@@ -240,6 +240,10 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		/* vote and power on mminfra */
 		if (disp_dpc_driver.dpc_vidle_power_keep)
 			priv->pm_ret = disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+		if (priv->pm_ret)
+			VDISPDBG("pd:%d %s ret:%d", priv->pd_id,
+				event == GENPD_NOTIFY_PRE_ON ? "pre_on" : "pre_off",
+				priv->pm_ret);
 		break;
 	case GENPD_NOTIFY_OFF:
 	case GENPD_NOTIFY_ON:

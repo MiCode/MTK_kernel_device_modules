@@ -104,7 +104,7 @@ static unsigned int g_vb_duration; //us
 static unsigned int g_vdisp_level_disp;
 static unsigned int g_vdisp_level_mml;
 static DEFINE_MUTEX(dvfs_lock);
-static unsigned int g_vlp_user_mask;
+static unsigned int g_vlp_pm_mask;
 
 #define MTK_DPC_PM_USER_COUNT 64
 static struct mtk_dpc_pm_user *g_dpc_pm_user;
@@ -462,6 +462,7 @@ static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mmdvfs_power_sync = false,
 	.mmdvfs_settings_addr = NULL,
 	.mmdvfs_settings_count = 0,
+	.vcp_is_alive = ATOMIC_INIT(true),
 	.mtcmos_mask = 0x3f,
 };
 
@@ -476,6 +477,7 @@ static struct mtk_dpc mt6878_dpc_driver_data = {
 	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
 	.mmdvfs_settings_count = 0, //pending by mmdvfs ready
 	.mtcmos_mask = 0x3f,
+	.vcp_is_alive = ATOMIC_INIT(true),
 };
 
 static struct mtk_dpc mt6899_dpc_driver_data = {
@@ -631,31 +633,37 @@ static unsigned int mtk_dpc_get_vidle_mask(const enum mtk_dpc_subsys subsys, boo
 static void dpc_pm_user_dump(bool force)
 {
 	unsigned int i = 0, count = 0;
+	unsigned long flags = 0;
 
 	if (!force || IS_ERR_OR_NULL(g_dpc_pm_user))
 		return;
 
-	DPCFUNC("     ========= pm user list ==============");
+	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
+	DPCFUNC("--------- pm user list,vcp:%d ------------",
+		atomic_read(&g_priv->vcp_is_alive));
+
 	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
 		if (!g_dpc_pm_user[i].valid) {
-			DPCFUNC("     ========= pm user count:%u=========", i);
+			DPCFUNC("--------- pm user count:%u---------", i);
 			break;
 		}
-		DPCFUNC("     user[%u]:%s,count:%d,max:%d %s",
-			i, g_dpc_pm_user[i].name, g_dpc_pm_user[i].count,
-			g_dpc_pm_user[i].max,
-			g_dpc_pm_user[i].count ? "[ACTIVE]" : ".");
+		if (g_dpc_pm_user[i].count || g_dpc_pm_user[i].max > 1)
+			DPCFUNC("\t pm_user[%u]:%s \t count:%d \t max:%d %s",
+				i, g_dpc_pm_user[i].name,
+				g_dpc_pm_user[i].count, g_dpc_pm_user[i].max,
+				g_dpc_pm_user[i].count ? "[ACTIVE]" : ".");
 	}
 
-	DPCFUNC("     ========= vlp user mask:0x%x ==============", g_vlp_user_mask);
+	DPCFUNC("--------- vlp pm mask:0x%x ------------", g_vlp_pm_mask);
 	for (i = 0; i < 32; i++) {
 		if (atomic_read(&g_vlp_user_cnt[i])) {
-			DPCFUNC("     vlp user[%u],count:%u",
+			DPCFUNC("\t vlp_user-%u \t count:%u",
 				i, atomic_read(&g_vlp_user_cnt[i]));
 			count++;
 		}
 	}
-	DPCFUNC("     ========= vlp user count:%u ===============", count);
+	DPCFUNC("--------- vlp user count:%u ---------------", count);
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 }
 
 static void dpc_pm_analysis(void)
@@ -700,6 +708,24 @@ static inline void dpc_pm_user_update(bool en, const char *source)
 		g_dpc_pm_user[i].count--;
 }
 
+static void dpc_pm_user_force_clear(void)
+{
+	unsigned int i = 0;
+
+	for (i = 0; i < MTK_DPC_PM_USER_COUNT; i++) {
+		if (!g_dpc_pm_user[i].valid)
+			break;
+		if (g_dpc_pm_user[i].count) {
+			DPCFUNC(":pm_user[%u]:%s,count:%d,max:%d",
+				i, g_dpc_pm_user[i].name, g_dpc_pm_user[i].count,
+				g_dpc_pm_user[i].max);
+			g_dpc_pm_user[i].count = 0;
+		}
+		g_dpc_pm_user[i].max = 0;
+	}
+	g_vlp_pm_mask = 0;
+}
+
 static inline int dpc_pm_ctrl(bool en, const char *source)
 {
 	int ret = 0, cnt0 = 0;
@@ -714,8 +740,9 @@ static inline int dpc_pm_ctrl(bool en, const char *source)
 	if (en) {
 		ret = pm_runtime_resume_and_get(g_priv->pd_dev);
 		if (ret) {
-			DPCERR("pm_runtime_resume_and_get failed skip_force_power(%u), en:%d, ret:%d",
-				g_priv->skip_force_power, en, ret);
+			DPCERR("pm on failed skip_force_power(%u),en:%d,ret:%d,vcp:%d",
+				g_priv->skip_force_power, en, ret,
+				atomic_read(&g_priv->vcp_is_alive));
 			return -1;
 		}
 
@@ -739,7 +766,7 @@ static inline int dpc_pm_ctrl(bool en, const char *source)
 		DPCFUNC("%s pm cnt:%d->%d, en:%d @%s,ret:%d,vlp:0x%x,mask:0x%x",
 			en ? "get" : "put", cnt0,
 			atomic_read(&g_priv->pd_dev->power.usage_count), en,
-			source ? source : "unknown", ret, val, g_vlp_user_mask);
+			source ? source : "unknown", ret, val, g_vlp_pm_mask);
 	}
 
 	if (source)
@@ -2227,6 +2254,7 @@ static void dpc_init_panel_type_v1(enum mtk_panel_type type)
 static int dpc_enable_vcp(bool en, const enum mtk_dpc_subsys subsys)
 {
 	u32 mmdvfs_user;
+	int ret = 0;
 
 	/* ignore it to shrink kernel log, since vcp only off after suspend */
 	if (!g_priv->mmdvfs_power_sync)
@@ -2242,7 +2270,24 @@ static int dpc_enable_vcp(bool en, const enum mtk_dpc_subsys subsys)
 		return -EINVAL;
 	}
 
-	return mtk_mmdvfs_enable_vcp(en, mmdvfs_user);
+	ret = mtk_mmdvfs_enable_vcp(en, mmdvfs_user);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (en && !ret) {
+		unsigned int i = 0;
+
+		while (!atomic_read(&g_priv->vcp_is_alive)) {
+			if (i++ > 100) {
+				DPCERR("failed enable vcp timeout,alive:%d,i:%u,ret:%d",
+					atomic_read(&g_priv->vcp_is_alive), i, ret);
+				ret = -EFAULT;
+				break;
+			}
+			udelay(1);
+		}
+	}
+#endif
+
+	return ret;
 }
 
 static void dpc_enable_v1(const u8 en)
@@ -3868,42 +3913,41 @@ static void mtk_disp_enable_gce_vote(bool enable)
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, dt_mask, enable);
 }
 
-static void mtk_disp_vlp_force_clear(void)
+static void mtk_vlp_user_force_clear(void)
 {
 	u32 val = 0, i = 0;
 
-	if (g_priv->get_sys_status) {
+	if (g_priv->get_sys_status)
 		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
-		val &= MTK_DISP_DPC_VLP_MASK;
-	}
-	if (!val) {
-		g_vlp_user_mask &= ~MTK_DISP_DPC_VLP_MASK;
+	if (!val)
 		return;
-	}
 
-	DPCFUNC("vlp force off,user mask:0x%x, value:0x%x", g_vlp_user_mask, val);
+	DPCFUNC("vlp force off,vlp pm mask:0x%x, vlp:0x%x", g_vlp_pm_mask, val);
 	writel_relaxed(val, g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CLR);
 	do {
 		writel_relaxed(val, g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CLR);
 		udelay(2);
 
-		if (g_priv->get_sys_status) {
+		if (g_priv->get_sys_status)
 			g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
-			val &= MTK_DISP_DPC_VLP_MASK;
-		}
 		if (!val)
 			break;
 
 		if (i > 2500) {
-			DPCERR("vlp force off timeout, mask:0x%x", val);
-			g_vlp_user_mask = (g_vlp_user_mask & ~MTK_DISP_DPC_VLP_MASK) | val;
+			DPCERR("vlp force off timeout, vlp:0x%x", val);
 			return;
 		}
 
 		i++;
 	} while (1);
 
-	g_vlp_user_mask &= ~MTK_DISP_DPC_VLP_MASK;
+
+	for (i = 0; i < 32; i++) {
+		if (atomic_read(&g_vlp_user_cnt[i])) {
+			DPCFUNC("vlp_user-%u, cnt:%d", i, atomic_read(&g_vlp_user_cnt[i]));
+			atomic_set(&g_vlp_user_cnt[i], 0);
+		}
+	}
 	if (dbg_mmp)
 		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE, val, 0xf0ce00ff);
 }
@@ -3942,15 +3986,17 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 		mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF) == 0)
 		return;
 
-	if (!vote_set && dbg_dpc_pm) {
-		if (g_priv->get_sys_status)
-			g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+	if (vote_set == VOTE_SET) {
+		atomic_inc(&g_vlp_user_cnt[thread]);
+		if (atomic_read(&g_vlp_user_cnt[thread]) > 1)
+			goto out;
+	} else {
+		if (atomic_read(&g_vlp_user_cnt[thread]) == 0)
+			return;
 
-		if ((val & BIT(thread)) == 0x0) {
-			DPCERR("user:%u vlp release without vote, vlp status:0x%x, set:%d",
-				thread, val, vote_set);
-			WARN_ON(1);
-		}
+		atomic_dec(&g_vlp_user_cnt[thread]);
+		if (atomic_read(&g_vlp_user_cnt[thread]) > 0)
+			goto out;
 	}
 
 	writel_relaxed(BIT(thread), g_priv->sys_va[VLP_BASE] + addr);
@@ -3970,16 +4016,13 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 		i++;
 	} while (1);
 
-	if (vote_set == VOTE_SET)
-		g_vlp_user_mask |= BIT(thread);
-	else
-		g_vlp_user_mask &= ~BIT(thread);
-
 	irq_log_store();
-	/* check voter only, later will use another API to power on mminfra */
-	if (dbg_mmp)
-		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE, BIT(thread) | vote_set, val);
 	mtk_dpc_update_vlp_state(thread, val, false);
+
+out:
+	if (dbg_mmp)
+		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE,
+			(thread << 16) | atomic_read(&g_vlp_user_cnt[thread]), val);
 }
 
 static void dpc_vidle_power_keep_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
@@ -4007,13 +4050,14 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user _user)
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user:%u skip force power", user);
+		DPCFUNC("user:%u skip vlp vote, force:%d,vlp pm mask:0x%x,vcp:%d",
+			user, g_priv->skip_force_power, g_vlp_pm_mask,
+			atomic_read(&g_priv->vcp_is_alive));
 		return -1;
 	}
 
 	if (!vote_only) {
-		atomic_inc(&g_vlp_user_cnt[user]);
-		if (atomic_read(&g_vlp_user_cnt[user]) == 1) {
+		if ((g_vlp_pm_mask & BIT(user)) == 0) {
 			ret = snprintf(&name[0], 63, "vlp_user-%u", user);
 			if (ret >= 0 && ret < 64)
 				ret = dpc_pm_ctrl(true, name);
@@ -4025,17 +4069,21 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user _user)
 				return -1;
 			}
 
+			g_vlp_pm_mask |= BIT(user);
 			if (BIT(user) & dbg_dpc_pm) {
 				DPCFUNC("vlp_user-%d, mask:0x%x, only:%u",
-					user, g_vlp_user_mask, vote_only);
+					user, g_vlp_pm_mask, vote_only);
 				WARN_ON(dbg_vlp_backtrace);
 			}
 		}
-	} else if (dbg_vlp_backtrace)
-		DPCFUNC("vlp_user-%d cnt:%u, skip pm ctrl, vote only:%u, user mask:0x%x",
-			user, atomic_read(&g_vlp_user_cnt[user]), vote_only, g_vlp_user_mask);
+	}
 
 	mtk_disp_vlp_vote_by_cpu_v1(VOTE_SET, user);
+	if (dbg_vlp_backtrace && (g_vlp_pm_mask & BIT(user)) == 0)
+		DPCFUNC("vlp_user-%d cnt:%u,vlp vote w/o pm,vote only:%u,vlp pm mask:0x%x,vcp:%d",
+			user, atomic_read(&g_vlp_user_cnt[user]),
+			vote_only, g_vlp_pm_mask,
+			atomic_read(&g_priv->vcp_is_alive));
 	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
 	udelay(50);
@@ -4052,8 +4100,9 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
-		DPCFUNC("user:%u skip release power, user mask:0x%x",
-			user, g_vlp_user_mask);
+		DPCFUNC("user:%u skip vlp clr, force:%d,vlp pm mask:0x%x,vcp:%d",
+			user, g_priv->skip_force_power, g_vlp_pm_mask,
+			atomic_read(&g_priv->vcp_is_alive));
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		return;
 	}
@@ -4062,12 +4111,16 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 	mtk_disp_vlp_vote_by_cpu_v1(VOTE_CLR, user);
 	irq_log_store();
 
-	if (atomic_read(&g_vlp_user_cnt[user]) == 0) {
+	if ((g_vlp_pm_mask & BIT(user)) == 0) {
+		if (dbg_vlp_backtrace)
+			DPCFUNC("vlp_user-%d cnt:%u,vlp clr w/o pm,vote only:%u,vlp pm mask:0x%x,vcp:%d",
+				user, atomic_read(&g_vlp_user_cnt[user]),
+				vote_only, g_vlp_pm_mask,
+				atomic_read(&g_priv->vcp_is_alive));
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		return;
 	}
 
-	atomic_dec(&g_vlp_user_cnt[user]);
 	if (atomic_read(&g_vlp_user_cnt[user]) == 0) {
 		ret = snprintf(&name[0], 63, "vlp_user-%u", user);
 		if (ret >= 0 && ret < 64)
@@ -4076,13 +4129,15 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 			dpc_pm_ctrl(false, "vlp_user-unknown");
 		if (BIT(user) & dbg_dpc_pm) {
 			DPCFUNC("vlp_user-%d, mask:0x%x, vote only:%u",
-				user, g_vlp_user_mask, vote_only);
+				user, g_vlp_pm_mask, vote_only);
 			WARN_ON(dbg_vlp_backtrace);
 		}
 
+		g_vlp_pm_mask &= ~BIT(user);
 		if (vote_only && dbg_vlp_backtrace)
-			DPCFUNC("vlp_user-%d cnt:%u, do pm ctrl, vote only:%u, user mask:0x%x",
-				user, atomic_read(&g_vlp_user_cnt[user]), vote_only, g_vlp_user_mask);
+			DPCFUNC("vlp_user-%d cnt:%u, do pm ctrl,vote only:%u,vlp pm mask:0x%x,vcp:%d",
+				user, atomic_read(&g_vlp_user_cnt[user]), vote_only,
+				g_vlp_pm_mask, atomic_read(&g_priv->vcp_is_alive));
 
 	}
 	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
@@ -4125,7 +4180,7 @@ static void _dpc_analysis(bool detail)
 		status = g_priv->get_sys_status(SYS_POWER_ACK_DPC, &value);
 	if (!status) {
 		DPCFUNC("power_off(%d,0x%x),vlp mask:0x%x",
-			status, value, g_vlp_user_mask);
+			status, value, g_vlp_pm_mask);
 		dpc_pm_user_dump(true);
 		return;
 	}
@@ -4142,8 +4197,8 @@ static void _dpc_analysis(bool detail)
 		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &value);
 	else
 		value = 0xdead;
-	DPCDUMP("VLP: vote:0x%x,cpu user:0x%x,mminfra pm cnt:%u",
-		value, g_vlp_user_mask,
+	DPCDUMP("vlp:0x%x,vlp pm user:0x%x,mminfra pm cnt:%u",
+		value, g_vlp_pm_mask,
 		atomic_read(&g_priv->pd_dev->power.usage_count));
 	dpc_pm_user_dump(true);
 	DPCDUMP("DT settings: DISP_DT:0x%x,MML_DT:0x%x,DPC_EN:0x%x",
@@ -4259,55 +4314,49 @@ static void dpc_analysis_v1(void)
 	_dpc_analysis(false);
 }
 
-static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+static void dpc_skip_pm_ctrl(bool enable)
 {
 	unsigned long flags;
-	u32 force_release = 0, i = 0;
+	u32 force_release = 0;
 
-	switch (pm_event) {
-	case PM_SUSPEND_PREPARE:
-		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-		g_priv->skip_force_power = true;
-		if (dbg_dpc_pm)
-			DPCFUNC("pm cnt:%d,suspend prepare",
-				atomic_read(&g_priv->pd_dev->power.usage_count));
+	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
+
+	if (g_priv->skip_force_power == enable)
+		goto out;
+
+	if (enable) {
 		if (g_priv->pd_dev) {
 			while (atomic_read(&g_priv->pd_dev->power.usage_count) > 0) {
 				force_release++;
 				pm_runtime_put_sync(g_priv->pd_dev);
-				if (dbg_dpc_pm)
-					DPCFUNC("pm cnt:%d,force release:%d",
-						atomic_read(&g_priv->pd_dev->power.usage_count),
-						force_release);
 			}
 		}
-		mtk_disp_vlp_force_clear();
-		if (unlikely(force_release)) {
-			DPCFUNC("dpc_dev dpc_pm unbalanced(%u)", force_release);
-			for (i = 0; i < 32; i++) {
-				if (atomic_read(&g_vlp_user_cnt[i])) {
-					DPCFUNC("vlp user-%u, cnt:%d", i, atomic_read(&g_vlp_user_cnt[i]));
-					atomic_set(&g_vlp_user_cnt[i], 0);
-				}
-			}
-		}
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
+		if (unlikely(force_release))
+			DPCFUNC("dpc_dev dpc_pm unbalanced(%u),vcp:%d", force_release,
+				atomic_read(&g_priv->vcp_is_alive));
+		mtk_vlp_user_force_clear();
+		dpc_pm_user_force_clear();
+	}
+
+	g_priv->skip_force_power = enable;
+	dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, enable);
+	DPCFUNC("skip_force_power:%d, vcp:%d,vlp pm mask:0x%x", g_priv->skip_force_power,
+		atomic_read(&g_priv->vcp_is_alive), g_vlp_pm_mask);
+
+out:
+	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
+}
+
+static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		dpc_skip_pm_ctrl(true);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
-		spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-		g_priv->skip_force_power = false;
-		if (dbg_dpc_pm)
-			DPCFUNC("pm cnt:%d,suspend post",
-				atomic_read(&g_priv->pd_dev->power.usage_count));
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
+		dpc_skip_pm_ctrl(false);
 		return NOTIFY_OK;
 	default:
-		if (dbg_dpc_pm)
-			DPCFUNC("pm cnt:%d,suspend event:%lu",
-				atomic_read(&g_priv->pd_dev->power.usage_count),
-				pm_event);
 		break;
 	}
 	return NOTIFY_DONE;
@@ -4323,9 +4372,13 @@ static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, 
 		break;
 	case VCP_EVENT_SUSPEND:
 		atomic_set(&g_priv->vcp_is_alive, false);
+		if (!g_priv->mmdvfs_power_sync)
+			dpc_skip_pm_ctrl(true);
 		break;
 	case VCP_EVENT_RESUME:
 		atomic_set(&g_priv->vcp_is_alive, true);
+		if (!g_priv->mmdvfs_power_sync)
+			dpc_skip_pm_ctrl(false);
 		break;
 	}
 	return NOTIFY_DONE;
@@ -4399,6 +4452,12 @@ static void process_dbg_opt(const char *opt)
 			DPCERR();
 			return;
 		}
+	} else if (strncmp(opt, "vidle_cap:", 10) == 0) {
+		ret = sscanf(opt, "vidle_cap:%u\n", &val);
+		if (ret != 1)
+			goto err;
+		g_priv->vidle_mask = val;
+		mtk_dpc_dump_caps();
 	}
 
 	if (g_priv->get_sys_status) {
@@ -4407,7 +4466,7 @@ static void process_dbg_opt(const char *opt)
 	}
 	if (!status1 || !status2) {
 		DPCFUNC("power_off(%d,%d,0x%x),vlp mask:0x%x",
-			status1, status2, value, g_vlp_user_mask);
+			status1, status2, value, g_vlp_pm_mask);
 		dpc_pm_user_dump(true);
 		return;
 	}
@@ -4500,12 +4559,6 @@ static void process_dbg_opt(const char *opt)
 		if (ret != 1)
 			goto err;
 		dpc_dvfs_set_v1(DPC_SUBSYS_DISP, val, true);
-	} else if (strncmp(opt, "vidle_cap:", 10) == 0) {
-		ret = sscanf(opt, "vidle_cap:%u\n", &val);
-		if (ret != 1)
-			goto err;
-		g_priv->vidle_mask = val;
-		mtk_dpc_dump_caps();
 	} else if (strncmp(opt, "dt:", 3) == 0) {
 		ret = sscanf(opt, "dt:%u,%u\n", &v1, &v2);
 		if (ret != 2)
@@ -4538,11 +4591,11 @@ static void process_dbg_opt(const char *opt)
 				g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
 			else
 				val = 0xdead;
-			DPCFUNC("mminfra_dpc_state: pm cnt:%d, vlp vote:0x%x, vlp user mask:0x%x",
+			DPCFUNC("mminfra_dpc_state: pm cnt:%d, vlp:0x%x, vlp pm mask:0x%x",
 				atomic_read(&g_priv->pd_dev->power.usage_count),
-				val, g_vlp_user_mask);
+				val, g_vlp_pm_mask);
 		} else
-			DPCFUNC("mminfra_dpc_state: vlp user mask: 0x%x", g_vlp_user_mask);
+			DPCFUNC("mminfra_dpc_state: vlp pm mask: 0x%x", g_vlp_pm_mask);
 		dpc_pm_user_dump(true);
 	}
 

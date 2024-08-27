@@ -36,7 +36,6 @@ enum mtk_vidle_voter_user {
 	DISP_VIDLE_FORCE_KEEP = 31,
 	DISP_VIDLE_USER_MASK = 0x1f,
 };
-#define MTK_DISP_DPC_VLP_MASK (0xFFFF8000)
 
 enum mtk_vidle_voter_status {
 	VOTER_PM_FAILED = -1,
