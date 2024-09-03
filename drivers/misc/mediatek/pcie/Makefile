@@ -2,4 +2,4 @@
 
 obj-$(CONFIG_DEVICE_MODULES_PCIE_MEDIATEK_SMT) += mtk_pcie_smt.o
 
-mtk_pcie_smt-objs:= mtk_pcie_lib.o mtk_pcie_main.o pcie_sphy2_test_lib.o pcie_sphy3_test_lib.o pcie_sphy4_test_lib.o
+mtk_pcie_smt-objs:= mtk_pcie_lib.o mtk_pcie_main.o
