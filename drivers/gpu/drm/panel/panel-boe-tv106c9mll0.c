@@ -402,6 +402,8 @@ static int panel_ata_check(struct drm_panel *panel)
 
 static struct mtk_panel_params ext_params = {
 	.pll_clk = 520,
+	.data_rate = 1040,
+	.data_rate_khz = 1039878,
 };
 
 static struct mtk_panel_funcs ext_funcs = {
