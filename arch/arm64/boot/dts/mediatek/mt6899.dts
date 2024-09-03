@@ -16303,7 +16303,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		max-temperature-stage = <3>;
 		temperature-threshold = <25 10 0>;
 		system-ocp = <13000>;
-		system-uvlo = <2400>;
+		system-uvlo = <2610>;
 
 		bat-ocv-table-num = <0>;
 	};
@@ -16314,24 +16314,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
 			3550 3100 2900
-			3800 3100 2900
-			4300 3400 3100
-			4400 3400 3100>;
+			3650 3100 2900
+			3750 3400 3100
+			3850 3400 3100>;
 		bat0-thd-volts-h = <
 			3600 3550 3100
-			3900 3800 3100
-			4500 4300 3400
-			4500 4400 3400>;
+			3750 3650 3100
+			3850 3750 3400
+			3950 3850 3400>;
 		bat1-thd-volts-l = <
 			3550 3100 2900
-			3800 3100 2900
-			4300 3400 3100
-			4400 3400 3100>;
+			3650 3100 2900
+			3750 3400 3100
+			3850 3400 3100>;
 		bat1-thd-volts-h = <
 			3600 3550 3100
-			3900 3800 3100
-			4500 4300 3400
-			4500 4400 3400>;
+			3750 3650 3100
+			3850 3750 3400
+			3950 3850 3400>;
 		lvsys-thd-volt-l = <2900>;
 		lvsys-thd-volt-h = <3100>;
 		temperature-stage-threshold = <25 10 0>;
