@@ -1236,13 +1236,13 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"RC1_M6_0,RC1_M6_1,RC1_M7_0,RC1_M7_1,",
 				"WD_CH0_0,WD_CH0_1,WD_CH1_0,WD_CH1_1";
 			node-126 = "SSPM_SPM_DBG__RC_REQ",
-				"xoufs_req,srclken_fpm_2,nfc_srcclkeni_0_dbc,srclken_bblpm_10,",
+				"xoufs_req,spm_srclken_fpm_2,nfc_srcclkeni_0_dbc,srclken_bblpm_10,",
 				"srclken_fpm_9,srclken_fpm_8,srclken_fpm_7,srclken_fpm_6,",
 				"srclken_fpm_5,srclken_fpm_4,srclken_fpm_3,srclken_fpm_2,",
 				"srclken_fpm_1,spm_srclken_fpm_0,dcxo_bblpm,dcxo_lpm,dcxo_fpm,",
-				"mainpll_en,univpll_en,adsppll,mmpll_en,apll1,apll2_en,msdcpll_en,",
+				"mainpll_en,univpll_en,adsppll,mmpll_en,apll1_en,apll2_en,msdcpll_en,",
 				"emipll_en,emipll2_en,tvdpll_en,imgpll_en,cg_en_axi,cg_en_peri_faxi,",
-				"cg_en_ufs_faxi,cg_en_pextp_faxi,cg_en_bus_aximem,cg_en_mem_sub,",
+				"cg_en_ufs_faxi,cg_en_pextp_faxi,cg_en_bus_aximen,cg_en_mem_sub,",
 				"cg_en_peri_fmem,cg_en_ufs_fmem,cg_en_pexpt_fmem,cg_en_mcu_infra,",
 				"cg_en_mcu_acp,cg_en_mminfra,cg_en_mmup";
 			node-127 = "SSPM_SWPM_SCP__POWER_IDX",
