@@ -812,3 +812,14 @@ config DRM_PANEL_RM692J0_TM_FHDPLUS_CMD_LTPO
 	  rm692j0 tm fhdplus cmd ltpo panel. The panel has a 1216x2640
 	  resolution and uses 24-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
+
+config DRM_PANEL_NT51021H_WUXGA_VDO_BOE
+tristate "nt51021h wuxga vdo boe panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for nt51021h wuxga vdo boe.
+	  This panel is a 1200x1920 resolution and uses 24-bits RGB per pixel
+	  resolution and uses 24-bits RGB per pixel. It provides a
+	  MIPI DSI interface to host.
