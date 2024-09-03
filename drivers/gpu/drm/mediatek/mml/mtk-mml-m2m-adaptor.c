@@ -118,8 +118,6 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
 
-	m2m_param_remove(mctx);
-
 	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	if (!src_buf ||!dst_buf) {
@@ -141,7 +139,6 @@ static void m2m_task_frame_done(struct mml_task *task)
 	struct mml_frame_config *tmp;
 	struct mml_ctx *ctx = task->ctx;
 	struct mml_dev *mml = cfg->mml;
-	enum vb2_buffer_state vb_state = VB2_BUF_STATE_DONE;
 	struct mml_m2m_ctx *mctx = container_of(ctx, struct mml_m2m_ctx, ctx);
 
 	mml_trace_ex_begin("%s", __func__);
@@ -164,7 +161,6 @@ static void m2m_task_frame_done(struct mml_task *task)
 			task->state);
 		task->err = true;
 		cfg->err = true;
-		vb_state = VB2_BUF_STATE_ERROR;
 		mml_record_track(mml, task);
 		kref_put(&task->ref, task_move_to_destroy);
 	} else {
@@ -208,8 +204,7 @@ static void m2m_task_frame_done(struct mml_task *task)
 done:
 	mutex_unlock(&ctx->config_mutex);
 
-	/* notice frame done to v4l2 */
-	mml_m2m_process_done(mctx, vb_state);
+	m2m_param_remove(mctx);
 
 	/* kref_get mctx->ref in mml_m2m_device_run */
 	kref_put(&mctx->ref, m2m_ctx_complete);
@@ -219,9 +214,23 @@ done:
 	mml_trace_ex_end();
 }
 
+static void m2m_task_signal_irq(struct mml_task *task)
+{
+	struct mml_ctx *ctx = task->ctx;
+	struct mml_m2m_ctx *mctx = container_of(ctx, struct mml_m2m_ctx, ctx);
+	enum vb2_buffer_state vb_state = VB2_BUF_STATE_DONE;
+
+	mml_msg("[m2m]%s signal user done job id %u", __func__, task->job.jobid);
+	kref_get(&mctx->ref);
+	mml_m2m_process_done(mctx, vb_state);
+	mml_mmp(m2m_sig, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
+	kref_put(&mctx->ref, m2m_ctx_complete);
+}
+
 static const struct mml_task_ops m2m_task_ops = {
 	.submit_done = task_submit_done,
 	.frame_done = m2m_task_frame_done,
+	.signal_irq = m2m_task_signal_irq,
 	.dup_task = task_dup,
 	.get_tile_cache = task_get_tile_cache,
 };
@@ -1971,6 +1980,7 @@ err_buf_exit:
 		if (is_init_state)
 			cfg->cfg_ops->put(cfg);
 	}
+	m2m_param_remove(mctx);
 	mml_m2m_process_done(mctx, vb_state);
 
 	kref_put(&mctx->ref, m2m_ctx_complete);
