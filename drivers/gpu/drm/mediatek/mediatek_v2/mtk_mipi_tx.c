@@ -2279,13 +2279,16 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int txdiv, txdiv0, tmp;
 	u32 rate;
+	u32 rate_khz;
 	unsigned int fbksel;
 
 	DDPINFO("%s+\n", __func__);
 
 	rate = (mipi_tx->data_rate_adpt) ? mipi_tx->data_rate_adpt :
 			mipi_tx->data_rate / 1000000;
+	rate_khz = (mipi_tx->data_rate_khz_adpt) ? mipi_tx->data_rate_khz_adpt : 0;
 	dev_dbg(mipi_tx->dev, "prepare: %u MHz\n", rate);
+	dev_dbg(mipi_tx->dev, "prepare: %u KHz\n", rate_khz);
 
 	if (rate >= 2000) {
 		txdiv = 1;
@@ -2366,7 +2369,10 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 			FLD_RG_DSI_PLL_FBSEL_MT6983, (fbksel - 1) << 13);
 
-	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
+	if (rate_khz && mipi_tx->driver_data->dsi_get_pcw_khz)
+		tmp = mipi_tx->driver_data->dsi_get_pcw_khz(rate_khz, txdiv);
+	else
+		tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
 	writel(tmp, mipi_tx->regs + MIPITX_PLL_CON0);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
@@ -2947,8 +2953,8 @@ static unsigned int _dsi_get_pcw_khz_mt6989(unsigned long data_rate_khz,
 	 * PCW bit 0~7 = (pcw*256*256 - floor(pcw)*256*256)*256
 	 * div3_en=0,so div3 always 1
 	 */
-	pcw = DO_COMMON_DIV(data_rate_khz * pcw_ratio, 26);
-	pcw_floor = DO_COMMMON_MOD(data_rate_khz * pcw_ratio * div3 / fbksel, 26);
+	pcw = DO_COMMON_DIV(data_rate_khz * pcw_ratio, clk_26m);
+	pcw_floor = DO_COMMMON_MOD(data_rate_khz * pcw_ratio * div3 / fbksel, clk_26m);
 	tmp = ((pcw & 0xFF) << 24) | (((256 * pcw_floor / clk_26m) & 0xFF) << 16) |
 		(((256 * (256 * pcw_floor % clk_26m) / clk_26m) & 0xFF) << 8) |
 		((256 * (256 * (256 * pcw_floor % clk_26m) % clk_26m) / clk_26m) & 0xFF);
