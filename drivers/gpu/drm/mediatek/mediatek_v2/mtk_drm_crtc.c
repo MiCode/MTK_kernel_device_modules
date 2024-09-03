@@ -9146,14 +9146,14 @@ void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
 
 void update_layer_cap_for_bwm(struct drm_crtc *crtc,
 				struct drm_crtc_state *old_crtc_state,
-				unsigned int partial_enable)
+				unsigned int ovl_partial_dirty)
 {
 	struct drm_plane *plane = NULL;
 	unsigned int plane_mask = 0;
 
 	plane_mask = old_crtc_state->plane_mask;
 
-	if (partial_enable == 1) {
+	if (ovl_partial_dirty == 1) {
 		drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 			struct mtk_plane_state *plane_state =
 				to_mtk_plane_state(plane->state);
@@ -18120,7 +18120,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		state->ovl_partial_dirty = 1;
 
 	/* bwm skip ratio get if enable SISO PU */
-	update_layer_cap_for_bwm(crtc, old_crtc_state, partial_enable);
+	update_layer_cap_for_bwm(crtc, old_crtc_state, state->ovl_partial_dirty);
 
 	/* skip if ovl partial dirty is disable and equal to old */
 	if (!state->ovl_partial_dirty &&
