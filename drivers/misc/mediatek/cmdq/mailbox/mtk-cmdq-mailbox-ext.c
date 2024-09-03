@@ -3738,6 +3738,13 @@ void cmdq_mbox_enable(void *chan)
 		writel(CMDQ_TPR_EN, cmdq->base + CMDQ_TPR_MASK);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 
+		if (cmdq->gce_req_wa) {
+			cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDREN_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDREN_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDRSRC_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_EMI_BIT);
+		}
+
 		// thread
 		if (cmdq->prebuilt_enable) {
 			cmdq_init_cpu(cmdq);
@@ -3749,14 +3756,6 @@ void cmdq_mbox_enable(void *chan)
 			cmdq_util_hw_trace_enable(cmdq->hwid,
 				cmdq_util_get_bit_feature() &
 				CMDQ_LOG_FEAT_PERF);
-
-		if (cmdq->gce_req_wa) {
-			cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDREN_BIT);
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDREN_BIT);
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDRSRC_BIT);
-			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_EMI_BIT);
-		}
-
 		cmdq_mtcmos_by_fast(cmdq, false);
 	}
 
