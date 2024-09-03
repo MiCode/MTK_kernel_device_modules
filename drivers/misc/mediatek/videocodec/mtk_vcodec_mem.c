@@ -116,7 +116,7 @@ void *mtk_vcodec_get_buffer(struct device *dev, struct mtk_vcodec_queue *vcodec_
 	}
 	vcodec_buf->attach = attach;
 
-	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(sgt)) {
 		pr_info("map failed, detach and return\n");
 		dma_buf_detach(vcodec_buf->dbuf, attach);
@@ -196,7 +196,7 @@ int mtk_vcodec_free_buffer(struct mtk_vcodec_queue *vcodec_queue,
 
 				/* decrease file count */
 				//free iova here
-				dma_buf_unmap_attachment(vcodec_buf->attach,
+				dma_buf_unmap_attachment_unlocked(vcodec_buf->attach,
 					vcodec_buf->sgt,
 					DMA_BIDIRECTIONAL);
 

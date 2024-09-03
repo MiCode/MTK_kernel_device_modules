@@ -189,14 +189,14 @@ long vcodec_cache_flush_buff(struct device *dev, unsigned long arg, unsigned int
 		dma_buf_put(dmabuf);
 		return -EFAULT;
 	}
-	sgt = dma_buf_map_attachment(attach, op);
+	sgt = dma_buf_map_attachment_unlocked(attach, op);
 	if (IS_ERR(sgt)) {
 		pr_info("map failed, detach and return\n");
 		dma_buf_detach(dmabuf, attach);
 		return -EFAULT;
 	}
 	dma_sync_sg_for_device(dev, sgt->sgl, sgt->orig_nents, op);
-	dma_buf_unmap_attachment(attach, sgt, op);
+	dma_buf_unmap_attachment_unlocked(attach, sgt, op);
 	dma_buf_detach(dmabuf, attach);
 	dma_buf_put(dmabuf);
 	pr_debug("%s -\n", __func__);
