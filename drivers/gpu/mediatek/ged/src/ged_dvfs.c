@@ -2595,7 +2595,7 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 5) {
 		dcs_set_fix_num(4);
 		start_mewtwo_timer();
-	} else if (flag == 6 || flag == 7) {
+	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000)) {
 		if (api_sync_flag != flag)
 			api_sync_flag = flag;
 	} else if (flag == 8) {
