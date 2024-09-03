@@ -1748,9 +1748,11 @@ void serdes_disable(struct drm_bridge *bridge, u8 port)
 
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #if ENABLE_HOTPLUG_INT
-	disable_irq(ser_des->irq_num);
+	if (ser_des->irq_num)
+		disable_irq(ser_des->irq_num);
 #endif
-	kthread_stop(ser_des->hotplug_task);
+	if (ser_des->hotplug_task)
+		kthread_stop(ser_des->hotplug_task);
 #endif
 
 	serdes_bl_off(ser_des, port);
