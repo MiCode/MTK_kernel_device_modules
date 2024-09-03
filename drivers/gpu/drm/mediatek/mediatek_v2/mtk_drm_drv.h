@@ -21,6 +21,8 @@
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 #define MAX_CONNECTOR 7
+#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define MAX_CONNECTOR 6
 #else
 #define MAX_CONNECTOR 3
 #endif
@@ -70,7 +72,7 @@ struct mtk_mmsys_driver_data {
 	const struct mtk_crtc_path_data *third_path_data_wo_tdshp;
 	const struct mtk_crtc_path_data *fourth_path_data_secondary;
 	const struct mtk_crtc_path_data *fourth_path_data_discrete;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	const struct mtk_crtc_path_data *fifth_path_data;
 	const struct mtk_crtc_path_data *sixth_path_data;
 	const struct mtk_crtc_path_data *seventh_path_data;
@@ -189,7 +191,7 @@ struct mtk_drm_private {
 	struct device *dpc_dev;
 	struct device *dsi_phy0_dev;
 	struct device *dsi_phy1_dev;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	struct device *dsi_phy2_dev;
 #endif
 

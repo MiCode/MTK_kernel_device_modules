@@ -81,7 +81,7 @@
 
 #include <soc/mediatek/mmqos.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "mtk_drm_auto/mtk_drm_ddp_comp_auto.h"
 #include "mtk_drm_auto/mtk_drm_crtc_auto.h"
 #endif
@@ -5235,9 +5235,11 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 	_mtk_crtc_atmoic_addon_module_disconnect(crtc, mtk_crtc->ddp_mode,
 						 old_lye_state, cmdq_handle);
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (priv->data->ovl_exdma_rule && (lye_state->rpo_lye || lye_state->mml_dl_lye) &&
 	(old_crtc_state->prop_val[CRTC_PROP_LYE_IDX] < state->prop_val[CRTC_PROP_LYE_IDX]))
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
+#endif
 
 	_mtk_crtc_atmoic_addon_module_connect(crtc, mtk_crtc->ddp_mode,
 					      lye_state, cmdq_handle, false);
@@ -9012,7 +9014,7 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (!mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]) {
 		DDPMSG("%s CRTC%d has no bwm ratio loop client\n", __func__, crtc_id);
 		return;
@@ -9130,7 +9132,7 @@ void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (!mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]) {
 		DDPMSG("%s CRTC%d has no bwm ratio loop client\n", __func__, drm_crtc_index(crtc));
 		return;
@@ -10645,7 +10647,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (!mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]) {
 		DDPMSG("%s CRTC%d has no triger loop client\n", __func__, crtc_id);
 		return;
@@ -11078,7 +11080,7 @@ void mtk_crtc_stop_trig_loop(struct drm_crtc *crtc)
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (!mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP]) {
 		DDPMSG("%s CRTC%d has no triger loop client\n", __func__, drm_crtc_index(crtc));
 		return;
@@ -13335,7 +13337,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_config_default_path(mtk_crtc);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 3);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(mtk_crtc);
 #endif
@@ -16067,11 +16069,13 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_msync2_switch_begin(crtc);
 	}
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (priv->data->ovl_exdma_rule &&
 		(old_mtk_state->prop_val[CRTC_PROP_LYE_IDX] < mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX])) {
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
 		CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	}
+#endif
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_config_begin(comp, mtk_crtc_state->cmdq_handle, j);
@@ -16409,7 +16413,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 							0, cmdq_handle);
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
 				} else {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
 #else
 					comp = mtk_crtc_get_plane_comp(crtc, plane_state);
@@ -20348,22 +20352,17 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	}
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp) {
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		unsigned int possible_crtcs = 0;
 #endif
 
 		mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT,
 				    &mtk_crtc->panel_ext);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		possible_crtcs = 1 << pipe;
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_CRTC_ID,
 				    &possible_crtcs);
-
-		if (output_comp->id == DDP_COMPONENT_DSI2_VIRTUAL) {
-			mtk_crtc->virtual_path = true;
-			mtk_crtc->offset_x = mtk_crtc->panel_ext->params->crop_width[0];
-		}
 #endif
 	}
 

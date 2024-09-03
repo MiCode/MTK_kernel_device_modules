@@ -106,7 +106,7 @@
 
 #include "mtk_disp_vdisp_ao.h"
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "mtk_drm_auto/mtk_drm_crtc_auto.h"
 #endif
 
@@ -3367,7 +3367,7 @@ static const enum mtk_ddp_comp_id mt6899_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_DP_INTF0,
 };
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL_EXDMA3,
 	DDP_COMPONENT_OVL0_BLENDER1,
@@ -3508,6 +3508,8 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_BLENDER4,
 	DDP_COMPONENT_OVL_EXDMA7,
 	DDP_COMPONENT_OVL0_BLENDER5,
+	DDP_COMPONENT_OVL_EXDMA8,
+	DDP_COMPONENT_OVL0_BLENDER6,
 	DDP_COMPONENT_OVL0_OUTPROC0,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
 };
@@ -5534,7 +5536,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_ext_path_data = {
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
 	.addon_data = mt6991_addon_ext,
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	.is_exdma_dual_layer = true,
 #endif
 };
@@ -5573,7 +5575,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_discrete_path_data = {
 	.is_discrete_path = true,
 };
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 static const struct mtk_crtc_path_data mt6991_mtk_fifth_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_fifth_path,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_fifth_path),
@@ -6649,7 +6651,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.third_path_data_wo_tdshp = &mt6991_mtk_dp_wo_tdshp_path_data,
 	.fourth_path_data_secondary = &mt6991_mtk_secondary_path_data,
 	.fourth_path_data_discrete = &mt6991_mtk_discrete_path_data,
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	.fifth_path_data = &mt6991_mtk_fifth_path_data,
 	.sixth_path_data = &mt6991_mtk_sixth_path_data,
 	.seventh_path_data = &mt6991_mtk_seventh_path_data,
@@ -6996,7 +6998,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dsi_phy1_dev && (!pm_runtime_enabled(priv->dsi_phy1_dev)))
 			pm_runtime_enable(priv->dsi_phy1_dev);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev && (!pm_runtime_enabled(priv->dsi_phy2_dev)))
 			pm_runtime_enable(priv->dsi_phy2_dev);
 #endif
@@ -7031,7 +7033,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dsi_phy1_dev)
 			pm_runtime_disable(priv->dsi_phy1_dev);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev)
 			pm_runtime_disable(priv->dsi_phy2_dev);
 #endif
@@ -7053,7 +7055,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			}
 		}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev) {
 			ret = pm_runtime_resume_and_get(priv->dsi_phy2_dev);
 			if (unlikely(ret)) {
@@ -7099,7 +7101,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dsi_phy1_dev)
 			pm_runtime_put_sync(priv->dsi_phy1_dev);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev)
 			pm_runtime_put_sync(priv->dsi_phy2_dev);
 #endif
@@ -7126,7 +7128,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->dsi_phy1_dev)
 			pm_runtime_put_sync(priv->dsi_phy1_dev);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev)
 			pm_runtime_put_sync(priv->dsi_phy2_dev);
 #endif
@@ -7144,7 +7146,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			ret = -2;
 			goto err_dsi_phy1;
 		}
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (priv->dsi_phy2_dev && pm_runtime_get_if_in_use(priv->dsi_phy2_dev) <= 0) {
 			DDPMSG("%s, dsi phy2 unused,%d", __func__,
 				atomic_read(&priv->dsi_phy2_dev->power.usage_count));
@@ -7199,7 +7201,7 @@ err_mmsys:
 	if (priv->dpc_dev)
 		pm_runtime_put(priv->dpc_dev);
 err_dpc_dev:
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (priv->dsi_phy2_dev)
 		pm_runtime_put_sync(priv->dsi_phy2_dev);
 err_dsi_phy2:
@@ -9280,7 +9282,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 				goto err_component_unbind;
 		}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (private->data->fifth_path_data) {
 			DDPMSG("CRTC4 Path\n");
 			if (of_property_read_bool(private->mmsys_dev->of_node,
@@ -11026,7 +11028,7 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DPTX},
 	{.compatible = "mediatek,mt6899-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	{.compatible = "mediatek,mt6991-dp_tx",
 	 .data = (void *)MTK_DISP_DPTX},
 #endif
@@ -11636,7 +11638,7 @@ SKIP_OVLSYS_CONFIG:
 
 	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
 	private->dsi_phy1_dev = mtk_drm_get_pd_device(dev, "dsi_phy1");
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	private->dsi_phy2_dev = mtk_drm_get_pd_device(dev, "dsi_phy2");
 #endif
 
@@ -12160,11 +12162,11 @@ static void __exit mtk_drm_exit(void)
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);
 
-#if (IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) && IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT))
+#if (IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) && IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO))
 MODULE_SOFTDEP("pre: mtk-drm-edp panel-serdes-max96789");
 #elif IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 MODULE_SOFTDEP("pre: mtk-drm-edp");
-#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 MODULE_SOFTDEP("pre: panel-serdes-max96789");
 #endif
 MODULE_AUTHOR("YT SHEN <yt.shen@mediatek.com>");

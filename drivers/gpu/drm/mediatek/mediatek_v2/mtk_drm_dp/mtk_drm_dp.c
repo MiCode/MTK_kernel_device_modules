@@ -5600,13 +5600,13 @@ static int mtk_dp_bridge_attach(struct drm_bridge *bridge,
 		ret = drm_bridge_attach(bridge->encoder, mtk_dp->next_bridge,
 					&mtk_dp->bridge, flags);
 		if (ret) {
-			drm_warn(mtk_dp->drm_dev,
-				 "Failed to attach external bridge:%d\n", ret);
+			pr_info("Failed to attach external bridge:%d\n", ret);
 			goto err_bridge_attach;
 		}
 	}
 
-	mtk_dp->drm_dev = bridge->dev;
+	if (bridge)
+		mtk_dp->drm_dev = bridge->dev;
 
 	mtk_dp_init_port(mtk_dp);
 	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
@@ -6791,6 +6791,8 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	int irq_num = 0;
 	void *base;
 
+	DP_FUNC("+\n");
+
 	mtk_dp = devm_kmalloc(dev, sizeof(*mtk_dp), GFP_KERNEL | __GFP_ZERO);
 	if (!mtk_dp)
 		return -ENOMEM;
@@ -6805,7 +6807,7 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 #if ATTACH_BRIDGE
 	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
 	if (!mtk_dp->next_bridge) {
-		DP_DBG("Can not find next_bridge %d\n", ret);
+		DP_MSG("Can not find next_bridge %d\n", ret);
 		return -EPROBE_DEFER;
 	}
 	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);

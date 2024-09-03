@@ -1323,7 +1323,7 @@ static int mtk_dpintf_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 	}
 		break;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	case SET_CRTC_ID:
 	{
 		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,
@@ -1385,7 +1385,7 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	if (!dpi->conf->no_next_bridge) {
 		dpi->next_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 0, 0);
 		if (IS_ERR(dpi->next_bridge)) {
-			dev_dbg(dev, "Can not find next_bridge");
+			dev_info(dev, "Can not find next_bridge");
 			return -EPROBE_DEFER;
 		}
 		dev_info(dev, "Found dp tx bridge node: %pOF\n", dpi->next_bridge->of_node);

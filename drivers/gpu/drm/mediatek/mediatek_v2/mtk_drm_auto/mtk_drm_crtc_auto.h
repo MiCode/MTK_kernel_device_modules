@@ -15,7 +15,7 @@
 #include <drm/drm_crtc.h>
 //#include "mtk_drm_crtc.h"
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #define DUMMY_REG_BASE 0x329D0000
 
 #define MT6991_OVL_MDP_RSZ0_DUMMY0 0x10

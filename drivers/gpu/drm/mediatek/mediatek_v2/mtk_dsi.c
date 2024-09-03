@@ -7445,7 +7445,7 @@ bool mtk_dsi_is_cmd_mode(struct mtk_ddp_comp *comp)
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		return true;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI) {
 		DDPMSG("[W]%s comp %s is not dsi type\n", __func__, mtk_dump_comp_str(comp));
 		return false;
@@ -12939,7 +12939,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		list_for_each_entry(m, &dsi->conn.modes, head)
 			num++;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_AUTO)
 		if (!panel_ext || !num) {
 			DDPMSG("%s %s connector status %s modes %d\n",
 			       __func__, mtk_dump_comp_str(comp),
@@ -13543,7 +13543,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_cal_dsi_valid_partial_roi(comp, partial_roi);
 	}
 		break;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	case SET_CRTC_ID:
 	{
 		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,

@@ -2264,8 +2264,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	/* 7. connect path */
 	mtk_crtc_connect_default_path(mtk_crtc);
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(mtk_crtc);
+#endif
 
 #ifdef SHARE_WROT_SRAM
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SHARE_SRAM))

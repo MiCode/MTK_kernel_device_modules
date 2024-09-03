@@ -9,7 +9,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 struct mtk_ddp_comp_match {
 	enum mtk_ddp_comp_id index;
 	enum mtk_ddp_comp_type type;

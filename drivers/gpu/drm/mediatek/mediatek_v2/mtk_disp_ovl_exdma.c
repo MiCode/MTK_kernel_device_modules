@@ -2323,7 +2323,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	priv = crtc->dev->dev_private;
 	crtc_idx = (unsigned long)drm_crtc_index(crtc);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, idx, handle);
 #endif
 

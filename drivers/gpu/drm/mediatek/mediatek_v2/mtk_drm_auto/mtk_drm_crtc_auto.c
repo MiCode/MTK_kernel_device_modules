@@ -5,7 +5,7 @@
 
 #include <drm/drm_crtc.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
 #include "../mtk_dump.h"

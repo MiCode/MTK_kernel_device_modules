@@ -1028,7 +1028,7 @@ static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		*base_bw = mtk_dvo_get_frame_hrt_bw_base_by_datarate(crtc, dvo);
 	}
 		break;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	case SET_CRTC_ID:
 	{
 		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,

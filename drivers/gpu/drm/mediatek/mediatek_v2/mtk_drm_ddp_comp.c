@@ -37,7 +37,7 @@
 #include <soc/mediatek/smi.h>
 #endif
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "mtk_drm_auto/mtk_drm_ddp_comp_auto.h"
 #endif
 
@@ -393,7 +393,7 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_MML_WROT] = "mml_wrot",
 };
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 struct mtk_ddp_comp_match {
 	enum mtk_ddp_comp_id index;
 	enum mtk_ddp_comp_type type;
@@ -1466,7 +1466,7 @@ unsigned int mtk_drm_find_possible_crtc_by_comp(struct drm_device *drm,
 			ddp_comp, private->data->fourth_path_data_discrete) == true) {
 		ret = BIT(3);
 	}
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	else if (mtk_drm_find_comp_in_ddp(
 			   ddp_comp, private->data->fifth_path_data) == true) {
 		ret = BIT(4);

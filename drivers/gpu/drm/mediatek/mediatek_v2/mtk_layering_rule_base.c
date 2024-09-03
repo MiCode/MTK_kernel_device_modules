@@ -3092,6 +3092,21 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		else
 			return DDP_COMPONENT_OVL2_2L;
 	}
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	else {
+		struct drm_crtc *crtc = priv->crtc[disp_idx];
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+		int first_exdma_comp = mtk_crtc->first_exdma->id;
+		int exdma_comp = 0;
+
+		if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
+			exdma_comp = first_exdma_comp + layer_idx - fun_lye;
+		else
+			exdma_comp = first_exdma_comp + layer_idx
+						- DISP_EXDMA_LAYER_LIMIT - fun_lye;
+		return exdma_comp;
+	}
+#endif
 
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL_EXDMA3;

@@ -43,8 +43,10 @@ module_param(debug_mmqos, int, 0644);
 int debug_deteriorate;
 module_param(debug_deteriorate, int, 0644);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_AUTO_YCT)
 #define CRTC_NUM		7
+#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define CRTC_NUM		6
 #else
 #define CRTC_NUM		4
 #endif
