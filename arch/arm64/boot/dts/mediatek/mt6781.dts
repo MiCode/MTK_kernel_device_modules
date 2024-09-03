@@ -1277,6 +1277,30 @@
 				};
 			};
 
+			mt6358_dynamic_loading_throttling: mtk_dynamic_loading_throttling {
+					compatible = "mediatek,mt6358-dynamic_loading_throttling";
+					/*charger: mtk_charger_thread*/
+					/*mediatek,charger = <&charger>;*/
+					/*2600~2900mv ,one gear per 50mv*/
+					uvlo-level = <2600>;
+					io-channels =    <&pmic_auxadc AUXADC_IMP>,
+					<&pmic_auxadc AUXADC_IMIX_R>,
+					<&pmic_auxadc AUXADC_BATADC>;
+					io-channel-names = "pmic_ptim",
+						"pmic_imix_r",
+						"pmic_batadc";
+				};
+
+			mt6358_lbat: pmic_lbat_service {
+					compatible = "mediatek,mt6358-lbat_service";
+				};
+
+			mt6358_batoc_throttle: mtk_battery_oc_throttling {
+					compatible = "mediatek,mt6358-battery_oc_throttling";
+					oc-thd-h = <4670>;
+					oc-thd-l = <5500>;
+				};
+
 			mtk_gauge: mtk_gauge {
 				compatible = "mediatek,mt6358-gauge";
 				bootmode = <&chosen>;
