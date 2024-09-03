@@ -12239,7 +12239,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larbs = <&smi_larb14>;
 			mediatek,larb-node-names = "camisp-l14-1";
 			interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 388 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 394 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_CAMSV>,
@@ -12304,7 +12305,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larbs = <&smi_larb13>;
 			mediatek,larb-node-names = "camisp-l13-1";
 			interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMSV>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_CAMSV>,
@@ -12368,7 +12370,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <2>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 390 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 390 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 396 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P0_CAMSV_C_CQI_E1>,
 				<&disp_iommu M4U_L29_P4_CAMSV_C_WDMA>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
@@ -12416,7 +12419,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <3>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 385 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 391 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 391 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 397 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P1_CAMSV_D_CQI_E1>,
 				<&disp_iommu M4U_L29_P5_CAMSV_D_WDMA>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
@@ -12464,7 +12468,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <4>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 386 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 392 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 392 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 398 IRQ_TYPE_LEVEL_HIGH 0>;
 			iommus = <&disp_iommu M4U_L29_P2_CAMSV_E_CQI_E1>,
 				<&disp_iommu M4U_L29_P6_CAMSV_E_WDMA>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_CAM_MAIN>;
