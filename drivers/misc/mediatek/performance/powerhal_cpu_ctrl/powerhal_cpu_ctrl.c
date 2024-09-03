@@ -182,21 +182,6 @@ void cpu_policy_init(void)
 	struct cpufreq_policy *policy;
 	struct cpufreq_frequency_table *pos;
 
-	for_each_possible_cpu(cpu) {
-		policy = cpufreq_cpu_get(cpu);
-
-		if (policy) {
-			pr_info("%s, policy[%d]: first:%d, min:%d, max:%d",
-				__func__, num, cpu, policy->min, policy->max);
-
-			num++;
-			cpu = cpumask_last(policy->related_cpus);
-			cpufreq_cpu_put(policy);
-		}
-	}
-
-	policy_num = num;
-
 	if (policy_num == 0) {
 		pr_info("%s, no policy", __func__);
 		return;
@@ -332,15 +317,24 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 			if (i == 0)
 				cpu = data;
 			else if (i == 1) { /* min */
+				if (cpu_mapping_policy[cpu] >= policy_num) {
+					pr_debug("@%s: cpu %d policy is null\n", __func__, cpu);
+					goto out;
+				}
 				policy = cpu_mapping_policy[cpu];
 				for(j=0; j<CORE_MAX; j++) {
-					if(cpu_mapping_policy[j] == policy)
+					if(cpu_mapping_policy[j] < policy_num && cpu_mapping_policy[j] == policy)
 						core_freq_to_set[j].min = data;
 				}
 			} else { /* max */
+				if (cpu_mapping_policy[cpu] >= policy_num) {
+					pr_debug("@%s: cpu %d policy is null\n", __func__, cpu);
+					goto out;
+				}
 				policy = cpu_mapping_policy[cpu];
 				for(j=0; j<CORE_MAX; j++) {
-					if(cpu_mapping_policy[j] == policy)
+					if(cpu_mapping_policy[j] < policy_num && cpu_opp_tbl[cpu_mapping_policy[j]] &&
+						cpu_mapping_policy[j] == policy)
 						core_freq_to_set[j].max =
 							(data != 0) ? data : cpu_opp_tbl[cpu_mapping_policy[j]][0];
 				}
@@ -921,7 +915,8 @@ static int __init powerhal_cpu_ctrl_init(void)
 
 	for (i = 0; i < CORE_MAX; i++) {
 		core_freq_to_set[i].min = 0;
-		core_freq_to_set[i].max = cpu_opp_tbl[cpu_mapping_policy[i]][0];
+		if(cpu_mapping_policy[i] < policy_num && cpu_opp_tbl[cpu_mapping_policy[i]] != NULL)
+			core_freq_to_set[i].max = cpu_opp_tbl[cpu_mapping_policy[i]][0];
 	}
 
 	freq_min_request = kcalloc(policy_num, sizeof(struct freq_qos_request), GFP_KERNEL);
