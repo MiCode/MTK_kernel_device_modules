@@ -597,6 +597,10 @@ struct mtk_panel_params {
 	/*vdo ltpo*/
 	unsigned int ltpo_vm_enable;
 	unsigned int ltpo_vm_minimum_fps;
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	bool b_send_pps_per_frame;
+	unsigned char pps[128];
+#endif
 };
 
 struct mtk_panel_ext {

@@ -118,7 +118,10 @@ struct mtk_dsi {
 #if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	struct task_struct *hotplug_task;
 #endif
-
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	wait_queue_head_t pps_wq;
+	struct task_struct *pps_task;
+#endif
 	void __iomem *regs;
 
 	struct clk *engine_clk;

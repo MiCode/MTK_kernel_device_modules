@@ -35,7 +35,7 @@
 #include <linux/ratelimit.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
-#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG) || IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
 #include <uapi/linux/sched/types.h>
 #endif
 
@@ -404,6 +404,15 @@
 #define DSI_GERNERIC_SHORT_PACKET_ID_2 0x23
 #define DSI_GERNERIC_LONG_PACKET_ID 0x29
 #define DSI_GERNERIC_READ_LONG_PACKET_ID 0x14
+
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+#define VFP_START_INT_FLAG	BIT(10)
+#define LONG_PKT			BIT(1)
+#define TIME_SEL			BIT(2)
+#define VM_CMD_USE_CMDQ		BIT(4)
+#define DSI_VM_CMD_CON1		0x114
+atomic_t pps_vfp_event = ATOMIC_INIT(0);
+#endif
 
 struct phy;
 unsigned int line_back_to_LP = 1;
@@ -3413,6 +3422,10 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 			inten |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
 			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 		}
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+		if (dsi && dsi->ext && dsi->ext->params && dsi->ext->params->b_send_pps_per_frame)
+			inten |= VFP_START_INT_FLAG;
+#endif
 	} else
 		inten |= TE_RDY_INT_FLAG;
 
@@ -3851,6 +3864,11 @@ void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+void mipi_dsi_dcs_write_pps(struct mtk_dsi *dsi,
+				  const void *data, size_t len, bool is_pps);
+#endif
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -4017,7 +4035,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		//if (status & INP_UNFINISH_INT_EN)
 			//DDPPR_ERR("[IRQ] %s: input relay unfinish\n",
 				  //mtk_dump_comp_str(comp));
-
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+		if (status & VFP_START_INT_FLAG) {
+			panel_ext = dsi->ext;
+			if(panel_ext && panel_ext->params->b_send_pps_per_frame && !dsi->is_slave) {
+				atomic_set(&pps_vfp_event, 1);
+				wake_up_interruptible(&dsi->pps_wq);
+			}
+		}
+#endif
 		if (status & SLEEPOUT_DONE_INT_FLAG) {
 			if (atomic_read(&dsi->ulps_async) == 0) {
 				wakeup_dsi_wq(&dsi->exit_ulps_done);
@@ -8045,6 +8071,9 @@ static void build_vm_cmdq(struct mtk_dsi *dsi,
 {
 	unsigned int i = 0, j = 0, k;
 	const char *tx_buf = msg->tx_buf;
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	unsigned int cmd_addr = dsi->driver_data->reg_cmdq1_ofs;
+#endif
 
 	if (!dsi || !dsi->driver_data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -8067,14 +8096,31 @@ static void build_vm_cmdq(struct mtk_dsi *dsi,
 			vm_cmd_addr = dsi->driver_data->reg_vm_cmd_data20_ofs + (i%16);
 		if (i / 16 == 3)
 			vm_cmd_addr = dsi->driver_data->reg_vm_cmd_data30_ofs + (i%16);
-
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+		if (handle) {
+			if (msg->tx_len > 64) { // vm cmd used cmdq, fill data to cmdq
+				cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+					dsi->ddp_comp.regs_pa + cmd_addr, vm_cmd_val, ~0);
+				cmd_addr += 0x4;
+			} else
+				cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+					dsi->ddp_comp.regs_pa + vm_cmd_addr,
+					vm_cmd_val, ~0);
+		} else {
+			if (msg->tx_len > 64) { // vm cmd used cmdq, fill data to cmdq
+				writel(vm_cmd_val, dsi->regs + cmd_addr);
+				cmd_addr += 0x4;
+			} else
+				writel(vm_cmd_val, dsi->regs + vm_cmd_addr);
+		}
+#else
 		if (handle)
 			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 				dsi->ddp_comp.regs_pa + vm_cmd_addr,
 				vm_cmd_val, ~0);
 		else
 			writel(vm_cmd_val, dsi->regs + vm_cmd_addr);
-
+#endif
 		i += 4;
 	}
 }
@@ -8085,6 +8131,9 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 	const char *tx_buf = msg->tx_buf;
 	u8 config, type = msg->type;
 	u32 reg_val;
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	u32 used_cmdq_val, cmq_size_val;
+#endif
 
 	if (!dsi || !dsi->driver_data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -8094,6 +8143,24 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 	config = (msg->tx_len > 2) ? VM_LONG_PACKET : 0;
 
 	if (msg->tx_len > 2) {
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+		if (msg->tx_len > 64) {
+			used_cmdq_val = (msg->tx_len << 16) | (type << 8) | config;
+			cmq_size_val = (msg->tx_len << 8) | (msg->tx_len + 3) / 4;
+			if (handle){
+				cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+					dsi->ddp_comp.regs_pa + DSI_VM_CMD_CON1, VM_CMD_USE_CMDQ, VM_CMD_USE_CMDQ);
+				cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+					dsi->ddp_comp.regs_pa + dsi->driver_data->reg_cmdq0_ofs, used_cmdq_val, ~0);
+				cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+					dsi->ddp_comp.regs_pa + DSI_CMDQ_CON(dsi->driver_data), cmq_size_val, ~0);
+			}else{
+				mtk_dsi_mask(dsi, DSI_VM_CMD_CON1, VM_CMD_USE_CMDQ, VM_CMD_USE_CMDQ);
+				writel(used_cmdq_val, dsi->regs + dsi->driver_data->reg_cmdq0_ofs);
+				writel(cmq_size_val, dsi->regs + DSI_CMDQ_CON(dsi->driver_data));
+			}
+		}
+#endif
 		build_vm_cmdq(dsi, msg, handle);
 		reg_val = (msg->tx_len << 16) | (type << 8) | config;
 	} else if (msg->tx_len == 2) {
@@ -8104,7 +8171,10 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 	}
 
 	reg_val |= (VM_CMD_EN + TS_VFP_EN);
-
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	if (msg->tx_len > 64)
+		reg_val |= (VM_LONG_PACKET + TIME_SEL);
+#endif
 	if (handle == NULL)
 		writel(reg_val, dsi->regs + dsi->driver_data->reg_vm_cmd_con_ofs);
 	else
@@ -8112,6 +8182,126 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 			dsi->ddp_comp.regs_pa + dsi->driver_data->reg_vm_cmd_con_ofs, reg_val, ~0);
 
 }
+
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+static ssize_t mtk_dsi_host_send_vm_cmd(struct mtk_dsi *dsi,
+				     const struct mipi_dsi_msg *msg, u8 flag);
+
+static void _mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
+				struct cmdq_pkt *handle,
+				const struct mipi_dsi_msg *msg);
+
+void mipi_dsi_dcs_write_pps(struct mtk_dsi *dsi,
+				  const void *data, size_t len, bool is_pps)
+{
+	int dsi_mode = !mtk_dsi_is_cmd_mode(&dsi->ddp_comp);
+	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct cmdq_pkt *handle = NULL;
+	unsigned int use_lpm_or_vm = 0; //0: vm, 1: LP, 2: vm used LP cmdq
+
+	struct mipi_dsi_msg msg;
+
+	msg.tx_buf = data;
+	msg.tx_len = len;
+
+	if (!comp)
+		pr_info("%s: error, comp=NULL!\n", __func__);
+	if (!mtk_crtc)
+		pr_info("%s: error, mtk_crtc=NULL!\n", __func__);
+
+	if (dsi_mode)
+		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
+				    mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+	else
+		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
+				    mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+	if (!handle)
+		pr_info("%s: error, handle=NULL!\n", __func__);
+
+	switch (len) {
+	case 0:
+		return;
+
+	case 1:
+		msg.type = MIPI_DSI_DCS_SHORT_WRITE;
+		break;
+
+	case 2:
+		msg.type = MIPI_DSI_DCS_SHORT_WRITE_PARAM;
+		break;
+
+	default:
+		msg.type = MIPI_DSI_DCS_LONG_WRITE;
+		break;
+	}
+
+	if (is_pps)
+		msg.type = MIPI_DSI_PICTURE_PARAMETER_SET; //0x0a, type is pps
+
+	if (!dsi_mode) {
+		pr_info("%s:not support cmd mode!\n", __func__);
+		return;
+	} else if (dsi_mode != 0 && use_lpm_or_vm == 0) { /* VDO with VM_CMD */
+		mtk_dsi_vm_cmdq(dsi, &msg, handle);
+
+		/* clear VM_CMD_DONE */
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
+			       VM_CMD_DONE_INT_EN);
+
+		/* start to send VM cmd */
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_START, 0,
+			       VM_CMD_START);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_START, VM_CMD_START,
+			       VM_CMD_START);
+
+		/* poll VM cmd done */
+		mtk_dsi_cmdq_poll(&dsi->ddp_comp, handle,
+				  dsi->ddp_comp.regs_pa + DSI_INTSTA,
+				  VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_START, 0,
+			       VM_CMD_START);
+
+		/* clear VM_CMD_DONE */
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_INTSTA, 0,
+			       VM_CMD_DONE_INT_EN);
+	} else if (dsi_mode != 0 &&
+		   use_lpm_or_vm == 1) { /* VDO to CMD with LP */
+		msg.flags |= MIPI_DSI_MSG_USE_LPM;
+		pr_info("cmd send pps +\n");
+		/* wait frame done */
+		cmdq_pkt_wait_no_clear(handle,
+				       mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		mtk_dsi_stop_vdo_mode(dsi, handle);
+
+		mtk_dsi_poll_for_idle(dsi, handle);
+
+		_mtk_mipi_dsi_write_gce(dsi, handle, &msg);
+
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			       dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+
+		mtk_dsi_poll_for_idle(dsi, handle);
+
+		mtk_dsi_start_vdo_mode(comp, handle);
+		mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
+		mtk_dsi_trigger(comp, handle);
+	} else {
+		pr_info("send pps -????\n");
+	}
+
+	cmdq_pkt_flush(handle);
+	cmdq_pkt_destroy(handle);
+}
+#endif
 
 static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				const struct mipi_dsi_msg *msg)
@@ -12646,6 +12836,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
 				inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 			}
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+			if (dsi && dsi->ext && dsi->ext->params && dsi->ext->params->b_send_pps_per_frame)
+				inten |= VFP_START_INT_FLAG;
+#endif
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi)
@@ -12698,6 +12892,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
 				inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 			}
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+			if (dsi && dsi->ext && dsi->ext->params && dsi->ext->params->b_send_pps_per_frame)
+				inten |= VFP_START_INT_FLAG;
+#endif
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi)
@@ -13785,6 +13983,29 @@ static int mtk_dsi_hotplug_kthread(void *data)
 }
 #endif
 
+
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+static int mtk_dsi_pps_kthread(void *data)
+{
+	struct mtk_dsi *dsi = (struct mtk_dsi *)data;
+	struct mtk_panel_ext *panel_ext = dsi->ext;
+	struct sched_param param = {.sched_priority = MAX_RT_PRIO - 15};
+
+	init_waitqueue_head(&dsi->pps_wq);
+	sched_setscheduler(current, SCHED_FIFO, &param);
+
+	while (!kthread_should_stop()) {
+		wait_event_interruptible(dsi->pps_wq,
+			atomic_read(&pps_vfp_event));
+		mipi_dsi_dcs_write_pps(dsi, panel_ext->params->pps, 128, true);
+
+		atomic_set(&pps_vfp_event, 0);
+	}
+
+	return 0;
+}
+#endif
+
 static const struct mtk_ddp_comp_funcs mtk_dsi_funcs = {
 	.config = mtk_dsi_ddp_config,
 	.first_cfg = mtk_dsi_first_cfg,
@@ -14612,6 +14833,15 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	//wake_up_process(dsi->hotplug_task);
 #endif
 
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	if (!dsi->is_slave && dsi->ext && dsi->ext->params->b_send_pps_per_frame) {
+		dsi->pps_task = kthread_run(mtk_dsi_pps_kthread,
+			(void *)dsi, "mtk_dsi_pps_thread");
+		if (IS_ERR(dsi->pps_task))
+			pr_info("%s: failed to create pps thread, err=%d\n", __func__, PTR_ERR(dsi->pps_task));
+	}
+#endif
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	// need power on panel for connector detect
 	if (dsi->panel) {
@@ -14641,6 +14871,10 @@ static int mtk_dsi_remove(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	kthread_stop(dsi->hotplug_task);
+#endif
+#if IS_ENABLED(CONFIG_ENABLE_SEND_PPS_PER_FRAME)
+	if (dsi->pps_task)
+		kthread_stop(dsi->pps_task);
 #endif
 	mtk_output_dsi_disable(dsi, NULL, false);
 	component_del(&pdev->dev, &mtk_dsi_component_ops);
