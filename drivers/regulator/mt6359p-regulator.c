@@ -894,7 +894,7 @@ static int mt6359p_regulator_probe(struct platform_device *pdev)
 		if (IS_ERR(rdev)) {
 			dev_err(&pdev->dev, "failed to register %s\n",
 				mt6359p_regulators[i].desc.name);
-			return PTR_ERR(rdev);
+			continue;
 		}
 	}
 
