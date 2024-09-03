@@ -1687,6 +1687,14 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 	} else {
 		mml_pq_get_readback_buffer(task, pipe, &(task->pq_task->aal_hist[pipe]));
 
+
+		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
+		condi_inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, aal_frm->condi_offset);
+		if (unlikely(!condi_inst))
+			mml_pq_err("%s wrong offset %u\n", __func__, aal_frm->condi_offset);
+
+		*condi_inst = (u32)CMDQ_REG_SHIFT_ADDR(begin_pa);
+
 		if (unlikely(!task->pq_task->aal_hist[pipe])) {
 			mml_pq_err("%s job_id[%d] aal_hist is null", __func__,
 				task->job.jobid);
@@ -1697,13 +1705,6 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 			(u32)task->pq_task->aal_hist[pipe]->pa);
 		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_1],
 			(u32)DO_SHIFT_RIGHT(task->pq_task->aal_hist[pipe]->pa, 32));
-
-		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
-		condi_inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, aal_frm->condi_offset);
-		if (unlikely(!condi_inst))
-			mml_pq_err("%s wrong offset %u\n", __func__, aal_frm->condi_offset);
-
-		*condi_inst = (u32)CMDQ_REG_SHIFT_ADDR(begin_pa);
 
 		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 			__func__, task->job.jobid, comp->id, task->pq_task->aal_hist[pipe]->va,

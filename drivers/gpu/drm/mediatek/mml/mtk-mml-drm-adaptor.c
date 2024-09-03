@@ -1171,7 +1171,7 @@ bool mml_drm_ctx_idle(struct mml_drm_ctx *dctx)
 	mutex_unlock(&ctx->config_mutex);
 
 	if (!idle) {
-		if (!wait_for_completion_timeout(&dctx->idle, jiffies_to_msecs(5000))) {
+		if (!wait_for_completion_timeout(&dctx->idle, nsecs_to_jiffies(1000000000))) {
 			mml_err("[drm]wait idle timed out");
 			return false;
 		}
