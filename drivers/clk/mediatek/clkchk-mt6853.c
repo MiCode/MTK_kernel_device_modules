@@ -214,8 +214,6 @@ static struct regname rn[] = {
 	REGNAME(apmixed,  0x14, AP_PLL_5),
 	/* SCP_PAR_TOP register */
 	REGNAME(scp_par,  0x180, AUDIODSP_CK_CG),
-	/* IMP_IIC_WRAP_C register */
-	REGNAME(impc,  0xe00, AP_CLOCK_CG_CEN),
 	/* AUDIO register */
 	REGNAME(audsys,  0x0, AUDIO_TOP_0),
 	REGNAME(audsys,  0x4, AUDIO_TOP_1),
@@ -230,8 +228,6 @@ static struct regname rn[] = {
 	REGNAME(impw,  0xe00, AP_CLOCK_CG_WST),
 	/* IMP_IIC_WRAP_N register */
 	REGNAME(impn,  0xe00, AP_CLOCK_CG_NOR),
-	/* MFGCFG register */
-	REGNAME(mfg,  0x0, MFG_CG),
 	/* MMSYS_CONFIG register */
 	REGNAME(mm,  0x100, MMSYS_CG_0),
 	REGNAME(mm,  0x1a0, MMSYS_CG_2),
