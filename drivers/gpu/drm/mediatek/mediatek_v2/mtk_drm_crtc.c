@@ -17757,7 +17757,7 @@ struct drm_display_mode *mtk_crtc_get_display_mode_by_comp(
 	else
 		mode = &crtc->state->adjusted_mode;
 
-	DDPDBG("%s scaling_en: %d, comp: %s, in_scaling_path: %d, mode: %ux%u@%d\n", source,
+	DDPINFO("%s scaling_en: %d, comp: %s, in_scaling_path: %d, mode: %ux%u@%d\n", source,
 		mtk_crtc->scaling_ctx.scaling_en,
 		(comp != NULL) ? mtk_dump_comp_str(comp) : "unknown",
 		(((comp != NULL) && comp->in_scaling_path) || in_scaling_path),
