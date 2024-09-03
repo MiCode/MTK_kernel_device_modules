@@ -71,6 +71,8 @@ int dbg_dpc_pm;
 module_param(dbg_dpc_pm, int, 0644);
 int dbg_vlp_backtrace;
 module_param(dbg_vlp_backtrace, int, 0644);
+int dbg_align_prete;
+module_param(dbg_align_prete, int, 0644);
 
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
@@ -4673,7 +4675,8 @@ static const struct file_operations debug_fops = {
 
 static void dpc_clear_wfe_event_v1(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user user, int event)
 {
-	if (mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF) == 0 ||
+	if (!dbg_align_prete ||
+		mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF) == 0 ||
 		!atomic_read(&is_mminfra_ctrl_by_dpc))
 		return;
 
