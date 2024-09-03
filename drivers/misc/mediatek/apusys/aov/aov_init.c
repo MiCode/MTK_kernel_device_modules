@@ -440,6 +440,7 @@ int npu_scp_ipi_send(struct npu_scp_ipi_param *send_msg, struct npu_scp_ipi_para
 
 	mutex_lock(&ctx->scp_ipi_lock);
 
+	reinit_completion(&ctx->comp);
 	atomic_set(&ctx->response_arrived, 0);
 
 	dev_dbg(ctx->dev, "%s send scp ipi, cmd %d, act %d\n", __func__, send_msg->cmd,
@@ -460,7 +461,6 @@ int npu_scp_ipi_send(struct npu_scp_ipi_param *send_msg, struct npu_scp_ipi_para
 
 	if (ret_msg) {
 		// wait npu_scp_ipi_callback
-		reinit_completion(&ctx->comp);
 		ret = wait_for_completion_timeout(&ctx->comp, msecs_to_jiffies(timeout_ms));
 		if (!ret) {
 			dev_info(ctx->dev, "%s wait for scp ipi timeout\n", __func__);
