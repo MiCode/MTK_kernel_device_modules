@@ -2175,7 +2175,7 @@ static int get_segment_buf(struct xhci_ring *ring, struct usb_offload_buffer **b
 
 /* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
 int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
-	enum usb_offload_mem_id mem_type)
+	enum usb_offload_mem_id mem_type, bool is_rsv)
 {
 	struct xhci_hcd *xhci = uodev->xhci;
 	struct xhci_virt_device *virt_dev;
@@ -2213,7 +2213,7 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	max_packet = virt_dev->eps[ep_id].ring->bounce_buf_len;
 	ring_type = virt_dev->eps[ep_id].ring->type;
 	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
-		max_packet, GFP_NOIO, mem_type, true);
+		max_packet, GFP_NOIO, mem_type, is_rsv);
 	if (!ring) {
 		USB_OFFLOAD_ERR("ring is NULL\n");
 		return -1;
@@ -2271,7 +2271,7 @@ static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs)
 	else
 		mem_type = lowpwr_mem_type();
 
-	return xhci_mtk_realloc_transfer_ring(slot_id, ep_id, mem_type);
+	return xhci_mtk_realloc_transfer_ring(slot_id, ep_id, mem_type, true);
 }
 
 /* Xhci checkes ep type before allocating transfer ring but it doesn't

@@ -324,7 +324,7 @@ extern unsigned int debug_memory_log;
 extern u32 sram_version;
 extern struct usb_offload_buffer *usb_offload_get_ring_buf(dma_addr_t phy);
 extern int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
-	enum usb_offload_mem_id mem_type);
+	enum usb_offload_mem_id mem_type, bool is_rsv);
 extern int soc_init_aud_intf(void);
 extern int mtk_offload_init_rsv_dram(int min_alloc_order);
 extern int mtk_offload_init_rsv_sram(int min_alloc_order);
