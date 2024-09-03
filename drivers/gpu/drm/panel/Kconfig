@@ -336,7 +336,7 @@ config DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP_6382
            resolution and uses 24-bits RGB per pixel. It provides a
            MIPI DSI interface to host.
 
-config DRM_PANEL_TIANMA_TL1270100_120HZ
+config DRM_PANEL_TIANMA_TL1270100
 	tristate "TIANMA wqxga2944 vdo mode panel"
 	depends on OF
 	depends on DRM_MIPI_DSI
