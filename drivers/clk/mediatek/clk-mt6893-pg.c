@@ -4785,7 +4785,8 @@ int pg_prepare(struct clk_hw *hw)
 	if (pg->pre_clk2) {
 		r = clk_prepare_enable(pg->pre_clk2);
 		if (r) {
-			clk_disable_unprepare(pg->pre_clk);
+			if (pg->pre_clk)
+				clk_disable_unprepare(pg->pre_clk);
 			return r;
 		}
 	}
