@@ -1507,8 +1507,16 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 			vfree(handle->sec_isp_msg2);
 			return -ENOMEM;
 		}
-		if (is_sec_meta_data_support)
-			cmdq_mdp_cmdqSecIspMeta_fd_to_handle(&secData->ispMeta);
+		if (is_sec_meta_data_support) {
+			s32 ret = cmdq_mdp_cmdqSecIspMeta_fd_to_handle(&secData->ispMeta);
+
+			if (ret != 0) {
+				CMDQ_ERR("invalid fd, failed to get dma_buf\n");
+				vfree(handle->sec_isp_msg1);
+				vfree(handle->sec_isp_msg2);
+				return -EINVAL;
+			}
+		}
 		cmdq_mdp_fill_isp_meta(&secData->ispMeta,
 			handle->sec_isp_msg1, handle->sec_isp_msg2, true);
 		meta_type = CMDQ_METAEX_CQ;
@@ -1561,7 +1569,7 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 #endif
 }
 
-void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
+s32 cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 {
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	struct dma_buf *buf;
@@ -1571,7 +1579,7 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, ispMeta->BpciHandle:%lld\n",
 				__func__, PTR_ERR(buf), ispMeta->BpciHandle);
-			return;
+			return -EINVAL;
 		}
 		ispMeta->BpciHandle = dmabuf_to_secure_handle(buf);
 		dma_buf_put(buf);
@@ -1581,7 +1589,7 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, ispMeta->LsciHandle:%lld\n",
 				__func__, PTR_ERR(buf), ispMeta->LsciHandle);
-			return;
+			return -EINVAL;
 		}
 		ispMeta->LsciHandle = dmabuf_to_secure_handle(buf);
 		dma_buf_put(buf);
@@ -1591,7 +1599,7 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, ispMeta->LceiHandle:%lld\n",
 				__func__, PTR_ERR(buf), ispMeta->LceiHandle);
-			return;
+			return -EINVAL;
 		}
 		ispMeta->LceiHandle = dmabuf_to_secure_handle(buf);
 		dma_buf_put(buf);
@@ -1601,7 +1609,7 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, ispMeta->DepiHandle:%lld\n",
 				__func__, PTR_ERR(buf), ispMeta->DepiHandle);
-			return;
+			return -EINVAL;
 		}
 		ispMeta->DepiHandle = dmabuf_to_secure_handle(buf);
 		dma_buf_put(buf);
@@ -1611,12 +1619,13 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, ispMeta->DmgiHandle:%lld\n",
 				__func__, PTR_ERR(buf), ispMeta->DmgiHandle);
-			return;
+			return -EINVAL;
 		}
 		ispMeta->DmgiHandle = dmabuf_to_secure_handle(buf);
 		dma_buf_put(buf);
 	}
 #endif
+	return 0;
 }
 
 void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
