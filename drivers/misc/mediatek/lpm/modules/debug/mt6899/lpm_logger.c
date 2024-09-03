@@ -557,6 +557,15 @@ static int lpm_get_wakeup_status(void)
 	help->wakesrc->sw_rsv_5 = plat_mmio_read(SPM_SW_RSV_5);
 	help->wakesrc->sw_rsv_6 = plat_mmio_read(SPM_SW_RSV_6);
 
+	help->wakesrc->debug_spare2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_2);
+	help->wakesrc->debug_spare3 = plat_mmio_read(PCM_WDT_LATCH_SPARE_3);
+	help->wakesrc->debug_spare4 = plat_mmio_read(PCM_WDT_LATCH_SPARE_4);
+	help->wakesrc->debug_spare5 = plat_mmio_read(PCM_WDT_LATCH_SPARE_5);
+	help->wakesrc->debug_spare6 = plat_mmio_read(PCM_WDT_LATCH_SPARE_6);
+	help->wakesrc->debug_spare7 = plat_mmio_read(PCM_WDT_LATCH_SPARE_7);
+	help->wakesrc->debug_spare8 = plat_mmio_read(PCM_WDT_LATCH_SPARE_8);
+	help->wakesrc->debug_spare9 = plat_mmio_read(PCM_WDT_LATCH_SPARE_9);
+
 	/* get ISR status */
 	help->wakesrc->isr = plat_mmio_read(SPM_IRQ_STA);
 
@@ -804,11 +813,19 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_OUT_SZ - log_size,
-			"cg_check_sta =0x%x, isr = 0x%x, sw_rsv = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x, ",
+			"cg_check_sta = 0x%x, isr = 0x%x, sw_rsv = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x, ",
 			wakesrc->cg_check_sta,
 			wakesrc->isr, wakesrc->sw_rsv_0, wakesrc->sw_rsv_1,
 			wakesrc->sw_rsv_2, wakesrc->sw_rsv_3,
 			wakesrc->sw_rsv_4, wakesrc->sw_rsv_5, wakesrc->sw_rsv_6);
+
+		log_size += scnprintf(log_buf + log_size,
+			LOG_BUF_OUT_SZ - log_size,
+			"debug = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x, ",
+			wakesrc->debug_spare2, wakesrc->debug_spare3,
+			wakesrc->debug_spare4, wakesrc->debug_spare5,
+			wakesrc->debug_spare6, wakesrc->debug_spare7,
+			wakesrc->debug_spare8, wakesrc->debug_spare9);
 
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_OUT_SZ - log_size,
@@ -861,7 +878,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	} else
 		pr_info("[name:spm&][SPM] %s", log_buf);
 
-	if (wakesrc->sw_flag1
+	if ((wakesrc->sw_flag1 | wakesrc->b_sw_flag1)
 		& (SPM_FLAG1_ENABLE_WAKE_PROF | SPM_FLAG1_ENABLE_SLEEP_PROF)) {
 		uint32_t addr;
 
