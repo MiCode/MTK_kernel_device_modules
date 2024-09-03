@@ -138,6 +138,7 @@ struct mml_pq_config {
 	bool en_fg:1;
 	bool en_c3d:1;
 	bool en_clarity:1;
+	bool en_color_adaptive:1;
 };
 
 enum mml_pq_enable_flag {
@@ -158,6 +159,7 @@ enum mml_pq_enable_flag {
 	MML_PQ_C3D_EN = 1 << 11,
 	MML_PQ_CLARITY_EN = 1 << 12,
 	MML_PQ_FG_EN = 1 << 13,
+	MML_PQ_COLOR_ADAPTIVE_EN = 1 << 14,
 };
 
 enum mml_pq_user_info {
