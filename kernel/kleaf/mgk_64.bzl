@@ -35,13 +35,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/build/connac2x:wmt_chrdev_wifi_connac2",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/build/connac3x:wmt_chrdev_wifi_connac3",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool:wlan_page_pool",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765:wlan_drv_gen4m_6765",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768:wlan_drv_gen4m_6768",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6781:wlan_drv_gen4m_6781",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6833:wlan_drv_gen4m_6833",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6853:wlan_drv_gen4m_6853",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877",
-    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6893:wlan_drv_gen4m_6893",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6897:wlan_drv_gen4m_6897",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6899:wlan_drv_gen4m_6899",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6985_6639:wlan_drv_gen4m_6985_6639",
@@ -1171,6 +1164,7 @@ def get_overlay_modules_list():
         mgk_64_common_user_modules.append("drivers/pps/clients/pps-gpio.ko")
 
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6877")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
@@ -1429,6 +1423,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko")
 
     if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6781:wlan_drv_gen4m_6781")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6781")
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6781.ko":"mt6781"})
@@ -1721,6 +1716,7 @@ def get_overlay_modules_list():
 
 
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768:wlan_drv_gen4m_6768")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6768")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie")
@@ -2220,6 +2216,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
 
     if "mt6761_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765:wlan_drv_gen4m_6765")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
         mgk_64_kleaf_eng_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_k61")
@@ -2623,6 +2620,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_mt6379.ko")
 
     if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6893:wlan_drv_gen4m_6893")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6893")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
@@ -2894,6 +2892,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6991.ko")
 
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765:wlan_drv_gen4m_6765")
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765.ko":"mt6765"})
@@ -3252,6 +3251,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/mmc/host/mtk-mmc-swcqhci.ko")
 
     if "mt6833_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6833:wlan_drv_gen4m_6833")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6833")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
@@ -3535,6 +3535,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
 
     if "mt6853_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6853:wlan_drv_gen4m_6853")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6853")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
