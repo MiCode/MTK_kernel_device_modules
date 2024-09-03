@@ -691,6 +691,18 @@
 		csi_efuse5: csi-data5@154 {
 			reg = <0x154 0x4>;
 		};
+
+		pcie0_calibration: pcie0@31c {
+			reg = <0x31c 0x8>;
+		};
+
+		pcie1_calibration: pcie1@324 {
+			reg = <0x324 0xc>;
+		};
+
+		pcie2_calibration: pcie2@330 {
+			reg = <0x330 0x8>;
+		};
 	};
 
 
@@ -10541,6 +10553,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			      <0 0x16920000 0 0x10000>;
 			reg-names = "sif", "ckm";
 			num-lanes = <1>;
+			nvmem-cells = <&pcie0_calibration>;
+			nvmem-cell-names = "calibration";
 			status = "disabled";
 
 			clocks = <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_PHY_P0_PEXTP_REF_PCIE>,
@@ -10555,6 +10569,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			      <0 0x16950000 0 0x10000>;
 			reg-names = "sif", "ckm";
 			num-lanes = <2>;
+			nvmem-cells = <&pcie1_calibration>;
+			nvmem-cell-names = "calibration";
 			status = "disabled";
 
 			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P1_PEXTP_REF_PCIE>,
@@ -10569,6 +10585,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			      <0 0x16980000 0 0x10000>;
 			reg-names = "sif", "ckm";
 			num-lanes = <1>;
+			nvmem-cells = <&pcie2_calibration>;
+			nvmem-cell-names = "calibration";
 			status = "disabled";
 
 			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P2_PEXTP_REF_PCIE>,
