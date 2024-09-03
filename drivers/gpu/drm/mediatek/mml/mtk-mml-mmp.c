@@ -80,6 +80,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.throughput = mmprofile_register_event(parent, "throughput");
 	mml_mmp_events.bandwidth = mmprofile_register_event(parent, "bandwidth");
 	mml_mmp_events.mmdvfs = mmprofile_register_event(parent, "vcp_mmdvfs");
+	mml_mmp_events.overdue = mmprofile_register_event(parent, "overdue");
 
 	parent = mml_mmp_events.addon;
 	mml_mmp_events.addon_mml_calc_cfg = mmprofile_register_event(parent, "mml_calc_cfg");
