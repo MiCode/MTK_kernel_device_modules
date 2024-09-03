@@ -1252,8 +1252,9 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		ged_commit_freq = ui32NewFreq;
 		ged_commit_opp_freq = ged_get_freq_by_idx(ui32NewFreqID);
 
-		/* do change */
-		if (ui32NewFreqID != ui32CurFreqID || dcs_get_setting_dirty()) {
+		if (ui32NewFreqID != ui32CurFreqID ||
+			ui32NewFreqID != (ged_dvfs_get_last_commit_dual_idx() & 0xFF) ||
+			dcs_get_setting_dirty()) {
 			/* call to ged gpufreq wrapper module */
 			ged_gpufreq_commit(ui32NewFreqID, eCommitType, &bCommited);
 
@@ -1399,6 +1400,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	/* do change, top change or stack change */
 	if (stackNewFreqID != ui32CurFreqID ||
 		newTopFreq != ged_get_cur_top_freq() ||
+		stackNewFreqID != (ged_dvfs_get_last_commit_dual_idx() & 0xFF) ||
 		dcs_get_setting_dirty()) {
 		if (FORCE_OPP >= 0)
 			stackNewFreqID = FORCE_OPP;
