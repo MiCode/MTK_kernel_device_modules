@@ -109,6 +109,14 @@ config MTK_SE_SUPPORT
 	  you should enable this option. Otherwise, it can be left disabled to
 	  reduce the driver's footprint.
 
+config MTK_DISP_MMDVFS_INIT_SEQUENCE
+	bool "Configure initialization sequence of DISP and MMDVFS"
+	help
+	  Say yes here to add support for adjusting the initialization sequence
+	  between DISP and MMDVFS . This can be used to resolve issues with screen
+	  flickering that arise due to the order in which these components are
+	  started during the boot process.
+
 config MTK_RECU_FENCE_LOCK
 	bool "enable fence deadlock workarond for img_gpu"
 	help

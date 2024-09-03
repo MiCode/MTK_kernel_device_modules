@@ -69,6 +69,10 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_vdisp_common.h"
 
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+#include <soc/mediatek/mmdvfs_v3.h>
+#endif
+
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
 #include "dvfsrc-exp.h"
@@ -9195,6 +9199,10 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);
+
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+	mmdvfs_disp_boot_ready();
+#endif
 
 	/* power off mtcmos */
 	/* Because of align lk hw power status,

@@ -78,6 +78,10 @@ static struct notifier_block mmdvfs_mmup_notifier;
 static struct notifier_block mmdvfs_vcp_notifier;
 static struct notifier_block force_on_notifier;
 
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+static bool mmdvfs_disp_boot;
+#endif
+
 static int ccu_power;
 static int ccu_pwr_usage[CCU_PWR_USR_NUM];
 static DEFINE_MUTEX(mmdvfs_ccu_pwr_mutex);
@@ -1787,12 +1791,13 @@ inline bool mmdvfs_vcp_cb_ready_get(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_ready_get);
 
-static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
+
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+static void mmdvfs_vcp_notifier_callback_ready(void)
 {
 	static bool sram_init;
+	MMDVFS_DBG("mmdvfs_disp_boot:%d", mmdvfs_disp_boot);
 
-	switch (action) {
-	case VCP_EVENT_READY:
 		cb_timestamp[2] = sched_clock();
 		mmdvfs_rst_clk_done = false;
 		mmdvfs_release_step_done = false;
@@ -1813,6 +1818,50 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
+}
+
+void mmdvfs_disp_boot_ready(void)
+{
+	if (!mmdvfs_disp_boot) {
+		mmdvfs_vcp_notifier_callback_ready();
+		mmdvfs_disp_boot = true;
+	}
+}
+EXPORT_SYMBOL_GPL(mmdvfs_disp_boot_ready);
+#endif
+
+static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
+{
+#if !IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+	static bool sram_init;
+#endif
+	switch (action) {
+	case VCP_EVENT_READY:
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+		if (mmdvfs_disp_boot)
+			mmdvfs_vcp_notifier_callback_ready();
+#else
+		cb_timestamp[2] = sched_clock();
+		mmdvfs_rst_clk_done = false;
+		mmdvfs_release_step_done = false;
+		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+		if (dpc_fp)
+			dpc_fp(true, mmdvfs_vcp_stop);
+		mmdvfs_vcp_stop = false;
+		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
+		if (mmdvfs_mmup_sram && unlikely(!sram_init)) {
+			mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + readl(MEM_SRAM_OFFSET);
+			sram_init = true;
+			MMDVFS_ERR("sram_init:%d virt:%#lx offset:%#x va:%#lx",
+				sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
+				readl(MEM_SRAM_OFFSET), (unsigned long)(void *)mmdvfs_mmup_sram_va);
+		}
+		mutex_lock(&mmdvfs_vcp_cb_mutex);
+		mmdvfs_vcp_cb_ready = true;
+		mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		if (hqa_enable)
+			mtk_mmdvfs_enable_vmm(true);
+#endif
 		break;
 	case VCP_EVENT_RESUME:
 		if (mmdvfs_restore_step)

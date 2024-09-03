@@ -113,6 +113,9 @@ int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb);
 void mmdvfs_set_lp_mode(bool lp_mode);
 void mmdvfs_call_ccu_set_fp(call_ccu fp);
 void mmdvfs_rc_enable_set_fp(rc_enable fp);
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+void mmdvfs_disp_boot_ready(void);
+#endif
 
 int mmdvfs_set_lp_mode_by_vcp(const bool enable);
 int mmdvfs_get_version(void);
