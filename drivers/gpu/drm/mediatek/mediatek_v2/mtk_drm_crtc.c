@@ -451,7 +451,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		else if (crtc_id == 2)
 			next_blender = dual_comp_blender_map_mt6991(comp->id);
 		else if (crtc_id == 3)
-			next_blender = DDP_COMPONENT_OVL1_BLENDER8 + plane_index;
+			next_blender = DDP_COMPONENT_OVL1_BLENDER3 + plane_index;
 
 		value = mtk_ddp_exdma_mout_MT6991(comp->id, next_blender, &addr);
 		if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
