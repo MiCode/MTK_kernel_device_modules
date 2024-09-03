@@ -48,15 +48,15 @@
 	 __GFP_COMP)
 
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
-static gfp_t order_flags[] = { HIGH_ORDER_GFP, LOW_ORDER_GFP, LOW_ORDER_GFP };
+static gfp_t order_flags[] = { LOW_ORDER_GFP };
 
 #define BASE_SEC_HEAP_SZ (PAGE_SIZE << 3)
 
 /*
- * 4KB page granule: 64KB, 16KB, 4KB
- * 16KB page granule: 256KB, 64KB, 16KB
+ * 4KB page granule: 16KB
+ * 16KB page granule: 64KB
  */
-int orders[3] = { 4, 2, 0};
+int orders[1] = { 2 };
 #define NUM_ORDERS ARRAY_SIZE(orders)
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 
