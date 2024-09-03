@@ -340,9 +340,11 @@ void mtk_drm_gem_free_object(struct drm_gem_object *obj)
 		(unsigned long)((unsigned long long)(mtk_gem->dma_addr >> 4 & 0x030000000ul)
 		| mtk_gem->size));
 
-	if (mtk_gem->sg)
+	if (mtk_gem->sg) {
+		DDPINFO("dma_addr:0x%08llx, size:0x%08lx, dmabuf:0x%8p\n",
+			mtk_gem->dma_addr, mtk_gem->size, obj->import_attach->dmabuf);
 		drm_prime_gem_destroy(obj, mtk_gem->sg);
-	else if (!mtk_gem->sec)
+	} else if (!mtk_gem->sec)
 		mtk_gem_dma_free(priv->dma_dev, obj->size, mtk_gem->cookie,
 			       mtk_gem->dma_addr, mtk_gem->dma_attrs,
 			       __func__, __LINE__);
@@ -569,8 +571,9 @@ struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj)
 struct drm_gem_object *mtk_gem_prime_import(struct drm_device *dev,
 					    struct dma_buf *dma_buf)
 {
-	if (WARN_ON(!dma_buf || !dma_buf->file))
+	if (WARN_ON(!dma_buf || !dma_buf->file || !dma_buf->attachments.next->prev))
 		return NULL;
+	DDPINFO("%s, dma_buf:0x%8p, size:0x%08lx\n", __func__, dma_buf, dma_buf->size);
 	return drm_gem_prime_import_dev(dev, dma_buf,
 		mtk_smmu_get_shared_device(dev->dev));
 }
@@ -642,12 +645,13 @@ mtk_gem_prime_import_sg_table(struct drm_device *dev,
 		(unsigned long)((unsigned long long)(mtk_gem->dma_addr >> 4 & 0x030000000ul)
 		| mtk_gem->size));
 
-	DDPDBG("%s:%d sec:%d, addr:0x%llx, size:%ld, sg:0x%p -\n",
+	DDPINFO("%s:%d sec:%d, addr:0x%llx, size:%ld, sg:0x%p, dmabuf:0x%8p\n",
 			__func__, __LINE__,
 			mtk_gem->sec,
 			mtk_gem->dma_addr,
 			mtk_gem->size,
-			mtk_gem->sg);
+			mtk_gem->sg,
+			attach->dmabuf);
 
 	return &mtk_gem->base;
 
