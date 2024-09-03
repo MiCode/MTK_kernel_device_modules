@@ -2337,7 +2337,6 @@ static int _calc_hrt_num(struct drm_device *dev,
 
 	for (i = 0; i < disp_info->layer_num[disp]; i++) {
 		int ovl_idx;
-		int skipped = 0;
 
 		layer_info = &disp_info->input_config[disp][i];
 		if (disp_info->gles_head[disp] == -1 ||
@@ -2376,18 +2375,14 @@ static int _calc_hrt_num(struct drm_device *dev,
 				}
 			}
 
-			if (layer_info->src_width > 40 || skipped == 1) {
-				sum_overlap_w += overlap_w;
-				add_layer_entry(layer_info, true, overlap_w);
-				if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
-					sum_overlap_w_of_bwm += overlap_w_of_bwm;
-					DDPDBG_BWM("BWM line:%d sum_o_w:%d sum_o_w_of_bwm:%d\n",
-						__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
-					add_layer_entry_for_compare(layer_info, true,
-						overlap_w_of_bwm);
-				}
-			} else {
-				skipped = 1;
+			sum_overlap_w += overlap_w;
+			add_layer_entry(layer_info, true, overlap_w);
+			if ((disp_idx == HRT_PRIMARY) && bw_monitor_is_on) {
+				sum_overlap_w_of_bwm += overlap_w_of_bwm;
+				DDPDBG_BWM("BWM line:%d sum_o_w:%d sum_o_w_of_bwm:%d\n",
+					__LINE__, sum_overlap_w, sum_overlap_w_of_bwm);
+				add_layer_entry_for_compare(layer_info, true,
+					overlap_w_of_bwm);
 			}
 		} else if (i == disp_info->gles_head[disp]) {
 			/* Add GLES layer */
