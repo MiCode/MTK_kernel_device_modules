@@ -10692,7 +10692,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x15310000 0 0x9000>;
 			// dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			cmdqsec-supply = <&gce_m_sec>;
-			maeplat-supply = <&mtk_mae_plat>;
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
 					<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 			mediatek,larb = <&smi_larb12>;
@@ -10703,6 +10702,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L12_P0_FDVT_RDA_0>,
 						<&disp_iommu M4U_L12_P1_FDVT_WRA_0>;
 			power-domains = <&hfrpsys MT6899_POWER_DOMAIN_ISP_MAIN>;
+		};
+
+		mtk_mae_plat: mtk-mae-plat@15319000 {
+			compatible = "mediatek,mtk-mae-plat-isp8-mt6899";
+			reg = <0 0x15319000 0 0x1000>;
+			mae-supply = <&mae>;
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_MAE>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_MAE>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_MAE>,
@@ -10727,11 +10732,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"GALS_TRX_IPE0_CAMERA_MAE",
 				"GALS_TRX_IPE1_CAMERA_MAE",
 				"GALS_CAMERA_MAE";
-		};
-
-		mtk_mae_plat: mtk-mae-plat@15319000 {
-			compatible = "mediatek,mtk-mae-plat-isp8-mt6899";
-			reg = <0 0x15319000 0 0x1000>;
 		};
 
 		smi-larb9@15001000 {
