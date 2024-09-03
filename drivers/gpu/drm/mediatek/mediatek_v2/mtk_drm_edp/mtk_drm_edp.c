@@ -284,6 +284,7 @@ int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 	char name_buf[120];
 	char state_buf[120];
 	char crtc_buf[16];
+	int ret = 0;
 	struct mtk_edp *mtk_edp = g_mtk_edp;
 
 	if (sdev == NULL)
@@ -292,11 +293,25 @@ int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 	if (sdev->state != state)
 		sdev->state = state;
 
-	snprintf(name_buf, sizeof(name_buf), "SWITCH_NAME=%s", sdev->name);
+	ret = snprintf(name_buf, sizeof(name_buf), "SWITCH_NAME=%s", sdev->name);
+	if (ret < 0 || ret >= sizeof(name_buf)) {
+		dev_info(mtk_edp->dev, "%s: SWITCH_NAME snprintf error\n", EDPTX_DEBUG_INFO);
+		return -1;
+	}
 	envp[0] = name_buf;
-	snprintf(state_buf, sizeof(state_buf), "SWITCH_STATE=%d", sdev->state);
+
+	ret = snprintf(state_buf, sizeof(state_buf), "SWITCH_STATE=%d", sdev->state);
+	if (ret < 0 || ret >= sizeof(state_buf)) {
+		dev_info(mtk_edp->dev, "%s: SWITCH_STATE snprintf error\n", EDPTX_DEBUG_INFO);
+		return -1;
+	}
 	envp[1] = state_buf;
-	snprintf(crtc_buf, sizeof(crtc_buf), "CRTC=%d", sdev->crtc);
+
+	ret = snprintf(crtc_buf, sizeof(crtc_buf), "CRTC=%d", sdev->crtc);
+	if (ret < 0 || ret >= sizeof(crtc_buf)) {
+		dev_info(mtk_edp->dev, "%s: CRTC snprintf error\n", EDPTX_DEBUG_INFO);
+		return -1;
+	}
 	envp[2] = crtc_buf;
 	envp[3] = NULL;
 	dev_info(mtk_edp->dev, "[eDPTX] uevent name:%s ,state:%s, dev:%s\n",
@@ -1228,15 +1243,13 @@ static void mtk_edp_video_mute(struct mtk_edp *mtk_edp, bool enable)
 	struct arm_smccc_res res;
 	u32 x3 = (EDP_VIDEO_UNMUTE << 16) | enable;
 
-/*  use secure mute and MTK_DP_ENC0_P0_3000 use default mute value
- *	u32 val = VIDEO_MUTE_SEL_DP_ENC0_P0 |
- *			(enable ? VIDEO_MUTE_SW_DP_ENC0_P0 : 0);
- *
- *	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_P0_3000,
- *			   val,
- *			   VIDEO_MUTE_SEL_DP_ENC0_P0 |
- *		   VIDEO_MUTE_SW_DP_ENC0_P0);
- */
+/*  use secure mute and MTK_DP_ENC0_P0_3000 use default mute value */
+	u32 val = VIDEO_MUTE_SEL_DP_ENC0_P0 |
+			(enable ? VIDEO_MUTE_SW_DP_ENC0_P0 : 0);
+
+	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_P0_3000,
+			   val, VIDEO_MUTE_SEL_DP_ENC0_P0 |
+				VIDEO_MUTE_SW_DP_ENC0_P0);
 
 	arm_smccc_smc(MTK_SIP_DP_CONTROL,
 		      EDP_VIDEO_UNMUTE, enable,
@@ -1287,8 +1300,8 @@ static void mtk_edp_power_enable(struct mtk_edp *mtk_edp)
 					RG_XTP_GLB_CKDET_EN | RG_DPAUX_RX_VALID_DEGLITCH_EN);
 		mtk_edp_update_bits(mtk_edp, MTK_DP_0034, 0, DA_CKM_CKTX0_EN_FORCE_EN);
 	} else
-		regmap_write(mtk_edp->phy_regs, DP_PHY_DIG_AUX_RX_CTL,
-					RG_DPAUX_RX_EN | RG_XTP_GLB_CKDET_EN | RG_DPAUX_RX_VALID_DEGLITCH_EN);
+		regmap_write(mtk_edp->phy_regs, DP_PHY_DIG_AUX_RX_CTL, RG_DPAUX_RX_EN |
+				RG_XTP_GLB_CKDET_EN | RG_DPAUX_RX_VALID_DEGLITCH_EN);
 }
 
 static void mtk_edp_power_disable(struct mtk_edp *mtk_edp)
@@ -1298,7 +1311,7 @@ static void mtk_edp_power_disable(struct mtk_edp *mtk_edp)
 		mtk_edp_update_bits(mtk_edp, MTK_DP_0034, 0,
 					DA_CKM_CKTX0_EN_FORCE_EN);
 
-	// /* Disable RX */
+	/* Disable RX */
 	if (!mtk_edp->phy_regs)
 		mtk_edp_write(mtk_edp, MTK_DP_1040, 0);
 	else
@@ -2140,9 +2153,11 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
 	}
 
-	pr_info("%s EDID raw data:\n", EDPTX_DEBUG_INFO);
-	print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
+	if (new_edid) {
+		pr_info("%s EDID raw data:\n", EDPTX_DEBUG_INFO);
+		print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
 					new_edid, EDID_LENGTH * (new_edid->extensions + 1), false);
+	}
 
 	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return new_edid;

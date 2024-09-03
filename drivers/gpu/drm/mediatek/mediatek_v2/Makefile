@@ -123,7 +123,7 @@ mtk-drm-edp-y += mtk_drm_edp/mtk_drm_edp_phy.o
 mtk-drm-edp-y += mtk_drm_edp/mtk_drm_edp.o
 obj-$(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT) += mtk-drm-edp.o
 #ccflags-y += -DEDPTX_DEBUG
-#ccflags-y += -DEDPTX_ANDROID_SUPPORT
+ccflags-y += -DEDPTX_ANDROID_SUPPORT
 endif
 
 ifneq ($(findstring $(CONFIG_DRM_MEDIATEK_CEC), y m),)
