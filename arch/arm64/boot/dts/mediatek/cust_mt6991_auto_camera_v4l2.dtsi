@@ -183,15 +183,17 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio180_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
 
 		status = "okay";
 
@@ -215,15 +217,16 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio181_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "disabled";
 
@@ -243,15 +246,17 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio181_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
 
 		status = "okay";
 
@@ -275,15 +280,16 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 
@@ -302,15 +308,16 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 
@@ -329,15 +336,16 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 
@@ -356,15 +364,17 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
 
 		status = "okay";
 
@@ -382,15 +392,17 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
 
 		status = "okay";
 
@@ -415,15 +427,17 @@
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio46_regulator>;
 
-		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
 
 		status = "okay";
 
