@@ -64,6 +64,14 @@ struct hrt_mmclk_request {
 	int layer_num;
 	int volt;
 };
+
+/* available bw per emi port limited*/
+static unsigned int hrt_level_bw_mt6768[] = {
+	2240, /* 200MHz*16byte*0.7 */
+	3360, /* 300MHz*16byte*0.7 */
+	4480  /* 400MHz*16byte*0.7 */
+};
+
 /* aspect ratio <= 18 : 9 */
 struct hrt_mmclk_request hrt_req_level_bdg_mt6768[] = {
 	{20, 700000},
@@ -759,19 +767,20 @@ void mtk_disp_hrt_mmclk_request_mt6768(struct mtk_drm_crtc *mtk_crtc, unsigned i
 			req_level = hrt_req_level_mt6768;
 	}
 
-	if (layer_num <= req_level[0].layer_num) {
+	if (layer_num <= req_level[0].layer_num && bw <= hrt_level_bw_mt6768[0]) {
 		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL2]);
 		ret = regulator_set_voltage(mm_freq_request, req_level[0].volt, INT_MAX);
 		if (ret)
 			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
 		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[0].volt);
-	} else if (layer_num > req_level[0].layer_num && layer_num <= req_level[1].layer_num) {
+	} else if ((layer_num > req_level[0].layer_num || bw > hrt_level_bw_mt6768[0])
+			&& layer_num <= req_level[1].layer_num && bw <= hrt_level_bw_mt6768[1]) {
 		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL1]);
 		ret = regulator_set_voltage(mm_freq_request, req_level[1].volt, INT_MAX);
 		if (ret)
 			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
 		DDPMSG("%s layer_num = %d, volt = %d\n", __func__, layer_num, req_level[1].volt);
-	} else if (layer_num > req_level[1].layer_num) {
+	} else if (layer_num > req_level[1].layer_num || bw > hrt_level_bw_mt6768[1]) {
 		icc_set_bw(priv->hrt_bw_request, 0, disp_perfs[HRT_LEVEL_LEVEL0]);
 		ret = regulator_set_voltage(mm_freq_request, req_level[2].volt, INT_MAX);
 		if (ret)
