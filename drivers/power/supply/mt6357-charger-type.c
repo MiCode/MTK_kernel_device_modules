@@ -1014,7 +1014,12 @@ static int __init mt6357_charger_type_init(void)
 {
 	return platform_driver_register(&mt6357_charger_type_driver);
 }
+
+#if IS_BUILTIN(CONFIG_CHARGER_TYPE_MT6357)
+late_initcall(mt6357_charger_type_init);
+#else
 module_init(mt6357_charger_type_init);
+#endif
 
 static void __exit mt6357_charger_type_exit(void)
 {
