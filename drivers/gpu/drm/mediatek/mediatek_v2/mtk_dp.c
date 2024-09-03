@@ -372,7 +372,6 @@ bool mdrv_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 		return false;
 	}
 
-
 	do {
 		bReplyStatus = mhal_DPTx_AuxRead_Bytes(mtk_dp, ubCmd,
 					usDPCDADDR, ubLength, pData);
@@ -3428,8 +3427,10 @@ int mtk_drm_dp_get_info(struct drm_device *dev,
 
 void mtk_dp_get_dsc_capability(u8 *dsc_cap)
 {
+	return;
+
 	if (g_mtk_dp == NULL) {
-		DPTXERR("%s: dp not initial\n", __func__);
+		DPTXMSG("%s: dp not initial\n", __func__);
 		return;
 	}
 
@@ -3901,6 +3902,11 @@ static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
 	bool mot, ack = false;
 	struct mtk_dp *mtk_dp;
 
+	if (!g_mtk_dp->bPowerOn) {
+		DPTXMSG("%s: dp not power on\n", __func__);
+		return ret;
+	}
+
 	mtk_dp = container_of(mtk_aux, struct mtk_dp, aux);
 	mot = (msg->request & DP_AUX_I2C_MOT) ? true : false;
 	ubCmd = msg->request;
@@ -4225,6 +4231,11 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 
 void mtk_dp_aux_swap_enable(bool enable)
 {
+	if (!g_mtk_dp) {
+		DPTXMSG("%s: dp not initial\n", __func__);
+		return;
+	}
+
 	DPTXMSG("%s, enable=%d -> %d\n", __func__, aux_swap, enable);
 	aux_swap = enable;
 }
