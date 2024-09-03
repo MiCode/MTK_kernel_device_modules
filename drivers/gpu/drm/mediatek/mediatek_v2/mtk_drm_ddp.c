@@ -22856,8 +22856,8 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_dd
 
 	/* set value according to dst comp */
 	switch (next) {
-	case DDP_COMPONENT_OVLSYS_DLO_ASYNC0:
-	case DDP_COMPONENT_OVLSYS1_DLO_ASYNC0:
+	case DDP_COMPONENT_OVLSYS_DLO_ASYNC1:
+	case DDP_COMPONENT_OVLSYS1_DLO_ASYNC1:
 		value = MT6991_DISP_OVL_EXDMA_OUT_CB_TO_OVL_DLO_RELAY1;
 		break;
 	case DDP_COMPONENT_OVL0_BLENDER0:
@@ -30708,7 +30708,7 @@ void mtk_ddp_insert_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int addr, value;
 
 	if (panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
-		addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		addr = MT6991_SPLITTER_IN_CB1_MOUT_EN;
 		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER0;
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
@@ -38267,7 +38267,7 @@ int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
 
 		if (type ==  MTK_OVL_BLENDER) {
 			*addr_begin = MT6991_OVL_BLENDER_OUT_CROSSBAR0_MOUT_EN;
-			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
+			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR9_MOUT_EN;
 			*offset = 4;
 		}
 	} else if (crtc_id == 1) {

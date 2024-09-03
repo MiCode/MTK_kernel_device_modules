@@ -356,6 +356,36 @@ static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
 	unsigned int ret = 0;
 
 	switch (comp_id) {
+	case DDP_COMPONENT_OVL_EXDMA3:
+		ret = DDP_COMPONENT_OVL0_BLENDER3;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA4:
+		ret = DDP_COMPONENT_OVL0_BLENDER4;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA5:
+		ret = DDP_COMPONENT_OVL0_BLENDER5;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA6:
+		ret = DDP_COMPONENT_OVL0_BLENDER6;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA7:
+		ret = DDP_COMPONENT_OVL0_BLENDER7;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA8:
+		ret = DDP_COMPONENT_OVL0_BLENDER8;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA9:
+		ret = DDP_COMPONENT_OVL0_BLENDER9;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA3:
+		ret = DDP_COMPONENT_OVL1_BLENDER0;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA4:
+		ret = DDP_COMPONENT_OVL1_BLENDER1;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA5:
+		ret = DDP_COMPONENT_OVL1_BLENDER2;
+		break;
 	case DDP_COMPONENT_OVL1_EXDMA6:
 		ret = DDP_COMPONENT_OVL1_BLENDER5;
 		break;
@@ -445,7 +475,11 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 
 		if (crtc_id == 0)
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+			next_blender = dual_comp_blender_map_mt6991(comp->id);
+#else
 			next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
+#endif
 		else if (crtc_id == 1)
 			next_blender = dual_comp_blender_map_mt6991(comp->id);
 		else if (crtc_id == 2)
@@ -612,6 +646,9 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 				if (mtk_drm_dal_enable() && i == 0xE98)
 					continue;
 				writel_relaxed(0, mtk_crtc->ovlsys0_regs + i);
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+#endif
 			} else if (crtc_id == 1) {
 				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
 			} else if (crtc_id == 2) {
@@ -654,6 +691,14 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
 					0, mask);
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+		if (ddp->ovlsys1_regs)
+			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
+
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+						ovl1_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+						0, mask);
+#endif
 	} else if (crtc_id == 1) {
 		if (ddp->ovlsys1_regs)
 			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
@@ -3580,7 +3625,11 @@ unsigned int mtk_crtc_get_plane_comp_id(struct drm_crtc *crtc, struct mtk_crtc_s
 				(state->lye_state.mml_ir_lye & (1 << plane_index)))
 				fun_lye++;
 		}
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+		comp_id = (DDP_COMPONENT_OVL_EXDMA3 + (plane_index - fun_lye) * 2);
+#else
 		comp_id = (DDP_COMPONENT_OVL_EXDMA3 + plane_index - fun_lye);
+#endif
 	}
 
 	DDPINFO("%s comp[%d %s] plane_index[%u] lye info[%08x %08x %08x]\n", __func__,
@@ -5327,6 +5376,21 @@ static unsigned int dual_comp_map_mt6991(unsigned int comp_id)
 	unsigned int ret = 0;
 
 	switch (comp_id) {
+	case DDP_COMPONENT_OVL_EXDMA3:
+		ret = DDP_COMPONENT_OVL_EXDMA4;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA5:
+		ret = DDP_COMPONENT_OVL_EXDMA6;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA7:
+		ret = DDP_COMPONENT_OVL_EXDMA8;
+		break;
+	case DDP_COMPONENT_OVL_EXDMA9:
+		ret = DDP_COMPONENT_OVL1_EXDMA3;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA4:
+		ret = DDP_COMPONENT_OVL1_EXDMA5;
+		break;
 	case DDP_COMPONENT_OVL1_EXDMA6:
 		ret = DDP_COMPONENT_OVL1_EXDMA7;
 		break;

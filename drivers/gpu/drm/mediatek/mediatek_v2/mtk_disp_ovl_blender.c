@@ -420,8 +420,11 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 {
 	int i = 0;
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
-
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+	if (comp->id == DDP_COMPONENT_OVL0_BLENDER3){
+#else
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1){
+#endif
 		DDPDBG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
@@ -661,7 +664,12 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	}
 
 	if ((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+			mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA ||
+			mtk_ddp_comp_get_type(next) == MTK_DISP_VIRTUAL) &&
+#else
 			mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA) &&
+#endif
 			next != DDP_COMPONENT_ID_MAX) {
 		if (handle == NULL)
 			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,

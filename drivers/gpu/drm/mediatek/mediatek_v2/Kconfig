@@ -79,6 +79,15 @@ config MTK_FB_MMDVFS_SUPPORT
          If HRT hardware is not in the platform, then support for
          MMDVFS needs to be added through software.
 
+config MTK_LCM_DUAL_PORT_SUPPORT
+	bool "support lcm dual dsi port"
+	help
+	  This config decide if device support lcm dual dsi port
+	  If dsi support dual port, dual dsc may also should support
+	  If this value is Y, display maybe single pipe
+	  If dsi support dual port, each dsi could calculate lower mmclk, and
+	  support more types lcm
+
 config MTK_MT6382_BDG
 	tristate "Support Bridge IC 6382"
 	help

@@ -80,7 +80,7 @@ static DEFINE_MUTEX(layering_info_lock);
 #define DISP_LAYER_RULE_MAX_NUM 1024
 
 #define DISP_EXDMA_LAYER_LIMIT 7
-
+#define DISP_DUAL_EXDMA_LAYER_LIMIT 4
 static struct {
 	enum LYE_HELPER_OPT opt;
 	unsigned int val;
@@ -3005,12 +3005,19 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	if (disp_idx == 0) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
 			int exdma_comp = 0;
-
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+			if (layer_idx < (DISP_DUAL_EXDMA_LAYER_LIMIT + fun_lye))
+				exdma_comp = DDP_COMPONENT_OVL_EXDMA3 + ((layer_idx - fun_lye) * 2);
+			else
+				exdma_comp = DDP_COMPONENT_OVL1_EXDMA4 + (layer_idx
+									- DISP_DUAL_EXDMA_LAYER_LIMIT - fun_lye) * 2;
+#else
 			if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
 				exdma_comp = DDP_COMPONENT_OVL_EXDMA3 + layer_idx - fun_lye;
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
+#endif
 			return exdma_comp;
 		}
 	} else if (disp_idx == 1) {

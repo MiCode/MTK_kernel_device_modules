@@ -53,7 +53,11 @@ static int larb_bound_table[HRT_BOUND_NUM][HRT_LEVEL_NUM] = {
  * represent the layer mapping rule by the number of input layers.
  */
 static uint16_t layer_mapping_table[HRT_TB_NUM] = {
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+	0x0003, 0x007C, 0x007A, 0x0001
+#else
 	0x0003, 0x007E, 0x007A, 0x0001
+#endif
 };
 static uint16_t layer_mapping_table_mt6985[HRT_TB_NUM] = {
 	0x0003, 0x007E, 0x007A, 0x0001
