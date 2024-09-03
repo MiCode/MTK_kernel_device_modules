@@ -16,6 +16,7 @@
 #include <linux/phy/phy.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/slab.h>
 
@@ -55,6 +56,7 @@ struct match_table {
 	unsigned int max_lane[PCIE_PORT_MAX];
 	unsigned int max_speed[PCIE_PORT_MAX];
 	unsigned int max_port;
+	struct pcie_test_lib *test_lib[PCIE_PORT_MAX];
 };
 
 static struct match_table test_table[] = {
@@ -66,6 +68,8 @@ static struct match_table test_table[] = {
 	.max_lane = {2, 2, 1, 1},
 	.max_speed = {3, 3, 3, 3},
 	.max_port = 4,
+	.test_lib = {&pcie_sphy2_test_lib, &pcie_sphy2_test_lib,
+		     &pcie_sphy2_test_lib, &pcie_sphy2_test_lib},
 	},
 	/* MT6980 PCIe info */
 	{
@@ -75,6 +79,8 @@ static struct match_table test_table[] = {
 	.max_lane = {2, 2, 2},
 	.max_speed = {4, 3, 3},
 	.max_port = 3,
+	.test_lib = {&pcie_sphy4_test_lib, &pcie_sphy2_test_lib,
+		     &pcie_sphy2_test_lib},
 	},
 	/* MT2737 PCIe info */
 	{
@@ -84,6 +90,7 @@ static struct match_table test_table[] = {
 	.max_lane = {2, 2},
 	.max_speed = {4, 3},
 	.max_port = 2,
+	.test_lib = {&pcie_sphy4_test_lib, &pcie_sphy2_test_lib},
 	},
 	/* MT6989 PCIe info */
 	{
@@ -93,6 +100,7 @@ static struct match_table test_table[] = {
 	.max_lane = {1, 2},
 	.max_speed = {4, 3},
 	.max_port = 2,
+	.test_lib = {&pcie_sphy4_test_lib, &pcie_sphy2_test_lib},
 	},
 	/* MT6991 PCIe info */
 	{
@@ -103,6 +111,8 @@ static struct match_table test_table[] = {
 	.max_lane = {1, 2, 1},
 	.max_speed = {4, 4, 4},
 	.max_port = 3,
+	.test_lib = {&pcie_sphy3_test_lib, &pcie_sphy3_test_lib,
+		     &pcie_sphy3_test_lib},
 	},
 };
 
@@ -110,625 +120,6 @@ static struct mtk_pcie_info *pcie_smt;
 static int mtk_pcie_test_ctrl(char *buf);
 static int mtk_pcie_phy_power_on(struct mtk_pcie_info *smt_info, int port);
 static void mtk_pcie_phy_power_off(struct mtk_pcie_info *smt_info, int port);
-
-static void mtk_pcie_cpe_gen1(unsigned int port)
-{
-	void __iomem *phy_base = pcie_smt->regs[port];
-	int val;
-
-	/* PCIe rate = Gen1 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x30000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Force Pipe P0 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0xc00);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x3000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Set TX output Compliance Pattern  for lane0 */
-	val = readl(phy_base + 0x4010);
-	val = (val & (~0xf)) | (0x06);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 7);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 6);
-	writel(val, phy_base + 0x4010);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x4010);
-	val &= (~0x40);
-	writel(val, phy_base + 0x4010);
-
-	/* TX -3.5dB: (Cp1,C0,Cm1)=(8,40,0) for lane0 */
-	val = readl(phy_base + 0xa008);
-	val &= (~0x200);
-	writel(val, phy_base + 0xa008);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 14);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 22);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val &= (~0x3f00);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xc0ffffff) | (0x08 << 24);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xffc0ffff) | (0x28 << 16);
-	writel(val, phy_base + 0x3048);
-
-	pr_info("Gen1 compliance setting completed!\n");
-}
-
-static void mtk_pcie_cpe_gen2_35db(unsigned int port)
-{
-	void __iomem *phy_base = pcie_smt->regs[port];
-	int val;
-
-	/* PCIe rate = Gen2 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 16);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Force Pipe P0 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0xc00);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x3000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Set TX output Compliance Pattern for lane0 */
-	val = readl(phy_base + 0x4010);
-	val = (val & (~0xf)) | (0x06);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 7);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 6);
-	writel(val, phy_base + 0x4010);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x4010);
-	val &= (~0x40);
-	writel(val, phy_base + 0x4010);
-
-	/* TX -3.5dB: (Cp1,C0,Cm1)=(8,40,0) for lane0 */
-	val = readl(phy_base + 0xa008);
-	val &= (~0x200);
-	writel(val, phy_base + 0xa008);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 14);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 22);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val &= (~0x3f00);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xc0ffffff) | (0x08 << 24);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xffc0ffff) | (0x28 << 16);
-	writel(val, phy_base + 0x3048);
-
-	pr_info("Gen2 3.5db compliance setting completed!\n");
-}
-
-static void mtk_pcie_cpe_gen2_6db(unsigned int port)
-{
-	void __iomem *phy_base = pcie_smt->regs[port];
-	int val;
-
-	/* PCIe rate = Gen2 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 16);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Force Pipe P0 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0xc00);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x3000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Set TX output Compliance Pattern for lane0 */
-	val = readl(phy_base + 0x4010);
-	val = (val & (~0xf)) | (0x06);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 7);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 6);
-	writel(val, phy_base + 0x4010);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x4010);
-	val &= (~0x40);
-	writel(val, phy_base + 0x4010);
-
-	/* TX -6dB: (Cp1,C0,Cm1)=(12,36,0) for lane0 */
-	val = readl(phy_base + 0xa008);
-	val &= (~0x200);
-	writel(val, phy_base + 0xa008);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 14);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 22);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val &= (~0x3f00);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xc0ffffff) | (0x0c << 24);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xffc0ffff) | (0x24 << 16);
-	writel(val, phy_base + 0x3048);
-
-	pr_info("Gen2 6db compliance setting completed!\n");
-}
-
-static void mtk_pcie_cpe_gen3(unsigned int port)
-{
-	void __iomem *phy_base = pcie_smt->regs[port];
-	int val;
-
-	/* PCIe rate = Gen3 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x02 << 16);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Force Pipe P0 */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0xc00);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x3000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Set TX output Compliance Pattern */
-	val = readl(phy_base + 0x4010);
-	val = (val & (~0xf)) | (0x06);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x28);
-
-	/* P7 Settings */
-	/* Set TX output Compliance Pattern */
-	val = readl(phy_base + 0x4010);
-	val = (val & (~0xf)) | (0x06);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 7);
-	writel(val, phy_base + 0x4010);
-
-	val = readl(phy_base + 0x4010);
-	val |= (0x01 << 6);
-	writel(val, phy_base + 0x4010);
-
-	usleep_range(100, 200);
-
-	val = readl(phy_base + 0x4010);
-	val &= (~0x40);
-	writel(val, phy_base + 0x4010);
-
-	/* TX P7: (Cp1,C0,Cm1)=(10,34,4)*/
-	val = readl(phy_base + 0xa008);
-	val &= (~0x200);
-	writel(val, phy_base + 0xa008);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 14);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 22);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xffffc0ff) | (0x04 << 8);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xc0ffffff) | (0x0a << 24);
-	writel(val, phy_base + 0x3048);
-
-	val = readl(phy_base + 0x3048);
-	val = (val & 0xffc0ffff) | (0x22 << 16);
-	writel(val, phy_base + 0x3048);
-
-	pr_info("Gen3 compliance setting completed!\n");
-}
-
-/* for gen3 phy */
-static int mtk_pcie_loopback_test_gen3(struct mtk_pcie_info *pcie_smt, unsigned int port)
-{
-	int val = 0, ret = 0, i = 0, err_count = 0;
-	void __iomem *phy_base = pcie_smt->regs[port];
-
-	pr_info("pcie loopback test start\n");
-
-	/* L1ss = enable */
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 5);
-	writel(val, phy_base + 0x28);
-
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x28);
-
-	val = readl(phy_base + 0x28);
-	val &= (~0x200);
-	writel(val, phy_base + 0x28);
-
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x28);
-
-	val = readl(phy_base + 0x28);
-	val &= (~0x800);
-	writel(val, phy_base + 0x28);
-
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 10);
-	writel(val, phy_base + 0x28);
-
-	/* Set Rate=Gen1 */
-	usleep_range(100, 200);
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x30000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Force PIPE (P0) */
-	val = readl(phy_base + 0x70);
-	val |= (0x01);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0xc00);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val &= (~0x3000);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 8);
-	writel(val, phy_base + 0x70);
-
-	val = readl(phy_base + 0x70);
-	val |= (0x01 << 4);
-	writel(val, phy_base + 0x70);
-
-	usleep_range(100, 200);
-	val = readl(phy_base + 0x70);
-	val &= (~0x10);
-	writel(val, phy_base + 0x70);
-
-	/* Set TX output Pattern for each lane */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		usleep_range(100, 200);
-		val = readl(phy_base + 0x4010 + (0x100 * i));
-		val = ((val & ~0xf) | 0x0d);
-		writel(val, phy_base + 0x4010 + (0x100 * i));
-	}
-
-	/* Set TX PTG Enable */
-	val = readl(phy_base + 0x28);
-	val |= (0x01 << 30);
-	writel(val, phy_base + 0x28);
-
-	/* Set RX Pattern Checker (Type & Enable)  for each lane */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		val = readl(phy_base + 0x501c + (0x100 * i));
-		val |= (0x01 << 1);
-		writel(val, phy_base + 0x501c + (0x100 * i));
-
-		val = readl(phy_base + 0x501c + (0x100 * i));
-		val = ((val & ~0xf0) | 0xd0);
-		writel(val, phy_base + 0x501c + (0x100 * i));
-	}
-	/* toggle ptc_en for status counter clear for each lane */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		val = readl(phy_base + 0x501c + (0x100 * i));
-		val &= (~0x2);
-		writel(val, phy_base + 0x501c + (0x100 * i));
-		usleep_range(100, 200);
-		val = readl(phy_base + 0x501c + (0x100 * i));
-		val |= (0x01 << 1);
-		writel(val, phy_base + 0x501c + (0x100 * i));
-	}
-
-	msleep(50);
-	/* Check status */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		val = readl(phy_base + 0x50c8 + (0x100 * i));
-		if ((val & 0x3) != 0x3) {
-			err_count = val >> 12;
-			pr_info("PCIe lane%i test failed: %#x!\n", i, val);
-			pr_info("lane%i error count: %d\n", i, err_count);
-			ret = -1;
-		} else {
-			pr_info("lane%i loopback test success!\n", i);
-		}
-	}
-
-	return ret;
-}
-
-/* for GEN4 SPHY3 */
-static int mtk_pcie_loopback_test_gen4(struct mtk_pcie_info *pcie_smt, unsigned int port)
-{
-	int val = 0, ret = 0, i = 0, err_count = 0;
-	void __iomem *phy_base = pcie_smt->regs[port];
-
-	pr_info("pcie loopback test start\n");
-
-	/* L1ss enable */
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_28, RX_XTP_MAC_L1SS_EN);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_28, RX_XTP_FRC_MAC_L1SS_EN);
-	mtk_phy_clear_bits(phy_base + PEXTP_DIG_GLB_28, RG_XTP_MAC_RX_EI_DIS);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_28, RG_XTP_FRC_MAC_RX_EI_DIS);
-	mtk_phy_clear_bits(phy_base + PEXTP_DIG_GLB_28, RG_XTP_MAC_TX_CM_DIS);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_28, RG_XTP_FRC_MAC_TX_CM_DIS);
-
-	/* Set Rate=Gen1 */
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_IN_FR_RG);
-	mtk_phy_update_field(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_RATE, 0x0);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
-	mtk_phy_clear_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
-
-	/* Force PIPE (P0) */
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_IN_FR_RG);
-	mtk_phy_update_field(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_POWER_DOWN_ASYNC, 0x0);
-	mtk_phy_update_field(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_POWER_DOWN_SYNC, 0x0);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_FRC_PIPE_POWER_DOWN_ASYNC);
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
-	mtk_phy_clear_bits(phy_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
-
-	/* Set TX output Pattern for each lane */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		mtk_phy_update_field(phy_base + PEXTP_DIG_LN_TX + PEXTP_DIG_LN_TX_10 +
-				     PEXTP_LANE_OFFSET * i, RG_XTP_LN_TX_PTG_TYPE, 0x6);
-	}
-
-	/* Set TX PTG Enable */
-	mtk_phy_set_bits(phy_base + PEXTP_DIG_GLB_28, RG_XTP_TX_PTG_EN);
-
-	/* Set RX Pattern Checker (Type & Enable)  for each lane */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		mtk_phy_set_bits(phy_base + PEXTP_DIG_LN_RX + PEXTP_DIG_LN_RX_1C +
-				 PEXTP_LANE_OFFSET * i, RG_XTP_LN_RX_PTC_EN);
-		mtk_phy_update_field(phy_base + PEXTP_DIG_LN_RX + PEXTP_DIG_LN_RX_1C +
-				     PEXTP_LANE_OFFSET * i, RG_XTP_LN_RX_PTC_TYPE, 0x6);
-	}
-
-	/* toggle ptc_en for status counter clear */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		mtk_phy_clear_bits(phy_base + PEXTP_DIG_LN_RX + PEXTP_DIG_LN_RX_1C +
-				   PEXTP_LANE_OFFSET * i, RG_XTP_LN_RX_PTC_EN);
-		mtk_phy_set_bits(phy_base + PEXTP_DIG_LN_RX + PEXTP_DIG_LN_RX_1C +
-				 PEXTP_LANE_OFFSET * i, RG_XTP_LN_RX_PTC_EN);
-	}
-
-	msleep(50);
-	/* RX Check status */
-	for (i = 0; i < pcie_smt->test_lane[port]; i++) {
-		val = readl(phy_base + PEXTP_DIG_LN_RX + PEXTP_DIG_LN_RX_RGS_CC + PEXTP_LANE_OFFSET * i);
-		if ((val & (RG_XTP_LN_RX_PTC_RX_LOCK | RG_XTP_LN_RX_PTC_RX_PASS)) != 0x3) {
-			err_count = val >> 16;
-			pr_info("PCIe lane%i test failed: %#x!\n", i, val);
-			pr_info("lane%i error count: %d\n", i, err_count);
-			ret = -1;
-		} else {
-			pr_info("lane%i loopback test success!\n", i);
-		}
-	}
-
-	return ret;
-}
 
 /* Set partition when use PCIe PHY debug probe table */
 static void mtk_pcie_phy_dbg_set_partition(void __iomem *phy_base, u32 partition)
@@ -965,14 +356,18 @@ static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port
 
 static int mtk_pcie_loopback_test(struct mtk_pcie_info *pcie_smt, unsigned int port)
 {
-	if (pcie_smt->max_speed[port] == 3)
-		return mtk_pcie_loopback_test_gen3(pcie_smt, port);
-	else if (pcie_smt->max_speed[port] == 4)
-		return mtk_pcie_loopback_test_gen4(pcie_smt, port);
+	int (*loopback_callback)(struct mtk_pcie_info *smt_info, int port);
 
-	pr_info("unsupport max speed!\n");
+	if (!pcie_smt->pdev[port])
+		return -ENODEV;
 
-	return -1;
+	loopback_callback = pcie_smt->test_lib[port]->loopback;
+	if (!loopback_callback) {
+		pr_info("loopback function not found\n");
+		return -EOPNOTSUPP;
+	}
+
+	return loopback_callback(pcie_smt, port);
 }
 
 static int mtk_pcie_ioctl_loopback(struct mtk_pcie_info *pcie_smt, int port)
@@ -1116,9 +511,11 @@ exit:
 	return ret;
 }
 
-static int mtk_pcie_sysfs_complaince(int argc, char **argv)
+static int mtk_pcie_sysfs_compliance(int argc, char **argv)
 {
-	unsigned int port = 0;
+	int (*compliance_cb)(struct mtk_pcie_info *smt_info, int port,
+			    char *cmd, char *preset);
+	int port = 0, ret;
 
 	if (argc > 1) {
 		port = mtk_get_value(argv[1]);
@@ -1129,30 +526,39 @@ static int mtk_pcie_sysfs_complaince(int argc, char **argv)
 		pr_info("Test port number is %d.\n", port);
 	}
 
-	if (argc > 2) {
-		if (!strcmp(argv[2], "gen1")) {
-			pr_info("Start Gen1 compliance test\n");
-			mtk_pcie_cpe_gen1(port);
-		} else if (!strcmp(argv[2], "gen2_35db")) {
-			pr_info("Start Gen2 3.5DB compliance test\n");
-			mtk_pcie_cpe_gen2_35db(port);
-		} else if (!strcmp(argv[2], "gen2_6db")) {
-			pr_info("Start Gen2 6DB compliance test\n");
-			mtk_pcie_cpe_gen2_6db(port);
-		} else if (!strcmp(argv[2], "gen3")) {
-			if (pcie_smt->max_speed[port] >= 3) {
-				pr_info("Start Gen3 compliance test\n");
-				mtk_pcie_cpe_gen3(port);
-			} else {
-				pr_info("Unsupported speed: %s\n", argv[2]);
-				return -EINVAL;
-			}
-		} else {
-			pr_info("Unknown command: %s\n", argv[2]);
-			return -EINVAL;
-		}
+	if (!pcie_smt->pdev[port]) {
+		pr_info("Platform device not found\n");
+		return -ENODEV;
 	}
 
+	compliance_cb = pcie_smt->test_lib[port]->compliance;
+	if (!compliance_cb) {
+		pr_info("compliance function not found\n");
+		return -EOPNOTSUPP;
+	}
+
+	if (argc > 2) {
+		if (!strcmp(argv[2], "start")) {
+			ret = mtk_pcie_phy_power_on(pcie_smt, port);
+			if (ret) {
+				pr_info("PHY power-on failed with ret = %d\n", ret);
+				return ret;
+			}
+
+			pr_info("PHY power-on completed. Please excute 'end' cmd to power off after test ended.\n");
+		} else if (!strcmp(argv[2], "end")) {
+			mtk_pcie_phy_power_off(pcie_smt, port);
+			pr_info("PHY power-off completed.\n");
+		} else {
+			if (!pm_runtime_active(&pcie_smt->phys[port]->dev)) {
+				pr_info("Please excute 'start' cmd before excuting compliance command.\n");
+				goto out;
+			}
+
+			return compliance_cb(pcie_smt, port, argv[2], argc > 3 ? argv[3] : "p7");
+		}
+	}
+out:
 	return 0;
 }
 
@@ -1206,13 +612,15 @@ static int t_pcie_lane_margin(int argc, char **argv)
 }
 
 static struct cmd_tbl cmd_table[] = {
-	{	"loopback",
+	{
+		"loopback",
 		&mtk_pcie_sysfs_loopback,
 		"PCIe Loopback Test [port num] [num of lane]"
 	},
-	{	"cpe",
-		&mtk_pcie_sysfs_complaince,
-		"PCIe Compliance Test [port num] [cpe type]"
+	{
+		"compliance",
+		&mtk_pcie_sysfs_compliance,
+		"PCIe Compliance Test [port num] [start/end/compliance type] ([optional preset])"
 	},
 	{
 		"lane_margin",
@@ -1261,12 +669,17 @@ static ssize_t cli_show(struct kobject *kobj, struct kobj_attribute *attr,
 	}
 
 	pr_info("***************Test cmd user guide****************\n");
-	pr_info("[port num]       0, 1, 2 ....\n");
-	pr_info("[num of lane]    1, 2, 4.\n");
-	pr_info("[cpe type]       gen1, gen2_35db, gen2_6db, gen3.\n");
+	pr_info("[port_num]       0, 1, 2 ....\n");
+	pr_info("[lane_num]    1, 2, 4.\n");
+	pr_info("[compliance_type]       gen1, gen2_35db, gen2_6db, gen3, gen4\n");
+	pr_info("[preset(optional)] only for gen3 and gen4 compliance test\n");
+	pr_info("Loopback test usage: echo loopback [port_num] [lane_num] > cli\n");
 	pr_info("e.g: echo loopback 0 1 > cli\n");
-	pr_info("e.g: echo cpe 0 gen2_6db > cli\n");
-	pr_info("NOTE: Switch use loopback and cpe cmd need reboot.\n");
+	pr_info("Compliance test usage: echo compliance [port_num] [compliance_type] ([preset]) > cli\n");
+	pr_info("e.g: echo compliance 0 gen2_6db > cli\n");
+	pr_info("You can specify the preset type of GEN3 or GEN4 compliance as follow:\n");
+	pr_info("e.g.: echo compliance 0 gen3 p4 > cli\n");
+	pr_info("We use P7 by default if the preset type was not specified\n");
 
 	return 1;
 }
@@ -1332,13 +745,12 @@ static struct device_node *mtk_pcie_find_node_by_port(int port)
 	return NULL;
 }
 
-static int mtk_pcie_phy_power_on(struct mtk_pcie_info *smt_info, int port)
+static int mtk_pcie_update_phy_info(struct mtk_pcie_info *pcie_smt, int port)
 {
 	struct platform_device *pdev;
 	struct device_node *pcie_node = NULL;
-	struct phy *pcie_phy;
 	struct clk_bulk_data *clks;
-	int err = 0, num_clks = 0;
+	int num_clks;
 
 	pcie_node = mtk_pcie_find_node_by_port(port);
 	if (!pcie_node) {
@@ -1346,29 +758,50 @@ static int mtk_pcie_phy_power_on(struct mtk_pcie_info *smt_info, int port)
 		return -ENODEV;
 	}
 
-	pdev = of_find_device_by_node(pcie_node);
+	pcie_smt->pdev[port] = pdev = of_find_device_by_node(pcie_node);
 	if (!pdev) {
-		pr_info("failed to find device node\n");
+		pr_info("failed to find platform device\n");
 		return -ENODEV;
 	}
 
 	num_clks = devm_clk_bulk_get_all(&pdev->dev, &clks);
 	if (num_clks < 0) {
 		pr_info("failed to get clocks\n");
+		pcie_smt->num_clks[port] = 0;
 		return num_clks;
 	}
 
-	pcie_phy = devm_phy_optional_get(&pdev->dev, "pcie-phy");
-	if (IS_ERR(pcie_phy))
-		return PTR_ERR(pcie_phy);
+	pcie_smt->num_clks[port] = num_clks;
+	pcie_smt->clks[port] = clks;
 
-	smt_info->phy_reset[port] = reset_control_get_exclusive(&pdev->dev, "phy");
-	if (IS_ERR(smt_info->phy_reset[port]))
-		return PTR_ERR(smt_info->phy_reset[port]);
+	pcie_smt->phys[port] = devm_phy_optional_get(&pdev->dev, "pcie-phy");
+	if (IS_ERR(pcie_smt->phys[port]))
+		return PTR_ERR(pcie_smt->phys[port]);
 
-	smt_info->mac_reset[port] = reset_control_get_exclusive(&pdev->dev, "mac");
-	if (IS_ERR(smt_info->mac_reset[port]))
-		return PTR_ERR(smt_info->mac_reset[port]);
+	pcie_smt->phy_reset[port] = reset_control_get_exclusive(&pdev->dev, "phy");
+	if (IS_ERR(pcie_smt->phy_reset[port]))
+		return PTR_ERR(pcie_smt->phy_reset[port]);
+
+	pcie_smt->mac_reset[port] = reset_control_get_exclusive(&pdev->dev, "mac");
+	if (IS_ERR(pcie_smt->mac_reset[port]))
+		return PTR_ERR(pcie_smt->mac_reset[port]);
+
+	return 0;
+}
+
+static int mtk_pcie_phy_power_on(struct mtk_pcie_info *smt_info, int port)
+{
+	struct phy *pcie_phy = smt_info->phys[port];
+	struct clk_bulk_data *clks = smt_info->clks[port];
+	int err = 0, num_clks = smt_info->num_clks[port];
+
+	if (IS_ERR(pcie_phy) || !num_clks)
+		return -ENODEV;
+
+	if (pm_runtime_active(&pcie_phy->dev)) {
+		pr_info("PHY already powered on\n");
+		return 0;
+	}
 
 	/* PHY power on and enable pipe clock */
 	reset_control_deassert(smt_info->phy_reset[port]);
@@ -1392,10 +825,6 @@ static int mtk_pcie_phy_power_on(struct mtk_pcie_info *smt_info, int port)
 		goto err_clk_init;
 	}
 
-	smt_info->num_clks[port] = num_clks;
-	smt_info->clks[port] = clks;
-	smt_info->phys[port] = pcie_phy;
-
 	return 0;
 
 err_clk_init:
@@ -1403,7 +832,6 @@ err_clk_init:
 err_power_on:
 	phy_exit(pcie_phy);
 err_init:
-
 	return err;
 }
 
@@ -1421,14 +849,17 @@ static void mtk_pcie_phy_power_off(struct mtk_pcie_info *smt_info, int port)
 
 	pcie_phy = smt_info->phys[port];
 
+	if (!pm_runtime_active(&pcie_phy->dev)) {
+		pr_info("PHY already powered off\n");
+		return;
+	}
+
 	clk_bulk_disable_unprepare(smt_info->num_clks[port],
 				   smt_info->clks[port]);
 	phy_power_off(pcie_phy);
 	phy_exit(pcie_phy);
 	reset_control_assert(smt_info->phy_reset[port]);
 	reset_control_assert(smt_info->mac_reset[port]);
-	reset_control_put(smt_info->phy_reset[port]);
-	reset_control_put(smt_info->mac_reset[port]);
 }
 
 static int __init mtk_pcie_test_init(void)
@@ -1476,7 +907,7 @@ static int __init mtk_pcie_test_init(void)
 	}
 
 	for (j = 0; j < pcie_smt->max_port; j++) {
-		pcie_smt->regs[j] = ioremap(test_table[i].phy_base[j], 0xA000);
+		pcie_smt->regs[j] = ioremap(test_table[i].phy_base[j], 0xB000);
 		if (!pcie_smt->regs[j]) {
 			while (j > 0) {
 				j--;
@@ -1497,6 +928,14 @@ static int __init mtk_pcie_test_init(void)
 			ret = -EIO;
 			goto err_iomap_mac;
 		}
+	}
+
+	for (j = 0; j < pcie_smt->max_port; j++) {
+		ret = mtk_pcie_update_phy_info(pcie_smt, j);
+		if (ret)
+			continue;
+
+		pcie_smt->test_lib[j] = test_table[i].test_lib[j];
 	}
 
 	/* dev node support */
