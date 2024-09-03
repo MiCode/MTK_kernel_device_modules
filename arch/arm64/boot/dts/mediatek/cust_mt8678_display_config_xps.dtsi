@@ -17,7 +17,7 @@
 };
 
 &disp_dvo0 {
-	status = "disabled";
+	status = "okay";
 };
 
 &disp1_dp_intf0 {

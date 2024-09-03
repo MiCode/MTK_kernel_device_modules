@@ -403,7 +403,7 @@
 		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
 		ser-double-pixel = <0>;
-		ser-dp-mst = <1>;
+		ser-dp-mst = <0>;
 		support-touch = <1>;
 
 		feature{
