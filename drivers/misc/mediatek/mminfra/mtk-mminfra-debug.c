@@ -1329,12 +1329,16 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	pwr_ctl = kzalloc(sizeof(*pwr_ctl), GFP_KERNEL);
-	if(!pwr_ctl)
+	if(!pwr_ctl) {
+		kfree(dbg);
 		return -ENOMEM;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		dev_notice(&pdev->dev, "could not get resource for ctrl\n");
+		kfree(dbg);
+		kfree(pwr_ctl);
 		return -EINVAL;
 	}
 
@@ -1342,6 +1346,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	dbg->ctrl_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(dbg->ctrl_base)) {
 		dev_notice(&pdev->dev, "could not ioremap resource for ctrl\n");
+		kfree(dbg);
+		kfree(pwr_ctl);
 		return PTR_ERR(dbg->ctrl_base);
 	}
 
@@ -1352,8 +1358,11 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		of_property_read_u32(node, "mediatek,common-id", &comm_id);
 		comm_pdev = of_find_device_by_node(node);
 		of_node_put(node);
-		if (!comm_pdev)
+		if (!comm_pdev) {
+			kfree(dbg);
+			kfree(pwr_ctl);
 			return -EINVAL;
+		}
 		pr_notice("[mminfra] comm_id=%d, comm_nr=%d\n", comm_id, comm_nr);
 		dbg->comm_dev[comm_nr++] = &comm_pdev->dev;
 	}
@@ -1455,6 +1464,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_notice(&pdev->dev,
 				"failed to register ISR %d (%d)", irq, ret);
+			kfree(dbg);
+			kfree(pwr_ctl);
 			return ret;
 		}
 		cmdq_util_mminfra_cmd(0);
