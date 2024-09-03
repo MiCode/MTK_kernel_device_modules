@@ -14566,6 +14566,12 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			mtk,smmu-shared = <&mm_smmu_cam>;
 
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
+		};
+
+		mtk-mae-plat@34319000 {
+			compatible = "mediatek,mtk-mae-plat";
+			reg = <0 0x34319000 0 0x1000>;
+			mae-supply = <&mae>;
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
@@ -14590,11 +14596,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				"GALS_TRX_IPE0_CAMERA_P2",
 				"GALS_TRX_IPE1_CAMERA_P2",
 				"GALS_CAMERA_P2";
-		};
-
-		mtk-mae-plat@34319000 {
-			compatible = "mediatek,mtk-mae-plat";
-			reg = <0 0x34319000 0 0x1000>;
 		};
 
 		dvs: dvs@3a770000 {
