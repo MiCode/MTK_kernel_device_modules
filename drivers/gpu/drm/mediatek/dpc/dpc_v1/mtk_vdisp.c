@@ -246,7 +246,21 @@ static int genpd_event_notifier(struct notifier_block *nb,
 				priv->pm_ret);
 		break;
 	case GENPD_NOTIFY_OFF:
+		/* unvote and power off mminfra, release should be called only if keep successfully */
+		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
+			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
+		mminfra_hwv_pwr_ctrl(priv, false);
+		break;
 	case GENPD_NOTIFY_ON:
+		if (priv->pd_id == DISP_PD_DISP1) {
+			if (priv->pm_ret)
+				VDISPDBG("cannot init dpc hw,pd:%d,pm_ret:%d",
+					priv->pd_id, priv->pm_ret);
+			if (disp_dpc_driver.dpc_config && !priv->pm_ret)
+				disp_dpc_driver.dpc_config(DPC_SUBSYS_DIS1, false);
+			if (disp_dpc_driver.dpc_enable && !priv->pm_ret)
+				disp_dpc_driver.dpc_enable(false);
+		}
 		/* unvote and power off mminfra, release should be called only if keep successfully */
 		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);

@@ -7336,10 +7336,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			if (mtk_crtc &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
 				mtk_crtc->is_mml_dc = false;
-			CRTC_MMP_MARK(crtc_idx, leave_vidle,
-				(0xc10c | 0x40000000), atomic_read(&top_clk_ref));
-			mtk_vidle_config_ff(false);
-			mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
 		}
 	}
 
