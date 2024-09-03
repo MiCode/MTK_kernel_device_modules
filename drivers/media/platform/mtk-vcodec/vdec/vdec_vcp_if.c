@@ -27,6 +27,7 @@
 // TODO: need remove ISR ipis
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcodec_dec_pm.h"
+#include "../../../misc/mediatek/mmdvfs/mtk-mmdvfs-debug.h"
 
 #if IS_ENABLED(CONFIG_MTK_ENG_BUILD)
 #define IPI_TIMEOUT_MS          (10000U)
@@ -951,9 +952,10 @@ return_vdec_ipi_ack:
 			case VCU_IPIMSG_DEC_SMI_DBG_DUMP:
 				mtk_v4l2_debug(0, "[VDEC] start smi dbg dump");
 				atomic_inc(&dev->smi_dump_ref_cnt);
-				if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_DECODER))
+				if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 					mtk_smi_dbg_dump_for_vdec();
-				else
+					mmdvfs_debug_status_dump(NULL);
+				} else
 					mtk_smi_dbg_hang_detect("vdec smi debug dump");
 				atomic_dec(&dev->smi_dump_ref_cnt);
 
