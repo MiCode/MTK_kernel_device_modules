@@ -139,6 +139,7 @@ char *get_hash_value(unsigned long key)
 	return value;
 }
 
+#define MAX_INVALID_ENTRIES 128
 char *hash_table_to_char_array(unsigned int *p_buffer_size)
 {
 	struct str_hash_entry *entry;
@@ -146,8 +147,23 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 	unsigned int total_size = 0;
 	char *array, *ptr;
 	int ret;
+	char c;
+	unsigned int invalid_indices[MAX_INVALID_ENTRIES];
+	unsigned int invalid_count = 0;
 
 	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		ret = copy_from_kernel_nofault(&c, entry->value, sizeof(c));
+		if (ret != 0) {
+			MMEERR("invalid value:%llx,ret:%d,invalid_count:%d",(unsigned long long)entry->value,
+				ret, invalid_count);
+			if (invalid_count < MAX_INVALID_ENTRIES) {
+				invalid_indices[invalid_count++] = bkt;
+			} else {
+				MMEERR("invalid count exceeded max entries:%d", MAX_INVALID_ENTRIES);
+				return NULL;
+			}
+			continue;
+		}
 		total_size += 16 + strlen(entry->value) + 2;
 	}
 
@@ -165,6 +181,18 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 
 	ptr = array;
 	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		bool skip_entry = false;
+
+		for (unsigned int i = 0; i < invalid_count; ++i) {
+			if (invalid_indices[i] == bkt) {
+				skip_entry = true;
+				break;
+			}
+		}
+
+		if (skip_entry)
+			continue;
+
 		ret = snprintf(ptr, total_size - (ptr - array), "%lx:", entry->key);
 		if (ret < 0) {
 			MMEERR("snprintf failed, ret:%d", ret);
