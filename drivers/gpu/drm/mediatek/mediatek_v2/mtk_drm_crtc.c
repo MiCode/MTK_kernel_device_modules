@@ -9497,6 +9497,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 1);
 		wake_up_interruptible(&(mtk_crtc->signal_mml_last_job_is_flushed_wq));
 	}
+	CRTC_MMP_MARK(id, mml_job_status, mtk_crtc->is_mml,
+		atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);

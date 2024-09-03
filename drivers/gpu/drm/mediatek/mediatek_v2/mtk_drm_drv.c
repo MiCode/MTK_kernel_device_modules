@@ -2157,10 +2157,18 @@ static int mtk_atomic_commit(struct drm_device *drm,
 			return 0;
 		}
 
+		CRTC_MMP_MARK(drm_crtc_index(crtc), mml_job_status, mtk_crtc->is_mml,
+			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+
 		if (mtk_crtc->is_mml) {
 			/* if last frame is mml, need to wait job done before holding lock */
 			ret = wait_event_interruptible(mtk_crtc->signal_mml_last_job_is_flushed_wq,
 					atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+			if (ret < 0) {
+				DDPPR_ERR("%s[%d] wait_event_interruptible fail, ret:%d\n",
+					__func__, __LINE__, ret);
+				break;
+			}
 			DDP_PROFILE("[PROFILE] pf:%u mml last job is flushed\n", pf);
 		}
 		break;
@@ -2201,6 +2209,9 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		mtk_crtc = to_mtk_crtc(crtc);
 
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
+
+		CRTC_MMP_MARK(i, mml_job_status, mtk_crtc->is_mml,
+			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 		DRM_MMP_MARK(mutex_lock, (unsigned long)&mtk_crtc->lock, i);
 
