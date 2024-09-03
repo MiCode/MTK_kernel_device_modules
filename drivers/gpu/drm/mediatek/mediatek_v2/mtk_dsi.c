@@ -3969,8 +3969,13 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 				mtk_dprec_snapshot();
 
-				if (dsi->encoder.crtc)
-					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+				if (dsi->encoder.crtc) {
+					if (priv->data->mmsys_id == MMSYS_MT6899) {
+						mtk_drm_crtc_analysis(dsi->encoder.crtc);
+						mtk_drm_crtc_dump(dsi->encoder.crtc);
+					} else
+						mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+				}
 
 				mtk_vidle_dpc_analysis();
 
@@ -14057,7 +14062,6 @@ static const struct mtk_dsi_driver_data mt6899_dsi_driver_data = {
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
 	.support_pre_urgent = true,
-	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
