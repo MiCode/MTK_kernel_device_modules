@@ -574,6 +574,7 @@ int mtk_clk_check_muxes(void)
 {
 	struct clk *clk;
 	int i;
+	int ret = 0;
 
 	if (!clkchk_ops || !clkchk_ops->get_vf_name
 			|| !clkchk_ops->get_vf_num)
@@ -587,7 +588,15 @@ int mtk_clk_check_muxes(void)
 
 		pr_notice("name: %s\n", name);
 		clk = __clk_chk_lookup(name);
-		clk_notifier_register(clk, &mtk_clk_notifier);
+
+		if (clk) {
+			ret = clk_notifier_register(clk, &mtk_clk_notifier);
+			if(ret)
+				pr_err("clk: %s notifier register failed!\n", name);
+		} else {
+			pr_err("clk: %s lookup failed!\n", name);
+			continue;
+		}
 	}
 
 	return 0;
