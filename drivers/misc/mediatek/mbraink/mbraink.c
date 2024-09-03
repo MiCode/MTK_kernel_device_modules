@@ -51,6 +51,16 @@ static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
 long long last_resume_timestamp;
 
+
+#define MAX_LOGMISCDATA_LOG_SIZE 256
+#define MAX_LOGMISCDATA_VALUE_NUM 8
+#define LogMiscDataToken     "__LMD&"
+
+struct mbraink_logmiscdata_buffer {
+	long long value[MAX_LOGMISCDATA_VALUE_NUM];
+	char buffer[MAX_LOGMISCDATA_LOG_SIZE];
+};
+
 static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info);
 
 static int mbraink_open(struct inode *inode, struct file *filp)
@@ -2003,6 +2013,60 @@ int mbraink_netlink_send_msg(const char *msg)
 }
 EXPORT_SYMBOL_GPL(mbraink_netlink_send_msg);
 
+int logmiscdata2mbrain(long long *value, unsigned int value_num, char *buf, unsigned int buf_size)
+{
+	struct mbraink_logmiscdata_buffer logmiscdata;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	if (value == NULL || buf == NULL) {
+		pr_info("[MBK_INFO] %s: Mbraink value or buf is null.\n", __func__);
+		return -1;
+	}
+
+	if (value_num > MAX_LOGMISCDATA_VALUE_NUM) {
+		pr_info("[MBK_INFO] %s: Mbraink value_num(%d) error.\n", __func__, value_num);
+		return -1;
+	}
+
+	if (buf_size > MAX_LOGMISCDATA_LOG_SIZE) {
+		pr_info("[MBK_INFO] %s: Mbraink buf_size(%d) error.\n", __func__, buf_size);
+		return -1;
+	}
+
+	memset(&logmiscdata, 0, sizeof(struct mbraink_logmiscdata_buffer));
+	memcpy(logmiscdata.value, value, sizeof(long long)*value_num);
+	memcpy(logmiscdata.buffer, buf, buf_size);
+
+	//MSG Format : __LMD&:0:1:2:3:4:5:6:7:string:__LMD&
+	n = scnprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%s:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%s:%s",
+				LogMiscDataToken,
+				logmiscdata.value[0],
+				logmiscdata.value[1],
+				logmiscdata.value[2],
+				logmiscdata.value[3],
+				logmiscdata.value[4],
+				logmiscdata.value[5],
+				logmiscdata.value[6],
+				logmiscdata.value[7],
+				logmiscdata.buffer,
+				LogMiscDataToken);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return -1;
+
+	pr_info("[sammi]netlink_buf(%s)", netlink_buf);
+
+	mbraink_netlink_send_msg(netlink_buf);
+	return 0;
+
+}
+EXPORT_SYMBOL_GPL(logmiscdata2mbrain);
+
+
 static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info)
 {
 	struct nlmsghdr *nlhdr = NULL;
@@ -2029,6 +2093,7 @@ static int mbraink_genetlink_init(void)
 
 	return ret;
 }
+
 
 static int mbraink_init(void)
 {
@@ -2087,6 +2152,7 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink auto cpu load init failed.\n");
 #endif
+
 	return ret;
 }
 
@@ -2145,6 +2211,7 @@ static void mbraink_exit(void)
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	mbraink_auto_deinit();
 #endif
+
 }
 
 module_init(mbraink_init);

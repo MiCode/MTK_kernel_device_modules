@@ -205,5 +205,7 @@ struct mbraink_data {
 };
 
 int mbraink_netlink_send_msg(const char *msg);
+int logmiscdata2mbrain(long long *value, unsigned int value_num, char *buf, unsigned int buf_size);
+
 
 #endif /*end of MBRAINK_H*/
