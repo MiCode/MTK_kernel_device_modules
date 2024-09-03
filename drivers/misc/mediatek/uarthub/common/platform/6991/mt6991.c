@@ -79,6 +79,7 @@ static int uarthub_is_host_trx_idle_mt6991(int dev_index, enum uarthub_trx_type 
 static int uarthub_get_host_byte_cnt_mt6991(int dev_index, enum uarthub_trx_type trx);
 static int uarthub_get_cmm_byte_cnt_mt6991(enum uarthub_trx_type trx);
 static int uarthub_config_crc_ctrl_mt6991(int enable);
+static int uarthub_config_feedback_tx_host_awake_sta_en_ctrl_mt6991(int enable);
 static int uarthub_config_host_fifoe_ctrl_mt6991(int dev_index, int enable);
 static int uarthub_get_rx_error_crc_info_mt6991(
 	int dev_index, int *p_crc_error_data, int *p_crc_result);
@@ -155,6 +156,8 @@ struct uarthub_core_ops_struct mt6991_plat_core_data = {
 	.uarthub_plat_get_cmm_byte_cnt = uarthub_get_cmm_byte_cnt_mt6991,
 	.uarthub_plat_config_crc_ctrl = uarthub_config_crc_ctrl_mt6991,
 	.uarthub_plat_config_bypass_ctrl = uarthub_config_bypass_ctrl_mt6991,
+	.uarthub_plat_config_feedback_tx_host_awake_sta_en_ctrl =
+		uarthub_config_feedback_tx_host_awake_sta_en_ctrl_mt6991,
 	.uarthub_plat_config_host_fifoe_ctrl = uarthub_config_host_fifoe_ctrl_mt6991,
 	.uarthub_plat_get_rx_error_crc_info = uarthub_get_rx_error_crc_info_mt6991,
 	.uarthub_plat_get_trx_timeout_info = uarthub_get_trx_timeout_info_mt6991,
@@ -1741,6 +1744,12 @@ int uarthub_config_crc_ctrl_mt6991(int enable)
 int uarthub_config_bypass_ctrl_mt6991(int enable)
 {
 	CON2_SET_intfhub_bypass(CON2_ADDR, enable);
+	return 0;
+}
+
+int uarthub_config_feedback_tx_host_awake_sta_en_ctrl_mt6991(int enable)
+{
+	STA0_SET_feedback_tx_host_awake_sta_en(STA0_ADDR, enable);
 	return 0;
 }
 

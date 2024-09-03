@@ -1236,10 +1236,14 @@ int uarthub_core_md_adsp_fifo_ctrl(int enable)
 #endif
 
 	if (enable == 1) {
+		if (g_plat_ic_core_ops->uarthub_plat_config_feedback_tx_host_awake_sta_en_ctrl)
+			g_plat_ic_core_ops->uarthub_plat_config_feedback_tx_host_awake_sta_en_ctrl(0);
 		uarthub_core_reset_to_ap_enable_only(1);
 	} else {
 		g_plat_ic_core_ops->uarthub_plat_config_host_fifoe_ctrl(1, 1);
 		g_plat_ic_core_ops->uarthub_plat_config_host_fifoe_ctrl(2, 1);
+		if (g_plat_ic_core_ops->uarthub_plat_config_feedback_tx_host_awake_sta_en_ctrl)
+			g_plat_ic_core_ops->uarthub_plat_config_feedback_tx_host_awake_sta_en_ctrl(1);
 #if UARTHUB_INFO_LOG
 		uarthub_core_debug_info(__func__);
 #endif
