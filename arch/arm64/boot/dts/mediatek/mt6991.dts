@@ -12453,7 +12453,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <0>;
 			mediatek,larbs = <&smi_larb14>;
 			interrupts = <GIC_SPI 529 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 541 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_CAMSV>,
@@ -12520,7 +12521,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <1>;
 			mediatek,larbs = <&smi_larb13>;
 			interrupts = <GIC_SPI 530 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 536 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 536 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 542 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_CAMSV>,
@@ -12587,7 +12589,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <2>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 531 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 537 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 537 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 543 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -12635,7 +12638,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <3>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 532 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 544 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -12683,7 +12687,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <4>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 533 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 545 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
@@ -12731,7 +12736,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,cammux-id = <5>;
 			mediatek,larbs = <&smi_larb29>;
 			interrupts = <GIC_SPI 534 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 540 IRQ_TYPE_LEVEL_HIGH 0>;
+						<GIC_SPI 540 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 546 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
