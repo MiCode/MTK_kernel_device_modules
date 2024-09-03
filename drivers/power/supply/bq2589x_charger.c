@@ -1082,7 +1082,7 @@ int bq2589x_get_usb_type(struct bq2589x *bq, int *type)
 
 	switch (vbus_stat) {
 	case BQ2589X_VBUS_TYPE_NONE:
-		bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		pr_info("BQ2589X charger type: UNKNOW\n");
 		break;
@@ -1123,7 +1123,7 @@ int bq2589x_get_usb_type(struct bq2589x *bq, int *type)
 		pr_info("BQ2589X charger type: NON_STANDARD\n");
 		break;
 	default:
-		bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		pr_info("BQ2589X charger type: UNKNOW\n");
 		break;
@@ -1222,7 +1222,7 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 			}
 		} else if (prev_pg && !bq->power_good) {
 			pr_info("adapter/usb removed\n");
-			bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+			bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		}
 	} else {//for bq25890h
 		if (!prev_pg && bq->power_good) {
@@ -1234,7 +1234,7 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 			}
 	} else if (prev_pg && !bq->power_good) {
 			pr_info("adapter/usb removed\n");
-			bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+			bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		}
 	}
 
