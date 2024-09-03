@@ -1170,7 +1170,7 @@ static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache 
 
 static enum mml_mode support_couple(void)
 {
-	return MML_MODE_DIRECT_LINK;
+	return MML_MODE_RACING;
 }
 
 static bool tp_support_dc2(void)
