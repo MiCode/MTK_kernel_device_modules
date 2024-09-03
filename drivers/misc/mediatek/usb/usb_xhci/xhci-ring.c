@@ -382,7 +382,8 @@ EXPORT_SYMBOL_GPL(xhci_ring_cmd_db_);
 
 static bool xhci_mod_cmd_timer(struct xhci_hcd *xhci)
 {
-	return mod_delayed_work(system_wq, &xhci->cmd_timer,
+	return xhci->current_cmd &&
+		mod_delayed_work(system_wq, &xhci->cmd_timer,
 			msecs_to_jiffies(xhci->current_cmd->timeout_ms));
 }
 
