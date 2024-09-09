@@ -351,6 +351,11 @@ struct cmdq_poll_reuse {
 	struct cmdq_reuse sleep_jump_to_end;
 };
 
+struct hwmbox_group {
+	u16 num;
+	u16 hwmbox_id[32];
+};
+
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, void *data);
 int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);
@@ -658,7 +663,15 @@ u32 *cmdq_pkt_get_perf_ret(struct cmdq_pkt *pkt);
  */
 int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event);
 
+int cmdq_pkt_wfe_timeout(struct cmdq_pkt *pkt, u16 event, u16 reg_gpr, u32 aux_timeout_cycles);
+
 int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event);
+
+int cmdq_pkt_aux_wtd_toggle(struct cmdq_pkt *pkt);
+
+int cmdq_pkt_aux_wtd_enable(struct cmdq_pkt *pkt);
+
+int cmdq_pkt_aux_wtd_reset(struct cmdq_pkt *pkt);
 
 int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event);
 
@@ -682,6 +695,31 @@ s32 cmdq_pkt_finalize(struct cmdq_pkt *pkt);
 s32 cmdq_pkt_refinalize(struct cmdq_pkt *pkt);
 
 s32 cmdq_pkt_finalize_loop(struct cmdq_pkt *pkt);
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_HOST_VM)
+s32 cmdq_pkt_set_thread_mpu_mask(struct cmdq_pkt *pkt,
+	u32 thread_id, u32 mpu_mask);
+s32 cmdq_pkt_set_domain_epu_mask(struct cmdq_pkt *pkt,
+	u32 domain, u32 epu_mask);
+#endif
+
+s32 cmdq_pkt_hwmbox_req(struct cmdq_pkt *pkt, u16 hwmbox_id, u32 payload);
+
+s32 cmdq_pkt_hwmbox_clear_req(struct cmdq_pkt *pkt, u16 hwmbox_id);
+
+s32 cmdq_pkt_hwmbox_wait_req(struct cmdq_pkt *pkt, struct hwmbox_group *mboxes);
+
+s32 cmdq_pkt_hwmbox_wait_clear_req(struct cmdq_pkt *pkt, struct hwmbox_group *mboxes);
+
+s32 cmdq_pkt_hwmbox_query(struct cmdq_pkt *pkt, u16 hwmbox_id, u16 reg_spr);
+
+s32 cmdq_pkt_hwmbox_ack(struct cmdq_pkt *pkt, u16 hwmbox_id);
+
+s32 cmdq_pkt_hwmbox_clear_ack(struct cmdq_pkt *pkt, u16 hwmbox_id);
+
+s32 cmdq_pkt_hwmbox_wait_ack(struct cmdq_pkt *pkt, u16 hwmbox_id);
+
+s32 cmdq_pkt_hwmbox_wait_and_clear_ack(struct cmdq_pkt *pkt, u16 hwmbox_id);
 
 /**
  * cmdq_pkt_flush_async() - trigger CMDQ to asynchronously execute the CMDQ

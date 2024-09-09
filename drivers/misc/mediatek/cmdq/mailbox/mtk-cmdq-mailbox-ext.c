@@ -20,6 +20,7 @@
 #include <linux/workqueue.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/of_address.h>
 #include <linux/atomic.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
@@ -123,6 +124,37 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_VM_ID_MAP1		0x501C
 #define GCE_VM_ID_MAP2		0x5020
 #define GCE_VM_ID_MAP3		0x5024
+#define GCE_VM_ID_GET_MAP_BY_THREAD(thread_id) \
+	(((thread_id % 10) * 4) + GCE_VM_ID_MAP0)
+#define GCE_VM_ID_MAP_THREAD_BIT_START(thread_id) ((thread_id % 10) * 3)
+#define GCE_VM_ID_GET(map, thread_id) \
+	((map >> GCE_VM_ID_MAP_THREAD_BIT_START(thread_id)) & GENMASK(2, 0))
+#define GCE_VM_ID_SET(vm_id, thread_id) \
+	((vm_id & GENMASK(2, 0)) << GCE_VM_ID_MAP_THREAD_BIT_START(thread_id))
+
+#define GCE_MPU_IRQ_EN		0x6180
+#define GCE_MPU_IRQ_R_FAIL_EN		BIT(0)
+#define GCE_MPU_IRQ_W_FAIL_EN		BIT(1)
+#define GCE_MPU_IRQ_PREFETCH_R_FAIL_EN		BIT(2)
+#define GCE_MPU_IRQ_STATUS		0x6184
+#define GCE_MPU_ERROR_THREAD(error_bit)		((error_bit * 8) + 0x618C)
+
+#define CMDQ_MPU_TABLE_ADDR_START(table_id)		((table_id * 8) + 0x6080)
+#define CMDQ_MPU_TABLE_ADDR_END(table_id)		((table_id * 8) + 0x6084)
+#define CMDQ_MPU_THREAD_MASK(thread_id)		((thread_id * 4) + 0x6000)
+
+#define CMDQ_EPU_TABLE_EVENT_START(table_id)		((table_id * 8) + 0x6280)
+#define CMDQ_EPU_TABLE_EVENT_END(table_id)		((table_id * 8) + 0x6284)
+#define CMDQ_EPU_DOMAIN_MASK(domain)		((domain * 4) + 0x6200)
+
+#define CMDQ_HWMBOX_ID_OFFSET(id)		(id * 4)
+
+#define CMDQ_AUX_EN		0x6400
+#define CMDQ_AUX_WTD_MODE		0x6404
+#define CMDQ_AUX_RESET		0x640c
+#define CMDQ_AUX_TIMEOUT_CYCLES(aux_id)		((aux_id * 4) + 0x6410)
+#define CMDQ_AUX_IRQ_EN		0x6590
+#define CMDQ_AUX_IRQ_STATUS		0x6594
 
 #define GCE_DDREN_BIT		(0)
 #define GCE_DDRSRC_BIT		(1)
@@ -148,6 +180,9 @@ EXPORT_SYMBOL(gce_thread_nr);
 
 unsigned long long gce_mminfra;
 EXPORT_SYMBOL(gce_mminfra);
+
+u32 gce_control_address_limit;
+EXPORT_SYMBOL(gce_control_address_limit);
 
 bool skip_poll_sleep;
 EXPORT_SYMBOL(skip_poll_sleep);
@@ -265,6 +300,13 @@ struct cmdq_mmp_event {
 };
 struct cmdq_mmp_event	cmdq_mmp;
 
+struct cmdq_hwmbox {
+	dma_addr_t pa;
+	u16 mbox_num;
+	u16 *id_list;
+	u16 *event_list;
+};
+
 struct cmdq {
 	struct mbox_controller	mbox;
 	void __iomem		*base;
@@ -332,6 +374,14 @@ struct cmdq {
 	bool		gce_req_wa;
 	unsigned int	dbg3;
 	bool		gce_res_sw_mode;
+	u32		mpu_irq;
+	u32		aux_irq;
+	u32		hwmbox_page_num;
+	struct cmdq_hwmbox		*hwmbox_page;
+	bool		support_mpu;
+	bool		support_epu;
+	bool		support_hwmbox;
+	bool		support_aux;
 };
 
 struct gce_plat {
@@ -577,6 +627,48 @@ void cmdq_dump_usage(void)
 	}
 }
 EXPORT_SYMBOL(cmdq_dump_usage);
+
+static void cmdq_aux_wdt_enable(struct cmdq_thread *thread)
+{
+	struct cmdq *cmdq;
+	u32 aux_id;
+	unsigned long flags;
+
+	cmdq = dev_get_drvdata(thread->chan->mbox->dev);
+	aux_id = thread->idx;
+
+	if (unlikely(!cmdq->support_aux)) {
+		cmdq_err("not support aux");
+		return;
+	}
+
+	spin_lock_irqsave(&cmdq->lock, flags);
+	writel(readl(cmdq->base + CMDQ_AUX_EN) | BIT(aux_id), cmdq->base + CMDQ_AUX_EN);
+	spin_unlock_irqrestore(&cmdq->lock, flags);
+}
+
+static void cmdq_aux_wdt_disable(struct cmdq_thread *thread)
+{
+	struct cmdq *cmdq;
+	u32 aux_id;
+	unsigned long flags;
+
+	cmdq = dev_get_drvdata(thread->chan->mbox->dev);
+	aux_id = thread->idx;
+
+	if (unlikely(!cmdq->support_aux)) {
+		cmdq_err("not support aux");
+		return;
+	}
+
+	spin_lock_irqsave(&cmdq->lock, flags);
+	writel(BIT(aux_id), cmdq->base + CMDQ_AUX_RESET);
+	writel(readl(cmdq->base + CMDQ_AUX_IRQ_EN) & ~(BIT(aux_id)), cmdq->base + CMDQ_AUX_IRQ_EN);
+	writel(readl(cmdq->base + CMDQ_AUX_IRQ_STATUS) & ~(BIT(aux_id)), cmdq->base + CMDQ_AUX_IRQ_STATUS);
+	spin_unlock_irqrestore(&cmdq->lock, flags);
+
+	thread->aux_wtd_en = false;
+}
 
 bool cmdq_get_support_vm(u8 hwid)
 {
@@ -987,6 +1079,8 @@ static void cmdq_thread_disable(struct cmdq *cmdq, struct cmdq_thread *thread)
 			cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
 			atomic_read(&thread->usage));
 
+	if (thread->aux_wtd_en)
+		cmdq_aux_wdt_disable(thread);
 	cmdq_thread_reset(cmdq, thread);
 	writel(CMDQ_THR_DISABLED, thread->base + CMDQ_THR_ENABLE_TASK);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -1084,6 +1178,16 @@ size_t cmdq_task_current_offset(dma_addr_t pa, struct cmdq_pkt *pkt)
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_task_current_offset);
+
+static inline bool cmdq_task_is_host_thread(struct cmdq *cmdq, u32 thread_id)
+{
+	u32 thread_vm, map;
+
+	map = readl(cmdq->base + GCE_VM_ID_GET_MAP_BY_THREAD(thread_id));
+	thread_vm = GCE_VM_ID_GET(map, thread_id);
+
+	return thread_vm == CMDQ_VM_HOST;
+}
 
 static bool cmdq_task_is_current_run(dma_addr_t pa, struct cmdq_pkt *pkt)
 {
@@ -1356,6 +1460,9 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 
 		writel(CMDQ_THR_IRQ_EN, thread->base + CMDQ_THR_IRQ_ENABLE);
 		writel(CMDQ_THR_ENABLED, thread->base + CMDQ_THR_ENABLE_TASK);
+
+		if (thread->aux_wtd_en && thread->aux_wtd_monitor_en)
+			cmdq_aux_wdt_enable(thread);
 
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 		mmprofile_log_ex(cmdq_mmp.thread_en, MMPROFILE_FLAG_PULSE,
@@ -2041,6 +2148,107 @@ static irqreturn_t cmdq_vm_irq_handler(int irq, void *dev)
 #endif
 	cmdq_trace_end();
 	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
+}
+
+static irqreturn_t cmdq_mpu_irq_handler(int irq, void *dev)
+{
+	struct cmdq *cmdq = dev;
+	struct cmdq_thread *thread;
+	u32 irq_status, bit, thread_id;
+	unsigned long flags;
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	u64 start = sched_clock(), end[3];
+	u32 end_cnt = 0;
+#endif
+	cmdq_mtcmos_by_fast(cmdq, true);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+	irq_status = readl(cmdq->base + GCE_MPU_IRQ_STATUS);
+	for_each_set_bit(bit, (unsigned long *)&irq_status, 3) {
+		thread_id = readl(cmdq->base + GCE_MPU_ERROR_THREAD(bit));
+
+		if(cmdq_task_is_host_thread(cmdq, thread_id)) {
+			/* reset host mpu */
+			spin_lock_irqsave(&cmdq->lock, flags);
+			writel(0xffff, cmdq->base + CMDQ_MPU_THREAD_MASK(thread_id));
+			spin_unlock_irqrestore(&cmdq->lock, flags);
+			cmdq_err("host thread come with mpu error, thread_id: %u", thread_id);
+		} else {
+			thread = &cmdq->thread[thread_id];
+			spin_lock_irqsave(&thread->chan->lock, flags);
+			writel(CMDQ_THR_SUSPEND, thread->base + CMDQ_THR_SUSPEND_TASK);
+			spin_unlock_irqrestore(&thread->chan->lock, flags);
+			cmdq_err("guest thread come with mpu error, thread_id: %u", thread_id);
+		}
+	}
+	writel(0x0, cmdq->base + GCE_MPU_IRQ_STATUS);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 1000000 && !cmdq->irq_long_times) { /* 1ms */
+		cmdq_util_err(
+			"IRQ_LONG:%llu time interval:%llu %llu %llu",
+			end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1]);
+	}
+#endif
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t cmdq_aux_irq_handler(int irq, void *dev)
+{
+	struct cmdq *cmdq = dev;
+	struct cmdq_thread *thread;
+	u32 irq_status, bit;
+	unsigned long flags_thd, flags_core;
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	u64 start = sched_clock(), end[3];
+	u32 end_cnt = 0;
+#endif
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+
+	irq_status = readl(cmdq->base + CMDQ_AUX_IRQ_STATUS);
+	for_each_set_bit(bit, (unsigned long *)&irq_status, CMDQ_THR_MAX_COUNT) {
+		thread = &cmdq->thread[bit];
+		if(thread->aux_wtd_en && thread->aux_wtd_monitor_en) {
+			spin_lock_irqsave(&thread->chan->lock, flags_thd);
+			cmdq_aux_wdt_disable(thread);
+			writel(CMDQ_THR_DO_WARM_RESET, thread->base + CMDQ_THR_WARM_RESET);
+			spin_unlock_irqrestore(&thread->chan->lock, flags_thd);
+		}
+	}
+	spin_lock_irqsave(&cmdq->lock, flags_core);
+	writel(0x0, cmdq->base + CMDQ_AUX_IRQ_STATUS);
+	spin_unlock_irqrestore(&cmdq->lock, flags_core);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 1000000 && !cmdq->irq_long_times) { /* 1ms */
+		cmdq_util_err(
+			"IRQ_LONG:%llu time interval:%llu %llu %llu",
+			end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1]);
+	}
+#endif
+
+	return IRQ_HANDLED;
 }
 
 static int cmdq_irq_handler_thread(void *data)
@@ -3056,6 +3264,59 @@ static void cmdq_config_default_token(struct device *dev, struct cmdq *cmdq)
 	}
 }
 
+static void cmdq_config_hwmboxes(struct device *dev, struct cmdq *cmdq)
+{
+	u16 idx;
+	struct resource res;
+	struct of_phandle_args args;
+
+	if (!cmdq->support_hwmbox) {
+		cmdq_err("not support hwmbox");
+		return;
+	}
+
+	cmdq->hwmbox_page_num =
+		of_count_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells");
+
+	cmdq->hwmbox_page =
+		devm_kcalloc(dev, cmdq->hwmbox_page_num,
+			    sizeof(*cmdq->hwmbox_page), GFP_KERNEL);
+
+	/* parse phandle */
+	for (idx = 0; idx < cmdq->hwmbox_page_num; idx++) {
+		of_parse_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells", idx, &args);
+
+		cmdq->hwmbox_page[idx].mbox_num =
+			of_property_count_u16_elems(args.np, "hwmbox-id");
+
+		cmdq->hwmbox_page[idx].id_list =
+			devm_kcalloc(dev, cmdq->hwmbox_page[idx].mbox_num, sizeof(u16),
+				    GFP_KERNEL);
+
+		cmdq->hwmbox_page[idx].event_list =
+			devm_kcalloc(dev, cmdq->hwmbox_page[idx].mbox_num, sizeof(u16),
+				    GFP_KERNEL);
+
+		of_property_read_u16_array(args.np, "hwmbox-id",
+			cmdq->hwmbox_page[idx].id_list,
+			cmdq->hwmbox_page[idx].mbox_num);
+
+		if (args.args[0] == HWMBOX_EXTERNAL_PAGE)
+			of_property_read_u16_array(args.np, "hwmbox-external-event",
+				cmdq->hwmbox_page[idx].event_list,
+				cmdq->hwmbox_page[idx].mbox_num);
+		else
+			of_property_read_u16_array(args.np, "hwmbox-internal-event",
+				cmdq->hwmbox_page[idx].event_list,
+				cmdq->hwmbox_page[idx].mbox_num);
+
+		of_address_to_resource(args.np, 0, &res);
+		cmdq->hwmbox_page[idx].pa = res.start;
+
+		of_node_put(args.np);
+	}
+}
+
 static void cmdq_config_init_buf(struct device *dev, struct cmdq *cmdq)
 {
 	u32 i, *va;
@@ -3231,11 +3492,57 @@ static int cmdq_probe(struct platform_device *pdev)
 		return PTR_ERR(cmdq->base);
 	}
 
+	if (of_property_read_bool(dev->of_node, "support-mpu"))
+		cmdq->support_mpu = true;
+
+	if (of_property_read_bool(dev->of_node, "support-epu"))
+		cmdq->support_epu = true;
+
+	if (of_property_read_bool(dev->of_node, "support-hwmbox"))
+		cmdq->support_hwmbox = true;
+
+	if (of_property_read_bool(dev->of_node, "support-aux"))
+		cmdq->support_aux = true;
+
+	cmdq_msg("%s support_mpu:%d support_epu:%d support_hwmbox:%d support_aux:%d",
+		__func__, cmdq->support_mpu, cmdq->support_epu, cmdq->support_hwmbox, cmdq->support_aux);
+
 	cmdq->irq = platform_get_irq(pdev, 0);
 	if (!cmdq->irq) {
 		cmdq_err("failed to get irq");
 		return -EINVAL;
 	}
+
+	if (cmdq->support_mpu) {
+		cmdq->mpu_irq = platform_get_irq(pdev, 2);
+		if (!cmdq->mpu_irq) {
+			cmdq_err("failed to get mpu_irq");
+			return -EINVAL;
+		}
+
+		err = devm_request_irq(dev, cmdq->mpu_irq, cmdq_mpu_irq_handler, IRQF_SHARED,
+			"mtk_cmdq_mpu", cmdq);
+		if (err < 0) {
+			cmdq_err("failed to register MPU ISR (%d)", err);
+			return err;
+		}
+	}
+
+	if (cmdq->support_aux) {
+		cmdq->aux_irq = platform_get_irq(pdev, 3);
+		if (!cmdq->aux_irq) {
+			cmdq_err("failed to get aux_irq");
+			return -EINVAL;
+		}
+
+		err = devm_request_irq(dev, cmdq->aux_irq, cmdq_aux_irq_handler, IRQF_SHARED,
+				       "mtk_cmdq_aux", cmdq);
+		if (err < 0) {
+			cmdq_err("failed to register AUX ISR (%d)", err);
+			return err;
+		}
+	}
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
 	irq_mon_aee_callback_register(cmdq->irq, cmdq_burst_irq_callback);
 #endif
@@ -3307,6 +3614,8 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
 	of_property_read_u32(dev->of_node, "cmdq-print-debug", &cmdq_print_debug);
+	of_property_read_u32(dev->of_node, "cmdq-control-address-limit",
+		&gce_control_address_limit);
 
 	cmdq_msg("dump_buf_size %d error irq %d tfa_read_dbg:%d proc_debug_off:%d print_debug:%d",
 		cmdq_dump_buf_size,
@@ -3330,6 +3639,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq_config_prefetch(dev->of_node, cmdq);
 	cmdq_config_default_token(dev, cmdq);
 	cmdq_config_dma_mask(dev);
+	cmdq_config_hwmboxes(dev, cmdq);
 	cmdq_config_init_buf(mtk_smmu_get_shared_device(dev), cmdq);
 
 	cmdq->clock = devm_clk_get(dev, "gce");
@@ -3592,6 +3902,231 @@ static __init int cmdq_drv_init(void)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_CMDQ_HOST_VM)
+s32 cmdq_set_mpu_table(struct device *gce_dev,
+	struct cmdq_mpu_table *mpu_table)
+{
+	struct platform_device *pdev;
+	struct cmdq *cmdq;
+	s32 ret = 0;
+	int i = 0;
+
+	if (unlikely(!gce_dev)) {
+		cmdq_err("Null dev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	pdev = to_platform_device(gce_dev);
+	if (unlikely(!pdev)) {
+		cmdq_err("Null pdev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq = platform_get_drvdata(pdev);
+	if (unlikely(!cmdq)) {
+		cmdq_err("Null cmdq");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!cmdq->support_mpu)) {
+		cmdq_err("not support mpu");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!mpu_table)) {
+		cmdq_err("Null mpu_table");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	/* config MPU table */
+	for (i = 0;  i < CMDQ_MPU_TABLE_MAX_COUNT; i++) {
+		u32 start = mpu_table->table[i].addr_start;
+		u32 end = mpu_table->table[i].addr_end;
+
+		if((start > end) || (end >= gce_control_address_limit)) {
+			cmdq_err("Invalid mpu table entry[%d, %x-%x]\n", i, start, end);
+			start = end = 0;
+		}
+
+		cmdq_mtcmos_by_fast(cmdq, true);
+		writel(start, cmdq->base + CMDQ_MPU_TABLE_ADDR_START(i));
+		writel(end, cmdq->base + CMDQ_MPU_TABLE_ADDR_END(i));
+		cmdq_mtcmos_by_fast(cmdq, false);
+	}
+
+err_ret:
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_set_mpu_table);
+
+s32 cmdq_set_thread_mpu_mask(struct device *gce_dev,
+	u32 thread_id, u32 mpu_mask)
+{
+	struct platform_device *pdev;
+	struct cmdq *cmdq;
+	s32 ret = 0;
+	unsigned long flags;
+
+	if (unlikely(!gce_dev)) {
+		cmdq_err("Null dev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	pdev = to_platform_device(gce_dev);
+	if (unlikely(!pdev)) {
+		cmdq_err("Null pdev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq = platform_get_drvdata(pdev);
+	if (unlikely(!cmdq)) {
+		cmdq_err("Null cmdq");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!cmdq->support_mpu)) {
+		cmdq_err("not support mpu");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(thread_id >= CMDQ_THR_MAX_COUNT)) {
+		cmdq_err("illegal thread_id");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+	spin_lock_irqsave(&cmdq->lock, flags);
+	writel(mpu_mask, cmdq->base + CMDQ_MPU_THREAD_MASK(thread_id));
+	spin_unlock_irqrestore(&cmdq->lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+err_ret:
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_set_thread_mpu_mask);
+
+s32 cmdq_set_epu_table(struct device *gce_dev,
+	struct cmdq_epu_table *epu_table)
+{
+	struct platform_device *pdev;
+	struct cmdq *cmdq;
+	s32 ret = 0;
+	int i = 0;
+
+	if (unlikely(!gce_dev)) {
+		cmdq_err("Null dev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	pdev = to_platform_device(gce_dev);
+	if (unlikely(!pdev)) {
+		cmdq_err("Null pdev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq = platform_get_drvdata(pdev);
+	if (unlikely(!cmdq)) {
+		cmdq_err("Null cmdq");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!cmdq->support_epu)) {
+		cmdq_err("not support epu");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!epu_table)) {
+		cmdq_err("Null epu_table");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	/* config EPU table */
+	for (i = 0;  i < CMDQ_EPU_TABLE_MAX_COUNT; i++) {
+		u32 start = epu_table->table[i].event_start;
+		u32 end = epu_table->table[i].event_end;
+
+		if((start > end) || (end >= CMDQ_EVENT_MAX)) {
+			cmdq_err("Invalid epu table entry[%d, %x-%x]\n", i, start, end);
+			start = end = CMDQ_EVENT_MAX;
+		}
+		cmdq_mtcmos_by_fast(cmdq, true);
+		writel(start, cmdq->base + CMDQ_EPU_TABLE_EVENT_START(i));
+		writel(end, cmdq->base + CMDQ_EPU_TABLE_EVENT_END(i));
+		cmdq_mtcmos_by_fast(cmdq, false);
+	}
+
+err_ret:
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_set_epu_table);
+
+s32 cmdq_set_domain_epu_mask(struct device *gce_dev,
+	u32 domain, u32 epu_mask)
+{
+	struct platform_device *pdev;
+	struct cmdq *cmdq;
+	s32 ret = 0;
+	unsigned long flags;
+
+	if (unlikely(!gce_dev)) {
+		cmdq_err("Null dev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	pdev = to_platform_device(gce_dev);
+	if (unlikely(!pdev)) {
+		cmdq_err("Null pdev");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq = platform_get_drvdata(pdev);
+	if (unlikely(!cmdq)) {
+		cmdq_err("Null cmdq");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(!cmdq->support_epu)) {
+		cmdq_err("not support epu");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	if (unlikely(domain >= CMDQ_EPU_DOMAIN_MAX)) {
+		cmdq_err("illegal domain");
+		ret = -EINVAL;
+		goto err_ret;
+	}
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+	spin_lock_irqsave(&cmdq->lock, flags);
+	writel(epu_mask, cmdq->base + CMDQ_EPU_DOMAIN_MASK(domain));
+	spin_unlock_irqrestore(&cmdq->lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+err_ret:
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_set_domain_epu_mask);
+#endif
+
 void cmdq_mbox_enable(void *chan)
 {
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
@@ -3756,6 +4291,20 @@ void cmdq_mbox_enable(void *chan)
 			cmdq_util_hw_trace_enable(cmdq->hwid,
 				cmdq_util_get_bit_feature() &
 				CMDQ_LOG_FEAT_PERF);
+
+		if (cmdq->gce_req_wa) {
+			cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDREN_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDREN_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDRSRC_BIT);
+			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_EMI_BIT);
+		}
+
+		if (cmdq->support_mpu)
+			writel(readl(cmdq->base + GCE_MPU_IRQ_EN)
+				| GCE_MPU_IRQ_R_FAIL_EN
+				| GCE_MPU_IRQ_W_FAIL_EN
+				| GCE_MPU_IRQ_PREFETCH_R_FAIL_EN, cmdq->base + GCE_MPU_IRQ_EN);
+
 		cmdq_mtcmos_by_fast(cmdq, false);
 	}
 
@@ -3932,6 +4481,36 @@ phys_addr_t cmdq_mbox_get_base_pa(void *chan)
 	return cmdq->base_pa;
 }
 EXPORT_SYMBOL(cmdq_mbox_get_base_pa);
+
+dma_addr_t cmdq_mbox_get_hwmbox_pa(void *chan, u16 mbox_id)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	u16 i, j;
+
+	for (i = 0; i < cmdq->hwmbox_page_num; i++)
+		for (j = 0; j < cmdq->hwmbox_page[i].mbox_num; j++)
+			if (cmdq->hwmbox_page[i].id_list[j] == mbox_id)
+				return cmdq->hwmbox_page[i].pa + CMDQ_HWMBOX_ID_OFFSET(j);
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_mbox_get_hwmbox_pa);
+
+u16 cmdq_mbox_get_hwmbox_event(void *chan, u16 mbox_id)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	u16 i, j;
+
+	for (i = 0; i < cmdq->hwmbox_page_num; i++)
+		for (j = 0; j < cmdq->hwmbox_page[i].mbox_num; j++)
+			if (cmdq->hwmbox_page[i].id_list[j] == mbox_id)
+				return cmdq->hwmbox_page[i].event_list[j];
+
+	return CMDQ_EVENT_MAX;
+}
+EXPORT_SYMBOL(cmdq_mbox_get_hwmbox_event);
 
 phys_addr_t cmdq_dev_get_base_pa(struct device *dev)
 {
@@ -4118,6 +4697,39 @@ void cmdq_mbox_check_buffer(struct mbox_chan *chan,
 
 }
 EXPORT_SYMBOL(cmdq_mbox_check_buffer);
+
+s32 cmdq_aux_wdt_setup(struct mbox_chan *chan, u32 timeout_tick)
+{
+	struct cmdq *cmdq;
+	u32 aux_id;
+	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
+	unsigned long flags_thd, flags_core;
+
+	cmdq = dev_get_drvdata(chan->mbox->dev);
+	aux_id = thread->idx;
+
+	if (unlikely(!cmdq->support_aux)) {
+		cmdq_err("not support aux");
+		return -EFAULT;
+	}
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+
+	spin_lock_irqsave(&thread->chan->lock, flags_thd);
+	thread->aux_wtd_en = true;
+
+	spin_lock_irqsave(&cmdq->lock, flags_core);
+	writel(readl(cmdq->base + CMDQ_AUX_IRQ_EN) | BIT(aux_id), cmdq->base + CMDQ_AUX_IRQ_EN);
+	writel(timeout_tick, cmdq->base + CMDQ_AUX_TIMEOUT_CYCLES(aux_id));
+	writel(readl(cmdq->base + CMDQ_AUX_WTD_MODE) | BIT(aux_id), cmdq->base + CMDQ_AUX_WTD_MODE);
+	spin_unlock_irqrestore(&cmdq->lock, flags_core);
+	spin_unlock_irqrestore(&thread->chan->lock, flags_thd);
+
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_aux_wdt_setup);
 
 s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 {
@@ -4428,7 +5040,7 @@ s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id)
 }
 EXPORT_SYMBOL(cmdq_pkt_hw_trace);
 
-s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt)
+s32 cmdq_pkt_set_capability(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
 	struct cmdq *cmdq;
@@ -4442,21 +5054,27 @@ s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt)
 		return -EINVAL;
 	}
 
-#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
-	if (g_cmdq[cmdq->hwid]) {
-		if (g_cmdq[cmdq->hwid]->spr3_timer)
-			pkt->support_spr3_timer = true;
-	} else {
-		cmdq_log("g_cmdq[%d] is null", cmdq->hwid);
-	}
-#else
+	if (!g_cmdq[cmdq->hwid])
+		cmdq_err("g_cmdq[%d] is null", cmdq->hwid);
+
 	if (g_cmdq[cmdq->hwid]->spr3_timer)
 		pkt->support_spr3_timer = true;
-#endif
+
+	if (g_cmdq[cmdq->hwid]->support_mpu)
+		pkt->support_mpu = true;
+
+	if (g_cmdq[cmdq->hwid]->support_epu)
+		pkt->support_epu = true;
+
+	if (g_cmdq[cmdq->hwid]->support_hwmbox && g_cmdq[cmdq->hwid]->spr3_timer)
+		pkt->support_hwmbox = true;
+
+	if (g_cmdq[cmdq->hwid]->support_aux)
+		pkt->support_aux = true;
 
 	return 0;
 }
-EXPORT_SYMBOL(cmdq_pkt_set_spr3_timer);
+EXPORT_SYMBOL(cmdq_pkt_set_capability);
 
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 void cmdq_mmp_wait(struct mbox_chan *chan, void *pkt)

@@ -39,6 +39,11 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 	((timeout_ms == CMDQ_NO_TIMEOUT) ? CMDQ_PREDUMP_DEFAULT_MS : timeout_ms / 5)
 
 #define CMDQ_THR_MAX_COUNT		32
+#define CMDQ_MPU_TABLE_MAX_COUNT	32
+#define CMDQ_EPU_TABLE_MAX_COUNT	32
+#define CMDQ_EPU_DOMAIN_MAX		32
+
+#define CMDQ_AUX_STATUS_COUNT	0x100
 
 #define CMDQ_INST_SIZE			8 /* instruction is 64-bit */
 #define CMDQ_SUBSYS_SHIFT		16
@@ -53,6 +58,12 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 #define CMDQ_WFE_WAIT			BIT(15)
 #define CMDQ_WFE_WAIT_VALUE		0x1
 #define CMDQ_EVENT_MAX			0x3FF
+
+#define HWMBOX_INTERNAL_INTR		BIT(0)
+#define HWMBOX_EXTERNAL_INTR		BIT(1)
+#define HWMBOX_ID_MAX		112
+#define HWMBOX_INTERNAL_PAGE		0
+#define HWMBOX_EXTERNAL_PAGE		1
 
 #define CMDQ_THRD_PKT_ARR_MAX	1024
 
@@ -131,6 +142,17 @@ enum cmdq_log_type {
 	CMDQ_PWR_CHECK = 0,
 };
 
+enum cmdq_vm_id {
+	CMDQ_VM_INVALID = 0x0,
+	CMDQ_VM_1 = 0x1,
+	CMDQ_VM_2 = 0x2,
+	CMDQ_VM_3 = 0x3,
+	CMDQ_VM_4 = 0x4,
+	CMDQ_VM_5 = 0x5,
+	CMDQ_VM_6 = 0x6,
+	CMDQ_VM_HOST = 0x7,
+	CMDQ_VM_MAX,
+};
 
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
 
@@ -218,6 +240,10 @@ struct cmdq_pkt {
 	bool			timeout_dump_hw_trace;
 	bool		support_spr3_timer;
 	u32				debug_id;
+	bool		support_mpu;
+	bool		support_epu;
+	bool		support_hwmbox;
+	bool		support_aux;
 };
 
 struct cmdq_thread {
@@ -248,6 +274,22 @@ struct cmdq_thread {
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	bool			is_virtio;
 #endif
+	bool			aux_wtd_en;
+	bool			aux_wtd_monitor_en;
+};
+
+struct cmdq_mpu_table {
+	struct {
+		u32 addr_start;
+		u32 addr_end;
+	} table[CMDQ_MPU_TABLE_MAX_COUNT];
+};
+
+struct cmdq_epu_table {
+	struct {
+		u32 event_start;
+		u32 event_end;
+	} table[CMDQ_EPU_TABLE_MAX_COUNT];
 };
 
 extern int mtk_cmdq_log;
@@ -381,6 +423,8 @@ phys_addr_t cmdq_mbox_get_base_pa(void *chan);
 phys_addr_t cmdq_dev_get_base_pa(struct device *dev);
 phys_addr_t cmdq_mbox_get_dummy_reg(void *chan);
 phys_addr_t cmdq_mbox_get_spr_pa(void *chan, u8 spr);
+dma_addr_t cmdq_mbox_get_hwmbox_pa(void *chan, u16 mbox_id);
+u16 cmdq_mbox_get_hwmbox_event(void *chan, u16 mbox_id);
 s32 cmdq_mbox_thread_reset(void *chan);
 s32 cmdq_mbox_thread_suspend(void *chan);
 void cmdq_mbox_thread_disable(void *chan);
@@ -389,6 +433,7 @@ u32 cmdq_mbox_set_thread_timeout(void *chan, u32 timeout);
 s32 cmdq_mbox_chan_id(void *chan);
 void cmdq_mbox_check_buffer(struct mbox_chan *chan,
 	struct cmdq_pkt_buffer *buffer);
+s32 cmdq_aux_wdt_setup(struct mbox_chan *chan, u32 timeout_tick);
 s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out);
 s32 cmdq_task_get_thread_irq(struct mbox_chan *chan, u32 *irq_out);
 s32 cmdq_task_get_thread_irq_en(struct mbox_chan *chan, u32 *irq_en_out);
@@ -410,8 +455,19 @@ struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev);
 s32 cmdq_mbox_set_hw_id(void *cmdq);
 s32 cmdq_mbox_reset_hw_id(void *cmdq);
 s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id);
-s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt);
+s32 cmdq_pkt_set_capability(struct cmdq_pkt *pkt);
 s32 cmdq_thread_set_vm(struct cmdq_thread *thread);
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_HOST_VM)
+s32 cmdq_set_mpu_table(struct device *gce_dev,
+	struct cmdq_mpu_table *mpu_table);
+s32 cmdq_set_thread_mpu_mask(struct device *gce_dev,
+	u32 thread_id, u32 mpu_mask);
+s32 cmdq_set_epu_table(struct device *gce_dev,
+	struct cmdq_epu_table *epu_table);
+s32 cmdq_set_domain_epu_mask(struct device *gce_dev,
+	u32 domain, u32 epu_mask);
+#endif
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 void cmdq_mmp_wait(struct mbox_chan *chan, void *pkt);

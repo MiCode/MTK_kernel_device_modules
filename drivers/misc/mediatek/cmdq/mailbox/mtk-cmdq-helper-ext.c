@@ -105,6 +105,17 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define	CMDQ_UNPACK_IOVA(addr)   \
 	((uint64_t)(addr & 0xFFFFFFF0) | (((uint64_t)(addr) & 0xF) << 32))
 
+#define CMDQ_MPU_THREAD_MASK(thread_id)		((thread_id * 4) + 0x6000)
+#define CMDQ_EPU_DOMAIN_MASK(domain)		((domain * 4) + 0x6200)
+
+#define CMDQ_AUX_EN		0x6400
+#define CMDQ_AUX_WTD_MODE		0x6404
+#define CMDQ_AUX_WTD_TOGGLE		0x6408
+#define CMDQ_AUX_RESET		0x640c
+#define CMDQ_AUX_TIMEOUT_CYCLES(aux_id)		((aux_id * 4) + 0x6410)
+#define CMDQ_AUX_FAKE_EVENT(aux_id)		((aux_id * 4) + 0x6490)
+#define CMDQ_AUX_TIMER_STATUS(aux_id)		((aux_id * 4) + 0x6510)
+
 #define VCP_TO_SPM_REG_PA			(0x1ec24098)
 #define VCP_USER_CNT		(8)
 #define MMINFRA_BASE		((dma_addr_t)0x1e800000)
@@ -125,6 +136,10 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define	VCP_OFF_DELAY 1000 /* 1000ms */
 
 #define EVENT_DEBUG_TIMES	5
+
+#define HWMBOX_WAIT_INTERVAL	17 /* 17 ms */
+
+#define HWMBOX_MAX_PAYLOAD	0x3FFFFFFF /* 30 bit payload */
 
 u32 BUF_SIZE[CMDQ_HW_MAX];
 u32 BUF_SIZE_THRD[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
@@ -1068,7 +1083,6 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		return ERR_PTR(-ENODEV);
 	}
 
-	cmdq_pkt_set_spr3_timer(pkt);
 	cmdq_set_buffer_size(cl, true);
 
 	/* try dma pool if available */
@@ -1352,6 +1366,7 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 			end[1] - end[0], end[2] - end[1]);
 #endif
 
+	cmdq_pkt_set_capability(pkt);
 	cmdq_set_pkt_size(client, true);
 	return pkt;
 }
@@ -2932,6 +2947,41 @@ int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event)
 }
 EXPORT_SYMBOL(cmdq_pkt_wfe);
 
+int cmdq_pkt_wfe_timeout(struct cmdq_pkt *pkt, u16 event, u16 reg_gpr, u32 aux_timeout_cycles)
+{
+	u32 aux_id;
+	struct cmdq_client *cl = pkt->cl;
+	struct cmdq_thread *thread;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!pkt->support_aux)) {
+		cmdq_err("not support aux");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	aux_id = thread->idx;
+
+	cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_FAKE_EVENT(aux_id), event, 0xffffffff);
+	cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_TIMEOUT_CYCLES(aux_id),
+		       aux_timeout_cycles, 0xffffffff);
+	cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_WTD_MODE, 0, BIT(aux_id));
+	cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_EN, BIT(aux_id), BIT(aux_id));
+	cmdq_pkt_wfe(pkt, event);
+	cmdq_pkt_read_addr(pkt, gce_pa + CMDQ_AUX_TIMER_STATUS(aux_id), CMDQ_GPR_CNT_ID + reg_gpr);
+	cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_RESET, BIT(aux_id), BIT(aux_id));
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_wfe_timeout);
+
 int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 {
 	u32 arg_b;
@@ -2961,6 +3011,81 @@ int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 	return ret;
 }
 EXPORT_SYMBOL(cmdq_pkt_wait_no_clear);
+
+int cmdq_pkt_aux_wtd_toggle(struct cmdq_pkt *pkt)
+{
+	u32 aux_id;
+	struct cmdq_client *cl = pkt->cl;
+	struct cmdq_thread *thread;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!pkt->support_aux)) {
+		cmdq_err("not support aux");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	aux_id = thread->idx;
+
+	return cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_WTD_TOGGLE, BIT(aux_id), BIT(aux_id));
+}
+EXPORT_SYMBOL(cmdq_pkt_aux_wtd_toggle);
+
+int cmdq_pkt_aux_wtd_enable(struct cmdq_pkt *pkt)
+{
+	u32 aux_id;
+	struct cmdq_client *cl = pkt->cl;
+	struct cmdq_thread *thread;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!pkt->support_aux)) {
+		cmdq_err("not support aux");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	aux_id = thread->idx;
+
+	return cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_EN, BIT(aux_id), BIT(aux_id));
+}
+EXPORT_SYMBOL(cmdq_pkt_aux_wtd_enable);
+
+int cmdq_pkt_aux_wtd_reset(struct cmdq_pkt *pkt)
+{
+	u32 aux_id;
+	struct cmdq_client *cl = pkt->cl;
+	struct cmdq_thread *thread;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!pkt->support_aux)) {
+		cmdq_err("not support aux");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	aux_id = thread->idx;
+
+	return cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_AUX_RESET, BIT(aux_id), BIT(aux_id));
+}
+EXPORT_SYMBOL(cmdq_pkt_aux_wtd_reset);
 
 int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event)
 {
@@ -3135,6 +3260,406 @@ s32 cmdq_pkt_finalize_loop(struct cmdq_pkt *pkt)
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_pkt_finalize_loop);
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_HOST_VM)
+s32 cmdq_pkt_set_thread_mpu_mask(struct cmdq_pkt *pkt,
+	u32 thread_id, u32 mpu_mask)
+{
+	struct cmdq_client *cl = pkt->cl;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!pkt->support_mpu)) {
+		cmdq_err("not support mpu");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(thread_id >= CMDQ_THR_MAX_COUNT)) {
+		cmdq_err("illegal thread_id");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+
+	return cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_MPU_THREAD_MASK(thread_id),
+		mpu_mask, ~0);
+}
+EXPORT_SYMBOL(cmdq_pkt_set_thread_mpu_mask);
+
+s32 cmdq_pkt_set_domain_epu_mask(struct cmdq_pkt *pkt,
+	u32 domain, u32 epu_mask)
+{
+	struct cmdq_client *cl = pkt->cl;
+	phys_addr_t gce_pa;
+
+	if (unlikely(!cmdq->support_epu)) {
+		cmdq_err("not support epu");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(domain >= CMDQ_EPU_DOMAIN_MAX)) {
+		cmdq_err("illegal domain");
+		return -EINVAL;
+	}
+
+	gce_pa = cmdq_mbox_get_base_pa(cl->chan);
+
+	return cmdq_pkt_write(pkt, NULL, gce_pa + CMDQ_EPU_DOMAIN_MASK(domain),
+		epu_mask, ~0);
+}
+EXPORT_SYMBOL(cmdq_pkt_set_domain_epu_mask);
+#endif
+
+static s32 cmdq_pkt_get_hwmbox_info(struct cmdq_pkt *pkt,
+	struct hwmbox_group *mboxes,
+	u16 *hwmbox_event, dma_addr_t mbox_pa[])
+{
+	struct cmdq_client *cl = pkt->cl;
+	u16 i, hwmbox_id, event_tmp, event = CMDQ_EVENT_MAX;
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < mboxes->num; i++) {
+		hwmbox_id = mboxes->hwmbox_id[i];
+		if (hwmbox_id >= HWMBOX_ID_MAX)
+			goto err;
+
+		event_tmp = event;
+		event = cmdq_mbox_get_hwmbox_event(cl->chan, hwmbox_id);
+		if (event >= CMDQ_EVENT_MAX || (i > 0 && event != event_tmp))
+			goto err;
+
+		mbox_pa[i] = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+		if (!mbox_pa[i])
+			goto err;
+	}
+
+	*hwmbox_event = event;
+	return 0;
+
+err:
+	cmdq_err("illegal hwmbox_group");
+	return -EINVAL;
+}
+
+/*
+ *cmdq_pkt_wait_ack_hwmbox pseudo code:
+ *try_wait:
+ * cmdq_pkt_acquire_event(hwmbox_event)
+ * for (i = 0; i < mboxes->num; i++)
+ *  result |= readl(mbox_pa[i])
+ * result &= HWMBOX_INTR
+ * if (result == HWMBOX_INTR)
+ *  goto end
+ * else
+ *  sleep
+ *  goto try_wait
+ *end:
+ */
+static s32 cmdq_pkt_wait_hwmbox(struct cmdq_pkt *pkt,
+	struct hwmbox_group *mboxes, u32 dir)
+{
+	const u16 reg_temp = CMDQ_THR_SPR_IDX1;
+	const u16 result_temp = CMDQ_THR_SPR_IDX2;
+	dma_addr_t mbox_pa[32];
+	u32 begin_mark, jump_mark, jump_offset;
+	u16 event, i;
+	struct cmdq_operand lop, rop;
+	dma_addr_t cmd_pa;
+	struct cmdq_instruction *cmdq_inst;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!mboxes || !mboxes->num))
+		return -EINVAL;
+
+	if (unlikely(dir != HWMBOX_INTERNAL_INTR && dir != HWMBOX_EXTERNAL_INTR))
+		return -EINVAL;
+
+	if (cmdq_pkt_get_hwmbox_info(pkt, mboxes, &event, mbox_pa) < 0)
+		return -EINVAL;
+
+	begin_mark = pkt->cmd_buf_size;
+	cmdq_pkt_acquire_event(pkt, event);
+
+	for (i = 0; i < mboxes->num; i++) {
+		cmdq_pkt_read_addr(pkt, mbox_pa[i], reg_temp);
+
+		lop.reg = true;
+		lop.idx = result_temp;
+		rop.reg = true;
+		rop.idx = reg_temp;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, result_temp, &lop, &rop);
+	}
+
+	lop.reg = true;
+	lop.idx = result_temp;
+	rop.reg = false;
+	rop.value = dir;
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, result_temp, &lop, &rop);
+
+	jump_mark = pkt->cmd_buf_size;
+	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, CMDQ_JUMP_PASS);
+	cmdq_pkt_cond_jump(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop, CMDQ_EQUAL);
+
+	/* tick 9 == 19.69us, nearly context switch time 17u*/
+	cmdq_pkt_sleep(pkt, CMDQ_US_TO_TICK(HWMBOX_WAIT_INTERVAL), CMDQ_THR_SPR_IDX3);
+
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, begin_mark);
+	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, (cmd_pa >> gce_shift_bit));
+	cmdq_pkt_cond_jump_abs(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop, CMDQ_NOT_EQUAL);
+
+	cmdq_inst = (void *)cmdq_pkt_get_va_by_offset(pkt, jump_mark);
+	if (cmdq_inst) {
+		jump_offset = pkt->cmd_buf_size - (jump_mark + CMDQ_INST_SIZE);
+		cmdq_inst->arg_c = CMDQ_GET_ARG_C(jump_offset >> gce_shift_bit);
+		cmdq_inst->arg_b = CMDQ_GET_ARG_B(jump_offset >> gce_shift_bit);
+	} else
+		cmdq_err("modify SPR jump offset fail");
+
+	return 0;
+}
+
+s32 cmdq_pkt_hwmbox_req(struct cmdq_pkt *pkt, u16 hwmbox_id, u32 payload)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t mbox_pa;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(hwmbox_id >= HWMBOX_ID_MAX)) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	mbox_pa = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+	if (!mbox_pa) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	if (payload > HWMBOX_MAX_PAYLOAD) {
+		cmdq_err("payload overflow");
+		return -EINVAL;
+	}
+
+	payload = payload << 2;
+	return cmdq_pkt_write(pkt, NULL, mbox_pa, (payload | HWMBOX_EXTERNAL_INTR), ~0);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_req);
+
+s32 cmdq_pkt_hwmbox_clear_req(struct cmdq_pkt *pkt, u16 hwmbox_id)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t mbox_pa;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(hwmbox_id >= HWMBOX_ID_MAX)) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	mbox_pa = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+	if (!mbox_pa) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	return cmdq_pkt_write(pkt, NULL, mbox_pa, 0, HWMBOX_EXTERNAL_INTR);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_clear_req);
+
+s32 cmdq_pkt_hwmbox_wait_req(struct cmdq_pkt *pkt, struct hwmbox_group *mboxes)
+{
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	return cmdq_pkt_wait_hwmbox(pkt, mboxes, HWMBOX_EXTERNAL_INTR);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_wait_req);
+
+s32 cmdq_pkt_hwmbox_wait_clear_req(struct cmdq_pkt *pkt, struct hwmbox_group *mboxes)
+{
+	u16 i;
+	s32 ret = 0;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (cmdq_pkt_wait_hwmbox(pkt, mboxes, HWMBOX_EXTERNAL_INTR) < 0)
+		return -EINVAL;
+
+	for (i = 0; i < mboxes->num; i++)
+		ret |= cmdq_pkt_hwmbox_clear_req(pkt, mboxes->hwmbox_id[i]);
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_wait_clear_req);
+
+s32 cmdq_pkt_hwmbox_query(struct cmdq_pkt *pkt, u16 hwmbox_id, u16 reg_spr)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t mbox_pa;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(hwmbox_id >= HWMBOX_ID_MAX)) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	mbox_pa = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+	if (!mbox_pa) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	return cmdq_pkt_read_addr(pkt, mbox_pa, reg_spr);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_query);
+
+s32 cmdq_pkt_hwmbox_ack(struct cmdq_pkt *pkt, u16 hwmbox_id)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t mbox_pa;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(hwmbox_id >= HWMBOX_ID_MAX)) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	mbox_pa = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+	if (!mbox_pa) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	return cmdq_pkt_write(pkt, NULL, mbox_pa, HWMBOX_INTERNAL_INTR,
+			      HWMBOX_INTERNAL_INTR | HWMBOX_EXTERNAL_INTR);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_ack);
+
+s32 cmdq_pkt_hwmbox_clear_ack(struct cmdq_pkt *pkt, u16 hwmbox_id)
+{
+	struct cmdq_client *cl = pkt->cl;
+	dma_addr_t mbox_pa;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	if (unlikely(!cl)) {
+		cmdq_err("null client");
+		return -EINVAL;
+	}
+
+	if (unlikely(hwmbox_id >= HWMBOX_ID_MAX)) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	mbox_pa = cmdq_mbox_get_hwmbox_pa(cl->chan, hwmbox_id);
+	if (!mbox_pa) {
+		cmdq_err("illegal hwmbox_id");
+		return -EINVAL;
+	}
+
+	return cmdq_pkt_write(pkt, NULL, mbox_pa, 0, HWMBOX_INTERNAL_INTR);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_clear_ack);
+
+s32 cmdq_pkt_hwmbox_wait_ack(struct cmdq_pkt *pkt, u16 hwmbox_id)
+{
+	struct hwmbox_group mboxes;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	mboxes.num = 1;
+	mboxes.hwmbox_id[0] = hwmbox_id;
+
+	return cmdq_pkt_wait_hwmbox(pkt, &mboxes, HWMBOX_INTERNAL_INTR);
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_wait_ack);
+
+s32 cmdq_pkt_hwmbox_wait_and_clear_ack(struct cmdq_pkt *pkt, u16 hwmbox_id)
+{
+	s32 ret = 0;
+	struct hwmbox_group mboxes;
+
+	if (unlikely(!pkt->support_hwmbox)) {
+		cmdq_err("not support hwmbox");
+		return -EINVAL;
+	}
+
+	mboxes.num = 1;
+	mboxes.hwmbox_id[0] = hwmbox_id;
+
+	if (cmdq_pkt_wait_hwmbox(pkt, &mboxes, HWMBOX_INTERNAL_INTR) < 0)
+		return -EINVAL;
+
+	cmdq_pkt_hwmbox_clear_ack(pkt, hwmbox_id);
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_hwmbox_wait_and_clear_ack);
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 static struct cmdq_flush_item *cmdq_prepare_flush_tiem(struct cmdq_pkt *pkt)
