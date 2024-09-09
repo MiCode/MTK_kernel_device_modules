@@ -11,6 +11,7 @@
 #include "sspm_ipi.h"
 #else
 #include "sspm_ipi_id.h"
+static bool ipi_inited;
 #endif
 #include "clk-fhctl-util.h"
 
@@ -29,7 +30,7 @@ enum FH_DEVCTL_CMD_ID {
 	FH_DCTL_CMD_PLL_PAUSE = 0x100E,
 	FH_DCTL_CMD_MAX
 };
-
+static unsigned int ack_data;
 struct match {
 	char *name;
 	struct fh_hdlr *hdlr;
@@ -67,7 +68,6 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 				struct fhctl_ipi_data *ipi_data)
 {
 	int ret = 0;
-	unsigned int ack_data = 0;
 
 	pr_debug("send ipi command %x", cmd);
 
@@ -102,7 +102,6 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 				struct fhctl_ipi_data *ipi_data)
 {
 	int ret = 0;
-	unsigned int ack_data = 0;
 
 	pr_debug("send ipi command %x", cmd);
 
@@ -142,7 +141,20 @@ static int sspm_init_v1(struct pll_dts *array, struct match *match)
 	struct fhctl_ipi_data ipi_data;
 	int pll_id;
 	struct fh_hdlr *hdlr;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
+	if (!ipi_inited) {
+		int ret;
 
+	ret = mtk_ipi_register(&sspm_ipidev, IPIS_C_FHCTL, NULL, NULL,
+				(void *)&ack_data);
+	if (ret) {
+		FHDBG("[FHCTL] ipi_register fail, ret=%d\n", ret);
+		return -1;
+	}
+		ipi_inited = true;
+		FHDBG("\n");
+	}
+#endif /* CONFIG_MTK_TINYSYS_SSPM_V2*/
 	pll_id = array->fh_id;
 
 	priv_data = kzalloc(sizeof(*priv_data), GFP_KERNEL);
