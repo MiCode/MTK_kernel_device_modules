@@ -2289,8 +2289,14 @@ int exec_ccci_kern_func(unsigned int id, char *buf, unsigned int len)
 		ret = ccci_md_force_assert(MD_FORCE_ASSERT_BY_USER_TRIGGER, NULL, 0);
 		break;
 	case ID_SPMI_FORCE_MD_ASSERT:
-		CCCI_NORMAL_LOG(0, CORE, "Force MD assert called by SPMI\n");
+		CCCI_NORMAL_LOG(0, CORE, "Force MD assert called by %s (SPMI)\n",
+			current->comm);
 		ret = ccci_md_force_assert(MD_FORCE_ASSERT_BY_SPMI_TRIGGER, NULL, 0);
+		break;
+	case ID_PMIF_FORCE_MD_ASSERT:
+		CCCI_NORMAL_LOG(0, CORE, "Force MD assert called by %s (PMIF)\n",
+			current->comm);
+		ret = ccci_md_force_assert(MD_FORCE_ASSERT_BY_PMIF_TRIGGER, buf, len);
 		break;
 	case ID_MD_MPU_ASSERT:
 		if (buf != NULL && strlen(buf)) {
