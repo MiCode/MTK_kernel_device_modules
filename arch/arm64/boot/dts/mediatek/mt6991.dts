@@ -20670,6 +20670,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			interrupts-extended = <&mtk_gauge RG_INT_STATUS_FG_CUR_H>,
 					      <&mtk_gauge RG_INT_STATUS_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
+			status = "disabled";
 			oc-thd = <6000 7000 8000>;
 		};
 
@@ -20739,6 +20740,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			interrupts-extended = <&mtk_gauge2 RG_INT_STATUS_FG_CUR_H>,
 					      <&mtk_gauge2 RG_INT_STATUS_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
+			status = "disabled";
 			oc-thd = <6000 7000 8000>;
 		};
 
