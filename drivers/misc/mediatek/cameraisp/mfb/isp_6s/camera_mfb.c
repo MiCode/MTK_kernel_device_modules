@@ -3776,7 +3776,7 @@ static long MFB_ioctl_compat(struct file *filp,
 	switch (cmd) {
 	case COMPAT_MFB_MSS_READ_REGISTER:
 		{
-			struct MFB_REG_IO_STRUCT data;
+			struct MFB_REG_IO_STRUCT data = {0};
 			int err;
 
 			err = compat_get_MFB_read_register_data(arg, &data);
@@ -3798,7 +3798,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSF_READ_REGISTER:
 		{
-			struct MFB_REG_IO_STRUCT data;
+			struct MFB_REG_IO_STRUCT data = {0};
 			int err;
 
 			err = compat_get_MFB_read_register_data(arg, &data);
@@ -3820,7 +3820,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSS_WRITE_REGISTER:
 		{
-			struct MFB_REG_IO_STRUCT data;
+			struct MFB_REG_IO_STRUCT data = {0};
 			int err;
 
 			err = compat_get_MFB_read_register_data(arg, &data);
@@ -3836,7 +3836,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSF_WRITE_REGISTER:
 		{
-			struct MFB_REG_IO_STRUCT data;
+			struct MFB_REG_IO_STRUCT data = {0};
 			int err;
 
 			err = compat_get_MFB_read_register_data(arg, &data);
@@ -3852,7 +3852,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSS_ENQUE_REQ:
 		{
-			struct MFB_MSSRequest data;
+			struct MFB_MSSRequest data = {0};
 			int err;
 
 			err = compat_get_MFB_mss_enque_req_data(arg, &data);
@@ -3874,7 +3874,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSS_DEQUE_REQ:
 		{
-			struct MFB_MSSRequest data;
+			struct MFB_MSSRequest data = {0};
 			int err;
 
 			err = compat_get_MFB_mss_deque_req_data(arg, &data);
@@ -3897,7 +3897,7 @@ static long MFB_ioctl_compat(struct file *filp,
 
 	case COMPAT_MFB_MSF_ENQUE_REQ:
 		{
-			struct MFB_MSFRequest data;
+			struct MFB_MSFRequest data = {0};
 			int err;
 
 			err = compat_get_MFB_msf_enque_req_data(arg, &data);
@@ -3919,7 +3919,7 @@ static long MFB_ioctl_compat(struct file *filp,
 		}
 	case COMPAT_MFB_MSF_DEQUE_REQ:
 		{
-			struct MFB_MSFRequest data;
+			struct MFB_MSFRequest data = {0};
 			int err;
 
 			err = compat_get_MFB_msf_deque_req_data(arg, &data);
