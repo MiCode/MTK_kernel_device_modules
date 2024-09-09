@@ -867,7 +867,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
 			< full_height - panel_ext->corner_pattern_height_bot) {
 			/*1. No overlapping cases*/
-			DDPINFO("%s, 1. No overlapping cases\n",__func__);
+			DDPDBG("%s, 1. No overlapping cases\n",__func__);
 			DDPDBG("%s, force_relay = 1\n",__func__);
 			force_relay = 1;
 		} else if ((postmask->roi_y_offset - overhead_v) < panel_ext->corner_pattern_height
@@ -877,7 +877,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			tmp_top = postmask->roi_y_offset - overhead_v - 1;
 			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
 							panel_ext->corner_pattern_size_per_line);
-			DDPINFO("%s, 2. overlap with top and not overlap with bot\n",__func__);
+			DDPDBG("%s, 2. overlap with top and not overlap with bot\n",__func__);
 			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
 				__func__, size_per_line_top, 0, tmp_top);
 
@@ -919,7 +919,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			tmp_top = panel_ext->corner_pattern_height - 1;
 			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
 							panel_ext->corner_pattern_size_per_line);
-			DDPINFO("%s, 3. not overlap with top and overlap with bot\n",__func__);
+			DDPDBG("%s, 3. not overlap with top and overlap with bot\n",__func__);
 			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
 				__func__, size_per_line_top, 0, tmp_top);
 
@@ -971,7 +971,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			tmp_top = postmask->roi_y_offset - overhead_v - 1;
 			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
 							panel_ext->corner_pattern_size_per_line);
-			DDPINFO("%s, 4. overlap with top and overlap with bot\n",__func__);
+			DDPDBG("%s, 4. overlap with top and overlap with bot\n",__func__);
 			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
 				__func__, size_per_line_top, 0, tmp_top);
 

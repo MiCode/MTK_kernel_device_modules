@@ -8384,7 +8384,7 @@ static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			goto_addr, (0xFFu << ((goto_addr & 0x3u) * 8)),
 			handle);
 
-		DDPINFO("set cmdqaddr 0x%08lx, val:0x%08x, mask 0x%08x\n", goto_addr,
+		DDPDBG("set cmdqaddr 0x%08lx, val:0x%08x, mask 0x%08x\n", goto_addr,
 			tx_buf[i] << ((goto_addr & 0x3u) * 8),
 			(0xFFu << ((goto_addr & 0x3u) * 8)));
 	}
@@ -8396,15 +8396,14 @@ static void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	mtk_ddp_write_mask(&dsi->ddp_comp, reg_val,
 				dsi->driver_data->reg_cmdq0_ofs,
 				cmdq_mask, handle);
-	DDPINFO("set cmdqaddr 0x%08x, val:0x%08x, mask 0x%08x\n",
+	DDPINFO("set cmdqaddr 0x%08x, val:0x%08x, cmdqsize 0x%08x\n",
 			dsi->driver_data->reg_cmdq0_ofs,
-			reg_val,
-			cmdq_mask);
+			reg_val, cmdq_size);
 	mtk_ddp_write_mask(&dsi->ddp_comp, cmdq_size,
 				DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE, handle);
 	mtk_ddp_write_mask(&dsi->ddp_comp, CMDQ_SIZE_SEL,
 				DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE_SEL, handle);
-	DDPINFO("set cmdqaddr 0x%08x, val:0x%08x, mask 0x%08x\n", DSI_CMDQ_CON(dsi->driver_data), cmdq_size,
+	DDPDBG("set cmdqaddr 0x%08x, val:0x%08x, mask 0x%08x\n", DSI_CMDQ_CON(dsi->driver_data), cmdq_size,
 			CMDQ_SIZE);
 }
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,

@@ -18085,7 +18085,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	if (!(mtk_crtc->enabled))
-		DDPINFO("Sleep State set partial update enable --crtc not ebable\n");
+		DDPDBG("Sleep State set partial update enable --crtc not ebable\n");
 
 	/* disable partial update if rpo lye is exist */
 	if (state->lye_state.rpo_lye && partial_enable) {
@@ -18115,7 +18115,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* disable partial update if doze mode is enable*/
 	if (state->prop_val[CRTC_PROP_DOZE_ACTIVE] && partial_enable) {
-		DDPINFO("skip because doze mode is enable\n");
+		DDPDBG("skip because doze mode is enable\n");
 		partial_enable = 0;
 	}
 
@@ -18216,12 +18216,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* wait mode switch thread finish */
 	while (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
-		DDPINFO("Wait event from mode_switch\n");
+		DDPDBG("Wait event from mode_switch\n");
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 3, 1);
 		ret = wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
 			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
 		if (ret)
-			DDPMSG("Wait event result ret %d\n", ret);
+			DDPDBG("Wait event result ret %d\n", ret);
 	}
 
 	if (debug_trigger_loop & BIT(4))
