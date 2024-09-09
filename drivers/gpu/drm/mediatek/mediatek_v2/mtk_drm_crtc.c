@@ -5816,11 +5816,12 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 			continue;
 
 		if ((priv->data->mmsys_id == MMSYS_MT6991) &&
-				(mtk_crtc_state->lye_state.rpo_lye || pre_rpo_lye)) {
+			(mtk_crtc_state->lye_state.rpo_lye || pre_rpo_lye)) {
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 				handle, event, &bw_base);
 		}
-		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
+		if (event == PMQOS_SET_HRT_BW_DELAY_POST)
+			pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, handle, event,
