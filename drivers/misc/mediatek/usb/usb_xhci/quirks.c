@@ -7,6 +7,7 @@
  */
 #include <linux/usb/audio.h>
 #include <linux/usb/quirks.h>
+#include <linux/spinlock.h>
 #include <linux/stringhash.h>
 #include "quirks.h"
 #include "xhci-mtk.h"
@@ -23,6 +24,8 @@ struct usb_audio_quirk_flags_table {
 #define DEVICE_FLG(vid, pid, _flags) \
 	{ .id = USB_ID(vid, pid), .flags = (_flags) }
 #define VENDOR_FLG(vid, _flags) DEVICE_FLG(vid, 0, _flags)
+
+static DEFINE_SPINLOCK(lock_mbrain_update_db);
 
 /* quirk list in usbcore */
 static const struct usb_device_id mtk_usb_quirk_list[] = {
@@ -265,28 +268,51 @@ int unregister_xhci_enum_mbrain_cb(void)
 }
 EXPORT_SYMBOL(unregister_xhci_enum_mbrain_cb);
 
+static void xhci_update_mbrain_work(struct work_struct *work)
+{
+	struct delayed_work *delayed_work = to_delayed_work(work);
+	struct xhci_mbrain_hash_node *item = container_of(delayed_work, struct xhci_mbrain_hash_node, updated_db_work);
+
+	spin_lock(&lock_mbrain_update_db);
+	if (!item->updated_db) {
+		item->updated_db = true;
+		if (item->updated_db_work_delay)
+			pr_info("usb %s: mbrain: already stay in state(%d) over %d ms and try to update mbrain db\n",
+				item->dev_name, item->mbrain_data.state, XHCI_MBRAIN_STATE_TIMEOUT_MS);
+		else
+			pr_info("usb %s: mbrain: already stay in state(%d) and try to update mbrain db\n",
+				item->dev_name, item->mbrain_data.state);
+
+		if (xhci_enum_mbrain_cb)
+			xhci_enum_mbrain_cb(item->mbrain_data);
+	}
+	spin_unlock(&lock_mbrain_update_db);
+}
+
 static struct xhci_mbrain_hash_node *xhci_mtk_mbrain_get_hash_node(struct usb_device *udev)
 {
 	struct xhci_mbrain_hash_node *item;
 	const char *key = dev_name(&udev->dev);
 	unsigned int hash_key = full_name_hash(NULL, key, strlen(key));
-	char *dev_name_backup;
 
 	hash_for_each_possible(mbrain_hash_table, item, node, hash_key) {
 		if (strcmp(item->dev_name, key) == 0) {
 			// dev_dbg(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", &item->mbrain_data);
 
 			if (udev->state == USB_STATE_DEFAULT) {
-				dev_name_backup = item->dev_name;
-				memset(item, 0x00, sizeof(struct xhci_mbrain_hash_node));
-				item->dev_name = dev_name_backup;
+				memset(&item->mbrain_data, 0x00, sizeof(struct xhci_mbrain));
+				item->updated_db = false;
 			}
 			return item;
 		}
 	}
 
 	item = kzalloc(sizeof(struct xhci_mbrain_hash_node), GFP_ATOMIC);
+	if (!item)
+		return NULL;
+
 	item->dev_name = kstrdup(key, GFP_ATOMIC);
+	INIT_DELAYED_WORK(&item->updated_db_work, xhci_update_mbrain_work);
 	dev_info(&udev->dev, "mbrain: allocate new node: mbrain_data=0x%p\n", &item->mbrain_data);
 	hash_add(mbrain_hash_table, &item->node, hash_key);
 	return item;
@@ -301,10 +327,10 @@ static void xhci_mtk_mbrain_action(struct urb *urb)
 		struct xhci_mbrain *mbrain_data;
 
 		hash_node = xhci_mtk_mbrain_get_hash_node(udev);
-		mbrain_data = &hash_node->mbrain_data;
-		if (hash_node->updated_db)
+		if (!hash_node || hash_node->updated_db)
 			return;
 
+		mbrain_data = &hash_node->mbrain_data;
 		mbrain_data->vid = le16_to_cpu(udev->descriptor.idVendor);
 		mbrain_data->pid = le16_to_cpu(udev->descriptor.idProduct);
 		mbrain_data->bcd = bcdDevice;
@@ -312,26 +338,23 @@ static void xhci_mtk_mbrain_action(struct urb *urb)
 
 		if (mbrain_data->state != udev->state) {
 			mbrain_data->state = udev->state;
-			hash_node->jiffies = jiffies;
 			dev_info(&udev->dev,
 				"mbrain: idVendor=%04x, idProduct=%04x, bcdDevice=%2x.%02x, speed=%d, state=%d\n",
 					mbrain_data->vid, mbrain_data->pid,
 					mbrain_data->bcd >> 8, mbrain_data->bcd & 0xff,
 					mbrain_data->speed, mbrain_data->state
 				);
-		}
 
-		if (mbrain_data->state == USB_STATE_CONFIGURED || time_after(jiffies, hash_node->jiffies + 2*HZ)) {
-			hash_node->updated_db = true;
-			dev_info(&udev->dev, "mbrain: configured or already stay in state(%d) over 2s and try to update mbrain db\n",
-									mbrain_data->state);
-			if (xhci_enum_mbrain_cb) {
-				xhci_enum_mbrain_cb(*mbrain_data);
-			}
+			if (mbrain_data->state == USB_STATE_CONFIGURED)
+				hash_node->updated_db_work_delay = 0;
+
+			else
+				hash_node->updated_db_work_delay = XHCI_MBRAIN_STATE_TIMEOUT_MS;
+
+			mod_delayed_work(system_wq, &hash_node->updated_db_work,
+				msecs_to_jiffies(hash_node->updated_db_work_delay));
 		}
 	}
-
-
 }
 
 static void xhci_mtk_mbrain_init(struct device *dev)
@@ -347,6 +370,7 @@ static void xhci_mtk_mbrain_cleanup(struct device *dev)
 
 	dev_info(dev, "mbrain: cleanup hash\n");
 	hash_for_each_safe(mbrain_hash_table, bkt, tmp, item, node) {
+		cancel_delayed_work_sync(&item->updated_db_work);
 		hash_del(&item->node);
 		kfree(item->dev_name);
 		kfree(item);
