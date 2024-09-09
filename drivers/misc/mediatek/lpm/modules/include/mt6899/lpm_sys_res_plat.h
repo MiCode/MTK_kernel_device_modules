@@ -19,6 +19,24 @@ enum lpm_sys_res_record_plat_op_id {
 	SYS_RES_SIG_ADDR,
 };
 
+enum lpm_sys_res_group_id {
+	SYS_RES_DDREN_REQ,
+	SYS_RES_APSRC_REQ,
+	SYS_RES_EMI_REQ,
+	SYS_RES_MAINPLL_REQ,
+	SYS_RES_INFRA_REQ,
+	SYS_RES_F26M_REQ,
+	SYS_RES_PMIC_REQ,
+	SYS_RES_VCORE_REQ,
+	SYS_RES_RC_REQ,
+	SYS_RES_PLL_EN,
+	SYS_RES_PWR_OFF,
+	SYS_RES_PWR_ACT,
+	SYS_RES_SYS_STA,
+
+	SYS_RES_GRP_NUM,
+};
+
 extern struct sys_res_group_info *group_info;
 
 int lpm_sys_res_plat_init(void);

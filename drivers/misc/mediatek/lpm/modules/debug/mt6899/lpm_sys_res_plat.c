@@ -285,7 +285,7 @@ static void lpm_sys_res_set_threshold(unsigned int val)
 	if (val > 100)
 		val = 100;
 
-	for (i = 0; i < SWPM_MAIN_RES_NUM; i++)
+	for (i = 0; i < SYS_RES_GRP_NUM; i++)
 		group_info[i].threshold = val;
 }
 
@@ -355,7 +355,7 @@ static void lpm_sys_res_log(unsigned int scene)
 				LOG_BUF_OUT_SZ - sys_res_log_size,
 				"[name:spm&][SPM] %s %llu ms; ", scene_name, time);
 
-	for (i = 0; i < SWPM_MAIN_RES_NUM; i++){
+	for (i = 0; i < SYS_RES_GRP_NUM; i++){
 		sys_index = group_info[i].sys_index;
 		if (!sys_index || sys_index == NON_RES_GROUP)
 			continue;
@@ -389,8 +389,13 @@ static void lpm_sys_res_log(unsigned int scene)
 						       ratio_type,
 						       j + sig_tbl_index);
 
-			if (ratio < threshold)
-				continue;
+			if (i == SYS_RES_PWR_OFF) {
+				if ((100 - ratio) < threshold)
+					continue;
+			} else {
+				if (ratio < threshold)
+					continue;
+			}
 
 			if (sys_res_log_size > LOG_BUF_OUT_SZ - 45) {
 				pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
@@ -484,18 +489,30 @@ int lpm_sys_res_plat_init(void)
 		}
 	}
 
-	group_info = kcalloc(SWPM_MAIN_RES_NUM, sizeof(struct sys_res_group_info), GFP_KERNEL);
+	group_info = kcalloc(SYS_RES_GRP_NUM, sizeof(struct sys_res_group_info), GFP_KERNEL);
 	if (!group_info)
 		return ret;
 
-	for(i=0; i<SWPM_MAIN_RES_NUM; i++) {
+	for(i=0; i<SYS_RES_GRP_NUM; i++) {
 		ret = get_res_group_info(i,
 					 &group_info[i].sys_index,
 					 &group_info[i].sig_table_index,
 					 &group_info[i].group_num
 					);
-		if (!ret)
-			group_info[i].threshold = DEFAULT_THRESHOLD;
+		if (ret)
+			continue;
+
+		group_info[i].threshold = DEFAULT_THRESHOLD;
+		switch(i) {
+		case SYS_RES_PWR_OFF:
+			group_info[i].sys_index = group_info[SYS_RES_VCORE_REQ].sys_index;
+			break;
+		case SYS_RES_PWR_ACT:
+			group_info[i].sys_index = group_info[SYS_RES_VCORE_REQ].sys_index;
+			break;
+		default:
+			break;
+		}
 	}
 
 	for (i = 0; i < SYS_RES_SCENE_NUM; i++) {
