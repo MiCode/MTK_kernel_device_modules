@@ -1604,6 +1604,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	if (ret)
 		goto err_submit;
 
+	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
+
+	CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->is_mml,
+		atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+
 	CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMIT);
 
 	/* release previous mml_cfg */
@@ -2211,11 +2216,6 @@ static int mtk_atomic_commit(struct drm_device *drm,
 			continue;
 		crtc = private->crtc[i];
 		mtk_crtc = to_mtk_crtc(crtc);
-
-		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
-
-		CRTC_MMP_MARK(i, mml_job_status, mtk_crtc->is_mml,
-			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 		DRM_MMP_MARK(mutex_lock, (unsigned long)&mtk_crtc->lock, i);
 
