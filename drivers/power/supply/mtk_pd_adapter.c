@@ -204,6 +204,14 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		srcu_notifier_call_chain(&adapter->evt_nh, MTK_TYPEC_WD_STATUS,
 					 &noti->wd_status.water_detected);
 		break;
+	case TCP_NOTIFY_SINK_VBUS:
+		dev_info(info->dev, "%s: sink vbus mv:%d, ma:%d, type:%d\n",
+			__func__, noti->vbus_state.mv, noti->vbus_state.ma,
+			noti->vbus_state.type);
+		if (noti->vbus_state.type & TCP_VBUS_CTRL_PD_DETECT)
+			srcu_notifier_call_chain(&adapter->evt_nh,
+					 MTK_SINK_VBUS, &noti->vbus_state.ma);
+		break;
 	}
 
 	return NOTIFY_OK;
@@ -228,6 +236,13 @@ static int pd_get_property(struct adapter_device *dev,
 	case CAP_TYPE:
 		mutex_lock(&info->idx_lock);
 		ret = pd_type_to_cap_type(info->pd_type[info->active_idx]);
+		mutex_unlock(&info->idx_lock);
+		break;
+	/*Ryan*/
+	case PD_SRC_PDO_SUPPORT_USB_SUSPEND:
+		mutex_lock(&info->idx_lock);
+		ret = tcpm_inquire_dpm_flags(info->tcpc[info->active_idx])
+		& DPM_FLAGS_PARTNER_USB_SUSPEND;
 		mutex_unlock(&info->idx_lock);
 		break;
 	default:
@@ -620,9 +635,10 @@ static void mtk_pd_adapter_remove_helper(struct mtk_pd_adapter_info *info)
 	for (i = 0; i < info->nr_port; i++) {
 		if (!info->tcpc[i])
 			return;
-		ret = unregister_tcp_dev_notifier(info->tcpc[i],
-						  &info->pd_nb[i].nb,
-						  TCP_NOTIFY_TYPE_ALL);
+		if (info->pd_nb)
+			ret = unregister_tcp_dev_notifier(info->tcpc[i],
+							  &info->pd_nb[i].nb,
+							  TCP_NOTIFY_TYPE_ALL);
 		if (ret < 0)
 			return;
 	}
@@ -721,7 +737,9 @@ out:
 		mutex_destroy(&info->idx_lock);
 		return ret;
 	}
-	mtk_pd_adapter_remove_helper(info);
+
+	if (info)
+		mtk_pd_adapter_remove_helper(info);
 
 	return ret;
 }
@@ -730,7 +748,8 @@ static int mtk_pd_adapter_remove(struct platform_device *pdev)
 {
 	struct mtk_pd_adapter_info *info = platform_get_drvdata(pdev);
 
-	mtk_pd_adapter_remove_helper(info);
+	if (info)
+		mtk_pd_adapter_remove_helper(info);
 	return 0;
 }
 
