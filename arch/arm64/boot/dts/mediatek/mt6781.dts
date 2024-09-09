@@ -732,7 +732,7 @@
 
 	infracfg_ao: infracfg_ao@10001000 {
 		compatible = "mediatek,common-infracfg_ao", "mediatek,mt6781-infracfg_ao",
-			"mediatek,infracfg_ao", "syscon";
+			"mediatek,infracfg_ao", "syscon", "simple-mfd";
 		reg = <0 0x10001000 0 0x1000>;
 		#clock-cells = <1>;
 
