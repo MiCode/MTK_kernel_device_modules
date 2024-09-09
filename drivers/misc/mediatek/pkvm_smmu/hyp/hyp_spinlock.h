@@ -104,8 +104,7 @@ static inline bool hyp_spin_is_locked(hyp_spinlock_t *lock)
 }
 
 /* MTK porting : To solve the problem of "kernel option is tristate */
-#define CONFIG_NVHE_EL2_DEBUG	0
-#if CONFIG_NVHE_EL2_DEBUG
+#ifdef CONFIG_NVHE_EL2_DEBUG
 static inline void hyp_assert_lock_held(hyp_spinlock_t *lock)
 {
 	/*
