@@ -287,8 +287,6 @@ static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info 
 	if (spm_l2_info == NULL)
 		return 0;
 
-	pr_notice("mbraink spm get_sig(%d)\n", get_sig);
-
 	sys_res_mbrain_ops = get_mbraink_dbg_ops();
 	if (sys_res_mbrain_ops &&
 		sys_res_mbrain_ops->get_over_threshold_num &&
@@ -319,7 +317,8 @@ static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info 
 
 			if (sys_res_mbrain_ops->get_over_threshold_num(g_spm_l2_ls_ptr,
 				SPM_L2_LS_SZ, thr, 4) == 0) {
-				memcpy(&g_spm_l2_sig_num, g_spm_l2_ls_ptr + 24, sizeof(g_spm_l2_sig_num));
+				memcpy(&g_spm_l2_sig_num, g_spm_l2_ls_ptr + 24,
+					sizeof(g_spm_l2_sig_num));
 
 				if (g_spm_l2_sig_num > SPM_TOTAL_MAX_SIG_NUM) {
 					bfree = true;
@@ -333,8 +332,8 @@ static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info 
 					goto End;
 				}
 
-				if (sys_res_mbrain_ops->get_over_threshold_data(g_spm_l2_sig_tbl_ptr,
-					g_spm_l2_sig_tbl_size) != 0) {
+				if (sys_res_mbrain_ops->get_over_threshold_data(
+					g_spm_l2_sig_tbl_ptr, g_spm_l2_sig_tbl_size) != 0) {
 					bfree = true;
 					goto End;
 				}
@@ -987,6 +986,7 @@ int mbraink_v6991_power_init(void)
 	int ret = 0;
 
 	ret = register_mbraink_power_ops(&mbraink_v6991_power_ops);
+
 	mbraink_v6991_power_sys_res_init();
 	ret = register_low_battery_mbrain_cb(pt2mbrain_hint_low_battery_volt_throttle);
 	if (ret != 0) {

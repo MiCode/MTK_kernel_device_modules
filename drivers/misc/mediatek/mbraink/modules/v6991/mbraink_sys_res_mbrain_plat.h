@@ -8,7 +8,7 @@
 
 #define MBRAINK_SYS_RES_ALL_DATA_MODULE_ID (0)
 #define MBRAINK_SYS_RES_LVL_DATA_MODULE_ID (2)
-#define MBRAINK_SYS_RES_DATA_VERSION (1)
+#define MBRAINK_SYS_RES_DATA_VERSION (2)
 
 int mbraink_sys_res_mbrain_plat_init(void);
 void mbraink_sys_res_mbrain_plat_deinit(void);

@@ -14,7 +14,7 @@
 #include <swpm_module_psp.h>
 #endif
 
-#define MBRAINK_SYS_RES_SYS_RESOURCE_NUM (8)
+#define MBRAINK_SYS_RES_SYS_RESOURCE_NUM (11)
 
 enum _mbraink_sys_res_scene {
 	MBRAINK_SYS_RES_SCENE_COMMON = 0,

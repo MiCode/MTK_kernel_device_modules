@@ -1527,13 +1527,11 @@ static long mbraink_ioctl(struct file *filp,
 	}
 	case RO_UFS_INFO:
 	{
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 		mbraink_data = kmalloc(sizeof(struct mbraink_ufs_info), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
 		ret = handle_ufs_info(arg, mbraink_data);
 		kfree(mbraink_data);
-#endif
 		break;
 	}
 	case RO_WIFI_TXTIMEOUT_INFO:
@@ -2057,8 +2055,6 @@ int logmiscdata2mbrain(long long *value, unsigned int value_num, char *buf, unsi
 
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return -1;
-
-	pr_info("[sammi]netlink_buf(%s)", netlink_buf);
 
 	mbraink_netlink_send_msg(netlink_buf);
 	return 0;

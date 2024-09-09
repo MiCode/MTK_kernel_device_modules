@@ -43,7 +43,7 @@ struct mbraink_sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
 	{0, 0,  0, 20},
 	{0, 0,  0, 20},
 	{0, 0,  0, 20},
-	{0, 0,  0, 20},
+	{0, 0,  0, 80},
 	{0, 0,  0, 20},
 	{0, 0,  0, 20},
 };

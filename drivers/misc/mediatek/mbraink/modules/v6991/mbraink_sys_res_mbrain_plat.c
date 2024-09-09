@@ -17,17 +17,17 @@ enum {
 };
 
 static int group_release[NR_SPM_GRP] = {
-	MBRAINK_RELEASE_GROUP,
-	MBRAINK_RELEASE_GROUP,
-	MBRAINK_NOT_RELEASE,
-	MBRAINK_NOT_RELEASE,
-	MBRAINK_NOT_RELEASE,
-	MBRAINK_RELEASE_GROUP,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_RELEASE_GROUP,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
+	MBRAINK_RELEASE_GROUP,
+	MBRAINK_NOT_RELEASE,
+	MBRAINK_RELEASE_GROUP,
+	MBRAINK_NOT_RELEASE,
+	MBRAINK_NOT_RELEASE,
+	MBRAINK_RELEASE_GROUP,
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_NOT_RELEASE,
 };
@@ -111,7 +111,7 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 
 	sys_res_update = sys_res_ops->update();
 	if (sys_res_update)
-		pr_info("[Mbraink][SPM] SWPM data invalid, Error %d\n", sys_res_update);
+		pr_info("[Mbraink][SPM] SWPM data ret(%d)\n", sys_res_update);
 
 	/* Copy scenario data */
 	sys_res_record[MBRAINK_SYS_RES_RELEASE_SCENE_COMMON] = sys_res_ops->get(
@@ -164,7 +164,6 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 		}
 	}
 	spin_unlock_irqrestore(sys_res_ops->lock, flag);
-
 	return ret;
 }
 
@@ -202,7 +201,7 @@ static int mbraink_get_last_suspend_res_data(void *address, uint32_t size)
 
 	sys_res_update = sys_res_ops->update();
 	if (sys_res_update)
-		pr_info("[Mbraink][SPM] SWPM data invalid, Error %d\n", sys_res_update);
+		pr_info("[Mbraink][SPM] SWPM data ret(%d)\n", sys_res_update);
 
 	sys_res_last_suspend_record = sys_res_ops->get(MBRAINK_SYS_RES_LAST_SUSPEND);
 	if (sys_res_last_suspend_record == NULL ||
@@ -317,17 +316,23 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 							MBRAINK_SYS_RES_SIG_SUSPEND_RATIO,
 							sig_index);
 
-			if (ratio < threshold[k])
-				continue;
+			if (i == PWR_OFF) {
+				if (ratio > threshold[k])
+					continue;
+			} else {
+				if (ratio < threshold[k])
+					continue;
+			}
 
 			spm_res_sig_tbl_num++;
 			sig_info = (void *)sys_res_ops->get_detail(sys_res_last_suspend_record,
 								   MBRAINK_SYS_RES_SIG_ADDR,
 								   sig_index);
-			if (sig_info)
+			if (sig_info) {
 				ptr = sys_res_data_copy(ptr,
 							sig_info,
 							sizeof(struct mbraink_sys_res_sig_info));
+			}
 		}
 		k++;
 	}
@@ -382,7 +387,9 @@ int mbraink_sys_res_mbrain_plat_init(void)
 
 	for (i = 0; i < NR_SPM_GRP; i++) {
 		if (group_release[i]) {
-			sys_res_grp_num += 1;
+			if (i == DDREN_REQ || i == APSRC_REQ || i == EMI_REQ || i == INFRA_REQ ||
+				i == F26M_REQ || i == VCORE_REQ)
+				sys_res_grp_num += 1;
 			sys_res_sig_num += sys_res_group_info[i].group_num;
 		}
 	}
