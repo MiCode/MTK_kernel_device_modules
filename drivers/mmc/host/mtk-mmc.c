@@ -2091,18 +2091,29 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 				data->error = -ETIMEDOUT;
 				host->data_timeout_cont++;
 				bitmap_set(host->err_bag.err_bitmap,3,1);
-				host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
-				host->err_bag.blocks = data->blocks;
-				host->err_bag.bytes_xfered = data->bytes_xfered;
+				if(data != NULL && data->mrq != NULL && data->mrq->cmd != NULL) {
+					host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
+					host->err_bag.blocks = data->blocks;
+					host->err_bag.bytes_xfered = data->bytes_xfered;
+				} else {
+					dev_err(host->dev,
+					"%s: data->mrq or data->mrq->cmd is NULL\n",
+					__func__);
+				}
 			} else if (events & MSDC_INT_DATCRCERR) {
 				host->data_timeout_cont = 0;
 				data->error = -EILSEQ;
 				bitmap_set(host->err_bag.err_bitmap,2,1);
-				host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
-				host->err_bag.blocks = data->blocks;
-				host->err_bag.bytes_xfered = data->bytes_xfered;
+				if(data != NULL && data->mrq != NULL && data->mrq->cmd != NULL) {
+					host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
+					host->err_bag.blocks = data->blocks;
+					host->err_bag.bytes_xfered = data->bytes_xfered;
+				} else {
+					dev_err(host->dev,
+					"%s: data->mrq or data->mrq->cmd is NULL\n",
+					__func__);
+				}
 			}
-
 		}
 
 		msdc_data_xfer_next(host, mrq);
