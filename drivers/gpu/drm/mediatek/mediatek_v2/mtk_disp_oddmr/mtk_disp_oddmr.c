@@ -2232,7 +2232,11 @@ static void mtk_oddmr_relay(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			SET_VAL_MASK(value, mask, 1, MT6991_REG_BYPASS_SHADOW);
 		else
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_BYPASS_SHADOW);
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_BYPASS);
+#else
+		SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_BYPASS);
+#endif
 		mtk_oddmr_write_mask(comp, value,
 			MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 
