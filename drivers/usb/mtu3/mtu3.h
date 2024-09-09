@@ -502,7 +502,6 @@ struct mtu3 {
 	struct power_supply *usb_psy;
 	struct work_struct draw_work;
 	unsigned int vbus_draw;
-	unsigned int is_power_limit:1;
 
 	const char *typec_name;
 	const char *typec_port_name;

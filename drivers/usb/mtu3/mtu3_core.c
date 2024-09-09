@@ -25,6 +25,8 @@
 #include <linux/usb/typec.h>
 #include "class.h"
 
+#include "mtk_charger.h"
+
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {
 	struct mtu3_fifo_info *fifo = mep->fifo;
@@ -78,19 +80,25 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	union power_supply_propval val;
 	int ret;
 
-	val.intval = mtu->is_active &&	!(mtu->vbus_draw > USB_SELF_POWER_VBUS_MAX_DRAW);
-
-	if (mtu->is_power_limit != val.intval) {
-		ret = power_supply_set_property(mtu->usb_psy,
-			POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
-		if (!ret)
-			mtu->is_power_limit = val.intval;
+	if (mtu->is_active) {
+		if (mtu->vbus_draw < USB_SELF_POWER_VBUS_MAX_DRAW)
+			val.intval = 0; /* 0 mA*/
+		else if (mtu->vbus_draw == USB_SELF_POWER_VBUS_MAX_DRAW)
+			val.intval = 100; /* 100 mA*/
 		else
-			dev_info(mtu->dev, "%s set property error:%d\n", __func__, ret);
-	}
+			val.intval = UNLIMIT_CURRENT_MASK; /* unlimited */
+	} else
+		val.intval = UNLIMIT_CURRENT_MASK; /* unlimited */
 
-	dev_info(mtu->dev, "%s %d mA, is_limit %d\n",
-		__func__, mtu->vbus_draw, mtu->is_power_limit);
+	val.intval |= USB_CURRENT_MASK;
+
+	ret = power_supply_set_property(mtu->usb_psy,
+		POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
+	if (ret)
+		dev_info(mtu->dev, "%s set property error:%d\n", __func__, ret);
+
+	dev_info(mtu->dev, "%s: limited %d, %d mA\n",
+		__func__, (val.intval & UNLIMIT_CURRENT_MASK) ? 0 : 1, mtu->vbus_draw);
 }
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
