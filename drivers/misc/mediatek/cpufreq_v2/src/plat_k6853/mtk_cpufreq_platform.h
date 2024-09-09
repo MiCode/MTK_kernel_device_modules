@@ -67,6 +67,11 @@
 #define ENTRY_EACH_LOG		5
 #define REG_LEN                 4
 
+enum load_type {
+K6853TV1 = 1,
+QEA,
+TURBO,
+};
 
 extern struct mt_cpu_dvfs cpu_dvfs[NR_MT_CPU_DVFS];
 extern struct cpudvfs_doe dvfs_doe;
