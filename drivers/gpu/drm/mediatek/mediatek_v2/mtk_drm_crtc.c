@@ -11019,10 +11019,17 @@ skip_prete:
 				GCE_DO(wfe, EVENT_VDO_EOF);
 
 		} else {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
+				GCE_DO(wfe, EVENT_CMD_EOF);
+			else
+				GCE_DO(wfe, EVENT_VDO_EOF);
+#else
 			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_DVO)
 				GCE_DO(wfe, EVENT_VDO_EOF);
 			else
 				GCE_DO(wfe, EVENT_CMD_EOF);
+#endif
 		}
 
 		/* sw workaround to fix gce hw bug */
