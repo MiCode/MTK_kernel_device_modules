@@ -4861,6 +4861,23 @@ static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 {
 	struct mmc_host *mmc = dev_get_drvdata(dev);
 	struct msdc_host *host = mmc_priv(mmc);
+	u32 val = 0;
+	int ret = 0;
+
+	if (mmc->caps2 & MMC_CAP2_CQE) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)
+		if (host->swcq_host)
+			ret = 0;
+#endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI)
+		if (host->cq_host)
+			ret = cqhci_suspend(mmc);
+#endif
+		val = readl(host->base + MSDC_INT);
+		writel(val, host->base + MSDC_INT);
+		if (ret)
+			dev_dbg(host->dev, "%s: %d\n", __func__, ret);
+	}
 
 	sdr_clr_bits(host->base + SDC_CFG, SDC_CFG_SDIOIDE);
 	if (host->sdio_irq_cnt == 0 && host->id == MSDC_SDIO) {
