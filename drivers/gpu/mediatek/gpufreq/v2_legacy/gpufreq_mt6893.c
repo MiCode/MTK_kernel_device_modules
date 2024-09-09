@@ -2062,11 +2062,6 @@ static int __gpufreq_volt_scale_gpu(
 
 	g_gpu.cur_volt = __gpufreq_get_real_vgpu();
 	if (unlikely(g_gpu.cur_volt != vgpu_new)) {
-		unsigned int rdata;
-
-		rdata = regulator_get_voltage(g_pmic->reg_vgpu)/10;
-		GPUFREQ_LOGE("regulator_get_voltage = %u,power_count =%d, regulator_is_enabled = %d",
-			rdata,g_gpu.power_count,regulator_is_enabled(g_pmic->reg_vgpu));
 		__gpufreq_abort("inconsistent scaled Vgpu, cur_volt: %d, target_volt: %d, vgpu_old: %d",
 			g_gpu.cur_volt, vgpu_new, vgpu_old);
 	}
@@ -2236,19 +2231,11 @@ static unsigned int __gpufreq_get_real_vsram(void)
 static unsigned int __gpufreq_get_real_vgpu(void)
 {
 	unsigned int volt = 0;
-	int ret = 0;
-	if (regulator_is_enabled(g_pmic->reg_vgpu)) {
-		/* regulator_get_voltage prints volt with uV */
-		volt = regulator_get_voltage(g_pmic->reg_vgpu) / 10;
-	} else if(!regulator_is_enabled(g_pmic->reg_vgpu) && g_gpu.power_count) {
-		ret = regulator_enable(g_pmic->reg_vgpu);
-		if (unlikely(ret)) {
-			__gpufreq_abort("fail to enable VGPU (%d)", ret);
-			return 0;
-		}
-		if (regulator_is_enabled(g_pmic->reg_vgpu))
-			volt = regulator_get_voltage(g_pmic->reg_vgpu) / 10;
-	}
+	/* regulator_get_voltage prints volt with uV */
+	if (!regulator_is_enabled(g_pmic->reg_vgpu))
+		GPUFREQ_LOGE("VGPU regulator is not enabled");
+
+	volt = regulator_get_voltage(g_pmic->reg_vgpu) / 10;
 
 	return volt;
 }
