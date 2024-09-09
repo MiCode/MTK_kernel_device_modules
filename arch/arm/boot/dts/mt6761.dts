@@ -3224,6 +3224,12 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		clock-names = "apb", "smi";
 	};
 
+	smi-dbg {
+		compatible = "mediatek,mtk-smi-dbg";
+		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2>;
+		mediatek-common-supply = <&smi_common>;
+	};
+
 	mdp_rdma0: mdp_rdma0@14004000 {
 		compatible = "mediatek,mdp_rdma0";
 		reg = <0 0x14004000 0 0x1000>;
