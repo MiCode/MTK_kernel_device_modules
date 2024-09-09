@@ -872,6 +872,7 @@ struct mml_comp_hw_ops {
 
 struct mml_comp_debug_ops {
 	void (*dump)(struct mml_comp *comp);
+	void (*dump_fast)(struct mml_comp *comp);
 	void (*reset)(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe);
 };
 
