@@ -9136,7 +9136,7 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 	}
 }
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);

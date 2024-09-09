@@ -13531,7 +13531,7 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		__pm_stay_awake(mtk_crtc->wk_lock);
 		atomic_inc(&priv->kernel_pm.wakelock_cnt);
 	} else {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if ((atomic_read(&priv->kernel_pm.status) != KERNEL_SHUTDOWN) &&
 		    (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1) &&
 		    vdisp_func.poll_power_cnt && (vdisp_func.poll_power_cnt(0) < 0)) {
@@ -13547,7 +13547,7 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		drm_crtc_index(crtc), (get ? "hold" : "release"),
 		func, line, atomic_read(&priv->kernel_pm.wakelock_cnt));
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (vdisp_func.wk_lock)
 		vdisp_func.wk_lock(drm_crtc_index(crtc), get, __func__, __LINE__);
 #endif
@@ -13767,7 +13767,7 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		if (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1) {
 			atomic_set(&priv->kernel_pm.wakelock_cnt, 0);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			if (vdisp_func.wk_lock)
 				vdisp_func.wk_lock(index, 0, __func__, __LINE__);
 #endif
