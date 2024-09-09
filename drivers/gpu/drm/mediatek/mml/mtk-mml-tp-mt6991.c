@@ -1569,8 +1569,10 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	enum mml_mode mode;
 
-	if (unlikely(mml_path_mode))
+	if (unlikely(mml_path_mode)) {
+		mml_log("%s force use path mode %d", __func__, mml_path_mode);
 		return mml_path_mode;
+	}
 
 	if (unlikely(!tp))
 		goto not_support;

@@ -501,7 +501,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	}
 
 	mtk_plane_state->pending.mml_mode = mtk_plane_state->mml_mode;
-	mtk_plane_state->pending.mml_cfg = mtk_plane_state->mml_cfg;
+	if (mtk_plane_state->mml_mode > MML_MODE_UNKNOWN)
+		mtk_plane_state->pending.mml_cfg = mtk_plane_state->mml_cfg;
 
 	// MML setting display single pipe in here, we set dual pipe
 	// in mtk_drm_layer_dispatch_to_dual_pipe()
