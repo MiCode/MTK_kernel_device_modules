@@ -92,6 +92,10 @@
 	status = "okay";
 };
 
+&disp_r2y0 {
+	status = "okay";
+};
+
 &dispsys_config {
 	pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>, <2700>, <2700>;
 	crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>, <0x4>, <0x4>;

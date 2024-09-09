@@ -165,6 +165,7 @@
 			dsc1 = &disp_dsc_wrap1;
 			dsc2 = &disp_dsc_wrap2;
 			dsc3 = &disp_dsc_wrap3;
+			r2y0 = &disp_r2y0;
 	};
 
 	aov: aov {
@@ -9883,6 +9884,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"mediatek,mt6991-disp-dsc";
 			reg = <0 0x32480000 0 0x1000>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSC_WRAP3_DISP>;
+		};
+
+		disp_r2y0: disp-r2y@32540000 {
+			compatible = "mediatek,mt6991-disp1-r2y";
+			reg = <0 0x32540000 0 0x1000>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_R2Y0_DISP>;
+			status = "disabled";
 		};
 
 		disp_dpc: disp-dpc@3e8f0000 {
