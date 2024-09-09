@@ -285,6 +285,7 @@ struct mml_task_ops {
 	void (*queue)(struct mml_task *task, u32 pipe);
 	void (*submit_done)(struct mml_task *task);
 	void (*frame_done)(struct mml_task *task);
+	void (*signal_irq)(struct mml_task *task);
 	/* optional: adaptor may use frame_done to handle error */
 	void (*frame_err)(struct mml_task *task);
 	s32 (*dup_task)(struct mml_task *task, u32 pipe);
@@ -753,6 +754,10 @@ struct mml_task {
 
 	/* mml pq task */
 	struct mml_pq_task *pq_task;
+
+	/* mml m2m */
+	struct vb2_v4l2_buffer *src_buf;
+	struct vb2_v4l2_buffer *dst_buf;
 
 	bool done;
 	bool err;

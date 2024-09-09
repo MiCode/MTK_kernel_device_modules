@@ -1851,6 +1851,9 @@ static void core_taskdone_check(struct mml_task *task)
 	if (cfg->dual && cnt <= 1)
 		return;
 
+	if (task->config->task_ops->signal_irq)
+		task->config->task_ops->signal_irq(task);
+
 	task->done = true;
 	if (task->fence) {
 		dma_fence_signal(task->fence);
