@@ -870,6 +870,7 @@ static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
 {
 	struct mtk_drm_private *priv = NULL;
 	static bool vidle_status;
+	bool is_ff_enabled = false;
 
 	if (crtc == NULL || crtc->dev == NULL)
 		return;
@@ -882,8 +883,9 @@ static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
 		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))
 		return;
 
-	DDPINFO("%s, enable:%d, vidle:%d, ff:%d\n", __func__, enable, vidle_status, mtk_vidle_is_ff_enabled());
-	if (enable && !mtk_vidle_is_ff_enabled() && !vidle_status) {
+	is_ff_enabled = mtk_vidle_is_ff_enabled();
+	DDPINFO("%s, enable:%d, vidle:%d, ff:%d\n", __func__, enable, vidle_status, is_ff_enabled);
+	if (enable && !is_ff_enabled && !vidle_status) {
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle, 0x1d1e, enable);
 		mtk_vidle_enable(true, priv);
 		mtk_vidle_force_enable_mml(true);
