@@ -3722,10 +3722,6 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 		host->dvfsrc_vcore_power ?
 		regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_CQHCI_DEBUG)
-	dump_stack();
-#endif
-
 	if (host->top_base) {
 		sdr_set_bits(host->top_base + EMMC50_PAD_DS_TUNE,
 			     PAD_DS_DLY_SEL);// 1:DS pass through
@@ -3784,12 +3780,10 @@ static int msdc_execute_hs400_tuning(struct mmc_host *mmc, struct mmc_card *card
 	dev_info(host->dev,"[%s]msdc tune pass,opcode=%d,vcore=%d",
 		__func__, MMC_SEND_EXT_CSD, host->autok_vcore);
 	host->is_skip_hs200_tune = 1;
-	msdc_reset_hw(host);
 	return 0;
 
 fail:
 	dev_err(host->dev, "Failed to tuning DS pin delay!\n");
-	msdc_reset_hw(host);
 	return -EIO;
 }
 
