@@ -30,6 +30,12 @@ static int __gpuppm_limit_effective(enum gpufreq_target target);
 static int __gpuppm_convert_limit_to_idx(enum gpufreq_target target, enum gpuppm_limiter limiter,
 	int ceiling_info, int floor_info, int *ceiling_idx, int *floor_idx);
 static void __gpuppm_update_gpuppm_info(void);
+static int __gpuppm_generate_stress_random(void);
+static int __gpuppm_generate_stress_traverse(void);
+static int __gpuppm_generate_stress_max_min(void);
+static int __gpuppm_generate_stress_ascending(void);
+static int __gpuppm_generate_stress_descending(void);
+static int __gpuppm_generate_stress_slt2(void);
 
 /**
  * ===============================================
@@ -41,6 +47,7 @@ static struct gpuppm_status g_ppm;
 static unsigned int g_gpueb_support;
 static unsigned int g_stress_test;
 static unsigned int g_stress_direction;
+static unsigned int g_stress_count;
 static int g_stress_oppidx;
 static struct gpufreq_shared_status *g_shared_status;
 
@@ -411,17 +418,141 @@ static void __gpuppm_update_gpuppm_info(void)
 	memcpy(g_shared_status->limit_table, g_limit_table, copy_size);
 }
 
+static int __gpuppm_generate_stress_random(void)
+{
+	int oppidx = 0;
+	int cur_ceiling = g_ppm.ceiling, cur_floor = g_ppm.floor;
+
+	/* random */
+	get_random_bytes(&oppidx, sizeof(oppidx));
+	oppidx = oppidx < 0 ? (oppidx * -1) : oppidx;
+	oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+
+	return oppidx;
+}
+
+static int __gpuppm_generate_stress_traverse(void)
+{
+	int oppidx = 0;
+	int cur_ceiling = g_ppm.ceiling, cur_floor = g_ppm.floor;
+
+	/* 0 <-> 1 <-> ... <-> opp_num-2 <-> opp_num-1 */
+	oppidx = g_stress_oppidx / 10;
+	oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+	if (oppidx == cur_ceiling)
+		g_stress_direction = SCALE_UP;
+	else if (oppidx == cur_floor)
+		g_stress_direction = SCALE_DOWN;
+	if (g_stress_direction == SCALE_UP)
+		g_stress_oppidx++;
+	else if (g_stress_direction == SCALE_DOWN)
+		g_stress_oppidx--;
+
+	return oppidx;
+}
+
+static int __gpuppm_generate_stress_max_min(void)
+{
+	int oppidx = 0;
+	int min_oppidx = g_ppm.opp_num - 1;
+
+	/* 0 <-> opp_num-1 */
+	oppidx = g_stress_oppidx;
+	g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
+
+	return oppidx;
+}
+
+static int __gpuppm_generate_stress_ascending(void)
+{
+	int oppidx = 0;
+	int cur_ceiling = g_ppm.ceiling, cur_floor = g_ppm.floor;
+
+	/* 0 -> 1 -> ... -> opp_num-2 -> opp_num-1 -> 0 -> 1 -> ... */
+	oppidx = g_stress_oppidx / 10;
+	oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+	if (oppidx == cur_floor)
+		g_stress_oppidx = 0;
+	else
+		g_stress_oppidx++;
+
+	return oppidx;
+}
+
+static int __gpuppm_generate_stress_descending(void)
+{
+	int oppidx = 0;
+	int cur_ceiling = g_ppm.ceiling, cur_floor = g_ppm.floor;
+
+	/* opp_num-1 -> opp_num-2 -> ... -> 1 -> 0 -> opp_num-1 -> opp_num-2 -> ... */
+	oppidx = g_stress_oppidx / 10;
+	oppidx = cur_floor - (oppidx % (cur_floor - cur_ceiling + 1));
+	if (oppidx == cur_ceiling)
+		g_stress_oppidx = 0;
+	else
+		g_stress_oppidx++;
+
+	return oppidx;
+}
+
+static int __gpuppm_generate_stress_slt2(void)
+{
+	int oppidx = 0;
+	unsigned int stress_mode = 0;
+
+	stress_mode = (g_stress_count / 1000) % 8;
+	g_stress_count++;
+
+	switch (stress_mode) {
+	case 0:
+		/* fix opp_min */
+		oppidx = g_ppm.opp_num - 1;
+		break;
+	case 1:
+		/* fix opp_mid */
+		oppidx = g_ppm.opp_num / 2;
+		break;
+	case 2:
+		/* fix opp_max */
+		oppidx = 0;
+		break;
+	case 3:
+		/* random */
+		oppidx = __gpuppm_generate_stress_random();
+		break;
+	case 4:
+		/* traverse */
+		oppidx = __gpuppm_generate_stress_traverse();
+		break;
+	case 5:
+		/* max_min */
+		oppidx = __gpuppm_generate_stress_max_min();
+		break;
+	case 6:
+		/* ascending */
+		oppidx = __gpuppm_generate_stress_ascending();
+		break;
+	case 7:
+		/* descending */
+		oppidx = __gpuppm_generate_stress_descending();
+		break;
+	}
+
+	return oppidx;
+}
+
 void gpuppm_set_stress_test(unsigned int val)
 {
 	g_stress_test = val;
+	g_stress_oppidx = 0;
+	g_stress_count = 0;
+	g_stress_direction = SCALE_UP;
 
 	/* disable CGPPT to make sure traverse all OPP in stress test mode */
 	if (g_stress_test == FEAT_DISABLE)
 		gpuppm_switch_limit(TARGET_DEFAULT, LIMIT_PEAK_POWER, LIMIT_ENABLE, LIMIT_ENABLE, true);
 	else
 		gpuppm_switch_limit(TARGET_DEFAULT, LIMIT_PEAK_POWER, LIMIT_DISABLE, LIMIT_DISABLE, true);
-
-	g_stress_oppidx = 0;
 
 	GPUFREQ_LOGD("stress test mode: %d", g_stress_test);
 
@@ -554,7 +685,7 @@ done:
 int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 {
 	int limited_idx = 0;
-	int cur_ceiling = 0, cur_floor = 0, min_oppidx = 0;
+	int cur_ceiling = 0, cur_floor = 0;
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("target=%d, oppidx=%d", target, oppidx);
@@ -564,47 +695,20 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 	/* fit to limited interval */
 	cur_ceiling = g_ppm.ceiling;
 	cur_floor = g_ppm.floor;
-	min_oppidx = g_ppm.opp_num - 1;
 
 	/* replace target OPP index to do stress test */
-	if (g_stress_test == STRESS_RANDOM) {
-		/* random */
-		get_random_bytes(&oppidx, sizeof(oppidx));
-		oppidx = oppidx < 0 ? (oppidx * -1) : oppidx;
-		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
-	} else if (g_stress_test == STRESS_TRAVERSE) {
-		/* 0 <-> 1 <-> ... <-> opp_num-2 <-> opp_num-1 */
-		oppidx = g_stress_oppidx;
-		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
-		if (oppidx == cur_ceiling)
-			g_stress_direction = SCALE_UP;
-		else if (oppidx == cur_floor)
-			g_stress_direction = SCALE_DOWN;
-		if (g_stress_direction == SCALE_UP)
-			g_stress_oppidx++;
-		else if (g_stress_direction == SCALE_DOWN)
-			g_stress_oppidx--;
-	} else if (g_stress_test == STRESS_MAX_MIN) {
-		/* 0 <-> opp_num-1 */
-		oppidx = g_stress_oppidx;
-		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
-	} else if (g_stress_test == STRESS_ASCENDING) {
-		/* 0 -> 1 -> ... -> opp_num-2 -> opp_num-1 -> 0 -> 1 -> ... */
-		oppidx = g_stress_oppidx;
-		oppidx = (oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
-		if (oppidx == cur_floor)
-			g_stress_oppidx = 0;
-		else
-			g_stress_oppidx++;
-	} else if (g_stress_test == STRESS_DESCENDING) {
-		/* opp_num-1 -> opp_num-2 -> ... -> 1 -> 0 -> opp_num-1 -> opp_num-2 -> ... */
-		oppidx = g_stress_oppidx;
-		oppidx = cur_floor - (oppidx % (cur_floor - cur_ceiling + 1));
-		if (oppidx == cur_ceiling)
-			g_stress_oppidx = 0;
-		else
-			g_stress_oppidx++;
-	}
+	if (g_stress_test == STRESS_RANDOM)
+		oppidx = __gpuppm_generate_stress_random();
+	else if (g_stress_test == STRESS_TRAVERSE)
+		oppidx = __gpuppm_generate_stress_traverse();
+	else if (g_stress_test == STRESS_MAX_MIN)
+		oppidx = __gpuppm_generate_stress_max_min();
+	else if (g_stress_test == STRESS_ASCENDING)
+		oppidx = __gpuppm_generate_stress_ascending();
+	else if (g_stress_test == STRESS_DESCENDING)
+		oppidx = __gpuppm_generate_stress_descending();
+	else if (g_stress_test == STRESS_SLT2)
+		oppidx = __gpuppm_generate_stress_slt2();
 
 	if (oppidx < cur_ceiling)
 		limited_idx = cur_ceiling;
@@ -636,7 +740,7 @@ int gpuppm_limited_commit(enum gpufreq_target target, int oppidx)
 int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 {
 	int limited_idx_gpu = 0, limited_idx_stack = 0;
-	int cur_ceiling = 0, cur_floor = 0, min_oppidx = 0;
+	int cur_ceiling = 0, cur_floor = 0;
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
@@ -646,51 +750,26 @@ int gpuppm_limited_dual_commit(int gpu_oppidx, int stack_oppidx)
 	/* fit to limited interval */
 	cur_ceiling = g_ppm.ceiling;
 	cur_floor = g_ppm.floor;
-	min_oppidx = g_ppm.opp_num - 1;
 
 	/* replace target OPP index to do stress test */
 	if (g_stress_test == STRESS_RANDOM) {
-		/* random */
-		get_random_bytes(&gpu_oppidx, sizeof(gpu_oppidx));
-		gpu_oppidx = gpu_oppidx < 0 ? (gpu_oppidx * -1) : gpu_oppidx;
-		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		gpu_oppidx = __gpuppm_generate_stress_random();
 		stack_oppidx = gpu_oppidx;
 	} else if (g_stress_test == STRESS_TRAVERSE) {
-		/* 0 <-> 1 <-> ... <-> opp_num-2 <-> opp_num-1 */
-		gpu_oppidx = g_stress_oppidx;
-		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		gpu_oppidx = __gpuppm_generate_stress_traverse();
 		stack_oppidx = gpu_oppidx;
-		if (gpu_oppidx == cur_ceiling)
-			g_stress_direction = SCALE_UP;
-		else if (gpu_oppidx == cur_floor)
-			g_stress_direction = SCALE_DOWN;
-		if (g_stress_direction == SCALE_UP)
-			g_stress_oppidx++;
-		else if (g_stress_direction == SCALE_DOWN)
-			g_stress_oppidx--;
 	} else if (g_stress_test == STRESS_MAX_MIN) {
-		/* 0 <-> opp_num-1 */
-		gpu_oppidx = g_stress_oppidx;
+		gpu_oppidx = __gpuppm_generate_stress_max_min();
 		stack_oppidx = gpu_oppidx;
-		g_stress_oppidx = g_stress_oppidx ? 0 : min_oppidx;
 	} else if (g_stress_test == STRESS_ASCENDING) {
-		/* 0 -> 1 -> ... -> opp_num-2 -> opp_num-1 -> 0 -> 1 -> ... */
-		gpu_oppidx = g_stress_oppidx;
-		gpu_oppidx = (gpu_oppidx % (cur_floor - cur_ceiling + 1)) + cur_ceiling;
+		gpu_oppidx = __gpuppm_generate_stress_ascending();
 		stack_oppidx = gpu_oppidx;
-		if (gpu_oppidx == cur_floor)
-			g_stress_oppidx = 0;
-		else
-			g_stress_oppidx++;
 	} else if (g_stress_test == STRESS_DESCENDING) {
-		/* opp_num-1 -> opp_num-2 -> ... -> 1 -> 0 -> opp_num-1 -> opp_num-2 -> ... */
-		gpu_oppidx = g_stress_oppidx;
-		gpu_oppidx = cur_floor - (gpu_oppidx % (cur_floor - cur_ceiling + 1));
+		gpu_oppidx = __gpuppm_generate_stress_descending();
 		stack_oppidx = gpu_oppidx;
-		if (gpu_oppidx == cur_ceiling)
-			g_stress_oppidx = 0;
-		else
-			g_stress_oppidx++;
+	} else if (g_stress_test == STRESS_SLT2) {
+		gpu_oppidx = __gpuppm_generate_stress_slt2();
+		stack_oppidx = gpu_oppidx;
 	}
 
 	/* GPU */
