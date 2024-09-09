@@ -4061,9 +4061,10 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user _user)
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user:%u skip vlp vote, force:%d,vlp pm mask:0x%x,vcp:%d",
-			user, g_priv->skip_force_power, g_vlp_pm_mask,
-			atomic_read(&g_priv->vcp_is_alive));
+		if (dbg_vlp_backtrace)
+			DPCFUNC("user:%u skip vlp vote, force:%d,vlp pm mask:0x%x,vcp:%d",
+				user, g_priv->skip_force_power, g_vlp_pm_mask,
+				atomic_read(&g_priv->vcp_is_alive));
 		return -1;
 	}
 
@@ -4111,9 +4112,10 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user _user)
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
-		DPCFUNC("user:%u skip vlp clr, force:%d,vlp pm mask:0x%x,vcp:%d",
-			user, g_priv->skip_force_power, g_vlp_pm_mask,
-			atomic_read(&g_priv->vcp_is_alive));
+		if (dbg_vlp_backtrace)
+			DPCFUNC("user:%u skip vlp clr, force:%d,vlp pm mask:0x%x,vcp:%d",
+				user, g_priv->skip_force_power, g_vlp_pm_mask,
+				atomic_read(&g_priv->vcp_is_alive));
 		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 		return;
 	}
@@ -4909,8 +4911,11 @@ static void mtk_dpc_shutdown_v1(struct platform_device *pdev)
 {
 	struct mtk_dpc *priv = platform_get_drvdata(pdev);
 
-	if (priv)
+	if (priv) {
 		priv->skip_force_power = true;
+		DPCFUNC("skip_force_power:%d, vcp:%d,vlp pm mask:0x%x", priv->skip_force_power,
+			atomic_read(&priv->vcp_is_alive), g_vlp_pm_mask);
+	}
 	dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 }
 
