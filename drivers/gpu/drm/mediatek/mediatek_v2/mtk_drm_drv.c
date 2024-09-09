@@ -2145,10 +2145,13 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
+	cpu_hotplug_disable();
 
 	ret = drm_atomic_helper_prepare_planes(drm, state);
-	if (ret)
+	if (ret) {
+		cpu_hotplug_enable();
 		return ret;
+	}
 
 	crtc_mask = mtk_atomic_crtc_mask(drm, state);
 
@@ -2163,6 +2166,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 		if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_SAME_POWER_MODE) {
 			DDPMSG("skip atomic commit with same power mode\n");
+			cpu_hotplug_enable();
 			return 0;
 		}
 
@@ -2271,6 +2275,8 @@ cm_unlock:
 	DRM_MMP_EVENT_END(mutex_lock, 0, 0);
 	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, pf);
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);
+
+	cpu_hotplug_enable();
 
 	return 0;
 }
