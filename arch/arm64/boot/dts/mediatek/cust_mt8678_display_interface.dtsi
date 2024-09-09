@@ -198,6 +198,9 @@
 };
 
 &dp_tx {
+	power-domains = <&hfrpsys 32>,
+		<&scpsys 3>;
+	power-domain-names = "pd_dp_tx", "pd_dp_phy";
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp_gpio_def_cfg>;
 	status = "disabled";
@@ -1005,10 +1008,10 @@
 					0 0x0261 0xac 0
 					0 0x0262 0x4c 0
 					0 0x0263 0x28 0
-					2 0x020c 0x03 0	/* 96752 INT linka GPIO 4*/
+					2 0x020c 0x03 0	/* 96752 INT linkaï¿½GPIO 4*/
 					2 0x020d 0xab 0
 					2 0x020e 0x4b 0
-					3 0x020c 0x03 0	/* 96752 INT linkb GPIO 4*/
+					3 0x020c 0x03 0	/* 96752ï¿½INT linkb GPIO 4*/
 					3 0x020d 0xac 0
 					3 0x020e 0x4c 0
 				>;
@@ -1619,7 +1622,7 @@
 					0 0x0261 0xac 0
 					0 0x0262 0x4c 0
 					0 0x0263 0x28 0
-					1 0x020c 0x03 0   /* 96752 INT linka GPIO 4*/
+					1 0x020c 0x03 0   /* 96752 INT linkaï¿½GPIO 4*/
 					1 0x020d 0xab 0
 					1 0x020e 0x4b 0
 				>;
