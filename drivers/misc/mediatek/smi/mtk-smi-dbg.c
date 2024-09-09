@@ -1022,12 +1022,14 @@ void call_smi_user_pwr_ctrl(u32 action, char *caller)
 	struct smi_user_pwr_ctrl *entry;
 	struct mtk_smi_dbg	*smi = gsmi;
 	int ret;
+	unsigned long flags;
 
 	if (dbg_version != SMI_DBG_VER_2) {
 		pr_notice("%s: not support\n", __func__);
 		return;
 	}
 
+	spin_lock_irqsave(&smi->v2.lock, flags);
 	list_for_each_entry(entry, &smi_user_pwr_ctrl_list, list) {
 		strscpy(entry->caller, caller, sizeof(entry->caller));
 		switch (action) {
@@ -1058,6 +1060,7 @@ void call_smi_user_pwr_ctrl(u32 action, char *caller)
 			break;
 		}
 	}
+	spin_unlock_irqrestore(&smi->v2.lock, flags);
 }
 
 void call_smi_pm_get_if_in_use(void)
@@ -1107,22 +1110,12 @@ void call_smi_pm_put_if_in_use(void)
 
 void call_smi_user_get_if_in_use(char *caller)
 {
-	struct mtk_smi_dbg	*smi = gsmi;
-	unsigned long flags;
-
-	spin_lock_irqsave(&smi->v2.lock, flags);
 	call_smi_user_pwr_ctrl(ACTION_GET_IF_IN_USE, caller);
-	spin_unlock_irqrestore(&smi->v2.lock, flags);
 }
 
 void call_smi_user_put_if_in_use(char *caller)
 {
-	struct mtk_smi_dbg	*smi = gsmi;
-	unsigned long flags;
-
-	spin_lock_irqsave(&smi->v2.lock, flags);
 	call_smi_user_pwr_ctrl(ACTION_PUT_IF_IN_USE, caller);
-	spin_unlock_irqrestore(&smi->v2.lock, flags);
 }
 
 void call_smi_user_force_all_on(char *caller)
