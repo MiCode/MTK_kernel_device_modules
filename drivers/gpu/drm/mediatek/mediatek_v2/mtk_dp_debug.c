@@ -159,6 +159,17 @@ void mtk_dp_debug(const char *opt)
 		DPTXMSG("Paterrn Gen:enable = %d, resolution =%d\n",
 			enable, resolution);
 		mdrv_DPTx_PatternSet(enable, resolution);
+	} else if (strncmp(opt, "format:", 7) == 0) {
+		int ret = 0;
+		int bpc, format;
+
+		ret = sscanf(opt, "format:%d,%d\n", &bpc, &format);
+		if (ret != 2) {
+			DPTXMSG("ret = %d\n", ret);
+			return;
+		}
+		DPTXMSG("set bpc:%d format:%d\n",bpc, format);
+		mdrv_DPTx_ColorSet(bpc, format);
 	} else if (strncmp(opt, "maxlinkrate:", 12) == 0) {
 		int ret = 0;
 		int enable, maxlinkrate;

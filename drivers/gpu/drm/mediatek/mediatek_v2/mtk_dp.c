@@ -438,7 +438,6 @@ void mdrv_DPTx_deinit(struct mtk_dp *mtk_dp)
 {
 	mdrv_DPTx_VideoMute(mtk_dp, true);
 	mdrv_DPTx_AudioMute(mtk_dp, true);
-	mhal_DPTx_VideoMuteSW(mtk_dp, true);
 	cancel_work_sync(&mtk_dp->hdcp_work);
 
 	mtk_dp->training_info.ucCheckCapTimes = 0;
@@ -479,10 +478,13 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	mtk_dp->state = DPTXSTATE_INITIAL;
 	mtk_dp->state_pre = DPTXSTATE_INITIAL;
 	mtk_dp->info.input_src = DPTX_SRC_DPINTF;
-	mtk_dp->info.format = DP_COLOR_FORMAT_RGB_444;
-	mtk_dp->info.depth = DP_COLOR_DEPTH_8BIT;
-	if (!mtk_dp->info.bPatternGen)
+	if (mtk_dp->info.bPatternGen)
+		DPTXMSG("Use dptx mac pattern gen format and depth\n");
+	else {
+		mtk_dp->info.format = DP_COLOR_FORMAT_RGB_444;
+		mtk_dp->info.depth = DP_COLOR_DEPTH_8BIT;
 		mtk_dp->info.resolution = SINK_1920_1080;
+	}
 	mtk_dp->info.bSetAudioMute = false;
 	mtk_dp->info.bSetVideoMute = false;
 	memset(&mtk_dp->info.DPTX_OUTBL, 0,
@@ -1481,6 +1483,19 @@ void mdrv_DPTx_PatternSet(bool enable, int resolution)
 	g_mtk_dp->info.resolution = resolution;
 }
 
+void mdrv_DPTx_ColorSet(int bpc, int format)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	DPTXMSG("adb set bpc:%d format:%d\n", __func__, bpc, format);
+	// bpc 0/1/2/3/4: 6/8/10/12/16
+	// format 0/1/2/3/4 RGB/YUV422/YUV420/YONLY/RAW
+	g_mtk_dp->info.depth = bpc;
+	g_mtk_dp->info.format = format;
+}
+
 void mdrv_DPTx_set_maxlinkrate(bool enable, int maxlinkrate)
 {
 	if (g_mtk_dp == NULL) {
@@ -2380,7 +2395,7 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_AudioMute(mtk_dp, true);
 			mtk_dp->training_state = DPTX_NTSTATE_CHECKTIMING;
 			mtk_dp->dp_ready = true;
-			mhal_DPTx_EnableFEC(mtk_dp, false);
+			mhal_DPTx_EnableFEC(mtk_dp, mtk_dp->has_fec);
 		} else if (ret == DPTX_RETRANING) {
 			ret = DPTX_NOERR;
 		} else
@@ -3009,123 +3024,142 @@ void mtk_dp_video_config(struct mtk_dp *mtk_dp)
 		}
 		mtk_dp->info.depth = fakebpc;
 	}
-
-	switch (mtk_dp->info.resolution) {
-	case SINK_7680_4320:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 8040; DPTX_TBL->Hbp = 240; DPTX_TBL->Hsw = 96;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 24; DPTX_TBL->Hde = 7680;
-		DPTX_TBL->Vtt = 4381; DPTX_TBL->Vbp = 6; DPTX_TBL->Vsw = 8;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 47; DPTX_TBL->Vde = 4320;
-		break;
-	case SINK_3840_2160:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
-		DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
-		break;
-	case SINK_3840_2160_30:
-		DPTX_TBL->FrameRate = 30;
-		DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
-		DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
-		break;
-	case SINK_2560_1600:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
-		DPTX_TBL->Vtt = 1646; DPTX_TBL->Vbp = 37; DPTX_TBL->Vsw = 6;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1600;
-		break;
-	case SINK_2560_1440:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
-		DPTX_TBL->Vtt = 1481; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1440;
-		break;
-	case SINK_1920_1440:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 2600; DPTX_TBL->Hbp = 344; DPTX_TBL->Hsw = 208;
-		DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 128; DPTX_TBL->Hde = 1920;
-		DPTX_TBL->Vtt = 1500; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 3;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 1440;
-		break;
-	case SINK_1920_1200:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
-		DPTX_TBL->Vtt = 1235; DPTX_TBL->Vbp = 26; DPTX_TBL->Vsw = 6;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1200;
-		break;
-	case SINK_1920_1080_120_RB:
-		DPTX_TBL->FrameRate = 120;
-		DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
-		DPTX_TBL->Vtt = 1144; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1080;
-		break;
-	case SINK_1920_1080_120:
-		DPTX_TBL->FrameRate = 120;
-		DPTX_TBL->Htt = 2200; DPTX_TBL->Hbp = 148; DPTX_TBL->Hsw = 44;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1920;
-		DPTX_TBL->Vtt = 1125; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1080;
-		break;
-	case SINK_1920_1080:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 2200; DPTX_TBL->Hbp = 148; DPTX_TBL->Hsw = 44;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1920;
-		DPTX_TBL->Vtt = 1125; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1080;
-		break;
-	case SINK_1080_2460:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 1172; DPTX_TBL->Hbp = 30; DPTX_TBL->Hsw = 32;
-		DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 30; DPTX_TBL->Hde = 1080;
-		DPTX_TBL->Vtt = 2476; DPTX_TBL->Vbp = 5; DPTX_TBL->Vsw = 2;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 9; DPTX_TBL->Vde = 2460;
-		break;
-	case SINK_1280_1024:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 1560; DPTX_TBL->Hbp = 148; DPTX_TBL->Hsw = 44;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1280;
-		DPTX_TBL->Vtt = 1069; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1024;
-		break;
-	case SINK_1280_960:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 1800; DPTX_TBL->Hbp = 312; DPTX_TBL->Hsw = 112;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 96; DPTX_TBL->Hde = 1280;
-		DPTX_TBL->Vtt = 1000; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 3;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 960;
-		break;
-	case SINK_1280_720:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 1650; DPTX_TBL->Hbp = 220; DPTX_TBL->Hsw = 40;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 110; DPTX_TBL->Hde = 1280;
-		DPTX_TBL->Vtt = 750; DPTX_TBL->Vbp = 20; DPTX_TBL->Vsw = 5;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 5; DPTX_TBL->Vde = 720;
-		break;
-	case SINK_800_600:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 1056; DPTX_TBL->Hbp = 88; DPTX_TBL->Hsw = 128;
-		DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 40; DPTX_TBL->Hde = 800;
-		DPTX_TBL->Vtt = 628; DPTX_TBL->Vbp = 23; DPTX_TBL->Vsw = 4;
-		DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 16; DPTX_TBL->Vde = 600;
-		break;
-	case SINK_640_480:
-	default:
-		DPTX_TBL->FrameRate = 60;
-		DPTX_TBL->Htt = 800; DPTX_TBL->Hbp = 48; DPTX_TBL->Hsw = 96;
-		DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 16; DPTX_TBL->Hde = 640;
-		DPTX_TBL->Vtt = 525; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 2;
-		DPTX_TBL->bVsp = 1; DPTX_TBL->Vfp = 10; DPTX_TBL->Vde = 480;
-		break;
+		switch (mtk_dp->info.resolution) {
+		case SINK_7680_4320:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 8040; DPTX_TBL->Hbp = 240; DPTX_TBL->Hsw = 96;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 24; DPTX_TBL->Hde = 7680;
+			DPTX_TBL->Vtt = 4381; DPTX_TBL->Vbp = 6; DPTX_TBL->Vsw = 8;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 47; DPTX_TBL->Vde = 4320;
+			break;
+		case SINK_3840_2160:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
+			DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
+			break;
+		case SINK_3840_2160_30:
+			DPTX_TBL->FrameRate = 30;
+			DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
+			DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
+			break;
+		case SINK_2560_1600:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
+			DPTX_TBL->Vtt = 1646; DPTX_TBL->Vbp = 37; DPTX_TBL->Vsw = 6;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1600;
+			break;
+		case SINK_2560_1440:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
+			DPTX_TBL->Vtt = 1481; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 5;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1440;
+			break;
+		case SINK_2048_1536:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2208; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2048;
+			DPTX_TBL->Vtt = 1580; DPTX_TBL->Vbp = 37; DPTX_TBL->Vsw = 4;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1536;
+			break;
+		case SINK_1920_1440:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2600; DPTX_TBL->Hbp = 344; DPTX_TBL->Hsw = 208;
+			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 128; DPTX_TBL->Hde = 1920;
+			DPTX_TBL->Vtt = 1500; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 3;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 1440;
+			break;
+		case SINK_1920_1200:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
+			DPTX_TBL->Vtt = 1235; DPTX_TBL->Vbp = 26; DPTX_TBL->Vsw = 6;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1200;
+			break;
+		case SINK_1920_1080_120_RB:
+			DPTX_TBL->FrameRate = 120;
+			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
+			DPTX_TBL->Vtt = 1144; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 5;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1080;
+			break;
+		case SINK_1920_1080_120:
+			DPTX_TBL->FrameRate = 120;
+			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
+			DPTX_TBL->Vtt = 1144; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 5;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1080;
+			break;
+		case SINK_1920_1080:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 2200; DPTX_TBL->Hbp = 148; DPTX_TBL->Hsw = 44;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1920;
+			DPTX_TBL->Vtt = 1125; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 5;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1080;
+			break;
+		case SINK_1280_800:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1680; DPTX_TBL->Hbp = 200; DPTX_TBL->Hsw = 128;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 72; DPTX_TBL->Hde = 1280;
+			DPTX_TBL->Vtt = 831; DPTX_TBL->Vbp = 22; DPTX_TBL->Vsw = 6;
+			DPTX_TBL->bVsp = 1; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 800;
+			break;
+		case SINK_1080_2460:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1172; DPTX_TBL->Hbp = 30; DPTX_TBL->Hsw = 32;
+			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 30; DPTX_TBL->Hde = 1080;
+			DPTX_TBL->Vtt = 2476; DPTX_TBL->Vbp = 5; DPTX_TBL->Vsw = 2;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 9; DPTX_TBL->Vde = 2460;
+			break;
+		case SINK_1280_1024:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1688; DPTX_TBL->Hbp = 248; DPTX_TBL->Hsw = 112;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1280;
+			DPTX_TBL->Vtt = 1066; DPTX_TBL->Vbp = 38; DPTX_TBL->Vsw = 3;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1024;
+			break;
+		case SINK_1280_960:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1800; DPTX_TBL->Hbp = 312; DPTX_TBL->Hsw = 112;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 96; DPTX_TBL->Hde = 1280;
+			DPTX_TBL->Vtt = 1000; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 3;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 960;
+			break;
+		case SINK_1280_720:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1650; DPTX_TBL->Hbp = 220; DPTX_TBL->Hsw = 40;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 110; DPTX_TBL->Hde = 1280;
+			DPTX_TBL->Vtt = 750; DPTX_TBL->Vbp = 20; DPTX_TBL->Vsw = 5;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 5; DPTX_TBL->Vde = 720;
+			break;
+		case SINK_800_600:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1056; DPTX_TBL->Hbp = 88; DPTX_TBL->Hsw = 128;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 40; DPTX_TBL->Hde = 800;
+			DPTX_TBL->Vtt = 628; DPTX_TBL->Vbp = 23; DPTX_TBL->Vsw = 4;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 16; DPTX_TBL->Vde = 600;
+			break;
+		case SINK_848_480:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 1088; DPTX_TBL->Hbp = 112; DPTX_TBL->Hsw = 112;
+			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 16; DPTX_TBL->Hde = 848;
+			DPTX_TBL->Vtt = 517; DPTX_TBL->Vbp = 23; DPTX_TBL->Vsw = 8;
+			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 6; DPTX_TBL->Vde = 480;
+			break;
+		case SINK_640_480:
+		default:
+			DPTX_TBL->FrameRate = 60;
+			DPTX_TBL->Htt = 800; DPTX_TBL->Hbp = 48; DPTX_TBL->Hsw = 96;
+			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 16; DPTX_TBL->Hde = 640;
+			DPTX_TBL->Vtt = 525; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 2;
+			DPTX_TBL->bVsp = 1; DPTX_TBL->Vfp = 10; DPTX_TBL->Vde = 480;
+			break;
 	}
-
 	if (mtk_dp->info.resolution == SINK_3840_2160) {
 		// patch for 4k@60 with DSC 3 times compress
 		switch (mtk_dp->training_info.ubLinkRate) {
