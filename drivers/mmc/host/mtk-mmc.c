@@ -774,6 +774,14 @@ static void msdc_reset_hw(struct msdc_host *host)
 	u32 val;
 	int ret;
 
+	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP, 1);
+	ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
+			!(val & MSDC_DMA_CTRL_STOP), 1, MSDC_RESET_HW_TIMEOUT);
+	if (ret) {
+		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
+		msdc_dump_info(NULL, 0, NULL, host);
+	}
+
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
 	ret = readl_poll_timeout_atomic(host->base + MSDC_CFG, val,
 			!(val & MSDC_CFG_RST), 1, MSDC_RESET_HW_TIMEOUT);
@@ -793,13 +801,6 @@ static void msdc_reset_hw(struct msdc_host *host)
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
 	ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
 			!(val & MSDC_FIFOCS_CLR), 1, MSDC_RESET_HW_TIMEOUT);
-	if (ret) {
-		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
-		msdc_dump_info(NULL, 0, NULL, host);
-	}
-
-	ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
-			!(val & MSDC_DMA_CFG_STS), 1, MSDC_RESET_HW_TIMEOUT);
 	if (ret) {
 		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
 		msdc_dump_info(NULL, 0, NULL, host);
@@ -1414,8 +1415,9 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 
 	mod_delayed_work(system_wq, &host->req_timeout, DAT_TIMEOUT);
 	msdc_dma_setup(host, &host->dma, data);
-	sdr_set_bits(host->base + MSDC_INTEN, data_ints_mask);
 	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_START, 1);
+	udelay(1);
+	sdr_set_bits(host->base + MSDC_INTEN, data_ints_mask);
 	dev_dbg(host->dev, "DMA start\n");
 	dev_dbg(host->dev, "%s: cmd=%d DMA data: %d blocks; read=%d\n",
 			__func__, cmd->opcode, data->blocks, read);
@@ -2065,21 +2067,6 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 						!(val & MSDC_DMA_CTRL_STOP), 1, 20000);
 		if (ret)
 			dev_info(host->dev, "DMA stop timed out\n");
-
-		sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
-		ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
-				!(val & MSDC_FIFOCS_CLR), 1, MSDC_RESET_HW_TIMEOUT);
-		if (ret) {
-			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_FIFOCS_CLR_TIMEOUT_BIT, 1);
-			msdc_dump_register_to_buf(host, 0);
-		}
-
-		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CFG, val,
-				!(val & MSDC_DMA_CFG_STS), 1, MSDC_RESET_HW_TIMEOUT);
-		if (ret) {
-			bitmap_set(host->err_bag.err_bitmap, ERR_MSDC_DMA_CFG_STS_TIMEOUT_BIT, 1);
-			msdc_dump_register_to_buf(host, 1);
-		}
 
 		spin_lock_irqsave(&host->lock, flags);
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
