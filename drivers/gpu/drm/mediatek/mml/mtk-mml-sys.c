@@ -71,6 +71,9 @@ int mml_dle_delay;
 module_param(mml_dle_delay, int, 0644);
 #endif
 
+int mml_dlo_dbg = 1;
+module_param(mml_dlo_dbg, int, 0644);
+
 #define sys_msg(fmt, args...) \
 do { \
 	if (mtk_mml_msg || mml_rrot_msg) \
@@ -1039,8 +1042,11 @@ static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 
 	if (mode == MML_MODE_RACING)
 		sys_addr_update(comp, task, ccfg);
-	else if (mode == MML_MODE_DIRECT_LINK)
+	else if (mode == MML_MODE_DIRECT_LINK) {
 		sys_addr_update(comp, task, ccfg);
+		if (comp->sysid == path->mmlsys->sysid && task->dlo_status.inst_offset)
+			cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->dlo_status);
+	}
 	return 0;
 }
 
@@ -1376,6 +1382,30 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 	return 0;
 }
 
+static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct mml_frame_config *cfg = task->config;
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && task->dlo_status.inst_offset &&
+		comp->sysid == cfg->path[ccfg->pipe]->mmlsys->sysid) {
+		u32 status1 = cmdq_pkt_backup_get(pkt, &task->dlo_status);
+
+		if ((status1 & 0x0fff0000) != (task->dlo_size & 0x0fff0000))
+			mml_err("task job %u dlo size %#010x status %#010x not match",
+				task->job.jobid, task->dlo_size, status1);
+		else if (mml_dlo_dbg & BIT(2))
+			mml_log("task job %u dlo size %#010x status %#010x",
+				task->job.jobid, task->dlo_size, status1);
+		else if (mml_dlo_dbg & BIT(1))
+			mml_msg("task job %u dlo size %#010x status %#010x",
+				task->job.jobid, task->dlo_size, status1);
+
+		mml_mmp(dlo, MMPROFILE_FLAG_PULSE, task->dlo_size, status1);
+	}
+}
+
 static const struct mml_comp_hw_ops sys_hw_ops = {
 	.pw_enable = mml_comp_pw_enable,
 	.pw_disable = mml_comp_pw_disable,
@@ -1391,6 +1421,7 @@ static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
+	.task_done = &mml_sys_taskdone,
 };
 
 #ifdef MML_FPGA
@@ -2180,6 +2211,8 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 dl_h = tile->in.ye - tile->in.ys + 1;
 	u32 size = (dl_h << 16) + dl_w;
 
+	if (comp->sysid == task->config->path[ccfg->pipe]->mmlsys->sysid)
+		task->dlo_size = size;
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
 
 	if (dl_frm) {
@@ -2230,6 +2263,36 @@ static const struct mml_comp_config_ops dl_config_ops = {
 	.tile = dl_config_tile,
 	.wait = dl_wait,
 	.post = dl_post,
+};
+
+#define MT6991_MML_DLO_ASYNC5_STATUS1	0x420
+
+static s32 dlo_post_mt6991f(struct mml_comp *comp, struct mml_task *task,
+		   struct mml_comp_config *ccfg)
+{
+	s32 ret = dl_post(comp, task, ccfg);
+	struct mml_frame_config *cfg = task->config;
+
+	if ((mml_dlo_dbg & BIT(0)) && cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		comp->sysid == cfg->path[ccfg->pipe]->mmlsys->sysid) {
+		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+		int ret;
+
+		ret = cmdq_pkt_backup(pkt, comp->base_pa + MT6991_MML_DLO_ASYNC5_STATUS1,
+			&task->dlo_status);
+		if (ret) {
+			mml_err("%s fail to backup dlo status", __func__);
+			task->dlo_status.inst_offset = 0;
+		}
+	}
+
+	return ret;
+}
+
+static const struct mml_comp_config_ops dlo_config_ops_mt6991f = {
+	.tile = dl_config_tile,
+	.wait = dl_wait,
+	.post = dlo_post_mt6991f,
 };
 
 static s32 dl_mml_config_tile(struct mml_comp *comp, struct mml_task *task,
@@ -2335,6 +2398,18 @@ static int dlo_comp_init(struct device *dev, struct mml_sys *sys,
 		return ret;
 	comp->tile_ops = &dlo_tile_ops;
 	return 0;
+}
+
+static int dlo_comp_init_mt6991f(struct device *dev, struct mml_sys *sys, struct mml_comp *comp)
+{
+	int ret = dl_comp_init(dev, sys, comp);
+
+	if (ret)
+		return ret;
+	comp->tile_ops = &dlo_tile_ops;
+	comp->config_ops = &dlo_config_ops_mt6991f;
+
+	return ret;
 }
 
 static int dl_mml_comp_init(struct device *dev, struct mml_sys *sys, struct mml_comp *comp)
@@ -2859,7 +2934,7 @@ static const struct mml_data mt6991_mmlf_data = {
 	.comp_inits = {
 		[MML_CT_SYS] = &sys_comp_init,
 		[MML_CT_DL_IN] = &dl_mml_comp_init,
-		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init_mt6991f,
 	},
 	.ddp_comp_funcs = {
 		[MML_CT_SYS] = &sys_ddp_funcs,
