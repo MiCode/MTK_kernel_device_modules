@@ -2529,8 +2529,10 @@ void mhal_DPTx_PhyCheckReady(struct mtk_dp *mtk_dp, u8 lane_count)
 	case 4:
 		phyd_rdy_bmp |= (RGS_TX_LN3_READY_FLDMASK |
 				RGS_TX_LN2_READY_FLDMASK);
+		break;
 	case 2:
 		phyd_rdy_bmp |= RGS_TX_LN1_READY_FLDMASK;
+		break;
 	default:
 		break;
 	}

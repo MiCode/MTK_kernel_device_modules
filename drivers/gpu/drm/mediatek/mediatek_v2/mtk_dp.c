@@ -1114,12 +1114,13 @@ u8 mdrv_get_checksum(struct edid *edid)
 	u8 *raw_edid = (u8 *)edid;
 	u8 checksum;
 
-	if (!edid)
+	if (!edid || edid->extensions > 255)
 		return 0;
 
 	ext_block = edid->extensions;
 	checksum = raw_edid[ext_block * EDID_LENGTH + 0x7f];
 	DPTXMSG("checksum: 0x%x\n", checksum);
+	DPTXMSG("ext_block: %d\n", ext_block);
 
 	return checksum;
 }
@@ -2248,9 +2249,8 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 
 #if !ENABLE_DPTX_FIX_LRLC
 	maxLinkRate = ubLinkRate;
-	ubTrainTimeLimits = 0x6;
-#endif
 	ubTrainTimeLimits = 12;
+#endif
 	do {
 		DPTXMSG("LinkRate:0x%x, LaneCount:%x", ubLinkRate, ubLaneCount);
 
@@ -3461,8 +3461,6 @@ int mtk_drm_dp_get_info(struct drm_device *dev,
 
 void mtk_dp_get_dsc_capability(u8 *dsc_cap)
 {
-	return;
-
 	if (g_mtk_dp == NULL) {
 		DPTXMSG("%s: dp not initial\n", __func__);
 		return;
