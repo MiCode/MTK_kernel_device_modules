@@ -13845,6 +13845,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			operating-points-v2 = <&opp_table_disp>;
 			gce-supply = <&gce>;
 			mmqos-supply = <&mmqos>;
+			mml-max-layer = /bits/ 8 <2>;
 		};
 
 		mml1_mutex0: mml1-mutex0@1f801000 {
