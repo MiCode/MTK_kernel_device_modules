@@ -554,6 +554,82 @@ static struct clkbuf_dts *pmif_parse_dts_v2(struct clkbuf_dts *array,
 	return array;
 }
 
+static struct clkbuf_dts *pmif_parse_dts_v3(struct clkbuf_dts *array,
+				  struct device_node *clkbuf_node, int nums)
+{
+	struct device_node *pmif_node;
+	unsigned int pmif_reg_idx = 0, phandle_idx = 1;
+	const char *comp = NULL;//, *pmif_name = NULL;
+	void __iomem *pmif_m_base = NULL, *pmif_p_base = NULL;
+	int perms = 0xffff, num_pmif;
+	const char *pmif_reg_name;
+	struct clkbuf_dts *pmif_m_array = NULL, *pmif_p_array = NULL;
+
+	pmif_node = of_parse_phandle(clkbuf_node, "pmif", 0);
+
+	num_pmif = count_pmif_elements(clkbuf_node);
+
+	/* Check if >0 pmif_reg_idx specified */
+	if (num_pmif > 0) {
+		for (phandle_idx = 1; phandle_idx <= num_pmif; ++phandle_idx) {
+			/* Check if pmif_reg_idx exists */
+			if (of_property_read_u32_index(clkbuf_node, "pmif",
+					phandle_idx, &pmif_reg_idx)) {
+				CLKBUF_DBG("ERROR: Get PMIF attribute[%u] failed\n", phandle_idx);
+				break;
+			}
+
+			/* Check reg-names[pmif_reg_idx] exists */
+			if (of_property_read_string_index(pmif_node, "reg-names",
+					pmif_reg_idx, &pmif_reg_name)) {
+				CLKBUF_DBG("ERROR: Get PMIF reg-names[%u] failed\n", pmif_reg_idx);
+				break;
+			}
+
+			/* Parse PMIF REG by reg-names */
+			if (!strcmp(pmif_reg_name, "pmif")) {
+				CLKBUF_DBG("PMIF_M dts found!");
+				pmif_m_array = array;
+				pmif_m_base = of_iomap(pmif_node, pmif_reg_idx);
+				of_property_read_string(pmif_node, "compatible", &comp);
+				array->hw.hw_type = PMIF_M;
+				array->comp = (char *)comp;
+				array->pmif_id = PMIF_M_ID;
+				array->perms = perms;
+				array->pmif_name = "PMIF_M";
+				array->nums = nums;
+				array->num_pmif = num_pmif;
+				array++;
+			} else if (!strcmp(pmif_reg_name, "pmif-m2")) {
+				CLKBUF_DBG("PMIF_M2 dts found!");
+				pmif_p_array = array;
+				pmif_p_base = of_iomap(pmif_node, pmif_reg_idx);
+				of_property_read_string(pmif_node, "compatible", &comp);
+				array->hw.hw_type = PMIF_P;
+				array->comp = (char *)comp;
+				array->pmif_id = PMIF_P_ID;
+				array->perms = perms;
+				array->pmif_name = "PMIF_M2";
+				array->nums = nums;
+				array->num_pmif = num_pmif;
+				array++;
+			}
+		}
+
+		if (pmif_m_array != NULL) {
+			pmif_m_array->hw.base.pmif_m = pmif_m_base;
+			pmif_m_array->hw.base.pmif_p = pmif_p_base;
+		}
+
+		if (pmif_p_array != NULL) {
+			pmif_p_array->hw.base.pmif_m = pmif_m_base;
+			pmif_p_array->hw.base.pmif_p = pmif_p_base;
+		}
+	}
+
+	return array;
+}
+
 void __spmi_dump_pmif_record(void)
 {
 	spmi_dump_pmif_record_reg();
@@ -663,7 +739,7 @@ static struct match_pmif mt6899_match_pmif = {
 	.name = "mediatek,mt6899-spmi",
 	.hdlr = &pmif_hdlr_v3,
 	.init = &pmif_init_v1,
-	.parse_dts = &pmif_parse_dts_v2,
+	.parse_dts = &pmif_parse_dts_v3,
 };
 
 static struct match_pmif mt6985_match_pmif = {
