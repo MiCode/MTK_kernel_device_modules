@@ -1360,6 +1360,7 @@ static inline u32 msdc_cmd_prepare_raw_cmd(struct msdc_host *host,
 	u32 opcode = cmd->opcode;
 	u32 resp = msdc_cmd_find_resp(host, mrq, cmd);
 	u32 rawcmd = (opcode & 0x3f) | ((resp & 0x7) << 7);
+	u32 blksz = (readl(host->base + SDC_CMD) >> 16) & 0xFFF;
 
 	host->cmd_rsp = resp;
 
@@ -1400,7 +1401,9 @@ static inline u32 msdc_cmd_prepare_raw_cmd(struct msdc_host *host,
 					data->timeout_clks);
 
 		writel(data->blocks, host->base + SDC_BLK_NUM);
-	}
+	} else
+		rawcmd |= blksz << 16;
+
 	return rawcmd;
 }
 
