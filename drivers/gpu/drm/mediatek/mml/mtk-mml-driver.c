@@ -162,6 +162,7 @@ struct mml_dev {
 	bool dpc_disable;
 	bool v4l2_en;
 	bool smmu_en;
+	u8 max_layer;
 
 	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
@@ -1562,6 +1563,12 @@ bool mml_racing_enable(struct mml_dev *mml)
 }
 EXPORT_SYMBOL_GPL(mml_racing_enable);
 
+u8 mml_max_layer(struct mml_dev *mml)
+{
+	return mml->max_layer;
+}
+EXPORT_SYMBOL_GPL(mml_max_layer);
+
 bool mml_tablet_ext(struct mml_dev *mml)
 {
 	return mml->tablet_ext;
@@ -2296,6 +2303,10 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->racing_en)
 		mml_log("IR mode enable");
 #endif
+
+	if (of_property_read_u8(dev->of_node, "mml-max-layer", &mml->max_layer))
+		mml->max_layer = MML_MAX_LAYER;
+	mml_log("max_layer %u", mml->max_layer);
 
 	mml->v4l2_en = of_property_read_bool(dev->of_node, "v4l2-enable");
 

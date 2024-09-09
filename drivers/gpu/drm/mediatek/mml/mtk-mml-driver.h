@@ -199,6 +199,15 @@ bool mml_dpc_disable(struct mml_dev *mml);
 bool mml_racing_enable(struct mml_dev *mml);
 
 /*
+ * mml_max_layer - mml multi-layer max layer
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	number of max layer.
+ */
+u8 mml_max_layer(struct mml_dev *mml);
+
+/*
  * mml_tablet_ext - current is tablet project or not
  *
  * @mml:	The mml driver instance

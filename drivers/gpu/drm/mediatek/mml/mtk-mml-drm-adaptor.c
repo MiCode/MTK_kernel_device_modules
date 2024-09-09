@@ -49,7 +49,7 @@ module_param(mml_dc, int, 0644);
 int mml_hrt_overhead = 100;
 module_param(mml_hrt_overhead, int, 0644);
 
-int mml_max_layers = MML_MAX_LAYER;
+int mml_max_layers;
 module_param(mml_max_layers, int, 0644);
 
 struct mml_drm_ctx {
@@ -356,8 +356,11 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	u32 remain[mml_max_sys] = {0};
 	u32 mml_layer_cnt = 0;
 	u32 i;
-	s32 max_layer = min(mml_max_layers, MML_MAX_LAYER);
 	bool couple_used = false;
+	struct mml_dev *mml = dctx->ctx.mml;
+	s32 max_layer = mml_max_layers ? mml_max_layers : mml_max_layer(mml);
+
+	max_layer = min(max_layer, MML_MAX_LAYER);
 
 	if (!duration_us)
 		duration_us = MML_MAX_DUR;
