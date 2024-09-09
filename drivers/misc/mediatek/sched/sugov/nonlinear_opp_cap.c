@@ -2289,6 +2289,11 @@ int set_turn_point_freq(int cpu, unsigned long freq)
 		return 0;
 	}
 
+	if (freq == 1) {
+		turn_point_util[cpu] = 1;
+		return 0;
+	}
+
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
 		for_each_cpu(i, policy->related_cpus) {
