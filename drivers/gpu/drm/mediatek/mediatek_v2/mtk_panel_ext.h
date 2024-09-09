@@ -190,6 +190,14 @@ enum MTK_PANEL_SPR_OUTPUT_MODE {
 	MTK_PANEL_PACKED_SPR_12_BITS,
 };
 
+enum LCM_PS_TYPE {
+	LCM_PACKED_PS_30BIT_RGB101010 = 8,
+	LCM_PACKED_PS_20BIT_YUV422 = 9,
+	LCM_LOOSELY_PS_20BIT_YUV422 = 10,
+	LCM_PACKED_PS_16BIT_YUV422 = 11,
+	LCM_PACKED_PS_12BIT_YUV420 = 12,
+};
+
 struct esd_check_item {
 	unsigned char cmd;
 	unsigned char count;
@@ -572,6 +580,9 @@ struct mtk_panel_params {
 	bool is_support_od;
 	bool is_support_dmr;
 	bool is_support_dbi;
+
+	/* for mt6991 yuv support */
+	enum LCM_PS_TYPE ext_pix_mode;
 
 	/*Msync 3.0*/
 	unsigned int skip_vblank;

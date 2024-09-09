@@ -1665,6 +1665,29 @@ unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 			}
 		}
 
+		if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+			switch (dsi->ext->params->ext_pix_mode) {
+			case LCM_PACKED_PS_30BIT_RGB101010:
+				bit_per_pixel = 30;
+				break;
+			case LCM_PACKED_PS_20BIT_YUV422:
+				bit_per_pixel = 20;
+				break;
+			case LCM_LOOSELY_PS_20BIT_YUV422:
+				bit_per_pixel = 24;
+				break;
+			case LCM_PACKED_PS_16BIT_YUV422:
+				bit_per_pixel = 16;
+				break;
+			case LCM_PACKED_PS_12BIT_YUV420:
+				bit_per_pixel = 12;
+				break;
+			default:
+				break;
+			}
+		}
+
 		pixel_clock = dsi->vm.pixelclock * 1000;
 		htotal = dsi->vm.hactive + dsi->vm.hback_porch +
 			dsi->vm.hfront_porch + dsi->vm.hsync_len;
@@ -2469,6 +2492,28 @@ static unsigned int mtk_get_dsi_buf_bpp(struct mtk_dsi *dsi)
 			default:
 				break;
 			}
+		if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+			switch (dsi->ext->params->ext_pix_mode) {
+			case LCM_PACKED_PS_30BIT_RGB101010:
+				dsi_buf_bpp = 4;
+				break;
+			case LCM_PACKED_PS_20BIT_YUV422:
+				dsi_buf_bpp = 3;
+				break;
+			case LCM_LOOSELY_PS_20BIT_YUV422:
+				dsi_buf_bpp = 3;
+				break;
+			case LCM_PACKED_PS_16BIT_YUV422:
+				dsi_buf_bpp = 2;
+				break;
+			case LCM_PACKED_PS_12BIT_YUV420:
+				dsi_buf_bpp = 2;
+				break;
+			default:
+				break;
+			}
+		}
 		}
 	} else if (dsc_params && dsc_params->enable != 0) {
 		dsi_buf_bpp = 3;
@@ -2548,6 +2593,39 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			SET_VAL_MASK(value, mask, spr_params->rg_xy_swap, RG_XY_SWAP);
 			SET_VAL_MASK(value, mask, spr_params->custom_header_en, CUSTOM_HEADER_EN);
 			SET_VAL_MASK(value, mask, spr_params->custom_header, CUSTOM_HEADER);
+		} else if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode){
+			switch (dsi->ext->params->ext_pix_mode) {
+			case LCM_PACKED_PS_30BIT_RGB101010:
+				value = DSI_DCS_30BIT_FORMAT;
+				mask = DSI_DCS_30BIT_FORMAT;
+				SET_VAL_MASK(value, mask, 4, DSI_PS_SEL);
+				ps_wc = width * 30 / 8;
+				break;
+			case LCM_PACKED_PS_20BIT_YUV422:
+				value = DSI_DCS_30BIT_FORMAT;
+				mask = DSI_DCS_30BIT_FORMAT;
+				SET_VAL_MASK(value, mask, 6, DSI_PS_SEL);
+				ps_wc = width * 20 / 8;
+				break;
+			case LCM_PACKED_PS_16BIT_YUV422:
+				SET_VAL_MASK(value, mask, 13, DSI_PS_SEL);
+				ps_wc = width * 2;
+				break;
+			case LCM_LOOSELY_PS_20BIT_YUV422:
+				value = DSI_DCS_30BIT_FORMAT;
+				mask = DSI_DCS_30BIT_FORMAT;
+				SET_VAL_MASK(value, mask, 14, DSI_PS_SEL);
+				ps_wc = width * 3;
+				break;
+			case LCM_PACKED_PS_12BIT_YUV420:
+				SET_VAL_MASK(value, mask, 15, DSI_PS_SEL);
+				ps_wc = width * 3 / 2;
+				break;
+			default:
+				break;
+			}
+			SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
 		} else {
 			switch (dsi->format) {
 			case MIPI_DSI_FMT_RGB888:
@@ -3078,6 +3156,29 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			break;
 		case MTK_PANEL_PACKED_SPR_12_BITS:
 			dsi_tmp_buf_bpp = 3;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			dsi_tmp_buf_bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			dsi_tmp_buf_bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			dsi_tmp_buf_bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			dsi_tmp_buf_bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			dsi_tmp_buf_bpp = 2;
 			break;
 		default:
 			break;
@@ -6189,6 +6290,28 @@ static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
 		case MIPI_DSI_FMT_RGB888:
 		default:
 			mtk_crtc->bpc = 8;
+			break;
+		}
+	}
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			mtk_crtc->bpc = 10;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			mtk_crtc->bpc = 10;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			mtk_crtc->bpc = 10;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			mtk_crtc->bpc = 8;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			mtk_crtc->bpc = 4;
+			break;
+		default:
 			break;
 		}
 	}
@@ -10983,6 +11106,29 @@ void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,
 	struct mtk_ddp_comp *comp = dsi->is_slave ?
 		(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
 
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			bpp = 2;
+			break;
+		default:
+			break;
+		}
+	}
+
 	mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
 	if (mode == NULL) {
 		DDPPR_ERR("%s display_mode is NULL\n", __func__);
@@ -11100,6 +11246,29 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	if (!dsi->driver_data) {
 		pr_info("%s: error! dsi->driver_data=NULL! return!\n", __func__);
 		return;
+	}
+
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			bpp = 2;
+			break;
+		default:
+			break;
+		}
 	}
 
 	bubble_rate = dsi->driver_data->bubble_rate ?
@@ -11399,6 +11568,28 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 					to_info.right_in_width);
 
 	dsi->ext = find_panel_ext(dsi->panel);
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			bpp = 2;
+			break;
+		default:
+			break;
+		}
+	}
 	if (dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
 
@@ -11506,6 +11697,28 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
 					to_info.is_support, to_info.left_in_width,
 					to_info.right_in_width);
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			bpp = 2;
+			break;
+		default:
+			break;
+		}
+	}
 
 	if (dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
@@ -13707,6 +13920,28 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				*bpc = 8;
 				break;
 			}
+			if (dsi && dsi->ext &&
+					dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+				switch (dsi->ext->params->ext_pix_mode) {
+				case LCM_PACKED_PS_30BIT_RGB101010:
+					*bpc = 10;
+					break;
+				case LCM_PACKED_PS_20BIT_YUV422:
+					*bpc = 10;
+					break;
+				case LCM_LOOSELY_PS_20BIT_YUV422:
+					*bpc = 10;
+					break;
+				case LCM_PACKED_PS_16BIT_YUV422:
+					*bpc = 8;
+					break;
+				case LCM_PACKED_PS_12BIT_YUV420:
+					*bpc = 4;
+					break;
+				default:
+					break;
+				}
+			}
 		}
 	}
 		break;
@@ -14975,7 +15210,28 @@ int fbconfig_mtk_dsi_get_bpp(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 	int bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
-
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			bpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			bpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			bpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			bpp = 2;
+			break;
+		default:
+			break;
+		}
+	}
 	DDPINFO("%s, format:%d, bpp:%d\n", __func__, dsi->format, bpp);
 	return bpp;
 }
@@ -15020,7 +15276,28 @@ u32 PanelMaster_get_dsi_timing(struct mtk_dsi *dsi, enum MIPI_SETTING_TYPE type)
 			break;
 		}
 	}
-
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			fbconfig_dsiTmpBufBpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			fbconfig_dsiTmpBufBpp = 2;
+			break;
+		default:
+			break;
+		}
+	}
 	vid_mode = pm_mtk_dsi_get_mode_type(dsi);
 
 
@@ -15224,6 +15501,28 @@ int PanelMaster_DSI_set_timing(struct mtk_dsi *dsi, struct MIPI_TIMING timing)
 			break;
 		case MTK_PANEL_PACKED_SPR_12_BITS:
 			fbconfig_dsiTmpBufBpp = 3;
+			break;
+		default:
+			break;
+		}
+	}
+	if (dsi && dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		switch (dsi->ext->params->ext_pix_mode) {
+		case LCM_PACKED_PS_30BIT_RGB101010:
+			fbconfig_dsiTmpBufBpp = 4;
+			break;
+		case LCM_PACKED_PS_20BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 3;
+			break;
+		case LCM_LOOSELY_PS_20BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 3;
+			break;
+		case LCM_PACKED_PS_16BIT_YUV422:
+			fbconfig_dsiTmpBufBpp = 2;
+			break;
+		case LCM_PACKED_PS_12BIT_YUV420:
+			fbconfig_dsiTmpBufBpp = 2;
 			break;
 		default:
 			break;
