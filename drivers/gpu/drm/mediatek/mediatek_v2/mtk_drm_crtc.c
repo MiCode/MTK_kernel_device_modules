@@ -13054,6 +13054,10 @@ int mtk_drm_crtc_usage_enable(struct mtk_drm_private *priv,
 	unsigned int i, main_disp_idx = 0xFFFFFFFF;
 	unsigned int occupied_ovl = 0;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	return DISP_ENABLE;
+#endif
+
 	if (unlikely(crtc_id >= MAX_CRTC)) {
 		DDPPR_ERR("%s invalid crtc_id %u\n", __func__, crtc_id);
 		return DISP_ENABLE;

@@ -2996,6 +2996,29 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 	return DDP_COMPONENT_OVL2_2L;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
+	struct drm_device *drm_dev, int fun_lye)
+{
+	struct mtk_drm_private *priv = drm_dev->dev_private;
+	struct drm_crtc *crtc = priv->crtc[disp_idx];
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	int first_exdma_comp = mtk_crtc->first_exdma->id;
+	int exdma_comp = 0;
+
+	if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
+		exdma_comp = first_exdma_comp + layer_idx - fun_lye;
+	else
+		exdma_comp = first_exdma_comp + layer_idx
+					- DISP_EXDMA_LAYER_LIMIT - fun_lye;
+
+	DDPINFO("%s, %d, disp_id:%d, fun_lye:%d, exdma_comp:%s\n",
+		__func__, __LINE__, disp_idx, fun_lye,
+		mtk_dump_comp_str_id(exdma_comp));
+
+	return exdma_comp;
+}
+#else
 static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int fun_lye)
 {
@@ -3113,6 +3136,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL_EXDMA3;
 }
+#endif
 
 static int mtk_lye_get_lye_id(int disp_idx, int disp_list, struct drm_device *drm_dev,
 			      int layer_map_idx)
