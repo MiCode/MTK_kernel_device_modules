@@ -11934,7 +11934,10 @@ SKIP_OVLSYS_CONFIG:
 		DDPINFO("CRTC %d available BW:%x OVL usage:%x\n", i,
 				private->pre_defined_bw[i], private->ovl_usage[i]);
 	}
-
+	ret = of_property_read_u32(dev->of_node, "no_hwc_layers", &private->no_hwc_layers);
+	ret = of_property_read_u32(dev->of_node, "no_hwc_overlap", &private->no_hwc_overlap);
+	DDPINFO("no_hwc_layers %d,no_hwc_overlap %d\n", private->no_hwc_layers,
+				private->no_hwc_overlap);
 	mtk_fence_init();
 
 #if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)

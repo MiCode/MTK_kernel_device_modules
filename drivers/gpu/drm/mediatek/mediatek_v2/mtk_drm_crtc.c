@@ -7415,7 +7415,17 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 #else
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
 #endif
-		mtk_crtc->usage_ovl_fmt[0] = 4;
+		int layers_i;
+		//no_hwc_layers & no_hwc_overlap for customer modify in dts
+		if(mtk_drm->no_hwc_layers) {
+			for (layers_i = 0; layers_i < mtk_drm->no_hwc_layers; layers_i++)
+				mtk_crtc->usage_ovl_fmt[layers_i] = 4;
+		} else
+			mtk_crtc->usage_ovl_fmt[0] = 4;
+
+		if (mtk_drm->no_hwc_overlap)
+			pan_disp_frame_weight = pan_disp_frame_weight * mtk_drm->no_hwc_overlap;
+
 		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
 			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%llu->%llu\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
