@@ -16,9 +16,9 @@ struct ch_reg {
 };
 
 struct pmif {
-	void __iomem	*pmif_base[2];
+	void __iomem	*pmif_base[3];
 	const u32	*regs;
-	void __iomem	*spmimst_base[2];
+	void __iomem	*spmimst_base[3];
 	const u32	*spmimst_regs;
 	const u32	*dbgregs;
 	const u32	*busdbgregs;
@@ -27,6 +27,7 @@ struct pmif {
 	int     mstid;
 	int     pmifid;
 	int		irq;
+	int		irq_m2;
 	int		irq_p;
 	int		grpid;
 	raw_spinlock_t	lock_m;
@@ -48,8 +49,10 @@ struct pmif {
 	struct clk *vlp_spmimst_p_clk_mux;
 	struct irq_domain	*domain;
 	struct irq_chip		irq_chip;
+	struct irq_chip		irq_chip_m2;
 	struct irq_chip		irq_chip_p;
 	int			rcs_irq;
+	int			rcs_irq_m2;
 	int			rcs_irq_p;
 	struct mutex		rcs_m_irqlock;
 	struct mutex		rcs_p_irqlock;
@@ -62,10 +65,15 @@ struct pmif {
 	int (*write_cmd)(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			u16 addr, const u8 *buf, size_t len);
 	int spmi_nack_irq;
+	int spmi_m2_nack_irq;
 	int spmi_p_nack_irq;
 	u32 caps;
 	u32 swintf_err_idx[2];
 	u32 hwintf_err_idx[2];
+	u32 swintf_err_idx_m2[2];
+	u32 hwintf_err_idx_m2[2];
+	u32 swintf_err_idx_p[2];
+	u32 hwintf_err_idx_p[2];
 };
 
 struct spmi_dev {
@@ -113,7 +121,7 @@ extern void spmi_dump_pmic_acc_vio_reg(void);
 extern void spmi_dump_pmif_busy_reg(void);
 extern void spmi_dump_pmif_swinf_reg(void);
 extern void spmi_dump_pmif_all_reg(void);
-extern void spmi_dump_pmif_record_reg(int irq_m, int irq_p);
+extern void spmi_dump_pmif_record_reg(int irq_0, int irq_1, int irq_2);
 /* spmi debug API declaration */
 extern void spmi_dump_spmimst_all_reg(void);
 /* pmic debug API declaration */
