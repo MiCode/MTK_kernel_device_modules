@@ -928,6 +928,10 @@ struct mtk_dp {
 	u32 vsv_vers;
 	bool swap_enable;
 	struct notifier_block nb;
+	struct device *genpd_dp_tx;
+	struct device *genpd_dp_phy;
+	struct device_link *genpd_dl_dp_tx;
+	struct device_link *genpd_dl_dp_phy;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
 	bool mst_enable;

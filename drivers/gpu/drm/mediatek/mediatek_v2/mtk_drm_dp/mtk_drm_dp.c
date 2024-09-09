@@ -32,6 +32,7 @@
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_domain.h>
 #include <linux/printk.h>
 #include <linux/regmap.h>
 #include <linux/refcount.h>
@@ -6812,6 +6813,41 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	}
 	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
 #endif
+
+	mtk_dp->genpd_dp_tx = dev_pm_domain_attach_by_name(dev, "pd_dp_tx");
+	if (IS_ERR_OR_NULL(mtk_dp->genpd_dp_tx)) {
+		ret = PTR_ERR(mtk_dp->genpd_dp_tx) ? : -ENODATA;
+		DP_MSG("failed to attach pd_dp_tx pm-domain: %d\n", ret);
+		return -ENODEV;
+	}
+
+	mtk_dp->genpd_dp_phy = dev_pm_domain_attach_by_name(dev, "pd_dp_phy");
+	if (IS_ERR_OR_NULL(mtk_dp->genpd_dp_phy)) {
+		ret = PTR_ERR(mtk_dp->genpd_dp_phy) ? : -ENODATA;
+		dev_pm_domain_detach(mtk_dp->genpd_dp_tx, false);
+		DP_MSG("failed to attach pd_dp_phy pm-domain: %d\n", ret);
+		return -ENODEV;
+	}
+
+	mtk_dp->genpd_dl_dp_tx = device_link_add(dev, mtk_dp->genpd_dp_tx,
+					DL_FLAG_PM_RUNTIME |
+					DL_FLAG_STATELESS);
+	if (!mtk_dp->genpd_dl_dp_tx) {
+		dev_pm_domain_detach(mtk_dp->genpd_dp_tx, false);
+		dev_pm_domain_detach(mtk_dp->genpd_dp_phy, false);
+		dev_info(dev, "failed to add usb genpd u2 link\n");
+		return -ENODEV;
+	}
+
+	mtk_dp->genpd_dl_dp_phy = device_link_add(dev, mtk_dp->genpd_dp_phy,
+					DL_FLAG_PM_RUNTIME |
+					DL_FLAG_STATELESS);
+	if (!mtk_dp->genpd_dl_dp_phy) {
+		dev_pm_domain_detach(mtk_dp->genpd_dp_tx, false);
+		dev_pm_domain_detach(mtk_dp->genpd_dp_phy, false);
+		dev_info(dev, "failed to add usb genpd u3 link\n");
+		return -ENODEV;
+	}
 
 	pm_runtime_enable(mtk_dp->dev);
 	pm_runtime_get_sync(mtk_dp->dev);
