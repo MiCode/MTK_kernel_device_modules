@@ -30,7 +30,10 @@
 	#define RGB_TO_FULL709 (0x1 << 4)
 	#define RGB_TO_BT601 (0x2 << 4)
 	#define RGB_TO_BT709 (0x3 << 4)
-
+#define DISP_REG_DISP_R2Y_DNSP_CFG 0x030
+	#define CFG_R2Y_DNSP_EN BIT(0)
+	#define CFG_R2Y_HDROP_EN BIT(1)
+	#define CFG_R2Y_HFILTER_SEL (0x2 << 4)
 #define DISP_REG_DISP_R2Y_DATA_CFG 0x034
 	#define DISP_R2Y_DATACONV_EN BIT(0)
 	#define YUV444 (0x0 << 4)
@@ -87,6 +90,20 @@ static void mtk_r2y_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DISP_R2Y_1TNP,
 			R2Y_SW_1T2P, R2Y_SW_1T2P);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_CT_CFG,
+			RGB_TO_BT709 | DISP_R2Y_CT_EN, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_DNSP_CFG,
+			CFG_R2Y_DNSP_EN | CFG_R2Y_HDROP_EN | CFG_R2Y_HFILTER_SEL,
+			CFG_R2Y_DNSP_EN | CFG_R2Y_HDROP_EN | CFG_R2Y_HFILTER_SEL);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_DATA_CFG,
+			YUV422 | DISP_R2Y_DATACONV_EN , YUV422 | DISP_R2Y_DATACONV_EN);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_RELAY,
+			0, DISP_R2Y_RELAY_MODE);
 }
 
 int mtk_r2y_analysis(struct mtk_ddp_comp *comp)
@@ -221,6 +238,7 @@ static int mtk_disp_r2y_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_disp_r2y_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6989-disp1-r2y",},
+	{.compatible = "mediatek,mt6991-disp1-r2y",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_r2y_driver_dt_match);
