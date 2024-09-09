@@ -135,6 +135,7 @@ static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
 static const struct scpsys_plat_ops *scpsys_ops;
 
 static void turn_onoff_infra(enum infra_onoff_enum on);
+static bool mtk_check_vcp_is_ready(struct scp_domain *scpd);
 static DEFINE_SPINLOCK(hwv_infra_lock);
 #define hwccf_lock(flags)   spin_lock_irqsave(&hwv_infra_lock, flags)
 #define hwccf_unlock(flags) spin_unlock_irqrestore(&hwv_infra_lock, flags)
@@ -616,6 +617,14 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE))
 		pd_start_time = jiffies_to_msecs(jiffies);
 
+	/* wait until vcp is ready, for HFRP base MTCMOS */
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+		if (ret < 0)
+			goto err_vcp_ready;
+	}
+
 	ret = scpsys_regulator_enable(scpd);
 	if (ret < 0)
 		goto err_regulator;
@@ -767,6 +776,8 @@ err_pwr_ack:
 	dev_err(scp->dev, "Failed to power on mtcmos %s(%d)\n", genpd->name, ret);
 err_lp_clk:
 	dev_err(scp->dev, "Failed to enable lp_clk %s(%d)\n", genpd->name, ret);
+err_vcp_ready:
+	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 err_clk:
 	val = scpsys_regulator_is_enabled(scpd);
 	dev_err(scp->dev, "Failed to enable clk %s(%d %d)\n", genpd->name, ret, val);
@@ -791,6 +802,14 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_OFF)) {
 		dev_err(scp->dev, "bypass power off %s for bringup\n", genpd->name);
 		return 0;
+	}
+
+	/* wait until vcp is ready, for HFRP base MTCMOS */
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+		if (ret < 0)
+			goto err_vcp_ready;
 	}
 
 	ret = scpsys_clk_enable(scpd->lp_clk, MAX_CLKS);
@@ -915,6 +934,8 @@ err_subsys_lp_clk:
 	scpsys_clk_disable(scpd->subsys_lp_clk, MAX_SUBSYS_CLKS);
 err_lp_clk:
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
+err_vcp_ready:
+	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 out:
 	val = scpsys_regulator_is_enabled(scpd);
 	dev_err(scp->dev, "Failed to power off domain %s(%d %d)\n", genpd->name, ret, val);
