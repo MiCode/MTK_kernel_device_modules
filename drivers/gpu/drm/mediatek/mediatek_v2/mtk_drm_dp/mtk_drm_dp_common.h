@@ -7,6 +7,7 @@
 #define __MTK_DRM_DP_COMMON_H__
 
 #define ATTACH_BRIDGE 1
+#define VIRTUAL_CONNECT 0
 
 #define DP_SUPPORT_MAX_LINKRATE	DP_LINK_RATE_HBR3
 #define DP_SUPPORT_MAX_LANECOUNT	DP_2LANE
@@ -100,6 +101,12 @@ enum dp_color_depth {
 	DP_COLOR_DEPTH_12BIT = 3,
 	DP_COLOR_DEPTH_16BIT = 4,
 	DP_COLOR_DEPTH_UNKNOWN = 5,
+};
+
+enum dp_out_mode {
+	DP_OUT_NONE = 0,
+	DP_OUT_SST = 1,
+	DP_OUT_MST  = 2,
 };
 
 enum dp_color_format {
@@ -409,6 +416,8 @@ struct mtk_dp_connector {
 
 	struct drm_display_mode mode;
 	struct edid *edid;
+	enum dp_out_mode out_mode;
+	bool assigned;
 };
 
 struct mtk_drm_dp_vcpi {
@@ -932,6 +941,8 @@ struct mtk_dp {
 	struct device *genpd_dp_phy;
 	struct device_link *genpd_dl_dp_tx;
 	struct device_link *genpd_dl_dp_phy;
+
+	bool virtual_connect;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
 	bool mst_enable;

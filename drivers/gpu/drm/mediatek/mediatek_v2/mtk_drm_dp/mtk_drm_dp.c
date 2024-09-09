@@ -72,6 +72,10 @@
 #include "mtk_drm_dp_mst_drv.h"
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#define DP_PATCH_NIO
+#endif
+
 #define YUV422_PRIORITY		0x0
 #define DEPTH_10BIT_PRIORITY		0x0
 
@@ -5063,7 +5067,13 @@ static int mtk_dp_vsvoter_parse(struct mtk_dp *mtk_dp, struct device_node *node)
 
 void mtk_dp_disconnect_release(struct mtk_dp *mtk_dp)
 {
+	int i;
 	enum dp_encoder_id encoder_id;
+
+	for (i = 0; i < ARRAY_SIZE(mtk_dp->mtk_connector); i++) {
+		if (mtk_dp->mtk_connector[i])
+			mtk_dp->mtk_connector[i]->out_mode = DP_OUT_NONE;
+	}
 
 	for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
 		mtk_dp_video_mute(mtk_dp, encoder_id, true);
@@ -5225,6 +5235,23 @@ static const struct drm_encoder_helper_funcs mtk_dp_encoder_helper_funcs = {
 	.atomic_check = mtk_dp_encoder_atomic_check,
 };
 
+static int mtk_dp_connector_index(struct mtk_dp *mtk_dp, struct mtk_dp_connector *mtk_connector)
+{
+	int i, index;
+
+	for (i = 0; i < ARRAY_SIZE(mtk_dp->mtk_connector); i++) {
+		if (mtk_dp->mtk_connector[i] == mtk_connector) {
+			index = i;
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(mtk_dp->mtk_connector))
+		index = -ENODEV;
+
+	return index;
+}
+
 static enum drm_connector_status mtk_dp_connector_detect
 	(struct drm_connector *connector, bool force)
 {
@@ -5237,7 +5264,7 @@ static enum drm_connector_status mtk_dp_connector_detect
 	mtk_dp = mtk_connector->mtk_dp;
 
 	if (!mtk_dp->training_info.cable_plug_in)
-		return ret;
+		goto end;
 
 	if (mtk_dp->training_info.dp_mst_cap) {
 		mtk_dp->is_mst_start = true;
@@ -5257,6 +5284,13 @@ static enum drm_connector_status mtk_dp_connector_detect
 	}
 
 	DP_MSG("detect, connector status:%d", ret);
+
+end:
+	DP_MSG("connector[%d], plug in:%d, mst:%d, out mode:%d, sink count:%d, detect:%d",
+	       mtk_dp_connector_index(mtk_dp, mtk_connector),
+		mtk_dp->training_info.cable_plug_in,
+		mtk_dp->mst_enable, mtk_connector->out_mode,
+		mtk_dp->training_info.sink_count, ret);
 	return ret;
 }
 
@@ -5572,6 +5606,114 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 	}
 }
 
+#ifdef DP_PATCH_NIO
+struct mtk_dp_connector *mtk_dp_create_connector(struct mtk_dp *mtk_dp, enum dp_out_mode out_mode)
+{
+	u32 i;
+	int ret;
+	int con_index;
+	int bridge_index;
+	struct drm_property *prop;
+	struct drm_bridge *bridge;
+	struct mtk_dp_connector *mtk_connector;
+
+	for (i = 0; i < ARRAY_SIZE(mtk_dp->mtk_connector); i++) {
+		if (mtk_dp->mtk_connector[i] &&
+		    mtk_dp->mtk_connector[i]->assigned && mtk_dp->mtk_connector[i] &&
+			mtk_dp->mtk_connector[i]->out_mode == out_mode)
+			continue;
+
+		if (mtk_dp->mtk_connector[i] && mtk_dp->mtk_connector[i]->out_mode == out_mode) {
+			DP_MSG("use existed mtk connector[%d] with %d mode\n", i, out_mode);
+			mtk_dp->mtk_connector[i]->assigned = true;
+			return mtk_dp->mtk_connector[i];
+		}
+
+		if (mtk_dp->mtk_connector[i] && mtk_dp->mtk_connector[i]->out_mode != out_mode) {
+			DP_MSG("use existed mtk connector[%d], change to %d mode\n", i, out_mode);
+			mtk_dp->mtk_connector[i]->out_mode = out_mode;
+			mtk_dp->mtk_connector[i]->assigned = true;
+			return mtk_dp->mtk_connector[i];
+		}
+
+		if (!mtk_dp->mtk_connector[i]) {
+			con_index = i;
+			bridge_index = con_index;
+			break;
+		}
+	}
+
+	if (i == ARRAY_SIZE(mtk_dp->mtk_connector)) {
+		DP_MSG("can not find available mtk_connector");
+		return NULL;
+	}
+
+	bridge = devm_drm_of_get_bridge(mtk_dp->dev, mtk_dp->dev->of_node, bridge_index, 0);
+	if (IS_ERR(bridge)) {
+		DP_MSG("can not find bridge[%d, %d]", bridge_index, 0);
+		return NULL;
+	}
+	if (!bridge->encoder) {
+		DP_MSG("bridge have no encoder[%d, %d]", bridge_index, 0);
+		return NULL;
+	}
+	DP_MSG("found dp_intf[%d] bridge node:%pOF\n", bridge_index, bridge->of_node);
+
+	mtk_connector = kzalloc(sizeof(*mtk_connector), GFP_KERNEL);
+	if (!mtk_connector) {
+		DP_ERR("fail to kzalloc!\n");
+		return NULL;
+	}
+
+	mtk_connector->mtk_dp = mtk_dp;
+
+	ret = drm_connector_init(bridge->dev, &mtk_connector->connector,
+				 &mtk_dp_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
+	if (ret) {
+		DP_MSG("failed to init connector:%d\n", ret);
+		kfree(mtk_connector);
+		return NULL;
+	}
+
+	drm_display_info_set_bus_formats(&mtk_connector->connector.display_info,
+					 mt8678_output_fmts,
+					 ARRAY_SIZE(mt8678_output_fmts));
+
+	drm_connector_helper_add(&mtk_connector->connector,
+				 &mtk_dp_connector_helper_funcs);
+	mtk_connector->connector.polled = DRM_CONNECTOR_POLL_HPD;
+
+	ret = drm_connector_attach_encoder(&mtk_connector->connector, bridge->encoder);
+	if (ret) {
+		DP_MSG("Failed to attach encoder:%d\n", ret);
+		kfree(mtk_connector);
+		return NULL;
+	}
+
+	mtk_connector->encoder = bridge->encoder;
+	mtk_connector->connector.encoder = bridge->encoder;
+
+	if (mtk_connector->connector.funcs->reset)
+		mtk_connector->connector.funcs->reset(&mtk_connector->connector);
+
+	ret = drm_connector_register(&mtk_connector->connector);
+	if (ret) {
+		DP_MSG("Failed to register connector:%d\n", ret);
+		kfree(mtk_connector);
+		return NULL;
+	}
+
+	drm_encoder_helper_add(bridge->encoder, &mtk_dp_encoder_helper_funcs);
+
+	mtk_dp->mtk_connector[con_index] = mtk_connector;
+	mtk_dp->mtk_connector[con_index]->out_mode = out_mode;
+	mtk_dp->mtk_connector[con_index]->assigned = true;
+	DP_MSG("create mtk connector[%d] with %d mode\n", con_index, out_mode);
+
+	return mtk_dp->mtk_connector[con_index];
+}
+#endif
+
 static struct mtk_dp *mtk_dp_from_bridge(struct drm_bridge *b)
 {
 	return container_of(b, struct mtk_dp, bridge);
@@ -5608,6 +5750,9 @@ static int mtk_dp_bridge_attach(struct drm_bridge *bridge,
 
 	if (bridge)
 		mtk_dp->drm_dev = bridge->dev;
+#ifdef DP_PATCH_NIO
+	mtk_dp_create_connector(mtk_dp, DP_OUT_NONE);
+#endif
 
 	mtk_dp_init_port(mtk_dp);
 	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
@@ -5714,16 +5859,23 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 			if (!mst_cap) {
 				DP_MSG("support SST\n");
 				mtk_dp->training_info.dp_mst_cap = false;
+#ifdef DP_PATCH_NIO
+				mtk_dp_create_connector(mtk_dp, DP_OUT_SST);
+				DP_MSG("support MST\n");
+#endif
 			} else {
 				DP_MSG("support MST\n");
 				mtk_dp->training_info.dp_mst_cap = true;
 				mtk_dp->mst_enable = true;
 			}
-
+#ifdef DP_PATCH_NIO
+#else
 			mtk_dp_connect_attach_encoder(mtk_dp);
+#endif
 		} else {
 			DP_MSG("HPD_DISCON\n");
 			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
+				mtk_dp->mtk_connector[encoder_id]->assigned = false;
 				mtk_dp_video_mute(mtk_dp, encoder_id, true);
 				mtk_dp_audio_mute(mtk_dp, encoder_id, true);
 			}
@@ -6768,7 +6920,7 @@ static int mtk_drm_dp_notifier(struct notifier_block *notifier,
 	struct mtk_dp *mtk_dp = container_of(notifier, struct mtk_dp, nb);
 	struct device *dev = mtk_dp->dev;
 
-	pr_info("%s pm_event %d dev %s usage_count %d nb priority %d\n",
+	pr_info("%s pm_event %lu dev %s usage_count %d nb priority %d\n",
 		__func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count),
 	       notifier->priority);
 
