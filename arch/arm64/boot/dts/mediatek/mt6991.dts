@@ -2079,6 +2079,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					,prefetch_enable,pass_throttle,timer_diff_ms";
 			node-33 = "MCUPM_CPUCOOLER_limiter",
 					"L_limiter,M_limiter,B_limiter";
+			node-34 = "MCUPM_turbo",
+					"enable_turbo";
 		};
 
 		sspm_rts_header: sspm-rts-header {
