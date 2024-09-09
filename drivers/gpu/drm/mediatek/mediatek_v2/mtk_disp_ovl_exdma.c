@@ -4109,7 +4109,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 		comp->last_qos_bw = comp->qos_bw;
-		if (!force_update) {
+		if (!force_update && update_pending) {
 			mtk_crtc->total_srt += comp->qos_bw;
 			if (channel_id < 4)
 				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
