@@ -286,6 +286,8 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_pq_comp_config_result *result = NULL;
+	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_pq_reg *regs = NULL;
 	u32 *c3d_lut = NULL;
 	u32 gpr = c3d->data->gpr[ccfg->pipe];
@@ -331,9 +333,8 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 			base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_0], addr, U32_MAX);
 		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
 			base_pa + c3d->data->reg_table[C3D_SRAM_STATUS], (0x1 << 16), gpr);
-		cmdq_pkt_write(pkt, NULL,
-				base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1], c3d_lut[i],
-				U32_MAX);
+		mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
+			c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->labels[i]);
 	}
 
 	mml_pq_msg("%s:config c3d regs, count: %d", __func__, result->c3d_reg_cnt);
@@ -389,7 +390,12 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_pq_comp_config_result *result = NULL;
+	struct c3d_frame_data *c3d_frm = c3d_frm_data(ccfg);
+	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
+	u32 *c3d_lut = NULL;
+	u32 i=0;
 	s32 ret = 0;
+
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	if (!dest->pq_config.en_c3d)
@@ -412,6 +418,10 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			goto exit;
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
+
+	c3d_lut = result->c3d_lut;
+	for (i = 0 ; i < C3D_LUT_NUM; i++)
+		mml_update(comp->id, reuse, c3d_frm->labels[i], c3d_lut[i]);
 
 	mml_pq_msg("%s: success ", __func__);
 exit:
