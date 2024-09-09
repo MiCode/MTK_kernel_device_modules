@@ -1217,14 +1217,11 @@
 				ccipll {
 					fh-id = <3>;
 				};
-				gpupll {
+				mfgpll {
 					fh-id = <4>;
 				};
 				mpll {
 					fh-id = <5>;
-				};
-				mempll {
-					fh-id = <6>;
 				};
 				mainpll {
 					fh-id = <7>;
@@ -1232,11 +1229,14 @@
 				msdcpll {
 					fh-id = <8>;
 				};
-				adsppll {
+				mmpll {
 					fh-id = <9>;
 				};
-				tvdpll {
+				adsppll {
 					fh-id = <10>;
+				};
+				tvdpll {
+					fh-id = <11>;
 				};
 			};
 	};
