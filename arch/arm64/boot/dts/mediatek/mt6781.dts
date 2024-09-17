@@ -747,11 +747,11 @@
 
 				/* ufs reset */
 				0x130 15 0x134 15 0 0
-				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 0: ufshci */
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 2: ufshci */
 				0x140  7 0x144  7 0 0
-				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 1: unipro */
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 3: unipro */
 				0x150 21 0x154 21 0 0
-				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 2: ufs-crypto */
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 4: ufs-crypto */
 				>;
 		};
 	};
@@ -4665,8 +4665,8 @@
 
 		vcc-supply = <&mt_pmic_vemc_ldo_reg>;
 
-		resets = <&infracfg_rst 0>, <&infracfg_rst 1>,
-				 <&infracfg_rst 2>;
+		resets = <&infracfg_rst 2>, <&infracfg_rst 3>,
+				 <&infracfg_rst 4>;
 		reset-names = "hci_rst", "unipro_rst", "crypto_rst";
 
 		/* Reference clock control mode */
