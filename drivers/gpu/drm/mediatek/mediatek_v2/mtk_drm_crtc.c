@@ -11093,15 +11093,7 @@ skip_prete:
 			}
 		}
 	}
-
-	lop.reg = true;
-	lop.idx = CMDQ_CPR_MML_TRIG;
-	rop.reg = false;
-	rop.value = 1;
-	GCE_IF(lop, R_CMDQ_EQUAL, rop);
 	GCE_DO(set_event, EVENT_MML_DISP_DONE_EVENT);
-	GCE_FI;
-
 	cmdq_pkt_finalize_loop(cmdq_handle);
 	ret = cmdq_pkt_flush_async(cmdq_handle, trig_done_cb, (void *)crtc_id);
 

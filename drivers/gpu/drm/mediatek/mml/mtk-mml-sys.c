@@ -2226,13 +2226,8 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 dl_wait(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 idx)
 {
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
-		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-
-		cmdq_pkt_assign_command(pkt, CMDQ_CPR_MML_TRIG, 1);
-		cmdq_pkt_wfe(pkt, task->config->info.disp_done_event);
-		cmdq_pkt_assign_command(pkt, CMDQ_CPR_MML_TRIG, 0);
-	}
+	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
+		cmdq_pkt_wfe(task->pkts[ccfg->pipe], task->config->info.disp_done_event);
 
 	return 0;
 }
