@@ -1181,6 +1181,7 @@ static s32 mdp_enable_larb(bool enable, struct device *larb)
 
 			if (ret < 0) {
 				CMDQ_ERR("%s enable larb fail ret:%d\n", __func__, ret);
+				atomic_dec_return(&mdp_smi_clk_usage);
 				return TASK_STATE_ERROR;
 			}
 			CMDQ_LOG_CLOCK("%s enable, mdp_smi_clk_usage:%d\n",
@@ -1195,6 +1196,7 @@ static s32 mdp_enable_larb(bool enable, struct device *larb)
 
 			if (ret < 0) {
 				CMDQ_ERR("%s disable larb fail ret:%d\n", __func__, ret);
+				atomic_inc_return(&mdp_smi_clk_usage);
 				return TASK_STATE_ERROR;
 			}
 		}
