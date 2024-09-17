@@ -16384,6 +16384,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		oc-limit-freq-lv2 = < 900000 900000 900000>;
 
 		soc-max-level = <1>;
+		soc-core-active-lv1 = < 1 1 1 1 1 1 1 1 >;
 		soc-limit-freq-lv1 = < 2147483647 2147483647 2147483647>;
 	};
 
