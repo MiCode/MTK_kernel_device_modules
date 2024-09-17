@@ -2765,6 +2765,7 @@ cpus {
 			wakeup-source;
 			cdp-block;
 			usb3-u1gou2-disable;
+			usb3-lpm-disable;
 
 			usb_host: xhci0@11200000 {
 				compatible = "mediatek,mtk-xhci";
@@ -3183,6 +3184,7 @@ cpus {
 				mediatek,eye-vrt-host = <6>; /* 0~7 */
 				mediatek,eye-term-host = <6>; /* 0~7 */
 				mediatek,rev6-host = <1>; /* 0~3 */
+				mediatek,disc-host = <7>; /* 0~8 */
 				nvmem-cells = <&u2_phy_data>;
 				nvmem-cell-names = "intr_cal";
 				nvmem-cell-masks = <0x1f>;

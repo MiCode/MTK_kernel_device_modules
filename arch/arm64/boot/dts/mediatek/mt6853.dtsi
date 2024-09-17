@@ -2383,6 +2383,7 @@
 			mediatek,gen2cp-unsupported;
 			mediatek,smc-req;
 			usb3-u1gou2-disable;
+			usb3-lpm-disable;
 
 			usb_host: xhci0@11200000 {
 				compatible = "mediatek,mtk-xhci";
