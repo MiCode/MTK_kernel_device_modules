@@ -11742,7 +11742,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 		}
 	}
 
-	if (dsi->ext->params->dsc_params.enable)
+	if ((dsi->ext != NULL) && (dsi->ext->params != NULL)
+		&& dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
 
 	if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_get) {
@@ -15465,7 +15466,8 @@ u32 PanelMaster_get_dsi_timing(struct mtk_dsi *dsi, enum MIPI_SETTING_TYPE type)
 	}
 	case MIPI_SSC_EN:
 	{
-		if (dsi->ext->params->ssc_enable)
+		if ((dsi->ext != NULL) && (dsi->ext->params != NULL)
+			&& dsi->ext->params->ssc_enable)
 			dsi_val = 1;
 		else
 			dsi_val = 0;
@@ -15485,7 +15487,8 @@ u32 DSI_ssc_enable(struct mtk_dsi *dsi, u32 en)
 {
 	u32 enable = en ? 1 : 0;
 
-	dsi->ext->params->ssc_enable = enable;
+	if ((dsi->ext != NULL) && (dsi->ext->params != NULL))
+		dsi->ext->params->ssc_enable = enable;
 
 	return 0;
 }
