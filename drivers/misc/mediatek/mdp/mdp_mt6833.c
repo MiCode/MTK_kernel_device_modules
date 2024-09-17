@@ -602,22 +602,22 @@ void cmdq_mdp_init_module_base_VA(void)
 	memset(&gCmdqMdpModuleBaseVA, 0, sizeof(struct CmdqMdpModuleBaseVA));
 
 	gCmdqMdpModuleBaseVA.MDP_RDMA0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-rdma0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_rdma0");
 	gCmdqMdpModuleBaseVA.MDP_RSZ0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_rsz0");
 	gCmdqMdpModuleBaseVA.MDP_RSZ1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz1");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_rsz1");
 	gCmdqMdpModuleBaseVA.MDP_WROT0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_wrot0");
 	gCmdqMdpModuleBaseVA.MDP_WROT1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot1");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_wrot1");
 	gCmdqMdpModuleBaseVA.MDP_TDSHP0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-tdshp0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp_tdshp0");
 	gCmdqMdpModuleBaseVA.MDP_AAL0 =
-		cmdq_dev_alloc_reference_by_name("mdp-aal0",
+		cmdq_dev_alloc_reference_by_name("mdp_aal0",
 		&mdp_module_pa.aal0);
 	gCmdqMdpModuleBaseVA.MDP_HDR0 =
-		cmdq_dev_alloc_reference_by_name("mdp-hdr0",
+		cmdq_dev_alloc_reference_by_name("mdp_hdr0",
 		&mdp_module_pa.hdr0);
 	gCmdqMdpModuleBaseVA.VENC =
 		cmdq_dev_alloc_reference_VA_by_name("venc");
@@ -767,21 +767,21 @@ void cmdq_mdp_init_module_clk(void)
 	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG_DL_RELAY1_ASYNC1",
 		&gCmdqMdpModuleClock.clk_IMG0_IMG_DL_RELAY1_ASYNC1);
-	cmdq_dev_get_module_clock_by_name("mdp-rdma0", "MDP_RDMA0",
+	cmdq_dev_get_module_clock_by_name("mdp_rdma0", "MDP_RDMA0",
 		&gCmdqMdpModuleClock.clk_MDP_RDMA0);
-	cmdq_dev_get_module_clock_by_name("mdp-rsz0", "MDP_RSZ0",
+	cmdq_dev_get_module_clock_by_name("mdp_rsz0", "MDP_RSZ0",
 		&gCmdqMdpModuleClock.clk_MDP_RSZ0);
-	cmdq_dev_get_module_clock_by_name("mdp-rsz1", "MDP_RSZ1",
+	cmdq_dev_get_module_clock_by_name("mdp_rsz1", "MDP_RSZ1",
 		&gCmdqMdpModuleClock.clk_MDP_RSZ1);
-	cmdq_dev_get_module_clock_by_name("mdp-wrot0", "MDP_WROT0",
+	cmdq_dev_get_module_clock_by_name("mdp_wrot0", "MDP_WROT0",
 		&gCmdqMdpModuleClock.clk_MDP_WROT0);
-	cmdq_dev_get_module_clock_by_name("mdp_-wrot1", "MDP_WROT1",
+	cmdq_dev_get_module_clock_by_name("mdp_wrot1", "MDP_WROT1",
 		&gCmdqMdpModuleClock.clk_MDP_WROT1);
-	cmdq_dev_get_module_clock_by_name("mdp-tdshp0", "MDP_TDSHP0",
+	cmdq_dev_get_module_clock_by_name("mdp_tdshp0", "MDP_TDSHP0",
 		&gCmdqMdpModuleClock.clk_MDP_TDSHP0);
-	cmdq_dev_get_module_clock_by_name("mdp-aal0", "MDP_AAL0",
+	cmdq_dev_get_module_clock_by_name("mdp_aal0", "MDP_AAL0",
 		&gCmdqMdpModuleClock.clk_MDP_AAL0);
-	cmdq_dev_get_module_clock_by_name("mdp-hdr0", "MDP_HDR0",
+	cmdq_dev_get_module_clock_by_name("mdp_hdr0", "MDP_HDR0",
 		&gCmdqMdpModuleClock.clk_MDP_HDR0);
 
 }
