@@ -17353,15 +17353,15 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
-			3200 3000 2850
-			3300 3000 2850
-			3360 3000 2850
-			3470 3000 2850>;
+			3290 3210 3060
+			3360 3210 3060
+			3430 3210 3060
+			3540 3210 3060>;
 		bat0-thd-volts-h = <
-			3300 3200 3000
-			3400 3300 3000
-			3460 3360 3000
-			3570 3470 3000>;
+			3390 3290 3210
+			3460 3360 3210
+			3530 3430 3210
+			3640 3540 3210>;
 		bat1-thd-volts-l = <
 			3400 3100 2900
 			3400 3100 2900
@@ -17372,8 +17372,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
-		lvsys-thd-volt-l = <2850>;
-		lvsys-thd-volt-h = <3100>;
+		lvsys-thd-volt-l = <3060>;
+		lvsys-thd-volt-h = <3210>;
 		temperature-stage-threshold = <25 10 0>;
 
 		bat0-aging-threshold = <500 1000>;
