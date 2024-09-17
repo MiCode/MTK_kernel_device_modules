@@ -14584,6 +14584,7 @@ static const struct mtk_dsi_driver_data mt6899_dsi_driver_data = {
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
 	.urgent_hi_fifo_us = 15,
+	.support_bl_at_te = 1,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
