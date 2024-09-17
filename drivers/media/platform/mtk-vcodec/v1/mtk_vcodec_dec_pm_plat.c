@@ -699,6 +699,7 @@ void mtk_vdec_dvfs_set_vsi_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	vsi_data->is_active = ctx->is_active;
 	vsi_data->op_rate = ctx->dec_params.operating_rate;
 	vsi_data->op_rate_adaptive = ctx->op_rate_adaptive;
+	vsi_data->low_latency_hint = ctx->is_active ? ctx->dynamic_low_latency : 0;
 }
 
 void mtk_vdec_force_update_freq(struct mtk_vcodec_dev *dev)
