@@ -2171,7 +2171,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 			return 0;
 		}
 
-		CRTC_MMP_MARK(drm_crtc_index(crtc), mml_job_status, mtk_crtc->is_mml,
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), mml_job_status, mtk_crtc->is_mml,
 			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 		if (mtk_crtc->is_mml) {
