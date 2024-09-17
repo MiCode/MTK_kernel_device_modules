@@ -186,7 +186,7 @@ static struct eem_det *id_to_eem_det(enum eem_det_id id)
 static int get_devinfo(void)
 {
 	struct pi_efuse_index *p;
-	unsigned int n, tmp, idx;
+	unsigned int n, tmp, idx = NR_PI_SHARED_CTRL;
 	struct eem_det *det;
 	int ret = 0;
 	int i = 0;
