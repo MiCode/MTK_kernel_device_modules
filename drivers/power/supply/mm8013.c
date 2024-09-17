@@ -14,6 +14,7 @@
 #include <linux/i2c.h>
 #include <linux/slab.h>
 #include <asm/unaligned.h>
+#include <linux/delay.h>
 //#include "mtk_battery.h"
 
 #define DRIVER_VERSION			"1.0.0"
@@ -78,7 +79,7 @@ static int mm8013_read_reg(struct i2c_client *client, u8 reg)
 
 	if (ret < 0)
 		dev_info(&client->dev, "%s: err %d\n", __func__, ret);
-	msleep(20);
+	mdelay(20);
 
 	return ret;
 }
