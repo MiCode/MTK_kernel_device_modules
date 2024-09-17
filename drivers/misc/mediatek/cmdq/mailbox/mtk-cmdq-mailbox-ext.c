@@ -3288,22 +3288,37 @@ static void cmdq_config_hwmboxes(struct device *dev, struct cmdq *cmdq)
 	u16 idx;
 	struct resource res;
 	struct of_phandle_args args;
+	int ret;
 
 	if (!cmdq->support_hwmbox) {
 		cmdq_err("not support hwmbox");
 		return;
 	}
 
-	cmdq->hwmbox_page_num =
-		of_count_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells");
+	ret = of_count_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells");
+	if (ret < 0) {
+		cmdq_err("get hwmboxes-connect count fail err:%d", ret);
+		return;
+	}
+	cmdq->hwmbox_page_num = ret;
 
 	cmdq->hwmbox_page =
 		devm_kcalloc(dev, cmdq->hwmbox_page_num,
 			    sizeof(*cmdq->hwmbox_page), GFP_KERNEL);
 
+	if (!cmdq->hwmbox_page) {
+		cmdq_err("alloc hwmbox_page fail");
+		return;
+	}
+
 	/* parse phandle */
 	for (idx = 0; idx < cmdq->hwmbox_page_num; idx++) {
-		of_parse_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells", idx, &args);
+		ret = of_parse_phandle_with_args(dev->of_node, "hwmboxes-connect", "#page-cells", idx, &args);
+
+		if (ret < 0) {
+			cmdq_err("failed to hwmboxes-connect args err:%d", ret);
+			return;
+		}
 
 		cmdq->hwmbox_page[idx].mbox_num =
 			of_property_count_u16_elems(args.np, "hwmbox-id");
@@ -3329,7 +3344,11 @@ static void cmdq_config_hwmboxes(struct device *dev, struct cmdq *cmdq)
 				cmdq->hwmbox_page[idx].event_list,
 				cmdq->hwmbox_page[idx].mbox_num);
 
-		of_address_to_resource(args.np, 0, &res);
+		ret = of_address_to_resource(args.np, 0, &res);
+		if (ret < 0) {
+			cmdq_err("Failed to get resource err:%d", ret);
+			return;
+		}
 		cmdq->hwmbox_page[idx].pa = res.start;
 
 		of_node_put(args.np);
