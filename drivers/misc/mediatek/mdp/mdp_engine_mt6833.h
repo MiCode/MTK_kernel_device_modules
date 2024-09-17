@@ -65,6 +65,9 @@ enum CMDQ_ENG_ENUM {
 	CMDQ_ENG_MAX = CMDQ_MAX_ENGINE_COUNT   /* ALWAYS keep at the end */
 };
 
+#define CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS ((1LL << CMDQ_ENG_MDP_HDR0) | \
+				 (1LL << CMDQ_ENG_MDP_AAL0))
+
 #define MDP_ENG_LARB2 ((1LL << CMDQ_ENG_MDP_RDMA0) | \
 		       (1LL << CMDQ_ENG_MDP_WROT0) | \
 		       (1LL << CMDQ_ENG_MDP_WROT1))
