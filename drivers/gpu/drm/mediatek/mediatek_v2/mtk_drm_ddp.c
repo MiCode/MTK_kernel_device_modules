@@ -32405,20 +32405,26 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		}
 	}
 
+	ret = IRQ_HANDLED;
+
+out:
+	mtk_drm_top_clk_isr_put(&ddp->ddp_comp);
+
+	if (irq_time_index < IRQ_DEBUG_MAX) {
+		irq_time[irq_time_index].comp = NULL;
+		irq_time[irq_time_index].time = sched_clock();
+		irq_time_index++;
+	}
+
 	if (((sched_clock() - irq_time[0].time) > 4800000) &&
 			__ratelimit(&irq_ratelimit)) {
-		DDPMSG("%s > 850 us\n", __func__);
+		DDPMSG("%s > 4800 us\n", __func__);
 		for (i = 0; i < irq_time_index; i++) {
 			comp_name[0] = '\0';
 			mtk_ddp_comp_get_name(irq_time[i].comp, comp_name, sizeof(comp_name));
 			DDPMSG("comp:%s, clock_time:%llu\n", comp_name, irq_time[i].time);
 		}
 	}
-
-	ret = IRQ_HANDLED;
-
-out:
-	mtk_drm_top_clk_isr_put(&ddp->ddp_comp);
 
 	return ret;
 }
