@@ -4752,11 +4752,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
 			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_BW_VAL(phy_id));
-			if (port_bw != NO_PENDING_HRT && port_bw <= comp->last_hrt_bw) {
-				DDPQOS("%s/%u,layer:%u final down:%u slot:%u\n",
+			if (port_bw != NO_PENDING_HRT && port_bw >= comp->last_hrt_bw) {
+				DDPQOS("%s/%u,layer:%u final down, last:%u slot:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
 					comp->last_hrt_bw, port_bw);
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, comp->last_hrt_bw,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, port_bw,
 					priv->data->respective_ostdl);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
@@ -4770,11 +4770,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 			port_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_BW_VAL(phy_id + 1));
-			if (port_bw != NO_PENDING_HRT && port_bw <= comp->last_hrt_bw_other) {
-				DDPQOS("%s/%u,layer:%u final down:%u slot:%u\n",
+			if (port_bw != NO_PENDING_HRT && port_bw >= comp->last_hrt_bw_other) {
+				DDPQOS("%s/%u,layer:%u final down, last:%u slot:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, (unsigned int)(phy_id + 1U),
 					comp->last_hrt_bw_other, port_bw);
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, comp->last_hrt_bw_other,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, port_bw,
 					priv->data->respective_ostdl);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_BW_VAL(phy_id + 1)) =	NO_PENDING_HRT;
@@ -4784,11 +4784,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
 			hdr_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_HDR_BW_VAL(phy_id));
-			if (hdr_bw != NO_PENDING_HRT && hdr_bw <= comp->last_hdr_bw) {
-				DDPQOS("%s/%u,layer:%u hdr final down:%u slot:%u\n",
+			if (hdr_bw != NO_PENDING_HRT && hdr_bw >= comp->last_hdr_bw) {
+				DDPQOS("%s/%u,layer:%u hdr final down, last:%u slot:%u\n",
 					mtk_dump_comp_str_id(comp->id), comp->id, phy_id,
 					comp->last_hdr_bw, hdr_bw);
-				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, comp->last_hdr_bw,
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw,
 					priv->data->respective_ostdl);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_HDR_BW_VAL(phy_id)) = NO_PENDING_HRT;

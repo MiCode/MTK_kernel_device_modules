@@ -5835,8 +5835,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		/* DMR outstanding */
 		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_CUR_HRT_VAL_DMRR);
-		if (bw_val != NO_PENDING_HRT && bw_val <= oddmr_priv->last_hrt_dmrr) {
-			ODDMRLOW_LOG("dmrr bw_val slow down to %u\n", oddmr_priv->last_hrt_dmrr);
+		if (bw_val != NO_PENDING_HRT && bw_val >= oddmr_priv->last_hrt_dmrr) {
+			ODDMRLOW_LOG("dmrr bw_val final down to %u,last:%u\n", bw_val, oddmr_priv->last_hrt_dmrr);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
@@ -5846,8 +5846,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		/* DBI outstanding */
 		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_CUR_HRT_VAL_DBIR);
-		if (bw_val != NO_PENDING_HRT && bw_val <= oddmr_priv->last_hrt_dbir) {
-			ODDMRLOW_LOG("dbir bw_val slow down to %u\n", oddmr_priv->last_hrt_dbir);
+		if (bw_val != NO_PENDING_HRT && bw_val >= oddmr_priv->last_hrt_dbir) {
+			ODDMRLOW_LOG("dbir bw_val final down to %u,last:%u\n", bw_val, oddmr_priv->last_hrt_dbir);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
@@ -5857,8 +5857,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		/* OD outstanding */
 		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_CUR_HRT_VAL_ODRW);
-		if (bw_val != NO_PENDING_HRT && bw_val <= oddmr_priv->last_hrt_odrw) {
-			ODDMRLOW_LOG("odrw bw_val slow down to %u\n", oddmr_priv->last_hrt_odrw);
+		if (bw_val != NO_PENDING_HRT && bw_val >= oddmr_priv->last_hrt_odrw) {
+			ODDMRLOW_LOG("odrw bw_val final down to %u,last:%u\n", bw_val, oddmr_priv->last_hrt_odrw);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odw_hrt, comp->id, bw_val,

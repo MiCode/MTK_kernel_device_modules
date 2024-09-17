@@ -1161,11 +1161,12 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 			priv->req_hrt_channel_bw[crtc_idx][2],
 			priv->req_hrt_channel_bw[crtc_idx][3], force);
 
-	if (mtk_crtc->qos_ctx->last_channel_req[ch_idx] == ch_bw)
-		goto out;
-
-	DRM_MMP_MARK(channel_bw, ch_idx, ch_bw);
-	mtk_vidle_channel_bw_set(ch_bw, ch_idx);
+	/* update vdisp level at case1:fast up, case2:final down*/
+	if ((!force && mtk_crtc->qos_ctx->last_channel_req[ch_idx] < ch_bw) ||
+		(force && mtk_crtc->qos_ctx->last_channel_req[ch_idx] <= ch_bw)) {
+		DRM_MMP_MARK(channel_bw, ch_idx, ch_bw);
+		mtk_vidle_channel_bw_set(ch_bw, ch_idx);
+	}
 
 out:
 	return NO_PENDING_HRT;
