@@ -27,6 +27,8 @@
 #define CHECK_VCORE_FREQ	0
 #define TAG	"[clkchk] "
 
+static unsigned int suspend_cnt;
+
 /*
  * clkchk dump_regs
  */
@@ -553,6 +555,22 @@ static bool is_pll_chk_bug_on(void)
  * init functions
  */
 
+static bool is_suspend_retry_stop(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
 static struct clkchk_ops clkchk_mt6893_ops = {
 	.get_all_regnames = get_all_mt6893_regnames,
 	.get_spm_pwr_status_array = get_spm_pwr_status_array,
@@ -565,10 +583,12 @@ static struct clkchk_ops clkchk_mt6893_ops = {
 #if IS_ENABLED(CONFIG_MTK_DEVAPC)
 	.devapc_dump = devapc_dump,
 #endif
+	.is_suspend_retry_stop = is_suspend_retry_stop,
 };
 
 static int clk_chk_mt6893_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
 	init_regbase();
 	set_clkchk_notify();
 	set_clkchk_ops(&clkchk_mt6893_ops);
