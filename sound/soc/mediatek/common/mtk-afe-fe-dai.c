@@ -596,6 +596,7 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	struct mtk_base_afe_memif *memif = &afe->memif[cpu_dai->id];
 	int pid = current->pid;
 	int tid = current->tgid;
+	u32 reg = 0;
 
 	dev_info(afe->dev,
 		 "%s(), %s, use_adsp_share_mem %d, using_sram %d, use_dram_only %d, dma_addr %pad, dma_area %p, dma_bytes 0x%zx, vow_barge_in_enable %d, trigger close memif pid %d, tid %d, name %s and hw free pid %d, tid %d, name %s\n",
@@ -616,6 +617,17 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 
 	if (memif->err_close_order)
 		dump_stack();
+
+	/* To prevent the audio server from unexpectedly terminating and leaving
+	 * the memory interface open, ensure that the memory interface is
+	 * disabled before it is freed.
+	 */
+	regmap_read(afe->regmap, memif->data->enable_reg, &reg);
+	if (reg & BIT(memif->data->enable_shift)) {
+		dev_err(afe->dev, "%s: %s(%d) was not disabled before being freed",
+			__func__, memif->data->name, cpu_dai->id);
+		mtk_memif_set_disable(afe, cpu_dai->id);
+	}
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 	afe_pcm_ipi_to_dsp(AUDIO_DSP_TASK_PCM_HWFREE,
