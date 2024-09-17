@@ -16912,7 +16912,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		battery2-path-rac-t3 = <65>;
 		temperature-threshold = <25 10 0>;
 		system-ocp = <15000>;
-		system-uvlo = <2400>;
+		system-uvlo = <2610>;
 
 		bat0-aging-threshold = <500 1000>;
 		bat0-aging-multiples = <0 0>;
