@@ -801,6 +801,10 @@ static int mtk_i2c_clock_enable(struct mtk_i2c *i2c)
 {
 	int ret;
 
+	#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6765) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+		dev_info(i2c->dev,"Clock Enable Logs\n");
+	#endif
+
 	if (i2c->ch_offset_i2c == i2c->i2c_offset_ap)
 		i2c->clk_flag = 1;
 
@@ -842,6 +846,11 @@ err_main:
 
 static void mtk_i2c_clock_disable(struct mtk_i2c *i2c)
 {
+
+	#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6765) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
+		dev_info(i2c->dev,"Clock Disable Logs\n");
+	#endif
+
 	if (i2c->clk_arb)
 		clk_disable_unprepare(i2c->clk_arb);
 
