@@ -1667,8 +1667,8 @@ unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 			}
 		}
 
-		if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 			switch (dsi->ext->params->ext_pix_mode) {
 			case LCM_PACKED_PS_30BIT_RGB101010:
 				bit_per_pixel = 30;
@@ -2514,8 +2514,8 @@ static unsigned int mtk_get_dsi_buf_bpp(struct mtk_dsi *dsi)
 			default:
 				break;
 			}
-		if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+		if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 			switch (dsi->ext->params->ext_pix_mode) {
 			case LCM_PACKED_PS_30BIT_RGB101010:
 				dsi_buf_bpp = 4;
@@ -2615,8 +2615,8 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			SET_VAL_MASK(value, mask, spr_params->rg_xy_swap, RG_XY_SWAP);
 			SET_VAL_MASK(value, mask, spr_params->custom_header_en, CUSTOM_HEADER_EN);
 			SET_VAL_MASK(value, mask, spr_params->custom_header, CUSTOM_HEADER);
-		} else if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode){
+		} else if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN){
 			switch (dsi->ext->params->ext_pix_mode) {
 			case LCM_PACKED_PS_30BIT_RGB101010:
 				value = DSI_DCS_30BIT_FORMAT;
@@ -3184,8 +3184,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		}
 	}
 
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			dsi_tmp_buf_bpp = 4;
@@ -6317,7 +6316,7 @@ static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
 		}
 	}
 	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			mtk_crtc->bpc = 10;
@@ -11129,9 +11128,8 @@ void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,
 	struct mtk_ddp_comp *comp = dsi->is_slave ?
 		(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
 
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
-		switch (dsi->ext->params->ext_pix_mode) {
+	if (ext && ext->params && ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
+		switch (ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
 			break;
@@ -11271,8 +11269,8 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 		return;
 	}
 
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
@@ -11591,8 +11589,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 					to_info.right_in_width);
 
 	dsi->ext = find_panel_ext(dsi->panel);
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
@@ -11720,8 +11718,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
 					to_info.is_support, to_info.left_in_width,
 					to_info.right_in_width);
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
@@ -13943,8 +13940,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				*bpc = 8;
 				break;
 			}
-			if (dsi && dsi->ext &&
-					dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+			if (dsi->ext &&
+					dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 				switch (dsi->ext->params->ext_pix_mode) {
 				case LCM_PACKED_PS_30BIT_RGB101010:
 					*bpc = 10;
@@ -15233,8 +15230,8 @@ int fbconfig_mtk_dsi_get_bpp(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 	int bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
@@ -15299,8 +15296,8 @@ u32 PanelMaster_get_dsi_timing(struct mtk_dsi *dsi, enum MIPI_SETTING_TYPE type)
 			break;
 		}
 	}
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
+	if (dsi->ext &&
+			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			fbconfig_dsiTmpBufBpp = 4;
@@ -15529,9 +15526,8 @@ int PanelMaster_DSI_set_timing(struct mtk_dsi *dsi, struct MIPI_TIMING timing)
 			break;
 		}
 	}
-	if (dsi && dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode) {
-		switch (dsi->ext->params->ext_pix_mode) {
+	if (ext && ext->params && ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
+		switch (ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			fbconfig_dsiTmpBufBpp = 4;
 			break;
