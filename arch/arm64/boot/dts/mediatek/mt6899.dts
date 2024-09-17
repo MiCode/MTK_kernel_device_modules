@@ -5052,24 +5052,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				};
 			};
 		};
-		cpu-big-core6-0 {
+		cpu-medium-core6-0 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 9>;
 			trips {
-				cpu_big_core6_0_crit: cpu-big-core6-0-crit {
+				cpu_medium_core6_0_crit: cpu-medium-core6-0-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 			};
 		};
-		cpu-big-core6-1 {
+		cpu-medium-core6-1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
 			thermal-sensors = <&lvts 10>;
 			trips {
-				cpu_big_core6_1_crit: cpu-big-core6-1-crit {
+				cpu_medium_core6_1_crit: cpu-medium-core6-1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
 					type = "passive";
