@@ -537,6 +537,7 @@ struct vdec_vsi {
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 is_active;
+	__u32 low_latency_hint;
 	struct vdec_resource_info res_info;
 	struct vdec_bandwidth_info bandwidth_info;
 };
