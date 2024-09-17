@@ -25,47 +25,72 @@
 #define CLUSTER_NUM 3
 #define CORE_NUM 8
 #define NAME_LENGTH 32
-#define CPU_DOWN(i)	\
-	(get_cpu_device(i) == NULL ? false \
-	: remove_cpu(i))
-#define CPU_UP(i)	\
-	(get_cpu_device(i) == NULL ? false \
-	: add_cpu(i))
-#define cpu_is_offline(cpu)	unlikely(!cpu_online(cpu))
 
 struct cpu_pt_priv {
 	char max_lv_name[NAME_LENGTH];
 	char freq_limit_name[NAME_LENGTH];
-	char core_onoff_name[NAME_LENGTH];
+	char core_active_name[NAME_LENGTH];
 	u32 max_lv;
+	u32 cur_lv;
 	u32 *freq_limit;
-	u32 *core_onoff;
+	u32 *core_active;
+};
+
+struct cpu_pause_tbl {
+	int (*pause_func)(unsigned int cpu, bool is_pause);
 };
 
 static struct cpu_pt_priv cpu_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 	[LBAT_POWER_THROTTLING] = {
 		.max_lv_name = "lbat-max-level",
 		.freq_limit_name = "lbat-limit-freq-lv",
-		.core_onoff_name = "",
+		.core_active_name = "",
 		.max_lv = LOW_BATTERY_LEVEL_NUM - 1,
 	},
 	[OC_POWER_THROTTLING] = {
 		.max_lv_name = "oc-max-level",
 		.freq_limit_name = "oc-limit-freq-lv",
-		.core_onoff_name = "",
+		.core_active_name = "",
 		.max_lv = BATTERY_OC_LEVEL_NUM - 1,
 	},
 	[SOC_POWER_THROTTLING] = {
 		.max_lv_name = "soc-max-level",
 		.freq_limit_name = "soc-limit-freq-lv",
-		.core_onoff_name = "soc-core-onoff-lv",
+		.core_active_name = "soc-core-active-lv",
 		.max_lv = BATTERY_PERCENT_LEVEL_NUM - 1,
 	}
 };
 
-static unsigned int cpu_off_by_soc[CORE_NUM];
+static DEFINE_MUTEX(cpu_thr_lock);
+static unsigned int cur_core_active[CORE_NUM];
+static struct cpu_pause_tbl cicb = {
+	.pause_func = NULL,
+};
 
 static LIST_HEAD(pt_policy_list);
+
+static int pt_set_cpu_active(unsigned int cpu, bool active)
+{
+	int ret = -EPERM;
+	bool pause;
+
+	if (cur_core_active[cpu] == active)
+		return 0;
+
+	if (cicb.pause_func) {
+		pause = (active == false) ? true : false;
+		ret = cicb.pause_func(cpu, pause);
+	}
+
+	if (ret >= 0) {
+		cur_core_active[cpu] = active;
+		pr_info("%s: PT success to set cpu%d active=%d, ret=%d\n", __func__, cpu, active, ret);
+	} else
+		pr_info("%s: PT failed to set cpu%d active=%d, ret=%d\n", __func__, cpu, active, ret);
+
+	return ret;
+}
+
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 static void cpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
@@ -112,7 +137,7 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 	struct cpu_pt_policy *pt_policy;
 	struct cpu_pt_priv *pt_info_p = &cpu_pt_info[SOC_POWER_THROTTLING];
 	s32 freq_limit;
-	int ret, idx = 0, i = 0;
+	int idx = 0, i = 0, active;
 
 	if (level > cpu_pt_info[SOC_POWER_THROTTLING].max_lv)
 		return;
@@ -127,39 +152,18 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 		}
 	}
 
+	mutex_lock(&cpu_thr_lock);
 	for_each_possible_cpu(i) {
-		if (level == BATTERY_PERCENT_LEVEL_0) {
-			if (cpu_is_offline(i) && cpu_off_by_soc[i]) {
-				ret = CPU_UP(i);
-				if (ret)
-					pr_notice("failed to bring up cpu:%d\n", i);
-				else {
-					cpu_off_by_soc[i] = 0;
-					pr_notice("PT bring up cpu:%d\n", i);
-				}
-			}
-		} else {
+		if (level == BATTERY_PERCENT_LEVEL_0)
+			pt_set_cpu_active(i, true);
+		else {
 			idx = (level - 1) * CORE_NUM + i;
-			if (pt_info_p->core_onoff[idx] == 0 && !cpu_is_offline(i) && !cpu_off_by_soc[i]) {
-				ret = CPU_DOWN(i);
-				if (ret)
-					pr_notice("failed to bring down cpu: %d\n", i);
-				else {
-					cpu_off_by_soc[i] = 1;
-					pr_notice("PT bring down cpu:%d\n", i);
-				}
-
-			} else if (pt_info_p->core_onoff[idx] == 1 && cpu_is_offline(i) && cpu_off_by_soc[i]) {
-				ret = CPU_UP(i);
-				if (ret)
-					pr_notice("failed to bring up cpu: %d\n", i);
-				else {
-					cpu_off_by_soc[i] = 0;
-					pr_notice("PT bring up cpu:%d\n", i);
-				}
-			}
+			active = (pt_info_p->core_active[idx] > 0) ? true : false;
+			pt_set_cpu_active(i, active);
 		}
 	}
+	pt_info_p->cur_lv = level;
+	mutex_unlock(&cpu_thr_lock);
 }
 #endif
 static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_type type)
@@ -178,11 +182,12 @@ static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_typ
 	pt_info_p->max_lv = max_lv;
 	if (!pt_info_p->max_lv)
 		return;
+
 	pt_info_p->freq_limit = kzalloc(sizeof(u32) * pt_info_p->max_lv * CLUSTER_NUM, GFP_KERNEL);
-	pt_info_p->core_onoff = kzalloc(sizeof(u32) * pt_info_p->max_lv * CORE_NUM, GFP_KERNEL);
+	pt_info_p->core_active = kzalloc(sizeof(u32) * pt_info_p->max_lv * CORE_NUM, GFP_KERNEL);
 	for (i = 0; i < CLUSTER_NUM; i++) {
 		pt_info_p->freq_limit[i] = CPU_LIMIT_FREQ;
-		pt_info_p->core_onoff[i] = 1;
+		pt_info_p->core_active[i] = 1;
 	}
 
 	if (type == LBAT_POWER_THROTTLING) {
@@ -199,7 +204,7 @@ static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_typ
 	for (i = 1; i < pt_info_p->max_lv; i++) {
 		memcpy(&pt_info_p->freq_limit[i * CLUSTER_NUM], &pt_info_p->freq_limit[0],
 			sizeof(u32) * CLUSTER_NUM);
-		memcpy(&pt_info_p->core_onoff[i * CORE_NUM], &pt_info_p->core_onoff[0],
+		memcpy(&pt_info_p->core_active[i * CORE_NUM], &pt_info_p->core_active[0],
 			sizeof(u32) * CORE_NUM);
 	}
 }
@@ -228,8 +233,8 @@ static int __used parse_cpu_limit_table(struct device *dev)
 		if (!pt_info_p->freq_limit)
 			return -ENOMEM;
 
-		pt_info_p->core_onoff = kzalloc(sizeof(u32) * pt_info_p->max_lv * CORE_NUM, GFP_KERNEL);
-		if (!pt_info_p->core_onoff)
+		pt_info_p->core_active = kzalloc(sizeof(u32) * pt_info_p->max_lv * CORE_NUM, GFP_KERNEL);
+		if (!pt_info_p->core_active)
 			return -ENOMEM;
 
 		for (j = 0; j < pt_info_p->max_lv; j++) {
@@ -248,15 +253,15 @@ static int __used parse_cpu_limit_table(struct device *dev)
 
 			if (i == SOC_POWER_THROTTLING) {
 				memset(buf, 0, sizeof(buf));
-				ret = snprintf(buf, sizeof(buf), "%s%d", pt_info_p->core_onoff_name, j+1);
+				ret = snprintf(buf, sizeof(buf), "%s%d", pt_info_p->core_active_name, j+1);
 				if (ret < 0)
-					pr_notice("can't merge %s %d\n", pt_info_p->core_onoff_name, j+1);
+					pr_notice("can't merge %s %d\n", pt_info_p->core_active_name, j+1);
 				ret = of_property_read_u32_array(np, buf,
-					&pt_info_p->core_onoff[j * CORE_NUM], CORE_NUM);
+					&pt_info_p->core_active[j * CORE_NUM], CORE_NUM);
 				if (ret < 0) {
 					pr_notice("%s: get %s fail %d set core limit to 1\n", __func__, buf, ret);
 					for (k = 0; k < CORE_NUM; k++)
-						pt_info_p->core_onoff[j * CORE_NUM + k] = 1;
+						pt_info_p->core_active[j * CORE_NUM + k] = 1;
 				}
 			}
 		}
@@ -264,6 +269,34 @@ static int __used parse_cpu_limit_table(struct device *dev)
 
 	return 0;
 }
+
+int register_pt_isolate_cb(cpu_isolate_cb cb_func)
+{
+	int ret = 0, idx;
+	unsigned int i = 0;
+	bool active;
+	struct cpu_pt_priv *pt_info_p = &cpu_pt_info[SOC_POWER_THROTTLING];
+
+	if (cb_func) {
+		cicb.pause_func = cb_func;
+
+		mutex_lock(&cpu_thr_lock);
+		if (pt_info_p->core_active && pt_info_p->cur_lv > 0) {
+			for (i = 0; i < CORE_NUM; i++) {
+				idx = (pt_info_p->cur_lv - 1) * CORE_NUM + i;
+				active = (pt_info_p->core_active[idx] > 0) ? true : false;
+				pt_set_cpu_active(i, active);
+			}
+		}
+		mutex_unlock(&cpu_thr_lock);
+
+	} else
+		ret = -EINVAL;
+
+	return ret;
+}
+EXPORT_SYMBOL(register_pt_isolate_cb);
+
 static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 {
 	struct cpufreq_policy *policy;
@@ -324,8 +357,12 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 		register_battery_oc_notify(&cpu_pt_over_current_cb, BATTERY_OC_PRIO_CPU_B, NULL);
 #endif
 #if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-	if (cpu_pt_info[SOC_POWER_THROTTLING].max_lv > 0)
+	if (cpu_pt_info[SOC_POWER_THROTTLING].max_lv > 0) {
+		for (i = 0; i < CORE_NUM; i++)
+			cur_core_active[i] = 1;
+
 		register_bp_thl_notify(&cpu_pt_battery_percent_cb, BATTERY_PERCENT_PRIO_CPU_B);
+	}
 #endif
 
 	return 0;

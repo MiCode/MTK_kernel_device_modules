@@ -24,4 +24,7 @@ struct cpu_pt_policy {
 	struct list_head           cpu_pt_list;
 };
 
+typedef int (*cpu_isolate_cb)(unsigned int cpu, bool is_pause);
+extern int register_pt_isolate_cb(cpu_isolate_cb cb_func);
+
 #endif

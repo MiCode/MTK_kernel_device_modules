@@ -29,6 +29,7 @@
 #include <thermal_interface.h>
 #include <eas/eas_plus.h>
 #include "core_ctl.h"
+#include <mtk_cpu_power_throttling.h>
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 extern int get_immediate_tslvts1_1_wrap(void);
@@ -2327,6 +2328,10 @@ static int __init core_ctl_init(void)
 		ret = -ENOMEM;
 		goto failed_deprob;
 	}
+
+	ret = register_pt_isolate_cb(core_ctl_force_pause_cpu);
+	if (ret)
+		pr_info("%s: Could not register register_pt_isolate_cb\n", TAG);
 
 	initialized = true;
 	return 0;
