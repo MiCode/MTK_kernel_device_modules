@@ -6903,6 +6903,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gce-fast-mtcmos;
 			cmdq-dump-buf-size = <1>;
 			cmdq-print-debug = <1>;
+			cmdq-res-wa-chk = <1>;
+			cmdq-res-debug = <1>;
+			iommu-mask-chk = <1>;
+			iommu-mask-addr = <0x1e800400>;
+			spm-res-chk = <1>;
+			wla-north-ddr-ack-addr = <0x1035d268>;
+			wla-south-ddr-ack-addr = <0x1035e268>;
+			spm-gce-req = <0x1c001864>;
+			cmdq-predump-res-sw-mode = <1>;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
@@ -6945,6 +6954,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gce-req-wa;
 			cmdq-dump-buf-size = <1>;
 			cmdq-print-debug = <1>;
+			cmdq-res-wa-chk = <1>;
+			cmdq-res-debug = <1>;
+			iommu-mask-chk = <1>;
+			iommu-mask-addr = <0x1e800400>;
+			spm-res-chk = <1>;
+			wla-north-ddr-ack-addr = <0x1035d268>;
+			wla-south-ddr-ack-addr = <0x1035e268>;
+			spm-gce-req = <0x1c001864>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
