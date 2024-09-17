@@ -294,7 +294,7 @@ void get_orig_volt_table_gpu(struct eem_det *det)
 
 	for (i = 0; i < det->num_freq_tbl; i++) {
 
-		// volt = mt_gpufreq_get_volt_by_real_idx(i);
+		volt = mt_gpufreq_get_volt_by_real_idx(i);
 		det->volt_tbl_orig[i] = det->ops->volt_2_pmic(det, volt);
 
 	}
