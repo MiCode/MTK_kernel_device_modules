@@ -956,6 +956,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	unsigned int tmp, total = 0, tmp1 = 0, bw_base  = 0;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	int i, ret = 0, ovl_num = 0;
+	bool is_force_high_step;
 
 	tmp = bw;
 
@@ -965,6 +966,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 		return 0;
 
+	is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765) {
@@ -981,7 +983,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	for (i = 0; i < MAX_CRTC; ++i)
 		total += priv->req_hrt[i];
 
-	if (bw == MAX_MMCLK) {
+	if (bw != 0 && is_force_high_step) {
 		DDPMSG("%s,total:%d->65535\n", __func__, total);
 		total = 65535;
 	} else if (debug_deteriorate) {
