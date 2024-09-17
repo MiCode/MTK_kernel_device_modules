@@ -4529,44 +4529,31 @@ static unsigned int m_LastMNum[_cam_max_] = {0}; /* imgo/rrzo */
 
 #endif
 /* static long ISP_Buf_CTRL_FUNC(unsigned int Param) */
-static long ISP_Buf_CTRL_FUNC(unsigned long Param)
+static long ISP_Buf_CTRL_FUNC(struct ISP_BUFFER_CTRL_STRUCT *rt_buf_ctrl)
 {
 	signed int Ret = 0;
 	enum _isp_dma_enum_ rt_dma;
 	unsigned int i = 0;
-	/*    unsigned int x = 0;*/
-	/*    unsigned int iBuf = 0;*/
-	/*    unsigned int size = 0;*/
-	/*    unsigned int bWaitBufRdy = 0;*/
-	struct ISP_BUFFER_CTRL_STRUCT         rt_buf_ctrl;
-	/*    unsigned int flags;*/
-	/*    struct ISP_RT_BUF_INFO_STRUCT       rt_buf_info;*/
-	/*    struct ISP_DEQUE_BUF_INFO_STRUCT    deque_buf;*/
-	/*    enum ISP_IRQ_TYPE_ENUM irqT = ISP_IRQ_TYPE_AMOUNT;*/
-	/*    enum ISP_IRQ_TYPE_ENUM irqT_Lock = ISP_IRQ_TYPE_AMOUNT;*/
-	/*    bool CurVF_En = MFALSE;*/
-	/*  */
-	if ((void __user *)Param == NULL)  {
-		LOG_INF("[rtbc]NULL Param");
+
+	if (rt_buf_ctrl == NULL)  {
+		LOG_INF("[rtbc]NULL rt_buf_ctrl");
 		return -EFAULT;
 	}
 	/*  */
-	if (copy_from_user(&rt_buf_ctrl, (void __user *)Param,
-	    sizeof(struct ISP_BUFFER_CTRL_STRUCT)) == 0) {
-		if (rt_buf_ctrl.module >= ISP_IRQ_TYPE_AMOUNT ||
-		    rt_buf_ctrl.module < 0) {
+		if (rt_buf_ctrl->module >= ISP_IRQ_TYPE_AMOUNT ||
+		    rt_buf_ctrl->module < 0) {
 			LOG_INF("[rtbc]not supported module:0x%x\n",
-				rt_buf_ctrl.module);
+				rt_buf_ctrl->module);
 			return -EFAULT;
 		}
 
-		if (pstRTBuf[rt_buf_ctrl.module] == NULL)  {
+		if (pstRTBuf[rt_buf_ctrl->module] == NULL)  {
 			LOG_INF("[rtbc]NULL pstRTBuf, module:0x%x\n",
-				rt_buf_ctrl.module);
+				rt_buf_ctrl->module);
 			return -EFAULT;
 		}
 
-		rt_dma = rt_buf_ctrl.buf_id;
+		rt_dma = rt_buf_ctrl->buf_id;
 		if (rt_dma >= _cam_max_ ||
 		    rt_dma < 0) {
 			LOG_INF("[rtbc]buf_id error:0x%x\n", rt_dma);
@@ -4574,19 +4561,19 @@ static long ISP_Buf_CTRL_FUNC(unsigned long Param)
 		}
 
 		/*  */
-		switch (rt_buf_ctrl.ctrl) {
+		switch (rt_buf_ctrl->ctrl) {
 		case ISP_RT_BUF_CTRL_CLEAR:
 			/*  */
 			if (IspInfo.DebugMask & ISP_DBG_BUF_CTRL)
 				pr_info("[rtbc][%d][CLEAR]:rt_dma(%d)\n",
-					rt_buf_ctrl.module, rt_dma);
+					rt_buf_ctrl->module, rt_dma);
 			/*  */
 
 			memset((void *)IspInfo.IrqInfo.LastestSigTime_usec
-				[rt_buf_ctrl.module],
+				[rt_buf_ctrl->module],
 				0, sizeof(unsigned int) * 32);
 			memset((void *)IspInfo.IrqInfo.LastestSigTime_sec
-				[rt_buf_ctrl.module],
+				[rt_buf_ctrl->module],
 				0, sizeof(unsigned int) * 32);
 			/* remove, cause clear will be involked only when
 			 * current module r totally stopped
@@ -4596,39 +4583,39 @@ static long ISP_Buf_CTRL_FUNC(unsigned long Param)
 			 */
 
 			/* reset active record*/
-			pstRTBuf[rt_buf_ctrl.module]->ring_buf[rt_dma].active =
+			pstRTBuf[rt_buf_ctrl->module]->ring_buf[rt_dma].active =
 			MFALSE;
 			memset((char *)
-				&pstRTBuf[rt_buf_ctrl.module]->ring_buf[rt_dma],
+				&pstRTBuf[rt_buf_ctrl->module]->ring_buf[rt_dma],
 				0x00,
 				sizeof(struct ISP_RT_RING_BUF_INFO_STRUCT));
 			/* init. frmcnt before vf_en */
 			for (i = 0; i < ISP_RT_BUF_SIZE; i++)
-				pstRTBuf[rt_buf_ctrl.module]->ring_buf[rt_dma].data
+				pstRTBuf[rt_buf_ctrl->module]->ring_buf[rt_dma].data
 				[i].image.frm_cnt = _INVALID_FRM_CNT_;
 
-			switch (rt_buf_ctrl.module) {
+			switch (rt_buf_ctrl->module) {
 			case ISP_IRQ_TYPE_INT_CAM_A_ST:
 			case ISP_IRQ_TYPE_INT_CAM_B_ST:
-				if ((pstRTBuf[rt_buf_ctrl.module]->ring_buf[_imgo_].active ==
-					MFALSE) && (pstRTBuf[rt_buf_ctrl.module]->ring_buf
+				if ((pstRTBuf[rt_buf_ctrl->module]->ring_buf[_imgo_].active ==
+					MFALSE) && (pstRTBuf[rt_buf_ctrl->module]->ring_buf
 					[_rrzo_].active ==
 					MFALSE)) {
-					sof_count[rt_buf_ctrl.module] = 0;
-					g1stSof[rt_buf_ctrl.module] = MTRUE;
+					sof_count[rt_buf_ctrl->module] = 0;
+					g1stSof[rt_buf_ctrl->module] = MTRUE;
 					#if (TSTMP_SUBSAMPLE_INTPL == 1)
-					g1stSwP1Done[rt_buf_ctrl.module] =
+					g1stSwP1Done[rt_buf_ctrl->module] =
 						MTRUE;
 					gPrevSofTimestp[rt_buf_ctrl.module] = 0;
 					#endif
-					g_ISPIntErr[rt_buf_ctrl.module] = 0;
-					g_ISPIntErr_SMI[rt_buf_ctrl.module] = 0;
-					pstRTBuf[rt_buf_ctrl.module]->dropCnt =
+					g_ISPIntErr[rt_buf_ctrl->module] = 0;
+					g_ISPIntErr_SMI[rt_buf_ctrl->module] = 0;
+					pstRTBuf[rt_buf_ctrl->module]->dropCnt =
 						0;
-					pstRTBuf[rt_buf_ctrl.module]->state = 0;
+					pstRTBuf[rt_buf_ctrl->module]->state = 0;
 				}
 
-				memset((void *)g_DmaErr_CAM[rt_buf_ctrl.module],
+				memset((void *)g_DmaErr_CAM[rt_buf_ctrl->module],
 					0, sizeof(unsigned int)*_cam_max_);
 				break;
 			case ISP_IRQ_TYPE_INT_CAMSV_0_ST:
@@ -4637,30 +4624,30 @@ static long ISP_Buf_CTRL_FUNC(unsigned long Param)
 			case ISP_IRQ_TYPE_INT_CAMSV_3_ST:
 			case ISP_IRQ_TYPE_INT_CAMSV_4_ST:
 			case ISP_IRQ_TYPE_INT_CAMSV_5_ST:
-				if (pstRTBuf[rt_buf_ctrl.module]->ring_buf[_camsv_imgo_].active ==
+				if (pstRTBuf[rt_buf_ctrl->module]->ring_buf[_camsv_imgo_].active ==
 					MFALSE) {
-					sof_count[rt_buf_ctrl.module] = 0;
-					g1stSof[rt_buf_ctrl.module] = MTRUE;
-					g_ISPIntErr[rt_buf_ctrl.module] = 0;
-					g_ISPIntErr_SMI[rt_buf_ctrl.module] = 0;
-					pstRTBuf[rt_buf_ctrl.module]->dropCnt =
+					sof_count[rt_buf_ctrl->module] = 0;
+					g1stSof[rt_buf_ctrl->module] = MTRUE;
+					g_ISPIntErr[rt_buf_ctrl->module] = 0;
+					g_ISPIntErr_SMI[rt_buf_ctrl->module] = 0;
+					pstRTBuf[rt_buf_ctrl->module]->dropCnt =
 						0;
-					pstRTBuf[rt_buf_ctrl.module]->state = 0;
+					pstRTBuf[rt_buf_ctrl->module]->state = 0;
 				}
 
 				break;
 			case ISP_IRQ_TYPE_INT_DIP_A_ST:
 			case ISP_IRQ_TYPE_INT_UNI_A_ST:
-				sof_count[rt_buf_ctrl.module] = 0;
-				g1stSof[rt_buf_ctrl.module] = MTRUE;
-				g_ISPIntErr[rt_buf_ctrl.module] = 0;
-				g_ISPIntErr_SMI[rt_buf_ctrl.module] = 0;
-				pstRTBuf[rt_buf_ctrl.module]->dropCnt = 0;
-				pstRTBuf[rt_buf_ctrl.module]->state = 0;
+				sof_count[rt_buf_ctrl->module] = 0;
+				g1stSof[rt_buf_ctrl->module] = MTRUE;
+				g_ISPIntErr[rt_buf_ctrl->module] = 0;
+				g_ISPIntErr_SMI[rt_buf_ctrl->module] = 0;
+				pstRTBuf[rt_buf_ctrl->module]->dropCnt = 0;
+				pstRTBuf[rt_buf_ctrl->module]->state = 0;
 				break;
 			default:
 				LOG_INF("unsupported module:0x%x\n",
-					rt_buf_ctrl.module);
+					rt_buf_ctrl->module);
 				break;
 			}
 
@@ -4678,17 +4665,17 @@ static long ISP_Buf_CTRL_FUNC(unsigned long Param)
 			unsigned int z;
 			unsigned char *pExt;
 
-			if (rt_buf_ctrl.pExtend == NULL) {
+			if (rt_buf_ctrl->pExtend == NULL) {
 				LOG_INF("NULL pExtend");
 				Ret = -EFAULT;
 				break;
 			}
 
-			pExt = (unsigned char *)(rt_buf_ctrl.pExtend);
+			pExt = (unsigned char *)(rt_buf_ctrl->pExtend);
 			for (z = 0; z < _cam_max_; z++) {
 				if (get_user(array[z],
 				(unsigned char *)pExt) == 0) {
-					pstRTBuf[rt_buf_ctrl.module]->ring_buf[z].active = array[z];
+					pstRTBuf[rt_buf_ctrl->module]->ring_buf[z].active = array[z];
 					if (IspInfo.DebugMask &
 					    ISP_DBG_BUF_CTRL)
 						pr_info(
@@ -4709,10 +4696,6 @@ static long ISP_Buf_CTRL_FUNC(unsigned long Param)
 			break;
 
 		}
-	} else {
-		LOG_INF("[rtbc]copy_from_user failed");
-		Ret = -EFAULT;
-	}
 
 	return Ret;
 }
@@ -6721,8 +6704,19 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			Ret = -EFAULT;
 		}
 		break;
-	case ISP_BUFFER_CTRL:
-		Ret = ISP_Buf_CTRL_FUNC(Param);
+	case ISP_BUFFER_CTRL: {
+		struct ISP_BUFFER_CTRL_STRUCT rt_buf_ctrl;
+
+		if (copy_from_user(&rt_buf_ctrl, (void __user *)Param,
+			   sizeof(struct ISP_BUFFER_CTRL_STRUCT)) == 0) {
+			Ret = ISP_Buf_CTRL_FUNC(&rt_buf_ctrl);
+			if (Ret < 0)
+				LOG_INF("ISP_Buf_CTRL_FUNC update failed\n");
+		} else {
+			LOG_INF("copy_from_user failed\n");
+			Ret = -EFAULT;
+		}
+	}
 		break;
 	case ISP_REF_CNT_CTRL:
 		Ret = ISP_REF_CNT_CTRL_FUNC(Param);
@@ -7720,7 +7714,7 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 			return err;
 		}
 
-		ret = ISP_Buf_CTRL_FUNC((unsigned long)&data);
+		ret = ISP_Buf_CTRL_FUNC(&data);
 
 		err = compat_put_isp_buf_ctrl_struct_data(arg, &data32, &data);
 
@@ -7825,6 +7819,12 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 		ret = filp->f_op->unlocked_ioctl(filp,
 			ISP_SET_MEM_INFO,
 			(unsigned long)&data);
+		return ret;
+	}
+	case COMPAT_ISP_TRANSFOR_CCU_REG: {
+		ret =
+			filp->f_op->unlocked_ioctl(filp, ISP_TRANSFOR_CCU_REG,
+					   (unsigned long)compat_ptr(arg));
 		return ret;
 	}
 	case ISP_GET_DUMP_INFO:
