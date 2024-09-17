@@ -125,4 +125,15 @@ mediatek_eem-y += plat_k6781/mtk_eem.o
 mediatek_eem-y += plat_k6781/mtk_eem_platform.o
 mediatek_eem-y += plat_k6781/mtk_eem_internal.o
 mediatek_eem-y += plat_k6781/mtk_eem_api.o
+
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6853)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v6/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/plat_k6853/inc
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
+mediatek_eem-y += plat_k6853/mtk_eem.o
+mediatek_eem-y += plat_k6853/mtk_eem_platform.o
+mediatek_eem-y += plat_k6853/mtk_eem_internal.o
+mediatek_eem-y += plat_k6853/mtk_eem_api.o
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mtk_picachu.o
+mtk_picachu-y += plat_k6853/mtk_picachu.o
 endif
