@@ -945,6 +945,11 @@ static int eem_volt_thread_handler(void *data)
 	struct eem_ctrl *ctrl = (struct eem_ctrl *)data;
 	struct eem_det *det = id_to_eem_det(ctrl->det_id);
 
+	if (!det) {
+		eem_error("%s det[%d] is null\n", __func__, ctrl->det_id);
+		return -EINVAL;
+	}
+
 	FUNC_ENTER(FUNC_LV_HELP);
 
 	do {
@@ -1302,6 +1307,11 @@ static void eem_set_eem_volt(struct eem_det *det)
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
+	if (!ctrl) {
+		eem_error("%s ctrl[%d] is null\n", __func__, det->ctrl_id);
+		return;
+	}
+
 #if ENABLE_LOO
 	/* remap to L/B bank for update dvfs table,
 	 * also copy high opp volt table
@@ -1480,6 +1490,11 @@ static void eem_restore_eem_volt(struct eem_det *det)
 {
 #if SET_PMIC_VOLT
 	struct eem_ctrl *ctrl = id_to_eem_ctrl(det->ctrl_id);
+
+	if (!ctrl) {
+		eem_error("%s ctrl[%d] is null\n", __func__, det->ctrl_id);
+		return;
+	}
 
 	ctrl->volt_update |= EEM_VOLT_RESTORE;
 	wake_up_interruptible(&ctrl->wq);
@@ -2326,9 +2341,17 @@ int mt_eem_opp_num(enum eem_det_id id)
 	struct eem_det *det = id_to_eem_det(id);
 
 	FUNC_ENTER(FUNC_LV_API);
-	FUNC_EXIT(FUNC_LV_API);
+
+	if (!det) {
+		eem_error("%s det[%d] is null\n", __func__, id);
+		return -EINVAL;
+	}
 
 	return det->num_freq_tbl;
+
+	FUNC_EXIT(FUNC_LV_API);
+
+
 }
 EXPORT_SYMBOL(mt_eem_opp_num);
 
@@ -2338,6 +2361,11 @@ void mt_eem_opp_freq(enum eem_det_id id, unsigned int *freq)
 	int i = 0;
 
 	FUNC_ENTER(FUNC_LV_API);
+
+	if (!det) {
+		eem_error("%s det[%d] is null\n", __func__, id);
+		return;
+	}
 
 	for (i = 0; i < det->num_freq_tbl; i++)
 		freq[i] = det->freq_tbl[i];
@@ -2353,6 +2381,11 @@ void mt_eem_opp_status(enum eem_det_id id, unsigned int *temp,
 	int i = 0;
 
 	FUNC_ENTER(FUNC_LV_API);
+
+	if (!det) {
+		eem_error("%s det[%d] is null\n", __func__, id);
+		return;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 	if (id == EEM_DET_L)
@@ -2956,6 +2989,11 @@ det->name, det_entries[i].name);
 void eem_set_pi_efuse(enum eem_det_id id, unsigned int pi_efuse)
 {
 	struct eem_det *det = id_to_eem_det(id);
+
+	if (!det) {
+		eem_error("%s det[%d] is null\n", __func__, id);
+		return;
+	}
 
 	if (det->pi_efuse_count >= NR_PI_SHARED_CTRL)
 		return;
