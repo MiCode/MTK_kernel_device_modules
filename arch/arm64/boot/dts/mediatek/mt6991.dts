@@ -17410,8 +17410,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		oc-limit-freq-lv2 = < 1200000  1700000 1900000>;
 
 		soc-max-level = <2>;
-		soc-core-onoff-lv1 = < 1 1 1 1 1 1 1 1 >;
-		soc-core-onoff-lv2 = < 1 1 1 1 1 1 0 0 >;
+		soc-core-active-lv1 = < 1 1 1 1 1 1 1 1 >;
+		soc-core-active-lv2 = < 1 1 1 1 1 1 0 0 >;
 		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647 >;
 		soc-limit-freq-lv2 = < 1800000 900000 670000>;
 	};
