@@ -8521,7 +8521,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 				return -EINVAL;
 			}
 		} else
-			ret = mtk_drm_get_panel_info(dev, info, 0);
+			ret = mtk_drm_get_panel_info(dev, info, crtc_id);
 		DDPMSG("%s panel w%d h%d\n", __func__, info->physical_width, info->physical_height);
 #endif
 		return ret;
