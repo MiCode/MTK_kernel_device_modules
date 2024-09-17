@@ -9209,7 +9209,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 		pr_info("%s: error! dsi->driver_data=NULL! return!\n", __func__);
 		return -1;
 	}
-	dsi_mode = readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE;
+	dsi_mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp) ? 0 : 3;
 
 	/* Check cmd_msg param */
 	if (cmd_msg->tx_cmd_num == 0 ||
@@ -9893,7 +9893,7 @@ int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 		return -1;
 	}
 
-	dsi_mode = readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE;
+	dsi_mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp) ? 0: 3;
 
 	/* Check cmd_msg param */
 	if (cmd_msg->tx_cmd_num == 0 ||
