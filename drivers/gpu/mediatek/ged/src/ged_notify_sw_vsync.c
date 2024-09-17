@@ -103,12 +103,13 @@ static struct ged_gpu_frame_time_table g_ged_gpu_frame_time[GED_FRAME_TIME_CONFI
 	{36666666, 33333333},    // 30fps
 };
 
-#define GED_APO_THR_NS 2000000
+#define GED_APO_VAR_NS 1000000
+#define GED_APO_SHORT_ACTIVE_NS 1300000
 
+#define GED_APO_THR_NS 2000000
 #define GED_APO_LP_THR_NS 4000000
 
-#define GED_APO_WAKEUP_THR_NS (GED_APO_THR_NS + 1000000)
-
+#define GED_APO_WAKEUP_THR_NS (GED_APO_THR_NS + GED_APO_VAR_NS)
 #define GED_APO_LONG_WAKEUP_THR_NS 100000000
 
 #define GED_APO_AUTOSUSPEND_DELAY_TARGET_REF_COUNT 3
@@ -908,6 +909,9 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 {
 	/* autosuspend_delay setting */
 	if (g_apo_autosuspend_delay_ctrl == 0) {
+		trace_GPU_Power__Policy__APO_active_time(g_ns_gpu_predict_A_to_I_duration);
+		trace_GPU_Power__Policy__APO_idle_time(idle_time);
+
 		if (g_apo_legacy == GED_APO_LEGACY_VER1) {
 			if (g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target)
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
@@ -916,15 +920,37 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 		} else {
 			if ((g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target) &&
 				(g_gpu_frame_time_ns <= g_ged_gpu_frame_time[3].target)) {
-				if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
+				if (idle_time > 0 &&
+					idle_time <= (long long)(div_u64(g_gpu_frame_time_ns, 2) + GED_APO_VAR_NS)) {
+					if (g_ns_gpu_predict_A_to_I_duration < GED_APO_SHORT_ACTIVE_NS &&
+						idle_time < GED_APO_WAKEUP_THR_NS) {
+						g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+						trace_GPU_Power__Policy__APO_irregular(2);
+					} else if ((g_ns_gpu_predict_A_to_I_duration <
+						((unsigned long long)(div_u64(g_gpu_frame_time_ns, 3)))) &&
+						(ged_get_policy_state() == POLICY_STATE_FB) &&
+						(ged_get_cur_oppidx() >= ged_get_min_oppidx_real())) {
+						g_apo_autosuspend_delay_ms = 0;
+						trace_GPU_Power__Policy__APO_irregular(3);
+					} else {
+						g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+						trace_GPU_Power__Policy__APO_irregular(4);
+					}
+				} else if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + GED_APO_VAR_NS)) {
 					g_apo_autosuspend_delay_ms = 0;
-				else
+					trace_GPU_Power__Policy__APO_irregular(5);
+				} else {
 					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+					trace_GPU_Power__Policy__APO_irregular(6);
+				}
 			} else {
-				if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
+				if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + GED_APO_VAR_NS)) {
 					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
-				else
+					trace_GPU_Power__Policy__APO_irregular(7);
+				} else {
 					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_HFR_MS;
+					trace_GPU_Power__Policy__APO_irregular(8);
+				}
 			}
 		}
 	}
@@ -1210,6 +1236,10 @@ bool ged_check_predict_power_autosuspend_nolock(void)
 				(g_ns_gpu_predict_prev_A_to_A_duration < div_u64(g_apo_wakeup_ns, 2)) ||
 				(g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns &&
 				g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns))) {
+				// Calculate for autosuspend_delay setting
+				llDiff = (long long)(g_ns_gpu_predict_prev_A_to_A_duration -
+					g_ns_gpu_predict_A_to_I_duration);
+
 				// Jobs in one frame or similar power-durations
 				if (((g_ns_gpu_predict_A_to_A_duration +
 					g_ns_gpu_predict_prev_A_to_A_duration) <= g_gpu_frame_time_ns) ||
@@ -1217,11 +1247,8 @@ bool ged_check_predict_power_autosuspend_nolock(void)
 						g_ns_gpu_predict_prev_A_to_A_duration) <
 					min(g_ns_gpu_predict_A_to_A_duration,
 						g_ns_gpu_predict_prev_A_to_A_duration)) {
-					trace_GPU_Power__Policy__APO_irregular(0);
-					// Calculate for autosuspend_delay setting
-					llDiff = (long long)(g_ns_gpu_predict_prev_A_to_A_duration -
-							g_ns_gpu_predict_A_to_I_duration);
 					bPredict_current_I_to_A = llDiff < (long long)g_apo_thr_ns;
+					trace_GPU_Power__Policy__APO_irregular(0);
 				} else {
 					// set "false" when power-durations are irregular.
 					bPredict_current_I_to_A = false;
