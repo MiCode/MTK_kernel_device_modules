@@ -203,7 +203,6 @@ struct mtk_drm_private {
 	unsigned int ovlsys_usage[MAX_CRTC]; //describe each CRTC OVLSYS connect state
 	unsigned int req_hrt[MAX_CRTC];
 	unsigned int req_hrt_channel_bw[MAX_CRTC][BW_CHANNEL_NR];
-	unsigned int last_max_channel_req;
 	unsigned int num_pipes;
 
 	unsigned int sw_ver;

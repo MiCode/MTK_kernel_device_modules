@@ -12912,7 +12912,7 @@ skip:
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		unsigned int channel_hrt[BW_CHANNEL_NR] = { 0 };
 
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, channel_hrt,
 				ARRAY_SIZE(channel_hrt), __func__);
 	}
 
@@ -13433,7 +13433,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_connect_default_path(mtk_crtc);
 
 	mtk_crtc->qos_ctx->last_hrt_req = 0;
-	priv->last_max_channel_req = 0;
 	mtk_crtc->usage_ovl_fmt[0] = 4;
 	for (i = 0; i < BW_CHANNEL_NR ; i++)
 		mtk_crtc->qos_ctx->last_channel_req[i] = 0;
@@ -13472,7 +13471,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		if (priv->data->mmsys_id == MMSYS_MT6899 && mtk_drm_dal_enable())
 			mtk_crtc->usage_ovl_fmt[5] = 2;
 		mtk_disp_get_channel_hrt_bw(mtk_crtc, channel_hrt, ARRAY_SIZE(channel_hrt));
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, channel_hrt,
 					ARRAY_SIZE(channel_hrt), __func__);
 		for (i = 0 ; i < ARRAY_SIZE(channel_hrt); i++)
 			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];

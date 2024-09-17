@@ -116,7 +116,7 @@ void mtk_disp_get_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 				unsigned int *result, unsigned int size);
 unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int bw, unsigned int ch_idx, bool force, const char *master);
-unsigned int mtk_disp_set_max_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_set_all_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int *bw, unsigned int size, const char *master);
 
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);

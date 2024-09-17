@@ -2744,23 +2744,36 @@ static u8 dpc_max_dvfs_level(const enum mtk_dpc_subsys subsys)
 	return max_level;
 }
 
-u8 dpc_dvfs_bw_to_level(const u32 bw_in_mb)
+u8 dpc_dvfs_bw_to_level(void)
 {
 	u8 bw_level = 0;
-	u32 total_bw;
+	u32 max_channel_bw = 0, ch_bw = 0, i = 0;
 
-	total_bw = bw_in_mb * 10 / 7;
-	if (total_bw > 6988)
+	for (i = 0; i < MTK_MAX_CHANNEL_NUM; i++) {
+		ch_bw = g_priv->channel_bw[i].disp_bw + g_priv->channel_bw[i].mml_bw;
+		if (max_channel_bw < ch_bw)
+			max_channel_bw = ch_bw;
+	}
+
+	max_channel_bw = max_channel_bw * 10 / 7;
+	if (max_channel_bw > 6988)
 		bw_level = 4;
-	else if (total_bw > 5129)
+	else if (max_channel_bw > 5129)
 		bw_level = 3;
-	else if (total_bw > 4076)
+	else if (max_channel_bw > 4076)
 		bw_level = 2;
-	else if (total_bw > 3057)
+	else if (max_channel_bw > 3057)
 		bw_level = 1;
 	else
 		bw_level = 0;
 
+	if (dbg_dvfs_vdisp && bw_level != g_priv->dvfs_bw.bw_level)
+		DPCFUNC("bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u) max_bw:%u", bw_level,
+			g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+			g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+			g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+			g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw,
+			max_channel_bw);
 	return bw_level;
 }
 
@@ -2812,21 +2825,28 @@ static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bo
 		spin_unlock_irqrestore(&dpc_lock, flags);
 		if (unlikely(dbg_dvfs_vdisp))
 			DPCFUNC(
-				"subsys:%d ignore subl:%u->%u,max:%u[%u,%u,%u(%u,%u)],f:%u,reg[0x%x,0x%x]",
+				"subsys:%d ignore freq:%u->%u,max:%u,disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u),f:%u,reg[0x%x,0x%x]",
 				subsys, last_level, level, max_level,
 				g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-				g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-				g_priv->dvfs_bw.mml_bw, force,
-				readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
+				g_priv->dvfs_bw.bw_level,
+				g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+				g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+				g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+				g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw,
+				force, readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
 				readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
 		goto out;
 	}
 	if (unlikely(dbg_dvfs_vdisp))
-		DPCFUNC("subsys:%d update subl:%u->%u,max:%u/%u->%u[%u,%u,%u(%u,%u)],f:%u",
+		DPCFUNC(
+			"subsys:%d update freq:%u->%u,max:%u/%u->%u,disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u),f:%u",
 			subsys, last_level, level, g_vdisp_level_disp, g_vdisp_level_mml,
 			max_level, g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-			g_priv->dvfs_bw.mml_bw, force);
+			g_priv->dvfs_bw.bw_level,
+			g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+			g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+			g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+			g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw, force);
 
 	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
@@ -2841,7 +2861,8 @@ static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bo
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.bw_level << 16) |
 		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_level);
+		(BIT(subsys) << 16) | (g_vdisp_level_disp > g_vdisp_level_mml ?
+			g_vdisp_level_disp : g_vdisp_level_mml));
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
@@ -2852,86 +2873,15 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_dvfs_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
+static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb)
 {
 	u8 max_bw_level, last_bw_level;
-	u32 total_bw = 0;
+	u32 last_bw = 0;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
-	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
-		DPCERR("invalid user:%d", subsys);
-		WARN_ON(1);
+	if (idx >= MTK_MAX_CHANNEL_NUM)
 		return;
-	}
-
-	if (dpc_pm_ctrl(true, __func__))
-		return;
-
-	mutex_lock(&dvfs_lock);
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
-		g_priv->dvfs_bw.disp_bw = bw_in_mb;
-	else if (MTK_DPC_OF_MML_SUBSYS(subsys))
-		g_priv->dvfs_bw.mml_bw = bw_in_mb;
-	total_bw = g_priv->dvfs_bw.disp_bw +  g_priv->dvfs_bw.mml_bw;
-
-	last_bw_level = g_priv->dvfs_bw.bw_level;
-	g_priv->dvfs_bw.bw_level = dpc_dvfs_bw_to_level(total_bw);
-
-	max_bw_level = dpc_max_dvfs_level(DPC_SUBSYS_VDISP_LEVEL_OF_BW);
-	if (max_bw_level == DPC_VDISP_LEVEL_IGNORE) {
-		if (unlikely(dbg_dvfs_vdisp))
-			DPCFUNC("subsys:%d ignore bwl:%u->%u,max:%u[%u,%u,%u(%u,%u)],reg[0x%x,0x%x]",
-				subsys, last_bw_level, g_priv->dvfs_bw.bw_level, max_bw_level,
-				g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-				g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-				g_priv->dvfs_bw.mml_bw,
-				readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
-				readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
-		goto out;
-	}
-	if (unlikely(dbg_dvfs_vdisp))
-		DPCFUNC("subsys:%d update bwl:%u->%u,max:%u/%u->%u[%u,%u,%u(%u,%u)]",
-			subsys, last_bw_level, g_priv->dvfs_bw.bw_level,
-			g_vdisp_level_disp, g_vdisp_level_mml, max_bw_level,
-			g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-			g_priv->dvfs_bw.mml_bw);
-
-	if (dpc_enable_vcp(true, subsys) < 0)
-		mmdvfs_state = false;
-
-	spin_lock_irqsave(&dpc_lock, flags);
-	vdisp_level_set_vcp(DPC_SUBSYS_VDISP_LEVEL_OF_BW, max_bw_level, mmdvfs_state);
-
-	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
-		(g_priv->dvfs_bw.bw_level << 16) |
-		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_bw_level);
-
-	spin_unlock_irqrestore(&dpc_lock, flags);
-	if (mmdvfs_state)
-		dpc_enable_vcp(false, subsys);
-
-out:
-	mutex_unlock(&dvfs_lock);
-	dpc_pm_ctrl(false, __func__);
-}
-
-static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
-	const u32 bw_in_mb)
-{
-	u32 addr = 0, avail = 0, total_bw = 0;
-	u8 max_level = 0, max_level_subsys = 0, max_level_bw = 0;
-	u8 last_bw_level, last_level = 0;
-	unsigned long flags = 0;
-	bool mmdvfs_state = true;
-
-	/* support 575, 600, 650, 700, 750 mV */
-	if (level > 4) {
-		DPCERR("vdisp support only 5 levels");
-		return;
-	}
 
 	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
@@ -2944,77 +2894,59 @@ static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 leve
 
 	mutex_lock(&dvfs_lock);
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
-		addr = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
-		last_level = g_priv->dvfs_bw.disp_level;
-		g_priv->dvfs_bw.disp_level = level;
-		g_priv->dvfs_bw.disp_bw = bw_in_mb;
+		if (g_priv->channel_bw[idx].disp_bw == bw_in_mb)
+			goto out;
+		last_bw = g_priv->channel_bw[idx].disp_bw;
+		g_priv->channel_bw[idx].disp_bw = bw_in_mb;
 	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
-		addr = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
-		last_level = g_priv->dvfs_bw.mml_level;
-		g_priv->dvfs_bw.mml_level = level;
-		g_priv->dvfs_bw.mml_bw = bw_in_mb;
+		if (g_priv->channel_bw[idx].mml_bw == bw_in_mb)
+			goto out;
+		last_bw = g_priv->channel_bw[idx].mml_bw;
+		g_priv->channel_bw[idx].mml_bw = bw_in_mb;
 	}
-	total_bw = g_priv->dvfs_bw.disp_bw + g_priv->dvfs_bw.mml_bw;
 
 	last_bw_level = g_priv->dvfs_bw.bw_level;
-	g_priv->dvfs_bw.bw_level = dpc_dvfs_bw_to_level(total_bw);
+	g_priv->dvfs_bw.bw_level = dpc_dvfs_bw_to_level();
 
-	max_level_bw = dpc_max_dvfs_level(DPC_SUBSYS_VDISP_LEVEL_OF_BW);
-	/* bw level and disp level share the same vote*/
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
-		max_level_subsys = DPC_VDISP_LEVEL_IGNORE;
-	else
-		max_level_subsys = dpc_max_dvfs_level(subsys);
-
-	if (max_level_subsys == DPC_VDISP_LEVEL_IGNORE &&
-		max_level_bw == DPC_VDISP_LEVEL_IGNORE) {
-		spin_lock_irqsave(&dpc_lock, flags);
-		/* switch vdisp to SW or HW mode */
-		avail = mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS);
-		writel((force || !avail) ? 1 : 0, dpc_base + addr);
-		spin_unlock_irqrestore(&dpc_lock, flags);
-
+	max_bw_level = dpc_max_dvfs_level(DPC_SUBSYS_VDISP_LEVEL_OF_BW);
+	if (max_bw_level == DPC_VDISP_LEVEL_IGNORE) {
 		if (unlikely(dbg_dvfs_vdisp))
 			DPCFUNC(
-				"subsys:%d ignore bwl:%u->%u,subl:%u->%u,max:%u/%u[%u,%u,%u(%u,%u)],f:%u,reg[0x%x,0x%x]",
-				subsys, last_bw_level, g_priv->dvfs_bw.bw_level,
-				last_level, level, max_level_subsys, max_level_bw,
-				g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-				g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-				g_priv->dvfs_bw.mml_bw, force,
+				"subsys:%d ch%u:%u->%u ignore bwl:%u->%u,max:%u,disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u),reg[0x%x,0x%x]",
+				subsys, idx, last_bw, bw_in_mb, last_bw_level, g_priv->dvfs_bw.bw_level,
+				max_bw_level, g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
+				g_priv->dvfs_bw.bw_level,
+				g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+				g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+				g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+				g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw,
 				readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
 				readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
 		goto out;
 	}
 	if (unlikely(dbg_dvfs_vdisp))
-		DPCFUNC("subsys:%d update bwl:%u->%u,subl:%u->%u,max:%u/%u->%u/%u,[%u,%u,%u(%u,%u)],f:%u",
-			subsys, last_bw_level, g_priv->dvfs_bw.bw_level, last_level, level,
-			g_vdisp_level_disp, g_vdisp_level_mml, max_level_bw, max_level_subsys,
+		DPCFUNC(
+			"subsys:%d ch%u:%u->%u update bwl:%u->%u,max:%u/%u->%u,disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u)",
+			subsys, idx, last_bw, bw_in_mb, last_bw_level, g_priv->dvfs_bw.bw_level,
+			g_vdisp_level_disp, g_vdisp_level_mml, max_bw_level,
 			g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-			g_priv->dvfs_bw.mml_bw, force);
+			g_priv->dvfs_bw.bw_level,
+			g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+			g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+			g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+			g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw);
 
 	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
-	if (max_level_subsys != DPC_VDISP_LEVEL_IGNORE) {
-		max_level = max_level_subsys;
-		vdisp_level_set_vcp(subsys, max_level_subsys, mmdvfs_state);
-	}
-	if (max_level_bw != DPC_VDISP_LEVEL_IGNORE) {
-		max_level = (max_level_bw > max_level) ? max_level_bw : max_level;
-		vdisp_level_set_vcp(DPC_SUBSYS_VDISP_LEVEL_OF_BW, max_level_bw, mmdvfs_state);
-	}
-
-	/* switch vdisp to SW or HW mode */
-	avail = mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS);
-	writel((force || !avail) ? 1 : 0, dpc_base + addr);
+	vdisp_level_set_vcp(DPC_SUBSYS_VDISP_LEVEL_OF_BW, max_bw_level, mmdvfs_state);
 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
 		(g_priv->dvfs_bw.bw_level << 16) |
 		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
-		(BIT(subsys) << 16) | max_level);
+		(BIT(subsys) << 16) | (g_vdisp_level_disp > g_vdisp_level_mml ?
+			g_vdisp_level_disp : g_vdisp_level_mml));
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
@@ -4233,10 +4165,13 @@ static void _dpc_analysis(bool detail)
 		g_vdisp_level_mml,
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
-	DPCDUMP("vdisp req: freq(%u/%u), bw:%u(%u+%u)",
+	DPCDUMP("vdisp req: disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u)",
 		g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
-		g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
-		g_priv->dvfs_bw.mml_bw);
+		g_priv->dvfs_bw.bw_level,
+		g_priv->channel_bw[0].disp_bw, g_priv->channel_bw[0].mml_bw,
+		g_priv->channel_bw[1].disp_bw, g_priv->channel_bw[1].mml_bw,
+		g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
+		g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw);
 	DPCDUMP("mtcmos: (disp:%#04x %#04x %#04x %#04x mml1:%#04x)",
 		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0)) ?
 			readl(dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG) : 0x0,
@@ -4707,8 +4642,7 @@ static const struct dpc_funcs funcs_v1 = {
 	.dpc_hrt_bw_set = dpc_hrt_bw_set_v1,
 	.dpc_srt_bw_set = dpc_srt_bw_set_v1,
 	.dpc_dvfs_set = dpc_dvfs_set_v1,
-	.dpc_dvfs_bw_set = dpc_dvfs_bw_set_v1,
-	.dpc_dvfs_both_set = dpc_dvfs_both_set_v1,
+	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis_v1,
 	.dpc_pm_analysis = dpc_pm_analysis,
 	.dpc_dsi_pll_set = dpc_dsi_pll_set_v1,

@@ -2309,7 +2309,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			mtk_crtc->qos_ctx->last_hrt_req);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_channel_req,
+		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_channel_req,
 			ARRAY_SIZE(mtk_crtc->qos_ctx->last_channel_req), __func__);
 	}
 
@@ -2574,7 +2574,7 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data, bool w
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 			mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
 				CHANNEL_BW_HSIDLE_DL, channel_hrt, ARRAY_SIZE(channel_hrt));
-			mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+			mtk_disp_set_all_channel_hrt_bw(mtk_crtc, channel_hrt,
 					ARRAY_SIZE(channel_hrt), "hsidle-dl");
 			for (i = 0; i < BW_CHANNEL_NR; i++)
 				mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
@@ -2594,12 +2594,10 @@ static void mtk_drm_idlemgr_update_wb_bw(struct mtk_iwb_cb_data *cb_data, bool w
 	}
 
 	CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_idle,
-		priv->last_max_channel_req | 0xcb000000,
-		mtk_crtc->qos_ctx->last_hrt_req | 0xcb000000);
+		0xcb000000, mtk_crtc->qos_ctx->last_hrt_req);
 
-	DDPINFO("%s,[IWB] update BW channel:%u,total:%u, base:%u,wdma_only:%d\n",
-		__func__, priv->last_max_channel_req,
-		mtk_crtc->qos_ctx->last_hrt_req, bw_base, wdma_only);
+	DDPINFO("%s,[IWB] update total:%u, base:%u,wdma_only:%d\n",
+		__func__, mtk_crtc->qos_ctx->last_hrt_req, bw_base, wdma_only);
 }
 
 static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
@@ -2764,7 +2762,7 @@ void mtk_drm_idlemgr_wb_capture(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		mtk_disp_get_channel_hrt_bw_by_scope(mtk_crtc,
 			CHANNEL_BW_HSIDLE_DC, channel_hrt, ARRAY_SIZE(channel_hrt));
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, channel_hrt,
 			ARRAY_SIZE(channel_hrt), "hsidle-dc");
 		for (i = 0; i < ARRAY_SIZE(channel_hrt); i++)
 			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];

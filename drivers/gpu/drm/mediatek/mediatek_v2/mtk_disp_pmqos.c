@@ -336,30 +336,6 @@ int mtk_disp_get_port_hrt_bw(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type)
 	return 0;
 }
 
-static unsigned int mtk_disp_calc_max_channel_bw(struct mtk_drm_crtc *mtk_crtc)
-{
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = drm_crtc_index(crtc);
-	unsigned int ch_bw[BW_CHANNEL_NR] = { 0 };
-	unsigned int i, max_ch_bw = 0;
-
-	for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
-		for (crtc_idx = 0; crtc_idx < MAX_CRTC; crtc_idx++)
-			ch_bw[i] += priv->req_hrt_channel_bw[crtc_idx][i];
-	}
-
-	for (int i = 0; i < BW_CHANNEL_NR; i++) {
-		if (ch_bw[i] > max_ch_bw)
-			max_ch_bw = ch_bw[i];
-	}
-
-	DDPDBG("%s max_ch_bw:%u, ch:%u,%u,%u,%u\n",
-		__func__, max_ch_bw, ch_bw[0], ch_bw[1], ch_bw[2], ch_bw[3]);
-
-	return max_ch_bw;
-}
-
 void mtk_disp_update_channel_bw_by_layer_MT6989(unsigned int layer, unsigned int bpp,
 		unsigned int *subcomm_bw_sum, unsigned int size,
 		unsigned int bw_base, enum CHANNEL_TYPE type)
@@ -1132,8 +1108,8 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned int last_ch_bw = 0, max_channel_bw = 0;
-	int crtc_idx = 0;
+	unsigned int last_ch_bw = 0, ch_bw = 0;
+	int crtc_idx = 0, i;
 
 	if (IS_ERR_OR_NULL(mtk_crtc) || ch_idx >= BW_CHANNEL_NR )
 		goto out;
@@ -1156,10 +1132,9 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 	/* ch bw slow down */
 	if (!force && priv->req_hrt_channel_bw[crtc_idx][ch_idx] > bw) {
 		if (debug_mmqos)
-			DDPMSG("%s, CRTC%d SLOW-DOWN channel:%u(%u->%u) max:%u(%u,%u,%u,%u) force:%d\n",
+			DDPMSG("%s, CRTC%d SLOW-DOWN channel:%u(%u->%u) ch_bw(%u,%u,%u,%u) force:%d\n",
 				IS_ERR_OR_NULL(master) ? "unknown" : master,
 				crtc_idx, ch_idx, last_ch_bw, bw,
-				priv->last_max_channel_req,
 				priv->req_hrt_channel_bw[crtc_idx][0],
 				priv->req_hrt_channel_bw[crtc_idx][1],
 				priv->req_hrt_channel_bw[crtc_idx][2],
@@ -1167,84 +1142,78 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		return bw;
 	}
 
-	/* ch bw fast up or final down */
+	/* by crtc fast up or final down */
 	priv->req_hrt_channel_bw[crtc_idx][ch_idx] = bw;
 	CRTC_MMP_MARK(crtc_idx, channel_bw, ch_idx, bw);
-	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
+
+	/* all crtc report channel hrt bw */
+	for (i= 0; i < MAX_CRTC; i++)
+		ch_bw += priv->req_hrt_channel_bw[i][ch_idx];
 	if (debug_mmqos)
-		DDPMSG("%s, CRTC%d %s channel:%u(%u->%u) max:%u->%u(%u,%u,%u,%u) force:%d\n",
+		DDPMSG("%s, CRTC%d %s channel%u:%u(%u->%u) ch_bw(%u,%u,%u,%u) force:%d\n",
 			IS_ERR_OR_NULL(master) ? "unknown" : master,
 			crtc_idx, force ? "FINAL-DOWN" : "FAST-UP",
-			ch_idx, last_ch_bw, bw,
-			priv->last_max_channel_req, max_channel_bw,
+			ch_idx, ch_bw, last_ch_bw, bw,
 			priv->req_hrt_channel_bw[crtc_idx][0],
 			priv->req_hrt_channel_bw[crtc_idx][1],
 			priv->req_hrt_channel_bw[crtc_idx][2],
 			priv->req_hrt_channel_bw[crtc_idx][3], force);
 
-	/* max channel bw keep unchanged */
-	if (priv->last_max_channel_req == max_channel_bw)
+	if (mtk_crtc->qos_ctx->last_channel_req[ch_idx] == ch_bw)
 		goto out;
 
-	/* max channel bw fast up or final down */
-	DRM_MMP_MARK(channel_bw, max_channel_bw, crtc_idx);
-	mtk_vidle_dvfs_bw_set(max_channel_bw);
-	priv->last_max_channel_req = max_channel_bw;
+	DRM_MMP_MARK(channel_bw, ch_idx, ch_bw);
+	mtk_vidle_channel_bw_set(ch_bw, ch_idx);
 
 out:
 	return NO_PENDING_HRT;
 }
 
-unsigned int mtk_disp_set_max_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_set_all_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int *bw, unsigned int size, const char *master)
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned int max_channel_bw = 0, i;
-	int crtc_idx = 0;
+	unsigned int i, ch_bw = 0;
+	int crtc_idx = 0, j;
 
 	if (IS_ERR_OR_NULL(mtk_crtc))
-		return 0;
+		return;
 
 	crtc = &mtk_crtc->base;
 	crtc_idx = drm_crtc_index(crtc);
 	if (IS_ERR_OR_NULL(crtc->dev) || IS_ERR_OR_NULL(crtc->dev->dev_private))
-		return 0;
+		return;
 
 	priv = crtc->dev->dev_private;
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT) ||
 		size > BW_CHANNEL_NR || size == 0 || IS_ERR_OR_NULL(bw))
-		goto out;
+		return;
 
-	/* update all channel hrt bw */
+	/* by crtc update all channel hrt bw */
 	for (i = 0; i< size; i++) {
 		if (priv->req_hrt_channel_bw[crtc_idx][i] != bw[i]) {
 			priv->req_hrt_channel_bw[crtc_idx][i] = bw[i];
 			CRTC_MMP_MARK(crtc_idx, channel_bw, (i | 0xf0ce0000), bw[i]);
 		}
 	}
-	max_channel_bw = mtk_disp_calc_max_channel_bw(mtk_crtc);
+
+	/* all crtc report all channel hrt bw */
+	for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
+		ch_bw = 0;
+		for (j= 0; j < MAX_CRTC; j++)
+			ch_bw += priv->req_hrt_channel_bw[j][i];
+		mtk_vidle_channel_bw_set(ch_bw, i);
+		DRM_MMP_MARK(channel_bw, (i | 0xf0ce0000), ch_bw);
+	}
 
 	if (debug_mmqos)
-		DDPMSG("%s, CRTC%d UPDATE channel max:%u->%u(%u,%u,%u,%u) size:%u\n",
+		DDPMSG("%s, CRTC%d UPDATE channel bw(%u,%u,%u,%u) size:%u\n",
 			IS_ERR_OR_NULL(master) ? "unknown" : master, crtc_idx,
-			priv->last_max_channel_req, max_channel_bw,
 			priv->req_hrt_channel_bw[crtc_idx][0],
 			priv->req_hrt_channel_bw[crtc_idx][1],
 			priv->req_hrt_channel_bw[crtc_idx][2],
 			priv->req_hrt_channel_bw[crtc_idx][3], size);
-
-	/* max channel bw keep unchanged */
-	if (priv->last_max_channel_req == max_channel_bw)
-		goto out;
-
-	/* max channel force update */
-	DRM_MMP_MARK(channel_bw, max_channel_bw, (crtc_idx | 0xf0ce0000));
-	mtk_vidle_dvfs_bw_set(max_channel_bw);
-	priv->last_max_channel_req = max_channel_bw;
-
-out:
-	return priv->last_max_channel_req;
 }
 
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
@@ -1270,7 +1239,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		mtk_crtc->usage_ovl_fmt[0] = 4;
 		mtk_disp_get_channel_hrt_bw(mtk_crtc, channel_hrt, ARRAY_SIZE(channel_hrt));
-		mtk_disp_set_max_channel_hrt_bw(mtk_crtc, channel_hrt,
+		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, channel_hrt,
 					ARRAY_SIZE(channel_hrt), __func__);
 		for (i = 0 ; i < ARRAY_SIZE(channel_hrt); i++)
 			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
