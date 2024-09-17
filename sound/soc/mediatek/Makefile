@@ -86,4 +86,5 @@ endif
 obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += codec/
 obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += common_int/
 obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += mt6765/
+obj-$(CONFIG_SND_SOC_AW87519)   += aw87519/
 endif

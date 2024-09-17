@@ -52,7 +52,7 @@ extern void accdet_late_init(unsigned long a);
 #endif
 
 /*AKITA-5 M8 audio bring up begin */
-#ifdef SND_SOC_AW87519
+#if IS_ENABLED(CONFIG_SND_SOC_AW87519)
 extern unsigned char aw87519_amp_lch_on(void);
 extern unsigned char aw87519_amp_lch_off(void);
 extern unsigned char aw87519_amp_rch_on(void);
