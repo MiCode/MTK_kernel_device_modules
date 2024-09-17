@@ -571,8 +571,14 @@ struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj)
 struct drm_gem_object *mtk_gem_prime_import(struct drm_device *dev,
 					    struct dma_buf *dma_buf)
 {
-	if (WARN_ON(!dma_buf || !dma_buf->file || !dma_buf->attachments.next->prev))
+	struct mtk_drm_private *priv = dev->dev_private;
+
+	if (WARN_ON(!dma_buf || !dma_buf->file))
 		return NULL;
+	if (priv && priv->data->mmsys_id == MMSYS_MT6768) {
+		if (WARN_ON(!dma_buf->attachments.next && !dma_buf->attachments.next->prev))
+			return NULL;
+	}
 	DDPINFO("%s, dma_buf:0x%8p, size:0x%08lx\n", __func__, dma_buf, dma_buf->size);
 	return drm_gem_prime_import_dev(dev, dma_buf,
 		mtk_smmu_get_shared_device(dev->dev));
