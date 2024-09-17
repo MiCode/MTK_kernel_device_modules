@@ -2302,6 +2302,7 @@
 			clock-names = "main";
 			clock-div = <1>;
 			mediatek,fifo_only;
+			mediatek,control-rs-stop;
 		};
 
 		i2c11: i2c@11017000 {
@@ -2312,6 +2313,7 @@
 			clock-names = "main";
 			clock-div = <1>;
 			mediatek,fifo_only;
+			mediatek,control-rs-stop;
 		};
 
 		spi4: spi4@11018000 {
@@ -2669,6 +2671,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_e_clk: syscon@11cb1000 {
@@ -2686,6 +2689,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c7: i2c@11d01000 {
@@ -2697,6 +2701,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c8: i2c@11d02000 {
@@ -2708,6 +2713,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c9: i2c@11d03000 {
@@ -2719,6 +2725,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_s_clk: syscon@11d04000 {
@@ -2736,6 +2743,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c2: i2c@11d21000 {
@@ -2747,6 +2755,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c4: i2c@11d22000 {
@@ -2758,6 +2767,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_ws_clk: syscon@11d23000 {
@@ -2775,6 +2785,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		imp_iic_wrap_w_clk: syscon@11e01000 {
@@ -2832,6 +2843,7 @@
 				<&infracfg_ao_clk CLK_IFRAO_AP_DMA>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			clock-frequency = <400000>;
