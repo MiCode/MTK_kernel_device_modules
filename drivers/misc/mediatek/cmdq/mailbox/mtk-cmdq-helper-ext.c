@@ -4234,7 +4234,13 @@ static int cmdq_pkt_wait_complete_loop(struct cmdq_pkt *pkt)
 			"===== SW timeout Pre-dump %u =====", cnt);
 		++cnt;
 		cmdq_dump_summary(client, pkt);
+		cmdq_mbox_dump_res_status(client->chan);
 		cmdq_util_helper->dump_unlock();
+
+		if (cnt == 1) {
+			cmdq_mbox_predump_req_switch_swmode(client->chan);
+			cmdq_chan_dump_dbg(client->chan);
+		}
 
 		if (cnt == 1 && cmdq_hw_trace && !cmdq_is_hw_trace_thread(client->chan))
 			cmdq_util_hw_trace_dump(cmdq_util_get_hw_id(

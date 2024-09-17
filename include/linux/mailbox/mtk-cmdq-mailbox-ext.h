@@ -398,6 +398,7 @@ char *cmdq_dump_pkt_usage(u32 hwid, char *buf_start, char *buf_end);
 void cmdq_mbox_mtcmos_by_fast_chan(struct mbox_chan *chan, bool on);
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
 void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
+void cmdq_mbox_dump_res_status(void *chan);
 void cmdq_mbox_dump_gce_req(struct mbox_chan *chan);
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread);
 dma_addr_t cmdq_thread_get_end(struct cmdq_thread *thread);
@@ -414,6 +415,7 @@ void cmdq_thread_dump_all(void *mbox_cmdq, const bool lock, const bool dump_pkt,
 void cmdq_thread_dump_all_seq(void *mbox_cmdq, struct seq_file *seq);
 void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 	struct cmdq_pkt *pkt);
+void cmdq_mbox_predump_req_switch_swmode(void *chan);
 void cmdq_mbox_enable(void *chan);
 void cmdq_mbox_disable(void *chan);
 s32 cmdq_mbox_get_usage(void *chan);

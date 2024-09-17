@@ -159,6 +159,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_DDREN_BIT		(0)
 #define GCE_DDRSRC_BIT		(1)
 #define GCE_EMI_BIT			(2)
+#define GCE_DDRSRC_EMI_SWMODE	(0x60006)
 
 #define CMDQ_JUMP_BY_OFFSET		0x10000000
 #define CMDQ_JUMP_BY_PA			0x10000001
@@ -254,6 +255,16 @@ module_param(cmdq_proc_debug_off, int, 0644);
 int cmdq_ftrace_ena;
 EXPORT_SYMBOL(cmdq_ftrace_ena);
 module_param(cmdq_ftrace_ena, int, 0644);
+
+int cmdq_res_wa_chk;
+EXPORT_SYMBOL(cmdq_res_wa_chk);
+module_param(cmdq_res_wa_chk, int, 0644);
+
+int cmdq_res_debug;
+EXPORT_SYMBOL(cmdq_res_debug);
+module_param(cmdq_res_debug, int, 0644);
+
+spinlock_t	g_lock_req_swmode;
 
 struct cmdq_hw_trace_bit {
 	uint8_t enable : 1;
@@ -364,6 +375,10 @@ struct cmdq {
 	bool		err_irq;
 	void __iomem	*dram_pwr_base;
 	void __iomem	*mminfra_ao_base;
+	void __iomem	*iommu_mask;
+	void __iomem	*wla_north_ddr_ack;
+	void __iomem	*wla_south_ddr_ack;
+	void __iomem	*spm_gce_req;
 	bool		error_irq_sw_req;
 	bool		gce_vm;
 	bool		spr3_timer;
@@ -372,6 +387,9 @@ struct cmdq {
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
 	bool		gce_req_wa;
+	bool		iommu_mask_chk;
+	bool		spm_res_chk;
+	bool		cmdq_predump_res_swmode;
 	unsigned int	dbg3;
 	bool		gce_res_sw_mode;
 	u32		mpu_irq;
@@ -2503,7 +2521,7 @@ void cmdq_dump_core(struct mbox_chan *chan)
 {
 	struct cmdq *cmdq = dev_get_drvdata(chan->mbox->dev);
 	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
-	u32 irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl;
+	u32 irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl, gce_res_val;
 
 	cmdq_mtcmos_by_fast(cmdq, true);
 
@@ -2523,12 +2541,13 @@ void cmdq_dump_core(struct mbox_chan *chan)
 	tpr_mask = readl(cmdq->base + CMDQ_TPR_MASK);
 	tpr_en = readl(cmdq->base + CMDQ_TPR_TIMEOUT_EN);
 	bus_gctl = readl(cmdq->base + GCE_BUS_GCTL);
+	gce_res_val = readl(cmdq->base + GCE_GCTL_VALUE);
 
 	cmdq_mtcmos_by_fast(cmdq, false);
 
 	cmdq_util_user_msg(chan,
-		"irq:%#x loaded:%#x cycle:%#x thd timer:%#x mask:%#x en:%#x bus_gctl:%#x",
-		irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl);
+		"irq:%#x loaded:%#x cycle:%#x thd timer:%#x mask:%#x en:%#x bus_gctl:%#x gce_res_val:%#x",
+		irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl, gce_res_val);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	cmdq_chan_dump_dbg(chan);
 #endif
@@ -3467,7 +3486,8 @@ static int cmdq_probe(struct platform_device *pdev)
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	int port;
 #endif
-	u32 dram_pwr_pa, mminfra_ao_pa;
+	u32 dram_pwr_pa, mminfra_ao_pa, iommu_mask_pa;
+	u32 wla_north_ddr_ack_pa, wla_south_ddr_ack_pa, spm_gce_req_pa;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -3555,7 +3575,7 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&cmdq->irq_removes);
 	spin_lock_init(&cmdq->irq_removes_lock);
-
+	spin_lock_init(&g_lock_req_swmode);
 	init_waitqueue_head(&cmdq->err_irq_wq);
 	kthr = kthread_run(cmdq_irq_handler_thread, cmdq, "cmdq_irq_thread");
 
@@ -3614,15 +3634,18 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
 	of_property_read_u32(dev->of_node, "cmdq-print-debug", &cmdq_print_debug);
+	of_property_read_u32(dev->of_node, "cmdq-res-wa-chk", &cmdq_res_wa_chk);
+	of_property_read_u32(dev->of_node, "cmdq-res-debug", &cmdq_res_debug);
 	of_property_read_u32(dev->of_node, "cmdq-control-address-limit",
 		&gce_control_address_limit);
 
-	cmdq_msg("dump_buf_size %d error irq %d tfa_read_dbg:%d proc_debug_off:%d print_debug:%d",
+	cmdq_msg("dump_buf_size %d error irq %d tfa_read_dbg:%d proc_debug_off:%d print_debug:%d cmdq_res_wa_chk:%d",
 		cmdq_dump_buf_size,
 		error_irq_bug_on,
 		cmdq_tfa_read_dbg,
 		cmdq_proc_debug_off,
-		cmdq_print_debug);
+		cmdq_print_debug,
+		cmdq_res_wa_chk);
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
 		cmdq->fast_mtcmos = true;
@@ -3820,7 +3843,32 @@ static int cmdq_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (of_property_read_bool(dev->of_node, "iommu-mask-chk")) {
+		cmdq->iommu_mask_chk = true;
+		if (!of_property_read_u32(dev->of_node, "iommu-mask-addr", &iommu_mask_pa)) {
+			cmdq_msg("iommu_mask_pa:%#x", iommu_mask_pa);
+			cmdq->iommu_mask = ioremap(iommu_mask_pa, 0x1000);
+		}
+	}
+
+	if (of_property_read_bool(dev->of_node, "spm-res-chk")) {
+		cmdq->spm_res_chk = true;
+		if (!of_property_read_u32(dev->of_node, "wla-north-ddr-ack-addr", &wla_north_ddr_ack_pa)) {
+			cmdq_msg("wla_north_ddr_ack_pa:%#x", wla_north_ddr_ack_pa);
+			cmdq->wla_north_ddr_ack = ioremap(wla_north_ddr_ack_pa, 0x1000);
+		}
+		if (!of_property_read_u32(dev->of_node, "wla-north-ddr-ack-addr", &wla_south_ddr_ack_pa)) {
+			cmdq_msg("wla_south_ddr_ack_pa:%#x", wla_south_ddr_ack_pa);
+			cmdq->wla_south_ddr_ack = ioremap(wla_south_ddr_ack_pa, 0x1000);
+		}
+		if (!of_property_read_u32(dev->of_node, "spm-gce-req", &spm_gce_req_pa)) {
+			cmdq_msg("spm_gce_req_pa:%#x", spm_gce_req_pa);
+			cmdq->spm_gce_req = ioremap(spm_gce_req_pa, 0x1000);
+		}
+	}
+
 	cmdq->gce_req_wa = of_property_read_bool(dev->of_node, "gce-req-wa");
+	cmdq->cmdq_predump_res_swmode = of_property_read_bool(dev->of_node, "cmdq-predump-res-sw-mode");
 
 	if (cmdq->hwid == 0 && cmdq_print_debug)
 		cmdq_util_reserved_memory_lookup(dev);
@@ -4127,6 +4175,62 @@ err_ret:
 EXPORT_SYMBOL(cmdq_set_domain_epu_mask);
 #endif
 
+void cmdq_mbox_dump_res_status(void *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	u32 gce_res_val, iommu_mask_val, north_ddr_ack, south_ddr_ack, spm_gce_req;
+
+	if(!cmdq_res_debug)
+		return;
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+	gce_res_val = readl(cmdq->base + GCE_GCTL_VALUE);
+	iommu_mask_val = cmdq->iommu_mask_chk ?
+		readl(cmdq->iommu_mask) : ~0;
+	north_ddr_ack = cmdq->spm_res_chk ?
+		readl(cmdq->wla_north_ddr_ack) : ~0;
+	south_ddr_ack = cmdq->spm_res_chk ?
+		readl(cmdq->wla_south_ddr_ack) : ~0;
+	spm_gce_req = cmdq->spm_res_chk ?
+		readl(cmdq->spm_gce_req) : ~0;
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+	cmdq_util_user_msg(chan,
+		"iommu_mask:%#x gce_res:%#x north_ddr_ack:%#x south_ddr_ack:%#x spm_gce_req:%#x",
+		iommu_mask_val, gce_res_val, north_ddr_ack, south_ddr_ack, spm_gce_req);
+}
+EXPORT_SYMBOL(cmdq_mbox_dump_res_status);
+
+void cmdq_mbox_predump_req_switch_swmode(void *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	struct cmdq_thread *thread =
+		(struct cmdq_thread *)((struct mbox_chan *)chan)->con_priv;
+	unsigned long flags;
+	u32	gce_res_val;
+	dma_addr_t curr_pa = 0;
+
+	if (!cmdq->cmdq_predump_res_swmode)
+		return;
+
+	spin_lock_irqsave(&g_lock_req_swmode, flags);
+	cmdq_mtcmos_by_fast(cmdq, true);
+	gce_res_val = readl(cmdq->base + GCE_GCTL_VALUE);
+	cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDREN_BIT);
+	cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDRSRC_BIT);
+	cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_EMI_BIT);
+	curr_pa = cmdq_thread_get_pc(thread);
+	cmdq_util_user_msg(chan,
+		"enable sw mode gce_res:%#x pc:%pa", gce_res_val, &curr_pa);
+	cmdq_mbox_dump_res_status(chan);
+	writel(gce_res_val, cmdq->base + GCE_GCTL_VALUE);
+	cmdq_mtcmos_by_fast(cmdq, false);
+	spin_unlock_irqrestore(&g_lock_req_swmode, flags);
+}
+EXPORT_SYMBOL(cmdq_mbox_predump_req_switch_swmode);
+
 void cmdq_mbox_enable(void *chan)
 {
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
@@ -4273,11 +4377,26 @@ void cmdq_mbox_enable(void *chan)
 		writel(CMDQ_TPR_EN, cmdq->base + CMDQ_TPR_MASK);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 
+		if (cmdq_res_wa_chk && cmdq->hwid == GCED_HWID) {
+			u32 req_val = readl(cmdq->base + GCE_GCTL_VALUE);
+
+			if (req_val != GCE_DDRSRC_EMI_SWMODE) {
+				spin_lock_irqsave(&g_lock_req_swmode, flags);
+				cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDRSRC_BIT);
+				cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_EMI_BIT);
+				cmdq_err("vcp set req fail req_before:%#x req_after:%#x",
+					req_val, readl(cmdq->base + GCE_GCTL_VALUE));
+				spin_unlock_irqrestore(&g_lock_req_swmode, flags);
+			}
+		}
+
 		if (cmdq->gce_req_wa) {
+			spin_lock_irqsave(&g_lock_req_swmode, flags);
 			cmdq_mbox_set_resource_req(GCED_HWID, true, true, GCE_DDREN_BIT);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDREN_BIT);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_DDRSRC_BIT);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, true, GCE_EMI_BIT);
+			spin_unlock_irqrestore(&g_lock_req_swmode, flags);
 		}
 
 		// thread
@@ -4413,10 +4532,12 @@ void cmdq_mbox_disable(void *chan)
 		clk_disable_unprepare(cmdq->clock);
 
 		if (cmdq->gce_req_wa) {
+			spin_lock_irqsave(&g_lock_req_swmode, flags);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDREN_BIT);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_DDRSRC_BIT);
 			cmdq_mbox_set_resource_req(GCEM_HWID, true, false, GCE_EMI_BIT);
 			cmdq_mbox_set_resource_req(GCED_HWID, false, false, GCE_DDREN_BIT);
+			spin_unlock_irqrestore(&g_lock_req_swmode, flags);
 		}
 		cmdq_mtcmos_by_fast(cmdq, false);
 
