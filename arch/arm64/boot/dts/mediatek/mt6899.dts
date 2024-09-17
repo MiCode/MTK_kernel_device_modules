@@ -6063,7 +6063,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				monitor8 {
 					monitor-name = "debug_ctrl_ao_MMUP_AO";
 					base = <0x11651000>;
-					num-ports = <18>;
+					num-ports = <19>;
 					bus-freq-mhz = <728>;
 					isr-dump = <0>;
 				};
@@ -15945,7 +15945,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fmeter-type = <5>;	/* fmeter type */
 			mbox-count = <5>;
 			vcp-excep-mode = <1>;
-			bus-debug-num-ports = <18>;
+			bus-debug-num-ports = <19>;
 			vcp-pwr-status = <0x1c001e94>;
 			/* id, mbox, send_size*/
 			send-table =
