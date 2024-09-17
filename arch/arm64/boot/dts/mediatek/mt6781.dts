@@ -31,7 +31,7 @@
 
 	/* chosen */
 	chosen: chosen {
-		bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
+		bootargs = "console=tty0 root=/dev/ram \
 			vmalloc=400M swiotlb=noforce transparent_hugepage=never \
 			initcall_debug=1 \
 			8250.nr_uarts=2 \
@@ -4091,6 +4091,7 @@
 		dmas = <&apdma 0
 				&apdma 1>;
 		dma-names = "tx", "rx";
+		uart-line = <0>;
 	};
 
 	apuart1: serial@11003000 {
@@ -4102,6 +4103,7 @@
 		dmas = <&apdma 2
 				&apdma 3>;
 		dma-names = "tx", "rx";
+		uart-line = <1>;
 	};
 
 	i2c0: i2c0@11007000 {
