@@ -513,6 +513,7 @@ enum DISPLAY_MODE {
 };
 
 struct mtk_panel_params {
+	unsigned int prefetch_time;
 	unsigned int pll_clk;
 	unsigned int data_rate;
 	unsigned int data_rate_khz;

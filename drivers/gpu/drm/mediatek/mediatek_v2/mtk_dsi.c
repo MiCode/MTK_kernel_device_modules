@@ -240,6 +240,8 @@
 #define DSI_TIME_CON0(data)	(data->dsi_time_con ? data->dsi_time_con : 0xA0)
 #define FLD_SKEWCAL_PRD REG_FLD_MSB_LSB(31, 16)
 #define DSI_TIME_CON1(data)	(data->dsi_time_con ? data->dsi_time_con + 0x4 : 0xAA)
+#define PREFETCH_EN BIT(31)
+#define FLD_PREFETCH_TIME REG_FLD_MSB_LSB(30, 16)
 #define DSI_RESERVED(data)	(data->dsi_reserved ? data->dsi_reserved : 0xF0)
 #define DSI_VDE_BLOCK_ULTRA BIT(29)
 
@@ -2382,6 +2384,26 @@ static void mtk_dsi_set_vm_cmd(struct mtk_dsi *dsi)
 
 	mtk_dsi_mask(dsi, dsi->driver_data->reg_vm_cmd_con_ofs, VM_CMD_EN, VM_CMD_EN);
 	mtk_dsi_mask(dsi, dsi->driver_data->reg_vm_cmd_con_ofs, TS_VFP_EN, TS_VFP_EN);
+}
+
+static void mtk_dsi_set_prefetch_time(struct mtk_dsi *dsi)
+{
+	struct mtk_panel_ext *panel_ext = NULL;
+	u32 val = 0, mask = 0, prefetch_time = 0;
+
+	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
+		pr_info("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+
+	if (dsi->panel && dsi->ext && dsi->ext->params->prefetch_time) {
+		prefetch_time = dsi->ext->params->prefetch_time & 0x7fff;
+		SET_VAL_MASK(val, mask, prefetch_time, FLD_PREFETCH_TIME);
+		mtk_dsi_mask(dsi, DSI_TIME_CON1(dsi->driver_data), mask, val);
+		mtk_dsi_mask(dsi, DSI_TIME_CON1(dsi->driver_data), PREFETCH_EN, PREFETCH_EN);
+		pr_info("%s DSI_TIME_CON1= 0x%x\n", __func__,
+			readl(dsi->regs + DSI_TIME_CON1(dsi->driver_data)));
+	}
 }
 
 int mtk_dsi_get_virtual_heigh(struct mtk_dsi *dsi,
@@ -4819,7 +4841,8 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	if (is_bdg_supported())
 		check_stopstate(NULL);
 	mtk_dsi_clk_hs_mode(dsi, 0);
-
+	/*set dsi prefetch time*/
+	mtk_dsi_set_prefetch_time(dsi);
 	return 0;
 }
 

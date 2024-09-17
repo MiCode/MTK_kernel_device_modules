@@ -61,6 +61,7 @@
 #define PANEL_VREFRESH_NODE_NAME				"panel-mode-vrefresh"
 #define PANEL_PLL_NODE_NAME						"panel-mode-pll"
 #define PANEL_LPPF_NODE_NAME					"panel-mode-lppf"
+#define PANEL_PREFETCH_TIME					    "panel-mode-prefetch"
 #define PANEL_WIDTH_MM_NODE_NAME				"panel-mode-width-mm"
 #define PANEL_HEIGHT_MM_NODE_NAME				"panel-mode-height-mm"
 
@@ -465,6 +466,15 @@ static int serdes_get_timing_info_from_dts(struct serdes *ser_des, u8 port)
 		} else {
 			pr_info("lppf = 0!\n");
 			des->disp_mode.lppf = 0;
+		}
+
+		ret = of_property_read_u32(mode_node, PANEL_PREFETCH_TIME, &read_value);
+		if (!ret) {
+			des->disp_mode.prefetch = read_value;
+			pr_info("disp_mode.prefetch = %d\n", read_value);
+		} else {
+			pr_info("prefetch = 0!\n");
+			des->disp_mode.prefetch = 0;
 		}
 
 		ret = of_property_read_u32(mode_node, PANEL_WIDTH_MM_NODE_NAME, &read_value);
@@ -1801,6 +1811,7 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode, u
 	} else {
 		disp_mode->pll = des->disp_mode.pll;
 		disp_mode->lppf = des->disp_mode.lppf;
+		disp_mode->prefetch = des->disp_mode.prefetch;
 	}
 }
 EXPORT_SYMBOL(serdes_get_modes);

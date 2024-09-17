@@ -24,6 +24,7 @@ struct vdo_timing {
 	u32 fps;
 	u32 pll;
 	u32 lppf;
+	u32 prefetch;
 	u32 physcial_w;
 	u32 physcial_h;
 	u32 crop_width[2];

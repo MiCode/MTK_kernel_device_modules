@@ -66,6 +66,7 @@ struct lcm {
 	struct mtk_panel_params ext_params;
 	u32 pll;
 	u32 lppf;
+	u32 prefetch;
 	u32 is_virtual;
 };
 
@@ -279,8 +280,10 @@ static void get_real_timing(struct lcm *ctx)
 						 1000) :
 				timing.pll;
 		ctx->lppf = timing.lppf;
+		ctx->prefetch = timing.prefetch;
 	}
 	ctx->ext_params.pll_clk = ctx->pll;
+	ctx->ext_params.prefetch_time = ctx->prefetch;
 	ctx->ext_params.vdo_per_frame_lp_enable = ctx->lppf;
 	ctx->ext_params.physical_width = ctx->real_disp_mode.hdisplay;
 	ctx->ext_params.physical_height = ctx->real_disp_mode.vdisplay;
