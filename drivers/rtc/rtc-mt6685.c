@@ -910,7 +910,7 @@ static bool mtk_rtc_check_set_time(struct mt6685_rtc *rtc, struct rtc_time *tm,
 			if (latest[i] != data[i])
 				write_fail++;
 
-			if (j == retry_time) {
+			if (write_fail) {
 				ret = rtc_read(rtc, rtc->data->hwid, &hwid);
 				if (ret < 0)
 					return ret;
@@ -1050,6 +1050,7 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	struct rtc_time *tm = &alm->time;
 	struct mt6685_rtc *rtc = dev_get_drvdata(dev);
 	int ret = 0, result = 0;
+	int retry = 0;
 	u16 data[RTC_OFFSET_COUNT];
 	ktime_t target;
 	time64_t p_now, scheduled;
@@ -1124,45 +1125,62 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 				(tm->tm_year & RTC_AL_YEA_MASK));
 
 	if (alm->enabled) {
-		ret = rtc_bulk_write(rtc,
-					rtc->addr_base + RTC_AL_SEC,
-					data, RTC_OFFSET_COUNT * 2);
-		if (ret < 0)
-			goto exit;
-		ret = rtc_write(rtc, rtc->addr_base + RTC_AL_MASK,
-				   RTC_AL_MASK_DOW);
-		if (ret < 0)
-			goto exit;
+		/* re-write alarm time once again to make sure it's correctly set
+		 * if the alarm is still set incorrectly then trigger dump kernel API
+		 */
+		for (retry = 0; retry < 2; retry++) {
+			dev_notice(rtc->rtc_dev->dev.parent,
+				"set al data[%d] = %x, %x, %x, %x, %x, %x\n",
+				retry,
+				data[RTC_OFFSET_SEC], data[RTC_OFFSET_MIN],
+				data[RTC_OFFSET_HOUR], data[RTC_OFFSET_DOM],
+				data[RTC_OFFSET_MTH], data[RTC_OFFSET_YEAR]);
 
-		ret =  rtc_update_bits(rtc,
-				rtc->addr_base + RTC_IRQ_EN,
-				RTC_IRQ_EN_AL, RTC_IRQ_EN_AL);
-		if (ret < 0)
-			goto exit;
+			ret = rtc_bulk_write(rtc, rtc->addr_base + RTC_AL_SEC,
+						data, RTC_OFFSET_COUNT * 2);
+
+			if (ret < 0)
+				goto exit;
+			ret = rtc_write(rtc, rtc->addr_base + RTC_AL_MASK,
+					RTC_AL_MASK_DOW);
+			if (ret < 0)
+				goto exit;
+
+			ret =  rtc_update_bits(rtc,
+					rtc->addr_base + RTC_IRQ_EN,
+					RTC_IRQ_EN_AL, RTC_IRQ_EN_AL);
+			if (ret < 0)
+				goto exit;
+
+			/* All alarm time register write to hardware after calling
+			 * mtk_rtc_write_trigger. This can avoid race condition if alarm
+			 * occur happen during writing alarm time register.
+			 */
+			ret = mtk_rtc_write_trigger(rtc);
+			if (ret < 0)
+				goto exit;
+
+			result = mtk_rtc_check_set_time(rtc, tm, 2, RTC_AL_SEC);
+			if (!result) {
+				dev_info(rtc->rtc_dev->dev.parent, "check rtc set alarm\n");
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+				if (retry > 0)
+					aee_kernel_warning("mt6685-rtc", "mt6685-rtc: set alarm time failed\n");
+#endif
+			} else
+				break;
+		}
 	} else {
 		ret =  rtc_update_bits(rtc,
 				rtc->addr_base + RTC_IRQ_EN,
 			RTC_IRQ_EN_AL, 0);
 		if (ret < 0)
 			goto exit;
+		ret = mtk_rtc_write_trigger(rtc);
+		if (ret < 0)
+			goto exit;
 	}
 
-	/* All alarm time register write to hardware after calling
-	 * mtk_rtc_write_trigger. This can avoid race condition if alarm
-	 * occur happen during writing alarm time register.
-	 */
-	ret = mtk_rtc_write_trigger(rtc);
-	if (ret < 0)
-		goto exit;
-
-	result = mtk_rtc_check_set_time(rtc, tm, 2, RTC_AL_SEC);
-
-	if (!result) {
-		dev_info(rtc->rtc_dev->dev.parent, "check rtc set alarm\n");
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		aee_kernel_warning("mt6685-rtc", "mt6685-rtc: set alarm time failed\n");
-#endif
-	}
 	if ((alm->enabled == 3) || (alm->enabled == 4))
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
 exit:
