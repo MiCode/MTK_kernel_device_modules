@@ -3003,9 +3003,9 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	if (dsi->driver_data->support_pre_urgent) {
 		if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 			/* line counter mode for vdo mode */
-			u32 line_time_ns;
-			u64 buf_preurgent_high;
-			u32 prefetch_time;
+			u32 line_time_ns = 0;
+			u64 buf_preurgent_high = 0;
+			u32 prefetch_time = 0;
 			struct drm_display_mode *mode = mtk_crtc_get_display_mode_by_comp(__func__,
 							&mtk_crtc->base, comp, false);
 
@@ -3051,6 +3051,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 			fps = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 			fps = fps > 0 ? fps : drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+			if (fps == 0)
+				return;
 
 			if (dsc_params->enable)
 				ps_wc = dsc_params->chunk_size * (dsc_params->slice_mode + 1);
@@ -8682,7 +8684,7 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE, handle);
 	mtk_ddp_write_mask(comp, CMDQ_SIZE_SEL,
 				DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE_SEL, handle);
-	DDPINFO("%s DSI_CMDQ_CON=0x%x\n", __func__, (total_cmdq_size | CMDQ_SIZE_SEL));
+	DDPINFO("%s total_cmdq_size=%d\n", __func__, total_cmdq_size);
 
 	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 	mtk_ddp_write_relaxed(comp, 0x1, DSI_START, handle);
