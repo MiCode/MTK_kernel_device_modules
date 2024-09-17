@@ -36,7 +36,7 @@
 #include <linux/wait.h>
 #include <linux/pm_runtime.h>
 
-#define SERDES_DEBUG_INFO					"[serdes-dp]"
+#define SERDES_DEBUG_INFO					"[serdes_dp]"
 #define SERDES_POLL_TIMEOUT_MS				2000
 
 #define I2C_WRITE							0x1
@@ -62,9 +62,9 @@
 #define FEATURE_HANDLE_CMD					"handle-cmd"
 #define FEATURE_SETTING						"feature-setting"
 
-#define SERDES_DP_SST_SETTING				"serdes-dp-sst-settting"
+#define SERDES_DP_SST_SETTING				"serdes-dp-sst-setting"
 #define DES_I2C_ADDR						"des-i2c-addr"
-#define BL_I2C_ADDR							"bl-i2c-addr"
+#define DES_I2C_ADDR_LINKB					"des-i2c-addr-linkb"
 #define SER_INIT_CMD_NAME					"ser-init-cmd"
 #define DES_INIT_CMD_NAME					"des-init-cmd"
 #define TOUCH_INIT_CMD_ADDR					"touch-init-cmd"
@@ -91,8 +91,10 @@
 #define serdes_dp_DP_MST_TOUCH_I2C_ADDR		"dp-mst-touch-i2c-addr"
 #define serdes_dp_DP_MST_TOUCH_INIT_CMD		"dp-mst-touch-init-cmd"
 
-#define BL_ON_CMD							"bl-on-cmd"
-#define BL_OFF_CMD							"bl-off-cmd"
+#define DES_LINKA_BL_ON_CMD					"des-linka-bl-on-cmd"
+#define DES_LINKA_BL_OFF_CMD				"des-linka-bl-off-cmd"
+#define DES_LINKB_BL_ON_CMD					"des-linkb-bl-on-cmd"
+#define DES_LINKB_BL_OFF_CMD				"des-linkb-bl-off-cmd"
 
 #define SINGAL_SETTING						"signal-setting"
 #define SUPERFRAME_SETTING					"superframe-setting"
@@ -105,6 +107,12 @@
 
 #define DES_REG_0x06ff_HOTPLUG_DETECT		0x06FF
 #define DES_HOTPLUG_CHECK_VALUE				0x22
+
+enum serdes_link_port {
+	SERDES_LINKA_PORT = 1,
+	SERDES_LINKB_PORT,
+	SERDES_LINKB_PORT_UNKNOWN,
+};
 
 enum serdes_status {
 	des_link_status_connected = 1,
@@ -155,27 +163,29 @@ struct serdes_dp_bridge {
 
 	/* irq handle for hotplug */
 	bool serdes_init_done;
-	bool is_support_hotplug;
+	bool support_hotplug;
 	int irq_num;
 	wait_queue_head_t waitq;
 	struct task_struct *serdes_hotplug_task;
 	atomic_t hotplug_event;
 
 	/* Serdes i2c client */
-	struct i2c_client *serdes_dp_i2c;
-	struct i2c_client *max96752_i2c;
-	struct i2c_client *bl_i2c;
-	struct i2c_client *max96752_linka_i2c;
-	struct i2c_client *max96752_linka_bl_i2c;
-	struct i2c_client *max96752_linkb_i2c;
-	struct i2c_client *max96752_linkb_bl_i2c;
+	struct i2c_client *serdes_dp_i2c_client;
+	struct i2c_client *des_i2c_client;
+	struct i2c_client *des_i2c_linkb_client;
+	struct i2c_client *linka_i2c_client;
+	struct i2c_client *linka_bl_i2c_client;
+	struct bl_cmd_info linka_bl_on_cmd;
+	struct bl_cmd_info linka_bl_off_cmd;
+	struct i2c_client *linkb_i2c_client;
+	struct i2c_client *linkb_bl_i2c_client;
+	struct bl_cmd_info linkb_bl_on_cmd;
+	struct bl_cmd_info linkb_bl_off_cmd;
 
 	/* signal setting */
-	struct serdes_cmd_info signal_ser_init_cmd;
-	struct serdes_cmd_info signal_des_init_cmd;
-	struct serdes_cmd_info signal_touch_init_cmd;
-	struct bl_cmd_info bl_on_cmd;
-	struct bl_cmd_info bl_off_cmd;
+	struct serdes_cmd_info sst_ser_init_cmd;
+	struct serdes_cmd_info sst_des_init_cmd;
+	struct serdes_cmd_info sst_touch_init_cmd;
 
 	/* superframe setting */
 	struct serdes_cmd_info serdes_init_linka_cmd;
@@ -201,10 +211,10 @@ struct serdes_dp_bridge {
 
 	bool boot_from_lk;
 	bool double_pixel_support;
-	bool superframe_support;
+	bool support_superframe;
 	bool asymmetric_multi_view;
-	bool is_support_mst;
-	bool is_support_touch;
+	bool support_mst;
+	bool support_touch;
 	bool prepared;
 	bool enabled;
 	bool suspend;
@@ -213,11 +223,11 @@ struct serdes_dp_bridge {
 
 	char *panel_name;
 	u32 des_i2c_addr;
-	u32	bl_i2c_addr;
+	u32 des_i2c_addr_linkb;
 	u32 linka_i2c_addr;
-	u32 linka_bl_addr;
+	u32 linka_bl_i2c_addr;
 	u32 linkb_i2c_addr;
-	u32 linkb_bl_addr;
+	u32 linkb_bl_i2c_addr;
 };
 
 int get_panel_name_and_mode(char *panel_name, char *panel_mode, bool is_dp);

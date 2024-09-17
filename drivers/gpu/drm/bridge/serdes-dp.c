@@ -10,7 +10,7 @@ static char *global_panel_dp_mode;
 static char *global_panel_edp_name;
 static char *global_panel_edp_mode;
 
-static const char * const props[] = {DES_I2C_ADDR, BL_I2C_ADDR, DES_LINKA_I2C_ADDR,
+static const char * const props[] = {DES_I2C_ADDR, DES_I2C_ADDR_LINKB, DES_LINKA_I2C_ADDR,
 					DES_LINKA_BL_I2C_ADDR, DES_LINKB_I2C_ADDR, DES_LINKB_BL_I2C_ADDR};
 static const char * const init_cmds[] = {SERDES_INIT_LINKA_CMD, DES_LINKA_INIT_CMD,
 					SERDES_INIT_LINKB_CMD, DES_LINKB_INIT_CMD, SER_SUPERFRAME_INIT_CMD};
@@ -41,10 +41,9 @@ int get_panel_name_and_mode(char *panel_name, char *panel_mode, bool is_dp)
 }
 EXPORT_SYMBOL(get_panel_name_and_mode);
 
-static u8 serdes_read_byte(struct i2c_client *client,
-								u16 addr)
+static int serdes_read_byte(struct i2c_client *client,
+								u16 addr, u8 *buf)
 {
-	u8 buf;
 	int ret = 0;
 	char read_data[2] = { 0 };
 
@@ -59,21 +58,21 @@ static u8 serdes_read_byte(struct i2c_client *client,
 #ifdef SERDES_DEBUG
 		pr_info("%s Failed to send i2c command, ret = %d\n", SERDES_DEBUG_INFO, ret);
 #endif
-		return 0;
+		return -1;
 	}
 
-	ret = i2c_master_recv(client, &buf, 1);
+	ret = i2c_master_recv(client, buf, 1);
 	if (ret <= 0) {
 		mutex_unlock(&edp_i2c_access);
 #ifdef SERDES_DEBUG
 		pr_info("%s Failed to recv i2c data, ret = %d\n", SERDES_DEBUG_INFO, ret);
 #endif
-		return 0;
+		return -1;
 	}
 
 	mutex_unlock(&edp_i2c_access);
 
-	return buf;
+	return 0;
 }
 
 static int serdes_write_byte(struct i2c_client *client, u16 addr,
@@ -117,39 +116,61 @@ static inline struct serdes_dp_bridge *
 static int serdes_dp_create_i2c_client(struct serdes_dp_bridge *max_bridge)
 {
 	u16 addr = 0;
+	struct i2c_adapter *bus_adapter = max_bridge->serdes_dp_i2c_client->adapter;
 
 	addr = (u16)max_bridge->des_i2c_addr;
-	max_bridge->max96752_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-
-	addr = (u16)max_bridge->bl_i2c_addr;
-	max_bridge->bl_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-
-	if (!max_bridge->max96752_i2c || !max_bridge->bl_i2c) {
-		pr_info("%s Failed to create i2c client for max96752 or BL!\n", SERDES_DEBUG_INFO);
+	max_bridge->des_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+	if (!max_bridge->des_i2c_client) {
+		pr_info("%s Failed to create i2c client for des!\n", SERDES_DEBUG_INFO);
 		return -ENODEV;
 	}
 
-	if (max_bridge->superframe_support) {
+	if (max_bridge->support_superframe) {
+		pr_info("%s superframe support\n", SERDES_DEBUG_INFO);
+		addr = (u16)max_bridge->des_i2c_addr_linkb;
+		if (addr == max_bridge->des_i2c_addr)
+			max_bridge->des_i2c_linkb_client = max_bridge->des_i2c_client;
+		else
+			max_bridge->des_i2c_linkb_client = i2c_new_dummy_device(bus_adapter, addr);
 		addr = (u16)max_bridge->linka_i2c_addr;
-		max_bridge->max96752_linka_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-		addr = (u16)max_bridge->linka_bl_addr;
-		max_bridge->max96752_linka_bl_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
+		max_bridge->linka_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linka_bl_i2c_addr;
+		max_bridge->linka_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
 		addr = (u16)max_bridge->linkb_i2c_addr;
-		max_bridge->max96752_linkb_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-		addr = (u16)max_bridge->linkb_bl_addr;
-		max_bridge->max96752_linkb_bl_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
+		max_bridge->linkb_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linkb_bl_i2c_addr;
+		if (addr == max_bridge->linka_bl_i2c_addr)
+			max_bridge->linkb_bl_i2c_client = max_bridge->linka_bl_i2c_client;
+		else
+			max_bridge->linkb_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
 	} else if (max_bridge->double_pixel_support) {
 		pr_info("%s double pixel support\n", SERDES_DEBUG_INFO);
-	} else if (max_bridge->is_support_mst) {
-		addr = (u16)max_bridge->linka_i2c_addr;
-		max_bridge->max96752_linka_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-		addr = (u16)max_bridge->linka_bl_addr;
-		max_bridge->max96752_linka_bl_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-		addr = (u16)max_bridge->linkb_i2c_addr;
-		max_bridge->max96752_linkb_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
-		addr = (u16)max_bridge->linkb_bl_addr;
-		max_bridge->max96752_linkb_bl_i2c = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, addr);
+	} else if (max_bridge->support_mst) {
 		pr_info("%s DP MST support\n", SERDES_DEBUG_INFO);
+		addr = (u16)max_bridge->des_i2c_addr_linkb;
+		if (addr == max_bridge->des_i2c_addr)
+			max_bridge->des_i2c_linkb_client = max_bridge->des_i2c_client;
+		else
+			max_bridge->des_i2c_linkb_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linka_i2c_addr;
+		max_bridge->linka_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linka_bl_i2c_addr;
+		max_bridge->linka_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linkb_i2c_addr;
+		max_bridge->linkb_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linkb_bl_i2c_addr;
+		if (addr == max_bridge->linka_bl_i2c_addr)
+			max_bridge->linkb_bl_i2c_client = max_bridge->linka_bl_i2c_client;
+		else
+			max_bridge->linkb_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+	} else {
+		pr_info("%s DP SST support\n", SERDES_DEBUG_INFO);
+		addr = (u16)max_bridge->linka_bl_i2c_addr;
+		max_bridge->linka_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		if (!max_bridge->linka_bl_i2c_addr) {
+			pr_info("%s Failed to create i2c client for backlight!\n", SERDES_DEBUG_INFO);
+			return -ENODEV;
+		}
 	}
 
 	return 0;
@@ -160,7 +181,8 @@ static void ser_init_loop(struct serdes_dp_bridge *max_bridge, struct serdes_cmd
 	int i, ret;
 
 	for (i = 0; i < cmd_data->length; i++) {
-		ret = serdes_write_byte(max_bridge->serdes_dp_i2c, cmd_data->addr[i], cmd_data->data[i]);
+		ret = serdes_write_byte(max_bridge->serdes_dp_i2c_client,
+						cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
 #ifdef SERDES_DEBUG
 			pr_info("%s Write ser command failed, addr=0x%x data=0x%x ret: %d\n",
@@ -182,7 +204,8 @@ static void des_init_loop(struct serdes_dp_bridge *max_bridge, struct serdes_cmd
 	int i, ret;
 
 	for (i = 0; i < cmd_data->length; i++) {
-		ret = serdes_write_byte(max_bridge->max96752_i2c, cmd_data->addr[i], cmd_data->data[i]);
+		ret = serdes_write_byte(max_bridge->des_i2c_client,
+					cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
 #ifdef SERDES_DEBUG
 			pr_info("%s Write des command failed, addr=0x%x data=0x%x ret: %d\n",
@@ -200,7 +223,8 @@ static void des_init_loop(struct serdes_dp_bridge *max_bridge, struct serdes_cmd
 	}
 }
 
-static void serdes_init_loop(struct serdes_dp_bridge *max_bridge, struct serdes_cmd_info *cmd_data)
+static void serdes_init_loop(struct serdes_dp_bridge *max_bridge,
+		struct serdes_cmd_info *cmd_data, enum serdes_link_port port)
 {
 	int i, ret;
 	struct i2c_client *client = NULL;
@@ -208,16 +232,21 @@ static void serdes_init_loop(struct serdes_dp_bridge *max_bridge, struct serdes_
 	for (i = 0; i < cmd_data->length; i++) {
 		switch (cmd_data->obj[i]) {
 		case 0:
-			client = max_bridge->serdes_dp_i2c;
+			client = max_bridge->serdes_dp_i2c_client;
 			break;
 		case 1:
-			client = max_bridge->max96752_i2c;
+			if (port == SERDES_LINKA_PORT)
+				client = max_bridge->des_i2c_client;
+			else if (port == SERDES_LINKB_PORT)
+				client = max_bridge->des_i2c_linkb_client;
+			else
+				client = max_bridge->des_i2c_client;
 			break;
 		case 2:
-			client = max_bridge->max96752_linka_i2c;
+			client = max_bridge->linka_i2c_client;
 			break;
 		case 3:
-			client = max_bridge->max96752_linkb_i2c;
+			client = max_bridge->linkb_i2c_client;
 			break;
 		default:
 			pr_info("%s Invalid obj id: %d\n", SERDES_DEBUG_INFO, cmd_data->obj[i]);
@@ -358,11 +387,13 @@ static int excute_feature_check_cmd(struct serdes_dp_bridge *max_bridge,
 				struct feature_cmd feature_cmd)
 {
 	struct i2c_client *client = NULL;
+	struct i2c_adapter *bus_adapter = max_bridge->serdes_dp_i2c_client->adapter;
 	int ret = 0;
 
-	client = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, feature_cmd.i2c_addr);
+	client = i2c_new_dummy_device(bus_adapter, feature_cmd.i2c_addr);
 	if (IS_ERR(client)) {
-		pr_info("%s Failed to create dummy I2C device 0x%x\n", SERDES_DEBUG_INFO, feature_cmd.i2c_addr);
+		pr_info("%s Failed to create dummy I2C device 0x%x\n", SERDES_DEBUG_INFO,
+				feature_cmd.i2c_addr);
 		return PTR_ERR(client);
 	}
 
@@ -382,15 +413,18 @@ err:
 	return ret;
 }
 
-static int excute_feature_verify_cmd(struct serdes_dp_bridge *max_bridge, struct feature_cmd feature_cmd)
+static int excute_feature_verify_cmd(struct serdes_dp_bridge *max_bridge,
+							struct feature_cmd feature_cmd)
 {
 	struct i2c_client *client = NULL;
+	struct i2c_adapter *bus_adapter = max_bridge->serdes_dp_i2c_client->adapter;
 	int ret = 0, i = 0;
 	u8 value[32] = {0};
 
-	client = i2c_new_dummy_device(max_bridge->serdes_dp_i2c->adapter, feature_cmd.i2c_addr);
+	client = i2c_new_dummy_device(bus_adapter, feature_cmd.i2c_addr);
 	if (IS_ERR(client)) {
-		pr_info("%s Failed to create dummy I2C device 0x%x\n", SERDES_DEBUG_INFO, feature_cmd.i2c_addr);
+		pr_info("%s Failed to create dummy I2C device 0x%x\n", SERDES_DEBUG_INFO,
+				feature_cmd.i2c_addr);
 		return PTR_ERR(client);
 	}
 
@@ -545,40 +579,83 @@ static int parse_and_process_bl_cmd_from_dts(struct serdes_dp_bridge *max_bridge
 	return 0;
 }
 
-static int get_bl_on_off_cmd_info_from_dts(struct serdes_dp_bridge *max_bridge, struct device_node *np)
+static int get_bl_on_off_cmd(struct serdes_dp_bridge *max_bridge, struct device_node *np,
+							bool sst)
 {
-	int ret;
+	int ret = 0;
 
-	ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, BL_ON_CMD, &max_bridge->bl_on_cmd);
+	ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, DES_LINKA_BL_ON_CMD,
+				&max_bridge->linka_bl_on_cmd);
 	if (ret)
 		return ret;
 
-	ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, BL_OFF_CMD, &max_bridge->bl_off_cmd);
+	ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, DES_LINKA_BL_OFF_CMD,
+				&max_bridge->linka_bl_off_cmd);
 	if (ret)
 		return ret;
+
+	if (!sst) {
+		ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, DES_LINKB_BL_ON_CMD,
+					&max_bridge->linkb_bl_on_cmd);
+		if (ret)
+			return ret;
+
+		ret = parse_and_process_bl_cmd_from_dts(max_bridge, np, DES_LINKB_BL_OFF_CMD,
+					&max_bridge->linkb_bl_off_cmd);
+		if (ret)
+			return ret;
+	}
+
+
 
 	return 0;
 }
 
-static int parse_multi_view_cmd_from_dts(struct serdes_dp_bridge *max_bridge, struct device_node *multi_view_setting_np)
+static int get_bl_on_off_cmd_info_from_dts(struct serdes_dp_bridge *max_bridge,
+			struct device_node *np)
+{
+	int ret;
+
+	if (max_bridge->support_superframe) {
+		ret = get_bl_on_off_cmd(max_bridge, np, FALSE);
+		if (ret)
+			return ret;
+	} else if (max_bridge->support_mst) {
+		ret = get_bl_on_off_cmd(max_bridge, np, FALSE);
+		if (ret)
+			return ret;
+	} else if (max_bridge->double_pixel_support) {
+		ret = get_bl_on_off_cmd(max_bridge, np, FALSE);
+		if (ret)
+			return ret;
+	} else {
+		ret = get_bl_on_off_cmd(max_bridge, np, TRUE);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int parse_multi_view_cmd_from_dts(struct serdes_dp_bridge *max_bridge,
+						struct device_node *multi_view_setting_np)
 {
 	int ret = 0;
 
 	for (int i = 0; i < ARRAY_SIZE(props); i++) {
 		ret = parse_data_by_prop_from_dts(multi_view_setting_np, props[i], &max_bridge->des_i2c_addr + i);
-		if (ret) {
+		if (ret)
 			pr_info("%s failed to parse %s property\n", SERDES_DEBUG_INFO, props[i]);
-			return ret;
-		}
 	}
 
-	pr_info("%s des-i2c-addr:0x%x bl-i2c-addr:0x%x\n", SERDES_DEBUG_INFO,
-			max_bridge->des_i2c_addr, max_bridge->bl_i2c_addr);
+	pr_info("%s des-i2c-addr:0x%x des-i2c-addr-linkb:0x%x\n",
+			SERDES_DEBUG_INFO, max_bridge->des_i2c_addr,
+			max_bridge->des_i2c_addr_linkb);
 	pr_info("%s des-linka-i2c-addr:0x%x des-linka-bl-i2c-addr:0x%x\n",
 			SERDES_DEBUG_INFO, max_bridge->linka_i2c_addr,
-			max_bridge->linka_bl_addr);
+			max_bridge->linka_bl_i2c_addr);
 	pr_info("%s des-linkb-i2c-addr:0x%x des-linkb-bl-i2c-addr:0x%x\n",
-			SERDES_DEBUG_INFO, max_bridge->linkb_i2c_addr, max_bridge->linkb_bl_addr);
+			SERDES_DEBUG_INFO, max_bridge->linkb_i2c_addr, max_bridge->linkb_bl_i2c_addr);
 
 	/* Parse init commands */
 
@@ -591,7 +668,7 @@ static int parse_multi_view_cmd_from_dts(struct serdes_dp_bridge *max_bridge, st
 		}
 	}
 
-	if (max_bridge->is_support_touch) {
+	if (max_bridge->support_touch) {
 		ret = parse_init_cmd_by_prop_from_dts(max_bridge, multi_view_setting_np,
 										SERDES_SUPERFRAME_TOUCH_INIT_CMD,
 								&max_bridge->serdes_superframe_touch_init_cmd);
@@ -656,25 +733,25 @@ static void get_general_info_from_dts(struct serdes_dp_bridge *max_bridge)
 	pr_info("%s Serdes for: %d [0: eDP, 1: DP]\n", SERDES_DEBUG_INFO, max_bridge->is_dp);
 
 	ret = of_property_read_u32(np, SERDES_SUPPORT_HOTPLUG, &read_value);
-	max_bridge->is_support_hotplug = (!ret) ? !!read_value : false;
+	max_bridge->support_hotplug = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(np, SERDES_SUPER_FRAME, &read_value);
-	max_bridge->superframe_support = (!ret) ? !!read_value : false;
+	max_bridge->support_superframe = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(np, SERDES_DOUBLE_PIXEL, &read_value);
 	max_bridge->double_pixel_support = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(np, SUPPORT_MST, &read_value);
-	max_bridge->is_support_mst = (!ret) ? !!read_value : false;
+	max_bridge->support_mst = (!ret) ? !!read_value : false;
 
 	ret = of_property_read_u32(np, SUPPORT_TOUCH, &read_value);
-	max_bridge->is_support_touch = (!ret) ? !!read_value : false;
+	max_bridge->support_touch = (!ret) ? !!read_value : false;
 
 	pr_info("%s ser-super-frame: %d ser-double-pixel: %d ser-dp-mst: %d support-touch: %d\n",
-			SERDES_DEBUG_INFO, max_bridge->superframe_support, max_bridge->double_pixel_support,
-			max_bridge->is_support_mst, max_bridge->is_support_touch);
+			SERDES_DEBUG_INFO, max_bridge->support_superframe, max_bridge->double_pixel_support,
+			max_bridge->support_mst, max_bridge->support_touch);
 
-	pr_info("%s is_support_hotplug: %d\n", SERDES_DEBUG_INFO, max_bridge->is_support_hotplug);
+	pr_info("%s support_hotplug: %d\n", SERDES_DEBUG_INFO, max_bridge->support_hotplug);
 }
 
 static int get_panel_feature_info_from_dts(struct serdes_dp_bridge *max_bridge)
@@ -717,71 +794,72 @@ err:
 	return ret;
 }
 
-static int get_signal_setting_from_dts(struct serdes_dp_bridge *max_bridge,
+static int get_sst_setting_from_dts(struct serdes_dp_bridge *max_bridge,
 									  struct device_node *panel_setting_np)
 {
-	struct device_node *signal_setting_np;
+	struct device_node *sst_setting_np;
 	int ret;
 
-	/* Get child node serdes_dp_signal_setting */
-	signal_setting_np = of_get_child_by_name(panel_setting_np, SERDES_DP_SST_SETTING);
-	if (!signal_setting_np) {
-		pr_info("%s %s No signal setting node!\n", SERDES_DEBUG_INFO, __func__);
+	/* Get child node serdes_dp_sst_setting */
+	sst_setting_np = of_get_child_by_name(panel_setting_np, SERDES_DP_SST_SETTING);
+	if (!sst_setting_np) {
+		pr_info("%s %s No sst setting node!\n", SERDES_DEBUG_INFO, __func__);
 		return -EINVAL;
 	}
 
 	/* Parse DES and BL I2C addresses */
-	ret = parse_data_by_prop_from_dts(signal_setting_np, DES_I2C_ADDR, &max_bridge->des_i2c_addr);
+	ret = parse_data_by_prop_from_dts(sst_setting_np, DES_I2C_ADDR, &max_bridge->des_i2c_addr);
 	if (ret) {
 		pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, DES_I2C_ADDR);
 		goto err;
 	}
 
-	ret = parse_data_by_prop_from_dts(signal_setting_np, BL_I2C_ADDR, &max_bridge->bl_i2c_addr);
+	ret = parse_data_by_prop_from_dts(sst_setting_np, DES_LINKA_BL_I2C_ADDR,
+				&max_bridge->linka_bl_i2c_addr);
 	if (ret) {
-		pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, BL_I2C_ADDR);
+		pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, DES_LINKA_BL_I2C_ADDR);
 		goto err;
 	}
 
-	pr_info("%s DES I2C Addr: 0x%x, BL I2C Addr: 0x%x\n",
-			SERDES_DEBUG_INFO, max_bridge->des_i2c_addr, max_bridge->bl_i2c_addr);
+	pr_info("%s Des i2c addr: 0x%x, Linka bl i2c addr: 0x%x\n", SERDES_DEBUG_INFO,
+			max_bridge->des_i2c_addr, max_bridge->linka_bl_i2c_addr);
 
-	/* Parse signal init command info from dts */
-	ret = parse_init_cmd_by_prop_from_dts(max_bridge, signal_setting_np,
-				SER_INIT_CMD_NAME, &max_bridge->signal_ser_init_cmd);
+	/* Parse sst init command info from dts */
+	ret = parse_init_cmd_by_prop_from_dts(max_bridge, sst_setting_np,
+				SER_INIT_CMD_NAME, &max_bridge->sst_ser_init_cmd);
 	if (ret) {
 		pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, SER_INIT_CMD_NAME);
 		goto err;
 	}
 
-	ret = parse_init_cmd_by_prop_from_dts(max_bridge, signal_setting_np,
-					DES_INIT_CMD_NAME, &max_bridge->signal_des_init_cmd);
+	ret = parse_init_cmd_by_prop_from_dts(max_bridge, sst_setting_np,
+					DES_INIT_CMD_NAME, &max_bridge->sst_des_init_cmd);
 	if (ret) {
 		pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, DES_INIT_CMD_NAME);
 		goto err;
 	}
 
-	if (max_bridge->is_support_touch) {
-		ret = parse_init_cmd_by_prop_from_dts(max_bridge, signal_setting_np, TOUCH_INIT_CMD_ADDR,
-							&max_bridge->signal_touch_init_cmd);
+	if (max_bridge->support_touch) {
+		ret = parse_init_cmd_by_prop_from_dts(max_bridge, sst_setting_np, TOUCH_INIT_CMD_ADDR,
+							&max_bridge->sst_touch_init_cmd);
 		if (ret) {
 			pr_info("%s Failed to parse %s property\n", SERDES_DEBUG_INFO, TOUCH_INIT_CMD_ADDR);
 			goto err;
 		}
 	}
 
-	/* Parse signal backlight settings from dts */
-	ret = get_bl_on_off_cmd_info_from_dts(max_bridge, signal_setting_np);
+	/* Parse sst backlight settings from dts */
+	ret = get_bl_on_off_cmd_info_from_dts(max_bridge, sst_setting_np);
 	if (ret) {
 		pr_info("%s Failed to parse backlight setting\n", SERDES_DEBUG_INFO);
 		goto err;
 	}
 
-	of_node_put(signal_setting_np);
+	of_node_put(sst_setting_np);
 	return 0;
 
 err:
-	of_node_put(signal_setting_np);
+	of_node_put(sst_setting_np);
 	return ret;
 }
 
@@ -822,13 +900,12 @@ static int parse_dp_mst_setting(struct serdes_dp_bridge *max_bridge, struct devi
 		}
 	}
 
-	pr_info("%s des-i2c-addr:0x%x bl-i2c-addr:0x%x\n", SERDES_DEBUG_INFO,
-			max_bridge->des_i2c_addr, max_bridge->bl_i2c_addr);
+	pr_info("%s des-i2c-addr:0x%x des-i2c-addr-linkb:0x%x\n ", SERDES_DEBUG_INFO,
+			max_bridge->des_i2c_addr, max_bridge->des_i2c_addr_linkb);
 	pr_info("%s des-linka-i2c-addr:0x%x des-linka-bl-i2c-addr:0x%x\n",
-			SERDES_DEBUG_INFO, max_bridge->linka_i2c_addr,
-			max_bridge->linka_bl_addr);
+			SERDES_DEBUG_INFO, max_bridge->linka_i2c_addr, max_bridge->linka_bl_i2c_addr);
 	pr_info("%s des-linkb-i2c-addr:0x%x des-linkb-bl-i2c-addr:0x%x\n",
-			SERDES_DEBUG_INFO, max_bridge->linkb_i2c_addr, max_bridge->linkb_bl_addr);
+			SERDES_DEBUG_INFO, max_bridge->linkb_i2c_addr, max_bridge->linkb_bl_i2c_addr);
 
 	/* Parse init commands */
 
@@ -841,7 +918,7 @@ static int parse_dp_mst_setting(struct serdes_dp_bridge *max_bridge, struct devi
 		}
 	}
 
-	if (max_bridge->is_support_touch) {
+	if (max_bridge->support_touch) {
 		ret = parse_init_cmd_by_prop_from_dts(max_bridge, dp_mst_setting_np,
 										serdes_dp_DP_MST_TOUCH_INIT_CMD,
 								&max_bridge->dp_mst_touch_init_cmd);
@@ -929,7 +1006,7 @@ static int get_serdes_setting_from_dts(struct serdes_dp_bridge *max_bridge)
 		strscpy(global_panel_edp_name, max_bridge->panel_name, PANEL_NAME_SIZE);
 	}
 
-	if (max_bridge->superframe_support) {
+	if (max_bridge->support_superframe) {
 		/* parse superframe setting */
 		if (max_bridge->is_dp)
 			strscpy(global_panel_dp_mode, SUPERFRAME_SETTING, PANEL_NAME_SIZE);
@@ -945,7 +1022,7 @@ static int get_serdes_setting_from_dts(struct serdes_dp_bridge *max_bridge)
 		ret = get_double_pixel_setting_from_dts(max_bridge, panel_setting_np);
 		if (ret)
 			return ret;
-	} else if (max_bridge->is_support_mst) {
+	} else if (max_bridge->support_mst) {
 		/* parse mst setting */
 		if (!max_bridge->is_dp)
 			return -EINVAL;
@@ -953,12 +1030,12 @@ static int get_serdes_setting_from_dts(struct serdes_dp_bridge *max_bridge)
 		if (ret)
 			return ret;
 	} else {
-		/* parse signal setting */
+		/* parse sst setting */
 		if (max_bridge->is_dp)
 			strscpy(global_panel_dp_mode, SINGAL_SETTING, PANEL_NAME_SIZE);
 		else
 			strscpy(global_panel_edp_mode, SINGAL_SETTING, PANEL_NAME_SIZE);
-		ret = get_signal_setting_from_dts(max_bridge, panel_setting_np);
+		ret = get_sst_setting_from_dts(max_bridge, panel_setting_np);
 		if (ret)
 			return ret;
 	}
@@ -978,119 +1055,117 @@ static int serdes_dp_dt_parse(struct serdes_dp_bridge *max_bridge, struct device
 	return 0;
 }
 
-static int turn_on_off_bl(struct serdes_dp_bridge *max_bridge, bool enable, u8 type)
+static void serdes_dp_bl_ctl(struct serdes_dp_bridge *max_bridge, struct i2c_client *client,
+				struct bl_cmd_info *bl_cmd, bool enable)
 {
 	int ret = 0;
-	struct i2c_client *client = NULL;
-
-	if (max_bridge->superframe_support) {
-		if (type == 0x1)
-			client = max_bridge->max96752_linka_bl_i2c;
-		else if (type == 0x2)
-			client = max_bridge->max96752_linkb_bl_i2c;
-	} else if (max_bridge->double_pixel_support) {
-		client = max_bridge->bl_i2c;
-	} else if (max_bridge->is_support_mst) {
-		if (type == 0x1)
-			client = max_bridge->max96752_linka_bl_i2c;
-		else if (type == 0x2)
-			client = max_bridge->max96752_linkb_bl_i2c;
-	} else
-		client = max_bridge->bl_i2c;
-
-	pr_info("%s %s enable: %d\n", SERDES_DEBUG_INFO, __func__, enable);
-	if (!client) {
-		pr_info("%s No client found for BL\n", SERDES_DEBUG_INFO);
-		return -ENODEV;
-	}
 
 	if (enable) {
-		ret = i2c_master_send(client, max_bridge->bl_on_cmd.data, max_bridge->bl_on_cmd.length);
-		if (ret < 0) {
+		ret = i2c_master_send(client, bl_cmd->data, bl_cmd->length);
+		if (ret < 0)
 			pr_info("%s Failed to send bl on cmd\n", SERDES_DEBUG_INFO);
-			return ret;
-		}
 	} else {
-		ret = i2c_master_send(client, max_bridge->bl_off_cmd.data, max_bridge->bl_off_cmd.length);
-		if (ret < 0) {
+		ret = i2c_master_send(client, bl_cmd->data, bl_cmd->length);
+		if (ret < 0)
 			pr_info("%s Failed to send bl off cmd\n", SERDES_DEBUG_INFO);
-			return ret;
-		}
+	}
+}
+
+static int turn_on_off_bl(struct serdes_dp_bridge *max_bridge, bool enable,
+						enum serdes_link_port port)
+{
+	pr_info("%s %s port: %d enable: %d\n", SERDES_DEBUG_INFO, __func__, port, enable);
+	if (enable) {
+		if (port == SERDES_LINKA_PORT)
+			serdes_dp_bl_ctl(max_bridge, max_bridge->linka_bl_i2c_client,
+				&max_bridge->linka_bl_on_cmd, TRUE);
+		else if (port == SERDES_LINKB_PORT)
+			serdes_dp_bl_ctl(max_bridge, max_bridge->linkb_bl_i2c_client,
+				&max_bridge->linkb_bl_on_cmd, TRUE);
+	} else {
+		if (port == SERDES_LINKA_PORT)
+			serdes_dp_bl_ctl(max_bridge, max_bridge->linka_bl_i2c_client,
+				&max_bridge->linka_bl_off_cmd, FALSE);
+		else if (port == SERDES_LINKB_PORT)
+			serdes_dp_bl_ctl(max_bridge, max_bridge->linkb_bl_i2c_client,
+				&max_bridge->linkb_bl_off_cmd, FALSE);
 	}
 
 	return 0;
 }
 
-static void serdes_init_by_signal(struct serdes_dp_bridge *max_bridge)
+static void serdes_init_by_sst(struct serdes_dp_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "[serdes_dp] %s+\n", __func__);
+	dev_info(max_bridge->dev, "%s %s+\n", SERDES_DEBUG_INFO, __func__);
 	/* ser init by default */
-	ser_init_loop(max_bridge, &max_bridge->signal_ser_init_cmd);
+	ser_init_loop(max_bridge, &max_bridge->sst_ser_init_cmd);
 
 	/* des init by default */
-	des_init_loop(max_bridge, &max_bridge->signal_des_init_cmd);
+	des_init_loop(max_bridge, &max_bridge->sst_des_init_cmd);
 
 	/* touch init by default */
-	serdes_init_loop(max_bridge, &max_bridge->signal_touch_init_cmd);
+	if (max_bridge->support_touch)
+		serdes_init_loop(max_bridge, &max_bridge->sst_touch_init_cmd, SERDES_LINKA_PORT);
 
-	dev_info(max_bridge->dev, "[serdes_dp] %s-\n", __func__);
+	dev_info(max_bridge->dev, "%s %s-\n", SERDES_DEBUG_INFO, __func__);
 }
 
 static void serdes_init_by_superframe(struct serdes_dp_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "[serdes_dp] %s+\n", __func__);
+	dev_info(max_bridge->dev, "%s %s+\n", SERDES_DEBUG_INFO, __func__);
 	/* serdes to init linka */
-	serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd, SERDES_LINKA_PORT);
 
 	/*des to init linka */
-	serdes_init_loop(max_bridge, &max_bridge->des_linka_init_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->des_linka_init_cmd, SERDES_LINKA_PORT);
 
 	/*serdes to init linkb */
-	serdes_init_loop(max_bridge, &max_bridge->serdes_init_linkb_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->serdes_init_linkb_cmd, SERDES_LINKB_PORT);
 
 	/* des to init linkb */
-	serdes_init_loop(max_bridge, &max_bridge->des_linkb_init_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->des_linkb_init_cmd, SERDES_LINKB_PORT);
 
 	/* ser to init superframe */
 	ser_init_loop(max_bridge, &max_bridge->ser_superframe_init_cmd);
 
 	/* serdes to init superframe touch */
-	serdes_init_loop(max_bridge, &max_bridge->serdes_superframe_touch_init_cmd);
+	if (max_bridge->support_touch)
+		serdes_init_loop(max_bridge, &max_bridge->serdes_superframe_touch_init_cmd, SERDES_LINKA_PORT);
 
-	dev_info(max_bridge->dev, "[serdes_dp] %s-\n", __func__);
+	dev_info(max_bridge->dev, "%s %s-\n", SERDES_DEBUG_INFO, __func__);
 }
 
 static void serdes_init_by_double_pixel(struct serdes_dp_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "[serdes_dp] %s+\n", __func__);
+	dev_info(max_bridge->dev, "%s %s+\n", SERDES_DEBUG_INFO, __func__);
 
-	dev_info(max_bridge->dev, "[serdes_dp] %s-\n", __func__);
+	dev_info(max_bridge->dev, "%s %s-\n", SERDES_DEBUG_INFO, __func__);
 }
 
 static void serdes_init_by_mst(struct serdes_dp_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "[serdes_dp] %s+\n", __func__);
+	dev_info(max_bridge->dev, "%s %s+\n", SERDES_DEBUG_INFO, __func__);
 
 	/* serdes to init linka */
-	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd, SERDES_LINKA_PORT);
 
 	/*des to init linka */
-	serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd, SERDES_LINKA_PORT);
 
 	/*serdes to init linkb */
-	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd, SERDES_LINKB_PORT);
 
 	/* des to init linkb */
-	serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd);
+	serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd, SERDES_LINKB_PORT);
 
 	/* ser to init dp mst */
 	ser_init_loop(max_bridge, &max_bridge->dp_mst_init_cmd);
 
 	/* serdes to init dp mst touch */
-	if (max_bridge->is_support_touch)
-		serdes_init_loop(max_bridge, &max_bridge->dp_mst_touch_init_cmd);
+	if (max_bridge->support_touch)
+		serdes_init_loop(max_bridge, &max_bridge->dp_mst_touch_init_cmd, SERDES_LINKA_PORT);
 
-	dev_info(max_bridge->dev, "[serdes_dp] %s-\n", __func__);
+	dev_info(max_bridge->dev, "%s %s-\n", SERDES_DEBUG_INFO, __func__);
 }
 
 static int check_des_cable_status(struct i2c_client *des_client)
@@ -1098,7 +1173,11 @@ static int check_des_cable_status(struct i2c_client *des_client)
 	u8 serdes_cable_state_change = 0x0;
 	int ret = 0;
 
-	serdes_cable_state_change = serdes_read_byte(des_client, DES_REG_0x06ff_HOTPLUG_DETECT);
+	ret = serdes_read_byte(des_client, DES_REG_0x06ff_HOTPLUG_DETECT,
+						&serdes_cable_state_change);
+	if (ret)
+		return 0;
+
 	if (serdes_cable_state_change != DES_HOTPLUG_CHECK_VALUE) {
 		ret = serdes_write_byte(des_client, DES_REG_0x06ff_HOTPLUG_DETECT,
 								DES_HOTPLUG_CHECK_VALUE);
@@ -1116,58 +1195,68 @@ static void serdes_link_status_handler(struct serdes_dp_bridge *max_bridge)
 	int ret = 0;
 	u8 linka_status = 0x0, linkb_status = 0x0;
 
-	linka_status = serdes_read_byte(max_bridge->serdes_dp_i2c, SER_REG_0x2A_LINKA_CTRL);
-	linkb_status = serdes_read_byte(max_bridge->serdes_dp_i2c, SER_REG_0x34_LINKB_CTRL);
+	ret = serdes_read_byte(max_bridge->serdes_dp_i2c_client,
+						SER_REG_0x2A_LINKA_CTRL, &linka_status);
+	if (ret)
+		return;
+
+	ret = serdes_read_byte(max_bridge->serdes_dp_i2c_client,
+						SER_REG_0x34_LINKB_CTRL, &linkb_status);
+	if (ret)
+		return;
+
+#ifdef SERDES_DEBUG
 	pr_info("%s DP %d %s: linka_status:0x%x linkb_status:0x%x\n", SERDES_DEBUG_INFO,
 			max_bridge->is_dp, __func__, linka_status, linkb_status);
+#endif
 
 	if (max_bridge->double_pixel_support) {
 		if (linka_status & SER_CMSL_LINKA_LOCKED)
-			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
 		if (linkb_status & SER_CMSL_LINKB_LOCKED)
-			ret = check_des_cable_status(max_bridge->max96752_linkb_i2c);
-	} else if (max_bridge->superframe_support) {
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
+	} else if (max_bridge->support_superframe) {
 		if (linka_status & SER_CMSL_LINKA_LOCKED) {
-			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
 			if (ret) {
-				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd);
-				serdes_init_loop(max_bridge, &max_bridge->des_linka_init_cmd);
-				turn_on_off_bl(max_bridge, true, 0x01);
+				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd, SERDES_LINKA_PORT);
+				serdes_init_loop(max_bridge, &max_bridge->des_linka_init_cmd, SERDES_LINKA_PORT);
+				turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
 			}
 		}
 		if (linkb_status & SER_CMSL_LINKB_LOCKED) {
-			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
 			if (ret) {
-				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linkb_cmd);
-				serdes_init_loop(max_bridge, &max_bridge->des_linkb_init_cmd);
-				turn_on_off_bl(max_bridge, true, 0x02);
+				serdes_init_loop(max_bridge, &max_bridge->serdes_init_linkb_cmd, SERDES_LINKB_PORT);
+				serdes_init_loop(max_bridge, &max_bridge->des_linkb_init_cmd, SERDES_LINKB_PORT);
+				turn_on_off_bl(max_bridge, true, SERDES_LINKB_PORT);
 			}
 		}
-	} else if (max_bridge->is_support_mst) {
+	} else if (max_bridge->support_mst) {
 		if (linka_status & SER_CMSL_LINKA_LOCKED) {
-			serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd);
-			ret = check_des_cable_status(max_bridge->max96752_linka_i2c);
+			serdes_init_loop(max_bridge, &max_bridge->mst_des_linka_init_cmd, SERDES_LINKA_PORT);
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
 			if (ret) {
-				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd);
-				turn_on_off_bl(max_bridge, true, 0x01);
+				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd, SERDES_LINKA_PORT);
+				turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
 			}
 		}
 		if (linkb_status & SER_CMSL_LINKB_LOCKED) {
-			serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd);
-			ret = check_des_cable_status(max_bridge->max96752_linkb_i2c);
+			serdes_init_loop(max_bridge, &max_bridge->mst_des_linkb_init_cmd, SERDES_LINKB_PORT);
+			ret = check_des_cable_status(max_bridge->linka_i2c_client);
 			if (ret) {
-				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd);
-				turn_on_off_bl(max_bridge, true, 0x02);
+				serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linkb_cmd, SERDES_LINKB_PORT);
+				turn_on_off_bl(max_bridge, true, SERDES_LINKB_PORT);
 			}
 		}
 	} else {
 		if ((linka_status & SER_CMSL_LINKA_LOCKED) ||
 			(linkb_status & SER_CMSL_LINKB_LOCKED)) {
-			ret = check_des_cable_status(max_bridge->max96752_i2c);
+			ret = check_des_cable_status(max_bridge->des_i2c_client);
 			if (ret) {
 				msleep(500);
-				des_init_loop(max_bridge, &max_bridge->signal_des_init_cmd);
-				turn_on_off_bl(max_bridge, true, 0x0);
+				des_init_loop(max_bridge, &max_bridge->sst_des_init_cmd);
+				turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
 			}
 		}
 	}
@@ -1175,19 +1264,27 @@ static void serdes_link_status_handler(struct serdes_dp_bridge *max_bridge)
 
 static void serdes_init_by_dts(struct serdes_dp_bridge *max_bridge)
 {
+	int ret = 0;
+
 	if (max_bridge->inited) {
 		dev_info(max_bridge->dev, "[serdes_dp] serdes already init!\n");
 		return;
 	}
 
-	if (max_bridge->superframe_support)
+	/* use the unoccupied GPIO ID register to store the ser status */
+	ret = serdes_write_byte(max_bridge->serdes_dp_i2c_client,
+					SER_ACTIVE_STATUS_CHECK_REG, SER_ACTIVE_STATUS_VALUE);
+	if (ret)
+		dev_info(max_bridge->dev, "%s Write ser status failed\n", SERDES_DEBUG_INFO);
+
+	if (max_bridge->support_superframe)
 		serdes_init_by_superframe(max_bridge);
 	else if (max_bridge->double_pixel_support)
 		serdes_init_by_double_pixel(max_bridge);
-	else if (max_bridge->is_support_mst)
+	else if (max_bridge->support_mst)
 		serdes_init_by_mst(max_bridge);
 	else
-		serdes_init_by_signal(max_bridge);
+		serdes_init_by_sst(max_bridge);
 
 	max_bridge->inited = true;
 }
@@ -1223,7 +1320,7 @@ static void serdes_init_wait_queue(struct serdes_dp_bridge *max_bridge)
 	atomic_set(&max_bridge->hotplug_event, 0);
 	init_waitqueue_head(&max_bridge->waitq);
 	max_bridge->serdes_hotplug_task = kthread_run(serdes_hotplug_kthread,
-									(void *)max_bridge, "serdes_dp");
+							(void *)max_bridge, "serdes_dp");
 }
 
 static irqreturn_t serdes_interrupt_handler(int irq, void *data)
@@ -1278,14 +1375,13 @@ static void serdes_dp_pre_enable(struct drm_bridge *bridge)
 	if (max_bridge->prepared)
 		return;
 
-	dev_id = serdes_read_byte(max_bridge->serdes_dp_i2c, SER_ACTIVE_STATUS_CHECK_REG);
-	if (dev_id != SER_ACTIVE_STATUS_VALUE) {
-		ret = serdes_write_byte(max_bridge->serdes_dp_i2c, SER_ACTIVE_STATUS_CHECK_REG,
-								SER_ACTIVE_STATUS_VALUE);
-		if (ret)
-			dev_info(max_bridge->dev, "%s Write ser status failed\n", SERDES_DEBUG_INFO);
+	ret = serdes_read_byte(max_bridge->serdes_dp_i2c_client,
+							SER_ACTIVE_STATUS_CHECK_REG, &dev_id);
+	if (ret)
+		return;
+
+	if (dev_id != SER_ACTIVE_STATUS_VALUE)
 		max_bridge->inited = false;
-	}
 
 	serdes_init_by_dts(max_bridge);
 
@@ -1304,18 +1400,18 @@ static void serdes_dp_enable(struct drm_bridge *bridge)
 		return;
 
 	/* turn on backlight */
-	if (max_bridge->superframe_support) {
-		turn_on_off_bl(max_bridge, true, 0x01);
-		turn_on_off_bl(max_bridge, true, 0x02);
+	if (max_bridge->support_superframe) {
+		turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
+		turn_on_off_bl(max_bridge, true, SERDES_LINKB_PORT);
 	} else if (max_bridge->double_pixel_support) {
-		turn_on_off_bl(max_bridge, true, 0x0);
-	} else if (max_bridge->is_support_mst) {
-		turn_on_off_bl(max_bridge, true, 0x01);
-		turn_on_off_bl(max_bridge, true, 0x02);
+		turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
+	} else if (max_bridge->support_mst) {
+		turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
+		turn_on_off_bl(max_bridge, true, SERDES_LINKB_PORT);
 	} else
-		turn_on_off_bl(max_bridge, true, 0x0);
+		turn_on_off_bl(max_bridge, true, SERDES_LINKA_PORT);
 
-	if (max_bridge->is_support_hotplug) {
+	if (max_bridge->support_hotplug) {
 		if (max_bridge->irq_num <= 0) {
 			atomic_set(&max_bridge->hotplug_event, 1);
 			wake_up_interruptible(&max_bridge->waitq);
@@ -1335,18 +1431,18 @@ static void serdes_dp_disable(struct drm_bridge *bridge)
 		return;
 
 	/* turn off backlight */
-	if (max_bridge->superframe_support) {
-		turn_on_off_bl(max_bridge, false, 0x01);
-		turn_on_off_bl(max_bridge, false, 0x02);
+	if (max_bridge->support_superframe) {
+		turn_on_off_bl(max_bridge, false, SERDES_LINKA_PORT);
+		turn_on_off_bl(max_bridge, false, SERDES_LINKB_PORT);
 	} else if (max_bridge->double_pixel_support) {
-		turn_on_off_bl(max_bridge, false, 0x0);
-	} else if (max_bridge->is_support_mst) {
-		turn_on_off_bl(max_bridge, false, 0x01);
-		turn_on_off_bl(max_bridge, false, 0x02);
+		turn_on_off_bl(max_bridge, false, SERDES_LINKA_PORT);
+	} else if (max_bridge->support_mst) {
+		turn_on_off_bl(max_bridge, false, SERDES_LINKA_PORT);
+		turn_on_off_bl(max_bridge, false, SERDES_LINKB_PORT);
 	} else
-		turn_on_off_bl(max_bridge, false, 0x0);
+		turn_on_off_bl(max_bridge, false, SERDES_LINKA_PORT);
 
-	if (max_bridge->is_support_hotplug) {
+	if (max_bridge->support_hotplug) {
 		if (max_bridge->irq_num <= 0) {
 			atomic_set(&max_bridge->hotplug_event, 0);
 			wake_up_interruptible(&max_bridge->waitq);
@@ -1369,7 +1465,7 @@ static int serdes_dp_bridge_attach(struct drm_bridge *bridge,
 
 	pr_info("%s Serdes DP: %d %s+\n", SERDES_DEBUG_INFO, max_bridge->is_dp, __func__);
 
-	dev = &max_bridge->serdes_dp_i2c->dev;
+	dev = &max_bridge->serdes_dp_i2c_client->dev;
 	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, &max_bridge->panel1, NULL);
 	if (!max_bridge->panel1) {
 		pr_info("%s Failed to find panel %d\n", SERDES_DEBUG_INFO, ret);
@@ -1385,7 +1481,7 @@ static int serdes_dp_bridge_attach(struct drm_bridge *bridge,
 	}
 	max_bridge->panel_bridge = panel_bridge;
 
-	if (max_bridge->is_support_mst) {
+	if (max_bridge->support_mst) {
 		ret = drm_of_find_panel_or_bridge(dev->of_node, 3, 0, &max_bridge->panel2, NULL);
 		if (!max_bridge->panel2) {
 			pr_info("%s Failed to find panel2 %d\n", SERDES_DEBUG_INFO, ret);
@@ -1418,15 +1514,12 @@ static int serdes_dp_bridge_attach(struct drm_bridge *bridge,
 	}
 
 	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
-	dev_id = serdes_read_byte(max_bridge->serdes_dp_i2c, DEVICE_IDENTIFIER_ADDR);
-	pr_notice("%s Device Identifier = 0x%02x\n", SERDES_DEBUG_INFO, dev_id);
-
-	/* use the unoccupied GPIO ID register to store the ser status */
-	ret = serdes_write_byte(max_bridge->serdes_dp_i2c, SER_ACTIVE_STATUS_CHECK_REG, SER_ACTIVE_STATUS_VALUE);
-	if (ret)
-		dev_info(dev, "%s Write serdes failed\n", SERDES_DEBUG_INFO);
-	else
+	ret = serdes_read_byte(max_bridge->serdes_dp_i2c_client,
+							DEVICE_IDENTIFIER_ADDR, &dev_id);
+	if (!ret) {
+		pr_notice("%s Device Identifier = 0x%02x\n", SERDES_DEBUG_INFO, dev_id);
 		serdes_init_by_dts(max_bridge);
+	}
 
 	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
 		pr_info("%s Driver does not provide a connector\n", SERDES_DEBUG_INFO);
@@ -1439,7 +1532,7 @@ static int serdes_dp_bridge_attach(struct drm_bridge *bridge,
 	}
 
 	/* SerDes irq or poll mode for hotplug */
-	if (max_bridge->is_support_hotplug) {
+	if (max_bridge->support_hotplug) {
 		max_bridge->irq_num = irq_of_parse_and_map(dev->of_node, 0);
 		if (max_bridge->irq_num <= 0)
 			pr_info("%s %s: get irq failed, use polling mode\n", SERDES_DEBUG_INFO, __func__);
@@ -1459,7 +1552,7 @@ static int serdes_dp_bridge_get_modes(struct drm_bridge *bridge,
 
 	pr_info("%s %s\n", SERDES_DEBUG_INFO, __func__);
 
-	if (max_bridge->is_support_mst) {
+	if (max_bridge->support_mst) {
 		if (connector->name)
 			pr_info("%s get mst mode from %s panel\n", SERDES_DEBUG_INFO, connector->name);
 		else {
@@ -1532,7 +1625,7 @@ static int serdes_dp_probe(struct i2c_client *client)
 	max_bridge->dev->driver_data = max_bridge;
 	i2c_set_clientdata(client, max_bridge);
 	max_bridge->client = client;
-	max_bridge->serdes_dp_i2c = client;
+	max_bridge->serdes_dp_i2c_client = client;
 
 	ret = serdes_dp_dt_parse(max_bridge, dev);
 	if (ret) {
@@ -1573,20 +1666,22 @@ static void serdes_dp_remove(struct i2c_client *client)
 {
 	struct serdes_dp_bridge *max_bridge = i2c_get_clientdata(client);
 
-	if (max_bridge->is_support_hotplug) {
+	if (max_bridge->support_hotplug) {
 		if (max_bridge->irq_num > 0)
 			free_irq(max_bridge->irq_num, &client);
 		kthread_stop(max_bridge->serdes_hotplug_task);
 	}
 
-	i2c_unregister_device(max_bridge->max96752_i2c);
-	i2c_unregister_device(max_bridge->bl_i2c);
-	if (max_bridge->double_pixel_support) {
-		i2c_unregister_device(max_bridge->max96752_linka_i2c);
-		i2c_unregister_device(max_bridge->max96752_linkb_i2c);
+	i2c_unregister_device(max_bridge->des_i2c_client);
+	i2c_unregister_device(max_bridge->linka_bl_i2c_client);
+	if (max_bridge->double_pixel_support || max_bridge->support_mst ||
+		max_bridge->support_superframe) {
+		i2c_unregister_device(max_bridge->linka_i2c_client);
+		i2c_unregister_device(max_bridge->linkb_i2c_client);
+		i2c_unregister_device(max_bridge->linkb_bl_i2c_client);
 	}
-	i2c_unregister_device(max_bridge->serdes_dp_i2c);
 
+	i2c_unregister_device(max_bridge->serdes_dp_i2c_client);
 	drm_bridge_remove(&max_bridge->bridge);
 }
 
