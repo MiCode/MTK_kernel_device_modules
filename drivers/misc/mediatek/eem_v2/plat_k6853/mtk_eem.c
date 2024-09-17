@@ -1064,7 +1064,7 @@ static ssize_t eem_setmargin_proc_write(struct file *file,
 	int ret;
 	int aging_val[2];
 	int i = 0;
-	int start_oft, end_oft;
+	//int start_oft, end_oft;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	char *tok;
@@ -1106,13 +1106,16 @@ static ssize_t eem_setmargin_proc_write(struct file *file,
 			i++;
 	}
 
-	if (!strncmp(cmd_str, "aging", sizeof("aging"))) {
-		start_oft = aging_val[0];
-		end_oft = aging_val[1];
-		//eem_calculate_aging_margin(det, start_oft, end_oft);
+/*
+ *	if (!strncmp(cmd_str, "aging", sizeof("aging"))) {
+ *		start_oft = aging_val[0];
+ *		end_oft = aging_val[1];
+ *		//eem_calculate_aging_margin(det, start_oft, end_oft);
+ *		ret = count;
+ *	}
+ */
 
-		ret = count;
-	} else if (!strncmp(cmd_str, "clamp", sizeof("clamp"))) {
+	if (!strncmp(cmd_str, "clamp", sizeof("clamp"))) {
 		if (aging_val[0] < 20)
 			det->volt_clamp = aging_val[0];
 
