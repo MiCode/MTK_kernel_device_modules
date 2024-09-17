@@ -1058,6 +1058,10 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 			pixel_blend_mode = state->base.pixel_blend_mode;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	pixel_blend_mode = state->base.pixel_blend_mode;
+#endif
+
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
 		modifier |= MTK_FMT_PREMULTIPLIED;
 

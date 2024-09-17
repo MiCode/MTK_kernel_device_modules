@@ -2392,6 +2392,10 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			state->base.fb->format->has_alpha, state->base.pixel_blend_mode, fmt);
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	pixel_blend_mode = state->base.pixel_blend_mode;
+#endif
+
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
 		modifier |= MTK_FMT_PREMULTIPLIED;
 

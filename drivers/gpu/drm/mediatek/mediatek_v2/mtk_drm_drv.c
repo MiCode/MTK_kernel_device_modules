@@ -5,6 +5,7 @@
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_atomic_uapi.h>
+#include <drm/drm_blend.h>
 #include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_probe_helper.h>
@@ -9787,6 +9788,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 
 	state->pending.prop_val[PLANE_PROP_COMPRESS] = layer_info->compress;
 	state->base.alpha = 0xff << 8;
+	state->base.pixel_blend_mode = DRM_MODE_BLEND_PREMULTI;
 
 	DDPINFO("%s line:%d panel_id:%d en:%d, (%d %d %d %d w%d h%d) fmt:%d picth:%d addr:0x%llx, compress:%llu",
 		__func__, __LINE__, se_plane->panel_id, state->pending.enable, state->pending.src_x,
