@@ -1979,7 +1979,7 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 
 	AALFLOW_LOG("\n");
 	if(aal_data->primary_data->aal_fo->mtk_cabc_no_support) {
-		pr_notice("mtk_cabc_no_support is true\n");
+		AALFLOW_LOG("mtk_cabc_no_support is true\n");
 		return 0;
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
