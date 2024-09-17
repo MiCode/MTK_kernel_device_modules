@@ -129,6 +129,9 @@ static int wifi_cooling_probe(struct platform_device *pdev)
 	len = (strlen(np->name) > MAX_WIFI_COOLER_NAME_LEN) ?
 		MAX_WIFI_COOLER_NAME_LEN : strlen(np->name);
 
+	if (len == MAX_WIFI_COOLER_NAME_LEN)
+		len--;
+
 	strncpy(wifi_cdev->name, np->name, len);
 	wifi_cdev->name[len] = '\0';
 
