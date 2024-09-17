@@ -1695,6 +1695,8 @@ static int serdes_dp_suspend(struct device *dev)
 		return 0;
 
 	gpiod_set_value(max_bridge->gpio_rst_n, 0);
+	/* add serdes power off operation */
+
 	pm_runtime_put_sync(dev);
 	max_bridge->suspend = true;
 	max_bridge->inited = false;
@@ -1709,6 +1711,7 @@ static int serdes_dp_resume(struct device *dev)
 
 	pr_info("%s Serdes DP: %d %s+\n", SERDES_DEBUG_INFO, max_bridge->is_dp, __func__);
 	pm_runtime_get_sync(dev);
+	/* add serdes power on operation and after this operation, a certain delay must be added */
 	gpiod_set_value(max_bridge->gpio_rst_n, 1);
 	max_bridge->suspend = false;
 
