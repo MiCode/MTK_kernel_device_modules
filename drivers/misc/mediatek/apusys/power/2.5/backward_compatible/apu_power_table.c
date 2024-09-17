@@ -106,16 +106,26 @@ EXPORT_SYMBOL(mdla_power_table);
 
 static int _thermal_throttle(enum DVFS_USER limit_user, enum APU_OPP_INDEX opp)
 {
+#if (APUSYS_VPU_NUM || APUSYS_MDLA_NUM)
 	enum DVFS_USER user;
+#endif
 
 	switch (limit_user) {
 	case VPU0:
+#if APUSYS_VPU_NUM
 		for (user = VPU0 ; user < VPU0 + APUSYS_VPU_NUM ; user++)
 			apupw_thermal_limit(user, opp);
+#else
+		pr_info("%s do not support vpu\n", __func__);
+#endif
 	break;
 	case MDLA0:
+#if APUSYS_MDLA_NUM
 		for (user = MDLA0 ; user < MDLA0 + APUSYS_MDLA_NUM ; user++)
 			apupw_thermal_limit(user, opp);
+#else
+		pr_info("%s do not support mdla\n", __func__);
+#endif
 	break;
 	default:
 		pr_info("%s invalid limit_user : %d\n", __func__, limit_user);
