@@ -545,21 +545,23 @@ static void mtk_vcodec_set_uclamp(bool enable, int ctx_id, int pid, unsigned int
 		attr.sched_policy = p->policy;
 		if(p->policy == SCHED_FIFO || p->policy == SCHED_RR)
 			attr.sched_priority = p->rt_priority;
+		rcu_read_unlock();
 		ret = sched_setattr_nocheck(p, &attr);
 		for_each_thread(p, task_child) {
 			if(task_child) {
+				rcu_read_lock();
 				get_task_struct(task_child);
-				if(try_get_task_stack(task_child))
-					ret = sched_setattr_nocheck(task_child, &attr);
+				rcu_read_unlock();
+				ret = sched_setattr_nocheck(task_child, &attr);
 				put_task_struct(task_child);
 			}
 		}
 		put_task_struct(p);
 		if(ret != 0)
 			mtk_v4l2_err("[VDVFS][%d] set uclamp fail, pid: %d, ret: %d", ctx_id, pid, ret);
-	}
-	rcu_read_unlock();
-};
+	} else
+		rcu_read_unlock();
+}
 
 void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	enum mtk_instance_type type, int ctx_id, int cpu_caller_pid, const char *debug_str)
