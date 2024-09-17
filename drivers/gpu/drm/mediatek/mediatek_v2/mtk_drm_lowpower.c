@@ -2465,7 +2465,7 @@ static unsigned int mtk_drm_idlemgr_wb_alloc_fb(struct mtk_drm_crtc *mtk_crtc,
 			DDPPR_ERR("%s, failed to create gem\n", __func__);
 			return MTK_MAX_WB_FB_COUNT;
 		}
-		DDPMSG("%s,[IWB] create buf:0x%lx,dual:%d,roi(%u/%u,%u/%u),nr:%u,size:%u(%u,%u)\n",
+		DDPMSG("%s,[IWB] create buf:0x%lx,dual:%d,roi(%u/%u,%u/%u),nr:%u,size:%zu(%zu,%zu)\n",
 			__func__, (unsigned long)mtk_gem->dma_addr, dual, width, w,
 			height, h, subblock_nr, size_total, size_header, size_body);
 
@@ -2476,9 +2476,9 @@ static unsigned int mtk_drm_idlemgr_wb_alloc_fb(struct mtk_drm_crtc *mtk_crtc,
 			DDPPR_ERR("%s, failed to create fb\n", __func__);
 			return MTK_MAX_WB_FB_COUNT;
 		}
-		DDPMSG("%s,[IWB] create fb:%u, dual:%d,roi(%u,%u),fmt:0x%x,pitches:%u\n",
+		DDPMSG("%s,[IWB] create fb:%u, dual:%d,roi(%u,%u),fmt:%u,pitches:%u\n",
 			__func__, ret, dual, wb_fb[ret]->width, wb_fb[ret]->height,
-			wb_fb[ret]->format, wb_fb[ret]->pitches[0]);
+			wb_fb[ret]->format ? wb_fb[ret]->format->format : 0, wb_fb[ret]->pitches[0]);
 	}
 
 	if (dual) {
@@ -2490,7 +2490,7 @@ static unsigned int mtk_drm_idlemgr_wb_alloc_fb(struct mtk_drm_crtc *mtk_crtc,
 	} else {
 		mtk_crtc->idlemgr->fb_index = ret;
 		mtk_crtc->idlemgr->wb_buffer_iova = mtk_fb_get_dma(wb_fb[ret]);
-		DDPMSG("%s,[IWB] switch to fb:%u(%u,%u),fmt:0x%lx,buf:0x%lx\n",
+		DDPMSG("%s,[IWB] switch to fb:%u(%u,%u),fmt:0x%x,buf:0x%lx\n",
 			__func__, mtk_crtc->idlemgr->fb_index, width, height, fmt,
 			(unsigned long)mtk_crtc->idlemgr->wb_buffer_iova);
 	}
