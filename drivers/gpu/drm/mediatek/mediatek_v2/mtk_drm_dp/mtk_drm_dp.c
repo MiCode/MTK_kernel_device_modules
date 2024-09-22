@@ -5095,6 +5095,14 @@ void mtk_dp_disconnect_release(struct mtk_dp *mtk_dp)
 	DP_MSG("Power OFF:%d", mtk_dp->power_on);
 	mtk_dp_analog_power_on_off(mtk_dp, false);
 
+	for (i = 0; i < ARRAY_SIZE(mtk_dp->mtk_connector); i++) {
+		if (mtk_dp->mtk_connector[i]) {
+			mtk_dp->mtk_connector[i]->assigned = false;
+			kfree(mtk_dp->mtk_connector[i]->edid);
+			mtk_dp->mtk_connector[i]->edid = NULL;
+		}
+	}
+
 	mtk_dp_vsvoter_clr(mtk_dp);
 }
 
@@ -5874,29 +5882,14 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 #endif
 		} else {
 			DP_MSG("HPD_DISCON\n");
-			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
-				mtk_dp->mtk_connector[encoder_id]->assigned = false;
-				mtk_dp_video_mute(mtk_dp, encoder_id, true);
-				mtk_dp_audio_mute(mtk_dp, encoder_id, true);
-			}
-
 			if (mtk_dp->uevent_to_hwc) {
 				mtk_dp_hotplug_uevent(0);
 				mtk_dp->uevent_to_hwc = false;
-				mtk_dp->disp_state = DP_DISP_STATE_NONE;
 			} else {
 				DP_MSG("Skip uevent(0)\n");
 			}
 
-			mtk_dp_init_variable(mtk_dp);
-			mtk_dp_phy_set_idle_pattern(mtk_dp, true);
-			if (mtk_dp->has_fec)
-				mtk_dp_fec_enable(mtk_dp, false);
-			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++)
-				mtk_dp_stop_sent_sdp(mtk_dp, encoder_id);
-
-			DP_MSG("Power OFF:%d", mtk_dp->power_on);
-			mtk_dp_analog_power_on_off(mtk_dp, false);
+			mtk_dp_disconnect_release(mtk_dp);
 
 			fake_cable_in = false;
 			fake_res = FAKE_DEFAULT_RES;
