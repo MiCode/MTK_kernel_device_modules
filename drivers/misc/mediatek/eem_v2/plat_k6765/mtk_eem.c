@@ -1307,11 +1307,6 @@ static void eem_set_eem_volt(struct eem_det *det)
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
-	if (!ctrl) {
-		eem_error("%s ctrl[%d] is null\n", __func__, det->ctrl_id);
-		return;
-	}
-
 #if ENABLE_LOO
 	/* remap to L/B bank for update dvfs table,
 	 * also copy high opp volt table
@@ -1329,6 +1324,12 @@ static void eem_set_eem_volt(struct eem_det *det)
 		ctrl = id_to_eem_ctrl(det->ctrl_id);
 	}
 #endif
+
+	if (!ctrl) {
+		eem_error("%s ctrl[%d] is null\n", __func__, det->ctrl_id);
+		return;
+	}
+
 	det->temp = det->ops->get_temp(det);
 
 #if UPDATE_TO_UPOWER
