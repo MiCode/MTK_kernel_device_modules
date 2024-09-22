@@ -1673,7 +1673,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 {
 	unsigned int size = 0;
 	unsigned int con = 0;
-	unsigned long long bw_base;
+	unsigned long long bw_base, srt_bw;
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
@@ -1685,6 +1685,8 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	resource_size_t mmsys_reg = priv->config_regs_pa;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int line_time = 0;
 
 	comp->fb = addon_config->addon_wdma_config.fb;
 	if (!comp->fb) {
@@ -1713,15 +1715,36 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	}
 
 	// WDMA bandwidth setting
-	bpp = mtk_get_format_bpp(comp->fb->format->format);
-	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-	bw_base = div_u64(bw_base, 1000) * 2;
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		bpp = mtk_get_format_bpp(comp->fb->format->format);
+		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
+		bw_base = div_u64(bw_base, 1000) * 2;
 
-	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+	}
+	if (priv->data->mmsys_id == MMSYS_MT6899) {
+		bpp = mtk_get_format_bpp(comp->fb->format->format);
+		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &line_time);
+		bw_base = div_u64((unsigned long long)clip_w * vact * bpp * 1000,
+			line_time * vact);
+		if (comp->last_hrt_bw < bw_base) {
+			comp->hrt_bw = bw_base;
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+		}
+		srt_bw = div_u64((unsigned long long)clip_w * clip_h * vrefresh * bpp, 1000000);
+		if (comp->last_qos_bw < srt_bw) {
+			comp->qos_bw = srt_bw;
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, NULL);
+		}
+	}
 
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
@@ -2393,23 +2416,15 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 	//tempory solution: only for ufbc
 	case PMQOS_UPDATE_BW: {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
 		unsigned int update_pending = 0;
 		struct mtk_drm_private *priv;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 
-		if (!wdma->info_data->is_support_ufbc)
-			break;
-
 		priv = comp->mtk_crtc->base.dev->dev_private;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
-
-		mtk_crtc = comp->mtk_crtc;
-		crtc = &mtk_crtc->base;
 
 		if (params) {
 			force_update = *(unsigned int *)params;
@@ -2879,7 +2894,6 @@ static const struct mtk_disp_wdma_data mt6899_wdma_driver_data = {
 	.fifo_size_uv_2plane = PARSE_FROM_DTS,
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
-	.force_ostdl_bw = 3000,
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.sodi_config = mt6989_mtk_sodi_config,

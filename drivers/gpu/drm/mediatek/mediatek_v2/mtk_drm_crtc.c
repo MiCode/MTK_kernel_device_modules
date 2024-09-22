@@ -12930,6 +12930,18 @@ skip:
 		}
 	}
 
+	if (crtc_id == 0 && priv->data->mmsys_id == MMSYS_MT6899) {
+		unsigned int wdma_bw = 0;
+
+		comp = mtk_disp_get_wdma_comp_by_scn(crtc, WDMA_WRITE_BACK);
+		if (comp) {
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
+			comp->qos_bw = 0;
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
+			DDPMSG("%s, clear cwb wdma:%u bw:%u\n", __func__, comp->id, wdma_bw);
+		}
+	}
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(priv->data->mmsys_id == MMSYS_MT6991 ||
 			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
@@ -17117,7 +17129,7 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	int session_id;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
 	struct pixel_type_map *pixel_types;
-	unsigned int spr_mode_type, bw_zero;
+	unsigned int spr_mode_type;
 
 	if (mtk_crtc->pq_data) {
 		spr_mode_type = mtk_get_cur_spr_type(crtc);
@@ -17134,9 +17146,6 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	//	drm_framebuffer_put(cb_data->wb_fb);
 	session_id = mtk_get_session_id(crtc);
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
-
-	bw_zero = 0;
-	mtk_addon_path_io_cmd(crtc, cb_data->wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
 
 	CRTC_MMP_MARK(0, wbBmpDump, 1, fence_idx);
 	mtk_dprec_mmp_dump_wdma_layer(crtc, cb_data->wb_fb);
