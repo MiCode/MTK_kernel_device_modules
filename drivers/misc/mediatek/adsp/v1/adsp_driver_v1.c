@@ -30,6 +30,15 @@ const struct adspsys_description mt6893_adspsys_desc = {
 	.axibus_idle_val = 0x100, //AP read pending counter = 1
 };
 
+const struct adspsys_description mt6853_adspsys_desc = {
+	.platform_name = "mt6853",
+	.version = 1,
+	.semaphore_ways = 3,
+	.semaphore_ctrl = 2,
+	.semaphore_retry = 5000,
+	.axibus_idle_val = 0x100, //AP read pending counter = 1
+};
+
 const struct adsp_core_description mt6893_adsp_c0_desc = {
 	.id = 0,
 	.name = "adsp_0",
@@ -71,14 +80,38 @@ const struct adsp_core_description mt6893_adsp_c1_desc = {
 	}
 };
 
+const struct adsp_core_description mt6853_adsp_c0_desc = {
+	.id = 0,
+	.name = "adsp_0",
+	.sharedmems = {
+		[ADSP_SHAREDMEM_BOOTUP_MARK] = {0x0004, 0x0004},
+		[ADSP_SHAREDMEM_SYS_STATUS] = {0x0008, 0x0004},
+		[ADSP_SHAREDMEM_MPUINFO] = {0x0028, 0x0020},
+		[ADSP_SHAREDMEM_WAKELOCK] = {0x002C, 0x0004},
+		[ADSP_SHAREDMEM_IPCBUF] = {0x0300, 0x0200},
+		[ADSP_SHAREDMEM_TIMESYNC] = {0x2530, 0x0020},
+		[ADSP_SHAREDMEM_DVFSSYNC] = {0x253C, 0x000C},
+		[ADSP_SHAREDMEM_SLEEPSYNC] = {0x2540, 0x0004},
+		[ADSP_SHAREDMEM_BUS_MON_DUMP] = {0x25FC, 0x00BC},
+		[ADSP_SHAREDMEM_INFRA_BUS_DUMP] = {0x269C, 0x00A0},
+		[ADSP_SHAREDMEM_LATMON_DUMP] = {0x26B8, 0x001C},
+	},
+	.ops = {
+		.initialize = adsp_core0_init,
+		.after_bootup = adsp_after_bootup,
+	}
+};
+
 static const struct of_device_id adspsys_of_ids[] = {
 	{ .compatible = "mediatek,adsp_common", .data = &mt6893_adspsys_desc},
+	{ .compatible = "mediatek,mt6853-adspsys", .data = &mt6853_adspsys_desc},
 	{}
 };
 
 static const struct of_device_id adsp_core_of_ids[] = {
 	{ .compatible = "mediatek,adsp_core_0", .data = &mt6893_adsp_c0_desc},
 	{ .compatible = "mediatek,adsp_core_1", .data = &mt6893_adsp_c1_desc},
+	{ .compatible = "mediatek,mt6853-adsp_core_0", .data = &mt6853_adsp_c0_desc},
 	{}
 };
 

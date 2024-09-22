@@ -19,3 +19,17 @@ obj-$(CONFIG_SND_SOC_MT6853) += snd-soc-mt6853-afe.o
 
 # machine driver
 obj-$(CONFIG_SND_SOC_MT6853_MT6359P) += mt6853-mt6359p.o
+# MENU Governor Predict(low power)
+ifneq ($(CONFIG_MTK_ACAO_SUPPORT), )
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mcdi/include/
+endif
+
+# adsp include path
+ifneq ($(CONFIG_MTK_AUDIODSP_SUPPORT), )
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp
+endif
+
+# spm
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include

@@ -21,12 +21,17 @@
 #include "../common/mtk-afe-fe-dai.h"
 #include "../common/mtk-sp-pcm-ops.h"
 #include "../common/mtk-sram-manager.h"
-
+#include "../common/mtk-mmap-ion.h"
 #include "mt6853-afe-common.h"
 #include "mt6853-afe-clk.h"
 #include "mt6853-afe-gpio.h"
 #include "mt6853-interconnection.h"
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+#include "../audio_dsp/mtk-dsp-common.h"
+#endif
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+#include "../ultrasound/ultra_scp/mtk-scp-ultra-common.h"
+#endif
 /* FORCE_FPGA_ENABLE_IRQ use irq in fpga */
 /* #define FORCE_FPGA_ENABLE_IRQ */
 
@@ -127,7 +132,8 @@ int mt6853_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	int fs;
 	int ret = 0;
 
-	dev_info(afe->dev,
+	if (!in_interrupt())
+		dev_info(afe->dev,
 			 "%s(), %s cmd %d, irq_id %d, is_afe_need_triggered %d, no_period_wakeup %d\n",
 			 __func__, memif->data->name, cmd, irq_id,
 			 is_afe_need_triggered(memif),
@@ -252,13 +258,57 @@ int mt6853_get_memif_pbuf_size(struct snd_pcm_substream *substream)
 		return MT6853_MEMIF_PBUF_SIZE_32_BYTES;
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+int mt6853_fe_prepare(struct snd_pcm_substream *substream,
+		      struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_pcm_runtime * const runtime = substream->runtime;
+	struct mtk_base_afe *afe = snd_soc_dai_get_drvdata(dai);
+	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	int id = cpu_dai->id;
+	struct mtk_base_afe_memif *memif = &afe->memif[id];
+	int irq_id = memif->irq_usage;
+	struct mtk_base_afe_irq *irqs = &afe->irqs[irq_id];
+	const struct mtk_base_irq_data *irq_data = irqs->irq_data;
+	unsigned int counter = runtime->period_size;
+	int fs;
+	int ret;
+
+	ret = mtk_afe_fe_prepare(substream, dai);
+	if (ret)
+		goto exit;
+
+	/* set irq counter */
+	mtk_regmap_update_bits(afe->regmap, irq_data->irq_cnt_reg,
+			       irq_data->irq_cnt_maskbit,
+			       counter, irq_data->irq_cnt_shift);
+
+	/* set irq fs */
+	fs = afe->irq_fs(substream, runtime->rate);
+
+	if (fs < 0)
+		return -EINVAL;
+
+	mtk_regmap_update_bits(afe->regmap, irq_data->irq_fs_reg,
+			       irq_data->irq_fs_maskbit,
+			       fs, irq_data->irq_fs_shift);
+exit:
+	return ret;
+}
+#endif
+
 /* FE DAIs */
 static const struct snd_soc_dai_ops mt6853_memif_dai_ops = {
 	.startup	= mt6853_fe_startup,
 	.shutdown	= mt6853_fe_shutdown,
 	.hw_params	= mtk_afe_fe_hw_params,
 	.hw_free	= mtk_afe_fe_hw_free,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	.prepare	= mt6853_fe_prepare,
+#else
 	.prepare	= mtk_afe_fe_prepare,
+#endif
 	.trigger	= mt6853_fe_trigger,
 };
 
@@ -940,6 +990,281 @@ static int mt6853_vow_barge_in_irq_id_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+static int mt6853_adsp_ref_mem_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mtk_base_afe_memif *memif;
+	int memif_num = get_dsp_task_attr(AUDIO_TASK_CAPTURE_UL1_ID,
+					  ADSP_TASK_ATTR_MEMREF);
+	if (memif_num < 0)
+		return 0;
+
+	memif = &afe->memif[memif_num];
+	ucontrol->value.integer.value[0] = memif->use_adsp_share_mem;
+
+	return 0;
+}
+
+static int mt6853_adsp_ref_mem_set(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mtk_base_afe_memif *memif;
+	int memif_num = get_dsp_task_attr(AUDIO_TASK_CAPTURE_UL1_ID,
+					  ADSP_TASK_ATTR_MEMREF);
+	if (memif_num < 0)
+		return 0;
+
+	memif = &afe->memif[memif_num];
+	memif->use_adsp_share_mem = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int mt6853_adsp_mem_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mtk_base_afe_memif *memif;
+	int memif_num = -1;
+	int task_id = get_dsp_task_id_from_str(kcontrol->id.name);
+
+	switch (task_id) {
+	case AUDIO_TASK_PRIMARY_ID:
+	case AUDIO_TASK_DEEPBUFFER_ID:
+	case AUDIO_TASK_FAST_ID:
+	case AUDIO_TASK_OFFLOAD_ID:
+	case AUDIO_TASK_PLAYBACK_ID:
+	case AUDIO_TASK_CALL_FINAL_ID:
+	case AUDIO_TASK_KTV_ID:
+	case AUDIO_TASK_VOIP_ID:
+		memif_num = get_dsp_task_attr(task_id,
+					      ADSP_TASK_ATTR_MEMDL);
+		break;
+	case AUDIO_TASK_CAPTURE_UL1_ID:
+	case AUDIO_TASK_FM_ADSP_ID:
+		memif_num = get_dsp_task_attr(task_id,
+					      ADSP_TASK_ATTR_MEMUL);
+		break;
+	default:
+		pr_info("%s(), task_id %d do not use shared mem\n",
+			__func__, task_id);
+		break;
+	};
+
+	if (memif_num < 0)
+		return 0;
+
+	memif = &afe->memif[memif_num];
+	ucontrol->value.integer.value[0] = memif->use_adsp_share_mem;
+
+	return 0;
+}
+
+static int mt6853_adsp_mem_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mtk_base_afe_memif *memif;
+	int dl_memif_num = -1;
+	int ul_memif_num = -1;
+	int ref_memif_num = -1;
+	int task_id = get_dsp_task_id_from_str(kcontrol->id.name);
+
+	switch (task_id) {
+	case AUDIO_TASK_PRIMARY_ID:
+	case AUDIO_TASK_DEEPBUFFER_ID:
+	case AUDIO_TASK_FAST_ID:
+	case AUDIO_TASK_OFFLOAD_ID:
+	case AUDIO_TASK_VOIP_ID:
+		dl_memif_num = get_dsp_task_attr(task_id,
+						 ADSP_TASK_ATTR_MEMDL);
+		break;
+	case AUDIO_TASK_CAPTURE_UL1_ID:
+	case AUDIO_TASK_FM_ADSP_ID:
+		ul_memif_num = get_dsp_task_attr(task_id,
+						 ADSP_TASK_ATTR_MEMUL);
+		break;
+	case AUDIO_TASK_CALL_FINAL_ID:
+	case AUDIO_TASK_PLAYBACK_ID:
+	case AUDIO_TASK_KTV_ID:
+		dl_memif_num = get_dsp_task_attr(task_id,
+						 ADSP_TASK_ATTR_MEMDL);
+		ul_memif_num = get_dsp_task_attr(task_id,
+						 ADSP_TASK_ATTR_MEMUL);
+		ref_memif_num = get_dsp_task_attr(task_id,
+						  ADSP_TASK_ATTR_MEMREF);
+		break;
+	default:
+		pr_info("%s(), task_id %d do not use shared mem\n",
+			__func__, task_id);
+		break;
+	};
+
+	if (dl_memif_num >= 0) {
+		memif = &afe->memif[dl_memif_num];
+		memif->use_adsp_share_mem = ucontrol->value.integer.value[0];
+	}
+
+	if (ul_memif_num >= 0) {
+		memif = &afe->memif[ul_memif_num];
+		memif->use_adsp_share_mem = ucontrol->value.integer.value[0];
+	}
+
+	if (ref_memif_num >= 0) {
+		memif = &afe->memif[ref_memif_num];
+		memif->use_adsp_share_mem = ucontrol->value.integer.value[0];
+	}
+
+	return 0;
+}
+#endif
+
+static int mt6853_mmap_dl_scene_get(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6853_afe_private *afe_priv = afe->platform_priv;
+
+	ucontrol->value.integer.value[0] = afe_priv->mmap_playback_state;
+	return 0;
+}
+
+static int mt6853_mmap_dl_scene_set(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6853_afe_private *afe_priv = afe->platform_priv;
+	int memif_num = MT6853_MMAP_DL_MEMIF;
+	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
+
+	afe_priv->mmap_playback_state = ucontrol->value.integer.value[0];
+
+	if (afe_priv->mmap_playback_state == 1) {
+		unsigned long phy_addr;
+		void *vir_addr;
+
+		mtk_get_mmap_dl_buffer(&phy_addr, &vir_addr);
+
+		if (phy_addr != 0x0 && vir_addr)
+			memif->use_mmap_share_mem = 1;
+	} else {
+		memif->use_mmap_share_mem = 0;
+	}
+
+	dev_info(afe->dev, "%s(), state %d, mem %d\n", __func__,
+		 afe_priv->mmap_playback_state, memif->use_mmap_share_mem);
+	return 0;
+}
+
+static int mt6853_mmap_ul_scene_get(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6853_afe_private *afe_priv = afe->platform_priv;
+
+	ucontrol->value.integer.value[0] = afe_priv->mmap_record_state;
+	return 0;
+}
+
+static int mt6853_mmap_ul_scene_set(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6853_afe_private *afe_priv = afe->platform_priv;
+	int memif_num = MT6853_MMAP_UL_MEMIF;
+	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
+
+	afe_priv->mmap_record_state = ucontrol->value.integer.value[0];
+
+	if (afe_priv->mmap_record_state == 1) {
+		unsigned long phy_addr;
+		void *vir_addr;
+
+		mtk_get_mmap_ul_buffer(&phy_addr, &vir_addr);
+
+		if (phy_addr != 0x0 && vir_addr)
+			memif->use_mmap_share_mem = 2;
+	} else {
+		memif->use_mmap_share_mem = 0;
+	}
+
+	dev_info(afe->dev, "%s(), state %d, mem %d\n", __func__,
+		 afe_priv->mmap_record_state, memif->use_mmap_share_mem);
+	return 0;
+}
+
+static int mt6853_mmap_ion_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int mt6853_mmap_ion_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(afe->dev, "%s() afe %p\n", __func__, afe);
+	mtk_exporter_init(afe->dev);
+	return 0;
+}
+
+static int mt6853_dl_mmap_fd_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int memif_num = MT6853_MMAP_DL_MEMIF;
+	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
+
+	ucontrol->value.integer.value[0] = (memif->use_mmap_share_mem == 1) ?
+					    mtk_get_mmap_dl_fd() : 0;
+	dev_info(afe->dev, "%s, fd %ld\n", __func__,
+		 ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+static int mt6853_dl_mmap_fd_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int mt6853_ul_mmap_fd_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int memif_num = MT6853_MMAP_UL_MEMIF;
+	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
+
+	ucontrol->value.integer.value[0] = (memif->use_mmap_share_mem == 2) ?
+					    mtk_get_mmap_ul_fd() : 0;
+	dev_info(afe->dev, "%s, fd %ld\n", __func__,
+		 ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+static int mt6853_ul_mmap_fd_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
 static const struct snd_kcontrol_new mt6853_pcm_kcontrols[] = {
 	SOC_SINGLE_EXT("Audio IRQ1 CNT", SND_SOC_NOPM, 0, 0x3ffff, 0,
 		       mt6853_irq_cnt1_get, mt6853_irq_cnt1_set),
@@ -967,6 +1292,68 @@ static const struct snd_kcontrol_new mt6853_pcm_kcontrols[] = {
 		       mt6853_sram_size_get, NULL),
 	SOC_SINGLE_EXT("vow_barge_in_irq_id", SND_SOC_NOPM, 0, 0x3ffff, 0,
 			   mt6853_vow_barge_in_irq_id_get, NULL),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	SOC_SINGLE_EXT("adsp_primary_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_deepbuffer_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_voip_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_playback_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_call_final_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_ktv_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_fm_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_offload_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_capture_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_ref_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_ref_mem_get,
+		       mt6853_adsp_ref_mem_set),
+	SOC_SINGLE_EXT("adsp_fast_sharemem_scenario",
+		       SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_adsp_mem_get,
+		       mt6853_adsp_mem_set),
+#endif
+	SOC_SINGLE_EXT("mmap_play_scenario", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_mmap_dl_scene_get, mt6853_mmap_dl_scene_set),
+	SOC_SINGLE_EXT("mmap_record_scenario", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6853_mmap_ul_scene_get, mt6853_mmap_ul_scene_set),
+	SOC_SINGLE_EXT("aaudio_ion",
+		       SND_SOC_NOPM, 0, 0xffffffff, 0,
+		       mt6853_mmap_ion_get,
+		       mt6853_mmap_ion_set),
+	SOC_SINGLE_EXT("aaudio_dl_mmap_fd",
+		       SND_SOC_NOPM, 0, 0xffffffff, 0,
+		       mt6853_dl_mmap_fd_get,
+		       mt6853_dl_mmap_fd_set),
+	SOC_SINGLE_EXT("aaudio_ul_mmap_fd",
+		       SND_SOC_NOPM, 0, 0xffffffff, 0,
+		       mt6853_ul_mmap_fd_get,
+		       mt6853_ul_mmap_fd_set),
 };
 
 static int ul_tinyconn_event(struct snd_soc_dapm_widget *w,
@@ -3094,7 +3481,7 @@ static const struct snd_soc_component_driver mt6853_afe_component = {
 	.open           = mtk_afe_pcm_open,
 	.pointer        = mtk_afe_pcm_pointer,
 	.pcm_construct  = mtk_afe_pcm_new,
-	.copy = mtk_afe_pcm_copy_user,
+	.copy           = mtk_afe_pcm_copy_user,
 };
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -5741,6 +6128,12 @@ static int mt6853_afe_pcm_dev_probe(struct platform_device *pdev)
 		goto err_dai_component;
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	audio_set_dsp_afe(afe);
+#endif
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+	ultra_set_dsp_afe(afe);
+#endif
 	return 0;
 
 err_dai_component:

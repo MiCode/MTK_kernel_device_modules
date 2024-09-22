@@ -618,6 +618,62 @@ SND_SOC_DAILINK_DEFS(btcvsd,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("18050000.mtk-btcvsd-snd")));
 #endif
+#if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) && IS_ENABLED(CONFIG_SND_SOC_MTK_OFFLOAD))
+SND_SOC_DAILINK_DEFS(dspoffload,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_offload_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("mt-soc-offload-common")));
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+SND_SOC_DAILINK_DEFS(dspvoip,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_voip_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspprimary,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_primary_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspdeepbuf,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_deepbuf_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspfast,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_fast_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_Playback_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspcapture1,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_capture_ul1_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspcallfinal,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_call_final_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspktv,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ktv_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspcaptureraw,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_capture_raw_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspfmadsp,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_fm_adsp_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspa2dp,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_a2dp_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspulproc,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ulproc_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 SND_SOC_DAILINK_DEFS(vow,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -1129,6 +1185,75 @@ static struct snd_soc_dai_link mt6853_mt6359p_dai_links[] = {
 		SND_SOC_DAILINK_REG(btcvsd),
 	},
 #endif
+#if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) && IS_ENABLED(CONFIG_SND_SOC_MTK_OFFLOAD))
+	{
+		.name = "Offload_Playback",
+		.stream_name = "Offload_Playback",
+		SND_SOC_DAILINK_REG(dspoffload),
+	},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	{
+		.name = "DSP_Playback_Voip",
+		.stream_name = "DSP_Playback_Voip",
+		SND_SOC_DAILINK_REG(dspvoip),
+	},
+	{
+		.name = "DSP_Playback_Primary",
+		.stream_name = "DSP_Playback_Primary",
+		SND_SOC_DAILINK_REG(dspprimary),
+	},
+	{
+		.name = "DSP_Playback_DeepBuf",
+		.stream_name = "DSP_Playback_DeepBuf",
+		SND_SOC_DAILINK_REG(dspdeepbuf),
+	},
+	{
+		.name = "DSP_Playback_Fast",
+		.stream_name = "DSP_Playback_Fast",
+		SND_SOC_DAILINK_REG(dspfast),
+	},
+	{
+		.name = "DSP_Playback_Playback",
+		.stream_name = "DSP_Playback_Playback",
+		SND_SOC_DAILINK_REG(dspplayback),
+	},
+	{
+		.name = "DSP_Capture_Ul1",
+		.stream_name = "DSP_Capture_Ul1",
+		SND_SOC_DAILINK_REG(dspcapture1),
+	},
+	{
+		.name = "DSP_Call_Final",
+		.stream_name = "DSP_Call_Final",
+		SND_SOC_DAILINK_REG(dspcallfinal),
+	},
+	{
+		.name = "DSP_Playback_Ktv",
+		.stream_name = "DSP_Playback_Ktv",
+		SND_SOC_DAILINK_REG(dspktv),
+	},
+	{
+		.name = "DSP_Capture_Raw",
+		.stream_name = "DSP_Capture_Raw",
+		SND_SOC_DAILINK_REG(dspcaptureraw),
+	},
+	{
+		.name = "DSP_Playback_Fm_Adsp",
+		.stream_name = "DSP_Playback_Fm_Adsp",
+		SND_SOC_DAILINK_REG(dspfmadsp),
+	},
+	{
+		.name = "DSP_Playback_A2DP",
+		.stream_name = "DSP_Playback_A2DP",
+		SND_SOC_DAILINK_REG(dspa2dp),
+	},
+	{
+		.name = "DSP_Capture_Process",
+		.stream_name = "DSP_Capture_Process",
+		SND_SOC_DAILINK_REG(dspulproc),
+	},
+#endif
 	/* VoW */
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	{
@@ -1217,6 +1342,9 @@ static int mt6853_mt6359p_dev_probe(struct platform_device *pdev)
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)
 		dev_info(&pdev->dev, "%s snd_soc_register_card fail %d\n",
+			__func__, ret);
+	else
+		dev_info(&pdev->dev, "%s snd_soc_register_card PASS %d\n",
 			__func__, ret);
 	return ret;
 }

@@ -8,7 +8,7 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 #include <soc/mediatek/emi.h>
 #endif
 #include "adsp_reserved_mem.h"
