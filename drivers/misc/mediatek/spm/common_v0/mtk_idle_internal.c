@@ -71,11 +71,11 @@ u32 clk_buf_bblpm_enter_cond(void)
 		//return bblpm_cond;
 	//}
 
-	//if (!spm_flightmode)
-		//bblpm_cond |= BBLPM_COND_CEL;
+	if (!spm_flightmode)
+		bblpm_cond |= BBLPM_COND_CEL;
 
-	//if (mtk_spm_read_register(SPM_PWRSTA) & (1 << 1))
-		//bblpm_cond |= BBLPM_COND_WCN;
+	if (mtk_spm_read_register(SPM_PWRSTA) & (1 << 1))
+		bblpm_cond |= BBLPM_COND_WCN;
 
 	//if (clk_buf_get_xo_en_sta("XO_NFC") == 1)
 		//bblpm_cond |= BBLPM_COND_NFC;
