@@ -4447,6 +4447,7 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 		for (int i = 0; i < MAX_LAYER_NR ; i++)
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
 				     mtk_crtc->usage_ovl_compr[i]);
+		DDPINFO("%s\n", dbg_msg);
 
 		memset(dbg_msg, 0, sizeof(dbg_msg));
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_ext_compr = ", __func__);
