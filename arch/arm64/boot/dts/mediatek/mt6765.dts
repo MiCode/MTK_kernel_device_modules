@@ -4644,7 +4644,6 @@ pwrap: pwrap@1000d000 {
 	};
 
 	pmic_clock_buffer_ctrl: pmic_clock_buffer_ctrl {
-		pmic-supply = <&mt6357_clkbuf>;
 		compatible = "mediatek,mt6765-clkbuf";
 		pmic = <&mt6357_clkbuf>;
 		pmif = <&pwrap 0>;
