@@ -111,8 +111,9 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 
 	now = ktime_get_boottime();
 
-	pr_debug("%s, %s:soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
+	pr_debug("%s, %s:overheat:%d,soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
 		gm->gauge->name, __func__,
+		sdu->shutdown_status.is_overheat,
 		sdu->shutdown_status.is_soc_zero_percent,
 		sdu->shutdown_status.is_uisoc_one_percent,
 		sdu->shutdown_status.is_dlpt_shutdown,
@@ -122,6 +123,13 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		is_single = true;
 	else
 		is_single = false;
+
+	if (sdu->shutdown_status.is_overheat) {
+		pr_debug("overheat shutdown\n");
+		polling++;
+		kernel_power_off();
+		return next_waketime(polling);
+	}
 
 	if (sdu->shutdown_status.is_soc_zero_percent) {
 		if (current_ui_soc == 0) {
