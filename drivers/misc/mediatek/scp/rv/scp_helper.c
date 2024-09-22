@@ -34,6 +34,7 @@
 //#include <mt-plat/aee.h>
 #include <linux/delay.h>
 #include <linux/mfd/syscon.h> /* need by regmap infracfg_ao_clk */
+#include <clk-fmeter.h>
 #include "scp_feature_define.h"
 #include "scp_err_info.h"
 #include "scp_helper.h"
@@ -162,6 +163,7 @@ static struct scp_work_struct scp_A_notify_work;
 static unsigned int scp_timeout_times;
 
 struct scp_resource_dump_info_st scp_resource_dump_info;
+struct scp_clk_fmeter_dump_info_st scp_clk_fmeter_dump_info;
 
 static DEFINE_MUTEX(scp_A_notify_mutex);
 static DEFINE_MUTEX(scp_feature_mutex);
@@ -203,6 +205,14 @@ struct mtk_pin_dump scp_pin_dump[SCP_IPI_COUNT] = {
 };
 
 static unsigned int scp_ipi_dump_timout = 100;
+
+void dump_u1u2_clock(void)
+{
+	if(scp_clk_fmeter_dump_info.en) {
+		pr_notice("[scp] u2 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc_ck, VLPCK));
+		pr_notice("[scp] u1 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc2_ck, VLPCK));
+	}
+}
 
 static int scp_resume_cb(struct device *dev)
 {
@@ -2162,6 +2172,8 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	/* dump scp related resource information */
 	scp_reousrce_dump();
 
+	dump_u1u2_clock();
+
 	/* print_clk and scp_aed before pll enable to keep ori CLK_SEL */
 	print_clk_registers();
 	/*workqueue for scp ee, scp reset by cmd will not trigger scp ee*/
@@ -2475,9 +2487,9 @@ static bool scp_ipi_table_init(struct mtk_mbox_device *scp_mboxdev, struct platf
 	};
 	u32 i, ret, mbox_id, recv_opt, recv_cells_mode, recv_cells_num, lock, buf_full_opt,
 			cb_ctx_opt;
-	of_property_read_u32(pdev->dev.of_node, "mbox-count"
+	ret = of_property_read_u32(pdev->dev.of_node, "mbox-count"
 						, &scp_mboxdev->count);
-	if (!scp_mboxdev->count) {
+	if (ret) {
 		pr_notice("[SCP] mbox count not found\n");
 		return false;
 	}
@@ -2728,6 +2740,46 @@ void scp_reousrce_dump(void)
 		pr_notice("[SCP] resource dump disable\n");
 	}
 }
+
+static bool scp_clk_fmeter_dump_init(struct platform_device *pdev)
+{
+	const char *scp_clk_fmeter_dump_flag = NULL;
+	u32 ret;
+
+	/* check if the property exists or not */
+	if (!of_property_read_string(pdev->dev.of_node, "scp-clk-fmeter-dump",
+				&scp_clk_fmeter_dump_flag)) {
+		if (!strncmp(scp_clk_fmeter_dump_flag, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp clk fmeter dump enabled\n");
+			scp_clk_fmeter_dump_info.en = 1;
+		} else {
+			pr_notice("[SCP] scp clk fmeter dump disable\n");
+			scp_clk_fmeter_dump_info.en = 0;
+			return true;
+		}
+	} else {
+		pr_notice("[SCP] scp resource dump not support\n");
+		scp_clk_fmeter_dump_info.en = 0;
+		return true;
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "scp-u1-id",
+			&scp_clk_fmeter_dump_info.fm_ulposc_ck);
+	if (ret) {
+		scp_clk_fmeter_dump_info.fm_ulposc_ck = 0;
+		pr_notice("[SCP] dump fm_ulposc_ck not defined.\n");
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "scp-u2-id",
+			&scp_clk_fmeter_dump_info.fm_ulposc2_ck);
+	if (ret) {
+		scp_clk_fmeter_dump_info.fm_ulposc2_ck = 0;
+		pr_notice("[SCP] dump fm_ulposc_ck2 not defined.\n");
+	}
+
+	return true;
+}
+
 
 static bool scp_resource_dump_init(struct platform_device *pdev)
 {
@@ -3185,6 +3237,9 @@ static int scp_device_probe(struct platform_device *pdev)
 		pr_notice("[SCP] ipi_dev_register fail, ret %d\n", ret);
 
 	if (!scp_resource_dump_init(pdev))
+		return -ENODEV;
+
+	if (!scp_clk_fmeter_dump_init(pdev))
 		return -ENODEV;
 
 #if SCP_RESERVED_MEM && defined(CONFIG_OF)

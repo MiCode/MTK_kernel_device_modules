@@ -211,6 +211,12 @@ struct scp_resource_dump_info_st {
 	uint32_t dump_regs_cnt;
 };
 
+struct scp_clk_fmeter_dump_info_st {
+	uint32_t en;
+	uint32_t fm_ulposc_ck;
+	uint32_t fm_ulposc2_ck;
+};
+
 struct scp_kasan_info_st {
 	uint32_t ubsan_en;
 	uint32_t asan_en;

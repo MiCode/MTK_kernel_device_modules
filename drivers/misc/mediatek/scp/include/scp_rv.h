@@ -287,5 +287,7 @@ extern int get_scp_dram_region_manage(void);
 
 extern void scp_send_thermal_wq(enum SCP_THERMAL_TYPE type);
 
+extern void dump_u1u2_clock(void);
+
 #endif
 

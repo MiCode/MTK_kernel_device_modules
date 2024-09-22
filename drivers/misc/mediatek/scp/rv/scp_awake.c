@@ -167,6 +167,7 @@ int scp_awake_lock(void *_scp_id)
 			 * then we backup some information before APMCU halt SCP.
 			 */
 			scp_reousrce_dump();
+			dump_u1u2_clock();
 			pr_notice("%s: start to reset scp...\n", __func__);
 			/*
 			 * Based on SCP DE suggestion, force PLL CG enable in order to avoid
@@ -320,6 +321,7 @@ int scp_awake_unlock(void *_scp_id)
 			 * then we backup some information before APMCU halt SCP.
 			 */
 			scp_reousrce_dump();
+			dump_u1u2_clock();
 			pr_notice("%s: start to reset scp...\n", __func__);
 			/*
 			 * Based on SCP DE suggestion, force PLL CG enable in order to avoid
