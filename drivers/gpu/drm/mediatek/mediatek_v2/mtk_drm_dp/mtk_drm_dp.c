@@ -5268,6 +5268,14 @@ static enum drm_connector_status mtk_dp_connector_detect
 	enum drm_connector_status ret = connector_status_disconnected;
 	u8 sink_count = 0;
 
+#ifdef DP_PATCH_NIO
+	if (g_mtk_dp->virtual_connect) {
+		ret = g_mtk_dp->virtual_connect ? connector_status_connected : ret;
+		DP_MSG("[%s,%d] detect, connector status:%d", __func__, __LINE__, ret);
+		return ret;
+	}
+#endif
+
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mtk_dp = mtk_connector->mtk_dp;
 
@@ -5380,10 +5388,17 @@ static enum drm_mode_status mtk_dp_connector_mode_valid(struct drm_connector *co
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mtk_dp = mtk_connector->mtk_dp;
 
-	DP_DBG("Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
+	DP_MSG("Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d, clk:%d\n",
 			mode->htotal, mode->vtotal,
 			mode->hdisplay, mode->vdisplay,
 			drm_mode_vrefresh(mode), mode->clock);
+
+#ifdef DP_PATCH_NIO
+	if (g_mtk_dp->virtual_connect) {
+		DP_MSG("Enter virtual Mode");
+		return MODE_OK;
+	}
+#endif
 
 	bpp = connector->display_info.color_formats & DRM_COLOR_FORMAT_YCBCR422 ? 16 : 24;
 	lane_count_min = mtk_dp->training_info.link_lane_count;
@@ -5399,9 +5414,21 @@ static enum drm_mode_status mtk_dp_connector_mode_valid(struct drm_connector *co
 	return MODE_OK;
 }
 
+#ifdef DP_PATCH_NIO
+static struct drm_display_mode dp_set_modes[] = {
+	/* 1920x1080@60Hz */
+	{ DRM_MODE("1920x1080", DRM_MODE_TYPE_DRIVER, 148500, 1920, 2008,
+		   2052, 2200, 0, 1080, 1084, 1089, 1125, 0,
+		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC),
+	  .picture_aspect_ratio = HDMI_PICTURE_ASPECT_16_9,},
+};
+#endif
+
 static int mtk_dp_connector_get_modes(struct drm_connector *connector)
 {
 	struct mtk_dp *mtk_dp;
+	struct drm_device *dev;
+	struct drm_display_mode *virtual_mode;
 	struct mtk_dp_connector *mtk_connector;
 	int ret, num_modes = 0;
 
@@ -5409,6 +5436,18 @@ static int mtk_dp_connector_get_modes(struct drm_connector *connector)
 
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mtk_dp = mtk_connector->mtk_dp;
+
+#ifdef DP_PATCH_NIO
+	if (g_mtk_dp->virtual_connect) {
+		dev = connector->dev;
+		virtual_mode = drm_mode_duplicate(dev, &dp_set_modes[0]);
+		drm_mode_set_name(virtual_mode);
+		virtual_mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+		drm_mode_probed_add(connector, virtual_mode);
+		DP_MSG("Get virtual mode");
+		return 1;
+	}
+#endif
 
 	if (mtk_dp->next_bridge) {
 		DP_MSG("getting timing mode from next bridge\n");
@@ -5722,6 +5761,27 @@ struct mtk_dp_connector *mtk_dp_create_connector(struct mtk_dp *mtk_dp, enum dp_
 }
 #endif
 
+static int mtk_dp_delayed_hpd(void *arg)
+{
+	struct mtk_dp *mtk_dp = (struct mtk_dp *)arg;
+
+	DP_FUNC();
+
+	msleep(10000);
+
+	if (!g_mtk_dp->virtual_connect)
+		return 0;
+
+	mtk_dp_create_connector(mtk_dp, DP_OUT_SST);
+
+	DP_MSG("%s connect done", __func__);
+	msleep(1000);
+	mtk_dp_hotplug_uevent(1);
+	g_mtk_dp->virtual_connect = true;
+	DP_MSG("virtual_connect:%d done", g_mtk_dp->virtual_connect);
+	return 0;
+}
+
 static struct mtk_dp *mtk_dp_from_bridge(struct drm_bridge *b)
 {
 	return container_of(b, struct mtk_dp, bridge);
@@ -5730,10 +5790,13 @@ static struct mtk_dp *mtk_dp_from_bridge(struct drm_bridge *b)
 static int mtk_dp_bridge_attach(struct drm_bridge *bridge,
 				enum drm_bridge_attach_flags flags)
 {
-	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
 	int ret;
+	static struct task_struct *thread_st;
+	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
 
 	DP_FUNC();
+
+	g_mtk_dp->virtual_connect = true;
 
 	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
 		DP_MSG("Driver does not provide a connector");
@@ -5760,6 +5823,12 @@ static int mtk_dp_bridge_attach(struct drm_bridge *bridge,
 		mtk_dp->drm_dev = bridge->dev;
 #ifdef DP_PATCH_NIO
 	mtk_dp_create_connector(mtk_dp, DP_OUT_NONE);
+
+	thread_st = kthread_run(mtk_dp_delayed_hpd, mtk_dp, "dptx_delay_200ms");
+	if (thread_st)
+		DP_MSG("[%s,%d], Thread Created successfully\n", __func__, __LINE__);
+	else
+		DP_ERR("[%s,%d], Thread creation failed\n", __func__, __LINE__);
 #endif
 
 	mtk_dp_init_port(mtk_dp);
@@ -5857,6 +5926,7 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 
 		if (mtk_dp->training_info.cable_plug_in && current_hpd) {
 			DP_MSG("HPD_CON\n");
+			g_mtk_dp->virtual_connect = false;
 			mtk_dp_vsvoter_set(mtk_dp);
 			mtk_dp_initial_setting(mtk_dp);
 			mtk_dp_analog_power_on_off(mtk_dp, true);
