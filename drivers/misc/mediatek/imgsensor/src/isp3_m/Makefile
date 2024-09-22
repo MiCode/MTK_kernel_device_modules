@@ -2,7 +2,11 @@
 # Copyright (C) 2020 MediaTek Inc.
 
 MTK_PLATFORM := isp3_m
+ifeq ($(CONFIG_CAMEREA_PROJECT_TB8766P1), m)
+MTK_SENSOR_PROJECT := tb8766p1_32_bsp_2g_ago
+else
 MTK_SENSOR_PROJECT :=
+endif
 COMMON_VERSION := v1
 IMGSENSOR_DRIVER_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/src
 MTK_PLATFORM_KO := imgsensor_$(MTK_PLATFORM)
