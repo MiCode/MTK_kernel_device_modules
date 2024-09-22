@@ -10739,6 +10739,13 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		DDPMSG("%s CRTC%d has no triger loop client\n", __func__, crtc_id);
 		return;
 	}
+
+	DDPMSG("%s crtc%lu cmd mode %d CMD_EOF %d VDO_EOF %d +\n",
+	       __func__,
+	       crtc_id,
+	       mtk_crtc_is_frame_trigger_mode(crtc),
+	       mtk_crtc->gce_obj.event[EVENT_CMD_EOF],
+	       mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
 #endif
 
 	mtk_crtc->trig_loop_cmdq_handle = cmdq_pkt_create(
@@ -11005,6 +11012,21 @@ skip_prete:
 		}
 	} else {
 		mtk_disp_mutex_submit_sof(mtk_crtc->mutex[0]);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+		if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
+			GCE_DO(wfe, EVENT_CMD_EOF);
+		else
+			GCE_DO(wfe, EVENT_VDO_EOF);
+
+		DDPMSG("%s crtc%lu output comp %s cmd mode %d CMD_EOF %d VDO_EOF %d +\n",
+		       __func__,
+		       crtc_id,
+		       mtk_dump_comp_str(output_comp),
+		       mtk_crtc_is_frame_trigger_mode(crtc),
+		       mtk_crtc->gce_obj.event[EVENT_CMD_EOF],
+		       mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
+#else
 		if (crtc_id == 0) {
 			if (mtk_crtc->panel_ext)
 				params = mtk_crtc->panel_ext->params;
@@ -11031,18 +11053,12 @@ skip_prete:
 				GCE_DO(wfe, EVENT_VDO_EOF);
 
 		} else {
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
-			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
-				GCE_DO(wfe, EVENT_CMD_EOF);
-			else
-				GCE_DO(wfe, EVENT_VDO_EOF);
-#else
 			if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_DVO)
 				GCE_DO(wfe, EVENT_VDO_EOF);
 			else
 				GCE_DO(wfe, EVENT_CMD_EOF);
-#endif
 		}
+#endif
 
 		/* sw workaround to fix gce hw bug */
 		if (mtk_crtc_with_sodi_loop(crtc)) {
