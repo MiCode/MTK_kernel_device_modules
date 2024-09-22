@@ -2645,6 +2645,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 				ps_wc = width * 3 / 2;
 				break;
 			default:
+				ps_wc = width * 3;
 				break;
 			}
 			SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
@@ -11271,8 +11272,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 		return;
 	}
 
-	if (dsi->ext &&
-			dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
+	if (dsi->ext->params && dsi->ext->params->ext_pix_mode != LCM_PACKED_PS_UNKNOWN) {
 		switch (dsi->ext->params->ext_pix_mode) {
 		case LCM_PACKED_PS_30BIT_RGB101010:
 			bpp = 4;
@@ -11742,7 +11742,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 		}
 	}
 
-	if ((dsi->ext != NULL) && (dsi->ext->params != NULL)
+	if ((dsi->ext->params != NULL)
 		&& dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
 
