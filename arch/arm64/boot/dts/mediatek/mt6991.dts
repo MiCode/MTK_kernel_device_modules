@@ -17372,8 +17372,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
-		lvsys-thd-volt-l = <3060>;
-		lvsys-thd-volt-h = <3210>;
+		lvsys-thd-volt-l = <2850>;
+		lvsys-thd-volt-h = <3100>;
 		temperature-stage-threshold = <25 10 0>;
 
 		bat0-aging-threshold = <500 1000>;
