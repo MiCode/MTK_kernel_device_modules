@@ -29,7 +29,6 @@
 
 struct ccci_fsm_ctl *ccci_fsm_entries;
 struct md_wdt_record md_wdt_rec;
-
 static int needforcestop;
 static int hs2_done;
 
@@ -43,6 +42,8 @@ static unsigned int spm_resource_size;
 static void *spm_resource_data;
 static struct kern_md_state_cb md_state_callbacks[KERN_MD_STAT_RCV_MAX];
 static spinlock_t state_broadcase_lock;
+static struct mutex md_ufs_io_lock;
+
 static unsigned int kern_reg_cb_bitmap;
 atomic_t md_ee_occurred;
 
@@ -114,6 +115,40 @@ int ccci_register_md_state_receiver(unsigned char ch_id,
 	return -1;
 }
 EXPORT_SYMBOL(ccci_register_md_state_receiver);
+
+int ccci_ufs_io_operate(int op_id)
+{
+	int val = -1;
+#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+	static int md_io_block_status;
+
+	CCCI_NORMAL_LOG(0, FSM, "%s: md_io_block_status: %d\n", __func__, md_io_block_status);
+	mutex_lock(&md_ufs_io_lock);
+	if (op_id == 1 && md_io_block_status == 0) {
+		val = ufs_mtk_cali_hold();	//replace ufs api block io
+		if(val == 0) {
+			md_io_block_status = 1;
+			CCCI_NORMAL_LOG(0, FSM,
+				"%s: md block io, val: %d, op_id: %d\n",
+				__func__, val, op_id);
+		}
+	} else if (op_id == 0 && md_io_block_status == 1) {
+		val = ufs_mtk_cali_release();  //replace ufs api release io
+		if(val == 0) {
+			md_io_block_status = 0;
+			CCCI_NORMAL_LOG(0, FSM,
+				"%s: md release io, val: %d, op_id: %d\n",
+				__func__, val, op_id);
+		}
+	} else
+		CCCI_ERROR_LOG(0, FSM, "invalid op_id: %d!\n", op_id);
+	mutex_unlock(&md_ufs_io_lock);
+	CCCI_NORMAL_LOG(0, FSM, "%s val: %d, op_id: %d, md_io_block_status: %d\n",
+					__func__, val, op_id, md_io_block_status);
+#endif
+
+	return val;
+}
 
 static void broadcast_md_state_kernel(int old_stat, int new_stat)
 {
@@ -418,6 +453,10 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 {
 	CCCI_NORMAL_LOG(0, FSM, "exception %d, from %ps\n",
 		reason, __builtin_return_address(0));
+
+	/* when meet md ee, first time release ufs io  */
+	ccci_ufs_io_operate(0);
+
 	fsm_monitor_send_message(CCCI_MD_MSG_EXCEPTION, 0);
 	/* 1. state sanity check */
 	if (ctl->curr_state == CCCI_FSM_GATED) {
@@ -1810,6 +1849,7 @@ int ccci_fsm_init(void)
 	spin_lock_init(&ctl->command_lock);
 	spin_lock_init(&ctl->cmd_complete_lock);
 	spin_lock_init(&state_broadcase_lock);
+	mutex_init(&md_ufs_io_lock);
 	atomic_set(&ctl->fs_ongoing, 0);
 	ret = snprintf(ctl->wakelock_name, sizeof(ctl->wakelock_name), "md_wakelock");
 	if (ret <= 0 || ret >= sizeof(ctl->wakelock_name)) {

@@ -40,6 +40,8 @@
 #include "ccci_modem.h"
 #include "port_rpc.h"
 #include "ccmni.h"
+#include "ccci_fsm.h"
+
 #define MAX_QUEUE_LENGTH 16
 
 static struct gpio_item gpio_mapping_table[] = {
@@ -1329,7 +1331,6 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 	case IPC_RPC_AFC_UFC_IO_BLOCK_OP:
 		{
 			unsigned int op_id = 0;
-			int val = -1;
 
 			if (pkt_num != 1) {
 				CCCI_ERROR_LOG(0, RPC,
@@ -1344,15 +1345,9 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 			}
 
 			op_id = *(unsigned int *)(pkt[0].buf);
-			if (op_id == 1)
-				val = ufs_mtk_cali_hold();  //replace ufs api block io
-			else if (op_id == 0)
-				val = ufs_mtk_cali_release();  //replace ufs api relase io
-			else
-				CCCI_ERROR_LOG(0, RPC, "invalid op_id: %d!\n", op_id);
-			tmp_data[1] = val;
-			CCCI_DEBUG_LOG(0, RPC, "[0x%X]: op_id=%d, val=%d!\n",
-				p_rpc_buf->op_id, op_id, val);
+			tmp_data[1] = ccci_ufs_io_operate(op_id);
+			CCCI_DEBUG_LOG(0, RPC, "[0x%X]: op_id=%d, tmp_data=%d!\n",
+				p_rpc_buf->op_id, op_id, tmp_data[1]);
 			tmp_data[0] = 0;
 			pkt_num = 0;
 			pkt[pkt_num].len = sizeof(unsigned int);

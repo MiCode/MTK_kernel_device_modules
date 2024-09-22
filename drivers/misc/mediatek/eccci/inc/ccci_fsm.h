@@ -18,7 +18,11 @@ int ccci_fsm_recv_md_interrupt(enum MD_IRQ_TYPE type);
 long ccci_fsm_ioctl(unsigned int cmd, unsigned long arg);
 enum MD_STATE ccci_fsm_get_md_state(void);
 enum MD_STATE_FOR_USER ccci_fsm_get_md_state_for_user(void);
-
+int ccci_ufs_io_operate(int op_id);
+#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+extern int ufs_mtk_cali_hold(void);
+extern int ufs_mtk_cali_release(void);
+#endif
 extern void mdee_set_ex_time_str(unsigned int type, char *str);
 
 int ccci_fsm_increase_devapc_dump_counter(void);

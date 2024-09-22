@@ -281,10 +281,7 @@ extern bool is_clk_buf_from_pmic(void);
 extern void clk_buf_get_rf_drv_curr(void *rf_drv_curr);
 extern void clk_buf_save_afc_val(unsigned int afcdac);
 extern int ccci_get_adc_val(void);
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
-extern int ufs_mtk_cali_hold(void);
-extern int ufs_mtk_cali_release(void);
-#endif
+
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
 ssize_t port_rpc_ecid_show(char *buf);
 #endif
