@@ -1133,6 +1133,7 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 		switch (chip->chip_id) {
 		case MT6357_CHIP_ID:
 		case MT6358_CHIP_ID:
+		case MT6366_CHIP_ID:
 			mt6357_lbat_init_setting();
 			break;
 		default:
