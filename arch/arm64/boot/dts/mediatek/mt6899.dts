@@ -15419,24 +15419,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<18 0x8000 0x0>, /* scp chre to */
 					<19 0x200 0x0>;  /* low power debug */
 
-			scp-resource-dump = "disable";   /* enable dump scp related resource */
+			scp-resource-dump = "enable";   /* enable dump scp related resource */
 			/* regulator */
-			scp-supply-num = <3>;	/* total number of scp related regulator */
-			//vscp0-supply = <&mt6363_vbuck4>;
-			//vscp1-supply = <&mt6363_vsram_apu>;
+			scp-supply-num = <2>;	/* total number of scp related regulator */
+			vscp0-supply = <&mt6363_vbuck4>;
+			vscp1-supply = <&mt6363_vsram_mdfe>;
 			//vscp2-supply = <&mt6363_vs3>;
 
 			/* dump register */
 			/* cell means register info (address,size), not total reg num */
 			scp-resource-reg-dump-cell = <2>;
-			scp-resource-reg-dump = <0x1c001818 0x4>,
-				<0x1c00192c 0x4>;
-				//<0x1c0018e4 0x4>,
+			scp-resource-reg-dump = <0x1c00c92c 0x4>,
+				<0x1c00c930 0x4>,
+				<0x1c013010 0x4>;
 				//<0x1c0012b8 0x4>,
 				//<0x1c013010 0x4>,
 
 			/* awake timeout count plt setting */
 			awake-timeout = <10000>; /* 100 ms */
+			/* scp fmeter dump */
+			scp-clk-fmeter-dump = "enable";
+			scp-u1-id = <34>;
+			scp-u2-id = <35>;
 		};
 
 		srclken_rc: srclken-rc@1c00d000 {
