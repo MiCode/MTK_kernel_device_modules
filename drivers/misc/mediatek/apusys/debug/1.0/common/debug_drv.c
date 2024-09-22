@@ -337,7 +337,7 @@ static int debug_probe(struct platform_device *pdev)
 		reg_mem_size += range_table[i].size;
 
 	data.reg_all_mem = vzalloc(reg_mem_size);
-	data.gals_reg = vzalloc(debug_drv.total_dbg_mux_count);
+	data.gals_reg = vzalloc(debug_drv.total_dbg_mux_count * sizeof(u32));
 	memset(data.module_name, 0, STRMAX);
 
 	apusys_dump_force = false;
