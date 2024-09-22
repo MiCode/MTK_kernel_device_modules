@@ -4204,7 +4204,6 @@
 				 <&topckgen_clk CLK_TOP_IPU_IF_SEL>;
 			voltage-names = "vvpu", "vcore", "vsram";
 			vcore-supply = <&dvfsrc_vcore>;
-			vvpu-supply = <&mt6359p_vproc2_reg>;
 			vsram-supply = <&mt6359p_vsram_others_reg>;
 		};
 

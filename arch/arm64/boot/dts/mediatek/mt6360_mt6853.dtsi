@@ -24,6 +24,10 @@
 	vvpu-supply = <&mt6315_3_vbuck3>;
 };
 
+&apu_rpc {
+	vvpu-supply = <&mt6315_3_vbuck3>;
+};
+
 &mtk_ctd {
 	nr-port = <1>;
 	chg-name-port0 = "primary_chg";

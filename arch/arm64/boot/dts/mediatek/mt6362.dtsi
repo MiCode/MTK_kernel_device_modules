@@ -20,6 +20,10 @@
 	vvpu-supply = <&mt6359p_vproc2_reg>;
 };
 
+&apu_rpc {
+	vvpu-supply = <&mt6359p_vproc2_reg>;
+};
+
 &extcon_usb {
 	charger = <&mt6362_chg>;
 	vbus-supply = <&otg_vbus>;
