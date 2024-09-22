@@ -7931,12 +7931,14 @@ static signed int ISP_open(
 pr_info("- E. register IRQ:\n");
 	/* do wait queue head init when re-enter in camera */
 	/*  */
+	spin_lock((spinlock_t *)(&SpinLock_UserKey));
 	for (i = 0; i < IRQ_USER_NUM_MAX; i++) {
 		FirstUnusedIrqUserKey = 1;
 		strncpy((void *)IrqUserKey_UserInfo[i].userName,
 			"DefaultUserNametoAllocMem", USERKEY_STR_LEN);
 		IrqUserKey_UserInfo[i].userKey = -1;
 	}
+	spin_unlock((spinlock_t *)(&SpinLock_UserKey));
 pr_info("- E. register IRQ: done\n");
 	/*  */
 	spin_lock(&(SpinLock_P2FrameList));
@@ -8283,12 +8285,14 @@ static signed int ISP_release(
 	}
 	/* reset */
 	/*      */
+	spin_lock((spinlock_t *)(&SpinLock_UserKey));
 	for (i = 0; i < IRQ_USER_NUM_MAX; i++) {
 		FirstUnusedIrqUserKey = 1;
 		strncpy((void *)IrqUserKey_UserInfo[i].userName,
 			"DefaultUserNametoAllocMem", USERKEY_STR_LEN);
 		IrqUserKey_UserInfo[i].userKey = -1;
 	}
+	spin_unlock((spinlock_t *)(&SpinLock_UserKey));
 	if (IspInfo.BufInfo.Read.pData != NULL) {
 		kfree(IspInfo.BufInfo.Read.pData);
 		IspInfo.BufInfo.Read.pData = NULL;
