@@ -84,6 +84,8 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 	struct mbraink_sys_res_record *sys_res_record[MBRAINK_SCENE_RELEASE_NUM];
 	struct mbraink_sys_res_scene_info scene_info;
 	void *sig_info;
+	uint64_t addr_idx = 0;
+	uint64_t copy_size = 0;
 
 	get_sys_res_header(ALL_SCENE);
 
@@ -107,7 +109,11 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 		return ret;
 
 	/* Copy header */
-	address = sys_res_data_copy(address, &header, sizeof(struct mbraink_sys_res_mbrain_header));
+	copy_size = sizeof(struct mbraink_sys_res_mbrain_header);
+	if ((addr_idx + copy_size) <= size) {
+		address = sys_res_data_copy(address, &header, copy_size);
+		addr_idx += copy_size;
+	}
 
 	sys_res_update = sys_res_ops->update();
 	if (sys_res_update)
@@ -134,36 +140,47 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 								   MBRAINK_SYS_RES_DURATION, 0);
 		scene_info.suspend_time = sys_res_ops->get_detail(sys_res_record[i],
 								   MBRAINK_SYS_RES_SUSPEND_TIME, 0);
-		address = sys_res_data_copy(address,
-					    &scene_info,
-					    sizeof(struct mbraink_sys_res_scene_info));
+
+		copy_size = sizeof(struct mbraink_sys_res_scene_info);
+		if ((addr_idx + copy_size) <= size) {
+			address = sys_res_data_copy(address,
+					    &scene_info, copy_size);
+			addr_idx += copy_size;
+		}
 	}
 
 	/* Copy signal data */
 	for (i = 0; i < MBRAINK_SCENE_RELEASE_NUM; i++) {
 		for (j = 0; j < MBRAINK_SYS_RES_SYS_RESOURCE_NUM; j++) {
-			if (!group_release[j])
+			if (!group_release[j] || (sys_res_group_info[j].group_num == 0))
 				continue;
 
 			sig_info = (void *)sys_res_ops->get_detail(sys_res_record[i],
 						MBRAINK_SYS_RES_SIG_ADDR,
 						sys_res_group_info[j].sys_index);
-			if (sig_info)
-				address = sys_res_data_copy(address,
-							sig_info,
-							sizeof(struct mbraink_sys_res_sig_info));
+			if (sig_info) {
+				copy_size = sizeof(struct mbraink_sys_res_sig_info);
+				if ((addr_idx + copy_size) <= size) {
+					address = sys_res_data_copy(address,
+							sig_info, copy_size);
+					addr_idx += copy_size;
+				}
+			}
 
 			sig_info = (void *)sys_res_ops->get_detail(sys_res_record[i],
 						MBRAINK_SYS_RES_SIG_ADDR,
 						sys_res_group_info[j].sig_table_index);
-			if (sig_info)
-				address = sys_res_data_copy(address,
-							sig_info,
-							sizeof(struct mbraink_sys_res_sig_info) *
-							sys_res_group_info[j].group_num);
+			if (sig_info) {
+				copy_size = sizeof(struct mbraink_sys_res_sig_info) *
+					sys_res_group_info[j].group_num;
+				if ((addr_idx + copy_size) <= size) {
+					address = sys_res_data_copy(address,
+							sig_info, copy_size);
+					addr_idx += copy_size;
+				}
+			}
 		}
 	}
-
 	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	return ret;
@@ -177,6 +194,8 @@ static int mbraink_get_last_suspend_res_data(void *address, uint32_t size)
 	struct mbraink_sys_res_record *sys_res_last_suspend_record;
 	struct mbraink_sys_res_ops *sys_res_ops;
 	void *sig_info = NULL;
+	uint64_t addr_idx = 0;
+	uint64_t copy_size = 0;
 
 	get_sys_res_header(LAST_SUSPEND_RES);
 
@@ -199,7 +218,11 @@ static int mbraink_get_last_suspend_res_data(void *address, uint32_t size)
 	if (ret)
 		return ret;
 
-	address = sys_res_data_copy(address, &header, sizeof(struct mbraink_sys_res_mbrain_header));
+	copy_size = sizeof(struct mbraink_sys_res_mbrain_header);
+	if ((addr_idx + copy_size) <= size) {
+		address = sys_res_data_copy(address, &header, copy_size);
+		addr_idx += copy_size;
+	}
 
 	sys_res_update = sys_res_ops->update();
 	if (sys_res_update)
@@ -219,29 +242,40 @@ static int mbraink_get_last_suspend_res_data(void *address, uint32_t size)
 	scene_info.suspend_time = sys_res_ops->get_detail(sys_res_last_suspend_record,
 							  MBRAINK_SYS_RES_SUSPEND_TIME,
 							  0);
-	address = sys_res_data_copy(address, &scene_info,
-		sizeof(struct mbraink_sys_res_scene_info));
 
-	for (i = 0; i < MBRAINK_SYS_RES_SYS_RESOURCE_NUM; i++) {
-		if (!group_release[i])
-			continue;
-
-		address = sys_res_data_copy(address,
-					    &(sys_res_group_info[i].threshold),
-					    sizeof(uint32_t));
+	copy_size = sizeof(struct mbraink_sys_res_scene_info);
+	if ((addr_idx + copy_size) <= size) {
+		address = sys_res_data_copy(address, &scene_info, copy_size);
+		addr_idx += copy_size;
 	}
 
 	for (i = 0; i < MBRAINK_SYS_RES_SYS_RESOURCE_NUM; i++) {
-		if (!group_release[i])
+		if (!group_release[i] || (sys_res_group_info[i].group_num == 0))
+			continue;
+
+		copy_size = sizeof(uint32_t);
+		if ((addr_idx + copy_size) <= size) {
+			address = sys_res_data_copy(address,
+					    &(sys_res_group_info[i].threshold), copy_size);
+			addr_idx += copy_size;
+		}
+	}
+
+	for (i = 0; i < MBRAINK_SYS_RES_SYS_RESOURCE_NUM; i++) {
+		if (!group_release[i] || (sys_res_group_info[i].group_num == 0))
 			continue;
 
 		sig_info = (void *)sys_res_ops->get_detail(sys_res_last_suspend_record,
 							   MBRAINK_SYS_RES_SIG_ADDR,
 							   sys_res_group_info[i].sys_index);
-		if (sig_info)
-			address = sys_res_data_copy(address,
-						    sig_info,
-						    sizeof(struct mbraink_sys_res_sig_info));
+
+		if (sig_info) {
+			copy_size = sizeof(struct mbraink_sys_res_sig_info);
+			if ((addr_idx + copy_size) <= size) {
+				address = sys_res_data_copy(address, sig_info, copy_size);
+				addr_idx += copy_size;
+			}
+		}
 	}
 	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 	return 0;
@@ -259,6 +293,8 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 	void *sig_info;
 	uint64_t ratio;
 	uint32_t sig_index;
+	uint64_t addr_idx = 0;
+	uint64_t copy_size = 0;
 
 	get_sys_res_header(LAST_SUSPEND_STATS);
 
@@ -280,7 +316,11 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 	if (ret)
 		return ret;
 
-	address = sys_res_data_copy(address, &header, sizeof(struct mbraink_sys_res_mbrain_header));
+	copy_size = sizeof(struct mbraink_sys_res_mbrain_header);
+	if ((addr_idx + copy_size) <= size) {
+		address = sys_res_data_copy(address, &header, copy_size);
+		addr_idx += copy_size;
+	}
 
 	sys_res_last_suspend_record = sys_res_ops->get(MBRAINK_SYS_RES_LAST_SUSPEND);
 
@@ -299,7 +339,7 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 	spm_res_sig_tbl_num = 0;
 
 	for (i = 0; i < MBRAINK_SYS_RES_SYS_RESOURCE_NUM; i++) {
-		if (!group_release[i])
+		if (!group_release[i] || (sys_res_group_info[i].group_num == 0))
 			continue;
 
 		if (k >= threshold_num) {
@@ -330,19 +370,24 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 			sig_info = (void *)sys_res_ops->get_detail(sys_res_last_suspend_record,
 								   MBRAINK_SYS_RES_SIG_ADDR,
 								   sig_index);
-			if (sig_info)
+			if (sig_info) {
 				ptr = sys_res_data_copy(ptr,
 							sig_info,
 							sizeof(struct mbraink_sys_res_sig_info));
+			}
 		}
 		k++;
 	}
 	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	scene_info.res_sig_num = spm_res_sig_tbl_num;
-	address = sys_res_data_copy(address,
+	copy_size = sizeof(struct mbraink_sys_res_scene_info);
+	if ((addr_idx + copy_size) <= size) {
+		address = sys_res_data_copy(address,
 				    &scene_info,
-				    sizeof(struct mbraink_sys_res_scene_info));
+				    copy_size);
+		addr_idx += copy_size;
+	}
 	return ret;
 }
 

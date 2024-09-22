@@ -425,13 +425,16 @@ static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_bu
 		if (spm_buffer->type == 1) {
 			size = sizeof(struct mbraink_sys_res_mbrain_header);
 			bufIdx = 0;
-			if ((bufIdx + size) <= g_data_size) {
+
+			if (((bufIdx + size) <= g_data_size) &&
+				(size <= sizeof(spm_buffer->spm_data))) {
 				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw, size);
 				bufIdx += size;
 			}
 
 			size = sizeof(struct mbraink_sys_res_scene_info)*MBRAINK_SCENE_RELEASE_NUM;
-			if ((bufIdx + size) <= g_data_size) {
+			if (((bufIdx + size) <= g_data_size) &&
+				(size <= sizeof(spm_buffer->spm_data))) {
 				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw + bufIdx, size);
 				bufIdx += size;
 			}
