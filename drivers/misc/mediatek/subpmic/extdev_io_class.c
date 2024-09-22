@@ -70,9 +70,16 @@ static int extdev_io_read(struct extdev_io_device *extdev, char *buf)
 		return ret;
 	data = extdev->data_buffer;
 	cnt = snprintf(buf + cnt, 256, "0x");
-	for (i = 0; i < extdev->size; i++)
+	if (cnt >= 256)
+		return -ENOMEM;
+	for (i = 0; i < extdev->size; i++) {
 		cnt += snprintf(buf + cnt, 256, "%02x,", *(data + i));
+		if (cnt >= 256)
+			return -ENOMEM;
+	}
 	cnt = snprintf(buf + cnt, 256, "\n");
+	if (cnt >= 256)
+		return -ENOMEM;
 	return ret;
 }
 
@@ -128,19 +135,27 @@ static ssize_t extdev_io_show(struct device *dev,
 	mutex_lock(&extdev->io_lock);
 	switch (offset) {
 	case EXTDEV_IO_DESC_REG:
-		snprintf(buf, 256, "0x%04x\n", extdev->reg);
+		ret = snprintf(buf, 256, "0x%04x\n", extdev->reg);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_SIZE:
-		snprintf(buf, 256, "%d\n", extdev->size);
+		ret = snprintf(buf, 256, "%d\n", extdev->size);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_DATA:
 		ret = extdev_io_read(extdev, buf);
 		break;
 	case EXTDEV_IO_DESC_TYPE:
-		snprintf(buf, 256, "%s\n", extdev->desc->typestr);
+		ret = snprintf(buf, 256, "%s\n", extdev->desc->typestr);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_LOCK:
-		snprintf(buf, 256, "%d\n", extdev->access_lock);
+		ret = snprintf(buf, 256, "%d\n", extdev->access_lock);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	default:
 		ret = -EINVAL;
@@ -181,7 +196,7 @@ static ssize_t extdev_io_store(struct device *dev,
 {
 	struct extdev_io_device *extdev = dev_get_drvdata(dev);
 	const ptrdiff_t offset = attr - extdev_io_device_attributes;
-	long int val;
+	long val = 0;
 	int ret = 0;
 
 	mutex_lock(&extdev->io_lock);
