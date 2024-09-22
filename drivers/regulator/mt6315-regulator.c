@@ -113,11 +113,13 @@ static int mt6315_regulator_get_voltage_sel(struct regulator_dev *rdev)
 
 	info = container_of(rdev->desc, struct mt6315_regulator_info, desc);
 	ret = regmap_read(rdev->regmap, info->da_reg, &reg_en);
+
+#if !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 	if (ret != 0) {
 		dev_notice(&rdev->dev, "Failed to get enable reg: %d\n", ret);
 		return ret;
 	}
-
+#endif
 	if (reg_en & info->qi)
 		reg_addr = info->da_vsel_reg;
 	else
