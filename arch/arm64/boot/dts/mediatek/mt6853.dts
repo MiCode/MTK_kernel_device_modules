@@ -688,18 +688,6 @@
 	regulator-max-microvolt = <3000000>;
 };
 
-&mt6359p_vsram_others_reg {
-	regulator-always-on;
-};
-
-&mt6359p_vbif28_reg {
-	regulator-always-on;
-};
-
-&mt6359p_vproc1_reg {
-	regulator-always-on;
-};
-
 &mt6359p_vproc2_reg {
 	regulator-always-on;
 };
