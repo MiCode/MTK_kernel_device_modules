@@ -3578,6 +3578,7 @@ pwrap: pwrap@1000d000 {
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi_common: smi-common@14002000 {
