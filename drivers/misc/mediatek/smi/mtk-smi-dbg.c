@@ -449,6 +449,7 @@ static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
 static bool no_pm_runtime;
 static u32 dbg_version;
+static bool skip_bug_on;
 
 #define LINE_MAX_LEN		(800)
 
@@ -1517,6 +1518,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	of_property_read_u64_index(dev->of_node, "smi-isp-traw-skip-rpm", 1,
 				&smi->subsys[SMI_TRAW].comm_skip_rpm);
 
+	if (of_property_read_bool(dev->of_node, "skip-bug-On"))
+		skip_bug_on = true;
+
 	smi->probe = true;
 	return 0;
 }
@@ -2574,7 +2578,9 @@ static void __mtk_smi_dbg_hang_detect(char *user)
 	/* if bus hang, then BUG_ON */
 	if (is_hang) {
 		pr_notice("[smi] smi may hang\n");
-		BUG_ON(1);
+		/* skip bug_on for legecy chips */
+		if (!skip_bug_on)
+			BUG_ON(1);
 	}
 }
 
