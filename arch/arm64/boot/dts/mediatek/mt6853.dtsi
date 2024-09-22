@@ -2095,83 +2095,6 @@
 			reg = <0 0x10720000 0 0x1000>;
 			#clock-cells = <1>;
 		};
-
-		adsp_common: adsp_common@10800000 {
-			compatible = "mediatek,adsp_common";
-			reg = <0 0x1080b000 0 0x50>, /* CFG SECURE */
-				<0 0x10806000 0 0x100>, /* MBOX0 base */
-				<0 0x10806100 0 0x4>, /* MBOX0 set */
-				<0 0x1080610c 0 0x4>, /* MBOX0 clr */
-				<0 0x1080b050 0 0x4>, /* MBOX0 init */
-				<0 0x10807000 0 0x100>, /* MBOX1 base */
-				<0 0x10807100 0 0x4>, /* MBOX1 set */
-				<0 0x1080710c 0 0x4>, /* MBOX1 clr */
-				<0 0x1080b054 0 0x4>, /* MBOX1 init */
-				<0 0x10808000 0 0x100>, /* MBOX2 base */
-				<0 0x10808100 0 0x4>, /* MBOX2 set */
-				<0 0x1080810c 0 0x4>, /* MBOX2 clr */
-				<0 0x1080b058 0 0x4>, /* MBOX2 init */
-				<0 0x10809000 0 0x100>, /* MBOX3 base */
-				<0 0x10809100 0 0x4>, /* MBOX3 set */
-				<0 0x1080910c 0 0x4>, /* MBOX3 clr */
-				<0 0x1080b05c 0 0x4>; /* MBOX3 init */
-			reg-names = "cfg_secure",
-				"mbox0_base",
-				"mbox0_set",
-				"mbox0_clr",
-				"mbox0_init",
-				"mbox1_base",
-				"mbox1_set",
-				"mbox1_clr",
-				"mbox1_init",
-				"mbox2_base",
-				"mbox2_set",
-				"mbox2_clr",
-				"mbox2_init",
-				"mbox3_base",
-				"mbox3_set",
-				"mbox3_clr",
-				"mbox3_init";
-			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX0 */
-				<GIC_SPI 451 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX1 */
-				<GIC_SPI 452 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX2 */
-				<GIC_SPI 453 IRQ_TYPE_LEVEL_HIGH 0>; /* MBOX3 */
-			interrupt-names = "mbox0",
-				"mbox1",
-				"mbox2",
-				"mbox3";
-			#mbox-cells = <1>;
-			power-domains = <&scpsys MT6853_POWER_DOMAIN_ADSP_DORMANT>;
-			clocks = <&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
-				<&topckgen_clk CLK_TOP_ADSP_SEL>,
-				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
-				<&topckgen_clk CLK_TOP_ADSPPLL>,
-				<&topckgen_clk CLK_TOP_SCP_SEL>;
-			clock-names = "clk_adsp_ck_cg",
-				"clk_top_adsp_sel",
-				"clk_top_clk26m",
-				"clk_top_adsppll",
-				"clk_top_scp_sel";
-			adsp-rsv-ipidma-a = <0x200000>;
-			adsp-rsv-logger-a = <0x80000>;
-			adsp-rsv-dbg-dump-a = <0x80000>;
-			adsp-rsv-core-dump-a = <0x400>;
-			adsp-rsv-audio = <0x5c0000>;
-		};
-
-		adsp_core0: adsp_core0@10820000 {
-			compatible = "mediatek,adsp_core_0";
-			reg = <0 0x10800000 0 0x6000>, /* CFG */
-				<0 0x10840000 0 0x9000>, /* ITCM */
-				<0 0x10820000 0 0x8000>; /* DTCM */
-			system = <0 0x56000000 0 0x900000>;
-			interrupts = <GIC_SPI 444 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 446 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
-			mboxes = <&adsp_common 0>, /*channel 0*/
-				<&adsp_common 1>; /*channel 1*/
-		};
-
 		auxadc: auxadc@11001000 {
 			compatible = "mediatek,mt6765-auxadc";
 			reg = <0 0x11001000 0 0x1000>;
@@ -2396,185 +2319,6 @@
 				clock-names = "sys_ck";
 				status = "okay";
 			};
-		};
-
-		audio_clk: syscon@11210000 {
-			compatible = "mediatek,mt6853-audiosys", "syscon";
-			reg = <0 0x11210000 0 0x2000>;
-			#clock-cells = <1>;
-		};
-
-		afe: mt6853-afe-pcm@11210000 {
-			compatible = "mediatek,mt6853-sound";
-			reg = <0 0x11210000 0 0x2000>;
-			interrupts = <GIC_SPI 202 IRQ_TYPE_LEVEL_HIGH 0>;
-			topckgen = <&topckgen_clk>;
-			apmixedsys = <&apmixedsys_clk>;
-			infracfg = <&infracfg_ao_clk>;
-			power-domains = <&scpsys MT6853_POWER_DOMAIN_AUDIO>;
-			clocks = <&audio_clk CLK_AUDSYS_AFE>,
-				<&audio_clk CLK_AUDSYS_DAC>,
-				<&audio_clk CLK_AUDSYS_DAC_PREDIS>,
-				<&audio_clk CLK_AUDSYS_ADC>,
-				<&audio_clk CLK_AUDSYS_ADDA6_ADC>,
-				<&audio_clk CLK_AUDSYS_22M>,
-				<&audio_clk CLK_AUDSYS_24M>,
-				<&audio_clk CLK_AUDSYS_APLL_TUNER>,
-				<&audio_clk CLK_AUDSYS_APLL2_TUNER>,
-				<&audio_clk CLK_AUDSYS_TDM>,
-				<&audio_clk CLK_AUDSYS_TML>,
-				<&audio_clk CLK_AUDSYS_NLE>,
-				<&audio_clk CLK_AUDSYS_DAC_HIRES>,
-				<&audio_clk CLK_AUDSYS_ADC_HIRES>,
-				<&audio_clk CLK_AUDSYS_ADC_HIRES_TML>,
-				<&audio_clk CLK_AUDSYS_ADDA6_ADC_HIRES>,
-				<&audio_clk CLK_AUDSYS_3RD_DAC>,
-				<&audio_clk CLK_AUDSYS_3RD_DAC_PREDIS>,
-				<&audio_clk CLK_AUDSYS_3RD_DAC_TML>,
-				<&audio_clk CLK_AUDSYS_3RD_DAC_HIRES>,
-				<&infracfg_ao_clk CLK_IFRAO_AUDIO>,
-				<&infracfg_ao_clk CLK_IFRAO_AUDIO_26M_BCLK>,
-				<&topckgen_clk CLK_TOP_AUDIO_SEL>,
-				<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
-				<&topckgen_clk CLK_TOP_MAINPLL_D4_D4>,
-				<&topckgen_clk CLK_TOP_AUD_1_SEL>,
-				<&topckgen_clk CLK_TOP_APLL1>,
-				<&topckgen_clk CLK_TOP_AUD_2_SEL>,
-				<&topckgen_clk CLK_TOP_APLL2>,
-				<&topckgen_clk CLK_TOP_AUD_ENGEN1_SEL>,
-				<&topckgen_clk CLK_TOP_APLL1_D4>,
-				<&topckgen_clk CLK_TOP_AUD_ENGEN2_SEL>,
-				<&topckgen_clk CLK_TOP_APLL2_D4>,
-				<&topckgen_clk CLK_TOP_APLL_I2S0_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL_I2S1_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL_I2S2_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL_I2S3_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL_I2S4_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL_I2S5_MCK_SEL>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV0>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV1>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV2>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV3>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV4>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIVB>,
-				<&topckgen_clk CLK_TOP_APLL12_CK_DIV5>,
-				<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
-				<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
-
-			clock-names = "aud_afe_clk",
-				"aud_dac_clk",
-				"aud_dac_predis_clk",
-				"aud_adc_clk",
-				"aud_adda6_adc_clk",
-				"aud_apll22m_clk",
-				"aud_apll24m_clk",
-				"aud_apll1_tuner_clk",
-				"aud_apll2_tuner_clk",
-				"aud_tdm_clk",
-				"aud_tml_clk",
-				"aud_nle",
-				"aud_dac_hires_clk",
-				"aud_adc_hires_clk",
-				"aud_adc_hires_tml",
-				"aud_adda6_adc_hires_clk",
-				"aud_3rd_dac_clk",
-				"aud_3rd_dac_predis_clk",
-				"aud_3rd_dac_tml",
-				"aud_3rd_dac_hires_clk",
-				"aud_infra_clk",
-				"aud_infra_26m_clk",
-				"top_mux_audio",
-				"top_mux_audio_int",
-				"top_mainpll_d4_d4",
-				"top_mux_aud_1",
-				"top_apll1_ck",
-				"top_mux_aud_2",
-				"top_apll2_ck",
-				"top_mux_aud_eng1",
-				"top_apll1_d4",
-				"top_mux_aud_eng2",
-				"top_apll2_d4",
-				"top_i2s0_m_sel",
-				"top_i2s1_m_sel",
-				"top_i2s2_m_sel",
-				"top_i2s3_m_sel",
-				"top_i2s4_m_sel",
-				"top_i2s5_m_sel",
-				"top_apll12_div0",
-				"top_apll12_div1",
-				"top_apll12_div2",
-				"top_apll12_div3",
-				"top_apll12_div4",
-				"top_apll12_divb",
-				"top_apll12_div5",
-				"top_mux_audio_h",
-				"top_clk26m_clk";
-
-			pinctrl-names = "aud_clk_mosi_off",
-					"aud_clk_mosi_on",
-					"aud_dat_mosi_off",
-					"aud_dat_mosi_on",
-					"aud_dat_miso_off",
-					"aud_dat_miso_on",
-					"vow_dat_miso_off",
-					"vow_dat_miso_on",
-					"vow_clk_miso_off",
-					"vow_clk_miso_on",
-					"aud_nle_mosi_off",
-					"aud_nle_mosi_on",
-					"aud_dat_miso2_off",
-					"aud_dat_miso2_on",
-					"aud_gpio_i2s0_off",
-					"aud_gpio_i2s0_on",
-					"aud_gpio_i2s1_off",
-					"aud_gpio_i2s1_on",
-					"aud_gpio_i2s2_off",
-					"aud_gpio_i2s2_on",
-					"aud_gpio_i2s3_off",
-					"aud_gpio_i2s3_on",
-					"aud_gpio_i2s5_off",
-					"aud_gpio_i2s5_on",
-					"aud_dat_mosi_ch34_off",
-					"aud_dat_mosi_ch34_on",
-					"aud_dat_miso_ch34_off",
-					"aud_dat_miso_ch34_on";
-
-			pinctrl-0 = <&aud_clk_mosi_off>;
-			pinctrl-1 = <&aud_clk_mosi_on>;
-			pinctrl-2 = <&aud_dat_mosi_off>;
-			pinctrl-3 = <&aud_dat_mosi_on>;
-			pinctrl-4 = <&aud_dat_miso_off>;
-			pinctrl-5 = <&aud_dat_miso_on>;
-			pinctrl-6 = <&vow_dat_miso_off>;
-			pinctrl-7 = <&vow_dat_miso_on>;
-			pinctrl-8 = <&vow_clk_miso_off>;
-			pinctrl-9 = <&vow_clk_miso_on>;
-			pinctrl-10 = <&aud_nle_mosi_off>;
-			pinctrl-11 = <&aud_nle_mosi_on>;
-			pinctrl-12 = <&aud_dat_miso2_off>;
-			pinctrl-13 = <&aud_dat_miso2_on>;
-			pinctrl-14 = <&aud_gpio_i2s0_off>;
-			pinctrl-15 = <&aud_gpio_i2s0_on>;
-			pinctrl-16 = <&aud_gpio_i2s1_off>;
-			pinctrl-17 = <&aud_gpio_i2s1_on>;
-			pinctrl-18 = <&aud_gpio_i2s2_off>;
-			pinctrl-19 = <&aud_gpio_i2s2_on>;
-			pinctrl-20 = <&aud_gpio_i2s3_off>;
-			pinctrl-21 = <&aud_gpio_i2s3_on>;
-			pinctrl-22 = <&aud_gpio_i2s5_off>;
-			pinctrl-23 = <&aud_gpio_i2s5_on>;
-			pinctrl-24 = <&aud_dat_mosi_ch34_off>;
-			pinctrl-25 = <&aud_dat_mosi_ch34_on>;
-			pinctrl-26 = <&aud_dat_miso_ch34_off>;
-			pinctrl-27 = <&aud_dat_miso_ch34_on>;
-		};
-
-		audio_sram@11212000 {
-			compatible = "mediatek,audio_sram";
-			reg = <0 0x11212000 0 0x18000>;
-			prefer-mode = <0>;
-			mode-size = <0x12000 0x18000>;
-			block-size = <0x1000>;
 		};
 
 		ufshci: ufshci@11270000 {
@@ -4212,18 +3956,6 @@
 				 <&venc_gcon_clk CLK_VENC_CKE2_JPGENC>,
 				 <&venc_gcon_clk CLK_VENC_CKE2_JPGENC>;
 			clock-names = "apb", "smi", "gals0", "gals1";
-		};
-
-		btcvsd_snd: mtk-btcvsd-snd@18050000 {
-			compatible = "mediatek,mtk-btcvsd-snd";
-			reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
-			    <0 0x18080000 0 0x14000>; /*SRAM_BANK2*/
-			interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH 0>;
-			mediatek,infracfg = <&infracfg_ao_clk>;
-			/*INFRA MISC, conn_bt_cvsd_mask*/
-			/*cvsd_mcu_read, write, packet_indicator*/
-			mediatek,offset =<0xf00 0x800 0x140 0x144 0x148>;
-			disable_write_silence = <1>;
 		};
 
 		iommu1: iommu@19010000 {
@@ -6123,10 +5855,317 @@
 		};
 	};
 
+
+	adspsys: adspsys@10800000 {
+		compatible = "mediatek,mt6853-adspsys";
+		reg = <0 0x10800000 0 0x6000>, /* CFG */
+			<0 0x1080b000 0 0x50>, /* CFG SECURE */
+			<0 0x10806000 0 0x100>, /* MBOX0 base */
+			<0 0x10806100 0 0x4>, /* MBOX0 set */
+			<0 0x1080610c 0 0x4>, /* MBOX0 clr */
+			<0 0x1080b050 0 0x4>, /* MBOX0 init */
+			<0 0x10807000 0 0x100>, /* MBOX1 base */
+			<0 0x10807100 0 0x4>, /* MBOX1 set */
+			<0 0x1080710c 0 0x4>, /* MBOX1 clr */
+			<0 0x1080b054 0 0x4>, /* MBOX1 init */
+			<0 0x10808000 0 0x100>, /* MBOX2 base */
+			<0 0x10808100 0 0x4>, /* MBOX2 set */
+			<0 0x1080810c 0 0x4>, /* MBOX2 clr */
+			<0 0x1080b058 0 0x4>, /* MBOX2 init */
+			<0 0x10809000 0 0x100>, /* MBOX3 base */
+			<0 0x10809100 0 0x4>, /* MBOX3 set */
+			<0 0x1080910c 0 0x4>, /* MBOX3 clr */
+			<0 0x1080b05c 0 0x4>; /* MBOX3 init */
+		reg-names = "cfg",
+			"cfg_secure",
+			"mbox0_base",
+			"mbox0_set",
+			"mbox0_clr",
+			"mbox0_init",
+			"mbox1_base",
+			"mbox1_set",
+			"mbox1_clr",
+			"mbox1_init",
+			"mbox2_base",
+			"mbox2_set",
+			"mbox2_clr",
+			"mbox2_init",
+			"mbox3_base",
+			"mbox3_set",
+			"mbox3_clr",
+			"mbox3_init";
+		interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX0 */
+			<GIC_SPI 451 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX1 */
+			<GIC_SPI 452 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX2 */
+			<GIC_SPI 453 IRQ_TYPE_LEVEL_HIGH 0>; /* MBOX3 */
+		interrupt-names = "mbox0",
+			"mbox1",
+			"mbox2",
+			"mbox3";
+		#mbox-cells = <1>;
+		power-domains = <&scpsys MT6853_POWER_DOMAIN_ADSP_DORMANT>;
+		clocks = <&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
+			<&topckgen_clk CLK_TOP_ADSP_SEL>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_ADSPPLL>,
+			<&topckgen_clk CLK_TOP_SCP_SEL>;
+		clock-names = "clk_adsp_ck_cg",
+			"clk_top_adsp_sel",
+			"clk_top_clk26m",
+			"clk_top_adsppll",
+			"clk_top_scp_sel";
+		core-num = <1>;    /* core number */
+		adsp-rsv-ipidma-a = <0x200000>;
+		adsp-rsv-logger-a = <0x80000>;
+		adsp-rsv-dbg-dump-a = <0x80000>;
+		adsp-rsv-core-dump-a = <0x400>;
+		adsp-rsv-audio = <0x5c0000>;
+	};
+
+	adsp_core0: adsp_core0@10820000 {
+		compatible = "mediatek,mt6853-adsp_core_0";
+		reg = <0 0x10840000 0 0x9000>, /* ITCM */
+			<0 0x10820000 0 0x8000>; /* DTCM */
+		system = <0 0x56000000 0 0xA00000>;
+		interrupts = <GIC_SPI 444 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 446 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
+		mboxes = <&adspsys 0>, /*channel 0*/
+			 <&adspsys 1>; /*channel 1*/
+		feature-control-bits = /bits/ 64 <0xffffffffffffffff>;
+	};
+
+	btcvsd_snd: mtk-btcvsd-snd@18050000 {
+		compatible = "mediatek,mtk-btcvsd-snd";
+		reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
+		    <0 0x18080000 0 0x14000>; /*SRAM_BANK2*/
+		interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH 0>;
+		mediatek,infracfg = <&infracfg_ao_clk>;
+		/*INFRA MISC, conn_bt_cvsd_mask*/
+		/*cvsd_mcu_read, write, packet_indicator*/
+		mediatek,offset =<0xf00 0x800 0x140 0x144 0x148>;
+		disable_write_silence = <1>;
+	};
+
+	audio_clk: syscon@11210000 {
+		compatible = "mediatek,mt6853-audiosys", "syscon";
+		reg = <0 0x11210000 0 0x2000>;
+		#clock-cells = <1>;
+	};
+
+	afe: mt6853-afe-pcm@11210000 {
+		compatible = "mediatek,mt6853-sound";
+		reg = <0 0x11210000 0 0x2000>;
+		interrupts = <GIC_SPI 202 IRQ_TYPE_LEVEL_HIGH 0>;
+		topckgen = <&topckgen_clk>;
+		apmixedsys = <&apmixedsys_clk>;
+		infracfg = <&infracfg_ao_clk>;
+		power-domains = <&scpsys MT6853_POWER_DOMAIN_AUDIO>;
+		clocks = <&audio_clk CLK_AUDSYS_AFE>,
+			<&audio_clk CLK_AUDSYS_DAC>,
+			<&audio_clk CLK_AUDSYS_DAC_PREDIS>,
+			<&audio_clk CLK_AUDSYS_ADC>,
+			<&audio_clk CLK_AUDSYS_ADDA6_ADC>,
+			<&audio_clk CLK_AUDSYS_22M>,
+			<&audio_clk CLK_AUDSYS_24M>,
+			<&audio_clk CLK_AUDSYS_APLL_TUNER>,
+			<&audio_clk CLK_AUDSYS_APLL2_TUNER>,
+			<&audio_clk CLK_AUDSYS_TDM>,
+			<&audio_clk CLK_AUDSYS_TML>,
+			<&audio_clk CLK_AUDSYS_NLE>,
+			<&audio_clk CLK_AUDSYS_DAC_HIRES>,
+			<&audio_clk CLK_AUDSYS_ADC_HIRES>,
+			<&audio_clk CLK_AUDSYS_ADC_HIRES_TML>,
+			<&audio_clk CLK_AUDSYS_ADDA6_ADC_HIRES>,
+			<&audio_clk CLK_AUDSYS_3RD_DAC>,
+			<&audio_clk CLK_AUDSYS_3RD_DAC_PREDIS>,
+			<&audio_clk CLK_AUDSYS_3RD_DAC_TML>,
+			<&audio_clk CLK_AUDSYS_3RD_DAC_HIRES>,
+			<&infracfg_ao_clk CLK_IFRAO_AUDIO>,
+			<&infracfg_ao_clk CLK_IFRAO_AUDIO_26M_BCLK>,
+			<&topckgen_clk CLK_TOP_AUDIO_SEL>,
+			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D4_D4>,
+			<&topckgen_clk CLK_TOP_AUD_1_SEL>,
+			<&topckgen_clk CLK_TOP_APLL1>,
+			<&topckgen_clk CLK_TOP_AUD_2_SEL>,
+			<&topckgen_clk CLK_TOP_APLL2>,
+			<&topckgen_clk CLK_TOP_AUD_ENGEN1_SEL>,
+			<&topckgen_clk CLK_TOP_APLL1_D4>,
+			<&topckgen_clk CLK_TOP_AUD_ENGEN2_SEL>,
+			<&topckgen_clk CLK_TOP_APLL2_D4>,
+			<&topckgen_clk CLK_TOP_APLL_I2S0_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S1_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S2_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S3_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S4_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL_I2S5_MCK_SEL>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV0>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV1>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV2>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV3>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV4>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIVB>,
+			<&topckgen_clk CLK_TOP_APLL12_CK_DIV5>,
+			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
+
+		clock-names = "aud_afe_clk",
+			"aud_dac_clk",
+			"aud_dac_predis_clk",
+			"aud_adc_clk",
+			"aud_adda6_adc_clk",
+			"aud_apll22m_clk",
+			"aud_apll24m_clk",
+			"aud_apll1_tuner_clk",
+			"aud_apll2_tuner_clk",
+			"aud_tdm_clk",
+			"aud_tml_clk",
+			"aud_nle",
+			"aud_dac_hires_clk",
+			"aud_adc_hires_clk",
+			"aud_adc_hires_tml",
+			"aud_adda6_adc_hires_clk",
+			"aud_3rd_dac_clk",
+			"aud_3rd_dac_predis_clk",
+			"aud_3rd_dac_tml",
+			"aud_3rd_dac_hires_clk",
+			"aud_infra_clk",
+			"aud_infra_26m_clk",
+			"top_mux_audio",
+			"top_mux_audio_int",
+			"top_mainpll_d4_d4",
+			"top_mux_aud_1",
+			"top_apll1_ck",
+			"top_mux_aud_2",
+			"top_apll2_ck",
+			"top_mux_aud_eng1",
+			"top_apll1_d4",
+			"top_mux_aud_eng2",
+			"top_apll2_d4",
+			"top_i2s0_m_sel",
+			"top_i2s1_m_sel",
+			"top_i2s2_m_sel",
+			"top_i2s3_m_sel",
+			"top_i2s4_m_sel",
+			"top_i2s5_m_sel",
+			"top_apll12_div0",
+			"top_apll12_div1",
+			"top_apll12_div2",
+			"top_apll12_div3",
+			"top_apll12_div4",
+			"top_apll12_divb",
+			"top_apll12_div5",
+			"top_mux_audio_h",
+			"top_clk26m_clk";
+
+		pinctrl-names = "aud_clk_mosi_off",
+				"aud_clk_mosi_on",
+				"aud_dat_mosi_off",
+				"aud_dat_mosi_on",
+				"aud_dat_miso_off",
+				"aud_dat_miso_on",
+				"vow_dat_miso_off",
+				"vow_dat_miso_on",
+				"vow_clk_miso_off",
+				"vow_clk_miso_on",
+				"aud_nle_mosi_off",
+				"aud_nle_mosi_on",
+				"aud_dat_miso2_off",
+				"aud_dat_miso2_on",
+				"aud_gpio_i2s0_off",
+				"aud_gpio_i2s0_on",
+				"aud_gpio_i2s1_off",
+				"aud_gpio_i2s1_on",
+				"aud_gpio_i2s2_off",
+				"aud_gpio_i2s2_on",
+				"aud_gpio_i2s3_off",
+				"aud_gpio_i2s3_on",
+				"aud_gpio_i2s5_off",
+				"aud_gpio_i2s5_on",
+				"aud_dat_mosi_ch34_off",
+				"aud_dat_mosi_ch34_on",
+				"aud_dat_miso_ch34_off",
+				"aud_dat_miso_ch34_on";
+
+		pinctrl-0 = <&aud_clk_mosi_off>;
+		pinctrl-1 = <&aud_clk_mosi_on>;
+		pinctrl-2 = <&aud_dat_mosi_off>;
+		pinctrl-3 = <&aud_dat_mosi_on>;
+		pinctrl-4 = <&aud_dat_miso_off>;
+		pinctrl-5 = <&aud_dat_miso_on>;
+		pinctrl-6 = <&vow_dat_miso_off>;
+		pinctrl-7 = <&vow_dat_miso_on>;
+		pinctrl-8 = <&vow_clk_miso_off>;
+		pinctrl-9 = <&vow_clk_miso_on>;
+		pinctrl-10 = <&aud_nle_mosi_off>;
+		pinctrl-11 = <&aud_nle_mosi_on>;
+		pinctrl-12 = <&aud_dat_miso2_off>;
+		pinctrl-13 = <&aud_dat_miso2_on>;
+		pinctrl-14 = <&aud_gpio_i2s0_off>;
+		pinctrl-15 = <&aud_gpio_i2s0_on>;
+		pinctrl-16 = <&aud_gpio_i2s1_off>;
+		pinctrl-17 = <&aud_gpio_i2s1_on>;
+		pinctrl-18 = <&aud_gpio_i2s2_off>;
+		pinctrl-19 = <&aud_gpio_i2s2_on>;
+		pinctrl-20 = <&aud_gpio_i2s3_off>;
+		pinctrl-21 = <&aud_gpio_i2s3_on>;
+		pinctrl-22 = <&aud_gpio_i2s5_off>;
+		pinctrl-23 = <&aud_gpio_i2s5_on>;
+		pinctrl-24 = <&aud_dat_mosi_ch34_off>;
+		pinctrl-25 = <&aud_dat_mosi_ch34_on>;
+		pinctrl-26 = <&aud_dat_miso_ch34_off>;
+		pinctrl-27 = <&aud_dat_miso_ch34_on>;
+	};
+
+	audio_sram@11212000 {
+		compatible = "mediatek,audio_sram";
+		reg = <0 0x11212000 0 0x18000>;
+		prefer-mode = <0>;
+		mode-size = <0x12000 0x18000>;
+		block-size = <0x1000>;
+	};
+
 	sound: sound {
 		compatible = "mediatek,mt6853-mt6359p-sound";
-		mediatek,headset-codec = <&accdet>;
+		mediatek,snd_audio_dsp = <&snd_audio_dsp>;
 		mediatek,platform = <&afe>;
+		mediatek,headset-codec = <&accdet>;
+	};
+
+	/* feature : $enable $dl_mem $ul_mem $ref_mem $size */
+	snd_audio_dsp: snd-audio-dsp {
+		compatible = "mediatek,snd-audio-dsp";
+		mtk-dsp-voip = <0x1f 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-primary = <0x5 0xffffffff 0xffffffff \
+				0xffffffff 0x30000>;
+		mtk-dsp-offload = <0x1 0xffffffff 0xffffffff \
+				0xffffffff 0x400000>;
+		mtk-dsp-deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-playback = <0x1 0x4 0xffffffff 0x14 0x30000>;
+		mtk-dsp-music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
+		mtk-dsp-capture1 = <0x1 0xffffffff 0xd 0x13 0x20000>;
+		mtk-dsp-a2dp = <0x1 0xffffffff 0xffffffff 0xffffffff 0x40000>;
+		mtk-dsp-dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
+		mtk-dsp-call-final = <0x5 0x4 0x10 0x14 0x18000>;
+		mtk-dsp-fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
+		mtk-dsp-ktv = <0x1 0x8 0x12 0xffffffff 0x10000>;
+		mtk-dsp-capture-raw = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
+		mtk-dsp-fm = <0x1 0xffffffff 0x10 0xffffffff 0x10000>;
+		mtk-dsp-ver = <0x1>;
+		swdsp-smartpa-process-enable = <0x5>;
+		mtk-dsp-mem-afe = <0x1 0x40000>; /* always enable */
+				};
+
+	mt-soc-offload-common {
+		compatible = "mediatek,mt-soc-offload-common";
+	};
+
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x1>;
+		adsp-phone-call-hwif = <0x0>;
+		adsp-ble-phone-call-enable = <0x0>;
 	};
 
 	slbc: slbc {
