@@ -18733,29 +18733,29 @@ static char *ddp_sys_1_clock_0_mt6991(int bit)
 	case 3:
 		return "disp_dli_async20, ";
 	case 4:
-		return "disp_dli_async2, ";
+		return "disp_dli_async21, ";
 	case 5:
-		return "disp_mdp_rdma0, ";
+		return "disp_dli_async22, ";
 	case 6:
-		return "disp_r2y0, ";
+		return "disp_dli_async23, ";
 	case 7:
-		return "disp_splitter0, ";
+		return "disp_dli_async24, ";
 	case 8:
-		return "disp_splitter1, ";
+		return "disp_dli_async25, ";
 	case 9:
-		return "disp_vdcm0, ";
+		return "disp_dli_async26, ";
 	case 10:
-		return "disp_dsc_wrap0, ";
+		return "disp_dli_async27, ";
 	case 11:
-		return "disp_dsc_wrap1, ";
+		return "disp_dli_async28, ";
 	case 12:
-		return "disp_dsc_wrap2, ";
+		return "disp_relay0, ";
 	case 13:
-		return "disp_dp_intf0, ";
+		return "disp_relay1, ";
 	case 14:
-		return "disp_dsi0, ";
+		return "disp_relay2, ";
 	case 15:
-		return "disp_dsi1, ";
+		return "disp_relay3, ";
 	case 16:
 		return "disp_dp_intf0, ";
 	case 17:
@@ -36498,7 +36498,7 @@ void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id)
 		}
 	}
 
-	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6989);
+	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6991);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
 			name = ddp_clock_mt6991(1, bit, sys_id);
