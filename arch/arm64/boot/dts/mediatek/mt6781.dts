@@ -6531,9 +6531,6 @@
 	regulator-always-on;
 };
 
-&mt_pmic_vsram_others_ldo_reg {
-	regulator-always-on;
-};
 
 &mt_pmic_vxo22_ldo_reg {
 	regulator-always-on;
