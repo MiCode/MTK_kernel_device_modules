@@ -667,7 +667,9 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	if (oddmr_hrt > 0)
 		subcomm_bw_sum[2] += oddmr_hrt;
 
-	//TODO: consider discrete path
+	if (mtk_crtc->path_data->is_discrete_path)
+		subcomm_bw_sum[1] += bw_base;
+
 	/* channel_bw[0]: comm0_ch0: sub_comm0
 	 * channel_bw[1]: comm0_ch1: sub_comm1
 	 * channel_bw[2]: comm1_ch0: sub_comm3
