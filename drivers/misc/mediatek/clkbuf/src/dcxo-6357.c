@@ -197,6 +197,7 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 6)
 		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF2_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF2_BBLPM_EN_MASK)
+		.xo_en_auxout_sel = 5,
 	},
 	[2] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF3_MODE)
