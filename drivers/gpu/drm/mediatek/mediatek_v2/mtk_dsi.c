@@ -4165,9 +4165,13 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 				mtk_vidle_dpc_analysis();
 
-				//printing status of mmqos and mmdvfs and smi info
-				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
-				wake_up_interruptible(&mtk_crtc->smi_info_dump_wq);
+				if (priv->data->mmsys_id != MMSYS_MT6899 ||
+					(priv->data->mmsys_id == MMSYS_MT6899 &&
+					mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE_V2))) {
+					//printing status of mmqos and mmdvfs and smi info
+					atomic_set(&mtk_crtc->smi_info_dump_event, 1);
+					wake_up_interruptible(&mtk_crtc->smi_info_dump_wq);
+				}
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
@@ -14582,6 +14586,7 @@ static const struct mtk_dsi_driver_data mt6899_dsi_driver_data = {
 	.need_bypass_shadow = false,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
+	.smi_dbg_disable = true,
 	.support_pre_urgent = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
