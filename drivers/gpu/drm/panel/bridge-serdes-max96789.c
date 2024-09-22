@@ -148,8 +148,6 @@ struct serdes {
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #if ENABLE_HOTPLUG_INT
 	int irq_num;
-	wait_queue_head_t hotplug_wq;
-	atomic_t hotplug_event;
 #endif
 #endif
 
@@ -169,6 +167,8 @@ struct serdes {
 	struct serdes_cmd *link_status_cmd;
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	struct task_struct *hotplug_task;
+	wait_queue_head_t hotplug_wq;
+	atomic_t hotplug_event;
 #endif
 	u32 comp_setting_cmd_num;
 	struct comp_cmd comp_setting_cmd[MAX_COMPATIBLE_NUM];
@@ -1623,9 +1623,12 @@ static int serdes_hotplug_kthread(void *data)
 				atomic_read(&ser_des->hotplug_event));
 			atomic_set(&ser_des->hotplug_event, 0);
 			disable_irq(ser_des->irq_num);
-		} else
+		} else {
+			wait_event_interruptible(ser_des->hotplug_wq, atomic_read(&ser_des->hotplug_event));
 			msleep(2000);
+		}
 #else
+		wait_event_interruptible(ser_des->hotplug_wq, atomic_read(&ser_des->hotplug_event));
 		msleep(2000);
 #endif
 		if (kthread_should_stop())
@@ -1646,7 +1649,7 @@ static int serdes_hotplug_kthread(void *data)
 			serdes_set_dual_setting(ser_des);
 		if (reset_a) {
 			serdes_init_des(ser_des, 0);
-			serdes_bl_on(ser_des, 1);
+			serdes_bl_on(ser_des, 0);
 		}
 
 		if (reset_b) {
@@ -1688,6 +1691,14 @@ void serdes_enable(struct drm_bridge *bridge, u8 port)
 	else
 		ser_des->port0_enabled = true;
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if ENABLE_HOTPLUG_INT
+	enable_irq(ser_des->irq_num);
+#else
+	atomic_set(&ser_des->hotplug_event, 1);
+	wake_up_interruptible(&ser_des->hotplug_wq);
+#endif
+#endif
 	pr_info("%s -\n", __func__);
 }
 EXPORT_SYMBOL(serdes_enable);
@@ -1760,11 +1771,10 @@ void serdes_disable(struct drm_bridge *bridge, u8 port)
 #if ENABLE_HOTPLUG_INT
 	if (ser_des->irq_num)
 		disable_irq(ser_des->irq_num);
+#else
+	atomic_set(&ser_des->hotplug_event, 0);
+	wake_up_interruptible(&ser_des->hotplug_wq);
 #endif
-	if (ser_des->hotplug_task) {
-		kthread_stop(ser_des->hotplug_task);
-		ser_des->hotplug_task = NULL;
-	}
 #endif
 
 	serdes_bl_off(ser_des, port);
@@ -1883,8 +1893,6 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 			return -EBUSY;
 		}
 		disable_irq(max96789->irq_num);
-		atomic_set(&max96789->hotplug_event, 0);
-		init_waitqueue_head(&max96789->hotplug_wq);
 	}
 #endif
 #endif
@@ -2009,6 +2017,11 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 		}
 	}
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	max96789->hotplug_task = kthread_run(serdes_hotplug_kthread, max96789, "hotplug");
+	atomic_set(&max96789->hotplug_event, 0);
+	init_waitqueue_head(&max96789->hotplug_wq);
+#endif
 	if (max96789->inited_in_lk) {
 		max96789->port0_enabled = true;
 		max96789->port0_pre_enabled = true;
@@ -2017,12 +2030,12 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 			max96789->port1_pre_enabled = true;
 		}
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
-		max96789->hotplug_task = kthread_run(serdes_hotplug_kthread, max96789, "hotplug");
 #if ENABLE_HOTPLUG_INT
 		if (max96789->irq_num)
 			enable_irq(max96789->irq_num);
-		atomic_set(&ser_des->hotplug_event, 1);
-		wake_up_interruptible(&ser_des->hotplug_wq);
+#else
+		atomic_set(&max96789->hotplug_event, 1);
+		wake_up_interruptible(&max96789->hotplug_wq);
 #endif
 #endif
 	}
@@ -2061,6 +2074,10 @@ static void serdes_iic_driver_remove(struct i2c_client *client)
 	if (max96789->irq_num)
 		free_irq(max96789->irq_num, max96789);
 #endif
+	if (!IS_ERR_OR_NULL(max96789->hotplug_task)) {
+		kthread_stop(max96789->hotplug_task);
+		max96789->hotplug_task = NULL;
+	}
 #endif
 	pr_info("%s -\n", __func__);
 }
