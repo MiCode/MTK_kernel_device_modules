@@ -2305,6 +2305,10 @@
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
 			usb-role-switch;
+			mediatek,noise-still-tr;
+			mediatek,syscon-wakeup = <&pericfg 0x420 101>;
+			wakeup-source;
+			cdp-block;
 			mediatek,gen2cp-unsupported;
 			mediatek,smc-req;
 			usb3-u1gou2-disable;

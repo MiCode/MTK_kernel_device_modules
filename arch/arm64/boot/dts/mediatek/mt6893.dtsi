@@ -2761,7 +2761,7 @@ cpus {
 			mediatek,smc-req;
 			usb-role-switch;
 			mediatek,noise-still-tr;
-			mediatek,syscon-wakeup = <&infracfg_ao_clk 0x200 103>;
+			mediatek,syscon-wakeup = <&pericfg 0x420 101>;
 			wakeup-source;
 			cdp-block;
 			usb3-u1gou2-disable;
