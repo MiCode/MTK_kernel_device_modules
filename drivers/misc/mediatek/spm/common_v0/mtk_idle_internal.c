@@ -333,7 +333,7 @@ int mtk_idle_notifier_register(struct notifier_block *n)
 	int ret = 0;
 	int index = 0;
 	#if IS_ENABLED(CONFIG_KALLSYMS)
-	char namebuf[128] = {0};
+	char namebuf[KSYM_NAME_LEN] = {0};
 	//const char *symname = NULL;
 
 	sprint_symbol(namebuf, (unsigned long)n->notifier_call);
