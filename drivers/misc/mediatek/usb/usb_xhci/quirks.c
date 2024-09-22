@@ -112,6 +112,41 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 	return quirks;
 }
 
+static void xhci_mtk_usb_free_format(struct audioformat *fp)
+{
+	list_del(&fp->list);
+	kfree(fp->rate_table);
+	kfree(fp->chmap);
+	kfree(fp);
+}
+
+static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
+{
+	struct snd_usb_stream *as;
+	struct snd_usb_substream *subs;
+	struct audioformat *fp, *n;
+
+	/* Restrict the playback format for bestechnic audio device */
+	if (chip->usb_id == USB_ID(0xbe57, 0x0238)) {
+		dev_info(&chip->dev->dev, "Restrict the playback format to 16 bits\n");
+		/* list all streams */
+		list_for_each_entry(as, &chip->pcm_list, list) {
+			subs = &as->substream[SNDRV_PCM_STREAM_PLAYBACK];
+			/* check if the stream is initialized */
+			if (subs->num_formats) {
+				/* check and remove the unsupported format from the list */
+				list_for_each_entry_safe(fp, n, &subs->fmt_list, list) {
+					if (fp->fmt_bits > 16) {
+						subs->num_formats--;
+						subs->formats &= ~(fp->formats);
+						xhci_mtk_usb_free_format(fp);
+					}
+				}
+			}
+		}
+	}
+}
+
 void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 {
 	const struct usb_audio_quirk_flags_table *p;
@@ -128,6 +163,8 @@ void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 			return;
 		}
 	}
+
+	xhci_mtk_usb_format_quirk(chip);
 }
 
 /* update mtk usbcore quirk */
