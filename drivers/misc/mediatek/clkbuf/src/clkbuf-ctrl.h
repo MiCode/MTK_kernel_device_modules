@@ -112,6 +112,7 @@ extern int clkbuf_pmif_init(struct clkbuf_dts *array, struct device *dev);
 extern int clkbuf_srclken_init(struct clkbuf_dts *array, struct device *dev);
 extern int clkbuf_platform_init(struct clkbuf_dts *array, struct device *dev);
 extern int clkbuf_debug_init(struct clkbuf_dts *array, struct device *dev);
+extern bool clk_buf_is_init_done(void);
 
 int clkbuf_xo_ctrl(char *cmd, int xo_id, u32 input);
 int clkbuf_srclken_ctrl(char *cmd, int sub_id);

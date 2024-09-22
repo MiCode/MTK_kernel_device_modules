@@ -328,6 +328,11 @@ static int dump_all(struct device *dev)
 
 	return 0;
 }
+bool clk_buf_is_init_done(void)
+{
+	return _inited;
+}
+EXPORT_SYMBOL(clk_buf_is_init_done);
 
 static int clk_buf_dev_pm_suspend(struct device *dev)
 {
