@@ -206,6 +206,8 @@ static ssize_t mt_soc_debug_write(struct file *f, const char __user *buf,
 		goto exit;
 	}
 
+	InputBuf[MAX_DEBUG_WRITE_INPUT - 1] = '\0';
+
 	str_begin = kstrndup(InputBuf, MAX_DEBUG_WRITE_INPUT - 1,
 			     GFP_KERNEL);
 	if (!str_begin) {
