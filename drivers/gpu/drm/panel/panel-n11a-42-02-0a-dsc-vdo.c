@@ -931,7 +931,7 @@ static int mode_switch(struct drm_panel *panel,
 
 	if (m_dst == NULL || m_cur == NULL) {
 		pr_err("%s, get m_dst or m_cur fail\n", __func__);
-		ret = -EINVAL;
+		return -EINVAL;
 	}
 
 	isFpsChange = drm_mode_vrefresh(m_dst) == drm_mode_vrefresh(m_cur)? false: true;
