@@ -793,7 +793,7 @@ EXPORT_SYMBOL(mtk_dl2_copy_l);
 
 static int mtk_pcm_dl2_copy(struct snd_soc_component *component,
 			    struct snd_pcm_substream *substream, int channel,
-			    unsigned long pos, void __user *dst,
+			    unsigned long pos, struct iov_iter *dst,
 			    unsigned long count)
 {
 	struct afe_block_t *Afe_Block = &pMemControl->rBlock;
