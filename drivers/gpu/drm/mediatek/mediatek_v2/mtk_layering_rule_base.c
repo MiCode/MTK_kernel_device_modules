@@ -5124,6 +5124,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		scale_num = get_scale_cnt(&layering_info);
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 	}
+	/* Double Check GLES adjustment and ext layer checking */
+	ret = filter_by_ovl_cnt(dev, &layering_info);
 	ret = dispatch_ovl_id(&layering_info, lyeblob_ids, dev, &lye_state);
 
 	layering_info.hrt_idx = _layering_rule_get_hrt_idx(disp_idx);
