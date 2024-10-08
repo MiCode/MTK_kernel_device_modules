@@ -82,6 +82,7 @@ enum mtk_slbc_kernel_ops {
 #define SLBC_CHECK_TIME			msecs_to_jiffies(1000)
 #define SLBC_CHECK_TIMEOUT		msecs_to_jiffies(5000)
 #define SLBC_TIMEOUT_LIMIT		500
+#define SLBC_SCMI_RETRY_MAX		10 /* max retry times for slbc scmi init */
 
 
 #define GID_MAX					64
@@ -2234,7 +2235,7 @@ static int slbc_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	int ret = 0;
+	int ret = 0, i = 0;
 	/* struct resource *res; */
 	uint32_t reg[4] = {0, 0, 0, 0};
 
@@ -2243,14 +2244,28 @@ static int slbc_probe(struct platform_device *pdev)
 		pr_info("SLBC FAILED TO CREATE TRACE MEMORY (%d)\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-	ret = slbc_scmi_init();
-	if (ret < 0)
+	for (i = 0; i < SLBC_SCMI_RETRY_MAX; i++) {
+		ret = slbc_scmi_init();
+		if (ret == 0) {
+			pr_info("slbc scmi init succeeded after retry %d\n", i);
+			SLBC_TRACE_REC(LVL_NORM, TYPE_N, 0, ret,
+				"slbc scmi init succeeded after retry %d", i);
+			break;
+		}
+		udelay(500);
+	}
+	if (ret < 0) {
+		pr_info("SLBC FAILED TO INIT SCMI (%d)\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to init scmi (%d)", ret);
 		return ret;
+	}
 
 	ret = slbc_shared_dram_init(pdev);
-	if(ret){
+	if (ret) {
 		pr_info("SLBC FAILED TO INIT SHARED DRAM MEMORY (%d)\n", ret);
-		return ret;
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"failed to init shared dram (%d)", ret);
 	}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
@@ -2339,8 +2354,19 @@ static int slbc_probe(struct platform_device *pdev)
 	}
 
 	if (slbc_enable) {
-		slbc_sspm_enable(slbc_enable);
-		slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		ret = slbc_sspm_enable(slbc_enable);
+		if (ret) {
+			pr_info("SLBC FAILED TO ENABLE SSPM SLBC (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to enable sspm slbc (%d)", ret);
+		}
+
+		ret = slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		if (ret) {
+			pr_info("SLBC FAILED TO GET SSPM VERSION (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to get sspm version (%d)", ret);
+		}
 	}
 
 #ifdef SLBC_CB_TEST
