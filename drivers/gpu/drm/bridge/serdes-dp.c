@@ -147,15 +147,15 @@ static int serdes_dp_create_i2c_client(struct serdes_dp_bridge *max_bridge)
 		pr_info("%s double pixel support\n", SERDES_DEBUG_INFO);
 	} else if (max_bridge->support_mst) {
 		pr_info("%s DP MST support\n", SERDES_DEBUG_INFO);
+		addr = (u16)max_bridge->linka_i2c_addr;
+		max_bridge->linka_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
+		addr = (u16)max_bridge->linka_bl_i2c_addr;
+		max_bridge->linka_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
 		addr = (u16)max_bridge->des_i2c_addr_linkb;
 		if (addr == max_bridge->des_i2c_addr)
 			max_bridge->des_i2c_linkb_client = max_bridge->des_i2c_client;
 		else
 			max_bridge->des_i2c_linkb_client = i2c_new_dummy_device(bus_adapter, addr);
-		addr = (u16)max_bridge->linka_i2c_addr;
-		max_bridge->linka_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
-		addr = (u16)max_bridge->linka_bl_i2c_addr;
-		max_bridge->linka_bl_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
 		addr = (u16)max_bridge->linkb_i2c_addr;
 		max_bridge->linkb_i2c_client = i2c_new_dummy_device(bus_adapter, addr);
 		addr = (u16)max_bridge->linkb_bl_i2c_addr;
@@ -469,7 +469,8 @@ static int feature_handle(struct serdes_dp_bridge *max_bridge, struct device_nod
 
 	ret = parse_feature_cmd_by_prop_from_dts(max_bridge, &verify_cmd, FEATURE_VERIFY_CMD, feature_handle_np);
 	if (ret) {
-		devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
+		for (i = 0; i < check_cmd.group_num; i++)
+			devm_kfree(max_bridge->dev, check_cmd.feature_cmd[i].data);
 		devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
 		return ret;
 	}
@@ -495,15 +496,19 @@ static int feature_handle(struct serdes_dp_bridge *max_bridge, struct device_nod
 		}
 	}
 
-	devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
+	for (i = 0; i < check_cmd.group_num; i++)
+		devm_kfree(max_bridge->dev, check_cmd.feature_cmd[i].data);
 	devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
-	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd->data);
+	for (i = 0; i < verify_cmd.group_num; i++)
+		devm_kfree(max_bridge->dev, verify_cmd.feature_cmd[i].data);
 	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd);
 	return 0;
 err:
-	devm_kfree(max_bridge->dev, check_cmd.feature_cmd->data);
+	for (i = 0; i < check_cmd.group_num; i++)
+		devm_kfree(max_bridge->dev, check_cmd.feature_cmd[i].data);
 	devm_kfree(max_bridge->dev, check_cmd.feature_cmd);
-	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd->data);
+	for (i = 0; i < verify_cmd.group_num; i++)
+		devm_kfree(max_bridge->dev, verify_cmd.feature_cmd[i].data);
 	devm_kfree(max_bridge->dev, verify_cmd.feature_cmd);
 	return ret;
 }
