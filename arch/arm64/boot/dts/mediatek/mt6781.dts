@@ -33,7 +33,7 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			vmalloc=400M swiotlb=noforce transparent_hugepage=never \
-			initcall_debug=1 \
+			initcall_debug=0 \
 			8250.nr_uarts=2 \
 			firmware_class.path=/vendor/firmware \
 			loop.max_part=7";
