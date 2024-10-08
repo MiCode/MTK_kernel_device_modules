@@ -164,6 +164,7 @@ int __access_remote_vm_for_hang(struct mm_struct *mm, unsigned long addr, void *
 			if (vma->vm_ops && vma->vm_ops->access)
 				bytes = vma->vm_ops->access(vma, addr, buf, len, 0);
 #endif
+			pr_debug("[%s:%d]: access bytes: %d\n",__func__, __LINE__, bytes);
 			if (bytes <= 0)
 				break;
 		} else {
@@ -865,11 +866,7 @@ static void get_kernel_bt(struct task_struct *tsk)
 	int nr_entries;
 	int i;
 
-#ifndef __aarch64__
-	nr_entries = stack_trace_save_tsk(tsk, stacks, ARRAY_SIZE(stacks), 0);
-#else
 	nr_entries = hang_kernel_trace(tsk, stacks, ARRAY_SIZE(stacks));
-#endif
 	for (i = 0; i < nr_entries; i++) {
 		log_hang_info("<%lx> %pS\n", (long)stacks[i],
 				(void *)stacks[i]);
