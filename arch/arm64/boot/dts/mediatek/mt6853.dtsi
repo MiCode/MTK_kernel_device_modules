@@ -1610,10 +1610,10 @@
 			compatible = "mediatek,gpio_usage_mapping";
 		};
 
-		md1_sim1_hot_plug_eint: md1-sim1-hot-plug-eint {
+		md1_sim1_hot_plug_eint:MD1-SIM1-HOT-PLUG-EINT {
 		};
 
-		md1_sim2_hot_plug_eint: md1-sim2-hot-plug-eint {
+		md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
 		};
 
 		cqdma: cq_dma@10212000 {
