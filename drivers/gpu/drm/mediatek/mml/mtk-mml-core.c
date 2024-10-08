@@ -1361,7 +1361,8 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	/* note the running task not always current begin task */
 	task_pipe_tmp = list_first_entry_or_null(&path_clt->tasks,
 		typeof(*task_pipe_tmp), entry_clt);
-	while (task_pipe_tmp && task_pipe_tmp->task->done) {
+	while (task_pipe_tmp && (task_pipe_tmp->task->done ||
+		task_pipe_tmp->task->config->dpc != cfg->dpc)) {
 		if (task_pipe_tmp ==
 			list_last_entry(&path_clt->tasks, typeof(*task_pipe_tmp), entry_clt)) {
 			task_pipe_tmp = NULL;
@@ -1481,7 +1482,8 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	task_pipe_cur = list_first_entry_or_null(&path_clt->tasks, typeof(*task_pipe_cur),
 		entry_clt);
 	/* find current item which still running */
-	while (task_pipe_cur && task_pipe_cur->task->done) {
+	while (task_pipe_cur && (task_pipe_cur->task->done ||
+		task_pipe_cur->task->config->dpc != cfg->dpc)) {
 		if (task_pipe_cur ==
 			list_last_entry(&path_clt->tasks, typeof(*task_pipe_cur), entry_clt)) {
 			task_pipe_cur = NULL;
