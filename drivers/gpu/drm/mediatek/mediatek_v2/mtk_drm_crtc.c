@@ -15026,7 +15026,7 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
-					 comp ? mtk_get_gpr(comp, cmdq_handle) : 0);
+					mtk_get_gpr(mtk_crtc, cmdq_handle));
 #endif
 
 	/* mml need to power on InlineRotate and sync with mml */
@@ -19605,6 +19605,50 @@ dma_addr_t mtk_get_gce_backup_slot_pa(struct mtk_drm_crtc *mtk_crtc,
 	return 0;
 }
 
+u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+{
+	struct drm_crtc *crtc;
+	struct cmdq_client *client_dsi;
+	struct cmdq_client *client_trig_loop;
+	unsigned int mmsys_id;
+
+	if (!mtk_crtc || !handle)
+		return CMDQ_GPR_R07;
+
+	crtc = &mtk_crtc->base;
+	client_dsi = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
+	client_trig_loop = mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP];
+	mmsys_id = mtk_get_mmsys_id(crtc);
+
+	switch (mmsys_id) {
+	case MMSYS_MT6983:
+	case MMSYS_MT6985:
+	case MMSYS_MT6989:
+	case MMSYS_MT6899:
+	case MMSYS_MT6897:
+	case MMSYS_MT6879:
+	case MMSYS_MT6895:
+	case MMSYS_MT6886:
+	case MMSYS_MT6835:
+	case MMSYS_MT6855:
+		if (handle->cl == (void *)client_dsi)
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
+		else
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
+	case MMSYS_MT6991:
+		if (handle->cl == (void *)client_dsi)
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
+		else if (handle->cl == (void *)client_trig_loop)
+			return CMDQ_GPR_R07;
+		else
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
+	default:
+		if (handle->cl == (void *)client_dsi)
+			return CMDQ_GPR_R14;
+		else
+			return CMDQ_GPR_R07;
+	}
+}
 
 static int mtk_drm_cwb_copy_buf(struct drm_crtc *crtc,
 			  struct mtk_cwb_info *cwb_info,

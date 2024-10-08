@@ -307,15 +307,22 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 		return -EFAULT;
 	}
 
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		return 1;
+	}
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	va = ioremap(pa, sizeof(*va));
-
-	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	rParams->val = readl(va) & rParams->mask;
-	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+	iounmap(va);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	DDPINFO("%s, read pa:0x%x(va:0x%lx) = 0x%x (0x%x)\n",
 		__func__, pa, (long)va, rParams->val, rParams->mask);
 
-	iounmap(va);
 	return ret;
 }
 
@@ -357,6 +364,8 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
 	}
+	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+			mtk_get_gpr(mtk_crtc, cmdq_handle));
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
 	else
@@ -389,6 +398,7 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 			}
 		}
 	}
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
@@ -400,12 +410,22 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 
-	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		cmdq_pkt_destroy(cmdq_handle);
+		kfree(cb_data);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		return 1;
+	}
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	if (cmdq_pkt_flush_threaded(cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	}
-	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	return 0;
 }
@@ -537,7 +557,6 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	char *kdata = NULL;
 	unsigned long long time;
 	int ret = -1;
-	int pm_ret = 0;
 
 	if (!params || !params->size || !params->data) {
 		DDPPR_ERR("%s, null pointer!\n", __func__);
@@ -574,8 +593,6 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
-	if (disp_pq_is_cmd_need_pm(cmd))
-		pm_ret = mtk_vidle_pq_power_get(__func__);
 
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
@@ -589,10 +606,6 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 						__func__, __LINE__, comp->id, cmd);
 			}
 		}
-	}
-	if (disp_pq_is_cmd_need_pm(cmd)) {
-		if (!pm_ret)
-			mtk_vidle_pq_power_put(__func__);
 	}
 	if (cmd > PQ_GET_CMD_START) {
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
@@ -669,7 +682,6 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	unsigned int i, j, k;
 	int index = drm_crtc_index(crtc);
 	bool is_atomic_commit = cmdq_handle;
-	int pm_ret = 0;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	bool need_wait_done = false;
 
@@ -696,9 +708,11 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		pq_cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		if (!pq_cmdq_handle) {
 			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+			mtk_drm_trace_end();
 			return -1;
 		}
-
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, pq_cmdq_handle,
+				mtk_get_gpr(mtk_crtc, pq_cmdq_handle));
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 			mtk_crtc_wait_frame_done(mtk_crtc, pq_cmdq_handle,
 				DDP_SECOND_PATH, 0);
@@ -727,8 +741,6 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	}
 
 	/* call comp frame config */
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-
 	for (k = 0; k < cmds_len; k++) {
 		unsigned int pq_type = requests[k].cmd >> 16;
 		unsigned int cmd = requests[k].cmd & 0xffff;
@@ -773,8 +785,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			}
 		}
 	}
-	if (!pm_ret)
-		mtk_vidle_pq_power_put(__func__);
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, pq_cmdq_handle);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {
@@ -788,6 +799,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 				wake_up_interruptible(&pq_data->cfg_done_wq);
 			}
 			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000001);
+			mtk_drm_trace_end();
 			return -1;
 		}
 
@@ -796,31 +808,34 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		cb_data->misc = need_wait_done;
 
 		if (user_lock)
-			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
-
-		mtk_drm_trace_begin("mtk_drm_idlemgr_kick");
-		mtk_drm_idlemgr_kick(__func__, crtc, !user_lock);
-		mtk_drm_trace_end();
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 		if (!(mtk_crtc->enabled)) {
 			DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 			cmdq_pkt_destroy(pq_cmdq_handle);
 			kfree(cb_data);
 			if (user_lock)
-				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 			if (need_wait_done) {
 				need_wait_done = false;
 				atomic_set(&pq_data->cfg_done, 1);
 				wake_up_interruptible(&pq_data->cfg_done_wq);
 			}
 			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000002);
+			mtk_drm_trace_end();
 			return -1;
 		}
+
+		mtk_drm_trace_begin("mtk_drm_idlemgr_kick");
+		mtk_drm_idlemgr_kick(__func__, crtc, !user_lock);
+		mtk_drm_trace_end();
 
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 		mtk_drm_trace_begin("flush+check_trigger");
+		if (user_lock)
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 		if (cmdq_pkt_flush_threaded(pq_cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
 			DDPPR_ERR("failed to flush %s\n", __func__);
 			if (need_wait_done) {
@@ -836,8 +851,10 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		DDPDBG("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);
 		mtk_drm_trace_end();
 
-		if (user_lock)
-			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+		if (user_lock) {
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		}
 
 	}
 	DDPDBG("%s:%d --\n", __func__, __LINE__);
@@ -1081,6 +1098,8 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
 	}
+	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+			mtk_get_gpr(mtk_crtc, cmdq_handle));
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
 	else
@@ -1099,6 +1118,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 				mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
 		}
 	}
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
@@ -1110,24 +1130,24 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 
-	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 		cmdq_pkt_destroy(cmdq_handle);
 		kfree(cb_data);
-		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		return 1;
 	}
-
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	} else
 		mtk_crtc_check_trigger(mtk_crtc, true, false);
-
-	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	while (wait_config_done) {
 		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {

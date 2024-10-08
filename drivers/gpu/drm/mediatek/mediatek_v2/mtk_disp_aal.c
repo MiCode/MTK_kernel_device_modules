@@ -467,7 +467,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
 		if (need_lock)
-			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_LOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 		atomic_set(&aal_data->primary_data->force_event_en, 1);
 		atomic_set(&aal_data->primary_data->event_en, 1);
 
@@ -477,7 +477,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 		 */
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trig, false);
 		if (need_lock)
-			DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_UNLOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	}
 }
 
@@ -1431,20 +1431,13 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	mtk_drm_trace_begin("aal_sof_thread");
 	AALIRQ_LOG("[SRAM] dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-	if (pm_ret < 0) {
-		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 0xe);
-		mtk_drm_trace_end();
-		AALERR("pm get error %d\n",pm_ret);
-		return;
-	}
 	mutex_lock(&aal_data->primary_data->clk_lock);
 	first_frame = atomic_read(&aal_data->first_frame);
 	if (atomic_read(&aal_data->is_clock_on) != 1) {
 		AALIRQ_LOG("clock is off\n");
 		mutex_unlock(&aal_data->primary_data->clk_lock);
-		if (!pm_ret)
-			mtk_vidle_pq_power_put(__func__);
+		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 2);
+		mtk_drm_trace_end();
 		return;
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -1453,18 +1446,26 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		if (atomic_read(&aal1_data->is_clock_on) != 1) {
 			AALIRQ_LOG("aal1 clock is off\n");
 			mutex_unlock(&aal_data->primary_data->clk_lock);
-			if (!pm_ret)
-				mtk_vidle_pq_power_put(__func__);
+			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 2);
+			mtk_drm_trace_end();
 			return;
 		}
 	}
+	pm_ret = mtk_vidle_pq_power_get(__func__);
+	if (pm_ret) {
+		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		mutex_unlock(&aal_data->primary_data->clk_lock);
+		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
+		mtk_drm_trace_end();
+		return;
+	}
 	ret = disp_aal_update_dre3_sram(comp, true);
-	mutex_unlock(&aal_data->primary_data->clk_lock);
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
+	mutex_unlock(&aal_data->primary_data->clk_lock);
 	CRTC_MMP_MARK(0, aal_sof_thread, 0, 1);
 
-	DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	if (aal_data->primary_data->dre30_enabled && !ret &&
 	    (first_frame == 1 || atomic_read(&aal_data->primary_data->event_en) == 1))
 		mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, FLIP_SRAM, NULL, false);
@@ -1474,7 +1475,7 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
 		atomic_set(&aal_data->primary_data->dre30_write, 0);
 	}
-	DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	if (first_frame == 1) {
 		atomic_set(&aal_data->first_frame, 0);
 		if (comp->mtk_crtc->is_dual_pipe)

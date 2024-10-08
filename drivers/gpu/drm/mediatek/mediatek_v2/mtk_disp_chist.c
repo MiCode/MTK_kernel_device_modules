@@ -981,7 +981,7 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	int max_bins = 0;
+	int max_bins = 0, pm_ret = 0;
 	unsigned int i = 0;
 	unsigned int *p_present_fence = NULL;
 	unsigned int cur_present_fence = 0;
@@ -1002,6 +1002,12 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 
 	mutex_lock(&prim_data->clk_lock);
 	if (atomic_read(&(prim_data->clock_on)) == 0) {
+		mutex_unlock(&prim_data->clk_lock);
+		return;
+	}
+	pm_ret = mtk_vidle_pq_power_get(__func__);
+	if (pm_ret) {
+		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
 		mutex_unlock(&prim_data->clk_lock);
 		return;
 	}
@@ -1042,6 +1048,8 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	}
 
 	mutex_unlock(&prim_data->data_lock);
+	if (!pm_ret)
+		mtk_vidle_pq_power_put(__func__);
 	mutex_unlock(&prim_data->clk_lock);
 	p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_PRESENT_FENCE(0)));
@@ -1072,7 +1080,6 @@ static int disp_chist_read_kthread(void *data)
 
 	while (!kthread_should_stop()) {
 		int ret = 0;
-		int pm_ret = 0;
 
 		if (atomic_read(&(chist_data->primary_data->irq_event)) == 0) {
 			DDPDBG("%s: wait_event_interruptible ++ ", __func__);
@@ -1086,17 +1093,10 @@ static int disp_chist_read_kthread(void *data)
 			DDPDBG("%s: get_irq = 0", __func__);
 		}
 		atomic_set(&(chist_data->primary_data->irq_event), 0);
-		pm_ret = mtk_vidle_pq_power_get(__func__);
-		if (pm_ret < 0) {
-			DDPPR_ERR("%s: mtk_vidle_pq_power_get error, skip get_hist! pm_ret:%d", __func__, pm_ret);
-			continue;
-		}
 		mtk_drm_trace_begin("disp_chist_get_hist-%d", comp->id);
 		DDPDBG("%s disp_chist_get_hist comp->id:%d\n", __func__, comp->id);
 		disp_chist_get_hist((struct mtk_ddp_comp *)data);
 		mtk_drm_trace_end();
-		if (!pm_ret)
-			mtk_vidle_pq_power_put(__func__);
 	}
 	return 0;
 }

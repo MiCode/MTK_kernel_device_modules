@@ -1540,6 +1540,8 @@ dma_addr_t mtk_get_gce_backup_slot_pa(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_get_plane_slot_idx(struct mtk_drm_crtc *mtk_crtc, unsigned int idx);
 void mtk_gce_backup_slot_init(struct mtk_drm_crtc *mtk_crtc);
 
+u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+
 void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle);
 void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle,
 				   bool force);
