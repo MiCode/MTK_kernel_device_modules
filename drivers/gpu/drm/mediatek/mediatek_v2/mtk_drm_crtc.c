@@ -8210,24 +8210,17 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_ENABLE) {
 		//EXDMA2 is not on the list of basic main data path, need extra setting
 		if ((priv->data->mmsys_id == MMSYS_MT6991)
-			&& mtk_crtc_state->lye_state.rpo_lye) {
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-				NULL, PMQOS_SET_BW, NULL);
+			&& mtk_crtc_state->lye_state.rpo_lye)
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 				NULL, PMQOS_UPDATE_BW, &flag);
-		} else if ((priv->data->mmsys_id == MMSYS_MT6991)
-			&& pre_rpo_lye) { //exit RPO
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-				NULL, PMQOS_SET_BW, NULL);
+		else if ((priv->data->mmsys_id == MMSYS_MT6991)
+			&& pre_rpo_lye) //exit RPO
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 				NULL, PMQOS_UPDATE_BW, &flag);
-		}
 		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
-				i, j, ddp_mode, 0) {
-			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+				i, j, ddp_mode, 0)
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
-		}
 	}
 
 	if (priv->power_state == false)
@@ -12926,16 +12919,11 @@ skip:
 
 	/* 4. Set QOS BW to 0 */
 	//EXDMA2 is not on the list of basic main data path, need extra setting
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-			NULL, PMQOS_SET_BW, NULL);
+	if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 			NULL, PMQOS_UPDATE_BW, &flag);
-	}
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
-	}
 	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
 	mtk_disp_channel_srt_bw(mtk_crtc);
 
@@ -13506,7 +13494,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/* 10. Set QOS BW */
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-			NULL, PMQOS_SET_BW, NULL);
+			NULL, PMQOS_UPDATE_BW, NULL);
 	}
 
 	bw = _layering_get_frame_bw(crtc, &crtc->state->adjusted_mode);
@@ -13530,7 +13518,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, NULL);
 
 	/* 11. set dirty for cmd mode */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
