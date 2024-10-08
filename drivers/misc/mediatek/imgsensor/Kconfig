@@ -38,14 +38,6 @@ config CAMEREA_PROJECT_TB8766P1
 	  To compile this driver as a module, choose M here: the
 	  module will be called CONFIG_CAMEREA_PROJECT_TB8766P1.
 
-config CAMEREA_PROJECT_TB8768P1
-	tristate "MediaTek image sensor support"
-	help
-	  This is a driver for the MediaTek
-	  image sensors.
-	  To compile this driver as a module, choose M here: the
-	  module will be called CONFIG_CAMEREA_PROJECT_TB8768P1.
-
 config MTK_IMGSENSOR_ISP4_C
 	tristate "MediaTek image sensor support"
 	help
