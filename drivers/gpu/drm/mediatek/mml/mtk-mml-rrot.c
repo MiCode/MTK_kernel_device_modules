@@ -422,7 +422,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 		swap(outw, outh);
 
-	if (binning && (w >> 1) >= outw && !(src->width & 0x3) && !(w & 0x3)) {
+	if (binning && (w >> 1) >= outw && !(src->width & 0x3)) {
 		cfg->frame_in.width = (src->width + 1) >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
@@ -431,7 +431,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
 		}
 	}
-	if (binning && (h >> 1) >= outh && !(src->height & 0x3) && !(h & 0x3)) {
+	if (binning && (h >> 1) >= outh && !(src->height & 0x3)) {
 		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
