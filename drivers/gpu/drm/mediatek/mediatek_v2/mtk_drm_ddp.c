@@ -2330,6 +2330,7 @@
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY0_SIZE 0x260
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY0_CNT 0x304
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY1_SIZE 0x264
+#define MT6991_DISP_REG_OVLSYS_DLI_ASYNC1_STATUS0 0x308
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY1_CNT 0x30C
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY2_SIZE 0x268
 #define MT6991_DISP_REG_OVLSYS_DLI_RELAY2_CNT 0x314
@@ -36598,7 +36599,7 @@ void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id)
 #endif
 }
 
-void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs)
+void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs, bool rg_dump)
 {
 	unsigned int idx = 0, bit = 0;
 	int len = 0;
@@ -36638,6 +36639,16 @@ void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs)
 	ready[5] =
 		readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DL_READY_5);
 
+	if (rg_dump) {
+		DDPMSG("OVLSYS_DLI_A1:0x%08x,0x%08x\n",
+			readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_ASYNC1_STATUS0),
+			readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_RELAY1_CNT));
+		DDPMSG("OVLSYS_V:0x%08x,0x%08x,0x%08x,0x%08x,0x%08x,0x%08x\n",
+			valid[0],valid[1],valid[2],valid[3],valid[4],valid[5]);
+		DDPMSG("OVLSYS_R:0x%08x,0x%08x,0x%08x,0x%08x,0x%08x,0x%08x\n",
+			ready[0],ready[1],ready[2],ready[3],ready[4],ready[5]);
+		return;
+	}
 	greq0 = readl_relaxed(config_regs +
 				MT6991_DISP_REG_OVLSYS_SMI_LARB0_GREQ);
 	greq1 = readl_relaxed(config_regs +

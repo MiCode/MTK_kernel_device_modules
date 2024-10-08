@@ -3968,7 +3968,7 @@ void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp)
 
 	dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 	reg_val = readl(DSI_INPUT_DBG(dsi->driver_data) + baddr);
-	DDPINFO("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+	DDPMSG("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
 		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_X, reg_val),
 		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_Y, reg_val));
 }
@@ -4089,6 +4089,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			int underrun_int_en = 0;
 
 			dump_cur_pos(mtk_crtc);
+			if (dsi->encoder.crtc)
+				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
 
 			if (aee_cooldown && !dsi_underrun_called) {
 				dsi_underrun_called = 1;

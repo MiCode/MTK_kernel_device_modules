@@ -1345,6 +1345,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc);
 void mtk_drm_crtc_dump(struct drm_crtc *crtc);
 void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc);
+void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc);
 void mtk_drm_crtc_analysis(struct drm_crtc *crtc);
 void mtk_drm_crtc_diagnose(void);
 bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc);

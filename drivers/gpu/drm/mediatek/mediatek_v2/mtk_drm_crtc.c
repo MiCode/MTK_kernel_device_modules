@@ -1293,6 +1293,45 @@ static void mtk_drm_crtc_addon_analysis(struct drm_crtc *crtc,
 		}
 	}
 }
+void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	int crtc_id = 0;
+
+	if (!crtc) {
+		DDPMSG("%s: Invalid crtc\n", __func__);
+		return;
+	}
+
+	crtc_id = drm_crtc_index(crtc);
+	if (crtc_id < 0) {
+		DDPMSG("%s: Invalid crtc_id:%d\n", __func__, crtc_id);
+		return;
+	}
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPMSG("%s: Invalid priv\n", __func__);
+		return;
+	}
+
+	if (priv->data->mmsys_id != MMSYS_MT6991)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+	}
+	ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, true);
+	goto done_return;
+
+done_return:
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	}
+}
 
 void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 {
@@ -1403,11 +1442,11 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6991:
 			DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs);
+			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, false);
 			if (mtk_crtc->ovlsys1_regs) {
 				DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs);
+				ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs, false);
 			}
 
 			DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
@@ -1624,11 +1663,11 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6991:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->ovlsys0_regs_pa);
-		ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs);
+		ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, false);
 		if (mtk_crtc->ovlsys1_regs) {
 			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->ovlsys1_regs_pa);
-			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs);
+			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs, false);
 		}
 
 		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
