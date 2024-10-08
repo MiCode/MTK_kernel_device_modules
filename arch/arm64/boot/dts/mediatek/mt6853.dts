@@ -740,8 +740,8 @@
 };
 
 &mddriver {
-	md_vdigrf-supply = <&mt6359p_vpu_reg>;
-
+	md-vdigrf-supply = <&mt6359p_vpu_reg>;
+	md-vdigrf = <700000 700000>;
 };
 &ssusb {
 	port {
