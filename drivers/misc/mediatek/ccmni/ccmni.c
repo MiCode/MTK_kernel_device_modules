@@ -404,7 +404,10 @@ static u16 ccmni_select_queue(struct net_device *dev, struct sk_buff *skb,
 		if (skb->mark & APP_VIP_MARK) {
 			ret = MD_HW_HIGH_Q; /* highest priority */
 		} else if (skb->mark & APP_VIP_MARK2) {
-			ret = MD_HW_MEDIUM_Q;
+			if (is_ack_skb(skb))
+				ret = MD_HW_HIGH_Q;
+			else
+				ret = MD_HW_MEDIUM_Q;
 		} else if (ccmni->ack_prio_en) {
 			if (is_ack_skb(skb))
 				ret = MD_HW_HIGH_Q;
