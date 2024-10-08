@@ -8635,8 +8635,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x14001000 0 0x1000>,
 				  <0 0x14201000 0 0x1000>,
 				  <0 0x14401000 0 0x1000>;
-			interrupts = <GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 442 IRQ_TYPE_LEVEL_HIGH 0>,
+			interrupts = <GIC_SPI 443 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 678 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_MUTEX0_DISP>,
 				 <&dispsys1_config_clk CLK_MM1_DISP_MUTEX0_DISP>,
