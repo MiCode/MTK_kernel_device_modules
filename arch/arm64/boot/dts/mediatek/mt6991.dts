@@ -626,6 +626,10 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		edp_calibration: edp-data {
+			reg = <0x1b8 0xc>;
+		};
+
 		efuse_segment: segment@78 {
 			reg = <0x78 0x4>;
 		};
@@ -10371,6 +10375,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 			reg = <0 0x3ec40000 0 0x4000>,
 					<0 0x130a0000 0 0x1500>;
+			nvmem-cells = <&edp_calibration>;
+			nvmem-cell-names = "edp_calibration_data";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
 			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ivi_cksys2_clk	CLK_CK2_DVO_SEL>;
