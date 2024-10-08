@@ -1121,12 +1121,16 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 		}
 	}
 
-	if (cmdq_pkt_flush_threaded(cmdq_handle, pq_bypass_cmdq_cb, cb_data) < 0)
-		DDPPR_ERR("failed to flush user_cmd\n");
+	if (bypass)
+		cmdq_pkt_flush(cmdq_handle);
+	else {
+		if (cmdq_pkt_flush_threaded(cmdq_handle, pq_bypass_cmdq_cb, cb_data) < 0)
+			DDPPR_ERR("failed to flush user_cmd\n");
+	}
 
 #ifndef DRM_CMDQ_DISABLE
 	if (bypass) {
-		cmdq_mbox_stop(client); /* Before power off need stop first */
+		cmdq_pkt_destroy(cmdq_handle);
 		cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
 	}
 #endif
