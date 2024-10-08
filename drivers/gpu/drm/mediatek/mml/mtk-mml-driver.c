@@ -442,7 +442,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 		if (!tp->path_clts[i].sys_en_ref[sysid])
 			continue;
 		/* select max one across clients */
-		tput = max(tput, tp->path_clts[i].throughput);
+		tput = max(tput, tp->path_clts[i].throughput[dpc]);
 	}
 
 	for (i = 0; i < sysqos->opp_cnt; i++) {
@@ -458,13 +458,14 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 	if (!dpc && sysqos->dvfs_clk && enable)
 		mml_dvfs_vcp_enable(mml, sysid);
 
-	if (sysqos->current_volt == volt)	/* skip for better performance */
+	if (sysqos->current_volt[dpc] == volt)	/* skip for better performance */
 		goto done;
-	sysqos->current_level = i;
+	sysqos->current_level[dpc] = i;
 
-	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u",
-		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i], tput);
-	tp->qos[sysid].current_volt = volt;
+	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u dpc %u",
+		__func__, sysid, tp->qos[sysid].current_volt[dpc], volt, sysqos->opp_speeds[i],
+		tput, dpc);
+	tp->qos[sysid].current_volt[dpc] = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
