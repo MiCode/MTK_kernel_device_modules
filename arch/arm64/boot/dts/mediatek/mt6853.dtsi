@@ -2381,7 +2381,7 @@
 			};
 
 			lvts_e_data2: data2 {
-				reg = <0x2F8 0x36>;
+				reg = <0x2F8 0x48>;
 			};
 
 			apu_pod26: apu_efuse3 {
