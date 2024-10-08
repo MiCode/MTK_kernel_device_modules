@@ -240,24 +240,32 @@ static inline int is_ack_skb(struct sk_buff *skb)
 }
 
 #ifdef ENABLE_WQ_GRO
-static int is_skb_gro(struct sk_buff *skb)
+static unsigned int is_skb_gro(struct sk_buff *skb)
 {
 	u32 packet_type;
 	u32 protocol = 0xFFFFFFFF;
+	unsigned int ihl;
 
 	packet_type = skb->data[0] & 0xF0;
 
-	if (packet_type == IPV4_VERSION)
+	if (packet_type == IPV4_VERSION) {
 		protocol = ip_hdr(skb)->protocol;
-	else if (packet_type == IPV6_VERSION)
+		ihl = ip_hdr(skb)->ihl * 4;
+	} else if (packet_type == IPV6_VERSION) {
 		protocol = ipv6_hdr(skb)->nexthdr;
-
+		ihl = sizeof(struct ipv6hdr);
+	}
 	if (protocol == IPPROTO_TCP) {
 		return g_tcp_is_need_gro;
 	} else if (protocol == IPPROTO_UDP) {
 		/* UDP always do GRO */
-		if (g_cur_dl_speed > 300000000LL) //>300Mbps
+		if (g_cur_dl_speed > 300000000LL) {//>300Mbps
+			struct udphdr *udph = (void *)(skb->data + ihl);
+
+			if (htons(udph->len) <= 28) //for tethering offloading scene
+				return 2;
 			return 1;
+		}
 	}
 
 	return 0;
@@ -1440,6 +1448,7 @@ static int ccmni_rx_callback(unsigned int ccmni_idx, struct sk_buff *skb,
 	char tag_name[32] = { '\0' };
 	unsigned int tag_id = 0;
 #endif
+	unsigned int gro_if = 0;
 
 	ccmni = ccmni_ctl_blk->ccmni_inst[ccmni_idx];
 	dev = ccmni->dev;
@@ -1480,11 +1489,19 @@ static int ccmni_rx_callback(unsigned int ccmni_idx, struct sk_buff *skb,
 #endif
 	} else {
 #ifdef ENABLE_WQ_GRO
-		if (is_skb_gro(skb)) {
+		gro_if = is_skb_gro(skb);
+		/* tcp scene, or udp throughput > 300M, we enabled GRO */
+		if (gro_if == 1) {
 			spin_lock_bh(ccmni->spinlock);
 			napi_gro_receive(ccmni->napi, skb);
 			spin_unlock_bh(ccmni->spinlock);
 		} else {
+			/* tethering offload scene, small packets skip GRO,*/
+			/* and flush previous GROed packets, */
+			if (gro_if == 2)
+				napi_gro_list_flush(ccmni);
+
+			/* non-tethering scene, just deliver it to stack */
 			netif_rx(skb);
 		}
 #else
