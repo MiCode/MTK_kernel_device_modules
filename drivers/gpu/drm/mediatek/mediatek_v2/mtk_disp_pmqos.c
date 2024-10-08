@@ -1233,6 +1233,13 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 	unsigned int *slot = NULL;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if (drm_crtc_index(crtc) != 0) {
+		DDPMSG("%s invalid crtc%d\n", __func__, drm_crtc_index(crtc));
+		return;
+	}
+#endif
+
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
 	mode = &crtc->state->adjusted_mode;
@@ -1277,6 +1284,13 @@ void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx)
 {
 	int i, ret;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if (drm_crtc_index(dev_crtc) != 0) {
+		DDPMSG("%s invalid crtc%d\n", __func__, drm_crtc_index(dev_crtc));
+		return;
+	}
+#endif
 
 	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, dev_crtc->dev);
 	for (i = 0; i < 5; ++i) {
@@ -1361,6 +1375,15 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 		return 0;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if (drm_crtc_index(dev_crtc) != 0) {
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
+
+		DDPMSG("%s invalid crtc%d\n", __func__, drm_crtc_index(dev_crtc));
+		return 0;
+	}
+#endif
+
 	switch (value) {
 	case BW_THROTTLE_START: /* CAM on */
 		DDPMSG("DISP BW Throttle start\n");
@@ -1409,8 +1432,15 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv;
 	unsigned int i;
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
+#else
+	if (drm_crtc_index(crtc) == 0)
+		dev_crtc = crtc;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+#endif
 
 	if (IS_ERR_OR_NULL(mtk_crtc)) {
 		DDPPR_ERR("%s:mtk_crtc is NULL\n", __func__);
