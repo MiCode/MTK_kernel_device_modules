@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include <asm/unaligned.h>
 #include <linux/delay.h>
+#include <linux/pm.h>
 //#include "mtk_battery.h"
 
 #define DRIVER_VERSION			"1.0.0"
@@ -65,6 +66,8 @@ struct mm8013_chip {
 
 struct mm8013_chip *chip;
 bool has_8013;
+bool mm8013_suspend_flag;
+int mm8013_soc_value;
 
 static int mm8013_read_reg(struct i2c_client *client, u8 reg)
 {
@@ -88,7 +91,9 @@ int mm8013_soc(int *val)
 {
 	int soc = 0;
 
-	if (has_8013) {
+	if (mm8013_suspend_flag) {
+		*val = mm8013_soc_value;
+	} else if (has_8013) {
 		soc = mm8013_read_reg(chip->client, REG_RSOC);
 		*val = soc;
 	} else {
@@ -376,6 +381,23 @@ static int mm8013_probe(struct i2c_client *client)
 	return 0;
 }
 
+static int __maybe_unused mm8013_suspend(struct device *dev)
+{
+	mm8013_soc(&mm8013_soc_value);
+	mm8013_suspend_flag = true;
+
+	return 0;
+}
+
+static int __maybe_unused mm8013_resume(struct device *dev)
+{
+	mm8013_suspend_flag = false;
+
+	return 0;
+}
+
+static SIMPLE_DEV_PM_OPS(mm8013_pm_ops, mm8013_suspend, mm8013_resume);
+
 static	struct i2c_device_id mm8013_id_table[] = {
 	{ "mm8013", 0 },
 	{},
@@ -392,6 +414,7 @@ static struct i2c_driver mm8013_i2c_driver = {
 	.name  = "mm8013",
 	.owner = THIS_MODULE,
 	.of_match_table = mm8013_match_table,
+	.pm = &mm8013_pm_ops,
 	},
 	.probe	   = mm8013_probe,
 	.id_table  = mm8013_id_table,
