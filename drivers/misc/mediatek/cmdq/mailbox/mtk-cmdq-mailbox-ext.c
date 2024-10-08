@@ -3465,7 +3465,7 @@ static void cmdq_shutdown(struct platform_device *pdev)
 			cmdq_msg(
 				"%s hwid:%hu usage:%d idx:%d still has tasks",
 				__func__, cmdq->hwid, usage, i);
-			cmdq_mbox_thread_stop(cmdq->thread);
+			cmdq_mbox_thread_stop(&cmdq->thread[i]);
 		}
 }
 
