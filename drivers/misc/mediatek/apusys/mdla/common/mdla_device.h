@@ -128,6 +128,8 @@ struct mdla_dev {
 	/* platform */
 	void *cmd_buf_dmp;
 	size_t cmd_buf_len;
+	void *reg_buf_dmp;
+	size_t reg_buf_len;
 	struct mutex cmd_buf_dmp_lock;
 
 	/* SW preemption */

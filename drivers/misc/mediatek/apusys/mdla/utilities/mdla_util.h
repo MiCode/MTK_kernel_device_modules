@@ -167,4 +167,7 @@ do {									\
 			mdla_util_io_ops_get()->cmde.read(i, name));	\
 } while (0)
 
+#define get_reg_top_base(core_id) \
+	mdla_reg_control[core_id].apu_mdla_cmde_mreg_top
+
 #endif /* __MDLA_UTIL_H__ */

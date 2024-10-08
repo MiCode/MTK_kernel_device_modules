@@ -101,6 +101,10 @@ static void mdla_plat_destroy_dump_cmdbuf(struct mdla_dev *mdla_device)
 		mdla_device->cmd_buf_len = 0;
 	}
 
+	if (mdla_device->reg_buf_len) {
+		kvfree(mdla_device->reg_buf_dmp);
+		mdla_device->reg_buf_len = 0;
+	}
 	mutex_unlock(&mdla_device->cmd_buf_dmp_lock);
 }
 
@@ -116,6 +120,7 @@ static void mdla_plat_destroy_dump_cmdbuf(struct mdla_dev *mdla_device)
 static int mdla_plat_create_dump_cmdbuf(struct mdla_dev *mdla_device, struct command_entry *ce)
 {
 	int ret = 0;
+	uint32_t core_id = mdla_device->mdla_id;
 
 	if (ce->kva == NULL)
 		return ret;
@@ -125,15 +130,26 @@ static int mdla_plat_create_dump_cmdbuf(struct mdla_dev *mdla_device, struct com
 	if (mdla_device->cmd_buf_len)
 		kvfree(mdla_device->cmd_buf_dmp);
 
+	if (mdla_device->reg_buf_len)
+		kvfree(mdla_device->reg_buf_dmp);
+
 	mdla_device->cmd_buf_dmp = kvmalloc(ce->count * MREG_CMD_SIZE, GFP_KERNEL);
+	mdla_device->reg_buf_dmp = kvmalloc(0x1000, GFP_KERNEL);
 
 	if (!mdla_device->cmd_buf_dmp) {
 		ret = -ENOMEM;
 		mdla_err("%s: allocate mem failed\n", __func__);
 		goto out;
 	}
+	if (!mdla_device->reg_buf_dmp) {
+		ret = -ENOMEM;
+		mdla_err("%s: kvmalloc: failed\n", __func__);
+		goto out;
+	}
 	mdla_device->cmd_buf_len = ce->count * MREG_CMD_SIZE;
+	mdla_device->reg_buf_len = 0x1000;
 	memcpy(mdla_device->cmd_buf_dmp, ce->kva, mdla_device->cmd_buf_len);
+	memcpy_fromio(mdla_device->reg_buf_dmp, get_reg_top_base(core_id), 0x1000);
 
 out:
 	mutex_unlock(&mdla_device->cmd_buf_dmp_lock);
@@ -401,6 +417,21 @@ static void mdla_plat_memory_show(struct seq_file *s)
 	int i;
 	u32 core_id;
 	u32 *cmd_addr;
+	u32 *reg_addr;
+
+	seq_puts(s, "----- dump MDLA top reg dump -----\n");
+	for_each_mdla_core(core_id) {
+		mdla_device = mdla_get_device(core_id);
+		if (mdla_device->reg_buf_len == 0)
+			continue;
+		seq_printf(s, "mdla %d reg dump:\n", mdla_device->mdla_id);
+		mutex_lock(&mdla_device->cmd_buf_dmp_lock);
+		reg_addr = mdla_device->reg_buf_dmp;
+		for (i = 0; i < (mdla_device->reg_buf_len/4); i = i + 4)
+			seq_printf(s, "offset: 0x%03x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+				i*4, reg_addr[i+3], reg_addr[i+2], reg_addr[i+1], reg_addr[i]);
+		mutex_unlock(&mdla_device->cmd_buf_dmp_lock);
+	}
 
 	seq_puts(s, "------- dump MDLA code buf -------\n");
 
