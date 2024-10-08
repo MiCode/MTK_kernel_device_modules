@@ -40,6 +40,10 @@
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_drv.h"
 
+#ifdef EDPTX_AUTOTEST_SUPPORT
+#include "mtk_drm_edp_phy_autotest.h"
+#endif
+
 #define EDPTX_DEBUG_INFO		"[eDPTX]"
 #define EDPTX_COLOR_BAR			0
 
@@ -93,7 +97,7 @@ struct mtk_dp_train_info {
 	/* link_rate is in multiple of 0.27Gbps */
 	int link_rate;
 	int lane_count;
-	unsigned int channel_eq_pattern;
+	u8 channel_eq_pattern;
 };
 
 struct mtk_dp_info {
@@ -149,8 +153,15 @@ struct mtk_edp {
 	bool edp_ui_enable;
 	bool has_fec;
 
+	/* Kernel suspend and resume event */
 	bool suspend;
-	struct notifier_block nb;	/* Kernel suspend and resume event */
+	struct notifier_block nb;
+
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	/* eDP as DP for AUTOTEST */
+	struct dp_cts_auto_req cts_req;
+#endif
+
 };
 
 struct mtk_edp_data {
@@ -390,40 +401,66 @@ static bool mtk_edp_plug_state(struct mtk_edp *mtk_edp)
 		  HPD_STATUS_DP_AUX_TX_P0_MASK);
 }
 
+#ifdef EDPTX_AUTOTEST_SUPPORT
+static bool mtk_edp_autotest_request(struct mtk_edp *mtk_edp, u8 *dpcd_201)
+{
+	ssize_t ret = 0;
+	u8 device_service_irq_vector;
+	u8 device_service_irq_vector_esi0;
+
+	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_DEVICE_SERVICE_IRQ_VECTOR,
+					&device_service_irq_vector);
+	if (!ret) {
+		dev_info(mtk_edp->dev, "[eDPTX] Read DP_DEVICE_SERVICE_IRQ_VECTOR failed: %ld\n",
+			 ret);
+		return FALSE;
+	}
+
+	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_DEVICE_SERVICE_IRQ_VECTOR_ESI0,
+					&device_service_irq_vector_esi0);
+	if (!ret) {
+		dev_info(mtk_edp->dev, "[eDPTX] Read DP_DEVICE_SERVICE_IRQ_VECTOR failed: %ld\n",
+			 ret);
+		return FALSE;
+	}
+
+	*dpcd_201 = device_service_irq_vector | device_service_irq_vector_esi0;
+	dev_info(mtk_edp->dev, "%s %s 0x%x\n", EDPTX_DEBUG_INFO, __func__, *dpcd_201);
+
+	return device_service_irq_vector & DP_AUTOMATED_TEST_REQUEST ? TRUE : FALSE;
+}
+#endif
+
 static void mtk_edp_hpd_sink_event(struct mtk_edp *mtk_edp)
 {
-	ssize_t ret;
-	u8 sink_count;
-	u8 link_status[DP_LINK_STATUS_SIZE] = {};
-	u32 sink_count_reg;
-	u32 link_status_reg;
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	u8 dpcd_201;
+	bool autotest_request;
+#endif
 
-	sink_count_reg = DP_SINK_COUNT_ESI;
-	link_status_reg = DP_LANE0_1_STATUS;
-	ret = drm_dp_dpcd_readb(&mtk_edp->aux, sink_count_reg, &sink_count);
-	if (ret < 0) {
-		dev_info(mtk_edp->dev,
-			 "[eDPTX] Read sink count failed: %ld\n", ret);
-		return;
+	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
+
+	/* AUTOMETED_TEST_REQUEST */
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	autotest_request = mtk_edp_autotest_request(mtk_edp, &dpcd_201);
+	if (autotest_request) {
+		/* eDP PHY auto test */
+		mtk_edp->cts_req.regs = mtk_edp->regs;
+		if (mtk_edp->phy_regs)
+			mtk_edp->cts_req.phyd_regs = mtk_edp->phy_regs;
+		else
+			mtk_edp->cts_req.phyd_regs = mtk_edp->regs;
+
+		mtk_edp->cts_req.aux = &mtk_edp->aux;
+
+		autotest_request = mtk_edp_phy_auto_test(&mtk_edp->cts_req, dpcd_201);
+		if (!autotest_request)
+			dev_info(mtk_edp->dev, "%s %s phy autotest fail!\n", EDPTX_DEBUG_INFO, __func__);
 	}
+#endif
 
-	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
-	if (ret < 0) {
-		dev_info(mtk_edp->dev,
-			 "[eDPTX] Read DP_SINK_COUNT_ESI failed: %ld\n", ret);
-		return;
-	}
-
-	ret = drm_dp_dpcd_read(&mtk_edp->aux, link_status_reg, link_status,
-			       sizeof(link_status));
-	if (!ret) {
-		drm_info(mtk_edp->drm_dev, "[eDPTX] Read link status failed: %ld\n",
-			 ret);
-		return;
-	}
-
+	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 }
-
 
 static void mtk_edp_msa_bypass_enable(struct mtk_edp *mtk_edp, bool enable)
 {
@@ -861,8 +898,8 @@ static void mtk_edp_set_swing_pre_emphasis(struct mtk_edp *mtk_edp, int lane_cou
 	for (lane = 0; lane < lane_count; lane++) {
 
 		dev_info(mtk_edp->dev,
-			"[eDPTX] Link training lane%d: swing_val = 0x%x, pre-emphasis = 0x%x\n",
-			lane, swing_val[lane], preemphasis[lane]);
+			"%s Link training lane%d: swing_val = 0x%x, pre-emphasis = 0x%x\n",
+			EDPTX_DEBUG_INFO, lane, swing_val[lane], preemphasis[lane]);
 	}
 
 	mtk_edp_phy_configure(mtk_edp, 0, lane_count, TRUE, swing_val, preemphasis);
@@ -1132,7 +1169,7 @@ static void mtk_edp_phyd_wait_aux_ldo_ready(struct mtk_edp *mtk_edp, unsigned lo
 		pr_info("%s %s AUX not ready\n", EDPTX_DEBUG_INFO, __func__);
 }
 
-static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
+static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, u8 lanes)
 {
 	/* Turn off phy power before phy configure */
 	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
@@ -1259,8 +1296,8 @@ static void mtk_edp_video_mute(struct mtk_edp *mtk_edp, bool enable)
 		      EDP_VIDEO_UNMUTE, enable,
 		      x3, 0xFEFD, 0, 0, 0, &res);
 
-	dev_info(mtk_edp->dev, "[eDPTX] smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
-		EDP_VIDEO_UNMUTE, enable ? "enable" : "disable", res.a0, res.a1);
+	dev_info(mtk_edp->dev, "%s smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
+		EDPTX_DEBUG_INFO, EDP_VIDEO_UNMUTE, enable ? "enable" : "disable", res.a0, res.a1);
 }
 
 static void mtk_edp_aux_panel_poweron(struct mtk_edp *mtk_edp, bool pwron)
@@ -1458,7 +1495,6 @@ static void mtk_edp_train_update_swing_pre(struct mtk_edp *mtk_edp, int lanes,
 	}
 
 	mtk_edp_set_swing_pre_emphasis(mtk_edp, lanes, swing, preemphasis);
-
 }
 
 static void mtk_edp_pattern(struct mtk_edp *mtk_edp, bool is_tps1)
@@ -1513,10 +1549,9 @@ static int mtk_edp_train_setting(struct mtk_edp *mtk_edp, u8 target_link_rate,
 		return ret;
 
 	dev_info(mtk_edp->dev,
-		"Link train target_link_rate = 0x%x, target_lane_count = 0x%x\n",
-		target_link_rate, target_lane_count);
+		"%s Link train target_link_rate = 0x%x, target_lane_count = 0x%x\n",
+		EDPTX_DEBUG_INFO, target_link_rate, target_lane_count);
 
-	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -1527,6 +1562,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	u8 prev_lane_adjust = 0xff;
 	int train_retries = 0;
 	int voltage_retries = 0;
+	int ret = 0;
 
 	if (!target_lane_count)
 		return -ENODEV;
@@ -1541,8 +1577,13 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			return -ENODEV;
 		}
 
-		drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
+		ret = drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
 				 lane_adjust, sizeof(lane_adjust));
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to read adjust request %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
 		mtk_edp_train_update_swing_pre(mtk_edp, target_lane_count,
 					      lane_adjust);
 
@@ -1550,7 +1591,13 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 						       mtk_edp->rx_cap);
 
 		/* check link status from sink device */
-		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		ret = drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to link status %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
+
 		if (drm_dp_clock_recovery_ok(link_status,
 					     target_lane_count)) {
 			dev_info(mtk_edp->dev, "%s CR training pass\n", EDPTX_DEBUG_INFO);
@@ -1573,7 +1620,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			 */
 			if (voltage_retries > MTK_DP_TRAIN_VOLTAGE_LEVEL_RETRY ||
 			    (prev_lane_adjust & DP_ADJUST_VOLTAGE_SWING_LANE0_MASK) == 3) {
-				dev_dbg(mtk_edp->dev, "Link train CR fail\n");
+				dev_info(mtk_edp->dev, "%s Link train CR fail\n", EDPTX_DEBUG_INFO);
 				break;
 			}
 		} else {
@@ -1584,7 +1631,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			voltage_retries = 0;
 		}
 		prev_lane_adjust = link_status[4];
-		dev_info(mtk_edp->dev, "[eDPTX] CR training retries: %d\n", voltage_retries);
+		dev_info(mtk_edp->dev, "%s CR training retries: %d\n", EDPTX_DEBUG_INFO, voltage_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
 	/* Failed to train CR, and disable pattern. */
@@ -1600,6 +1647,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	u8 lane_adjust[2] = {};
 	u8 link_status[DP_LINK_STATUS_SIZE] = {};
 	int train_retries = 0;
+	int ret = 0;
 
 	if (!target_lane_count)
 		return -ENODEV;
@@ -1613,8 +1661,13 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			return -ENODEV;
 		}
 
-		drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
+		ret = drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
 				 lane_adjust, sizeof(lane_adjust));
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to read adjust request %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
 		mtk_edp_train_update_swing_pre(mtk_edp, target_lane_count,
 					      lane_adjust);
 
@@ -1622,7 +1675,13 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 						   mtk_edp->rx_cap);
 
 		/* check link status from sink device */
-		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		ret = drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to link status %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
+
 		if (drm_dp_channel_eq_ok(link_status, target_lane_count)) {
 			dev_info(mtk_edp->dev, "%s EQ training pass\n", EDPTX_DEBUG_INFO);
 
@@ -1632,7 +1691,8 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			mtk_edp_train_set_pattern(mtk_edp, 0);
 			return 0;
 		}
-		dev_info(mtk_edp->dev, "[eDPTX] EQ training retries: %d\n", train_retries);
+		dev_info(mtk_edp->dev, "%s EQ training retries: %d\n",
+				EDPTX_DEBUG_INFO, train_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
 	/* Failed to train EQ, and disable pattern. */
@@ -1812,7 +1872,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 	mtk_edp_training_set_scramble(mtk_edp, true);
 	mtk_edp_set_enhanced_frame_mode(mtk_edp);
 
-	pr_info("[%s %s-\n", EDPTX_DEBUG_INFO, __func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return 0;
 }
@@ -1892,12 +1952,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 
 	if (status & MTK_DP_THREAD_HPD_EVENT) {
 		dev_info(mtk_edp->dev, "[eDPTX] Receive IRQ from sink devices\n");
-		/*
-		 * mtk_edp_hpd_sink_event(mtk_edp);
-		 * ret = mtk_edp_training(mtk_edp);
-		 * if (ret)
-		 *	pr_info("%s link trainning failed %d\n", EDPTX_DEBUG_INFO, ret);
-		 */
+		mtk_edp_hpd_sink_event(mtk_edp);
 		dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 		return IRQ_HANDLED;
 	}
@@ -2161,6 +2216,10 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 	}
 
 	if (new_edid) {
+#ifdef EDPTX_AUTOTEST_SUPPORT
+		mtk_edp->cts_req.edid = new_edid;
+		mtk_edp->cts_req.connector = connector;
+#endif
 		pr_info("%s EDID raw data:\n", EDPTX_DEBUG_INFO);
 		print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
 					new_edid, EDID_LENGTH * (new_edid->extensions + 1), false);

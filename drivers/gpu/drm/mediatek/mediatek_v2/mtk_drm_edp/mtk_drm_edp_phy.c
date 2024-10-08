@@ -167,11 +167,6 @@ static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts
 
 	if (opts->dp.set_rate) {
 		switch (opts->dp.link_rate) {
-		default:
-			dev_info(&phy->dev,
-				"Implementation error, unknown linkrate %x\n",
-				opts->dp.link_rate);
-			return -EINVAL;
 		case 1620:
 			val = BIT_RATE_RBR;
 			break;
@@ -184,6 +179,11 @@ static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts
 		case 8100:
 			val = BIT_RATE_HBR3;
 			break;
+		default:
+			dev_info(&phy->dev,
+				"Implementation error, unknown linkrate %x\n",
+				opts->dp.link_rate);
+			return -EINVAL;
 		}
 		regmap_write(edp_phy->regs, MTK_DP_PHY_DIG_BIT_RATE, val);
 	}
@@ -254,9 +254,9 @@ static int mtk_edp_phy_reset(struct phy *phy)
 	pr_info("[eDPTX] Current lane power %x\n", val);
 
 	while (val > 0) {
-		val >>= 1;
 		regmap_update_bits(edp_phy->regs, DP_PHY_DIG_TX_CTL_0,
 			val, TX_LN_EN_FLDMASK);
+		val >>= 1;
 	}
 
 	mtk_dptx_phyd_reset_swing_pre(edp_phy);
