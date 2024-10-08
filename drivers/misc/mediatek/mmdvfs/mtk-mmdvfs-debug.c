@@ -214,6 +214,7 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 void mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
+	uint64_t mux_cb_time;
 	u32 i, j, k, val;
 
 	if (!g_mmdvfs)
@@ -374,6 +375,18 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 		mmdvfs_debug_dump_line(file, "[%5u.%6u] vmm_ceil_enable:%#x",
 			readl(MEM_REC_VMM_CEIL_SEC(j)), readl(MEM_REC_VMM_CEIL_USEC(j)),
 			readl(MEM_REC_VMM_CEIL_VAL(j)));
+
+	// sram mux cb records
+	if (mmdvfs_get_mux_cb_sram_enable()) {
+		mmdvfs_debug_dump_line(file, "sram mux cb records");
+		for (i = 0; i < SRAM_MUX_CB_CNT; i++) {
+			mux_cb_time = readq(SRAM_MUX_CB_TIME(i));
+			if (mux_cb_time)
+				mmdvfs_debug_dump_line(file, "[%5llu.%6llu] mux_cb_val:%#x",
+					mux_cb_time/1000000, mux_cb_time%1000000,
+					readl(SRAM_MUX_CB_VAL(i)));
+		}
+	}
 
 	// vcp exception
 	if (readl(MEM_VCP_EXC_SEC)) {
