@@ -1322,8 +1322,12 @@ static void scp_write_reset_register_with_retry(int cpu_id)
 
 void scp_wdt_reset(int cpu_id)
 {
+	int scp_awake_flag = 0;
+	int ret = 0;
+
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
 		pr_notice("[SCP] %s: awake scp fail\n", __func__);
 	}
 
@@ -1331,15 +1335,15 @@ void scp_wdt_reset(int cpu_id)
 	if (scpreg.secure_dump) {
 		switch (cpu_id) {
 		case 0:
-			scp_do_wdt_set(0);
+			ret = scp_do_wdt_set(0);
 			break;
 		case 1:
-			scp_do_wdt_set(1);
+			ret = scp_do_wdt_set(1);
 			break;
 		}
 
 		if (sap_enabled() && cpu_id == sap_get_core_id())
-			scp_do_wdt_set(cpu_id);
+			ret = scp_do_wdt_set(cpu_id);
 	} else {
 #else
 	{
@@ -1350,6 +1354,11 @@ void scp_wdt_reset(int cpu_id)
 	if (sap_enabled() && cpu_id == sap_get_core_id())
 		sap_wdt_reset();
 
+	}
+
+	if(!scp_awake_flag && ret) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
 	}
 }
 EXPORT_SYMBOL(scp_wdt_reset);
