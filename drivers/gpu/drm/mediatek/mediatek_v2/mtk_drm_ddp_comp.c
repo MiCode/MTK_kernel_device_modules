@@ -3134,6 +3134,9 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
 			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
 		}
+
+		if (priv->data->mmsys_id == MMSYS_MT6899 && priv->side_config_regs)
+			writel_relaxed(0x13, priv->side_config_regs + MMSYS1_BUF_UNDERRUN_ID0);
 	} else {
 		/* 0xF4/0xF8: config on DISPSYS(HARD CODE) */
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
@@ -3167,6 +3170,9 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
 				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}
+		if (priv->data->mmsys_id == MMSYS_MT6899 && priv->side_config_regs_pa)
+			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
+				MMSYS1_BUF_UNDERRUN_ID0, 0x13, ~0);
 	}
 }
 

@@ -31491,6 +31491,11 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 					ddp->data->mutex_sof[val],
 					ddp->ovlsys1_regs +
 					DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+			if (priv->data->mmsys_id == MMSYS_MT6899) {
+				writel_relaxed(
+					MT6899_MUTEX_EOF_DSI0,
+					ddp->side_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+			}
 		}
 		return;
 	}
