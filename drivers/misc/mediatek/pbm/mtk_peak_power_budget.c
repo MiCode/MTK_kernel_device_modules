@@ -2123,6 +2123,7 @@ static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 			lbat_set_hpt_mode(hpt_enable);
 
 		pb.hpt_cur_lv = level;
+		pr_info("%s: hpt_reg=%d pb.hpt_cur_lv=%d\n", __func__, pb.hpt_lv_t[level], pb.hpt_cur_lv);
 	}
 }
 
@@ -2204,8 +2205,10 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	get_md_dbm_info();
 	ppb_set_wifi_pwr_addr_by_dts();
 
-	if (pb.hpt_max_lv)
+	if (pb.hpt_max_lv) {
+		pb.hpt_cur_lv = -1;
 		register_bp_thl_notify(&hpt_bp_cb, BATTERY_PERCENT_PRIO_HPT);
+	}
 
 	timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
 	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
