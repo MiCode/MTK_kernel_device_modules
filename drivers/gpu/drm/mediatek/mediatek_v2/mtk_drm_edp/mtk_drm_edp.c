@@ -74,17 +74,35 @@
 #define MTK_EDP_MAX_LINK_RATE			"max-linkrate-mhz"
 
 enum {
-	MTK_DP_CAL_GLB_BIAS_TRIM = 0,
-	MTK_DP_CAL_CLKTX_IMPSE,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_0,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_1,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_2,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_3,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_0,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_1,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_2,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_3,
-	MTK_DP_CAL_MAX,
+	DPTX_LANE0 = 0x0,
+	DPTX_LANE1 = 0x1,
+	DPTX_LANE2 = 0x2,
+	DPTX_LANE3 = 0x3,
+	DPTX_LANE_MAX,
+};
+
+enum {
+	EFUSE_IP_MIPI_DSI_EDP_D2 = 0,
+	EFUSE_IP_MIPI_DSI_EDP_D2_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D0,
+	EFUSE_IP_MIPI_DSI_EDP_D0_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D1,
+	EFUSE_IP_MIPI_DSI_EDP_D1_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D3,
+	EFUSE_IP_MIPI_DSI_EDP_D3_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D2,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D0,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D1,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D3,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM,
+	EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS,
+	EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS,
+	EFUSE_IP_MIPI_BIAS_INTR_CTRL,
+	EFUSE_IP_MIPI_V2V_VTRIM,
+	MTK_EDP_CAL_MAX,
 };
 
 struct mtk_edp_enable {
@@ -122,7 +140,7 @@ struct mtk_edp {
 	u8 max_linkrate;
 	struct clk *power_clk;
 	u8 rx_cap[DP_RECEIVER_CAP_SIZE];
-	u32 cal_data[MTK_DP_CAL_MAX];
+	u32 cal_data[MTK_EDP_CAL_MAX];
 	u32 irq_thread_handle;
 	/* irq_thread_lock is used to protect irq_thread_handle */
 	spinlock_t irq_thread_lock;
@@ -152,6 +170,7 @@ struct mtk_edp {
 	bool external_monitor;
 	bool edp_ui_enable;
 	bool has_fec;
+	bool has_inited;
 
 	/* Kernel suspend and resume event */
 	bool suspend;
@@ -171,86 +190,166 @@ struct mtk_edp_data {
 	enum mtk_mmsys_id mmsys_id;
 };
 
-static const struct mtk_edp_efuse_fmt mt8678_edp_efuse_fmt[MTK_DP_CAL_MAX] = {
-	[MTK_DP_CAL_GLB_BIAS_TRIM] = {
-		.idx = 3,
-		.shift = 27,
-		.mask = 0x1f,
-		.min_val = 1,
-		.max_val = 0x1e,
+static const struct mtk_edp_efuse_fmt mt8678_edp_efuse_fmt[MTK_EDP_CAL_MAX] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D2] = {
+		.idx = 0,
+		.shift = 0,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
 		.default_val = 0xf,
 	},
-	[MTK_DP_CAL_CLKTX_IMPSE] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D2_DEM] = {
 		.idx = 0,
-		.shift = 9,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_0] = {
-		.idx = 2,
-		.shift = 28,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_1] = {
-		.idx = 2,
-		.shift = 20,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_2] = {
-		.idx = 2,
-		.shift = 12,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_3] = {
-		.idx = 2,
 		.shift = 4,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
 	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_0] = {
-		.idx = 2,
-		.shift = 24,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_1] = {
-		.idx = 2,
-		.shift = 16,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_2] = {
-		.idx = 2,
+	[EFUSE_IP_MIPI_DSI_EDP_D0] = {
+		.idx = 0,
 		.shift = 8,
 		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
 	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_3] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D0_DEM] = {
+		.idx = 0,
+		.shift = 12,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D1] = {
+		.idx = 0,
+		.shift = 24,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D1_DEM] = {
+		.idx = 0,
+		.shift = 28,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D3] = {
+		.idx = 1,
+		.shift = 0,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D3_DEM] = {
+		.idx = 1,
+		.shift = 4,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D2] = {
+		.idx = 1,
+		.shift = 16,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] = {
+		.idx = 1,
+		.shift = 20,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D0] = {
+		.idx = 1,
+		.shift = 24,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] = {
+		.idx = 1,
+		.shift = 28,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D1] = {
 		.idx = 2,
 		.shift = 0,
 		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] = {
+		.idx = 2,
+		.shift = 4,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D3] = {
+		.idx = 2,
+		.shift = 7,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] = {
+		.idx = 2,
+		.shift = 11,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS] = {
+		.idx = 2,
+		.shift = 14,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS] = {
+		.idx = 2,
+		.shift = 18,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_BIAS_INTR_CTRL] = {
+		.idx = 2,
+		.shift = 22,
+		.mask = 0x3f,
+		.min_val = 0x0,
+		.max_val = 0x3f,
+		.default_val = 0x0,
+	},
+	[EFUSE_IP_MIPI_V2V_VTRIM] = {
+		.idx = 2,
+		.shift = 28,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xa,
 	},
 };
 
@@ -378,6 +477,55 @@ static int mtk_edp_update_bits(struct mtk_edp *mtk_edp, u32 offset,
 			"Failed to update register 0x%04x with value 0x%08x, mask 0x%x\n",
 			offset, val, mask);
 	return ret;
+}
+
+#ifdef EDPTX_DEBUG
+static u32 mtk_edp_phy_read(struct mtk_edp *mtk_edp, u32 offset)
+{
+	u32 read_val;
+	int ret;
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+
+	ret = regmap_read(regs, offset, &read_val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to read register 0x%x: %d\n",
+			offset, ret);
+		return 0;
+	}
+
+	return read_val;
+}
+
+static int mtk_edp_phy_write(struct mtk_edp *mtk_edp, u32 offset, u32 val)
+{
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+	int ret = 0;
+
+	ret = regmap_write(regs, offset, val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to write register 0x%8x with value 0x%x\n",
+			offset, val);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
+static int mtk_edp_phy_update_bits(struct mtk_edp *mtk_edp, u32 offset,
+			      u32 mask, u32 val)
+{
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+	int ret = 0;
+
+	ret = regmap_update_bits(regs, offset, mask, val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to update register 0x%04x with value 0x%08x, mask 0x%x\n",
+			offset, val, mask);
+		return ret;
+	}
+
+	return 0;
 }
 
 static void mtk_edp_bulk_16bit_write(struct mtk_edp *mtk_edp, u32 offset, u8 *buf,
@@ -853,6 +1001,385 @@ static int mtk_edp_aux_do_transfer(struct mtk_edp *mtk_edp, bool is_read, u8 cmd
 	return 0;
 }
 
+static void mtk_edp_set_calibration_data(struct mtk_edp *mtk_edp)
+{
+	u32 *cal_data = mtk_edp->cal_data;
+	u32 lane = 0x0,  data_index = 0x0, offset = 0x0;
+	u32 n_total_l = 0x0, temp_l = 0x0, code_s01p2_d = 0x0, code_dem_s01p2_d = 0x0;
+	u32 temp_l_preemp3_swing0 = 0x0, code_s0p3_d, code_dem_sop3_d = 0x0;
+
+	/* Bandgap*/
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_2,
+					RG_DSI_V2V_VTRIM,
+					cal_data[EFUSE_IP_MIPI_V2V_VTRIM] << 16);
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_2,
+					RG_DSI_BIAS_INTR_CTRL,
+					cal_data[EFUSE_IP_MIPI_BIAS_INTR_CTRL] << 0);
+	/* AUX R50 */
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+					RG_CKM_CKTX_IMPSEL_PMOS,
+					cal_data[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS] << 8);
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+					RG_CKM_CKTX_IMPSEL_NMOS,
+					cal_data[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS] << 12);
+
+	/* Main-Link RT code for Swing 0 and Swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D0;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D1;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D2;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D3;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 20);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 20);
+	}
+
+	/* Main-Link RT_DEM code for Swing 0 and Swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 19);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 19);
+	}
+
+	/* Main-Link RT code for Swing 2 and Swing 3 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D0;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D1;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D2;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D3;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 2 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_P_RT_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_N_RT_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_P_RT_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_N_RT_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 20);
+		/* Swing 3 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_6,
+						RG_DSI_LN_P_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_6,
+						RG_DSI_LN_N_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 16);
+	}
+
+	/* Main-Link RT_DEM code for swing 2 and swing 3 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D0_DEM;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D1_DEM;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D2_DEM;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D3_DEM;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 2 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 19);
+		/* Swing 3 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_14,
+						RG_DSI_LN_P_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_14,
+						RG_DSI_LN_N_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 16);
+	}
+
+	/* Pre-emphasis 2 for swing 0 and swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_2,
+						code_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_2,
+						code_s01p2_d << 24);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_2,
+						code_dem_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_2,
+						code_dem_s01p2_d << 24);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_2,
+						code_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_2,
+						code_s01p2_d << 24);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_2,
+						code_dem_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_2,
+						code_dem_s01p2_d << 16);
+	}
+
+	/* Pre-emphasis 3 for swing 0 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		temp_l_preemp3_swing0 = (n_total_l / 100) * 84 - 20;
+		code_s0p3_d = temp_l_preemp3_swing0 < code_s01p2_d ?
+					temp_l_preemp3_swing0 : (code_s01p2_d - 1);
+		code_dem_sop3_d = n_total_l - 22 - code_s0p3_d;
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_3,
+						code_s0p3_d << 12);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_3,
+						code_s0p3_d << 28);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_3,
+						code_dem_sop3_d << 11);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_3,
+						code_dem_sop3_d << 27);
+	}
+
+	/* Set IPMUX_CONTROL to eDP Mode */
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_GLB_OFFSET + IPMUX_CONTROL, 0,
+					RG_EDPTX_DSI_PHYD_SEL);
+
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN0_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN1_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN2_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN3_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+				XTP_CKTX_675_VOLTAGE_SEL, RG_XTP_GLB_CKTX_VLDO_SEL);
+
+	mtk_edp->has_inited = true;
+}
+
 static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 				u32 link_rate, int lane_count,
 				bool set_swing_pre, unsigned int *swing,
@@ -878,7 +1405,10 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 
 	ret = phy_configure(mtk_edp->phy, &phy_opts);
 	if (ret)
-		return ret;
+		goto err_phy_config;
+
+	if (!mtk_edp->has_inited)
+		mtk_edp_set_calibration_data(mtk_edp);
 
 	/* Turn on phy power after phy configure */
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
@@ -887,6 +1417,10 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 			   DP_PWR_STATE_BANDGAP_TPLL_LANE, DP_PWR_STATE_MASK);
 
 	return 0;
+
+err_phy_config:
+		phy_exit(mtk_edp->phy);
+	return ret;
 }
 
 static void mtk_edp_set_swing_pre_emphasis(struct mtk_edp *mtk_edp, int lane_count,
@@ -1201,30 +1735,28 @@ static void mtk_edp_get_calibration_data(struct mtk_edp *mtk_edp)
 	int i = 0;
 	size_t len = 0;
 
-	cell = nvmem_cell_get(dev, "dp_calibration_data");
+	cell = nvmem_cell_get(dev, "edp_calibration_data");
 	if (IS_ERR(cell)) {
-		dev_info(dev, "Failed to get nvmem cell dp_calibration_data\n");
+		dev_info(dev, "%s Failed to get nvmem cell dp_calibration_data\n", EDPTX_DEBUG_INFO);
 		goto use_default_val;
 	}
 
 	buf = (u32 *)nvmem_cell_read(cell, &len);
 	nvmem_cell_put(cell);
 
-	if (IS_ERR(buf) || ((len / sizeof(u32)) != 4)) {
-		dev_info(dev, "Failed to read nvmem_cell_read\n");
-
+	if (IS_ERR(buf) || len / sizeof(u32) != 3) {
+		dev_info(dev, "%s Failed to read nvmem_cell_read\n", EDPTX_DEBUG_INFO);
 		if (!IS_ERR(buf))
 			kfree(buf);
 
 		goto use_default_val;
 	}
 
-	for (i = 0; i < MTK_DP_CAL_MAX; i++) {
+	for (i = 0; i < MTK_EDP_CAL_MAX; i++) {
 		fmt = &mtk_edp->data->efuse_fmt[i];
 		cal_data[i] = (buf[fmt->idx] >> fmt->shift) & fmt->mask;
-
 		if (cal_data[i] < fmt->min_val || cal_data[i] > fmt->max_val) {
-			dev_info(mtk_edp->dev, "Invalid efuse data, idx = %d\n", i);
+			dev_info(mtk_edp->dev, "%s Invalid efuse data, idx = %d\n", EDPTX_DEBUG_INFO, i);
 			kfree(buf);
 			goto use_default_val;
 		}
@@ -1234,8 +1766,8 @@ static void mtk_edp_get_calibration_data(struct mtk_edp *mtk_edp)
 	return;
 
 use_default_val:
-	dev_info(mtk_edp->dev, "[eDPTX] Use default calibration data\n");
-	for (i = 0; i < MTK_DP_CAL_MAX; i++)
+	dev_info(mtk_edp->dev, "%s Use default calibration data\n", EDPTX_DEBUG_INFO);
+	for (i = 0; i < MTK_EDP_CAL_MAX; i++)
 		cal_data[i] = mtk_edp->data->efuse_fmt[i].default_val;
 }
 
@@ -1374,6 +1906,7 @@ static void mtk_edp_initialize_priv_data(struct mtk_edp *mtk_edp)
 	pr_info("%s cable_plugged_in = %d\n", EDPTX_DEBUG_INFO, mtk_edp->train_info.cable_plugged_in);
 	mtk_edp->info.format = DP_PIXELFORMAT_RGB;
 	mtk_edp->has_fec = false;
+	mtk_edp->has_inited = false;
 	memset(&mtk_edp->info.vm, 0, sizeof(struct videomode));
 }
 
@@ -2093,10 +2626,15 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	/* eDP PHY ioremap resource */
 	mtk_edp->phy_regs = NULL;
 	phy_base = devm_platform_ioremap_resource(pdev, 1);
-	if (!IS_ERR(phy_base)) {
-		mtk_edp->phy_regs = devm_regmap_init_mmio(dev, phy_base, &mtk_edp_phy_regmap_config);
-		if (IS_ERR(mtk_edp->phy_regs))
-			mtk_edp->phy_regs = NULL;
+	if (IS_ERR(phy_base)) {
+		dev_info(dev, "%s failed to phy ioremap %ld\n", EDPTX_DEBUG_INFO, PTR_ERR(phy_base));
+		return PTR_ERR(phy_base);
+	}
+	mtk_edp->phy_regs = devm_regmap_init_mmio(dev, phy_base, &mtk_edp_phy_regmap_config);
+	if (IS_ERR(mtk_edp->phy_regs)) {
+		dev_info(dev, "%s failed to phy regmap init %ld\n",
+				EDPTX_DEBUG_INFO, PTR_ERR(mtk_edp->phy_regs));
+		return PTR_ERR(mtk_edp->phy_regs);
 	}
 
 	ret = device_property_read_u32(dev, MTK_EDP_MAX_LANE_COUNT, &lane_count);
@@ -2188,15 +2726,9 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 {
 
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
-	bool enabled = mtk_edp->enabled;
 	struct edid *new_edid = NULL;
 
 	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
-
-	if (!enabled) {
-		drm_atomic_bridge_chain_pre_enable(bridge, connector->state->state);
-		mtk_edp_aux_panel_poweron(mtk_edp, true);
-	}
 
 	new_edid = drm_get_edid(connector, &mtk_edp->aux.ddc);
 
@@ -2208,11 +2740,6 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		drm_err(mtk_edp->drm_dev, " %s Can't parse capabilities\n", EDPTX_DEBUG_INFO);
 		kfree(new_edid);
 		new_edid = NULL;
-	}
-
-	if (!enabled) {
-		mtk_edp_aux_panel_poweron(mtk_edp, false);
-		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
 	}
 
 	if (new_edid) {
@@ -2302,7 +2829,7 @@ static void mtk_edp_aux_init(struct mtk_edp *mtk_edp)
 
 static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 {
-	int ret;
+	int ret = 0;
 
 	ret = phy_init(mtk_edp->phy);
 	if (ret) {
@@ -2310,18 +2837,8 @@ static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 		return ret;
 	}
 
-	ret = mtk_edp_phy_configure(mtk_edp, 0x6, 1, false, NULL, NULL);
-	if (ret) {
-		dev_info(mtk_edp->dev, "%s Failed to configure phy: %d\n", EDPTX_DEBUG_INFO, ret);
-		goto err_phy_config;
-	}
-
 	mtk_edp_init_port(mtk_edp);
 	mtk_edp_power_enable(mtk_edp);
-
-	return ret;
-err_phy_config:
-		phy_exit(mtk_edp->phy);
 
 	return ret;
 }
@@ -2449,9 +2966,10 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 					struct drm_bridge_state *old_state)
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
-	int ret;
+	int ret = 0;
 
 	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
+
 	mtk_edp->conn = drm_atomic_get_new_connector_for_encoder(old_state->base.state,
 								bridge->encoder);
 	if (!mtk_edp->conn) {
@@ -2461,6 +2979,7 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 
 	mtk_edp_aux_panel_poweron(mtk_edp, true);
 	mtk_edp_parse_capabilities(mtk_edp);
+
 	ret = mtk_edp_training(mtk_edp);
 	if (ret) {
 		drm_err(mtk_edp->drm_dev, "%s Training failed, %d\n", EDPTX_DEBUG_INFO, ret);
@@ -3140,6 +3659,7 @@ static int mtk_edp_resume(struct device *dev)
 		mtk_edp->train_info.cable_plugged_in = true;
 
 	mtk_edp->suspend = false;
+	mtk_edp->has_inited = false;
 
 	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO, __func__,
 			atomic_read(&dev->power.usage_count));

@@ -47,7 +47,9 @@
 #define EDP_TX_LN_PRE_EMPH_VAL_FLDMASK                                  0x18
 #define EDP_TX_LN_PRE_EMPH_VAL_FLDMASK_POS                              3
 
-
+#define RG_DSI_DEM_EN			0x500
+#define DSI_DE_EMPHASIS_ENABLE	BIT(1)
+#define RG_DSI_QC_EN			0x508
 
 #define MTK_DP_LANE0_DRIVING_PARAM_3		(PHYD_OFFSET + 0x138)
 #define MTK_DP_LANE1_DRIVING_PARAM_3		(PHYD_OFFSET + 0x238)
@@ -164,6 +166,7 @@ static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts
 {
 	struct mtk_edp_phy *edp_phy = phy_get_drvdata(phy);
 	u32 val = 0x0;
+	int i = 0;
 
 	if (opts->dp.set_rate) {
 		switch (opts->dp.link_rate) {
@@ -185,6 +188,13 @@ static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts
 				opts->dp.link_rate);
 			return -EINVAL;
 		}
+
+		if (val == BIT_RATE_HBR3)
+			regmap_update_bits(edp_phy->regs, RG_DSI_QC_EN, BIT(19) | BIT(20),
+				BIT(19) | BIT(20));
+		else
+			regmap_update_bits(edp_phy->regs, RG_DSI_QC_EN, BIT(19) | BIT(20), 0);
+
 		regmap_write(edp_phy->regs, MTK_DP_PHY_DIG_BIT_RATE, val);
 	}
 
@@ -228,6 +238,18 @@ static int mtk_edp_phy_configure(struct phy *phy, union phy_configure_opts *opts
 						opts->dp.voltage[DPTX_LANE3] << 1 |
 						opts->dp.pre[DPTX_LANE3] << 3);
 				}
+			}
+		}
+
+		if (opts->dp.lanes == DPTX_LANE_COUNT4) {
+			for (i = 0; i < DPTX_LANE_COUNT4; i++) {
+				if (opts->dp.pre[i] != 0) {
+					regmap_update_bits(edp_phy->regs, RG_DSI_DEM_EN, BIT(1), BIT(1));
+					break;
+				} else if (i == DPTX_LANE3)
+					regmap_update_bits(edp_phy->regs, RG_DSI_DEM_EN, BIT(1), 0);
+				else
+					continue;
 			}
 		}
 	}
