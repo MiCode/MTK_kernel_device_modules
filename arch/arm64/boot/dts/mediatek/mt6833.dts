@@ -7075,10 +7075,10 @@ grpid = <11>;
 		};
 		mt6315_3_regulator: mt6315_3_regulator {
 			compatible = "mediatek,mt6315_3-regulator";
-			buck-size = <3>;
+			buck-size = <4>;
 			buck1-modeset-mask = <0x3>;
 
-			mt6315_3_vbuck1: 3_vbuck1 {
+			mt6315_3_vbuck1: 3-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "3_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -7088,7 +7088,7 @@ grpid = <11>;
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck3: 3_vbuck3 {
+			mt6315_3_vbuck3: 3-vbuck3 {
 				regulator-compatible = "vbuck3";
 				regulator-name = "3_vbuck3";
 				regulator-min-microvolt = <300000>;
@@ -7098,7 +7098,7 @@ grpid = <11>;
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck4: 3_vbuck4 {
+			mt6315_3_vbuck4: 3-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "3_vbuck4";
 				regulator-min-microvolt = <300000>;
