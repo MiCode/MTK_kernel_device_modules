@@ -1094,19 +1094,19 @@ static void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 
 	switch (fmt->pixelformat) {
 	case V4L2_PIX_FMT_NV12_HYFBC:
-		descr = "Mediatek hybrid compressed NV12 Y/UV 4:2:0"; break;
+		descr = "MTK compressed NV12 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_P010_HYFBC:
-		descr = "Mediatek hybrid compressed P010 10-bit Y/UV 4:2:0"; break;
+		descr = "MTK compressed P010 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_RGB32_AFBC:
-		descr = "Arm compressed 32-bit A/XRGB 8-8-8-8"; break;
+		descr = "Arm compressed A/XRGB 8-8-8-8"; break;
 	case V4L2_PIX_FMT_RGBA1010102_AFBC:
-		descr = "Arm compressed 32-bit RGBA 10-10-10-2"; break;
+		descr = "Arm compressed RGBA 10-10-10-2"; break;
 	case V4L2_PIX_FMT_NV12_AFBC:
 		descr = "Arm compressed NV12 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_NV12_10B_AFBC:
 		descr = "Arm compressed 10-bit NV12"; break;
 	case V4L2_PIX_FMT_YVU420A:
-		descr = "Planar YVU 4:2:0 16-pixel stride"; break;
+		descr = "Planar YVU 4:2:0 16-byte stride"; break;
 	}
 
 	if (descr)
