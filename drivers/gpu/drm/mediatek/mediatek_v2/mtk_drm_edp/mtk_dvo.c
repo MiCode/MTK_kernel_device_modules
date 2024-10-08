@@ -33,6 +33,7 @@
 #include "../mtk_drm_drv.h"
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
+#include "mtk_drm_edp_api.h"
 #include "../mtk_disp_pmqos.h"
 #include "../mtk_dump.h"
 
@@ -977,6 +978,102 @@ unsigned long long mtk_dvo_get_frame_hrt_bw_base_by_datarate(
 	return bw_base;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static void mtk_dvo_get_panels_info(struct mtk_dvo *dvo,
+	struct mtk_drm_panels_info *panel_ctx)
+{
+	int dvo_cnt = 0;
+	int crtc_conn_id = -1;
+	bool only_check_mode = false;
+
+	if (!panel_ctx) {
+		pr_info("invalid panel_info_ctx ptr\n");
+		return;
+	}
+
+	if (panel_ctx->connector_cnt == -1)
+		only_check_mode = true;
+
+	if (only_check_mode == false) {
+		char *panel_name = NULL;
+
+		panel_name = vzalloc(sizeof(char) * GET_PANELS_STR_LEN);
+		if (panel_name == NULL)
+			return;
+
+		mtk_ddp_comp_io_cmd(&dvo->ddp_comp, NULL, GET_PANEL_NAME,
+				panel_name);
+
+		if (panel_name) {
+			strscpy(panel_ctx->panel_name[dvo_cnt], panel_name,
+				GET_PANELS_STR_LEN);
+			panel_ctx->connector_obj_id[dvo_cnt] =
+							dvo->connector->base.id;
+			panel_ctx->possible_crtc[dvo_cnt][0] =
+							dvo->encoder.possible_crtcs;
+		} else {
+			pr_info("%s NULL panel_name\n", __func__);
+		}
+		vfree(panel_name);
+	}
+	dvo_cnt += 1;
+
+	if (only_check_mode == true) {
+		crtc_conn_id = dvo->connector->base.id;
+		panel_ctx->connector_cnt = dvo_cnt;
+		panel_ctx->default_connector_id = crtc_conn_id;
+	}
+
+}
+
+static int mtk_dvo_get_panel_name(struct mtk_dvo *dvo, char *panel_name)
+{
+	struct device_node *node = dvo->dev->of_node;
+	struct device_node *edp_tx_node = NULL, *serdes_node = NULL;
+	struct device_node *panel_node = NULL;
+	const char *panel_name_src = NULL;
+	int ret = 0;
+
+	edp_tx_node = of_graph_get_remote_node(node, 0, 0);
+	if (!edp_tx_node) {
+		pr_info("%s: %pOF failed to get edp_tx remote node\n", __func__, node);
+		return -EINVAL;
+	}
+
+	serdes_node = of_graph_get_remote_node(edp_tx_node, 1, 0);
+	if (!serdes_node) {
+		pr_info("%s: %pO failed to get serdes remote node\n", __func__, edp_tx_node);
+		ret = -EINVAL;
+		goto err_edp_tx_node;
+	}
+
+	panel_node = of_graph_get_remote_node(serdes_node, 1, 0);
+	if (!panel_node) {
+		pr_info("%s: %pOF failed to get panel node\n", __func__, serdes_node);
+		ret = -EINVAL;
+		goto err_serdes_node;
+	}
+
+	panel_name_src = of_get_property(panel_node, "panel-name", NULL);
+	if (!panel_name_src) {
+		dev_info(dvo->dev, "%pOF: no panel name specified\n", panel_node);
+		ret = -EINVAL;
+		goto err_panel_node;
+	}
+
+	strscpy(panel_name, panel_name_src, (strlen(panel_name_src) + 1));
+
+err_panel_node:
+	of_node_put(panel_node);
+err_serdes_node:
+	of_node_put(serdes_node);
+err_edp_tx_node:
+	of_node_put(edp_tx_node);
+
+	return ret;
+}
+#endif
+
 static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
@@ -1031,12 +1128,42 @@ static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		*base_bw = mtk_dvo_get_frame_hrt_bw_base_by_datarate(crtc, dvo);
 	}
 		break;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	case SET_CRTC_ID:
 	{
 		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,
 			mtk_dump_comp_str(comp), *(unsigned int *)params);
 		dvo->encoder.possible_crtcs = *(unsigned int *)params;
+	}
+		break;
+	case GET_PANEL_NAME:
+	{
+		int ret;
+
+		ret = mtk_dvo_get_panel_name(dvo, params);
+		if (ret != 0)
+			pr_info("[eDPTX] failed to get panel name %d\n", ret);
+		else
+			pr_info("[eDPTX] params: %s\n", params);
+	}
+		break;
+	case GET_ALL_CONNECTOR_PANEL_NAME:
+	{
+		struct mtk_drm_panels_info *panel_ctx;
+
+		panel_ctx = (struct mtk_drm_panels_info *)params;
+		if (!panel_ctx) {
+			pr_info("invalid panel_info_ctx ptr\n");
+			break;
+		}
+		mtk_dvo_get_panels_info(dvo, panel_ctx);
+	}
+		break;
+	case GET_CONNECTOR_ID:
+	{
+		unsigned int *conn_id = (unsigned int *)params;
+
+		*conn_id = dvo->connector->base.id;
 	}
 		break;
 #endif
@@ -1159,8 +1286,12 @@ int mtk_drm_dvo_get_info(struct drm_device *dev,
 
 	info->physical_width = g_mtk_dvo->mode.hdisplay;
 	info->physical_height = g_mtk_dvo->mode.vdisplay;
+	info->physicalHeightUm = g_mtk_dvo->mode.height_mm;
+	info->physicalWidthUm = g_mtk_dvo->mode.width_mm;
 	pr_info("[eDPTX] physical_width:%u physical_height:%u\n",
 			info->physical_width, info->physical_height);
+	pr_info("[eDPTX] physical_width_mm:%u physical_height_mm:%u\n",
+			info->physicalHeightUm, info->physicalWidthUm);
 
 	return 0;
 }
