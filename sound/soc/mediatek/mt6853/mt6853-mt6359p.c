@@ -358,6 +358,7 @@ static int mt6853_mt6359p_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 static int mt6853_mt6359p_init(struct snd_soc_pcm_runtime *rtd)
 {
+	struct mt6359_codec_ops ops;
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
@@ -365,6 +366,11 @@ static int mt6853_mt6359p_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_component *codec_component =
 		snd_soc_rtdcom_lookup(rtd, CODEC_MT6359_NAME);
 	struct snd_soc_dapm_context *dapm = &rtd->card->dapm;
+	ops.enable_dc_compensation = mt6853_enable_dc_compensation;
+	ops.set_lch_dc_compensation = mt6853_set_lch_dc_compensation;
+	ops.set_rch_dc_compensation = mt6853_set_rch_dc_compensation;
+	ops.adda_dl_gain_control = mt6853_adda_dl_gain_control;
+	mt6359_set_codec_ops(codec_component, &ops);
 
 	/* set mtkaif protocol */
 	mt6359_set_mtkaif_protocol(codec_component,

@@ -222,6 +222,11 @@ unsigned int mt6853_general_rate_transform(struct device *dev,
 					   unsigned int rate);
 unsigned int mt6853_rate_transform(struct device *dev,
 				   unsigned int rate, int aud_blk);
+int mt6853_enable_dc_compensation(bool enable);
+int mt6853_set_lch_dc_compensation(int value);
+int mt6853_set_rch_dc_compensation(int value);
+int mt6853_adda_dl_gain_control(bool mute);
+
 int mt6853_dai_set_priv(struct mtk_base_afe *afe, int id,
 			int priv_size, const void *priv_data);
 #endif

@@ -3364,6 +3364,26 @@ skip_regmap:
 	return 0;
 }
 
+static int mt6853_afe_pcm_copy(struct snd_pcm_substream *substream,
+			       int channel, unsigned long hwoff,
+			       struct iov_iter *buf, unsigned long bytes,
+			       mtk_sp_copy_f sp_copy)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_component *component =
+		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+	int ret = 0;
+
+	mt6853_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4);
+
+	ret = sp_copy(substream, channel, hwoff, buf, bytes);
+
+	mt6853_set_audio_int_bus_parent(afe, CLK_CLK26M);
+
+	return ret;
+}
+
 static int mt6853_set_memif_sram_mode(struct device *dev,
 				      enum mtk_audio_sram_mode sram_mode)
 {
@@ -5890,10 +5910,6 @@ static const struct file_operations mt6853_debugfs_ops = {
 };
 #endif
 
-static const struct snd_soc_component_driver mt6853_afe_pcm_component = {
-	.name = "mt6853-afe-pcm-dai",
-};
-
 static int mt6853_dai_memif_register(struct mtk_base_afe *afe)
 {
 	struct mtk_base_afe_dai *dai;
@@ -6104,6 +6120,8 @@ static int mt6853_afe_pcm_dev_probe(struct platform_device *pdev)
 	afe->request_dram_resource = mt6853_afe_dram_request;
 	afe->release_dram_resource = mt6853_afe_dram_release;
 
+	afe->copy = mt6853_afe_pcm_copy;
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	/* debugfs */
 	afe->debug_cmds = mt6853_debug_cmds;
@@ -6113,19 +6131,12 @@ static int mt6853_afe_pcm_dev_probe(struct platform_device *pdev)
 #endif
 	/* register component */
 	ret = devm_snd_soc_register_component(&pdev->dev,
-					     &mt6853_afe_component, NULL, 0);
-	if (ret) {
-		dev_info(dev, "err_platform\n");
-		goto err_pm_disable;
-	}
-
-	ret = devm_snd_soc_register_component(&pdev->dev,
-					      &mt6853_afe_pcm_component,
+					      &mt6853_afe_component,
 					      afe->dai_drivers,
 					      afe->num_dai_drivers);
 	if (ret) {
-		dev_info(dev, "err_dai_component\n");
-		goto err_dai_component;
+		dev_info(dev, "err_platform\n");
+		goto err_pm_disable;
 	}
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
@@ -6135,9 +6146,6 @@ static int mt6853_afe_pcm_dev_probe(struct platform_device *pdev)
 	ultra_set_dsp_afe(afe);
 #endif
 	return 0;
-
-err_dai_component:
-	snd_soc_unregister_component(&pdev->dev);
 
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);
