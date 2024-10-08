@@ -3874,6 +3874,13 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("sound/soc/mediatek/aw87519/aw87519_right_audio.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-rt5509.ko")
 
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/barometer/baro_common.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/step_counter/step_counter.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/step_counter/stepsignhub/stepsignhub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/barometer/barohub/barohub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/magnetometer/maghub/maghub.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/1.0/magnetometer/mag_common.ko")
+
     if "wifionly.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
