@@ -14502,6 +14502,9 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
+	/*need enable hrt_bw for pan display, be aware should update BW before SRT BW */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -14541,10 +14544,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
-
-	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
