@@ -640,6 +640,7 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 		frame_config_queue_destroy(cfg);
 	}
 
+	mml_msg("[adpt]%s destroy_workqueue %p on ctx %p", __func__, ctx->wq_destroy, ctx);
 	destroy_workqueue(ctx->wq_destroy);
 	ctx->wq_destroy = NULL;
 	if (ctx->kt_config[0]) {
