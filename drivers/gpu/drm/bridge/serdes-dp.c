@@ -304,12 +304,20 @@ static int parse_init_cmd_by_prop_from_dts(struct serdes_dp_bridge *max_bridge,
 
 	init_cmd->length = num / 4;
 	init_cmd->obj = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
-	init_cmd->addr = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
-	init_cmd->data = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
-	init_cmd->delay_ms = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
+	if (!init_cmd->obj)
+		return -ENOMEM;
 
-	if (!init_cmd->addr || !init_cmd->data || !init_cmd->delay_ms)
-		goto err;
+	init_cmd->addr = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
+	if (!init_cmd->addr)
+		return -ENOMEM;
+
+	init_cmd->data = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
+	if (!init_cmd->data)
+		return -ENOMEM;
+
+	init_cmd->delay_ms = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
+	if (!init_cmd->delay_ms)
+		return -ENOMEM;
 
 	ret = of_property_read_u32_array(np, init_cmd_prop, array, num);
 	if (ret)
@@ -361,6 +369,8 @@ static int parse_feature_cmd_by_prop_from_dts(struct serdes_dp_bridge *max_bridg
 
 	feature_info->feature_cmd = devm_kzalloc(max_bridge->dev,
 						feature_info->group_num * sizeof(struct feature_info), GFP_KERNEL);
+	if (!feature_info->feature_cmd)
+		return -ENOMEM;
 
 	/* parse cmd */
 	for (i = 0; i < feature_info->group_num; i++) {
@@ -370,6 +380,9 @@ static int parse_feature_cmd_by_prop_from_dts(struct serdes_dp_bridge *max_bridg
 			feature_info->feature_cmd[i].cmd_length = (u8)array[j++];
 			feature_info->feature_cmd[i].data = devm_kzalloc(max_bridge->dev,
 				feature_info->feature_cmd[i].cmd_length * sizeof(u8), GFP_KERNEL);
+			if (!feature_info->feature_cmd[i].data)
+				return -ENOMEM;
+
 			for (k = 0; k < feature_info->feature_cmd[i].cmd_length; k++)
 				feature_info->feature_cmd[i].data[k] = (u8)array[j++];
 		}
