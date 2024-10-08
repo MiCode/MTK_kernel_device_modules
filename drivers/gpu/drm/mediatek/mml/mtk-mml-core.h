@@ -891,6 +891,13 @@ struct mml_comp_debug_ops {
 	void (*reset)(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe);
 };
 
+struct mml_comp_bw {
+	u16 srt_bw;
+	u16 hrt_bw;
+	u16 stash_srt_bw;
+	u16 stash_hrt_bw;
+};
+
 struct mml_comp {
 	u32 id;
 	u32 sub_idx;
@@ -904,10 +911,7 @@ struct mml_comp {
 	s32 pw_cnt;
 	s32 mminfra_pw_cnt;
 	s32 clk_cnt;
-	u32 srt_bw;
-	u32 hrt_bw;
-	u32 stash_srt_bw;
-	u32 stash_hrt_bw;
+	struct mml_comp_bw bw[mml_tput_modes];	/* 0:AP 1:DPC */
 	struct icc_path *icc_path;
 	struct icc_path *icc_dpc_path;
 	struct icc_path *icc_stash_path;

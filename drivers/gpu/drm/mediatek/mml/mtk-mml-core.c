@@ -1019,15 +1019,18 @@ static void mml_core_qos_reset(struct mml_task *task, u32 pipe)
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[pipe];
 	struct mml_comp *comp;
+	struct mml_comp_bw *bw;
+	u32 dpc = cfg->dpc;
 	u32 i;
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
+		bw = &comp->bw[dpc];
 
-		comp->srt_bw = 0;
-		comp->hrt_bw = 0;
-		comp->stash_srt_bw = 0;
-		comp->stash_hrt_bw = 0;
+		bw->srt_bw = 0;
+		bw->hrt_bw = 0;
+		bw->stash_srt_bw = 0;
+		bw->stash_hrt_bw = 0;
 	}
 }
 
