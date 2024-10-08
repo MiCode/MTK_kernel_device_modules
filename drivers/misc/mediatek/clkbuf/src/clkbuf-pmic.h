@@ -73,5 +73,6 @@ extern struct plat_xodata mt6357_data;
 extern struct plat_xodata mt6358_data;
 extern struct plat_xodata mt6358_tb_data;
 extern struct plat_xodata mt6359p_data;
+extern struct plat_xodata mt6359p_tb_data;
 
 #endif /* CLKBUF_DCXO_6685P_H */
