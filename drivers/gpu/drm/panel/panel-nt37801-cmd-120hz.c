@@ -80,6 +80,9 @@
 
 #define MODE_SWITCH_CMDQ_ENABLE 1
 
+#define lcm_info(fmt, ...) \
+	pr_info("lcm_info: %s(%d): " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
 struct mtk_mode_switch_cmd cmd_table_120fps[] = {
 	{2, {0x2F, 0x00}}
 };
@@ -481,6 +484,8 @@ static int lcm_unprepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
+	lcm_info("+\n");
+
 	if (!ctx->prepared)
 		return 0;
 
@@ -531,6 +536,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 		devm_gpiod_put(ctx->dev, ctx->bias_pos);
 	}
 #endif
+	lcm_info("-\n");
 
 	return 0;
 }
@@ -539,6 +545,8 @@ static int lcm_prepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 	int ret;
+
+	lcm_info("+\n");
 
 	if (ctx->prepared)
 		return 0;
@@ -588,6 +596,7 @@ static int lcm_prepare(struct drm_panel *panel)
 #ifdef PANEL_SUPPORT_READBACK
 	lcm_panel_get_data(ctx);
 #endif
+	lcm_info("-\n");
 
 	return ret;
 }
