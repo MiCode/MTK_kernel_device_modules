@@ -3389,6 +3389,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,vcore-check-rg = <0x1c00f2b0>;
 		mediatek,vcore-check-offset = <6>;
 		mediatek,vcore-level =	/bits/ 8 <0 1 2 3 4 4>;
+		mediatek,mux-cb-sram;
 	};
 
 	mmdvfs-user {
