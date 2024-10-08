@@ -1609,7 +1609,7 @@ static long compat_FD_ioctl(
 	}
 	case COMPAT_FDVT_IOC_T_SET_FDCONF_CMD:
 	{
-		FDVTRegIO data;
+		FDVTRegIO data = {0};
 		int err;
 
 		err = compat_FD_get_register_data(arg, &data);
@@ -1628,7 +1628,7 @@ static long compat_FD_ioctl(
 	}
 	case COMPAT_FDVT_IOC_G_READ_FDREG_CMD:
 	{
-		FDVTRegIO data;
+		FDVTRegIO data = {0};
 		int err;
 
 		err = compat_FD_get_register_data(arg, &data);
@@ -1643,7 +1643,7 @@ static long compat_FD_ioctl(
 	}
 	case COMPAT_FDVT_IOC_T_SET_SDCONF_CMD:
 	{
-		FDVTRegIO data;
+		FDVTRegIO data = {0};
 		int err;
 
 		err = compat_FD_get_register_data(arg, &data);
@@ -1663,7 +1663,7 @@ static long compat_FD_ioctl(
 #if (MTK_SECURE_FD_SUPPORT == 1)
 	case COMPAT_FDVT_IOC_SETMETA_CMD:
 	{
-		FDVTMetaData data;
+		FDVTMetaData data = {0};
 		int err;
 
 		err = compat_FD_get_meta_data(arg, &data);
