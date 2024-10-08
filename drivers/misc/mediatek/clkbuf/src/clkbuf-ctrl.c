@@ -134,6 +134,43 @@ int clkbuf_srclken_ctrl(char *cmd, int sub_id)
 }
 EXPORT_SYMBOL(clkbuf_srclken_ctrl);
 
+int clkbuf_get_auxout(int xo_id, u32 *out, char *reg_name)
+{
+	struct clkbuf_dts *array = get_dts_array();
+	struct clkbuf_hdlr *hdlr;
+	struct plat_xodata *pd;
+	struct clkbuf_hw hw;
+	int ret = 0, nums = 0, i;
+
+	if (!_inited || !array)
+		return -ENODEV;
+
+	nums = array->nums;
+
+	for (i = 0; i < nums; i++, array++) {
+		hw = array->hw;
+		hdlr = array->hdlr;
+
+		if ((IS_PMIC_HW(hw.hw_type)) && (array->xo_id == xo_id)) {
+			if (!hdlr->ops->get_xo_auxout) {
+				CLKBUF_DBG("Error: get_xo_auxout is null\n");
+				return -EINVAL;
+			}
+			pd = (struct plat_xodata *)hdlr->data;
+			ret = hdlr->ops->get_xo_auxout(
+				pd, xo_id, out, reg_name);
+			if (ret) {
+				CLKBUF_DBG("Error: %d\n", ret);
+				break;
+			}
+			return ret;
+		}
+	}
+	CLKBUF_DBG("can not find xo_id: %d\n", xo_id);
+	return -EINVAL;
+}
+EXPORT_SYMBOL(clkbuf_get_auxout);
+
 /* API usage example */
 /* clkbuf_xo_ctrl("SET_XO_MODE", 12, 0); */
 /* clkbuf_xo_ctrl("SET_XO_EN_M", 11, 1); */

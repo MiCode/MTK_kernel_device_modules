@@ -243,7 +243,6 @@ static struct xo_buf_t mt6359p_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF3_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 9)
 		SET_REG_BY_NAME(impedance, RG_XO_EXTBUF3_RSEL)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF3_HD)
 		SET_REG_BY_NAME(rc_voter, XO_NFC_VOTE)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF3_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
@@ -256,6 +255,14 @@ static struct xo_buf_t mt6359p_xo_bufs[] = {
 		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF4_SRSEL)
 		SET_REG_BY_NAME(rc_voter, XO_CEL_VOTE)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF4_BBLPM_EN_MASK)
+		.xo_en_auxout_sel = 6,
+	},
+	[5] = {
+		SET_REG_BY_NAME(xo_mode, XO_EXTBUF6_MODE)
+		SET_REG_BY_NAME(xo_en, XO_EXTBUF6_EN_M)
+		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 5)
+		SET_REG_BY_NAME(rc_voter, XO_CEL_VOTE)
+		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF6_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
 	},
 	[6] = {

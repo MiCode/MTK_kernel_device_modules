@@ -1081,6 +1081,13 @@ static int __get_xo_cmd_hdlr_lv1(void *data, int xo_id, char *buf, int len)
 	if (ret)
 		return len;
 	len += snprintf(buf + len, PAGE_SIZE - len, "auxout: <%2d>\n", out);
+	/****IMPEDANCE****/
+	ret = get_xo_impedance(data, xo_id, &out);
+	if (ret)
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"impedance: not support ");
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len, "imp: <0x%08x> ", out);
 	/******DESENSE: makesure platform data reg exist*****/
 	ret = get_xo_desense(data, xo_id, &out);
 	if (ret)
@@ -1199,6 +1206,7 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 
 static struct clkbuf_operation clkbuf_ops_lv1 = {
 	.get_pmrcen = __get_pmrcen_lv1,
+	.get_xo_auxout = get_xo_auxout_lv1,
 	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
 	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_lv1,
 	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_lv1,

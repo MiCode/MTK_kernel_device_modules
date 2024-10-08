@@ -187,7 +187,6 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF1_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF1_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 0)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF1_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF1_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 5,
 	},
@@ -195,7 +194,6 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF2_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF2_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 6)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF2_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF2_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 5,
 	},
@@ -203,7 +201,6 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF3_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF3_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 0)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF3_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF3_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
 	},
@@ -211,15 +208,13 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF4_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF4_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 6)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF4_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF4_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
 	},
 	[5] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF6_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF6_EN_M)
-		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 0)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF6_ISET)
+		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 6)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF6_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 7,
 	},
@@ -227,7 +222,6 @@ static struct xo_buf_t mt6357_xo_bufs[] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF7_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF7_EN_M)
 		SET_REG(xo_en_auxout, XO_STATIC_AUXOUT_ADDR, 0x1, 12)
-		SET_REG_BY_NAME(de_sense, RG_XO_EXTBUF7_ISET)
 		SET_REG_BY_NAME(hwbblpm_msk, XO_EXTBUF7_BBLPM_EN_MASK)
 		.xo_en_auxout_sel = 6,
 	},
