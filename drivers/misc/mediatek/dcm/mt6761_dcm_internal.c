@@ -82,15 +82,15 @@ int sync_dcm_set_cci_div(unsigned int cci)
 	 * 2. set xxx_sync_dcm_tog from 0 to 1 for making sure it is toggled
 	 */
 	reg_write(MCUCFG_SYNC_DCM_CCI_REG,
-		  (reg_read(MCUCFG_SYNC_DCM_CCI_REG) |
+		  (reg_read(MCUCFG_SYNC_DCM_CCI_REG) &
 		      (~MCUCFG_SYNC_DCM_SEL_CCI_MASK) |
 		      (cci << MCUCFG_SYNC_DCM_SEL_CCI)));
 	reg_write(MCUCFG_SYNC_DCM_CCI_REG,
-		(reg_read(MCUCFG_SYNC_DCM_CCI_REG) |
+		(reg_read(MCUCFG_SYNC_DCM_CCI_REG) &
 		(~MCUCFG_SYNC_DCM_CCI_TOGMASK) |
 		MCUCFG_SYNC_DCM_CCI_TOG0));
 	reg_write(MCUCFG_SYNC_DCM_CCI_REG,
-		(reg_read(MCUCFG_SYNC_DCM_CCI_REG) |
+		(reg_read(MCUCFG_SYNC_DCM_CCI_REG) &
 		(~MCUCFG_SYNC_DCM_CCI_TOGMASK) |
 		MCUCFG_SYNC_DCM_CCI_TOG1));
 #ifdef __KERNEL__
