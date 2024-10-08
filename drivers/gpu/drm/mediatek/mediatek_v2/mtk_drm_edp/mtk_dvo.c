@@ -27,6 +27,7 @@
 #include <drm/drm_edid.h>
 #include <drm/drm_of.h>
 #include <drm/drm_simple_kms_helper.h>
+#include <drm/mediatek_drm.h>
 
 #include "mtk_dvo_regs.h"
 #include "../mtk_drm_drv.h"
@@ -199,6 +200,7 @@ struct mtk_dvo_conf {
 	u32 pixels_per_iter;
 	bool edge_cfg_in_mmsys;
 	bool has_commit;
+	enum mtk_mmsys_id mmsys_id;
 };
 
 static struct mtk_dvo *g_mtk_dvo;
@@ -835,7 +837,8 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 			usleep_range(500, 800);
 			continue;
 		}
-
+		if (dvo->conf->mmsys_id == MMSYS_MT6991)
+			dvo->next_bridge->driver_private = bridge->driver_private;
 		dev_info(dvo->dev, "[eDPTX] Found bridge node: %pOF\n", dvo->next_bridge->of_node);
 		break;
 	}
@@ -1058,7 +1061,11 @@ static int mtk_dvo_bind(struct device *dev, struct device *master, void *data)
 
 	dev_info(dev, "[eDPTX] %s+\n", __func__);
 
+	if (dvo->conf->mmsys_id == MMSYS_MT6991)
+		dvo->bridge.driver_private = drm_dev->dev_private;
+
 	dvo->mmsys_dev = priv->mmsys_dev;
+
 	ret = mtk_ddp_comp_register(drm_dev, &dvo->ddp_comp);
 	if (ret < 0) {
 		dev_info(dev, "Failed to register component %s: %d\n",
@@ -1139,6 +1146,7 @@ static const struct mtk_dvo_conf mt6991_conf = {
 	.csc_enable_bit = CSC_EN,
 	.yuv422_en_bit = YUV422_EN | VYU_MAP,
 	.swap_input_support = false,
+	.mmsys_id = MMSYS_MT6991,
 };
 
 int mtk_drm_dvo_get_info(struct drm_device *dev,

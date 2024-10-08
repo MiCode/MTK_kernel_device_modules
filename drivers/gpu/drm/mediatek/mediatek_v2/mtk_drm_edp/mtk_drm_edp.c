@@ -15,6 +15,7 @@
 #include <drm/drm_panel.h>
 #include <drm/drm_print.h>
 #include <drm/drm_probe_helper.h>
+#include <drm/mediatek_drm.h>
 #include <linux/arm-smccc.h>
 #include <linux/clk.h>
 #include <linux/device.h>
@@ -37,6 +38,7 @@
 #include "mtk_drm_edp_regs.h"
 #include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
+#include "../mtk_drm_drv.h"
 
 #define EDPTX_DEBUG_INFO		"[eDPTX]"
 #define EDPTX_COLOR_BAR			0
@@ -122,6 +124,7 @@ struct mtk_edp {
 	spinlock_t irq_thread_lock;
 
 	struct device *dev;
+	struct device *dpc_dev;
 	struct drm_bridge bridge;
 	struct drm_bridge *next_bridge;
 	struct drm_connector *conn;
@@ -154,6 +157,7 @@ struct mtk_edp_data {
 	int bridge_type;
 	unsigned int smc_cmd;
 	const struct mtk_edp_efuse_fmt *efuse_fmt;
+	enum mtk_mmsys_id mmsys_id;
 };
 
 static const struct mtk_edp_efuse_fmt mt8678_edp_efuse_fmt[MTK_DP_CAL_MAX] = {
@@ -1857,10 +1861,15 @@ static void mtk_edp_pm_ctl(struct mtk_edp *mtk_edp, bool enable)
 	/* DISP_EDPTX_PWR_CON */
 	void *address = ioremap(0x31B50074, 0x1);
 
-	if (enable)
-		writel(0xC2FC224D, address);
-	else
-		writel(0xC2FC2372, address);
+	if (enable) {
+		/* Subsys power-on reset */
+		writel(readl(address) | (1 << 0), address);
+		/* Enable subsys clock */
+		writel(readl(address) & ~(1 << 4), address);
+	} else {
+		writel(readl(address) & ~(1 << 0), address);
+		writel(readl(address) |  (1 << 4), address);
+	}
 
 	if (address)
 		iounmap(address);
@@ -1899,10 +1908,8 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			mtk_edp->need_debounce = false;
 			mod_timer(&mtk_edp->debounce_timer,
 				  jiffies + msecs_to_jiffies(100) - 1);
-		} else {
-			mtk_edp_pm_ctl(mtk_edp, true);
+		} else
 			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_CONNECT\n", EDPTX_DEBUG_INFO);
-		}
 	}
 
 #ifdef EDPTX_ANDROID_SUPPORT
@@ -2271,6 +2278,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 	struct drm_panel *panel = NULL;
+	struct mtk_drm_private *mtk_priv = bridge->driver_private;
 	int ret;
 
 	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
@@ -2309,6 +2317,15 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 				return ret;
 			}
 		}
+	}
+
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp->dpc_dev = mtk_priv->dpc_dev;
+		/* get mminfra before eDPTX on */
+		if (mtk_edp->dpc_dev)
+			pm_runtime_resume_and_get(mtk_edp->dpc_dev);
+
+		mtk_edp_pm_ctl(mtk_edp, true);
 	}
 
 	mtk_edp_aux_init(mtk_edp);
@@ -2806,10 +2823,10 @@ static int mtk_drm_edp_notifier(struct notifier_block *notifier, unsigned long p
 {
 	struct mtk_edp *mtk_edp = container_of(notifier, struct mtk_edp, nb);
 	struct device *dev = mtk_edp->dev;
-
+#ifdef EDPTX_DEBUG
 	pr_info("%s %s pm_event %lu dev %s usage_count %d\n", EDPTX_DEBUG_INFO,
 	       __func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count));
-
+#endif
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		mtk_edp_suspend(dev);
@@ -2885,17 +2902,20 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		dev_info(dev, "%s switch_dev_register failed, returned:%d!\n", EDPTX_DEBUG_INFO, ret);
 #endif
 
-	mtk_edp->power_clk = devm_clk_get(dev, "power");
-	if (IS_ERR(mtk_edp->power_clk)) {
-		pr_info("%s Failed to get power clock\n",EDPTX_DEBUG_INFO);
-		return PTR_ERR(mtk_edp->power_clk);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp->power_clk = devm_clk_get(dev, "power");
+		if (IS_ERR(mtk_edp->power_clk)) {
+			pr_info("%s Failed to get power clock\n", EDPTX_DEBUG_INFO);
+			return PTR_ERR(mtk_edp->power_clk);
+		}
+
+		ret = clk_prepare_enable(mtk_edp->power_clk);
+		if (ret)
+			dev_info(mtk_edp->dev, "%s Failed to enable power clock: %d\n",
+				EDPTX_DEBUG_INFO, ret);
 	}
-	ret = clk_prepare_enable(mtk_edp->power_clk);
-	if (ret)
-		dev_info(mtk_edp->dev, "%s Failed to enable power clock: %d\n", EDPTX_DEBUG_INFO, ret);
 
 	platform_set_drvdata(pdev, mtk_edp);
-
 	ret = mtk_edp_register_phy(mtk_edp);
 	if (ret)
 		return ret;
@@ -3010,11 +3030,18 @@ static int mtk_edp_suspend(struct device *dev)
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, false);
 
-	clk_disable_unprepare(mtk_edp->power_clk);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		clk_disable_unprepare(mtk_edp->power_clk);
+		mtk_edp_pm_ctl(mtk_edp, false);
+	}
+
 	pm_runtime_put_sync(dev);
+	/* put mminfra after eDPTX off */
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_edp->dpc_dev)
+			pm_runtime_put_sync(mtk_edp->dpc_dev);
 
 	mtk_edp->suspend = true;
-
 	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO,
 			__func__, atomic_read(&dev->power.usage_count));
 
@@ -3033,10 +3060,17 @@ static int mtk_edp_resume(struct device *dev)
 	dev_info(mtk_edp->dev, "%s %s usage_count %d +\n", EDPTX_DEBUG_INFO, __func__,
 			atomic_read(&dev->power.usage_count));
 
-	pm_runtime_get_sync(dev);
+	/* get mminfra before eDPTX on */
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_edp->dpc_dev)
+			pm_runtime_resume_and_get(mtk_edp->dpc_dev);
 
-	if (clk_prepare_enable(mtk_edp->power_clk))
-		dev_info(mtk_edp->dev, "%s Failed to enable power clock\n", EDPTX_DEBUG_INFO);
+	pm_runtime_get_sync(dev);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp_pm_ctl(mtk_edp, true);
+		if (clk_prepare_enable(mtk_edp->power_clk))
+			dev_info(mtk_edp->dev, "%s Failed to enable power clock\n", EDPTX_DEBUG_INFO);
+	}
 
 	mtk_edp_init_port(mtk_edp);
 	if (mtk_edp->use_hpd)
@@ -3061,6 +3095,7 @@ static const struct mtk_edp_data mt8678_edp_data = {
 	.bridge_type = DRM_MODE_CONNECTOR_eDP,
 	.smc_cmd = MTK_DP_SIP_ATF_EDP_VIDEO_UNMUTE,
 	.efuse_fmt = mt8678_edp_efuse_fmt,
+	.mmsys_id = MMSYS_MT6991,
 };
 
 static const struct of_device_id mtk_edp_of_match[] = {
