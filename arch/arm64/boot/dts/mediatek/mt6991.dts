@@ -123,6 +123,8 @@
 			mml-wrot1 = &mml1_wrot2;
 			mml-wrot2 = &mml0_wrot0;
 			mml-wrot3 = &mml0_wrot2;
+			mml-mutex0 = &mml0_mutex0;
+			mml-mutex1 = &mml1_mutex0;
 			mtksmmu0 = &mm_smmu;
 			mtksmmu1 = &gpu_smmu;
 			mtksmmu2 = &apu_smmu;
@@ -7086,6 +7088,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML0_MUTEX>;
 			comp-names = "mml0_mutex0";
 
+			interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			mutex-comps = "rdma0", "rdma2", "birsz0", "hdr0",
 				"aal0", "rsz0", "rsz2", "tdshp0",
@@ -7264,6 +7268,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML0_RROT0>;
 			comp-names = "mml0_rrot0";
 			pipe = /bits/ 8 <1>;
+
+			interrupts = <GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RROT0_MML>;
 			clock-names = "rrot0";
@@ -7522,6 +7528,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML1_MUTEX>;
 			comp-names = "mml1_mutex0";
 
+			interrupts = <GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH 0>;
+
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			mutex-comps = "rdma0", "rdma2", "birsz0", "hdr0",
 				"aal0", "rsz0", "rsz2", "tdshp0",
@@ -7728,6 +7736,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML1_RROT0>;
 			comp-names = "mml1_rrot0";
 			pipe = /bits/ 8 <0>;
+
+			interrupts = <GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0_MML>;
 			clock-names = "rrot0";
