@@ -4180,7 +4180,7 @@ void cmdq_mdp_dump_birsz(const unsigned long base, const char *label)
 
 void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 {
-	u32 value[47] = { 0 };
+	u32 value[49] = { 0 };
 	u32 state = 0;
 	u32 grep = 0;
 
@@ -4241,6 +4241,8 @@ void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 	value[44] = CMDQ_REG_GET32(base + 0xF08);
 	value[45] = CMDQ_REG_GET32(base + 0xF20);
 	value[46] = CMDQ_REG_GET32(base + 0xF28);
+	value[47] = CMDQ_REG_GET32(base + 0x020);
+	value[48] = CMDQ_REG_GET32(base + 0x200);
 
 	CMDQ_ERR(
 		"=============== [CMDQ] %s Status ====================================\n",
@@ -4294,7 +4296,8 @@ void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 		"MDP_RDMA_UFO_DEC_LENGTH_BASE_Y: 0x%08x, MDP_RDMA_UFO_DEC_LENGTH_BASE_C: 0x%08x\n",
 		value[45], value[46]);
 	CMDQ_ERR("RDMA_EN: 0x%08x\n", value[43]);
-	CMDQ_ERR("RDMA_SRC_BASE_1: 0x%08x\n", value[44]);
+	CMDQ_ERR("RDMA_SRC_BASE_1: 0x%08x, RDMA_CON: 0x%08x, RDMA_TRANSFORM_0: 0x%08x\n",
+		value[44], value[47], value[48]);
 
 	/* parse state */
 	CMDQ_ERR("RDMA ack:%d req:%d ufo:%d\n", (value[9] >> 11) & 0x1,
