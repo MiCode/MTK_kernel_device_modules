@@ -458,6 +458,7 @@
 						0 0x0028 0x88 0
 						0 0x0032 0x08 100
 						1 0x0000 0x94 0
+						0 0x0032 0x88 0
 					>;
 					des-linka-i2c-addr = <0x4a>;
 					des-linka-bl-i2c-addr = <0x1b>;
@@ -474,6 +475,7 @@
 						2 0x0043 0x34 0
 						2 0x06ff 0x22 0
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -486,6 +488,7 @@
 						0 0x0028 0x08 0
 						0 0x0032 0x88 100
 						1 0x0000 0x90 0
+						0 0x0028 0x88 0
 					>;
 					des-linkb-init-cmd = <
 						3 0x01ce 0x5e 0
@@ -646,6 +649,7 @@
 					0 0x0028 0x88 0
 					0 0x0032 0x08 200
 					1 0x0000 0x94 0
+					0 0x0032 0x88 0
 				>;
 				des-linka-i2c-addr = <0x4a>;
 				des-linka-bl-i2c-addr = <0x1b>;
@@ -663,6 +667,7 @@
 					2 0x0043 0x34 0
 					2 0x06ff 0x22 0
 				>;
+				des-i2c-addr-linkb = <0x4c>;
 				des-linkb-i2c-addr = <0x48>;
 				des-linkb-bl-i2c-addr = <0x1c>;
 				des-linkb-bl-on-cmd = <
@@ -675,6 +680,7 @@
 					0 0x0028 0x08 0
 					0 0x0032 0x88 100
 					1 0x0000 0x90 0
+					0 0x0028 0x88 0
 				>;
 				des-linkb-init-cmd = <
 					3 0x0050 0x01 0
@@ -771,6 +777,7 @@
 						0 0x0028 0x88 0
 						0 0x0032 0x08 200
 						1 0x0000 0x94 0
+						0 0x0032 0x88 0
 					>;
 					des-linka-i2c-addr = <0x4a>;
 					des-linka-bl-i2c-addr = <0x1b>;
@@ -787,6 +794,7 @@
 						2 0x0043 0x34 0
 						2 0x06ff 0x22 0
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -799,6 +807,7 @@
 						0 0x0028 0x08 0
 						0 0x0032 0x88 100
 						1 0x0000 0x90 0
+						0 0x0028 0x88 0
 					>;
 					des-linkb-init-cmd = <
 						3 0x01ce 0x4e 0
@@ -977,6 +986,7 @@
 					0 0x0028 0x88 0
 					0 0x0032 0x08 100
 					1 0x0000 0x94 0
+					0 0x0032 0x88 0
 				>;
 				des-linka-i2c-addr = <0x4a>;
 				des-linka-bl-i2c-addr = <0x1b>;
@@ -1007,6 +1017,7 @@
 					0 0x0028 0x08 0
 					0 0x0032 0x88 200
 					1 0x0000 0x90 0
+					0 0x0028 0x88 0
 				>;
 				des-linkb-init-cmd = <
 					3 0x0050 0x01 0
@@ -1155,6 +1166,7 @@
 					>;
 					des-linka-init-cmd = <
 					>;
+					des-i2c-addr-linkb = <0x4a>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -1185,6 +1197,7 @@
 					0 0x0028 0x88 0
 					0 0x0032 0x08 200
 					1 0x0000 0x98 0
+					0 0x0032 0x88 0
 				>;
 				des-linka-i2c-addr = <0x4c>;
 				des-linka-bl-i2c-addr = <0x1b>;
@@ -1230,6 +1243,7 @@
 					2 0x01ca 0x1a 0
 					2 0x06ff 0x22 0
 				>;
+				des-i2c-addr-linkb = <0x4a>;
 				des-linkb-i2c-addr = <0x4d>;
 				des-linkb-bl-i2c-addr = <0x1c>;
 				des-linkb-bl-on-cmd = <
@@ -1242,6 +1256,7 @@
 					0 0x0028 0x08 0
 					0 0x0032 0x88 200
 					1 0x0000 0x9a 0
+					0 0x0028 0x88 0
 				>;
 				des-linkb-init-cmd = <
 					3 0x01ea 0x05 0
@@ -1354,6 +1369,7 @@
 					>;
 					des-linka-init-cmd = <
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -1454,6 +1470,7 @@
 						0 0x0028 0x88 0
 						0 0x0032 0x08 100
 						1 0x0000 0x94 0
+						0 0x0032 0x88 0
 					>;
 					des-linka-i2c-addr = <0x4a>;
 					des-linka-bl-i2c-addr = <0x1b>;
@@ -1470,6 +1487,7 @@
 						2 0x0043 0x34 0
 						2 0x06ff 0x22 0
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -1482,6 +1500,7 @@
 						0 0x0028 0x08 0
 						0 0x0032 0x88 100
 						1 0x0000 0x90 0
+						0 0x0028 0x88 0
 					>;
 					des-linkb-init-cmd = <
 						3 0x01ce 0x5e 0
@@ -1643,6 +1662,7 @@
 					0 0x0028 0x88 0
 					0 0x0032 0x08 100
 					1 0x0000 0x96 0
+					0 0x0032 0x88 0
 				>;
 				des-linka-i2c-addr = <0x4b>;
 				des-linka-bl-i2c-addr = <0x51>;
@@ -1690,6 +1710,7 @@
 					0 0x0028 0x08 0
 					0 0x0032 0x88 200
 					1 0x0000 0x94 0
+					0 0x0028 0x88 0
 				>;
 				des-linkb-init-cmd = <
 					3 0x0050 0x00 0
@@ -1868,6 +1889,7 @@
 						0 0x0028 0x88 0
 						0 0x0032 0x08 100
 						1 0x0000 0x94 0
+						0 0x0032 0x88 0
 					>;
 					des-linka-i2c-addr = <0x4a>;
 					des-linka-bl-i2c-addr = <0x1b>;
@@ -1884,6 +1906,7 @@
 						2 0x0043 0x34 0
 						2 0x06ff 0x22 0
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -1896,6 +1919,7 @@
 						0 0x0028 0x08 0
 						0 0x0032 0x88 100
 						1 0x0000 0x90 0
+						0 0x0028 0x88 0
 					>;
 					des-linkb-init-cmd = <
 						3 0x01ce 0x5e 0
@@ -2100,6 +2124,7 @@
 						0 0x0028 0x88 0
 						0 0x0032 0x08 100
 						1 0x0000 0x94 0
+						0 0x0032 0x88 0
 					>;
 					des-linka-i2c-addr = <0x4a>;
 					des-linka-bl-i2c-addr = <0x1b>;
@@ -2115,6 +2140,7 @@
 						2 0x0042 0x36 0
 						2 0x0043 0x34 0
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -2127,6 +2153,7 @@
 						0 0x0028 0x08 0
 						0 0x0032 0x88 100
 						1 0x0000 0x90 0
+						0 0x0028 0x88 0
 					>;
 					des-linkb-init-cmd = <
 						3 0x01ce 0x4e 0
@@ -2363,6 +2390,7 @@
 					>;
 					des-linka-init-cmd = <
 					>;
+					des-i2c-addr-linkb = <0x4a>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
@@ -2426,6 +2454,7 @@
 					>;
 					des-linka-init-cmd = <
 					>;
+					des-i2c-addr-linkb = <0x4c>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
 					des-linkb-bl-on-cmd = <
