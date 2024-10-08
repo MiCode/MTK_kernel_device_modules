@@ -28,4 +28,5 @@ struct mtk_disp_rdma_data {
 	bool disable_underflow;
 };
 extern int polling_rdma_output_line_enable;
+extern void set_ovl_reset_flag(struct mtk_drm_crtc *mtk_crtc);
 #endif

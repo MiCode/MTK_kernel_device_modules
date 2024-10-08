@@ -262,6 +262,8 @@ static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_p
 static void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc);
 
 #define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
+#define DISP_REG_OVL_DUMMY_REG (0x200UL)
+#define DISP_REG_OVL_DUMMY_RESET_MASK (1 << 31)
 
 #define TZMP2_DT_NAME "ssheap-reserved-cma_memory"
 #define PAGE_BASE_NAME "page-based-v2-enabled"
@@ -10621,21 +10623,41 @@ static void cmdq_pkt_wait_te(struct cmdq_pkt *cmdq_handle,
 static void cmdq_pkt_reset_ovl_by_crtc(struct cmdq_pkt *cmdq_handle, struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc, unsigned int index)
 {
+	struct mtk_drm_private *priv = NULL;
 	const u16 reg_jump = CMDQ_THR_SPR_IDX2;
 	const u16 ovl_greq_cnt = CMDQ_THR_SPR_IDX3;
+	const u16 reg_val = CMDQ_THR_SPR_IDX0;
 	struct cmdq_operand lop;
 	struct cmdq_operand rop;
 	u32 inst_condi_jump;
 	u64 *inst, jump_pa;
 
+	if (!mtk_crtc || !(mtk_crtc->base.dev))
+		return;
+	priv = mtk_crtc->base.dev->dev_private;
 	lop.reg = true;
 	lop.idx = ovl_greq_cnt;
-	rop.reg = false;
-	rop.value = 0;		/* condition */
+	rop.reg = true;
+	rop.value = reg_val;		/* condition */
 
 	cmdq_pkt_read(cmdq_handle, NULL,
 		comp->regs_pa + DISP_REG_OVL_GREQ_LAYER_CNT, ovl_greq_cnt);
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6768
+		|| priv->data->mmsys_id == MMSYS_MT6761)) {
+		const u16 reg_tmp = CMDQ_THR_SPR_IDX1;
+		struct cmdq_operand top;
 
+		top.reg = true;
+		top.idx = reg_tmp;
+		cmdq_pkt_read(cmdq_handle, NULL,	/* If underflow occurs,reset ovl */
+			comp->regs_pa + DISP_REG_OVL_DUMMY_REG, reg_tmp);
+		cmdq_pkt_assign_command(cmdq_handle, reg_val, DISP_REG_OVL_DUMMY_RESET_MASK);
+		cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_AND, reg_tmp,
+			&top, &rop);
+		cmdq_pkt_logic_command(cmdq_handle, CMDQ_LOGIC_OR, ovl_greq_cnt,
+			&lop, &top);
+	}
+	cmdq_pkt_assign_command(cmdq_handle, reg_val, 0);
 	inst_condi_jump = cmdq_handle->cmd_buf_size;
 	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
 	/* check OVL GREQ_LAYER_CNT is 0 */
@@ -10649,6 +10671,10 @@ static void cmdq_pkt_reset_ovl_by_crtc(struct cmdq_pkt *cmdq_handle, struct mtk_
 		dma_addr_t addr_ogc = mtk_get_gce_backup_slot_pa(mtk_crtc,
 			DISP_SLOT_OVL_GREQ_CNT(index));
 
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6768
+			|| priv->data->mmsys_id == MMSYS_MT6761))
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + DISP_REG_OVL_DUMMY_REG, 0, DISP_REG_OVL_DUMMY_RESET_MASK);
 		mtk_ddp_comp_reset(comp, cmdq_handle);
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr_oci, comp->id, ~0);
 		cmdq_pkt_mem_move(cmdq_handle, comp->cmdq_base,

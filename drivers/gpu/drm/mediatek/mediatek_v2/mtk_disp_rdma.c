@@ -396,6 +396,9 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 			  mtk_dump_comp_str(rdma), priv->underflow_cnt);
 		if (mtk_crtc)
 			drm_priv = mtk_crtc->base.dev->dev_private;
+		if (mtk_crtc && drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
+			|| drm_priv->data->mmsys_id == MMSYS_MT6761))
+			set_ovl_reset_flag(mtk_crtc);
 		if (drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
 			|| drm_priv->data->mmsys_id == MMSYS_MT6765
 			|| drm_priv->data->mmsys_id == MMSYS_MT6761))
@@ -1862,12 +1865,12 @@ const struct mtk_disp_rdma_data mt6768_rdma_driver_data = {
 
 const struct mtk_disp_rdma_data mt6761_rdma_driver_data = {
 	.fifo_size = SZ_1K * 6,
-	.pre_ultra_low_us = 60,
-	.pre_ultra_high_us = 70,
-	.ultra_low_us = 40,
-	.ultra_high_us = 60,
-	.urgent_low_us = 30,
-	.urgent_high_us = 35,
+	.pre_ultra_low_us = 95,
+	.pre_ultra_high_us = 105,
+	.ultra_low_us = 75,
+	.ultra_high_us = 95,
+	.urgent_low_us = 55,
+	.urgent_high_us = 70,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.shadow_update_reg = 0x00bc,
 	.support_shadow = false,

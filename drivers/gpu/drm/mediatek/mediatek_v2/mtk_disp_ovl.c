@@ -405,6 +405,7 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_SMI_2ND_CFG	(0x8F0)
 
 #define MML_SRAM_SHIFT (512*1024)
+#define DISP_REG_OVL_DUMMY_RESET_MASK (1 << 31)
 
 enum GS_OVL_FLD {
 	GS_OVL_RDMA_ULTRA_TH = 0,
@@ -4423,6 +4424,22 @@ static void mtk_ovl_backup_info_cmp(struct mtk_ddp_comp *comp, bool *compare)
 	}
 	memcpy(ovl->backup_info, cur_info,
 	       sizeof(struct mtk_ovl_backup_info) * MAX_LAYER_NUM);
+}
+
+void set_ovl_reset_flag(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_drm_private *drm_priv = NULL;
+	struct mtk_ddp_comp *comp_ovl = NULL;
+
+	if (!mtk_crtc || !(mtk_crtc->base.dev) || !(mtk_crtc->base.dev->dev_private))
+		return;
+	drm_priv = mtk_crtc->base.dev->dev_private;
+	comp_ovl = drm_priv->ddp_comp[DDP_COMPONENT_OVL0];
+	if (comp_ovl)
+		writel(DISP_REG_OVL_DUMMY_RESET_MASK, comp_ovl->regs + DISP_REG_OVL_DUMMY_REG);
+	comp_ovl = drm_priv->ddp_comp[DDP_COMPONENT_OVL0_2L];
+	if (comp_ovl)
+		writel(DISP_REG_OVL_DUMMY_RESET_MASK, comp_ovl->regs + DISP_REG_OVL_DUMMY_REG);
 }
 
 static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
