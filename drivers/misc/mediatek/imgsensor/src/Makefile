@@ -8,6 +8,7 @@ subdir-ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/inc \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/inc \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cam_cal/inc \
+	-DDEBUG \
 
 obj-$(CONFIG_MTK_IMGSENSOR_ISP3_Z) += isp3_z/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP3_M) += isp3_m/
