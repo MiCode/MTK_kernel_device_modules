@@ -14346,6 +14346,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dvfsrc-debugfs {
 				compatible = "mediatek,mt6899-dvfsrc-debugfs";
 			};
+
+			dvfsrc-mb {
+				compatible = "mediatek,dvfsrc-mb";
+			};
 		};
 
 		systimer: systimer@1cc10000 {
