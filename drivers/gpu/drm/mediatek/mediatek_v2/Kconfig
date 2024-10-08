@@ -43,6 +43,16 @@ config DRM_MTK_DISABLE_AEE_LAYER
 	  If this value is n, will produce AEE.
 	  If you do not produce AEE, please set it to Y in xxx_defconfig.
 
+config DRM_MTK_R2Y
+	bool "Support MTK RGB2YUV feature"
+	help
+	  Decide whether to support RGB 2 YUV by pq.
+	  This config only for auto driver.
+	  This feature requires the cowork of panel driver.
+	  Enabling this feature ensures optimal color conversion
+	  from RGB to YUV, which is essential for display and
+	  imaging applications.
+
 config MTK_AAL_SUPPORT
 	bool "Support MTK ambient-light adaptive luma (AAL)"
 	help

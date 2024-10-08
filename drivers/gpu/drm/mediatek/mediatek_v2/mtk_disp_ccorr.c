@@ -26,6 +26,12 @@
 #include "mtk_drm_helper.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_pq_helper.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_gamma.h"
+#include "mtk_disp_aal.h"
+#include "mtk_disp_dither.h"
+#include "mtk_disp_c3d.h"
+#endif
 
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -61,6 +67,11 @@
 	max : ((val <= min) ? min : val))
 
 static struct drm_device *g_drm_dev;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+static struct mtk_ddp_comp *default_comp;
+static struct mtk_ddp_comp *default_comp1;
+struct mtk_drm_crtc *global_r2y_mtk_crtc[2] = {NULL, NULL};
+#endif
 
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock);
@@ -141,6 +152,12 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		DDPINFO("%s:, ccorr r2y is enable, not allow to set ccorr coef\n", __func__);
+		return ret;
+	}
+#endif
 	if (lock)
 		mutex_lock(&primary_data->data_lock);
 
@@ -963,6 +980,12 @@ static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 		return;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		DDPINFO("%s:, ccorr r2y is enable, not allow to bypass ccorr\n", __func__);
+		return;
+	}
+#endif
 	ccorr_data = comp_to_ccorr(comp);
 	primary_data = ccorr_data->primary_data;
 	companion = ccorr_data->companion;
@@ -1362,6 +1385,14 @@ static int disp_ccorr_probe(struct platform_device *pdev)
 	if (comp_id == DDP_COMPONENT_CCORR0)
 		mtk_leds_register_notifier(&leds_init_notifier);
 #endif
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (!default_comp && comp_id == DDP_COMPONENT_CCORR0)
+		default_comp = &priv->ddp_comp;
+
+	if (!default_comp1 && comp_id == DDP_COMPONENT_CCORR2)
+		default_comp1 = &priv->ddp_comp;
+#endif
 	DDPINFO("%s-\n", __func__);
 
 error_primary:
@@ -1597,3 +1628,121 @@ unsigned int disp_ccorr_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 
 	return ccorr_data->primary_data->relay_state != 0 ? 1 : 0;
 }
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+bool disp_r2y_relay_other_engines(struct mtk_ddp_comp *comp, uint32_t engine)
+{
+	bool ret = false;
+
+	if (((engine & 0x1) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR))
+		|| ((engine & 0x2) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR))
+		|| ((engine & 0x4) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_C3D))
+		|| ((engine & 0x8) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_TDSHP))
+		|| ((engine & 0x10) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL))
+		|| ((engine & 0x20) && (mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL))
+		|| ((engine & 0x40) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_GAMMA))
+		|| ((engine & 0x80) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DITHER))
+		|| ((engine & 0x100) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)))
+		ret = true;
+
+	return ret;
+}
+
+int disp_ccorr_r2y_enable(int enable, int id)
+{
+	struct mtk_disp_ccorr *ccorr_data;
+	struct mtk_ddp_comp *comp = NULL;
+	struct cmdq_pkt *cmdq_handle;
+	struct cmdq_client *client = NULL;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_crtc *crtc;
+	int ret = -1;
+	int i, j;
+	uint32_t relay_engines = 0x0;
+	uint32_t caller = 0x0;
+	int relay = 1;
+
+	if (id == 0 && default_comp)
+		comp = default_comp;
+	else if(id == 1 && default_comp1)
+		comp = default_comp1;
+
+	if (!comp) {
+		DDPMSG("%s: comp is null.\n", __func__);
+		return ret;
+	}
+
+	ccorr_data = comp_to_ccorr(comp);
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+
+	if (mtk_crtc->gce_obj.client[CLIENT_PQ])
+		client = mtk_crtc->gce_obj.client[CLIENT_PQ];
+	else
+		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+
+	// create pkt
+	mtk_crtc_pkt_create(&cmdq_handle ,
+		&comp->mtk_crtc->base, client);
+
+	if (!cmdq_handle) {
+		DDPMSG("%s: cmdq handle is null.\n", __func__);
+		return ret;
+	}
+
+	/* enable R2Y in CC0RR */
+	if (enable == 1) {
+		global_r2y_mtk_crtc[id] = mtk_crtc;
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_CCORR_CFG, 0x6, 0x7);
+	/*full 709 */
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + CCORR_REG(0),
+			0x04001c5e, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + CCORR_REG(1),
+			0x1FA201b3, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + CCORR_REG(2),
+			0x05b90094, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + CCORR_REG(3),
+			0x1F151CEB, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + CCORR_REG(4),
+			0x04000000, ~0);
+		/* Ccorr Offset */
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_CCORR_COLOR_OFFSET_0,
+			0x81000000, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_CCORR_COLOR_OFFSET_1,
+			0x00000000, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_CCORR_COLOR_OFFSET_2,
+			0x01000000, ~0);
+	} else {
+		global_r2y_mtk_crtc[id] = NULL;
+		ret = disp_ccorr_write_coef_reg(comp, cmdq_handle, 0);
+		return ret;
+	}
+
+	cmdq_pkt_flush(cmdq_handle);
+
+	/* relay other PQ modules */
+	if(global_r2y_mtk_crtc[id] != NULL) {
+		relay_engines = 0xD5;
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+			if (comp && comp->funcs && comp->funcs->bypass
+				&& disp_r2y_relay_other_engines(comp, relay_engines))
+				mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
+		}
+	}
+
+	ret = 0;
+	return ret;
+
+}
+#endif
+
+

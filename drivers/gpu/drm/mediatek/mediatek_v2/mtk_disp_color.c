@@ -906,6 +906,14 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_CFG_MAIN, COLOR_BYPASS_ALL, COLOR_BYPASS_ALL);
 	mutex_unlock(&primary_data->data_lock);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_COLOR_CFG_MAIN,
+				   COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+	}
+#endif
 }
 
 int disp_color_act_set_pqindex(struct mtk_ddp_comp *comp, void *data)
@@ -1001,6 +1009,11 @@ void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+		if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+			bypass = 1;
+#endif
 
 	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {

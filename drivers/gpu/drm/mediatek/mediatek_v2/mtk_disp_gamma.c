@@ -30,6 +30,10 @@
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_ccorr.h"
+#endif
+
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 #include <linux/leds-mtk.h>
@@ -134,6 +138,11 @@ static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		bypass = 1;
+#endif
 
 	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {
@@ -741,12 +750,17 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			disp_gamma_flip_sram(comp, handle);
 		}
 	}
-
 	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
 
 	mutex_unlock(&primary_data->data_lock);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		disp_gamma_bypass(comp, 1, 0, handle);
+#endif
+
 }
 
 static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)

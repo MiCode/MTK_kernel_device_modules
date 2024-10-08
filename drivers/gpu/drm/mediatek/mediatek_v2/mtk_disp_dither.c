@@ -25,6 +25,9 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_disp_chist.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_ccorr.h"
+#endif
 
 #define DISP_DITHER_EN		0x0
 #define DISP_DITHER_INTEN	0x08
@@ -349,6 +352,14 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_DITHER_SHADOW, 0x0, 0x1);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_CFG,
+			primary_data->relay_state, 0x1);
+	}
+#endif
 }
 
 static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
@@ -424,6 +435,10 @@ static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		bypass = 1;
+#endif
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
