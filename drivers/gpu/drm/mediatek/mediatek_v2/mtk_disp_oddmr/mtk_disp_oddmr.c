@@ -6838,15 +6838,6 @@ static int mtk_oddmr_od_enable(struct drm_device *dev, int en)
 		ODDMRFLOW_LOG("od can not enable, state %d\n", g_oddmr_priv->od_state);
 		return -EFAULT;
 	}
-	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
-	}
 
 	g_oddmr_priv->od_enable_req = enable;
 	if (default_comp->mtk_crtc->is_dual_pipe)
@@ -9298,15 +9289,6 @@ static int mtk_oddmr_dbi_enable(struct drm_device *dev, bool en)
 		ODDMRFLOW_LOG("can not enable, state %d\n", g_oddmr_priv->dbi_state);
 		return -EFAULT;
 	}
-	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
-	}
 
 	g_oddmr_priv->dbi_enable_req = enable;
 	if (default_comp->mtk_crtc->is_dual_pipe)
@@ -9351,15 +9333,6 @@ static int mtk_oddmr_dmr_enable(struct drm_device *dev, bool en)
 	if (g_oddmr_priv->dmr_state < ODDMR_INIT_DONE) {
 		DDPPR_ERR("can not enable, state %d\n", g_oddmr_priv->dmr_state);
 		return -EFAULT;
-	}
-	mtk_drm_idlemgr_kick(__func__,
-		&default_comp->mtk_crtc->base, 0);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		DDPPR_ERR("clock not on %d\n", ret);
-		return ret;
 	}
 
 	g_oddmr_priv->dmr_enable_req = enable;
