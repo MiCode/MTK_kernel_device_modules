@@ -94,6 +94,8 @@ static void m2m_param_queue(struct mml_m2m_ctx *ctx)
 	struct mml_m2m_param *param;
 
 	param = kzalloc(sizeof(*param), GFP_KERNEL);
+	if (!param)
+		return;
 	*param = ctx->param;
 	mutex_lock(&ctx->param_mutex);
 	list_add_tail(&param->entry, &ctx->params);
@@ -123,16 +125,17 @@ static void m2m_task_submit_done(struct mml_task *task)
 	mml_trace_ex_begin("%s", __func__);
 	m2m_param_remove(mctx);
 
-	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
-	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
+	src_buf = task->src_buf;
+	dst_buf = task->dst_buf;
 	if (!src_buf ||!dst_buf) {
 		mml_err("[m2m]%s no src or dst buffer found", __func__);
-		return;
+		goto done;
 	}
 	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
 	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
 	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
+done:
 	task_submit_done(task);
 	mml_trace_ex_end();
 }
@@ -1809,11 +1812,12 @@ static void mml_m2m_device_run(void *priv)
 	/* hold mctx to avoid release from v4l2 before call submit_done */
 	kref_get(&mctx->ref);
 
-	src_buf = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
-	dst_buf = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
+	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
+	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	if (!src_buf || !dst_buf) {
 		mml_err("[m2m]%s get next buf fail src %p dst %p", __func__,
 			src_buf, dst_buf);
+		result = -EFAULT;
 		goto err_buf_exit;
 	}
 
