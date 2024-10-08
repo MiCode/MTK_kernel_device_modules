@@ -864,7 +864,6 @@ struct ISP_HOLD_INFO_STRUCT {
 };
 
 static signed int FirstUnusedIrqUserKey = 1;
-#define USERKEY_STR_LEN 128
 
 struct UserKeyInfo {
 	char userName[USERKEY_STR_LEN];
@@ -8175,28 +8174,23 @@ static signed int ISP_REGISTER_IRQ_USERKEY(char *userName)
 
 	char m_UserName[USERKEY_STR_LEN];
 	/* local veriable for saving Username from user space */
-	bool bCopyFromUser = MTRUE;
 
 	if (userName == NULL) {
 		log_err(" [regUser] userName is NULL\n");
 	} else {
 		/*get UserName from user space */
-		length = strnlen_user(userName, USERKEY_STR_LEN);
+		length = strnlen(userName, USERKEY_STR_LEN);
+
 		if (length == 0) {
 			log_err(" [regUser] userName address is not valid\n");
 			return key;
 		}
 
-		/*user key len at most 128*/
+		/*user key len at most 32*/
 		length = (length > USERKEY_STR_LEN) ? USERKEY_STR_LEN : length;
 
+		strscpy(m_UserName, userName, length);
 
-		if (copy_from_user(m_UserName, (void *)(userName),
-				   length * sizeof(char)) != 0) {
-			bCopyFromUser = MFALSE;
-		}
-
-		if (bCopyFromUser == MTRUE) {
 			spin_lock((spinlock_t *)(&SpinLock_UserKey));
 			/*check String length, add end */
 			if (length == USERKEY_STR_LEN) {
@@ -8291,9 +8285,6 @@ static signed int ISP_REGISTER_IRQ_USERKEY(char *userName)
 				}
 			}
 			spin_unlock((spinlock_t *)(&SpinLock_UserKey));
-		} else {
-			log_err(" [regUser] copy_from_user failed (%d)\n", i);
-		}
 	}
 
 	log_inf("User(%s)key(%d)\n", m_UserName, key);
