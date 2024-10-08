@@ -442,6 +442,10 @@ struct xsphy_instance {
 	int hsrx_term_cal;
 	int hstx_impn;
 	int hstx_impp;
+	struct regmap *uart_usb_sel;
+	u32 uart_usb_sel_reg;
+	u32 uart_usb_sel_mask;
+	u32 uart_usb_sel_val;
 };
 
 struct mtk_xsphy {
@@ -2666,6 +2670,25 @@ done:
 	return mode;
 }
 
+static void mtk_phy_uart_usb_sel_set(struct mtk_xsphy *xsphy,
+				    struct xsphy_instance *inst)
+{
+	int ret;
+
+	if (!inst->uart_usb_sel)
+		return;
+
+	dev_info(xsphy->dev, "uart usb sel rg: %x %x %x\n",
+					inst->uart_usb_sel_reg,
+					inst->uart_usb_sel_mask,
+					inst->uart_usb_sel_val);
+
+	ret = regmap_update_bits(inst->uart_usb_sel, inst->uart_usb_sel_reg,
+			   inst->uart_usb_sel_mask, inst->uart_usb_sel_val);
+	if (ret)
+		dev_info(xsphy->dev, "Failed to update uart usb sel register\n");
+}
+
 static int mtk_xsphy_uart_suspend(struct device *dev)
 {
 	return 0;
@@ -2702,7 +2725,36 @@ static int mtk_xsphy_uart_resume(struct device *dev)
 	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0,
 		(0x1 << 17) | (0x1 << 19) | (0x1 << 20) | (0x1 << 21) | (0x1 << 23));
 
+	mtk_phy_uart_usb_sel_set(xsphy, inst);
+
 	return 0;
+}
+
+
+static void mtk_phy_of_parse_phy_uart_usb_sel(struct xsphy_instance *inst)
+{
+	struct device *dev = &inst->phy->dev;
+	struct device_node *np = dev->of_node;
+	struct of_phandle_args args;
+	int ret;
+
+	inst->uart_usb_sel = NULL;
+
+	if (!of_property_read_bool(np, "mediatek,uart-usb-sel"))
+		return;
+
+	ret = of_parse_phandle_with_fixed_args(np,
+		"mediatek,uart-usb-sel", 3, 0, &args);
+	if (ret)
+		return;
+
+	inst->uart_usb_sel = device_node_to_regmap(args.np);
+	if (!inst->uart_usb_sel)
+		return;
+
+	inst->uart_usb_sel_reg = args.args[0];
+	inst->uart_usb_sel_mask = args.args[1];
+	inst->uart_usb_sel_val = args.args[2];
 }
 
 static int mtk_phy_uart_init(struct phy *phy)
@@ -2723,8 +2775,12 @@ static int mtk_phy_uart_init(struct phy *phy)
 	}
 	udelay(250);
 
+	mtk_phy_of_parse_phy_uart_usb_sel(inst);
+
 	xsphy->suspend = mtk_xsphy_uart_suspend;
 	xsphy->resume = mtk_xsphy_uart_resume;
+
+	mtk_phy_uart_usb_sel_set(xsphy, inst);
 
 	return 0;
 }
@@ -3081,8 +3137,28 @@ static int __maybe_unused mtk_xsphy_resume(struct device *dev)
 		return xsphy->resume(dev);
 	return 0;
 }
+
+static int __maybe_unused mtk_xsphy_runtime_suspend(struct device *dev)
+{
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
+
+	if (xsphy->suspend)
+		return xsphy->suspend(dev);
+	return 0;
+}
+static int __maybe_unused mtk_xsphy_runtime_resume(struct device *dev)
+{
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
+
+	if (xsphy->resume)
+		return xsphy->resume(dev);
+	return 0;
+}
+
 static const struct dev_pm_ops mtk_xsphy_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mtk_xsphy_suspend, mtk_xsphy_resume)
+	SET_RUNTIME_PM_OPS(mtk_xsphy_runtime_suspend,
+			   mtk_xsphy_runtime_resume, NULL)
 };
 #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtk_xsphy_pm_ops : NULL)
 
