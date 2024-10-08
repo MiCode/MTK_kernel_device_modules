@@ -31,8 +31,10 @@
 #define SYS_CG_CON1		0x110
 #define SYS_CG_CON2		0x120
 #define SYS_CG_CON3		0x130
+#define SYS_MDP_IRQ		0x280
 #define SYS_SW0_RST_B_REG	0x700
 #define SYS_SW1_RST_B_REG	0x704
+#define SYS_INTMERGE		0x8c4
 #define SYS_BYPASS_MUX_SHADOW	0xf00
 #define SYS_AID_SEL		0xfa8	/* only for mt6983/mt6895 */
 
@@ -121,6 +123,7 @@ struct mml_data {
 	bool pw_mminfra;
 	bool set_mml_uid;
 	bool gce_event;
+	bool irq;
 };
 
 enum mml_mux_type {
@@ -493,6 +496,11 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_BYPASS_MUX_SHADOW,
 		cfg->shadow ? 0 : 1, U32_MAX);
 #endif
+
+	if (sys->data->irq) {
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MDP_IRQ, 1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_INTMERGE, 0, U32_MAX);
+	}
 
 	/* if this mmlsys is not primary sys in current path, skip sys config */
 	if (comp->sysid != path->mmlsys->sysid)
@@ -2923,6 +2931,7 @@ static const struct mml_data mt6991_mmlt_data = {
 	.pw_mminfra = true,
 	.gce_event = true,
 	.ddren = 0x42,
+	.irq = true,
 };
 
 static const struct mml_data mt6991_mmlf_data = {
@@ -2946,6 +2955,7 @@ static const struct mml_data mt6991_mmlf_data = {
 	.pw_mminfra = true,
 	.gce_event = true,
 	.ddren = 0x42,
+	.irq = true,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {

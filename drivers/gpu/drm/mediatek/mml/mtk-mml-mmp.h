@@ -47,9 +47,7 @@ struct mml_mmp_events_t {
 	mmp_event submit_cb;
 	mmp_event taskdone;
 	mmp_event exec;
-	mmp_event racing_enter;
-	mmp_event racing_stop;
-	mmp_event racing_stop_sync;
+	mmp_event irq;
 	mmp_event couple;
 	mmp_event kick;
 	mmp_event dvfs;
@@ -91,6 +89,17 @@ struct mml_mmp_events_t {
 	mmp_event irq_stop;
 	mmp_event fence_sig;
 	mmp_event m2m_sig;
+
+	/* events for IRQ */
+	mmp_event mutex;
+	mmp_event rrot0;
+	mmp_event rrot1;
+	mmp_event underrun;
+
+	/* events for couple */
+	mmp_event racing_enter;
+	mmp_event racing_stop;
+	mmp_event racing_stop_sync;
 
 	/* events for dvfs */
 	mmp_event throughput;

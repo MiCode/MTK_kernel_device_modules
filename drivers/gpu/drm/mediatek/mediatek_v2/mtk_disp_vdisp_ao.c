@@ -53,7 +53,7 @@
 	#define CPU_INTSEL_BIT_14		REG_FLD_MSB_LSB(23, 16)
 	#define CPU_INTSEL_BIT_15		REG_FLD_MSB_LSB(31, 24)
 #define DISP_REG_VDISP_AO_INT_SEL_G4_MT6991		(0x0030)
-	#define CPU_INTSEL_BIT_16		REG_FLD_MSB_LSB(7, 0)	//GIC:456
+	#define CPU_INTSEL_BIT_16		REG_FLD_MSB_LSB(7, 0)	//GIC:466
 	#define CPU_INTSEL_BIT_17		REG_FLD_MSB_LSB(15, 8)
 	#define CPU_INTSEL_BIT_18		REG_FLD_MSB_LSB(23, 16)
 	#define CPU_INTSEL_BIT_19		REG_FLD_MSB_LSB(31, 24)
@@ -85,6 +85,11 @@
 #define	IRQ_TABLE_DISP_DVO0_MT6991		(56)	//461
 
 #define	IRQ_TABLE_DISP_DP_INTF1_MT6991		(44)	//464
+
+#define IRQ_TABLE_MDP0_MUTEX0_MT6991           (80)    //465
+#define IRQ_TABLE_MDP0_RROT0_MT6991            (94)    //466
+#define IRQ_TABLE_MDP1_MUTEX0_MT6991           (112)   //467
+#define IRQ_TABLE_MDP1_RROT0_MT6991            (126)   //468
 
 #define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
 #define IRQ_TABLE_DISP_DITHER1_MT6991          (22)    //470
@@ -244,6 +249,7 @@ static void mtk_vdisp_ao_int_sel_g3_MT6991(void)
 	int value = 0, mask = 0;
 
 	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DP_INTF1_MT6991, CPU_INTSEL_BIT_14);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_MDP0_MUTEX0_MT6991, CPU_INTSEL_BIT_15);
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G3_MT6991);
 
@@ -253,6 +259,10 @@ static void mtk_vdisp_ao_int_sel_g3_MT6991(void)
 static void mtk_vdisp_ao_int_sel_g4_MT6991(void)
 {
 	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_MDP0_RROT0_MT6991, CPU_INTSEL_BIT_16);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_MDP1_MUTEX0_MT6991, CPU_INTSEL_BIT_17);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_MDP1_RROT0_MT6991, CPU_INTSEL_BIT_18);
 
 	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DITHER2_MT6991, CPU_INTSEL_BIT_19);
 

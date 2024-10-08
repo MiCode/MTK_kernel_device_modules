@@ -32,9 +32,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.submit_cb = mmprofile_register_event(parent, "submit_cb");
 	mml_mmp_events.taskdone = mmprofile_register_event(parent, "taskdone");
 	mml_mmp_events.exec = mmprofile_register_event(parent, "exec");
-	mml_mmp_events.racing_enter = mmprofile_register_event(parent, "racing_enter");
-	mml_mmp_events.racing_stop = mmprofile_register_event(parent, "racing_stop");
-	mml_mmp_events.racing_stop_sync = mmprofile_register_event(parent, "racing_stop_sync");
+	mml_mmp_events.irq = mmprofile_register_event(parent, "IRQ");
 	mml_mmp_events.couple = mmprofile_register_event(parent, "couple");
 	mml_mmp_events.kick = mmprofile_register_event(parent, "kick");
 	mml_mmp_events.dvfs = mmprofile_register_event(parent, "dvfs");
@@ -76,6 +74,17 @@ void mml_mmp_init(void)
 	mml_mmp_events.irq_stop = mmprofile_register_event(parent, "irq_stop");
 	mml_mmp_events.fence_sig = mmprofile_register_event(parent, "fence_sig");
 	mml_mmp_events.m2m_sig = mmprofile_register_event(parent, "m2m_sig");
+
+	parent = mml_mmp_events.irq;
+	mml_mmp_events.mutex = mmprofile_register_event(parent, "mutex");
+	mml_mmp_events.rrot0 = mmprofile_register_event(parent, "rrot0");
+	mml_mmp_events.rrot1 = mmprofile_register_event(parent, "rrot1");
+	mml_mmp_events.underrun = mmprofile_register_event(parent, "underrun");
+
+	parent = mml_mmp_events.couple;
+	mml_mmp_events.racing_enter = mmprofile_register_event(parent, "racing_enter");
+	mml_mmp_events.racing_stop = mmprofile_register_event(parent, "racing_stop");
+	mml_mmp_events.racing_stop_sync = mmprofile_register_event(parent, "racing_stop_sync");
 
 	parent = mml_mmp_events.dvfs;
 	mml_mmp_events.throughput = mmprofile_register_event(parent, "throughput");
