@@ -14838,6 +14838,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				mediatek,efuse-intr = <0x26>;
 				mediatek,rx-sqth = <0x3>;
 				mediatek,discth = <0x7>;
+				mediatek,uart-usb-sel = <&pericfg_ao_clk 0x058 0xf 1>;
 			};
 
 			u3port0: usb3-phy0@11c93000 {
