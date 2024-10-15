@@ -10848,43 +10848,69 @@ static void mtk_oddmr_update_table_handle(struct work_struct *data)
 {
 	struct cmdq_pkt *cmdq_handle0 = NULL;
 	struct cmdq_pkt *cmdq_handle1 = NULL;
+	struct mtk_drm_crtc *mtk_crtc = default_comp->mtk_crtc;
+	struct cmdq_client *client = NULL;
 	uint32_t update_sram_idx, updata_dram_idx;
+	int ret, pm_ret;
 
-	CRTC_MMP_EVENT_START(0, oddmr_ctl,
-		g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
-	ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
-	g_oddmr_priv->od_state = ODDMR_TABLE_UPDATING;
-	/* In case hasn't yet enabled by mtk_oddmr_set_od_enable. */
-	if (g_oddmr_priv->data->od_version == MTK_OD_V2)
-		mtk_oddmr_set_top_clk_force(default_comp, 1, NULL);
+	ODDMRFLOW_LOG("+\n");
+	mtk_drm_idlemgr_kick(__func__,
+			&default_comp->mtk_crtc->base, 1);
+	ret = mtk_oddmr_acquire_clock();
+	if (ret == 0) {
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			mtk_oddmr_release_clock();
+			return;
+		}
+		CRTC_MMP_EVENT_START(0, oddmr_ctl,
+			g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
+		ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
+		g_oddmr_priv->od_state = ODDMR_TABLE_UPDATING;
+		/* In case hasn't yet enabled by mtk_oddmr_set_od_enable. */
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+			mtk_oddmr_set_top_clk_force(default_comp, 1, NULL);
 
-	update_sram_idx = (uint32_t)!g_oddmr_priv->od_data.od_sram_read_sel;
-	updata_dram_idx = (uint32_t)g_od_param.updata_dram_table;
-	CRTC_MMP_MARK(0, oddmr_ctl, 10, 0);
-	cmdq_handle0 =
-		g_oddmr_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
-	cmdq_pkt_refinalize(cmdq_handle0);
-	CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle0, updata_dram_idx);
-	cmdq_pkt_flush(cmdq_handle0);
-	CRTC_MMP_MARK(0, oddmr_ctl, 10, 2);
-	ODDMRFLOW_LOG("now dram0 %d, now_dram1 %d\n",
-		g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
-	g_oddmr_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
-	if (default_comp->mtk_crtc->is_dual_pipe) {
-		cmdq_handle1 =
-			g_oddmr1_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
-		cmdq_pkt_refinalize(cmdq_handle1);
-		CRTC_MMP_MARK(0, oddmr_ctl, 11, 0);
-		CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle1, updata_dram_idx);
-		cmdq_pkt_flush(cmdq_handle1);
-		CRTC_MMP_MARK(0, oddmr_ctl, 11, 2);
-		g_oddmr1_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		if (mtk_crtc->gce_obj.client[CLIENT_PQ])
+			client = mtk_crtc->gce_obj.client[CLIENT_PQ];
+		else
+			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+		cmdq_mbox_enable(client->chan);
+		update_sram_idx = (uint32_t)!g_oddmr_priv->od_data.od_sram_read_sel;
+		updata_dram_idx = (uint32_t)g_od_param.updata_dram_table;
+		CRTC_MMP_MARK(0, oddmr_ctl, 10, 0);
+		cmdq_handle0 =
+			g_oddmr_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+		cmdq_pkt_refinalize(cmdq_handle0);
+		CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle0, updata_dram_idx);
+		cmdq_pkt_flush(cmdq_handle0);
+		CRTC_MMP_MARK(0, oddmr_ctl, 10, 2);
+		ODDMRFLOW_LOG("now dram0 %d, now_dram1 %d\n",
+			g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
+		g_oddmr_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		if (default_comp->mtk_crtc->is_dual_pipe) {
+			cmdq_handle1 =
+				g_oddmr1_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+			cmdq_pkt_refinalize(cmdq_handle1);
+			CRTC_MMP_MARK(0, oddmr_ctl, 11, 0);
+			CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle1, updata_dram_idx);
+			cmdq_pkt_flush(cmdq_handle1);
+			CRTC_MMP_MARK(0, oddmr_ctl, 11, 2);
+			g_oddmr1_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		}
+		cmdq_mbox_disable(client->chan);
+		ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
+			g_oddmr_priv->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
+		g_oddmr_priv->od_state = ODDMR_INIT_DONE;
+		ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
+		CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
+		mtk_oddmr_release_clock();
+	} else {
+		ODDMRFLOW_LOG("clock not on %d\n", ret);
 	}
-	ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
-		g_oddmr_priv->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
-	g_oddmr_priv->od_state = ODDMR_INIT_DONE;
-	ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
-	CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
 }
 
 static int mtk_oddmr_create_workqueue(struct mtk_disp_oddmr *priv)
