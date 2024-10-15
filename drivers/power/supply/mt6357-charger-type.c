@@ -171,7 +171,11 @@ static void hw_bc11_init(struct mtk_charger_type *info)
 		if (is_usb_rdy() == false) {
 			pr_info("CDP, block\n");
 			while (is_usb_rdy() == false && timeout > 0) {
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6765)
+				msleep(70);
+#else
 				msleep(100);
+#endif
 				timeout--;
 			}
 			if (timeout == 0)
