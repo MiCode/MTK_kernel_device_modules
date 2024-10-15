@@ -106,6 +106,17 @@ config COMMON_CLK_MT6768
 	  If you wish to use clock resources from the MT6853 SOC,
 	  say Y. Otherwise, say N.
 
+config COMMON_CLK_MT6771
+	tristate "Clock driver for MediaTek MT6771"
+	depends on ARM64 || ARM || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6771
+	help
+	  This driver supports MediaTek MT6771 basic clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6771 SOC,
+	  say Y. Otherwise, say N.
+
 config COMMON_CLK_MT6833
 	tristate "Clock driver for MediaTek MT6833"
 	depends on ARM64 || COMPILE_TEST
