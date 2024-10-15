@@ -6192,6 +6192,10 @@
 		compatible = "mediatek,touch";
 	};
 
+	goodix_fp: fingerprint {
+		compatible = "mediatek,goodix-fp";
+	};
+
 	mtk_lpm: mtk_lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
