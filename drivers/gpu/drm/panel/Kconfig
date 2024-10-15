@@ -747,6 +747,17 @@ config DRM_PANEL_NT37707_C2V_ARP
 	  and uses 24-bits RGB per pixel. It provides a MIPI DSI
 	  interface to host. It support ARP_TE.
 
+config DRM_PANEL_JD9635DA_GQ31093GQ
+	tristate "JD9635DA GQ31093GQ wxga vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+		Say Y here if you want to enable support for jd9635da
+		wxga vdo mode panel. The panel has a 800x1280 resolution
+		and uses 24-bits RGB per pixel. It provides a
+		MIPI DSI interface to host.
+
 config DRM_PANEL_NT37707_BOE_FHDPLUS_CMD
 	tristate "mt6991 nt37707 boe fhdplus cmd panel"
 	depends on OF
