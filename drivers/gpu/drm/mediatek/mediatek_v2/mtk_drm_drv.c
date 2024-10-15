@@ -3567,10 +3567,12 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_discrete_chip[] = {
 };
 #else
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
+#ifndef CONFIG_MTK_DISP_NO_LK
 	DDP_COMPONENT_OVL_EXDMA3,
 	DDP_COMPONENT_OVL0_BLENDER1,
 	DDP_COMPONENT_OVL_EXDMA4,
 	DDP_COMPONENT_OVL0_BLENDER2,
+#endif
 	DDP_COMPONENT_OVL_EXDMA5,
 	DDP_COMPONENT_OVL0_BLENDER3,
 	DDP_COMPONENT_OVL_EXDMA6,
@@ -7558,6 +7560,7 @@ void mtk_vidle_multi_crtc_stop(unsigned int crtc_id)
 	}
 }
 
+#ifndef CONFIG_MTK_DISP_NO_LK
 static void mtk_drm_first_enable(struct drm_device *drm)
 {
 	struct drm_crtc *crtc;
@@ -7570,6 +7573,17 @@ static void mtk_drm_first_enable(struct drm_device *drm)
 		lcm_fps_ctx_init(crtc);
 	}
 }
+#else
+static void mtk_drm_first_enable(struct drm_device *drm)
+{
+	struct drm_crtc *crtc;
+
+	drm_for_each_crtc(crtc, drm) {
+		mtk_drm_crtc_init_para(crtc);
+		lcm_fps_ctx_init(crtc);
+	}
+}
+#endif
 
 bool mtk_drm_session_mode_is_decouple_mode(struct drm_device *dev)
 {
@@ -8224,6 +8238,7 @@ found:
 
 unsigned int mtk_disp_num_from_atag(void)
 {
+#ifndef CONFIG_MTK_DISP_NO_LK
 	struct device_node *chosen_node;
 
 	chosen_node = of_find_node_by_path("/chosen");
@@ -8242,7 +8257,7 @@ unsigned int mtk_disp_num_from_atag(void)
 	} else {
 		DDPINFO("[DT][videolfb] of_chosen not found\n");
 	}
-
+#endif
 	return 0;
 }
 
