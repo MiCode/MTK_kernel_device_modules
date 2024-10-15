@@ -423,6 +423,7 @@ struct mtk_disp_oddmr {
 	int od_enable_req;
 	int od_enable;
 	int od_enable_last;
+	int od_update_sram;
 	int od_force_off;
 	int dmr_enable_req;
 	int dmr_enable;

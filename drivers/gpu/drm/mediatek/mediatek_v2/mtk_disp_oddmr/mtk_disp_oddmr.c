@@ -1545,6 +1545,7 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	}
 	//od reset
 	if (oddmr_priv->data->od_version == MTK_OD_V2) {
+		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		mtk_oddmr_set_od_clk(comp, 1, handle);
 		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
 		mtk_oddmr_write(comp, 0, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
@@ -1579,6 +1580,11 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	if (oddmr_priv->data->od_version != MTK_OD_V2)
 		mtk_oddmr_write(comp, 1,
 				DISP_ODDMR_TOP_HRT0_BYPASS, handle);
+
+	if (oddmr_priv->data->od_version == MTK_OD_V2 && g_oddmr_priv->od_update_sram == 0 &&
+			!g_oddmr_priv->dmr_enable)
+		mtk_oddmr_set_top_clk_force(comp, 0, handle); //no need to update sram table, top_clk can be closed
+
 }
 
 static void mtk_oddmr_fill_cfg(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg)
@@ -4133,6 +4139,8 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *priv,
 	if (g_oddmr_priv->od_state == ODDMR_TABLE_UPDATING) {
 		ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
 		*table_idx = tmp_table_idx;
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+			g_oddmr_priv->od_update_sram = 1;
 		return 0;
 	}
 	ODDMRFLOW_LOG("%d\n", __LINE__);
@@ -5921,6 +5929,8 @@ static void mtk_oddmr_od_table_chg(struct cmdq_pkt *handle)
 				g_oddmr_current_timing.old_vrefresh = g_oddmr_current_timing.vrefresh;
 				g_oddmr_current_timing.old_bl_level = g_oddmr_current_timing.bl_level;
 			} else if (g_oddmr_priv->data->is_od_4_table && ret == 2) {
+				if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+					g_oddmr_priv->od_update_sram = 1;
 				//TODO:update table work queue(table pq sram) mt6985 no need
 				queue_work(g_oddmr_priv->oddmr_wq, &g_oddmr_priv->update_table_work);
 			} else if (ret == 0) {
@@ -5956,8 +5966,6 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		enable, sec_on, oddmr_priv->od_force_off);
 	mtk_oddmr_od_srt_cal(comp, en);
 	if (en) {
-		if (oddmr_priv->data->od_version == MTK_OD_V2)
-			mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		if (oddmr_priv->od_enable_last == 0 && en == true) {
 			//OD_PU: make sure related RGs are set before enable
 			if (oddmr_priv->data->od_version == MTK_OD_V2) {
@@ -5986,8 +5994,6 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, handle);
 			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, handle);
 			mtk_oddmr_set_od_clk(comp, 0, handle);
-			if (!oddmr_priv->dmr_enable)
-				mtk_oddmr_set_top_clk_force(comp, 0, handle);
 		} else {
 			mtk_oddmr_write_mask(comp, 0, DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 			mtk_oddmr_od_bypass(comp, handle);
@@ -6027,6 +6033,7 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 		struct cmdq_pkt *handle)
 {
 	bool sec_on, en;
+	int od_update_sram_last;
 
 	ODDMRAPI_LOG("+\n");
 	sec_on = default_comp->mtk_crtc->sec_on;
@@ -6037,12 +6044,25 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 	if (default_comp->mtk_crtc->is_dual_pipe)
 		en = en && !g_oddmr1_priv->od_force_off;
 
+	if (g_oddmr_priv->data->od_version == MTK_OD_V2) {
+		od_update_sram_last = g_oddmr_priv->od_update_sram;
+		g_oddmr_priv->od_update_sram = 0;
+	}
+
+	if(en && g_oddmr_priv->od_state >= ODDMR_INIT_DONE)
+		mtk_oddmr_od_table_chg(handle);
+	// mtk_oddmr_set_od_enable will use od_update_sram info from mtk_oddmr_od_table_chg
+	// g_oddmr_priv->od_update_sram = 1 means OD will or still update sram table
 	mtk_oddmr_set_od_enable(default_comp, enable, handle);
 	if (default_comp->mtk_crtc->is_dual_pipe)
 		mtk_oddmr_set_od_enable(oddmr1_default_comp, enable, handle);
-	if(en && g_oddmr_priv->od_state >= ODDMR_INIT_DONE)
-		mtk_oddmr_od_table_chg(handle);
+
+	if (g_oddmr_priv->data->od_version == MTK_OD_V2  &&
+			od_update_sram_last == 1 && g_oddmr_priv->od_update_sram == 0 &&
+			!g_oddmr_priv->dmr_enable)
+		mtk_oddmr_set_top_clk_force(default_comp, 0, handle); //updating sram done, top_clk can be closed
 }
+
 static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle)
 {
