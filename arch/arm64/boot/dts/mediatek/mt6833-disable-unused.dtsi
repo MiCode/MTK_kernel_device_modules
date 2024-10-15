@@ -260,7 +260,6 @@
 			<&infracfg_ao_clk CLK_IFRAO_MSDC1_SRC>,
 			<&infracfg_ao_clk CLK_IFRAO_MSDC0_AES>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF_AP>,
-			<&infracfg_ao_clk CLK_IFRAO_DEBUGSYS>,
 			<&infracfg_ao_clk CLK_IFRAO_AUDIO>,
 			<&infracfg_ao_clk CLK_IFRAO_CCIF_MD>,
 			<&infracfg_ao_clk CLK_IFRAO_SSUSB>,
