@@ -26,6 +26,10 @@ ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP4_C), m y))
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_C) += isp4_c/
 endif
 
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP5_SYL), m y))
+obj-$(CONFIG_MTK_CAM_CAL_ISP5_SYL) += isp5_syl/
+endif
+
 ifneq (,$(filter $(CONFIG_MTK_CAM_CAL), m))
 obj-$(CONFIG_MTK_CAM_CAL) += custom/
 endif

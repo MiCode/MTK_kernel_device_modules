@@ -69,6 +69,7 @@ obj-$(CONFIG_MTK_CAM_CAL_ISP3_Z) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP3_M) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_C) += cam_cal/
+obj-$(CONFIG_MTK_CAM_CAL_ISP5_SYL) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MOU) += cam_cal/
