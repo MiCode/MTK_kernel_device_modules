@@ -591,6 +591,21 @@ static const struct mtk_i2c_compatible mt6765_compat = {
 	.need_add_hhs_div = 0,
 };
 
+static const struct mtk_i2c_compatible mt6771_compat = {
+	.regs = mt_i2c_regs_v2,
+	.pmic_i2c = 0,
+	.dcm = 0,
+	.auto_restart = 1,
+	.aux_len_reg = 1,
+	.timing_adjust = 1,
+	.dma_sync = 1,
+	.ltiming_adjust = 1,
+	.dma_ver = 0,
+	.apdma_sync = 1,
+	.max_dma_support = 36,
+	.fifo_size = 8,
+};
+
 static const struct mtk_i2c_compatible mt6781_compat = {
 	.regs = mt_i2c_regs_v2,
 	.pmic_i2c = 0,
@@ -738,6 +753,7 @@ static const struct of_device_id mtk_i2c_of_match[] = {
 	{ .compatible = "mediatek,mt6781-i2c", .data = &mt6781_compat },
 	{ .compatible = "mediatek,mt6877-i2c", .data = &mt6877_compat },
 	{ .compatible = "mediatek,mt6765-i2c", .data = &mt6765_compat },
+	{ .compatible = "mediatek,mt6771-i2c", .data = &mt6771_compat },
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_i2c_of_match);
