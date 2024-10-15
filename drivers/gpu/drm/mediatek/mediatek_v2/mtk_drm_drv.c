@@ -12087,19 +12087,28 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	struct drm_device *drm = private->drm;
 	int ret = 0;
 
-	if (drm) {
-		/* skip all next atomic commit */
-		atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
-		DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
-		mtk_drm_pm_ctrl(private, DISP_PM_GET);
-		ret = mtk_vidle_force_power_ctrl_by_cpu(true);
-		drm_atomic_helper_shutdown(drm);
-		if (!ret)
-			ret = mtk_vidle_force_power_ctrl_by_cpu(false);
-		else if (ret < 0)
-			DDPMSG("%s ret[%d]", __func__, ret);
-		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
+	if (!drm)
+		return;
+
+	/* skip all next atomic commit */
+	atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
+	DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
+
+	/* skip shutdown flow if already suspended */
+	if (atomic_read(&private->kernel_pm.wakelock_cnt) == 0) {
+		DDPMSG("%s skipped, disp wakelock already released\n", __func__);
+		return;
 	}
+
+	ret = mtk_vidle_force_power_ctrl_by_cpu(true);
+	if (ret < 0) {
+		DDPMSG("%s skipped, power keep ret(%d)\n", __func__, ret);
+		return;
+	}
+	mtk_drm_pm_ctrl(private, DISP_PM_GET);
+	drm_atomic_helper_shutdown(drm);
+	mtk_drm_pm_ctrl(private, DISP_PM_PUT);
+	mtk_vidle_force_power_ctrl_by_cpu(false);
 }
 
 static int mtk_drm_remove(struct platform_device *pdev)
