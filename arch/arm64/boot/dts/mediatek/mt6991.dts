@@ -9870,6 +9870,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		vdisp_ao: vdisp-ao@3e800000 {
 			compatible = "mediatek,mt6991-vdisp-ao";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
 			reg = <0 0x3e800000 0 0x1000>;
 		};
 
@@ -9910,7 +9911,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		disp_dpc: disp-dpc@3e8f0000 {
 			compatible = "mediatek,mt6991-disp-dpc-v2";
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>; /* for apb access, not real parent */
+			disp-power-pair-size = <2>;                               /* power domain pair size */
 			reg =
 				<0 0x3e8f0000 0 0x1000>,
 				<0 0x31b501b8 0 0x4>,             /* hfrp rtff pwr con */
@@ -9956,7 +9958,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts =
 				<GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>; /* DISP_VDISP_AO_MERGE_IRQ_BIT */
 			vidle-mask = <0x13>;
-			root-dev = <&disp_vcore_ctrl>;
+			root-dev = <&vdisp_ao>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {
@@ -13092,7 +13094,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	disp_vcore_ctrl: disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>,
+				<&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA0>; /* parent */
+		disp-power-pair-size = <2>;                               /* power domain pair size */
 		clocks =
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_DPC_DISP>,
