@@ -579,15 +579,17 @@ static void scp_A_register_notify_pending(void)
 	struct notifier_block *nb = NULL;
 
 	spin_lock(&notify_register_spinlock);
-	while (node->next) {
-		nb = node->next;
-		node->next = node->next->next;
-		spin_unlock(&notify_register_spinlock);
-		/* should not call blocking API in atomic context */
-		scp_A_register_notify(nb);
-		spin_lock(&notify_register_spinlock);
+	if (unlikely(register_curr != &register_notify_pending)) {
+		while (node->next) {
+			nb = node->next;
+			node->next = node->next->next;
+			spin_unlock(&notify_register_spinlock);
+			/* should not call blocking API in atomic context */
+			scp_A_register_notify(nb);
+			spin_lock(&notify_register_spinlock);
+		}
+		register_curr = &register_notify_pending;
 	}
-	register_curr = &register_notify_pending;
 	spin_unlock(&notify_register_spinlock);
 }
 
@@ -597,15 +599,17 @@ static void scp_A_unregister_notify_pending(void)
 	struct notifier_block *nb = NULL;
 
 	spin_lock(&notify_unregister_spinlock);
-	while (node->next) {
-		nb = node->next;
-		node->next = node->next->next;
-		spin_unlock(&notify_unregister_spinlock);
-		/* should not call blocking API in atomic context */
-		scp_A_unregister_notify(nb);
-		spin_lock(&notify_unregister_spinlock);
+	if (unlikely(unregister_curr != &unregister_notify_pending)) {
+		while (node->next) {
+			nb = node->next;
+			node->next = node->next->next;
+			spin_unlock(&notify_unregister_spinlock);
+			/* should not call blocking API in atomic context */
+			scp_A_unregister_notify(nb);
+			spin_lock(&notify_unregister_spinlock);
+		}
+		unregister_curr = &unregister_notify_pending;
 	}
-	unregister_curr = &unregister_notify_pending;
 	spin_unlock(&notify_unregister_spinlock);
 }
 /*
@@ -617,25 +621,32 @@ static void scp_A_unregister_notify_pending(void)
 void scp_A_register_notify(struct notifier_block *nb)
 {
 	pr_debug("%s start\n", __func__);
+	spin_lock(&notify_register_spinlock);
 	switch (atomic_read(&scp_A_notifier_status)) {
 	/*
 	 * if user register nb after SCP ready event, should notify
 	 * user the ready event, too.
 	 */
 	case SCP_EVENT_READY:
+		spin_unlock(&notify_register_spinlock);
 		nb->notifier_call(nb, SCP_EVENT_READY, NULL);
 		pr_debug("%s callback finished\n", __func__);
-		fallthrough;
+		blocking_notifier_chain_register(&scp_A_notifier_list, nb);
+		pr_debug("%s register finished\n", __func__);
+		break;
 	case SCP_EVENT_STOP:
+		spin_unlock(&notify_register_spinlock);
 		blocking_notifier_chain_register(&scp_A_notifier_list, nb);
 		pr_debug("%s register finished\n", __func__);
 		break;
 	case SCP_EVENT_NOTIFYING:
-		spin_lock(&notify_register_spinlock);
 		register_curr->next = nb;
 		register_curr = register_curr->next;
-		spin_unlock(&notify_register_spinlock);
 		pr_debug("%s pending finished\n", __func__);
+		spin_unlock(&notify_register_spinlock);
+		break;
+	default:
+		spin_unlock(&notify_register_spinlock);
 		break;
 	}
 	pr_debug("%s end\n", __func__);
@@ -651,15 +662,19 @@ EXPORT_SYMBOL_GPL(scp_A_register_notify);
  */
 void scp_A_unregister_notify(struct notifier_block *nb)
 {
+	spin_lock(&notify_unregister_spinlock);
 	switch (atomic_read(&scp_A_notifier_status)) {
 	case SCP_EVENT_STOP:
 	case SCP_EVENT_READY:
+		spin_unlock(&notify_unregister_spinlock);
 		blocking_notifier_chain_unregister(&scp_A_notifier_list, nb);
 		break;
 	case SCP_EVENT_NOTIFYING:
-		spin_lock(&notify_unregister_spinlock);
 		unregister_curr->next = nb;
 		unregister_curr = unregister_curr->next;
+		spin_unlock(&notify_unregister_spinlock);
+		break;
+	default:
 		spin_unlock(&notify_unregister_spinlock);
 		break;
 	}
@@ -1997,10 +2012,8 @@ void scp_extern_notify(enum SCP_NOTIFY_EVENT notify_status)
 	 * if there is some user (un)register when notifier is notifying,
 	 * should (un)register them after the notify action is finish.
 	 */
-	if (unlikely(register_curr != &register_notify_pending))
-		scp_A_register_notify_pending();
-	if (unlikely(unregister_curr != &unregister_notify_pending))
-		scp_A_unregister_notify_pending();
+	scp_A_register_notify_pending();
+	scp_A_unregister_notify_pending();
 	mutex_unlock(&scp_A_notify_mutex);
 }
 
