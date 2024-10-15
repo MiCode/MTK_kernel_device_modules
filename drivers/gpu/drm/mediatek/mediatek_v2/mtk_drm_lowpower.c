@@ -1387,11 +1387,15 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 			local_clock() - idlemgr_ctx->enter_idle_ts);
 		if (mtk_crtc->esd_ctx)
 			atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
-		if (mtk_crtc->enabled && need_lock)
-			mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);
+
+		if (mtk_crtc->enabled)
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);	/* no polling for this user */
+
 		mtk_drm_idlemgr_leave_idle_nolock(crtc);
-		if (mtk_crtc->enabled && need_lock)
+
+		if (mtk_crtc->enabled)
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
+
 		idlemgr_ctx->is_idle = 0;
 		/* wake up idlemgr process to monitor next idle state */
 		wake_up_interruptible(&idlemgr->idlemgr_wq);
@@ -1749,7 +1753,7 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			/* enter idle state */
 			if (!vblank || atomic_read(&vblank->refcount) == 0) {
 				DDPINFO("[LP] enter idle\n");
-				mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);
+				mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);	/* no polling for this user */
 				mtk_drm_idlemgr_enter_idle_nolock(crtc);
 				mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
 				idlemgr_ctx->is_idle = 1;
