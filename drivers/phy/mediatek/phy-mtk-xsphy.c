@@ -205,7 +205,11 @@
 #define RG_XTP0_U1_U2_EXIT_EQUAL		BIT(19)
 
 #define SSPXTP_DAIG_LN_RX0_70	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x070)
-#define RG_XTP0_CDR_PPATH_DVN_G2_LTD1	GENMASK(15, 8)
+#define RG_XTP0_CDR_PPATH_DVN_G2_LTD0		GENMASK(7, 0)
+#define RG_XTP0_CDR_PPATH_DVN_G2_LTD1		GENMASK(15, 8)
+
+#define SSPXTP_DAIG_LN_RX0_7C   ((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x07C)
+#define RG_XTP0_CDR_STB_GAIN_G2_LTD0		GENMASK(15, 14)
 
 #define SSPXTP_DAIG_LN_DAIF_00	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x00)
 #define RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1		BIT(7)
@@ -426,6 +430,7 @@ struct xsphy_instance {
 	bool u3_gen2_hqa;
 	/* u3 lpm */
 	bool u1u2_exit_equal;
+	bool u3gen2_lpm_fix;
 	/* refclk source */
 	bool refclk_sel;
 	/* HWPLL mode setting */
@@ -1660,6 +1665,16 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_RX0_48, RG_XTP0_U1_U2_EXIT_EQUAL);
 	}
 
+	if (inst->u3gen2_lpm_fix) {
+		dev_info(xsphy->dev, "%s apply u3gen2 lpm fix.\n", __func__);
+		/* CDR DVN LTD0 [7:0] = 0x28 */
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_70, RG_XTP0_CDR_PPATH_DVN_G2_LTD0, 0x28);
+		/* CDR STB LTD0 [15:14] = 0x2 */
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_7C, RG_XTP0_CDR_STB_GAIN_G2_LTD0, 0x2);
+		/* CDR IIR GAIN [15:13] = 0x2*/
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_44, RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN, 0x2);
+	}
+
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, inst->index);
 
 }
@@ -2302,12 +2317,14 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		inst->u3_gen2_hqa = device_property_read_bool(dev, "mediatek,u3-gen2-hqa");
 		inst->u3_sw_efuse = device_property_read_bool(dev, "mediatek,u3-sw-efuse");
 		inst->u1u2_exit_equal = device_property_read_bool(dev, "mediatek,u1u2-exit-equal");
+		inst->u3gen2_lpm_fix = device_property_read_bool(dev, "mediatek,u3gen2-lpm-fix");
 
 		dev_dbg(dev, "u3-sw-efuse: %d, intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d, u3_gen2_hqa:%d\n",
 			inst->u3_sw_efuse, inst->efuse_intr, inst->efuse_tx_imp,
 			inst->efuse_rx_imp, inst->u3_rx_fix, inst->u3_gen2_hqa);
 
-		dev_dbg(dev, "u1u2_exit_equal: %d", inst->u1u2_exit_equal);
+		dev_dbg(dev, "u1u2_exit_equal: %d, u3gen2_lpm_fix: %d", inst->u1u2_exit_equal,
+			inst->u3gen2_lpm_fix);
 
 		inst->orientation = 0;
 
