@@ -53,19 +53,18 @@ int irq_aee;
 module_param(irq_aee, int, 0644);
 int mminfra_floor;
 module_param(mminfra_floor, int, 0644);
-
 int post_vlp_delay = 60;
 module_param(post_vlp_delay, int, 0644);
-
 u32 dump_begin;
 module_param(dump_begin, uint, 0644);
 u32 dump_lines = 40;
 module_param(dump_lines, uint, 0644);
-
-int debug_force_wait;
-module_param(debug_force_wait, int, 0644);
 u32 debug_presz;
 module_param(debug_presz, uint, 0644);
+
+/* 0: normal, 1: force wait, 2: force skip */
+int wfe_prete = 2;
+module_param(wfe_prete, int, 0644);
 
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
@@ -1623,8 +1622,15 @@ static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 
 static void dpc_clear_wfe_event(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user user, int event)
 {
-	if (!has_cap(DPC_CAP_MTCMOS) && !debug_force_wait)
+	switch (wfe_prete) {
+	case 1:
+		break;
+	case 2:
 		return;
+	default:
+		if (!has_cap(DPC_CAP_MTCMOS))
+			return;
+	}
 
 	cmdq_pkt_clear_event(pkt, event);
 	cmdq_pkt_wfe(pkt, event);
