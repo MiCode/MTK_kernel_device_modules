@@ -360,14 +360,14 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 			struct snd_pcm_substream *substream,
 			int channel,
 			unsigned long pos,
-			void __user *buf,
+			struct iov_iter *buf,
 			unsigned long bytes)
 {
 	struct afe_block_t *Afe_Block = NULL;
 	int copy_size = 0, Afe_WriteIdx_tmp;
 	unsigned long flags;
 	/* struct snd_pcm_runtime *runtime = substream->runtime; */
-	char *data_w_ptr = (char *)buf;
+	struct iov_iter data_w_ptr = *buf;
 
 	/* get total bytes to copy */
 	unsigned long count = bytes;
@@ -419,11 +419,11 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 		/* copy once */
 		if (Afe_WriteIdx_tmp + copy_size < Afe_Block->u4BufferSize) {
 
-			if (!access_ok(data_w_ptr, copy_size)) {
+			if (!access_ok(data_w_ptr.__iov->iov_base, copy_size)) {
 #if defined(DL1_DEBUG_LOG)
 				pr_debug(
 					"AudDrv_write 0ptr invalid data_w_ptr=%p, size=%d u4BufferSize=%d, u4DataRemained=%d",
-					data_w_ptr, copy_size,
+					data_w_ptr.__iov->iov_base, copy_size,
 					Afe_Block->u4BufferSize,
 					Afe_Block->u4DataRemained);
 #endif
@@ -433,14 +433,14 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 					"memcpy VirtBufAddr+Afe_WriteIdx= %p,data_w_ptr = %p copy_size = 0x%x\n",
 					Afe_Block->pucVirtBufAddr +
 						Afe_WriteIdx_tmp,
-					data_w_ptr, copy_size);
+					data_w_ptr.__iov->iov_base, copy_size);
 #endif
-				if (copy_from_user((Afe_Block->pucVirtBufAddr +
-						    Afe_WriteIdx_tmp),
-						   data_w_ptr, copy_size)) {
+				if (copy_from_iter(Afe_Block->pucVirtBufAddr +
+						    Afe_WriteIdx_tmp, copy_size,
+						     &data_w_ptr) != copy_size) {
 #if defined(DL1_DEBUG_LOG)
 					pr_debug(
-						"AudDrv_write Fail copy from user\n");
+						"AudDrv_write Fail copy from iter\n");
 #endif
 					return -1;
 				}
@@ -451,7 +451,7 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 			Afe_Block->u4WriteIdx = Afe_WriteIdx_tmp + copy_size;
 			Afe_Block->u4WriteIdx %= Afe_Block->u4BufferSize;
 			spin_unlock_irqrestore(&auddrv_DLCtl_lock, flags);
-			data_w_ptr += copy_size;
+			iov_iter_advance(&data_w_ptr, copy_size);
 			count -= copy_size;
 #ifdef DL1_DEBUG_LOG
 			pr_debug(
@@ -462,7 +462,7 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 #endif
 		} else {
 			/* copy twice */
-			kal_uint32 size_1 = 0, size_2 = 0;
+			unsigned int size_1 = 0, size_2 = 0;
 
 			size_1 = word_size_align(
 				(Afe_Block->u4BufferSize - Afe_WriteIdx_tmp));
@@ -471,9 +471,9 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 			pr_debug("size_1=0x%x, size_2=0x%x\n", size_1,
 				       size_2);
 #endif
-			if (!access_ok(data_w_ptr, size_1)) {
+			if (!access_ok(data_w_ptr.__iov->iov_base, size_1)) {
 				pr_err("AudDrv_write 1ptr invalid data_w_ptr=%p, size_1=%d u4BufferSize=%d, u4DataRemained=%d",
-				       data_w_ptr, size_1,
+				       data_w_ptr.__iov->iov_base, size_1,
 				       Afe_Block->u4BufferSize,
 				       Afe_Block->u4DataRemained);
 			} else {
@@ -482,15 +482,14 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 					"mcmcpy Afe_Block->pucVirtBufAddr+Afe_WriteIdx= %p data_w_ptr = %p size_1 = %x\n",
 					Afe_Block->pucVirtBufAddr +
 						Afe_WriteIdx_tmp,
-					data_w_ptr, size_1);
+					data_w_ptr.__iov->iov_base, size_1);
 #endif
-				if ((copy_from_user((Afe_Block->pucVirtBufAddr +
-						     Afe_WriteIdx_tmp),
-						    data_w_ptr,
-						    (unsigned int)size_1))) {
+				if (copy_from_iter(Afe_Block->pucVirtBufAddr +
+						 Afe_WriteIdx_tmp, size_1,
+						 &data_w_ptr) != size_1) {
 #if defined(DL1_DEBUG_LOG)
 					pr_debug(
-						"AudDrv_write Fail 1 copy from user");
+						"AudDrv_write Fail 1 copy from iter");
 #endif
 					return -1;
 				}
@@ -502,12 +501,12 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 			Afe_WriteIdx_tmp = Afe_Block->u4WriteIdx;
 			spin_unlock_irqrestore(&auddrv_DLCtl_lock, flags);
 
-			if (!access_ok(data_w_ptr + size_1,
+			if (!access_ok(data_w_ptr.__iov->iov_base + size_1,
 				       size_2)) {
 #if defined(DL1_DEBUG_LOG)
 				pr_debug(
 					"AudDrv_write 2ptr invalid data_w_ptr=%p, size_1=%d, size_2=%d u4BufferSize=%d, u4DataRemained=%d",
-					data_w_ptr, size_1, size_2,
+					data_w_ptr.__iov->iov_base, size_1, size_2,
 					Afe_Block->u4BufferSize,
 					Afe_Block->u4DataRemained);
 #endif
@@ -517,16 +516,15 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 					"mcmcpy VirtBufAddr+Afe_WriteIdx= %p,data_w_ptr+size_1 = %p size_2 = %x\n",
 					Afe_Block->pucVirtBufAddr +
 						Afe_WriteIdx_tmp,
-					data_w_ptr + size_1,
+					data_w_ptr.__iov->iov_base + size_1,
 					(unsigned int)size_2);
 #endif
-				if ((copy_from_user((Afe_Block->pucVirtBufAddr +
-						     Afe_WriteIdx_tmp),
-						    (data_w_ptr + size_1),
-						    size_2))) {
+				if (copy_from_iter(Afe_Block->pucVirtBufAddr +
+						Afe_WriteIdx_tmp, size_2,
+						 &data_w_ptr) != size_2) {
 #if defined(DL1_DEBUG_LOG)
 					pr_debug(
-						"AudDrv_write Fail 2  copy from user");
+						"AudDrv_write Fail 2  copy from iter");
 #endif
 					return -1;
 				}
@@ -538,7 +536,7 @@ static int mtk_pcm_copy(struct snd_soc_component *component,
 			Afe_Block->u4WriteIdx %= Afe_Block->u4BufferSize;
 			spin_unlock_irqrestore(&auddrv_DLCtl_lock, flags);
 			count -= copy_size;
-			data_w_ptr += copy_size;
+			iov_iter_advance(&data_w_ptr, copy_size);
 #ifdef DL1_DEBUG_LOG
 
 			pr_debug(

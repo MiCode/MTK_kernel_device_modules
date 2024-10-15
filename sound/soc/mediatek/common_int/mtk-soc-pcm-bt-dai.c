@@ -294,12 +294,12 @@ static bool CheckNullPointer(void *pointer)
 
 static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 			       struct snd_pcm_substream *substream, int channel,
-			       unsigned long pos, void __user *buf,
+			       unsigned long pos, struct iov_iter *buf,
 			       unsigned long bytes)
 {
 	struct afe_mem_control_t *pDAI_MEM_ConTrol = NULL;
 	struct afe_block_t *Dai_Block = NULL;
-	char *Read_Data_Ptr = (char *)buf;
+	struct iov_iter Read_Data_Ptr = *buf;
 	ssize_t DMA_Read_Ptr = 0, read_size = 0, read_count = 0;
 	unsigned long flags;
 	unsigned int count = 0;
@@ -355,16 +355,13 @@ static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 				DMA_Read_Ptr, Dai_Block->u4DMAReadIdx);
 		}
 
-		if (copy_to_user((void __user *)Read_Data_Ptr,
-				 (Dai_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 read_size)) {
-
-			pr_err("%s Fail 1 copy to user Read_Data_Ptr:%p, pucVirtBufAddr:%p, u4DMAReadIdx:0x%x",
-			       __func__, Read_Data_Ptr,
-			       Dai_Block->pucVirtBufAddr,
-			       Dai_Block->u4DMAReadIdx);
-			pr_err("%s Fail 1 copy to user DMA_Read_Ptr:%zu,read_size:%zu",
-			       __func__, DMA_Read_Ptr, read_size);
+		if (copy_to_iter(Dai_Block->pucVirtBufAddr + DMA_Read_Ptr,
+				 read_size, &Read_Data_Ptr) != read_size) {
+			pr_info("%s Fail 1 copy to iter pucVirtBufAddr:%p, u4DMAReadIdx:0x%x",
+				   __func__, Dai_Block->pucVirtBufAddr,
+				   Dai_Block->u4DMAReadIdx);
+			pr_info("%s Fail 1 copy to iter DMA_Read_Ptr:%zu,read_size:%zu",
+				   __func__, DMA_Read_Ptr, read_size);
 			return 0;
 		}
 
@@ -376,7 +373,7 @@ static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 		DMA_Read_Ptr = Dai_Block->u4DMAReadIdx;
 		spin_unlock(&auddrv_BTDaiInCtl_lock);
 
-		Read_Data_Ptr += read_size;
+		iov_iter_advance(&Read_Data_Ptr, read_size);
 		count -= read_size;
 #if defined(AUD_DEBUG_LOG)
 		pr_debug(
@@ -395,13 +392,11 @@ static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 				__func__, size_1, Dai_Block->u4DataRemained,
 				DMA_Read_Ptr, Dai_Block->u4DMAReadIdx);
 		}
-		if (copy_to_user((void __user *)Read_Data_Ptr,
-				 (Dai_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 size_1)) {
+		if (copy_to_iter(Dai_Block->pucVirtBufAddr + DMA_Read_Ptr,
+				  size_1, &Read_Data_Ptr) != size_1) {
 
-			pr_warn("%s Fail 2 copy to user Ptr:%p,VirtAddr:%p, ReadIdx:0x%x, Read_Ptr:%zu,read_size:%zu",
-				__func__, Read_Data_Ptr,
-				Dai_Block->pucVirtBufAddr,
+			pr_info("%s Fail 2 copy to iter VirtAddr:%p, ReadIdx:0x%x, Read_Ptr:%zu,read_size:%zu",
+				__func__, Dai_Block->pucVirtBufAddr,
 				Dai_Block->u4DMAReadIdx, DMA_Read_Ptr,
 				read_size);
 			return 0;
@@ -427,13 +422,10 @@ static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 				__func__, size_2, Dai_Block->u4DataRemained,
 				DMA_Read_Ptr, Dai_Block->u4DMAReadIdx);
 		}
-		if (copy_to_user((void __user *)(Read_Data_Ptr + size_1),
-				 (Dai_Block->pucVirtBufAddr + DMA_Read_Ptr),
-				 size_2)) {
-
-			pr_warn("%s Fail 3 copy to user Ptr:%p,VirtAddr:%p, ReadIdx:0x%x , Ptr:%zu,read_size:%zu",
-				__func__, Read_Data_Ptr,
-				Dai_Block->pucVirtBufAddr,
+		if (copy_to_iter(Dai_Block->pucVirtBufAddr + DMA_Read_Ptr,
+				 size_2, &Read_Data_Ptr) != size_2) {
+			pr_info("%s Fail 3 copy to iter VirtAddr:%p, ReadIdx:0x%x , Ptr:%zu,read_size:%zu",
+				__func__, Dai_Block->pucVirtBufAddr,
 				Dai_Block->u4DMAReadIdx, DMA_Read_Ptr,
 				read_size);
 			return read_count << 2;
@@ -446,8 +438,8 @@ static int mtk_bt_dai_pcm_copy(struct snd_soc_component *component,
 		DMA_Read_Ptr = Dai_Block->u4DMAReadIdx;
 		spin_unlock(&auddrv_BTDaiInCtl_lock);
 
+		iov_iter_advance(&Read_Data_Ptr, read_size);
 		count -= read_size;
-		Read_Data_Ptr += read_size;
 #if defined(AUD_DEBUG_LOG)
 		pr_debug(
 			"%s finish3, copy size_2:0x%x,ReadIdx:0x%x, WriteIdx:0x%x Remained:0x%x \r\n",
