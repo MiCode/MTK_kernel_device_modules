@@ -6515,6 +6515,19 @@ static const struct mtk_disp_ovl_data mt6855_ovl_driver_data = {
 	.source_bpc = 8,
 };
 
+static const struct mtk_disp_ovl_data mt6771_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0X04,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	.fifo_size = 192,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.is_support_34bits = false,
+	.source_bpc = 8,
+};
+
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
 	.addr = DISP_REG_OVL_ADDR_MT8173,
 	.el_addr_offset = 0x04,
@@ -6538,6 +6551,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6765_ovl_driver_data},
 	{.compatible = "mediatek,mt6768-disp-ovl",
 	 .data = &mt6768_ovl_driver_data},
+	{.compatible = "mediatek,mt6771-disp-ovl",
+	 .data = &mt6771_ovl_driver_data},
 	{.compatible = "mediatek,mt6779-disp-ovl",
 	 .data = &mt6779_ovl_driver_data},
 	{.compatible = "mediatek,mt8173-disp-ovl",

@@ -1017,6 +1017,11 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT8173:
 		break;
+	case MMSYS_MT6771:
+		mmsys_cofig_dump_reg_mt6771(mtk_crtc->config_regs);
+		mutex_dump_reg_mt6771(mtk_crtc->mutex[0]);
+		mutex_dump_analysis_mt6771(mtk_crtc->mutex[0]);
+		break;
 	case MMSYS_MT6779:
 		break;
 	case MMSYS_MT6885:
@@ -1574,6 +1579,9 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT2712:
 		break;
 	case MMSYS_MT8173:
+		break;
+	case MMSYS_MT6771:
+		mmsys_config_dump_analysis_mt6771(mtk_crtc->config_regs);
 		break;
 	case MMSYS_MT6779:
 		break;
