@@ -376,18 +376,6 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			readl(MEM_REC_VMM_CEIL_SEC(j)), readl(MEM_REC_VMM_CEIL_USEC(j)),
 			readl(MEM_REC_VMM_CEIL_VAL(j)));
 
-	// sram mux cb records
-	if (mmdvfs_get_mux_cb_sram_enable()) {
-		mmdvfs_debug_dump_line(file, "sram mux cb records");
-		for (i = 0; i < SRAM_MUX_CB_CNT; i++) {
-			mux_cb_time = readq(SRAM_MUX_CB_TIME(i));
-			if (mux_cb_time)
-				mmdvfs_debug_dump_line(file, "[%5llu.%6llu] mux_cb_val:%#x",
-					mux_cb_time/1000000, mux_cb_time%1000000,
-					readl(SRAM_MUX_CB_VAL(i)));
-		}
-	}
-
 	// vcp exception
 	if (readl(MEM_VCP_EXC_SEC)) {
 		val = readl(MEM_VCP_EXC_VAL);
@@ -419,16 +407,29 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 			readl(MEM_REC_VMM_VOLT(j)),
 			readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
-	return;
 
 sram_dump:
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
 	mmdvfs_vcp_cb_mutex_lock();
 	if (!mmdvfs_vcp_cb_ready_get()) {
-		mmdvfs_vcp_cb_mutex_unlock();
 		MMDVFS_DBG("cb_ready:%d", mmdvfs_vcp_cb_ready_get());
-		return;
+		goto sram_dump_end;
 	}
+
+	// sram mux cb records
+	if (mmdvfs_get_mux_cb_sram_enable()) {
+		mmdvfs_debug_dump_line(file, "sram mux cb records");
+		for (i = 0; i < SRAM_MUX_CB_CNT; i++) {
+			mux_cb_time = readq(SRAM_MUX_CB_TIME(i));
+			if (mux_cb_time)
+				mmdvfs_debug_dump_line(file, "[%5llu.%6llu] mux_cb_val:%#x",
+					mux_cb_time/1000000, mux_cb_time%1000000,
+					readl(SRAM_MUX_CB_VAL(i)));
+		}
+	}
+
+	if (!mmdvfs_get_mmup_sram_enable())
+		goto sram_dump_end;
 
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 	// usr
@@ -533,6 +534,7 @@ sram_dump:
 		mmdvfs_debug_dump_line(file, "pwr:%d gear:%u", i, readl(SRAM_PWR_GEAR(i)));
 	mmdvfs_debug_dump_line(file, "pwr:%d ceil:%u", i, readl(SRAM_VMM_CEIL));
 
+sram_dump_end:
 	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 }
