@@ -372,7 +372,7 @@ enum IMGSENSOR_RETURN imgsensor_hw_power(
 		ret = IMGSENSOR_RETURN_ERROR;
 		return ret;
 	}
-	if (IS_MT6873(phw->g_platform_id) || IS_MT6853(phw->g_platform_id))
+	if (IS_MT6873(phw->g_platform_id))
 		imgsensor_hw_power_sequence(
 				phw,
 				sensor_idx,
