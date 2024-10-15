@@ -180,7 +180,8 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 			ppwr_info--;
 			pin_cnt--;
 
-			if (ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
+			if (ppwr_info->pin >= IMGSENSOR_HW_PIN_NONE &&
+				ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
 				pdev =
 				    phw->pdev[psensor_pwr->id[ppwr_info->pin]];
 				mdelay(ppwr_info->pin_on_delay);
