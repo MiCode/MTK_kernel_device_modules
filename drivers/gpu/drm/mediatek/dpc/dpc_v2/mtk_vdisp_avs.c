@@ -17,12 +17,6 @@
 
 #define VDISP_IPI_ACK_TIMEOUT_US 1000
 
-#define VDISPDBG(fmt, args...) \
-	pr_info("[vdisp] %s:%d " fmt "\n", __func__, __LINE__, ##args)
-
-#define VDISPERR(fmt, args...) \
-	pr_info("[vdisp][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
-
 static void __iomem *g_aging_base;
 static struct clk *g_mmdvfs_clk;
 const struct mtk_vdisp_avs_data *g_vdisp_avs_data;
