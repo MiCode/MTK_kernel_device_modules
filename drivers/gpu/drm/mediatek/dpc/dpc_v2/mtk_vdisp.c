@@ -529,7 +529,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		}
 
 		/* unvote and power off mminfra, release should be called only if keep successfully */
-		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
+		if (disp_dpc_driver.dpc_vidle_power_release && priv->pm_ret == VOTER_PM_DONE)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);
@@ -569,7 +569,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (atomic_read(&g_mtcmos_cnt) == BIT(DISP_PD_DISP_VCORE))
 			vdisp_hwccf_ctrl(priv, false);
 
-		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
+		if (disp_dpc_driver.dpc_vidle_power_release && priv->pm_ret == VOTER_PM_DONE)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);

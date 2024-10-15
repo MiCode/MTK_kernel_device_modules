@@ -49,7 +49,6 @@ struct mtk_disp_vidle {
 	enum mtk_dpc_version dpc_version;
 	enum mtk_vdisp_version vdisp_version;
 	int pm_ret_crtc;	/* for DISP_VIDLE_USER_CRTC only, already locked by crtc_lock */
-	int pm_ret_pq;		/* for DISP_VIDLE_USER_PQ only, protected by pq ref cnt */
 };
 
 static struct mtk_disp_vidle vidle_data = {
@@ -220,16 +219,23 @@ int mtk_vidle_user_power_keep_v2(enum mtk_vidle_voter_user user)
 		return 0;
 
 	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
-		pm_ret = -1;
-	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
-		pm_ret = disp_dpc_driver.dpc_vidle_power_keep(user | VOTER_ONLY);
-	else
+		pm_ret = VOTER_PM_FAILED;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0) {
+		if (user == DISP_VIDLE_USER_PQ) {
+			/* not suitable for PQ user */
+			pm_ret = VOTER_PM_FAILED;
+		} else {
+			/* VOTER_ONLY is set means the power check will be skipped
+			 * useful in perparing for the power on process
+			 * otherwise, the power on process may be powered off by vidle
+			 */
+			pm_ret = disp_dpc_driver.dpc_vidle_power_keep(user | VOTER_ONLY);
+		}
+	} else
 		pm_ret = disp_dpc_driver.dpc_vidle_power_keep(user);
 
 	if (user == DISP_VIDLE_USER_CRTC)
 		vidle_data.pm_ret_crtc = pm_ret;
-	else if (user == DISP_VIDLE_USER_PQ)
-		vidle_data.pm_ret_pq = pm_ret;
 
 	return pm_ret;
 }
@@ -242,8 +248,7 @@ void mtk_vidle_user_power_release_v2(enum mtk_vidle_voter_user user)
 	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return;
 
-	if ((user == DISP_VIDLE_USER_CRTC && vidle_data.pm_ret_crtc == VOTER_ONLY) ||
-	    (user == DISP_VIDLE_USER_PQ && vidle_data.pm_ret_pq == VOTER_ONLY))
+	if (user == DISP_VIDLE_USER_CRTC && vidle_data.pm_ret_crtc == VOTER_ONLY)
 		user |= VOTER_ONLY;
 
 	disp_dpc_driver.dpc_vidle_power_release(user);
@@ -268,21 +273,25 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 int mtk_vidle_pq_power_get(const char *caller)
 {
 	s32 ref;
-	int pm_ret = 0;
+	int ret = 0;
 
 	mutex_lock(&g_vidle_pq_ref_lock);
 	ref = atomic_inc_return(&g_vidle_pq_ref);
 	if (ref == 1) {
-		pm_ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
-		if (pm_ret < 0)
+		ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
+
+		/* user access registers only if mminfra and disp power is checked */
+		if (ret != VOTER_PM_DONE) {
 			ref = atomic_dec_return(&g_vidle_pq_ref);
+			ret = -1;
+		}
 	}
 	mutex_unlock(&g_vidle_pq_ref_lock);
 	if (ref < 0) {
 		DDPPR_ERR("%s  get invalid cnt %d\n", caller, ref);
 		return ref;
 	}
-	return pm_ret;
+	return ret;
 }
 
 void mtk_vidle_pq_power_put(const char *caller)
@@ -368,32 +377,10 @@ static void mtk_set_vidle_stop_flag_v1(unsigned int flag, unsigned int stop)
 		mtk_vidle_pause(false);
 }
 
-static void mtk_vidle_stop(void)
-{
-	// mtk_vidle_power_keep();
-	mtk_vidle_dt_enable(0);
-	/* TODO: stop timestamp */
-}
-
-static void mtk_set_vidle_stop_flag_v2(unsigned int flag, unsigned int stop)
-{
-	if (stop)
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop | flag;
-	else
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop & ~flag;
-
-	if (mtk_disp_vidle_flag.vidle_stop)
-		mtk_vidle_stop();
-}
-
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 {
 	if (vidle_data.dpc_version == DPC_VER1)
 		return mtk_set_vidle_stop_flag_v1(flag, stop);
-	else
-		return mtk_set_vidle_stop_flag_v2(flag, stop);
 }
 
 static int mtk_set_dt_configure_all(unsigned int dur_frame, unsigned int dur_vblank)
