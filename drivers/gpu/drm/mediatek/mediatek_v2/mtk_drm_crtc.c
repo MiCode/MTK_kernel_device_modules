@@ -3003,6 +3003,13 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 		return -EINVAL;
 	}
 
+	if (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
+		DDPINFO("HBM Wait event from mode_switch\n");
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 3, 1);
+		wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
+			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
+	}
+
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
 	if (is_frame_mode) {
