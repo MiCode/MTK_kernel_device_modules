@@ -15126,6 +15126,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-resource-reg-dump = <0x1c013008 0x4>,
 			<0x1c001908 0x4>,
 			<0x1c001818 0x4>;
+		/* scp fmeter dump */
+		scp-clk-fmeter-dump = "enable";
+		scp-u1-id = <59>;
+		scp-u2-id = <60>;
 
 		scp-infracfg = <&infracfg_ao_clk>;
 		/* awake timeout count plt setting */
