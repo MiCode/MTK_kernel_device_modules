@@ -17431,6 +17431,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	int session_id = 0;
 	unsigned int fence_idx;
 	struct pixel_type_map *pixel_types;
+	int ret = 0;
+
 
 
 	if (!cmdq_handle) {
@@ -17629,11 +17631,13 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	mtk_crtc->skip_frame = false;
 
-	if (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
+	while (atomic_read(&mtk_crtc->singal_for_mode_switch)) {
 		DDPINFO("Wait event from mode_switch\n");
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 3, 0);
-		wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
+		ret = wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
 			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
+		if (ret)
+			DDPMSG("Wait event result ret %d\n", ret);
 	}
 
 #ifdef MTK_DRM_CMDQ_ASYNC
