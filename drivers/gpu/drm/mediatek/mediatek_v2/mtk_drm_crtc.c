@@ -13019,6 +13019,11 @@ skip:
 		}
 	}
 
+	/* Set vdisp level to 0, also trigger dvfs after reporting total bw, */
+	/* channel bw and ostdl to ensure the lowest gear before suspending */
+	if (crtc_id == 0 && (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1))
+		mtk_vidle_dvfs_set(0);
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(priv->data->mmsys_id == MMSYS_MT6991 ||
 			priv->data->mmsys_id == MMSYS_MT6899) && crtc_id == 0)
@@ -18911,10 +18916,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* need to check mml is submit done */
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
-		mtk_vidle_dvfs_trigger(__func__);
-	}
+
+	mtk_vidle_dvfs_trigger(__func__);
 
 	if (mtk_crtc_state->lye_state.need_repaint) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);

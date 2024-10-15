@@ -1577,8 +1577,10 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 
 	if (final_level >= 0)
 		freq = g_freq_steps[final_level];
-	else
+	else {
 		freq = g_freq_steps[0];
+		final_level = 0;
+	}
 
 	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
 		__func__, __LINE__, final_level, freq, final_lp_mode);
