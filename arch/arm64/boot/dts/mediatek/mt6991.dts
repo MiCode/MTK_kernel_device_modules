@@ -6513,7 +6513,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				clock-names = "ref";
 				#phy-cells = <1>;
 				mediatek,u3-sw-efuse;
-				mediatek,u1u2-exit-equal;
+				mediatek,u3-rx-fix;
+				mediatek,u3gen2-lpm-fix;
 				nvmem-cells = <&u3_phy_data1>, <&u3_phy_data1>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
