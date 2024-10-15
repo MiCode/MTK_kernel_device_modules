@@ -11,8 +11,14 @@
 #define ADSP_B_INTR_STATUS          (ADSP_BASE + 0x0014)
 #define INFRABUS_TIMEOUT_IRQ        (1 << 24)
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#define ADSP_SW_INT_SET             (ADSP_BASE + 0x001C)
+#define ADSP_SW_INT_CLR             (ADSP_BASE + 0x0020)
+#else
 #define ADSP_SW_INT_SET             (ADSP_BASE + 0x0018)
 #define ADSP_SW_INT_CLR             (ADSP_BASE + 0x001C)
+#endif
+
 #define ADSP_A_SW_INT               (1 << 0)
 #define ADSP_B_SW_INT               (1 << 1)
 #define ADSP_AB_SW_INT              (1 << 2)
@@ -27,6 +33,7 @@
 	(ADSP_A_2HOST_IRQ_BIT | ADSP_B_2HOST_IRQ_BIT \
 	| ADSP_A_AFE2HOST_IRQ_BIT | ADSP_B_AFE2HOST_IRQ_BIT)
 
+#if !IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
 #define ADSP_A_DDREN_REQ            (ADSP_BASE + 0x0044)
 #define ADSP_B_DDREN_REQ            (ADSP_BASE + 0x0048)
 #define ADSP_SPM_ACK                (ADSP_BASE + 0x004C)
@@ -42,12 +49,17 @@
 #define ADSP_A_SPM_SRC_BITS         (0xF << 0)
 #define ADSP_A_IRQ_EN               (ADSP_BASE + 0x0050)
 #define ADSP_B_IRQ_EN               (ADSP_BASE + 0x0058)
+#endif
 
 #define ADSP_A_SPM_WAKEUPSRC        (ADSP_BASE + 0x005C)
 #define ADSP_B_SPM_WAKEUPSRC        (ADSP_BASE + 0x0060)
 #define ADSP_WAKEUP_SPM             (0x1 << 0)
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#define ADSP_SEMAPHORE              (ADSP_BASE + 0x0058)
+#else
 #define ADSP_SEMAPHORE              (ADSP_BASE + 0x0064)
+#endif
 
 #define ADSP_B_WDT_REG              (ADSP_BASE + 0x0068)
 #define ADSP_B_WDT_INIT_VALUE       (ADSP_BASE + 0x006C)
@@ -102,7 +114,12 @@
 
 #define ADSP_A_IS_WFI               (1 << 0)
 #define ADSP_B_IS_WFI               (1 << 1)
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#define ADSP_AXI_BUS_IS_IDLE        (1 << 1)
+#else
 #define ADSP_AXI_BUS_IS_IDLE        (1 << 2)
+#endif
 
 /* clk reg */
 #define ADSP_CLK_CTRL_BASE          (ADSP_BASE + 0x1000)

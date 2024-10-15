@@ -9,12 +9,17 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed
+ifneq ($(strip $(CONFIG_MTK_ADSP_LEGACY)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
+endif
 
 # target object
 obj-${CONFIG_MTK_AUDIODSP_SUPPORT} += adsp.o
 obj-${CONFIG_MTK_ADSP_V0} += v0/
 obj-${CONFIG_MTK_ADSP_V1} += v1/
 obj-${CONFIG_MTK_ADSP_V2} += v2/
+obj-${CONFIG_MTK_ADSP_LEGACY} += legacy/
 
 adsp-objs += adsp_core.o
 adsp-objs += adsp_fs.o

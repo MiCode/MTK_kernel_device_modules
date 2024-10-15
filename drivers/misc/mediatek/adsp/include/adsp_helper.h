@@ -14,7 +14,11 @@
 #define CFG_RECOVERY_SUPPORT
 
 /* ipi share buffer size: it will remove later */
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#define SHARE_BUF_SIZE  288
+#else
 #define SHARE_BUF_SIZE  240
+#endif
 
 /* adsp feature PRI list */
 /* The higher number, higher priority */

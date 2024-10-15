@@ -24,12 +24,19 @@ enum adsp_sharedmem_id {
 	ADSP_SHAREDMEM_BUS_MON_DUMP,
 	ADSP_SHAREDMEM_INFRA_BUS_DUMP,
 	ADSP_SHAREDMEM_LATMON_DUMP,
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	ADSP_SHAREDMEM_AUDIO_IPIBUF,
+#endif
 	ADSP_SHAREDMEM_NUM,
 };
 
 /* platform method */
 void adsp_mt_set_swirq(u32 cid);
 u32 adsp_mt_check_swirq(u32 cid);
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+void adsp_mt_set_swirq_awake(u32 cid);
+u32 adsp_mt_check_swirq_awake(u32 cid);
+#endif
 void adsp_mt_clr_sysirq(u32 cid);
 void adsp_mt_clr_auidoirq(u32 cid);
 void adsp_mt_clr_spm(u32 cid);

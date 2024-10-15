@@ -16,6 +16,7 @@
 
 #define ADSP_BASE                  mt_base
 #define INFRA_RSV_BASE             mt_infra_rsv
+#define ADSP_A_SW_INT_AWAKE_BIT    (1 << 1)
 
 #define SET_BITS(addr, mask) writel(readl(addr) | (mask), addr)
 #define CLR_BITS(addr, mask) writel(readl(addr) & ~(mask), addr)
@@ -24,6 +25,31 @@
 static void __iomem *mt_base;
 static void __iomem *mt_infra_rsv;
 static u32 axibus_idle_val;
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+/* Added for MT6781 */
+void adsp_mt_set_swirq_awake(u32 cid)
+{
+	if (unlikely(cid >= get_adsp_core_total()))
+		return;
+
+	if (cid == ADSP_A_ID)
+		writel(ADSP_A_SW_INT_AWAKE_BIT, ADSP_SW_INT_SET);
+	else
+		writel(ADSP_A_SW_INT_AWAKE_BIT, ADSP_SW_INT_SET);
+}
+
+u32 adsp_mt_check_swirq_awake(u32 cid)
+{
+	if (unlikely(cid >= get_adsp_core_total()))
+		return 0;
+
+	if (cid == ADSP_A_ID)
+		return readl(ADSP_SW_INT_SET) & ADSP_A_SW_INT_AWAKE_BIT;
+	else
+		return readl(ADSP_SW_INT_SET) & ADSP_B_SW_INT;
+}
+#endif
 
 /* below access adsp register necessary */
 void adsp_mt_set_swirq(u32 cid)

@@ -29,6 +29,9 @@ struct adsp_core_operations {
 struct adsp_core_description {
 	u32 id;
 	const char *name;
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	u32 cirq_num;
+#endif
 	const struct sharedmem_info sharedmems[ADSP_SHAREDMEM_NUM];
 	const struct adsp_core_operations ops;
 };
@@ -52,8 +55,18 @@ struct irq_t {
 	void *data;
 };
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+struct adsp_com {
+	void __iomem *infracfg_ao;
+	void __iomem *pericfg;
+};
+#endif
+
 struct adsp_priv {
 	u32 id;
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	u32 cirq_num;
+#endif
 	const char *name;
 	int state;
 	u64 feature_set;
@@ -79,6 +92,10 @@ struct adsp_priv {
 
 	/* logger control */
 	struct log_ctrl_s *log_ctrl;
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	/* ipi info */
+	struct ipi_ctrl_s *ipi_ctrl;
+#endif
 
 	struct device *dev;
 	struct kfifo tracefifo;
@@ -91,6 +108,11 @@ struct adsp_priv {
 
 	spinlock_t wakelock;
 	u32 prelock_cnt;
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	/* snapshot for recovery restore */
+	void *itcm_snapshot;
+	void *dtcm_snapshot;
+#endif
 };
 
 struct adspsys_priv {

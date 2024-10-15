@@ -10,6 +10,9 @@
 #include <linux/ktime.h>
 #include <linux/pm_runtime.h>
 #include <slbc_ops.h>
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#include "adsp_ipi.h"
+#endif
 #include "adsp_mbox.h"
 #include "adsp_logger.h"
 #include "adsp_timesync.h"
@@ -172,7 +175,8 @@ int adsp_core0_suspend(void)
 	return 0;
 ERROR:
 	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
-	adsp_mbox_dump();
+	if (pdata->recv_mbox)
+		adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
 }
@@ -191,7 +195,8 @@ int adsp_core0_resume(void)
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
 			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
-			adsp_mbox_dump();
+			if (pdata->recv_mbox)
+				adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
 		}
@@ -252,7 +257,8 @@ int adsp_core1_suspend(void)
 	return 0;
 ERROR:
 	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
-	adsp_mbox_dump();
+	if (pdata->recv_mbox)
+		adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
 }
@@ -273,7 +279,8 @@ int adsp_core1_resume(void)
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
 			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
-			adsp_mbox_dump();
+			if (pdata->recv_mbox)
+				adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
 		}
@@ -428,11 +435,17 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 	if (adspsys->desc->version == 1)
 		adsp_update_mpu_memory_info(pdata);
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	adsp_ipi_init();
+	adsp_irq_registration(pdata->id, ADSP_IRQ_IPC_ID, adsp_ipi_handler, pdata);
+#endif
+
 	/* wdt irq */
 	adsp_irq_registration(pdata->id, ADSP_IRQ_WDT_ID, adsp_wdt_handler, pdata);
 
 	/* mailbox */
-	pdata->recv_mbox->prdata = &pdata->id;
+	if (pdata->recv_mbox)
+		pdata->recv_mbox->prdata = &pdata->id;
 
 	/* slb init ipi */
 	adsp_ipi_registration(ADSP_IPI_SLB_INIT, adsp_slb_init_handler, "slb_init");
