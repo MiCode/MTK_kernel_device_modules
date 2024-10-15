@@ -473,12 +473,11 @@ static int mtk_vidle_update_dt_v2_by_period(unsigned int duration)
 
 	if (duration == vidle_data.te_duration)
 		return duration;
-	else if (duration > vidle_data.te_duration)
-		mtk_vidle_config_ff(false);
+
+	DDPMSG("%s %d -> %d, disable vidle\n", __func__, vidle_data.te_duration, duration);
+	mtk_vidle_config_ff(false);
 
 	disp_dpc_driver.dpc_duration_update(duration);
-
-	DDPMSG("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
 	vidle_data.te_duration = duration;
 
 	return duration;
@@ -744,6 +743,17 @@ void mtk_vidle_config_ff(bool en)
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
+	/* only allow in single CRTC, usually limits only CRTC0 to call */
+	if (en && (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) != 1))
+		return;
+
+	/* skip the same config
+	 * the default value of g_ff_enabled is set as -1(true)
+	 * so the first config_ff(false) can pass this same check
+	 */
+	if (vidle_data.dpc_version == DPC_VER2 && mtk_vidle_is_ff_enabled() == en)
+		return;
+
 	ret = disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
 	if (ret == 0)
@@ -821,8 +831,10 @@ void mtk_vidle_register(const struct dpc_funcs *funcs, enum mtk_dpc_version vers
 	vidle_data.dpc_version = version;
 	disp_dpc_driver = *funcs;
 
-	if(version == DPC_VER1)
+	if (version == DPC_VER1)
 		mtk_vidle_register_v1(funcs);
+	else if (version == DPC_VER2)
+		atomic_set(&g_ff_enabled, -1);	/* indicate not initialized yet */
 
 	complete(&dpc_registered);
 }

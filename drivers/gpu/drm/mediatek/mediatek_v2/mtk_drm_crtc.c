@@ -86,6 +86,10 @@
 #include "mtk_drm_auto/mtk_drm_crtc_auto.h"
 #endif
 
+// [0] after mode switch [1] fps hint
+int dynamic_vidle_enable;
+module_param(dynamic_vidle_enable, int, 0644);
+
 int debug_merge_t = 150;
 module_param(debug_merge_t, int, 0644);
 
@@ -6270,14 +6274,11 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
 			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	}
-	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE) {
-		//workaround for hwc
-		if (mtk_crtc->mode_idx
-			== old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
-			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]
-				= mtk_crtc->mode_idx;
-		}
-	}
+
+	/* FIXME: workaround for hwc */
+	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
+		if (mtk_crtc->mode_idx == old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] = mtk_crtc->mode_idx;
 
 	DDPMSG("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
@@ -6300,8 +6301,10 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	drm_mode_set_crtcinfo(&new_state->adjusted_mode, 0);
 
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
-		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+	    new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
 		mtk_crtc->mode_chg = true;
+		new_mtk_state->disp_mode_changed = true;
+	}
 }
 
 void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
@@ -16301,12 +16304,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
-				!old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE]
-				&& ((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
-				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) ||
-				((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
-				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
-				&& !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
+			    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
+			    (!mtk_crtc_state->disp_mode_changed ||
+			    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
 				DDPDBG("partial update is disable and equal to old\n");
 			else
 				/* set partial update */
@@ -16315,9 +16315,41 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
-						    mtk_crtc_state->cmdq_handle);
+	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		/* update DT timer to avoid mismatch between real TE and DT timer */
+		if (crtc->state->active && !mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			if (crtc->state->active_changed ||
+			    (old_mtk_state->doze_changed != mtk_crtc_state->doze_changed)) {
+				DDPINFO("crtc active_changed(%u) doze_changed(%u->%u)\n",
+					(bool)crtc->state->active_changed,
+					old_mtk_state->doze_changed, mtk_crtc_state->doze_changed);
+				mtk_vidle_update_dt_by_type(crtc, mtk_dsi_is_cmd_mode(output_comp) ?
+							    PANEL_TYPE_CMD : PANEL_TYPE_VDO);
+			}
+		}
+
+		/* keep power on to avoid extra TE during mode switch process */
+		if (mtk_crtc_state->disp_mode_changed)
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
+		else {
+			if (dynamic_vidle_enable) {
+				static u8 debounce = 3;
+
+				if (old_mtk_state->disp_mode_changed)
+					debounce = 3;
+				else if(--debounce == 1) {
+					DDPMSG("disp_mode_changed(1->0->0->0) enable vidle\n");
+					mtk_vidle_config_ff(true);
+				} else if (debounce == 0)
+					mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
+									    mtk_crtc_state->cmdq_handle);
+			} else {
+				/* this is the only way to release DISP_VIDLE_USER_DISP_DPC_CFG */
+				mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
+								    mtk_crtc_state->cmdq_handle);
+			}
+		}
+	}
 #endif
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&

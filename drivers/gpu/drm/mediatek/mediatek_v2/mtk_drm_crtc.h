@@ -1298,6 +1298,7 @@ struct mtk_crtc_state {
 	/* property */
 	uint64_t prop_val[CRTC_PROP_MAX];
 	bool doze_changed;
+	bool disp_mode_changed;
 };
 
 struct mtk_cmdq_cb_data {
