@@ -55,6 +55,7 @@ obj-$(CONFIG_MTK_IMGSENSOR_ISP3_Z) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP3_M) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP4_T) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP4_C) += imgsensor/src/
+obj-$(CONFIG_MTK_IMGSENSOR_ISP5_SYL) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MOU) += imgsensor/src/
