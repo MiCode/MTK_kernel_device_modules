@@ -47,6 +47,7 @@ enum mtk_iommu_plat {
 	M4U_MT6761,
 	M4U_MT6765,
 	M4U_MT6768,
+	M4U_MT6771,
 	M4U_MT6779,
 	M4U_MT6781,
 	M4U_MT6833,

@@ -3596,6 +3596,18 @@ static const struct mtk_iommu_plat_data mt6768_data = {
 	.iommu_type     = MM_IOMMU,
 };
 
+static const struct mtk_iommu_plat_data mt6771_data = {
+	.m4u_plat      = M4U_MT6771,
+	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
+			 NOT_STD_AXI_MODE | SHARE_PGTABLE | HAS_EMI_PM | SMI_DEV_LINK_SKIP |
+			 PGTABLE_PA_35_EN,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN1,
+	.iova_region   = single_domain,
+	.iova_region_nr = ARRAY_SIZE(single_domain),
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+};
+
 static const struct mtk_iommu_plat_data mt6779_data = {
 	.m4u_plat      = M4U_MT6779,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
@@ -4251,6 +4263,7 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6761-m4u", .data = &mt6761_data},
 	{ .compatible = "mediatek,mt6765-m4u", .data = &mt6765_data},
 	{ .compatible = "mediatek,mt6768-m4u", .data = &mt6768_data},
+	{ .compatible = "mediatek,mt6771-m4u", .data = &mt6771_data},
 	{ .compatible = "mediatek,mt6779-m4u", .data = &mt6779_data},
 	{ .compatible = "mediatek,mt6781-m4u", .data = &mt6781_data},
 	{ .compatible = "mediatek,mt6833-m4u", .data = &mt6833_data},
