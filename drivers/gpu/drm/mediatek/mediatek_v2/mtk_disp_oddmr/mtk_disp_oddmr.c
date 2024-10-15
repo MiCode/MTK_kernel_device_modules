@@ -5896,9 +5896,7 @@ static void mtk_oddmr_od_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	ODDMRLOW_LOG("+\n");
 	mtk_oddmr_write(comp, 1,
 			DISP_ODDMR_TOP_OD_BYASS, handle);
-	if (oddmr->data->od_version == MTK_OD_V2)
-		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
-	else
+	if (oddmr->data->od_version != MTK_OD_V2)
 		mtk_oddmr_write(comp, 0x200, DISP_ODDMR_OD_SW_RESET, handle);
 }
 
