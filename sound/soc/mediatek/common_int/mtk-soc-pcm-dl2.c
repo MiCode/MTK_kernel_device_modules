@@ -773,7 +773,7 @@ EXPORT_SYMBOL(mtk_dl2_copy2buffer);
 
 void mtk_dl2_copy_l(void)
 {
-	struct afe_block_t Afe_Block = pMemControl->rBlock;
+	struct afe_block_t *Afe_Block = &pMemControl->rBlock;
 	unsigned long count = ISRCopyBuffer.u4BufferSize;
 
 	if (unlikely(!ISRCopyBuffer.u4BufferSize || !ISRCopyBuffer.pBufferIndx))
@@ -782,7 +782,7 @@ void mtk_dl2_copy_l(void)
 	/* for debug */
 	detectData((char *)ISRCopyBuffer.pBufferIndx, count);
 
-	mtk_pcm_dl2_copy_((void *)ISRCopyBuffer.pBufferIndx, &count, &Afe_Block,
+	mtk_pcm_dl2_copy_((void *)ISRCopyBuffer.pBufferIndx, &count, Afe_Block,
 			  true);
 
 	ISRCopyBuffer.pBufferIndx += count;
