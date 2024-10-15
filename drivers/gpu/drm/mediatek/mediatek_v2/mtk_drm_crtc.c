@@ -20253,6 +20253,14 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		if (mtk_ddp_comp_get_type(comp_id) == MTK_DISP_VIRTUAL)
 			continue;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+		DDPMSG("%s CRTC %d comp id %d %s\n",
+			__func__,
+			pipe,
+			comp_id,
+			mtk_dump_comp_str_id(comp_id));
+#endif
+
 		node = priv->comp_node[comp_id];
 		if (!node) {
 			if (!of_property_read_bool(priv->mmsys_dev->of_node,
