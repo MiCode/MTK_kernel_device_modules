@@ -5,6 +5,7 @@
  * Copyright (c) 2022 MediaTek Inc.
  * Author: Denis Hsu <denis.hsu@mediatek.com>
  */
+#include <linux/platform_device.h>
 #include <linux/usb/audio.h>
 #include <linux/usb/quirks.h>
 #include <linux/spinlock.h>
@@ -56,7 +57,6 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 
 
 static xhci_enum_mbrain_callback xhci_enum_mbrain_cb;
-DEFINE_HASHTABLE(mbrain_hash_table, 3);
 
 static int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 {
@@ -330,11 +330,15 @@ static void xhci_update_mbrain_work(struct work_struct *work)
 
 static struct xhci_mbrain_hash_node *xhci_mtk_mbrain_get_hash_node(struct usb_device *udev)
 {
+	struct xhci_hcd_mtk *mtk = NULL;
+	struct usb_hcd *hcd;
 	struct xhci_mbrain_hash_node *item;
 	const char *key = dev_name(&udev->dev);
 	unsigned int hash_key = full_name_hash(NULL, key, strlen(key));
 
-	hash_for_each_possible(mbrain_hash_table, item, node, hash_key) {
+	hcd = bus_to_hcd(udev->bus);
+	mtk = hcd_to_mtk(hcd);
+	hash_for_each_possible(mtk->mbrain_hash_table, item, node, hash_key) {
 		if (strcmp(item->dev_name, key) == 0) {
 			// dev_dbg(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", &item->mbrain_data);
 
@@ -353,7 +357,7 @@ static struct xhci_mbrain_hash_node *xhci_mtk_mbrain_get_hash_node(struct usb_de
 	item->dev_name = kstrdup(key, GFP_ATOMIC);
 	INIT_DELAYED_WORK(&item->updated_db_work, xhci_update_mbrain_work);
 	dev_info(&udev->dev, "mbrain: allocate new node: mbrain_data=0x%p\n", &item->mbrain_data);
-	hash_add(mbrain_hash_table, &item->node, hash_key);
+	hash_add(mtk->mbrain_hash_table, &item->node, hash_key);
 	return item;
 }
 
@@ -398,17 +402,22 @@ static void xhci_mtk_mbrain_action(struct urb *urb)
 
 static void xhci_mtk_mbrain_init(struct device *dev)
 {
-	hash_init(mbrain_hash_table);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xhci_hcd_mtk *mtk = platform_get_drvdata(pdev);
+
+	hash_init(mtk->mbrain_hash_table);
 }
 
 static void xhci_mtk_mbrain_cleanup(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xhci_hcd_mtk *mtk = platform_get_drvdata(pdev);
 	struct xhci_mbrain_hash_node *item;
 	struct hlist_node *tmp;
 	int bkt;
 
 	dev_info(dev, "mbrain: cleanup hash\n");
-	hash_for_each_safe(mbrain_hash_table, bkt, tmp, item, node) {
+	hash_for_each_safe(mtk->mbrain_hash_table, bkt, tmp, item, node) {
 		cancel_delayed_work_sync(&item->updated_db_work);
 		hash_del(&item->node);
 		kfree(item->dev_name);
