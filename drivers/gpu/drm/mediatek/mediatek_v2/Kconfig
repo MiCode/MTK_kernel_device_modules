@@ -152,4 +152,13 @@ config ENABLE_SEND_PPS_PER_FRAME
 	  Only for mt8678 dsi vdo mode.
 	  Only for demo.
 
+config MTK_LK_NO_DISPLAY
+	tristate "DRM LK NO DISPLAY Support for Mediatek SoCs"
+	depends on DRM_MEDIATEK_V2
+	help
+	  DRM LK NO DISPLAY Support for Mediatek SoCs.
+	  This config will enable CONFIG_MTK_DISP_NO_LK.
+	  Choose this option if you want to enable
+	  CONFIG_MTK_DISP_NO_LK for auto.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
