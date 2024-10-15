@@ -3349,9 +3349,11 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 
+	if (!(oddmr_priv->data->dbi_version == MTK_DBI_V2)) {
+		if (g_oddmr_dump_en == false)
+			return;
+	}
 
-	if (g_oddmr_dump_en == false)
-		return;
 	mtk_crtc = comp->mtk_crtc;
 	if(mtk_crtc->base.dev->dev_private)
 		priv = mtk_crtc->base.dev->dev_private;
