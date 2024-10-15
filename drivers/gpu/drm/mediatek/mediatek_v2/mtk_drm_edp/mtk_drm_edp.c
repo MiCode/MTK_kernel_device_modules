@@ -388,11 +388,12 @@ struct notify_dev {
 
 /* staitc global variable define */
 static struct mtk_edp *g_mtk_edp;
-struct notify_dev edptx_notify_data;
-struct class *switch_edp_class;
+static struct notify_dev edptx_notify_data;
+static struct class *switch_edp_class;
 static atomic_t device_count;
 
-int edp_notify_uevent_user(struct notify_dev *sdev, int state)
+#ifdef EDPTX_ANDROID_SUPPORT
+static int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 {
 	char *envp[4];
 	char name_buf[120];
@@ -435,6 +436,7 @@ int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 
 	return 0;
 }
+#endif
 
 static struct mtk_edp *mtk_edp_from_bridge(struct drm_bridge *b)
 {
@@ -1898,10 +1900,13 @@ static void mtk_edp_initialize_priv_data(struct mtk_edp *mtk_edp)
 {
 	mtk_edp->train_info.link_rate = mtk_edp->max_linkrate;
 	mtk_edp->train_info.lane_count = mtk_edp->max_lanes;
-	if (mtk_edp_plug_state(mtk_edp))
+	if (mtk_edp_plug_state(mtk_edp)) {
 		mtk_edp->train_info.cable_plugged_in = true;
-	else
+		edptx_notify_data.state = 1;
+	} else {
 		mtk_edp->train_info.cable_plugged_in = false;
+		edptx_notify_data.state = 0;
+	}
 
 	pr_info("%s cable_plugged_in = %d\n", EDPTX_DEBUG_INFO, mtk_edp->train_info.cable_plugged_in);
 	mtk_edp->info.format = DP_PIXELFORMAT_RGB;
@@ -2228,6 +2233,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 				EDPTX_DEBUG_INFO, train_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
+	dev_info(mtk_edp->dev, "%s EQ training fail\n", EDPTX_DEBUG_INFO);
 	/* Failed to train EQ, and disable pattern. */
 	drm_dp_dpcd_writeb(&mtk_edp->aux, DP_TRAINING_PATTERN_SET,
 			   DP_TRAINING_PATTERN_DISABLE);
@@ -2496,8 +2502,11 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			mtk_edp->need_debounce = false;
 			mod_timer(&mtk_edp->debounce_timer,
 				  jiffies + msecs_to_jiffies(100) - 1);
-		} else
+			edptx_notify_data.state = 0;
+		} else {
 			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_CONNECT\n", EDPTX_DEBUG_INFO);
+			edptx_notify_data.state = 1;
+		}
 	}
 
 #ifdef EDPTX_ANDROID_SUPPORT
@@ -3239,19 +3248,18 @@ static int mtk_edp_register_phy(struct mtk_edp *mtk_edp)
 	return 0;
 }
 
-#ifdef EDPTX_ANDROID_SUPPORT
 static ssize_t state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_state) {
 		ret = sdev->print_state(sdev, buf);
 		if (ret >= 0)
 			return ret;
 	}
+
 	return sprintf(buf, "%d\n", sdev->state);
 }
 
@@ -3259,8 +3267,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_name) {
 		ret = sdev->print_name(sdev, buf);
@@ -3274,8 +3281,7 @@ static ssize_t crtc_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_crtc) {
 		ret = sdev->print_crtc(sdev, buf);
@@ -3300,7 +3306,7 @@ static int create_switch_class(void)
 	return 0;
 }
 
-int edptx_uevent_dev_register(struct notify_dev *sdev)
+static int edptx_uevent_dev_register(struct notify_dev *sdev)
 {
 	int ret;
 
@@ -3351,7 +3357,6 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 
 	return ret;
 }
-#endif
 
 static const char LK_TAG_NAME[] = "mediatek_drm.lkdisplay=";
 
@@ -3469,8 +3474,6 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		mtk_edp->aux.wait_hpd_asserted = mtk_edp_wait_hpd_asserted;
 	}
 
-#ifdef EDPTX_ANDROID_SUPPORT
-	/* Andrioid use HWC */
 	edptx_notify_data.name = "edptx";
 	edptx_notify_data.index = 0;
 	edptx_notify_data.state = DPTX_STATE_NO_DEVICE;
@@ -3478,7 +3481,6 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	ret = edptx_uevent_dev_register(&edptx_notify_data);
 	if (ret)
 		dev_info(dev, "%s switch_dev_register failed, returned:%d!\n", EDPTX_DEBUG_INFO, ret);
-#endif
 
 	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
 		mtk_edp->power_clk = devm_clk_get(dev, "power");
@@ -3530,6 +3532,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 static void mtk_edp_remove(struct platform_device *pdev)
 {
 	struct mtk_edp *mtk_edp = platform_get_drvdata(pdev);
+	struct notify_dev *sdev = &edptx_notify_data;
 	int ret = 0;
 
 	pm_runtime_put(&pdev->dev);
@@ -3542,49 +3545,15 @@ static void mtk_edp_remove(struct platform_device *pdev)
 
 	if (mtk_edp->data->bridge_type != DRM_MODE_CONNECTOR_eDP)
 		del_timer_sync(&mtk_edp->debounce_timer);
+
+	device_remove_file(sdev->dev, &dev_attr_state);
+	device_remove_file(sdev->dev, &dev_attr_name);
+	device_remove_file(sdev->dev, &dev_attr_crtc);
+	if (switch_edp_class)
+		class_destroy(switch_edp_class);
+
 	platform_device_unregister(mtk_edp->phy_dev);
 }
-
-int mtk_drm_ioctl_enable_edp(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_edp_enable *edp_enable = data;
-	struct mtk_edp *mtk_edp = g_mtk_edp;
-	int event;
-
-	if ((edp_enable == NULL) || (mtk_edp == NULL)) {
-		pr_info("%s IOCTL: ERROR!\n", EDPTX_DEBUG_INFO);
-		return -EFAULT;
-	}
-
-	dev_info(mtk_edp->dev, "%s %s enable=%d\n", EDPTX_DEBUG_INFO, __func__, edp_enable->enable);
-	event = mtk_edp_plug_state(mtk_edp) ? connector_status_connected :
-		connector_status_disconnected;
-	if (edp_enable->enable == true) {
-		if (mtk_edp->edp_ui_enable == true) {
-			dev_info(mtk_edp->dev, "%s eDP has already been enabled, return\n", EDPTX_DEBUG_INFO);
-			return 0;
-		}
-		mtk_edp->edp_ui_enable = true;
-		if (event == connector_status_connected) {
-			edp_notify_uevent_user(&edptx_notify_data,
-				DPTX_STATE_ACTIVE);
-		} else {
-			edp_notify_uevent_user(&edptx_notify_data,
-				DPTX_STATE_NO_DEVICE);
-		}
-	} else {
-		if (mtk_edp->edp_ui_enable == false) {
-			dev_info(mtk_edp->dev, "%s eDP has already been disabled, return\n", EDPTX_DEBUG_INFO);
-			return 0;
-		}
-		mtk_edp->edp_ui_enable = false;
-		edp_notify_uevent_user(&edptx_notify_data,
-			DPTX_STATE_NO_DEVICE);
-	}
-	return 0;
-}
-EXPORT_SYMBOL(mtk_drm_ioctl_enable_edp);
 
 #ifdef CONFIG_PM_SLEEP
 static int mtk_edp_suspend(struct device *dev)
