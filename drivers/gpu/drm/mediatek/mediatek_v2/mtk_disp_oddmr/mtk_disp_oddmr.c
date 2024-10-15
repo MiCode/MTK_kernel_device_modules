@@ -3071,6 +3071,11 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 				mtk_oddmr_set_spr2rgb(comp, NULL);
 			}
 		}
+		value = 0; mask = 0;
+		if (oddmr_priv->data->od_version == MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 0, MT6991_REG_OD_SPR2RGB_BYPASS); // =1 will cause OD bypass
+			mtk_oddmr_write_mask(default_comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, mask, handle);
+		}
 
 		uint32_t width = oddmr_priv->cfg.width;
 
@@ -6620,6 +6625,7 @@ static int mtk_oddmr_od_init(void)
 	struct mtk_drm_crtc *mtk_crtc;
 	int ret, table_idx, pm_ret = 0;
 	struct cmdq_client *client = NULL;
+	uint32_t value = 0, mask = 0;
 
 	ODDMRAPI_LOG("+\n");
 	DDPMSG("%s+\n",__func__);
@@ -6667,6 +6673,10 @@ static int mtk_oddmr_od_init(void)
 			mtk_oddmr_set_top_clk_force(default_comp, 1, NULL); //needed by writing sram and udma init
 		mtk_oddmr_od_common_init_dual(NULL);
 		mtk_oddmr_set_spr2rgb_dual(NULL);
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 0, MT6991_REG_OD_SPR2RGB_BYPASS); // =1 will cause OD bypass
+			mtk_oddmr_write_mask(default_comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, mask, NULL);
+		}
 		mtk_oddmr_od_smi_dual(NULL);
 		mtk_oddmr_od_alloc_dram_dual();
 		mtk_oddmr_od_set_dram_dual(NULL);
