@@ -893,7 +893,7 @@ struct mtk_crtc_se_plane {
 	struct mtk_plane_state state;
 };
 
-#define MTK_FB_SE_NUM 3
+#define MTK_FB_SE_NUM 6
 
 enum DISP_SE_STATE {
 	DISP_SE_IDLE,

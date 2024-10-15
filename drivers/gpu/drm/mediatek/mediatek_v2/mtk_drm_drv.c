@@ -171,6 +171,7 @@ struct mtk_se_dma_map {
 };
 
 static struct mtk_se_dma_map dma_map_list;
+bool dma_map_list_initialized;
 
 #ifdef DRM_OVL_SELF_PATTERN
 struct drm_crtc *test_crtc;
@@ -8329,6 +8330,8 @@ bool mtk_drm_se_crtc_need_enable(struct mtk_drm_crtc *mtk_crtc)
 	}
 
 	if (comp->id == DDP_COMPONENT_DSI0 ||
+	    comp->id == DDP_COMPONENT_DSI1 ||
+	    comp->id == DDP_COMPONENT_DSI2 ||
 	    comp->id == DDP_COMPONENT_DISP_DVO ||
 	    comp->id == DDP_COMPONENT_DP_INTF0 ||
 	    comp->id == DDP_COMPONENT_DP_INTF1) {
@@ -9601,6 +9604,8 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 	cb_data->cmdq_handle = cmdq_handle;
 	cb_data->crtc = &mtk_crtc->base;
 
+	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
 	//disable panel layers
 	if (mtk_crtc->se_state == DISP_SE_START) {
 		if (mtk_crtc->se_panel & (1 << MTK_PANEL_DP0)) {
@@ -9768,6 +9773,12 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	if (layer_info->layer_en)
 		mtk_crtc->se_panel |= 1 << layer_info->panel_id;
 
+	if (layer_id >= MTK_FB_SE_NUM) {
+		DDPMSG("%s invalid layer id:%d\n", __func__, layer_id);
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
+		return -EINVAL;
+	}
+
 	se_plane = &mtk_crtc->se_plane[layer_id];
 	se_plane->panel_id = layer_info->panel_id;
 	state = &se_plane->state;
@@ -9858,6 +9869,8 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		(enable_cnt))  {
 		DDPMSG("crtc%d se first start\n", index);
 		mtk_crtc->se_state = DISP_SE_START;
+
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 10000, true);
 	}
 
 	if (!enable_cnt) {
@@ -9879,11 +9892,37 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_se_dma_map *map_list;
 	dma_addr_t mva;
+	struct mtk_se_dma_map *m, *n = NULL;
+	struct dma_buf *temp_dmabuf;
 
 	dma_map->mva = 0;
 
 	if (dma_map->fd <= 0)
 		return -1;
+
+	if (!dma_map_list_initialized) {
+		INIT_LIST_HEAD(&dma_map_list.list);
+		dma_map_list_initialized = true;
+	}
+
+	temp_dmabuf = dma_buf_get(dma_map->fd);
+
+	if (IS_ERR(temp_dmabuf)) {
+		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
+				__func__, __LINE__, temp_dmabuf, dma_map->fd);
+		return -1;
+	}
+
+	//check if repeat map dma
+	list_for_each_entry_safe(m, n, &dma_map_list.list, list) {
+		if (temp_dmabuf->file == m->dmabuf->file) {
+			dma_map->mva = sg_dma_address(m->sgt->sgl);
+			DDPINFO("ignore map dma buffer: tmp_dma=0x%p dma=0x%p mva=0x%llx",
+					temp_dmabuf->file, m->dmabuf->file, dma_map->mva);
+			dma_buf_put(temp_dmabuf);
+			return 0;
+		}
+	}
 
 	map_list = kmalloc(sizeof(struct mtk_se_dma_map), GFP_KERNEL);
 	if (!map_list) {
@@ -9892,14 +9931,9 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	}
 
 	map_list->fd = dma_map->fd;
-
-	map_list->dmabuf = dma_buf_get(dma_map->fd);
-	if (IS_ERR(map_list->dmabuf)) {
-		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
-				__func__, __LINE__, map_list->dmabuf, dma_map->fd);
-		goto release;
-	}
+	map_list->dmabuf = temp_dmabuf;
 	map_list->attach = dma_buf_attach(map_list->dmabuf, private->dma_dev);
+
 	if (IS_ERR(map_list->attach)) {
 		DDPMSG("%s:%d error! attach:0x%p, fd:%d\n",
 				__func__, __LINE__, map_list->attach, dma_map->fd);
@@ -9907,6 +9941,7 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	}
 
 	map_list->sgt = dma_buf_map_attachment(map_list->attach, DMA_BIDIRECTIONAL);
+
 	if (IS_ERR(map_list->sgt))
 		goto fail_detach;
 
@@ -9916,6 +9951,8 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 
 	DDPINFO("dma fd is %d mva 0x%lx\n", dma_map->fd, dma_map->mva);
 
+	INIT_LIST_HEAD(&map_list->list);
+
 	list_add_tail(&map_list->list, &dma_map_list.list);
 
 	return 0;
@@ -9924,7 +9961,7 @@ fail_detach:
 	dma_buf_detach(map_list->dmabuf, map_list->attach);
 fail_get:
 	dma_buf_put(map_list->dmabuf);
-release:
+
 	kfree(map_list);
 	map_list = NULL;
 	return -1;
@@ -9938,8 +9975,9 @@ static int mtk_drm_unmap_dma_buf(struct drm_device *dev, void *data,
 	int *fd = (int *)data;
 
 	list_for_each_entry_safe(map_list, n, &dma_map_list.list, list) {
+		DDPMSG("%s %d map_list->fd:%d", __func__, __LINE__, map_list->fd);
 		if (*fd == map_list->fd) {
-			DDPINFO("dma fd is %d\n", *fd);
+			DDPMSG("dma fd is %d\n", *fd);
 			list_del_init(&map_list->list);
 			dma_buf_unmap_attachment(map_list->attach, map_list->sgt,
 				DMA_BIDIRECTIONAL);
