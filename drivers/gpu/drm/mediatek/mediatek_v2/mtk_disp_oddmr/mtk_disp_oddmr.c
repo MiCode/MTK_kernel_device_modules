@@ -9049,7 +9049,7 @@ fail:
 
 #define share_lifecycle_offset (0x10000)
 bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
-	void *get_size, unsigned int curr_fps, unsigned int curr_bl)
+	void *get_size, unsigned int curr_bl, unsigned int curr_fps)
 {
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	struct iommu_domain *domain;
