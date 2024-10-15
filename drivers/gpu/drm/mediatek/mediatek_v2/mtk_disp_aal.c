@@ -2434,7 +2434,9 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 	AALFLOW_LOG("0x%x\n", events);
 	CRTC_MMP_MARK(0, aal_event_ctl, events, 0);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761) {
 		if(enable && (enable != aal_data->primary_data->pre_enable))
 			mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
 	} else {
