@@ -9041,6 +9041,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	void *table_addr;
 	unsigned int j;
 	static bool mem_maped;
+	unsigned int map_size;
 
 	if(!g_oddmr_priv->dbi_data.support_scp)
 		return false;
@@ -9082,16 +9083,17 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 			= width*height*4*3/scale_factor_h/scale_factor_v;
 
 		share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
-			width*height*4*3/scale_factor_h/scale_factor_v;
+			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
 		share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va +
-			width*height*4*3/scale_factor_h/scale_factor_v;
+			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
 
-		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + width*height*3;
-		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + width*height*3;
+		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + (width*height*3 + 4095)/4096*4096;
+		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + (width*height*3 + 4095)/4096*4096;
 
-		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + width*height*3;
-		share_mem->table_addr_va = share_mem->pic_addr_va[1] + width*height*3;
+		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + (width*height*3 + 4095)/4096*4096;
+		share_mem->table_addr_va = share_mem->pic_addr_va[1] + (width*height*3 + 4095)/4096*4096;
 
+		map_size = get_mem_size(SCP_DBI_MEM_ID) - (share_mem->pic_addr_pa[0] - get_mem_phys(SCP_DBI_MEM_ID));
 		if (!mem_maped) {
 			domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(default_comp->dev));
 			if (domain == NULL) {
@@ -9099,7 +9101,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 				return false;
 			}
 			ret = iommu_map(domain, share_mem->pic_addr_pa[0], share_mem->pic_addr_pa[0],
-				ROUNDUP(width*height*3*2, PAGE_SIZE),
+				ROUNDUP(map_size, PAGE_SIZE),
 				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			if (ret < 0) {
 				DDPPR_ERR("%s, iommu_map fail\n", __func__);
