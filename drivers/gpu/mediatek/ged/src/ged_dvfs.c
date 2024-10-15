@@ -38,8 +38,8 @@
 #include <gpu_bm.h>
 #endif /* MTK_GPU_BM_2 */
 
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-//#include "thermal_interface.h"
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+#include "thermal_interface.h"
 #endif
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -2605,28 +2605,24 @@ void set_api_sync_flag(int flag)
 		MTKGPUQoS_mode_ratio(0);
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-	} else if ((flag & 0xFFFF0000) == 0x55660000) {
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+	} else if ((flag & 0xFFF00000) == 0x55600000) {
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
-			// reset default
-			//set_gpu_pre_throttle(0x27BC86AA);
-			//set_gpu_pre_throttle_opp(0x27BC86AA);
+			set_gpu_pre_throttle(0x27BC86AA, (flag & 0x000F0000) >> 16);
+			set_gpu_pre_throttle_opp(0x27BC86AA, (flag & 0x000F0000) >> 16);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				//set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
+				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000, (flag & 0x000F0000) >> 16);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
 				// set preferred opp.
-				//set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1, (flag & 0x000F0000) >> 16);
 			}
 		}
-		GED_LOGE("new gpu_pre_throttle temp");
-		//GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
-		//	__func__, __LINE__, (flag & 0x0000FFFF),
-		//	get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
+		GED_LOGI("GPT: 0x%08x", (flag & 0x000FFFFF));
 #endif
 	}
 }
