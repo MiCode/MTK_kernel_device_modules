@@ -74,6 +74,9 @@
 #define SCP_A_TIMER 0
 
 #define DEBUG_CMD_BUFFER_SZ  0x40000
+#define MAX_RETRY_BEFORE_KE 30
+
+int retry_count_before_KE;
 
 /* scp resume apmcu ipi debug flag */
 bool scp_ipi_resume_dbg;
@@ -2148,9 +2151,12 @@ void scp_reset_wait_timeout(void)
 	pr_notice("[SCP] %s() SCP core status c0:%x c1:%x sap:%x\n", __func__, core0_halt, core1_halt, sap_halt);
 
 	if (timeout == 0) {
-		pr_notice("[SCP] reset timeout...\n");
-		if (scpreg.recovery_wfi_detect)
+		retry_count_before_KE++;
+		pr_notice("[SCP] reset timeout... %d\n",retry_count_before_KE);
+		if (scpreg.recovery_wfi_detect && (retry_count_before_KE >= MAX_RETRY_BEFORE_KE))
 			BUG_ON(1);
+		else
+			msleep(10000); /* reserve time to let aee finish its job */
 	}
 
 }
@@ -3668,8 +3674,11 @@ void scp_plat_ipi_timeout_cb(int ipi_id)
 	if (scp_pin_dump[ipi_id].count > SCP_IPI_DUMP_TIMEOUT) {
 		scp_dump_function();
 		scp_pin_dump[ipi_id].count = 0;
-		if (scpreg.ipi_timeout_bugon)
-			BUG_ON(1);
+		if (scpreg.ipi_timeout_bugon) {
+			/* trigger coredump */
+			scp_do_halt_set();
+			scp_send_reset_wq(RESET_TYPE_TIMEOUT);
+		}
 	}
 	spin_unlock_irqrestore(&scp_ipidev.lock_monitor, flags);
 }
