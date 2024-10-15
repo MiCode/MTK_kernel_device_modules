@@ -4928,7 +4928,7 @@ static const struct of_device_id of_pwrap_match_tbl[] = {
 		.compatible = "mediatek,mt6768-pwrap",
 		.data = &pwrap_mt6768,
 	}, {
-		.compatible = "mediatek,pwrap",
+		.compatible = "mediatek,mt6771-pwrap",
 		.data = &pwrap_mt6771,
 	}, {
 		.compatible = "mediatek,mt6779-pwrap",
