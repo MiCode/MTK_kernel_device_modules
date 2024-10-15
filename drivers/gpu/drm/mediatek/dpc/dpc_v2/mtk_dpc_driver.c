@@ -14,6 +14,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/sched/clock.h>
@@ -68,6 +69,11 @@ module_param(debug_presz, uint, 0644);
 
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
+
+/* debug emi violation */
+static void __iomem *mmpc_emi_req;
+static void __iomem *mmpc_ddrsrc_req;
+static void __iomem *spm_ddr_emi_req;
 
 static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
 static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
@@ -324,8 +330,12 @@ static inline int dpc_pm_ctrl(bool en)
 		}
 
 		/* read dummy register to make sure it's ready to use */
-		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0))
-			DPCAEE("read mminfra dummy failed");
+		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0)) {
+			dump_stack();
+			DPCAEE("%s read mminfra dummy failed", __func__);
+			pm_runtime_put_sync(g_priv->pd_dev);
+			return -2;
+		}
 
 		/* disable devapc power check false alarm, */
 		/* DPC address is bound by power of disp1 on 6989 */
@@ -371,15 +381,34 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 		return -1;
 	}
 
+	if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0)) {
+		DPCAEE("%s read mminfra dummy failed", __func__);
+		ret = -2;
+		goto no_pwr_err;
+	}
+
+	if (!dpc_is_power_on()) {
+		DPCERR("disp vcore is not power on");
+		ret = -3;
+		goto no_pwr_err;
+	}
+
 	/* by subsys pm */
 	// ret = readl_poll_timeout_atomic(g_priv->mtcmos_cfg[subsys].chk_va, value, 0xB, 1, 200);
 
 	/* by dpc */
 	ret = readl_poll_timeout_atomic(dpc_base + g_priv->mtcmos_cfg[subsys].cfg + 0x8,
 					value, value & BIT(20), 1, 200);
-	if (ret < 0)
+	if (ret < 0) {
 		DPCERR("wait subsys(%d) power on timeout", subsys);
+		goto no_pwr_err;
+	}
 
+	return ret;
+
+no_pwr_err:
+	dump_stack();
+	udelay(post_vlp_delay);
 	return ret;
 }
 
@@ -1247,8 +1276,14 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	}
 
 	/* Panel TE */
-	if (disp_sta & BIT(18))
-		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
+	if (disp_sta & BIT(18)) {
+		if (mmpc_emi_req && mmpc_ddrsrc_req && spm_ddr_emi_req)
+			dpc_mmp(prete, MMPROFILE_FLAG_PULSE,
+				(readl(mmpc_emi_req) & 0xffff) << 16 | (readl(mmpc_ddrsrc_req) & 0xffff),
+				readl(spm_ddr_emi_req));
+		else
+			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
+	}
 	if (disp_sta & BIT(9)) {
 		u32 presz = DPC2_DT_PRESZ;
 
@@ -1419,6 +1454,10 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		/* power check by dpc, instead of subsys_pm */
 		for (subsys = 0; subsys < DPC_SUBSYS_CNT; subsys++)
 			priv->mtcmos_cfg[subsys].chk_pa = priv->dpc_pa + priv->mtcmos_cfg[subsys].cfg + 0x8;
+
+		mmpc_emi_req = ioremap(0x31b5103c, 0x4);
+		mmpc_ddrsrc_req = ioremap(0x31b5101c, 0x4);
+		spm_ddr_emi_req = ioremap(0x1c00488c, 0x4);
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
@@ -1782,17 +1821,29 @@ static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, 
 }
 #endif
 
+static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long action, void *data)
+{
+	if (g_priv->root_dev) {
+		DPCFUNC("action(%lu)", action);
+		if (action == true) {
+			dpc_vidle_power_keep(DISP_VIDLE_USER_SMI_DUMP);
+			pm_runtime_get_sync(g_priv->root_dev);
+		} else {
+			pm_runtime_put_sync(g_priv->root_dev);
+			dpc_vidle_power_release(DISP_VIDLE_USER_SMI_DUMP);
+		}
+	}
+
+	return NOTIFY_DONE;
+}
 static int dpc_smi_pwr_get(void *data)
 {
-	dpc_vidle_power_keep(DISP_VIDLE_USER_SMI_DUMP);
-	g_priv->vidle_mask_bk = g_priv->vidle_mask;
-	g_priv->vidle_mask = 0;
+	DPCFUNC("+");
 	return 0;
 }
 static int dpc_smi_pwr_put(void *data)
 {
-	g_priv->vidle_mask = g_priv->vidle_mask_bk;
-	dpc_vidle_power_release(DISP_VIDLE_USER_SMI_DUMP);
+	DPCFUNC("-");
 	return 0;
 }
 static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs = {
@@ -2112,8 +2163,11 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 		if (node)
 			pdev = of_find_device_by_node(node);
-		if (pdev)
+		if (pdev) {
 			priv->root_dev = &pdev->dev;
+			if (!pm_runtime_enabled(priv->root_dev))
+				pm_runtime_enable(priv->root_dev);
+		}
 	}
 
 #if defined(DISP_VIDLE_ENABLE)
@@ -2141,6 +2195,9 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		DPCERR("register_pm_notifier failed %d", ret);
 		return ret;
 	}
+
+	priv->smi_nb.notifier_call = dpc_smi_force_on_callback;
+	mtk_smi_dbg_register_force_on_notifier(&priv->smi_nb);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	priv->vcp_nb.notifier_call = dpc_vcp_notifier;
@@ -2176,8 +2233,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		/* set vdisp level */
 		// dpc_dvfs_set(DPC_SUBSYS_DISP, 0x4, true);
 
-		/* set channel bw for larb0 HRT READ */
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, 363 * 16);
+		/* set channel bw for the first HRT_READ layer, which is exdma3 currently */
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, 6, 363 * 16);
 
 		/* set total HRT bw */
 		dpc_hrt_bw_set(DPC_SUBSYS_DISP, 363 * priv->total_hrt_unit, true);
