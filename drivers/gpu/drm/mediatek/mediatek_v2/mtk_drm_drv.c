@@ -10273,6 +10273,68 @@ int mtk_drm_ioctl_mml_ctrl(struct drm_device *dev, void *data, struct drm_file *
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_COMPAT)
+struct mtk_drm_mml_query_hw_support_32 {
+	compat_uptr_t info;
+	bool support;
+};
+
+struct mtk_drm_mml_ctrl_32 {
+	uint32_t func;
+	union {
+		struct mtk_drm_mml_caps_info caps;
+		struct mtk_drm_mml_query_hw_support_32 query;
+	};
+};
+
+int mtk_drm_ioctl_mml_ctrl_compat(struct file *file, unsigned int cmd,
+			      unsigned long arg)
+{
+	struct mtk_drm_mml_ctrl data;
+	struct mtk_drm_mml_ctrl_32 data32;
+	struct drm_file *file_priv = file->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	struct mtk_drm_mml_ctrl_32 __user *argp = (void __user *)arg;
+	int ret = 0;
+
+	if (copy_from_user(&data32, argp, sizeof(data32)))
+		return -EFAULT;
+	memset(&data, 0, sizeof(data));
+	data.func = data32.func;
+	switch (data.func) {
+	case mtk_drm_mml_func_get_caps:
+		data.caps.mode_caps = data32.caps.mode_caps;
+		data.caps.hw_caps = data32.caps.hw_caps;
+		ret = mtk_drm_mml_ctrl_caps(&data.caps, dev);
+		if (ret)
+			return ret;
+
+		data32.caps.mode_caps = data.caps.mode_caps;
+		data32.caps.hw_caps = data.caps.hw_caps;
+		break;
+	case mtk_drm_mml_func_query_hw_support:
+		data.query.info = compat_ptr(data32.query.info);
+		data.query.support = data32.query.support;
+		ret = mtk_drm_mml_ctrl_query_hw_support(&data.query);
+		if (ret)
+			return ret;
+
+		data32.query.info = ptr_to_compat(data.query.info);
+		data32.query.support = data.query.support;
+		break;
+	default:
+		DDPMSG("%s wrong func %u\n", __func__, data.func);
+		ret = -EINVAL;
+		break;
+	};
+
+	if (copy_to_user(argp, &data32, sizeof(data32)))
+		return -EFAULT;
+
+	return ret;
+}
+#endif
+
 static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_GEM_CREATE, mtk_gem_create_ioctl,
 			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
@@ -10419,13 +10481,13 @@ static const struct drm_ioctl32_desc mtk_compat_ioctls[] = {
 	DRM_IOCTL32_DEF_DRV(MTK_ODDMR_LOAD_PARAM, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_ODDMR_CTL, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_KICK_IDLE, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_PQ_FRAME_CONFIG, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_PQ_FRAME_CONFIG, mtk_drm_ioctl_pq_frame_config_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_GET_MODE_EXT_INFO, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_PQ_PROXY_IOCTL, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_PQ_PROXY_IOCTL, mtk_drm_ioctl_pq_proxy_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_HWVSYNC_ON, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_DUMMY_CMD_ON, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_ESD_STAT_CHK, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_MML_CTRL, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_MML_CTRL, mtk_drm_ioctl_mml_ctrl_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_DEBUG_LOG, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SET_OVL_LAYER, NULL),

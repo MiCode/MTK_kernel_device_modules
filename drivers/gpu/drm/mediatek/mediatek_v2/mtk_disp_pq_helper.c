@@ -11,6 +11,12 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
+#if IS_ENABLED(CONFIG_COMPAT)
+#include <linux/compat.h>
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#endif
+
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else
@@ -862,6 +868,140 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_COMPAT)
+struct mtk_drm_pq_config_ctl_32 {
+	uint32_t crtc_id;
+	uint8_t check_trigger;
+	uint8_t len;
+	compat_uptr_t data;
+};
+
+struct mtk_drm_pq_param_32 {
+	uint32_t cmd;
+	uint32_t size;
+	compat_uptr_t data;
+};
+
+struct mtk_drm_pq_proxy_ctl_32 {
+	uint32_t crtc_id;
+	uint32_t cmd;
+	uint32_t size;
+	uint32_t extra_size;
+	compat_uptr_t data;
+	compat_uptr_t extra_data;
+};
+
+int mtk_drm_ioctl_pq_proxy_compat(struct file *file, unsigned int cmd,
+					unsigned long arg)
+{
+	struct mtk_drm_pq_proxy_ctl data;
+	struct mtk_drm_pq_proxy_ctl_32 data32;
+	struct drm_file *file_priv = file->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	struct mtk_drm_pq_proxy_ctl_32 __user *argp = (void __user *)arg;
+	int err, i;
+
+	if (copy_from_user(&data32, argp, sizeof(data32)))
+		return -EFAULT;
+	memset(&data, 0, sizeof(data));
+	data.crtc_id = data32.crtc_id;
+	data.cmd = data32.cmd;
+	data.size = data32.size;
+	data.extra_size = data32.extra_size;
+	data.data = compat_ptr(data32.data);
+	data.extra_data = compat_ptr(data32.extra_data);
+
+	err = mtk_drm_ioctl_pq_proxy(dev, &data, file_priv);
+	if (err)
+		return err;
+
+	data32.crtc_id = data.crtc_id;
+	data32.cmd = data.cmd;
+	data32.size = data.size;
+	data32.extra_size = data.extra_size;
+	data32.data = ptr_to_compat(data.data);
+	data32.extra_data = ptr_to_compat(data.extra_data);
+	if (copy_to_user(argp, &data32, sizeof(data32)))
+		return -EFAULT;
+
+	return 0;
+}
+
+int mtk_drm_ioctl_pq_frame_config_compat(struct file *file, unsigned int cmd,
+			      unsigned long arg)
+{
+	struct mtk_drm_pq_config_ctl data;
+	struct mtk_drm_pq_config_ctl_32 data32;
+	struct mtk_drm_pq_param requests[REQUEST_MAX_COUNT];
+	struct mtk_drm_pq_param_32 requests32[REQUEST_MAX_COUNT];
+	struct drm_crtc *crtc;
+	struct drm_file *file_priv = file->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	struct mtk_drm_pq_config_ctl_32 __user *argp = (void __user *)arg;
+	struct mtk_drm_pq_param_32 __user *argq;
+
+	int ret, i;
+
+	if (copy_from_user(&data32, argp, sizeof(data32)))
+		return -EFAULT;
+	memset(&data, 0, sizeof(data));
+	data.crtc_id = data32.crtc_id;
+	data.check_trigger = data32.check_trigger;
+	data.len = data32.len;
+
+	crtc = drm_crtc_find(dev, file_priv, data.crtc_id);
+	if (!crtc) {
+		DDPDBG("[E] %s, invalid crtc id:%d!\n", __func__, data.crtc_id);
+		return -1;
+	}
+	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1) {
+		DDPDBG("[E] %s, crtc %d not ready!\n", __func__, data.crtc_id);
+		return -1;
+	}
+	if (!data.len || data.len > REQUEST_MAX_COUNT || data32.data == NULL) {
+		DDPDBG("[E] %s, invalid len param:%d!\n",
+			__func__, data.len);
+		return -1;
+	}
+
+	argq = (void __user *)compat_ptr(data32.data);
+	if (copy_from_user(&requests32, argq, sizeof(struct mtk_drm_pq_param_32) * data.len))
+		return -EFAULT;
+
+	memset(&requests, 0, sizeof(struct mtk_drm_pq_param) * data.len);
+	for (i = 0; i < data.len && i < REQUEST_MAX_COUNT; i++) {
+		requests[i].cmd = requests32[i].cmd;
+		requests[i].size = requests32[i].size;
+		requests[i].data = compat_ptr(requests32[i].data);
+	}
+	data.data = &requests;
+
+	ret = disp_pq_helper_frame_config(crtc, NULL, &data, true);
+	if (ret)
+		return ret;
+
+	data32.crtc_id = data.crtc_id;
+	data32.check_trigger = data.check_trigger;
+	data32.len = data.len;
+#ifdef IF_ZERO
+	//Current usage is only user to kernel. In future, if needed we can test and utilize
+	for (i = 0; i < data.len && i < REQUEST_MAX_COUNT; i++) {
+		requests32[i].cmd = requests[i].cmd;
+		requests32[i].size = requests[i].size;
+		requests32[i].data = ptr_to_compat(requests[i].data);
+	}
+
+	if (copy_to_user(argq, &requests32, sizeof(struct mtk_drm_pq_param_32) * data.len))
+		return -EFAULT;
+#endif
+
+	if (copy_to_user(argp, &data32, sizeof(data32)))
+		return -EFAULT;
+
+	return 0;
+}
+#endif
 
 static void disp_pq_helper_fill_tuning_table(struct mtk_ddp_comp *comp,
 	int comp_type, int path_order, resource_size_t pa, resource_size_t companion_pa)
