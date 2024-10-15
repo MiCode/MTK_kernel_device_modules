@@ -478,7 +478,10 @@
 #define MT6991_DISP_ODDMR_TOP_CTR_3					0x00C
 	#define MT6991_REG_ODDMR_BYPASS					REG_FLD_MSB_LSB(0, 0)
 	#define MT6991_REG_BYPASS_SHADOW				REG_FLD_MSB_LSB(5, 5)
+	#define MT6991_REG_ODDMR_TOP_CLK_GATING_DB_EN	REG_FLD_MSB_LSB(14, 14)
 	#define MT6991_REG_ODDMR_TOP_CLK_FORCE_EN		REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_TOP_CTR_4					0x01C
+	#define MT6991_REG_DMR_SW_RST					REG_FLD_MSB_LSB(1, 1)
 #define MT6991_DISP_ODDMR_TOP_DMR_BYPASS			0x1C4
 #define MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS			0x1C8
 	#define MT6991_REG_OD_SPR2RGB_BYPASS			REG_FLD_MSB_LSB(0, 0)
@@ -2206,6 +2209,8 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_HSIZE, handle);
 		mtk_oddmr_write(comp, oddmr_priv->cfg.height,
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
+		mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 		return;
 	}
 
@@ -6177,6 +6182,24 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if(is_oddmr_dbi_support) {
 		if (oddmr_priv->data->dbi_version == MTK_DBI_V2) {
 			if (enable) {
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_GATING_DB_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				mtk_oddmr_write(comp, 1,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+				value = 0;
+				mask = 0;
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_EN);
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_OUT_CUP_EN);
 				mtk_oddmr_write_mask(comp, value,
@@ -6204,6 +6227,11 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 				}
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 			} else {
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_EN);
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_OUT_CUP_EN);
@@ -6221,6 +6249,9 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				if (oddmr_priv->data->is_dbi_support_stash)
 					mtk_oddmr_write(comp, 0,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
+				if (!oddmr_priv->dmr_enable)
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 			}
 			return;
 		}
