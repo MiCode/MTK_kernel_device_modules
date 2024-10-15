@@ -41,6 +41,11 @@
 	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define DPCDBG(fmt, args...) \
+	pr_debug("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
+#endif
+
 /* Compatible with 32bit division and mold operation */
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 #define DO_COMMON_DIV(x, base) ((x) / (base))

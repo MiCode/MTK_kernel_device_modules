@@ -870,7 +870,11 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_d
 		return;
 	}
 	if (subsys >= DPC_SUBSYS_CNT) {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+		DPCDBG("not support subsys(%u)", subsys);
+#else
 		DPCERR("not support subsys(%u)", subsys);
+#endif
 		return;
 	}
 	if (power_on != 0b11) {
