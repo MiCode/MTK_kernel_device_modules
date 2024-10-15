@@ -210,6 +210,11 @@ config DEVICE_MODULES_CHARGER_MT6370
 	  This driver can also be built as a module. If so, the module
 	  will be called "mt6370-charger".
 
+config DEVICE_MODULES_CHARGER_SC8960X
+	tristate "MediaTek SC8960X Charger Driver"
+	help
+	  Say Y here to enable SC8960X Charger Part.
+
 config CHARGER_MT6362
 	tristate "MT6362 SPMI CHG driver"
 	depends on MFD_MT6362
