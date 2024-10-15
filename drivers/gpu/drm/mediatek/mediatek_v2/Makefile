@@ -195,6 +195,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv_v2/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include \
              -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
