@@ -1092,6 +1092,14 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (!comp)
 		return;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	/* OVL comp might not attach to CRTC in layer_config(), need to check */
+	if (unlikely(!comp->mtk_crtc)) {
+		DDPMSG("[E]%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+#endif
+
 	DDPDBG("%s, %s idx:%d, ext_idx:%d\n", __func__,
 		mtk_dump_comp_str(comp), idx, ext_idx);
 
