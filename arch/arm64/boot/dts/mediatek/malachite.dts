@@ -1,0 +1,436 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6878-pinfunc.h>
+#include <dt-bindings/thermal/thermal.h>
+
+#if 0
+#include <dt-bindings/pinctrl/mt6897-pinfunc.h>
+#endif
+
+&chosen {
+bootargs_ext = "";
+};
+
+&odm {
+	thermal_message: thermal-message {
+		board-sensor = "VIRTUAL-SENSOR";
+	};
+};
+
+&pdc {
+	pd-vbus-upper-bound = <9000000>;
+};
+
+#if 0
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
+/* GPS GPIO standardization start */
+&pio {
+	gps_pins_default: gps-default {
+	};
+	gps_l1_lna_pins_ol: gps-l1-lna0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
+			output-low;
+		};
+	};
+	gps_l1_lna_pins_dsp_ctrl: gps-l1-lna1 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO143__FUNC_GPS_L1_ELNA_EN>;
+		};
+	};
+	gps_l1_lna_pins_oh: gps-l1-lna2 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
+			output-high;
+		};
+	};
+};
+&gps {
+	pinctrl-names = "default",
+		"gps_l1_lna_disable",
+		"gps_l1_lna_dsp_ctrl",
+		"gps_l1_lna_enable",
+	pinctrl-0 = <&gps_pins_default>;
+	pinctrl-1 = <&gps_l1_lna_pins_ol>;
+	pinctrl-2 = <&gps_l1_lna_pins_dsp_ctrl>;
+	pinctrl-3 = <&gps_l1_lna_pins_oh>;
+	status = "okay";
+};
+/* GPS GPIO standardization end */
+
+#endif
+
+&i2c6 {
+	clock-frequency = <400000>;
+/*
+	spk: speaker-amp@5c {
+		compatible = "richtek,rt5512";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+*/
+/*receiver*/
+	smartpa_0: aw882xx@35 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x35>;
+		reset-gpio = <&pio 193 0x0>;
+		irq-gpio = <&pio 17 0x0>;
+		fsm,rst-gpio = <&pio 193 0x0>;
+		fsm,irq-gpio = <&pio 17 0x0>;
+		sync-load = <1>;
+		vcalb_half = <1>;
+		sound-channel = <0>; /*0:pri_l 1:pri_r 2:sec_l 3:sec_r*/
+		aw-re-min = <5500>;
+		aw-re-max= <9500>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
+/*speaker*/
+	smartpa_1: aw882xx@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		reset-gpio = <&pio 192 0x0>;
+		irq-gpio = <&pio 10 0x0>;
+		fsm,rst-gpio = <&pio 192 0x0>;
+		fsm,irq-gpio = <&pio 10 0x0>;
+		sync-load = <1>;
+		vcalb_half = <1>;
+		sound-channel = <1>; /*0:pri_l 1:pri_r 2:sec_l 3:sec_r*/
+		aw-re-min = <5500>;
+		aw-re-max= <9500>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
+
+	et7480: et7480@42 {
+		status = "ok";
+		compatible = "mediatek,et7480-audioswitch";
+		reg = <0x42>;
+	};
+};
+
+&accdet {
+	et7480-i2c-handle = <&et7480>;
+};
+
+&sound {
+	mediatek,spk-i2s = <25 24>;
+	mediatek,speaker-codec {
+		sound-dai = <&smartpa_0>,<&smartpa_1>;
+	};
+        mediatek,speaker-codec-fsm {
+                sound-dai = <&smartpa_0>;
+        };
+};
+
+
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&pio {
+	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		compatible = "o16u_42_02_0a_dsc_vdo,lcm";
+		reg = <0>;
+		reset-gpios = <&pio 90 0>;
+		dvdd-gpios = <&pio 184 0>;
+		amoled-vci-supply = <&mt6369_vmch>;
+		amoled-vio18-supply = <&mt6369_vmc>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "o16u_36_02_0b_dsc_vdo,lcm";
+		reg = <1>;
+		reset-gpios = <&pio 90 0>;
+		dvdd-gpios = <&pio 184 0>;
+		amoled-vci-supply = <&mt6369_vmch>;
+		amoled-vio18-supply = <&mt6369_vmc>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+
+	panel3@2 {
+		compatible = "o16u_44_0f_0c_dsc_vdo,lcm";
+		reg = <2>;
+		reset-gpios = <&pio 90 0>;
+		dvdd-gpios = <&pio 184 0>;
+		amoled-vci-supply = <&mt6369_vmch>;
+		amoled-vio18-supply = <&mt6369_vmc>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
+
+	panel4@3 {
+		compatible = "o16u_42_02_0d_dsc_vdo,lcm";
+		reg = <3>;
+		reset-gpios = <&pio 90 0>;
+		dvdd-gpios = <&pio 184 0>;
+		amoled-vci-supply = <&mt6369_vmch>;
+		amoled-vio18-supply = <&mt6369_vmc>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in4: endpoint {
+				remote-endpoint = <&dsi_out4>;
+			};
+		};
+	};
+
+	panel5@4 {
+		compatible = "o16u_virtual_default_dsc_vdo,lcm";
+		reg = <4>;
+		reset-gpios = <&pio 90 0>;
+		dvdd-gpios = <&pio 184 0>;
+		amoled-vci-supply = <&mt6369_vmch>;
+		amoled-vio18-supply = <&mt6369_vmc>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default";
+		port {
+			panel_in5: endpoint {
+				remote-endpoint = <&dsi_out5>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint2 {
+				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint3 {
+				remote-endpoint = <&panel_in3>;
+			};
+			dsi_out4: endpoint4 {
+				remote-endpoint = <&panel_in4>;
+			};
+			dsi_out5: endpoint5 {
+				remote-endpoint = <&panel_in5>;
+			};
+		};
+	};
+};
+
+/* GPIO IRTX start */
+&irtx_pwm {
+	pwm_ch = <0>;
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio19 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio19 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO19__FUNC_PWM_0>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+/* GPIO IRTX end */
+
+&audio_sram {
+	reg = <0 0x11059000 0 0xc000>;
+	mode-size = <0xc000 0x11300>;
+};
+
+&audio_xhci_sram {
+	reg = <0 0x11065000 0 0x3900>;
+	mode-size = <0x3900>;
+	afe-reserved;
+};
+
+&mtee_svp {
+	mtee: MTEE {
+		compatible = "mediatek,mtk_svp_on_mtee_support";
+	};
+	svp: SecureVideoPath {
+		compatible = "mediatek,mtk_sec_video_path_support";
+	};
+};
+&mtkheap_page_svp {
+	status = "ok";
+};
+&mtkheap_page_wfd {
+	status = "ok";
+};
+&mtkheap_region_svp {
+	status = "ok";
+};
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
+#include <malachite/cust.dtsi>
+#include "mediatek/cust_mt6878_touch_1220x2712.dtsi"
+#include "mediatek/malachite_mt6878_camera_v4l2.dtsi"
+#include "mediatek/xiaomi_malachite_mt6878_mitee.dtsi"
+#include "mediatek/cust_k6878_connfem.dtsi"
+#include "mediatek/o16_charger.dtsi"
+#include "mediatek/cust_mt6878_nfc_nxp.dtsi"
+#include "mediatek/cust_mt6878_fingerprint.dtsi"
+#include "mediatek/xiaomi_malachite_mt6878_wifi.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/

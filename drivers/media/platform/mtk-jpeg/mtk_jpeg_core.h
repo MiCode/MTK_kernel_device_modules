@@ -10,6 +10,7 @@
 #define _MTK_JPEG_CORE_H
 
 #include <linux/interrupt.h>
+#include "mtk-interconnect-provider.h"
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-fh.h>
@@ -17,6 +18,8 @@
 #define MTK_JPEG_NAME		"mtk-jpeg"
 
 #define MTK_JPEG_COMP_MAX		3
+#define MTK_JPEG_MAX_FREQ		8
+#define MTK_JPEG_MAX_LARB_COUNT		2
 
 #define MTK_JPEG_FMT_FLAG_OUTPUT	BIT(0)
 #define MTK_JPEG_FMT_FLAG_CAPTURE	BIT(1)
@@ -32,6 +35,17 @@
 
 #define MTK_JPEG_MAX_EXIF_SIZE	(64 * 1024)
 
+#define SNPRINTF(args...)							\
+	do {											\
+		if (snprintf(args) < 0)						\
+			pr_notice("snprintf error\n");			\
+	} while (0)
+
+enum mtk_enc_dtsi_reg_idx {
+	VENC_SYS,
+	VENC_GCON,
+	NUM_MAX_VENC_REG_BASE
+};
 /**
  * enum mtk_jpeg_ctx_state - states of the context state machine
  * @MTK_JPEG_INIT:		current state is initialized
@@ -45,11 +59,11 @@ enum mtk_jpeg_ctx_state {
 };
 
 /**
- * struct mtk_jpeg_variant - mtk jpeg driver variant
+ * mtk_jpeg_variant - mtk jpeg driver variant
  * @clks:			clock names
  * @num_clks:			numbers of clock
- * @formats:			jpeg driver's internal color format
- * @num_formats:		number of formats
+ * @format:			jpeg driver's internal color format
+ * @num_format:			number of format
  * @qops:			the callback of jpeg vb2_ops
  * @irq_handler:		jpeg irq handler callback
  * @hw_reset:			jpeg hardware reset callback
@@ -75,7 +89,7 @@ struct mtk_jpeg_variant {
 };
 
 /**
- * struct mtk_jpeg_dev - JPEG IP abstraction
+ * struct mt_jpeg - JPEG IP abstraction
  * @lock:		the mutex protecting this structure
  * @hw_lock:		spinlock protecting the hw device resource
  * @workqueue:		decode work queue
@@ -99,13 +113,24 @@ struct mtk_jpeg_dev {
 	void			*alloc_ctx;
 	struct video_device	*vdev;
 	void __iomem		*reg_base;
-	struct device		*larb;
+	void __iomem		*gcon_base;
+	struct device		*larb[MTK_JPEG_MAX_LARB_COUNT];
 	struct delayed_work job_timeout_work;
 	const struct mtk_jpeg_variant *variant;
+	struct icc_path *path_y_rdma;
+	struct icc_path *path_c_rdma;
+	struct icc_path *path_qtbl;
+	struct icc_path *path_bsdma;
+	struct regulator *jpegenc_reg;
+	struct clk *jpegenc_mmdvfs_clk;
+	int freq_cnt;
+	unsigned long freqs[MTK_JPEG_MAX_FREQ];
+	u32 fake34bits;
+	struct device *smmu_dev;
 };
 
 /**
- * struct mtk_jpeg_fmt - driver's internal color format data
+ * struct jpeg_fmt - driver's internal color format data
  * @fourcc:	the fourcc code, 0 if not applicable
  * @hw_format:	hardware format value
  * @h_sample:	horizontal sample count of plane in 4 * 4 pixel image
@@ -127,7 +152,7 @@ struct mtk_jpeg_fmt {
 };
 
 /**
- * struct mtk_jpeg_q_data - parameters of one queue
+ * mtk_jpeg_q_data - parameters of one queue
  * @fmt:	  driver-specific format of this queue
  * @pix_mp:	  multiplanar format
  * @enc_crop_rect:	jpeg encoder crop information
@@ -139,7 +164,7 @@ struct mtk_jpeg_q_data {
 };
 
 /**
- * struct mtk_jpeg_ctx - the device context data
+ * mtk_jpeg_ctx - the device context data
  * @jpeg:		JPEG IP device for this context
  * @out_q:		source (output) queue information
  * @cap_q:		destination (capture) queue queue information
@@ -160,6 +185,7 @@ struct mtk_jpeg_ctx {
 	u8 enc_quality;
 	u8 restart_interval;
 	struct v4l2_ctrl_handler ctrl_hdl;
+	u32 dst_offset;
 };
 
 #endif /* _MTK_JPEG_CORE_H */

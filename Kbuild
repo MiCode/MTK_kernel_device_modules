@@ -1,59 +1,106 @@
 # SPDX-License-Identifier: GPL-2.0
-#
-# Kbuild for top-level directory of the kernel
 
-#####
-# Generate bounds.h
+ifneq ($(CONFIG_DEVICE_MODULES_ALLOW_BUILTIN),y)
 
-bounds-file := include/generated/bounds.h
+LINUXINCLUDE := $(DEVCIE_MODULES_INCLUDE) $(LINUXINCLUDE)
 
-always-y := $(bounds-file)
-targets := kernel/bounds.s
+subdir-ccflags-y += -Werror \
+		-I$(srctree)/$(src)/include \
+		-I$(srctree)/$(src)/include/uapi \
 
-$(bounds-file): kernel/bounds.s FORCE
-	$(call filechk,offsets,__LINUX_BOUNDS_H__)
+obj-y += drivers/memory/
 
-#####
-# Generate timeconst.h
+obj-y += drivers/iio/adc/
 
-timeconst-file := include/generated/timeconst.h
+obj-y += drivers/mfd/
 
-filechk_gentimeconst = echo $(CONFIG_HZ) | bc -q $<
+obj-y += drivers/nvmem/
 
-$(timeconst-file): kernel/time/timeconst.bc FORCE
-	$(call filechk,gentimeconst)
+obj-y += drivers/dma/mediatek/
 
-#####
-# Generate asm-offsets.h
+obj-y += drivers/ufs/
 
-offsets-file := include/generated/asm-offsets.h
+obj-y += drivers/char/
 
-always-y += $(offsets-file)
-targets += arch/$(SRCARCH)/kernel/asm-offsets.s
+obj-y += drivers/clk/mediatek/
 
-arch/$(SRCARCH)/kernel/asm-offsets.s: $(timeconst-file) $(bounds-file)
+obj-y += drivers/clocksource/
 
-$(offsets-file): arch/$(SRCARCH)/kernel/asm-offsets.s FORCE
-	$(call filechk,offsets,__ASM_OFFSETS_H__)
+obj-y += drivers/cpufreq/
 
-#####
-# Check for missing system calls
+obj-y += drivers/soc/mediatek/
 
-always-y += missing-syscalls
+obj-y += drivers/watchdog/
 
-quiet_cmd_syscalls = CALL    $<
-      cmd_syscalls = $(CONFIG_SHELL) $< $(CC) $(c_flags) $(missing_syscalls_flags)
+obj-y += drivers/dma-buf/heaps/
 
-missing-syscalls: scripts/checksyscalls.sh $(offsets-file) FORCE
-	$(call cmd,syscalls)
+obj-y += drivers/regulator/
 
-#####
-# Check atomic headers are up-to-date
+obj-y += drivers/leds/
 
-always-y += old-atomics
+obj-y += drivers/pinctrl/mediatek/
 
-quiet_cmd_atomics = CALL    $<
-      cmd_atomics = $(CONFIG_SHELL) $<
+obj-y += drivers/power/supply/
 
-old-atomics: scripts/atomic/check-atomics.sh FORCE
-	$(call cmd,atomics)
+obj-y += drivers/rtc/
+
+obj-y += drivers/remoteproc/
+
+obj-y += drivers/rpmsg/
+
+obj-y += drivers/input/keyboard/
+
+obj-y += drivers/phy/mediatek/
+
+obj-y += drivers/thermal/mediatek/
+
+obj-y += drivers/spmi/
+
+obj-y += drivers/tty/serial/8250/
+
+obj-y += drivers/reset/
+
+obj-y += drivers/mailbox/
+
+obj-y += drivers/interconnect/
+
+obj-y += drivers/i2c/busses/
+
+obj-y += drivers/pwm/
+
+obj-y += drivers/spi/
+
+obj-y += drivers/iommu/
+
+obj-y += drivers/mmc/host/
+
+obj-y += drivers/tee/
+
+obj-y += drivers/gpu/drm/mediatek/
+
+obj-y += drivers/input/touchscreen/
+
+obj-y += drivers/gpu/drm/panel/
+
+obj-y += drivers/gpu/mediatek/
+
+obj-y += drivers/media/platform/
+
+obj-y += drivers/usb/
+
+obj-y += drivers/devfreq/
+
+obj-y += drivers/misc/mediatek/
+
+obj-y += drivers/misc/xiaomi/
+
+obj-y += sound/soc/codecs/
+
+obj-y += sound/soc/mediatek/
+
+obj-y += drivers/pci/controller/
+
+obj-y += drivers/input/fingerprint/
+
+
+endif

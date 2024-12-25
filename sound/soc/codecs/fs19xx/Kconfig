@@ -1,0 +1,6 @@
+config SND_SOC_FS1XXX
+	tristate "FourSemi FS19xx speaker amplifier"
+	depends on I2C
+	default n
+	help
+	  Config of FourSemi FS19xx speaker amplifier.

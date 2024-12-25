@@ -285,12 +285,16 @@ static const struct resource mt6360_adc_resources[] = {
 
 static const struct resource mt6360_chg_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_TREG_EVT, "chg_treg_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_CHG_MIVR_EVT, "chg_mivr_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_PWR_RDY_EVT, "pwr_rdy_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_BATSYSUV_EVT, "chg_batsysuv_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_VSYSUV_EVT, "chg_vsysuv_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_VSYSOV_EVT, "chg_vsysov_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_VBATOV_EVT, "chg_vbatov_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_VBUSOV_EVT, "chg_vbusov_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_WD_PMU_DET, "wd_pmu_det"),
+	DEFINE_RES_IRQ_NAMED(MT6360_WD_PMU_DONE, "wd_pmu_done"),
+	DEFINE_RES_IRQ_NAMED(MT6360_CHG_TMRI, "chg_tmri"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_AICCMEASL, "chg_aiccmeasl"),
 	DEFINE_RES_IRQ_NAMED(MT6360_WDTMRI, "wdtmri"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_RECHGI, "chg_rechgi"),
@@ -298,6 +302,8 @@ static const struct resource mt6360_chg_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6360_CHG_IEOCI, "chg_ieoci"),
 	DEFINE_RES_IRQ_NAMED(MT6360_PUMPX_DONEI, "pumpx_donei"),
 	DEFINE_RES_IRQ_NAMED(MT6360_ATTACH_I, "attach_i"),
+	DEFINE_RES_IRQ_NAMED(MT6360_HVDCP_DET, "hvdcp_det"),
+	DEFINE_RES_IRQ_NAMED(MT6360_DCDTI, "dcdti"),
 	DEFINE_RES_IRQ_NAMED(MT6360_CHRDET_EXT_EVT, "chrdet_ext_evt"),
 };
 
@@ -319,6 +325,10 @@ static const struct resource mt6360_regulator_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6360_BUCK2_OC_EVT, "buck2_oc_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_BUCK2_OV_EVT, "buck2_ov_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_BUCK2_UV_EVT, "buck2_uv_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_LDO6_OC_EVT, "ldo6_oc_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_LDO7_OC_EVT, "ldo7_oc_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_LDO6_PGB_EVT, "ldo6_pgb_evt"),
+	DEFINE_RES_IRQ_NAMED(MT6360_LDO7_PGB_EVT, "ldo7_pgb_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_LDO1_OC_EVT, "ldo1_oc_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_LDO2_OC_EVT, "ldo2_oc_evt"),
 	DEFINE_RES_IRQ_NAMED(MT6360_LDO3_OC_EVT, "ldo3_oc_evt"),
@@ -341,8 +351,8 @@ static const struct mfd_cell mt6360_devs[] = {
 	MFD_CELL_OF("mt6360-led", mt6360_led_resources,
 		    NULL, 0, 0, "mediatek,mt6360-led"),
 	MFD_CELL_RES("mt6360-regulator", mt6360_regulator_resources),
-	MFD_CELL_OF("mt6360-tcpc", NULL,
-		    NULL, 0, 0, "mediatek,mt6360-tcpc"),
+	/* debug dev */
+	{ .name = "mt6360-dbg", },
 };
 
 static int mt6360_check_vendor_info(struct mt6360_ddata *ddata)
@@ -410,6 +420,7 @@ static int mt6360_regmap_read(void *context, const void *reg, size_t reg_size,
 	u8 crc;
 	int ret;
 
+	//pr_info("%s: bank:%d, addr:0x%x\n", __func__, bank, reg_addr);
 	if (bank == MT6360_SLAVE_PMIC || bank == MT6360_SLAVE_LDO) {
 		crc_needed = true;
 		ret = mt6360_xlate_pmicldo_addr(&reg_addr, val_size);
@@ -460,6 +471,7 @@ static int mt6360_regmap_write(void *context, const void *val, size_t val_size)
 	int write_size = val_size - MT6360_REGMAP_REG_BYTE_SIZE;
 	int ret;
 
+	//pr_info("%s: bank:%d, addr:0x%x\n", __func__, bank, reg_addr);
 	if (bank == MT6360_SLAVE_PMIC || bank == MT6360_SLAVE_LDO) {
 		crc_needed = true;
 		ret = mt6360_xlate_pmicldo_addr(&reg_addr, val_size - MT6360_REGMAP_REG_BYTE_SIZE);
@@ -500,9 +512,8 @@ static bool mt6360_is_readwrite_reg(struct device *dev, unsigned int reg)
 {
 	switch (reg) {
 	case MT6360_REG_TCPCSTART ... MT6360_REG_TCPCEND:
-		fallthrough;
+		return false;
 	case MT6360_REG_PMICSTART ... MT6360_REG_PMICEND:
-		fallthrough;
 	case MT6360_REG_LDOSTART ... MT6360_REG_LDOEND:
 		fallthrough;
 	case MT6360_REG_PMUSTART ... MT6360_REG_PMUEND:
@@ -526,6 +537,7 @@ static int mt6360_probe(struct i2c_client *client)
 	struct mt6360_ddata *ddata;
 	int i, ret;
 
+	pr_info("%s\n", __func__);
 	ddata = devm_kzalloc(&client->dev, sizeof(*ddata), GFP_KERNEL);
 	if (!ddata)
 		return -ENOMEM;
@@ -533,7 +545,10 @@ static int mt6360_probe(struct i2c_client *client)
 	ddata->dev = &client->dev;
 	i2c_set_clientdata(client, ddata);
 
-	for (i = 0; i < MT6360_SLAVE_MAX - 1; i++) {
+	/* Ignore TYPEC for independant i2c device */
+	ddata->i2c[MT6360_SLAVE_TCPC] = NULL;
+
+	for (i = MT6360_SLAVE_PMIC; i < MT6360_SLAVE_MAX - 1; i++) {
 		ddata->i2c[i] = devm_i2c_new_dummy_device(&client->dev,
 							  client->adapter,
 							  mt6360_slave_addr[i]);
@@ -575,6 +590,7 @@ static int mt6360_probe(struct i2c_client *client)
 		return ret;
 	}
 
+	pr_info("%s: successfully\n", __func__);
 	return 0;
 }
 

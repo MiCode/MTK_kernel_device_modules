@@ -17,6 +17,20 @@
 #include "mtu3.h"
 #include "mtu3_dr.h"
 
+/* mt6886 */
+#define PERI_WK_CTRL3	0x14
+#define UWK_V1_4_CTRL0_MASK	0x1
+
+/* mt6983 etc */
+#define PERI_WK_CTRL2	0x8
+#define UWK_V1_3_CTRL0_MASK	0x3
+#define UWK_V1_3_CTRL2_MASK	0x699
+
+/* mt6878 etc */
+/* bit0: IP_SLEEP */
+/* bit2: LINESTATE */
+#define UWK_V1_5_CTRL2_MASK	0x5
+
 /* mt8173 etc */
 #define PERI_WK_CTRL1	0x4
 #define WC1_IS_C(x)	(((x) & 0xf) << 26)  /* cycle debounce */
@@ -43,6 +57,9 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V2,
 	SSUSB_UWK_V1_1 = 101,	/* specific revision 1.01 */
 	SSUSB_UWK_V1_2,		/* specific revision 1.02 */
+	SSUSB_UWK_V1_3,		/* specific revision 1.03 */
+	SSUSB_UWK_V1_4,		/* specific revision 1.04 */
+	SSUSB_UWK_V1_5,		/* specific revision 1.05 */
 };
 
 /*
@@ -67,6 +84,26 @@ static void ssusb_wakeup_ip_sleep_set(struct ssusb_mtk *ssusb, bool enable)
 	case SSUSB_UWK_V1_2:
 		reg = ssusb->uwk_reg_base + PERI_WK_CTRL0;
 		msk = WC0_SSUSB0_CDEN | WC0_IS_SPM_EN;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_3:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL0;
+		msk = UWK_V1_3_CTRL0_MASK;
+		val = enable ? msk : 0;
+		regmap_update_bits(ssusb->uwk, reg, msk, val);
+
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL2;
+		msk = UWK_V1_3_CTRL2_MASK;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_4:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL3;
+		msk = UWK_V1_4_CTRL0_MASK;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_5:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL2;
+		msk = UWK_V1_5_CTRL2_MASK;
 		val = enable ? msk : 0;
 		break;
 	case SSUSB_UWK_V2:
@@ -125,7 +162,7 @@ static void host_ports_num_get(struct ssusb_mtk *ssusb)
 }
 
 /* only configure ports will be used later */
-static int ssusb_host_enable(struct ssusb_mtk *ssusb)
+int ssusb_host_enable(struct ssusb_mtk *ssusb)
 {
 	void __iomem *ibase = ssusb->ippc_base;
 	int num_u3p = ssusb->u3_ports;
@@ -134,6 +171,11 @@ static int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	u32 check_clk;
 	u32 value;
 	int i;
+	int ret;
+
+	/* if dp 4-lane, set u3_ports = 0 */
+	if (get_dp_switch_status(ssusb))
+		num_u3p = 0;
 
 	/* power on host ip */
 	mtu3_clrbits(ibase, U3D_SSUSB_IP_PW_CTRL1, SSUSB_IP_HOST_PDN);
@@ -167,10 +209,15 @@ static int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	if (num_u3p > u3_ports_disabled)
 		check_clk = SSUSB_U3_MAC_RST_B_STS;
 
-	return ssusb_check_clocks(ssusb, check_clk);
+	ret =  ssusb_check_clocks(ssusb, check_clk);
+
+	/* update txdeemph */
+	ssusb_set_txdeemph(ssusb);
+
+	return ret;
 }
 
-static int ssusb_host_disable(struct ssusb_mtk *ssusb)
+int ssusb_host_disable(struct ssusb_mtk *ssusb)
 {
 	void __iomem *ibase = ssusb->ippc_base;
 	int num_u3p = ssusb->u3_ports;
@@ -214,6 +261,10 @@ int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 	u32 value;
 	int i;
 
+	/* if dp 4-lane, set u3_ports = 0 */
+	if (get_dp_switch_status(ssusb))
+		num_u3p = 0;
+
 	if (p0_skipped) {
 		u2p_skip_msk |= 0x1;
 		if (ssusb->otg_switch.is_u3_drd)
@@ -229,7 +280,8 @@ int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 			continue;
 
 		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
-		value &= ~SSUSB_U3_PORT_PDN;
+		/* resume u3phy since power issue. */
+		value &= ~(SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS);
 		mtu3_writel(ibase, SSUSB_U3_CTRL(i), value);
 	}
 
@@ -261,7 +313,8 @@ int ssusb_host_suspend(struct ssusb_mtk *ssusb)
 			continue;
 
 		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
-		value |= SSUSB_U3_PORT_PDN;
+		/* disable u3phy since power issue. */
+		value |= SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS;
 		mtu3_writel(ibase, SSUSB_U3_CTRL(i), value);
 	}
 
@@ -293,6 +346,7 @@ static void ssusb_host_setup(struct ssusb_mtk *ssusb)
 	ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_HOST);
 
 	/* if port0 supports dual-role, works as host mode by default */
+	ssusb_set_force_vbus(ssusb, false);
 	ssusb_set_vbus(&ssusb->otg_switch, 1);
 }
 
@@ -302,6 +356,25 @@ static void ssusb_host_cleanup(struct ssusb_mtk *ssusb)
 		ssusb_set_vbus(&ssusb->otg_switch, 0);
 
 	ssusb_host_disable(ssusb);
+}
+
+static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
+{
+	struct device_node *parent_dn = ssusb->dev->of_node;
+	struct device_node *child;
+	struct platform_device *pdev;
+
+	for_each_child_of_node(parent_dn, child) {
+		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
+		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1")) {
+			pdev = of_find_device_by_node(child);
+			if (pdev) {
+				ssusb->xhci_pdrv =
+					to_platform_driver(pdev->dev.driver);
+				break;
+			}
+		}
+	}
 }
 
 /*
@@ -325,6 +398,10 @@ int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn)
 	}
 
 	dev_info(parent_dev, "xHCI platform device register success...\n");
+
+	ssusb_set_noise_still_tr(ssusb);
+
+	ssusb_get_platform_driver(ssusb);
 
 	return 0;
 }

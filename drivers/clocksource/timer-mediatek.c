@@ -13,9 +13,15 @@
 #include <linux/clocksource.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
+#include <linux/module.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/sched_clock.h>
 #include <linux/slab.h>
 #include "timer-of.h"
+
+#define CREATE_TRACE_POINTS
+#include "timer-mediatek-trace.h"
 
 #define TIMER_CLK_EVT           (1)
 #define TIMER_CLK_SRC           (2)
@@ -103,6 +109,8 @@ static int mtk_syst_clkevt_next_event(unsigned long ticks,
 	 * after timeout ticks are updated.
 	 */
 	writel(ticks, SYST_VAL_REG(to));
+
+	trace_timer_set_next_event(ticks);
 
 	/* Enable interrupt */
 	writel(SYST_CON_EN | SYST_CON_IRQ_EN, SYST_CON_REG(to));
@@ -337,5 +345,41 @@ static int __init mtk_gpt_init(struct device_node *node)
 
 	return 0;
 }
+
+#ifdef MODULE
+static int mtk_timer_probe(struct platform_device *pdev)
+{
+	int (*timer_init)(struct device_node *node);
+	struct device_node *np = pdev->dev.of_node;
+
+	timer_init = of_device_get_match_data(&pdev->dev);
+	return timer_init(np);
+}
+
+static const struct of_device_id mtk_timer_match_table[] = {
+	{
+		.compatible = "mediatek,mt6577-timer",
+		.data = mtk_gpt_init,
+	},
+	{
+		.compatible = "mediatek,mt6765-timer",
+		.data = mtk_syst_init,
+	},
+	{}
+};
+
+static struct platform_driver mtk_timer_driver = {
+	.probe = mtk_timer_probe,
+	.driver = {
+		.name = "mtk-timer",
+		.of_match_table = mtk_timer_match_table,
+	},
+};
+MODULE_DESCRIPTION("MEDIATEK Module Timer driver");
+MODULE_LICENSE("GPL v2");
+
+module_platform_driver(mtk_timer_driver);
+#else
 TIMER_OF_DECLARE(mtk_mt6577, "mediatek,mt6577-timer", mtk_gpt_init);
 TIMER_OF_DECLARE(mtk_mt6765, "mediatek,mt6765-timer", mtk_syst_init);
+#endif

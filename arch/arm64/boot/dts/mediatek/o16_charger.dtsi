@@ -1,0 +1,852 @@
+&i2c3 {
+    sc8541_standalone: sc8541@6A{
+        compatible = "sc,sc8541-standalone";
+        #io-channel-cells = <1>;
+        reg = <0x6A>;
+
+		interrupt-parent = <&pio>;
+		interrupts = <12 0>;
+		sc8541,intr_gpio = <&pio 12 IRQ_TYPE_EDGE_FALLING>;
+
+		charger_name = "primary_dvchg";
+		charger_name_v4_19 = "primary_divider_chg";
+		sc,sc8541,vbat-ovp-dis = <0>;
+		sc,sc8541,vbat-ovp = <90>; /*3840 + val * 10*/
+		sc,sc8541,vbat-ovp-alm-dis = <1>;
+		sc,sc8541,vbat-ovp-alm = <70>; /*3840 + val * 10*/
+		sc,sc8541,ibat-ocp-dis = <0>;
+		sc,sc8541,ibat-ocp  = <127>; /*val * 100*/
+		sc,sc8541,ibat-ocp-alm-dis = <1>;
+		sc,sc8541,ibat-ocp-alm = <80>; /*val * 100*/
+		sc,sc8541,ibus-ucp-dis = <0>;
+		sc,sc8541,vbus-in-range-dis = <0>;
+		sc,sc8541,vbus-pd-en = <0>;
+		sc,sc8541,vbus-ovp = <100>; /*7000 + val * 50*/
+		sc,sc8541,vbus-ovp-alm-dis = <1>;
+		sc,sc8541,vbus-ovp-alm = <100>; /*7000 + val * 50*/
+		sc,sc8541,ibus-ocp-dis = <0>;
+		sc,sc8541,ibus-ocp = <21>; /*1000 + val * 250*/
+		sc,sc8541,tshut-dis = <1>;
+		sc,sc8541,tsbus-flt-dis = <1>;
+		sc,sc8541,tsbat-flt-dis = <1>;
+		sc,sc8541,tdie-alm = <200>; /*25 + val * 0.5*/
+		sc,sc8541,tsbus-flt = <21>;
+		sc,sc8541,tsbat-flt = <21>;
+		sc,sc8541,vac1-ovp = <3>; /*0:6.5V 1:10.5V 2:12V 3:14V 4:16V 5~7:18V*/
+		sc,sc8541,vac2-ovp = <3>; /*0:6.5V 1:10.5V 2:12V 3:14V 4:16V 5~7:18V*/
+		sc,sc8541,vac1-pd-en = <0>;
+		sc,sc8541,vac2-pd-en = <0>;
+		sc,sc8541,fsw-set = <4>; /*0:200KHz 1:300KHz 2:400KHz
+				3:500KHz 4:600KHz 5:650KHz 6:700KHz 7:750KHz*/
+		sc,sc8541,wd-timeout = <0>; /*0:0.5s 1:1s 2:5s 3:30s*/
+		sc,sc8541,wd-timeout-dis = <1>;
+		sc,sc8541,ibat-sns-r = <0>; /*0:2mho 1:5mho*/
+		sc,sc8541,ss-timeout = <7>; /*0:6.25ms 1:12.5ms 2:25ms 3:50ms
+				4:100ms 5:400ms 6:1.5s 7:10s*/
+		sc,sc8541,ibus-ucp-fall-dg = <1>;
+		sc,sc8541,vout-ovp-dis = <0>;
+		sc,sc8541,vout-ovp = <3>; /*4700 + val * 100*/
+		sc,sc8541,pmid2out-uvp = <7>; /*50 + val * 25*/
+		sc,sc8541,pmid2out-ovp = <7>; /*200 + val * 50*/
+    };
+
+    bq25960_standalone: bq25960@65 {
+        compatible = "bq,bq25960-standalone";
+        #io-channel-cells = <1>;
+        status = "ok";
+        reg = <0x65>;
+
+        bq25960,intr_gpio = <&pio 12 IRQ_TYPE_EDGE_FALLING>;
+
+        charger_name = "primary_dvchg";
+        bq,bq25960,vbat-ovp-dis = <0>;
+        bq,bq25960,vbat-ovp = <127>; /*3500 + val * 10*/
+        bq,bq25960,vbat-ovp-alm-dis = <1>;
+        bq,bq25960,vbat-ovp-alm = <122>; /*3500 + val * 10*/
+        bq,bq25960,ibat-ocp-dis = <0>;
+        bq,bq25960,ibat-ocp  = <65>; /*2000 + val * 100*/
+        bq,bq25960,ibat-ocp-alm-dis = <1>;
+        bq,bq25960,ibat-ocp-alm = <65>; /*2000 + val * 100*/
+        bq,bq25960,ibus-ucp-dis = <0>;
+        bq,bq25960,ibus-ucp = <0>;
+        bq,bq25960,chg-config-2 = <0>;
+        bq,bq25960,vbus-pd-en = <0>;
+        bq,bq25960,vbus-ovp = <100>; /*7000 + val * 50*/
+        bq,bq25960,vbus-ovp-alm-dis = <1>;
+        bq,bq25960,vbus-ovp-alm = <100>; /*7000 + val * 50*/
+        /*bq,bq25960,ibus-ocp-dis = <0>;*/
+        bq,bq25960,ibus-ocp = <21>; /*1000 + val * 250*/
+        /*bq,bq25960,tshut-dis = <1>;*/
+        bq,bq25960,tsbus-flt-dis = <1>;
+        bq,bq25960,tsbat-flt-dis = <1>;
+        bq,bq25960,tdie-alm = <200>; /*25 + val * 0.5*/
+        bq,bq25960,tsbus-flt = <21>;
+        bq,bq25960,tsbat-flt = <21>;
+        bq,bq25960,vac1-ovp = <3>; /*0:6.5V 1:10.5V 2:12V 3:14V 4:16V 5~7:18V*/
+        bq,bq25960,vac2-ovp = <3>; /*0:6.5V 1:10.5V 2:12V 3:14V 4:16V 5~7:18V*/
+        bq,bq25960,vac1-pd-en = <0>;
+        bq,bq25960,vac2-pd-en = <0>;
+        bq,bq25960,fsw-set = <4>; /*0:187.5KHz 1:250KHz 2:300KHz
+                                    3:375KHz 4:500KHz 5:750KHz */
+        bq,bq25960,wd-timeout = <0>; /*0:0.5s 1:1s 2:5s 3:30s*/
+        bq,bq25960,wd-timeout-dis = <1>;
+        bq,bq25960,ibat-sns-r = <0>; /*0:2mho 1:5mho*/
+        bq,bq25960,ss-timeout = <7>; /*0:6.25ms 1:12.5ms 2:25ms 3:50ms
+                4:100ms 5:400ms 6:1.5s 7:10s*/
+        bq,bq25960,ibus-ucp-fall-dg = <1>; /*0:0.01ms, 1:5ms, 2:50ms, 3:150ms*/
+        bq,bq25960,vout-ovp-dis = <0>;
+        bq,bq25960,ms = <0>;
+        bq,bq25960,vout-ovp = <3>; /*4700 + val * 100*/
+        /*bq,bq25960,pmid2out-uvp = <7>;*/ /*50 + val * 25*/
+        /*bq,bq25960,pmid2out-ovp = <7>; */ /*150 + val * 50*/
+    };
+
+};
+
+&pe {
+	compatible = "mediatek,charger,pe";
+    status = "disabled";
+};
+
+&pe2 {
+    compatible = "mediatek,charger,pe2";
+    status = "disabled";
+};
+
+&pdc {
+    compatible = "mediatek,charger,pd";
+    status = "disabled";
+};
+
+&pe45 {
+    compatible = "mediatek,charger,pe45";
+    status = "disabled";
+};
+
+&pe5 {
+    compatible = "mediatek,charger,pe5";
+    status = "disabled";
+};
+
+&pe5p {
+    compatible = "mediatek,charger,pe5p";
+    status = "disabled";
+};
+
+&charger {
+		max_charger_voltage = <11000000>;
+		fv = <4500>;
+		fv_normal = <4480>;
+		fv_ffc = <4530>;
+		iterm = <250>;
+		iterm_warm = <250>;
+		iterm_warm_cn = <270>;
+		/* charging current */
+		usb_charger_current = <500000>;
+		ac_charger_current = <1600000>;
+		ac_charger_input_current = <1600000>;
+		charging_host_charger_current = <1500000>;
+		ffc_low_tbat = <150>;
+		ffc_medium_tbat = <300>;
+		ffc_warm_tbat = <350>;
+		ffc_little_high_tbat = <400>;
+		ffc_high_tbat = <450>;
+		ffc_high_soc = <90>;
+		step_fallback_hyst = <25>;
+		step_forward_hyst = <5>;
+		jeita_fallback_hyst = <10>;
+		jeita_forward_hyst = <0>;
+		mt6369_moscon1_control;
+		en_floatgnd;
+		rust_support;
+
+		min_charger_voltage_1 = <4600000>;
+		min_charger_voltage_2 = <4500000>;
+
+		/* battery temperature protection */
+		//enable-min-charge-temp;
+		min-charge-temp = <(-10)>;
+		min-charge-temp-plus-x-degree = <(-8)>;
+		max-charge-temp = <58>;
+		max-charge-temp-minus-x-degree = <56>;
+
+		jeita_fcc_cfg_gl = <(-100)	(-1)	4500	503	503
+				0	49	4150	1006	1006
+				50	99	4150	2515	2515
+				100	149	4150	4024	4024
+				150	449	4150	8000	5400
+				450	599	4100	2515	2515>;
+		jeita_fcc_cfg_cn = <(-100)	(-1)	4500	542	542
+				0	49	4150	1084	1084
+				50	99	4150	2660	2660
+				100	149	4150	4286	4286
+				150	449	4150	7950	5400
+				450	599	4100	2710	2710>;
+		jeita_fv_cfg = <(-100)	(-1)	4500
+				0	49	4500
+				50	99	4500
+				100	149	4500
+				150	449	4530
+				450	599	4100>;
+		/* 1-100cls */
+		step_chg_cfg_1_cycle = <3000	4150	8000
+					4151	4300	6000
+					4301	4500	5400
+					4501	4530	4336>;
+		step_chg_cfg_1_cycle_gl = <3000	4150	8000
+					4151	4300	6000
+					4301	4500	5400
+					4501	4530	4024>;
+		iterm_ffc_1_cycle_0 = <758>;
+		iterm_ffc_little_warm_1_cycle_0 = <1084>;
+		iterm_ffc_warm_1_cycle_0 = <1219>;
+		iterm_ffc_hot_1_cycle_0 = <1355>;
+		iterm_ffc_1_cycle_1 = <867>;
+		iterm_ffc_little_warm_1_cycle_1 = <1246>;
+		iterm_ffc_warm_1_cycle_1 = <1490>;
+		iterm_ffc_hot_1_cycle_1 = <1734>;
+		iterm_ffc_1_cycle_2 = <754>;
+		iterm_ffc_little_warm_1_cycle_2 = <1157>;
+		iterm_ffc_warm_1_cycle_2 = <1257>;
+		iterm_ffc_hot_1_cycle_2 = <1358>;
+		iterm_ffc_1_cycle_3 = <855>;
+		iterm_ffc_little_warm_1_cycle_3 = <1258>;
+		iterm_ffc_warm_1_cycle_3 = <1458>;
+		iterm_ffc_hot_1_cycle_3 = <1659>;
+		/* 100-200cls */
+		step_chg_cfg_100_cycle = <3000	4100	8000
+					4101	4250	6000
+					4251	4450	5400
+					4451	4530	4336>;
+		step_chg_cfg_100_cycle_gl = <3000	4100	8000
+					4101	4250	6000
+					4251	4450	5400
+					4451	4530	4024>;
+		iterm_ffc_100_cycle_0 = <758>;
+		iterm_ffc_little_warm_100_cycle_0 = <921>;
+		iterm_ffc_warm_100_cycle_0 = <1138>;
+		iterm_ffc_hot_100_cycle_0 = <1355>;
+		iterm_ffc_100_cycle_1 = <1084>;
+		iterm_ffc_little_warm_100_cycle_1 = <1246>;
+		iterm_ffc_warm_100_cycle_1 = <1490>;
+		iterm_ffc_hot_100_cycle_1 = <1734>;
+		iterm_ffc_100_cycle_2 = <804>;
+		iterm_ffc_little_warm_100_cycle_2 = <1006>;
+		iterm_ffc_warm_100_cycle_2 = <1182>;
+		iterm_ffc_hot_100_cycle_2 = <1358>;
+		iterm_ffc_100_cycle_3 = <1056>;
+		iterm_ffc_little_warm_100_cycle_3 = <1258>;
+		iterm_ffc_warm_100_cycle_3 = <1458>;
+		iterm_ffc_hot_100_cycle_3 = <1659>;
+		/* 200-300cls */
+		step_chg_cfg_200_cycle = <3000	4100	8000
+					4101	4250	6000
+					4251	4450	5400
+					4451	4530	4336>;
+		step_chg_cfg_200_cycle_gl = <3000	4100	8000
+					4101	4250	6000
+					4251	4450	5400
+					4451	4530	4024>;
+		iterm_ffc_200_cycle_0 = <704>;
+		iterm_ffc_little_warm_200_cycle_0 = <813>;
+		iterm_ffc_warm_200_cycle_0 = <975>;
+		iterm_ffc_hot_200_cycle_0 = <1138>;
+		iterm_ffc_200_cycle_1 = <1030>;
+		iterm_ffc_little_warm_200_cycle_1 = <1084>;
+		iterm_ffc_warm_200_cycle_1 = <1327>;
+		iterm_ffc_hot_200_cycle_1 = <1571>;
+		iterm_ffc_200_cycle_2 = <704>;
+		iterm_ffc_little_warm_200_cycle_2 = <855>;
+		iterm_ffc_warm_200_cycle_2 = <980>;
+		iterm_ffc_hot_200_cycle_2 = <1106>;
+		iterm_ffc_200_cycle_3 = <905>;
+		iterm_ffc_little_warm_200_cycle_3 = <1107>;
+		iterm_ffc_warm_200_cycle_3 = <1358>;
+		iterm_ffc_hot_200_cycle_3 = <1610>;
+		/* 300-400cls */
+		step_chg_cfg_300_cycle = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4336>;
+		step_chg_cfg_300_cycle_gl = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4024>;
+		iterm_ffc_300_cycle_0 = <650>;
+		iterm_ffc_little_warm_300_cycle_0 = <758>;
+		iterm_ffc_warm_300_cycle_0 = <948>;
+		iterm_ffc_hot_300_cycle_0 = <1138>;
+		iterm_ffc_300_cycle_1 = <867>;
+		iterm_ffc_little_warm_300_cycle_1 = <1084>;
+		iterm_ffc_warm_300_cycle_1 = <1327>;
+		iterm_ffc_hot_300_cycle_1 = <1571>;
+		iterm_ffc_300_cycle_2 = <653>;
+		iterm_ffc_little_warm_300_cycle_2 = <804>;
+		iterm_ffc_warm_300_cycle_2 = <955>;
+		iterm_ffc_hot_300_cycle_2 = <1106>;
+		iterm_ffc_300_cycle_3 = <805>;
+		iterm_ffc_little_warm_300_cycle_3 = <1056>;
+		iterm_ffc_warm_300_cycle_3 = <1333>;
+		iterm_ffc_hot_300_cycle_3 = <1610>;
+		/* 400-500cls */
+		step_chg_cfg_400_cycle = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4336>;
+		step_chg_cfg_400_cycle_gl = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4024>;
+		iterm_ffc_400_cycle_0 = <596>;
+		iterm_ffc_little_warm_400_cycle_0 = <704>;
+		iterm_ffc_warm_400_cycle_0 = <840>;
+		iterm_ffc_hot_400_cycle_0 = <1192>;
+		iterm_ffc_400_cycle_1 = <813>;
+		iterm_ffc_little_warm_400_cycle_1 = <976>;
+		iterm_ffc_warm_400_cycle_1 = <1247>;
+		iterm_ffc_hot_400_cycle_1 = <1680>;
+		iterm_ffc_400_cycle_2 = <603>;
+		iterm_ffc_little_warm_400_cycle_2 = <754>;
+		iterm_ffc_warm_400_cycle_2 = <855>;
+		iterm_ffc_hot_400_cycle_2 = <1207>;
+		iterm_ffc_400_cycle_3 = <754>;
+		iterm_ffc_little_warm_400_cycle_3 = <1006>;
+		iterm_ffc_warm_400_cycle_3 = <1182>;
+		iterm_ffc_hot_400_cycle_3 = <1459>;
+		/* 500-600cls */
+		step_chg_cfg_500_cycle = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4336>;
+		step_chg_cfg_500_cycle_gl = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4024>;
+		iterm_ffc_500_cycle_0 = <596>;
+		iterm_ffc_little_warm_500_cycle_0 = <650>;
+		iterm_ffc_warm_500_cycle_0 = <813>;
+		iterm_ffc_hot_500_cycle_0 = <1355>;
+		iterm_ffc_500_cycle_1 = <758>;
+		iterm_ffc_little_warm_500_cycle_1 = <921>;
+		iterm_ffc_warm_500_cycle_1 = <1219>;
+		iterm_ffc_hot_500_cycle_1 = <1734>;
+		iterm_ffc_500_cycle_2 = <553>;
+		iterm_ffc_little_warm_500_cycle_2 = <704>;
+		iterm_ffc_warm_500_cycle_2 = <829>;
+		iterm_ffc_hot_500_cycle_2 = <1358>;
+		iterm_ffc_500_cycle_3 = <704>;
+		iterm_ffc_little_warm_500_cycle_3 = <955>;
+		iterm_ffc_warm_500_cycle_3 = <1156>;
+		iterm_ffc_hot_500_cycle_3 = <1659>;
+		/* 600-700cls */
+		step_chg_cfg_600_cycle = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4336>;
+		step_chg_cfg_600_cycle_gl = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4024>;
+		iterm_ffc_600_cycle_0 = <542>;
+		iterm_ffc_little_warm_600_cycle_0 = <650>;
+		iterm_ffc_warm_600_cycle_0 = <1029>;
+		iterm_ffc_hot_600_cycle_0 = <1355>;
+		iterm_ffc_600_cycle_1 = <704>;
+		iterm_ffc_little_warm_600_cycle_1 = <867>;
+		iterm_ffc_warm_600_cycle_1 = <1327>;
+		iterm_ffc_hot_600_cycle_1 = <1734>;
+		iterm_ffc_600_cycle_2 = <511>;
+		iterm_ffc_little_warm_600_cycle_2 = <704>;
+		iterm_ffc_warm_600_cycle_2 = <1081>;
+		iterm_ffc_hot_600_cycle_2 = <1358>;
+		iterm_ffc_600_cycle_3 = <653>;
+		iterm_ffc_little_warm_600_cycle_3 = <905>;
+		iterm_ffc_warm_600_cycle_3 = <1232>;
+		iterm_ffc_hot_600_cycle_3 = <1659>;
+		/* 700-800cls */
+		step_chg_cfg_700_cycle = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4336>;
+		step_chg_cfg_700_cycle_gl = <3000	4070	8000
+					4071	4220	6000
+					4221	4420	5400
+					4421	4530	4024>;
+		iterm_ffc_700_cycle_0 = <542>;
+		iterm_ffc_little_warm_700_cycle_0 = <596>;
+		iterm_ffc_warm_700_cycle_0 = <1219>;
+		iterm_ffc_hot_700_cycle_0 = <1355>;
+		iterm_ffc_700_cycle_1 = <704>;
+		iterm_ffc_little_warm_700_cycle_1 = <867>;
+		iterm_ffc_warm_700_cycle_1 = <1490>;
+		iterm_ffc_hot_700_cycle_1 = <1734>;
+		iterm_ffc_700_cycle_2 = <511>;
+		iterm_ffc_little_warm_700_cycle_2 = <653>;
+		iterm_ffc_warm_700_cycle_2 = <1257>;
+		iterm_ffc_hot_700_cycle_2 = <1358>;
+		iterm_ffc_700_cycle_3 = <653>;
+		iterm_ffc_little_warm_700_cycle_3 = <905>;
+		iterm_ffc_warm_700_cycle_3 = <1458>;
+		iterm_ffc_hot_700_cycle_3 = <1659>;
+		/* 800-900cls */
+		step_chg_cfg_800_cycle = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3648>;
+		step_chg_cfg_800_cycle_gl = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3219>;
+		iterm_ffc_800_cycle_0 = <487>;
+		iterm_ffc_little_warm_800_cycle_0 = <596>;
+		iterm_ffc_warm_800_cycle_0 = <1219>;
+		iterm_ffc_hot_800_cycle_0 = <1355>;
+		iterm_ffc_800_cycle_1 = <650>;
+		iterm_ffc_little_warm_800_cycle_1 = <813>;
+		iterm_ffc_warm_800_cycle_1 = <1490>;
+		iterm_ffc_hot_800_cycle_1 = <1734>;
+		iterm_ffc_800_cycle_2 = <460>;
+		iterm_ffc_little_warm_800_cycle_2 = <653>;
+		iterm_ffc_warm_800_cycle_2 = <1257>;
+		iterm_ffc_hot_800_cycle_2 = <1358>;
+		iterm_ffc_800_cycle_3 = <603>;
+		iterm_ffc_little_warm_800_cycle_3 = <855>;
+		iterm_ffc_warm_800_cycle_3 = <1458>;
+		iterm_ffc_hot_800_cycle_3 = <1659>;
+		/* 900-1000cls */
+		step_chg_cfg_900_cycle = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3648>;
+		step_chg_cfg_900_cycle_gl = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3219>;
+		iterm_ffc_900_cycle_0 = <487>;
+		iterm_ffc_little_warm_900_cycle_0 = <596>;
+		iterm_ffc_warm_900_cycle_0 = <1219>;
+		iterm_ffc_hot_900_cycle_0 = <1355>;
+		iterm_ffc_900_cycle_1 = <650>;
+		iterm_ffc_little_warm_900_cycle_1 = <813>;
+		iterm_ffc_warm_900_cycle_1 = <1490>;
+		iterm_ffc_hot_900_cycle_1 = <1734>;
+		iterm_ffc_900_cycle_2 = <460>;
+		iterm_ffc_little_warm_900_cycle_2 = <653>;
+		iterm_ffc_warm_900_cycle_2 = <1257>;
+		iterm_ffc_hot_900_cycle_2 = <1358>;
+		iterm_ffc_900_cycle_3 = <603>;
+		iterm_ffc_little_warm_900_cycle_3 = <855>;
+		iterm_ffc_warm_900_cycle_3 = <1458>;
+		iterm_ffc_hot_900_cycle_3 = <1659>;
+		/* 1000-1100cls */
+		step_chg_cfg_1000_cycle = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3648>;
+		step_chg_cfg_1000_cycle_gl = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3219>;
+		iterm_ffc_1000_cycle_0 = <542>;
+		iterm_ffc_little_warm_1000_cycle_0 = <758>;
+		iterm_ffc_warm_1000_cycle_0 = <1219>;
+		iterm_ffc_hot_1000_cycle_0 = <1355>;
+		iterm_ffc_1000_cycle_1 = <704>;
+		iterm_ffc_little_warm_1000_cycle_1 = <921>;
+		iterm_ffc_warm_1000_cycle_1 = <1490>;
+		iterm_ffc_hot_1000_cycle_1 = <1734>;
+		iterm_ffc_1000_cycle_2 = <511>;
+		iterm_ffc_little_warm_1000_cycle_2 = <754>;
+		iterm_ffc_warm_1000_cycle_2 = <1257>;
+		iterm_ffc_hot_1000_cycle_2 = <1358>;
+		iterm_ffc_1000_cycle_3 = <653>;
+		iterm_ffc_little_warm_1000_cycle_3 = <955>;
+		iterm_ffc_warm_1000_cycle_3 = <1458>;
+		iterm_ffc_hot_1000_cycle_3 = <1659>;
+		/* 1100-1200cls */
+		step_chg_cfg_1100_cycle = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3648>;
+		step_chg_cfg_1100_cycle_gl = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3219>;
+		iterm_ffc_1100_cycle_0 = <650>;
+		iterm_ffc_little_warm_1100_cycle_0 = <867>;
+		iterm_ffc_warm_1100_cycle_0 = <1219>;
+		iterm_ffc_hot_1100_cycle_0 = <1355>;
+		iterm_ffc_1100_cycle_1 = <758>;
+		iterm_ffc_little_warm_1100_cycle_1 = <1084>;
+		iterm_ffc_warm_1100_cycle_1 = <1490>;
+		iterm_ffc_hot_1100_cycle_1 = <1734>;
+		iterm_ffc_1100_cycle_2 = <603>;
+		iterm_ffc_little_warm_1100_cycle_2 = <955>;
+		iterm_ffc_warm_1100_cycle_2 = <1257>;
+		iterm_ffc_hot_1100_cycle_2 = <1358>;
+		iterm_ffc_1100_cycle_3 = <754>;
+		iterm_ffc_little_warm_1100_cycle_3 = <1006>;
+		iterm_ffc_warm_1100_cycle_3 = <1458>;
+		iterm_ffc_hot_1100_cycle_3 = <1659>;
+
+		/* 1200cls->> */
+		step_chg_cfg_1200_cycle = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3648>;
+		step_chg_cfg_1200_cycle_gl = <3000	4050	6400
+					4051	4200	4800
+					4201	4400	4320
+					4401	4530	3219>;
+		iterm_ffc_1200_cycle_0 = <758>;
+		iterm_ffc_little_warm_1200_cycle_0 = <1084>;
+		iterm_ffc_warm_1200_cycle_0 = <1219>;
+		iterm_ffc_hot_1200_cycle_0 = <1355>;
+		iterm_ffc_1200_cycle_1 = <867>;
+		iterm_ffc_little_warm_1200_cycle_1 = <1246>;
+		iterm_ffc_warm_1200_cycle_1 = <1490>;
+		iterm_ffc_hot_1200_cycle_1 = <1734>;
+		iterm_ffc_1200_cycle_2 = <754>;
+		iterm_ffc_little_warm_1200_cycle_2 = <1157>;
+		iterm_ffc_warm_1200_cycle_2 = <1257>;
+		iterm_ffc_hot_1200_cycle_2 = <1358>;
+		iterm_ffc_1200_cycle_3 = <855>;
+		iterm_ffc_little_warm_1200_cycle_3 = <1258>;
+		iterm_ffc_warm_1200_cycle_3 = <1458>;
+		iterm_ffc_hot_1200_cycle_3 = <1659>;
+
+		thermal_limit_dcp = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		thermal_limit_qc2 = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		thermal_limit_qc3_18w = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		thermal_limit_qc3_27w = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		thermal_limit_qc35 = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		thermal_limit_pd = <8000 7800 7600 7400 7200 7000
+                		     6800 6600 6400 6200 6000 5800
+                                     5600 5400 5200 5000 4800 4600
+                                     4400 4200 4000 3800 3600 3400
+                                     3200 3000 2800 2600 2400 2200
+                                     2000 1800 1600 1400 1000 500>;
+		smart_chg_lowfast_thermal = <320  330  340  350  360  370  380  390  395  400  410  420  425  430  440  450>;
+		smart_chg_lowfast_current = <8000 8000 7000 7000 7000 7000 6000 6000 6000 5400 4600 4600 3600 3000 3000 3000>;
+};
+
+&pd_cp_manager {
+		compatible = "pd_cp_manager";
+		fv = <4492>;
+		fv_ffc = <4542>;
+		max_fcc = <7700>;
+		max_vbus = <11000>;
+		max_ibus = <4100>;
+		fcc_low_hyst = <150>;
+		fcc_high_hyst = <(-100)>;
+		low_tbat = <100>;
+		high_tbat = <480>;
+		high_vbat = <4400>;
+		high_soc = <95>;
+		low_fcc = <2000>;
+		cv_vbat = <4480>;
+		cv_vbat_ffc = <4510>;
+		cv_ibat = <1200>;
+		min_pdo_vbus = <8000>;
+		max_pdo_vbus = <11000>;
+		//mt6375_control_gpio = <&pio 215 0x0>;
+		//support_4_1_mode;
+		switch1_1_enter = <2600>;
+		switch1_1_exit = <3600>;
+		switch2_1_enter = <6000>;
+		switch2_1_exit = <7000>;
+		pdm_ibus_gap = <600>;
+};
+
+&mt6375_typec {
+	tcpc,en_floatgnd;
+	/* 0:16x, 1:128x, 2:512x, 3:1024x */
+	wd,wd0_tsleep = <1>;
+	/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
+	wd,wd0_tdet = <3>;
+	/* example wd0_tsleep = 512x, wd0_tdet = 4ms, wd0 polling time = 512*4ms */
+};
+
+	/* SI Haptic */
+&pio {
+		sih_reset_low: sih_reset_reset {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+		sih_reset_high: sih_reset_active {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+		sih_interrupt: sih_interrupt_active {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+};
+
+/***************************awinic start******************************/
+&i2c12 {
+	clock-frequency = <400000>;
+	status = "ok";
+	haptic_hv@5A {
+		compatible = "awinic,awinic_haptic";
+		reg = <0x5A>;
+		irq-gpio = <&pio 9 0>;
+		reset-gpio = <&pio 41 0>;
+		pinctrl-names = "awinic_reset_reset","awinic_reset_active","awinic_interrupt_active";
+		pinctrl-0 = <&awinic_reset_low>;
+		pinctrl-1 = <&awinic_reset_high>;
+		pinctrl-2 = <&awinic_interrupt>;
+		status = "okay";
+/*----------------------aw8692x----------------------*/
+		aw86927_vib_mode = < 0 >; /* mode: RAM mode->0; CONT mode->1 */
+		aw86927_vib_f0_pre = < 1700 >;
+		aw86927_comp_gain_temp = < 182 >;
+		aw86927_vib_f0_cali_percen = < 7 >;
+		aw86927_vib_cont_drv1_lvl = < 0x7F >;
+		aw86927_vib_cont_drv2_lvl = < 0x36 >;
+		aw86927_vib_cont_drv1_time = < 0x04 >;
+		aw86927_vib_cont_drv2_time = < 0x06 >;
+		aw86927_vib_cont_drv_width = < 0x6A >;
+		aw86927_vib_cont_wait_num = < 0x06 >;
+		aw86927_vib_cont_brk_time = < 0x08 >;
+		aw86927_vib_cont_track_margin = < 0x0C >;
+		aw86927_vib_brk_bst_md = < 0 >;
+		aw86927_vib_cont_tset = < 0x06 >;
+		aw86927_vib_cont_bemf_set = < 0x02 >;
+		aw86927_vib_cont_bst_brk_gain = < 0x05 >;
+		aw86927_vib_cont_brk_gain = < 0x08 >;
+		aw86927_vib_d2s_gain = < 0x04 >;
+		aw86927_vib_trig_config = < 1 0 1 1 1 2 0 0
+					    1 0 0 1 0 2 0 0
+					    1 0 0 1 0 2 0 0 >;
+		aw86927_vib_bst_vol_default = < 0x57 >;
+		aw86927_vib_bst_vol_ram = < 0x57 >;
+		aw86927_vib_bst_vol_rtp = < 0x57 >;
+		/*--------------------common--------------------*/
+		vib_effect_id_boundary = < 10 >;
+		vib_effect_max = < 197 >; /*vib_effect_max must bigger than vib_effect_id*/
+		vib_rtp_time = < 20 20 20 20 20 20 20 20 20000 15000
+				15000 20000 25000 15000 30000 25000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 >;
+		wf_0 {
+			/*CLICK*/
+			mtk,effect-id = <0>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_1 {
+			/*DOUBLE CLICK*/
+			mtk,effect-id = <1>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 3e];
+			mtk,wf-brake-pattern = [03 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_2 {
+			/*TICK*/
+			mtk,effect-id = <2>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_3 {
+			/*THUD*/
+			mtk,effect-id = <3>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_4 {
+			/*POP*/
+			mtk,effect-id = <4>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <28000>;
+		};
+		wf_5 {
+			/*HEAVY CLICK*/
+			mtk,effect-id = <5>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 7e 7e];
+			mtk,wf-brake-pattern = [03 03 01 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_6 {
+			/*id 6*/
+			mtk,effect-id = <6>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_7 {
+			/*id 7*/
+			mtk,effect-id = <7>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_8 {
+			/*id 8*/
+			mtk,effect-id = <8>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_9 {
+			/*id 9*/
+			mtk,effect-id = <9>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+	};
+	/* SI Haptic */
+		/* SI Haptic */
+	sih6887_haptic:sih6887_haptic@6B{
+		compatible = "silicon,sih_haptic_688X";
+		reg = <0x6B>;
+		reset-gpio = <&pio 41 0>;
+		irq-gpio = <&pio 9 0>;
+		interrupt=<26 1>;
+		pinctrl-names = "sih_reset_reset","sih_reset_active","sih_interrupt_active";
+		pinctrl-0 = <&sih_reset_low>;
+		pinctrl-1 = <&sih_reset_high>;
+		pinctrl-2 = <&sih_interrupt>;
+		lra_name = "0809";
+		vib_effect_id_boundary = < 10 >;
+		vib_effect_max = < 197 >;
+		vib_f0_pre = < 1700 >;
+		vib_bst_vol_default = < 85 >;
+    };
+	/* SI Haptic */
+};
+
+/* Awinic Haptic start */
+&pio {
+	awinic_reset_low: awinic_reset_reset {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+	awinic_reset_high: awinic_reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+	awinic_interrupt: awinic_interrupt_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+&regulator_vibrator {
+	status = "disabled";
+};
+
+&pio {
+	w1_pins: w1_pins {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
+			drive-strength = <7>;
+			output-high;
+		};
+	};
+};
+
+&onewire_gpio {
+	compatible = "xiaomi,onewire_gpio";
+	gpios = <&pio 3 0x00>;
+	vfp-supply = <&mt6369_vfp>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&w1_pins>;
+	status = "okay";
+};
+
+&st_stick {
+	compatible = "st,stick";
+	auth_name = "third_supplier";
+	status = "okay";
+};
+
+&maxim_ds28e16 {
+	compatible = "maxim,ds28e30";
+	auth_name = "second_supplier";
+	status = "okay";
+};
+
+&acl_slg {
+	compatible = "acl,slg";
+	auth_name = "main_supplier";
+	status = "okay";
+};

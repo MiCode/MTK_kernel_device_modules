@@ -119,6 +119,7 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	 * period = (PWM_CLK_RATE * period_ns) / (10^9 * (clk_div + 1)) - 1
 	 * high_width = (PWM_CLK_RATE * duty_ns) / (10^9 * (clk_div + 1))
 	 */
+	pr_notice("%s duty_cycle[%llu] period[%llu]\n", __func__, state->duty_cycle, state->period);
 	rate = clk_get_rate(mdp->clk_main);
 	clk_div = mul_u64_u64_div_u64(state->period, rate, NSEC_PER_SEC) >>
 			  PWM_PERIOD_BIT_WIDTH;
@@ -137,6 +138,9 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	high_width = mul_u64_u64_div_u64(state->duty_cycle, rate, div);
 	value = period | (high_width << PWM_HIGH_WIDTH_SHIFT);
+
+	pr_notice("%s rate[%llx] clk_div[%u] div[%llx] high_width[%u] value[%u] period[%u]",
+		__func__, rate, clk_div, div, high_width, value, period);
 
 	mtk_disp_pwm_update_bits(mdp, mdp->data->con0,
 				 PWM_CLKDIV_MASK,
@@ -172,7 +176,7 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	return 0;
 }
 
-static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
+static int mtk_disp_pwm_get_state(struct pwm_chip *chip,
 				   struct pwm_device *pwm,
 				   struct pwm_state *state)
 {
@@ -184,14 +188,14 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	err = clk_prepare_enable(mdp->clk_main);
 	if (err < 0) {
 		dev_err(chip->dev, "Can't enable mdp->clk_main: %pe\n", ERR_PTR(err));
-		return;
+		return 0;
 	}
 
 	err = clk_prepare_enable(mdp->clk_mm);
 	if (err < 0) {
 		dev_err(chip->dev, "Can't enable mdp->clk_mm: %pe\n", ERR_PTR(err));
 		clk_disable_unprepare(mdp->clk_main);
-		return;
+		return 0;
 	}
 
 	rate = clk_get_rate(mdp->clk_main);
@@ -204,6 +208,10 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	 * period has 12 bits, clk_div 11 and NSEC_PER_SEC has 30,
 	 * so period * (clk_div + 1) * NSEC_PER_SEC doesn't overflow.
 	 */
+	if (rate == 0) {
+		pr_notice("%s rate[%llx] will divide by zero", __func__, rate);
+		return 0;
+	}
 	state->period = DIV64_U64_ROUND_UP(period * (clk_div + 1) * NSEC_PER_SEC, rate);
 	high_width = FIELD_GET(PWM_HIGH_WIDTH_MASK, con1);
 	state->duty_cycle = DIV64_U64_ROUND_UP(high_width * (clk_div + 1) * NSEC_PER_SEC,
@@ -211,6 +219,8 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	state->polarity = PWM_POLARITY_NORMAL;
 	clk_disable_unprepare(mdp->clk_mm);
 	clk_disable_unprepare(mdp->clk_main);
+
+	return 0;
 }
 
 static const struct pwm_ops mtk_disp_pwm_ops = {
@@ -231,16 +241,22 @@ static int mtk_disp_pwm_probe(struct platform_device *pdev)
 	mdp->data = of_device_get_match_data(&pdev->dev);
 
 	mdp->base = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(mdp->base))
+	if (IS_ERR(mdp->base)) {
+		pr_notice("%s mdp base null", __func__);
 		return PTR_ERR(mdp->base);
+	}
 
 	mdp->clk_main = devm_clk_get(&pdev->dev, "main");
-	if (IS_ERR(mdp->clk_main))
+	if (IS_ERR(mdp->clk_main)) {
+		pr_notice("%s clk_main is null", __func__);
 		return PTR_ERR(mdp->clk_main);
+	}
 
 	mdp->clk_mm = devm_clk_get(&pdev->dev, "mm");
-	if (IS_ERR(mdp->clk_mm))
+	if (IS_ERR(mdp->clk_mm)) {
+		pr_notice("%s clk_mm is null", __func__);
 		return PTR_ERR(mdp->clk_mm);
+	}
 
 	mdp->chip.dev = &pdev->dev;
 	mdp->chip.ops = &mtk_disp_pwm_ops;
@@ -276,6 +292,16 @@ static const struct mtk_pwm_data mt2701_pwm_data = {
 	.bls_debug_mask = 0x3,
 };
 
+static const struct mtk_pwm_data mt6799_pwm_data = {
+	.enable_mask = BIT(0),
+	.con0 = 0x18,
+	.con0_sel = 0x0,
+	.con1 = 0x1C,
+	.has_commit = true,
+	.commit = 0xC,
+	.commit_mask = 0x1,
+};
+
 static const struct mtk_pwm_data mt8173_pwm_data = {
 	.enable_mask = BIT(0),
 	.con0 = 0x10,
@@ -299,8 +325,13 @@ static const struct mtk_pwm_data mt8183_pwm_data = {
 static const struct of_device_id mtk_disp_pwm_of_match[] = {
 	{ .compatible = "mediatek,mt2701-disp-pwm", .data = &mt2701_pwm_data},
 	{ .compatible = "mediatek,mt6595-disp-pwm", .data = &mt8173_pwm_data},
+	{ .compatible = "mediatek,mt6873-disp-pwm", .data = &mt6799_pwm_data},
+	{ .compatible = "mediatek,mt6853-disp-pwm", .data = &mt6799_pwm_data},
+	{ .compatible = "mediatek,mt6985-disp-pwm0", .data = &mt6799_pwm_data},
 	{ .compatible = "mediatek,mt8173-disp-pwm", .data = &mt8173_pwm_data},
 	{ .compatible = "mediatek,mt8183-disp-pwm", .data = &mt8183_pwm_data},
+	{ .compatible = "mediatek,mt6886-disp-pwm", .data = &mt6799_pwm_data},
+	{ .compatible = "mediatek,mt6835-disp-pwm", .data = &mt6799_pwm_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_pwm_of_match);

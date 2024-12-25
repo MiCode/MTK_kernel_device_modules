@@ -13,6 +13,9 @@ Linux Virtualization Support
    guest-halt-polling
    ne_overview
    acrn/index
+   coco/sev-guest
+   hyperv/index
+   gunyah/index
 
 .. only:: html and subproject
 

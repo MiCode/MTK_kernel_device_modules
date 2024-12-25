@@ -1,0 +1,6 @@
+config SND_SMARTPA_AW882XX
+	tristate "AWINIC AW882XXxx speaker amplifier"
+	depends on I2C
+	default n
+	help
+	  Config of AWINIC AW882xx speaker amplifier.

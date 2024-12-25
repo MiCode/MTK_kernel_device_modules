@@ -1,0 +1,6 @@
+config HARDWARE_INFO
+	tristate "hardware info"
+	default n
+	help
+	This adds support for hardware info.
+

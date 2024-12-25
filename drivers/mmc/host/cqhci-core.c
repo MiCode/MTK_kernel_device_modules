@@ -17,6 +17,7 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 
+#include <mt-plat/mtk_blocktag.h>
 #include "cqhci.h"
 #include "cqhci-crypto.h"
 
@@ -646,6 +647,12 @@ static int cqhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	cq_host->qcnt += 1;
 	/* Make sure descriptors are ready before ringing the doorbell */
 	wmb();
+
+	if (mrq->data) {
+		mmc_mtk_biolog_send_command(tag, mrq);
+		mmc_mtk_biolog_check(mmc, cq_host->qcnt);
+	}
+
 	cqhci_writel(cq_host, 1 << tag, CQHCI_TDBR);
 	if (!(cqhci_readl(cq_host, CQHCI_TDBR) & (1 << tag)))
 		pr_debug("%s: cqhci: doorbell not set for tag %d\n",
@@ -804,6 +811,8 @@ static void cqhci_finish_mrq(struct mmc_host *mmc, unsigned int tag)
 			data->bytes_xfered = 0;
 		else
 			data->bytes_xfered = data->blksz * data->blocks;
+		mmc_mtk_biolog_transfer_req_compl(mmc, tag, 0);
+		mmc_mtk_biolog_check(mmc, cq_host->qcnt);
 	}
 
 	mmc_cqe_request_done(mmc, mrq);
@@ -822,15 +831,8 @@ irqreturn_t cqhci_irq(struct mmc_host *mmc, u32 intmask, int cmd_error,
 	pr_debug("%s: cqhci: IRQ status: 0x%08x\n", mmc_hostname(mmc), status);
 
 	if ((status & (CQHCI_IS_RED | CQHCI_IS_GCE | CQHCI_IS_ICCE)) ||
-	    cmd_error || data_error) {
-		if (status & CQHCI_IS_RED)
-			mmc_debugfs_err_stats_inc(mmc, MMC_ERR_CMDQ_RED);
-		if (status & CQHCI_IS_GCE)
-			mmc_debugfs_err_stats_inc(mmc, MMC_ERR_CMDQ_GCE);
-		if (status & CQHCI_IS_ICCE)
-			mmc_debugfs_err_stats_inc(mmc, MMC_ERR_CMDQ_ICCE);
+	    cmd_error || data_error)
 		cqhci_error_irq(mmc, status, cmd_error, data_error);
-	}
 
 	if (status & CQHCI_IS_TCC) {
 		/* read TCN and complete the request */
@@ -909,8 +911,8 @@ static bool cqhci_timeout(struct mmc_host *mmc, struct mmc_request *mrq,
 	spin_unlock_irqrestore(&cq_host->lock, flags);
 
 	if (timed_out) {
-		pr_err("%s: cqhci: timeout for tag %d\n",
-		       mmc_hostname(mmc), tag);
+		pr_err("%s: cqhci: timeout for tag %d, qcnt %d\n",
+		       mmc_hostname(mmc), tag, cq_host->qcnt);
 		cqhci_dumpregs(cq_host);
 	}
 

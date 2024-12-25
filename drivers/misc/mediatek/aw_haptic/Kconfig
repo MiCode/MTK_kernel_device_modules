@@ -1,0 +1,7 @@
+config AWINIC_HAPTIC_HV
+	tristate "awinic aw haptics support"
+	depends on I2C
+	help
+	  Say Y to enable support for the AW869x haptics driver.
+
+	  To compile this driver as a module, choose M here.

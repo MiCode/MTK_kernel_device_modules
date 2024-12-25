@@ -2,7 +2,18 @@
 #
 # Phy drivers for Mediatek devices
 #
-config PHY_MTK_TPHY
+config DEVICE_MODULES_PHY_MTK_PCIE
+	tristate "MediaTek PCIe-PHY Driver"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	depends on OF
+	select GENERIC_PHY
+	help
+	  Enable this to support the PCIe PHY for
+	  PCIe GEN3 controllers on Mediatek chips.
+	  The driver provide vendor-specific probing,
+	  initialization, power on and power off flow.
+
+config DEVICE_MODULES_PHY_MTK_TPHY
 	tristate "MediaTek T-PHY Driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on OF && OF_ADDRESS
@@ -16,7 +27,7 @@ config PHY_MTK_TPHY
 	  multi-ports is first version, otherwise is second version,
 	  so you can easily distinguish them by banks layout.
 
-config PHY_MTK_UFS
+config DEVICE_MODULES_PHY_MTK_UFS
 	tristate "MediaTek UFS M-PHY driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on OF
@@ -27,7 +38,7 @@ config PHY_MTK_UFS
 	  initialization, power on and power off flow of
 	  specified M-PHYs.
 
-config PHY_MTK_XSPHY
+config DEVICE_MODULES_PHY_MTK_XSPHY
 	tristate "MediaTek XS-PHY Driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 	depends on OF && OF_ADDRESS
@@ -38,20 +49,10 @@ config PHY_MTK_XSPHY
 	  USB3.1 GEN2 controllers on MediaTek chips. The driver supports
 	  multiple USB2.0, USB3.1 GEN2 ports.
 
-config PHY_MTK_HDMI
-	tristate "MediaTek HDMI-PHY Driver"
+config PHY_MTK_FPGAPHY
+	tristate "MediaTek FPGA-PHY Driver"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
-	depends on COMMON_CLK
 	depends on OF
 	select GENERIC_PHY
 	help
-	  Support HDMI PHY for Mediatek SoCs.
-
-config PHY_MTK_MIPI_DSI
-	tristate "MediaTek MIPI-DSI Driver"
-	depends on ARCH_MEDIATEK || COMPILE_TEST
-	depends on COMMON_CLK
-	depends on OF
-	select GENERIC_PHY
-	help
-	  Support MIPI DSI for Mediatek SoCs.
+	  Enable this to support A60931/A60810 FPGA PHY.

@@ -443,6 +443,9 @@ struct msdc_host {
 	int irq;		/* host interrupt */
 	struct reset_control *reset;
 
+	struct clk *p_clk;		/* msdc power clock */
+	struct clk *axi_clk;	/* msdc axi clock*/
+	struct clk *ahb_clk;	/* msdc ahb2axi_brg_clk clock*/
 	struct clk *src_clk;	/* msdc source clock */
 	struct clk *h_clk;      /* msdc h_clk */
 	struct clk *bus_clk;	/* bus clock which used to access register */
@@ -497,6 +500,19 @@ static const struct mtk_mmc_compatible mt8173_compat = {
 };
 
 static const struct mtk_mmc_compatible mt8183_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_fix = true,
+	.enhance_rx = true,
+	.support_64g = true,
+};
+
+static const struct mtk_mmc_compatible mt8195_compat = {
 	.clk_div_bits = 12,
 	.recheck_sdio_irq = false,
 	.hs400_tune = false,
@@ -589,6 +605,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt8135-mmc", .data = &mt8135_compat},
 	{ .compatible = "mediatek,mt8173-mmc", .data = &mt8173_compat},
 	{ .compatible = "mediatek,mt8183-mmc", .data = &mt8183_compat},
+	{ .compatible = "mediatek,mt8195-mmc", .data = &mt8195_compat},
 	{ .compatible = "mediatek,mt2701-mmc", .data = &mt2701_compat},
 	{ .compatible = "mediatek,mt2712-mmc", .data = &mt2712_compat},
 	{ .compatible = "mediatek,mt7622-mmc", .data = &mt7622_compat},
@@ -811,6 +828,9 @@ static void msdc_gate_clock(struct msdc_host *host)
 	clk_disable_unprepare(host->src_clk);
 	clk_disable_unprepare(host->bus_clk);
 	clk_disable_unprepare(host->h_clk);
+	clk_disable_unprepare(host->axi_clk);
+	clk_disable_unprepare(host->ahb_clk);
+	clk_disable_unprepare(host->p_clk);
 }
 
 static int msdc_ungate_clock(struct msdc_host *host)
@@ -818,6 +838,9 @@ static int msdc_ungate_clock(struct msdc_host *host)
 	u32 val;
 	int ret;
 
+	clk_prepare_enable(host->p_clk);
+	clk_prepare_enable(host->axi_clk);
+	clk_prepare_enable(host->ahb_clk);
 	clk_prepare_enable(host->h_clk);
 	clk_prepare_enable(host->bus_clk);
 	clk_prepare_enable(host->src_clk);
@@ -1915,7 +1938,7 @@ static struct msdc_delay_phase get_best_delay(struct msdc_host *host, u32 delay)
 		final_phase = (start_final + len_final / 3) % PAD_DELAY_MAX;
 	else
 		final_phase = (start_final + len_final / 2) % PAD_DELAY_MAX;
-	dev_info(host->dev, "phase: [map:%x] [maxlen:%d] [final:%d]\n",
+	dev_err(host->dev, "phase: [map:%x] [maxlen:%d] [final:%d]\n",
 		 delay, len_final, final_phase);
 
 	delay_phase.maxlen = len_final;
@@ -1957,8 +1980,8 @@ static int msdc_tune_response(struct mmc_host *mmc, u32 opcode)
 	u8 final_delay, final_maxlen;
 	u32 internal_delay = 0;
 	u32 tune_reg = host->dev_comp->pad_tune_reg;
-	int cmd_err;
-	int i, j;
+	int cmd_err = 0;
+	int i = 0, j = 0;
 
 	if (mmc->ios.timing == MMC_TIMING_MMC_HS200 ||
 	    mmc->ios.timing == MMC_TIMING_UHS_SDR104)
@@ -2047,9 +2070,9 @@ static int hs400_tune_response(struct mmc_host *mmc, u32 opcode)
 	struct msdc_host *host = mmc_priv(mmc);
 	u32 cmd_delay = 0;
 	struct msdc_delay_phase final_cmd_delay = { 0,};
-	u8 final_delay;
-	int cmd_err;
-	int i, j;
+	u8 final_delay = 0;
+	int cmd_err = 0;
+	int i = 0, j = 0;
 
 	/* select EMMC50 PAD CMD tune */
 	sdr_set_bits(host->base + PAD_CMD_TUNE, BIT(0));
@@ -2460,7 +2483,7 @@ static const struct mmc_host_ops mt_msdc_ops = {
 	.execute_tuning = msdc_execute_tuning,
 	.prepare_hs400_tuning = msdc_prepare_hs400_tuning,
 	.execute_hs400_tuning = msdc_execute_hs400_tuning,
-	.hw_reset = msdc_hw_reset,
+	.card_hw_reset = msdc_hw_reset,
 };
 
 static const struct cqhci_host_ops msdc_cmdq_ops = {
@@ -2504,7 +2527,7 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 static int msdc_of_clock_parse(struct platform_device *pdev,
 			       struct msdc_host *host)
 {
-	int ret;
+	int ret = 0;
 
 	host->src_clk = devm_clk_get(&pdev->dev, "source");
 	if (IS_ERR(host->src_clk))
@@ -2528,7 +2551,11 @@ static int msdc_of_clock_parse(struct platform_device *pdev,
 		host->sys_clk_cg = NULL;
 
 	/* If present, always enable for this clock gate */
-	clk_prepare_enable(host->sys_clk_cg);
+	ret = clk_prepare_enable(host->sys_clk_cg);
+	if (ret) {
+		dev_err(&pdev->dev, "Cannot enable clock gate\n");
+		return ret;
+	}
 
 	host->bulk_clks[0].id = "pclk_cg";
 	host->bulk_clks[1].id = "axi_cg";
@@ -2549,6 +2576,7 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	struct msdc_host *host;
 	struct resource *res;
 	int ret;
+	const char *dup_name;
 
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No DT found\n");
@@ -2559,6 +2587,15 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	mmc = mmc_alloc_host(sizeof(struct msdc_host), &pdev->dev);
 	if (!mmc)
 		return -ENOMEM;
+
+	pdev->name = kstrdup(pdev->name, GFP_KERNEL);
+	if (!strcmp(pdev->name, "11230000.mmc") &&
+		!device_rename(mmc->parent, "bootdevice"))
+		dev_notice(&pdev->dev, "device renamed to bootdevice.\n");
+
+	dup_name = pdev->name;
+	pdev->name = pdev->dev.kobj.name;
+	kfree_const(dup_name);
 
 	host = mmc_priv(mmc);
 	ret = mmc_of_parse(mmc);
@@ -2582,6 +2619,29 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	if (ret)
 		goto host_free;
 
+	host->src_clk = devm_clk_get(&pdev->dev, "source");
+	if (IS_ERR(host->src_clk)) {
+		dev_dbg(&pdev->dev, "can't find source clk");
+		ret = PTR_ERR(host->src_clk);
+		goto host_free;
+	}
+
+	host->h_clk = devm_clk_get(&pdev->dev, "hclk");
+	if (IS_ERR(host->h_clk)) {
+		dev_dbg(&pdev->dev, "can't find hclk");
+		ret = PTR_ERR(host->h_clk);
+		goto host_free;
+	}
+
+	host->bus_clk = devm_clk_get(&pdev->dev, "bus_clk");
+	if (IS_ERR(host->bus_clk))
+		host->bus_clk = NULL;
+
+	/*source clock control gate is optional clock*/
+	host->src_clk_cg = devm_clk_get(&pdev->dev, "source_cg");
+	if (IS_ERR(host->src_clk_cg))
+		host->src_clk_cg = NULL;
+
 	ret = msdc_of_clock_parse(pdev, host);
 	if (ret)
 		goto host_free;
@@ -2592,6 +2652,18 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		ret = PTR_ERR(host->reset);
 		goto host_free;
 	}
+
+	host->p_clk = devm_clk_get(&pdev->dev, "p_clk");
+	if (IS_ERR(host->p_clk))
+		host->p_clk = NULL;
+
+	host->axi_clk = devm_clk_get(&pdev->dev, "axi_clk");
+	if (IS_ERR(host->axi_clk))
+		host->axi_clk = NULL;
+
+	host->ahb_clk = devm_clk_get(&pdev->dev, "ahb_clk");
+	if (IS_ERR(host->ahb_clk))
+		host->ahb_clk = NULL;
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq < 0) {

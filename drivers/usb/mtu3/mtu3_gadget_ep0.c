@@ -36,6 +36,27 @@ static const u8 mtu3_test_packet[53] = {
 	/* implicit CRC16 then EOP to end */
 };
 
+/* update bmAttributes for usb pd compliance */
+static void set_usb_selfpower(struct mtu3 *mtu, bool selfpower)
+{
+	struct usb_configuration *c = NULL, *iter;
+	struct usb_composite_dev *cdev = get_gadget_data(&mtu->g);
+
+	list_for_each_entry(iter, &cdev->configs, list) {
+		c = iter;
+		if (c) {
+			if (selfpower) {
+				c->bmAttributes |= USB_CONFIG_ATT_SELFPOWER;
+				c->MaxPower = 0;
+				dev_info(mtu->dev, "set selfpower\n");
+			} else {
+				c->bmAttributes &= ~USB_CONFIG_ATT_SELFPOWER;
+				c->MaxPower = 500;
+			}
+		}
+	}
+}
+
 static char *decode_ep0_state(struct mtu3 *mtu)
 {
 	switch (mtu->ep0_state) {
@@ -64,14 +85,16 @@ forward_to_driver(struct mtu3 *mtu, const struct usb_ctrlrequest *setup)
 __releases(mtu->lock)
 __acquires(mtu->lock)
 {
-	int ret;
+	int ret = -EINVAL;
 
 	if (!mtu->gadget_driver)
 		return -EOPNOTSUPP;
 
-	spin_unlock(&mtu->lock);
-	ret = mtu->gadget_driver->setup(&mtu->g, setup);
-	spin_lock(&mtu->lock);
+	if (mtu->async_callbacks) {
+		spin_unlock(&mtu->lock);
+		ret = mtu->gadget_driver->setup(&mtu->g, setup);
+		spin_lock(&mtu->lock);
+	}
 
 	dev_dbg(mtu->dev, "%s ret %d\n", __func__, ret);
 	return ret;
@@ -226,6 +249,8 @@ ep0_get_status(struct mtu3 *mtu, const struct usb_ctrlrequest *setup)
 
 		break;
 	case USB_RECIP_INTERFACE:
+		/* status of function remote wakeup, forward request */
+		handled = 0;
 		break;
 	case USB_RECIP_ENDPOINT:
 		epnum = (u8) le16_to_cpu(setup->wIndex);
@@ -397,10 +422,8 @@ static int ep0_handle_feature(struct mtu3 *mtu,
 		/* superspeed only */
 		if (value == USB_INTRF_FUNC_SUSPEND &&
 		    mtu->g.speed >= USB_SPEED_SUPER) {
-			/*
-			 * forward the request because function drivers
-			 * should handle it
-			 */
+			/* forward the request for function suspend */
+			mtu->may_wakeup = !!(index & USB_INTRF_FUNC_SUSPEND_RW);
 			handled = 0;
 		}
 		break;
@@ -445,6 +468,7 @@ static int handle_standard_request(struct mtu3 *mtu,
 	int handled = -EINVAL;
 	u32 dev_conf;
 	u16 value;
+	int usb_pd;
 
 	value = le16_to_cpu(setup->wValue);
 
@@ -460,9 +484,13 @@ static int handle_standard_request(struct mtu3 *mtu,
 		dev_conf |= DEV_ADDR(mtu->address);
 		mtu3_writel(mbase, U3D_DEVICE_CONF, dev_conf);
 
-		if (mtu->address)
+		if (mtu->address) {
 			usb_gadget_set_state(&mtu->g, USB_STATE_ADDRESS);
-		else
+
+			usb_pd = mtu3_is_usb_pd(mtu);
+			if (usb_pd >= 0)
+				set_usb_selfpower(mtu, usb_pd);
+		} else
 			usb_gadget_set_state(&mtu->g, USB_STATE_DEFAULT);
 
 		handled = 1;
@@ -813,18 +841,18 @@ static int ep0_queue(struct mtu3_ep *mep, struct mtu3_request *mreq)
 		return -EINVAL;
 	}
 
-	if (mtu->delayed_status) {
-
-		mtu->delayed_status = false;
-		ep0_do_status_stage(mtu);
-		/* needn't giveback the request for handling delay STATUS */
-		return 0;
-	}
-
 	if (!list_empty(&mep->req_list))
 		return -EBUSY;
 
 	list_add_tail(&mreq->list, &mep->req_list);
+
+	if (mtu->delayed_status) {
+
+		mtu->delayed_status = false;
+		ep0_do_status_stage(mtu);
+		ep0_req_giveback(mtu, &mreq->request);
+		return 0;
+	}
 
 	/* sequence #1, IN ... start writing the data */
 	if (mtu->ep0_state == MU3D_EP0_STATE_TX)
@@ -850,6 +878,7 @@ static int mtu3_ep0_queue(struct usb_ep *ep,
 	mreq = to_mtu3_request(req);
 
 	spin_lock_irqsave(&mtu->lock, flags);
+	trace_mtu3_gadget_queue(mreq);
 	ret = ep0_queue(mep, mreq);
 	spin_unlock_irqrestore(&mtu->lock, flags);
 	return ret;

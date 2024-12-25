@@ -1,0 +1,256 @@
+#ifndef __XIAOMI_TOUCH_TYPE_COMMON_H__
+#define __XIAOMI_TOUCH_TYPE_COMMON_H__
+
+#include <linux/types.h>
+
+#define CMD_DATA_BUF_SIZE	128
+#define THP_CMD_BASE		1000
+#define THP_IC_CMD_BASE		3000
+#define TOUCH_MOTION_BASE        200
+#define Touch_GAMETURBOTOOL_BASE 10000
+/*
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef uint16_t u16;
+typedef uint8_t u8;
+typedef char s8;
+typedef int32_t s32;
+*/
+
+enum suspend_state {
+	XIAOMI_TOUCH_RESUME = 0,
+	XIAOMI_TOUCH_SUSPEND,
+	XIAOMI_TOUCH_LP1,
+	XIAOMI_TOUCH_LP2,
+};
+
+enum THP_IC_MODE_TYPE {
+	SET_IDLE_THD						= THP_IC_CMD_BASE + 1,
+	SET_IDLE_RATE						= THP_IC_CMD_BASE + 2,
+	SET_ENTER_SLEEP_MODE				= THP_IC_CMD_BASE + 3,
+	SET_VSYNC_EN						= THP_IC_CMD_BASE + 4,
+	SET_HSYNC_EN						= THP_IC_CMD_BASE + 5,
+	SET_FOD_EN							= THP_IC_CMD_BASE + 6,
+	SET_REPORT_RATE						= THP_IC_CMD_BASE + 7,
+	SET_SCAN_FREQ						= THP_IC_CMD_BASE + 8,
+	SET_SCAN_FREQ_HOPPING_EN			= THP_IC_CMD_BASE + 9,
+	SET_AFE_EN							= THP_IC_CMD_BASE + 10,
+	SET_MC_SCAN_EN						= THP_IC_CMD_BASE + 11,
+	SET_SC_SCAN_EN						= THP_IC_CMD_BASE + 12,
+	SET_MC_CALIBRATION_EN				= THP_IC_CMD_BASE + 13,
+	SET_SC_CALIBRATION_EN				= THP_IC_CMD_BASE + 14,
+	SET_LINE_SHIRT_EN					= THP_IC_CMD_BASE + 15,
+	SET_INT_STATE						= THP_IC_CMD_BASE + 16,
+	SET_BASE_REFRESH_EN					= THP_IC_CMD_BASE + 17,
+	SET_FRAME_DATA_TYPE					= THP_IC_CMD_BASE + 18,
+	SET_GAME_MODE_EN					= THP_IC_CMD_BASE + 19,
+	SET_CHARGING_STATUS_EN				= THP_IC_CMD_BASE + 20,
+	SET_TOUCH_IC_RESET_EN				= THP_IC_CMD_BASE + 21,
+	SET_GESTURE_EN						= THP_IC_CMD_BASE + 22,
+	SET_CHLICK_GESTURE_EN				= THP_IC_CMD_BASE + 23,
+	SET_DOUBLE_CHLICK_EN				= THP_IC_CMD_BASE + 24,
+	SET_FLAG_BUF						= THP_IC_CMD_BASE + 25,
+	SET_ACTIVE_STYLUS_PROTOCOL			= THP_IC_CMD_BASE + 26,
+	ACTIVE_STYLUS_EN					= THP_IC_CMD_BASE + 27,
+	ACTIVE_STYLUS_ONLY_EN				= THP_IC_CMD_BASE + 28,
+	ACTIVE_STYLUS_TOUCH_SIMULTANEOUSLY	= THP_IC_CMD_BASE + 29,
+	ACTIVE_STYLUS_SYNC_SUCESS			= THP_IC_CMD_BASE + 30,
+	ACTIVE_STYLUS_GESTURE_MODE			= THP_IC_CMD_BASE + 31,
+	SET_IC_RUN_STEP						= THP_IC_CMD_BASE + 32,
+	SET_NULL_MODE						= THP_IC_CMD_BASE + 33,
+	SET_IC_LOG_LEVEL					= THP_IC_CMD_BASE + 34,
+	SET_IC_CALIBRATEION					= THP_IC_CMD_BASE + 35,
+	SET_IC_SELF_TEST					= THP_IC_CMD_BASE + 36,
+	SET_IC_SOFT_RETEST					= THP_IC_CMD_BASE + 37,
+	SET_SCAN_SLOPE						= THP_IC_CMD_BASE + 38,
+	SET_SCAN_VOLTAGE					= THP_IC_CMD_BASE + 39,
+	SET_SCAN_NUM						= THP_IC_CMD_BASE + 40,
+	SET_SCAN_FREQ_NUM					= THP_IC_CMD_BASE + 41,
+	SET_IC_WORK_MODE					= THP_IC_CMD_BASE + 42,
+	SET_FILTER_LEVEL					= THP_IC_CMD_BASE + 43,
+	SET_RAW_TYPE						= THP_IC_CMD_BASE + 44,
+	SET_OPEN_TRANSPORT_MODE				= THP_IC_CMD_BASE + 45,
+	SET_CRC_EN							= THP_IC_CMD_BASE + 46,
+	SET_TOUCH_IC_INFO					= THP_IC_CMD_BASE + 50,
+};
+
+enum ioctl_cmd {
+	COMMON_DATA_CMD = 0,
+	HARDWARE_PARAM_CMD,
+	SELECT_MMAP_CMD,
+	SELECT_TOUCH_ID,
+	GET_FRAME_DATA_INDEX,
+	RAW_DATA_INDEX,
+};
+
+enum common_data_cmd {
+	SET_CUR_VALUE = 0,
+	GET_CUR_VALUE,
+	GET_DEF_VALUE,
+	GET_MIN_VALUE,
+	GET_MAX_VALUE,
+	GET_MODE_VALUE,
+	RESET_MODE,
+	SET_LONG_VALUE,
+	SET_THP_IC_CUR_VALUE,
+	GET_THP_IC_CUR_VALUE,
+	SET_CMD_FOR_THP,
+	SET_CMD_FOR_DRIVER,
+	GET_DUMP_PARAM
+};
+
+enum common_data_mode {
+	Touch_Game_Mode					= 0,
+	Touch_Active_MODE				= 1,
+	Touch_UP_THRESHOLD				= 2,
+	Touch_Tolerance					= 3,
+	Touch_Aim_Sensitivity			= 4,
+	Touch_Tap_Stability				= 5,
+	Touch_Expert_Mode				= 6,
+	Touch_Edge_Filter				= 7,
+	Touch_Panel_Orientation			= 8,
+	Touch_Report_Rate				= 9,
+	Touch_Fod_Enable				= 10,
+	Touch_Aod_Enable				= 11,
+	Touch_Resist_RF					= 12,
+	Touch_Idle_Time					= 13,
+	Touch_Doubletap_Mode			= 14,
+	Touch_Grip_Mode					= 15,
+	Touch_FodIcon_Enable			= 16,
+	Touch_Nonui_Mode				= 17,
+	Touch_Debug_Level				= 18,
+	Touch_Power_Status				= 19,
+	Touch_Pen_Enable				= 20,
+	Touch_Performance_Mode			= 21,
+	Touch_Stylus_Hopping_Mode		= 22,
+	Touch_Passive_Pen_Mode			= 23,
+	Touch_Stylus_Quick_Note_Mode	= 24,
+	Touch_Is_In_Input_Method		= 25,
+	Touch_Palm_Sensor				= 26,
+	Touch_Suspend					= 27,
+	Touch_Hand_Detect_Result		= 28,
+	Touch_Mode_NUM					= 29,
+	TOUCH_CLOUD_MODE_WATER_PROOF	= 100,
+	Touch_Boost_EN					= TOUCH_MOTION_BASE + 0,
+	Touch_Empty_Int					= TOUCH_MOTION_BASE + 1,
+	Touch_Super_Report				= TOUCH_MOTION_BASE + 2,
+	Touch_Idle_Scan_Rate			= TOUCH_MOTION_BASE + 3,
+	Touch_Idle_THD					= TOUCH_MOTION_BASE + 4,
+	Touch_Resolution				= TOUCH_MOTION_BASE + 5,
+	Touch_Move_Jitter				= TOUCH_MOTION_BASE + 6,
+	THP_LOCK_SCAN_MODE				= THP_CMD_BASE + 0,
+	THP_FOD_DOWNUP_CTL				= THP_CMD_BASE + 1,
+	THP_SELF_CAP_SCAN				= THP_CMD_BASE + 2,
+	THP_REPORT_POINT_SWITCH			= THP_CMD_BASE + 3,
+	THP_HAL_INIT_READY				= THP_CMD_BASE + 4,
+	THP_HAL_BUILD_VERSION			= THP_CMD_BASE + 5,
+	THP_HAL_SAVE_DUMP				= THP_CMD_BASE + 6,
+	THP_HAL_MEMORY_DUMP				= THP_CMD_BASE + 7,
+	THP_PRINT_EN_VALUE				= THP_CMD_BASE + 8,
+	THP_HAL_VSYNC_MODE				= THP_CMD_BASE + 9,
+	THP_HAL_CHARGING_STATUS			= THP_CMD_BASE + 10,
+	THP_HAL_REPORT_RATE				= THP_CMD_BASE + 11,
+	THP_HAL_DISPLAY_FPS				= THP_CMD_BASE + 12,
+	THP_KNOCK_FRAME_COUNT			= THP_CMD_BASE + 13,
+	THP_HAL_DEBUG_LEVEL				= THP_CMD_BASE + 14,
+	THP_HAL_TOUCH_SENSOR			= THP_CMD_BASE + 15,
+	THP_CALIBRATION_EN				= THP_CMD_BASE + 16,
+	THP_SCAN_EN						= THP_CMD_BASE + 17,
+	THP_PRINT_RUN_INFOR				= THP_CMD_BASE + 18,
+	THP_BASE_TRACK_EN				= THP_CMD_BASE + 19,
+	THP_BASE_REFRESH_EN				= THP_CMD_BASE + 20,
+	THP_DIF_FILTER1_EN				= THP_CMD_BASE + 21,
+	THP_DIF_FILTER2_EN				= THP_CMD_BASE + 22,
+	THP_PALM_EN						= THP_CMD_BASE + 23,
+	THP_INTERRUPT_EN				= THP_CMD_BASE + 24,
+	THP_PEAK_MERGE_EN				= THP_CMD_BASE + 25,
+	THP_ALL_LOG_EN					= THP_CMD_BASE + 26,
+	THP_NEW_AGREEMENT_KEY			= THP_CMD_BASE + 27,
+	THP_ACTIVE_FLG					= THP_CMD_BASE + 28,
+	THP_SET_PARAMETER_FLG			= THP_CMD_BASE + 29,
+	THP_ARGUMENT_STRUCT_V			= THP_CMD_BASE + 30,
+	THP_PROJECT_NAME				= THP_CMD_BASE + 31,
+	THP_DRIVE_V						= THP_CMD_BASE + 32,
+	THP_ARGUMENT_V					= THP_CMD_BASE + 33,
+	THP_FW_V						= THP_CMD_BASE + 34,
+	THP_PRINT_RAW_EN				= THP_CMD_BASE + 35,
+	THP_IC_NAME						= THP_CMD_BASE + 36,
+	THP_X_RES						= THP_CMD_BASE + 37,
+	THP_Y_RES						= THP_CMD_BASE + 38,
+	THP_TX_NUM						= THP_CMD_BASE + 39,
+	THP_RX_NUM						= THP_CMD_BASE + 40,
+	THP_PRINT_DIF1_EN				= THP_CMD_BASE + 41,
+	THP_STANDARDT_RAW				= THP_CMD_BASE + 42,
+	THP_STANDARDT_DIF1				= THP_CMD_BASE + 43,
+	THP_STANDARDT_DIF2				= THP_CMD_BASE + 44,
+	THP_STANDARDT_BASE				= THP_CMD_BASE + 45,
+	THP_EXTEND_DATA_EN				= THP_CMD_BASE + 46,
+	THP_SCAN_VOLTAGE				= THP_CMD_BASE + 47,
+	THP_STANDARDT_COORDINATES		= THP_CMD_BASE + 48,
+	THP_BATCH_GET_PARAMETERS		= THP_CMD_BASE + 49,
+	THP_PRINT_COORDINATES_EN		= THP_CMD_BASE + 50,
+	THP_SMOOTH						= THP_CMD_BASE + 51,
+	THP_FIRST_JITTER				= THP_CMD_BASE + 52,
+	THP_MOVE_JITTER					= THP_CMD_BASE + 53,
+	THP_FIRST_THD					= THP_CMD_BASE + 54,
+	THP_UP_THD						= THP_CMD_BASE + 55,
+	THP_PRINT_DIF2_EN				= THP_CMD_BASE + 56,
+	THP_PRINT_BASE_EN				= THP_CMD_BASE + 57,
+	THP_SMOOTH_EN					= THP_CMD_BASE + 58,
+	THP_MOVE_JITTER_EN				= THP_CMD_BASE + 59,
+	THP_PROJECT_ID					= THP_CMD_BASE + 60,
+	THP_LANDLOCK_EN					= THP_CMD_BASE + 61,
+	THP_FW_REST						= THP_CMD_BASE + 62,
+	THP_TOUCH_IC_REST				= THP_CMD_BASE + 63,
+	THP_PRINT_DATA					= THP_CMD_BASE + 64,
+	THP_REPORT_CLOSE_EN				= THP_CMD_BASE + 65,
+	THP_SAVE_RAW_EN					= THP_CMD_BASE + 66,
+	THP_SAVE_DIF_EN					= THP_CMD_BASE + 67,
+	THP_NORMALIZE_STUDY_SCAN		= THP_CMD_BASE + 68,
+	THP_NORMALIZE_K_REQUEST			= THP_CMD_BASE + 69,
+	THP_NORMALIZE_B_REQUEST			= THP_CMD_BASE + 70,
+	THP_IDLE_BASALINE_UPDATE		= THP_CMD_BASE + 71,
+	THP_TOUCH_SENSOR_CTRL			= THP_CMD_BASE + 72,
+	Touch_Test_Preset_Point			= THP_CMD_BASE + 73,
+	Touch_Test_Test_Mode			= THP_CMD_BASE + 74,
+	Touch_Test_Result				= THP_CMD_BASE + 75,
+	Touch_THP_Dump					= THP_CMD_BASE + 76,
+	THP_IC_FRAME_LOG_LEVE			= THP_CMD_BASE + 77,
+	THP_GET_FRAME_DATA_B			= THP_CMD_BASE + 78,
+	Touch_THP_Breakline_Mode		= THP_CMD_BASE + 79,
+	Touch_THP_Breakline_Result		= THP_CMD_BASE + 80,
+	Touch_THP_Dump_Size				= THP_CMD_BASE + 82,
+	Touch_Disconnect_Detect			= THP_CMD_BASE + 83,
+	THP_IDLE_THD					= THP_CMD_BASE + 84,
+	Touch_GAMETURBOTOOL_FOLLOWUP	= Touch_GAMETURBOTOOL_BASE + 1,
+	Touch_GAMETURBOTOOL_RESPONSE	= Touch_GAMETURBOTOOL_BASE + 2,
+	Touch_GAMETURBOTOOL_SHAKING		= Touch_GAMETURBOTOOL_BASE + 3,
+	Touch_GAMETURBOTOOL_PACKAGE		= Touch_GAMETURBOTOOL_BASE + 100,
+	Touch_GAMETURBOTOOL_NUM,
+};
+
+typedef struct common_data {
+	s8 touch_id;
+	u8 cmd;
+	u16 mode;
+	u16 data_len;
+	s32 data_buf[CMD_DATA_BUF_SIZE];
+} common_data_t;
+
+typedef struct hardware_param {
+	u16 x_resolution;
+	u16 y_resolution;
+	u16 rx_num;
+	u16 tx_num;
+	u8 super_resolution_factor;
+	u8 frame_data_page_size;
+	u8 frame_data_buf_size;
+	u8 raw_data_page_size;
+	u8 raw_data_buf_size;
+	u8 lockdown_info[8];
+	char config_file_name[64];
+	char driver_version[64];
+	char fw_version[64];
+} hardware_param_t;
+
+#endif

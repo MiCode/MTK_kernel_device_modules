@@ -1,0 +1,21 @@
+&pio {
+	xiaomi_wifi_gpio: xiaomi_wifi_gpio {
+                pins_cmd_dat {
+			pinmux = <PINMUX_GPIO36__FUNC_GPIO36>;
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+
+};
+
+&odm {
+	xiaomi_wifi_gpio {
+		compatible = "wlan,xiaomi_wifi_gpio";
+		status-gpio = <&pio 36 0>;
+		debounce-time = <500>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&xiaomi_wifi_gpio>;
+	};
+};
