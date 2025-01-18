@@ -76,6 +76,7 @@ unsigned int EKV[GKEL][RT] = {0};
 
 static u32 flt_mode = FLT_MODE_0;
 static u32 flt_version;
+static u32 flt_chip_sw_ver = 0xff;
 static void __iomem *flt_xrg;
 static unsigned long long flt_xrg_size;
 static bool is_flt_io_enable;
@@ -116,6 +117,17 @@ u32 flt_get_version(void)
 	return flt_version;
 }
 EXPORT_SYMBOL(flt_get_version);
+
+void  flt_set_chip_sw_ver(u32 ver)
+{
+	flt_chip_sw_ver = ver;
+}
+
+u32 flt_get_chip_sw_ver(void)
+{
+	return flt_chip_sw_ver;
+}
+EXPORT_SYMBOL(flt_get_chip_sw_ver);
 
 static void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
 {
@@ -376,7 +388,7 @@ static void flt_fei(int wl, int ctp)
 		XHR[i] = clamp_t(unsigned int, XHR[i], 0, AMI);
 	}
 
-	if (flt_version > HAV)
+	if (flt_version > HAV || flt_chip_sw_ver == 1)
 		goto HA_EXIT;
 
 	for (i = 0; i < (XLO - 1); ++i) {
