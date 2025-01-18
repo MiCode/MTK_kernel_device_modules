@@ -105,6 +105,22 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 				struct mml_frame_info *info);
 
 /*
+ * mml_drm_query_multi_layer - Query multiple mml layer support mode in single query.
+ *
+ * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
+ * @infos:	Frame info array which describe frame process by mml. The result mode will
+ *		fill back into infos[i].mode variable.
+ * @cnt:	Size of array.
+ *
+ * Return:	True if query success. False if any error happen.
+ *
+ * Note: The mml frme stand for display ovl layer. Display use N layers compose to single
+ * display frame to screen.
+ */
+int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
+	struct mml_frame_info *infos, u32 cnt, u32 duration_us);
+
+/*
  * mml_drm_try_frame - Try/adjust frame info to match mml hardware spec.
  *
  * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.

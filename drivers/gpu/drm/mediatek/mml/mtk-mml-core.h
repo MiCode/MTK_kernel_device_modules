@@ -297,6 +297,11 @@ struct mml_path_node {
 	u8 tile_eng_idx;
 };
 
+struct mml_frame_info_cache {
+	u32 pixels;
+	u32 duration;
+};
+
 struct mml_topology_info {
 	enum mml_mode mode;
 	u8 dst_cnt;
@@ -397,7 +402,8 @@ struct mml_topology_ops {
 				     struct mml_frame_info *info,
 				     u32 *reason,
 				     u32 panel_width,
-				     u32 panel_height);
+				     u32 panel_height,
+				     struct mml_frame_info_cache *info_cache);
 	s32 (*init_cache)(struct mml_dev *mml,
 			  struct mml_topology_cache *cache,
 			  struct cmdq_client **clts,
