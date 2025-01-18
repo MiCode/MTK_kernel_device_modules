@@ -44,6 +44,7 @@ struct smi_user_pwr_ctrl_data {
 	u32 *id_list;
 	u32 id_nr;
 	void __iomem *pwr_sta_rg;
+	bool skip_smi_chk;
 };
 
 #define SMI_CALLER_MAX_LEN 64
