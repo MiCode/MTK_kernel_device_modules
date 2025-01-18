@@ -7,6 +7,15 @@ config DRM_MEDIATEK_V2
 	  This driver provides kernel mode setting and
 	  buffer management to userspace.
 
+config DRM_MEDIATEK_DPTX_AUTO
+	tristate "DRM DPTX AUTO Support for Mediatek SoCs"
+	depends on DRM_MEDIATEK_V2
+	help
+	  DPTX AUTO driver for Mediatek SoCs.
+	  This config will separate the auto from phone.
+	  Choose this option if you want to enable
+	  DPTX AUTO driver for auto.
+
 config DRM_MTK_DISABLE_AEE_LAYER
 	bool "Disable AEE Layer for the customer who don't want to produce AEE"
 	help
