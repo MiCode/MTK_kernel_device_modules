@@ -2384,8 +2384,7 @@ unsigned int get_curr_cap(unsigned int cpu)
 }
 EXPORT_SYMBOL_GPL(get_curr_cap);
 
-void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
-		unsigned int *target_freq, unsigned int old_target_freq)
+static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned int target_freq)
 {
 	unsigned int cpu = policy->cpu;
 
@@ -2393,11 +2392,11 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	if (trace_sugov_ext_gear_state_enabled())
 		trace_sugov_ext_gear_state(topology_cluster_id(cpu),
-			pd_get_freq_opp(cpu, *target_freq));
+			pd_get_freq_opp(cpu, target_freq));
 
-	if (policy->cached_target_freq != *target_freq) {
-		policy->cached_target_freq = *target_freq;
-		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP,
+	if (policy->cached_target_freq != target_freq) {
+		policy->cached_target_freq = target_freq;
+		policy->cached_resolved_idx = pd_X2Y(cpu, target_freq, FREQ, OPP,
 			true, DPT_CALL_CPUFREQ_UPDATE_TARGET_FREQ);
 	}
 
@@ -2405,7 +2404,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		policy->cached_resolved_idx);
 
 	if (is_gearless_support())
-		mtk_arch_set_freq_scale_gearless(policy, target_freq);
+		mtk_arch_set_freq_scale_gearless(policy, &target_freq);
 
 	if (freq_state.is_eas_dsu_support) {
 		if (freq_state.is_eas_dsu_ctrl)
@@ -2416,11 +2415,23 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 			c->sb_ch = -1;
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(UINT_MAX,
-					topology_cluster_id(cpu), *target_freq, UINT_MAX);
+					topology_cluster_id(cpu), target_freq, UINT_MAX);
 		}
 	}
 
 	irq_log_store();
+}
+
+void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
+				unsigned int *target_freq, unsigned int old_target_freq)
+{
+	cpufreq_update_target_freq(policy, *target_freq);
+}
+
+void mtk_cpufreq_target(void *data, struct cpufreq_policy *policy,
+				unsigned int *target_freq, unsigned int old_target_freq)
+{
+	cpufreq_update_target_freq(policy, *target_freq);
 }
 
 void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
