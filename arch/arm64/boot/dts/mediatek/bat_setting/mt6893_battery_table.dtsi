@@ -4,9 +4,9 @@
  *
  */
 
-battery0_profile_t0_num = <100>;
-battery0_profile_t0_col = <3>;
-battery0_profile_t0 =
+battery0-profile-t0-num = <100>;
+battery0-profile-t0-col = <3>;
+battery0-profile-t0 =
 <
 0       43220   1275
 305     43058   1275
@@ -109,9 +109,9 @@ battery0_profile_t0 =
 29915   31672   11079
 30220   28030   6625
 >;
-battery0_profile_t1_num = <100>;
-battery0_profile_t1_col = <3>;
-battery0_profile_t1 =
+battery0-profile-t1-num = <100>;
+battery0-profile-t1-col = <3>;
+battery0-profile-t1 =
 <
 0       43220   1275
 305     43058   1275
@@ -214,9 +214,9 @@ battery0_profile_t1 =
 29915   31672   11079
 30220   28030   6625
 >;
-battery0_profile_t2_num = <100>;
-battery0_profile_t2_col = <3>;
-battery0_profile_t2 =
+battery0-profile-t2-num = <100>;
+battery0-profile-t2-col = <3>;
+battery0-profile-t2 =
 <
 0       43030   2350
 305     42868   2352
@@ -319,9 +319,9 @@ battery0_profile_t2 =
 29915   28210   6725
 30220   28210   6725
 >;
-battery0_profile_t3_num = <100>;
-battery0_profile_t3_col = <3>;
-battery0_profile_t3 =
+battery0-profile-t3-num = <100>;
+battery0-profile-t3-col = <3>;
+battery0-profile-t3 =
 <
 0       42710   3800
 305     42507   3802
@@ -424,9 +424,9 @@ battery0_profile_t3 =
 29915   31040   13275
 30220   31040   13275
 >;
-battery0_profile_t4_num = <100>;
-battery0_profile_t4_col = <3>;
-battery0_profile_t4 =
+battery0-profile-t4-num = <100>;
+battery0-profile-t4-col = <3>;
+battery0-profile-t4 =
 <
 0       42150   10450
 305     41905   10457
