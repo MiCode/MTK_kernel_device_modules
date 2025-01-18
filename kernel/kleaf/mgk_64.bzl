@@ -209,6 +209,7 @@ mgk_64_device_modules = [
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko",
+    "drivers/misc/mediatek/iommu/mtk_smmu_qos.ko",
     "drivers/iommu/mtk_iommu.ko",
     "drivers/leds/leds-mt6360.ko",
     "drivers/leds/leds-mtk-disp.ko",
@@ -953,6 +954,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko")
+        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/mtk_smmu_qos.ko")
 
         #mgk_64_device_modules.remove("drivers/media/platform/mtk-aie/mtk_aie.ko")
         #mgk_64_device_modules.remove("drivers/media/platform/mtk-isp/mtk-aov/mtk_aov.ko")
@@ -1193,7 +1196,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6768/mt6768-mt6358.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6768/snd-soc-mt6768-afe.ko":"mt6768"})
 
-        mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v1.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v1.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/slc-parity.ko")
