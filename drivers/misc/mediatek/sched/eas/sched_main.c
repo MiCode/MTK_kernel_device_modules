@@ -364,7 +364,8 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	/*other hack...*/
 	freq = pd_opp2freq(cpu, 0, false, 0);
 	desired_cpufreq = (freq >> 2) + (freq >> 3);
-	desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq);
+	desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq,
+		NULL, true, "mtk_pos_init_entity_util_avg"); /* not sure */
 	desired_util_avg = (desired_cpu_scale * 819) >> 10;
 
 	/* suppressed to desired freq when fork*/

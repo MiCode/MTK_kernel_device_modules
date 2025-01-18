@@ -565,7 +565,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		for_each_cpu(cpu, &candidates) {
 			cpu_util_cum = util_cum[cpu];
 			irq_log_store();
-			this_pwr_eff = calc_pwr_eff(wl_type, cpu, cpu_util_cum);
+			this_pwr_eff = calc_pwr_eff(wl_type, cpu, cpu_util_cum, NULL);
 			irq_log_store();
 
 			if (trace_sched_aware_energy_rt_enabled()) {

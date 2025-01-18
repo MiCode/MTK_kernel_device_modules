@@ -66,6 +66,22 @@ __weak struct mtk_dsu_em  mtk_dsu_em;
 #endif
 __weak int mtk_update_wl_table(int gear_id, int wl) { return 0; }
 
+/* DPT */
+static void __iomem *dpt_sram_base;
+static void __iomem *collab_type_0_sram_base;
+static unsigned long long dpt_size;
+static unsigned long last_jiffies_dpt;
+static DEFINE_SPINLOCK(update_dpt_lock);
+struct curr_collab_state_struct *curr_collab_state;
+EXPORT_SYMBOL_GPL(curr_collab_state);
+int nr_collab_type = -1;
+int *curr_collab_state_manual;
+int *wl_collab_type_mapping_mask;
+void (*change_dpt_support_driver_hook) (int turn_on);
+EXPORT_SYMBOL(change_dpt_support_driver_hook);
+int val_m = 1;
+/* End of DPT */
+
 /* group aware dvfs */
 int grp_dvfs_support_mode;
 int grp_dvfs_ctrl_mode;
@@ -357,7 +373,8 @@ void update_wl_tbl(unsigned int cpu)
 						mtk_update_wl_table(i, wl_type_curr);
 					for_each_cpu(j, &pd_cpumask[i])
 						WRITE_ONCE(per_cpu(cpu_scale, j),
-								pd_opp2cap(j, 0, true, wl_type_curr));
+							pd_opp2cap(j, 0, true, wl_type_curr, NULL, true,
+								"update_wl_tbl"));
 				}
 			}
 			last_wl_type = wl_type_curr;
@@ -400,6 +417,115 @@ int get_em_wl(void)
 	return -1;
 }
 EXPORT_SYMBOL_GPL(get_em_wl);
+
+/* DPT */
+void (*init_collab_driver_hook) (int *nr_collab_type);
+EXPORT_SYMBOL(init_collab_driver_hook);
+void (*init_wl_collab_mask_driver_hook) (int **wl_collab_type_mapping_mask);
+EXPORT_SYMBOL(init_wl_collab_mask_driver_hook);
+void (*set_curr_collab_state_driver_hook) (struct curr_collab_state_struct *__curr_collab_state);
+EXPORT_SYMBOL(set_curr_collab_state_driver_hook);
+void (*set_val_m_driver_hook) (int *val_m);
+EXPORT_SYMBOL(set_val_m_driver_hook);
+void (*set_collab_state_manual_driver_hook) (int type, int state);
+EXPORT_SYMBOL(set_collab_state_manual_driver_hook);
+int (*is_dpt_support_driver_hook) (void);
+EXPORT_SYMBOL(is_dpt_support_driver_hook);
+void (*set_v_driver_hook)(int v);
+EXPORT_SYMBOL(set_v_driver_hook);
+
+bool __dpt_init_done;
+void init_curr_collab_struct(void)
+{
+	int collab_type = 0;
+
+	init_collab_driver_hook(&nr_collab_type);
+	if (nr_collab_type == -1) {
+		pr_info("DPT hook fail, nr_collab_state is -1\n");
+		return;
+	}
+
+	curr_collab_state = kcalloc(nr_collab_type,
+		sizeof(struct curr_collab_state_struct), GFP_ATOMIC | __GFP_NOFAIL);
+	curr_collab_state_manual = kcalloc(nr_collab_type,
+		sizeof(struct curr_collab_state_struct), GFP_ATOMIC | __GFP_NOFAIL);
+
+	for_each_collab_type(collab_type) {
+		curr_collab_state[collab_type].state = 0;
+		curr_collab_state_manual[collab_type] = -1;
+	}
+	curr_collab_state[0].ret_function = &collab_type_0_ret_function;
+
+	set_curr_collab_state_driver_hook(curr_collab_state);
+
+	set_val_m_driver_hook(&val_m);
+
+	wl_collab_type_mapping_mask = kcalloc(nr_collab_type, sizeof(int), GFP_ATOMIC | __GFP_NOFAIL);
+	init_wl_collab_mask_driver_hook(&wl_collab_type_mapping_mask);
+	__dpt_init_done = true;
+	change_dpt_support_driver_hook(1);
+}
+
+#define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
+void update_curr_collab_state(void)
+{
+	int collab_type = 0, curr_state = 0;
+	int cpu = 0;
+	unsigned long cap;
+	bool need_update_capacity_orig = false;
+	int wl_type = get_em_wl();
+
+	if (spin_trylock(&update_dpt_lock)) {
+		unsigned long tmp_jiffies_dpt = jiffies;
+
+		if (last_jiffies_dpt != tmp_jiffies_dpt) {
+			last_jiffies_dpt = tmp_jiffies_dpt;
+
+			if (!__dpt_init_done) {
+				if (init_collab_driver_hook == NULL) {
+					spin_unlock(&update_dpt_lock);
+					return;
+				}
+
+				if (nr_collab_type == -1)
+					init_curr_collab_struct();
+			}
+
+			spin_unlock(&update_dpt_lock);
+
+
+			for_each_collab_type(collab_type) {
+				if (curr_collab_state_manual[collab_type] != -1)
+					curr_state = curr_collab_state_manual[collab_type];
+				else
+					curr_state = curr_collab_state[collab_type].ret_function();
+
+				if (curr_state != -1)
+					curr_collab_state[collab_type].state = curr_state;
+
+				if (!need_update_capacity_orig)
+					need_update_capacity_orig = is_bit_set(
+						wl_collab_type_mapping_mask[collab_type],wl_type);
+			}
+
+			/* update capacity_orig_of */
+			for_each_possible_cpu(cpu) {
+				if (need_update_capacity_orig)
+					cap = pd_opp2cap(cpu, 0, false, wl_type,
+						NULL, false, "update_curr_collab_state");
+				else
+					cap = pd_opp2cap(cpu, 0, false, wl_type,
+						NULL, true, "update_curr_collab_state");
+
+				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
+				cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
+			}
+		} else
+			spin_unlock(&update_dpt_lock);
+	}
+}
+EXPORT_SYMBOL_GPL(update_curr_collab_state);
+/* End of DPT */
 
 int init_dsu(void)
 {
@@ -943,27 +1069,51 @@ int pd_opp2freq(int cpu, int opp, int quant, int wl)
 }
 EXPORT_SYMBOL_GPL(pd_opp2freq);
 
-int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl);
+int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl,
+	int *val_1, int *val_2, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2cap_hook);
-int pd_opp2cap(int cpu, int opp, int quant, int wl)
+int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
 {
 	if (em_ver() == 3) {
-		if (mtk_opp2cap_hook)
-			return mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl));
-		else
+		if (mtk_opp2cap_hook) {
+			int result, val_1, val_2, val_r;
+
+			result = mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl),
+				&val_1, &val_2, &val_r, val_s, val_m, r_o);
+			if (trace_sched_pd_opp2cap_enabled())  {
+				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+				trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
+					val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
+			}
+
+			return result;
+		} else
 			return em_opp2cap(cpu, opp);
 	}
 	return mtk_opp2cap(cpu, opp, quant, get_eas_wl(wl));
 }
 EXPORT_SYMBOL_GPL(pd_opp2cap);
 
-int (*mtk_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl);
+int (*mtk_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl,
+	int *val_1, int *val_2, int *val_3, int *val_r1, int *val_r2, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2pwr_eff_hook);
-int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl)
+int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
 {
 	if (em_ver() == 3) {
-		if (mtk_opp2pwr_eff_hook)
-			return mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl));
+		if (mtk_opp2pwr_eff_hook) {
+			int result, val_1, val_2, val_3, val_r1, val_r2;
+
+			result =  mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
+				&val_1, &val_2, &val_3, &val_r1, &val_r2, val_s, val_m, r_o);
+			if (trace_sched_pd_opp2pwr_eff_enabled()) {
+				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+				trace_sched_pd_opp2pwr_eff(cpu, opp, quant, wl,
+					val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
+			}
+			return result;
+		}
 		else
 			return em_opp2pwr_eff(cpu, opp);
 	}
@@ -971,14 +1121,25 @@ int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl)
 }
 EXPORT_SYMBOL_GPL(pd_opp2pwr_eff);
 
-
-int (*mtk_opp2dyn_pwr_hook)(int cpu, int opp, int quant, int wl);
+int (*mtk_opp2dyn_pwr_hook)(int cpu, int opp, int quant, int wl,
+	int *val_1, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2dyn_pwr_hook);
-int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl)
+int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
 {
 	if (em_ver() == 3) {
-		if (mtk_opp2dyn_pwr_hook)
-			return mtk_opp2dyn_pwr_hook(cpu, opp, quant, get_eas_wl(wl));
+		if (mtk_opp2dyn_pwr_hook) {
+			int result, val_1, val_r;
+
+			result = mtk_opp2dyn_pwr_hook(cpu, opp, quant, get_eas_wl(wl),
+				&val_1, &val_r, val_s, val_m, r_o);
+			if (trace_sched_pd_opp2dyn_pwr_enabled()) {
+				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+				trace_sched_pd_opp2dyn_pwr(cpu, opp, quant, wl,
+					val_1, val_r, val_s_0, val_m, r_o, caller);
+			}
+			return result;
+		}
 		else
 			return 1;
 	}
@@ -1014,13 +1175,25 @@ int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl)
 }
 EXPORT_SYMBOL_GPL(pd_cpu_opp2dsu_freq);
 
-int (*mtk_util2opp_hook)(int cpu, int util, int quant, int wl);
+int (*mtk_util2opp_hook)(int cpu, int util, int quant, int wl,
+	int *val_1, int *val_2, int *val_3, int *val_4, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_util2opp_hook);
-int pd_util2opp(int cpu, int util, int quant, int wl)
+int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, char *caller)
 {
 	if (em_ver() == 3) {
-		if (mtk_util2opp_hook)
-			return mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl));
+		if (mtk_util2opp_hook) {
+			int result, val_1, val_2, val_3, val_4, val_r;
+
+			result = mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl),
+				&val_1, &val_2, &val_3, &val_4, &val_r, val_s, val_m, r_o);
+			if(trace_sched_pd_util2opp_enabled()) {
+				int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+				trace_sched_pd_util2opp(cpu, quant, wl,
+					val_1, val_2, val_3, val_4, val_r, val_s_0, val_m, r_o, caller);
+			}
+			return result;
+		}
 		else
 			return em_util2opp(cpu, util);
 	}
@@ -1152,13 +1325,13 @@ int pd_get_dsu_freq(void)
 EXPORT_SYMBOL_GPL(pd_get_dsu_freq);
 /* hook API */
 
-int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl)
+int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl, int *val_s, int r_o)
 {
 	int opp;
 
 	wl = get_eas_wl(wl);
 	opp = pd_freq2opp(cpu, freq, quant, wl);
-	return pd_opp2cap(cpu, opp, quant, wl);
+	return pd_opp2cap(cpu, opp, quant, wl, val_s, r_o, "pd_freq2util");
 }
 EXPORT_SYMBOL_GPL(pd_freq2util);
 
@@ -1167,7 +1340,7 @@ int pd_util2freq(unsigned int cpu, int util, bool quant, int wl)
 	int opp;
 
 	wl = get_eas_wl(wl);
-	opp = pd_util2opp(cpu, util, quant, wl);
+	opp = pd_util2opp(cpu, util, quant, wl, NULL, false, "pd_util2freq");
 	return pd_opp2freq(cpu, opp, quant, wl);
 }
 EXPORT_SYMBOL_GPL(pd_util2freq);
@@ -1183,31 +1356,31 @@ unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int w
 
 unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util)
 {
-	return pd_util2opp(cpu, util, false, -1);
+	return pd_util2opp(cpu, util, false, -1, NULL, false, "pd_get_util_opp");
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp);
 
 unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util)
 {
-	return pd_util2opp(cpu, util, true, get_em_wl());
+	return pd_util2opp(cpu, util, true, get_em_wl(), NULL, false, "pd_get_util_opp_legacy");
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp_legacy);
 
 unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util)
 {
 	int wl = get_em_wl();
-	int opp = pd_util2opp(cpu, util, false, wl);
+	int opp = pd_util2opp(cpu, util, false, wl, NULL, false, "pd_get_util_freq");
 
 	return pd_opp2freq(cpu, opp, false, wl);
 }
 EXPORT_SYMBOL_GPL(pd_get_util_freq);
 
-unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util)
+unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, char *caller)
 {
 	int wl = get_eas_wl(-1);
-	int opp = pd_util2opp(cpu, util, false, wl);
+	int opp = pd_util2opp(cpu, util, false, wl, NULL, false, caller);
 
-	return pd_opp2pwr_eff(cpu, opp, false, wl);
+	return pd_opp2pwr_eff(cpu, opp, false, wl, NULL, false, caller);
 }
 EXPORT_SYMBOL_GPL(pd_get_util_pwr_eff);
 
@@ -1229,12 +1402,12 @@ unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigne
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
 
-unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq)
+unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq, int *val_s, int r_o, char *caller)
 {
 	int wl = get_eas_wl(-1);
 	int opp = pd_freq2opp(cpu, freq, false, wl);
 
-	return pd_opp2cap(cpu, opp, false, wl);
+	return pd_opp2cap(cpu, opp, false, wl, val_s, r_o, caller);
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_util);
 
@@ -1243,7 +1416,7 @@ unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq)
 	int wl = get_eas_wl(-1);
 	int opp = pd_freq2opp(cpu, freq, false, wl);
 
-	return pd_opp2pwr_eff(cpu, opp, false, wl);
+	return pd_opp2pwr_eff(cpu, opp, false, wl, NULL, false, "pd_get_freq_pwr_eff");
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_pwr_eff);
 
@@ -1255,13 +1428,13 @@ EXPORT_SYMBOL_GPL(pd_get_opp_freq);
 
 unsigned long pd_get_opp_capacity(unsigned int cpu, int opp)
 {
-	return pd_opp2cap(cpu, opp, false, -1);
+	return pd_opp2cap(cpu, opp, false, -1, NULL, false, "pd_get_opp_capacity");
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_capacity);
 
 unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp)
 {
-	return pd_opp2cap(cpu, opp, true, get_em_wl());
+	return pd_opp2cap(cpu, opp, true, get_em_wl(), NULL, false, "pd_get_opp_capacity");
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_capacity_legacy);
 
@@ -1273,7 +1446,7 @@ EXPORT_SYMBOL_GPL(pd_get_opp_freq_legacy);
 
 unsigned long pd_get_opp_pwr_eff(unsigned int cpu, int opp)
 {
-	return pd_opp2pwr_eff(cpu, opp, false, -1);
+	return pd_opp2pwr_eff(cpu, opp, false, -1, NULL, false, "pd_get_opp_pwr_eff");
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_pwr_eff);
 
@@ -1292,7 +1465,7 @@ unsigned long pd_get_opp_to(int cpu, unsigned long input, enum sugov_type out_ty
 	}
 }
 
-unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant)
+unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant, char *caller)
 {
 	switch (out_type) {
 	case OPP:
@@ -1300,19 +1473,19 @@ unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_t
 	case FREQ:
 		return pd_get_util_freq(cpu, input);
 	case PWR_EFF:
-		return pd_get_util_pwr_eff(cpu, input);
+		return pd_get_util_pwr_eff(cpu, input, caller);
 	default:
 		return -EINVAL;
 	}
 }
 
-unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant)
+unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant, char *caller)
 {
 	switch (out_type) {
 	case OPP:
 		return quant ? pd_get_freq_opp_legacy(cpu, input) : pd_get_freq_opp(cpu, input);
 	case CAP:
-		return pd_get_freq_util(cpu, input);
+		return pd_get_freq_util(cpu, input, NULL, false, caller);
 	case PWR_EFF:
 		return pd_get_freq_pwr_eff(cpu, input);
 	default:
@@ -1321,15 +1494,15 @@ unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_t
 }
 
 unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
-		enum sugov_type out_type, bool quant)
+		enum sugov_type out_type, bool quant, char *caller)
 {
 	switch (in_type) {
 	case OPP:
 		return pd_get_opp_to(cpu, input, out_type, quant);
 	case CAP:
-		return pd_get_util_to(cpu, input, out_type, quant);
+		return pd_get_util_to(cpu, input, out_type, quant, caller);
 	case FREQ:
-		return pd_get_freq_to(cpu, input, out_type, quant);
+		return pd_get_freq_to(cpu, input, out_type, quant, caller);
 	default:
 		return -EINVAL;
 	}
@@ -1338,7 +1511,7 @@ EXPORT_SYMBOL_GPL(pd_X2Y);
 
 unsigned int pd_get_cpu_opp(unsigned int cpu)
 {
-	return pd_util2opp(cpu, 0, false, -1) + 1;
+	return pd_util2opp(cpu, 0, false, -1, NULL, true, "pd_get_cpu_opp") + 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_cpu_opp);
 
@@ -1917,7 +2090,7 @@ int get_cpu_gear_uclamp_max_capacity(unsigned int cpu)
 	capacity = (gear_uclamp_max[topology_cluster_id(cpu)] *
 		get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
 	freq = pd_get_util_freq(cpu, capacity);
-	return pd_get_freq_util(cpu, freq);
+	return pd_get_freq_util(cpu, freq, NULL, false, "get_cpu_gear_uclamp_max_capacity");
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max_capacity);
 
@@ -1972,6 +2145,13 @@ long *get_mtk_em_api_data(void)
 }
 EXPORT_SYMBOL(get_mtk_em_api_data);
 
+void *get_dpt_sram_base(void)
+{
+	pr_info("get_sram_base at driver\n");
+	return dpt_sram_base;
+}
+EXPORT_SYMBOL(get_dpt_sram_base);
+
 /* show em_ver */
 static int em_ver_show(struct seq_file *m, void *v)
 {
@@ -1989,6 +2169,116 @@ static const struct proc_ops em_ver_ops = {
 	.proc_read = seq_read,
 };
 
+int init_dpt_io(void)
+{
+	struct device_node *dev_node;
+	struct platform_device *pdev_temp;
+	struct resource *sram_res;
+
+	/* init dpt io*/
+	dev_node = of_find_node_by_name(NULL, "dpt-info");
+	if (!dev_node) {
+		pr_info("failed to find node dpt-info @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	if (!pdev_temp) {
+		pr_info("failed to find dpt-info pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		dpt_sram_base = ioremap(sram_res->start,
+				resource_size(sram_res));
+		pr_info("dpt_sram_base init over\n");
+	} else {
+		pr_info("%s can't get dpt-info resource\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!dpt_sram_base) {
+		pr_info("dpt info failed\n");
+		return -EIO;
+	}
+
+	dpt_size = resource_size(sram_res);
+	pr_info("dpt io init done\n");
+
+	/* init collab type 0 io */
+	dev_node = of_find_node_by_name(NULL, "collab-type-0-info");
+	if (!dev_node) {
+		pr_info("failed to find node collab_type_0-info @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	if (!pdev_temp) {
+		pr_info("failed to find collab_type_0-info pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		collab_type_0_sram_base = ioremap(sram_res->start,
+				resource_size(sram_res));
+		pr_info("init collab_type_0_sram_base over\n");
+	} else {
+		pr_info("%s can't get collab_type_0-info resource\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!dpt_sram_base) {
+		pr_info("collab_type_0-info failed\n");
+		return -EIO;
+	}
+	pr_info("collab_type_0-info init done\n");
+	return 0;
+}
+
+#define VAL1_OFFSET 0x0
+#define VAL2_OFFSET 0x4
+int collab_type_0_ret_function(void)
+{
+	unsigned int val1, val2;
+
+	if (collab_type_0_sram_base == NULL)
+		return 0;
+
+	val1 = ioread32(collab_type_0_sram_base + VAL1_OFFSET);
+	val2 = ioread32(collab_type_0_sram_base + VAL2_OFFSET);
+
+	if (trace_collab_type_0_ret_function_enabled())
+		trace_collab_type_0_ret_function(val1/val2, val1, val2);
+
+	if (val1 == 0 || val2 == 0)
+		return -1;
+
+	return val1/val2;
+}
+
+int get_nr_collab_type(void)
+{
+	return nr_collab_type;
+}
+EXPORT_SYMBOL(get_nr_collab_type);
+
+void set_collab_state_manual(int type, int state)
+{
+	if (is_dpt_support_driver_hook == NULL)
+		return;
+
+	if (type < 0 || type >= nr_collab_type || !is_dpt_support_driver_hook()) {
+		pr_info("type=%d exceed nr_collab_type=%d\n", type, nr_collab_type);
+		return;
+	}
+
+	curr_collab_state_manual[type] = state;
+	pr_info("set collab_type=%d, state=%d\n", type, state);
+}
+EXPORT_SYMBOL_GPL(set_collab_state_manual);
+
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret;
@@ -2005,6 +2295,11 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	nr_wl_type = mtk_mapping.total_type;
 #endif
+
+	ret = init_dpt_io();
+	if (ret)
+		pr_info("init_dpt_io fail, return=%d\n", ret);
+
 	init_mtk_em_api_data();
 
 	if (em_ver() == 2) {
@@ -2070,8 +2365,10 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 	struct cpufreq_mtk *c = policy->driver_data;
 
 	if (c->last_index == policy->cached_resolved_idx) {
-		cap = pd_X2Y(policy->cpu, *target_freq, FREQ, CAP, false);
-		max_cap = pd_X2Y(policy->cpu, policy->cpuinfo.max_freq, FREQ, CAP, false);
+		cap = pd_X2Y(policy->cpu, *target_freq, FREQ, CAP,
+			false, "mtk_arch_set_freq_scale_gearless");
+		max_cap = pd_X2Y(policy->cpu, policy->cpuinfo.max_freq, FREQ, CAP,
+			false, "mtk_arch_set_freq_scale_gearless");
 		for_each_cpu(i, policy->related_cpus)
 			per_cpu(arch_freq_scale, i) = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	}
@@ -2097,7 +2394,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	if (policy->cached_target_freq != *target_freq) {
 		policy->cached_target_freq = *target_freq;
-		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP, true);
+		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP, true, "cpufreq_update_target_freq");
 	}
 
 	curr_cap[topology_cluster_id(cpu)] = pd_get_opp_capacity_legacy(policy->cpu,
@@ -2136,8 +2433,8 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 		freq = policy->cached_target_freq;
 		cpufreq_cpu_put(policy);
 	}
-	cap = pd_X2Y(cpu, freq, FREQ, CAP, false);
-	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false);
+	cap = pd_X2Y(cpu, freq, FREQ, CAP, false, "mtk_arch_set_freq_scale");
+	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false, "mtk_arch_set_freq_scale");
 	*scale = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	irq_log_store();
 }
@@ -2246,7 +2543,7 @@ int set_turn_point_freq(int cpu, unsigned long freq)
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
 		for_each_cpu(i, policy->related_cpus) {
-			turn_point_util[i] = pd_freq2util(cpu, freq, false, -1);
+			turn_point_util[i] = pd_freq2util(cpu, freq, false, -1, NULL, true);
 		}
 		cpufreq_cpu_put(policy);
 	}
@@ -2586,13 +2883,13 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
 
-	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false);
+	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, "mtk_map_util_freq");
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
 		struct cpufreq_policy *policy = sg_policy->policy;
 
 		policy->cached_target_freq = *next_freq;
-		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true);
+		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, "mtk_map_util_freq");
 		sg_policy->cached_raw_freq = *next_freq;
 	}
 

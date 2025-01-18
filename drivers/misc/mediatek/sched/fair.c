@@ -1697,6 +1697,20 @@ out:
 				num_sched_clusters, max_num_gear, *order_index, *end_index, *reverse);
 }
 
+inline void init_val_s(struct energy_env *eenv)
+{
+	int collab_type = 0;
+
+	if (is_dpt_support_driver_hook == NULL)
+		return;
+
+	else if (!is_dpt_support_driver_hook())
+		return;
+
+	for (collab_type = 0; collab_type < get_nr_collab_type(); collab_type++)
+		eenv->val_s[collab_type] = curr_collab_state[collab_type].state;
+}
+
 struct find_best_candidates_parameters {
 	bool in_irq;
 	bool latency_sensitive;
@@ -2035,6 +2049,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		}
 	}
 
+	init_val_s(&eenv);
+
 	irq_log_store();
 
 	fbc_params.in_irq = in_irq;
@@ -2073,7 +2089,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		if (unlikely(in_irq)) {
 			int wl_type = get_em_wl();
 
-			cur_delta = calc_pwr_eff(wl_type, cpu, cpu_utils[uint_cpu]);
+			cur_delta = calc_pwr_eff(wl_type, cpu, cpu_utils[uint_cpu], eenv.val_s);
 			base_energy = 0;
 		} else {
 			target_pd = find_pd(target_pd, cpu);
