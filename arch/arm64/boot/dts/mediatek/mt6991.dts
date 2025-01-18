@@ -3254,6 +3254,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 1 1 0 0 0 0 1 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3268,6 +3270,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 1 0 0 0 0 0 0 1 1 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3282,6 +3286,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3296,6 +3302,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
 		clocks = <&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3310,6 +3318,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
 		clocks = <&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 0 0 0 0 1 0>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3324,6 +3334,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS1_DORMANT>;
 		clocks = <&dispsys1_config_clk CLK_MM1_SMI_LARB0_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3338,6 +3350,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
 		clocks = <&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 1 1 0 0 0 0 1 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3352,6 +3366,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
 		clocks = <&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 1 0 0 0 0 0 0 1 1 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3366,6 +3382,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
 		clocks = <&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 1 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3380,6 +3398,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
 		clocks = <&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 1>;
 		smi-user-id = <MTK_SMI_DISP>;
 	};
@@ -3393,6 +3413,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML0_SHUTDOWN>;
 		clocks = <&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_MML0>;
 	};
@@ -3406,6 +3428,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML1_SHUTDOWN>;
 		clocks = <&mdpsys1_config_clk CLK_MDP1_SMI0_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 1 2>;
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
 	};
@@ -3420,6 +3444,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-busy-check;
 		skip-rpm-cb;
 		skip-tcms-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC1_SMI>;
 	};
@@ -3434,6 +3460,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-busy-check;
 		skip-rpm-cb;
 		skip-tcms-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT MTK_SMI_VDEC0_SMI>;
 	};
@@ -3448,6 +3476,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		skip-busy-check;
 		skip-rpm-cb;
 		skip-tcms-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC0_SMI>;
 	};
@@ -3524,6 +3554,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_VENC0_SMI MTK_SMI_JPEGDEC0 MTK_SMI_JPEGENC0>;
 	};
@@ -3539,6 +3571,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI MTK_SMI_JPEGDEC1 MTK_SMI_JEPGENC1>;
 	};
@@ -3554,6 +3588,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
@@ -3569,6 +3605,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC0 MTK_SMI_VENC0_SMI>;
 	};
@@ -3584,6 +3622,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC1 MTK_SMI_VENC1_SMI>;
 	};
@@ -3599,6 +3639,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
 		clock-names = "apb", "smi";
 		skip-busy-check;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <3 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 1 1 1 3 3 3 3 3 3 3 3 1 1 1 1 3>;
 		smi-user-id = <MTK_SMI_VENC2 MTK_SMI_VENC2_SMI>;
 	};
@@ -3713,6 +3755,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clocks = <&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
 			<&imgsys_main_clk CLK_IMG_LARB9_SMI>;
 		clock-names = "apb", "smi";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_FW>;
 	};
@@ -3729,6 +3773,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS0_CAMERA_P2>,
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB10_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_DIP>;
 	};
@@ -3745,6 +3791,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0_CAMERA_P2>,
 			<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_WPE_EIS>;
 	};
@@ -3761,6 +3809,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0_CAMERA_P2>,
 			<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_WPE_TNR>;
 	};
@@ -3777,6 +3827,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&wpe3_dip1_clk CLK_WPE3_DIP1_GALS0_CAMERA_P2>,
 			<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_WPE_LITE>;
 	};
@@ -3792,6 +3844,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
 				<&imgsys_main_clk CLK_IMG_LARB12_SMI>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_AOV MTK_SMI_IMG_FW>;
 	};
@@ -3810,6 +3864,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR_CAMERA_P2>,
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0", "gals1", "gals2", "gals3";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_DIP>;
 	};
@@ -3824,6 +3880,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clocks =  <&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
 				<&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>;
 		clock-names = "apb", "smi";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_FW>;
 	};
@@ -3840,6 +3898,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_TRAW>;
 	};
@@ -3856,6 +3916,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS2_CAMERA_P2>,
 			<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_DIP>;
 	};
@@ -3874,6 +3936,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		 <&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR_CAMERA_P2>,
 		 <&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39_CAMERA_P2>;
 		clock-names = "apb", "smi", "gals0", "gals1", "gals2", "gals3";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_DIP>;
 	};
@@ -3890,6 +3954,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
 		<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_SMI>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_TRAW>;
 	};
@@ -3974,6 +4040,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
 		clock-names = "apb";
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 1 1 0 0>;
 		smi-user-id = <MTK_SMI_CAMSV2>;
 	};
@@ -3987,6 +4056,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>;
 		clock-names = "apb";
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 1 0 0>;
 		smi-user-id = <MTK_SMI_CAMSV1>;
 	};
@@ -4002,6 +4074,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
 			<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_RAWA>;
 	};
@@ -4017,6 +4091,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
 			<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_RAWB>;
 	};
@@ -4032,6 +4108,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
 			<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_RAWC>;
 	};
@@ -4047,6 +4125,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
 			<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_YUVA>;
 	};
@@ -4062,6 +4142,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
 			<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_YUVB>;
 	};
@@ -4077,6 +4159,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
 			<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
 		clock-names = "apb", "smi", "gals0";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_YUVC>;
 	};
@@ -4090,6 +4174,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_IMG_DPE>;
 	};
@@ -4103,6 +4189,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
 		smi-user-id = <MTK_SMI_PDA1 MTK_SMI_MRAW1>;
 	};
@@ -4116,6 +4204,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MRAW>;
 		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 1 1 1 1 1 1 1 0 0>;
 		smi-user-id = <MTK_SMI_PDA2 MTK_SMI_MRAW2>;
 	};
@@ -4129,6 +4219,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <2 0 2 3 3 0 0 3 3>;
 		smi-user-id = <MTK_SMI_CAM_AOV MTK_SMI_CAM_RAW>;
 	};
@@ -4142,6 +4234,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 		clock-names = "apb";
+		is-two-dram-path-ostdl;
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <0 0 0 0 0 0 0 0 1 1 0 0 0 0>;
 		smi-user-id = <MTK_SMI_CAMSV3>;
 	};
@@ -4155,6 +4250,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_CCU>;
 		clocks = <&ccu_main_clk CLK_CCLARB30_CON_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
 		larb-port-real-time-type = <1 1 1 1>;
 		smi-user-id = <MTK_SMI_CCU>;
 	};
