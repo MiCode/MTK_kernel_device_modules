@@ -349,6 +349,5 @@ struct mtk_dpc_dvfs_bw {
 
 static void dpc_dt_enable(u16 dt, bool en);
 static void dpc_dt_set(u16 dt, u32 counter);
-static void dpc_dt_sw_trig(u16 dt);
 
 #endif
