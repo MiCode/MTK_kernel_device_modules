@@ -78,12 +78,6 @@ enum CCCI_FSM_POLLER_STATE {
 	FSM_POLLER_RECEIVED_RESPONSE,
 };
 
-enum {
-	SCP_CCCI_STATE_INVALID = 0,
-	SCP_CCCI_STATE_BOOTING = 1,
-	SCP_CCCI_STATE_RBREADY = 2,
-	SCP_CCCI_STATE_STOP = 3,
-};
 
 enum CCCI_MD_MSG {
 	CCCI_MD_MSG_FORCE_STOP_REQUEST = 0xFAF50001,
@@ -158,7 +152,7 @@ enum ccci_ipi_op_id {
 #define MD_EX_REC_OK_TIMEOUT 10000
 #define MD_EX_PASS_TIMEOUT 10000
 #define EE_DONE_TIMEOUT 30 /* s */
-#define SCP_BOOT_TIMEOUT (30*1000)
+
 
 
 #define DSP_IMG_DUMP_SIZE (1<<9)
@@ -167,31 +161,8 @@ enum ccci_ipi_op_id {
 #define CCCI_AED_DUMP_EX_PKT		(1<<3)
 #define MD_EX_MPU_STR_LEN (512)
 #define MD_EX_START_TIME_LEN (128)
-#define SCP_MSG_CHECK_A 0xABCDDCBA
-#define SCP_MSG_CHECK_B 0xAABBCCDD
 
 /************ structures ************/
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
-struct ccci_ipi_msg {
-	u16 md_id;
-	u16 op_id;
-	u32 data[1];
-} __packed;
-#endif
-
-struct ccci_ipi_msg_out {
-	u16 md_id; //compatibility member
-	u16 op_id;
-	u32 data[3];
-} __packed;
-
-struct ccci_ipi_msg_in {
-	u16 md_id; //compatibility member
-	u16 op_id;
-	u32 data[1];
-} __packed;
-
 struct ccci_fsm_poller {
 	enum CCCI_FSM_POLLER_STATE poller_state;
 	struct task_struct *poll_thread;
@@ -228,15 +199,6 @@ struct ccci_fsm_monitor {
 	struct ccci_skb_queue rx_skb_list;
 };
 
-struct ccci_fsm_scp {
-	enum MD_STATE old_state;
-	struct work_struct scp_md_state_sync_work;
-	void __iomem *ccif2_ap_base;
-	void __iomem *ccif2_md_base;
-	unsigned int scp_clk_free_run;
-};
-
-
 struct ccci_fsm_ctl {
 	enum MD_STATE md_state;
 
@@ -255,11 +217,6 @@ struct ccci_fsm_ctl {
 
 	unsigned long boot_count; /* for throttling feature */
 
-#ifdef CCCI_KMODULE_ENABLE
-	struct ccci_fsm_scp *scp_ctl;
-#else
-	struct ccci_fsm_scp scp_ctl;
-#endif
 	struct ccci_fsm_poller poller_ctl;
 	struct ccci_fsm_ee ee_ctl;
 	struct ccci_fsm_monitor monitor_ctl;

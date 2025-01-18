@@ -15,6 +15,7 @@
 #include "ccci_fsm_internal.h"
 #include "md_sys1_platform.h"
 #include "modem_secure_base.h"
+#include "ccci_fsm_scp_c.h"
 
 #ifdef FEATURE_SCP_CCCI_SUPPORT
 #include "scp_ipi.h"
@@ -23,7 +24,6 @@ static struct ccci_clk_node scp_clk_table[] = {
 	{ NULL, "infra-ccif2-ap"},
 	{ NULL, "infra-ccif2-md"},
 };
-
 
 
 static struct ccci_fsm_scp ccci_scp_ctl;
@@ -49,7 +49,7 @@ unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
 #endif
 
 static atomic_t scp_state = ATOMIC_INIT(SCP_CCCI_STATE_INVALID);
-static struct ccci_ipi_msg_out scp_ipi_tx_msg;
+static struct ccci_ipi_msg_out *scp_ipi_tx_msg;
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT) //MD_GENERATION >= 6297
 static struct ccci_ipi_msg_in scp_ipi_rx_msg;
 #endif
@@ -60,6 +60,7 @@ static struct ccci_skb_queue scp_ipi_rx_skb_list;
 static unsigned int init_work_done;
 static unsigned int scp_clk_last_state;
 static atomic_t scp_md_sync_flg;
+static unsigned int ipi_msg_out_len;
 
 static inline void ccci_scp_ipi_msg_add_magic(struct ccci_ipi_msg_out *ipi_msg)
 {
@@ -74,6 +75,7 @@ static int ccci_scp_ipi_send(int op_id, void *data)
 	int ipi_status = 0;
 	unsigned int cnt = 0;
 #endif
+
 	if (atomic_read(&scp_state) == SCP_CCCI_STATE_INVALID) {
 		CCCI_ERROR_LOG(0, FSM,
 			"ignore IPI %d, SCP state %d!\n",
@@ -82,21 +84,27 @@ static int ccci_scp_ipi_send(int op_id, void *data)
 	}
 
 	mutex_lock(&scp_ipi_tx_mutex);
-	memset(&scp_ipi_tx_msg, 0, sizeof(scp_ipi_tx_msg));
+	memset(scp_ipi_tx_msg, 0, ipi_msg_out_len);
 
-	scp_ipi_tx_msg.md_id = 0;
-	scp_ipi_tx_msg.op_id = op_id;
-	scp_ipi_tx_msg.data[0] = *((u32 *)data);
-	ccci_scp_ipi_msg_add_magic(&scp_ipi_tx_msg);
-	CCCI_NORMAL_LOG(0, FSM,
-		"IPI send op_id=%d/data0=0x%x,data1=0x%x,data2=0x%x size=%d\n",
-		scp_ipi_tx_msg.op_id,
-		scp_ipi_tx_msg.data[0], scp_ipi_tx_msg.data[1], scp_ipi_tx_msg.data[2],
-		(int)sizeof(struct ccci_ipi_msg_out));
+	scp_ipi_tx_msg->md_id = 0;
+	scp_ipi_tx_msg->op_id = op_id;
+	scp_ipi_tx_msg->data[0] = *((u32 *)data);
+	if (ccci_scp_ctl.ipi_msg_out_data_num == 3) {
+		ccci_scp_ipi_msg_add_magic(scp_ipi_tx_msg);
+		CCCI_NORMAL_LOG(0, FSM,
+			"IPI send op_id=%d,data0=0x%x,data1=0x%x,data2=0x%x,size=%d\n",
+			scp_ipi_tx_msg->op_id,
+			scp_ipi_tx_msg->data[0], scp_ipi_tx_msg->data[1], scp_ipi_tx_msg->data[2],
+			ipi_msg_out_len);
+	} else
+		CCCI_NORMAL_LOG(0, FSM,
+			"IPI send op_id=%d,data0=0x%x,size=%d\n",
+			scp_ipi_tx_msg->op_id, scp_ipi_tx_msg->data[0], ipi_msg_out_len);
+
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	while (1) {
 		ipi_status = mtk_ipi_send(&scp_ipidev, IPI_OUT_APCCCI_0,
-		0, &scp_ipi_tx_msg, (sizeof(scp_ipi_tx_msg) / 4), 1);
+		0, scp_ipi_tx_msg, (ipi_msg_out_len / 4), 1);
 		if (ipi_status != IPI_PIN_BUSY)
 			break;
 		cnt++;
@@ -111,8 +119,8 @@ static int ccci_scp_ipi_send(int op_id, void *data)
 		ret = -CCCI_ERR_MD_NOT_READY;
 	}
 #else
-	if (scp_ipi_send(IPI_APCCCI, &scp_ipi_tx_msg,
-			sizeof(scp_ipi_tx_msg), 1, SCP_A_ID) != SCP_IPI_DONE) {
+	if (scp_ipi_send(IPI_APCCCI, scp_ipi_tx_msg, ipi_msg_out_len, 1, SCP_A_ID)
+			!= SCP_IPI_DONE) {
 		CCCI_ERROR_LOG(0, FSM, "IPI send fail!\n");
 		ret = -CCCI_ERR_MD_NOT_READY;
 	}
@@ -263,7 +271,7 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 		}
 		switch (ipi_msg_ptr->op_id) {
 		case CCCI_OP_SCP_STATE:
-			switch (ipi_msg_ptr->data[0]) {
+			switch (ipi_msg_ptr->data) {
 			case SCP_CCCI_STATE_BOOTING:
 				if (atomic_read(&scp_state) ==
 					SCP_CCCI_STATE_RBREADY) {
@@ -302,7 +310,7 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 			default:
 				break;
 			};
-			atomic_set(&scp_state, ipi_msg_ptr->data[0]);
+			atomic_set(&scp_state, ipi_msg_ptr->data);
 			break;
 		default:
 			break;
@@ -344,18 +352,18 @@ static int ccci_scp_ipi_handler(unsigned int id, void *prdata, void *data,
 #else
 static void ccci_scp_ipi_handler(int id, void *data, unsigned int len)
 {
-	struct ccci_ipi_msg *ipi_msg_ptr = (struct ccci_ipi_msg *)data;
+	struct ccci_ipi_msg_in *ipi_msg_ptr = (struct ccci_ipi_msg_in *)data;
 	struct sk_buff *skb = NULL;
 
-	if (len != sizeof(struct ccci_ipi_msg)) {
+	if (len != sizeof(struct ccci_ipi_msg_in)) {
 		CCCI_ERROR_LOG(-1, CORE,
 			"IPI handler, data length wrong %d vs. %d\n",
-			len, (int)sizeof(struct ccci_ipi_msg));
+			len, (int)sizeof(struct ccci_ipi_msg_in));
 		return;
 	}
 	CCCI_NORMAL_LOG(0, CORE, "IPI handler %d/0x%x, %d\n",
 		ipi_msg_ptr->op_id,
-		ipi_msg_ptr->data[0], len);
+		ipi_msg_ptr->data, len);
 
 	skb = ccci_alloc_skb(len, 0, 0);
 	if (!skb)
@@ -496,6 +504,87 @@ static int fsm_scp_hw_init(struct ccci_fsm_scp *scp_ctl, struct device *dev)
 	return 0;
 }
 
+static int fsm_scp_ipi_out_msg_init(struct ccci_fsm_scp *scp_ctl)
+{
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+	enum table_item_num {
+		send_item_num = 3,
+		recv_item_num = 5
+	};
+
+	struct device_node *node = NULL;
+	int ret;
+	struct scp_ipi_info ipi_info;
+	unsigned int ipi_count, i;
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,scp");
+	if (!node) {
+		CCCI_ERROR_LOG(-1, FSM, "[%s] scp node is not exist\n",
+			__func__);
+		return -ENODEV;
+	}
+
+	ipi_count = of_property_count_u32_elems(node, "send-table") / send_item_num;
+	if (ipi_count <= 0) {
+		CCCI_ERROR_LOG(-1, FSM, "[%s] scp send table not found\n",
+			__func__);
+		return -ENODEV;
+	}
+
+	memset(&ipi_info, 0, sizeof(struct scp_ipi_info));
+
+	for (i = 0; i < ipi_count; ++i) {
+		ret = of_property_read_u32_index(node, "send-table",
+			i * send_item_num, &ipi_info.chan_id);
+		if (ret) {
+			CCCI_ERROR_LOG(-1, FSM, "[%s] Cannot get ipi id ret:(%d), i:(%u)\n",
+				__func__, ret, i);
+			return -ENODEV;
+		}
+
+		if(ipi_info.chan_id == IPI_OUT_APCCCI_0) {
+			ret = of_property_read_u32_index(node, "send-table",
+				i * send_item_num + 2, &ipi_info.msg_size);
+			if (ret) {
+				CCCI_ERROR_LOG(-1, FSM, "[%s] Cannot get msg_size ret:(%d), i:(%u)\n",
+					__func__, ret, i);
+				return -ENODEV;
+			}
+
+			/* sizeof(ccci_ipi_msg_out) = 4 bytes
+			 * data size = (4 * data_num) bytes
+			 * ipi_info.msg_size * 4 = sizeof(ccci_ipi_msg_out) + data size
+			 * so the data_num = ipi_info.msg_size - 1;
+			 * ipi_msg_out_len = 4 + 4 * data_num = 4 * (data_num + 1)；
+			 */
+			scp_ctl->ipi_msg_out_data_num = ipi_info.msg_size - 1;
+			ipi_msg_out_len = 4 * (ccci_scp_ctl.ipi_msg_out_data_num + 1);
+			CCCI_NORMAL_LOG(0, FSM, "[%s] data_num = %d, total size = %d bytes\n",
+				__func__, scp_ctl->ipi_msg_out_data_num, ipi_msg_out_len);
+
+			scp_ipi_tx_msg = kzalloc(ipi_msg_out_len, GFP_KERNEL);
+			if (!scp_ipi_tx_msg) {
+				CCCI_ERROR_LOG(-1, FSM, "[%s] scp_ipi_tx_msg kzalloc fail\n",
+					__func__);
+				return -ENOMEM;
+			}
+			return 0;
+		}
+	}
+	return -ENODEV;
+#else
+	scp_ctl->ipi_msg_out_data_num = 1;
+	ipi_msg_out_len = 4 * (ccci_scp_ctl.ipi_msg_out_data_num + 1);
+	scp_ipi_tx_msg = kzalloc(ipi_msg_out_len, GFP_KERNEL);
+	if (!scp_ipi_tx_msg) {
+		CCCI_ERROR_LOG(-1, FSM, "[%s] CM4 scp_ipi_tx_msg kzalloc fail\n",
+			__func__);
+		return -ENOMEM;
+	}
+	return 0;
+#endif
+}
+
 int fsm_scp_init(struct ccci_fsm_scp *scp_ctl, struct device *dev)
 {
 	int ret = 0;
@@ -519,6 +608,12 @@ int fsm_scp_init(struct ccci_fsm_scp *scp_ctl, struct device *dev)
 		}
 	} else
 		CCCI_NORMAL_LOG(0, FSM, "No need control ccif2 clk\n");
+
+	ret = fsm_scp_ipi_out_msg_init(scp_ctl);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(-1, FSM, "ccif scp ipi msg size init fail\n");
+		return ret;
+	}
 
 	scp_A_register_notify(&apsync_notifier);
 
