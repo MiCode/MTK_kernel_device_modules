@@ -651,6 +651,43 @@ static unsigned int mtk_ovl_phy_mapping_MT6991(struct mtk_ddp_comp *comp)
 	}
 }
 
+static unsigned int mtk_ovl_phy_channel_mapping_MT6991(struct mtk_ddp_comp *comp)
+{
+	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
+	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
+	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
+	 * sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
+	 */
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL_EXDMA2:
+	case DDP_COMPONENT_OVL_EXDMA7:
+	case DDP_COMPONENT_OVL1_EXDMA5:
+	case DDP_COMPONENT_OVL1_EXDMA8:
+		return 0;
+	case DDP_COMPONENT_OVL_EXDMA3:
+	case DDP_COMPONENT_OVL_EXDMA6:
+	case DDP_COMPONENT_OVL1_EXDMA4:
+	case DDP_COMPONENT_OVL1_EXDMA9:
+		return 1;
+	case DDP_COMPONENT_OVL_EXDMA4:
+	case DDP_COMPONENT_OVL_EXDMA9:
+	case DDP_COMPONENT_OVL1_EXDMA3:
+	case DDP_COMPONENT_OVL1_EXDMA6:
+		return 2;
+	case DDP_COMPONENT_OVL_EXDMA5:
+	case DDP_COMPONENT_OVL_EXDMA8:
+	case DDP_COMPONENT_OVL1_EXDMA2:
+	case DDP_COMPONENT_OVL1_EXDMA7:
+		return 3;
+	case DDP_COMPONENT_OVL_EXDMA0:
+	case DDP_COMPONENT_OVL1_EXDMA0:
+		return 4; // no use
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 4;
+	}
+}
+
 static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 			struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state)
 {
@@ -3648,6 +3685,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
 		unsigned int update_pending = 0;
+		unsigned int crtc_idx, channel_id;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3655,6 +3693,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		mtk_crtc = comp->mtk_crtc;
 		crtc = &mtk_crtc->base;
+		crtc_idx = drm_crtc_index(crtc);
+
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			channel_id = mtk_ovl_phy_channel_mapping_MT6991(comp);
 
 		/* process FBDC */
 		/* qos BW only has one port for one device, no need to separate */
@@ -3670,48 +3712,33 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		if (!force_update && !update_pending) {
 			mtk_crtc->total_srt += comp->qos_bw;
-			if (!IS_ERR_OR_NULL(comp->qos_req_other))
-				mtk_crtc->total_srt += comp->qos_bw_other;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
 		}
 
 		/* process normal */
 		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
-			comp->last_hrt_bw == comp->hrt_bw) {
-			if (IS_ERR(comp->qos_req_other) ||
-			    ((comp->last_qos_bw_other == comp->qos_bw_other) &&
-				    (comp->last_hrt_bw_other == comp->hrt_bw_other)))
-				break;
-			goto other;
-		}
+			comp->last_hrt_bw == comp->hrt_bw)
+			break;
+
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 					    DISP_BW_NORMAL_MODE);
 		comp->last_qos_bw = comp->qos_bw;
-		if (!force_update)
+		if (!force_update) {
 			mtk_crtc->total_srt += comp->qos_bw;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
+		}
 
 		if ((comp->last_hrt_bw <= comp->hrt_bw) ||
 				(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
 			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, comp->hrt_bw,
 						    DISP_BW_NORMAL_MODE);
+
 			comp->last_qos_bw = comp->qos_bw;
 			comp->last_hrt_bw = comp->hrt_bw;
 		}
-other:
-		if (!IS_ERR(comp->qos_req_other)) {
-			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
-					    DISP_BW_NORMAL_MODE);
-			comp->last_qos_bw_other = comp->qos_bw_other;
-			if (!force_update)
-				mtk_crtc->total_srt += comp->qos_bw_other;
 
-			if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) || (update_pending &&
-					comp->last_hrt_bw_other > comp->hrt_bw_other)) {
-				__mtk_disp_set_module_srt(comp->qos_req_other,
-					comp->id, comp->qos_bw_other, comp->hrt_bw_other, DISP_BW_NORMAL_MODE);
-				comp->last_qos_bw_other = comp->qos_bw_other;
-				comp->last_hrt_bw_other = comp->hrt_bw_other;
-			}
-		}
 		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
 			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
 		break;

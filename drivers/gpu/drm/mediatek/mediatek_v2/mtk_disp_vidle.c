@@ -40,8 +40,9 @@ struct mtk_disp_vidle {
 	u32 te_duration;
 	s8 dpc_hw_mode;
 	struct mtk_drm_private *drm_priv;
+	u32 channel_bw;
 };
-static struct mtk_disp_vidle vidle_data = {U8_MAX, U32_MAX, U32_MAX, U32_MAX, -1, NULL};
+static struct mtk_disp_vidle vidle_data = {U8_MAX, U32_MAX, U32_MAX, U32_MAX, -1, NULL, U32_MAX};
 
 void mtk_vidle_flag_init(void *_crtc)
 {
@@ -346,6 +347,15 @@ void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_dvfs_bw_set)
 		disp_dpc_driver.dpc_dvfs_bw_set(DPC_SUBSYS_DISP, bw_in_mb);
+}
+void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx)
+{
+	vidle_data.channel_bw = bw_in_mb;
+	if (disp_dpc_driver.dpc_channel_bw_set)
+		disp_dpc_driver.dpc_channel_bw_set(DPC_SUBSYS_DISP, idx, bw_in_mb);
+	else
+		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
+
 }
 void mtk_vidle_config_ff(bool en)
 {

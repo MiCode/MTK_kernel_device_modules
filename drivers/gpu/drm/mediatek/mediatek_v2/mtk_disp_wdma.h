@@ -24,6 +24,7 @@ struct mtk_disp_wdma_data {
 	bool is_support_34bits;
 	bool use_larb_control_sec;
 	bool (*is_right_wdma_comp)(struct mtk_ddp_comp *comp);
+	unsigned int (*hrt_channel)(struct mtk_ddp_comp *comp);
 };
 
 #endif

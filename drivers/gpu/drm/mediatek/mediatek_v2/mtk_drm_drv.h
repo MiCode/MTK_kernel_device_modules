@@ -268,6 +268,10 @@ struct mtk_drm_private {
 	atomic_t need_recover;
 
 	unsigned int seg_id;
+
+	unsigned int hrt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int last_hrt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 };
 
 struct mtk_drm_property {

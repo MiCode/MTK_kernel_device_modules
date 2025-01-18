@@ -65,6 +65,7 @@ void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb);
 void mtk_vidle_register(const struct dpc_funcs *funcs);
 void mtk_vidle_config_ff(bool en);
 void mtk_vidle_dpc_analysis(void);
+void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp);
 void mtk_vidle_wait_init(void);

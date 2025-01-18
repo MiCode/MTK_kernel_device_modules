@@ -613,9 +613,33 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 	writel((!force && has_cap(DPC_CAP_QOS)) ? 0 : 0x00010001, dpc_base + addr2);
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) hrt bw(%u,%u)MB force(%u)", subsys, bw_in_mb, ch_bw, force);
+	/*
+	 *	if (g_priv->mmsys_id == MMSYS_MT6991)
+	 *		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, ch_bw);
+	 */
+
+	dpc_pm_ctrl(false);
+}
+
+static void dpc_channel_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx,
+		const u32 bw_in_mb)
+{
+	u32 ch_bw = bw_in_mb;
+
+	if (dpc_pm_ctrl(true))
+		return;
+
+	if (g_priv->total_hrt_unit == 0)
+		return;
+
+	if (mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16))
+		ch_bw = mminfra_floor * 16;
+
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) hrt bw(%u,%u)MB", subsys, bw_in_mb, ch_bw);
 
 	if (g_priv->mmsys_id == MMSYS_MT6991)
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, ch_bw);
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, idx, ch_bw);
 
 
 	dpc_pm_ctrl(false);
@@ -1763,6 +1787,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dvfs_set = dpc_dvfs_set,
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
 	.dpc_dvfs_both_set = dpc_dvfs_both_set,
+	.dpc_channel_bw_set = dpc_channel_bw_set,
 	.dpc_analysis = dpc_analysis,
 };
 
