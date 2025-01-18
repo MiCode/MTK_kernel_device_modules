@@ -2259,10 +2259,8 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 	bool enabled = mtk_edp->enabled;
 	struct edid *new_edid = NULL;
 	struct mtk_dp_audio_cfg *audio_caps = &mtk_edp->info.audio_cur_cfg;
-	int ret = 0;
 
 	pr_info("[eDPTX] %s+\n", __func__);
-
 
 	if (!enabled) {
 		drm_atomic_bridge_chain_pre_enable(bridge, connector->state->state);
@@ -2295,12 +2293,7 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
 	}
 
-	ret = mtk_edp_training(mtk_edp);
-	if (ret)
-		dev_info(mtk_edp->dev, "[eDPTX] Training failed, %d\n", ret);
-
 	pr_info("[eDPTX] %s-\n", __func__);
-
 	return new_edid;
 }
 
