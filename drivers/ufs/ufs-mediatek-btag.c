@@ -16,8 +16,6 @@
 #include "ufshpb.h"
 #endif
 
-atomic_t btag_init_done;
-
 static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {
 	char cmd_op = cmd->cmnd[0];
@@ -51,8 +49,7 @@ void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (!atomic_read(&btag_init_done) || atomic_read(&host->skip_btag) ||
-			!ufs_mtk_is_data_cmd(cmd))
+	if (atomic_read(&host->skip_btag) || !ufs_mtk_is_data_cmd(cmd))
 		return;
 
 	if (is_mcq_enabled(hba)) {
@@ -70,8 +67,7 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (!atomic_read(&btag_init_done) || atomic_read(&host->skip_btag) ||
-			!ufs_mtk_is_data_cmd(cmd))
+	if (atomic_read(&host->skip_btag) || !ufs_mtk_is_data_cmd(cmd))
 		return;
 
 	if (is_mcq_enabled(hba)) {
@@ -82,32 +78,22 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_compl_command);
 
-static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
-{
-	struct ufs_hba *hba = (struct ufs_hba *)data;
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	if (!wait_for_completion_timeout(&host->luns_added, 10 * HZ)) {
-		dev_info(hba->dev, "%s: LUNs not ready before timeout. blocktag init failed",
-			 __func__);
-		return;
-	}
-
-	if (!mtk_btag_ufs_init(host, hba->nr_hw_queues, hba->nutrs))
-		atomic_set(&btag_init_done, 1);
-}
-
 void ufs_mtk_btag_init(struct ufs_hba *hba)
 {
-	atomic_set(&btag_init_done, 0);
-	async_schedule(ufs_mtk_blocktag_add, hba);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 nr_queues = hba->nr_hw_queues ? hba->nr_hw_queues : 1;
+	u32 nutrs = hba->nutrs ? hba->nutrs : 32;
+	int err;
+
+	err = mtk_btag_ufs_init(host, nr_queues, nutrs);
+	if (err)
+		dev_notice(hba->dev, "btag host init failed, %d\n", err);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
 
 void ufs_mtk_btag_exit(struct ufs_hba *hba)
 {
-	if (atomic_read(&btag_init_done))
-		mtk_btag_ufs_exit();
+	mtk_btag_ufs_exit();
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_exit);
 
