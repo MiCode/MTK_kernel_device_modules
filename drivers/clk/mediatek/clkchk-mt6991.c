@@ -2866,6 +2866,10 @@ static void clkchk_arm64_serror_panic_hook(void *data,
 #endif
 
 static const char * const off_pll_names[] = {
+	NULL
+};
+
+static const char * const notice_pll_names[] = {
 	"mfgpll",
 	"mfgpll-sc0",
 	"mfgpll-sc1",
@@ -2877,10 +2881,6 @@ static const char * const off_pll_names[] = {
 	"tvdpll1",
 	"tvdpll2",
 	"tvdpll3",
-	NULL
-};
-
-static const char * const notice_pll_names[] = {
 	"mainpll2",
 	"adsppll",
 	"vlp-apll1",
@@ -2910,7 +2910,7 @@ static const char * const *get_bypass_pll_name(void)
 
 static bool is_pll_chk_bug_on(void)
 {
-#if (BUG_ON_CHK_ENABLE) || (IS_ENABLED(CONFIG_MTK_CLKMGR_DEBUG))
+#if (BUG_ON_CHK_ENABLE) && (IS_ENABLED(CONFIG_MTK_CLKMGR_DEBUG))
 	return true;
 #endif
 	return false;
