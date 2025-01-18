@@ -18,6 +18,7 @@
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
+#include <linux/topology.h>
 
 #include "mediatek-cpufreq-hw_fdvfs.h"
 
@@ -32,6 +33,8 @@
 #define REG_STOP_CPUDVFS_LOG		0x128 /* from csram_base */
 #define REG_QOS_OFF			0x20
 #define CHECK_VAL			0X55AA55AA
+#define MAX_CONTROL_GROUPS		8
+#define MAX_PERF_DOMAINS		3
 
 enum {
 	REG_FREQ_LUT_TABLE,
@@ -65,7 +68,12 @@ static const u16 cpufreq_mtk_offsets[REG_ARRAY_SIZE] = {
 static struct cpufreq_mtk *mtk_freq_domain_map[NR_CPUS];
 static bool freq_scaling_disabled = true;
 static bool fdvfs_enabled;
+static bool per_core_enabled;
 static void __iomem *qos_base;
+static int control_group_num;
+static int cpu_control_group_map[MAX_CONTROL_GROUPS];
+static int control_group_master[MAX_CONTROL_GROUPS];
+static int perf_domain_master[MAX_PERF_DOMAINS];
 
 static int look_up_cpu(struct device *cpu_dev)
 {
@@ -355,25 +363,31 @@ static int mtk_cpu_create_freq_table(struct platform_device *pdev,
 	return 0;
 }
 
-static int mtk_get_related_cpus(int index, struct cpufreq_mtk *c)
+static int mtk_get_related_cpus(int master_index, struct cpufreq_mtk *c)
 {
 	struct device_node *cpu_np;
 	struct of_phandle_args args;
+	int control_index;
 	int cpu, ret;
 
 	for_each_possible_cpu(cpu) {
-		cpu_np = of_cpu_device_node_get(cpu);
-		if (!cpu_np)
-			continue;
+		if(!per_core_enabled) {
+			cpu_np = of_cpu_device_node_get(cpu);
+			if (!cpu_np)
+				continue;
 
-		ret = of_parse_phandle_with_args(cpu_np, "performance-domains",
-						 "#performance-domain-cells", 0,
-						 &args);
-		of_node_put(cpu_np);
-		if (ret < 0)
-			continue;
+			ret = of_parse_phandle_with_args(cpu_np, "performance-domains",
+							"#performance-domain-cells", 0,
+							&args);
+			of_node_put(cpu_np);
+			if (ret < 0)
+				continue;
 
-		if (index == args.args[0]) {
+			control_index = args.args[0];
+		} else
+			control_index = cpu_control_group_map[cpu];
+
+		if (control_index == master_index) {
 			cpumask_set_cpu(cpu, &c->related_cpus);
 			mtk_freq_domain_map[cpu] = c;
 		}
@@ -388,6 +402,7 @@ static int mtk_cpu_resources_init(struct platform_device *pdev,
 {
 	struct cpufreq_mtk *c;
 	struct device *dev = &pdev->dev;
+	int control_index;
 	int ret, i;
 	void __iomem *base;
 
@@ -405,9 +420,10 @@ static int mtk_cpu_resources_init(struct platform_device *pdev,
 	for (i = REG_FREQ_LUT_TABLE; i < REG_ARRAY_SIZE; i++)
 		c->reg_bases[i] = base + offsets[i];
 
-	ret = mtk_get_related_cpus(index, c);
+	control_index = !per_core_enabled ? index : cpu_control_group_map[cpu];
+	ret = mtk_get_related_cpus(control_index, c);
 	if (ret) {
-		dev_info(dev, "Domain-%d failed to get related CPUs\n", index);
+		dev_info(dev, "Domain-%d failed to get related CPUs\n", control_index);
 		return ret;
 	}
 
@@ -418,6 +434,107 @@ static int mtk_cpu_resources_init(struct platform_device *pdev,
 	}
 
 	return 0;
+}
+
+static int mtk_per_core_cpu_resources_init(struct platform_device *pdev,
+					unsigned int cpu, int index,
+					const u16 *offsets)
+{
+	struct cpufreq_mtk *c;
+	struct cpufreq_mtk *master_c;
+	struct device *dev = &pdev->dev;
+	int ret, i, master;
+	int control_group = cpu_control_group_map[cpu];
+
+	if (mtk_freq_domain_map[cpu]) {
+		dev_info(dev, "already has per-core entry: index-%d cpu-%d\n", index, cpu);
+		return 0;
+	}
+
+	if (cpu == perf_domain_master[index])
+		return mtk_cpu_resources_init(pdev, cpu, index, offsets);
+	else if (cpu == control_group_master[control_group]) {
+		master = perf_domain_master[index];
+		master_c = mtk_freq_domain_map[master];
+
+		c = devm_kzalloc(dev, sizeof(*c), GFP_KERNEL);
+		if (!c)
+			return -ENOMEM;
+
+		/* init all other member variables from master_c */
+		c->table = master_c->table;
+		c->nr_opp = master_c->nr_opp;
+
+		for (i = REG_FREQ_LUT_TABLE; i < REG_ARRAY_SIZE; i++)
+			c->reg_bases[i] = master_c->reg_bases[i];
+
+		ret = mtk_get_related_cpus(control_group, c);
+		if (ret) {
+			dev_info(dev, "Domain-%d failed to get related CPUs\n", control_group);
+			return ret;
+		}
+	} else {
+		/* shall not go in here */
+		dev_info(dev, "wrong per-core entry, index-%d cpu-%d\n", index, cpu);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static bool check_per_core_enabled(void)
+{
+	struct device_node *cpu_np;
+	u32 control_group;
+	int cpu_cluster_id;
+	int i, cpu, ret;
+
+	if (!fdvfs_enabled) {
+		pr_notice("%s: per-core requires fdvfs support\n", __func__);
+		return false;
+	}
+
+	control_group_num = 0;
+	for (i = 0; i < MAX_CONTROL_GROUPS; i++)
+		control_group_master[i] = -1;
+
+	for (i = 0; i < MAX_PERF_DOMAINS; i++)
+		perf_domain_master[i] = -1;
+
+	for_each_possible_cpu(cpu) {
+		cpu_np = of_cpu_device_node_get(cpu);
+		if (!cpu_np) {
+			pr_notice("%s: failed to get cpu device\n", __func__);
+			return false;
+		}
+
+		ret = of_property_read_u32(cpu_np, "control-group", &control_group);
+		of_node_put(cpu_np);
+		if (ret < 0) {
+			pr_notice("%s: failed to get control-group\n", __func__);
+			return false;
+		}
+
+		if (control_group >= MAX_CONTROL_GROUPS) {
+			pr_notice("%s: control-group incorrect\n", __func__);
+			return false;
+		}
+
+		cpu_control_group_map[cpu] = control_group;
+
+		if (control_group_master[control_group] == -1)
+			control_group_master[control_group] = cpu;
+
+		if (control_group + 1 > control_group_num)
+			control_group_num = control_group + 1;
+
+		cpu_cluster_id = topology_cluster_id(cpu);
+		if (perf_domain_master[cpu_cluster_id] == -1)
+			perf_domain_master[cpu_cluster_id] = cpu;
+	}
+
+	pr_notice("%s: per-core enabled\n", __func__);
+	return true;
 }
 
 static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
@@ -490,6 +607,7 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		release_mem_region(csram_res->start, resource_size(csram_res));
 	}
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
+	per_core_enabled = check_per_core_enabled();
 
 	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
 	if (!qos_node) {
@@ -527,11 +645,19 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		if (ret < 0)
 			return ret;
 
-		/* Get the bases of cpufreq for domains */
-		ret = mtk_cpu_resources_init(pdev, cpu, args.args[0], offsets);
-		if (ret) {
-			dev_info(&pdev->dev, "CPUFreq resource init failed\n");
-			return ret;
+		if (per_core_enabled) {
+			ret = mtk_per_core_cpu_resources_init(pdev, cpu, args.args[0], offsets);
+			if (ret) {
+				dev_info(&pdev->dev, "per-core CPUFreq resource init failed\n");
+				return ret;
+			}
+		} else {
+			/* Get the bases of cpufreq for domains */
+			ret = mtk_cpu_resources_init(pdev, cpu, args.args[0], offsets);
+			if (ret) {
+				dev_info(&pdev->dev, "CPUFreq resource init failed\n");
+				return ret;
+			}
 		}
 	}
 
