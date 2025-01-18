@@ -887,7 +887,7 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	smmu_init_wpcfg(smmu);
 
 	smmu_mpam_register(smmu);
-	if (data->plat_data->smmu_type == GPU_SMMU)
+	if (data->plat_data->smmu_type == GPU_SMMU && data->irq_disable)
 		smmu->features |= ARM_SMMU_FEAT_DIS_EVTQ;
 
 	return 0;
@@ -2442,7 +2442,7 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
-	u32 prefetch;
+	u32 prefetch, irq_disable;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2461,6 +2461,14 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 					 data->smi_com_base, SMI_COM_REGS_NUM);
 	if (!ret)
 		data->smi_com_base_cnt = SMI_COM_REGS_NUM;
+
+	ret = of_property_read_u32(smmu->dev->of_node, "interrupt-disable", &irq_disable);
+	if(!ret && irq_disable == 1) {
+		dev_info(smmu->dev, "parse interrupt-disable:%d\n", irq_disable);
+		data->irq_disable = true;
+	} else {
+		data->irq_disable = false;
+	}
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
