@@ -23,8 +23,8 @@
 			"sku2_backup",			/* [14] SKU2 Backup */
 			"sku2_backup",			/* [15] SKU2 Backup TxHD160 */
 			"qm42655_qm45655",		/* [16] SKU1-1 with MXD7282 BT eFEM */
-			"qm42655_qm45655_2g2a__phone",	/* [17] SKU1-1 Phone 2ant 2G+2A */
-			"qm42655_qm45655_2g2a";		/* [18] SKU1-1 EVB 2ant 2G+2A */
+			"qm42655_qm45655_2g2a__phone",	/* [17] SKU1-1 Phone 2G+2A */
+			"qm42655_qm45655_2g2a";		/* [18] SKU1-1 EVB 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
@@ -57,15 +57,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -101,15 +101,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -145,15 +145,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_sky55208>,
-				<&sku1_g_wf1_bt1_sky55208>,
-				<&sku1_a_wf0_sky55714>,
-				<&sku1_a_wf1_sky55714>,
-				<&sku1_a_wf2_bt0_sky55714>;
+				<&g_wf0_bt0_sky55208>,
+				<&g_wf1_bt1_sky55208>,
+				<&a_wf0_sky55714>,
+				<&a_wf1_sky55714>,
+				<&a_wf2_bt0_sky55714>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -189,15 +189,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_sky55208>,
-				<&sku1_g_wf1_bt1_sky55208>,
-				<&sku1_a_wf0_sky55714>,
-				<&sku1_a_wf1_sky55714>,
-				<&sku1_a_wf2_bt0_sky55714>;
+				<&g_wf0_bt0_sky55208>,
+				<&g_wf1_bt1_sky55208>,
+				<&a_wf0_sky55714>,
+				<&a_wf1_sky55714>,
+				<&a_wf2_bt0_sky55714>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -231,14 +231,14 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku2_a_wf0_qm45655>,
-				<&sku2_a_wf12_emlsr_bt0_qm45655>;
+				<&a_wf0_qm45655>,
+				<&a_wf12_emlsr_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>,
+				<&spdt_a1_a2_tx>,
+				<&spdt_a1_a2_rx>,
+				<&sp3t_g0_ipa>,
+				<&sp3t_g1_ipa>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -271,14 +271,14 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku2_a_wf0_qm45655>,
-				<&sku2_a_wf12_emlsr_bt0_qm45655>;
+				<&a_wf0_qm45655>,
+				<&a_wf12_emlsr_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>,
+				<&spdt_a1_a2_tx>,
+				<&spdt_a1_a2_rx>,
+				<&sp3t_g0_ipa>,
+				<&sp3t_g1_ipa>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -313,15 +313,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42195>,
-				<&sku1_g_wf1_bt1_qm42195>,
-				<&sku1_a_wf0_qm45639>,
-				<&sku1_a_wf1_qm45639>,
-				<&sku1_a_wf2_bt0_qm45639>;
+				<&g_wf0_bt0_qm42195>,
+				<&g_wf1_bt1_qm42195>,
+				<&a_wf0_qm45639>,
+				<&a_wf1_qm45639>,
+				<&a_wf2_bt0_qm45639>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -357,15 +357,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42195>,
-				<&sku1_g_wf1_bt1_qm42195>,
-				<&sku1_a_wf0_qm45639>,
-				<&sku1_a_wf1_qm45639>,
-				<&sku1_a_wf2_bt0_qm45639>;
+				<&g_wf0_bt0_qm42195>,
+				<&g_wf1_bt1_qm42195>,
+				<&a_wf0_qm45639>,
+				<&a_wf1_qm45639>,
+				<&a_wf2_bt0_qm45639>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -401,15 +401,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>,
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -446,15 +446,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>,
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -491,15 +491,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -535,15 +535,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -577,14 +577,14 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku2_a_wf0_sky55714>,
-				<&sku2_a_wf12_emlsr_bt0_sky55714>;
+				<&a_wf0_sky55714>,
+				<&a_wf12_emlsr_bt0_sky55714>;
 
 			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>,
+				<&spdt_a1_a2_tx>,
+				<&spdt_a1_a2_rx>,
+				<&sp3t_g0_ipa>,
+				<&sp3t_g1_ipa>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -619,15 +619,15 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42195>,
-				<&sku1_g_wf1_bt1_qm42195>,
-				<&sku1_a_wf0_qm45639>,
-				<&sku1_a_wf1_qm45639>,
-				<&sku1_a_wf2_bt0_qm45639>;
+				<&g_wf0_bt0_qm42195>,
+				<&g_wf1_bt1_qm42195>,
+				<&a_wf0_qm45639>,
+				<&a_wf1_qm45639>,
+				<&a_wf2_bt0_qm45639>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -665,14 +665,14 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku2_a_wf0_qm45639>,
-				<&sku2_a_wf12_emlsr_bt0_qm45639>;
+				<&a_wf0_qm45639>,
+				<&a_wf12_emlsr_bt0_qm45639>;
 
 			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>,
+				<&spdt_a1_a2_tx>,
+				<&spdt_a1_a2_rx>,
+				<&sp3t_g0_ipa>,
+				<&sp3t_g1_ipa>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -705,14 +705,14 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku2_a_wf0_qm45639>,
-				<&sku2_a_wf12_emlsr_bt0_qm45639>;
+				<&a_wf0_qm45639>,
+				<&a_wf12_emlsr_bt0_qm45639>;
 
 			layout-spdt =
-				<&sku2_spdt_a1_a2_tx>,
-				<&sku2_spdt_a1_a2_rx>,
-				<&sku2_sp3t_g0_ipa>,
-				<&sku2_sp3t_g1_ipa>,
+				<&spdt_a1_a2_tx>,
+				<&spdt_a1_a2_rx>,
+				<&sp3t_g0_ipa>,
+				<&sp3t_g1_ipa>,
 				<&spdt_laa_ctrl>;
 
 			common {
@@ -752,16 +752,16 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>,
-				<&sku1_a_wf2_bt0_qm45655>,
-				<&sku1_g_bt1_mxd7282>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_qm45655>,
+				<&g_bt1_mxd7282>;
 
 			layout-spdt =
-				<&sku1_spdt_a2_filter>,
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -789,7 +789,7 @@
 
 
 		/***************************************************************
-		 * [HW][17] SKU1-1 Phone 2ant 2G+2A
+		 * [HW][17] SKU1-1 Phone 2G+2A
 		 **************************************************************/
 		hw-17 {
 			using-fems =
@@ -798,13 +798,13 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
@@ -831,7 +831,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][18] SKU1-1 EVB 2ant 2G+2A
+		 * [HW][18] SKU1-1 EVB 2G+2A
 		 **************************************************************/
 		hw-18 {
 			using-fems =
@@ -840,13 +840,13 @@
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&sku1_g_wf0_bt0_qm42655>,
-				<&sku1_g_wf1_bt1_qm42655>,
-				<&sku1_a_wf0_qm45655>,
-				<&sku1_a_wf1_qm45655>;
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
 
 			layout-spdt =
-				<&sku1_spdt_bt_antswap>;
+				<&spdt_g_bt1_antswap>;
 
 			common {
 				flags {
