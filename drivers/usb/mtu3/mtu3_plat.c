@@ -856,6 +856,10 @@ get_phy:
 	if (ret)
 		dev_info(dev, "failed to parse dp_switch property\n");
 
+	ssusb->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
+	if (ssusb->wakeup_irq == -EPROBE_DEFER)
+		return ssusb->wakeup_irq;
+
 	ssusb->dr_mode = usb_get_dr_mode(dev);
 	if (ssusb->dr_mode == USB_DR_MODE_UNKNOWN)
 		ssusb->dr_mode = USB_DR_MODE_OTG;
@@ -1037,6 +1041,15 @@ static int mtu3_probe(struct platform_device *pdev)
 	ret = ssusb_rscs_init(ssusb);
 	if (ret)
 		goto comm_init_err;
+
+	if (ssusb->wakeup_irq > 0) {
+		ret = dev_pm_set_dedicated_wake_irq_reverse(dev, ssusb->wakeup_irq);
+		if (ret) {
+			dev_info(dev, "failed to set wakeup irq %d\n", ssusb->wakeup_irq);
+			goto comm_exit;
+		}
+		dev_info(dev, "wakeup irq %d\n", ssusb->wakeup_irq);
+	}
 
 	if (IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3_HOST))
 		ssusb->dr_mode = USB_DR_MODE_HOST;
