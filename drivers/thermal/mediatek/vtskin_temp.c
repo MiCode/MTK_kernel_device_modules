@@ -38,8 +38,8 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 			return -EINVAL;
 		}
 
-		tzd = thermal_zone_get_zone_by_name(sensor_name);
-		if (IS_ERR_OR_NULL(tzd) || !tzd->ops->get_temp) {
+		tzd = skin_param[skin_tz->id].tzd[i];
+		if (IS_ERR_OR_NULL(tzd) || !tzd->ops || !tzd->ops->get_temp) {
 			dev_err(skin_data->dev, "get %s temp fail\n", sensor_name);
 			*temp = THERMAL_TEMP_INVALID;
 			return -EINVAL;
