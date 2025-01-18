@@ -782,7 +782,7 @@ static int check_duplicate(unsigned int *volt_thd)
 	return 0;
 }
 
-static int pt_check_power_off(void)
+static int __used pt_check_power_off(void)
 {
 	int ret = 0, pt_power_off_lv = LOW_BATTERY_LEVEL_3;
 	static int pt_power_off_cnt;
@@ -817,7 +817,7 @@ static int pt_check_power_off(void)
 	return ret;
 }
 
-static void pt_set_shutdown_condition(void)
+static void __used pt_set_shutdown_condition(void)
 {
 	static struct power_supply *bat_psy;
 	union power_supply_propval prop;

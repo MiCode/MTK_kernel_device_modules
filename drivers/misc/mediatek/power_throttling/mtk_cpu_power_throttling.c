@@ -102,7 +102,7 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 	}
 }
 #endif
-static void cpu_limit_default_setting(struct device *dev, enum cpu_pt_type type)
+static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_type type)
 {
 	struct device_node *np = dev->of_node;
 	int i, max_lv, ret;
@@ -137,7 +137,7 @@ static void cpu_limit_default_setting(struct device *dev, enum cpu_pt_type type)
 			sizeof(u32) * CLUSTER_NUM);
 	}
 }
-static int parse_cpu_limit_table(struct device *dev)
+static int __used parse_cpu_limit_table(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	int i, j, num, ret;
