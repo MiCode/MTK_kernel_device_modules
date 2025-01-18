@@ -3210,7 +3210,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb0", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x14003000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <0>;
 		init-power-on;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_DIS>;
@@ -3451,7 +3451,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb2", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x15001000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <2>;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_CAM>;
 		clocks = <&mmsys_config CLK_MM_SMI_IMG>,
@@ -3637,7 +3637,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb1", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
-		mediatek,smi-supply = <&smi_common>;
+		mediatek,smi-supply = <&smi_common 0>;
 		mediatek,larb-id = <1>;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_VCODEC>;
 		clocks = <&vcodecsys CLK_VENC_SET1_VENC>,
