@@ -22,6 +22,8 @@
 	#define MT6989_Y2R0_EN BIT(0)
 #define MT6989_DISP_REG_DISP_Y2R0_RST  0x004
 #define MT6989_DISP_REG_DISP_Y2R0_INTEN  0x008
+	#define MT6989_IF_END_INT_EN BIT(0)
+	#define MT6989_OF_END_INT_EN BIT(1)
 #define MT6989_DISP_REG_DISP_Y2R0_INTSTA  0x00C
 #define MT6989_DISP_REG_DISP_Y2R0_CFG  0x018
 	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP BIT(4)
@@ -197,8 +199,6 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
 			MT6989_Y2R0_EN, MT6989_Y2R0_EN);
-
-	DDPINFO("%s -\n", __func__);
 }
 
 static void mtk_y2r_config(struct mtk_drm_crtc *mtk_crtc,
@@ -239,6 +239,7 @@ static void mtk_y2r_config(struct mtk_drm_crtc *mtk_crtc,
 
 	DDPINFO("%s -\n", __func__);
 }
+
 static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 				 enum mtk_ddp_comp_id prev,
 				 enum mtk_ddp_comp_id next,
@@ -278,7 +279,7 @@ void mtk_y2r_dump(struct mtk_ddp_comp *comp)
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_mt6989_y2r_dump(comp);
 	else {
 		DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
@@ -300,50 +301,55 @@ static void mtk_y2r_discrete_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	unsigned int width = pending->width;
 	unsigned int height = pending->height;
-	struct mtk_drm_private *priv = NULL;
 
-	priv = mtk_crtc->base.dev->dev_private;
+	if (idx == 0)
+		//plane 0 config, need to clear prev atomic commit frame done event
+		mtk_crtc_clr_comp_done(mtk_crtc, handle, comp, 0);
+	else
+		//plane n need to wait prev plane n-1 frame done event
+		mtk_crtc_wait_comp_done(mtk_crtc, handle, comp, 0);
 
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
-		if (idx == 0)
-			//plane 0 config, need to clear prev atomic commit frame done event
-			mtk_crtc_clr_comp_done(mtk_crtc, handle, comp, 0);
-		else
-			//plane n need to wait prev plane n-1 frame done event
-			mtk_crtc_wait_comp_done(mtk_crtc, handle, comp, 0);
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
-			((width << 16) | height), ~0);
-	}
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
+		((width << 16) | height), ~0);
 }
 
 static void mtk_y2r_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct mtk_drm_private *priv = NULL;
 
-	priv = mtk_crtc->base.dev->dev_private;
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991)
+	if (mtk_crtc->path_data->is_discrete_path) {
+		unsigned int val = 0;
+
+		val = MT6989_IF_END_INT_EN | MT6989_OF_END_INT_EN;
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_INTEN,
+				val, val);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
 				MT6989_Y2R0_EN, MT6989_Y2R0_EN);
+	}
 }
 
 static void mtk_y2r_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct mtk_drm_private *priv = NULL;
 
-	priv = mtk_crtc->base.dev->dev_private;
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991)
+	if (mtk_crtc->path_data->is_discrete_path) {
+		unsigned int val = 0;
+
+		val = MT6989_IF_END_INT_EN | MT6989_OF_END_INT_EN;
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
 				0, MT6989_Y2R0_EN);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_INTEN,
+				0, val);
+	}
 }
 
 static void mtk_y2r_prepare(struct mtk_ddp_comp *comp)

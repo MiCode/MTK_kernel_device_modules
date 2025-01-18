@@ -72,9 +72,15 @@
 #define DISP_REG_MDP_RDMA_SRC_OFFSET_1 0x120
 #define DISP_REG_MDP_RDMA_SRC_OFFSET_2 0x128
 
+struct mtk_disp_mdp_rdma_data {
+	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			struct cmdq_pkt *handle, void *data);
+};
+
 struct mtk_disp_mdp_rdma {
 	struct mtk_ddp_comp ddp_comp;
 	struct mtk_drm_gem_obj *fill_gem;
+	const struct mtk_disp_mdp_rdma_data *data;
 	unsigned int underrun_cnt;
 	unsigned int cfg_h;
 };
@@ -187,8 +193,11 @@ int mtk_mdp_rdma_analysis(struct mtk_ddp_comp *comp)
 static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
+	const struct mtk_disp_mdp_rdma_data *data = mdp_rdma->data;
 	struct mtk_drm_private *priv = NULL;
 	unsigned int val;
+	bool en = 1;
 
 	if (!mtk_crtc) {
 		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
@@ -197,8 +206,10 @@ static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 	priv = mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991)
+	if (data && data->sodi_config)
+		data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
+
+	if (mtk_crtc->path_data->is_discrete_path)
 		mtk_ddp_write_mask(comp, COMMAND_DIV,
 			DISP_REG_MDP_RDMA_GMCIF_CON, COMMAND_DIV, handle);
 
@@ -213,6 +224,13 @@ static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 static void mtk_mdp_rdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_mdp_rdma *mdp_rdma = comp_to_mdp_rdma(comp);
+	const struct mtk_disp_mdp_rdma_data *data = mdp_rdma->data;
+	bool en = 0;
+
+	if (data && data->sodi_config)
+		data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
+
 	mtk_ddp_write(comp, 0, DISP_REG_MDP_RDMA_INT_ENABLE, handle);
 	mtk_ddp_write_mask(comp, 0,
 		DISP_REG_MDP_RDMA_EN, ROT_ENABLE, handle);
@@ -717,7 +735,9 @@ static int mtk_disp_mdp_rdma_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-//	priv->data = of_device_get_match_data(dev);
+	priv->data = of_device_get_match_data(dev);
+	if (priv->data == NULL)
+		dev_err(dev, "priv->data is NULL\n");
 
 	platform_set_drvdata(pdev, priv);
 
@@ -744,10 +764,15 @@ static int mtk_disp_mdp_rdma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct mtk_disp_mdp_rdma_data mt6991_mdp_rdma_driver_data = {
+	.sodi_config = mt6991_mtk_sodi_config,
+};
+
 static const struct of_device_id mtk_disp_mdp_rdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6985-disp-mdp-rdma",},
 	{.compatible = "mediatek,mt6989-disp-mdp-rdma",},
-	{.compatible = "mediatek,mt6991-disp-mdp-rdma",},
+	{.compatible = "mediatek,mt6991-disp-mdp-rdma",
+		.data = &mt6991_mdp_rdma_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_mdp_rdma_driver_dt_match);
