@@ -46,6 +46,7 @@ struct mbraink_sys_res_mbrain_dbg_ops {
 	int (*get_over_threshold_num)(void *addr, uint32_t size,
 		uint32_t *thr, uint32_t thr_num);
 	int (*get_over_threshold_data)(void *addr, uint32_t size);
+	int (*update)(void);
 };
 
 struct mbraink_sys_res_mbrain_dbg_ops *get_mbraink_dbg_ops(void);
