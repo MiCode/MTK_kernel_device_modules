@@ -1213,7 +1213,7 @@ static void mtk_jpeg_enc_device_run(void *priv)
 	 * Resetting the hardware every frame is to ensure that all the
 	 * registers are cleared. This is a hardware requirement.
 	 */
-	if (jpeg->gcon_base != NULL && jpeg->fake34bits)
+	if (jpeg->gcon_base != NULL && jpeg->support_34bits == MTK_JPEG_FAKE_34BITS)
 		mtk_jpeg_enc_set_34bits(ctx, jpeg->gcon_base, &dst_buf->vb2_buf);
 	mtk_jpeg_enc_reset(jpeg->reg_base);
 	mtk_jpeg_set_enc_src(ctx, jpeg->reg_base, &src_buf->vb2_buf);
@@ -1393,7 +1393,8 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 		return IRQ_NONE;
 	}
 
-	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base);
+	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base, jpeg->support_34bits);
+	pr_info("%s %d result_size %u\n", __func__, __LINE__, result_size);
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
 
 	buf_state = VB2_BUF_STATE_DONE;
@@ -1720,12 +1721,13 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	jpeg->variant = of_device_get_match_data(jpeg->dev);
 	INIT_DELAYED_WORK(&jpeg->job_timeout_work, mtk_jpeg_job_timeout_work);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,34bits", &jpeg->fake34bits);
+	ret = of_property_read_u32(pdev->dev.of_node, "support-34bits", &jpeg->support_34bits);
+	pr_info("%s  ret: %d  support_34bit: %u", __func__, ret, jpeg->support_34bits);
 	if (ret != 0) {
-		dev_info(&pdev->dev, "default for fake34bits");
-		jpeg->fake34bits = 0;
+		dev_info(&pdev->dev, "default for support-34bits");
+		jpeg->support_34bits = MTK_JPEG_SUPPORT_34BITS;
 	}
-	dev_info(&pdev->dev, "use 34bits %d", jpeg->fake34bits);
+	dev_info(&pdev->dev, "use 34bits %d", jpeg->support_34bits);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(jpeg->reg_base)) {
@@ -1733,7 +1735,7 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (jpeg->fake34bits) {
+	if (jpeg->support_34bits == MTK_JPEG_FAKE_34BITS) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
 		jpeg->gcon_base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(jpeg->gcon_base)) {

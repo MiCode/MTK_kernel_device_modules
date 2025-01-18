@@ -57,6 +57,17 @@ enum mtk_jpeg_ctx_state {
 	MTK_JPEG_RUNNING,
 	MTK_JPEG_SOURCE_CHANGE,
 };
+/**
+ * enum mtk_jpeg_support_34bits - value of support 34bits
+ * @MTK_JPEG_NON_SUPPORT_34bits:		legacy low-end chip is 0
+ * @MTK_JPEG_SUPPORT_34bits:		not define in dts default is 1
+ * @MTK_JPEG_FAKE_34bits:	mt6835(fake34bits feature) is 2
+ */
+enum mtk_jpeg_support_34bits {
+	MTK_JPEG_NON_SUPPORT_34BITS = 0,
+	MTK_JPEG_SUPPORT_34BITS,
+	MTK_JPEG_FAKE_34BITS,
+};
 
 /**
  * mtk_jpeg_variant - mtk jpeg driver variant
@@ -125,7 +136,7 @@ struct mtk_jpeg_dev {
 	struct clk *jpegenc_mmdvfs_clk;
 	int freq_cnt;
 	unsigned long freqs[MTK_JPEG_MAX_FREQ];
-	u32 fake34bits;
+	enum mtk_jpeg_support_34bits support_34bits;
 	struct device *smmu_dev;
 };
 
