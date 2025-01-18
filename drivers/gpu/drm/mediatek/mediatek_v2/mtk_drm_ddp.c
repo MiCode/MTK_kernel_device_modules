@@ -965,6 +965,7 @@
 #define DISP_CHIST_BEFORE_PQ      BIT(1)
 #define MT6985_CHIST_PATH_CONNECT (DISP_CHIST_AFTER_PQ | DISP_CHIST_BEFORE_PQ)
 #define MT6989_CHIST_PATH_CONNECT (DISP_CHIST_AFTER_PQ | DISP_CHIST_BEFORE_PQ)
+#define MT6991_CHIST_PATH_CONNECT (DISP_CHIST_AFTER_PQ | DISP_CHIST_BEFORE_PQ)
 
 #define OVLSYS_INTMERGE		0x008
 #define DISPSYS_INTMERGE	0x008
@@ -1815,6 +1816,8 @@
 
 #define MT6991_DISPSYS_BYPASS_MUX_SHADOW 0xC30
 
+#define MT6991_PQ_PATH_SEL 0x34
+
 #define MT6991_PQ_IN_CROSSBAR0_MOUT_EN 0xDD0	//in DLI_RELAY0
 #define MT6991_PQ_IN_CROSSBAR1_MOUT_EN 0xDD4	//in DLI_RELAY1
 #define MT6991_PQ_IN_CROSSBAR2_MOUT_EN 0xDD8	//in DLI_RELAY2
@@ -1854,6 +1857,7 @@
 	#define MT6991_DISP_DITHER0_TO_DISP_PANEL_COMP_OUT_CB7 BIT(7)
 	#define MT6991_DISP_DITHER0_TO_DISP_PANEL_COMP_OUT_CB8 BIT(8)
 	#define MT6991_DISP_DITHER0_TO_DISP_PANEL_COMP_OUT_CB9 BIT(9)
+	#define MT6991_DISP_DITHER0_TO_CHIST0 BIT(10)
 
 #define MT6991_PQ_OUT_CROSSBAR1_MOUT_EN 0xE40
 	#define MT6991_DISP_POSTMASK0_SOUT_TO_DISP_SPR0 BIT(0)
@@ -1928,6 +1932,7 @@
 	#define MT6991_DISP_PQ_IN_CB_TO_DISP_PANEL_COMP_OUT_CB7 BIT(7)
 	#define MT6991_DISP_PQ_IN_CB_TO_DISP_PANEL_COMP_OUT_CB8 BIT(8)
 	#define MT6991_DISP_PQ_IN_CB_TO_DISP_PANEL_COMP_OUT_CB9 BIT(9)
+	#define MT6991_DISP_PQ_IN_CB_TO_CHIST1 BIT(11)
 
 #define MT6991_PANEL_COMP_OUT_CB0_MOUT_EN 0xD80
 	#define MT6991_DISP_SPR0_TO_DLO_RELAY0 BIT(0)
@@ -5537,8 +5542,8 @@ static const unsigned int mt6991_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_POSTMASK1] = MT6991_MUTEX_MOD1_DISP_POSTMASK1,
 	[DDP_COMPONENT_PWM0] = MT6991_MUTEX_MOD1_DISP_PWM0,
 	[DDP_COMPONENT_PWM1] = MT6991_MUTEX_MOD1_DISP_PWM1,
-	[DDP_COMPONENT_MDP_RSZ0] = MT6991_MUTEX_MOD1_MDP_RSZ0,
-	[DDP_COMPONENT_MDP_RSZ1] = MT6991_MUTEX_MOD1_MDP_RSZ1,
+	[DDP_COMPONENT_RSZ0] = MT6991_MUTEX_MOD1_MDP_RSZ0,
+	[DDP_COMPONENT_RSZ1] = MT6991_MUTEX_MOD1_MDP_RSZ1,
 	[DDP_COMPONENT_SPR0] = MT6991_MUTEX_MOD1_DISP_SPR0,
 	[DDP_COMPONENT_TDSHP0] = MT6991_MUTEX_MOD1_DISP_TDSHP0,
 	[DDP_COMPONENT_TDSHP1] = MT6991_MUTEX_MOD1_DISP_TDSHP1,
@@ -20140,25 +20145,6 @@ static int mtk_ddp_mout_en_MT6985(const struct mtk_mmsys_reg_data *data,
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_OUT_CROSSBAR3_MOUT_EN;
 		value = DISP_PQ_IN_CROSSBAR2_TO_PQ_OUT_CHIST1;
-	} else if ((cur == DDP_COMPONENT_GAMMA0 &&
-		next == DDP_COMPONENT_POSTMASK0) ||
-		(cur == DDP_COMPONENT_GAMMA1 &&
-		next == DDP_COMPONENT_POSTMASK1)) {
-		/* PQ_IN_CROSSBAR */
-		*addr = MT6985_PQ_PATH_SEL;
-#if defined(MT6985_FULL_PQ_PATH1)
-		value = PQ_FAST_PATH1;
-#elif defined(MT6985_FULL_PQ_PATH2)
-		value = PQ_FAST_PATH2;
-#elif defined(MT6985_FULL_PQ_PATH3)
-		value = PQ_FAST_PATH3;
-#elif defined(MT6985_FULL_PQ_PATH4)
-		value = PQ_FAST_PATH4;
-#elif defined(MT6985_FULL_PQ_PATH5)
-		value = PQ_FAST_PATH5;
-#elif defined(MT6985_FULL_PQ_PATH6)
-		value = PQ_FAST_PATH6;
-#endif
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -20799,40 +20785,6 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* PQ_OUT_CROSSBAR */
 		*addr = MT6989_PQ_OUT_CROSSBAR4_MOUT_EN;
 		value = MT6989_DISP_PQ_IN_CROSSBAR2_TO_CHIST1;
-	} else if (cur == DDP_COMPONENT_GAMMA0 &&
-		next == DDP_COMPONENT_POSTMASK0) {
-		/* PQ_IN_CROSSBAR */
-		*addr = MT6989_PQ_PATH_SEL;
-#if defined(MT6989_FULL_PQ_PATH1)
-		value = MT6989_PQ_FAST_PATH1;
-#elif defined(MT6989_FULL_PQ_PATH5)
-		value = MT6989_PQ_FAST_PATH5;
-#elif defined(MT6989_FULL_PQ_PATH7)
-		value = MT6989_PQ_FAST_PATH7;
-#elif defined(MT6989_FULL_PQ_PATH10)
-		value = MT6989_PQ_FAST_PATH10;
-#elif defined(MT6989_FULL_PQ_PATH15)
-		value = MT6989_PQ_FAST_PATH15;
-#elif defined(MT6989_FULL_PQ_PATH19)
-		value = MT6989_PQ_FAST_PATH19;
-#endif
-	} else if (cur == DDP_COMPONENT_GAMMA1 &&
-		next == DDP_COMPONENT_POSTMASK1) {
-		/* PQ_IN_CROSSBAR */
-		*addr = MT6989_PQ_PATH_SEL;
-#if defined(MT6989_FULL_PQ_PATH1)
-		value = MT6989_PQ_FAST_PATH1 << 8;
-#elif defined(MT6989_FULL_PQ_PATH5)
-		value = MT6989_PQ_FAST_PATH5 << 8;
-#elif defined(MT6989_FULL_PQ_PATH7)
-		value = MT6989_PQ_FAST_PATH7 << 8;
-#elif defined(MT6989_FULL_PQ_PATH10)
-		value = MT6989_PQ_FAST_PATH10 << 8;
-#elif defined(MT6989_FULL_PQ_PATH15)
-		value = MT6989_PQ_FAST_PATH15 << 8;
-#elif defined(MT6989_FULL_PQ_PATH19)
-		value = MT6989_PQ_FAST_PATH19 << 8;
-#endif
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -21334,10 +21286,34 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_PQ0_OUT_CB6)){
 		*addr = MT6991_PQ_IN_CROSSBAR0_MOUT_EN;
 		value = MT6991_DISP_PQ_IN_TO_PQ_OUT_CB_in6;
+	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_RSZ0)){
+		*addr = MT6991_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = MT6991_DISP_PQ_IN_TO_MDP_RSZ0;
+		if (MT6991_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ)
+			value |= MT6991_DISP_PQ_IN_TO_PQ_OUT_CB_in6;
+	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
+		next == DDP_COMPONENT_SPR0)) {
+		*addr = MT6991_PQ_OUT_CROSSBAR0_MOUT_EN;
+		value = MT6991_DISP_DITHER0_TO_DISP_SPR0;
+		if (MT6991_CHIST_PATH_CONNECT & DISP_CHIST_AFTER_PQ)
+			value |= MT6991_DISP_DITHER0_TO_CHIST0;
 	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
 		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB1)) {
 		*addr = MT6991_PQ_OUT_CROSSBAR6_MOUT_EN;
 		value = MT6991_DISP_PQ_IN_CB_TO_DISP_PANEL_COMP_OUT_CB1;
+	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
+		next == DDP_COMPONENT_SPR0)) {
+		*addr = MT6991_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = MT6991_DISP_PQ_IN_CB_TO_DISP_SPR0;
+	} else if ((cur == DDP_COMPONENT_PANEL0_COMP_OUT_CB0 &&
+		next == DDP_COMPONENT_DLO_ASYNC0)) {
+		*addr = MT6991_PANEL_COMP_OUT_CB0_MOUT_EN;
+		value = MT6991_DISP_SPR0_TO_DLO_RELAY0;
+	} else if ((cur == DDP_COMPONENT_PANEL0_COMP_OUT_CB0 &&
+		next == DDP_COMPONENT_DLO_ASYNC1)) {
+		*addr = MT6991_PANEL_COMP_OUT_CB0_MOUT_EN;
+		value = MT6991_DISP_SPR0_TO_DLO_RELAY1;
 	} else if ((cur == DDP_COMPONENT_PANEL0_COMP_OUT_CB1 &&
 		next == DDP_COMPONENT_DLO_ASYNC1)) {
 		*addr = MT6991_PANEL_COMP_OUT_CB1_MOUT_EN;
@@ -21346,6 +21322,18 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_SPLITTER0_OUT_CB9)) {
 		*addr = MT6991_SPLITTER_IN_CB1_MOUT_EN;
 		value = MT6991_DISP_DLI_RELAY_TO_SPLITTER_OUT_CB9;
+	} else if ((cur == DDP_COMPONENT_POSTALIGN0 &&
+		next == DDP_COMPONENT_SPLITTER0_OUT_CB8)) {
+		*addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		value = MT6991_DISP_POSTALIGN0_TO_SPLITTER_OUT_CB8;
+	} else if ((cur == DDP_COMPONENT_POSTALIGN0 &&
+		next == DDP_COMPONENT_SPLITTER0_OUT_CB9)) {
+		*addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		value = MT6991_DISP_POSTALIGN0_TO_SPLITTER_OUT_CB9;
+	} else if ((cur == DDP_COMPONENT_SPLITTER0_OUT_CB8 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB6)) {
+		*addr = MT6991_SPLITTER_OUT_CB8_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_COMP_OUT_CB6;
 	} else if ((cur == DDP_COMPONENT_SPLITTER0_OUT_CB9 &&
 		next == DDP_COMPONENT_COMP0_OUT_CB6)) {
 		*addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
@@ -21358,6 +21346,10 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_DSI0)) {
 		*addr = MT6991_MERGE_OUT_CB0_MOUT_EN;
 		value = MT6991_DISP_COMP_OUT_CB_TO_DSI0_0;
+	} else if ((MT6991_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ) &&
+		   (cur == DDP_COMPONENT_CHIST0 && next == DDP_COMPONENT_CHIST1)) {
+		*addr = MT6991_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = MT6991_DISP_PQ_IN_CB_TO_CHIST1;
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -21902,25 +21894,6 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_OUT_CROSSBAR3_MOUT_EN;
 		value = DISP_PQ_IN_CROSSBAR2_TO_PQ_OUT_CHIST1;
-	} else if ((cur == DDP_COMPONENT_GAMMA0 &&
-		next == DDP_COMPONENT_POSTMASK0) ||
-		(cur == DDP_COMPONENT_GAMMA1 &&
-		next == DDP_COMPONENT_POSTMASK1)) {
-		/* PQ_IN_CROSSBAR */
-		*addr = MT6985_PQ_PATH_SEL;
-#if defined(MT6897_FULL_PQ_PATH1)
-		value = PQ_FAST_PATH1;
-#elif defined(MT6897_FULL_PQ_PATH2)
-		value = PQ_FAST_PATH2;
-#elif defined(MT6897_FULL_PQ_PATH3)
-		value = PQ_FAST_PATH3;
-#elif defined(MT6897_FULL_PQ_PATH4)
-		value = PQ_FAST_PATH4;
-#elif defined(MT6897_FULL_PQ_PATH5)
-		value = PQ_FAST_PATH5;
-#elif defined(MT6897_FULL_PQ_PATH6)
-		value = PQ_FAST_PATH6;
-#endif
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -23969,7 +23942,6 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 					(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
 		}
-
 		break;
 	case MMSYS_MT6897:
 		addr = MT6897_DISPSYS_BYPASS_MUX_SHADOW;

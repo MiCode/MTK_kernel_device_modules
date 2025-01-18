@@ -4367,6 +4367,19 @@ static void process_dbg_opt(const char *opt)
 
 		mtk_vidle_get_all_flag(&en, &stop);
 		DDPMSG("[vidle_dbg] en: 0x%8x, stop: 0x%8x\n", en, stop);
+	} else if (strncmp(opt, "pq_path_sel:", 12) == 0) {
+		unsigned int path_sel, ret, old_path;
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+
+		ret = sscanf(opt, "pq_path_sel:%u\n", &path_sel);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		old_path = priv->pq_path_sel;
+		if (path_sel > 0)
+			priv->pq_path_sel = path_sel;
+		DDPMSG("[pq_dump] pq_path %u --> %u\n", old_path, priv->pq_path_sel);
 	} else if (strncmp(opt, "pq_dump", 7) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;

@@ -23,9 +23,6 @@
 
 //#define CONFIG_MTK_DISP_NO_LK
 //#define DRM_BYPASS_PQ
-#define MT6985_FULL_PQ_PATH1
-#define MT6897_FULL_PQ_PATH1
-#define MT6989_FULL_PQ_PATH19
 //#define DRM_OVL_SELF_PATTERN
 
 #define MTK_DRM_FENCE_SUPPORT
@@ -178,6 +175,7 @@ struct mtk_drm_private {
 	struct device *mutex_dev;
 	unsigned int dispsys_num;
 	unsigned int ovlsys_num;
+	unsigned int pq_path_sel;
 	void __iomem *config_regs;
 	resource_size_t config_regs_pa;
 	void __iomem *side_config_regs;
