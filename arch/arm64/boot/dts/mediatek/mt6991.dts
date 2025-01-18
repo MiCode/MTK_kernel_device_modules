@@ -196,7 +196,10 @@
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6991 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
-			    firmware_class.path=/vendor/firmware";
+			    firmware_class.path=/vendor/firmware \
+			    cgroup.memory=nosocket,nokmem \
+			    disable_dma32=on \
+			    transparent_hugepage=never";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
 	};
