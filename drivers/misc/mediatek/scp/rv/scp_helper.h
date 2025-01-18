@@ -154,6 +154,7 @@ struct scp_regs {
 	unsigned int ipc_wa;
 	unsigned int read_infra_irq_sta_en;
 	unsigned int scpsys_regmap_en;
+	unsigned int mbrain;
 	struct scp_bus_tracker_status tracker_status;
 };
 
