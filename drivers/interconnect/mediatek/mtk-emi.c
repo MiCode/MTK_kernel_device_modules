@@ -10,8 +10,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/soc/mediatek/mtk_dvfsrc.h>
-#include <dt-bindings/interconnect/mtk,mt8183-emi.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "internal.h"
@@ -142,25 +141,6 @@ DEFINE_MNODE(hrt_mm_mdp, MASTER_HRT_MM_MDP, 0, MASTER_HRT_MMSYS);
 DEFINE_MNODE(hrt_adsp, MASTER_HRT_ADSP, 0, SLAVE_HRT_DDR_EMI);
 DEFINE_MNODE(hrt_dbgif, MASTER_HRT_DBGIF, 0, SLAVE_HRT_DDR_EMI);
 
-static struct mtk_icc_node *mt8183_icc_nodes[] = {
-	[MT8183_SLAVE_DDR_EMI] = &ddr_emi,
-	[MT8183_MASTER_MCUSYS] = &mcusys,
-	[MT8183_MASTER_GPU] = &gpu,
-	[MT8183_MASTER_MMSYS] = &mmsys,
-	[MT8183_MASTER_MM_VPU] = &mm_vpu,
-	[MT8183_MASTER_MM_DISP] = &mm_disp,
-	[MT8183_MASTER_MM_VDEC] = &mm_vdec,
-	[MT8183_MASTER_MM_VENC] = &mm_venc,
-	[MT8183_MASTER_MM_CAM] = &mm_cam,
-	[MT8183_MASTER_MM_IMG] = &mm_img,
-	[MT8183_MASTER_MM_MDP] = &mm_mdp,
-};
-
-static struct mtk_icc_desc mt8183_icc = {
-	.nodes = mt8183_icc_nodes,
-	.num_nodes = ARRAY_SIZE(mt8183_icc_nodes),
-};
-
 static struct mtk_icc_node *mt6873_icc_nodes[] = {
 	[MT6873_SLAVE_DDR_EMI] = &ddr_emi,
 	[MT6873_MASTER_MCUSYS] = &mcusys,
@@ -209,7 +189,6 @@ static struct mtk_icc_desc mt6873_icc = {
 };
 
 static const struct of_device_id emi_icc_of_match[] = {
-	{ .compatible = "mediatek,mt8183-dvfsrc", .data = &mt8183_icc },
 	{ .compatible = "mediatek,mt6873-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6853-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6885-dvfsrc", .data = &mt6873_icc },

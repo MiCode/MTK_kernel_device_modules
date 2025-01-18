@@ -4,7 +4,7 @@
  * Author: Wendy-ST Lin <wendy-st.lin@mediatek.com>
  */
 #include <dt-bindings/interconnect/mtk,mmqos.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/memory/mt6991-larb-port.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
