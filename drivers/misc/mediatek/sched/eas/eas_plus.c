@@ -847,7 +847,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	int pd_idx = cpumask_first(cpus);
 	unsigned long pwr_eff;
 	unsigned long gear_max_util;
-	unsigned long dsu_volt, pd_volt, gear_volt, extern_volt;
+	unsigned long dsu_volt, pd_volt = 0, gear_volt = 0, extern_volt;
 	int dst_idx, shared_buck_mode;
 
 	if (eenv->wl_support) {
@@ -860,14 +860,14 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 		extern_volt = dsu_volt;
 	}
 
-	/* dvfs Vin/Vout */
-	pd_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, max_util);
-
-	dst_idx = (dst_cpu >= 0) ? 1 : 0;
-	gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
-	gear_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, gear_max_util);
-
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
+		/* dvfs Vin/Vout */
+		pd_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, max_util);
+
+		dst_idx = (dst_cpu >= 0) ? 1 : 0;
+		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
+		gear_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, gear_max_util);
+
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
 			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
@@ -888,8 +888,8 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	}
 
 	if (trace_sched_shared_buck_calc_pwr_eff_enabled())
-		trace_sched_shared_buck_calc_pwr_eff(dst_cpu, pd_idx, cpus, pwr_eff,
-			shared_buck_mode, gear_max_util, max_util,
+		trace_sched_shared_buck_calc_pwr_eff(dst_cpu, pd_idx, cpus,
+			eenv->wl_type, pwr_eff, shared_buck_mode, gear_max_util, max_util,
 			gear_volt, pd_volt, dsu_volt, extern_volt);
 
 	return pwr_eff;

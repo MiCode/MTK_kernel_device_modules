@@ -704,14 +704,16 @@ TRACE_EVENT(sched_compute_energy_dsu,
 
 TRACE_EVENT(sched_compute_energy_cpu_dsu,
 
-	TP_PROTO(int dst_cpu, unsigned long cpu_pwr, unsigned long shared_pwr,
+	TP_PROTO(int dst_cpu, unsigned long cpu_pwr,
+		unsigned long shared_pwr_dvfs, unsigned long shared_pwr,
 		unsigned long dsu_pwr, unsigned long sum_pwr),
 
-	TP_ARGS(dst_cpu, cpu_pwr, shared_pwr, dsu_pwr, sum_pwr),
+	TP_ARGS(dst_cpu, cpu_pwr, shared_pwr_dvfs, shared_pwr, dsu_pwr, sum_pwr),
 
 	TP_STRUCT__entry(
 		__field(int, dst_cpu)
 		__field(unsigned long, cpu_pwr)
+		__field(unsigned long, shared_pwr_dvfs)
 		__field(unsigned long, shared_pwr)
 		__field(unsigned long, dsu_pwr)
 		__field(unsigned long, sum_pwr)
@@ -720,14 +722,16 @@ TRACE_EVENT(sched_compute_energy_cpu_dsu,
 	TP_fast_assign(
 		__entry->dst_cpu    = dst_cpu;
 		__entry->cpu_pwr    = cpu_pwr;
+		__entry->shared_pwr_dvfs = shared_pwr_dvfs;
 		__entry->shared_pwr = shared_pwr;
 		__entry->dsu_pwr    = dsu_pwr;
 		__entry->sum_pwr    = sum_pwr;
 		),
 
-	TP_printk("dst_cpu=%d cpu_pwr=%lu share_buck_pd_pwr=%lu dsu_pwr=%lu sum=%lu",
+	TP_printk("dst_cpu=%d cpu_pwr=%lu shared_pwr_dvfs=%lu share_buck_pd_pwr=%lu dsu_pwr=%lu sum=%lu",
 		__entry->dst_cpu,
 		__entry->cpu_pwr,
+		__entry->shared_pwr_dvfs,
 		__entry->shared_pwr,
 		__entry->dsu_pwr,
 		__entry->sum_pwr)

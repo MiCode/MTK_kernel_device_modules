@@ -212,17 +212,18 @@ TRACE_EVENT(sched_calc_pwr_eff,
 TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 
 	TP_PROTO(int dst_cpu, int gear_id, struct cpumask *pd_mask,
-		unsigned long pwr_eff, int shared_buck_mode,
+		int wl_type, unsigned long pwr_eff, int shared_buck_mode,
 		unsigned long gear_max_util, unsigned long pd_max_util,
 		unsigned long gear_volt, unsigned long pd_volt, unsigned long dsu_volt, unsigned long extern_volt),
 
-	TP_ARGS(dst_cpu, gear_id, pd_mask, pwr_eff, shared_buck_mode, pd_max_util, gear_max_util,
+	TP_ARGS(dst_cpu, gear_id, pd_mask, wl_type, pwr_eff, shared_buck_mode, pd_max_util, gear_max_util,
 			gear_volt, pd_volt, dsu_volt, extern_volt),
 
 	TP_STRUCT__entry(
 		__field(int, dst_cpu)
 		__field(int, gear_id)
 		__field(long, cpu_mask)
+		__field(int, wl_type)
 		__field(unsigned long, pwr_eff)
 		__field(int, shared_buck_mode)
 		__field(unsigned long, gear_max_util)
@@ -237,6 +238,7 @@ TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 		__entry->dst_cpu    = dst_cpu;
 		__entry->gear_id    = gear_id;
 		__entry->cpu_mask   = pd_mask->bits[0];
+		__entry->wl_type     = wl_type;
 		__entry->pwr_eff     = pwr_eff;
 		__entry->shared_buck_mode = shared_buck_mode;
 		__entry->gear_max_util   = gear_max_util;
@@ -247,10 +249,11 @@ TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 		__entry->extern_volt   = extern_volt;
 		),
 
-	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx pwr_eff=%lu shared_buck_mode=%d gear_max_util=%lu pd_max_util=%lu gear_volt=%lu pd_volt=%lu dsu_volt=%lu extern_volt=%lu",
+	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx wl_type=%d pwr_eff=%lu shared_buck_mode=%d gear_max_util=%lu pd_max_util=%lu gear_volt=%lu pd_volt=%lu dsu_volt=%lu extern_volt=%lu",
 		__entry->dst_cpu,
 		__entry->gear_id,
 		__entry->cpu_mask,
+		__entry->wl_type,
 		__entry->pwr_eff,
 		__entry->shared_buck_mode,
 		__entry->gear_max_util,
