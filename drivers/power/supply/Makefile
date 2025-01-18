@@ -16,7 +16,6 @@ mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger
 mtk_pd_charging-objs := mtk_pd.o mtk_pd_hal.o
 obj-$(CONFIG_CHARGER_RT9465)	+= rt9465.o
 #obj-$(CONFIG_BATTERY_MT6359P) += mt6359p_battery.o
-#mt6359p_battery-objs := mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mt6359p-gauge.o mtk_battery_daemon.o
 obj-$(CONFIG_DEVICE_MODULES_CHARGER_MT6360) += mt6360_charger.o
 obj-$(CONFIG_DEVICE_MODULES_CHARGER_MT6370)	+= mt6370-charger.o
 obj-$(CONFIG_DEVICE_MODULES_CHARGER_MT6360)	+= mt6360_pmu_chg.o
@@ -32,6 +31,8 @@ endif
 mtk_battery_manager-objs := mtk-battery-manager.o mtk_battery_interface.o
 mt6358_battery-objs := mt6358-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
 obj-$(CONFIG_BATTERY_MT6358) += mtk_battery_manager.o mt6358_battery.o
+mt6359p_battery-objs := mt6359p-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
+obj-$(CONFIG_BATTERY_MT6359P) += mtk_battery_manager.o mt6359p_battery.o
 mt6375-battery-objs := mt6375-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
 obj-$(CONFIG_GAUGE_MT6375) += mtk_battery_manager.o mt6375-battery.o
 mt6379-battery-objs := mt6379-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
