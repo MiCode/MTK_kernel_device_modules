@@ -7699,7 +7699,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		apusys_rv: apusys-rv@4c200000 {
 			compatible = "mediatek,mt6991-apusys_rv";
-			status = "disabled";
+			status = "okay";
 			reg = <0 0x4c200000 0 0xfffff>,
 				  <0 0x19001000 0 0x1000>,
 				  <0 0x19002000 0 0x10>,
@@ -7716,8 +7716,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"md32_tcm",
 					"md32_debug_apb",
 					"apu_rpc";
-			//mtk,iommu-group = <&apu_iommu_group_0>;
-			//iommus = <&apu_smmu 9>;
+			mtk,iommu-group = <&apu_iommu_group_0>;
+			iommus = <&apu_smmu 9>;
 			interrupts = <GIC_SPI 629 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 638 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 639 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7748,6 +7748,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			apu-apummu {
 				compatible = "mediatek,apu-apummu-rpmsg";
 				mtk,rpmsg-name = "apu-apummu-rpmsg";
+			};
+			apu-apummu-rx {
+				compatible = "mediatek,apu-apummu-rx";
+				mtk,rpmsg-name = "apu-apummu-rx";
 			};
 			apu-edma {
 				compatible = "mediatek,apu-edma-rpmsg";
@@ -7805,18 +7809,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		apusys_hw_logger: apusys-hw-logger@19024000 {
 			compatible = "mediatek,apusys_hw_logger";
-			status = "disabled";
+			status = "okay";
 			reg = <0 0x19024000 0 0x1000>,
-				<0 0x190e1000 0 0x2000>;
+				<0 0x4c200000 0 0xfffff>;
 			reg-names = "apu_logtop",
 					"apu_mbox";
 			interrupts = <GIC_SPI 632 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "apu_logtop";
-			//mtk,iommu-group = <&apu_iommu_group_0>;
-			//iommus = <&apu_smmu 12>;
-			aov-log-buf-sz = <0x0>;
-			enable-interrupt = <0x0>;
-			access-rcx-in-atf = <0x0>;
+			mtk,iommu-group = <&apu_iommu_group_0>;
+			iommus = <&apu_smmu 12>;
+			aov-log-buf-sz = <0x100000>;
+			enable-interrupt = <0x1>;
+			access-rcx-in-atf = <0x1>;
 			interrupt-lbc-sz = <0x80000>;
 		};
 
