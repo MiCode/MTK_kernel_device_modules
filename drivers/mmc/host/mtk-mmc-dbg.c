@@ -1043,7 +1043,6 @@ void mmc_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 {
 	unsigned long free_size = MMC_AEE_BUFFER_SIZE;
 	char *buff;
-	struct msdc_host *msdc_host = NULL;
 
 	if (!mmc_aee_buffer) {
 		pr_info("failed to dump MMC: null AEE buffer");
@@ -1054,14 +1053,7 @@ void mmc_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 	msdc_dump_host_state(&buff, &free_size, NULL);
 	mmc_cmd_dump(&buff, &free_size, NULL, mtk_mmc_host[0], dbg_max_cnt);
 	sd_cmd_dump(&buff, &free_size, NULL, mtk_mmc_host[1], sd_dbg_max_cnt);
-	if (mtk_mmc_host[0]) {
-		msdc_host = mmc_priv(mtk_mmc_host[0]);
-		__msdc_dump_info(&buff, &free_size, NULL, msdc_host);
-	}
-	if (mtk_mmc_host[1]) {
-		msdc_host = mmc_priv(mtk_mmc_host[1]);
-		__msdc_dump_info(&buff, &free_size, NULL, msdc_host);
-	}
+
 	/* return start location */
 	*vaddr = (unsigned long)mmc_aee_buffer;
 	*size = MMC_AEE_BUFFER_SIZE - free_size;
