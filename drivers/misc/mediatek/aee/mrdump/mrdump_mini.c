@@ -125,8 +125,8 @@ static void fill_ko_list(unsigned int idx, struct module *mod)
 		    MAX_KO_NAME_LEN, "%s", mod->name) > 0) {
 		ko_info_list[idx].text_addr = text_addr;
 		ko_info_list[idx].init_text_addr = init_addr;
-		ko_info_list[idx].core_size = mod->core_layout.size;
-		ko_info_list[idx].init_size = mod->init_layout.size;
+		ko_info_list[idx].core_size = mod->mem[MOD_TEXT].size;
+		ko_info_list[idx].init_size = mod->mem[MOD_INIT_TEXT].size;
 		if (build_id_sz && build_id_sz <= LEN_BUILD_ID)
 			memcpy(ko_info_list[idx].build_id, build_id,
 					build_id_sz);
