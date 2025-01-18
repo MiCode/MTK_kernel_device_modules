@@ -63,11 +63,23 @@ enum boot_mode_t {
 	UNKNOWN_BOOT
 };
 
+struct lbat_mbrain {
+	enum LOW_BATTERY_USER_TAG user;
+	unsigned int thd_volt;
+	unsigned int level;
+	int soc;
+	int bat_temp;
+	unsigned int temp_stage;
+};
+
 typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag, void *data);
+typedef void (*low_battery_mbrain_callback)(struct lbat_mbrain lbat_mbrain);
+
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 int register_low_battery_notify(low_battery_callback lb_cb,
 				enum LOW_BATTERY_PRIO_TAG prio_val, void *data);
+int register_low_battery_mbrain_cb(low_battery_mbrain_callback lb_mbrain_cb);
 int lbat_set_ppb_mode(unsigned int mode);
 #endif
 

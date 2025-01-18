@@ -168,6 +168,7 @@ struct battery_oc {
 	unsigned int intr_num;
 	unsigned int oc_cur_level;
 	int ppb_mode;
+	struct battery_oc_mbrain bat_oc_mbrain_info;
 	struct battery_oc_priv *oc_priv[OC_INTR_MAX_NUM];
 };
 
@@ -177,6 +178,7 @@ struct battery_oc_callback_table {
 };
 
 static struct battery_oc_callback_table occb_tb[OCCB_MAX_NUM] = { {0}, {0} };
+static battery_oc_mbrain_callback bat_oc_mbrain_cb;
 static int g_battery_oc_stop;
 static struct battery_oc bat_oc;
 static DEFINE_MUTEX(exe_thr_lock);
@@ -206,6 +208,17 @@ static int __regmap_read(struct regmap *regmap, const struct reg_t *reg,
 	return regmap_bulk_read(regmap, reg->addr, val, reg->size);
 }
 
+int register_battery_oc_mbrain_cb(battery_oc_mbrain_callback cb)
+{
+	if (!cb)
+		return -EINVAL;
+
+	bat_oc_mbrain_cb = cb;
+
+	return 0;
+}
+EXPORT_SYMBOL(register_battery_oc_mbrain_cb);
+
 void register_battery_oc_notify(battery_oc_callback oc_cb,
 				enum BATTERY_OC_PRIO_TAG prio_val, void *data)
 {
@@ -231,6 +244,11 @@ void exec_battery_oc_callback(enum BATTERY_OC_LEVEL_TAG battery_oc_level)
 		for (i = 0; i < OCCB_MAX_NUM; i++) {
 			if (occb_tb[i].occb)
 				occb_tb[i].occb(battery_oc_level, occb_tb[i].data);
+		}
+
+		if (bat_oc_mbrain_cb) {
+			bat_oc.bat_oc_mbrain_info.level = battery_oc_level;
+			bat_oc_mbrain_cb(bat_oc.bat_oc_mbrain_info);
 		}
 		pr_info("[%s] battery_oc_level=%d\n", __func__, battery_oc_level);
 	}
