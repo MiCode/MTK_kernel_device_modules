@@ -2083,7 +2083,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 	static atomic_t event_QedBuffer_cnt, event_3d_fence_cnt, event_hw_vsync;
 	unsigned long ui32IRQFlags;
 
-	if (g_psWorkQueue && is_GED_KPI_enabled) {
+	if (g_psWorkQueue && ged_kpi_enabled()) {
 		struct GED_TIMESTAMP *psTimeStamp = (struct GED_TIMESTAMP *)
 			ged_alloc_atomic(sizeof(struct GED_TIMESTAMP));
 		unsigned int pui32Block, pui32Idle;
@@ -2269,7 +2269,7 @@ GED_ERROR ged_kpi_acquire_buffer_ts(int pid, u64 ullWdnd, int i32FrameID)
 unsigned int ged_kpi_enabled(void)
 {
 #ifdef MTK_GED_KPI
-	return is_GED_KPI_enabled;
+	return is_GED_KPI_enabled && (g_is_bringup == 0);
 #else
 	return 0;
 #endif /* MTK_GED_KPI */

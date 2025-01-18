@@ -3899,7 +3899,7 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	/* initial as locked, signal when vsync_sw_notify */
 #ifdef ENABLE_COMMON_DVFS
-	gpu_dvfs_enable = 1;
+	gpu_dvfs_enable = (g_is_bringup == 1)? 0: 1;
 
 	gpu_util_history_init();
 

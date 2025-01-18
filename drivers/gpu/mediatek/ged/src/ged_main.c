@@ -152,7 +152,8 @@ unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
 unsigned int g_ged_pre_fence_chk;
 unsigned int g_default_log_level;
-
+//Bring up flag
+u32 g_is_bringup;
 
 /******************************************************************************
  * GED File operations
@@ -732,12 +733,13 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-
 	if (g_ged_gpueb_support) {
 		fastdvfs_proc_init();
 		fdvfs_init();
 		GED_LOGI("@%s: fdvfs init done\n", __func__);
-	}
+		g_is_bringup = (g_ged_gpu_freq_notify_support == 0)? 1: 0;
+	} else //Legacy non-gpueb platform
+		g_is_bringup = ged_gpufreq_bringup();
 
 	err = ged_sysfs_init();
 	if (unlikely(err != GED_OK)) {
