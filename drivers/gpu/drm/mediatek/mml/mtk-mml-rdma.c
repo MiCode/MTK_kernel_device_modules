@@ -1444,7 +1444,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 #endif
 
 	/* before everything start, make sure ddr enable */
-	if (ccfg->pipe == 0)
+	if (ccfg->pipe == 0 && cfg->task_ops->ddren)
 		cfg->task_ops->ddren(task, pkt, true);
 
 	if (!write_sec) {
@@ -2109,7 +2109,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
-	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -2135,8 +2135,8 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	rdma_backup_crc(comp, task, ccfg);
 
 	/* after rdma stops read, call ddren to sleep */
-	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, task->pkts[0], false);
+	if (ccfg->pipe == 0 && cfg->task_ops->ddren)
+		cfg->task_ops->ddren(task, task->pkts[0], false);
 
 	return 0;
 }

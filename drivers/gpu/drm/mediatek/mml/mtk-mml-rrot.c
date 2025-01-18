@@ -510,7 +510,7 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	/* calculate binning size and set to frame config */
 	if (rrot->pipe == 0)
-		calc_binning_rot(task->config, ccfg);
+		calc_binning_rot(cfg, ccfg);
 	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
 		rrot_msg("%s rrot%s bin %u %u",
@@ -1153,7 +1153,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 #endif
 
 	/* before everything start, make sure ddr enable */
-	if (ccfg->pipe == 0)
+	if (ccfg->pipe == 0 && cfg->task_ops->ddren)
 		cfg->task_ops->ddren(task, pkt, true);
 
 	/* Enable engine */
@@ -1509,7 +1509,8 @@ static void rrot_config_bottom(struct mml_tile_engine *tile)
 	tile->out.ye += out_top;
 }
 
-static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine *tile)
+static void rrot_calc_unbin(const struct mml_frame_config *cfg,
+	struct mml_tile_engine *tile)
 {
 	if (cfg->bin_x) {
 		u32 in_w = (tile->in.xe - tile->in.xs + 1) << cfg->bin_x;
@@ -1548,8 +1549,8 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 	struct mml_comp_config *ccfg, struct mml_tile_engine *tile_merge)
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
-	const struct mml_frame_dest *dest = &task->config->info.dest[0];
 	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_tile_engine tile = *tile_merge;
 
 	rrot_msg("%s frame in crop %u %u %u %u in %u %u %u %u out %u %u %u %u",
@@ -1631,7 +1632,7 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		}
 	}
 
-	rrot_calc_unbin(task->config, &tile);
+	rrot_calc_unbin(cfg, &tile);
 
 	return tile;
 }
@@ -2005,7 +2006,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const u32 pipe = rrot->pipe;
 
@@ -2026,8 +2027,8 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	rrot_backup_crc(comp, task, ccfg);
 
 	/* after rdma stops read, call ddren to sleep */
-	if (ccfg->pipe == 0)
-		task->config->task_ops->ddren(task, task->pkts[0], false);
+	if (ccfg->pipe == 0 && cfg->task_ops->ddren)
+		cfg->task_ops->ddren(task, task->pkts[0], false);
 
 	if (rrot->data->ddren_off) {
 		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
