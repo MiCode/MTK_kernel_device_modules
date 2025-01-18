@@ -60,7 +60,7 @@ static void ffa_device_remove(struct device *dev)
 		ffa_drv->remove(to_ffa_dev(dev));
 }
 
-static int ffa_device_uevent(struct device *dev, struct kobj_uevent_env *env)
+static int ffa_device_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
 	const struct ffa_device *ffa_dev = to_ffa_dev(dev);
 
