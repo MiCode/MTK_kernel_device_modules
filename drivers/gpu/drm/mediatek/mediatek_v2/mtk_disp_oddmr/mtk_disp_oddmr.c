@@ -464,12 +464,27 @@
 //#define DISP_ODDMR_TOP_CRP_BYPASS			(0x1DB)//bit 0
 
 
-/* DBI: deburn in mt6991 */
-// mt6991 DBI TOP CTL
+/* DBI&DMR in mt6991 */
+// mt6991 DBI&DMR TOP CTL
+#define MT6991_DISP_ODDMR_TOP_CTR_1					0x004
+#define MT6991_DISP_ODDMR_TOP_CTR_2					0x008
 #define MT6991_DISP_ODDMR_TOP_CTR_3					0x00C
 	#define MT6991_REG_ODDMR_BYPASS					REG_FLD_MSB_LSB(0, 0)
 	#define MT6991_REG_BYPASS_SHADOW				REG_FLD_MSB_LSB(5, 5)
 	#define MT6991_REG_ODDMR_TOP_CLK_FORCE_EN		REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_TOP_DMR_BYPASS			0x1C4
+#define MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS			0x1C8
+	#define MT6991_REG_OD_SPR2RGB_BYPASS			REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_REG_SPR2RGB_BYPASS				REG_FLD_MSB_LSB(1, 1)
+#define MT6991_DISP_ODDMR_TOP_CLK_GATING			0x1E0
+#define MT6991_DISP_ODDMR_REG_DMR_UDMA_EN			0x1E4
+	#define MT6991_REG_DMR_UDMA_EN					REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_REG_DBI_UDMA_EN					REG_FLD_MSB_LSB(4, 4)
+#define MT6991_DISP_ODDMR_REG_DMR_CLK_EN			0x10140
+#define MT6991_DISP_ODDMR_REG_DMR_EN				0x10144
+	#define MT6991_REG_DMR_EN						REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_REG_DMR_DBI_EN					REG_FLD_MSB_LSB(1, 1)
+	#define MT6991_REG_DMR_DBI_OUT_CUP_EN			REG_FLD_MSB_LSB(2, 2)
 
 // mt6991 SMI SB
 #define MT6991_DISP_ODDMR_SMI_SB_FLG_DBI				0x05C
@@ -479,6 +494,31 @@
 	#define MT6991_REG_DBI_ULTRA_RE_FRCE				REG_FLD_MSB_LSB(3, 3)
 	#define MT6991_REG_DBI_POACH_CFG_OFF				REG_FLD_MSB_LSB(4, 4)
 	#define MT6991_REG_DBI_RE_ULTRA_MODE				REG_FLD_MSB_LSB(11, 8)
+#define MT6991_DISP_ODDMR_SMI_SB_FLG_DMR				0x060
+	#define MT6991_REG_DMR_PREULTRA_RE_ULTRA_MASK		REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_REG_DMR_PREULTRA_RE_ULTRA_FRCE		REG_FLD_MSB_LSB(1, 1)
+	#define MT6991_REG_DMR_ULTRA_RE_MASK				REG_FLD_MSB_LSB(2, 2)
+	#define MT6991_REG_DMR_ULTRA_RE_FRCE				REG_FLD_MSB_LSB(3, 3)
+	#define MT6991_REG_DMR_POACH_CFG_OFF				REG_FLD_MSB_LSB(4, 4)
+	#define MT6991_REG_DMR_RE_ULTRA_MODE				REG_FLD_MSB_LSB(11, 8)
+#define MT6991_DISP_ODDMR_UDMA_DMR_CTRL21				0xC54
+	#define MT6991_REG_DMR_REQ_PREULTRA_RISE_LV			REG_FLD_MSB_LSB(6, 0)
+	#define MT6991_REG_DMR_REQ_PREULTRA_FORCE_HIGH		REG_FLD_MSB_LSB(7, 7)
+	#define MT6991_REG_DMR_REQ_PREULTRA_FAIL_LV			REG_FLD_MSB_LSB(14, 8)
+	#define MT6991_REG_DMR_REQ_PREULTRA_MASK			REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_UDMA_DMR_CTRL22				0xC58
+	#define MT6991_REG_DMR_REQ_ULTRA_RISE_LV			REG_FLD_MSB_LSB(6, 0)
+	#define MT6991_REG_DMR_REQ_ULTRA_FORCE_HIGH			REG_FLD_MSB_LSB(7, 7)
+	#define MT6991_REG_DMR_REQ_ULTRA_FAIL_LV			REG_FLD_MSB_LSB(14, 8)
+	#define MT6991_REG_DMR_REQ_ULTRA_MASK				REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_UDMA_DMR_CTRL23				0xC5C
+	#define MT6991_REG_DMR_REQ_URGENT_RISE_LV			REG_FLD_MSB_LSB(6, 0)
+	#define MT6991_REG_DMR_REQ_URGENT_FORCE_HIGH		REG_FLD_MSB_LSB(7, 7)
+	#define MT6991_REG_DMR_REQ_URGENT_FAIL_LV			REG_FLD_MSB_LSB(14, 8)
+	#define MT6991_REG_DMR_REQ_URGENT_MASK				REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_UDMA_DMR_CTRL30				0xC6C
+	#define MT6991_REG_DMR_REQ_STASH_LEAD_CNT			REG_FLD_MSB_LSB(3, 0)
+	#define MT6991_REG_DMR_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
 #define MT6991_DISP_ODDMR_UDMA_DBI_CTRL21				0xE54
 	#define MT6991_REG_DBI_REQ_PREULTRA_RISE_LV			REG_FLD_MSB_LSB(6, 0)
 	#define MT6991_REG_DBI_REQ_PREULTRA_FORCE_HIGH		REG_FLD_MSB_LSB(7, 7)
@@ -499,7 +539,8 @@
 	#define MT6991_REG_DBI_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
 
 // mt6991 DBI DDREN CTL
-#define MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL		0x084
+#define MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL			0x084
+#define MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL			0x088
 
 // mt6991 DBI CTL
 #define MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH			0x098
@@ -515,15 +556,15 @@
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1		0x128
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI			0x12C
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI			0x130
+#define MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0		0x144
+#define MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1		0x148
 #define MT6991_DISP_ODDMR_REG_DMR_SPR_MODE				0x154
 	#define MT6991_REG_DMR_SPR_MODE						REG_FLD_MSB_LSB(1, 0)
 	#define MT6991_REG_DMR_DELTA_MODE_EVEN				REG_FLD_MSB_LSB(4, 2)
 	#define MT6991_REG_DMR_DELTA_MODE_ODD				REG_FLD_MSB_LSB(7, 5)
-
 	#define MT6991_REG_OD_SPR_MODE						REG_FLD_MSB_LSB(9, 8) //MT6991 OD mode
 	#define MT6991_REG_OD_DELTA_MODE_EVEN				REG_FLD_MSB_LSB(12, 10) //MT6991 OD mode
 	#define MT6991_REG_OD_DELTA_MODE_ODD				REG_FLD_MSB_LSB(15, 13) //MT6991 OD mode
-
 #define MT6991_DISP_ODDMR_REG_ODDMR_OUTP_EN				0x158
 	#define MT6991_REG_ODDMR_OUTP_EN					REG_FLD_MSB_LSB(0, 0)
 	#define MT6991_REG_ODDMR_OUTP_RST					REG_FLD_MSB_LSB(1, 1)
@@ -531,58 +572,28 @@
 	#define MT6991_REG_ODDMR_INP_EN						REG_FLD_MSB_LSB(4, 4)
 	#define MT6991_REG_ODDMR_INP_RST					REG_FLD_MSB_LSB(5, 5)
 	#define MT6991_REG_ODDMR_INP_1TNP					REG_FLD_MSB_LSB(7, 6)
-#define MT6991_DISP_ODDMR_TOP_DMR_BYPASS				0x1C4
-#define MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS				0x1C8
-	#define MT6991_REG_OD_SPR2RGB_BYPASS				REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_REG_SPR2RGB_BYPASS					REG_FLD_MSB_LSB(1, 1)
-#define MT6991_DISP_ODDMR_REG_DMR_UDMA_EN				0x1E4
-	#define MT6991_REG_DMR_UDMA_EN						REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_REG_DBI_UDMA_EN						REG_FLD_MSB_LSB(4, 4)
 #define MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH			0x10100
 #define MT6991_DISP_ODDMR_REG_DMR_FRAME_HEIGHT			0x10104
 #define MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH		0x10108
 #define MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_HEIGHT		0x1010C
-
-#define MT6991_DISP_ODDMR_REG_DMR_EN			0x10144
-	#define MT6991_REG_DMR_EN					REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_REG_DMR_DBI_EN				REG_FLD_MSB_LSB(1, 1)
-	#define MT6991_REG_DMR_DBI_OUT_CUP_EN		REG_FLD_MSB_LSB(2, 2)
-
-#define MT6991_DISP_ODDMR_REG_PQ_EN							0x10150
-	#define MT6991_REG_DMR_FRAME_SCALER_EN					REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_REG_DMR_OFFSET_MASK_EN					REG_FLD_MSB_LSB(1, 1)
-	#define MT6991_REG_DMR_DBI_DITHER_EN					REG_FLD_MSB_LSB(2, 2)
-	#define MT6991_REG_DMR_DITHER_EN						REG_FLD_MSB_LSB(3, 3)
-#define MT6991_DISP_ODDMR_REG_DMR_REMAP						0x10158
-	#define MT6991_REG_DMR_REMAP_EN							REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_REG_DMR_REMAP_GAIN						REG_FLD_MSB_LSB(20, 8)
-	#define MT6991_REG_DMR_BIAS_EN							REG_FLD_MSB_LSB(24, 24)
-#define MT6991_DISP_ODDMR_REG_DMR_FRAME_SCALER_FOR_DBI_R	0x1015C
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_DBI_R			REG_FLD_MSB_LSB(15, 0)
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_BETA_R			REG_FLD_MSB_LSB(27, 16)
-#define MT6991_DISP_ODDMR_REG_DMR_FRAME_SCALER_FOR_DBI_G	0x1016C
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_DBI_G			REG_FLD_MSB_LSB(15, 0)
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_BETA_G			REG_FLD_MSB_LSB(27, 16)
-#define MT6991_DISP_ODDMR_REG_DMR_FRAME_SCALER_FOR_DBI_B	0x1017C
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_DBI_B			REG_FLD_MSB_LSB(15, 0)
-	#define MT6991_REG_DMR_FRAME_SCALER_FOR_BETA_B			REG_FLD_MSB_LSB(27, 16)
-#define MT6991_DISP_ODDMR_REG_DMR_DBI_RANGE_SEL_R			0x1018C
-	#define MT6991_REG_DMR_DBI_RANGE_SEL_R					REG_FLD_MSB_LSB(1, 0)
-#define MT6991_DISP_ODDMR_REG_DMR_DBI_RANGE_SEL_G			0x10190
-	#define MT6991_REG_DMR_DBI_RANGE_SEL_G					REG_FLD_MSB_LSB(1, 0)
-#define MT6991_DISP_ODDMR_REG_DMR_DBI_RANGE_SEL_B			0x10194
-	#define MT6991_REG_DMR_DBI_RANGE_SEL_B					REG_FLD_MSB_LSB(1, 0)
-#define MT6991_DISP_ODDMR_DMR_SHADOW_CTRL					0x106C8
-	#define MT6991_DMR_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_DMR_FORCE_COMMIT							REG_FLD_MSB_LSB(1, 1)
-	#define MT6991_DMR_READ_WRK_REG							REG_FLD_MSB_LSB(2, 2)
-#define MT6991_DISP_ODDMR_REG_DBI_SCL_HSIZE					0x10708
-#define MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE					0x1070C
-#define MT6991_DISP_ODDMR_REG_DBI_DMR_DBI_LAYER_NUM			0x10730 //bit 0-3
-#define MT6991_DISP_ODDMR_DBI_SHADOW_CTRL					0x10734
-	#define MT6991_DBI_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
-	#define MT6991_DBI_FORCE_COMMIT							REG_FLD_MSB_LSB(1, 1)
-	#define MT6991_DBI_READ_WRK_REG							REG_FLD_MSB_LSB(2, 2)
+#define MT6991_DISP_ODDMR_REG_DMR_REMAP					0x10158
+	#define MT6991_REG_DMR_REMAP_EN						REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_REG_DMR_REMAP_GAIN					REG_FLD_MSB_LSB(20, 8)
+	#define MT6991_REG_DMR_BIAS_EN						REG_FLD_MSB_LSB(24, 24)
+#define MT6991_DISP_ODDMR_DMR_SHADOW_CTRL				0x106C8
+	#define MT6991_DMR_BYPASS_SHADOW					REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_DMR_FORCE_COMMIT						REG_FLD_MSB_LSB(1, 1)
+	#define MT6991_DMR_READ_WRK_REG						REG_FLD_MSB_LSB(2, 2)
+#define MT6991_DISP_ODDMR_REG_DBI_SCL_HSIZE				0x10708
+#define MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE				0x1070C
+#define MT6991_DISP_ODDMR_DBI_SHADOW_CTRL				0x10734
+	#define MT6991_DBI_BYPASS_SHADOW					REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_DBI_FORCE_COMMIT						REG_FLD_MSB_LSB(1, 1)
+	#define MT6991_DBI_READ_WRK_REG						REG_FLD_MSB_LSB(2, 2)
+#define MT6991_DISP_ODDMR_MURA_SHADOW_CTRL				0x108B8
+	#define MT6991_DMR_DECODER_BYPASS_SHADWO			REG_FLD_MSB_LSB(0, 0)
+	#define MT6991_DMR_DECODER_FORCE_COMMIT				REG_FLD_MSB_LSB(1, 1)
+	#define MT6991_DMR_DECODER_READ_WRK_REG				REG_FLD_MSB_LSB(2, 2)
 
 /* mt6991 SPR2RGB */
 #define MT6991_DISP_ODDMR_REG_SPR_COMP_EN			0x10900
@@ -1800,7 +1811,7 @@ static void mtk_oddmr_set_spr2rgb(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_REG_SPR_COMP_EN, pkg);
 		mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_SCALING_6,
 				MT6991_REG_SPR_RGBG_MODE, pkg); //spr_mode for od
-		if (is_oddmr_dbi_support) {
+		if (is_oddmr_dbi_support || is_oddmr_dmr_support) {
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_SPR2RGB_BYPASS);
 			mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS,
 				mask, pkg);
@@ -1929,24 +1940,31 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	ODDMRAPI_LOG("+\n");
 
 	if (oddmr_priv->data->dbi_version == MTK_DBI_V2) {
-		SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+		mtk_oddmr_write(comp, 32, MT6991_DISP_ODDMR_TOP_CTR_1, NULL);
+		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CTR_2, NULL);
+		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 		if (oddmr_priv->data->need_bypass_shadow == true) {
 			SET_VAL_MASK(value, mask, 1, MT6991_REG_BYPASS_SHADOW);
 			mtk_oddmr_write(comp, 3,
 				MT6991_DISP_ODDMR_DBI_SHADOW_CTRL, handle);
 			mtk_oddmr_write(comp, 3,
 				MT6991_DISP_ODDMR_DMR_SHADOW_CTRL, handle);
+			mtk_oddmr_write(comp, 1,
+				MT6991_DISP_ODDMR_MURA_SHADOW_CTRL, handle);
 		} else {
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_BYPASS_SHADOW);
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_DBI_SHADOW_CTRL, handle);
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_DMR_SHADOW_CTRL, handle);
+			mtk_oddmr_write(comp, 0,
+				MT6991_DISP_ODDMR_MURA_SHADOW_CTRL, handle);
 		}
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_BYPASS);
 		mtk_oddmr_write_mask(comp, value,
 			MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 
+		/* ODDMR input&output enable */
 		value = 0;
 		mask = 0;
 		SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_OUTP_EN);
@@ -1989,8 +2007,11 @@ static void mtk_oddmr_relay(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	ODDMRAPI_LOG("+\n");
 
 	if (oddmr_priv->data->dbi_version == MTK_DBI_V2) {
-		/* ODDMR enable */
-		SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+		mtk_oddmr_write(comp, 32, MT6991_DISP_ODDMR_TOP_CTR_1, NULL);
+		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CTR_2, NULL);
+
+		/* ODDMR relay */
+		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 		if (oddmr_priv->data->need_bypass_shadow == true)
 			SET_VAL_MASK(value, mask, 1, MT6991_REG_BYPASS_SHADOW);
 		else
@@ -1998,6 +2019,10 @@ static void mtk_oddmr_relay(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_BYPASS);
 		mtk_oddmr_write_mask(comp, value,
 			MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+
+		/* DMR&DBI clock off*/
+		mtk_oddmr_write(comp, 0,
+			MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 
 		/* ODDMR input&output enable */
 		value = 0;
@@ -2020,12 +2045,6 @@ static void mtk_oddmr_relay(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_HSIZE, handle);
 		mtk_oddmr_write(comp, oddmr_priv->cfg.height,
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
-
-		/* SPR2RGB/OD/DMR bypass */
-		mtk_oddmr_write(comp, 0x1,
-			MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
-		mtk_oddmr_write(comp, 0x3,
-			MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, handle);
 	}
 }
 
@@ -2189,6 +2208,93 @@ static void mtk_oddmr_remap_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_dbi_change_remap_gain(default_comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
 		mtk_oddmr_remap_set_enable(comp, handle, true);
 		mutex_unlock(&g_dbi_data_lock);
+	}
+
+}
+
+static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle)
+{
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = &g_oddmr_priv->dmr_cfg_info;
+	unsigned int dbv_table_idx = 0;
+	unsigned int dbv_node = 0;
+	unsigned int fps_table_idx = 0;
+	unsigned int fps_node = 0;
+	unsigned int dbi_fps_node = 0;
+	unsigned int dbi_dbv_node = 0;
+	dma_addr_t addr = 0;
+	uint32_t value = 0, mask = 0;
+
+	if (is_oddmr_dmr_support == true && g_oddmr_priv->dmr_state == ODDMR_INIT_DONE) {
+		mtk_oddmr_dmr_common_init(comp, handle);
+		if (!(g_oddmr_priv->spr_enable == 0 || g_oddmr_priv->spr_relay == 1)) {
+			if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+				switch(g_oddmr_priv->spr_format) {
+				case MTK_PANEL_RGBG_BGRG_TYPE:
+				case MTK_PANEL_BGRG_RGBG_TYPE:
+					SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_SPR_MODE);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_REG_DMR_SPR_MODE,
+						mask, handle);
+					mtk_oddmr_set_spr2rgb(comp, handle);
+					break;
+				case MTK_PANEL_RGBRGB_BGRBGR_TYPE:
+				case MTK_PANEL_BGRBGR_RGBRGB_TYPE:
+				case MTK_PANEL_RGBRGB_BRGBRG_TYPE:
+				case MTK_PANEL_BRGBRG_RGBRGB_TYPE:
+					SET_VAL_MASK(value, mask, 1, MT6991_REG_SPR2RGB_BYPASS);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS,
+						mask, handle);
+					SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_SPR_MODE);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_REG_DMR_SPR_MODE,
+						mask, handle);
+					SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DELTA_MODE_ODD);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_REG_DMR_SPR_MODE,
+						mask, handle);
+					SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DELTA_MODE_EVEN);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_REG_DMR_SPR_MODE,
+						mask, handle);
+					break;
+				default:
+					break;
+				}
+			} else {
+				mtk_oddmr_set_spr2rgb(comp, handle);
+			}
+		}
+		mtk_oddmr_dmr_smi_dual(handle);
+
+		if(mtk_oddmr_dmr_dbv_lookup(g_oddmr_current_timing.bl_level,
+			dmr_cfg_data, &dbv_table_idx, &dbv_node))
+			ODDMRFLOW_LOG("dmr dbv lookup fail\n");
+		if(mtk_oddmr_dmr_fps_lookup(g_oddmr_current_timing.vrefresh,
+			dmr_cfg_data, &fps_table_idx, &fps_node))
+			ODDMRFLOW_LOG("dmr fps lookup fail\n");
+		atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_node, dbv_node);
+		atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_table_idx, dbv_table_idx);
+		atomic_set(&g_oddmr_priv->dmr_data.cur_fps_node, fps_node);
+		atomic_set(&g_oddmr_priv->dmr_data.cur_fps_table_idx, fps_table_idx);
+
+		mtk_oddmr_dmr_static_cfg(comp, handle, &dmr_cfg_data->static_cfg);
+		mtk_oddmr_dmr_gain_cfg(comp,
+			handle, dbi_dbv_node, dbi_fps_node, dmr_cfg_data);
+		//set dmr table
+		addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
+		if (oddmr_priv->data->dmr_version == MTK_DBI_V2) {
+			mtk_oddmr_write(default_comp, addr >> 4,
+				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, handle);
+			mtk_oddmr_write(default_comp, addr >> 20,
+				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1, handle);
+		} else {
+			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
+			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
+		}
+		mtk_oddmr_set_dmr_enable(comp, g_oddmr_priv->dmr_enable, handle);
 	}
 
 }
@@ -2475,16 +2581,11 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *cmdq_handle0 = NULL;
 	struct cmdq_pkt *cmdq_handle1 = NULL;
 	struct cmdq_client *client = NULL;
-	unsigned int dbv_table_idx = 0;
-	unsigned int dbv_node = 0;
-	unsigned int fps_table_idx = 0;
-	unsigned int fps_node = 0;
-	unsigned int dbi_fps_node = 0;
-	unsigned int dbi_dbv_node = 0;
 
 	dma_addr_t addr = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = &g_oddmr_priv->dmr_cfg_info;
 	unsigned int postalign_en = 0;
+	uint32_t value = 0, mask = 0;
 
 	if (!comp->mtk_crtc || !comp->mtk_crtc->panel_ext || g_oddmr_priv == NULL) {
 		ODDMRFLOW_LOG("comp is invalid-\n");
@@ -2610,32 +2711,7 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 		}
 	}
 
-	if (is_oddmr_dmr_support == true && g_oddmr_priv->dmr_state == ODDMR_INIT_DONE) {
-		mtk_oddmr_dmr_common_init(comp, handle);
-		if (!(g_oddmr_priv->spr_enable == 0 || g_oddmr_priv->spr_relay == 1))
-			mtk_oddmr_set_spr2rgb(comp, handle);
-		mtk_oddmr_dmr_smi_dual(handle);
-
-		if(mtk_oddmr_dmr_dbv_lookup(g_oddmr_current_timing.bl_level,
-			dmr_cfg_data, &dbv_table_idx, &dbv_node))
-			ODDMRFLOW_LOG("dmr dbv lookup fail\n");
-		if(mtk_oddmr_dmr_fps_lookup(g_oddmr_current_timing.vrefresh,
-			dmr_cfg_data, &fps_table_idx, &fps_node))
-			ODDMRFLOW_LOG("dmr fps lookup fail\n");
-		atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_node, dbv_node);
-		atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_table_idx, dbv_table_idx);
-		atomic_set(&g_oddmr_priv->dmr_data.cur_fps_node, fps_node);
-		atomic_set(&g_oddmr_priv->dmr_data.cur_fps_table_idx, fps_table_idx);
-
-		mtk_oddmr_dmr_static_cfg(comp, handle, &dmr_cfg_data->static_cfg);
-		mtk_oddmr_dmr_gain_cfg(comp,
-			handle, dbi_dbv_node, dbi_fps_node, dmr_cfg_data);
-		//set dmr table
-		addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
-		mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
-		mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
-		mtk_oddmr_set_dmr_enable(comp, g_oddmr_priv->dmr_enable, handle);
-	}
+	mtk_oddmr_dmr_config(comp, handle);
 
 	if (g_oddmr_priv->spr_enable == 1 && g_oddmr_priv->spr_relay == 0 &&
 		postalign_en == 0 && mtk_crtc->spr_is_on == 1)
@@ -2643,6 +2719,10 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 
 	mtk_oddmr_dbi_config(comp,handle);
 	mtk_oddmr_remap_config(comp, handle);
+	if (g_oddmr_priv->dbi_enable == 0 && g_oddmr_priv->dmr_enable == 0) {
+		mtk_oddmr_write(comp, 1,
+			MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
+	}
 }
 
 static void mtk_oddmr_dump_od_table(int table_idx)
@@ -3805,23 +3885,45 @@ static void mtk_oddmr_dmr_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	/* dmr */
 	value = 0;
 	mask = 0;
-	SET_VAL_MASK(value, mask, 4, REG_DMR_RE_ULTRA_MODE);
-	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_DMR_8, mask, pkg);
-	buf_size = oddmr->data->dmr_buffer_size;
-	value = ODDMR_READ_IN_PRE_ULTRA(buf_size);//read in pre-ultra
-	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_PREULTRA_RE_IN_THR_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_REG_DMR_PREULTRA_RE_IN_THR_1, 0xFFFF, pkg);
-	value = ODDMR_READ_IN_ULTRA(buf_size);//read in ultra
-	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_ULTRA_RE_IN_THR_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_REG_DMR_ULTRA_RE_IN_THR_1, 0xFFFF, pkg);
-	value = ODDMR_READ_OUT_PRE_ULTRA(buf_size);//read out pre-ultra
-	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_PREULTRA_RE_OUT_THR_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_REG_DMR_PREULTRA_RE_OUT_THR_1, 0xFFFF, pkg);
-	value = ODDMR_READ_OUT_ULTRA(buf_size);//read out ultra
-	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_ULTRA_RE_OUT_THR_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_REG_DMR_ULTRA_RE_OUT_THR_1, 0xFFFF, pkg);
+	if (oddmr->data->dmr_version == MTK_DMR_V2) {
+		SET_VAL_MASK(value, mask, 4, MT6991_REG_DMR_RE_ULTRA_MODE);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_SMI_SB_FLG_DMR, mask, pkg);
+		buf_size = oddmr->data->dmr_buffer_size;
+		value = MT6991_ODDMR_PRE_ULTRA_RISE_LV(buf_size);//pre-ultra rise level
+		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_PREULTRA_RISE_LV);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL21,
+			mask, pkg);
+		value = MT6991_ODDMR_PRE_ULTRA_FAIL_LV(buf_size);//pre-ultra fail level
+		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_PREULTRA_FAIL_LV);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL21,
+			mask, pkg);
+		value = MT6991_ODDMR_ULTRA_RISE_LV(buf_size);//ultra rise level
+		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_ULTRA_RISE_LV);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL22,
+			mask, pkg);
+		value = MT6991_ODDMR_ULTRA_FAIL_LV(buf_size);//ultra fail level
+		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_ULTRA_FAIL_LV);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL22,
+			mask, pkg);
+	} else {
+		SET_VAL_MASK(value, mask, 4, REG_DMR_RE_ULTRA_MODE);
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_DMR_8, mask, pkg);
+		buf_size = oddmr->data->dmr_buffer_size;
+		value = ODDMR_READ_IN_PRE_ULTRA(buf_size);//read in pre-ultra
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_PREULTRA_RE_IN_THR_0, 0xFFFF, pkg);
+		mtk_oddmr_write_mask(comp, value >> 16,
+				DISP_ODDMR_REG_DMR_PREULTRA_RE_IN_THR_1, 0xFFFF, pkg);
+		value = ODDMR_READ_IN_ULTRA(buf_size);//read in ultra
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_ULTRA_RE_IN_THR_0, 0xFFFF, pkg);
+		mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_REG_DMR_ULTRA_RE_IN_THR_1, 0xFFFF, pkg);
+		value = ODDMR_READ_OUT_PRE_ULTRA(buf_size);//read out pre-ultra
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_PREULTRA_RE_OUT_THR_0, 0xFFFF, pkg);
+		mtk_oddmr_write_mask(comp, value >> 16,
+				DISP_ODDMR_REG_DMR_PREULTRA_RE_OUT_THR_1, 0xFFFF, pkg);
+		value = ODDMR_READ_OUT_ULTRA(buf_size);//read out ultra
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_REG_DMR_ULTRA_RE_OUT_THR_0, 0xFFFF, pkg);
+		mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_REG_DMR_ULTRA_RE_OUT_THR_1, 0xFFFF, pkg);
+	}
 }
 
 static void mtk_oddmr_dbi_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
@@ -4234,6 +4336,15 @@ static void mtk_oddmr_dmr_timing_chg_dual(struct mtk_oddmr_timing *timing, struc
 
 		if(fps_table_idx != atomic_read(&g_oddmr_priv->dmr_data.cur_fps_table_idx)) {
 			addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
+			if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+				mtk_oddmr_write(default_comp, addr >> 4,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0, NULL);
+				mtk_oddmr_write(default_comp, addr >> 20,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1, NULL);
+			} else {
+				mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
+				mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
+			}
 			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
 			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
 			atomic_set(&g_oddmr_priv->dmr_data.cur_fps_table_idx, fps_table_idx);
@@ -4370,8 +4481,15 @@ static void mtk_oddmr_dmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 		}
 		if(dbv_table_idx != atomic_read(&g_oddmr_priv->dmr_data.cur_dbv_table_idx)){
 			addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
-			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
-			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
+			if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+				mtk_oddmr_write(default_comp, addr >> 4,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0, NULL);
+				mtk_oddmr_write(default_comp, addr >> 20,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1, NULL);
+			} else {
+				mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
+				mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
+			}
 			atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_table_idx, dbv_table_idx);
 		}
 		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
@@ -4491,9 +4609,16 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 				sum += mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode);
 			else
 				sum += mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode);
-		if (g_oddmr_priv->dmr_enable_req)
-			sum += mtk_oddmr_dmr_bpp(
-					g_dmr_param.dmr_basic_info.basic_param.dmr_table_mode);
+		/* DMR HRT */
+		if (g_oddmr_priv->dmr_enable_req) {
+			temp_hrt = mtk_oddmr_dmr_bpp(
+				g_dmr_param.dmr_basic_info.basic_param.dmr_table_mode);
+			if (g_oddmr_priv->data->dmr_version == MTK_DMR_V2) {
+				/* stash bw = data_bw / 4096 * 16 */
+				temp_hrt += temp_hrt / 256;
+			}
+			sum += temp_hrt;
+		}
 		/* DBI HRT */
 		if (g_oddmr_priv->dbi_enable_req) {
 			temp_hrt = mtk_oddmr_dbi_bpp(
@@ -4793,12 +4918,20 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		dbi_enable = !!bw_val && dbi_enable;
 
 		if (priv->data->respective_ostdl) {
+			/* DMR outstanding */
+			layer_num = mtk_oddmr_dmr_bpp(0);
+			bw_val = ((layer_num * bw_val) / 400) * dmr_enable;
+			/* stash bw = data_bw / 4096 * 16 */
+			bw_val += bw_val / 256;
+			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, bw_val,
+				priv->data->respective_ostdl);
+
+			/* DBI outstanding */
+			bw_val = *(unsigned int *)params;
 			layer_num = mtk_oddmr_dbi_bpp(0);
 			bw_val = ((layer_num * bw_val) / 400) * dbi_enable;
 			/* stash bw = data_bw / 4096 * 16 */
 			bw_val += bw_val / 256;
-			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, dmr_enable,
-				priv->data->respective_ostdl);
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, bw_val,
 				priv->data->respective_ostdl);
 
@@ -4991,11 +5124,62 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle)
 {
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	uint32_t reg_val;
+	unsigned int dsi_line_time = 0;
+	unsigned int stash_lead_time = 12;
+	unsigned int stash_lead_cnt = 0;
+	uint32_t value = 0, mask = 0;
+
 	ODDMRAPI_LOG("+\n");
 
 	mtk_oddmr_dmr_srt_cal(comp, enable);
 
 	if(is_oddmr_dmr_support) {
+		if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
+			if (enable) {
+				reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_EN);
+				mtk_oddmr_write(comp, (reg_val | 1),
+					MT6991_DISP_ODDMR_REG_DMR_EN, handle);
+				reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_UDMA_EN);
+				mtk_oddmr_write(comp, (reg_val | 1),
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, handle);
+				value = 0; mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
+				mtk_oddmr_write(comp, 1,
+					MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				mtk_oddmr_write(comp, 4,
+					MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL, handle);
+
+				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
+				output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+				if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+					mtk_ddp_comp_io_cmd(output_comp, NULL,
+						DSI_GET_LINE_TIME_NS, &dsi_line_time);
+				dsi_line_time /= 1000;
+				stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
+				reg_val = (1 << 8) | stash_lead_cnt;
+				mtk_oddmr_write(comp, reg_val,
+					MT6991_DISP_ODDMR_UDMA_DMR_CTRL30, handle);
+			} else {
+				reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_EN);
+				mtk_oddmr_write(comp, (reg_val | 0),
+					MT6991_DISP_ODDMR_REG_DMR_EN, handle);
+				reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_UDMA_EN);
+				mtk_oddmr_write(comp, (reg_val | 0),
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, handle);
+				mtk_oddmr_write(comp, 9,
+					MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL, handle);
+			}
+			return;
+		}
+
 		if (enable) {
 			//mtk_oddmr_top_prepare(comp, handle);
 			mtk_oddmr_write(comp, 1, DISP_ODDMR_REG_DMR_EN, handle);
@@ -5027,6 +5211,7 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	unsigned int dsi_line_time = 0;
 	unsigned int stash_lead_time = 12;
 	unsigned int stash_lead_cnt = 0;
+	uint32_t value = 0, mask = 0;
 
 	ODDMRAPI_LOG("+\n");
 
@@ -5042,8 +5227,13 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			mtk_oddmr_write(comp, (reg_val | (enable << 4)),
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, handle);
 			if (enable) {
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
+				mtk_oddmr_write(comp, 1,
+					MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
 
@@ -5058,12 +5248,8 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				mtk_oddmr_write(comp, reg_val,
 					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 			} else {
-				mtk_oddmr_write(comp, 1,
-					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 9,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
-				mtk_oddmr_write(comp, 0,
-					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 			}
 			return;
 		}
@@ -5743,12 +5929,18 @@ static int mtk_oddmr_od_user_gain(struct mtk_ddp_comp *comp, struct mtk_drm_oddm
 
 static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+
 	ODDMRAPI_LOG("+\n");
 	/* top */
-	mtk_oddmr_write(comp, 32, DISP_ODDMR_TOP_CTR_1, pkg);
-	mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CTR_2, pkg);
-	mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_DMR_BYASS, pkg);
-	mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CLK_GATING, pkg);
+	if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
+		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CLK_GATING, pkg);
+	} else {
+		mtk_oddmr_write(comp, 32, DISP_ODDMR_TOP_CTR_1, pkg);
+		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CTR_2, pkg);
+		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_DMR_BYASS, pkg);
+		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CLK_GATING, pkg);
+	}
 }
 
 static void mtk_oddmr_dmr_common_init_dual(struct cmdq_pkt *pkg)
@@ -7054,7 +7246,7 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 	if (ret == 0) {
 		mtk_crtc = default_comp->mtk_crtc;
 
-		mtk_oddmr_dmr_common_init_dual(NULL);
+		//mtk_oddmr_dmr_common_init_dual(NULL);
 		mtk_oddmr_set_spr2rgb_dual(NULL);
 		mtk_oddmr_dmr_smi_dual(NULL);
 
@@ -7065,8 +7257,15 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 
 		//set dmr table
 		addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
-		mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
-		mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
+		if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+			mtk_oddmr_write(default_comp, addr >> 4,
+				MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0, NULL);
+			mtk_oddmr_write(default_comp, addr >> 20,
+				MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1, NULL);
+		} else {
+			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
+			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
+		}
 
 		g_oddmr_priv->dmr_state = ODDMR_INIT_DONE;
 		mtk_oddmr_release_clock();
@@ -7662,6 +7861,41 @@ static void mtk_oddmr_odr_get_status(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
 }
 
+static void mtk_oddmr_dmr_ddren_en(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int en)
+{
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	if (en == 1) {
+		GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+		/* get dbi status */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.value = 1;
+		cmdq_pkt_read(handle, NULL,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DMR_EN, var1);
+		cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = var2;
+		rop.value = 1;
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* condition true: DMR enabled, enable dmr ddren */
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL, 4, ~0);
+		GCE_FI;
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL, 9, ~0);
+	}
+}
+
 static void mtk_oddmr_dbi_ddren_en(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int en)
 {
@@ -7718,6 +7952,8 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6991)) {
 			if(is_oddmr_dbi_support)
 				mtk_oddmr_dbi_ddren_en(comp, handle, 1);
+			if(is_oddmr_dmr_support)
+				mtk_oddmr_dmr_ddren_en(comp, handle, 1);
 		}
 	}
 		break;
@@ -7726,6 +7962,8 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6991)) {
 			if (is_oddmr_dbi_support)
 				mtk_oddmr_dbi_ddren_en(comp, handle, 0);
+			if(is_oddmr_dmr_support)
+				mtk_oddmr_dmr_ddren_en(comp, handle, 0);
 		}
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
@@ -8634,12 +8872,13 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.is_od_4_table = true,
 	.p_num = 2,
 	.tile_overhead = 8,
-	.dmr_buffer_size = 458,
+	.dmr_buffer_size = 102,
 	.dbir_buffer_size = 72,
 	.odr_buffer_size = 960,
 	.odw_buffer_size = 960,
 	.irq_handler = mtk_oddmr_check_framedone,
 	.dbi_version = MTK_DBI_V2,
+	.dmr_version = MTK_DMR_V2,
 	.od_version = MTK_OD_V2,
 };
 
