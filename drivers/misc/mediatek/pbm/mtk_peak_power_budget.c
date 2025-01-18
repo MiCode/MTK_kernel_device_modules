@@ -39,6 +39,8 @@ static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
 void __iomem *hpt_ctrl_base;
+void __iomem *gpu_dbg_base;
+void __iomem *cpu_dbg_base;
 struct fg_cus_data fg_data;
 struct power_budget_t pb;
 static struct notifier_block ppb_nb;
@@ -123,6 +125,16 @@ static void __used ppb_write_sram(unsigned int val, int offset)
 	}
 
 	writel(val, (void __iomem *)(ppb_sram_base + offset * 4));
+}
+
+static int dbg_read(void __iomem *reg_base, int offset)
+{
+	if (IS_ERR(reg_base)) {
+		pr_info("reg_base error %p, offset %d\n", reg_base, offset);
+		return 0;
+	}
+
+	return readl(reg_base + offset * 4);
 }
 
 static int __used hpt_ctrl_read(int offset)
@@ -1522,6 +1534,33 @@ static ssize_t mt_hpt_sf_setting_proc_write
 	return count;
 }
 
+static int mt_xpu_dbg_dump_proc_show(struct seq_file *m, void *v)
+{
+	unsigned int val, cpub_len, cpum_len, gpu_len, cpub_cnt, cpum_cnt, gpu_cnt,
+		cpub_th_t, cpum_th_t, gpu_th_t;
+
+	val = dbg_read(cpu_dbg_base, 1);
+	cpub_len = (val >> 16) & 0x3FF;
+	cpub_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 2);
+	cpub_th_t = val;
+	val = dbg_read(cpu_dbg_base, 5);
+	cpum_len = (val >> 16) & 0x3FF;
+	cpum_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 6);
+	cpum_th_t = val;
+	val = dbg_read(gpu_dbg_base, 0);
+	gpu_len = (val >> 16) & 0x3FF;
+	gpu_cnt = val & 0xFFFF;
+	val = dbg_read(gpu_dbg_base, 1);
+	gpu_th_t = val;
+
+	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u\n", cpub_len, cpub_cnt,
+		cpub_th_t, cpum_len, cpum_cnt, cpum_th_t, gpu_len, gpu_cnt, gpu_th_t);
+
+
+	return 0;
+}
 
 #define PROC_FOPS_RW(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
@@ -1563,6 +1602,7 @@ PROC_FOPS_RO(hpt_debug);
 PROC_FOPS_RO(hpt_dump);
 PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
+PROC_FOPS_RO(xpu_dbg_dump);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -1589,6 +1629,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(hpt_dump),
 		PROC_ENTRY(hpt_ctrl),
 		PROC_ENTRY(hpt_sf_setting),
+		PROC_ENTRY(xpu_dbg_dump),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
@@ -1667,6 +1708,22 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		ppb_write_sram(1, HPT_SF_ENABLE);
 		ppb_write_sram(100, HPT_DELAY_TIME);
 	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpu_dbg");
+	addr = devm_ioremap_resource(&pdev->dev, res);
+
+	if (IS_ERR(addr))
+		pr_info("%s:%d gpu_dbg get addr error 0x%p\n", __func__, __LINE__, addr);
+	else
+		gpu_dbg_base = addr;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cpu_dbg");
+	addr = devm_ioremap_resource(&pdev->dev, res);
+
+	if (IS_ERR(addr))
+		pr_info("%s:%d cpu_dbg get addr error 0x%p\n", __func__, __LINE__, addr);
+	else
+		cpu_dbg_base = addr;
 
 	mt_ppb_create_procfs();
 
