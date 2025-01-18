@@ -11110,7 +11110,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	vcp: vcp@31800000 {
 		compatible = "mediatek,vcp";
-		vcp-support = <0>;
+		vcp-support = <1>;
 		status = "okay";
 		reg = <0 0x31800000 0 0x60000>, /* tcm */
 			<0 0x31900000 0 0x1000>, /* bus tracker */
@@ -11188,6 +11188,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		/* id, mbox, send_size*/
 		send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
+			<11 1  2>,/* IPI_OUT_MMQOS */
+			<15 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<16 1 18>,/* IPI_OUT_VENC_0 */
 			<33 1  2>,/* IPI_OUT_MMDVFS_VCP */
 			<22 2  6>,/* IPI_OUT_LOGGER_CTRL_0 */
@@ -11199,6 +11201,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		/* id, mbox, recv_size, recv_opt */
 		recv-table =
 			< 1 0 18 0>,/* IPI_IN_VDEC_1 */
+			<12 1  2 0>,/* IPI_IN_MMQOS */
+			<15 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<17 1 18 0>,/* IPI_IN_VENC_0 */
 			<34 1  2 0>,/* IPI_IN_MMDVFS_VCP */
 			< 5 2  1 0>,/* IPI_IN_VCP_READY_0 */
@@ -11223,7 +11227,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<4 0x400>, /* VENC_SET_PROP_MEM_ID 1KB */
 			<5 0x400>, /* VDEC_VCP_LOG_INFO_ID 1KB */
 			<6 0x400>, /* VENC_VCP_LOG_INFO_ID 1KB */
-			<7 0x100000>, /* GCE_MEM_ID 256*4KB */
 			<8 0x1000>, /* MMDVFS_MEM_ID 4KB */
 			<9 0x1000>, /* MMQOS_MEM_ID 4KB */
 			<10 0x0>; /* secure dump, its size is in secure_dump_size */
@@ -11232,30 +11235,32 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	vcp_io2: vcp-iommu-vdec {
 		compatible =  "mediatek,vcp-io-vdec";
-		vcp-support = <0>;
+		vcp-support = <2>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io3: vcp-iommu-venc {
 		compatible =  "mediatek,vcp-io-venc";
-		vcp-support = <0>;
+		vcp-support = <3>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io4: vcp-iommu-work {
 		compatible = "mediatek,vcp-io-work";
-		vcp-support = <0>;
+		vcp-support = <4>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io5: vcp-iommu-sec {
 		compatible =  "mediatek,vcp-io-sec";
-		vcp-support = <0>;
-		/*mtk,smmu-shared = <&mm_smmu_mmup_protected>;*/
+		vcp-support = <7>;
+		mtk,smmu-shared = <&mm_smmu_hfrp_protected>;
 	};
 
 	mmup: mmup@31a00000 {
 		compatible = "mediatek,mmup";
+		status = "okay";
+		l2tcm-offset = <0x030000>;
 		twohart = <0>;		/* two hart arch */
 		reg = <0 0x31bb0000 0 0x100>, /* mbox0 base, is actully mbox3 hw */
 			<0 0x31bb0100 0 0x4>, /* mbox0 set, is actully mbox3 hw*/
@@ -11279,9 +11284,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		/* id, mbox, send_size*/
 		send-table =
 			< 9 0  2>,/* IPI_OUT_MMDVFS_MMUP */
-			<11 0  2>,/* IPI_OUT_MMQOS */
 			<13 0  2>,/* IPI_OUT_MMDEBUG */
-			<15 0  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<30 1  6>,/* IPI_OUT_LOGGER_CTRL_1 */
 			<20 1  2>,/* IPI_OUT_C_SLEEP_1 */
 			<21 1  3>,/* IPI_OUT_TEST_1 */
@@ -11290,9 +11293,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		/* id, mbox, recv_size, recv_opt */
 		recv-table =
 			<10 0  2 0>,/* IPI_IN_MMDVFS_MMUP */
-			<12 0  2 0>,/* IPI_IN_MMQOS */
 			<14 0  2 0>,/* IPI_IN_MMDEBUG */
-			<15 0  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<26 1  1 0>,/* IPI_IN_VCP_READY_1 */
 			<31 1  6 0>,/* IPI_IN_LOGGER_CTRL_1 */
 			<20 1  1 1>;/* IPI_OUT_C_SLEEP_1 */
@@ -11302,6 +11303,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		interrupt-names = "mbox0",
 			"mbox1";
+
+		mmup-secure-dump = <0>;   /* enable dump via secure world*/
+		mmup-secure-dump-size = <0x200000>;
+		mmup-secure-dump-offset = <0xc00000>;
+
+		memorydump = <0x020000>, /* l1c */
+			<0x003f00>, /* regdump */
+			<0x000100>, /* trace buffer */
+			<0x160000>; /* dram */
 	};
 
 	opp_table_mminfra: opp-table-mminfra {
@@ -11925,14 +11935,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hfrp: mm-smmu-hfrp {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_hfrp";
 		iommus = <&mm_smmu 160>;
 		mtk,iommu-group = <&mm_iommu_group_1>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hfrp_protected: mm-smmu-hfrp-protected {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_hfrp_protected";
 		mtk,iommu-dma-range = <0x1 0x0 0x0 0x40000000>;
 		iommus = <&mm_smmu 161>;
