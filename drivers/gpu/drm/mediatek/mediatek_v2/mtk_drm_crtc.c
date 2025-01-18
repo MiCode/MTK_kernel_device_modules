@@ -12886,9 +12886,9 @@ static void mtk_drm_crtc_release_fence(struct drm_crtc *crtc)
 	}
 
 	/* release present fence */
-	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_PRIMARY ||
-			MTK_SESSION_TYPE(session_id) == MTK_SESSION_EXTERNAL ||
-			MTK_SESSION_TYPE(session_id) == MTK_SESSION_SP) {
+	if (MTK_SESSION_TYPE(session_id) != MTK_SESSION_MEMORY &&
+		MTK_SESSION_TYPE(session_id) >= MTK_SESSION_PRIMARY &&
+		MTK_SESSION_TYPE(session_id) < MTK_SESSION_MAX) {
 		mtk_drm_suspend_release_present_fence(crtc->dev->dev, id);
 		/* TODO: sf present fence is obsolete, should remove corresponding code */
 		/* mtk_drm_suspend_release_sf_present_fence(crtc->dev->dev, id); */

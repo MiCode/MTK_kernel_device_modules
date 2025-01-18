@@ -24,7 +24,7 @@ int mtk_drm_session_create(struct drm_device *dev,
 	int i, idx = -1;
 
 	if (config->type < MTK_SESSION_PRIMARY ||
-			config->type > MTK_SESSION_SP) {
+			config->type >= MTK_SESSION_MAX) {
 		DDPPR_ERR("%s create session type abnormal: %u,\n",
 			__func__, config->type);
 		return -EINVAL;

@@ -5390,9 +5390,13 @@ const struct mtk_session_mode_tb mt6991_mode_tb[MTK_DRM_SESSION_NUM] = {
 				.en = 1,
 				.ddp_mode = {DDP_MINOR, DDP_MAJOR, DDP_NO_USE},
 			},
+
+		// When multi-display (3~10 display), just use SESSION_TRIPLE_DL
 		[MTK_DRM_SESSION_TRIPLE_DL] = {
 
 				.en = 1,
+				// Although ddp_mode array size is MAX_SESSION_COUNT,
+				// it will init to DDP_MAJOR by default, so we do not need to init all element
 				.ddp_mode = {DDP_MAJOR, DDP_MAJOR, DDP_MAJOR},
 			},
 };
@@ -7229,8 +7233,8 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		return ret;
 	} else if (s_type == MTK_SESSION_MEMORY) {
 		return ret;
-	} else if (s_type == MTK_SESSION_SP) {
-		ret = mtk_drm_get_panel_info(dev, info, 3);
+	} else if (s_type >= MTK_SESSION_SP0 && s_type < MTK_SESSION_MAX) {
+		ret = mtk_drm_get_panel_info(dev, info, 3 + (s_type - MTK_SESSION_SP0));
 		return ret;
 	}
 	DDPPR_ERR("invalid session type:0x%08x\n", info->session_id);
