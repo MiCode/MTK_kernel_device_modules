@@ -15,6 +15,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
@@ -35,6 +36,11 @@ mtk_gpufreq_mt6768-y := \
 	gpufreq_history_mt6768.o \
 	gpuppm_legacy.o \
 	gpufreq_mt6768.o
+
+mtk_gpufreq_mt6761-y := \
+	gpufreq_history_mt6761.o \
+        gpuppm_legacy.o \
+	gpufreq_mt6761.o
 
 mtk_gpufreq_mt6893-y := \
 	gpufreq_history_mt6893.o \
@@ -62,3 +68,9 @@ ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6877.c),)
 obj-$(CONFIG_MTK_GPU_MT6877_SUPPORT) += mtk_gpufreq_mt6877.o
 endif
 endif
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6761.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6761.c),)
+obj-$(CONFIG_MTK_GPU_MT6761_SUPPORT) += mtk_gpufreq_mt6761.o
+endif
+endif
+

@@ -1825,12 +1825,12 @@ static void gpufreq_init_external_callback(void)
 
 	/* register PBM callback */
 //todo mark for not ready
-#if IS_ENABLED(CONFIG_MTK_PBM) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_PBM) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_MT6761_SUPPORT)
 	register_pbm_gpu_notify(&pbm_cb);
 #endif /* CONFIG_MTK_PBM */
 
 //todo mark for not ready
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_MT6761_SUPPORT)
 	register_devapc_power_callback(&devapc_cb_gpu);
 	register_devapc_power_callback(&devapc_cb_gpu1);
 #endif /* CONFIG_DEVAPC_ARCH_MULTI */
