@@ -656,6 +656,9 @@ struct mtk_panel_funcs {
 			void *handle, unsigned int flag);
 	int (*get_virtual_heigh)(void);
 	int (*get_virtual_width)(void);
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	int (*get_link_status)(struct drm_panel *panel);
+#endif
 	void (*get_switch_mode_delay)(enum SWITCH_MODE_DELAY **switch_mode_delay,
 		unsigned int mode_num);
 	/**

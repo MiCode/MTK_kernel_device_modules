@@ -34,4 +34,5 @@ void serdes_enable(struct drm_bridge *bridge);
 void serdes_pre_enable(struct drm_bridge *bridge);
 void serdes_disable(struct drm_bridge *bridge);
 void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode);
+int serdes_get_link_status(struct drm_bridge *bridge);
 

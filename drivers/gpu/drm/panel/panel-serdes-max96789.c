@@ -161,6 +161,10 @@ static void get_timing(struct lcm *ctx)
 	} else {
 		ext_params.physical_width = ctx->disp_mode.hdisplay;
 		ext_params.physical_height = ctx->disp_mode.vdisplay;
+		ext_params.crop_width[0] = 0;
+		ext_params.crop_width[1] = 0;
+		ext_params.crop_height[0] = 0;
+		ext_params.crop_height[1] = 0;
 	}
 
 	default_mode.hdisplay = ctx->disp_mode.hdisplay;
@@ -264,9 +268,23 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+static int panel_get_link_status(struct drm_panel *panel)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	pr_info("%s +\n", __func__);
+	return serdes_get_link_status(ctx->bridge);
+	pr_info("%s -\n", __func__);
+}
+#endif
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.ata_check = panel_ata_check,
+#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+	.get_link_status = panel_get_link_status,
+#endif
 };
 
 static int lcm_get_modes(struct drm_panel *panel,
