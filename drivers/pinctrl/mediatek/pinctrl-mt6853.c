@@ -1241,13 +1241,13 @@ static const struct mtk_pin_soc mt6853_data = {
 };
 
 static const struct of_device_id mt6853_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt6853-pinctrl", .data = &mt6853_data },
+	{ .compatible = "mediatek,mt6853-pinctrl", },
 	{ }
 };
 
 static int mt6853_pinctrl_probe(struct platform_device *pdev)
 {
-	return mtk_paris_pinctrl_probe(pdev);
+	return mtk_paris_pinctrl_probe(pdev, &mt6853_data);
 }
 
 static struct platform_driver mt6853_pinctrl_driver = {
