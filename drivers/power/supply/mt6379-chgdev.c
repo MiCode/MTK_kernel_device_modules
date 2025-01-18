@@ -117,7 +117,7 @@ static int mt6379_charger_set_cv(struct mt6379_charger_data *cdata, u32 uV)
 		goto out;
 	}
 
-	if (uV < cdata->cv || uV >= cdata->cv + RECHG_THRESHOLD)
+	if (uV <= cdata->cv || uV >= cdata->cv + RECHG_THRESHOLD)
 		goto out_cv;
 	ret = power_supply_get_property(cdata->psy, POWER_SUPPLY_PROP_STATUS, &val);
 	done = (val.intval == POWER_SUPPLY_STATUS_FULL);
@@ -256,7 +256,7 @@ static int mt6379_get_adc(struct charger_device *chgdev, enum adc_channel chan,
 
 	switch (chan) {
 	case ADC_CHANNEL_VBUS:
-		adc_chan = ADC_CHAN_CHGVINDIV5;
+		adc_chan = ADC_CHAN_CHGVIN;
 		break;
 	case ADC_CHANNEL_VSYS:
 		adc_chan = ADC_CHAN_VSYS;
@@ -271,7 +271,7 @@ static int mt6379_get_adc(struct charger_device *chgdev, enum adc_channel chan,
 		adc_chan = ADC_CHAN_IBAT;
 		break;
 	case ADC_CHANNEL_TEMP_JC:
-		adc_chan = ADC_CHAN_TEMP_JC;
+		adc_chan = ADC_CHAN_TEMPJC;
 		break;
 	case ADC_CHANNEL_USBID:
 		adc_chan = ADC_CHAN_SBU2;
@@ -665,7 +665,7 @@ static int mt6379_enable_chg_type_det(struct charger_device *chgdev, bool en)
 
 #define DUMP_REG_BUF_SIZE	1024
 enum {
-	ADC_DUMP_VBUS, /* CHGVINDIV5 */
+	ADC_DUMP_VBUS = 0, /* CHGVIN */
 	ADC_DUMP_IBUS,
 	ADC_DUMP_VBAT,
 	ADC_DUMP_IBAT,
@@ -678,7 +678,6 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
 	int i = 0, ret = 0, vbus = 0, ibus = 0;
 	u32 val = 0;
-	u16 data = 0;
 	char buf[DUMP_REG_BUF_SIZE] = "\0";
 	static const struct {
 		const char *name;
@@ -699,7 +698,7 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		enum mt6379_adc_chan chan;
 		u32 value;
 	} adcs[ADC_DUMP_MAX] = {
-		{ .chan = ADC_CHAN_CHGVINDIV5, .name = "VBUS", .unit = "mV" },
+		{ .chan = ADC_CHAN_CHGVIN, .name = "VBUS", .unit = "mV" },
 		{ .chan = ADC_CHAN_IBUS, .name = "IBUS", .unit = "mA" },
 		{ .chan = ADC_CHAN_VBAT, .name = "VBAT", .unit = "mV" },
 		{ .chan = ADC_CHAN_IBAT, .name = "IBAT", .unit = "mA" },
@@ -790,21 +789,23 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 	}
 
 	if (cdata->batprotect_en) {
-		ret = regmap_bulk_read(cdata->rmap, MT6379_REG_VBAT_MON_RPT, &data, 2);
-		if (ret < 0)
-			dev_err(cdata->dev, "Failed to get vbat mon rpt\n");
-		else {
-			val = ADC_FROM_VBAT_RAW(be16_to_cpu(data));
-			ret = scnprintf(buf + strlen(buf), DUMP_REG_BUF_SIZE,
-					"VBATCELL = %dmV\n", val);
+		ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &val);
+		if (ret) {
+			dev_info(cdata->dev, "Failed to read VBATMON(ret:%d)\n", ret);
+			return ret;
 		}
+
+		ret = scnprintf(buf + strlen(buf), DUMP_REG_BUF_SIZE,
+				"VBATCELL(VBAT_MON) = %dmV\n", val);
 	}
+
 	for (i = 0; i < ARRAY_SIZE(regs); i++) {
 		ret = regmap_read(cdata->rmap, regs[i].reg, &val);
-		if (ret < 0) {
+		if (ret) {
 			dev_err(cdata->dev, "Failed to read %s\n", regs[i].name);
 			return ret;
 		}
+
 		if (i == ARRAY_SIZE(regs) - 1)
 			ret = scnprintf(buf + strlen(buf), DUMP_REG_BUF_SIZE,
 					"%s = 0x%02x\n", regs[i].name, val);
@@ -847,7 +848,7 @@ static int mt6379_enable_6pin_battery_charging(struct charger_device *chgdev,
 {
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
-	u16 data, batend_code;
+	u16 batend_code;
 	u32 vbat, cv;
 	int ret = 0;
 
@@ -862,29 +863,21 @@ static int mt6379_enable_6pin_battery_charging(struct charger_device *chgdev,
 	if (atomic_read(&cdata->no_6pin_used) == 1)
 		goto dis_pro;
 
-	ret = mt6379_charger_field_set(cdata, F_VBAT_MON_EN, 1);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to enable vbat monitor\n");
-		goto out;
-	}
-	usleep_range(ADC_CONV_TIME_US * 2, ADC_CONV_TIME_US * 3);
 	/* avoid adc too fast, write 0 for make sure read adc succuessfully */
-	regmap_write(cdata->rmap, MT6379_REG_VBAT_MON_RPT, 0);
-	ret = regmap_bulk_read(cdata->rmap, MT6379_REG_VBAT_MON_RPT, &data, 2);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to get vbat monitor report\n");
+	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &vbat);
+	if (ret) {
+		dev_info(cdata->dev, "Failed to read VBATMON(ret:%d)\n", ret);
 		goto dis_mon;
 	}
-	vbat = ADC_FROM_VBAT_RAW(be16_to_cpu(data));
+
 	ret = mt6379_charger_field_get(cdata, F_CV, &cv);
 	if (ret < 0) {
 		dev_err(cdata->dev, "Failed to get cv\n");
 		goto dis_mon;
 	}
-	dev_info(cdata->dev, "%s vbat = %dmV, cv = %dmV\n", __func__, vbat/1000, cv/1000);
+	dev_info(cdata->dev, "%s vbat = %dmV, cv = %dmV\n", __func__, vbat / 1000, cv / 1000);
 	if (vbat >= cv) {
-		dev_warn(cdata->dev, "vbat(%d) >= cv(%d), should not start\n",
-			 vbat, cv);
+		dev_info(cdata->dev, "vbat(%d) >= cv(%d), should not start\n", vbat, cv);
 		goto dis_mon;
 	} else if (vbat <= pdata->pmic_uvlo) {
 		/*
@@ -930,8 +923,6 @@ dis_pro:
 	if (mt6379_charger_field_set(cdata, F_CV, cdata->cv) < 0)
 		dev_notice(cdata->dev, "Failed to set cv\n");
 dis_mon:
-	if (mt6379_charger_field_set(cdata, F_VBAT_MON_EN, 0) < 0)
-		dev_notice(cdata->dev, "Failed to disable vbat monitor\n");
 	cdata->batprotect_en = false;
 out:
 	mutex_unlock(&cdata->cv_lock);

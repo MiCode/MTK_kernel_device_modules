@@ -183,7 +183,7 @@ static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD(F_BATPROTECT_EN, MT6379_REG_CHG_BATPRO, 7, 7),
 	MT6379_CHARGER_FIELD(F_PP_PG_FLAG, MT6379_REG_CHG_TOP1, 7, 7),
 	MT6379_CHARGER_FIELD(F_BATFET_DIS, MT6379_REG_CHG_TOP1, 6, 6),
-	MT6379_CHARGER_FIELD(F_BATFET_DISDLY, MT6379_REG_CHG_TOP1, 4, 5),
+	MT6379_CHARGER_FIELD(F_BATFET_DISDLY, MT6379_REG_CHG_COMP2, 5, 7),
 	MT6379_CHARGER_FIELD(F_QON_RST_EN, MT6379_REG_CHG_TOP1, 3, 3),
 	MT6379_CHARGER_FIELD(F_UUG_FULLON, MT6379_REG_CHG_TOP2, 3, 3),
 	MT6379_CHARGER_FIELD(F_CHG_BYPASS, MT6379_REG_CHG_TOP2, 1, 1),
@@ -232,8 +232,6 @@ static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD_RANGE(F_IRCMP_V, MT6379_REG_CHG_COMP2, 0, 4),
 	MT6379_CHARGER_FIELD(F_IC_STAT, MT6379_REG_CHG_STAT, 0, 3),
 	MT6379_CHARGER_FIELD(F_FORCE_VBUS_SINK, MT6379_REG_CHG_HD_TOP1, 5, 5),
-	MT6379_CHARGER_FIELD(F_VBAT_MON_EN, MT6379_REG_ADC_CONFG1, 5, 5),
-	MT6379_CHARGER_FIELD(F_VBAT_MON2_EN, MT6379_REG_ADC_CONFG1, 4, 4),
 	MT6379_CHARGER_FIELD(F_IS_TDET, MT6379_REG_USBID_CTRL1, 2, 4),
 	MT6379_CHARGER_FIELD(F_ID_RUPSEL, MT6379_REG_USBID_CTRL1, 5, 6),
 	MT6379_CHARGER_FIELD(F_USBID_EN, MT6379_REG_USBID_CTRL1, 7, 7),
@@ -507,6 +505,7 @@ static const struct regulator_desc mt6379_charger_otg_rdesc = {
 	.min_uV = 4850000,
 	.uV_step = 25000,
 	.n_voltages = 287,
+	.linear_min_sel = 20,
 	.vsel_reg = MT6379_REG_CHG_OTG_CV_MSB,
 	.vsel_mask = 0x1FF,
 	.enable_reg = MT6379_REG_CHG_TOP2,
@@ -717,38 +716,15 @@ static int mt6379_get_charger_status(struct mt6379_charger_data *cdata)
 static int mt6379_get_vbat_monitor(struct mt6379_charger_data *cdata,
 				   union power_supply_propval *val)
 {
-	u32 value = 0;
-	u16 data = 0;
+	u32 vbat_mon = 0;
 	int ret = 0;
 
-	mutex_lock(&cdata->cv_lock);
-	ret = mt6379_charger_field_get(cdata, F_VBAT_MON_EN, &value);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Get vbat_mon failed\n");
-		goto out;
-	}
-	if (value) {
-		ret = -EBUSY;
-		dev_notice(cdata->dev, "vbat_mon is enabled\n");
-		goto out;
-	}
-	ret = mt6379_charger_field_set(cdata, F_VBAT_MON_EN, 1);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to enable vbat_mon\n");
-		goto out;
-	}
-	usleep_range(ADC_CONV_TIME_US * 2, ADC_CONV_TIME_US * 3);
-	/* avoid adc run too fast, write rtp first */
-	ret = regmap_write(cdata->rmap, MT6379_REG_VBAT_MON_RPT, 0);
-	ret = regmap_bulk_read(cdata->rmap, MT6379_REG_VBAT_MON_RPT, &data, 2);
-	if (ret < 0)
-		dev_notice(cdata->dev, "Failed to get vbat_mon report\n");
-	else
-		val->intval = ADC_FROM_VBAT_RAW(be16_to_cpu(data));
-	if (mt6379_charger_field_set(cdata, F_VBAT_MON_EN, 0) < 0)
-		dev_notice(cdata->dev, "Failed to disable vbat_mon\n");
-out:
-	mutex_unlock(&cdata->cv_lock);
+	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &vbat_mon);
+	if (ret)
+		dev_info(cdata->dev, "Failed to read VBATMON(ret:%d)\n", ret);
+
+	val->intval = vbat_mon;
+
 	return ret;
 }
 
@@ -940,6 +916,22 @@ static ssize_t shipping_mode_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(shipping_mode);
 
+static ssize_t bypass_iq_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	unsigned int val = 0;
+	int ret = 0;
+
+	ret = regmap_read(cdata->rmap, MT6379_REG_CHG_BYPASS_IQ, &val);
+	if (ret)
+		return ret;
+
+	dev_info(dev, "%s val = 0x%02x\n", __func__, val);
+	return sysfs_emit(buf, "%d uA\n", 20 * (1 + val));
+}
+static DEVICE_ATTR_RO(bypass_iq);
+
 static ssize_t bypass_mode_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -985,6 +977,7 @@ static DEVICE_ATTR_RW(bypass_mode);
 static struct attribute *mt6379_charger_psy_sysfs_attrs[] = {
 	&dev_attr_bypass_mode.attr,
 	&dev_attr_shipping_mode.attr,
+	&dev_attr_bypass_iq.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(mt6379_charger_psy_sysfs); /* mt6379_charger_psy_sysfs_groups */
@@ -1367,9 +1360,8 @@ static int mt6379_charger_apply_pdata(struct mt6379_charger_data *cdata)
 
 static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 {
-	int ret = 0;
-	u32 val = 0;
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
+	int ret = 0;
 
 	/* enable pre-UV function */
 	ret |= mt6379_enable_hm(cdata, true);
@@ -1433,16 +1425,9 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 	 * if it is enabled int dt property ant TA attached
 	 */
 	ret = mt6379_charger_field_set(cdata, F_WDT_EN, 0);
-	if (ret < 0) {
+	if (ret < 0)
 		dev_err(cdata->dev, "Failed to disable WDT\n");
-		return ret;
-	}
-
-	/* if get PP PG Flag faled, just ignore it */
-	ret = mt6379_charger_field_get(cdata, F_PP_PG_FLAG, &val);
-	if (ret >= 0 && val)
-		dev_warn(cdata->dev, "BATSYSUV occurred\n");
-	return mt6379_charger_field_set(cdata, F_PP_PG_FLAG, 1);
+	return ret;
 }
 
 static void mt6379_charger_check_pwr_rdy(struct mt6379_charger_data *cdata)

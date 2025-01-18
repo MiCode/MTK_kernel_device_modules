@@ -30,16 +30,17 @@ enum ufcs_transmit_status {
 
 #define UFCS_MAX_PAYLOAD		61
 
-#define UFCS_HEADER_ROLE_SHIFT	13
-#define UFCS_HEADER_ROLE_MASK	GENMASK(2, 0)
-#define UFCS_HEADER_ID_SHIFT	9
-#define UFCS_HEADER_ID_MASK	GENMASK(3, 0)
-#define UFCS_HEADER_REV_SHIFT	3
-#define UFCS_HEADER_REV_MASK	GENMASK(5, 0)
-#define UFCS_HEADER_TYPE_SHIFT	0
-#define UFCS_HEADER_TYPE_MASK	GENMASK(2, 0)
+#define UFCS_HEADER_ROLE_SHIFT		13
+#define UFCS_HEADER_ROLE_MASK		GENMASK(2, 0)
+#define UFCS_HEADER_ID_SHIFT		9
+#define UFCS_HEADER_ID_MASK		GENMASK(3, 0)
+#define UFCS_HEADER_REV_SHIFT		3
+#define UFCS_HEADER_REV_MASK		GENMASK(5, 0)
+#define UFCS_HEADER_TYPE_SHIFT		0
+#define UFCS_HEADER_TYPE_MASK		GENMASK(2, 0)
 
-#define MAX_SRC_CAP_CNT		7
+#define MAX_SRC_CAP_CNT			7
+#define MAX_EMARK_BYTE_CNT		10
 
 enum ufcs_role {
 	UFCS_SRC = 1,
@@ -124,9 +125,11 @@ union ufcs_dpm_output {
 	};
 	/* Cable info result */
 	struct {
-		u32 milliohm;
-		u32 volt;
-		u32 amp;
+		u16 cbl_vid1;
+		u16 cbl_vid2;
+		u16 cbl_mOhm;
+		u32 cbl_mVolt;
+		u32 cbl_mAmp;
 	};
 	/* Src device info result */
 	struct {
