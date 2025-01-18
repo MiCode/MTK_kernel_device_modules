@@ -198,12 +198,44 @@ struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 }
 EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
+// for mtk em v2
+int mtk_dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl, int *dsu_target_freq)
+{
+	int dsu_freq = pd_cpu_freq2dsu_freq(cpu, max_freq_in_gear, quant, wl);
+		if (*dsu_target_freq < dsu_freq)
+			*dsu_target_freq = dsu_freq;
+		return dsu_freq;
+}
+
+int (*mtk_dsu_freq_agg_hook)(int cpu, int max_freq_in_gear, int quant,
+		int wl, int *dsu_target_freq);
+EXPORT_SYMBOL(mtk_dsu_freq_agg_hook);
+int dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl, int *dsu_target_freq)
+{
+	int dsu_freq;
+
+	if (em_ver() == 3) {
+		if (mtk_dsu_freq_agg_hook)
+			return mtk_dsu_freq_agg_hook(cpu, max_freq_in_gear,
+						quant, wl, dsu_target_freq);
+
+		// if mtk_dsu_freq_agg_hook not ready yet
+		dsu_freq = max_freq_in_gear > 1;
+		if (*dsu_target_freq < dsu_freq)
+			*dsu_target_freq = dsu_freq;
+		return dsu_freq;
+	}
+
+	// for mtk em v2
+	return mtk_dsu_freq_agg(cpu, max_freq_in_gear, quant, wl, dsu_target_freq);
+}
+EXPORT_SYMBOL_GPL(dsu_freq_agg);
+
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl_type = get_em_wl();
-	int dsu_freq;
 	struct cpufreq_mtk *c = policy->driver_data;
 
 	for_each_cpu(cpu_idx, policy->related_cpus)
@@ -232,11 +264,8 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear && cpu_active(cpu_idx))
 				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 
-		dsu_freq = pd_cpu_freq2dsu_freq(cpu, max_freq_in_gear, false, wl_type);
-		freq_state.dsu_freq_vote[i] = dsu_freq;
-
-		if (dsu_target_freq < dsu_freq)
-			dsu_target_freq = dsu_freq;
+		freq_state.dsu_freq_vote[i]
+			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl_type, &dsu_target_freq);
 
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
