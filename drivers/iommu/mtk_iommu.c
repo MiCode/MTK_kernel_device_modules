@@ -2879,6 +2879,14 @@ out:
 		}
 	}
 
+	if (MTK_IOMMU_HAS_FLAG(data->plat_data, PGTABLE_PA_35_EN)) {
+		ret = dma_set_mask(dev, DMA_BIT_MASK(35));
+		if (ret) {
+			dev_info(dev, "Failed to set dma_mask 35.\n");
+			return ret;
+		}
+	}
+
 	/* mt6873, mt6893, mt6983, mt6879 */
 	if (data->plat_data->iommu_type == APU_IOMMU &&
 	    MTK_IOMMU_HAS_FLAG(data->plat_data, LINK_WITH_APU)) {
