@@ -54,6 +54,7 @@
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include <scp.h>
 #endif
+#include "usb_boost.h"
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
 
@@ -70,6 +71,8 @@ struct usb_offload_buffer *buf_seg;
 struct usb_offload_buffer *buf_ev_table;
 struct usb_offload_buffer *buf_ev_ring;
 struct usb_offload_buffer buf_allocated[2];
+
+static bool is_vcore_hold;
 
 unsigned int usb_offload_log;
 module_param(usb_offload_log, uint, 0644);
@@ -218,6 +221,13 @@ static void memory_cleanup(void)
 	if (sram_version == 0x3 && !rsv_region) {
 		fake_sram_pwr_ctrl(false);
 		rsv_region = 0;
+	}
+
+	USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d\n", is_vcore_hold);
+	if (is_vcore_hold) {
+		usb_boost_vcore_control(false);
+		USB_OFFLOAD_INFO("request releasing vcore\n");
+		is_vcore_hold = false;
 	}
 
 	USB_OFFLOAD_MEM_DBG("--\n");
@@ -1507,7 +1517,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			}
 		}
 
-		USB_OFFLOAD_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
 			is_vcore_hold, uainfo->direction, subs->dev->speed);
 		if (uainfo->direction &&
 			subs->dev->speed == USB_SPEED_HIGH) {
@@ -1523,6 +1533,17 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 		USB_OFFLOAD_INFO("hw_free, ret: %d\n", ret);
 
 		msg.uainfo.direction = uainfo->direction;
+
+		USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d dir:%d speed:%d\n",
+			is_vcore_hold, uainfo->direction, subs->dev->speed);
+		if (uainfo->direction &&
+			subs->dev->speed == USB_SPEED_HIGH) {
+			if (is_vcore_hold) {
+				usb_boost_vcore_control(false);
+				USB_OFFLOAD_INFO("request releasing vcore\n");
+				is_vcore_hold = false;
+			}
+		}
 	}
 	mutex_unlock(&uodev->dev_lock);
 
@@ -3040,6 +3061,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->event_ring = NULL;
 	uodev->erst = NULL;
 	uodev->num_entries_in_use = 0;
+	is_vcore_hold = false;
 	uodev->backup_erst = NULL;
 	uodev->backup_ev_ring = NULL;
 	ir_lost = false;
