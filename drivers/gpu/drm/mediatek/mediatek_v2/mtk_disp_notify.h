@@ -28,5 +28,8 @@ int mtk_disp_notifier_call_chain(unsigned long val, void *v);
 int mtk_disp_sub_notifier_register(const char *source, struct notifier_block *nb);
 int mtk_disp_sub_notifier_unregister(struct notifier_block *nb);
 int mtk_disp_sub_notifier_call_chain(unsigned long val, void *v);
+int mtk_disp_3rd_notifier_register(const char *source, struct notifier_block *nb);
+int mtk_disp_3rd_notifier_unregister(struct notifier_block *nb);
+int mtk_disp_3rd_notifier_call_chain(unsigned long val, void *v);
 
 #endif
