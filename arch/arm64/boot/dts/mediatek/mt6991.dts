@@ -18050,6 +18050,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		#cooling-cells = <2>;
 	};
 
+	fan_cooler: fan-cooler {
+		compatible = "mediatek,fan-cooler";
+		#cooling-cells = <2>;
+		status = "disabled";
+	};
+
 	therm_intf: therm-intf@114000 {
 		compatible = "mediatek,therm_intf";
 		reg = <0 0x00114000 0 0x400>,
