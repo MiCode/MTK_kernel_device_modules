@@ -8,7 +8,6 @@
 #include <linux/of.h>
 #include "mkp_module.h"
 #include "mkp_api.h"
-#include <linux/module.h>
 
 #define DRV_NUM_MAX 128
 static const char *drv_skip_list[DRV_NUM_MAX] __ro_after_init;
@@ -60,7 +59,6 @@ void module_enable_ro(const struct module *mod, bool after_init, uint32_t policy
 	module_set_memory(mod, MOD_TEXT, HELPER_MAPPING_RO, policy);
 	module_set_memory(mod, MOD_RODATA, HELPER_MAPPING_RO, policy);
 }
-
 void module_enable_nx(const struct module *mod, uint32_t policy)
 {
 	module_set_memory(mod, MOD_RODATA, HELPER_MAPPING_NX, policy);

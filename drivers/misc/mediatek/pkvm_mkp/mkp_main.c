@@ -31,17 +31,17 @@ static int __init mkp_init(void)
 	// Get pkvm dts node
 	node = of_find_node_by_name(NULL, "pkvm");
 	if (!node) {
-		pr_info("[MKP] Cannot find pkvm node, failed to initialize pkvm mkp\n");
+		pr_info("Cannot find pkvm node, failed to initialize pkvm mkp\n");
 		return 0;
 	}
 
 	of_property_read_string(node, "status", &pkvm_status);
 	if (strncmp(pkvm_status, "okay", sizeof("okay"))) {
-		pr_info("[MKP] pkvm is disabled\n");
+		pr_info("pkvm is disabled\n");
 		return 0;
 	}
 
-	pr_info("[MKP] pkvm is enabled\n");
+	pr_info("pkvm is enabled\n");
 
 	/* TODO: Preparation for grant ticket */
 

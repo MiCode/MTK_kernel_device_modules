@@ -450,7 +450,7 @@ int mkp_clear_mapping(u32 policy, u32 handle)
 		/* IPA == PA */
 		nr_pages = handle_obj->size >> PAGE_SHIFT;
 		pfn = handle_obj->start >> PAGE_SHIFT;
-		ret = module_ops->host_donate_hyp(pfn, nr_pages);
+		ret = module_ops->host_donate_hyp(pfn, nr_pages, 0);
 
 		/* Update attrset if applied successfully */
 		if (!ret) {

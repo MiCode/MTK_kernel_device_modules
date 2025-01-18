@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (C) 2021 MediaTek Inc.
  */
-#include <asm/kvm_pkvm_module.h>
+
 #include "policy.h"
 
 DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
@@ -12,26 +12,25 @@ DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
 static atomic_t policy_violations[MKP_POLICY_NR];
 static int panic_on __ro_after_init;
 
-int policy_ctrl[MKP_POLICY_NR];	// TODO: __ro_after_init attributes
-
-u32 mkp_policy_action[MKP_POLICY_NR] = {	// TODO: __ro_after_init attributes
+int __ro_after_init policy_ctrl[MKP_POLICY_NR];
+uint32_t __ro_after_init mkp_policy_action[MKP_POLICY_NR] = {
 	/* Policy Table */
 	[MKP_POLICY_MKP]		= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | NO_UPGRADE_TO_EXEC | HANDLE_PERMANENT | ACTION_PANIC),
 	[MKP_POLICY_DRV]		= (NO_MAP_TO_DEVICE | ACTION_PANIC),
-	[MKP_POLICY_SELINUX_STATE]	= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | ACTION_PANIC),
+	[MKP_POLICY_SELINUX_STATE]  = (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | ACTION_PANIC),
 	[MKP_POLICY_SELINUX_AVC]	= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | SB_ENTRY_DISORDERED | ACTION_WARNING),
-	[MKP_POLICY_TASK_CRED]		= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | SB_ENTRY_ORDERED | ACTION_WARNING),
+	[MKP_POLICY_TASK_CRED]	  	= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | SB_ENTRY_ORDERED | ACTION_WARNING),
 	[MKP_POLICY_KERNEL_CODE]	= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | ACTION_WARNING),
-	[MKP_POLICY_KERNEL_RODATA]	= (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | ACTION_WARNING),
-	[MKP_POLICY_KERNEL_PAGES]	= (0x0 | ACTION_NOTIFICATION),
+	[MKP_POLICY_KERNEL_RODATA]  = (NO_MAP_TO_DEVICE | NO_UPGRADE_TO_WRITE | HANDLE_PERMANENT | ACTION_WARNING),
+	[MKP_POLICY_KERNEL_PAGES]   = (0x0 | ACTION_NOTIFICATION),
 	[MKP_POLICY_PGTABLE]		= (0x0),
 	[MKP_POLICY_S1_MMU_CTRL]	= (0x0),
 	[MKP_POLICY_FILTER_SMC_HVC]	= (0x0),
 };
-
-void set_policy(u32 policy)	// TODO: __init attribute
+void __init set_policy(u32 policy)
 {
-	memset(policy_ctrl, 0, MKP_POLICY_NR * sizeof(int));
+	MKP_INFO("MKP: set policy start...\n");
+	memset(policy_ctrl, 0, MKP_POLICY_NR*sizeof(int));
 
 	/* default enable all policy */
 	/* MKP default policies (0 ~ 15) */
@@ -49,6 +48,7 @@ void set_policy(u32 policy)	// TODO: __init attribute
 
 	/* Policies for vendors start from here (16 ~ 31) */
 	policy_ctrl[MKP_POLICY_VENDOR_START] = policy & BIT(MKP_POLICY_VENDOR_START);
+	MKP_INFO("MKP: set policy Done\n");
 }
 
 int __init set_ext_policy(uint32_t policy)
@@ -65,9 +65,15 @@ int __init set_ext_policy(uint32_t policy)
 	return 0;
 }
 
+void __init enable_action_panic(void)
+{
+	pr_info("%s: enable mkp panic\n", __func__);
+	panic_on = 1;
+}
+
 static void do_policy_action_panic(uint32_t policy)
 {
-	pr_info("%s for policy:%u\n", __func__, policy);
+	pr_alert("%s for policy:%u\n", __func__, policy);
 
 	/* Is action_panic enabled */
 	if (!panic_on)
@@ -79,7 +85,7 @@ static void do_policy_action_panic(uint32_t policy)
 
 static void do_policy_action_warning(uint32_t policy)
 {
-	pr_info("%s for policy:%u\n", __func__, policy);
+	pr_alert("%s for policy:%u\n", __func__, policy);
 
 	/* Is action_panic enabled */
 	if (!panic_on)
