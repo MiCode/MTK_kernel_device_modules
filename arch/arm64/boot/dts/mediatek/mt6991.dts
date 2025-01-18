@@ -15359,6 +15359,20 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mtk,smmu-shared = <&mm_smmu_acp_codec>;
 	};
 
+	vcp_io9: vcp-iommu-sentrymode {
+		compatible = "mediatek,vcp-io-sentrymode";
+		vcp-support = <10>;
+		mtk,smmu-shared = <&mm_smmu_vencsentrymode>;
+		status = "disabled";
+	};
+
+	vcp_io10: vcp-iommu-sentrymode-extra {
+		compatible = "mediatek,vcp-io-sentrymode_extra";
+		vcp-support = <11>;
+		mtk,smmu-shared = <&mm_smmu_vencsentrymode_extra>;
+		status = "disabled";
+	};
+
 	slbc: slbc@117800 {
 		compatible = "mediatek,mtk-slbc";
 		reg = <0 0x00117800 0 0x400>;
@@ -16210,12 +16224,21 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		iommus = <&mm_smmu 161>;
 		smmu-supply = <&mm_smmu>;
 	};
+
 	mm_smmu_imgsyssentrymode: mm-smmu-imgsyssentrymode {
 		compatible = "mediatek,smmu-share-group";
 		iommus = <&mm_smmu 140>;
 		mtk,smmu-dma-mode = "disable";
 		status = "disabled";
 	};
+
+	mm_smmu_vencsentrymode: mm-smmu-vencsentrymode {
+		compatible = "mediatek,smmu-share-group";
+		iommus = <&mm_smmu 163>;
+		mtk,smmu-dma-mode = "disable";
+		status = "disabled";
+	};
+
 	mm_smmu_codec: mm-smmu-codec {
 		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_codec";
@@ -16224,6 +16247,12 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mtk,iommu-group = <&mm_iommu_group_0>;
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
+	};
+	mm_smmu_vencsentrymode_extra: mm-smmu-vencsentrymode-extra {
+		compatible = "mediatek,smmu-share-group";
+		iommus = <&mm_smmu 179>;
+		mtk,smmu-dma-mode = "disable";
+		status = "disabled";
 	};
 	mm_smmu_codec_protected: mm-smmu-codec-protected {
 		compatible = "mediatek,smmu-share-group";
