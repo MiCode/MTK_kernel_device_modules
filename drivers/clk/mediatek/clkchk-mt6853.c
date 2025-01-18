@@ -12,7 +12,7 @@
 
 #include <dt-bindings/power/mt6853-power.h>
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
@@ -417,7 +417,7 @@ static u32 get_vf_num(void)
 #endif
 }
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 /*
  * MT6853: for devapc debug
  */
@@ -570,7 +570,7 @@ void clkchk_set_cfg(void)
 	mtk_clk_check_muxes();
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 }

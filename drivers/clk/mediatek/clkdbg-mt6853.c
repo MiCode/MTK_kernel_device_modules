@@ -12,7 +12,7 @@
 
 #include <dt-bindings/power/mt6853-power.h>
 
-#ifdef CONFIG_MTK_DEVAPC
+#ifdef CONFIG_DEVICE_MODULES_MTK_DEVAPC
 #include <mt-plat/devapc_public.h>
 #endif
 
