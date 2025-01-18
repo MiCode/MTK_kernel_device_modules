@@ -368,8 +368,8 @@ static int smmu_pmu_get_event_idx(struct smmu_pmu *smmu_pmu,
 		err = mtk_smmu_rpm_get(smmu_pmu->smmu_type);
 		if (err) {
 			spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
-			pr_info("%s, pm get fail, smmu:%d.\n",
-				__func__, smmu_pmu->smmu_type);
+			pr_info_ratelimited("%s, pm get fail, smmu:%d.\n",
+					    __func__, smmu_pmu->smmu_type);
 			return -EPERM;
 		}
 		smmu_pmu->take_power = true;
