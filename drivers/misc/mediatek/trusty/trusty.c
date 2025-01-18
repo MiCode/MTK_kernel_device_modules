@@ -56,8 +56,9 @@ static phys_addr_t mcia_paddr;
 static size_t mcia_size;
 
 enum ise_type {
-	ISE_TYPE_SHM = 0,
+	ISE_TYPE_REE_SHM = 0,
 	ISE_TYPE_MCIA,
+	ISE_TYPE_TEE_SHM,
 	ISE_TYPE_NUM,
 };
 
@@ -565,7 +566,7 @@ static int trusty_probe(struct platform_device *pdev)
 	}
 
 	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
-		ISE_MODULE_TRUSTY, ISE_TYPE_SHM, 0, 0, 0, 0, 0, &res);
+		ISE_MODULE_TRUSTY, ISE_TYPE_REE_SHM, 0, 0, 0, 0, 0, &res);
 	if (res.a0) {
 		dev_err(&pdev->dev, "Failed to get shm memory region: 0x%lx\n", res.a0);
 		ret = -EINVAL;
