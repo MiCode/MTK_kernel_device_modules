@@ -171,6 +171,10 @@ static void ser_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
+#if SERDES_DEBUG
+		pr_info("[MAX96851] i2c client: 0, i2c addr:0x%04x value: 0x%04x delay:%d\n",
+				cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
+#endif
 	}
 }
 
@@ -187,6 +191,11 @@ static void des_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
+#if SERDES_DEBUG
+		pr_info("[MAX96851] i2c client: 1, i2c addr:0x%04x value: 0x%04x delay:%d\n",
+			cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
+#endif
+
 	}
 }
 
@@ -221,6 +230,10 @@ static void serdes_init_loop(struct max96851_bridge *max_bridge, struct serdes_c
 
 		if (cmd_data->delay_ms[i])
 			msleep(cmd_data->delay_ms[i]);
+#if SERDES_DEBUG
+		pr_info("[MAX96851] i2c client:%d i2c addr:0x%04x value:0x%04x delay_ms:%d\n",
+			cmd_data->obj[i], cmd_data->addr[i], cmd_data->data[i], cmd_data->delay_ms[i]);
+#endif
 	}
 }
 
@@ -260,7 +273,7 @@ static int parse_init_cmd_by_prop_from_dts(struct max96851_bridge *max_bridge,
 	init_cmd->obj = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
 	init_cmd->addr = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
 	init_cmd->data = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
-	init_cmd->delay_ms = devm_kzalloc(max_bridge->dev, num * sizeof(u8) / 4, GFP_KERNEL);
+	init_cmd->delay_ms = devm_kzalloc(max_bridge->dev, num * sizeof(u16) / 4, GFP_KERNEL);
 
 	if (!init_cmd->addr || !init_cmd->data || !init_cmd->delay_ms)
 		goto err;
@@ -278,7 +291,7 @@ static int parse_init_cmd_by_prop_from_dts(struct max96851_bridge *max_bridge,
 			else if (ret == 2)
 				init_cmd->data[i] = (u8)array[i*4 + ret];
 			else
-				init_cmd->delay_ms[i] = (u8)array[i*4 + ret];
+				init_cmd->delay_ms[i] = (u16)array[i*4 + ret];
 		}
 	}
 
@@ -995,7 +1008,7 @@ static int turn_on_off_bl(struct max96851_bridge *max_bridge, bool enable, u8 ty
 
 static void serdes_init_by_signal(struct max96851_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "%s+\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s+\n", __func__);
 	/* ser init by default */
 	ser_init_loop(max_bridge, &max_bridge->signal_ser_init_cmd);
 
@@ -1005,12 +1018,12 @@ static void serdes_init_by_signal(struct max96851_bridge *max_bridge)
 	/* touch init by default */
 	serdes_init_loop(max_bridge, &max_bridge->signal_touch_init_cmd);
 
-	dev_info(max_bridge->dev, "%s-\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s-\n", __func__);
 }
 
 static void serdes_init_by_superframe(struct max96851_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "%s+\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s+\n", __func__);
 	/* serdes to init linka */
 	serdes_init_loop(max_bridge, &max_bridge->serdes_init_linka_cmd);
 
@@ -1029,19 +1042,19 @@ static void serdes_init_by_superframe(struct max96851_bridge *max_bridge)
 	/* serdes to init superframe touch */
 	serdes_init_loop(max_bridge, &max_bridge->serdes_superframe_touch_init_cmd);
 
-	dev_info(max_bridge->dev, "%s-\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s-\n", __func__);
 }
 
 static void serdes_init_by_dual_link(struct max96851_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "%s+\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s+\n", __func__);
 
-	dev_info(max_bridge->dev, "%s-\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s-\n", __func__);
 }
 
 static void serdes_init_by_mst(struct max96851_bridge *max_bridge)
 {
-	dev_info(max_bridge->dev, "%s+\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s+\n", __func__);
 
 	/* serdes to init linka */
 	serdes_init_loop(max_bridge, &max_bridge->mst_serdes_init_linka_cmd);
@@ -1062,7 +1075,7 @@ static void serdes_init_by_mst(struct max96851_bridge *max_bridge)
 	if (max_bridge->is_support_touch)
 		serdes_init_loop(max_bridge, &max_bridge->dp_mst_touch_init_cmd);
 
-	dev_info(max_bridge->dev, "%s-\n", __func__);
+	dev_info(max_bridge->dev, "[MAX96851] %s-\n", __func__);
 }
 
 static void max96851_pre_enable(struct drm_bridge *bridge)
@@ -1086,15 +1099,6 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 	/* device identifier  0xC4: Without HDCP 0xC5: With HDCP */
 	dev_id = max96851_read_byte(max_bridge->max96851_i2c, DEVICE_IDENTIFIER_ADDR);
 	pr_notice("[MAX96851] Device Identifier = 0x02%x\n", dev_id);
-
-	if (max_bridge->superframe_support)
-		serdes_init_by_superframe(max_bridge);
-	else if(max_bridge->dual_link_support)
-		serdes_init_by_dual_link(max_bridge);
-	else if (max_bridge->is_support_mst)
-		serdes_init_by_mst(max_bridge);
-	else
-		serdes_init_by_signal(max_bridge);
 
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 }
@@ -1186,6 +1190,16 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 		pr_info("[MAX96851] Parent encoder object not found\n");
 		return -ENODEV;
 	}
+
+	/* init sereds */
+	if (max_bridge->superframe_support)
+		serdes_init_by_superframe(max_bridge);
+	else if(max_bridge->dual_link_support)
+		serdes_init_by_dual_link(max_bridge);
+	else if (max_bridge->is_support_mst)
+		serdes_init_by_mst(max_bridge);
+	else
+		serdes_init_by_signal(max_bridge);
 
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 
