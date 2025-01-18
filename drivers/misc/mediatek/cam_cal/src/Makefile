@@ -10,18 +10,26 @@
 # GNU General Public License for more details.
 #
 
-ifeq ($(CONFIG_MTK_CAM_CAL), m)
-obj-$(CONFIG_MTK_CAM_CAL) += custom/
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP3_Z), m y))
+obj-$(CONFIG_MTK_CAM_CAL_ISP3_Z) += isp3_z/
 endif
 
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_T), m y), $(CONFIG_MTK_CAM_CAL_ISP4_T))
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP3_M), m y))
+obj-$(CONFIG_MTK_CAM_CAL_ISP3_M) += isp3_m/
+endif
+
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP4_T), m y))
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += isp4_t/
 endif
 
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP4_C), m y), $(CONFIG_MTK_CAM_CAL_ISP4_C))
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP4_C), m y))
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_C) += isp4_c/
 endif
 
-ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP6S_MON), m), $(CONFIG_MTK_CAM_CAL_ISP6S_MON))
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL), m))
+obj-$(CONFIG_MTK_CAM_CAL) += custom/
+endif
+
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP6S_MON), m y))
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += isp6s_mon/
 endif

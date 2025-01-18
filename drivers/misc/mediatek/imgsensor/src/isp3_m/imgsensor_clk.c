@@ -377,7 +377,7 @@ void imgsensor_clk_enable_all(struct IMGSENSOR_CLK *pclk)
 		if (!IS_ERR(pclk->imgsensor_ccf[i]) && i == IMGSENSOR_CCF_CG_SENINF)
 			pr_info("%s counter:%d clk_is_enabled:%d\n",
 				gimgsensor_mclk_name[i],
-				pclk->enable_cnt[i],
+				atomic_read(&pclk->enable_cnt[i]),
 				__clk_is_enabled(pclk->imgsensor_ccf[i]));
 	}
 }
@@ -397,7 +397,7 @@ void imgsensor_clk_disable_all(struct IMGSENSOR_CLK *pclk)
 		if (!IS_ERR(pclk->imgsensor_ccf[i]) && i == IMGSENSOR_CCF_CG_SENINF)
 			pr_info("%s counter:%d clk_is_enabled:%d\n",
 				gimgsensor_mclk_name[i],
-				pclk->enable_cnt[i],
+				atomic_read(&pclk->enable_cnt[i]),
 				__clk_is_enabled(pclk->imgsensor_ccf[i]));
 	}
 	pr_info("%s X\n", __func__);
