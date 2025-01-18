@@ -70,4 +70,3 @@
 &panel_edp {
 	status = "okay";
 };
-
