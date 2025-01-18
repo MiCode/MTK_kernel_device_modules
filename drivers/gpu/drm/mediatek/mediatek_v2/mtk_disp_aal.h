@@ -20,6 +20,12 @@
 #define DISP_AAL_INTSTA                         (0x00c)
 #define DISP_AAL_STATUS                         (0x010)
 #define DISP_AAL_CFG                            (0x020)
+#define FLD_RELAY_MODE			REG_FLD_MSB_LSB(0, 0)
+#define FLD_AAL_ENGINE_EN		REG_FLD_MSB_LSB(1, 1)
+#define FLD_AAL_HIST_EN			REG_FLD_MSB_LSB(2, 2)
+#define FLD_BLK_HIST_EN			REG_FLD_MSB_LSB(5, 5)
+#define FLD_AAL_8BIT_SWITCH		REG_FLD_MSB_LSB(8, 8)
+#define FLD_FRAME_DONE_DELAY		REG_FLD_MSB_LSB(23, 16)
 #define DISP_AAL_IN_CNT                         (0x024)
 #define DISP_AAL_OUT_CNT                        (0x028)
 #define DISP_AAL_CHKSUM                         (0x02c)
@@ -299,30 +305,6 @@ struct mtk_aal_feature_option {
 };
 
 #define CABC_GAINLMT_NUM (11)
-struct aal_backup { /* structure for backup AAL register value */
-	unsigned int DRE_MAPPING;
-	unsigned int DRE_FLT_FORCE[MAX_DRE_FLT_NUM];
-	unsigned int CABC_00;
-	unsigned int CABC_02;
-	unsigned int CABC_GAINLMT[CABC_GAINLMT_NUM];
-#if defined(DRE3_IN_DISP_AAL)
-	unsigned int DRE_BLOCK_INFO_00;
-	unsigned int DRE_BLOCK_INFO_01;
-	unsigned int DRE_BLOCK_INFO_02;
-	unsigned int DRE_BLOCK_INFO_04;
-	unsigned int DRE_BLOCK_INFO_05;
-	unsigned int DRE_BLOCK_INFO_06;
-	unsigned int DRE_BLOCK_INFO_07;
-	unsigned int DRE_CHROMA_HIST_00;
-	unsigned int DRE_CHROMA_HIST_01;
-	unsigned int DRE_ALPHA_BLEND_00;
-	unsigned int SRAM_CFG;
-	unsigned int DUAL_PIPE_INFO_00;
-	unsigned int DUAL_PIPE_INFO_01;
-#endif
-	unsigned int AAL_CFG;
-	unsigned int AAL_INTEN;
-};
 
 struct work_struct_aal_data {
 	void *data;
@@ -382,11 +364,11 @@ struct mtk_disp_aal_primary {
 	struct DISP_CLARITY_REG *disp_clarity_regs;
 	struct mtk_aal_feature_option *aal_fo;
 	struct DISP_AAL_PARAM aal_param;
+	bool aal_param_valid;
 	struct DISP_AAL_ESS20_SPECT_PARAM ess20_spect_param;
 	int aal_clarity_support;
 	int tdshp_clarity_support;
 	int disp_clarity_support;
-	struct aal_backup backup;
 	struct DISP_AAL_INITREG init_regs;
 	struct work_struct_aal_data refresh_task;
 	enum MTK_LED_TYPE led_type;
@@ -412,7 +394,6 @@ struct mtk_disp_aal {
 	atomic_t first_frame;
 	atomic_t force_curve_sram_apb;
 	atomic_t force_hist_apb;
-	atomic_t dre_hw_init;
 	atomic_t dre_config;
 	struct mtk_ddp_comp *comp_tdshp;
 	struct mtk_ddp_comp *comp_gamma;
