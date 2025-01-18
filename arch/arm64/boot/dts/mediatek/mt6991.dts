@@ -7386,6 +7386,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			autosuspend-delay-ms = <10>;
 			adaptive-power-policy = <2>;
 			exception-mask = <0x5>;
+			reset-exception-mask = <0x0>;
 			iter-trace-enable = <1>;
 			gpu-frame-base-optimize = <1>;
 			pbha {
