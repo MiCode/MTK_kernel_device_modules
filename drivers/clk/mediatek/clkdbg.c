@@ -1529,6 +1529,37 @@ static int clkdbg_pm_runtime_put_sync(struct seq_file *s, void *v)
 	return 0;
 }
 
+static int clkdbg_pm_runtime_resume_and_get(struct seq_file *s, void *v)
+{
+	char cmd[sizeof(last_cmd)];
+	char *c = cmd;
+	char *ign;
+	char *dev_name;
+	struct device *dev;
+
+	// Use strscpy instead of strncpy
+	strscpy(cmd, last_cmd, sizeof(cmd));
+
+	ign = strsep(&c, " ");
+	dev_name = strsep(&c, " ");
+
+	if (dev_name == NULL)
+		return 0;
+
+	seq_printf(s, "pm_runtime_resume_and_get(%s): ", dev_name);
+
+	dev = dev_from_name(dev_name);
+	if (dev != NULL) {
+		int r = pm_runtime_resume_and_get(dev);
+
+		seq_printf(s, "%d\n", r);
+	} else {
+		seq_puts(s, "NULL\n");
+	}
+
+	return 0;
+}
+
 static int genpd_op(const char *gpd_op_name, struct seq_file *s)
 {
 	char cmd[sizeof(last_cmd)];
@@ -2226,6 +2257,7 @@ static const struct cmd_fn common_cmds[] = {
 	CMDFN("pm_runtime_disable", clkdbg_pm_runtime_disable),
 	CMDFN("pm_runtime_get_sync", clkdbg_pm_runtime_get_sync),
 	CMDFN("pm_runtime_put_sync", clkdbg_pm_runtime_put_sync),
+	CMDFN("pm_runtime_resume_and_get", clkdbg_pm_runtime_resume_and_get),
 	CMDFN("pwr_on", clkdbg_pwr_on),
 	CMDFN("pwr_off", clkdbg_pwr_off),
 	CMDFN("reg_pdrv", clkdbg_reg_pdrv),
