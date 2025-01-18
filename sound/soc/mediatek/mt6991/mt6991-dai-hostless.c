@@ -191,7 +191,7 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"I2SOUT6", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},
 
 	/* Hostless BT DL */
-	{"I2SOUT6", NULL, "Hostless BT DL"},
+	{"I2SOUT0", NULL, "Hostless BT DL"},
 
 	/* Hostless_SRC 0 */
 	{"ADDA_DL_CH1", "HW_SRC_0_OUT_CH1", "Hostless_SRC_0_DL"},

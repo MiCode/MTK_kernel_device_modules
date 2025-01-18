@@ -241,14 +241,16 @@ enum {
 	DAI_I2SIN4,
 	DAI_I2SIN5,
 	DAI_I2SIN6,
-	DAI_I2SOUT0,
+	DAI_I2SIN_NUM,
+	DAI_I2SOUT0 = DAI_I2SIN_NUM,
 	DAI_I2SOUT1,
 	DAI_I2SOUT2,
 	DAI_I2SOUT3,
 	DAI_I2SOUT4,
 	DAI_I2SOUT5,
 	DAI_I2SOUT6,
-	DAI_FMI2S_MASTER,
+	DAI_I2SOUT_NUM,
+	DAI_FMI2S_MASTER = DAI_I2SOUT_NUM,
 	DAI_I2S_NUM,
 };
 
@@ -833,6 +835,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT0_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT0_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT0_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT0_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -877,6 +885,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT1_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT1_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT1_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT1_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -921,6 +935,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT2_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT2_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT2_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT2_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -965,6 +985,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT3_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT3_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT3_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT3_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -1009,6 +1035,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT4_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT4_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT4_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT4_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -1057,6 +1089,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT5_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT5_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT5_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT5_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -1105,6 +1143,12 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.enable_reg = ETDM_OUT6_CON0,
 		.enable_mask = OUT_REG_ETDM_OUT_EN_MASK,
 		.enable_shift = OUT_REG_ETDM_OUT_EN_SFT,
+		.sync_reg = ETDM_OUT6_CON0,
+		.sync_mask = REG_SYNC_MODE_MASK,
+		.sync_shift = REG_SYNC_MODE_SFT,
+		.ch_reg = ETDM_OUT6_CON0,
+		.ch_mask = REG_CH_NUM_MASK,
+		.ch_shift = REG_CH_NUM_SFT,
 		.init_count_reg = ETDM_OUT6_CON1,
 		.init_count_mask = OUT_REG_INITIAL_COUNT_MASK,
 		.init_count_shift = OUT_REG_INITIAL_COUNT_SFT,
@@ -2203,6 +2247,7 @@ enum {
 	SUPPLY_SEQ_APLL,
 	SUPPLY_SEQ_I2S_MCLK_EN,
 	SUPPLY_SEQ_I2S_HD_EN,
+	SUPPLY_SEQ_I2S_GPIO,
 	SUPPLY_SEQ_I2S_EN,
 };
 
@@ -2243,25 +2288,11 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 		break;
 	}
 	switch (id) {
+	case DAI_I2SIN0:
+	case DAI_I2SIN1:
+	case DAI_I2SIN2:
+	case DAI_I2SIN3:
 	case DAI_I2SIN4:
-		/* set etdm ch */
-		mtk_regmap_update_bits(afe->regmap, etdm_data.ch_reg,
-				       etdm_data.ch_mask,
-				       (i2s_priv->ch_num - 1),
-				       etdm_data.ch_shift);
-		/* set etdm ch */
-		regmap_update_bits(afe->regmap, ETDM_OUT4_CON0,
-				   REG_CH_NUM_MASK_SFT, (i2s_priv->ch_num - 1) << REG_CH_NUM_SFT);
-		/* set etdm ip mode */
-		mtk_regmap_update_bits(afe->regmap, etdm_data.ip_mode_reg,
-				       etdm_data.ip_mode_mask, i2s_priv->ip_mode,
-				       etdm_data.ip_mode_shift);
-		/* set etdm sync */
-		mtk_regmap_update_bits(afe->regmap, etdm_data.sync_reg,
-				       etdm_data.sync_mask,
-				       i2s_priv->sync,
-				       etdm_data.sync_shift);
-		break;
 	case DAI_I2SIN5:
 	case DAI_I2SIN6:
 		/* set etdm ch */
@@ -2279,6 +2310,23 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 				       i2s_priv->sync,
 				       etdm_data.sync_shift);
 		break;
+	case DAI_I2SOUT0:
+	case DAI_I2SOUT1:
+	case DAI_I2SOUT2:
+	case DAI_I2SOUT3:
+	case DAI_I2SOUT4:
+	case DAI_I2SOUT6:
+		/* set etdm ch */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.ch_reg,
+				       etdm_data.ch_mask,
+				       (i2s_priv->ch_num - 1),
+				       etdm_data.ch_shift);
+		/* set etdm sync */
+		mtk_regmap_update_bits(afe->regmap, etdm_data.sync_reg,
+				       etdm_data.sync_mask,
+				       i2s_priv->sync,
+				       etdm_data.sync_shift);
+		break;
 	case DAI_I2SOUT5:
 		/* set etdm out5 ch */
 		regmap_update_bits(afe->regmap, ETDM_OUT5_CON0,
@@ -2287,11 +2335,6 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(afe->regmap, ETDM_OUT5_CON3,
 					OUT_REG_START_CH_PAIR0_MASK_SFT,
 					(i2s_priv->ch_num / 2) << OUT_REG_START_CH_PAIR1_SFT);
-		break;
-	case DAI_I2SIN0:
-	case DAI_I2SIN1:
-	case DAI_I2SIN2:
-	case DAI_I2SIN3:
 		break;
 	default:
 		break;
@@ -2486,36 +2529,60 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			   mtk_i2sout6_ch2_mix,
 			   ARRAY_SIZE(mtk_i2sout6_ch2_mix)),
 	/* i2s gpio*/
-	SND_SOC_DAPM_SUPPLY_S("I2SIN0_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN0_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN1_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN1_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN2_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN2_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN3_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN3_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN4_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN4_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN5_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN5_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SIN6_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN6_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
-	SND_SOC_DAPM_SUPPLY_S("I2SOUT5_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT0_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT1_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT2_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT3_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT4_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT5_GPIO", SUPPLY_SEQ_I2S_GPIO,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_i2s_en_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT6_GPIO", SUPPLY_SEQ_I2S_EN,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -3231,6 +3298,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT0", NULL, "I2SOUT0_CH2"},
 
 	{"I2SOUT0", NULL, "I2SIN0_GPIO"},
+	{"I2SOUT0", NULL, "I2SOUT0_GPIO"},
 	{"I2SOUT0", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT0", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT0", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -3303,6 +3371,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT1", NULL, "I2SOUT1_CH2"},
 
 	{"I2SOUT1", NULL, "I2SIN1_GPIO"},
+	{"I2SOUT1", NULL, "I2SOUT1_GPIO"},
 	{"I2SOUT1", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT1", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT1", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -3375,6 +3444,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT2", NULL, "I2SOUT2_CH2"},
 
 	{"I2SOUT2", NULL, "I2SIN2_GPIO"},
+	{"I2SOUT2", NULL, "I2SOUT2_GPIO"},
 	{"I2SOUT2", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT2", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT2", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -3446,6 +3516,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT3", NULL, "I2SOUT3_CH2"},
 
 	{"I2SOUT3", NULL, "I2SIN3_GPIO"},
+	{"I2SOUT3", NULL, "I2SOUT3_GPIO"},
 	{"I2SOUT3", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT3", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT3", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -3532,6 +3603,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 
 
 	{"I2SOUT4", NULL, "I2SIN4_GPIO"},
+	{"I2SOUT4", NULL, "I2SOUT4_GPIO"},
 	{"I2SOUT4", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT4", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT4", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -3657,6 +3729,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT6", NULL, "I2SOUT6_CH2"},
 
 	{"I2SOUT6", NULL, "I2SIN6_GPIO"},
+	{"I2SOUT6", NULL, "I2SOUT6_GPIO"},
 	{"I2SOUT6", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT6", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT6", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -4918,134 +4991,100 @@ static const struct mtk_afe_i2s_priv mt6991_i2s_priv[DAI_I2S_NUM] = {
 		.share_i2s_id = -1,
 	},
 };
+
+#define I2S_IN_NUM (DAI_I2SIN_NUM - DAI_I2SIN0)
+#define I2S_OUT_NUM (DAI_I2SOUT_NUM - DAI_I2SOUT0)
+
 static int etdm_parse_dt(struct mtk_base_afe *afe)
 {
 	int ret;
+	int i;
 	struct mt6991_afe_private *afe_priv = afe->platform_priv;
-	struct mtk_afe_i2s_priv *i2sin4_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN4];
-	struct mtk_afe_i2s_priv *i2sout4_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT4];
-	struct mtk_afe_i2s_priv *i2sin5_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN5];
-	struct mtk_afe_i2s_priv *i2sin6_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN6];
-	struct mtk_afe_i2s_priv *i2sout5_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT5];
-	unsigned int ch_num_in;
-	unsigned int ch_num_out;
-	unsigned int sync_in;
-	unsigned int sync_out;
-	unsigned int ip_mode;
+	struct mtk_afe_i2s_priv *i2s_priv = NULL;
+	unsigned int ch_num_out[I2S_OUT_NUM];
+	unsigned int sync_out[I2S_OUT_NUM];
+
+	unsigned int ch_num_in[I2S_IN_NUM];
+	unsigned int sync_in[I2S_IN_NUM];
+	unsigned int ip_mode[I2S_IN_NUM];
+
+	dev_dbg(afe->dev, "%s(): I2S_IN_NUM=%d, I2S_OUT_NUM=%d\n", __func__, I2S_IN_NUM, I2S_OUT_NUM);
 
 	/* get etdm ch */
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-out-ch", &ch_num_out);
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-out-ch", ch_num_out, I2S_OUT_NUM);
 	if (ret) {
 		dev_info(afe->dev, "%s() failed to read etdm-out-ch\n", __func__);
 		return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_OUT_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT0 + i];
+			i2s_priv->ch_num = ch_num_out[i];
+		}
 	}
-	i2sout4_priv->ch_num = ch_num_out;
-	dev_info(afe->dev, "%s() etdm-out-ch: %d\n", __func__, ch_num_out);
 
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in-ch", &ch_num_in);
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-in-ch", ch_num_in, I2S_IN_NUM);
 	if (ret) {
 		dev_info(afe->dev, "%s() failed to read etdm-in-ch\n", __func__);
 		return -EINVAL;
-	}
-	i2sin4_priv->ch_num = ch_num_in;
-	dev_info(afe->dev, "%s() etdm-in-ch: %d\n", __func__, ch_num_in);
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in5-ch", &ch_num_in);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-in5-ch, default 16ch\n", __func__);
-		i2sin5_priv->ch_num = 16;
 	} else {
-		i2sin5_priv->ch_num = ch_num_in;
-	}
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in6-ch", &ch_num_in);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-in6-ch, default 16ch\n", __func__);
-		i2sin6_priv->ch_num = 16;
-	} else {
-		i2sin6_priv->ch_num = ch_num_in;
-	}
-	dev_info(afe->dev, "%s(), i2sin5 ch:%d, i2sin6 ch:%d\n", __func__,
-		i2sin5_priv->ch_num, i2sin6_priv->ch_num);
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-out5-ch", &ch_num_out);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-out5-ch\n", __func__);
-		i2sout5_priv->ch_num = 16;
-	} else {
-		i2sout5_priv->ch_num = ch_num_out;
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
+			i2s_priv->ch_num = ch_num_in[i];
+		}
 	}
 
 	/* get etdm sync */
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-out-sync", &sync_out);
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-out-sync", sync_out, I2S_OUT_NUM);
 	if (ret) {
 		dev_info(afe->dev, "%s() failed to read etdm-out-sync\n", __func__);
 		return -EINVAL;
-	}
-	i2sout4_priv->sync = sync_out;
-	dev_info(afe->dev, "%s() etdm-out-sync: %d\n", __func__, sync_out);
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-out5-sync", &sync_out);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-out5-sync\n", __func__);
-		i2sout5_priv->sync = 0;
 	} else {
-		i2sout5_priv->sync = sync_out;
+		for (i = 0; i < I2S_OUT_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT0 + i];
+			i2s_priv->sync = sync_out[i];
+		}
 	}
-	dev_info(afe->dev, "%s() etdm-out5-sync: %d\n", __func__, i2sout5_priv->sync);
 
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in-sync", &sync_in);
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-in-sync", sync_in, I2S_IN_NUM);
 	if (ret) {
 		dev_info(afe->dev, "%s() failed to read etdm-in-sync\n", __func__);
 		return -EINVAL;
-	}
-	i2sin4_priv->sync = sync_in;
-	dev_info(afe->dev, "%s() etdm-in-sync: %d\n", __func__, sync_in);
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in5-sync", &sync_in);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-in5-sync\n", __func__);
-		i2sin5_priv->sync = 1;
 	} else {
-		i2sin5_priv->sync = sync_in;
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
+			i2s_priv->sync = sync_in[i];
+		}
 	}
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-in6-sync", &sync_in);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-in6-sync\n", __func__);
-		i2sin6_priv->sync = 1;
-	} else {
-		i2sin6_priv->sync = sync_in;
-	}
-	dev_info(afe->dev, "%s() etdm-in5-sync: %d, etdm-in6-sync: %d\n", __func__,
-		i2sin5_priv->sync, i2sin6_priv->sync);
 
 	/* get etdm ip mode */
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-ip-mode", &ip_mode);
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-ip-mode", ip_mode, I2S_IN_NUM);
 	if (ret) {
 		dev_info(afe->dev, "%s() failed to read etdm-ip-mode\n", __func__);
 		return -EINVAL;
-	}
-	i2sin4_priv->ip_mode = ip_mode;
-	dev_info(afe->dev, "%s() etdm-ip-mode: %d\n", __func__, ip_mode);
-
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-ip-mode-in5", &ip_mode);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-ip-mode-in5\n", __func__);
-		i2sin5_priv->ip_mode = 0;
 	} else {
-		i2sin5_priv->ip_mode = ip_mode;
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
+			i2s_priv->ip_mode = ip_mode[i];
+		}
 	}
 
-	ret = of_property_read_u32(afe->dev->of_node, "etdm-ip-mode-in6", &ip_mode);
-	if (ret) {
-		dev_info(afe->dev, "%s() failed to read etdm-ip-mode-in6\n", __func__);
-		i2sin6_priv->ip_mode = 0;
-	} else {
-		i2sin6_priv->ip_mode = ip_mode;
+	for (i = 0; i < I2S_IN_NUM; i++) {
+		i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_IN0 + i];
+		dev_dbg(afe->dev, "%s() I2SIN%d (%d), ch_num=%d sync=%d ip_mode=%d\n", __func__,
+				i,
+				MT6991_DAI_I2S_IN0 + i,
+				i2s_priv->ch_num,
+				i2s_priv->sync,
+				i2s_priv->ip_mode);
 	}
-	dev_info(afe->dev, "%s() etdm-ip-mode-in5: %d, etdm-ip-mode-in6: %d\n", __func__,
-		i2sin5_priv->ip_mode, i2sin6_priv->ip_mode);
+	for (i = 0; i < I2S_OUT_NUM; i++) {
+		i2s_priv = afe_priv->dai_priv[MT6991_DAI_I2S_OUT0 + i];
+		dev_dbg(afe->dev, "%s() I2SOUT%d (%d), ch_num=%d sync=%d\n", __func__,
+				i,
+				MT6991_DAI_I2S_OUT0 + i,
+				i2s_priv->ch_num,
+				i2s_priv->sync);
+	}
 
 	return 0;
 }
