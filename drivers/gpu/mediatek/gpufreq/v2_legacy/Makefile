@@ -1,0 +1,54 @@
+#
+# Copyright (C) 2019 MediaTek Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See http://www.gnu.org/licenses/gpl-2.0.html for more details.
+#
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed/
+
+ccflags-y += \
+	-Wno-unused-variable \
+	-Wno-unused-function
+
+mtk_gpufreq_wrapper_legacy-y := \
+	gpufreq_v2_legacy.o \
+	gpufreq_history_legacy.o \
+	gpufreq_debug_legacy.o
+
+mtk_gpufreq_mt6768-y := \
+	gpufreq_history_mt6768.o \
+	gpuppm_legacy.o \
+	gpufreq_mt6768.o
+
+mtk_gpufreq_mt6893-y := \
+	gpufreq_history_mt6893.o \
+	gpuppm_legacy.o \
+	gpufreq_mt6893.o
+
+obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper_legacy.o
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6768.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6768.c),)
+obj-$(CONFIG_MTK_GPU_MT6768_SUPPORT) += mtk_gpufreq_mt6768.o
+endif
+endif
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6893.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6893.c),)
+obj-$(CONFIG_MTK_GPU_MT6893_SUPPORT) += mtk_gpufreq_mt6893.o
+endif
+endif

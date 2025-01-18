@@ -1,43 +1,43 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
-* Copyright (C) 2022 MediaTek Inc.
-*/
+ * Copyright (C) 2022 MediaTek Inc.
+ */
 
 /**
-* @file    gpufreq_history_mt6768.c
-* @brief   GPU DVFS History log DB Implementation
-*/
+ * @file    gpufreq_history_mt6768.c
+ * @brief   GPU DVFS History log DB Implementation
+ */
 
 /**
-* ===============================================
-* Include
-* ===============================================
-*/
+ * ===============================================
+ * Include
+ * ===============================================
+ */
 
 #include <linux/sched/clock.h>
 #include <linux/string.h>
 #include <linux/io.h>
 
 /* GPUFREQ */
-#include <gpufreq_v2.h>
+#include <gpufreq_v2_legacy.h>
 #include <gpufreq_history_common.h>
 #include <gpufreq_history_mt6768.h>
-#include <gpuppm.h>
-#include <gpufreq_common.h>
+#include <gpuppm_legacy.h>
+#include <gpufreq_common_legacy.h>
 
 /**
-* ===============================================
-* Variable Definition
-* ===============================================
-*/
+ * ===============================================
+ * Variable Definition
+ * ===============================================
+ */
 static int g_history_target_opp_stack;
 static int g_history_target_opp_top;
 
 /**
-* ===============================================
-* Common Function Definition
-* ===============================================
-*/
+ * ===============================================
+ * Common Function Definition
+ * ===============================================
+ */
 
 /* API: set target oppidx */
 void gpufreq_set_history_target_opp(enum gpufreq_target target, int oppidx)

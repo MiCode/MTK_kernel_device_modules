@@ -30,7 +30,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_GPU_SUPPORT)
-#include <gpufreq_v2.h>
+#include <mtk_gpufreq.h>
 static unsigned int gpueb_enable;
 #endif
 

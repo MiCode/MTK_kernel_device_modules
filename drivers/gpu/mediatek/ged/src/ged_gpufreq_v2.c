@@ -7,7 +7,7 @@
 #include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-#include <gpufreq_v2.h>
+#include <mtk_gpufreq.h>
 #include <ged_base.h>
 #include <ged_dcs.h>
 #include <ged_dvfs.h>

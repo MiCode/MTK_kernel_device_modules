@@ -3,8 +3,8 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_DEBUG_H__
-#define __GPUFREQ_DEBUG_H__
+#ifndef __GPUFREQ_DEBUG_LEGACY_H__
+#define __GPUFREQ_DEBUG_LEGACY_H__
 
 /**************************************************
  * Definition
@@ -90,7 +90,6 @@
 /**************************************************
  * Function
  **************************************************/
-void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support,
-	const struct gpufreq_shared_status *shared_status);
+void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support);
 
-#endif /* __GPUFREQ_DEBUG_H__ */
+#endif /* __GPUFREQ_DEBUG_LEGACY_H__ */

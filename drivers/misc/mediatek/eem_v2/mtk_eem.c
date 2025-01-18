@@ -65,7 +65,7 @@
 #include "mtk_eem_internal_ap.h"
 #include "mtk_eem_internal.h"
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
-	#include "gpu_misc.h"
+#include "mtk_gpufreq.h"
 #endif
 //#include <mt-plat/mtk_devinfo.h>
 #include <regulator/consumer.h>

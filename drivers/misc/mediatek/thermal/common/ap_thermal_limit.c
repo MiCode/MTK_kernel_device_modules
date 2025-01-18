@@ -45,7 +45,7 @@
 #endif
 #endif
 
-#include "gpufreq_v2.h"
+#include "mtk_gpufreq.h"
 
 /*=============================================================
  * Local variable definition

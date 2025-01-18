@@ -30,10 +30,10 @@
 #include <linux/nvmem-consumer.h>
 #endif
 
-#include <gpufreq_v2.h>
-#include <gpufreq_debug.h>
-#include <gpuppm.h>
-#include <gpufreq_common.h>
+#include <gpufreq_v2_legacy.h>
+#include <gpufreq_debug_legacy.h>
+#include <gpuppm_legacy.h>
+#include <gpufreq_common_legacy.h>
 #include <gpufreq_mt6893.h>
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
@@ -873,7 +873,7 @@ const struct gpufreq_opp_info *__gpufreq_get_signed_table_stack(void)
 	return NULL;
 }
 
-/* 
+/*
 struct gpufreq_debug_opp_info __gpufreq_get_debug_opp_info_stack(void)
 {
 	struct gpufreq_debug_opp_info opp_info = {};
@@ -2832,10 +2832,10 @@ static int __gpufreq_pdrv_probe(struct platform_device *pdev)
 		__gpufreq_dump_bringup_status();
 		goto done;
 	}
-	
+
 	/* init footprint */
   	__gpufreq_reset_footprint();
-	
+
 	/* init reg base address and flavor config of the platform in both AP and EB mode */
 	ret = __gpufreq_init_platform_info(pdev);
 	if (unlikely(ret)) {

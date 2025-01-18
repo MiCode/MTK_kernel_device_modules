@@ -3,8 +3,8 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
-#ifndef __GPUPPM_H__
-#define __GPUPPM_H__
+#ifndef __GPUPPM_LEGACY_H__
+#define __GPUPPM_LEGACY_H__
 
 /**************************************************
  * Definition
@@ -70,5 +70,7 @@ int gpuppm_get_ceiling(void);
 int gpuppm_get_floor(void);
 unsigned int gpuppm_get_c_limiter(void);
 unsigned int gpuppm_get_f_limiter(void);
+const struct gpuppm_limit_info *gpuppm_get_limit_table(enum gpufreq_target target);
+struct gpufreq_debug_limit_info gpuppm_get_debug_limit_info(enum gpufreq_target target);
 
-#endif /* __GPUPPM_H__ */
+#endif /* __GPUPPM_LEGACY_H__ */
