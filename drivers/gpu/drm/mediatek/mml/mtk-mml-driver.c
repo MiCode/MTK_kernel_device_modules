@@ -378,7 +378,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
-		if (!tp->path_clts[sysid].sys_en_ref[sysid])
+		if (!tp->path_clts[i].sys_en_ref[sysid])
 			continue;
 		/* select max one across clients */
 		tput = max(tput, tp->path_clts[i].throughput);
