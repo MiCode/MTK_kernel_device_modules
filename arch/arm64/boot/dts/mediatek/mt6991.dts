@@ -4658,34 +4658,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			status = "okay";
 		};
 
-		mmc1: mmc@16310000 {
-			compatible = "mediatek,mt6991-mmc";
-			reg = <0 0x16310000 0 0x1000>,
-				<0 0x12a10000 0 0x1000>;
-			interrupts = <GIC_SPI 267 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&cksys_clk CLK_CK_MSDC30_1_SEL>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC1_AXI_MSDC1>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC1_HCLK_MSDC1>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC1_MSDC_SRC_MSDC1>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC1_HCLK_WRAP_MSDC1>;
-			clock-names = "source", "axi_cg", "hclk", "source_cg", "macro";
-			status = "disabled";
-		};
-
-		mmc2: mmc@16320000 {
-			compatible = "mediatek,mt6991-mmc";
-			reg = <0 0x16320000 0 0x1000>,
-				<0 0x138a0000 0 0x1000>;
-			interrupts = <GIC_SPI 268 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&cksys_clk CLK_CK_MSDC30_2_SEL>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC2_AXI_MSDC2>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC2_HCLK_MSDC2>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC2_MSDC_SRC_MSDC2>,
-					<&pericfg_ao_clk CLK_PERAO_MSDC2_HCLK_WRAP_MSDC2>;
-			clock-names = "source", "axi_cg", "hclk", "source_cg", "macro";
-			status = "disabled";
-		};
-
 		pwm@16330000 {
 			compatible = "mediatek,pwm";
 			reg = <0 0x16330000 0 0x1000>;
@@ -15141,7 +15113,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 #include "mediatek/mt6373.dtsi"
 #include "mediatek/mt6991-clkitg.dtsi"
 #include "mediatek/mt6991-disable-unused.dtsi"
-#include "mediatek/cust_mt6991_msdc.dtsi"
 #include "mediatek/cust_mt6991_connfem.dtsi"
 #include "mediatek/cust_mt6991_msdc.dtsi"
 
