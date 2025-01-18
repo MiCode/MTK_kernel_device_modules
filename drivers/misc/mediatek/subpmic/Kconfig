@@ -15,6 +15,16 @@ config MTK_SUBPMIC_DEBUGFS
 	  /d/ext_dev_io/ folder
 	  Say N here to disable
 
+config MT6360_DBG
+	tristate "Mediatek MT6360 Debug core"
+	depends on MTK_SUBPMIC_MISC
+	depends on DEVICE_MODULES_MFD_MT6360
+	help
+	  Say Y here to enable MT6360 Debug support.
+	  Say N here to disable.
+	  Provide Read/Write interface by debugfs ext_dev_io.
+	  Also support multiple size condition.
+
 config SUBPMIC_DBG
 	tristate "Mediatek subpmic Debug core"
 	depends on MTK_SUBPMIC_MISC
