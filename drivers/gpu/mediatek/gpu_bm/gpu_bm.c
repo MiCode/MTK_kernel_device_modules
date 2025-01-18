@@ -26,6 +26,13 @@ static int g_mode_sport_flag;
 static DEFINE_MUTEX(g_GPU_BM_lock);
 static unsigned int g_mode;
 static unsigned int g_value;
+static unsigned int idx, min_idx, high_idx, low_idx;
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+static unsigned int idx_freq, min_freq, high_freq, low_freq, peak_perf_limit_freq;
+static int gpu_bm_freq_inited;
+#endif
+static int gpu_bm_idx_inited;
+static int gpu_opp_num;
 
 static void _mgq_proc_show_v1(struct seq_file *m)
 {
@@ -203,25 +210,70 @@ static void _MTKGPUQoS_setupFW(phys_addr_t phyaddr, size_t size)
 
 void MTKGPUQoS_mode(int seg_flag)
 {
-	unsigned int loading, idx, min_idx, high_idx, low_idx;
+	unsigned int loading;
 
 	mtk_get_gpu_loading(&loading);
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
+	idx_freq = gpufreq_get_cur_out_freq(TARGET_DEFAULT);
 	idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
-	min_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
-	high_idx = (gpufreq_get_opp_num(TARGET_DEFAULT) - 1) / 4 + 1;
-	low_idx = (gpufreq_get_opp_num(TARGET_DEFAULT) - 1) / 3 * 2 + 1;
+
+	if (!gpu_bm_idx_inited) {
+		gpu_opp_num = gpufreq_get_opp_num(TARGET_DEFAULT);
+		min_idx = gpu_opp_num - 1;
+		high_idx = (gpu_opp_num - 1) / 4 + 1;
+		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
+		gpu_bm_idx_inited = 1;
+	}
+
+	if (!gpu_bm_freq_inited && idx_freq > 0) {
+		min_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, min_idx);
+		high_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, high_idx);
+		low_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, low_idx);
+		peak_perf_limit_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, GPU_BM_PEAK_INDEX_TOP_LIMIT);
+		gpu_bm_freq_inited = 1;
+	}
 #else
 	idx = mt_gpufreq_get_cur_freq_index();
-	min_idx = mt_gpufreq_get_dvfs_table_num() - 1;
-	high_idx = (mt_gpufreq_get_dvfs_table_num() - 1) / 4 + 1;
-	low_idx = (mt_gpufreq_get_dvfs_table_num() - 1) / 3 * 2 + 1;
+
+	if (!gpu_bm_idx_inited) {
+		gpu_opp_num = mt_gpufreq_get_dvfs_table_num();
+		min_idx = gpu_opp_num - 1;
+		high_idx = (gpu_opp_num - 1) / 4 + 1;
+		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
+		gpu_bm_idx_inited = 1;
+	}
 #endif
 
 	/* sport mode */
 	if (g_mode_sport_flag) {
 		/* if gpu freq at top quartile, boost dram freq. */
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+		if(gpu_bm_freq_inited) {
+			if (idx_freq >= high_freq) {
+				if (g_mode == GPU_BW_DEFAULT_MODE)
+					gpu_info_buf->freq = GPU_BW_RATIO_CEIL;
+				else if (g_mode == GPU_BW_NO_PRED_MODE)
+					gpu_info_buf->freq = GPU_BW_RATIO_CEIL + 2000;
+			} else
+				if (g_mode == GPU_BW_DEFAULT_MODE)
+					gpu_info_buf->freq = 0;
+				else if (g_mode == GPU_BW_NO_PRED_MODE)
+					gpu_info_buf->freq = 2000;
+		} else {
+			if (idx <= high_idx) {
+				if (g_mode == GPU_BW_DEFAULT_MODE)
+					gpu_info_buf->freq = GPU_BW_RATIO_CEIL;
+				else if (g_mode == GPU_BW_NO_PRED_MODE)
+					gpu_info_buf->freq = GPU_BW_RATIO_CEIL + 2000;
+			} else
+				if (g_mode == GPU_BW_DEFAULT_MODE)
+					gpu_info_buf->freq = 0;
+				else if (g_mode == GPU_BW_NO_PRED_MODE)
+					gpu_info_buf->freq = 2000;
+		}
+		return;
+#else
 		if (idx <= high_idx) {
 			if (g_mode == GPU_BW_DEFAULT_MODE)
 				gpu_info_buf->freq = GPU_BW_RATIO_CEIL;
@@ -233,6 +285,7 @@ void MTKGPUQoS_mode(int seg_flag)
 			else if (g_mode == GPU_BW_NO_PRED_MODE)
 				gpu_info_buf->freq = 2000;
 		return;
+#endif
 	}
 
 	/* default avg prediction */
@@ -241,6 +294,43 @@ void MTKGPUQoS_mode(int seg_flag)
 		 * if gpu loading < 40% and gpu freq is lowest,
 		 * don't do GPU QoS prediction.
 		 */
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+		if(gpu_bm_freq_inited) {
+			if ((idx_freq <= min_freq) && (loading < 40))
+				gpu_info_buf->freq = GPU_BW_NO_PRED_MODE;
+			else {
+				if (seg_flag && idx_freq <= low_freq)
+					gpu_info_buf->freq = GPU_BW_LP_MODE;
+				else if (idx_freq >= peak_perf_limit_freq)
+					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
+				else if (idx_freq >= high_freq)
+					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else
+					gpu_info_buf->freq = 0;
+
+				if (g_value >= GPU_BW_RATIO_FLOOR && g_value <= GPU_BW_RATIO_CEIL)
+					/* apply a ratio for bw prediction */
+					gpu_info_buf->freq = g_value;
+			}
+		} else {
+			if ((idx == min_idx) && (loading < 40))
+				gpu_info_buf->freq = GPU_BW_NO_PRED_MODE;
+			else {
+				if (seg_flag && idx >= low_idx)
+					gpu_info_buf->freq = GPU_BW_LP_MODE;
+				else if (idx <= GPU_BM_PEAK_INDEX_TOP_LIMIT)
+					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
+				else if (idx <= high_idx)
+					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else
+					gpu_info_buf->freq = 0;
+
+				if (g_value >= GPU_BW_RATIO_FLOOR && g_value <= GPU_BW_RATIO_CEIL)
+					/* apply a ratio for bw prediction */
+					gpu_info_buf->freq = g_value;
+			}
+		}
+#else
 		if ((idx == min_idx) && (loading < 40))
 			gpu_info_buf->freq = GPU_BW_NO_PRED_MODE;
 		else {
@@ -257,6 +347,7 @@ void MTKGPUQoS_mode(int seg_flag)
 				/* apply a ratio for bw prediction */
 				gpu_info_buf->freq = g_value;
 		}
+#endif
 		return;
 	}
 
@@ -321,6 +412,12 @@ static void _MTKGPUQoS_init(void)
 void MTKGPUQoS_setup(struct v1_data *v1, phys_addr_t phyaddr, size_t size)
 {
 	gpu_info_buf = v1;
+	idx = min_idx = high_idx = low_idx = -1;
+	gpu_bm_idx_inited = 0;
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+	idx_freq = min_freq = high_freq = low_freq = peak_perf_limit_freq = -1;
+	gpu_bm_freq_inited = 0;
+#endif
 
 	_MTKGPUQoS_init();
 	_MTKGPUQoS_initDebugFS();
