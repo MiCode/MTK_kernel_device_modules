@@ -4439,10 +4439,23 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 
 
 		/* 5:  TDM Mode */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		if (id == DAI_I2SIN4 || id == DAI_I2SIN5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x4,
+					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x0,
+					       etdm_data.tdm_mode_shift);
+#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
 				       0x0,
 				       etdm_data.tdm_mode_shift);
+#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -4523,10 +4536,23 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 				       etdm_data.relatch_en_sel_shift);
 
 		/* 5:  TDM Mode */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		if (id == DAI_I2SOUT4 || id == DAI_I2SOUT5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x4,
+					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x0,
+					       etdm_data.tdm_mode_shift);
+#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
 				       0x0,
 				       etdm_data.tdm_mode_shift);
+#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -4776,10 +4802,23 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 		}
 
 		/* 5:  TDM Mode */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		if (id == DAI_I2SIN4 || id == DAI_I2SIN5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x4,
+					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x0,
+					       etdm_data.tdm_mode_shift);
+#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
 				       0x0,
 				       etdm_data.tdm_mode_shift);
+#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
@@ -4867,10 +4906,23 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.relatch_en_sel_shift);
 
 		/* 5:  TDM Mode */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		if (id == DAI_I2SOUT4 || id == DAI_I2SOUT5)
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x4,
+					       etdm_data.tdm_mode_shift);// DSP_A mode for multi-channel
+		else
+			mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
+					       etdm_data.tdm_mode_mask,
+					       0x0,
+					       etdm_data.tdm_mode_shift);
+#else
 		mtk_regmap_update_bits(afe->regmap, etdm_data.tdm_mode_reg,
 				       etdm_data.tdm_mode_mask,
 				       0x0,
 				       etdm_data.tdm_mode_shift);
+#endif
 
 		/* APLL */
 		mtk_regmap_update_bits(afe->regmap,
