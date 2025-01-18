@@ -2182,7 +2182,7 @@ int xhci_disable_slot(struct xhci_hcd *xhci, u32 slot_id);
 int xhci_ext_cap_init_(struct xhci_hcd *xhci);
 
 int xhci_suspend_(struct xhci_hcd *xhci, bool do_wakeup);
-int xhci_resume_(struct xhci_hcd *xhci, bool hibernated);
+int xhci_resume_(struct xhci_hcd *xhci, pm_message_t msg);
 
 irqreturn_t xhci_irq(struct usb_hcd *hcd);
 irqreturn_t xhci_msi_irq(int irq, void *hcd);
