@@ -356,7 +356,8 @@ enum mtk_dec_param {
 	MTK_DEC_PARAM_GOLDEN_PATH = (1 << 3),
 	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 4),
 	MTK_DEC_PARAM_OPERATING_RATE = (1 << 5),
-	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 6)
+	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 6),
+	MTK_DEC_PARAM_LINECOUNT_THRESHOLD = (1 << 7)
 };
 
 struct mtk_dec_params {
@@ -381,6 +382,7 @@ struct mtk_dec_params {
 	__s32	priority;
 	__s32	slice_count;
 	__u32	vpeek;
+	__u32	linecount_threshold_mode;
 };
 
 /**

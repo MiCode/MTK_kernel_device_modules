@@ -744,6 +744,7 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_VDEC_PLUS_DROP_RATIO:
 	case SET_PARAM_CONTAINER_FRAMERATE:
 	case SET_PARAM_DISABLE_DEBLOCK:
+	case SET_PARAM_VDEC_LINECOUNT_THRESHOLD:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
 		break;
 	case SET_PARAM_COMPRESSED_MODE: {
