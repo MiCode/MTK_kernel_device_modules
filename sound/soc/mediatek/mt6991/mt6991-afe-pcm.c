@@ -176,15 +176,15 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 					__func__, id, ret);
 				return ret;
 			}
-			if (!strcmp(memif->data->name, "VUL8")) {
+			if (!strcmp(memif->data->name, "VUL8") || !strcmp(memif->data->name, "VUL_CM0")) {
 				if (mt6991_is_need_enable_cm(afe, CM0))
 					mt6991_enable_cm(afe, CM0, 1);
 			}
-			if (!strcmp(memif->data->name, "VUL9")) {
+			if (!strcmp(memif->data->name, "VUL9") || !strcmp(memif->data->name, "VUL_CM1")) {
 				if (mt6991_is_need_enable_cm(afe, CM1))
 					mt6991_enable_cm(afe, CM1, 1);
 			}
-			if (!strcmp(memif->data->name, "VUL10")) {
+			if (!strcmp(memif->data->name, "VUL10") || !strcmp(memif->data->name, "VUL_CM2")) {
 				if (mt6991_is_need_enable_cm(afe, CM2))
 					mt6991_enable_cm(afe, CM2, 1);
 			}
@@ -249,11 +249,11 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 					"%s(), error, id %d, memif enable, ret %d\n",
 					__func__, id, ret);
 			}
-			if (!strcmp(memif->data->name, "VUL8"))
+			if (!strcmp(memif->data->name, "VUL8") || !strcmp(memif->data->name, "VUL_CM0"))
 				mt6991_enable_cm(afe, CM0, 0);
-			if (!strcmp(memif->data->name, "VUL9"))
+			if (!strcmp(memif->data->name, "VUL9") || !strcmp(memif->data->name, "VUL_CM1"))
 				mt6991_enable_cm(afe, CM1, 0);
-			if (!strcmp(memif->data->name, "VUL10"))
+			if (!strcmp(memif->data->name, "VUL10") || !strcmp(memif->data->name, "VUL_CM2"))
 				mt6991_enable_cm(afe, CM2, 0);
 		}
 
@@ -3040,56 +3040,80 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch32_mix[] = {
 };
 
 static const char * const cm0_mux_map[] = {
-	"CM0_8CH_PATH",
 	"CM0_2CH_PATH",
+	"CM0_8CH_PATH",
 };
 static const char * const cm1_mux_map[] = {
-	"CM1_16CH_PATH",
 	"CM1_2CH_PATH",
+	"CM1_16CH_PATH",
 };
 static const char * const cm2_mux_map[] = {
-	"CM2_32CH_PATH",
 	"CM2_2CH_PATH",
+	"CM2_32CH_PATH",
 };
 
-static int cm0_mux_map_value[] = {
-	CM0_MUX_VUL8_8CH,
-	CM0_MUX_VUL8_2CH,
-};
-static int cm1_mux_map_value[] = {
-	CM1_MUX_VUL9_16CH,
-	CM1_MUX_VUL9_2CH,
-};
-static int cm2_mux_map_value[] = {
-	CM2_MUX_VUL10_32CH,
-	CM2_MUX_VUL10_2CH,
-};
+static int cm_mux_get(struct snd_kcontrol *kcontrol,
+		      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *widget = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(widget->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 
-static SOC_VALUE_ENUM_SINGLE_DECL(ul_cm0_mux_map_enum,
-				  AFE_CM0_CON0,
-				  AFE_CM0_OUTPUT_MUX_SFT,
-				  AFE_CM0_OUTPUT_MUX_MASK,
-				  cm0_mux_map,
-				  cm0_mux_map_value);
-static SOC_VALUE_ENUM_SINGLE_DECL(ul_cm1_mux_map_enum,
-				  AFE_CM1_CON0,
-				  AFE_CM1_OUTPUT_MUX_SFT,
-				  AFE_CM1_OUTPUT_MUX_MASK,
-				  cm1_mux_map,
-				  cm1_mux_map_value);
-static SOC_VALUE_ENUM_SINGLE_DECL(ul_cm2_mux_map_enum,
-				  AFE_CM2_CON0,
-				  AFE_CM2_OUTPUT_MUX_SFT,
-				  AFE_CM2_OUTPUT_MUX_MASK,
-				  cm2_mux_map,
-				  cm2_mux_map_value);
+	if (!strcmp(widget->name, "CM2_UL_MUX")) {
+		ucontrol->value.integer.value[0] = mt6991_get_cm_mux(CM2);
+	} else if (!strcmp(widget->name, "CM1_UL_MUX")) {
+		ucontrol->value.integer.value[0] = mt6991_get_cm_mux(CM1);
+	} else if (!strcmp(widget->name, "CM0_UL_MUX")) {
+		ucontrol->value.integer.value[0] = mt6991_get_cm_mux(CM0);
+	} else {
+		dev_info(afe->dev, "%s(), No match: %s\n", __func__, widget->name);
+		ucontrol->value.integer.value[0] = 0;
+	}
+
+	return 0;
+}
+
+static int cm_mux_set(struct snd_kcontrol *kcontrol,
+		      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget *widget = snd_soc_dapm_kcontrol_widget(kcontrol);
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(widget->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(afe->dev, "%s(), %s: fd %ld\n",
+			 __func__, widget->name, ucontrol->value.integer.value[0]);
+
+	if (!strcmp(widget->name, "CM2_UL_MUX"))
+		mt6991_set_cm_mux(CM2, ucontrol->value.integer.value[0]);
+	else if (!strcmp(widget->name, "CM1_UL_MUX"))
+		mt6991_set_cm_mux(CM1, ucontrol->value.integer.value[0]);
+	else if (!strcmp(widget->name, "CM0_UL_MUX"))
+		mt6991_set_cm_mux(CM0, ucontrol->value.integer.value[0]);
+	else
+		dev_info(afe->dev, "%s(), No match: %s\n", __func__, widget->name);
+
+	return snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
+}
+
+static SOC_ENUM_SINGLE_DECL(ul_cm0_mux_map_enum,
+			    SND_SOC_NOPM,
+			    0,
+			    cm0_mux_map);
+static SOC_ENUM_SINGLE_DECL(ul_cm1_mux_map_enum,
+			    SND_SOC_NOPM,
+			    0,
+			    cm1_mux_map);
+static SOC_ENUM_SINGLE_DECL(ul_cm2_mux_map_enum,
+			    SND_SOC_NOPM,
+			    0,
+			    cm2_mux_map);
 
 static const struct snd_kcontrol_new ul_cm0_mux_control =
-	SOC_DAPM_ENUM("CM0_UL_MUX Select", ul_cm0_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("CM0_UL_MUX Select", ul_cm0_mux_map_enum, cm_mux_get, cm_mux_set);
 static const struct snd_kcontrol_new ul_cm1_mux_control =
-	SOC_DAPM_ENUM("CM1_UL_MUX Select", ul_cm1_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("CM1_UL_MUX Select", ul_cm1_mux_map_enum, cm_mux_get, cm_mux_set);
 static const struct snd_kcontrol_new ul_cm2_mux_control =
-	SOC_DAPM_ENUM("CM2_UL_MUX Select", ul_cm2_mux_map_enum);
+	SOC_DAPM_ENUM_EXT("CM2_UL_MUX Select", ul_cm2_mux_map_enum, cm_mux_get, cm_mux_set);
 
 static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 	/* inter-connections */
@@ -3183,10 +3207,8 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 			   memif_ul_cm0_ch7_mix, ARRAY_SIZE(memif_ul_cm0_ch7_mix)),
 	SND_SOC_DAPM_MIXER("UL_CM0_CH8", SND_SOC_NOPM, 0, 0,
 			   memif_ul_cm0_ch8_mix, ARRAY_SIZE(memif_ul_cm0_ch8_mix)),
-	SND_SOC_DAPM_MUX_E("CM0_UL_MUX", SND_SOC_NOPM, 0, 0,
-			   &ul_cm0_mux_control,
-			   ul_cm0_event,
-			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_MUX("CM0_UL_MUX", SND_SOC_NOPM, 0, 0,
+			   &ul_cm0_mux_control),
 
 	SND_SOC_DAPM_MIXER("UL_CM1_CH1", SND_SOC_NOPM, 0, 0,
 			   memif_ul_cm1_ch1_mix, ARRAY_SIZE(memif_ul_cm1_ch1_mix)),
@@ -11813,6 +11835,11 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 
 	map = dev_get_regmap(pmic_pdev->dev.parent, NULL);
 	afe_priv->pmic_regmap = map;
+
+	//init cm mux 0/1/2 to 0
+	mt6991_set_cm_mux(CM0, 0);
+	mt6991_set_cm_mux(CM1, 0);
+	mt6991_set_cm_mux(CM2, 0);
 err_find_pmic:
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 	audio_set_dsp_afe(afe);

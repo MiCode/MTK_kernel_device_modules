@@ -18,6 +18,9 @@
 static unsigned int cm0_rate;
 static unsigned int cm1_rate;
 static unsigned int cm2_rate;
+static unsigned int cm0_mux_switch;
+static unsigned int cm1_mux_switch;
+static unsigned int cm2_mux_switch;
 
 struct mtk_base_cm_data {
 	int reg;
@@ -34,6 +37,8 @@ struct mtk_base_cm_data {
 	int swap_shift;
 	int ch_mask;
 	int ch_shift;
+	int mux_mask;
+	int mux_shift;
 };
 
 const struct mtk_base_cm_data cm_data[CM_NUM] = {
@@ -52,6 +57,8 @@ const struct mtk_base_cm_data cm_data[CM_NUM] = {
 		.swap_shift = AFE_CM0_BYTE_SWAP_SFT,
 		.ch_mask = AFE_CM0_CH_NUM_MASK,
 		.ch_shift = AFE_CM0_CH_NUM_SFT,
+		.mux_mask = AFE_CM0_OUTPUT_MUX_MASK,
+		.mux_shift = AFE_CM0_OUTPUT_MUX_SFT,
 	},
 	[CM1] = {
 		.reg = AFE_CM1_CON0,
@@ -68,6 +75,8 @@ const struct mtk_base_cm_data cm_data[CM_NUM] = {
 		.swap_shift = AFE_CM1_BYTE_SWAP_SFT,
 		.ch_mask = AFE_CM1_CH_NUM_MASK,
 		.ch_shift = AFE_CM1_CH_NUM_SFT,
+		.mux_mask = AFE_CM1_OUTPUT_MUX_MASK,
+		.mux_shift = AFE_CM1_OUTPUT_MUX_SFT,
 	},
 	[CM2] = {
 		.reg = AFE_CM2_CON0,
@@ -84,6 +93,8 @@ const struct mtk_base_cm_data cm_data[CM_NUM] = {
 		.swap_shift = AFE_CM2_BYTE_SWAP_SFT,
 		.ch_mask = AFE_CM2_CH_NUM_MASK,
 		.ch_shift = AFE_CM2_CH_NUM_SFT,
+		.mux_mask = AFE_CM2_OUTPUT_MUX_MASK,
+		.mux_shift = AFE_CM2_OUTPUT_MUX_SFT,
 	},
 };
 
@@ -97,6 +108,46 @@ void mt6991_set_cm_rate(int id, unsigned int rate)
 		cm2_rate = rate;
 }
 EXPORT_SYMBOL_GPL(mt6991_set_cm_rate);
+
+void mt6991_set_cm_mux(int id, unsigned int mux)
+{
+	if (id == CM0)
+		cm0_mux_switch = mux;
+	else if (id == CM1)
+		cm1_mux_switch = mux;
+	else if (id == CM2)
+		cm2_mux_switch = mux;
+	else
+		return;
+
+	pr_info("%s(), set CM%d mux = %d\n", __func__, id, mux);
+}
+EXPORT_SYMBOL_GPL(mt6991_set_cm_mux);
+
+int mt6991_get_cm_mux(int id)
+{
+	int value = 0;
+
+	switch (id) {
+	case CM0:
+		value = cm0_mux_switch;
+		break;
+	case CM1:
+		value = cm1_mux_switch;
+		break;
+	case CM2:
+		value = cm2_mux_switch;
+		break;
+	default:
+		pr_info("%s(), CM id %d not exist!!\n", __func__, id);
+		return 0;
+	}
+
+	pr_info("%s(), CM%d value %d\n", __func__, id, value);
+	return value;
+}
+EXPORT_SYMBOL_GPL(mt6991_get_cm_mux);
+
 static int mt6991_convert_cm_ch(unsigned int ch)
 {
 	return ch - 1;
@@ -118,6 +169,7 @@ int mt6991_set_cm(struct mtk_base_afe *afe, int id,
 	       unsigned int update, bool swap, unsigned int ch)
 {
 	unsigned int rate = 0;
+	unsigned int mux = 0;
 	struct mtk_base_cm_data cm;
 	unsigned int samplerate = 0;
 	unsigned int update_val = 0;
@@ -129,14 +181,17 @@ int mt6991_set_cm(struct mtk_base_afe *afe, int id,
 	case CM0:
 		cm = cm_data[id];
 		rate = cm0_rate;
+		mux = cm0_mux_switch;
 		break;
 	case CM1:
 		cm = cm_data[id];
 		rate = cm1_rate;
+		mux = cm1_mux_switch;
 		break;
 	case CM2:
 		cm = cm_data[id];
 		rate = cm2_rate;
+		mux = cm2_mux_switch;
 		break;
 	default:
 		pr_info("%s(), CM%d not found\n", __func__, id);
@@ -162,6 +217,10 @@ int mt6991_set_cm(struct mtk_base_afe *afe, int id,
 	/* swap */
 	mtk_regmap_update_bits(afe->regmap, cm.reg,
 			       cm.swap_mask, swap, cm.swap_shift);
+
+	/* mux */
+	mtk_regmap_update_bits(afe->regmap, cm.reg,
+			       cm.mux_mask, mux, cm.mux_shift);
 
 	return 0;
 }
