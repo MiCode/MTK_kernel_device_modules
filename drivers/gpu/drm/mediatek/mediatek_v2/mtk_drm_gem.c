@@ -302,7 +302,7 @@ struct mtk_drm_gem_obj *mtk_drm_gem_create_from_heap(struct drm_device *dev,
 		dma_heap_buffer_free(dma_buf);
 		goto err_gem_free;
 	}
-	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(sgt)) {
 		DDPPR_ERR("map failed, detach and return\n");
 		dma_buf_detach(dma_buf, attach);
@@ -312,7 +312,7 @@ struct mtk_drm_gem_obj *mtk_drm_gem_create_from_heap(struct drm_device *dev,
 	mtk_gem->dma_addr = sg_dma_address(sgt->sgl);
 	mtk_gem->sg = sgt;
 	mtk_gem->size = dma_buf->size;
-	ret = dma_buf_vmap(dma_buf, &map);
+	ret = dma_buf_vmap_unlocked(dma_buf, &map);
 	if (ret) {
 		DDPPR_ERR("map failed\n");
 		/* svp buff can not be mapped */
