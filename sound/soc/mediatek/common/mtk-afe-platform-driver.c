@@ -77,12 +77,13 @@ int mtk_afe_add_sub_dai_control(struct snd_soc_component *component)
 }
 EXPORT_SYMBOL_GPL(mtk_afe_add_sub_dai_control);
 
-unsigned long word_size_align(unsigned long in_size)
+unsigned long long word_size_align(unsigned long long in_size)
 {
-	unsigned long align_size;
+	unsigned long long align_size;
 
 	/* MTK memif access need 16 bytes alignment */
 	align_size = in_size & 0xFFFFFFFFF0;
+
 	return align_size;
 }
 EXPORT_SYMBOL_GPL(word_size_align);
@@ -108,9 +109,9 @@ snd_pcm_uframes_t mtk_afe_pcm_pointer(struct snd_soc_component *component,
 	struct device *dev = afe->dev;
 	unsigned int hw_ptr_lower32 = 0, hw_ptr_upper32 = 0;
 	unsigned int hw_base_lower32 = 0, hw_base_upper32 = 0;
-	unsigned long hw_ptr = 0, hw_base = 0;
+	unsigned long long hw_ptr = 0, hw_base = 0;
 	int ret;
-	unsigned long pcm_ptr_bytes = 0;
+	unsigned long long pcm_ptr_bytes = 0;
 
 	ret = regmap_read(regmap, memif_data->reg_ofs_cur, &hw_ptr_lower32);
 	if (ret || hw_ptr_lower32 == 0) {
@@ -143,14 +144,15 @@ snd_pcm_uframes_t mtk_afe_pcm_pointer(struct snd_soc_component *component,
 		}
 	}
 	hw_ptr = hw_ptr_upper32;
-	hw_ptr = (hw_ptr << 32) + hw_ptr_lower32;
 	hw_base = hw_base_upper32;
+	hw_ptr = (hw_ptr << 32) + hw_ptr_lower32;
 	hw_base = (hw_base << 32) + hw_base_lower32;
+
 	pcm_ptr_bytes = hw_ptr - hw_base;
 
 POINTER_RETURN_FRAMES:
 	pcm_ptr_bytes = word_size_align(pcm_ptr_bytes);
-	return bytes_to_frames(substream->runtime, pcm_ptr_bytes);
+	return bytes_to_frames(substream->runtime, (unsigned long)pcm_ptr_bytes);
 }
 EXPORT_SYMBOL_GPL(mtk_afe_pcm_pointer);
 
