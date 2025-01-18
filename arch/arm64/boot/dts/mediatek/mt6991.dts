@@ -803,7 +803,7 @@
 	};
 
 	scpsys: power-controller@1c004000 {
-		compatible = "mediatek,mt6991-scpsys", "syscon";
+		compatible = "mediatek,mt6991-scpsys-hwv", "syscon";
 		reg = <0 0x1c004000 0 0x1000>;
 		#power-domain-cells = <1>;
 		apifrbus-ao-io-reg-bus = <&ifr_bus>;
