@@ -377,6 +377,11 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	enum dma_data_direction direction);
 void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt);
 
+long mtk_vcodec_dma_attach_map(struct device *dev, struct dma_buf *dmabuf,
+	struct dma_buf_attachment **att_ptr, struct sg_table **sgt_ptr, dma_addr_t *addr_ptr,
+	enum dma_data_direction direction, const char *debug_str, int debug_line);
+void mtk_vcodec_dma_unmap_detach(struct dma_buf *dmabuf,
+	struct dma_buf_attachment **att_ptr, struct sg_table **sgt_ptr, enum dma_data_direction direction);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment **attach, struct sg_table **sgt, enum mtk_instance_type fmt);

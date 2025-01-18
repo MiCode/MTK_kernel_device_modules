@@ -1240,6 +1240,7 @@ static bool clean_free_fm_buffer(struct mtk_vcodec_ctx *ctx)
 	return has_eos;
 }
 
+#if ENABLE_META_BUF
 static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 {
 	int i = 0;
@@ -1255,20 +1256,9 @@ static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 		return 0;
 	}
 
-	buf_att = dma_buf_attach(
-		dmabuf,
-		ctx->m2m_ctx->out_q_ctx.q.dev);
-	if (IS_ERR_OR_NULL(buf_att)) {
-		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
+	if (mtk_vcodec_dma_attach_map(ctx->m2m_ctx->out_q_ctx.q.dev,
+		dmabuf, &buf_att, &sgt, &dma_meta_addr, DMA_TO_DEVICE, __func__, __LINE__))
 		return 0;
-	}
-	sgt = dma_buf_map_attachment_unlocked(buf_att, DMA_TO_DEVICE);
-	if (IS_ERR_OR_NULL(sgt)) {
-		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
-		dma_buf_detach(dmabuf, buf_att);
-		return 0;
-	}
-	dma_meta_addr  = sg_dma_address(sgt->sgl);
 
 	mtk_v4l2_debug(4, "map new, dmabuf:%p, dma_addr:%pad", dmabuf, &dma_meta_addr);
 	//save va and dmabuf
@@ -1330,6 +1320,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 
 	return dma_addr;
 }
+#endif
 
 static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 {
@@ -1341,7 +1332,6 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 	dma_addr_t dma_general_addr = 0;
 	void *va = NULL;
 	int i = 0;
-	int ret;
 
 	memset(&map, 0, sizeof(struct iosys_map));
 
@@ -1351,26 +1341,19 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 		return NULL;
 	}
 
+#if ENABLE_META_BUF
 	dma_buf_begin_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
-	ret = dma_buf_vmap_unlocked(dmabuf, &map);
-	va = ret ? NULL : map.vaddr;
+	if (!dma_buf_vmap_unlocked(dmabuf, &map))
+		va = map.vaddr;
+#endif
 
-	buf_att = dma_buf_attach(dmabuf, ctx->general_dev);
-	if (IS_ERR_OR_NULL(buf_att)) {
-		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
-		dma_buf_vunmap_unlocked(dmabuf, &map);
+	if (mtk_vcodec_dma_attach_map(ctx->general_dev,
+		dmabuf, &buf_att, &sgt, &dma_general_addr, DMA_BIDIRECTIONAL, __func__, __LINE__)) {
+		if (va)
+			dma_buf_vunmap_unlocked(dmabuf, &map);
 		dma_buf_put(dmabuf);
 		return NULL;
 	}
-	sgt = dma_buf_map_attachment_unlocked(buf_att, DMA_BIDIRECTIONAL);
-	if (IS_ERR_OR_NULL(sgt)) {
-		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
-		dma_buf_detach(dmabuf, buf_att);
-		dma_buf_vunmap_unlocked(dmabuf, &map);
-		dma_buf_put(dmabuf);
-		return NULL;
-	}
-	dma_general_addr  = sg_dma_address(sgt->sgl);
 
 	//save va and dmabuf
 	for (i = 0; i < MAX_GEN_BUF_CNT; i++) {
@@ -1388,9 +1371,9 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 	}
 	if (gen_buf_info == NULL) {
 		mtk_v4l2_err("dma_buf_list is overflow!");
-		dma_buf_unmap_attachment_unlocked(buf_att, sgt, DMA_BIDIRECTIONAL);
-		dma_buf_detach(dmabuf, buf_att);
-		dma_buf_vunmap_unlocked(dmabuf, &map);
+		mtk_vcodec_dma_unmap_detach(dmabuf, &buf_att, &sgt, DMA_BIDIRECTIONAL);
+		if (va)
+			dma_buf_vunmap_unlocked(dmabuf, &map);
 		dma_buf_put(dmabuf);
 	}
 
@@ -1416,9 +1399,6 @@ static struct dma_gen_buf *get_general_buffer_info(struct mtk_vcodec_ctx *ctx,
 
 static void release_general_buffer_info(struct dma_gen_buf *gen_buf_info)
 {
-	struct iosys_map map;
-	struct dma_buf *dmabuf;
-
 	if (gen_buf_info == NULL) {
 		mtk_v4l2_debug(1, "gen_buf_info NULL, may be already released");
 		return;
@@ -1427,14 +1407,16 @@ static void release_general_buffer_info(struct dma_gen_buf *gen_buf_info)
 	mtk_v4l2_debug(8, "dma_buf_put general_buf %p, dmabuf:%p, dma_addr:%llx",
 		gen_buf_info->va, gen_buf_info->dmabuf, (u64)gen_buf_info->dma_general_addr);
 
-	iosys_map_set_vaddr(&map, gen_buf_info->va);
-	dmabuf = gen_buf_info->dmabuf;
+	mtk_vcodec_dma_unmap_detach(
+		gen_buf_info->dmabuf, &gen_buf_info->buf_att, &gen_buf_info->sgt, DMA_BIDIRECTIONAL);
+	if (gen_buf_info->va) {
+		struct iosys_map map;
 
-	dma_buf_unmap_attachment_unlocked(gen_buf_info->buf_att, gen_buf_info->sgt, DMA_BIDIRECTIONAL);
-	dma_buf_detach(dmabuf, gen_buf_info->buf_att);
-	dma_buf_vunmap_unlocked(dmabuf, &map);
-	dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
-	dma_buf_put(dmabuf);
+		iosys_map_set_vaddr(&map, gen_buf_info->va);
+		dma_buf_vunmap_unlocked(gen_buf_info->dmabuf, &map);
+		dma_buf_end_cpu_access(gen_buf_info->dmabuf, DMA_BIDIRECTIONAL);
+	}
+	dma_buf_put(gen_buf_info->dmabuf);
 
 	memset((void *)gen_buf_info, 0, sizeof(struct dma_gen_buf));
 }
@@ -1709,8 +1691,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 			struct dma_buf_attachment *buf_att = ctx->dma_meta_list[i].buf_att;
 			struct sg_table *sgt = ctx->dma_meta_list[i].sgt;
 
-			dma_buf_unmap_attachment_unlocked(buf_att, sgt, DMA_TO_DEVICE);
-			dma_buf_detach(dmabuf, buf_att);
+			mtk_vcodec_dma_unmap_detach(dmabuf, &buf_att, &sgt, DMA_TO_DEVICE);
 			dma_buf_put(dmabuf);
 		}
 	}
@@ -2466,8 +2447,7 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 			struct dma_buf_attachment *buf_att = ctx->dma_meta_list[i].buf_att;
 			struct sg_table *sgt = ctx->dma_meta_list[i].sgt;
 
-			dma_buf_unmap_attachment_unlocked(buf_att, sgt, DMA_TO_DEVICE);
-			dma_buf_detach(dmabuf, buf_att);
+			mtk_vcodec_dma_unmap_detach(dmabuf, &buf_att, &sgt, DMA_TO_DEVICE);
 			dma_buf_put(dmabuf);
 		}
 	}
@@ -3687,6 +3667,8 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 			mtkbuf->frame_buffer.dma_general_buf,
 			&mtkbuf->frame_buffer.dma_general_addr);
 
+#if ENABLE_META_BUF
+		mutex_lock(&ctx->meta_buf_lock);
 		if (mtkbuf->meta_user_fd > 0) {
 			mtkbuf->frame_buffer.dma_meta_buf =
 				dma_buf_get(mtkbuf->meta_user_fd);
@@ -3698,8 +3680,6 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 		} else
 			mtkbuf->frame_buffer.dma_meta_buf = 0;
 
-#if ENABLE_META_BUF
-		mutex_lock(&ctx->meta_buf_lock);
 		mtkbuf->general_dma_va = NULL;
 		if (mtkbuf->frame_buffer.dma_general_buf != 0) {
 			// NOTE: all codec should use a common struct
@@ -3726,23 +3706,22 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 				ctx->id, vb->index, general_buf_va,
 				metaBufferfd, mtkbuf->meta_user_fd);
 		}
-		mutex_unlock(&ctx->meta_buf_lock);
-#endif
-
 		mtk_v4l2_debug(4,
 			"meta_buf fd=%d, dma_buf=%p, DMA=%pad",
 			mtkbuf->meta_user_fd,
 			mtkbuf->frame_buffer.dma_meta_buf,
 			&mtkbuf->frame_buffer.dma_meta_addr);
+		mutex_unlock(&ctx->meta_buf_lock);
+#endif
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		struct device *io_dev = vcp_get_io_device_ex(VCP_IOMMU_VDEC);
 
 		if (ctx->dev->support_acp && mtk_vdec_acp_enable && mtk_vdec_acp_debug && io_dev != NULL) {
-			mtkbuf->non_acp_attach = dma_buf_attach(vb->planes[0].dbuf, io_dev);
-			mtkbuf->non_acp_sgt = dma_buf_map_attachment(mtkbuf->non_acp_attach, DMA_BIDIRECTIONAL);
-			mtkbuf->bs_buffer.non_acp_iova = (__u64)sg_dma_address(mtkbuf->non_acp_sgt->sgl);
+			mtk_vcodec_dma_attach_map(io_dev, vb->planes[0].dbuf,
+				&mtkbuf->non_acp_attach, &mtkbuf->non_acp_sgt, &mtkbuf->bs_buffer.non_acp_iova,
+				DMA_BIDIRECTIONAL, __func__, __LINE__);
 		} else {
 			mtkbuf->non_acp_attach = NULL;
 			mtkbuf->non_acp_sgt = NULL;
@@ -4111,14 +4090,8 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 		mtkbuf = container_of(vb2_v4l2, struct mtk_video_dec_buf, vb);
-		if (!IS_ERR_OR_NULL(mtkbuf->non_acp_attach)) {
-			if (!IS_ERR_OR_NULL(mtkbuf->non_acp_sgt))
-				dma_buf_unmap_attachment(
-					mtkbuf->non_acp_attach, mtkbuf->non_acp_sgt, DMA_BIDIRECTIONAL);
-			dma_buf_detach(vb->planes[0].dbuf, mtkbuf->non_acp_attach);
-			mtkbuf->non_acp_attach = NULL;
-			mtkbuf->non_acp_sgt = NULL;
-		}
+		mtk_vcodec_dma_unmap_detach(
+			vb->planes[0].dbuf, &mtkbuf->non_acp_attach, &mtkbuf->non_acp_sgt, DMA_BIDIRECTIONAL);
 	}
 #endif
 
@@ -4138,17 +4111,17 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 	vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 	mtkbuf = container_of(vb2_v4l2, struct mtk_video_dec_buf, vb);
 
-	if (mtkbuf->frame_buffer.dma_general_buf != 0) {
+	if (!IS_ERR_OR_NULL(mtkbuf->frame_buffer.dma_general_buf)) {
 		release_general_buffer_info_by_dmabuf(ctx, mtkbuf->frame_buffer.dma_general_buf);
-		mtkbuf->frame_buffer.dma_general_buf = 0;
+		mtkbuf->frame_buffer.dma_general_buf = NULL;
 		mtk_v4l2_debug(4, "dma_buf_put general_buf fd=%d, dma_buf=%p, DMA=%pad",
 			mtkbuf->general_user_fd,
 			mtkbuf->frame_buffer.dma_general_buf,
 			&mtkbuf->frame_buffer.dma_general_addr);
 	}
-	if (mtkbuf->frame_buffer.dma_meta_buf != 0) {
+	if (!IS_ERR_OR_NULL(mtkbuf->frame_buffer.dma_meta_buf)) {
 		dma_buf_put(mtkbuf->frame_buffer.dma_meta_buf);
-		mtkbuf->frame_buffer.dma_meta_buf = 0;
+		mtkbuf->frame_buffer.dma_meta_buf = NULL;
 		mtk_v4l2_debug(4, "dma_buf_put meta_buf fd=%d, dma_buf=%p, DMA=%pad",
 			mtkbuf->meta_user_fd,
 			mtkbuf->frame_buffer.dma_meta_buf,
