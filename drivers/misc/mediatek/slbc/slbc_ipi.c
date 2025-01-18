@@ -31,6 +31,7 @@ static DEFINE_MUTEX(slbc_scmi_lock);
 
 int slbc_sspm_slb_disable(int disable)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -40,11 +41,15 @@ int slbc_sspm_slb_disable(int disable)
 	slbc_ipi_d.cmd = IPI_SLB_DISABLE;
 	slbc_ipi_d.arg1 = disable;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_slb_disable);
 
 int slbc_sspm_slc_disable(int disable)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -54,11 +59,15 @@ int slbc_sspm_slc_disable(int disable)
 	slbc_ipi_d.cmd = IPI_SLC_DISABLE;
 	slbc_ipi_d.arg1 = disable;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_slc_disable);
 
 int slbc_sspm_enable(int enable)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -68,11 +77,15 @@ int slbc_sspm_enable(int enable)
 	slbc_ipi_d.cmd = IPI_SLBC_ENABLE;
 	slbc_ipi_d.arg1 = enable;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_enable);
 
 int slbc_force_scmi_cmd(unsigned int force)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -81,11 +94,15 @@ int slbc_force_scmi_cmd(unsigned int force)
 	slbc_ipi_d.arg1 = force;
 
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_force_scmi_cmd);
 
 int slbc_mic_num_cmd(unsigned int num)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -94,11 +111,15 @@ int slbc_mic_num_cmd(unsigned int num)
 	slbc_ipi_d.arg1 = num;
 
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_mic_num_cmd);
 
 int slbc_inner_cmd(unsigned int inner)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -107,11 +128,15 @@ int slbc_inner_cmd(unsigned int inner)
 	slbc_ipi_d.arg1 = inner;
 
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_inner_cmd);
 
 int slbc_outer_cmd(unsigned int outer)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -120,11 +145,15 @@ int slbc_outer_cmd(unsigned int outer)
 	slbc_ipi_d.arg1 = outer;
 
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_outer_cmd);
 
 int slbc_suspend_resume_notify(int suspend)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -132,11 +161,15 @@ int slbc_suspend_resume_notify(int suspend)
 	slbc_ipi_d.cmd = IPI_SLBC_SUSPEND_RESUME_NOTIFY;
 	slbc_ipi_d.arg1 = suspend;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_suspend_resume_notify);
 
 int slbc_table_gid_set(int gid, int quota, int pri)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -146,11 +179,15 @@ int slbc_table_gid_set(int gid, int quota, int pri)
 	slbc_ipi_d.arg2 = pri;
 	slbc_ipi_d.arg3 = quota;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_set);
 
 int slbc_table_gid_release(int gid)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -158,11 +195,15 @@ int slbc_table_gid_release(int gid)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_RELEASE;
 	slbc_ipi_d.arg1 = gid;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_release);
 
 int slbc_table_gid_get(int gid)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -170,11 +211,15 @@ int slbc_table_gid_get(int gid)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_GET;
 	slbc_ipi_d.arg1 = gid;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_get);
 
 int slbc_table_idt_set(int index, int arid, int idt)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -184,11 +229,15 @@ int slbc_table_idt_set(int index, int arid, int idt)
 	slbc_ipi_d.arg2 = arid;
 	slbc_ipi_d.arg3 = idt;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_idt_set);
 
 int slbc_table_idt_release(int index)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -196,11 +245,15 @@ int slbc_table_idt_release(int index)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_IDT_RELEASE;
 	slbc_ipi_d.arg1 = index;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_idt_release);
 
 int slbc_table_idt_get(int index)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -208,11 +261,15 @@ int slbc_table_idt_get(int index)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_IDT_GET;
 	slbc_ipi_d.arg1 = index;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_idt_get);
 
 int slbc_table_gid_axi_set(int index, int axiid, int pg)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -222,11 +279,15 @@ int slbc_table_gid_axi_set(int index, int axiid, int pg)
 	slbc_ipi_d.arg2 = axiid;
 	slbc_ipi_d.arg3 = pg;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_axi_set);
 
 int slbc_table_gid_axi_release(int index)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -234,11 +295,15 @@ int slbc_table_gid_axi_release(int index)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_AXI_RELEASE;
 	slbc_ipi_d.arg1 = index;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_axi_release);
 
 int slbc_table_gid_axi_get(int index)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -246,11 +311,15 @@ int slbc_table_gid_axi_get(int index)
 	slbc_ipi_d.cmd = IPI_SLBC_TABLE_GID_AXI_GET;
 	slbc_ipi_d.arg1 = index;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_table_gid_axi_get);
 
 int emi_slb_select(int argv1, int argv2, int argv3)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -260,11 +329,15 @@ int emi_slb_select(int argv1, int argv2, int argv3)
 	slbc_ipi_d.arg2 = argv2;
 	slbc_ipi_d.arg3 = argv3;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_slb_select);
 
 int emi_pmu_counter(int idx, int filter0, int bw_lat_sel)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -274,11 +347,15 @@ int emi_pmu_counter(int idx, int filter0, int bw_lat_sel)
 	slbc_ipi_d.arg2 = filter0;
 	slbc_ipi_d.arg3 = bw_lat_sel;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_pmu_counter);
 
 int emi_pmu_set_ctrl(int feature, int idx, int action)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -288,11 +365,15 @@ int emi_pmu_set_ctrl(int feature, int idx, int action)
 	slbc_ipi_d.arg2 = idx;
 	slbc_ipi_d.arg3 = action;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_pmu_set_ctrl);
 
 int emi_pmu_read_counter(int idx)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 	int ret = 0;
@@ -309,11 +390,15 @@ int emi_pmu_read_counter(int idx)
 	}
 
 	return rvalue.slbc_resv1;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_pmu_read_counter);
 
 int emi_gid_pmu_counter(int idx, int set)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -322,11 +407,15 @@ int emi_gid_pmu_counter(int idx, int set)
 	slbc_ipi_d.arg1 = idx;
 	slbc_ipi_d.arg2 = set;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_gid_pmu_counter);
 
 int emi_gid_pmu_read_counter(void *ptr)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 	struct slbc_data *d = (struct slbc_data *)ptr;
@@ -348,11 +437,15 @@ int emi_gid_pmu_read_counter(void *ptr)
 	d->timeout = rvalue.slbc_resv3;
 
 	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_gid_pmu_read_counter);
 
 int emi_slc_test_result(void)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 	int ret = 0;
@@ -368,6 +461,9 @@ int emi_slc_test_result(void)
 	}
 
 	return rvalue.slbc_resv1;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(emi_slc_test_result);
 
@@ -646,6 +742,7 @@ EXPORT_SYMBOL_GPL(_slbc_sspm_shared_dram_scmi);
 
 int slbc_sspm_sram_update(void)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
 
@@ -653,6 +750,9 @@ int slbc_sspm_sram_update(void)
 	slbc_ipi_d.cmd = IPI_SLBC_SRAM_UPDATE;
 	slbc_ipi_d.arg1 = 0;
 	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 EXPORT_SYMBOL_GPL(slbc_sspm_sram_update);
 
