@@ -33,6 +33,9 @@
 #include "sugov/cpufreq.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
+#else
+#define csram_read(offs)	\
+	IS_ERR_OR_NULL((void *)csram_base) ? 0 : __raw_readl(csram_base + (offs))
 #endif
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
