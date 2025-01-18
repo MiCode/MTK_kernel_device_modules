@@ -397,6 +397,7 @@ static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 		mask = ~((drecolor_sel << 15) | (drecolor_sel << 20)) & mask;
 	} else {
 		SET_VAL_MASK(value, mask, 0, FLD_WIDE_GAMUT_EN);
+		mask = mask | 0xFF;
 		/* disable wide_gamut */
 	}
 
@@ -1511,8 +1512,8 @@ static const struct mtk_disp_color_data mt2701_color_driver_data = {
 
 static const struct mtk_disp_color_data mt6761_color_driver_data = {
 	.color_offset = DISP_COLOR_START_REG,
-	.support_color21 = true,
-	.support_color30 = true,
+	.support_color21 = false,
+	.support_color30 = false,
 	.color_window = 0x40185E57,
 	.support_shadow = false,
 	.need_bypass_shadow = false,
@@ -1529,8 +1530,8 @@ static const struct mtk_disp_color_data mt6765_color_driver_data = {
 
 static const struct mtk_disp_color_data mt6768_color_driver_data = {
 	.color_offset = DISP_COLOR_START_REG,
-	.support_color21 = true,
-	.support_color30 = true,
+	.support_color21 = false,
+	.support_color30 = false,
 	.color_window = 0x40185E57,
 	.support_shadow = false,
 	.need_bypass_shadow = false,

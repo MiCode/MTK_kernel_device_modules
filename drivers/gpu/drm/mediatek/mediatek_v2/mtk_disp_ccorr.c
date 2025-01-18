@@ -758,10 +758,17 @@ int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccor
 int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
-	int i = 0;
+	int i = 0, j=0;
 	int ret = 0;
 	bool support_matrix = true;
+	bool identity_matrix = true;
 	struct DISP_COLOR_TRANSFORM *color_transform = data;
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+		to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
+	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
 	if (color_transform == NULL) {
 		support_matrix = false;
@@ -787,6 +794,23 @@ int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 		}
 	}
 
+	if (support_matrix) {
+		ret = 0; //Zero: support color matrix.
+		for (i = 0 ; i < 3; i++)
+			for (j = 0 ; j < 3; j++)
+				if ((i == j) &&
+					(color_transform->matrix[i][j] !=
+					primary_data->ccorr_offset_base)){
+					identity_matrix = false;
+				}
+	}
+
+	//if only one ccorr and ccorr0 is linear, AOSP matrix unsupport
+	if ((primary_data->disp_ccorr_number == 1) &&
+		(ccorr_data->is_linear == 1) && (!identity_matrix))
+		ret = -EFAULT;
+	else
+		ret = 0;
 	return ret;
 }
 
