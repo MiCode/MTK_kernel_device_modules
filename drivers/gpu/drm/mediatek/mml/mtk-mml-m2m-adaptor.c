@@ -84,6 +84,7 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
 
+	mutex_lock(&v4l2_dev->m2m_mutex);
 	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
@@ -93,6 +94,7 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	v4l2_m2m_buf_done(src_buf, vb_state);
 	v4l2_m2m_buf_done(dst_buf, vb_state);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
+	mutex_unlock(&v4l2_dev->m2m_mutex);
 }
 
 static void m2m_task_frame_done(struct mml_task *task)
