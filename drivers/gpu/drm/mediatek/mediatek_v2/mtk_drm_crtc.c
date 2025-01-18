@@ -1922,6 +1922,117 @@ static bool msync_is_on(struct mtk_drm_private *priv,
 	return false;
 }
 
+int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
+	unsigned int panel_ext_param, unsigned int cfg_flag)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_ddp_comp *oddmr_comp;
+	struct mtk_bl_ext_config bl_ext_config;
+	static unsigned int bl_cnt;
+	bool is_frame_mode;
+	int index = drm_crtc_index(crtc);
+	int ret = 0;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+	struct mtk_crtc_state *mtk_crtc_state = NULL;
+
+	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
+			level);
+
+	if(mtk_crtc == NULL || crtc->state == NULL){
+		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		return -EINVAL;
+	}
+
+	mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
+	if (mtk_crtc_state == NULL) {
+		DDPINFO("Sleep State set backlight stop --mtk_crtc_state NULL\n");
+		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		return -EINVAL;
+	}
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		return -EINVAL;
+	}
+
+	if (!comp) {
+		DDPINFO("%s no output comp\n", __func__);
+		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		return -EINVAL;
+	}
+
+	if (unlikely(!panel_ext)) {
+		DDPPR_ERR("%s:can't find panel_ext handle\n", __func__);
+		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		return -EINVAL;
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
+	cmdq_handle = mtk_crtc_state->cmdq_handle;
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		return -EINVAL;
+	}
+
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
+
+	/* set backlight */
+	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
+
+	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))
+		&& !(cfg_flag & (0x1<<ENABLE_DYN_ELVSS))
+		&& !(cfg_flag & (0x1<<DISABLE_DYN_ELVSS))) {
+
+		DDPINFO("%s cfg_flag = %d,level=%d\n", __func__, cfg_flag, level);
+		if (comp && comp->funcs && comp->funcs->io_cmd)
+			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL, &level);
+
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
+	} else {
+		/* set backlight and elvss*/
+		bl_ext_config.cfg_flag = cfg_flag;
+		bl_ext_config.backlight_level = level;
+		bl_ext_config.elvss_pn = panel_ext_param;
+
+		if (!is_frame_mode) {
+			/* In video mode, DSI_SET_BL_ELVSS will stop video mode to command mode, */
+			/* so no need to record the DSI_SET_BL_ELVSS duration */
+			/* Record Vblank end timestamp and calculate duration */
+			mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
+		}
+
+		if (comp && comp->funcs && comp->funcs->io_cmd)
+			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL_ELVSS, &bl_ext_config);
+
+	}
+	if (is_frame_mode) {
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
+	}
+
+	CRTC_MMP_MARK(index, backlight, bl_cnt, 0);
+	drm_trace_tag_mark("backlight");
+	bl_cnt++;
+
+	CRTC_MMP_EVENT_END(index, backlight, (unsigned long)crtc,
+			level);
+
+	return ret;
+}
+
+
+
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)
 {

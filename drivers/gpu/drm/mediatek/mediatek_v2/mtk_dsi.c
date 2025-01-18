@@ -2977,6 +2977,7 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 		struct mtk_ddp_comp *comp;
 		struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
 		struct mtk_crtc_state *mtk_crtc_state = NULL;
+		struct pq_common_data *pq_data = NULL;
 
 		if (mtk_crtc == NULL) {
 			DDPPR_ERR("%s[%d]:mtk_crtc is NULL\n", __func__, __LINE__);
@@ -2992,7 +2993,12 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
 		csc_nits[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
 		DDPINFO("%s, csc_bl[%d] = %llu nits %llu\n", __func__, index, csc_bl[index], csc_nits[index]);
-		mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
+		pq_data = mtk_crtc->pq_data;
+		if (pq_data)
+			DDPDBG("%s, DISP_PQ_CCORR_SILKY_BRIGHTNESS[%d]\n", __func__,
+			pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]);
+
+		mtk_drm_setbacklight_at_te(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL));
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 		if (comp)
