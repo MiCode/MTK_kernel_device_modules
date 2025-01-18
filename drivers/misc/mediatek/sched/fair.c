@@ -131,20 +131,6 @@ unsigned long capacity_of(int cpu)
 
 }
 
-unsigned long cpu_util(int cpu)
-{
-	struct cfs_rq *cfs_rq;
-	unsigned int util;
-
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
-
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		util = max(util, READ_ONCE(cfs_rq->avg.util_est.enqueued));
-
-	return min_t(unsigned long, util, capacity_orig_of(cpu));
-}
-
 #if IS_ENABLED(CONFIG_MTK_EAS)
 /*
  * Predicts what cpu_util(@cpu) would return if @p was migrated (and enqueued)

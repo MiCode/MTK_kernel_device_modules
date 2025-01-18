@@ -220,17 +220,5 @@ static inline bool is_util_est_enable(void)
 	return true;
 #endif
 }
-
-static inline unsigned long mtk_cpu_util_cfs(struct rq *rq)
-{
-	unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
-
-	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
-		util = max_t(unsigned long, util,
-			     READ_ONCE(rq->cfs.avg.util_est.enqueued));
-	}
-
-	return util;
-}
-
+extern unsigned long cpu_util_cfs(int cpu);
 #endif /* _SCHED_COMMON_H */
