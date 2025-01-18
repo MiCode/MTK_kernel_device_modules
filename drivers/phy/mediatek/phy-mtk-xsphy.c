@@ -74,6 +74,9 @@
 
 #define XSP_USBPHYACR2		((SSUSB_SIFSLV_U2PHY_COM) + 0x08)
 
+#define XSP_USBPHYACR4		((SSUSB_SIFSLV_U2PHY_COM) + 0x10)
+#define P2A4_RG_USB20_FS_CR		GENMASK(10, 8)
+
 #define XSP_USBPHYACR5		((SSUSB_SIFSLV_U2PHY_COM) + 0x014)
 #define P2A5_RG_HSTX_SRCAL_EN	BIT(15)
 #define P2A5_RG_HSTX_SRCTRL		GENMASK(14, 12)
@@ -98,7 +101,7 @@
 #define P2A3_RG_USB20_PUPD_BIST_EN	BIT(12)
 #define P2A3_RG_USB20_EN_PU_DP		BIT(9)
 
-#define XSP_USBPHYACR4		((SSUSB_SIFSLV_U2PHY_COM) + 0x020)
+#define XSP_U2PHYACR4		((SSUSB_SIFSLV_U2PHY_COM) + 0x020)
 #define P2A4_RG_USB20_GPIO_CTL		BIT(9)
 #define P2A4_USB20_GPIO_MODE		BIT(8)
 #define P2A4_U2_GPIO_CTR_MSK (P2A4_RG_USB20_GPIO_CTL | P2A4_USB20_GPIO_MODE)
@@ -411,6 +414,7 @@ struct xsphy_instance {
 	int host_rx_sqth;
 	int rev6;
 	int hsrx_vref_sel;
+	int fs_cr;
 	/* u2 eye diagram for host */
 	int eye_src_host;
 	int eye_vrt_host;
@@ -612,7 +616,7 @@ static int proc_jtag_show(struct seq_file *s, void *unused)
 	void __iomem *pbase = inst->port_base;
 	u32 cr4, cr6, cr0, cr2, mon0;
 
-	cr4 = readl(pbase + XSP_USBPHYACR4);
+	cr4 = readl(pbase + XSP_U2PHYACR4);
 	cr6 = readl(pbase + XSP_USBPHYACR6);
 	cr0 = readl(pbase + XSP_USBPHYACR0);
 	cr2 = readl(pbase + XSP_USBPHYACR2);
@@ -1809,7 +1813,7 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM1, P2D_RG_UART_EN);
 
-	mtk_phy_clear_bits(pbase + XSP_USBPHYACR4, P2A4_U2_GPIO_CTR_MSK);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYACR4, P2A4_U2_GPIO_CTR_MSK);
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_FORCE_SUSPENDM);
 
@@ -1856,7 +1860,7 @@ static void u2_phy_instance_power_off(struct mtk_xsphy *xsphy,
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM1, P2D_RG_UART_EN);
 
-	mtk_phy_clear_bits(pbase + XSP_USBPHYACR4, P2A4_U2_GPIO_CTR_MSK);
+	mtk_phy_clear_bits(pbase + XSP_U2PHYACR4, P2A4_U2_GPIO_CTR_MSK);
 
 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
 
@@ -1897,6 +1901,7 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 				     int submode)
 {
 	u32 tmp;
+	int i = 0;
 
 	dev_info(xsphy->dev, "%s mode(%d), submode(%d)\n", __func__,
 		mode, submode);
@@ -1957,14 +1962,30 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 					   P2A6_RG_BC11_SW_EN);
 			break;
 		case PHY_MODE_DPPULLUP_SET:
+			/* eUSB2 rptr to pullup DP */
+			if (!IS_ERR_OR_NULL(xsphy->repeater[0])) {
+				for (i = 0; i < xsphy->num_rptr; i++) {
+					if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+						phy_set_mode_ext(xsphy->repeater[i],
+							PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_SET);
+				}
+			}
 			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR3,
-					 (P2A3_RG_USB20_PUPD_BIST_EN |
-					 P2A3_RG_USB20_EN_PU_DP));
+					(P2A3_RG_USB20_PUPD_BIST_EN |
+					P2A3_RG_USB20_EN_PU_DP));
 			break;
 		case PHY_MODE_DPPULLUP_CLR:
+			/* eUSB2 rptr to pulldown DP */
+			if (!IS_ERR_OR_NULL(xsphy->repeater[0])) {
+				for (i = 0; i < xsphy->num_rptr; i++) {
+					if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+						phy_set_mode_ext(xsphy->repeater[i],
+							PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_CLR);
+				}
+			}
 			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR3,
-					   (P2A3_RG_USB20_PUPD_BIST_EN |
-					   P2A3_RG_USB20_EN_PU_DP));
+					(P2A3_RG_USB20_PUPD_BIST_EN |
+					P2A3_RG_USB20_EN_PU_DP));
 			break;
 		default:
 			return;
@@ -2197,6 +2218,9 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (device_property_read_u32(dev, "mediatek,hsrx-vref-sel",
 					&inst->hsrx_vref_sel) || inst->hsrx_vref_sel < 0)
 			inst->hsrx_vref_sel = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,fs-cr",
+					&inst->fs_cr) || inst->fs_cr < 0)
+			inst->fs_cr = -EINVAL;
 		if (device_property_read_string(dev, "mediatek,intr-ofs",
 					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->intr_ofs) < 0)
 			inst->intr_ofs = -(P2AR_RG_INTR_CAL_MASK + 1);
@@ -2241,6 +2265,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->efuse_term_cal, inst->term_ofs, inst->host_term_ofs);
 		dev_dbg(dev, "src:%d, vrt:%d, term:%d, hsrx_vref_sel:%d\n",
 			inst->eye_src, inst->eye_vrt, inst->eye_term, inst->hsrx_vref_sel);
+		dev_dbg(dev, "fs_cr:%d\n",
+			inst->fs_cr);
 		dev_dbg(dev, "src_host:%d, vrt_host:%d, term_host:%d\n",
 			inst->eye_src_host, inst->eye_vrt_host,
 			inst->eye_term_host);
@@ -2350,6 +2376,10 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 			mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_HSRX_VREF_SEL,
 				     inst->hsrx_vref_sel);
 	}
+
+	if (inst->fs_cr != -EINVAL)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR4, P2A4_RG_USB20_FS_CR,
+				     inst->fs_cr);
 
 }
 
@@ -2658,7 +2688,7 @@ static int mtk_xsphy_uart_resume(struct device *dev)
 
 	mtk_phy_set_bits(pbase + XSP_U2PHYDTM1, (0x1 << 16) | (0x1 << 17) | (0x1 << 18));
 
-	mtk_phy_set_bits(pbase + XSP_USBPHYACR4, (0x1 << 17));
+	mtk_phy_set_bits(pbase + XSP_U2PHYACR4, (0x1 << 17));
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, (0x3 << 4));
 
@@ -2743,7 +2773,7 @@ static int mtk_phy_jtag_init(struct phy *phy)
 		return ret;
 	}
 
-	mtk_phy_set_bits(pbase + XSP_USBPHYACR4, 0xf300);
+	mtk_phy_set_bits(pbase + XSP_U2PHYACR4, 0xf300);
 
 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, ~(0xf67ffff));
 
