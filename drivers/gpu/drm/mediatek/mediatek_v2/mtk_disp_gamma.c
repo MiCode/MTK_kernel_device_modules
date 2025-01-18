@@ -178,15 +178,14 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
 		primary_data->table_out_sel = primary_data->table_config_sel;
+		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_stop(client);
 		cmdq_mbox_disable(client->chan);
 		break;
 
 	case GAMMA_PREPARE:
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_stop(client);
 		cmdq_mbox_disable(client->chan);
 		break;
 	default:
@@ -1587,6 +1586,11 @@ struct mtk_disp_gamma_data mt6989_driver_data = {
 	.gamma_gain_range = 16384,
 };
 
+struct mtk_disp_gamma_data mt6878_driver_data = {
+	.support_gamma_gain = true,
+	.gamma_gain_range = 16384,
+};
+
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-gamma",
 	  .data = &legacy_driver_data,},
@@ -1618,6 +1622,8 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	  .data = &mt6897_driver_data,},
 	{ .compatible = "mediatek,mt6989-disp-gamma",
 	  .data = &mt6989_driver_data,},
+	{ .compatible = "mediatek,mt6878-disp-gamma",
+	  .data = &mt6878_driver_data,},
 	{},
 };
 

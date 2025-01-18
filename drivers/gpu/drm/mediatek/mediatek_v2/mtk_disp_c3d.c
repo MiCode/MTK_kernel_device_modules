@@ -210,18 +210,16 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 
 	switch (cmd_type) {
 	case C3D_USERSPACE:
+		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
-		if (async == false) {
-			cmdq_mbox_stop(client);
+		if (async == false)
 			cmdq_mbox_disable(client->chan);
-		}
 		break;
 
 	case C3D_PREPARE:
 		cmdq_pkt_refinalize(cmdq_handle);
 		if (async == false) {
 			cmdq_pkt_flush(cmdq_handle);
-			cmdq_mbox_stop(client);
 			cmdq_mbox_disable(client->chan);
 		} else {
 			int ret = 0;
@@ -467,7 +465,7 @@ static int disp_c3d_cfg_write_3dlut_to_reg(struct mtk_ddp_comp *comp,
 		mutex_unlock(&primary_data->c3d_lut_lock);
 	} else if (c3dBinNum == 9) {
 		if (!c3d_data->is_right_pipe) {
-			if (memcpy(&primary_data->c3d_reg_9bin,
+			if (copy_from_user(&primary_data->c3d_reg_9bin,
 						C3D_U32_PTR(c3d_lut->lut3d),
 						sizeof(primary_data->c3d_reg_9bin)) == 0) {
 				mutex_lock(&primary_data->c3d_lut_lock);
@@ -1613,6 +1611,14 @@ static const struct mtk_disp_c3d_data mt6989_c3d_driver_data = {
 	.c3d_sram_end_addr = 19648,
 };
 
+static const struct mtk_disp_c3d_data mt6878_c3d_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.bin_num = 9,
+	.c3d_sram_start_addr = 0,
+	.c3d_sram_end_addr = 2912,
+};
+
 static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6983-disp-c3d",
 	  .data = &mt6983_c3d_driver_data},
@@ -1628,6 +1634,8 @@ static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	  .data = &mt6897_c3d_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-c3d",
 	  .data = &mt6989_c3d_driver_data},
+	{ .compatible = "mediatek,mt6878-disp-c3d",
+	  .data = &mt6878_c3d_driver_data},
 	{},
 };
 

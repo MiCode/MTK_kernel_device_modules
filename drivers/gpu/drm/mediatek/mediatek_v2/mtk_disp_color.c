@@ -1284,29 +1284,6 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 		DDPINFO("Disp COLOR's bit is : %u\n", cfg->bpc);
 }
 
-void ddp_color_bypass_color(struct mtk_ddp_comp *comp, int bypass,
-		struct cmdq_pkt *handle)
-{
-	struct mtk_disp_color_primary *primary_data = NULL;
-
-	DDPINFO("%s, bypass:%d\n", __func__, bypass);
-	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer!", __func__);
-		return;
-	}
-	primary_data = comp_to_color(comp)->primary_data;
-	primary_data->color_bypass = bypass;
-
-	if (bypass) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(1 << 7), 0xFF); /* bypass all */
-	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0 << 7), 0xFF); /* resume all */
-	}
-}
 
 int mtk_drm_color_cfg_set_pqparam(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
@@ -1559,6 +1536,37 @@ int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
 }
 
 
+void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+	struct cmdq_pkt *handle)
+{
+
+	struct mtk_disp_color *color;
+	struct mtk_disp_color_primary *primary_data;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s, null pointer!", __func__);
+		return;
+	}
+	color = comp_to_color(comp);
+	primary_data = NULL;
+
+
+	DDPINFO("%s: bypass: %d\n", __func__, bypass);
+
+	primary_data = comp_to_color(comp)->primary_data;
+	primary_data->color_bypass = bypass;
+
+	if (bypass) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_COLOR_CFG_MAIN,
+			       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_COLOR_CFG_MAIN,
+			(0 << 7), 0xFF); /* resume all */
+	}
+}
+
 int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
@@ -1566,11 +1574,11 @@ int mtk_color_cfg_bypass(struct mtk_ddp_comp *comp,
 	unsigned int *value = data;
 	struct mtk_disp_color *color = comp_to_color(comp);
 
-	ddp_color_bypass_color(comp, *value, handle);
+	mtk_color_bypass(comp, *value, handle);
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_color1 = color->companion;
 
-		ddp_color_bypass_color(comp_color1, *value, handle);
+		mtk_color_bypass(comp_color1, *value, handle);
 	}
 
 	return ret;
@@ -2641,32 +2649,6 @@ int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
 	return mtk_drm_ioctl_hw_write_impl(crtc, data);
 }
 
-static void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
-{
-	struct mtk_disp_color *color = comp_to_color(comp);
-
-	DDPINFO("%s: bypass: %d\n", __func__, bypass);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_COLOR_CFG_MAIN,
-		       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
-
-	/* disable R2Y/Y2R in Color Wrapper */
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_CM1_EN(color), 0, 0x1);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_CM2_EN(color), 0, 0x1);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_START(color), 0x3, 0x3);
-
-	/*
-	 * writel(0, comp->regs + DISP_COLOR_CM1_EN);
-	 * writel(0, comp->regs + DISP_COLOR_CM2_EN);
-	 * writel(0x1, comp->regs + DISP_COLOR_START(color));
-	 */
-}
-
 void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
 	unsigned int pa, unsigned int pa1)
@@ -2817,11 +2799,11 @@ static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		unsigned int *value = data;
 
-		ddp_color_bypass_color(comp, *value, handle);
+		mtk_color_bypass(comp, *value, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_color1 = color->companion;
 
-			ddp_color_bypass_color(comp_color1, *value, handle);
+			mtk_color_bypass(comp_color1, *value, handle);
 		}
 	}
 	break;
@@ -3303,6 +3285,15 @@ static const struct mtk_disp_color_data mt6989_color_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_color_data mt6878_color_driver_data = {
+	.color_offset = DISP_COLOR_START_MT6873,
+	.support_color21 = true,
+	.support_color30 = true,
+	.color_window = 0x40185E57,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	{.compatible = "mediatek,mt2701-disp-color",
 	 .data = &mt2701_color_driver_data},
@@ -3338,6 +3329,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	 .data = &mt6897_color_driver_data},
 	{.compatible = "mediatek,mt6989-disp-color",
 	 .data = &mt6989_color_driver_data},
+	{.compatible = "mediatek,mt6878-disp-color",
+	 .data = &mt6878_color_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_color_driver_dt_match);

@@ -622,14 +622,14 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		hint, identity_matrix, fte_flag, mtk_dump_comp_str(comp), ccorr_data->bypass_color);
 	if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
 		if (ccorr_data->bypass_color == true) {
-			ddp_color_bypass_color(ccorr_data->color_comp, false, handle);
+			mtk_color_bypass(ccorr_data->color_comp, false, handle);
 			ccorr_data->bypass_color = false;
 		}
 	} else {
 		if ((ccorr_data->bypass_color == false) &&
 				(primary_data->disp_ccorr_number == 1) &&
 				(!(primary_data->disp_ccorr_linear & 0x01))) {
-			ddp_color_bypass_color(ccorr_data->color_comp, true, handle);
+			mtk_color_bypass(ccorr_data->color_comp, true, handle);
 			ccorr_data->bypass_color = true;
 		}
 	}
@@ -1876,6 +1876,11 @@ static const struct mtk_disp_ccorr_data mt6989_ccorr_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_ccorr_data mt6878_ccorr_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+};
+
 
 static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-ccorr",
@@ -1908,7 +1913,8 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	  .data = &mt6897_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-ccorr",
 	  .data = &mt6989_ccorr_driver_data},
-
+	{ .compatible = "mediatek,mt6878-disp-ccorr",
+	  .data = &mt6878_ccorr_driver_data},
 	{},
 };
 
