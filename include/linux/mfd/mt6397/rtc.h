@@ -21,6 +21,7 @@
 #define RTC_BBPU_CBUSY         BIT(6)
 #define RTC_BBPU_KEY            (0x43 << 8)
 #define RTC_BBPU_PWREN         BIT(0)
+#define RTC_BBPU_RESET_AL      BIT(3)
 #define RTC_OSC32CON           0x0026
 #define RTC_BBPU_CLR           BIT(1)
 #define RTC_BBPU_RELOAD        BIT(5)
@@ -30,6 +31,7 @@
 #define RTC_CON                0x003c
 #define RTC_WRTGR_MT6357       0x003a
 #define RTC_WRTGR_MT6358       0x003a
+#define RTC_WRTGR_MT6359P      0x003a
 #define RTC_WRTGR_MT6397       0x003c
 #define RTC_WRTGR_MT6323       RTC_WRTGR_MT6397
 
