@@ -111,6 +111,7 @@ unsigned long ged_kpi_get_fb_ulMask(void);
 void update_fb_timer_set_count(void);
 void reset_fb_timer_set_count(void);
 void ged_kpi_fastdvfs_update_dcs(void);
+bool ged_kpi_get_stable_lb(void);
 
 extern spinlock_t gsGpuUtilLock;
 

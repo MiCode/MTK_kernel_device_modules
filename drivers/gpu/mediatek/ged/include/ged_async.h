@@ -38,6 +38,20 @@ static const long async_coeff_1[11] = {
 	89720
 };
 
+static const long async_coeff_2[11] = {
+	-34096,
+	1368,
+	31564,
+	-1514,
+	-13396,
+	2541,
+	10481,
+	14315,
+	85591,
+	-99225,
+	101541
+};
+
 struct async_counter {
 	long gpuactive;
 	long iter;

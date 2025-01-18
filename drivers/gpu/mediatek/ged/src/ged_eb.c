@@ -1237,6 +1237,12 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 		case EB_UPDATE_SMALL_FRAME:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_SMALL_FRAME, value);
 		break;
+		case EB_UPDATE_STABLE_LB:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_STABLE_LB, value);
+		break;
+		case EB_UPDATE_DESIRE_FREQ_ID:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DESIRE_FREQ_ID, value);
+		break;
 		default:
 			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
 			break;
