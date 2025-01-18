@@ -387,6 +387,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 				dsu_bw = get_pelt_per_core_dsu_bw(cpu);
 				dsu->per_core_dsu_bw[cpu] = dsu_bw;
 				sum_dsu_bw += dsu_bw;
+				if (trace_sched_per_core_BW_enabled())
+					trace_sched_per_core_BW(cpu, dsu_bw, sum_dsu_bw);
 			}
 			dsu->dsu_bw = sum_dsu_bw;
 		} else
@@ -416,13 +418,13 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		if (trace_sched_eenv_init_enabled())
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					eenv->dsu_freq_thermal, share_buck.gear_idx);
+					eenv->dsu_freq_thermal, dsu->dsu_bw, dsu->emi_bw,
+					share_buck.gear_idx);
 #else
 			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					0, share_buck.gear_idx);
+					0, dsu->dsu_bw, dsu->emi_bw, share_buck.gear_idx);
 #endif
-	} else
-		eenv->wl_type = 0;
+	}
 }
 
 static inline unsigned long
@@ -2239,6 +2241,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		eenv.gear_idx = topology_cluster_id(cpu);
 		cpus = to_cpumask(target_pd->em_pd->cpus);
+		eenv.dst_cpu = cpu;
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
@@ -2253,7 +2256,6 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			cur_delta = mtk_compute_energy(&eenv, target_pd, cpus, p,
 								cpu);
 			base_energy = mtk_compute_energy(&eenv, target_pd, cpus, p, -1);
-			eenv.dst_cpu = -1;
 		}
 		cur_delta = max(cur_delta, base_energy) - base_energy;
 		if (cur_delta < best_delta) {

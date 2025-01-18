@@ -88,7 +88,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = true;
 		post_init_util_ctl = true;
-		percore_l3_bw = false;
+		percore_l3_bw = true;
 		dsu_pwr_enable = true;
 		break;
 	default:
