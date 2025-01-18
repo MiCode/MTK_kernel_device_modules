@@ -59,7 +59,8 @@ extern inline unsigned int num_vip_in_cpu(int cpu, int vip_prio);
 extern inline bool is_task_latency_sensitive(struct task_struct *p);
 extern int find_imbalanced_vvip_gear(void);
 extern struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type);
-extern struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p, int vip_prio);
+extern struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p,
+		int vip_prio, struct cpumask *allowed_cpu_mask);
 extern int find_vip_backup_cpu(struct task_struct *p, struct cpumask *allowed_cpu_mask, int prev_cpu, int target);
 extern unsigned int get_adaptive_margin(unsigned int cpu);
 extern void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq);

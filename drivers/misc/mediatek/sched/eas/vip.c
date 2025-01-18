@@ -90,7 +90,7 @@ struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_
 #define ret_first_vip(vrq) (link_with_others(&vrq->vip_tasks) ? \
 	container_of(vrq->vip_tasks.next, struct vip_task_struct, vip_list) : NULL)
 struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p,
-		int vip_prio)
+		int vip_prio, struct cpumask *allowed_cpu_mask)
 {
 	unsigned int cpu, num_same_vip, min_num_same_vip = UINT_MAX;
 	struct cpumask vip_candidate;
@@ -119,6 +119,8 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 
 			if (cpu_high_irqload(cpu))
 				continue;
+
+			cpumask_set_cpu(cpu, allowed_cpu_mask);
 
 			if (cpu_rq(cpu)->rt.rt_nr_running >= 1 &&
 						!rt_rq_throttled(&(cpu_rq(cpu)->rt)))

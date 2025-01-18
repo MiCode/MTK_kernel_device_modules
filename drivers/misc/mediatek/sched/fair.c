@@ -1286,6 +1286,9 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	unsigned long task_util;
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
 
+	if (prio_is_vip(vip_prio, NOT_VIP))
+		return 0;
+
 	if (latency_sensitive)
 		return 0;
 
@@ -1305,40 +1308,23 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	if (!cpu_in_bcpus || !fits_capacity(task_util, util_Th, get_adaptive_margin(cpu)))
 		return 0;
 
-	if (cpu_in_bcpus && prio_is_vip(vip_prio, VVIP))
-		return 0;
-
 	return 1;
 }
 
-static inline bool is_target_max_spare_cpu(bool is_vip, unsigned int num_vip, unsigned int min_num_vip,
-			long spare_cap, long target_max_spare_cap,
+static inline bool is_target_max_spare_cpu(long spare_cap, long target_max_spare_cap,
 			int best_cpu, int new_cpu, const char *type)
 {
 	bool replace = true;
 
-	if (is_vip) {
-		if (num_vip > min_num_vip) {
-			replace = false;
-			goto out;
-		}
-
-		if (num_vip == min_num_vip &&
-				spare_cap <= target_max_spare_cap) {
-			replace = false;
-			goto out;
-		}
-	} else {
-		if (spare_cap <= target_max_spare_cap) {
-			replace = false;
-			goto out;
-		}
+	if (spare_cap <= target_max_spare_cap) {
+		replace = false;
+		goto out;
 	}
 
 out:
 	if (trace_sched_target_max_spare_cpu_enabled())
 		trace_sched_target_max_spare_cpu(type, best_cpu, new_cpu, replace,
-			is_vip, num_vip, min_num_vip, spare_cap, target_max_spare_cap);
+			spare_cap, target_max_spare_cap);
 
 	return replace;
 }
@@ -1727,6 +1713,7 @@ struct find_best_candidates_parameters {
 	int fbc_reason;
 	bool is_vip;
 	int vip_prio;
+	struct cpumask vip_candidate;
 };
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
@@ -1758,13 +1745,14 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int reverse = fbc_params->reverse;
 	bool is_vip = fbc_params->is_vip;
 	int vip_prio = fbc_params->vip_prio;
+	struct cpumask vip_candidate = fbc_params->vip_candidate;
 
 	num_vip = prev_min_num_vip = min_num_vip = UINT_MAX;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	is_vvip = prio_is_vip(vip_prio, VVIP);
 
 	if (is_vvip) {
-		target_balance_cluster = find_imbalanced_vvip_gear();
+		target_balance_cluster = topology_cluster_id(cpumask_last(&vip_candidate));
 		order_index = target_balance_cluster;
 		end_index = 0;
 	}
@@ -1798,24 +1786,29 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #endif
 			track_sched_cpu_util(p, cpu, min_cap, max_cap);
 
-			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
-				continue;
+			if (!is_vip) {
+				if (!cpumask_test_cpu(cpu, p->cpus_ptr))
+					continue;
 
-			if (cpu_paused(cpu))
-				continue;
+				if (cpu_paused(cpu))
+					continue;
 
-			if (cpu_high_irqload(cpu))
-				continue;
+				if (cpu_high_irqload(cpu))
+					continue;
 
-			cpumask_set_cpu(cpu, allowed_cpu_mask);
+				cpumask_set_cpu(cpu, allowed_cpu_mask);
 
-			if (in_irq &&
-				task_can_skip_this_cpu(p, min_cap, latency_sensitive, cpu, &bcpus, vip_prio))
-				continue;
+				if (in_irq &&
+					task_can_skip_this_cpu(p, min_cap, latency_sensitive, cpu, &bcpus, vip_prio))
+					continue;
 
-			if (cpu_rq(cpu)->rt.rt_nr_running >= 1 &&
-						!rt_rq_throttled(&(cpu_rq(cpu)->rt)))
-				continue;
+				if (cpu_rq(cpu)->rt.rt_nr_running >= 1 &&
+							!rt_rq_throttled(&(cpu_rq(cpu)->rt)))
+					continue;
+			} else  {
+				if (!cpumask_test_cpu(cpu, &vip_candidate))
+					continue;
+			}
 
 			cpu_util = cpu_util_next(cpu, p, cpu);
 			cpu_util_without_p = cpu_util_next(cpu, p, -1);
@@ -1830,28 +1823,10 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			if (not_in_softmask)
 				continue;
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-			if (is_vip) {
-				num_vip = num_vip_in_cpu(cpu, vip_prio);
-				if (!is_vvip && num_vip_in_cpu(cpu, VVIP))
-					continue;
-
-				if (num_vip > min_num_vip)
-					continue;
-
-				prev_min_num_vip = min_num_vip;
-				min_num_vip = num_vip;
-				/*don't choice CPU only because it can calc energy, choice min_num_vip CPU */
-				if ((prev_min_num_vip != UINT_MAX) && (prev_min_num_vip != min_num_vip))
-					cpumask_clear(candidates);
-			}
-#endif
-
 			if (cpu == prev_cpu)
 				spare_cap += spare_cap >> 6;
 
-			if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap_without_p, sys_max_spare_cap,
+			if (is_target_max_spare_cpu(spare_cap_without_p, sys_max_spare_cap,
 					*sys_max_spare_cap_cpu, cpu, "sys_max_spare")) {
 				sys_max_spare_cap = spare_cap_without_p;
 				*sys_max_spare_cap_cpu = cpu;
@@ -1864,8 +1839,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * of exit latency.
 			 */
 			if (latency_sensitive && available_idle_cpu(cpu)) {
-				if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap_without_p, idle_max_spare_cap,
+				if (is_target_max_spare_cpu(spare_cap_without_p, idle_max_spare_cap,
 					*idle_max_spare_cap_cpu, cpu, "idle_max_spare")) {
 					idle_max_spare_cap = spare_cap_without_p;
 					*idle_max_spare_cap_cpu = cpu;
@@ -1899,8 +1873,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * Find the CPU with the maximum spare capacity in
 			 * the performance domain
 			 */
-			if (!latency_sensitive && is_target_max_spare_cpu(is_vip, num_vip,
-					prev_min_num_vip, spare_cap, pd_max_spare_cap,
+			if (!latency_sensitive && is_target_max_spare_cpu(spare_cap, pd_max_spare_cap,
 					pd_max_spare_cap_cpu, cpu, "pd_max_spare")) {
 				pd_max_spare_cap = spare_cap;
 				pd_max_spare_cap_cpu = cpu;
@@ -1922,8 +1895,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 					continue;
 #endif
 
-				if (!is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap, pd_max_spare_cap_ls_idle,
+				if (!is_target_max_spare_cpu(spare_cap, pd_max_spare_cap_ls_idle,
 					pd_max_spare_cap_cpu_ls_idle, cpu, "pd_max_spare_is_idle"))
 					continue;
 
@@ -1990,6 +1962,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	int recent_used_cpu, target;
 	bool is_vip = false;
 	int vip_prio = NOT_VIP;
+	struct cpumask vip_candidate;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 
@@ -2012,6 +1985,10 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
 
 	pd = rcu_dereference(rd->pd);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (is_vip)
+		vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio, &allowed_cpu_mask);
+#endif
 	if (!pd || READ_ONCE(rd->overutilized)) {
 		select_reason = LB_FAIL;
 		rcu_read_unlock();
@@ -2070,6 +2047,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	fbc_params.fbc_reason = 0;
 	fbc_params.is_vip = is_vip;
 	fbc_params.vip_prio = vip_prio;
+	fbc_params.vip_candidate = vip_candidate;
 
 	/* Pre-select a set of candidate CPUs. */
 	candidates = this_cpu_ptr(&energy_cpus);
@@ -2175,7 +2153,8 @@ fail:
 		cpumask_andnot(&allowed_cpu_mask, p->cpus_ptr, cpu_pause_mask);
 		cpumask_and(&allowed_cpu_mask, &allowed_cpu_mask, cpu_active_mask);
 	} else {
-		select_reason = LB_FAIL_IN_REGULAR;
+		if (select_reason != LB_FAIL)
+			select_reason = LB_FAIL_IN_REGULAR;
 	}
 
 	rcu_read_lock();
@@ -2183,7 +2162,6 @@ fail:
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (is_vip) {
 		struct cpumask temp_mask;
-		struct cpumask vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio);
 
 		/* for VVIP, select biggest CPU */
 		if (prio_is_vip(vip_prio , VVIP)) {
