@@ -177,6 +177,10 @@ bool mtk_venc_acp_enable;
 EXPORT_SYMBOL_GPL(mtk_venc_acp_enable);
 
 /* For vecn acp switch on/off */
+bool mtk_venc_input_acp_enable;
+EXPORT_SYMBOL_GPL(mtk_venc_input_acp_enable);
+
+/* For vecn acp switch on/off */
 int mtk_vdec_acp_debug;
 EXPORT_SYMBOL_GPL(mtk_vdec_acp_debug);
 

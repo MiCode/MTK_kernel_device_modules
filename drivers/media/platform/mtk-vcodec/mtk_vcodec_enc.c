@@ -2014,7 +2014,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		if (!ctx->has_first_input) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (!ctx->enc_params.svp_mode) {
-				if (ctx->dev->support_acp && mtk_venc_acp_enable &&
+				if (ctx->dev->support_acp && mtk_venc_input_acp_enable &&
 				    !(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
 				    vcp_get_io_device(VCP_IOMMU_ACP_CODEC)) {
 					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_CODEC);
