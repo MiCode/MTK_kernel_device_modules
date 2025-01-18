@@ -25,7 +25,6 @@
 #include "gpueb_common.h"
 #include "gpueb_helper.h"
 #include "gpueb_ipi.h"
-#include "gpueb_timesync.h"
 #include "ghpm_wrapper.h"
 #include "ghpm_debug.h"
 
@@ -60,11 +59,6 @@ int wait_gpueb(enum gpueb_low_power_event event)
 		ret = ghpm_fp->wait_gpueb(event);
 	else
 		gpueb_pr_err(GHPM_TAG, "null ghpm platform function pointer (ENOENT)");
-
-#if GPUEB_TIMESYNC_ENABLE
-	if (event == SUSPEND_POWER_ON)
-		gpueb_timesync_update();
-#endif
 
 	return ret;
 }
