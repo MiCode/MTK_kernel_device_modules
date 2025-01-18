@@ -177,7 +177,6 @@ extern unsigned long long mmevent_log(
 
 #define MMEMSG(fmt, arg...) pr_info("MME: %s(): "fmt"\n", __func__, ##arg)
 #define MMEERR(fmt, arg...) pr_info("MME ERROR: %s(): "fmt"\n", __func__, ##arg)
-#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
 
 #define MMEVENT_LOG(p_mme_buf, length, flag, module, type, log_level) \
 	do { \

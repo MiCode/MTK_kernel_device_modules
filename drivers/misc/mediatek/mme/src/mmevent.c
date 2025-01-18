@@ -19,6 +19,8 @@
 
 #include "mmevent.h"
 
+#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
+
 static int bmme_init_buffer;
 
 static struct mme_header_t mme_header = {
@@ -392,7 +394,7 @@ static int get_string_buffer(unsigned int index, char *p_buffer, unsigned int *p
 		MMEERR("invalid format p_str, index:%d, p_str:%p", index, p_str);
 		return INVALIDE_EVENT;
 	}
-	MMEINFO("format addr:%p, format:%s, len:%d", p_str, p_str, strlen(p_str));
+	MMEINFO("format addr:%p, format:%s, len:%zu", p_str, p_str, strlen(p_str));
 	mme_fill_dump_block(p_str, p_buffer, &src_pos, p_buf_pos, strlen(p_str), STRING_BUFFER_LEN);
 	*p_buf_pos += 1; // string end with 0
 	data_size += sizeof(char *);
@@ -416,7 +418,7 @@ static int get_string_buffer(unsigned int index, char *p_buffer, unsigned int *p
 			p_str = *((char **)p);
 			src_pos = 0;
 			if (is_valid_addr(p_str)) {
-				MMEINFO("str data addr:%p, str data:%s, len:%d",
+				MMEINFO("str data addr:%p, str data:%s, len:%zu",
 						p_str, p_str, strlen(p_str));
 				mme_fill_dump_block(p_str, p_buffer, &src_pos, p_buf_pos, strlen(p_str),
 									STRING_BUFFER_LEN);
@@ -755,7 +757,7 @@ static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
 		}
 
 		if (copy_to_user(buf + total_copy, (void *)addr, copy_size)) {
-			MMEERR("fail to copytouser total_copy=%lld", total_copy);
+			MMEERR("fail to copytouser total_copy=%u", total_copy);
 			break;
 		}
 		*ppos += copy_size;
@@ -785,9 +787,9 @@ static void process_dbg_cmd(char *cmd)
 		MMEMSG("mme_log_on=%d\n", mme_debug_on);
 	} else if (strncmp(cmd, "scale_ring_buffer:", 18) == 0) {
 		char *p = (char *)cmd + 18;
-		char *scale_str;
-		unsigned long scale_value;
-		unsigned long module;
+		char *scale_str = NULL;
+		unsigned long scale_value = 0;
+		unsigned long module = 0;
 
 		p += strspn(p, " ");
 		scale_str = strchr(p, ' ');
@@ -800,7 +802,7 @@ static void process_dbg_cmd(char *cmd)
 			}
 		}
 
-		MMEMSG("scale_ring_buffer, module:%d, scale_value:%d", module, scale_value);
+		MMEMSG("scale_ring_buffer, module:%lu, scale_value:%lu", module, scale_value);
 	} else {
 		MMEMSG("invalid mme debug command: %s\n",
 			cmd != NULL ? cmd : "(empty)");

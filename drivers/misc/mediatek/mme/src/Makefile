@@ -11,8 +11,8 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mme/
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 
 mme-y := mmevent.o
 
