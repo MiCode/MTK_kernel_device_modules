@@ -183,9 +183,9 @@ static struct mtk_dpc_channel_bw_cfg mt6991_ch_bw_cfg[24] = {
 /*22*/	{0xA30,	12},	/*	0xA90	[21:12]		SLB	H	R	*/
 /*23*/	{0xA3C,	12},	/*	0xA9C	[21:12]		SLB	H	W	*/
 /*	AXI00	AXI01	AXI10	AXI11	*/
-/*	0	1	20	21	*/
-/*	37	36	35	34	*/
-/*	2	32	33	3	*/
+/*	0	1	21	20	*/
+/*	37	36	34	35	*/
+/*	2	32	3	33	*/
 };
 
 static struct mtk_dpc_dt_usage mt6989_disp_dt_usage[DPC_DISP_DT_CNT] = {
