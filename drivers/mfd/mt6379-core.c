@@ -140,22 +140,22 @@ static void mt6379_irq_bus_lock(struct irq_data *d)
 	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
 
 	mutex_lock(&data->irq_lock);
+	memcpy(data->tmp_buf, data->mask_buf, MT6379_MAX_IRQ_REG);
 }
 
-static void mt6379_irq_bus_sync_unlock(struct irq_data *d)
+static unsigned int mt6379_find_irq_hwreg(unsigned int hwirq)
 {
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-	struct device *dev = data->dev;
 	unsigned int offs_idx, offs_cal, rg_cnt = 0;
 	unsigned int hwirq_reg = 0;
-	int i, ret;
+	int i;
 
-	offs_idx = offs_cal = d->hwirq / 8;
+	offs_idx = offs_cal = hwirq / 8;
 
 	/* Lookup hwirq reg from table */
 	for (i = 0; i < ARRAY_SIZE(mt6379_irq_ind_rg_maps); i++) {
 		if (offs_cal >= mt6379_irq_ind_rg_maps[i].rg_num)
 			offs_cal -= mt6379_irq_ind_rg_maps[i].rg_num;
+
 		rg_cnt += mt6379_irq_ind_rg_maps[i].rg_num;
 
 		if (offs_idx < rg_cnt) {
@@ -165,10 +165,27 @@ static void mt6379_irq_bus_sync_unlock(struct irq_data *d)
 		}
 	}
 
-	ret = regmap_write(data->regmap, hwirq_reg, data->mask_buf[offs_idx]);
+	return hwirq_reg;
+}
+
+static void mt6379_irq_bus_sync_unlock(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	struct device *dev = data->dev;
+	unsigned int hwirq_reg;
+	int ret;
+
+	if (data->tmp_buf[d->hwirq / 8] == data->mask_buf[d->hwirq / 8])
+		goto out_sync_unlock;
+
+	memcpy(data->mask_buf, data->tmp_buf, MT6379_MAX_IRQ_REG);
+
+	hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	ret = regmap_write(data->regmap, hwirq_reg, data->mask_buf[d->hwirq / 8]);
 	if (ret)
 		dev_warn(dev, "Failed to config for hwirq %ld\n", d->hwirq);
 
+out_sync_unlock:
 	mutex_unlock(&data->irq_lock);
 }
 
@@ -176,14 +193,48 @@ static void mt6379_irq_enable(struct irq_data *d)
 {
 	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
 
-	data->mask_buf[d->hwirq / 8] &= ~BIT(d->hwirq % 8);
+	data->tmp_buf[d->hwirq / 8] &= ~BIT(d->hwirq % 8);
 }
 
 static void mt6379_irq_disable(struct irq_data *d)
 {
 	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
 
-	data->mask_buf[d->hwirq / 8] |= BIT(d->hwirq % 8);
+	data->tmp_buf[d->hwirq / 8] |= BIT(d->hwirq % 8);
+}
+
+static void mt6379_irq_mask(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	int ret;
+
+	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
+		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0xFF);
+		if (ret)
+			dev_info(data->dev, "%s, Failed to mask UFCS IND_MASK\n", __func__);
+	}
+
+	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0xFF);
+	if (ret)
+		dev_info(data->dev, "%s, Failed to mask 0x%03X irq mask\n", __func__, hwirq_reg);
+}
+
+static void mt6379_irq_unmask(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	int ret;
+
+	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
+		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0);
+		if (ret)
+			dev_info(data->dev, "%s, Failed to unmask UFCS IND_MASK\n", __func__);
+	}
+
+	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0);
+	if (ret)
+		dev_info(data->dev, "%s, Failed to unmask 0x%03X irq mask\n", __func__, hwirq_reg);
 }
 
 static int mt6379_irq_domain_map(struct irq_domain *h, unsigned int virq,
@@ -198,7 +249,7 @@ static int mt6379_irq_domain_map(struct irq_domain *h, unsigned int virq,
 	case MT6379_EVT_GM30_LDO ... MT6379_EVT_GM30_HK1:
 	case MT6379_EVT_USBPD:
 	case MT6379_DUMMY_EVT_UFCS:
-		irq_set_chip_and_handler(virq, irqc, handle_simple_irq);
+		irq_set_chip_and_handler(virq, irqc, handle_level_irq);
 		break;
 	default:
 		irq_set_chip(virq, irqc);
@@ -247,7 +298,7 @@ static int mt6379_init_irq_chip(struct mt6379_data *data)
 		map = mt6379_irq_ind_rg_maps + i;
 
 		ret = regmap_raw_write(regmap, map->mask_rg_base,
-				  data->mask_buf + evt_offs, map->rg_num);
+				       data->mask_buf + evt_offs, map->rg_num);
 		if (ret)
 			return ret;
 
@@ -264,6 +315,8 @@ static int mt6379_init_irq_chip(struct mt6379_data *data)
 	irqc->irq_bus_sync_unlock = mt6379_irq_bus_sync_unlock;
 	irqc->irq_enable = mt6379_irq_enable;
 	irqc->irq_disable = mt6379_irq_disable;
+	irqc->irq_mask = mt6379_irq_mask;
+	irqc->irq_unmask = mt6379_irq_unmask;
 	irqc->flags = IRQCHIP_SKIP_SET_WAKE;
 
 	data->irq_domain = irq_domain_add_linear(dev->of_node,
