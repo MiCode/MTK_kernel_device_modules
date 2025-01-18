@@ -710,6 +710,17 @@
 			mapping = <22 0x0e 0>,	/* Antsel 22 <-> SPDT_9 (0x0E) */
 				  <23 0x0f 0>;	/* Antsel 23 <-> SPDT_10 (0x0F) */
 		};
+
+		/***************************************************************
+		 * [LAYOUT] Others
+		 **************************************************************/
+		spdt_g_wf0_antswap: spdt-g-wf0-antswap {
+			mapping = <22 0x20 0>;	/* Antsel 22 <-> SPDT_11 (0x20) */
+		};
+
+		spdt_a_wf0_antswap: spdt-a-wf0-antswap {
+			mapping = <23 0x21 0>;	/* Antsel 23 <-> SPDT_12 (0x21) */
+		};
 	};
 };
 /* Connsys FEM End */
