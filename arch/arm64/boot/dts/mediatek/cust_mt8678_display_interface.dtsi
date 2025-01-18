@@ -1692,6 +1692,7 @@
 		desdef {
 			des-i2c-addr = <0x4c>;
 			bl-i2c-addr = <0x1a>;
+			bl-dummy-i2c-addr = <0x1f>;
 			des-init-cmd = <
 				0x01ce 0x5e 2
 			>;
@@ -1744,6 +1745,7 @@
 		desdef {
 			des-i2c-addr = <0x4c>;
 			bl-i2c-addr = <0x1a>;
+			bl-dummy-i2c-addr = <0x1f>;
 			des-init-cmd = <
 				0x01ce 0x4e 2
 			>;
