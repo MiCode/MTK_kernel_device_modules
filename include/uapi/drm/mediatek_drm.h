@@ -524,6 +524,9 @@ struct DISP_AAL_TRIG_STATE {
 
 #define DRM_MTK_PQ_FRAME_CONFIG 0x5c
 
+/* DISP_ESD_CEHCK */
+#define DRM_MTK_ESD_STAT_CHK 0x5d
+
 /* DISP_CLARITY */
 #define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
 
@@ -1889,6 +1892,9 @@ struct mtk_spr_type_fence {
 
 #define DRM_IOCTL_MTK_DEBUG_LOG     DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_DEBUG_LOG, int)
+
+#define DRM_IOCTL_MTK_ESD_STAT_CHK    DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_ESD_STAT_CHK, unsigned int)
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */

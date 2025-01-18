@@ -6005,6 +6005,43 @@ int mtk_drm_wait_repaint_ioctl(struct drm_device *dev, void *data,
 }
 /*---------------- function for repaint end ------------------*/
 
+int mtk_drm_esd_recovery_check_ioctl(struct drm_device *dev, void *data,
+			       struct drm_file *file_priv)
+{
+	unsigned int *crtc_id = data;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	int ret = 0;
+
+	crtc = drm_crtc_find(dev, file_priv, *crtc_id);
+
+	if (!crtc) {
+		DDPPR_ERR("%s unknown CRTC ID %d\n", __func__, *crtc_id);
+		return -EINVAL;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
+		return  -EFAULT;
+	}
+
+	DDPINFO("[ESD RECOVERY] HWC waits for esd recovery\n");
+
+	/*  wait for esd recovery */
+	ret = wait_event_interruptible(
+		mtk_crtc->esd_notice_wq,
+		atomic_read(&mtk_crtc->esd_notice_status));
+
+	if (ret >= 0)
+		DDPINFO("[ESD RECOVERY] trigger esd notice\n");
+	else
+		DDPINFO("[ESD RECOVERY] interrupted unexpected\n");
+
+	return 0;
+}
+
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 {
 	int ret = 0;
@@ -8176,10 +8213,10 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_HWVSYNC_ON, mtk_drm_hwvsync_on_ioctl,
 				  DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, mtk_drm_sec_hnd_to_gem_hnd,
-			DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(MTK_DEBUG_LOG, mtk_disp_ioctl_debug_log_switch,
-					DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_DUMMY_CMD_ON, mtk_drm_dummy_cmd_on_ioctl,
+				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_ESD_STAT_CHK, mtk_drm_esd_recovery_check_ioctl,
+				  DRM_UNLOCKED),
 };
 
 static const struct file_operations mtk_drm_fops = {

@@ -487,6 +487,9 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	mtk_drm_trace_begin("esd recover");
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
+	atomic_set(&mtk_crtc->esd_notice_status, 1);
+	wake_up_interruptible(&mtk_crtc->esd_notice_wq);
+
 	/* stop MML IR & DL before display disable */
 	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 		mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
@@ -633,6 +636,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		} else if (recovery_flg && ret == 0) {
 			DDPPR_ERR("[ESD%u] esd recovery success\n", crtc_idx);
 			recovery_flg = 0;
+			atomic_set(&mtk_crtc->esd_notice_status, 0);
 		}
 		mtk_drm_trace_end("esd");
 
@@ -840,6 +844,10 @@ static void mtk_disp_esd_chk_init(struct drm_crtc *crtc)
 	atomic_set(&esd_ctx->check_wakeup, 0);
 	atomic_set(&esd_ctx->ext_te_event, 0);
 	atomic_set(&esd_ctx->target_time, 0);
+
+	init_waitqueue_head(&mtk_crtc->esd_notice_wq);
+	atomic_set(&mtk_crtc->esd_notice_status, 0);
+
 	if (panel_ext->params->cust_esd_check == 1)
 		esd_ctx->chk_mode = READ_LCM;
 	else

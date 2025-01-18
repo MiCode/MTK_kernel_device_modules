@@ -1107,6 +1107,9 @@ struct mtk_drm_crtc {
 
 	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
 
+	wait_queue_head_t esd_notice_wq;
+	atomic_t esd_notice_status;
+
 };
 
 enum BL_GAMMA_GAIN {
