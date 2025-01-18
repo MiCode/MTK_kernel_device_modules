@@ -239,11 +239,11 @@ EXPORT_SYMBOL_GPL(read_emmc_config);
 static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 {
 	char *logstore_pos = buffer;
-	int i = 0, ret = -1;
+	int ret = -1;
 	size_t write_remain = write_len;
-	sector_t block_num = 0;
 	sector_t index_offset = 0;
 	sector_t write_block_offset = 0;
+	sector_t write_offset = 0;
 	struct emmc_log log_config;
 	struct log_emmc_header pEmmc;
 
@@ -271,21 +271,36 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 
 			log_config.start = pEmmc.offset;
 			write_block_offset = pEmmc.offset / expdb_logstore->block_size;
-			if (pEmmc.offset % expdb_logstore->block_size != 0)
-				write_block_offset += 1;
+			write_offset = pEmmc.offset % expdb_logstore->block_size;
 
-			/* the last block is index */
-			if (write_remain > (expdb_logstore->logstore_size - expdb_logstore->block_size)) {
-				write_remain = expdb_logstore->logstore_size - expdb_logstore->block_size;
-				logstore_pos += (write_remain - expdb_logstore->logstore_size
-					+ expdb_logstore->block_size);
+			if (write_remain > expdb_logstore->logstore_size/4) {
+				write_remain = expdb_logstore->logstore_size/4;
+				logstore_pos += (write_remain - expdb_logstore->logstore_size/4);
 			}
 
-			block_num = write_remain / expdb_logstore->block_size;
-			if (write_remain % expdb_logstore->block_size != 0)
-				block_num += 1;
+			if (write_offset > 0) {
+				if (write_remain >= (expdb_logstore->block_size - write_offset)) {
+					ret = partition_block_rw(expdb_logstore->bdev, 1,
+						expdb_logstore->logstore_offset + write_block_offset, write_offset,
+						logstore_pos, expdb_logstore->block_size - write_offset);
+					write_remain -= (expdb_logstore->block_size - write_offset);
+					logstore_pos += (expdb_logstore->block_size - write_offset);
+					pEmmc.offset += (expdb_logstore->block_size - write_offset);
+					write_block_offset += 1;
+				} else {
+					ret = partition_block_rw(expdb_logstore->bdev, 1,
+						expdb_logstore->logstore_offset + write_block_offset, write_offset,
+						logstore_pos, write_remain);
+					write_remain -= write_remain;
+					pEmmc.offset += write_remain;
+				}
+			}
+			if (ret) {
+				pr_err("%s: write log is error!\n", __func__);
+				return ret;
+			}
 
-			for (i = 0; i < block_num; i++) {
+			while (write_remain > 0) {
 				if ((pEmmc.offset + expdb_logstore->block_size) >
 					(expdb_logstore->logstore_size - expdb_logstore->block_size)) {
 					pEmmc.offset = 0;
@@ -296,28 +311,26 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 					pEmmc.offset = 0;
 					write_block_offset = 0;
 				}
-				if (write_remain >= expdb_logstore->block_size) {
+
+				if (write_remain > expdb_logstore->block_size) {
 					ret = partition_block_rw(expdb_logstore->bdev, 1,
 						expdb_logstore->logstore_offset + write_block_offset, 0,
 						logstore_pos, expdb_logstore->block_size);
 					write_remain -= expdb_logstore->block_size;
+					pEmmc.offset += expdb_logstore->block_size;
 					logstore_pos += expdb_logstore->block_size;
 				} else {
 					ret = partition_block_rw(expdb_logstore->bdev, 1,
 						expdb_logstore->logstore_offset + write_block_offset, 0,
 						logstore_pos, write_remain);
 					write_remain -= write_remain;
+					pEmmc.offset += write_remain;
 				}
 				if (ret) {
 					pr_err("%s: write log to partition is error!\n", __func__);
 					return ret;
 				}
-
-				/* not enough one block, it will be counted as the one block */
-				pEmmc.offset += expdb_logstore->block_size;
 				write_block_offset += 1;
-				if (write_remain <= 0)
-					break;
 			}
 
 			log_config.end = pEmmc.offset;
@@ -344,7 +357,7 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 				pr_err("%s: write log to partition is error!\n", __func__);
 				return ret;
 			}
-			ret = block_num * expdb_logstore->block_size;
+			ret = write_len;
 		}
 	pr_info("write log to partition done!\n");
 	return ret;
@@ -934,6 +947,7 @@ int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
 	if(data == NULL)
 		return 0;
 
+	pr_info("reboot reason: %s\n", (char *)data);
 	if (sram_header->reboot_count != 0 && !strcmp((char *)data, "shell"))
 		store_log_to_emmc_enable(false);
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
