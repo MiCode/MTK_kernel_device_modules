@@ -17,9 +17,11 @@
 #define BW_FACTOR_10BIT 125
 #define BW_FACTOR_NONAFBC 114
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 extern void set_top_grp_aware(int val, int force_ctrl);
 extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
+#endif
 
 struct mtk_vcodec_dev;
 struct mtk_vcodec_ctx;

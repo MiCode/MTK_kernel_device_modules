@@ -39,6 +39,7 @@ struct vdec_vcu_inst {
 	struct mtk_vcodec_ctx *ctx;
 	struct platform_device *dev;
 	ipi_handler_t handler;
+	bool init_done;
 	bool abort;
 	int daemon_pid;
 	struct mutex *ctx_ipi_lock;

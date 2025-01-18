@@ -17,8 +17,8 @@
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcu.h"
-#include "mtk_heap.h"
-#include "iommu_pseudo.h"
+
+
 
 static unsigned int venc_h265_get_profile(struct venc_inst *inst,
 	unsigned int profile)
@@ -247,8 +247,6 @@ static int venc_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	cb.enc_pmqos_gce_begin = venc_encode_pmqos_gce_begin;
 	cb.enc_pmqos_gce_end = venc_encode_pmqos_gce_end;
 	cb.gce_timeout_dump = mtk_vcodec_gce_timeout_dump;
-	cb.enc_lock = venc_lock;
-	cb.enc_unlock = venc_unlock;
 	VCU_FPTR(vcu_set_v4l2_callback)(inst->vcu_inst.dev, &cb);
 
 	mtk_vcodec_debug_leave(inst);
@@ -480,12 +478,6 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.p_qp = enc_prm->p_qp;
 		inst->vsi->config.b_qp = enc_prm->b_qp;
 		inst->vsi->config.svp_mode = enc_prm->svp_mode;
-		if (inst->vsi->config.svp_mode)
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
-			inst->vsi->config.svp_is_hal_secure_handle = is_disable_map_sec();
-#else
-			inst->vsi->config.svp_is_hal_secure_handle = false;
-#endif
 		inst->vsi->config.highquality = enc_prm->highquality;
 		inst->vsi->config.max_qp = enc_prm->max_qp;
 		inst->vsi->config.min_qp = enc_prm->min_qp;
@@ -500,9 +492,9 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.temporal_layer_pcount = enc_prm->temporal_layer_pcount;
 		inst->vsi->config.temporal_layer_bcount = enc_prm->temporal_layer_bcount;
 		inst->vsi->config.max_ltr_num = enc_prm->max_ltr_num;
-		inst->vsi->config.qpvbr_enable = enc_prm->qpvbr_enable;
-		inst->vsi->config.qpvbr_qpthreshold = enc_prm->qpvbr_qpthreshold;
-		inst->vsi->config.qpvbr_qpbrratio = enc_prm->qpvbr_qpbrratio;
+		inst->vsi->config.qpvbr_upper_enable = enc_prm->qpvbr_upper_enable;
+		inst->vsi->config.qpvbr_qp_upper_threshold = enc_prm->qpvbr_qp_upper_threshold;
+		inst->vsi->config.qpvbr_qp_max_brratio = enc_prm->qpvbr_qp_max_brratio;
 		inst->vsi->config.cb_qp_offset = enc_prm->cb_qp_offset;
 		inst->vsi->config.cr_qp_offset = enc_prm->cr_qp_offset;
 		inst->vsi->config.mbrc_tk_spd = enc_prm->mbrc_tk_spd;
@@ -555,7 +547,7 @@ static int venc_set_param(unsigned long handle,
 		if (fmt == V4L2_PIX_FMT_H264) {
 			inst->vsi->config.profile = enc_prm->profile;
 			inst->vsi->config.level = enc_prm->level;
-		} else if (fmt == V4L2_PIX_FMT_H265 ||
+		} else if (fmt == V4L2_PIX_FMT_HEVC ||
 				fmt == V4L2_PIX_FMT_HEIF) {
 			inst->vsi->config.profile =
 				venc_h265_get_profile(inst, enc_prm->profile);

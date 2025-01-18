@@ -373,7 +373,6 @@ u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq)
 u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 {
 	struct vcodec_perf *perf;
-	u32 dflt_op_rate;
 	u64 freq = 0;
 
 	perf = find_perf(inst, dev);
@@ -406,23 +405,7 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 
 		} else if (perf != 0 && inst->op_rate <= 0) {
 			/* Undefined priority + op_rate combination & max op rate behavior */
-			dflt_op_rate = find_dflt_op_rate(inst, dev);
-
-			if (inst->priority < 0) {
-				inst->op_rate = 30;
-				if (inst->codec_fmt == 808996950) {
-					/* performance class WA for VP8 */
-					inst->op_rate = 60;
-				} else if (
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-					feature_table[VENC_FEATURE_ID].enable > 0 &&
-#endif
-					inst->codec_fmt == 875967048 && dev->dec_cnt > 1 &&
-					(inst->width * inst->height <= 1920 * 1088)) {
-					inst->op_rate = 174;
-				}
-			} else
-				inst->op_rate = dflt_op_rate;
+			inst->op_rate = find_dflt_op_rate(inst, dev);
 
 			mtk_v4l2_debug(6, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %u",
 				inst->width, inst->height, inst->priority, inst->op_rate);
@@ -689,7 +672,7 @@ void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev)
 #ifdef VDEC_CHECK_ALIVE
 	/* Only support vdec check alive now */
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		if (!list_empty(&dev->ctx_list) && dev->vdec_dvfs_params.has_timer) {
+		if (!mtk_vcodec_ctx_list_empty(dev) && dev->vdec_dvfs_params.has_timer) {
 			mtk_v4l2_debug(0, "[VDVFS][VDEC] suspend vdec alive checker (freq %d)..",
 				dev->vdec_dvfs_params.target_freq);
 			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
@@ -707,7 +690,7 @@ void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
 #ifdef VDEC_CHECK_ALIVE
 	/* Only support vdec check alive now */
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		if (!list_empty(&dev->ctx_list) && !dev->vdec_dvfs_params.has_timer) {
+		if (!mtk_vcodec_ctx_list_empty(dev) && !dev->vdec_dvfs_params.has_timer) {
 			mtk_v4l2_debug(0, "[VDVFS][VDEC] resume vdec alive checker (freq %d)..",
 				dev->vdec_dvfs_params.target_freq);
 			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
@@ -755,22 +738,22 @@ void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
 	if (enable) {
 		if(cur_dvfs_param->cpu_top_grp_aware == 0) {
 			cur_dvfs_param->cpu_top_grp_aware = 1;
-			#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_top_grp_aware(1, 0);
 			set_grp_awr_min_opp_margin(0, 0, 2048);
 			set_grp_awr_thr(0, 0, 800000);
 			set_grp_awr_min_opp_margin(1, 0, 2048);
 			set_grp_awr_thr(1, 0, 1100000);
-			#endif
+#endif
 			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] enable CPU top grp aware!\n",
 				__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id);
 		}
 	} else {
 		if(cur_dvfs_param->cpu_top_grp_aware == 1) {
 			cur_dvfs_param->cpu_top_grp_aware = 0;
-			#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_top_grp_aware(0, 0);
-			#endif
+#endif
 			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] disable CPU top grp aware!\n",
 				__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id);
 		}

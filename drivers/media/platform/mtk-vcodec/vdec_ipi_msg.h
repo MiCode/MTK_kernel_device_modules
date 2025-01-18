@@ -89,7 +89,9 @@ enum vdec_ipi_msg_id {
 	AP_IPIMSG_DEC_MEM_ALLOC_DONE,
 	AP_IPIMSG_DEC_MEM_FREE_DONE,
 	AP_IPIMSG_DEC_WAITISR_DONE,
-	AP_IPIMSG_DEC_CHECK_CODEC_ID_DONE
+	AP_IPIMSG_DEC_CHECK_CODEC_ID_DONE,
+
+	VCU_ASYNCIPIMSG_DEC_PUT_FRAME_BUFFER = VCU_IPIMSG_VDEC_SEND_ASYNC_BASE,
 };
 
 enum vdec_flush_type {
@@ -138,15 +140,19 @@ enum vdec_get_param_type {
 	GET_PARAM_COLOR_DESC,
 	GET_PARAM_ASPECT_RATIO,
 	GET_PARAM_PLATFORM_SUPPORTED_FIX_BUFFERS,
-	GET_PARAM_PLATFORM_SUPPORTED_FIX_BUFFERS_SVP,
 	GET_PARAM_INTERLACING,
-	GET_PARAM_CODEC_TYPE,
 	GET_PARAM_INPUT_DRIVEN,
 	GET_PARAM_OUTPUT_ASYNC,
 	GET_PARAM_LOW_POWER_MODE,
 	GET_PARAM_INTERLACING_FIELD_SEQ,
-	GET_PARAM_CAPABILITY_FRAMEINTERVALS,
-	GET_PARAM_VDEC_VCU_VPUD_LOG
+	GET_PARAM_VDEC_CAP_FRAMEINTERVALS,
+	GET_PARAM_RES_INFO,
+	GET_PARAM_VDEC_CAP_MAX_BUF_INFO,
+	GET_PARAM_BANDWIDTH_INFO,
+	GET_PARAM_TRICK_MODE,
+	GET_PARAM_VDEC_VCU_VPUD_LOG,
+
+	GET_PARAM_MAX = 0xFFFFFFFF
 };
 
 /*
@@ -156,23 +162,20 @@ enum vdec_get_param_type {
  * SET_PARAM_DECODE_MODE: set decoder mode
  * SET_PARAM_FRAME_SIZE: set container frame size
  * SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER: set fixed maximum buffer size
- * SET_PARAM_UFO_MODE: set UFO mode
+ * SET_PARAM_COMPRESSED_MODE: set compressed mode
  * SET_PARAM_CRC_PATH: set CRC path used for UT
  * SET_PARAM_GOLDEN_PATH: set Golden YUV path used for UT
  * SET_PARAM_FB_NUM_PLANES                      : frame buffer plane count
  */
 enum vdec_set_param_type {
 	SET_PARAM_DECODE_MODE,
-	SET_PARAM_FRAME_SIZE,
 	SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER,
-	SET_PARAM_UFO_MODE,
+	SET_PARAM_COMPRESSED_MODE,
 	SET_PARAM_CRC_PATH,
 	SET_PARAM_GOLDEN_PATH,
 	SET_PARAM_FB_NUM_PLANES,
 	SET_PARAM_WAIT_KEY_FRAME,
-	SET_PARAM_NAL_SIZE_LENGTH,
 	SET_PARAM_OPERATING_RATE,
-	SET_PARAM_TOTAL_FRAME_BUFQ_COUNT,
 	SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT,
 	SET_PARAM_FRAME_BUFFER,
 	SET_PARAM_VDEC_PROPERTY,
@@ -186,6 +189,13 @@ enum vdec_set_param_type {
 	SET_PARAM_DECODE_ERROR_HANDLE_MODE,
 	SET_PARAM_DEC_PARAMS,
 	SET_PARAM_MMDVFS,
+	SET_PARAM_PER_FRAME_SUBSAMPLE_MODE,
+	SET_PARAM_ACQUIRE_RESOURCE,
+	SET_PARAM_VPEEK_MODE,
+	SET_PARAM_VDEC_PLUS_DROP_RATIO,
+	SET_PARAM_CONTAINER_FRAMERATE,
+	SET_PARAM_DISABLE_DEBLOCK,
+	SET_PARAM_LOW_LATENCY,
 	/** only for kernel **/
 	SET_PARAM_VDEC_VCU_VPUD_LOG,
 	SET_PARAM_VDEC_IN_GROUP,
@@ -225,6 +235,15 @@ struct vdec_ap_ipi_cmd {
 	VDEC_MSG_AP_SEND_PREFIX;
 	__u32 drain_type;
 	__u32 reserved;
+};
+
+/**
+ * struct vdec_ap_ipi_cmd - generic AP to VCU ipi command format for instance independent
+ * @msg_id      : vdec_ipi_msg_id
+ * @ap_inst_addr        : AP video decoder instance address
+ */
+struct vdec_ap_ipi_cmd_indp {
+	VDEC_MSG_PREFIX;
 };
 
 /**
@@ -437,9 +456,7 @@ struct vdec_vsi {
 	struct mtk_codec_framesizes vdec_framesizes[MTK_MAX_DEC_CODECS_SUPPORT];
 	__u32 aspect_ratio;
 	__u32 fix_buffers;
-	__u32 fix_buffers_svp;
 	__u32 interlacing;
-	__u32 codec_type;
 	__u8 input_driven;
 	__u8 output_async;
 	__u8 low_pw_mode;
@@ -469,6 +486,8 @@ struct vdec_vsi {
 	__s32 target_freq;
 	__u32 is_active;
 	__u64 vp_mode_src_buf[2];
+	struct vdec_resource_info res_info;
+	struct vdec_bandwidth_info bandwidth_info;
 };
 
 #endif

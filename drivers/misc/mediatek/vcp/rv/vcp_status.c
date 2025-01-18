@@ -51,7 +51,7 @@ void vcp_set_ipidev(struct mtk_ipi_device *ipidev)
 }
 EXPORT_SYMBOL_GPL(vcp_set_ipidev);
 
-struct mtk_ipi_device *vcp_get_ipidev(void)
+struct mtk_ipi_device *vcp_get_ipidev(enum feature_id id)
 {
 	return vcp_ipidev_ex;
 }
@@ -73,6 +73,14 @@ phys_addr_t vcp_get_reserve_mem_virt_ex(enum vcp_reserve_mem_id_t id)
 }
 EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_virt_ex);
 
+phys_addr_t vcp_get_reserve_mem_size_ex(enum vcp_reserve_mem_id_t id)
+{
+	if (!vcp_fp || !vcp_fp->vcp_get_reserve_mem_size)
+		return 0;
+	return vcp_fp->vcp_get_reserve_mem_size(id);
+}
+EXPORT_SYMBOL_GPL(vcp_get_reserve_mem_size_ex);
+
 int vcp_register_feature_ex(enum feature_id id)
 {
 	if (!vcp_fp || !vcp_fp->vcp_register_feature)
@@ -89,7 +97,7 @@ int vcp_deregister_feature_ex(enum feature_id id)
 }
 EXPORT_SYMBOL_GPL(vcp_deregister_feature_ex);
 
-unsigned int is_vcp_ready_ex(enum vcp_core_id id)
+unsigned int is_vcp_ready_ex(enum feature_id id)
 {
 	if (!vcp_fp || !vcp_fp->is_vcp_ready)
 		return 0;
@@ -105,27 +113,35 @@ unsigned int is_vcp_suspending_ex(void)
 }
 EXPORT_SYMBOL_GPL(is_vcp_suspending_ex);
 
-void vcp_A_register_notify_ex(struct notifier_block *nb)
+unsigned int is_vcp_ao_ex(void)
+{
+	if (!vcp_fp || !vcp_fp->is_vcp_ao)
+		return 0;
+	return vcp_fp->is_vcp_ao();
+}
+EXPORT_SYMBOL_GPL(is_vcp_ao_ex);
+
+void vcp_A_register_notify_ex(enum feature_id id, struct notifier_block *nb)
 {
 	if (!vcp_fp || !vcp_fp->vcp_A_register_notify)
 		return;
-	vcp_fp->vcp_A_register_notify(nb);
+	vcp_fp->vcp_A_register_notify(id, nb);
 }
 EXPORT_SYMBOL_GPL(vcp_A_register_notify_ex);
 
-void vcp_A_unregister_notify_ex(struct notifier_block *nb)
+void vcp_A_unregister_notify_ex(enum feature_id id, struct notifier_block *nb)
 {
 	if (!vcp_fp || !vcp_fp->vcp_A_unregister_notify)
 		return;
-	vcp_fp->vcp_A_unregister_notify(nb);
+	vcp_fp->vcp_A_unregister_notify(id, nb);
 }
 EXPORT_SYMBOL_GPL(vcp_A_unregister_notify_ex);
 
-unsigned int vcp_cmd_ex(enum vcp_cmd_id id, char *user)
+unsigned int vcp_cmd_ex(enum feature_id id, enum vcp_cmd_id cmd_id, char *user)
 {
 	if (!vcp_fp || !vcp_fp->vcp_cmd)
 		return 0;
-	return vcp_fp->vcp_cmd(id, user);
+	return vcp_fp->vcp_cmd(id, cmd_id, user);
 }
 EXPORT_SYMBOL_GPL(vcp_cmd_ex);
 

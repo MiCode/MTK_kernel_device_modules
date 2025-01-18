@@ -71,12 +71,12 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmqos_vcp_ipi_mutex);
 
-	while (!is_vcp_ready_ex(VCP_A_ID) || (!mmqos_vcp_cb_ready && func != FUNC_MMQOS_INIT)) {
+	while (!is_vcp_ready_ex(MMQOS_FEATURE_ID) || (!mmqos_vcp_cb_ready && func != FUNC_MMQOS_INIT)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = -ETIMEDOUT;
 			MMQOS_ERR(
 				"ret:%d retry:%d ready:%d cb_ready:%d",
-				ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready);
+				ret, retry, is_vcp_ready_ex(MMQOS_FEATURE_ID), mmqos_vcp_cb_ready);
 			goto ipi_send_end;
 		}
 		mdelay(1);
@@ -85,9 +85,9 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	mutex_lock(&mmqos_vcp_ipi_mutex);
 	writel(0, MEM_IPI_SYNC_DATA);
 	writel(val | (1 << func), MEM_IPI_SYNC_FUNC);
-	gen = vcp_cmd_ex(VCP_GET_GEN, "mmqos_ipi_task");
+	gen = vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_GET_GEN, "mmqos_ipi_task");
 
-	ret = mtk_ipi_send(vcp_get_ipidev(), IPI_OUT_MMQOS, IPI_SEND_WAIT,
+	ret = mtk_ipi_send(vcp_get_ipidev(MMQOS_FEATURE_ID), IPI_OUT_MMQOS, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMQOS, IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
@@ -98,15 +98,15 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 			ret = IPI_COMPL_TIMEOUT;
 			MMQOS_ERR(
 				"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
-				ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready,
+				ret, retry, is_vcp_ready_ex(MMQOS_FEATURE_ID), mmqos_vcp_cb_ready,
 				*(u64 *)&slot, vcp_power, val);
 			break;
 		}
-		if (!is_vcp_ready_ex(VCP_A_ID)) {
+		if (!is_vcp_ready_ex(MMQOS_FEATURE_ID)) {
 			ret = -ETIMEDOUT;
 			MMQOS_ERR(
 				"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
-				ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready,
+				ret, retry, is_vcp_ready_ex(MMQOS_FEATURE_ID), mmqos_vcp_cb_ready,
 				*(u64 *)&slot, vcp_power, val);
 			break;
 		}
@@ -115,10 +115,10 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 
 	if (!ret)
 		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
-	else if (gen == vcp_cmd_ex(VCP_GET_GEN, "mmqos_ipi_task")) {
+	else if (gen == vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_GET_GEN, "mmqos_ipi_task")) {
 		if (!times) {
 			MMQOS_ERR("VCP_SET_HALT");
-			vcp_cmd_ex(VCP_SET_HALT, "mmqos_ipi_task");
+			vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_SET_HALT, "mmqos_ipi_task");
 		}
 		times += 1;
 	}
@@ -131,12 +131,12 @@ ipi_send_end:
 	if (ret)
 		MMQOS_ERR(
 			"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
-			ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready,
+			ret, retry, is_vcp_ready_ex(MMQOS_FEATURE_ID), mmqos_vcp_cb_ready,
 			*(u64 *)&slot, vcp_power, val);
 	if (log_level & (1 << log_ipi))
 		MMQOS_DBG(
 			"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
-			ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready,
+			ret, retry, is_vcp_ready_ex(MMQOS_FEATURE_ID), mmqos_vcp_cb_ready,
 			*(u64 *)&slot, vcp_power, val);
 	mmqos_ipi_status = ret;
 	return ret;
@@ -215,7 +215,7 @@ int mmqos_vcp_init_thread(void *data)
 	}
 
 	retry = 0;
-	while (!is_vcp_ready_ex(VCP_A_ID)) {
+	while (!is_vcp_ready_ex(MMQOS_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMQOS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
@@ -224,7 +224,7 @@ int mmqos_vcp_init_thread(void *data)
 	}
 
 	retry = 0;
-	while (!(vcp_ipi_dev = vcp_get_ipidev())) {
+	while (!(vcp_ipi_dev = vcp_get_ipidev(MMQOS_FEATURE_ID))) {
 		if (++retry > 100) {
 			MMQOS_ERR("cannot get vcp ipidev");
 			return -ETIMEDOUT;
@@ -247,7 +247,7 @@ int mmqos_vcp_init_thread(void *data)
 		(unsigned long)mmqos_memory_va, mmqos_vcp_init_done);
 
 	vcp_ready_notifier.notifier_call = mmqos_vcp_notifier_callback;
-	vcp_A_register_notify_ex(&vcp_ready_notifier);
+	vcp_A_register_notify_ex(MMQOS_FEATURE_ID, &vcp_ready_notifier);
 
 	mtk_mmqos_enable_vcp(false);
 

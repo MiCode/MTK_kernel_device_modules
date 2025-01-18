@@ -44,6 +44,44 @@ static const struct venc_common_if *get_data_path_ptr(void)
 #endif
 }
 
+int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct venc_inst *inst = NULL;
+
+	inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
+	if (inst == NULL)
+		return -ENOMEM;
+	inst->ctx = ctx;
+	inst->vcu_inst.ctx = ctx;
+	inst->vcu_inst.id = IPI_VENC_COMMON;
+	init_waitqueue_head(&inst->vcu_inst.wq_hd);
+
+	ctx->drv_handle = (unsigned long)(inst);
+	ctx->enc_if = get_data_path_ptr();
+
+	ctx->dev = dev;
+	ctx->dev_ctx = ctx;
+	ctx->type = MTK_INST_ENCODER;
+	spin_lock_init(&ctx->state_lock);
+	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
+
+	mtk_vcodec_add_ctx_list(ctx);
+	mtk_v4l2_debug(0, "[%d] init drv_handle = 0x%lx", ctx->id, ctx->drv_handle);
+
+	return 0;
+}
+
+void venc_if_dev_ctx_deinit(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct venc_inst *inst = (struct venc_inst *)ctx->drv_handle;
+
+	ctx->drv_handle = 0;
+	mtk_vcodec_del_ctx_list(ctx);
+	kfree(inst);
+}
+
 int venc_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 {
 	int ret = 0;
@@ -53,7 +91,7 @@ int venc_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 
 	switch (fourcc) {
 	case V4L2_PIX_FMT_H264:
-	case V4L2_PIX_FMT_H265:
+	case V4L2_PIX_FMT_HEVC:
 	case V4L2_PIX_FMT_HEIF:
 	case V4L2_PIX_FMT_MPEG4:
 	case V4L2_PIX_FMT_H263:
@@ -74,33 +112,20 @@ int venc_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 					  void *out)
 {
-	struct venc_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool is_query_cap = (type == GET_PARAM_VENC_CAP_SUPPORTED_FORMATS ||
+			     type == GET_PARAM_VENC_CAP_FRAME_SIZES);
 
-	if (!ctx->drv_handle) {
-		inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
-		if (!inst)
-			return -ENOMEM;
-		inst->ctx = ctx;
-		ctx->drv_handle = (unsigned long)(inst);
+	if (is_query_cap && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
 		ctx->enc_if = get_data_path_ptr();
-		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
-		mtk_v4l2_debug(0, "%s init drv_handle = 0x%lx",
-			__func__, ctx->drv_handle);
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
-	if (ctx->enc_if)
+
+	if (ctx->enc_if && ctx->drv_handle)
 		ret = ctx->enc_if->get_param(ctx->drv_handle, type, out);
 	else
 		ret = -EINVAL;
-
-	if (!drv_handle_exist) {
-		mtk_vcodec_del_ctx_list(ctx);
-		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->enc_if = NULL;
-	}
 
 	return ret;
 }
@@ -108,33 +133,21 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 	enum venc_set_param_type type, struct venc_enc_param *enc_prm)
 {
-	struct venc_inst *inst = NULL;
 	int ret = 0;
-	int drv_handle_exist = 1;
+	bool is_set_prop = (type == VENC_SET_PARAM_PROPERTY ||
+			    type == VENC_SET_PARAM_VCP_LOG_INFO ||
+			    type == VENC_SET_PARAM_VCU_VPUD_LOG);
 
-	if (!ctx->drv_handle) {
-		inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
-		if (!inst)
-			return -ENOMEM;
-		inst->ctx = ctx;
-		ctx->drv_handle = (unsigned long)(inst);
+	if (is_set_prop && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
 		ctx->enc_if = get_data_path_ptr();
-		mtk_vcodec_add_ctx_list(ctx);
-		drv_handle_exist = 0;
-		mtk_v4l2_debug(0, "%s init drv_handle = 0x%lx",
-			__func__, ctx->drv_handle);
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
-	if (ctx->enc_if)
+
+	if (ctx->enc_if && ctx->drv_handle)
 		ret = ctx->enc_if->set_param(ctx->drv_handle, type, enc_prm);
 	else
 		ret = -EINVAL;
-
-	if (!drv_handle_exist) {
-		mtk_vcodec_del_ctx_list(ctx);
-		kfree(inst);
-		ctx->drv_handle = 0;
-		ctx->enc_if = NULL;
-	}
 
 	return ret;
 }
@@ -148,6 +161,7 @@ void venc_encode_prepare(void *ctx_prepare,
 		return;
 
 	mutex_lock(&ctx->hw_status);
+	mtk_venc_lock(ctx, core_id);
 	spin_lock_irqsave(&ctx->dev->irqlock, *flags);
 	ctx->dev->curr_enc_ctx[core_id] = ctx;
 	spin_unlock_irqrestore(&ctx->dev->irqlock, *flags);
@@ -201,6 +215,7 @@ void venc_encode_unprepare(void *ctx_unprepare,
 	spin_lock_irqsave(&ctx->dev->irqlock, *flags);
 	ctx->dev->curr_enc_ctx[core_id] = NULL;
 	spin_unlock_irqrestore(&ctx->dev->irqlock, *flags);
+	mtk_venc_unlock(ctx, core_id);
 	mutex_unlock(&ctx->hw_status);
 }
 
@@ -265,17 +280,3 @@ void venc_check_release_lock(void *ctx_check)
 	}
 }
 
-int venc_lock(void *ctx_lock, int core_id, bool sec)
-{
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_lock;
-
-	return mtk_venc_lock(ctx, core_id, sec);
-
-}
-
-void venc_unlock(void *ctx_unlock, int core_id)
-{
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unlock;
-
-	mtk_venc_unlock(ctx, core_id);
-}

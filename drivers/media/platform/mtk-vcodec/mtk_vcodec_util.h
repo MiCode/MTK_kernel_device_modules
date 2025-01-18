@@ -166,10 +166,10 @@ extern char *mtk_venc_vcp_log;
 extern char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
 extern int mtk_vdec_lpw_limit;
 extern int mtk_vdec_lpw_timeout;
+extern bool mtk_vdec_enable_dynll;
 extern bool mtk_vdec_slc_enable;
 extern int support_svp_region;
 extern int support_wfd_region;
-extern int venc_enable_hw_break;
 
 struct VENC_SLB_CB_T {
 	atomic_t release_slbc;
@@ -194,8 +194,7 @@ enum mtk_vcodec_debug_level {
 	VCODEC_DBG_L8 = 8,
 };
 
-#define VCODEC_TRACE 1
-#if VCODEC_TRACE
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 #define vcodec_trace_begin(fmt, args...) do { \
 			if (mtk_vdec_trace_enable) { \
 				vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \
@@ -219,6 +218,7 @@ enum mtk_vcodec_debug_level {
 void vcodec_trace(const char *fmt, ...);
 #else
 #define vcodec_trace_begin(fmt, args...)
+#define vcodec_trace_begin_func()
 #define vcodec_trace_end()
 #define vcodec_trace_count(name, count)
 #endif
@@ -334,12 +334,6 @@ enum mtk_put_buffer_type {
 	PUT_BUFFER_CALLBACK = 0,
 };
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-extern phys_addr_t vcp_get_reserve_mem_phys(enum vcp_reserve_mem_id_t id);
-extern phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id);
-extern phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id);
-#endif
-
 bool mtk_vcodec_is_vcp(int type);
 bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
 bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b);
@@ -362,6 +356,7 @@ struct mtk_vcodec_ctx *mtk_vcodec_get_curr_ctx(struct mtk_vcodec_dev *dev,
 	unsigned int hw_id);
 void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx);
 void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx);
+bool mtk_vcodec_ctx_list_empty(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_level);
 struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx);
 struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx);

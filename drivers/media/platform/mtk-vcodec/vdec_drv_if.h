@@ -26,6 +26,12 @@ struct vdec_inst {
 	struct mtk_vcodec_ctx *ctx;
 	struct vdec_vcu_inst vcu;
 	struct vdec_vsi *vsi;
+
+	bool put_frame_async;
+	struct ring_fb_list list_disp_fb;
+	struct mutex list_disp_fb_lock;
+	struct ring_fb_list list_free_fb;
+	struct mutex list_free_fb_lock;
 };
 
 /**
@@ -43,6 +49,8 @@ extern struct mtk_video_fmt
 	mtk_vdec_formats[MTK_MAX_DEC_CODECS_SUPPORT];
 extern struct mtk_codec_framesizes
 	mtk_vdec_framesizes[MTK_MAX_DEC_CODECS_SUPPORT];
+extern struct v4l2_vdec_max_buf_info mtk_vdec_max_buf_info;
+extern struct mtk_video_frame_frameintervals mtk_vdec_frameintervals;
 
 /**
  * vdec_if_init() - initialize decode driver
@@ -101,6 +109,9 @@ int vdec_if_set_param(struct mtk_vcodec_ctx *ctx,
  */
 int vdec_if_flush(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 				   struct vdec_fb *fb, enum vdec_flush_type type);
+
+int vdec_if_dev_ctx_init(struct mtk_vcodec_dev *dev);
+void vdec_if_dev_ctx_deinit(struct mtk_vcodec_dev *dev);
 
 void vdec_decode_prepare(void *ctx_prepare,
 	unsigned int hw_id);

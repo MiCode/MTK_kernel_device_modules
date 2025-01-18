@@ -31,6 +31,12 @@
 #define VCPSYS_CORE0                     0
 #define VCPSYS_CORE1                     1
 
+/* vcp Core ID definition */
+enum vcp_core_id {
+	VCP_A_ID = 0,
+	VCP_CORE_TOTAL = 1,
+};
+
 struct vcp_feature_tb {
 	uint32_t feature;
 	uint32_t freq;

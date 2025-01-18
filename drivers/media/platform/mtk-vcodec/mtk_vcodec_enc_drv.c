@@ -26,8 +26,11 @@
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "venc_drv_if.h"
 #include "mtk-smmu-v3.h"
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
 
 module_param(mtk_v4l2_dbg_level, int, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_dbg, bool, 0644); //S_IRUGO | S_IWUSR
@@ -81,7 +84,7 @@ static int fops_vcodec_open(struct file *file)
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
-		ret = vcp_register_feature(VENC_FEATURE_ID);
+		ret = vcp_register_feature_ex(VENC_FEATURE_ID);
 		if (ret) {
 			mtk_v4l2_err("Failed to vcp_register_feature");
 			kfree(ctx);
@@ -108,6 +111,7 @@ static int fops_vcodec_open(struct file *file)
 	v4l2_fh_add(&ctx->fh);
 	INIT_LIST_HEAD(&ctx->list);
 	ctx->dev = dev;
+	ctx->dev_ctx = &dev->dev_ctx;
 	init_waitqueue_head(&ctx->queue[0]);
 	init_waitqueue_head(&ctx->queue[1]);
 	spin_lock_init(&ctx->state_lock);
@@ -115,6 +119,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->worker_lock);
 	mutex_init(&ctx->hw_status);
 	mutex_init(&ctx->q_mutex);
+	mutex_init(&ctx->ipi_use_lock);
 	mutex_init(&ctx->gen_buf_list_lock);
 
 	ctx->type = MTK_INST_ENCODER;
@@ -231,7 +236,7 @@ static int fops_vcodec_release(struct file *file)
 	mutex_unlock(&dev->dev_mutex);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
-		ret = vcp_deregister_feature(VENC_FEATURE_ID);
+		ret = vcp_deregister_feature_ex(VENC_FEATURE_ID);
 		if (ret) {
 			mtk_v4l2_err("Failed to vcp_deregister_feature");
 			return -EPERM;
@@ -372,9 +377,8 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	for (i = 0; i < NUM_MAX_VENC_REG_BASE; i++)
-		dev->enc_reg_base[i] = NULL;
-	for (i = 0; !of_property_read_string_index(pdev->dev.of_node, "reg-names", i, &name); i++) {
+
+	while (!of_property_read_string_index(pdev->dev.of_node, "reg-names", i, &name)) {
 		if (!strcmp(MTK_VDEC_REG_NAME_VENC_SYS, name)) {
 			reg_index = VENC_SYS;
 		} else if (!strcmp(MTK_VDEC_REG_NAME_VENC_C1_SYS, name)) {
@@ -409,6 +413,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
 			reg_index, (unsigned long)dev->enc_reg_base[reg_index]);
 
+		i++;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "support-wfd-region", &support_wfd_region);
@@ -416,13 +421,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(0, "[VENC] Cannot get support-wfd-region, skip");
 		support_wfd_region = 0;
 	}
-
-	ret = of_property_read_u32(pdev->dev.of_node, "venc-enable-hw-break", &venc_enable_hw_break);
-	if (ret) {
-		mtk_v4l2_debug(0, "[VENC] default enable venc hw break");
-		venc_enable_hw_break = 1;
-	} else
-		mtk_v4l2_debug(0, "[VENC] enable venc hw break %d", venc_enable_hw_break);
 
 	ret = mtk_vcodec_enc_irq_setup(pdev, dev);
 	if (ret)
@@ -587,6 +585,12 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	venc_vcp_probe(dev);
 #endif
 
+	ret = venc_if_dev_ctx_init(dev);
+	if (ret) {
+		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
+		goto err_enc_reg;
+	}
+
 	INIT_LIST_HEAD(&dev->log_param_list);
 	INIT_LIST_HEAD(&dev->prop_param_list);
 	dev_ptr = dev;
@@ -625,7 +629,7 @@ static const struct of_device_id mtk_vcodec_enc_match[] = {
 	{.compatible = "mediatek,mt6835-vcodec-enc",},
 	{.compatible = "mediatek,mt6897-vcodec-enc",},
 	{.compatible = "mediatek,mt6989-vcodec-enc",},
-	{.compatible = "mediatek,mt6768-vcodec-enc",},
+	{.compatible = "mediatek,mt6991-vcodec-enc",},
 	{.compatible = "mediatek,venc_gcon",},
 	{},
 };
@@ -634,6 +638,8 @@ MODULE_DEVICE_TABLE(of, mtk_vcodec_enc_match);
 static int mtk_vcodec_enc_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
+
+	venc_if_dev_ctx_deinit(dev);
 
 	mtk_unprepare_venc_emi_bw(dev);
 	mtk_unprepare_venc_dvfs(dev);

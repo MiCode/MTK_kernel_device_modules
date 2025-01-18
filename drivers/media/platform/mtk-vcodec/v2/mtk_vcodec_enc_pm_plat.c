@@ -22,7 +22,6 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include "vcodec_dvfs.h"
-#define STD_VENC_FREQ 250000000
 #define BW_FACTOR_DENOMINATOR 1000000
 #define VENC_ADAPTIVE_OPRATE_INTERVAL 500 //ms
 #define VENC_INIT_BOOST_INTERVAL 1500
@@ -33,6 +32,7 @@
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
 #include "mtk-smi-dbg.h"
+#define STD_VENC_FREQ 250000000
 #endif
 
 //#define VENC_PRINT_DTS_INFO
@@ -41,7 +41,7 @@ int venc_max_mon_frm = 8;
 module_param(venc_smi_monitor_mode, int, 0644);
 module_param(venc_max_mon_frm, int, 0644);
 
-
+#if ENC_EMI_BW
 static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 {
 	const int tp_item_num = 6;
@@ -291,6 +291,7 @@ static void mtk_enc_tput_deinit(struct mtk_vcodec_dev *dev)
 	}
 	mtk_venc_pmqos_monitor_deinit(dev);
 }
+#endif
 
 void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 {
@@ -414,6 +415,7 @@ void mtk_unprepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 
 void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 {
+#if ENC_DVFS
 	struct dev_pm_opp *opp = 0;
 	int volt = 0;
 	int ret = 0;
@@ -444,6 +446,7 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 			mtk_v4l2_debug(8, "[VENC] freq %u, voltage %d", freq, volt);
 		}
 	}
+#endif
 }
 
 /*prepare mmdvfs data to vcp to begin*/
@@ -521,6 +524,7 @@ void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
 
 void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 {
+#if ENC_DVFS
 	unsigned int cur_in_timestamp;
 
 	if (!dev->venc_dvfs_params.mmdvfs_in_adaptive || !dev->venc_dvfs_params.init_boost)
@@ -538,10 +542,12 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 		mtk_v4l2_debug(0, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
 		mutex_unlock(&dev->enc_dvfs_mutex);
 	}
+#endif
 }
 
 void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
 	u32 target_bw = 0;
@@ -563,11 +569,12 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 		}
 		dev->venc_qos.prev_comm_bw[i] = target_bw;
 	}
-
+#endif
 }
 
 void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	int i;
 	struct mtk_vcodec_dev *dev = 0;
 	u32 target_bw = 0;
@@ -591,6 +598,7 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 					dev->venc_larb_bw[i].larb_type);
 		}
 	}
+#endif
 }
 
 void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)
@@ -610,6 +618,7 @@ void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)
 
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 {
+#if ENC_EMI_BW
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 
 	u32 data_comm0[MTK_SMI_MAX_MON_REQ] = {0};
@@ -662,6 +671,7 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 		mtk_v4l2_debug(0, "[VQOS] unknown smi monitor state...\n");
 		break;
 	}
+#endif
 };
 
 void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
@@ -755,6 +765,7 @@ void mtk_venc_pmqos_monitor_reset(struct mtk_vcodec_dev *dev)
 			sizeof(unsigned long long) * SMI_COMMON_NUM * MTK_VCODEC_QOS_TYPE);
 };
 
+#if ENC_EMI_BW
 static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur_common_bw)
 {
 	int i;
@@ -765,9 +776,11 @@ static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur
 		dev->venc_qos.prev_comm_bw[i] = cur_common_bw[i];
 	}
 }
+#endif
 
 void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 	u32 common_bw[MTK_SMI_MAX_MON_REQ] = {0};
@@ -800,6 +813,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 		mtk_v4l2_debug(8, "[VQOS] set larb%d: %dMB/s",
 			dev->venc_larb_bw[i].larb_id, common_bw[i]);
 	}
+#endif
 }
 
 /*
@@ -813,6 +827,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
  */
 bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
+#if ENC_DVFS
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int prev_op, cur_op, tmp_op; /* monitored op in the prev interval */
 	bool need_update = false;
@@ -876,5 +891,6 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 			return true;
 		}
 	}
+#endif
 	return false;
 }

@@ -19,7 +19,6 @@
 #define V4L2_PIX_FMT_P010M   v4l2_fourcc('P', '0', '1', '0')
 
 #define V4L2_PIX_FMT_H264_SLICE v4l2_fourcc('S', '2', '6', '4') /* H264 parsed slices */
-#define V4L2_PIX_FMT_H265     v4l2_fourcc('H', '2', '6', '5') /* H265 with start codes */
 #define V4L2_PIX_FMT_HEIF     v4l2_fourcc('H', 'E', 'I', 'F') /* HEIF */
 
 #define V4L2_PIX_FMT_VP8_FRAME v4l2_fourcc('V', 'P', '8', 'F') /* VP8 parsed frames */
@@ -107,6 +106,8 @@
 #define V4L2_BUF_FLAG_HAS_META			0x04000000
 #define V4L2_BUF_FLAG_COLOR_ASPECT_CHANGED	0x08000000
 #define V4L2_BUF_FLAG_MULTINAL			0x20000000
+#define V4L2_BUF_FLAG_NEED_MORE_BS		0x80000000
+
 
 #define V4L2_EVENT_MTK_VCODEC_START	(V4L2_EVENT_PRIVATE_START + 0x00002000)
 #define V4L2_EVENT_MTK_VDEC_ERROR	(V4L2_EVENT_MTK_VCODEC_START + 1)
@@ -116,14 +117,9 @@
 /* Mediatek control IDs */
 #define V4L2_CID_CODEC_MTK_BASE \
 	(V4L2_CTRL_CLASS_CODEC | 0x2000)
-#define V4L2_CID_MPEG_MTK_FRAME_INTERVAL \
-	(V4L2_CID_CODEC_MTK_BASE+0)
-#define V4L2_CID_MPEG_MTK_ERRORMB_MAP \
-	(V4L2_CID_CODEC_MTK_BASE+1)
 #define V4L2_CID_MPEG_MTK_DECODE_MODE \
 	(V4L2_CID_CODEC_MTK_BASE+2)
-#define V4L2_CID_MPEG_MTK_FRAME_SIZE \
-	(V4L2_CID_CODEC_MTK_BASE+3)
+
 #define V4L2_CID_MPEG_MTK_FIXED_MAX_FRAME_BUFFER \
 	(V4L2_CID_CODEC_MTK_BASE+4)
 #define V4L2_CID_MPEG_MTK_CRC_PATH \
@@ -132,29 +128,25 @@
 	(V4L2_CID_CODEC_MTK_BASE+6)
 #define V4L2_CID_MPEG_MTK_COLOR_DESC \
 	(V4L2_CID_CODEC_MTK_BASE+7)
-#define V4L2_CID_MPEG_MTK_ASPECT_RATIO \
-	(V4L2_CID_CODEC_MTK_BASE+8)
+
 #define V4L2_CID_MPEG_MTK_SET_WAIT_KEY_FRAME \
 	(V4L2_CID_CODEC_MTK_BASE+9)
-#define V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH \
-	(V4L2_CID_CODEC_MTK_BASE+10)
+
 #define V4L2_CID_MPEG_MTK_SEC_DECODE \
 	(V4L2_CID_CODEC_MTK_BASE+11)
 #define V4L2_CID_MPEG_MTK_FIX_BUFFERS \
 	(V4L2_CID_CODEC_MTK_BASE+12)
-#define V4L2_CID_MPEG_MTK_FIX_BUFFERS_SVP \
-	(V4L2_CID_CODEC_MTK_BASE+13)
+
 #define V4L2_CID_MPEG_MTK_INTERLACING \
 	(V4L2_CID_CODEC_MTK_BASE+14)
-#define V4L2_CID_MPEG_MTK_CODEC_TYPE \
-	(V4L2_CID_CODEC_MTK_BASE+15)
+
 #define V4L2_CID_MPEG_MTK_OPERATING_RATE \
 	(V4L2_CID_CODEC_MTK_BASE+16)
 #define V4L2_CID_MPEG_MTK_SEC_ENCODE \
 	(V4L2_CID_CODEC_MTK_BASE+17)
 #define V4L2_CID_MPEG_MTK_QUEUED_FRAMEBUF_COUNT \
 	(V4L2_CID_CODEC_MTK_BASE+18)
-#define V4L2_CID_MPEG_MTK_UFO_MODE \
+#define V4L2_CID_VDEC_COMPRESSED_MODE \
 	(V4L2_CID_CODEC_MTK_BASE+19)
 #define V4L2_CID_MPEG_MTK_ENCODE_SCENARIO \
 	(V4L2_CID_CODEC_MTK_BASE+20)
@@ -224,8 +216,6 @@
 	(V4L2_CID_CODEC_MTK_BASE+55)
 #define V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES \
 	(V4L2_CID_CODEC_MTK_BASE+56)
-#define V4L2_CID_VDEC_SLICE_COUNT \
-	(V4L2_CID_CODEC_MTK_BASE+57)
 #define V4L2_CID_VDEC_HDR10_INFO \
 	(V4L2_CID_CODEC_MTK_BASE+58)
 #define V4L2_CID_VDEC_HDR10PLUS_DATA \
@@ -275,5 +265,137 @@
 
 #define V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE \
 	(V4L2_CID_CODEC_MTK_BASE+74)
+
+#define V4L2_CID_VDEC_SUBSAMPLE_MODE \
+	(V4L2_CID_CODEC_MTK_BASE + 75)
+
+#define V4L2_CID_VDEC_ACQUIRE_RESOURCE \
+	(V4L2_CID_CODEC_MTK_BASE + 76)
+
+#define V4L2_CID_VDEC_RESOURCE_METRICS \
+	(V4L2_CID_CODEC_MTK_BASE + 77)
+
+#define V4L2_CID_VDEC_VPEEK_MODE \
+	(V4L2_CID_CODEC_MTK_BASE + 78)
+
+#define V4L2_CID_VDEC_PLUS_DROP_RATIO \
+	(V4L2_CID_CODEC_MTK_BASE + 79)
+
+#define V4L2_CID_VDEC_CONTAINER_FRAMERATE \
+	(V4L2_CID_CODEC_MTK_BASE + 80)
+
+#define V4L2_CID_VDEC_DISABLE_DEBLOCK \
+	(V4L2_CID_CODEC_MTK_BASE + 81)
+
+#define V4L2_CID_VDEC_LOW_LATENCY \
+	(V4L2_CID_CODEC_MTK_BASE + 82)
+
+#define V4L2_CID_VDEC_MAX_BUF_INFO \
+	(V4L2_CID_CODEC_MTK_BASE + 83)
+
+#define V4L2_CID_VDEC_BANDWIDTH_INFO \
+	(V4L2_CID_CODEC_MTK_BASE + 84)
+
+enum v4l2_vdec_bandwidth_type {
+	V4L2_AV1_COMPRESS = 0,
+	V4L2_AV1_NO_COMPRESS = 1,
+	V4L2_HEVC_COMPRESS = 2,
+	V4L2_HEVC_NO_COMPRESS = 3,
+	V4L2_VSD = 4,
+	V4L2_BW_COUNT = 5,
+};
+
+enum v4l2_vdec_compressed_mode {
+	V4L2_VDEC_UFO_DEFAULT = 0,
+	V4L2_VDEC_UFO_ON,
+	V4L2_VDEC_UFO_OFF,
+};
+
+enum v4l2_vdec_subsample_mode {
+	/*
+	 * VDEC could generate subsample according to internal condition
+	 * usually the condition is resolution > FHD
+	 */
+	V4L2_VDEC_SUBSAMPLE_DEFAULT = 0,
+	/*
+	 * VDEC should not generate subsample
+	 * this setting will not affect buffer layout in order to support per-frame on/off
+	 */
+	V4L2_VDEC_SUBSAMPLE_OFF,
+	/*
+	 * VDEC should generate subsample
+	 * this setting will not affect buffer layout in order to support per-frame on/off
+	 */
+	V4L2_VDEC_SUBSAMPLE_ON,
+};
+
+struct v4l2_vdec_resource_parameter {
+	__u32 width;
+	__u32 height;
+	struct v4l2_fract frame_rate;
+	__u32 priority; /* Smaller value means higher priority */
+};
+
+struct v4l2_vdec_resource_metrics {
+	__u32 core_used;  /* bit mask, if core-i is used, bit i is set */
+	__u32 core_usage; /* unit is 1/1000 */
+	__u8 gce;
+};
+
+struct v4l2_vdec_max_buf_info {
+	/* set by user*/
+	__u32 pixelformat;
+	__u32 max_width;
+	__u32 max_height;
+	/* report by vdec*/
+	__u32 max_internal_buf_size; /* hw buf and shm buf */
+	__u32 max_dpb_count; /* codec report dpb + 1(current decode) */
+	__u32 max_frame_buf_size; /* frame size */
+};
+
+struct v4l2_vdec_low_latency_parameter {
+	/* TV Used */
+	/* Racing Display Only : slice_count = 1,  racing_display = 1 */
+	/* Slice Decode : slice_count = 4(by stream),  racing_display = 1 */
+	/* max 256 slice in a frame according to HW DE */
+	__u16 slice_count;
+	__u8 racing_display;
+	/* Synergy with IMB */
+	__u16 threshold_numerator;
+	__u16 threshold_denominator;
+};
+
+struct v4l2_vdec_fmt_modifier {
+	union {
+		struct {
+			__u8 tile:1;
+			__u8 raster:1;
+			__u8 compress:1;
+			__u8 jump:1;
+			__u8 vsd_mode:3; /* enum fmt_modifier_vsd */
+			__u8 vsd_ce_mode:1;
+			__u8 is_vsd_buf_layout:1;
+			__u8 is_10bit:1;
+			__u8 compress_engine:2; /* 0 : no compress, 1 : ufo, 2 : mfc */
+			__u8 color_space_num:2; /* luma, chroma */
+			__u8 size_multiplier:3; /* mpeg2 new deblocking mode would double fb size*/
+			__u8 luma_target;  /* temp : 87 */
+			__u8 chroma_target; /* temp : 66 */
+		};
+		/* TODO: Reserve several bits in MSB for version control */
+		__u64 padding;
+	};
+};
+
+struct v4l2_vdec_bandwidth_info {
+	/* unit is 1/1000 */
+	/*[0] : av1 w/ compress, [1] : av1 w/o compress */
+	/*[2] : hevc w/ compress, [3] : hevc w/o compress */
+	/*[4] : vsd*/
+	__u32 bandwidth_per_pixel[V4L2_BW_COUNT];
+	__u8 compress;
+	__u8 vsd;
+	struct v4l2_vdec_fmt_modifier modifier;
+};
 
 #endif // #ifndef __UAPI_MTK_V4L2_VCODEC_H__

@@ -262,6 +262,7 @@ struct vcp_mminfra_on_off_st vcp_mminfra_on_off = {
 struct vcp_status_fp vcp_helper_fp = {
 	.vcp_get_reserve_mem_phys	= vcp_get_reserve_mem_phys,
 	.vcp_get_reserve_mem_virt	= vcp_get_reserve_mem_virt,
+	.vcp_get_reserve_mem_size	= vcp_get_reserve_mem_size,
 	.vcp_register_feature		= vcp_register_feature,
 	.vcp_deregister_feature		= vcp_deregister_feature,
 	.is_vcp_ready				= is_vcp_ready,
@@ -269,6 +270,7 @@ struct vcp_status_fp vcp_helper_fp = {
 	.vcp_A_unregister_notify	= vcp_A_unregister_notify,
 	.vcp_cmd					= vcp_cmd,
 	.is_vcp_suspending			= is_vcp_suspending,
+	.is_vcp_ao					= is_vcp_ao,
 };
 
 #undef pr_debug
@@ -595,14 +597,14 @@ static BLOCKING_NOTIFIER_HEAD(vcp_A_notifier_list);
  * and should not be called in interrupt context
  * @param nb:   notifier block struct
  */
-void vcp_A_register_notify(struct notifier_block *nb)
+void vcp_A_register_notify(enum feature_id id, struct notifier_block *nb)
 {
 	mutex_lock(&vcp_A_notify_mutex);
 	blocking_notifier_chain_register(&vcp_A_notifier_list, nb);
 
 	pr_debug("[VCP] register vcp A notify callback..\n");
 
-	if (is_vcp_ready(VCP_A_ID))
+	if (is_vcp_ready(id))
 		nb->notifier_call(nb, VCP_EVENT_READY, NULL);
 	mutex_unlock(&vcp_A_notify_mutex);
 }
@@ -615,7 +617,7 @@ EXPORT_SYMBOL_GPL(vcp_A_register_notify);
  * and should not be called in interrupt context
  * @param nb:     notifier block struct
  */
-void vcp_A_unregister_notify(struct notifier_block *nb)
+void vcp_A_unregister_notify(enum feature_id id, struct notifier_block *nb)
 {
 	mutex_lock(&vcp_A_notify_mutex);
 	blocking_notifier_chain_unregister(&vcp_A_notifier_list, nb);
@@ -958,29 +960,20 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 }
 EXPORT_SYMBOL_GPL(trigger_vcp_halt);
 
-void trigger_vcp_disp_sync(enum vcp_core_id id)
-{
-	int ret = 0;
-	if (mmup_enable_count() && vcp_ready[id]) {
-		ret = vcp_turn_mminfra_on();
-		if (ret < 0)
-			return;
-		/* trigger disp sync isr */
-		writel(B_GIPC0_SETCLR_0, R_GIPC_IN_SET);
-		pr_debug("[VCP] %s trigger\n", __func__);
-		vcp_turn_mminfra_off();
-	} else
-		pr_debug("[VCP] %s not trigger since mmup_enable_count=%d, vcp_ready[%d]=%d\n",
-			__func__, mmup_enable_count(), id, vcp_ready[id]);
-}
-EXPORT_SYMBOL_GPL(trigger_vcp_disp_sync);
-
 /*
  * @return: 1 if vcp is ready for running tasks
  */
-unsigned int is_vcp_ready(enum vcp_core_id id)
+unsigned int is_vcp_ready_by_coreid(enum vcp_core_id id)
 {
 	if (vcp_ready[id])
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int is_vcp_ready(enum feature_id id)
+{
+	if (is_vcp_ready_by_coreid(VCP_A_ID))
 		return 1;
 	else
 		return 0;
@@ -993,6 +986,12 @@ unsigned int is_vcp_suspending(void)
 }
 EXPORT_SYMBOL_GPL(is_vcp_suspending);
 
+unsigned int is_vcp_ao(void)
+{
+	return vcp_ao;
+}
+EXPORT_SYMBOL_GPL(is_vcp_ao);
+
 /*
  * @return: generaltion count of vcp (reset count)
  */
@@ -1002,14 +1001,11 @@ unsigned int get_vcp_generation(void)
 }
 EXPORT_SYMBOL_GPL(get_vcp_generation);
 
-unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
+unsigned int vcp_cmd(enum feature_id id, enum vcp_cmd_id cmd_id, char *user)
 {
-	switch (id) {
+	switch (cmd_id) {
 	case VCP_SET_HALT:
 		trigger_vcp_halt(VCP_A_ID, user, true);
-		break;
-	case VCP_SET_DISP_SYNC:
-		//trigger_vcp_disp_sync(VCP_A_ID);
 		break;
 	case VCP_GET_GEN:
 		return get_vcp_generation();
@@ -1023,7 +1019,7 @@ unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
 		trigger_vcp_dump(VCP_A_ID, user, false);
 		break;
 	default:
-		pr_notice("[VCP] %s wrong cmd id %d", __func__, id);
+		pr_notice("[VCP] %s wrong cmd id %d", __func__, cmd_id);
 		break;
 	}
 	return 0;
@@ -1062,11 +1058,11 @@ uint32_t vcp_wait_ready_sync(enum feature_id id)
 	} else {
 		if ((C0_H0 == CORE_REBOOT_OK) && (C0_H1 == CORE_REBOOT_OK)
 			&& (C1_H0 == CORE_REBOOT_OK) && (C1_H1 == CORE_REBOOT_OK)
-			&& !is_vcp_ready(VCP_A_ID))
+			&& !is_vcp_ready_by_coreid(VCP_A_ID))
 			vcp_A_set_ready();
 	}
 
-	while (!is_vcp_ready(VCP_A_ID)) {
+	while (!is_vcp_ready_by_coreid(VCP_A_ID)) {
 		i += 5;
 		mdelay(5);
 		if (i > VCP_SYNC_TIMEOUT_MS) {
@@ -1127,7 +1123,7 @@ int vcp_enable_pm_clk(enum feature_id id)
 		vcp_enable_dapc();
 		vcp_enable_irqs();
 
-		if (!is_vcp_ready(VCP_A_ID))
+		if (!is_vcp_ready_by_coreid(VCP_A_ID))
 			reset_vcp(VCP_ALL_ENABLE);
 	}
 	pwclkcnt++;
@@ -1165,7 +1161,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	}
 
 	pr_notice("[VCP] %s id %d entered %d ready %d\n", __func__, id,
-		pwclkcnt, is_vcp_ready(VCP_A_ID));
+		pwclkcnt, is_vcp_ready_by_coreid(VCP_A_ID));
 
 	if (vcp_ao && id != RTOS_FEATURE_ID) {
 		ipi_data.cmd = SLP_WAKE_UNLOCK;
@@ -1744,6 +1740,12 @@ enum ipi_debug_opt {
 	IPI_TRACKING_ON,
 	IPIMON_SHOW,
 	IPI_PROFILING,
+	IPI_PBFR,
+	IPI_VCP_TEST = 100,
+	IPI_VCP_TEST_END = 199,
+	IPI_MMUP_TEST = 200,
+	IPI_MMUP_TEST_END = 299,
+	IPI_DEBUG_MAX = 300,
 };
 
 static inline ssize_t vcp_ipi_test_show(struct device *kobj
@@ -1755,6 +1757,7 @@ static inline ssize_t vcp_ipi_test_show(struct device *kobj
 
 	if (vcp_ready[VCP_A_ID]) {
 		timetick = arch_timer_read_counter();
+		cmd.type = IPI_PROFILING;
 		cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
 		cmd.ipi_time_l = timetick & 0xFFFFFFFF;
 
@@ -1791,6 +1794,7 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 	case IPI_PROFILING:
 		for (i = 0; i < 100; i++) {
 			timetick = arch_timer_read_counter();
+			cmd.type = IPI_PROFILING;
 			cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
 			cmd.ipi_time_l = timetick & 0xFFFFFFFF;
 
@@ -1801,6 +1805,19 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 
 			udelay(1000);
 		}
+		break;
+	case IPI_PBFR:
+		cmd.type = IPI_PBFR;
+		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
+			PIN_OUT_SIZE_TEST_0, 0);
+
+		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_1, 0, &cmd,
+			PIN_OUT_SIZE_TEST_1, 0);
+		break;
+	case IPI_VCP_TEST ... IPI_VCP_TEST_END:
+		cmd.type = opt;
+		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
+			PIN_OUT_SIZE_TEST_0, 0);
 		break;
 	default:
 		pr_info("cmd '%d' is not supported.\n", opt);

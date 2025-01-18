@@ -38,6 +38,7 @@ struct venc_vcu_inst {
 	enum ipi_id id;
 	struct mtk_vcodec_ctx *ctx;
 	struct platform_device *dev;
+	bool init_done;
 	bool abort;
 	int daemon_pid;
 	ipi_handler_t handler;

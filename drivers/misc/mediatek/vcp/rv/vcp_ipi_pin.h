@@ -8,6 +8,7 @@
 
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include "vcp.h"
+#include "vcp_helper.h"
 
 /* vcp awake timeout count definition */
 #define VCP_AWAKE_TIMEOUT 200000

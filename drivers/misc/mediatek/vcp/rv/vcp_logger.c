@@ -302,9 +302,9 @@ ssize_t vcp_A_log_read(char __user *data, size_t len)
 				}
 			}
 
-			if (is_vcp_ready(VCP_A_ID)) {
+			if (is_vcp_ready_by_coreid(VCP_A_ID)) {
 				msg.cmd = VCP_LOGGER_IPI_FLUSH;
-				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL,
+				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL_0,
 					0, &msg, sizeof(msg)/MBOX_SLOT_SIZE, 0);
 				mutex_unlock(&vcp_pw_clk_mutex);
 
@@ -488,8 +488,8 @@ static unsigned int vcp_A_log_enable_set(unsigned int enable)
 					goto error;
 				}
 			}
-			if (is_vcp_ready(VCP_A_ID)) {
-				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL,
+			if (is_vcp_ready_by_coreid(VCP_A_ID)) {
+				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL_0,
 					0, &msg, sizeof(msg)/MBOX_SLOT_SIZE, 0);
 				mutex_unlock(&vcp_pw_clk_mutex);
 
@@ -549,8 +549,8 @@ static unsigned int vcp_A_log_wakeup_set(unsigned int enable)
 		do {
 			msg.cmd = VCP_LOGGER_IPI_WAKEUP;
 			msg.u.flag.enable = enable;
-			if (is_vcp_ready(VCP_A_ID)) {
-				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL,
+			if (is_vcp_ready_by_coreid(VCP_A_ID)) {
+				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL_0,
 					0, &msg, sizeof(msg)/MBOX_SLOT_SIZE, 0);
 
 				if (ret == IPI_ACTION_DONE)
@@ -742,7 +742,7 @@ static ssize_t log_filter_store(struct device *dev,
 
 	msg.cmd = VCP_LOGGER_IPI_SET_FILTER;
 	msg.u.flag.enable = filter;
-	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL, 0, &msg,
+	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL_0, 0, &msg,
 			   sizeof(msg)/MBOX_SLOT_SIZE, 0);
 	switch (ret) {
 	case IPI_ACTION_DONE:
@@ -868,7 +868,7 @@ static void vcp_logger_notify_ws(struct work_struct *ws)
 	struct vcp_work_struct *sws =
 		container_of(ws, struct vcp_work_struct, work);
 
-	vcp_ipi_id = IPI_OUT_LOGGER_CTRL;
+	vcp_ipi_id = IPI_OUT_LOGGER_CTRL_0;
 	msg.cmd = VCP_LOGGER_IPI_INIT;
 	dma_addr = vcp_get_reserve_mem_phys(VCP_A_LOGGER_MEM_ID);
 	msg.u.init.addr = (uint32_t)(VCP_PACK_IOVA(dma_addr));
@@ -879,7 +879,7 @@ static void vcp_logger_notify_ws(struct work_struct *ws)
 	 */
 	retrytimes = VCP_IPI_RETRY_TIMES;
 	do {
-		if (is_vcp_ready(VCP_A_ID)) {
+		if (is_vcp_ready_by_coreid(VCP_A_ID)) {
 			ap_time = local_clock();
 			msg.u.init.ap_time_l = (unsigned int)(ap_time & 0xFFFFFFFF);
 			msg.u.init.ap_time_h = (unsigned int)((ap_time >> 32) & 0xFFFFFFFF);
@@ -956,7 +956,7 @@ int vcp_logger_init(phys_addr_t start, phys_addr_t limit)
 	last_log_info.vcp_log_buf_maxlen = LAST_LOG_BUF_SIZE;
 
 	/* register logger ctrl IPI */
-	mtk_ipi_register(&vcp_ipidev, IPI_IN_LOGGER_CTRL,
+	mtk_ipi_register(&vcp_ipidev, IPI_IN_LOGGER_CTRL_0,
 			(void *)vcp_logger_ctrl_handler, NULL,
 			&msg_vcp_logger_ctrl);
 

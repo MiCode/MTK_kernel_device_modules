@@ -253,8 +253,6 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 		}
 	}
 
-	inst->vsi->dec.queued_frame_buf_count =
-		inst->ctx->dec_params.queued_frame_buf_count;
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
 	memcpy(&inst->vsi->hdr10plus_buf, bs->hdr10plus_buf, sizeof(struct hdr10plus_info));
 
@@ -313,6 +311,7 @@ static void vdec_get_bs(struct vdec_inst *inst,
 	unsigned long vdec_bs_va;
 	struct mtk_vcodec_mem *bs;
 
+get_bs:
 	if (list->count == 0) {
 		mtk_vcodec_debug(inst, "[BS] there is no bs");
 		*out_bs = NULL;
@@ -320,14 +319,25 @@ static void vdec_get_bs(struct vdec_inst *inst,
 	}
 
 	bs_index = list->vdec_bs_va_list[list->read_idx];
+	if (bs_index == 0 || bs_index > VB2_MAX_FRAME) {
+		mtk_vcodec_err(inst, "free bs list read_idx %d bs_index %lld invalid !",
+			list->read_idx, bs_index);
+		list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1U) ? 0U : list->read_idx + 1U;
+		list->count--;
+		if (list->count > 0)
+			goto get_bs;
+		else {
+			*out_bs = NULL;
+			return;
+		}
+	}
 	vdec_bs_va = (unsigned long)inst->ctx->bs_list[bs_index];
 	bs = (struct mtk_vcodec_mem *)vdec_bs_va;
 
 	*out_bs = bs;
 	mtk_vcodec_debug(inst, "[BS] get free bs %lld %lx", bs_index, vdec_bs_va);
 
-	list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1) ?
-					 0 : list->read_idx + 1;
+	list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1) ? 0 : list->read_idx + 1;
 	list->count--;
 }
 
@@ -338,6 +348,7 @@ static void vdec_get_fb(struct vdec_inst *inst,
 	unsigned long vdec_fb_va;
 	struct vdec_fb *fb;
 
+get_fb:
 	if (list->count >= DEC_MAX_FB_NUM) {
 		mtk_vcodec_err(inst, "list count %d invalid ! (write_idx %d, read_idx %d)",
 			list->count, list->write_idx, list->read_idx);
@@ -349,22 +360,32 @@ static void vdec_get_fb(struct vdec_inst *inst,
 			list->count = list->write_idx + DEC_MAX_FB_NUM - list->read_idx;
 	}
 	if (list->count == 0) {
-		mtk_vcodec_debug(inst, "[FB] there is no %s fb",
-						 disp_list ? "disp" : "free");
+		mtk_vcodec_debug(inst, "[FB] there is no %s fb", disp_list ? "disp" : "free");
 		*out_fb = NULL;
 		return;
 	}
 
 	fb_index = (u64)list->fb_list[list->read_idx].vdec_fb_va;
+	if (fb_index == 0 || fb_index > VB2_MAX_FRAME) {
+		mtk_vcodec_err(inst, "%s fb list read_idx %d fb_index %lld invalid !",
+			disp_list ? "disp" : "free", list->read_idx, fb_index);
+		list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ? 0U : list->read_idx + 1U;
+		list->count--;
+		if (list->count > 0)
+			goto get_fb;
+		else {
+			*out_fb = NULL;
+			return;
+		}
+	}
 	vdec_fb_va = (unsigned long)inst->ctx->fb_list[fb_index];
 	fb = (struct vdec_fb *)vdec_fb_va;
 	if (fb == NULL)
 		return;
 	fb->timestamp = list->fb_list[list->read_idx].timestamp;
-#ifdef TV_INTEGRATION
 	fb->field = list->fb_list[list->read_idx].field;
 	fb->frame_type = list->fb_list[list->read_idx].frame_type;
-#endif
+
 	if (disp_list) {
 		fb->status |= FB_ST_DISPLAY;
 		if (list->fb_list[list->read_idx].reserved)
@@ -382,8 +403,7 @@ static void vdec_get_fb(struct vdec_inst *inst,
 		list->fb_list[list->read_idx].vdec_fb_va, vdec_fb_va,
 		fb->general_buf_fd, fb->dma_general_buf);
 
-	list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ?
-					 0U : list->read_idx + 1U;
+	list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ? 0U : list->read_idx + 1U;
 	list->count--;
 }
 
@@ -404,12 +424,11 @@ static void get_supported_format(struct vdec_inst *inst,
 	}
 }
 
-#ifdef TV_INTEGRATION
-static void get_frame_intervals(struct vdec_inst *inst,
+static void get_supported_frame_intervals(struct vdec_inst *inst,
 	struct mtk_video_frame_frameintervals *f_ints)
 {
 	inst->vcu.ctx = inst->ctx;
-	vcu_dec_query_cap(&inst->vcu, GET_PARAM_CAPABILITY_FRAMEINTERVALS,
+	vcu_dec_query_cap(&inst->vcu, GET_PARAM_VDEC_CAP_FRAMEINTERVALS,
 					  f_ints);
 
 	mtk_vcodec_debug(inst, "codec fourcc %d w %d h %d max %d/%d min %d/%d step %d/%d\n",
@@ -418,7 +437,6 @@ static void get_frame_intervals(struct vdec_inst *inst,
 			 f_ints->stepwise.min.numerator, f_ints->stepwise.min.denominator,
 			 f_ints->stepwise.step.numerator, f_ints->stepwise.step.denominator);
 }
-#endif
 
 static void get_frame_sizes(struct vdec_inst *inst,
 	struct mtk_codec_framesizes *codec_framesizes)
@@ -468,13 +486,6 @@ static void get_supported_fix_buffers(struct vdec_inst *inst, unsigned int *supp
 		*supported = inst->vsi->fix_buffers;
 }
 
-static void get_supported_fix_buffers_svp(struct vdec_inst *inst, unsigned int *supported)
-{
-	inst->vcu.ctx = inst->ctx;
-	if (inst->vsi != NULL)
-		*supported = inst->vsi->fix_buffers_svp;
-}
-
 static void get_interlacing(struct vdec_inst *inst, unsigned int *interlacing)
 {
 	inst->vcu.ctx = inst->ctx;
@@ -487,13 +498,6 @@ static void get_interlacing_fieldseq(struct vdec_inst *inst, unsigned int *botto
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		*bottomFirst = inst->vsi->interlacing_fieldseq;
-}
-
-static void get_codec_type(struct vdec_inst *inst, unsigned int *codec_type)
-{
-	inst->vcu.ctx = inst->ctx;
-	if (inst->vsi != NULL)
-		*codec_type = inst->vsi->codec_type;
 }
 
 static void get_input_driven(struct vdec_inst *inst, unsigned int *input_driven)
@@ -517,14 +521,41 @@ static void get_low_pw_mode(struct vdec_inst *inst, unsigned int *low_pw_mode)
 		*low_pw_mode = inst->vsi->low_pw_mode;
 }
 
-#ifdef TV_INTEGRATION
 static void get_frame_interval(struct vdec_inst *inst, struct v4l2_fract *time_per_frame)
 {
 	inst->vcu.ctx = inst->ctx;
 	if (inst->vsi != NULL)
 		memcpy(time_per_frame, &inst->vsi->time_per_frame, sizeof(struct v4l2_fract));
 }
-#endif
+
+static void get_res_info(struct vdec_inst *inst,
+			 struct vdec_resource_info *res_info)
+{
+	if (inst->vsi != NULL)
+		memcpy(res_info, &inst->vsi->res_info, sizeof(struct vdec_resource_info));
+}
+
+static void get_bandwidth_info(struct vdec_inst *inst,
+			struct vdec_bandwidth_info *bandwidth_info)
+{
+	if (inst->vsi != NULL)
+		memcpy(bandwidth_info, &inst->vsi->bandwidth_info, sizeof(struct vdec_bandwidth_info));
+}
+
+static void get_max_buf_sizes(struct vdec_inst *inst,
+	struct vdec_max_buf_info *max_buf_info)
+{
+	inst->vcu.ctx = inst->ctx;
+	vcu_dec_query_cap(&inst->vcu, GET_PARAM_VDEC_CAP_MAX_BUF_INFO, max_buf_info);
+}
+
+static void get_trick_mode(struct vdec_inst *inst,
+			   unsigned int *trick_mode)
+{
+	inst->vcu.ctx = inst->ctx;
+	if (inst->vsi != NULL)
+		*trick_mode = inst->vsi->trick_mode;
+}
 
 static int vdec_get_param(unsigned long h_vdec,
 	enum vdec_get_param_type type, void *out)
@@ -600,16 +631,8 @@ static int vdec_get_param(unsigned long h_vdec,
 		get_supported_fix_buffers(inst, out);
 		break;
 
-	case GET_PARAM_PLATFORM_SUPPORTED_FIX_BUFFERS_SVP:
-		get_supported_fix_buffers_svp(inst, out);
-		break;
-
 	case GET_PARAM_INTERLACING:
 		get_interlacing(inst, out);
-		break;
-
-	case GET_PARAM_CODEC_TYPE:
-		get_codec_type(inst, out);
 		break;
 
 	case GET_PARAM_INPUT_DRIVEN:
@@ -627,19 +650,28 @@ static int vdec_get_param(unsigned long h_vdec,
 	case GET_PARAM_INTERLACING_FIELD_SEQ:
 		get_interlacing_fieldseq(inst, out);
 		break;
-#ifdef TV_INTEGRATION
 	case GET_PARAM_FRAME_INTERVAL:
 		get_frame_interval(inst, out);
 		break;
-	case GET_PARAM_CAPABILITY_FRAMEINTERVALS:
-		get_frame_intervals(inst, out);
+	case GET_PARAM_VDEC_CAP_FRAMEINTERVALS:
+		get_supported_frame_intervals(inst, out);
 		break;
-#endif
-
 	case GET_PARAM_VDEC_VCU_VPUD_LOG:
 		VCU_FPTR(vcu_get_log)(out, LOG_PROPERTY_SIZE);
 		break;
 
+	case GET_PARAM_RES_INFO:
+		get_res_info(inst, out);
+		break;
+	case GET_PARAM_BANDWIDTH_INFO:
+		get_bandwidth_info(inst, out);
+		break;
+	case GET_PARAM_VDEC_CAP_MAX_BUF_INFO:
+		get_max_buf_sizes(inst, out);
+		break;
+	case GET_PARAM_TRICK_MODE:
+		get_trick_mode(inst, out);
+		break;
 	default:
 		mtk_vcodec_err(inst, "invalid get parameter type=%d", type);
 		ret = -EINVAL;
@@ -664,11 +696,6 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_FRAME_BUFFER:
 		vcu_dec_set_frame_buffer(&inst->vcu, in);
 		break;
-	case SET_PARAM_FRAME_SIZE:
-		inst->vsi->dec_params.frame_size_width = (__u32)(*param_ptr);
-		inst->vsi->dec_params.frame_size_height = (__u32)(*(param_ptr + 1));
-		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
-		break;
 	case SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER:
 		inst->vsi->dec_params.fixed_max_frame_size_width = (__u32)(*param_ptr);
 		inst->vsi->dec_params.fixed_max_frame_size_height = (__u32)(*(param_ptr + 1));
@@ -678,10 +705,6 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_DECODE_MODE:
 		inst->vsi->dec_params.decode_mode = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
-		break;
-	case SET_PARAM_NAL_SIZE_LENGTH:
-		inst->vsi->dec_params.nal_size_length = (__u32)(*param_ptr);
-		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
 		break;
 	case SET_PARAM_WAIT_KEY_FRAME:
 		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
@@ -699,14 +722,23 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_PUT_FB:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
 		break;
-	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
 	case SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT:
 	case SET_PARAM_SET_DV:
 	case SET_PARAM_NO_REORDER:
+	case SET_PARAM_PER_FRAME_SUBSAMPLE_MODE:
+	case SET_PARAM_VPEEK_MODE:
+	case SET_PARAM_VDEC_PLUS_DROP_RATIO:
+	case SET_PARAM_CONTAINER_FRAMERATE:
+	case SET_PARAM_DISABLE_DEBLOCK:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
 		break;
-	case SET_PARAM_UFO_MODE:
+	case SET_PARAM_COMPRESSED_MODE: {
+		unsigned long param = 0;
+
+		param = ((unsigned long)(in) == V4L2_VDEC_UFO_ON) ? 1 : 0;
+		vcu_dec_set_param(&inst->vcu, (unsigned int)type, (void *)&param, 1U);
 		break;
+	}
 	case SET_PARAM_CRC_PATH:
 		if (inst->vsi == NULL)
 			return -EINVAL;
@@ -755,6 +787,31 @@ static int vdec_set_param(unsigned long h_vdec,
 			return -EINVAL;
 		inst->vsi->in_group = (bool)in;
 		break;
+	case SET_PARAM_ACQUIRE_RESOURCE: {
+		struct v4l2_vdec_resource_parameter *res_param = in;
+		struct v4l2_fract *framerate = &res_param->frame_rate;
+		unsigned long in_vcu[4] = {0};
+
+		in_vcu[0] = res_param->width;
+		in_vcu[1] = res_param->height;
+		if (framerate->denominator) {
+			in_vcu[2] = (framerate->numerator + framerate->denominator / 2) /
+				    framerate->denominator;
+		}
+		in_vcu[3] = res_param->priority;
+		ret = vcu_dec_set_param(&inst->vcu, (unsigned int)type, in_vcu, 4U);
+		break;
+	}
+	case SET_PARAM_LOW_LATENCY: {
+		struct v4l2_vdec_low_latency_parameter *low_latency_param = in;
+		unsigned long in_vcu[2] = {0};
+
+		in_vcu[0] = low_latency_param->slice_count;
+		in_vcu[1] = low_latency_param->racing_display;
+
+		ret = vcu_dec_set_param(&inst->vcu, (unsigned int)type, in_vcu, 2U);
+		break;
+	}
 	default:
 		mtk_vcodec_err(inst, "invalid set parameter type=%d\n", type);
 		ret = -EINVAL;

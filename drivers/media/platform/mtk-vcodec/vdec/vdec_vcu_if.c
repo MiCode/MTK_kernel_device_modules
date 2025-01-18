@@ -63,6 +63,16 @@ static void handle_query_cap_ack_msg(struct vdec_vcu_inst *vcu,
 		memcpy((void *)mtk_vdec_framesizes, data,
 			size * MTK_MAX_DEC_CODECS_SUPPORT);
 		break;
+	case GET_PARAM_VDEC_CAP_MAX_BUF_INFO:
+		size = sizeof(struct vdec_max_buf_info);
+		memcpy((void *)&mtk_vdec_max_buf_info, data,
+			size);
+		break;
+	case GET_PARAM_VDEC_CAP_FRAMEINTERVALS:
+		size = sizeof(struct mtk_video_frame_frameintervals);
+		memcpy((void *)&mtk_vdec_frameintervals, data,
+			size);
+		break;
 	default:
 		break;
 	}
@@ -77,7 +87,7 @@ static int check_codec_id(struct vdec_vcu_ipi_ack *msg, unsigned int fmt, unsign
 	case V4L2_PIX_FMT_H264:
 		codec_id = VDEC_H264;
 		break;
-	case V4L2_PIX_FMT_H265:
+	case V4L2_PIX_FMT_HEVC:
 		codec_id = VDEC_H265;
 		break;
 	case V4L2_PIX_FMT_HEIF:
@@ -502,6 +512,9 @@ void vcu_dec_set_pid(struct vdec_vcu_inst *vcu)
 	else
 		vcu->daemon_pid = -1;
 	VCU_FPTR(vcu_put_task)();
+
+	if (vcu->ctx == vcu->ctx->dev_ctx)
+		vcu->abort = false;
 }
 
 int vcu_dec_set_ctx(struct vdec_vcu_inst *vcu,

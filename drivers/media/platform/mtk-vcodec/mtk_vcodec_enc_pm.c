@@ -558,7 +558,7 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 
 	dev = ctx->dev;
 
-	if (core_id == MTK_VENC_CORE_0 && venc_enable_hw_break)
+	if (core_id == MTK_VENC_CORE_0)
 		mtk_venc_hw_break(dev);
 
 	if (ctx->sysram_enable == 1)
