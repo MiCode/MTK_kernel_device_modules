@@ -322,7 +322,6 @@ struct class rpmb_class = {
 #else
 	.name = "rpmb",
 #endif
-	.owner = THIS_MODULE,
 	.dev_release = rpmb_dev_release,
 };
 EXPORT_SYMBOL(rpmb_class);
@@ -564,9 +563,10 @@ EXPORT_SYMBOL_GPL(rpmb_dev_register);
 
 static int __init rpmb_init(void)
 {
+	int err;
 	ida_init(&rpmb_ida);
-	class_register(&rpmb_class);
-	return rpmb_cdev_init();
+	err = class_register(&rpmb_class);
+	return err ? err : rpmb_cdev_init();
 }
 
 static void __exit rpmb_exit(void)
