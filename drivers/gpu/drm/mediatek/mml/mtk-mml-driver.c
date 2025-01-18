@@ -728,6 +728,9 @@ static s32 comp_init(struct platform_device *pdev, struct mml_comp *comp,
 	}
 	comp->base_pa = res->start;
 
+	/* default set to mml-frame, maybe change in tp_init_cache */
+	comp->sysid = mml_sys_frame;
+
 	/* ignore clks if clkpropname is null as subcomponent */
 	if (!clkpropname)
 		return 0;
