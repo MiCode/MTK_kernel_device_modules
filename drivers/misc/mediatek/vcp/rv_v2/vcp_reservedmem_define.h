@@ -7,6 +7,7 @@
 #define __VCP_RESERVEDMEM_DEFINE_H__
 
 static const int vcp_reserve_mblock_remap[] = {
+	MMQOS_MEM_ID,
 	VDEC_SET_PROP_MEM_ID,
 	VENC_SET_PROP_MEM_ID,
 	VDEC_VCP_LOG_INFO_ID,
@@ -18,8 +19,7 @@ static const int vcp_reserve_mblock_remap[] = {
 	VDEC_MEM_ID,
 	VENC_MEM_ID,
 	VCP_A_LOGGER_MEM_ID,
-	MMDVFS_MEM_ID,
-	MMQOS_MEM_ID
+	MMDVFS_MEM_ID
 };
 
 static struct vcp_reserve_mblock vcp_reserve_mblock[] = {
