@@ -414,6 +414,7 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	struct icc_path *bw_path;
 
 	spin_lock_init(&cm_mgr_lock);
+	force_use_bcpu_weight();
 	ret = cm_mgr_common_init();
 	if (ret) {
 		pr_info("[CM_MGR] FAILED TO INIT(%d)\n", ret);

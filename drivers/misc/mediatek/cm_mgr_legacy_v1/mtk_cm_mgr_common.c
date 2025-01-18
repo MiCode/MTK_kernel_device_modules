@@ -966,7 +966,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 			__func__, __LINE__, cm_mgr_enable);
 
 	ret = of_property_read_string(node,
-			"use_bcpu_weight", (const char **)&buf);
+			"use-bcpu-weight", (const char **)&buf);
 	if (!ret) {
 		if (!strcmp(buf, "enable"))
 			cm_mgr_use_bcpu_weight = 1;
@@ -1311,6 +1311,12 @@ fail_reg_cpu_frequency_entry:
 	return 0;
 }
 EXPORT_SYMBOL_GPL(cm_mgr_common_init);
+
+void force_use_bcpu_weight(void)
+{
+	cm_mgr_use_bcpu_weight = 1;
+}
+EXPORT_SYMBOL_GPL(force_use_bcpu_weight);
 
 void cm_mgr_common_exit(void)
 {
