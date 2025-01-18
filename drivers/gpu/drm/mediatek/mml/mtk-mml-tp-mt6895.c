@@ -607,8 +607,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (unlikely(mml_racing)) {
 		if (mml_racing == 2)
 			goto decouple;
-	} else if (!mml_racing_enable(mml))
+	} else if (!mml_racing_enable(mml)) {
 		goto decouple;
+	}
 
 	/* skip all racing mode check if use prefer dc */
 	if (info->mode == MML_MODE_MML_DECOUPLE ||
