@@ -758,7 +758,7 @@ bootargs_ext = "";
 	status = "okay";
 };
 /* usb typec mux end */
-#if 0
+
 &i2c6 {
 	spk1: speaker_amp@5c {
 		compatible = "richtek,rt5512";
@@ -784,6 +784,7 @@ bootargs_ext = "";
 	};
 };
 
+#if 0
 &pdc {
 	pd_vbus_upper_bound = <12000000>;
 };

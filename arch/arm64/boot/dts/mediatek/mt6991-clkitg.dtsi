@@ -28,8 +28,6 @@
 			<&cksys_clk CLK_CK_I2C_NORTH_SEL>,
 			<&cksys_clk CLK_CK_AES_UFSFDE_SEL>,
 			<&cksys_clk CLK_CK_SEL>,
-			<&cksys_clk CLK_CK_AUD_1_SEL>,
-			<&cksys_clk CLK_CK_AUD_2_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
 			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
 			<&cksys_clk CLK_CK_IPSEAST_SEL>,
@@ -37,35 +35,6 @@
 			<&cksys_clk CLK_CK_TL_P1_SEL>,
 			<&cksys_clk CLK_CK_TL_P2_SEL>,
 			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN0_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN1_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN2_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN3_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN4_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SIN6_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT0_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT1_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT2_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT3_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT4_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_I2SOUT6_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_FMI2S_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL_TDMOUT_MCK_SEL>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN0>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN1>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN2>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN3>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN4>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SIN6>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT0>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT1>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT2>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT3>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT4>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_I2SOUT6>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_FMI2S>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_TDMOUT_M>,
-			<&cksys_clk CLK_CK_APLL12_CK_DIV_TDMOUT_B>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
 			<&cksys_gp2_clk CLK_CK2_SENINF0_SEL>,
@@ -108,11 +77,7 @@
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG7_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_USB_TOP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_USB_XHCI_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_AUDIO_H_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_AUD_ENGEN1_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_AUD_ENGEN2_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_AUD_INTBUS_SEL>;
+			<&vlp_cksys_clk CLK_VLP_CK_USB_XHCI_SEL>;
 	};
 	bring-up-disp@1 {
 		compatible = "mediatek,clk-bring-up";
@@ -748,72 +713,6 @@
 		clocks =
 			<&scp_i3c_clk CLK_SCP_I3C_I2C1_SCP_I2C>;
 	};
-	bring-up-afe@17 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x17>;
-		clocks =
-			<&afe_clk CLK_AFE_PCM1_AFE>,
-			<&afe_clk CLK_AFE_PCM0_AFE>,
-			<&afe_clk CLK_AFE_CM2_AFE>,
-			<&afe_clk CLK_AFE_CM1_AFE>,
-			<&afe_clk CLK_AFE_CM0_AFE>,
-			<&afe_clk CLK_AFE_STF_AFE>,
-			<&afe_clk CLK_AFE_HW_GAIN23_AFE>,
-			<&afe_clk CLK_AFE_HW_GAIN01_AFE>,
-			<&afe_clk CLK_AFE_FM_I2S_AFE>,
-			<&afe_clk CLK_AFE_MTKAIFV4_AFE>,
-			<&afe_clk CLK_AFE_UL2_ADC_HIRES_TML_AFE>,
-			<&afe_clk CLK_AFE_UL2_ADC_HIRES_AFE>,
-			<&afe_clk CLK_AFE_UL2_TML_AFE>,
-			<&afe_clk CLK_AFE_UL2_ADC_AFE>,
-			<&afe_clk CLK_AFE_UL1_ADC_HIRES_TML_AFE>,
-			<&afe_clk CLK_AFE_UL1_ADC_HIRES_AFE>,
-			<&afe_clk CLK_AFE_UL1_TML_AFE>,
-			<&afe_clk CLK_AFE_UL1_ADC_AFE>,
-			<&afe_clk CLK_AFE_UL0_ADC_HIRES_TML_AFE>,
-			<&afe_clk CLK_AFE_UL0_ADC_HIRES_AFE>,
-			<&afe_clk CLK_AFE_UL0_TML_AFE>,
-			<&afe_clk CLK_AFE_UL0_ADC_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN6_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN5_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN4_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN3_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN2_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN1_AFE>,
-			<&afe_clk CLK_AFE_ETDM_IN0_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT6_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT5_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT4_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT3_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT2_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT1_AFE>,
-			<&afe_clk CLK_AFE_ETDM_OUT0_AFE>,
-			<&afe_clk CLK_AFE_TDM_OUT_AFE>,
-			<&afe_clk CLK_AFE_GENERAL15_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL14_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL13_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL12_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL11_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL10_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL9_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL8_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL7_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL6_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL5_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL4_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL3_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL2_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL1_ASRC_AFE>,
-			<&afe_clk CLK_AFE_GENERAL0_ASRC_AFE>,
-			<&afe_clk CLK_AFE_CONNSYS_I2S_ASRC_AFE>,
-			<&afe_clk CLK_AFE_AUDIO_HOPPING_AFE>,
-			<&afe_clk CLK_AFE_AUDIO_F26M_AFE>,
-			<&afe_clk CLK_AFE_APLL1_AFE>,
-			<&afe_clk CLK_AFE_APLL2_AFE>,
-			<&afe_clk CLK_AFE_H208M_AFE>,
-			<&afe_clk CLK_AFE_APLL_TUNER2_AFE>,
-			<&afe_clk CLK_AFE_APLL_TUNER1_AFE>;
-	};
 	bring-up-camrawb@18 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x18>;
@@ -1023,11 +922,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x2f>;
 		power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY2>;
-	};
-	bring-up-pd-audio@30 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x30>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_AUDIO>;
 	};
 	bring-up-pd-adsp-top-dormant@31 {
 		compatible = "mediatek,scpsys-bring-up";
