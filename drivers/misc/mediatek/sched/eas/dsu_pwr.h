@@ -46,6 +46,15 @@ struct dsu_info {
 	unsigned int dsu_volt;
 };
 
+struct eenv_dsu {
+	struct dsu_info dsu;
+	unsigned int dsu_freq_thermal;
+	unsigned int dsu_freq_base;
+	unsigned int dsu_freq_new;
+	unsigned int dsu_volt_base;
+	unsigned int dsu_volt_new;
+};
+
 void init_percore_l3_bw(void);
 unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu);
@@ -61,6 +70,9 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 		unsigned int p_emi_bw);
 #endif
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		unsigned long total_util, void *private, unsigned int extern_volt,
+		bool dsu_pwr_enable);
+unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
+		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable);
 #endif

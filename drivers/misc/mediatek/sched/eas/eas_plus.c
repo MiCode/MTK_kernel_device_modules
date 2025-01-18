@@ -907,7 +907,8 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 				pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 						eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
-			dsu_volt = update_dsu_status(eenv, pd_freq, floor_freq, pd_idx, dst_cpu);
+			dsu_volt = update_dsu_status(eenv, false,
+						pd_freq, floor_freq, pd_idx, dst_cpu);
 		} else
 			dsu_volt = 0;
 

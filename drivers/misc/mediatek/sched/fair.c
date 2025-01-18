@@ -301,12 +301,6 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned int cpu, pd_idx;
 	struct perf_domain *pd_ptr = pd;
-	struct dsu_info *dsu;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	unsigned int dsu_opp;
-	struct dsu_state *dsu_ps;
-#endif
-	unsigned int dsu_bw, sum_dsu_bw;
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -376,53 +370,33 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 #endif
 
 	if (eenv->wl_support) {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		static struct cpu_dsu_freq_state *freq_state;
-#endif
+		unsigned int output[6], val[MAX_NR_CPUS];
 
-		dsu = &(eenv->dsu);
+		eenv_dsu_init(eenv->android_vendor_data1, eenv->wl_type,
+				PERCORE_L3_BW, cpu_active_mask->bits[0], val, output);
+
 		if (PERCORE_L3_BW) {
-			sum_dsu_bw = 0;
+			unsigned int sum_val = 0;
 			for_each_cpu(cpu, cpu_active_mask) {
-				dsu_bw = get_pelt_per_core_dsu_bw(cpu);
-				dsu->per_core_dsu_bw[cpu] = dsu_bw;
-				sum_dsu_bw += dsu_bw;
+				sum_val += val[cpu];
 				if (trace_sched_per_core_BW_enabled())
-					trace_sched_per_core_BW(cpu, dsu_bw, sum_dsu_bw);
+					trace_sched_per_core_BW(cpu, val[cpu], sum_val);
 			}
-			dsu->dsu_bw = sum_dsu_bw;
-		} else
-			dsu->dsu_bw = get_pelt_dsu_bw();
-		dsu->emi_bw = get_pelt_emi_bw();
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-		dsu->temp = get_dsu_temp()/1000;
-		if (!reasonable_temp(dsu->temp)) {
-			if (trace_sched_check_temp_enabled())
-				trace_sched_check_temp("dsu", -1, dsu->temp);
 		}
-#else
-		dsu->temp = 0;
-#endif
 
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-		eenv->dsu_freq_thermal = get_dsu_ceiling_freq();
-#endif
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		freq_state = get_dsu_freq_state();
-		eenv->dsu_freq_base = freq_state->dsu_target_freq;
-		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_base);
-		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
-		eenv->dsu_volt_base = dsu_ps->volt;
-#endif
+		if (!reasonable_temp(output[0])) {
+			if (trace_sched_check_temp_enabled())
+				trace_sched_check_temp("dsu", -1, (int) output[0]);
+		}
 
 		if (trace_sched_eenv_init_enabled())
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					eenv->dsu_freq_thermal, dsu->dsu_bw, dsu->emi_bw,
+			trace_sched_eenv_init(output[1], output[2],
+					output[3], output[4], output[5],
 					share_buck.gear_idx);
 #else
-			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					0, dsu->dsu_bw, dsu->emi_bw, share_buck.gear_idx);
+			trace_sched_eenv_init(output[1], output[2],
+					0, output[4], output[5], share_buck.gear_idx);
 #endif
 	}
 }
@@ -452,7 +426,8 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 				pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
 						eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
-			dsu_volt = update_dsu_status(eenv, pd_freq, floor_freq, pd_idx, dst_cpu);
+			dsu_volt = update_dsu_status(eenv, false,
+						pd_freq, floor_freq, pd_idx, dst_cpu);
 		} else
 			dsu_volt = 0;
 
@@ -547,7 +522,6 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
 	unsigned long shared_pwr = 0, shared_pwr_dvfs = 0;
-	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int gear_idx;
 	int dst_idx;
 	int pd_idx = cpumask_first(pd_cpus);
@@ -586,7 +560,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	}
 
 	/* calc indirect DSU share_buck */
-	if ((eenv->dsu_freq_new  > eenv->dsu_freq_base) && !(shared_gear(eenv->gear_idx))
+	if (dsu_freq_changed(eenv->android_vendor_data1) && !(shared_gear(eenv->gear_idx))
 			&& share_buck.gear_idx != -1) {
 		struct root_domain *rd = this_rq()->rd;
 		struct perf_domain *pd_ptr, *share_buck_pd = 0;
@@ -628,12 +602,8 @@ calc_sharebuck_done:
 
 	/* calc DSU power */
 	if (dst_cpu >= 0 && (shared_gear(eenv->gear_idx))) {
-		dsu->dsu_freq = eenv->dsu_freq_new;
-		dsu->dsu_volt = eenv->dsu_volt_new;
 		dst_idx = 1;
 	} else {
-		dsu->dsu_freq = eenv->dsu_freq_base;
-		dsu->dsu_volt = eenv->dsu_volt_base;
 		dst_idx = 0;
 	}
 
@@ -648,23 +618,13 @@ calc_sharebuck_done:
 			share_buck_freq, false, eenv->wl_type, floor_freq);
 	eenv->gear_idx = gear_idx;
 
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-			trace_sched_compute_energy_dsu(dst_cpu, eenv->task_busy_time,
-				eenv->pds_busy_time[pd_idx], dsu->dsu_bw, dsu->emi_bw,
-					dsu->temp, dsu->dsu_freq, dsu->dsu_volt, dsu_extern_volt);
-#else
-			trace_sched_compute_energy_dsu(dst_cpu, eenv->task_busy_time,
-				eenv->pds_busy_time[pd_idx], dsu->dsu_bw, dsu->emi_bw,
-					0, dsu->dsu_freq, dsu->dsu_volt, dsu_extern_volt);
-#endif
-
 	if (PERCORE_L3_BW)
 		total_util = eenv->cpu_max_util[eenv->dst_cpu][0];
 	else
 		total_util = eenv->total_util;
 
 	dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
-					total_util, dsu, dsu_extern_volt, dsu_pwr_enable);
+					total_util, eenv->android_vendor_data1, dsu_extern_volt, dsu_pwr_enable);
 
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
 		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr_dvfs,

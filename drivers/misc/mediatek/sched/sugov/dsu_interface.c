@@ -108,7 +108,43 @@ int dsu_pwr_swpm_init(void)
 	return ret;
 }
 
+unsigned int (*get_pelt_dsu_bw_hook)(void __iomem *base);
+EXPORT_SYMBOL(get_pelt_dsu_bw_hook);
+
+unsigned int get_pelt_dsu_bw(void)
+{
+	if (get_pelt_dsu_bw_hook)
+		return get_pelt_dsu_bw_hook(get_l3ctl_sram_base_addr());
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(get_pelt_dsu_bw);
+
+unsigned int (*get_pelt_emi_bw_hook)(void __iomem *base);
+EXPORT_SYMBOL(get_pelt_emi_bw_hook);
+
+unsigned int get_pelt_emi_bw(void)
+{
+	if (get_pelt_emi_bw_hook)
+		return get_pelt_emi_bw_hook(get_l3ctl_sram_base_addr());
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(get_pelt_emi_bw);
+
+unsigned int (*get_pelt_per_core_dsu_bw_hook)(unsigned int cpu, void __iomem *base);
+EXPORT_SYMBOL(get_pelt_per_core_dsu_bw_hook);
+
 unsigned int get_pelt_per_core_dsu_bw(unsigned int cpu)
+{
+	if (get_pelt_per_core_dsu_bw_hook)
+		return get_pelt_per_core_dsu_bw_hook(cpu, get_l3ctl_sram_base_addr());
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(get_pelt_per_core_dsu_bw);
+
+unsigned int get_pelt_per_core_dsu_bw_(unsigned int cpu)
 {
 	unsigned int pelt_per_core_dsu_bw;
 
@@ -117,9 +153,9 @@ unsigned int get_pelt_per_core_dsu_bw(unsigned int cpu)
 
 	return pelt_per_core_dsu_bw;
 }
-EXPORT_SYMBOL_GPL(get_pelt_per_core_dsu_bw);
+EXPORT_SYMBOL_GPL(get_pelt_per_core_dsu_bw_);
 
-unsigned int get_pelt_dsu_bw(void)
+unsigned int get_pelt_dsu_bw_(void)
 {
 	unsigned int pelt_dsu_bw;
 
@@ -127,9 +163,9 @@ unsigned int get_pelt_dsu_bw(void)
 
 	return pelt_dsu_bw;
 }
-EXPORT_SYMBOL_GPL(get_pelt_dsu_bw);
+EXPORT_SYMBOL_GPL(get_pelt_dsu_bw_);
 
-unsigned int get_pelt_emi_bw(void)
+unsigned int get_pelt_emi_bw_(void)
 {
 	unsigned int pelt_emi_bw;
 
@@ -137,7 +173,7 @@ unsigned int get_pelt_emi_bw(void)
 
 	return pelt_emi_bw;
 }
-EXPORT_SYMBOL_GPL(get_pelt_emi_bw);
+EXPORT_SYMBOL_GPL(get_pelt_emi_bw_);
 
 /* write pelt weight and pelt sum */
 void update_pelt_data(unsigned int pelt_weight, unsigned int pelt_sum)

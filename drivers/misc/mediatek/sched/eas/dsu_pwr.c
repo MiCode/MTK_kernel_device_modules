@@ -123,7 +123,7 @@ unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_vo
 	clkg_sram_base_addr = get_clkg_sram_base_addr();
 	temperature = p->temp;
 	type = DSU_LKG;
-	// /* volt to opp for calculating offset */
+	/* volt to opp for calculating offset */
 	shared_volt = max(p->dsu_volt, extern_volt);
 	opp = pd_dsu_volt2opp(shared_volt);
 
@@ -166,18 +166,23 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
 unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
 	unsigned int dsu_pwr[RES_PWR];
 	unsigned int p_dsu_bw, p_emi_bw; /* predict dsu and emi bw */
 	int i;
+	struct eenv_dsu *eenv = (struct eenv_dsu *) private;
+	struct dsu_info *dsu = &eenv->dsu;
 
 	if (!dsu_pwr_enable)
 		return 0;
 
 	/* predict task bw */
 	if (dst_cpu >= 0) {
+		dsu->dsu_freq = eenv->dsu_freq_new;
+		dsu->dsu_volt = eenv->dsu_volt_new;
+
 		/* predict dsu bw */
 		p_dsu_bw = predict_dsu_bw(wl_type, dst_cpu, task_util, total_util,
 				dsu);
@@ -185,6 +190,9 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 		p_emi_bw = predict_emi_bw(wl_type, dst_cpu, task_util, total_util,
 				dsu->emi_bw);
 	} else {
+		dsu->dsu_freq = eenv->dsu_freq_base;
+		dsu->dsu_volt = eenv->dsu_volt_base;
+
 		p_dsu_bw = dsu->dsu_bw;
 		p_emi_bw = dsu->emi_bw;
 	}
@@ -207,34 +215,37 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 
 	if (trace_dsu_pwr_cal_enabled()) {
 		trace_dsu_pwr_cal(dst_cpu, task_util, total_util, p_dsu_bw,
-				p_emi_bw, dsu, extern_volt,
+				p_emi_bw, dsu->temp, dsu->dsu_freq,
+				dsu->dsu_volt, extern_volt,
 				dsu_pwr[DSU_DYN_PWR], dsu_pwr[DSU_LKG_PWR],
-				dsu_pwr[MCU_DYN_PWR], dsu_pwr[DSU_PWR_TAL]);
+				dsu_pwr[MCU_DYN_PWR]);
 	}
 
 	return dsu_pwr[DSU_PWR_TAL];
 }
 
 unsigned long (*mtk_get_dsu_pwr_hook)(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		unsigned long total_util, void *private, unsigned int extern_volt,
 		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base, int *data);
 EXPORT_SYMBOL(mtk_get_dsu_pwr_hook);
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		unsigned long total_util, void *private, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
 	if (mtk_get_dsu_pwr_hook) {
 		unsigned long ret;
-		int data[6];
+		int data[8];
 
 		ret = mtk_get_dsu_pwr_hook(wl_type, dst_cpu, task_util,
-			total_util, dsu, extern_volt, dsu_pwr_enable,
+			total_util, private, extern_volt, dsu_pwr_enable,
 			PERCORE_L3_BW, get_clkg_sram_base_addr(), &data[0]);
+
 		if (trace_dsu_pwr_cal_enabled()) {
 			trace_dsu_pwr_cal(dst_cpu, task_util, total_util, data[0],
-					data[1], dsu, extern_volt,
-					data[2], data[3], data[4], data[5]);
+					data[1], data[2], data[3], data[4], extern_volt,
+					data[5], data[6], data[7]);
 		}
+
 		return ret;
 	}
 	return 0;

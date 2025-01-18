@@ -19,6 +19,10 @@ void __iomem *get_l3ctl_sram_base_addr(void);
 unsigned int get_wl(unsigned int wl_idx);
 void update_pelt_data(unsigned int pelt_weight, unsigned int pelt_sum);
 int dsu_pwr_swpm_init(void);
+unsigned int get_pelt_dsu_bw_(void);
+unsigned int get_pelt_emi_bw_(void);
+unsigned int get_pelt_per_core_dsu_bw_(unsigned int cpu);
+
 unsigned int get_pelt_dsu_bw(void);
 unsigned int get_pelt_emi_bw(void);
 unsigned int get_pelt_per_core_dsu_bw(unsigned int cpu);

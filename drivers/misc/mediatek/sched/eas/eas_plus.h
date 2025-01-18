@@ -6,6 +6,7 @@
 #ifndef _EAS_PLUS_H
 #define _EAS_PLUS_H
 #include <linux/ioctl.h>
+#include <linux/android_vendor.h>
 #include "eas/dsu_pwr.h"
 #include "vip.h"
 
@@ -90,14 +91,10 @@ struct energy_env {
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
 	unsigned int wl_type;
-	struct dsu_info dsu;
-	unsigned int dsu_freq_thermal;
-	unsigned int dsu_freq_base;
-	unsigned int dsu_freq_new;
-	unsigned int dsu_volt_base;
-	unsigned int dsu_volt_new;
 
 	int val_s[10];
+
+	ANDROID_VENDOR_DATA_ARRAY(1, 32);
 };
 
 struct rt_energy_aware_output {
@@ -144,9 +141,18 @@ extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
 		int quant, int wl_type, unsigned long floor_freq);
 extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
 		int quant, int wl_type, unsigned long floor_freq);
-extern unsigned long update_dsu_status(struct energy_env *eenv,
+extern unsigned long update_dsu_status_(struct energy_env *eenv, int quant,
 		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
-/* should hide later */
+extern unsigned long update_dsu_status(struct energy_env *eenv, int quant,
+		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
+extern int dsu_freq_changed(void *private);
+extern int dsu_freq_changed_(void *private);
+extern void eenv_dsu_init(void *private, unsigned int wl,
+		int PERCORE_L3_BW, unsigned int cpumask_val,
+		unsigned int *val, unsigned int *output);
+extern void eenv_dsu_init_(void *private, unsigned int wl,
+		int PERCORE_L3_BW, unsigned int cpumask_val,
+		unsigned int *val, unsigned int *output);
 
 extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
