@@ -58,6 +58,15 @@ config VHOST_DMABUF
 	  To compile as a module, choose M, the module will be called
 	  acrn. If unsure, say N.
 
+config VHOST_VDMABUF
+	tristate "hypervisor vhost vdmabuf driver"
+	help
+	  This extension enable vhost vdmabuf driver, vhost vdmabuf driver
+	  for hypervisor project. The vhost driver is located at virt/grt.
+	  The guest-os will share buf with host-os via buf-id. This driver
+	  import the buffer from guest-os and return a dmabuf fd to userspace.
+	  If unsure, say N.
+
 config GRT_HYPERVISOR
 	tristate "hypervisor driver config"
 	help
