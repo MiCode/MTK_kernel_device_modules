@@ -5523,7 +5523,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mt6991-timer",
 				"mediatek,mt6765-timer";
 		reg = <0 0x1c400000 0 0x1000>;
-		interrupts = <GIC_SPI 813 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupts = <GIC_SPI 813 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 814 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 815 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk13m>;
 	};
 
@@ -7323,3 +7325,5 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		vio18-switch-reg = <0x53 0x58>;
 	};
 };
+
+#include "mediatek/trusty.dtsi"
