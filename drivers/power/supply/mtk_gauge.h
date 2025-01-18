@@ -98,6 +98,8 @@ enum gauge_property {
 	GAUGE_PROP_IS_NVRAM_FAIL_MODE,
 	GAUGE_PROP_MONITOR_SOFF_VALIDTIME,
 	GAUGE_PROP_CON0_SOC,
+	GAUGE_PROP_CON1_UISOC,
+	GAUGE_PROP_CON1_VAILD,
 	GAUGE_PROP_SHUTDOWN_CAR,
 	GAUGE_PROP_CAR_TUNE_VALUE,
 	GAUGE_PROP_R_FG_VALUE,
@@ -123,6 +125,7 @@ struct gauge_hw_status {
 	int nafg_c_dltv;
 	int nafg_c_dltv_th;
 	int nafg_zcv;
+	int nafg_en;
 
 	/* ivag intr en/disable for hal */
 	int iavg_intr_flag;
@@ -221,6 +224,7 @@ enum gauge_irq {
 	VBAT_H_IRQ,
 	VBAT_L_IRQ,
 	NAFG_IRQ,
+	BAT_PLUGIN_IRQ,
 	BAT_PLUGOUT_IRQ,
 	ZCV_IRQ,
 	FG_N_CHARGE_L_IRQ,
@@ -236,6 +240,7 @@ struct mtk_gauge {
 	struct regmap *regmap;
 	struct platform_device *pdev;
 	struct mutex ops_lock;
+	char *name;
 
 	struct power_supply_desc psy_desc;
 	struct power_supply_config psy_cfg;
@@ -246,6 +251,8 @@ struct mtk_gauge {
 	struct gauge_hw_status hw_status;
 	struct gauge_hw_info_data fg_hw_info;
 	struct mutex fg_mutex;
+
+	bool efuse_cali_done;
 
 	int irq_no[GAUGE_IRQ_MAX];
 

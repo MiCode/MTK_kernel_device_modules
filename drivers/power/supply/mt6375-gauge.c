@@ -3769,7 +3769,7 @@ static int bat_create_netlink(struct platform_device *pdev)
 static enum power_supply_property gauge_properties[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_ONLINE,
-	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY_DESIGN,
 	POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
@@ -3825,7 +3825,7 @@ static int psy_gauge_get_property(struct power_supply *psy,
 		else
 			val->intval = gauge->gm->disableGM30;
 		break;
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = get_ptim_current(gauge);
 		break;
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
