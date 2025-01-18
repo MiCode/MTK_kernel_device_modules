@@ -10983,8 +10983,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMRAWA>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>;
-				    //<&mmdvfs_mux MMDVFS_USER_CAM>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>,
+				    <&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "camsys_cam_cgpdn",
 				"camsys_camtg_cgpdn",
 				"camsys_adlrd_cgpdn",
@@ -10997,8 +10997,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"camsys_cam2mm0_gals_cgpdn",
 				"camsys_cam2mm1_gals_cgpdn",
 				"camsys_cam2sys_gals_cgpdn",
-				"camsys_cam2mm2_gals_cgpdn";
-				//"mmdvfs_mux";
+				"camsys_cam2mm2_gals_cgpdn",
+				"mmdvfs_mux";
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
 		};
 
