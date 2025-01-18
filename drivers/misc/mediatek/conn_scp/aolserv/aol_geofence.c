@@ -161,20 +161,23 @@ void aol_geofence_state_change(int state)
 	if (state == 1) {
 		ctx->status = AOL_GEOFENCE_ACTIVE;
 
-		/* if geofence is working, notify HAL to restart */
-		data_buf = aol_buffer_alloc(&g_geo_buf_pool);
-		if (data_buf) {
-			pr_info("[%s] RESTART msg msgId=[%d] size=[%d]", __func__, msg_id, size);
-			memcpy(&(data_buf->buf[buf_idx]), &msg_id, sizeof(u32));
-			buf_idx += sizeof(u32);
-			memcpy(&(data_buf->buf[buf_idx]), &size, sizeof(u32));
-			buf_idx += sizeof(u32);
-			data_buf->size = buf_idx;
+		if (g_geo_dev_opened == true) {
+			/* if geofence is working, notify HAL to restart */
+			data_buf = aol_buffer_alloc(&g_geo_buf_pool);
+			if (data_buf) {
+				pr_info("[%s] RESTART msg msgId=[%d] size=[%d]", __func__, msg_id, size);
+				memcpy(&(data_buf->buf[buf_idx]), &msg_id, sizeof(u32));
+				buf_idx += sizeof(u32);
+				memcpy(&(data_buf->buf[buf_idx]), &size, sizeof(u32));
+				buf_idx += sizeof(u32);
+				data_buf->size = buf_idx;
 
-			aol_buffer_active_push(&g_geo_buf_pool, data_buf);
+				aol_buffer_active_push(&g_geo_buf_pool, data_buf);
 
-			wake_up_interruptible(&g_geofence_wq);
-		}
+				wake_up_interruptible(&g_geofence_wq);
+			}
+		} else
+			pr_notice("[%s] no client is attached", __func__);
 
 	} else
 		ctx->status = AOL_GEOFENCE_INACTIVE;
