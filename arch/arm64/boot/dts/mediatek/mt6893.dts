@@ -33,29 +33,29 @@
 	};
 
 	eem_fsm: eem-fsm@11278000 {
- 		compatible = "mediatek,eem_fsm";
- 		reg = <0 0x11278000 0 0x1000>;
- 		interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH>;
- 		clocks = <&infracfg_ao_clk CLK_IFRAO_THERM>;
- 		clock-names = "therm-main";
- 		eem-status = <1>;
- 		eem-initmon-little = <0xf>;
- 		eem-initmon-big = <0xf>;
- 		eem-initmon-cci = <0xf>;
- 		eem-initmon-gpu = <0xf>;
- 		eem-clamp-little = <0>;
- 		eem-clamp-big = <0>;
+		compatible = "mediatek,eem_fsm";
+		reg = <0 0x11278000 0 0x1000>;
+		interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>;
+		clocks = <&infracfg_ao_clk CLK_IFRAO_THERM>;
+		clock-names = "therm-main";
+		eem-status = <1>;
+		eem-initmon-little = <0xf>;
+		eem-initmon-big = <0xf>;
+		eem-initmon-cci = <0xf>;
+		eem-initmon-gpu = <0xf>;
+		eem-clamp-little = <0>;
+		eem-clamp-big = <0>;
 		eem-clamp-cci = <0>;
- 		eem-clamp-gpu = <0>;
- 		eem-offset-little = <0xff>;
- 		eem-offset-big = <0xff>;
- 		eem-offset-cci = <0xff>;
- 		eem-offset-gpu = <0xff>;
- 		nvmem = <&efuse>;
- 		nvmem-names = "mtk_efuse";
- 		nvmem-cells = <&efuse_segment>;
- 		nvmem-cell-names = "efuse_segment_cell";
- 	};
+		eem-clamp-gpu = <0>;
+		eem-offset-little = <0xff>;
+		eem-offset-big = <0xff>;
+		eem-offset-cci = <0xff>;
+		eem-offset-gpu = <0xff>;
+		nvmem = <&efuse>;
+		nvmem-names = "mtk_efuse";
+		nvmem-cells = <&efuse_segment>;
+		nvmem-cell-names = "efuse_segment_cell";
+	};
 
         tboard_thermistor1: thermal-ntc1 {
 		compatible = "generic-adc-thermal";
@@ -705,6 +705,18 @@
 		hv_thd_volt = <3400>;
 		lv1_thd_volt = <3250>;
 		lv2_thd_volt = <3100>;
+	};
+
+	cpu_power_throttling: cpu-power-throttling {
+		compatible = "mediatek,cpu-power-throttling";
+		lbat_cpu_limit = <900000 900000 1300000>;
+		oc_cpu_limit = <900000 900000 1300000>;
+	};
+
+	md_power_throttling: md-power-throttling {
+		compatible = "mediatek,md-power-throttling";
+		lbat_md_reduce_tx = <6>;
+		oc_md_reduce_tx = <6>;
 	};
 
 	lk_charger: lk_charger {

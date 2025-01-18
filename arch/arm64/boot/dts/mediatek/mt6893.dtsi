@@ -516,7 +516,7 @@ cpus {
 			};
 			cpuoff_b: cpuoff_b {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x00010002>;
+				arm,psci-suspend-param = <0x00010001>;
 				local-timer-stop;
 				entry-latency-us = <50>;
 				exit-latency-us = <100>;
@@ -524,7 +524,7 @@ cpus {
 			};
 			clusteroff_l: clusteroff_l {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010101>;
+				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
 				exit-latency-us = <250>;
@@ -532,7 +532,7 @@ cpus {
 			};
 			clusteroff_b: clusteroff_b {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010102>;
+				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
 				entry-latency-us = <100>;
 				exit-latency-us = <250>;
@@ -540,42 +540,18 @@ cpus {
 			};
 			mcusysoff: mcusysoff {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010701>;
+				arm,psci-suspend-param = <0x01010002>;
 				local-timer-stop;
-				entry-latency-us = <450>;
-				exit-latency-us = <600>;
-				min-residency-us = <4000>;
-			};
-			system_mem: system_mem {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010f01>;
-				local-timer-stop;
-				entry-latency-us = <700>;
-				exit-latency-us = <850>;
-				min-residency-us = <4000>;
-			};
-			system_pll: system_pll {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010f02>;
-				local-timer-stop;
-				entry-latency-us = <800>;
-				exit-latency-us = <950>;
-				min-residency-us = <4000>;
-			};
-			system_bus: system_bus {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010f03>;
-				local-timer-stop;
-				entry-latency-us = <1300>;
-				exit-latency-us = <2800>;
-				min-residency-us = <4000>;
+				entry-latency-us = <300>;
+				exit-latency-us = <1200>;
+				min-residency-us = <2600>;
 			};
 			s2idle: s2idle {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01011f01>;
+				arm,psci-suspend-param = <0x01010100>;
 				local-timer-stop;
-				entry-latency-us = <10000>;
-				exit-latency-us = <10000>;
+				entry-latency-us = <500>;
+				exit-latency-us = <1400>;
 				min-residency-us = <4294967295>;
 			};
 		};
@@ -990,40 +966,6 @@ cpus {
 		#size-cells = <2>;
 		compatible = "simple-bus";
 		ranges;
-
-		performance: performance-controller@0011bc00 {
-			compatible = "mediatek,cpufreq-hw";
-			reg = <0 0x0011bc10 0 0x120>,
-					<0 0x0011bd30 0 0x120>,
-					<0 0x0011be50 0 0x120>;
-			reg-names = "performance-domain0",
-						"performance-domain1",
-						"performance-domain2";
-			#performance-domain-cells = <1>;
-		};
-
-		lkg: lkg@0010f800 {
-			compatible = "mediatek,mtk-lkg";
-			reg = <0 0x0010f800 0 0xc00>;
-		};
-
-		cpuhvfs: cpuhvfs@0010f800{
-			compatible = "mediatek,cpufreq-hybrid";
-			reg = <0 0x0010f800 0 0xC00>,
-				<0 0x0011bc00 0 0x1400>;
-			reg-names="USRAM","CSRAM";
-			cslog-range =<0x03d0>,<0x0fa0>;
-
-			pll-con = <0x20c>, <0x22c>, <0x21c>, <0x25c>;
-			clk-div = <0xa2a0>, <0xa2a4>, <0xa2b0>, <0xa2e0>;
-			tbl-off = <4>,     <76>,    <148>,   <220>;
-			apmixedsys   = <&apmixedsys_clk>;
-			clk-div-base = <&cm_mgr>;
-			proc1-supply = <&mt6315_7_vbuck3>; //L
-			proc2-supply = <&mt6315_6_vbuck1>; //BL
-			proc3-supply = <&mt6315_6_vbuck1>; //B
-			proc4-supply = <&mt6315_7_vbuck3>; //DSU
-		};
 
 		dvfsp: dvfsp@0011bc00 {
 		compatible = "mediatek,mt6885-dvfsp";
@@ -8110,26 +8052,27 @@ cpus {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
 
-		logger-enable-states = "mcusysoff", "system_mem",
-					"system_pll", "system_bus";
+		logger-enable-states = "mcusysoff";
 
 		irq-remain = <&edge_keypad &edge_mdwdt>,
-				<&level_mali0 &level_mali1>,
-				<&level_mali2 &level_mali3 &level_mali4>,
-				<&level_mtk_mdla>,
-				<&level_usb_host &level_ufshci>;
+			<&level_vpu_core0 &level_vpu_core1>,
+			<&level_vpu_core2>,
+			<&level_mtk_mdla0 &level_mtk_mdla1>,
+			<&level_edma0 &level_edma1>,
+			<&level_mali0 &level_mali1 &level_mali2>,
+			<&level_mali3 &level_mali4>,
+			<&level_i2c0>,
+			<&level_btif_tx &level_btif_rx &level_bt>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1>;
-		constraints = <&rc_bus26m &rc_syspll &rc_dram>,
-				<&rc_cpu_buck_ldo>;
+		constraints = <&rc_bus26m &rc_syspll &rc_dram>;
 		spm-cond = <&spm_cond_cg &spm_cond_pll>;
 		cg-shift = <0>; /* cg blocking index */
 		pll-shift = <16>; /* pll blocking index */
-
-		power-gs = <&gs_6359p &gs_6315_1 &gs_6315_2 &gs_6315_3>;
 
 		mcusys-cnt-chk = <1>;
 
@@ -8149,17 +8092,41 @@ cpus {
 		};
 
 		irq-remain-list {
-			level_ufshci: level_ufshci {
-				target = <&ufshci>;
-				value = <0 0 0 0>;
-			};
 			edge_keypad: edge_keypad {
 				target = <&keypad>;
 				value = <1 0 0 0x04>;
 			};
 			edge_mdwdt: edge_mdwdt {
 				target = <&mddriver>;
-				value = <1 0 0 0x02000000>;
+				value = <1 0 0x80000000 0x02000000>;
+			};
+			level_vpu_core0: level_vpu_core0 {
+				target = <&vpu_core0>;
+				value = <0 0 0 0>;
+			};
+			level_vpu_core1: level_vpu_core1 {
+				target = <&vpu_core1>;
+				value = <0 0 0 0>;
+			};
+			level_vpu_core2: level_vpu_core2 {
+				target = <&vpu_core2>;
+				value = <0 0 0 0>;
+			};
+			level_mtk_mdla0: level_mtk_mdla0 {
+				target = <&mtk_mdla>;
+				value = <0 0 0 0>;
+			};
+			level_mtk_mdla1: level_mtk_mdla1 {
+				target = <&mtk_mdla>;
+				value = <0 1 0 0>;
+			};
+			level_edma0: level_edma0 {
+				target = <&edma0>;
+				value = <0 0 0 0>;
+			};
+			level_edma1: level_edma1 {
+				target = <&edma1>;
+				value = <0 0 0 0>;
 			};
 			level_mali0: level_mali0 {
 				target = <&mali>;
@@ -8181,15 +8148,24 @@ cpus {
 				target = <&mali>;
 				value = <0 4 0 0>;
 			};
-			level_mtk_mdla: level_mtk_mdla {
-				target = <&mtk_mdla>;
+			level_i2c0: level_i2c0 {
+				target = <&i2c0>;
 				value = <0 0 0 0>;
 			};
-			level_usb_host: level_usb_host {
-				target = <&usb_host>;
+			level_bt: level_bt {
+				target = <&bt>;
 				value = <0 0 0 0>;
+			};
+			level_btif_tx: level_btif_tx {
+				target = <&btif>;
+				value = <0 1 0 0>;
+			};
+			level_btif_rx: level_btif_rx {
+				target = <&btif>;
+				value = <0 2 0 0>;
 			};
 		};
+
 		resource-ctrl-list {
 			bus26m: bus26m {
 				id = <0x00000000>;
@@ -8212,6 +8188,7 @@ cpus {
 				value = <0>;
 			};
 		};
+
 		constraint-list {
 			rc_bus26m: rc_bus26m {
 				rc-name = "bus26m";
@@ -8231,12 +8208,6 @@ cpus {
 				value = <1>;
 				cond-info = <1>;
 			};
-			rc_cpu_buck_ldo: rc_cpu_buck_ldo{
-				rc-name = "cpu-buck-ldo";
-				id = <0x00000003>;
-				value = <1>;
-				cond-info = <0>;
-			};
 		};
 
 		spm-cond-list {
@@ -8255,36 +8226,10 @@ cpus {
 					"MFGPLL",
 					"MSDCPLL",
 					"TVPLL",
-					"MMPLL",
-					"USBPLL",
-					"ADSPPLL",
-					"APLL1",
-					"APLL2",
-					"APUPLL",
-					"NPUPLL";
-			};
-		};
-		/* FIXME */
-		power-gs-list {
-			gs_6359p: gs_6359p {
-				target = <&pmic>;
-				value = "mediatek,mt6359p-regulator";
-			};
-			gs_6315_1: gs_6315_1 {
-				target = <&spmi>;
-				value = "mediatek,mt6315_6-regulator";
-			};
-			gs_6315_2: gs_6315_2 {
-				target = <&spmi>;
-				value = "mediatek,mt6315_7-regulator";
-			};
-			gs_6315_3: gs_6315_3 {
-				target = <&spmi>;
-				value = "mediatek,mt6315_3-regulator";
+					"MMPLL";
 			};
 		};
 	};
-
 };
 
 &pio {
