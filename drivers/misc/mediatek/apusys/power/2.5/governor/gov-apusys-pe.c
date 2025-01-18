@@ -62,7 +62,7 @@ static int update_parent(struct apu_gov_data *gov_data)
 	if (!parent_gov->this->profile->polling_ms) {
 		ret = update_devfreq(gov_data->parent);
 		if (ret < 0 && ret != -EPROBE_DEFER)
-			advfs_err(ad->dev, "[%s] update \"%s\" freq fail, ret %d\n",
+			advfs_warn(ad->dev, "[%s] update \"%s\" freq fail, ret %d\n",
 				__func__, apu_dev_name(gov_data->parent->dev.parent), ret);
 	}
 

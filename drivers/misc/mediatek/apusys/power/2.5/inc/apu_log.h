@@ -6,14 +6,33 @@
 #ifndef __APU_LOG_H__
 #define __APU_LOG_H__
 #include <linux/device.h>
+#include <mt-plat/aee.h>
 
 #include "apu_dbg.h"
 #include "apu_common.h"
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define apu_pwr_aee_warn(module, reason) \
+	do { \
+		char mod_name[150];\
+		if (snprintf(mod_name, 150, "%s_%s", reason, module) > 0) { \
+			pr_notice("CRDISPATCH_KEY %s: %s\n", reason, module); \
+				aee_kernel_exception(mod_name, \
+				"\nCRDISPATCH_KEY:%s\n", module); \
+		} else { \
+			pr_notice("%s: snprintf fail(%d)\n", \
+				__func__, __LINE__); \
+		} \
+	} while (0)
+#else
+#define apu_pwr_aee_warn(module, reason)
+#endif
 
 #define APUCLK_PRE	"clk"
 #define aclk_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APUCLK_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_CLK"); \
 	} while (0)
 #define aclk_info(dev, fmt, ...) \
 	do { \
@@ -29,6 +48,7 @@
 #define argul_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APURGU_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_REGULATOR"); \
 	} while (0)
 #define argul_info(dev, fmt, ...) \
 	do { \
@@ -44,6 +64,7 @@
 #define aprobe_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APUPROBE_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_PROBE"); \
 	} while (0)
 #define aprobe_info(dev, fmt, ...) \
 	do { \
@@ -59,6 +80,7 @@
 #define apower_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APUPW_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_PWR"); \
 	} while (0)
 #define apower_info(dev, fmt, ...) \
 do { \
@@ -74,6 +96,7 @@ do { \
 #define arpc_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APURPC_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_RPC"); \
 	} while (0)
 #define arpc_info(dev, fmt, ...) \
 do { \
@@ -90,6 +113,7 @@ do { \
 #define aspm_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APUSPM_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_SPM"); \
 	} while (0)
 #define aspm_info(dev, fmt, ...) \
 do { \
@@ -105,6 +129,7 @@ do { \
 #define advfs_err(dev, fmt, ...) \
 	do { \
 		pr_info("[%s:"APUDVFS_PRE"]" fmt, apu_dev_name(dev), ##__VA_ARGS__); \
+		apu_pwr_aee_warn("APUSYS_POWER", "APU_DVFS"); \
 	} while (0)
 #define advfs_info(dev, fmt, ...) \
 do { \
