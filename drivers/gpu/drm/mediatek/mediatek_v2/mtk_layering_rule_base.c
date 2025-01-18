@@ -4460,7 +4460,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 		if (mml_multi_layer) {
 			if (j < mml_cnt) {
-				DDPINFO("L%d,m:%d\n", i, multi_mml_info[j]->mode);
+				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j]->mode);
 				c->layer_caps |= mml_mode_mapping(multi_mml_info[j]->mode);
 				j ++;
 			} else
@@ -4558,8 +4558,12 @@ static void check_is_mml_layer(const int disp_idx,
 			}
 		}
 
-		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps)
+		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps) {
+			if (mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER))
+				c->layer_caps &= ~MTK_CLIENT_CLEAR_LAYER;
+
 			mtk_gles_incl_layer(disp_info, disp_idx, i);
+		}
 
 		if (mml_dc_layers == false &&
 			(c->layer_caps & MTK_MML_DISP_DECOUPLE_LAYER))
