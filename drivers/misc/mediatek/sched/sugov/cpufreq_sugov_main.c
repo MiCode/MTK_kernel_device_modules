@@ -568,7 +568,7 @@ void mtk_set_cpu_min_opp(unsigned int cpu, unsigned long min_util)
 	int gear_id, min_opp;
 
 	gear_id = topology_cluster_id(cpu);
-	min_util = map_util_perf(min_util);
+	min_util = get_cpu_util_with_margin(cpu, min_util);
 	min_opp = pd_X2Y(cpu, min_util, CAP, OPP, true, "mtk_set_cpu_min_opp");
 	set_cpu_min_opp(gear_id, min_opp);
 }
