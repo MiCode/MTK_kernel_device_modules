@@ -94,21 +94,7 @@
 
 static int g_max_core_num;
 
-#define REFRESH_DIFF           0 // deprecated for limited diff fps with refresh rate
-#define HIGH_REFRESH           0 // deprecated for limited with high refresh rate
-#define GPU_FPS_START_MASK     0x000000FF
-#define GPU_FPS_END_MASK       0x0000FF00
-#define GPU_FPS_MARGIN_MASK    0x00FF0000
-#define GPU_FPS_DEFAULT_MARGIN 110
-#define GPU_FPS_DEFAULT_START  1
-#define GPU_FPS_DEFAULT_END    3
 #define GPU_SOC_TIMER_SUPPORT  1
-
-unsigned int g_gpu_fps_enable = 1;
-unsigned int g_gpu_fps_margin = GPU_FPS_DEFAULT_MARGIN;
-unsigned int g_gpu_fps_start_level = GPU_FPS_DEFAULT_START;
-unsigned int g_gpu_fps_end_level = GPU_FPS_DEFAULT_END;
-unsigned int ignore_fpsgo_enable;
 
 enum ged_gpu_fps_level {
 	GED_FPS_LEVEL_0,
@@ -116,8 +102,24 @@ enum ged_gpu_fps_level {
 	GED_FPS_LEVEL_2,
 	GED_FPS_LEVEL_3,
 	GED_FPS_LEVEL_4,
+	GED_FPS_LEVEL_5,
 	GED_FPS_CONFIG_NUM
 };
+
+#define REFRESH_DIFF           0 // deprecated for limited diff fps with refresh rate
+#define HIGH_REFRESH           0 // deprecated for limited with high refresh rate
+#define GPU_FPS_START_MASK     0x000000FF
+#define GPU_FPS_END_MASK       0x0000FF00
+#define GPU_FPS_MARGIN_MASK    0x00FF0000
+#define GPU_FPS_DEFAULT_MARGIN 110
+#define GPU_FPS_DEFAULT_START  GED_FPS_LEVEL_1
+#define GPU_FPS_DEFAULT_END    (GED_FPS_CONFIG_NUM - 2)
+
+unsigned int g_gpu_fps_enable = 1;
+unsigned int g_gpu_fps_margin = GPU_FPS_DEFAULT_MARGIN;
+unsigned int g_gpu_fps_start_level = GPU_FPS_DEFAULT_START;
+unsigned int g_gpu_fps_end_level = GPU_FPS_DEFAULT_END;
+unsigned int ignore_fpsgo_enable;
 
 struct ged_gpu_fps_table {
 	unsigned int fps;
@@ -130,7 +132,8 @@ static struct ged_gpu_fps_table g_ged_gpu_fps[GED_FPS_CONFIG_NUM] = {
 	{ 30, 33, 33200000},
 	{ 60, 66, 16500000},
 	{ 90, 99, 11000000},
-	{120, 120, 8300000},
+	{120, 132, 8300000},
+	{144, 144, 6940000},
 };
 
 struct GED_KPI_HEAD {
@@ -621,9 +624,9 @@ void update_gpu_fps_table(int i32MarginValue)
 	g_gpu_fps_enable = i32MarginValue;
 
 	if (i32MarginValue != 1) {
-		g_gpu_fps_start_level = (start_level < GED_FPS_CONFIG_NUM) ?
+		g_gpu_fps_start_level = (start_level < GED_FPS_CONFIG_NUM - 1) ?
 								start_level : GPU_FPS_DEFAULT_START;
-		g_gpu_fps_end_level = (end_level < GED_FPS_CONFIG_NUM) ?
+		g_gpu_fps_end_level = (end_level < GED_FPS_CONFIG_NUM - 1) ?
 							end_level : GPU_FPS_DEFAULT_END;
 		g_gpu_fps_margin = (margin > 0 && margin < 200) ?
 							margin : GPU_FPS_DEFAULT_MARGIN;
