@@ -521,6 +521,33 @@ TRACE_EVENT(sched_task_uclamp,
 		__entry->max_req)
 );
 
+TRACE_EVENT(sched_domain_flags,
+	TP_PROTO(struct task_struct *task, int prev_cpu, int sd_flag, int wake_flags, int target_cpu),
+	TP_ARGS(task, prev_cpu, sd_flag, wake_flags, target_cpu),
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, prev_cpu)
+		__field(int, sd_flag)
+		__field(int, wake_flags)
+		__field(int, target_cpu)
+	),
+
+	TP_fast_assign(
+		__entry->pid = task->pid;
+		__entry->prev_cpu = prev_cpu;
+		__entry->sd_flag = sd_flag;
+		__entry->wake_flags = wake_flags;
+		__entry->target_cpu = target_cpu;
+	),
+
+	TP_printk("pid=%d prev_cpu=%d sd_flag=0x%08x wake_flags=0x%08x target_cpu=%d",
+		__entry->pid,
+		__entry->prev_cpu,
+		__entry->sd_flag,
+		__entry->wake_flags,
+		__entry->target_cpu)
+);
+
 TRACE_EVENT(sched_rq_load,
 
 	TP_PROTO(struct cfs_rq *rq),
