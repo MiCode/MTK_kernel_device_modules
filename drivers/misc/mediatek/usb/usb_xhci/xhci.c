@@ -304,6 +304,32 @@ static void xhci_zero_64b_regs(struct xhci_hcd *xhci)
 		xhci_info(xhci, "Fault detected\n");
 }
 
+static int xhci_enable_interrupter(struct xhci_interrupter *ir)
+{
+	u32 iman;
+
+	if (!ir || !ir->ir_set)
+		return -EINVAL;
+
+	iman = readl(&ir->ir_set->irq_pending);
+	writel(ER_IRQ_ENABLE(iman), &ir->ir_set->irq_pending);
+
+	return 0;
+}
+
+static int xhci_disable_interrupter(struct xhci_interrupter *ir)
+{
+	u32 iman;
+
+	if (!ir || !ir->ir_set)
+		return -EINVAL;
+
+	iman = readl(&ir->ir_set->irq_pending);
+	writel(ER_IRQ_DISABLE(iman), &ir->ir_set->irq_pending);
+
+	return 0;
+}
+
 #ifdef CONFIG_USB_PCI
 /*
  * Set up MSI
@@ -641,8 +667,7 @@ static int xhci_run_finished(struct xhci_hcd *xhci)
 	writel(temp, &xhci->op_regs->command);
 
 	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "Enable primary interrupter");
-	temp = readl(&ir->ir_set->irq_pending);
-	writel(ER_IRQ_ENABLE(temp), &ir->ir_set->irq_pending);
+	xhci_enable_interrupter(ir);
 
 	if (xhci_start(xhci)) {
 		xhci_halt(xhci);
@@ -748,6 +773,7 @@ static void xhci_stop(struct usb_hcd *hcd)
 {
 	u32 temp;
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+	struct xhci_interrupter *ir = xhci->interrupter;
 
 	mutex_lock(&xhci->mutex);
 
@@ -784,8 +810,7 @@ static void xhci_stop(struct usb_hcd *hcd)
 			"// Disabling event ring interrupts");
 	temp = readl(&xhci->op_regs->status);
 	writel((temp & ~0x1fff) | STS_EINT, &xhci->op_regs->status);
-	temp = readl(&xhci->interrupter->ir_set->irq_pending);
-	writel(ER_IRQ_DISABLE(temp), &xhci->interrupter->ir_set->irq_pending);
+	xhci_disable_interrupter(ir);
 
 	xhci_dbg_trace_(xhci, trace_xhci_dbg_init, "cleaning up memory");
 	xhci_mem_cleanup(xhci);
@@ -1242,8 +1267,7 @@ int xhci_resume_(struct xhci_hcd *xhci, bool hibernated)
 		xhci_dbg(xhci, "// Disabling event ring interrupts\n");
 		temp = readl(&xhci->op_regs->status);
 		writel((temp & ~0x1fff) | STS_EINT, &xhci->op_regs->status);
-		temp = readl(&xhci->interrupter->ir_set->irq_pending);
-		writel(ER_IRQ_DISABLE(temp), &xhci->interrupter->ir_set->irq_pending);
+		xhci_disable_interrupter(xhci->interrupter);
 
 		xhci_dbg(xhci, "cleaning up memory\n");
 		xhci_mem_cleanup(xhci);
