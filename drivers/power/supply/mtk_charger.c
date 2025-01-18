@@ -3576,7 +3576,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 		val->intval = get_charger_zcv(info, chg);
 		break;
 	case POWER_SUPPLY_PROP_USB_TYPE:
-		chr_err("not yet\n");
+		chr_debug("not yet\n");
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
 		ret = charger_dev_get_adc(info->chg1_dev,
