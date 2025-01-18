@@ -74,7 +74,11 @@ int unregister_mbraink_gps_ops(void);
 
 /*WIFI*/
 struct mbraink_wifi_ops {
-	void (*get_wifi_data)(unsigned int reason);
+	void (*get_wifi_rate_data)(int current_idx,
+				struct mbraink_wifi2mbr_lls_rate_data *rate_data);
+	void (*get_wifi_radio_data)(struct mbraink_wifi2mbr_lls_radio_data *radio_data);
+	void (*get_wifi_ac_data)(struct mbraink_wifi2mbr_lls_ac_data *ac_data);
+	void (*get_wifi_lp_data)(struct mbraink_wifi2mbr_lp_ratio_data *lp_data);
 };
 int register_mbraink_wifi_ops(struct mbraink_wifi_ops *ops);
 int unregister_mbraink_wifi_ops(void);
