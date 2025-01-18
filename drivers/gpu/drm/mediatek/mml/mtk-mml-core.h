@@ -845,6 +845,7 @@ struct mml_frm_dump_data {
 	void *frame;
 	u32 bufsize;
 	u32 size;
+	u8 dump_option;
 };
 
 /* config_get_tile - helper inline func which uses tile index to get
@@ -921,18 +922,15 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 					       u32 clts_cnt);
 
 /*
- * mml_core_get_frame_in - return input frame dump
+ * mml_core_dump_buf - dump mml frame data into cache buffer
  *
- * Return:	The frame dump instance for input frame
+ * @task:	task to dump
+ * @data:	frame data to buffer
+ * @buf:	the mml file buf struct to copy data
+ * @frm:	frame data related to in/out 0/1 buffer
  */
-struct mml_frm_dump_data *mml_core_get_frame_in(void);
-
-/*
- * mml_core_get_frame_out - return input frame dump
- *
- * Return:	The frame dump instance for output frame
- */
-struct mml_frm_dump_data *mml_core_get_frame_out(void);
+void mml_core_dump_buf(struct mml_task *task, const struct mml_frame_data *data,
+	struct mml_file_buf *buf, struct mml_frm_dump_data *frm);
 
 /*
  * mml_core_get_dump_inst - return debug dump buffer with current buf size

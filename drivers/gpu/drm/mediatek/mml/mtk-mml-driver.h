@@ -402,6 +402,100 @@ void mml_backup_crc_update(struct mml_task *task, struct mml_comp_config *ccfg,
  */
 u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 crc_idx);
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+enum mml_frm_dump_buf {
+	/* dump once */
+	mml_frm_dump_src0,
+	mml_frm_dump_src1,
+	mml_frm_dump_dest0,
+	mml_frm_dump_dest1,
+	mml_frm_dump_count,
+
+	/* dump always */
+	mml_frm_dump_src0_always,
+	mml_frm_dump_src1_always,
+	mml_frm_dump_dest0_always,
+	mml_frm_dump_dest1_always,
+};
+
+enum mml_frm_dump_opt {
+	mml_frm_dump_frame,
+	mml_frm_dump_name,
+	mml_frm_dump_total
+};
+
+/*
+ * mml_dump_enable - Enable or disable dump feature.
+ *
+ * @mml:	The mml_dev instance
+ * @sysid:	mmlsys id
+ */
+void mml_dump_reset(struct mml_dev *mml, enum mml_sys_id sysid);
+
+/*
+ * mml_dump_enable - Enable or disable dump feature.
+ *
+ * @mml:	The mml_dev instance
+ * @sysid:	mmlsys id
+ * @bufid:	The buffer id to input/output 0/1
+ * @enable:	Enable or disable the dump
+ * @always:	Always dump or dump once.
+ */
+void mml_dump_enable(struct mml_dev *mml, enum mml_sys_id sysid,
+	enum mml_frm_dump_buf bufid, bool enable, bool always);
+
+/*
+ * mml_dump_set_option - Setup the sysid, bufid and optino into option cache. Client may
+ *	read/pull data which index by these options.
+ *
+ * @mml:	The mml_dev instance
+ * @sysid:	mmlsys id
+ * @bufid:	The buffer id to input/output 0/1
+ * @opt:	The option want to read.
+ */
+void mml_dump_set_option(struct mml_dev *mml, enum mml_sys_id sysid, enum mml_frm_dump_buf bufid,
+	enum mml_frm_dump_opt opt);
+
+/*
+ * mml_dump_read_data_lock - Get frame data by current dump option frm_dump_opt_sysid and
+ *	frm_dump_opt_bufid which set by mml_dump_set_option.
+ *
+ * Note this api also lock dump mutex, thus caller must call mml_dump_read_data_unlock to unlock
+ * after done with return frame data.
+ *
+ * @mml:	The mml_dev instance
+ *
+ * Return:	The frame dump data struct.
+ */
+struct mml_frm_dump_data *mml_dump_read_data_lock(struct mml_dev *mml);
+
+/*
+ * mml_dump_read_data_unlock - Unlock dump mutex, which lock in mml_dump_read_data_lock.
+ *
+ * @mml:	The mml_dev instance
+ */
+void mml_dump_read_data_unlock(struct mml_dev *mml);
+
+/*
+ * mml_dump_input - Dump input frame into mml dev frame cache.
+ *
+ * @mml:	The mml_dev instance
+ * @sysid:	Current task mmlsys id
+ * @task:	Current task to dump
+ * @force:	Force dump input, use for timeout dump.
+ */
+void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task, bool force);
+
+/*
+ * mml_dump_output - Dump output frame into mml dev frame cache.
+ *
+ * @mml:	The mml_dev instance
+ * @sysid:	Current task mmlsys id
+ * @task:	Current task to dump
+ */
+void mml_dump_output(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task);
+#endif
+
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;
 extern struct platform_driver mml_color_driver;

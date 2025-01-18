@@ -101,23 +101,8 @@ int mml_hw_perf;
 module_param(mml_hw_perf, int, 0644);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-/* Assign bit to dump in/out buffer frame
- * bit 0: dump input
- * bit 1: dump output
- */
-enum mml_bufdump_opt {
-	MML_DUMPBUF_IN = 0x1,
-	MML_DUMPBUF_OUT = 0x2,
-};
-int mml_frame_dump;
-module_param(mml_frame_dump, int, 0644);
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);
-
-static struct mml_frm_dump_data mml_frm_dumps[2] = {
-	{.prefix = "in", },
-	{.prefix = "out", },
-};
 
 static char *mml_inst_dump;
 u32 mml_inst_dump_sz;
@@ -1286,7 +1271,7 @@ static void core_dump_alloc(struct mml_file_buf *buf, struct mml_frm_dump_data *
 	frm->size = size;
 }
 
-static void core_dump_buf(struct mml_task *task, struct mml_frame_data *data,
+void mml_core_dump_buf(struct mml_task *task, const struct mml_frame_data *data,
 	struct mml_file_buf *buf, struct mml_frm_dump_data *frm)
 {
 	u64 stamp = div_u64(sched_clock(), 1000000);
@@ -1313,16 +1298,6 @@ static void core_dump_buf(struct mml_task *task, struct mml_frame_data *data,
 
 	memcpy(frm->frame, buf->dma[0].va, frm->size);
 	mml_log("%s copy frame %s", __func__, frm->name);
-}
-
-struct mml_frm_dump_data *mml_core_get_frame_in(void)
-{
-	return &mml_frm_dumps[0];
-}
-
-struct mml_frm_dump_data *mml_core_get_frame_out(void)
-{
-	return &mml_frm_dumps[1];
 }
 
 static void core_dump_inst(struct cmdq_pkt *pkt)
@@ -1449,15 +1424,7 @@ static void core_taskdone(struct work_struct *work)
 	mml_trace_begin("%s", __func__);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_frame_dump) {
-		mutex_lock(&mml_dump_mutex);
-		if (mml_frame_dump & MML_DUMPBUF_OUT) {
-			core_dump_buf(task, &task->config->info.dest[0].data,
-				&task->buf.dest[0], &mml_frm_dumps[1]);
-			mml_frame_dump &= ~MML_DUMPBUF_OUT;
-		}
-		mutex_unlock(&mml_dump_mutex);
-	}
+	mml_dump_output(cfg->mml, path->mmlsys->sysid, task);
 #endif
 
 	mml_core_mminfra_enable(task->config->mml, 0, path->mmlsys);
@@ -1707,15 +1674,7 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_timeout_dump) {
-		u64 cost = sched_clock();
-
-		mutex_lock(&mml_dump_mutex);
-		mml_buf_invalid(&task->buf.src);
-		core_dump_buf(task, &task->config->info.src,
-			&task->buf.src, &mml_frm_dumps[0]);
-		cost = sched_clock() - cost;
-		mutex_unlock(&mml_dump_mutex);
-		mml_log("dump input frame cost %lluus", (u64)div_u64(cost, 1000));
+		mml_dump_input(task->config->mml, path->mmlsys->sysid, task, true);
 		mml_timeout_dump = false;
 	}
 #endif
@@ -1822,17 +1781,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mutex_unlock(&task->config->pipe_mutex);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_frame_dump) {
-		/* buffer dump always do in pipe 0 */
-		mutex_lock(&mml_dump_mutex);
-		if (pipe == 0 && (mml_frame_dump & MML_DUMPBUF_IN)) {
-			mml_buf_invalid(&task->buf.src);
-			core_dump_buf(task, &task->config->info.src,
-				&task->buf.src, &mml_frm_dumps[0]);
-			mml_frame_dump &= ~MML_DUMPBUF_IN;
-		}
-		mutex_unlock(&mml_dump_mutex);
-	}
+	mml_dump_input(task->config->mml, path->mmlsys->sysid, task, false);
 
 	if (pipe == 0 && mml_check_dumpsrv(DUMPOPT_SRC, &task->buf.src)) {
 		char fmt[24];
