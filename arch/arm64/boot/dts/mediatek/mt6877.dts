@@ -6707,6 +6707,7 @@
 		compatible = "mediatek,gate-ic-i2c";
 		gate-power-gpios = <&pio 107 0>;
 		reg = <0x11>;
+		id = <6>;
 		status = "okay";
 	};
 };
