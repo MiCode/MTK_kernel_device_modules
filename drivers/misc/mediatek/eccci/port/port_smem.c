@@ -12,6 +12,7 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
+#include <linux/sched/clock.h>
 #include "mt-plat/mtk_ccci_common.h"
 #include "ccci_fsm.h"
 #include "port_smem.h"

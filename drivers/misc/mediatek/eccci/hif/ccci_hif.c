@@ -5,6 +5,7 @@
 
 #include <linux/types.h>
 #include <linux/ktime.h>
+#include <linux/sched/clock.h>
 
 #include "ccci_debug.h"
 #include "ccci_core.h"

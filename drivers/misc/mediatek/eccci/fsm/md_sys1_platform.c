@@ -12,6 +12,7 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
+#include <linux/sched/clock.h>
 #include "ccci_config.h"
 #include "ccci_common_config.h"
 #include <linux/clk.h>
