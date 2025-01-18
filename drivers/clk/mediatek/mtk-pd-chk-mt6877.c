@@ -292,14 +292,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	BUG_ON(1);
 }
 
-static void log_dump(unsigned int id, unsigned int pwr_sta)
-{
-	if (id >= MT6877_CHK_PD_NUM)
-		return;
-
-	print_subsys_reg_mt6877(spm);
-}
-
 static struct pd_sta pd_pwr_sta[] = {
 	{MT6877_CHK_PD_CONN, spm, 0x0EF0, BIT(1)},
 	{MT6877_CHK_PD_ISP0, spm, 0x0EF0, BIT(9)},
@@ -384,7 +376,6 @@ static struct pdchk_ops pdchk_mt6877_ops = {
 	.dump_subsys_reg = dump_subsys_reg,
 	.is_in_pd_list = is_in_pd_list,
 	.debug_dump = debug_dump,
-	.log_dump = log_dump,
 	.get_pd_pwr_status = get_pd_pwr_status,
 	.get_off_mtcmos_id = get_off_mtcmos_id,
 	.get_notice_mtcmos_id = get_notice_mtcmos_id,
