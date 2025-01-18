@@ -198,7 +198,7 @@ void apupw_dbg_power_info(struct work_struct *work)
 		/* search the list of dbg_clk_list for this clk */
 		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
 			n_pos += snprintf((buffer + n_pos), (LOG_LEN - n_pos),
-				"%lu,", TOMHZ(clk_get_rate(dbg_clk->clk)));
+					"%lu,", TOMHZ(clk_get_rate(dbg_clk->clk)));
 	} else {
 		/* search the list of dbg_clk_list for this clk */
 		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node) {
@@ -619,10 +619,16 @@ static int apupw_dbg_dump_stat(struct seq_file *s)
 	seq_puts(s, "\n");
 
 	seq_puts(s, "|freq|");
-	list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
-		seq_printf(s, "%lu|", TOMHZ(clk_get_rate(dbg_clk->clk)));
-	seq_puts(s, "\n");
-
+	if (!apupw_dbg.use_atf_clk) {
+		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
+			seq_printf(s, "%lu|", TOMHZ(clk_get_rate(dbg_clk->clk)));
+		seq_puts(s, "\n");
+	} else {
+		list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
+			seq_printf(s, "%lu|",
+					   TOMHZ(dbg_clk->aclk_gp->ops->get_rate(dbg_clk->aclk_gp)));
+		seq_puts(s, "\n");
+	}
 	seq_puts(s, "|clk |");
 	list_for_each_entry_reverse(dbg_clk, &apupw_dbg.clk_list, node)
 		seq_printf(s, "%s|", __clk_get_name(dbg_clk->clk));

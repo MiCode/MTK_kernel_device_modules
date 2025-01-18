@@ -124,8 +124,6 @@ void apu_dump_opp_table(struct apu_dev *ad, const char *fun_name, int dir)
 	if (dir)
 		freq = ULONG_MAX;
 	while(1) {
-		if (apupw_dbg_get_loglvl() < VERBOSE_LVL)
-			break;
 		if (dir) {
 			if (IS_ERR(dev_pm_opp_find_freq_floor(ad->dev, &freq)))
 				break;
@@ -134,7 +132,7 @@ void apu_dump_opp_table(struct apu_dev *ad, const char *fun_name, int dir)
 				break;
 		}
 		apu_get_recommend_freq_volt(ad->dev, &freq, &volt, dir);
-		aprobe_info(ad->dev, " %s freq/volt %lu/%lu\n", fun_name, freq, volt);
+		dev_info(ad->dev, " %s freq/volt %lu/%lu\n", fun_name, freq, volt);
 		if (dir)
 			freq--;
 		else
@@ -335,6 +333,117 @@ int apu_opp2freq(struct apu_dev *ad, int opp)
 	return ad->df->profile->freq_table[max_st - opp];
 }
 
+/**
+ * apu_opp2volt() - get volt from opp
+ * @ad: apu_dev
+ * @opp: opp value (0 means the fastest)
+ *
+ */
+unsigned long apu_opp2volt(struct apu_dev *ad, int opp)
+{
+	int max_st = 0;
+	unsigned long freq = 0, volt = 0;
+	struct dev_pm_opp *pm_opp = NULL;
+
+	if (!_valid_ad(ad))
+		return -EINVAL;
+
+	max_st = ad->df->profile->max_state - 1;
+	if (opp < 0)
+		opp = 0;
+	if (opp > max_st)
+		opp = max_st;
+
+	/*
+	 * opp 0 mean the max freq, but index 0 of freq_table
+	 * is the slowest one.
+	 *
+	 * So we need to take index
+	 * as [max_st - opp], while getting freq we want in
+	 * profile->freq_table.
+	 */
+	freq = ad->df->profile->freq_table[max_st - opp] + 1;
+	pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
+	if (IS_ERR(pm_opp))
+		return PTR_ERR(pm_opp);
+
+	volt = dev_pm_opp_get_voltage(pm_opp);
+	dev_pm_opp_put(pm_opp);
+	return volt;
+}
+
+/**
+ * apu_opp2freq() - get freq from opp
+ * @ad: apu_dev
+ * @opp: opp value (0 means the fastest)
+ *
+ */
+unsigned long apu_opp2freq_n_df(struct apu_dev *ad, int opp)
+{
+	int max_st = 0, ret = 0;
+	unsigned long freq = ULONG_MAX, ret_f = 0;
+	struct dev_pm_opp *pm_opp = NULL;
+
+	if (IS_ERR(ad) || IS_ERR_OR_NULL(ad->dev))
+		return -EINVAL;
+
+	max_st = dev_pm_opp_get_opp_count(ad->dev) - 1;
+
+	if (opp < 0)
+		opp = 0;
+	if (opp > max_st)
+		opp = max_st;
+
+	while(1) {
+		pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
+		if (IS_ERR(pm_opp))
+			break;
+		ret_f = dev_pm_opp_get_freq(pm_opp);
+		dev_pm_opp_put(pm_opp);
+		if (ret == opp)
+			break;
+		freq --;
+		ret ++;
+	}
+
+	return freq;
+}
+
+/**
+ * apu_opp2volt() - get volt from opp
+ * @ad: apu_dev
+ * @opp: opp value (0 means the fastest)
+ *
+ */
+unsigned long apu_opp2volt_n_df(struct apu_dev *ad, int opp)
+{
+	int max_st = 0, ret = 0;
+	unsigned long freq = ULONG_MAX, ret_v = 0;
+	struct dev_pm_opp *pm_opp = NULL;
+
+	if (IS_ERR(ad) || IS_ERR_OR_NULL(ad->dev))
+		return -EINVAL;
+
+	max_st = dev_pm_opp_get_opp_count(ad->dev) - 1;
+	if (opp < 0)
+		opp = 0;
+	if (opp > max_st)
+		opp = max_st;
+
+	while(1) {
+		pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
+		if (IS_ERR(pm_opp))
+			break;
+		ret_v = dev_pm_opp_get_voltage(pm_opp);
+		dev_pm_opp_put(pm_opp);
+		if (ret == opp)
+			break;
+		freq --;
+		ret ++;
+	}
+
+	return ret_v;
+}
 
 /**
  * apu_opp2boost() - get opp from boost

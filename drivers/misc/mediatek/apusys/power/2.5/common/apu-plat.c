@@ -28,7 +28,7 @@ MODULE_PARM_DESC(fake_bin, "fake binning");
 int fake_raise;
 module_param(fake_raise, int, 0444);
 MODULE_PARM_DESC(fake_raise, "fake raise");
-#ifdef ENABLE_AVS
+
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 #include <linux/nvmem-consumer.h>
 #endif
@@ -39,18 +39,17 @@ MODULE_PARM_DESC(fake_raise, "fake raise");
 //#define AGING_MARGIN
 
 static const char *efuse_field[EFUSE_CNT_MAX] = {
-	"efuse_seg", "efuse_bin", "efuse_raise"
+	"efuse_seg", "efuse_bin", "efuse_raise", "efuse_bin_h", "efuse_bin_m"
 };
 
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
-static u32 _get_devinfo(struct apu_dev *ad, const char *name)
+static noinline u32 _get_devinfo(struct apu_dev *ad, const char *name)
 {
 	int ret = 0, oft = 0, mask = 0XFF;
 	struct nvmem_cell *cell;
 	unsigned int *buf = NULL;
 	size_t len;
 
-	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 	if (!strcmp(name, efuse_field[EFUSE_SEG])) {
 		/* segment name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_SEG]);
@@ -81,7 +80,6 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 	} else if (!strcmp(name, efuse_field[EFUSE_BIN])) {
 		/* bin name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_BIN]);
-		aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 		if (IS_ERR(cell)) {
 			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
 				   efuse_field[EFUSE_BIN], ret);
@@ -114,7 +112,6 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 	} else if (!strcmp(name, efuse_field[EFUSE_RAISE])) {
 		/* raise name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_RAISE]);
-		aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 		if (IS_ERR(cell)) {
 			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
 				  efuse_field[EFUSE_RAISE], ret);
@@ -144,11 +141,74 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_raise = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_RAISE], fake_raise, oft, mask, ret);
 		}
+	}else if (!strcmp(name, efuse_field[EFUSE_BIN_H])) {
+		/* bin name match */
+		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_BIN_H]);
+		if (IS_ERR(cell)) {
+			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
+				   efuse_field[EFUSE_BIN_H], ret);
+			goto out;
+		}
+		buf = (unsigned int *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		if (IS_ERR_OR_NULL(buf)) {
+			ret = PTR_ERR(buf);
+			aprobe_warn(ad->dev, "fail to get %s efuse data (%d)",
+				   efuse_field[EFUSE_BIN_H], ret);
+			goto out;
+		} else {
+			ret = of_property_read_u32(ad->dev->of_node, "bin_h-offset", &oft);
+			if (ret < 0)
+				goto out;
+			ret = of_property_read_u32(ad->dev->of_node, "bin_h-mask", &mask);
+			if (ret < 0)
+				goto out;
+			ret = (*buf >> oft) & mask;
+			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
+				    efuse_field[EFUSE_BIN_H], *buf, oft, mask, ret);
+		}
+
+		if (fake_bin) {
+			ret = (fake_bin >> oft) & mask;
+			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_bin = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
+				    efuse_field[EFUSE_BIN_H], fake_bin, oft, mask, ret);
+		}
+	}else if (!strcmp(name, efuse_field[EFUSE_BIN_M])) {
+		/* bin name match */
+		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_BIN_M]);
+		if (IS_ERR(cell)) {
+			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
+				   efuse_field[EFUSE_BIN_M], ret);
+			goto out;
+		}
+
+		buf = (unsigned int *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		if (IS_ERR_OR_NULL(buf)) {
+			ret = PTR_ERR(buf);
+			aprobe_warn(ad->dev, "fail to get %s efuse data (%d)",
+				   efuse_field[EFUSE_BIN_M], ret);
+			goto out;
+		} else {
+			ret = of_property_read_u32(ad->dev->of_node, "bin_m-offset", &oft);
+			if (ret < 0)
+				goto out;
+			ret = of_property_read_u32(ad->dev->of_node, "bin_m-mask", &mask);
+			if (ret < 0)
+				goto out;
+			ret = (*buf >> oft) & mask;
+			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
+				    efuse_field[EFUSE_BIN_M], *buf, oft, mask, ret);
+		}
+
+		if (fake_bin) {
+			ret = (fake_bin >> oft) & mask;
+			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_bin = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
+				    efuse_field[EFUSE_BIN_M], fake_bin, oft, mask, ret);
+		}
 	}
 
 out:
-	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
-
 	kfree(buf);
 	return ret;
 }
@@ -169,7 +229,7 @@ static int _get_opp_from_v(struct apu_dev *ad, int v)
 		volt = dev_pm_opp_get_voltage(opp);
 		if (volt == v)
 			goto out;
-		freq ++;
+		freq --;
 		ret ++;
 	}
 out:
@@ -272,7 +332,7 @@ static int __inter_volt(int i1, int b1, int i2, int b2, int i)
  * Suppose bin array in dts is <0 0 0 0 775000 762500 750000>;
  * and bin index = 4, this function will return bin[4] = 775000;
  */
-static int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int idx)
+static noinline int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int idx)
 {
 	int ret = 0;
 	u32 count = 0;
@@ -284,6 +344,9 @@ static int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int idx)
 		return -ENODEV;
 
 	count = prop->length / sizeof(u32);
+	if (idx > count)
+		goto out;
+
 	tmp = kmalloc_array(count, sizeof(*tmp), GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
@@ -291,11 +354,44 @@ static int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int idx)
 	ret = of_property_read_u32_array(ad->dev->of_node, name, tmp, count);
 	if (ret) {
 		aprobe_warn(ad->dev, "%s: Error parsing %s: %d\n", __func__, name, ret);
-		goto out;
+		goto free_mem;
 	}
 	ret = tmp[idx];
-out:
+
+free_mem:
 	kfree(tmp);
+out:
+	return ret;
+}
+
+/**
+ * __get_v_f_from_opp() - return bin/raise voltage/freq
+ * @ad: apu device
+ * @v: voltage expect write to pm_opp
+ * @opp: opp idx
+ *
+ */
+static noinline int _update_v_f_2_opp(struct apu_dev *ad, unsigned long v, int opp)
+{
+	int ret = 0;
+	struct dev_pm_opp *pm_opp = NULL;
+	unsigned long freq = 0;
+
+	freq = apu_opp2freq_n_df(ad, opp) + 1;
+	pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
+	if (IS_ERR(pm_opp))
+		return PTR_ERR(pm_opp);
+
+	freq = dev_pm_opp_get_freq(pm_opp);
+	ret = dev_pm_opp_adjust_voltage(ad->dev,
+					freq,
+					(ulong)(v),
+					(ulong)(v),
+					(ulong)(v));
+	dev_pm_opp_put(pm_opp);
+	if (ret)
+		goto out;
+out:
 	return ret;
 }
 
@@ -308,7 +404,7 @@ out:
  * @raise_f: final raise freq
  *
  */
-static int __get_bin_raise_v_f(struct apu_dev *ad, int *bin_v, unsigned long *bin_f,
+static noinline int __get_bin_raise_v_f(struct apu_dev *ad, int *bin_v, unsigned long *bin_f,
 							int *raise_v, unsigned long *raise_f)
 {
 	int ret = 0;
@@ -353,18 +449,116 @@ out:
 }
 
 /**
- * _bin_raise_opp() - binning and raising opp
+ * _bin_3p_2l() - mt6877 3p2l AVS
  * @dev: struct device, used for checking child number
  *
  * rm unnecessary opp by different segment.
  */
-static int _bin_raise_opp(struct apu_dev *ad)
+static noinline int _bin_3p_2l(struct apu_dev *ad)
+{
+
+	int idx = 0;
+	unsigned long bin_h_v = 0, bin_m_v = 0, raise_v = 0, tmp_v = 0;
+	unsigned long bin_h_f = 0, bin_m_f = 0, raise_f = 0, tmp_f = 0;
+	const char *vb_mtd_name = NULL;
+
+
+	if (of_property_read_string(ad->dev->of_node, "vb_mtd", &vb_mtd_name))
+		goto out;
+
+	aprobe_info(ad->dev, "%s %d vb_mtd_name = %s\n", __func__, __LINE__, vb_mtd_name);
+
+	if (strncmp(vb_mtd_name, VB_MTD_3P2L, VB_MTD_LEN))
+		goto out;
+
+	/* get bin_h voltage */
+	idx = _get_devinfo(ad, efuse_field[EFUSE_BIN_H]);
+	if (idx < 0)
+		goto out;
+	bin_h_v = __get_bin_raise_from_dts(ad, "bin_h", idx);
+	ad->bin_h_idx = idx;
+
+	/* get bin_m voltage */
+	idx = _get_devinfo(ad, efuse_field[EFUSE_BIN_M]);
+	if (idx < 0)
+		goto out;
+	bin_m_v = __get_bin_raise_from_dts(ad, "bin_m", idx);
+	ad->bin_m_idx = idx;
+
+	/* get raise voltage */
+	idx = _get_devinfo(ad, efuse_field[EFUSE_RAISE]);
+	if (idx < 0)
+		goto out;
+	raise_v = __get_bin_raise_from_dts(ad, "raise", idx);
+	if ((bin_h_v == -ENODEV) && (bin_h_v == -ENODEV) && (raise_v == -ENODEV))
+		goto out;
+
+	/* LV rising ceiling limited by MV */
+	if (raise_v > bin_m_v)
+		raise_v = bin_m_v;
+
+	/* update bin_h, bin_m, raise into pm_opp */
+	_update_v_f_2_opp(ad, bin_h_v, VVPU_BIN_HIGHV_OPP);
+	_update_v_f_2_opp(ad, bin_m_v, VVPU_BIN_MIDV_OPP);
+	_update_v_f_2_opp(ad, raise_v, VVPU_BIN_LOWV_OPP);
+
+	bin_h_f = apu_opp2freq_n_df(ad, VVPU_BIN_HIGHV_OPP);
+	bin_m_f = apu_opp2freq_n_df(ad, VVPU_BIN_MIDV_OPP);
+	raise_f = apu_opp2freq_n_df(ad, VVPU_BIN_LOWV_OPP);
+
+	aprobe_info(ad->dev, "%s: [int3p2l] b_h_v/bin_m_v/r_v/ = %lumV/%lumV/%lumV\n",
+			__func__, TOMV(bin_h_v), TOMV(bin_m_v), TOMV(raise_v));
+	aprobe_info(ad->dev, "%s: [int3p2l] b_h_f/bin_m_f/r_f/ = %luMhz/%luMhz/%luMhz\n",
+			__func__, TOMHZ(bin_h_f), TOMHZ(bin_m_f), TOMHZ(raise_f));
+
+	/* 2L (HV<->MV) */
+	for (idx = VVPU_BIN_MIDV_OPP; idx >= VVPU_BIN_HIGHV_OPP; idx--) {
+		tmp_f = apu_opp2freq_n_df(ad, idx);
+		tmp_v = __inter_volt(bin_m_f, bin_m_v, bin_h_f, bin_h_v, tmp_f);
+		_update_v_f_2_opp(ad, tmp_v, idx);
+		aprobe_info(ad->dev, "%s: [int3p2l hv<->mv] idx %d v/f = %lumV/%luKhz\n",
+				__func__, idx,
+				TOMV(apu_opp2volt_n_df(ad, idx)),
+				TOKHZ(apu_opp2freq_n_df(ad,idx)));
+	}
+
+	/* 2L (MV<->LV) */
+	for (idx = VVPU_BIN_LOWV_OPP; idx >= VVPU_BIN_MIDV_OPP; idx--) {
+		tmp_f = apu_opp2freq_n_df(ad, idx);
+		tmp_v = __inter_volt(raise_f, raise_v, bin_m_f, bin_m_v, tmp_f);
+		_update_v_f_2_opp(ad, tmp_v, idx);
+		aprobe_info(ad->dev, "%s: [int3p2l mv<->lv] idx %d v/f = %lumV/%luKhz\n",
+				__func__, idx,
+				TOMV(apu_opp2volt_n_df(ad, idx)),
+				TOKHZ(apu_opp2freq_n_df(ad,idx)));
+	}
+
+	apu_dump_opp_table(ad, __func__, 1);
+out:
+	return 0;
+}
+
+/**
+ * _bin_intpl() - binning and raising opp
+ * @dev: struct device, used for checking child numbers
+ *
+ * rm unnecessary opp by different segment info.
+ */
+static noinline int _bin_intpl(struct apu_dev *ad)
 {
 	struct dev_pm_opp *opp;
 	int ret = 0, idx = 0, intpl = 1;
 	int bin_v = 0, raise_v = 0, tmp_v = 0;
 	unsigned long bin_f = 0, raise_f = 0, tmp_f = 0, sign_v = 0;
-	const char *vb_mtd_name = NULL;
+	const char *vb_mtd_name;
+
+	if (of_property_read_string(ad->dev->of_node, "vb_mtd", &vb_mtd_name))
+		goto out;
+
+	aprobe_info(ad->dev, "%s %d vb_mtd_name = %s\n", __func__, __LINE__, vb_mtd_name);
+
+	if (strncmp(vb_mtd_name, VB_MTD_INTPL, VB_MTD_LEN))
+		goto out;
 
 	/* get bin voltage */
 	idx = _get_devinfo(ad, efuse_field[EFUSE_BIN]);
@@ -372,15 +566,12 @@ static int _bin_raise_opp(struct apu_dev *ad)
 		goto out;
 	bin_v = __get_bin_raise_from_dts(ad, "bin", idx);
 	ad->bin_idx = idx;
-	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 
 	/* get raise voltage */
 	idx = _get_devinfo(ad, efuse_field[EFUSE_RAISE]);
 	if (idx < 0)
 		goto out;
 	raise_v = __get_bin_raise_from_dts(ad, "raise", idx);
-	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
-
 	if ((bin_v == -ENODEV) && (raise_v == -ENODEV)) {
 		goto out;
 	} else if (bin_v == -ENODEV || bin_v == 0xDEADBEEF) {
@@ -402,38 +593,36 @@ static int _bin_raise_opp(struct apu_dev *ad)
 	aprobe_info(ad->dev, "%s: b_v/b_f/r_v/r_f = %d/%lu/%d/%lu\n",
 			__func__, bin_v, bin_f, raise_v, raise_f);
 
-	if (of_property_read_string(ad->dev->of_node, "vb_mtd", &vb_mtd_name) || !intpl)
+	if(!intpl)
 		goto out;
-
-	if (!strncmp(vb_mtd_name, VB_MTD_INTPL, VB_MTD_LEN)) {
-		/* calculate other volt/bin except bin/raise points */
-		tmp_f = raise_f + 1;
-		opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
-		while (!IS_ERR(opp)) {
-			tmp_f = dev_pm_opp_get_freq(opp);
-			sign_v = dev_pm_opp_get_voltage(opp);
-			tmp_v = __inter_volt(raise_f, raise_v, bin_f, bin_v, tmp_f);
-			aprobe_info(ad->dev,
-				    "%s: \"%s\",r_f/r_v/b_f/b_v = %lu/%d/%lu/%d\n",
-				    __func__, VB_MTD_INTPL,
-				   raise_f, raise_v, bin_f, bin_v);
-			aprobe_info(ad->dev,
-				    "%s: \"%s\",t_f/t_v/s_v = %lu/%d/%lu\n",
-				    __func__, VB_MTD_INTPL,
-				   tmp_f, tmp_v, sign_v);
-			/* change v if inerpolate_v < signed_v */
-			if (tmp_v < sign_v) {
-				ret = dev_pm_opp_adjust_voltage(ad->dev, tmp_f,
-								(ulong)tmp_v,
-								(ulong)tmp_v,
-								(ulong)tmp_v);
-				if (ret)
-					goto out;
-			}
-			tmp_f ++;
-			opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
+	/* calculate other volt/bin except bin/raise points */
+	tmp_f = raise_f + 1;
+	opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
+	while (!IS_ERR(opp)) {
+		tmp_f = dev_pm_opp_get_freq(opp);
+		sign_v = dev_pm_opp_get_voltage(opp);
+		tmp_v = __inter_volt(raise_f, raise_v, bin_f, bin_v, tmp_f);
+		aprobe_info(ad->dev,
+			    "%s: \"%s\",r_f/r_v/b_f/b_v = %lu/%d/%lu/%d\n",
+			    __func__, VB_MTD_INTPL,
+			   raise_f, raise_v, bin_f, bin_v);
+		aprobe_info(ad->dev,
+			    "%s: \"%s\",t_f/t_v/s_v = %lu/%d/%lu\n",
+			    __func__, VB_MTD_INTPL,
+			   tmp_f, tmp_v, sign_v);
+		/* change v if inerpolate_v < signed_v */
+		if (tmp_v < sign_v) {
+			ret = dev_pm_opp_adjust_voltage(ad->dev, tmp_f,
+							(ulong)tmp_v,
+							(ulong)tmp_v,
+							(ulong)tmp_v);
+			if (ret)
+				goto out;
 		}
+		tmp_f ++;
+		opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
 	}
+
 	apu_dump_opp_table(ad, __func__, 1);
 out:
 	return ret;
@@ -442,11 +631,11 @@ out:
 
 /**
  * _segment_opp() - rm opp by different segment
- * @dev: struct device, used for checking child number
+ * @dev: struct device, used for checking child numbers
  *
- * rm unnecessary opp by different segment.
+ * rm unnecessary opp by different segment info.
  */
-static int _segment_opp(struct apu_dev *ad)
+static noinline int _segment_opp(struct apu_dev *ad)
 {
 	struct device_node *opp_np, *np;
 	int seg_id = 0, ret = 0;
@@ -492,7 +681,7 @@ static int _segment_opp(struct apu_dev *ad)
 out:
 	return ret;
 }
-#endif
+
 static int apu_opp_init(struct apu_dev *ad)
 {
 	int ret = 0;
@@ -511,7 +700,7 @@ static int apu_opp_init(struct apu_dev *ad)
 
 	ad->threshold_opp = -EINVAL;
 	ad->child_opp_limit = -EINVAL;
-#ifdef ENABLE_AVS
+
 	/* has regulator dts and can bin/aging/segment */
 	if (ad->user != APUCORE) {
 		ret = _segment_opp(ad);
@@ -524,7 +713,11 @@ static int apu_opp_init(struct apu_dev *ad)
 		if (apu_data->child_volt_limit)
 			ad->child_opp_limit = _get_opp_from_v(ad, apu_data->child_volt_limit);
 
-		ret = _bin_raise_opp(ad);
+		ret = _bin_intpl(ad);
+		if (ret)
+			goto out;
+
+		ret = _bin_3p_2l(ad);
 		if (ret)
 			goto out;
 	}
@@ -535,7 +728,7 @@ static int apu_opp_init(struct apu_dev *ad)
 		if (ret)
 			goto out;
 	}
-#endif
+
 	ad->oppt = dev_pm_opp_get_opp_table(ad->dev);
 	if (IS_ERR_OR_NULL(ad->oppt)) {
 		ret = PTR_ERR(ad->oppt);

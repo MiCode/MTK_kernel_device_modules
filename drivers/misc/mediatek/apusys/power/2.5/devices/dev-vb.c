@@ -24,6 +24,11 @@
 #include "apu_of.h"
 #include "apu_trace.h"
 
+#define MT6877_VPU_TBL_SZ   3
+char *mt6877_vpu_tables[MT6877_VPU_TBL_SZ] = {
+	"APUCORE:APUCONN", "apusys_power:APUVPU", "apusys_power:APUMDLA"
+};
+
 #define MT6893_BIN_OFSET  3
 #define MT6893_VPU_TBL_SZ   3
 char *mt6893_vpu_tables[MT6893_VPU_TBL_SZ] = {
@@ -54,7 +59,7 @@ unsigned long mt6893_LB_650mv[2][4][6] = {
 };
 
 /**
- * _get_sign_v() - get signed volt from freq
+ * _get_sign_v() - get signed voltage from freq
  * @ad: apu devcie
  * @f: input freq
  * @v: output find v
@@ -212,7 +217,8 @@ static int mt6893_vb_lb(struct device *dev)
 		goto free_ofdev;
 
 	dev_info(dev, "Final opp table %s\n", dev_name(ofdev0[0]));
-	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev0[0]), "", 1);
+	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev0[0]), "APUVB final", 1);
+	dev_info(dev, "APUVB final ----------------------\n");
 
 	/* get interpolate need devs */
 	for (idx = 0; idx < MT6893_MDLA_TBL_SZ; idx++)
@@ -224,11 +230,135 @@ static int mt6893_vb_lb(struct device *dev)
 		goto free_ofdev;
 
 	dev_info(dev, "Final opp table %s\n", dev_name(ofdev1[0]));
-	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev1[0]), "", 1);
+	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev1[0]), "APUVB final", 1);
+	dev_info(dev, "APUVB final ----------------------\n");
 
 free_ofdev:
 	devm_kfree(dev, ofdev0);
 	devm_kfree(dev, ofdev1);
+out:
+	return err;
+}
+
+/**
+ * _mt6877_set_vb_v() - min(VPU_vb, TOP_vb, DLA_vb)
+ * @dev: struct device, used for checking child number
+ * @ofdev: array of struct device to compare
+ * @dev_cnt: how many ofdev to compare
+ *
+ * min(VPU_vb, TOP_vb, DLA_vb).
+ */
+static int _mt6877_set_vb_v(struct device *dev,
+	struct device **ofdev, int dev_cnt)
+{
+	struct dev_pm_opp **opp;
+	int ret = 0, idx1 = 0, idx2 = 0, opp_cnt = 0;
+	unsigned long *tmp_f = NULL, *tmp_v = NULL;
+	unsigned long max_v = 0, sign_v = 0, raise_v = 0;
+	struct apu_dev *ad = NULL;
+
+	ad = dev_get_drvdata(ofdev[0]);
+
+	if (ad->seg_idx)
+		goto out;
+
+	opp_cnt = dev_pm_opp_get_opp_count(ofdev[0]);
+	if (!opp_cnt)
+		goto out;
+	tmp_f = devm_kzalloc(dev, (sizeof(tmp_f) * dev_cnt), GFP_KERNEL);
+	if (!tmp_f)
+		goto free_f;
+	tmp_v = devm_kzalloc(dev, (sizeof(tmp_f) * dev_cnt), GFP_KERNEL);
+	if (!tmp_v)
+		goto free_v;
+	opp = devm_kzalloc(dev, (sizeof(*opp) * dev_cnt), GFP_KERNEL);
+	if (!opp)
+		goto free_opp;
+
+	/* Get Raise v 1st */
+	tmp_f[0] = 0;
+	opp[0] = dev_pm_opp_find_freq_ceil(ofdev[0], &tmp_f[0]);
+	raise_v = dev_pm_opp_get_voltage(opp[0]);
+
+	for (idx2 = 0; idx2 < dev_cnt; idx2++)
+		tmp_f[idx2] = ULONG_MAX;
+
+	 /* Bypass slowest opp, since it will be raised and comparison is no need */
+	for (idx1 = 0; idx1 < opp_cnt -1; idx1++) {
+		max_v = 0;
+		/* record f/v with opp on differnt table */
+		for (idx2 = 0; idx2 < dev_cnt; idx2++) {
+			opp[idx2] = dev_pm_opp_find_freq_floor(ofdev[idx2], &tmp_f[idx2]);
+			tmp_f[idx2] = dev_pm_opp_get_freq(opp[idx2]);
+			tmp_v[idx2] = dev_pm_opp_get_voltage(opp[idx2]);
+			max_v = max3(0UL, max_v, tmp_v[idx2]);
+		}
+		ret = __get_sign_v(ofdev[0], tmp_f[0], &sign_v);
+		if (ret)
+			goto free_opp;
+
+		dev_info(dev, "opp %d, %s bin_h/bin_m/seg %d/%d/%d\n",
+				idx1, ad->name, ad->bin_h_idx, ad->bin_m_idx, ad->seg_idx);
+
+		dev_info(dev, "opp %d, %s t_f/m_v/s_v/r_v = %lu/%lu/%lu/%lu\n",
+				idx1, ad->name, tmp_f[0], max_v, sign_v, raise_v);
+
+		/* (A) HV <-> MV
+		 * (B) MV <-> LV and raise_v = 575000
+		 *
+		 * Above 2 cased need to min(vmin, signed)
+		 */
+		if (idx1 <= VVPU_BIN_MIDV_OPP ||
+			(idx1 > VVPU_BIN_MIDV_OPP && raise_v == 575000))
+			max_v = min(max_v, sign_v);
+
+		/* update index 0 */
+		ret = dev_pm_opp_adjust_voltage(ofdev[0], tmp_f[0],
+						(ulong)max_v,
+						(ulong)max_v,
+						(ulong)max_v);
+
+		/* decrease freq for dev_pm_opp_find_freq_floor to get next opp */
+		for (idx2 = 0; idx2 < dev_cnt; idx2++)
+			tmp_f[idx2] --;
+	}
+
+free_opp:
+	devm_kfree(dev, opp);
+free_f:
+	devm_kfree(dev, tmp_f);
+free_v:
+	devm_kfree(dev, tmp_v);
+out:
+	return ret;
+}
+
+static int mt6877_vb_lb(struct device *dev)
+{
+	int err = 0, idx = 0;
+	struct device **ofdev0 = NULL;
+
+	ofdev0 = devm_kzalloc(dev, (sizeof(*ofdev0) * MT6877_VPU_TBL_SZ), GFP_KERNEL);
+	if (!ofdev0) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	/* get interpolate need devs */
+	for (idx = 0; idx < MT6877_VPU_TBL_SZ; idx++)
+		ofdev0[idx] = bus_find_device_by_name(&platform_bus_type,
+									NULL, mt6877_vpu_tables[idx]);
+
+	err = _mt6877_set_vb_v(dev, ofdev0, MT6877_VPU_TBL_SZ);
+	if (err)
+		goto free_ofdev;
+
+	dev_info(dev, "Final opp table %s\n", dev_name(ofdev0[0]));
+	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev0[0]), "APUVB final", 1);
+	dev_info(dev, "APUVB final ----------------------\n");
+
+free_ofdev:
+	devm_kfree(dev, ofdev0);
 out:
 	return err;
 }
@@ -268,8 +398,14 @@ static const struct apu_plat_data mt6893_vb_data = {
 	.vb_lb = mt6893_vb_lb,
 };
 
+static const struct apu_plat_data mt6877_vb_data = {
+	.user = APUVB,
+	.vb_lb = mt6877_vb_lb,
+};
+
 static const struct of_device_id vb_of_match[] = {
 	{ .compatible = "mtk6893,vb", .data = &mt6893_vb_data},
+	{ .compatible = "mtk6877,vb", .data = &mt6877_vb_data},
 	{ },
 };
 

@@ -53,6 +53,8 @@ struct apu_dev {
 	struct opp_table *oppt;
 
 	int bin_idx;
+	int bin_h_idx;
+	int bin_m_idx;
 	int seg_idx;
 
 	int threshold_opp;   /* located in child's gov */
