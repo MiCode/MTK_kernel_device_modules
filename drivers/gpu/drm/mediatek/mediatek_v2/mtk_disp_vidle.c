@@ -162,6 +162,24 @@ void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct 
 	disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user);
 }
 
+int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
+{
+	int ret = 0;
+
+	if (disp_dpc_driver.dpc_vidle_power_keep == NULL ||
+		disp_dpc_driver.dpc_vidle_power_release == NULL) {
+		DDPMSG("%s power_on[%d] power ctrl api is null\n", __func__, power_on);
+		return -1;
+	}
+
+	if (power_on)
+		ret = disp_dpc_driver.dpc_vidle_power_keep(DISP_VIDLE_FORCE_KEEP);
+	else
+		disp_dpc_driver.dpc_vidle_power_release(DISP_VIDLE_FORCE_KEEP);
+
+	return ret;
+}
+
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)

@@ -51,6 +51,7 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user);
 void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user,
 				      struct cmdq_pkt *pkt, u16 gpr);
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt);
+int mtk_vidle_force_power_ctrl_by_cpu(bool power_on);
 int mtk_vidle_pq_power_get(const char *caller);
 void mtk_vidle_pq_power_put(const char *caller);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
