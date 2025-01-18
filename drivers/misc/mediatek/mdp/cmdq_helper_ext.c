@@ -733,7 +733,7 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 						"Reg%d\n", arg_c_i);
 				} else {
 					reqLen = snprintf(textBuf, bufLen,
-						"%d\n", CMDQ_REG_REVERT_ADDR(
+						"%d\n", (u32)CMDQ_REG_REVERT_ADDR(
 						arg_c_i));
 				}
 				bufLen -= reqLen;
@@ -781,7 +781,7 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 					"Reg%d) jump ", arg_c_i);
 			} else {
 				reqLen = snprintf(textBuf, bufLen,
-					"%d) jump ", CMDQ_REG_REVERT_ADDR(
+					"%d) jump ", (u32)CMDQ_REG_REVERT_ADDR(
 					arg_c_i));
 			}
 			bufLen -= reqLen;

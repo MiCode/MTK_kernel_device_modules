@@ -47,6 +47,12 @@ enum CMDQ_SECURE_STATE_ENUM {
 	CMDQ_TEE_STATE = 1,
 };
 
+enum CMDQ_POLL_TYPE {
+	CMDQ_POLL_TIMEOUT,
+	CMDQ_POLL,
+	CMDQ_POLL_SLEEP,
+};
+
 struct test_node {
 	struct device	*dev;
 	void __iomem	*va;
@@ -342,7 +348,7 @@ u32 *cmdq_test_mbox_polling_timeout_unit(struct cmdq_pkt *pkt,
 }
 
 void cmdq_test_mbox_polling(
-	struct cmdq_test *test, const bool secure, const bool timeout,
+	struct cmdq_test *test, const bool secure, enum CMDQ_POLL_TYPE timeout,
 	const bool aee)
 {
 	unsigned long	va = (unsigned long)(secure ?
@@ -387,26 +393,36 @@ void cmdq_test_mbox_polling(
 #endif
 
 		cmdq_pkt_wfe(pkt[i], test->token_for_ut);
-		if (timeout)
+		switch (timeout) {
+		case CMDQ_POLL_TIMEOUT:
 			out_va = cmdq_test_mbox_polling_timeout_unit(
 				pkt[i], pa, pttn[i], mask[i], aee);
-		else
+			break;
+		case CMDQ_POLL:
 			cmdq_pkt_poll(pkt[i], NULL, pttn[i] & mask[i], pa,
 				mask[i], CMDQ_GPR_DEBUG_TIMER);
+			break;
+		case CMDQ_POLL_SLEEP:
+			cmdq_pkt_poll_sleep(pkt[i], pttn[i] & mask[i], pa, mask[i]);
+			break;
+		default:
+			cmdq_err("append poll instr fail, timeout:%d", timeout);
+			break;
+		}
 
 		cmdq_pkt_set_event(pkt[i], test->token_for_ut);
 
 		cpu_time = sched_clock();
 		cmdq_pkt_flush_async(pkt[i], NULL, NULL);
 
-		if (!timeout) {
+		if (timeout != CMDQ_POLL_TIMEOUT) {
 			writel(pttn[i] & mask[i], (void *)va);
 			val = readl((void *)va);
 		}
 		cmdq_pkt_wait_complete(pkt[i]);
 		cpu_time = div_u64(sched_clock() - cpu_time, 1000000);
 
-		if (!timeout)
+		if (timeout != CMDQ_POLL_TIMEOUT)
 			gce_time = 0;
 		else if (*out_va <= *(out_va + 1))
 			gce_time = *(out_va + 1) - *out_va;
@@ -1163,9 +1179,9 @@ static void cmdq_test_mbox_prebuilt_instr_ext_table(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
-		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base),
-		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base +
+		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base),
+		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base +
 			pkt->cmd_buf_size));
 
 	for (i = 0; i < pkt->cmd_buf_size / CMDQ_INST_SIZE; i++)
@@ -1305,9 +1321,9 @@ static void cmdq_test_mbox_prebuilt_instr(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
-		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base),
-		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base +
+		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base),
+		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base +
 			pkt->cmd_buf_size));
 
 	for (i = 0; i < pkt->cmd_buf_size / CMDQ_INST_SIZE; i++)
@@ -1587,8 +1603,12 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec, const
 		cmdq_test_mbox_flush(test, sec, true);
 		break;
 	case 3:
-		cmdq_test_mbox_polling(test, sec, false, false);
-		cmdq_test_mbox_polling(test, sec, true, false);
+		cmdq_msg("%s start pkt_poll", __func__);
+		cmdq_test_mbox_polling(test, sec, CMDQ_POLL, false);
+		cmdq_msg("%s start pkt_poll_timeout", __func__);
+		cmdq_test_mbox_polling(test, sec, CMDQ_POLL_TIMEOUT, false);
+		cmdq_msg("%s start pkt_poll_sleep", __func__);
+		cmdq_test_mbox_polling(test, sec, CMDQ_POLL_SLEEP, false);
 		break;
 	case 4:
 		cmdq_test_mbox_dma_access(test, sec);
@@ -1868,22 +1888,9 @@ static int cmdq_test_remove(struct platform_device *pdev)
 {
 	struct cmdq_test *test = (struct cmdq_test *)platform_get_drvdata(pdev);
 
-	cmdq_msg("%s entry ++", __func__);
-
-	if (test->clt)
-		cmdq_mbox_destroy(test->clt);
-	else
-		cmdq_err("%s: test->clt:0x%p", __func__, test->clt);
-	if (test->loop)
-		cmdq_mbox_destroy(test->loop);
-	else
-		cmdq_err("%s: test->loop:0x%p", __func__, test->loop);
-	if (test->sec)
-		cmdq_mbox_destroy(test->sec);
-	else
-		cmdq_err("%s: test->sec:0x%p", __func__, test->sec);
-
-	cmdq_msg("%s leave --", __func__);
+	cmdq_mbox_destroy(test->clt);
+	cmdq_mbox_destroy(test->loop);
+	cmdq_mbox_destroy(test->sec);
 	return 0;
 }
 

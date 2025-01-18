@@ -84,6 +84,7 @@ enum cmdq_code {
 	CMDQ_CODE_POLL  = 0x08,
 	CMDQ_CODE_JUMP = 0x10,
 	CMDQ_CODE_WFE = 0x20,
+	CMDQ_CODE_POLL_SLEEP = 0x30,
 	CMDQ_CODE_EOC = 0x40,
 
 	/* these are pseudo op code defined by SW */
@@ -121,6 +122,7 @@ enum cmdq_aee_type {
 enum cmdq_log_type {
 	CMDQ_PWR_CHECK = 0,
 };
+
 
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
 
@@ -193,18 +195,20 @@ struct cmdq_pkt {
 	cmdq_aee_cb		aee_cb;
 	void			*user_priv; /* cmdq user use only */
 	u32			vcp_eng;
-	bool		no_pool;
-	bool		no_irq;
-	struct cmdq_append append;
 #if IS_ENABLED(CONFIG_MTK_MT6382_BDG)
 	void			*bdg_data;
 	bool			reuse;
 #endif
+	bool		no_pool;
+	bool		no_irq;
+	struct cmdq_append append;
+
 	struct work_struct	destroy_work;
 	u32			write_addr_high;
 	struct device	*share_dev;
 	size_t			create_instr_cnt;
 	bool			timeout_dump_hw_trace;
+	bool		support_spr3_timer;
 };
 
 struct cmdq_thread {
@@ -384,8 +388,10 @@ struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev);
 s32 cmdq_mbox_set_hw_id(void *cmdq);
 s32 cmdq_mbox_reset_hw_id(void *cmdq);
 s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id);
+s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt);
+s32 cmdq_thread_set_vm(struct cmdq_thread *thread);
 
-#if IS_ENABLED(CONFIG_DEBUG_FS)
+#if IS_ENABLED(CONFIG_MMPROFILE)
 void cmdq_mmp_wait(struct mbox_chan *chan, void *pkt);
 #endif
 
