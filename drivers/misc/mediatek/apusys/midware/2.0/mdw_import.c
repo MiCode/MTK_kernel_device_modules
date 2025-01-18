@@ -12,6 +12,8 @@
 #include "apummu_mem_def.h"
 #include "mnoc_api.h"
 #include "apusys_power.h"
+#include "apu_mem_export.h"
+#include "apu_mem_def.h"
 
 bool mdw_pwr_check(void)
 {
@@ -59,7 +61,7 @@ int mdw_rvs_get_vlm_property(uint64_t *start, uint32_t *size)
 		(unsigned int *)size);
 }
 
-static int mdw_rvs_type_convert(uint32_t type, uint32_t *out)
+static int mdw_mem_type_convert(uint32_t type, uint32_t *out)
 {
 	switch (type) {
 	case MDW_MEM_TYPE_VLM:
@@ -82,60 +84,60 @@ static int mdw_rvs_type_convert(uint32_t type, uint32_t *out)
 	return 0;
 }
 
-int mdw_rvs_mem_alloc(uint32_t type, uint32_t size,
+int mdw_apu_mem_alloc(uint32_t type, uint32_t size,
 	uint64_t *addr, uint32_t *sid)
 {
 	uint32_t mapped_type = 0;
 	int ret = 0;
 
-	if (mdw_rvs_type_convert(type, &mapped_type))
+	if (mdw_mem_type_convert(type, &mapped_type))
 		return -EINVAL;
 
-	ret = apummu_alloc_mem(mapped_type, size, addr, sid);
+	ret = apu_mem_alloc(mapped_type, size, addr, sid);
 	mdw_flw_debug("type(%u->%u)size(%u)addr(0x%llx)sid(%u)\n",
 		type, mapped_type, size, *addr, *sid);
 
 	return ret;
 }
 
-int mdw_rvs_mem_free(uint32_t sid)
+int mdw_apu_mem_free(uint32_t sid)
 {
 	mdw_flw_debug("sid(%u)\n", sid);
-	return apummu_free_mem(sid);
+	return apu_mem_free(sid);
 }
 
-int mdw_rvs_mem_import(uint64_t session, uint32_t sid)
+int mdw_apu_mem_import(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return apummu_import_mem(session, sid);
+	return apu_mem_import(session, sid);
 }
 
-int mdw_rvs_mem_unimport(uint64_t session, uint32_t sid)
+int mdw_apu_mem_unimport(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return apummu_unimport_mem(session, sid);
+	return apu_mem_unimport(session, sid);
 }
 
-int mdw_rvs_mem_map(uint64_t session, uint32_t sid, uint64_t *vaddr)
+int mdw_apu_mem_map(uint64_t session, uint32_t sid, uint64_t *vaddr)
 {
 	int ret = 0;
 
-	ret = apummu_map_mem(session, sid, vaddr);
+	ret = apu_mem_map(session, sid, vaddr);
 	mdw_flw_debug("s(0x%llx)sid(%u)vaddr(0x%llx)\n",
 		session, sid, *vaddr);
 
 	return ret;
 }
 
-int mdw_rvs_mem_unmap(uint64_t session, uint32_t sid)
+int mdw_apu_mem_unmap(uint64_t session, uint32_t sid)
 {
 	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
-	return apummu_unmap_mem(session, sid);
+	return apu_mem_unmap(session, sid);
 }
 
 int mdw_ammu_eva2iova(uint64_t eva, uint64_t *iova)
 {
-	return apummu_eva2iova(eva, iova);
+	return apu_mem_iova_decode(eva, iova);
 }
 
 int mdw_qos_cmd_start(uint64_t cmd_id, uint64_t sc_id,

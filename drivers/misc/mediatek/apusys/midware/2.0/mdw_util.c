@@ -13,6 +13,8 @@ static int mdw_util_info(struct mdw_fpriv *mpriv, uint32_t type, uint64_t val)
 
 	switch (type) {
 	case MDW_UTIL_INFO_POWERPOLICY:
+		if (mdev->uapi_ver < 4)
+			break;
 		/* only performance mode can be set by user */
 		if (val == MDW_POWERPOLICY_PERFORMANCE)
 			ret = mdev->dev_funcs->pb_get(MDW_POWERPOLICY_PERFORMANCE, MDW_PB_DEBOUNCE_MS);

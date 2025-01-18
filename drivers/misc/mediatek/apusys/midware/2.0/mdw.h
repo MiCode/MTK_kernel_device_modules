@@ -64,6 +64,17 @@
 #define MDW_POLL_TIMEOUT (4*1000) //us
 #define MDW_POLLTIME_SLEEP_TH(x) (x*65/100) //us
 
+/* cmd deubg */
+#define mdw_cmd_show(c, f) \
+	f("cmd(0x%llx/0x%llx/0x%llx/0x%llx/%d/%u)param(%u/%u/%u/%u/"\
+	"%u/%u/%u/%u/%u/%llu)subcmds(%u/%pK/%u/%u)pid(%d/%d)(%d)\n", \
+	(uint64_t) c->mpriv, c->uid, c->kid, c->rvid, c->id, kref_read(&c->ref), \
+	c->priority, c->hardlimit, c->softlimit, \
+	c->power_save, c->power_plcy, c->power_dtime, \
+	c->app_type, c->inference_ms, c->tolerance_ms, c->is_dtime_set, \
+	c->num_subcmds, c->cmdbufs, c->num_cmdbufs, c->size_cmdbufs, \
+	c->pid, c->tgid, task_pid_nr(current))
+
 struct mdw_fpriv;
 struct mdw_device;
 struct mdw_mem;
@@ -242,8 +253,6 @@ struct mdw_device {
 	uint32_t dla_mask;
 	uint32_t dma_mask;
 
-	/* mdw version */
-	uint32_t mdw_ver;
 	/* user interface version */
 	uint32_t uapi_ver;
 
@@ -301,6 +310,7 @@ struct mdw_fpriv {
 	struct mutex mtx;
 	struct mdw_mem_pool cmd_buf_pool;
 	struct idr cmds;
+	struct list_head cmds_list;
 	atomic_t active_cmds;
 	atomic_t exec_seqno;
 
@@ -395,6 +405,7 @@ struct mdw_cmd {
 	struct mdw_subcmd_link_v1 *links;
 
 	struct mutex mtx;
+	struct list_head u_item;
 	struct list_head map_invokes; //mdw_cmd_map_invoke
 	struct list_head d_node; //mdev->d_cmds
 
@@ -488,18 +499,22 @@ struct mdw_dev_func {
 #define aps_exception(reason, args...)
 #endif
 
+void mdw_ap_set_func(struct mdw_device *mdev);
 void mdw_rv_set_func(struct mdw_device *mdev);
 
 long mdw_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
 int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data);
 int mdw_mem_ioctl(struct mdw_fpriv *mpriv, void *data);
-int mdw_cmd_ioctl(struct mdw_fpriv *mpriv, void *data);
-int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args);
+int mdw_cmd_ioctl_v2(struct mdw_fpriv *mpriv, void *data);
+int mdw_cmd_ioctl_v3(struct mdw_fpriv *mpriv, void *data);
+int mdw_cmd_ioctl_v4(struct mdw_fpriv *mpriv, void *data);
+int mdw_cmd_ioctl_run_v4(struct mdw_fpriv *mpriv, union mdw_cmd_args *args);
 int mdw_util_ioctl(struct mdw_fpriv *mpriv, void *data);
 
 void mdw_cmd_delete(struct mdw_cmd *c);
 int mdw_cmd_invoke_map(struct mdw_cmd *c, struct mdw_mem_map *map);
 void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv);
+void mdw_cmd_mpriv_release_v2(struct mdw_fpriv *mpriv);
 void mdw_mem_mpriv_release(struct mdw_fpriv *mpriv);
 void mdw_cmd_put(struct mdw_cmd *c);
 void mdw_cmd_get(struct mdw_cmd *c);
@@ -535,5 +550,29 @@ int mdw_dev_validation(struct mdw_fpriv *mpriv, uint32_t dtype,
 void mdw_cmd_history_init(struct mdw_device *mdev);
 void mdw_cmd_history_deinit(struct mdw_device *mdev);
 struct mdw_cmd_history_tbl *mdw_cmd_ch_tbl_find(struct mdw_cmd *c);
+
+void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+void mdw_cmd_put_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+int mdw_cmd_get_apummutable(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+int mdw_cmd_create_infos(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+void mdw_cmd_delete_infos(struct mdw_fpriv *mpriv, struct mdw_cmd *c);
+void mdw_cmd_check_rets(struct mdw_cmd *c, int ret);
+int mdw_cmd_sanity_check(struct mdw_cmd *c);
+int mdw_cmd_sc_sanity_check(struct mdw_cmd *c);
+int mdw_cmd_link_check(struct mdw_cmd *c);
+int mdw_cmd_adj_check(struct mdw_cmd *c);
+void mdw_cmd_delete_async(struct mdw_cmd *c);
+void mdw_cmd_unvoke_map(struct mdw_cmd *c);
+int mdw_cmd_ioctl_del(struct mdw_fpriv *mpriv, union mdw_cmd_args *args);
+void mdw_cmd_history_reset(struct mdw_fpriv *mpriv);
+
+uint64_t mdw_fence_ctx_alloc(struct mdw_device *mdev);
+void mdw_fence_ctx_free(struct mdw_device *mdev, uint64_t ctx);
+const char *mdw_fence_get_driver_name(struct dma_fence *fence);
+const char *mdw_fence_get_timeline_name(struct dma_fence *fence);
+bool mdw_fence_enable_signaling(struct dma_fence *fence);
+void mdw_fence_release(struct dma_fence *fence);
+int mdw_fence_init(struct mdw_cmd *c, int fd);
 
 #endif
