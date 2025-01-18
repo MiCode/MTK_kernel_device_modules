@@ -8260,12 +8260,12 @@ static irqreturn_t mtk_oddmr_check_framedone(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(oddmr_priv))
 		return IRQ_NONE;
 
-	if (mtk_drm_top_clk_isr_get("oddmr_irq") == false) {
+	comp = &oddmr_priv->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
 
-	comp = &oddmr_priv->ddp_comp;
 	status_raw = mtk_oddmr_read(comp, DISP_ODDMR_IRQ_RAW_STATUS);
 	status = mtk_oddmr_read(comp, DISP_ODDMR_IRQ_STATUS);
 	mtk_oddmr_write(comp, status, DISP_ODDMR_IRQ_CLEAR, NULL);
@@ -8369,7 +8369,7 @@ static irqreturn_t mtk_oddmr_check_framedone(int irq, void *dev_id)
 		mtk_smi_dbg_hang_detect("oddmr err");
 	}
 	ret = IRQ_HANDLED;
-	mtk_drm_top_clk_isr_put("oddmr_irq");
+	mtk_drm_top_clk_isr_put(comp);
 
 	return ret;
 }

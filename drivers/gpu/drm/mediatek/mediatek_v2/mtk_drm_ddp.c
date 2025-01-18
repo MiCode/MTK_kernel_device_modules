@@ -29651,7 +29651,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	irq_time[irq_time_index].time = sched_clock();
 	irq_time_index++;
 
-	if (mtk_drm_top_clk_isr_get("mutex_irq") == false) {
+	if (mtk_drm_top_clk_isr_get(&ddp->ddp_comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
@@ -29801,7 +29801,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	ret = IRQ_HANDLED;
 
 out:
-	mtk_drm_top_clk_isr_put("mutex_irq");
+	mtk_drm_top_clk_isr_put(&ddp->ddp_comp);
 
 	return ret;
 }
@@ -35601,6 +35601,8 @@ static int mtk_ddp_probe(struct platform_device *pdev)
 				"ovlsys-num", &dispsys_num);
 
 	ddp->ovlsys_num = dispsys_num;
+
+	ddp->ddp_comp.id = 2;	/* borrow an unuse id DDP_COMPONENT_BLS */
 
 	num_irqs = platform_irq_count(pdev);
 	if (num_irqs) {

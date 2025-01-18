@@ -135,14 +135,14 @@ static irqreturn_t disp_dither_irq_handler(int irq, void *dev_id)
 
 	comp = &dither_data->ddp_comp;
 
-	if (mtk_drm_top_clk_isr_get("dither_irq") == false) {
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
 	status = readl(comp->regs + DISP_DITHER_INTSTA);
 	writel(status & ~0x3, comp->regs + DISP_DITHER_INTSTA);
 	disp_dither_on_end_of_frame(comp, status);
-	mtk_drm_top_clk_isr_put("dither_irq");
+	mtk_drm_top_clk_isr_put(comp);
 
 	return IRQ_HANDLED;
 }

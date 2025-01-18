@@ -6587,7 +6587,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 			atomic_read(&top_isr_ref));
 }
 
-bool mtk_drm_top_clk_isr_get(char *master)
+bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags = 0;
 	int ret = 0;
@@ -6595,18 +6595,23 @@ bool mtk_drm_top_clk_isr_get(char *master)
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_irqsave(&top_clk_lock, flags);
 		if (atomic_read(&top_clk_ref) <= 0) {
-			DDPPR_ERR("%s, top clk off at %s\n",
-				  __func__, master ? master : "NULL");
 			spin_unlock_irqrestore(&top_clk_lock, flags);
+			DDPPR_ERR("%s, top clk off at %s\n", __func__, mtk_dump_comp_str(comp));
 			return false;
 		}
 		atomic_inc(&top_isr_ref);
 		if (g_dpc_dev) {
-			ret = pm_runtime_resume_and_get(g_dpc_dev);
-			if (unlikely(ret)) {
-				DDPMSG("%s pm_runtime_resume_and_get fail\n", __func__);
-				spin_unlock_irqrestore(&top_clk_lock, flags);
-				return ret;
+			comp->pm_ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_TOP_CLK_ISR);
+			if (comp->pm_ret == 2) {
+				DRM_MMP_EVENT_START(top_clk, comp->id, 0);
+				ret = pm_runtime_resume_and_get(g_dpc_dev);
+				if (unlikely(ret)) {
+					comp->pm_ret = 0;
+					spin_unlock_irqrestore(&top_clk_lock, flags);
+					DDPMSG("%s pm_runtime_resume_and_get fail\n", __func__);
+					return ret;
+				}
+				DRM_MMP_EVENT_END(top_clk, comp->id, 0);
 			}
 		}
 		spin_unlock_irqrestore(&top_clk_lock, flags);
@@ -6614,7 +6619,7 @@ bool mtk_drm_top_clk_isr_get(char *master)
 	return true;
 }
 
-void mtk_drm_top_clk_isr_put(char *master)
+void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags = 0;
 
@@ -6624,14 +6629,18 @@ void mtk_drm_top_clk_isr_put(char *master)
 
 		/* when timeout of polling isr ref in unpreare top clk*/
 		if (atomic_read(&top_clk_ref) <= 0) {
-			DDPPR_ERR("%s, top clk off at %s\n",
-				  __func__, master ? master : "NULL");
 			spin_unlock_irqrestore(&top_clk_lock, flags);
+			DDPPR_ERR("%s, top clk off at %s\n", __func__, mtk_dump_comp_str(comp));
 			return;
 		}
 		atomic_dec(&top_isr_ref);
-		if (g_dpc_dev)
-			pm_runtime_put(g_dpc_dev);
+		if (g_dpc_dev) {
+			if (comp->pm_ret == 2) {
+				pm_runtime_put(g_dpc_dev);
+				comp->pm_ret = 0;
+			}
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_TOP_CLK_ISR);
+		}
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 }

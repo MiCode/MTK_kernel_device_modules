@@ -511,8 +511,8 @@ struct mtk_panel_params *mtk_drm_get_lcm_ext_params(struct drm_crtc *crtc);
 struct mtk_panel_funcs *mtk_drm_get_lcm_ext_funcs(struct drm_crtc *crtc);
 bool mtk_drm_session_mode_is_decouple_mode(struct drm_device *dev);
 bool mtk_drm_session_mode_is_mirror_mode(struct drm_device *dev);
-bool mtk_drm_top_clk_isr_get(char *master);
-void mtk_drm_top_clk_isr_put(char *master);
+bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp);
+void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp);
 int lcm_fps_ctx_init(struct drm_crtc *crtc);
 int lcm_fps_ctx_reset(struct drm_crtc *crtc);
 int lcm_fps_ctx_update(unsigned long long cur_ns,

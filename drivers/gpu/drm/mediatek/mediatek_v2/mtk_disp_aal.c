@@ -3046,10 +3046,12 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(aal))
 		return IRQ_NONE;
 
-	if (mtk_drm_top_clk_isr_get("aal_irq") == false) {
+	comp = &aal->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
+
 	mtk_crtc = aal->ddp_comp.mtk_crtc;
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
@@ -3057,7 +3059,6 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 		goto out;
 	}
 
-	comp = &aal->ddp_comp;
 	comp1 = aal->companion;
 	status0 = disp_aal_read_clear_irq(comp);
 	if (mtk_crtc->is_dual_pipe && comp1)
@@ -3089,7 +3090,7 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 
 	ret = IRQ_HANDLED;
 out:
-	mtk_drm_top_clk_isr_put("aal_irq");
+	mtk_drm_top_clk_isr_put(comp);
 
 	return ret;
 }

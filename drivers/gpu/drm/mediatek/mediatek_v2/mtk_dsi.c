@@ -3143,16 +3143,18 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	unsigned int doze_wait = 0, index = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
+	struct mtk_ddp_comp *comp = NULL;
 
 	if (IS_ERR_OR_NULL(dsi))
 		return IRQ_NONE;
 
-	if (mtk_drm_top_clk_isr_get("dsi_irq") == false) {
+	comp = &dsi->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
 
-	mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	mtk_crtc = comp->mtk_crtc;
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
 		ret = IRQ_NONE;
@@ -3183,15 +3185,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		if (__ratelimit(&mmp_rate))
 			DRM_MMP_MARK(dsi, underrun_cnt, status);
 	} else {
-		if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0)
+		if (comp->id == DDP_COMPONENT_DSI0)
 			DRM_MMP_MARK(dsi0, status, 0);
-		else if (dsi->ddp_comp.id == DDP_COMPONENT_DSI1)
+		else if (comp->id == DDP_COMPONENT_DSI1)
 			DRM_MMP_MARK(dsi1, status, 0);
-		else if (dsi->ddp_comp.id == DDP_COMPONENT_DSI2)
+		else if (comp->id == DDP_COMPONENT_DSI2)
 			DRM_MMP_MARK(dsi2, status, 0);
 	}
 
-	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(&dsi->ddp_comp), status);
+	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(comp), status);
 	/*
 	 * rd_rdy don't clear and wait for ESD &
 	 * Read LCM will clear the bit.
@@ -3219,11 +3221,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				MTK_DRM_OPT_DSI_UNDERRUN_AEE)) && trigger_aee) {
 #if IS_ENABLED(CONFIG_ARM64)
 				DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
-					mtk_dump_comp_str(&dsi->ddp_comp),
+					mtk_dump_comp_str(comp),
 					(u32)arch_timer_read_counter());
 #else
 				DDPAEE("[IRQ] %s:buffer underrun\n",
-					mtk_dump_comp_str(&dsi->ddp_comp));
+					mtk_dump_comp_str(comp));
 #endif
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
@@ -3254,26 +3256,26 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			if (__ratelimit(&print_rate))
 				DDPPR_ERR(pr_fmt("[IRQ] %s: buffer underrun\n"),
-					mtk_dump_comp_str(&dsi->ddp_comp));
+					mtk_dump_comp_str(comp));
 
 			if (mtk_crtc)
 				atomic_set(&mtk_crtc->force_high_step, 1);
 
 			/* disable dsi underrun irq*/
 			en = 0;
-			mtk_ddp_comp_io_cmd(&dsi->ddp_comp, NULL, IRQ_UNDERRUN, &en);
+			mtk_ddp_comp_io_cmd(comp, NULL, IRQ_UNDERRUN, &en);
 		}
 
 		//if (status & INP_UNFINISH_INT_EN)
 			//DDPPR_ERR("[IRQ] %s: input relay unfinish\n",
-				  //mtk_dump_comp_str(&dsi->ddp_comp));
+				  //mtk_dump_comp_str(comp));
 
 		if (status & SLEEPOUT_DONE_INT_FLAG) {
 			if (atomic_read(&dsi->ulps_async) == 0) {
 				wakeup_dsi_wq(&dsi->exit_ulps_done);
 			} else {
 				mtk_dsi_ulps_exit_end(dsi);
-				if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+				if (mtk_dsi_is_cmd_mode(comp))
 					mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 								(EXT_TE_EN | HSTX_CKLP_EN));
 				mtk_dsi_set_mode(dsi);
@@ -3285,7 +3287,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 				atomic_set(&dsi->ulps_async, 0);
 				crtc = dsi->encoder.crtc;
-				mtk_drm_idlemgr_async_put(crtc, dsi->ddp_comp.id);
+				mtk_drm_idlemgr_async_put(crtc, comp->id);
 			}
 		}
 
@@ -3296,23 +3298,23 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_dsi_ulps_enter_end(dsi, priv);
 				atomic_set(&dsi->ulps_async, 0);
 				crtc = dsi->encoder.crtc;
-				mtk_drm_idlemgr_async_put(crtc, dsi->ddp_comp.id);
+				mtk_drm_idlemgr_async_put(crtc, comp->id);
 			}
 		}
 
 		if ((status & TE_RDY_INT_FLAG) &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
-			if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI2) {
+			if (comp->id == DDP_COMPONENT_DSI0 ||
+				comp->id == DDP_COMPONENT_DSI1 ||
+				comp->id == DDP_COMPONENT_DSI2) {
 				unsigned long long ext_te_time = sched_clock();
 				lcm_fps_ctx_update(ext_te_time, 0, 0);
 			}
 
-			if ((dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
-				dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
-				mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			if ((comp->id == DDP_COMPONENT_DSI0 ||
+				comp->id == DDP_COMPONENT_DSI1 ||
+				comp->id == DDP_COMPONENT_DSI2) &&
+				mtk_dsi_is_cmd_mode(comp)) {
 				unsigned long flags;
 
 				spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
@@ -3326,7 +3328,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->te_rdy);
 
-			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			if (mtk_dsi_is_cmd_mode(comp)) {
 				panel_ext = dsi->ext;
 				if (dsi->skip_vblank == 0
 					|| (panel_ext && panel_ext->params->skip_vblank == 0)) {
@@ -3397,13 +3399,13 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if (status & TARGET_LINE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-					(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-					 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
-					 dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
+				if (!mtk_dsi_is_cmd_mode(comp) &&
+					(comp->id == DDP_COMPONENT_DSI0 ||
+					 comp->id == DDP_COMPONENT_DSI1 ||
+					 comp->id == DDP_COMPONENT_DSI2) &&
 					(priv->data->mmsys_id == MMSYS_MT6989 ||
 					 priv->data->mmsys_id == MMSYS_MT6991)) {
-					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0001);
+					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0001);
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
 					wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
 				}
@@ -3412,11 +3414,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if (status & FRAME_DONE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-					(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-					 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
-					 dsi->ddp_comp.id == DDP_COMPONENT_DSI2)) {
-					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0000);
+				if (!mtk_dsi_is_cmd_mode(comp) &&
+					(comp->id == DDP_COMPONENT_DSI0 ||
+					 comp->id == DDP_COMPONENT_DSI1 ||
+					 comp->id == DDP_COMPONENT_DSI2)) {
+					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0000);
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 				}
 			}
@@ -3427,17 +3429,17 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->frame_done);
 
-			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-				(dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
-				 dsi->ddp_comp.id == DDP_COMPONENT_DSI1 ||
-				 dsi->ddp_comp.id == DDP_COMPONENT_DSI2) &&
+			if (!mtk_dsi_is_cmd_mode(comp) &&
+				(comp->id == DDP_COMPONENT_DSI0 ||
+				 comp->id == DDP_COMPONENT_DSI1 ||
+				 comp->id == DDP_COMPONENT_DSI2) &&
 					mtk_crtc->pf_ts_type == IRQ_DSI_EOF) {
 				mtk_crtc->pf_time = ktime_get();
 				atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
 				wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 			}
 
-			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
+			if (!mtk_dsi_is_cmd_mode(comp) &&
 				mtk_crtc->vblank_en) {
 				panel_ext = dsi->ext;
 				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
@@ -3471,7 +3473,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	ret = IRQ_HANDLED;
 
 out:
-	mtk_drm_top_clk_isr_put("dsi_irq");
+	mtk_drm_top_clk_isr_put(comp);
 
 	return ret;
 }
