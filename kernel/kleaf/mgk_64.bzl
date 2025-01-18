@@ -1607,6 +1607,7 @@ def get_overlay_modules_list():
 
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6765.ko":"mt6765"})
 
 
 get_overlay_modules_list()
