@@ -10139,6 +10139,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		scp-infracfg = <&infracfg_ao_clk>;
 	};
 
+	scp_clk_ctrl_vlp: scp-clk-ctrl-vlp@1c00192c {
+		compatible = "mediatek,scp-clk-ctrl-vlp", "syscon";
+		reg = <0 0x1c00192c 0 0x14>;
+	};
+
 	scp_clk_ctrl: scp-clk-ctrl@1cf21000 {
 		compatible = "mediatek,scp-clk-ctrl", "syscon";
 		reg = <0 0x1cf21000 0 0x1000>;
@@ -10168,6 +10173,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		fmeter-clksys = <&vlp_cksys_clk>;
 		ulposc-clksys = <&vlp_cksys_clk>;
 		scp-clk-ctrl = <&scp_clk_ctrl>;
+		scp-clk-ctrl-vlp = <&scp_clk_ctrl_vlp>;
 		scp-clk-hw-ver = "v1";
 		ulposc-cali-ver = "v3";
 		ulposc-cali-alg-ver = <2>;
