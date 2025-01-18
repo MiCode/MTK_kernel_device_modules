@@ -209,6 +209,7 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 			ret = iommu_map(domain, APU_SEC_FW_IOVA,
 				apu->apusys_sec_mem_start,
 				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV, GFP_KERNEL);
+
 		if (ret) {
 			dev_info(dev, "%s: iommu_map fail(%d)\n", __func__, ret);
 			return ret;
@@ -252,6 +253,7 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
 			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
 				sgt.nents, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV, GFP_KERNEL);
+
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		dev_info(dev, "%s: map_sg_sz = %d\n", __func__, map_sg_sz);
@@ -398,9 +400,8 @@ static int apu_probe(struct platform_device *pdev)
 			apu->apusys_aee_coredump_mem_start,
 			apu->apusys_aee_coredump_mem_size);
 		apu->apu_aee_coredump_mem_base =
-			ioremap_cache(apu->apusys_aee_coredump_mem_start,
-				apu->apusys_aee_coredump_mem_size);
-
+			memremap(apu->apusys_aee_coredump_mem_start,
+				apu->apusys_aee_coredump_mem_size, MEMREMAP_WC);
 		apu->apusys_aee_coredump_info = (struct apusys_aee_coredump_info_t *)
 			apu->apu_aee_coredump_mem_base;
 	}
@@ -614,6 +615,9 @@ static int apu_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifndef MT6878_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6878_platdata;
+#endif
 #ifndef MT6879_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6879_platdata;
 #endif
@@ -641,8 +645,12 @@ const struct mtk_apu_platdata mt6989_platdata;
 #ifndef MT8188_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt8188_platdata;
 #endif
+#ifndef MT6991_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6991_platdata;
+#endif
 
 static const struct of_device_id mtk_apu_of_match[] = {
+	{ .compatible = "mediatek,mt6878-apusys_rv", .data = &mt6878_platdata},
 	{ .compatible = "mediatek,mt6879-apusys_rv", .data = &mt6879_platdata},
 	{ .compatible = "mediatek,mt6886-apusys_rv", .data = &mt6886_platdata},
 	{ .compatible = "mediatek,mt6893-apusys_rv", .data = &mt6893_platdata},
@@ -652,6 +660,7 @@ static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6985-apusys_rv", .data = &mt6985_platdata},
 	{ .compatible = "mediatek,mt6989-apusys_rv", .data = &mt6989_platdata},
 	{ .compatible = "mediatek,mt8188-apusys_rv", .data = &mt8188_platdata},
+	{ .compatible = "mediatek,mt6991-apusys_rv", .data = &mt6991_platdata},
 	{},
 };
 

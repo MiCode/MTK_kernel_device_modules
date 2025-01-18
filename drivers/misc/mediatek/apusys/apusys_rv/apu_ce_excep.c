@@ -41,8 +41,8 @@ enum CE_JOB_ID {
 	CE_JOB_ID_RCX_WAKEUP,
 	CE_JOB_ID_RCX_SLEEP,
 	CE_JOB_ID_TPPA_PLUS_PSC,
-	CE_JOB_ID_RESERVED_19,
-	CE_JOB_ID_RESERVED_20,
+	CE_JOB_ID_MNOC_BW_JOB_KICKER,
+	CE_JOB_ID_BRISKET_OUTER_LOOP,
 	CE_JOB_ID_RESERVED_21,
 	CE_JOB_ID_BW_PREDICTION,
 	CE_JOB_ID_QOS_EVENT_DRIVEN,
@@ -77,8 +77,8 @@ const char *CE_JOB_NAME[CE_JOB_ID_MAX] = {
 	"APUSYS_CE_RCX_WAKEUP",
 	"APUSYS_CE_RCX_SLEEP",
 	"APUSYS_CE_TPPA_PLUS_PSC",
-	"APUSYS_CE_RESERVED_19",
-	"APUSYS_CE_RESERVED_20",
+	"APUSYS_CE_MNOC_BW_JOB_KICKER",
+	"APUSYS_CE_BRISKET_OUTER_LOOP",
 	"APUSYS_CE_RESERVED_21",
 	"APUSYS_CE_BW_PREDICTION",
 	"APUSYS_CE_QOS_EVENT_DRIVEN",
@@ -94,9 +94,13 @@ const char *CE_JOB_NAME[CE_JOB_ID_MAX] = {
 
 const enum CE_JOB_ID CE_HW_TIMER[] = {
 	CE_JOB_ID_TPPA_PLUS_PSC,
-	CE_JOB_ID_MAX,
-	CE_JOB_ID_MAX,
+	CE_JOB_ID_MNOC_BW_JOB_KICKER,
+	CE_JOB_ID_BRISKET_OUTER_LOOP,
 	CE_JOB_ID_MAX
+};
+
+const enum CE_JOB_ID CE_HW_TIMER_EXP_BYPASS[] = {
+	CE_JOB_ID_BRISKET_OUTER_LOOP,
 };
 
 struct apu_coredump_work_struct {
@@ -179,13 +183,19 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 		apusys_ce_exception_aee_warn(get_ce_job_name_by_id(exception_job_id));
 
+		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke) {
+			dev_info(dev, "%s: wait aee_kernel_exception to generate db\n", __func__);
+			msleep(30 * 1000);
+			panic("APUSYS_CE exception: %s\n", get_ce_job_name_by_id(exception_job_id));
+		}
+
 		exception_job_id = -1;
 	}
 }
 
 static int get_exception_job_id(struct device *dev)
 {
-	uint32_t op;
+	uint32_t i, op;
 	uint32_t ce_task[4];
 	int32_t job_id, exception_ce_id, exception_timer_id;
 	uint32_t ce_flag = 0, ace_flag = 0, user_flag = 0;
@@ -287,6 +297,12 @@ static int get_exception_job_id(struct device *dev)
 
 		dev_info(dev, "HW_Timer_%d mapping to job id %d (%s)\n",
 			exception_timer_id, job_id, get_ce_job_name_by_id(job_id));
+
+		for (i = 0; i < sizeof(CE_HW_TIMER_EXP_BYPASS) / sizeof(enum CE_JOB_ID); i++)
+			if (job_id == CE_HW_TIMER_EXP_BYPASS[i]) {
+				dev_info(dev, "Bypass ce exception, job id %d\n", job_id);
+				job_id = -1;
+			}
 	}
 
 	return job_id;
@@ -363,15 +379,15 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 		/* log important register */
 		log_ce_register(dev);
 
+		if (exception_job_id == -1)
+			return -EINVAL;
+
 		/* dump ce register to apusys_ce_fw_sram buffer */
 		if (apusys_rv_smc_call(
 				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
 				(unsigned int)exception_job_id, NULL, NULL, NULL) == 0) {
 			dev_info(dev, "Dump CE register to apusys_ce_fw_sram\n");
 		}
-
-		if (exception_job_id == -1)
-			return -EINVAL;
 
 		/**
 		 * schedule task, the task will

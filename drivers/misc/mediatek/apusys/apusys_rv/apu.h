@@ -66,6 +66,8 @@ struct mtk_apu_hw_ops {
 #define F_FPGA_EP				BIT(12)
 #define F_ACCESS_RCX_IN_ATF		BIT(13)
 #define F_TCM_WA				BIT(14)
+#define F_EXCEPTION_KE			BIT(15)
+#define F_INFRA_WA				BIT(16)
 
 /* #define APUSYS_RV_FPGA_EP */
 
@@ -163,6 +165,8 @@ struct mtk_apu {
 	void *md32_debug_apb;
 	void *apu_mbox;
 	void *apu_rpc;
+	void *apu_infra;
+	void *apu_infra_hwsem;
 	void *apu_sec_mem_base;
 	void *apu_aee_coredump_mem_base;
 	void *coredump_buf;
@@ -240,6 +244,8 @@ struct mtk_apu {
 	uint32_t wake_lock_ref_cnt;
 	uint32_t ipi_pwr_ref_cnt[APU_IPI_MAX];
 	uint32_t ipi_wake_lock_ref_cnt[APU_IPI_MAX];
+
+	bool disable_ke;
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))
@@ -247,7 +253,7 @@ struct mtk_apu {
 #define TBUF_SIZE (4UL * 32UL)
 #define CACHE_DUMP_SIZE (37UL * 1024UL)
 #define DRAM_OFFSET (0x00000UL)
-#define TCM_OFFSET (0x1d000000UL)
+#define TCM_OFFSET (0x4d000000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
 #define APU_SEC_FW_IOVA (0x200000UL)
 
@@ -275,6 +281,7 @@ void apu_timesync_remove(struct mtk_apu *apu);
 int apu_debug_init(struct mtk_apu *apu);
 void apu_debug_remove(struct mtk_apu *apu);
 
+extern const struct mtk_apu_platdata mt6878_platdata;
 extern const struct mtk_apu_platdata mt6879_platdata;
 extern const struct mtk_apu_platdata mt6886_platdata;
 extern const struct mtk_apu_platdata mt6893_platdata;
@@ -284,6 +291,7 @@ extern const struct mtk_apu_platdata mt6983_platdata;
 extern const struct mtk_apu_platdata mt6985_platdata;
 extern const struct mtk_apu_platdata mt6989_platdata;
 extern const struct mtk_apu_platdata mt8188_platdata;
+extern const struct mtk_apu_platdata mt6991_platdata;
 
 extern int reviser_set_init_info(struct mtk_apu *apu);
 extern int vpu_set_init_info(struct mtk_apu *apu);
@@ -296,8 +304,8 @@ extern void apu_deepidle_exit(struct mtk_apu *apu);
 #define apu_info_ratelimited(dev, fmt, ...)  \
 {                                                \
 	static DEFINE_RATELIMIT_STATE(_rs,           \
-				      HZ * 5,                    \
-				      50);                       \
+					  HZ * 5,                    \
+					  50);                       \
 	if (__ratelimit(&_rs))                       \
 		dev_info(dev, fmt, ##__VA_ARGS__);       \
 }
