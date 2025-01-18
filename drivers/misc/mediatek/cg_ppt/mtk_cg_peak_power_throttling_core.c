@@ -92,6 +92,7 @@ struct platform_data {
 	int default_cg_ppt_mode;
 	int default_mo_gpu_curr_freq_power_calc;
 	int default_mo_onetime_power_table_calc;
+	int default_mo_gpu_low_freq_power_calc;
 	int default_defer_timer_period_ms;
 	int default_gacboost_mode;
 
@@ -108,6 +109,7 @@ static const struct platform_data default_platform_data = {
 	.default_cg_ppt_mode = 2, /*OFF*/
 	.default_mo_gpu_curr_freq_power_calc = 1,
 	.default_mo_onetime_power_table_calc = 0,
+	.default_mo_gpu_low_freq_power_calc = 0,
 	.default_defer_timer_period_ms = 1000,
 	.default_gacboost_mode = 0,
 
@@ -123,6 +125,7 @@ static const struct platform_data mt6989_platform_data = {
 	.default_cg_ppt_mode = 0,
 	.default_mo_gpu_curr_freq_power_calc = 1,
 	.default_mo_onetime_power_table_calc = 0,
+	.default_mo_gpu_low_freq_power_calc = 0,
 	.default_defer_timer_period_ms = 1000,
 	.default_gacboost_mode = 0,
 
@@ -137,8 +140,9 @@ static const struct platform_data mt6991_platform_data = {
 	/* MT6989-specific settings */
 	//.default_cg_ppt_mode = 2, /*TODO: OFF*/
 	.default_cg_ppt_mode = 12, /*mode 12: CGPPT use vsys_pb + PreOC (DX4 default)*/
-	.default_mo_gpu_curr_freq_power_calc = 1,
+	.default_mo_gpu_curr_freq_power_calc = 0, /*change*/
 	.default_mo_onetime_power_table_calc = 1, /*change*/
+	.default_mo_gpu_low_freq_power_calc = 1,  /*change*/
 	.default_defer_timer_period_ms = 1000,
 	.default_gacboost_mode = 0,
 
@@ -314,6 +318,8 @@ static int data_init(void)
 		&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc);
 	iowrite32(g_platform_data->default_mo_onetime_power_table_calc,
 		&g_dlpt_sram_layout_ptr->mo_info.mo_onetime_power_table_calc);
+	iowrite32(g_platform_data->default_mo_gpu_low_freq_power_calc,
+		&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_low_freq_power_calc);
 	iowrite32(g_platform_data->default_gacboost_mode, &g_dlpt_sram_layout_ptr->cgsm_info.gacboost_mode);
 
 	g_defer_timer_period_ms = g_platform_data->default_defer_timer_period_ms;
@@ -997,7 +1003,7 @@ static ssize_t model_option_show(struct device *dev, struct device_attribute *at
 			    char *buf)
 {
 	return snprintf(buf, PAGE_SIZE,
-	"favor_cpu: %d\nfavor_gpu: %d\nfavor_multiscene: %d\ncpu_avs: %d\ngpu_avs: %d\ngpu_curr_freq_power_calc: %d\nonetime_power_table_calc: %d\nmo_status: %u\n",
+	"favor_cpu: %d\nfavor_gpu: %d\nfavor_multiscene: %d\ncpu_avs: %d\ngpu_avs: %d\ngpu_curr_freq_power_calc: %d\nonetime_power_table_calc: %d\ngpu_low_freq_power_calc: %d\nmo_status: %u\n",
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_cpu),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_gpu),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_multiscene),
@@ -1005,6 +1011,7 @@ static ssize_t model_option_show(struct device *dev, struct device_attribute *at
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_avs),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_onetime_power_table_calc),
+	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_low_freq_power_calc),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_status));
 
 }
@@ -1034,6 +1041,7 @@ static ssize_t model_option_store(struct device *dev, struct device_attribute *a
 	_ASSIGN_MO_(gpu_avs, val);
 	_ASSIGN_MO_(gpu_curr_freq_power_calc, val);
 	_ASSIGN_MO_(onetime_power_table_calc, val);
+	_ASSIGN_MO_(gpu_low_freq_power_calc, val);
 	_ASSIGN_MO_(status, val); //RO. only for test
 
 	return count;

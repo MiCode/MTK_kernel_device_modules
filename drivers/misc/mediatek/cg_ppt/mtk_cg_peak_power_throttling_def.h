@@ -69,6 +69,7 @@
 #define MO_GPU_AVS                   (1 << 4)
 #define MO_GPU_CURR_FREQ_POWER_CALC  (1 << 5)
 #define MO_ONETIME_POWER_TABLE_CALC  (1 << 6)
+#define MO_GPU_LOW_FREQ_POWER_CALC   (1 << 7)
 
 
 /*
