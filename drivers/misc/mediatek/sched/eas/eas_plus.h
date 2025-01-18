@@ -226,6 +226,7 @@ extern void set_background_vip(unsigned int prio);
 extern void unset_background_vip(void);
 extern void set_ls_task_vip(unsigned int prio);
 extern void unset_ls_task_vip(void);
+extern void (*change_dpt_support_driver_hook) (int turn_on);
 
 extern void get_most_powerful_pd_and_util_Th(void);
 
@@ -285,6 +286,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RESET_GAS_MARG_THR		_IOW('g', 57,  int)
 #define EAS_RT_AGGRE_PREEMPT_SET    _IOW('g', 58,  unsigned int)
 #define EAS_RT_AGGRE_PREEMPT_GET    _IOW('g', 59,  unsigned int)
+#define EAS_DPT_CTRL				_IOW('g', 60,  int)
 
 
 extern void update_curr_collab_state(void);
