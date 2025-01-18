@@ -1433,12 +1433,30 @@ void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass)
 unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 {
 	struct mtk_ddp_comp *comp;
-	struct mtk_disp_c3d *c3d_data;
+	struct mtk_disp_c3d *c3d_data_0;
+	struct mtk_ddp_comp *comp1;
+	struct mtk_disp_c3d *c3d_data_1;
+	int c3d_bin_num = 0;
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 0);
-	c3d_data = comp_to_c3d(comp);
-	if (c3d_data->bin_num == num)
-		return atomic_read(&c3d_data->primary_data->c3d_force_relay);
+	if (!comp) {
+		DDPPR_ERR("%s, comp is null!\n", __func__);
+		return 1;
+	}
+	c3d_data_0 = comp_to_c3d(comp);
+	c3d_bin_num = mtk_crtc->pq_data->c3d_per_crtc;
+
+	if ((c3d_bin_num & 0xFF) == num )
+		return atomic_read(&c3d_data_0->primary_data->c3d_force_relay);
+	else if (((c3d_bin_num >> 16) & 0xFF) == num) {
+		comp1 = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 1);
+		if (!comp1) {
+			DDPPR_ERR("%s, comp1 is null!\n", __func__);
+			return 1;
+		}
+		c3d_data_1 = comp_to_c3d(comp1);
+		return atomic_read(&c3d_data_1->primary_data->c3d_force_relay);
+	}
 
 	return 1;
 }
