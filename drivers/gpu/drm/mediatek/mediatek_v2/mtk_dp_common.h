@@ -14,7 +14,7 @@
 #include "mtk_dp_hdcp.h"
 #include "mtk_dp_debug.h"
 #include "mtk_drm_drv.h"
-
+#include <drm/display/drm_dp_mst_helper.h>
 
 #ifndef BYTE
 #define BYTE    unsigned char
@@ -34,17 +34,6 @@
 #define UINT8   unsigned char
 #endif
 
-#define DPTX_PETRUS_CHIP_ID	0x10
-#define DPTX_MT8195_CHIP_ID	0x15
-#define DPTX_LEPIN_CHIP_ID	0x20
-#define DPTX_DUJAC_CHIP_ID	0x30
-#define DPTX_PONSOT_CHIP_ID	0x32
-#define DPTX_LEROY_CHIP_ID	0x40
-#define DPTX_LIBER_CHIP_ID	0x50
-#define DPTX_PINGUS_CHIP_ID	0x52
-#define DPTX_FPGA_CHIP_ID	0x999
-
-#define DPTX_CHIP_ID DPTX_LIBER_CHIP_ID
 
 #define EDID_SIZE 0x200
 #define ENABLE_DPTX_SSC_FORCEON		0
@@ -111,6 +100,34 @@
 #define VS_VOTER_EN_LO_SET 0x1
 #define VS_VOTER_EN_LO_CLR 0x2
 
+#define DP_REG_OFFSETA00(a) ((a) * 0xA00)
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#define DPTX_ENCODER_NUM 2
+#else
+#define DPTX_ENCODER_NUM 1
+#endif
+
+enum DPTX_STREAM_ID {
+	DPTX_STREAM_ID_0 = 0x0,
+#if (DPTX_ENCODER_NUM > 1)
+	DPTX_STREAM_ID_1 = 0x1,
+#endif
+	DPTX_STREAM_MAX,
+};
+
+enum DPTX_ENCODER_ID {
+	DPTX_ENCODER_ID_0	= 0,
+#if (DPTX_ENCODER_NUM > 1)
+	DPTX_ENCODER_ID_1	= 1,
+#endif
+	DPTX_ENCODER_ID_MAX
+};
+
+enum DPTX_SDP_ASP_HB3_AUCH {
+	DPTX_SDP_ASP_HB3_AU02CH	= 0x01,
+	DPTX_SDP_ASP_HB3_AU08CH	= 0x07,
+};
 
 enum dp_cmd {
 	DP_DUMP = 0x20,
@@ -136,10 +153,6 @@ enum dp_usb_pin_assign_type {
 	DP_USB_PIN_ASSIGNMENT_MAX_NUM,
 };
 
-enum DPTX_SDP_ASP_HB3_AUCH{
-	DPTX_SDP_ASP_HB3_AU02CH	= 0x01,
-	DPTX_SDP_ASP_HB3_AU08CH	= 0x07,
-};
 
 union PPS_T {
 	struct{
@@ -231,6 +244,10 @@ struct DPTX_TIMING_PARAMETER {
 	BYTE FrameRate;
 	DWORD PixRateKhz;
 	int Video_ip_mode;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	union MISC_T misc;
+#endif
 };
 
 struct DPTX_TRAINING_INFO {
@@ -252,10 +269,14 @@ struct DPTX_TRAINING_INFO {
 	BYTE ubSysMaxLinkRate;
 	BYTE ubLinkRate;
 	BYTE ubLinkLaneCount;
-	WORD usPHY_STS;
+	u16 usPHY_STS;
 	BYTE ubDPCD_REV;
 	BYTE ubSinkCountNum;
 	BYTE ucCheckCapTimes;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	u16 phy_status;
+#endif
 };
 
 struct DPTX_INFO {
@@ -284,12 +305,29 @@ struct DPTX_INFO {
 	struct HDCP2_INFO hdcp2_info;
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	uint8_t  pattern_id;
+#endif
 };
 
 struct DPTX_PHY_PARAMETER {
 	unsigned char C0;
 	unsigned char CP1;
 };
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+struct DPTX_STREAM_INFO {
+	uint8_t ideal_timing;
+	uint8_t final_timing;
+	uint8_t color_depth;
+	uint8_t color_format;
+	uint8_t pg_type;
+	uint8_t audio_freq;
+	uint8_t audio_ch;
+	bool is_dsc;
+	struct drm_dp_mst_port *port;
+};
+#endif
 
 struct mtk_dp {
 	struct mtk_ddp_comp ddp_comp;
@@ -302,7 +340,7 @@ struct mtk_dp {
 	struct drm_dp_aux aux;
 	u8 rx_cap[16];
 	struct drm_display_mode mode;
-	struct DPTX_INFO info;
+	struct DPTX_INFO info[DPTX_ENCODER_NUM];
 	int state;
 	int state_pre;
 	struct DPTX_TRAINING_INFO training_info;
@@ -342,6 +380,18 @@ struct mtk_dp {
 	u32 vsv_reg;
 	u32 vsv_mask;
 	u32 vsv_vers;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	uint8_t mst_enable;
+	uint8_t is_mst_start;
+	uint8_t is_mst_fec_en;
+	struct drm_dp_mst_topology_mgr mgr;
+
+	struct DPTX_STREAM_INFO stream_info[DPTX_STREAM_MAX];
+	//struct DPTX_INFO video_info[DPTX_ENCODER_NUM];
+	struct mtk_dp_mst_connector *mst_connector[DPTX_ENCODER_NUM];
+	struct drm_display_mode disp_mode;
+#endif
 };
 
 #endif /*__DRTX_TYPE_H__*/

@@ -148,17 +148,17 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_SWInterruptSet(4);
 	} else if (strncmp(opt, "pattern:", 8) == 0) {
 		int ret = 0;
-		int enable, resolution;
+		int id, enable, resolution;
 
-		ret = sscanf(opt, "pattern:%d,%d\n", &enable, &resolution);
-		if (ret != 2) {
+		ret = sscanf(opt, "pattern:%d,%d,%d\n", &id, &enable, &resolution);
+		if (ret != 3) {
 			DPTXMSG("ret = %d\n", ret);
 			return;
 		}
 
-		DPTXMSG("Paterrn Gen:enable = %d, resolution =%d\n",
-			enable, resolution);
-		mdrv_DPTx_PatternSet(enable, resolution);
+		DPTXMSG("Paterrn Gen:id = %d, enable = %d, resolution =%d\n",
+			id, enable, resolution);
+		mdrv_DPTx_PatternSet(id, enable, resolution);
 	} else if (strncmp(opt, "maxlinkrate:", 12) == 0) {
 		int ret = 0;
 		int enable, maxlinkrate;
@@ -197,6 +197,52 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_clock_debug(clksrc, con1);
 	} else if (strncmp(opt, "dump:", 5) == 0) {
 		dptx_dump_reg();
+	} else if (strncmp(opt, "write:", 6) == 0) {
+		u32 data = 0;
+		u32 addr = 0;
+		int ret = 0;
+
+		ret = sscanf(opt, "write:0x%x=0x%x\n", &addr, &data);
+		if (ret != 2) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+
+		dptx_write_reg(addr, data);
+	} else if (strncmp(opt, "read:", 5) == 0) {
+		u32 addr = 0;
+		int ret = 0;
+
+		ret = sscanf(opt, "read:0x%x\n", &addr);
+		if (ret != 1) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+
+		dptx_read_reg(addr);
+	} else if (strncmp(opt, "phy_write:", 10) == 0) {
+		u32 data = 0;
+		u32 addr = 0;
+		int ret = 0;
+
+		ret = sscanf(opt, "phy_write:0x%x=0x%x\n", &addr, &data);
+		if (ret != 2) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+
+		dptx_phy_write_reg(addr, data);
+	} else if (strncmp(opt, "phy_read:", 9) == 0) {
+		u32 addr = 0;
+		int ret = 0;
+
+		ret = sscanf(opt, "phy_read:0x%x\n", &addr);
+		if (ret != 1) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+
+		dptx_phy_read_reg(addr);
 	}
 }
 
