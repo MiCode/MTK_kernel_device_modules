@@ -1520,9 +1520,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 
-	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_INTR;
-	if (host->caps & UFS_MTK_CAP_MCQ_BROKEN_RTC)
-		hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_RTC;
+	//hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_INTR;
+	//if (host->caps & UFS_MTK_CAP_MCQ_BROKEN_RTC)
+	//	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_RTC;
 
 	hba->vps->wb_flush_threshold = UFS_WB_BUF_REMAIN_PERCENT(80);
 
@@ -2202,9 +2202,9 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 		ufs_mtk_config_mcq(hba, false);
 		/* Enable required interrupts */
 		_ufshcd_enable_intr(hba, UFSHCD_ENABLE_MTK_MCQ_INTRS);
-		ufshcd_mcq_make_queues_operational(hba);
+		//ufshcd_mcq_make_queues_operational(hba);
 		ufs_mtk_mcq_config_cqid(hba);
-		ufshcd_mcq_config_mac(hba, hba->nutrs);
+		//ufshcd_mcq_config_mac(hba, hba->nutrs);
 		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
 			      REG_UFS_MEM_CFG);
 	}
@@ -2475,7 +2475,7 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	u16 mid = dev_info->wmanufacturerid;
 
 	/* Replace default rpm_autosuspend_delay */
-	hba->host->hostt->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
+	//hba->host->hostt->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
 
 	if (is_mcq_enabled(hba)) {
 		/* Use none scheduler for mcq */
@@ -2860,21 +2860,21 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
 	struct ufs_hw_queue *hwq;
-	u32 events;
+	//u32 events;
 	int i = mcq_intr_info->qid;
 
 	hwq = &hba->uhq[i];
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	ufshcd_vops_check_bus_status(hba);
+	//ufshcd_vops_check_bus_status(hba);
 #endif
 
-	events = ufshcd_mcq_read_cqis(hba, i);
-	if (events)
-		ufshcd_mcq_write_cqis(hba, events, i);
+	//events = ufshcd_mcq_read_cqis(hba, i);
+	//if (events)
+	//	ufshcd_mcq_write_cqis(hba, events, i);
 
-	if (events & UFSHCD_MCQ_CQIS_TAIL_ENT_PUSH_STS)
-		ufshcd_mcq_poll_cqe_lock(hba, hwq);
+	//if (events & UFSHCD_MCQ_CQIS_TAIL_ENT_PUSH_STS)
+	//	ufshcd_mcq_poll_cqe_lock(hba, hwq);
 
 	return IRQ_HANDLED;
 }
@@ -2979,8 +2979,8 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
 	.config_esi          = ufs_mtk_config_esi,
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	.check_bus_status    = ufs_mtk_check_bus_status,
-	.dbg_dump            = _ufs_mtk_dbg_dump,
+	//.check_bus_status    = ufs_mtk_check_bus_status,
+	//.dbg_dump            = _ufs_mtk_dbg_dump,
 #endif
 };
 

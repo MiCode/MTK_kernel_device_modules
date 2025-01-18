@@ -158,6 +158,7 @@ EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_init);
 #define FM_U_FAXI_CK		3
 #define FM_U_CK		44
 
+#if 0
 void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 {
 	void __iomem *reg;
@@ -245,6 +246,7 @@ void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 	}
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_status);
+#endif // if 0
 #endif
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
@@ -306,7 +308,7 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      "Auto BKOPS=%d, Host self-block=%d\n",
 		      hba->auto_bkops_enabled,
 		      hba->host->host_self_blocked);
-	SPREAD_PRINTF(buff, size, m,
+	/*SPREAD_PRINTF(buff, size, m,
 		      "Clk scale sup./en.=%d/%d, min/max g.=G%d/G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
 		    !!ufshcd_is_clkscaling_supported(hba),
 			hba->clk_scaling.is_enabled,
@@ -315,7 +317,7 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 			hba->vps->devfreq_profile.polling_ms,
 			hba->vps->ondemand_data.upthreshold,
 			hba->vps->ondemand_data.downdifferential
-	);
+	);*/
 	if (ufshcd_is_clkgating_allowed(hba))
 		SPREAD_PRINTF(buff, size, m,
 			      "Clk gate=%d, suspended=%d, active_reqs=%d\n",
