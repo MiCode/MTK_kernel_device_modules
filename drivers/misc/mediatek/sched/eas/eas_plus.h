@@ -7,7 +7,6 @@
 #define _EAS_PLUS_H
 #include <linux/ioctl.h>
 #include <linux/android_vendor.h>
-#include "eas/dsu_pwr.h"
 #include "vip.h"
 
 #define MIGR_IDLE_BALANCE               1
@@ -135,24 +134,24 @@ extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util, unsigned long allowed_cpu_cap,
 		unsigned long scale_cpu);
 
-/* should hide later */
+/* arch-related API */
 #define volt_diff  5000
 extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
 		int quant, int wl, unsigned long floor_freq);
 extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
 		int quant, int wl, unsigned long floor_freq);
-extern unsigned long update_dsu_status_(struct energy_env *eenv, int quant,
-		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
+
 extern unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
 extern int dsu_freq_changed(void *private);
-extern int dsu_freq_changed_(void *private);
 extern void eenv_dsu_init(void *private, unsigned int wl,
 		int PERCORE_L3_BW, unsigned int cpumask_val,
 		unsigned int *val, unsigned int *output);
-extern void eenv_dsu_init_(void *private, unsigned int wl,
-		int PERCORE_L3_BW, unsigned int cpumask_val,
-		unsigned int *val, unsigned int *output);
+void init_percore_l3_bw(void);
+
+unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
+		unsigned long total_util, void *private, unsigned int extern_volt,
+		int dsu_pwr_enable);
 
 extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,

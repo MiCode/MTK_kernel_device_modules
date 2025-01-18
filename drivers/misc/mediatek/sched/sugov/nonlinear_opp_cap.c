@@ -67,6 +67,7 @@ int *wl_collab_type_mapping_mask;
 void (*change_dpt_support_driver_hook) (int turn_on);
 EXPORT_SYMBOL(change_dpt_support_driver_hook);
 int val_m = 1;
+EXPORT_SYMBOL_GPL(val_m);
 /* End of DPT */
 
 /* group aware dvfs */
