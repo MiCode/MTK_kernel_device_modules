@@ -610,6 +610,7 @@ int vcp_enc_ipi_handler(void *arg)
 		case VCU_IPIMSG_ENC_ENCODE_DONE:
 		case VCU_IPIMSG_ENC_DEINIT_DONE:
 		case VCU_IPIMSG_ENC_BACKUP_DONE:
+		case VCU_IPIMSG_ENC_RESUME_DONE:
 return_venc_ipi_ack:
 			vcu->signaled = true;
 			wake_up(&vcu->wq_hd);
@@ -785,6 +786,28 @@ static int venc_vcp_backup(struct venc_inst *inst)
 	return err;
 }
 
+static int venc_vcp_resume(struct venc_inst *inst)
+{
+	struct venc_ap_ipi_msg_indp msg;
+	int err = 0;
+
+	if (!inst)
+		return -EINVAL;
+
+	mtk_vcodec_debug_enter(inst);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_id = AP_IPIMSG_ENC_RESUME;
+	msg.ap_inst_addr = (uintptr_t)&inst->vcu_inst;
+	msg.ctx_id = inst->ctx->id;
+	venc_vcp_set_vcu(&inst->vcu_inst);
+	mtk_v4l2_debug(0, "[VDVFS] VENC resume");
+	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
+	mtk_vcodec_debug(inst, "- ret=%d", err);
+
+	return err;
+}
+
 static bool has_valid_vcp_inst(struct mtk_vcodec_dev *dev)
 {
 	struct mtk_vcodec_ctx *ctx;
@@ -874,6 +897,12 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 		}
 	break;
 	case VCP_EVENT_RESUME:
+		// send backup ipi to vcp by dev_ctx if vcp has inst
+		mutex_lock(&dev->ctx_mutex);
+		need_ipi = has_valid_vcp_inst(dev);
+		mutex_unlock(&dev->ctx_mutex);
+		if (need_ipi)
+			venc_vcp_resume((struct venc_inst *)dev->dev_ctx.drv_handle);
 		dev->is_codec_suspending = 0;
 		break;
 	}
