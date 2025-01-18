@@ -2753,13 +2753,13 @@ static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 	struct cmdq_thread *thread;
 	u32 hwid;
 
-	if (!pkt->cl)
+	if (!cmdq_hw_trace || !pkt->cl)
 		return false;
 
 	client = (struct cmdq_client *)pkt->cl;
 	thread = (struct cmdq_thread *)client->chan->con_priv;
 	hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(client->chan));
-	if (!cmdq_hw_trace || hw_trace_built_in[hwid])
+	if (hw_trace_built_in[hwid])
 		return false;
 
 	switch (event) {

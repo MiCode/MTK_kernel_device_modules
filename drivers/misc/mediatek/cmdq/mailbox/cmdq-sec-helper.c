@@ -234,6 +234,8 @@ s32 cmdq_sec_pkt_write_reg(struct cmdq_pkt *pkt, u32 addr, u64 base,
 {
 	s32 ret;
 
+	pkt->write_addr_high = 0;
+
 	ret = cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, addr);
 	if (ret)
 		return ret;
