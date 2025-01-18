@@ -5304,6 +5304,7 @@
 				regulator-max-microvolt = <1275000>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
 			};
 		};
 	};
@@ -5455,6 +5456,10 @@
 };
 
 &mt6373_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck7 {
 	regulator-always-on;
 };
 
