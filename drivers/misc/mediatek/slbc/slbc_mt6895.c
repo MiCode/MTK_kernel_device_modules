@@ -1062,6 +1062,6 @@ int __init slbc_module_init(void)
 
 late_initcall(slbc_module_init);
 
-MODULE_SOFTDEP("pre: tinysys-scmi.ko");
-MODULE_DESCRIPTION("SLBC Driver mt6983 v0.1");
+MODULE_SOFTDEP("pre: tinysys-scmi.ko");
+MODULE_DESCRIPTION("SLBC Driver mt6895 v0.1");
 MODULE_LICENSE("GPL");
