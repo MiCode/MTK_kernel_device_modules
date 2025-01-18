@@ -172,9 +172,8 @@ static void slbc_restore_private_data(int uid, struct slbc_data *d)
 {
 	struct slbc_data *pd = &slbc_pd[uid];
 
-	memcpy(pd, d, offsetof(struct slbc_data, sid));
-	memcpy(&d->sid, &pd->sid, sizeof(struct slbc_data) -
-			offsetof(struct slbc_data, sid));
+
+	memcpy(pd, d, sizeof(struct slbc_data));
 	pd->private = d;
 	d->private = pd;
 }
@@ -642,8 +641,7 @@ int slbc_request(struct slbc_data *d)
 
 	sid = slbc_get_sid_by_uid(uid);
 	if (sid != SID_NOT_FOUND) {
-		memset(&d->sid, 0, sizeof(struct slbc_data) -
-				offsetof(struct slbc_data, sid));
+		memset(&d->sid_group, 0, sizeof(d->sid_group));
 		d->sid = sid;
 		d->config = &p_config[sid];
 	} else {
