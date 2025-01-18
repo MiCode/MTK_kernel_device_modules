@@ -2909,8 +2909,6 @@ static int __init mt_scp_dts_ildo_clk_chk(struct device_node *node)
 	pr_notice("[%s]: check ildo freq %s, cur: %u, target: %u khz\n",
 		__func__, pass ? "pass" : "fail",
 		cur_freq, target_khz);
-	if (!pass)
-		WARN_ON(1);
 
 	return 0;
 }
