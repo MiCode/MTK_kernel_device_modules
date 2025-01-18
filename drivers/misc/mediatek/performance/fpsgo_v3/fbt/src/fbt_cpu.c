@@ -1057,13 +1057,11 @@ static struct pmu_info *fbt_pmu_search_add(struct rb_root *pmu_info_tree, int pi
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 {
 	struct rb_node *cur = NULL;
-	struct rb_node *next = NULL;
 	struct pmu_info *iter = NULL;
 	unsigned int cpu;
 
 	cur = rb_first(pmu_info_tree);
 	while (cur) {
-		next = rb_next(cur);
 		iter = rb_entry(cur, struct pmu_info, entry);
 		if (iter->ts != ts) {
 			for_each_possible_cpu(cpu) {
@@ -1073,9 +1071,10 @@ void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 				perf_event_release_kernel(iter->inst_event[cpu]);
 			}
 			rb_erase(&iter->entry, pmu_info_tree);
+			cur = rb_first(pmu_info_tree);
 			kfree(iter);
-		}
-		cur = next;
+		} else
+			cur = rb_next(cur);
 	}
 }
 
