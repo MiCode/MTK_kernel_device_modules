@@ -412,7 +412,8 @@ static s32 calc_tile_loop(struct mml_task *task,
 {
 	struct tile_reg_map *tile_reg_map = ctx->tile_reg_map;
 	struct func_description *tile_func = ctx->tile_func;
-	struct mml_tile_config *tiles = ctx->output->tiles;
+	struct mml_frame_tile *output = ctx->output;
+	struct mml_tile_config *tiles = output->tiles;
 	u32 tile_cnt = 0;
 	enum isp_tile_message result;
 	bool stop;
@@ -446,9 +447,9 @@ static s32 calc_tile_loop(struct mml_task *task,
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
 
-	ctx->output->tile_cnt = tile_cnt;
-	ctx->output->h_tile_cnt = tiles[tile_cnt - 1].h_tile_no + 1;
-	ctx->output->v_tile_cnt = tiles[tile_cnt - 1].v_tile_no + 1;
+	output->tile_cnt = tile_cnt;
+	output->h_tile_cnt = tiles[tile_cnt - 1].h_tile_no + 1;
+	output->v_tile_cnt = tiles[tile_cnt - 1].v_tile_no + 1;
 	return 0;
 
 err_tile:
