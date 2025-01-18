@@ -1008,7 +1008,6 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	mml_msg_dpc("%s dpc dvfs level %u srt %u hrt %u hrt_mode %u trigger %s",
 		__func__, dpc_dvfs_lv, srt_bw_max, hrt_bw_max, mtk_mml_hrt_mode,
 		trigger ? "true" : "false");
-	hrt_bw_max = hrt_bw_max ? max_t(u32, hrt_bw_max, cfg->disp_hrt) : 0;
 	if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY || mtk_mml_hrt_mode == MML_HRT_MMQOS) {
 		/* dpc off case set bw to 0 */
 		hrt_bw_max = 0;
@@ -1028,7 +1027,7 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	}
 
 	/* set dpc dvfs (mminfra, bus) */
-	mml_dpc_dvfs_set(dpc_dvfs_lv, false);
+	mml_dpc_dvfs_set(dpc_dvfs_lv, true);
 
 	/* and update in dvfs end case */
 	if (trigger)

@@ -1392,9 +1392,6 @@ dl_force:
 	return MML_MODE_DIRECT_LINK;
 
 decouple:
-	if (!tp_check_tput_dc(info, tp, panel_width, panel_height, NULL))
-		return MML_MODE_NOT_SUPPORT;
-
 	return MML_MODE_MML_DECOUPLE;
 }
 
@@ -1518,6 +1515,8 @@ decouple:
 static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
+	enum mml_mode mode;
+
 	if (unlikely(mml_path_mode))
 		return mml_path_mode;
 
@@ -1549,9 +1548,18 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	/* rotate go to racing (inline rotate) */
 	if (mml_racing == 1 &&
 		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
-		return tp_query_mode_racing(mml, info, reason);
+		mode = tp_query_mode_racing(mml, info, reason);
+	else
+		mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
 
-	return tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
+	if (mml_isdc(mode)) {
+		struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+
+		if (!tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache))
+			return MML_MODE_NOT_SUPPORT;
+	}
+
+	return mode;
 
 decouple_user:
 	return info->mode;

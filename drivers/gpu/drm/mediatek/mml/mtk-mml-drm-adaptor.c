@@ -25,6 +25,7 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-pq-core.h"
 
+#define MML_MAX_DUR	3300000
 #define MML_MAX_W	4096
 #define MML_MAX_H	2176
 #define MML_MAX_PIXEL	8355840		/* 3840*2176 */
@@ -258,11 +259,15 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 
 	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
 
-	if (!mml_drm_query_hw_support(info))
+	if (!mml_drm_query_hw_support(info)) {
+		reason = mml_query_not_support;
 		goto not_support;
+	}
 
-	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2))
+	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2)) {
+		reason = mml_query_tp;
 		goto not_support;
+	}
 
 	if (tp->op->query_mode2)
 		mode = tp->op->query_mode2(dctx->ctx.mml, info, &reason,
@@ -278,7 +283,7 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 		 * not increase after read. And it's safe to do one more mdp
 		 * decouple w/o mml couple/dc conflict.
 		 */
-		mml_log("%s mode %u to mdp dc or mml dc2 couple %d",
+		mml_log("[drm]%s mode %u to mdp dc or mml dc2 couple %d",
 			__func__, mode, mml_dev_get_couple_cnt(dctx->ctx.mml));
 		if (tp->op->support_dc2 && tp->op->support_dc2())
 			mode = MML_MODE_MML_DECOUPLE2;
@@ -298,12 +303,13 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 	}
 
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE, info->mode, mode, 0, reason);
-	mml_msg("query mode %u result mode %u reason %d", info->mode, mode, (s32)reason);
+	mml_msg("[drm]query mode %u result mode %u reason %d", info->mode, mode, (s32)reason);
 	return mode;
 
 not_support:
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE,
-		info->mode, MML_MODE_NOT_SUPPORT, 0, mml_query_not_support);
+		info->mode, MML_MODE_NOT_SUPPORT, 0, reason);
+	mml_msg("[drm]query mode not support reason %d", (s32)reason);
 	return MML_MODE_NOT_SUPPORT;
 }
 
@@ -315,7 +321,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 EXPORT_SYMBOL_GPL(mml_drm_query_cap);
 
 /* dc mode reserve time in us */
-int dc_sw_reserve = 3000;
+int dc_sw_reserve = 1000;
 module_param(dc_sw_reserve, int, 0644);
 
 int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
@@ -329,6 +335,10 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	u32 mml_layer_cnt = 0;
 	u32 i;
 	bool couple_used = false;
+
+	if (!duration_us)
+		duration_us = MML_MAX_DUR;
+	mml_msg("[drm]%s duration %u", __func__, duration_us);
 
 	remain[mml_sys_frame] = duration_us -  dc_sw_reserve;
 	remain[mml_sys_tile] = duration_us -  dc_sw_reserve;
@@ -344,14 +354,20 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			infos[i].mode = MML_MODE_MML_DECOUPLE;
 		mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
 		if (mode == MML_MODE_MML_DECOUPLE) {
-			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration)
+			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
+				mml_msg("[drm]%s dc not support remain %u need %u",
+					__func__, remain[mml_sys_frame],
+					info_cache[mml_layer_cnt].duration);
 				mode = MML_MODE_NOT_SUPPORT;
-			else
+			} else
 				remain[mml_sys_frame] -= info_cache[mml_layer_cnt].duration;
 		} else if (mode == MML_MODE_MML_DECOUPLE2) {
-			if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration)
+			if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration) {
 				mode = MML_MODE_NOT_SUPPORT;
-			else
+				mml_msg("[drm]%s dc2 not support remain %u need %u",
+					__func__, remain[mml_sys_tile],
+					info_cache[mml_layer_cnt].duration);
+			} else
 				remain[mml_sys_tile] -= info_cache[mml_layer_cnt].duration;
 		}
 		infos[i].mode = mode;
@@ -359,6 +375,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 		if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING)
 			couple_used = true;
 
+		mml_mmp(query_layer, MMPROFILE_FLAG_PULSE,
+			i << 16 | (atomic_read(&dctx->ctx.job_serial) & 0xffff), mode);
 		mml_layer_cnt++;
 	}
 
@@ -444,58 +462,6 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 }
 EXPORT_SYMBOL_GPL(mml_drm_try_frame);
 
-static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *info,
-	u32 layer_w, u32 layer_h)
-{
-	/* MML HRT bandwidth calculate by
-	 *	hrt_MBps = crop_bytes / active_duration * overhead
-	 *
-	 * with following:
-	 *	overhead:		default 10%
-	 *	active_duration:	active time provide by display driver
-	 */
-	u32 plane = MML_FMT_PLANE(info->src.format);
-	u32 cropw = info->dest[0].crop.r.width;
-	u32 croph = info->dest[0].crop.r.height;
-	u64 hrt;
-
-	if (MML_FMT_COMPRESS(info->src.format)) {
-		cropw = round_up(cropw, 32);
-		croph = round_up(croph, 16);
-	}
-
-	/* calculate source data size as bandwidth */
-	hrt = mml_color_get_min_y_size(info->src.format, cropw, croph);
-	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1)
-		hrt += (u64)mml_color_get_min_uv_size(info->src.format, cropw, croph) * (plane - 1);
-
-	hrt = hrt * 1000 / info->act_time * mml_hrt_overhead / 100;
-
-	/* region pq read map data */
-	if (info->dest[0].pq_config.en_region_pq) {
-		u64 size = mml_color_get_min_y_size(info->seg_map.format,
-			info->seg_map.width, info->seg_map.height);
-
-		/* read whole frame and also count resize ratio */
-		hrt += size * 1000 / info->act_time * mml_hrt_overhead / 100;
-	}
-
-	/* region pq wrot out small frame, count wrot hrt */
-	if (info->dest_cnt > 1) {
-		u64 size = mml_color_get_min_y_size(info->dest[1].data.format,
-			info->dest[1].data.width, info->dest[1].data.height);
-
-		/* also must write done in layer time to avoid blocking hw path */
-		hrt += size * 1000 / info->act_time * mml_hrt_overhead / 100;
-	}
-
-	mml_msg("%s hrt %llu size %ux%u panel %ux%u layer width %u acttime %u",
-		__func__, hrt, cropw, croph, ctx->panel_width, ctx->panel_height, layer_w,
-		info->act_time);
-
-	return (u32)hrt;
-}
-
 static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 	struct mml_file_buf *fbuf, struct mml_buffer *user_buf,
 	bool secure, const char *name)
@@ -504,7 +470,7 @@ static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, secure);
 
 	if (unlikely(!mmu_dev)) {
-		mml_err("%s mmu_dev is null", __func__);
+		mml_err("[drm]%s mmu_dev is null", __func__);
 		return -EFAULT;
 	}
 
@@ -524,13 +490,13 @@ static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 		/* get iova */
 		ret = mml_buf_iova_get(mmu_dev, fbuf);
 		if (ret < 0)
-			mml_err("%s iova fail %d", __func__, ret);
+			mml_err("[drm]%s iova fail %d", __func__, ret);
 
 		mml_mmp(buf_map, MMPROFILE_FLAG_END,
 			atomic_read(&ctx->job_serial),
 			(unsigned long)fbuf->dma[0].iova);
 
-		mml_msg("%s %s dmabuf %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+		mml_msg("[drm]%s %s dmabuf %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
 			__func__, name, fbuf->dma[0].dmabuf,
 			fbuf->dma[0].iova, fbuf->size[0],
 			fbuf->dma[1].iova, fbuf->size[1],
@@ -748,7 +714,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			task = mml_core_create_task();
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
-				mml_err("%s create task for reuse frame fail", __func__);
+				mml_err("[drm]%s create task for reuse frame fail", __func__);
 				task = NULL;
 				goto err_unlock_exit;
 			}
@@ -763,7 +729,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		mml_msg("[drm]%s create config %p", __func__, cfg);
 		if (IS_ERR(cfg)) {
 			result = PTR_ERR(cfg);
-			mml_err("%s create frame config fail", __func__);
+			mml_err("[drm]%s create frame config fail", __func__);
 			goto err_unlock_exit;
 		}
 		task = mml_core_create_task();
@@ -772,7 +738,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			frame_config_destroy(cfg);
 			result = PTR_ERR(task);
 			task = NULL;
-			mml_err("%s create task fail", __func__);
+			mml_err("[drm]%s create task fail", __func__);
 			goto err_unlock_exit;
 		}
 		task->config = cfg;
@@ -786,8 +752,6 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 				cfg->layer_h = submit->info.dest[0].compose.height;
 			cfg->panel_w = dctx->panel_width;
 			cfg->panel_h = dctx->panel_height;
-			cfg->disp_hrt = frame_calc_layer_hrt(dctx, &submit->info,
-				cfg->layer_w, cfg->layer_h);
 		}
 
 		if (submit->info.mode == MML_MODE_DIRECT_LINK) {
@@ -919,7 +883,7 @@ err_unlock_exit:
 err_buf_exit:
 	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), 0);
 	mml_trace_end();
-	mml_log("%s fail result %d task %p", __func__, result, task);
+	mml_log("[drm]%s fail result %d task %p", __func__, result, task);
 	if (task) {
 		bool is_init_state = task->state == MML_TASK_INITIAL;
 
@@ -929,7 +893,7 @@ err_buf_exit:
 		cfg->await_task_cnt--;
 
 		if (is_init_state) {
-			mml_log("dec config %p and del", cfg);
+			mml_log("[drm]dec config %p and del", cfg);
 
 			list_del_init(&cfg->entry);
 			ctx->config_cnt--;
@@ -938,7 +902,7 @@ err_buf_exit:
 			mml_dev_couple_dec(ctx->mml, cfg->info.mode);
 			dctx->racing_begin = false;
 		} else
-			mml_log("dec config %p", cfg);
+			mml_log("[drm]dec config %p", cfg);
 
 		mutex_unlock(&ctx->config_mutex);
 		kref_put(&task->ref, task_move_to_destroy);
@@ -1130,12 +1094,12 @@ bool mml_drm_ctx_idle(struct mml_drm_ctx *dctx)
 	mutex_lock(&ctx->config_mutex);
 	list_for_each_entry(cfg, &ctx->configs, entry) {
 		if (!list_empty(&cfg->await_tasks)) {
-			mml_log("%s await_tasks not empty", __func__);
+			mml_log("[drm]%s await_tasks not empty", __func__);
 			goto done;
 		}
 
 		if (!list_empty(&cfg->tasks)) {
-			mml_log("%s tasks not empty", __func__);
+			mml_log("[drm]%s tasks not empty", __func__);
 			goto done;
 		}
 	}
@@ -1197,7 +1161,7 @@ void mml_drm_kick_done(struct mml_drm_ctx *dctx)
 	kthread_flush_worker(ctx->kt_done);
 
 	mml_mmp(kick, MMPROFILE_FLAG_END, jobid, 0);
-	mml_msg("%s kick done job id %u", __func__, jobid);
+	mml_msg("[drm]%s kick done job id %u", __func__, jobid);
 }
 EXPORT_SYMBOL_GPL(mml_drm_kick_done);
 
@@ -1213,8 +1177,6 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 pane
 		/* calculate hrt base on new pixel count */
 		cfg->panel_w = panel_width;
 		cfg->panel_h = panel_height;
-		cfg->disp_hrt = frame_calc_layer_hrt(dctx, &cfg->info,
-			cfg->layer_w, cfg->layer_h);
 	}
 	mutex_unlock(&ctx->config_mutex);
 }
@@ -1482,7 +1444,7 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	info_pq->dest[1].crop = info_pq->dest[0].crop;
 
 	if (MML_FMT_PLANE(dest->data.format) > 1)
-		mml_err("%s dest plane should be 1 but format %#010x",
+		mml_err("[drm]%s dest plane should be 1 but format %#010x",
 			__func__, dest->data.format);
 }
 
