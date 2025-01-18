@@ -478,6 +478,7 @@
 
 /* U3D_USB_UBS_PERFORMANCE */
 #define NOISE_STILL_TRANSFER	BIT(21)
+#define SSUSB_SOF_KEEP			BIT(26)
 
 /* U3D_LINK_RESET_INFO */
 #define WTCHRP_MSK		GENMASK(19, 16)
@@ -612,8 +613,5 @@
 
 /* U3D_SSUSB_IP_TRUNK_VERS */
 #define IP_TRUNK_VERS(x)		(((x) >> 16) & 0xffff)
-
-/* U3D_SSUSB_IP_SPARE0 */
-#define SSUSB_SOF_KEEP			BIT(0)
 
 #endif	/* _SSUSB_HW_REGS_H_ */
