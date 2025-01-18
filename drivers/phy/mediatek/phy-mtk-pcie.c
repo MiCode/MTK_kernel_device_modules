@@ -351,7 +351,7 @@ static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 sel, u32 bus)
 static int mtk_pcie_monitor_phy(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	u32 phy_table[8] = {0};
+	u32 phy_table[11] = {0};
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x404);
 	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
@@ -364,11 +364,20 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 						 0x11c011d);
 	phy_table[4] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
 						 0x11e011f);
+	/* phy_table[10] for polling compliance*/
+	phy_table[10] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x880089);
 	dev_info(pcie_phy->dev,
-		 "phy ln0 probe: 0x0x910090=%#x, 0x1180092=%#x, 0x11a011b=%#x, 0x11c011d=%#x, 0x11e011f=%#x\n",
-		 phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4]);
+		 "phy ln0 probe: 0x0x910090=%#x, 0x1180092=%#x, 0x11a011b=%#x, 0x11c011d=%#x, 0x11e011f=%#x, 0x880089=%#x\n",
+		 phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4], phy_table[10]);
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x0);
+	/* phy_table[8] and phy_table[9] for L1P2*/
+	phy_table[8] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
+						 0x2201);
+	phy_table[9] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
+						 0x2120);
+
 	writel_relaxed(0x5600038e, pcie_phy->sif_base + PEXTP_ANA_GLB_6);
 	phy_table[5] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
 						 0x1a);
@@ -377,8 +386,8 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 	writel_relaxed(0x98045600, pcie_phy->sif_base + PEXTP_ANA_GLB_9);
 	phy_table[6] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
 						 0x1b1a);
-	dev_info(pcie_phy->dev, "phy misc probe: 0x1a=%#x, 0x1b1a=%#x\n",
-		 phy_table[5], phy_table[6]);
+	dev_info(pcie_phy->dev, "phy misc probe: 0x1a=%#x, 0x1b1a=%#x, 0x2201=%#x, 0x2120=%#x\n",
+		 phy_table[5], phy_table[6], phy_table[8], phy_table[9]);
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x4);
 	phy_table[7] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
@@ -476,6 +485,7 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct phy_provider *provider;
 	struct mtk_pcie_phy *pcie_phy;
+	struct resource *ckm_res;
 	u32 num_lanes;
 	int ret;
 
@@ -487,6 +497,15 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(pcie_phy->sif_base)) {
 		dev_info(dev, "Failed to map phy-sif base\n");
 		return PTR_ERR(pcie_phy->sif_base);
+	}
+
+	ckm_res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "ckm");
+	if (ckm_res) {
+		pcie_phy->ckm_base = devm_ioremap_resource(dev, ckm_res);
+		if (IS_ERR(pcie_phy->ckm_base)) {
+			dev_info(dev, "Failed to map phy-ckm base\n");
+			return PTR_ERR(pcie_phy->ckm_base);
+		}
 	}
 
 	pm_runtime_enable(dev);
@@ -553,16 +572,11 @@ static int mtk_pcie_phy_init_6985(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	struct device *dev = pcie_phy->dev;
-	struct platform_device *pdev = to_platform_device(dev);
 	u32 val;
 
 	if (!pcie_phy->ckm_base) {
-		pcie_phy->ckm_base = devm_platform_ioremap_resource_byname(pdev,
-									   "ckm");
-		if (IS_ERR(pcie_phy->ckm_base)) {
-			dev_info(dev, "Failed to map phy-ckm base\n");
-			return PTR_ERR(pcie_phy->ckm_base);
-		}
+		dev_info(dev, "phy-ckm base is null\n");
+		return -EINVAL;
 	}
 
 	val = readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_28);
@@ -797,17 +811,12 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	struct device *dev = pcie_phy->dev;
-	struct platform_device *pdev = to_platform_device(dev);
 	int ret = 0;
 	u32 i;
 
 	if (!pcie_phy->ckm_base) {
-		pcie_phy->ckm_base = devm_platform_ioremap_resource_byname(pdev,
-									   "ckm");
-		if (IS_ERR(pcie_phy->ckm_base)) {
-			dev_info(dev, "Failed to map phy-ckm base\n");
-			return PTR_ERR(pcie_phy->ckm_base);
-		}
+		dev_info(dev, "phy-ckm base is null\n");
+		return -EINVAL;
 	}
 
 	/* Switch PHY mode for port1, only used by EP mode */
