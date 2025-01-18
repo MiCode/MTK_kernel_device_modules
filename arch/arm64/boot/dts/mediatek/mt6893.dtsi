@@ -3471,22 +3471,6 @@ cpus {
 				"mtcmos_mfg_core3_4",
 				"mtcmos_mfg_core5_6",
 				"mtcmos_mfg_core7_8";
-			power-domains =
-				<&scpsys MT6893_POWER_DOMAIN_MFG0>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG1>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG2>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG3>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG4>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG5>,
-				<&scpsys MT6893_POWER_DOMAIN_MFG6>;
-			power-domain-names =
-				"pd_mfg0",
-				"pd_mfg1",
-				"pd_mfg2",
-				"pd_mfg3",
-				"pd_mfg4",
-				"pd_mfg5",
-				"pd_mfg6";
 			nvmem-cells = <&efuse_segment &apu_pod19>;
 			nvmem-cell-names = "efuse_segment_cell", "efuse_pod19";
 			gpufreq_wrapper-supply = <&gpufreq_wrapper>;
