@@ -10,7 +10,7 @@ config DEVICE_MODULES_DMABUF_HEAPS_PAGE_POOL
 
 config DEVICE_MODULES_DMABUF_HEAPS_SYSTEM
 	tristate "DMA-BUF System Heap"
-	depends on DMABUF_HEAPS && DEVICE_MODULES_DMABUF_HEAPS_DEFERRED_FREE && DEVICE_MODULES_DMABUF_HEAPS_PAGE_POOL
+	depends on DMABUF_HEAPS
 	help
 	  Choose this option to enable the system dmabuf heap. The system heap
 	  is backed by pages from the buddy allocator. If in doubt, say Y.
