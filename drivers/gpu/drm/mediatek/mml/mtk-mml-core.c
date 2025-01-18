@@ -156,6 +156,8 @@ void mml_save_log_record(const char *fmt, ...)
 		mml_log_idx = ret >= sizeof(mml_log_record) ? 0 : ret;
 	} else {
 		mml_log_idx += ret;
+		if (mml_log_idx >= MML_LOG_SIZE)
+			mml_log_idx = 0;
 	}
 	spin_unlock_irqrestore(&mml_log_lock, flags);
 
@@ -166,7 +168,7 @@ EXPORT_SYMBOL_GPL(mml_save_log_record);
 void mml_print_log_record(struct seq_file *seq)
 {
 	int ret = 0;
-	u32 idx, end;
+	u32 idx, end, size = seq->size;
 	unsigned long flags = 0;
 
 	seq_puts(seq, "\nMML log buffer begin:\n");
@@ -177,18 +179,17 @@ void mml_print_log_record(struct seq_file *seq)
 
 	if (idx > 0 && end > idx) {
 		ret = seq_write(seq, mml_log_record + idx,
-			min_t(u32, end - idx, sizeof(mml_log_record) - idx));
+			min_t(u32, end - idx - 1, seq->size));
 		if (!ret)
 			seq_puts(seq, "\n");
 	}
-	if (!ret)
-		ret = seq_write(seq, mml_log_record, idx - 1);
+	if (!ret) {
+		ret = seq_write(seq, mml_log_record, min_t(u32, idx - 1, seq->size));
+		if (!ret)
+			seq_puts(seq, "\n");
+	}
 	spin_unlock_irqrestore(&mml_log_lock, flags);
-
-	if (!ret)
-		seq_puts(seq, "\n");
-	if (ret)
-		pr_notice("[mml][err]%s fail to print log index %u end %u", __func__, idx, end);
+	mml_log("%s print log index %u end %u sz %u ret %d", __func__, idx, end, size, ret);
 }
 
 int mml_topology_register_ip(const char *ip, const struct mml_topology_ops *op)
