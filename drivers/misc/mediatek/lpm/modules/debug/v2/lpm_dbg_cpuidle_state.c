@@ -14,6 +14,9 @@
 #define MTK_CPUIDLE_DRIVE_STATE_GET	(0)
 #define MTK_CPUIDLE_DRIVE_STATE_SET	(1)
 #define ALL_CPU_ID			(100)
+#define RESET_ALL			(-1)
+#define STRESS_VAL			(10)
+#define STRESS_ENU_OFFSET		(IDLE_STRESS_LAT - IDLE_PARAM_LAT)
 
 #define LPM_CPUIDLE_STATE_OP(op, _priv) ({\
 	op.fs_read = lpm_cpuidle_state_read;\
@@ -24,6 +27,16 @@
 	_n.name = _name;\
 	_n.type = _type;\
 	LPM_CPUIDLE_STATE_OP(_n.op, &_n); })
+
+#define LPM_CPUIDLE_STATE_STRESS_OP(op, _priv) ({\
+	op.fs_read = lpm_cpuidle_state_stress_read;\
+	op.fs_write = lpm_cpuidle_state_stress_write;\
+	op.priv = _priv; })
+
+#define LPM_CPUIDLE_STATE_STRESS_NODE_INIT(_n, _name, _type) ({\
+	_n.name = _name;\
+	_n.type = _type;\
+	LPM_CPUIDLE_STATE_STRESS_OP(_n.op, &_n); })
 
 enum LPM_CPUIDLE_STATE_NODE_TYPE {
 	LPM_CPUIDLE_STATE_NODE_ENABLED,
@@ -42,6 +55,8 @@ struct mtk_lp_sysfs_handle lpm_entry_cpuidle_state;
 struct LPM_CPUIDLE_STATE_NODE state_enabled;
 struct LPM_CPUIDLE_STATE_NODE state_latency;
 struct LPM_CPUIDLE_STATE_NODE state_residency;
+struct LPM_CPUIDLE_STATE_NODE state_stress_latency;
+struct LPM_CPUIDLE_STATE_NODE state_stress_residency;
 
 struct MTK_CPUIDLE_DRV_INFO {
 	int cpu;
@@ -51,6 +66,7 @@ struct MTK_CPUIDLE_DRV_INFO {
 	unsigned int val;
 	char *p;
 	size_t *sz;
+	int reset;
 };
 
 struct lpm_cpu_topology {
@@ -63,12 +79,16 @@ static const char *node_string[NF_IDLE_PARAM] = {
 	[IDLE_PARAM_EN]		= "Enabled",
 	[IDLE_PARAM_LAT]	= "Exit latency",
 	[IDLE_PARAM_RES]	= "Target residency",
+	[IDLE_STRESS_LAT]	= "Stress latency",
+	[IDLE_STRESS_RES]	= "Stress residency",
 };
 
 static const char *node_name[NF_IDLE_PARAM] = {
 	[IDLE_PARAM_EN]		= "enabled",
 	[IDLE_PARAM_LAT]	= "latency",
 	[IDLE_PARAM_RES]	= "residency",
+	[IDLE_STRESS_LAT]	= "stress_latency",
+	[IDLE_STRESS_RES]	= "stress_residency",
 };
 
 struct lpm_idle_state_info {
@@ -78,6 +98,25 @@ struct lpm_idle_state_info {
 
 static struct lpm_idle_state_info state_info[CPUIDLE_STATE_MAX];
 static unsigned int nr_states;
+
+static void idle_proc_state_get_default(char *state_name, struct MTK_CPUIDLE_DRV_INFO *info)
+{
+	unsigned int entry_lat = 0, exit_lat = 0, min_residency = 0;
+	struct device_node *node = NULL;
+
+	node = of_find_node_by_name(NULL, state_name);
+	if (node) {
+		if (info->param == IDLE_PARAM_LAT) {
+			of_property_read_u32(node, "entry-latency-us", &entry_lat);
+			of_property_read_u32(node, "exit-latency-us", &exit_lat);
+			info->val = entry_lat + exit_lat;
+		} else if (info->param == IDLE_PARAM_RES) {
+			of_property_read_u32(node, "min-residency-us", &min_residency);
+			info->val = min_residency;
+		}
+		of_node_put(node);
+	}
+}
 
 static long lpm_per_cpuidle_drv_param(void *pData)
 {
@@ -91,42 +130,19 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 	if (!drv)
 		return -ENODEV;
 	if (info->type == MTK_CPUIDLE_DRIVE_STATE_GET) {
-		if (info->cpu == 0) {
-			mtk_dbg_cpuidle_log("%-12s:", "state_index");
-			for (i = 0; i < nr_states; i++)
-				if (i == 0)
-					mtk_dbg_cpuidle_log("  %-8d", i);
-				else
-					mtk_dbg_cpuidle_log("%-15d", i);
-			mtk_dbg_cpuidle_log("\n");
-
-			mtk_dbg_cpuidle_log("%-12s:", "state_name");
-			for (i = 0; i < nr_states; i++) {
-				if (i == 0)
-					mtk_dbg_cpuidle_log("  %-8s", state_info[i].name);
-				else
-					mtk_dbg_cpuidle_log("%-15s", state_info[i].name);
-			}
-			mtk_dbg_cpuidle_log("\n");
-		}
+		unsigned int j = 1;
 
 		mtk_dbg_cpuidle_log("%11s%d:", "cpu", info->cpu);
-		if (cpu_is_offline(info->cpu))
-			mtk_dbg_cpuidle_log("%18s ", "Offline");
-		else {
-			unsigned int j = 1;
-
-			mtk_dbg_cpuidle_log("  %-8ld",
-				mtk_cpuidle_get_param(drv, 0, info->param));
-			for (i = 1; i < nr_states; i++) {
-				if (!strncmp((drv->states[j]).name, state_info[i].name,
-						strlen(state_info[i].name))) {
-					mtk_dbg_cpuidle_log("%-15ld",
-						mtk_cpuidle_get_param(drv, j, info->param));
-					j += 1;
-				} else {
-					mtk_dbg_cpuidle_log("%-15s", "X");
-				}
+		mtk_dbg_cpuidle_log("  %-8ld",
+			mtk_cpuidle_get_param(drv, 0, info->param));
+		for (i = 1; i < nr_states; i++) {
+			if (!strncmp((drv->states[j]).name, state_info[i].name,
+				strlen(state_info[i].name))) {
+				mtk_dbg_cpuidle_log("%-15ld",
+					mtk_cpuidle_get_param(drv, j, info->param));
+				j += 1;
+			} else {
+				mtk_dbg_cpuidle_log("%-15s", "X");
 			}
 		}
 		mtk_dbg_cpuidle_log("\n");
@@ -135,6 +151,9 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 			if (!strncmp((drv->states[i]).name,
 				state_info[info->state_idx].name,
 				strlen(state_info[info->state_idx].name))) {
+				if (info->reset)
+					idle_proc_state_get_default((drv->states[i]).name,
+								    info);
 				mtk_cpuidle_set_param(drv, i, info->param, info->val);
 				break;
 			}
@@ -147,17 +166,47 @@ static long lpm_per_cpuidle_drv_param(void *pData)
 	return 0;
 }
 
-static void cpuidle_state_read_param(char **ToUserBuf, size_t *sz, int param)
+static void cpuidle_state_read_param(char **ToUserBuf, size_t *sz_p, int param)
 {
-	int cpu;
+	int cpu, i = 0;
+	char *p = *ToUserBuf;
+	size_t sz = *sz_p;
 	struct MTK_CPUIDLE_DRV_INFO drv_info = {
 		.type = MTK_CPUIDLE_DRIVE_STATE_GET,
 		.param = param,
-		.p = *ToUserBuf,
-		.sz = sz,
 	};
 
+	mtk_dbg_cpuidle_log("%-12s:", "state_index");
+	for (i = 0; i < nr_states; i++)
+		if (i == 0)
+			mtk_dbg_cpuidle_log("  %-8d", i);
+		else
+			mtk_dbg_cpuidle_log("%-15d", i);
+	mtk_dbg_cpuidle_log("\n");
+
+	mtk_dbg_cpuidle_log("%-12s:", "state_name");
+	for (i = 0; i < nr_states; i++) {
+		if (i == 0)
+			mtk_dbg_cpuidle_log("  %-8s", state_info[i].name);
+		else
+			mtk_dbg_cpuidle_log("%-15s", state_info[i].name);
+	}
+	mtk_dbg_cpuidle_log("\n");
+	*sz_p = sz;
+	drv_info.sz = sz_p;
+	drv_info.p = p;
+
 	for_each_possible_cpu(cpu) {
+		if (cpu_is_offline(cpu)) {
+			p = drv_info.p;
+			sz = *(drv_info.sz);
+			mtk_dbg_cpuidle_log("%11s%d:", "cpu", cpu);
+			mtk_dbg_cpuidle_log("%18s\n", "Offline");
+			*sz_p = sz;
+			drv_info.sz = sz_p;
+			drv_info.p = p;
+			continue;
+		}
 		drv_info.cpu = cpu;
 		work_on_cpu(cpu, lpm_per_cpuidle_drv_param,
 				&drv_info);
@@ -166,33 +215,22 @@ static void cpuidle_state_read_param(char **ToUserBuf, size_t *sz, int param)
 	*ToUserBuf = drv_info.p;
 }
 
-static int idle_proc_state_param_setting(char *cmd, size_t *sz, int param)
+static int idle_proc_state_param_setting(int cpu, unsigned int state_idx, unsigned int val,
+									size_t *sz, int param)
 {
-	char *args;
-	unsigned int cpu_mask, state_idx = 0, val = 0;
-	int cpu = 0, i = 0;
+	unsigned int cpu_mask;
+	int i = 0, reset = 0;
 	struct MTK_CPUIDLE_DRV_INFO drv_info;
-	struct cmd_param {
-		unsigned int id;
-		unsigned int mask;
-	};
-
-	args = strsep(&cmd, " ");
-	if (!args || kstrtoint(args, 10, &cpu) != 0)
-		return -EINVAL;
-
-	args = strsep(&cmd, " ");
-	if (!args || kstrtouint(args, 10, &state_idx) != 0)
-		return -EINVAL;
-
-	args = strsep(&cmd, " ");
-	if (!args || kstrtouint(args, 10, &val) != 0)
-		return -EINVAL;
-
-	if (!state_idx || state_idx >= nr_states)
-		return -EINVAL;
 
 	cpu_mask = 0;
+
+	if (cpu == RESET_ALL && param > IDLE_PARAM_EN) {
+		cpu = ALL_CPU_ID;
+		reset = 1;
+	}
+
+	if (param == IDLE_STRESS_LAT || param == IDLE_STRESS_RES)
+		param -= STRESS_ENU_OFFSET;
 
 	if (cpu >= 0 && cpu < nr_cpu_ids) {
 		cpu_mask = (1 << cpu);
@@ -217,8 +255,8 @@ static int idle_proc_state_param_setting(char *cmd, size_t *sz, int param)
 		drv_info.param = param;
 		drv_info.state_idx = state_idx;
 		drv_info.val = val;
-		drv_info.p = cmd;
 		drv_info.sz = sz;
+		drv_info.reset = reset;
 
 		work_on_cpu(cpu, lpm_per_cpuidle_drv_param,
 				&drv_info);
@@ -237,15 +275,23 @@ static void idle_proc_state_uasge_print(char **ToUserBuf, size_t *size,
 
 	num_present_cpus = num_present_cpus();
 
-	if (type > IDLE_PARAM_RES)
-		type = IDLE_PARAM_RES;
+	if (type > IDLE_STRESS_RES)
+		type = IDLE_STRESS_RES;
 
 	mtk_dbg_cpuidle_log("\n======== Command Usage ========\n");
-	mtk_dbg_cpuidle_log("%s > /proc/mtk_lpm/cpuidle/state/%s\n",
-			"echo [cpu_id] [state_index] [val(dec)]",
-			node_name[type]);
+	if (type != IDLE_STRESS_LAT && type != IDLE_STRESS_RES) {
+		mtk_dbg_cpuidle_log("%s > /proc/mtk_lpm/cpuidle/state/%s\n",
+				"echo [cpu_id] [state_index] [val(dec)]",
+				node_name[type]);
+	} else {
+		mtk_dbg_cpuidle_log("%s > /proc/mtk_lpm/cpuidle/state/%s\n",
+				"echo [cpu_id|reset]",
+				node_name[type]);
+		mtk_dbg_cpuidle_log("\t  reset: %3d -> reset all %s\n",
+					RESET_ALL, node_name[type - STRESS_ENU_OFFSET]);
+	}
 	mtk_dbg_cpuidle_log("\t cpu_id: 0~%u -> cpu number\n",
-				num_present_cpus);
+				num_present_cpus - 1);
 
 	while (topology[i]->id != ALL_CPU_ID) {
 		mtk_dbg_cpuidle_log("\t         %3d -> all cluster%d CPU\n",
@@ -255,10 +301,47 @@ static void idle_proc_state_uasge_print(char **ToUserBuf, size_t *size,
 	mtk_dbg_cpuidle_log("\t         %3d -> all CPU\n",
 					topology[i]->id);
 
-	mtk_dbg_cpuidle_log("\t state_index msut > 0 (index 0 can't be modified)\n");
+	mtk_dbg_cpuidle_log("\t state_index must > 0 (index 0 can't be modified)\n");
 	mtk_dbg_cpuidle_log("\n");
 
 	*ToUserBuf = p;
+}
+
+static ssize_t lpm_cpuidle_state_stress_read(char *ToUserBuf,
+						size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	struct LPM_CPUIDLE_STATE_NODE *node =
+			(struct LPM_CPUIDLE_STATE_NODE *)priv;
+
+	if (!p || !node)
+		return -EINVAL;
+
+	idle_proc_state_uasge_print(&p, &sz, node->type);
+
+	return p - ToUserBuf;
+}
+
+static ssize_t lpm_cpuidle_state_stress_write(char *FromUserBuf,
+						size_t sz, void *priv)
+{
+	struct LPM_CPUIDLE_STATE_NODE *node =
+			(struct LPM_CPUIDLE_STATE_NODE *)priv;
+	int cpu = 0;
+	int i;
+
+	if (!FromUserBuf || !node)
+		return -EINVAL;
+	if (kstrtoint(FromUserBuf, 10, &cpu) != 0)
+		return -EINVAL;
+
+	for (i = 1; i < nr_states; i++) {
+		if (!strcmp(state_info[i].name, S2IDLE_STATE_NAME))
+			continue;
+
+		idle_proc_state_param_setting(cpu, i, STRESS_VAL, &sz, node->type);
+	}
+	return sz;
 }
 
 static ssize_t lpm_cpuidle_state_read(char *ToUserBuf,
@@ -271,10 +354,10 @@ static ssize_t lpm_cpuidle_state_read(char *ToUserBuf,
 	if (!p || !node)
 		return -EINVAL;
 
-		mtk_dbg_cpuidle_log("==== CPU idle state: %s ====\n",
-					node_string[node->type]);
-		cpuidle_state_read_param(&p, &sz, node->type);
-		idle_proc_state_uasge_print(&p, &sz, node->type);
+	mtk_dbg_cpuidle_log("==== CPU idle state: %s ====\n",
+				node_string[node->type]);
+	cpuidle_state_read_param(&p, &sz, node->type);
+	idle_proc_state_uasge_print(&p, &sz, node->type);
 
 	return p - ToUserBuf;
 }
@@ -284,17 +367,20 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 {
 	struct LPM_CPUIDLE_STATE_NODE *node =
 			(struct LPM_CPUIDLE_STATE_NODE *)priv;
-	char cmd[128];
-	int parm;
+	unsigned int cpu = 0, val = 0, state_idx = 0;
 
 	if (!FromUserBuf || !node)
 		return -EINVAL;
+	if (node->type < IDLE_STATE_EN && !mtk_cpuidle_get_state_en())
+		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%127s %x", cmd, &parm) == 2) {
-		idle_proc_state_param_setting(FromUserBuf, &sz, node->type);
+	if (sscanf(FromUserBuf, "%u %u %u", &cpu, &state_idx, &val) == 3) {
+		if (!state_idx || state_idx >= nr_states)
+			return -EINVAL;
+		idle_proc_state_param_setting(cpu, state_idx, val, &sz, node->type);
+
 		return sz;
 	}
-
 	return -EINVAL;
 }
 
@@ -418,4 +504,20 @@ void lpm_cpuidle_state_init(void)
 					&state_residency.op,
 					&lpm_entry_cpuidle_state,
 					&state_residency.handle);
+
+	LPM_CPUIDLE_STATE_STRESS_NODE_INIT(state_stress_latency, node_name[IDLE_STRESS_LAT],
+				    IDLE_STRESS_LAT);
+	mtk_cpuidle_sysfs_sub_entry_node_add(state_stress_latency.name,
+					MTK_CPUIDLE_SYS_FS_MODE,
+					&state_stress_latency.op,
+					&lpm_entry_cpuidle_state,
+					&state_stress_latency.handle);
+
+	LPM_CPUIDLE_STATE_STRESS_NODE_INIT(state_stress_residency, node_name[IDLE_STRESS_RES],
+				    IDLE_STRESS_RES);
+	mtk_cpuidle_sysfs_sub_entry_node_add(state_stress_residency.name,
+					MTK_CPUIDLE_SYS_FS_MODE,
+					&state_stress_residency.op,
+					&lpm_entry_cpuidle_state,
+					&state_stress_residency.handle);
 }

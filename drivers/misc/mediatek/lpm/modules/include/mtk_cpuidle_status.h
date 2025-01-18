@@ -10,9 +10,13 @@
 #define LPM_CPU_OFF_BLOCK_VALUE	2
 
 enum idle_param {
-	IDLE_PARAM_EN,
 	IDLE_PARAM_LAT,
 	IDLE_PARAM_RES,
+/* add above if need state_en control */
+	IDLE_STATE_EN,
+	IDLE_PARAM_EN,
+	IDLE_STRESS_LAT,
+	IDLE_STRESS_RES,
 
 	NF_IDLE_PARAM
 };
@@ -64,6 +68,9 @@ do {                                                            \
 		}								\
 	}							\
 } while (0)
+
+void mtk_cpuidle_set_state_en(bool en);
+bool mtk_cpuidle_get_state_en(void);
 
 void mtk_cpuidle_set_stress_test(bool en);
 bool mtk_cpuidle_get_stress_status(void);
