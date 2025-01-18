@@ -25,10 +25,9 @@
 #define SENINF_CLK_CONTROL 1
 #endif
 
-// #define IMGSENSOR_DFS_CTRL_ENABLE
-#ifdef IMGSENSOR_DFS_CTRL_ENABLE
-#include <linux/soc/mediatek/mtk-pm-qos.h>
-#include <mmdvfs_pmqos.h>
+#ifdef DFS_CTRL_BY_OPP
+#include <linux/pm_opp.h>
+#include <linux/regulator/consumer.h>
 
 enum DFS_OPTION {
 	DFS_CTRL_ENABLE,
@@ -38,7 +37,18 @@ enum DFS_OPTION {
 	DFS_SUPPORTED_ISP_CLOCKS,
 	DFS_CUR_ISP_CLOCK,
 };
-extern int imgsensor_dfs_ctrl(enum DFS_OPTION option, void *pbuff);
+
+struct seninf_dfs_ctx {
+	struct device *dev;
+	struct regulator *reg;
+	unsigned long *freqs;
+	unsigned long *volts;
+	int cnt;
+};
+int seninf_dfs_init(struct seninf_dfs_ctx *ctx, struct device *dev);
+void seninf_dfs_exit(struct seninf_dfs_ctx *ctx);
+int seninf_dfs_ctrl(
+	struct seninf_dfs_ctx *ctx, enum DFS_OPTION option, void *pbuff);
 #endif
 
 #ifndef SENINF_USE_RPM
@@ -180,8 +190,6 @@ gseninf_clk_freq[SENINF_CLK_IDX_FREQ_IDX_NUM] = {
 	SENINF_CLK_SYS_TOP_MUX_SENINF_FREQ_392MHZ, //seninf_clk 392.857
 	SENINF_CLK_SYS_TOP_MUX_SENINF_FREQ_499MHZ, //seninf_clk 499.2
 };
-
-
 
 struct SENINF_CLK {
 	struct platform_device *pplatform_device;
