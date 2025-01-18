@@ -10,8 +10,8 @@
 
 #include "inc/mt6991.h"
 #include "inc/mt6991_debug.h"
-#if (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
-#include "ut/mt6991_ut_test.h"
+#if UARTHUB_SUPPORT_DVT
+#include "test/mt6991_test_api.h"
 #endif
 
 #include <linux/clk.h>
@@ -55,6 +55,8 @@ static atomic_t g_uarthub_pll_clk_on = ATOMIC_INIT(0);
 #if UNIVPLL_CTRL_EN
 static struct clk *clk_top_uarthub_bclk_sel;
 static struct clk *clk_top_uart_sel;
+static struct clk *clk_top_adsp_uarthub_bclk_sel;
+static struct clk *clk_top_univpll_d6_d2_208m;
 static struct clk *clk_top_univpll_d6_d4_104m;
 static struct clk *clk_top_tck_26m_mx9;
 #endif
@@ -95,6 +97,7 @@ static int uarthub_init_debug_monitor_mt6991(void);
 static int uarthub_uart_src_clk_ctrl(enum uarthub_clk_opp clk_opp);
 static int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
 static int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
+static int uarthub_adsp_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
 static int uarthub_univpll_clk_init(struct platform_device *pdev);
 static int uarthub_univpll_clk_exit(void);
 #endif
@@ -168,6 +171,17 @@ struct uarthub_core_ops_struct mt6991_plat_core_data = {
 	.uarthub_plat_sspm_irq_mask_ctrl = uarthub_sspm_irq_mask_ctrl_mt6991,
 #endif
 
+	.uarthub_plat_inband_enable_ctrl = uarthub_inband_enable_ctrl_mt6991,
+	.uarthub_plat_inband_irq_mask_ctrl = uarthub_inband_irq_mask_ctrl_mt6991,
+	.uarthub_plat_inband_irq_clear_ctrl = uarthub_inband_irq_clear_ctrl_mt6991,
+	.uarthub_plat_inband_irq_get_sta = uarthub_inband_irq_get_sta_mt6991,
+	.uarthub_plat_inband_get_esc_sta = uarthub_inband_get_esc_sta_mt6991,
+	.uarthub_plat_inband_clear_esc_sta = uarthub_inband_clear_esc_sta_mt6991,
+	.uarthub_plat_inband_set_esc_char = uarthub_inband_set_esc_char_mt6991,
+	.uarthub_plat_inband_set_esc_sta = uarthub_inband_set_esc_sta_mt6991,
+	.uarthub_plat_inband_is_tx_complete = uarthub_inband_is_tx_complete_mt6991,
+	.uarthub_plat_inband_trigger_ctrl = uarthub_inband_trigger_ctrl_mt6991,
+
 	.uarthub_plat_get_bt_sleep_flow_hw_mech_en = uarthub_get_bt_sleep_flow_hw_mech_en_mt6991,
 	.uarthub_plat_set_bt_sleep_flow_hw_mech_en = uarthub_set_bt_sleep_flow_hw_mech_en_mt6991,
 	.uarthub_plat_get_host_awake_sta = uarthub_get_host_awake_sta_mt6991,
@@ -224,9 +238,8 @@ int uarthub_get_hwccf_univpll_on_info_mt6991(void)
 		return -1;
 	}
 
-	return (UARTHUB_REG_READ_BIT(apmixedsys_remap_addr_mt6991 + UNIVPLL_PLLEN_ALL,
-		UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_MASK) >>
-		UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_SHIFT);
+	return (UARTHUB_REG_READ_BIT(apmixedsys_remap_addr_mt6991 + FENC_STATUS_CON0,
+		RG_UNIVPLL_FENC_STATUS_MASK) >> RG_UNIVPLL_FENC_STATUS_SHIFT);
 #else
 	return 1;
 #endif
@@ -772,11 +785,28 @@ int uarthub_usb_rx_pin_ctrl_mt6991(void __iomem *dev_base, int enable)
 	return 0;
 }
 
+#if UARTHUB_WAKEUP_DEBUG_EN
+int uarthub_sspm_wakeup_enable_mt6991(void)
+{
+	SPM_26M_ULPOSC_REQ_CTRL_SET_spm_26m_ulposc_req(SPM_26M_ULPOSC_REQ_CTRL_ADDR, 0x1);
+	UARTHUB_REG_WRITE(SSPM_WAKEUP_IRQ_STA_CLR_ADDR, 0xF);
+	UARTHUB_REG_WRITE(SSPM_WAKEUP_IRQ_STA_MASK_ADDR, 0x0);
+	UARTHUB_REG_WRITE(SSPM_WAKEUP_IRQ_STA_EN_ADDR, 0xF);
+	return 0;
+}
+#endif
+
 int uarthub_uarthub_init_mt6991(struct platform_device *pdev)
 {
+	uarthub_set_bt_sleep_flow_hw_mech_en_mt6991(0);
+
 	/* default assert mode enable */
 	/* assert mode enable --> BT off or assert state*/
 	uarthub_assert_state_ctrl_mt6991(1);
+
+#if UARTHUB_WAKEUP_DEBUG_EN
+	uarthub_sspm_wakeup_enable_mt6991();
+#endif
 
 #if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	/* init UNIVPLL clk from dts node */
@@ -796,6 +826,17 @@ int uarthub_uarthub_init_mt6991(struct platform_device *pdev)
 
 	/* config debug monitor to check data mode */
 	uarthub_init_debug_monitor_mt6991();
+
+	/* config dx-4 wakeup/sleep flow */
+	FEEDBACK_DATA1_SET_feedback_data1(FEEDBACK_DATA1_ADDR, 0x02FDFF01);
+	CON3_SET_feedback_header_mode(CON3_ADDR, 0x0);
+	STA0_SET_feedback_pkt_type(STA0_ADDR, 0x1);
+
+	/* mask sspm irq, feedback_host_awake_tx_done */
+	IRQ_MASK_SET_feedback_host_awake_tx_done_mask(IRQ_MASK_ADDR, 1);
+
+	/* disable not_ready_block_rx_data*/
+	RX_DATA_REQ_MASK_SET_not_ready_block_rx_data_en(RX_DATA_REQ_MASK_ADDR, 0);
 
 #if UARTHUB_INFO_LOG
 	uarthub_dump_intfhub_debug_info_mt6991(__func__);
@@ -835,11 +876,14 @@ int uarthub_pll_clk_on_mt6991(int on, const char *tag)
 	/* config ap_uart source clock to TOPCKGEN */
 	uarthub_uart_src_clk_ctrl((on == 1) ? uarthub_clk_topckgen : uarthub_clk_26m);
 
-	/* config TOPCKGEN ap_uart mux to 104m */
-	uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
+	/* config TOPCKGEN ap_uart mux to 208m */
+	uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
 
-	/* config TOPCKGEN uarthub mux to 104m */
-	uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
+	/* config TOPCKGEN uarthub mux to 208m */
+	uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
+
+	/* config TOPCKGEN adsp_uarthub mux to 208m */
+	uarthub_adsp_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
 
 	atomic_set(&g_uarthub_pll_clk_on, on);
 
@@ -865,6 +909,8 @@ int uarthub_uarthub_open_mt6991(void)
 	uarthub_dump_uartip_debug_info_mt6991(__func__, NULL);
 #endif
 #endif
+
+	uarthub_bt_on_count_inc_mt6991();
 
 	return 0;
 }
@@ -909,13 +955,19 @@ int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 #if UNIVPLL_CTRL_EN
 	int ret = 0;
 
-	if (clk_opp != uarthub_clk_26m && clk_opp != uarthub_clk_104m) {
+	if (clk_opp != uarthub_clk_26m && clk_opp != uarthub_clk_104m && clk_opp != uarthub_clk_208m) {
 		pr_notice("[%s] clk_opp value is not support(%d)\n", __func__, clk_opp);
 		return UARTHUB_ERR_ENUM_NOT_SUPPORT;
 	}
 
+#if SUPPORT_HWCCF
 	if (IS_ERR_OR_NULL(clk_top_uart_sel)) {
 		pr_notice("[%s] clk_top_uart_sel is not init\n", __func__);
+		return -1;
+	}
+
+	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d2_208m)) {
+		pr_notice("[%s] clk_top_univpll_d6_d2_208m is not init\n", __func__);
 		return -1;
 	}
 
@@ -929,14 +981,29 @@ int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 		return -1;
 	}
 
-	ret = clk_set_parent(clk_top_uart_sel, ((clk_opp == uarthub_clk_104m) ?
-		clk_top_univpll_d6_d4_104m : clk_top_tck_26m_mx9));
+	ret = clk_set_parent(clk_top_uart_sel,
+		((clk_opp == uarthub_clk_208m) ? clk_top_univpll_d6_d2_208m :
+		((clk_opp == uarthub_clk_104m) ? clk_top_univpll_d6_d4_104m : clk_top_tck_26m_mx9)));
 
 	if (ret)
 		pr_notice("[%s] uart_sel set clk parent to %s failed, %d\n",
 			__func__,
-			((clk_opp == uarthub_clk_104m) ? "clk104m" : "clk26m"), ret);
+			((clk_opp == uarthub_clk_208m) ? "clk208m" :
+			((clk_opp == uarthub_clk_104m) ? "clk104m" : "clk26m")), ret);
+#else
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_6_CLR,
+		CLK_CFG_6_UART_SEL_MASK);
 
+	if (clk_opp == uarthub_clk_104m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_6_SET,
+			CLK_CFG_6_UART_SEL_104M);
+	else if (clk_opp == uarthub_clk_208m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_6_SET,
+			CLK_CFG_6_UART_SEL_208M);
+
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_UPDATE,
+		CLK_CFG_UPDATE_UART_CK_UPDATE_MASK);
+#endif
 	return ret;
 #else
 	return 0;
@@ -950,13 +1017,19 @@ int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 #if UNIVPLL_CTRL_EN
 	int ret = 0;
 
-	if (clk_opp != uarthub_clk_26m && clk_opp != uarthub_clk_104m) {
+	if (clk_opp != uarthub_clk_26m && clk_opp != uarthub_clk_104m && clk_opp != uarthub_clk_208m) {
 		pr_notice("[%s] clk_opp value is not support(%d)\n", __func__, clk_opp);
 		return UARTHUB_ERR_ENUM_NOT_SUPPORT;
 	}
 
+#if SUPPORT_HWCCF
 	if (IS_ERR_OR_NULL(clk_top_uarthub_bclk_sel)) {
 		pr_notice("[%s] clk_top_uarthub_bclk_sel is not init\n", __func__);
+		return -1;
+	}
+
+	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d2_208m)) {
+		pr_notice("[%s] clk_top_univpll_d6_d2_208m is not init\n", __func__);
 		return -1;
 	}
 
@@ -970,14 +1043,91 @@ int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 		return -1;
 	}
 
-	ret = clk_set_parent(clk_top_uarthub_bclk_sel, ((clk_opp == uarthub_clk_104m) ?
-		clk_top_univpll_d6_d4_104m : clk_top_tck_26m_mx9));
+	ret = clk_set_parent(clk_top_uarthub_bclk_sel,
+		((clk_opp == uarthub_clk_208m) ? clk_top_univpll_d6_d2_208m :
+		((clk_opp == uarthub_clk_104m) ? clk_top_univpll_d6_d4_104m : clk_top_tck_26m_mx9)));
 
 	if (ret)
 		pr_notice("[%s] uarthub_sel set clk parent to %s failed, %d\n",
 			__func__,
-			((clk_opp == uarthub_clk_104m) ? "clk104m" : "clk26m"), ret);
+			((clk_opp == uarthub_clk_208m) ? "clk208m" :
+			((clk_opp == uarthub_clk_104m) ? "clk104m" : "clk26m")), ret);
+#else
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_16_CLR,
+		CLK_CFG_16_UARTHUB_BCLK_SEL_MASK);
 
+	if (clk_opp == uarthub_clk_104m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_16_SET,
+			CLK_CFG_16_UARTHUB_BCLK_SEL_104M);
+	else if (clk_opp == uarthub_clk_208m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_16_SET,
+			CLK_CFG_16_UARTHUB_BCLK_SEL_208M);
+
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_UPDATE2,
+		CLK_CFG_UPDATE2_UARTHUB_BCLK_UPDATE_MASK);
+#endif
+	return ret;
+#else
+	return 0;
+#endif
+}
+#endif
+
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
+int uarthub_adsp_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
+{
+#if UNIVPLL_CTRL_EN
+	int ret = 0;
+
+	if (clk_opp != uarthub_clk_26m && clk_opp != uarthub_clk_104m && clk_opp != uarthub_clk_208m) {
+		pr_notice("[%s] clk_opp value is not support(%d)\n", __func__, clk_opp);
+		return UARTHUB_ERR_ENUM_NOT_SUPPORT;
+	}
+
+#if SUPPORT_HWCCF
+	if (IS_ERR_OR_NULL(clk_top_adsp_uarthub_bclk_sel)) {
+		pr_notice("[%s] clk_top_adsp_uarthub_bclk_sel is not init\n", __func__);
+		return -1;
+	}
+
+	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d2_208m)) {
+		pr_notice("[%s] clk_top_univpll_d6_d2_208m is not init\n", __func__);
+		return -1;
+	}
+
+	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d4_104m)) {
+		pr_notice("[%s] clk_top_univpll_d6_d4_104m is not init\n", __func__);
+		return -1;
+	}
+
+	if (IS_ERR_OR_NULL(clk_top_tck_26m_mx9)) {
+		pr_notice("[%s] clk_top_tck_26m_mx9 is not init\n", __func__);
+		return -1;
+	}
+
+	ret = clk_set_parent(clk_top_adsp_uarthub_bclk_sel,
+		((clk_opp == uarthub_clk_208m) ? clk_top_univpll_d6_d2_208m :
+		((clk_opp == uarthub_clk_104m) ? clk_top_univpll_d6_d4_104m : clk_top_tck_26m_mx9)));
+
+	if (ret)
+		pr_notice("[%s] adsp_uarthub_sel set clk parent to %s failed, %d\n",
+			__func__,
+			((clk_opp == uarthub_clk_208m) ? "clk208m" :
+			((clk_opp == uarthub_clk_104m) ? "clk104m" : "clk26m")), ret);
+#else
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_13_CLR,
+		CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_MASK);
+
+	if (clk_opp == uarthub_clk_104m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_13_SET,
+			CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_104M);
+	else if (clk_opp == uarthub_clk_208m)
+		UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_13_SET,
+			CLK_CFG_13_ADSP_UARTHUB_BCLK_SEL_208M);
+
+	UARTHUB_REG_WRITE(topckgen_base_remap_addr_mt6991 + CLK_CFG_UPDATE1,
+		CLK_CFG_UPDATE1_ADSP_UARTHUB_BCLK_UPDATE_MASK);
+#endif
 	return ret;
 #else
 	return 0;
@@ -1014,6 +1164,24 @@ int uarthub_univpll_clk_init(struct platform_device *pdev)
 	pr_info("[%s] clk_top_uart_sel=[%p]\n",
 		__func__, clk_top_uart_sel);
 
+	clk_top_adsp_uarthub_bclk_sel = devm_clk_get(&pdev->dev, "clk_top_adsp_uarthub_bclk_sel");
+	if (IS_ERR_OR_NULL(clk_top_adsp_uarthub_bclk_sel)) {
+		pr_notice("[%s] cannot get clk_top_adsp_uarthub_bclk_sel clock.\n",
+			__func__);
+		return PTR_ERR(clk_top_adsp_uarthub_bclk_sel);
+	}
+	pr_info("[%s] clk_top_adsp_uarthub_bclk_sel=[%p]\n",
+		__func__, clk_top_adsp_uarthub_bclk_sel);
+
+	clk_top_univpll_d6_d2_208m = devm_clk_get(&pdev->dev, "clk_top_univpll_d6_d2_208m");
+	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d2_208m)) {
+		pr_notice("[%s] cannot get clk_top_univpll_d6_d2_208m clock.\n",
+			__func__);
+		return PTR_ERR(clk_top_univpll_d6_d2_208m);
+	}
+	pr_info("[%s] clk_top_univpll_d6_d2_208m=[%p]\n",
+		__func__, clk_top_univpll_d6_d2_208m);
+
 	clk_top_univpll_d6_d4_104m = devm_clk_get(&pdev->dev, "clk_top_univpll_d6_d4_104m");
 	if (IS_ERR_OR_NULL(clk_top_univpll_d6_d4_104m)) {
 		pr_notice("[%s] cannot get clk_top_univpll_d6_d4_104m clock.\n",
@@ -1045,6 +1213,13 @@ int uarthub_univpll_clk_init(struct platform_device *pdev)
 			__func__, ret);
 		return ret;
 	}
+
+	ret = clk_prepare_enable(clk_top_adsp_uarthub_bclk_sel);
+	if (ret) {
+		pr_notice("[%s] prepare adsp_uarthub_sel fail(%d)\n",
+			__func__, ret);
+		return ret;
+	}
 #endif
 
 	return 0;
@@ -1065,8 +1240,14 @@ int uarthub_univpll_clk_exit(void)
 		return -1;
 	}
 
+	if (IS_ERR_OR_NULL(clk_top_adsp_uarthub_bclk_sel)) {
+		pr_notice("[%s] clk_top_adsp_uarthub_bclk_sel is not init\n", __func__);
+		return -1;
+	}
+
 	clk_disable_unprepare(clk_top_uarthub_bclk_sel);
 	clk_disable_unprepare(clk_top_uart_sel);
+	clk_disable_unprepare(clk_top_adsp_uarthub_bclk_sel);
 #endif
 
 	return 0;
@@ -1163,9 +1344,9 @@ int uarthub_init_debug_monitor_mt6991(void)
 
 int uarthub_init_remap_reg_mt6991(void)
 {
-	gpio_base_remap_addr_mt6991 = ioremap(GPIO_BASE_ADDR, 0x500);
-	pericfg_ao_remap_addr_mt6991 = ioremap(PERICFG_AO_BASE_ADDR, 0x100);
-	topckgen_base_remap_addr_mt6991 = ioremap(TOPCKGEN_BASE_ADDR, 0x100);
+	gpio_base_remap_addr_mt6991 = ioremap(GPIO_BASE_ADDR, 0x1000);
+	pericfg_ao_remap_addr_mt6991 = ioremap(PERICFG_AO_BASE_ADDR, 0x1000);
+	topckgen_base_remap_addr_mt6991 = ioremap(TOPCKGEN_BASE_ADDR, 0x1000);
 	uartip_base_map_mt6991[uartip_id_ap] = ioremap(UARTHUB_DEV_0_BASE_ADDR, 0x100);
 	uartip_base_map_mt6991[uartip_id_md] = ioremap(UARTHUB_DEV_1_BASE_ADDR, 0x100);
 	uartip_base_map_mt6991[uartip_id_adsp] = ioremap(UARTHUB_DEV_2_BASE_ADDR, 0x100);
@@ -1694,6 +1875,117 @@ int uarthub_get_irq_err_type_mt6991(void)
 	return UARTHUB_REG_READ_BIT(DEV0_IRQ_STA_ADDR, BIT_0x7FFF_FFFF);
 }
 
+int uarthub_inband_enable_ctrl_mt6991(int enable)
+{
+	int mask = 0;
+
+	if (enable == 1) {
+		mask = REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_EN) |
+			REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_IRQ_EN) |
+			REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_IRQ_CLR) |
+			REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_STA_CLR);
+
+		UARTHUB_REG_WRITE_MASK(
+			INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), mask, mask);
+
+		uarthub_inband_set_esc_char_mt6991(0xDC);
+	} else {
+		mask = REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_EN) |
+			REG_FLD_MASK(INB_IRQ_CTL_FLD_INB_IRQ_EN);
+
+		UARTHUB_REG_WRITE_MASK(
+			INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), 0, mask);
+	}
+
+	return 0;
+}
+
+int uarthub_inband_irq_mask_ctrl_mt6991(int mask)
+{
+	INB_IRQ_CTL_SET_INB_IRQ_EN(
+		INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), ((mask == 1) ? 0x0 : 0x1));
+	return 0;
+}
+
+int uarthub_inband_irq_clear_ctrl_mt6991(void)
+{
+	INB_IRQ_CTL_SET_INB_IRQ_CLR(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), 0x1);
+	return 0;
+}
+
+int uarthub_inband_irq_get_sta_mt6991(void)
+{
+	int state_inband_irq = 1;
+	int state_uarthub2ap_irq = 1;
+
+	state_inband_irq = INB_IRQ_CTL_GET_INB_IRQ_IND(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
+	state_uarthub2ap_irq = DEV0_IRQ_STA_GET_uarthub2ap_irq_b(DEV0_IRQ_STA_ADDR);
+
+	return ((state_inband_irq == 0x0 && state_uarthub2ap_irq == 0x0) ? 0x1 : 0x0);
+}
+
+unsigned char uarthub_inband_get_esc_sta_mt6991(void)
+{
+	return INB_STA_GET_INB_STA(INB_STA_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
+}
+
+int uarthub_inband_clear_esc_sta_mt6991(void)
+{
+	INB_IRQ_CTL_SET_INB_STA_CLR(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), 0x1);
+	return 0;
+}
+
+int uarthub_inband_set_esc_char_mt6991(unsigned char esc_char)
+{
+	INB_ESC_CHAR_SET_INB_ESC_CHAR(INB_ESC_CHAR_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), esc_char);
+	return 0;
+}
+
+int uarthub_inband_set_esc_sta_mt6991(unsigned char esc_sta)
+{
+	INB_STA_CHAR_SET_INB_STA_CHAR(INB_STA_CHAR_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), esc_sta);
+	return 0;
+}
+
+int uarthub_inband_is_tx_complete_mt6991(void)
+{
+	return INB_IRQ_CTL_GET_INB_TX_COMP(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
+}
+
+int uarthub_inband_trigger_ctrl_mt6991(void)
+{
+	INB_IRQ_CTL_SET_INB_TRIG(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), 0x1);
+	return 0;
+}
+
+int uarthub_inband_trigger_with_esc_sta_mt6991(unsigned char esc_sta)
+{
+	int retry = 0;
+	int val = 0;
+
+	uarthub_inband_set_esc_sta_mt6991(esc_sta);
+	uarthub_inband_trigger_ctrl_mt6991();
+
+	retry = 200;
+	while (retry-- > 0) {
+		val = uarthub_inband_is_tx_complete_mt6991();
+		if (val == 1) {
+			pr_info("[%s] inband_is_tx_complete pass, esc_sta=[0x%x], retry=[%d]\n",
+				__func__, esc_sta, retry);
+			break;
+		}
+		udelay(20);
+	}
+
+	if (val == 0) {
+		pr_notice("[%s] inband_is_tx_complete fail, esc_sta=[0x%x], retry=[%d]\n",
+			__func__, esc_sta, retry);
+		uarthub_core_debug_info("inband_trigger_fail");
+	}
+
+	return (val == 0) ? -1 : 0;
+}
+
 int uarthub_get_bt_sleep_flow_hw_mech_en_mt6991(void)
 {
 	return STA0_GET_bt_sleep_flow_hw_mechanism_en(STA0_ADDR);
@@ -1785,4 +2077,23 @@ int uarthub_get_cmm_bt_awake_sta_mt6991(void)
 int uarthub_get_bt_awake_sta_mt6991(void)
 {
 	return STA0_GET_bt_awake_sta(STA0_ADDR);
+}
+
+int uarthub_get_bt_on_count_mt6991(void)
+{
+	return UARTHUB_REG_READ_BIT(DEV0_RESERVE_ADDR, 0xFF);
+}
+
+int uarthub_bt_on_count_inc_mt6991(void)
+{
+	int count = 0;
+
+	count = uarthub_get_bt_on_count_mt6991();
+	if (count == 0xFF)
+		count = 0;
+	else
+		count++;
+
+	UARTHUB_REG_WRITE_MASK(DEV0_RESERVE_ADDR, count, 0xFF);
+	return 0;
 }

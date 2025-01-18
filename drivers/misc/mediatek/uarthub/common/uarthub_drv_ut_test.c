@@ -142,7 +142,7 @@ int uarthub_core_clear_host_irq(int dev_index)
 	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_host_irq(dev_index, BIT_0xFFFF_FFFF);
 
 	if (dev_index == 0 && g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(50);
+		uarthub_core_sync_uarthub_irq_sta(50, -1);
 
 	return state;
 }
@@ -287,13 +287,13 @@ int uarthub_core_reset_fifo_trx(void)
 	return state;
 }
 
-int uarthub_core_config_inband_esc_char(int esc_char)
+int uarthub_core_inband_set_esc_char(unsigned char esc_char)
 {
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_config_inband_esc_char == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_set_esc_char == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -304,16 +304,16 @@ int uarthub_core_config_inband_esc_char(int esc_char)
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] esc_char=[0x%x]\n", __func__, esc_char);
 #endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_config_inband_esc_char(esc_char);
+	return g_plat_ic_core_ops->uarthub_plat_inband_set_esc_char(esc_char);
 }
 
-int uarthub_core_config_inband_esc_sta(int esc_sta)
+int uarthub_core_inband_set_esc_sta(unsigned char esc_sta)
 {
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_config_inband_esc_sta == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_set_esc_sta == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -324,18 +324,18 @@ int uarthub_core_config_inband_esc_sta(int esc_sta)
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] esc_sta=[0x%x]\n", __func__, esc_sta);
 #endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_config_inband_esc_sta(esc_sta);
+	return g_plat_ic_core_ops->uarthub_plat_inband_set_esc_sta(esc_sta);
 }
 
-int uarthub_core_config_inband_enable_ctrl(int enable)
+int uarthub_core_inband_enable_ctrl(int enable)
 {
 	int state = 0;
 
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_config_inband_enable_ctrl == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_enable_ctrl == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -346,21 +346,21 @@ int uarthub_core_config_inband_enable_ctrl(int enable)
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] enable=[%d]\n", __func__, enable);
 #endif
-	state = g_plat_ic_ut_test_ops->uarthub_plat_config_inband_enable_ctrl(enable);
+	state = g_plat_ic_core_ops->uarthub_plat_inband_enable_ctrl(enable);
 
 	if (enable == 1 && g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(50);
+		uarthub_core_sync_uarthub_irq_sta(50, -1);
 
 	return state;
 }
 
-int uarthub_core_config_inband_irq_enable_ctrl(int enable)
+int uarthub_core_inband_irq_mask_ctrl(int mask)
 {
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -369,20 +369,20 @@ int uarthub_core_config_inband_irq_enable_ctrl(int enable)
 	}
 
 #if UARTHUB_INFO_LOG
-	pr_info("[%s] enable=[%d]\n", __func__, enable);
+	pr_info("[%s] mask=[%d]\n", __func__, mask);
 #endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(enable);
+	return g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl(mask);
 }
 
-int uarthub_core_config_inband_trigger(void)
+int uarthub_core_inband_trigger_ctrl(void)
 {
 	int state = 0;
 
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_config_inband_trigger == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_trigger_ctrl == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -390,32 +390,7 @@ int uarthub_core_config_inband_trigger(void)
 		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
 	}
 
-	state = g_plat_ic_ut_test_ops->uarthub_plat_config_inband_trigger();
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] state=[0x%x]\n", __func__, state);
-#endif
-
-	return state;
-}
-
-int uarthub_core_is_inband_tx_complete(void)
-{
-	int state = 0;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_is_inband_tx_complete == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-	state = g_plat_ic_ut_test_ops->uarthub_plat_is_inband_tx_complete();
+	state = g_plat_ic_core_ops->uarthub_plat_inband_trigger_ctrl();
 
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] state=[0x%x]\n", __func__, state);
@@ -424,15 +399,40 @@ int uarthub_core_is_inband_tx_complete(void)
 	return state;
 }
 
-int uarthub_core_get_inband_irq_sta(void)
+int uarthub_core_inband_is_tx_complete(void)
 {
 	int state = 0;
 
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_is_tx_complete == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_inband_is_tx_complete();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[0x%x]\n", __func__, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_inband_irq_get_sta(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -444,12 +444,12 @@ int uarthub_core_get_inband_irq_sta(void)
 #if UARTHUB_INFO_LOG
 		pr_info("[%s] g_dev0_inband_irq_sta=[0x%x/0x%x]\n",
 			__func__, g_dev0_inband_irq_sta,
-			g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta());
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta());
 #endif
 		return g_dev0_inband_irq_sta;
 	}
 
-	state = g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta();
+	state = g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta();
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] uarthub_plat_get_inband_irq_sta=[0x%x]\n",
 		__func__, state);
@@ -457,15 +457,15 @@ int uarthub_core_get_inband_irq_sta(void)
 	return state;
 }
 
-int uarthub_core_clear_inband_irq(void)
+int uarthub_core_inband_irq_clear_ctrl(void)
 {
 	int state = 0;
 
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq == NULL)
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_irq_clear_ctrl == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -473,27 +473,28 @@ int uarthub_core_clear_inband_irq(void)
 		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
 	}
 
-	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq();
+	state = g_plat_ic_core_ops->uarthub_plat_inband_irq_clear_ctrl();
 
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] state=[0x%x]\n", __func__, state);
 #endif
 
 	if (g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(50);
+		uarthub_core_sync_uarthub_irq_sta(50, -1);
 
 	return state;
 }
 
-int uarthub_core_get_received_inband_sta(void)
+int uarthub_core_inband_get_esc_sta(unsigned char *p_esc_sta)
 {
-	int state = 0;
-
 	if (g_uarthub_disable == 1)
 		return 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_get_received_inband_sta == NULL)
+	if (!p_esc_sta)
+		return UARTHUB_ERR_PARA_WRONG;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
@@ -501,7 +502,32 @@ int uarthub_core_get_received_inband_sta(void)
 		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
 	}
 
-	state = g_plat_ic_ut_test_ops->uarthub_plat_get_received_inband_sta();
+	*p_esc_sta = g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] esc_sta=[0x%x]\n", __func__, *p_esc_sta);
+#endif
+
+	return 0;
+}
+
+int uarthub_core_inband_clear_esc_sta(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_clear_esc_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_inband_clear_esc_sta();
 
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] state=[0x%x]\n", __func__, state);
@@ -510,29 +536,23 @@ int uarthub_core_get_received_inband_sta(void)
 	return state;
 }
 
-int uarthub_core_clear_received_inband_sta(void)
+int uarthub_core_inband_is_support(void)
 {
-	int state = 0;
+	int is_support = 1;
 
 	if (g_uarthub_disable == 1)
-		return 0;
+		is_support = 0;
 
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_clear_received_inband_sta == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_received_inband_sta();
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_enable_ctrl == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_inband_trigger_ctrl == NULL)
+		is_support = 0;
 
 #if UARTHUB_INFO_LOG
-	pr_info("[%s] state=[0x%x]\n", __func__, state);
+	pr_info("[%s] is_support=[0x%x]\n", __func__, is_support);
 #endif
 
-	return state;
+	return is_support;
 }
 
 int uarthub_core_uartip_write_data_to_tx_buf(int dev_index, int tx_data)
@@ -731,7 +751,7 @@ int uarthub_core_get_intfhub_active_sta(void)
 	return state;
 }
 
-int uarthub_core_sync_uarthub_irq_sta(int delay_us)
+int uarthub_core_sync_uarthub_irq_sta(int delay_us, int inband_irq_sta)
 {
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
@@ -791,14 +811,18 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us)
 		g_dev0_irq_sta = (g_dev0_irq_sta & BIT_0x7FFF_FFFF);
 
 	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s] irq_sta_dev0=[0x%x]", __func__, g_dev0_irq_sta);
+		"[%s] g_dev0_irq_sta=[0x%x]", __func__, g_dev0_irq_sta);
 
-	if (g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta) {
-		g_dev0_inband_irq_sta =
-			g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta();
+	if (g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta) {
+		if (inband_irq_sta == -1)
+			g_dev0_inband_irq_sta =
+				g_plat_ic_core_ops->uarthub_plat_inband_irq_get_sta();
+		else
+			g_dev0_inband_irq_sta = inband_irq_sta;
 
 		len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			", inband_irq_sta=[0x%x]", g_dev0_inband_irq_sta);
+			", g_dev0_inband_irq_sta=[0x%x], inband_irq_sta=[%d]",
+			g_dev0_inband_irq_sta, inband_irq_sta);
 	}
 
 	pr_info("%s\n", dmp_info_buf);
@@ -806,48 +830,61 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us)
 	return 0;
 }
 
-int uarthub_core_handle_ut_test_irq(void)
+int uarthub_core_handle_ut_test_irq(int inband_irq_sta, unsigned char *p_esc_sta)
 {
-	int err_type = -1;
 	int sspm_irq_type = -1;
+	int sspm_irq_sta = -1;
 
 	if (g_is_ut_testing == 1) {
-		/* mask sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 1);
-		/* disable inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
-			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(0);
-		/* sync irq sta */
-		uarthub_core_sync_uarthub_irq_sta(0);
-		/* handle sspm irq */
+		/* check sspm irq type */
 		if (g_plat_ic_ut_test_ops &&
 				g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle &&
 				g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta) {
-			err_type = g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta();
-			if (err_type > 0)
-				sspm_irq_type =
-					g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle(
-					err_type);
+			sspm_irq_type = g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta();
+		}
+		/* mask sspm irq */
+		if (sspm_irq_type > 0)
+			g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 1);
+		/* mask inband irq */
+		if (inband_irq_sta > 0)
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl(1);
+		/* sync irq sta */
+		uarthub_core_sync_uarthub_irq_sta(0, inband_irq_sta);
+		/* handle sspm irq */
+		if (sspm_irq_type > 0)
+			sspm_irq_sta =
+				g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle(
+				sspm_irq_type);
+		/* handle inband irq */
+		if (g_plat_ic_ut_test_ops &&
+				g_plat_ic_ut_test_ops->uarthub_plat_inband_irq_handle) {
+			if (g_dev0_inband_irq_sta > 0)
+				g_plat_ic_ut_test_ops->uarthub_plat_inband_irq_handle();
 		}
 		/* clear dev0 irq */
 		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(g_dev0_irq_sta);
 		/* clear sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
-		if (sspm_irq_type >= 0)
-			uarthub_core_debug_info_with_tag_worker(__func__);
+		if (sspm_irq_type > 0) {
+			g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+			if (sspm_irq_sta >= 0)
+				uarthub_core_debug_info_with_tag_worker(__func__);
+		}
 		/* clear inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq)
-			g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq();
+		if (inband_irq_sta > 0)
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_clear_ctrl();
 		/* unmask dev0 irq */
 		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(0);
 		/* unmask sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 0);
-	  /* enable inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
-			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(1);
+		if (sspm_irq_type > 0)
+			g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 0);
+		/* unmask inband irq */
+		if (inband_irq_sta > 0)
+			g_plat_ic_core_ops->uarthub_plat_inband_irq_mask_ctrl(0);
+		/* get inband esc sta */
+		if (inband_irq_sta > 0 && p_esc_sta && g_plat_ic_core_ops &&
+				g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta) {
+			*p_esc_sta = g_plat_ic_core_ops->uarthub_plat_inband_get_esc_sta();
+		}
 	}
 
 	return g_is_ut_testing;

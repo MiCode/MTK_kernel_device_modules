@@ -49,6 +49,7 @@ enum debug_dump_tx_rx_index {
 };
 
 typedef void (*UARTHUB_IRQ_CB) (unsigned int err_type);
+typedef void (*UARTHUB_INBAND_IRQ_CB) (unsigned char esc_sta);
 
 struct uarthub_drv_cbs {
 	int (*open) (void);
@@ -77,6 +78,8 @@ struct uarthub_drv_cbs {
 	int (*dump_debug_info) (void);
 	int (*dump_debug_info_with_tag) (const char *tag);
 	int (*debug_dump_tx_rx_count) (const char *tag, int trigger_point);
+	int (*inband_irq_register_cb) (UARTHUB_INBAND_IRQ_CB inband_irq_callback);
+	int (*debug_bus_status_info) (const char *tag);
 	int (*get_bt_sleep_flow_hw_mech_en) (void);
 	int (*set_bt_sleep_flow_hw_mech_en) (int enable);
 	int (*get_host_awake_sta) (int dev_index);
@@ -85,6 +88,11 @@ struct uarthub_drv_cbs {
 	int (*get_host_bt_awake_sta) (int dev_index);
 	int (*get_cmm_bt_awake_sta) (void);
 	int (*get_bt_awake_sta) (void);
+	int (*inband_set_esc_sta) (unsigned char esc_sta);
+	int (*inband_trigger_ctrl) (void);
+	int (*inband_is_tx_complete) (void);
+	int (*inband_enable_ctrl) (int enable);
+	int (*inband_is_support) (void);
 };
 extern void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cb);
 extern void uarthub_drv_callbacks_unregister(void);
@@ -101,16 +109,6 @@ int UARTHUB_get_host_rx_fifo_size(int dev_index);
 int UARTHUB_get_cmm_rx_fifo_size(void);
 int UARTHUB_config_uartip_dma_en_ctrl(int dev_index, int trx, int enable);
 int UARTHUB_reset_fifo_trx(void);
-int UARTHUB_config_inband_esc_char(int esc_char);
-int UARTHUB_config_inband_esc_sta(int esc_sta);
-int UARTHUB_config_inband_enable_ctrl(int enable);
-int UARTHUB_config_inband_irq_enable_ctrl(int enable);
-int UARTHUB_config_inband_trigger(void);
-int UARTHUB_is_inband_tx_complete(void);
-int UARTHUB_get_inband_irq_sta(void);
-int UARTHUB_clear_inband_irq(void);
-int UARTHUB_get_received_inband_sta(void);
-int UARTHUB_clear_received_inband_sta(void);
 int UARTHUB_uartip_write_data_to_tx_buf(int dev_index, int tx_data);
 int UARTHUB_uartip_read_data_from_rx_buf(int dev_index);
 int UARTHUB_is_uartip_tx_buf_empty_for_writing(int dev_index);

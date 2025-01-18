@@ -54,10 +54,13 @@ ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6991/mt6991.c),)
     $(MODULE_NAME)-objs += common/platform/6991/mt6991.o
     $(MODULE_NAME)-objs += common/platform/6991/mt6991_debug.o
 ifeq ($(BUILD_UT), 6991)
-    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_test.o
-    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_test_for_ip.o
-    $(MODULE_NAME)-objs += common/platform/6991/ut/mt6991_ut_dat.o
-    $(MODULE_NAME)-objs += common/platform/6991/ut/ut_util.o
+    include $(PATH_TO_UARTHUB_DRV)/common/platform/6991/test/build.mk
+    UARTHUB_TEST = $(uarthub_drv_test_objs:%.o=common/platform/6991/test/%.o)
+    UARTHUB_UT_TC = $(uarthub_drv_ut_tc_objs:%.o=common/platform/6991/test/ut/%.o)
+    UARTHUB_IT_TC = $(uarthub_drv_it_tc_objs:%.o=common/platform/6991/test/it/%.o)
+    $(MODULE_NAME)-objs += $(UARTHUB_TEST)
+    $(MODULE_NAME)-objs += $(UARTHUB_UT_TC)
+    $(MODULE_NAME)-objs += $(UARTHUB_IT_TC)
 endif
 endif
 

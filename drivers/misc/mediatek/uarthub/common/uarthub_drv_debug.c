@@ -187,13 +187,7 @@ int uarthub_dbg_dump_hub_dbg_info(int par1, int par2, int par3, int par4, int pa
 {
 	pr_info("[%s] par1=[0x%x]\n", __func__, par1);
 
-	if (g_plat_ic_ut_test_ops == NULL)
-		pr_info("[jlog] g_plat_ic_ut_test_ops == NULL >> ++++++++++++++++++++++++++++++++\n");
-	else
-		pr_info("[jlog] g_plat_ic_ut_test_ops != NULL >> --------------------------------\n");
-
 	uarthub_core_debug_info("HUB_DBG_CMD");
-
 	return 0;
 }
 
@@ -201,7 +195,8 @@ int uarthub_dbg_dump_apdma_dbg_info(int par1, int par2, int par3, int par4, int 
 {
 	pr_info("[%s] par1=[0x%x]\n", __func__, par1);
 
-	return uarthub_core_debug_apdma_uart_info("HUB_DBG_CMD");
+	uarthub_core_debug_apdma_uart_info("HUB_DBG_CMD");
+	return 0;
 }
 
 int uarthub_dbg_config_loopback_info(int par1, int par2, int par3, int par4, int par5)
@@ -513,13 +508,22 @@ int uarthub_dbg_trigger_dvt_testing(int par1, int par2, int par3, int par4, int 
 	int status = 0;
 
 	if (g_plat_ic_debug_ops == NULL ||
-			g_plat_ic_debug_ops->uarthub_plat_trigger_dvt_testing == NULL)
+			g_plat_ic_debug_ops->uarthub_plat_trigger_dvt_ut_testing == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
-	pr_info("[%s] dvt type:0x%x\n", __func__, par2);
-
-	status = g_plat_ic_debug_ops->uarthub_plat_trigger_dvt_testing(par2);
-
+	switch (par2) {
+	case 1: // IT DVT testing
+		pr_info("[%s] dvt type:0x%x\n", __func__, par3);
+		status = g_plat_ic_debug_ops->uarthub_plat_trigger_dvt_it_testing(par3);
+		break;
+	case 2: // UT DVT testing
+		pr_info("[%s] dvt type:0x%x\n", __func__, par3);
+		status = g_plat_ic_debug_ops->uarthub_plat_trigger_dvt_ut_testing(par3);
+		break;
+	default:
+		pr_info("[%s] Unknown par2=0x%x. Please use 1=(dvt it); 2=(dvt ut) for testing.\n", __func__, par2);
+		return 0;
+	}
 	pr_info("[%s] dvt testing result:0x%x\n", __func__, status);
 
 	return 0;
@@ -632,6 +636,18 @@ int uarthub_core_debug_clk_info(const char *tag)
 	return g_plat_ic_debug_ops->uarthub_plat_dump_debug_clk_info(tag);
 }
 
+int uarthub_core_debug_bus_status_info(const char *tag)
+{
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_debug_ops == NULL ||
+		  g_plat_ic_debug_ops->uarthub_plat_dump_debug_bus_status_info == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	return g_plat_ic_debug_ops->uarthub_plat_dump_debug_bus_status_info(tag);
+}
+
 int uarthub_core_debug_info(const char *tag)
 {
 	const char *def_tag = "HUB_DBG";
@@ -660,8 +676,14 @@ int uarthub_core_debug_info(const char *tag)
 		g_plat_ic_debug_ops->uarthub_plat_dump_uartip_debug_info(
 			tag, &g_clear_trx_req_lock);
 
+	if (g_plat_ic_debug_ops->uarthub_plat_dump_inband_irq_debug)
+		g_plat_ic_debug_ops->uarthub_plat_dump_inband_irq_debug(tag);
+
 	if (g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor)
 		g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor(tag);
+
+	if (g_plat_ic_debug_ops->uarthub_plat_dump_sspm_wakeup_debug_info)
+		g_plat_ic_debug_ops->uarthub_plat_dump_sspm_wakeup_debug_info(tag);
 
 	pr_info("[%s][%s] ----------------------------------------\n",
 		def_tag, ((tag == NULL) ? "null" : tag));

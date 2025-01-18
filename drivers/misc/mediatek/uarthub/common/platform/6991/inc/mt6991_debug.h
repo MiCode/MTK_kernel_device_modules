@@ -203,6 +203,17 @@
 	debug7._dev = UARTHUB_REG_READ(DEBUG_7(UARTHUB_DEBUG_REMAP_ADDR(_addr, _dev_idx)));\
 	debug8._dev = UARTHUB_REG_READ(DEBUG_8(UARTHUB_DEBUG_REMAP_ADDR(_addr, _dev_idx)))
 
+#define UARTHUB_DEBUG_READ_CODA_ID_REG(_coda_id) \
+	do {\
+		_coda_id.dev0 = UARTHUB_REG_READ(_coda_id##_ADDR(uartip_base_map_mt6991[uartip_id_ap]));\
+		_coda_id.dev1 = UARTHUB_REG_READ(_coda_id##_ADDR(uartip_base_map_mt6991[uartip_id_md]));\
+		_coda_id.dev2 = UARTHUB_REG_READ(_coda_id##_ADDR(uartip_base_map_mt6991[uartip_id_adsp]));\
+		_coda_id.cmm = UARTHUB_REG_READ(_coda_id##_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));\
+		if (apuart_base_map_mt6991[3] != NULL) {\
+			_coda_id.ap = UARTHUB_REG_READ(_coda_id##_ADDR(apuart_base_map_mt6991[3]));\
+		}\
+	} while (0)
+
 #define UARTHUB_DEBUG_PRINT_DEBUG_1_REG(_v1, _m1, _s1, _str) \
 	do {\
 		int _d0, _d1, _d2, _cmm, _ap;\
