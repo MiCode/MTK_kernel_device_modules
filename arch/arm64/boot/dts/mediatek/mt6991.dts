@@ -13885,6 +13885,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek-larb-supply = <&smi_larb19>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P4_DVS_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P5_DVS_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P6_DVP_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P7_DVP_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P10_DVGF_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P11_DVGF_WT)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "l19_dvs_rd_p4",
+						"l19_dvs_wt_p5",
+						"l19_dvp_rd_p6",
+						"l19_dvp_wt_p7",
+						"l19_dvgf_rd_p10",
+						"l19_dvgf_wt_p11";
+			mediatek,cam-bwr = <&cam_bwr>;
 			mtk,img-frm-sync = <&img_frm_sync>;
 			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
 			dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
@@ -13909,6 +13929,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek-larb-supply = <&smi_larb19>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P4_DVS_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P5_DVS_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P6_DVP_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P7_DVP_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P10_DVGF_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P11_DVGF_WT)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "l19_dvs_rd_p4",
+						"l19_dvs_wt_p5",
+						"l19_dvp_rd_p6",
+						"l19_dvp_wt_p7",
+						"l19_dvgf_rd_p10",
+						"l19_dvgf_wt_p11";
+			mediatek,cam-bwr = <&cam_bwr>;
 			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
 			dvpdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT>;
 			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
@@ -13933,6 +13973,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek-larb-supply = <&smi_larb19>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P4_DVS_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P5_DVS_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P6_DVP_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P7_DVP_WT)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P10_DVGF_RD)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L19_P11_DVGF_WT)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "l19_dvs_rd_p4",
+						"l19_dvs_wt_p5",
+						"l19_dvp_rd_p6",
+						"l19_dvp_wt_p7",
+						"l19_dvgf_rd_p10",
+						"l19_dvgf_wt_p11";
+			mediatek,cam-bwr = <&cam_bwr>;
 			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
 			dvgfdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVFG_CMQ_EVENT>;
 			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
