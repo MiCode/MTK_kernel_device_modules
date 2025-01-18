@@ -45,8 +45,11 @@
 #include "mtk_cpufreq_hybrid.h"
 #include "mtk_cpufreq_opp_pv_table.h"
 #include "mtk_cpufreq_debug.h"
+
+#if IS_ENABLED(CONFIG_MTK_SWPM)
 #ifdef DSU_DVFS_ENABLE
-#include "swpm_v1/mtk_swpm_interface.h"
+#include "mtk_swpm_interface.h"
+#endif
 #endif
 
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
@@ -122,8 +125,11 @@ static void __iomem *csram_base;
 #endif
 /* log_box_parsed[MAX_LOG_FETCH] is also used to save last log entry */
 static struct cpu_dvfs_log_box log_box_parsed[1 + MAX_LOG_FETCH];
+
+#if IS_ENABLED(CONFIG_MTK_SWPM)
 #ifdef DSU_DVFS_ENABLE
 unsigned int force_disable;
+#endif
 #endif
 
 void parse_time_log_content(unsigned int time_stamp_l_log,
@@ -1462,6 +1468,7 @@ void cpuhvfs_update_cci_mode(unsigned int mode, unsigned int use_id)
 		return;
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SWPM)
 #ifdef DSU_DVFS_ENABLE
 	if (use_id == FPS_PERF && force_disable)
 		return;
@@ -1474,6 +1481,7 @@ void cpuhvfs_update_cci_mode(unsigned int mode, unsigned int use_id)
 			force_disable = 0;
 		}
 	}
+#endif
 #endif
 
 	if (mode < NR_CCI_TBL) {

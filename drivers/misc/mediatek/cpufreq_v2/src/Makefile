@@ -78,6 +78,14 @@ ccflags-y += \
 	-I$(srctree)/drivers/misc/mediatek/mcupm/common/
 
 endif
+
+ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6877)),)
+ccflags-y += \
+	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6877	\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include	\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/swpm_v1
+endif
+
 #sspm
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 	ccflags-y += -DUSE_SSPM_VER_V1
@@ -119,6 +127,9 @@ CPU_DVFS-y += common_v3/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6761)),)
 CPU_DVFS-y += platform/mtk_cpufreq_platform.o
+endif
+ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6877)),)
+CPU_DVFS-y += plat_k6877/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 CPU_DVFS-y += plat_k6893/mtk_cpufreq_platform.o
