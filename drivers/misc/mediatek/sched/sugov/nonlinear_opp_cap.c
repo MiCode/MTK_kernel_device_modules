@@ -69,7 +69,6 @@ __weak int mtk_update_wl_table(int gear_id, int wl) { return 0; }
 /* DPT */
 static void __iomem *dpt_sram_base;
 static void __iomem *collab_type_0_sram_base;
-static unsigned long long dpt_size;
 static unsigned long last_jiffies_dpt;
 static DEFINE_SPINLOCK(update_dpt_lock);
 struct curr_collab_state_struct *curr_collab_state;
@@ -374,7 +373,7 @@ void update_wl_tbl(unsigned int cpu)
 					for_each_cpu(j, &pd_cpumask[i])
 						WRITE_ONCE(per_cpu(cpu_scale, j),
 							pd_opp2cap(j, 0, true, wl_type_curr, NULL, true,
-								"update_wl_tbl"));
+								DPT_CALL_UPDATE_WL_TBL));
 				}
 			}
 			last_wl_type = wl_type_curr;
@@ -512,10 +511,10 @@ void update_curr_collab_state(void)
 			for_each_possible_cpu(cpu) {
 				if (need_update_capacity_orig)
 					cap = pd_opp2cap(cpu, 0, false, wl_type,
-						NULL, false, "update_curr_collab_state");
+						NULL, false, DPT_CALL_UPDATE_CURR_COLLAB_STATE);
 				else
 					cap = pd_opp2cap(cpu, 0, false, wl_type,
-						NULL, true, "update_curr_collab_state");
+						NULL, true, DPT_CALL_UPDATE_CURR_COLLAB_STATE);
 
 				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
 				cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
@@ -1072,7 +1071,7 @@ EXPORT_SYMBOL_GPL(pd_opp2freq);
 int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl,
 	int *val_1, int *val_2, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2cap_hook);
-int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
+int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (em_ver() == 3) {
 		if (mtk_opp2cap_hook) {
@@ -1098,7 +1097,7 @@ EXPORT_SYMBOL_GPL(pd_opp2cap);
 int (*mtk_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl,
 	int *val_1, int *val_2, int *val_3, int *val_r1, int *val_r2, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2pwr_eff_hook);
-int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
+int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (em_ver() == 3) {
 		if (mtk_opp2pwr_eff_hook) {
@@ -1124,7 +1123,7 @@ EXPORT_SYMBOL_GPL(pd_opp2pwr_eff);
 int (*mtk_opp2dyn_pwr_hook)(int cpu, int opp, int quant, int wl,
 	int *val_1, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2dyn_pwr_hook);
-int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller)
+int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (em_ver() == 3) {
 		if (mtk_opp2dyn_pwr_hook) {
@@ -1178,7 +1177,7 @@ EXPORT_SYMBOL_GPL(pd_cpu_opp2dsu_freq);
 int (*mtk_util2opp_hook)(int cpu, int util, int quant, int wl,
 	int *val_1, int *val_2, int *val_3, int *val_4, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_util2opp_hook);
-int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, char *caller)
+int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (em_ver() == 3) {
 		if (mtk_util2opp_hook) {
@@ -1331,7 +1330,7 @@ int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl, int *val_s, int
 
 	wl = get_eas_wl(wl);
 	opp = pd_freq2opp(cpu, freq, quant, wl);
-	return pd_opp2cap(cpu, opp, quant, wl, val_s, r_o, "pd_freq2util");
+	return pd_opp2cap(cpu, opp, quant, wl, val_s, r_o, DPT_CALL_PD_FREQ2UTIL);
 }
 EXPORT_SYMBOL_GPL(pd_freq2util);
 
@@ -1340,7 +1339,7 @@ int pd_util2freq(unsigned int cpu, int util, bool quant, int wl)
 	int opp;
 
 	wl = get_eas_wl(wl);
-	opp = pd_util2opp(cpu, util, quant, wl, NULL, false, "pd_util2freq");
+	opp = pd_util2opp(cpu, util, quant, wl, NULL, false, DPT_CALL_PD_UTIL2FREQ);
 	return pd_opp2freq(cpu, opp, quant, wl);
 }
 EXPORT_SYMBOL_GPL(pd_util2freq);
@@ -1356,26 +1355,26 @@ unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int w
 
 unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util)
 {
-	return pd_util2opp(cpu, util, false, -1, NULL, false, "pd_get_util_opp");
+	return pd_util2opp(cpu, util, false, -1, NULL, false, DPT_CALL_PD_GET_UTIL_OPP);
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp);
 
 unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util)
 {
-	return pd_util2opp(cpu, util, true, get_em_wl(), NULL, false, "pd_get_util_opp_legacy");
+	return pd_util2opp(cpu, util, true, get_em_wl(), NULL, false, DPT_CALL_PD_GET_UTIL_OPP_LEGACY);
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp_legacy);
 
 unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util)
 {
 	int wl = get_em_wl();
-	int opp = pd_util2opp(cpu, util, false, wl, NULL, false, "pd_get_util_freq");
+	int opp = pd_util2opp(cpu, util, false, wl, NULL, false, DPT_CALL_PD_GET_UTIL_FREQ);
 
 	return pd_opp2freq(cpu, opp, false, wl);
 }
 EXPORT_SYMBOL_GPL(pd_get_util_freq);
 
-unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, char *caller)
+unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, int caller)
 {
 	int wl = get_eas_wl(-1);
 	int opp = pd_util2opp(cpu, util, false, wl, NULL, false, caller);
@@ -1407,7 +1406,7 @@ unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq)
 	int wl = get_eas_wl(-1);
 	int opp = pd_freq2opp(cpu, freq, false, wl);
 
-	return pd_opp2cap(cpu, opp, false, wl, NULL, false, "pd_get_freq_util");
+	return pd_opp2cap(cpu, opp, false, wl, NULL, false, DPT_CALL_PD_GET_FRE_UTIL);
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_util);
 
@@ -1416,7 +1415,7 @@ unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq)
 	int wl = get_eas_wl(-1);
 	int opp = pd_freq2opp(cpu, freq, false, wl);
 
-	return pd_opp2pwr_eff(cpu, opp, false, wl, NULL, false, "pd_get_freq_pwr_eff");
+	return pd_opp2pwr_eff(cpu, opp, false, wl, NULL, false, DPT_CALL_PD_GET_FREQ_PWR_EFF);
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_pwr_eff);
 
@@ -1428,13 +1427,13 @@ EXPORT_SYMBOL_GPL(pd_get_opp_freq);
 
 unsigned long pd_get_opp_capacity(unsigned int cpu, int opp)
 {
-	return pd_opp2cap(cpu, opp, false, -1, NULL, false, "pd_get_opp_capacity");
+	return pd_opp2cap(cpu, opp, false, -1, NULL, false, DPT_CALL_PD_GET_OPP_CAPACITY);
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_capacity);
 
 unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp)
 {
-	return pd_opp2cap(cpu, opp, true, get_em_wl(), NULL, false, "pd_get_opp_capacity");
+	return pd_opp2cap(cpu, opp, true, get_em_wl(), NULL, false, DPT_CALL_PD_GET_OPP_CAPACITY_LEGACY);
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_capacity_legacy);
 
@@ -1446,7 +1445,7 @@ EXPORT_SYMBOL_GPL(pd_get_opp_freq_legacy);
 
 unsigned long pd_get_opp_pwr_eff(unsigned int cpu, int opp)
 {
-	return pd_opp2pwr_eff(cpu, opp, false, -1, NULL, false, "pd_get_opp_pwr_eff");
+	return pd_opp2pwr_eff(cpu, opp, false, -1, NULL, false, DPT_CALL_PD_GET_OPP_PWR_EFF);
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_pwr_eff);
 
@@ -1465,7 +1464,7 @@ unsigned long pd_get_opp_to(int cpu, unsigned long input, enum sugov_type out_ty
 	}
 }
 
-unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant, char *caller)
+unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant, int caller)
 {
 	switch (out_type) {
 	case OPP:
@@ -1479,7 +1478,7 @@ unsigned long pd_get_util_to(int cpu, unsigned long input, enum sugov_type out_t
 	}
 }
 
-unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant, char *caller)
+unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_type, bool quant)
 {
 	switch (out_type) {
 	case OPP:
@@ -1494,7 +1493,7 @@ unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_t
 }
 
 unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
-		enum sugov_type out_type, bool quant, char *caller)
+		enum sugov_type out_type, bool quant, int caller)
 {
 	switch (in_type) {
 	case OPP:
@@ -1502,7 +1501,7 @@ unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
 	case CAP:
 		return pd_get_util_to(cpu, input, out_type, quant, caller);
 	case FREQ:
-		return pd_get_freq_to(cpu, input, out_type, quant, caller);
+		return pd_get_freq_to(cpu, input, out_type, quant);
 	default:
 		return -EINVAL;
 	}
@@ -1511,7 +1510,7 @@ EXPORT_SYMBOL_GPL(pd_X2Y);
 
 unsigned int pd_get_cpu_opp(unsigned int cpu)
 {
-	return pd_util2opp(cpu, 0, false, -1, NULL, true, "pd_get_cpu_opp") + 1;
+	return pd_util2opp(cpu, 0, false, -1, NULL, true, DPT_CALL_PD_GET_CPU_OPP) + 1;
 }
 EXPORT_SYMBOL_GPL(pd_get_cpu_opp);
 
@@ -2210,7 +2209,6 @@ int init_dpt_io(void)
 		return -EIO;
 	}
 
-	dpt_size = resource_size(sram_res);
 	pr_info("dpt io init done\n");
 
 	/* init collab type 0 io */
@@ -2371,9 +2369,9 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 
 	if (c->last_index == policy->cached_resolved_idx) {
 		cap = pd_X2Y(policy->cpu, *target_freq, FREQ, CAP,
-			false, "mtk_arch_set_freq_scale_gearless");
+			false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE_GEARLESS);
 		max_cap = pd_X2Y(policy->cpu, policy->cpuinfo.max_freq, FREQ, CAP,
-			false, "mtk_arch_set_freq_scale_gearless");
+			false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE_GEARLESS);
 		for_each_cpu(i, policy->related_cpus)
 			per_cpu(arch_freq_scale, i) = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	}
@@ -2399,7 +2397,8 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	if (policy->cached_target_freq != *target_freq) {
 		policy->cached_target_freq = *target_freq;
-		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP, true, "cpufreq_update_target_freq");
+		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP,
+			true, DPT_CALL_CPUFREQ_UPDATE_TARGET_FREQ);
 	}
 
 	curr_cap[topology_cluster_id(cpu)] = pd_get_opp_capacity_legacy(policy->cpu,
@@ -2438,8 +2437,8 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 		freq = policy->cached_target_freq;
 		cpufreq_cpu_put(policy);
 	}
-	cap = pd_X2Y(cpu, freq, FREQ, CAP, false, "mtk_arch_set_freq_scale");
-	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false, "mtk_arch_set_freq_scale");
+	cap = pd_X2Y(cpu, freq, FREQ, CAP, false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE);
+	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false, DPT_CALL_MTK_ARCH_SET_FREQ_SCALE);
 	*scale = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	irq_log_store();
 }
@@ -2894,13 +2893,13 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
 
-	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, "mtk_map_util_freq");
+	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, DPT_CALL_MTK_MAP_UTIL_FREQ);
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
 		struct cpufreq_policy *policy = sg_policy->policy;
 
 		policy->cached_target_freq = *next_freq;
-		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, "mtk_map_util_freq");
+		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, DPT_CALL_MTK_MAP_UTIL_FREQ);
 		sg_policy->cached_raw_freq = *next_freq;
 	}
 

@@ -139,11 +139,11 @@ void set_grp_awr_thr(int gear_id, int group_id, int freq)
 			if (freq == -1) {
 				converge_thr_cap[cpu_idx][group_id] = (cap_max[cpu_idx] * 64) / 100;
 				opp = pd_util2opp(cpu_idx, converge_thr_cap[cpu_idx][group_id],
-					true, 0, NULL, true, "set_grp_awr_thr");
+					true, 0, NULL, true, DPT_CALL_SET_GRP_AWR_THR);
 			} else
 				opp = pd_get_freq_opp_legacy_type(0, cpu_idx, freq);
 			converge_thr_cap[cpu_idx][group_id] = pd_opp2cap(cpu_idx, opp,
-				true, 0, NULL, true, "set_grp_awr_thr");
+				true, 0, NULL, true, DPT_CALL_SET_GRP_AWR_THR);
 			converge_thr_freq[cpu_idx][group_id] = pd_opp2freq(cpu_idx, opp, true, 0);
 		}
 }
@@ -486,8 +486,8 @@ int grp_awr_init(void)
 		pcpu_pgrp_tar_u_grp_m[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 
-		cap_max[cpu_idx] = pd_opp2cap(cpu_idx, 0, true, 0, NULL, true, "set_grp_awr_thr");
-		cap_min[cpu_idx] = pd_opp2cap(cpu_idx, INT_MAX, true, 0, NULL, true, "set_grp_awr_thr");
+		cap_max[cpu_idx] = pd_opp2cap(cpu_idx, 0, true, 0, NULL, true, DPT_CALL_GRP_AWR_INIT);
+		cap_min[cpu_idx] = pd_opp2cap(cpu_idx, INT_MAX, true, 0, NULL, true, DPT_CALL_GRP_AWR_INIT);
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = -1;
 	}

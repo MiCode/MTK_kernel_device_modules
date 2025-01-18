@@ -160,11 +160,11 @@ void clear_opp_cap_info(void);
 
 extern int get_eas_hook(void);
 extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
-extern int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
-extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
-extern int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, char *caller);
+extern int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller);
+extern int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller);
+extern int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller);
 extern int pd_opp2volt(int cpu, int opp, int quant, int wl);
-extern int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, char *caller);
+extern int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, int caller);
 extern int pd_freq2opp(int cpu, int freq, int quant, int wl);
 extern int pd_cpu_volt2opp(int cpu, int volt, int quant, int wl);
 extern int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl, int *val_s, int r_o);
@@ -174,7 +174,7 @@ extern int pd_dsu_volt2opp(int volt);
 extern int pd_get_dsu_freq(void);
 unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
-		enum sugov_type out_type, bool quant, char *caller);
+		enum sugov_type out_type, bool quant, int caller);
 
 extern unsigned long pd_get_opp_capacity(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
@@ -188,7 +188,7 @@ extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq
 extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq);
 
 extern unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util);
-extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, char *caller);
+extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util, int caller);
 extern unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util);
 
@@ -287,7 +287,7 @@ struct curr_collab_state_struct {
 	int (*ret_function)(void);
 };
 
-extern void *get_dpt_base_info(void);
+extern void *get_dpt_sram_base(void);
 extern struct curr_collab_state_struct *get_curr_collab_state(void);
 extern void update_curr_collab_state(void);
 extern struct curr_collab_state_struct *curr_collab_state;
@@ -299,6 +299,38 @@ extern int (*is_dpt_support_driver_hook) (void);
 extern void (*set_v_driver_hook)(int v);
 #define for_each_collab_type(collab_type) for (collab_type = 0; collab_type < nr_collab_type; collab_type++)
 int collab_type_0_ret_function(void);
+
+#define DPT_CALL_UPDATE_WL_TBL 0
+#define DPT_CALL_UPDATE_CURR_COLLAB_STATE 1
+#define DPT_CALL_PD_FREQ2UTIL 2
+#define DPT_CALL_PD_GET_FRE_UTIL 3
+#define DPT_CALL_PD_GET_FREQ_PWR_EFF 4
+#define DPT_CALL_PD_GET_OPP_CAPACITY 5
+#define DPT_CALL_PD_GET_OPP_CAPACITY_LEGACY 6
+#define DPT_CALL_ESTIMATE_ENERGY 7
+#define DPT_CALL_CALC_PWR_EFF 8
+#define DPT_CALL_CALC_PWR_EFF_V2 9
+#define DPT_CALL_FLT_INIT 10
+#define DPT_CALL_GROUP_UPDATE_THRESHOLD_UTIL 11
+#define DPT_CALL_SET_GRP_AWR_THR 12
+#define DPT_CALL_GRP_AWR_INIT 13
+#define DPT_CALL_MTK_ARCH_SET_FREQ_SCALE_GEARLESS 14
+#define DPT_CALL_CPUFREQ_UPDATE_TARGET_FREQ 15
+#define DPT_CALL_MTK_ARCH_SET_FREQ_SCALE 16
+#define DPT_CALL_MTK_MAP_UTIL_FREQ 17
+#define DPT_CALL_FBT_CLUSTER_X2Y 18
+#define DPT_CALL_MTK_SET_CPU_MIN_OPP 19
+#define DPT_CALL_PD_GET_OPP_PWR_EFF 20
+#define DPT_CALL_PD_UTIL2FREQ 21
+#define DPT_CALL_PD_GET_UTIL_OPP 22
+#define DPT_CALL_PD_GET_UTIL_OPP_LEGACY 23
+#define DPT_CALL_PD_GET_UTIL_FREQ 24
+#define DPT_CALL_PD_GET_CPU_OPP 25
+#define DPT_CALL_MTK_EM_CPU_ENERGY 26
+
+#define DPT_CALL_DEBUG1 98
+#define DPT_CALL_DEBUG2 99
+
 /* End of DPT */
 
 #endif /* __CPUFREQ_H__ */
