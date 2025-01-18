@@ -167,7 +167,7 @@ struct snd_soc_dai;
 
 typedef int (*mtk_sp_copy_f)(struct snd_pcm_substream *substream,
 				 int channel, unsigned long hwoff,
-				 void *buf, unsigned long bytes);
+				 struct iov_iter *iter, unsigned long bytes);
 struct mtk_base_afe {
 	void __iomem *base_addr;
 	struct device *dev;
@@ -220,7 +220,7 @@ struct mtk_base_afe {
 
 	int (*copy)(struct snd_pcm_substream *substream,
 		    int channel, unsigned long hwoff,
-		    void *buf, unsigned long bytes,
+		    struct iov_iter *iter, unsigned long bytes,
 		    mtk_sp_copy_f sp_copy);
 
 };

@@ -144,10 +144,10 @@ static void *get_dma_ptr(struct snd_pcm_runtime *runtime,
 /* default copy_user ops for write; used for both interleaved and non- modes */
 static int default_write_copy(struct snd_pcm_substream *substream,
 			      int channel, unsigned long hwoff,
-			      void *buf, unsigned long bytes)
+			      struct iov_iter *iter, unsigned long bytes)
 {
-	if (copy_from_user(get_dma_ptr(substream->runtime, channel, hwoff),
-			   (void __user *)buf, bytes))
+	if (copy_from_iter(get_dma_ptr(substream->runtime, channel, hwoff),
+			   bytes, iter) != bytes)
 		return -EFAULT;
 	return 0;
 }
@@ -155,11 +155,10 @@ static int default_write_copy(struct snd_pcm_substream *substream,
 /* default copy_user ops for read; used for both interleaved and non- modes */
 static int default_read_copy(struct snd_pcm_substream *substream,
 			     int channel, unsigned long hwoff,
-			     void *buf, unsigned long bytes)
+			     struct iov_iter *iter, unsigned long bytes)
 {
-	if (copy_to_user((void __user *)buf,
-			 get_dma_ptr(substream->runtime, channel, hwoff),
-			 bytes))
+	if (copy_to_iter(get_dma_ptr(substream->runtime, channel, hwoff),
+			 bytes, iter) != bytes)
 		return -EFAULT;
 	return 0;
 }
@@ -183,12 +182,12 @@ int mtk_afe_pcm_copy_user(struct snd_soc_component *component,
 
 	if (afe->copy && !(memif->fast_palyback == 1)) {
 		ret = afe->copy(substream, channel, hwoff,
-				(void __user *)buf, bytes, sp_copy);
+				buf, bytes, sp_copy);
 		if (ret)
 			return -EFAULT;
 	} else {
 		sp_copy(substream, channel, hwoff,
-			(void __user *)buf, bytes);
+			buf, bytes);
 	}
 
 	return 0;

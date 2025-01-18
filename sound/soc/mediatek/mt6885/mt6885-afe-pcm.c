@@ -3348,7 +3348,7 @@ skip_regmap:
 
 static int mt6885_afe_pcm_copy(struct snd_pcm_substream *substream,
 			       int channel, unsigned long hwoff,
-			       void *buf, unsigned long bytes,
+			       struct iov_iter *buf, unsigned long bytes,
 			       mtk_sp_copy_f sp_copy)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
