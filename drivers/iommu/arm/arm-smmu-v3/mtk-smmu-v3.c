@@ -1921,6 +1921,10 @@ bool hyp_smmu_debug_value_error(uint64_t hyp_smmu_ret_val)
 		pr_info("[%s] %s, HYP_SMMU_INVALID_SMMU_TYPE_BIT\n",
 			HYP_SMMU_INFO_PREFIX, __func__);
 		break;
+	case HYP_SMMU_HYP_NO_SUPPORT_DEBUG:
+		pr_debug("[%s] %s, HYP_SMMU_HYP_NO_SUPPORT_DEBUG\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
 	default:
 		return false;
 	}
