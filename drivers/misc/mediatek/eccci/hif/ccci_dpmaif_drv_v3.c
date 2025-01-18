@@ -621,6 +621,24 @@ static inline void check_dl_mask_state_register(unsigned int L2RIMR0)
 	}
 }
 
+/* L2 RX interrupt mask register and L2 RX interrupt Status register
+ * are not one-to-one mapping, this function adjust this unmapped bit
+ * positions of the mask and sts register into a on-by-one bit mapping.
+ */
+static inline unsigned int mapping_rx_reg_from_mask_to_sts(unsigned int L2RIMR0)
+{
+	unsigned int ret_val;
+
+	ret_val = (L2RIMR0 & ((1 << 8) - 1));   // preserve bits 0-7
+	ret_val |= ((L2RIMR0 >> 8) & 1) << 13;  // move bit8 to bit13
+	ret_val |= ((L2RIMR0 >> 9) & 1) << 14;  // move bit9 to bit14
+	ret_val |= ((L2RIMR0 >> 10) & 1) << 8;  // move bit10 to bit8
+	ret_val |= ((L2RIMR0 >> 11) & 1) << 9;  // move bit 11 to bit9
+	ret_val |= ((L2RIMR0 >> 12) & 1) << 10; // move bit 12 to bit 10
+
+	return ret_val;
+}
+
 static irqreturn_t drv3_isr0(int irq, void *data)
 {
 	struct dpmaif_rx_queue *rxq = (struct dpmaif_rx_queue *)data;
@@ -628,9 +646,11 @@ static irqreturn_t drv3_isr0(int irq, void *data)
 	unsigned int L2RIMR0  = drv3_get_dl_interrupt_mask();
 	unsigned int L2TISAR0 = ccci_drv_get_ul_isr_event();
 	unsigned int L2TIMR0  = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0);
-#ifdef ENABLE_DPMAIF_ISR_LOG
 	unsigned int L2RISAR0_bak = L2RISAR0, L2TISAR0_bak = L2TISAR0;
-#endif
+	unsigned int L1TISAR0;
+
+	if (g_debug_flags & DEBUG_RXTX_ISR)
+		L1TISAR0 = DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_AP_L1TISAR0);
 
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
@@ -672,7 +692,9 @@ static irqreturn_t drv3_isr0(int irq, void *data)
 
 	/* RX interrupt */
 	if (L2RISAR0) {
-		L2RISAR0 &= ~(L2RIMR0|DP_DL_INT_LRO1_QDONE_SET);
+		L2RISAR0 &= ~(mapping_rx_reg_from_mask_to_sts(L2RIMR0) |
+				DP_DL_INT_LRO1_QDONE_SET);
+
 		if (L2RISAR0 & AP_DL_L2INTR_ERR_En_Msk)
 			ccci_irq_rx_lenerr_handler(L2RISAR0);
 
@@ -695,12 +717,14 @@ static irqreturn_t drv3_isr0(int irq, void *data)
 		hdr.type = TYPE_RXTX_ISR_ID;
 		hdr.qidx = 0;
 		hdr.time = (unsigned int)(local_clock() >> 16);
-		hdr.rxsr = L2RISAR0;
+		hdr.rxsr = L2RISAR0_bak;
 		hdr.rxmr = L2RIMR0;
-		hdr.txsr = L2TISAR0;
+		hdr.txsr = L2TISAR0_bak;
 		hdr.txmr = L2TIMR0;
+		hdr.l1sr = L1TISAR0;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 	}
+
 #ifdef ENABLE_DPMAIF_ISR_LOG
 	if (ccci_dpmaif_record_isr_cnt(local_clock(), rxq, L2TISAR0, L2RISAR0))
 		CCCI_ERROR_LOG(0, TAG, "DPMAIF IRQ L2(%x/%x)(%x/%x)\n",
@@ -766,9 +790,11 @@ static irqreturn_t drv3_isr(int irq, void *data)
 	unsigned int L2RIMR0  = drv3_get_dl_interrupt_mask();
 	unsigned int L2TISAR0 = ccci_drv_get_ul_isr_event();
 	unsigned int L2TIMR0  = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0);
-#ifdef ENABLE_DPMAIF_ISR_LOG
 	unsigned int L2RISAR0_bak = L2RISAR0, L2TISAR0_bak = L2TISAR0;
-#endif
+	unsigned int L1TISAR0;
+
+	if (g_debug_flags & DEBUG_RXTX_ISR)
+		L1TISAR0 = DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_AP_L1TISAR0);
 
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
@@ -810,7 +836,7 @@ static irqreturn_t drv3_isr(int irq, void *data)
 
 	/* RX interrupt */
 	if (L2RISAR0) {
-		L2RISAR0 &= ~(L2RIMR0);
+		L2RISAR0 &= ~mapping_rx_reg_from_mask_to_sts(L2RIMR0);
 
 		if (L2RISAR0 & AP_DL_L2INTR_ERR_En_Msk)
 			ccci_irq_rx_lenerr_handler(L2RISAR0 & AP_DL_L2INTR_ERR_En_Msk);
@@ -835,10 +861,11 @@ static irqreturn_t drv3_isr(int irq, void *data)
 		hdr.type = TYPE_RXTX_ISR_ID;
 		hdr.qidx = 0;
 		hdr.time = (unsigned int)(local_clock() >> 16);
-		hdr.rxsr = L2RISAR0;
+		hdr.rxsr = L2RISAR0_bak;
 		hdr.rxmr = L2RIMR0;
-		hdr.txsr = L2TISAR0;
+		hdr.txsr = L2TISAR0_bak;
 		hdr.txmr = L2TIMR0;
+		hdr.l1sr = L1TISAR0;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 	}
 #ifdef ENABLE_DPMAIF_ISR_LOG
@@ -1290,7 +1317,8 @@ static void drv3_dump_register(int buf_type)
 	ccci_util_mem_dump(buf_type,
 		dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
+		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1493,6 +1521,8 @@ static void drv3_hw_reset_v1(void)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
+	else if (g_plat_inf == 6991)
+		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF14, 1<<6);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<22);
 
@@ -1507,6 +1537,8 @@ static void drv3_hw_reset_v1(void)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<2);
 	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<11);
+	else if (g_plat_inf == 6991)
+		dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0xF14, 1<<3);
 	else
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<0);
 	if (ret)
@@ -1524,6 +1556,8 @@ static void drv3_hw_reset_v1(void)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<2);
 	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<11);
+	else if (g_plat_inf == 6991)
+		dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0xF18, 1<<3);
 	else
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<0);
 	if (ret)
@@ -1542,6 +1576,8 @@ static void drv3_hw_reset_v1(void)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
+	else if (g_plat_inf == 6991)
+		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF18, 1<<6);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<22);
 
@@ -1762,7 +1798,8 @@ int ccci_dpmaif_drv3_init(void)
 	else
 		ops.drv_dl_get_wridx = &drv3_dl_get_wridx;
 
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989) {
+	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
+		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {

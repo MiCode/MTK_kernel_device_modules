@@ -1046,6 +1046,7 @@ static int drv2_resume_noirq(struct device *dev)
 		atomic_set(&txq->drb_rd_idx, 0);
 		atomic_set(&txq->drb_wr_idx, 0);
 		atomic_set(&txq->drb_rel_rd_idx, 0);
+		atomic_set(&txq->txq_ccmni_stop_counter, 0);
 	}
 
 	/* there are some inter for init para. check. */

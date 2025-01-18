@@ -33,6 +33,10 @@
 #define TYPE_RX_START_ID     10
 #define TYPE_UL_DL_TPUT_ID   11
 #define TYPE_MAX_SKB_CNT_ID  12
+#define TYPE_DROP_SKB_ID     13
+#define TYPE_Q_STOP_START_ID 14
+#define TYPE_RX_FLUSH_ID     15
+#define TYPE_TX_ERROR_ID     16
 
 
 #define DEBUG_RX_DONE_SKB    (1 << TYPE_RX_DONE_SKB_ID)
@@ -48,6 +52,25 @@
 #define DEBUG_RX_START       (1 << TYPE_RX_START_ID)
 #define DEBUG_UL_DL_TPUT     (1 << TYPE_UL_DL_TPUT_ID)
 #define DEBUG_MAX_SKB_CNT    (1 << TYPE_MAX_SKB_CNT_ID)
+#define DEBUG_DROP_SKB       (1 << TYPE_DROP_SKB_ID)
+#define DEBUG_Q_STOP_START   (1 << TYPE_Q_STOP_START_ID)
+#define DEBUG_RX_FLUSH       (1 << TYPE_RX_FLUSH_ID)
+#define DEBUG_TX_ERROR       (1 << TYPE_TX_ERROR_ID)
+
+
+#define DROP_SKB_FROM_RX_TASKLET_LRO     0
+#define DROP_SKB_FROM_RX_TASKLET_NOLRO   1
+#define DROP_SKB_FROM_RX_ENQUEUE         2
+#define DROP_SKB_FROM_TX_SKB_LEN_IS_0    3
+
+#define RX_PUSH_IP_VER_4      1
+#define RX_PUSH_IP_VER_6      2
+#define RX_PUSH_IP_VER_OTH    3
+
+#define RX_PUSH_IP_PROC_TCP   1
+#define RX_PUSH_IP_PROC_UDP   2
+#define RX_PUSH_IP_PROC_OTH   3
+
 
 
 struct debug_rx_done_skb_hdr {
@@ -66,6 +89,10 @@ struct debug_rx_push_skb_hdr {
 	u32 time;
 	u16 ipid;
 	u16 fcnt;
+	u16 bid;
+	u8  ver:4;
+	u8  proc:4;
+	s16 ret;
 
 } __packed;
 
@@ -76,6 +103,10 @@ struct debug_tx_send_skb_hdr {
 	u16 wr;
 	u16 ipid;
 	u16 len;
+	u16 count_l;
+	u8  ccmni_idx;
+	u16 queue_idx:3;
+	u16 budget:13;
 
 } __packed;
 
@@ -95,6 +126,7 @@ struct debug_rxtx_isr_hdr {
 	u32 rxmr;
 	u32 txsr;
 	u32 txmr;
+	u32 l1sr;
 
 } __packed;
 
@@ -155,6 +187,51 @@ struct debug_max_skb_cnt_hdr {
 	u8  qidx:3;
 	u32 time;
 	u16 value;
+
+} __packed;
+
+struct debug_drop_skb_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u8  from;
+	u16 bid;
+	u16 ipid;
+	u16 len;
+
+} __packed;
+
+struct debug_tx_q_stop_start_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u32 flag:1;
+	u32 nidx:4;
+	u32 netif:5;
+	u32 state:22;
+	u16 budget;
+	s32 counter;
+	s32 ret;
+
+} __packed;
+
+struct debug_rx_flush_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u8  ccmni;
+	u8  rx_flush;
+
+} __packed;
+
+struct debug_tx_error_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u16 ipid;
+	u16 len;
+	u16 bget;
+	s32 err;
 
 } __packed;
 

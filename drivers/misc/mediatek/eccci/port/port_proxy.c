@@ -1162,23 +1162,6 @@ int port_user_unregister(struct port_t *port)
 	return 0;
 }
 
-
-/*
- * This API is called by port_net,
- * which is used to send skb message to md
- */
-int port_net_send_skb_to_md(struct port_t *port, int priority_level,
-	struct sk_buff *skb)
-{
-	int tx_qno = 0;
-
-	if (ccci_fsm_get_md_state() != READY)
-		return -ENODEV;
-	tx_qno = port_get_queue_no(port, OUT, priority_level);
-	return ccci_hif_send_skb(port->hif_id, tx_qno, skb,
-			port->skb_from_pool, 0);
-}
-
 int port_send_skb_to_md(struct port_t *port, struct sk_buff *skb, int blocking)
 {
 	int tx_qno = 0;
@@ -1417,8 +1400,6 @@ static inline int proxy_dispatch_recv_skb(struct port_proxy *proxy_p,
 	int hif_id, struct sk_buff *skb, unsigned int flag)
 {
 	struct ccci_header *ccci_h = NULL;
-	struct lhif_header *lhif_h = NULL;
-	struct ccmni_ch ccmni;
 	struct port_t *port = NULL;
 	struct list_head *port_list = NULL;
 	int ret = -CCCI_ERR_CHANNEL_NUM_MIS_MATCH;
@@ -1434,10 +1415,6 @@ static inline int proxy_dispatch_recv_skb(struct port_proxy *proxy_p,
 	if (flag == NORMAL_DATA) {
 		ccci_h = (struct ccci_header *)skb->data;
 		channel = ccci_h->channel;
-	} else if (flag == CLDMA_NET_DATA) {
-		lhif_h = (struct lhif_header *)skb->data;
-		if (!ccci_get_ccmni_channel(lhif_h->netif, &ccmni))
-			channel = ccmni.rx;
 	} else {
 		WARN_ON(1);
 	}
@@ -1461,12 +1438,12 @@ static inline int proxy_dispatch_recv_skb(struct port_proxy *proxy_p,
 		 * use req->state to achive some
 		 * kind of multi-cast if needed.
 		 */
-		matched = (hif_id == port->hif_id) &&
+		matched = (hif_id == port->hif_id) && port->ops &&
 			((port->ops->recv_match == NULL) ?
 			(channel == port->rx_ch) :
 			port->ops->recv_match(port, skb));
 		if (matched) {
-			if (likely(skb && port->ops->recv_skb)) {
+			if (likely(skb && port->ops && port->ops->recv_skb)) {
 				ret = port->ops->recv_skb(port, skb);
 			} else {
 				CCCI_ERROR_LOG(0, TAG,
@@ -1492,15 +1469,14 @@ static inline int proxy_dispatch_recv_skb(struct port_proxy *proxy_p,
 
 	return ret;
 }
+
 static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 	int hif, int qno, int dir, unsigned int state)
 {
 	struct port_t *port = NULL;
-	int match = 0;
-	int i, matched = 0;
+	int match = 0, matched = 0;
 
-	if (hif < CLDMA_HIF_ID || hif >= CCCI_HIF_NUM
-		|| qno >= MAX_QUEUE_NUM || qno < 0) {
+	if (hif < 0 || hif >= CCCI_HIF_NUM || qno >= MAX_QUEUE_NUM || qno < 0) {
 		CCCI_ERROR_LOG(0, CORE,
 			"%s:hif=%d or qno=%d is inval\n", __func__, hif, qno);
 		return;
@@ -1515,7 +1491,7 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 				match =	(qno == port->txq_exp_index);
 			else
 				match = (qno == port->rxq_exp_index);
-			if (match && port->ops->queue_state_notify)
+			if (match && port->ops && port->ops->queue_state_notify)
 				port->ops->queue_state_notify(port, dir, qno, state);
 		}
 		return;
@@ -1530,27 +1506,9 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 				|| qno == (port->txq_exp_index & 0x0F);
 		else
 			match = qno == port->rxq_index;
-		if (match && port->ops->queue_state_notify) {
+		if (match && port->ops && port->ops->queue_state_notify) {
 			port->ops->queue_state_notify(port, dir, qno, state);
 			matched = 1;
-		}
-	}
-	/*handle ccmni tx queue or tx ack queue state change*/
-	if ((!matched && hif == DPMAIF_HIF_ID) || (!matched && hif == CLDMA_HIF_ID)) {
-		for (i = 0; i < proxy_p->port_number; i++) {
-			port = proxy_p->ports + i;
-			if ((port->hif_id == DPMAIF_HIF_ID) || (port->hif_id == CLDMA_HIF_ID)) {
-				/* consider network data/ack queue design */
-				if (dir == OUT)
-					match = qno == port->txq_index
-					|| qno == (port->txq_exp_index & 0x0F);
-				else
-					match = qno == port->rxq_index;
-				if (match && port->ops->queue_state_notify)
-					port->ops->queue_state_notify(port, dir,
-						qno, state);
-			} else
-				break;
 		}
 	}
 }
@@ -1569,7 +1527,7 @@ static inline void proxy_dispatch_md_status(struct port_proxy *proxy_p,
 			port->rx_drop_cnt = 0;
 			port->tx_pkg_cnt = 0;
 		}
-		if (port->ops->md_state_notify)
+		if (port->ops && port->ops->md_state_notify)
 			port->ops->md_state_notify(port, state);
 	}
 }
@@ -1605,7 +1563,7 @@ static inline void proxy_dump_status(struct port_proxy *proxy_p)
 			port->tx_busy_count = 0;
 			port->rx_busy_count = 0;
 		}
-		if (port->ops->dump_info)
+		if (port->ops && port->ops->dump_info)
 			port->ops->dump_info(port, 0);
 	}
 	if (port_full)
@@ -1650,10 +1608,11 @@ static inline void proxy_init_all_ports(struct port_proxy *proxy_p)
 			proxy_p->ctl_port = port;
 		port->major = proxy_p->major;
 		port->minor_base = proxy_p->minor_base;
-		if (port->ops->init)
+		if (port->ops && port->ops->init)
 			port->ops->init(port);
 		spin_lock_init(&port->flag_lock);
 	}
+
 	proxy_setup_channel_mapping(proxy_p);
 }
 
@@ -1916,6 +1875,7 @@ int ccci_port_init(void)
 		CCCI_ERROR_LOG(0, TAG, "alloc port_proxy fail\n");
 		return -1;
 	}
+
 	return 0;
 }
 

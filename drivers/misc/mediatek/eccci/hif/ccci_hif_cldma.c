@@ -32,6 +32,7 @@
 #include <mt-plat/aee.h>
 #endif
 #include <linux/clk.h>
+#include <linux/bits.h>
 
 #include "ccci_config.h"
 #include "ccci_common_config.h"
@@ -119,7 +120,6 @@ static inline struct device *ccci_md_get_dev_by_id(void)
 {
 	return &cldma_ctrl->plat_dev->dev;
 }
-
 
 static void cldma_dump_register(struct md_cd_ctrl *md_ctrl)
 {
@@ -592,20 +592,13 @@ void md_cd_traffic_monitor_func(struct timer_list *t)
 #endif
 	ccci_channel_dump_packet_counter(tinfo);
 	ccci_dump_skb_pool_usage();
-
+	ccmni_ops.dump();
 	if ((jiffies - md_ctrl->traffic_stamp) / HZ <=
 		TRAFFIC_MONITOR_INTERVAL * 2)
 		mod_timer(&md_ctrl->traffic_monitor,
 			jiffies + TRAFFIC_MONITOR_INTERVAL * HZ);
 }
 #endif
-
-static int cldma_queue_broadcast_state(struct md_cd_ctrl *md_ctrl,
-	enum HIF_STATE state, enum DIRECTION dir, int index)
-{
-	ccci_port_queue_status_notify(md_ctrl->hif_id, index, dir, state);
-	return 0;
-}
 
 #ifdef ENABLE_CLDMA_TIMER
 static void cldma_timeout_timer_func(unsigned long data)
@@ -693,6 +686,27 @@ static inline void ccci_md_check_rx_seq_num(
 	}
 }
 
+static int cldma_recv_skb(unsigned int hif_id, struct sk_buff *skb)
+{
+	int md_state = ccci_fsm_get_md_state();
+	int ret = 0;
+
+	if (unlikely(md_state == GATED || md_state == INVALID)) {
+		ret = -CCCI_ERR_HIF_NOT_POWER_ON;
+		goto err_exit;
+	}
+	skb_pull(skb, sizeof(struct lhif_header));
+	ret = ccmni_ops.recv_skb(hif_id, skb);
+ err_exit:
+	if (ret < 0 && ret != -CCCI_ERR_PORT_RX_FULL) {
+		if (skb)
+			ccci_free_skb(skb);
+		ret = -CCCI_ERR_DROP_PACKET;
+	}
+
+	return ret;
+}
+
 /* may be called from workqueue or NAPI or tasklet (queue0) context,
  * only NAPI and tasklet with blocking=false
  */
@@ -776,9 +790,7 @@ again:
 		skb_put(skb, rgpd->data_buff_len);
 		skb_bytes = skb->len;
 		lhif_h = *((struct lhif_header *)skb->data);
-		memset(&ccci_h, 0, sizeof(ccci_h));
-		memcpy(&ccci_h, &lhif_h, sizeof(lhif_h));
-		ccci_h.channel = lhif_h.netif;
+
 		/* check wakeup source */
 		if (atomic_cmpxchg(&md_ctrl->wakeup_src, 1, 0) == 1) {
 			md_ctrl->wakeup_count++;
@@ -795,7 +807,7 @@ again:
 			rgpd->data_buff_len);
 		/* upload skb */
 		if (using_napi) {
-			ccci_port_recv_skb(md_ctrl->hif_id, skb, CLDMA_NET_DATA);
+			cldma_recv_skb(lhif_h.netif, skb);
 			ret = 0;
 		} else {
 #ifdef CCCI_SKB_TRACE
@@ -991,21 +1003,128 @@ again:
 	return ret;
 }
 
+static void cldma_stop_dev_queue(struct md_cd_queue *txq,
+	unsigned int ccmni_idx, unsigned int que_idx)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&txq->txq_stop_start_lock, flags);
+
+	if (ccmni_idx < CCMNI_INTERFACE_NUM && que_idx < MD_HW_Q_MAX) {
+		int ccmni_stop_counter;
+
+		ccmni_ops.stop_queue(ccmni_idx, que_idx);
+		set_bit(ccmni_idx, &txq->txq_ccmni_state[que_idx]);
+
+		smp_mb(); /* for cpu exec. */
+
+		ccmni_stop_counter = atomic_inc_return(&txq->txq_ccmni_stop_counter);
+
+		txq->txq_stop_cnt[que_idx]++;
+		if (time_after(jiffies, txq->txq_stop_tick[que_idx] +
+			msecs_to_jiffies(CLDMA_TXQ_FULL_LOG_INTERVAL))) {
+			txq->txq_stop_tick[que_idx] = jiffies;
+			CCCI_NORMAL_LOG(-1, TAG,
+				"[%s] ccmni%u, queque%u, happen TX_FULL, count: %u\n",
+				__func__, ccmni_idx, que_idx, txq->txq_stop_cnt[que_idx]);
+		}
+	}
+
+	spin_unlock_irqrestore(&txq->txq_stop_start_lock, flags);
+}
+
+static void cldma_start_dev_queue(struct md_cd_queue *txq)
+{
+	unsigned int que_idx = 0, ccmni_idx;
+	int ret, ccmni_stop_counter;
+	unsigned long *ccmni_state, flags;
+
+	spin_lock_irqsave(&txq->txq_stop_start_lock, flags);
+
+	ccmni_stop_counter = atomic_read(&txq->txq_ccmni_stop_counter);
+
+	while (que_idx < MD_HW_Q_MAX) {
+		if (txq->txq_ccmni_state[que_idx]) {
+			ccmni_state = &txq->txq_ccmni_state[que_idx];
+			ccmni_idx = find_first_bit(ccmni_state, CCMNI_INTERFACE_NUM);
+
+			while (ccmni_idx < CCMNI_INTERFACE_NUM) {
+				clear_bit(ccmni_idx, ccmni_state);
+
+				smp_mb(); /* for cpu exec. */
+
+				ret = ccmni_ops.start_queue(ccmni_idx, que_idx);
+
+				txq->txq_start_cnt[que_idx]++;
+				if (time_after(jiffies, txq->txq_start_tick[que_idx] +
+					msecs_to_jiffies(CLDMA_TXQ_FULL_LOG_INTERVAL))) {
+					txq->txq_start_tick[que_idx] = jiffies;
+
+					CCCI_NORMAL_LOG(-1, TAG,
+						"[%s] ccmni%u, queque%u, TX_FULL restore, count: %u\n",
+						__func__, ccmni_idx, que_idx,
+						txq->txq_start_cnt[que_idx]);
+				}
+
+				if ((*ccmni_state) == 0)
+					break;
+
+				ccmni_idx = find_next_bit(ccmni_state,
+						CCMNI_INTERFACE_NUM, ccmni_idx+1);
+			}
+		}
+
+		que_idx++;
+	}
+
+	ccmni_stop_counter = atomic_sub_return(ccmni_stop_counter, &txq->txq_ccmni_stop_counter);
+	if (ccmni_stop_counter < 0)
+		atomic_set(&txq->txq_ccmni_stop_counter, 1);
+
+	spin_unlock_irqrestore(&txq->txq_stop_start_lock, flags);
+}
+
+static void cldma_flush_napi_rx_list(unsigned int count, unsigned int *ccmni, unsigned int qno)
+{
+	unsigned int rx_count, i = 0;
+
+	if (unlikely(count > CCMNI_INTERFACE_NUM)) {
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s] error: ccmni_flush_count: %u > %u\n",
+			__func__, count, CCMNI_INTERFACE_NUM);
+		return;
+	}
+
+	while (i < count) {
+		rx_count = ccmni_ops.flush_queue(ccmni[i]);
+
+		i++;
+	}
+}
+
 static int cldma_net_rx_push_thread(void *arg)
 {
 	struct sk_buff *skb = NULL;
 	struct md_cd_queue *queue = (struct md_cd_queue *)arg;
-	struct md_cd_ctrl *md_ctrl = cldma_ctrl;
 #ifdef CCCI_SKB_TRACE
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
 #endif
 	int count = 0;
 	int ret;
+	unsigned int ccmni_idx = 0xFFFFFFFF;
+	unsigned int ccmni_flush_count = 0;
+	unsigned long ccmni_temp_state = 0;
+	unsigned int ccmni_flush_state[CCMNI_INTERFACE_NUM];
+	struct lhif_header *lhif;
 
 	while (1) {
 		if (skb_queue_empty(&queue->skb_list.skb_list)) {
-			cldma_queue_broadcast_state(md_ctrl, RX_FLUSH,
-				IN, queue->index);
+			cldma_flush_napi_rx_list(ccmni_flush_count,
+				ccmni_flush_state, queue->index);
+			ccmni_flush_count = 0;
+			ccmni_temp_state = 0;
+			ccmni_idx = 0xFFFFFFFF;
+
 			count = 0;
 			ret = wait_event_interruptible(queue->rx_wq,
 				!skb_queue_empty(&queue->skb_list.skb_list));
@@ -1023,7 +1142,30 @@ static int cldma_net_rx_push_thread(void *arg)
 		if (count > 0)
 			skb->tstamp = sched_clock();
 #endif
-		ccci_port_recv_skb(md_ctrl->hif_id, skb, CLDMA_NET_DATA);
+		lhif = (struct lhif_header *)skb->data;
+		if (unlikely(ccmni_idx != lhif->netif)) {
+			if (likely(lhif->netif < CCMNI_INTERFACE_NUM)) {
+				if ((ccmni_temp_state & (1 << lhif->netif)) == 0) {
+					set_bit(lhif->netif, &ccmni_temp_state);
+
+					if (ccmni_flush_count < CCMNI_INTERFACE_NUM) {
+						ccmni_flush_state[ccmni_flush_count] = lhif->netif;
+						ccmni_flush_count++;
+					} else
+						CCCI_ERROR_LOG(-1, TAG,
+							"[%s] error: ccmni_flush_count:%u >= %u\n",
+							__func__, ccmni_flush_count,
+							CCMNI_INTERFACE_NUM);
+				}
+			} else
+				CCCI_ERROR_LOG(-1, TAG,
+					"[%s] error: queue_mapping: %u >= %u\n",
+					__func__, lhif->netif, CCMNI_INTERFACE_NUM);
+
+			ccmni_idx = lhif->netif;
+		}
+
+		cldma_recv_skb(lhif->netif, skb);
 		count++;
 #ifdef CCCI_SKB_TRACE
 		per_md_data->netif_rx_profile[6] =
@@ -1119,11 +1261,11 @@ static int cldma_gpd_bd_tx_collect(struct md_cd_queue *queue,
 		req->skb = NULL;
 		/* step forward */
 		queue->tr_done = cldma_ring_step_forward(queue->tr_ring, req);
-		if (likely(ccci_md_get_cap_by_id() &
-			MODEM_CAP_TXBUSY_STOP)) {
-			if (queue->budget > queue->tr_ring->length / 8)
-				cldma_queue_broadcast_state(md_ctrl, TX_IRQ,
-				OUT, queue->index);
+		if (atomic_read(&queue->txq_ccmni_stop_counter)) {
+			if (likely(ccci_md_get_cap_by_id() & MODEM_CAP_TXBUSY_STOP)) {
+				if (queue->budget > queue->tr_ring->length / 8)
+					cldma_start_dev_queue(queue);
+			}
 		}
 		spin_unlock_irqrestore(&queue->ring_lock, flags);
 		count++;
@@ -1240,10 +1382,9 @@ static int cldma_gpd_tx_collect(struct md_cd_queue *queue,
 		/* step forward */
 		queue->tr_done =
 			cldma_ring_step_forward(queue->tr_ring, req);
-		if (likely(ccci_md_get_cap_by_id()
-			& MODEM_CAP_TXBUSY_STOP))
-			cldma_queue_broadcast_state(md_ctrl, TX_IRQ,
-				OUT, queue->index);
+		if (atomic_read(&queue->txq_ccmni_stop_counter))
+			if (likely(ccci_md_get_cap_by_id() & MODEM_CAP_TXBUSY_STOP))
+				cldma_start_dev_queue(queue);
 		spin_unlock_irqrestore(&queue->ring_lock, flags);
 		count++;
 		/*
@@ -1701,6 +1842,7 @@ static void cldma_tx_queue_init(struct md_cd_queue *queue)
 	queue->timeout_start = 0;
 	queue->timeout_end = 0;
 #endif
+	spin_lock_init(&queue->txq_stop_start_lock);
 }
 
 void cldma_enable_irq(struct md_cd_ctrl *md_ctrl)
@@ -2104,7 +2246,7 @@ static int md_cd_late_init(unsigned char hif_id);
 
 static int cldma_start(unsigned char hif_id)
 {
-	int i;
+	int i, j;
 	unsigned long flags;
 	struct md_cd_ctrl *md_ctrl = cldma_ctrl;
 	int ret;
@@ -2127,6 +2269,15 @@ static int cldma_start(unsigned char hif_id)
 		cldma_reg_set_tx_start_addr_bk(md_ctrl->cldma_ap_ao_base,
 			md_ctrl->txq[i].index,
 			md_ctrl->txq[i].tr_done->gpd_addr);
+
+		atomic_set(&(md_ctrl->txq[i].txq_ccmni_stop_counter), 0);
+		for (j = 0; j < MD_HW_Q_MAX; j++) {
+			md_ctrl->txq[i].txq_ccmni_state[j] = 0;
+			md_ctrl->txq[i].txq_start_cnt[j]   = 0;
+			md_ctrl->txq[i].txq_stop_cnt[j]    = 0;
+			md_ctrl->txq[i].txq_start_tick[j]  = 0;
+			md_ctrl->txq[i].txq_stop_tick[j]   = 0;
+		}
 	}
 	for (i = 0; i < QUEUE_LEN(md_ctrl->rxq); i++) {
 		cldma_queue_switch_ring(&md_ctrl->rxq[i]);
@@ -2646,18 +2797,30 @@ static int cldma_gpd_handle_tx_request(struct md_cd_queue *queue,
 	return 0;
 }
 
-static int md_cd_send_skb(unsigned char hif_id, int qno,
-	struct sk_buff *skb, int skb_from_pool, int blocking)
+static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 {
 	struct md_cd_ctrl *md_ctrl = cldma_ctrl;
 	struct md_cd_queue *queue;
 	struct cldma_request *tx_req;
 	int ret = 0;
-	struct ccci_header ccci_h;
+	struct ccci_header *ccci_h = NULL;
 	unsigned int ioc_override = 0;
 	unsigned long flags;
 	unsigned int tx_bytes = 0;
 	struct ccci_buffer_ctrl *buf_ctrl = NULL;
+	int skb_from_pool = 0;
+	int blocking = 0;
+	int qno = tx_info->hw_qno;
+	struct sk_buff *skb = tx_info->skb;
+	struct ccmni_ch *channel = ccmni_ops.get_ch(tx_info->ccmni_idx);
+	/*qno */
+	int tx_ch;
+
+	if (channel)
+		tx_ch = qno ? channel->dl_ack : channel->tx;
+	else
+		tx_ch = qno;
+
 #ifdef CLDMA_TRACE
 	static unsigned long long last_leave_time[CLDMA_TXQ_NUM]
 		= { 0 };
@@ -2675,7 +2838,6 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 		tx_interal = total_time - last_leave_time[qno];
 #endif
 
-	memset(&ccci_h, 0, sizeof(struct ccci_header));
 #if TRAFFIC_MONITOR_INTERVAL
 	if ((jiffies - md_ctrl->traffic_stamp) / HZ >
 			TRAFFIC_MONITOR_INTERVAL)
@@ -2683,7 +2845,7 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 			jiffies + TRAFFIC_MONITOR_INTERVAL * HZ);
 	md_ctrl->traffic_stamp = jiffies;
 #endif
-
+	queue = &md_ctrl->txq[qno];
 	if (qno >= QUEUE_LEN(md_ctrl->txq)) {
 		ret = -CCCI_ERR_INVALID_QUEUE_INDEX;
 		goto __EXIT_FUN;
@@ -2699,9 +2861,6 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 	} else
 		CCCI_DEBUG_LOG(0, TAG,
 			"send request: skb %p use default value!\n", skb);
-
-	ccci_h = *(struct ccci_header *)skb->data;
-	queue = &md_ctrl->txq[qno];
 	tx_bytes = skb->len;
 
  retry:
@@ -2710,10 +2869,16 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 		 * cause a potential deadlock
 		 */
 	CCCI_DEBUG_LOG(0, TAG,
-		"get a Tx req on q%d free=%d, tx_bytes = %X\n",
-		qno, queue->budget, tx_bytes);
+		"get a Tx req on q%d free=%d, tx_bytes = %X, tx_ch=%d\n",
+		qno, queue->budget, tx_bytes, tx_ch);
 	tx_req = queue->tx_xmit;
 	if (queue->budget > 0 && tx_req->skb == NULL) {
+		ccci_h = (struct ccci_header *)skb_push(skb,
+			sizeof(struct ccci_header));
+		ccci_h->channel = tx_ch ;
+		ccci_h->data[0] = tx_info->ccmni_idx;
+		ccci_h->data[1] = skb->len;
+		ccci_h->reserved = 0;
 		ccci_md_inc_tx_seq_num(&md_ctrl->traffic_info,
 			(struct ccci_header *)skb->data);
 		/* wait write done */
@@ -2729,10 +2894,10 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 #if TRAFFIC_MONITOR_INTERVAL
 		md_ctrl->tx_pre_traffic_monitor[queue->index]++;
 		ccci_channel_update_packet_counter(
-			md_ctrl->traffic_info.logic_ch_pkt_pre_cnt, &ccci_h);
+			md_ctrl->traffic_info.logic_ch_pkt_pre_cnt, ccci_h);
 #endif
 		ccci_md_add_log_history(&md_ctrl->traffic_info, OUT,
-			(int)queue->index, &ccci_h, 0);
+			(int)queue->index, ccci_h, 0);
 		/*
 		 * make sure TGPD is ready by here,
 		 * otherwise there is race conditon between
@@ -2751,7 +2916,7 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 				jiffies + CLDMA_ACTIVE_T * HZ);
 			CCCI_DEBUG_LOG(0, TAG,
 				"md_ctrl->txq_active=%d, qno%d ,ch%d, start_timer=%d\n",
-				md_ctrl->txq_active, qno, ccci_h.channel, ret);
+				md_ctrl->txq_active, qno, ccci_h->channel, ret);
 			ret = 0;
 #endif
 			md_ctrl->tx_busy_warn_cnt = 0;
@@ -2787,21 +2952,20 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 			 */
 			CCCI_NORMAL_LOG(0, TAG,
 				"ch=%d qno=%d cldma maybe stop, this package will be dropped!\n",
-				ccci_h.channel, qno);
+				ccci_h->channel, qno);
 		}
 		spin_unlock_irqrestore(&md_ctrl->cldma_timeout_lock, flags);
 	} else {
 		if (likely(ccci_md_get_cap_by_id() &
 			MODEM_CAP_TXBUSY_STOP))
-			cldma_queue_broadcast_state(md_ctrl, TX_FULL,
-				OUT, queue->index);
+			cldma_stop_dev_queue(queue, tx_info->ccmni_idx, tx_info->hw_qno);
 		spin_unlock_irqrestore(&queue->ring_lock, flags);
 		/* check CLDMA status */
 		if (cldma_read32(md_ctrl->cldma_ap_pdn_base,
 				CLDMA_AP_UL_STATUS) & (1 << qno)) {
 			CCCI_DEBUG_LOG(0, TAG,
 				"ch=%d qno=%d free slot 0, CLDMA_AP_UL_STATUS=0x%x\n",
-				ccci_h.channel, qno,
+				tx_ch, qno,
 				cldma_read32(md_ctrl->cldma_ap_pdn_base,
 				CLDMA_AP_UL_STATUS));
 			queue->busy_count++;
@@ -2811,7 +2975,7 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 				CLDMA_AP_L2TIMR0) & (1 << qno))
 				CCCI_REPEAT_LOG(0, TAG,
 					"ch=%d qno=%d free slot 0, CLDMA_AP_L2TIMR0=0x%x\n",
-					ccci_h.channel, qno,
+					tx_ch, qno,
 					cldma_read32(md_ctrl->cldma_ap_pdn_base,
 					CLDMA_AP_L2TIMR0));
 			if (++md_ctrl->tx_busy_warn_cnt == 1000) {
@@ -2853,7 +3017,7 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 				goto __EXIT_FUN;
 			}
 #ifdef CLDMA_TRACE
-			trace_cldma_error(qno, ccci_h.channel, ret, __LINE__);
+			trace_cldma_error(qno, tx_ch, ret, __LINE__);
 #endif
 			goto retry;
 		} else {
@@ -2868,19 +3032,19 @@ static int md_cd_send_skb(unsigned char hif_id, int qno,
 	if (unlikely(ret)) {
 		CCCI_DEBUG_LOG(0, TAG,
 			"txq_active=%d, qno=%d is 0,drop ch%d package,ret=%d\n",
-			md_ctrl->txq_active, qno, ccci_h.channel, ret);
-		trace_cldma_error(qno, ccci_h.channel,
+			md_ctrl->txq_active, qno, tx_ch, ret);
+		trace_cldma_error(qno, tx_ch,
 			ret, __LINE__);
 	} else {
 		last_leave_time[qno] = sched_clock();
 		total_time = last_leave_time[qno] - total_time;
 		sample_time[queue->index] += (total_time + tx_interal);
 		sample_bytes[queue->index] += tx_bytes;
-		trace_cldma_tx(qno, ccci_h.channel, md_ctrl->txq[qno].budget,
+		trace_cldma_tx(qno, tx_ch, md_ctrl->txq[qno].budget,
 			tx_interal, total_time,
 			tx_bytes, 0, 0);
 		if (sample_time[queue->index] >= trace_sample_time) {
-			trace_cldma_tx(qno, ccci_h.channel, 0, 0, 0, 0,
+			trace_cldma_tx(qno, tx_ch, 0, 0, 0, 0,
 				sample_time[queue->index],
 				sample_bytes[queue->index]);
 			sample_time[queue->index] = 0;
@@ -2922,7 +3086,7 @@ static void md_cldma_rxq0_tasklet(unsigned long data)
 static struct ccci_hif_ops ccci_hif_cldma_ops = {
 	//.init = &md_cd_init,
 	.late_init = &md_cd_late_init,
-	.send_skb = &md_cd_send_skb,
+//	.send_skb = &md_cd_send_skb,
 	.give_more = &md_cd_give_more,
 	.write_room = &md_cd_write_room,
 	.stop_queue = &md_cd_stop_queue,
@@ -3128,7 +3292,7 @@ static int ccci_cldma_hif_init(struct platform_device *pdev,
 
 	ccci_hif_register(CLDMA_HIF_ID, (void *)cldma_ctrl,
 		&ccci_hif_cldma_ops);
-
+	ccmni_ops.send_skb = &md_cd_send_skb;
 	return 0;
 }
 

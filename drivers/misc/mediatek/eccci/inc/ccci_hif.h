@@ -62,6 +62,5 @@ int ccci_hif_clear_all_queue(unsigned int hif_flag, enum DIRECTION dir);
 int ccci_hif_clear(unsigned int hif_flag);
 void ccci_hif_set_clk_cg(unsigned int hif_flag, unsigned int on);
 void ccci_hif_hw_reset(unsigned int hif_flag);
-int ccci_dpmaif_empty_query(int qno);
 
 #endif

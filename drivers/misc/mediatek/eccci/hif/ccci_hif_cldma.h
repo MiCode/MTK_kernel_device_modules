@@ -14,13 +14,15 @@
 #include <linux/hrtimer.h>
 #include <linux/skbuff.h>
 #include "mt-plat/mtk_ccci_common.h"
-
+#include "ccmni.h"
 #include "ccci_config.h"
 #include "ccci_common_config.h"
 #include "ccci_bm.h"
 #include "ccci_hif_internal.h"
 //#include "modem_sys.h"
 #include "ccci_cldma_plat.h"
+#include "ccmni.h"
+
 /*
  * hardcode, max queue number should be synced with port array in port_cfg.c
  * and macros in ccci_core.h following number should sync with MAX_TXQ/RXQ_NUM
@@ -32,7 +34,7 @@
 #define NET_RXQ_NUM 1
 #define NORMAL_TXQ_NUM 0
 #define NORMAL_RXQ_NUM 0
-
+#define CLDMA_TXQ_FULL_LOG_INTERVAL 500
 #define MAX_BD_NUM (MAX_SKB_FRAGS + 1)
 #define TRAFFIC_MONITOR_INTERVAL 10	/* seconds */
 #define SKB_RX_QUEUE_MAX_LEN 200000
@@ -224,6 +226,15 @@ struct md_cd_queue {
 	unsigned char hif_id;
 	enum DIRECTION dir;
 	unsigned int busy_count;
+
+	/* only for txq used by stop/start ccmni queue */
+	atomic_t            txq_ccmni_stop_counter;
+	spinlock_t          txq_stop_start_lock;
+	unsigned long       txq_ccmni_state[MD_HW_Q_MAX];
+	unsigned long       txq_start_tick[MD_HW_Q_MAX];
+	unsigned int        txq_start_cnt[MD_HW_Q_MAX];
+	unsigned long       txq_stop_tick[MD_HW_Q_MAX];
+	unsigned int        txq_stop_cnt[MD_HW_Q_MAX];
 };
 
 #define QUEUE_LEN(a) (sizeof(a)/sizeof(struct md_cd_queue))
