@@ -197,8 +197,17 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 			pr_info("[%s]copy_from_user failed\n", __func__);
 			return ret;
 		}
-		get_secure_handle(&mem_info, &ha_transfer.sec_handle);
-		get_apu_iova(&mem_info, &ha_transfer.dma_addr);
+		ret = get_secure_handle(&mem_info, &ha_transfer.sec_handle);
+		if (ret) {
+			pr_info("[%s]get_secure_handle failed\n", __func__);
+			return ret;
+		}
+
+		ret = get_apu_iova(&mem_info, &ha_transfer.dma_addr);
+		if (ret) {
+			pr_info("[%s]get_apu_iova failed\n", __func__);
+			return ret;
+		}
 
 		ret = sapu_ha_bridge(&mem_info, &ha_transfer);
 		if (ret)
@@ -214,7 +223,11 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 
 		ha_transfer.sec_handle = 0;
 		// get_secure_handle(&mem_info, &ha_transfer.sec_handle);
-		get_apu_iova(&mem_info, &ha_transfer.dma_addr);
+		ret = get_apu_iova(&mem_info, &ha_transfer.dma_addr);
+		if (ret) {
+			pr_info("[%s]get_apu_iova failed\n", __func__);
+			return ret;
+		}
 
 		ret = sapu_ha_bridge(&mem_info, &ha_transfer);
 		if (ret)
@@ -229,6 +242,11 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 		}
 
 		get_secure_handle(&mem_info, &ha_transfer.sec_handle);
+		if (ret) {
+			pr_info("[%s]get_secure_handle failed\n", __func__);
+			return ret;
+		}
+
 		ha_transfer.dma_addr = 0;
 
 		ret = sapu_ha_bridge(&mem_info, &ha_transfer);
