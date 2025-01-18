@@ -45,22 +45,25 @@ struct mml_m2m_frame {
 };
 
 struct mml_m2m_param {
-	const struct mml_m2m_limit *limit;
-	struct mml_m2m_frame output;	/* src buffer */
-	struct mml_m2m_frame capture;	/* dst buffer */
-
 	s32 rotation;
 	u32 hflip:1;
 	u32 vflip:1;
 	u32 secure:1;
 	u32 alpha:1;
+	struct v4l2_pq_submit pq_submit;
+
+	struct list_head entry;
 };
 
 struct mml_m2m_ctx {
 	struct mml_ctx ctx;
 	struct mml_submit submit;
+	const struct mml_m2m_limit *limit;
+	struct mml_m2m_frame output;	/* src buffer */
+	struct mml_m2m_frame capture;	/* dst buffer */
 	struct mml_m2m_param param;
-	struct v4l2_pq_submit pq_submit;
+	struct list_head params;
+	struct mutex param_mutex;
 
 	/* v4l2 m2m context */
 	struct v4l2_fh fh;
@@ -83,6 +86,15 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 {
 	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
+	struct mml_m2m_param *param;
+
+	mutex_lock(&mctx->param_mutex);
+	param = list_first_entry_or_null(&mctx->params, struct mml_m2m_param, entry);
+	if (param) {
+		list_del(&param->entry);
+		kfree(param);
+	}
+	mutex_unlock(&mctx->param_mutex);
 
 	mutex_lock(&v4l2_dev->m2m_mutex);
 	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
@@ -191,13 +203,24 @@ static const struct mml_config_ops m2m_config_ops = {
 	.free = frame_config_free,
 };
 
+static void mml_m2m_param_queue(struct mml_m2m_ctx *ctx)
+{
+	struct mml_m2m_param *param;
+
+	param = kzalloc(sizeof(struct mml_m2m_param), GFP_KERNEL);
+	*param = ctx->param;
+	mutex_lock(&ctx->param_mutex);
+	list_add_tail(&param->entry, &ctx->params);
+	mutex_unlock(&ctx->param_mutex);
+}
+
 static struct mml_m2m_frame *ctx_get_frame(struct mml_m2m_ctx *ctx,
 					   enum v4l2_buf_type type)
 {
 	if (V4L2_TYPE_IS_OUTPUT(type))
-		return &ctx->param.output;
+		return &ctx->output;
 	else
-		return &ctx->param.capture;
+		return &ctx->capture;
 }
 
 static struct mml_frame_dest *ctx_get_submit_dest(struct mml_m2m_ctx *ctx, int index)
@@ -273,7 +296,7 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 	capture = ctx_get_frame(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	src = ctx_get_submit_frame(ctx, output->format.type);
 	dest = ctx_get_submit_dest(ctx, 0);
-	pq_config = &ctx->pq_submit.pq_config;
+	pq_config = &ctx->param.pq_submit.pq_config;
 
 	get_frame_str(frame, sizeof(frame), src);
 	mml_log("[m2m] in v4l2:(%u, %u) mml:%s plane:%hhu",
@@ -304,7 +327,7 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 		ctx->param.vflip ? " vflip" : "",
 		ctx->param.secure ? " sec" : "",
 		ctx->param.alpha,
-		ctx->pq_submit.id,
+		ctx->param.pq_submit.id,
 		pq_config->en ? " PQ" : "",
 		pq_config->en_fg ? " FG" : "",
 		pq_config->en_hdr ? " HDR" : "",
@@ -367,7 +390,7 @@ static int mml_m2m_start_streaming(struct vb2_queue *q, unsigned int count)
 		ret = mml_check_scaling_ratio(&dest->crop.r,
 					      &dest->compose,
 					      ctx->param.rotation,
-					      ctx->param.limit);
+					      ctx->limit);
 		if (ret) {
 			mml_err("[m2m]%s out of scaling range crop(%u,%u) compose(%u,%u)",
 				__func__, dest->crop.r.width, dest->crop.r.height,
@@ -382,9 +405,22 @@ static int mml_m2m_start_streaming(struct vb2_queue *q, unsigned int count)
 static struct vb2_v4l2_buffer *mml_m2m_buf_remove(struct mml_m2m_ctx *ctx,
 						  unsigned int type)
 {
-	if (V4L2_TYPE_IS_OUTPUT(type))
-		return v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
-	else
+	struct vb2_v4l2_buffer *buf;
+	struct mml_m2m_param *param;
+
+	if (V4L2_TYPE_IS_OUTPUT(type)) {
+		buf = v4l2_m2m_src_buf_remove(ctx->m2m_ctx);
+		if (buf) {
+			mutex_lock(&ctx->param_mutex);
+			param = list_first_entry_or_null(&ctx->params, struct mml_m2m_param, entry);
+			if (param) {
+				list_del(&param->entry);
+				kfree(param);
+			}
+			mutex_unlock(&ctx->param_mutex);
+		}
+		return buf;
+	} else
 		return v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
 }
 
@@ -461,6 +497,8 @@ static void mml_m2m_buf_queue(struct vb2_buffer *vb)
 
 	vbuf->field = V4L2_FIELD_NONE;
 	v4l2_m2m_buf_queue(ctx->m2m_ctx, to_vb2_v4l2_buffer(vb));
+	if (V4L2_TYPE_IS_OUTPUT(vb->type))
+		mml_m2m_param_queue(ctx);
 }
 
 static const struct vb2_ops mml_m2m_qops = {
@@ -767,7 +805,7 @@ static int m2m_try_colorspace_mplane(
 }
 
 static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
-	const struct mml_m2m_param *param)
+	const struct mml_m2m_ctx *ctx)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
 	const struct mml_m2m_format *fmt;
@@ -802,8 +840,8 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 		}
 	}
 
-	pix_limit = V4L2_TYPE_IS_OUTPUT(f->type) ? &param->limit->out_limit :
-						&param->limit->cap_limit;
+	pix_limit = V4L2_TYPE_IS_OUTPUT(f->type) ? &ctx->limit->out_limit :
+						&ctx->limit->cap_limit;
 	org_w = pix_mp->width;
 	org_h = pix_mp->height;
 
@@ -854,19 +892,19 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 	return fmt;
 }
 
-static int m2m_param_init(struct mml_m2m_param *param)
+static int m2m_param_init(struct mml_m2m_ctx *ctx)
 {
 	struct mml_m2m_frame *frame;
 
-	param->limit = &mml_m2m_def_limit;
+	ctx->limit = &mml_m2m_def_limit;
 
-	frame = &param->output;
+	frame = &ctx->output;
 	frame->format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, param);
+	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
 
-	frame = &param->capture;
+	frame = &ctx->capture;
 	frame->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, param);
+	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, ctx);
 
 	return 0;
 }
@@ -891,8 +929,10 @@ static int mml_m2m_s_ctrl(struct v4l2_ctrl *ctrl)
 		mml_msg("[m2m]%s set rotation: %d", __func__, ctx->param.rotation);
 		break;
 	case MML_M2M_CID_PQPARAM:
-		ctx->pq_submit = *(struct v4l2_pq_submit *)ctrl->p_new.p;
-		mml_msg("[m2m]%s set pq_submit: %u", __func__, ctx->pq_submit.id);
+		ctx->param.pq_submit = *(struct v4l2_pq_submit *)ctrl->p_new.p;
+		mml_msg("[m2m]%s set pq_submit: %u fg_grain_seed: %d", __func__,
+			ctx->param.pq_submit.id,
+			ctx->param.pq_submit.pq_param.video_param.fg_meta.grain_seed);
 		break;
 	case MML_M2M_CID_SECURE:
 		ctx->param.secure = ctrl->val;
@@ -1015,7 +1055,7 @@ static int m2m_ctrls_create(struct mml_m2m_ctx *ctx)
 	cfg.step = 1;
 	cfg.ops = &mml_m2m_ctrl_ops;
 	cfg.type_ops = &mml_m2m_type_ops;
-	cfg.elem_size = sizeof(ctx->pq_submit);
+	cfg.elem_size = sizeof(ctx->param.pq_submit);
 	ctx->ctrls.pq = v4l2_ctrl_new_custom(&ctx->ctrl_handler, &cfg, NULL);
 	mml_msg("[m2m] set ctrl MML_M2M_CID_PQPARAM:%x ctrl type:%x, elem_size:%u",
 		MML_M2M_CID_PQPARAM, cfg.type, cfg.elem_size);
@@ -1187,7 +1227,7 @@ static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 	struct mml_frame_dest *dest;
 	const struct mml_frame_data *mml_frame_ref; /* should be output (source) */
 
-	fmt = m2m_try_fmt_mplane(f, &ctx->param);
+	fmt = m2m_try_fmt_mplane(f, ctx);
 	if (!fmt)
 		return -EINVAL;
 
@@ -1248,7 +1288,7 @@ static int mml_m2m_try_fmt_mplane(struct file *file, void *fh,
 {
 	struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
 
-	if (!m2m_try_fmt_mplane(f, &ctx->param))
+	if (!m2m_try_fmt_mplane(f, ctx))
 		return -EINVAL;
 	return 0;
 }
@@ -1410,6 +1450,9 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 	mutex_init(&ctx->q_mutex);
 	kref_init(&ctx->ref);
 
+	mutex_init(&ctx->param_mutex);
+	INIT_LIST_HEAD(&ctx->params);
+
 	return ctx;
 }
 
@@ -1486,7 +1529,7 @@ static int mml_m2m_open(struct file *file)
 	}
 	ctx->fh.m2m_ctx = ctx->m2m_ctx;
 
-	ret = m2m_param_init(&ctx->param);
+	ret = m2m_param_init(ctx);
 	if (ret) {
 		mml_err("Failed to initialize mml parameter");
 		goto err_release_m2m_ctx;
@@ -1524,9 +1567,17 @@ static void m2m_ctx_destroy(struct kref *kref)
 {
 	struct mml_m2m_ctx *mctx = container_of(kref, struct mml_m2m_ctx, ref);
 	struct mml_ctx *ctx = &mctx->ctx;
+	struct mml_m2m_param *param, *tmp;
 	u32 i;
 
 	mml_msg("[m2m]%s on ctx %p", __func__, ctx);
+
+	mutex_lock(&mctx->param_mutex);
+	list_for_each_entry_safe(param, tmp, &mctx->params, entry) {
+		list_del(&param->entry);
+		kfree(param);
+	}
+	mutex_unlock(&mctx->param_mutex);
 
 	mml_ctx_deinit(ctx);
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
@@ -1606,23 +1657,43 @@ static int m2m_set_orientation(struct mml_frame_dest *dest,
 
 static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 {
-	int ret;
+	int ret = 0;
+	struct device *mmu_dev;
+	struct vb2_queue *src_vq, *dst_vq;
+	struct mml_m2m_param *param;
+
+	mutex_lock(&mctx->param_mutex);
+	if (list_empty(&mctx->params)) {
+		mml_err("No control parameters available");
+		ret = -EINVAL;
+		goto unlock_param;
+	}
+
+	param = list_first_entry(&mctx->params, struct mml_m2m_param, entry);
 
 	ret = m2m_set_orientation(&submit->info.dest[0],
-		mctx->param.rotation, mctx->param.hflip, mctx->param.vflip);
+		param->rotation, param->hflip, param->vflip);
 	if (ret < 0)
-		return ret;
+		goto unlock_param;
 
-	submit->info.src.secure = mctx->param.secure;
+	mmu_dev = mml_get_mmu_dev(mctx->ctx.mml, param->secure);
+	submit->info.src.secure = param->secure;
+	src_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+	src_vq->dev = mmu_dev;
 
-	submit->info.dest[0].pq_config = mctx->pq_submit.pq_config;
-	submit->info.dest[0].data.secure = mctx->param.secure;
+	submit->info.dest[0].pq_config = param->pq_submit.pq_config;
+	submit->info.dest[0].data.secure = param->secure;
+	dst_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+	dst_vq->dev = mmu_dev;
 	submit->info.dest_cnt = 1;
 	submit->info.mode = MML_MODE_MML_DECOUPLE2;
 
 	submit->buffer.dest_cnt = 1;
-	submit->pq_param[0] = &mctx->pq_submit.pq_param;
-	return 0;
+	submit->pq_param[0] = &param->pq_submit.pq_param;
+
+unlock_param:
+	mutex_unlock(&mctx->param_mutex);
+	return ret;
 }
 
 static s32 m2m_frame_buf_to_task_buf(struct mml_ctx *ctx,
@@ -1816,7 +1887,7 @@ static void mml_m2m_device_run(void *priv)
 
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.src,
 		&submit->buffer.src, src_buf,
-		"mml_m2m_rdma", mctx->param.secure);
+		"mml_m2m_rdma", submit->info.src.secure);
 	if (result) {
 		mml_err("[m2m]%s get src dma buf fail", __func__);
 		goto err_buf_exit;
@@ -1825,7 +1896,7 @@ static void mml_m2m_device_run(void *priv)
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.dest[0],
 		&submit->buffer.dest[0], dst_buf,
-		"mml_m2m_wrot", mctx->param.secure);
+		"mml_m2m_wrot", submit->info.dest[0].data.secure);
 	if (result) {
 		mml_err("[m2m]%s get dest dma buf fail", __func__);
 		goto err_buf_exit;
