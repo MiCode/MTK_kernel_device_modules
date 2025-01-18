@@ -1322,6 +1322,9 @@ static const struct dvfsrc_debug_data mt6768_data = {
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
 	.qos = &mt6768_qos_config,
 #endif
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6765)
+	.qos = &mt6765_qos_config,
+#endif
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6761)
 	.qos = &mt6761_qos_config,
 #endif
@@ -1411,6 +1414,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 		.compatible = "mediatek,mt6768-dvfsrc",
 		.data = &mt6768_data,
 	}, {
+		.compatible = "mediatek,mt6765-dvfsrc",
+		.data = &mt6768_data,
+	}, {
 		.compatible = "mediatek,mt6878-dvfsrc",
 		.data = &mt6878_data,
 	}, {
@@ -1494,7 +1500,6 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 		if (dvfsrc->ceil_ddr_support)
 			register_dvfsrc_ceiling_opp_handler(mtk_dvfsrc_ceiling_opp);
 	}
-
 	return 0;
 }
 
