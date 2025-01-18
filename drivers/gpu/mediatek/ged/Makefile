@@ -96,6 +96,7 @@ ged-y += \
 	src/ged_gpufreq_v1.o
 endif
 
+ifeq ($(CONFIG_MTK_GPU_SUPPORT),m)
 ged-y += \
 	src/ged.o \
 	src/ged_base.o \
@@ -116,6 +117,7 @@ ged-y += \
 	src/ged_gpu_bm.o \
 	src/ged_gpu_slc.o \
 	src/ged_mali_event.o
+endif
 
 ged-$(CONFIG_SYNC_FILE) += src/ged_sync.o
 
