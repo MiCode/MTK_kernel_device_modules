@@ -121,7 +121,7 @@ static int mtk_pll_fenc_is_prepared(struct clk_hw *hw)
 	if (!is_registered)
 		return 0;
 
-	return  (((readl(pll->fenc_addr) & pll->fenc_msk) != 0) || (pll->onoff_cnt != 0));
+	return  ((readl(pll->fenc_addr) & pll->fenc_msk) != 0);
 }
 
 static int mtk_pll_setclr_is_prepared(struct clk_hw *hw)
