@@ -329,6 +329,19 @@ clk-dbg-mt6761-$(CONFIG_COMMON_CLK_MT6761) += clkdbg-mt6761.o
 endif
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6765.c),)
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clk-mt6765.o
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clk-mt6765-pg.o
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clkchk-mt6765.o
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clk-fmeter-mt6765.o
+ifeq ($(CONFIG_DEBUG_FS), y)
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clkdbg-mt6765.o
+clk-dbg-mt6765-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += clkdbg-mt6765.o
+obj-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += mt6765_clkmgr.o
+clk-clkmgr-mt6765-$(CONFIG_DEVICE_MODULE_COMMON_CLK_MT6765) += mt6765_clkmgr.o
+endif
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/clk-mt6768.c),)
 obj-$(CONFIG_COMMON_CLK_MT6768) += clk-mt6768.o
 obj-$(CONFIG_COMMON_CLK_MT6768) += clk-mt6768-pg.o

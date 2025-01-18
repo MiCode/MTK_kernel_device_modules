@@ -84,6 +84,17 @@ config COMMON_CLK_MT6761_MIPI0ASYS
 	  If you wish to use clock resources from the mipi0asys device,
 	  say Y. Otherwise, say N.
 
+config DEVICE_MODULE_COMMON_CLK_MT6765
+	tristate "Clock driver for MediaTek MT6765"
+	depends on ARM64 || ARM || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6765
+	help
+	  This driver supports MediaTek MT6765 basic clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6853 SOC,
+	  say Y. Otherwise, say N.
+
 config COMMON_CLK_MT6768
 	tristate "Clock driver for MediaTek MT6768"
 	depends on ARM64 || ARM || COMPILE_TEST
