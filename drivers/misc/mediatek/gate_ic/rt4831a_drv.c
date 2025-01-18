@@ -284,8 +284,7 @@ EXPORT_SYMBOL_GPL(_gate_ic_i2c_panel_bias_enable);
  * Function
  *****************************************************************************/
 
-static int _gate_ic_i2c_probe(struct i2c_client *client,
-	const struct i2c_device_id *id)
+static int _gate_ic_i2c_probe(struct i2c_client *client)
 {
 	struct gate_ic_client *gate_client;
 	struct device *dev = &client->dev;
