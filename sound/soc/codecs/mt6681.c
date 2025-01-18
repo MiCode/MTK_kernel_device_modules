@@ -4958,6 +4958,7 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	unsigned int mux = dapm_kcontrol_get_value(w->kcontrols[0]);
 	int device = DEVICE_HP;
 	unsigned long long t_start = get_current_time(), t_consume = 0;
@@ -4965,6 +4966,8 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 	dev_info(priv->dev,
 		 "%s(), event 0x%x, dev_counter[DEV_HP] %d, mux %u\n", __func__,
 		 event, priv->dev_counter[device], mux);
+
+	scp_wake_request(adap);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -5008,6 +5011,8 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
+	scp_wake_release(adap);
+
 	t_consume = get_current_time() - t_start;
 	if (t_consume >= RG_RW_TIMEOUT)
 		dev_info(priv->dev, "%s(), function cost %llu time(ns)", __func__, t_consume);
@@ -5020,12 +5025,14 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	int device = DEVICE_RCV;
 	unsigned long long t_start = get_current_time(), t_consume = 0;
 
 	dev_info(priv->dev, "%s(), event 0x%x, mux %u\n", __func__, event,
 		 dapm_kcontrol_get_value(w->kcontrols[0]));
 
+	scp_wake_request(adap);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		priv->dev_counter[device]++;
@@ -5212,6 +5219,8 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
+	scp_wake_release(adap);
+
 	t_consume = get_current_time() - t_start;
 	if (t_consume >= RG_RW_TIMEOUT)
 		dev_info(priv->dev, "%s(), function cost %llu time(ns)", __func__, t_consume);
@@ -5224,11 +5233,13 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
 	unsigned int mux = dapm_kcontrol_get_value(w->kcontrols[0]);
 	unsigned long long t_start = get_current_time(), t_consume = 0;
 
 	dev_info(priv->dev, "%s(), event 0x%x, mux %u\n", __func__, event, mux);
 
+	scp_wake_request(adap);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* 3:hwgain1/2 swap & bypass HWgain1/2 */
@@ -5374,6 +5385,8 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 	default:
 		break;
 	}
+
+	scp_wake_release(adap);
 
 	t_consume = get_current_time() - t_start;
 	if (t_consume >= RG_RW_TIMEOUT)
@@ -6412,9 +6425,9 @@ static int mt_clksq_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int mt_scp_req_event(struct snd_soc_dapm_widget *w,
-			  struct snd_kcontrol *kcontrol,
-			  int event)
+static int mt_scp_req_first_pu_last_pd_event(struct snd_soc_dapm_widget *w,
+					     struct snd_kcontrol *kcontrol,
+					     int event)
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
@@ -6433,6 +6446,28 @@ static int mt_scp_req_event(struct snd_soc_dapm_widget *w,
 	}
 	if (!ret)
 		dev_info(priv->dev, "%s(), event = %d, ret = %d\n", __func__, event, ret);
+
+	return 0;
+}
+
+static int mt_scp_req_first_pd_last_pu_event(struct snd_soc_dapm_widget *w,
+					     struct snd_kcontrol *kcontrol,
+					     int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		scp_wake_release(adap);
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		scp_wake_request(adap);
+		break;
+	default:
+		break;
+	}
 
 	return 0;
 }
@@ -13026,8 +13061,12 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	/* Global Supply*/
 	SND_SOC_DAPM_SUPPLY_S("SCP_REQ", SUPPLY_SEQ_SCP_REQ,
 			      SND_SOC_NOPM, 0, 0,
-			      mt_scp_req_event,
+			      mt_scp_req_first_pu_last_pd_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("SCP_REQ_2", SUPPLY_SEQ_SCP_REQ_2,
+			      SND_SOC_NOPM, 0, 0,
+			      mt_scp_req_first_pd_last_pu_event,
+			      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_SUPPLY_S("KEY", SUPPLY_SEQ_CLK_BUF, SND_SOC_NOPM, 0, 0,
 			      mt_key_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -13036,7 +13075,7 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("NCP_CK", SUPPLY_SEQ_CKTST, MT6681_TOP_CKTST_CON0,
 			      RG_VCORE_26M_CK_TST_DIS_SFT, 0, NULL, 0),
-	/* set when 208M*/
+	/* set when 208M */
 	SND_SOC_DAPM_SUPPLY_S("NCP_CK_208", SUPPLY_SEQ_CKTST,
 			      MT6681_TOP_CKTST_CON0,
 			      RG_DSPPLL_208M_CK_TST_DIS_SFT, 0, NULL, 0),
@@ -13616,6 +13655,7 @@ static int mt_dcc_clk_connect(struct snd_soc_dapm_widget *source,
 static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	/* Capture */
 	{"AIFTX_Supply", NULL, "SCP_REQ"},
+	{"AIFTX_Supply", NULL, "SCP_REQ_2"},
 	{"AIFTX_Supply", NULL, "KEY"},
 	{"AIFTX_Supply", NULL, "UL_GPIO"},
 	{"AIFTX_Supply", NULL, "ADC_INIT"},
@@ -13765,6 +13805,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"ADC_R", NULL, "ADC_R_Mux"},
 	{"ADC_R", NULL, "ADC_LR_CLKGEN"},
 	{"ADC_R", NULL, "ADC_R_EN"},
+
 	/*
 	 * amic fifo ch1/2 clk from ADC_L,
 	 * enable ADC_L even use ADC_R only
@@ -13859,6 +13900,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 
 	/* DL Supply */
 	{"DL Power Supply", NULL, "SCP_REQ"},
+	{"DL Power Supply", NULL, "SCP_REQ_2"},
 	{"DL Power Supply", NULL, "KEY"},
 	{"DL Power Supply", NULL, "DL_GPIO"},
 	{"DL Power Supply", NULL, "CLK_BUF"},
