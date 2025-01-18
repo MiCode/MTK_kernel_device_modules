@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2020 MediaTek Inc.
 
-MTK_PLATFORM := isp4
+MTK_PLATFORM := isp4_t
 MTK_SENSOR_PROJECT :=
 COMMON_VERSION := v1
 IMGSENSOR_DRIVER_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/src
@@ -15,11 +15,11 @@ IMGSENSOR_DRIVER_OBJ := \
 	../common/$(COMMON_VERSION)/imgsensor_sensor_list.o \
 	imgsensor_clk.o \
 
-ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4), m)
-obj-$(CONFIG_MTK_IMGSENSOR_ISP4) += $(MTK_PLATFORM_KO).o
+ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4_T), m)
+obj-$(CONFIG_MTK_IMGSENSOR_ISP4_T) += $(MTK_PLATFORM_KO).o
 $(eval $(MTK_PLATFORM_KO)-objs += $(IMGSENSOR_DRIVER_OBJ))
-else ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4), y)
-obj-$(CONFIG_MTK_IMGSENSOR_ISP4) += $(IMGSENSOR_DRIVER_OBJ)
+else ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4_T), y)
+obj-$(CONFIG_MTK_IMGSENSOR_ISP4_T) += $(IMGSENSOR_DRIVER_OBJ)
 endif
 
 subdir-ccflags-y += \

@@ -9,13 +9,19 @@ subdir-ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/inc \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cam_cal/inc \
 
-obj-$(CONFIG_MTK_IMGSENSOR_ISP4) += isp4/
+obj-$(CONFIG_MTK_IMGSENSOR_ISP3_Z) += isp3_z/
+obj-$(CONFIG_MTK_IMGSENSOR_ISP3_M) += isp3_m/
+obj-$(CONFIG_MTK_IMGSENSOR_ISP4_T) += isp4_t/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP4_C) += isp4_c/
 obj-$(CONFIG_MTK_IMGSENSOR) += isp6s/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += isp6s_mon/
 
-ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4), $(filter $(CONFIG_MTK_IMGSENSOR_ISP4), m y))
-$(info imgsensor CONFIG_MTK_IMGSENSOR_ISP4 = $(CONFIG_MTK_IMGSENSOR_ISP4))
+ifeq ($(CONFIG_MTK_IMGSENSOR_ISP3_Z), $(filter $(CONFIG_MTK_IMGSENSOR_ISP3_Z), m y))
+$(info imgsensor CONFIG_MTK_IMGSENSOR_ISP3_Z = $(CONFIG_MTK_IMGSENSOR_ISP3_Z))
+else ifeq ($(CONFIG_MTK_IMGSENSOR_ISP3_M), $(filter $(CONFIG_MTK_IMGSENSOR_ISP3_M), m y))
+$(info imgsensor CONFIG_MTK_IMGSENSOR_ISP3_M = $(CONFIG_MTK_IMGSENSOR_ISP3_M))
+else ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4_T), $(filter $(CONFIG_MTK_IMGSENSOR_ISP4_T), m y))
+$(info imgsensor CONFIG_MTK_IMGSENSOR_ISP4_T = $(CONFIG_MTK_IMGSENSOR_ISP4_T))
 else ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4_C), $(filter $(CONFIG_MTK_IMGSENSOR_ISP4_C), m y))
 $(info imgsensor CONFIG_MTK_IMGSENSOR_ISP4_C = $(CONFIG_MTK_IMGSENSOR_ISP4_C))
 else ifeq ($(CONFIG_MTK_IMGSENSOR), $(filter $(CONFIG_MTK_IMGSENSOR), m y))

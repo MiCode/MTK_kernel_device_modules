@@ -123,7 +123,6 @@ int imgsensor_dfs_ctrl(struct imgsensor_dfs_ctx *ctx, enum DFS_OPTION option, vo
 			return IMGSENSOR_RETURN_ERROR;
 		}
 	}
-	/*pr_info("%s\n", __func__);*/
 
 	switch (option) {
 	case DFS_CTRL_ENABLE:
@@ -388,7 +387,7 @@ void imgsensor_clk_disable_all(struct IMGSENSOR_CLK *pclk)
 {
 	unsigned int i;
 
-	pr_info("%s\n", __func__);
+	pr_info("%s E\n", __func__);
 	for (i = IMGSENSOR_CCF_MCLK_TG_MIN_NUM;
 		i < IMGSENSOR_CCF_MAX_NUM;
 		i++) {
