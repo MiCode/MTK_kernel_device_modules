@@ -83,6 +83,9 @@ static DEFINE_MUTEX(mmdvfs_vmm_pwr_mutex);
 static int last_vote_step[PWR_MMDVFS_NUM];
 static int last_force_step[PWR_MMDVFS_NUM];
 static int last_force_volt[PWR_MMDVFS_NUM];
+static int last_test_set_rate[MMDVFS_USER_NUM];
+static int last_test_ap_set_opp[MMDVFS_USER_NUM];
+static int last_test_ap_set_rate[MMDVFS_USER_NUM];
 static int dpsw_thr;
 static int vmm_ceil_step;
 static bool mmdvfs_mux_version;
@@ -649,13 +652,11 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 {
 	int ret = 0;
 
-	if (!mmdvfs_v3_dev)
-		return 0;
-
 	mutex_lock(&mmdvfs_vmm_pwr_mutex);
 	if (enable) {
 		if (!vmm_power) {
-			ret = pm_runtime_resume_and_get(mmdvfs_v3_dev);
+			ret = mmdvfs_v3_dev ? pm_runtime_resume_and_get(mmdvfs_v3_dev) :
+				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, enable ? 1 : 0, NULL, true);
 			if (ret)
 				goto enable_vmm_end;
 		}
@@ -666,7 +667,8 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 			goto enable_vmm_end;
 		}
 		if (vmm_power == 1) {
-			ret = pm_runtime_put_sync(mmdvfs_v3_dev);
+			ret = mmdvfs_v3_dev ? pm_runtime_put_sync(mmdvfs_v3_dev) :
+				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, enable ? 1 : 0, NULL, true);
 			if (ret)
 				goto enable_vmm_end;
 		}
@@ -675,7 +677,7 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 
 enable_vmm_end:
 	if (ret || (log_level & (1 << log_pwr)))
-		MMDVFS_ERR("ret:%d enable:%d vmm_power:%d", ret, enable, vmm_power);
+		MMDVFS_ERR("ret:%d enable:%d vmm_power:%d dev:%p", ret, enable, vmm_power, mmdvfs_v3_dev);
 	mutex_unlock(&mmdvfs_vmm_pwr_mutex);
 	return ret;
 }
@@ -1371,10 +1373,11 @@ MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
 	s32 opp;
-	u8 func, idx, mux_idx, vcp;
+	u8 func, idx, mux_idx = MMDVFS_MUX_NUM, vcp;
 	bool ready;
 	s8 level;
 	int ret;
+	int *last = NULL;
 
 	ret = sscanf(val, "%hhu %hhu %d", &func, &idx, &opp);
 	vcp = func & (1U << 7);
@@ -1407,6 +1410,20 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		level = mmdvfs_mux[mux_idx].freq_num - 1 - opp;
 	}
 
+	if (func == TEST_SET_RATE)
+		last = &last_test_set_rate[idx];
+	else if (func == TEST_AP_SET_OPP)
+		last = &last_test_ap_set_opp[idx];
+	else if (func == TEST_AP_SET_USER_RATE)
+		last = &last_test_ap_set_rate[idx];
+
+	if (func == TEST_SET_RATE && opp && !*last)
+		mtk_mmdvfs_enable_vmm(true);
+	else if ((func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) &&
+		((opp >= 0 && opp < mmdvfs_mux[mux_idx].freq_num) &&
+		(*last < 0 || *last >= mmdvfs_mux[mux_idx].freq_num)))
+		mtk_mmdvfs_enable_vmm(true);
+
 	switch (func) {
 	case TEST_SET_RATE:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
@@ -1438,6 +1455,13 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_GENPD);
 		break;
 	}
+
+	if (func == TEST_SET_RATE && !opp && *last)
+		mtk_mmdvfs_enable_vmm(false);
+	else if ((func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) &&
+		((opp < 0 || opp >= mmdvfs_mux[mux_idx].freq_num) &&
+		(*last >= 0 && *last < mmdvfs_mux[mux_idx].freq_num)))
+		mtk_mmdvfs_enable_vmm(false);
 
 	MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%d vcp:%hhu", ret, func, idx, opp, vcp);
 	return ret;
@@ -2263,9 +2287,9 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d",
 		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step);
 
-	mmdvfs_v3_dev = &pdev->dev;
 	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,vdec-larb", 0);
 	if (larb) {
+		mmdvfs_v3_dev = &pdev->dev;
 		larb_pdev = of_find_device_by_node(larb);
 		if (!device_link_add(mmdvfs_v3_dev, &larb_pdev->dev,
 			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
@@ -2410,6 +2434,11 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		last_force_step[i] = -1;
 		last_force_volt[i] = -1;
 	}
+	for (i = 0; i < MMDVFS_USER_NUM; i++) {
+		last_test_ap_set_opp[i] = -1;
+		last_test_ap_set_rate[i] = -1;
+	}
+
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
 	of_property_read_s32(node, "vmrc-log-level", &vmrc_log_level);
