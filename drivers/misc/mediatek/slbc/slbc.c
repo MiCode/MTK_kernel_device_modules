@@ -79,6 +79,7 @@ char *slc_ach_uid_str[ID_MAX + 1] = {
 	"ID_SMMU",
 	"ID_MD",
 	"ID_ADSP",
+	"ID_AOV",
 	"ID_MAX",
 };
 EXPORT_SYMBOL_GPL(slc_ach_uid_str);
