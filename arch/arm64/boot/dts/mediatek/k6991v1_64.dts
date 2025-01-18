@@ -127,6 +127,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		reg = <0>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -153,6 +154,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		reg = <2>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -166,6 +168,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		reg = <3>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -179,6 +182,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		reg = <4>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
