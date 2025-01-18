@@ -11,11 +11,11 @@
 #include "mmqos-mtk.h"
 static const struct mtk_node_desc node_descs_mt6765[] = {
 	DEFINE_MNODE(common0, SLAVE_COMMON(0), 0, false, 0x0, MMQOS_NO_LINK),
-	DEFINE_MNODE(common0_port0, MASTER_COMMON_PORT(0, 0), 0, false, 0x0, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port1, MASTER_COMMON_PORT(0, 1), 0, false, 0x0, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port2, MASTER_COMMON_PORT(0, 2), 0, false, 0x0, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port3, MASTER_COMMON_PORT(0, 3), 0, false, 0x0, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port4, MASTER_COMMON_PORT(0, 4), 0, false, 0x0, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port0, MASTER_COMMON_PORT(0, 0), 0, false, 0x1, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port1, MASTER_COMMON_PORT(0, 1), 0, false, 0x2, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port2, MASTER_COMMON_PORT(0, 2), 0, false, 0x1, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port3, MASTER_COMMON_PORT(0, 3), 0, false, 0x2, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port4, MASTER_COMMON_PORT(0, 4), 0, false, 0x1, SLAVE_COMMON(0)),
 	/*SMI Common*/
 	DEFINE_MNODE(larb0, SLAVE_LARB(0), 0, false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(larb1, SLAVE_LARB(1), 0, false, 0x0, MASTER_COMMON_PORT(0, 1)),
