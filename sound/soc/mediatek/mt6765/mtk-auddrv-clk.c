@@ -34,7 +34,6 @@
 /*****************************************************************************
  *                E X T E R N A L   R E F E R E N C E S
  *****************************************************************************/
-#define CONFIG_FPGA_EARLY_PORTING
 
 #include <linux/clk.h>
 
@@ -558,9 +557,10 @@ EXPORT_SYMBOL(AudDrv_Clk_On);
 
 void AudDrv_Clk_Off(void)
 {
+	size_t i;
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 	pr_debug("!! %s, Aud_AFE_Clk_cntr:%d\n",
-		__func__Aud_AFE_Clk_cntr);
+		__func__,Aud_AFE_Clk_cntr);
 	mutex_lock(&auddrv_clk_mutex);
 
 	Aud_AFE_Clk_cntr--;
