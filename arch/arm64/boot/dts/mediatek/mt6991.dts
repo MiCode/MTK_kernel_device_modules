@@ -5567,167 +5567,161 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			vlp-tracker-timeout-mask = <0x100>;
 		};
 
-				eth0: ethernet@16570000 {
-					compatible = "mediatek,mt8678-gmac0", "snps,dwmac-5.10a";
-					reg = <0 0x16570000 0 0x4000>;
-					interrupts = <GIC_SPI 913 IRQ_TYPE_LEVEL_HIGH 0>;
-					interrupt-names = "macirq";
-					clock-names = "mac_main",
-								"ptp_ref",
-								"rmii_internal";
-					/*clocks = <&clk26m>,
-							<&clk26m>,
-							<&clk26m>;
-					assigned-clocks = <&clk26m>,
-								<&clk26m>,
-								<&clk26m>;
-					assigned-clock-parents = <&clk26m>,
-									<&clk26m>,
-									<&clk26m>;
-			*/
-					/*power-domains = <&spm MT8195_POWER_DOMAIN_ETHER>;*/
-			/*mediatek,pericfg = <&infracfg_ao>;*/
-					snps,axi-config = <&stmmac_axi_setup_mac0>;
-					snps,mtl-rx-config = <&mtl_rx_setup_mac0>;
-					snps,mtl-tx-config = <&mtl_tx_setup_mac0>;
-					snps,txpbl = <16>;
-					snps,rxpbl = <16>;
-					clk-csr = <0>;
-					status = "disabled";
+		eth0: ethernet@16570000 {
+			compatible = "mediatek,mt8678-gmac0", "snps,dwmac-5.10a";
+			reg = <0 0x16570000 0 0x4000>;
+			interrupts = <GIC_SPI 913 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "macirq";
+			clock-names = "mac_main",
+				      "ptp_ref",
+				      "sgmii_sel",
+				      "sgmii_sbus_sel",
+				      "rmii_internal";
+			clocks = <&ivi_cksys_clk CLK_CK_GMAC_125M_SEL>,
+				 <&ivi_cksys_clk CLK_CK_GMAC_62P4M_PTP_SEL>,
+				 <&ivi_cksys_clk CLK_CK_SGMII0_REF_325M_SEL>,
+				 <&ivi_cksys_clk CLK_CK_SGMII0_REG_SEL>,
+				 <&ivi_cksys_clk CLK_CK_GMAC_RMII_SEL>;
+			power-domains = <&ivi_scpsys MT6991_POWER_DOMAIN_PERI_ETHER>;
+			mediatek,pericfg = <&pericfg_ao_clk>;
+			snps,axi-config = <&stmmac_axi_setup_mac0>;
+			snps,mtl-rx-config = <&mtl_rx_setup_mac0>;
+			snps,mtl-tx-config = <&mtl_tx_setup_mac0>;
+			snps,txpbl = <16>;
+			snps,rxpbl = <16>;
+			clk-csr = <0>;
+			status = "disabled";
 
-					stmmac_axi_setup_mac0: stmmac-axi-config-mac0 {
-						snps,wr-osr-lmt = <0x7>;
-						snps,rd-osr-lmt = <0x7>;
-						snps,blen = <0 0 0 0 16 8 4>;
-					};
+			stmmac_axi_setup_mac0: stmmac-axi-config-mac0 {
+				snps,wr-osr-lmt = <0x7>;
+				snps,rd-osr-lmt = <0x7>;
+				snps,blen = <0 0 0 0 16 8 4>;
+			};
 
-					mtl_rx_setup_mac0: rx-queues-config-mac0 {
-						snps,rx-queues-to-use = <4>;
-						snps,rx-sched-sp;
-						queue0 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue1 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue2 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue3 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-					};
-
-					mtl_tx_setup_mac0: tx-queues-config-mac0 {
-						snps,tx-queues-to-use = <4>;
-						snps,tx-sched-wrr;
-						queue0 {
-							snps,weight = <0x10>;
-							snps,dcb-algorithm;
-							snps,priority = <0x0>;
-						};
-						queue1 {
-							snps,weight = <0x11>;
-							snps,dcb-algorithm;
-							snps,priority = <0x1>;
-						};
-						queue2 {
-							snps,weight = <0x12>;
-							snps,dcb-algorithm;
-							snps,priority = <0x2>;
-						};
-						queue3 {
-							snps,weight = <0x13>;
-							snps,dcb-algorithm;
-							snps,priority = <0x3>;
-						};
-					};
+			mtl_rx_setup_mac0: rx-queues-config-mac0 {
+				snps,rx-queues-to-use = <4>;
+				snps,rx-sched-sp;
+				queue0 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
 				};
-
-				eth1: ethernet@16580000 {
-					compatible = "mediatek,mt8678-gmac1", "snps,dwmac-5.10a";
-					reg = <0 0x16580000 0 0x4000>;
-					interrupts = <GIC_SPI 920 IRQ_TYPE_LEVEL_HIGH 0>;
-					interrupt-names = "macirq";
-					clock-names = "mac_main",
-								"ptp_ref",
-								"rmii_internal";
-					/*clocks = <&clk26m>,
-							<&clk26m>,
-							<&clk26m>;
-					assigned-clocks = <&clk26m>,
-								<&clk26m>,
-								<&clk26m>;
-					assigned-clock-parents = <&clk26m>,
-									<&clk26m>,
-									<&clk26m>;
-					*/
-					/*power-domains = <&spm MT8195_POWER_DOMAIN_ETHER>;*/
-			/*mediatek,pericfg = <&infracfg_ao>;*/
-					snps,axi-config = <&stmmac_axi_setup_mac1>;
-					snps,mtl-rx-config = <&mtl_rx_setup_mac1>;
-					snps,mtl-tx-config = <&mtl_tx_setup_mac1>;
-					snps,txpbl = <16>;
-					snps,rxpbl = <16>;
-					clk-csr = <0>;
-					status = "disabled";
-
-					stmmac_axi_setup_mac1: stmmac-axi-config-mac1 {
-						snps,wr-osr-lmt = <0x7>;
-						snps,rd-osr-lmt = <0x7>;
-						snps,blen = <0 0 0 0 16 8 4>;
-					};
-
-					mtl_rx_setup_mac1: rx-queues-config-mac1 {
-						snps,rx-queues-to-use = <4>;
-						snps,rx-sched-sp;
-						queue0 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue1 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue2 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-						queue3 {
-							snps,dcb-algorithm;
-							snps,map-to-dma-channel = <0x0>;
-						};
-					};
-
-					mtl_tx_setup_mac1: tx-queues-config-mac1 {
-						snps,tx-queues-to-use = <4>;
-						snps,tx-sched-wrr;
-						queue0 {
-							snps,weight = <0x10>;
-							snps,dcb-algorithm;
-							snps,priority = <0x0>;
-						};
-						queue1 {
-							snps,weight = <0x11>;
-							snps,dcb-algorithm;
-							snps,priority = <0x1>;
-						};
-						queue2 {
-							snps,weight = <0x12>;
-							snps,dcb-algorithm;
-							snps,priority = <0x2>;
-						};
-						queue3 {
-							snps,weight = <0x13>;
-							snps,dcb-algorithm;
-							snps,priority = <0x3>;
-						};
-					};
+				queue1 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
 				};
+				queue2 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+				queue3 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+			};
+
+			mtl_tx_setup_mac0: tx-queues-config-mac0 {
+				snps,tx-queues-to-use = <4>;
+				snps,tx-sched-wrr;
+				queue0 {
+					snps,weight = <0x10>;
+					snps,dcb-algorithm;
+					snps,priority = <0x0>;
+				};
+				queue1 {
+					snps,weight = <0x11>;
+					snps,dcb-algorithm;
+					snps,priority = <0x1>;
+				};
+				queue2 {
+					snps,weight = <0x12>;
+					snps,dcb-algorithm;
+					snps,priority = <0x2>;
+				};
+				queue3 {
+					snps,weight = <0x13>;
+					snps,dcb-algorithm;
+					snps,priority = <0x3>;
+				};
+			};
+		};
+
+		eth1: ethernet@16580000 {
+			compatible = "mediatek,mt8678-gmac1", "snps,dwmac-5.10a";
+			reg = <0 0x16580000 0 0x4000>;
+			interrupts = <GIC_SPI 920 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "macirq";
+			clock-names = "mac_main",
+				      "ptp_ref",
+				      "sgmii_sel",
+				      "sgmii_sbus_sel",
+				      "rmii_internal";
+			clocks = <&ivi_cksys_clk CLK_CK_GMAC_125M_SEL>,
+				 <&ivi_cksys_clk CLK_CK_GMAC_62P4M_PTP_SEL>,
+				 <&ivi_cksys_clk CLK_CK_SGMII1_REF_325M_SEL>,
+				 <&ivi_cksys_clk CLK_CK_SGMII1_REG_SEL>,
+				 <&ivi_cksys_clk CLK_CK_GMAC_RMII_SEL>;
+			power-domains = <&ivi_scpsys MT6991_POWER_DOMAIN_PERI_ETHER>;
+			mediatek,pericfg = <&pericfg_ao_clk>;
+			snps,axi-config = <&stmmac_axi_setup_mac1>;
+			snps,mtl-rx-config = <&mtl_rx_setup_mac1>;
+			snps,mtl-tx-config = <&mtl_tx_setup_mac1>;
+			snps,txpbl = <16>;
+			snps,rxpbl = <16>;
+			clk-csr = <0>;
+			status = "disabled";
+
+			stmmac_axi_setup_mac1: stmmac-axi-config-mac1 {
+				snps,wr-osr-lmt = <0x7>;
+				snps,rd-osr-lmt = <0x7>;
+				snps,blen = <0 0 0 0 16 8 4>;
+			};
+
+			mtl_rx_setup_mac1: rx-queues-config-mac1 {
+				snps,rx-queues-to-use = <4>;
+				snps,rx-sched-sp;
+				queue0 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+				queue1 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+				queue2 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+				queue3 {
+					snps,dcb-algorithm;
+					snps,map-to-dma-channel = <0x0>;
+				};
+			};
+
+			mtl_tx_setup_mac1: tx-queues-config-mac1 {
+				snps,tx-queues-to-use = <4>;
+				snps,tx-sched-wrr;
+				queue0 {
+					snps,weight = <0x10>;
+					snps,dcb-algorithm;
+					snps,priority = <0x0>;
+				};
+				queue1 {
+					snps,weight = <0x11>;
+					snps,dcb-algorithm;
+					snps,priority = <0x1>;
+				};
+				queue2 {
+					snps,weight = <0x12>;
+					snps,dcb-algorithm;
+					snps,priority = <0x2>;
+				};
+				queue3 {
+					snps,weight = <0x13>;
+					snps,dcb-algorithm;
+					snps,priority = <0x3>;
+				};
+			};
+		};
 
 		adspsys: adspsys@1a000000 {
 			compatible = "mediatek,mt6991-adspsys";
