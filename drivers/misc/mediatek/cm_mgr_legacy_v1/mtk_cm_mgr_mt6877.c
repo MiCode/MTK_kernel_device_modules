@@ -37,11 +37,11 @@
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "dvfsrc-exp.h"
 #endif /* CONFIG_MTK_DVFSRC */
-#include "mtk_cm_mgr_mt6768.h"
+#include "mtk_cm_mgr_mt6877.h"
 #include "mtk_cm_mgr_common.h"
 
 /* #define CREATE_TRACE_POINTS */
-/* #include "mtk_cm_mgr_events_mt6873.h" */
+/* #include "mtk_cm_mgr_events_mt6877.h" */
 #define trace_CM_MGR__perf_hint(idx, en, opp, base, hint, force_hint)
 
 #include <linux/pm_qos.h>
@@ -56,14 +56,15 @@ static unsigned int prev_freq[CM_MGR_CPU_CLUSTER];
 
 static int cm_mgr_init_done;
 static int cm_mgr_idx = -1;
+spinlock_t cm_mgr_lock;
 
-u32 cm_mgr_get_perfs_mt6768(int num)
+u32 cm_mgr_get_perfs_mt6877(int num)
 {
 	if (num < 0 || num >= cm_mgr_get_num_perf())
 		return 0;
 	return cm_mgr_perfs[num];
 }
-EXPORT_SYMBOL_GPL(cm_mgr_get_perfs_mt6768);
+EXPORT_SYMBOL_GPL(cm_mgr_get_perfs_mt6877);
 
 static int cm_mgr_check_dram_type(void)
 {
@@ -71,10 +72,11 @@ static int cm_mgr_check_dram_type(void)
 	int ddr_type = mtk_dramc_get_ddr_type();
 	int ddr_hz = mtk_dramc_get_steps_freq(0);
 
-	if (ddr_type == TYPE_LPDDR4X || ddr_type == TYPE_LPDDR4)
+	if (ddr_type == TYPE_LPDDR5)
+		cm_mgr_idx = CM_MGR_LP5;
+	else
 		cm_mgr_idx = CM_MGR_LP4;
-	else if (ddr_type == TYPE_LPDDR3)
-		cm_mgr_idx = CM_MGR_LP3;
+
 	pr_info("#@# %s(%d) ddr_type 0x%x, ddr_hz %d, cm_mgr_idx 0x%x\n",
 			__func__, __LINE__, ddr_type, ddr_hz, cm_mgr_idx);
 #else
@@ -83,8 +85,10 @@ static int cm_mgr_check_dram_type(void)
 			__func__, __LINE__, cm_mgr_idx);
 #endif /* CONFIG_MTK_DRAMC */
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
 	if (cm_mgr_idx >= 0)
 		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_TYPE, cm_mgr_idx);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 
 	return cm_mgr_idx;
 };
@@ -127,7 +131,8 @@ static void cm_mgr_perf_timeout_timer_fn(struct timer_list *timer)
 #define PERF_TIME 100
 
 static ktime_t perf_now;
-void cm_mgr_perf_platform_set_status_mt6768(int enable)
+
+void cm_mgr_perf_platform_set_status_mt6877(int enable)
 {
 	unsigned long expires;
 	int down_local;
@@ -136,6 +141,9 @@ void cm_mgr_perf_platform_set_status_mt6768(int enable)
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
+
+	/* set dsu mode */
+	//mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (!cm_mgr_get_perf_enable())
@@ -146,6 +154,17 @@ void cm_mgr_perf_platform_set_status_mt6768(int enable)
 		perf_now = ktime_get();
 
 		if (cm_mgr_get_dram_opp_base() == -1) {
+			//cm_mgr_dram_opp_base = get_cur_ddr_opp();
+
+			//if (cm_mgr_dram_perf_opp < 0)
+				//cm_mgr_dram_opp = 0;
+			//else if (cm_mgr_dram_opp_base > cm_mgr_dram_perf_opp) {
+				//if (cm_mgr_dram_step_opp < 0)
+					//cm_mgr_dram_step_opp = 0;
+				//cm_mgr_dram_opp = cm_mgr_dram_step_opp;
+
+			//} else
+				//cm_mgr_dram_opp = 0;
 			cm_mgr_dram_opp = 0;
 			cm_mgr_set_dram_opp_base(cm_mgr_get_num_perf());
 			icc_set_bw(cm_mgr_get_bw_path(), 0,
@@ -166,8 +185,8 @@ void cm_mgr_perf_platform_set_status_mt6768(int enable)
 
 		++down_local;
 		debounce_times_perf_down_local_set(down_local);
-		if (down_local <
-				debounce_times_perf_down_get()) {
+		//To be confirmed:
+		if (down_local > debounce_times_perf_down_get()) {
 			if (cm_mgr_get_dram_opp_base() < 0) {
 				icc_set_bw(cm_mgr_get_bw_path(), 0, 0);
 				pm_qos_update_request_status = enable;
@@ -184,12 +203,18 @@ void cm_mgr_perf_platform_set_status_mt6768(int enable)
 			cm_mgr_dram_opp = cm_mgr_get_dram_opp_base() *
 				debounce_times_perf_down_local_get() /
 				debounce_times_perf_down_get();
+
+			//if ((cm_mgr_dram_perf_opp >= 0) &&
+				//(cm_mgr_dram_opp < cm_mgr_dram_step_opp))
+				//cm_mgr_dram_opp = cm_mgr_dram_step_opp;
+
 			icc_set_bw(cm_mgr_get_bw_path(), 0,
 					cm_mgr_perfs[cm_mgr_dram_opp]);
 		} else {
 			cm_mgr_dram_opp = -1;
 			cm_mgr_set_dram_opp_base(cm_mgr_dram_opp);
 			icc_set_bw(cm_mgr_get_bw_path(), 0, 0);
+
 			pm_qos_update_request_status = enable;
 			debounce_times_perf_down_local_set(-1);
 		}
@@ -201,9 +226,9 @@ trace:
 			debounce_times_perf_down_local_get(),
 			debounce_times_perf_down_force_local_get());
 }
-EXPORT_SYMBOL_GPL(cm_mgr_perf_platform_set_status_mt6768);
+EXPORT_SYMBOL_GPL(cm_mgr_perf_platform_set_status_mt6877);
 
-static void cm_mgr_perf_platform_set_force_status(int enable)
+void cm_mgr_perf_platform_set_force_status(int enable)
 {
 	unsigned long expires;
 	int down_force_local;
@@ -212,6 +237,9 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
+
+	/* set dsu mode */
+	//mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (!cm_mgr_get_perf_enable())
@@ -240,7 +268,7 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 		if (down_force_local < 0)
 			return;
 
-		if (!pm_qos_update_request_status)
+		if (pm_qos_update_request_status == 0)
 			return;
 
 		++down_force_local;
@@ -259,8 +287,8 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 			} else {
 				cm_mgr_dram_opp = -1;
 				cm_mgr_set_dram_opp_base(cm_mgr_dram_opp);
-				icc_set_bw(cm_mgr_get_bw_path(), 0,
-						cm_mgr_perfs[cm_mgr_dram_opp]);
+				icc_set_bw(cm_mgr_get_bw_path(), 0, 0);
+
 				pm_qos_update_request_status = enable;
 				debounce_times_perf_down_force_local_set(-1);
 			}
@@ -273,7 +301,7 @@ static void cm_mgr_perf_platform_set_force_status(int enable)
 			debounce_times_perf_down_force_local_get());
 }
 
-void cm_mgr_perf_set_status_mt6768(int enable)
+void cm_mgr_perf_set_status_mt6877(int enable)
 {
 	if (cm_mgr_get_disable_fb() == 1 && cm_mgr_get_blank_status() == 1)
 		enable = 0;
@@ -283,11 +311,11 @@ void cm_mgr_perf_set_status_mt6768(int enable)
 	if (cm_mgr_get_perf_force_enable())
 		return;
 
-	cm_mgr_perf_platform_set_status_mt6768(enable);
+	cm_mgr_perf_platform_set_status_mt6877(enable);
 }
-EXPORT_SYMBOL_GPL(cm_mgr_perf_set_status_mt6768);
+EXPORT_SYMBOL_GPL(cm_mgr_perf_set_status_mt6877);
 
-void cm_mgr_perf_set_force_status_mt6768(int enable)
+void cm_mgr_perf_set_force_status_mt6877(int enable)
 {
 	if (enable != cm_mgr_get_perf_force_enable()) {
 		cm_mgr_set_perf_force_enable(enable);
@@ -295,21 +323,86 @@ void cm_mgr_perf_set_force_status_mt6768(int enable)
 			cm_mgr_perf_platform_set_force_status(enable);
 	}
 }
-EXPORT_SYMBOL_GPL(cm_mgr_perf_set_force_status_mt6768);
+EXPORT_SYMBOL_GPL(cm_mgr_perf_set_force_status_mt6877);
 
-void check_cm_mgr_status_mt6768(unsigned int cluster, unsigned int freq,
+void check_cm_mgr_status_mt6877(unsigned int cluster, unsigned int freq,
 		unsigned int idx)
 {
+	unsigned long spinlock_save_flag;
+
 	if (!cm_mgr_init_done)
 		return;
+
+	spin_lock_irqsave(&cm_mgr_lock, spinlock_save_flag);
 
 	prev_freq_idx[cluster] = idx;
 	prev_freq[cluster] = freq;
 
+	spin_unlock_irqrestore(&cm_mgr_lock, spinlock_save_flag);
 	cm_mgr_update_dram_by_cpu_opp
 		(prev_freq_idx[CM_MGR_CPU_CLUSTER - 1]);
 }
-EXPORT_SYMBOL_GPL(check_cm_mgr_status_mt6768);
+EXPORT_SYMBOL_GPL(check_cm_mgr_status_mt6877);
+
+void cm_mgr_ddr_setting_init(void)
+{
+	int i;
+	int idx = cm_mgr_get_idx();
+
+	if (idx == CM_MGR_LP4) {
+		for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+			cpu_power_ratio_up[i] = cpu_power_ratio_up0[i];
+			cpu_power_ratio_down[i] = cpu_power_ratio_down0[i];
+			debounce_times_up_adb[i] = debounce_times_up_adb0[i];
+			debounce_times_down_adb[i] = debounce_times_down_adb0[i];
+		}
+#ifdef USE_BCPU_WEIGHT
+		cpu_power_bcpu_weight_max = cpu_power_bcpu_weight_max0;
+		cpu_power_bcpu_weight_min = cpu_power_bcpu_weight_min0;
+#endif
+#ifdef CM_BCPU_MIN_OPP_WEIGHT
+		cm_mgr_bcpu_min_opp_weight = cm_mgr_bcpu_min_opp_weight0;
+		cm_mgr_bcpu_low_opp_weight = cm_mgr_bcpu_low_opp_weight0;
+		cm_mgr_bcpu_low_opp_bound = cm_mgr_bcpu_low_opp_bound0;
+#endif /* CM_BCPU_MIN_OPP_WEIGHT */
+	} else if (idx == CM_MGR_LP5) {
+		for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+			cpu_power_ratio_up[i] = cpu_power_ratio_up1[i];
+			cpu_power_ratio_down[i] = cpu_power_ratio_down1[i];
+			debounce_times_up_adb[i] = debounce_times_up_adb1[i];
+			debounce_times_down_adb[i] = debounce_times_down_adb1[i];
+		}
+#ifdef USE_BCPU_WEIGHT
+		cpu_power_bcpu_weight_max = cpu_power_bcpu_weight_max1;
+		cpu_power_bcpu_weight_min = cpu_power_bcpu_weight_min1;
+#endif
+#ifdef CM_BCPU_MIN_OPP_WEIGHT
+		cm_mgr_bcpu_min_opp_weight = cm_mgr_bcpu_min_opp_weight1;
+		cm_mgr_bcpu_low_opp_weight = cm_mgr_bcpu_low_opp_weight1;
+		cm_mgr_bcpu_low_opp_bound = cm_mgr_bcpu_low_opp_bound1;
+#endif /* CM_BCPU_MIN_OPP_WEIGHT */
+	}
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+	for (i = 0; i < CM_MGR_EMI_OPP; i++) {
+		cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP,
+			i << 16 | cpu_power_ratio_up[i]);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_DOWN,
+			i << 16 | cpu_power_ratio_down[i]);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DEBOUNCE_UP,
+			i << 16 | debounce_times_up_adb[i]);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DEBOUNCE_DOWN,
+			i << 16 | debounce_times_down_adb[i]);
+	}
+#ifdef CM_BCPU_MIN_OPP_WEIGHT
+	cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_MIN_OPP_WEIGHT_SET,
+			cm_mgr_bcpu_min_opp_weight);
+	cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_LOW_OPP_WEIGHT_SET,
+			cm_mgr_bcpu_low_opp_weight);
+	cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_LOW_OPP_BOUND_SET,
+			cm_mgr_bcpu_low_opp_bound);
+#endif /* CM_BCPU_MIN_OPP_WEIGHT */
+#endif
+}
 
 static int platform_cm_mgr_probe(struct platform_device *pdev)
 {
@@ -320,6 +413,7 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 #endif /* CONFIG_MTK_DVFSRC */
 	struct icc_path *bw_path;
 
+	spin_lock_init(&cm_mgr_lock);
 	ret = cm_mgr_common_init();
 	if (ret) {
 		pr_info("[CM_MGR] FAILED TO INIT(%d)\n", ret);
@@ -341,15 +435,11 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	} else {
 		cm_mgr_set_bw_path(bw_path);
 	}
+
 	if (ret > 0) {
 		cm_mgr_perfs = devm_kzalloc(&pdev->dev,
 				ret * sizeof(u32),
 				GFP_KERNEL);
-
-		if (!cm_mgr_perfs) {
-			ret = -ENOMEM;
-			goto ERROR;
-		}
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 		for (i = 0; i < ret; i++) {
@@ -368,20 +458,21 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 		pr_info("[CM_MGR] FAILED TO GET DTS DATA(%d)\n", ret);
 		return ret;
 	}
+
 	INIT_DELAYED_WORK(&cm_mgr_timeout_work, cm_mgr_timeout_process);
 	timer_setup(&cm_mgr_perf_timeout_timer, cm_mgr_perf_timeout_timer_fn,
 			0);
 
 	local_hk.cm_mgr_get_perfs =
-		cm_mgr_get_perfs_mt6768;
+		cm_mgr_get_perfs_mt6877;
 	local_hk.cm_mgr_perf_set_force_status =
-		cm_mgr_perf_set_force_status_mt6768;
+		cm_mgr_perf_set_force_status_mt6877;
 	local_hk.check_cm_mgr_status =
-		check_cm_mgr_status_mt6768;
+		check_cm_mgr_status_mt6877;
 	local_hk.cm_mgr_perf_platform_set_status =
-		cm_mgr_perf_platform_set_status_mt6768;
+		cm_mgr_perf_platform_set_status_mt6877;
 	local_hk.cm_mgr_perf_set_status =
-		cm_mgr_perf_set_status_mt6768;
+		cm_mgr_perf_set_status_mt6877;
 
 	cm_mgr_register_hook(&local_hk);
 
@@ -394,9 +485,6 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	pr_info("[CM_MGR] platform-cm_mgr_probe Done.\n");
 
 	return 0;
-
-ERROR:
-	return ret;
 }
 
 static int platform_cm_mgr_remove(struct platform_device *pdev)
@@ -410,12 +498,12 @@ static int platform_cm_mgr_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id platform_cm_mgr_of_match[] = {
-	{ .compatible = "mediatek,mt6768-cm_mgr", },
+	{ .compatible = "mediatek,mt6877-cm_mgr", },
 	{},
 };
 
 static const struct platform_device_id platform_cm_mgr_id_table[] = {
-	{ "mt6768-cm_mgr", 0},
+	{ "mt6877-cm_mgr", 0},
 	{ },
 };
 
@@ -423,7 +511,7 @@ static struct platform_driver mtk_platform_cm_mgr_driver = {
 	.probe = platform_cm_mgr_probe,
 	.remove	= platform_cm_mgr_remove,
 	.driver = {
-		.name = "mt6768-cm_mgr",
+		.name = "mt6877-cm_mgr",
 		.owner = THIS_MODULE,
 		.of_match_table = platform_cm_mgr_of_match,
 	},
@@ -444,11 +532,7 @@ static void __exit platform_cm_mgr_exit(void)
 	pr_info("[CM_MGR] platform-cm_mgr Exit.\n");
 }
 
-#if IS_BUILTIN(CONFIG_MTK_CM_MGR_MT6768)
-late_initcall(platform_cm_mgr_init);
-#else
 subsys_initcall(platform_cm_mgr_init);
-#endif
 module_exit(platform_cm_mgr_exit);
 
 MODULE_DESCRIPTION("Mediatek cm_mgr driver");
