@@ -34,6 +34,7 @@
 #define CMDQ_RECORD_NUM			512
 #define CMDQ_BUF_RECORD_NUM		60
 #define CMDQ_FIRST_ERR_SIZE		524288	/* 512k */
+#define CMDQ_IRQ_HISTORY_MAX_SIZE		5000
 
 #define CMDQ_CURR_IRQ_STATUS		0x10
 #define CMDQ_CURR_LOADED_THR		0x18
@@ -118,6 +119,8 @@ struct cmdq_util {
 	struct cmdq_hw_trace hw_trace[CMDQ_HW_MAX];
 	u16 buf_record_idx;
 	struct cmdq_buf_record buf_record[CMDQ_BUF_RECORD_NUM];
+	u8	cmdq_irq_thrd_history[CMDQ_HW_MAX][CMDQ_IRQ_HISTORY_MAX_SIZE];
+	u16	cmdq_irq_thrd_history_idx[CMDQ_HW_MAX];
 };
 static struct cmdq_util	util;
 
@@ -137,6 +140,51 @@ struct cmdq_util_helper_fp helper_fp = {
 	.set_first_err_mod = cmdq_util_set_first_err_mod,
 	.track = cmdq_util_track,
 };
+
+void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx)
+{
+	u16 arr_idx;
+
+	if(thread_idx >= CMDQ_THR_MAX_COUNT || hwid >= CMDQ_HW_MAX)
+		return;
+
+	arr_idx = util.cmdq_irq_thrd_history_idx[hwid]++;
+	if(util.cmdq_irq_thrd_history_idx[hwid] >= CMDQ_IRQ_HISTORY_MAX_SIZE)
+		util.cmdq_irq_thrd_history_idx[hwid] = 0;
+
+	util.cmdq_irq_thrd_history[hwid][arr_idx] = thread_idx;
+}
+
+void cmdq_dump_thrd_irq_history(u8 hwid)
+{
+#define txt_sz 128
+	u16 arr_idx, thrd_irq_cnt[CMDQ_THR_MAX_COUNT];
+	u16 offset, len;
+	u8 thrd_idx, i;
+	char text[txt_sz];
+
+	for(arr_idx = 0; arr_idx < CMDQ_IRQ_HISTORY_MAX_SIZE; arr_idx++) {
+		thrd_idx = util.cmdq_irq_thrd_history[hwid][arr_idx];
+		if(thrd_idx < CMDQ_THR_MAX_COUNT)
+			thrd_irq_cnt[thrd_idx]++;
+	}
+
+	offset = 0;
+	for (i = 0; i < CMDQ_THR_MAX_COUNT; ++i) {
+		len = snprintf(text + offset, sizeof(text) - offset, "%d ", thrd_irq_cnt[i]);
+		if (len < 0) {
+			cmdq_err("snprintf failed len:%d", len);
+			return;
+		}
+		offset += len;
+		if (offset >= sizeof(text)) {
+			cmdq_err("text size is full offset:%d", offset);
+			break;
+		}
+	}
+	cmdq_msg("%s thrd irq cnt: %s", __func__, text);
+}
+EXPORT_SYMBOL(cmdq_dump_thrd_irq_history);
 
 cmdq_mminfra_power mminfra_power_cb;
 EXPORT_SYMBOL(mminfra_power_cb);
@@ -1215,6 +1263,7 @@ int cmdq_util_init(void)
 	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 
+	memset(util.cmdq_irq_thrd_history, CMDQ_THR_MAX_COUNT, sizeof(util.cmdq_irq_thrd_history));
 	cmdq_msg("%s end", __func__);
 
 	return 0;
