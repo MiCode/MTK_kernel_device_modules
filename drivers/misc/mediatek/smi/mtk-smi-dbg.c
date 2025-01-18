@@ -499,10 +499,14 @@ static int mtk_smi_dbg_larb_disable(struct device *dev)
 static int __mtk_smi_pwr_chk_v2(struct mtk_smi_dbg_node *node)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	int i, ret = 0;
+	int i, val, ret = 0;
 
-	for (i = 0; i < node->user_nr; i++)
-		ret |= smi->v2.user_pwr_stat[node->user[i]];
+	for (i = 0; i < node->user_nr; i++) {
+		val = smi->v2.user_pwr_stat[node->user[i]];
+		if (val < 0)
+			return 0;
+		ret |= val;
+	}
 
 	if (ret)
 		return USER_REPORT_PWR_ON;
@@ -1026,11 +1030,6 @@ void call_smi_user_pwr_ctrl(u32 action, char *caller)
 			if (!entry->smi_user_get_if_in_use || !entry->smi_user_put)
 				break;
 			ret = entry->smi_user_get_if_in_use(entry->data);
-			if (ret < 0) {
-				pr_notice("id:%d name:%s get_if_in_use fail, ret=%d\n",
-						entry->smi_user_id, entry->name, ret);
-				ret = 0;
-			}
 			smi->v2.user_pwr_stat[entry->smi_user_id] = ret;
 			pr_notice("id:%d name:%s get_if_in_use result=%d\n",
 						entry->smi_user_id, entry->name, ret);
