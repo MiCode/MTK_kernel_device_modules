@@ -928,7 +928,13 @@ return_vdec_ipi_ack:
 				break;
 			case VCU_IPIMSG_DEC_SMI_DBG_DUMP:
 				mtk_v4l2_debug(0, "[VDEC] start smi dbg dump");
-				mtk_smi_dbg_dump_for_vdec();
+				atomic_inc(&dev->smi_dump_ref_cnt);
+				if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_DECODER))
+					mtk_smi_dbg_dump_for_vdec();
+				else
+					mtk_smi_dbg_hang_detect("vdec smi debug dump");
+				atomic_dec(&dev->smi_dump_ref_cnt);
+
 				msg->msg_id = AP_IPIMSG_DEC_SMI_DBG_DUMP_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;

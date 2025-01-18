@@ -707,6 +707,15 @@ static int mtk_vdec_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 		struct mtk_smi_pwr_ctrl_info info;
 		int ret;
 
+		if (type == MTK_SMI_GET_IF_IN_USE) {
+			if (atomic_read(&dev->smi_dump_ref_cnt)) {
+				atomic_inc(&dev->smi_ctrl_get_ref_cnt[hw_id]);
+				return 1;
+			}
+			return 0;
+		} else if (type == MTK_SMI_PUT && atomic_add_unless(&dev->smi_ctrl_get_ref_cnt[hw_id], -1, 0))
+			return 0;
+
 		info.type = type;
 		info.hw_id = hw_id;
 		ret = vdec_if_set_param(&dev->dev_ctx, SET_PARAM_VDEC_PWR_CTRL, (void *)&info);
@@ -740,6 +749,11 @@ static int mtk_vdec_lat_smi_put(void *data)
 	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VDEC_LAT);
 }
 
+static int mtk_vdec_lat_smi_get_if_in_use(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET_IF_IN_USE, MTK_VDEC_LAT);
+}
+
 static int mtk_vdec_core_smi_get(void *data)
 {
 	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET, MTK_VDEC_CORE);
@@ -750,11 +764,17 @@ static int mtk_vdec_core_smi_put(void *data)
 	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_PUT, MTK_VDEC_CORE);
 }
 
+static int mtk_vdec_core_smi_get_if_in_use(void *data)
+{
+	return mtk_vdec_smi_pwr_ctrl((struct mtk_vcodec_dev *)data, MTK_SMI_GET_IF_IN_USE, MTK_VDEC_CORE);
+}
+
 static struct smi_user_pwr_ctrl vdec_lat_pwr_ctrl = {
 	.name = "vdec_lat",
 	.smi_user_id = MTK_SMI_VDEC_LAT,
 	.smi_user_get = mtk_vdec_lat_smi_get,
 	.smi_user_put = mtk_vdec_lat_smi_put,
+	.smi_user_get_if_in_use = mtk_vdec_lat_smi_get_if_in_use,
 };
 
 static struct smi_user_pwr_ctrl vdec_core_pwr_ctrl = {
@@ -762,6 +782,7 @@ static struct smi_user_pwr_ctrl vdec_core_pwr_ctrl = {
 	.smi_user_id = MTK_SMI_VDEC_CORE,
 	.smi_user_get = mtk_vdec_core_smi_get,
 	.smi_user_put = mtk_vdec_core_smi_put,
+	.smi_user_get_if_in_use = mtk_vdec_core_smi_get_if_in_use,
 };
 
 void mtk_vcodec_dec_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev)

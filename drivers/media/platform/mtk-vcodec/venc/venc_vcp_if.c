@@ -712,10 +712,12 @@ return_venc_ipi_ack:
 			break;
 		case VCU_IPIMSG_ENC_SMI_BUS_DUMP:
 		{
+			atomic_inc(&dev->smi_dump_ref_cnt);
 			if (msg->status == MTK_VENC_POWERCTL_IN_VCP)
 				mtk_smi_dbg_dump_for_venc();
 			else
 				mtk_smi_dbg_hang_detect("venc timeout");
+			atomic_dec(&dev->smi_dump_ref_cnt);
 
 			msg->msg_id = AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
