@@ -15546,6 +15546,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	usb_boost: usb-boost-manager {
 		compatible = "mediatek,usb-boost", "mediatek,mt6991-usb-boost";
+		usb-audio;
+		small-core = <1250000>;
 	};
 
 	usb_offload: usb-offload {
