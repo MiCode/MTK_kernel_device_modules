@@ -52,6 +52,7 @@ else
   fi
 fi
 
+export PATH="${ROOT_DIR}/prebuilts/jdk/jdk11/linux-x86/bin:${PATH}"
 export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 export DEFCONFIG_OVERLAYS="${DEFCONFIG_OVERLAYS}"
 export KERNEL_VERSION=${KERNEL_VERSION}
