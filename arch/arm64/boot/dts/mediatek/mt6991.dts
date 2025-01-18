@@ -10564,7 +10564,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
 		};
 
-		jpgenc@38030000 {
+		jpgenc0: jpgenc@38030000 {
 			compatible = "mediatek,mtk-jpgenc";
 			mediatek,platform = "platform:mt6991";
 			reg = <0 0x38030000 0 0x10000>;
@@ -10590,7 +10590,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"path_jpegenc_bsdma";
 		};
 
-		jpgenc@38830000 {
+		jpgenc1: jpgenc@38830000 {
 			compatible = "mediatek,mtk-jpgenc_c0_c1";
 			mediatek,platform = "platform:mt6991";
 			reg = <0 0x38830000 0 0x10000>;
@@ -10749,7 +10749,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<2 SMMU_L41_P31_EC_SYSRAM 1>;
 		};
 
-		jpgdec0@38040000 {
+		jpgdec0: jpgdec0@38040000 {
 			compatible = "mediatek,jpgdec";
 			reg = <0 0x38040000 0 0x10000>,
 				<0 0x38050000 0 0x10000>;
@@ -10783,7 +10783,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 						"path_jpegdec1_huff_offset";
 		};
 
-		jpgdec1@38840000 {
+		jpgdec1: jpgdec1@38840000 {
 			compatible = "mediatek,jpgdec_c1";
 			reg = <0 0x38840000 0 0x10000>;
 			interrupts = <GIC_SPI 494 IRQ_TYPE_LEVEL_HIGH 0>;
