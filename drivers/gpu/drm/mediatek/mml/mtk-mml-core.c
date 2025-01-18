@@ -1988,7 +1988,8 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		}
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		/* direct link mode also loop, set flag to cmdq pass timeout */
-		task->pkts[pipe]->self_loop = true;
+		if (cfg->disp_vdo)
+			task->pkts[pipe]->self_loop = true;
 	}
 
 	/* do dvfs/bandwidth calc right before flush to cmdq */
