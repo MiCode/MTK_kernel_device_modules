@@ -101,7 +101,8 @@ u32 flt_get_mode(void)
 	return flt_mode;
 }
 EXPORT_SYMBOL(flt_get_mode);
-void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
+
+static void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
 {
 	int i = 0, RD = 0;
 	unsigned int tmp = 0;
@@ -391,7 +392,7 @@ static void flt_fei(int wl, int ctp)
 		FLT_LOGI("EKV[%d] 0x%x", ctp, EKV[ctp][i]);
 }
 
-int flt_init_ekg(void)
+static int flt_init_ekg(void)
 {
 	struct device_node *flt_node;
 	struct platform_device *pdev_temp;
@@ -428,7 +429,7 @@ int flt_init_ekg(void)
 	return 0;
 }
 
-void flt_mi(int ctp, u32 flt_mode)
+static void flt_mi(int ctp, u32 flt_mode)
 {
 	int i = 0, offset = KOL + ((ctp * LFP) << 2);
 
@@ -448,10 +449,17 @@ void flt_mi(int ctp, u32 flt_mode)
 	iowrite32(IBS, flt_xrg + offset);
 	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
 	offset += 4;
-	if (flt_mode == FLT_MODE_2)
+	switch (flt_mode) {
+	case FLT_MODE_2:
+	case FLT_MODE_4:
 		iowrite32(TSH, flt_xrg + offset);
-	else if (flt_mode == FLT_MODE_3)
+		break;
+	case FLT_MODE_3:
 		iowrite32(MSH, flt_xrg + offset);
+		break;
+	default:
+		return;
+	}
 	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
 }
 
@@ -464,9 +472,9 @@ int flt_init_res(void)
 	flt_cal_init();
 	nr_wl = get_nr_wl_type();
 	nr_cpu = get_nr_cpu_type();
-	if (unlikely(flt_mode == FLT_MODE_0))
+	if (unlikely(flt_mode == FLT_MODE_0)) {
 		return -1;
-	else if (likely(flt_mode == FLT_MODE_2) || likely(flt_mode == FLT_MODE_3)) {
+	} else {
 		for (wl = 0; wl < nr_wl; ++wl) {
 			ctp = get_cpu_type(wl);
 			FLT_LOGI("nr_cpu %d wl %d get_cpu_type %d\n", nr_cpu, wl, ctp);
@@ -480,10 +488,19 @@ int flt_init_res(void)
 			return ret;
 		for (ctp = 0; ctp < GKEL && ctp < nr_cpu; ctp++)
 			flt_mi(ctp, flt_mode);
-		if (flt_mode == FLT_MODE_2)
+		switch (flt_mode) {
+		case FLT_MODE_2:
 			flt_register_api_hooks_mode2();
-		else if (flt_mode == FLT_MODE_3)
+			break;
+		case FLT_MODE_3:
 			flt_register_api_hooks_mode3();
+			break;
+		case FLT_MODE_4:
+			flt_register_api_hooks_mode4();
+			break;
+		default:
+			return -1;
+		}
 		flt_res_init();
 	}
 
@@ -492,3 +509,4 @@ int flt_init_res(void)
 #endif
 	return 0;
 }
+EXPORT_SYMBOL(flt_init_res);

@@ -602,13 +602,13 @@ EXPORT_SYMBOL(group_get_mode);
 
 void  group_update_threshold_util(int wl)
 {
-	int weight, cpu, grp_idx;
+	int weight = 0, cpu, grp_idx;
 	struct cpumask *gear_cpus;
 	struct mtk_em_perf_state *ps = NULL;
 
 	gear_cpus = get_gear_cpumask(0);
 	cpu = cpumask_first(gear_cpus);
-	weight = cpumask_weight(gear_cpus);
+	weight = flt_get_grp_thr_weight();
 	ps = pd_get_opp_ps(wl, cpu, 0, false);
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)

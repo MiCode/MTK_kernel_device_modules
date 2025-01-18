@@ -31,7 +31,7 @@
 #include "eas_trace.h"
 
 #define CPU_NUM		8
-#define RESERVED_LEN	96
+#define RESERVED_LEN	508
 #define WP_LEN		16
 #define WC_LEN		16
 #define WC_MASK	0xffff
@@ -43,21 +43,27 @@
 #define GP_H		(GP_R + (PER_ENTRY * GROUP_ID_RECORD_MAX))
 #define FLT_VALID	(GP_H + (PER_ENTRY * GROUP_ID_RECORD_MAX))
 #define GP_RWP		(FLT_VALID + PER_ENTRY)
-#define AP_CPU_SETTING_ADDR (GP_RWP + (PER_ENTRY * GROUP_ID_RECORD_MAX) + RESERVED_LEN)
+#define RQ_O		(GP_RWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define GP_MAX_NIDWP	(RQ_O + (PER_ENTRY * CPU_NUM))
+#define GP_MIN_NIDWP	(GP_MAX_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define PER_CPUGP_NIDWP	(GP_MIN_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+
+#define AP_CPU_SETTING_ADDR (PER_CPUGP_NIDWP \
+					+ (PER_ENTRY * GROUP_ID_RECORD_MAX * CPU_NUM)  \
+					+ RESERVED_LEN)
 #define AP_GP_SETTING_STA_ADDR (AP_CPU_SETTING_ADDR + (PER_ENTRY * CPU_NUM))
 #define AP_FLT_CTL (AP_GP_SETTING_STA_ADDR + (PER_ENTRY * GROUP_ID_RECORD_MAX))
 #define AP_WS_CTL (AP_FLT_CTL + PER_ENTRY)
 
-#define FLT_MODE3_EN 3
+#define FLT_MODE4_EN 4
 #define DEFAULT_WS 4
 #define CPU_DEFAULT_WC GROUP_RAVG_HIST_SIZE_MAX
 #define CPU_DEFAULT_WP WP_MODE_4
 
 #undef FLT_MODE_SEL
-#define FLT_MODE_SEL FLT_MODE3_EN
-
+#define FLT_MODE_SEL FLT_MODE4_EN
 #undef FLT_VER
-#define FLT_VER	BIT(1)
+#define FLT_VER	BIT(2)
 
 static int FLT_FN(nid) = FLT_GP_NID;
 static int FLT_FN(grp_wt) = FLT_GP_NWT;
@@ -180,9 +186,7 @@ static int FLT_FN(get_max_group)(int grp_id)
 		return -1;
 	offset = grp_id * PER_ENTRY;
 	if (FLT_FN(nid) == FLT_GP_NID)
-		res = flt_get_data(GP_NIDWP + offset);
-	else
-		res = flt_get_data(GP_RWP + offset);
+		res = flt_get_data(GP_MAX_NIDWP + offset);
 
 	return res;
 }
@@ -244,31 +248,32 @@ static int FLT_FN(get_cpu_by_wp)(int cpu)
 
 static int FLT_FN(sched_get_cpu_group_eas)(int cpu_idx, int group_id)
 {
-	int flt_util = 0;
+	int res = 0, flt_util = 0;
+	unsigned int offset;
 
 	if (group_id >= GROUP_ID_RECORD_MAX ||
 		group_id < 0 ||
 		!cpumask_test_cpu(cpu_idx, cpu_possible_mask))
 		return -1;
 
-	flt_util = FLT_FN(get_max_group)(group_id);
+	offset = (group_id * CPU_NUM * PER_ENTRY) + (cpu_idx * PER_ENTRY);
+	flt_util = flt_get_data(PER_CPUGP_NIDWP + offset);
 
-	return flt_util;
+	res = clamp_t(int, flt_util, 0, cpu_cap_ceiling(cpu_idx));
+
+	return res;
 }
 
 static int FLT_FN(get_o_util)(int cpu)
 {
-	struct rq *rq;
-	struct flt_rq *fsrq;
 	int cpu_dmand_util = 0;
+	unsigned int offset;
 
 	if (unlikely(!cpumask_test_cpu(cpu, cpu_possible_mask)))
 		return -1;
 
-	rq = cpu_rq(cpu);
-	fsrq = &per_cpu(flt_rq, cpu);
-
-	cpu_dmand_util = READ_ONCE(fsrq->util_history[0]);
+	offset = cpu * PER_ENTRY;
+	cpu_dmand_util = flt_get_data(RQ_O + offset);
 	return cpu_dmand_util;
 }
 
@@ -313,6 +318,14 @@ static int FLT_FN(get_grp_weight)(void)
 	return FLT_FN(grp_wt);
 }
 
+static int FLT_FN(set_grp_weight)(int set)
+{
+	if (set >= FLT_GP_WT_NUM)
+		return -1;
+	FLT_FN(grp_wt) = set;
+	return 0;
+}
+
 static int FLT_FN(get_grp_thr_weight)(void)
 {
 	int wt = 1;
@@ -341,6 +354,7 @@ const struct flt_class FLT_FN(api_hooks) = {
 	.flt_getnid_eas_api = FLT_FN(getnid),
 	.flt_res_init_api = FLT_FN(res_init),
 	.flt_get_grp_weight_api = FLT_FN(get_grp_weight),
+	.flt_set_grp_weight_api = FLT_FN(set_grp_weight),
 	.flt_get_grp_thr_weight_api = FLT_FN(get_grp_thr_weight),
 };
 

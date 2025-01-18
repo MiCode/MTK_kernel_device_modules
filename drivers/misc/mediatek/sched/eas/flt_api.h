@@ -19,6 +19,13 @@ enum _flt_nid_mode {
 	FLT_GP_NUM,
 };
 
+/* weight mode */
+enum _flt_weight_mode {
+	FLT_GP_NWT = 0,
+	FLT_GP_WT = 1,
+	FLT_GP_WT_NUM,
+};
+
 /* API Function pointer*/
 struct flt_class {
 	int (*flt_get_ws_api)(void);
@@ -49,6 +56,9 @@ struct flt_class {
 	int (*flt_setnid_eas_api)(u32 mode);
 	u32 (*flt_getnid_eas_api)(void);
 	int (*flt_res_init_api)(void);
+	int (*flt_get_grp_weight_api)(void);
+	int (*flt_set_grp_weight_api)(int set);
+	int (*flt_get_grp_thr_weight_api)(void);
 };
 
 /* Note: ws setting related API */
@@ -78,6 +88,9 @@ int flt_get_gp_r(int grp_id);
 int flt_set_grp_dvfs_ctrl(int set);
 int flt_setnid(u32 mode);
 u32 flt_getnid(void);
+int flt_get_grp_weight(void);
+int flt_set_grp_weight(int set);
+int flt_get_grp_thr_weight(void);
 
 /* Note: cpu related API */
 int flt_get_cpu_by_wp(int cpu);
