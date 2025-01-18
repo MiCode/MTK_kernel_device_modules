@@ -6,9 +6,13 @@
 #ifndef __LAST_BUS_H__
 #define __LAST_BUS_H__
 
+#define DUMP_BUFF_SIZE            0x10000
+#define TIMEOUT_THRES_LOWEST      0x1
+#define TIMEOUT_THRES_LIMIT       0xFFFF
 #define LASTBUS_BUF_LENGTH        0x4000
-#define NR_MAX_LASTBUS_MONITOR    16
-#define MAX_MONITOR_NAME_LEN      32
+#define MS_US_TRANSLATE           1000
+#define NR_MAX_LASTBUS_MONITOR    32
+#define MAX_MONITOR_NAME_LEN      40
 #define NR_MAX_LASTBUS_IDLE_MASK  8
 
 #define TIMEOUT_THRES_SHIFT       16
@@ -28,6 +32,15 @@ enum LASTBUS_SW_VERSION {
 enum LASTBUS_TIMEOUT_TYPE {
 	LASTBUS_TIMEOUT_FIRST = 0,
 	LASTBUS_TIMEOUT_LAST = 1,
+};
+
+enum LASTBUS_MODE {
+	TIMEOUT_DUMP = 0,
+	FORCE_DUMP,
+	FORCE_CLEAR,
+	GET_PER_TMO,
+	REDUCE_TMO,
+	TOTAL_MODE,
 };
 
 struct lastbus_idle_mask {
@@ -56,8 +69,5 @@ struct cfg_lastbus {
 	unsigned int num_used_monitors;
 	struct lastbus_monitor monitors[NR_MAX_LASTBUS_MONITOR];
 };
-#define TIMEOUT_DUMP 0
-#define FORCE_DUMP   1
-#define FORCE_CLEAR  2
 int lastbus_dump(int force_dump);
 #endif
