@@ -983,6 +983,57 @@ TRACE_EVENT(sched_deactivate_vip_task,
 		  __entry->pid, __entry->cpu, __entry->prev_pid,
 		  __entry->next_pid, __entry->num_vip)
 );
+
+TRACE_EVENT(sched_set_vip,
+	TP_PROTO(int id, int done, char *type, int vip_prio, int throttle_time, int slot_id),
+
+	TP_ARGS(id, done, type, vip_prio, throttle_time, slot_id),
+
+	TP_STRUCT__entry(
+		__field(int, id)
+		__field(int, done)
+		__string(type, type)
+		__field(int, vip_prio)
+		__field(int, throttle_time)
+		__field(int, slot_id)
+	),
+
+	TP_fast_assign(
+		__entry->id       = id;
+		__entry->done       = done;
+		__assign_str(type, type);
+		__entry->vip_prio       = vip_prio;
+		__entry->throttle_time  = throttle_time;
+		__entry->slot_id  = slot_id;
+	),
+
+	TP_printk("id=%d done=%d type=%s vip_prio=%d throttle_time=%d, slot_id=%d",
+		  __entry->id, __entry->done,	__get_str(type),
+		  __entry->vip_prio, __entry->throttle_time/1000000, __entry->slot_id)
+);
+
+TRACE_EVENT(sched_unset_vip,
+	TP_PROTO(int id, int done, char *type, int slot_id),
+
+	TP_ARGS(id, done, type, slot_id),
+
+	TP_STRUCT__entry(
+		__field(int, id)
+		__field(int, done)
+		__string(type, type)
+		__field(int, slot_id)
+	),
+
+	TP_fast_assign(
+		__entry->id       = id;
+		__entry->done       = done;
+		__assign_str(type, type);
+		__entry->slot_id       = slot_id;
+	),
+
+	TP_printk("id=%d done=%d type=%s, slot_id=%d",
+		  __entry->id, __entry->done,	__get_str(type), __entry->slot_id)
+);
 #endif /* CONFIG_MTK_SCHED_VIP_TASK */
 #endif /* _TRACE_SCHEDULER_H */
 
