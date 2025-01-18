@@ -6538,12 +6538,12 @@
 			#phy-cells = <1>;
 			mediatek,eye-vrt = <6>; /* 0~7 */
 			mediatek,eye-term = <6>; /* 0~7 */
-			mediatek,eye-rev6 = <1>; /* 0~3 */
-			mediatek,eye-disc = <7>; /* 0~8 */
-			mediatek,host-eye-vrt = <6>; /* 0~7 */
-			mediatek,host-eye-term = <6>; /* 0~7 */
-			mediatek,host-eye-rev6 = <1>; /* 0~3 */
-			mediatek,host-eye-disc = <7>; /* 0~8 */
+			mediatek,rev6 = <1>; /* 0~3 */
+			mediatek,discth = <7>; /* 0~8 */
+			mediatek,eye-vrt-host = <6>; /* 0~7 */
+			mediatek,eye-term-host = <6>; /* 0~7 */
+			mediatek,rev6-host = <1>; /* 0~3 */
+			mediatek,disc-host = <7>; /* 0~8 */
 			mediatek,rx-sqth = <0x5>;
 			mediatek,rev4 = <0x1>;
 			nvmem-cells = <&u2_phy_data>;
@@ -6579,9 +6579,18 @@
 		};
 	};
 
-	usb_boost_manager {
-		compatible = "mediatek,usb_boost";
-		boost_period = <0>;
+	usb_meta: usb-meta {
+		compatible = "mediatek,usb-meta";
+		udc = <&ssusb>;
+	};
+
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6877-usb-boost";
+		interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "icc-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+		usb-audio;
+		small-core = <1250000>;
 	};
 
 	mrdump_ext_rst: mrdump_ext_rst {
