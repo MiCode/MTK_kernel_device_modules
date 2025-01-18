@@ -35,6 +35,8 @@ void get_md_sleep_time(struct md_sleep_status *md_data);
 #define MD_STATUS_R_DONE 0xFFFFFFFF
 #endif
 
+extern int mbraink_netlink_send_msg(const char *msg);
+
 int vcorefs_get_src_req_num(void);
 unsigned int *vcorefs_get_src_req(void);
 

@@ -9,6 +9,9 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/bridge
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/bridge
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
+
 subdir-ccflags-y += -Wformat
 
 obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o

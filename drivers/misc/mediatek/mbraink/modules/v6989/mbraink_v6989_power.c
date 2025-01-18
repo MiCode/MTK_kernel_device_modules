@@ -8,6 +8,8 @@
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
 #include <linux/regulator/consumer.h>
+#include <mtk_low_battery_throttling.h>
+#include <mtk_battery_oc_throttling.h>
 #include <swpm_module_ext.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6989_power.h"
@@ -657,6 +659,66 @@ static int mbraink_v6989_power_get_pmic_voltage_info(struct mbraink_pmic_voltage
 	return 0;
 }
 
+void pt2mbrain_hint_low_battery_volt_throttle(struct lbat_mbrain lbat_mbrain)
+{
+	int user = lbat_mbrain.user;
+	unsigned int thd_volt = lbat_mbrain.thd_volt;
+	unsigned int level = lbat_mbrain.level;
+	unsigned int soc = lbat_mbrain.soc;
+	unsigned int bat_temp = lbat_mbrain.bat_temp;
+	unsigned int temp_stage = lbat_mbrain.temp_stage;
+
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	struct timespec64 tv = { 0 };
+	long long timestamp = 0;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%llu:%d:%d:%d:%d:%d:%d",
+			NETLINK_EVENT_LOW_BATTERY_VOLTAGE_THROTTLE,
+			timestamp,
+			user,
+			thd_volt,
+			level,
+			soc,
+			bat_temp,
+			temp_stage);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
+void pt2mbrain_hint_battery_oc_throttle(struct battery_oc_mbrain bat_oc_mbrain)
+{
+	unsigned int level = bat_oc_mbrain.level;
+
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	struct timespec64 tv = { 0 };
+	long long timestamp = 0;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%llu:%d",
+			NETLINK_EVENT_BATTERY_OVER_CURRENT_THROTTLE,
+			timestamp,
+			level);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
 static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getVotingInfo = mbraink_v6989_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -678,6 +740,17 @@ int mbraink_v6989_power_init(void)
 	int ret = 0;
 
 	ret = register_mbraink_power_ops(&mbraink_v6989_power_ops);
+	ret = register_low_battery_mbrain_cb(pt2mbrain_hint_low_battery_volt_throttle);
+	if (ret != 0) {
+		pr_info("low battery callback failed by: %d", ret);
+		return ret;
+	}
+	ret = register_battery_oc_mbrain_cb(pt2mbrain_hint_battery_oc_throttle);
+	if (ret != 0) {
+		return ret;
+		pr_info("battery oc callback failed by: %d", ret);
+	}
+
 	return ret;
 }
 
