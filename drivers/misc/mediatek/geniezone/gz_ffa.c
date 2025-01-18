@@ -430,10 +430,12 @@ static int ffa_memory_send_write(struct args *args, void * __user user_args)
 		ptr[i] = i / 4096;
 
 	args->arg[4] = ffa_memory_handle;
-	ret = copy_to_user(user_args, args, sizeof(struct args));
-	if (ret) {
-		FFA_ERR("copy_to_user error with ret=%d\n", ret);
-		return ret;
+	if (user_args != NULL) {
+		ret = copy_to_user(user_args, args, sizeof(struct args));
+		if (ret) {
+			FFA_ERR("copy_to_user error with ret=%d\n", ret);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -547,11 +549,12 @@ static int gz_ffa_memory_share(struct args *args, void * __user user_args)
 	}
 	args->arg[4] = ffa_memory_handle;
 
-	ret = copy_to_user(user_args, args, sizeof(struct args));
-
-	if (ret) {
-		FFA_ERR("copy_to_user error with ret=%d\n", ret);
-		return ret;
+	if (user_args != NULL) {
+		ret = copy_to_user(user_args, args, sizeof(struct args));
+		if (ret) {
+			FFA_ERR("copy_to_user error with ret=%d\n", ret);
+			return ret;
+		}
 	}
 	return 0;
 }
@@ -661,14 +664,15 @@ static int gz_ffa_message_send(struct args *args, void * __user user_args)
 	struct ffa_send_direct_data data = {};
 	uint32_t number_of_vm;
 	unsigned short vmids[VM_NUMBER_MAX] = {0};
+	void *send_vmid = (void *)args->arg[4];
 
 	if (!g_ffa_dev)
 		return -ENODEV;
 
 	number_of_vm = (args->arg[0] >> 32) & 0x0FFFFFFFF;
-	if (number_of_vm > VM_NUMBER_MAX || !number_of_vm)
+	if (number_of_vm > VM_NUMBER_MAX || !number_of_vm || !send_vmid)
 		return -EINVAL;
-	ret = copy_from_user(vmids, (void *)args->arg[4], number_of_vm * sizeof(unsigned short));
+	ret = copy_from_user(vmids, send_vmid, number_of_vm * sizeof(unsigned short));
 	if (ret) {
 		FFA_ERR("copy_from_user error with ret=%d\n", ret);
 		return ret;
@@ -690,10 +694,12 @@ static int gz_ffa_message_send(struct args *args, void * __user user_args)
 	FFA_INFO("Responsed data: 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n", data.data0, data.data1,
 			 data.data2, data.data3, data.data4);
 
-	ret = copy_to_user(user_args, &data, sizeof(struct args));
-	if (ret) {
-		FFA_ERR("copy_to_user error with ret=%d\n", ret);
-		return ret;
+	if (user_args != NULL) {
+		ret = copy_to_user(user_args, &data, sizeof(struct args));
+		if (ret) {
+			FFA_ERR("copy_to_user error with ret=%d\n", ret);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -738,9 +744,11 @@ static int gz_ffa_get_chm_handle(struct args *args, void * __user user_args)
 	}
 
 	args->arg[1] = handle;
-	ret = copy_to_user(user_args, args, sizeof(struct args));
-	if (ret)
-		FFA_INFO("[%s]copy_to_user fail(0x%x)\n", __func__, ret);
+	if (user_args != NULL) {
+		ret = copy_to_user(user_args, args, sizeof(struct args));
+		if (ret)
+			FFA_INFO("[%s]copy_to_user fail(0x%x)\n", __func__, ret);
+	}
 
 	return ret;
 }
