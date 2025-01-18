@@ -336,9 +336,6 @@ static int ioread32_atf(uint8_t op_num, void **addr, uint32_t **ret_val)
 	if (res.a0 != 0) {
 		if (res.a0 == -16) {
 			HWLOGR_DBG("arm_smccc_smc reg_dump acquire rcx sema timeout (rcx off)\n");
-			HWLOGR_DBG("arm_smccc_smc reg_dump op: 0x%08x\n", op);
-			HWLOGR_DBG("arm_smccc_smc reg_dump a0 a1 a2 a3 / 0x%lx 0x%lx 0x%lx 0x%lx\n",
-						res.a0, res.a1, res.a2, res.a3);
 		} else {
 			HWLOGR_ERR("arm_smccc_smc reg_dump error ret: 0x%lx\n", res.a0);
 			HWLOGR_ERR("arm_smccc_smc reg_dump op: 0x%08x\n", op);
@@ -381,9 +378,13 @@ static int iowrite32_atf(uint32_t write_val, void *addr)
 	HWLOGR_DBG("arm_smccc_smc reg_write a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
 
 	if (res.a0 != 0) {
-		HWLOGR_ERR("arm_smccc_smc reg_write error ret: 0x%lx", res.a0);
-		HWLOGR_ERR("arm_smccc_smc reg_write op val / 0x%x 0x%x\n", op, write_val);
-		HWLOGR_ERR("arm_smccc_smc reg_write a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
+		if (res.a0 == -16) {
+			HWLOGR_DBG("arm_smccc_smc reg_write acquire rcx sema timeout (rcx off)\n");
+		} else {
+			HWLOGR_ERR("arm_smccc_smc reg_write error ret: 0x%lx", res.a0);
+			HWLOGR_ERR("arm_smccc_smc reg_write op val / 0x%x 0x%x\n", op, write_val);
+			HWLOGR_ERR("arm_smccc_smc reg_write a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
+		}
 		return res.a0;
 	}
 
@@ -414,7 +415,9 @@ static int w1c32_atf(void *addr, uint32_t *ret_val)
 	HWLOGR_DBG("arm_smccc_smc reg_w1c a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
 
 	if (res.a0 != 0) {
-		if (burst_intr_cnt < HW_LOG_INTR_THRESHOLD) {
+		if (res.a0 == -16) {
+			HWLOGR_DBG("arm_smccc_smc reg_w1c acquire rcx sema timeout (rcx off)\n");
+		} else {
 			HWLOGR_ERR("arm_smccc_smc reg_w1c error ret: 0x%lx", res.a0);
 			HWLOGR_ERR("arm_smccc_smc reg_w1c op / 0x%x\n", op);
 			HWLOGR_ERR("arm_smccc_smc reg_w1c a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
@@ -729,7 +732,7 @@ static int apu_logtop_copy_buf(void)
 	ret = get_r_w_ptr(&r_ptr, &w_ptr);
 
 	if (ret != 0 && pwr_status != 0) {
-		HWLOGR_ERR("skip copy buf, power on but get_r_w_ptr() fail, ret = %d\n", ret);
+		HWLOGR_DBG("skip copy buf, apu may power off, ret = %d\n", ret);
 		goto out;
 	}
 
@@ -884,7 +887,8 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 
 	if (!lbc_full_flg && !ovwrite_flg) {
 		if (burst_intr_cnt < HW_LOG_INTR_THRESHOLD) {
-			HWLOGR_INFO("intr status = 0x%x should not occur, intr cnt = %d\n", ctrl_flag, burst_intr_cnt);
+			HWLOGR_INFO("apu may power off, intr status = 0x%x, intr cnt = %d\n",
+				ctrl_flag, burst_intr_cnt);
 			burst_intr_cnt++;
 		} else if (burst_intr_cnt == HW_LOG_INTR_THRESHOLD) {
 			if (burst_intr_aee_triggered == 0) {
