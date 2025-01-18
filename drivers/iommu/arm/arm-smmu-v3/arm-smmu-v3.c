@@ -3663,6 +3663,9 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu, bool bypass)
 
 	writel_relaxed(reg, smmu->base + ARM_SMMU_CR2);
 
+	if (smmu->impl && smmu->impl->smmu_device_reset)
+		smmu->impl->smmu_device_reset(smmu);
+
 	/* Stream table */
 	writeq_relaxed(smmu->strtab_cfg.strtab_base,
 		       smmu->base + ARM_SMMU_STRTAB_BASE);
