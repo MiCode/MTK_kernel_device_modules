@@ -123,6 +123,20 @@
 /************************************************************************
  *
  ************************************************************************/
+#define HI1339_SENSOR_ID                          0x1339
+#define SENSOR_DRVNAME_HI1339_MIPI_RAW            "hi1339_mipi_raw"
+
+#define HI1339OFILM_SENSOR_ID                     0x133A
+#define SENSOR_DRVNAME_HI1339OFILM_MIPI_RAW       "hi1339ofilm_mipi_raw"
+/* Onyx */
+#define OV13B10LN_SENSOR_ID                       0x0D42
+#define SENSOR_DRVNAME_OV13B10LN_MIPI_RAW         "ov13b10ln_mipi_raw"
+#define S5K4H7LN_SENSOR_ID                        0x487B
+#define SENSOR_DRVNAME_S5K4H7LN_MIPI_RAW          "s5k4h7ln_mipi_raw"
+
+#define GC08A3REAR_SENSOR_ID                          0x08a3
+#define SENSOR_DRVNAME_GC08A3REAR_MIPI_RAW            "gc08a3rear_mipi_raw"
+
 /* SENSOR CHIP VERSION */
 /*IMX*/
 #define IMX499_SENSOR_ID                        0x0499
