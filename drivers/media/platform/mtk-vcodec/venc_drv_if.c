@@ -63,6 +63,7 @@ int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
 	ctx->dev = dev;
 	ctx->dev_ctx = ctx;
 	ctx->type = MTK_INST_ENCODER;
+	mutex_init(&ctx->ipi_use_lock);
 	spin_lock_init(&ctx->state_lock);
 	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
 
