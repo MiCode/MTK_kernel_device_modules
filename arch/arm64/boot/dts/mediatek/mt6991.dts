@@ -13021,6 +13021,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<0 0x34710000 0 0x00100>,	/* 22 IMGSYS_TRAW_DIP1 */
 					<0 0x34080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x34780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
 			mediatek,hcp = <&hcp>;
 			mediatek,img-frm-sync = <&img_frm_sync>;
 			mediatek,larbs = <&smi_larb15>,
