@@ -256,6 +256,10 @@ struct mtk_apu {
 #define TCM_OFFSET (0x4d000000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
 #define APU_SEC_FW_IOVA (0x200000UL)
+/* delay 30s and trigger KE */
+#define APU_KE_DELAY_MS (30 * 1000)
+/* bypass trigger KE while system bootup */
+#define BOOT_BYPASS_APU_KE_MS (60 * 1000)
 
 int apu_mem_init(struct mtk_apu *apu);
 void apu_mem_remove(struct mtk_apu *apu);
