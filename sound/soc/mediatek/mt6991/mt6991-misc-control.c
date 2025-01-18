@@ -820,7 +820,9 @@ static int mt6991_dev_power_set(struct snd_kcontrol *kcontrol,
 
 	// notify system that audio will use smartpa due to spk power is too big
 #if !defined(SKIP_SB_PBM)
+#if IS_ENABLED(CONFIG_MTK_PEAK_POWER_BUDGET)
 	kicker_ppb_request_power(KR_AUDIO, power);
+#endif
 #endif
 	return 0;
 }
