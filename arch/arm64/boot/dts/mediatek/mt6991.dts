@@ -7399,6 +7399,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			gpueb-supply = <&gpueb>;
 		};
 
+		gpu_qos: gpu-qos@13f800 {
+			compatible = "mediatek,gpu_qos";
+			qos-sysram-support = <1>;
+			reg = <0 0x13f800 0 0x20>;
+			qos-mode = <0>;
+			qos-value = <0>;
+		};
+
 		gpueb: gpueb@4b000000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
