@@ -1549,6 +1549,8 @@
 	logstore: logstore {
 		enabled = <1>;
 		pmic-register = <0xa0d>;
+		/* if not, means default(2M); v2.0 (4M) */
+		version = "v2.0";
 	};
 
 	gic: interrupt-controller {
