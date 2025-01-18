@@ -10,6 +10,36 @@
 /* mutex_send, sema_ack, mbox, slot, size,
  * async, retdata, lock, polling, unused, prdata
  */
+ #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
+struct _pin_send send_pintable[] = {
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0,  0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	/*====================================================================*/
+	{{{0} }, {0}, 0, 0, 0,
+	 1, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 1, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0,  0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0, 0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0,  0,
+	 0, 0, 0, 0, 0, 0},
+	{{{0} }, {0}, 0, 0,  0,
+	 0, 0, 0, 0, 0, 0},
+ /*====================================================================*/
+};
+#else
 struct _pin_send send_pintable[] = {
 	{{{0} }, {0}, 0, PINS_OFFSET_PLATFORM, PINS_SIZE_PLATFORM,
 	 0, 1, 0, 0, 0, 0},
@@ -40,6 +70,7 @@ struct _pin_send send_pintable[] = {
 	 0, 1, 1, 1, 0, 0},
  /*====================================================================*/
 };
+#endif //CONFIG_MTK_TINYSYS_SSPM_LEGACY
 #define TOTAL_SEND_PIN      (sizeof(send_pintable)/sizeof(struct _pin_send))
 
 
@@ -53,13 +84,24 @@ struct _pin_recv recv_pintable[] = {
 #define TOTAL_RECV_PIN      (sizeof(recv_pintable)/sizeof(struct _pin_recv))
 
 /* info for all mbox: start, end, used_slot, mode, unused */
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
+struct _mbox_info mbox_table[IPI_MBOX_TOTAL] = {
+	{0, 4, 0, 2, 0},  /* mbox 0 for send */
+	{5, 10, 0, 2, 0},  /* mbox 1 for send */
+	{0, 3, 0, 1, 0},  /* mbox 2 for recv */
+	{0, 0, 0, 0, 0}, /* mbox 3 */
+};
+#else
 struct _mbox_info mbox_table[IPI_MBOX_TOTAL] = {
 	{0, 5, PINS_MBOX0_USED, 2, 0},  /* mbox 0 for send */
 	{6, 12, PINS_MBOX1_USED, 2, 0},  /* mbox 1 for send */
 	{0, 3, PINR_MBOX2_USED, 1, 0},  /* mbox 2 for recv */
 	{0, 0, 0, 0, 0}, /* mbox 3 */
 };
-
+#endif //CONFIG_MTK_TINYSYS_SSPM_LEGACY
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
+const char *pin_name[IPI_ID_TOTAL] = { };
+#else
 static char *pin_name[IPI_ID_TOTAL] = {
 	"PLATFORM",
 	"CPU_DVFS",
@@ -75,7 +117,7 @@ static char *pin_name[IPI_ID_TOTAL] = {
 	"UPower",
 	"CM_MGR",
 };
-
+#endif //CONFIG_MTK_TINYSYS_SSPM_LEGACY
 #ifndef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 #define sspm_ipi_lock_spm_scenario(start, id, opt, name)
 #endif

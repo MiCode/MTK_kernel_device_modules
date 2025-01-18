@@ -18,7 +18,9 @@ enum {
 	MET_MEM_ID,
 #endif
 	SMI_MEM_ID,
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
 	GPU_MEM_ID,
+#endif
 	NUMS_MEM_ID,
 };
 
@@ -63,12 +65,18 @@ static struct sspm_reserve_mblock sspm_reserve_mblock[NUMS_MEM_ID] = {
 #endif
 	{
 		.num = SMI_MEM_ID,
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
+		.size = 0,
+#else
 		.size = 0x9000, /* 36K */
+#endif
 	},
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
 	{
 		.num = GPU_MEM_ID,
 		.size = 0x1000,  /* 4K */
 	},
+#endif
 	/* TO align 64K, total is 1M+64K. The remaining size = 0x2800 */
 };
 #endif

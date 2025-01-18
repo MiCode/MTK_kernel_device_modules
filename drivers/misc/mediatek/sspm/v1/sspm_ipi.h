@@ -10,6 +10,7 @@
 #include <linux/io.h>
 #include <linux/semaphore.h>
 #include <linux/completion.h>
+#include <linux/platform_device.h>
 
 #include "sspm_ipi_pin.h"
 
@@ -40,7 +41,7 @@ struct ipi_action {
 #define IPI_USED_IN_WAIT    -7
 #define IPI_PIN_MISUES      -8
 
-extern int sspm_ipi_init(void);
+extern int sspm_ipi_init(struct platform_device *pdev);
 
 /* definition for opts arguments (new) */
 #define IPI_OPT_WAIT          0

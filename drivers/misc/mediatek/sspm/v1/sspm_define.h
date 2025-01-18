@@ -14,7 +14,12 @@
 #define SSPM_MBOX_SLOT_SIZE		0x4
 
 #define SSPM_CFG_OFS_SEMA	0x048
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
+#define SSPM_MPU_REGION_ID  4
+#else
 #define SSPM_MPU_REGION_ID  9
+#endif
 
 #define SSPM_PLT_SERV_SUPPORT       (1)
 #define SSPM_LOGGER_SUPPORT         (1)

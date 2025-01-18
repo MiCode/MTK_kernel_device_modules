@@ -7,6 +7,7 @@
 #define __SSPM_IPI_MBOX_LAYOUT_H__
 
 #define IPI_MBOX_TOTAL  4
+#define IPI_MBOX0_USERS  5
 #define IPI_MBOX0_64D   0
 #define IPI_MBOX1_64D   0
 #define IPI_MBOX2_64D   0
@@ -22,7 +23,7 @@
 #define IPI_MBOX3_SLOTS ((IPI_MBOX3_64D+1)*32)
 #define IPI_MBOX4_SLOTS ((IPI_MBOX4_64D+1)*32)
 
-
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_LEGACY)
 /* definition of slot size for send PINs */
 #define PINS_SIZE_PLATFORM       3  /* the following will use mbox 0 */
 #define PINS_SIZE_CPU_DVFS       4
@@ -65,6 +66,7 @@
 #error "MBOX1 cannot hold all pin definitions"
 #endif
 /* ============================================================ */
+#endif //CONFIG_MTK_TINYSYS_SSPM_LEGACY
 
 /* definition of slot size for received PINs */
 #define PINR_SIZE_PLATFORM       3  /* the following will use mbox 2 */
