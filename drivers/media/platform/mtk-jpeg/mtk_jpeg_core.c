@@ -132,14 +132,15 @@ static int debug;
 static int jpgenc_probe_time;
 module_param(debug, int, 0644);
 
-#if MTK_JPEG_DEC_SUPPORT
-static int jpgDec_probe_time;
 #define JPEG_LOG(level, format, args...)                       \
 	do {                                                        \
 		if ((debug & level) == level)              \
 			pr_info("level=%d %s(),%d: " format "\n",\
 				level, __func__, __LINE__, ##args);      \
 	} while (0)
+
+#if MTK_JPEG_DEC_SUPPORT
+static int jpgDec_probe_time;
 #endif
 static inline struct mtk_jpeg_ctx *ctrl_to_ctx(struct v4l2_ctrl *ctrl)
 {
@@ -226,6 +227,27 @@ static int mtk_jpeg_enc_ctrls_setup(struct mtk_jpeg_ctx *ctx)
 	return 0;
 }
 
+void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
+{
+	const char *descr = NULL;
+
+	if (fmt == NULL) {
+		JPEG_LOG(0, "error, fmt is NULL\n");
+		return;
+	}
+
+	switch (fmt->pixelformat) {
+	case V4L2_PIX_FMT_NV12_AFBC:
+		descr = "MCN8"; break;
+	default:
+		JPEG_LOG(2, "error pixelformat 0x%08x\n", fmt->pixelformat);
+		break;
+	}
+
+	if (descr)
+		WARN_ON(strscpy(fmt->description, descr, sizeof(fmt->description)) < 0);
+}
+
 static int mtk_jpeg_enum_fmt(struct mtk_jpeg_fmt *mtk_jpeg_formats, int n,
 			     struct v4l2_fmtdesc *f, u32 type)
 {
@@ -243,6 +265,8 @@ static int mtk_jpeg_enum_fmt(struct mtk_jpeg_fmt *mtk_jpeg_formats, int n,
 		return -EINVAL;
 
 	f->pixelformat = mtk_jpeg_formats[i].fourcc;
+	memset(f->reserved, 0, sizeof(f->reserved));
+	v4l_fill_mtk_fmtdesc(f);
 
 	return 0;
 }
@@ -1595,6 +1619,12 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
 
 	buf_state = VB2_BUF_STATE_DONE;
+
+	if (v4l2_m2m_is_last_draining_src_buf(ctx->fh.m2m_ctx, src_buf)) {
+		v4l2_dbg(0, debug, &jpeg->v4l2_dev, "mark stopped\n");
+		dst_buf->flags |= V4L2_BUF_FLAG_LAST;
+		v4l2_m2m_mark_stopped(ctx->fh.m2m_ctx);
+	}
 
 	v4l2_m2m_buf_done(src_buf, buf_state);
 	v4l2_m2m_buf_done(dst_buf, buf_state);
