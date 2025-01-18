@@ -394,6 +394,7 @@ static const struct mtk_mmc_compatible mt6765_compat = {
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = true,
+	.set_crypto_enable_in_sw = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
 	.infra_check = {
