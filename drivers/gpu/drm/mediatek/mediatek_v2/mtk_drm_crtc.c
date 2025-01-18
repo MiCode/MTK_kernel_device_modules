@@ -5267,7 +5267,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	unsigned int bw = overlap_to_bw(crtc, frame_weight, lyeblob_ids);
-	unsigned int larb_bw = 0;
+	unsigned int larb_bw = 0, bw_base = 0;
 	int crtc_idx = drm_crtc_index(crtc);
 	unsigned int ovl0_2l_no_compress_num;
 	struct mtk_ddp_comp *output_comp;
@@ -5364,10 +5364,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 	mtk_crtc->qos_ctx->last_hrt_req = bw;
 
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991)
-		mtk_disp_set_module_hrt(mtk_crtc);
-
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 		(priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6991)) {
@@ -5392,6 +5388,11 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		}
 
 		mtk_crtc->qos_ctx->last_larb_hrt_req = larb_bw;
+	}
+
+	if (priv->data->respective_ostdl) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base);
 	}
 
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
@@ -7512,6 +7513,10 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	/* adjust hrt usage callback only for primary display */
 	if (crtc_idx == 0)
 		wake_up(&mtk_crtc->qos_ctx->hrt_cond_wq);
+
+	if (priv->data->respective_ostdl)
+		mtk_disp_clr_module_hrt(mtk_crtc);
+
 	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
 
 	if (cur_hrt_bw != NO_PENDING_HRT &&
@@ -7528,10 +7533,6 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL) =
 				NO_PENDING_HRT;
 	}
-
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991)
-		mtk_disp_clr_module_hrt(mtk_crtc);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 			(priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -11486,6 +11487,9 @@ skip:
 		(priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6991))
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, 0);
+
+	if (priv->data->respective_ostdl)
+		mtk_disp_set_module_hrt(mtk_crtc, 0);
 
 	/* 6. stop trig loop  */
 	if (mtk_crtc_with_trigger_loop(crtc)) {

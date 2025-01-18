@@ -682,11 +682,10 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 		mtk_disp_clear_channel_srt_bw_MT6991(mtk_crtc);
 }
 
-void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc)
+void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_ddp_comp *comp;
-	unsigned int bw_base  = 0;
 	int i, j, ret = 0;
 
 	if (mtk_crtc == NULL)
@@ -695,7 +694,6 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc)
 	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 		return;
 
-	bw_base = mtk_drm_primary_frame_bw(crtc);
 	for (i = 0; i < DDP_PATH_NR; i++) {
 		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 			continue;
@@ -761,7 +759,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765) {
 		DDPMSG("%s: no need to set module hrt bw for legacy!\n", __func__);
-	}
+	} else if (!priv->data->respective_ostdl)
+		mtk_disp_set_module_hrt(mtk_crtc, bw);
+
 	if (ret == RDMA_REQ_HRT)
 		tmp = mtk_drm_primary_frame_bw(crtc);
 	else if (ret == MDP_RDMA_REQ_HRT)
@@ -914,7 +914,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 {
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_display_mode *mode;
-	unsigned int bw = 0;
+	unsigned int bw = 0, bw_base = 0;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	dev_crtc = crtc;
@@ -925,14 +925,17 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	mtk_disp_set_hrt_bw(mtk_crtc, bw);
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 
+	/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
+	mtk_crtc->usage_ovl_fmt[1] = 4;
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 		(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991)) {
-
-		/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
-		mtk_crtc->usage_ovl_fmt[1] = 4;
-
+		priv->data->mmsys_id == MMSYS_MT6991))
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc, bw);
+
+	if (priv->data->respective_ostdl) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base);
 	}
 }
 
