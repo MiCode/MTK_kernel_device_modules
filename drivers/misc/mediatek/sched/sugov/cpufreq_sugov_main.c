@@ -420,7 +420,7 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu)
 	sg_cpu->max = arch_scale_cpu_capacity(sg_cpu->cpu);
 	sg_cpu->bw_dl = cpu_bw_dl(rq);
 
-	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, cpu_util_cfs(sg_cpu->cpu), FREQUENCY_UTIL,
+	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, mtk_cpu_util_cfs(sg_cpu->cpu), FREQUENCY_UTIL,
 							(struct task_struct *)UINTPTR_MAX,
 							0, SCHED_CAPACITY_SCALE);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)

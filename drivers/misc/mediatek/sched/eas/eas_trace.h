@@ -1482,7 +1482,7 @@ TRACE_EVENT(sched_enq_deq_task,
 		__entry->gp1_cnt		= fsrq->group_nr_running[1];
 		__entry->gp2_cnt		= fsrq->group_nr_running[2];
 		__entry->gp3_cnt		= fsrq->group_nr_running[3];
-		__entry->cfs_util		= cpu_util_cfs(task_rq(p)->cpu);
+		__entry->cfs_util		= mtk_cpu_util_cfs(task_rq(p)->cpu);
 		__entry->rt_util		= cpu_util_rt(task_rq(p));
 	),
 
