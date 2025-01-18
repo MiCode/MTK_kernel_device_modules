@@ -105,7 +105,7 @@ unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool gpufreq_devapc_vio_callback(void);
-static bool gpufreq_dbg_tracker_vio_callback(int devapc_type, int slave_type, int vio_idx);
+static bool gpufreq_dbg_tracker_vio_callback(int slave_type);
 struct devapc_power_callbacks devapc_cb_gpu = {
 	.type = DEVAPC_TYPE_GPU,
 	.query_power = gpufreq_devapc_vio_callback,
@@ -1698,12 +1698,12 @@ static bool gpufreq_devapc_vio_callback(void)
 #endif /* CONFIG_DEVAPC_ARCH_MULTI */
 
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
-static bool gpufreq_dbg_tracker_vio_callback(int devapc_type, int slave_type, int vio_idx)
+static bool gpufreq_dbg_tracker_vio_callback(int slave_type)
 {
 	if (gpufreq_fp && gpufreq_fp->dump_dbg_tracker_status)
 		return gpufreq_fp->dump_dbg_tracker_status();
 
-	return true;
+	return false;
 }
 #endif /* CONFIG_DEVAPC_ARCH_MULTI */
 

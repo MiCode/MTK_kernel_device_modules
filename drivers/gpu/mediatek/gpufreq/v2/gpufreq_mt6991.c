@@ -489,7 +489,7 @@ void __gpufreq_dump_power_tracker_status(void)
 
 bool __gpufreq_dump_dbg_tracker_status(void)
 {
-	bool ret = true;
+	bool ret = false;
 	int i = 0;
 	unsigned int vio_sta = 0, vcore_bus_dbg_con = 0, vgpu_bus_dbg_con = 0;
 
@@ -615,7 +615,7 @@ bool __gpufreq_dump_dbg_tracker_status(void)
 		if (!(vio_sta & ~BIT(26))) {
 			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_STA_0, BIT(26));
 			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_MASK_0, 0x0);
-			ret = false;
+			ret = true;
 		}
 	}
 	return ret;
