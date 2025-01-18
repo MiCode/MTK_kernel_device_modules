@@ -88,6 +88,7 @@ struct uarthub_drv_cbs {
 	int (*get_host_bt_awake_sta) (int dev_index);
 	int (*get_cmm_bt_awake_sta) (void);
 	int (*get_bt_awake_sta) (void);
+	int (*bt_on_count_inc) (void);
 	int (*inband_set_esc_sta) (unsigned char esc_sta);
 	int (*inband_trigger_ctrl) (void);
 	int (*inband_is_tx_complete) (void);
