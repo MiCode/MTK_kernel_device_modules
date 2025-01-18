@@ -673,7 +673,8 @@
 
 	sensor0: sensor0@36 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "ov48b_mipi_raw";
+		sensor-names = "ov48b_mipi_raw",
+					"imx06a_mipi_raw";
 		reg = <0x36 0 0>;
 		maximum-pmic-delay = <4000>;
 
@@ -942,7 +943,8 @@
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "imx758_mipi_raw";
+		sensor-names = "imx758_mipi_raw",
+					"imx858_mipi_raw";
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 
@@ -1127,7 +1129,8 @@
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "imx598_mipi_raw",
-				"imx709_mipi_raw";
+				"imx709_mipi_raw",
+				"imx858dual_mipi_raw";
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 		reindex-match = "imx709_mipi_raw";
