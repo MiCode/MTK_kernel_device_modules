@@ -33,6 +33,10 @@
 #include "../mediatek/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
 #endif
 
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+#include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+#endif
+
 struct lcm {
 	struct device *dev;
 	struct drm_panel panel;
@@ -116,6 +120,7 @@ static void lcm_panel_get_data(struct lcm *ctx)
 }
 #endif
 
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
@@ -198,6 +203,7 @@ static int lcm_panel_bias_disable(void)
 
 	return retval;
 }
+#endif
 #endif
 
 static void lcm_panel_init(struct lcm *ctx)
@@ -570,7 +576,11 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	ctx->error = 0;
 	ctx->prepared = false;
-#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	/*this is rt4831a*/
+	_gate_ic_i2c_panel_bias_enable(0);
+	_gate_ic_Power_off();
+#elif IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_disable();
 #else
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
@@ -617,7 +627,11 @@ static int lcm_prepare(struct drm_panel *panel)
 	if (ctx->prepared)
 		return 0;
 
-#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+#if IS_ENABLED(CONFIG_RT4831A_I2C)
+	_gate_ic_Power_on();
+	/*rt4831a co-work with leds_i2c*/
+	_gate_ic_i2c_panel_bias_enable(1);
+#elif IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable();
 #else
 	ctx->bias_pos =
@@ -880,7 +894,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	}
 	devm_gpiod_put(dev, ctx->reset_gpio);
 
-#ifndef CONFIG_RT4831A_I2C
+#if !IS_ENABLED(CONFIG_RT4831A_I2C)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 	lcm_panel_bias_enable();
 #else
