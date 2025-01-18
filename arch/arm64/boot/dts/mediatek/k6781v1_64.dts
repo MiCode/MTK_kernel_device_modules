@@ -157,7 +157,7 @@
 
 &mt6370_typec {
 	mt6370pd,intr_gpio_num = <83>; /* direct defined GPIO num */
-	mt6370pd,intr_gpio = <&pio 83 0x0>;
+	mt6370pd-intr-gpios = <&pio 83 0x0>;
 };
 
 &i2c2 {
