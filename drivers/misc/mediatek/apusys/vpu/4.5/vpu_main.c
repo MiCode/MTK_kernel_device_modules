@@ -342,6 +342,8 @@ int vpu_send_cmd(int op, void *hnd, struct apusys_device *adev)
 			      __func__, vd->id,
 			      *(uint32_t *)ucmd->kva, ucmd->size);
 		return vpu_ucmd_handle(vd, ucmd);
+	case APUSYS_CMD_VALIDATE:
+		return ret;
 	default:
 		vpu_cmd_debug("%s: vpu%d: unknown command: %d\n",
 			      __func__, vd->id, op);
@@ -542,11 +544,13 @@ static int vpu_shared_get(struct platform_device *pdev,
 
 	kref_init(&vpu_drv->iova_ref);
 
-	if (!vpu_drv->mva_algo) {
+	if (!vpu_drv->mva_algo && vd->id == 0) {
 		cops->emi_mpu_set(vpu_drv->bin_pa, vpu_drv->bin_size);
 
 		if (mops->dts(vd->dev, "algo", &vpu_drv->iova_algo))
 			goto error;
+		if (!vpu_drv->iova_algo.size)
+			return 0;
 		iova = mops->alloc(vd->dev, &vpu_drv->iova_algo);
 		if (!iova)
 			goto error;
@@ -708,6 +712,7 @@ static int vpu_init_adev(struct vpu_device *vd,
 	adev->dev_type = type;
 	adev->preempt_type = APUSYS_PREEMPT_WAITCOMPLETED;
 	adev->private = vd;
+	adev->idx = vd->id;
 	adev->send_cmd = hndl;
 	memset(adev->meta_data, 0, sizeof(adev->meta_data));
 
@@ -778,9 +783,18 @@ static int vpu_init_dev_plat(struct platform_device *pdev,
 static int vpu_probe(struct platform_device *pdev)
 {
 	struct vpu_device *vd;
-	struct vpu_probe_ops *probe_ops = vd_probe_ops(vd);
-
+	struct vpu_probe_ops *probe_ops = NULL;
 	int ret = 0;
+	int id = 0;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "id", &id);
+	if (ret) {
+		dev_info(&pdev->dev, "unable to get core ID: %d\n", ret);
+		goto out;
+	}
+
+	if (id != 0 && !vpu_drv)
+		return -EPROBE_DEFER;
 
 	vd = vpu_alloc(pdev);
 	if (!vd)
@@ -801,8 +815,10 @@ static int vpu_probe(struct platform_device *pdev)
 		kref_init(&vpu_drv->ref);
 
 		ret = vpu_init_bin(pdev->dev.of_node);
-		if (ret)
+		if (ret) {
+			dev_info(&pdev->dev, "vpu_init_bin fails\n");
 			goto out;
+		}
 
 		vpu_init_debug();
 
@@ -824,6 +840,14 @@ static int vpu_probe(struct platform_device *pdev)
 	ret = vpu_init_dev_plat(pdev, vd);
 	if (ret)
 		goto out;
+
+	probe_ops = vd_probe_ops(vd);
+
+	if (!probe_ops) {
+		dev_info(&pdev->dev, "Invalid probe_ops\n");
+		ret = -EFAULT;
+		goto out;
+	}
 
 	if (vpu_drv->bin_type != vpu_drv->vp->cfg->bin_type) {
 		dev_info(&pdev->dev,
@@ -1004,6 +1028,7 @@ static const struct of_device_id vpu_of_ids[] = {
 	{.compatible = "mediatek,mt6873-vpu_core", .data = &vpu_plat_mt68xx},
 	{.compatible = "mediatek,mt6853-vpu_core", .data = &vpu_plat_mt68xx},
 	{.compatible = "mediatek,mt6893-vpu_core", .data = &vpu_plat_mt68xx},
+	{.compatible = "mediatek,mt6877-vpu_core", .data = &vpu_plat_mt68xx},
 	{.compatible = "mediatek,mt6785-vpu_core", .data = &vpu_plat_mt67xx},
 	{.compatible = "mediatek,mt6779-vpu_core", .data = &vpu_plat_mt67xx},
 	{.compatible = "mediatek,mt8188-vpu_core", .data = &vpu_plat_mt8188},

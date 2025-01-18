@@ -520,13 +520,12 @@ static int vpu_free_algo_info(struct vpu_device *vd)
 	if (!vd->iova_algo_info.m.va)
 		return 0;
 
-	mops->alloc(vd->dev, &vd->iova_algo_info);
-	mops->alloc(vd->dev, &vd->iova_preload_info);
+	mops->free(vd->dev, &vd->iova_algo_info);
+	mops->free(vd->dev, &vd->iova_preload_info);
 	vd->iova_algo_info.m.va = 0;
 	vd->iova_preload_info.m.va = 0;
 	return 0;
 }
-
 
 #define PRELOAD_IRAM 0xFFFFFFFF
 
