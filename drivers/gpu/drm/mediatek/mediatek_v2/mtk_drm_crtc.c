@@ -3830,6 +3830,7 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885) {
 		union mtk_addon_config addon_config;
 		int w = crtc->state->adjusted_mode.hdisplay;
@@ -3866,6 +3867,7 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 				priv->data->mmsys_id == MMSYS_MT6761 ||
 				priv->data->mmsys_id == MMSYS_MT6765 ||
 				priv->data->mmsys_id == MMSYS_MT6877 ||
+				priv->data->mmsys_id == MMSYS_MT6833 ||
 				priv->data->mmsys_id == MMSYS_MT6885) {
 				if (addon_module[0]->type == ADDON_BETWEEN &&
 					(addon_module[0]->module == DISP_RSZ ||
@@ -4396,6 +4398,7 @@ _mtk_crtc_lye_addon_module_connect(
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885) {
 		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
@@ -4439,6 +4442,7 @@ _mtk_crtc_lye_addon_module_connect(
 					priv->data->mmsys_id == MMSYS_MT6877 ||
 					priv->data->mmsys_id == MMSYS_MT6761 ||
 					priv->data->mmsys_id == MMSYS_MT6765 ||
+					priv->data->mmsys_id == MMSYS_MT6833 ||
 					priv->data->mmsys_id == MMSYS_MT6885) {
 					if (addon_module[0]->type == ADDON_BETWEEN)
 						mtk_addon_connect_between(crtc, ddp_mode, addon_module[0],
@@ -6348,6 +6352,7 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761) {
 		DDPINFO("To do workaround:%s():%d\n", __func__, __LINE__);
@@ -8264,6 +8269,7 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 		if (priv->data->mmsys_id == MMSYS_MT6983 ||
 			priv->data->mmsys_id == MMSYS_MT6768 ||
 			priv->data->mmsys_id == MMSYS_MT6877 ||
+			priv->data->mmsys_id == MMSYS_MT6833 ||
 			priv->data->mmsys_id == MMSYS_MT6761 ||
 			priv->data->mmsys_id == MMSYS_MT6765 ||
 			priv->data->mmsys_id == MMSYS_MT6885 ||
@@ -11066,6 +11072,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -11579,6 +11586,7 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
@@ -14389,6 +14397,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6761)
 		DDPINFO("skip reset ovl for legacy chip\n");
 	else
