@@ -44,6 +44,8 @@
 #define P0_LOWPOWER_CK_SEL		BIT(0)
 #define P1_LOWPOWER_CK_SEL		P0_LOWPOWER_CK_SEL
 #define P2_LOWPOWER_CK_SEL		BIT(3)
+#define PEXTP1_RSV_1			0x3c
+#define PCIE_SUSPEND_L2_CTRL		BIT(7)
 #define PEXTP_PWRCTL_0			0x40
 #define PCIE_HW_MTCMOS_EN		BIT(0)
 #define PEXTP_TIMER_SET			GENMASK(31, 8)
@@ -338,6 +340,7 @@ struct mtk_pcie_port {
 	bool dvfs_req_en;
 	bool peri_reset_en;
 	bool soft_off;
+	bool skip_suspend;
 	int irq;
 	u32 saved_irq_state;
 	raw_spinlock_t irq_lock;
@@ -2149,6 +2152,39 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 }
 EXPORT_SYMBOL(mtk_pcie_hw_control_vote);
 
+/*
+ * mtk_pcie_in_use() - whether pcie is used
+ */
+bool mtk_pcie_in_use(int port)
+{
+	struct platform_device *pdev;
+	struct mtk_pcie_port *pcie_port;
+	u32 val;
+
+	/* Currently only available for port 1 */
+	if (port != 1)
+		return false;
+
+	pdev = mtk_pcie_find_pdev_by_port(port);
+	if (!pdev) {
+		pr_info("PCIe platform device not found!\n");
+		return false;
+	}
+
+	pcie_port = platform_get_drvdata(pdev);
+	if (!pcie_port) {
+		pr_info("PCIe port not found!\n");
+		return false;
+	}
+
+	val = readl_relaxed(pcie_port->pextpcfg + PEXTP1_RSV_1);
+	if (val & PCIE_SUSPEND_L2_CTRL)
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL(mtk_pcie_in_use);
+
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
@@ -2173,6 +2209,12 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 
 		mtk_pcie_dump_pextp_info(port);
 	} else {
+		if (mtk_pcie_in_use(port->port_num)) {
+			port->skip_suspend = true;
+			dev_info(port->dev, "port%d in use, keep active\n", port->port_num);
+			return 0;
+		}
+
 		mtk_pcie_save_restore_cfg(port, true);
 
 		/* Trigger link to L2 state */
@@ -2212,6 +2254,12 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 				return err;
 		}
 	} else {
+		if (port->port_num == 1 && port->skip_suspend) {
+			port->skip_suspend = false;
+			dev_info(port->dev, "port%d resume done\n", port->port_num);
+			return 0;
+		}
+
 		err = mtk_pcie_power_up(port);
 		if (err)
 			return err;

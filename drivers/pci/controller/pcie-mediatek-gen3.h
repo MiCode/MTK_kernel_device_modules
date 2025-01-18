@@ -15,6 +15,7 @@ enum pin_state {
 	PCIE_PINMUX_PD
 };
 
+bool mtk_pcie_in_use(int port);
 int mtk_pcie_probe_port(int port);
 int mtk_pcie_remove_port(int port);
 int mtk_pcie_soft_off(struct pci_bus *bus);
