@@ -176,14 +176,14 @@
 	};
 	camera_pins_cam0_oisvdd_0: camera-pins-cam0-oisvdd-0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
 	camera_pins_cam0_oisvdd_1: camera-pins-cam0-oisvdd-1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
 			slew-rate = <1>;
 			output-high;
 		};
