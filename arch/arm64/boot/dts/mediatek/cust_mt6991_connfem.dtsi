@@ -43,7 +43,7 @@
 					cat-iso {
 						cat-id = <0x00>;
 						states =
-							<0x00>;	/* ISO */
+							<0x10>;	/* BYP */
 					};
 					cat-rx {
 						cat-id = <0x01>;
