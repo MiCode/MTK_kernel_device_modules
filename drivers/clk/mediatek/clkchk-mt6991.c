@@ -46,6 +46,10 @@
 #define HWV_CG_EN(id)			(0x1910 + (id * 0x4))
 #define HWV_CG_XPU_DONE(xpu)		(0x2B00 + (xpu * 0x8))
 #define HWV_CG_DONE(id)			(0x2C00 + (id * 0x4))
+#define HWV_XPU(n) ((n < 5) ? (0x00000 + (n * 0x10000)) : \
+					(0x41000 + ((n - 5) * 0x1000)))
+#define HWV_XPU_CG_SET(n,x)		(HWV_XPU(n) + (x) * 0x8)
+#define HWV_XPU_CG_CLR(n,x)		(HWV_XPU(n) + (x) * 0x8 + 0x004)
 #define HWV_TIMELINE_PTR		(0x2AA0)
 #define HWV_TIMELINE_HIS(idx)		(0x2AA4 + (idx / 4))
 #define HWV_CG_ADDR_HIS(idx)		(0x18D8 + (idx * 4))
@@ -67,19 +71,19 @@ static unsigned int evt_cnt, suspend_cnt;
 /* xpu*/
 enum {
 	APMCU = 0,
-	MD,
-	SSPM,
+	TEE,
 	MMUP,
 	SCP,
+	SSPM,
 	XPU_NUM,
 };
 
 static u32 xpu_id[XPU_NUM] = {
 	[APMCU] = 0,
-	[MD] = 2,
+	[TEE] = 1,
+	[MMUP] = 2,
+	[SCP] = 3,
 	[SSPM] = 4,
-	[MMUP] = 7,
-	[SCP] = 9,
 };
 
 /* trace all subsys cgs */
@@ -3671,25 +3675,14 @@ static bool is_suspend_retry_stop(bool reset_cnt)
 
 static void dump_hwv_history(struct regmap *regmap, u32 id)
 {
-	u32 set[XPU_NUM] = {0}, sta = 0, en = 0, done = 0;
+	u32 set[XPU_NUM] = {0};
 	int i;
 
 	if (regmap != NULL) {
-		for (i = 0; i < XPU_NUM; i++)
-			regmap_read(regmap, HWV_CG_SET(xpu_id[i], id), &set[i]);
-
-		regmap_read(regmap, HWV_CG_STA(id), &sta);
-		regmap_read(regmap, HWV_CG_EN(id), &en);
-		regmap_read(regmap, HWV_CG_DONE(id), &done);
-
-
-		for (i = 0; i < XPU_NUM; i++)
-			pr_notice("set: (%x)%x", HWV_CG_SET(xpu_id[i], id), set[i]);
-		pr_notice("[%d] (%x)%x, (%x)%x, (%x)%x\n",
-				id,
-				HWV_CG_STA(id), sta,
-				HWV_CG_EN(id), en,
-				HWV_CG_DONE(id), done);
+		for (i = 0; i < XPU_NUM; i++) {
+			regmap_read(regmap, HWV_XPU_CG_SET(i, id), &set[i]);
+			pr_notice("set: HW_CCF_XPU%d_CG_SET_%d: 0x%x\n", i, id, set[i]);
+		}
 	}
 }
 
@@ -3871,6 +3864,8 @@ static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 {
 	u32 val;
 	int i;
+
+	dump_hwv_history(regmap, id);
 
 	if (regmap) {
 		for (i = 0; i < 10; i++) {
