@@ -4180,7 +4180,7 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 					       etdm_data.pad_top_ck_en_shift);
 			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
 					       etdm_data.master_latch_mask,
-					       0x1,
+					       0x0,
 					       etdm_data.master_latch_shift);
 		}
 		break;
@@ -4264,7 +4264,7 @@ static int mtk_dai_etdm_hw_params(struct snd_pcm_substream *substream,
 				       etdm_data.pad_top_ck_en_shift);
 			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
 				       etdm_data.master_latch_mask,
-				       0x1,
+				       0x0,
 				       etdm_data.master_latch_shift);
 		}
 		break;
@@ -4518,7 +4518,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.pad_top_ck_en_shift);
 			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
 				       etdm_data.master_latch_mask,
-				       0x1,
+				       0x0,
 				       etdm_data.master_latch_shift);
 		}
 
@@ -4604,7 +4604,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.pad_top_ck_en_shift);
 			mtk_regmap_update_bits(afe->regmap, etdm_data.master_latch_reg,
 				       etdm_data.master_latch_mask,
-				       0x1,
+				       0x0,
 				       etdm_data.master_latch_shift);
 		}
 		break;
