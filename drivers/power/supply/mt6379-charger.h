@@ -27,6 +27,9 @@
 #define ADC_TO_VBAT_RAW(vbat)	((vbat) / ADC_VBAT_SCALE)
 #define ADC_FROM_VBAT_RAW(raw)	((raw) * ADC_VBAT_SCALE)
 
+#define MT6379_REG_CORE_CTRL0		(0x01)
+#define MT6379_REG_RST1			(0x02)
+#define MT6379_REG_RST_PAS_CODE1	(0x04)
 #define MT6379_REG_TM_PAS_CODE1		(0x07)
 #define MT6379_REG_CORE_CTRL2		(0x06)
 #define MT6379_REG_CHG_STAT0		(0x70)
@@ -71,6 +74,9 @@
 #define MT6379_REG_USBID_CTRL1		(0x190)
 #define MT6379_REG_USBID_CTRL2		(0x191)
 
+#define MT6379_REG_PD_SYS_CTRL3		(0x4B0)
+#define MT6379_REG_TYPECOTP_CTRL	(0x4CD)
+
 #define MT6379_REG_BC12_FUNC		(0x600)
 #define MT6379_REG_BC12_STAT		(0x601)
 #define MT6379_REG_DPDM_CTRL1		(0x603)
@@ -84,6 +90,8 @@
 #define MT6379_CHG_IEOC_FLOW_RB_MSK	BIT(4)
 
 enum mt6379_charger_reg_field {
+	/* MT6379_REG_CORE_CTRL0 */
+	F_MREN,
 	/* MT6379_REG_CHG_BATPRO_SLE */
 	F_BATPROTECT_SOURCE,
 	/* MT6379_REG_CORE_CTRL2 */
@@ -296,7 +304,7 @@ struct mt6379_charger_data {
 	atomic_t no_6pin_used;
 	u32 zcv;
 	u32 cv;
-	bool bypass_mode_entered;
+	u8 bypass_mode_entered;
 
 	struct ufcs_port *ufcs;
 	struct notifier_block ufcs_noti;

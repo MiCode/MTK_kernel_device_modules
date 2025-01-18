@@ -173,6 +173,7 @@ static const struct linear_range mt6379_charger_ranges[MT6379_RANGE_F_MAX] = {
 
 
 static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
+	MT6379_CHARGER_FIELD(F_MREN, MT6379_REG_CORE_CTRL0, 4, 4),
 	MT6379_CHARGER_FIELD(F_BATPROTECT_SOURCE, MT6379_REG_CHG_BATPRO_SLE, 5, 5),
 	MT6379_CHARGER_FIELD(F_SHIP_RST_DIS, MT6379_REG_CORE_CTRL2, 0, 0),
 	MT6379_CHARGER_FIELD(F_PD_MDEN, MT6379_REG_CORE_CTRL2, 1, 1),
@@ -1011,7 +1012,11 @@ static ssize_t bypass_mode_show(struct device *dev,
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 
-	return sysfs_emit(buf, "%s\n", cdata->bypass_mode_entered ? "Y" : "N");
+	if (cdata->bypass_mode_entered == 1)
+		return sysfs_emit(buf, "bypass mode\n");
+	if (cdata->bypass_mode_entered >= 2)
+		return sysfs_emit(buf, "bypass mode with reset\n");
+	return sysfs_emit(buf, "bypass mode off\n");
 }
 
 static ssize_t bypass_mode_store(struct device *dev,
@@ -1020,9 +1025,10 @@ static ssize_t bypass_mode_store(struct device *dev,
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	int ret = 0;
-	bool enter = false;
+	unsigned long enter = 0;
+	u8 rst_code[2] = {0xA9, 0x96};
 
-	ret = kstrtobool(buf, &enter);
+	ret = kstrtoul(buf, 0, &enter);
 	if (ret)
 		return ret;
 
@@ -1035,11 +1041,23 @@ static ssize_t bypass_mode_store(struct device *dev,
 			return ret;
 		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, 3000000);
 		ret = mt6379_charger_field_set(cdata, F_CHG_BYPASS, 1);
+		if (enter >= 2) {
+			ret = mt6379_charger_field_set(cdata, F_MREN, 0);
+			/* enter reset pas code */
+			ret |= regmap_bulk_write(cdata->rmap, MT6379_REG_RST_PAS_CODE1, rst_code, 2);
+			/* REG_RST */
+			ret |= regmap_write(cdata->rmap, MT6379_REG_RST1, 0x1);
+			/* PD SW_RESET */
+			ret |= regmap_write(cdata->rmap, MT6379_REG_PD_SYS_CTRL3, 0x1);
+			mdelay(2);
+			/* PD disable OTP_HW_EN */
+			ret |= regmap_write(cdata->rmap, MT6379_REG_TYPECOTP_CTRL, 0x00);
+		}
 		if (ret)
 			return ret;
-		cdata->bypass_mode_entered = true;
 	} else {
-		ret = mt6379_charger_field_set(cdata, F_CHG_BYPASS, 0);
+		ret = mt6379_charger_field_set(cdata, F_MREN, 1);
+		ret |= mt6379_charger_field_set(cdata, F_CHG_BYPASS, 0);
 		if (ret)
 			return ret;
 	}
