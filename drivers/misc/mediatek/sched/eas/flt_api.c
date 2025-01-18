@@ -407,8 +407,8 @@ EXPORT_SYMBOL_GPL(flt_set_grp_dvfs_ctrl);
 
 void flt_ctl(int set)
 {
-	if (flt_class_mode && flt_class_mode->flt_set_grp_dvfs_ctrl_api && !flt_ctrl_force)
-		flt_class_mode->flt_set_grp_dvfs_ctrl_api(set);
+	if (!flt_ctrl_force)
+		flt_set_grp_dvfs_ctrl(set);
 }
 EXPORT_SYMBOL_GPL(flt_ctl);
 
