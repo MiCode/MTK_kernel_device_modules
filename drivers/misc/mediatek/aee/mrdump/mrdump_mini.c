@@ -635,9 +635,9 @@ void mrdump_mini_add_kallsyms(void)
 {
 	unsigned long size, vaddr;
 
-	vaddr = aee_get_kallsyms_addresses();
+	vaddr = aee_get_kns_addr();
 	vaddr = round_down(vaddr, PAGE_SIZE);
-	size = aee_get_kti_addresses() - vaddr + 512;
+	size = aee_get_kallsyms_mem_size();
 	size = round_up(size, PAGE_SIZE);
 	if (vaddr)
 		mrdump_mini_add_misc_pa(vaddr, __pa_nodebug(vaddr),

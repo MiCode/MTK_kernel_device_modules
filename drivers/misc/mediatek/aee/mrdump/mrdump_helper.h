@@ -14,13 +14,14 @@ extern unsigned long aee_get_etext(void);
 extern unsigned long aee_get_init_begin(void);
 
 extern struct list_head *aee_get_modules(void);
-extern unsigned long aee_get_kallsyms_addresses(void);
 extern unsigned long aee_get_kti_addresses(void);
+extern unsigned long aee_get_kns_addr(void);
+extern unsigned long aee_get_kallsyms_mem_size(void);
 extern unsigned long aee_get_kn_off(void);
-extern unsigned long aee_get_kns_off(void);
 extern unsigned long aee_get_km_off(void);
 extern unsigned long aee_get_ktt_off(void);
 extern unsigned long aee_get_kti_off(void);
+extern unsigned long aee_get_ka_off(void);
 extern void aee_reinit_die_lock(void);
 #if IS_ENABLED(CONFIG_MODULES)
 extern void init_ko_addr_list_late(void);
