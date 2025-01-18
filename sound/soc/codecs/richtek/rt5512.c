@@ -1047,6 +1047,8 @@ static inline int rt5512_chip_id_check(struct rt5512_chip *chip)
 					     2, data);
 	if (ret < 0)
 		return ret;
+	ret = i2c_smbus_read_i2c_block_data(chip->i2c, 0x05, 2, id);
+	dev_info(chip->dev, "%s ret = %d, reg0x5 = %x %x\n", __func__, ret, id[0], id[1]);
 	ret = i2c_smbus_read_i2c_block_data(chip->i2c, RT5512_REG_DEVID, 2, id);
 	if (ret < 0)
 		return ret;
