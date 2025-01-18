@@ -28966,8 +28966,10 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				&& mtk_crtc0 && atomic_read(&mtk_crtc0->spr_switching)) {
 				if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc0,
 					DISP_SLOT_PANEL_SPR_EN))) {
-					atomic_set(&mtk_crtc0->spr_switching, 0);
-					wake_up(&mtk_crtc0->spr_switch_wait_queue);
+					if (atomic_read(&mtk_crtc0->spr_switch_cb_done) == 1) {
+						atomic_set(&mtk_crtc0->spr_switching, 0);
+						wake_up(&mtk_crtc0->spr_switch_wait_queue);
+					}
 				}
 			}
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
