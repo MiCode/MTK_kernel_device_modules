@@ -41,6 +41,13 @@
 #define DRV_STAT_SYNC_REG               SPARE_DBG_REG7
 #define MBRAIN_DATA_SYNC_0_REG          SPARE_DBG_REG8  // pll recording
 #define MBRAIN_DATA_SYNC_1_REG          SPARE_DBG_REG9  // vapu recording
+#define MBRAIN_RCX_CNT                  0xF798          // PLL WA retry count, rcx on
+#define MBRAIN_RCX_DUMPMNOCPLL_REG      0xF700          // PLL WA retry count, rcx on
+#define MBRAIN_RCX_DUMPUPPLL_REG        0xF800          // PLL WA retry count, rcx on
+#define MBRAIN_DVFS_CNT                 0xF998          // PLL WA retry count, dvfs
+#define MBRAIN_DVFS_DUMPMNOCPLL_REG     0xF900          // PLL WA retry count, rcx on
+#define MBRAIN_DVFS_DUMPUPPLL_REG       0xFA00          // PLL WA retry count, rcx on
+#define MBRAIN_DUMP_SIZE                32
 
 /*
  * The following are used for data exchange through spare register(s)

@@ -273,10 +273,8 @@ static int get_aputop_func_param(char *buf, const struct kernel_param *kp)
 		return -ENODEV;
 
 	if (pwr_data->plat_aputop_func_return_val)
-		return snprintf(buf, 64,
-			"aputop_func_sel:%d, aputop_func_return_val:0x%08x\n",
-			aputop_func_sel,
-			pwr_data->plat_aputop_func_return_val(aputop_func_sel));
+		return pwr_data->plat_aputop_func_return_val(aputop_func_sel,
+		       buf);
 	else
 		return snprintf(buf, 64, "aputop_func_sel:%d\n",
 			aputop_func_sel);
