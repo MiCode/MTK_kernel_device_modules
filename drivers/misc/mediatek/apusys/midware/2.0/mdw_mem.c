@@ -290,7 +290,7 @@ static void mdw_mem_map_release(struct kref *ref)
 	mutex_lock(&m->mtx);
 	mdw_trace_begin("apumdw:detach|size:%u align:%u",
 		m->size, m->align);
-	dma_buf_unmap_attachment(map->attach,
+	dma_buf_unmap_attachment_unlocked(map->attach,
 		map->sgt, DMA_BIDIRECTIONAL);
 	mdw_trace_end();
 	mdw_trace_begin("apumdw:unmap|size:%u align:%u",
@@ -385,11 +385,11 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	/* map device va */
 	mdw_trace_begin("apumdw:map|size:%u align:%u",
 		m->size, m->align);
-	map->sgt = dma_buf_map_attachment(map->attach,
+	map->sgt = dma_buf_map_attachment_unlocked(map->attach,
 		DMA_BIDIRECTIONAL);
 	if (IS_ERR(map->sgt)) {
 		ret = PTR_ERR(map->sgt);
-		mdw_drv_err("dma_buf_map_attachment failed: %d\n", ret);
+		mdw_drv_err("dma_buf_map_attachment_unlocked failed: %d\n", ret);
 		mdw_trace_end();
 		goto detach_dbuf;
 	}
@@ -441,7 +441,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	goto out;
 
 unmap_dbuf:
-	dma_buf_unmap_attachment(map->attach,
+	dma_buf_unmap_attachment_unlocked(map->attach,
 		map->sgt, DMA_BIDIRECTIONAL);
 detach_dbuf:
 	dma_buf_detach(m->dbuf, map->attach);
