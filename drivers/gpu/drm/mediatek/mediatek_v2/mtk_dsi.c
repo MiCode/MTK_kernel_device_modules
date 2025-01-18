@@ -2327,12 +2327,23 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			priv->data->mmsys_id == MMSYS_MT6991)) {
 		dli_relay_1tnp = 2;
 
-		if (comp->id == DDP_COMPONENT_DSI2)
-			buf_con = 1036;
-		else if ((comp->id == DDP_COMPONENT_DSI0) || (comp->id == DDP_COMPONENT_DSI1))
-			buf_con = 1544;
-		else
-			DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			if (comp->id == DDP_COMPONENT_DSI2)
+				buf_con = 1036;
+			else if ((comp->id == DDP_COMPONENT_DSI0) ||
+				(comp->id == DDP_COMPONENT_DSI1))
+				buf_con = 1554;
+			else
+				DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
+		} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			if (comp->id == DDP_COMPONENT_DSI1)
+				buf_con = 1036;
+			else if ((comp->id == DDP_COMPONENT_DSI0) ||
+				(comp->id == DDP_COMPONENT_DSI2))
+				buf_con = 1554;
+			else
+				DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
+		}
 	}
 
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
