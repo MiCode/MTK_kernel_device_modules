@@ -141,7 +141,7 @@ struct smmuv3_driver {
 typedef struct smmu_device {
 	/* subsys info */
 	unsigned long reg_base_pa_addr;
-	unsigned long reg_base_va_addr;
+	void *reg_base_va_addr;
 	unsigned int smmu_id;
 	unsigned int reg_size;
 	unsigned int dma_coherent;
