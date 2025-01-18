@@ -117,9 +117,7 @@ int mml_buf_iova_get(struct device *dev, struct mml_file_buf *buf)
 
 	for (i = 0; i < buf->cnt; i++) {
 		if (!buf->dma[i].dmabuf) {
-			/* no fd/dmabuf but need this plane,
-			 * use previous iova
-			 */
+			/* no dmabuf but need this plane, use previous iova */
 			if (i)
 				buf->dma[i].iova = buf->dma[i-1].iova;
 			continue;
