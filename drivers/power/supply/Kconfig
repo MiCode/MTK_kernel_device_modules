@@ -149,6 +149,15 @@ config CHARGER_RT9758
 	  high voltage application. The maximum charge current is up to 5A.
 	  Say N to disable.
 
+config BATTERY_MT6357
+	tristate "MT6357 fuel gauge support"
+	depends on DEVICE_MODULES_MFD_MT6397
+	help
+	  Say Y to enable support for MT6357 battery driver.
+	  it measure battery current and temperature to provide
+	  battery information , It issues interrupt when trigger
+	  threshold is met.
+
 config BATTERY_MT6358
 	tristate "MT6358 fuel gauge support"
 	depends on DEVICE_MODULES_MFD_MT6397

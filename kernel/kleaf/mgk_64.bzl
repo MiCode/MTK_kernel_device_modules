@@ -600,6 +600,7 @@ mgk_64_device_modules = [
     "drivers/power/supply/charger_class.ko",
     "drivers/power/supply/k6985v1_64_alpha/bq2579x.ko",
     "drivers/power/supply/k6985v1_64_alpha/bq28z610.ko",
+    "drivers/power/supply/mt6357_battery.ko",
     "drivers/power/supply/mt6358_battery.ko",
     "drivers/power/supply/mt6359p_battery.ko",
     "drivers/power/supply/mt6360_charger.ko",
