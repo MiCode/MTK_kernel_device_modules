@@ -1073,7 +1073,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	regulator_vibrator {
+	regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
 		min-volt = <2300000>;
