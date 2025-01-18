@@ -936,6 +936,11 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	if (mem->type == MEM_TYPE_FOR_SW ||
 	    mem->type == MEM_TYPE_FOR_HW ||
 	    mem->type == MEM_TYPE_FOR_UBE_HW) {
+		if (mtk_vcodec_is_vcp(fmt))
+			dma_heap = dma_heap_find("mtk_mm-uncached");
+		else
+			dma_heap = dma_heap_find("mtk_mm");
+	} else if (mem->type == MEM_TYPE_FOR_HW_CACHE) {
 		dma_heap = dma_heap_find("mtk_mm");
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW ||
 		   mem->type == MEM_TYPE_FOR_SEC_HW ||
@@ -1142,7 +1147,7 @@ int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 
 		src_buf = &dev->vp_mode_buf[idx][i];
 		src_buf->mem.len = 192 * 16 * 1024 + 16;
-		src_buf->mem.type = MEM_TYPE_FOR_HW;
+		src_buf->mem.type = MEM_TYPE_FOR_HW_CACHE;
 
 		ret = mtk_vcodec_alloc_mem(&src_buf->mem, io_dev, &src_buf->attach, &src_buf->sgt, MTK_INST_DECODER);
 		if (ret) {
