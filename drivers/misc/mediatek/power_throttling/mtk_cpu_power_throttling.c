@@ -14,7 +14,9 @@
 #include "mtk_bp_thl.h"
 #include "mtk_cpu_power_throttling.h"
 
+#if !IS_BUILTIN(CONFIG_MTK_CPU_POWER_THROTTLING)
 #define CREATE_TRACE_POINTS
+#endif
 #include "mtk_low_battery_throttling_trace.h"
 
 #define CPU_LIMIT_FREQ 900000

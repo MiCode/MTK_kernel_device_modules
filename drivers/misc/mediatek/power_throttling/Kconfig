@@ -16,6 +16,16 @@ config PMIC_LBAT_SERVICE
 	  Select "y" if you want to enable PMIC lbat service.
 	  Select "n" if unsure.
 
+config PMIC_DUAL_LBAT_SERVICE
+	tristate "PMIC dual lbat service"
+	select MTK_POWER_THROTTLING_COMMON
+	help
+	  For MediaTek PMIC dual lbat service.
+	  It will detect if VBAT is higher or lower some threshold and trigger
+	  interrupt to notify.
+	  Select "y" if you want to enable PMIC dual lbat service.
+	  Select "n" if unsure.
+
 config MTK_BATTERY_OC_POWER_THROTTLING
 	tristate "MTK battery over current throttle"
 	select MTK_POWER_THROTTLING_COMMON
