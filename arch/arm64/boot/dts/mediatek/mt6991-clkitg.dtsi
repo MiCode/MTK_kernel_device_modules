@@ -11,10 +11,6 @@
 		reg = <0x0>;
 		clocks =
 			<&cksys_clk CLK_CK_UART_SEL>,
-			<&cksys_clk CLK_CK_I2C_P_SEL>,
-			<&cksys_clk CLK_CK_I2C_EAST_SEL>,
-			<&cksys_clk CLK_CK_I2C_WEST_SEL>,
-			<&cksys_clk CLK_CK_I2C_NORTH_SEL>,
 			<&cksys_clk CLK_CK_ADSP_SEL>,
 			<&cksys_clk CLK_CK_ADSP_UARTHUB_BCLK_SEL>,
 			<&cksys_clk CLK_CK_TL_SEL>,
@@ -439,27 +435,6 @@
 			<&camsys_mraw_clk CLK_CAM_MR_MRAW2_PDAF>,
 			<&camsys_mraw_clk CLK_CAM_MR_MRAW3_PDAF>;
 	};
-	bring-up-i2c@8 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x8>;
-		clocks =
-			<&imp_iic_wrap_e_clk CLK_IMPE_I2C5_I2C>,
-			<&imp_iic_wrap_w_clk CLK_IMPW_I2C0_I2C>,
-			<&imp_iic_wrap_w_clk CLK_IMPW_I2C3_I2C>,
-			<&imp_iic_wrap_w_clk CLK_IMPW_I2C6_I2C>,
-			<&imp_iic_wrap_w_clk CLK_IMPW_I2C10_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C1_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C2_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C4_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C7_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C8_I2C>,
-			<&imp_iic_wrap_n_clk CLK_IMPN_I2C9_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C11_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C12_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C13_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C14_I2C>,
-			<&pericfg_ao_clk CLK_PERAO_AP_DMA_X32W_BCLK_I2C>;
-	};
 	bring-up-jpgdec@9 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x9>;
@@ -769,12 +744,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_SENINF>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_ASG_CAM_SENINF>;
-	};
-	bring-up-scp-i2c@16 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x16>;
-		clocks =
-			<&scp_i3c_clk CLK_SCP_I3C_I2C1_SCP_I2C>;
 	};
 	bring-up-camrawb@18 {
 		compatible = "mediatek,clk-bring-up";
