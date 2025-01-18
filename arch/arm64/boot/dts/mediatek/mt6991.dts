@@ -14188,6 +14188,11 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			mmqos-supply = <&mmqos>;
 			mediatek,imgsys-qof-ver = <31>;
 		};
+		imgsys_scp: imgsys-iommu-sentrymode {
+			compatible = "mediatek,imgsys-io-sentrymode";
+			mtk,smmu-shared = <&mm_smmu_imgsyssentrymode>;
+			status = "disabled";
+		};
 
 		mae: mae@34310000 {
 			compatible = "mediatek,mtk-mae";
@@ -16204,6 +16209,12 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mtk,iommu-dma-range = <0x1 0x0 0x0 0x40000000>;
 		iommus = <&mm_smmu 161>;
 		smmu-supply = <&mm_smmu>;
+	};
+	mm_smmu_imgsyssentrymode: mm-smmu-imgsyssentrymode {
+		compatible = "mediatek,smmu-share-group";
+		iommus = <&mm_smmu 140>;
+		mtk,smmu-dma-mode = "disable";
+		status = "disabled";
 	};
 	mm_smmu_codec: mm-smmu-codec {
 		compatible = "mediatek,smmu-share-group";
