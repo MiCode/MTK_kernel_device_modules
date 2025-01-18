@@ -40,8 +40,8 @@ extern void mt_irq_set_polarity(unsigned int irq, unsigned int polarity);
 #define MIPI_RX_BASE_HW 0x11c10000
 #define GPIO_BASE_HW    0x10002000
 
-#define ISP_REG_RANGE           (PAGE_SIZE)
-#define ISP_REG_PER_DIP_RANGE   (PAGE_SIZE*5)
+#define ISP_REG_RANGE           (4096)
+#define ISP_REG_PER_DIP_RANGE   (4096 * 5)
 
 #define USERKEY_STR_LEN (32)
 
