@@ -52,6 +52,8 @@ int adsp_qos_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+	if (!res->start)
+		goto SKIP_THROTTLE_OFF;
 	qos_ctrl.cfg_hrt = devm_ioremap(dev, res->start,
 					resource_size(res));
 	if (unlikely(!qos_ctrl.cfg_hrt)) {
@@ -69,6 +71,7 @@ int adsp_qos_probe(struct platform_device *pdev)
 	/* emi hrt setting */
 	writel(qos_ctrl.hrt_bits, qos_ctrl.cfg_hrt);
 
+SKIP_THROTTLE_OFF:
 	qos_ctrl.icc_hrt_path = of_icc_get(dev, "icc-hrt-bw");
 	if (IS_ERR_OR_NULL(qos_ctrl.icc_hrt_path)) {
 		pr_warn("%s get icc_hrt_path fail:%s.\n", __func__, "icc-hrt-bw");
