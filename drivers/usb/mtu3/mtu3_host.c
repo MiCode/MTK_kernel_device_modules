@@ -222,6 +222,12 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 		dev_info(ssusb->dev, "U3D_USB20_LPM_TIMING_PARAM - value:0x%x\n", value);
 	}
 
+	if (!ssusb->utmi_8bit) {
+		mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL, SSUSB_U2_UTMI_DATABUS_16_8);
+		value = mtu3_readl(ibase, U3D_SSUSB_SYS_CK_CTRL);
+		dev_info(ssusb->dev, "U3D_SSUSB_SYS_CK_CTRL - value:0x%x\n", value);
+	}
+
 	return ret;
 }
 
