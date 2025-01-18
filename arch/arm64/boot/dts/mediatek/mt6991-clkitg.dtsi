@@ -19,12 +19,6 @@
 			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF0_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF1_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF2_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF3_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF4_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF5_SEL>,
 			<&cksys_gp2_clk CLK_CK2_IMG1_SEL>,
 			<&cksys_gp2_clk CLK_CK2_IPE_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
@@ -50,14 +44,6 @@
 			<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL3>,
 			<&vlp_cksys_clk CLK_VLP_CK_VLP_APLL1>,
 			<&vlp_cksys_clk CLK_VLP_CK_VLP_APLL2>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG2_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG3_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG4_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG5_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG6_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG7_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>;
 	};
 	bring-up-smi@1 {
@@ -650,16 +636,6 @@
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
 	};
-	bring-up-cam-seninf@15 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x15>;
-		clocks =
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAM_SENINF>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_SENINF>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_ASG_CAM_SENINF>;
-	};
 	bring-up-camrawb@18 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x18>;
@@ -1007,16 +983,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x5a>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA_AO>;
-	};
-	bring-up-pd-csi-bs-rx@5b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5b>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CSI_BS_RX>;
-	};
-	bring-up-pd-csi-ls-rx@5c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5c>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CSI_LS_RX>;
 	};
 	bring-up-pd-dsi-phy0@5d {
 		compatible = "mediatek,scpsys-bring-up";
