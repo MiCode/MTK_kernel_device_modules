@@ -333,6 +333,10 @@ static const struct resource mt6366_regulators_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6366_IRQ_VBIF28_OC, "VBIF28"),
 };
 
+static const struct resource mt6358_chrdet_resources[] = {
+	DEFINE_RES_IRQ_NAMED(MT6358_IRQ_CHRDET_EDGE, "CHRDET"),
+};
+
 static const struct mfd_cell mt6323_devs[] = {
 	{
 		.name = "mt6323-rtc",
@@ -461,6 +465,12 @@ static const struct mfd_cell mt6358_devs[] = {
 	}, {
 		.name = "mt6358_clkbuf",
 		.of_compatible = "mediatek,mt6358-clkbuf",
+	},
+	{
+		.name = "mt6358-chrdet",
+		.of_compatible = "mediatek,mtk-chr-det",
+		.num_resources = ARRAY_SIZE(mt6358_chrdet_resources),
+		.resources = mt6358_chrdet_resources,
 	},
 };
 
