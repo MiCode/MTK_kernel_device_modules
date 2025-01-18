@@ -76,6 +76,7 @@ mediatek-drm-y += mtk_drm_debugfs.o
 endif
 
 ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DDISP_STASH_ENABLE
 ccflags-y += -DDRM_PARTIAL_UPDATE
 endif
 

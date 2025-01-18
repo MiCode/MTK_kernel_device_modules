@@ -271,7 +271,18 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_EL0_CLR(n)			(0x390UL + 0x4 * (n))
 #define DISP_REG_OVL_ADDR(module, n)	((module)->data->addr + 0x20 * (n))
 #define DISP_REG_OVL_STASH_CFG0			(0xAE0UL)
+#define L0_STASH_EN BIT(0)
+#define EL0_STASH_EN BIT(4)
+#define EL1_STASH_EN BIT(5)
+#define EL2_STASH_EN BIT(6)
+
 #define DISP_REG_OVL_STASH_CFG1			(0xAE4UL)
+#define STASH_LINE_IGNORE			REG_FLD_MSB_LSB(7, 0)
+#define STASH_GMC_LINE_STALL		REG_FLD_MSB_LSB(15, 8)
+#define STASH_ROI_LINE_STALL		REG_FLD_MSB_LSB(23, 16)
+#define STASH_HDR_ROI_LINE_STALL	REG_FLD_MSB_LSB(31, 24)
+
+#define DISP_REG_OVL_STASH_CFG2			(0xAE8UL)
 
 /* OVL Bandwidth monitor */
 #define DISP_REG_OVL_BURST_MON_CFG		(0x97CUL)
@@ -710,7 +721,7 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
 
-	DDPINFO("%s+%s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	mtk_ovl_exdma_io_cmd(comp, handle, IRQ_LEVEL_NORMAL, NULL);
 
@@ -779,7 +790,7 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 static void mtk_ovl_exdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_INTEN, 0, ~0);
@@ -936,7 +947,8 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
 	unsigned int con;
-	DDPINFO("%s,%d, %s idx:%d, ext_idx:%d\n", __func__, __LINE__,
+
+	DDPDBG("%s %s idx:%d, ext_idx:%d\n", __func__,
 		mtk_dump_comp_str(comp), idx, ext_idx);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
@@ -958,13 +970,27 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->regs_pa + DISP_REG_OVL_L_EN(ext_idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
 }
 
+static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
+		return;
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG1,
+		       1, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG0,
+		       0,
+		       (L0_STASH_EN | EL0_STASH_EN | EL1_STASH_EN | EL2_STASH_EN));
+}
+
 static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
 	u32 wcg_mask = 0, wcg_value = 0, sel_value = 0, sel_mask = 0;
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 
-	DDPINFO(" %s,%d, %s idx:%d, ext_idx:%d\n", __func__, __LINE__,
+	DDPDBG("%s, %s idx:%d, ext_idx:%d\n", __func__,
 		mtk_dump_comp_str(comp), idx, ext_idx);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1002,6 +1028,7 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		       comp->regs_pa + DISP_REG_OVL_WCG_CFG1, wcg_value,
 		       wcg_mask);
 
+	mtk_ovl_exdma_stash_off(comp, handle);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
 		       0x0, DISP_OVL_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2017,6 +2044,64 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	}
 }
 
+static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	unsigned int vrefresh = 0;
+	unsigned int l_time = 0, fifo_l = 0, hdr_fifo_l = 0;
+	unsigned int roi_stall = 0, hdr_roi_stall = 0, gmc_stall = 0;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *output_comp;
+	struct drm_crtc *crtc;
+	struct drm_display_mode *mode = NULL;
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
+		return;
+
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+		mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+		vrefresh =
+			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+	else
+		vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+
+	if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
+			(output_comp->id == DDP_COMPONENT_DSI1)))
+		mtk_ddp_comp_io_cmd(output_comp, NULL,
+			DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
+
+	if ((!vrefresh) || (!mode->vtotal) || (!mode->hdisplay)) {
+		DDPPR_ERR("%s, vrefresh=%d, vtotal=%d, hdisplay=%d is invalid!\n",
+			__func__, vrefresh, mode->vtotal, mode->hdisplay);
+		return;
+	}
+
+	l_time = 1000000 * 100 / vrefresh / mode->vtotal;
+	fifo_l = 1536 * 4 * l_time / mode->hdisplay;
+	hdr_fifo_l = (320 - 8) * 32 * 4 * l_time / mode->hdisplay;
+
+	if (!l_time) {
+		DDPPR_ERR("%s, l_time=%d is invalid!\n", __func__, l_time);
+		return;
+	}
+
+	hdr_roi_stall = (24 * 100 + hdr_fifo_l) / l_time;
+	roi_stall = (24 * 100 + fifo_l) / l_time;
+	gmc_stall = 24 * 100 / l_time;
+	DDPDBG("%s, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
+		__func__, l_time, fifo_l, hdr_fifo_l, hdr_roi_stall, roi_stall, gmc_stall);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG1,
+			   ((hdr_roi_stall << 24) + (roi_stall << 16) + (gmc_stall << 8) + 0), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG0,
+			   (L0_STASH_EN | EL0_STASH_EN | EL1_STASH_EN | EL2_STASH_EN),
+			   (L0_STASH_EN | EL0_STASH_EN | EL1_STASH_EN | EL2_STASH_EN));
+}
+
 static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 				 struct mtk_plane_state *state,
 				 struct cmdq_pkt *handle)
@@ -2320,6 +2405,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			__func__, vtotal, vact);
 
 		mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, handle);
+		mtk_ovl_exdma_stash_config(comp, handle);
 
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */
@@ -2457,7 +2543,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		}
 	}
 
-	DDPINFO("%s , comp %d idx %d\n", __func__,comp->id, idx);
+	DDPINFO("%s- comp %d idx %d\n", __func__,comp->id, idx);
 
 	if (comp && comp->bind_comp && comp->bind_comp->funcs
 		&& comp->bind_comp->funcs->layer_config && !comp->bind_comp->blank_mode)
