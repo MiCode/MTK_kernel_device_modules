@@ -1470,6 +1470,16 @@
 			compatible = "mediatek,mssdl";
 			reg = <0 0x15812000 0 0x1000>;
 			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			iommus =
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA0>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA1>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA2>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA3>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA4>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA5>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA0>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA1>;
 		};
 
 		msfdl@15810000 {
@@ -1548,9 +1558,9 @@
 			reg = <0 0x15812000 0 0x1000>;
 			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&gce_mbox 17 0 CMDQ_THR_PRIO_1>;
-			mss-frame-done =
+			mss_frame_done =
 			/bits/ 16 <CMDQ_EVENT_MSS_DONE_LINK_MISC>;
-			mss-token =
+			mss_token =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_MSS>;
 		};
 
