@@ -9892,7 +9892,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				opp-peak-KBps = <50400000>;
 			};
 
-			dvfsrc-helper {
+			dvfsrc_helper: dvfsrc-helper {
 				compatible = "mediatek,dvfsrc-helper";
 				vcore-supply = <&mt6316_8_vbuck1>;
 				rc-vcore-supply = <&dvfsrc_vcore>;
