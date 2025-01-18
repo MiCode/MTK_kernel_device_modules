@@ -4022,7 +4022,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				};
 			};
 		};
-#if 0
+
 		emislb: emislb@1046e000 {
 			compatible = "mediatek,common-emislb";
 			reg = <0 0x1046e000 0 0x1000>,
@@ -4049,7 +4049,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ktf-emislc-test {
 			compatible = "mediatek,ktf-emislc-test";
 		};
-#endif
 
 		nsmpu: nsmpu@1046f000 {
 			compatible = "mediatek,smpu";
