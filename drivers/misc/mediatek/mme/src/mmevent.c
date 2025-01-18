@@ -295,7 +295,7 @@ EXPORT_SYMBOL(mme_register_dump_callback);
 // ---------------------------------------- Dump section -------------------------------------------
 
 #define MME_DUMP_BLOCK_SIZE (1024*4)
-#define MME_MODULE_DUMP_SIZE (1024*4)
+#define MME_MODULE_DUMP_SIZE (1024*6)
 #define STRING_BUFFER_LEN 1024
 #define INVALIDE_EVENT -1
 #define SUCCESS 1
