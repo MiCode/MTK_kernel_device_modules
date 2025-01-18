@@ -125,6 +125,7 @@
 #define P2A2R0_RG_PLL_FBKSEL         BIT(31)
 #define P2A2R0_RG_HSRX_TERM_CAL		GENMASK(19, 16)
 #define P2A2R0_RG_HSTX_IMPN		GENMASK(24, 20)
+#define P2A2R0_RG_HSRX_VREF_SEL		GENMASK(6, 4)
 
 #define XSP_U2PHYA_RESERVE1	((SSUSB_SIFSLV_U2PHY_COM) + 0x044)
 #define P2A2R1_RG_PLL_POSDIV    GENMASK(2, 0)
@@ -409,6 +410,7 @@ struct xsphy_instance {
 	int rx_sqth;
 	int host_rx_sqth;
 	int rev6;
+	int hsrx_vref_sel;
 	/* u2 eye diagram for host */
 	int eye_src_host;
 	int eye_vrt_host;
@@ -2160,6 +2162,9 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (device_property_read_u32(dev, "mediatek,rev6",
 					 &inst->rev6) || inst->rev6 < 0)
 			inst->rev6 = -EINVAL;
+		if (device_property_read_u32(dev, "mediatek,hsrx-vref-sel",
+					&inst->hsrx_vref_sel) || inst->hsrx_vref_sel < 0)
+			inst->hsrx_vref_sel = -EINVAL;
 		if (device_property_read_string(dev, "mediatek,intr-ofs",
 					 &ofs_str) || kstrtoint(ofs_str, 10, &inst->intr_ofs) < 0)
 			inst->intr_ofs = -(P2AR_RG_INTR_CAL_MASK + 1);
@@ -2202,8 +2207,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->efuse_intr, inst->intr_ofs, inst->host_intr_ofs);
 		dev_dbg(dev, "term_cal:%d, term_ofs:%d, host_term_ofs:%d\n",
 			inst->efuse_term_cal, inst->term_ofs, inst->host_term_ofs);
-		dev_dbg(dev, "src:%d, vrt:%d, term:%d\n",
-			inst->eye_src, inst->eye_vrt, inst->eye_term);
+		dev_dbg(dev, "src:%d, vrt:%d, term:%d, hsrx_vref_sel:%d\n",
+			inst->eye_src, inst->eye_vrt, inst->eye_term, inst->hsrx_vref_sel);
 		dev_dbg(dev, "src_host:%d, vrt_host:%d, term_host:%d\n",
 			inst->eye_src_host, inst->eye_vrt_host,
 			inst->eye_term_host);
@@ -2307,6 +2312,10 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 	if (inst->pll_posdiv != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE1, P2A2R1_RG_PLL_POSDIV,
 				     inst->pll_posdiv);
+
+	if (inst->hsrx_vref_sel != -EINVAL)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0, P2A2R0_RG_HSRX_VREF_SEL,
+				     inst->hsrx_vref_sel);
 
 }
 
