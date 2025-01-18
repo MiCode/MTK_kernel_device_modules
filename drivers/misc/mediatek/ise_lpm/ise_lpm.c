@@ -96,6 +96,7 @@ static struct wakeup_source *ise_wakelock;
 static uint32_t ise_awake_cnt;
 static uint32_t ise_wakelock_en;
 static uint32_t ise_lpm_freerun_en;
+static uint32_t ise_lpm_fr_ms;
 static uint32_t ise_lpm_deinit_bypass;
 static uint32_t ise_req_pending_cnt;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
@@ -485,6 +486,13 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-freerun", &ise_lpm_freerun_en))
 		pr_notice("ise_lpm_freerun_en %d\n", ise_lpm_freerun_en);
 
+	ise_lpm_fr_ms = 0;
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-fr-ms", &ise_lpm_fr_ms))
+		pr_notice("ise_lpm_fr_ms %d\n", ise_lpm_fr_ms);
+
+	if (ise_lpm_fr_ms < ISE_LPM_FREERUN_TIMEOUT_MS)
+		ise_lpm_fr_ms = ISE_LPM_FREERUN_TIMEOUT_MS;
+
 	ise_lpm_deinit_bypass = 0;
 	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-deinit-bypass", &ise_lpm_deinit_bypass))
 		pr_notice("ise_lpm_deinit_bypass %d\n", ise_lpm_deinit_bypass);
@@ -519,7 +527,7 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	if (ise_lpm_freerun_en) {
 		timer_setup(&ise_lpm_timer, ise_lpm_timeout, 0);
 		mod_timer(&ise_lpm_timer,
-			jiffies + msecs_to_jiffies(ISE_LPM_FREERUN_TIMEOUT_MS));
+			jiffies + msecs_to_jiffies(ise_lpm_fr_ms));
 	}
 
 	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
