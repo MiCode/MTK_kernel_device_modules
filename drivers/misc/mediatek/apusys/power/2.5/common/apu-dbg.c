@@ -534,6 +534,44 @@ static int apupw_dbg_power_stress(int type, int device, int opp)
 	return 0;
 }
 
+int apupw_thermal_limit(enum DVFS_USER user, int limit_ceiling_opp)
+{
+
+	struct apu_dev *ad = NULL;
+	int ret = 0;
+
+	ad = _apupw_valid_df(user);
+	if (!ad) {
+		pr_info("%s invalid user : %d\n", __func__, user);
+		return -EINVAL;
+	}
+
+	if (limit_ceiling_opp >= 0) {
+		/*
+		 * Protect against theoretical sysfs writes between
+		 * device_add and dev_pm_qos_add_request
+		 */
+		if (!dev_pm_qos_request_active(
+					&ad->df->user_max_freq_req))
+			return -EINVAL;
+
+		/* Change qos max freq to fix freq */
+		ret = dev_pm_qos_update_request(
+				&ad->df->user_max_freq_req,
+				TOKHZ(apu_opp2freq(ad, limit_ceiling_opp)));
+	}
+
+	/*
+	 * only ret < 0 is fail
+	 * since dev_pm_qos_update_request will return 1 when pass
+	 */
+	if (ret < 0)
+		pr_info("[%s] limit_ceiling_opp = %d fail, ret %d\n",
+				__func__, limit_ceiling_opp, ret);
+
+	return ret;
+}
+
 static int apupw_dbg_dvfs(u8 param, int argc, int *args)
 {
 	enum DVFS_USER user;
