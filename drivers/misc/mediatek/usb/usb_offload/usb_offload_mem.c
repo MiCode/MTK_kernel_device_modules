@@ -145,7 +145,7 @@ static char *memory_type(bool is_sram, u8 sub_type)
 }
 
 int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
-	unsigned int *phys, unsigned int *size)
+	unsigned long long *phys, unsigned int *size)
 {
 	if (mem_id >= USB_OFFLOAD_MEM_NUM) {
 		USB_OFFLOAD_ERR("Invalid id: %d\n", mem_id);
@@ -444,7 +444,7 @@ static int mtk_usb_offload_init_pool(int min_alloc_order, uint32_t mem_id)
 	if ((!va_start) || (!va_chunk))
 		return -ENOMEM;
 
-	if (gen_pool_add_virt(pool, (unsigned long)va_start,
+	if (gen_pool_add_virt(pool, (unsigned long long)va_start,
 		usb_offload_mem_buffer[mem_id].phy_addr, va_chunk, -1)) {
 		USB_OFFLOAD_ERR("idx: %d failed, va_start: 0x%lx, va_chunk: %zu\n",
 			mem_id, va_start, va_chunk);
@@ -514,7 +514,7 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 		*vaddr = (unsigned char *)gen_pool_dma_zalloc_align(gen_pool_usb_offload,
 									size, paddr, align);
 		*paddr = gen_pool_virt_to_phys(gen_pool_usb_offload,
-					(unsigned long)*vaddr);
+					(unsigned long long)*vaddr);
 	}
 error:
 	return ret;
@@ -533,7 +533,7 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 		goto error;
 	}
 
-	if (!gen_pool_has_addr(gen_pool_usb_offload, (unsigned long)*vaddr, *size)) {
+	if (!gen_pool_has_addr(gen_pool_usb_offload, (unsigned long long)*vaddr, *size)) {
 		USB_OFFLOAD_ERR("vaddr is not in pool[%d]:%p\n", mem_id, gen_pool_usb_offload);
 		ret = -1;
 		goto error;
@@ -541,7 +541,7 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 
 	/* allocate VA with gen pool */
 	if (*vaddr) {
-		gen_pool_free(gen_pool_usb_offload, (unsigned long)*vaddr, *size);
+		gen_pool_free(gen_pool_usb_offload, (unsigned long long)*vaddr, *size);
 		*vaddr = NULL;
 		*size = 0;
 	}

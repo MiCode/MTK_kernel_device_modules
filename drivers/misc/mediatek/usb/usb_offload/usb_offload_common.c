@@ -1093,9 +1093,9 @@ int send_init_ipi_msg_to_adsp(struct mem_info_xhci *mpu_info)
 	struct ipi_msg_t ipi_msg;
 	uint8_t scene = 0;
 
-	USB_OFFLOAD_INFO("[reserved dram] addr:0x%x size:%d\n",
+	USB_OFFLOAD_INFO("[reserved dram] addr:0x%llx size:%d\n",
 			mpu_info->xhci_dram_addr, mpu_info->xhci_dram_size);
-	USB_OFFLOAD_INFO("[reserved sram] addr:0x%x size:%d\n",
+	USB_OFFLOAD_INFO("[reserved sram] addr:0x%llx size:%d\n",
 			mpu_info->xhci_sram_addr, mpu_info->xhci_sram_size);
 
 	// Send struct usb_audio_stream_info Address to Hifi3 Via IPI
@@ -1205,7 +1205,8 @@ static struct urb_information mtk_usb_offload_calculate_urb(
 	struct snd_usb_audio *chip = ep->chip;
 	unsigned int freqn, freqmax;
 	unsigned int maxsize, packs_per_ms, max_packs_per_urb, urb_packs, nurbs;
-	unsigned int buffer_size, align = 64 - 1;
+	unsigned int buffer_size;
+	unsigned long long align = 64 - 1;
 	int frame_bits, packets;
 
 	frame_bits = uainfo->bit_depth * uainfo->number_of_ch;
@@ -1276,7 +1277,8 @@ static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
 	struct urb_information urb_info;
 	struct usb_host_endpoint *ep;
 	struct xhci_ring *ring;
-	unsigned int total_size, align = 64 - 1;
+	unsigned int total_size;
+	unsigned long long align = 64 - 1;
 	unsigned int slot_id, ep_id;
 	struct usb_offload_buffer *buf = &buf_allocated[uainfo->direction];
 	dma_addr_t phy_addr;
