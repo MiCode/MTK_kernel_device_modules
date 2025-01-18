@@ -1544,16 +1544,6 @@ int mtk_mipi_tx_dphy_lane_config_mt6991(void __iomem *dsi_phy_base, struct phy *
 		break;
 	}
 
-	/* LANE0~3 */
-	mtk_mipi_tx_update_bits(mipi_tx, MT6991_DSI_DPHY_LANE_SWAP,
-				MT6897_FLD_DPHY_LANE0_SEL, swap_base[MIPITX_PHY_LANE_0]);
-	mtk_mipi_tx_update_bits(mipi_tx, MT6991_DSI_DPHY_LANE_SWAP,
-				MT6897_FLD_DPHY_LANE1_SEL, swap_base[MIPITX_PHY_LANE_1] << 4);
-	mtk_mipi_tx_update_bits(mipi_tx, MT6991_DSI_DPHY_LANE_SWAP,
-				MT6897_FLD_DPHY_LANE2_SEL, swap_base[MIPITX_PHY_LANE_2] << 8);
-	mtk_mipi_tx_update_bits(mipi_tx, MT6991_DSI_DPHY_LANE_SWAP,
-				MT6897_FLD_DPHY_LANE3_SEL, swap_base[MIPITX_PHY_LANE_3] << 12);
-
 	mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
 							FLD_MIPI_TX_CPHY_EN, 0x0);
 
