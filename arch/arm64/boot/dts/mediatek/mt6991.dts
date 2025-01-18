@@ -9769,6 +9769,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			/* value[1] not exist means in mddbgsys. the value(6) has no meaningful */
 			mediatek,offset-epon-md1 = <0x64 0x06>;
 			mediatek,cldma-capability = <10>;
+			mediatek,boot-status-value = <0x544300f1>;
 			/* bit0:srcclkena|bit1:srclken_o1_on|bit2:revert_sequencer */
 			/* bit3:md_pll|bit4:dpsw */
 			mediatek,power-flow-config = <0x10>;
