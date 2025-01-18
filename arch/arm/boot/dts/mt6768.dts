@@ -4303,7 +4303,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 			"MT_CG_VENC";
 		operating-points-v2 = <&opp_table_venc>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		venc-enable-hw-break = <0>;
+		venc-disable-hw-break = <1>;
 		throughput-op-rate-thresh = <120>;
 		throughput-min = <312000000>;
 		throughput-normal-max = <457000000>;
