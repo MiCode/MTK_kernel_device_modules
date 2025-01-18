@@ -255,6 +255,8 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RESET_GAS_THR			_IOW('g', 55,  int)
 #define EAS_SET_GAS_MARG_THR		_IOW('g', 56,  struct gas_margin_thr)
 #define EAS_RESET_GAS_MARG_THR		_IOW('g', 57,  int)
+#define EAS_RT_AGGRE_PREEMPT_SET    _IOW('g', 58,  unsigned int)
+#define EAS_RT_AGGRE_PREEMPT_GET    _IOW('g', 59,  unsigned int)
 
 
 extern void update_curr_collab_state(void);
@@ -295,6 +297,7 @@ extern bool sched_rt_aggre_preempt_enable_get(void);
 extern void init_skip_hiIRQ(void);
 extern void init_rt_aggre_preempt(void);
 extern void set_rt_aggre_preempt(int val);
+extern bool get_rt_aggre_preempt(void);
 extern int cpu_high_irqload(int cpu);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 extern unsigned long mtk_sched_cpu_util(int cpu);
