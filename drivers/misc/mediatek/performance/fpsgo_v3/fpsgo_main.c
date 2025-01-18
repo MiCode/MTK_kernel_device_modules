@@ -1067,6 +1067,7 @@ int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 
 	if (test_bit(FPSGO_RUNNING_QUERY, &mask)) {
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		sbe2fpsgo_query_is_running = fpsgo_ctrl2base_query_sbe_spid_loading();
 		return sbe2fpsgo_query_is_running ? 10001 : 0;
 	}
 
