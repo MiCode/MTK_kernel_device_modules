@@ -367,6 +367,8 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
     "drivers/misc/mediatek/lpm/modules/platform/v2/mtk-lpm-plat-v2.ko",
     "drivers/misc/mediatek/lpm/mtk-lpm.ko",
+    "drivers/misc/mediatek/wla/version/v1/wla-v1.ko",
+    "drivers/misc/mediatek/wla/version/v1/wla-v1-dbg.ko",
     "drivers/misc/mediatek/masp/sec.ko",
     "drivers/misc/mediatek/mbraink/mtk_mbraink.ko",
     "drivers/misc/mediatek/mcupm/v2/mcupm.ko",
