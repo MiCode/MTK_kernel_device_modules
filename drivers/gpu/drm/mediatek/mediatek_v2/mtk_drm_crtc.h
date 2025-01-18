@@ -1053,6 +1053,11 @@ struct mtk_drm_crtc {
 	struct task_struct *sf_pf_release_thread;
 	atomic_t sf_pf_event;
 
+	/*thread of dump SMI log (SMI larb, sub common, common: OSTDL, bw throttle)*/
+	wait_queue_head_t smi_info_dump_wq;
+	struct task_struct *smi_info_dump_thread;
+	atomic_t smi_info_dump_event;
+
 	/*capture write back ctx*/
 	struct mutex cwb_lock;
 	struct mtk_cwb_info *cwb_info;

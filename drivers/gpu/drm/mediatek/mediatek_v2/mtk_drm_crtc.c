@@ -7277,6 +7277,32 @@ static int _mtk_crtc_cmdq_retrig(void *data)
 	return 0;
 }
 
+static int _mtk_crtc_cmdq_smi_info_dump(void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct sched_param param = {.sched_priority = 94 };
+	int ret;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	atomic_set(&mtk_crtc->smi_info_dump_event, 0);
+	while (1) {
+		ret = wait_event_interruptible(mtk_crtc->smi_info_dump_wq,
+			atomic_read(&mtk_crtc->smi_info_dump_event));
+		if (ret < 0)
+			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+
+		mtk_smi_dbg_hang_detect("disp_underrun");
+		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
+
+		if (kthread_should_stop())
+			break;
+	}
+
+	return 0;
+}
+
 static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 {
 	struct drm_crtc *crtc = data.data;
@@ -19010,6 +19036,14 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	init_waitqueue_head(&mtk_crtc->mode_switch_wq);
 	init_waitqueue_head(&mtk_crtc->mode_switch_end_wq);
 	wake_up_process(mtk_crtc->mode_switch_task);
+
+	/*thread of dump SMI log (SMI larb, sub common, common: OSTDL, bw throttle)*/
+	init_waitqueue_head(&mtk_crtc->smi_info_dump_wq);
+	atomic_set(&(mtk_crtc->smi_info_dump_event), 0);
+	mtk_crtc->smi_info_dump_thread =
+		kthread_create(_mtk_crtc_cmdq_smi_info_dump,
+				mtk_crtc, "smi_info_dump_thread");
+	wake_up_process(mtk_crtc->smi_info_dump_thread);
 
 	if (output_comp && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DUAL_TE))

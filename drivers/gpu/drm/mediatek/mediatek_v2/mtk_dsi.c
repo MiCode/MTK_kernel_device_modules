@@ -52,6 +52,7 @@
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
 #include "mtk_disp_gamma.h"
+#include "mtk-mmdvfs-debug.h"
 
 /* ************ Panel Master ********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -3372,6 +3373,7 @@ void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
 			mtk_dump_cur_pos(comp);
 	}
 }
+static void mmqos_hrt_dump(void);
 
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
@@ -3501,6 +3503,13 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_dprec_snapshot();
 				mtk_vidle_dpc_analysis();
 				mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+
+				//printing status of mmqos and mmdvfs and smi info
+				wake_up_process(mtk_crtc->smi_info_dump_thread);
+				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
+				mmqos_hrt_dump();
+				mmdvfs_debug_status_dump(NULL);
+
 				dsi_underrun_trigger = 0;
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
