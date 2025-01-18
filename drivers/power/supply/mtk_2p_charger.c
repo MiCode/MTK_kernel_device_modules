@@ -690,6 +690,7 @@ static const struct of_device_id mtk_2p_charger_charger_match_table[] = {
 		.data = &mtk_2p_charger_role_data[mtk_2p_charger_MASTER], },
 	{   .compatible = "mediatek,mtk_2p_charger_slave",
 		.data = &mtk_2p_charger_role_data[mtk_2p_charger_SLAVE], },
+	{ },
 };
 
 static const struct charger_ops mtk_2p_charger_chg_ops = {
