@@ -5,6 +5,7 @@
 
 /dts-v1/;
 #include <dt-bindings/clock/mt6991-clk.h>
+#include <dt-bindings/clock/mt6991-ivi-clk.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -106,6 +107,7 @@
 			outproc9 = &disp_ovl1_outproc3;
 			outproc10 = &disp_ovl1_outproc4;
 			outproc11 = &disp_ovl1_outproc5;
+			disp-dvo0 = &disp_dvo0;
 			dsi0 = &dsi0;
 			dsi1 = &dsi1;
 			dsi2 = &dsi2;
@@ -9790,6 +9792,40 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			//iommus = <&disp_iommu M4U_PORT_L33_DISP_POSTMASK0>;
 		};
 
+		disp_dvo0: disp-dvo0@324c0000 {
+			compatible = "mediatek,disp-dvo0",
+					"mediatek,mt6991-edp-dvo",
+					"mediatek,mt8678-edp-dvo";
+			status = "disabled";
+			reg = <0 0x324c0000 0 0x1000>;
+			interrupts = <GIC_SPI 461 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk	CLK_MM1_DISP_DVO0_DISP>,
+					<&ivi_cksys2_clk	CLK_CK2_DVO_SEL>,
+					<&apmixedsys_gp2_clk	CLK_APMIXED2_TVDPLL3>,
+					<&cksys_clk	CLK_CK_TCK_26M_MX9>,
+					<&ivi_cksys2_clk	CLK_CK2_TVDPLL3_D2>,
+					<&ivi_cksys2_clk	CLK_CK2_TVDPLL3_D4>,
+					<&ivi_cksys2_clk	CLK_CK2_TVDPLL3_D8>,
+					<&ivi_cksys2_clk	CLK_CK2_TVDPLL3_D16>;
+			clock-names = "engine",
+						"pixel",
+						"pll",
+						"dvo_clk",
+						"TVDPLL_D2",
+						"TVDPLL_D4",
+						"TVDPLL_D8",
+						"TVDPLL_D16";
+		};
+
+		edp_tx: edp-tx@3ec42000 {
+			compatible = "mediatek,mt6991-edp-tx",
+						 "mediatek,mt8678-edp-tx";
+			status = "disabled";
+			reg = <0 0x3ec40000 0 0x14000>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
+			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
 		soc_smmu: iommu@14900000 {
 			compatible = "arm,smmu-v3", "mtk,smmu-v700", "mediatek,mt6991-soc-smmu";
 			reg = <0 0x14900000 0 0x1e0000>,
@@ -9809,6 +9845,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					mtk,smmu-mode = "dma";
 				};
 			};
+		};
+
+		panel_edp: panel@1 {
+			compatible = "edp-panel";
+			status = "disabled";
 		};
 
 		pcie0: pcie@16910000 {
