@@ -4,6 +4,7 @@
  */
 
 
+#include <linux/cpumask.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
@@ -12,6 +13,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/time.h>
+#include <linux/timer.h>
 
 #include <lpm.h>
 
@@ -173,6 +175,100 @@ bool lpm_plat_is_cluster_off(int cpu)
 	return !lp_dev_cpu[cpu].parent->pwr_on.cluster;
 }
 
+struct lpm_cpu_ret_timer_data {
+	int cpu;
+	int dts_en;
+	int ret_ready;
+	struct timer_list ret_timer;
+};
+
+static struct lpm_cpu_ret_timer_data lpm_crt[NR_CPUS];
+static unsigned int cpu_ret_check_interval;
+
+static void lpm_cpu_ret_check(struct timer_list *t)
+{
+	long en;
+	struct lpm_cpu_ret_timer_data *crtd = from_timer(crtd, t, ret_timer);
+	unsigned int cur_cpu = smp_processor_id();
+
+	if (cur_cpu != crtd->cpu) {
+		crtd->ret_timer.expires += ((unsigned long)cpu_ret_check_interval);
+		add_timer_on(&crtd->ret_timer, crtd->cpu);
+		return;
+	}
+
+	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+					0x6, 0);
+	if (en == 0) {
+		crtd->ret_ready = 1;
+		del_timer(&crtd->ret_timer);
+	} else if (!timer_pending(&crtd->ret_timer)) {
+		crtd->ret_timer.expires += ((unsigned long)cpu_ret_check_interval);
+		add_timer_on(&crtd->ret_timer, cur_cpu);
+	}
+	pr_info("[name:cpu_pm&] cpu_ret_check\n");
+}
+
+static int lpm_start_cpu_ret_timer(unsigned int cpu)
+{
+	if (!lpm_crt[cpu].dts_en || lpm_crt[cpu].ret_ready)
+		return 0;
+	timer_setup(&lpm_crt[cpu].ret_timer, lpm_cpu_ret_check, 0);
+	lpm_crt[cpu].ret_timer.expires =
+			jiffies + ((unsigned long)cpu_ret_check_interval);
+	add_timer_on(&lpm_crt[cpu].ret_timer, cpu);
+	return 0;
+}
+
+static int lpm_stop_cpu_ret_timer(unsigned int cpu)
+{
+	if (!lpm_crt[cpu].dts_en || lpm_crt[cpu].ret_ready)
+		return 0;
+	del_timer(&lpm_crt[cpu].ret_timer);
+	return 0;
+}
+
+static int lpm_cpu_ret_init(void)
+{
+	long en;
+	int cpu, hpstate;
+	struct device_node *cpu_dts, *lpm_node;
+
+	lpm_node = of_find_compatible_node(NULL, NULL, MTK_LPM_DTS_COMPATIBLE);
+	if (lpm_node)
+		of_property_read_u32(lpm_node, "cpu-ret-chk-interval",
+				&cpu_ret_check_interval);
+
+	if (cpu_ret_check_interval)
+		cpu_ret_check_interval *= HZ;
+	else
+		cpu_ret_check_interval = 5 * HZ; /* default check interval: 5s */
+
+	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+					0, 0);
+
+	for_each_possible_cpu(cpu) {
+		const char *pRetention = NULL;
+
+		cpu_dts = of_cpu_device_node_get(cpu);
+		of_property_read_string(cpu_dts, "cpu-retention", &pRetention);
+		lpm_crt[cpu].cpu = cpu;
+		lpm_crt[cpu].ret_ready = 0;
+		if (pRetention && !strcmp(pRetention, "disable"))
+			lpm_crt[cpu].dts_en = 0;
+		else if (en & (1 << cpu))
+			lpm_crt[cpu].dts_en = 1;
+	}
+
+	if (en) {
+		hpstate = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "cpu_ret_en_check",
+				lpm_start_cpu_ret_timer, lpm_stop_cpu_ret_timer);
+		if (hpstate == -ENOSPC)
+			pr_info("[name:cpu_pm&] Fail to register cpu_ret_en_check hpcb\n");
+	}
+	return 0;
+}
+
 /*
  * Timespec interfaces utilizing the ktime based ones
  */
@@ -242,6 +338,8 @@ int __init lpm_plat_apmcu_init(void)
 	lpm_plat_pwr_dev_init();
 	lpm_cpu_off_allow();
 
+	lpm_cpu_ret_init();
+
 	return 0;
 }
 
@@ -265,4 +363,3 @@ int __init lpm_plat_apmcu_early_init(void)
 
 	return 0;
 }
-
