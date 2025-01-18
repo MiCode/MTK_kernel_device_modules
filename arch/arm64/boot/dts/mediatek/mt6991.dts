@@ -4997,6 +4997,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				interrupts = <GIC_SPI 600 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&clk26m>;
 				clock-names = "sys_ck";
+				mediatek,usb-offload = <&usb_offload>;
 				status = "okay";
 			};
 		};
@@ -12086,6 +12087,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	usb_boost: usb-boost-manager {
 		compatible = "mediatek,usb-boost", "mediatek,mt6991-usb-boost";
+	};
+
+	usb_offload: usb-offload {
+		compatible = "mediatek,usb-offload";
+		xhci-host = <&usb_host>;
+		sram-version = <3>;
+		adv-lowpower;
+		smc-ctrl;
 	};
 
 	/* ATF logger */
