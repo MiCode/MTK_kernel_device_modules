@@ -27,7 +27,7 @@
 #include <trace/events/power.h>
 #include <trace/hooks/sched.h>
 #include <linux/sched/topology.h>
-#include <trace/hooks/topology.h>
+//#include <trace/hooks/topology.h>
 #include <trace/hooks/cpufreq.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
@@ -1219,12 +1219,12 @@ static int __init cpufreq_mtk_init(void)
 	if (ret)
 		return ret;
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
+	//ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
 	if (ret)
 		pr_info("register android_vh_cpufreq_fast_switch failed\n");
 
-	ret = register_trace_android_vh_arch_set_freq_scale(
-			mtk_arch_set_freq_scale, NULL);
+	//ret = register_trace_android_vh_arch_set_freq_scale(
+	//		mtk_arch_set_freq_scale, NULL);
 	if (ret)
 		pr_info("register android_vh_arch_set_freq_scale failed\n");
 	else

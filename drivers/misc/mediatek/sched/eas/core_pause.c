@@ -238,7 +238,9 @@ int pause_cpus(struct cpumask *cpus)
 	cpumask_t requested_cpus;
 	u64 start_time = sched_clock();
 	unsigned long flags;
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	cpumask_t unpaused;
+#endif
 
 	raw_spin_lock_irqsave(&sched_pause_lock, flags);
 	cpumask_copy(&requested_cpus, cpus);
@@ -282,7 +284,9 @@ int resume_cpus(struct cpumask *cpus)
 	cpumask_t requested_cpus;
 	unsigned long flags;
 	u64 start_time = sched_clock();
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	cpumask_t unpaused;
+#endif
 
 	raw_spin_lock_irqsave(&sched_pause_lock, flags);
 	cpumask_copy(&requested_cpus, cpus);
@@ -593,7 +597,9 @@ void sched_pause_init(void)
 				hook_rvh_get_nohz_timer_target,	NULL);
 	register_trace_android_rvh_can_migrate_task(hook_rvh_can_migrate_task, NULL);
 	register_trace_android_rvh_find_busiest_queue(hook_rvh_find_busiest_queue, NULL);
+	/* need upstream, add vendor hook
 	register_trace_android_rvh_find_new_ilb(hook_rvh_find_new_ilb, NULL);
+	*/
 }
 
 static ssize_t show_sched_core_pause_info(struct kobject *kobj,

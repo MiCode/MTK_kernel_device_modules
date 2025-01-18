@@ -306,7 +306,8 @@ static void group_init_existing_task_load(struct task_struct *p)
 	group_init_new_task_load(p);
 }
 
-static void group_android_rvh_wake_up_new_task(void *unused, struct task_struct *new)
+void group_android_rvh_wake_up_new_task(void *unused, struct task_struct *new)
+//static void group_android_rvh_wake_up_new_task(void *unused, struct task_struct *new)
 {
 	/* init new task grp & list */
 	group_init_new_task_load(new);
@@ -360,8 +361,10 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 	}
 }
 
-static void group_android_rvh_try_to_wake_up_success(void *unused,
+void group_android_rvh_try_to_wake_up_success(void *unused,
 							struct task_struct *p)
+//static void group_android_rvh_try_to_wake_up_success(void *unused,
+//							struct task_struct *p)
 {
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
@@ -432,7 +435,8 @@ int set_task_to_group(int pid, int grp_id)
 }
 EXPORT_SYMBOL(set_task_to_group);
 
-static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
+//static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
+void group_android_rvh_flush_task(void *unused, struct task_struct *p)
 {
 	int ret = 0;
 
@@ -447,13 +451,14 @@ static void group_register_hooks(void)
 {
 	int ret = 0;
 
-	ret = register_trace_android_rvh_wake_up_new_task(
-		group_android_rvh_wake_up_new_task, NULL);
+	// need upstream, add vendor hook
+	//ret = register_trace_android_rvh_wake_up_new_task(
+	//	group_android_rvh_wake_up_new_task, NULL);
 	if (ret)
 		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
 
-	register_trace_android_rvh_flush_task(
-		group_android_rvh_flush_task, NULL);
+	//register_trace_android_rvh_flush_task(
+	//	group_android_rvh_flush_task, NULL);
 	if (ret)
 		pr_info("register flush_task hooks failed, returned %d\n", ret);
 
@@ -467,8 +472,8 @@ static void group_register_hooks(void)
 	if (ret)
 		pr_info("register cpu_cgroup_online hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_try_to_wake_up_success(
-		group_android_rvh_try_to_wake_up_success, NULL);
+	//ret = register_trace_android_rvh_try_to_wake_up_success(
+	//	group_android_rvh_try_to_wake_up_success, NULL);
 	if (ret)
 		pr_info("register try_to_wake_up_success hooks failed, returned %d\n", ret);
 }
