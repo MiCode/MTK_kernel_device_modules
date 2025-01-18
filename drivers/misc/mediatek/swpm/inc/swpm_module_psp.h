@@ -141,6 +141,8 @@ struct swpm_internal_ops {
 	int32_t (*const res_group_id_get)
 		(uint32_t ip1, uint32_t ip2, uint32_t ip3,
 		 uint32_t *out1, uint32_t *out2, uint32_t *out3);
+	int32_t (*const data_record_number_get)
+		(uint32_t *number);
 };
 
 extern int32_t sync_latest_data(void);
@@ -167,6 +169,7 @@ extern int32_t get_res_group_info(uint32_t grp,
 extern int32_t get_res_group_id(uint32_t ip1, uint32_t ip2, uint32_t ip3,
 		uint32_t *out1, uint32_t *out2, uint32_t *out3);
 extern int mtk_register_swpm_ops(struct swpm_internal_ops *ops);
+extern int32_t get_data_record_number(uint32_t *number);
 
 #endif /* __SWPM_MODULE_PSP_H__ */
 

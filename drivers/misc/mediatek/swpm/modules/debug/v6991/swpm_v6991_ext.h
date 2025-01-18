@@ -127,6 +127,9 @@ struct share_index_ext {
 
 	/* last ddr freq index */
 	unsigned int last_freq_idx;
+
+	/* for determine if the data has been updated */
+	unsigned int update_count;
 };
 
 struct share_ctrl_ext {

@@ -206,3 +206,14 @@ int mtk_register_swpm_ops(struct swpm_internal_ops *ops)
 	return 0;
 }
 EXPORT_SYMBOL(mtk_register_swpm_ops);
+
+int32_t get_data_record_number(uint32_t *number)
+{
+	if (SWPM_PSP_OPS &&
+	    SWPM_PSP_OPS->data_record_number_get)
+		return SWPM_PSP_OPS->data_record_number_get(number);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(get_data_record_number);
+

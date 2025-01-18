@@ -230,6 +230,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	char *p = ToUser;
 	int i;
 	int32_t core_vol_num, xpu_ip_num;
+	int data_update_count;
 
 	struct ip_stats *xpu_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
@@ -272,9 +273,11 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_xpu_ip_stats(xpu_ip_num, xpu_ip_stats_ptr);
-
+	get_data_record_number(&data_update_count);
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
+	swpm_dbg_log("data update count : %u\n",
+		     data_update_count);
 
 	swpm_dbg_log("suspend_time (ms) : %llu\n",
 		     spm_res_sig_stats_ptr->suspend_time);
@@ -312,7 +315,7 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	char *p = ToUser;
 	int i, j;
 	int32_t ddr_freq_num, ddr_bc_ip_num;
-
+	int data_update_count;
 	struct ddr_act_times *ddr_act_times_ptr = NULL;
 	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
 	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
@@ -352,7 +355,8 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	get_ddr_freq_data_ip_stats(ddr_bc_ip_num,
 				   ddr_freq_num,
 				   ddr_ip_stats_ptr);
-
+	get_data_record_number(&data_update_count);
+	swpm_dbg_log("data update count : %u\n", data_update_count);
 	swpm_dbg_log("SR time(msec): %lld\n",
 		   ddr_sr_pd_times_ptr->sr_time);
 	swpm_dbg_log("PD time(msec): %lld\n",
@@ -390,7 +394,7 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
 	int i, grp_id = 0, prev_id;
-
+	int data_update_count;
 	struct res_sig_stats *spm_res_sig_stats_ptr;
 	struct res_sig *spm_res_sig_ptr;
 
@@ -404,7 +408,7 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 		goto END;
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
-
+	get_data_record_number(&data_update_count);
 	spm_res_sig_stats_ptr->res_sig_tbl =
 	kcalloc(spm_res_sig_stats_ptr->res_sig_num,
 			sizeof(struct res_sig), GFP_KERNEL);
@@ -415,7 +419,7 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 	sync_latest_data();
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
-
+	swpm_dbg_log("data update count : %u\n", data_update_count);
 	swpm_dbg_log("spm resource signal time: (ms)\n");
 	swpm_dbg_log("resource signal number: %u\n", spm_res_sig_stats_ptr->res_sig_num);
 	swpm_dbg_log("group 0\n");

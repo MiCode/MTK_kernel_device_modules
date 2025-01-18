@@ -77,6 +77,8 @@ struct share_subsys_data sub_idx_snap;
 /* share sram for swpm mem */
 static struct share_subsys_data *share_swpm_sub_data_ptr;
 
+/*determine if the share sram data has been updated*/
+static unsigned int update_count;
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
 	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "SCP", "ADSP"
@@ -110,6 +112,8 @@ static void swpm_sp_internal_update(void)
 			return;
 		}
 		writel(1, &share_idx_ctrl_ext->read_lock);
+
+		update_count = readl(&(share_idx_ref_ext->update_count));
 
 		for (i = 0; i < NR_CORE_VOLT; i++) {
 			core_vol_duration[i].duration +=
@@ -159,7 +163,6 @@ static void swpm_sp_internal_update(void)
 			((uint64_t)duration_time.time_H << 32) |
 			duration_time.time_L;
 		total_duration_us += duration_time_temp;
-
 
 		if (spm_res_sig_tbl) {
 			for (i = 0; i < total_spm_res_sig_num; i++) {
@@ -381,6 +384,12 @@ static int32_t swpm_res_group_id_get(uint32_t ip1, uint32_t ip2, uint32_t ip3,
 	return ret;
 }
 
+static int32_t swpm_data_record_number_get(uint32_t *number)
+{
+	*number = update_count;
+	return 0;
+}
+
 static struct swpm_internal_ops plat_ops = {
 	.cmd = swpm_sp_dispatcher,
 	.ddr_act_times_get = swpm_ddr_act_times,
@@ -400,6 +409,8 @@ static struct swpm_internal_ops plat_ops = {
 		swpm_res_group_info_get,
 	.res_group_id_get =
 		swpm_res_group_id_get,
+	.data_record_number_get =
+		swpm_data_record_number_get,
 };
 
 /* critical section function */
