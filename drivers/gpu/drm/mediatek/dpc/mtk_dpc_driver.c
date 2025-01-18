@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
+#include <linux/sched/clock.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #endif
@@ -619,7 +620,7 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 	else
 		addr = DISP_REG_DPC_MML_SW_HRT_BW;
 
-	writel(bw_in_mb * 100 / g_priv->hrt_emi_efficiency / g_priv->total_hrt_unit,
+	writel(bw_in_mb * 10000 / g_priv->hrt_emi_efficiency / g_priv->total_hrt_unit,
 	       dpc_base + addr);
 
 	if (g_priv->mml_ch_bw_set && subsys != DPC_SUBSYS_DISP)
@@ -641,7 +642,7 @@ static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 		addr = DISP_REG_DPC_DISP_SW_SRT_BW;
 	else
 		addr = DISP_REG_DPC_MML_SW_SRT_BW;
-	writel(bw_in_mb * g_priv->srt_emi_efficiency / 100 / g_priv->total_srt_unit,
+	writel(bw_in_mb * g_priv->srt_emi_efficiency / 10000 / g_priv->total_srt_unit,
 	       dpc_base + addr);
 
 	if (g_priv->mml_ch_bw_set && subsys != DPC_SUBSYS_DISP)
@@ -1077,7 +1078,7 @@ static void dpc_disp_group_enable(bool en)
 		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x21 : 0x60;
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_EDP].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DPTX].cfg);
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x020202 : 0x0e0e0e;
+		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
 		writel(value, dpc_base + DISP_DPC2_DISP_26M_PMIC_VCORE_OFF_CFG);
 	}
 }
@@ -1104,7 +1105,7 @@ static void dpc_mml_group_enable(bool en)
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		/* vcore off */
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x020202 : 0x0e0e0e;
+		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
 		writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
 	}
 }
@@ -1544,6 +1545,10 @@ static bool dpc_is_power_on(void)
 
 static void dpc_analysis(void)
 {
+	char msg[512] = {0};
+	int written = 0;
+	struct timespec64 ts = {0};
+
 	if (!dpc_is_power_on()) {
 		DPCFUNC("disp vcore is not power on");
 		return;
@@ -1552,23 +1557,13 @@ static void dpc_analysis(void)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	DPCDUMP("(ddremi mminfra): (%#010x %#08x)(%#010x %#08x)",
-		readl(dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG),
-		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
-	DPCDUMP("hrt(cfg val): (%#010x %#06x)(%#010x %#06x)",
-		readl(dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG),
-		readl(dpc_base + DISP_REG_DPC_DISP_HIGH_HRT_BW),
-		readl(dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_SW_HRT_BW));
-	DPCDUMP("vdisp(cfg val): (%#04x %#04x)(%#04x %#04x)",
-		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
-		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
-		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
-	DPCDUMP("en(%#x) voter(%#x) mtcmos(%#04x %#04x %#04x %#04x %#04x %#04x)",
-		readl(dpc_base), readl(g_priv->voter_set_va),
+	ktime_get_ts64(&ts);
+	written = scnprintf(msg, 512, "[%lu.%06lu]:", (unsigned long)ts.tv_sec,
+		(unsigned long)DO_COMMMON_MOD(DO_COMMON_DIV(ts.tv_nsec, NSEC_PER_USEC), 1000000));
+
+	written += scnprintf(msg + written, 512 - written,
+		"vidle(%#x) dpc_en(%#x) voter(%#x) mtcmos(%#x %#x %#x %#x %#x %#x) ",
+		g_priv->vidle_mask, readl(dpc_base), readl(g_priv->voter_set_va),
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS0].cfg),
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg),
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_OVL0].cfg),
@@ -1576,22 +1571,47 @@ static void dpc_analysis(void)
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML1].cfg),
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML0].cfg));
 
+	written += scnprintf(msg + written, 512 - written,
+		"vdisp[cfg val](%#04x %#04x)(%#04x %#04x) ",
+		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
+		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
+		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
+		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
+
+	written += scnprintf(msg + written, 512 - written,
+		"hrt[cfg val](%#010x %#06x)(%#010x %#06x) ",
+		readl(dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG),
+		readl(dpc_base + DISP_REG_DPC_DISP_HIGH_HRT_BW),
+		readl(dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG),
+		readl(dpc_base + DISP_REG_DPC_MML_SW_HRT_BW));
+
+	written += scnprintf(msg + written, 512 - written,
+		"[ddremi mminfra](%#010x %#08x)(%#010x %#08x) ",
+		readl(dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG),
+		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
+		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
+		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
+	DPCDUMP("%s", msg);
+
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		int i;
 
-		DPCDUMP("ch(hrt srt): (%#05x %#05x %#05x %#05x)(%#05x %#05x %#05x %#05x)",
-			readl(dpc_base + mt6991_ch_bw_cfg[2].offset),
-			readl(dpc_base + mt6991_ch_bw_cfg[6].offset) >> mt6991_ch_bw_cfg[6].shift,
-			readl(dpc_base + mt6991_ch_bw_cfg[10].offset),
-			readl(dpc_base + mt6991_ch_bw_cfg[14].offset) >> mt6991_ch_bw_cfg[14].shift,
-			readl(dpc_base + mt6991_ch_bw_cfg[0].offset),
-			readl(dpc_base + mt6991_ch_bw_cfg[4].offset) >> mt6991_ch_bw_cfg[4].shift,
-			readl(dpc_base + mt6991_ch_bw_cfg[8].offset),
-			readl(dpc_base + mt6991_ch_bw_cfg[12].offset) >> mt6991_ch_bw_cfg[12].shift);
+		written = scnprintf(msg, 512,
+			"ch[hrt srt](%#04x %#04x %#04x %#04x)(%#04x %#04x %#04x %#04x) dt",
+			(readl(dpc_base + mt6991_ch_bw_cfg[2].offset)) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[6].offset) >> mt6991_ch_bw_cfg[6].shift) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[10].offset)) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[14].offset) >> mt6991_ch_bw_cfg[14].shift) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[0].offset)) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[4].offset) >> mt6991_ch_bw_cfg[4].shift) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[8].offset)) & 0xfff,
+			(readl(dpc_base + mt6991_ch_bw_cfg[12].offset) >> mt6991_ch_bw_cfg[12].shift) & 0xfff);
 
 		for (i = 0; i < DPC2_VIDLE_CNT; i ++)
 			if (g_priv->dpc2_dt_usage[i].en)
-				DPCDUMP("dt idx[%d]=%u", i, g_priv->dpc2_dt_usage[i].val);
+				written += scnprintf(msg + written, 512 - written, "[%d]%u ",
+					i, g_priv->dpc2_dt_usage[i].val);
+		DPCDUMP("%s", msg);
 	}
 
 	dpc_pm_ctrl(false);
@@ -1868,8 +1888,8 @@ static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mml_dt_usage = mt6989_mml_dt_usage,
 	.total_srt_unit = 100,
 	.total_hrt_unit = 32,
-	.srt_emi_efficiency = 100,			// CHECK ME
-	.hrt_emi_efficiency = 100,			// CHECK ME
+	.srt_emi_efficiency = 10000,			// CHECK ME
+	.hrt_emi_efficiency = 10000,			// CHECK ME
 };
 
 static struct mtk_dpc mt6878_dpc_driver_data = {
@@ -1878,8 +1898,8 @@ static struct mtk_dpc mt6878_dpc_driver_data = {
 	.set_mtcmos = mt6989_set_mtcmos,		// same as 6989
 	.disp_irq_handler = mt6989_disp_irq_handler,	// same as 6989
 	.mml_irq_handler = mt6989_mml_irq_handler,	// same as 6989
-	.srt_emi_efficiency = 100,			// CHECK ME
-	.hrt_emi_efficiency = 100,			// CHECK ME
+	.srt_emi_efficiency = 10000,			// CHECK ME
+	.hrt_emi_efficiency = 10000,			// CHECK ME
 };
 
 static struct mtk_dpc mt6991_dpc_driver_data = {
@@ -1893,8 +1913,8 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.dpc2_dt_usage = mt6991_dt_usage,
 	.total_srt_unit = 64,
 	.total_hrt_unit = 64,
-	.srt_emi_efficiency = 133,			// multiply 1.33
-	.hrt_emi_efficiency = 85,			// divide 0.85
+	.srt_emi_efficiency = 13715,			// multiply (1.33 * 33/32(TCU)) = 1.3715
+	.hrt_emi_efficiency = 8242,			// divide (0.85 * 33/32(TCU)) = *100/82.4242
 	.ch_bw_urate = 70,				// divide 0.7
 	.mml_ch_bw_set = mt6991_mml_ch_bw_set,
 };

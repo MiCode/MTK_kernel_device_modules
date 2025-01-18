@@ -40,6 +40,34 @@
 	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 #endif
 
+/* Compatible with 32bit division and mold operation */
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+#define DO_COMMON_DIV(x, base) ((x) / (base))
+#define DO_COMMMON_MOD(x, base) ((x) % (base))
+#else
+#define DO_COMMON_DIV(x, base) ({                   \
+	uint64_t result = 0;                        \
+	if (sizeof(x) < sizeof(uint64_t))           \
+		result = ((x) / (base));            \
+	else {                                      \
+		uint64_t __x = (x);                 \
+		do_div(__x, (base));                \
+		result = __x;                       \
+	}                                           \
+	result;                                     \
+})
+#define DO_COMMMON_MOD(x, base) ({                  \
+	uint32_t result = 0;                        \
+	if (sizeof(x) < sizeof(uint64_t))           \
+		result = ((x) % (base));            \
+	else {                                      \
+		uint64_t __x = (x);                 \
+		result = do_div(__x, (base));       \
+	}                                           \
+	result;                                     \
+})
+#endif
+
 #define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
