@@ -24,6 +24,8 @@
 #include <mt-plat/aee.h>
 #include <mt-plat/mtk_thermal_platform.h>
 #include <tscpu_settings.h>
+#include <gpufreq_v2_legacy.h>
+
 /* ************************************ */
 /* Definition */
 /* ************************************ */

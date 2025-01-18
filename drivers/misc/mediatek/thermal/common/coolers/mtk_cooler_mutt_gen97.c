@@ -350,7 +350,7 @@ static struct clmutt_param clmutt_data = {
  *  Weak Function
  ****************************************************************************/
 unsigned long __attribute__ ((weak))
-ccci_get_md_boot_count(int md_id)
+ccci_get_md_boot_count(void)
 {
 	pr_notice("E_WF: %s doesn't exist\n", __func__);
 	return 0;
@@ -358,7 +358,7 @@ ccci_get_md_boot_count(int md_id)
 
 int __attribute__ ((weak))
 exec_ccci_kern_func(
-int md_id, unsigned int id, char *buf)
+unsigned int id, char *buf, unsigned int len)
 {
 	pr_notice("E_WF: %s doesn't exist\n", __func__);
 	return -316;
@@ -453,21 +453,21 @@ static int clmutt_send_tmc_cmd(unsigned int cmd)
 
 	if (cmd != clmutt_data.cur_limit) {
 		clmutt_data.cur_limit = cmd;
-		clmutt_data.last_md_boot_cnt = ccci_get_md_boot_count(MD_SYS1);
-		ret = exec_ccci_kern_func(MD_SYS1,
-			ID_THROTTLING_CFG, (char *) &cmd);
+		clmutt_data.last_md_boot_cnt = ccci_get_md_boot_count();
+		ret = exec_ccci_kern_func(
+			ID_THROTTLING_CFG, (char *) &cmd,4);
 
 		mtk_cooler_mutt_dprintk_always(
 			"[%s] ret %d param 0x%08x bcnt %lu\n", __func__,
 			ret, cmd, clmutt_data.last_md_boot_cnt);
 
 	} else if (cmd != MUTT_TMC_COOLER_LV_DISABLE) {
-		unsigned long cur_md_bcnt = ccci_get_md_boot_count(MD_SYS1);
+		unsigned long cur_md_bcnt = ccci_get_md_boot_count();
 
 		if (clmutt_data.last_md_boot_cnt != cur_md_bcnt) {
 			clmutt_data.last_md_boot_cnt = cur_md_bcnt;
-			ret = exec_ccci_kern_func(MD_SYS1,
-				ID_THROTTLING_CFG, (char *) &cmd);
+			ret = exec_ccci_kern_func(
+				ID_THROTTLING_CFG, (char *) &cmd,4);
 
 			mtk_cooler_mutt_dprintk_always(
 				"[%s] mdrb ret %d param 0x%08x bcnt %lu\n",
@@ -561,7 +561,7 @@ static int clmutt_send_tm_signal(enum mutt_type type, unsigned long state)
 		ret = -1;
 	}
 
-	mtk_cooler_mutt_dprintk_always("[%s] %s:pid is %d, %d; MD off=%d\n",
+	mtk_cooler_mutt_dprintk_always("[%s] %s:pid is %d, %d; MD off=%lu\n",
 		__func__, clmutt_data.cooler_param[type].name,
 		clmutt_data.tm_pid, clmutt_data.tm_input_pid, state);
 
@@ -807,7 +807,7 @@ static void mtk_cl_mutt_set_onIMS(enum mutt_type type, unsigned long state)
 		clmutt_data.cooler_param[type].noIMS_state = state;
 		clmutt_data.cooler_param[type].target_level = target_lv;
 		clmutt_data.cur_level = target_lv;
-		mtk_cooler_mutt_dprintk_always("[%s] %s:set noIMS state=%d\n",
+		mtk_cooler_mutt_dprintk_always("[%s] %s:set noIMS state=%lu\n",
 			__func__, clmutt_data.cooler_param[type].name, state);
 	}
 }

@@ -12,6 +12,7 @@
 #include <linux/proc_fs.h>
 #include "mt-plat/mtk_thermal_monitor.h"
 #include "mach/mtk_thermal.h"
+#include <gpufreq_v2_legacy.h>
 #include "mt-plat/mtk_thermal_platform.h"
 #if IS_ENABLED(CONFIG_MTK_CLKMGR)
 #include <mach/mtk_clkmgr.h>
@@ -438,9 +439,8 @@ static int is_EARA_handled;
  *Local function prototype
  *=============================================================
  */
-#if IS_ENABLED(CONFIG_MTK_GPU_MT6768_SUPPORT)
 static void set_adaptive_gpu_power_limit(unsigned int limit);
-#endif
+
 /*=============================================================
  *Weak functions
  *=============================================================
@@ -828,7 +828,6 @@ static void set_adaptive_cpu_power_limit(unsigned int limit)
 #endif
 }
 #endif
-#if IS_ENABLED(CONFIG_MTK_GPU_MT6768_SUPPORT)
 static void set_adaptive_gpu_power_limit(unsigned int limit)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
@@ -880,7 +879,7 @@ static void set_adaptive_gpu_power_limit(unsigned int limit)
 #endif
 #endif
 }
-#endif
+
 #if defined(THERMAL_VPU_SUPPORT)
 static void set_adaptive_vpu_power_limit(unsigned int limit)
 {
