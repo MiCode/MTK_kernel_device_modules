@@ -1200,9 +1200,11 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, ui32MinWorkingFreqID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
+	int is_fix_dvfs = 0;
 	int top_freq_diff = 0, sc_freq_diff = 0;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
+	is_fix_dvfs = ged_is_fix_dvfs();
 
 	if (ui32CurFreqID == -1)
 		return bCommited;
@@ -1221,7 +1223,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		ui32CeilingID = ged_get_cur_limit_idx_ceil();
 		ui32FloorID = ged_get_cur_limit_idx_floor();
 
-		if (g_force_disable_dcs) {
+		if (g_force_disable_dcs || is_fix_dvfs > 0) {
 			ui32MinWorkingFreqID = ged_get_min_oppidx_real();
 			if (ui32NewFreqID > ui32MinWorkingFreqID)
 				ui32NewFreqID = ui32MinWorkingFreqID;
@@ -1290,6 +1292,8 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		if (dcs_get_adjust_support() % 2 != 0)
 			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
+		trace_tracing_mark_write(5566, "fix", is_fix_dvfs);
+
 		policy_state = ged_get_policy_state();
 
 		if (policy_state != POLICY_STATE_INIT && eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
@@ -1310,10 +1314,12 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	int ret = GED_OK;
+	int is_fix_dvfs = 0;
 	int top_freq_diff = 0, sc_freq_diff = 0;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 	newTopFreq = ged_get_top_freq_by_virt_opp(topNewFreqID);
+	is_fix_dvfs = ged_is_fix_dvfs();
 
 	if (ui32CurFreqID == -1)
 		return bCommited;
@@ -1329,7 +1335,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	ui32FloorID = ged_get_cur_limit_idx_floor();
 
-	if (g_force_disable_dcs) {
+	if (g_force_disable_dcs || is_fix_dvfs > 0) {
 		ui32MinWorkingFreqID = ged_get_min_oppidx_real();
 		if (stackNewFreqID > ui32MinWorkingFreqID) {
 			stackNewFreqID = ui32MinWorkingFreqID;
@@ -1424,6 +1430,8 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		trace_tracing_mark_write(5566, "eb_update_vir", stackNewFreqID);
 	if (dcs_get_adjust_support() % 2 != 0)
 		trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
+
+	trace_tracing_mark_write(5566, "fix", is_fix_dvfs);
 
 	policy_state = ged_get_policy_state();
 

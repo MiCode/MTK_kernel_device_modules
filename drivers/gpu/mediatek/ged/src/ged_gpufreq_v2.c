@@ -739,6 +739,25 @@ unsigned int ged_get_cur_limiter_floor(void)
 	return gpufreq_get_cur_limiter(TARGET_DEFAULT, GPUPPM_FLOOR);
 }
 
+int ged_is_fix_dvfs(void)
+{
+	int cur_floor = 0;
+	int cur_ceil = 0;
+	int dvfs_state = 0;
+
+	dvfs_state = gpufreq_get_dvfs_state();
+
+	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT)
+		return dvfs_state & DVFS_FIX_OPP | dvfs_state & DVFS_FIX_FREQ_VOLT;
+
+	cur_floor =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_FLOOR);
+	cur_ceil =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_CEILING);
+	if (cur_floor == cur_ceil)
+		return 1;
+
+	return 0;
+}
+
 int ged_set_limit_ceil(int limiter, int ceil)
 {
 	if (ceil > g_min_working_oppidx)
@@ -787,7 +806,6 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	unsigned int freq = 0, core_mask_tar = 0, core_num_tar = 0;
 	unsigned int ud_mask_bit = 0;
 
-	int dvfs_state = 0;
 	g_cur_oppidx = oppidx;
 
 	oppidx_cur = ged_get_cur_oppidx();
@@ -813,14 +831,6 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	ged_dvfs_set_sysram_last_commit_top_idx(oppidx_tar);
 	ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
 	ged_dvfs_set_sysram_last_commit_dual_idx(oppidx_tar, oppidx_tar);
-
-	/* scaling cores to max if freq. is fixed */
-	dvfs_state = gpufreq_get_dvfs_state();
-
-	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT) {
-		mask_idx = 0;
-		oppidx_tar = oppidx;
-	}
 
 	if (is_dcs_enable()) {
 		if (dcs_get_dcs_stress()) {
@@ -896,8 +906,6 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	unsigned int freq = 0, core_mask_tar = 0, core_num_tar = 0;
 	unsigned int ud_mask_bit = 0;
 
-	int dvfs_state = 0;
-
 	if (gpu_oppidx < 0 || stack_oppidx < 0) {
 		GED_LOGE("[DVFS_ASYNC] oppidx in dual_commit is invalid: gpu(%d) stack(%d)",
 				gpu_oppidx, stack_oppidx);
@@ -940,13 +948,6 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 		ged_dvfs_set_sysram_last_commit_top_idx(gpu_oppidx);
 		ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
 		ged_dvfs_set_sysram_last_commit_dual_idx(gpu_oppidx, oppidx_tar);
-	}
-	/* scaling cores to max if freq. is fixed */
-	dvfs_state = gpufreq_get_dvfs_state();
-
-	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT) {
-		mask_idx = 0;
-		oppidx_tar = stack_oppidx;
 	}
 
 	if (is_dcs_enable()) {
