@@ -24,7 +24,7 @@
 
 #define MICTX_RESET_NS 1000000000
 
-static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __s8 id)
+static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u64 id)
 {
 	struct mtk_btag_mictx *mictx;
 
@@ -365,17 +365,17 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx *mictx;
 
 	if (!iostat)
-		return -1;
+		return -EINVAL;
 
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
-		return -1;
+		return -ENODEV;
 
 	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
 	if (!mictx) {
 		rcu_read_unlock();
-		return -1;
+		return -ENOENT;
 	}
 
 	memset(iostat, 0, sizeof(struct mtk_btag_mictx_iostat_struct));
@@ -528,12 +528,20 @@ void mtk_btag_mictx_free_all(struct mtk_blocktag *btag)
 	}
 }
 
-void mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable)
+int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable)
 {
-	if (enable)
-		mictx_id->id = mictx_alloc(mictx_id->storage);
-	else
+	int ret;
+
+	if (enable) {
+		ret = mictx_alloc(mictx_id->storage);
+		if (ret < 0)
+			return ret;
+		mictx_id->id = ret;
+	} else {
 		mictx_free(mictx_id);
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_btag_mictx_enable);
 

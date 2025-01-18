@@ -178,8 +178,7 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
-	if (mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat))
-		mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+	mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat);
 
 	top = earaio_ctrl.pwd_top_pages;
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
@@ -594,6 +593,7 @@ void mtk_btag_earaio_init_mictx(
 	struct proc_dir_entry *btag_proc_root)
 {
 	struct proc_dir_entry *proc_entry;
+	int ret;
 
 	if (!vops->earaio_enabled)
 		return;
@@ -612,7 +612,11 @@ void mtk_btag_earaio_init_mictx(
 	}
 
 	/* Enable mictx by default if EARA-IO is enabled*/
-	mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+	ret = mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+	if (ret) {
+		pr_notice("earaio mictx enable failed: %d\n", ret);
+		return;
+	}
 
 	/* Disable Full Logging for earaio by default */
 	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
