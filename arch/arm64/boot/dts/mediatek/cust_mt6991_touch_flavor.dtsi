@@ -8,17 +8,17 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	pinctrl-names = "default", "gt9916_int_active",
-		"gt9916_reset_active", "gt9916_int_suspend",
-		"gt9916_reset_suspend", "gt9916_spi_mode",
-		"synaptics_spi_mode";
-	pinctrl-0 = <&ctp_gt9916_pins_default>;
-	pinctrl-1 = <&ctp_gt9916_int_active>;
-	pinctrl-2 = <&ctp_gt9916_reset_active>;
-	pinctrl-3 = <&ctp_gt9916_int_suspend>;
-	pinctrl-4 = <&ctp_gt9916_reset_suspend>;
-	pinctrl-5 = <&ctp_gt9916_spi_mode>;
-	pinctrl-6 = <&ctp_synaptics_spi_mode>;
+	pinctrl-names = "default",
+		"synaptics_spi_mode","gt9896s_int_active",
+		"gt9896s_reset_active", "gt9896s_int_suspend",
+		"gt9896s_reset_suspend", "gt9896s_spi_mode";
+	pinctrl-0 = <&ctp_gt9896s_pins_default>;
+	pinctrl-1 = <&ctp_synaptics_spi_mode>;
+	pinctrl-2 = <&ctp_gt9896s_int_active>;
+	pinctrl-3 = <&ctp_gt9896s_reset_active>;
+	pinctrl-4 = <&ctp_gt9896s_int_suspend>;
+	pinctrl-5 = <&ctp_gt9896s_reset_suspend>;
+	pinctrl-6 = <&ctp_gt9896s_spi_mode>;
 
 	multi-touchscreen@0 {
 		compatible = "goodix,brl-d",
@@ -38,26 +38,16 @@
 		goodix,irq-gpio = <&pio 7 0x0>;
 		goodix,irq-flags = <2>; /* 1:rising, 2:falling;*/
 		goodix,panel-max-id = <10>;
-		goodix,panel-max-x = <12200>;
-		goodix,panel-max-y = <27120>;
+		goodix,panel-max-x = <1260>;
+		goodix,panel-max-y = <2800>;
 		goodix,panel-max-w = <256>;
 		goodix,panel-max-p = <256>;
-		goodix,input-max-x = <12200>;
-		goodix,input-max-y = <27120>;
-		gt9916,power-voltage = <2800000>;
+		gt9895,power-voltage = <2800000>;
 		goodix,panel-key-map = <158 172 217>; /*BACK,HOMEPAGE,SEARCH*/
 		goodix,power-on-delay-us = <10000>; /*10ms*/
 		goodix,power-off-delay-us = <5000>;
-		gt9916,firmware-name = "gt9916_L12_firmware_6985v01.bin";
-		gt9916,config-name = "gt9916_L12_cfg_6985v01.bin";
-		/*goodix,swap-axis;*/
-		goodix,x2x;
-		goodix,y2y;
-		goodix,pen-enable;
-		tpd-filter-enable = <0>;
-		tpd-filter-pixel-density = <161>;
-		tpd-filter-custom-prameters = <0 0 0 0 0 0 0 0 0 0 0 0>;
-		tpd-filter-custom-speed = <0 0 0>;
+		gt9895,firmware-name = "gt9916r_firmware_6991v01.bin";
+		gt9895,config-name = "gt9916r_cfg_6991v01.bin";
 
 		synaptics,pwr-reg-name = "vtouch";
 		synaptics,irq-gpio = <&pio 7 0x2008>;
@@ -75,7 +65,6 @@
 		avdd-supply = <&mt6373_vtp>;
 		fts,config-array-size = <1>;
 		fts,pwr-reg-name = "avdd";
-		//fts,bus-reg-name = "vdd";
 		fts,irq-gpio = <&pio 7 0x0>;
 		fts,irq-gpio-name = "fts_irq";
 		fts,reset-gpio-enable;
@@ -86,19 +75,10 @@
 		fts,y-max = <32000>;/*Super resolution*/
 		fts,screen-x = <1440>;
 		fts,screen-y = <3200>;
-		//fts,fod-lx = <4180>;
-		//fts,fod-ly = <16810>;
 		fts,support-super-resolution = <1>;
-		//spi-max-frequency = <12000000>;
 		fts,default-fw-name = "st_fts_L11a.ftb";
 		fts,old-fw-name = "st_fts_L11.ftb";
 		fts,thp-fw-name = "st_fts_L11a_thp.ftb";
-/*		fts,touch-up-threshold-min = <40>;	*/
-/*		fts,touch-up-threshold-max = <120>;	*/
-/*		fts,touch-up-threshold-def = <80>;	*/
-/*		fts,touch-tolerance-min = <5>;		*/
-/*		fts,touch-tolerance-max = <35>;		*/
-/*		fts,touch-tolerance-def = <25>;*/
 		fts,touch-follow-performance-def = <3>;
 		fts,touch-tap-sensitivity-def = <4>;
 		fts,touch-aim-sensitivity-def = <3>;
@@ -163,33 +143,33 @@
 };
 
 &pio {
-	ctp_gt9916_pins_default: pins-default {
+	ctp_gt9896s_pins_default: pins-default {
 	};
-	ctp_gt9916_int_active: int1-active {
+	ctp_gt9896s_int_active: int2-active {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
 			input-enable;
 		};
 	};
-	ctp_gt9916_reset_active: reset1-active {
+	ctp_gt9896s_reset_active: reset2-active {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
 			output-high;
 		};
 	};
-	ctp_gt9916_int_suspend: int1-suspend {
+	ctp_gt9896s_int_suspend: int2-suspend {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
 			output-low;
 		};
 	};
-	ctp_gt9916_reset_suspend: reset1-suspend {
+	ctp_gt9896s_reset_suspend: reset2-suspend {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
 			output-low;
 		};
 	};
-	ctp_gt9916_spi_mode: spimode-default {
+	ctp_gt9896s_spi_mode: spimode2-default {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO81__FUNC_SPI6_B_CLK>,
 				<PINMUX_GPIO82__FUNC_SPI6_B_CSB>,
@@ -243,6 +223,7 @@
 		};
 	};
 };
+
 &odm {
 	tc8_touch: tc8-touch {
 		compatible = "tc8sp-touch";
