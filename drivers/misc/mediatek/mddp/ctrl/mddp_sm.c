@@ -76,7 +76,7 @@ void mddp_check_feature(void)
 	struct check_feature_req ap_info = {
 		.major_version = 13,
 		.minor_version = 0,
-		.wifi_feature = 0
+		.wifi_feature = 1
 	};
 
 	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
