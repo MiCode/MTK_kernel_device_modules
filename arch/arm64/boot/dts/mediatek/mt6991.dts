@@ -461,10 +461,14 @@
 
 	clkchk {
 		compatible = "mediatek,mt6991-clkchk";
+		hwv-regmap = <&hwv>;
+		mm-hwv-regmap = <&mm_hwv>;
 	};
 
 	pdchk {
 		compatible = "mediatek,mt6991-pdchk";
+		hwv-regmap = <&hwv>;
+		mm-hwv-regmap = <&mm_hwv>;
 		interrupts = <GIC_SPI 389 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 825 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "hwv_irq", "hfrp_hwv_irq";
