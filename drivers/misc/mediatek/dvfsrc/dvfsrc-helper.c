@@ -1478,7 +1478,7 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768) || IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6765)
 	if (dvfsrc->dvd->qos)
 		dvfsrc->dvd->qos->qos_dvfsrc_init(dvfsrc);
 #endif
