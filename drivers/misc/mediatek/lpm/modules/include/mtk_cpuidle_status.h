@@ -59,10 +59,8 @@ do {                                                            \
 	} else if (param == IDLE_PARAM_EN) {			\
 		if (!!val) {					\
 			get_disabled(drv, state) &= ~CPUIDLE_FLAG_UNUSABLE;	\
-			cpuidle_driver_state_disabled(drv, state, false);	\
 		} else {							\
 			get_disabled(drv, state) |= CPUIDLE_FLAG_UNUSABLE;	\
-			cpuidle_driver_state_disabled(drv, state, true);	\
 		}								\
 	}							\
 } while (0)
