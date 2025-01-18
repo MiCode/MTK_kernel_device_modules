@@ -97,7 +97,7 @@ int scp_awake_lock(void *_scp_id)
 	count = 0;
 	while (++count != SCP_AWAKE_TIMEOUT) {
 #if SCP_RECOVERY_SUPPORT
-		if (atomic_read(&scp_reset_status) == RESET_STATUS_START) {
+		if (atomic_read(&scp_reset_status) != RESET_STATUS_STOP) {
 			pr_notice("%s: resetting scp, break\n", __func__);
 			break;
 		}
@@ -152,7 +152,7 @@ int scp_awake_lock(void *_scp_id)
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
 
 	if (ret == -1) {
-		pr_notice("%s: awake %s fail..\n", __func__, core_id);
+		pr_notice("%s: awake %s fail.., %dus\n", __func__, core_id, count*10);
 		scp_smc_awake_ctrl(IS_AWAKE_FAIL);
 #if SCP_RECOVERY_SUPPORT
 		/*
@@ -243,7 +243,7 @@ int scp_awake_unlock(void *_scp_id)
 	count = 0;
 	while (++count != SCP_AWAKE_TIMEOUT) {
 #if SCP_RECOVERY_SUPPORT
-		if (atomic_read(&scp_reset_status) == RESET_STATUS_START) {
+		if (atomic_read(&scp_reset_status) != RESET_STATUS_STOP) {
 			pr_notice("%s: scp is being reset, break\n", __func__);
 			break;
 		}
@@ -303,7 +303,7 @@ int scp_awake_unlock(void *_scp_id)
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
 
 	if (ret == -1) {
-		pr_notice("%s: awake %s fail..\n", __func__, core_id);
+		pr_notice("%s: awake %s fail.., %dus\n", __func__, core_id, count*10);
 		scp_smc_awake_ctrl(IS_AWAKE_FAIL);
 #if SCP_RECOVERY_SUPPORT
 		/*
