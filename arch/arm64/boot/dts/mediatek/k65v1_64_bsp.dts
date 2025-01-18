@@ -16,10 +16,6 @@
 	status = "ok";
 };
 
-&mtkheap_region_wfd {
-	status = "ok";
-};
-
 /* chosen */
 &chosen {
 
