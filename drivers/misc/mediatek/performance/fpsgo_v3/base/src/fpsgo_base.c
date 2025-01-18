@@ -643,7 +643,7 @@ static int fpsgo_fbt_delete_rl_render(int pid, unsigned long long buf_id)
 	return ret;
 }
 
-static int fpsgo_fbt_delete_power_rl(int pid, unsigned long long buf_id)
+int fpsgo_fbt_delete_power_rl(int pid, unsigned long long buf_id)
 {
 	int ret = 0;
 
@@ -948,6 +948,7 @@ void fpsgo_delete_render_info(int pid,
 	}
 	fpsgo_fbt_delete_rl_render(pid, buffer_id);
 	fpsgo_fbt_delete_power_rl(pid, buffer_id);
+	fbt_task_reset_pmu(&data->pmu_info_tree, 0);
 	fpsgo_fstb2other_info_update(data->pid,
 		data->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 	fpsgo_thread_unlock(&data->thr_mlock);
@@ -1753,6 +1754,7 @@ int fpsgo_check_thread_status(void)
 			}
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 			fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
+			fbt_task_reset_pmu(&iter->pmu_info_tree, 0);
 			fpsgo_fstb2other_info_update(iter->pid,
 				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 			fpsgo_thread_unlock(&iter->thr_mlock);
@@ -1840,6 +1842,7 @@ void fpsgo_clear(void)
 		}
 		fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 		fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
+		fbt_task_reset_pmu(&iter->pmu_info_tree, 0);
 		fpsgo_fstb2other_info_update(iter->pid,
 			iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 		fpsgo_thread_unlock(&iter->thr_mlock);
