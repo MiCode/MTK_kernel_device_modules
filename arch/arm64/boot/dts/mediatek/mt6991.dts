@@ -4272,6 +4272,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dma-mask-bit = <35>;
 			support-gce-vm;
 			support-spr3-timer;
+			ddr-urgent;
+			cmdq-tfa-read-dbg;
 		};
 
 		gce_m: gce@30140000 {
@@ -4297,6 +4299,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dma-mask-bit = <35>;
 			support-gce-vm;
 			support-spr3-timer;
+			ddr-urgent;
+			cmdq-tfa-read-dbg;
 		};
 
 		cmdq-test {
