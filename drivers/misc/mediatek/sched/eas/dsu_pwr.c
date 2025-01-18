@@ -193,3 +193,21 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 
 	return dsu_pwr[DSU_PWR_TAL];
 }
+
+unsigned long (*mtk_get_dsu_pwr_hook)(int wl_type, int dst_cpu, unsigned long task_util,
+		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base);
+EXPORT_SYMBOL(mtk_get_dsu_pwr_hook);
+#ifdef DSU_PWR_HOOK
+unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
+		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		bool dsu_pwr_enable)
+{
+	if (mtk_get_dsu_pwr_hook) {
+		return mtk_get_dsu_pwr_hook(wl_type, dst_cpu, task_util,
+			total_util, dsu, extern_volt, dsu_pwr_enable,
+			PERCORE_L3_BW, get_clkg_sram_base_addr());
+	}
+	return 0;
+}
+#endif
