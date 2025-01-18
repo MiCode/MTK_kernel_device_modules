@@ -131,6 +131,13 @@ enum {
 	eint_state011,
 	eint_inverter_state000,
 };
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
 /* just be called by audio module for DC trim */
 extern void mt6681_accdet_late_init(unsigned long data);
 extern const struct file_operations *accdet_get_fops(void);
