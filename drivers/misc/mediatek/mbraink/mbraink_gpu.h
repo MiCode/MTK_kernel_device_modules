@@ -18,4 +18,5 @@ int mbraink_gpu_getOppInfo(struct mbraink_gpu_opp_info *gOppInfo);
 int mbraink_gpu_getStateInfo(struct mbraink_gpu_state_info *gStateInfo);
 int mbraink_gpu_getLoadingInfo(struct mbraink_gpu_loading_info *gLoadingInfo);
 
+void mbraink_gpu_setOpMode(int OpMode);
 #endif /*end of MBRAINK_GPU_H*/

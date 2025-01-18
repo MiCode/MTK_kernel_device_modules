@@ -7,10 +7,12 @@ subdir-ccflags-y += -I$(MTK_MBRAINK_FOLDER)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
 
+ifeq ($(CONFIG_MTK_FPSGO_V3),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/fstb/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/fstb/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/mt-plat/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/mt-plat/
+endif
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
@@ -18,8 +20,10 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/regulator/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/regulator/
 
+ifeq ($(CONFIG_MTK_GPU_SUPPORT),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
+endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/
 

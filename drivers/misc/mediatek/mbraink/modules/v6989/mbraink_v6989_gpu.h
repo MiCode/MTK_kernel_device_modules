@@ -29,4 +29,9 @@ void fpsgo2mbrain_hint_deleteperfinfo(int pid, unsigned long long bufID,
 
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+void gpu2mbrain_hint_fenceTimeoutNotify(int pid, void *data, unsigned long long time);
+void gpu2mbrain_hint_GpuResetDoneNotify(unsigned long long time);
+#endif
+
 #endif /*end of MBRAINK_V6989_GPU_H*/

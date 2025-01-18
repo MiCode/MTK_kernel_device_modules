@@ -32,6 +32,9 @@
 #define NETLINK_EVENT_SYSBINDER		"NLEvent_SysBinder"
 #define NETLINK_EVENT_SYSNOTIFIER_PS	"NLEvent_SysNotifierPS"
 #define NETLINK_EVENT_PERFTIMEOUT		"NLEvent_PERFTO"
+#define NETLINK_EVENT_PERFLOWOUT		"NLEvent_PERFLO"
+#define NETLINK_EVENT_GPUFENCETIMOEUT "NLEvent_GFTO"
+#define NETLINK_EVENT_GPURESETDONE "NLEvent_GReset"
 #define NETLINK_EVENT_SYSPROCESS	"NLEvent_SysProcess"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
@@ -61,6 +64,15 @@
 #define MD_BLK_SZ 300
 #define MD_SECBLK_NUM 6
 #define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
+#define MAX_GPU_FENCE_RECORD_DATA 8
+
+enum mbraink_op_mode {
+	mbraink_op_mode_normal = 0,
+	mbraink_op_mode_sbe = 1,
+	mbraink_op_mode_game = 2,
+	mbraink_op_mode_camera = 3,
+	mbraink_op_mode_max = 4
+};
 
 struct mbraink_process_stat_struct {
 	unsigned short pid;
@@ -334,4 +346,9 @@ struct mbraink_pmic_voltage_info {
 	uint64_t vcore;
 	uint64_t vsram_core;
 };
+
+struct mbraink_operation_mode_info {
+	enum mbraink_op_mode opMode;
+};
+
 #endif
