@@ -1876,11 +1876,11 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 			mmap_read_unlock(rms_mm);
 			mmput(rms_mm);
-			put_task_struct(task);
 			if (copy_to_user(thread_info.Userthread_maps,
 				maps, mapsLength)) {
 				vfree(maps);
 				ret = -EFAULT;
+				put_task_struct(task);
 				goto EXIT;
 			}
 
@@ -1889,6 +1889,7 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			if (end == 0) {
 				pr_info("Dump native stack failed:\n");
 				ret = -EFAULT;
+				put_task_struct(task);
 				goto EXIT;
 			}
 
@@ -1899,11 +1900,13 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			stack = vmalloc(MaxStackSize);
 			if (!stack) {
 				ret = -ENOMEM;
+				put_task_struct(task);
 				goto EXIT;
 			}
 
 			copied = access_process_vm(task, start,
 				stack, length, 0);
+			put_task_struct(task);
 			if (copied != length) {
 				pr_info("Access stack error");
 				vfree(stack);
