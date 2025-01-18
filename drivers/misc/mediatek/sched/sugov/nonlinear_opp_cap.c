@@ -884,6 +884,19 @@ int get_eas_hook(void)
 }
 EXPORT_SYMBOL_GPL(get_eas_hook);
 
+int (*mtk_data_hook)(int *data);
+EXPORT_SYMBOL(mtk_data_hook);
+int mtk_data_get(int *data)
+{
+	if (em_ver() == 3) {
+		if (mtk_data_hook)
+			return mtk_data_hook(data);
+		return 0;
+	}
+	return 1;
+}
+EXPORT_SYMBOL_GPL(mtk_data_get);
+
 int (*mtk_opp2freq_hook)(int cpu, int opp, int quant, int wl);
 EXPORT_SYMBOL(mtk_opp2freq_hook);
 int pd_opp2freq(int cpu, int opp, int quant, int wl)
