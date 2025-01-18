@@ -235,12 +235,6 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
-void mtk_set_dt_configure(u8 dt, unsigned int us)
-{
-	if (disp_dpc_driver.dpc_dt_set)
-		disp_dpc_driver.dpc_dt_set(dt, us);
-}
-
 int mtk_vidle_update_dt_by_period(void *_crtc)
 {
 	struct drm_crtc *crtc = NULL;
@@ -250,7 +244,7 @@ int mtk_vidle_update_dt_by_period(void *_crtc)
 	if (!mtk_disp_vidle_flag.vidle_en)
 		return -1;
 
-	if (_crtc == NULL || !disp_dpc_driver.dpc_dt_set)
+	if (_crtc == NULL || !disp_dpc_driver.dpc_duration_update)
 		return -1;
 
 	crtc = (struct drm_crtc *)_crtc;
@@ -270,23 +264,13 @@ int mtk_vidle_update_dt_by_period(void *_crtc)
 
 	if (duration == vidle_data.te_duration)
 		return duration;
-	else if ((duration > vidle_data.te_duration) || (duration != 8333)) {
-		DDPMSG("%s %d -> %d, disable ff\n", __func__, vidle_data.te_duration, duration);
+	else if (duration > vidle_data.te_duration)
 		mtk_vidle_config_ff(false);
-	} else
-		DDPINFO("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
 
+	disp_dpc_driver.dpc_duration_update(duration);
+
+	DDPMSG("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
 	vidle_data.te_duration = duration;
-
-#if IF_ZERO
-	/* update DTs affected by TE duration */
-	disp_dpc_driver.dpc_dt_set(1, duration - DT_OVL_OFFSET);
-	disp_dpc_driver.dpc_dt_set(5, duration - DT_DISP1_OFFSET);
-	disp_dpc_driver.dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
-	disp_dpc_driver.dpc_dt_set(33, duration - DT_OVL_OFFSET);
-	disp_dpc_driver.dpc_dt_set(64, duration - DT_VCORE_OFFSET);
-	disp_dpc_driver.dpc_dt_set(73, duration - DT_VCORE_OFFSET);
-#endif
 
 	return duration;
 }
