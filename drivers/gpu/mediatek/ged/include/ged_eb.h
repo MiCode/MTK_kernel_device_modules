@@ -423,7 +423,6 @@ extern int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
 extern unsigned int
 	mtk_gpueb_dvfs_set_feedback_info(int frag_done_interval_in_ns,
 	struct GpuUtilization_Ex util_ex, unsigned int curr_fps);
-extern unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction);
 extern unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action);
 unsigned int mtk_gpueb_set_fallback_mode(int fallback_status);
 unsigned int mtk_gpueb_set_stability_mode(int stability_status);

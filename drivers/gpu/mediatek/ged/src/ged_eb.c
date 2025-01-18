@@ -52,8 +52,7 @@ int g_is_fastdvfs_enable;
 int g_is_fulltrace_enable;
 
 int g_is_stability_enable;
-unsigned int fastdvfs_mode;
-unsigned int eb_policy_mode;
+static unsigned int eb_policy_mode;
 
 bool need_to_refresh_mode = true;
 static struct hrtimer g_HT_fdvfs_debug;
@@ -561,10 +560,6 @@ EXPORT_SYMBOL(mtk_gpueb_dvfs_get_desire_freq_dual);
 unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
 {
 	int ret = 0;
-	struct fdvfs_ipi_data ipi_data;
-
-	ipi_data.u.set_para.arg[0] = action;
-
 	eb_policy_mode = action;
 
 	/* mpdify fallback interval timer */
@@ -581,20 +576,11 @@ unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
 		ged_kpi_set_loading_mode(0,
 					GED_DEFAULT_SLIDE_STRIDE_SIZE);
 
-	mtk_gpueb_set_stability_mode(eb_policy_mode);
+	ret = mtk_gpueb_set_stability_mode(eb_policy_mode);
 
 	return ret;
 }
 EXPORT_SYMBOL(mtk_gpueb_dvfs_set_mode);
-
-unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction)
-{
-	if (pAction != NULL)
-		*pAction = fastdvfs_mode;
-
-	return fastdvfs_mode;
-}
-EXPORT_SYMBOL(mtk_gpueb_dvfs_get_mode);
 
 int mtk_gpueb_power_modle_cmd(unsigned int enable)
 {
@@ -968,16 +954,6 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 {
 	char show_string[256];
 	unsigned int ui32FastDVFSMode = 0;
-
-	 mtk_gpueb_dvfs_get_mode(&ui32FastDVFSMode);
-
-	scnprintf(show_string, 256, "FastDVFS enable : %d. (%d)\n",
-		g_is_fastdvfs_enable, ui32FastDVFSMode);
-	seq_puts(m, show_string);
-
-	scnprintf(show_string, 256, "FullTrace enable : %d. (%d)\n",
-		g_is_fulltrace_enable, ui32FastDVFSMode);
-	seq_puts(m, show_string);
 
 	if (g_is_fulltrace_enable == 1) {
 /*

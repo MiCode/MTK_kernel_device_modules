@@ -57,7 +57,6 @@ extern unsigned long g_ulWorkingPeriod_us;
 extern unsigned long g_desire_freq;
 extern unsigned long g_desire_freq_stack;
 extern unsigned long g_desire_freq_top;
-extern unsigned int g_fastdvfs_mode;
 extern unsigned int g_ged_gpueb_support;
 extern unsigned int g_ged_fdvfs_support;
 extern unsigned int g_ged_gpu_freq_notify_support;
