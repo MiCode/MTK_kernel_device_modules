@@ -1782,7 +1782,8 @@ static int ul_cm0_event(struct snd_soc_dapm_widget *w,
 		mt6991_set_cm(afe, CM0, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		mt6991_enable_cm_bypass(afe, CM0, 0x1);
+		/* remove so we fix in normal mode */
+		// mt6991_enable_cm_bypass(afe, CM0, 0x1);
 		break;
 	default:
 		break;
@@ -1808,7 +1809,8 @@ static int ul_cm1_event(struct snd_soc_dapm_widget *w,
 		mt6991_set_cm(afe, CM1, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		mt6991_enable_cm_bypass(afe, CM1, 0x1);
+		/* remove so we fix in normal mode */
+		// mt6991_enable_cm_bypass(afe, CM1, 0x1);
 		break;
 	default:
 		break;
@@ -1834,7 +1836,8 @@ static int ul_cm2_event(struct snd_soc_dapm_widget *w,
 		mt6991_set_cm(afe, CM2, 0x1, false, channels);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		mt6991_enable_cm_bypass(afe, CM2, 0x1);
+		/* remove so we fix in normal mode */
+		// mt6991_enable_cm_bypass(afe, CM2, 0x1);
 		break;
 	default:
 		break;
@@ -3194,19 +3197,19 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 			  &ul_cm2_mux_control),
 
 	SND_SOC_DAPM_SUPPLY("CM0_Enable",
-			AFE_CM0_CON0, AFE_CM0_ON_SFT, 0,
+			SND_SOC_NOPM, 0, 0,
 			ul_cm0_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
 
 	SND_SOC_DAPM_SUPPLY("CM1_Enable",
-			AFE_CM1_CON0, AFE_CM1_ON_SFT, 0,
+			SND_SOC_NOPM, 0, 0,
 			ul_cm1_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
 
 	SND_SOC_DAPM_SUPPLY("CM2_Enable",
-			AFE_CM2_CON0, AFE_CM2_ON_SFT, 0,
+			SND_SOC_NOPM, 0, 0,
 			ul_cm2_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
@@ -5808,6 +5811,11 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_IRQ24_MCU_CFG1:
 	case AFE_IRQ25_MCU_CFG1:
 	case AFE_IRQ26_MCU_CFG1:
+	case AFE_CM0_CON0:
+	case AFE_CM1_CON0:
+	case AFE_CM2_CON0:
+	//case AFE_SRAM_9100:
+	//case AFE_SRAM_9200:
 	/* for vow using */
 	case AFE_IRQ_MCU_SCP_EN:
 	case AFE_VUL_CM0_BASE_MSB:
@@ -5926,7 +5934,7 @@ static int mt6991_afe_runtime_suspend(struct device *dev)
 	unsigned int tmp_reg = 0;
 	int ret = 0, i;
 
-	dev_dbg(afe->dev, "%s() ready to stop\n", __func__);
+	dev_dbg_ratelimited(afe->dev, "%s() ready to stop\n", __func__);
 
 	if (!afe->regmap) {
 		dev_info(afe->dev, "%s() skip regmap\n", __func__);
@@ -5943,7 +5951,7 @@ static int mt6991_afe_runtime_suspend(struct device *dev)
 				       (value & AUDIO_ENGEN_MON_SFT) == 0,
 				       20,
 				       1 * 1000 * 1000);
-	dev_dbg(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
+	dev_dbg_ratelimited(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
 	if (ret)
 		dev_info(afe->dev, "%s(), ret %d\n", __func__, ret);
 
@@ -5992,7 +6000,7 @@ static int mt6991_afe_runtime_resume(struct device *dev)
 	int ret = 0;
 
 	ret = mt6991_afe_enable_clock(afe);
-	dev_dbg(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
+	dev_dbg_ratelimited(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
 
 	if (ret)
 		return ret;
