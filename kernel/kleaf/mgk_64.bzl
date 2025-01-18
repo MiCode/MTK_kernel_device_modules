@@ -393,6 +393,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mminfra/mm-fake-engine.ko",
     "drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko",
     "drivers/misc/mediatek/mmp/src/mmprofile.ko",
+    "drivers/misc/mediatek/mme/src/mme.ko",
     "drivers/misc/mediatek/mmqos/mmqos_wrapper.ko",
     "drivers/misc/mediatek/mmstat/trace_mmstat.ko",
     "drivers/misc/mediatek/monitor_hang/monitor_hang.ko",
