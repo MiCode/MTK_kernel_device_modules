@@ -204,6 +204,7 @@ mgk_64_device_modules = [
     "drivers/input/touchscreen/tui-common.ko",
     "drivers/interconnect/mediatek/mmqos-common.ko",
     "drivers/interconnect/mediatek/mtk-emi.ko",
+    "drivers/interconnect/mediatek/mtk-emibus-icc.ko",
     "drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko",
