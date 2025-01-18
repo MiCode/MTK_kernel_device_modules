@@ -113,8 +113,11 @@
 #define COLOR_READ_WRK_REG		BIT(2)
 #define COLOR_BYPASS_ALL		BIT(7)
 #define COLOR_SEQ_SEL			BIT(13)
-#define FLD_S_GAIN_BY_Y_EN	REG_FLD_MSB_LSB(15, 15)
-#define FLD_LSP_EN		REG_FLD_MSB_LSB(20, 20)
+#define FLD_ALLBP			REG_FLD_MSB_LSB(7, 7)
+#define FLD_WIDE_GAMUT_EN		REG_FLD_MSB_LSB(8, 8)
+#define FLD_S_GAIN_BY_Y_EN		REG_FLD_MSB_LSB(15, 15)
+#define FLD_LSP_EN			REG_FLD_MSB_LSB(20, 20)
+#define FLD_LSP_SAT_LIMIT		REG_FLD_MSB_LSB(21, 21)
 
 enum WINDOW_SETTING {
 	WIN1 = 0,
@@ -391,28 +394,32 @@ static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	int i, j, reg_index;
 	int wide_gamut_en = 0;
+	uint32_t value = 0, mask = 0;
 	/* unmask s_gain_by_y lsp when drecolor enable */
 	int drecolor_sel = primary_data->drecolor_param.drecolor_sel;
-	unsigned int drecolor_unmask = ~((drecolor_sel << 15) | (drecolor_sel << 20));
 
 	DDPINFO("%s,SET COLOR REG id(%d) drecolor_sel %d\n", __func__, comp->id, drecolor_sel);
 
 	if (primary_data->color_bypass == 0) {
 		if (color->data->support_color21 == true) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_COLOR_CFG_MAIN,
-				(1 << 21)
-				| (color_reg->LSP_EN << 20)
-				| (color_reg->S_GAIN_BY_Y_EN << 15)
-				| (wide_gamut_en << 8)
-				| (0 << 7),
-				0x003081FF | drecolor_unmask);
+			SET_VAL_MASK(value, mask, 1 , FLD_LSP_SAT_LIMIT);
+			SET_VAL_MASK(value, mask, color_reg->LSP_EN , FLD_LSP_EN);
+			SET_VAL_MASK(value, mask, color_reg->S_GAIN_BY_Y_EN, FLD_S_GAIN_BY_Y_EN);
+			SET_VAL_MASK(value, mask, wide_gamut_en, FLD_WIDE_GAMUT_EN);
+			mask = ~((drecolor_sel << 15) | (drecolor_sel << 20)) & mask;
 		} else {
+			SET_VAL_MASK(value, mask, 0, FLD_WIDE_GAMUT_EN);
 			/* disable wide_gamut */
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_COLOR_CFG_MAIN,
-				(0 << 8) | (0 << 7), 0x00001FF);
 		}
+
+		if (!primary_data->color_reg_valid) {
+			SET_VAL_MASK(value, mask, 0, FLD_ALLBP);
+			DDPINFO("%s, set color unrelay\n", __func__);
+		}
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_COLOR_CFG_MAIN,
+			value, mask);
 
 		/* color start */
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -438,9 +445,6 @@ static void disp_color_write_hw_reg(struct mtk_ddp_comp *comp,
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x1);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0x1 << 7) | (0x1 << 13), (0x1 << 7) | (0x1 << 13));
 	}
 
 	/* for partial Y contour issue */
@@ -909,7 +913,7 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_SHADOW_CTRL, (0x0 << 0), (0x1 << 0));
 
-	if (!primary_data->color_reg_valid) {
+	if (!primary_data->color_reg_valid || primary_data->color_bypass) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_CFG_MAIN,
 			(0x1 << 7) | (0x1 << 13), (0x1 << 7) | (0x1 << 13));
