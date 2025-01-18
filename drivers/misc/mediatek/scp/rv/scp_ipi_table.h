@@ -83,6 +83,7 @@ struct mtk_ipi_device scp_ipidev = {
 	.pre_cb = (ipi_tx_cb_t)scp_awake_lock,
 	.post_cb = (ipi_tx_cb_t)scp_awake_unlock,
 	.prdata = 0,
+	.timeout_handler = scp_plat_ipi_timeout_cb,
 };
 EXPORT_SYMBOL(scp_ipidev);
 

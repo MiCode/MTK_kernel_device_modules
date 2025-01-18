@@ -391,6 +391,8 @@ int mtk_ipi_send(struct mtk_ipi_device *ipidev, int ipi_id,
 
 	if (ret == MBOX_PIN_BUSY) {
 		ipi_timeout_dump(ipidev, ipi_id);
+		if (ipidev->timeout_handler)
+			ipidev->timeout_handler(ipi_id);
 		return IPI_PIN_BUSY;
 	} else if (ret != IPI_ACTION_DONE) {
 		pr_warn("%s IPI %d send fail (%d)\n",
