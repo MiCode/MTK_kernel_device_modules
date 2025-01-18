@@ -99,7 +99,7 @@ static void vmm_notifier_timeout_debug_dump(void)
 		readl_relaxed(ioremap(HW_CCF_BACKUP2_CLR_STATUS, 4)));
 }
 
-static void vmm_locked_hwccf_ctrl(bool enable)
+static void vmm_locked_hwccf_ctrl(bool enable, unsigned int vote_bit)
 {
 	void __iomem *hwccf_done = 0;
 	void __iomem *ctrl_reg = 0;
@@ -110,31 +110,31 @@ static void vmm_locked_hwccf_ctrl(bool enable)
 	hwccf_done = ioremap(HW_CCF_BACKUP2_DONE, 4);
 	ctrl_reg = (enable) ? ioremap(HW_CCF_XPU0_BACKUP2_SET, 4) : ioremap(HW_CCF_XPU0_BACKUP2_CLR, 4);
 	hwccf_ctrl_status = (enable) ? ioremap(HW_CCF_BACKUP2_SET_STATUS, 4) : ioremap(HW_CCF_BACKUP2_CLR_STATUS, 4);
-	val = (enable) ? BIT(HW_CCF_AP_VOTER_BIT) : 0;
+	val = (enable) ? BIT(vote_bit) : 0;
 
 	// polling done
 	if (readl_poll_timeout_atomic
-		(hwccf_done, tmp, (tmp & BIT(HW_CCF_AP_VOTER_BIT)) == BIT(HW_CCF_AP_VOTER_BIT),
+		(hwccf_done, tmp, (tmp & BIT(vote_bit)) == BIT(vote_bit),
 		POLL_DELAY_US, TIMEOUT_1000US) < 0)
 		vmm_notifier_timeout_debug_dump();
 
 	// set/clr
-	writel_relaxed(BIT(HW_CCF_AP_VOTER_BIT), ctrl_reg);
+	writel_relaxed(BIT(vote_bit), ctrl_reg);
 
 	// polling
 	if (readl_poll_timeout_atomic
-		(ctrl_reg, tmp, (tmp & BIT(HW_CCF_AP_VOTER_BIT)) == val, POLL_DELAY_US, TIMEOUT_1000US) < 0)
+		(ctrl_reg, tmp, (tmp & BIT(vote_bit)) == val, POLL_DELAY_US, TIMEOUT_1000US) < 0)
 		vmm_notifier_timeout_debug_dump();
 
 	// polling done
 	if (readl_poll_timeout_atomic
-		(hwccf_done, tmp, (tmp & BIT(HW_CCF_AP_VOTER_BIT)) == BIT(HW_CCF_AP_VOTER_BIT),
+		(hwccf_done, tmp, (tmp & BIT(vote_bit)) == BIT(vote_bit),
 		POLL_DELAY_US, TIMEOUT_1000US) < 0)
 		vmm_notifier_timeout_debug_dump();
 
 	// wait for current done
 	if (readl_poll_timeout_atomic
-		(hwccf_ctrl_status, tmp, (tmp & BIT(HW_CCF_AP_VOTER_BIT)) == 0, POLL_DELAY_US, TIMEOUT_1000US) < 0)
+		(hwccf_ctrl_status, tmp, (tmp & BIT(vote_bit)) == 0, POLL_DELAY_US, TIMEOUT_1000US) < 0)
 		vmm_notifier_timeout_debug_dump();
 }
 
@@ -148,9 +148,9 @@ static int vmm_locked_buck_ctrl(bool enable)
 		vmm_user_counter--;
 
 	if (pre_cnt == 0 && vmm_user_counter == 1)
-		vmm_locked_hwccf_ctrl(true);
+		vmm_locked_hwccf_ctrl(true, HW_CCF_AP_VOTER_BIT);
 	else if (pre_cnt == 1 && vmm_user_counter == 0)
-		vmm_locked_hwccf_ctrl(false);
+		vmm_locked_hwccf_ctrl(false, HW_CCF_AP_VOTER_BIT);
 
 	return 0;
 }
@@ -251,14 +251,14 @@ EXPORT_SYMBOL_GPL(vmm_isp_ctrl_notify);
 
 int mtk_vmm_notify_ut_ctrl(const char *val, const struct kernel_param *kp)
 {
-	int ctrl;
-	bool st;
+	unsigned int enable;
+	unsigned int vote_bit;
 	int ret;
 
-	ret = sscanf(val, "%u ", &ctrl);
-	ISP_LOGI("[%s][%d] ctrl[%u]\n", __func__, __LINE__, ctrl);
-	st = (ctrl == 1);
-	vmm_locked_buck_ctrl(st);
+	ret = sscanf(val, "%u %u", &enable, &vote_bit);
+	ISP_LOGI("[%s][%d] en[%u] vote_bit[%u]\n", __func__, __LINE__, enable, vote_bit);
+
+	vmm_locked_hwccf_ctrl((enable > 0), vote_bit);
 
 	return 0;
 }
