@@ -143,9 +143,6 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 
 		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
 
-		if (is_runnable_boost_enable() && boost)
-			util_est = max(util_est, runnable);
-
 		if (dst_cpu == cpu)
 			util_est += _task_util_est(p);
 		else if (p && unlikely(task_on_rq_queued(p) || current == p))
