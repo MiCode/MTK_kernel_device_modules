@@ -120,6 +120,17 @@ def main(**args):
     file_text.append("  export SOURCE_DATE_EPOCH=0")
     file_text.append("  export GKI_SOURCE_DATE_EPOCH=0")
     file_text.append("fi")
+    file_text.append("LLD_COMPILER_RT=\"-fuse-ld=lld --rtlib=compiler-rt\"")
+    file_text.append("NDK_DIR=${ROOT_DIR}/prebuilts/ndk-r23")
+    file_text.append("USERCFLAGS=\"--target=${NDK_TRIPLE} \"")
+    file_text.append("USERCFLAGS+=\"--sysroot=${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/sysroot \"")
+    file_text.append("USERCFLAGS+=\"-Wno-unused-function \"")
+    file_text.append("USERLDFLAGS=\"${LLD_COMPILER_RT} \"")
+    file_text.append("USERLDFLAGS+=\"--target=${NDK_TRIPLE} \"")
+    file_text.append("export USERCFLAGS USERLDFLAGS")
+    file_text.append("sysroot_flags+=\"--sysroot=${ROOT_DIR}/build/kernel/build-tools/sysroot\"")
+    file_text.append("export HOSTCFLAGS=\"${sysroot_flags} -I${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/include\"")
+    file_text.append("export HOSTLDFLAGS=\"${sysroot_flags} ${LLD_COMPILER_RT} -L ${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/lib64\"")
     if kernel_arch == 'arm':
         file_text.append("ARCH=arm")
         file_text.append("NDK_TRIPLE=arm-linux-androideabi31")
@@ -141,7 +152,8 @@ def main(**args):
     pre_defconfig_cmds = 'PRE_DEFCONFIG_CMDS=\'if [ -f ${OUT_DIR}/.config ]; then cp -f -p ${OUT_DIR}/.config ${OUT_DIR}/.config.timestamp; else touch ${OUT_DIR}/.config.timestamp; fi; %s\'' % (pre_defconfig_cmds)
     file_text.append(pre_defconfig_cmds)
 
-    file_text.append("POST_DEFCONFIG_CMDS='if ! cmp -s ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; then rm -f ${OUT_DIR}/.config.timestamp; else mv -f ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; fi'\n")
+    post_defconfig_cmds = "POST_DEFCONFIG_CMDS='if ! cmp -s ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; then rm -f ${OUT_DIR}/.config.timestamp; else mv -f ${OUT_DIR}/.config.timestamp ${OUT_DIR}/.config; fi'"
+    file_text.append(post_defconfig_cmds)
 
     ext_modules_list = ''
     ext_modules_file = '%s/kernel/configs/ext_modules.list' % (abs_kernel_dir)
@@ -189,12 +201,14 @@ def main(**args):
     if kernel_arch == 'arm64':
         gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
         file_handle = open(gen_build_config_gki_goals, 'w')
-        file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"')
+        file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"\n')
+        file_handle.write('DEFCONFIG=olddefconfig\n')
+        file_handle.write('POST_DEFCONFIG_CMDS="'+post_defconfig_cmds+'"')
         file_handle.close()
         gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
 
         file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
-        file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64.vendor")
+        file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64")
         file_text.append(gki_build_config_fragments)
         file_text.append("fi")
     else:
@@ -211,10 +225,13 @@ def main(**args):
     file_text.append("GKI_KCONFIG_EXT_PREFIX=${KCONFIG_EXT_PREFIX}")
     file_text.append("GKI_VENDOR_DEFCONFIG=${DEFCONFIG}")
     file_text.append("GKI_PRE_DEFCONFIG_CMDS=${PRE_DEFCONFIG_CMDS}")
-    file_text.append("GKI_POST_DEFCONFIG_CMDS=${GKI_POST_DEFCONFIG_CMDS}")
+    file_text.append("GKI_POST_DEFCONFIG_CMDS=${POST_DEFCONFIG_CMDS}")
     file_text.append("if [ -d \"${ROOT_DIR}/../vendor/mediatek/internal\" ]; then")
     file_text.append("  MGK_INTERNAL=true")
     file_text.append("fi")
+    file_text.append("export GKI_USERCFLAGS=${USERCFLAGS} GKI_USERLDFLAGS=${USERLDFLAGS}")
+    file_text.append("export GKI_HOSTCFLAGS=${HOSTCFLAGS}")
+    file_text.append("export GKI_HOSTLDFLAGS=${HOSTLDFLAGS}")
 
     gen_build_config_mtk = '%s.mtk' % (gen_build_config)
     file_handle = open(gen_build_config_mtk, 'w')

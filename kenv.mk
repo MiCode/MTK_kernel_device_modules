@@ -44,7 +44,7 @@ endif
       endif
 
      ifneq ($(KERNEL_USE_BAZEL),yes)
-       MTK_GKI_BUILD_CONFIG := $(REL_ACK_DIR)/build.config.gki.aarch64.vendor
+       MTK_GKI_BUILD_CONFIG := $(REL_ACK_DIR)/build.config.gki.aarch64
        KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
        ifdef MTK_GKI_PREBUILTS_DIR
          KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
