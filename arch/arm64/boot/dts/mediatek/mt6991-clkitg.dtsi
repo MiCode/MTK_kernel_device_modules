@@ -9,12 +9,5 @@
 	bring-up@0 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
-		clocks =
-			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>;
-	};
-	bring-up-pd-mm-proc-dormant@34 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x34>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
 	};
 };
