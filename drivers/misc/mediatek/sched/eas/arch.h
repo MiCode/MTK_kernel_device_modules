@@ -10,15 +10,13 @@
 #include <thermal_interface.h>
 #endif
 
-unsigned long (*get_volt_wFloor_Freq_hook)(int cpu, unsigned long freq,
-	int quant, int wl, unsigned long floor_freq);
-EXPORT_SYMBOL(get_volt_wFloor_Freq_hook);
+unsigned long (*get_freq_volt_hook)(int cpu, unsigned long freq, int quant, int wl);
+EXPORT_SYMBOL(get_freq_volt_hook);
 
-unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
-	int quant, int wl, unsigned long floor_freq)
+unsigned long pd_get_freq_volt(int cpu, unsigned long freq, int quant, int wl)
 {
-	if (get_volt_wFloor_Freq_hook)
-		return get_volt_wFloor_Freq_hook(cpu, freq, quant, wl, floor_freq);
+	if (get_freq_volt_hook)
+		return get_freq_volt_hook(cpu, freq, quant, wl);
 
 	return 0;
 }
@@ -54,14 +52,12 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 
 unsigned long (*get_cpu_pwr_eff_hook)(int cpu, unsigned long pd_freq, int quant, int wl,
 	int *dpt_opp_val, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
-	unsigned long floor_freq, int temperature, unsigned long extern_volt,
-	unsigned long *output);
+	int temperature, unsigned long extern_volt, unsigned long *output);
 EXPORT_SYMBOL(get_cpu_pwr_eff_hook);
 
 unsigned long get_cpu_pwr_eff(int cpu, unsigned long pd_freq,
 	int quant, int wl, int *val_s, int r_o, int caller,
-	unsigned long floor_freq, int temperature, unsigned long extern_volt,
-	unsigned long *output)
+	int temperature, unsigned long extern_volt, unsigned long *output)
 {
 	if (get_cpu_pwr_eff_hook) {
 		unsigned long result;
@@ -70,7 +66,7 @@ unsigned long get_cpu_pwr_eff(int cpu, unsigned long pd_freq,
 
 		result = get_cpu_pwr_eff_hook(cpu, pd_freq, quant, wl,
 				dpt_opp_val, dpt_pwr_eff_val, val_s, val_m, r_o,
-				floor_freq, temperature, extern_volt, output);
+				temperature, extern_volt, output);
 
 		record_sched_pd_opp2cap(cpu, output[0], quant, wl,
 			dpt_opp_val[0], dpt_opp_val[1], dpt_opp_val[2], val_s, r_o, caller);
@@ -125,19 +121,19 @@ void eenv_dsu_init(void *private, int quant, unsigned int wl,
 }
 
 unsigned long (*update_dsu_status_hook)(void *private, int quant, unsigned int wl,
-		unsigned int gear_idx, unsigned long freq, unsigned long floor_freq,
+		unsigned int gear_idx, unsigned long freq,
 		int this_cpu, int dst_cpu, unsigned int *output);
 EXPORT_SYMBOL(update_dsu_status_hook);
 
 unsigned long update_dsu_status(struct energy_env *eenv, int quant,
-		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu)
+		unsigned long freq, int this_cpu, int dst_cpu)
 {
 	if (update_dsu_status_hook) {
 		unsigned long dsu_volt;
 		unsigned int output[6];
 
 		dsu_volt = update_dsu_status_hook(eenv->android_vendor_data1, quant,
-			eenv->wl, eenv->gear_idx, freq, floor_freq, this_cpu, dst_cpu, output);
+			eenv->wl, eenv->gear_idx, freq, this_cpu, dst_cpu, output);
 
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(eenv->gear_idx, dst_cpu, output[0], output[1],
