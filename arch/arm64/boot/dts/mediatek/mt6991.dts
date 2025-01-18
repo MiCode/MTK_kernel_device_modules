@@ -17215,15 +17215,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					  "fl_wdt", "fl_batpro_done",
 					  "fl_bc12_dn", "adc_vbat_mon_ov",
 					  "usbid_evt";
-			io-channels = <&mt6379_adc MT6379_ADC_CHGVIN>,
+			io-channels = <&mt6379_adc MT6379_ADC_VBATMON>,
+				      <&mt6379_adc MT6379_ADC_CHGVIN>,
+				      <&mt6379_adc MT6379_ADC_USBDP>,
 				      <&mt6379_adc MT6379_ADC_VSYS>,
 				      <&mt6379_adc MT6379_ADC_VBAT>,
 				      <&mt6379_adc MT6379_ADC_IBUS>,
 				      <&mt6379_adc MT6379_ADC_IBAT>,
-				      <&mt6379_adc MT6379_ADC_TEMPJC>,
-				      <&mt6379_adc MT6379_ADC_USBDP>,
 				      <&mt6379_adc MT6379_ADC_USBDM>,
+				      <&mt6379_adc MT6379_ADC_TEMPJC>,
 				      <&mt6379_adc MT6379_ADC_SBU2>,
+				      <&mt6379_adc MT6379_ADC_VBATMON2>,
 				      <&mt6379_adc MT6379_ADC_ZCV>;
 			chgdev-name = "primary_chg";
 			chg-tmr = <10>;
@@ -17623,7 +17625,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			oc-thd = <6000 7000 8000>;
 		};
 
-			mt6379_eusb2_repeater: mt6379-eusb2-repeater@d00 {
+		mt6379_eusb2_repeater: mt6379-eusb2-repeater@d00 {
 			compatible = "mtk,mt6379-eusb2-repeater";
 			reg = <0xd00>;
 			#phy-cells = <0>;
