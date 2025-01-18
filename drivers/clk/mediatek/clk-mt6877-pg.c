@@ -794,7 +794,6 @@ static void ram_console_update(void)
 
 		log_dump = true;
 
-		//TODO:
 		// dump_enabled_clks_once();
 
 		for (i = 0; i < ARRAY_SIZE(data); i++)
@@ -4453,7 +4452,6 @@ static int disable_subsys(enum subsys_id id, enum mtcmos_op action)
 		 * Check if subsys CGs are still on before the mtcmos  is going
 		 * to be off. (Could do nothing here for early porting)
 		 */
-		//TODO:
 		// mtk_check_subsys_swcg(id);
 		r = sys->ops->disable(sys);
 	}
