@@ -3,19 +3,6 @@
 #include <dt-bindings/clock/mt6991-clk.h>
 
 &seninf_top {
-		seninf_csi_port_2: seninf-csi-port-2 {
-			compatible = "mediatek,seninf";
-			csi-port = "2";
-
-			// nvmem-cells = <&csi_efuse2>;
-			nvmem-cell-names = "rg_csi";
-
-			port {
-				seninf_csi_port_2_in: endpoint {
-					remote-endpoint = <&sensor1_out>;
-				};
-			};
-		};
 		seninf_csi_port_4: seninf-csi-port-4 {
 			compatible = "mediatek,seninf";
 			csi-port = "4";
@@ -25,6 +12,19 @@
 
 			port {
 				seninf_csi_port_4_in: endpoint {
+					remote-endpoint = <&sensor1_out>;
+				};
+			};
+		};
+		seninf_csi_port_11: seninf-csi-port-11 {
+			compatible = "mediatek,seninf";
+			csi-port = "3";
+
+			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cell-names = "rg_csi";
+
+			port {
+				seninf_csi_port_11_in: endpoint {
 					remote-endpoint = <&sensor0_out>;
 				};
 			};
@@ -42,9 +42,22 @@
 				};
 			};
 		};
+		seninf_csi_port_10: seninf-csi-port-10{
+			compatible = "mediatek,seninf";
+			csi-port = "2";
+
+			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cell-names = "rg_csi";
+
+			port {
+				seninf_csi_port_10_in: endpoint {
+					remote-endpoint = <&sensor6_out>;
+				};
+			};
+		};
 		seninf_csi_port_6: seninf-csi-port-6{
 			compatible = "mediatek,seninf";
-			csi-port = "3";
+			csi-port = "2";
 
 			// nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
@@ -57,7 +70,7 @@
 		};
 		seninf_csi_port_7: seninf-csi-port-7 {
 			compatible = "mediatek,seninf";
-			csi-port = "3";
+			csi-port = "2";
 
 			// nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
@@ -70,7 +83,7 @@
 		};
 		seninf_csi_port_8: seninf-csi-port-8 {
 			compatible = "mediatek,seninf";
-			csi-port = "3";
+			csi-port = "2";
 
 			// nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
@@ -83,7 +96,7 @@
 		};
 		seninf_csi_port_9: seninf-csi-port-9 {
 			compatible = "mediatek,seninf";
-			csi-port = "3";
+			csi-port = "2";
 
 			// nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
@@ -103,7 +116,7 @@
 
 			port {
 				seninf_csi_port_3_in: endpoint {
-					remote-endpoint = <&sensor6_out>;
+					remote-endpoint = <&sensor2_out>;
 				};
 			};
 		};
@@ -161,12 +174,6 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	mtk_camera_eeprom1:camera-eeprom1@50 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x50>;
-		status = "okay";
-	};
-
 	sensor3: sensor3@52 {
 		mediatek,legacy-search;
 		compatible = "mediatek,imgsensor";
@@ -200,10 +207,37 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	sensor6: sensor6@74 {
+	sensor0: sensor0@52 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "ox08b40_mipi_raw",
-						"max96712a_mipi_yuv";
+		sensor-names = "max96712isx_mipi_yuv";
+		reg = <0x52>;
+
+		#thermal-sensor-cells = <0>;
+		pdn-supply = <&gpio181_regulator>;
+
+		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&vlp_cksys_clk CLK_CK_F26M_CK_D2>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&vlp_cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+
+		status = "disabled";
+
+		port {
+			sensor0_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_11_in>;
+			};
+		};
+	};
+
+	sensor2: sensor2@74 {
+		mediatek,legacy-search;
+		compatible = "mediatek,imgsensor";
+		sensor-names = "ox08b40_mipi_raw";
 		reg = <0x74>;
 
 		#thermal-sensor-cells = <0>;
@@ -222,11 +256,16 @@
 		status = "okay";
 
 		port {
-			sensor6_out: endpoint {
+			sensor2_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_3_in>;
 			};
 		};
 	};
+};
+
+&i2c7 {
+	status = "okay";
+	clock-frequency = <1000000>;
 
 	sensor7: sensor7@70 {
 		compatible = "mediatek,imgsensor";
@@ -234,7 +273,7 @@
 		reg = <0x70>;
 
 		#thermal-sensor-cells = <0>;
-		pdn-supply = <&gpio181_regulator>;
+		pdn-supply = <&gpio47_regulator>;
 
 		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
 			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
@@ -261,7 +300,7 @@
 		reg = <0x71>;
 
 		#thermal-sensor-cells = <0>;
-		pdn-supply = <&gpio181_regulator>;
+		pdn-supply = <&gpio47_regulator>;
 
 		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
 			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
@@ -288,7 +327,7 @@
 		reg = <0x72>;
 
 		#thermal-sensor-cells = <0>;
-		pdn-supply = <&gpio181_regulator>;
+		pdn-supply = <&gpio47_regulator>;
 
 		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
 			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
@@ -315,7 +354,7 @@
 		reg = <0x73>;
 
 		#thermal-sensor-cells = <0>;
-		pdn-supply = <&gpio181_regulator>;
+		pdn-supply = <&gpio47_regulator>;
 
 		clocks = <&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D32>,
 			<&vlp_cksys_clk CLK_CK_UNIVPLL_192M_D16>,
@@ -335,23 +374,10 @@
 			};
 		};
 	};
-
-	mtk_camera_eeprom0:camera-eeprom0@50 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x50>;
-		status = "okay";
-	};
-};
-
-&i2c7 {
-	status = "okay";
-	clock-frequency = <1000000>;
-
-	sensor1: sensor1@52 {
-		#mediatek,legacy-search;
+	sensor6: sensor6@74 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "max96712_mipi_yuv";
-		reg = <0x52>;
+		sensor-names = "max96712a_mipi_yuv";
+		reg = <0x74>;
 
 		#thermal-sensor-cells = <0>;
 		pdn-supply = <&gpio47_regulator>;
@@ -369,8 +395,8 @@
 		status = "okay";
 
 		port {
-			sensor1_out: endpoint {
-				remote-endpoint = <&seninf_csi_port_2_in>;
+			sensor6_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_10_in>;
 			};
 		};
 	};
@@ -381,9 +407,9 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-	sensor0: sensor0@52 {
+	sensor1: sensor1@52 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "max96712isx_mipi_yuv";
+		sensor-names = "max96712_mipi_yuv";
 		reg = <0x52>;
 
 		#thermal-sensor-cells = <0>;
@@ -402,7 +428,7 @@
 		status = "okay";
 
 		port {
-			sensor0_out: endpoint {
+			sensor1_out: endpoint {
 				remote-endpoint = <&seninf_csi_port_4_in>;
 			};
 		};
