@@ -501,6 +501,7 @@ int mmdvfs_dbg_clk_set(int step, bool is_force)
 	pr_notice("%s: step=%d volt=%d is_force=%d\n", __func__, step, volt, is_force);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(mmdvfs_dbg_clk_set);
 
 int mmdvfs_set_force_step(int force_step)
 {

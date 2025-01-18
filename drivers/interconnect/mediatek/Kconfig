@@ -28,7 +28,11 @@ config INTERCONNECT_MTK_MMQOS_MT6873
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6873 multimedia QoS.
+	  Support MT6873 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config INTERCONNECT_MTK_MMQOS_MT6853
 	tristate "Mediatek MT6853 MMQoS interconnect driver"
@@ -36,7 +40,11 @@ config INTERCONNECT_MTK_MMQOS_MT6853
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6853 multimedia QoS.
+	  Support MT6853 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config INTERCONNECT_MTK_MMQOS_MT6886
 	tristate "Mediatek MT6886 MMQoS interconnect driver"
@@ -56,7 +64,11 @@ config INTERCONNECT_MTK_MMQOS_MT6893
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6893 multimedia QoS.
+	  Support MT6893 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config INTERCONNECT_MTK_MMQOS_MT6897
 	tristate "Mediatek MT6897 MMQoS interconnect driver"
@@ -76,7 +88,11 @@ config INTERCONNECT_MTK_MMQOS_MT6983
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6983 multimedia QoS.
+	  Support MT6983 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config INTERCONNECT_MTK_MMQOS_MT6985
 	tristate "Mediatek MT6985 MMQoS interconnect driver"
@@ -84,7 +100,11 @@ config INTERCONNECT_MTK_MMQOS_MT6985
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6985 multimedia QoS.
+	  Support MT6985 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config INTERCONNECT_MTK_MMQOS_MT6768
 	tristate "Mediatek MT6768 MMQoS interconnect driver"
@@ -92,7 +112,23 @@ config INTERCONNECT_MTK_MMQOS_MT6768
 	depends on DEVICE_MODULES_MTK_SMI
 	select INTERCONNECT_MTK_MMQOS_COMMON
 	help
-	  Support MT6768 multimedia QoS.
+	  Support MT6768 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
+
+config INTERCONNECT_MTK_MMQOS_MT6761
+	tristate "Mediatek MT6761 MMQoS interconnect driver"
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	select INTERCONNECT_MTK_MMQOS_COMMON
+	help
+	  Support MT6761 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.
 
 config MTK_MMQOS_VCP
 	tristate "MediaTek MMQOS VCP Support"
