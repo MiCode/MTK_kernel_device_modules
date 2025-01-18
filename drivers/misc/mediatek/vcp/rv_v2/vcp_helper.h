@@ -103,6 +103,8 @@ enum {
 	SLP_WAKE_LOCK = 0,
 	SLP_WAKE_UNLOCK,
 	SLP_STATUS_DBG,
+	SLP_SUSPEND,
+	SLP_RESUME,
 };
 
 struct vcp_regs {

@@ -44,6 +44,11 @@
 #define R_CORE0_WDT_IRQ                 (vcpreg.cfgreg_ap + 0x0050)
 #define R_CORE1_WDT_IRQ                 (vcpreg.cfgreg_ap + 0x0054)
 	#define B_WDT_IRQ                   (1 << 0)
+#define AP_R_GPR1                       (vcpreg.cfgreg_ap + 0x0064)
+	#define B_CORE0_SUSPEND             (1 << 0)
+	#define B_CORE1_SUSPEND             (1 << 1)
+	#define B_CORE0_RESUME              (1 << 2)
+	#define B_CORE1_RESUME              (1 << 3)
 
 #define VCP_SYS_CTRL                    (vcpreg.cfg)
 #define VCP_SLP_PROT_EN                 (vcpreg.cfg + 0x0008)
