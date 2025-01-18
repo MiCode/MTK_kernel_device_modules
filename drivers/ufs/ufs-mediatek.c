@@ -1669,8 +1669,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_rpmb_init(hba);
 
-	ufs_mtk_init_ioctl(hba);
-
 	goto out;
 
 out_variant_clear:
