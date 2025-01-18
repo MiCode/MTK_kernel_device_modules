@@ -39,6 +39,7 @@
 #define MAGT_GET_FPSGO_CPU_FRAMETIME      _IOWR('g', 7, struct fpsgo_cpu_frametime)
 #define MAGT_GET_FPSGO_THREAD_LOADING     _IOWR('g', 8, struct fpsgo_thread_loading)
 #define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
+#define MAGT_NOTIFY_THREAD_STATUS         _IOW('g', 10, struct thread_status_info)
 
 struct cpu_time {
 	u64 time;
@@ -99,6 +100,12 @@ struct fpsgo_thread_loading {
 struct fpsgo_render_perf {
 	int32_t pid;
 	int32_t perf_idx;
+};
+struct thread_status_info {
+	__u32 frameid;
+	__u32 type;
+	__u32 status;
+	__u64 tv_ts;
 };
 
 extern int get_cpu_loading(struct cpu_info *_ci);

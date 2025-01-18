@@ -240,6 +240,14 @@ EXPORT_SYMBOL(magt2fpsgo_get_all_fps_control_pid_info);
 int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);
 EXPORT_SYMBOL(magt2fpsgo_get_fpsgo_frame_info);
+
+/*--------------------FPSGO SET THREAD STATUS------------------------*/
+int (*magt2fpsgo_notify_thread_status_fp)(unsigned int frameid,
+	unsigned int type,
+	unsigned int status,
+	unsigned long long tv_ts);
+EXPORT_SYMBOL(magt2fpsgo_notify_thread_status_fp);
+
 /*--------------------MAGT IOCTL------------------------*/
 static long magt_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
@@ -251,6 +259,8 @@ static long magt_ioctl(struct file *filp,
 	struct dep_list_info *dliKM = NULL, *dliUM = NULL;
 	struct dep_list_info dli;
 	unsigned long query_mask = 0;
+	struct thread_status_info *tsiKM = NULL, *tsiUM = NULL;
+	struct thread_status_info tsi;
 
 	switch (cmd) {
 	case MAGT_GET_CPU_LOADING:
@@ -566,6 +576,23 @@ static long magt_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case MAGT_NOTIFY_THREAD_STATUS:
+		if (!magt2fpsgo_notify_thread_status_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		tsiUM = (struct thread_status_info *)arg;
+		tsiKM = &tsi;
+
+		if (perfctl_copy_from_user(tsiKM, tsiUM,
+				sizeof(struct thread_status_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		ret = magt2fpsgo_notify_thread_status_fp(tsiKM->frameid,
+			tsiKM->type, tsiKM->status, tsiKM->tv_ts);
+		break;
+
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
