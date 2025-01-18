@@ -14618,6 +14618,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mt6991-virtual-tskin";
 		#thermal-sensor-cells = <1>;
 	};
+
+	touch_tui0: touch-tui0 {
+		compatible = "mediatek,tui_common";
+	};
 };
 
 /* WF GPIO start */
