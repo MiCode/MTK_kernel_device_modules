@@ -14,6 +14,7 @@ extern struct kobj_attribute trace_enable_attr;
 extern struct kobj_attribute boot_complete_attr;
 extern struct kobj_attribute show_L3m_status_attr;
 extern struct kobj_attribute resource_pct_attr;
+extern struct kobj_attribute show_group_partition_attr;
 
 extern int set_cpuqos_mode(int mode);
 extern int set_ct_task(int pid, bool set);

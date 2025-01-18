@@ -30,6 +30,7 @@ static struct attribute *cpuqos_attrs[] = {
 	&boot_complete_attr.attr,
 	&show_L3m_status_attr.attr,
 	&resource_pct_attr.attr,
+	&show_group_partition_attr.attr,
 	NULL,
 };
 
