@@ -940,6 +940,7 @@ mgk_64_platform_device_modules = {
     "drivers/pinctrl/mediatek/pinctrl-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/devapc/device-apc-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
+    "drivers/soc/mediatek/devapc/device-apc-mt6877.ko": "mt6877",
     "drivers/soc/mediatek/devapc/device-apc-mt6879.ko": "mt6879",
     "drivers/soc/mediatek/devapc/device-apc-mt6886.ko": "mt6886",
     "drivers/soc/mediatek/devapc/device-apc-mt6893.ko": "mt6893",
@@ -1657,6 +1658,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6877.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6879.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6886.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
