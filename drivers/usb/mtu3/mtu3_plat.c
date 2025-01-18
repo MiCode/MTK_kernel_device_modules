@@ -1475,11 +1475,20 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 
 	dev_info(ssusb->dev, "%s offload_mode %d\n", __func__, ssusb->offload_mode);
 
-	if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_S) {
+	switch (ssusb->offload_mode) {
+	case SSUSB_OFFLOAD_MODE_D:
+		ssusb_host_u3_suspend(ssusb);
+		fallthrough;
+	case SSUSB_OFFLOAD_MODE_D_SS:
+		return 0;
+	case SSUSB_OFFLOAD_MODE_S:
+		ssusb_host_u3_suspend(ssusb);
+		fallthrough;
+	case SSUSB_OFFLOAD_MODE_S_SS:
 		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD);
 		return 0;
-	} else if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_D) {
-		return 0;
+	default:
+		break;
 	}
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_SUSPEND);
@@ -1539,11 +1548,20 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	dev_info(ssusb->dev, "%s offload_mode %d\n",
 		__func__, ssusb->offload_mode);
 
-	if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_S) {
+	switch (ssusb->offload_mode) {
+	case SSUSB_OFFLOAD_MODE_D:
+		ssusb_host_u3_resume(ssusb);
+		fallthrough;
+	case SSUSB_OFFLOAD_MODE_D_SS:
+		return 0;
+	case SSUSB_OFFLOAD_MODE_S:
+		ssusb_host_u3_resume(ssusb);
+		fallthrough;
+	case SSUSB_OFFLOAD_MODE_S_SS:
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		return 0;
-	} else if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_D) {
-		return 0;
+	default:
+		break;
 	}
 
 	ssusb_wakeup_set(ssusb, false);

@@ -181,8 +181,10 @@ enum mtu3_fpga_phy {
 
 enum ssusb_offload_mode {
 	SSUSB_OFFLOAD_MODE_NONE = 0,
-	SSUSB_OFFLOAD_MODE_D,
-	SSUSB_OFFLOAD_MODE_S,
+	SSUSB_OFFLOAD_MODE_D,    /* full-speed or high speed D mode */
+	SSUSB_OFFLOAD_MODE_S,    /* full-speed or high speed S mode */
+	SSUSB_OFFLOAD_MODE_D_SS, /* super-speed or super-speed-plus D mode */
+	SSUSB_OFFLOAD_MODE_S_SS, /* super-speed or super-speed-plus S mode */
 };
 
 /**
