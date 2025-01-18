@@ -461,11 +461,13 @@ done:
 static bool tp_need_dual(struct mml_frame_config *cfg)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
+	const struct mml_frame_data *dest = &cfg->info.dest[0].data;
 	u32 min_crop_w, i;
 	u32 min_pixel = cfg->info.mode == MML_MODE_RACING ?
 		MML_IR_MIN_FRAME : MML_DUAL_FRAME;
 
-	if (src->width * src->height < min_pixel)
+	if (src->width * src->height < min_pixel &&
+	    dest->width * dest->height < min_pixel)
 		return false;
 
 	min_crop_w = cfg->info.dest[0].crop.r.width;
