@@ -877,7 +877,7 @@ static struct apu_clk_gp mt688x_mdla1_clk_gp = {
 	.ops = &mt68xx_clk_ops,
 };
 
-#include "clk_def/mt6877_clk.c"
+#include "clk_def/atf_acc_clk.c"
 
 static const struct apu_clk_array apu_clk_gps[] = {
 	{ .name = "mt68x3_core", .aclk_gp = &mt68x3_core_clk_gp },
