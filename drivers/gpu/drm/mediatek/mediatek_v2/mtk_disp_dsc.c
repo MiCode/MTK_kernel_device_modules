@@ -1795,17 +1795,13 @@ static int mtk_disp_dsc_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_dsc *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int irq;
+	int irq, num_irqs;
 	int ret;
 
 	DDPMSG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
-
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		return irq;
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DSC);
 	if ((int)comp_id < 0) {
@@ -1824,16 +1820,24 @@ static int mtk_disp_dsc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 
-	ret = devm_request_irq(dev, irq, mtk_dsc_irq_handler,
-			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
-			       priv);
-	if (ret < 0) {
-		DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
-				__func__, __LINE__,
-				irq, ret, comp_id);
-		return ret;
-	}
+	num_irqs = platform_irq_count(pdev);
 
+	if (num_irqs) {
+
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+			return irq;
+
+		ret = devm_request_irq(dev, irq, mtk_dsc_irq_handler,
+				       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+				       priv);
+		if (ret < 0) {
+			DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
+					__func__, __LINE__,
+					irq, ret, comp_id);
+			return ret;
+		}
+	}
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
 	ret = component_add(dev, &mtk_disp_dsc_component_ops);
@@ -1883,6 +1887,15 @@ static const struct mtk_disp_dsc_data mt6985_dsc_driver_data = {
 };
 
 static const struct mtk_disp_dsc_data mt6989_dsc_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.need_obuf_sw = true,
+	.dsi_buffer = true,
+	.shadow_ctrl_reg = 0x0228,
+	.reset_after_eof = true,
+};
+
+static const struct mtk_disp_dsc_data mt6991_dsc_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
 	.need_obuf_sw = true,
@@ -1960,6 +1973,8 @@ static const struct of_device_id mtk_disp_dsc_driver_dt_match[] = {
 	  .data = &mt6985_dsc_driver_data},
 	{ .compatible = "mediatek,mt6989-disp-dsc",
 	  .data = &mt6989_dsc_driver_data},
+	{ .compatible = "mediatek,mt6991-disp-dsc",
+	  .data = &mt6991_dsc_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-dsc",
 	  .data = &mt6897_dsc_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-dsc",
