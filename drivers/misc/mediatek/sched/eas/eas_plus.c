@@ -297,20 +297,20 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 		unsigned long scale_cpu, unsigned long freq, unsigned long extern_volt)
 {
 	int cpu, this_cpu, wl_type = 0;
-	unsigned long pwr_eff = 0, cap, sum_cap = 0;
+	unsigned long cap;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 	unsigned long freq_legacy;
 #else
 	struct em_perf_state *ps;
 #endif
-	unsigned long dyn_pwr = 0, static_pwr = 0;
 	unsigned long energy;
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 	int *cpu_temp = eenv->cpu_temp;
 #endif
 	struct cpumask *pd_cpus = to_cpumask(pd->cpus);
-	bool mtk_em, get_lkg;
-	unsigned int cpu_static_pwrs[MAX_NR_CPUS];
+	unsigned int mtk_em, get_lkg;
+	unsigned long output[MAX_NR_CPUS + 4] = {0};
+	unsigned long data[4] = {0};
 
 	this_cpu = cpu = cpumask_first(to_cpumask(pd->cpus));
 
@@ -323,29 +323,34 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	mtk_em = true;
+	mtk_em = 1;
 #else
-	mtk_em = false;
+	mtk_em = 0;
 	ps = &pd->table[pd->nr_perf_states - opp - 1];
-	pwr_eff = ps->cost;
+	output[2] = ps->cost;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
-	get_lkg = true;
+	get_lkg = 1;
 #else
-	get_lkg = false;
+	get_lkg = 0;
 #endif
 
 	cpumask_and(pd_cpus, pd_cpus, cpu_online_mask);
-	energy = get_cpu_power(mtk_em, get_lkg, eenv->wl_type, eenv->val_s,
-		this_cpu, cpu_temp, opp, sum_util, extern_volt, cap, pd_cpus->bits[0],
-		&dyn_pwr, &static_pwr, &pwr_eff, &sum_cap, cpu_static_pwrs, scale_cpu, freq);
+	data[0] = sum_util;
+	data[1] = extern_volt;
+	data[2] = cap;
+	data[3] = scale_cpu;
+	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl_type,
+		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
+		this_cpu, cpu_temp, opp, pd_cpus->bits[0],
+		data, output);
 
 	if (get_lkg) {
 		for_each_cpu_and(cpu, pd_cpus, cpu_online_mask) {
 			if (trace_sched_leakage_enabled())
-				trace_sched_leakage(cpu, opp, cpu_temp[cpu], cpu_static_pwrs[cpu],
-						static_pwr, sum_util, sum_cap);
+				trace_sched_leakage(cpu, opp, cpu_temp[cpu], output[cpu + 4],
+						output[1], sum_util, output[3]);
 		}
 	}
 
@@ -354,13 +359,13 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	if (trace_sched_em_cpu_energy_enabled()) {
 		freq_legacy = pd_get_opp_freq_legacy(this_cpu, pd_get_freq_opp_legacy(this_cpu,
 											freq));
-		trace_sched_em_cpu_energy(wl_type, opp, freq_legacy, "pwr_eff", pwr_eff,
-			scale_cpu, dyn_pwr, static_pwr);
+		trace_sched_em_cpu_energy(wl_type, opp, freq_legacy, "pwr_eff", output[2],
+			scale_cpu, output[0] , output[1]);
 	}
 #else
 	if (trace_sched_em_cpu_energy_enabled())
-		trace_sched_em_cpu_energy(wl_type, opp, freq, "ps->cost", pwr_eff,
-			scale_cpu, dyn_pwr, static_pwr);
+		trace_sched_em_cpu_energy(wl_type, opp, freq, "ps->cost", output[2],
+			scale_cpu, output[0], output[1]);
 #endif
 
 	return energy;
@@ -862,31 +867,22 @@ __always_inline
 unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long max_util,
 		struct cpumask *cpus, unsigned long extern_volt)
 {
-	int opp;
-	unsigned long static_pwr_eff, pwr_eff;
-	int cap;
-	int pd_pwr_eff;
-	unsigned long pd_volt;
+	unsigned long pwr_eff;
 	unsigned long pd_freq, floor_freq;
+	unsigned long output[4] = {0};
+	int temp = get_cpu_temp(cpu)/1000;
 
 	pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 			eenv->pds_cpu_cap[cpu], arch_scale_cpu_capacity(cpu));
 	floor_freq = per_cpu(min_freq, cpu);
 
-	opp = pd_get_opp_wFloor_Freq(cpu, pd_freq, eenv->wl_type, floor_freq);
-
-	pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_CALC_PWR_EFF);
-	pd_volt = pd_opp2volt(cpu, opp, false, eenv->wl_type);
-	pd_pwr_eff = shared_buck_dyn_pwr(pd_pwr_eff, pd_volt, extern_volt);
-
-	cap = pd_opp2cap(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_CALC_PWR_EFF);
-	static_pwr_eff = shared_buck_lkg_pwr(eenv->wl_type, cpu, opp,
-				get_cpu_temp(cpu)/1000, extern_volt) / cap;
-	pwr_eff = pd_pwr_eff + static_pwr_eff;
+	pwr_eff = get_cpu_pwr_eff(cpu, pd_freq, false, eenv->wl_type,
+			eenv->val_s, false, DPT_CALL_CALC_PWR_EFF,
+			floor_freq, temp, extern_volt, output);
 
 	if (trace_sched_calc_pwr_eff_enabled())
-		trace_sched_calc_pwr_eff(cpu, max_util, opp, cap,
-				pd_pwr_eff, static_pwr_eff, pwr_eff);
+		trace_sched_calc_pwr_eff(cpu, max_util, (int) output[0], (int) output[2],
+				output[1], output[3], pwr_eff);
 
 	return pwr_eff;
 }
@@ -924,13 +920,14 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 					eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
-		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, eenv->wl_type, floor_freq);
+		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, false, eenv->wl_type, floor_freq);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, cpus, gear_max_util,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, eenv->wl_type, floor_freq);
+		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, false, eenv->wl_type,
+				floor_freq);
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);

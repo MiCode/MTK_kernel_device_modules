@@ -113,6 +113,12 @@ extern int get_cpu_type(int type);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
 
+extern void record_sched_pd_opp2cap(int cpu, int opp, int quant, int wl,
+		int val_1, int val_2, int val_r, int *val_s, int r_o, int caller);
+extern void record_sched_pd_opp2pwr_eff(int cpu, int opp, int quant, int wl,
+		int val_1, int val_2, int val_3, int val_r1, int val_r2, int *val_s,
+		int r_o, int caller);
+
 extern int get_eas_hook(void);
 extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
 extern int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller);

@@ -783,6 +783,18 @@ int pd_opp2freq(int cpu, int opp, int quant, int wl)
 }
 EXPORT_SYMBOL_GPL(pd_opp2freq);
 
+void record_sched_pd_opp2cap(int cpu, int opp, int quant, int wl,
+	int val_1, int val_2, int val_r, int *val_s, int r_o, int caller)
+{
+	if (trace_sched_pd_opp2cap_enabled())  {
+		int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+		trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
+				val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
+	}
+}
+EXPORT_SYMBOL_GPL(record_sched_pd_opp2cap);
+
 int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl,
 	int *val_1, int *val_2, int *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2cap_hook);
@@ -793,18 +805,27 @@ int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int cal
 
 		result = mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_r, val_s, val_m, r_o);
-		if (trace_sched_pd_opp2cap_enabled())  {
-			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-			trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
-				val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
-		}
+		record_sched_pd_opp2cap(cpu, opp, quant, wl, val_1, val_2, val_r, val_s, r_o, caller);
 
 		return result;
 	} else
 		return em_opp2cap(cpu, opp);
 }
 EXPORT_SYMBOL_GPL(pd_opp2cap);
+
+void record_sched_pd_opp2pwr_eff(int cpu, int opp, int quant, int wl,
+	int val_1, int val_2, int val_3, int val_r1, int val_r2, int *val_s,
+	int r_o, int caller)
+{
+	if (trace_sched_pd_opp2pwr_eff_enabled()) {
+		int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
+
+		trace_sched_pd_opp2pwr_eff(cpu, opp, quant, get_eas_wl(wl),
+				val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
+	}
+}
+EXPORT_SYMBOL_GPL(record_sched_pd_opp2pwr_eff);
 
 int (*mtk_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl,
 	int *val_1, int *val_2, int *val_3, int *val_r1, int *val_r2, int *val_s, int val_m, int r_o);
@@ -814,14 +835,12 @@ int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int
 	if (mtk_opp2pwr_eff_hook) {
 		int result, val_1, val_2, val_3, val_r1, val_r2;
 
-		result =  mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
+		result = mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_3, &val_r1, &val_r2, val_s, val_m, r_o);
-		if (trace_sched_pd_opp2pwr_eff_enabled()) {
-			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
 
-			trace_sched_pd_opp2pwr_eff(cpu, opp, quant, wl,
-				val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
-		}
+		record_sched_pd_opp2pwr_eff(cpu, opp, quant, wl, val_1, val_2, val_3,
+				val_r1, val_r2, val_s, r_o, caller);
+
 		return result;
 	} else
 		return em_opp2pwr_eff(cpu, opp);

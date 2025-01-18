@@ -3,39 +3,42 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 #include "eas_plus.h"
+#include "../sugov/cpufreq.h"
+
+int val_m = 1;
 
 inline
 int pd_get_opp_wFloor_Freq(int cpu, unsigned long freq,
-	int wl_type, unsigned long floor_freq)
+	int quant, int wl_type, unsigned long floor_freq)
 {
 	int opp = -1;
 
 	freq = max(freq, floor_freq);
-	opp = pd_freq2opp(cpu, freq, false, wl_type);
+	opp = pd_freq2opp(cpu, freq, quant, wl_type);
 
 	return opp;
 }
 
 inline
-unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
-	int wl_type, unsigned long floor_freq)
+unsigned long pd_get_volt_wFloor_Freq_(int cpu, unsigned long freq,
+	int quant, int wl_type, unsigned long floor_freq)
 {
 	int opp = -1;
 
-	opp = pd_get_opp_wFloor_Freq(cpu, freq, wl_type, floor_freq);
+	opp = pd_get_opp_wFloor_Freq(cpu, freq, quant, wl_type, floor_freq);
 
-	return (unsigned long) pd_opp2volt(cpu, opp, false, wl_type);
+	return (unsigned long) pd_opp2volt(cpu, opp, quant, wl_type);
 }
 
 inline
 unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
-	int wl_type, unsigned long floor_freq)
+	int quant, int wl_type, unsigned long floor_freq)
 {
 	int opp = -1;
 
-	opp = pd_get_opp_wFloor_Freq(cpu, freq, wl_type, floor_freq);
+	opp = pd_get_opp_wFloor_Freq(cpu, freq, quant, wl_type, floor_freq);
 
-	return (unsigned long) pd_cpu_opp2dsu_freq(cpu, opp, false, wl_type);
+	return (unsigned long) pd_cpu_opp2dsu_freq(cpu, opp, quant, wl_type);
 }
 
 unsigned long pd_get_cpufreq_wFloor_Freq(int cpu, unsigned long freq,
@@ -79,7 +82,7 @@ unsigned long update_dsu_status(struct energy_env *eenv,
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
 
-	dsu_freq = pd_get_dsu_freq_wFloor_Freq(this_cpu, freq, eenv->wl_type, floor_freq);
+	dsu_freq = pd_get_dsu_freq_wFloor_Freq(this_cpu, freq, false, eenv->wl_type, floor_freq);
 	if (dst_cpu >= 0) {
 		if (eenv->dsu_freq_base < dsu_freq) {
 			eenv->dsu_freq_new = dsu_freq;
@@ -107,43 +110,153 @@ unsigned long update_dsu_status(struct energy_env *eenv,
 }
 
 inline
-unsigned long get_cpu_power(bool dyn_pwr_ctrl, bool lkg_pwr_ctrl, int wl_type,
-	int *val_s, int this_cpu, int *cpu_temp, int opp, unsigned long sum_util,
-	unsigned long extern_volt, unsigned long cap, unsigned int cpumask_val,
-	unsigned long *dyn_pwr, unsigned long *static_pwr, unsigned long *pwr_eff,
-	unsigned long *sum_cap, unsigned int *cpu_static_pwr_array,
-	unsigned long scale_cpu, unsigned long freq)
+unsigned long get_cpu_power_(unsigned int mtk_em, unsigned int get_lkg,
+	int quant, int wl_type, int *val_s, int r_o, int caller,
+	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
+	unsigned long *data, unsigned long *output)
 {
 	unsigned int pd_volt = 0;
 	int cpu = 0;
+	unsigned long dyn_pwr, static_pwr = 0, pwr_eff, sum_cap = 0;
+	unsigned long sum_util = data[0];
+	unsigned long extern_volt = data[1];
+	unsigned long cap = data[2];
+	unsigned long scale_cpu = data[3];
 
-	if (lkg_pwr_ctrl) {
+	if (get_lkg) {
 		while (cpumask_val) {
 			if (cpumask_val & 1) {
 				unsigned int cpu_static_pwr;
 
 				cpu_static_pwr = shared_buck_lkg_pwr(wl_type, cpu, opp,
 						cpu_temp[cpu], extern_volt);
-				*static_pwr += cpu_static_pwr;
-				*sum_cap += cap;
-				cpu_static_pwr_array[cpu] = cpu_static_pwr;
+				static_pwr += cpu_static_pwr;
+				sum_cap += cap;
+				output[cpu + 4] = cpu_static_pwr;
 			}
 			cpumask_val >>= 1;
 			cpu ++;
 		}
-		*static_pwr = (likely(*sum_cap) ? (*static_pwr * sum_util) / *sum_cap : 0);
+		static_pwr = (likely(sum_cap) ? (static_pwr * sum_util) / sum_cap : 0);
 	}
 
-	if (dyn_pwr_ctrl) {
-		*pwr_eff = pd_opp2pwr_eff(this_cpu, opp, false, wl_type, val_s,
+	if (mtk_em) {
+		pwr_eff = pd_opp2pwr_eff(this_cpu, opp, false, wl_type, val_s,
 				false, DPT_CALL_MTK_EM_CPU_ENERGY);
-		*dyn_pwr = *pwr_eff * sum_util;
+		dyn_pwr = pwr_eff * sum_util;
 
 		/* shared-buck dynamic power*/
-		pd_volt = pd_opp2volt(this_cpu, opp, false, wl_type);
-		*dyn_pwr = shared_buck_dyn_pwr(*dyn_pwr, pd_volt, extern_volt);
-	} else
-		*dyn_pwr = (*pwr_eff * sum_util / scale_cpu);
+		pd_volt = pd_opp2volt(this_cpu, opp, quant, wl_type);
+		dyn_pwr = shared_buck_dyn_pwr(dyn_pwr, pd_volt, extern_volt);
+	} else {
+		pwr_eff = output[2];
+		dyn_pwr = (pwr_eff * sum_util / scale_cpu);
+	}
 
-	return *dyn_pwr + *static_pwr;
+	output[0] = dyn_pwr;
+	output[1] = static_pwr;
+	output[2] = pwr_eff;
+	output[3] = sum_cap;
+
+	return dyn_pwr + static_pwr;
+}
+
+inline
+unsigned long get_cpu_pwr_eff_(int cpu, unsigned long pd_freq, int quant, int wl_type,
+	int *val_s, int r_o, int caller, unsigned long floor_freq, int temperature,
+	unsigned long extern_volt, unsigned long *output)
+{
+	int opp;
+	unsigned long static_pwr_eff, pwr_eff;
+	int cap;
+	int pd_pwr_eff;
+	unsigned long pd_volt;
+
+	output[0] = opp = pd_get_opp_wFloor_Freq(cpu, pd_freq, quant, wl_type, floor_freq);
+
+	pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, quant, wl_type, val_s, false, caller);
+	pd_volt = pd_opp2volt(cpu, opp, quant, wl_type);
+	output[1] = pd_pwr_eff = shared_buck_dyn_pwr(pd_pwr_eff, pd_volt, extern_volt);
+
+	output[2] = cap = pd_opp2cap(cpu, opp, quant, wl_type, val_s, false, caller);
+	output[3] = static_pwr_eff = shared_buck_lkg_pwr(wl_type, cpu, opp,
+				temperature, extern_volt) / cap;
+	pwr_eff = pd_pwr_eff + static_pwr_eff;
+
+	return pwr_eff;
+}
+
+unsigned long (*get_volt_wFloor_Freq_hook)(int cpu, unsigned long freq,
+	int quant, int wl_type, unsigned long floor_freq);
+EXPORT_SYMBOL(get_volt_wFloor_Freq_hook);
+
+unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
+	int quant, int wl_type, unsigned long floor_freq)
+{
+	if (get_volt_wFloor_Freq_hook)
+		return get_volt_wFloor_Freq_hook(cpu, freq, quant, wl_type, floor_freq);
+
+	return 0;
+}
+
+unsigned long (*get_cpu_power_hook)(unsigned int mtk_em, unsigned int get_lkg,
+	int quant, int wl_type, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
+	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
+	unsigned long *data, unsigned long *output);
+EXPORT_SYMBOL(get_cpu_power_hook);
+
+unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
+	int quant, int wl_type, int *val_s, int r_o, int caller,
+	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
+	unsigned long *data, unsigned long *output)
+{
+	if (get_cpu_power_hook) {
+		unsigned long result;
+		int dpt_pwr_eff_val[5];
+
+		result = get_cpu_power_hook(mtk_em, get_lkg, quant, wl_type,
+				dpt_pwr_eff_val, val_s, val_m, r_o,
+				this_cpu, cpu_temp, opp, cpumask_val, data, output);
+
+		record_sched_pd_opp2pwr_eff(this_cpu, opp, quant, wl_type,
+			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],
+			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], val_s, r_o, caller);
+
+		return result;
+	}
+
+	return 0;
+}
+
+unsigned long (*get_cpu_pwr_eff_hook)(int cpu, unsigned long pd_freq, int quant, int wl,
+	int *dpt_opp_val, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
+	unsigned long floor_freq, int temperature, unsigned long extern_volt,
+	unsigned long *output);
+EXPORT_SYMBOL(get_cpu_pwr_eff_hook);
+
+unsigned long get_cpu_pwr_eff(int cpu, unsigned long pd_freq,
+	int quant, int wl_type, int *val_s, int r_o, int caller,
+	unsigned long floor_freq, int temperature, unsigned long extern_volt,
+	unsigned long *output)
+{
+	if (get_cpu_pwr_eff_hook) {
+		unsigned long result;
+		int dpt_opp_val[3];
+		int dpt_pwr_eff_val[5];
+
+		result = get_cpu_pwr_eff_hook(cpu, pd_freq, quant, wl_type,
+				dpt_opp_val, dpt_pwr_eff_val, val_s, val_m, r_o,
+				floor_freq, temperature, extern_volt, output);
+
+		record_sched_pd_opp2cap(cpu, output[0], quant, wl_type,
+			dpt_opp_val[0], dpt_opp_val[1], dpt_opp_val[2], val_s, r_o, caller);
+
+		record_sched_pd_opp2pwr_eff(cpu, output[0], quant, wl_type,
+			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],
+			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], val_s, r_o, caller);
+
+		return result;
+	}
+
+	return 0;
 }
