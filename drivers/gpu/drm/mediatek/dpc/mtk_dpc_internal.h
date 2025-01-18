@@ -246,6 +246,13 @@ enum mtk_dpc_cap_id {
 };
 #define has_cap(id) (g_priv && (g_priv->vidle_mask & BIT(id)))
 
+enum mtk_dpc_channel_type {
+	DPC_SRT_READ,
+	DPC_SRT_WRITE,
+	DPC_HRT_READ,
+	DPC_HRT_WRITE,
+};
+
 struct mtk_dpc_dt_usage {
 	s16 index;
 	enum mtk_dpc_sp_type sp;		/* start point */
