@@ -76,9 +76,6 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret)
 
 	/* Check if irq is pending */
 	mt_irq_dump_status(hba->irq);
-	/* dump CPU3 callstack for debugging */
-	dev_info(hba->dev, "%s: Task dump on CPU3\n", __func__);
-	sched_show_task(cpu_curr(3));
 
 	ret2 = ufshcd_dme_get(hba,
 		UIC_ARG_MIB(VS_UNIPROPOWERDOWNCONTROL), &val);
@@ -626,6 +623,179 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 }
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+#define NUM_OF_MON	14
+#define MON_DEPTH	4
+#define W_PT_BITS	0x3
+#define W_PT_OFFSET	22
+#define W_PT_MASK	(W_PT_BITS << W_PT_OFFSET)
+
+static struct mon_struct mon_info[NUM_OF_MON] = {
+	{REG_UFS_NOPOUT_MON, "NOP OUT"},
+	{REG_UFS_NOPIN_MON, "NOP IN"},
+	{REG_UFS_COMMAND_MON, "COMMAND"},
+	{REG_UFS_RESP_MON, "RESPONSE"},
+	{REG_UFS_DATAOUT_MON, "DATA OUT"},
+	{REG_UFS_DATAIN_MON, "DATA IN"},
+	{REG_UFS_TMREQ_MON, "TM REQUEST"},
+	{REG_UFS_TMRESP_MON, "TM RESPONSE"},
+	{REG_UFS_RTT_MON, "RTT"},
+	{REG_UFS_QUERYREQ_MON, "QUERY REQUEST"},
+	{REG_UFS_QUERYRESP_MON, "QUERY RESPONSE"},
+	{REG_UFS_REJECT_MON, "REJECT"},
+	{REG_UFS_AH8E_MON, "H8 ENTER"},
+	{REG_UFS_AH8X_MON, "H8 EXIT"},
+};
+
+void ufs_mtk_mon_dump(struct ufs_hba *hba)
+{
+	u8 i, j, sort[MON_DEPTH];
+	u32 mon_w_pt[NUM_OF_MON], w_pt;
+	u32 mon_data[NUM_OF_MON][MON_DEPTH];
+
+	/* Clear buffer */
+	memset(mon_data, 0, sizeof(u32) * NUM_OF_MON * MON_DEPTH);
+
+	dev_info(hba->dev, "format: LLTTtttt (LUN/TAG/timestamp in us\n");
+	dev_info(hba->dev, "%16s    %8s %8s %8s %8s", "", "OLDEST", "", "", "LATEST");
+
+	/* Fetch data in a batch */
+	for (i = 0; i < NUM_OF_MON; i++) {
+		for (j = 0; j < MON_DEPTH; j++) {
+			mon_data[i][j] = ufshcd_readl(hba, mon_info[i].offset);
+			w_pt = (mon_data[i][j] >> W_PT_OFFSET) & W_PT_BITS;
+
+			/* Get the current write pointer, and alert if not all write pointers are the same */
+			if (j == 0)
+				mon_w_pt[i] = w_pt;
+			else if (mon_w_pt[i] != w_pt) {
+				dev_info(hba->dev, "w_pt[%d][0] = %x, w_pt[%d][%d] = %x\n",
+					i, mon_w_pt[i], i, j, w_pt);
+			}
+		}
+
+		/*
+		 * Reorder according to the current write pointer
+		 * the oldest record is listed first; the latest, last
+		 */
+		for (j = 0; j < MON_DEPTH; j++)
+			sort[j] = (j + mon_w_pt[i]) % MON_DEPTH;
+
+		dev_info(hba->dev, "%16s || %08x %08x %08x %08x",
+			mon_info[i].name,
+			mon_data[i][sort[0]] &~ W_PT_MASK,
+			mon_data[i][sort[1]] &~ W_PT_MASK,
+			mon_data[i][sort[2]] &~ W_PT_MASK,
+			mon_data[i][sort[3]] &~ W_PT_MASK
+			);
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_mon_dump);
+
+void ufs_mtk_ahb_dump(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 val = ufshcd_readl(hba, REG_UFS_MMIO_DBG_AHB);
+
+	if (host->ip_ver < IP_VER_MT6899)
+		return;
+
+	dev_info(hba->dev, "=== INPUT ===\n");
+	dev_info(hba->dev, "HTRANS(2) = 0x%x\n", (val >> 6) & 0x3);
+	dev_info(hba->dev, "HADDR(32) = 0x%x\n", ufshcd_readl(hba, REG_UFS_MMIO_DBG_AHB_HADDR));
+	dev_info(hba->dev, "HWRITE(1) = 0x%x\n", (val >> 8) & 0x1);
+	dev_info(hba->dev, "HSIZE(3) = 0x%x\n", (val >> 9) & 0x7);
+	dev_info(hba->dev, "HBURST(3) = 0x%x\n", (val >> 3) & 0x7);
+	dev_info(hba->dev, "HSECUR_B(1) = 0x%x\n", (val >> 2) & 0x1);
+	dev_info(hba->dev, "HREADY_IN(1) = 0x%x\n", (val >> 1) & 0x1);
+	dev_info(hba->dev, "HWDATA(32) = 0x%x\n", ufshcd_readl(hba, REG_UFS_MMIO_DBG_AHB_HWDATA));
+	dev_info(hba->dev, "=== OUTPUT ===\n");
+	dev_info(hba->dev, "HREADY(1) = 0x%x\n", (val & 0x1));
+	dev_info(hba->dev, "HRDATA(32) = 0x%x\n\n", ufshcd_readl(hba, REG_UFS_MMIO_DBG_AHB_HRDATA));
+
+	val = ufshcd_readl(hba, REG_UFS_MMIO_DBG_NIT);
+	dev_info(hba->dev, "=== INPUT ===\n");
+	dev_info(hba->dev, "NIT_ADDR(16) = 0x%x\n", (val & 0xFFFF));
+	dev_info(hba->dev, "NIT_WR(1) = 0x%x\n", ((val >> 16) & 0x1));
+	dev_info(hba->dev, "NIT_WDATA(32) = 0x%x\n", ufshcd_readl(hba, REG_UFS_MMIO_DBG_NIT_WDATA));
+	dev_info(hba->dev, "=== OUTPUT ===\n");
+	dev_info(hba->dev, "NIT_RDATA(32) = 0x%x\n\n", ufshcd_readl(hba, REG_UFS_MMIO_DBG_NIT_RDATA));
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_ahb_dump);
+
+void ufs_mtk_axi_dump(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u64 sel_val[13] = {0};
+	u32 i, val, reg;
+
+	if (host->ip_ver < IP_VER_MT6897)
+		return;
+
+	reg = REG_UFS_MMIO_DBG_AXIM;
+	for (i = 0; i < ARRAY_SIZE(sel_val) * 2; i++) {
+		val = (ufshcd_readl(hba, reg) & ~0xFF0000) | (i << 16);
+		ufshcd_writel(hba, val, reg);
+		val = ufshcd_readl(hba, reg) & 0xFFFF;
+
+		if (i % 2 == 0)
+			sel_val[i / 2] |= (u64)val;
+		else
+			sel_val[i / 2] |= (u64)val << 16;
+	}
+
+	/* mru_dbg_axim_aw */
+	dev_info(hba->dev, "=== mru_dbg_axim_aw ===\n");
+	dev_info(hba->dev, "AWID(2) = 0x%llx\n", sel_val[0] & 0x3);
+	dev_info(hba->dev, "AWADDR(36) = 0x%llx\n", (sel_val[0] >> 2) |
+						    ((sel_val[1] & 0x3F) << 30));
+	dev_info(hba->dev, "AWLEN(8) = 0x%llx\n", (sel_val[1] >> 6) & 0xFF);
+	dev_info(hba->dev, "AWSIZE(3) = 0x%llx\n", (sel_val[1] >> 14) & 0x7);
+	dev_info(hba->dev, "AWBURST(2) = 0x%llx\n", (sel_val[1] >> 17) & 0x3);
+	dev_info(hba->dev, "AWCACHE(4) = 0x%llx\n", (sel_val[1] >> 19) & 0xF);
+	dev_info(hba->dev, "AWUSER(4) = 0x%llx\n\n", (sel_val[1] >> 23) & 0xF);
+
+	/* mru_dbg_axim_w */
+	dev_info(hba->dev, "=== mru_dbg_axim_w ===\n");
+	dev_info(hba->dev, "WID(2) = 0x%llx\n", (sel_val[1] >> 27) & 0x3);
+	dev_info(hba->dev, "WDATA(128)[63:0] = 0x%llx\n", (sel_val[1] >> 29) |
+							  (sel_val[2] << 3) |
+							  ((sel_val[3] & 0x3FFFFFFF) << 35));
+	dev_info(hba->dev, "WDATA(128)[128:64] = 0x%llx\n", (sel_val[3] >> 29) |
+							    (sel_val[4] << 3) |
+							    ((sel_val[5] & 0x3FFFFFFF) << 35));
+	dev_info(hba->dev, "WSTRB(16) = 0x%llx\n", (sel_val[5] >> 29) |
+						   ((sel_val[6] & 0x1FFF) << 3));
+	dev_info(hba->dev, "WLAST(1) = 0x%llx\n\n", (sel_val[6] >> 13) & 0x1);
+
+	/* mru_dbg_axim_b */
+	dev_info(hba->dev, "=== mru_dbg_axim_b ===\n");
+	dev_info(hba->dev, "BID(2) = 0x%llx\n", (sel_val[6] >> 14) & 0x3);
+	dev_info(hba->dev, "BERSP(2) = 0x%llx\n\n", (sel_val[6] >> 16) & 0x3);
+
+	/* mru_dbg_axim_ar */
+	dev_info(hba->dev, "=== mru_dbg_axim_ar ===\n");
+	dev_info(hba->dev, "ARID(2) = 0x%llx\n", (sel_val[6] >> 18) & 0x3);
+	dev_info(hba->dev, "ARADDR(36) = 0x%llx\n", (sel_val[6] >> 20) |
+						    ((sel_val[7] & 0xFFFFFF) << 12));
+	dev_info(hba->dev, "ARLEN(8) = 0x%llx\n", (sel_val[7] >> 24) & 0xFF);
+	dev_info(hba->dev, "ARSIZE(3) = 0x%llx\n", sel_val[8] & 0x7);
+	dev_info(hba->dev, "ARURST(2) = 0x%llx\n", (sel_val[8] >> 3) & 0x3);
+	dev_info(hba->dev, "ARCACHE(4) = 0x%llx\n", (sel_val[8] >> 5) & 0xF);
+	dev_info(hba->dev, "ARUSER(4) = 0x%llx\n\n", (sel_val[8] >> 9) & 0xF);
+
+	/* mru_dbg_axim_r */
+	dev_info(hba->dev, "=== mru_dbg_axim_r ===\n");
+	dev_info(hba->dev, "RID(2) = 0x%llx\n", (sel_val[8] >> 13) & 0x3);
+	dev_info(hba->dev, "RDATA(128)[63:0] = 0x%llx\n", (sel_val[8] >> 15) |
+							  (sel_val[9] << 17) |
+							  ((sel_val[10] & 0x7FFF) << 49));
+	dev_info(hba->dev, "RDATA(128)[128:64] = 0x%llx\n", (sel_val[10] >> 15) |
+							    (sel_val[11] << 17) |
+							    ((sel_val[12] & 0x7FFF) << 49));
+	dev_info(hba->dev, "RRESP(2) = 0x%llx\n", (sel_val[12] >> 15) & 0x3);
+	dev_info(hba->dev, "RLAST(1) = 0x%llx\n\n", (sel_val[12] >> 17) & 0x1);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_axi_dump);
 
 /* MPHY Debugging is for ENG/USERDEBUG builds only */
 static u32 mphy_phys_base;
@@ -1596,7 +1766,7 @@ static void ufs_mtk_dbg_print_clk_gating_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
+		"%3d-CLK_GAT(%d),%6llu.%09lu,%5d,%2d,%13s,arg1=0x%X,arg2=0x%X,arg3=0x%X\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1629,7 +1799,7 @@ static void ufs_mtk_dbg_print_clk_scaling_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%15s, err:%d\n",
+		"%3d-CLKSCAL(%d),%6llu.%09lu,%5d,%2d,%15s, err:%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1665,7 +1835,7 @@ static void ufs_mtk_dbg_print_pm_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
+		"%3d-PWR_MOD(%d),%6llu.%09lu,%5d,%2d,%3s, ret=%d, time_us=%8lu, pwr_mode=%d, link_status=%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1691,7 +1861,7 @@ static void ufs_mtk_dbg_print_device_reset_event(char **buff,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-c(%d),%6llu.%09lu,%5d,%2d,%13s\n",
+		"%3d-DEV_RST(%d),%6llu.%09lu,%5d,%2d,%13s\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1708,7 +1878,7 @@ static void ufs_mtk_dbg_print_uic_event(char **buff, unsigned long *size,
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-u(%d),%6llu.%09lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
+		"%3d-UIC_CMD(%d),%6llu.%09lu,%5d,%2d,0x%2x,arg1=0x%X,arg2=0x%X,arg3=0x%X,\t%llu\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1731,7 +1901,7 @@ static void ufs_mtk_dbg_print_utp_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
+		"%3d-UTP_CMD(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1757,7 +1927,7 @@ static void ufs_mtk_dbg_print_dev_event(char **buff, unsigned long *size,
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
+		"%3d-DEV_CMD(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -1781,7 +1951,7 @@ static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-r(%d),%6llu.%09lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
+		"%3d-TAS_MAN(%d),%6llu.%09lu,%5d,%2d,0x%2x,lun=%d,tag=%d,task_tag=%d\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,

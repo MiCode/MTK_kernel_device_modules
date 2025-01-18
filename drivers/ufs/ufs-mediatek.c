@@ -463,7 +463,7 @@ static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if (((host->ip_ver >> 16) & 0xFF) >= 0x36) {
+	if (host->ip_ver >= IP_VER_MT6983) {
 		ufshcd_writel(hba, 0x820820, REG_UFS_DEBUG_SEL);
 		ufshcd_writel(hba, 0x0, REG_UFS_DEBUG_SEL_B0);
 		ufshcd_writel(hba, 0x55555555, REG_UFS_DEBUG_SEL_B1);
@@ -1075,6 +1075,7 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
  * HW version format has been changed from 01MMmmmm to 1MMMmmmm, since
  * project MT6878. In order to perform correct version comparison,
  * version number is changed by SW for the following projects.
+ * IP_VER_MT6983	0x00360000 to 0x10360000
  * IP_VER_MT6897	0x01440000 to 0x10440000
  * IP_VER_MT6989	0x01450000 to 0x10450000
  * IP_VER_MT6991	0x01460000 to 0x10460000
@@ -1086,9 +1087,10 @@ static void ufs_mtk_get_hw_ip_version(struct ufs_hba *hba)
 
 	hw_ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
 
-	if ((hw_ip_ver & 0xFF000000) == 0x01000000) {
-		hw_ip_ver &= ~0xFF000000;
-		hw_ip_ver |= 0x10000000;
+	if (((hw_ip_ver & (0xFF << 24)) == (0x1 << 24)) ||
+	    ((hw_ip_ver & (0xFF << 24)) == 0)) {
+		hw_ip_ver &= ~(0xFF << 24);
+		hw_ip_ver |= (0x1 << 28);
 	}
 
 	host->ip_ver = hw_ip_ver;
@@ -2506,7 +2508,6 @@ fail:
 static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	int i;
 
 	/*
 	 * Skip debug dump since critical information has already
@@ -2517,55 +2518,46 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	mt_irq_dump_status(hba->irq);
 
-	/* Dump ufshci register 0x0 ~ 0xA0 */
-	ufshcd_dump_regs(hba, 0, UFSHCI_REG_SPACE_SIZE, "UFSHCI (0x0):");
+	/* Dump ufshci register 0x0 ~ 0x9C */
+	ufshcd_dump_regs(hba, 0, UFSHCI_REG_SPACE_SIZE,
+				"UFSHCI (0x0):");
+	/* Dump ufshci register 0x100 ~ 0x160 */
+	ufshcd_dump_regs(hba, REG_UFS_CCAP,
+				REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
+				"UFSHCI (0x100): ");
+	/* Dump ufshci register 0x170 */
+	ufshcd_dump_regs(hba, REG_UFS_MMIO_STS_0, 4,
+				"UFSHCI (0x170): ");
+	/* Dump ufshci register 0x300 */
+	ufshcd_dump_regs(hba, REG_UFS_MEM_CFG, 4,
+				"UFSHCI (0x300): ");
 
-	/* Dump ufshci register 0x140 ~ 0x14C */
-	ufshcd_dump_regs(hba, REG_UFS_XOUFS_CTRL, 0x10, "XOUFS Ctrl (0x140): ");
-
-	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg ");
-
-	if (hba->mcq_enabled) {
-		/* Dump ufshci register 0x100 ~ 0x160 */
-		ufshcd_dump_regs(hba, REG_UFS_CCAP,
-				 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
-				 "UFSHCI (0x100): ");
-
-		/* Dump ufshci register 0x300 */
-		ufshcd_dump_regs(hba, REG_UFS_MEM_CFG, 4,
-				 "UFSHCI (0x300): ");
-
-		/* Dump ufshci register 0x380 */
-		ufshcd_dump_regs(hba, REG_UFS_MCQ_CFG, 4,
-				 "UFSHCI (0x380): ");
-	}
-
-	/* Dump ufshci register 0x2200 ~ 0x22AC */
-	ufshcd_dump_regs(hba, REG_UFS_MPHYCTRL,
-			 REG_UFS_REJECT_MON - REG_UFS_MPHYCTRL + 4,
-			 "UFSHCI (0x2200): ");
-
-	/* Dump ufshci register 0x22B0 ~ 0x22B4, 4 times */
-	for (i = 0; i < 4; i++)
-		ufshcd_dump_regs(hba, REG_UFS_AH8E_MON,
-			 REG_UFS_AH8X_MON - REG_UFS_AH8E_MON + 4,
-			 "UFSHCI (0x22B0): ");
+	/* Dump ufshci register 0x2100 */
+	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg (0x2100): ");
 
 	/* Direct debugging information to REG_MTK_PROBE */
 	ufs_mtk_dbg_sel(hba);
 	/* Dump ufshci register 0x22C8 */
-	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4, "Debug Probe ");
+	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
+				"Debug Probe (0x22C8): ");
 
 	if (hba->mcq_enabled) {
+		/* Dump ufshci register 0x380 */
+		ufshcd_dump_regs(hba, REG_UFS_MCQ_CFG, 4,
+				"UFSHCI (0x380): ");
 		/* Dump ufshci register 0x22FC ~ 0x2304 */
 		ufshcd_dump_regs(hba, REG_UFS_SQ_DBR_DBG,
-				 REG_UFS_ACT_STS - REG_UFS_SQ_DBR_DBG + 4,
-				 "UFSHCI (0x22F0): ");
+				REG_UFS_ACT_STS - REG_UFS_SQ_DBR_DBG + 4,
+				"UFSHCI (0x22F0): ");
 		/* Dump ufshci register 0x2800 ~ 0x297C */
 		ufshcd_dump_regs(hba, REG_UFS_MTK_SQD,
-				 REF_UFS_MTK_CQ7_IACR - REG_UFS_MTK_SQD + 4,
-				 "UFSHCI (0x2800): ");
+				REF_UFS_MTK_CQ7_IACR - REG_UFS_MTK_SQD + 4,
+				"UFSHCI (0x2800): ");
 	}
+
+	ufs_mtk_mon_dump(hba);
+	ufs_mtk_ahb_dump(hba);
+	ufs_mtk_axi_dump(hba);
 
 	ufs_mtk_dbg_dump(100);
 

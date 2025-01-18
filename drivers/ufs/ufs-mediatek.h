@@ -41,12 +41,34 @@
 #define REG_UFS_XOUFS_CTRL          0x140
 #define REG_UFS_REFCLK_CTRL         0x144
 #define REG_UFS_MMIO_OPT_CTRL_0     0x160
+#define REG_UFS_MMIO_STS_0          0x170
+#define REG_UFS_MMIO_DBG_AHB        0x1C0
+#define REG_UFS_MMIO_DBG_AHB_HADDR  0x1C4
+#define REG_UFS_MMIO_DBG_AHB_HRDATA 0x1C8
+#define REG_UFS_MMIO_DBG_AHB_HWDATA 0x1CC
+#define REG_UFS_MMIO_DBG_NIT        0x1D0
+#define REG_UFS_MMIO_DBG_NIT_RDATA  0x1D4
+#define REG_UFS_MMIO_DBG_NIT_WDATA  0x1D8
+#define REG_UFS_MMIO_DBG_AXIM       0x1FC
 #define REG_UFS_EXTREG              0x2100
 #define REG_UFS_MPHYCTRL            0x2200
 #define REG_UFS_MTK_IP_VER          0x2240
+/* UPIU Monitor */
+#define REG_UFS_NOPOUT_MON          0x2280
+#define REG_UFS_NOPIN_MON           0x2284
+#define REG_UFS_COMMAND_MON         0x2288
+#define REG_UFS_RESP_MON            0x228C
+#define REG_UFS_DATAOUT_MON         0x2290
+#define REG_UFS_DATAIN_MON          0x2294
+#define REG_UFS_TMREQ_MON           0x2298
+#define REG_UFS_TMRESP_MON          0x229C
+#define REG_UFS_RTT_MON             0x22A0
+#define REG_UFS_QUERYREQ_MON        0x22A4
+#define REG_UFS_QUERYRESP_MON       0x22A8
 #define REG_UFS_REJECT_MON          0x22AC
 #define REG_UFS_AH8E_MON            0x22B0
 #define REG_UFS_AH8X_MON            0x22B4
+/* Debug Signal */
 #define REG_UFS_DEBUG_SEL           0x22C0
 #define REG_UFS_PROBE               0x22C8
 #define REG_UFS_DEBUG_SEL_B0        0x22D0
@@ -55,7 +77,7 @@
 #define REG_UFS_DEBUG_SEL_B3        0x22DC
 #define REG_UFS_SQ_DBR_DBG          0x22FC
 #define REG_UFS_ACT_STS             0x2304
-
+/* MCQ CQ/SQ */
 #define REG_UFS_MTK_SQD             0x2800
 #define REG_UFS_MTK_SQIS            0x2814
 #define REG_UFS_MTK_CQD             0x281C
@@ -299,8 +321,10 @@ enum {
 /* UFS MTK ip version value */
 enum {
 	IP_VER_NONE   = 0x0,
+	IP_VER_MT6983 = 0x10360000,
 	IP_VER_MT6897 = 0x10440000,
 	IP_VER_MT6989 = 0x10450000,
+	IP_VER_MT6899 = 0x10450100,
 	IP_VER_MT6991 = 0x10460000
 };
 
