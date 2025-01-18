@@ -6697,6 +6697,7 @@
 		interrupts = <GIC_SPI 246 IRQ_TYPE_LEVEL_HIGH 0>;
 		topckgen = <&topckgen_clk>;
 		infracfg_ao = <&infracfg_ao_clk>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_AUDIO>;
 		clocks = <&audio_clk CLK_AUDSYS_AFE>,
 			<&audio_clk CLK_AUDSYS_22M>,
 			<&audio_clk CLK_AUDSYS_24M>,
