@@ -914,6 +914,7 @@ static void pt_notify_init(struct platform_device *pdev)
 			dev_notice(&pdev->dev, "bootmode:0x%x\n", low_bat_thl_data->tag->bootmode);
 	}
 
+	init_waitqueue_head(&low_bat_thl_data->notify_waiter);
 	timer_setup(&low_bat_thl_data->notify_timer, pt_timer_func, TIMER_DEFERRABLE);
 	low_bat_thl_data->notify_thread = kthread_run(pt_notify_handler, 0,
 					 "pt_notify_thread");
@@ -921,10 +922,10 @@ static void pt_notify_init(struct platform_device *pdev)
 		pr_notice("Failed to create notify_thread\n");
 		return;
 	}
-	init_waitqueue_head(&low_bat_thl_data->notify_waiter);
 	bp_nb.notifier_call = pt_psy_event;
 	ret = power_supply_reg_notifier(&bp_nb);
 	if (ret) {
+		kthread_stop(low_bat_thl_data->notify_thread);
 		pr_notice("power_supply_reg_notifier fail\n");
 		return;
 	}
