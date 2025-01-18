@@ -718,7 +718,7 @@ inline int mtk_cpu_volt2opp_linear(int cpu, int volt, int quant, int wl)
 	return nr_opp - 1;
 }
 
-inline int mtk_dsu_weighting(int cpu, int wl)
+inline int mtk_dsu_weighting(int wl, int cpu)
 {
 	int i;
 
@@ -726,7 +726,7 @@ inline int mtk_dsu_weighting(int cpu, int wl)
 	return cpu_wt[i][wl].dsu_weighting;
 }
 
-inline int mtk_emi_weighting(int cpu, int wl)
+inline int mtk_emi_weighting(int wl, int cpu)
 {
 	int i;
 
@@ -746,12 +746,29 @@ inline int mtk_dsu_fre2dsu_opp(int freq)
 	return idx;
 }
 
-inline struct dsu_state *mtk_dsu_opp2dsu_ps(int opp, int wl)
+inline struct dsu_state *mtk_dsu_opp2dsu_ps(int wl, int opp)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	opp = clamp_val(opp, 0, mtk_dsu_em.nr_perf_states - 1);
 #endif
 	return &dsu_tbl.tbl[wl][opp];
+}
+
+int mtk_dsu_opp2volt(int opp)
+{
+	struct dsu_state *ds = mtk_dsu_opp2dsu_ps(0, opp);
+
+	return ds->volt;
+}
+
+int mtk_dsu_volt2opp_linear(int volt)
+{
+	int i;
+
+	for (i = 0; i < dsu_tbl.nr_opp; i++)
+		if (volt >= mtk_dsu_opp2volt(i))
+			return i;
+	return dsu_tbl.nr_opp - 1;
 }
 /* binary space */
 
@@ -1000,11 +1017,11 @@ unsigned int pd_get_dsu_weighting(int wl, unsigned int cpu)
 {
 	if (em_ver() == 3) {
 		if (mtk_dsu_weighting_hook)
-			return mtk_dsu_weighting_hook(cpu, get_eas_wl(wl));
+			return mtk_dsu_weighting_hook(get_eas_wl(wl), cpu);
 		else
 			return 1;
 	}
-	return mtk_dsu_weighting(cpu, get_eas_wl(wl));
+	return mtk_dsu_weighting(get_eas_wl(wl), cpu);
 }
 EXPORT_SYMBOL_GPL(pd_get_dsu_weighting);
 
@@ -1014,11 +1031,11 @@ unsigned int pd_get_emi_weighting(int wl, unsigned int cpu)
 {
 	if (em_ver() == 3) {
 		if (mtk_emi_weighting_hook)
-			return mtk_emi_weighting_hook(cpu, get_eas_wl(wl));
+			return mtk_emi_weighting_hook(get_eas_wl(wl), cpu);
 		else
 			return 1;
 	}
-	return mtk_emi_weighting(cpu, get_eas_wl(wl));
+	return mtk_emi_weighting(get_eas_wl(wl), cpu);
 }
 EXPORT_SYMBOL_GPL(pd_get_emi_weighting);
 
@@ -1035,6 +1052,20 @@ unsigned int dsu_get_freq_opp(unsigned int freq)
 }
 EXPORT_SYMBOL_GPL(dsu_get_freq_opp);
 
+int (*mtk_dsu_volt2opp_hook)(int volt);
+EXPORT_SYMBOL(mtk_dsu_volt2opp_hook);
+int pd_dsu_volt2opp(int volt)
+{
+	if (em_ver() == 3) {
+		if (mtk_dsu_volt2opp_hook)
+			return mtk_dsu_volt2opp_hook(volt);
+		else
+			return 1;
+	}
+	return mtk_dsu_volt2opp_linear(volt);
+}
+EXPORT_SYMBOL_GPL(pd_dsu_volt2opp);
+
 static struct dsu_state dsu_state_tmp;
 struct dsu_state *(*mtk_dsu_opp_ps_hook)(int wl, int opp);
 EXPORT_SYMBOL(mtk_dsu_opp_ps_hook);
@@ -1045,7 +1076,7 @@ struct dsu_state *dsu_get_opp_ps(int wl, int opp)
 			return mtk_dsu_opp_ps_hook(wl, opp);
 		return &dsu_state_tmp;
 	}
-	return mtk_dsu_opp2dsu_ps(opp, get_eas_wl(wl));
+	return mtk_dsu_opp2dsu_ps(get_eas_wl(wl), opp);
 }
 EXPORT_SYMBOL_GPL(dsu_get_opp_ps);
 

@@ -170,6 +170,7 @@ extern int pd_cpu_volt2opp(int cpu, int volt, int quant, int wl);
 extern int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl);
 extern int pd_util2freq(unsigned int cpu, int util, bool quant, int wl);
 extern int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl);
+extern int pd_dsu_volt2opp(int volt);
 extern int pd_get_dsu_freq(void);
 unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
