@@ -1054,10 +1054,12 @@ EXPORT_SYMBOL(cmdq_util_track);
 void cmdq_util_dump_smi(void)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	int smi_hang;
 
 	smi_hang = mtk_smi_dbg_hang_detect("CMDQ");
 	cmdq_util_err("smi hang:%d", smi_hang);
+#endif
 #else
 	cmdq_util_err("[WARNING]not enable SMI dump now");
 #endif

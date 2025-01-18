@@ -16,7 +16,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/virtio
 
+ifneq ($(CONFIG_VIRTIO_CMDQ),m)
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_CMDQ_MMPROFILE_SUPPORT
+endif
 
 ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)),)
 include $(DEVICE_MODULES_PATH)/drivers/tee/teei/Makefile.include
