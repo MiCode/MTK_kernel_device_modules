@@ -18,7 +18,7 @@
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
 #ifdef RX_PAGE_POOL
-#include <net/page_pool.h>
+#include <net/page_pool/types.h>
 #include "ccci_dpmaif_page_pool.h"
 #endif
 #include "ccci_debug.h"
