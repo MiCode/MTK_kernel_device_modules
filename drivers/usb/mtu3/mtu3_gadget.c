@@ -343,20 +343,25 @@ struct usb_request *mtu3_alloc_request(struct usb_ep *ep, gfp_t gfp_flags)
 void mtu3_free_request(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtu3_request *mreq = to_mtu3_request(req);
-	struct mtu3_request *r;
+	struct mtu3_request *r = NULL;
 	struct mtu3_ep *mep = to_mtu3_ep(ep);
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 
-	trace_mtu3_free_request(mreq);
 	spin_lock_irqsave(&mtu->lock, flags);
+
+	if (!mreq || mreq->mep != mep)
+		goto error;
+
 	list_for_each_entry(r, &mep->req_list, list) {
 		if (r == mreq) {
 			list_del(&mreq->list);
 			break;
 		}
 	}
+	trace_mtu3_free_request(mreq);
 	kfree(mreq);
+error:
 	spin_unlock_irqrestore(&mtu->lock, flags);
 }
 
@@ -372,7 +377,7 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	if (!req->buf)
 		return -ENODATA;
 
-	if (mreq->mep != mep)
+	if (!mreq || mreq->mep != mep)
 		return -EINVAL;
 
 	dev_dbg(mtu->dev, "%s %s EP%d(%s), req=%p, maxp=%d, len#%d\n",
@@ -408,6 +413,7 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	spin_lock_irqsave(&mtu->lock, flags);
 
 	if (mtu3_prepare_transfer(mep)) {
+		usb_gadget_unmap_request(&mtu->g, req, mep->is_in);  // Unmap before returning on error.
 		ret = -EAGAIN;
 		goto error;
 	}
@@ -427,18 +433,20 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtu3_ep *mep = to_mtu3_ep(ep);
 	struct mtu3_request *mreq = to_mtu3_request(req);
-	struct mtu3_request *r;
+	struct mtu3_request *r = NULL;
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 	int ret = 0;
 
-	if (mreq->mep != mep)
-		return -EINVAL;
+	spin_lock_irqsave(&mtu->lock, flags);
+
+	if (!mreq || mreq->mep != mep) {
+		ret = -EINVAL;
+		goto done;
+	}
 
 	dev_dbg(mtu->dev, "%s : req=%p\n", __func__, req);
 	trace_mtu3_gadget_dequeue(mreq);
-
-	spin_lock_irqsave(&mtu->lock, flags);
 
 	list_for_each_entry(r, &mep->req_list, list) {
 		if (r == mreq)
