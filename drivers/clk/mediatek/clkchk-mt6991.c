@@ -3612,7 +3612,7 @@ static void dump_hwv_history(struct regmap *regmap, u32 id)
 	u32 set[XPU_NUM] = {0};
 	int i;
 
-	if (regmap != NULL) {
+	if (!IS_ERR_OR_NULL(regmap)) {
 		for (i = 0; i < XPU_NUM; i++) {
 			regmap_read(regmap, HWV_XPU_CG_SET(i, id), &set[i]);
 			pr_notice("set: HW_CCF_XPU%d_CG_SET_%d: 0x%x\n", i, id, set[i]);
@@ -3769,7 +3769,7 @@ static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 
 	dump_hwv_history(regmap, id);
 
-	if (regmap) {
+	if (!IS_ERR_OR_NULL(regmap)) {
 		for (i = 0; i < 10; i++) {
 			regmap_write(regmap, HWV_CG_SET(xpu_id[0], id), 1 << shift);
 			regmap_read(regmap, HWV_CG_SET(xpu_id[0], id), &val);
