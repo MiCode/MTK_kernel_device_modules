@@ -110,6 +110,7 @@ obj-$(CONFIG_MTK_SENSOR_SUPPORT) += sensor/
 obj-$(CONFIG_MTK_DRAM_LOG_STORE) += log_store/
 obj-$(CONFIG_MTK_PRINTK) += mtprintk/
 obj-$(CONFIG_MTK_TASK_TURBO) += task_turbo/
+obj-$(CONFIG_MTK_KTCHBST) += ktchbst/
 obj-$(CONFIG_INTERCONNECT_MTK_EXTENSION) += mtk-interconnect/
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs/
 obj-$(CONFIG_MTK_MMDEBUG) += mmdebug/
