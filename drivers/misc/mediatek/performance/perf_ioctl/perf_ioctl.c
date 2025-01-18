@@ -379,7 +379,9 @@ static int fpsgo_lr_open(struct inode *inode, struct file *file)
 
 
 static const struct proc_ops fpsgo_lr_Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = fpsgo_lr_ioctl,
+#endif
 	.proc_ioctl = fpsgo_lr_ioctl,
 	.proc_open = fpsgo_lr_open,
 	.proc_read = seq_read,
