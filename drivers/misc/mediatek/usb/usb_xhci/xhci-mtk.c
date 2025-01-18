@@ -371,7 +371,7 @@ static void xhci_mtk_snd_connect(struct snd_usb_audio *chip)
 	ops = xhci_vendor_get_ops_(xhci);
 
 	if (ops && ops->usb_offload_connect)
-		return ops->usb_offload_connect(chip);
+		ops->usb_offload_connect(chip);
 }
 
 static void xhci_mtk_snd_disconnect(struct snd_usb_audio *chip)
@@ -386,7 +386,10 @@ static void xhci_mtk_snd_disconnect(struct snd_usb_audio *chip)
 	ops = xhci_vendor_get_ops_(xhci);
 
 	if (ops && ops->usb_offload_disconnect)
-		return ops->usb_offload_disconnect(chip);
+		ops->usb_offload_disconnect(chip);
+
+	/* workaround for use-after-free in snd_complete_urb */
+	mdelay(10);
 }
 
 static struct snd_usb_platform_ops snd_ops = {
