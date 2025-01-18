@@ -28874,6 +28874,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc0 = NULL;
 	int i;
+	int temp;
 #ifndef DRM_BYPASS_PQ
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
@@ -28971,6 +28972,12 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 						wake_up(&mtk_crtc0->spr_switch_wait_queue);
 					}
 				}
+			}
+			if(mtk_crtc0 && atomic_read(&mtk_crtc0->get_data_type)) {
+				temp = mtk_spr_check_postalign_status(mtk_crtc0);
+				if(temp >= 0)
+					atomic_set(&mtk_crtc0->postalign_relay, temp);
+				atomic_dec(&mtk_crtc0->get_data_type);
 			}
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
 				mtk_wakeup_pf_wq(m_id);

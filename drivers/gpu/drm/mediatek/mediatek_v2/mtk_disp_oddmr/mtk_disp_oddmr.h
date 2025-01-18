@@ -32,7 +32,7 @@
 
 #define DMR_DBV_TABLE_MAX 4
 #define DMR_FPS_TABLE_MAX 4
-
+#define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
@@ -51,6 +51,8 @@ enum ODDMR_USER_CMD {
 	ODDMR_CMD_OD_TUNING_WRITE_SRAM,
 	ODDMR_CMD_ODDMR_DDREN_OFF,
 	ODDMR_CMD_ODDMR_REMAP_EN,
+	ODDMR_CMD_ODDMR_REMAP_OFF,
+	ODDMR_CMD_ODDMR_REMAP_CHG,
 };
 enum MTK_ODDMR_MODE_CHANGE_INDEX {
 	MODE_ODDMR_NOT_DEFINED = 0,
@@ -85,14 +87,6 @@ enum MTK_ODDMR_DMR_MODE_TYPE {
 	DMR_MODE_TYPE_RGB4X4Q = 6,
 	DMR_MODE_TYPE_W4X4Q = 7,
 	DMR_MODE_TYPE_RGB7X8Q = 8,
-};
-
-struct bitstream_buffer {
-	uint8_t *_buffer;
-	uint32_t used_entry;
-	uint32_t used_bit;
-	uint32_t size;
-	uint32_t read_bit;
 };
 
 
@@ -169,6 +163,19 @@ struct mtk_drm_dmr_fps_dbv_change_cfg {
 	unsigned int *reg_DC_value; // 3D changed_reg_DC[DBV_ind][FPS_ind],
 };
 
+struct mtk_drm_oddmr_dbv_node {
+	unsigned int DBV_num;
+	unsigned int *DBV_node; // 0, 1024, 2048, 4095
+};
+
+struct mtk_drm_oddmr_dbv_chg_cfg {
+	unsigned int reg_num;
+	unsigned int reg_total_count;
+	unsigned int *reg_offset;
+	unsigned int *reg_mask;
+	unsigned int *reg_value;
+};
+
 struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_dmr_basic_info basic_info;
 	struct mtk_drm_dmr_static_cfg static_cfg;
@@ -183,8 +190,19 @@ struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_static_cfg static_cfg;
 	struct mtk_drm_dmr_fps_dbv_node fps_dbv_node;
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
+	struct mtk_drm_oddmr_dbv_node dbv_node;
+	struct mtk_drm_oddmr_dbv_chg_cfg dbv_change_cfg;
 };
 
+struct bitstream_buffer {
+	uint8_t *_buffer;
+	uint32_t used_entry;
+	uint32_t used_bit;
+	uint32_t size;
+	uint32_t read_bit;
+	struct mtk_drm_dmr_static_cfg static_cfg;
+	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
+};
 
 struct mtk_disp_oddmr_data {
 	bool need_bypass_shadow;
@@ -229,10 +247,13 @@ struct mtk_disp_oddmr_dbi_data {
 	atomic_t cur_table_idx;
 	atomic_t update_table_idx;
 	atomic_t update_table_done;
+	atomic_t enter_scp;
 	struct mtk_drm_gem_obj *dbi_table[2];
 	unsigned int table_size;
 	unsigned int cur_max_time;
-	unsigned int remap_enable;
+	atomic_t max_time_set_done;
+	atomic_t remap_enable;
+	atomic_t gain_ratio;
 };
 
 
@@ -313,6 +334,7 @@ struct mtk_disp_oddmr {
 	enum ODDMR_STATE dbi_state;
 	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
+	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
 	uint32_t od_user_gain;
 	/* workqueue */
 	struct workqueue_struct *oddmr_wq;
@@ -336,4 +358,7 @@ void mtk_oddmr_ddren(struct cmdq_pkt *cmdq_handle,
 	struct drm_crtc *crtc, int en);
 unsigned int check_oddmr_err_event(void);
 void clear_oddmr_err_event(void);
+void mtk_oddmr_scp_status(bool enable);
+
+
 #endif

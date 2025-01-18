@@ -434,12 +434,12 @@ static int disp_pq_proxy_virtual_wait_crtc_ready(struct drm_crtc *crtc, void *da
 	return 0;
 }
 
-static int mtk_drm_ioctl_get_spr_type_by_fence(struct drm_crtc *crtc, void *data)
+static int mtk_drm_ioctl_get_pixel_type_by_fence(struct drm_crtc *crtc, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	struct spr_type_map *spr_types = &mtk_crtc->pq_data->spr_types;
-	struct mtk_spr_type_fence *param = data;
+	struct pixel_type_map *pixel_types = &mtk_crtc->pq_data->pixel_types;
+	struct mtk_pixel_type_fence *param = data;
 	unsigned int fence_idx = param->fence_idx;
 	int i, ret= -1;
 
@@ -447,8 +447,9 @@ static int mtk_drm_ioctl_get_spr_type_by_fence(struct drm_crtc *crtc, void *data
 		return -1;
 
 	for (i = 0; i < SPR_TYPE_FENCE_MAX; i++)
-		if (fence_idx == spr_types->map[i].fence_idx) {
-			param->type = spr_types->map[i].type;
+		if (fence_idx == pixel_types->map[i].fence_idx) {
+			param->type = pixel_types->map[i].type;
+			param->secure = pixel_types->map[i].secure;
 			break;
 		}
 	if (i != SPR_TYPE_FENCE_MAX)
@@ -496,8 +497,8 @@ int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *de
 	case PQ_VIRTUAL_WAIT_CRTC_READY:
 		ret = disp_pq_proxy_virtual_wait_crtc_ready(crtc, kdata);
 		break;
-	case PQ_VIRTUAL_GET_SPR_TYPE_BY_FENCE:
-		ret = mtk_drm_ioctl_get_spr_type_by_fence(crtc, kdata);
+	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
+		ret = mtk_drm_ioctl_get_pixel_type_by_fence(crtc, kdata);
 		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
@@ -516,6 +517,16 @@ bool disp_pq_is_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 	case PQ_C3D_GET_IRQ:
 	case PQ_TDSHP_GET_SIZE:
 	case PQ_VIRTUAL_GET_IRQ:
+	case PQ_DBI_LOAD_PARAM:
+	case PQ_DBI_LOAD_TB:
+	case PQ_DBI_REMAP_CHG:
+	case PQ_DBI_GET_HW_ID:
+	case PQ_DBI_GET_WIDTH:
+	case PQ_DBI_GET_HEIGHT:
+	case PQ_DBI_GET_DBV:
+	case PQ_DBI_GET_FPS:
+	case PQ_DBI_GET_SCP:
+	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
 		ret = false;
 		break;
 	default:
