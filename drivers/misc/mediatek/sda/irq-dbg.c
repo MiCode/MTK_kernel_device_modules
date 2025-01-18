@@ -19,7 +19,6 @@
 #include <linux/irqdomain.h>
 #include <linux/interrupt.h>
 #include <linux/stacktrace.h>
-#include <workqueue_internal.h>
 
 #define MAX_CORE_NUM	(8)
 
@@ -219,7 +218,6 @@ static int mt_irq_dump_status_buf(unsigned int irq, char *buf)
 	int nr_entries;
 	int i;
 	struct task_struct *task;
-	struct worker *worker;
 
 	if (!ptr)
 		return 0;
@@ -371,19 +369,6 @@ static int mt_irq_dump_status_buf(unsigned int irq, char *buf)
 						tsk_name, task_pid_nr(task), task_cpu(task));
 				if (num == PAGE_SIZE)
 					goto OUT;
-
-				/* check if current task is a worker
-				 * if yes, dump work item info which
-				 * is currently executed by the worker.
-				 */
-				if (task->flags & PF_WQ_WORKER) {
-					worker = kthread_data(task);
-					num += snprintf(ptr + num, PAGE_SIZE - num,
-							"[mt gic dump] Work item info: %ps\n",
-							worker->current_func);
-					if (num == PAGE_SIZE)
-						goto OUT;
-				}
 
 				/* dump the backtrace of the task */
 				num += snprintf(ptr + num, PAGE_SIZE - num,
