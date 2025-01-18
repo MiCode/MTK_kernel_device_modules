@@ -151,7 +151,11 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		result = MBOX_CONFIG_ERR;
 		goto EXIT_MUTEX;
 	}
-	adsp_pre_wake_lock((u32)cid);
+
+	if (adsp_pre_wake_lock((u32)cid) != 0) {
+		result = MBOX_PIN_BUSY;
+		goto EXIT;
+	}
 
 	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox,
 				    pin_send->pin_index)) {
