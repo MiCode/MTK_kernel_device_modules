@@ -75,12 +75,6 @@ struct lcm {
 	struct drm_display_mode disp_mode;
 	u32 pll;
 	u32 lppf;
-	u32 ser_dual_link;
-
-	bool prepared;
-	bool enabled;
-
-	int error;
 };
 
 static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
@@ -156,12 +150,6 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	pr_info("%s +\n", __func__);
 
-	if (!ctx->prepared)
-		return 0;
-
-	ctx->error = 0;
-	ctx->prepared = false;
-
 	lcm_poweroff(ctx);
 
 	pr_info("%s -\n", __func__);
@@ -171,31 +159,19 @@ static int lcm_unprepare(struct drm_panel *panel)
 static int lcm_prepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
-	int ret;
 
 	pr_info("%s +\n", __func__);
-
-	if (ctx->prepared)
-		return 0;
 
 	lcm_poweron(ctx);
 	lcm_panel_init(ctx);
 	serdes_pre_enable(ctx->bridge);
-
-	ret = ctx->error;
-	if (ret < 0) {
-		pr_info("error! return\n");
-		lcm_unprepare(panel);
-	}
-
-	ctx->prepared = true;
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_rst(panel);
 #endif
 	pr_info("%s -\n", __func__);
 
-	return ret;
+	return 0;
 }
 
 static int lcm_disable(struct drm_panel *panel)
@@ -204,13 +180,7 @@ static int lcm_disable(struct drm_panel *panel)
 
 	pr_info("%s +\n", __func__);
 
-
-	if (!ctx->enabled)
-		return 0;
-
 	serdes_disable(ctx->bridge);
-
-	ctx->enabled = false;
 
 	pr_info("%s -\n", __func__);
 
@@ -223,12 +193,7 @@ static int lcm_enable(struct drm_panel *panel)
 
 	pr_info("%s +\n", __func__);
 
-	if (ctx->enabled)
-		return 0;
-
 	serdes_enable(ctx->bridge);
-
-	ctx->enabled = true;
 
 	pr_info("%s -\n", __func__);
 
@@ -363,8 +328,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 	get_timing(ctx);
 
-	ctx->prepared = false;
-	ctx->enabled = false;
 	drm_panel_init(&ctx->panel, dev, &lcm_drm_funcs, DRM_MODE_CONNECTOR_DSI);
 
 	drm_panel_add(&ctx->panel);
