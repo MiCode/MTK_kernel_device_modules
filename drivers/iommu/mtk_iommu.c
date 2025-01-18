@@ -3067,7 +3067,7 @@ out_runtime_disable:
 	return ret;
 }
 
-static int mtk_iommu_remove(struct platform_device *pdev)
+static void mtk_iommu_remove(struct platform_device *pdev)
 {
 	struct mtk_iommu_data *data = platform_get_drvdata(pdev);
 
@@ -3082,7 +3082,6 @@ static int mtk_iommu_remove(struct platform_device *pdev)
 	if (!MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_NO_IRQ))
 		devm_free_irq(&pdev->dev, data->irq, data);
 	component_master_del(&pdev->dev, &mtk_iommu_com_ops);
-	return 0;
 }
 
 static int mtk_iommu_hw_suspend(struct device *dev)
@@ -4067,7 +4066,7 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 
 static struct platform_driver mtk_iommu_driver = {
 	.probe	= mtk_iommu_probe,
-	.remove	= mtk_iommu_remove,
+	.remove_new = mtk_iommu_remove,
 	.driver	= {
 		.name = "mtk-iommu",
 		.of_match_table = mtk_iommu_of_ids,
