@@ -2425,7 +2425,8 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 	}
 	raw_spin_rq_unlock_irqrestore(target, flags);
 	if (active_balance) {
-		trace_sched_force_migrate(p, this_cpu, reason);
+		if (trace_sched_force_migrate_enabled())
+			trace_sched_force_migrate(p, this_cpu, reason);
 		stop_one_cpu_nowait(cpu_of(target),
 				mtk_active_load_balance_cpu_stop,
 				p, &target->active_balance_work);
@@ -2491,7 +2492,8 @@ void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf
 				set_task_cpu(p, this_cpu);
 				rq_unlock_irqrestore(src_rq, src_rf);
 
-				trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_PULL_VIP_RUNNABLE);
+				if (trace_sched_force_migrate_enabled())
+					trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_PULL_VIP_RUNNABLE);
 				attach_one_task(this_rq, p);
 				*had_pull_vvip = true;
 				goto unlock;
@@ -2554,7 +2556,8 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 	per_cpu(next_update_new_balance_time_ns, this_cpu) =
 		now_ns + new_idle_balance_interval_ns;
 
-	trace_sched_next_new_balance(now_ns, per_cpu(next_update_new_balance_time_ns, this_cpu));
+	if (trace_sched_next_new_balance_enabled())
+		trace_sched_next_new_balance(now_ns, per_cpu(next_update_new_balance_time_ns, this_cpu));
 
 	/*
 	 * This is OK, because current is on_cpu, which avoids it being picked
@@ -2615,7 +2618,8 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 		rq_unlock_irqrestore(src_rq, &src_rf);
 
 		if (p) {
-			trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_BALANCE);
+			if (trace_sched_force_migrate_enabled())
+				trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_BALANCE);
 			attach_one_task(this_rq, p);
 			break;
 		}

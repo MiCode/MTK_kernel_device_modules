@@ -272,7 +272,8 @@ int pause_cpus(struct cpumask *cpus)
 
 unlock:
 	raw_spin_unlock_irqrestore(&sched_pause_lock, flags);
-	trace_sched_pause_cpus(&requested_cpus, cpus, start_time, 1, err, cpu_pause_mask);
+	if (trace_sched_pause_cpus_enabled())
+		trace_sched_pause_cpus(&requested_cpus, cpus, start_time, 1, err, cpu_pause_mask);
 
 	return err;
 }
@@ -311,7 +312,8 @@ int resume_cpus(struct cpumask *cpus)
 
 unlock:
 	raw_spin_unlock_irqrestore(&sched_pause_lock, flags);
-	trace_sched_pause_cpus(&requested_cpus, cpus, start_time, 0, err, cpu_pause_mask);
+	if (trace_sched_pause_cpus_enabled())
+		trace_sched_pause_cpus(&requested_cpus, cpus, start_time, 0, err, cpu_pause_mask);
 
 	return err;
 }
