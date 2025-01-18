@@ -460,6 +460,91 @@ static const struct kernel_param_ops enable_tt_vip_ops = {
 module_param_cb(enable_tt_vip, &enable_tt_vip_ops, &tt_vip_enable, 0664);
 MODULE_PARM_DESC(enable_tt_vip, "Enable or disable tt vip");
 
+static int enable_tgid_debug_param;
+static int enable_tgid_debug(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtouint(buf, 0, &val);
+
+	if (retval)
+		return -EINVAL;
+
+	enable_tgid_debug_param = !!val;
+
+	if (enable_tgid_debug_param)
+		turn_on_tgid_vip();
+	else
+		turn_off_tgid_vip();
+
+	return retval;
+}
+
+static const struct kernel_param_ops enable_tgid_debug_ops = {
+	.set = enable_tgid_debug,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_tgid_debug, &enable_tgid_debug_ops, &enable_tgid_debug_param, 0664);
+MODULE_PARM_DESC(enable_tgid_debug, "enable tgid to vip for debug");
+
+static int set_tgid_debug_param;
+static int set_tgid_debug(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0;
+
+	set_tgid_debug_param = -1;
+	retval = kstrtouint(buf, 0, &set_tgid_debug_param);
+
+	if (retval)
+		return -EINVAL;
+
+	if (set_tgid_debug_param < 0 || set_tgid_debug_param > PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	set_tgid_vip(set_tgid_debug_param);
+	trace_turbo_vip(INVALID_LOADING, INVALID_LOADING,
+		"DEBUG set: tgid_vip:", set_tgid_debug_param);
+
+	return retval;
+}
+
+static const struct kernel_param_ops set_tgid_debug_ops = {
+	.set = set_tgid_debug,
+	.get = param_get_int,
+};
+
+module_param_cb(set_tgid_debug, &set_tgid_debug_ops, &set_tgid_debug_param, 0664);
+MODULE_PARM_DESC(set_tgid_debug, "set tgid to vip for debug");
+
+static int unset_tgid_debug_param;
+static int unset_tgid_debug(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0;
+
+	unset_tgid_debug_param = -1;
+	retval = kstrtouint(buf, 0, &unset_tgid_debug_param);
+
+	if (retval)
+		return -EINVAL;
+
+	if (unset_tgid_debug_param < 0 || unset_tgid_debug_param > PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	unset_tgid_vip(unset_tgid_debug_param);
+	trace_turbo_vip(INVALID_LOADING, INVALID_LOADING,
+		"DEBUG unset: tgid_vip:", unset_tgid_debug_param);
+
+	return retval;
+}
+
+static const struct kernel_param_ops unset_tgid_debug_ops = {
+	.set = unset_tgid_debug,
+	.get = param_get_int,
+};
+
+module_param_cb(unset_tgid_debug, &unset_tgid_debug_ops, &unset_tgid_debug_param, 0664);
+MODULE_PARM_DESC(unset_tgid_debug, "unset tgid to vip for debug");
 
 /*
  * enforce_ct_to_vip - Enforce critical task(ct) VIP status based on caller id
@@ -558,6 +643,7 @@ static void update_cpu_loading(void)
 		return;
 
 	mutex_lock(&cpu_loading_lock);
+	avg_cpu_loading = 0;
 	for (i = 0; i < max_cpus; i++)
 		avg_cpu_loading += ci.cpu_loading[i];
 	avg_cpu_loading /= max_cpus;
@@ -574,7 +660,7 @@ static void update_cpu_loading(void)
  */
 static void tt_vip(void)
 {
-	struct win_info *pos;
+	struct win_info *pos, *n;
 	struct win_info *pos_wi, *pos_cur_wi;
 	struct list_head *wi_ptr, *cur_wi_ptr;
 	bool need_clean = false;
@@ -583,6 +669,7 @@ static void tt_vip(void)
 	bool content_changed = false;
 	bool touching = false;
 	int tmp_avg_cpu_loading = 0;
+	int tgid_vip_ret;
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 	bool in_cam_3rd = false;
 
@@ -724,12 +811,19 @@ static void tt_vip(void)
 		 */
 		if (content_changed || !win_vip_status) {
 			win_vip_status = true;
-			list_for_each_entry(pos, &wi_head.list, list) {
-				set_task_basic_vip(pos->tgid);
-				set_tgid_vip(pos->tgid);
-				turn_on_tgid_vip();
-				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
-					"ct_vip_qualified: window set_tgid_vip:", pos->tgid);
+			list_for_each_entry_safe(pos, n, &wi_head.list, list) {
+				tgid_vip_ret = set_tgid_vip(pos->tgid);
+				/* If the tgid is not found, remove the corresponding entry from the win_info list. */
+				if (tgid_vip_ret) {
+					trace_turbo_vip(INVALID_LOADING, INVALID_LOADING,
+						"TGID NOT FOUND when set_tgid_vip:", pos->tgid);
+					wi_del_tgid(pos->tgid);
+				} else {
+					set_task_basic_vip(pos->tgid);
+					turn_on_tgid_vip();
+					trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
+						"ct_vip_qualified: window set_tgid_vip:", pos->tgid);
+				}
 			}
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
@@ -740,7 +834,7 @@ static void tt_vip(void)
 			if (cam_hal_tgid > 0 && cam_hal_tgid <= PID_MAX_DEFAULT && !cam_3rd_hal_vip_status) {
 				cam_3rd_hal_vip_status = true;
 				set_task_basic_vip(cam_hal_tgid);
-				set_tgid_vip(cam_hal_tgid);
+				tgid_vip_ret = set_tgid_vip(cam_hal_tgid);
 				turn_on_tgid_vip();
 				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
 					"ct_vip_qualified: cam_hal set_tgid_vip:", cam_hal_tgid);
@@ -750,7 +844,7 @@ static void tt_vip(void)
 			if (cam_svr_tgid > 0 && cam_svr_tgid <= PID_MAX_DEFAULT && !cam_3rd_svr_vip_status) {
 				cam_3rd_svr_vip_status = true;
 				set_task_basic_vip(cam_svr_tgid);
-				set_tgid_vip(cam_svr_tgid);
+				tgid_vip_ret = set_tgid_vip(cam_svr_tgid);
 				turn_on_tgid_vip();
 				trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
 					"ct_vip_qualified: cam_server set_tgid_vip:", cam_svr_tgid);
@@ -761,7 +855,7 @@ static void tt_vip(void)
 		if (touching && inputDispatcher_tgid > 0 && !touch_vip_status) {
 			touch_vip_status = true;
 			set_task_basic_vip(inputDispatcher_tgid);
-			set_tgid_vip(inputDispatcher_tgid);
+			tgid_vip_ret = set_tgid_vip(inputDispatcher_tgid);
 			turn_on_tgid_vip();
 			trace_turbo_vip(tmp_avg_cpu_loading, cpu_loading_thres,
 				"ct_vip_qualified: system_server set_tgid_vip:", inputDispatcher_tgid);

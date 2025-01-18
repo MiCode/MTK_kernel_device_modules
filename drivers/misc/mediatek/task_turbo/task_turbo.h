@@ -75,8 +75,8 @@ struct cpu_info {
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
-extern void set_tgid_vip(int tgid);
-extern void unset_tgid_vip(int tgid);
+extern int set_tgid_vip(int tgid);
+extern int unset_tgid_vip(int tgid);
 extern void turn_on_tgid_vip(void);
 extern void turn_off_tgid_vip(void);
 extern int get_cam_hal_pid_for_task_turbo(void);
