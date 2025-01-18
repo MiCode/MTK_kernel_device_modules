@@ -1243,14 +1243,14 @@ static inline ssize_t vcp_A_status_show(struct device *kobj
 	int len = 0;
 
 	if (is_vcp_ready_by_coreid(VCP_ID))
-		len += scnprintf(buf, PAGE_SIZE, "VCP is ready\n");
+		len += scnprintf(buf + len, PAGE_SIZE, "VCP is ready\n");
 	else
-		len += scnprintf(buf, PAGE_SIZE, "VCP is not ready\n");
+		len += scnprintf(buf + len, PAGE_SIZE, "VCP is not ready\n");
 
 	if (is_vcp_ready_by_coreid(MMUP_ID))
-		len += scnprintf(buf, PAGE_SIZE, "MMUP is ready\n");
+		len += scnprintf(buf + len, PAGE_SIZE, "MMUP is ready\n");
 	else
-		len += scnprintf(buf, PAGE_SIZE, "MMUP is not ready\n");
+		len += scnprintf(buf + len, PAGE_SIZE, "MMUP is not ready\n");
 
 	return len;
 }
