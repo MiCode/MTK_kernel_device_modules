@@ -3305,13 +3305,8 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 		return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		if (comp->id == plane_state->comp_state.comp_id) {
-			DDPINFO("%s i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__, i,
-				plane_state->comp_state.comp_id,
-				plane_state->comp_state.lye_id,
-				plane_state->comp_state.ext_lye_id);
+		if (comp->id == plane_state->comp_state.comp_id)
 			return comp;
-		}
 
 	return comp;
 }
@@ -3328,7 +3323,7 @@ mtk_crtc_get_plane_comp_for_bwm(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int i, j;
 
-	DDPINFO("%s dst_x:%u, width:%u, comp id:%u\n",
+	DDPDBG_BWM("%s dst_x:%u, width:%u, comp id:%u\n",
 		__func__, dst_x, width, comp_id);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -3344,7 +3339,7 @@ mtk_crtc_get_plane_comp_for_bwm(struct drm_crtc *crtc,
 
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
 			if (comp->id == comp_id) {
-				DDPINFO("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
+				DDPDBG_BWM("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
 					__func__, __LINE__, i,
 					comp_id,
 					plane_state->comp_state.lye_id,
@@ -3358,7 +3353,7 @@ mtk_crtc_get_plane_comp_for_bwm(struct drm_crtc *crtc,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp->id == comp_id) {
-			DDPINFO("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
+			DDPDBG_BWM("%s:%d i:%d, ovl_id:%d lye_id:%d, ext_lye_id:%d\n",
 				__func__, __LINE__, i,
 				comp_id,
 				plane_state->comp_state.lye_id,
@@ -3965,6 +3960,8 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 	unsigned int plane_mask = 0;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
+	char dbg_msg[512] = {0};
+	int written = 0;
 
 	if (crtc && crtc->state) {
 		plane_mask = crtc->state->plane_mask;
@@ -3978,7 +3975,7 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			to_mtk_plane_state(plane->state);
 		struct mtk_ddp_comp *comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 
-		DDPINFO("%s ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__,
+		DDPDBG("%s ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__,
 					plane_state->comp_state.comp_id,
 					plane_state->comp_state.lye_id,
 					plane_state->comp_state.ext_lye_id);
@@ -3992,6 +3989,15 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 		DDPINFO("%s: need handle dal layer\n", __func__);
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[6] = 2;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (mtk_crtc) {
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt = ", __func__);
+		for (int i = 0; i < OVL_LAYER_NR ; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
+				     mtk_crtc->usage_ovl_fmt[i]);
+		DDPINFO("%s\n", dbg_msg);
 	}
 }
 
@@ -14630,7 +14636,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 	struct cmdq_pkt *cmdq_handle = state->cmdq_handle;
 
 	if (comp)
-		DDPINFO("%s+ plane_id:%d, comp_id:%d, comp_id:%d\n", __func__,
+		DDPINFO("%s plane_id:%d, comp_id:%d, comp_id:%d\n", __func__,
 			plane->index, comp->id, plane_state->comp_state.comp_id);
 
 	if (plane_state->pending.enable) {
@@ -14737,7 +14743,6 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 		DISP_SLOT_SUBTRACTOR_WHEN_FREE(mtk_get_plane_slot_idx(mtk_crtc, plane_index)));
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr, sub, ~0);
 #endif
-	DDPINFO("%s-\n", __func__);
 }
 
 void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,

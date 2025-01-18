@@ -474,19 +474,6 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 
 }
 
-
-static void mtk_ovl_outproc_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
-{
-	DDPINFO("%s+\n", __func__);
-}
-
-static void mtk_ovl_outproc_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-			    enum mtk_ddp_comp_id prev,
-			    enum mtk_ddp_comp_id next)
-{
-	DDPINFO("%s+\n", __func__);
-}
-
 static int mtk_ovl_outproc_golden_setting(struct mtk_ddp_comp *comp,
 				  struct mtk_ddp_config *cfg,
 				  struct cmdq_pkt *handle)
@@ -702,16 +689,11 @@ int mtk_ovl_outproc_dump(struct mtk_ddp_comp *comp)
 		return 0;
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	if (mtk_ddp_comp_helper_get_opt(comp,
-					MTK_DRM_OPT_REG_PARSER_RAW_DUMP)) {
-		unsigned int i = 0;
 
-		for (i = 0; i < 0x150; i += 0x10)
-			mtk_serial_dump_reg(baddr, i, 4);
-	} else {
-		for (i = 0; i < 0x100; i++)
-			mtk_serial_dump_reg(baddr, 0 + 0x10*i, 4);
-	}
+	for (i = 0; i < 0x40; i += 0x10)
+		mtk_serial_dump_reg(baddr, i, 4);
+	for (i = 0x100; i < 0x160; i += 0x10)
+		mtk_serial_dump_reg(baddr, i, 4);
 
 	//mtk_ovl_outproc_dump_golden_setting(comp);
 
@@ -913,7 +895,6 @@ static int mtk_ovl_outproc_set_partial_update(struct mtk_ddp_comp *comp,
 static const struct mtk_ddp_comp_funcs mtk_disp_ovl_outproc_funcs = {
 	.config = mtk_ovl_outproc_config,
 	.first_cfg = mtk_ovl_outproc_config,
-	.config_begin = mtk_ovl_outproc_config_begin,
 	.start = mtk_ovl_outproc_start,
 	.stop = mtk_ovl_outproc_stop,
 	.reset = mtk_ovl_outproc_reset,
@@ -924,7 +905,6 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ovl_outproc_funcs = {
 	.io_cmd = mtk_ovl_outproc_io_cmd,
 	.prepare = mtk_ovl_outproc_prepare,
 	.unprepare = mtk_ovl_outproc_unprepare,
-	.connect = mtk_ovl_outproc_connect,
 	.config_trigger = mtk_ovl_outproc_config_trigger,
 	.partial_update = mtk_ovl_outproc_set_partial_update,
 };

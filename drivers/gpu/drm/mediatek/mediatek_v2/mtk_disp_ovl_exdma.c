@@ -2172,7 +2172,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	unsigned int pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
 	unsigned int modifier = 0;
 
-	DDPINFO("%s, %s+\n", __func__, mtk_dump_comp_str(comp));
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
@@ -2244,14 +2243,13 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 	alpha = 0xFF & (state->base.alpha >> 8);
 
-	DDPINFO("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
+	DDPDBG("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
 	if (state->base.fb) {
-		if (state->base.fb->format->has_alpha) {
+		if (state->base.fb->format->has_alpha)
 			pixel_blend_mode = state->base.pixel_blend_mode;
-			DDPINFO("Blending:real alpha exist X mode(%x)\n", fmt);
-		}
-		DDPINFO("Blending: has_alpha %d pixel_blend_mode=0x%x\n",
-			state->base.fb->format->has_alpha, state->base.pixel_blend_mode);
+
+		DDPDBG("Blending: has_alpha %d pixel_blend_mode=0x%x fmt=0x%x\n",
+			state->base.fb->format->has_alpha, state->base.pixel_blend_mode, fmt);
 	}
 
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
@@ -2593,8 +2591,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 #endif
 		}
 	}
-
-	DDPINFO("%s- comp %d idx %d\n", __func__,comp->id, idx);
 
 	if (comp && comp->bind_comp && comp->bind_comp->funcs
 		&& comp->bind_comp->funcs->layer_config && !comp->bind_comp->blank_mode)
@@ -3155,8 +3151,6 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
-	DDPINFO("%s,%s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (!comp->mtk_crtc)
 		return;
@@ -3999,6 +3993,7 @@ int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 	void __iomem *baddr = comp->regs;
 	int i;
+	int offset;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -4009,34 +4004,15 @@ int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 		return 0;
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	if (mtk_ddp_comp_helper_get_opt(comp,
-					MTK_DRM_OPT_REG_PARSER_RAW_DUMP)) {
-		unsigned int i = 0;
 
-		for (i = 0; i < 0xFF0; i += 0x10)
-			mtk_serial_dump_reg(baddr, i, 4);
-
-		/* ADDR */
-		mtk_cust_dump_reg(baddr, 0xF40, 0xF60, 0xF80, 0xFA0);
-		mtk_cust_dump_reg(baddr, 0xFB0, 0xFB4, 0xFB8, -1);
-
-		/* HDR_ADDR, HDR_PITCH */
-		mtk_cust_dump_reg(baddr, 0xF44, 0xF48, 0xF64, 0xF68);
-		mtk_cust_dump_reg(baddr, 0xF84, 0xF88, 0xFA4, 0xFA8);
-		mtk_cust_dump_reg(baddr, 0xFD0, 0xFD4, 0xFD8, 0xFDC);
-		mtk_cust_dump_reg(baddr, 0xFE0, 0xFE4, -1, -1);
-
-		/* ADDR MSB*/
-		if (ovl->data->is_support_34bits) {
-			mtk_cust_dump_reg(baddr, 0xF4C, 0xF6C, 0xF8C, 0xFAC);
-			mtk_cust_dump_reg(baddr, 0xFBC, 0xFCC, 0xFDC, -1);
-		}
-	} else {
-		for (i = 0; i < 0x50; i++)
-			mtk_serial_dump_reg(baddr, 0 + 0x10*i, 4);
-		mtk_cust_dump_reg(baddr, 0xF40, 0xF44, 0xF48, 0xF4C);
-		mtk_cust_dump_reg(baddr, 0xFF0, 0xFF4, 0xFF8, 0xFFC);
+	for (i = 0; i < 0x40; i++) {
+		offset = 0x10 * i;
+		if (offset == 0x060 || offset == 0x090 || offset == 0x0c0 || offset == 0x0f0)
+			continue;
+		mtk_serial_dump_reg(baddr, offset, 4);
 	}
+	mtk_cust_dump_reg(baddr, 0xF40, 0xF44, 0xF48, 0xF4C);
+	mtk_cust_dump_reg(baddr, 0xFF0, 0xFF4, 0xFF8, 0xFFC);
 
 	mtk_ovl_exdma_dump_golden_setting(comp);
 
@@ -4232,8 +4208,8 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 	path_con = readl(DISP_REG_OVL_DATAPATH_CON + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),bg(%dx%d)\n",
-		ovl_en & 0x1, src_con & 0x1, 0, 0, 0,
+	DDPDUMP("ovl_en=%d,l0_en=%d,bg(%dx%d)\n",
+		ovl_en & 0x1, src_con & 0x1,
 		readl(DISP_REG_OVL_ROI_SIZE + baddr) & 0xfff,
 		(readl(DISP_REG_OVL_ROI_SIZE + baddr) >> 16) & 0xfff);
 	DDPDUMP("ext_layer:layer_en(%d,%d,%d),attach_layer(%d,%d,%d)\n",

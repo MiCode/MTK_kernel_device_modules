@@ -2960,8 +2960,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
-			DDPINFO("%s exdma %d,layer_idx %d, fun_lye %d\n", __func__,
-				exdma_comp,layer_idx, fun_lye);
 			return exdma_comp;
 		}
 	} else if (disp_idx == 1) {
@@ -2998,8 +2996,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 
 			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + layer_idx - fun_lye;
 
-			DDPINFO("%s crtc1 exdma %d,layer_idx %d, fun_lye %d\n", __func__,
-				exdma_comp,layer_idx, fun_lye);
 			return exdma_comp;
 		}
 	} else if (disp_idx == 2) {
@@ -3008,8 +3004,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 
 			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + layer_idx - fun_lye;
 
-			DDPINFO("%s crtc2 exdma %d,layer_idx %d, fun_lye %d\n", __func__,
-				exdma_comp,layer_idx, fun_lye);
 			return exdma_comp;
 		} else
 			return DDP_COMPONENT_OVL2_2L;
@@ -3247,8 +3241,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 		layer_map_idx = HRT_GET_FIRST_SET_BIT(layer_map);
 		if (priv->data->ovl_exdma_rule) {
-			DDPINFO("%s disp_idx %d, i %d, fun_lye %d\n", __func__,
-				disp_idx, i, fun_lye);
+
 			if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER)) {
 				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA0;
 				fun_lye++;
@@ -3262,6 +3255,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				comp_state.comp_id =
 					mtk_lye_get_exdma_comp_id(disp_idx, i, drm_dev, fun_lye);
 			}
+			DDPINFO("%s disp_idx %d, i %d, fun_lye %d, comp %d\n", __func__,
+				disp_idx, i, fun_lye, comp_state.comp_id);
 			comp_state.lye_id = 0;
 		} else {
 			comp_state.comp_id =

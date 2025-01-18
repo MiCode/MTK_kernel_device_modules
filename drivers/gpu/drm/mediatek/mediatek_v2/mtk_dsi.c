@@ -9571,8 +9571,10 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 		(mtk_crtc->dli_relay_1tnp));
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
-			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
+	if (to_info.is_support)
+		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+					to_info.is_support, to_info.left_in_width,
+					to_info.right_in_width);
 
 	mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
 	if (mode == NULL) {
@@ -9854,8 +9856,10 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 		data_rate = data_rate * bdg_rxtx_ratio / 100;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
-			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
+	if (to_info.is_support)
+		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+					to_info.is_support, to_info.left_in_width,
+					to_info.right_in_width);
 
 	dsi->ext = find_panel_ext(dsi->panel);
 	if (dsi->ext->params->dsc_params.enable)
@@ -9957,8 +9961,10 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 	}
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
-			to_info.is_support, to_info.left_in_width, to_info.right_in_width);
+	if (to_info.is_support)
+		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+					to_info.is_support, to_info.left_in_width,
+					to_info.right_in_width);
 
 	if (dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
