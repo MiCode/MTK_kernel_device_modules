@@ -102,6 +102,9 @@ static int set_clk_enable(bool is_enable)
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	int i, j;
 
+	if (!mmsram || !mmsram->dev)
+		return -ENODEV;
+
 	if (is_enable) {
 		pm_runtime_get_sync(mmsram->dev);
 		for (i = 0; i < MAX_CLK_NUM; i++) {
@@ -313,12 +316,13 @@ static int mmsram_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	int irq, err, clk_num, i;
+	struct device_node *sminode;
+	struct platform_device *smidev;
+	unsigned int dl_flags = DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS;
 
 	mmsram = devm_kzalloc(&pdev->dev, sizeof(*mmsram), GFP_KERNEL);
 	if (!mmsram)
 		return -ENOMEM;
-
-	mmsram->dev = &pdev->dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -379,7 +383,18 @@ static int mmsram_probe(struct platform_device *pdev)
 			"failed to register ISR %d (%d)", irq, err);
 		return err;
 	}
-	pm_runtime_enable(&pdev->dev);
+
+	mmsram->dev = &pdev->dev;
+	sminode = of_parse_phandle(pdev->dev.of_node, "mmsram-smidev", 0);
+	if (sminode) {
+		smidev = of_find_device_by_node(sminode);
+		if (!device_link_add(mmsram->dev, &smidev->dev, dl_flags)) {
+			dev_notice(&pdev->dev, "add larbdev device link failed");
+			return -EINVAL;
+		}
+		pm_runtime_enable(mmsram->dev);
+		of_node_put(sminode);
+	}
 
 	INIT_WORK(&dump_reg_work, dump_reg_func);
 
