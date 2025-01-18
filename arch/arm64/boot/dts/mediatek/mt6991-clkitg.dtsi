@@ -16,36 +16,6 @@
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_AO_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>;
 	};
-	bring-up-pq@a {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xa>;
-		clocks =
-			<&dispsys_config_clk CLK_MM_DISP_AAL0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_AAL1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D2_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D3_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR2_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR3_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CHIST0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_CHIST1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_COLOR0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_COLOR1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_DITHER0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_DITHER1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_GAMMA0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_GAMMA1_PQ>,
-			<&dispsys_config_clk CLK_MM_MDP_AAL0_PQ>,
-			<&dispsys_config_clk CLK_MM_MDP_AAL1_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_TDSHP0_PQ>,
-			<&dispsys_config_clk CLK_MM_DISP_TDSHP1_PQ>,
-			<&dispsys1_config_clk CLK_MM1_DISP_ODDMR0_PQ>,
-			<&dispsys1_config_clk CLK_MM1_DISP_POSTALIGN0_PQ>,
-			<&dispsys1_config_clk CLK_MM1_DISP_DITHER2_PQ>;
-	};
 	bring-up-pd-mm-proc-dormant@34 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x34>;
