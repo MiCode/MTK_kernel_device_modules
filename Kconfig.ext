@@ -92,6 +92,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/usb/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/net/ethernet/stmicro/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/net/phy/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/Kconfig"

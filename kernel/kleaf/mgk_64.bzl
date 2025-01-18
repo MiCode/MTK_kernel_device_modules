@@ -566,6 +566,8 @@ mgk_64_device_modules = [
     "drivers/net/ethernet/stmicro/stmmac/mtk_sgmii_pwr.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac.ko",
+    "drivers/net/phy/mxl-gpy.ko",
+    "drivers/net/phy/realtek.ko",
     "drivers/nvmem/nvmem-mt6338-efuse.ko",
     "drivers/nvmem/nvmem-mt635x-efuse.ko",
     "drivers/nvmem/nvmem-mt6681-efuse.ko",
