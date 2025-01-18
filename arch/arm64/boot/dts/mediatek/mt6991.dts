@@ -19300,6 +19300,23 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		status = "disabled";
 	};
 
+	pwritg: pwritg {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	power_service: power-service {
+		compatible = "grt,power-service";
+		mboxes = <&nebula_mbox 0>, /*channel 0*/
+			<&nebula_mbox 1>, /*channel 1*/
+			<&nebula_mbox 2>, /*channel 2*/
+			<&nebula_mbox 3>, /*channel 3*/
+			<&nebula_mbox 4>; /*channel 4*/
+		status = "disabled";
+	};
+
 	pkvm: pkvm {
 		status = "disable";
 	};
