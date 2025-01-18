@@ -1036,8 +1036,8 @@ static u32 pq_rdma_datasize_get(struct mml_task *task, struct mml_comp_config *c
 	return rdma_frm->datasize;
 }
 
-static u32 pq_rdma_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
-	u32 *srt_bw_out, u32 *hrt_bw_out)
+static u32 pq_rdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
 	/* stash command for every 4KB size */
 	*srt_bw_out = *srt_bw_out / 256;

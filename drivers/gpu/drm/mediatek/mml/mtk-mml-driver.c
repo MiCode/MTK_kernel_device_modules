@@ -1285,7 +1285,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	stash_srt_bw = srt_bw;
 	stash_hrt_bw = hrt_bw;
-	comp->hw_ops->qos_stash_bw_get(task, ccfg, &stash_srt_bw, &stash_hrt_bw);
+	comp->hw_ops->qos_stash_bw_get(comp, task, ccfg, &stash_srt_bw, &stash_hrt_bw);
 
 	if (mml_stash_bw) {
 		stash_srt_bw = mml_stash_bw & 0xfffe;
@@ -1294,7 +1294,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
-	if (comp->cur_bw != srt_bw || comp->cur_peak != hrt_bw) {
+	if (comp->srt_bw != srt_bw || comp->hrt_bw != hrt_bw) {
 		mml_trace_begin("mml_bw_%u_%u", srt_bw, hrt_bw);
 #ifndef MML_FPGA
 		if (task->config->dpc) {
@@ -1333,13 +1333,13 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 					MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
 		}
 #endif
-		comp->cur_bw = srt_bw;
-		comp->cur_peak = hrt_bw;
+		comp->srt_bw = srt_bw;
+		comp->hrt_bw = hrt_bw;
 		mml_trace_end();
 		updated = true;
 	}
 
-	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
 
 	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u size %u%s%s dpc %u mode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
@@ -1356,8 +1356,8 @@ void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)
 	else
 		mtk_icc_set_bw(comp->icc_path, 0, 0);
 #endif
-	comp->cur_bw = 0;
-	comp->cur_peak = 0;
+	comp->srt_bw = 0;
+	comp->hrt_bw = 0;
 
 	mml_msg_qos("%s comp %u %s qos bw clear", __func__, comp->id, comp->name);
 }

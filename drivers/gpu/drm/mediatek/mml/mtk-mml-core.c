@@ -956,12 +956,16 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	memset(&task->dpc_hrt_bw[0], 0, sizeof(task->dpc_hrt_bw));
 
 	for (i = 0; i < path->node_cnt; i++) {
+		u32 stash_srt_bw = 0, stash_hrt_bw = 0;
+
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
+		call_hw_op(comp, qos_stash_bw_get, task, &cache->cfg[i],
+			&stash_srt_bw, &stash_hrt_bw);
 
 		if (cfg->dpc) {
-			task->dpc_srt_bw[comp->sysid] += comp->cur_bw;
-			task->dpc_hrt_bw[comp->sysid] += comp->cur_peak;
+			task->dpc_srt_bw[comp->sysid] += comp->srt_bw + stash_srt_bw;
+			task->dpc_hrt_bw[comp->sysid] += comp->hrt_bw + stash_hrt_bw;
 		}
 	}
 }

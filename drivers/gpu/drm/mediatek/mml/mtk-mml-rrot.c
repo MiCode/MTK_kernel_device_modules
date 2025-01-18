@@ -2208,8 +2208,8 @@ static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg
 #define stash_bw_3plane(_bw, _ysz, _uvsz, _burst, _burst1) \
 	((_bw * _ysz / _burst + _bw * _uvsz / _burst1 * 2) / (_ysz + _uvsz * 2))
 
-static u32 rrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
-	u32 *srt_bw_out, u32 *hrt_bw_out)
+static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;

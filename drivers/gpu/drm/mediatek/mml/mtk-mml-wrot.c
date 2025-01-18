@@ -2515,8 +2515,8 @@ u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return wrot_frm_data(ccfg)->datasize;
 }
 
-static u32 wrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
-	u32 *srt_bw_out, u32 *hrt_bw_out)
+static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
 	struct mml_frame_config *cfg = task->config;
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
