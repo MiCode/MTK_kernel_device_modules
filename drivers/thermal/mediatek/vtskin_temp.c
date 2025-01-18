@@ -89,7 +89,7 @@ static int vtskin_probe(struct platform_device *pdev)
 
 	skin_data = (struct vtskin_data *)of_device_get_match_data(dev);
 	if (!skin_data)	{
-		dev_err(dev, "Error: Failed to get lvts platform data\n");
+		dev_err(dev, "Error: Failed to get vtskin platform data\n");
 		return -ENODATA;
 	}
 
@@ -231,51 +231,51 @@ static struct vtskin_data mt6983_vtskin_data = {
 	.params = mt6983_vtskin_params,
 };
 
-enum mt6985_vtskin_sensor_enum {
-	MT6985_VTSKIN_MAX,
-	MT6985_VTSKIN_1,
-	MT6985_VTSKIN_2,
-	MT6985_VTSKIN_3,
-	MT6985_VTSKIN_4,
-	MT6985_VTSKIN_5,
-	MT6985_VTSKIN_6,
-	MT6985_VTSKIN_NUM,
+enum common_vtskin_sensor_enum {
+	COMMON_VTSKIN_MAX,
+	COMMON_VTSKIN_1,
+	COMMON_VTSKIN_2,
+	COMMON_VTSKIN_3,
+	COMMON_VTSKIN_4,
+	COMMON_VTSKIN_5,
+	COMMON_VTSKIN_6,
+	COMMON_VTSKIN_NUM,
 };
 
-struct vtskin_tz_param mt6985_vtskin_params[] = {
-	[MT6985_VTSKIN_MAX] = {
+struct vtskin_tz_param common_vtskin_params[] = {
+	[COMMON_VTSKIN_MAX] = {
 		.ref_num = 0,
 		.operation = OP_MAX,
 	},
-	[MT6985_VTSKIN_1] = {
+	[COMMON_VTSKIN_1] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	},
-	[MT6985_VTSKIN_2] = {
+	[COMMON_VTSKIN_2] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	},
-	[MT6985_VTSKIN_3] = {
+	[COMMON_VTSKIN_3] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	},
-	[MT6985_VTSKIN_4] = {
+	[COMMON_VTSKIN_4] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	},
-	[MT6985_VTSKIN_5] = {
+	[COMMON_VTSKIN_5] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	},
-	[MT6985_VTSKIN_6] = {
+	[COMMON_VTSKIN_6] = {
 		.ref_num = 0,
 		.operation = OP_COEF,
 	}
 };
 
-static struct vtskin_data mt6985_vtskin_data = {
-	.num_sensor = MT6985_VTSKIN_NUM,
-	.params = mt6985_vtskin_params,
+static struct vtskin_data common_vtskin_data = {
+	.num_sensor = COMMON_VTSKIN_NUM,
+	.params = common_vtskin_params,
 };
 
 static const struct of_device_id vtskin_of_match[] = {
@@ -285,15 +285,19 @@ static const struct of_device_id vtskin_of_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6985-virtual-tskin",
-		.data = (void *)&mt6985_vtskin_data,
+		.data = (void *)&common_vtskin_data,
 	},
 	{
 		.compatible = "mediatek,mt6897-virtual-tskin",
-		.data = (void *)&mt6985_vtskin_data,
+		.data = (void *)&common_vtskin_data,
 	},
 	{
 		.compatible = "mediatek,mt6989-virtual-tskin",
-		.data = (void *)&mt6985_vtskin_data,
+		.data = (void *)&common_vtskin_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-virtual-tskin",
+		.data = (void *)&common_vtskin_data,
 	},
 	{},
 };
