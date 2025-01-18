@@ -25,6 +25,8 @@
 #include "apu_of.h"
 #include "apu_trace.h"
 
+static struct wakeup_source *ws;
+
 static int con_devfreq_target(struct device *dev,
 				unsigned long *rate, u32 flags)
 {
@@ -130,6 +132,10 @@ static int runtime_suspend(struct device *dev)
 
 	/* update rpc/cg trace */
 	apupw_dbg_rpc_tag_update(ad);
+
+	/* unlock wake up source */
+	__pm_relax(ws);
+
 	return ret;
 }
 
@@ -139,6 +145,10 @@ static int runtime_resume(struct device *dev)
 	struct apu_dev *ad = dev_get_drvdata(dev);
 
 	apower_info(dev, "[%s] called", __func__);
+
+	/* lock wake up source */
+	__pm_stay_awake(ws);
+
 	/* enable regulator */
 	ret = ad->argul->ops->enable(ad->argul);
 	if (ret)
@@ -249,6 +259,9 @@ static int con_devfreq_probe(struct platform_device *pdev)
 	if (err)
 		goto uninit_devfreq;
 
+	/* register wake source */
+	ws = wakeup_source_register(NULL, ad->name);
+
 	/* initial run time power management */
 	pm_runtime_enable(dev);
 
@@ -287,6 +300,7 @@ static int con_devfreq_remove(struct platform_device *pdev)
 	/* remove apu_device from list */
 	apu_del_devfreq(ad);
 	ad->plat_ops->uninit_devfreq(ad);
+	wakeup_source_unregister(ws);
 	return 0;
 }
 

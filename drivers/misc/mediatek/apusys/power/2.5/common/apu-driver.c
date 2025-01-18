@@ -379,6 +379,9 @@ int apu_power_init(void)
 	ret = platform_driver_register(&apusys_power_driver);
 	if (ret)
 		return ret;
+	ret = platform_driver_register(&vb_driver);
+	if (ret)
+		return ret;
 	return 0;
 }
 
@@ -386,6 +389,7 @@ void apu_power_exit(void)
 {
 	int ret = 0;
 
+	platform_driver_unregister(&vb_driver);
 	platform_driver_unregister(&mdla_devfreq_driver);
 	platform_driver_unregister(&vpu_devfreq_driver);
 	platform_driver_unregister(&apu_cb_driver);

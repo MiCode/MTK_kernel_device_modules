@@ -24,13 +24,16 @@ struct apu_plat_data {
 	int child_volt_limit;
 	/* platform flags */
 	unsigned bypass_target:1;	/* shall this devfreq bypass target setting? */
+
+	int (*vb_lb)(struct device *dev);
 };
 
-enum EFUSE_INOF {
-	EF_SEGMENT = 0,	// 30
-	EF_POD19 = 1,	// 69
-	EF_POD26 = 2,	// 209
-	APUSYS_EFUSE_NUM,
+#define VB_MTD_INTPL "vb_intpl"
+enum EFUSE_CONTENT {
+	EFUSE_SEG = 0,
+	EFUSE_BIN = 1,
+	EFUSE_RAISE = 2,
+	EFUSE_CNT_MAX,
 };
 
 struct apu_dev;
@@ -70,5 +73,4 @@ struct apu_plat_ops {
 };
 
 struct apu_plat_ops *apu_plat_get_ops(struct apu_dev *ad, const char *name);
-
 #endif

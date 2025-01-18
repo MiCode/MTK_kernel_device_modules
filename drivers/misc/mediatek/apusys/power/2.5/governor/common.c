@@ -140,19 +140,22 @@ int apu_gov_setup(struct apu_dev *ad, void *data)
 	get_datas(gov_data, &parent_gov, NULL, NULL);
 
 	gov_data->max_opp = ad->df->profile->max_state - 1;
-	ad->opp_div = DIV_ROUND_CLOSEST(BOOST_MAX, ad->df->profile->max_state);
 
 	/*
 	 * Put threshold_volt and child_volt_limit at last,
 	 * since it needs devfreq->profile->table
 	 */
-	if (apu_data->threshold_volt)
+	if (apu_data->threshold_volt && ad->threshold_opp == -EINVAL)
 		gov_data->threshold_opp = apu_volt2opp(ad, apu_data->threshold_volt);
+	else if (ad->threshold_opp >= 0)
+		gov_data->threshold_opp = ad->threshold_opp;
 	else
 		gov_data->threshold_opp = -EINVAL;
 
-	if (apu_data->child_volt_limit)
+	if (apu_data->child_volt_limit && ad->child_opp_limit != -EINVAL)
 		gov_data->child_opp_limit = apu_volt2opp(ad, apu_data->child_volt_limit);
+	else if (ad->child_opp_limit >= 0)
+		gov_data->child_opp_limit = ad->child_opp_limit;
 	else
 		gov_data->child_opp_limit = -EINVAL;
 

@@ -51,7 +51,12 @@ struct apu_dev {
 	/* devfreq info */
 	struct devfreq	 *df;
 	struct opp_table *oppt;
-	unsigned int opp_div;
+
+	int bin_idx;
+	int seg_idx;
+
+	int threshold_opp;   /* located in child's gov */
+	int child_opp_limit; /* located in parent's gov */
 };
 
 static inline int devfreq_dummy_target(struct device *dev, unsigned long *rate,
