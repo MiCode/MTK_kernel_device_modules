@@ -78,9 +78,21 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_FORCE_VOL(x)	(MEM_BASE + 0x470 + 0x4 * (x)) // POWER_NUM(4)
 
 #define MEM_VMM_BUCK_ON		(MEM_BASE + 0x480)
-/* next start: 0x484 */
+
+// MMDVFS_OPP_RECORD_NUM: POWER_NUM(3), CAM_ALONE
+// x: POWER_NUM, y: OPP
+#define MEM_PWR_TOTAL_TIME(x, y)	(MEM_BASE + 0x484 + 0x40 * (x) + 0x8 * (y))
+/* next start: 0x584 */
 
 #define MEM_REC_CNT_MAX		16
+
+// POWER_NUM(3), CAM_ALONE
+// x: POWER_NUM, y: CNT
+#define MEM_REC_PWR_ALN_OBJ		3
+#define MEM_REC_PWR_ALN_CNT(x)		(MEM_BASE + 0x7DC + 0xC4 * (x))
+#define MEM_REC_PWR_ALN_SEC(x, y)	(MEM_BASE + 0x7E0 + 0xC4 * (x) + MEM_REC_PWR_ALN_OBJ * 0x4 * (y))
+#define MEM_REC_PWR_ALN_NSEC(x, y)	(MEM_BASE + 0x7E4 + 0xC4 * (x) + MEM_REC_PWR_ALN_OBJ * 0x4 * (y))
+#define MEM_REC_PWR_ALN_OPP(x, y)	(MEM_BASE + 0x7E8 + 0xC4 * (x) + MEM_REC_PWR_ALN_OBJ * 0x4 * (y))
 
 #define MEM_REC_VMM_CEIL_OBJ		3
 #define MEM_REC_VMM_CEIL_CNT		(MEM_BASE + 0xAEC)

@@ -25,6 +25,7 @@
 
 #include "mtk-mmdvfs-v3-memory.h"
 #include "mtk-mmdvfs-ftrace.h"
+#include "mtk-mmdvfs-debug.h"
 #include "clk-mtk.h"
 
 #ifndef MAX_OPP
@@ -173,6 +174,18 @@ static struct kernel_param_ops mmdvfs_debug_set_vote_step_ops = {
 module_param_cb(vote_step, &mmdvfs_debug_set_vote_step_ops, NULL, 0644);
 MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
 
+#ifndef CONFIG_64BIT
+static inline u64 readq(const void __iomem *addr)
+{
+	u32 low, high;
+
+	low = readl(addr);
+	high = readl(addr + 4);
+
+	return ((u64)high << 32) | low;
+}
+#endif
+
 static void mmdvfs_debug_record_opp(const u8 opp)
 {
 	struct mmdvfs_record *rec;
@@ -197,7 +210,7 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 void mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
-	u32 i, j, val;
+	u32 i, j, k, val;
 
 	/* MMDVFS_DBG_VER1 */
 	mmdvfs_debug_dump_line(file, "VER1: mux controlled by vcore regulator:\n");
@@ -305,6 +318,31 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
 			(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 	}
+
+	// power/alone records
+	mmdvfs_debug_dump_line(file, "power/alone opp records\n");
+	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++) {
+		j = readl(MEM_REC_PWR_ALN_CNT(i)) % MEM_REC_CNT_MAX;
+		if (readl(MEM_REC_PWR_ALN_SEC(i, j)))
+			for (k = j; k < MEM_REC_CNT_MAX; k++)
+				mmdvfs_debug_dump_line(file, "[%5u.%6u] pwr:%u opp:%u\n",
+					readl(MEM_REC_PWR_ALN_SEC(i, k)),
+					readl(MEM_REC_PWR_ALN_NSEC(i, k)),
+					i, readl(MEM_REC_PWR_ALN_OPP(i, k)));
+
+		for (k = 0; k < j; k++)
+			mmdvfs_debug_dump_line(file, "[%5u.%6u] pwr:%u opp:%u\n",
+				readl(MEM_REC_PWR_ALN_SEC(i, k)),
+				readl(MEM_REC_PWR_ALN_NSEC(i, k)),
+				i, readl(MEM_REC_PWR_ALN_OPP(i, k)));
+	}
+
+	// power total time
+	mmdvfs_debug_dump_line(file, "power/alone total time(ms)\n");
+	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
+		for (j = 0; j < MAX_OPP; j++)
+			mmdvfs_debug_dump_line(file, "pwr:%u opp:%u total_time:%llu\n",
+				i, j, readq(MEM_PWR_TOTAL_TIME(i, j)));
 
 	// vmm ceil records
 	i = readl(MEM_REC_VMM_CEIL_CNT) % MEM_REC_CNT_MAX;
@@ -604,6 +642,81 @@ static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
 };
 module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
 MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
+
+static struct mmdvfs_res_mbrain_header mmdvfs_mbrain_header;
+
+static unsigned int mmdvfs_mbrain_get_sys_res_length(void)
+{
+	mmdvfs_mbrain_header.mbrain_module = MMDVFS_RES_DATA_MODULE_ID;
+	mmdvfs_mbrain_header.version = MMDVFS_RES_DATA_VERSION;
+	mmdvfs_mbrain_header.data_offset = sizeof(struct mmdvfs_res_mbrain_header);
+	mmdvfs_mbrain_header.index_data_length = mmdvfs_mbrain_header.data_offset +
+		sizeof(struct mmdvfs_opp_record) * MMDVFS_OPP_RECORD_NUM;
+
+	MMDVFS_DBG("length:%u", mmdvfs_mbrain_header.index_data_length);
+
+	return mmdvfs_mbrain_header.index_data_length;
+}
+
+static void *mmdvfs_res_data_copy(void *dest, void *src, uint64_t size)
+{
+	memcpy(dest, src, size);
+	dest += size;
+	return dest;
+}
+
+static int mmdvfs_mbrain_get_sys_res_data(void *address, uint32_t size)
+{
+	struct mmdvfs_opp_record record[MMDVFS_OPP_RECORD_NUM];
+	uint64_t ns, sec, usec, us, total;
+	int i, j, k, opp;
+
+	ns = sched_clock();
+	us = ns / 1000;
+
+	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++) {
+		total = 0;
+		k = readl(MEM_REC_PWR_ALN_CNT(i)) % MEM_REC_CNT_MAX;
+		k = (k - 1) < 0 ? MEM_REC_CNT_MAX - 1 : k - 1;
+		sec = readl(MEM_REC_PWR_ALN_SEC(i, k));
+		usec = readl(MEM_REC_PWR_ALN_NSEC(i, k));
+		opp = readl(MEM_REC_PWR_ALN_OPP(i, k));
+
+		if (sec && opp < MAX_OPP) {
+			total = readq(MEM_PWR_TOTAL_TIME(i, opp));
+			total += (us - (sec * 1000000 + usec)) / 1000;
+		}
+
+		MMDVFS_DBG("pwr:%d k:%d sec:%llu usec:%llu opp:%u us:%llu total:%llu",
+			i, k, sec, usec, opp, us, total);
+
+		for (j = 0; j < MAX_OPP; j++) {
+			if (j == opp)
+				record[i].opp_duration[j] = total;
+			else
+				record[i].opp_duration[j] = readq(MEM_PWR_TOTAL_TIME(i, j));
+		}
+	}
+
+	mmdvfs_mbrain_get_sys_res_length();
+	address = mmdvfs_res_data_copy(address, &mmdvfs_mbrain_header,
+		sizeof(struct mmdvfs_res_mbrain_header));
+	address = mmdvfs_res_data_copy(address, &record,
+		sizeof(struct mmdvfs_opp_record) * MMDVFS_OPP_RECORD_NUM);
+
+	return 0;
+}
+
+static struct mmdvfs_res_mbrain_debug_ops mmdvfs_mbrain_ops = {
+	.get_length = mmdvfs_mbrain_get_sys_res_length,
+	.get_data = mmdvfs_mbrain_get_sys_res_data,
+};
+
+struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void)
+{
+	return &mmdvfs_mbrain_ops;
+}
+EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_dbg_ops);
 
 static void mmdvfs_debug_work(struct work_struct *work)
 {
