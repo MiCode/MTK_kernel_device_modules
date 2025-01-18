@@ -1973,10 +1973,6 @@
 		compatible = "mediatek,goodix-fp";
 	};
 
-	accdet: accdet {
-		compatible = "mediatek,pmic-accdet";
-	};
-
 	mt6359_gauge {
 		compatible = "mediatek,mt6359_gauge";
 		bootmode = <&chosen>;
