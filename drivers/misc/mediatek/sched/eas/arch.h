@@ -109,12 +109,20 @@ void eenv_dsu_init(void *private, unsigned int wl,
 {
 	if (eenv_dsu_init_hook) {
 		static struct cpu_dsu_freq_state *freq_state;
+		int dsu_temp = 0;
+		unsigned int dsu_freq_thermal = 0;
+
 		freq_state = get_dsu_freq_state();
+
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+		dsu_temp = get_dsu_temp()/1000;
+		dsu_freq_thermal = get_dsu_ceiling_freq();
+#endif
 
 		(*eenv_dsu_init_hook)(private, wl,
 			PERCORE_L3_BW, cpumask_val,
 			get_l3ctl_sram_base_addr(), freq_state->dsu_target_freq,
-			get_dsu_ceiling_freq(), get_dsu_temp(),
+			dsu_freq_thermal, dsu_temp,
 			val, output);
 	}
 }

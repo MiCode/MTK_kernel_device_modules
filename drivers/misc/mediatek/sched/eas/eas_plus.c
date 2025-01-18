@@ -304,9 +304,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	struct em_perf_state *ps;
 #endif
 	unsigned long energy;
-#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 	int *cpu_temp = eenv->cpu_temp;
-#endif
 	struct cpumask *pd_cpus = to_cpumask(pd->cpus);
 	unsigned int mtk_em, get_lkg;
 	unsigned long output[MAX_NR_CPUS + 4] = {0};
