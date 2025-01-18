@@ -3045,7 +3045,7 @@ static s32 cmdq_genpd_init(struct device *dev, struct cmdq *cmdq)
 						"#power-domain-cells");
 
 	cmdq_msg("%s num:%d pm_domain:%p", __func__, genpd_num, dev->pm_domain);
-	if (genpd_num == 1) {
+	if (genpd_num <= 1) {
 		cmdq->pd_mminfra_1 = dev;
 		if (cmdq->fast_mtcmos)
 			pm_runtime_irq_safe(cmdq->pd_mminfra_1);
@@ -3228,7 +3228,6 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq_tfa_read_dbg,
 		cmdq_proc_debug_off,
 		cmdq_print_debug);
-	cmdq_proc_create();
 
 	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
 		cmdq->fast_mtcmos = true;
@@ -3470,6 +3469,7 @@ static const struct of_device_id cmdq_of_ids[] = {
 	{.compatible = "mediatek,mt6989-gce", .data = (void *)&gce_plat_v5},
 	{.compatible = "mediatek,mt6878-gce", .data = (void *)&gce_plat_v5},
 	{.compatible = "mediatek,mt6991-gce", .data = (void *)&gce_plat_v6},
+	{.compatible = "mediatek,mt6899-gce", .data = (void *)&gce_plat_v5},
 	{}
 };
 
