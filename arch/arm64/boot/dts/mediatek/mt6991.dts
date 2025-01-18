@@ -8347,7 +8347,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ovl_dli_async1: ovl-dli-async1@32800000 {
 			compatible = "mediatek,ovl_dli_async1",
 				"mediatek,mt6991-disp-dli-async";
-//			clocks = <&ovlsys_config_clk CLK_OVL_DLI1_DISP>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DLI1_DISP>;
 			reg = <0 0x32800000 0 0x1000>;
 		};
 
@@ -8359,7 +8359,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		disp_ovl0_exdma0: disp-ovl0-exdma0@32830000 {
 			compatible = "mediatek,disp_ovl0_exdma0",
 				"mediatek,mt6991-disp-ovl-exdma";
-//			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA0_DISP>;
+			clocks = <&ovlsys_config_clk CLK_OVL_EXDMA0_DISP>;
 			reg = <0 0x32830000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
