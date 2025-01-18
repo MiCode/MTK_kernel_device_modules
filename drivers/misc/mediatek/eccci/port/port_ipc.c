@@ -301,7 +301,7 @@ int ccci_ipc_send_ilm(struct ipc_ilm *in_ilm)
 #ifdef CONFIG_MTK_CONN_MD
 static int ccci_ipc_send_ilm_to_md1(struct ipc_ilm *in_ilm)
 {
-	return port_ipc_kernel_write(0, in_ilm);
+	return port_ipc_kernel_write(in_ilm);
 }
 #endif
 static int port_ipc_kernel_thread(void *arg)
