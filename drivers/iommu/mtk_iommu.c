@@ -2024,6 +2024,15 @@ static void mtk_iommu_release_device(struct device *dev)
 	unsigned int larbid;
 
 	data = dev_iommu_priv_get(dev);
+
+	if(data->plat_data->iommu_type == MM_IOMMU &&
+	   MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_EN_PRE))
+		return;
+
+	if(data->plat_data->iommu_type == APU_IOMMU &&
+	   !MTK_IOMMU_HAS_FLAG(data->plat_data, LINK_WITH_APU))
+		return;
+
 	larbid = MTK_M4U_TO_LARB(fwspec->ids[0]);
 	larbdev = data->larb_imu[larbid].dev;
 	device_link_remove(dev, larbdev);
