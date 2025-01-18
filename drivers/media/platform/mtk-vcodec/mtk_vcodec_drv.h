@@ -646,6 +646,7 @@ struct mtk_vcodec_ctx {
 	u64 timestamp;
 	s64 input_max_ts;
 	struct mtk_detect_ts_param detect_ts_param;
+	bool has_first_input;
 
 	bool is_flushing;
 	unsigned int eos_type;
