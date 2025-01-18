@@ -45,7 +45,7 @@ int mtcmos_ao = 1;
 module_param(mtcmos_ao, int, 0644);
 int vdisp_ao = 1;
 module_param(vdisp_ao, int, 0644);
-int mminfra_floor = 457;
+int mminfra_floor = 363;
 module_param(mminfra_floor, int, 0644);
 
 u32 dump_begin;
@@ -586,10 +586,10 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 
 	if (g_priv->total_hrt_unit == 0)
 		return;
-
+/*
 	if (mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16))
 		ch_bw = mminfra_floor * 16;
-
+*/
 	if (subsys == DPC_SUBSYS_DISP) {
 		addr1 = DISP_REG_DPC_DISP_HIGH_HRT_BW;
 		addr2 = DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG;
@@ -597,7 +597,7 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 		addr1 = DISP_REG_DPC_MML_SW_HRT_BW;
 		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
 	}
-	writel(ch_bw / g_priv->total_hrt_unit, dpc_base + addr1);
+	writel(ch_bw * g_priv->hrt_emi_efficiency / 100 / g_priv->total_hrt_unit, dpc_base + addr1);
 
 	writel((!force && has_cap(DPC_CAP_QOS)) ? 0 : 0x00010001, dpc_base + addr2);
 	if (unlikely(debug_dvfs))
@@ -627,7 +627,7 @@ static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 		addr1 = DISP_REG_DPC_MML_SW_SRT_BW;
 		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
 	}
-	writel(bw_in_mb / g_priv->total_srt_unit, dpc_base + addr1);
+	writel(bw_in_mb * g_priv->srt_emi_efficiency / 100 / g_priv->total_srt_unit, dpc_base + addr1);
 
 	writel((!force && has_cap(DPC_CAP_QOS)) ? 0 : 0x00010001, dpc_base + addr2);
 	if (unlikely(debug_dvfs))
@@ -680,7 +680,7 @@ static u8 dpc_max_dvfs_level(void)
 
 static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
-	u32 addr1 = 0, addr2 = 0;
+	u32 addr = 0;
 	u32 mmdvfs_user = U32_MAX;
 	u8 max_level;
 
@@ -697,13 +697,11 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		mmdvfs_user = MMDVFS_USER_DISP;
-		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
+		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.disp_level = level;
 	} else if (subsys == DPC_SUBSYS_MML) {
 		mmdvfs_user = MMDVFS_USER_MML;
-		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
+		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.mml_level = level;
 	}
 
@@ -711,9 +709,6 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 	if (max_level < level)
 		max_level = level;
 	vdisp_level_set_vcp(subsys, max_level);
-
-	/* switch vdisp to SW or HW mode */
-	writel(force ? 1 : 0, dpc_base + addr2); /* TODO: DO NOT SET MODE HERE */
 
 	/* add vdisp info to met */
 	if (MEM_BASE)
@@ -784,7 +779,7 @@ static void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb
 static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
 	const u32 bw_in_mb)
 {
-	u32 addr1 = 0, addr2 = 0;
+	u32 addr = 0;
 	u32 mmdvfs_user = U32_MAX;
 	u32 total_bw;
 	u8 max_level;
@@ -802,14 +797,12 @@ static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, 
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		mmdvfs_user = MMDVFS_USER_DISP;
-		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
+		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.disp_level = level;
 		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
 	} else if (subsys == DPC_SUBSYS_MML) {
 		mmdvfs_user = MMDVFS_USER_MML;
-		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
+		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 		g_priv->dvfs_bw.mml_level = level;
 		g_priv->dvfs_bw.mml_bw = bw_in_mb * 10 / 7;
 	}
@@ -831,12 +824,6 @@ static void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, 
 	if (max_level < level)
 		max_level = level;
 	vdisp_level_set_vcp(subsys, max_level);
-
-	/* switch vdisp to SW or HW mode */
-	if (unlikely(vdisp_ao))
-		writel(1, dpc_base + addr2);
-	else
-		writel(force ? 1 : 0, dpc_base + addr2);
 
 	/* add vdisp info to met */
 	if (MEM_BASE)
@@ -877,7 +864,7 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 		addr = mt6991_ch_bw_cfg[idx].offset + 0x60;
 
 	value = readl(dpc_base + addr) & ~(0x3ff << mt6991_ch_bw_cfg[idx].shift);
-	value |= (bw_in_mb / 16) << mt6991_ch_bw_cfg[idx].shift;	/* 16MB unit */
+	value |= (bw_in_mb * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, bw_in_mb);
@@ -1716,6 +1703,8 @@ static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mml_dt_usage = mt6989_mml_dt_usage,
 	.total_srt_unit = 100,
 	.total_hrt_unit = 32,
+	.srt_emi_efficiency = 100,			// CHECK ME
+	.hrt_emi_efficiency = 100,			// CHECK ME
 };
 
 static struct mtk_dpc mt6878_dpc_driver_data = {
@@ -1724,6 +1713,8 @@ static struct mtk_dpc mt6878_dpc_driver_data = {
 	.set_mtcmos = mt6989_set_mtcmos,		// same as 6989
 	.disp_irq_handler = mt6989_disp_irq_handler,	// same as 6989
 	.mml_irq_handler = mt6989_mml_irq_handler,	// same as 6989
+	.srt_emi_efficiency = 100,			// CHECK ME
+	.hrt_emi_efficiency = 100,			// CHECK ME
 };
 
 static struct mtk_dpc mt6991_dpc_driver_data = {
@@ -1737,6 +1728,9 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.dpc2_dt_usage = mt6991_dt_usage,
 	.total_srt_unit = 64,
 	.total_hrt_unit = 64,
+	.srt_emi_efficiency = 133,			// multiply 1.33
+	.hrt_emi_efficiency = 85,			// divide 0.85
+	.ch_bw_urate = 70,				// divide 0.7
 };
 
 static const struct of_device_id mtk_dpc_driver_dt_match[] = {
@@ -1836,13 +1830,13 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	if (priv->mmsys_id == MMSYS_MT6991) {
 		/* set vdisp level */
-		dpc_dvfs_set(DPC_SUBSYS_DISP, 0x4, true);
+		// dpc_dvfs_set(DPC_SUBSYS_DISP, 0x4, true);
 
 		/* set channel bw for larb0 HRT READ */
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, 458 * 16);
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, mminfra_floor * 16);
 
 		/* set total HRT bw */
-		dpc_hrt_bw_set(DPC_SUBSYS_DISP, 458 * priv->total_hrt_unit, true);
+		dpc_hrt_bw_set(DPC_SUBSYS_DISP, mminfra_floor * priv->total_hrt_unit, true);
 
 		writel(priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_DISP_DT_FOLLOW_CFG);
 		writel(priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG);
