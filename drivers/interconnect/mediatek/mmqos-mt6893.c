@@ -5,7 +5,7 @@
  */
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/interconnect/mtk,emi.h>
-#include <dt-bindings/memory/mt6885-larb-port.h>
+#include <dt-bindings/memory/mt6893-larb-port.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
 #include "mmqos-mtk.h"
