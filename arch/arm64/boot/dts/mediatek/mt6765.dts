@@ -3557,10 +3557,12 @@ pwrap: pwrap@1000d000 {
 	mmqos: interconnect {
 		compatible = "mediatek,mt6765-mmqos";
 		#mtk-interconnect-cells = <1>;
-		mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
-		mediatek,commons = <&smi_common>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
+		mediatek,commons-supply = <&smi_common>;
 		disable-ostd;
 		disable-bwl;
+		mmqos-state = <0x7>;
+		mmqos-log-level = <0>;
 		clocks = <&topckgen CLK_TOP_MM_SEL>;
 		clock-names = "mm";
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
