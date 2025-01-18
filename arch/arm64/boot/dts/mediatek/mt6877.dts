@@ -4155,8 +4155,8 @@
 		compatible = "mediatek,mt-cpufreq";
 		proc1-supply = <&mt6315_6_vbuck1>;
 		proc2-supply = <&mt6315_6_vbuck3>;
-		/* sram_proc1-supply = <&mt_pmic_vsram_proc1_ldo_reg>; */
-		/* sram_proc2-supply = <&mt_pmic_vsram_proc2_ldo_reg>; */
+		sram_proc1-supply = <&mt6359p_vsram_proc1_reg>;
+		sram_proc2-supply = <&mt6359p_vsram_proc2_reg>;
 		nvmem-cells = <&efuse_segment>;
 		nvmem-cell-names = "efuse_segment_cell";
 	};
