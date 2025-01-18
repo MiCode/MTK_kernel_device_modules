@@ -4126,6 +4126,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mm-pwr-ver = <3>;
 		mm-cfg-base = <0x30000000 0x30a00000 0x30080000>; /* <mm0 mm1 mm_ao> */
 		mm-dbg-out-sel-nr = <35 4 0>;
+		mmpc-src-ctrl;
+		mmpc-src-ctrl-base = <0x31b51000>;
+		mm-proc-mtcmos-base = <0x1c004e60>;
+		mmpc-rsc-user = <7 9>;
 	};
 
 	mmqos-wrapper {
