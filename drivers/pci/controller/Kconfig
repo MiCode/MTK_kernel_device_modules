@@ -3,7 +3,7 @@
 config DEVICE_MODULES_PCIE_MEDIATEK_GEN3
 	tristate "MediaTek Gen3 PCIe controller"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
-	depends on PCI_MSI_IRQ_DOMAIN
+	depends on PCI_MSI
 	help
 	  Adds support for PCIe Gen3 MAC controller for MediaTek SoCs.
 	  This PCIe controller is compatible with Gen3, Gen2 and Gen1 speed,
