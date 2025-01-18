@@ -41,6 +41,7 @@
  */
 #define REG_UFS_XOUFS_CTRL          0x140
 #define REG_UFS_REFCLK_CTRL         0x144
+#define REG_UFS_UFS_MMIO_OTSD_CTRL  0x14C
 #define REG_UFS_MMIO_OPT_CTRL_0     0x160
 #define REG_UFS_MMIO_STS_0          0x170
 #define REG_UFS_MMIO_DBG_AHB        0x1C0
@@ -145,6 +146,14 @@ enum {
 	VS_HIB_WAITTIMER            = 11,
 	VS_HIB_EXIT_CONF            = 12,
 	VS_HIB_EXIT                 = 13,
+	VS_DS_IDLEEN                = 14,
+	VS_DS_ENTER                 = 15,
+	VS_DS_CONF                  = 16,
+	VS_DS_MIDDLE                = 17,
+	VS_XOUFS_CKOFF              = 18,
+	VS_XOUFS_MID                = 19,
+	VS_XOUFS_CKON               = 20,
+	VS_HCE_PRE_RESET            = 21
 };
 
 /*
@@ -326,7 +335,12 @@ enum {
 /* UFS MTK ip version value */
 enum {
 	IP_VER_NONE   = 0x0,
+
+	/* UFS 3.1 */
 	IP_VER_MT6983 = 0x10360000,
+	IP_VER_MT6878 = 0x10420200,
+
+	/* UFS 4.0 */
 	IP_VER_MT6897 = 0x10440000,
 	IP_VER_MT6989 = 0x10450000,
 	IP_VER_MT6899 = 0x10450100,

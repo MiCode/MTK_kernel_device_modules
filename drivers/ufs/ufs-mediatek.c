@@ -486,6 +486,7 @@ static void ufs_mtk_wait_idle_state(struct ufs_hba *hba,
 	u64 timeout, time_checked;
 	u32 val, sm;
 	bool wait_idle;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	/* cannot use plain ktime_get() in suspend */
 	timeout = ktime_get_mono_fast_ns() + retry_ms * 1000000UL;
@@ -496,8 +497,13 @@ static void ufs_mtk_wait_idle_state(struct ufs_hba *hba,
 
 	do {
 		time_checked = ktime_get_mono_fast_ns();
-		ufs_mtk_dbg_sel(hba);
-		val = ufshcd_readl(hba, REG_UFS_PROBE);
+		if (host->ip_ver < IP_VER_MT6899) {
+			ufs_mtk_dbg_sel(hba);
+			val = ufshcd_readl(hba, REG_UFS_PROBE);
+		} else {
+			val = ufshcd_readl(hba, REG_UFS_UFS_MMIO_OTSD_CTRL);
+			val = val >> 16;
+		}
 
 		sm = val & 0x1f;
 
@@ -525,13 +531,20 @@ static int ufs_mtk_wait_link_state(struct ufs_hba *hba, u32 state,
 {
 	ktime_t timeout, time_checked;
 	u32 val;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	timeout = ktime_add_ms(ktime_get(), max_wait_ms);
 	do {
 		time_checked = ktime_get();
-		ufs_mtk_dbg_sel(hba);
-		val = ufshcd_readl(hba, REG_UFS_PROBE);
-		val = val >> 28;
+
+		if (host->ip_ver < IP_VER_MT6899) {
+			ufs_mtk_dbg_sel(hba);
+			val = ufshcd_readl(hba, REG_UFS_PROBE);
+			val = val >> 28;
+		} else {
+			val = ufshcd_readl(hba, REG_UFS_UFS_MMIO_OTSD_CTRL);
+			val = val >> 24;
+		}
 
 		if (val == state)
 			return 0;
@@ -2261,6 +2274,7 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 {
 	int err;
 	u32 val;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	err = ufshcd_hba_enable(hba);
 	if (err)
@@ -2268,8 +2282,12 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 
 	err = ufs_mtk_unipro_set_lpm(hba, false);
 	if (err) {
-		ufs_mtk_dbg_sel(hba);
-		val = ufshcd_readl(hba, REG_UFS_PROBE);
+		if (host->ip_ver < IP_VER_MT6899) {
+			ufs_mtk_dbg_sel(hba);
+			val = ufshcd_readl(hba, REG_UFS_PROBE);
+		} else {
+			val = ufshcd_readl(hba, REG_UFS_UFS_MMIO_OTSD_CTRL);
+		}
 		ufshcd_update_evt_hist(hba, UFS_EVT_RESUME_ERR, (u32)val);
 		val = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
 		ufshcd_update_evt_hist(hba, UFS_EVT_RESUME_ERR, (u32)val);
@@ -2523,11 +2541,13 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 			 REG_UFS_REJECT_MON - REG_UFS_MPHYCTRL + 4,
 			 "MPHY Ctrl (0x2200): ");
 
-	/* Direct debugging information to REG_MTK_PROBE */
-	ufs_mtk_dbg_sel(hba);
-	/* Dump ufshci register 0x22C8 */
-	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
+	if (host->ip_ver < IP_VER_MT6899) {
+		/* Direct debugging information to REG_MTK_PROBE */
+		ufs_mtk_dbg_sel(hba);
+		/* Dump ufshci register 0x22C8 */
+		ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
 				"Debug Probe (0x22C8): ");
+	}
 
 	if (hba->mcq_enabled) {
 		/* Dump ufshci register 0x380 */
