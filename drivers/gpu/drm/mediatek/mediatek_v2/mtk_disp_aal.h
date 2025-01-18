@@ -78,6 +78,7 @@ struct _mtk_disp_aal_tile_overhead_v {
 struct mtk_aal_feature_option {
 	unsigned int mtk_aal_support;
 	unsigned int mtk_dre30_support;
+	unsigned int mtk_cabc_no_support;
 };
 
 struct work_struct_aal_data {
