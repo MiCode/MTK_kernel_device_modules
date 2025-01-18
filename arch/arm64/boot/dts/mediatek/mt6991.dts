@@ -14824,25 +14824,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		pinctrl-32 = <&aud_gpio_ext_hp_amp_off>;
 		pinctrl-33 = <&aud_gpio_ext_hp_amp_on>;
 
-		/* Only for ETDM in/out 4 */
-		etdm-out-ch = <2>;
-		etdm-in-ch = <2>;
-
-		/* ETDM in/out 5 6 */
-		etdm-in5-ch = <16>;
-		etdm-out5-ch = <16>;
-		etdm-in6-ch = <16>;
-
-		etdm-out-sync = <0>; /* 0: disable; 1: enable */
-		etdm-out5-sync = <0>;
-
-		etdm-in-sync = <1>; /* 0: disable; 1: enable */
-		etdm-in5-sync = <1>;
-		etdm-in6-sync = <1>;
-
-		etdm-ip-mode = <0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
-		etdm-ip-mode-in5 = <0>;
-		etdm-ip-mode-in6 = <0>;
+		etdm-out-ch = <2 2 2 2 2 16 2>;
+		etdm-in-ch = <2 2 2 2 2 16 16>;
+		etdm-out-sync = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
+		etdm-in-sync = <1 0 0 0 1 1 1>; /* 0: disable; 1: enable */
+		etdm-ip-mode = <0 0 0 0 0 0 0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
