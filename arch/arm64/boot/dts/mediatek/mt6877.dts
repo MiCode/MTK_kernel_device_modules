@@ -3103,13 +3103,13 @@
 			"mbox3",
 			"mbox4";
 
-		core_0 = "enable";
-		scp_sramSize = <0x00100000>;
-		core_nums = <1>;	/* core number */
+		core-0 = "enable";
+		scp-sram-size = <0x00100000>;
+		core-nums = <1>;	/* core number */
 		twohart = <1>;		/* two hart arch */
-		mbox_count = <5>;
+		mbox-count = <5>;
 		/* id, mbox, send_size*/
-		send_table =
+		send-table =
 		< 0 0  9>,/* IPI_OUT_AUDIO_VOW_1 */
 		< 3 1  2>,/* IPI_OUT_APCCCI_0 */
 		< 4 1  1>,/* IPI_OUT_DVFS_SET_FREQ_0 */
@@ -3125,7 +3125,7 @@
 		<24 4 34>;/* IPI_OUT_SCP_MPOOL_1 */
 
 		/* id, mbox, recv_size, recv_opt */
-		recv_table =
+		recv-table =
 		< 1 0  2 0>,/* IPI_IN_AUDIO_VOW_ACK_1 */
 		< 2 0 26 0>,/* IPI_IN_AUDIO_VOW_1 */
 		< 7 1  2 0>,/* IPI_IN_APCCCI_0 */
@@ -3143,7 +3143,7 @@
 		<15 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
 		<25 4 30 0>;/* IPI_IN_SCP_MPOOL_1 */
 
-		legacy_table = 	<11>, /* out_id_0 IPI_OUT_SCP_MPOOL_0 */
+		legacy-table = <11>, /* out_id_0 IPI_OUT_SCP_MPOOL_0 */
 				<24>, /* out_id_1 IPI_OUT_SCP_MPOOL_1 */
 				<12>, /* in_id_0 IPI_IN_SCP_MPOOL_0 */
 				<25>, /* in_id_1 IPI_IN_SCP_MPOOL_1 */
@@ -3151,7 +3151,7 @@
 				<30>; /* in_size */
 
 		/* feature, frequecy, coreid */
-		scp_feature_tbl = < 0   5 0>,	/* vow */
+		scp-feature-tbl = < 0   5 0>,	/* vow */
 				  < 1  29 0>,	/* sensor */
 				  < 2  26 0>,	/* flp */
 				  < 3   0 0>,	/* rtos */
@@ -3166,16 +3166,16 @@
 				  <12 135 0>,	/* vow dual mic barge in */
 				  <13 200 0>;	/* ultrasound */
 
-		secure_dump = "disable";	/* disabled in default */
-		secure_dump_size = <0>;
+		secure-dump = "disable";	/* disabled in default */
+		secure-dump-size = <0>;
 
-		scp_mem_key = "mediatek,reserve-memory-scp_share";
-		scp_mem_tbl = <0 0x0>, /* secure dump, its size is in secure_dump_size */
-			      <1 0x4e300>, /* vow */
-			      <2 0x100000>, /* sensor */
-			      <3 0x180000>, /* logger */
-			      <4 0x19000>, /* audio */
-			      <7 0x19000>; /* ultrasound*/
+		scp-mem-key = "mediatek,reserve-memory-scp_share";
+		scp-mem-tbl = <0 0x0 0x0>, /* secure dump, its size is in secure_dump_size */
+			      <1 0x4e300 0x0>, /* vow */
+			      <2 0x100000 0x0>, /* sensor */
+			      <3 0x180000 0x0>, /* logger */
+			      <4 0x19000 0x0>, /* audio */
+			      <7 0x19000 0x0>; /* ultrasound*/
 
 		memorydump =
 		<0x100000>, /* l2tcm */
