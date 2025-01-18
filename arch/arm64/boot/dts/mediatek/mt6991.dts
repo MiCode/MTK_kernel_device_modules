@@ -5438,9 +5438,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ulposc-cali-target = <400 650 850>;
 		ulposc-cali-config =
 			/* con0		con1		con2 */
-			<0x056aa340	0x10000a00	0x484a>,
-			<0x0456a540	0x10000a00	0x484a>,
-			<0x05bea540	0x10000a00	0x484a>;
+			<0x04eaa340	0x10000a00	0x484a>,
+			<0x0416a540	0x10000a00	0x484a>,
+			<0x055ea540	0x10000a00	0x484a>;
 		clk-dbg-ver = "v4";
 		ccf-fmeter-support;
 		fmeter-args-u2-cali =
