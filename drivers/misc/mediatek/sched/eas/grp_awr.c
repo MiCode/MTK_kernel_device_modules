@@ -126,13 +126,17 @@ void set_top_grp_aware(int val, int force_ctrl)
 	/* normal control (enable/disable) GAS by refcnt */
 	if (force_ctrl == 0 && gas_force_ctrl == 0) {
 		/* if refcnt >0 , force on flt, else follow of setting */
-		if (gas_ctrl_refcnt > 0 && !gas_enable) {
-			flt_set_grp_ctrl(1);
-			gas_enable = 1;
-		} else if (gas_enable) {
-			flt_set_grp_ctrl(0);
-			gas_enable = 0;
-			reset_grp_awr_margin();
+		if (gas_ctrl_refcnt > 0) {
+			if (!gas_enable) {
+				flt_set_grp_ctrl(1);
+				gas_enable = 1;
+			}
+		} else {
+			if (gas_enable) {
+				flt_set_grp_ctrl(0);
+				gas_enable = 0;
+				reset_grp_awr_margin();
+			}
 		}
 	}
 	if (trace_sugov_ext_ta_ctrl_enabled())
