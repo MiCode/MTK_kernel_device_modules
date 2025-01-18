@@ -678,8 +678,9 @@ void fpsgo_reset_deplist_task_priority(struct render_info *thr)
 		FPSGO_LOGE("%s: NON render info!!!!\n", __func__);
 		return;
 	}
+	if (ux_general_policy)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 
-	fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 }
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)

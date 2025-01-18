@@ -351,6 +351,7 @@ static int powerRL_voltage_unit;
 static int powerRL_total_unit;
 static int powerRL_voltage;
 static int powerRL_ko_is_ready;
+static int ux_general_policy;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -6381,7 +6382,8 @@ void fpsgo_base2fbt_stop_boost(struct render_info *thr)
 	if (!thr)
 		return;
 
-	fpsgo_reset_deplist_task_priority(thr);
+	if (ux_general_policy)
+		fpsgo_reset_deplist_task_priority(thr);
 
 	if (thr->boost_info.last_blc == 0)
 		return;
@@ -9439,6 +9441,7 @@ int __init fbt_cpu_init(void)
 	ml_th = 0;
 	tp_policy = 0;
 	gh_prefer = 0;
+	ux_general_policy = fbt_get_ux_scroll_policy_type();
 
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
