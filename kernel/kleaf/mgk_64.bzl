@@ -917,6 +917,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6768.ko": "mt6768",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6991.ko": "mt6991",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6877.ko": "mt6877",
+    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6899.ko": "mt6899",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6833.ko": "mt6833",
     "drivers/soc/mediatek/mtk-scpsys-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/mtk-scpsys-mt6768.ko": "mt6768",
