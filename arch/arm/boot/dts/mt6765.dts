@@ -13,11 +13,10 @@
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/gce/mt6765-gce.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/power/mt6765-power.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 
 /dts-v1/;
@@ -4522,6 +4521,7 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 					/* 1 2 2 2 2 2 2 2>; */
 
 		/* use_cpu_to_dram_map_new = "enable"; */
+		dvfs = <&dvfsrc>;
 	};
 
 	dram_ctrl {
