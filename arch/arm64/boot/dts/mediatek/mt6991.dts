@@ -499,6 +499,7 @@
 		};
 	};
 
+
 	imp_iic_wrap_n_clk: syscon@13c30000 {
 		compatible = "mediatek,mt6991-imp_iic_wrap_n", "syscon";
 		reg = <0 0x13c30000 0 0x1000>;
@@ -4732,6 +4733,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			vlp-scp-sleep-stat = <0x934 0xf0000 0x1f00>;
 			mediatek,wake-scp-check-en;
 			mediatek,use-l2-slp-stat;
+		};
+
+		lvts: lvts@14414000 {
+			compatible = "mediatek,mt6991-lvts";
+			#thermal-sensor-cells = <1>;
+			reg = <0 0x14414000 0 0x1000>,
+				  <0 0x0c230000 0 0x1000>,
+				  <0 0x19004000 0 0x1000>,
+				  <0 0x4b400000 0 0x1000>;
+			interrupts = <GIC_SPI 358 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 647 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 614 IRQ_TYPE_LEVEL_HIGH 0>;
+			nvmem-cells = <&lvts_e_data1 &lvts_e_data2 &lvts_e_data3
+					&lvts_e_data4>;
+			nvmem-cell-names = "e_data1","e_data2","e_data3","e_data4";
 		};
 
 		soc_dbg_error_flag: soc-dbg-error-flag@d01a000 {
@@ -15230,6 +15247,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		#thermal-sensor-cells = <1>;
 		nvmem-cells = <&mt6373_thermal_efuse>;
 		nvmem-cell-names = "mt6373_e_data";
+	};
+
+	wifi_cooler: wifi-cooler {
+		compatible = "mediatek,wifi-level-cooler";
+		#cooling-cells = <2>;
+	};
+
+	charger_cooler: charger-cooler {
+		compatible = "mediatek,mt6375-charger-cooler";
+		#cooling-cells = <2>;
+	};
+
+	backlight_cooler: backlight-cooler {
+		compatible = "mediatek,backlight-cooler";
+		backlight-names = "lcd-backlight";
+		#cooling-cells = <2>;
+	};
+
+	therm_intf: therm-intf@114000 {
+		compatible = "mediatek,therm_intf";
+		reg = <0 0x00114000 0 0x400>,
+			<0 0x0c2cd450 0 0x400>;
+		reg-names = "therm_sram",
+			"therm_cputcm";
 	};
 
     thermal_zones: thermal-zones {
