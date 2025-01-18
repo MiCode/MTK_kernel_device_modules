@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-config STMMAC_ETH
+config DEVICE_MODULES_STMMAC_ETH
 	tristate "STMicroelectronics Multi-Gigabit Ethernet driver"
 	depends on HAS_IOMEM && HAS_DMA
 	depends on PTP_1588_CLOCK_OPTIONAL
@@ -13,21 +13,21 @@ config STMMAC_ETH
 	  This is the driver for the Ethernet IPs built around a
 	  Synopsys IP Core.
 
-if STMMAC_ETH
+if DEVICE_MODULES_STMMAC_ETH
 
-config STMMAC_SELFTESTS
+config DEVICE_MODULES_STMMAC_SELFTESTS
 	bool "Support for STMMAC Selftests"
 	depends on INET
-	depends on STMMAC_ETH
+	depends on DEVICE_MODULES_STMMAC_ETH
 	default n
 	help
 	  This adds support for STMMAC Selftests using ethtool. Enable this
 	  feature if you are facing problems with your HW and submit the test
 	  results to the netdev Mailing List.
 
-config STMMAC_PLATFORM
+config DEVICE_MODULES_STMMAC_PLATFORM
 	tristate "STMMAC Platform bus support"
-	depends on STMMAC_ETH
+	depends on DEVICE_MODULES_STMMAC_ETH
 	select MFD_SYSCON
 	default y
 	help
@@ -39,9 +39,9 @@ config STMMAC_PLATFORM
 
 	  If unsure, say N.
 
-if STMMAC_PLATFORM
+if DEVICE_MODULES_STMMAC_PLATFORM
 
-config DWMAC_MEDIATEK
+config DEVICE_MODULES_DWMAC_MEDIATEK
 	tristate "MediaTek MT27xx GMAC support"
 	depends on OF && (ARCH_MEDIATEK || COMPILE_TEST)
 	help
