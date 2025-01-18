@@ -384,6 +384,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/wla/version/v1/wla-v1.ko",
     "drivers/misc/mediatek/wla/version/v1/wla-v1-dbg.ko",
     "drivers/misc/mediatek/masp/sec.ko",
+    "drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko",
     "drivers/misc/mediatek/mbraink/mtk_mbraink.ko",
     "drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko",
     "drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko",
@@ -1158,6 +1159,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-log.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-virtio.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
@@ -1361,6 +1363,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
 
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
@@ -1708,6 +1711,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v2/mtk-lpm-plat-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/mtk-lpm.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/slc-parity.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty.ko")
