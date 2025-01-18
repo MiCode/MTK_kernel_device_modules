@@ -21,6 +21,7 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
+#include <clocksource/arm_arch_timer.h>
 
 #include "mt-plat/mtk_ccci_common.h"
 

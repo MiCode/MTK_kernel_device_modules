@@ -18,6 +18,7 @@
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/smpu.h>
 #endif
+#include <clocksource/arm_arch_timer.h>
 
 #include "ccci_fsm_internal.h"
 #include "ccci_fsm_sys.h"
