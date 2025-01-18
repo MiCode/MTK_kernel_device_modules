@@ -34997,6 +34997,33 @@ exit:
 	return count;
 }
 
+static u32 liber_get_chipid(void)
+{
+	struct device_node *node;
+	struct chip_id_tag *chip_id;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (node) {
+		chip_id = (struct chip_id_tag *)of_get_property(node,
+								"atag,chipid",
+								&len);
+		if (!chip_id) {
+			pr_notice("could not found atag,chipid in chosen\n");
+			return -ENODEV;
+		}
+	} else {
+		pr_notice("chosen node not found in device tree\n");
+		return -ENODEV;
+	}
+	pr_notice("current sw version: %u\n", chip_id->sw_ver);
+
+	return chip_id->sw_ver;
+}
+
 static const struct file_operations mt6681_debugfs_ops = {
 	.open = mt6681_debugfs_open,
 	.write = mt6681_debugfs_write,
@@ -35036,12 +35063,14 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 			__func__);
 		priv->audio_r_miso1_enable = 0;
 
-		// for liber to check E1 or E2
+		// for liber to check ap or scp accdet
 		ret = of_property_read_u32(np, "accdet-efuse-check", &efuse_val);
 		if (!ret && efuse_val == 1) {
 			efuse_val = 0;
 			efuse_spare5 = nvmem_cell_get(dev, "efuse_spare5");
-			if (IS_ERR(efuse_spare5)) {
+			if (liber_get_chipid() == 0x1) {
+				priv->audio_r_miso1_enable = 1;
+			} else if (IS_ERR(efuse_spare5)) {
 				dev_info(priv->dev, "%s() failed to read efuse_spare5\n", __func__);
 			} else {
 				efuse_data = nvmem_cell_read(efuse_spare5, &efuse_len);
@@ -35057,8 +35086,8 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 				}
 				nvmem_cell_put(efuse_spare5);
 			}
-			dev_info(priv->dev, "%s() efuse_val = 0x%x, ap accdet = %d, efuse_len = %zu\n",
-				__func__, efuse_val, priv->audio_r_miso1_enable, efuse_len);
+			dev_info(priv->dev, "%s() efuse_val = 0x%x, ap accdet = %d, efuse_len = %zu, chip id = %d\n",
+				__func__, efuse_val, priv->audio_r_miso1_enable, efuse_len, liber_get_chipid());
 		}
 	}
 	ret = of_property_read_u32(np, "miso-only",

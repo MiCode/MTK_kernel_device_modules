@@ -583,6 +583,14 @@ struct mt6681_priv {
 	struct regulator *reg_vaud18;
 };
 
+struct chip_id_tag {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id)       \
 	{                                                                      \
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,            \
