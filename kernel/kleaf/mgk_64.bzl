@@ -979,6 +979,9 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
 
     if "thinmodem.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/tmi3:tmi3")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpio_sap_ctrl:gpio_sap_ctrl")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/pwrctl/common:wwan_gpio_pwrctl")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
