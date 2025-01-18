@@ -508,7 +508,6 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_DITHER_PURECOLOR0,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
-
 }
 
 static void mtk_dither_primary_data_init(struct mtk_ddp_comp *comp)
@@ -1202,6 +1201,11 @@ static const struct mtk_disp_dither_data mt6779_dither_driver_data = {
 	.need_bypass_shadow = false,
 };
 
+static const struct mtk_disp_dither_data mt6768_dither_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+};
+
 static const struct mtk_disp_dither_data mt6885_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -1265,6 +1269,8 @@ static const struct mtk_disp_dither_data mt6989_dither_driver_data = {
 static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-dither",
 	  .data = &mt6779_dither_driver_data},
+	{ .compatible = "mediatek,mt6768-disp-dither",
+	  .data = &mt6768_dither_driver_data},
 	{ .compatible = "mediatek,mt6885-disp-dither",
 	  .data = &mt6885_dither_driver_data},
 	{ .compatible = "mediatek,mt6873-disp-dither",

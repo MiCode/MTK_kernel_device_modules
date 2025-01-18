@@ -16,15 +16,15 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
 
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_CMDQ_MMPROFILE_SUPPORT
 
-ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),m)
+ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)),)
 include $(DEVICE_MODULES_PATH)/drivers/tee/teei/Makefile.include
 endif
 
-ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),m)
+ifneq ($(filter y m,$(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
 include $(DEVICE_MODULES_PATH)/drivers/tee/gud/Makefile.include
 endif
 
-ifeq ($(CONFIG_MTK_GZ_TZ_SYSTEM),m)
+ifneq ($(filter y m,$(CONFIG_MTK_GZ_TZ_SYSTEM)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
 ccflags-y += -DCMDQ_SECURE_MTEE_SUPPORT
 
@@ -32,7 +32,6 @@ ccflags-y += -DCMDQ_SECURE_SUPPORT
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-sec-drv.o
 cmdq-sec-drv-y := cmdq_sec_mtee.o cmdq-sec-mailbox.o cmdq-sec-helper.o
 
-ccflags-y += -DCMDQ_SECURE_CPR_SUPPORT
 endif
 
 ccflags-y += -DCMDQ_DCACHE_INVAL
@@ -42,6 +41,9 @@ mtk-cmdq-drv-ext-y := mtk-cmdq-mailbox-ext.o mtk-cmdq-helper-ext.o cmdq-util.o
 
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-test.o
 
+ifeq ($(CONFIG_MTK_CMDQ_MBOX_EXT), y)
+obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6768) += cmdq-platform-mt6768.o
+else
 ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6873.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6873.o
 endif
@@ -80,4 +82,8 @@ obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6989.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6878.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6878.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6768.c),)
+obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6768.o
+endif
 endif

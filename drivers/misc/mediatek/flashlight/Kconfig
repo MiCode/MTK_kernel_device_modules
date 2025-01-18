@@ -14,6 +14,7 @@ config MTK_FLASHLIGHT
 
 config MTK_V4L2_FLASHLIGHT
 	tristate "Mediatek V4L2 flashlight driver"
+	select V4L2_FWNODE
 	help
 	  Say Y to enable V4L2 flashlight device
 	  This Framework is good for

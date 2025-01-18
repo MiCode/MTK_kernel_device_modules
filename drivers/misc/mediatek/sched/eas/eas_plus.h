@@ -83,12 +83,14 @@ struct energy_env {
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
 	unsigned int wl_type;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	struct dsu_info dsu;
 	unsigned int dsu_freq_thermal;
 	unsigned int dsu_freq_base;
 	unsigned int dsu_freq_new;
 	unsigned int dsu_volt_base;
 	unsigned int dsu_volt_new;
+#endif
 };
 
 struct rt_energy_aware_output {

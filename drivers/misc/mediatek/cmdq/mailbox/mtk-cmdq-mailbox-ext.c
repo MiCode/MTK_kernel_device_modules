@@ -45,7 +45,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 
 /* ddp main/sub, mdp path 0/1/2/3, general(misc) */
 #define CMDQ_OP_CODE_MASK		(0xff << CMDQ_OP_CODE_SHIFT)
-#define CMDQ_IRQ_MASK			GENMASK(CMDQ_THR_MAX_COUNT - 1, 0)
+#define CMDQ_IRQ_MASK			GENMASK(gce_thread_nr - 1, 0)
 
 #define CMDQ_CORE_REST			0x0
 #define CMDQ_CURR_IRQ_STATUS		0x10
@@ -121,6 +121,9 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 /* pc and end shift bit for gce, should be config in probe */
 int gce_shift_bit;
 EXPORT_SYMBOL(gce_shift_bit);
+
+u32 gce_thread_nr;
+EXPORT_SYMBOL(gce_thread_nr);
 
 int gce_mminfra;
 EXPORT_SYMBOL(gce_mminfra);
@@ -1198,7 +1201,8 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 static void cmdq_task_exec_done(struct cmdq_task *task, s32 err)
 {
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
-	u32 *perf, hw_time = 0, exec_begin = 0, exec_end = 0;
+	u32 *perf, exec_begin = 0, exec_end = 0;
+	u64 hw_time = 0;
 	unsigned long hw_time_rem = 0;
 
 	perf = cmdq_pkt_get_perf_ret(task->pkt);
@@ -1585,7 +1589,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	end[end_cnt++] = sched_clock();
 #endif
 	spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
-	set_bit(CMDQ_THR_MAX_COUNT, &cmdq->err_irq_idx);
+	set_bit(gce_thread_nr, &cmdq->err_irq_idx);
 	spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
 	wake_up_interruptible(&cmdq->err_irq_wq);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1642,7 +1646,7 @@ static int cmdq_irq_handler_thread(void *data)
 
 		irq = cmdq->err_irq_idx;
 
-		if (irq & BIT(CMDQ_THR_MAX_COUNT)) {
+		if (irq & BIT(gce_thread_nr)) {
 			struct cmdq_task *task, *tmp;
 
 			spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
@@ -1658,7 +1662,7 @@ static int cmdq_irq_handler_thread(void *data)
 			}
 			spin_unlock_irqrestore(&cmdq->irq_removes_lock, flags);
 
-			clear_bit(CMDQ_THR_MAX_COUNT, &cmdq->err_irq_idx);
+			clear_bit(gce_thread_nr, &cmdq->err_irq_idx);
 		}
 		spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
 	}
@@ -2043,7 +2047,9 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 /* if pc match end and irq flag on, dump irq status */
 	if (curr_pa == end_pa && irq) {
 		cmdq_util_msg("gic dump not support irq id:%u\n", cmdq->irq);
+#if IS_ENABLED(CONFIG_MTK_IRQ_DBG) || IS_ENABLED(CONFIG_MTK_IRQ_DBG_LEGACY)
 		mt_irq_dump_status(cmdq->irq);
+#endif
 	}
 
 	if (inst_out)
@@ -2752,6 +2758,7 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	gce_shift_bit = plat_data->shift;
 	gce_mminfra = plat_data->mminfra;
+	gce_thread_nr = plat_data->thread_nr;
 	if (of_property_read_bool(dev->of_node, "skip-poll-sleep"))
 		skip_poll_sleep = true;
 
@@ -2929,8 +2936,10 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	if (!of_parse_phandle_with_args(
 		dev->of_node, "iommus", "#iommu-cells", 0, &args)) {
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 		mtk_iommu_register_fault_callback(
 			args.args[0], cmdq_iommu_fault_callback, cmdq, false);
+#endif
 	} else if (!of_property_read_u32(
 		dev->of_node, "mtk,iommu-dma-axid", &port)) {
 		mtk_iommu_register_fault_callback(
@@ -3348,6 +3357,17 @@ s32 cmdq_mbox_set_hw_id(void *cmdq_mbox)
 	ret = cmdq_util_hw_trace_set_client(cmdq->hwid, cmdq->hw_trace_clt);
 	if (ret)
 		return ret;
+	return 0;
+}
+
+s32 cmdq_mbox_reset_hw_id(void *cmdq_mbox)
+{
+	struct cmdq *cmdq = cmdq_mbox;
+
+	if (!cmdq)
+		return -EINVAL;
+	cmdq_util_prebuilt_set_client(cmdq->hwid, NULL);
+	cmdq->hwid = 0;
 	return 0;
 }
 
@@ -3813,6 +3833,10 @@ void cmdq_set_outpin_event(struct cmdq_client *cl, bool ena)
 }
 EXPORT_SYMBOL(cmdq_set_outpin_event);
 
+#if IS_BUILTIN(CONFIG_MTK_CMDQ_MBOX_EXT)
+arch_initcall(cmdq_drv_init);
+#else
 module_init(cmdq_drv_init);
+#endif
 
 MODULE_LICENSE("GPL v2");

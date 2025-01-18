@@ -263,7 +263,7 @@ static int ssmr_dma_alloc(struct SSMR_Feature *feature, phys_addr_t *pa,
 	feature->alloc_size = alloc_size;
 	feature->phy_addr = 0;
 
-	pr_debug("%s %d: upper_limit: %llx, feature{ alloc_size : 0x%lx",
+	pr_debug("%s %d: upper_limit: %llx, feature{ alloc_size : 0x%zx",
 		__func__, __LINE__, upper_limit, alloc_size);
 
 	/*
@@ -342,7 +342,7 @@ static int ssmr_cma_alloc(struct SSMR_Feature *feature, phys_addr_t *pa,
 
 	feature->alloc_size = alloc_size;
 
-	pr_debug("%s %d: upper_limit: %llx, feature{ alloc_size : 0x%lx",
+	pr_debug("%s %d: upper_limit: %llx, feature{ alloc_size : 0x%zx",
 		__func__, __LINE__, upper_limit, alloc_size);
 
 	/*
@@ -647,7 +647,7 @@ int sec_ssmr_init(struct platform_device *pdev)
 	int i;
 
 	sec_ssmr_dev = &pdev->dev;
-	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+	pdev->dev.coherent_dma_mask = 0xFFFFFFFFFFFFFFFF; //DMA_BIT_MASK(64);
 
 	/* setup secure feature size */
 	setup_feature_size();
@@ -678,7 +678,7 @@ int sec_ssmr_init(struct platform_device *pdev)
 int apmd_ssmr_init(struct platform_device *pdev)
 {
 	apmd_ssmr_dev = &pdev->dev;
-	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+	pdev->dev.coherent_dma_mask = 0xFFFFFFFFFFFFFFFF; //DMA_BIT_MASK(64);
 
 	memory_ssmr_init_feature(_ssmr_feats[SSMR_FEAT_AP_MD_SHM].feat_name,
 						_ssmr_feats[SSMR_FEAT_AP_MD_SHM].req_size,
@@ -698,7 +698,7 @@ int apscp_ssmr_init(struct platform_device *pdev)
 	struct reserved_mem *rmem;
 
 	apscp_ssmr_dev = &pdev->dev;
-	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+	pdev->dev.coherent_dma_mask = 0xFFFFFFFFFFFFFFFF; //DMA_BIT_MASK(64);
 
 	memory_ssmr_init_feature(_ssmr_feats[SSMR_FEAT_AP_SCP_SHM].feat_name,
 						_ssmr_feats[SSMR_FEAT_AP_SCP_SHM].req_size,

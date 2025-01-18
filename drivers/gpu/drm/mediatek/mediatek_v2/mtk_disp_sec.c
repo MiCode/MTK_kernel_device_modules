@@ -18,8 +18,13 @@
 #include "cmdq-sec.h"
 #include "cmdq-sec-iwc-common.h"
 #include "cmdq-sec-mailbox.h"
+#include "mtk_heap.h"
+#include "mtk_drm_gem.h"
+#include "mtk-cmdq-ext.h"
+#include "mtk_drm_fb.h"
 
 #define RETRY_SEC_CMDQ_FLUSH 3
+#define SECURE_CMDQ_ENABLE
 
 struct mtk_disp_sec_config {
 	struct cmdq_client *disp_sec_client;
@@ -151,11 +156,15 @@ int mtk_disp_secure_domain_disable(struct cmdq_pkt *handle,
 
 int mtk_disp_secure_get_dma_sec_status(struct dma_buf *buf_hnd)
 {
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 	int sec_check = 0;
 
 	sec_check = is_mtk_sec_heap_dmabuf(buf_hnd);
 	DDPINFO("%s is %d\n", __func__, sec_check);
 	return sec_check;
+#else
+	return 0;
+#endif
 }
 static int mtk_drm_disp_sec_cb_event(int value, struct cmdq_pkt *handle,
 									resource_size_t dummy_larb,
@@ -262,9 +271,278 @@ static struct platform_driver disp_sec_drv = {
 	},
 };
 
+
+#define GET_M4U_PORT 0x1F
+int mtk_disp_mtee_domain_enable(struct cmdq_pkt *handle, struct mtk_ddp_comp *comp,
+				u32 regs_addr, u32 lye_addr, u32 offset, u32 size)
+{
+	int port = 0, ret = 0, sec_id = 0;
+
+	DDPINFO("%s+\n", __func__);
+#if IS_ENABLED(SECURE_CMDQ_ENABLE)
+	if (!comp) {
+		cmdq_sec_pkt_write_reg_disp(handle, regs_addr, lye_addr,
+					CMDQ_IWC_H_2_MVA, offset, size, port, sec_id);
+		return true;
+	}
+#endif
+	sec_id = mtk_fb_get_sec_id(comp->fb);
+	ret = of_property_read_u32_index(comp->dev->of_node,
+				"iommus", 1, &port);
+	if (ret < 0) {
+		DDPMSG("%s, %d, parse iommus port fail, ret = %d, port = %d, sec_id = %d\n",
+				__func__, __LINE__, ret,  port, sec_id);
+		port = 0;
+	}
+	port &= (unsigned int)GET_M4U_PORT;
+	DDPINFO("%s, %d, port = %d, sec_id = %d\n", __func__, __LINE__, port, sec_id);
+#if IS_ENABLED(SECURE_CMDQ_ENABLE)
+	cmdq_sec_pkt_write_reg_disp(handle, regs_addr, lye_addr,
+				CMDQ_IWC_H_2_MVA, offset, size, port, sec_id);
+#endif
+	return true;
+}
+
+static u64 mtk_crtc_secure_port_lookup(struct mtk_ddp_comp *comp)
+{
+	u64 ret = 0;
+
+	if (!comp)
+		return ret;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_WDMA0:
+		ret = 1LL << CMDQ_SEC_DISP_WDMA0;
+		break;
+	case DDP_COMPONENT_WDMA1:
+		ret = 1LL << CMDQ_SEC_DISP_WDMA1;
+		break;
+	default:
+		ret = 0;
+	}
+
+	return ret;
+}
+
+static u64 mtk_crtc_secure_dapc_lookup(struct mtk_ddp_comp *comp)
+{
+	u64 ret = 0;
+
+	if (!comp)
+		return ret;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_WDMA0:
+		ret = 1LL << CMDQ_SEC_DISP_WDMA0;
+		break;
+	case DDP_COMPONENT_WDMA1:
+		ret = 1LL << CMDQ_SEC_DISP_WDMA1;
+		break;
+	default:
+		ret = 0;
+	}
+
+	return ret;
+}
+
+int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
+				struct mtk_ddp_comp *comp, u32 crtc_id)
+{
+	u64 sec_disp_port, sec_disp_dapc;
+	u32 sec_disp_scn;
+
+	if (crtc_id == 0) {
+		sec_disp_port = 0;
+		sec_disp_dapc = 0;
+		if (value == DISP_SEC_START)
+			sec_disp_scn = CMDQ_SEC_PRIMARY_DISP;
+		else
+			sec_disp_scn = CMDQ_SEC_DISP_PRIMARY_DISABLE_SECURE_PATH;
+	} else {
+		sec_disp_port = (crtc_id == 1) ? 0 :
+				mtk_crtc_secure_port_lookup(comp);
+		sec_disp_dapc = (crtc_id == 1) ? 0 :
+				mtk_crtc_secure_dapc_lookup(comp);
+		if (value == DISP_SEC_START)
+			sec_disp_scn = CMDQ_SEC_SUB_DISP;
+		else
+			sec_disp_scn = CMDQ_SEC_DISP_SUB_DISABLE_SECURE_PATH;
+	}
+
+	cmdq_sec_pkt_set_data(cmdq_handle, sec_disp_dapc,
+			sec_disp_port, sec_disp_scn,
+			CMDQ_METAEX_NONE);
+#if IS_ENABLED(SECURE_CMDQ_ENABLE)
+	cmdq_sec_pkt_set_secid(cmdq_handle, 1);
+#endif
+	cmdq_sec_pkt_set_mtee(cmdq_handle, mtk_disp_is_svp_on_mtee());
+
+	return true;
+}
+
+static int mtk_disp_mtee_gem_fd_to_sec_hdl(int fd, struct mtk_drm_gem_obj *mtk_gem_obj)
+{
+	int sec_id = -1;
+	u32 sec_handle = 0;
+	struct dma_buf *dma_buf = NULL;
+
+	dma_buf = dma_buf_get(fd);
+	if (IS_ERR(dma_buf)) {
+		DDPMSG("%s dma_buf_get fail\n", __func__);
+		return false;
+	}
+#if IS_ENABLED(SECURE_CMDQ_ENABLE)
+	if (mtk_disp_is_svp_on_mtee())
+		sec_id = dmabuf_to_sec_id(dma_buf, &sec_handle);
+	else
+		sec_id = dmabuf_to_tmem_type(dma_buf, &sec_handle);
+#endif
+	if (sec_id >= 0)
+		DDPINFO("%s:sec_hnd=0x%x,sec_id=%d\n", __func__, sec_handle, sec_id);
+	else {
+		DDPMSG("%s failed %d\n", __func__, fd);
+		dma_buf_put(dma_buf);
+		return false;
+	}
+	mtk_gem_obj->dma_addr = sec_handle;
+	mtk_gem_obj->sec_id = sec_id;
+	dma_buf_put(dma_buf);
+	return true;
+}
+
+static int mtk_drm_disp_mtee_cb_event(int value, int fd, struct mtk_drm_gem_obj *mtk_gem_obj,
+	struct cmdq_pkt *handle, struct mtk_ddp_comp *comp, u32 crtc_id, u32 regs_addr,
+	u32 lye_addr, u32 offset, u32 size)
+{
+	DDPINFO("%s, cmd-%d,comp id = %d\n", __func__, value, comp ? comp->id : 0);
+	switch (value) {
+	case DISP_SEC_START:
+		return mtk_disp_mtee_cmdq_secure_start(value, handle, comp, crtc_id);
+	case DISP_SEC_STOP:
+		return mtk_disp_mtee_cmdq_secure_start(value, handle, comp, crtc_id);
+	case DISP_SEC_ENABLE:
+		return mtk_disp_mtee_domain_enable(handle, comp, regs_addr, lye_addr, offset, size);
+	case DISP_SEC_FD_TO_SEC_HDL:
+		return mtk_disp_mtee_gem_fd_to_sec_hdl(fd, mtk_gem_obj);
+	default:
+		return false;
+	}
+}
+
+static void mtk_crtc_init_gce_sec_obj(struct drm_device *drm_dev, struct device *dev,
+			struct mtk_drm_crtc *mtk_crtc)
+{
+	int index;
+	unsigned int i = CLIENT_SEC_CFG;
+	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	static struct cmdq_client *tmp_client;
+
+	/* Load CRTC GCE client */
+	if (crtc_id == 0)
+		index = of_property_match_string(dev->of_node,
+						 "gce-client-names", "CLIENT_SEC_CFG0");
+	else if (crtc_id == 1)
+		index = of_property_match_string(dev->of_node,
+						 "gce-client-names", "CLIENT_SEC_CFG1");
+	else
+		index = of_property_match_string(dev->of_node,
+						 "gce-client-names", "CLIENT_SEC_CFG2");
+
+	if (index < 0) {
+		mtk_crtc->gce_obj.client[i] = NULL;
+		DDPPR_ERR("get index failed\n");
+	} else {
+		mtk_crtc->gce_obj.client[i] =
+			cmdq_mbox_create(dev, index);
+		if (crtc_id == 1)
+			tmp_client = mtk_crtc->gce_obj.client[i];
+		if (crtc_id == 2 && mtk_crtc->gce_obj.client[i] == NULL)
+			mtk_crtc->gce_obj.client[i] = tmp_client;
+	}
+	/* support DC with color matrix config no more */
+	/* mtk_crtc_init_color_matrix_data_slot(mtk_crtc); */
+	mtk_crtc->gce_obj.base = cmdq_register_device(dev);
+
+	DDPINFO("%s %d-done\n", __func__, index);
+}
+
+static int _drm_crtc_sec_create(struct drm_device *drm_dev, struct device *dev)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev\n", __func__);
+		return -1;
+	}
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+			typeof(*crtc), head);
+
+	drm_for_each_crtc(crtc, drm_dev) {
+		mtk_crtc = to_mtk_crtc(crtc);
+		if (!mtk_crtc) {
+			DDPPR_ERR("create sec crtc failed\n");
+			return -1;
+		}
+		mtk_crtc_init_gce_sec_obj(drm_dev, dev, mtk_crtc);
+	}
+	return 0;
+}
+
+static int disp_mtee_probe(struct platform_device *pdev)
+{
+	void **ret;
+	struct device *dev = &pdev->dev;
+
+	DDPINFO("%s+\n", __func__);
+
+	if (IS_ERR_OR_NULL(disp_mtee_cb.dev))
+		DDPPR_ERR("mtee_probe:invalid dev\n");
+	else {
+		if (_drm_crtc_sec_create(disp_mtee_cb.dev, dev) < 0) {
+			DDPPR_ERR("%s:create sec crtc failed\n", __func__);
+			return -1;
+		}
+	}
+
+	ret = mtk_drm_disp_mtee_cb_init();
+	*ret = (void *) mtk_drm_disp_mtee_cb_event;
+	DDPINFO("%s-\n", __func__);
+	return 0;
+}
+
+static int disp_mtee_remove(struct platform_device *pdev)
+{
+	DDPINFO("%s\n", __func__);
+	return 0;
+}
+
+static const struct of_device_id of_disp_mtee_match_tbl[] = {
+	{
+		.compatible = "mediatek,disp_mtee",
+	},
+	{}
+};
+
+static struct platform_driver disp_mtee_drv = {
+	.probe = disp_mtee_probe,
+	.remove = disp_mtee_remove,
+	.driver = {
+		.name = "mtk_mtee_sec",
+		.of_match_table = of_disp_mtee_match_tbl,
+	},
+};
+
 static int __init mtk_disp_sec_init(void)
 {
 	s32 status;
+
+	status = platform_driver_register(&disp_mtee_drv);
+	if (status) {
+		DDPMSG("Failed to register mtee sec driver(%d)\n", status);
+		return -ENODEV;
+	}
 
 	status = platform_driver_register(&disp_sec_drv);
 	if (status) {
@@ -276,6 +554,7 @@ static int __init mtk_disp_sec_init(void)
 
 static void __exit mtk_disp_sec_exit(void)
 {
+	platform_driver_unregister(&disp_mtee_drv);
 	platform_driver_unregister(&disp_sec_drv);
 }
 
@@ -286,3 +565,4 @@ MODULE_AUTHOR("Aaron Chung <Aaron.Chung@mediatek.com>");
 MODULE_DESCRIPTION("MTK DRM secure Display");
 MODULE_LICENSE("GPL v2");
 
+MODULE_IMPORT_NS(DMA_BUF);

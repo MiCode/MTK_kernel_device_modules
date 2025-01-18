@@ -65,7 +65,7 @@ endif
 ccflags-y += -DTCORE_MEMORY_LEAK_DETECTION_SUPPORT
 endif # !TCORE_KERN_MEMORY_LEAK_DETECTION_SUPPORT
 
-ifeq ($(CONFIG_TEST_MTK_TRUSTED_MEMORY),m)
+ifneq ($(filter y m,$(CONFIG_TEST_MTK_TRUSTED_MEMORY)),)
 trusted_mem-y += tests/ut_common.o
 trusted_mem-y += tests/ut_server.o
 trusted_mem-y += tests/ut_cases.o

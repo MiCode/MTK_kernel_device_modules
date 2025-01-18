@@ -1055,14 +1055,9 @@ static int ccmni_init(struct ccmni_ccci_ops *ccci_info)
 		/* allocate netdev */
 		if (ctlb->ccci_ops->md_ability & MODEM_CAP_CCMNI_MQ)
 			/* alloc multiple tx queue, 2 txq and 1 rxq */
-			dev =
-			alloc_etherdev_mqs(
-					sizeof(struct ccmni_instance),
-					2,
-					1);
+			dev = alloc_etherdev_mqs(sizeof(struct ccmni_instance), 2, 1);
 		else
-			dev =
-			alloc_etherdev(sizeof(struct ccmni_instance));
+			dev = alloc_etherdev(sizeof(struct ccmni_instance));
 		if (unlikely(dev == NULL)) {
 			netdev_dbg(dev, "alloc netdev fail\n");
 			ret = -ENOMEM;
@@ -1286,10 +1281,17 @@ static void ccmni_queue_state_callback(int ccmni_idx,
 		       ccmni_idx, state);
 		return;
 	}
-
 	ccmni_tmp = ctlb->ccmni_inst[ccmni_idx];
+	if(ccmni_tmp == NULL) {
+		pr_err("ccmni_tmp = NULL\n");
+		return;
+	}
 	dev = ccmni_tmp->dev;
 	ccmni = (struct ccmni_instance *)netdev_priv(dev);
+	if(ccmni == NULL) {
+		pr_err("netdev_priv FAIL ccmni = NULL\n");
+		return;
+	}
 
 	switch (state) {
 #ifdef ENABLE_WQ_GRO
@@ -1394,15 +1396,23 @@ static void ccmni_md_state_callback(int ccmni_idx, enum MD_STATE state)
 
 	if (unlikely(ccmni_ctl_blk == NULL)) {
 		pr_err("invalid ccmni ctrl when ccmni%d_md_sta=%d\n",
-		       ccmni_idx, state);
+			ccmni_idx, state);
 		return;
 	}
 	ccmni_tmp = ccmni_ctl_blk->ccmni_inst[ccmni_idx];
+	if(ccmni_tmp == NULL) {
+		pr_err("<%s> netdev_priv FAIL ccmni_tmp = NULL\n", __func__);
+		return;
+	}
 	dev = ccmni_tmp->dev;
 	ccmni = (struct ccmni_instance *)netdev_priv(dev);
+	if(ccmni == NULL) {
+		pr_err("<%s> netdev_priv FAIL ccmni = NULL\n", __func__);
+		return;
+	}
 	if (atomic_read(&ccmni->usage) > 0)
 		netdev_dbg(dev, "md_state_cb: CCMNI%d, md_sta=%d, usage=%d\n",
-			   ccmni_idx, state, atomic_read(&ccmni->usage));
+			ccmni_idx, state, atomic_read(&ccmni->usage));
 	switch (state) {
 	case READY:
 		for (i = 0; i < 2; i++) {

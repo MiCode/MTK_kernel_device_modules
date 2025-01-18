@@ -16,6 +16,7 @@ obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_SYSTEM)	+= system_heap.o
 obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_REFILL)	+= mtk_heap_refill.o
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/monitor_hang/

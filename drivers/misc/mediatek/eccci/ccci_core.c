@@ -45,7 +45,7 @@ static void *dev_class;
 
 unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
 
-unsigned int get_boot_mode_from_dts(void)
+unsigned int ccci_get_boot_mode_from_dts(void)
 {
 	struct device_node *np_chosen = NULL;
 	struct ccci_tag_bootmode *tag = NULL;

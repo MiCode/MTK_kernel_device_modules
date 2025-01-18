@@ -12,7 +12,7 @@ void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
 	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down);
 EXPORT_SYMBOL_GPL(touch_boost_get_cmd_fp);
 
-struct proc_dir_entry *perfmgr_root;
+static struct proc_dir_entry *perfmgr_root;
 
 static unsigned long perfctl_copy_from_user(void *pvTo,
 		const void __user *pvFrom, unsigned long ulBytes)
@@ -106,7 +106,9 @@ ret_ioctl:
 }
 
 static const struct proc_ops Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = device_ioctl,
+#endif
 	.proc_ioctl = device_ioctl,
 	.proc_open = device_open,
 	.proc_read = seq_read,

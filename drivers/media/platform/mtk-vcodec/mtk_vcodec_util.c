@@ -284,6 +284,10 @@ int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 
+/* default on, disable on legacy platform by config dts */
+int venc_enable_hw_break = 1;
+EXPORT_SYMBOL_GPL(venc_enable_hw_break);
+
 /* VCODEC FTRACE */
 #if VCODEC_TRACE
 void vcodec_trace(const char *fmt, ...)
@@ -693,6 +697,8 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	} else if (direction == DMA_FROM_DEVICE) {
 		dma_sync_sg_for_cpu(dev, sgt_tmp->sgl, sgt_tmp->nents, direction);
 	} else {
+		sg_free_table(sgt_tmp);
+		kfree(sgt_tmp);
 		mtk_v4l2_debug(0, "direction %d not correct\n", direction);
 		return -1;
 	}
@@ -1131,7 +1137,7 @@ static void mtk_vcodec_sync_log(struct mtk_vcodec_dev *dev,
 			mtk_v4l2_debug(8, "remove deprecated key: %s, value: %s\n",
 				pram->param_key, pram->param_val);
 			list_del_init(&pram->list);
-			kfree(pram);
+			vfree(pram);
 		}
 	}
 	mutex_unlock(plist_mutex);
@@ -1232,12 +1238,12 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
 
-	argv = kzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE, GFP_KERNEL);
+	argv = vzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE);
 	if (!argv)
 		return;
-	log = kzalloc(LOG_PROPERTY_SIZE, GFP_KERNEL);
+	log = vzalloc(LOG_PROPERTY_SIZE);
 	if (!log) {
-		kfree(argv);
+		vfree(argv);
 		return;
 	}
 
@@ -1278,16 +1284,16 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 			} else { // vcu path
 				if (ctx == NULL) {
 					mtk_v4l2_err("ctx is null, cannot set log to vpud");
-					kfree(argv);
-					kfree(log);
+					vfree(argv);
+					vfree(log);
 					return;
 				}
 				if (log_index != MTK_VCODEC_LOG_INDEX_LOG) {
 					mtk_v4l2_err(
 						"invalid index: %d, only support set log on vcu path",
 						log_index);
-					kfree(argv);
-					kfree(log);
+					vfree(argv);
+					vfree(log);
 					return;
 				}
 				memset(vcu_log, 0x00, sizeof(vcu_log));
@@ -1302,8 +1308,8 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) || mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		mtk_vcodec_build_log_string(dev, log_index);
 
-	kfree(argv);
-	kfree(log);
+	vfree(argv);
+	vfree(log);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_log);
 

@@ -33,7 +33,11 @@ enum md_dump_flag {
 };
 
 #define MD_REG_DUMP_MAGIC   (0x44554D50) /* DUMP */
+extern struct ccci_plat_val md_cd_plat_val_ptr;
 
 void md_dump_register_6873(void);
 void md_dump_reg(struct ccci_modem *md);
+extern u32 get_expected_boot_status_val(void);
+extern void md_cd_lock_modem_clock_src(int locked);
+
 #endif

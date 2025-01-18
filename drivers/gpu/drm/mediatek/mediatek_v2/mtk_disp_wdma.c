@@ -28,6 +28,7 @@
 #include "mtk_disp_wdma.h"
 #include "platform/mtk_drm_platform.h"
 
+#define DO_DIV_ROUND_UP(n, d) DO_COMMON_DIV(((n) + (d) - 1), (d))
 #define DISP_REG_WDMA_INTEN 0x0000
 #define INTEN_FLD_FME_CPL_INTEN REG_FLD_MSB_LSB(0, 0)
 #define INTEN_FLD_FME_UND_INTEN REG_FLD_MSB_LSB(1, 1)
@@ -694,101 +695,101 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 	gs[GS_WDMA_BUF_CON1] += (fifo_size_uv << 10) + fifo_size;
 
 	/* WDMA_BUF_CON5 */
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP);
 	gs[GS_WDMA_PRE_ULTRA_LOW_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * ultra_low_us, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * ultra_low_us, FP);
 	gs[GS_WDMA_ULTRA_LOW_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON6 */
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * preultra_high_us, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * preultra_high_us, FP);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_Y] =
 		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * ultra_high_us, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * ultra_high_us, FP);
 	gs[GS_WDMA_ULTRA_HIGH_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON7 */
-	tmp = DIV_ROUND_UP(consume_rate * preultra_low_us, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * preultra_low_us, FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_LOW_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * ultra_low_us, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * ultra_low_us, FP * factor1);
 	gs[GS_WDMA_ULTRA_LOW_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON8 */
-	tmp = DIV_ROUND_UP(consume_rate * preultra_high_us, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * preultra_high_us, FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * ultra_high_us, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * ultra_high_us, FP * factor1);
 	gs[GS_WDMA_ULTRA_HIGH_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON9 */
-	tmp = DIV_ROUND_UP(consume_rate * preultra_low_us, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * preultra_low_us, FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_LOW_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * ultra_low_us, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * ultra_low_us, FP * factor2);
 	gs[GS_WDMA_ULTRA_LOW_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON10 */
-	tmp = DIV_ROUND_UP(consume_rate * preultra_high_us, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * preultra_high_us, FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * ultra_high_us, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * ultra_high_us, FP * factor2);
 	gs[GS_WDMA_ULTRA_HIGH_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON11 */
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset),
 			   FP);
 	gs[GS_WDMA_PRE_ULTRA_LOW_Y_DVFS] =
 		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset),
 			   FP);
 	gs[GS_WDMA_ULTRA_LOW_Y_DVFS] =
 		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON12 */
-	tmp = DIV_ROUND_UP(
+	tmp = DO_DIV_ROUND_UP(
 		consume_rate * Bpp * (preultra_high_us + dvfs_offset), FP);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_Y_DVFS] =
 		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset),
 			   FP);
 	gs[GS_WDMA_ULTRA_HIGH_Y_DVFS] =
 		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON13 */
-	tmp = DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
 			   FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
 			   FP * factor1);
 	gs[GS_WDMA_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON14 */
-	tmp = DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
 			   FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
 			   FP * factor1);
 	gs[GS_WDMA_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON15 */
-	tmp = DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
 			   FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
 			   FP * factor2);
 	gs[GS_WDMA_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON16 */
-	tmp = DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
 			   FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
 			   FP * factor2);
 	gs[GS_WDMA_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
@@ -801,24 +802,24 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 	gs[GS_WDMA_DVFS_TH_V] = gs[GS_WDMA_ULTRA_HIGH_V_DVFS];
 
 	/* WDMA URGENT CONTROL 0 */
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * urgent_low_offset, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * urgent_low_offset, FP);
 	gs[GS_WDMA_URGENT_LOW_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * Bpp * urgent_high_offset, FP);
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * urgent_high_offset, FP);
 	gs[GS_WDMA_URGENT_HIGH_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA URGENT CONTROL 1 */
-	tmp = DIV_ROUND_UP(consume_rate * urgent_low_offset, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * urgent_low_offset, FP * factor1);
 	gs[GS_WDMA_URGENT_LOW_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * urgent_high_offset, FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * urgent_high_offset, FP * factor1);
 	gs[GS_WDMA_URGENT_HIGH_U] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA URGENT CONTROL 2 */
-	tmp = DIV_ROUND_UP(consume_rate * urgent_low_offset, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * urgent_low_offset, FP * factor2);
 	gs[GS_WDMA_URGENT_LOW_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DIV_ROUND_UP(consume_rate * urgent_high_offset, FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * urgent_high_offset, FP * factor2);
 	gs[GS_WDMA_URGENT_HIGH_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA Buf Constant 3 */
@@ -1018,7 +1019,7 @@ static void write_dst_addr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	mtk_ddp_write(comp, addr, DISP_REG_WDMA_DST_ADDRX(id), handle);
 
 	if (wdma->data->is_support_34bits)
-		mtk_ddp_write(comp, (addr >> 32),
+		mtk_ddp_write(comp,  DO_SHIFT_RIGHT(addr, 32),
 				DISP_REG_WDMA_DST_ADDRX_MSB(id), handle);
 }
 
@@ -1029,7 +1030,7 @@ static dma_addr_t read_dst_addr(struct mtk_ddp_comp *comp, int id)
 
 	if (wdma->data->is_support_34bits) {
 		addr = readl(comp->regs + DISP_REG_WDMA_DST_ADDRX_MSB(id));
-		addr = (addr << 32);
+		addr = DO_SHIFT_LEFT(addr, 32);
 	}
 
 	addr += readl(comp->regs + DISP_REG_WDMA_DST_ADDRX(id));
@@ -1113,9 +1114,20 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 		}
 	}
 
-	write_dst_addr(comp, handle, 1, dstAddress + u_off);
-	if (has_v)
-		write_dst_addr(comp, handle, 2, dstAddress + v_off);
+	if (disp_mtee_cb.cb != NULL && sec) {
+		disp_mtee_cb.cb(DISP_SEC_ENABLE, 0, NULL, handle, comp, 0,
+				comp->regs_pa + DISP_REG_WDMA_DST_ADDRX(1),
+				dstAddress, u_off, u_size);
+		if (has_v) {
+			disp_mtee_cb.cb(DISP_SEC_ENABLE, 0, NULL, handle, comp, 0,
+				comp->regs_pa + DISP_REG_WDMA_DST_ADDRX(2),
+				dstAddress, v_off, u_size);
+		}
+	} else {
+		write_dst_addr(comp, handle, 1, dstAddress + u_off);
+		if (has_v)
+			write_dst_addr(comp, handle, 2, dstAddress + v_off);
+	}
 
 	mtk_ddp_write_mask(comp, u_stride,
 			DISP_REG_WDMA_DST_UV_PITCH, 0xFFFF, handle);
@@ -1323,7 +1335,16 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 		}
 	}
 
-	mtk_ddp_write(comp, frame_cnt, DISP_REG_WDMA_DUMMY, handle);
+	if (disp_mtee_cb.cb != NULL && sec) {
+		u32 buffer_size = clip_w * comp->fb->pitches[0];
+
+		disp_mtee_cb.cb(DISP_SEC_ENABLE, 0, NULL, handle, comp, 0,
+			comp->regs_pa + DISP_REG_WDMA_DST_ADDRX(0),
+			addr & 0xFFFFFFFFU, 0, buffer_size);
+	} else {
+		write_dst_addr(comp, handle, 0, addr);
+		mtk_ddp_write(comp, frame_cnt, DISP_REG_WDMA_DUMMY, handle);
+	}
 
 	gsc = cfg->p_golden_setting_context;
 	mtk_wdma_golden_setting(comp, gsc, handle);
@@ -1991,6 +2012,19 @@ static const struct mtk_disp_wdma_data mt6779_wdma_driver_data = {
 	.is_support_34bits = false,
 };
 
+static const struct mtk_disp_wdma_data mt6768_wdma_driver_data = {
+	.fifo_size_1plane = 325,
+	.fifo_size_uv_1plane = 31,
+	.fifo_size_2plane = 228,
+	.fifo_size_uv_2plane = 109,
+	.fifo_size_3plane = 228,
+	.fifo_size_uv_3plane = 50,
+	.sodi_config = mt6768_mtk_sodi_config,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.is_support_34bits = false,
+};
+
 static const struct mtk_disp_wdma_data mt6885_wdma_driver_data = {
 	.fifo_size_1plane = 325,
 	.fifo_size_uv_1plane = 31,
@@ -2168,6 +2202,8 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt2701-disp-wdma"},
 	{.compatible = "mediatek,mt6779-disp-wdma",
 	 .data = &mt6779_wdma_driver_data},
+	{.compatible = "mediatek,mt6768-disp-wdma",
+	 .data = &mt6768_wdma_driver_data},
 	{.compatible = "mediatek,mt8173-disp-wdma"},
 	{.compatible = "mediatek,mt6885-disp-wdma",
 	 .data = &mt6885_wdma_driver_data},

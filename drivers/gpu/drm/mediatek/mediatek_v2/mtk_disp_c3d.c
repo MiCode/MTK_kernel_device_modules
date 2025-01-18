@@ -1255,8 +1255,7 @@ int mtk_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 		}
 	} else {
 		DDPINFO("%s(line: %d): skip write_3dlut(mtk_crtc:%d)\n",
-				__func__, __LINE__, mtk_crtc->enabled ? 1 : 0);
-
+  				__func__, __LINE__, mtk_crtc->enabled ? 1 : 0);
 		mutex_unlock(&primary_data->c3d_power_lock);
 
 		return -1;

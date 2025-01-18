@@ -40,11 +40,21 @@
 #include <linux/smp.h>
 #include <linux/irq.h>
 #include <linux/irqdesc.h>
+#include <linux/math64.h>
+#if !IS_ENABLED(CONFIG_ARM64)
+#include <asm/arch_timer.h>
+#endif
 
 void sysrq_sched_debug_show_at_AEE(void);
 
 #if IS_ENABLED(CONFIG_MTK_TICK_BROADCAST_DEBUG)
 extern void mt_irq_dump_status(unsigned int irq);
+#endif
+
+#if !IS_ENABLED(CONFIG_ARM64)
+extern int nr_ipi_get(void);
+extern struct irq_desc **ipi_desc_get(void);
+#define __pa_nodebug(x)		__virt_to_phys_nodebug((unsigned long)(x))
 #endif
 
 /*************************************************************************
@@ -129,6 +139,7 @@ static unsigned long long all_k_timer_t;
 static unsigned int aee_dump_timer_c;
 static unsigned int cpus_skip_bit;
 static uint32_t apwdt_en;
+static bool is_s2idle_status;
 
 __weak void mt_irq_dump_status(unsigned int irq)
 {
@@ -137,22 +148,25 @@ __weak void mt_irq_dump_status(unsigned int irq)
 
 static uint32_t get_s2idle_state(void)
 {
-	struct arm_smccc_res res;
+	if (is_s2idle_status) {
+		struct arm_smccc_res res;
 #if IS_ENABLED(CONFIG_ARM64)
-	arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
-			RGU_GET_S2IDLE,
-			0, 0, 0,
-			0, 0, 0,
-			&res);
+		arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
+				RGU_GET_S2IDLE,
+				0, 0, 0,
+				0, 0, 0,
+				&res);
 #endif
 #if IS_ENABLED(CONFIG_ARM_PSCI)
-	arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
-			RGU_GET_S2IDLE,
-			0, 0, 0,
-			0, 0, 0,
-			&res);
+		arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
+				RGU_GET_S2IDLE,
+				0, 0, 0,
+				0, 0, 0,
+				&res);
 #endif
-	return (uint32_t) res.a1;
+		return (uint32_t) res.a1;
+	} else
+		return 0xff;
 };
 
 static unsigned int get_check_bit(void)
@@ -378,6 +392,7 @@ static void kwdt_time_sync(void)
 		(unsigned int)(tv_android.tv_nsec / 1000));
 }
 
+#if IS_ENABLED(CONFIG_ARM64)
 static const int irq_to_ipi_type(int irq)
 {
 	struct irq_desc **ipi_desc = ipi_desc_get();
@@ -393,6 +408,27 @@ static const int irq_to_ipi_type(int irq)
 			return i;
 	return -1;
 }
+#else
+static const int irq_to_ipi_type(int irq)
+{
+	int temp_irq = 0;
+	int num = 0;
+	struct irq_desc *desc = irq_to_desc(irq);
+	struct irq_desc *temp_desc;
+
+	for_each_irq_desc(temp_irq, temp_desc) {
+		if (temp_desc->action && temp_desc->action->name) {
+			if (!strcmp(temp_desc->action->name, "IPI")) {
+				if (temp_desc == desc)
+					return num;
+				else
+					num++;
+			}
+		}
+	}
+	return -1;
+}
+#endif
 
 #define MAX_HWT_IRQ_FILE_SIZE SZ_128K
 #define MAX_HWT_IRQ_BUF_SIZE (MAX_HWT_IRQ_FILE_SIZE / 2)
@@ -656,7 +692,7 @@ static void aee_dump_timer_func(struct timer_list *t)
 {
 	spin_lock(&lock);
 
-	if (sched_clock() - aee_dump_timer_t < CHG_TMO_DLY_SEC * 1000000000) {
+	if (sched_clock() - aee_dump_timer_t < CHG_TMO_DLY_SEC * 1000000000ULL) {
 		g_change_tmo = 0;
 		aee_dump_timer_t = 0;
 		g_hang_detected = 0;
@@ -665,14 +701,14 @@ static void aee_dump_timer_func(struct timer_list *t)
 	}
 
 	if ((sched_clock() > all_k_timer_t) &&
-	    (sched_clock() - all_k_timer_t) < (CHG_TMO_DLY_SEC + 1) * 1000000000) {
+	    (sched_clock() - all_k_timer_t) < (CHG_TMO_DLY_SEC + 1) * 1000000000ULL) {
 		g_change_tmo = 0;
 		aee_dump_timer_t = 0;
 		g_hang_detected = 0;
 		spin_unlock(&lock);
 		return;
 	} else if ((all_k_timer_t > sched_clock()) &&
-	    (ULLONG_MAX - all_k_timer_t + sched_clock()) < (CHG_TMO_DLY_SEC + 1) * 1000000000) {
+	    (ULLONG_MAX - all_k_timer_t + sched_clock()) < (CHG_TMO_DLY_SEC + 1) * 1000000000ULL) {
 		g_change_tmo = 0;
 		aee_dump_timer_t = 0;
 		g_hang_detected = 0;
@@ -701,6 +737,16 @@ static void aee_dump_timer_func(struct timer_list *t)
 #if IS_ENABLED(CONFIG_SMP)
 static char tmr_buf[8][WK_MAX_MSG_SIZE];
 static struct __call_single_data wdt_csd[8];
+
+#if !IS_ENABLED(CONFIG_ARM64)
+static u32 arch_timer_reg_read_tval(void)
+{
+	u32 val = 0;
+	asm volatile("mrc p15, 0, %0, c14, c3, 0" : "=r" (val));
+	return val;
+}
+#endif
+
 static void wdt_dump_cntcv(void *arg)
 {
 	int ret = -1;
@@ -712,7 +758,7 @@ static void wdt_dump_cntcv(void *arg)
 		cnt = readl(systimer_base + SYSTIMER_CNTCV_H);
 		cnt = cnt << 32 | low;
 	}
-
+#if IS_ENABLED(CONFIG_ARM64)
 	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
 		"%s CPU:%d CNTCV_CTL:%llx CNTCV_TVAL:%llx CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx\n",
 		__func__,
@@ -723,6 +769,19 @@ static void wdt_dump_cntcv(void *arg)
 		systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
 		systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
 		systimer_base ? cnt : 0);
+#else
+	ret = snprintf(tmr_buf[smp_processor_id()], WK_MAX_MSG_SIZE,
+		"%s CPU:%d CNTCV_CTL:%x CNTCV_TVAL:%x CNTVCT:%llx SYST_CNTCR:%x SYST_DISTL:%x SYST_CNTCV:%llx\n",
+		__func__,
+		smp_processor_id(),
+		arch_timer_reg_read_cp15(ARCH_TIMER_VIRT_ACCESS, ARCH_TIMER_REG_CTRL),
+		arch_timer_reg_read_tval(),
+		__arch_counter_get_cntvct(),
+		systimer_base ? ioread32(systimer_base + SYST_CNTCR) : 0,
+		systimer_base ? ioread32(systimer_base + SYST_DISTL) : 0,
+		systimer_base ? cnt : 0);
+#endif
+
 	if (ret < 0) {
 		tmr_buf[smp_processor_id()][0] = 'E';
 		tmr_buf[smp_processor_id()][1] = 'R';
@@ -752,7 +811,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		rgu_fiq = true;
 
 	if (aee_dump_timer_t && ((sched_clock() - aee_dump_timer_t) >
-	    (CHG_TMO_DLY_SEC + 5) * 1000000000)) {
+	    (CHG_TMO_DLY_SEC + 5) * 1000000000ULL)) {
 		if (!aee_dump_timer_c) {
 			aee_dump_timer_c = 1;
 			snprintf(msg_buf, WK_MAX_MSG_SIZE, "wdtk-et %s %d cpu=%d o_k=%d\n",
@@ -811,13 +870,15 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #endif
 
 	wk_tsk_kick_time[cpu] = sched_clock();
+
 	snprintf(msg_buf, WK_MAX_MSG_SIZE,
 	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx %s\n",
 	 cpu, original_kicker, local_bit, get_check_bit(),
 	 (local_bit ^ get_check_bit()) & get_check_bit(), lasthpg_cpu,
-	 lasthpg_act, lasthpg_t, atomic_read(&plug_mask), lastsuspend_t / 1000000,
-	 lastsuspend_syst / 1000000, lastresume_t / 1000000, lastresume_syst / 1000000,
-	 wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle, smp_histroy);
+	 lasthpg_act, lasthpg_t, atomic_read(&plug_mask), div_u64(lastsuspend_t, 1000000),
+	 div_u64(lastsuspend_syst, 1000000), div_u64(lastresume_t, 1000000),
+	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle,
+	 smp_histroy);
 
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
@@ -1194,7 +1255,11 @@ static int __init hangdet_init(void)
 #if IS_ENABLED(CONFIG_MTK_TICK_BROADCAST_DEBUG)
 	unsigned int systirq = 0;
 #endif
-	struct device_node *np_toprgu, *np_systimer;
+	struct device_node *np_toprgu, *np_systimer, *s2idle_node;
+	s2idle_node = of_find_node_by_name(NULL, "s2idle");
+	if(s2idle_node) {
+		is_s2idle_status = 1;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB)
 	hwt_irq_info = kmalloc(MAX_HWT_IRQ_FILE_SIZE, GFP_KERNEL);

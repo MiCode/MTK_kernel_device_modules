@@ -110,7 +110,7 @@ static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
 static int sf_hint_low_power_enabled;
 
-void send_boost_cmd(int cmd, int value)
+static void send_boost_cmd(int cmd, int value)
 {
 	static struct k_list *node;
 
@@ -964,9 +964,10 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 
 int dsu_sport_mode(unsigned int mode)
 {
+#if !IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
 	pr_debug("[%s] mode: %d",  __func__, mode);
 	cpufreq_set_cci_mode(mode);
-
+#endif
 	return 0;
 }
 

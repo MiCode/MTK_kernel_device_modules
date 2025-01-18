@@ -22,6 +22,7 @@
 #include "vip.h"
 #endif
 #include <mt-plat/mtk_irq_mon.h>
+#include <linux/math64.h>
 
 MODULE_LICENSE("GPL");
 
@@ -63,6 +64,11 @@ static inline bool check_faster_idle_balance(struct sched_group *busiest, struct
 	}
 
 	return false;
+}
+
+static unsigned long capacity_of(int cpu)
+{
+	return cpu_rq(cpu)->cpu_capacity;
 }
 
 static inline bool check_has_overutilize_cpu(struct cpumask *grp)
@@ -252,18 +258,25 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	struct em_perf_state *ps;
 	int cpu, this_cpu, opp = -1, wl_type = 0;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
-	unsigned long pwr_eff, cap, freq_legacy, sum_cap = 0;
+	unsigned long pwr_eff, cap, freq_legacy;
 	struct mtk_em_perf_state *mtk_ps;
 #else
 	int i;
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
+	unsigned long sum_cap = 0;
+	int *cpu_temp = eenv->cpu_temp;
+#endif
+
 	unsigned long dyn_pwr = 0, static_pwr = 0;
 	unsigned long energy;
-	int *cpu_temp = eenv->cpu_temp;
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	unsigned int share_volt = 0, cpu_volt = 0;
 	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
+#endif
 
 	if (!sum_util)
 		return 0;
@@ -365,7 +378,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 	dyn_pwr = pwr_eff * sum_util;
-
+# if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (eenv->wl_support) {
 		if (share_buck.gear_idx == gear_idx) {
 			cpu_volt = mtk_ps->volt;
@@ -383,10 +396,13 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 			trace_sched_dsu_freq(gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new, freq,
 					mtk_ps->freq, dyn_pwr, share_volt, cpu_volt);
 
-		if (share_volt > cpu_volt)
-			dyn_pwr = (unsigned long long)dyn_pwr * (unsigned long long)share_volt *
-				(unsigned long long)share_volt / cpu_volt / cpu_volt;
+		if (share_volt > cpu_volt){
+			dyn_pwr = div_u64(
+				(unsigned long long)dyn_pwr * (unsigned long long)share_volt * (unsigned long long)share_volt,
+				cpu_volt * cpu_volt);
+		}
 	}
+#endif
 
 	/* for pd_opp_capacity is scaled based on maximum scale 1024, so cost = pwr_eff * 1024 */
 	if (trace_sched_em_cpu_energy_enabled()) {
@@ -411,40 +427,52 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 #define THERMAL_INFO_SIZE 200
 
 static void __iomem *sram_base_addr;
+static struct eas_info eas_node;
+
 int init_sram_info(void)
 {
 	struct device_node *dvfs_node;
 	struct platform_device *pdev_temp;
 	struct resource *csram_res;
 
+	// first try to read sram_base_addr from cpuhvfs
 	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
-	if (dvfs_node == NULL) {
-		pr_info("failed to find node @ %s\n", __func__);
-		return -ENODEV;
+	if (dvfs_node != NULL) {
+		pdev_temp = of_find_device_by_node(dvfs_node);
+		if (pdev_temp == NULL) {
+			pr_info("failed to find pdev @ %s\n", __func__);
+			return -EINVAL;
+		}
+
+		csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+		if (csram_res)
+			sram_base_addr =
+				ioremap(csram_res->start + OFFS_THERMAL_LIMIT_S, THERMAL_INFO_SIZE);
+		else {
+			pr_info("%s can't get resource\n", __func__);
+			return -ENODEV;
+		}
+
+		if (!sram_base_addr) {
+			pr_info("Remap thermal info failed in cpuhvfs node\n");
+
+			return -EIO;
+		}
+	} else {
+		pr_info("failed to find node @ %s, try to read eas-info from dts.\n", __func__);
 	}
 
-	pdev_temp = of_find_device_by_node(dvfs_node);
-	if (pdev_temp == NULL) {
-		pr_info("failed to find pdev @ %s\n", __func__);
-		return -EINVAL;
+	// second try to read sram_base_addr from eas-info
+	parse_eas_data(&eas_node);
+	if (eas_node.available) {
+		sram_base_addr = ioremap(eas_node.csram_base + eas_node.offs_thermal_limit_s,
+					THERMAL_INFO_SIZE);
+		if (!sram_base_addr) {
+			pr_info("Remap thermal info failed in eas-info node\n");
+			return -EIO;
+		}
 	}
-
-	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
-
-	if (csram_res)
-		sram_base_addr =
-			ioremap(csram_res->start + OFFS_THERMAL_LIMIT_S, THERMAL_INFO_SIZE);
-	else {
-		pr_info("%s can't get resource\n", __func__);
-		return -ENODEV;
-	}
-
-	if (!sram_base_addr) {
-		pr_info("Remap thermal info failed\n");
-
-		return -EIO;
-	}
-
 	return 0;
 }
 
@@ -460,8 +488,10 @@ void mtk_tick_entry(void *data, struct rq *rq)
 
 	irq_log_store();
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support())
 		update_wl_tbl(this_cpu);
+#endif
 
 	sbb_trigger = is_sbb_trigger(rq);
 
@@ -469,9 +499,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		if (sbb_data->tick_start) {
 			idle_time = get_cpu_idle_time(rq->cpu, &wall_time, 1);
 
-			cpu_utilize = 100 - (100 * (idle_time -
-				sbb_data->idle_time)) /
-				(wall_time - sbb_data->wall_time);
+			cpu_utilize = 100 - div_u64((100 * (idle_time - sbb_data->idle_time)),
+				wall_time - sbb_data->wall_time);
 
 			sbb_data->idle_time = idle_time;
 			sbb_data->wall_time = wall_time;
@@ -776,10 +805,13 @@ unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util)
 	int opp;
 	struct mtk_em_perf_state *ps;
 	unsigned long static_pwr_eff, pwr_eff;
-
 	ps = pd_get_util_ps(wl_type, cpu, map_util_perf(cpu_util), &opp);
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	static_pwr_eff = mtk_get_leakage(cpu, opp, get_cpu_temp(cpu)/1000) / ps->capacity;
+#else
+	static_pwr_eff = mtk_get_leakage(cpu, opp, 0) / ps->capacity;
+#endif
 	pwr_eff = ps->pwr_eff + static_pwr_eff;
 
 	if (trace_sched_calc_pwr_eff_enabled())

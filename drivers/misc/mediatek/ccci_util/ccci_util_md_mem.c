@@ -47,7 +47,6 @@ struct rt_smem_region_lk_fmt {
 	struct smem_region_lk_fmt inf;
 };
 
-
 static struct rt_smem_region_lk_fmt *s_smem_hash_tbl[SMEM_USER_MAX];
 
 /******************************************************************************
@@ -88,7 +87,7 @@ static struct rt_smem_region_lk_fmt gen6297_cacheable_tbl[] = {
  * all CCB user should be put together, and the total size is set
  * in the first one, all reset CCB users' address, offset and size
  * will be re-calculated during port initialization. and please be
- * aware of that CCB user's size will be aligned to 4KB.
+ * aware of that CCB user's size will be aligned to 4KB
  *
  * ap_p, ap_v,  id,                    ap_offset, size,  align,   flags, md_offset
  */
@@ -99,14 +98,7 @@ static struct rt_smem_region_lk_fmt gen6297_cacheable_tbl[] = {
 {0ULL, 0ULL, {SMEM_USER_RAW_USIP,	0,	0, 0, SMEM_NO_CLR_FIRST, 0}},
 };
 
-
-/* For legacy compatible: gen6295 and gen6293 */
-#define CCCI_SMEM_SIZE_DBM (160)
-#define CCCI_SMEM_SIZE_DBM_GUARD (8)
-#define DBM_S (CCCI_SMEM_SIZE_DBM + CCCI_SMEM_SIZE_DBM_GUARD * 2)
-
-
-static struct rt_smem_region_lk_fmt gen6293_6295_noncacheable_tbl[] = {
+static struct rt_smem_region_lk_fmt gen6295_noncacheable_tbl[] = {
 /*
  * ap_p, ap_v,  id,                    ap_offset, size,  align,   flags, md_offset
  */
@@ -115,7 +107,7 @@ static struct rt_smem_region_lk_fmt gen6293_6295_noncacheable_tbl[] = {
 {0ULL, 0ULL, {SMEM_USER_RAW_RESERVED,	12*1024,	46*1024, 0, 0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_RUNTIME_DATA, 58*1024,	4*1024,	 0, 0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_FORCE_ASSERT, 62*1024,	1*1024,	 0, 0,	0}},
-{0ULL, 0ULL, {SMEM_USER_RAW_DBM,		64*1024-DBM_S,	DBM_S,	 0, 0,	0}},
+{0ULL, 0ULL, {SMEM_USER_RAW_DBM,		64*1024-176,	176,	 0, 0,	0}}, /* DBM size 176 */
 {0ULL, 0ULL, {SMEM_USER_CCISM_SCP,	64*1024,	32*1024, 0, 0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_CCB_CTRL,	96*1024,	4*1024,	 0, SMEM_NO_CLR_FIRST, 0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_NETD,	100*1024,	4*1024,	 0,	0,	0}},
@@ -126,13 +118,13 @@ static struct rt_smem_region_lk_fmt gen6293_6295_noncacheable_tbl[] = {
 {0ULL, 0ULL, {SMEM_USER_RAW_DFD,	        1*1024*1024,	448*1024, 0,	0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_UDC_DATA,	(1*1024+448)*1024,	0, 0,	0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_AMMS_POS,	(1*1024 + 448)*1024,	0, 0,	SMEM_NO_CLR_FIRST, 0}},
-{0ULL, 0ULL, {SMEM_USER_RAW_ALIGN_PADDING, (1*1024 + 448)*1024,	0,  0,
-									SMEM_NO_CLR_FIRST, 0}},
+{0ULL, 0ULL, {SMEM_USER_RAW_ALIGN_PADDING, (1*1024 + 448)*1024,	0,  0,	SMEM_NO_CLR_FIRST, 0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_LWA,        (1*1024+448)*1024, 0,	 0, 0,	0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_PHY_CAP,	(1*1024+448)*1024, 0, 0, SMEM_NO_CLR_FIRST, 0}},
 };
 
-static struct rt_smem_region_lk_fmt gen6293_6295_cacheable_tbl[] = {
+
+static struct rt_smem_region_lk_fmt gen6295_cacheable_tbl[] = {
 /*
  * all CCB user should be put together, and the total size is set
  * in the first one, all reset CCB users' address, offset and size
@@ -176,7 +168,7 @@ static int get_amms_pose_size(void)
 
 	if (mtk_ccci_find_args_val("smem_amms_pos_size",
 		(unsigned char *)&amms_pos_size, sizeof(amms_pos_size)) != sizeof(amms_pos_size))
-		pr_info("ccci:  %s using -1 as amms pos size\n", __func__);
+		pr_info("ccci: %s using -1 as amms pos size\n", __func__);
 
 	return amms_pos_size;
 }
@@ -220,11 +212,59 @@ struct _smem_layout {
 	unsigned int total_smem_size;
 };
 
+/* non-cacheable share memory */
+struct nc_smem_update_node {
+	unsigned int ap_offset;
+	unsigned int md_offset;
+	unsigned int size;
+	unsigned int id;
+};
+
+void nc_smem_info_parsing_for_lk(void)
+{
+	unsigned int size, num = 0, i, j;
+	struct nc_smem_update_node *s_nc_update_layout;
+
+	if (mtk_ccci_find_args_val("nc_smem_info_ext_num", (unsigned char *)&num,
+		sizeof(unsigned int)) != sizeof(unsigned int)) {
+		CCCI_UTIL_ERR_MSG("nc_smem_info_ext_num get fail\n");
+		return;
+	}
+
+	size = num * sizeof(struct nc_smem_update_node);
+	s_nc_update_layout = kzalloc(size, GFP_KERNEL);
+	if (s_nc_update_layout == NULL) {
+		CCCI_UTIL_ERR_MSG("s_nc_update_layout:alloc nc_layout fail\n");
+		return;
+	}
+
+	if (mtk_ccci_find_args_val("nc_smem_info_ext", (unsigned char *)s_nc_update_layout,
+		size) != size) {
+		CCCI_UTIL_ERR_MSG("nc_smem_info_ext get fail\n");
+		kfree(s_nc_update_layout);
+		return;
+	}
+
+	for (i = 0; i < num; i++) {
+		CCCI_UTIL_INF_MSG("nc_smem<%d>: ap:0x%08x md:0x%08x[0x%08x]\n",
+			s_nc_update_layout[i].id, s_nc_update_layout[i].ap_offset,
+			s_nc_update_layout[i].md_offset, s_nc_update_layout[i].size);
+		for(j = 0; j < ARRAY_SIZE(gen6297_noncacheable_tbl); j++) {
+			if(gen6297_noncacheable_tbl[j].inf.id == s_nc_update_layout[i].id) {
+				gen6297_noncacheable_tbl[j].inf.size = s_nc_update_layout[i].size;
+				CCCI_UTIL_INF_MSG("Update <%d> size 0x%08x\n",
+					gen6297_noncacheable_tbl[j].inf.id, gen6297_noncacheable_tbl[j].inf.size);
+				break;
+			}
+		}
+	}
+	kfree(s_nc_update_layout);
+}
+
 static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned int num)
 {
 	unsigned int i;
 	unsigned long long ap_phy_base = 0ULL;
-	unsigned int adjust_en = 0;
 	int tmp_sz;
 	unsigned int tmp_u_sz;
 	struct _smem_layout nc_layout;
@@ -233,7 +273,6 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 		pr_info("ccci: %s get NULL table\n", __func__);
 		return -1;
 	}
-
 	if (mtk_ccci_find_args_val("smem_layout", (unsigned char *)&nc_layout,
 			sizeof(struct _smem_layout))  != sizeof(struct _smem_layout)) {
 		pr_info("ccci: %s nc layout find fail\n", __func__);
@@ -245,14 +284,10 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 			tbl[i].ap_phy = ap_phy_base;
 			tbl[i].inf.ap_offset = 0;
 			tbl[i].inf.md_offset = 0;
-		} else if (adjust_en) {
+		} else {
 			tbl[i].ap_phy = tbl[i - 1].ap_phy + tbl[i - 1].inf.size;
 			tbl[i].inf.ap_offset = tbl[i - 1].inf.ap_offset + tbl[i - 1].inf.size;
 			tbl[i].inf.md_offset = tbl[i - 1].inf.md_offset + tbl[i - 1].inf.size;
-		} else {
-			tbl[i].ap_phy = ap_phy_base + tbl[i].inf.ap_offset;
-			tbl[i].inf.ap_offset = tbl[i - 1].inf.ap_offset + tbl[i - 1].inf.size;
-			tbl[i].inf.md_offset = tbl[i].inf.ap_offset;
 		}
 
 		switch (tbl[i].inf.id) {
@@ -265,7 +300,6 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 			tmp_sz = get_dfd_size();
 			if (tmp_sz >= 0 && tmp_sz != tbl[i].inf.size) {
 				tbl[i].inf.size = tmp_sz;
-				adjust_en = 1;
 			}
 			pr_info("ccci: dfd size:%d\n", tbl[i].inf.size);
 			break;
@@ -274,7 +308,6 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 			tmp_sz = get_amms_pose_size();
 			if (tmp_sz >= 0 && tmp_sz != tbl[i].inf.size) {
 				tbl[i].inf.size = (unsigned int)tmp_sz;
-				adjust_en = 1;
 				/* free AMMS POS smem chao -- Fix me*/
 				//amms_cma_free((void *)(ap_vir_base + tbl[i].inf.ap_offset),
 				//tmp_sz);
@@ -286,7 +319,6 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 			tmp_sz = get_raw_align_padding_size();
 			if (tmp_sz >= 0 && tmp_sz != tbl[i].inf.size) {
 				tbl[i].inf.size = tmp_sz;
-				adjust_en = 1;
 				/* free POS padding smem chao -- Fix me*/
 				//amms_cma_free((void *)(ap_vir_base + tbl[i].inf.ap_offset),
 				//tmp_sz);
@@ -298,7 +330,6 @@ static int cmpt_nc_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned
 			tmp_u_sz = get_udc_nc_size();
 			if (tmp_u_sz > 0 && tmp_u_sz != tbl[i].inf.size) {
 				tbl[i].inf.size = tmp_u_sz;
-				adjust_en = 1;
 			}
 			break;
 		default:
@@ -360,7 +391,7 @@ static void c_smem_info_parsing(void)
 	pr_info("ccci: %s smem cachable offset 0x%X\n", __func__, s_md_cache_offset);
 }
 
-static int get_cache_smem_regin_info(int id, unsigned int *offset, unsigned int *size)
+static int get_cache_smem_regin_info(int id, unsigned int *offset, unsigned int *size, unsigned int *addr)
 {
 	unsigned int i, num;
 
@@ -371,6 +402,8 @@ static int get_cache_smem_regin_info(int id, unsigned int *offset, unsigned int 
 				*offset = csmem_layout[i].md_offset;
 			if (size)
 				*size = csmem_layout[i].csmem_buffer_size;
+			if (addr)
+				*addr = csmem_layout[i].csmem_buffer_addr;
 			return 0;
 		}
 	}
@@ -381,7 +414,7 @@ static int cmpt_c_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned 
 {
 	unsigned int i;
 	unsigned long long ap_phy_base = 0ULL;
-	unsigned int offset, size;
+	unsigned int offset, size, ap_phy_addr;
 
 	if (!tbl) {
 		pr_info("ccci: %s get NULL table\n", __func__);
@@ -407,19 +440,23 @@ static int cmpt_c_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned 
 
 		switch (tbl[i].inf.id) {
 		case SMEM_USER_CCB_START:
-			if (!get_cache_smem_regin_info(SMEM_USER_CCB_START, &offset, &size))
+			if (!get_cache_smem_regin_info(SMEM_USER_CCB_START, &offset, &size, &ap_phy_addr)) {
 				tbl[i].inf.size = size;
-			else
+				tbl[i].ap_phy = ap_phy_addr;
+				tbl[i].inf.ap_offset = offset;
+				tbl[i].inf.md_offset = offset + s_md_cache_offset;
+				CCCI_UTIL_INF_MSG("ccci:ap_phy_addr 0x%x offset 0x%x\n", ap_phy_addr, tbl[i].inf.ap_offset);
+
+			} else
 				tbl[i].inf.size = ccb_info.size;
 			break;
-
 		case SMEM_USER_RAW_MD_CONSYS:
 		case SMEM_USER_MD_NVRAM_CACHE: /* go through */
 		case SMEM_USER_RAW_USIP:
 		case SMEM_USER_RAW_UDC_DESCTAB:
 			offset = 0;
 			size = 0;
-			if (!get_cache_smem_regin_info(tbl[i].inf.id, &offset, &size)) {
+			if (!get_cache_smem_regin_info(tbl[i].inf.id, &offset, &size, &ap_phy_addr)) {
 				tbl[i].inf.size = size;
 
 				if (offset || size) {
@@ -558,18 +595,19 @@ static int get_md_smem_layout_tbl_from_lk_tag(void)
 
 static int get_md_smem_layout_tbl_from_lk_legacy_tag(void)
 {
+
 	if (s_md_gen < 6297) {
-		s_md_nc_smem_tbl = gen6293_6295_noncacheable_tbl;
-		s_md_c_smem_tbl = gen6293_6295_cacheable_tbl;
-		s_md_nc_smem_item_num = ARRAY_SIZE(gen6293_6295_noncacheable_tbl);
-		s_md_c_smem_item_num = ARRAY_SIZE(gen6293_6295_cacheable_tbl);
+		s_md_nc_smem_tbl = gen6295_noncacheable_tbl;
+		s_md_c_smem_tbl = gen6295_cacheable_tbl;
+		s_md_nc_smem_item_num = ARRAY_SIZE(gen6295_noncacheable_tbl);
+		s_md_c_smem_item_num = ARRAY_SIZE(gen6295_cacheable_tbl);
 	} else {
+		nc_smem_info_parsing_for_lk();
 		s_md_nc_smem_tbl = gen6297_noncacheable_tbl;
 		s_md_c_smem_tbl = gen6297_cacheable_tbl;
 		s_md_nc_smem_item_num = ARRAY_SIZE(gen6297_noncacheable_tbl);
 		s_md_c_smem_item_num = ARRAY_SIZE(gen6297_cacheable_tbl);
 	}
-
 	if (cmpt_nc_smem_layout_init(s_md_nc_smem_tbl, s_md_nc_smem_item_num) != 0)
 		return -1;
 
@@ -586,6 +624,11 @@ static int map_and_update_tbl(struct rt_smem_region_lk_fmt *tbl, u32 start, u32 
 	void __iomem *vir_addr;
 	u32 i;
 
+	if (size == 0) {
+		pr_info("ccci: %s for 0x%016llx smem size is 0, by pass map table!!!\n",
+			__func__, base);
+		return -1;
+	}
 	vir_addr = ccci_map_phy_addr(base, size);
 	if (!vir_addr) {
 		pr_info("ccci: %s for 0x%016llx[0x%08x] smem fail\n", __func__, base, size);
@@ -647,7 +690,7 @@ static void smem_layout_dump(const char name[], struct rt_smem_region_lk_fmt *rt
 {
 	unsigned int i;
 
-	CCCI_UTIL_INF_MSG("------- Dump %s details -------------\n", name);
+	CCCI_UTIL_INF_MSG("------------- Dump %s details -------------\n", name);
 	for (i = 0; i < num; i++)
 		CCCI_UTIL_INF_MSG("%03u-%03d-%016llX-%016llX-%08X-%08X-%08X-%08X-%u\n",
 			i, rt_tbl[i].inf.id, rt_tbl[i].ap_phy, rt_tbl[i].ap_vir,
@@ -668,6 +711,10 @@ int mtk_ccci_md_smem_layout_init(void)
 	s_md_gen = 6297;
 	ret = mtk_ccci_find_args_val("md_generation",  (unsigned char *)&s_md_gen,
 			sizeof(unsigned int));
+	if(s_md_gen < 6295) {
+		pr_info("ccci: %s : gen93 bypass init smem layout in util\n", __func__);
+		return 0;
+	}
 	if (ret <= 0)
 		pr_info("ccci: %s :get md generation fail(%d)\n", __func__, ret);
 
@@ -702,7 +749,6 @@ int mtk_ccci_md_smem_layout_init(void)
 	}
 
 	get_sib_info_from_tag();
-
 	/* Show map result */
 	smem_layout_dump("MD non-cache", s_md_nc_smem_tbl, s_md_nc_smem_item_num);
 	smem_layout_dump("MD cache", s_md_c_smem_tbl, s_md_c_smem_item_num);
@@ -746,7 +792,7 @@ void __iomem *mtk_ccci_get_smem_start_addr(enum SMEM_USER_ID user_id, int *size_
 			 * step over Guard pattern header
 			 */
 			if (user_id == SMEM_USER_RAW_DBM)
-				addr += CCCI_SMEM_SIZE_DBM_GUARD;
+				addr += 8;
 		}
 
 		if (size_o)

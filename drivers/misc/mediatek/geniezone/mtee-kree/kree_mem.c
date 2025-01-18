@@ -323,9 +323,13 @@ static TZ_RESULT kree_register_desc_shm(union MTEEC_PARAM *p,
 
 	ary = (int64_t *) mapAry;
 	numOfPA = ary[0];
+#if IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT)
 	KREE_DEBUG("[%s] numOfPA = %d, MAX_MARY_SIZE = %lu\n", __func__,
 		numOfPA, MAX_MARY_SIZE);
-
+#else
+	KREE_DEBUG("[%s] numOfPA = %d, MAX_MARY_SIZE = %u\n", __func__,
+                numOfPA, MAX_MARY_SIZE);
+#endif
 	/* encode page tables */
 	runLengAry =
 	shmem_param_run_length_encoding(numOfPA, &runLeng_arySize, ary);

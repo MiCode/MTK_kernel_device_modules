@@ -24,6 +24,8 @@
 #include <linux/vmalloc.h>
 #include <uapi/linux/sched/types.h>
 
+#include <clocksource/arm_arch_timer.h>
+
 #include <mt-plat/mrdump.h>
 #include "aed.h"
 #include "mrdump_helper.h"

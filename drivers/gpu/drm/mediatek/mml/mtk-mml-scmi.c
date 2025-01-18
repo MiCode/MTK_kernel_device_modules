@@ -18,6 +18,7 @@ struct mml_scmi_support {
 
 static bool mml_check_scmi_status(struct mml_scmi_support *scmi)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	if (scmi->tinfo)
 		return true;
 
@@ -38,16 +39,18 @@ static bool mml_check_scmi_status(struct mml_scmi_support *scmi)
 		&scmi->feature_id);
 	mml_log("%s scmi_smi succeed id %u",
 		__func__, scmi->feature_id);
+#endif
 	return true;
 }
 
 void mml_set_uid(void **mml_scmi)
 {
+	struct mml_scmi_support *scmi = (struct mml_scmi_support *)*mml_scmi;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	/* 0 for mdp, 1 for mml */
 	const unsigned int id = 1;
-	struct mml_scmi_support *scmi = (struct mml_scmi_support *)*mml_scmi;
 	int err;
-
+#endif
 	if (!scmi) {
 		scmi = kzalloc(sizeof(*scmi), GFP_KERNEL);
 		if (!scmi)
@@ -57,11 +60,12 @@ void mml_set_uid(void **mml_scmi)
 
 	if (!mml_check_scmi_status(scmi))
 		return;
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	err = scmi_tinysys_common_set(scmi->tinfo->ph, scmi->feature_id, 3, id, 0, 0, 0);
 	if (err)
 		mml_err("%s call scmi_tinysys_common_set %d err %d",
 			__func__, id, err);
+#endif
 }
 
 #else	/* MML_FPGA */

@@ -61,6 +61,32 @@ struct ccci_clk_node {
 	unsigned char *clk_name;
 };
 
+struct md_pll_reg {
+	void __iomem *md_top_clkSW;
+	void __iomem *md_top_Pll;
+};
+
+/* MD1 PLL */
+#define MDTOP_PLLMIXED_BASE	(0x20140000)
+#define MDTOP_PLLMIXED_LENGTH	(0x1000)
+#define MDTOP_CLKSW_BASE	(0x20150000)
+#define MDTOP_CLKSW_LENGTH	(0x1000)
+
+/* MD reg dump */
+#define INFRA_AP2MD_DUMMY_REG	(0x370)
+#define INFRA_AP2MD_DUMMY_BIT	0
+#define	INFRA_MD2PERI_PROT_EN	(0x250)
+#define	INFRA_MD2PERI_PROT_RDY	(0x258)
+#define	INFRA_MD2PERI_PROT_SET	(0x2A8)
+#define	INFRA_MD2PERI_PROT_CLR	(0x2AC)
+#define	INFRA_MD2PERI_PROT_BIT	6
+#define	INFRA_PERI2MD_PROT_EN	(0x220)
+#define	INFRA_PERI2MD_PROT_RDY	(0x228)
+#define	INFRA_PERI2MD_PROT_SET	(0x2A0)
+#define	INFRA_PERI2MD_PROT_CLR	(0x2A4)
+#define	INFRA_PERI2MD_PROT_BIT	7
+
+
 struct ccci_plat_ops {
 	void (*md_dump_reg)(void);
 	void (*lock_modem_clock_src)(int locked);
@@ -102,6 +128,19 @@ enum {
 	MD_PLL_SETTING,
 };
 
+enum MD_REG_DUMP_ID {
+	MD_REG_PC_MONITOR = 1,
+	MD_REG_PLL_REG,
+	MD_REG_BUS,
+	MD_REG_MDMCU_BUSMON,
+	MD_REG_MDINFRA_BUSMON,
+	MD_REG_ECT,
+	MD_REG_TOPSM_REG,
+	MD_REG_MD_RGU_REG,
+	MD_REG_OST_STATUS,
+	MD_REG_CSC_REG,
+	MD_REG_ELM_REG,
+};
 
 /* ADD_SYS_CORE */
 int ccci_modem_syssuspend(void);
@@ -120,4 +159,5 @@ unsigned int ccci_get_ap_plat(void);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 extern void spmi_dump_pmif_record_reg(void);
 #endif
+u32 get_expected_boot_status_val(void);
 #endif				/* __MD_SYS1_PLATFORM_H__ */

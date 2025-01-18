@@ -44,34 +44,62 @@
 
 static struct gpio_item gpio_mapping_table[] = {
 	{"GPIO_FDD_Band_Support_Detection_1",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-1ST-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-1ST-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_1ST_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_2",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-2ND-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-2ND-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_2ND_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_3",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-3RD-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-3RD-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_3RD_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_4",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-4TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-4TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_4TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_5",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-5TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-5TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_5TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_6",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-6TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-6TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_6TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_7",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-7TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-7TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_7TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_8",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-8TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-8TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_8TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_9",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-9TH-PIN",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-9TH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_9TH_PIN",},
 	{"GPIO_FDD_Band_Support_Detection_A",
-		"GPIO-FDD-BAND-SUPPORT-DETECT-ATH-PIN",},
-	{"GPIO_RF_PWREN_RST_PIN", "GPIO-RF-PWREN-RST-PIN",},
-	{"GPIO_SIM1_HOT_PLUG", "GPIO-SIM1-HOT-PLUG",},
-	{"GPIO_SIM2_HOT_PLUG", "GPIO-SIM2-HOT-PLUG",},
-	{"GPIO_SIM2_SCLK", "GPIO-SIM2-SCLK",},
-	{"GPIO_SIM2_SRST", "GPIO-SIM2-SRST",},
-	{"GPIO_SIM2_SIO", "GPIO-SIM2-SIO",},
-	{"GPIO_SIM1_SIO", "GPIO-SIM1-SIO",},
-	{"GPIO_SIM1_SRST", "GPIO-SIM1-SRST",},
-	{"GPIO_SIM1_SCLK", "GPIO-SIM1-SCLK",},
+		"GPIO-FDD-BAND-SUPPORT-DETECT-ATH-PIN",
+		"GPIO_FDD_BAND_SUPPORT_DETECT_ATH_PIN",},
+	{"GPIO_RF_PWREN_RST_PIN",
+		"GPIO-RF-PWREN-RST-PIN",
+		"GPIO_RF_PWREN_RST_PIN",},
+	{"GPIO_SIM1_HOT_PLUG",
+		"GPIO-SIM1-HOT-PLUG",
+		"GPIO_SIM1_HOT_PLUG",},
+	{"GPIO_SIM2_HOT_PLUG",
+		"GPIO-SIM2-HOT-PLUG",
+		"GPIO_SIM2_HOT_PLUG",},
+	{"GPIO_SIM2_SCLK",
+		"GPIO-SIM2-SCLK",
+		"GPIO_SIM2_SCLK",},
+	{"GPIO_SIM2_SRST",
+		"GPIO-SIM2-SRST",
+		"GPIO_SIM2_SRST",},
+	{"GPIO_SIM2_SIO",
+		"GPIO-SIM2-SIO",
+		"GPIO_SIM2_SIO",},
+	{"GPIO_SIM1_SIO",
+		"GPIO-SIM1-SIO",
+		"GPIO_SIM1_SIO",},
+	{"GPIO_SIM1_SRST",
+		"GPIO-SIM1-SRST",
+		"GPIO_SIM1_SRST",},
+	{"GPIO_SIM1_SCLK",
+		"GPIO-SIM1-SCLK",
+		"GPIO_SIM1_SCLK",},
 };
 
 static int get_md_gpio_val(unsigned int num)
@@ -101,14 +129,22 @@ static int get_md_adc_info(__attribute__((unused))char *adc_name,
 	return num;
 }
 
-static char *md_gpio_name_convert(char *gpio_name, unsigned int len)
+static char *md_gpio_name_convert(char *gpio_name, unsigned int len, enum name_convert_style style)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(gpio_mapping_table); i++) {
-		if (!strncmp(gpio_name, gpio_mapping_table[i].gpio_name_from_md,
-			len))
-			return gpio_mapping_table[i].gpio_name_from_dts;
+		if (!strncmp(gpio_name, gpio_mapping_table[i].gpio_name_from_md, len)) {
+			switch (style) {
+				case NAME_CONVERT_STYLE_UNDER_LINE:
+					return gpio_mapping_table[i].gpio_under_line_name_from_dts;
+				case NAME_CONVERT_STYLE_MID_LINE:
+					return gpio_mapping_table[i].gpio_mid_line_name_from_dts;
+				default:
+					CCCI_ERROR_LOG(0, RPC, "Invalid name convert style %d\n", style);
+					break;
+			}
+		}
 	}
 
 	return NULL;
@@ -152,18 +188,26 @@ static int get_md_gpio_info(char *gpio_name,
 		return gpio_id;
 	}
 
-	name = md_gpio_name_convert(gpio_name, len);
+	name = md_gpio_name_convert(gpio_name, len, NAME_CONVERT_STYLE_MID_LINE);
 	if (name) {
 		gpio_id = get_gpio_id_from_dt(node, name, md_view_gpio_id);
-		return gpio_id;
+		if(gpio_id >= 0)
+			return gpio_id;
+
+		//try to find gpio name with under line style
+		name = NULL;
+		name = md_gpio_name_convert(gpio_name, len, NAME_CONVERT_STYLE_UNDER_LINE);
+		if (name) {
+			return get_gpio_id_from_dt(node, name, md_view_gpio_id);
+		}
 	}
+
 	if (gpio_name[len-1] != 0) {
 		name = kmalloc(len + 1, GFP_KERNEL);
 		if (name) {
 			memcpy(name, gpio_name, len);
 			name[len] = 0;
-			gpio_id = get_gpio_id_from_dt(node, name,
-				md_view_gpio_id);
+			gpio_id = get_gpio_id_from_dt(node, name, md_view_gpio_id);
 			kfree(name);
 			return gpio_id;
 		}

@@ -370,7 +370,9 @@ static int __init mboot_params_init(struct mboot_params_buffer *buffer,
 	mbootlog_buf = kzalloc(SZ_128K, GFP_KERNEL);
 	if (!mbootlog_buf)
 		pr_notice("mboot_params: mbootlog_buf(SYS_LAST_KMSG) invalid");
+#ifdef MODULE
 	aee_rr_mboot_params_proc_init();
+#endif
 	mboot_params_init_done = 1;
 	return 0;
 }
@@ -1210,6 +1212,16 @@ static void aee_rr_mboot_params_proc_init(void)
 	if (!aee_rr_file)
 		pr_notice("%s: Can't create rr proc entry\n", __func__);
 }
+
+#ifndef MODULE
+static int __init mboot_params_proc_init(void)
+{
+	/* aed-main use /proc/aed/ too */
+	aee_rr_mboot_params_proc_init();
+	return 0;
+}
+arch_initcall(mboot_params_proc_init);
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek AED Driver");

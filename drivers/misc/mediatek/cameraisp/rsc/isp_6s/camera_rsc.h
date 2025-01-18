@@ -13,7 +13,7 @@
 #include <linux/fs.h>
 #include <linux/compat.h>
 #endif
-
+extern void mt_irq_dump_status(unsigned int irq);
 /*
  *   enforce kernel log enable
  */
@@ -123,7 +123,6 @@ struct RSC_Config {
 	unsigned int RSC_BVO_FD;
 	unsigned int RSC_BVO_OFFSET;
 	unsigned int RSC_BVO_STRIDE;
-	unsigned int IS_LEGACY;
 #define RSC_TUNABLE
 #ifdef RSC_TUNABLE
 	unsigned int RSC_MV_OFFSET;

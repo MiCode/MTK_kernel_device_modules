@@ -14,10 +14,20 @@
 #include <linux/regmap.h>
 #include <linux/rtc.h>
 
+#define SUPPORT_EOSC_CALI
+#define SUPPORT_PWR_OFF_ALARM
+
 #define RTC_BBPU               0x0000
 #define RTC_BBPU_CBUSY         BIT(6)
 #define RTC_BBPU_KEY            (0x43 << 8)
-
+#define RTC_BBPU_PWREN         BIT(0)
+#define RTC_OSC32CON           0x0026
+#define RTC_BBPU_CLR           BIT(1)
+#define RTC_BBPU_RELOAD        BIT(5)
+#define RTC_POWERKEY1          0x0028
+#define RTC_POWERKEY2          0x002a
+#define RTC_PROT               0x0034
+#define RTC_CON                0x003c
 #define RTC_WRTGR_MT6358       0x003a
 #define RTC_WRTGR_MT6397       0x003c
 #define RTC_WRTGR_MT6323       RTC_WRTGR_MT6397
@@ -113,12 +123,71 @@
 
 #define RTC_POFF_ALM_SET	_IOW('p', 0x15, struct rtc_time) /* Set alarm time  */
 
+#ifdef SUPPORT_EOSC_CALI
+
+#define EOSC_SOL_1	0x5
+#define EOSC_SOL_2	0x7
+
+
+enum rtc_eosc_cali_td {
+	EOSC_CALI_TD_01_SEC = 0x3,
+	EOSC_CALI_TD_02_SEC,
+	EOSC_CALI_TD_04_SEC,
+	EOSC_CALI_TD_08_SEC,
+	EOSC_CALI_TD_16_SEC,
+};
+
+enum cali_field_enum {
+	RTC_EOSC32_CK_PDN,
+	EOSC_CALI_TD,
+	RTC_K_EOSC_RSV,
+	CALI_FILED_MAX
+};
+
+enum eosc_cali_version {
+	EOSC_CALI_NONE,
+	EOSC_CALI_MT6357_SERIES,
+	EOSC_CALI_MT6358_SERIES,
+	EOSC_CALI_MT6359_SERIES,
+	EOSC_CALI_MT6359P_SERIES,
+};
+#endif
+
 enum mtk_rtc_spare_enum {
 	SPARE_AL_HOU,
 	SPARE_AL_MTH,
 	SPARE_SPAR0,
+#ifdef SUPPORT_PWR_OFF_ALARM
+	SPARE_KPOC,
+#endif
 	SPARE_RG_MAX,
+
 };
+
+#ifdef SUPPORT_PWR_OFF_ALARM
+
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
+enum boot_mode_t {
+	NORMAL_BOOT = 0,
+	META_BOOT = 1,
+	RECOVERY_BOOT = 2,
+	SW_REBOOT = 3,
+	FACTORY_BOOT = 4,
+	ADVMETA_BOOT = 5,
+	ATE_FACTORY_BOOT = 6,
+	ALARM_BOOT = 7,
+	KERNEL_POWER_OFF_CHARGING_BOOT = 8,
+	LOW_POWER_OFF_CHARGING_BOOT = 9,
+	DONGLE_BOOT = 10,
+	UNKNOWN_BOOT
+};
+#endif
 
 enum rtc_reg_set {
 	RTC_REG,
@@ -128,7 +197,12 @@ enum rtc_reg_set {
 
 struct mtk_rtc_data {
 	u32                     wrtgr;
+	u8			alarm_sta_clr_bit;
 	const struct reg_field *spare_reg_fields;
+#ifdef SUPPORT_EOSC_CALI
+	const struct reg_field	*cali_reg_fields;
+	u32			eosc_cali_version;
+#endif
 };
 
 struct mt6397_rtc {
@@ -140,6 +214,17 @@ struct mt6397_rtc {
 	int                     irq;
 	u32                     addr_base;
 	const struct mtk_rtc_data *data;
+#ifdef SUPPORT_EOSC_CALI
+	struct regmap_field	*cali[CALI_FILED_MAX];
+	bool			cali_is_supported;
+#endif
+#ifdef SUPPORT_PWR_OFF_ALARM
+	struct work_struct work;
+	struct completion comp;
+#if IS_ENABLED(CONFIG_PM)
+	struct notifier_block pm_nb;
+#endif
+#endif
 	struct regmap_field     *spare[SPARE_RG_MAX];
 };
 

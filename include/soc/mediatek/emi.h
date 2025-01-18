@@ -103,7 +103,23 @@ int mtk_emicen_addr2dram(unsigned long addr, struct emi_addr_map *map);
 void mtk_emidbg_dump(void);
 
 /* mtk emimpu api */
+#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+int emimpu_ap_region_init(void);
+int mtk_emimpu_init_region(
+	struct emimpu_region_t *rg_info, unsigned int rg_num);
+int mtk_emimpu_set_addr(struct emimpu_region_t *rg_info,
+	unsigned long long start, unsigned long long end);
+int mtk_emimpu_set_apc(struct emimpu_region_t *rg_info,
+	unsigned int d_num, unsigned int apc);
+int mtk_emimpu_lock_region(struct emimpu_region_t *rg_info, bool lock);
+int mtk_emimpu_set_protection(struct emimpu_region_t *rg_info);
+int mtk_emimpu_free_region(struct emimpu_region_t *rg_info);
+int mtk_emimpu_clear_protection(struct emimpu_region_t *rg_info);
+int mtk_emimpu_md_handling_register(void (*md_handling_func)
+	(unsigned int emi_id, struct reg_info_t *dump, unsigned int leng));
+#else
 int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
+#endif
 void mtk_clear_md_violation(void);
 int mtk_clear_smpu_log(unsigned int emi_id);
 

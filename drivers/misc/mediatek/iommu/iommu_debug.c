@@ -236,8 +236,10 @@ struct iova_map_list {
 
 static struct iova_map_list map_list = {.init_flag = ATOMIC_INIT(0)};
 
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 static void mtk_iommu_iova_trace(int event, dma_addr_t iova, size_t size,
 				 u64 tab_id, struct device *dev);
+#endif
 static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s,
 					  struct device *dev);
 static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev);
@@ -253,7 +255,7 @@ static void mtk_iommu_system_time(u64 *high, u32 *low)
 	*low = do_div(temp, 1000000);
 	*high = temp;
 }
-
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 static u64 to_system_time(u64 high, u32 low)
 {
 	return (high * 1000000 + low) * 1000;
@@ -305,7 +307,7 @@ static void mtk_iova_map_latency_check(u64 tab_id, u64 iova, size_t size,
 		}
 	}
 }
-
+#endif
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 {
 	u32 id = (iova >> 32);
@@ -335,11 +337,16 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	spin_lock_irqsave(&map_list.lock, flags);
 	list_add(&iova_buf->list_node, &map_list.head[id]);
 	spin_unlock_irqrestore(&map_list.lock, flags);
-
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iova_map_latency_check(tab_id, iova, size, time_high, time_low);
-
+#endif
 iova_trace:
-	mtk_iommu_iova_trace(IOMMU_MAP, iova, size, tab_id, NULL);
+
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
+#else
+	return;
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_iova_map);
 
@@ -380,12 +387,18 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 		pr_info("%s warnning, find iova:[0x%llx 0x%llx 0x%zx] in %d timeout:%llu\n",
 			__func__, tab_id, iova, size, i, (end_t - start_t));
 
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	if (!find_iova)
 		pr_info("%s warnning, iova:[0x%llx 0x%llx 0x%zx] not find in %d\n",
 			__func__, tab_id, iova, size, i);
+#endif
 
 iova_trace:
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
+#else
+	return;
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_iova_unmap);
 
@@ -513,7 +526,7 @@ static void __iommu_trace_dump(struct seq_file *s, u64 iova)
 
 		if (smmu_v3_enable) {
 			iommu_dump(s,
-				   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-12lx 0x%-10zx 0x%-12lx %10llu.%06u %s\n",
+				   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-12lx 0x%-10lx 0x%-12lx %10llu.%06u %s\n",
 				   event_mgr[event_id].name,
 				   smmu_tab_id_to_smmu_id(iommu_globals.record[i].data3),
 				   (iommu_globals.record[i].dev != NULL ?
@@ -527,7 +540,7 @@ static void __iommu_trace_dump(struct seq_file *s, u64 iova)
 				   (iommu_globals.record[i].dev != NULL ?
 				   dev_name(iommu_globals.record[i].dev) : ""));
 		} else {
-			iommu_dump(s, "%-8s %-6lu 0x%-12lx 0x%-10zx 0x%-12lx %10llu.%06u %s\n",
+			iommu_dump(s, "%-8s %-6lu 0x%-12lx 0x%-10lx 0x%-12lx %10llu.%06u %s\n",
 				   event_mgr[event_id].name,
 				   iommu_globals.record[i].data3,
 				   iommu_globals.record[i].data1,
@@ -1977,7 +1990,7 @@ static void mtk_iommu_trace_rec_write(int event,
 
 	if (event_mgr[event].dump_log) {
 		if (smmu_v3_enable)
-			pr_info("[trace] %5s |0x%-9lx |%9zx |0x%x |0x%-4x |%s\n",
+			pr_info("[trace] %5s |0x%-9lx |%9lx |0x%x |0x%-4x |%s\n",
 				event_mgr[event].name,
 				data1,
 				data2,
@@ -1985,7 +1998,7 @@ static void mtk_iommu_trace_rec_write(int event,
 				smmu_tab_id_to_asid(data3),
 				(dev != NULL ? dev_name(dev) : ""));
 		else
-			pr_info("[trace] %5s |0x%-9lx |%9zx |0x%lx |%s\n",
+			pr_info("[trace] %5s |0x%-9lx |%9lx |0x%lx |%s\n",
 				event_mgr[event].name,
 				data1, data2, data3,
 				(dev != NULL ? dev_name(dev) : ""));
@@ -2011,7 +2024,7 @@ static void mtk_iommu_trace_rec_write(int event,
 
 	spin_unlock_irqrestore(&iommu_globals.lock, flags);
 }
-
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 static void mtk_iommu_iova_trace(int event,
 	dma_addr_t iova, size_t size,
 	u64 tab_id, struct device *dev)
@@ -2025,6 +2038,7 @@ static void mtk_iommu_iova_trace(int event,
 
 	mtk_iommu_trace_rec_write(event, (unsigned long) iova, size, tab_id, dev);
 }
+#endif
 
 void mtk_iommu_tlb_sync_trace(u64 iova, size_t size, int iommu_ids)
 {
@@ -2456,7 +2470,9 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	list_add(&iova_buf->list_node, &iova_list.head);
 	spin_unlock(&iova_list.lock);
 
-	mtk_iommu_iova_trace(IOMMU_ALLOC, iova, size, tab_id, dev);
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
+#endif
 }
 
 static void mtk_iova_dbg_free(
@@ -2485,7 +2501,7 @@ static void mtk_iova_dbg_free(
 	}
 	end_t = sched_clock();
 	spin_unlock(&iova_list.lock);
-
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
 		pr_info("%s warnning, dev:%s, find iova:[0x%llx 0x%llx 0x%zx] in %d timeout:%llu\n",
 			__func__, (dev ? dev_name(dev) : "NULL"),
@@ -2495,7 +2511,17 @@ static void mtk_iova_dbg_free(
 		pr_info("%s warnning, iova:[0x%llx 0x%zx] not find in %d\n",
 			__func__, iova, size, i);
 
-	mtk_iommu_iova_trace(IOMMU_FREE, iova, size, tab_id, dev);
+	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
+#else
+	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
+		pr_info("%s warnning, dev:%s, find iova:0x%x in %d timeout:%llu\n",
+			__func__, (dev ? dev_name(dev) : "NULL"),
+			iova, i, (end_t - start_t));
+
+	if (dev == NULL)
+		pr_info("%s warnning, iova:0x%x is not find in %d\n",
+			__func__, iova, i);
+#endif
 }
 
 /* all code inside alloc_iova_hook can't be scheduled! */
@@ -2767,6 +2793,11 @@ static char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
 	}
 }
 
+static const struct mtk_m4u_plat_data mt6768_data = {
+	.port_list[MM_IOMMU] = iommu_port_mt6768,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(iommu_port_mt6768),
+};
+
 static const struct mtk_m4u_plat_data mt6855_data = {
 	.port_list[MM_IOMMU] = mm_port_mt6855,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6855),
@@ -2808,6 +2839,14 @@ static const struct mtk_m4u_plat_data mt6886_data = {
 	.mm_tf_is_gce_videoup = mt6886_tf_is_gce_videoup,
 	.mau_config	= mau_config_default,
 	.mau_config_nr = ARRAY_SIZE(mau_config_default),
+};
+
+static const struct mtk_m4u_plat_data mt6893_data = {
+	.port_list[MM_IOMMU] = mm_port_mt6893,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6893),
+	.port_list[APU_IOMMU] = apu_port_mt6893,
+	.port_nr[APU_IOMMU]   = ARRAY_SIZE(apu_port_mt6893),
+	.mm_tf_ccu_support = 1,
 };
 
 static const struct mtk_m4u_plat_data mt6895_data = {
@@ -2857,9 +2896,11 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
+	{ .compatible = "mediatek,mt6768-iommu-debug", .data = &mt6768_data},
 	{ .compatible = "mediatek,mt6855-iommu-debug", .data = &mt6855_data},
 	{ .compatible = "mediatek,mt6879-iommu-debug", .data = &mt6879_data},
 	{ .compatible = "mediatek,mt6886-iommu-debug", .data = &mt6886_data},
+	{ .compatible = "mediatek,mt6893-iommu-debug", .data = &mt6893_data},
 	{ .compatible = "mediatek,mt6895-iommu-debug", .data = &mt6895_data},
 	{ .compatible = "mediatek,mt6897-iommu-debug", .data = &mt6897_data},
 	{ .compatible = "mediatek,mt6983-iommu-debug", .data = &mt6983_data},
@@ -2876,5 +2917,13 @@ static struct platform_driver mtk_m4u_dbg_drv = {
 	}
 };
 
+#if IS_BUILTIN(CONFIG_MTK_IOMMU_MISC_DBG)
+static int __init mtk_m4u_dbg_init(void)
+{
+	return platform_driver_register(&mtk_m4u_dbg_drv);
+}
+fs_initcall(mtk_m4u_dbg_init);
+#else
 module_platform_driver(mtk_m4u_dbg_drv);
+#endif
 MODULE_LICENSE("GPL v2");

@@ -37,21 +37,20 @@ enum MODEM_EE_FLAG {
 };
 
 enum LOGGING_MODE {
-	MODE_UNKNOWN = -1,	  /* -1 */
-	MODE_IDLE,			  /* 0 */
-	MODE_USB,			   /* 1 */
-	MODE_SD,				/* 2 */
-	MODE_POLLING,		   /* 3 */
-	MODE_WAITSD,			/* 4 */
+	MODE_UNKNOWN = -1,	/* -1 */
+	MODE_IDLE,	/* 0 */
+	MODE_USB,	/* 1 */
+	MODE_SD,	/* 2 */
+	MODE_POLLING,	/* 3 */
+	MODE_WAITSD,	/* 4 */
 };
 
-#define MD_SETTING_ENABLE (1<<0)
-#define MD_SETTING_RELOAD (1<<1)
-#define MD_SETTING_FIRST_BOOT (1<<2)	/* this is the first time of boot up */
-#define MD_SETTING_DUMMY  (1<<7)
-
-#define MD_IMG_DUMP_SIZE (1<<8)
-#define DSP_IMG_DUMP_SIZE (1<<9)
+#define MD_SETTING_ENABLE	(1<<0)
+#define MD_SETTING_RELOAD	(1<<1)
+#define MD_SETTING_FIRST_BOOT	(1<<2)/* this is the first time of boot up */
+#define MD_SETTING_DUMMY	(1<<7)
+#define MD_IMG_DUMP_SIZE	(1<<8)
+#define DSP_IMG_DUMP_SIZE	(1<<9)
 
 struct ccci_force_assert_shm_fmt {
 	unsigned int  error_code;
@@ -81,21 +80,15 @@ struct ccci_modem_ops {
 		unsigned char qno, enum DIRECTION dir);
 	int (*send_runtime_data)(struct ccci_modem *md, unsigned int tx_ch,
 		unsigned int txqno, int skb_from_pool);
-	//int (*ee_handshake)(struct ccci_modem *md, int timeout);
+
 	int (*force_assert)(struct ccci_modem *md, enum MD_COMM_TYPE type);
 	int (*dump_info)(struct ccci_modem *md, enum MODEM_DUMP_FLAG flag,
 		void *buff, int length);
-	//int (*ee_callback)(struct ccci_modem *md, enum MODEM_EE_FLAG flag);
-	//int (*send_ccb_tx_notify)(struct ccci_modem *md, int core_id);
 	int (*reset_pccif)(struct ccci_modem *md);
 };
 
 struct md_sys1_info {
 		int channel_id;		/* CCIF channel */
-		//atomic_t ccif_irq_enabled;
-		//unsigned int ap_ccif_irq_id;
-		//unsigned long ap_ccif_irq_flags;
-
 		void __iomem *md_global_con0;
 
 #ifdef MD_PEER_WAKEUP
@@ -109,6 +102,7 @@ struct md_sys1_info {
 		void __iomem *md_topsm_status;
 		void __iomem *md_ost_status;
 		void __iomem *md_pll;
+		struct md_pll_reg *md_pll_base;
 };
 
 struct ccci_modem {
@@ -154,6 +148,8 @@ struct ccci_modem {
 };
 
 extern struct ccci_modem *modem_sys;
+extern struct ccci_plat_val md_cd_plat_val_ptr;
+
 
 /****************************************************************************/
 /* API Region called by sub-modem class, reuseable API */
@@ -179,13 +175,7 @@ static inline void *ccci_md_get_hw_info(void)
 /***************************************************************************/
 /* API Region called by ccci modem object */
 /***************************************************************************/
-
-extern bool spm_is_md1_sleep(void);
-
-//extern unsigned int trace_sample_time;
-
 extern u32 mt_irq_get_pending(unsigned int irq);
-
 extern int ccci_modem_init_common(struct platform_device *plat_dev,
 	struct ccci_dev_cfg *dev_cfg, struct md_hw_info *md_hw);
 
@@ -208,10 +198,6 @@ void ccci_md_dump_info(enum MODEM_DUMP_FLAG flag,
 int ccci_md_pre_stop(unsigned int stop_type);
 int ccci_md_stop(unsigned int stop_type);
 int ccci_md_soft_stop(unsigned int sim_mode);
-//int ccci_md_force_assert(enum MD_FORCE_ASSERT_TYPE type,
-//	char *param, int len);
-//void ccci_md_exception_handshake(int timeout);
-//int ccci_md_send_ccb_tx_notify(int core_id);
 int ccci_md_pre_start(void);
 int ccci_md_post_start(void);
 

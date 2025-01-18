@@ -234,7 +234,7 @@ void mmsram_get_info(struct mmsram_data *data)
 	data->paddr = mmsram->sram_paddr;
 	data->vaddr = mmsram->sram_vaddr;
 	data->size = mmsram->sram_size;
-	pr_notice("%s: pa:%#lx va:%#lx size:%#lx\n",
+	pr_notice("%s: pa:%#lx va:%#lx size:%#zx\n",
 		__func__, (unsigned long)data->paddr,
 		(unsigned long)data->vaddr, data->size);
 }
@@ -348,7 +348,7 @@ static int mmsram_probe(struct platform_device *pdev)
 		return PTR_ERR(mmsram->sram_vaddr);
 	}
 
-	dev_notice(&pdev->dev, "probe va=%p pa=%p size=%#lx\n",
+	dev_notice(&pdev->dev, "probe va=%p pa=%p size=%#zx\n",
 		mmsram->sram_vaddr, mmsram->sram_paddr,
 		mmsram->sram_size);
 

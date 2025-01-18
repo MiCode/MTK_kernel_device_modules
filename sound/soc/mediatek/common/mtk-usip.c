@@ -36,8 +36,10 @@
 
 #define NUM_MPU_REGION 3
 
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 static void usip_send_emi_info_to_dsp(void);
 static void usip_send_emi_info_to_dsp_ble(void);
+#endif
 
 int EMI_TABLE[3][3]
 	= {{0, 0, 0x30000}, {1, 0x30000, 0x8000}, {2, 0x38000, 0x28000} };
@@ -72,10 +74,12 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
 	long size_for_spe = 0;
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	unsigned int temp_confg = usip.adsp_phone_call_enh_config;
+#endif
 
-	pr_info("%s(), cmd 0x%x, arg %lu, memory_size = %ld addr_phy = 0x%llx\n",
-		 __func__, cmd, arg, usip.memory_size, usip.addr_phy);
+	pr_info("%s(), cmd 0x%x, arg %lu, memory_size = %ld addr_phy = 0x%lx\n",
+		 __func__, cmd, arg, (long)usip.memory_size, (unsigned long)usip.addr_phy);
 
 	size_for_spe = EMI_TABLE[SP_EMI_AP_USIP_PARAMETER][SP_EMI_SIZE];
 	switch (cmd) {
@@ -112,8 +116,10 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		pr_info("%s(): in SET_USIP_ADSP_PHONE_CALL_ENH_CONFIG: %d",
 			__func__,
 			usip.adsp_phone_call_enh_config);
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		if ((usip.adsp_phone_call_enh_config & 0x1) > (temp_confg & 0x1))
 			usip_send_emi_info_to_dsp();
+#endif
 		break;
 
 	case SCP_REGISTER_FEATURE_FOR_VOICE_CALL:
@@ -230,15 +236,15 @@ static void usip_get_addr(void)
 		usip.memory_ready = true;
 
 		get_md_resv_mem_info(&r_rw_base, &r_rw_size, &srw_base, &srw_size);
-		pr_info("%s(), 0x%llx %d 0x%llx %d 0x%llx", __func__,
-			r_rw_base, r_rw_size, srw_base, srw_size, phys_addr);
+		pr_info("%s(), 0x%lx %d 0x%lx %d 0x%lx", __func__,
+			(unsigned long)r_rw_base, r_rw_size, (unsigned long)srw_base, srw_size, (unsigned long)phys_addr);
 
 		usip.memory_size = size_o;
 		usip.addr_phy = phys_addr;
 	}
 #endif
 }
-
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 static void usip_send_emi_info_to_dsp_ble(void)
 {
 	int send_result = 0;
@@ -419,6 +425,7 @@ static void usip_send_emi_info_to_dsp(void)
 			pr_debug("%s(), scp_ipi send sub succeed\n", __func__);
 	}
 }
+#endif /* end of CONFIG_MTK_AUDIODSP_SUPPORT */
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 static int audio_call_event_receive(struct notifier_block *this,
@@ -473,8 +480,10 @@ static int usip_open(struct inode *inode, struct file *file)
 
 	if (!usip.memory_ready) {
 		usip_get_addr();
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		usip_send_emi_info_to_dsp();
 		usip_send_emi_info_to_dsp_ble();
+#endif
 	}
 
 	return 0;
@@ -523,8 +532,10 @@ static int speech_usip_dev_probe(struct platform_device *pdev)
 		pr_debug("%s adsp_ble_phone_call_enable is %d\n",
 				__func__, usip.adsp_ble_phone_call_config);
 
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	usip_send_emi_info_to_dsp();
 	usip_send_emi_info_to_dsp_ble();
+#endif
 	return 0;
 }
 

@@ -11,18 +11,22 @@
 # GNU General Public License for more details.
 #
 
-ifeq ($(CONFIG_MTK_CAMERA_ISP_PLATFORM),"mt6885")
-  obj-y += isp_6s/
-endif
-
-ifeq ($(CONFIG_MTK_CAMERA_ISP_PLATFORM),"mt6873")
-  obj-y += isp_6s/
-  subdir-ccflags-y += -DCAMERA_ISP_MT6873
-  subdir-ccflags-y += -DDISABLE_CAMSV_TOP0=0
-endif
-
-ifeq ($(CONFIG_MTK_CAMERA_ISP_PLATFORM),"mt6853")
-  obj-y += isp_6s/
-  subdir-ccflags-y += -DCAMERA_ISP_MT6853
-  subdir-ccflags-y += -DDISABLE_CAMSV_TOP0=1
+ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT), m)
+	ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_T), m)
+		obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_T) += isp_4/
+	else ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_C), m)
+		obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_C) += isp_4/
+	else ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_M), m)
+		obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_M) += isp_3/
+	else ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_Z), m)
+		obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_Z) += isp_3/
+	else
+		obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT) += isp_6s/
+	endif
+else ifeq ($(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT), y)
+# No isp6s driver is built-in.
+	obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_T) += isp_4/
+	obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP4_C) += isp_4/
+	obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_M) += isp_3/
+	obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT_ISP3_Z) += isp_3/
 endif

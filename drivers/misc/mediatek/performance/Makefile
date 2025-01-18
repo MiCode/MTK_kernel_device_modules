@@ -8,7 +8,7 @@ MTK_PM_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance
 
 subdir-ccflags-y += \
 	-I$(MTK_PM_BUILD_FOLDER)/perf_ioctl/ \
-	-I$(MTK_PM_BUILD_FOLDER)/include/	\
+	-I$(MTK_PM_BUILD_FOLDER)/include/\
 	-I$(MTK_PM_BUILD_FOLDER)/powerhal_cpu_ctrl/
 
 # mtk_perf_ioctl

@@ -15,6 +15,9 @@
 #include <linux/jiffies.h>
 #include <mtk_heap.h>
 
+#include "mtk_heap.h"
+#include "iommu_pseudo.h"
+
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_dec.h"
 #include "mtk_vcodec_intr.h"
@@ -50,6 +53,56 @@ static unsigned int default_cap_fmt_idx;
 #define NUM_SUPPORTED_FRAMESIZE ARRAY_SIZE(mtk_vdec_framesizes)
 #define NUM_FORMATS ARRAY_SIZE(mtk_vdec_formats)
 static struct vb2_mem_ops vdec_dma_contig_memops;
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+static struct vb2_mem_ops vdec_sec_dma_contig_memops;
+
+static int mtk_vdec_sec_dc_map_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to pin a non attached buffer\n");
+		return -EINVAL;
+	}
+
+	if (WARN_ON(buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already pinned\n");
+		return 0;
+	}
+
+	buf->dma_addr = dmabuf_to_secure_handle(buf->db_attach->dmabuf);
+	buf->dma_sgt = NULL;
+	buf->vaddr = NULL;
+	mtk_v4l2_debug(8, "buf=%p, secure_handle=%pad", buf, &buf->dma_addr);
+	return 0;
+}
+
+static void mtk_vdec_sec_dc_unmap_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to unpin a not attached buffer\n");
+		return;
+	}
+
+	if (WARN_ON(!buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already unpinned\n");
+		return;
+	}
+
+	if (buf->vaddr) {
+		mtk_v4l2_err("dmabuf buffer vaddr not null\n");
+		dma_buf_vunmap(buf->db_attach->dmabuf, buf->vaddr);
+		buf->vaddr = NULL;
+	}
+
+	mtk_v4l2_debug(8, "buf=%p, secure_handle=%pad", buf, &buf->dma_addr);
+	buf->dma_addr = 0;
+	buf->dma_sgt = NULL;
+}
+#endif
 
 static bool mtk_vdec_is_vcu(void)
 {
@@ -3528,10 +3581,16 @@ static int vb2ops_vdec_queue_setup(struct vb2_queue *vq,
 			sizes[i] = q_data->sizeimage[i];
 	}
 
-	mtk_v4l2_debug(1,
-				   "[%d]\t type = %d, get %d plane(s), %d buffer(s) of size 0x%x 0x%x ",
-				   ctx->id, vq->type, *nplanes, *nbuffers,
-				   sizes[0], sizes[1]);
+	mtk_v4l2_debug(1, "[%d]\t type = %d, get %d plane(s), %d buffer(s) of size 0x%x 0x%x ",
+		ctx->id, vq->type, *nplanes, *nbuffers, sizes[0], sizes[1]);
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(1, "[%d] hook vdec_sec_dma_contig_memops for queue type %d",
+			ctx->id, vq->type);
+	}
+#endif
 
 	return 0;
 }
@@ -5193,10 +5252,26 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->ops             = &mtk_vdec_vb2_ops;
 	vdec_dma_contig_memops = vb2_dma_contig_memops;
 	vdec_dma_contig_memops.attach_dmabuf = mtk_vdec_dc_attach_dmabuf;
-	src_vq->mem_ops         = &vdec_dma_contig_memops;
+	src_vq->mem_ops = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "src_vq use vdec_dma_contig_memops");
-	src_vq->bidirectional = 1;
 
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	// svp_mode will be raised in mtk_vdec_s_ctrl which will be later than mtk_vcodec_dec_queue_init
+	// init vdec_sec_dma_contig_memops without checking svp_mode value to avoid could not init sec
+	// dma_contig_memops which will cause input/output buffer secure handle will be 0,
+	// really mem_ops init for sec will finish at vb2ops_vdec_queue_setup
+	if (is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		vdec_sec_dma_contig_memops = vdec_dma_contig_memops;
+		vdec_sec_dma_contig_memops.map_dmabuf   = mtk_vdec_sec_dc_map_dmabuf;
+		vdec_sec_dma_contig_memops.unmap_dmabuf = mtk_vdec_sec_dc_unmap_dmabuf;
+	}
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		src_vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "src_vq use vdec_sec_dma_contig_memops");
+	}
+#endif
+
+	src_vq->bidirectional = 1;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
@@ -5230,8 +5305,14 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops             = &mtk_vdec_vb2_ops;
 	dst_vq->mem_ops         = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "dst_vq use vdec_dma_contig_memops");
-	dst_vq->bidirectional = 1;
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
+		dst_vq->mem_ops = &vdec_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "dst_vq use vdec_sec_dma_contig_memops");
+	}
+#endif
 
+	dst_vq->bidirectional = 1;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;
 	dst_vq->dev             = ctx->dev->smmu_dev;

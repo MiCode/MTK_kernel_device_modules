@@ -555,7 +555,7 @@ u32 tmem_core_get_max_pool_size(enum TRUSTED_MEM_TYPE mem_type)
 	return mem_size;
 }
 
-bool tmem_core_get_region_info(enum TRUSTED_MEM_TYPE mem_type, u64 *pa,
+bool tmem_core_get_region_info(enum TRUSTED_MEM_TYPE mem_type, phys_addr_t *pa,
 			       u32 *size)
 {
 	struct trusted_mem_device *mem_device =
@@ -567,7 +567,7 @@ bool tmem_core_get_region_info(enum TRUSTED_MEM_TYPE mem_type, u64 *pa,
 	*pa = mem_device->peer_mgr->peer_mgr_data.mem_pa_start;
 	*size = mem_device->peer_mgr->peer_mgr_data.mem_size;
 
-	pr_debug("[%d] region pa: 0x%llx, sz: 0x%x\n", mem_type, *pa, *size);
+	pr_debug("[%d] region pa: 0x%llx, sz: 0x%x\n", mem_type, (u64)*pa, *size);
 	return true;
 }
 

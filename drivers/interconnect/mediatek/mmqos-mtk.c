@@ -38,7 +38,7 @@
 #include "mmqos_events.h"
 
 #define SHIFT_ROUND(a, b)	((((a) - 1) >> (b)) + 1)
-#define icc_to_MBps(x)		((x) / 1000)
+#define icc_to_MBps(x)		div_u64((x), 1000)
 #define MASK_8(a)		((a) & 0xff)
 #define MASK_16(a)		((a) & 0xffff)
 #define COMM_PORT_COMM_ID(a)	((a >> 8) & 0xff)
@@ -163,7 +163,7 @@ static void mmqos_update_comm_bw(struct device *dev,
 	if (!freq || !dev)
 		return;
 	if (mix_bw)
-		comm_bw = (mix_bw << 8) / freq;
+		comm_bw = div_u64((mix_bw << 8), freq);
 	if (max_bwl)
 		comm_bw = 0xfff;
 	if (comm_bw)
@@ -322,9 +322,9 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 				avg_bw += comm_port_node->latest_avg_bw;
 			}
 			if (comm_port_node->hrt_type < HRT_TYPE_NUM) {
-				normalize_peak_bw = MULTIPLY_RATIO(comm_port_node->latest_peak_bw)
-							/ mtk_mmqos_get_hrt_ratio(
-							comm_port_node->hrt_type);
+				normalize_peak_bw = MULTIPLY_RATIO(div_u64(comm_port_node->latest_peak_bw,
+							mtk_mmqos_get_hrt_ratio(
+							comm_port_node->hrt_type)));
 				peak_bw += normalize_peak_bw;
 			}
 		}
@@ -338,7 +338,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 
 	if (log_level & 1 << log_bw)
 		MMQOS_DBG("comm%d avg %d peak %d",
-			comm_id, icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+			comm_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
 	if (MEM_BASE != NULL) {
 		writel(total_bw_to_vcp, MEM_APMCU_TOTAL_BW);
 		if (log_level & 1 << log_bw)
@@ -698,7 +698,7 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 				    &comm_node->comm_port_list, list) {
 			if (comm_port->hrt_type < HRT_TYPE_NUM) {
 				mutex_lock(&comm_port->bw_lock);
-				hrt_bw[comm_port->hrt_type] +=
+				hrt_bw[comm_port->hrt_type] += 
 					icc_to_MBps(comm_port->latest_peak_bw);
 				mutex_unlock(&comm_port->bw_lock);
 			}
@@ -719,8 +719,8 @@ static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
 	if (log_level & 1 << log_bw)
 		pr_notice("%s comm%d port%d larb%d %d %d %d %d\n", __func__,
 			comm_id, port_id, larb_id,
-			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw),
-			icc_to_MBps(l_avg), icc_to_MBps(l_peak));
+			(int)(icc_to_MBps(avg_bw)), (int)(icc_to_MBps(peak_bw)),
+			(int)(icc_to_MBps(l_avg)), (int)(icc_to_MBps(l_peak)));
 	idx = comm_port_bw_rec->idx[comm_id][port_id];
 	comm_port_bw_rec->time[comm_id][port_id][idx] = sched_clock();
 	comm_port_bw_rec->larb_id[comm_id][port_id][idx] = larb_id;
@@ -792,7 +792,7 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 	v2_chn_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
 	if (comm_port_node->hrt_type == HRT_DISP
 		&& gmmqos->dual_pipe_enable) {
-		half_hrt_r = (src->v2_peak_r_bw / 2);
+		half_hrt_r = div_u64(src->v2_peak_r_bw, 2);
 		v2_chn_hrt_r_bw[comm_id][chnn_id] -= half_hrt_r;
 		if (mmqos_state & DPC_ENABLE)
 			disp_hrt_r_bw[comm_id][chnn_id] -= half_hrt_r;
@@ -923,8 +923,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				if (comm_port_node->hrt_type == HRT_DISP
 					&& gmmqos->dual_pipe_enable) {
 					chn_hrt_r_bw[comm_id][chnn_id] -= larb_node->old_peak_bw;
-					chn_hrt_r_bw[comm_id][chnn_id] += (src->peak_bw / 2);
-					larb_node->old_peak_bw = (src->peak_bw / 2);
+					chn_hrt_r_bw[comm_id][chnn_id] += div_u64(src->peak_bw, 2);
+					larb_node->old_peak_bw = div_u64(src->peak_bw, 2);
 				} else {
 					chn_hrt_r_bw[comm_id][chnn_id] -= larb_node->old_peak_bw;
 					chn_hrt_r_bw[comm_id][chnn_id] += src->peak_bw;
@@ -1023,8 +1023,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				if (log_level & 1 << log_bw)
 					pr_notice("comm=%d port=%d larb=%d avg_bw:%d peak_bw:%d\n",
 						comm_id, MASK_8(dst->id), LARB_ID(src->id),
-						icc_to_MBps(src->avg_bw),
-						icc_to_MBps(src->peak_bw));
+						(int)icc_to_MBps(src->avg_bw),
+						(int)icc_to_MBps(src->peak_bw));
 				mmqos_update_comm_ostdl(comm_port_node->larb_dev,
 					port_id, mmqos->max_ratio, src);
 			}
@@ -1120,8 +1120,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				dev_notice(larb_node->larb_dev,
 					"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
 					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-					icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
-					icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+					(int)icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+					(int)icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
 					value);
 			value = mmqos->max_ratio;
 		}
@@ -1135,8 +1135,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			dev_notice(larb_node->larb_dev,
 				"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
-				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				(int)(icc_to_MBps(larb_port_node->base->icc_node->avg_bw)),
+				(int)(icc_to_MBps(larb_port_node->base->icc_node->peak_bw)),
 				value);
 
 		if (mmqos_met_enabled()) {
@@ -1298,10 +1298,10 @@ static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u
 		(u64)ts, rem_nsec / 1000,
 		comm_id, port_id,
 		comm_port_bw_rec->larb_id[comm_id][port_id][i],
-		icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i]),
-		icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i]),
-		icc_to_MBps(comm_port_bw_rec->l_avg_bw[comm_id][port_id][i]),
-		icc_to_MBps(comm_port_bw_rec->l_peak_bw[comm_id][port_id][i]));
+		(int)(icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->l_avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->l_peak_bw[comm_id][port_id][i])));
 }
 
 static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
@@ -1314,10 +1314,10 @@ static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
 	seq_printf(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		comm_id, chnn_id,
-		icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i]),
-		icc_to_MBps(chn_bw_rec->srt_w_bw[comm_id][chnn_id][i]),
-		icc_to_MBps(chn_bw_rec->hrt_r_bw[comm_id][chnn_id][i]),
-		icc_to_MBps(chn_bw_rec->hrt_w_bw[comm_id][chnn_id][i]));
+		(int)(icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i])),
+		(int)(icc_to_MBps(chn_bw_rec->srt_w_bw[comm_id][chnn_id][i])),
+		(int)(icc_to_MBps(chn_bw_rec->hrt_r_bw[comm_id][chnn_id][i])),
+		(int)(icc_to_MBps(chn_bw_rec->hrt_w_bw[comm_id][chnn_id][i])));
 }
 
 static void hrt_bw_dump(struct seq_file *file, u32 i)

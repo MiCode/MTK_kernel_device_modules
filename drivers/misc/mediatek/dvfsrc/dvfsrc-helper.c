@@ -588,7 +588,7 @@ static int mtk_dvfsrc_debug_setting(struct mtk_dvfsrc *dvfsrc)
 	if (IS_ERR(dvfsrc->vcore_power)) {
 		dev_info(dvfsrc->dev, "get vcore failed = %ld\n",
 			PTR_ERR(dvfsrc->vcore_power));
-		return PTR_ERR(dvfsrc->vcore_power);
+		dvfsrc->vcore_power = NULL;
 	}
 
 	dvfsrc->dvfsrc_vcore_power =
@@ -596,28 +596,28 @@ static int mtk_dvfsrc_debug_setting(struct mtk_dvfsrc *dvfsrc)
 	if (IS_ERR(dvfsrc->dvfsrc_vcore_power)) {
 		dev_info(dvfsrc->dev, "get dvfsrc_vcore failed = %ld\n",
 			PTR_ERR(dvfsrc->dvfsrc_vcore_power));
-		return PTR_ERR(dvfsrc->dvfsrc_vcore_power);
+		dvfsrc->dvfsrc_vcore_power = NULL;
 	}
 
 	dvfsrc->bw_path = devm_of_icc_get(dvfsrc->dev, "icc-bw");
 	if (IS_ERR(dvfsrc->bw_path)) {
 		dev_info(dvfsrc->dev, "get icc-bw failed = %ld\n",
 			PTR_ERR(dvfsrc->bw_path));
-		return PTR_ERR(dvfsrc->bw_path);
+		dvfsrc->bw_path = NULL;
 	}
 
 	dvfsrc->hrt_path = devm_of_icc_get(dvfsrc->dev, "icc-hrt-bw");
 	if (IS_ERR(dvfsrc->hrt_path)) {
 		dev_info(dvfsrc->dev, "get icc-hrt_bw failed = %ld\n",
 			PTR_ERR(dvfsrc->hrt_path));
-		return PTR_ERR(dvfsrc->hrt_path);
+		dvfsrc->hrt_path = NULL;
 	}
 
 	dvfsrc->perf_path = devm_of_icc_get(dvfsrc->dev, "icc-perf-bw");
 	if (IS_ERR(dvfsrc->perf_path)) {
 		dev_info(dvfsrc->dev, "get icc-perf_bw failed = %ld\n",
 			PTR_ERR(dvfsrc->perf_path));
-		return PTR_ERR(dvfsrc->perf_path);
+		dvfsrc->perf_path = NULL;
 	}
 
 	dvfsrc->force_opp = dvfsrc_force_opp;
@@ -1233,6 +1233,38 @@ static const struct dvfsrc_debug_data mt6989_data = {
 	.ceiling_support = true,
 };
 
+static struct dvfsrc_opp dvfsrc_opp_mt6768[] = {
+	{0, 0, 0, 0},
+	{1, 0, 0, 0},
+	{1, 0, 0, 0},
+	{2, 0, 0, 0},
+	{2, 1, 0, 0},
+	{2, 0, 0, 0},
+	{2, 1, 0, 0},
+	{2, 1, 0, 0},
+	{3, 1, 0, 0},
+	{3, 2, 0, 0},
+	{3, 1, 0, 0},
+	{3, 2, 0, 0},
+	{3, 1, 0, 0},
+	{3, 2, 0, 0},
+	{3, 2, 0, 0},
+	{3, 2, 0, 0},
+};
+
+static struct dvfsrc_opp_desc dvfsrc_opp_mt6768_desc[] = {
+	MT_DVFSRC_OPP(4, 3, dvfsrc_opp_mt6768),
+};
+
+static const struct dvfsrc_debug_data mt6768_data = {
+	.version = 0x6768,
+	.config = &mt6768_dvfsrc_config,
+	.opps_desc = dvfsrc_opp_mt6768_desc,
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
+	.qos = &mt6768_qos_config,
+#endif
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6768_desc),
+};
 
 static const struct of_device_id dvfsrc_helper_of_match[] = {
 	{
@@ -1280,6 +1312,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6989-dvfsrc",
 		.data = &mt6989_data,
+	}, {
+		.compatible = "mediatek,mt6768-dvfsrc",
+		.data = &mt6768_data,
 	}, {
 		/* sentinel */
 	},
@@ -1333,6 +1368,10 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
+	if (dvfsrc->dvd->qos)
+		dvfsrc->dvd->qos->qos_dvfsrc_init(dvfsrc);
+#endif
 	ret = mtk_dvfsrc_debug_setting(dvfsrc);
 	if (ret) {
 		dev_info(dev, "dvfsrc debug setting fail\n");

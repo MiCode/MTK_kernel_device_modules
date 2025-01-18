@@ -15,9 +15,9 @@ static s64 get_fix_tap_offset(u32 in, u32 out, u32 step, s32 bitnum)
 	offset = ((s64)(in - 1) * (1 << bitnum) - (s64)(out - 1) * step);
 
 	if (offset >= 0)
-		offset = (offset + 1) / 2;
+		offset = div_s64((offset + 1), 2);
 	else
-		offset = -((-offset + 1) / 2);
+		offset = -(div_s64((-offset + 1), 2));
 
 	return offset;
 }
@@ -28,7 +28,7 @@ static s32 get_fix_tap_step(u32 in, u32 out, s32 bitnum)
 
 	mml_msg("%s in_size = %d, bit_num = %d, out_size = %d",
 		__func__, in, bitnum, out);
-	step = (s32)(((s64)(in) * (1 << bitnum) + ((out) / 2)) / (out));
+	step = (s32)(div_s64(((s64)(in) * (1 << bitnum) + (div_s64((s64)(out), 2))), (s32)(out)));
 
 	return step;
 }
@@ -51,11 +51,11 @@ void birsz_fw(struct birsz_fw_in *in, struct birsz_fw_out *out)
 		in->in_height, in->out_height, out->vert_step, BIRSZ_FW_UNIT);
 
 	if (hori_ofst >= 0) {
-		out->hori_int_ofst = hori_ofst / (1 << BIRSZ_FW_UNIT);
+		out->hori_int_ofst = (s32)(div_s64(hori_ofst, (1 << BIRSZ_FW_UNIT)));
 		out->hori_sub_ofst = hori_ofst % (1 << BIRSZ_FW_UNIT);
 	} else {
 		out->hori_int_ofst =
-			-(((-hori_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)) / (1 << BIRSZ_FW_UNIT));
+			-((s32)(div_s64(((-hori_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)), (1 << BIRSZ_FW_UNIT))));
 		out->hori_sub_ofst =
 			(1 << BIRSZ_FW_UNIT) * (-out->hori_int_ofst) + hori_ofst;
 	}
@@ -63,11 +63,11 @@ void birsz_fw(struct birsz_fw_in *in, struct birsz_fw_out *out)
 		out->hori_int_ofst, out->hori_sub_ofst);
 
 	if (vert_ofst >= 0) {
-		out->vert_int_ofst = vert_ofst / (1 << BIRSZ_FW_UNIT);
+		out->vert_int_ofst = (s32)(div_s64(vert_ofst, (1 << BIRSZ_FW_UNIT)));
 		out->vert_sub_ofst = vert_ofst % (1 << BIRSZ_FW_UNIT);
 	} else {
 		out->vert_int_ofst =
-			-(((-vert_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)) / (1 << BIRSZ_FW_UNIT));
+			-((s32)(div_s64(((-vert_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)), (1 << BIRSZ_FW_UNIT))));
 		out->vert_sub_ofst =
 			(1 << BIRSZ_FW_UNIT) * (-out->vert_int_ofst) + vert_ofst;
 	}

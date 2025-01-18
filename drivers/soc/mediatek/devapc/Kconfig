@@ -6,6 +6,14 @@ config DEVICE_MODULES_MTK_DEVAPC
 	  device, it cannot access the device and will get a violation
 	  interrupt. Device APC prevents malicious access to internal devices.
 
+config DEVAPC_ARCH_COMMON
+	tristate "Mediatek Device APC driver architecture common"
+	help
+	  Say yes here to enable support Mediatek
+	  Device APC driver which is based on HW
+	  architecture version 1.
+	  This architecture supports common Infra-peri.
+
 config DEVAPC_ARCH_MULTI
 	tristate "Mediatek Device APC driver architecture multi"
 	help
@@ -21,6 +29,16 @@ config MTK_SERROR_HOOK
 	  slave error dump which can see Device APC driver
 	  violation log in case of slave error happened.
 	  This is for debug purpose.
+
+config DEVAPC_MT6768
+	tristate "Mediatek MT6768 Device APC driver"
+	select DEVICE_MODULES_MTK_DEVAPC
+	select DEVAPC_ARCH_COMMON
+	help
+	  Say yes here to enable support Mediatek MT6768
+	  Device APC driver.
+	  This driver is combined with DEVAPC_ARCH_COMMON for
+	  common handle flow.
 
 config DEVAPC_MT6853
 	tristate "Mediatek MT6853 Device APC driver"

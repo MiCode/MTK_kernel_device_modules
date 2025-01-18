@@ -8,6 +8,7 @@
  */
 
 #include <asm/page.h>
+#include <asm/div64.h>
 #include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/highmem.h>
@@ -381,6 +382,7 @@ static void dmabuf_log_dump(struct monitor_log_t *p_log, struct seq_file *file)
 	u64 data2 = p_log->data2;
 	u32 log_type, heap_tag;
 	u64 tm;
+	u64 mod;
 
 	log_type = MONITOR_LOG_TYPE_GET(log_info);
 	heap_tag = MONITOR_LOG_HEAP_GET(log_info);
@@ -390,18 +392,20 @@ static void dmabuf_log_dump(struct monitor_log_t *p_log, struct seq_file *file)
 	case DMABUF_LOG_ALLOC_TIME:
 		dmabuf_dump(file, "[DMA-MONITOR][alloctime];heap;%s(%d);ind;%d;tm;%llu;alloc;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index, tm);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "%llu;ord;%llu;free;%llu;suc;%llu;pool;%llu;tick;%llu,%06llu;\n",
 			    data2, data1 >> 32, (data1 & 0xFFFFFFFF) >> 2,
 			    data1 & 0x1, data1 & 0x2,
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_ALLOCATE:
 		dmabuf_dump(file, "[DMA-MONITOR][allocat];heap;%s(%d);ind;%d;tm;%llu;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index, tm);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "size;%llu;nent;%llu;inode;%llu;tick;%llu,%06llu;\n",
 			    (data1 & 0xFFFFFFFF) << PAGE_SHIFT, data1 >> 32, data2,
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_REFILL:
@@ -409,50 +413,55 @@ static void dmabuf_log_dump(struct monitor_log_t *p_log, struct seq_file *file)
 			    get_mtk_heap_name(heap_tag),
 			    heap_tag, index, tm,
 			    MONITOR_FILL_RET_GET(data1) * -1);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "%llu;avl-fre-fil-pool;%llu;%llu;%llu;%llu;tick;%llu,%06llu;\n",
 			    MONITOR_FILL_ORD_GET(data1),
 			    MONITOR_FILL_MEMAVAIL_GET(data1),
 			    MONITOR_FILL_MEMFREE_GET(data1),
 			    P2M(data2 >> 32), P2M((data2 & 0xFFFFFFFF)),
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_PREFILL:
 		dmabuf_dump(file, "[DMA-MONITOR][prefill];heap;%s(%d);ind;%d;tm;%llu;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index, tm);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "ret;%d;size;%llu;avail;%llu;free;%llu;tick;%llu,%06llu;\n",
 			    (int)(data1 >> 32), data1 & 0xFFFFFFFF,
 			    data2 >> 32, data2 & 0xFFFFFFFF,
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_RECYCLE:
 		dmabuf_dump(file, "[DMA-MONITOR][remove];heap;%s(%d);ind;%d;tm;%llu;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index, tm);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "order;%llu;remove;%llu;page_new;%llu;tick;%llu,%06llu;\n",
 			    data1, P2M(data2 >> 32), P2M(data2 & 0xFFFFFFFF),
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_POOL_SIZE:
 		dmabuf_dump(file, "[DMA-MONITOR][poolsize];heap;%s(%d);ind;%d;free-total-8-4-0;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "%llu;%llu;%llu;%llu;%llu;tick;%llu,%06llu;\n",
 			    (data1 >> 32)*4,
 			    (data1 & 0xFFFFFFFF)*4 + (data2 >> 32)*4 +
 			    (data2 & 0xFFFFFFFF)*4,
 			    (data1 & 0xFFFFFFFF)*4,
 			    (data2 >> 32)*4, (data2 & 0xFFFFFFFF)*4,
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 
 	case DMABUF_LOG_SHRINK:
 		dmabuf_dump(file, "[DMA-MONITOR][shrink];heap;%s(%d);ind;%d;tm;%llu;order;%llu;",
 			    get_mtk_heap_name(heap_tag), heap_tag, index, tm, data1 >> 32);
+		mod = do_div(time_tick,1000000);
 		dmabuf_dump(file, "size;%llu;free;%llu;scan;%llu;kind;%llu;tick;%llu,%06llu;\n",
 			    (data1 & 0xFFFFFFFF)*4, (data2 >> 32)*4,
 			    ((data2 & 0xFFFFFFFF)>>2)*4, (data2 & 0x3),
-			    time_tick / 1000000, time_tick % 1000000);
+			    time_tick, mod);
 		break;
 	}
 }
@@ -561,6 +570,8 @@ static void dmabuf_log_show(struct seq_file *s)
 {
 	unsigned int write_pointer, log_count, log_type, i;
 	u64 log_start = 0, log_end = 0;
+	u64 log_start_temp = 0, log_end_temp = 0;
+	u64 mod = 0;
 	struct monitor_log_t *p_log;
 	struct monitor_log_stats_t stats_alloc;
 	struct monitor_log_stats_t stats_refill;
@@ -622,7 +633,9 @@ static void dmabuf_log_show(struct seq_file *s)
 	}
 
 	dmabuf_dump(s, "-------- info --------\n");
-	dmabuf_dump(s, "start time:%llu.%llu\n", log_start / 1000000, log_start % 1000000);
+	log_start_temp = log_start;
+	mod = do_div(log_start_temp,1000000);
+	dmabuf_dump(s, "start time:%llu.%llu\n", log_start_temp, mod);
 	dmabuf_dump(s, "log count:%u\n", log_count);
 	dmabuf_dump(s, "pool interval(ms):%u\n", monitor_globals.log_pool_interval);
 
@@ -644,9 +657,11 @@ static void dmabuf_log_show(struct seq_file *s)
 			    high_wmark_pages(zone), P2M(high_wmark_pages(zone)));
 	}
 
-	if (log_end > log_start)
-		dmabuf_dump(s, "log time(ms):%llu\n", (log_end - log_start)/1000000);
-	else
+	if (log_end > log_start){
+		log_end_temp = log_end - log_start;
+		do_div(log_end_temp,1000000);
+		dmabuf_dump(s, "log time(ms):%llu\n", log_end_temp);
+	}else
 		dmabuf_dump(s, "log time:NULL\n");
 
 	show_memory_info(s);
@@ -664,13 +679,21 @@ static void dmabuf_log_show(struct seq_file *s)
 
 		dmabuf_dump(s, "-------- stats alloc --------\n");
 		if (total_size > 0) {
+			log_start_temp = stats_alloc.alloc.tm;
+			do_div(log_start_temp,stats_alloc.count);
+			log_end_temp = stats_alloc.alloc.tm;
+			do_div(log_end_temp,total_size);
 			dmabuf_dump(s, "count:%u;time(us/C):%llu;time(us/M):%llu;",
 				    stats_alloc.count,
-				    stats_alloc.alloc.tm/stats_alloc.count,
-				    stats_alloc.alloc.tm/total_size);
+				    log_start_temp,
+				    log_end_temp);
+			log_start_temp = stats_alloc.alloc.nent;
+			do_div(log_start_temp,total_size);
+			log_end_temp = total_size;
+			do_div(log_end_temp,stats_alloc.count);
 			dmabuf_dump(s, "nent(p/M):%llu;alloc(M):%llu;alloc(M/C):%llu;\n",
-				    stats_alloc.alloc.nent/total_size, total_size,
-				    total_size/stats_alloc.count);
+				    log_start_temp, total_size,
+				    log_end_temp);
 		} else {
 			dmabuf_dump(s, "total size low 1M\n");
 		}
@@ -769,6 +792,7 @@ void dmabuf_log_pool_size(struct dma_heap *heap)
 {
 	u64 log_info = 0, data1, data2;
 	u64 order0_page = 0, order4_page = 0, order8_page = 0, tm1, mem_free;
+	u64 log_time_temp = 0;
 	struct mtk_heap_priv_info *heap_priv;
 	struct mtk_dmabuf_page_pool **pools;
 	int heap_tag;
@@ -782,8 +806,10 @@ void dmabuf_log_pool_size(struct dma_heap *heap)
 		return;
 
 	tm1 = sched_clock();
+	log_time_temp = tm1 - pools[0]->log_time;
+	do_div(log_time_temp,1000000);
 	if (monitor_globals.log_pool_interval > 1 &&
-		(tm1 - pools[0]->log_time) / 1000000 < monitor_globals.log_pool_interval)
+		log_time_temp < monitor_globals.log_pool_interval)
 		return;
 
 	mem_free = global_zone_page_state(NR_FREE_PAGES);

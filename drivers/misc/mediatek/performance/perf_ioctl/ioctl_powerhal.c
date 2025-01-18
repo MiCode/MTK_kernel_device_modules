@@ -35,8 +35,7 @@ EXPORT_SYMBOL_GPL(boost_get_cmd_fp);
 int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
 EXPORT_SYMBOL_GPL(powerhal_dsu_sport_mode_fp);
 
-
-struct proc_dir_entry *perfmgr_root;
+static struct proc_dir_entry *perfmgr_root;
 
 static unsigned long perfctl_copy_from_user(void *pvTo,
 		const void __user *pvFrom, unsigned long ulBytes)
@@ -111,7 +110,6 @@ static long adpf_device_ioctl(struct file *filp,
 					t_msgKM->threadIds_size,
 					t_msgKM->durationNanos);
 			}
-
 			kfree(threadIds);
 		} else if (t_msgKM->cmd == ADPF_UPDATE_TARGET_WORK_DURATION) {
 			if (powerhal_adpf_update_work_duration_fp)
@@ -134,7 +132,6 @@ static long adpf_device_ioctl(struct file *filp,
 			if (powerhal_adpf_report_actual_work_duration_fp)
 				powerhal_adpf_report_actual_work_duration_fp(t_msgKM->sid,
 					workDuration, t_msgKM->work_duration_size);
-
 			kfree(workDuration);
 		} else if (t_msgKM->cmd == ADPF_PAUSE) {
 			if (powerhal_adpf_pause_fp)
@@ -252,7 +249,9 @@ ret_ioctl:
 }
 
 static const struct proc_ops adpf_Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = adpf_device_ioctl,
+#endif
 	.proc_ioctl = adpf_device_ioctl,
 	.proc_open = device_open,
 	.proc_read = seq_read,
@@ -261,7 +260,9 @@ static const struct proc_ops adpf_Fops = {
 };
 
 static const struct proc_ops Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = device_ioctl,
+#endif
 	.proc_ioctl = device_ioctl,
 	.proc_open = device_open,
 	.proc_read = seq_read,

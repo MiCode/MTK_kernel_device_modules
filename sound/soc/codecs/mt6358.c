@@ -570,6 +570,7 @@ static int mt6358_put_volsw(struct snd_kcontrol *kcontrol,
 		regmap_read(priv->regmap, MT6358_AUDENC_ANA_CON0, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1] =
 			(reg >> RG_AUDPREAMPLGAIN_SFT) & RG_AUDPREAMPLGAIN_MASK;
+		break;
 	case MT6358_AUDENC_ANA_CON1:
 		regmap_read(priv->regmap, MT6358_AUDENC_ANA_CON1, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP2] =
@@ -863,6 +864,34 @@ static SOC_VALUE_ENUM_SINGLE_DECL(aif_out_mux_map_enum,
 
 static const struct snd_kcontrol_new aif_out_mux_control =
 	SOC_DAPM_ENUM("AIF Out Select", aif_out_mux_map_enum);
+
+static const char * const mic_type_mux_map[] = {
+	"Idle",
+	"ACC",
+	"DMIC",
+	"DCC",
+	"DCC_ECM_DIFF",
+	"DCC_ECM_SINGLE",
+};
+
+static int mic_type_mux_map_value[] = {
+	MIC_TYPE_MUX_IDLE,
+	MIC_TYPE_MUX_ACC,
+	MIC_TYPE_MUX_DMIC,
+	MIC_TYPE_MUX_DCC,
+	MIC_TYPE_MUX_DCC_ECM_DIFF,
+	MIC_TYPE_MUX_DCC_ECM_SINGLE,
+};
+
+static SOC_VALUE_ENUM_SINGLE_DECL(mic_type_mux_map_enum,
+				  SND_SOC_NOPM,
+				  0,
+				  MIC_TYPE_MUX_MASK,
+				  mic_type_mux_map,
+				  mic_type_mux_map_value);
+
+static const struct snd_kcontrol_new mic_type_mux_control =
+	SOC_DAPM_ENUM("Mic Type Select", mic_type_mux_map_enum);
 
 static const char * const adc_left_mux_map[] = {
 	"Idle", "AIN0", "Left Preamplifier", "Idle_1"
@@ -1960,7 +1989,7 @@ static int mtk_hp_dual_spk_disable(struct mt6358_priv *priv)
 
 static int mtk_hp_impedance_enable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s() ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 
 	/* release HP CMFB gate rstb */
 	regmap_update_bits(priv->regmap, MT6358_AUDDEC_ANA_CON4,
@@ -2024,7 +2053,7 @@ static int mtk_hp_impedance_enable(struct mt6358_priv *priv)
 
 static int mtk_hp_impedance_disable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s(), ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 
 	/* disable HPDET circuit */
 	regmap_update_bits(priv->regmap, MT6358_AUDDEC_ANA_CON8,
@@ -2736,15 +2765,15 @@ static int mt6358_amic_enable(struct mt6358_priv *priv)
 	if (IS_DCC_BASE(mic_type)) {
 		/* Audio L/R preamplifier DCC precharge */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-				   0xf8ff, 0x0004);
+				   0xf8fd, 0x0004);
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
-				   0xf8ff, 0x0004);
+				   0xf8fd, 0x0004);
 	} else {
 		/* reset reg */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-				   0xf8ff, 0x0000);
+				   0xf8fd, 0x0000);
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
-				   0xf8ff, 0x0000);
+				   0xf8fd, 0x0000);
 	}
 
 	if (mux_pga_l != PGA_MUX_NONE) {
@@ -2758,14 +2787,6 @@ static int mt6358_amic_enable(struct mt6358_priv *priv)
 				   RG_AUDPREAMPLON_MASK_SFT,
 				   0x1 << RG_AUDPREAMPLON_SFT);
 
-		if (IS_DCC_BASE(mic_type)) {
-			/* L preamplifier DCCEN */
-			regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-					   RG_AUDPREAMPLDCCEN_MASK_SFT,
-					   0x1 << RG_AUDPREAMPLDCCEN_SFT);
-		}
-
-		usleep_range(1000, 1050);
 		/* Audio L ADC input selection: Left Preamplifier */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
 				   RG_AUDADCLINPUTSEL_MASK_SFT,
@@ -2790,14 +2811,6 @@ static int mt6358_amic_enable(struct mt6358_priv *priv)
 				   RG_AUDPREAMPRON_MASK_SFT,
 				   0x1 << RG_AUDPREAMPRON_SFT);
 
-		if (IS_DCC_BASE(mic_type)) {
-			/* R preamplifier DCCEN */
-			regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
-					   RG_AUDPREAMPRDCCEN_MASK_SFT,
-					   0x1 << RG_AUDPREAMPRDCCEN_SFT);
-		}
-
-		usleep_range(1000, 1050);
 		/* R ADC input sel : R PGA. Enable audio R ADC */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
 				   RG_AUDADCRINPUTSEL_MASK_SFT,
@@ -2884,12 +2897,9 @@ static void mt6358_amic_disable(struct mt6358_priv *priv)
 	/* L ADC input sel : off, disable L ADC */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
 			   0xf000, 0x0000);
-	/* L preamplifier DCCEN */
-	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-			   0x1 << 1, 0x0);
 	/* L preamplifier input sel : off, L PGA 0 dB gain */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-			   0xfffb, 0x0000);
+			   0x0ff9, 0x0000);
 
 	/* disable L preamplifier DCC precharge */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
@@ -2898,12 +2908,9 @@ static void mt6358_amic_disable(struct mt6358_priv *priv)
 	/* R ADC input sel : off, disable R ADC */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
 			   0xf000, 0x0000);
-	/* R preamplifier DCCEN */
-	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
-			   0x1 << 1, 0x0);
 	/* R preamplifier input sel : off, R PGA 0 dB gain */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
-			   0x0ffb, 0x0000);
+			   0x0ff9, 0x0000);
 
 	/* disable R preamplifier DCC precharge */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
@@ -2931,7 +2938,7 @@ static void mt6358_amic_disable(struct mt6358_priv *priv)
 
 static int mt6358_dmic_enable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s(), ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 
 	/* mic bias */
 	/* Enable MICBIAS0, MISBIAS0 = 1P9V */
@@ -2964,7 +2971,7 @@ static int mt6358_dmic_enable(struct mt6358_priv *priv)
 
 static void mt6358_dmic_disable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s(), ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 
 	/* UL turn off */
 	regmap_update_bits(priv->regmap, MT6358_AFE_UL_SRC_CON0_L,
@@ -3062,6 +3069,14 @@ static int mt6358_vow_amic_enable(struct mt6358_priv *priv)
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON9,
 				   0xff, 0x25);
 	}
+	/* Enable audio uplink LPW mode */
+	/* Enable Audio ADC 1st Stage LPW */
+	/* Enable Audio ADC 2nd & 3rd LPW */
+	/* Enable Audio ADC flash Audio ADC flash */
+	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON2,
+			   0xC31F, 0xC31F);
+	dev_info(priv->dev, "%s(), mt_vow_aud_lpw_enable 0xC31F\n",
+		 __func__);
 	/* Audio L preamplifier gain adjust: 24db */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
 			   RG_AUDPREAMPLGAIN_MASK_SFT,
@@ -3070,11 +3085,11 @@ static int mt6358_vow_amic_enable(struct mt6358_priv *priv)
 	if (IS_DCC_BASE(mic_type)) {
 		/* Audio L preamplifier DCC precharge */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-				   0xf8ff, 0x0004);
+				   0xf8fd, 0x0004);
 	} else {
 		/* reset reg */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-				   0xf8ff, 0x0000);
+				   0xf8fd, 0x0000);
 
 	}
 	if (mux_pga_l != PGA_MUX_NONE) {
@@ -3088,14 +3103,6 @@ static int mt6358_vow_amic_enable(struct mt6358_priv *priv)
 				   RG_AUDPREAMPLON_MASK_SFT,
 				   0x1 << RG_AUDPREAMPLON_SFT);
 
-		if (IS_DCC_BASE(mic_type)) {
-			/* L preamplifier DCCEN */
-			regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-					   RG_AUDPREAMPLDCCEN_MASK_SFT,
-					   0x1 << RG_AUDPREAMPLDCCEN_SFT);
-		}
-
-		usleep_range(1000, 1050);
 		/* Audio L ADC input selection: Left Preamplifier */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
 				   RG_AUDADCLINPUTSEL_MASK_SFT,
@@ -3145,14 +3152,6 @@ static int mt6358_vow_amic_enable(struct mt6358_priv *priv)
 				   0x1 << 12, 0x0);
 	}
 	usleep_range(1000, 1200);
-	/* Enable audio uplink LPW mode */
-	/* Enable Audio ADC 1st Stage LPW */
-	/* Enable Audio ADC 2nd & 3rd LPW */
-	/* Enable Audio ADC flash Audio ADC flash */
-	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON2,
-			   0x0039, 0x0039);
-	dev_info(priv->dev, "%s(), mt_vow_aud_lpw_enable 0x39\n",
-		 __func__);
 	return 0;
 }
 
@@ -3168,18 +3167,16 @@ static int mt6358_vow_amic_disable(struct mt6358_priv *priv)
 	/* Disable Audio ADC 2nd & 3rd LPW */
 	/* Disable Audio ADC flash Audio ADC flash */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON2,
-			   0x0039, 0x0000);
+			   0xC31F, 0x0000);
 	dev_info(priv->dev, "%s(), mt_vow_aud_lpw_disable 0x0\n",
 		 __func__);
 	/* L ADC input sel : off, disable L ADC */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
 			   0xf000, 0x0000);
-	/* L preamplifier DCCEN */
-	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-			   0x1 << 1, 0x0);
+
 	/* L preamplifier input sel : off, L PGA 0 dB gain */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
-			   0xfffb, 0x0000);
+			   0x0ff9, 0x0000);
 
 	/* disable L preamplifier DCC precharge */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
@@ -3206,7 +3203,7 @@ static int mt6358_vow_amic_disable(struct mt6358_priv *priv)
 
 static int mt6358_vow_dmic_enable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s(), ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 	/* mic bias */
 	/* Enable MICBIAS0, MISBIAS0 = 1P9V */
 	regmap_write(priv->regmap, MT6358_AUDENC_ANA_CON9, 0x0025);
@@ -3219,7 +3216,7 @@ static int mt6358_vow_dmic_enable(struct mt6358_priv *priv)
 
 static int mt6358_vow_dmic_disable(struct mt6358_priv *priv)
 {
-	dev_info(priv->dev, "%s(), ++\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 	/* DMIC disable */
 	regmap_write(priv->regmap, MT6358_AUDENC_ANA_CON8, 0x0004);
 
@@ -3293,6 +3290,52 @@ static int mt_mic_bias_event(struct snd_soc_dapm_widget *w,
 			else
 				mt6358_amic_disable(priv);
 		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int mt_mic_type_event(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *kcontrol,
+			     int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6358_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	unsigned int mux = dapm_kcontrol_get_value(w->kcontrols[0]);
+
+	dev_dbg(priv->dev, "%s(), event 0x%x, mux %u\n",
+		__func__, event, mux);
+
+	switch (event) {
+	case SND_SOC_DAPM_WILL_PMU:
+		priv->mux_select[MUX_MIC_TYPE] = mux;
+		break;
+	case SND_SOC_DAPM_PRE_PMU:
+		switch (mux) {
+		case MIC_TYPE_MUX_DMIC:
+			mt6358_dmic_enable(priv);
+			break;
+		default:
+			mt6358_amic_enable(priv);
+			break;
+		}
+		mt6358_restore_pga(priv);
+
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		switch (priv->mux_select[MUX_MIC_TYPE]) {
+		case MIC_TYPE_MUX_DMIC:
+			mt6358_dmic_disable(priv);
+			break;
+		default:
+			mt6358_amic_disable(priv);
+			break;
+		}
+
+		priv->mux_select[MUX_MIC_TYPE] = mux;
 		break;
 	default:
 		break;
@@ -3571,6 +3614,12 @@ static const struct snd_soc_dapm_widget mt6358_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("AIF Out Mux", SND_SOC_NOPM, 0, 0,
 			 &aif_out_mux_control),
 
+	SND_SOC_DAPM_MUX_E("Mic Type Mux", SND_SOC_NOPM, 0, 0,
+			   &mic_type_mux_control,
+			   mt_mic_type_event,
+			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD |
+			   SND_SOC_DAPM_WILL_PMU),
+
 	SND_SOC_DAPM_MUX_E("ADC L Mux", SND_SOC_NOPM, 0, 0,
 			   &adc_left_mux_control,
 			   mt_adc_l_event,
@@ -3637,9 +3686,21 @@ static const struct snd_soc_dapm_route mt6358_dapm_routes[] = {
 
 	{"AIF1TX", NULL, "AFE_ON"},
 
+	{"AIF Out Mux", NULL, "Mic Type Mux"},
 	{"AIF Out Mux", NULL, "AIN0_DMIC"},
 	{"AIF Out Mux", NULL, "ADC L"},
 	{"AIF Out Mux", NULL, "ADC R"},
+
+	{"Mic Type Mux", "ACC", "ADC L"},
+	{"Mic Type Mux", "ACC", "ADC R"},
+	{"Mic Type Mux", "DCC", "ADC L"},
+	{"Mic Type Mux", "DCC", "ADC R"},
+	{"Mic Type Mux", "DCC_ECM_DIFF", "ADC L"},
+	{"Mic Type Mux", "DCC_ECM_DIFF", "ADC R"},
+	{"Mic Type Mux", "DCC_ECM_SINGLE", "ADC L"},
+	{"Mic Type Mux", "DCC_ECM_SINGLE", "ADC R"},
+	{"Mic Type Mux", "DMIC", "AIN0"},
+	{"Mic Type Mux", "DMIC", "AIN2"},
 
 	{"ADC L", NULL, "ADC L Mux"},
 	{"ADC L", NULL, "ADC Supply"},
@@ -3723,6 +3784,7 @@ static const struct snd_soc_dapm_route mt6358_dapm_routes[] = {
 	{"Receiver", NULL, "RCV Mux"},
 
 	/* VOW */
+	{"VOW TX", NULL, "Mic Type Mux"},
 	{"VOW TX", NULL, "CLK_BUF"},
 	{"VOW TX", NULL, "AUDGLB"},
 	{"VOW TX", NULL, "AUD_CK"},
@@ -5786,6 +5848,20 @@ static void get_hp_trim_offset(struct mt6358_priv *priv, bool force)
 		 dc_trim->hp_offset[CH_L], dc_trim->hp_offset[CH_R]);
 }
 
+static void mic_type_default_init(struct mt6358_priv *priv)
+{
+	if (IS_DCC_BASE(priv->mux_select[MUX_MIC_TYPE])) {
+		/* L preamplifier DCCEN */
+		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON0,
+					RG_AUDPREAMPLDCCEN_MASK_SFT,
+					0x1 << RG_AUDPREAMPLDCCEN_SFT);
+		/* R preamplifier DCCEN */
+		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON1,
+					RG_AUDPREAMPRDCCEN_MASK_SFT,
+					0x1 << RG_AUDPREAMPRDCCEN_SFT);
+	}
+}
+
 static int dc_trim_thread(void *arg)
 {
 	struct mt6358_priv *priv = arg;
@@ -5797,7 +5873,7 @@ static int dc_trim_thread(void *arg)
 #if IS_ENABLED(CONFIG_SND_SOC_MT6366_ACCDET) || IS_ENABLED(CONFIG_SND_SOC_MT6358_ACCDET)
 	mt6358_accdet_late_init(0);
 #endif
-	do_exit(0);
+	//do_exit(0);
 	return 0;
 }
 
@@ -6545,6 +6621,8 @@ static void mt6358_codec_init_reg(struct mt6358_priv *priv)
 	capture_gpio_reset(priv);
 
 	mt6358_set_gpio_smt(priv);
+	/* mic type setting */
+	mic_type_default_init(priv);
 
 	/* disable clk buf */
 	regmap_update_bits(priv->regmap, MT6358_DCXO_CW14,
@@ -6600,7 +6678,7 @@ static int mt6358_codec_probe(struct snd_soc_component *cmpnt)
 	struct snd_card *card = sndcard->snd_card;
 	int ret = 0;
 
-	dev_info(priv->dev, "%s(), start probe function\n", __func__);
+	dev_info(priv->dev, "%s()\n", __func__);
 
 	codec_dev_attr_reg.private = priv;
 	ret = snd_card_add_dev_attr(card, &codec_bin_attr_group);
@@ -6666,13 +6744,13 @@ static void debug_write_reg(struct file *file, void *arg)
 }
 
 static void debug_re_trim_offset(struct file *file,
-				 void *arg __maybe_unused)
+				 void *arg __attribute__((unused)))
 {
 	struct mt6358_priv *priv = file->private_data;
 
-	dev_info(priv->dev, "before go into function %s\n", __func__);
+	dev_info(priv->dev, "start %s\n", __func__);
 	get_hp_trim_offset(priv, true);
-	dev_info(priv->dev, "end of the function %s\n", __func__);
+	dev_info(priv->dev, "end %s\n", __func__);
 }
 
 static void debug_set_debug_flag(struct file *file, void *arg)

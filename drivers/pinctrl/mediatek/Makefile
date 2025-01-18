@@ -37,6 +37,15 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6373.c),)
 obj-$(CONFIG_PINCTRL_MT6373)	+= pinctrl-mt6373.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6853.c),)
+obj-$(CONFIG_PINCTRL_MT6853)	+= pinctrl-mt6853.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6873.c),)
+obj-$(CONFIG_PINCTRL_MT6873)	+= pinctrl-mt6873.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6885.c),)
+obj-$(CONFIG_PINCTRL_MT6885)	+= pinctrl-mt6885.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6886.c),)
 obj-$(CONFIG_PINCTRL_MT6886)	+= pinctrl-mt6886.o
 endif
@@ -48,6 +57,9 @@ obj-$(CONFIG_PINCTRL_MT6983)	+= pinctrl-mt6983.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6985.c),)
 obj-$(CONFIG_PINCTRL_MT6985)	+= pinctrl-mt6985.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6768.c),)
+obj-$(CONFIG_PINCTRL_MT6768)	+= pinctrl-mt6768.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/pinctrl-mt6989.c),)
 obj-$(CONFIG_PINCTRL_MT6989)	+= pinctrl-mt6989.o

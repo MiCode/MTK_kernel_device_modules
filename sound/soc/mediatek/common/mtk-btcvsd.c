@@ -275,14 +275,14 @@ static int mtk_btcvsd_mblock_init(struct tfa_mblock_t *mblock_info)
 	mblock_info->total_size = rmem->size;
 	mblock_info->write_idx = 0;
 
-	pr_info(" %s, mblock key: %s, mblock_physical_base: 0x%llx, size: 0x%llx\n",
+	pr_info(" %s, mblock key: %s, mblock_physical_base: 0x%lx, size: 0x%lx\n",
 		__func__, AUDIO_BTCVSD_MBLOCK_MEMORY_KEY,
-		mblock_info->base_paddr, mblock_info->total_size);
+		(unsigned long)mblock_info->base_paddr, (unsigned long)mblock_info->total_size);
 
 	if ((mblock_info->base_paddr == 0) ||
 		(mblock_info->total_size == 0)) {
-		pr_notice("%s audio mblock physical addr or size is zero:0x%llx 0x%llx\n",
-			 __func__, mblock_info->base_paddr, mblock_info->total_size);
+		pr_notice("%s audio mblock physical addr or size is zero:0x%lx 0x%lx\n",
+			 __func__, (unsigned long)mblock_info->base_paddr, (unsigned long)mblock_info->total_size);
 		return -EFAULT;
 	}
 	/* remap reserved memory as cacheale */
@@ -292,8 +292,8 @@ static int mtk_btcvsd_mblock_init(struct tfa_mblock_t *mblock_info)
 			 __func__, PTR_ERR(mblock_info->base_vaddr));
 		return -EFAULT;
 	}
-	pr_info(" %s(-) mblock_virtual_base:0x%lx, size:0x%llx\n",
-		__func__, (unsigned long)mblock_info->base_vaddr, mblock_info->total_size);
+	pr_info(" %s(-) mblock_virtual_base:0x%lx, size:0x%lx\n",
+		__func__, (unsigned long)mblock_info->base_vaddr, (unsigned long)mblock_info->total_size);
 
 	return 0;
 }

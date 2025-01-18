@@ -10,7 +10,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv
 obj-$(CONFIG_INTERCONNECT_MTK_EMI) += mtk-emi.o
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON) += mmqos-common.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs
-mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o mmqos-vcp.o mmqos-test.o
+mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o mmqos-test.o
+ifneq ($(filter y m,$(CONFIG_MTK_MMQOS_VCP)),)
+mmqos-common-objs += mmqos-vcp.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6873.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6873) += mmqos-mt6873.o
 endif
@@ -19,6 +22,9 @@ obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6853) += mmqos-mt6853.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6886.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6886) += mmqos-mt6886.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6893.c),)
+obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6893) += mmqos-mt6893.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6897.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6897) += mmqos-mt6897.o
@@ -31,4 +37,7 @@ obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6985) += mmqos-mt6985.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6989.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6989) += mmqos-mt6989.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6768.c),)
+obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6768) += mmqos-mt6768.o
 endif

@@ -60,6 +60,10 @@ void __exit fbt_cpu_exit(void);
 int fpsgo_ctrl2fbt_switch_fbt(int enable);
 int fbt_switch_ceiling(int value);
 
+#if !IS_ENABLED(CONFIG_ARM64)
+void fbt_update_pwr_tbl(void);
+#endif
+
 void fbt_set_down_throttle_locked(int nsec);
 long fbt_get_loading(struct render_info *thr,
 	unsigned long long start_ts,

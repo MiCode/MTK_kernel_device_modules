@@ -8,7 +8,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/idr.h>
-
+#include <linux/list.h>
 #include <tee_client_api.h>
 #include "capi_proxy.h"
 
@@ -17,7 +17,15 @@
 
 #define HOSTNAME "bta_loader"
 
-static struct TEEC_Context capi_proxy_ctx;
+struct teei_proxy_context {
+	struct TEEC_Context capi_ctx;
+	struct list_head link;
+	int owner_pid;
+};
+
+static struct list_head g_teei_proxy_link;
+static struct mutex proxy_link_mutex;
+static struct mutex proxy_array_mutex;
 
 #define MAX_CAPI_SESSIONS 10
 #define MAX_CAPI_SHMS 12
@@ -28,27 +36,155 @@ static struct TEEC_SharedMemory capi_shm[MAX_CAPI_SHMS];
 struct ida capi_session_ida;
 struct ida capi_shm_ida;
 
+static int __link_proxy_context(struct teei_proxy_context *ctx)
+{
+	mutex_lock(&proxy_link_mutex);
+	list_add_tail(&(ctx->link), &g_teei_proxy_link);
+	mutex_unlock(&proxy_link_mutex);
+
+	return 0;
+}
+
+static int __unlink_proxy_context(struct teei_proxy_context *ctx)
+{
+	mutex_lock(&proxy_link_mutex);
+	list_del(&(ctx->link));
+	mutex_unlock(&proxy_link_mutex);
+
+	return 0;
+}
+
+static struct teei_proxy_context *__get_proxy_context(void)
+{
+	struct teei_proxy_context *ctx = NULL;
+	int pid = 0;
+	int ctx_found = 0;
+
+	pid = current->pid;
+
+	mutex_lock(&proxy_link_mutex);
+
+	list_for_each_entry(ctx, &g_teei_proxy_link, link) {
+		if (ctx->owner_pid == pid) {
+			ctx_found = 1;
+			break;
+		}
+	}
+
+	mutex_unlock(&proxy_link_mutex);
+
+	if (ctx_found == 1)
+		return ctx;
+
+	return NULL;
+
+}
+
+static struct TEEC_Context *teei_create_proxy_context(void)
+{
+	struct teei_proxy_context *proxy_cont = NULL;
+	int pid = 0;
+	int retVal = 0;
+
+	proxy_cont = kmalloc(sizeof(struct teei_proxy_context), GFP_KERNEL);
+	if (proxy_cont == NULL) {
+		IMSG_ERROR("Failed to kmalloc struct teei_proxy_context!\n");
+		return NULL;
+	}
+
+	memset(proxy_cont, 0, sizeof(struct teei_proxy_context));
+
+	pid = current->pid;
+
+	proxy_cont->owner_pid = pid;
+	INIT_LIST_HEAD(&(proxy_cont->link));
+
+	retVal = __link_proxy_context(proxy_cont);
+	if (retVal != 0) {
+		IMSG_ERROR("Failed to link proxy context, %d!\n", retVal);
+		goto free_proxy_context;
+	}
+
+	return &(proxy_cont->capi_ctx);
+
+free_proxy_context:
+	kfree(proxy_cont);
+
+	return NULL;
+}
+
+static struct TEEC_Context *teei_find_proxy_context(void)
+{
+	struct teei_proxy_context *proxy_cont = NULL;
+
+	proxy_cont = __get_proxy_context();
+	if (proxy_cont == NULL) {
+		IMSG_ERROR("Failed to get proxy context of current thread!\n");
+		return NULL;
+	}
+
+	return &(proxy_cont->capi_ctx);
+}
+
+static int teei_release_proxy_context(void)
+{
+	struct teei_proxy_context *proxy_cont = NULL;
+	int retVal = 0;
+
+	proxy_cont = __get_proxy_context();
+	if (proxy_cont == NULL) {
+		IMSG_ERROR("Failed to get proxy context of current thread!\n");
+		return -EINVAL;
+	}
+
+	retVal = __unlink_proxy_context(proxy_cont);
+	if (retVal != 0) {
+		IMSG_ERROR("Failed to unlink proxy context, %d!\n", retVal);
+		return retVal;
+	}
+
+	kfree(proxy_cont);
+
+	return 0;
+}
+
 static int alloc_capi_session(void)
 {
-	return ida_simple_get(&capi_session_ida, 0,
+	int retVal = 0;
+
+	mutex_lock(&proxy_array_mutex);
+	retVal = ida_simple_get(&capi_session_ida, 0,
 			MAX_CAPI_SESSIONS, GFP_KERNEL);
+	mutex_unlock(&proxy_array_mutex);
+
+	return retVal;
 }
 
 static void free_capi_session(int id)
 {
+	mutex_lock(&proxy_array_mutex);
 	ida_simple_remove(&capi_session_ida, id);
 	memset(&capi_session[id], 0, sizeof(struct TEEC_Session));
+	mutex_unlock(&proxy_array_mutex);
 }
 
 static int alloc_capi_shm(void)
 {
-	return ida_simple_get(&capi_shm_ida, 0, MAX_CAPI_SHMS, GFP_KERNEL);
+	int retVal = 0;
+
+	mutex_lock(&proxy_array_mutex);
+	retVal = ida_simple_get(&capi_shm_ida, 0, MAX_CAPI_SHMS, GFP_KERNEL);
+	mutex_unlock(&proxy_array_mutex);
+
+	return retVal;
 }
 
 static void free_capi_shm(int id)
 {
+	mutex_lock(&proxy_array_mutex);
 	ida_simple_remove(&capi_shm_ida, id);
 	memset(&capi_shm[id], 0, sizeof(struct TEEC_SharedMemory));
+	mutex_unlock(&proxy_array_mutex);
 }
 
 static int capi_params_to_op(struct capi_proxy_param *params,
@@ -213,36 +349,63 @@ static void capi_op_to_params(struct capi_proxy_param *params,
 
 static int do_capi_init_context(struct tee_ioctl_capi_proxy_arg *arg)
 {
-	arg->ret = TEEC_InitializeContext(HOSTNAME, &capi_proxy_ctx);
+	struct TEEC_Context *ctx = NULL;
 
-	if (arg->ret)
+	IMSG_PRINTK("TEEI: init capi_proxy_ctx START by thread (%d) \n", current->pid);
+
+	ctx = teei_create_proxy_context();
+	if (ctx == NULL) {
+		IMSG_ERROR("Failed to create proxy ctx!\n");
+		return -ENOMEM;
+	}
+
+	arg->ret = TEEC_InitializeContext(HOSTNAME, ctx);
+	if (arg->ret) {
+		teei_release_proxy_context();
 		return -1;
+	}
 
-	ida_init(&capi_session_ida);
-	ida_init(&capi_shm_ida);
+	IMSG_PRINTK("TEEI: init capi_proxy_ctx END by thread (%d) \n", current->pid);
 
 	return 0;
 }
 
 static int do_capi_final_context(struct tee_ioctl_capi_proxy_arg *arg)
 {
+	struct TEEC_Context *ctx = NULL;
 	(void)arg;
 
-	TEEC_FinalizeContext(&capi_proxy_ctx);
+	IMSG_PRINTK("TEEI: final capi_proxy_ctx START by thread (%d) \n", current->pid);
 
-	ida_destroy(&capi_session_ida);
-	ida_destroy(&capi_shm_ida);
+	ctx = teei_find_proxy_context();
+	if (ctx == NULL) {
+		IMSG_ERROR("Failed to find TEEC_context!\n");
+		return -EINVAL;
+	}
+
+	TEEC_FinalizeContext(ctx);
+
+	teei_release_proxy_context();
+
+	IMSG_PRINTK("TEEI: final capi_proxy_ctx END by thread (%d) \n", current->pid);
 
 	return 0;
 }
 
 static int do_capi_open_session(struct tee_ioctl_capi_proxy_arg *arg)
 {
+	struct TEEC_Context *ctx = NULL;
 	struct TEEC_Session *session;
 	struct TEEC_Operation op;
 	struct TEEC_UUID *uuid = (struct TEEC_UUID *)arg->uuid;
 	int ret = 0;
 	int sid;
+
+	ctx = teei_find_proxy_context();
+	if (ctx == NULL) {
+		IMSG_ERROR("Failed to find TEEC_context!\n");
+		return -EINVAL;
+	}
 
 	sid = alloc_capi_session();
 	if (sid < 0) {
@@ -254,7 +417,7 @@ static int do_capi_open_session(struct tee_ioctl_capi_proxy_arg *arg)
 
 	capi_params_to_op(arg->params, &op);
 
-	arg->ret = TEEC_OpenSession(&capi_proxy_ctx, session, uuid,
+	arg->ret = TEEC_OpenSession(ctx, session, uuid,
 			TEEC_LOGIN_PUBLIC, NULL, &op, &arg->ret_orig);
 
 	capi_op_to_params(arg->params, &op);
@@ -303,9 +466,16 @@ static int do_capi_close_session(struct tee_ioctl_capi_proxy_arg *arg)
 
 static int do_capi_register_shm(struct tee_ioctl_capi_proxy_arg *arg)
 {
+	struct TEEC_Context *ctx = NULL;
 	struct TEEC_SharedMemory *shm;
 	int ret = 0;
 	int sid;
+
+	ctx = teei_find_proxy_context();
+	if (ctx == NULL) {
+		IMSG_ERROR("Failed to find TEEC_context!\n");
+		return -EINVAL;
+	}
 
 	sid = alloc_capi_shm();
 	if (sid < 0) {
@@ -323,7 +493,7 @@ static int do_capi_register_shm(struct tee_ioctl_capi_proxy_arg *arg)
 		goto err;
 	}
 
-	arg->ret = TEEC_RegisterSharedMemory(&capi_proxy_ctx, shm);
+	arg->ret = TEEC_RegisterSharedMemory(ctx, shm);
 	if (arg->ret) {
 		ret = -EFAULT;
 		goto err;
@@ -339,9 +509,16 @@ err:
 
 static int do_capi_allocate_shm(struct tee_ioctl_capi_proxy_arg *arg)
 {
+	struct TEEC_Context *ctx = NULL;
 	struct TEEC_SharedMemory *shm;
 	int ret = 0;
 	int sid;
+
+	ctx = teei_find_proxy_context();
+	if (ctx == NULL) {
+		IMSG_ERROR("Failed to find TEEC_context!\n");
+		return -EINVAL;
+	}
 
 	sid = alloc_capi_shm();
 	if (sid < 0) {
@@ -354,7 +531,7 @@ static int do_capi_allocate_shm(struct tee_ioctl_capi_proxy_arg *arg)
 	shm->flags = arg->params[0].attr;
 	shm->size = arg->params[0].memref.size;
 
-	arg->ret = TEEC_AllocateSharedMemory(&capi_proxy_ctx, shm);
+	arg->ret = TEEC_AllocateSharedMemory(ctx, shm);
 	if (arg->ret) {
 		ret = -EFAULT;
 		goto err;
@@ -425,5 +602,15 @@ int tee_ioctl_capi_proxy(struct tee_context *ctx,
 	}
 
 	return ret;
+}
+
+void teei_init_proxy_link(void)
+{
+	mutex_init(&proxy_link_mutex);
+	mutex_init(&proxy_array_mutex);
+	INIT_LIST_HEAD(&g_teei_proxy_link);
+
+	ida_init(&capi_session_ida);
+	ida_init(&capi_shm_ida);
 }
 

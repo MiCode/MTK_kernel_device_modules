@@ -47,6 +47,7 @@ static inline int soter_register_shm_pool(phys_addr_t shm_pa, int shm_size)
 {
 	int retVal = 0;
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = soter_ffa_shm_register(
 			(unsigned long)virt_to_page(phys_to_virt(shm_pa)),
 			shm_size, 0,
@@ -60,6 +61,9 @@ static inline int soter_register_shm_pool(phys_addr_t shm_pa, int shm_size)
 	retVal = teei_forward_call(NQ_CMD_REGISTER_SHM_POOL,
 			soter_sec_world_id[SOTER_SEC_WORLD_ID_POOL],
 			soter_sec_world_id[SOTER_SEC_WORLD_ID_POOL]>>32);
+#else
+	retVal = teei_forward_call(NQ_CMD_REGISTER_SHM_POOL, shm_pa, shm_size);
+#endif
 
 	return retVal;
 

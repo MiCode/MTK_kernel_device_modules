@@ -176,6 +176,11 @@ enum MTK_PANEL_OUTPUT_PORT_MODE {
 	MTK_PANEL_DUAL_PORT,
 };
 
+enum MTK_PANEL_ROTATION {
+	MTK_PANEL_ROTATE_0 = 0,
+	MTK_PANEL_ROTATE_180,
+};
+
 enum MTK_PANEL_SPR_OUTPUT_MODE {
 	MTK_PANEL_SPR_OUTPUT_MODE_NOT_DEFINED = 0,
 	MTK_PANEL_PACKED_SPR_8_BITS = 1,
@@ -313,6 +318,7 @@ struct mtk_panel_dsc_ext_pps_cfg {
 struct mtk_panel_dsc_params {
 	unsigned int enable;
 	unsigned int dual_dsc_enable;
+	unsigned int bdg_dsc_enable;
 	unsigned int ver; /* [7:4] major [3:0] minor */
 	unsigned int slice_mode;
 	unsigned int rgb_swap;
@@ -503,6 +509,7 @@ struct mtk_panel_params {
 	unsigned int esd_check_enable;
 	struct esd_check_item lcm_esd_check_table[ESD_CHECK_NUM];
 	unsigned int ssc_enable;
+	unsigned int bdg_ssc_enable;
 	unsigned int ssc_range;
 	int lcm_color_mode;
 	unsigned int min_luminance;
@@ -520,6 +527,7 @@ struct mtk_panel_params {
 	unsigned int physical_width_um;
 	unsigned int physical_height_um;
 	unsigned int lane_swap_en;
+	unsigned int bdg_lane_swap_en;
 	unsigned int is_cphy;
 	enum MIPITX_PHY_LANE_SWAP
 		lane_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
@@ -549,6 +557,7 @@ struct mtk_panel_params {
 
 	struct mtk_panel_cm_params cm_params;
 	struct mtk_panel_spr_params spr_params;
+	enum MTK_PANEL_ROTATION rotate;
 	bool is_support_od;
 	bool is_support_dmr;
 	bool is_support_dbi;

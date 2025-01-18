@@ -643,7 +643,8 @@ static void cmdq_test_mbox_write_dma_cpr(
 	for (i = 0; i < cnt; i++) {
 		cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, pattern + i);
 		cmdq_pkt_assign_command(pkt, CMDQ_CPR_STRAT_ID + i * 2, (u32)dma_pa + i * 4);
-		cmdq_pkt_assign_command(pkt, CMDQ_CPR_STRAT_ID + i * 2 + 1, (u32)(dma_pa >> 32));
+		cmdq_pkt_assign_command(pkt, CMDQ_CPR_STRAT_ID + i * 2 + 1,
+			(u32)DO_SHIFT_RIGHT(dma_pa, 32));
 		cmdq_pkt_write_reg_indriect(pkt, CMDQ_CPR_STRAT_ID + CMDQ_CPR64 + i,
 			CMDQ_THR_SPR_IDX3, U32_MAX);
 		*(dma_va + i) = 0xdead0000 + i;
@@ -1162,7 +1163,7 @@ static void cmdq_test_mbox_prebuilt_instr_ext_table(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
 		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base),
 		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base +
 			pkt->cmd_buf_size));
@@ -1304,7 +1305,7 @@ static void cmdq_test_mbox_prebuilt_instr(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
 		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base),
 		CMDQ_REG_SHIFT_ADDR((unsigned long)buf->pa_base +
 			pkt->cmd_buf_size));
@@ -1867,9 +1868,22 @@ static int cmdq_test_remove(struct platform_device *pdev)
 {
 	struct cmdq_test *test = (struct cmdq_test *)platform_get_drvdata(pdev);
 
-	cmdq_mbox_destroy(test->clt);
-	cmdq_mbox_destroy(test->loop);
-	cmdq_mbox_destroy(test->sec);
+	cmdq_msg("%s entry ++", __func__);
+
+	if (test->clt)
+		cmdq_mbox_destroy(test->clt);
+	else
+		cmdq_err("%s: test->clt:0x%p", __func__, test->clt);
+	if (test->loop)
+		cmdq_mbox_destroy(test->loop);
+	else
+		cmdq_err("%s: test->loop:0x%p", __func__, test->loop);
+	if (test->sec)
+		cmdq_mbox_destroy(test->sec);
+	else
+		cmdq_err("%s: test->sec:0x%p", __func__, test->sec);
+
+	cmdq_msg("%s leave --", __func__);
 	return 0;
 }
 

@@ -155,7 +155,7 @@ static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)
 
 	/* Don't dump inode number here, it will cause KASAN issue !! */
 	if (WARN(!list_empty(&dmabuf->attachments),
-		 "%s: size:%-8ld dbg_name:%s exp:%s, %s\n", __func__,
+		 "%s: size:%zu dbg_name:%s exp:%s, %s\n", __func__,
 		 dmabuf->size,
 		 dmabuf->name,
 		 dmabuf->exp_name,

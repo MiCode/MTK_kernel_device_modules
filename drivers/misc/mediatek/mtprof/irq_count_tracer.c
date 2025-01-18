@@ -72,6 +72,27 @@ const void *irq_to_handler(int irq)
 	return NULL;
 }
 
+#if !IS_ENABLED(CONFIG_ARM64)
+const int irq_to_ipi_type(int irq)
+{
+	int temp_irq = 0;
+	int num = 0;
+	struct irq_desc *desc = irq_to_desc(irq);
+	struct irq_desc *temp_desc;
+
+	for_each_irq_desc(temp_irq, temp_desc) {
+		if (temp_desc->action && temp_desc->action->name) {
+			if (!strcmp(temp_desc->action->name, "IPI")) {
+				if (temp_desc == desc)
+					return num;
+				else
+					num++;
+			}
+		}
+	}
+	return -1;
+}
+#else
 const int irq_to_ipi_type(int irq)
 {
 	struct irq_desc **ipi_desc = ipi_desc_get();
@@ -84,6 +105,7 @@ const int irq_to_ipi_type(int irq)
 			return i;
 	return -1;
 }
+#endif
 
 /*
  * return true: not in debounce (will do aee) and update time if update is true
@@ -117,7 +139,7 @@ bool irq_mon_aee_debounce_check(bool update)
 	return ret;
 }
 
-#ifdef MODULE
+//#ifdef MODULE
 // workaround for kstat_irqs_cpu & kstat_irqs
 static unsigned int irq_mon_irqs(unsigned int irq)
 {
@@ -140,10 +162,12 @@ static unsigned int irq_mon_irqs_cpu(unsigned int irq, int cpu)
 	return desc && desc->kstat_irqs ?
 			*per_cpu_ptr(desc->kstat_irqs, cpu) : 0;
 }
-#else
-#define irq_mon_irqs(irq) kstat_irqs(irq)
-#define irq_mon_irqs_cpu(irq, cpu) kstat_irqs_cpu(irq, cpu)
-#endif
+//#else
+//GKI is generally compiled in a module,temporarily remove the
+//external interface
+//#define irq_mon_irqs(irq) kstat_irqs(irq)
+//#define irq_mon_irqs_cpu(irq, cpu) kstat_irqs_cpu(irq, cpu)
+//#endif
 
 #define REC_NUM 4
 

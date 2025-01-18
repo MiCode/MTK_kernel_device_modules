@@ -34,7 +34,9 @@ static int __init ccci_util_init(void)
 	mtk_ccci_args_key_val_init();
 	ccci_util_fo_init();
 	mtk_ccci_compatible_md_chk_hdr_parsing();
+#ifdef CCCI_KMODULE_ENABLE
 	mtk_ccci_dump_args_info();
+#endif
 	ccci_common_sysfs_init();
 	ccci_util_broadcast_init();
 	ccci_sib_init();

@@ -46,6 +46,10 @@
 #endif
 #include <mt-plat/mrdump.h>
 
+#ifndef __pa_nodebug
+#define __pa_nodebug __pa
+#endif
+
 /* debug flags */
 int vma_dump_enable;
 int dmabuf_rb_check;
@@ -409,10 +413,12 @@ unsigned long long get_current_time_ms(void)
 static int is_dmabuf_from_dma_heap(const struct dma_buf *dmabuf)
 {
 	if (is_mtk_mm_heap_dmabuf(dmabuf) ||
-	    is_system_heap_dmabuf(dmabuf) ||
-	    is_mtk_sec_heap_dmabuf(dmabuf))
+	    is_system_heap_dmabuf(dmabuf))
 		return 1;
-
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
+	if (is_mtk_sec_heap_dmabuf(dmabuf))
+		return 1;
+#endif
 	return 0;
 }
 
@@ -1303,7 +1309,7 @@ void dmabuf_rbtree_dump_stats(struct seq_file *s, struct pid_map *map,
 
 		total_pss += map[i].PSS;
 		total_rss += map[i].RSS;
-		dmabuf_dump(s, "%-5d   %-7ld   %ld\n",
+		dmabuf_dump(s, "%-5d   %-7zu   %zu\n",
 			    pid, map[i].PSS/1024, map[i].RSS/1024);
 	}
 
@@ -1386,7 +1392,7 @@ static void dmabuf_rbtree_dump_buf(struct dump_fd_data *fddata, unsigned long fl
 				path_p = d_path(&base_path, tpath, 100);
 
 				dmabuf_dump(s,
-					    "\t\tva:0x%08lx-0x%08lx map_sz:%lu buf_sz:%lu node:%s\n",
+					    "\t\tva:0x%08lx-0x%08lx map_sz:%lu buf_sz:%zu node:%s\n",
 					    vm_info->vm_start, vm_info->vm_start + vm_info->vm_size,
 					    vm_info->vm_size,
 					    dmabuf->size, path_p);

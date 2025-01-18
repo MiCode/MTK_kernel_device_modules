@@ -267,7 +267,7 @@ static void aol_flp_report_location_handler(struct work_struct *work)
 		batching_size = connsys_scp_shm_get_batching_size();
 
 		if (batching_phy_addr == 0 || batching_size == 0) {
-			pr_notice("[%s] batching addr/size invalid [%llu][%u]", __func__,
+			pr_notice("[%s] batching addr/size invalid [%llx][%u]", __func__,
 						batching_phy_addr, batching_size);
 
 			aol_flp_report_location_ack();

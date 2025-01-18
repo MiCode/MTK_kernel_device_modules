@@ -15,6 +15,7 @@
 #include "dsu_pwr.h"
 #include "sched_trace.h"
 
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 /* bml weighting and the predict way for dsu and emi may different */
 unsigned int predict_dsu_bw(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, unsigned int dsu_bw)
@@ -180,3 +181,4 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 
 	return dsu_pwr[DSU_PWR_TAL];
 }
+#endif

@@ -92,7 +92,11 @@ ssize_t sec_rng_dbg_read(struct file *file, char __user *buffer,
 	u32 val[4] = {0};
 	int i;
 	int len;
+#if IS_ENABLED(CONFIG_ARM64)
 	char buf[1024] = {0};
+#else
+	char buf[512] = {0};
+#endif
 	char *p = buf;
 
 	if (!__sec_get_rnd(rng_priv, val)) {

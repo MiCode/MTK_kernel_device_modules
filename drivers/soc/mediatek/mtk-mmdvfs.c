@@ -279,7 +279,9 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 	mmdvfs_dbg->time[mmdvfs_dbg->idx] = ktime_get();
 	mmdvfs_dbg->opp_level[mmdvfs_dbg->idx] = opp_level;
 	mmdvfs_dbg->idx = (mmdvfs_dbg->idx + 1) % MMDVFS_RECORD_NUM;
-	record_opp_fp(opp_level);
+	if (record_opp_fp) {
+		record_opp_fp(opp_level);
+	}
 	MMDVFS_SYSTRACE_END();
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(
@@ -746,11 +748,6 @@ static int mmdvfs_probe(struct platform_device *pdev)
 		}
 	}
 
-	drv_data->nb.notifier_call = regulator_event_notify;
-	ret = devm_regulator_register_notifier(reg, &drv_data->nb);
-	if (ret)
-		pr_notice("Failed to register notifier: %d\n", ret);
-
 	vcore_reg_id = regulator_get(dev, "_vcore");
 	if (IS_ERR(vcore_reg_id)) {
 		pr_info("regulator_get vcore_reg_id failed: %ld\n",
@@ -779,6 +776,11 @@ static int mmdvfs_probe(struct platform_device *pdev)
 
 	mmdvfs_dbg->nb.notifier_call = mmdvfs_dbg_log_cb;
 	mtk_smi_dbg_register_notifier(&mmdvfs_dbg->nb);
+
+	drv_data->nb.notifier_call = regulator_event_notify;
+	ret = devm_regulator_register_notifier(reg, &drv_data->nb);
+	if (ret)
+		pr_notice("Failed to register notifier: %d\n", ret);
 
 	return ret;
 }
@@ -842,7 +844,7 @@ bool mmdvfs_systrace_enabled(void)
 	return trace_ena & (1 << trace_systrace_ena);
 }
 
-noinline int tracing_mark_write(char *fmt, ...)
+noinline int mmdvfs_tracing_mark_write(char *fmt, ...)
 {
 #if IS_ENABLED(CONFIG_MTK_FTRACER)
 	char buf[TRACE_MSG_LEN];

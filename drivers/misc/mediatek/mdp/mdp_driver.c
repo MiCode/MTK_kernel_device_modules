@@ -1190,6 +1190,7 @@ static int cmdq_probe(struct platform_device *pDevice)
 	cmdq_core_initialize();
 
 	/* init cmdq context */
+	CMDQ_LOG("call cmdq_mdp_init\n");
 	cmdq_mdp_init(pDevice);
 
 	status = alloc_chrdev_region(&gMdpDevNo, 0, 1,
@@ -1362,7 +1363,7 @@ static void __exit cmdq_exit(void)
 	CMDQ_LOG("MDP driver exit end\n");
 }
 
-subsys_initcall(cmdq_init);
+module_init(cmdq_init);
 module_exit(cmdq_exit);
 
 MODULE_DESCRIPTION("MTK CMDQ driver");

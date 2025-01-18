@@ -73,4 +73,3 @@ define_mgk(
     platform_device_user_modules = mgk_64_platform_device_user_modules,
     symbol_list = mgk_kmi_symbol_list,
 )
-

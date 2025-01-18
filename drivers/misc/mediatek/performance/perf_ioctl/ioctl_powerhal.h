@@ -78,3 +78,4 @@ enum {
 #define POWERHAL_GET_ADPF_DATA   _IOW('g', 2, struct _ADPF_PACKAGE)
 
 #define DSU_CCI_SPORT_MODE		 _IOW('g', 3, struct _POWERHAL_PACKAGE)
+

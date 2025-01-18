@@ -25,6 +25,9 @@
 #include <linux/dma-mapping.h>
 #include <linux/dma-buf.h>
 #include <linux/pm_runtime.h>
+#include <linux/suspend.h>
+#include <linux/rtc.h>
+
 
 /*#include <linux/xlog.h>		 For xlog_printk(). */
 /*  */
@@ -109,36 +112,31 @@ int wpe_get_cnt;
 
 #define WPE_CHECK_SERVICE_IF_0    0
 
-#undef CONFIG_COMPAT
 /* CCF */
 #include <linux/clk.h>
 struct WPE_CLK_STRUCT {
 	struct clk *CG_IMGSYS_LARB9;
 	struct clk *CG_IMGSYS_WPE_A;
-#if (MTK_WPE_COUNT == 2)
 	struct clk *CG_IMGSYS_LARB11;
 	struct clk *CG_IMGSYS_WPE_B;
-#endif
-#ifdef FORCE_IMG1_ON
 	struct clk *CG_IMGSYS1;
-#endif
 };
 struct WPE_CLK_STRUCT wpe_clk;
 
 #ifndef M4U_PORT_L11_IMG_WPE_WDMA_DISP
-#define M4U_PORT_L11_IMG_WPE_WDMA_DISP M4U_PORT_L11_IMG_WPE_WDMA
+#define M4U_PORT_L11_IMG_WPE_WDMA_DISP M4U_PORT_L11_IMG_WPE_WDMA_DISP
 #endif
 
 #ifndef M4U_PORT_L11_IMG_WPE_RDMA1_DISP
-#define M4U_PORT_L11_IMG_WPE_RDMA1_DISP M4U_PORT_L11_IMG_WPE_RDMA1
+#define M4U_PORT_L11_IMG_WPE_RDMA1_DISP M4U_PORT_L11_IMG_WPE_RDMA1_DISP
 #endif
 
 #ifndef M4U_PORT_L9_IMG_WPE_WDMA_MDP
-#define M4U_PORT_L9_IMG_WPE_WDMA_MDP M4U_PORT_L9_IMG_WPE_WDMA
+#define M4U_PORT_L9_IMG_WPE_WDMA_MDP M4U_PORT_L9_IMG_WPE_WDMA_MDP
 #endif
 
 #ifndef M4U_PORT_L9_IMG_WPE_RDMA1_MDP
-#define M4U_PORT_L9_IMG_WPE_RDMA1_MDP M4U_PORT_L9_IMG_WPE_RDMA1
+#define M4U_PORT_L9_IMG_WPE_RDMA1_MDP M4U_PORT_L9_IMG_WPE_RDMA1_MDP
 #endif
 
 unsigned int ver;
@@ -187,6 +185,7 @@ pr_info(MyTag "[%s] " format, __func__, ##args)
 pr_info(MyTag "[%s] " format, __func__, ##args)
 #define LOG_AST(format, args...) \
 pr_debug(MyTag "[%s] " format, __func__, ##args)
+
 
 /***********************************************************************
  *
@@ -237,6 +236,8 @@ pr_debug(MyTag "[%s] " format, __func__, ##args)
 
 #define WPE_IS_BUSY    0x2
 
+#define CG_ENABLE      0x1
+#define CG_DISABLE     0x0
 
 /* static irqreturn_t WPE_Irq_CAM_A(signed int  Irq,void *DeviceId); */
 static irqreturn_t ISP_Irq_WPE(signed int Irq, void *DeviceId);
@@ -244,7 +245,10 @@ static bool ConfigWPE(void);
 static signed int ConfigWPEHW(struct WPE_Config *pWpeConfig);
 static void WPE_ScheduleWork(struct work_struct *data);
 
-
+/*For GKI 2.0*/
+static int CG_IMG1_ON = 0;
+static int CG_IMG_LARB11_ON = 0;
+static int GKI_IMG1_LARB_ON = 0;
 
 typedef irqreturn_t(*IRQ_CB) (signed int, void *);
 
@@ -301,9 +305,8 @@ struct WPE_device {
 	struct device *dev;
 	int irq;
 	struct device *larb9;
-#ifdef WPE_GKI_IMG1_LARB_ON
 	struct device *larb11;
-#endif
+
 };
 
 static struct WPE_device *WPE_devs;
@@ -318,9 +321,8 @@ static int nr_WPE_devs;
 
 
 #define ISP_WPE_BASE                  (WPE_devs[WPE_DEV_NODE_IDX].regs)
-#if (MTK_WPE_COUNT == 2)
 #define ISP_WPE_B_BASE                (WPE_devs[WPE_B_DEV_NODE_IDX].regs)
-#endif
+
 
 /* #define ISP_WPE_BASE                  (gISPSYS_Reg[WPE_DEV_NODE_IDX]) */
 
@@ -2591,7 +2593,7 @@ static signed int WPE_DumpReg(void)
 		(unsigned int)(WPE_VEC3I_ERR_STAT_HW),
 		(unsigned int)WPE_RD32(WPE_VEC3I_ERR_STAT_REG));
 
-#if (MTK_WPE_COUNT == 2)
+ if (CG_IMG_LARB11_ON == CG_ENABLE) {
 	cmdq_util_err("WPE B Registers Info\n");
 	/* WPE Config0 */
 	cmdq_util_err("[0x%08X %08X] [0x%08X %08X] [0x%08X %08X] [0x%08X %08X]\n",
@@ -2771,7 +2773,8 @@ static signed int WPE_DumpReg(void)
 		(unsigned int)WPE_RD32(WPE_B_VEC2I_ERR_STAT_REG),
 		(unsigned int)(WPE_B_VEC3I_ERR_STAT_HW),
 		(unsigned int)WPE_RD32(WPE_B_VEC3I_ERR_STAT_REG));
-#endif
+}
+
 
 	for (i = 0; i < _SUPPORT_MAX_WPE_REQUEST_RING_SIZE_; i++) {
 		LOG_INF(
@@ -2806,54 +2809,54 @@ static signed int WPE_DumpReg(void)
 	/*  */
 	return Ret;
 }
+
 #ifndef __WPE_EP_NO_CLKMGR__  /*CCF*/
 static inline void WPE_Prepare_Enable_ccf_clock(void)
 {
 	int ret;
-	/* enable through smi API */
+
 	pm_runtime_get_sync(WPE_devs->dev);
+
 	/* In 6873, 6853, larb9 here  is IMG2 larb11*/
-	LOG_INF("larb9 %p", WPE_devs->larb9);
-	ret = mtk_smi_larb_get(WPE_devs->larb9);
-	if (ret)
-		LOG_ERR("mtk_smi_larb_get larb9 fail %d\n", ret);
+	LOG_INF("WPE Prepare Enable CCF clock");
 
-#ifdef WPE_GKI_IMG1_LARB_ON
-	/* In 6873, 6853, larb11 here is IMG1 larb9*/
-	LOG_INF("larb11 %p", WPE_devs->larb11);
-	ret = mtk_smi_larb_get(WPE_devs->larb11);
-	if (ret)
-		LOG_ERR("mtk_smi_larb_get larb11 fail %d\n", ret);
-#endif
+	if (wpe_clk.CG_IMGSYS_LARB9 != NULL) {
+		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB9);
+		if (ret)
+			LOG_INF("cannot prepare and enable IMG_LARB9 clock\n");
+		LOG_INF("get CG_IMGSYS_LARB9 OK");
+	}
 
-	ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB9);
-	if (ret)
-		LOG_ERR("cannot prepare and enable IMG_LARB9 clock\n");
+	if (wpe_clk.CG_IMGSYS_WPE_A != NULL) {
+		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_A);
+		if (ret)
+			LOG_INF("cannot prepare CG_IMGSYS_WPE_A clock\n");
+		LOG_INF("get CG_IMGSYS_WPE_A OK");
+	}
 
-	ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_A);
-	if (ret)
-		LOG_ERR("cannot prepare CG_IMGSYS_WPE_A clock\n");
+	if (wpe_clk.CG_IMGSYS1 != NULL) {
+		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS1);
+		if (ret) {
+			LOG_INF("cannot prepare and enable IMGSYS1 clock\n");
+		}
+		LOG_INF("get wpe_clk.CG_IMGSYS1 OK");
+	}
 
-#ifdef FORCE_IMG1_ON
-	ret = clk_prepare_enable(wpe_clk.CG_IMGSYS1);
-	if (ret)
-		LOG_ERR("cannot prepare and enable IMGSYS1 clock\n");
-#endif
+	if (wpe_clk.CG_IMGSYS_LARB11 != NULL) {
+		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB11);
+		if (ret)
+			LOG_INF("cannot prepare and enable IMG_LARB11 clock\n");
+		LOG_INF("get CG_IMGSYS_LARB11 OK");
+	}
 
-#if (MTK_WPE_COUNT == 2)
-	ret = mtk_smi_larb_get(WPE_devs->larb11);
-	if (ret)
-		LOG_ERR("mtk_smi_larb_get larb9 fail %d\n", ret);
+	if (wpe_clk.CG_IMGSYS_WPE_B != NULL) {
+		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_B);
+		if (ret)
+			LOG_INF("cannot prepare and enable CG_IMGSYS_WPE_B clock\n");
+		LOG_INF("get CG_IMGSYS_WPE_B OK");
+	}
 
-	ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB11);
-	if (ret)
-		LOG_ERR("cannot prepare and enable IMG_LARB11 clock\n");
-
-	ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_B);
-	if (ret)
-		LOG_ERR("cannot prepare and enable CG_IMGSYS_WPE_B clock\n");
-#endif
-
+	LOG_INF("CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d, GKI_IMG1_LARB_ON= %d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
 }
 
 static inline void WPE_Disable_Unprepare_ccf_clock(void)
@@ -2861,28 +2864,31 @@ static inline void WPE_Disable_Unprepare_ccf_clock(void)
 	/* must keep this clk close order:*/
 	/*WPE clk -> CG_SCP_SYS_ISP -> */
 	/*CG_MM_SMI_COMMON -> CG_SCP_SYS_DIS */
-#ifdef FORCE_IMG1_ON
-	clk_disable_unprepare(wpe_clk.CG_IMGSYS1);
-#endif
-	clk_disable_unprepare(wpe_clk.CG_IMGSYS_WPE_A);
+	LOG_INF("WPE Disable UnPrepare CCF clock");
+
+	if (wpe_clk.CG_IMGSYS1 != NULL)
+		clk_disable_unprepare(wpe_clk.CG_IMGSYS1);
+
+	if (wpe_clk.CG_IMGSYS_WPE_A != NULL)
+		clk_disable_unprepare(wpe_clk.CG_IMGSYS_WPE_A);
+
 	/* In 6873, 6853, larb9 here is IMG2 larb11*/
-	clk_disable_unprepare(wpe_clk.CG_IMGSYS_LARB9);
+	if (wpe_clk.CG_IMGSYS_LARB9 != NULL)
+		clk_disable_unprepare(wpe_clk.CG_IMGSYS_LARB9);
 
-	mtk_smi_larb_put(WPE_devs->larb9);
-
-#ifdef WPE_GKI_IMG1_LARB_ON
 	/* In 6873, 6853, larb11 here is IMG1 larb9*/
-	mtk_smi_larb_put(WPE_devs->larb11);
-#endif
 
-#if (MTK_WPE_COUNT == 2)
-	clk_disable_unprepare(wpe_clk.CG_IMGSYS_WPE_B);
-	clk_disable_unprepare(wpe_clk.CG_IMGSYS_LARB11);
-	mtk_smi_larb_put(WPE_devs->larb11);
-#endif
+	if (wpe_clk.CG_IMGSYS_WPE_B != NULL)
+		clk_disable_unprepare(wpe_clk.CG_IMGSYS_WPE_B);
+	if (wpe_clk.CG_IMGSYS_LARB11 != NULL)
+		clk_disable_unprepare(wpe_clk.CG_IMGSYS_LARB11);
+
+	CG_IMG_LARB11_ON = CG_DISABLE;
+	GKI_IMG1_LARB_ON = CG_DISABLE;
 
 	pm_runtime_put_sync(WPE_devs->dev);
 
+	LOG_INF("[WPE_Disable_Unprepare_ccf_clock]CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d ,GKI_IMG1_LARB_ON =%d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
 }
 #endif
 
@@ -2906,15 +2912,6 @@ static void WPE_EnableClock(bool En)
 		case 0:
 #ifndef __WPE_EP_NO_CLKMGR__ /*CCF*/
 			WPE_Prepare_Enable_ccf_clock();
-#else
-			enable_clock(MT_CG_DOWE0_SMI_COMMON, "CAMERA");
-			enable_clock(MT_CG_IMAGE_CAM_SMI, "CAMERA");
-			enable_clock(MT_CG_IMAGE_CAM_CAM, "CAMERA");
-			enable_clock(MT_CG_IMAGE_SEN_TG, "CAMERA");
-			enable_clock(MT_CG_IMAGE_SEN_CAM, "CAMERA");
-			enable_clock(MT_CG_IMAGE_CAM_SV, "CAMERA");
-			/* enable_clock(MT_CG_IMAGE_FD, "CAMERA"); */
-			enable_clock(MT_CG_IMAGE_LARB5_SMI, "CAMERA");
 #endif
 			break;
 		default:
@@ -2923,6 +2920,7 @@ static void WPE_EnableClock(bool En)
 		g_u4EnableClockCount++;
 		mutex_unlock(&gWpeClkMutex);
 #ifdef CONFIG_MTK_IOMMU_V2
+		LOG_INF("get CONFIG_MTK_IOMMU_V2 enable");
 		if (g_u4EnableClockCount == 1) {
 			ret = m4u_control_iommu_port();
 			if (ret)
@@ -2939,16 +2937,6 @@ static void WPE_EnableClock(bool En)
 		case 0:
 #ifndef __WPE_EP_NO_CLKMGR__ /*CCF*/
 			WPE_Disable_Unprepare_ccf_clock();
-#else
-			/* do disable clock */
-			disable_clock(MT_CG_IMAGE_CAM_SMI, "CAMERA");
-			disable_clock(MT_CG_IMAGE_CAM_CAM, "CAMERA");
-			disable_clock(MT_CG_IMAGE_SEN_TG, "CAMERA");
-			disable_clock(MT_CG_IMAGE_SEN_CAM, "CAMERA");
-			disable_clock(MT_CG_IMAGE_CAM_SV, "CAMERA");
-			/* disable_clock(MT_CG_IMAGE_FD, "CAMERA"); */
-			disable_clock(MT_CG_IMAGE_LARB5_SMI, "CAMERA");
-			disable_clock(MT_CG_DOWE0_SMI_COMMON, "CAMERA");
 #endif
 			break;
 		default:
@@ -3171,6 +3159,11 @@ static signed int WPE_WaitIrq(struct WPE_WAIT_IRQ_STRUCT *WaitIrq)
 	/* FIX to avoid build warning */
 	unsigned int irqStatus;
 	/*int cnt = 0; */
+	struct timespec64 time_getrequest ;
+
+	/* do_gettimeofday(&time_getrequest); */
+
+	ktime_get_ts64(&time_getrequest);
 
 	/* Debug interrupt */
 	if (WPEInfo.DebugMask & WPE_DBG_INT) {
@@ -4490,6 +4483,7 @@ EXIT:
 /***********************************************************************
  *
  ***********************************************************************/
+/*
 static int compat_get_WPE_read_register_data(
 		struct compat_WPE_REG_IO_STRUCT __user *data32,
 		struct WPE_REG_IO_STRUCT __user *data)
@@ -4510,11 +4504,9 @@ static int compat_put_WPE_read_register_data(
 		struct WPE_REG_IO_STRUCT __user *data)
 {
 	compat_uint_t count;
-	/*compat_uptr_t uptr; */
+
 	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->pData); */
-	/* err |= put_user(uptr, &data32->pData); */
+
 	err |= get_user(count, &data->Count);
 	err |= put_user(count, &data32->Count);
 	return err;
@@ -4541,11 +4533,9 @@ static int compat_put_WPE_enque_req_data(
 		struct WPE_Request __user *data)
 {
 	compat_uint_t count;
-	/*compat_uptr_t uptr; */
+
 	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->m_pDpeConfig); */
-	/* err |= put_user(uptr, &data32->m_pDpeConfig); */
+
 	err |= get_user(count, &data->m_ReqNum);
 	err |= put_user(count, &data32->m_ReqNum);
 	return err;
@@ -4573,20 +4563,18 @@ static int compat_put_WPE_deque_req_data(
 		struct WPE_Request __user *data)
 {
 	compat_uint_t count;
-	/*compat_uptr_t uptr; */
+
 	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr), &data->m_pDpeConfig); */
-	/* err |= put_user(uptr, &data32->m_pDpeConfig); */
+
 	err |= get_user(count, &data->m_ReqNum);
 	err |= put_user(count, &data32->m_ReqNum);
 	return err;
 }
-
+*/
 static long WPE_ioctl_compat(
 		struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	long ret;
+	long ret = 0;
 
 
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
@@ -4596,6 +4584,8 @@ static long WPE_ioctl_compat(
 	switch (cmd) {
 	case COMPAT_WPE_READ_REGISTER:
 		{
+#ifdef WPE_K61
+
 			struct compat_WPE_REG_IO_STRUCT __user *data32;
 			struct WPE_REG_IO_STRUCT __user *data;
 			int err;
@@ -4622,13 +4612,17 @@ static long WPE_ioctl_compat(
 					);
 				return err;
 			}
+#endif
 			return ret;
 		}
 	case COMPAT_WPE_WRITE_REGISTER:
 		{
+#ifdef WPE_K61
+
 			struct compat_WPE_REG_IO_STRUCT __user *data32;
 			struct WPE_REG_IO_STRUCT __user *data;
 			int err;
+
 
 			data32 = compat_ptr(arg);
 			data = compat_alloc_user_space(sizeof(*data));
@@ -4643,10 +4637,13 @@ static long WPE_ioctl_compat(
 			ret =
 			    filp->f_op->unlocked_ioctl(filp, WPE_WRITE_REGISTER,
 						       (unsigned long)data);
+#endif
 			return ret;
 		}
 	case COMPAT_WPE_ENQUE_REQ:
 		{
+#ifdef WPE_K61
+
 			struct compat_WPE_Request __user *data32;
 			struct WPE_Request __user *data;
 			int err;
@@ -4669,10 +4666,14 @@ static long WPE_ioctl_compat(
 				LOG_INF("COMPAT_WPE_WPE_ENQUE_REQ error!!!\n");
 				return err;
 			}
+#endif
+
 			return ret;
 		}
 	case COMPAT_WPE_DEQUE_REQ:
 		{
+#ifdef WPE_K61
+
 			struct compat_WPE_Request __user *data32;
 			struct WPE_Request __user *data;
 			int err;
@@ -4695,10 +4696,15 @@ static long WPE_ioctl_compat(
 				LOG_INF("COMPAT_WPE_WPE_DEQUE_REQ error!!!\n");
 				return err;
 			}
+#endif
+
 			return ret;
+
 		}
 	case COMPAT_WPE_DEQUE_DONE:
 		{
+#ifdef WPE_K61
+
 			struct compat_WPE_Request __user *data32;
 			struct WPE_Request __user *data;
 			int err;
@@ -4721,6 +4727,8 @@ static long WPE_ioctl_compat(
 				LOG_INF("COMPAT_WPE_WPE_DEQUE_REQ error!!!\n");
 				return err;
 			}
+#endif
+
 			return ret;
 		}
 	case COMPAT_WPE_WAIT_DEQUE:
@@ -5045,6 +5053,68 @@ EXIT:
 	return Ret;
 }
 
+static void WPE_add_device_link(struct platform_device *pDev)
+{
+	char mtk_larb_str[32];
+	int i = 0, mtk_larb = 0, mtk_larbs = 0, larb_num = 0;
+	unsigned int larb_id = 0;
+	struct device_node *larb_node;
+	struct device_link *link;
+	struct platform_device *larb_pdev;
+
+	mtk_larb = of_count_phandle_with_args(pDev->dev.of_node, "mediatek,larb", NULL);
+	mtk_larbs = of_count_phandle_with_args(pDev->dev.of_node, "mediatek,larbs", NULL);
+
+	if (mtk_larb > mtk_larbs) {
+		larb_num = mtk_larb;
+		strncpy(mtk_larb_str, "mediatek,larb", 14);
+		} else {
+		larb_num = mtk_larbs;
+		strncpy(mtk_larb_str, "mediatek,larbs", 15);
+		}
+
+		LOG_INF("WPE larb_num: %d; (%d, %d)\n", larb_num, mtk_larb, mtk_larbs);
+
+		if (larb_num <= 0) {
+			LOG_ERR("WPE %s: find no larb", pDev->dev.of_node->name);
+			return;
+			}
+
+		for (i = 0; i < larb_num; i++) {
+			larb_node = of_parse_phandle(pDev->dev.of_node, mtk_larb_str, i);
+
+			if (!larb_node) {
+				LOG_ERR("WPE %s: [%d]: failed to get larb from %s\n",
+					pDev->dev.of_node->name, i, mtk_larb_str);
+				continue;
+				}
+
+			larb_pdev = of_find_device_by_node(larb_node);
+
+			if (WARN_ON(!larb_pdev)) {
+				of_node_put(larb_node);
+				LOG_ERR("WPE %s: failed to get larb pdev\n", pDev->dev.of_node->name);
+				continue;
+				}
+
+			if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
+				LOG_INF(" WPE Error: get larb id from DTS fail!!\n");
+			else
+				LOG_INF("WPE %s gets larb_id=%d\n",
+				pDev->dev.of_node->name, larb_id);
+
+			of_node_put(larb_node);
+
+			link = device_link_add(&pDev->dev, &larb_pdev->dev,
+				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+
+			if (!link)
+				LOG_INF("WPE %s: [%d]: unable to link smi larb %d\n",
+				pDev->dev.of_node->name, i, larb_id);
+		}
+}
+
+
 /***********************************************************************
  *
  ***********************************************************************/
@@ -5057,14 +5127,10 @@ static signed int WPE_probe(struct platform_device *pDev)
 	unsigned int irq_info[3];/* Record interrupts info from device tree */
 	struct device *dev = NULL;
 	struct WPE_device *_wpe_dev;
+
 #ifdef CONFIG_OF
 	struct WPE_device *WPE_dev;
-	struct device_node *node_larb9;
-	struct platform_device *pdev_larb9;
-#ifdef WPE_GKI_IMG1_LARB_ON
-	struct device_node *node_larb11;
-	struct platform_device *pdev_larb11;
-#endif
+
 #endif
 
 
@@ -5103,10 +5169,16 @@ static signed int WPE_probe(struct platform_device *pDev)
 	}
 	if (nr_WPE_devs == 1) {
 		pm_runtime_enable(WPE_devs->dev);
+		if (!pm_runtime_enabled(WPE_devs->dev)){
+			LOG_ERR("[ERROR] WPE pm runtime enabled failed");
+			goto EXIT;
+		}
 		/* parse larb node*/
+#ifdef WPE_PARSE_LARB
 		node_larb9 = of_parse_phandle(pDev->dev.of_node, "mediatek,larb", 0);
 		if (!node_larb9)
 			return -EINVAL;
+
 		pdev_larb9 = of_find_device_by_node(node_larb9);
 		if (WARN_ON(!pdev_larb9)) {
 			of_node_put(node_larb9);
@@ -5114,22 +5186,26 @@ static signed int WPE_probe(struct platform_device *pDev)
 		}
 		of_node_put(node_larb9);
 		WPE_devs->larb9 = &pdev_larb9->dev;
-
-#ifdef WPE_GKI_IMG1_LARB_ON
+		LOG_INF("larb 9 %p", WPE_devs->larb9);
+/*!#ifdef WPE_GKI_IMG1_LARB_ON*/
 		/* parse larb node*/
 		/* In 6873, 6853, larb11 here  is IMG1 larb9*/
 		node_larb11 = of_parse_phandle(pDev->dev.of_node, "mediatek,larb", 1);
 		if (!node_larb11)
 			return -EINVAL;
+
 		pdev_larb11 = of_find_device_by_node(node_larb11);
 		if (WARN_ON(!pdev_larb11)) {
 			of_node_put(node_larb11);
 			return -EINVAL;
+		} else {
+			GKI_IMG1_LARB_ON = CG_ENABLE;
 		}
 		of_node_put(node_larb11);
 		WPE_devs->larb11 = &pdev_larb11->dev;
-		LOG_INF("of_node_put(node_larb11).");
+		LOG_INF("larb11 %p", WPE_devs->larb11);
 #endif
+//!#endif
 	}
 
 #if defined(CONFIG_MTK_IOMMU_PGTABLE_EXT) && \
@@ -5202,6 +5278,8 @@ static signed int WPE_probe(struct platform_device *pDev)
 	}
 #endif
 
+	WPE_add_device_link(pDev);
+
 	/* Only register char driver in the 1st time */
 	if (nr_WPE_devs == 1) {
 
@@ -5220,8 +5298,8 @@ static signed int WPE_probe(struct platform_device *pDev)
 		LOG_INF("devm_clk_get CG_IMGSYS_LARB9");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS_LARB9)) {
-			LOG_ERR("cannot get CG_IMGSYS_LARB9 clock\n");
-			return PTR_ERR(wpe_clk.CG_IMGSYS_LARB9);
+			wpe_clk.CG_IMGSYS_LARB9 = NULL;
+			LOG_INF("cannot get CG_IMGSYS_LARB9 clock\n");
 		}
 
 		wpe_clk.CG_IMGSYS_WPE_A =
@@ -5229,20 +5307,20 @@ static signed int WPE_probe(struct platform_device *pDev)
 		LOG_INF("devm_clk_get WPE_CLK_IMG_WPE_A");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS_WPE_A)) {
-			LOG_ERR("cannot get CG_IMGSYS_WPE_A clock\n");
-			return PTR_ERR(wpe_clk.CG_IMGSYS_WPE_A);
+			wpe_clk.CG_IMGSYS_WPE_A = NULL;
+			LOG_INF("cannot get CG_IMGSYS_WPE_A clock\n");
 		}
 
-#ifdef FORCE_IMG1_ON
 		wpe_clk.CG_IMGSYS1 =
-			devm_clk_get(&pDev->dev, "WPE_CLK_IMG");
-		LOG_INF("devm_clk_get CG_IMGSYS1");
+				devm_clk_get(&pDev->dev, "WPE_CLK_IMG");
+				LOG_INF("devm_clk_get CG_IMGSYS1");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS1)) {
-			LOG_ERR("cannot get CG_IMGSYS1 clock\n");
-			return PTR_ERR(wpe_clk.CG_IMGSYS1);
+			LOG_INF("cannot get CG_IMGSYS1 clock\n");
+			wpe_clk.CG_IMGSYS1 = NULL;
+		} else {
+				CG_IMG1_ON = CG_ENABLE;
 		}
-#endif
 #endif
 		/* Create class register */
 		pWPEClass = class_create("WPEdrv");
@@ -5301,34 +5379,35 @@ static signed int WPE_probe(struct platform_device *pDev)
 #ifdef EP_NO_CLKMGR
 
 #else
-#if (MTK_WPE_COUNT == 2)
 		 /*CCF*/
 		wpe_clk.CG_IMGSYS_LARB11 =
 			devm_clk_get(&pDev->dev, "WPE_CLK_IMG_LARB11");
-		LOG_INF("devm_clk_get CG_IMGSYS_LARB11");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS_LARB11)) {
 			LOG_ERR("cannot get CG_IMGSYS_LARB11 clock\n");
-			return PTR_ERR(wpe_clk.CG_IMGSYS_LARB11);
+			wpe_clk.CG_IMGSYS_LARB11 = NULL;
+		} else {
+			LOG_INF("get CG_IMGSYS_LARB11 clock");
+			CG_IMG_LARB11_ON = CG_ENABLE;
 		}
 
 		wpe_clk.CG_IMGSYS_WPE_B =
 			devm_clk_get(&pDev->dev, "WPE_CLK_IMG_WPE_B");
-		LOG_INF("devm_clk_get WPE_CLK_IMG_WPE_B");
+			LOG_INF("devm_clk_get WPE_CLK_IMG_WPE_B");
 
 		if (IS_ERR(wpe_clk.CG_IMGSYS_WPE_B)) {
 			LOG_ERR("cannot get CG_IMGSYS_WPE_B clock\n");
-			return PTR_ERR(wpe_clk.CG_IMGSYS_WPE_B);
+			wpe_clk.CG_IMGSYS_WPE_B = NULL;
 		}
 #endif
-#endif
-
 	}
+
 
 EXIT:
 	if (Ret < 0)
 		WPE_UnregCharDev();
 
+	LOG_INF("[WPE_probe]CG_IMG_LARB11_ON = %d,CG_IMG1_ON = %d,GKI_IMG1_LARB_ON =%d \n",CG_IMG_LARB11_ON,CG_IMG1_ON,GKI_IMG1_LARB_ON);
 	LOG_INF("- X. WPE driver probe.");
 
 	return Ret;
@@ -5373,19 +5452,6 @@ static signed int bPass1_On_In_Resume_TG1;
 static signed int WPE_suspend(
 		struct platform_device *pDev, pm_message_t Mesg)
 {
-	/*signed int ret = 0; */
-
-	/*LOG_DBG("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);*/
-
-	bPass1_On_In_Resume_TG1 = 0;
-
-	if (g_u4EnableClockCount > 0) {
-		WPE_EnableClock(MFALSE);
-		g_u4WpeCnt++;
-	}
-
-	LOG_INF("%s: WPE suspend g_u4EnableClockCount: %d, g_u4WpeCnt: %d",
-		 __func__, g_u4EnableClockCount, g_u4WpeCnt);
 
 	return 0;
 }
@@ -5395,20 +5461,55 @@ static signed int WPE_suspend(
  ***********************************************************************/
 static signed int WPE_resume(struct platform_device *pDev)
 {
-	/*LOG_DBG("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);*/
-	if (g_u4WpeCnt > 0) {
-		WPE_EnableClock(MTRUE);
-		g_u4WpeCnt--;
-	}
-
-	LOG_INF("%s: WPE resume g_u4EnableClockCount: %d, g_u4WpeCnt: %d",
-		 __func__, g_u4EnableClockCount, g_u4WpeCnt);
 
 	return 0;
 }
+//#if IS_ENABLED(CONFIG_PM)
 
+static int wpe_suspend_pm_event(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	struct timespec64 ts;
+	struct rtc_time tm;
+
+	ktime_get_ts64(&ts);
+	rtc_time64_to_tm(ts.tv_sec, &tm);
+
+	switch (pm_event) {
+	case PM_HIBERNATION_PREPARE:
+		return NOTIFY_DONE;
+	case PM_RESTORE_PREPARE:
+		return NOTIFY_DONE;
+	case PM_POST_HIBERNATION:
+		return NOTIFY_DONE;
+	case PM_SUSPEND_PREPARE: /*enter suspend*/
+		/*LOG_DBG("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);*/
+		bPass1_On_In_Resume_TG1 = 0;
+		if (g_u4EnableClockCount > 0) {
+			WPE_EnableClock(MFALSE);
+			g_u4WpeCnt++;
+		}
+
+		LOG_INF("%s: WPE suspend g_u4EnableClockCount: %d, g_u4WpeCnt: %d",
+		__func__, g_u4EnableClockCount, g_u4WpeCnt);
+
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:    /*after resume*/
+		if (g_u4WpeCnt > 0) {
+			WPE_EnableClock(MTRUE);
+			g_u4WpeCnt--;
+		}
+
+		LOG_INF("%s: WPE resume g_u4EnableClockCount: %d, g_u4WpeCnt: %d",
+		__func__, g_u4EnableClockCount, g_u4WpeCnt);
+
+
+		return NOTIFY_DONE;
+}
+	return NOTIFY_OK;
+}
+#if IS_ENABLED(CONFIG_PM)
 /*---------------------------------------------------------------------*/
-#ifdef CONFIG_PM
 /*---------------------------------------------------------------------*/
 int WPE_pm_suspend(struct device *device)
 {
@@ -5459,9 +5560,7 @@ int WPE_pm_restore_noirq(struct device *device)
  */
 static const struct of_device_id WPE_of_ids[] = {
 	{.compatible = "mediatek,wpe_a",},
-#if (MTK_WPE_COUNT == 2)
 	{.compatible = "mediatek,wpe_b",},
-#endif
 	{}
 };
 #endif
@@ -5491,12 +5590,18 @@ static struct platform_driver WPEDriver = {
 #ifdef CONFIG_OF
 		   .of_match_table = WPE_of_ids,
 #endif
-#ifdef CONFIG_PM
+#if IS_ENABLED(CONFIG_PM)
 		   .pm = &WPE_pm_ops,
 #endif
 		}
 };
 
+#if IS_ENABLED(CONFIG_PM)
+static struct notifier_block wpe_suspend_pm_notifier_func = {
+	.notifier_call = wpe_suspend_pm_event,
+	.priority = 0,
+};
+#endif
 
 static int wpe_dump_read(struct seq_file *m, void *v)
 {
@@ -5717,19 +5822,24 @@ static signed int __init WPE_Init(void)
 	/* FIX-ME: linux-3.10 procfs API changed */
 
 	int i;
+
+	/*for GKI 2.0 */
+	CG_IMG1_ON = CG_DISABLE;
+	CG_IMG_LARB11_ON = CG_DISABLE;
+	GKI_IMG1_LARB_ON = CG_DISABLE;
 	/*  */
-	LOG_INF("- E.");
+	LOG_INF("- E. WPE_Init");
 	/*  */
 	Ret = platform_driver_register(&WPEDriver);
 	if (Ret < 0) {
+		LOG_INF("- platform_driver_register fail");
 		LOG_ERR("platform_driver_register fail");
 		return Ret;
 	}
-
+	LOG_INF("- platform_driver_register OK");
 	/* proc_entry = */
 	/*	proc_create("pll_test", S_IRUGO | */
 	/*		S_IWUSR, isp_wpe_dir, &pll_test_proc_fops); */
-
 
 	/* isr log */
 	if (PAGE_SIZE <
@@ -5745,6 +5855,7 @@ static signed int __init WPE_Init(void)
 	} else {
 		i = PAGE_SIZE;
 	}
+
 	pLog_kmalloc = kmalloc(i, GFP_KERNEL);
 	if (pLog_kmalloc == NULL) {
 		LOG_ERR("log mem not enough\n");
@@ -5787,6 +5898,15 @@ static signed int __init WPE_Init(void)
 			   WPE_ClockOffCallback);
 #endif
 
+#if IS_ENABLED(CONFIG_PM)
+	Ret = register_pm_notifier(&wpe_suspend_pm_notifier_func);
+	if (Ret) {
+		pr_debug("[Camera WPE] Failed to register PM notifier.\n");
+		return Ret;
+	}
+#endif
+
+	LOG_INF("[WPE_init]CG_IMG_LARB11_ON = %d ,CG_IMG1_ON = %d , GKI_IMG1_LARB_ON = %d \n",CG_IMG_LARB11_ON, CG_IMG1_ON, GKI_IMG1_LARB_ON);
 	LOG_DBG("- X. Ret: %d.", Ret);
 	return Ret;
 }
@@ -5933,4 +6053,5 @@ module_init(WPE_Init);
 module_exit(WPE_Exit);
 MODULE_DESCRIPTION("Camera WPE driver");
 MODULE_AUTHOR("MM3SW5");
+MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

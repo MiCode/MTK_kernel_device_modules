@@ -12,8 +12,12 @@
 
 #include <linux/blk_types.h>
 #include <linux/mmc/core.h>
+#include <linux/proc_fs.h>
+#include <linux/sched.h>
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 
@@ -57,12 +61,15 @@ int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_iostat_struct *iostat);
 void mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable);
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 int mtk_btag_ufs_init(struct ufs_mtk_host *host, __u32 ufs_nr_queue,
 		      __u32 ufs_nutrs);
 int mtk_btag_ufs_exit(void);
 void mtk_btag_ufs_send_command(__u16 tid, __u16 qid, struct scsi_cmnd *cmd);
 void mtk_btag_ufs_transfer_req_compl(__u16 tid, __u16 qid);
+#endif
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 int mmc_mtk_biolog_init(struct mmc_host *mmc);
 int mmc_mtk_biolog_exit(void);
 void mmc_mtk_biolog_send_command(__u16 task_id, struct mmc_request *mrq);
@@ -70,6 +77,7 @@ void mmc_mtk_biolog_transfer_req_compl(struct mmc_host *mmc,
 				       __u16 task_id,
 				       unsigned long req_mask);
 void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask);
+#endif
 
 #else
 

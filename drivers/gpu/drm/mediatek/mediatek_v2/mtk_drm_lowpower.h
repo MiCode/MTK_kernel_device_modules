@@ -9,6 +9,16 @@
 #include <drm/drm_crtc.h>
 #include <linux/pm_qos.h>
 #include "mtk_drm_crtc.h"
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
+
+#ifdef SHARE_WROT_SRAM
+#include "mdp_event_common.h"
+#define CMDQ_EVENT_ENUM cmdq_event
+#endif
 
 struct mtk_idle_private_data {
 	//the target cpu bind to idlemgr
@@ -170,4 +180,14 @@ void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
 /* enable cmd panel perf aee dump */
 void mtk_drm_idlegmr_perf_aee_control(unsigned int timeout);
 void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc);
+#ifdef SHARE_WROT_SRAM
+unsigned int can_use_wrot_sram(void);
+void set_share_sram(unsigned int share_sram);
+unsigned int use_wrot_sram(void);
+void mtk_drm_enter_share_sram(struct drm_crtc *crtc, bool first);
+void mtk_drm_leave_share_sram(struct drm_crtc *crtc,
+		struct cmdq_pkt *cmdq_handle);
+int32_t _acquire_wrot_resource(enum CMDQ_EVENT_ENUM resourceEvent);
+#endif
+
 #endif

@@ -36,6 +36,7 @@ ccflags-y += -I$(GUD_ROOT_FOLDER)/TlcTui/inc \
 
 ccflags-y += -DTUI_ENABLE_DISPLAY
 ccflags-y += -DTUI_ENABLE_TOUCH
+ccflags-y += -DTUI_LOCK_I2C
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/

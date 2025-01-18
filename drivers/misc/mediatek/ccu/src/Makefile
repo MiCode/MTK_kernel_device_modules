@@ -15,23 +15,16 @@ subdir-ccflags-y += -DMTK_VPU_KERNEL
 subdir-ccflags-y += -DCCU_AF_ENABLE
 
 $(warning CCU_MAKE_FILE_CALLED_2_1_1)
-$(info $(CONFIG_MTK_CAMERA_ISP_PLATFORM))
 
 platform = $(subst $\",,$(CONFIG_MTK_CAMERA_ISP_PLATFORM))
-folder_name = isp6s
-obj-$(CONFIG_MTK_CCU) += $(subst ",,$(folder_name))/
 
-$(info CCU_MAKE_FILE_CALLED)
-$(info $(CONFIG_MTK_CCU))
-$(info $(CONFIG_MTK_PLATFORM))
-$(info $(platform))
-ifneq (,$(filter $(platform),mt6757 mt6799))
-    obj-y += 1.0/
-else ifneq (,$(filter $(platform),mt6758 mt6763 mt6765 mt6768))
-    obj-y += 1.1/
-else ifneq (,$(filter $(platform),mt6771 mt6775 mt6785))
-    obj-y += 2.0/
-else ifneq (,$(filter $(platform),mt6779 mt6885))
-    obj-y += 2.1/
-    $(warning CCU_MAKE_FILE_CALLED_2_1)
+# folder_name = isp6s
+# obj-$(CONFIG_MTK_CCU) += $(subst ",,$(folder_name))/
+
+ifeq ($(CONFIG_MTK_CCU),m)
+obj-$(CONFIG_MTK_CCU) += isp4/
+obj-$(CONFIG_MTK_CCU) += isp6s/
+else
+obj-$(CONFIG_MTK_CCU_ISP4) += isp4/
+obj-$(CONFIG_MTK_CCU_ISP6S) += isp6s/
 endif

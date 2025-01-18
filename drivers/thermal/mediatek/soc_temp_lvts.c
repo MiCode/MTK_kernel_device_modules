@@ -24,6 +24,7 @@
 #include "soc_temp_lvts.h"
 #include "thermal_interface.h"
 #include "thermal_core.h"
+#include <linux/math64.h>
 /*==================================================
  * LVTS debug patch
  *==================================================
@@ -113,8 +114,8 @@ static unsigned int lvts_temp_to_raw_v1(struct formula_coeff *co, unsigned int s
 {
 	unsigned int msr_raw = 0;
 
-	msr_raw = ((long long)(((long long)co->golden_temp * 500 - co->a[0] - temp)) << 14)
-		/ (-1 * co->a[0]);
+	msr_raw = (unsigned int)div_s64(((long long)(((long long)co->golden_temp * 500 - co->a[0] - temp)) << 14),
+			(-1 * co->a[0]));
 
 	return msr_raw;
 }
@@ -126,7 +127,7 @@ static int lvts_raw_to_temp_v2(struct formula_coeff *co, unsigned int sensor_id,
 
 	int temp;
 
-	temp = ((long long)co->a[sensor_id] << 14) / msr_raw;
+	temp = (int)div_s64((long long)co->a[sensor_id] << 14, msr_raw);
 	temp = temp + co->golden_temp * 500 - co->a[sensor_id];
 
 	return temp;
@@ -137,8 +138,8 @@ static unsigned int lvts_temp_to_raw_v2(struct formula_coeff *co, unsigned int s
 {
 	unsigned int msr_raw = 0;
 
-	msr_raw = ((long long)co->a[sensor_id] << 14) / (temp - (co->golden_temp * 500) +
-		co->a[sensor_id]);
+	msr_raw = (unsigned int)div_s64(((long long)co->a[sensor_id] << 14), (temp - (co->golden_temp * 500) +
+		co->a[sensor_id]));
 
 	return msr_raw;
 }

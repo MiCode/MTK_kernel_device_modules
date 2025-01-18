@@ -23,3 +23,13 @@ config SUBPMIC_DBG
 	  Say N here to disable.
 	  Provide Read/Write interface by debugfs ext_dev_io.
 	  Also support multiple size condition.
+
+config MT6370_DBG
+	tristate "Mediatek MT6370 Debug core"
+	depends on MTK_SUBPMIC_MISC
+	depends on DEVICE_MODULES_MFD_MT6370
+	help
+	  Say Y here to enable MT6370 Debug support.
+	  Say N here to disable.
+	  Provide Read/Write interface by debugfs ext_dev_io.
+	  Also support multiple size condition.

@@ -200,6 +200,13 @@ static void msdc_dump_clock_sts_core(char **buff, unsigned long *size,
 			"[crypto_cg]enable:%d freq:%lu\n",
 			__clk_is_enabled(host->crypto_cg), clk_get_rate(host->crypto_cg));
 
+	if (host->dvfsrc_vcore_power) {
+		n += scnprintf(&buf_ptr[n], sizeof(buffer) - n,
+			"[dvfs vcore] voltage: %d, req vcore: %d, autok_vcore : %d\n",
+			!in_interrupt() ? regulator_get_voltage(host->dvfsrc_vcore_power) : -1,
+			host->req_vcore, host->autok_vcore);
+	}
+
 	SPREAD_PRINTF(buff, size, m, "%s", buffer);
 }
 
@@ -335,27 +342,47 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 	writel(0, host->base + MSDC_DBG_SEL);
 }
 
-void msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
+int __msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
 	struct msdc_host *host)
 {
 	if (host == NULL) {
 		SPREAD_PRINTF(buff, size, m, "msdc host null\n");
-		return;
+		return -1;
 	}
+
+	SPREAD_PRINTF(buff, size, m, "[MSDC%d]dump\n", host->id);
+
+	msdc_dump_clock_sts(buff, size, m, host);
+
+	if(!in_interrupt())
+		msdc_dump_ldo_sts(buff, size, m, host);
+
+	if (!buff)
+		mdelay(10);
+
+	if (host->dump_gpio_start && host->dump_gpio_end)
+		gpio_dump_regs_range(host->dump_gpio_start, host->dump_gpio_end);
+
+	return 0;
+}
+EXPORT_SYMBOL(__msdc_dump_info);
+
+void msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
+	struct msdc_host *host)
+{
+	if (__msdc_dump_info(buff, size, m, host))
+		return;
 
 	msdc_dump_register(buff, size, m, host);
 
 	if (!buff)
 		mdelay(10);
 
-	msdc_dump_clock_sts(buff, size, m, host);
-
-	msdc_dump_ldo_sts(buff, size, m, host);
+	msdc_dump_dbg_register(buff, size, m, host);
 
 	if (!buff)
 		mdelay(10);
 
-	msdc_dump_dbg_register(buff, size, m, host);
 }
 EXPORT_SYMBOL(msdc_dump_info);
 
@@ -878,10 +905,19 @@ static ssize_t mmc_debug_proc_write(struct file *file, const char *buf,
 
 static int mmc_debug_proc_show(struct seq_file *m, void *v)
 {
+	struct msdc_host *msdc_host = NULL;
+
 	msdc_dump_host_state(NULL, NULL, m);
 	mmc_cmd_dump(NULL, NULL, m, mtk_mmc_host[0], dbg_max_cnt);
 	sd_cmd_dump(NULL, NULL, m, mtk_mmc_host[1], sd_dbg_max_cnt);
-
+	if (mtk_mmc_host[0]) {
+		msdc_host = mmc_priv(mtk_mmc_host[0]);
+		__msdc_dump_info(NULL, NULL, m, msdc_host);
+	}
+	if (mtk_mmc_host[1]) {
+		msdc_host = mmc_priv(mtk_mmc_host[1]);
+		__msdc_dump_info(NULL, NULL, m, msdc_host);
+	}
 	return 0;
 }
 
@@ -1001,6 +1037,7 @@ void mmc_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 {
 	unsigned long free_size = MMC_AEE_BUFFER_SIZE;
 	char *buff;
+	struct msdc_host *msdc_host = NULL;
 
 	if (!mmc_aee_buffer) {
 		pr_info("failed to dump MMC: null AEE buffer");
@@ -1011,7 +1048,14 @@ void mmc_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 	msdc_dump_host_state(&buff, &free_size, NULL);
 	mmc_cmd_dump(&buff, &free_size, NULL, mtk_mmc_host[0], dbg_max_cnt);
 	sd_cmd_dump(&buff, &free_size, NULL, mtk_mmc_host[1], sd_dbg_max_cnt);
-
+	if (mtk_mmc_host[0]) {
+		msdc_host = mmc_priv(mtk_mmc_host[0]);
+		__msdc_dump_info(&buff, &free_size, NULL, msdc_host);
+	}
+	if (mtk_mmc_host[1]) {
+		msdc_host = mmc_priv(mtk_mmc_host[1]);
+		__msdc_dump_info(&buff, &free_size, NULL, msdc_host);
+	}
 	/* return start location */
 	*vaddr = (unsigned long)mmc_aee_buffer;
 	*size = MMC_AEE_BUFFER_SIZE - free_size;

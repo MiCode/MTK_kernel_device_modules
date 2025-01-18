@@ -11,6 +11,7 @@
 # GNU General Public License for more details.
 #
 
+$(info Ming-Hsuan Debug)
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/
@@ -23,6 +24,6 @@ ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
 
 #obj-y += camera_rsc_dummy.c
-obj-$(CONFIG_MTK_CAMERA_ISP_RSC_SUPPORT) += camera_rsc.o
-camera_rsc-objs += engine_request.o
-camera_rsc-objs += isp_6s/camera_rsc.o
+obj-$(CONFIG_MTK_CAMERA_RSC_ISP6S) += camera_rsc_isp6s.o
+camera_rsc_isp6s-objs += engine_request.o
+camera_rsc_isp6s-objs += isp_6s/camera_rsc.o

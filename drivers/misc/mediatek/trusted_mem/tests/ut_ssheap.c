@@ -192,7 +192,7 @@ static ssize_t ssheap_write(struct file *file, const char __user *buffer,
 
 	if (copy_from_user(desc, buffer, count))
 		return 0;
-	pr_info("write count:%lu\n", count);
+	pr_info("write count:%zu\n", count);
 	ssheap_ut(desc);
 	return count;
 }

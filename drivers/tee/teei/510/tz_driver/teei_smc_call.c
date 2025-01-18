@@ -36,8 +36,11 @@ int teei_forward_call(unsigned long long cmd, unsigned long long cmd_addr,
 	}
 
 	init_completion(wait_completion);
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		kfree(wait_completion);

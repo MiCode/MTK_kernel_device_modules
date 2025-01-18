@@ -114,7 +114,11 @@ static int xgf_tracepoint_probe_unregister(struct tracepoint *tp,
 
 void xgf_trace(const char *fmt, ...)
 {
+#if IS_ENABLED(CONFIG_ARM64)
 	char log[1024];
+#else
+	char log[512];
+#endif
 	va_list args;
 	int len;
 
@@ -123,8 +127,13 @@ void xgf_trace(const char *fmt, ...)
 
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);
+#if IS_ENABLED(CONFIG_ARM64)
 	if (unlikely(len == 1024))
 		log[1023] = '\0';
+#else
+	if (unlikely(len == 512))
+		log[511] = '\0';
+#endif
 	va_end(args);
 
 	trace_xgf_trace(log);
@@ -181,6 +190,36 @@ unsigned long long xgf_do_div(unsigned long long a, unsigned long long b)
 	return ret;
 }
 EXPORT_SYMBOL(xgf_do_div);
+
+unsigned long long xgf_do_div_rem(unsigned long long a, unsigned long long b)
+{
+	unsigned long long ret = 0;
+
+	ret = do_div(a, b);
+
+	return ret;
+}
+EXPORT_SYMBOL(xgf_do_div_rem);
+
+long long xgf_div64_s64(long long a, long long b)
+{
+	long long ret = 0;
+
+	ret = div64_s64(a, b);
+
+	return ret;
+}
+EXPORT_SYMBOL(xgf_div64_s64);
+
+unsigned long long xgf_div64_u64(unsigned long long a, unsigned long long b)
+{
+	unsigned long long ret = 0;
+
+	ret = div64_u64(a, b);
+
+	return ret;
+}
+EXPORT_SYMBOL(xgf_div64_u64);
 
 int xgf_get_process_id(int pid)
 {
@@ -1258,7 +1297,11 @@ static char *xgf_strcat(char *dest, const char *src,
 static void xgf_print_critical_path_info(int rpid, unsigned long long bufID,
 	int *raw_dep_list, int raw_dep_list_num)
 {
+#if IS_ENABLED(CONFIG_ARM64)
 	char total_pid_list[1024] = {"\0"};
+#else
+	char total_pid_list[512] = {"\0"};
+#endif
 	char pid[20] = {"\0"};
 	int i, count = 0;
 	int overflow = 0;

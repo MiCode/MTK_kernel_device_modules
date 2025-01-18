@@ -2961,8 +2961,6 @@ int mt6359p_accdet_init(struct snd_soc_component *component,
 			struct snd_soc_card *card)
 {
 	int ret;
-	struct mt63xx_accdet_data *priv =
-			snd_soc_card_get_drvdata(component->card);
 
 	/* Enable Headset and 4 Buttons Jack detection */
 	ret = snd_soc_card_jack_new(card,
@@ -2970,7 +2968,7 @@ int mt6359p_accdet_init(struct snd_soc_component *component,
 				    SND_JACK_HEADSET |
 				    SND_JACK_LINEOUT |
 				    SND_JACK_MECHANICAL,
-				    &priv->jack);
+				    &accdet->jack);
 	if (ret) {
 		pr_err("Property 'mediatek,soc-accdet' missing/invalid\n");
 		return ret;
@@ -2981,6 +2979,8 @@ int mt6359p_accdet_init(struct snd_soc_component *component,
 	snd_jack_set_key(accdet->jack.jack, SND_JACK_BTN_1, KEY_VOLUMEDOWN);
 	snd_jack_set_key(accdet->jack.jack, SND_JACK_BTN_2, KEY_VOLUMEUP);
 	snd_jack_set_key(accdet->jack.jack, SND_JACK_BTN_3, KEY_VOICECOMMAND);
+
+	snd_soc_component_set_jack(component, &accdet->jack, NULL);
 
 	return ret;
 }

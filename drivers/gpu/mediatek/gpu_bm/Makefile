@@ -22,11 +22,10 @@ ccflags-$(CONFIG_MTK_QOS_FRAMEWORK) += -DMTK_QOS_FRAMEWORK
 $(info *GPU BM QoS 2.0 QOS Framework defined)
 endif
 
-ifeq ($(CONFIG_MTK_QOS_MT6893),y)
+ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V3),y)
 ccflags-y += -DMTK_SCMI
 $(info *GPU BM QoS 2.0 SCMI defined)
 endif
-
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpu_qos.o
 mtk_gpu_qos-y := gpu_bm.o

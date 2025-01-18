@@ -175,6 +175,7 @@ struct mtk_chan {
 static unsigned long long num;
 static unsigned int flag_state;
 static unsigned int g_vff_sz;
+static unsigned int res_status;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 atomic_t tx_res_status;
 atomic_t rx_res_status;
@@ -415,6 +416,12 @@ int mtk_uart_get_apdma_rx_state(void)
 	return atomic_read(&hub_dma_rx_chan->rxdma_state);
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
+
+void mtk_uart_set_res_status(unsigned int status)
+{
+	res_status = status;
+}
+EXPORT_SYMBOL(mtk_uart_set_res_status);
 
 bool mtk_uart_get_apdma_handler_state(void)
 {

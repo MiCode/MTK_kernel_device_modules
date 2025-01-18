@@ -39,16 +39,18 @@ struct uarthub_core_ops_struct *g_plat_ic_core_ops;
 struct uarthub_debug_ops_struct *g_plat_ic_debug_ops;
 struct uarthub_ut_test_ops_struct *g_plat_ic_ut_test_ops;
 
-static atomic_t g_uarthub_probe_called = ATOMIC_INIT(0);
 struct platform_device *g_uarthub_pdev;
 UARTHUB_CORE_IRQ_CB g_core_irq_callback;
 int g_uarthub_disable;
 static atomic_t g_uarthub_open = ATOMIC_INIT(0);
 int g_is_ut_testing;
+int g_uarthub_enable_dump_debug = 1;
 static struct notifier_block uarthub_fb_notifier;
 struct workqueue_struct *uarthub_workqueue;
 static int g_last_err_type = -1;
 static struct timespec64 tv_now_assert, tv_end_assert;
+
+extern struct uarthub_drv_cbs uarthub_drv_export_cbs;
 
 int g_dev0_irq_sta;
 int g_dev0_inband_irq_sta;
@@ -75,6 +77,7 @@ static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long
 struct uarthub_ops_struct __weak undef_plat_data = {};
 struct uarthub_ops_struct __weak mt6985_plat_data = {};
 struct uarthub_ops_struct __weak mt6989_plat_data = {};
+struct uarthub_ops_struct __weak mt6991_plat_data = {};
 
 const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6835-uarthub", .data = &undef_plat_data },
@@ -83,6 +86,7 @@ const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6983-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6985-uarthub", .data = &mt6985_plat_data },
 	{ .compatible = "mediatek,mt6989-uarthub", .data = &mt6989_plat_data },
+	{ .compatible = "mediatek,mt6991-uarthub", .data = &mt6991_plat_data },
 	{}
 };
 #endif
@@ -135,7 +139,6 @@ static int mtk_uarthub_probe(struct platform_device *pdev)
 		}
 	}
 
-	atomic_set(&g_uarthub_probe_called, 1);
 	return 0;
 }
 
@@ -149,7 +152,6 @@ static int mtk_uarthub_remove(struct platform_device *pdev)
 	if (g_uarthub_pdev)
 		g_uarthub_pdev = NULL;
 
-	atomic_set(&g_uarthub_probe_called, 0);
 	return 0;
 }
 
@@ -207,21 +209,16 @@ struct uarthub_ops_struct *uarthub_core_get_platform_ic_ops(struct platform_devi
 
 static int uarthub_core_init(void)
 {
-	int ret = -1, retry = 0;
+	int ret = -1;
 
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] g_uarthub_disable=[%d]\n", __func__, g_uarthub_disable);
 #endif
 
-	ret = platform_driver_register(&mtk_uarthub_dev_drv);
-	if (ret)
+	ret = platform_driver_probe(&mtk_uarthub_dev_drv, mtk_uarthub_probe);
+	if (ret) {
 		pr_notice("[%s] Uarthub driver registered failed(%d)\n", __func__, ret);
-	else {
-		while (atomic_read(&g_uarthub_probe_called) == 0 && retry < 100) {
-			msleep(50);
-			retry++;
-			pr_info("[%s] g_uarthub_probe_called = 0, retry = %d\n", __func__, retry);
-		}
+		goto ERROR;
 	}
 
 	if (!g_uarthub_pdev) {
@@ -238,6 +235,12 @@ static int uarthub_core_init(void)
 		pr_notice("[%s] g_plat_ic_core_ops is NULL\n", __func__);
 		goto ERROR;
 	}
+
+	//register for 8250_mtk
+	uarthub_drv_callbacks_register(&uarthub_drv_export_cbs);
+
+	if (g_is_ut_testing == 1)
+		g_uarthub_enable_dump_debug = 0;
 
 	uarthub_workqueue = create_singlethread_workqueue("uarthub_wq");
 	if (!uarthub_workqueue) {
@@ -276,6 +279,7 @@ static int uarthub_core_init(void)
 
 ERROR:
 	g_uarthub_disable = 1;
+	uarthub_drv_callbacks_unregister();
 	return -1;
 }
 
@@ -293,6 +297,7 @@ static void uarthub_core_exit(void)
 
 	mtk_disp_notifier_unregister(&uarthub_fb_notifier);
 	platform_driver_unregister(&mtk_uarthub_dev_drv);
+	uarthub_drv_callbacks_unregister();
 }
 
 static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long value, void *v)
@@ -583,6 +588,7 @@ int uarthub_core_dev0_is_uarthub_ready(const char *tag)
 	state = g_plat_ic_core_ops->uarthub_plat_is_ready_state();
 
 	if (state == 1) {
+		uarthub_core_crc_ctrl(1);
 #if UARTHUB_DEBUG_LOG
 		uarthub_core_debug_clk_info(tag);
 #endif
@@ -1467,6 +1473,8 @@ int uarthub_core_assert_state_ctrl(int assert_ctrl)
 
 int uarthub_core_reset_flow_control(void)
 {
+	int ret = 0;
+
 	if (g_uarthub_disable == 1)
 		return 0;
 
@@ -1479,7 +1487,9 @@ int uarthub_core_reset_flow_control(void)
 		return UARTHUB_ERR_HUB_CLK_DISABLE;
 	}
 
-	return g_plat_ic_core_ops->uarthub_plat_reset_flow_control();
+	ret = g_plat_ic_core_ops->uarthub_plat_reset_flow_control();
+	uarthub_core_crc_ctrl(1);
+	return ret;
 }
 
 int uarthub_core_reset(void)
@@ -1597,6 +1607,208 @@ int uarthub_core_is_uarthub_clk_enable(void)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
 	return g_plat_ic_core_ops->uarthub_plat_is_uarthub_clk_enable();
+}
+
+int uarthub_core_get_bt_sleep_flow_hw_mech_en(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_get_bt_sleep_flow_hw_mech_en == NULL) {
+#if UARTHUB_INFO_LOG
+		pr_info("[%s] API NOT EXIST, force return [0]\n", __func__);
+#endif
+		return 0;
+	}
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_get_bt_sleep_flow_hw_mech_en();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[%d]\n", __func__, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_set_bt_sleep_flow_hw_mech_en(int enable)
+{
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_set_bt_sleep_flow_hw_mech_en == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	g_plat_ic_core_ops->uarthub_plat_set_bt_sleep_flow_hw_mech_en(enable);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] enable=[%d]\n", __func__, enable);
+#endif
+
+	return 0;
+}
+
+int uarthub_core_get_host_awake_sta(int dev_index)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_get_host_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_get_host_awake_sta(dev_index);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_set_host_awake_sta(int dev_index)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_set_host_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_set_host_awake_sta(dev_index);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_clear_host_awake_sta(int dev_index)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_clear_host_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_clear_host_awake_sta(dev_index);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_get_host_bt_awake_sta(int dev_index)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_get_host_bt_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_get_host_bt_awake_sta(dev_index);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_get_cmm_bt_awake_sta(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_get_cmm_bt_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_get_cmm_bt_awake_sta();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[%d]\n", __func__, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_get_bt_awake_sta(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_get_bt_awake_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_core_ops->uarthub_plat_get_bt_awake_sta();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[%d]\n", __func__, state);
+#endif
+
+	return state;
 }
 
 static void debug_info_worker_handler(struct work_struct *work)

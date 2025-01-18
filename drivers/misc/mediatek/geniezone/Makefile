@@ -51,8 +51,15 @@ endif # !CONFIG_TEE
 obj-$(CONFIG_MTK_GZ_MAIN) += gz_main_mod.o
 gz_main_mod-objs += gz_main.o \
 			     mtee_ut/gz_ut.o \
-			     mtee_ut/gz_chmem_ut.o mtee_ut/gz_shmem_ut.o mtee_ut/gz_vreg_ut.o \
-			     gz_ffa.o \
+			     mtee_ut/gz_shmem_ut.o mtee_ut/gz_vreg_ut.o \
+
+ifneq ($(filter y m, $(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)),)
+  gz_main_mod-objs += mtee_ut/gz_chmem_ut.o
+endif
+
+ifneq ($(filter y m, $(CONFIG_ARM_FFA_TRANSPORT)),)
+   gz_main_mod-objs += gz_ffa.o
+endif
 
 obj-$(CONFIG_MTK_GZ_TZ_SYSTEM) += gz_tz_system.o
 gz_tz_system-objs += tz_system.o mtee-kree/tz_mmap.o mtee-kree/kree_mem.o

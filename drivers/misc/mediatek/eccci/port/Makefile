@@ -15,9 +15,9 @@ ifeq ($(CONFIG_MTK_ECCCI_DRIVER), y)
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/platform
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni
 #ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/mt6873

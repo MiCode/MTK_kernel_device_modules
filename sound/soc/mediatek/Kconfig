@@ -40,6 +40,29 @@ config SND_SOC_MT6853_MT6359P
 	  Select Y if you have such device.
 	  If unsure select "N".
 
+config SND_SOC_MT6885
+	tristate "ASoC support for Mediatek MT6885 chip"
+	depends on ARCH_MEDIATEK
+	select DEVICE_MODULES_SND_SOC_MEDIATEK
+	select SND_SOC_MTK_SRAM
+	select SND_SOC_MTK_SMART_PHONE
+	select DMA_SHARED_BUFFER
+	help
+	  This adds ASoC driver for Mediatek MT6885 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT6885_MT6359P
+	tristate "ASoc Audio driver for MT6885 with MT6359P codec"
+	depends on SND_SOC_MT6885
+	select SND_SOC_MT6359P
+	help
+	  This adds ASoC driver for Mediatek MT6885 boards
+	  with the MT6359P codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
 config SND_SOC_MT6873
 	tristate "ASoC support for Mediatek MT6873 chip"
 	depends on ARCH_MEDIATEK
@@ -92,9 +115,6 @@ config SND_SOC_MT6897
 	select SND_SOC_MTK_SMART_PHONE
 	help
 	  This adds ASoC driver for Mediatek MT6897 boards
-	  that can be used with other codecs.
-	  Select Y if you have such device.
-	  If unsure select "N".
 
 config SND_SOC_MT6897_MT6368
 	tristate "ASoc Audio driver for MT6897 with MT6368 codec"
@@ -103,6 +123,27 @@ config SND_SOC_MT6897_MT6368
 	help
 	  This adds ASoC driver for Mediatek MT6897 boards
 	  with the MT6368 codecs.
+
+config SND_SOC_MT6768
+	tristate "ASoC support for Mediatek MT6768 chip"
+	depends on ARCH_MEDIATEK
+	select SND_SOC_MTK_SRAM
+	select DEVICE_MODULES_SND_SOC_MEDIATEK
+	select SND_SOC_MTK_SMART_PHONE
+	select DMA_SHARED_BUFFER
+	help
+	  This adds ASoC driver for Mediatek MT6768 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT6768_MT6358
+	tristate "ASoc Audio driver for MT6768 with MT6358 codec"
+	depends on SND_SOC_MT6768
+	select DEVICE_MODULES_SND_SOC_MT6358
+	help
+	  This adds ASoC driver for Mediatek MT6789 boards
+	  with the MT6358 codecs.
 	  Select Y if you have such device.
 	  If unsure select "N".
 

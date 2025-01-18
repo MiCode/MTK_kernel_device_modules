@@ -21,7 +21,24 @@ struct qos_rec_data {
 
 	/* remaining size = 3804 bytes */
 };
-
+#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY)
+static inline int qos_init_rec_share(void)
+{
+	return 0;
+}
+static inline unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
+{
+	return 0;
+}
+static inline unsigned int qos_rec_get_hist_data_bw(unsigned int idx, unsigned int type)
+{
+	return 0;
+}
+static inline unsigned int qos_rec_get_hist_idx(void)
+{
+	return 0xFFFF;
+}
+#else
 extern int qos_init_rec_share(void);
 extern unsigned int qos_rec_get_hist_bw(unsigned int idx,
 										unsigned int type);
@@ -30,6 +47,7 @@ extern unsigned int qos_rec_get_hist_data_bw(unsigned int idx,
 extern unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx,
 										unsigned int type);
 extern unsigned int qos_rec_get_hist_idx(void);
+#endif
 #define QOS_SHARE_REC_VER               0x0
 #define QOS_SHARE_CURR_IDX              0x20
 #define QOS_SHARE_HIST_BW               0x24

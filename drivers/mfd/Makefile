@@ -5,6 +5,7 @@ obj-$(CONFIG_DEVICE_MODULES_MFD_MT6360)	+= mt6360-core.o
 mt6397-objs			:= mt6397-core.o mt6397-irq.o mt6358-irq.o
 obj-$(CONFIG_DEVICE_MODULES_MFD_MT6397)	+= mt6397.o
 obj-$(CONFIG_DEVICE_MODULES_MFD_MT6397)        += mt63xx-debug.o
+obj-$(CONFIG_DEVICE_MODULES_MFD_MT6370) += mt6370.o
 obj-$(CONFIG_MFD_MT6375)	+= mt6375.o
 obj-$(CONFIG_MFD_MT6681)	+= mt6681-core.o
 obj-$(CONFIG_MT6685_AUDCLK)	+= mt6685-audclk.o

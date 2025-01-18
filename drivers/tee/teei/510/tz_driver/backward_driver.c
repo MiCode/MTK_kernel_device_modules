@@ -48,7 +48,9 @@ static struct completion teei_bdrv_done;
 
 static long register_shared_param_buf(struct service_handler *handler)
 {
+#ifdef TEEI_FFA_SUPPORT
 	unsigned long shared_ID = 0;
+#endif
 	long retVal = 0;
 
 	if (handler->size > VDRV_MAX_SIZE) {
@@ -69,7 +71,7 @@ static long register_shared_param_buf(struct service_handler *handler)
 							__FILE__, __LINE__);
 		return -ENOMEM;
 	}
-
+#ifdef TEEI_FFA_SUPPORT
 	retVal = soter_ffa_shm_register(
 				(unsigned long)virt_to_page(handler->param_buf),
 				ROUND_UP(handler->size, SZ_4K), 0, &shared_ID);
@@ -78,22 +80,33 @@ static long register_shared_param_buf(struct service_handler *handler)
 						__func__, __LINE__);
 		goto free_memory;
 	}
+#endif
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		goto free_memory;
 	}
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_nq_entry(TEEI_CREAT_BDRV, handler->sysno,
 				(unsigned long long)(&boot_sema),
 				shared_ID,
 				shared_ID >> 32, 0);
+#else
+	retVal = add_nq_entry(TEEI_CREAT_BDRV, handler->sysno,
+                            (unsigned long long)(&boot_sema),
+                            virt_to_phys((void *)(handler->param_buf)),
+                            handler->size, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add one nq to n_t_buffer\n");
 		goto free_memory;
 	}
-
 	teei_notify_switch_fn();
 
 	down(&boot_sema);
@@ -141,7 +154,11 @@ static int reetime_handle(struct NQ_entry *entry)
 		tv_usec = tp.tv_nsec / 1000;
 	}
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		return retVal;
@@ -214,7 +231,11 @@ static int vfs_handle(struct NQ_entry *entry)
 
 	vfs_thread_function((unsigned long)(vfs_handler.param_buf), 0, 0);
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+#endif
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
 		return retVal;
@@ -250,7 +271,12 @@ static int handle_load_img_call(struct bdrv_work_struct *entry)
 
 	vfs_thread_function(boot_vfs_addr, 0, 0);
 
+#ifdef TEEI_FFA_SUPPORT
 	retVal = add_work_entry(SMC_CALL_TYPE, N_ACK_T_LOAD_IMG, 0, 0);
+#else
+	retVal = add_work_entry(SMC_CALL_TYPE, N_ACK_T_LOAD_IMG, 0, 0, 0);
+#endif
+
 	if (retVal != 0) {
 		IMSG_ERROR("TEEI: Failed to add N_ACK_T_LOAD_IMG!\n");
 		return retVal;

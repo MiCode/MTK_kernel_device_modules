@@ -11,7 +11,7 @@
 #include <mt-plat/mrdump.h>
 #include "mrdump_private.h"
 
-void mrdump_arch_fill_machdesc(const mrdump_machdesc *machdesc_p)
+void mrdump_arch_fill_machdesc(struct mrdump_machdesc *machdesc_p)
 {
 	u32 ttbr0;
 	asm volatile ("mrc p15, 0, %0, c2, c0, 1\n\t"

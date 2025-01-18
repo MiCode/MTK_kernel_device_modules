@@ -1442,7 +1442,9 @@ int teei_tee_init(void)
 		class_destroy(tee_class);
 		tee_class = NULL;
 	}
-
+#if IS_ENABLED(CONFIG_MICROTRUST_TEST_DRIVERS)
+        teei_init_proxy_link();
+#endif
 	return rc;
 }
 EXPORT_SYMBOL_GPL(teei_tee_init);

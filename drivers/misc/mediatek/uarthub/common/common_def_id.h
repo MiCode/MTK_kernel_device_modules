@@ -9,9 +9,14 @@
 #define UARTHUB_INFO_LOG  1
 #define UARTHUB_DEBUG_LOG 0
 
-#define DBG_LOG_LEN    1024
 #define BIT_0xFFFF_FFFF  0xFFFFFFFF
 #define BIT_0x7FFF_FFFF  0x7FFFFFFF
+
+#if IS_ENABLED(CONFIG_ARM64)
+#define DBG_LOG_LEN 1024
+#else
+#define DBG_LOG_LEN 108
+#endif
 
 /* CR control definition */
 #define GET_BIT_MASK(value, mask) \

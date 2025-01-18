@@ -75,6 +75,15 @@ config DEVICE_MODULES_SND_SOC_MT6358
 	  Enable support for the platform which uses MT6358 as
 	  external codec device.
 
+config DEVICE_MODULES_SND_SOC_MT6660
+	tristate "Mediatek MT6660 Speaker Amplifier"
+	depends on I2C
+	help
+	  MediaTek MT6660 is a smart power amplifier which contain
+	  speaker protection, multi-band DRC, equalizer functions.
+	  Select N if you don't have MT6660 on board.
+	  Select M to build this as module.
+
 config DEVICE_MODULES_SND_SOC_MT6359
 	tristate "MediaTek MT6359 Codec"
 	depends on DEVICE_MODULES_MTK_PMIC_WRAP
@@ -100,6 +109,14 @@ config SND_SOC_MT6359P
 
 config SND_SOC_MT6359P_ACCDET
 	tristate "MediaTek MT6359 ACCDET driver"
+	default m
+	help
+	  ACCDET means Accessory Detection technology, MediaTek develop it
+	  for ASoC codec soc-jack detection mechanism.
+	  Select N if you don't have jack on board.
+
+config SND_SOC_MT6358_ACCDET
+	tristate "MediaTek MT6358 ACCDET driver"
 	default m
 	help
 	  ACCDET means Accessory Detection technology, MediaTek develop it

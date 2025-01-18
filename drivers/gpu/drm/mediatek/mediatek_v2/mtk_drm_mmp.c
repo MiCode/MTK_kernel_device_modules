@@ -350,6 +350,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "csc_bl");
 		g_CRTC_MMP_Events[i].vblank_rec_thread = mmprofile_register_event(
 			crtc_mmp_root, "vblank_rec_thread");
+		g_CRTC_MMP_Events[i].bdg_gce_irq = mmprofile_register_event(
+			crtc_mmp_root, "bdg_gce_irq");
 	}
 }
 void drm_mmp_init(void)

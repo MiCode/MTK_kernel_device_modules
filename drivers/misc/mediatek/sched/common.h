@@ -185,7 +185,6 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_rq,
 				enum cpu_util_type type,
 				struct task_struct *p,
 				unsigned long min_cap, unsigned long max_cap);
-int dequeue_idle_cpu(int cpu);
 #endif
 __always_inline
 unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
@@ -231,6 +230,39 @@ static inline unsigned long mtk_cpu_util_cfs(struct rq *rq)
 	}
 
 	return util;
+}
+
+#define EAS_NODE_NAME "eas_info"
+#define EAS_PROP_CSRAM "csram-base"
+#define EAS_PROP_OFFS_CAP "offs-cap"
+#define EAS_PROP_OFFS_THERMAL_S "offs-thermal-limit"
+
+struct eas_info {
+	unsigned int csram_base;
+	unsigned int offs_cap;
+	unsigned int offs_thermal_limit_s;
+	bool available;
+};
+
+void parse_eas_data(struct eas_info *info);
+
+static inline unsigned long task_util(struct task_struct *p)
+{
+	return READ_ONCE(p->se.avg.util_avg);
+}
+
+static inline unsigned long _task_util_est(struct task_struct *p)
+{
+	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+
+	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+}
+
+static inline unsigned long task_util_est(struct task_struct *p)
+{
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		return max(task_util(p), _task_util_est(p));
+	return task_util(p);
 }
 
 #endif /* _SCHED_COMMON_H */

@@ -490,6 +490,20 @@ static int mic_type_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int dmic_used_get(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6359_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	ucontrol->value.integer.value[0] =
+		priv->mux_select[MUX_MIC_TYPE_0] == MIC_TYPE_MUX_DMIC ||
+		priv->mux_select[MUX_MIC_TYPE_1] == MIC_TYPE_MUX_DMIC ||
+		priv->mux_select[MUX_MIC_TYPE_2] == MIC_TYPE_MUX_DMIC;
+
+	return 0;
+}
+
 static int mt6359_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -608,29 +622,22 @@ static const DECLARE_TLV_DB_SCALE(capture_tlv, 0, 600, 0);
 
 static const struct snd_kcontrol_new mt6359_snd_controls[] = {
 	/* dl pga gain */
-	SOC_SINGLE_EXT_TLV("HeadsetL Volume",
-			   MT6359_ZCD_CON2, 0, 0x1E, 0,
+	SOC_DOUBLE_EXT_TLV("Headset Volume",
+			   MT6359_ZCD_CON2, 0, 7, 0x1E, 0,
 			   snd_soc_get_volsw, mt6359_put_volsw,
 			   hp_playback_tlv),
-	SOC_SINGLE_EXT_TLV("HeadsetR Volume",
-			   MT6359_ZCD_CON2, 7, 0x1E, 0,
-			   snd_soc_get_volsw, mt6359_put_volsw,
-			   hp_playback_tlv),
-	SOC_SINGLE_EXT_TLV("LineoutL Volume",
-			   MT6359_ZCD_CON1, 0, 0x12, 0,
-			   snd_soc_get_volsw, mt6359_put_volsw, playback_tlv),
-	SOC_SINGLE_EXT_TLV("LineoutR Volume",
-			   MT6359_ZCD_CON1, 7, 0x12, 0,
+	SOC_DOUBLE_EXT_TLV("Lineout Volume",
+			   MT6359_ZCD_CON1, 0, 7, 0x12, 0,
 			   snd_soc_get_volsw, mt6359_put_volsw, playback_tlv),
 	SOC_SINGLE_EXT_TLV("Handset Volume",
 			   MT6359_ZCD_CON3, 0, 0x12, 0,
 			   snd_soc_get_volsw, mt6359_put_volsw, playback_tlv),
 
 	/* ul pga gain */
-	SOC_SINGLE_EXT_TLV("PGAL Volume",
+	SOC_SINGLE_EXT_TLV("PGA1 Volume",
 			   MT6359_AUDENC_ANA_CON0, RG_AUDPREAMPLGAIN_SFT, 4, 0,
 			   snd_soc_get_volsw, mt6359_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGAR Volume",
+	SOC_SINGLE_EXT_TLV("PGA2 Volume",
 			   MT6359_AUDENC_ANA_CON1, RG_AUDPREAMPRGAIN_SFT, 4, 0,
 			   snd_soc_get_volsw, mt6359_put_volsw, capture_tlv),
 	SOC_SINGLE_EXT_TLV("PGA3 Volume",
@@ -4580,7 +4587,7 @@ static int dc_trim_thread(void *arg)
 #if IS_ENABLED(CONFIG_SND_SOC_MT6359P_ACCDET)
 	accdet_late_init(0);
 #endif
-	do_exit(0);
+	//do_exit(0);
 
 	return 0;
 }
@@ -5218,6 +5225,7 @@ static const struct snd_kcontrol_new mt6359_snd_misc_controls[] = {
 		       hp_impedance_get, NULL),
 	SOC_ENUM_EXT("PMIC_REG_CLEAR", misc_control_enum[0],
 		     NULL, mt6359_rcv_dcc_set),
+        SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
 };
 
 static int mt6359_codec_init_reg(struct snd_soc_component *cmpnt)

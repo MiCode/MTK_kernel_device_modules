@@ -24,4 +24,5 @@ enum {
 int tee_ioctl_capi_proxy(struct tee_context *ctx,
 			struct tee_ioctl_capi_proxy_arg __user *uarg);
 
+void teei_init_proxy_link(void);
 #endif	/* end of CAPI_PROXY_H */

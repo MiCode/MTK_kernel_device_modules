@@ -26,7 +26,7 @@ config DEVICE_MODULES_MMC_MTK
 	  This is needed if support for any SD/SDIO/MMC devices is required.
 	  If unsure, say N.
 
-config MMC_MTK_PRO
+config DEVICE_MODULES_MMC_MTK_PRO
 	tristate "MediaTek SD/MMC Card Proprietary Interface support"
 	depends on !DEVICE_MODULES_MMC_MTK
 	help
@@ -49,10 +49,10 @@ config DEVICE_MODULES_MMC_CQHCI
 
 	  If unsure, say N.
 
-config MMC_AUTOK
-	tristate "MediaTek SD/MMC Card Auto Calibration support"
+config DEVICE_MODULES_MMC_MTK_MMC_WP
+	tristate "MediaTek eMMC Write Protect Group support"
 	help
-	  This selects the MediaTek(R) Secure digital and Multimedia card
-	  Online Tune Interface. If you have a controller with this interface,
-	  say Y or M here.
+	  Set read-only on the partitions belonging to eMMC write protect groups.
+	  If you set write protect on eMMC, say Y or M here.
 	  If unsure, say N.
+

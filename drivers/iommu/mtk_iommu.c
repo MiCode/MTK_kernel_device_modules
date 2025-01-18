@@ -351,6 +351,7 @@ static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
  * 6,VDEC:           0x1_7000_0000~0x1_FFFF_FFFF(2GB+256MB)
  */
 static const struct mtk_iommu_iova_region mt6855_multi_dom[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4G, .size = (SZ_4G * 3), .type = NORMAL}, /*0, NORMAL */
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 1 - SZ_4K), .type = NORMAL}, /* 1,CAM_MDP_4G-4K */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 2,LK_RESV:32MB */
@@ -359,10 +360,12 @@ static const struct mtk_iommu_iova_region mt6855_multi_dom[] = {
 	{ .iova_base = 0x150000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 5,VDO_UP_256MB_1 */
 	{ .iova_base = 0x160000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 6,VDO_UP_256MB_1 */
 	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL}, /* 7,VDEC */
+#endif
 };
 
 static const struct mtk_iommu_iova_region mt6873_multi_dom[] = {
 	{ .iova_base = 0x0, .size = SZ_4G},	      /* disp : 0 ~ 4G */
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4G, .size = SZ_4G},     /* vdec : 4G ~ 8G */
 	{ .iova_base = SZ_4G * 2, .size = SZ_4G}, /* CAM/MDP: 8G ~ 12G */
 	{ .iova_base = 0x240000000ULL, .size = 0x4000000}, /* CCU0 */
@@ -371,6 +374,7 @@ static const struct mtk_iommu_iova_region mt6873_multi_dom[] = {
 	{ .iova_base = 0x304000000ULL, .size = 0x4000000}, /* APU VLM */
 	{ .iova_base = 0x310000000ULL, .size = 0x10000000}, /* APU VPU */
 	{ .iova_base = 0x370000000ULL, .size = 0x12600000}, /* APU REG */
+#endif
 };
 
 /*
@@ -387,6 +391,7 @@ static const struct mtk_iommu_iova_region mt6873_multi_dom[] = {
  * 8,VDEC:           0x1_7000_0000~0x1_FFFF_FFFF
  */
 static const struct mtk_iommu_iova_region mt6879_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = PROTECTED}, /* 1,LK_RESV:32MB */
 	{ .iova_base = 0x108000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 2,CCU0:64MB */
@@ -396,6 +401,7 @@ static const struct mtk_iommu_iova_region mt6879_multi_dom_mm[] = {
 	{ .iova_base = 0x150000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 6,VDO_UP_256MB_1 */
 	{ .iova_base = 0x160000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 7,VDO_UP_256MB_1 */
 	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL}, /* 8,VDEC */
+#endif
 };
 
 /*
@@ -408,10 +414,12 @@ static const struct mtk_iommu_iova_region mt6879_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6879_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 /*
@@ -426,6 +434,7 @@ static const struct mtk_iommu_iova_region mt6879_multi_dom_apu[] = {
  * 6,VDEC:           0x1_7000_0000~0x1_FFFF_FFFF
  */
 static const struct mtk_iommu_iova_region mt6886_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x104000000ULL, .size = SZ_32M, .type = NORMAL}, /* 1,GCE:32MB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 2,LK_RESV:32MB */
@@ -433,6 +442,7 @@ static const struct mtk_iommu_iova_region mt6886_multi_dom_mm[] = {
 	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 4,CCU1:64MB */
 	{ .iova_base = 0x110000000ULL, .size = 0x60000000, .type = PROTECTED}, /* 5,VDO_UP:1536M */
 	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL}, /* 6,VDEC */
+#endif
 };
 
 /*
@@ -445,10 +455,12 @@ static const struct mtk_iommu_iova_region mt6886_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6886_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 /*
@@ -469,6 +481,7 @@ static const struct mtk_iommu_iova_region mt6886_multi_dom_apu[] = {
  * 8.VDO_UP_256MB_1: 0x1_6000_0000~0x1_6FFF_FFFF(256MB)
  */
 static const struct mtk_iommu_iova_region mt6895_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x20000000ULL, .size = 0x12c00000, .type = NORMAL}, /* 1,VDEC 300MB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 2,LK_RESV:32MB */
@@ -478,6 +491,7 @@ static const struct mtk_iommu_iova_region mt6895_multi_dom_mm[] = {
 	{ .iova_base = 0x130000000ULL, .size = SZ_512M, .type = PROTECTED}, /* 6,VDO_UP_512MB_2 */
 	{ .iova_base = 0x150000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 7,VDO_UP_256MB_1 */
 	{ .iova_base = 0x160000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 8,VDO_UP_256MB_1 */
+#endif
 };
 
 /*
@@ -490,10 +504,12 @@ static const struct mtk_iommu_iova_region mt6895_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6895_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},/*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 /*
@@ -509,12 +525,14 @@ static const struct mtk_iommu_iova_region mt6895_multi_dom_apu[] = {
  * 5.VDO_UP_1.5G:    0x1_4000_0000~0x1_9FFF_FFFF(1.5G)
  */
 static const struct mtk_iommu_iova_region mt6897_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 1,LK_RESV:32MB */
 	{ .iova_base = 0x108000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 2,CCU0:64MB */
 	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 3,CCU1:64MB */
 	{ .iova_base = 0x110000000ULL, .size = SZ_128M * 6, .type = PROTECTED}, /* 4,VDO_UP_768MB */
 	{ .iova_base = 0x140000000ULL, .size = 0x60000000, .type = NORMAL}, /* 5,VDO_UP_1.5G */
+#endif
 };
 
 /*
@@ -527,10 +545,12 @@ static const struct mtk_iommu_iova_region mt6897_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6897_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},/*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 /*
@@ -551,6 +571,7 @@ static const struct mtk_iommu_iova_region mt6897_multi_dom_apu[] = {
  * 8.VDO_UP_256MB_1: 0x1_6000_0000~0x1_6FFF_FFFF(256MB)
  */
 static const struct mtk_iommu_iova_region mt6983_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x20000000ULL, .size = 0x12c00000, .type = NORMAL}, /* 1,VDEC 300MB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 2,LK_RESV:32MB */
@@ -560,6 +581,7 @@ static const struct mtk_iommu_iova_region mt6983_multi_dom_mm[] = {
 	{ .iova_base = 0x130000000ULL, .size = SZ_512M, .type = PROTECTED}, /* 6,VDO_UP_512MB_2 */
 	{ .iova_base = 0x150000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 7,VDO_UP_256MB_1 */
 	{ .iova_base = 0x160000000ULL, .size = SZ_256M, .type = PROTECTED}, /* 8,VDO_UP_256MB_1 */
+#endif
 };
 
 /*
@@ -572,10 +594,12 @@ static const struct mtk_iommu_iova_region mt6983_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6983_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},/*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 /*
@@ -594,6 +618,7 @@ static const struct mtk_iommu_iova_region mt6983_multi_dom_apu[] = {
  * 6.VDO_UP_1.5G:         0x1_4000_0000~0x1_9FFF_FFFF(1.5G)
  */
 static const struct mtk_iommu_iova_region mt6985_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL}, /*0. NORMAL */
 	{ .iova_base = 0x20000000ULL, .size = 0x12c00000, .type = NORMAL}, /* 1,VDEC 300MB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 2,LK_RESV:32MB */
@@ -601,6 +626,7 @@ static const struct mtk_iommu_iova_region mt6985_multi_dom_mm[] = {
 	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED}, /* 4,CCU1:64MB */
 	{ .iova_base = 0x110000000ULL, .size = SZ_128M * 6, .type = PROTECTED}, /* 4,VDO_UP_768MB */
 	{ .iova_base = 0x140000000ULL, .size = 0x60000000, .type = NORMAL}, /* 5,VDO_UP_1.5G */
+#endif
 };
 
 /*
@@ -613,15 +639,18 @@ static const struct mtk_iommu_iova_region mt6985_multi_dom_mm[] = {
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  */
 static const struct mtk_iommu_iova_region mt6985_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},/*0. APU_DATA */
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1,APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
+#endif
 };
 
 static phys_addr_t mtk_iommu_iova_to_phys(struct iommu_domain *domain,
 					  dma_addr_t iova);
 
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
 				u64 *pa, u32 *type, u32 *lvl)
 {
@@ -655,6 +684,7 @@ uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
 	return pa[NS_TAB];
 }
 EXPORT_SYMBOL_GPL(mtee_iova_to_phys);
+#endif
 
 static int mtee_share_iova(uint64_t iova_start, uint32_t size)
 {
@@ -1120,17 +1150,25 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 		enum iommu_bank bank, u64 fault_iova)
 {
-	u64 iova_tmp, hw_pa[TAB_TYPE_NUM] = { 0 };
-	phys_addr_t fake_pa;
-	u32 sr_info[TAB_TYPE_NUM] = { 0 };
+	u64 iova_tmp = { 0 };
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	// for 32bit legacy 4G chip not use gz hypervisor
+	// so discompile those variable to avoid build error
+	u64 hw_pa[TAB_TYPE_NUM] = { 0 };
 	u32 pg_type[TAB_TYPE_NUM] = { 0 };
 	u32 lvl[TAB_TYPE_NUM] = { 0 };
+	u32 sr_info[TAB_TYPE_NUM] = { 0 };
+#endif
+	phys_addr_t fake_pa;
 	int i;
 
 	for (i = 0, iova_tmp = fault_iova; i < MTK_IOMMU_TF_IOVA_DUMP_NUM; i++) {
 		if (i > 0)
 			iova_tmp -= SZ_4K;
 		fake_pa = mtk_iommu_iova_to_phys(&data->m4u_dom->domain, iova_tmp);
+
+		// for 32bit legacy 4G chip not use gz hypervisor
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 		if (hypmmu_type2_en == true)
 			hw_pa[NS_TAB] = mtee_iova_to_phys(iova_tmp,
 						data->plat_data->tab_id,
@@ -1138,6 +1176,7 @@ static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 		pr_err("error, type2_en:%d, index:%d, lvl:%u, pg_type:0x%x, falut_iova:0x%llx, fault_pa:0x%llx ~ 0x%llx\n",
 			hypmmu_type2_en, i, lvl[NS_TAB], pg_type[NS_TAB], iova_tmp,
 			(u64)fake_pa, hw_pa[NS_TAB]);
+#endif
 		if (!fake_pa && i > 0)
 			break;
 	}
@@ -1349,10 +1388,10 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 		}
 		layer = fault_iova & F_MMU_FAULT_VA_LAYER_BIT;
 		write = fault_iova & F_MMU_FAULT_VA_WRITE_BIT;
-
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 		pr_info("%s, iommu:(%d,%d) reg_raw_data: int_status:0x%x,0x%x, int_id:0x%x, int_va:0x%llx, int_pa:0x%llx\n",
 			__func__, type, id, int_state0, int_state1, regval, fault_iova, fault_pa);
-
+#endif
 		if (MTK_IOMMU_HAS_FLAG(data->plat_data, IOVA_34_EN)) {
 			va34_32 = FIELD_GET(F_MMU_INVAL_VA_34_32_MASK, fault_iova);
 			fault_iova = fault_iova & F_MMU_INVAL_VA_31_12_MASK;
@@ -1362,12 +1401,21 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 		fault_pa |= (u64)pa34_32 << 32;
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 		pr_info("%s base:0x%x fault type=0x%x iova=0x%llx pa=0x%llx layer=%d %s, pgtable=0x%x, tfrp_pa=0x%llx, 0x114=0x%x\n",
 			dev_name(dev), table_base, int_state1, fault_iova, fault_pa,
 			layer, (write ? "write" : "read"), dom->cfg.arm_v7s_cfg.ttbr,
 			data->protect_base, readl_relaxed(base + REG_MMU_IVRP_PADDR));
 		mtk_iommu_dump_iova(data, IOMMU_BK0, fault_iova);
 		report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
+#else
+		pr_info("%s base:0x%x fault type=0x%x iova=0x%llx pa=0x%llx layer=%d %s, pgtable=0x%x, tfrp_pa=0x%zx, 0x114=0x%x\n",
+			dev_name(dev), table_base, int_state1, fault_iova, fault_pa,
+			layer, (write ? "write" : "read"), dom->cfg.arm_v7s_cfg.ttbr,
+			data->protect_base, readl_relaxed(base + REG_MMU_IVRP_PADDR));
+		mtk_iommu_dump_iova(data, IOMMU_BK0, fault_iova);
+		report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
+#endif
 #else
 		fault_port = F_MMU_INT_ID_PORT_ID(regval);
 		if (MTK_IOMMU_HAS_FLAG(data->plat_data, HAS_SUB_COMM)) {
@@ -1773,7 +1821,7 @@ static size_t mtk_iommu_unmap(struct iommu_domain *domain,
 	iommu_iotlb_gather_add_range(gather, iova, pgsize * pgcount);
 	ret = dom->iop->unmap_pages(dom->iop, iova, pgsize, pgcount, gather);
 	if (!ret) {
-		pr_info("%s fail:%lu, iommu:(%d,%d) tab_id:%d, iova:0x%lx end:0x%lx size:0x%zx\n",
+		pr_info("%s fail:%zu, iommu:(%d,%d) tab_id:%d, iova:0x%lx end:0x%lx size:0x%zx\n",
 			__func__, ret, dom->data->plat_data->iommu_type,
 			dom->data->plat_data->iommu_id, dom->tab_id, iova,
 			(iova + pgsize * pgcount - 1), pgsize * pgcount);
@@ -3316,6 +3364,17 @@ static const struct mtk_iommu_plat_data mt2712_data = {
 	.larbid_remap = {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}},
 };
 
+static const struct mtk_iommu_plat_data mt6768_data = {
+	.m4u_plat      = M4U_MT6768,
+	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
+			 NOT_STD_AXI_MODE | SHARE_PGTABLE,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN1,
+	.iova_region   = single_domain,
+	.iova_region_nr = ARRAY_SIZE(single_domain),
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+};
+
 static const struct mtk_iommu_plat_data mt6779_data = {
 	.m4u_plat      = M4U_MT6779,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
@@ -3483,7 +3542,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 	.m4u_plat        = M4U_MT6893,
-	.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	//.flags           = LINK_WITH_APU | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags           = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
 	.iommu_id	 = APU_IOMMU0,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom      = 0,
@@ -3496,7 +3556,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu2 = {
 
 static const struct mtk_iommu_plat_data mt6893_data_iommu3 = {
 	.m4u_plat        = M4U_MT6893,
-	.flags           = LINK_WITH_APU | SHARE_PGTABLE,
+	//.flags           = LINK_WITH_APU | SHARE_PGTABLE,
+	.flags           = SHARE_PGTABLE,
 	.iommu_id	 = APU_IOMMU1,
 	.iommu_type      = APU_IOMMU,
 	.normal_dom	 = 0,
@@ -3822,6 +3883,7 @@ static const struct mtk_iommu_plat_data mt8192_data = {
 
 static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt2712-m4u", .data = &mt2712_data},
+	{ .compatible = "mediatek,mt6768-m4u", .data = &mt6768_data},
 	{ .compatible = "mediatek,mt6779-m4u", .data = &mt6779_data},
 	{ .compatible = "mediatek,mt6853-m4u", .data = &mt6853_data},
 	{ .compatible = "mediatek,mt6855-disp-iommu", .data = &mt6855_data_disp},

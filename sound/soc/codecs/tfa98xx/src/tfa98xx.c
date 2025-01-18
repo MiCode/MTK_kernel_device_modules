@@ -26,7 +26,7 @@
 #include "tfa.h"
 #include "tfa_dsp_fw.h"
 /* MTK platform header file. */
-//#include <mtk-sp-spk-amp.h>
+#include <mtk-sp-spk-amp.h>
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -3184,9 +3184,10 @@ int tfa98xx_i2c_probe(struct i2c_client *i2c)
 	tfa98xx_device_count++;
 	list_add(&tfa98xx->list, &tfa98xx_device_list);
 	mutex_unlock(&tfa98xx_mutex);
-
+	mtk_spk_set_type(MTK_SPK_GOODIX_TFA98XX);
 	return 0;
 }
+EXPORT_SYMBOL(tfa98xx_i2c_probe);
 
 void tfa98xx_i2c_remove(struct i2c_client *i2c)
 {
@@ -3224,6 +3225,7 @@ void tfa98xx_i2c_remove(struct i2c_client *i2c)
 	mutex_unlock(&tfa98xx_mutex);
 
 }
+EXPORT_SYMBOL(tfa98xx_i2c_remove);
 
 static const struct of_device_id __maybe_unused tfa98xx_of_id[] = {
 	{ .compatible = "goodix,tfa9874",},

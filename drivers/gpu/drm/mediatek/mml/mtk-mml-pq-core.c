@@ -799,7 +799,7 @@ static int set_sub_task(struct mml_task *task,
 	if ((mml_pq_debug_mode & MML_PQ_STABILITY_TEST) &&
 		task->config->dual) {
 		get_random_bytes(&random_num, sizeof(u64));
-		mdelay((random_num % 50)+1);
+		mdelay((DO_COMMMON_MOD(random_num, 50)) + 1);
 
 	}
 
@@ -894,7 +894,7 @@ static int set_readback_sub_task(struct mml_pq_task *pq_task,
 	if ((mml_pq_debug_mode & MML_PQ_STABILITY_TEST) &&
 		dual) {
 		get_random_bytes(&random_num, sizeof(u64));
-		mdelay((random_num % 50)+1);
+		mdelay((DO_COMMMON_MOD(random_num, 50)) + 1);
 
 	}
 

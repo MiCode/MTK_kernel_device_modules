@@ -22,8 +22,9 @@ ccflags-y += -I$(srctree)/drivers/mmc/core
 ccflags-y += -I$(srctree)/drivers/ufs/core
 
 obj-$(CONFIG_MTK_BLOCK_IO_TRACER)	+= blocktag.o
-blocktag-y				+= blocktag-mictx.o blocktag-core.o blocktag-earaio.o blocktag-ufs.o blocktag-mmc.o
-blocktag-$(CONFIG_MTK_FUSE_DEBUG)+= blocktag-fuse-trace.o
+blocktag-$(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)	+= blocktag-ufs.o
+blocktag-$(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)	+= blocktag-mmc.o
+blocktag-y				+= blocktag-mictx.o blocktag-core.o blocktag-earaio.o
 blocktag-$(CONFIG_MTK_BLOCK_IO_PM_DEBUG)+= blocktag-pm-trace.o
 blocktag-$(CONFIG_MTK_FSCMD_TRACER)+= fscmd-trace.o
 

@@ -7,6 +7,67 @@
 #ifndef _MTK_MDPM_PLATFORM_DATA_H_
 #define _MTK_MDPM_PLATFORM_DATA_H_
 
+static struct scenario_power_type_t md_scen_power_6768[SCENARIO_NUM] = {
+	[S_STANDBY]		= {    1,    1},
+	[S_2G_CONNECT]		= {    28,  28},
+	[S_3G_C2K_TALKING] = {   55,  55},
+	[S_3G_4G_C2K_PAGING]		= {    1,  1},
+	[S_3G_C2K_DATALINK]		= {  145,  145},
+	[S_4G_DL_1CC]		= {    159,    159},
+	[S_4G_DL_2CC]		= {  260,  260},
+};
+
+static struct rfhw_power_t rfhw_6768[TX_DBM_NUM] = {
+	[TX_2G_DBM] = {
+		.pa_power = {
+			{  480,  380,  280,  188,  120,  64},   /*MAX*/
+			{  480,  380,  280,  188,  120,  64}}, /*AVG*/
+		.rf_power = {
+			{  51,  51,  51,  51,  51,  51},   /*MAX*/
+			{  51,  51,  51,  51,  51,  51}}, /*AVG*/
+		.section = {  31, 29, 25, 21, 13, 0}
+	},
+	[TX_3G_DBM] = {
+		.pa_power = {
+			{  1765,  1421,  793,  637,  320,  228},   /*MAX*/
+			{  1765,  1421,  793,  637,  320,  228}}, /*AVG*/
+		.rf_power = {
+			{  206,  186,  155,  150,  134,  106},   /*MAX*/
+			{  206,  186,  155,  150,  134,  106}}, /*AVG*/
+		.section = {  22, 19, 17, 15, 9, 0}
+	},
+
+	[TX_4G_CC0_DBM] = {
+		.pa_power = {
+			{  1258,  1132,  694,  428,  197,  112},   /*MAX*/
+			{  1258,  1132,  694,  428,  197,  112}}, /*AVG*/
+		.rf_power = {
+			{  235,  230,  230,  214,  212,  155},   /*MAX*/
+			{  235,  230,  230,  214,  212,  155}}, /*AVG*/
+		.section = {  22, 20, 17, 13, 5, 0}
+	},
+
+	[TX_4G_CC1_DBM] = {
+		.pa_power = {
+			{  1258,  1132,  694,  428,  197,  112},   /*MAX*/
+			{  1258,  1132,  694,  428,  197,  112}}, /*AVG*/
+		.rf_power = {
+			{  235,  230,  230,  214,  212,  155},   /*MAX*/
+			{  235,  230,  230,  214,  212,  155}}, /*AVG*/
+		.section = {  22, 20, 17, 13, 5, 0}
+	},
+
+	[TX_C2K_DBM] = {
+		.pa_power = {
+			{  1753,  1420,  967,  718,  506,  233},   /*MAX*/
+			{  1753,  1420,  967,  718,  506,  233}}, /*AVG*/
+		.rf_power = {
+			{  284,  262,  226,  173,  166,  158},   /*MAX*/
+			{  284,  262,  226,  173,  166,  158}}, /*AVG*/
+		.section = {  23, 22, 20, 17, 16, 0}
+	}
+};
+
 static struct scenario_power_type_t md_scen_power_6895[SCENARIO_NUM] = {
 	[S_STANDBY]		= {    1,    1},
 	[S_2G_IDLE]		= {    48,  48},

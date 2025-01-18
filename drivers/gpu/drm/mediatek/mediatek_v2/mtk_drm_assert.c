@@ -442,7 +442,8 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 void drm_update_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 {
 	struct MFC_CONTEXT *ctxt = (struct MFC_CONTEXT *)mfc_handle;
-	unsigned int width, height;
+	unsigned int width;
+	u64 height;
 
 	if (!mfc_handle)
 		return;

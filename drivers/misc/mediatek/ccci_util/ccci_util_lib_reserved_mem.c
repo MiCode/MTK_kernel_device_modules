@@ -71,7 +71,8 @@ void *vmap_reserved_mem(phys_addr_t start, phys_addr_t size, pgprot_t prot)
 }
 EXPORT_SYMBOL(vmap_reserved_mem);
 
-int free_reserved_memory(phys_addr_t start_phys,
+
+int free_reserved_memory_ccci(phys_addr_t start_phys,
 				phys_addr_t end_phys)
 {
 
@@ -89,10 +90,10 @@ int free_reserved_memory(phys_addr_t start_phys,
 		free_reserved_page(phys_to_page(pos));
 
 	if (pages)
-		pr_info("Freeing reserved memory: %ldK from phys %llx\n",
-			pages << (PAGE_SHIFT - 10),
-			(unsigned long long)start_phys);
+		pr_info("Freeing reserved memory: %ldK from phys 0x%llx\n",
+			pages << (PAGE_SHIFT - 10), (unsigned long long)start_phys);
 
 	return 0;
 }
-EXPORT_SYMBOL(free_reserved_memory);
+EXPORT_SYMBOL(free_reserved_memory_ccci);
+

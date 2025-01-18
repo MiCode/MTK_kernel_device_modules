@@ -39,6 +39,8 @@
 
 #include "cqhci.h"
 
+#define CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD	(1 << 31)
+
 #define MAX_BD_NUM          1024
 #define MSDC_NR_CLOCKS      3
 #define MSDC_EMMC           0
@@ -521,9 +523,19 @@ struct msdc_host {
 	u32 timeout_ns;		/* data timeout ns */
 	u32 timeout_clks;	/* data timeout clks */
 
+	int pins_state; /* pins state */
+#define PINS_DEFAULT 0
+#define PINS_UHS 1
+#define PINS_PULLDOWN 2
+
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *pins_default;
 	struct pinctrl_state *pins_uhs;
+	struct pinctrl_state *pins_pull_down;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
+	int dump_gpio_start; /* gpio start num */
+	int dump_gpio_end; /* gpio end num */
+#endif
 	struct delayed_work req_timeout;
 	int irq;		/* host interrupt */
 	int eint_irq;	        /* device interrupt */
@@ -545,11 +557,13 @@ struct msdc_host {
 	bool vqmmc_enabled;
 	u32 latch_ck;
 	u32 hs400_ds_delay;
+	u32 hs400_ds_dly3;
 	u32 hs200_cmd_int_delay; /* cmd internal delay for HS200/SDR104 */
 	u32 hs400_cmd_int_delay; /* cmd internal delay for HS400 */
 	bool hs400_cmd_resp_sel_rising;
 				 /* cmd response sample selection for HS400 */
 	bool hs400_mode;	/* current eMMC will run at hs400 mode */
+	bool hs400_tuning;	/* hs400 mode online tuning */
 	bool internal_cd;	/* Use internal card-detect logic */
 	bool cqhci;		/* support eMMC HW CMDQ */
 	struct msdc_save_para save_para; /* used when gate HCLK */
@@ -558,6 +572,7 @@ struct msdc_host {
 	struct cqhci_host *cq_host;
 	struct reg_oc_msdc sd_oc;
 	int	id;		/* host id */
+	int autok_vcore; /* vcore value when executing autok */
 	u8 card_inserted;  /* the status of card inserted */
 	bool block_bad_card;
 	bool need_tune;

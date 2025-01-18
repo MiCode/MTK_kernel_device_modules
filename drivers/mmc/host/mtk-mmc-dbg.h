@@ -91,6 +91,7 @@ struct msdc_host;
 extern void msdc_dump_info(char **buff, unsigned long *size, struct seq_file *m,
 	struct msdc_host *host);
 extern int mmc_dbg_register(struct mmc_host *mmc);
+extern void gpio_dump_regs_range(int start, int end);
 #else
 #define msdc_dump_info(...)
 #define mmc_dbg_register(...)

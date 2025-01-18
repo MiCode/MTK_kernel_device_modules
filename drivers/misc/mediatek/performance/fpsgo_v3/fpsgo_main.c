@@ -134,6 +134,10 @@ static int sbe2fpsgo_query_is_running;
 
 int powerhal_tid;
 
+#if !IS_ENABLED(CONFIG_ARM64)
+int cap_ready;
+#endif
+
 void (*rsu_cpufreq_notifier_fp)(int cluster_id, unsigned long freq);
 
 /* TODO: event register & dispatch */
@@ -585,6 +589,13 @@ int fpsgo_notify_qudeq(int qudeq,
 	vpPush->identifier = id;
 
 	fpsgo_queue_work(vpPush);
+
+#if !IS_ENABLED(CONFIG_ARM64)
+	if (!cap_ready) {
+		fbt_update_pwr_tbl();
+		cap_ready = 1;
+	}
+#endif
 
 	return FPSGO_VERSION_CODE;
 }
@@ -1379,7 +1390,7 @@ static void lookup_tracepoints(struct tracepoint *tp, void *ignore)
 	}
 }
 
-void tracepoint_cleanup(void)
+static void tracepoint_cleanup(void)
 {
 	int i;
 
@@ -1437,12 +1448,16 @@ static void __exit fpsgo_exit(void)
 
 static int __init fpsgo_init(void)
 {
+	
+#if !IS_ENABLED(CONFIG_ARM64)
+	cap_ready = 0;
+#endif
+
 	FPSGO_LOGI("[FPSGO_CTRL] init\n");
 
 	fpsgo_cpu_policy_init();
 
 	fpsgo_sysfs_init();
-
 
 	kfpsgo_tsk = kthread_create(kfpsgo, NULL, "kfps");
 	if (kfpsgo_tsk == NULL)
@@ -1501,7 +1516,11 @@ static int __init fpsgo_init(void)
 	return 0;
 }
 
+#if !IS_ENABLED(CONFIG_ARM64)
+late_initcall_sync(fpsgo_init);
+#else
 module_init(fpsgo_init);
+#endif
 module_exit(fpsgo_exit);
 
 MODULE_LICENSE("GPL");

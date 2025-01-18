@@ -410,5 +410,3 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	unsigned int pa, unsigned int pa1);
 
 #endif
-
-

@@ -131,7 +131,7 @@ static ssize_t fh_ctrl_proc_write(struct file *file,
 	FHDBG("array<%lx>\n", (unsigned long)array);
 	len = min(count, (sizeof(kbuf) - 1));
 
-	FHDBG("count: %ld", count);
+	FHDBG("count: %zu", count);
 	if (count == 0)
 		return -1;
 

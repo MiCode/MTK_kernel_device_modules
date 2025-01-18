@@ -1120,28 +1120,28 @@ static int dump_native_info_by_tid(pid_t tid,
 
 	mmap_read_lock(current_task->mm);
 #ifndef __aarch64__		/* 32bit */
-	log_hang_info(" pc/lr/sp 0x%08x/0x%08x/0x%08x\n", user_ret->ARM_pc,
+	log_hang_info(" pc/lr/sp 0x%08lx/0x%08lx/0x%08lx\n", user_ret->ARM_pc,
 			user_ret->ARM_lr, user_ret->ARM_sp);
-	hang_log(" pc/lr/sp 0x%08x/0x%08x/0x%08x\n", user_ret->ARM_pc,
+	hang_log(" pc/lr/sp 0x%08lx/0x%08lx/0x%08lx\n", user_ret->ARM_pc,
 				user_ret->ARM_lr, user_ret->ARM_sp);
-	log_hang_info("r12-r0 0x%08x/0x%08x/0x%08x/0x%08x\n",
+	log_hang_info("r12-r0 0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_ip), (long)(user_ret->ARM_fp),
 		(long)(user_ret->ARM_r10), (long)(user_ret->ARM_r9));
-	hang_log("r12-r0 0x%08x/0x%08x/0x%08x/0x%08x\n",
+	hang_log("r12-r0 0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_ip), (long)(user_ret->ARM_fp),
 		(long)(user_ret->ARM_r10), (long)(user_ret->ARM_r9));
-	log_hang_info("0x%08x/0x%08x/0x%08x/0x%08x/0x%08x\n",
+	log_hang_info("0x%08lx/0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_r8), (long)(user_ret->ARM_r7),
 		(long)(user_ret->ARM_r6), (long)(user_ret->ARM_r5),
 		(long)(user_ret->ARM_r4));
-	hang_log("0x%08x/0x%08x/0x%08x/0x%08x/0x%08x\n",
+	hang_log("0x%08lx/0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_r8), (long)(user_ret->ARM_r7),
 		(long)(user_ret->ARM_r6), (long)(user_ret->ARM_r5),
 		(long)(user_ret->ARM_r4));
-	log_hang_info("0x%08x/0x%08x/0x%08x/0x%08x\n",
+	log_hang_info("0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_r3), (long)(user_ret->ARM_r2),
 		(long)(user_ret->ARM_r1), (long)(user_ret->ARM_r0));
-	hang_log("0x%08x/0x%08x/0x%08x/0x%08x\n",
+	hang_log("0x%08lx/0x%08lx/0x%08lx/0x%08lx\n",
 		(long)(user_ret->ARM_r3), (long)(user_ret->ARM_r2),
 		(long)(user_ret->ARM_r1), (long)(user_ret->ARM_r0));
 
@@ -1168,9 +1168,9 @@ static int dump_native_info_by_tid(pid_t tid,
 
 		SPStart = userstack_start;
 		SPEnd = SPStart + length;
-		log_hang_info("UserSP_start:%08x,Length:%08x,End:%08x\n",
+		log_hang_info("UserSP_start:%08lx,Length:%08lx,End:%08lx\n",
 				SPStart, length, SPEnd);
-		hang_log("UserSP_start:%08x,Length:%08x,End:%08x\n",
+		hang_log("UserSP_start:%08lx,Length:%08lx,End:%08lx\n",
 				SPStart, length, SPEnd);
 		while (SPStart < SPEnd) {
 			copied =
@@ -1186,12 +1186,12 @@ static int dump_native_info_by_tid(pid_t tid,
 				tempSpContent[1] != 0 ||
 				tempSpContent[2] != 0 ||
 				tempSpContent[3] != 0) {
-				log_hang_info("%08x:%08x %08x %08x %08x\n", SPStart,
+				log_hang_info("%08lx:%08x %08x %08x %08x\n", SPStart,
 						tempSpContent[0],
 						tempSpContent[1],
 						tempSpContent[2],
 						tempSpContent[3]);
-				hang_log("%08x:%08x %08x %08x %08x\n", SPStart,
+				hang_log("%08lx:%08x %08x %08x %08x\n", SPStart,
 						tempSpContent[0],
 						tempSpContent[1],
 						tempSpContent[2],
@@ -1925,7 +1925,7 @@ static void __exit monitor_hang_exit(void)
 #endif
 }
 
-module_init(monitor_hang_init);
+subsys_initcall_sync(monitor_hang_init);
 module_exit(monitor_hang_exit);
 
 

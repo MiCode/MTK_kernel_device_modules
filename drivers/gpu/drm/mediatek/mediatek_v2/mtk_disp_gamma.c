@@ -34,7 +34,7 @@
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 #include <linux/leds-mtk.h>
 #else
-#define mtk_leds_brightness_set(x, y) do { } while (0)
+#define mtk_leds_brightness_set(x, y, m, n) do { } while (0)
 #endif
 
 #define DISP_GAMMA_EN 0x0000
@@ -1589,6 +1589,8 @@ struct mtk_disp_gamma_data mt6989_driver_data = {
 
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-gamma",
+	  .data = &legacy_driver_data,},
+	{ .compatible = "mediatek,mt6768-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6885-disp-gamma",
 	  .data = &legacy_driver_data,},

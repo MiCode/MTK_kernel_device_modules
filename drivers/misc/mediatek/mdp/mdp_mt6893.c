@@ -1137,30 +1137,30 @@ void cmdq_mdp_enable_clock(bool enable, u32 engine)
 /* Common Clock Framework */
 void cmdq_mdp_init_module_clk(void)
 {
-	cmdq_dev_get_module_clock_by_name("mmsys_config", "MDP_APB_BUS",
+	cmdq_dev_get_module_clock_by_name("mmsys-config", "MDP_APB_BUS",
 		&gCmdqMdpModuleClock.clk_APB);
-	cmdq_dev_get_module_clock_by_name("mmsys_config", "MDP_APMCU_GALS",
+	cmdq_dev_get_module_clock_by_name("mmsys-config", "MDP_APMCU_GALS",
 		&gCmdqMdpModuleClock.clk_APMCU_GALS);
-	cmdq_dev_get_module_clock_by_name("mm_mutex", "MDP_MUTEX0",
+	cmdq_dev_get_module_clock_by_name("mm-mutex", "MDP_MUTEX0",
 		&gCmdqMdpModuleClock.clk_MDP_MUTEX0);
-	cmdq_dev_get_module_clock_by_name("mmsys_config", "MDP_IMG_DL_ASYNC0",
+	cmdq_dev_get_module_clock_by_name("mmsys-config", "MDP_IMG_DL_ASYNC0",
 		&gCmdqMdpModuleClock.clk_IMG_DL_ASYNC0);
-	cmdq_dev_get_module_clock_by_name("mmsys_config", "MDP_IMG_DL_ASYNC1",
+	cmdq_dev_get_module_clock_by_name("mmsys-config", "MDP_IMG_DL_ASYNC1",
 		&gCmdqMdpModuleClock.clk_IMG_DL_ASYNC1);
-	cmdq_dev_get_module_clock_by_name("mmsys_config", "MDP_IMG_DL_ASYNC2",
+	cmdq_dev_get_module_clock_by_name("mmsys-config", "MDP_IMG_DL_ASYNC2",
 		&gCmdqMdpModuleClock.clk_IMG_DL_ASYNC2);
-	cmdq_dev_get_module_clock_by_name("mmsys_config",
+	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG_DL_ASYNC3", &gCmdqMdpModuleClock.clk_IMG_DL_ASYNC3);
-	cmdq_dev_get_module_clock_by_name("mmsys_config",
+	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG0_IMG_DL_ASYNC0",
 		&gCmdqMdpModuleClock.clk_IMG0_IMG_DL_ASYNC0);
-	cmdq_dev_get_module_clock_by_name("mmsys_config",
+	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG0_IMG_DL_ASYNC1",
 		&gCmdqMdpModuleClock.clk_IMG0_IMG_DL_ASYNC1);
-	cmdq_dev_get_module_clock_by_name("mmsys_config",
+	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG1_IMG_DL_ASYNC2",
 		&gCmdqMdpModuleClock.clk_IMG1_IMG_DL_ASYNC2);
-	cmdq_dev_get_module_clock_by_name("mmsys_config",
+	cmdq_dev_get_module_clock_by_name("mmsys-config",
 		"MDP_IMG1_IMG_DL_ASYNC3",
 		&gCmdqMdpModuleClock.clk_IMG1_IMG_DL_ASYNC3);
 	cmdq_dev_get_module_clock_by_name("mdp_rdma0", "MDP_RDMA0",
@@ -2444,6 +2444,16 @@ u64 cmdq_mdp_get_engine_group_bits(u32 engine_group)
 	return gCmdqEngineGroupBits[engine_group];
 }
 
+u64 cmdq_mdp_get_eng_larb(void)
+{
+	return MDP_ENG_LARB2;
+}
+
+struct device *cmdq_mdp_get_larb_device(void)
+{
+	return larb2;
+}
+
 static void mdp_enable_larb(bool enable, struct device *larb)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -2472,12 +2482,13 @@ static void mdp_enable_larb(bool enable, struct device *larb)
 #endif
 }
 
-static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
+static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 {
 	if (engine_flag & MDP_ENG_LARB2)
 		mdp_enable_larb(enable, larb2);
 	if (engine_flag & MDP_ENG_LARB3)
 		mdp_enable_larb(enable, larb3);
+	return 0;
 }
 
 static void cmdq_mdp_check_hw_status(struct cmdqRecStruct *handle)
@@ -3007,6 +3018,8 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getEngineGroupBits = cmdq_mdp_get_engine_group_bits;
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock;
 	pFunc->mdpGetLarbCount = cmdq_mdp_get_larb_count;
+	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb;
+	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine;

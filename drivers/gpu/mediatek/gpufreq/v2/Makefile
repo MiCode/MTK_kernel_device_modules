@@ -30,6 +30,10 @@ ifeq ($(findstring aging,$(PROJECT_DTB_NAMES)),aging)
 	ccflags-y += -DGPUFREQ_AGING_LOAD
 endif
 
+ifeq ($(CONFIG_MTK_GPU_MT6768_SUPPORT)$(CONFIG_MTK_GPU_MT6893_SUPPORT),)
+ccflags-y += -DMTK_GPU_EB_SUPPORT
+endif
+
 mtk_gpufreq_wrapper-y := \
 	gpufreq_v2.o \
 	gpufreq_history.o \
@@ -61,6 +65,15 @@ mtk_gpufreq_mt6989-y := \
 	gpuppm.o \
 	gpufreq_mt6989.o \
 	gpu_smmu_mt6989.o
+mtk_gpufreq_mt6768-y := \
+    gpufreq_history_mt6768.o \
+	gpuppm.o \
+	gpufreq_mt6768.o
+
+mtk_gpufreq_mt6893-y := \
+    gpufreq_history_mt6893.o \
+	gpuppm.o \
+	gpufreq_mt6893.o
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper.o
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6886.c),)
@@ -88,5 +101,15 @@ ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6989.c),)
 ifneq ($(wildcard $(srctree)/$(src)/gpu_smmu_mt6989.c),)
 obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpufreq_mt6989.o
 endif
+endif
+endif
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6768.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6768.c),)
+obj-$(CONFIG_MTK_GPU_MT6768_SUPPORT) += mtk_gpufreq_mt6768.o
+endif
+endif
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6893.c),)
+ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6893.c),)
+obj-$(CONFIG_MTK_GPU_MT6893_SUPPORT) += mtk_gpufreq_mt6893.o
 endif
 endif

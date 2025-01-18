@@ -426,7 +426,7 @@ void cmdq_dev_init_resource(CMDQ_DEV_INIT_RESOURCE_CB init_cb)
 	u32 count;
 
 	status = of_property_read_u32(gCmdqDev.pDev->of_node,
-		"sram_share_cnt", &count);
+		"sram-share-cnt", &count);
 	if (status < 0)
 		return;
 
@@ -434,12 +434,12 @@ void cmdq_dev_init_resource(CMDQ_DEV_INIT_RESOURCE_CB init_cb)
 		u32 engine = 0, event = 0;
 
 		status = of_property_read_u32_index(
-			gCmdqDev.pDev->of_node, "sram_share_engine",
+			gCmdqDev.pDev->of_node, "sram-share-engine",
 			index, &engine);
 		if (status < 0)
 			return;
 		status = of_property_read_u32_index(
-			gCmdqDev.pDev->of_node, "sram_share_event",
+			gCmdqDev.pDev->of_node, "sram-share-event",
 			index, &event);
 		if (status < 0)
 			return;

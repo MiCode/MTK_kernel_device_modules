@@ -1219,7 +1219,7 @@ static inline int proxy_check_critical_user(struct port_proxy *proxy_p)
 	int ret = 1;
 
 	if (proxy_get_critical_user(proxy_p, CRIT_USR_MUXD) == 0) {
-		if (get_boot_mode_from_dts() == META_BOOT_ID) {
+		if (ccci_get_boot_mode_from_dts() == META_BOOT_ID) {
 			if (proxy_get_critical_user(proxy_p,
 				CRIT_USR_META) == 0) {
 				CCCI_NORMAL_LOG(0, TAG,
@@ -1516,8 +1516,7 @@ static inline void proxy_dispatch_queue_status(struct port_proxy *proxy_p,
 			else
 				match = (qno == port->rxq_exp_index);
 			if (match && port->ops->queue_state_notify)
-				port->ops->queue_state_notify(port, dir,
-				qno, state);
+				port->ops->queue_state_notify(port, dir, qno, state);
 		}
 		return;
 	}
@@ -1831,7 +1830,7 @@ static ssize_t ccci_lp_mem_read(struct file *file, char __user *buf,
 			CCCI_ERROR_LOG(-1, TAG, "copy to user\n");
 			if (copy_to_user(buf, proc_user->curr_addr, read_len)) {
 				CCCI_ERROR_LOG(-1, TAG,
-				"read ccci_lp_mem fail, size %lu\n", size);
+				"read ccci_lp_mem fail, size %zu\n", size);
 				proc_user->busy = 0;
 				return -EFAULT;
 			}
@@ -2403,6 +2402,9 @@ int exec_ccci_kern_func(unsigned int id, char *buf, unsigned int len)
 		len = (len < sizeof(tmp_data)) ? len : sizeof(tmp_data);
 		memcpy((void *)&tmp_data, buf, len);
 		ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX, id, tmp_data, 0);
+		break;
+	case ID_GET_MD_BOOT_CNT:
+		ret = ccci_get_md_boot_count();
 		break;
 	default:
 		ret = -CCCI_ERR_FUNC_ID_ERROR;

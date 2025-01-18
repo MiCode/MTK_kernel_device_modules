@@ -79,4 +79,7 @@ config LEDS_REGULATOR_VIBRATOR
 	  To compile this driver as a module, choose 'M' here: the module
 	  will be called regulator-vibrator.
 
+comment "Flash and Torch LED drivers"
+source "$(KCONFIG_EXT_PREFIX)drivers/leds/flash/Kconfig"
+
 endif # NEW_LEDS

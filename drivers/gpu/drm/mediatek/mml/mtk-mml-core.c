@@ -20,7 +20,11 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-dpc.h"
 
-#define MML_TRACE_MSG_LEN 1024
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+#define MML_TRACE_MSG_LEN	1024
+#else
+#define MML_TRACE_MSG_LEN	896
+#endif
 #define CREATE_TRACE_POINTS
 #include "mtk-mml-trace.h"
 
@@ -2331,7 +2335,7 @@ void mml_update_array(struct mml_task_reuse *reuse,
 	*va = (*va & GENMASK_ULL(63, 32)) | value;
 }
 
-noinline int tracing_mark_write(char *fmt, ...)
+noinline int mml_tracing_mark_write(char *fmt, ...)
 {
 #ifdef CONFIG_TRACING
 	char buf[MML_TRACE_MSG_LEN];
@@ -2347,7 +2351,7 @@ noinline int tracing_mark_write(char *fmt, ...)
 		return -1;
 	}
 
-	trace_puts(buf);
+	trace_mml_tracing_mark_write(buf);
 #endif
 	return 0;
 }

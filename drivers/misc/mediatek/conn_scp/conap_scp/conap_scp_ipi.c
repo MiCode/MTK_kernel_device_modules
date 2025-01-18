@@ -12,7 +12,10 @@
 #include "conap_platform_data.h"
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+//temp modification for avoid cm4 scp build error
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 #define MTK_CONAP_IPI_SUPPORT 1
+#endif
 #endif
 
 #ifdef MTK_CONAP_IPI_SUPPORT
@@ -204,6 +207,7 @@ int conap_scp_ipi_send_data(enum conap_scp_drv_type drv_type, uint16_t msg_id, u
 int conap_scp_ipi_send_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id,
 					uint32_t p0, uint32_t p1, uint32_t p2)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	struct msg_cmd cmd;
 	int r;
 
@@ -219,6 +223,7 @@ int conap_scp_ipi_send_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id,
 							sizeof(struct msg_cmd));
 	if (r)
 		return r;
+#endif
 
 	return 0;
 }
@@ -226,6 +231,7 @@ int conap_scp_ipi_send_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id,
 int conap_scp_ipi_send_shm_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id,
 					uint32_t p0, uint32_t p1, uint32_t p2, uint32_t p3)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	struct shm_msg_cmd cmd;
 	int r;
 
@@ -240,6 +246,7 @@ int conap_scp_ipi_send_shm_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id
 							sizeof(struct shm_msg_cmd));
 	if (r)
 		return r;
+#endif
 
 	return 0;
 }
@@ -247,6 +254,7 @@ int conap_scp_ipi_send_shm_cmd(enum conap_scp_drv_type drv_type, uint16_t msg_id
 
 int conap_scp_shm_write(uint8_t *msg_buf, uint32_t msg_sz)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	struct conap_shm_ctx *ctx = &g_conap_shm_ctx;
 	uint32_t buf_len = ctx->tx_buf.size;
 	phys_addr_t wbf_addr = ctx->tx_buf.buf;
@@ -276,10 +284,14 @@ int conap_scp_shm_write(uint8_t *msg_buf, uint32_t msg_sz)
 	ctx->tx_buf.cur_ptr = wptr;
 
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 int conap_scp_shm_read(uint8_t *msg_buf, uint32_t oft, uint32_t msg_sz)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	struct conap_shm_ctx *ctx = &g_conap_shm_ctx;
 	uint32_t buf_len = ctx->rx_buf.size;
 	phys_addr_t rbf_addr = ctx->rx_buf.buf;
@@ -305,17 +317,23 @@ int conap_scp_shm_read(uint8_t *msg_buf, uint32_t oft, uint32_t msg_sz)
 
 	ctx->rx_buf.cur_ptr = rptr;
 
+#endif
 	return 0;
 }
 
 
 bool conap_scp_ipi_shm_support(void)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	return g_conap_shm_ctx.enable;
+#else
+	return 0;
+#endif
 }
 
 static int conap_scp_shm_init(void)
 {
+#ifdef MTK_CONAP_IPI_SUPPORT
 	phys_addr_t mem_addr = 0;
 	phys_addr_t mem_size = 0;
 
@@ -325,7 +343,7 @@ static int conap_scp_shm_init(void)
 	mem_size = scp_get_reserve_mem_size(SCP_CONNSYS_MEM_ID);
 
 	if (mem_addr == 0 || mem_size == 0) {
-		pr_notice("[%s] incoorect shm setting [%llX][%llX]", __func__, mem_addr, mem_size);
+		pr_notice("[%s] incoorect shm setting [%pa][%pa]", __func__, &mem_addr, &mem_size);
 		return -1;
 	}
 
@@ -341,10 +359,11 @@ static int conap_scp_shm_init(void)
 	g_conap_shm_ctx.enable = true;
 
 
-	pr_info("[%s] mem=[%llx][%llx] [%llx][%llx]", __func__,
-				mem_addr, mem_size,
-				g_conap_shm_ctx.tx_buf.buf, g_conap_shm_ctx.rx_buf.buf);
+	pr_info("[%s] mem=[%pa][%pa] [%pa][%pa]", __func__,
+				&mem_addr, &mem_size,
+				&g_conap_shm_ctx.tx_buf.buf, &g_conap_shm_ctx.rx_buf.buf);
 
+#endif
 	return 0;
 }
 

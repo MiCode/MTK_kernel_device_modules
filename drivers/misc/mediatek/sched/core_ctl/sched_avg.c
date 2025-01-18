@@ -14,6 +14,7 @@
 
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
+#include "common.h"
 #include "sched_avg.h"
 #include "common.h"
 
@@ -167,23 +168,6 @@ void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
 }
 
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
-
-	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
-}
-
-static inline unsigned long task_util_est(struct task_struct *p)
-{
-	return max(task_util(p), _task_util_est(p));
-}
-
 int arch_get_nr_clusters(void)
 {
 	int __arch_nr_clusters = -1;
@@ -290,7 +274,11 @@ static void sched_avg_deferred_func(struct work_struct *work)
 }
 static DECLARE_WORK(sched_avg_deferred_work, sched_avg_deferred_func);
 
+#if IS_ENABLED(CONFIG_ARM64)
 #define DEFERRED_WORK_DEBOUNCE_TIME	(5 * NSEC_PER_SEC)
+#else
+#define DEFERRED_WORK_DEBOUNCE_TIME	(5LL * NSEC_PER_SEC)
+#endif
 static void reset_over_thre_deferred(u64 curr_time)
 {
 	static s64 deferred_work_last_update;

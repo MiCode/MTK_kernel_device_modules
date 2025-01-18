@@ -235,6 +235,14 @@ typedef int(*UARTHUB_PLAT_INIT_REMAP_REG) (void);
 typedef int(*UARTHUB_PLAT_DEINIT_UNMAP_REG) (void);
 typedef int(*UARTHUB_PLAT_GET_HWCCF_UNIVPLL_ON_INFO) (void);
 typedef int(*UARTHUB_PLAT_GET_SPM_SYS_TIMER) (uint32_t *hi, uint32_t *lo);
+typedef int(*UARTHUB_PLAT_SET_BT_SLEEP_FLOW_HW_MECH_EN) (int enable);
+typedef int(*UARTHUB_PLAT_GET_BT_SLEEP_FLOW_HW_MECH_EN) (void);
+typedef int(*UARTHUB_PLAT_GET_HOST_AWAKE_STA) (int dev_index);
+typedef int(*UARTHUB_PLAT_SET_HOST_AWAKE_STA) (int dev_index);
+typedef int(*UARTHUB_PLAT_CLEAR_HOST_AWAKE_STA) (int dev_index);
+typedef int(*UARTHUB_PLAT_GET_HOST_BT_AWAKE_STA) (int dev_index);
+typedef int(*UARTHUB_PLAT_GET_CMM_BT_AWAKE_STA) (void);
+typedef int(*UARTHUB_PLAT_GET_BT_AWAKE_STA) (void);
 
 struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_IS_READY_STATE uarthub_plat_is_ready_state;
@@ -276,6 +284,14 @@ struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_DEINIT_UNMAP_REG uarthub_plat_deinit_unmap_reg;
 	UARTHUB_PLAT_GET_HWCCF_UNIVPLL_ON_INFO uarthub_plat_get_hwccf_univpll_on_info;
 	UARTHUB_PLAT_GET_SPM_SYS_TIMER uarthub_plat_get_spm_sys_timer;
+	UARTHUB_PLAT_SET_BT_SLEEP_FLOW_HW_MECH_EN uarthub_plat_set_bt_sleep_flow_hw_mech_en;
+	UARTHUB_PLAT_GET_BT_SLEEP_FLOW_HW_MECH_EN uarthub_plat_get_bt_sleep_flow_hw_mech_en;
+	UARTHUB_PLAT_GET_HOST_AWAKE_STA uarthub_plat_get_host_awake_sta;
+	UARTHUB_PLAT_SET_HOST_AWAKE_STA uarthub_plat_set_host_awake_sta;
+	UARTHUB_PLAT_CLEAR_HOST_AWAKE_STA uarthub_plat_clear_host_awake_sta;
+	UARTHUB_PLAT_GET_HOST_BT_AWAKE_STA uarthub_plat_get_host_bt_awake_sta;
+	UARTHUB_PLAT_GET_CMM_BT_AWAKE_STA uarthub_plat_get_cmm_bt_awake_sta;
+	UARTHUB_PLAT_GET_BT_AWAKE_STA uarthub_plat_get_bt_awake_sta;
 };
 
 struct uarthub_ops_struct {
@@ -368,6 +384,14 @@ int uarthub_core_dev0_clear_rx_request(void);
 int uarthub_core_dev0_clear_txrx_request(void);
 int uarthub_core_get_uart_cmm_rx_count(void);
 int uarthub_core_is_assert_state(void);
+int uarthub_core_get_bt_sleep_flow_hw_mech_en(void);
+int uarthub_core_set_bt_sleep_flow_hw_mech_en(int enable);
+int uarthub_core_get_host_awake_sta(int dev_index);
+int uarthub_core_set_host_awake_sta(int dev_index);
+int uarthub_core_clear_host_awake_sta(int dev_index);
+int uarthub_core_get_host_bt_awake_sta(int dev_index);
+int uarthub_core_get_cmm_bt_awake_sta(void);
+int uarthub_core_get_bt_awake_sta(void);
 
 int uarthub_core_irq_register_cb(UARTHUB_CORE_IRQ_CB irq_callback);
 int uarthub_core_bypass_mode_ctrl(int enable);

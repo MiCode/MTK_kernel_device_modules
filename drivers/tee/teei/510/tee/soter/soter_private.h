@@ -11,8 +11,9 @@
 #include <linux/semaphore.h>
 #include <tee_drv.h>
 #include <linux/types.h>
+#ifdef TEEI_FFA_SUPPORT
 #include <linux/arm_ffa.h>
-
+#endif
 #define TEEI_UUID_MAX_LEN 128
 
 /* Some Global Platform error codes used in this driver */
@@ -29,6 +30,7 @@ struct call_queue {
 	struct list_head waiters;
 };
 
+#ifdef TEEI_FFA_SUPPORT
 /**
  * struct soter_ffa_data -  FFA communication struct
  * @ffa_dev             FFA device, contains the destination id, the id of
@@ -46,15 +48,17 @@ struct soter_ffa_ops {
 	int (*do_call_with_arg)(struct tee_context *ctx,
 					phys_addr_t parg);
 };
-
+#endif
 
 struct soter_priv {
 	struct tee_device *teedev;
 	struct call_queue call_queue;
 	struct tee_shm_pool *pool;
 	void *memremaped_shm;
+#ifdef TEEI_FFA_SUPPORT
 	struct soter_ffa ffa;
 	struct soter_ffa_ops ops;
+#endif
 };
 
 struct soter_session {

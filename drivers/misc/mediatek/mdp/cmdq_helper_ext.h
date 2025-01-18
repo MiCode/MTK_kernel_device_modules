@@ -10,6 +10,7 @@
 #include <linux/printk.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/trace_events.h>
+#include <linux/kref.h>
 
 #include "mdp_def.h"
 
@@ -187,16 +188,20 @@ do {if (1) mmprofile_log_ex(args); } while (0);	\
 #endif
 
 /* CMDQ FTRACE */
-#define TRACE_MSG_LEN	1024
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+#define TRACE_MDP_MSG_LEN 1024
+#else
+#define TRACE_MDP_MSG_LEN 896
+#endif
 
 #define CMDQ_TRACE_FORCE_BEGIN_TID(tid, fmt, args...) \
-	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+	tracing_mark_write_cmdq("B|%d|" fmt "\n", tid, ##args)
 
 #define CMDQ_TRACE_FORCE_BEGIN(fmt, args...) \
 	CMDQ_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args)
 
 #define CMDQ_TRACE_FORCE_END() \
-	tracing_mark_write("E\n")
+	tracing_mark_write_cmdq("E\n")
 
 #define CMDQ_SYSTRACE_BEGIN(fmt, args...) do { \
 	if (cmdq_core_ftrace_enabled()) { \
@@ -700,6 +705,8 @@ struct cmdqRecStruct {
 	enum cmdq_thread_dispatch thd_dispatch;
 	/* work item when auto release is used */
 	struct work_struct auto_release_work;
+	bool auto_released;
+	struct kref use_cnt;
 
 	/* register backup at end of task */
 	u32 reg_count;
@@ -928,6 +935,7 @@ s32 cmdq_core_suspend_hw_thread(s32 thread);
 u64 cmdq_core_get_gpr64(const enum cmdq_gpr_reg regID);
 void cmdq_core_set_gpr64(const enum cmdq_gpr_reg regID, const u64 value);
 
+void cmdq_remove_handle_from_handle_active(struct cmdqRecStruct *handle);
 void cmdq_core_release_handle_by_file_node(void *file_node);
 s32 cmdq_core_remove(void);
 s32 cmdq_core_suspend(void);
@@ -1001,11 +1009,14 @@ void cmdq_core_initialize(void);
 void cmdq_core_late_init(void);
 void cmdq_core_deinitialize(void);
 unsigned long cmdq_get_tracing_mark(void);
-int tracing_mark_write(char *fmt, ...);
+int tracing_mark_write_cmdq(char *fmt, ...);
 void cmdq_helper_ext_deinit(void);
 
 struct cmdqSecSharedMemoryStruct *cmdq_core_get_secure_shared_memory(void);
 void cmdq_core_attach_error_handle(const struct cmdqRecStruct *handle,
 	s32 thread);
+void mdp_set_resource_callback(enum cmdq_event res_event,
+	CmdqResourceAvailableCB res_available,
+	CmdqResourceReleaseCB res_release);
 
 #endif

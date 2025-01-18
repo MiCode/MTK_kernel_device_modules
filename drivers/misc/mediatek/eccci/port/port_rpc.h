@@ -265,7 +265,13 @@ struct eint_node_struct {
 
 struct gpio_item {
 	char gpio_name_from_md[64];
-	char gpio_name_from_dts[64];
+	char gpio_mid_line_name_from_dts[64];
+	char gpio_under_line_name_from_dts[64];
+};
+
+enum name_convert_style {
+	NAME_CONVERT_STYLE_UNDER_LINE = 0,
+	NAME_CONVERT_STYLE_MID_LINE,
 };
 
 extern int IMM_get_adc_channel_num(char *channel_name, int len);

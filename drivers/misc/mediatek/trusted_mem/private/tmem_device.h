@@ -68,7 +68,7 @@ enum REGMGR_REGION_STATE {
 };
 
 struct trusted_peer_session {
-	u64 mem_pa_start;
+	phys_addr_t mem_pa_start;
 	u32 mem_size;
 	u32 mem_size_runtime;
 	u64 ref_chunks; /* chunks that are not freed yet! */

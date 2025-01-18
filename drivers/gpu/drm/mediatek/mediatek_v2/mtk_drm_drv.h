@@ -247,6 +247,13 @@ struct mtk_drm_private {
 
 	bool already_first_config;
 	bool is_tablet;
+
+	/*
+	 * When legacy chip HDCP and SVP is enabled,
+	 * Prime display always uses OVL0,Virtual display always uses OVL0_2L.
+	 */
+	bool secure_static_path_switch;
+
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 
@@ -304,12 +311,20 @@ struct mtk_aod_scp_cb {
 	void (*module_backup)(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd);
 };
 
+struct mtk_drm_disp_mtee_cb {
+	struct drm_device *dev;
+	int (*cb)(int value, int fd, struct mtk_drm_gem_obj *mtk_gem_obj,
+	struct cmdq_pkt *handle, struct mtk_ddp_comp *comp, u32 crtc_id,
+	u32 regs_addr, u32 lye_addr, u32 offset, u32 size);
+};
+
 enum DISP_SEC_SIGNAL {
 	DISP_SEC_START = 0,
 	DISP_SEC_STOP,
 	DISP_SEC_ENABLE,
 	DISP_SEC_DISABLE,
 	DISP_SEC_CHECK,
+	DISP_SEC_FD_TO_SEC_HDL,
 };
 
 struct layer_compress_ratio_data {
@@ -436,6 +451,7 @@ extern struct platform_driver mtk_disp_postalign_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
 extern struct mtk_vdisp_funcs vdisp_func;
+extern struct mtk_drm_disp_mtee_cb disp_mtee_cb;
 
 /* For overlay bandwidth monitor */
 extern struct layer_compress_ratio_data
@@ -501,4 +517,6 @@ int mtk_drm_get_master_info_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file_priv);
 void mtk_vidle_multi_crtc_stop(unsigned int crtc_id);
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
+void **mtk_drm_disp_mtee_cb_init(void);
+bool mtk_disp_is_svp_on_mtee(void);
 #endif /* MTK_DRM_DRV_H */

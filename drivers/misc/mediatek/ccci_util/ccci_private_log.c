@@ -829,7 +829,6 @@ static void ccci_dump_buffer_init(void)
 
 	spin_lock_init(&file_lock);
 
-
 	node_ptr = &node_array[0];
 	while (node_ptr->ctlb_ptr != NULL) {
 		ptr = node_ptr->ctlb_ptr;
@@ -847,14 +846,22 @@ static void ccci_dump_buffer_init(void)
 		}
 		node_ptr++;
 	}
-
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#if IS_ENABLED(CONFIG_ARM64)
 	mrdump_mini_add_extra_file((unsigned long)reg_dump_ctlb[0].buffer,
 		__pa_nodebug(reg_dump_ctlb[0].buffer),
 		CCCI_REG_DUMP_BUF, "EXTRA_MD");
 	mrdump_mini_add_extra_file((unsigned long)ke_dump_ctlb[0].buffer,
 		__pa_nodebug(ke_dump_ctlb[0].buffer),
 		CCCI_KE_DUMP_BUF, "EXTRA_CCCI");
+#else
+	mrdump_mini_add_extra_file((unsigned long)reg_dump_ctlb[0].buffer,
+		__pa(reg_dump_ctlb[0].buffer),
+		CCCI_REG_DUMP_BUF, "EXTRA_MD");
+	mrdump_mini_add_extra_file((unsigned long)ke_dump_ctlb[0].buffer,
+		__pa(ke_dump_ctlb[0].buffer),
+		CCCI_KE_DUMP_BUF, "EXTRA_CCCI");
+#endif
 #endif
 }
 

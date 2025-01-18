@@ -460,6 +460,7 @@ int audio_core_hold(void)
 		of_device_is_compatible(np, "mediatek,mt6895-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6855-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6789-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6768-usb_boost") ||
 		of_device_is_compatible(np, "mediatek,mt6985-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost")) {
@@ -479,6 +480,7 @@ int audio_core_release(void)
 		of_device_is_compatible(np, "mediatek,mt6895-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6855-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6789-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6768-usb_boost") ||
 		of_device_is_compatible(np, "mediatek,mt6985-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost")) {

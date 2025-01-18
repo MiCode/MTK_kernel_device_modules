@@ -934,7 +934,6 @@ static void md_ccif_reset_queue(unsigned char hif_id, unsigned char for_start)
 	struct md_ccif_ctrl *ccif_ctrl = ccci_ccif_ctrl;
 	unsigned long flags;
 
-	CCCI_NORMAL_LOG(0, TAG, "%s: All %d queue\n", __func__, QUEUE_NUM);
 	for (i = 0; i < QUEUE_NUM; ++i) {
 		flush_work(&ccif_ctrl->rxq[i].qwork);
 		spin_lock_irqsave(&ccif_ctrl->rxq[i].rx_lock, flags);
@@ -1345,7 +1344,6 @@ static int md_ccif_ring_buf_init(unsigned char hif_id)
 
 	if (!ccci_ccif_ctrl)
 		return -1;
-
 	ret = md_ccif_normal_ring_buf_init(ccci_ccif_ctrl);
 	if (ret < 0)
 		return ret;
@@ -1389,7 +1387,7 @@ static void ccif_set_clk_on(unsigned char hif_id)
 	int idx, ret = 0;
 	unsigned long flags;
 
-	CCCI_NORMAL_LOG(0, TAG, "%s at the begin...\n", __func__);
+	CCCI_NORMAL_LOG(0, TAG, "%s at the begin\n", __func__);
 
 	for (idx = 0; idx < ARRAY_SIZE(ccif_clk_table); idx++) {
 		if (ccif_clk_table[idx].clk_ref == NULL)
@@ -1444,13 +1442,18 @@ static void ccif_set_clk_off(unsigned char hif_id)
 				/* write 1 clear register */
 				regmap_write(ccif_ctrl->plat_val.infra_ao_base,
 					0xBF0, 0xF7FF);
-			} else if (ccif_ctrl->plat_val.md_gen <= 6297) {
+			} else if (ccif_ctrl->plat_val.md_gen == 6297) {
 				/* Clean MD_PCCIF4_SW_READY and MD_PCCIF4_PWR_ON */
 				if (!IS_ERR(ccif_ctrl->pericfg_base)) {
 					CCCI_NORMAL_LOG(0, TAG, "%s:pericfg_base:0x%p\n",
 						__func__, ccif_ctrl->pericfg_base);
 					regmap_write(ccif_ctrl->pericfg_base, 0x30c, 0x0);
 				}
+			} else if (ccif_ctrl->plat_val.md_gen == 6295) {
+				/* set gen95 clock */
+				CCCI_NORMAL_LOG(0, TAG, "%s:infra_ao_base:0x%p\n",
+					__func__, ccif_ctrl->plat_val.infra_ao_base);
+				regmap_write(ccif_ctrl->plat_val.infra_ao_base, 0xC10, 0x0);
 			}
 			udelay(1000);
 			CCCI_NORMAL_LOG(0, TAG,

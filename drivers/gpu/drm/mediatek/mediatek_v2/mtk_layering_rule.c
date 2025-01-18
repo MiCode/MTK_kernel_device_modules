@@ -15,10 +15,11 @@
 #include <linux/of_irq.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
-
+/*
 #if defined(CONFIG_MTK_DRAMC)
 #include "mtk_dramc.h"
 #endif
+*/
 #include "mtk_layering_rule.h"
 #include "mtk_log.h"
 #include "mtk_rect.h"
@@ -191,10 +192,11 @@ static void filter_by_yuv_layers(struct drm_mtk_layering_info *disp_info)
 
 static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 {
-	unsigned int i, j, layer_cnt = 0;
+	unsigned int i = 0, j = 0;
 
 	for (i = HRT_SECONDARY; i < HRT_DISP_TYPE_NUM; i++) {
 		unsigned int max_layer_cnt = SECONDARY_OVL_LAYER_NUM;
+		unsigned int layer_cnt = 0;
 
 		if (is_triple_disp(disp_info) && i == HRT_SECONDARY)
 			max_layer_cnt = 1;
@@ -203,7 +205,11 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 				continue;
 
 			layer_cnt++;
-			if (layer_cnt > max_layer_cnt)
+			if (disp_info->layer_num[i] <= SECONDARY_OVL_LAYER_NUM &&
+					layer_cnt > max_layer_cnt)
+				mtk_rollback_layer_to_GPU(disp_info, i, j);
+			else if (disp_info->layer_num[i] > SECONDARY_OVL_LAYER_NUM &&
+					layer_cnt >= max_layer_cnt)
 				mtk_rollback_layer_to_GPU(disp_info, i, j);
 		}
 	}
@@ -565,16 +571,18 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 				map = ovl_mapping_table_mt6985[addon_data->hrt_type];
 		else
 			map = ovl_mapping_table[addon_data->hrt_type];
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
+		if (priv->secure_static_path_switch == true ||
+			(mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VDS_PATH_SWITCH) &&
-			priv->need_vds_path_switch)
+			priv->need_vds_path_switch))
 			map = ovl_mapping_tb_vds_switch[addon_data->hrt_type];
 		break;
 	case DISP_HW_LARB_TB:
 		map = larb_mapping_table[addon_data->hrt_type];
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
+		if (priv->secure_static_path_switch == true ||
+			(mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VDS_PATH_SWITCH) &&
-			priv->need_vds_path_switch)
+			priv->need_vds_path_switch))
 			map = larb_mapping_tb_vds_switch[addon_data->hrt_type];
 		break;
 	case DISP_HW_LAYER_TB:
@@ -589,11 +597,12 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 					tmp_map = layer_mapping_table_mt6985[addon_data->hrt_type];
 			else
 				tmp_map = layer_mapping_table[addon_data->hrt_type];
-			if (mtk_drm_helper_get_opt(priv->helper_opt,
+			if (priv->secure_static_path_switch == true ||
+				(mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_VDS_PATH_SWITCH) &&
-				priv->need_vds_path_switch)
-				tmp_map = layer_mapping_table_vds_switch[
-					addon_data->hrt_type];
+				priv->need_vds_path_switch))
+					tmp_map = layer_mapping_table_vds_switch[
+						addon_data->hrt_type];
 
 			for (i = 0, map = 0; i < 16; i++) {
 				if (cnt == param)
@@ -731,7 +740,7 @@ unsigned long long _layering_get_frame_bw(struct drm_crtc *crtc,
 
 	bw_base = (unsigned long long)width * height * fps * 125 * 4;
 
-	bw_base /= 100 * 1024 * 1024;
+	bw_base = DO_COMMON_DIV(bw_base, 100 * 1024 * 1024);
 
 	return bw_base;
 }
@@ -804,7 +813,7 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 		DDPPR_ERR("Get frame hrt bw by datarate is zero\n");
 		return 600;
 	}
-	dvfs_bw /= tmp * 100;
+	dvfs_bw = DO_COMMON_DIV(dvfs_bw, tmp * 100);
 
 	/* error handling when requested BW is less than 2 layers */
 	if (dvfs_bw < 200) {

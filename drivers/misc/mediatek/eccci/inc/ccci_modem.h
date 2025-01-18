@@ -7,7 +7,7 @@
 #define __CCCI_MODEM_H__
 
 #include "mt-plat/mtk_ccci_common.h"
-#include "ap_md_mem.h"
+#include "fsm/ap_md_mem.h"
 
 #define HIRES_TIME_VER 1
 

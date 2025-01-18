@@ -53,7 +53,7 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 #define CMDQ_EOC_IRQ_DIS	(0)
 #define CMDQ_EOC_CMD		((u64)((CMDQ_CODE_EOC << CMDQ_OP_CODE_SHIFT)) \
 				<<32)
-#define CMDQ_EOC_MASK		GENMASK(63, 1)
+#define CMDQ_EOC_MASK		GENMASK_ULL(63, 1)
 #define CMDQ_MBOX_BUF_LIMIT	16 /* default limit count */
 #define CMDQ_HW_MAX			2
 
@@ -1345,6 +1345,10 @@ static void cmdq_pkt_instr_encoder(void *buf, u16 arg_c, u16 arg_b,
 	cmdq_inst->arg_a = arg_a;
 	cmdq_inst->arg_b = arg_b;
 	cmdq_inst->arg_c = arg_c;
+	if (cmdq_inst->op >> 4 == 7 || cmdq_inst->op != op) {
+		cmdq_err("cmdq_inst->op:%#x, op::%#x", cmdq_inst->op, op);
+		dump_stack();
+	}
 }
 
 s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
@@ -1371,7 +1375,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 
 		cmdq_util_err(
 			"%s: pkt:%p avail:%lu va:%p iova:%pa pa:%pa alloc_time:%llu va:%p inst:%#llx",
-			__func__, pkt, pkt->avail_buf_size, buf->va_base,
+			__func__, pkt, (unsigned long)pkt->avail_buf_size, buf->va_base,
 			&buf->iova_base, &buf->pa_base, buf->alloc_time,
 			va, *((u64 *)va));
 
@@ -1607,7 +1611,7 @@ void cmdq_pkt_reuse_jump(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 
 void cmdq_pkt_reuse_value(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 {
-	*reuse->va = (*reuse->va & GENMASK(63, 32)) | reuse->val;
+	*reuse->va = (*reuse->va & GENMASK_ULL(63, 32)) | reuse->val;
 }
 EXPORT_SYMBOL(cmdq_pkt_reuse_value);
 
@@ -2837,7 +2841,7 @@ static void cmdq_print_wait_summary(void *chan, dma_addr_t pc,
 			" GPR R%u:%#x", gprid, val);
 		if (len >= ARRAY_SIZE(text_gpr))
 			cmdq_log("len:%d over text_gpr size:%lu",
-				len, ARRAY_SIZE(text_gpr));
+				len, (unsigned long)(ARRAY_SIZE(text_gpr)));
 	} else if (inst->arg_a >= CMDQ_TOKEN_TZMP_ISP_WAIT &&
 		inst->arg_a <= CMDQ_TOKEN_TZMP_AIE_SET) {
 		const u16 mod = (inst->arg_a - CMDQ_TOKEN_TZMP_ISP_WAIT) / 2;

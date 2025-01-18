@@ -90,7 +90,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (start <= (s64)3 * precision) {
 		*in_start = 0;
 	} else {
-		start = start / precision - 3;
+		start = div_s64(start, precision) - 3;
 		if (!(start & 0x1))
 			*in_start = (s32)start;
 		else /* must be even */
@@ -102,7 +102,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (end > (s64)in_max * precision) {
 		*in_end = in_max;
 	} else {
-		end = end / precision;
+		end = div_s64(end, precision);
 		if (end & 0x1)
 			*in_end = (s32)end;
 		else /* must be odd */
@@ -129,7 +129,7 @@ static void birsz_second_6_taps(s32 in_start,
 	offset = (s64)back_out_start * coeff +
 		(s64)crop * precision + crop_frac - (s64)in_start * precision;
 
-	*luma = (s32)(offset / precision);
+	*luma = (s32)(div_s64(offset, precision));
 	*luma_frac = (s32)(offset - *luma * precision);
 
 	if (*luma_frac < 0) {

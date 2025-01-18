@@ -52,7 +52,7 @@ void qos_bound_enable(int enable)
 	bound = (struct qos_bound *)
 			sspm_sbuf_get(qos_ipi_to_sspm_command(&qos_ipi_d, 2));
 	smp_mb(); /* init bound before flag enabled */
-#elif IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#elif defined(MTK_SCMI)
 	struct qos_ipi_data qos_ipi_d;
 	int ack;
 
@@ -104,7 +104,7 @@ void qos_bound_stress_enable(int enable)
 	qos_ipi_d.cmd = QOS_IPI_QOS_BOUND_STRESS_ENABLE;
 	qos_ipi_d.u.qos_bound_stress_enable.enable = enable;
 	qos_ipi_to_sspm_command(&qos_ipi_d, 2);
-#elif IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#elif defined(MTK_SCMI)
 	struct qos_ipi_data qos_ipi_d;
 
 	if (!is_mtk_qos_enable())

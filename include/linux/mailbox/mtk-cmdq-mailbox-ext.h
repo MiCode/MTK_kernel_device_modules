@@ -196,7 +196,10 @@ struct cmdq_pkt {
 	bool		no_pool;
 	bool		no_irq;
 	struct cmdq_append append;
-
+#if IS_ENABLED(CONFIG_MTK_MT6382_BDG)
+	void			*bdg_data;
+	bool			reuse;
+#endif
 	struct work_struct	destroy_work;
 	u32			write_addr_high;
 	struct device	*share_dev;
@@ -379,9 +382,10 @@ u32 cmdq_thread_timeout_backup(struct cmdq_thread *thread, const u32 ms);
 void cmdq_thread_timeout_restore(struct cmdq_thread *thread, const u32 ms);
 struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev);
 s32 cmdq_mbox_set_hw_id(void *cmdq);
+s32 cmdq_mbox_reset_hw_id(void *cmdq);
 s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id);
 
-#if IS_ENABLED(CONFIG_MMPROFILE)
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 void cmdq_mmp_wait(struct mbox_chan *chan, void *pkt);
 #endif
 

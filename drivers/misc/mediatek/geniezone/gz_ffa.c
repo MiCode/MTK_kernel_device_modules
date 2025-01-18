@@ -51,7 +51,11 @@ bool device_driver_initalized;
 #define FFA_MEMORY_REGION_FLAG_MTK_RETRIEVE		(1<<31)
 
 struct args {
+#if IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT)
 	uint64_t arg[5];
+#else
+	uint32_t arg[5];
+#endif
 };
 
 #define VM_NUMBER_MAX 10

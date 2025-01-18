@@ -7,6 +7,7 @@
 #include <linux/list.h>
 #include <linux/list_sort.h>
 #include <linux/interrupt.h>
+#include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6377/registers.h>
 #include <linux/mfd/mt6397/core.h>
@@ -80,6 +81,8 @@ struct lbat_regs_t {
 	struct reg_t en;
 	struct reg_t debt_max;
 	struct reg_t debt_min;
+	struct reg_t det_prd_h;
+	struct reg_t det_prd_l;
 	struct reg_t det_prd;
 	struct reg_t max_en;
 	struct reg_t volt_max;
@@ -87,6 +90,20 @@ struct lbat_regs_t {
 	struct reg_t volt_min;
 	struct reg_t adc_out;
 	int volt_full;
+};
+struct lbat_regs_t mt6358_lbat_regs = {
+	.regmap_source = "parent_drvdata",
+	.en = {0},
+	.debt_max = {MT6358_AUXADC_LBAT0, 0xFF, 1},
+	.debt_min = {MT6358_AUXADC_LBAT0, 0xFF00, 1},
+	.det_prd_l = {MT6358_AUXADC_LBAT1, 0xFFFF, 1},
+	.det_prd_h = {MT6358_AUXADC_LBAT2, 0xF, 1},
+	.max_en = {MT6358_AUXADC_LBAT3, 0x3000, 1},
+	.volt_max = {MT6358_AUXADC_LBAT3, 0xFFF, 1},
+	.min_en = {MT6358_AUXADC_LBAT4, 0x3000, 1},
+	.volt_min = {MT6358_AUXADC_LBAT4, 0xFFF, 1},
+	.adc_out = {MT6358_AUXADC_ADC13, 0xFFF, 1},
+	.volt_full = 1800,
 };
 
 struct lbat_regs_t mt6359p_lbat_regs = {
@@ -968,20 +985,27 @@ out:
 	return IRQ_HANDLED;
 }
 
-static int pmic_lbat_service_probe(struct platform_device *pdev)
-{
-	int ret, irq;
-	unsigned int val;
-	struct device_node *np;
-	struct mt6397_chip *chip;
-	const char *r_ratio_node_name;
+/* LBAT H/L debounce: H: 150 ms, L: no-debounce */
+/* LBAT detion period (ms) */
+#define DEF_H_DEB		150
+#define DEF_L_DEB		0
+#define	DEF_DET_PRD		15
 
-	lbat_regs = of_device_get_match_data(&pdev->dev);
-	if (!strcmp(lbat_regs->regmap_source, "parent_drvdata")) {
-		chip = dev_get_drvdata(pdev->dev.parent);
-		regmap = chip->regmap;
-	} else
-		regmap = dev_get_regmap(pdev->dev.parent, NULL);
+static void mt6357_lbat_init_setting(void)
+{
+	/* Selects debounce as 10 */
+	__regmap_update_bits(regmap, &lbat_regs->debt_max, DEF_H_DEB / DEF_DET_PRD);
+	/* Selects debounce as 0 */
+	__regmap_update_bits(regmap, &lbat_regs->debt_min, DEF_L_DEB / DEF_DET_PRD);
+	/* Set LBAT_PRD as 15ms */
+	__regmap_update_bits(regmap, &lbat_regs->det_prd_l, DEF_DET_PRD);
+	__regmap_update_bits(regmap, &lbat_regs->det_prd_h, (DEF_DET_PRD & 0xF0000) >> 16);
+}
+
+static void mt6359p_lbat_init_setting(void)
+{
+	unsigned int val;
+
 	/* Selects debounce as 8 */
 	val = DEF_DEBT_MAX_SEL << (ffs(lbat_regs->debt_max.mask) - 1);
 	__regmap_update_bits(regmap, &lbat_regs->debt_max, val);
@@ -991,6 +1015,32 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 	/* Set LBAT_PRD as 15ms */
 	val = DEF_DET_PRD_SEL << (ffs(lbat_regs->det_prd.mask) - 1);
 	__regmap_update_bits(regmap, &lbat_regs->det_prd, val);
+}
+
+static int pmic_lbat_service_probe(struct platform_device *pdev)
+{
+	int ret, irq;
+	struct device_node *np;
+	struct mt6397_chip *chip;
+	const char *r_ratio_node_name;
+
+	lbat_regs = of_device_get_match_data(&pdev->dev);
+	if (!strcmp(lbat_regs->regmap_source, "parent_drvdata")) {
+		chip = dev_get_drvdata(pdev->dev.parent);
+		regmap = chip->regmap;
+
+		switch (chip->chip_id) {
+			case MT6358_CHIP_ID:
+				mt6357_lbat_init_setting();
+				break;
+			default:
+				mt6359p_lbat_init_setting();
+				break;
+			}
+	} else {
+		regmap = dev_get_regmap(pdev->dev.parent, NULL);
+		mt6359p_lbat_init_setting();
+	}
 
 	irq = platform_get_irq_byname(pdev, "bat_h");
 	if (irq < 0) {
@@ -1063,6 +1113,9 @@ static SIMPLE_DEV_PM_OPS(lbat_service_pm_ops, lbat_service_suspend,
 
 static const struct of_device_id lbat_service_of_match[] = {
 	{
+		.compatible = "mediatek,mt6358-lbat_service",
+		.data = &mt6358_lbat_regs,
+	}, {
 		.compatible = "mediatek,mt6359p-lbat_service",
 		.data = &mt6359p_lbat_regs,
 	}, {

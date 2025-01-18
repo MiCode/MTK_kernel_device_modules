@@ -372,8 +372,9 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-
-	while (!of_property_read_string_index(pdev->dev.of_node, "reg-names", i, &name)) {
+	for (i = 0; i < NUM_MAX_VENC_REG_BASE; i++)
+		dev->enc_reg_base[i] = NULL;
+	for (i = 0; !of_property_read_string_index(pdev->dev.of_node, "reg-names", i, &name); i++) {
 		if (!strcmp(MTK_VDEC_REG_NAME_VENC_SYS, name)) {
 			reg_index = VENC_SYS;
 		} else if (!strcmp(MTK_VDEC_REG_NAME_VENC_C1_SYS, name)) {
@@ -408,7 +409,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
 			reg_index, (unsigned long)dev->enc_reg_base[reg_index]);
 
-		i++;
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "support-wfd-region", &support_wfd_region);
@@ -416,6 +416,13 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(0, "[VENC] Cannot get support-wfd-region, skip");
 		support_wfd_region = 0;
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-enable-hw-break", &venc_enable_hw_break);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VENC] default enable venc hw break");
+		venc_enable_hw_break = 1;
+	} else
+		mtk_v4l2_debug(0, "[VENC] enable venc hw break %d", venc_enable_hw_break);
 
 	ret = mtk_vcodec_enc_irq_setup(pdev, dev);
 	if (ret)
@@ -618,6 +625,7 @@ static const struct of_device_id mtk_vcodec_enc_match[] = {
 	{.compatible = "mediatek,mt6835-vcodec-enc",},
 	{.compatible = "mediatek,mt6897-vcodec-enc",},
 	{.compatible = "mediatek,mt6989-vcodec-enc",},
+	{.compatible = "mediatek,mt6768-vcodec-enc",},
 	{.compatible = "mediatek,venc_gcon",},
 	{},
 };

@@ -46,9 +46,11 @@
 #include "mtk_dp_debug.h"
 #include "mtk_drm_arr.h"
 #include "mtk_drm_graphics_base.h"
+#include "mtk_disp_bdg.h"
 #include "mtk_dsi.h"
 #include "mtk_disp_vidle.h"
 #include <clk-fmeter.h>
+#include <linux/pm_domain.h>
 
 #define DISP_REG_CONFIG_MMSYS_CG_SET(idx) (0x104 + 0x10 * (idx))
 #define DISP_REG_CONFIG_MMSYS_CG_CLR(idx) (0x108 + 0x10 * (idx))
@@ -64,6 +66,15 @@
 #define SMI_LARB_VC_PRI_MODE (0x020)
 #define SMI_LARB_NON_SEC_CON(port) (0x380 + 4 * (port))
 #define GET_M4U_PORT 0x1F
+
+/* If it is 64bit use __pa_nodebug, otherwise use __pa_symbol_nodebug or __pa */
+#ifndef __pa_nodebug
+#ifdef __pa_symbol_nodebug
+#define __pa_nodebug __pa_symbol_nodebug
+#else
+#define __pa_nodebug __pa
+#endif
+#endif
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *mtkfb_dbgfs;
@@ -166,6 +177,80 @@ unsigned int g_trace_log;
 #endif
 
 struct DISP_PANEL_BASE_VOLTAGE base_volageg;
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+#define MT6768_DISP_REG_RDMA_OUT_LINE_CNT 0x0fC
+#define MT6768_DISP_REG_RDMA_DBG_OUT1 0x10C
+
+int polling_rdma_output_line_enable;
+static struct notifier_block nb;
+static unsigned long pm_penpd_status = GENPD_NOTIFY_OFF;
+
+/* SW workaround.
+ * Polling RDMA output line isn't 0 && RDMA status is run,
+ * before switching mm clock mux in cmd mode.
+ */
+void polling_rdma_output_line_is_not_zero(void)
+{
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	unsigned int loop_cnt = 0;
+
+	if (!drm_dev) {
+		DDPMSG("%s drm_dev is null\n", __func__);
+		return;
+	}
+	priv = drm_dev->dev_private;
+
+	if (!priv) {
+		DDPMSG("%s priv is null\n", __func__);
+		return;
+	}
+	comp = priv->ddp_comp[DDP_COMPONENT_RDMA0];
+
+	if (!comp || !comp->mtk_crtc ||
+			pm_penpd_status == GENPD_NOTIFY_PRE_OFF ||
+			pm_penpd_status == GENPD_NOTIFY_OFF) {
+		DDPDBG("%s DISP power status:%d\n",
+			__func__, pm_penpd_status);
+		return;
+	}
+
+	if (polling_rdma_output_line_enable &&
+		mtk_crtc_is_frame_trigger_mode(&comp->mtk_crtc->base)) {
+		DDPDBG("%s start\n", __func__);
+
+		while (loop_cnt < 1*1000) {
+			if (readl(comp->regs + MT6768_DISP_REG_RDMA_OUT_LINE_CNT) ||
+					!(readl(comp->regs + MT6768_DISP_REG_RDMA_DBG_OUT1) & 0x1))
+				break;
+			loop_cnt++;
+			udelay(1);
+		}
+
+		if (loop_cnt == 1000)
+			DDPMSG("%s delay loop_cnt=%d, outline=0x%x\n",
+				__func__, loop_cnt,
+				readl(comp->regs + MT6768_DISP_REG_RDMA_OUT_LINE_CNT));
+
+		/* DDPDBG("%s done\n", __func__); */
+	}
+}
+
+static int mtk_disp_pd_callback(struct notifier_block *nb,
+				unsigned long flags, void *data)
+{
+	pm_penpd_status = flags;
+	if (flags == GENPD_NOTIFY_PRE_OFF)
+		DDPDBG("%s,enter suspend pre_off\n", __func__);
+	else if (flags == GENPD_NOTIFY_OFF)
+		DDPDBG("%s,enter suspend off\n", __func__);
+	else if (flags == GENPD_NOTIFY_PRE_ON)
+		DDPDBG("%s,enter resume pre_on\n", __func__);
+	else if (flags == GENPD_NOTIFY_ON)
+		DDPDBG("%s,enter resume on\n", __func__);
+	return NOTIFY_OK;
+}
+#endif
 
 static int draw_RGBA8888_buffer(char *va, int w, int h,
 		       char r, char g, char b, char a)
@@ -231,7 +316,7 @@ static unsigned long long get_current_time_us(void)
 	return time;
 
 	ktime_get_ts64(&t);
-	return (t.tv_sec & 0xFFF) * 1000000 + t.tv_nsec / NSEC_PER_USEC;
+	return (t.tv_sec & 0xFFF) * 1000000 + DO_COMMON_DIV(t.tv_nsec, NSEC_PER_USEC);
 }
 
 static char *_logger_pr_type_spy(enum DPREC_LOGGER_PR_TYPE type)
@@ -389,7 +474,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...)
 
 		rem_nsec = do_div(time, 1000000000);
 		n += snprintf(buf + n, len - n, "[%5lu.%06lu]",
-			      (unsigned long)time, rem_nsec / 1000);
+			      (unsigned long)time, DO_COMMON_DIV(rem_nsec, 1000));
 
 		va_start(args, fmt);
 		n += vscnprintf(buf + n, len - n, fmt, args);
@@ -753,6 +838,23 @@ void mtk_disp_mipi_ccci_callback(unsigned int en, unsigned int usrdata)
 	return;
 }
 EXPORT_SYMBOL(mtk_disp_mipi_ccci_callback);
+
+void mtk_disp_mipi_clk_change(int msg, unsigned int en)
+{
+	struct mtk_drm_private *priv;
+
+	priv = drm_dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPMSG("%s, priv is null!\n", __func__);
+		return;
+	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
+		DDPMSG("%s, msg:%d, en:%d\n", __func__, msg, en);
+		mtk_disp_mipi_ccci_callback(en, (unsigned int)msg);
+	}
+}
+EXPORT_SYMBOL(mtk_disp_mipi_clk_change);
 
 void mtk_disp_osc_ccci_callback(unsigned int en, unsigned int usrdata)
 {
@@ -2803,6 +2905,78 @@ static void process_dbg_opt(const char *opt)
 			mtk_drm_crtc_analysis(crtc);
 			mtk_drm_crtc_dump(crtc);
 		}
+	} else if (is_bdg_supported() && strncmp(opt, "bdg_dump", 8) == 0) {
+		bdg_dsi_dump_reg(DISP_BDG_DSI0);
+	} else if (is_bdg_supported() && strncmp(opt, "set_data_rate:", 14) == 0) {
+		unsigned int data_rate = 0;
+		int ret = -1;
+
+		ret = sscanf(opt, "set_data_rate:%d\n",
+			&data_rate);
+		if (ret != 1) {
+			DDPMSG("[error]%d error to parse set_data_rate cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		set_bdg_data_rate(data_rate);
+
+	} else if (is_bdg_supported() && !strncmp(opt, "set_mask_spi:", 13)) {
+		unsigned int addr = 0, val = 0, mask = 0;
+		int ret = -1;
+
+		ret = sscanf(opt, "set_mask_spi:addr=0x%x,mask=0x%x,val=0x%x\n",
+			&addr, &mask, &val);
+		if (ret != 3) {
+			DDPMSG("[error]%d error to parse set_mt6382_spi cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		ret = mtk_spi_mask_write(addr, mask, val);
+		if (ret < 0) {
+			DDPMSG("[error]write mt6382 fail,addr:0x%x, val:0x%x\n",
+				addr, val);
+			return;
+		}
+	} else if (is_bdg_supported() && !strncmp(opt, "set_mt6382_spi:", 15)) {
+		unsigned int addr = 0, val = 0;
+		int ret = -1;
+
+		ret = sscanf(opt, "set_mt6382_spi:addr=0x%x,val=0x%x\n",
+			&addr, &val);
+		if (ret != 2) {
+			DDPMSG("[error]%d error to parse set_mt6382_spi cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		ret = mtk_spi_write(addr, val);
+		if (ret < 0) {
+			DDPMSG("[error]write mt6382 fail,addr:0x%x, val:0x%x\n",
+				addr, val);
+			return;
+		}
+
+	} else if (is_bdg_supported() && !strncmp(opt, "read_mt6382_spi:", 16)) {
+		unsigned int addr = 0, val = 0;
+		int ret = -1;
+
+		ret = sscanf(opt, "read_mt6382_spi:addr=0x%x\n", &addr);
+		if (ret != 1) {
+			DDPMSG("[error]%d error to parse read_mt6382_spi cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		val = mtk_spi_read(addr);
+		DDPMSG("mt6382 read addr:0x%08x, val:0x%08x\n", addr, val);
+
+	} else if (is_bdg_supported() && strncmp(opt, "check", 5) == 0) {
+		if (check_stopstate(NULL) == 0)
+			bdg_tx_start(DISP_BDG_DSI0, NULL);
+		mdelay(100);
+		return;
 	} else if (strncmp(opt, "repaint", 7) == 0) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, drm_dev);
 	} else if (strncmp(opt, "dalprintf", 9) == 0) {
@@ -3511,8 +3685,8 @@ static void process_dbg_opt(const char *opt)
 
 		DDPMSG("ddic_spr_switch:%d\n", cmd_num);
 
-		ddic_dsi_send_switch_pgt(cmd_num, addr, val1, val2, val3,
-			val4, val5, val6);
+		ddic_dsi_send_switch_pgt(cmd_num, (u8)addr, (u8)val1,
+			(u8)val2, (u8)val3, (u8)val4, (u8)val5, (u8)val6);
 	} else if (strncmp(opt, "read_base_voltage:", 18) == 0) {
 		unsigned int recoder;
 		struct drm_crtc *crtc;
@@ -3553,17 +3727,17 @@ static void process_dbg_opt(const char *opt)
 				DSI_READ_ELVSS_BASE_VOLTAGE, &base_volageg);
 
 	} else if (strncmp(opt, "read_cm:", 8) == 0) {
-		u8 addr;
+		unsigned int addr;
 		unsigned int ret;
 
-		ret = sscanf(opt, "read_cm:%c\n", &addr);
+		ret = sscanf(opt, "read_cm:%x\n", &addr);
 		if (ret != 1) {
 			DDPPR_ERR("%d error to parse cmd %s\n",
 				__LINE__, opt);
 			return;
 		}
 		DDPMSG("read_cm:%d\n", addr);
-		ddic_dsi_read_cm_cmd(addr);
+		ddic_dsi_read_cm_cmd((u8)addr);
 	}  else if (strncmp(opt, "spr_enable:", 10) == 0) {
 		unsigned int value;
 		unsigned int ret;
@@ -5354,7 +5528,10 @@ out:
 void disp_dbg_init(struct drm_device *dev)
 {
 	int i;
-
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+	int ret = 0;
+	struct mtk_drm_private *priv;
+#endif
 	if (IS_ERR_OR_NULL(dev))
 		DDPMSG("%s, disp debug init with invalid dev\n", __func__);
 	else
@@ -5362,13 +5539,44 @@ void disp_dbg_init(struct drm_device *dev)
 
 	drm_dev = dev;
 	init_completion(&cwb_cmp);
-
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+	priv = drm_dev->dev_private;
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPMSG("%s, invalid priv\n", __func__);
+		return;
+	}
+	/* SW workaround.
+	 * Polling RDMA output line isn't 0 && RDMA status is run,
+	 * before switching mm clock mux in cmd mode.
+	 */
+	if (priv->data->mmsys_id == MMSYS_MT6768) {
+		nb.notifier_call = mtk_disp_pd_callback;
+		ret = dev_pm_genpd_add_notifier(dev->dev, &nb);
+		if (ret)
+			DDPMSG("dev_pm_genpd_add_notifier disp register fail!\n");
+		else
+			mtk_mux_set_quick_switch_chk_cb(
+				polling_rdma_output_line_is_not_zero);
+	}
+#endif
 	for (i = 0; i < MAX_CRTC; ++i)
 		INIT_LIST_HEAD(&cb_data_list[i]);
 }
 
 void disp_dbg_deinit(void)
 {
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+	int ret = 0;
+	struct mtk_drm_private *priv;
+
+	priv = drm_dev->dev_private;
+	if (!IS_ERR_OR_NULL(priv) && priv->data->mmsys_id == MMSYS_MT6768) {
+		ret = dev_pm_genpd_remove_notifier(drm_dev->dev);
+		if (ret)
+			DDPMSG("dev_pm_genpd_remove_notifier disp unregister fail!\n");
+		mtk_mux_set_quick_switch_chk_cb(NULL);
+	}
+#endif
 	if (debug_buffer)
 		vfree(debug_buffer);
 #if IS_ENABLED(CONFIG_DEBUG_FS)

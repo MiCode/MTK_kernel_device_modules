@@ -642,8 +642,9 @@ void fsm_ee_cmd_init(enum CCCI_FSM_COMMAND cmd_id)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 		atomic_set(&pw_off_disable_dapc_ke, 0);
 		atomic_set(&md_dapc_ke_occurred, 0);
-#endif
 		atomic_set(&en_flight_timeout, 0);
+#endif
+
 		break;
 	case CCCI_COMMAND_STOP:
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)

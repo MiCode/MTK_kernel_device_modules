@@ -656,7 +656,11 @@ static void check_gles_change(struct debug_gles_range *dbg_gles, const int line,
 
 static void dump_disp_trace(struct drm_mtk_layering_info *disp_info)
 {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 #define LEN 1000
+#else
+#define LEN 896
+#endif
 	int i, j;
 	struct drm_mtk_layer_config *c;
 	char msg[LEN];
@@ -1706,7 +1710,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 		struct drm_mtk_layer_config *layer_info,
 		unsigned int frame_idx, bool is_gles)
 {
-	int bpp, weight;
+	int bpp;
+	u64 weight;
 	struct mtk_drm_private *priv = dev->dev_private;
 	static bool aee_trigger = true;
 
@@ -1781,11 +1786,11 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				/* Just from emi efficency table to find level index */
 				index = (fbt_layer_compress_ratio_tb[i].peak_ratio*256)/(1000*16);
 				if (index) {
-					weight = weight*10000/emi_eff_tb[index-1];
+					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
 					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
-					weight = weight*10000/emi_eff_tb[0];
+					weight = div_u64(weight*10000, emi_eff_tb[0]);
 					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
 							__LINE__, index, emi_eff_tb[0], weight);
 				}
@@ -1840,11 +1845,11 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 				/* Just from emi efficency table to find level index */
 				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
-					weight = weight*10000/emi_eff_tb[index-1];
+					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
 					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
-					weight = weight*10000/emi_eff_tb[0];
+					weight = div_u64(weight*10000, emi_eff_tb[0]);
 					DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%d\n",
 						__LINE__, index, emi_eff_tb[0], weight);
 				}
@@ -1885,11 +1890,11 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 				index = (peak_ratio * 256) / (1000 * 16);
 				if (index) {
-					weight = weight*10000/emi_eff_tb[index-1];
+					weight = div_u64(weight*10000, emi_eff_tb[index-1]);
 					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
 						__LINE__, index, emi_eff_tb[index-1], weight);
 				} else {
-					weight = weight*10000/emi_eff_tb[0];
+					weight = div_u64(weight*10000, emi_eff_tb[0]);
 					DDPDBG("%d BWM:index:%u eff:%u weight:%d\n",
 						__LINE__, index, emi_eff_tb[0], weight);
 				}
@@ -1907,7 +1912,7 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	if ((priv->data->mmsys_id == MMSYS_MT6897) ||
 		(priv->data->mmsys_id == MMSYS_MT6989))
-		return (weight * bpp * 10000)/default_emi_eff;
+		return div_u64((weight * bpp * 10000), default_emi_eff);
 
 	return weight * bpp;
 }
@@ -1954,7 +1959,7 @@ void calc_mml_layer_weight(struct drm_mtk_layering_info *disp_info,
 		return;
 
 	*overlap_w = ((u64)*overlap_w) * ratio;
-	do_div(*overlap_w, 100);
+	*overlap_w = DO_COMMON_DIV(*overlap_w, 100);
 	DDPINFO("%s overlap_w:%d ratio:%u\n", __func__, *overlap_w, ratio);
 }
 
@@ -2901,6 +2906,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			return DDP_COMPONENT_OVL0_2L_NWCG;
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL4_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6768)
+			return DDP_COMPONENT_OVL0_2L;
 		else
 			return DDP_COMPONENT_OVL2_2L;
 	} else if (disp_idx == 3) {
@@ -3856,7 +3863,7 @@ static int check_cross_pipe_rpo(
 	return 0;
 }
 
-static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
+static int RPO_rule(struct drm_crtc *crtc,
 		struct drm_mtk_layering_info *disp_info, int disp_idx)
 {
 	struct drm_mtk_layer_config *c = NULL;
@@ -3866,17 +3873,18 @@ static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 	struct mtk_rect dst_roi = {0};
 	unsigned int disp_w, disp_h;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *private = crtc->dev->dev_private;
 	struct drm_display_mode *mode;
 	int i = 0;
 	u8 scale_cnt = 0;
 
 	if (disp_idx >= LYE_CRTC || disp_idx < 0) {
 		DDPPR_ERR("%s[%d]:idx:%d\n", __func__, __LINE__, disp_idx);
-		return;
+		return 0;
 	}
 
 	if (disp_info->layer_num[disp_idx] <= 0)
-		return;
+		return 0;
 
 	mode = mtk_drm_crtc_avail_disp_mode(crtc, disp_info->disp_mode_idx[0]);
 	if (mode) {
@@ -3944,20 +3952,27 @@ static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 			continue;
 
 		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
-			priv->data->mmsys_id != MMSYS_MT6897)
+			private->data->mmsys_id != MMSYS_MT6897)
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)
 			break;
 
+		/* Check the tile length and in max height of RSZ */
+		if (src_roi.width > private->rsz_in_max[0] ||
+		    src_roi.height > private->rsz_in_max[1])
+			break;
+
 		c->layer_caps |= MTK_DISP_RSZ_LAYER;
 		++scale_cnt;
 	}
+	return scale_cnt;
 }
 
 /* resizing_rule - layering rule resize layer layout */
 static void resizing_rule(struct drm_device *dev,
-			struct drm_mtk_layering_info *disp_info)
+			struct drm_mtk_layering_info *disp_info,
+			unsigned int *scale_num)
 {
 	const u8 disp_idx = get_layering_opt(LYE_OPT_SPHRT) ? disp_info->disp_idx : 0;
 
@@ -3970,7 +3985,7 @@ static void resizing_rule(struct drm_device *dev,
 		struct drm_crtc *crtc = priv->crtc[disp_idx];
 
 		if (crtc)
-			RPO_rule(priv, crtc, disp_info, disp_idx);
+			*scale_num = RPO_rule(crtc, disp_info, disp_idx);
 	}
 
 	/* for crtc N layers that cannot supported by RPO */
@@ -4326,6 +4341,28 @@ static int get_crtc_num(
 	return crtc_num;
 }
 
+static inline int get_scale_cnt(struct drm_mtk_layering_info *disp_info)
+{
+	int disp_idx, scale_cnt = 0;
+
+	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++) {
+		struct drm_mtk_layer_config *c;
+		int i = 0;
+
+		if (disp_info->layer_num[disp_idx] <= 0)
+			continue;
+
+		/* check exist clear layer */
+		for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
+			c = &disp_info->input_config[disp_idx][i];
+			if (mtk_has_layer_cap(c, MTK_DISP_RSZ_LAYER))
+				scale_cnt++;
+		}
+	}
+
+	return scale_cnt;
+}
+
 static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 			       int debug_mode, struct drm_device *dev)
 {
@@ -4337,6 +4374,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	int disp_idx = 0, hrt_idx;
 	struct debug_gles_range dbg_gles = {-1, -1};
 	struct mtk_lye_ddp_state lye_state = {0};
+	unsigned int scale_num = 0;
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	DRM_MMP_EVENT_START(layering, (unsigned long)disp_info_user,
 			(unsigned long)dev);
@@ -4411,7 +4450,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 
 	/* Check and choose the Resize Scenario */
 	if (get_layering_opt(LYE_OPT_RPO)) {
-		resizing_rule(dev, &layering_info);
+		resizing_rule(dev, &layering_info, &scale_num);
 	} else {
 		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_PRIMARY);
 		mtk_rollback_all_resize_layer_to_GPU(&layering_info, HRT_SECONDARY);
@@ -4429,6 +4468,10 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* Add for FBDC */
 	if (l_rule_ops->fbdc_pre_calculate)
 		l_rule_ops->fbdc_pre_calculate(&layering_info);
+
+	/* Initial HRT conditions */
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885)
+		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 
 	/* Layer Grouping */
 	if (l_rule_ops->fbdc_adjust_layout)
@@ -4527,6 +4570,12 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	check_gles_change(&dbg_gles, __LINE__, true);
 
 	check_layering_result(&layering_info);
+
+	/* adjust scenario after dispatch gles range */
+	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6885) {
+		scale_num = get_scale_cnt(&layering_info);
+		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
+	}
 	ret = dispatch_ovl_id(&layering_info, lyeblob_ids, dev, &lye_state);
 
 	layering_info.hrt_idx = _layering_rule_get_hrt_idx(disp_idx);

@@ -23,6 +23,10 @@
 #include <dvfsrc-exp.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
+#include <mtk_cpufreq_api.h>
+#endif
+
 #include <perf_tracker.h>
 #include <perf_tracker_internal.h>
 
@@ -175,8 +179,12 @@ static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 	u32 offset = 0;
 	struct ppm_data *p = &cluster_ppm_info[cluster_id];
 
-	if (IS_ERR_OR_NULL((void *)csram_base))
+	if (IS_ERR_OR_NULL((void *)csram_base)) {
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
+		return mt_cpufreq_get_cur_freq(cluster_id);
+#endif
 		return 0;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (is_gearless_support())
@@ -293,7 +301,11 @@ void perf_tracker(u64 wallclock,
 		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums
 		+dram_bw_record_nums] = {0};
 	int sbin_lens = 0;
+#if IS_ENABLED(CONFIG_ARM64)
 	char sbin_data_print[PRINT_BUFFER_SIZE] = {0};
+#else
+	char *sbin_data_print = NULL;
+#endif
 	u32 sbin_data_ctl = 0;
 	u32 u_v = 0, u_f = 0;
 	u32 u_aff = 0;
@@ -309,6 +321,13 @@ void perf_tracker(u64 wallclock,
 
 	if (!perf_tracker_on)
 		return;
+
+#if !IS_ENABLED(CONFIG_ARM64)
+	sbin_data_print = kmalloc(PRINT_BUFFER_SIZE, GFP_KERNEL);
+	if (!sbin_data_print)
+		return;
+	memset(sbin_data_print, 0, PRINT_BUFFER_SIZE);
+#endif
 
 	/* dram freq */
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
@@ -428,7 +447,11 @@ void perf_tracker(u64 wallclock,
 		sbin_data_ctl |= SBIN_DRAM_BW_RECORD;
 	}
 
+#if IS_ENABLED(CONFIG_ARM64)
 	format_sbin_data(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
+#else
+	format_sbin_data(sbin_data_print, PRINT_BUFFER_SIZE, sbin_data, sbin_lens);
+#endif
 	trace_perf_index_sbin(sbin_data_print, sbin_lens, sbin_data_ctl);
 
 	/* trace for short bin */
@@ -444,8 +467,12 @@ void perf_tracker(u64 wallclock,
 			dram_rate, bw_c, bw_g, bw_mm, bw_total,
 			vcore_uv, cpu_mcupm_freq[0], cpu_mcupm_freq[1], cpu_mcupm_freq[2]);
 
-	if (!hit_long_check)
+	if (!hit_long_check) {
+		#if !IS_ENABLED(CONFIG_ARM64)
+			kfree(sbin_data_print);
+		#endif
 		return;
+	}
 
 	/* free mem */
 	mm_free = global_zone_page_state(NR_FREE_PAGES);
@@ -469,7 +496,9 @@ void perf_tracker(u64 wallclock,
 			iostat_ptr,
 			stall
 			);
-
+#if !IS_ENABLED(CONFIG_ARM64)
+	kfree(sbin_data_print);
+#endif
 }
 
 /*
