@@ -395,7 +395,10 @@ static int scp_reg_update(struct regmap *regmap, struct reg_info *reg, u32 val)
 	/* Keep SCP active to read */
 	need_scp_wakelock = g_dvfs_dev.clk_hw->scp_clk_regmap == regmap;
 	if (need_scp_wakelock)
-		scp_awake_lock((void *)SCP_A_ID);
+		if (scp_awake_lock((void *)SCP_A_ID)) {
+			pr_notice("[%s] scp_awake_lock failed\n", __func__);
+			return 0;
+		}
 
 	if (reg->setclr) {
 		ret = regmap_write(regmap, reg->ofs + 4, mask);
@@ -423,7 +426,10 @@ static int scp_reg_read(struct regmap *regmap, struct reg_info *reg, u32 *val)
 	/* Keep SCP active to read */
 	need_scp_wakelock = g_dvfs_dev.clk_hw->scp_clk_regmap == regmap;
 	if (need_scp_wakelock)
-		scp_awake_lock((void *)SCP_A_ID);
+		if (scp_awake_lock((void *)SCP_A_ID)) {
+			pr_notice("[%s] scp_awake_lock failed\n", __func__);
+			return 0;
+		}
 
 	ret = regmap_read(regmap, reg->ofs, val);
 	if (!ret)
@@ -708,8 +714,11 @@ static int scp_request_freq_vcore(void)
 	__pm_stay_awake(scp_dvfs_lock);
 
 	if (scp_current_freq != scp_expected_freq) {
-
-		scp_awake_lock((void *)SCP_A_ID);
+		/* wake up scp */
+		if (scp_awake_lock((void *)SCP_A_ID)) {
+			pr_notice("[%s] scp_awake_lock failed\n", __func__);
+			goto FINISH;
+		}
 
 		/* do DVS before DFS if increasing frequency */
 		if (scp_current_freq < scp_expected_freq) {
@@ -769,9 +778,10 @@ static int scp_request_freq_vcore(void)
 			scp_resource_req(SCP_REQ_RELEASE);
 	}
 
-	__pm_relax(scp_dvfs_lock);
 	pr_debug("[SCP] succeed to set freq, expect=%d, cur=%d\n",
 			scp_expected_freq, scp_current_freq);
+FINISH:
+	__pm_relax(scp_dvfs_lock);
 	return 0;
 }
 
@@ -803,18 +813,22 @@ static int scp_request_freq_vlp(void)
 		return 0;
 	}
 
-	/* because we are waiting for scp to update register:scp_current_freq
+	/* because we are waiting for scp to update the frequency
 	 * use wake lock to prevent AP from entering suspend state
 	 */
 	__pm_stay_awake(scp_dvfs_lock);
 
-	if (scp_current_freq != scp_expected_freq
+	if (last_scp_expected_freq != scp_expected_freq
 			|| last_sap_expected_freq != sap_expected_freq) {
 
 		ipi_data.scp_req_freq = scp_expected_freq;
 		ipi_data.sap_req_freq = sap_expected_freq;
 
-		scp_awake_lock((void *)SCP_A_ID);
+		/* wake up scp */
+		if (scp_awake_lock((void *)SCP_A_ID)) {
+			pr_notice("[%s] scp_awake_lock failed\n", __func__);
+			goto FINISH;
+		}
 
 		if (g_dvfs_dev.has_pll_opp) {
 			/* Request SPM not to turn off mainpll/26M/infra */
@@ -870,9 +884,10 @@ static int scp_request_freq_vlp(void)
 		scp_awake_unlock((void *)SCP_A_ID);
 	}
 
+	pr_debug("[SCP] succeed to request freq, expected SCP=%d SAP=%d\n",
+			scp_expected_freq, sap_expected_freq);
+FINISH:
 	__pm_relax(scp_dvfs_lock);
-	pr_debug("[SCP] succeed to set freq, expected SCP=%d SAP=%d, cur=%d\n",
-			scp_expected_freq, sap_expected_freq, scp_current_freq);
 	return 0;
 }
 
@@ -1299,7 +1314,10 @@ static int mt_scp_dvfs_ctrl_proc_show(struct seq_file *m, void *v)
 	int i;
 
 	/* Keep SCP active to read */
-	scp_awake_lock((void *)SCP_A_ID);
+	if (scp_awake_lock((void *)SCP_A_ID)) {
+		pr_notice("[%s] scp_awake_lock failed\n", __func__);
+		return 0;
+	}
 	scp_current_freq_reg = readl(CURRENT_FREQ_REG);
 	scp_expected_freq_reg = readl(EXPECTED_FREQ_REG);
 	scp_awake_unlock((void *)SCP_A_ID);
@@ -1511,7 +1529,6 @@ static_assert(CAL_BITS + CAL_EXT_BITS <= 8 * sizeof(unsigned short),
 "error: there are only 16bits available in IPI\n");
 bool sync_ulposc_cali_data_to_scp(void)
 {
-	unsigned int sel_clk = 0;
 	unsigned int ipi_data[2];
 	unsigned short *p = (unsigned short *)&ipi_data[1];
 	int i, ret;
@@ -1562,21 +1579,13 @@ bool sync_ulposc_cali_data_to_scp(void)
 		}
 	}
 
-	scp_reg_read(g_dvfs_dev.clk_hw->scp_clk_regmap,
-		&g_dvfs_dev.clk_hw->_sel_clk, &sel_clk);
-	if ((sel_clk & (SCP_ULPOSC_SEL_CORE | SCP_ULPOSC_SEL_PERI)) == 0) {
-		pr_notice("[%s]:ERROR scp is not switched to ULPOSC, CLK_SW_SEL=0x%x\n",
-			__func__, sel_clk);
-		WARN_ON(1);
-		cali_ok = false;
-	} else {
-		/*
-		 * After syncing, scp will be changed to default freq, which is not set by kernel.
-		 * Reset last_scp_expected_freq to prevent not updating freq in scp reset flow.
-		 */
-		last_scp_expected_freq = 0;
-		last_sap_expected_freq = 0;
-	}
+	/*
+	 * After syncing, scp will be changed to default freq, which is not set by kernel.
+	 * Reset last_scp_expected_freq to prevent not updating freq in scp reset flow.
+	 */
+	last_scp_expected_freq = 0;
+	last_sap_expected_freq = 0;
+
 	return cali_ok;
 }
 
@@ -2896,8 +2905,7 @@ static int __init mt_scp_dts_ildo_clk_chk(struct device_node *node)
 	cur_freq = get_freq_by_fmeter_wrapper(SCP_FM_CH_ILDO);
 	diff = (cur_freq >= target_khz) ?
 		(cur_freq - target_khz) : (target_khz - cur_freq);
-	/* pass criteria: +-20% */
-	pass = (diff * 5) < target_khz;
+	pass = (diff * 1000 / ILDO_MIS_RATE) < target_khz; /* pass criteria: +-5% */
 	pr_notice("[%s]: check ildo freq %s, cur: %u, target: %u khz\n",
 		__func__, pass ? "pass" : "fail",
 		cur_freq, target_khz);
