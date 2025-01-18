@@ -1980,6 +1980,7 @@
 				"MT_CG_VENC";
 			operating-points-v2 = <&opp_table_venc>;
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			venc-disable-hw-break = <1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REC)
