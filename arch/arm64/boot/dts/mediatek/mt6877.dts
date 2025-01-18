@@ -5073,15 +5073,21 @@
 	wpe_a@15811000 {
 		compatible = "mediatek,wpe_a";
 		reg = <0 0x15811000 0 0x1000>;
+		mediatek,larb = <&smi_larb11>,<&smi_larb9>;
 		interrupts = <GIC_SPI 431 IRQ_TYPE_LEVEL_HIGH 0>;
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP1>,
+					<&scpsys MT6877_POWER_DOMAIN_ISP0>;
 		clocks =
 			<&imgsys2_clk CLK_IMGSYS2_LARB9>,
 			<&imgsys2_clk CLK_IMGSYS2_WPE>;
-
 		clock-names =
 			"WPE_CLK_IMG_LARB9",
 			"WPE_CLK_IMG_WPE_A";
+		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+		iommus =
+			<&iommu0 M4U_PORT_L11_IMG_WPE_RDMA1>,
+			<&iommu0 M4U_PORT_L11_IMG_WPE_RDMA0>,
+			<&iommu0 M4U_PORT_L11_IMG_WPE_WDMA>;
 	};
 
 	smi_larb11: smi-larb11@1582e000 {
