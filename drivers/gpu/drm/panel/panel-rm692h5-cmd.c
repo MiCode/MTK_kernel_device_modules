@@ -643,7 +643,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
-#ifdef PARTIAL_UPDATE_ENABLE
 #define TO_ROI_SETTING(addr, base, offset) \
 		{\
 			{0x05, {addr, (base >> 8) & 0xFF, base & 0xFF, ((base + offset - 1) >> 8) & 0xFF, \
@@ -655,7 +654,6 @@ static int lcm_update_roi(struct drm_panel *panel,
 {
 	int ret = 0;
 	struct lcm *ctx = panel_to_lcm(panel);
-	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
 	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
 	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
 
@@ -688,7 +686,42 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 
 	return ret;
 }
-#endif
+
+static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
+	unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h)
+{
+	unsigned int roi_y = *y, roi_h = *h;
+	unsigned int slice_height = ext_param->dsc_params.slice_height;
+	unsigned int lil_te1_line = 520;
+	unsigned int lil_te2_line = 1560;
+	unsigned int inteval = 399;
+	int line_diff;
+
+	//lcm_info("partial roi y:%d height:%d\n", roi_y, roi_h);
+
+	if (ext_param
+		&& ext_param->real_te_duration != 0
+		&& ext_param->real_te_duration < 8333) {
+		//lcm_info("lil_te1_line:%d lil_te2_line:%d real_te_duration:%d\n",
+			//lil_te1_line, lil_te2_line, ext_param->real_te_duration);
+
+		if (roi_y >= lil_te1_line && roi_y <= (lil_te1_line + inteval)) {
+			line_diff = roi_y - lil_te1_line + slice_height * 2;
+			roi_y -= line_diff;
+			roi_h += line_diff;
+		} else if (roi_y >= lil_te2_line && roi_y <= (lil_te2_line + inteval)) {
+			line_diff = roi_y - lil_te2_line + slice_height * 2;
+			roi_y -= line_diff;
+			roi_h += line_diff;
+		}
+	}
+
+	//lcm_info("validate partial roi y:%d height:%d\n", roi_y, roi_h);
+
+	*y = roi_y;
+	*h = roi_h;
+}
+
 
 static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//120hz 360TE
@@ -1248,10 +1281,9 @@ static struct mtk_panel_funcs ext_funcs = {
 	.get_res_switch_type = mtk_get_res_switch_type,
 #endif
 	.mode_switch = mode_switch,
-	#ifdef PARTIAL_UPDATE_ENABLE
 	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
-	#endif
+	.lcm_valid_roi = rm692h5_lcm_valid_roi,
 };
 #endif
 
