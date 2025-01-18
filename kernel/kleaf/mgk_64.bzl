@@ -877,6 +877,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/slbc/slbc_mt6983.ko": "mt6983",
     "drivers/misc/mediatek/slbc/slbc_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/slbc/slbc_mt6989.ko": "mt6989",
+    "drivers/misc/mediatek/slbc/slbc_mt6991.ko": "mt6991",
     "drivers/misc/mediatek/smap/smap-mt6991.ko": "mt6991",
     "drivers/pinctrl/mediatek/pinctrl-mt6886.ko": "mt6886",
     "drivers/pinctrl/mediatek/pinctrl-mt6897.ko": "mt6897",
@@ -1360,6 +1361,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6983.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6991.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
