@@ -12,6 +12,10 @@
 #include <mt-plat/aee.h>
 #endif
 
+#define CMDQ_FIRST_ERR_SIZE		524288	/* 512k */
+#define CMDQ_RECORD_SIZE	(65536) /* 0x10000 */
+#define CMDQ_STATUS_SIZE	(CMDQ_FIRST_ERR_SIZE) /* 0x80000 */
+
 /* sync with request in atf */
 enum cmdq_smc_request {
 	CMDQ_ENABLE_DEBUG,
@@ -271,6 +275,7 @@ void cmdq_util_return_dbg(u32 id, u64 *dbg);
 void cmdq_util_devapc_dump(void);
 void cmdq_util_dump_fast_mtcmos(void);
 void cmdq_util_set_domain(u32 hwid, u32 thrd);
+void cmdq_util_reserved_memory_lookup(struct device *dev);
 int cmdq_util_init(void);
 
 extern void mt_irq_dump_status(unsigned int irq);

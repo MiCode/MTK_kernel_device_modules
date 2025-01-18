@@ -15,6 +15,8 @@
 #include <linux/proc_fs.h>
 #include "linux/seq_file.h"
 #include "linux/module.h"
+#include <linux/of_reserved_mem.h>
+#include <mt-plat/mrdump.h>
 
 #include "cmdq-util.h"
 
@@ -33,7 +35,6 @@
 #define CMDQ_HW_MAX			2
 #define CMDQ_RECORD_NUM			512
 #define CMDQ_BUF_RECORD_NUM		60
-#define CMDQ_FIRST_ERR_SIZE		524288	/* 512k */
 #define CMDQ_IRQ_HISTORY_MAX_SIZE		5000
 
 #define CMDQ_CURR_IRQ_STATUS		0x10
@@ -45,6 +46,9 @@
 #define GCE_DBG0			0x3004
 #define GCE_DBG2			0x300C
 #define GCE_DBG3			0x3010
+
+#define CMDQ_BUF_REC_BUFFER_SIZE		(PAGE_SIZE * 8)
+#define log_length		128
 
 #define util_time_to_us(start, end, duration)	\
 {	\
@@ -59,6 +63,7 @@ struct cmdq_util_error {
 	char		*buffer;
 	u32		length;
 	u64		nsec;
+	bool		record;
 	char		caller[TASK_COMM_LEN]; // TODO
 };
 
@@ -121,6 +126,7 @@ struct cmdq_util {
 	struct cmdq_buf_record buf_record[CMDQ_BUF_RECORD_NUM];
 	u8	cmdq_irq_thrd_history[CMDQ_HW_MAX][CMDQ_IRQ_HISTORY_MAX_SIZE];
 	u16	cmdq_irq_thrd_history_idx[CMDQ_HW_MAX];
+	char	*buf_rec_buffer;
 };
 static struct cmdq_util	util;
 
@@ -140,6 +146,17 @@ struct cmdq_util_helper_fp helper_fp = {
 	.set_first_err_mod = cmdq_util_set_first_err_mod,
 	.track = cmdq_util_track,
 };
+
+/**
+ * shared memory between normal and secure world
+ */
+struct cmdq_sec_shared_mem {
+	void		*va;
+	dma_addr_t	pa;
+	dma_addr_t	mva;
+	u32		size;
+};
+static struct cmdq_sec_shared_mem *shared_mem;
 
 void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx)
 {
@@ -351,6 +368,24 @@ void cmdq_util_error_disable(u8 hwid)
 	if (enable < 0) {
 		cmdq_err("enable:%d hwid:%d", enable, hwid);
 		dump_stack();
+	} else if (enable == 0 && !util.err[hwid].record && cmdq_print_debug) {
+		char *buf_va, *buf_va_end;
+		u64		sec = 0;
+		unsigned long	nsec = 0;
+		char title[] = "[cmdq] first error kernel time:";
+
+		if (util.err[1 - hwid].record)
+			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.err[1 -
+				hwid].length + log_length * 2);
+		else
+			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + log_length);
+
+		buf_va_end = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
+		sec = util.err[hwid].nsec;
+		nsec = do_div(sec, 1000000000);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s[%5llu.%06lu]\n", title, sec, nsec);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", util.err[hwid].buffer);
+		util.err[hwid].record = true;
 	}
 }
 EXPORT_SYMBOL(cmdq_util_error_disable);
@@ -499,14 +534,18 @@ static int cmdq_util_record_print(struct seq_file *seq, void *data)
 	return 0;
 }
 
-static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
+void cmdq_util_buf_record_save(void)
 {
 	struct cmdq_buf_record *buf_rec;
 	s32 i, j, arr_idx, idx;
 	u64		sec = 0;
 	unsigned long	nsec = 0;
+	char end[] = "\n";
+	char *buf_va, *buf_va_end;
 
-	mutex_lock(&cmdq_buf_record_mutex);
+	buf_va = (char *)(util.buf_rec_buffer);
+	buf_va_end = (char *)(util.buf_rec_buffer + CMDQ_BUF_REC_BUFFER_SIZE);
+	buf_va = cmdq_dump_buffer_size_seq(buf_va, buf_va_end);
 
 	idx = util.buf_record_idx;
 	for (arr_idx = 0; arr_idx < ARRAY_SIZE(util.buf_record); arr_idx++) {
@@ -514,32 +553,46 @@ static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
 		if (idx < 0)
 			idx = ARRAY_SIZE(util.buf_record) - 1;
 		buf_rec = &util.buf_record[idx];
-
 		sec = buf_rec->nsec;
 		nsec = do_div(sec, 1000000000);
-
 		for (i = 0; i < CMDQ_HW_MAX; i++) {
-			seq_printf(seq, "[%5llu.%06lu] hwid:%d ", sec, nsec, i);
-
+			buf_va += scnprintf(buf_va, buf_va_end - buf_va,
+				"[%5llu.%06lu] hwid:%d ", sec, nsec, i);
 			for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
-				seq_printf(seq, "thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]",
+				buf_va += scnprintf(buf_va, buf_va_end - buf_va,
+					"thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]",
 					j, buf_rec->buf_peek_cnt[i][j],
 					j + 1, buf_rec->buf_peek_cnt[i][j + 1],
 					j + 2, buf_rec->buf_peek_cnt[i][j + 2],
 					j + 3, buf_rec->buf_peek_cnt[i][j + 3]);
 			}
-			seq_puts(seq, "\n");
+			buf_va += scnprintf(buf_va, buf_va_end - buf_va,
+				"%s", end);
 		}
 	}
-
-	mutex_unlock(&cmdq_buf_record_mutex);
-
-	return 0;
 }
 
-static int cmdq_util_buffer_debug(struct seq_file *seq, void *data)
+
+void cmdq_util_buf_record_aee_dump(unsigned long *vaddr, unsigned long *size)
 {
-	cmdq_dump_buffer_size_seq(seq);
+	cmdq_util_buf_record_save();
+
+	if (cmdq_print_debug) {
+		char *buf_va, *buf_va_end;
+
+		buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.err[0].length + util.err[1].length);
+		buf_va_end = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", util.buf_rec_buffer);
+	}
+}
+
+static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
+{
+	mutex_lock(&cmdq_buf_record_mutex);
+	cmdq_util_buf_record_save();
+	seq_printf(seq, "%s", util.buf_rec_buffer);
+	mutex_unlock(&cmdq_buf_record_mutex);
+
 	return 0;
 }
 
@@ -560,11 +613,6 @@ static const struct proc_ops cmdq_util_status_fops = {
 	.proc_release = single_release,
 };
 
-static int cmdq_util_buffer_debug_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, cmdq_util_buffer_debug, inode->i_private);
-}
-
 static int cmdq_util_buffer_record_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cmdq_util_buf_record_print, inode->i_private);
@@ -572,13 +620,6 @@ static int cmdq_util_buffer_record_open(struct inode *inode, struct file *file)
 
 static const struct proc_ops cmdq_util_record_fops = {
 	.proc_open = cmdq_util_record_open,
-	.proc_read = seq_read,
-	.proc_lseek = seq_lseek,
-	.proc_release = single_release,
-};
-
-static const struct proc_ops cmdq_proc_util_buf_leak_fops = {
-	.proc_open = cmdq_util_buffer_debug_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -1070,11 +1111,14 @@ void cmdq_util_track(struct cmdq_pkt *pkt)
 	struct cmdq_client *cl = pkt->cl;
 	struct cmdq_pkt_buffer *buf;
 	u64 done = sched_clock();
-	u32 offset, *perf;
+	u32 offset, *perf, acq_time, irq_time, begin_wait, exec_time, total_time, hw_time;
+	u32 exec_begin = 0, exec_end = 0;
+	u64 submit_sec, last_inst = 0;
+	unsigned long submit_rem, hw_time_rem;
 
 	mutex_lock(&cmdq_record_mutex);
 
-	record = &util.record[util.record_idx++];
+	record = &util.record[util.record_idx];
 	record->pkt = (unsigned long)pkt;
 	record->priority = pkt->priority;
 	record->size = pkt->cmd_buf_size;
@@ -1084,6 +1128,15 @@ void cmdq_util_track(struct cmdq_pkt *pkt)
 	record->wait = pkt->rec_wait;
 	record->irq = pkt->rec_irq;
 	record->done = done;
+
+	submit_sec = pkt->rec_submit;
+	submit_rem = do_div(submit_sec, 1000000000);
+
+	util_time_to_us(pkt->rec_submit, pkt->rec_trigger, acq_time);
+	util_time_to_us(pkt->rec_trigger, pkt->rec_irq, irq_time);
+	util_time_to_us(pkt->rec_submit, pkt->rec_wait, begin_wait);
+	util_time_to_us(pkt->rec_trigger, done, exec_time);
+	util_time_to_us(pkt->rec_submit, done, total_time);
 
 	if (cl && cl->chan) {
 		record->thread = cmdq_mbox_chan_id(cl->chan);
@@ -1099,9 +1152,6 @@ void cmdq_util_track(struct cmdq_pkt *pkt)
 		record->is_secure = true;
 #endif
 
-	if (util.record_idx >= CMDQ_RECORD_NUM)
-		util.record_idx = 0;
-
 	if (!list_empty(&pkt->buf)) {
 		buf = list_first_entry(&pkt->buf, typeof(*buf), list_entry);
 
@@ -1110,14 +1160,40 @@ void cmdq_util_track(struct cmdq_pkt *pkt)
 			pkt->cmd_buf_size);
 		record->last_inst = *(u64 *)(buf->va_base + offset -
 			CMDQ_INST_SIZE);
+		last_inst = record->last_inst;
 
 		perf = cmdq_pkt_get_perf_ret(pkt);
 		if (perf) {
 			record->exec_begin = perf[0];
 			record->exec_end = perf[1];
+			exec_begin = record->exec_begin;
+			exec_end = record->exec_end;
 		}
 	}
 
+	hw_time = exec_end > exec_begin ?
+		exec_end - exec_begin :
+		~exec_begin + 1 + exec_end;
+	hw_time_rem = (u32)CMDQ_TICK_TO_US(hw_time);
+
+	if (cmdq_print_debug) {
+		char *buf_va, *buf_va_end;
+
+		buf_va = (char *)(shared_mem->va + log_length * 2 + (util.record_idx * log_length));
+		memset_io(buf_va, 0, log_length);
+		buf_va_end = buf_va + log_length;
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%u,%#lx,%d,%d,%u,%hhd,%d,", util.record_idx,
+			record->pkt, record->priority, record->is_secure, record->size, record->id, record->thread);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%llu.%06lu,", submit_sec, submit_rem / 1000);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%u,%u,%u,%u,%u,%#llx,", acq_time, irq_time,
+			begin_wait, exec_time, total_time, last_inst);
+		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%u,%u,%u.%06lu,\n", exec_begin, exec_end,
+			hw_time, hw_time_rem);
+	}
+
+	util.record_idx++;
+	if (util.record_idx >= CMDQ_RECORD_NUM)
+		util.record_idx = 0;
 	mutex_unlock(&cmdq_record_mutex);
 }
 EXPORT_SYMBOL(cmdq_util_track);
@@ -1224,13 +1300,6 @@ int cmdq_proc_create(void)
 	}
 
 	if (cmdq_dump_buf_size) {
-		entry = proc_create("cmdq_buffer_debug", 0444, debugDirEntry,
-			&cmdq_proc_util_buf_leak_fops);
-		if (!entry) {
-			cmdq_err("proc_create_file cmdq_buffer_debug failed");
-			return -ENOMEM;
-		}
-
 		entry = proc_create("cmdq_buffer_record", 0444, debugDirEntry,
 			&cmdq_proc_util_buf_record_fops);
 		if (!entry) {
@@ -1241,6 +1310,68 @@ int cmdq_proc_create(void)
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_proc_create);
+
+void cmdq_util_reserved_memory_lookup(struct device *dev)
+{
+	struct device_node node;
+	static struct reserved_mem *mem;
+	static void *va;
+	char buf[NAME_MAX] = {0};
+	u64 pa = 0;
+	s32 i, len;
+	char *buf_va, *buf_va_end;
+	char title[] = "index,pkt,task priority,sec,size,gce,thread,submit,acq_time(us),"
+		"irq_time(us),begin_wait(us),exec_time(us),total_time(us),jump,"
+		"exec begin,exec end,hw_time(us),";
+
+	shared_mem = kzalloc(sizeof(*shared_mem), GFP_KERNEL);
+	if (!shared_mem)
+		return;
+
+	shared_mem->va = dma_alloc_coherent(dev, CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE,
+		&shared_mem->pa, GFP_KERNEL);
+	shared_mem->size = CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE;
+
+	for (i = 0; i < 32 && !mem; i++) {
+		memset(buf, 0, sizeof(buf));
+		len = snprintf(buf, NAME_MAX - 1, "mblock-%d-me_cmdq_reserved", i);
+		if (len < 0 || len >= sizeof(buf)) {
+			cmdq_err("mblock-%d-me_cmdq_reserved failed", i);
+			return;
+		}
+		node.full_name = buf;
+		mem = of_reserved_mem_lookup(&node);
+	}
+
+	if (!mem)
+		return;
+
+	pa = mem->base + mem->size - CMDQ_RECORD_SIZE - CMDQ_STATUS_SIZE;
+
+	if (!va)
+		va = ioremap(pa, CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
+	shared_mem->va = va;
+
+
+	if (!cpr_not_support_cookie) {
+		shared_mem->pa = pa;
+		shared_mem->mva = *(u64 *)va ? *(u64 *)va : pa; /* iova */
+
+		cmdq_msg("%s: buf:%s pa:%#llx size:%u va:%p pa:%pa iova:%pa", __func__,
+			buf, pa, shared_mem->size, shared_mem->va,
+			&shared_mem->pa, &shared_mem->mva);
+	} else {
+		shared_mem->pa = *(u64 *)va ? *(u64 *)va : pa; /* iova */
+		cmdq_msg("%s: buf:%s pa:%#llx size:%u va:%p iova:%pa", __func__,
+			buf, pa, shared_mem->size, shared_mem->va, &shared_mem->pa);
+	}
+
+	buf_va = (char *)(shared_mem->va);
+	buf_va_end = buf_va + strlen(title);
+	buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", title);
+
+}
+EXPORT_SYMBOL(cmdq_util_reserved_memory_lookup);
 
 int cmdq_util_init(void)
 {
@@ -1259,6 +1390,9 @@ int cmdq_util_init(void)
 		if (!util.err[i].buffer)
 			return -ENOMEM;
 	}
+	util.buf_rec_buffer = vzalloc(CMDQ_BUF_REC_BUFFER_SIZE);
+	if (!util.buf_rec_buffer)
+		return -ENOMEM;
 
 	dir = debugfs_lookup("cmdq", NULL);
 	if (!dir) {
@@ -1287,6 +1421,7 @@ int cmdq_util_init(void)
 #endif
 
 	memset(util.cmdq_irq_thrd_history, CMDQ_THR_MAX_COUNT, sizeof(util.cmdq_irq_thrd_history));
+	mrdump_set_extra_dump(AEE_EXTRA_FILE_CMDQ, cmdq_util_buf_record_aee_dump);
 	cmdq_msg("%s end", __func__);
 
 	return 0;

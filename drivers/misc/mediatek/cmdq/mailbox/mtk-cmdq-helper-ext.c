@@ -289,14 +289,15 @@ void cmdq_dump_buffer_size(void)
 }
 EXPORT_SYMBOL(cmdq_dump_buffer_size);
 
-void cmdq_dump_buffer_size_seq(struct seq_file *seq)
+char *cmdq_dump_buffer_size_seq(char *buf_start, char *buf_end)
 {
 	int i, j;
 
 	for (i = 0; i < CMDQ_HW_MAX; i++) {
-		seq_printf(seq, "%s hwid:%d max total buf size:%u\n", __func__, i, BUF_SIZE_MAX[i]);
+		buf_start += scnprintf(buf_start, buf_end - buf_start,
+			"%s hwid:%d max total buf size:%u\n", __func__, i, BUF_SIZE_MAX[i]);
 		for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
-			seq_printf(seq,
+			buf_start += scnprintf(buf_start, buf_end - buf_start,
 				"%s max total buf size thr%d=[%u][%u][%u] thr%d=[%u][%u][%u] thr%d=[%u][%u][%u] thr%d=[%u][%u][%u]\n",
 				__func__,
 				j, PKT_SIZE_THRD[i][j] , BUF_SIZE_THRD[i][j],
@@ -310,8 +311,9 @@ void cmdq_dump_buffer_size_seq(struct seq_file *seq)
 		}
 	}
 	for (i = 0; i < CMDQ_HW_MAX; i++)
-		cmdq_dump_pkt_usage(i, seq);
+		buf_start = cmdq_dump_pkt_usage(i, buf_start, buf_end);
 
+	return buf_start;
 }
 EXPORT_SYMBOL(cmdq_dump_buffer_size_seq);
 

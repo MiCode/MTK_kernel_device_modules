@@ -1776,7 +1776,10 @@ static void cmdq_sec_reserved_mem_lookup(struct cmdq_sec_shared_mem *shared_mem)
 	if (!mem)
 		return;
 
-	pa = mem->base + mem->size - PAGE_SIZE;
+	if (cmdq_print_debug)
+		pa = mem->base + mem->size - PAGE_SIZE - CMDQ_RECORD_SIZE - CMDQ_STATUS_SIZE;
+	else
+		pa = mem->base + mem->size - PAGE_SIZE;
 	if (!va)
 		va = ioremap(pa, PAGE_SIZE);
 	shared_mem->va = va;
