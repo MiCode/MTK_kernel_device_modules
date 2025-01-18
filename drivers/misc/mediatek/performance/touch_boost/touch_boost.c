@@ -75,20 +75,15 @@ static int boost_fg = 1;
 static int idleprefer_ta = 1;
 static int idleprefer_fg = 1;
 static int boost_opp_cluster[CLUSTER_MAX];
-static int deboost_when_render = 1;
 static int boost_up;
 static int boost_down = 1;
 static int force_stop_boost;
-static long long active_time = TOUCH_FSTB_ACTIVE_MS;
 static long long boost_duration = TOUCH_TIMEOUT_MS;
 static struct hrtimer hrt1;
 static int my_tid = -1;
 static int touch_boost_on;
 static int gas_for_ta_on;
 static struct kmem_cache *touch_boost_cache;
-static int isFpsgoBoosting;
-static int fpsgo_callback_registered;
-static DEFINE_MUTEX(fpsgo_boost_lock);
 
 static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 {
@@ -121,8 +116,6 @@ struct k_list {
 	int _cmd;
 	int _enable;
 	int _boost_duration;
-	int _active_time;
-	int _deboost_when_render;
 	int _idleprefer_ta;
 	int _idleprefer_fg;
 	int _util_ta;
@@ -151,8 +144,6 @@ static void send_boost_cmd(int enable)
 
 	node->_cmd = TOUCH_BOOST_CPU;
 	node->_enable = enable;
-	node->_active_time = active_time;
-	node->_deboost_when_render = deboost_when_render;
 	node->_boost_duration = boost_duration;
 	node->_idleprefer_ta = idleprefer_ta;
 	node->_idleprefer_fg = idleprefer_fg;
@@ -173,7 +164,7 @@ out:
 }
 
 void touch_boost_get_cmd(int *cmd, int *enable,
-	int *deboost_when_render, int *active_time, int *boost_duration,
+	int *boost_duration,
 	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
 	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down)
 {
@@ -188,9 +179,7 @@ void touch_boost_get_cmd(int *cmd, int *enable,
 
 		*cmd = node->_cmd;
 		*enable = node->_enable;
-		*active_time = node->_active_time;
 		*boost_duration = node->_boost_duration;
-		*deboost_when_render = node->_deboost_when_render;
 		*idleprefer_ta = node->_idleprefer_ta;
 		*idleprefer_fg = node->_idleprefer_fg;
 		*util_ta = node->_util_ta;
@@ -298,68 +287,12 @@ void _force_stop_touch_boost(void)
 	force_stop_boost = 0;
 }
 
-static void notify_fpsgo_is_boost(int is_boosting)
-{
-	mutex_lock(&fpsgo_boost_lock);
-	isFpsgoBoosting = is_boosting;
-	_cpu_ctrl_systrace(isFpsgoBoosting, "fpsgo_boosting");
-	mutex_unlock(&fpsgo_boost_lock);
-
-	if (deboost_when_render == DEBOOST_WEHN_FPSGO_BOOST && isFpsgoBoosting)
-		_force_stop_touch_boost();
-}
-
-int get_fpsgo_status(void)
-{
-	int is_boosting = 0;
-
-	if (fpsgo_callback_registered == 0)
-		if (register_get_fpsgo_is_boosting_fp) {
-			register_get_fpsgo_is_boosting_fp(&notify_fpsgo_is_boost);
-			fpsgo_callback_registered = 1;
-		}
-
-	mutex_lock(&fpsgo_boost_lock);
-	is_boosting = isFpsgoBoosting;
-	mutex_unlock(&fpsgo_boost_lock);
-
-	return is_boosting;
-}
-
-
 void touch_boost(void)
 {
-	int i = 0, ret = -1, isact = 0;
-	int fpsgo_boosting = 0;
+	int i = 0, ret = -1;
 
 	// notify powerhal to set top grp aware
-	fpsgo_boosting = get_fpsgo_status();
-	if (!fpsgo_boosting)
-		send_boost_cmd(0);
-
-	switch (deboost_when_render) {
-	case DEBOOST_WEHN_RENDERING:
-		if (fpsgo_get_fstb_active_fp)
-			isact = fpsgo_get_fstb_active_fp(active_time * 1000);
-
-		_cpu_ctrl_systrace(isact, "is_fstb_active");
-
-		if (isact || !enable)
-			return;
-
-		break;
-
-	case DEBOOST_WEHN_FPSGO_BOOST:
-		fpsgo_boosting = get_fpsgo_status();
-
-		if (fpsgo_boosting || !enable)
-			return;
-
-		break;
-
-	default:
-		break;
-	}
+	send_boost_cmd(0);
 
 	disable_touch_boost_timer();
 	enable_touch_boost_timer();
@@ -390,23 +323,6 @@ static int ktchboost_thread(void *ptr)
 		event = ktchboost.touch_event;
 		_cpu_ctrl_systrace(event, "touch_event");
 		touch_boost();
-	}
-	return 0;
-}
-
-static int ktchboost_interrupt_thread(void *ptr)
-{
-	while (!kthread_should_stop()) {
-		if(fpsgo_wait_fstb_active_fp && deboost_when_render == DEBOOST_WEHN_RENDERING)
-			fpsgo_wait_fstb_active_fp();
-		else
-			msleep(60000);
-
-		_cpu_ctrl_systrace(1, "fpsgo_wait_fstb_active");
-		if (touch_boost_on == 1)
-			_force_stop_touch_boost();
-
-		_cpu_ctrl_systrace(0, "fpsgo_wait_fstb_active");
 	}
 	return 0;
 }
@@ -476,42 +392,6 @@ static ssize_t perfmgr_boost_up_proc_show(struct file *file,
 	if (*ppos != 0)
 		goto out;
 	n = scnprintf(buffer, 64, "%d\n", boost_up);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
-static ssize_t perfmgr_deboost_when_render_proc_write(struct file *filp,
-		const char *ubuf, size_t cnt, loff_t *data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	deboost_when_render = value;
-
-	return cnt;
-}
-
-static ssize_t perfmgr_deboost_when_render_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%d\n", deboost_when_render);
 out:
 	if (n < 0)
 		return -EINVAL;
@@ -867,42 +747,6 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
-static ssize_t perfmgr_active_time_proc_write(struct file *filp,
-		const char *ubuf, size_t cnt, loff_t *data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	active_time = value;
-
-	return cnt;
-}
-
-static ssize_t perfmgr_active_time_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%lld\n", active_time);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
 static ssize_t perfmgr_boost_ta_proc_write(struct file *filp,
 		const char *ubuf, size_t cnt, loff_t *data)
 {
@@ -1209,12 +1053,10 @@ PROC_FOPS_RW(boost_ta);
 PROC_FOPS_RW(boost_fg);
 PROC_FOPS_RW(idleprefer_ta);
 PROC_FOPS_RW(idleprefer_fg);
-PROC_FOPS_RW(active_time);
 PROC_FOPS_RW(boost_opp_cluster_0);
 PROC_FOPS_RW(boost_opp_cluster_1);
 PROC_FOPS_RW(boost_opp_cluster_2);
 PROC_FOPS_RW(force_stop_boost);
-PROC_FOPS_RW(deboost_when_render);
 PROC_FOPS_RW(gas_for_ta);
 PROC_FOPS_RW(gas_threshold_for_ta);
 PROC_FOPS_RW(boost_up);
@@ -1239,12 +1081,10 @@ static int __init touch_boost_init(void)
 		PROC_ENTRY(boost_fg),
 		PROC_ENTRY(idleprefer_ta),
 		PROC_ENTRY(idleprefer_fg),
-		PROC_ENTRY(active_time),
 		PROC_ENTRY(boost_opp_cluster_0),
 		PROC_ENTRY(boost_opp_cluster_1),
 		PROC_ENTRY(boost_opp_cluster_2),
 		PROC_ENTRY(force_stop_boost),
-		PROC_ENTRY(deboost_when_render),
 		PROC_ENTRY(gas_for_ta),
 		PROC_ENTRY(gas_threshold_for_ta),
 		PROC_ENTRY(boost_up),
@@ -1350,13 +1190,7 @@ static int __init touch_boost_init(void)
 	if (IS_ERR(ktchboost.thread))
 		return -EINVAL;
 
-	ktchboost.thread_interrupt = (struct task_struct *)kthread_run(ktchboost_interrupt_thread,
-			&ktchboost, "touch_boost_interrupt");
-	if (IS_ERR(ktchboost.thread_interrupt))
-		return -EINVAL;
-
 	touch_boost_get_cmd_fp = touch_boost_get_cmd;
-	fpsgo_callback_registered = 0;
 
 	return 0;
 }
