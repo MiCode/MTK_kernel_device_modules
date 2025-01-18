@@ -1182,7 +1182,7 @@ static inline void dpmaif_updata_max_bat_skb_cnt(struct dpmaif_rx_queue *rxq)
 static int dpmaif_rxq_data_collect(struct dpmaif_rx_queue *rxq)
 {
 	int ret = ALL_CLEAR, real_cnt = 0;
-	unsigned int L2RISAR0, rd_cnt;
+	unsigned int L2RISAR0, rd_cnt, new_cnt;
 
 	if (rxq->index == 0)
 		dpmaif_updata_max_bat_skb_cnt(rxq);
@@ -1200,11 +1200,13 @@ static int dpmaif_rxq_data_collect(struct dpmaif_rx_queue *rxq)
 					L2RISAR0 &= DP_DL_INT_LRO1_QDONE_SET;
 			} else
 				L2RISAR0 &= DPMAIF_DL_INT_QDONE_MSK;
-
-			if (L2RISAR0) {
+			if (L2RISAR0)
 				DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, L2RISAR0);
+
+			new_cnt = dpmaif_get_rxq_pit_read_cnt(rxq);
+			if (new_cnt)
 				ret = ONCE_MORE;
-			} else if (real_cnt == rd_cnt)
+			else if (real_cnt == rd_cnt)
 				ret = ALL_CLEAR;
 			else
 				ret = ONCE_MORE;
