@@ -1286,7 +1286,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 	unsigned short PMIC_SPMI_DBG_SEL = 0x42d, PMIC_SPMI_DBG_L = 0x42b;
 	unsigned short PMIC_SPMI_DBG_H = 0x42c;
 
-	for (sid = 6; sid <= 8; sid++) {
+	for (sid = 8; sid >= 6; sid--) {
 		/* Disable read command log */
 		val = 0;
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
@@ -1390,7 +1390,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x8,
 			PMIC_SPMI_DBG_SEL, &val, 1);
 
-	for (sid = 6; sid < 9; sid++) {
+	for (sid = 8; sid >= 6; sid--) {
 		/* Disable read command log */
 		/* pause debug log feature by setting RG_DEBUG_DIS_TRIG 1->0 */
 		val = 0;
@@ -1442,7 +1442,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		spmi_dump_pmif_record_reg();
 		if (spmi_p_nack & 0xD8) {
 			dump_spmip_pmic_dbg_rg(arb);
-			for (sid = 0x6; sid <= 0x8; sid++) {
+			for (sid = 0x8; sid >= 0x6; sid--) {
 				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
 					mt6316INTSTA, &rdata, 1);
 				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
@@ -1486,7 +1486,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 			flag = (in_spmi_nack_whitelist(spmi_nack)) ? 0 : 1;
 		} else {
 			dump_spmip_pmic_dbg_rg(arb);
-			for (sid = 0x6; sid <= 0x8; sid++) {
+			for (sid = 0x8; sid >= 0x6; sid--) {
 				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
 					mt6316INTSTA, &rdata, 1);
 				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
