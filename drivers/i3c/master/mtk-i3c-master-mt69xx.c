@@ -2769,7 +2769,7 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 	ret = devm_request_threaded_irq(&pdev->dev, i3c->irq, mtk_i3c_irq,
 			       mtk_i3c_irq_thread_fn, IRQF_NO_SUSPEND | IRQF_TRIGGER_NONE,
 			       dev_name(&pdev->dev), i3c);
-	if (ret < 0) {
+	if (ret) {
 		dev_info(&pdev->dev, "Request I3C IRQ %d fail\n", i3c->irq);
 		return ret;
 	}
