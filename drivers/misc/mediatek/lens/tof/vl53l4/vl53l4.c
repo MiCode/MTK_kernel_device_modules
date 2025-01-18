@@ -40,6 +40,8 @@ struct VL53LX_Dev_t *Dev = &dev;
 static int32_t vl53l4_log_dbg_en;
 static int32_t vl53l4_start_measure;
 
+static int g_is_tof_support;
+
 /*VL53L4 Workqueue */
 static struct workqueue_struct *vl53l4_init_wq;
 static struct work_struct vl53l4_init_work;
@@ -117,13 +119,20 @@ static int vl53l4_init(struct vl53l4_device *vl53l4)
 
 	LOG_INF("[%s] %p\n", __func__, client);
 
+	if (g_is_tof_support < 0) {
+		LOG_INF("not support tof\n");
+		return -1;
+	}
+
 	client->addr = VL53L4_I2C_SLAVE_ADDR >> 1;
 
 	VL53LX_RdByte(Dev, 0x010F, &i2c_ret);
 	LOG_INF("ST API: vl53l4 0x010F: 0x%x\n", i2c_ret);
 
-	if (!i2c_ret)
+	if (!i2c_ret) {
+		g_is_tof_support = -1;
 		return -1;
+	}
 
 	VL53LX_RdByte(Dev, 0x0110, &i2c_ret);
 	LOG_INF("ST API: vl53l4 0x0110: 0x%x\n", i2c_ret);
@@ -245,7 +254,8 @@ static int vl53l4_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	LOG_INF("+\n");
 
-	VL53LX_StopMeasurement(Dev);
+	if (g_is_tof_support >= 0)
+		VL53LX_StopMeasurement(Dev);
 
 	if (pm_runtime_put(sd->dev) < 0)
 		LOG_INF("power down failed\n");
@@ -699,6 +709,7 @@ static int vl53l4_probe(struct i2c_client *client)
 	}
 
 	g_vl53l4 = vl53l4;
+	g_is_tof_support = 1;
 	LOG_INF("probe done\n");
 
 	return 0;
