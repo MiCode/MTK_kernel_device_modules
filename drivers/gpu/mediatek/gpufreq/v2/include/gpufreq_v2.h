@@ -91,6 +91,7 @@ enum gpufreq_dvfs_state {
 	DVFS_MSSV_TEST     = BIT(6), /* 0000 0100 0000 */
 	DVFS_VMETER_CALI   = BIT(7), /* 0000 1000 0000 */
 	DVFS_PRE_SLEEP     = BIT(8), /* 0001 0000 0000 */
+	DVFS_PTP3_DEBUG    = BIT(9), /* 0010 0000 0000 */
 };
 
 enum gpufreq_target {
@@ -103,6 +104,12 @@ enum gpufreq_target {
 enum gpufreq_power_state {
 	GPU_PWR_OFF = 0,
 	GPU_PWR_ON,
+};
+
+enum gpufreq_test_mode {
+	TEST_NORMAL    = 0,
+	TEST_ADVANCED  = 1,
+	TEST_PRIVILEGE = 2,
 };
 
 enum gpufreq_config_target {
@@ -139,6 +146,7 @@ enum gpufreq_config_value {
 	STRESS_RANDOM      = 4,
 	STRESS_TRAVERSE    = 5,
 	STRESS_MAX_MIN     = 6,
+	PTP3_SAFE_MARGIN   = 7,
 };
 
 enum gpufreq_chip_type {
@@ -315,6 +323,7 @@ struct gpufreq_ptp3_shared_status {
 	enum gpufreq_brisket_mode brisket_tmeter_mode;
 	unsigned int brisket_cpmeter_mode;
 	unsigned int brisket_ctt_mode;
+	unsigned int brisket_safe_margin;
 	unsigned int auto_dma_refill_top_brisket;
 	unsigned int auto_dma_refill_top_gpm;
 };
