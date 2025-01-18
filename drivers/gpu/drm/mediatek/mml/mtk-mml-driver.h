@@ -348,10 +348,9 @@ phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
 /*
  * mml for swpm
  */
-void mml_init_swpm_comp(u32 idx, struct mml_comp *comp);
-void mml_update_comp_status(u32 idx, u32 status);
 void mml_update_freq_status(u32 freq);
 void mml_update_pq_status(const void *pq);
+void mml_update_status_to_tppa(const struct mml_frame_info *info);
 struct mml_swpm_func *mml_get_swpm_func(void);
 
 struct mml_swpm_func {

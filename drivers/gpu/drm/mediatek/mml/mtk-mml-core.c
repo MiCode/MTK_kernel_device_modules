@@ -1993,6 +1993,7 @@ static void core_config_task(struct mml_task *task)
 	}
 
 	mml_update_pq_status(&cfg->info.dest[0].pq_config);
+	mml_update_status_to_tppa(&cfg->info);
 
 	/* before pipe1 start, make sure iova map from device by pipe0 */
 	core_buffer_map(task);
