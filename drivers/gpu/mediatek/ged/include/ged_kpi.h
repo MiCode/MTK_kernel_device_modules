@@ -53,6 +53,8 @@ unsigned int ged_kpi_enabled(void);
 void ged_kpi_set_target_FPS(u64 ulID, int target_FPS);
 void ged_kpi_set_target_FPS_margin(u64 ulID, int target_FPS,
 		int target_FPS_margin, int eara_fps_margin, int cpu_time);
+void ged_kpi_set_target_FPS_api(u64 ulID, int target_FPS,
+		int target_FPS_margin);
 
 u64 ged_kpi_get_taget_time(void);
 
@@ -78,6 +80,7 @@ struct ged_risky_bq_info {
 	} completed_bq, uncompleted_bq;
 
 	unsigned int total_gpu_completed_count;
+	bool smallframe;
 };
 
 struct ged_sysram_info {
@@ -86,6 +89,7 @@ struct ged_sysram_info {
 	unsigned int last_tgpu_uncompleted_target;
 	unsigned long long last_uncomplete_soc_timer;
 	unsigned long long current_timestamp;
+	bool smallframe;
 };
 
 void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info);

@@ -74,7 +74,9 @@
 #define GED_TIMESTAMP_TYPE_H       0x20
 #define GED_SET_TARGET_FPS         0x40
 #define GED_SET_PANEL_REFRESH_RATE 0x80
+#define GED_SET_VSYNC_TARGET_FPS   0x100
 #define GED_TIMESTAMP_TYPE         int
+#define GED_API_FPS_HINT           -100
 
 /* No frame control is applied */
 #define GED_KPI_FRC_DEFAULT_MODE    0
@@ -136,6 +138,13 @@ static struct ged_gpu_fps_table g_ged_gpu_fps[GED_FPS_CONFIG_NUM] = {
 	{144, 144, 6940000},
 };
 
+/* small frame parameter */
+#define  GPU_MAX_FPS 28
+#define  GPU_MIN_FPS 13
+#define  V_TARGET_FPS_TH 60
+#define  TARGET_FPS_GAP 30
+
+
 struct GED_KPI_HEAD {
 	int pid;
 	int i32Count;   // number of KPI object still in the KPI pool
@@ -176,6 +185,7 @@ struct GED_KPI_HEAD {
 
 	int target_fps;   // -1 means target FPS via FPSGO is invalid or unprovided
 	int idel_target_fps;
+	int target_fps_v;	// -1 means vsync target FPS via free vsynv is invalid or unprovided
 	int target_fps_margin;
 	int eara_fps_margin;
 
@@ -534,6 +544,14 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 {
 	if (psHead != NULL) {
 		int pre_t_use_gpu_fps = psHead->t_use_gpu_fps;
+
+		//replace target fps if api fps is available
+		if (psHead->target_fps_v) {	// api target fps
+			psHead->t_cpu_target = (int)((int)GED_KPI_SEC_DIVIDER/psHead->target_fps_v);
+			psHead->t_gpu_target = psHead->t_cpu_target;
+			trace_tracing_mark_write(5566, "target_fps_v", psHead->target_fps_v);
+			return;
+		}
 
 		if (psHead->target_fps_margin != GED_KPI_DEFAULT_FPS_MARGIN)
 			return;
@@ -1117,7 +1135,11 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 		psHead->target_fps = -1;
 	}
 
-	if (ignore_fpsgo_enable) {
+	// use api fps first if available
+	if (psHead->target_fps_v > 0 &&
+		psHead->target_fps_v <= GED_KPI_FPS_LIMIT) {
+		psHead->t_gpu_target = (int)((int)GED_KPI_SEC_DIVIDER/psHead->target_fps_v);
+	} else if (ignore_fpsgo_enable) {
 		psHead->target_fps_margin = GED_KPI_DEFAULT_FPS_MARGIN;
 		if (psHead->t_gpu_target == 0)
 			psHead->t_gpu_target = g_gpu_target_default;
@@ -1152,6 +1174,18 @@ static GED_BOOL ged_kpi_update_default_target_fps_fcn(unsigned long ulID,
 					GED_KPI_DEFAULT_FPS_MARGIN, 0, 0,
 					GED_KPI_FRC_DEFAULT_MODE, -1);
 	}
+
+	return GED_TRUE;
+}
+
+static GED_BOOL ged_kpi_update_api_fps_fcn(unsigned long ulID,
+	void *pvoid, void *pvParam)
+{
+	struct GED_KPI_HEAD *psHead = (struct GED_KPI_HEAD *) pvoid;
+	struct GED_TIMESTAMP *psTimeStamp = (struct GED_TIMESTAMP *)pvParam;
+
+	if (psHead)
+		psHead->target_fps_v = psTimeStamp->i32FrameID;
 
 	return GED_TRUE;
 }
@@ -1301,6 +1335,7 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	static unsigned int candidate_same_times;
 	static unsigned int diff_times;
 	static struct GED_KPI_HEAD *candidate_head;
+	int isSmallFrame = 0;
 
 	spin_lock_irqsave(&gs_hashtableLock, ulIRQFlags);
 	g_is_multiproducer = false;
@@ -1352,11 +1387,20 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	if (same_times >= GED_KPI_SWITCH_FB_THRESHOLD) {
 		if (main_head->isSF == 1) //surfacefliger use LB only
 			is_loading_based = 1;
-		else /*switch FB*/
+		//skip to LB if no fpsgo, 13 < q2q fps < 28, and q2q fps + 30 > vsync target fps
+		else if (main_head->t_gpu_fps < GPU_MAX_FPS &&
+			main_head->t_gpu_fps > GPU_MIN_FPS &&
+			main_head->target_fps_v <= V_TARGET_FPS_TH &&
+			main_head->target_fps_v > main_head->t_gpu_fps + TARGET_FPS_GAP) {
+			is_loading_based = 1;
+			isSmallFrame = 1;
+			trace_tracing_mark_write(5566, "sf_policy", 1);
+		} else /*switch FB*/
 			is_loading_based = 0;
 	} else if (diff_times > GED_KPI_SWITCH_LB_THRESHOLD)
 		is_loading_based = 1; /*switch LB*/
 	/*else keep pre_state*/
+	ged_eb_dvfs_task(EB_UPDATE_SMALL_FRAME, isSmallFrame);
 }
 
 static int ged_kpi_get_fallback_mode(void)
@@ -2035,26 +2079,34 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			break;
 		}
 
-		ged_kpi_update_TargetTimeAndTargetFps(psHead,
-			target_FPS&0x000000ff,
-			(target_FPS&0x00000700) >> 8,
-			(target_FPS&0xfffff100) >> 11,
-			eara_fps_margin,
-			GED_KPI_FRC_DEFAULT_MODE, -1);
+		if (eara_fps_margin == GED_API_FPS_HINT)
+			psHead->target_fps_v = target_FPS&0x000000ff;
+		else {
+			ged_kpi_update_TargetTimeAndTargetFps(psHead,
+				target_FPS&0x000000ff,
+				(target_FPS&0x00000700) >> 8,
+				(target_FPS&0xfffff100) >> 11,
+				eara_fps_margin,
+				GED_KPI_FRC_DEFAULT_MODE, -1);
 
-		if (g_target_fps != psHead->target_fps)
-			g_target_fps = psHead->target_fps;
+			if (g_target_fps != psHead->target_fps)
+				g_target_fps = psHead->target_fps;
 
-		trace_tracing_mark_write(5566, "target_fps_fpsgo",
-			(target_FPS&0x000000ff));
-
+			trace_tracing_mark_write(5566, "target_fps_fpsgo",
+				(target_FPS&0x000000ff));
+		}
 		break;
 
 	case GED_SET_PANEL_REFRESH_RATE:
 		target_FPS = psTimeStamp->i32FrameID;
+		eara_fps_margin = psTimeStamp->i32QedBuffer_length;
+
 		if (target_FPS > 0 &&
 				target_FPS <= GED_KPI_FPS_LIMIT) {   // valid range
-			if (g_target_fps_default != target_FPS) {   // panel refresh rate change
+			if (eara_fps_margin == GED_API_FPS_HINT)
+				ged_hashtable_iterator(gs_hashtable,
+					ged_kpi_update_api_fps_fcn, (void *)psTimeStamp);
+			else if (g_target_fps_default != target_FPS) {   // panel refresh rate change
 				g_target_fps_default = target_FPS;
 				g_gpu_target_default = (int)((int)GED_KPI_SEC_DIVIDER/g_target_fps_default);
 				g_set_panel_refresh_rate = true;
@@ -2804,6 +2856,22 @@ void ged_kpi_set_target_FPS_margin(u64 ulID, int target_FPS,
 }
 EXPORT_SYMBOL(ged_kpi_set_target_FPS_margin);
 /* ------------------------------------------------------------------- */
+void ged_kpi_set_target_FPS_api(u64 ulID, int target_FPS, int target_FPS_margin)
+{
+#ifdef MTK_GED_KPI
+	trace_tracing_mark_write(5566, "target_fps_api", target_FPS);
+
+	if (ulID == 0)
+		ged_kpi_push_timestamp(GED_SET_PANEL_REFRESH_RATE, 0, -1, 0,
+			target_FPS, GED_API_FPS_HINT, -1, NULL);
+	else
+		ged_kpi_push_timestamp(GED_SET_TARGET_FPS, 0, -1, ulID,
+			(target_FPS | (target_FPS_margin << 8)), GED_API_FPS_HINT, -1, NULL);
+
+#endif /* MTK_GED_KPI */
+}
+EXPORT_SYMBOL(ged_kpi_set_target_FPS_api);
+/* ------------------------------------------------------------------- */
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 int ged_kpi_get_fw_idle_mode(void)
 {
@@ -2878,6 +2946,14 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 		t_gpu_target = psHead->t_gpu_target;
 		risk_completed = t_gpu_latest * 100 / t_gpu_target;
 		risk_uncompleted = t_gpu_latest_uncompleted * 100 / t_gpu_target;
+
+		if (psHead->t_gpu_fps < GPU_MAX_FPS &&
+			psHead->t_gpu_fps > GPU_MIN_FPS &&
+			psHead->target_fps_v <= V_TARGET_FPS_TH &&
+			psHead->target_fps_v > psHead->t_gpu_fps + TARGET_FPS_GAP) {
+			trace_tracing_mark_write(5566, "sf_policy", 2);
+			info->smallframe = true;
+		}
 
 		//prevent less than 1%
 		if (t_gpu_latest > 0 && risk_completed == 0)
@@ -3129,6 +3205,10 @@ GED_ERROR ged_kpi_hint_frame_info(
 	if (out == NULL)
 		return GED_ERROR_FAIL;
 
+	out->eError = GED_OK;
+	out->mainHead_fps_v = main_head->target_fps_v;
+	out->mainHead_fps_gpu = main_head->t_gpu_fps;
+	out->mainHead_BQ_ID = main_head->ullWnd;
 	return GED_OK;
 #else
 	return GED_OK;

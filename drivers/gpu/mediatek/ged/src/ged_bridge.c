@@ -257,8 +257,8 @@ int ged_bridge_hint_frame_info(
 	struct GED_BRIDGE_OUT_HINT_FRAME_INFO *HintFrameInfoOut)
 {
 	if (HintFrameInfoIn->enable != 0 && HintFrameInfoIn->BBQ_id && HintFrameInfoIn->target_fps)
-		ged_kpi_set_target_FPS_margin(HintFrameInfoIn->BBQ_id, HintFrameInfoIn->target_fps,
-			HintFrameInfoIn->target_fps_margin, -1, 0);
+		ged_kpi_set_target_FPS_api(HintFrameInfoIn->BBQ_id, HintFrameInfoIn->target_fps,
+			HintFrameInfoIn->target_fps_margin);
 	HintFrameInfoOut->eError = ged_kpi_hint_frame_info(HintFrameInfoOut);
 
 	return 0;

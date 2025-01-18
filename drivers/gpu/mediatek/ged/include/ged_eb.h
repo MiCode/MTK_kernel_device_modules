@@ -78,6 +78,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_LOG_DUMP_UNCOM_TIME = 159,
 	FASTDVFS_GPU_EB_LOG_DUMP_OPP = 169,			// cur, target
 	FASTDVFS_GPU_EB_P_MODE_STATUS = 205,
+	FASTDVFS_GPU_EB_SMALL_FRAME  = 206,
 	FASTDVFS_GPU_EB_26M_REPLACE  = 208,
 	FASTDVFS_GPU_EB_LOADING_MODE                = 209,
 	FASTDVFS_GPU_EB_API_BOOST = 210,
@@ -479,6 +480,10 @@ enum gpu_fastdvfs_counter {
 (														\
 (FASTDVFS_GPU_EB_USE_ASYNC_OPP_DIFF *SYSRAM_LOG_SIZE)	\
 )
+#define SYSRAM_GPU_EB_SMALL_FRAME                \
+(														\
+(FASTDVFS_GPU_EB_SMALL_FRAME *SYSRAM_LOG_SIZE)	\
+)
 
 enum action_map {
 	ACTION_MAP_FASTDVFS = 0,
@@ -658,6 +663,7 @@ enum ged_eb_dvfs_task_index {
 	EB_ASYNC_PARAM,
 	EB_UPDATE_API_BOOST,
 	EB_REINIT,
+	EB_UPDATE_SMALL_FRAME,
 	EB_MAX_INDEX,
 };
 

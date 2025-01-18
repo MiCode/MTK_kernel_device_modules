@@ -207,6 +207,8 @@ static unsigned int early_force_fallback;
 #define SHADER_CORE 6
 #define ULTRA_HIGH_STEP_SIZE 5
 #define ULTRA_LOW_STEP_SIZE 2
+#define SMALL_FRAME_STEP_SIZE 3
+
 static int g_max_core_num;
 
 /* overdue parameter*/
@@ -341,9 +343,13 @@ static unsigned int ged_dvfs_high_step_size_query(void)
 		return 1;
 }
 
-static unsigned int ged_dvfs_low_step_size_query(void)
+static unsigned int ged_dvfs_low_step_size_query(bool smallFrame)
 {
 	int gpu_freq = ged_get_cur_freq();
+
+	// Reduce frequency faster if smallFrame detected
+	if (smallFrame)
+		return SMALL_FRAME_STEP_SIZE;
 
 	if (g_step_size_by_platform[GED_STEP_FREQ_LOW]) {
 		if (gpu_freq < g_step_size_freq_th[GED_STEP_FREQ_MID])
@@ -383,10 +389,14 @@ static unsigned int ged_dvfs_ultra_high_step_size_query(void)
 		return (dvfs_step_mode & 0xff);
 }
 
-static unsigned int ged_dvfs_ultra_low_step_size_query(void)
+static unsigned int ged_dvfs_ultra_low_step_size_query(bool smallFrame)
 {
 	if (g_step_size_by_platform[GED_STEP_FREQ_LOW])
-		return ged_dvfs_low_step_size_query();
+		return ged_dvfs_low_step_size_query(smallFrame);
+
+	// Reduce frequency faster if smallFrame detected
+	if (smallFrame)
+		return SMALL_FRAME_STEP_SIZE;
 
 	if (g_max_core_num == SHADER_CORE &&
 		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
@@ -2876,11 +2886,11 @@ static bool ged_dvfs_policy(
 		if (ui32GPULoading >= ultra_high)
 			i32NewFreqID -= ged_dvfs_ultra_high_step_size_query();
 		else if (ui32GPULoading < ultra_low)
-			i32NewFreqID += ged_dvfs_ultra_low_step_size_query();
+			i32NewFreqID += ged_dvfs_ultra_low_step_size_query(info.smallframe);
 		else if (ui32GPULoading >= high)
 			i32NewFreqID -= ged_dvfs_high_step_size_query();
 		else if (ui32GPULoading <= low)
-			i32NewFreqID += ged_dvfs_low_step_size_query();
+			i32NewFreqID += ged_dvfs_low_step_size_query(info.smallframe);
 
 		// prevent decreasing opp in fallback mode
 		if ((policy_state == POLICY_STATE_FB_FALLBACK ||

@@ -413,6 +413,9 @@ struct GED_BRIDGE_IN_HINT_FRAME_INFO {
 
 struct GED_BRIDGE_OUT_HINT_FRAME_INFO {
 	GED_ERROR eError;
+	int32_t mainHead_fps_v;
+	int32_t mainHead_fps_gpu;
+	int64_t mainHead_BQ_ID;
 };
 
 /*****************************************************************************
