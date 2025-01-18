@@ -89,7 +89,7 @@ aliases {
 			interconnects = <&dvfsrc MT6873_MASTER_MM_DISP
 					&dvfsrc MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "disp-perf-bw";
-			required-opps = <&dvfsrc_freq_opp0>,
+			dvfsrc-required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>,
 					<&dvfsrc_freq_opp2>;
 			pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
@@ -251,6 +251,7 @@ aliases {
 					"mediatek,mt6761-disp-mutex";
 			reg = <0 0x14001000 0 0x1000>;
 			interrupts = <GIC_SPI 154 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&topckgen CLK_TOP_DISP_PWM_SEL>;
 		};
 
 		disp_ovl0: disp_ovl0@1400b000 {
