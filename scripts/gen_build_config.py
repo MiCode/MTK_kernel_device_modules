@@ -203,7 +203,8 @@ def main(**args):
         file_handle = open(gen_build_config_gki_goals, 'w')
         file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"\n')
         file_handle.write('DEFCONFIG=olddefconfig\n')
-        file_handle.write('POST_DEFCONFIG_CMDS="'+post_defconfig_cmds+'"')
+        file_handle.write('POST_DEFCONFIG_CMDS="'+post_defconfig_cmds+'"\n')
+        file_handle.write('BUILD_SYSTEM_DLKM=0')
         file_handle.close()
         gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
 
