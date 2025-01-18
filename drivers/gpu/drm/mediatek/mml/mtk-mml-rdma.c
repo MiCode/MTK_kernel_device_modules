@@ -2335,7 +2335,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	const bool write_sec = rdma->data->write_sec_reg;
-	u32 value[33], comp_con;
+	u32 value[34], comp_con;
 	u32 apu_en;
 	u32 state, greq;
 	u32 i;
@@ -2391,11 +2391,12 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[29] = readl(base + RDMA_AFBC_PAYLOAD_OST);
 	}
 	value[30] = readl(base + RDMA_GMCIF_CON);
+	value[33] = readl(base + RDMA_TRANSFORM_0);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], comp_con);
-	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
-		value[4], value[5]);
+	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x RDMA_TRANSFORM_0 %#010x",
+		value[4], value[5], value[33]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",
 		value[6], value[7], value[8]);
 	mml_err("RDMA_SF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_H_SIZE_IN_PXL %#010x",
