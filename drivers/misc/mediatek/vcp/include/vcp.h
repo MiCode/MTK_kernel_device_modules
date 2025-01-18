@@ -114,6 +114,10 @@ enum VCP_IOMMU_DEV {
 	VCP_IOMMU_ACP_VDEC = 7,
 	VCP_IOMMU_ACP_VENC = 8,
 	VCP_IOMMU_ACP_CODEC = 9,
+#if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
+	VCP_IOMMU_SENTRY_MODE = 10,
+	VCP_IOMMU_SENTRY_MODE_EXTRA = 11,
+#endif
 	VCP_IOMMU_DEV_NUM,
 };
 
@@ -166,4 +170,3 @@ extern struct mtk_mbox_pin_send *vcp_mbox_pin_send;
 extern struct mtk_mbox_pin_recv *vcp_mbox_pin_recv;
 
 #endif
-

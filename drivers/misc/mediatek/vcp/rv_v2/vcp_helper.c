@@ -3205,6 +3205,17 @@ static const struct of_device_id vcp_acp_codec_of_ids[] = {
 	{}
 };
 
+#if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
+static const struct of_device_id vcp_sentry_mode_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-sentrymode", },
+	{}
+};
+static const struct of_device_id vcp_sentry_mode_extra_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-sentrymode_extra", },
+	{}
+};
+#endif
+
 static struct platform_driver mtk_vcp_io_vdec = {
 	.probe = vcp_io_device_probe,
 	.remove = vcp_io_device_remove,
@@ -3295,6 +3306,28 @@ static struct platform_driver mtk_vcp_io_acp_codec = {
 	},
 };
 
+#if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
+static struct platform_driver mtk_vcp_io_sentry_mode = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_sentry_mode",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_sentry_mode_of_ids,
+	},
+};
+
+static struct platform_driver mtk_vcp_io_sentry_mode_extra = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_sentry_mode_extra",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_sentry_mode_extra_of_ids,
+	},
+};
+#endif
+
 /*
  * driver initialization entry point
  */
@@ -3367,7 +3400,16 @@ static int __init vcp_init(void)
 		pr_info("[VCP] mtk_vcp_io_acp_codec probe fail\n");
 		goto err_io_acp_codec;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
+	if (platform_driver_register(&mtk_vcp_io_sentry_mode)) {
+		pr_info("[VCP] mtk_vcp_io_sentry_mode probe fail\n");
+		goto err_io_sentry_mode;
+	}
+	if (platform_driver_register(&mtk_vcp_io_sentry_mode_extra)) {
+		pr_info("[VCP] mtk_vcp_io_sentry_mode_eatra probe fail\n");
+		goto err_io_sentry_mode_extra;
+	}
+#endif
 	if (!vcp_support)
 		return 0;
 
@@ -3461,6 +3503,12 @@ static int __init vcp_init(void)
 	return ret;
 err:
 	platform_driver_unregister(&mtk_vcp_io_acp_codec);
+#if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
+err_io_sentry_mode_extra:
+	platform_driver_unregister(&mtk_vcp_io_sentry_mode_extra);
+err_io_sentry_mode:
+	platform_driver_unregister(&mtk_vcp_io_sentry_mode);
+#endif
 err_io_acp_codec:
 	platform_driver_unregister(&mtk_vcp_io_acp_venc);
 err_io_acp_venc:
