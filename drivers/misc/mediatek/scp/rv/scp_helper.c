@@ -956,6 +956,14 @@ static inline ssize_t scp_A_reg_status_show(struct device *kobj
 {
 	int len = 0;
 
+	int scp_awake_flag = 0;
+
+	/* Need to awawke scp avoid peri off */
+	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
+		pr_notice("[SCP] %s: awake scp fail\n", __func__);
+	}
+
 	scp_dump_last_regs();
 	scp_show_last_regs();
 	sap_dump_last_regs();
@@ -1023,6 +1031,12 @@ core1:
 
 end:
 	len += sap_print_last_regs(buf + len, PAGE_SIZE - len);
+
+	if (scp_awake_flag == 0) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
+	}
+
 	return len;
 }
 
