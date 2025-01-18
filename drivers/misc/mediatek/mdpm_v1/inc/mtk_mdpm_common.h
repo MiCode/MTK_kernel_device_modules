@@ -6,7 +6,7 @@
 #ifndef _MTK_MDPM_COMMON_H_
 #define _MTK_MDPM_COMMON_H_
 
-extern bool mt_mdpm_debug;
+extern int mt_mdpm_debug;
 
 #ifdef MD_POWER_UT
 extern u32 fake_share_reg;

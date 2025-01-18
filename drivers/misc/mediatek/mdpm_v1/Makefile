@@ -11,10 +11,19 @@
 # GNU General Public License for more details.
 #
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc/
 
+
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6768)),)
 obj-$(CONFIG_MTK_MDPM_LEGACY) += mtk_mdpm_v1.o
-mtk_mdpm_v1-y += mtk_mdpm_common.o
-mtk_mdpm_v1-y += mtk_mdpm_platform_v1.o
+mtk_mdpm_v1-y += mtk_mdpm_common_v1.o
+mtk_mdpm_v1-y += mtk_mdpm_platform_mt6768.o
+endif
+
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
+obj-$(CONFIG_MTK_MDPM_LEGACY) += mtk_mdpm_v1.o
+mtk_mdpm_v1-y += mtk_mdpm_common_v2.o
+mtk_mdpm_v1-y += mtk_mdpm_platform_mt6877.o
+endif
