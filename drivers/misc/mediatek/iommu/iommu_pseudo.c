@@ -253,10 +253,43 @@ int tmem_type2sec_id(enum TRUSTED_MEM_REQ_TYPE tmem)
 }
 EXPORT_SYMBOL_GPL(tmem_type2sec_id);
 
+#if IS_ENABLED(CONFIG_MTK_ENABLE_GENIEZONE)
+#define IOMMU_PSEUDO_DT_NAME	"mtk_iommu_pseudo"
+
+int iommu_sec_mtee = STATE_ERROR;
+bool is_iommu_sec_on_mtee(void)
+{
+	struct device_node *iommu_pseudo_node;
+
+	if (iommu_sec_mtee != STATE_ERROR)
+		return (iommu_sec_mtee == STATE_ENABLED);
+
+	iommu_pseudo_node = of_find_node_by_name(NULL, IOMMU_PSEUDO_DT_NAME);
+	if (!iommu_pseudo_node) {
+		pr_info("%s, iommu_pseudo node not found\n", __func__);
+		iommu_sec_mtee = STATE_DISABLED;
+		return false;
+	}
+	of_node_put(iommu_pseudo_node);
+
+	iommu_sec_mtee = STATE_ENABLED;
+
+	return true;
+}
+EXPORT_SYMBOL_GPL(is_iommu_sec_on_mtee);
+#else
+bool is_iommu_sec_on_mtee(void)
+{
+	return false;
+}
+EXPORT_SYMBOL_GPL(is_iommu_sec_on_mtee);
+#endif
+
 static const struct of_device_id mtk_iommu_pseudo_of_ids[] = {
 	{ .compatible = "mediatek,mt6833-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6789-iommu-pseudo" },
 	{ .compatible = "mediatek,mt6765-iommu-pseudo" },
+	{ .compatible = "mediatek,mt6893-iommu-pseudo" },
 	{},
 };
 
