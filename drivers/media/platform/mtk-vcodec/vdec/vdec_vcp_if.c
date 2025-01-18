@@ -171,10 +171,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	struct vdec_ap_ipi_cmd *msg_cmd = (struct vdec_ap_ipi_cmd *)msg;
 	struct vdec_ap_ipi_cmd_indp *msg_indp = (struct vdec_ap_ipi_cmd_indp *)msg;
 	bool use_msg_indp = (is_ack || msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
-		msg_cmd->msg_id == AP_IPIMSG_DEC_QUERY_CAP ||
-		msg_cmd->msg_id == AP_IPIMSG_DEC_BACKUP ||
-		msg_cmd->msg_id == AP_IPIMSG_DEC_RESUME ||
-		msg_cmd->msg_id == AP_IPIMSG_DEC_PWR_CTRL); // msg use VDEC_MSG_PREFIX
+		(msg_cmd->msg_id & IPIMSG_TYPE_BITS) == IPIMSG_NO_INST_OFFSET); // msg use VDEC_MSG_PREFIX
 
 	if ((!use_msg_indp && msg_cmd->vcu_inst_addr == 0) ||
 	     (use_msg_indp && msg_indp->ap_inst_addr == 0 && !is_ack)) {
