@@ -756,7 +756,7 @@ static void ffa_notification_info_get(bool is_64b)
 
 		if (ret.a0 != FFA_FN_NATIVE(SUCCESS)) {
 			if (ret.a2 != FFA_RET_NO_DATA)
-				pr_err("Notification Info fetch failed: 0x%lx (0x%lx)",
+				pr_debug("Notification Info fetch failed: 0x%lx (0x%lx)",
 				       ret.a0, ret.a2);
 			return;
 		}
