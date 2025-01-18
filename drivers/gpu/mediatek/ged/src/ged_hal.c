@@ -34,6 +34,7 @@
 #include "ged_gpu_slc.h"
 #endif /* MTK_GPU_SLC_POLICY */
 
+
 static struct kobject *hal_kobj;
 
 int tokenizer(char *pcSrc, int i32len, int *pi32IndexArray, int i32NumToken)
@@ -67,6 +68,71 @@ int tokenizer(char *pcSrc, int i32len, int *pi32IndexArray, int i32NumToken)
 	return -1;
 }
 
+/* MBrain */
+static ssize_t opp_logs_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	int len = 0, i = 0, j = 0, cur_idx = 0;
+	unsigned int ui32FqCount = g_real_oppfreq_num;
+	struct GED_DVFS_OPP_STAT *report = NULL;
+	u64 last_ts = 0;
+
+	if (ui32FqCount)
+		report = vmalloc(sizeof(struct GED_DVFS_OPP_STAT) * ui32FqCount);
+
+	if ((report != NULL) &&
+		ged_dvfs_query_opp_cost(report, ui32FqCount, false, &last_ts) == 0) {
+		cur_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+		cur_idx = (cur_idx > g_real_minfreq_idx)? g_real_minfreq_idx: cur_idx;
+		len = sprintf(buf, "Last TS: %llu\n", last_ts);
+		len += sprintf(buf + len, "GPU Freq(MHz)  Time(ms)\n");
+
+		for (i = 0; i < ui32FqCount; i++) {
+			if (i == cur_idx)
+				len += sprintf(buf + len, "*");
+			else
+				len += sprintf(buf + len, " ");
+
+			len += sprintf(buf + len, "%4u    ",
+					gpufreq_get_freq_by_idx(TARGET_DEFAULT, i) / 1000);
+
+			/* truncate to ms */
+			len += sprintf(buf + len, "%llu\n", report[i].ui64Active);
+		}
+	} else
+		len = sprintf(buf, "Not Supported.\n");
+
+	if (report != NULL)
+		vfree(report);
+
+	return len;
+}
+static KOBJ_ATTR_RO(opp_logs);
+
+static ssize_t gpu_sum_loading_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	u64 sum_loading = 0, sum_delta_time = 0;
+
+	ged_dvfs_query_loading(&sum_loading, &sum_delta_time);
+
+	return scnprintf(buf, PAGE_SIZE, "%llu %llu\n", sum_loading, sum_delta_time);
+}
+static KOBJ_ATTR_RO(gpu_sum_loading);
+
+static ssize_t gpu_power_state_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	u64 off_time = 0, idle_time = 0, on_time = 0;
+	u64 last_ts = 0;
+
+	ged_dvfs_query_power_state_time(&off_time, &idle_time, &on_time, &last_ts);
+
+	return scnprintf(buf, PAGE_SIZE, "last_ts:%llu off: %llu idle: %llu on: %llu\n",
+			last_ts, off_time, idle_time, on_time);
+}
+static KOBJ_ATTR_RO(gpu_power_state);
+/* MBrain end */
 //-----------------------------------------------------------------------------
 static ssize_t total_gpu_freq_level_count_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2275,6 +2341,26 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	/* MBrain */
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_opp_logs);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("ged: failed to create opp_logs entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_sum_loading);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create gpu_sum_loading entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_power_state);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create gpu_power_state entry!\n");
+		goto ERROR;
+	}
+	/* MBrain end */
+
 	return err;
 
 ERROR:
@@ -2338,6 +2424,12 @@ void ged_hal_exit(void)
 #if defined(MTK_GPU_SLC_POLICY)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_slc_policy);
 #endif /* MTK_GPU_SLC_POLICY */
+
+	/* MBrain */
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_opp_logs);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_sum_loading);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_power_state);
+	/* MBrain end */
 
 	ged_sysfs_remove_dir(&hal_kobj);
 }

@@ -73,4 +73,8 @@ defined(CONFIG_GPU_MT6765)
 extern void MTKFWDump(void);
 #endif
 
+//MBrain
+extern unsigned long long g_ns_gpu_on_ts;
+extern u32 g_curr_pwr_state;
+
 #endif
