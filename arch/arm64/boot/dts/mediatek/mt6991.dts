@@ -8236,8 +8236,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
 				<&dispsys1_config_clk CLK_MM1_MOD2_DISP>,
 				<&dispsys1_config_clk CLK_MM1_MOD3_DISP>,
-				<&dispsys1_config_clk CLK_MM1_MOD4_DISP>,
-				<&dispsys1_config_clk CLK_MM1_MOD5_DISP>,
 				<&dispsys1_config_clk CLK_MM1_CK_CG0_DISP>,
 				<&dispsys1_config_clk CLK_MM1_CK_CG1_DISP>,
 				<&dispsys1_config_clk CLK_MM1_CK_CG2_DISP>,
