@@ -845,6 +845,7 @@ mgk_64_platform_device_modules = {
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6989.ko": "mt6989",
     "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6991.ko": "mt6991",
+    "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko": "mt6991",
     "drivers/interconnect/mediatek/mmqos-mt6886.ko": "mt6886",
     "drivers/interconnect/mediatek/mmqos-mt6893.ko": "mt6893",
     "drivers/interconnect/mediatek/mmqos-mt6897.ko": "mt6897",
@@ -1212,6 +1213,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989_fpga.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6897/mt6897-mt6368.ko")
@@ -1470,6 +1472,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6358.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/spi_slave_drv/spi_slave.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko")
