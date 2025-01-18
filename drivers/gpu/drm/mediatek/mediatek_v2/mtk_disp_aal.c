@@ -1305,10 +1305,10 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(10),
 			DRE_REG_3(gain[22], 0, gain[23], 9, gain[24], 18), ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(11),
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE_11,
 			DRE_REG_3(gain[25], 0, gain[26], 9, gain[27], 18), ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(12), gain[28], ~0);
+			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE_12, gain[28], ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
