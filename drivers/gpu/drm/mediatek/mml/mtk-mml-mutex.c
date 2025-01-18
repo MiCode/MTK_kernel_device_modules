@@ -381,7 +381,14 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 			mml_err("%s mml_drm_query_dl_path fail", __func__);
 			return;
 		}
-		cmdq_pkt_clear_event(pkt, cfg->submit.info.disp_done_event);
+
+		/* this path does not use current mml mutex */
+		if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp)
+			return;
+
+		/* only need clear event once */
+		if (path->mutex == &mutex->comp)
+			cmdq_pkt_clear_event(pkt, cfg->submit.info.disp_done_event);
 		mutex_enable(mutex, pkt, path, get_mutex_sof(&cfg->mutex), MML_MODE_DIRECT_LINK);
 		mutex->connected_mode = MML_MODE_DIRECT_LINK;
 	}
