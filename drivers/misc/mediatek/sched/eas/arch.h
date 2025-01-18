@@ -52,24 +52,6 @@ unsigned long pd_get_util_cpufreq_wFloor_Freq(struct energy_env *eenv,
 	return (unsigned long) pd_opp2freq(cpu, opp, false, eenv->wl_type);
 }
 
-int pd_get_volt_opp(int wl_type, int cpu, int opp, unsigned long extern_volt)
-{
-	int i;
-	unsigned long cpu_volt;
-
-	for (i = opp-1; i >= 0; i--) {
-		cpu_volt = (unsigned long) pd_opp2volt(cpu, opp, false, wl_type);
-
-		if (cpu_volt > extern_volt)
-			break;
-	}
-
-	if (i != 0)
-		i = i + 1;
-
-	return i;
-}
-
 unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp, int temperature,
 	unsigned long extern_volt)
 {
@@ -81,7 +63,7 @@ unsigned long shared_buck_lkg_pwr(int wl_type, int cpu, int opp, int temperature
 	if (!extern_volt || extern_volt <= cpu_volt_orig)
 		return static_pwr_orig;
 
-	i = pd_get_volt_opp(wl_type, cpu, opp, extern_volt);
+	i = pd_cpu_volt2opp(cpu, extern_volt, false, wl_type);
 	static_pwr = pd_get_opp_leakage(cpu, i, temperature);
 
 	return static_pwr;
