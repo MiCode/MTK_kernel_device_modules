@@ -165,16 +165,30 @@ skip:
 	return usb_pd;
 }
 
+static void mtu3_ss_u1u2_set(struct mtu3 *mtu)
+{
+	/* enable or disable accept LGO_U1/U2 link command from host */
+	if (mtu->u3_lpm) {
+		mtu3_setbits(mtu->mac_base, U3D_LINK_POWER_CONTROL,
+			SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
+	} else {
+		mtu3_clrbits(mtu->mac_base, U3D_LINK_POWER_CONTROL,
+			SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
+		dev_info(mtu->dev, "disable accept_lgo\n");
+	}
+
+	/* enable or disable U1 to U2 transition */
+	if (mtu->u3_u1gou2)
+		mtu3_setbits(mtu->mac_base, U3D_LTSSM_CTRL, U1_GO_U2_EN);
+	else
+		mtu3_clrbits(mtu->mac_base, U3D_LTSSM_CTRL, U1_GO_U2_EN);
+}
+
 /* enable/disable U3D SS function */
 static inline void mtu3_ss_func_set(struct mtu3 *mtu, bool enable)
 {
-	/* update lpm setting */
-	if (mtu->u3_lpm)
-		mtu3_setbits(mtu->mac_base, U3D_LINK_POWER_CONTROL,
-			SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
-	else
-		mtu3_clrbits(mtu->mac_base, U3D_LINK_POWER_CONTROL,
-			SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
+	/* update ss u1/u2 setting */
+	mtu3_ss_u1u2_set(mtu);
 
 	/* If usb3_en==0, LTSSM will go to SS.Disable state */
 	if (enable) {
@@ -408,17 +422,8 @@ static void mtu3_csr_init(struct mtu3 *mtu)
 		/* disable LGO_U1/U2 by default */
 		mtu3_clrbits(mbase, U3D_LINK_POWER_CONTROL,
 				SW_U1_REQUEST_ENABLE | SW_U2_REQUEST_ENABLE);
-		/* disable U1 to U2 transition */
-		mtu3_clrbits(mbase, U3D_LTSSM_CTRL, U1_GO_U2_EN);
-		/* enable accept LGO_U1/U2 link command from host */
-		if (mtu->u3_lpm) {
-			mtu3_setbits(mbase, U3D_LINK_POWER_CONTROL,
-				SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
-		} else {
-			dev_info(mtu->dev, "disable accept_lgo\n");
-			mtu3_clrbits(mbase, U3D_LINK_POWER_CONTROL,
-				SW_U1_ACCEPT_ENABLE | SW_U2_ACCEPT_ENABLE);
-		}
+		/* update ss u1/u2 setting */
+		mtu3_ss_u1u2_set(mtu);
 		mtu3_setbits(mbase, U3D_MAC_U1_EN_CTRL,
 			ACCEPT_BMU_RX_EMPTY_HCK);
 		mtu3_setbits(mbase, U3D_MAC_U2_EN_CTRL,
@@ -521,6 +526,12 @@ static void mtu3_regs_init(struct mtu3 *mtu)
 
 	/* update txdeemph */
 	ssusb_set_txdeemph(mtu->ssusb);
+
+	/* update ux exit lfps */
+	ssusb_set_ux_exit_lfps(mtu->ssusb);
+
+	/* update polling scdlfps time */
+	ssusb_set_polling_scdlfps_time(mtu->ssusb);
 }
 
 void mtu3_check_params(struct mtu3 *mtu)
@@ -1179,8 +1190,7 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 	mtu->ssusb = ssusb;
 	mtu->max_speed = usb_get_maximum_speed(dev);
 	mtu->u3_lpm = !of_property_read_bool(dev->of_node, "usb3-lpm-disable");
-	if (mtu->max_speed >= USB_SPEED_SUPER_PLUS)
-		mtu->u3_lpm = 0;
+	mtu->u3_u1gou2 = !of_property_read_bool(dev->of_node, "usb3-u1gou2-disable");
 
 	dev_dbg(dev, "mac_base=0x%p, ippc_base=0x%p\n",
 		mtu->mac_base, mtu->ippc_base);

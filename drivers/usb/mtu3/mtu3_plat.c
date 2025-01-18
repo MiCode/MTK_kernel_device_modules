@@ -236,6 +236,37 @@ void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 
 }
 
+void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb)
+{
+	u32 tmp;
+
+	if (ssusb->ux_exit_lfps) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_UX_EXIT_LFPS_TIMING_PARAMETER);
+		tmp &= ~RX_UX_EXIT_LFPS_PIPE_MASK;
+		tmp |= RX_UX_EXIT_LFPS_PIPE(ssusb->ux_exit_lfps);
+		mtu3_writel(ssusb->mac_base, U3D_UX_EXIT_LFPS_TIMING_PARAMETER, tmp);
+	}
+
+	if (ssusb->ux_exit_lfps_gen2) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_UX_EXIT_LFPS_TIMING_PARAMETER);
+		tmp &= ~RX_UX_EXIT_LFPS_GEN2_PIPE_MASK;
+		tmp |= RX_UX_EXIT_LFPS_GEN2_PIPE(ssusb->ux_exit_lfps_gen2);
+		mtu3_writel(ssusb->mac_base, U3D_UX_EXIT_LFPS_TIMING_PARAMETER, tmp);
+	}
+}
+
+void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb)
+{
+	u32 tmp;
+
+	if (ssusb->polling_scdlfps_time) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_GEN2_POLLING_SCDLFPS_TIME);
+		tmp &= ~POLLING_SCDLFPS_TIME_MASK;
+		tmp |= POLLING_SCDLFPS_TIME(ssusb->polling_scdlfps_time);
+		mtu3_writel(ssusb->mac_base, U3D_GEN2_POLLING_SCDLFPS_TIME, tmp);
+	}
+}
+
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb)
 {
 	u32 txdeemph;
@@ -1000,6 +1031,9 @@ get_phy:
 			     &ssusb->u2p_dis_msk);
 
 	of_property_read_u32(node, "mediatek,eusb2-cm-l1", &ssusb->eusb2_cm_l1);
+	of_property_read_u32(node, "mediatek,ux-exit-lfps", &ssusb->ux_exit_lfps);
+	of_property_read_u32(node, "mediatek,ux-exit-lfps-gen2", &ssusb->ux_exit_lfps_gen2);
+	of_property_read_u32(node, "mediatek,polling-scdlfps-time", &ssusb->polling_scdlfps_time);
 
 	ssusb->utmi_8bit = of_property_read_bool(node, "mediatek,utmi-8bit");
 

@@ -609,10 +609,8 @@ static ssize_t max_speed_store(struct device *dev,
 	struct mtu3 *mtu = ssusb->u3d;
 	int speed;
 
-	if (!strncmp(buf, "super-speed-plus", 16)) {
+	if (!strncmp(buf, "super-speed-plus", 16))
 		speed = USB_SPEED_SUPER_PLUS;
-		mtu->u3_lpm = 0;
-	}
 	else if (!strncmp(buf, "super-speed", 11))
 		speed = USB_SPEED_SUPER;
 	else if (!strncmp(buf, "high-speed", 10))
