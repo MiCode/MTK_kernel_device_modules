@@ -272,6 +272,9 @@ module_param(mml_wrot_bkgd_en, int, 0644);
 int mml_wrot_bkgd;
 module_param(mml_wrot_bkgd, int, 0644);
 
+int wrot_stash_delay = 20;
+module_param(wrot_stash_delay, int, 0644);
+
 /* ceil_m and floor_m helper function */
 static u32 ceil_m(u64 n, u64 d)
 {
@@ -347,6 +350,7 @@ struct wrot_data {
 	u8 px_per_tick;
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
+	bool stash;		/* enable stash prefetch with leading time */
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -392,6 +396,7 @@ static const struct wrot_data mt6991_wrot_data = {
 	.read_mode = MML_PQ_SOF_MODE,
 	.px_per_tick = 2,
 	.yuv_pending = true,
+	.stash = true,
 };
 
 struct mml_comp_wrot {
@@ -475,6 +480,8 @@ struct wrot_frame_data {
 
 	u32 pixel_acc;		/* pixel accumulation */
 	u32 datasize;		/* qos data size in bytes */
+	u32 stash_srt_bw;
+	u32 stash_hrt_bw;
 
 	struct {
 		bool eol:1;	/* tile is end of current line */
@@ -1969,6 +1976,69 @@ static void wrot_calc_setting(struct mml_comp_wrot *wrot,
 		wrot_check_buf(dest, setting, wrot_frm, &buf);
 }
 
+static u32 wrot_calc_stash_delay(const struct mml_frame_config *cfg,
+	const struct mml_frame_dest *dest, u32 in_xsize, u32 line_num)
+{
+	const struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
+	const u32 opp = tp->qos[mml_sys_frame].opp_cnt / 2;
+	const u32 clk_rate = tp->qos[mml_sys_frame].opp_speeds[opp];
+	u32 delay_interval, delay_line;
+
+	if (dest->rotate == MML_ROT_0) {
+		/* config only page to page delay in clock level
+		 * [15:0] = 0
+		 * [31:16] = wrot_delay_us * clk_rate
+		 */
+		return (clk_rate * wrot_stash_delay) << 16;
+	}
+
+
+	/* config first cmd delay in line time level,
+	 * and page to page delay in clock level
+	 * [15:0] = (in_xsize * line_num / clk_rate - delay_us) * clk_rate / in_xsize
+	 * [31:16] = 4096 / bpp * 16
+	 */
+	delay_interval = (in_xsize * line_num / clk_rate - wrot_stash_delay) * clk_rate / in_xsize;
+	delay_line = 524288 / MML_FMT_BITS_PER_PIXEL(dest->data.format);
+
+	return (delay_interval << 16) | delay_line;
+}
+
+static void wrot_calc_stash_addr_boundary(struct mml_comp *comp, struct cmdq_pkt *pkt,
+	enum mml_color format, enum mml_orientation rotate, u32 height, u32 ystride, u32 uvstride)
+{
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	u32 stash_offset_addr = 0, stash_offset_addr_cv = 0;
+
+	if (rotate == MML_ROT_0 || rotate == MML_ROT_90) {
+		if (MML_FMT_IS_ARGB(format)) {
+			/* RGB, 1 plane */
+			stash_offset_addr = ystride * height - 1;
+		} else if (MML_FMT_10BIT(format)) {
+			/* YUV 10bit */
+			stash_offset_addr = ystride * (height + (4 - (height & 0x1))) - 1;
+			if (uvstride)
+				stash_offset_addr_cv =
+					uvstride * (height + (4 - (height & 0x1))) - 1;
+		} else {
+			/* YUV 8bit */
+			stash_offset_addr = ystride * (height+ 1) - 1;
+			if (uvstride)
+				stash_offset_addr_cv = uvstride * (height + 1) / 2 - 1;
+		}
+	}
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR],
+		stash_offset_addr, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR_C],
+		stash_offset_addr_cv, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR_V],
+		stash_offset_addr_cv, U32_MAX);
+	mml_msg("%s stash ofst addr %#010x %#010x format %#010x rot %u stride %u %u",
+		__func__, stash_offset_addr, stash_offset_addr_cv, format, rotate,
+		ystride, uvstride);
+}
+
 static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg, u32 idx)
 {
@@ -1982,7 +2052,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	/* frame data should not change between each tile */
 	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
-	const u32 dest_fmt = dest->data.format;
+	const enum mml_color dest_fmt = dest->data.format;
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	const struct mml_frame_tile *tout = cfg->frame_tile[ccfg->pipe];
@@ -2050,6 +2120,16 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CROP_OFST],
 		       (wrot_crop_ofst_y << 16) + (wrot_crop_ofst_x <<  0),
 		       U32_MAX);
+
+	/* config address boundary for stash prefetch */
+	if (wrot->data->stash && mml_stash_en(cfg->info.mode)) {
+		if (!MML_FMT_COMPRESS(dest_fmt))
+			wrot_calc_stash_addr_boundary(comp, pkt, dest_fmt, dest->rotate,
+				wrot_tar_ysize, dest->data.y_stride, dest->data.uv_stride);
+		else
+			mml_log("[warn]stash addr boundary not support for format %#010x",
+				dest_fmt);
+	}
 
 	if (wrot_frm->pending_x || wrot_frm->pending_y) {
 		/* Not use auto mode */
@@ -2138,6 +2218,29 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x1, VIDO_INT_EN_MASK);
 	} else
 		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x0, VIDO_INT_EN_MASK);
+
+	if (wrot->data->stash) {
+		if (mml_stash_en(cfg->info.mode)) {
+			u32 delay_cnt = wrot_calc_stash_delay(cfg, dest, wrot_in_xsize,
+				buf_line_num);
+
+			/* enable wrot stash for expect performance
+			 * VIDO_STASH_DWNSAMP_H		[31:27] 2 (default)
+			 * VIDO_STASH_HW_MODE_SEL	[20:18] 2 (default)
+			 * VIDO_STASH_OVERTAKE_EN	[ 5: 5] 1 (default)
+			 * VIDO_STASH_LEAD_CMD_NUM	[ 4: 1] 1
+			 * VIDO_STASH_FUNC_EN		[ 0: 0] 1
+			 */
+			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_CMD_FUNC_1],
+				0x10080023, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_DELAY_CNT],
+				delay_cnt, U32_MAX);
+		} else {
+			/* stash off */
+			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_CMD_FUNC_1],
+				0, U32_MAX);
+		}
+	}
 
 	mml_msg("%s min block width: %u min buf line num: %u",
 		__func__, setting.main_blk_width, setting.main_buf_line_num);
@@ -2407,6 +2510,65 @@ u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return wrot_frm_data(ccfg)->datasize;
 }
 
+static u32 wrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 *srt_bw_out, u32 *hrt_bw_out)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	const u32 rotate = dest->rotate;
+	const u32 format = dest->data.format;
+	u32 burst, srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
+
+	if (wrot_frm->stash_srt_bw)
+		goto done;
+
+	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+		/* same as rdma */
+		wrot_frm->stash_srt_bw = srt_bw / 256;
+		wrot_frm->stash_hrt_bw = hrt_bw / 256;
+		goto done;
+	}
+
+	switch (format) {
+	case MML_FMT_RGB888:
+	case MML_FMT_BGR888:
+		burst = 6;
+		break;
+	/* RGB 8bit/10bit */
+	case MML_FMT_RGBA8888:
+	case MML_FMT_BGRA8888:
+	case MML_FMT_ARGB8888:
+	case MML_FMT_ABGR8888:
+	case MML_FMT_RGBA1010102:
+	case MML_FMT_BGRA1010102:
+	case MML_FMT_ARGB2101010:
+	case MML_FMT_ABGR2101010:
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
+	/* YUV422 1 plane */
+	case MML_FMT_UYVY:
+	case MML_FMT_VYUY:
+	case MML_FMT_YUYV:
+	case MML_FMT_YVYU:
+		burst = 8;
+		break;
+	default:
+		burst = 8;
+		mml_log("%s unknown format burst for wrot %#010x", __func__, format);
+		break;
+	}
+
+	wrot_frm->stash_srt_bw = srt_bw / burst;
+	wrot_frm->stash_hrt_bw = hrt_bw / burst;
+
+done:
+	*srt_bw_out = wrot_frm->stash_srt_bw;
+	*hrt_bw_out = wrot_frm->stash_hrt_bw;
+
+	return 0;
+}
+
 u32 wrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	return task->config->info.dest[ccfg->node->out_idx].data.format;
@@ -2478,6 +2640,7 @@ static const struct mml_comp_hw_ops wrot_hw_ops = {
 	.clk_enable = &mml_wrot_comp_clk_enable,
 	.clk_disable = &mml_wrot_comp_clk_disable,
 	.qos_datasize_get = &wrot_datasize_get,
+	.qos_stash_bw_get = &wrot_qos_stash_bw_get,
 	.qos_format_get = &wrot_format_get,
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,

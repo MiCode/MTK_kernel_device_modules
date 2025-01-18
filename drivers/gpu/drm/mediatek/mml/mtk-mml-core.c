@@ -104,6 +104,18 @@ module_param(mml_racing_eoc, int, 0644);
 int mml_hw_perf;
 module_param(mml_hw_perf, int, 0644);
 
+/* stash function for mml dma hw
+ * 0: disable all stash function
+ * bit 0: enable DL mode stash
+ * bit 1: enable DC mode stash
+ */
+#if defined(MML_STASH_SUPPORT)
+int mml_stash = 0x3;
+#else
+int mml_stash;
+#endif
+module_param(mml_stash, int, 0644);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);
@@ -1016,7 +1028,7 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	mml_mmp(dpc_dvfs, MMPROFILE_FLAG_PULSE, trigger, dpc_dvfs_lv);
 }
 
-static u64 time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rhs)
+u64 mml_core_time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rhs)
 {
 	struct timespec64 delta = timespec64_sub(*lhs, *rhs);
 
@@ -1063,7 +1075,7 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 static u64 mml_core_calc_tput(struct mml_task *task, u32 pixel, u32 pipe,
 	const struct timespec64 *end, const struct timespec64 *start)
 {
-	u64 duration = time_dur_us(end, start);
+	u64 duration = mml_core_time_dur_us(end, start);
 
 	if (!duration)
 		duration = 1;
@@ -1118,18 +1130,18 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	ktime_get_real_ts64(&curr_time);
 	if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		mml_msg_qos(
-			"task dvfs begin %p pipe %u cur %2u.%03llu act_time %u clt id %hhu",
+			"task dvfs begin %p pipe %u cur %2u.%03llu act_time %u clt id %hhu dur %u fps %u",
 			task, pipe,
 			(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
 			cfg->info.act_time,
-			cfg->path[pipe]->clt_id);
+			cfg->path[pipe]->clt_id, cfg->duration, cfg->fps);
 	} else {
 		mml_msg_qos(
-			"task dvfs begin %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu",
+			"task dvfs begin %p pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu dur %u fps %u",
 			task, pipe,
 			(u32)curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000000),
 			(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000),
-			cfg->path[pipe]->clt_id);
+			cfg->path[pipe]->clt_id, cfg->duration, cfg->fps);
 	}
 
 	/* do not append to list and no qos/dvfs for this task */

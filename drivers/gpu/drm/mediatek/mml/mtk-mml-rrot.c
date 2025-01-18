@@ -333,6 +333,8 @@ struct rrot_frame_data {
 	u32 gmcif_con;
 	u32 slice_size;
 	u32 slice_pixel;
+	u32 stash_srt_bw;
+	u32 stash_hrt_bw;
 	bool ultra_off;
 	bool binning;
 
@@ -385,27 +387,6 @@ static inline struct rrot_frame_data *rrot_frm_data(struct mml_comp_config *ccfg
 static inline struct mml_comp_rrot *comp_to_rrot(struct mml_comp *comp)
 {
 	return container_of(comp, struct mml_comp_rrot, comp);
-}
-
-static u32 rrot_get_latency(struct mml_frame_config *cfg)
-{
-	const enum mml_color fmt = cfg->info.src.format;
-	const u32 rot = cfg->info.dest[0].rotate;
-	u32 line;
-
-	if (MML_FMT_AFBC_ARGB(fmt)) {
-		/* rotate 0 and 180, include flip */
-		line = (rot == MML_ROT_0 || rot == MML_ROT_180) ? 4 : 32;
-	} else if (MML_FMT_AFBC_YUV(fmt) || MML_FMT_HYFBC(fmt)) {
-		line = 16;
-	} else if (MML_FMT_UFO(fmt) || MML_FMT_BLOCK(fmt)) {
-		line = (rot == MML_ROT_0 || rot == MML_ROT_180) ? 8 : 16;
-	} else {
-		/* other unexpect format, use max latency */
-		line = 32;
-	}
-
-	return line;
 }
 
 static void calc_binning_crop(u32 *crop, u32 *frac)
@@ -1029,8 +1010,11 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	const enum mml_orientation rot = info->dest[0].rotate;
 	u32 leading_pixels;
 
-	u32 prefetch_line_cnt[4];
+	u32 prefetch_line_cnt[4] = {0};
 	u32 con1, con2;
+
+	if (!mml_stash_en(cfg->info.mode))
+		goto done;
 
 	leading_pixels = round_up(w * h * fps * rrot_stash_leading, 1000000) / 1000000;
 
@@ -1108,6 +1092,7 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
+done:
 	if (unlikely(rrot_stash_con1))
 		con1 = rrot_stash_con1;
 	else
@@ -1117,8 +1102,10 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	else
 		con2 = (prefetch_line_cnt[2] << 16) | prefetch_line_cnt[3];
 
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, 0x43000000, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, con1, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, con2, U32_MAX);
+	mml_msg("rrot stash con %#010x %#010x", con1, con2);
 }
 
 static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
@@ -2197,9 +2184,125 @@ static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg
 {
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 
-	mml_msg("[rrot]latency:%u", rrot_get_latency(task->config));
-
 	return rrot_frm->datasize;
+}
+
+#define stash_bw_2plane(_bw, _ysz, _uvsz, _burst, _burst1) \
+	((_bw * _ysz / _burst + _bw * _uvsz / _burst1) / (_ysz + _uvsz))
+
+#define stash_bw_3plane(_bw, _ysz, _uvsz, _burst, _burst1) \
+	((_bw * _ysz / _burst + _bw * _uvsz / _burst1 * 2) / (_ysz + _uvsz * 2))
+
+static u32 rrot_qos_stash_bw_get(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 *srt_bw_out, u32 *hrt_bw_out)
+{
+	const struct mml_frame_data *src = &task->config->info.src;
+	const u32 rotate = task->config->info.dest[0].rotate;
+	const u32 format = src->format;
+	const u32 plane = MML_FMT_PLANE(format);
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+	u32 burst, burst1 = 1;
+	u32 srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
+
+	if (rrot_frm->stash_srt_bw)
+		goto done;
+
+	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+		/* same as rdma */
+		rrot_frm->stash_srt_bw = srt_bw / 256;
+		rrot_frm->stash_hrt_bw = hrt_bw / 256;
+		goto done;
+	}
+
+	switch (format) {
+	case MML_FMT_RGB565:
+	case MML_FMT_BGR565:
+		burst = 4;
+		break;
+	case MML_FMT_RGB888:
+	case MML_FMT_BGR888:
+		burst = 6;
+		break;
+	/* RGB 8bit/10bit */
+	case MML_FMT_RGBA8888:
+	case MML_FMT_BGRA8888:
+	case MML_FMT_ARGB8888:
+	case MML_FMT_ABGR8888:
+	case MML_FMT_RGBA1010102:
+	case MML_FMT_BGRA1010102:
+	case MML_FMT_ARGB2101010:
+	case MML_FMT_ABGR2101010:
+	case MML_FMT_YUVA8888:
+	case MML_FMT_AYUV8888:
+	/* YUV422 1 plane */
+	case MML_FMT_UYVY:
+	case MML_FMT_VYUY:
+	case MML_FMT_YUYV:
+	case MML_FMT_YVYU:
+	/* compress */
+	case MML_FMT_RGBA8888_AFBC:
+	case MML_FMT_RGBA1010102_AFBC:
+	case MML_FMT_YUV420_AFBC:
+	case MML_FMT_YUV420_10P_AFBC:
+	case MML_FMT_NV12_HYFBC:
+	case MML_FMT_P010_HYFBC:
+		burst = 8;
+		break;
+	/* YUV420 3plane */
+	case MML_FMT_I420:
+	case MML_FMT_YV12:
+		burst = 4;
+		burst1 = 2;
+		break;
+	/* YUV422 3plane */
+	case MML_FMT_I422:
+	case MML_FMT_YV16:
+		burst = 4;
+		burst1 = 2;
+		break;
+	/* YUV420 2plane */
+	case MML_FMT_NV12:
+	case MML_FMT_NV21:
+		burst = 4;
+		burst1 = 4;
+		break;
+	/* YUV422 2plane */
+	case MML_FMT_NV16:
+	case MML_FMT_NV61:
+		burst = 4;
+		burst1 = 4;
+		break;
+	default:
+		burst = 8;
+		mml_log("%s unknown format burst for rrot %#010x", __func__, format);
+		break;
+	}
+
+	if (plane == 2) {
+		u32 ysz = mml_color_get_y_size(format, src->width, src->height, src->y_stride);
+		u32 uvsz = mml_color_get_uv_size(format, src->width, src->height, src->uv_stride);
+
+		srt_bw = stash_bw_2plane(srt_bw, ysz, uvsz, burst, burst1);
+		hrt_bw = stash_bw_2plane(hrt_bw, ysz, uvsz, burst, burst1);
+	} else if (plane == 3) {
+		u32 ysz = mml_color_get_y_size(format, src->width, src->height, src->y_stride);
+		u32 uvsz = mml_color_get_uv_size(format, src->width, src->height, src->uv_stride);
+
+		srt_bw = stash_bw_3plane(srt_bw, ysz, uvsz, burst, burst1);
+		hrt_bw = stash_bw_3plane(hrt_bw, ysz, uvsz, burst, burst1);
+	} else {
+		srt_bw = srt_bw / burst;
+		hrt_bw = hrt_bw / burst;
+	}
+
+	rrot_frm->stash_srt_bw = srt_bw;
+	rrot_frm->stash_hrt_bw = hrt_bw;
+
+done:
+	*srt_bw_out = rrot_frm->stash_srt_bw;
+	*hrt_bw_out = rrot_frm->stash_hrt_bw;
+
+	return 0;
 }
 
 static u32 rrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
@@ -2234,6 +2337,7 @@ static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &rrot_datasize_get,
+	.qos_stash_bw_get = &rrot_qos_stash_bw_get,
 	.qos_format_get = &rrot_format_get,
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,
