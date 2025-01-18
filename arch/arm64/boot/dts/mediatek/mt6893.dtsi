@@ -8,7 +8,7 @@
 #include <dt-bindings/clock/mt6893-clk.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include <dt-bindings/memory/mt6885-larb-port.h>
+#include <dt-bindings/memory/mt6893-larb-port.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6885-pinfunc.h>
 #include <dt-bindings/power/mt6893-power.h>
