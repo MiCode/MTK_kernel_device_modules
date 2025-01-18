@@ -222,7 +222,7 @@ int mtk_audio_request_sram(dma_addr_t *phys_addr,
 
 	ret = mtk_audio_sram_allocate(local_afe->sram, phys_addr, virt_addr,
 				      length, user,
-				      SNDRV_PCM_FORMAT_S16_LE, true);
+				      SNDRV_PCM_FORMAT_S16_LE, true, false);
 	if (ret) {
 		dev_warn(local_afe->dev, "%s(), allocate sram fail, ret %d\n",
 			 __func__, ret);

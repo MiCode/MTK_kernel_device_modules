@@ -2246,7 +2246,7 @@ const struct snd_soc_component_driver mt6768_afe_component = {
 	.pcm_construct  = mtk_afe_pcm_new,
 	.pcm_destruct   = mtk_afe_pcm_free,
 	.pointer        = mtk_afe_pcm_pointer,
-	.copy_user      = mtk_afe_pcm_copy_user,
+	.copy           = mtk_afe_pcm_copy_user,
 	.probe          = mt6768_afe_pcm_platform_probe,
 };
 

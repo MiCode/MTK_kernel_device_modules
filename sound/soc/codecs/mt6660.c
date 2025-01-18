@@ -458,8 +458,7 @@ static int _mt6660_read_chip_revision(struct mt6660_chip *chip)
 	return 0;
 }
 
-int mt6660_i2c_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
+int mt6660_i2c_probe(struct i2c_client *client)
 {
 	struct mt6660_chip *chip = NULL;
 	static int dev_cnt;
