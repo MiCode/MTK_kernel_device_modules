@@ -688,6 +688,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
 		case MMSYS_MT6761:
+		case MMSYS_MT6885:
 			ui = 1000 / dsi->data_rate + 1;
 			cycle_time = 8000 / dsi->data_rate + 1;
 
@@ -774,6 +775,7 @@ CONFIG_REG:
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
 		case MMSYS_MT6761:
+		case MMSYS_MT6885:
 			break;
 		default:
 			//N4/5 must add this constraint, N6 is option, so we use the same
@@ -921,6 +923,7 @@ static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
 		case MMSYS_MT6761:
+		case MMSYS_MT6885:
 			ui = 1000 / dsi->data_rate + 1;
 			cycle_time = 8000 / dsi->data_rate + 1;
 
@@ -1021,6 +1024,7 @@ CONFIG_REG:
 		switch (priv->data->mmsys_id) {
 		case MMSYS_MT6768:
 		case MMSYS_MT6761:
+		case MMSYS_MT6885:
 			break;
 		default:
 			//N4/5/6/7/8/9/10/11 must add this constraint, N6 is option, so we use the same
@@ -2074,7 +2078,8 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			} else
 				SET_VAL_MASK(value, mask, 0, RG_DSI_DCS_30BIT_FORMAT);
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6768 ||
-						priv->data->mmsys_id == MMSYS_MT6761))
+					priv->data->mmsys_id == MMSYS_MT6761 ||
+					priv->data->mmsys_id == MMSYS_MT6885))
 				SET_VAL_MASK(value, mask, ps_wc * line_back_to_LP, DSI_PS_WC);
 			else
 				SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
