@@ -804,6 +804,9 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 					old_tmp = old * ((long long)hwui_info->dur_ts - (long long)rescue_target_time);
 					new_dur = div64_s64(old_tmp, new) + rescue_target_time;
 					drop = (int)div64_u64(new_dur, target_time);
+					if (drop < 0)
+						drop = 0;
+
 					if (drop < max_monitor_drop_frame)
 						tempScore[drop]++;
 					else
@@ -834,7 +837,7 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 		}
 
 		if (benifit_f_up > threshold || benifit_f_down) {
-			fpsgo_main_trace("SBE_UX enhance change from %d to %d\n",
+			FPSGO_LOGI("SBE_UX enhance change from %d to %d\n",
 					last_enhance, new_enhance);
 			result = new_enhance;
 		}
@@ -872,7 +875,7 @@ void clear_ux_info(struct render_info *thr)
 	struct ux_scroll_info *pos, *tmp;
 
 	// clear ux scroll infos for new activity
-	fpsgo_main_trace("SBE_UX clear_ux %d\n", thr->pid);
+	FPSGO_LOGI("SBE_UX clear_ux %d\n", thr->pid);
 	list_for_each_entry_safe(pos, tmp, &thr->scroll_list, queue_list) {
 		release_scroll(pos);
 	}
@@ -904,9 +907,10 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
 
 		if (sbe_dy_rescue_enable ) {
+			unsigned long long target_time;
 			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
 
-			fpsgo_main_trace("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d\n",
+			FPSGO_LOGI("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d\n",
 					thr->pid, frame_id,
 					thr->sbe_dy_enhance_f, sbe_dy_enhance);
 
@@ -914,12 +918,16 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			ts = fpsgo_get_time();
 			update_hwui_frame_info(thr, frame, frame_id, 0, 0, ts, 0, 0);
 
-			//update rescue_target, default is 1/2 target_time
-			if (rescue_target > 0) {
-				if(thr->boost_info.sbe_rescue_target_time != rescue_target)
-					thr->boost_info.sbe_rescue_target_time = rescue_target;
-			} else
-				thr->boost_info.sbe_rescue_target_time = (thr->boost_info.target_time >> 1);
+			target_time = thr->boost_info.target_time;
+
+			if (target_time > 0) {
+				//update rescue_target, default is 1/2 target_time
+				if (rescue_target > 0 && rescue_target < target_time) {
+					if(thr->boost_info.sbe_rescue_target_time != rescue_target)
+						thr->boost_info.sbe_rescue_target_time = rescue_target;
+				} else
+					thr->boost_info.sbe_rescue_target_time = (target_time >> 1);
+			}
 
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
 		}
@@ -1343,6 +1351,9 @@ void count_scroll_rescue_info(struct render_info *thr, struct hwui_frame_info *h
 			hwui_info->drop = 0;
 		} else {
 			drop = (int)div64_u64(hwui_info->dur_ts, target_time);
+			if (drop < 0)
+				drop = 0;
+
 			hwui_info->drop = drop;
 			if (drop < max_monitor_drop_frame)
 				scroll_info->score[drop] += 1;
@@ -1350,7 +1361,7 @@ void count_scroll_rescue_info(struct render_info *thr, struct hwui_frame_info *h
 				scroll_info->score[max_monitor_drop_frame] += 1;
 		}
 		scroll_info->jank_count++;
-		fpsgo_main_trace("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d\n",
+		FPSGO_LOGI("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d\n",
 					thr->pid, hwui_info->frameID,
 					hwui_info->perf_idx, hwui_info->dur_ts, drop);
 	}
