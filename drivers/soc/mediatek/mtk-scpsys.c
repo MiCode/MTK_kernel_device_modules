@@ -19,6 +19,7 @@
 
 #include "scpsys.h"
 #include "mtk-scpsys.h"
+#include "clkchk.h"
 
 #include <dt-bindings/power/mt2701-power.h>
 #include <dt-bindings/power/mt2712-power.h>
@@ -89,10 +90,6 @@
 #define PWR_ACK				BIT(30)
 #define PWR_ACK_2ND			BIT(31)
 
-#define MMINFRA_DONE_STA		BIT(0)
-#define VCP_READY_STA			BIT(1)
-#define VCP_VOTE_READY_STA		BIT(3)
-
 #define PWR_STATUS_CONN			BIT(1)
 #define PWR_STATUS_DISP			BIT(3)
 #define PWR_STATUS_MFG			BIT(4)
@@ -133,9 +130,6 @@ static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
 static void __iomem *hwvdbg_infra_base;
 static void __iomem *hwvdbg_mminfra_base;
 static void __iomem *hwvdbg_hfrp_base;
-static struct scp_domain *scpsys_mminfra_hwv;
-
-static bool mmproc_sspm_vote_sync_bits_support;
 
 int register_scpsys_notifier(struct notifier_block *nb)
 {
@@ -1066,16 +1060,11 @@ static int scpsys_apu_power_off(struct generic_pm_domain *genpd)
 
 static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 {
-	u32 val = 0, mask = 0;
-
-	if (mmproc_sspm_vote_sync_bits_support)
-		mask = VCP_READY_STA | VCP_VOTE_READY_STA;
-	else
-		mask = VCP_READY_STA;
+	u32 val = 0;
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
-
-	if ((val & mask) == mask)
+	pr_notice("mminfra done: %x\n", val);
+	if ((val & scpd->data->vcp_mask) == scpd->data->vcp_mask)
 		return 1;
 
 	return 0;
@@ -1084,14 +1073,18 @@ static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 static int mtk_hwv_is_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
-	u32 val = 0;
+	u32 val = 0, mask = 0;
 
 	if (scpd->hwv_regmap)
 		regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	else
 		regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	return (val & BIT(scpd->data->hwv_shift));
+	mask = BIT(scpd->data->hwv_shift);
+	if ((val & mask) == mask)
+		return 1;
+
+	return 0;
 }
 
 static int mtk_hwv_is_enable_done(struct scp_domain *scpd)
@@ -1158,7 +1151,7 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 		val = readl(hwvdbg_hfrp_base + 0xea8);
 
 		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
-		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpsys_mminfra_hwv,
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd,
 				tmp, tmp > 0, MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
 		if (ret < 0)
 			goto err_vcp_ready;
@@ -1195,6 +1188,9 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 		udelay(MTK_POLL_HWV_PREPARE_US);
 		i++;
 	} while (1);
+
+	/* add debounce time */
+	udelay(1);
 
 	/* wait until VOTER_ACK = 1 */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_enable_done, scpd, tmp, tmp > 0,
@@ -1242,7 +1238,7 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
 		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
-		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpsys_mminfra_hwv,
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd,
 				tmp, tmp > 0, MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
 		if (ret < 0)
 			goto err_vcp_ready;
@@ -1310,16 +1306,11 @@ err_lp_clk:
 
 static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 {
-	u32 val = 0, mask = 0;
-
-	if (mmproc_sspm_vote_sync_bits_support)
-		mask = VCP_READY_STA | MMINFRA_DONE_STA | VCP_VOTE_READY_STA;
-	else
-		mask = VCP_READY_STA | MMINFRA_DONE_STA;
+	u32 val = 0;
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	if (val == mask)
+	if (val == scpd->data->sta_mask)
 		return 1;
 
 	return 0;
@@ -1513,17 +1504,7 @@ static unsigned int mtk_pd_get_performance(struct generic_pm_domain *genpd,
 static int mtk_pd_get_regmap(struct platform_device *pdev, struct regmap **regmap,
 			const char *name)
 {
-	if (!strcmp("smi_comm", name)) {
-		struct device_node *smi_node;
-		smi_node = of_parse_phandle(pdev->dev.of_node, name, 0);
-		if (smi_node)
-			*regmap = device_node_to_regmap(smi_node);
-		else
-			*regmap = ERR_PTR(-ENODEV);
-	} else {
 		*regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, name);
-	}
-
 	if (PTR_ERR(*regmap) == -ENODEV) {
 		dev_notice(&pdev->dev, "%s regmap is null(%ld)\n",
 				name, PTR_ERR(*regmap));
@@ -1549,22 +1530,6 @@ struct scp *init_scp(struct platform_device *pdev,
 	struct resource *res;
 	int i, ret;
 	struct scp *scp;
-	struct device_node *vcp_node;
-	int support = 0;
-
-	vcp_node = of_find_node_by_name(NULL, "vcp");
-	if (vcp_node == NULL)
-		pr_info("failed to find vcp_node @ %s\n", __func__);
-	else {
-		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
-
-		if (ret || support == 0) {
-			pr_info("%s mmproc_sspm_vote_sync_bits_support is disabled: %d\n",
-				__func__, ret);
-			mmproc_sspm_vote_sync_bits_support = false;
-		} else
-			mmproc_sspm_vote_sync_bits_support = true;
-	}
 
 	scp = devm_kzalloc(&pdev->dev, sizeof(*scp), GFP_KERNEL);
 	if (!scp)
@@ -1577,8 +1542,12 @@ struct scp *init_scp(struct platform_device *pdev,
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scp->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(scp->base))
-		return ERR_CAST(scp->base);
+	if (IS_ERR(scp->base)) {
+		if (scp->base == IOMEM_ERR_PTR(-EBUSY))
+			scp->base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+		else
+			return ERR_CAST(scp->base);
+	}
 
 	scp->domains = devm_kcalloc(&pdev->dev,
 				num, sizeof(*scp->domains), GFP_KERNEL);
@@ -1691,7 +1660,6 @@ struct scp *init_scp(struct platform_device *pdev,
 		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_MMINFRA_HWV_OPS)) {
 			genpd->power_on = scpsys_mminfra_hwv_power_on;
 			genpd->power_off = scpsys_mminfra_hwv_power_off;
-			scpsys_mminfra_hwv = scpd;
 		} else {
 			genpd->power_off = scpsys_power_off;
 			genpd->power_on = scpsys_power_on;
@@ -1744,8 +1712,12 @@ int mtk_register_power_domains(struct platform_device *pdev,
 		 */
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_INIT_ON))
 			on = false;
-		else
-			on = !WARN_ON(genpd->power_on(genpd) < 0);
+		else {
+			ret = genpd->power_on(genpd);
+			on = !WARN_ON(ret < 0);
+			if (ret)
+				clkchk_external_dump();
+		}
 
 		pm_genpd_init(genpd, NULL, !on);
 	}
