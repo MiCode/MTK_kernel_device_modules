@@ -11238,6 +11238,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		block-size = <0x1000>;
 	};
 
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0x16>;
+	};
+
 	md_auxadc:md-auxadc {
 		compatible = "mediatek,md_auxadc";
 		/* io-channels = <&auxadc 2>; */
