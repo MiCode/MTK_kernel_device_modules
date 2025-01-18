@@ -465,7 +465,7 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 		kaslr-seed = <0 0>;
 	};
 
-	regulator_vibrator: regulator_vibrator {
+	regulator_vibrator: regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
 		min-volt = <2300000>;
