@@ -471,9 +471,6 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 	if (sscanf(buf, "%iu", &val) != 0) {
 		val = (val > 0) ? 1 : 0;
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-		mtk_btag_mictx_enable(&ufs_mictx_id, val);
-#endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SWPM_SUPPORT)
 		// GPU PMU Recording
 		if (val == 1 && gpu_pmu_enable && !is_gpu_pmu_worked) {
@@ -486,6 +483,10 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 #endif
 		/* do something after on/off perf_tracker */
 		if (val && !perf_tracker_on) {
+
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+			mtk_btag_mictx_enable(&ufs_mictx_id, val);
+#endif
 			insert_freq_qos_hook();
 			check_dram_bw = qos_rec_check_sram_ext();
 			if (perf_timer_enable)
@@ -498,6 +499,10 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 				timer_off();
 			else
 				passtiveTick_off();
+
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
+			mtk_btag_mictx_enable(&ufs_mictx_id, val);
+#endif
 		}
 		perf_tracker_on = val;
 	}
