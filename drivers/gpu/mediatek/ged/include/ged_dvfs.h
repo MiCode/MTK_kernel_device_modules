@@ -197,7 +197,7 @@ int ged_get_apo_force_hint(void);
 void ged_set_apo_force_hint(int apo_force_hint);
 void ged_set_apo_status(int apo_status);
 
-void ged_check_gpu_frame_time(void);
+void ged_get_gpu_frame_time(int frame_time);
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
 void ged_check_power_duration(void);

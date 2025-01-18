@@ -88,6 +88,20 @@ static enum gpu_dvfs_policy_state g_policy_state = POLICY_STATE_INIT;
 static enum gpu_dvfs_policy_state g_prev_policy_state = POLICY_STATE_INIT;
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+#define GED_FRAME_TIME_CONFIG_NUM 4
+
+struct ged_gpu_frame_time_table {
+	unsigned int margin;     // target * 1.1
+	unsigned int target;
+};
+
+static struct ged_gpu_frame_time_table g_ged_gpu_frame_time[GED_FRAME_TIME_CONFIG_NUM] = {
+	{9166666, 8333333},      // 120fps
+	{12222222, 11111111},    // 90fps
+	{18333333, 16666666},    // 60fps
+	{36666666, 33333333},    // 30fps
+};
+
 #define GED_APO_THR_NS 2000000
 
 #define GED_APO_LP_THR_NS 4000000
@@ -895,30 +909,18 @@ void ged_set_apo_autosuspend_delay_ms(unsigned int apo_autosuspend_delay_ms)
 }
 EXPORT_SYMBOL(ged_set_apo_autosuspend_delay_ms);
 
-void ged_check_gpu_frame_time(void)
+void ged_get_gpu_frame_time(int frame_time)
 {
-	unsigned long long gpu_frame_time_ns = 0;
-	int target_fps = 0;
-
-	target_fps = ged_kpi_get_target_fps();
-
-	if (target_fps <= 0)
-		target_fps = ged_kpi_get_panel_refresh_rate();
-
-	if (target_fps > 90 && target_fps <= 120)
-		gpu_frame_time_ns = 8333333; // target_fps = 120
-	else if (target_fps > 60 && target_fps <= 90)
-		gpu_frame_time_ns = 11111111; // target_fps = 90
-	else if (target_fps > 30 && target_fps <= 60)
-		gpu_frame_time_ns = 16666666; // target_fps = 60
-	else if (target_fps > 0 && target_fps <= 30)
-		gpu_frame_time_ns = 33333333; // target_fps = 30
-	else
-		gpu_frame_time_ns = 8333333; // target_fps = 120
-
-	g_gpu_frame_time_ns = gpu_frame_time_ns;
+	for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
+		if (frame_time <= g_ged_gpu_frame_time[i].margin) {
+			g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
+			break;
+		}
+	}
+	trace_GPU_Power__Policy__APO_Frame_Time(g_gpu_frame_time_ns);
 }
-EXPORT_SYMBOL(ged_check_gpu_frame_time);
+EXPORT_SYMBOL(ged_get_gpu_frame_time);
+
 
 void ged_set_apo_status(int apo_status)
 {
@@ -937,8 +939,6 @@ void ged_get_active_time(void)
 	unsigned long ulIRQFlags;
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
-
-	ged_check_gpu_frame_time();
 
 	g_ns_gpu_A_ts = ged_get_time();
 

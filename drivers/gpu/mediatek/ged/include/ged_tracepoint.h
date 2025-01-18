@@ -170,6 +170,23 @@ TRACE_EVENT(GPU_Power__Policy__APO_irregular,
 	TP_printk("apo_irregular=%u", __entry->apo_irregular)
 );
 
+TRACE_EVENT(GPU_Power__Policy__APO_Frame_Time,
+
+	TP_PROTO(unsigned int apo_frame_time),
+
+	TP_ARGS(apo_frame_time),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, apo_frame_time)
+	),
+
+	TP_fast_assign(
+		__entry->apo_frame_time = apo_frame_time;
+	),
+
+	TP_printk("apo_frame_time=%u", __entry->apo_frame_time)
+);
+
 
 TRACE_EVENT(GPU_DVFS__Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top),
