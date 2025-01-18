@@ -7,9 +7,11 @@
 #define _PANEL_MAXIAM_MAX96851_H_
 
 #define PANLE_NAME_SIZE		64
+#define USE_DEFAULT_SETTING	"use-default-setting"
 #define PANEL_NAME			"panel-name"
 #define PANEL_MODE			"panel-mode"
 #define DEBUG_DP_INFO		"[DPTX-panel]"
+#define DEBUG_DP_MST1_INFO	"[DPTX-MST1-panel]"
 #define DEBUG_EDP_INFO		"[eDPTX-panel]"
 
 struct panel_edp {
@@ -30,7 +32,8 @@ struct panel_edp {
 	struct gpio_desc *reset_gpio;
 
 	bool is_dp;
-	char debug_str[16];
+	bool use_default;
+	char debug_str[32];
 };
 
 #endif
