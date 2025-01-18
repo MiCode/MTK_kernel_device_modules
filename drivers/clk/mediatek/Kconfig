@@ -1142,6 +1142,15 @@ config COMMON_CLK_MT6991_VCODEC
 	  If you wish to use clock resources from the vcodec device,
 	  say Y. Otherwise, say N.
 
+config COMMON_CLK_MT6991_IVI
+	tristate "Clock driver for MediaTek MT6991 IVI"
+	depends on COMMON_CLK_MT6991
+	help
+	  This driver supports MediaTek MT6991 ivi clocks,
+	  which is used to control ivi clock output.
+	  If you wish to use clock resources from the ivi device,
+	  say Y. Otherwise, say N.
+
 config DEVICE_MODULES_COMMON_CLK_MT8192
 	tristate "Clock driver for MediaTek MT8192"
 	depends on ARM64 || COMPILE_TEST
