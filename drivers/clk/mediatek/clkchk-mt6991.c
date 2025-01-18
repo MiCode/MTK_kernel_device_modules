@@ -7,6 +7,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/io.h>
+#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/seq_file.h>
@@ -67,6 +68,8 @@
 static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
 static unsigned int evt_cnt, suspend_cnt;
+static struct regmap *hwv_regmap, *mm_hwv_regmap;
+static bool clkchk_bug_on_flag = true;
 
 /* xpu*/
 enum {
@@ -3431,6 +3434,40 @@ int chk_pm_state(void)
 	return 0;
 }
 
+void clkchk_debug_dump_mt6991(enum chk_sys_id id[],
+		char *exception_name, bool trigger_vcp_dump, bool trigger_bugon)
+{
+	const struct fmeter_clk *fclks;
+
+	fclks = mt_get_fmeter_clks();
+	set_subsys_reg_dump_mt6991(id);
+	get_subsys_reg_dump_mt6991();
+
+	chk_pm_state();
+	dump_clk_event();
+	pdchk_dump_trace_evt();
+
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
+
+	/* flag set false when trigger by adb cmd to avoid system abnormal */
+	if (clkchk_bug_on_flag) {
+		if (trigger_vcp_dump) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+			vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, exception_name);
+#endif
+			mdelay(10);
+		}
+
+		if (trigger_bugon)
+			BUG_ON(1);
+	}
+}
+EXPORT_SYMBOL_GPL(clkchk_debug_dump_mt6991);
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static enum chk_sys_id devapc_dump_id[] = {
 	spm,
@@ -3482,27 +3519,7 @@ static enum chk_sys_id devapc_dump_id[] = {
 
 static void devapc_dump(void)
 {
-	const struct fmeter_clk *fclks;
-
-	fclks = mt_get_fmeter_clks();
-	set_subsys_reg_dump_mt6991(devapc_dump_id);
-	get_subsys_reg_dump_mt6991();
-
-	chk_pm_state();
-
-	dump_clk_event();
-	pdchk_dump_trace_evt();
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	/* kick vcp wdt */
-	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_devapc");
-#endif
-
-	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != SUBSYS)
-			pr_notice("[%s] %d khz\n", fclks->name,
-				mt_get_fmeter_freq(fclks->id, fclks->type));
-	}
+	clkchk_debug_dump_mt6991(devapc_dump_id, "clk_devapc", true, false);
 }
 
 static struct devapc_vio_callbacks devapc_vio_handle = {
@@ -3514,28 +3531,7 @@ static struct devapc_vio_callbacks devapc_vio_handle = {
 #ifdef CONFIG_MTK_SERROR_HOOK
 static void serror_dump(void)
 {
-	const struct fmeter_clk *fclks;
-
-	fclks = mt_get_fmeter_clks();
-
-	set_subsys_reg_dump_mt6991(devapc_dump_id);
-	get_subsys_reg_dump_mt6991();
-
-	chk_pm_state();
-
-	dump_clk_event();
-	pdchk_dump_trace_evt();
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	/* kick vcp wdt */
-	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "clk_serror");
-#endif
-
-	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != SUBSYS)
-			pr_notice("[%s] %d khz\n", fclks->name,
-				mt_get_fmeter_freq(fclks->id, fclks->type));
-	}
+	clkchk_debug_dump_mt6991(devapc_dump_id, "clk_serror", true, false);
 }
 static void clkchk_arm64_serror_panic_hook(void *data,
 		struct pt_regs *regs, unsigned long esr)
@@ -3665,26 +3661,7 @@ static enum chk_sys_id bus_dump_id[] = {
 
 static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 {
-	const struct fmeter_clk *fclks;
-
-	fclks = mt_get_fmeter_clks();
-	set_subsys_reg_dump_mt6991(bus_dump_id);
-	get_subsys_reg_dump_mt6991();
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	chk_pm_state();
-	vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "hwv_cg_timeout");
-#endif
-
-	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != SUBSYS)
-			pr_notice("[%s] %d khz\n", fclks->name,
-				mt_get_fmeter_freq(fclks->id, fclks->type));
-	}
-
-	mdelay(10);
-
-	BUG_ON(1);
+	clkchk_debug_dump_mt6991(bus_dump_id, "hwv_cg_timeout", true, true);
 }
 
 static enum chk_sys_id pll_dump_id[] = {
@@ -3698,15 +3675,7 @@ static enum chk_sys_id pll_dump_id[] = {
 
 static void dump_pll_reg(bool bug_on)
 {
-	set_subsys_reg_dump_mt6991(pll_dump_id);
-	get_subsys_reg_dump_mt6991();
-
-	if (bug_on) {
-		/* sspm need some time to run isr */
-		mdelay(1000);
-
-		BUG_ON(1);
-	}
+	clkchk_debug_dump_mt6991(pll_dump_id, "pll_abnormal", true, bug_on);
 }
 
 static void check_hwv_irq_sta(void)
@@ -3783,10 +3752,10 @@ static enum chk_sys_id extern_dump_id[] = {
 
 static void external_dump(void)
 {
-	set_subsys_reg_dump_mt6991(extern_dump_id);
+	clkchk_debug_dump_mt6991(extern_dump_id, NULL, false, false);
 
-	get_subsys_reg_dump_mt6991();
-
+	/* OPT: due to vcp may not probe yet, use vcp mtcmos pwr ack */
+	/* condition to determine mminfra voter dump or not */
 	if ((get_mt6991_reg_value(spm, 0xE60) & 0xC0000000) == 0xC0000000) {
 		print_subsys_reg_mt6991(mminfra_hwvote);
 		print_subsys_reg_mt6991(irq_step_debug);
@@ -3813,6 +3782,22 @@ static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 	}
 
 	dump_bus_reg(regmap, 0);
+}
+
+static void verify_debug_flow(void)
+{
+	clkchk_bug_on_flag = false;
+	devapc_dump();
+#ifdef CONFIG_MTK_SERROR_HOOK
+	serror_dump();
+#endif
+	dump_hwv_history(mm_hwv_regmap, 0);
+	dump_bus_reg(mm_hwv_regmap, 0);
+	dump_pll_reg(false);
+	check_hwv_irq_sta();
+	check_mm_hwv_irq_sta();
+	external_dump();
+	clkchk_bug_on_flag = true;
 }
 
 /*
@@ -3843,6 +3828,7 @@ static struct clkchk_ops clkchk_mt6991_ops = {
 	.external_dump = external_dump,
 	.cg_timeout_handle = cg_timeout_handle,
 	.chk_pm_state = chk_pm_state,
+	.verify_debug_flow = verify_debug_flow,
 };
 
 static int clk_chk_mt6991_probe(struct platform_device *pdev)
@@ -3854,6 +3840,9 @@ static int clk_chk_mt6991_probe(struct platform_device *pdev)
 	suspend_cnt = 0;
 
 	init_regbase();
+
+	hwv_regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, "hwv-regmap");
+	mm_hwv_regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, "mm-hwv-regmap");
 
 	set_clkchk_notify();
 

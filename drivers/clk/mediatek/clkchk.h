@@ -104,6 +104,7 @@ struct clkchk_ops {
 	void (*external_dump)(void);
 	void (*cg_timeout_handle)(struct regmap *regmap, u32 id, u32 shift);
 	int (*chk_pm_state)(void);
+	void (*verify_debug_flow)(void);
 };
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);

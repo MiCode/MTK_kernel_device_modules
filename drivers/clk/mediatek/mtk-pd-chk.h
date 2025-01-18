@@ -7,6 +7,8 @@
 
 #include <linux/pm_domain.h>
 #include "clkchk.h"
+#include "clk-mtk.h"
+
 #define PD_PWR_ON	1
 #define PD_PWR_OFF	0
 #define SWCG(_name) {						\
@@ -49,10 +51,12 @@ struct pdchk_ops {
 	bool (*is_suspend_retry_stop)(bool reset_cnt);
 	const char *(*get_pd_name)(int idx);
 	bool (*get_mtcmos_sw_state)(struct generic_pm_domain *pd);
+	void (*verify_debug_flow)(struct clk_event_data *clkd);
 };
 
 void pdchk_common_init(const struct pdchk_ops *ops);
 void pdchk_hwv_irq_init(struct platform_device *pdev);
+int set_pdchk_notify(void);
 
 extern const struct dev_pm_ops pdchk_dev_pm_ops;
 extern struct clk *clk_chk_lookup(const char *name);

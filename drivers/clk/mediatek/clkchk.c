@@ -738,6 +738,14 @@ int clkchk_chk_pm_state(void)
 }
 EXPORT_SYMBOL_GPL(clkchk_chk_pm_state);
 
+static void clkchk_verify_debug_flow(void)
+{
+	if (clkchk_ops == NULL || clkchk_ops->verify_debug_flow == NULL)
+		return;
+
+	return clkchk_ops->verify_debug_flow();
+}
+
 static int clkchk_evt_handling(struct notifier_block *nb,
 			unsigned long flags, void *data)
 {
@@ -781,6 +789,9 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 		break;
 	case CLK_EVT_CHECK_APMIXED_STAT:
 		clkchk_check_apmixed_sta(clkd->shift);
+		break;
+	case CLK_EVT_DEBUG_FLOW_VERIFY:
+		clkchk_verify_debug_flow();
 		break;
 	default:
 		pr_notice("cannot get flags identify\n");
