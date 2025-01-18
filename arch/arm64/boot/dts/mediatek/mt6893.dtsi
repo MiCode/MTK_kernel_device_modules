@@ -2923,7 +2923,7 @@ cpus {
 			};
 		};
 
-		regulator_vibrator {
+		regulator-vibrator {
 			compatible = "regulator-vibrator";
 			label = "vibrator";
 			min-volt = <2300000>;
