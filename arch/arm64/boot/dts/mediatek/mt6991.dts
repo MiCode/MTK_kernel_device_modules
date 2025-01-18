@@ -3653,8 +3653,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 				tsrec-no-max = <12>;
 
-				s-dev-irq-sel-in-krn = <1>;
-
 				tsrec-top@3a310000 {
 					compatible = "mediatek,seninf-tsrec-top";
 					reg = <0 0x3a310000 0 0x1000>;
@@ -3868,6 +3866,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 					connected-cam-type = "uisp";
 				};
+			};
+
+			seninf-rproc {
+				compatible = "mediatek,seninf-rproc";
+				mediatek,ccu-rproc = <&ccu_rproc>;
 			};
 		};
 
