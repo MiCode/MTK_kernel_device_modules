@@ -821,8 +821,8 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE
-			| MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_EOT_PACKET
-			 | MIPI_DSI_CLOCK_NON_CONTINUOUS;
+			| MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET
+			| MIPI_DSI_CLOCK_NON_CONTINUOUS;
 
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0)
@@ -896,7 +896,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 }
 
 
-static int lcm_remove(struct mipi_dsi_device *dsi)
+static void lcm_remove(struct mipi_dsi_device *dsi)
 {
 	struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
 #if defined(CONFIG_MTK_PANEL_EXT)
@@ -910,8 +910,6 @@ static int lcm_remove(struct mipi_dsi_device *dsi)
 	mtk_panel_detach(ext_ctx);
 	mtk_panel_remove(ext_ctx);
 #endif
-
-	return 0;
 }
 
 static const struct of_device_id lcm_of_match[] = {
