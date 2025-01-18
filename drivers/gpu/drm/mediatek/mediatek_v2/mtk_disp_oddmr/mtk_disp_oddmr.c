@@ -2033,6 +2033,8 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 				MT6991_DISP_ODDMR_DMR_SHADOW_CTRL, handle);
 			mtk_oddmr_write(comp, 1,
 				MT6991_DISP_ODDMR_MURA_SHADOW_CTRL, handle);
+			mtk_oddmr_write(comp, 3,
+				MT6991_DISP_ODDMR_SPR_SHADOW_CTRL, NULL);
 		} else {
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_BYPASS_SHADOW);
 			mtk_oddmr_write(comp, 0,
@@ -2041,6 +2043,8 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 				MT6991_DISP_ODDMR_DMR_SHADOW_CTRL, handle);
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_MURA_SHADOW_CTRL, handle);
+			mtk_oddmr_write(comp, 0,
+				MT6991_DISP_ODDMR_SPR_SHADOW_CTRL, NULL);
 		}
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_BYPASS);
 		mtk_oddmr_write_mask(comp, value,
@@ -2149,11 +2153,6 @@ static void mtk_oddmr_prepare(struct mtk_ddp_comp *comp)
 	if (is_oddmr_od_support)
 		mtk_oddmr_od_prepare(comp, NULL);
 
-	if ((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
-			(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) &&
-			(is_oddmr_dbi_support ||
-				is_oddmr_od_support || is_oddmr_dmr_support || postalign_en == 0))
-		mtk_oddmr_spr2rgb_prepare(comp);
 	atomic_set(&oddmr_priv->oddmr_clock_ref, 1);
 }
 
@@ -5351,21 +5350,18 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 
 	if(is_oddmr_dbi_support) {
 		if (oddmr_priv->data->dbi_version == MTK_DBI_V2) {
-			//mtk_oddmr_top_prepare(comp, handle);
-			reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_EN);
-			mtk_oddmr_write(comp, (reg_val | (enable << 2) | (enable << 1)),
-				MT6991_DISP_ODDMR_REG_DMR_EN, handle);
-			reg_val = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_REG_DMR_UDMA_EN);
-			mtk_oddmr_write(comp, (reg_val | (enable << 4)),
-				MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, handle);
 			if (enable) {
-				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_EN);
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_OUT_CUP_EN);
 				mtk_oddmr_write_mask(comp, value,
-					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+					MT6991_DISP_ODDMR_REG_DMR_EN, mask, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_UDMA_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, mask, handle);
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
-				mtk_oddmr_write(comp, 1,
-					MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
 
@@ -5380,8 +5376,21 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				mtk_oddmr_write(comp, reg_val,
 					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 			} else {
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_EN);
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_OUT_CUP_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_REG_DMR_EN, mask, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_UDMA_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, mask, handle);
+				mtk_oddmr_write(comp, 1,
+					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 9,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 			}
 			return;
 		}
