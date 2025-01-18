@@ -613,7 +613,7 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 	if(!thr)
 		return;
-	thr->scroll_status = 0;
+
 
 	cur = rb_first(&(thr->ux_frame_info_tree));
 
@@ -669,23 +669,21 @@ void fpsgo_set_ux_general_policy(int scrolling)
 	int pid;
 
 	if (scrolling) {
-		//enable sched run-time power table
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		set_wl_manual(0);
-		// set_wl_type_manual(0);
 #endif
 		if (change_dpt_support_driver_hook)
 			change_dpt_support_driver_hook(1);
-
-
+		fpsgo_main_trace("begin runtime power talbe");
 	} else {
 		//disable sched run-time power table
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+		fpsgo_main_trace("set_wl_manual: -1");
 		set_wl_manual(-1);
-		// set_wl_type_manual(-1);
 #endif
 		if (change_dpt_support_driver_hook)
 			change_dpt_support_driver_hook(0);
+		fpsgo_main_trace("end runtime power talbe");
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
@@ -700,6 +698,7 @@ void fpsgo_set_ux_general_policy(int scrolling)
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	set_ignore_idle_ctrl(scrolling);
 	fpsgo_set_group_dvfs(scrolling);
+	fpsgo_main_trace("set group aware: %d", scrolling);
 #endif
 }
 
@@ -1376,11 +1375,6 @@ void fbt_init_ux(struct render_info *info)
 
 void fbt_del_ux(struct render_info *info)
 {
-	if (ux_general_policy) {
-		info->scroll_status = 0;
-		fpsgo_reset_deplist_task_priority(info);
-	}
-
 	if (sbe_dy_rescue_enable) {
 		clear_ux_info(info);
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {

@@ -117,7 +117,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 int fpsgo_ctrl2ux_get_perf(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
 
-
+extern int get_dpt_default_status(void);
 extern void set_ignore_idle_ctrl(bool val);
 extern void set_grp_dvfs_ctrl(int set);
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
