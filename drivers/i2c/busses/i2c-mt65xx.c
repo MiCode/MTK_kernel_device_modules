@@ -2180,16 +2180,15 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 	u8 *dma_multi_wr_buf;
 	struct i2c_msg multi_msg[1];
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
-	bool need_release = false;
 
-	if ((i2c->wake_scp_check_en) && (scp_wake.count == 0)) {
-		dev_dbg(i2c->dev, "[Error]:user no wake before use\n");
+	if (i2c->wake_scp_check_en) {
+		if (scp_wake.count == 0)
+			dev_dbg(i2c->dev, "[Error]:user no wake before use\n");
 		ret = scp_wake_request(adap);
 		if (ret) {
 			dev_info(i2c->dev, "%s: scp_wake_request error\n", __func__);
 			return ret;
 		}
-		need_release = true;
 	}
 
 	ret = mtk_i2c_clock_enable(i2c);
@@ -2301,7 +2300,7 @@ err_exit:
 	mtk_i2c_clock_disable(i2c);
 
 err_clk:
-	if (i2c->wake_scp_check_en && need_release) {
+	if (i2c->wake_scp_check_en) {
 		result = scp_wake_release(adap);
 		if (result)
 			dev_info(i2c->dev, "%s: scp_wake_release error\n", __func__);
