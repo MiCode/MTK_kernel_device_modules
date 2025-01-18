@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
-#include <linux/bitfield.h>
 #include <linux/delay.h>
 #include <linux/list.h>
 #include <linux/list_sort.h>
 #include <linux/interrupt.h>
-#include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6377/registers.h>
 #include <linux/mfd/mt6397/core.h>
@@ -82,8 +80,6 @@ struct lbat_regs_t {
 	struct reg_t en;
 	struct reg_t debt_max;
 	struct reg_t debt_min;
-	struct reg_t det_prd_h;
-	struct reg_t det_prd_l;
 	struct reg_t det_prd;
 	struct reg_t max_en;
 	struct reg_t volt_max;
@@ -91,97 +87,6 @@ struct lbat_regs_t {
 	struct reg_t volt_min;
 	struct reg_t adc_out;
 	int volt_full;
-};
-struct lbat_regs_t mt6358_lbat_regs = {
-	.regmap_source = "parent_drvdata",
-	.en = {0},
-	.debt_max = {MT6358_AUXADC_LBAT0, 0xFF, 1},
-	.debt_min = {MT6358_AUXADC_LBAT0, 0xFF00, 1},
-	.det_prd_l = {MT6358_AUXADC_LBAT1, 0xFFFF, 1},
-	.det_prd_h = {MT6358_AUXADC_LBAT2, 0xF, 1},
-	.max_en = {MT6358_AUXADC_LBAT3, 0x3000, 1},
-	.volt_max = {MT6358_AUXADC_LBAT3, 0xFFF, 1},
-	.min_en = {MT6358_AUXADC_LBAT4, 0x3000, 1},
-	.volt_min = {MT6358_AUXADC_LBAT4, 0xFFF, 1},
-	.adc_out = {MT6358_AUXADC_ADC13, 0xFFF, 1},
-	.volt_full = 1800,
-};
-
-struct lbat_regs_t mt6359p_lbat_regs = {
-	.regmap_source = "parent_drvdata",
-	.en = {MT6359P_AUXADC_LBAT0, 0x1, 1},
-	.debt_max = {MT6359P_AUXADC_LBAT1, 0xC, 1},
-	.debt_min = {MT6359P_AUXADC_LBAT1, 0x30, 1},
-	.det_prd = {MT6359P_AUXADC_LBAT1, 0x3, 1},
-	.max_en = {MT6359P_AUXADC_LBAT2, 0x3000, 1},
-	.volt_max = {MT6359P_AUXADC_LBAT2, 0xFFF, 1},
-	.min_en = {MT6359P_AUXADC_LBAT3, 0x3000, 1},
-	.volt_min = {MT6359P_AUXADC_LBAT3, 0xFFF, 1},
-	.adc_out = {MT6359P_AUXADC_LBAT7, 0xFFF, 1},
-	.volt_full = 1800,
-};
-
-#define MT6375_AUXADC_LBAT0		0x4AD
-#define MT6375_AUXADC_LBAT1		0x4AE
-#define MT6375_AUXADC_LBAT2		0x4AF
-#define MT6375_AUXADC_LBAT3		0x4B0
-#define MT6375_AUXADC_LBAT5		0x4B2
-#define MT6375_AUXADC_LBAT6		0x4B3
-#define MT6375_AUXADC_ADC_OUT_LBAT	0x41E
-
-static struct lbat_regs_t mt6375_lbat_regs = {
-	.regmap_source = "dev_get_regmap",
-	.en = { MT6375_AUXADC_LBAT0, BIT(0), 1 },
-	.debt_max = { MT6375_AUXADC_LBAT1, GENMASK(3, 2), 1 },
-	.debt_min = { MT6375_AUXADC_LBAT1, GENMASK(5, 4), 1 },
-	.det_prd = { MT6375_AUXADC_LBAT1, GENMASK(1, 0), 1 },
-	.max_en = { MT6375_AUXADC_LBAT2, GENMASK(1, 0), 1 },
-	.volt_max = { MT6375_AUXADC_LBAT3, GENMASK(11, 0), 2 },
-	.min_en = { MT6375_AUXADC_LBAT5, GENMASK(1, 0), 1 },
-	.volt_min = { MT6375_AUXADC_LBAT6, GENMASK(11, 0), 2 },
-	.adc_out = { MT6375_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
-	.r_ratio_node_name = "lbat-service",
-	.legacy_r_ratio_node_name = "lbat_service",
-	.volt_full = 1840,
-};
-
-struct lbat_regs_t mt6377_lbat_regs = {
-	.regmap_source = "dev_get_regmap",
-	.en = {MT6377_AUXADC_LBAT0, 0x1, 1},
-	.debt_max = {MT6377_AUXADC_LBAT1, 0xC, 1},
-	.debt_min = {MT6377_AUXADC_LBAT1, 0x30, 1},
-	.det_prd = {MT6377_AUXADC_LBAT1, 0x3, 1},
-	.max_en = {MT6377_AUXADC_LBAT2, 0x3, 1},
-	.volt_max = {MT6377_AUXADC_LBAT3, 0xFFF, 2},
-	.min_en = {MT6377_AUXADC_LBAT5, 0x3, 1},
-	.volt_min = {MT6377_AUXADC_LBAT6, 0xFFF, 2},
-	.adc_out = {MT6377_AUXADC_ADC_AUTO3_L, 0xFFF, 2},
-	.volt_full = 1840,
-};
-
-#define MT6379_RG_CORE_CTRL0		0x001
-#define MT6379_MASK_CELL_COUNT		BIT(7)
-#define MT6379_BAT1_AUXADC_LBAT0	0x9AD
-#define MT6379_BAT1_AUXADC_LBAT1	0x9AE
-#define MT6379_BAT1_AUXADC_LBAT2	0x9AF
-#define MT6379_BAT1_AUXADC_LBAT3	0x9B0
-#define MT6379_BAT1_AUXADC_LBAT5	0x9B2
-#define MT6379_BAT1_AUXADC_LBAT6	0x9B3
-#define MT6379_BAT1_AUXADC_ADC_OUT_LBAT	0x91E
-
-static struct lbat_regs_t mt6379_lbat1_regs = {
-	.regmap_source = "dev_get_regmap",
-	.en = { MT6379_BAT1_AUXADC_LBAT0, BIT(0), 1 },
-	.debt_max = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(3, 2), 1 },
-	.debt_min = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(5, 4), 1 },
-	.det_prd = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(1, 0), 1 },
-	.max_en = { MT6379_BAT1_AUXADC_LBAT2, GENMASK(1, 0), 1 },
-	.volt_max = { MT6379_BAT1_AUXADC_LBAT3, GENMASK(11, 0), 2 },
-	.min_en = { MT6379_BAT1_AUXADC_LBAT5, GENMASK(1, 0), 1 },
-	.volt_min = { MT6379_BAT1_AUXADC_LBAT6, GENMASK(11, 0), 2 },
-	.adc_out = { MT6379_BAT1_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
-	.r_ratio_node_name = "lbat-service-1",
-	.volt_full = 1840,
 };
 
 #define MT6379_BAT2_AUXADC_LBAT0	0xCAD
@@ -356,9 +261,9 @@ static void dump_lbat_user_thd(void)
 
 #if LBAT_SERVICE_SYSFS
 /* Create sysfs entry for lbat throttling ext */
-static ssize_t lbat_user_modify_thd_ext_show(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
+static ssize_t dual_lbat_user_modify_thd_ext_show(struct device *dev,
+						  struct device_attribute *attr,
+						  char *buf)
 {
 	int i, j;
 	char *p = buf;
@@ -397,9 +302,9 @@ static ssize_t lbat_user_modify_thd_ext_show(struct device *dev,
 }
 
 /* Digits in user_name are not allowed */
-static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t size)
+static ssize_t dual_lbat_user_modify_thd_ext_store(struct device *dev,
+						   struct device_attribute *attr,
+						   const char *buf, size_t size)
 {
 	char *sepstr, *substr;
 	unsigned int thd_volt[20] = {0};
@@ -439,7 +344,7 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 
 	return size;
 }
-static DEVICE_ATTR_RW(lbat_user_modify_thd_ext);
+static DEVICE_ATTR_RW(dual_lbat_user_modify_thd_ext);
 #endif
 
 /*
@@ -638,9 +543,9 @@ static struct lbat_thd_t *lbat_thd_init(unsigned int thd_volt,
 	return thd;
 }
 
-struct lbat_user *lbat_user_register_ext(const char *name, unsigned int *thd_volt_arr,
-					 unsigned int thd_volt_size,
-					 void (*callback)(unsigned int thd_volt))
+struct lbat_user *dual_lbat_user_register_ext(const char *name, unsigned int *thd_volt_arr,
+					      unsigned int thd_volt_size,
+					      void (*callback)(unsigned int thd_volt))
 {
 	int i, ret;
 	struct lbat_user *user;
@@ -688,10 +593,10 @@ out:
 	}
 	return user;
 }
-EXPORT_SYMBOL(lbat_user_register_ext);
+EXPORT_SYMBOL(dual_lbat_user_register_ext);
 
-int lbat_user_modify_thd_ext(struct lbat_user *user, unsigned int *thd_volt_arr,
-			     unsigned int thd_volt_size)
+int dual_lbat_user_modify_thd_ext(struct lbat_user *user, unsigned int *thd_volt_arr,
+				  unsigned int thd_volt_size)
 {
 	int i, thd_list_size = 0, ret = 0;
 	int hv_thd_cnt = 0, lv_thd_cnt = 0;
@@ -791,24 +696,24 @@ out:
 	lbat_irq_enable();
 	return ret;
 }
-EXPORT_SYMBOL(lbat_user_modify_thd_ext);
+EXPORT_SYMBOL(dual_lbat_user_modify_thd_ext);
 
-int lbat_user_modify_thd_ext_locked(struct lbat_user *user, unsigned int *thd_volt_arr,
-				    unsigned int thd_volt_size)
+int dual_lbat_user_modify_thd_ext_locked(struct lbat_user *user, unsigned int *thd_volt_arr,
+					 unsigned int thd_volt_size)
 {
 	int ret;
 
 	mutex_lock(&lbat_mutex);
-	ret = lbat_user_modify_thd_ext(user, thd_volt_arr, thd_volt_size);
+	ret = dual_lbat_user_modify_thd_ext(user, thd_volt_arr, thd_volt_size);
 	mutex_unlock(&lbat_mutex);
 	return ret;
 }
-EXPORT_SYMBOL(lbat_user_modify_thd_ext_locked);
+EXPORT_SYMBOL(dual_lbat_user_modify_thd_ext_locked);
 
-struct lbat_user *lbat_user_register(const char *name, unsigned int hv_thd_volt,
-				     unsigned int lv1_thd_volt,
-				     unsigned int lv2_thd_volt,
-				     void (*callback)(unsigned int thd_volt))
+struct lbat_user *dual_lbat_user_register(const char *name, unsigned int hv_thd_volt,
+					  unsigned int lv1_thd_volt,
+					  unsigned int lv2_thd_volt,
+					  void (*callback)(unsigned int thd_volt))
 {
 	int ret = 0;
 	struct lbat_user *user;
@@ -856,10 +761,10 @@ out:
 	}
 	return user;
 }
-EXPORT_SYMBOL(lbat_user_register);
+EXPORT_SYMBOL(dual_lbat_user_register);
 
-int lbat_user_modify_thd(struct lbat_user *user, unsigned int hv_thd_volt,
-			 unsigned int lv1_thd_volt, unsigned int lv2_thd_volt)
+int dual_lbat_user_modify_thd(struct lbat_user *user, unsigned int hv_thd_volt,
+			      unsigned int lv1_thd_volt, unsigned int lv2_thd_volt)
 {
 	int i, ret = 0;
 
@@ -908,23 +813,23 @@ out:
 	lbat_irq_enable();
 	return ret;
 }
-EXPORT_SYMBOL(lbat_user_modify_thd);
+EXPORT_SYMBOL(dual_lbat_user_modify_thd);
 
-int lbat_user_modify_thd_locked(struct lbat_user *user, unsigned int hv_thd_volt,
-				unsigned int lv1_thd_volt, unsigned int lv2_thd_volt)
+int dual_lbat_user_modify_thd_locked(struct lbat_user *user, unsigned int hv_thd_volt,
+				     unsigned int lv1_thd_volt, unsigned int lv2_thd_volt)
 {
 	int ret;
 
 	mutex_lock(&lbat_mutex);
-	ret = lbat_user_modify_thd(user, hv_thd_volt, lv1_thd_volt, lv2_thd_volt);
+	ret = dual_lbat_user_modify_thd(user, hv_thd_volt, lv1_thd_volt, lv2_thd_volt);
 	mutex_unlock(&lbat_mutex);
 	return ret;
 }
-EXPORT_SYMBOL(lbat_user_modify_thd_locked);
+EXPORT_SYMBOL(dual_lbat_user_modify_thd_locked);
 
-int lbat_user_set_debounce(struct lbat_user *user,
-			   unsigned int hv_deb_prd, unsigned int hv_deb_times,
-			   unsigned int lv_deb_prd, unsigned int lv_deb_times)
+int dual_lbat_user_set_debounce(struct lbat_user *user,
+				unsigned int hv_deb_prd, unsigned int hv_deb_times,
+				unsigned int lv_deb_prd, unsigned int lv_deb_times)
 {
 	if (IS_ERR(user))
 		return PTR_ERR(user);
@@ -934,9 +839,9 @@ int lbat_user_set_debounce(struct lbat_user *user,
 	user->lv_deb_times = lv_deb_times;
 	return 0;
 }
-EXPORT_SYMBOL(lbat_user_set_debounce);
+EXPORT_SYMBOL(dual_lbat_user_set_debounce);
 
-unsigned int lbat_read_raw(void)
+unsigned int dual_lbat_read_raw(void)
 {
 	unsigned int adc_out = 0;
 
@@ -946,17 +851,17 @@ unsigned int lbat_read_raw(void)
 	adc_out &= lbat_regs->adc_out.mask;
 	return adc_out;
 }
-EXPORT_SYMBOL(lbat_read_raw);
+EXPORT_SYMBOL(dual_lbat_read_raw);
 
-unsigned int lbat_read_volt(void)
+unsigned int dual_lbat_read_volt(void)
 {
-	unsigned int raw_data = lbat_read_raw();
+	unsigned int raw_data = dual_lbat_read_raw();
 
 	if (!raw_data)
 		return 0;
 	return (raw_data * lbat_regs->volt_full * r_ratio[0] / r_ratio[1]) >> LBAT_RES;
 }
-EXPORT_SYMBOL(lbat_read_volt);
+EXPORT_SYMBOL(dual_lbat_read_volt);
 
 static irqreturn_t bat_h_int_handler(int irq, void *data)
 {
@@ -1046,58 +951,6 @@ out:
 	return IRQ_HANDLED;
 }
 
-/* LBAT H/L debounce: H: 150 ms, L: no-debounce */
-/* LBAT detion period (ms) */
-#define DEF_H_DEB		150
-#define DEF_L_DEB		0
-#define	DEF_DET_PRD		15
-
-static void mt6357_lbat_init_setting(void)
-{
-	/* Selects debounce as 10 */
-	__regmap_update_bits(regmap, &lbat_regs->debt_max, DEF_H_DEB / DEF_DET_PRD);
-	/* Selects debounce as 0 */
-	__regmap_update_bits(regmap, &lbat_regs->debt_min, DEF_L_DEB / DEF_DET_PRD);
-	/* Set LBAT_PRD as 15ms */
-	__regmap_update_bits(regmap, &lbat_regs->det_prd_l, DEF_DET_PRD);
-	__regmap_update_bits(regmap, &lbat_regs->det_prd_h, (DEF_DET_PRD & 0xF0000) >> 16);
-}
-
-static void mt6359p_lbat_init_setting(void)
-{
-	unsigned int val;
-
-	/* Selects debounce as 8 */
-	val = DEF_DEBT_MAX_SEL << (ffs(lbat_regs->debt_max.mask) - 1);
-	__regmap_update_bits(regmap, &lbat_regs->debt_max, val);
-	/* Selects debounce as 1 */
-	val = DEF_DEBT_MIN_SEL << (ffs(lbat_regs->debt_min.mask) - 1);
-	__regmap_update_bits(regmap, &lbat_regs->debt_min, val);
-	/* Set LBAT_PRD as 15ms */
-	val = DEF_DET_PRD_SEL << (ffs(lbat_regs->det_prd.mask) - 1);
-	__regmap_update_bits(regmap, &lbat_regs->det_prd, val);
-}
-
-static int mt6379_check_bat_cell_count(struct device *dev)
-{
-	unsigned int val, cell_count;
-	int ret;
-
-	if (!strstr(dev_name(dev), "mt6379") || !strstr(dev_name(dev), "lbat-service-2"))
-		return 0;
-
-	ret = regmap_read(regmap, MT6379_RG_CORE_CTRL0, &val);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to read CORE_CTRL0\n");
-
-	cell_count = FIELD_GET(MT6379_MASK_CELL_COUNT, val);
-	if (cell_count != 1)
-		return dev_err_probe(dev, -ENODEV, "%s, HW not support! (cell_cound:%d)\n",
-				     __func__, cell_count);
-
-	return 0;
-}
-
 static int pmic_lbat_service_probe(struct platform_device *pdev)
 {
 	struct device_node *np;
@@ -1110,24 +963,8 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 	if (!strcmp(lbat_regs->regmap_source, "parent_drvdata")) {
 		chip = dev_get_drvdata(pdev->dev.parent);
 		regmap = chip->regmap;
-
-		switch (chip->chip_id) {
-			case MT6358_CHIP_ID:
-				mt6357_lbat_init_setting();
-				break;
-			default:
-				mt6359p_lbat_init_setting();
-				break;
-			}
-	} else {
+	} else
 		regmap = dev_get_regmap(pdev->dev.parent, NULL);
-		mt6359p_lbat_init_setting();
-	}
-
-	ret = mt6379_check_bat_cell_count(&pdev->dev);
-	if (ret)
-		return ret;
-
 	/* Selects debounce as 8 */
 	val = DEF_DEBT_MAX_SEL << (ffs(lbat_regs->debt_max.mask) - 1);
 	__regmap_update_bits(regmap, &lbat_regs->debt_max, val);
@@ -1185,7 +1022,7 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 
 #if LBAT_SERVICE_SYSFS
 	/* Create sysfs entry */
-	ret = device_create_file(&(pdev->dev), &dev_attr_lbat_user_modify_thd_ext);
+	ret = device_create_file(&(pdev->dev), &dev_attr_dual_lbat_user_modify_thd_ext);
 	if (ret < 0)
 		dev_notice(&pdev->dev, "failed to create lbat sysfs file\n");
 #endif
@@ -1209,22 +1046,7 @@ static SIMPLE_DEV_PM_OPS(lbat_service_pm_ops, lbat_service_suspend,
 
 static const struct of_device_id lbat_service_of_match[] = {
 	{
-		.compatible = "mediatek,mt6358-lbat_service",
-		.data = &mt6358_lbat_regs,
-	}, {
-		.compatible = "mediatek,mt6359p-lbat_service",
-		.data = &mt6359p_lbat_regs,
-	}, {
-		.compatible = "mediatek,mt6375-lbat-service",
-		.data = &mt6375_lbat_regs,
-	}, {
-		.compatible = "mediatek,mt6377-lbat-service",
-		.data = &mt6377_lbat_regs,
-	}, {
-		.compatible = "mediatek,mt6379-lbat-service-1",
-		.data = &mt6379_lbat1_regs,
-	}, {
-		.compatible = "mediatek,mt6379-lbat-service-2",
+		.compatible = "mediatek,mt6379-dual-lbat-service",
 		.data = &mt6379_lbat2_regs,
 	}, {
 		/* sentinel */
@@ -1234,7 +1056,7 @@ MODULE_DEVICE_TABLE(of, lbat_service_of_match);
 
 static struct platform_driver pmic_lbat_service_driver = {
 	.driver = {
-		.name = "pmic_lbat_service",
+		.name = "pmic_dual_lbat_service",
 		.of_match_table = lbat_service_of_match,
 		.pm = &lbat_service_pm_ops,
 	},
@@ -1242,6 +1064,5 @@ static struct platform_driver pmic_lbat_service_driver = {
 };
 module_platform_driver(pmic_lbat_service_driver);
 
-MODULE_AUTHOR("Jeter Chen <Jeter.Chen@mediatek.com>");
 MODULE_DESCRIPTION("MTK lbat driver");
 MODULE_LICENSE("GPL");

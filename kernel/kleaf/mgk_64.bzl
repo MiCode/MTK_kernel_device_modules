@@ -422,6 +422,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     "drivers/misc/mediatek/power_throttling/pmic_lbat_service.ko",
     "drivers/misc/mediatek/power_throttling/pmic_lvsys_notify.ko",
+    "drivers/misc/mediatek/power_throttling/pmic_dual_lbat_service.ko",
     "drivers/misc/mediatek/pwm/mtk-pwm.ko",
     "drivers/misc/mediatek/qos/mtk_qos.ko",
     "drivers/misc/mediatek/rps/rps_perf.ko",
