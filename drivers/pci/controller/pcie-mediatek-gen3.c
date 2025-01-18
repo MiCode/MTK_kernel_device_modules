@@ -672,6 +672,17 @@ static void mtk_pcie_clkbuf_force_26m(struct mtk_pcie_port *port, bool enable)
 
 	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
 
+	/* only port0 use BBCK2 in 6991 */
+	if (!port->port_num) {
+		/* keep BBCK2 request to 1 when swicth PMRC7 mode */
+		val |= PCIE_26M_REQ_FORCE_ON;
+		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+		mtk_pcie_clkbuf_force_bbck2(port, enable);
+		val &= ~PCIE_26M_REQ_FORCE_ON;
+		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+		return;
+	}
+
 	if (enable)
 		val |= PCIE_26M_REQ_FORCE_ON;
 	else
