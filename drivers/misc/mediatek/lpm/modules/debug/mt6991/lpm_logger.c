@@ -575,9 +575,10 @@ static int lpm_get_common_status(void)
 		return -EINVAL;
 
 	/* FIXME: common debug reg (SPMFW) */
-	// help->wakesrc->debug_flag2 = plat_mmio_read(SPM_SW_RSV_2);
-	// help->wakesrc->common_cnt0 = plat_mmio_read(SPM_SW_RSV_0);
-	// help->wakesrc->common_cnt1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_9);
+	help->wakesrc->debug_flag2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_2); // debug_flag2
+	help->wakesrc->common_cnt0 = plat_mmio_read(PCM_WDT_LATCH_SPARE_6); // apsrc cnt
+	help->wakesrc->common_cnt1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_7); //infra cnt
+	help->wakesrc->common_cnt2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_8); //vcore cnt
 
 	return 0;
 }
@@ -592,8 +593,9 @@ static int lpm_log_common_info(void)
 	lpm_get_common_status();
 	log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size,
-			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x\n",
-			wakesrc->debug_flag2, wakesrc->common_cnt0, wakesrc->common_cnt1);
+			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x 0x%x\n",
+			wakesrc->debug_flag2, wakesrc->common_cnt0,
+			wakesrc->common_cnt1, wakesrc-> common_cnt2);
 
 	pr_info("[name:spm&][SPM] %s", log_buf);
 
