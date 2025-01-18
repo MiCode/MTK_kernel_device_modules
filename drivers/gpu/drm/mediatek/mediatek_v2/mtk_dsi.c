@@ -1671,7 +1671,6 @@ static bool mtk_dsi_is_LTPO_VM_Enable(struct mtk_dsi *dsi)
 		dsi->ddp_comp.mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
 
-	DDPMSG("%s+\n", __func__);
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
 	if (!(priv && mtk_drm_helper_get_opt(priv->helper_opt,
@@ -1684,7 +1683,6 @@ static bool mtk_dsi_is_LTPO_VM_Enable(struct mtk_dsi *dsi)
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		return false;
 
-	DDPMSG("%s-\n", __func__);
 	return true;
 }
 static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
@@ -1703,7 +1701,7 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc;
 	unsigned int refresh_rate;
 
-	DDPMSG("%s+\n", __func__);
+	DDPMSG("%s+, en=%d\n", __func__, en);
 
 	if (dsi->is_slave) {
 		dev_info(dsi->dev, "is slave\n");
@@ -1729,6 +1727,8 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		dsi->ext->params->ltpo_vm_minimum_fps != 0) {
 		ltpo_vm_max_skip_num =
 			(refresh_rate / dsi->ext->params->ltpo_vm_minimum_fps) - 1;
+		DDPMSG("%s+, ltpo_vm_max_skip_num=%d, refresh_rate =%d\n", __func__,
+			ltpo_vm_max_skip_num, refresh_rate);
 	}
 
 
@@ -1747,7 +1747,6 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, val_ltpo_vm_en, LTPO_VDO_CON_FLD_REG_LTPO_VM_EN);
 	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, 1, LTPO_VDO_CON_FLD_REG_LTPO_TE_EN);
 	SET_VAL_MASK(ltpo_vdo_val, ltpo_vdo_mask, 1, LTPO_VDO_CON_FLD_REG_LTPO_VSYNC_EN);
-
 
 	if (handle == NULL) {
 		mtk_dsi_mask(dsi, DSI_LFR_CON(dsi->driver_data), lfr_mask, lfr_val);
@@ -1790,7 +1789,7 @@ static int mtk_dsi_LTPO_VM_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp
 {
 	u32 val = 0, mask = 0;
 
-	DDPMSG("%s+\n", __func__);
+	DDPDBG("%s+\n", __func__);
 
 	if (!mtk_dsi_is_LTPO_VM_Enable(dsi))
 		return -1;
@@ -1821,7 +1820,7 @@ static int mtk_dsi_LTPO_VM_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_LTPO_VDO_CON(dsi->driver_data),
 			val, mask);
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return 0;
 
 }
@@ -3387,6 +3386,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
+	unsigned int irq_mask = 0;
 
 	if (IS_ERR_OR_NULL(dsi))
 		return IRQ_NONE;
@@ -3442,7 +3442,18 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	 * Read LCM will clear the bit.
 	 */
 	/* do not clear vm command done */
-	status &= 0x4ffde;
+	irq_mask = 0x4ffde;
+
+	/* Add Special IRQ for APR:
+	 * INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG |DSI_DONE_INT_FLAG
+	 * status &= 0x1dffde
+	 */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_LTPO_VM)) {
+		irq_mask |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
+		irq_mask |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
+	}
+
+	status &= irq_mask;
 	if (status) {
 		writel(~status, dsi->regs + DSI_INTSTA);
 		if ((status & BUFFER_UNDERRUN_INT_FLAG)
@@ -3546,6 +3557,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				crtc = dsi->encoder.crtc;
 				mtk_drm_idlemgr_async_put(crtc, comp->id);
 			}
+			DDPIRQ("Sleep in done irq!, %d\n", __LINE__);
 		}
 
 		if ((status & TE_RDY_INT_FLAG) &&
@@ -3641,6 +3653,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					dsi->mode_switch_delay = 0;
 
 			}
+
+			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
+				DDPIRQ("ARP_TE irq!\n");
+				drm_trace_tag_mark("ARP_TE_RDY");
+				CRTC_MMP_MARK(index, arp_te, dsi->ddp_comp.id, 0xffff0001);
+			}
 		}
 
 		if (status & TARGET_LINE_INT_FLAG) {
@@ -3670,12 +3688,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 
 			drm_trace_tag_mark("dsi_frame_done");
-			/*for vdo LTPO debug*/
-			DDPMSG("frame done irq!\n");
-			drm_trace_tag_end("dsi_active_frame");
-			CRTC_MMP_EVENT_END(index, active_frame, dsi->ddp_comp.id, 0xffff0000);
-			drm_trace_tag_end("dsi_normal_frame");
-			CRTC_MMP_EVENT_END(index, normal_frame, dsi->ddp_comp.id, 0xffff0000);
 
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 							   MTK_DRM_OPT_HBM))
@@ -3722,15 +3734,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		}
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_LTPO_VM)) {
 			if (status & INTERNAL_SOF_INT_FLAG) {
-				DDPMSG("internal SOF irq!\n");
-				drm_trace_tag_start("dsi_active_frame");
-				CRTC_MMP_EVENT_START(index, active_frame, dsi->ddp_comp.id,
+				DDPIRQ("internal SOF irq!\n");
+				drm_trace_tag_mark("dsi_real_sof");
+				CRTC_MMP_MARK(index, dsi_real_sof, dsi->ddp_comp.id,
 					0xffff0001);
 			}
 			if (status & LTPO_VSYNC_INT_FLAG) {
-				DDPMSG("ltpo vsync irq!\n");
-				drm_trace_tag_start("dsi_normal_frame");
-				CRTC_MMP_EVENT_START(index, normal_frame, dsi->ddp_comp.id,
+				DDPIRQ("ltpo vsync irq!\n");
+				drm_trace_tag_mark("dsi_ltpo_vsync");
+				CRTC_MMP_MARK(index, dsi_ltpo_vsync, dsi->ddp_comp.id,
 					0xffff0001);
 			}
 		}

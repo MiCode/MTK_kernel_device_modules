@@ -1860,6 +1860,16 @@ static void mtk_drm_crtc_lfr_update(struct drm_crtc *crtc,
 
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LFR_UPDATE, NULL);
 }
+static void mtk_drm_crtc_vdo_ltpo_update(struct drm_crtc *crtc,
+					struct cmdq_pkt *cmdq_handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp =
+		mtk_ddp_comp_request_output(mtk_crtc);
+
+	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LTPO_VDO_UPDATE, NULL);
+}
+
 
 static bool mtk_drm_crtc_mode_fixup(struct drm_crtc *crtc,
 				    const struct drm_display_mode *mode,
@@ -17101,6 +17111,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	/* This refcnt would be release in ddp_cmdq_cb */
 	drm_atomic_state_get(old_crtc_state->state);
 	mtk_drm_crtc_lfr_update(crtc, cmdq_handle);
+	/*vdo ltpo*/
+	mtk_drm_crtc_vdo_ltpo_update(crtc, cmdq_handle);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SF_PF) &&
 	   (mtk_crtc_state->prop_val[CRTC_PROP_SF_PRES_FENCE_IDX] != (unsigned int)-1)) {
 		if (index == 0)

@@ -404,8 +404,8 @@ static struct mtk_panel_params ext_params = {
 	.corner_pattern_lt_addr = (void *)top_rc_pattern,
 	.corner_pattern_tp_size = sizeof(top_rc_pattern),
 	 /**vdo ltpo**/
-	//.ltpo_vm_enable = 1,
-	//.ltpo_vm_minimum_fps = 1,
+	.ltpo_vm_enable = 1,
+	.ltpo_vm_minimum_fps = 1,
 };
 
 
