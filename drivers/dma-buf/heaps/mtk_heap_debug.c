@@ -61,7 +61,9 @@ int pss_by_mmap_enable;
 #define DMA_HEAP_DUMP_ALLOC_GFP   (GFP_ATOMIC)
 #define SET_PID_CMDLINE_LEN       (16)
 #define EGL_DUMP_INTERVAL         (500)  /* unit: ms */
-#define DMABUF_DUMP_TOP_MAX       (10)
+#define DMABUF_DUMP_TOP_MAX       (30)
+#define DMABUF_DUMP_TOP_MIN       (10)
+#define DMABUF_DUMP_TOP_SIZE(x)   (((x) * 3) / 4)
 #define OOM_DUMP_RS_INTERVAL      (2 * HZ)
 #define OOM_DUMP_RS_BURST         (1)
 
@@ -1479,24 +1481,27 @@ static void dmabuf_count_list_top_dump(struct dump_fd_data *fddata, u64 total_si
 	struct dmabuf_count_info *n_count = NULL;
 	struct seq_file *s = fddata->constd.s;
 	int i = 0;
+	u64 size = 0;
 
 	/* sort dmabuf count list by size*/
 	list_sort(NULL, &fddata->count_list_head, dmabuf_size_cmp);
 
 	/* dump top max user */
-	dmabuf_dump(s, "dmabuf alloc total:(%d/%lluKB), top %d user:\n",
-		    total_cnt, total_size, DMABUF_DUMP_TOP_MAX);
+	dmabuf_dump(s, "dmabuf total_cnt:%d, total_size:%lluKB, top user:\n",
+		    total_cnt, total_size);
 
-	dmabuf_dump(s, "%-35s %-20s %-25s\n",
+	dmabuf_dump(s, "\t%-35s %-20s %-25s\n",
 		    "debug name", "sum of size(KB)", "count of heap");
 
 	list_for_each_entry_safe(p_count_list, n_count, &fddata->count_list_head, list_node) {
-		dmabuf_dump(s, "%-35s %-20llu %-25u\n",
+		dmabuf_dump(s, "\t%-35s %-20llu %-25u\n",
 			    p_count_list->name?:"NULL",
 			    p_count_list->size,
 			    p_count_list->count);
 		i++;
-		if (i >= DMABUF_DUMP_TOP_MAX)
+		size += p_count_list->size;
+		if ((i >= DMABUF_DUMP_TOP_MIN && size > DMABUF_DUMP_TOP_SIZE(total_size)) ||
+		    i >= DMABUF_DUMP_TOP_MAX)
 			break;
 	}
 	if (s)
