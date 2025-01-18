@@ -352,8 +352,10 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 	gic_ram_parity.power_domain[1].reg = args.args[0];
 
 	vcore_pdev = of_find_device_by_node(args.np->child);
-	if (!vcore_pdev)
+	if (!vcore_pdev) {
 		dev_err(&pdev->dev, "no vcore_pdev\n");
+		return -ENXIO;
+	}
 
 	gic_ram_parity.power_domain[1].map = dev_get_regmap(vcore_pdev->dev.parent, NULL);
 	if (!gic_ram_parity.power_domain[1].map)
