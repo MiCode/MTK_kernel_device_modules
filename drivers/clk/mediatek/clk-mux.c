@@ -430,10 +430,10 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	struct clk_hw *qs_hw;
 	u32 mask = GENMASK(mux->data->mux_width - 1, 0);
-	u32 val = 0, orig = 0;
+	u32 val = 0, orig = 0, new = 0;
 	unsigned long flags = 0;
 	bool qs_pll_need_off = false;
-	int ret = 0;
+	int ret = 0, i = 0;
 
 	if (mux->lock)
 		spin_lock_irqsave(mux->lock, flags);
@@ -443,16 +443,16 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 	if (setclr) {
 		regmap_read(mux->regmap, mux->data->mux_ofs, &orig);
 
-		val = (orig & ~(mask << mux->data->mux_shift))
+		new = (orig & ~(mask << mux->data->mux_shift))
 				| (index << mux->data->mux_shift);
 
-		if (val != orig) {
+		if (new != orig) {
 			if ((mux->flags & CLK_ENABLE_QUICK_SWITCH) == CLK_ENABLE_QUICK_SWITCH) {
-				val = mux->data->qs_shift;
+				new = mux->data->qs_shift;
 
-				qs_hw = clk_hw_get_parent_by_index(hw, val);
+				qs_hw = clk_hw_get_parent_by_index(hw, new);
 				if (!qs_hw) {
-					pr_err("qs_hw is null, index = %d\n", val);
+					pr_notice("qs_hw is null, index = %d\n", new);
 					ret = -EFAULT;
 					goto null_pointer_error;
 				}
@@ -502,11 +502,24 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 			index << mux->data->mux_shift);
 
 	if (mux->data->chk_ofs) {
-		regmap_read(mux->regmap, mux->data->chk_ofs, &val);
-		if (val & mux->data->chk_shift)
-			mtk_clk_notify(mux->regmap, NULL, clk_hw_get_name(hw),
-				mux->data->chk_ofs, 0,
-				mux->data->chk_shift, CLK_EVT_SET_PARENT_ERR);
+		i = 0;
+		while (1) {
+			regmap_read(mux->regmap, mux->data->chk_ofs, &val);
+
+			if ((val & BIT(mux->data->chk_shift)) == 0)
+				break;
+
+			if (i < MTK_WAIT_SET_PARENT_CNT)
+				udelay(MTK_WAIT_SET_PARENT_US);
+			else {
+				pr_notice("%s: %s err caused by cksta busy, ori:%x, nex:%x, clksrc index: %u\n",
+						__func__, mux->data->name, orig, new, index);
+				mtk_clk_notify(mux->regmap, NULL, clk_hw_get_name(hw),
+					mux->data->chk_ofs, 0,
+					mux->data->chk_shift, CLK_EVT_SET_PARENT_ERR);
+			}
+			i++;
+		}
 	}
 
 null_pointer_error:
