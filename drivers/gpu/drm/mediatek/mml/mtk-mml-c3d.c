@@ -431,8 +431,6 @@ static void c3d_debug_dump(struct mml_comp *comp)
 	void __iomem *base = comp->base;
 	u32 value[25];
 	u32 shadow_ctrl;
-	u32 sram_rrdy;
-	u32 i, temp_val, addr=0;
 
 	mml_err("c3d component %u dump:", comp->id);
 
@@ -440,17 +438,6 @@ static void c3d_debug_dump(struct mml_comp *comp)
 	shadow_ctrl = read_reg_value(comp, c3d->data->reg_table[C3D_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + c3d->data->reg_table[C3D_SHADOW_CTRL]);
-
-	writel((0 << 6)|(0 << 5)|(1 << 4), base + c3d->data->reg_table[C3D_SRAM_CFG]);
-	writel(0, base + c3d->data->reg_table[C3D_SRAM_RW_IF_2]);
-	sram_rrdy = read_reg_value(comp, c3d->data->reg_table[C3D_SRAM_STATUS]);
-	if ((sram_rrdy & 1<<17)) {
-		for (i=0, addr=0; i<729;i++, addr+=4) {
-			//writel(addr, base + c3d->data->reg_table[C3D_SRAM_RW_IF_2]);
-			temp_val = read_reg_value(comp, c3d->data->reg_table[C3D_SRAM_RW_IF_3]);
-			mml_err("addr[%d] SRAM[%d] 0x%x", addr, i, temp_val);
-		}
-	}
 
 	value[0] = readl(base + c3d->data->reg_table[C3D_CFG]);
 	mml_err("C3D_CFG %#010x", value[0]);
