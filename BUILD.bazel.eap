@@ -24,6 +24,7 @@ name = "mgk_64_k66"
 build = "no_device_ko"
 mgk_defconfig = "mtk_defconfig"
 kleaf_modules = [
+    "//vendor/mediatek/kernel_modules/wwan/pwrctl/common:wwan_gpio_pwrctl_ack",
 ]
 
 filegroup(
