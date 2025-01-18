@@ -774,12 +774,6 @@ void mtk_dp_intf_video_clock(struct mtk_dp_intf *dp_intf)
 			__func__, ret);
 	}
 
-	ret = clk_prepare_enable(dp_intf->pclk);
-	if (ret) {
-		DDPMSG("%s clk_prepare_enable dp_intf->pclk: err=%d\n",
-			__func__, ret);
-	}
-
 	ret = clk_set_parent(dp_intf->pclk, dp_intf->pclk_src[clksrc]);
 	if (ret) {
 		DDPMSG("%s clk_set_parent dp_intf->pclk: err=%d\n",
@@ -825,6 +819,25 @@ void mtk_dp_intf_mode_copy(struct drm_display_mode *mode)
 		g_dp_intf->mode.vtotal, g_dp_intf->mode.hdisplay, g_dp_intf->mode.vdisplay);
 }
 EXPORT_SYMBOL(mtk_dp_intf_mode_copy);
+
+void mtk_dp_intf_prepare_clk(void)
+{
+	int ret;
+
+	ret = clk_prepare_enable(g_dp_intf->pclk);
+	if (ret < 0)
+		DDPMSG("%s Failed to enable pclk: %d\n",
+			__func__, ret);
+
+	ret = clk_set_parent(g_dp_intf->pclk, g_dp_intf->pclk_src[TCK_26M]);
+	if (ret < 0)
+		DDPMSG("%s Failed to clk_set_parent: %d\n",
+			__func__, ret);
+
+	DDPMSG("%s dpintf->pclk =  %ld\n",
+		__func__, clk_get_rate(g_dp_intf->pclk));
+}
+EXPORT_SYMBOL(mtk_dp_intf_prepare_clk);
 
 static void void_mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 					    struct cmdq_pkt *handle)
