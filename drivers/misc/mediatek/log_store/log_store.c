@@ -565,9 +565,10 @@ static void update_to_emmc(void)
 				pr_err("update boot log to partition 2 is error!\n");
 				return;
 			}
-			/* update the boot_log_read and clear the buffer */
-			boot_log_read = write_len;
+			/* clear the buffer of the already read */
 			memset(bootbuff + boot_log_read, 0, write_len);
+			/* update the offset of the boot_log_read */
+			boot_log_read = write_len;
 		} else {
 			/* ring buffer is not full */
 			write_len = boot_log_write - boot_log_read;
@@ -577,9 +578,10 @@ static void update_to_emmc(void)
 					pr_err("update boot log to partition 3 is error!\n");
 					return;
 				}
-				/* update the boot_log_read and clear the buffer */
-				boot_log_read += write_len;
+				/* clear the buffer of the already read */
 				memset(bootbuff + boot_log_read, 0, write_len);
+				/* update the offset of the boot_log_read */
+				boot_log_read += write_len;
 			}
 		}
 
