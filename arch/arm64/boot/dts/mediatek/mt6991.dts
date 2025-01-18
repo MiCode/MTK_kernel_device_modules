@@ -5000,6 +5000,71 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			};
 		};
 
+		ssusb1: usb1@16711000 {
+			compatible = "mediatek,mt6991-mtu3", "mediatek,mtu3";
+			reg = <0 0x16711000 0 0x2e00>,
+			      <0 0x16713e00 0 0x0100>;
+			reg-names = "mac", "ippc";
+			interrupts = <GIC_SPI 602 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&u2port1 PHY_TYPE_USB2>;
+			clocks = <&cksys_clk CLK_CK_USB_TOP_1P_SEL>,
+				<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
+				<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>;
+			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P1>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			mediatek,hwrscs-vers = <2>;
+			mediatek,noise-still-tr;
+			cdp-block;
+			status = "disabled";
+
+			usb_host1: xhci1@16710000 {
+				compatible = "mediatek,mt6991-xhci",
+					     "mediatek,mtk-xhci-p1";
+				reg = <0 0x16710000 0 0x1000>;
+				reg-names = "mac";
+				clocks = <&cksys_clk CLK_CK_USB_XHCI_1P_SEL>;
+				clock-names = "xhci_ck";
+				interrupts = <GIC_SPI 603 IRQ_TYPE_LEVEL_HIGH 0>;
+				status = "disabled";
+			};
+		};
+
+		ssusb2: usb2@16721000 {
+			compatible = "mediatek,mt6991-mtu3", "mediatek,mtu3";
+			reg = <0 0x16721000 0 0x2e00>,
+			      <0 0x16723e00 0 0x0100>;
+			reg-names = "mac", "ippc";
+			interrupts = <GIC_SPI 670 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&u2port2 PHY_TYPE_USB2>,
+			       <&u2port3 PHY_TYPE_USB2>;
+			clocks = <&cksys_clk CLK_CK_USB_TOP_1P_SEL>,
+				<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
+				<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>;
+			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P23>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			mediatek,hwrscs-vers = <2>;
+			mediatek,noise-still-tr;
+			cdp-block;
+			status = "disabled";
+
+			usb_host2: xhci2@16720000 {
+				compatible = "mediatek,mt6991-xhci",
+					     "mediatek,mtk-xhci-p2";
+				reg = <0 0x16720000 0 0x1000>;
+				reg-names = "mac";
+				clocks = <&cksys_clk CLK_CK_USB_XHCI_1P_SEL>;
+				clock-names = "xhci_ck";
+				interrupts = <GIC_SPI 671 IRQ_TYPE_LEVEL_HIGH 0>;
+				status = "disabled";
+			};
+		};
+
 		u2phy0: usb-phy0@16730000 {
 			compatible = "mediatek,xsphy";
 			reg = <0 0x16730000 0 0x400>;
@@ -5018,6 +5083,50 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				#phy-cells = <1>;
 				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 				mediatek,refclk-sel;
+			};
+		};
+
+		u2phy1: usb-phy1@16740000 {
+			compatible = "mediatek,mt6991-xsphy", "mediatek,xsphy";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			status = "disabled";
+
+			u2port1: usb2-phy1@16740000 {
+				reg = <0 0x16740000 0 0x400>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
+				#phy-cells = <1>;
+				mediatek,refclk-sel;
+				status = "disabled";
+			};
+		};
+
+		u2phy2: usb-phy2@16750000 {
+			compatible = "mediatek,mt6991-xsphy", "mediatek,xsphy";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_PHY_P2>;
+			ranges;
+			status = "disabled";
+
+			u2port2: usb2-phy2@16750000 {
+				reg = <0 0x16750000 0 0x400>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
+				#phy-cells = <1>;
+				mediatek,refclk-sel;
+				status = "disabled";
+			};
+
+			u2port3: usb2-phy3@16760000 {
+				reg = <0 0x16760000 0 0x400>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
+				#phy-cells = <1>;
+				mediatek,refclk-sel;
+				status = "disabled";
 			};
 		};
 
