@@ -100,28 +100,6 @@ inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_c3d, ddp_comp);
 }
 
-static void disp_c3d_lock_wake_lock(struct mtk_ddp_comp *comp, bool lock)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-
-	if (lock) {
-		if (!primary_data->c3d_wake_locked) {
-			__pm_stay_awake(primary_data->c3d_wake_lock);
-			primary_data->c3d_wake_locked = true;
-		} else  {
-			DDPPR_ERR("%s: try lock twice\n", __func__);
-		}
-	} else {
-		if (primary_data->c3d_wake_locked) {
-			__pm_relax(primary_data->c3d_wake_lock);
-			primary_data->c3d_wake_locked = false;
-		} else {
-			DDPPR_ERR("%s: try unlock twice\n", __func__);
-		}
-	}
-}
-
 static int disp_c3d_create_gce_pkt(struct mtk_ddp_comp *comp, struct cmdq_pkt **pkt)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -258,12 +236,12 @@ static bool disp_c3d_check_sram(struct mtk_ddp_comp *comp,
 		sram_int = (read_value >> 6) & 0x1;
 		C3DFLOW_LOG("[SRAM] hist_apb(%d) hist_int(%d) 0x%08x in (SOF) comp:%s\n",
 			sram_apb, sram_int, read_value, comp_name);
-		// after suspend/resume, set FORCE_SRAM_APB = 0, FORCE_SRAM_INT = 0;
+		// after suspend/resume, set FORCE_SRAM_APB = FORCE_SRAM_INT;
 		// so need to config C3D_SRAM_CFG on ping-pong mode correctly.
-		if ((sram_apb == sram_int) && (sram_int == 0)) {
-			mtk_ddp_write_mask_cpu(comp, (0 << 6)|(1 << 5)|(1 << 4), C3D_SRAM_CFG, (0x7 << 4));
-			C3DFLOW_LOG("%s: C3D_SRAM_CFG(0x%08x)\n", __func__,
-				readl(comp->regs + C3D_SRAM_CFG));
+		if (sram_apb == sram_int) {
+			mtk_ddp_write_mask_cpu(comp, (sram_int << 6) | (!sram_int << 5) | (1 << 4),
+						C3D_SRAM_CFG, 0x7 << 4);
+			C3DFLOW_LOG("%s: C3D_SRAM_CFG(0x%08x)\n", __func__, readl(comp->regs + C3D_SRAM_CFG));
 		}
 		if (sram_int != atomic_read(&c3d_data->c3d_force_sram_apb)) {
 			pr_notice("c3d: SRAM config %d != %d config", sram_int,
@@ -374,7 +352,6 @@ static bool disp_c3d_flush_3dlut_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	else
 		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 
-	disp_c3d_lock_wake_lock(comp, true);
 	async = mtk_drm_idlemgr_get_async_status(crtc);
 	if (async == false) {
 		cmdq_mbox_enable(client->chan);
@@ -407,8 +384,6 @@ static bool disp_c3d_flush_3dlut_sram(struct mtk_ddp_comp *comp, int cmd_type)
 		break;
 	}
 
-	disp_c3d_lock_wake_lock(comp, false);
-
 	return true;
 }
 
@@ -423,8 +398,8 @@ void disp_c3d_flip_3dlut_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	sram_apb = (read_value >> 5) & 0x1;
 	sram_int = (read_value >> 6) & 0x1;
 
-	if ((sram_apb == sram_int) && (sram_int == 0)) {
-		pr_notice("%s: sram_apb == sram_int, skip flip!", __func__);
+	if (sram_apb == sram_int) {
+		pr_notice("%s: sram_apb = sram_int = %d, skip flip!\n", __func__, sram_int);
 		return;
 	}
 
@@ -716,6 +691,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 	unsigned int width;
 	unsigned int overhead_v;
+	int sram_int;
 
 	C3DFLOW_LOG("line: %d\n", __LINE__);
 
@@ -753,9 +729,9 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 
 	mutex_lock(&primary_data->data_lock);
 	if (atomic_read(&primary_data->c3d_sram_hw_init) == 1) {
-		mtk_ddp_write_mask_cpu(comp, (0 << 6)|(0 << 5)|(1 << 4), C3D_SRAM_CFG, (0x7 << 4));
+		sram_int = !!atomic_read(&c3d_data->c3d_force_sram_apb);
+		mtk_ddp_write_mask_cpu(comp, (sram_int << 6) | (sram_int << 5) | (1 << 4), C3D_SRAM_CFG, 0x7 << 4);
 		disp_c3d_flush_3dlut_sram(comp, C3D_RESUME);
-		atomic_set(&c3d_data->c3d_force_sram_apb, 0);
 		disp_c3d_write_1dlut(comp, handle, 0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
