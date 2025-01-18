@@ -132,23 +132,26 @@ TRACE_EVENT(sugov_ext_util,
 );
 
 TRACE_EVENT(sugov_ext_wl,
-	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl),
-	TP_ARGS(gear_id, cpu, wl),
+	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl, int wl_manual),
+	TP_ARGS(gear_id, cpu, wl, wl_manual),
 	TP_STRUCT__entry(
 		__field(unsigned int, gear_id)
 		__field(unsigned int, cpu)
 		__field(unsigned int, wl)
+		__field(int, wl_manual)
 	),
 	TP_fast_assign(
 		__entry->gear_id = gear_id;
 		__entry->cpu = cpu;
 		__entry->wl = wl;
+		__entry->wl_manual = wl_manual;
 	),
 	TP_printk(
-		"gear_id=%u cpu=%u wle=%u",
+		"gear_id=%u cpu=%u wle=%u wl_manual=%d",
 		__entry->gear_id,
 		__entry->cpu,
-		__entry->wl)
+		__entry->wl,
+		__entry->wl_manual)
 );
 
 TRACE_EVENT(sugov_ext_dsu_freq_vote,

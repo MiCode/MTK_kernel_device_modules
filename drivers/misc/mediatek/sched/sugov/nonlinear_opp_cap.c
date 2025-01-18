@@ -365,7 +365,7 @@ void update_wl_tbl(unsigned int cpu)
 			last_wl = wl_curr;
 			if (trace_sugov_ext_wl_enabled())
 				trace_sugov_ext_wl(topology_cluster_id(cpu),
-						cpu, wl_curr);
+						cpu, wl_curr, wl_manual);
 			if (wl_delay != wl_curr) {
 				wl_delay_cnt++;
 				if (wl_delay_cnt > wl_delay_update_tick) {
