@@ -81,7 +81,8 @@ struct mml_task *task_get_idle(struct mml_frame_config *cfg)
 		list_del_init(&task->entry);
 		cfg->done_task_cnt--;
 		memset(&task->buf, 0, sizeof(task->buf));
-		mml_pq_reset_hist_status(task);
+		if (cfg->info.dest[0].pq_config.en)
+			mml_pq_reset_hist_status(task);
 	}
 	return task;
 }
