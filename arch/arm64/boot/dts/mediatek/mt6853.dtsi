@@ -3460,19 +3460,20 @@
 			clock-names = "apb", "smi", "gals0", "gals1";
 		};
 
-		mmqos_wrapper {
-				compatible = "mediatek,mt6853-mmqos-wrapper";
+		mmqos-wrapper {
+			compatible = "mediatek,mt6853-mmqos-wrapper";
 		};
 
 		mmqos: interconnect {
 			compatible = "mediatek,mt6853-mmqos";
 			#interconnect-cells = <1>;
-			mediatek,larbs = <&larb0 &larb1 &larb2 &larb4
-					  &larb7 &larb9 &larb11
-					  &larb13 &larb14 &larb16 &larb17
+			mediatek,larbs-supply = <&larb0 &larb1 &larb2 &larb4 &larb7 &larb9
+					  &larb11 &larb13 &larb14 &larb16 &larb17
 					  &larb19 &larb20>;
-			mediatek,commons = <&smi_disp_common>;
+			mediatek,commons-supply = <&smi_disp_common>;
 			disable-mmqos;
+			mmqos-state = <0x7>;
+			mmqos-log-level = <0>;
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>;
 			clock-names = "mm";
 			interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
