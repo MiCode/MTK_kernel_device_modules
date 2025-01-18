@@ -3196,6 +3196,7 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 			      0, param);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_tf_detect);
+#endif
 
 static struct arm_smmu_device *get_smmu_dev_for_pmu(struct smmuv3_pmu_device *pmu_device)
 {
@@ -3271,7 +3272,6 @@ void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_unregister_pmu_device);
-#endif
 
 MODULE_DESCRIPTION("MediaTek SMMUv3 Customization");
 MODULE_LICENSE("GPL");
