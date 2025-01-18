@@ -68,7 +68,6 @@ struct mtk_disp_color_data {
 	unsigned int color_offset;
 	bool support_color21;
 	bool support_color30;
-	unsigned long reg_table[TUNING_REG_MAX];
 	unsigned int color_window;
 	bool support_shadow;
 	bool need_bypass_shadow;

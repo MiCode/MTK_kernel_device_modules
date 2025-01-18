@@ -60,10 +60,6 @@
 #define CCORR_CLIP(val, min, max) ((val >= max) ? \
 	max : ((val <= min) ? min : val))
 
-enum CCORR_IOCTL_CMD {
-	SET_INTERRUPT = 0,
-};
-
 static struct drm_device *g_drm_dev;
 
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
@@ -82,121 +78,50 @@ static void disp_ccorr_multiply_3x3(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int temp_Result;
 	int signedCcorrCoef[3][3];
-	int i, j;
+	int i, j, k;
 
-	/* convert unsigned 12 bit ccorr coefficient to signed 12 bit format */
 	for (i = 0; i < 3; i += 1) {
 		DDPINFO("inputCcorrCoef[%d][0-2] = {%d, %d, %d}\n", i,
-			ccorrCoef[i][0],
-			ccorrCoef[i][1],
-			ccorrCoef[i][2]);
+			ccorrCoef[i][0], ccorrCoef[i][1], ccorrCoef[i][2]);
 	}
+
 	for (i = 0; i < 3; i += 1) {
 		DDPINFO("inputcolor_matrix[%d][0-2] = {%d, %d, %d}\n", i,
-			color_matrix[i][0],
-			color_matrix[i][1],
-			color_matrix[i][2]);
+			color_matrix[i][0], color_matrix[i][1], color_matrix[i][2]);
 	}
 
 	/* convert unsigned 12 bit ccorr coefficient to signed 12 bit format */
 	for (i = 0; i < 3; i += 1) {
 		for (j = 0; j < 3; j += 1) {
-			if (ccorrCoef[i][j] > primary_data->ccorr_max_positive) {
+			if (ccorrCoef[i][j] > primary_data->ccorr_max_positive)
 				signedCcorrCoef[i][j] =
 					(int)ccorrCoef[i][j] - (primary_data->ccorr_offset_base<<2);
-			} else {
-				signedCcorrCoef[i][j] =
-					(int)ccorrCoef[i][j];
-			}
+			else
+				signedCcorrCoef[i][j] = (int)ccorrCoef[i][j];
 		}
 	}
 
 	for (i = 0; i < 3; i += 1) {
 		DDPINFO("signedCcorrCoef[%d][0-2] = {%d, %d, %d}\n", i,
-			signedCcorrCoef[i][0],
-			signedCcorrCoef[i][1],
-			signedCcorrCoef[i][2]);
+			signedCcorrCoef[i][0], signedCcorrCoef[i][1], signedCcorrCoef[i][2]);
 	}
 
-	temp_Result = (int)((signedCcorrCoef[0][0]*color_matrix[0][0] +
-		signedCcorrCoef[0][1]*color_matrix[1][0] +
-		signedCcorrCoef[0][2]*color_matrix[2][0]) / primary_data->ccorr_offset_base);
-	resultCoef[0][0] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3; j++) {
+			temp_Result = 0;
+			for (int k = 0; k < 3; k++)
+				temp_Result += signedCcorrCoef[i][k] * color_matrix[k][j];
 
-	temp_Result = (int)((signedCcorrCoef[0][0]*color_matrix[0][1] +
-		signedCcorrCoef[0][1]*color_matrix[1][1] +
-		signedCcorrCoef[0][2]*color_matrix[2][1]) / primary_data->ccorr_offset_base);
-	resultCoef[0][1] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[0][0]*color_matrix[0][2] +
-		signedCcorrCoef[0][1]*color_matrix[1][2] +
-		signedCcorrCoef[0][2]*color_matrix[2][2]) / primary_data->ccorr_offset_base);
-	resultCoef[0][2] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[1][0]*color_matrix[0][0] +
-		signedCcorrCoef[1][1]*color_matrix[1][0] +
-		signedCcorrCoef[1][2]*color_matrix[2][0]) / primary_data->ccorr_offset_base);
-	resultCoef[1][0] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[1][0]*color_matrix[0][1] +
-		signedCcorrCoef[1][1]*color_matrix[1][1] +
-		signedCcorrCoef[1][2]*color_matrix[2][1]) / primary_data->ccorr_offset_base);
-	resultCoef[1][1] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[1][0]*color_matrix[0][2] +
-		signedCcorrCoef[1][1]*color_matrix[1][2] +
-		signedCcorrCoef[1][2]*color_matrix[2][2]) / primary_data->ccorr_offset_base);
-	resultCoef[1][2] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[2][0]*color_matrix[0][0] +
-		signedCcorrCoef[2][1]*color_matrix[1][0] +
-		signedCcorrCoef[2][2]*color_matrix[2][0]) / primary_data->ccorr_offset_base);
-	resultCoef[2][0] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[2][0]*color_matrix[0][1] +
-		signedCcorrCoef[2][1]*color_matrix[1][1] +
-		signedCcorrCoef[2][2]*color_matrix[2][1]) / primary_data->ccorr_offset_base);
-	resultCoef[2][1] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
-
-	temp_Result = (int)((signedCcorrCoef[2][0]*color_matrix[0][2] +
-		signedCcorrCoef[2][1]*color_matrix[1][2] +
-		signedCcorrCoef[2][2]*color_matrix[2][2]) / primary_data->ccorr_offset_base);
-	resultCoef[2][2] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
-			primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
+			temp_Result = (int)(temp_Result / primary_data->ccorr_offset_base);
+			resultCoef[i][j] = CCORR_CLIP(temp_Result, primary_data->ccorr_max_negative,
+				primary_data->ccorr_max_positive) & primary_data->ccorr_fullbit_mask;
+		}
+	}
 
 	for (i = 0; i < 3; i += 1) {
 		DDPINFO("resultCoef[%d][0-2] = {0x%x, 0x%x, 0x%x}\n", i,
-			resultCoef[i][0],
-			resultCoef[i][1],
-			resultCoef[i][2]);
+			resultCoef[i][0], resultCoef[i][1], resultCoef[i][2]);
 	}
-}
-
-static int disp_ccorr_set_color_matrix_to_dispsys(struct mtk_ddp_comp *comp,
-		struct drm_device *dev)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	int ret = 0;
-	struct mtk_drm_private *private = dev->dev_private;
-
-	// All Support 3*4 matrix on drm architecture
-	if ((primary_data->disp_ccorr_number == 1) && (ccorr_data->is_linear == 1))
-		ret = mtk_drm_helper_set_opt_by_name(private->helper_opt,
-			"MTK_DRM_OPT_PQ_34_COLOR_MATRIX", 0);
-	else
-		ret = mtk_drm_helper_set_opt_by_name(private->helper_opt,
-			"MTK_DRM_OPT_PQ_34_COLOR_MATRIX", 1);
-
-	return ret;
 }
 
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
@@ -353,34 +278,28 @@ static int disp_ccorr_set_coef(
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int ret = 0;
-	struct DRM_DISP_CCORR_COEF_T *ccorr, *old_ccorr;
+	struct DRM_DISP_CCORR_COEF_T *ccorr;
 
-	ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
-	if (ccorr == NULL) {
-		DDPPR_ERR("%s: no memory\n", __func__);
-		return -EFAULT;
+	if (primary_data->disp_ccorr_coef == NULL) {
+		ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
+		if (ccorr == NULL) {
+			DDPPR_ERR("%s: no memory\n", __func__);
+			return -EFAULT;
+		}
+		primary_data->disp_ccorr_coef = ccorr;
 	}
 
-	if (user_color_corr == NULL) {
+	if (user_color_corr == NULL)
 		ret = -EFAULT;
-		kfree(ccorr);
-	} else {
-		memcpy(ccorr, user_color_corr,
+	else {
+		mutex_lock(&primary_data->data_lock);
+		memcpy(primary_data->disp_ccorr_coef, user_color_corr,
 			sizeof(struct DRM_DISP_CCORR_COEF_T));
 
-		mutex_lock(&primary_data->data_lock);
-
-		old_ccorr = primary_data->disp_ccorr_coef;
-		primary_data->disp_ccorr_coef = ccorr;
 		DDPINFO("%s: Set module(%s) coef\n", __func__, mtk_dump_comp_str(comp));
 
 		ret = disp_ccorr_write_coef_reg(comp, handle, 0);
-
 		mutex_unlock(&primary_data->data_lock);
-
-		if (old_ccorr != NULL)
-			kfree(old_ccorr);
-
 		//mtk_crtc_check_trigger(comp->mtk_crtc, false, false);
 	}
 
@@ -700,7 +619,7 @@ int disp_ccorr_eventctl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
+int disp_ccorr_set_RGB_gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle,
 	int r, int g, int b)
 {
@@ -817,47 +736,6 @@ int disp_ccorr_act_sbd_cv_mode(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
-int disp_ccorr_act_support_color_matrix(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	int ret = 0;
-	struct DISP_COLOR_TRANSFORM *color_transform;
-	bool support_matrix = true;
-	bool identity_matrix = true;
-	int i, j;
-
-	if (data == NULL) {
-		support_matrix = false;
-		ret = -EFAULT;
-		DDPINFO("unsupported matrix");
-		return ret;
-	}
-
-	color_transform = data;
-
-	// Support matrix:
-	// AOSP is 4x3 matrix. Offset is located at 4th row (not zero)
-
-	for (i = 0 ; i < 3; i++) {
-		if (color_transform->matrix[i][3] != 0) {
-			for (i = 0 ; i < 4; i++) {
-				DDPINFO("unsupported:[%d][0-3]:[%d %d %d %d]",
-					i,
-					color_transform->matrix[i][0],
-					color_transform->matrix[i][1],
-					color_transform->matrix[i][2],
-					color_transform->matrix[i][3]);
-			}
-			support_matrix = false;
-			ret = -EFAULT;
-			return ret;
-		}
-	}
-
-	return ret;
-}
-
 int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -870,15 +748,36 @@ int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccor
 int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
+	int i = 0;
+	int ret = 0;
+	bool support_matrix = true;
+	struct DISP_COLOR_TRANSFORM *color_transform = data;
 
-	if (IS_ERR_OR_NULL(comp))
-		return -EFAULT;
+	if (color_transform == NULL) {
+		support_matrix = false;
+		ret = -EFAULT;
+		DDPINFO("unsupported matrix");
+		return ret;
+	}
 
-	return disp_ccorr_act_support_color_matrix(comp, data);
+	// Support matrix:
+	// AOSP is 4x3 matrix. Offset is located at 4th row (not zero)
+	for (i = 0 ; i < 3; i++) {
+		if (color_transform->matrix[i][3] != 0) {
+			for (i = 0 ; i < 4; i++) {
+				DDPINFO("unsupported:[%d][0-3]:[%d %d %d %d]",
+					i, color_transform->matrix[i][0],
+					color_transform->matrix[i][1],
+					color_transform->matrix[i][2],
+					color_transform->matrix[i][3]);
+			}
+			support_matrix = false;
+			ret = -EFAULT;
+			return ret;
+		}
+	}
+
+	return ret;
 }
 
 int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
@@ -894,6 +793,25 @@ int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
 		return -EFAULT;
 
 	return disp_ccorr_act_get_ccorr_caps(comp, &pq_info->ccorr_caps);
+}
+
+static int disp_ccorr_update_dispsys_helper(struct mtk_ddp_comp *comp,
+		struct drm_device *dev)
+{
+	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
+	int ret = 0;
+	struct mtk_drm_private *private = dev->dev_private;
+
+	// All Support 3*4 matrix on drm architecture
+	if ((primary_data->disp_ccorr_number == 1) && (ccorr_data->is_linear == 1))
+		ret = mtk_drm_helper_set_opt_by_name(private->helper_opt,
+			"MTK_DRM_OPT_PQ_34_COLOR_MATRIX", 0);
+	else
+		ret = mtk_drm_helper_set_opt_by_name(private->helper_opt,
+			"MTK_DRM_OPT_PQ_34_COLOR_MATRIX", 1);
+
+	return ret;
 }
 
 static void disp_ccorr_init_data(struct mtk_ddp_comp *comp)
@@ -1032,25 +950,6 @@ static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 		}
 	}
 	mutex_unlock(&primary_data->data_lock);
-}
-
-static int disp_ccorr_user_cmd(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, unsigned int cmd, void *data)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-
-	DDPINFO("%s: cmd: %d\n", __func__, cmd);
-	switch (cmd) {
-	case SET_INTERRUPT:
-	{
-		disp_ccorr_set_interrupt(comp, data);
-	}
-	break;
-	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
-		return -EINVAL;
-	}
-	return 0;
 }
 
 static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -1335,7 +1234,7 @@ static int disp_ccorr_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-	disp_ccorr_set_color_matrix_to_dispsys(&priv->ddp_comp, drm_dev);
+	disp_ccorr_update_dispsys_helper(&priv->ddp_comp, drm_dev);
 	return 0;
 }
 
@@ -1353,7 +1252,6 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.first_cfg = disp_ccorr_first_cfg,
 	.start = disp_ccorr_start,
 	.bypass = disp_ccorr_bypass,
-	.user_cmd = disp_ccorr_user_cmd,
 	.io_cmd = disp_ccorr_io_cmd,
 	.prepare = disp_ccorr_prepare,
 	.unprepare = disp_ccorr_unprepare,
