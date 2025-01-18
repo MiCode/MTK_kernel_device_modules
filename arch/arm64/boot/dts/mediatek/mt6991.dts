@@ -89,6 +89,10 @@
 			mtksmmu1 = &gpu_smmu;
 			mtksmmu2 = &apu_smmu;
 			mtksmmu3 = &soc_smmu;
+			dsc0 = &disp_dsc_wrap0;
+			dsc1 = &disp_dsc_wrap1;
+			dsc2 = &disp_dsc_wrap2;
+			dsc3 = &disp_dsc_wrap3;
 	};
 
 	aov: aov {
@@ -7576,6 +7580,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		vdisp_ao: vdisp-ao@3e800000 {
 			compatible = "mediatek,mt6991-vdisp-ao";
 			reg = <0 0x3e800000 0 0x1000>;
+		};
+
+		disp_dsc_wrap0: disp1-dsc-wrap0@32450000 {
+			compatible = "mediatek,disp1_dsc_wrap0",
+			"mediatek,mt6991-disp-dsc";
+			reg = <0 0x32450000 0 0x1000>;
+		};
+
+		disp_dsc_wrap1: disp1-dsc-wrap1@32460000 {
+			compatible = "mediatek,disp1_dsc_wrap1",
+			"mediatek,mt6991-disp-dsc";
+			reg = <0 0x32460000 0 0x1000>;
+		};
+
+		disp_dsc_wrap2: disp1-dsc-wrap2@32470000 {
+			compatible = "mediatek,disp1_dsc_wrap2",
+			"mediatek,mt6991-disp-dsc";
+			reg = <0 0x32470000 0 0x1000>;
+		};
+
+		disp_dsc_wrap3: disp1-dsc-wrap3@32480000 {
+			compatible = "mediatek,disp1_dsc_wrap3",
+			"mediatek,mt6991-disp-dsc";
+			reg = <0 0x32480000 0 0x1000>;
 		};
 
 		disp_dpc: disp-dpc@3e8f0000 {
