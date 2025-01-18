@@ -1945,7 +1945,7 @@ inline int update_cpu_active_ratio(int cpu_idx)
 	last_wall_time_stamp[cpu_idx] = wall_time_stamp;
 	duration_wind[cpu_idx] = duration;
 	duration_act[cpu_idx] = active_duration;
-	return ((active_duration << SCHED_CAPACITY_SHIFT) / duration);
+	return div_u64((active_duration << SCHED_CAPACITY_SHIFT), duration);
 }
 
 void update_active_ratio_policy(struct cpumask *cpumask)
