@@ -8774,6 +8774,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"DPI_26M";
 			phys = <&dp_tx>;
 			phy-names = "dp_tx";
+			status = "disabled";
 		};
 
 		dp_tx: dp-tx@3ec00000 {
