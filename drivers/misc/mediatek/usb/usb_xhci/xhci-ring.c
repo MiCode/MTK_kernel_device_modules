@@ -3109,10 +3109,11 @@ out:
 	return ret;
 }
 
-irqreturn_t xhci_msi_irq(int irq, void *hcd)
+irqreturn_t xhci_msi_irq_(int irq, void *hcd)
 {
 	return xhci_irq(hcd);
 }
+EXPORT_SYMBOL_GPL(xhci_msi_irq_);
 
 /****		Endpoint Ring Operations	****/
 
