@@ -36,7 +36,7 @@
 #define MAX_CONTROL_GROUPS		8
 #define MAX_PERF_DOMAINS		3
 #define PER_CORE_OFF			0x1380
-#define PER_CORE_SIZE			0x32
+#define PER_CORE_SIZE			0x20
 
 enum {
 	REG_FREQ_LUT_TABLE,
