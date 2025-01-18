@@ -76,6 +76,7 @@ mtk_gpufreq_mt6893-y := \
 	gpufreq_mt6893.o
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper.o
+ifeq ($(CONFIG_MTK_GPU_MT6768_SUPPORT)$(CONFIG_MTK_GPU_MT6893_SUPPORT),)
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6886.c),)
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6886.c),)
 obj-$(CONFIG_MTK_GPU_MT6886_SUPPORT) += mtk_gpufreq_mt6886.o
@@ -100,6 +101,7 @@ ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6989.c),)
 ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6989.c),)
 ifneq ($(wildcard $(srctree)/$(src)/gpu_smmu_mt6989.c),)
 obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpufreq_mt6989.o
+endif
 endif
 endif
 endif
