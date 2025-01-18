@@ -112,6 +112,16 @@ config COMMON_CLK_PG_LEGACY
 	  If you wish to use MediaTek legacy PG，
 	  say Y. Otherwise, say N.
 
+config COMMON_CLK_PG_LEGACY_V1
+    tristate "Clock PG driver for legacy"
+    depends on ARM64 || ARM || COMPILE_TEST
+    select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+    help
+	  This driver supports MediaTek MT6765 legacy PG clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6765 SOC,
+	  say Y. Otherwise, say N.
+
 config COMMON_CLK_MT6853
 	tristate "Clock driver for MediaTek MT6853"
 	depends on ARM64 || COMPILE_TEST
