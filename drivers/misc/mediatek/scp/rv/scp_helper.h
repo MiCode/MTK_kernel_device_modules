@@ -32,7 +32,6 @@
 /* scp dvfs return status flag */
 #define SET_PLL_FAIL		(1)
 #define SET_PMIC_VOLT_FAIL	(2)
-#define SCPCTL_DEBUG_LOGIN	(0x2)
 #define SCP_DEBUG_MAGIC_PATTERN (0x05515521)
 #define mt_reg_sync_writel(v, a) \
 	do {    \
@@ -248,6 +247,7 @@ extern void scp_A_irq_init(void);
 /* scp helper */
 extern void scp_schedule_work(struct scp_work_struct *scp_ws);
 extern void scp_schedule_logger_work(struct scp_work_struct *scp_ws);
+extern void scp_schedule_reset_work(struct scp_work_struct *scp_ws);
 
 extern void memcpy_to_scp(void __iomem *trg,
 		const void *src, int size);
