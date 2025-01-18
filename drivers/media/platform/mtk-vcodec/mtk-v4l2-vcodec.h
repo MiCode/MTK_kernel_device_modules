@@ -320,9 +320,9 @@ enum v4l2_vdec_bandwidth_type {
 };
 
 enum v4l2_vdec_compressed_mode {
-	V4L2_VDEC_UFO_DEFAULT = 0,
-	V4L2_VDEC_UFO_ON,
-	V4L2_VDEC_UFO_OFF,
+	V4L2_VDEC_COMPRESSED_DEFAULT = 0,
+	V4L2_VDEC_COMPRESSED_ON,
+	V4L2_VDEC_COMPRESSED_OFF,
 };
 
 enum v4l2_vdec_subsample_mode {
