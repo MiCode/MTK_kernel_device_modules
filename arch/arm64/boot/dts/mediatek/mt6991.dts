@@ -15489,6 +15489,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		fbt-cpu-mask = <255 128 15 127 240 112>;
 		sbe-resceue-enable = <1>;
 		ux-scrol-policy-type = <1>;
+		ux-smart-launch-enable = <1>;
 	};
 
 	soc-smmu-lmu {
