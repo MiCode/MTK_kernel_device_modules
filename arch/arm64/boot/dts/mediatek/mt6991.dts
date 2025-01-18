@@ -16282,8 +16282,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 		oc-limit-freq-lv2 = < 1200000  1700000 1900000>;
 
-		soc-max-level = <1>;
+		soc-max-level = <2>;
 		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+		soc-limit-freq-lv2 = < 1200000  1700000 1900000>;
 	};
 
 	gpu_power_throttling: gpu-power-throttling {
@@ -16300,8 +16301,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		oc-limit-freq-lv1 = <981000>;
 		oc-limit-freq-lv2 = <550000>;
 
-		soc-max-level = <1>;
+		soc-max-level = <2>;
 		soc-limit-freq-lv1 = <2147483647>;
+		soc-limit-freq-lv2 = <550000>;
 	};
 
 	md_power_throttling: md-power-throttling {
@@ -16326,10 +16328,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mtk-bp-thl";
 
 		max-throttle-level = <2>;
-		soc-throttle-level = < 0 1>;
+		soc-throttle-level = < 0 1 2>;
 
-		soc-max-stage = <1>;
-		soc-limit-threshold = <15>;
+		soc-max-stage = <2>;
+		soc-limit-threshold = <15 1>;
+		soc-release-threshold = <16 2>;
 
 		md-soc-throttle-l = <20>;
 		md-soc-throttle-h = <25>;
