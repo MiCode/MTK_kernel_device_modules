@@ -432,7 +432,7 @@ error:
 static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtu3_ep *mep = to_mtu3_ep(ep);
-	struct mtu3_request *mreq = to_mtu3_request(req);
+	struct mtu3_request *mreq = NULL;
 	struct mtu3_request *r = NULL;
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
@@ -440,13 +440,14 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 
 	spin_lock_irqsave(&mtu->lock, flags);
 
-	if (!mreq || mreq->mep != mep) {
+	mreq = to_mtu3_request(req);
+
+	if (!mreq) {
 		ret = -EINVAL;
 		goto done;
 	}
 
 	dev_dbg(mtu->dev, "%s : req=%p\n", __func__, req);
-	trace_mtu3_gadget_dequeue(mreq);
 
 	list_for_each_entry(r, &mep->req_list, list) {
 		if (r == mreq)
@@ -457,6 +458,13 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 		ret = -EINVAL;
 		goto done;
 	}
+
+	if (mreq->mep != mep) {
+		ret = -EINVAL;
+		goto done;
+	}
+
+	trace_mtu3_gadget_dequeue(mreq);
 
 	mtu3_qmu_flush(mep);  /* REVISIT: set BPS ?? */
 	mtu3_req_complete(mep, req, -ECONNRESET);
