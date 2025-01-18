@@ -19,6 +19,7 @@
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/thermal.h>
 
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
@@ -664,6 +665,67 @@ static void pt_oc_callback(enum BATTERY_OC_LEVEL_TAG level, void *data)
 }
 #endif
 
+/******************************************************************************
+ * Thermal operations
+ *****************************************************************************/
+static int flashlight_cooling_get_max_state(
+					struct thermal_cooling_device *cdev,
+					unsigned long *state)
+{
+	struct flashlight_cooling_device *f_cdev = cdev->devdata;
+
+	*state = f_cdev->max_state;
+
+	return 0;
+}
+
+static int flashlight_cooling_get_cur_state(
+					struct thermal_cooling_device *cdev,
+					unsigned long *state)
+{
+	struct flashlight_cooling_device *f_cdev = cdev->devdata;
+
+	*state = f_cdev->target_state;
+
+	return 0;
+}
+
+static int flashlight_cooling_set_cur_state(
+					struct thermal_cooling_device *cdev,
+					unsigned long state)
+{
+	struct flashlight_cooling_device *f_cdev = cdev->devdata;
+	struct flashlight_dev *fdev;
+	struct flashlight_dev_arg fl_dev_arg;
+
+	/* Request state should be less than max_state */
+	if (state > f_cdev->max_state)
+		return -EINVAL;
+
+	if (f_cdev->target_state == state)
+		return 0;
+
+	f_cdev->target_state = state;
+	mutex_lock(&fl_mutex);
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			continue;
+
+		fl_dev_arg.arg = state;
+		fdev->ops->flashlight_ioctl(
+			FLASH_IOC_SET_THERMAL_CUR_STATE,
+			(unsigned long)&fl_dev_arg);
+	}
+	mutex_unlock(&fl_mutex);
+
+	return 0;
+}
+
+static struct thermal_cooling_device_ops flashlight_cooling_ops = {
+	.get_max_state		= flashlight_cooling_get_max_state,
+	.get_cur_state		= flashlight_cooling_get_cur_state,
+	.set_cur_state		= flashlight_cooling_set_cur_state,
+};
 
 /******************************************************************************
  * File operations
@@ -1755,9 +1817,24 @@ static int fl_parse_dt(struct device *dev)
 	return 0;
 }
 
-static int flashlight_probe(struct platform_device *dev)
+static int flashlight_probe(struct platform_device *pdev)
 {
+	struct flashlight_cooling_device *flash_cdev;
 	pr_debug("Probe start\n");
+
+	flash_cdev = devm_kzalloc(&pdev->dev, sizeof(*flash_cdev), GFP_KERNEL);
+	if (flash_cdev == NULL)
+		return -ENOMEM;
+
+	flash_cdev->max_state = FLASHLIGHT_COOLER_MAX_STATE;
+	flash_cdev->target_state = 0;
+
+	flash_cdev->cdev = thermal_of_cooling_device_register(pdev->dev.of_node,
+			"flashlight_cooler", flash_cdev, &flashlight_cooling_ops);
+	if (IS_ERR(flash_cdev->cdev))
+		pr_info("register thermal failed\n");
+
+	platform_set_drvdata(pdev, flash_cdev);
 
 	/* allocate char device number */
 	if (alloc_chrdev_region(&flashlight_devno, 0, 1, FLASHLIGHT_DEVNAME)) {
@@ -1841,7 +1918,7 @@ static int flashlight_probe(struct platform_device *dev)
 		goto err_create_torch_device_file;
 	}
 
-	fl_parse_dt(&dev->dev);
+	fl_parse_dt(&pdev->dev);
 
 	/* init flashlight */
 	fl_init();
@@ -1877,9 +1954,14 @@ err_allocate_chrdev:
 	return -1;
 }
 
-static int flashlight_remove(struct platform_device *dev)
+static int flashlight_remove(struct platform_device *pdev)
 {
+	struct flashlight_cooling_device *f_cdev;
+
 	fl_uninit();
+
+	f_cdev = (struct flashlight_cooling_device *)platform_get_drvdata(pdev);
+	thermal_cooling_device_unregister(f_cdev->cdev);
 
 	/* remove device file */
 	device_remove_file(flashlight_device, &dev_attr_flashlight_torch);
@@ -1902,7 +1984,7 @@ static int flashlight_remove(struct platform_device *dev)
 	return 0;
 }
 
-static void flashlight_shutdown(struct platform_device *dev)
+static void flashlight_shutdown(struct platform_device *pdev)
 {
 	fl_uninit();
 }
