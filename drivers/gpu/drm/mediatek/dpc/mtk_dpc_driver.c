@@ -285,10 +285,27 @@ static struct mtk_dpc_dt_usage mt6989_mml_dt_usage[DPC_MML_DT_CNT] = {
 
 static inline int dpc_pm_ctrl(bool en)
 {
+	int ret = 0;
+
 	if (!g_priv->pd_dev)
 		return 0;
 
-	return en ? pm_runtime_resume_and_get(g_priv->pd_dev) : pm_runtime_put_sync(g_priv->pd_dev);
+	if (en) {
+		ret = pm_runtime_resume_and_get(g_priv->pd_dev);
+		if (ret) {
+			DPCERR("pm_runtime_resume_and_get failed skip_force_power(%u)",
+			       g_priv->skip_force_power);
+			return -1;
+		}
+
+		/* disable devapc power check false alarm, */
+		/* DPC address is bound by power of disp1 on 6989 */
+		if (g_priv->mminfra_hangfree)
+			writel(readl(g_priv->mminfra_hangfree) & ~0x1, g_priv->mminfra_hangfree);
+	} else
+		pm_runtime_put_sync(g_priv->pd_dev);
+
+	return ret;
 }
 
 static inline bool dpc_pm_check_and_get(void)
@@ -979,6 +996,14 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 {
 	u32 value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x11 : 0;
 
+	if (!dpc_is_power_on()) {
+		DPCFUNC("disp vcore is not power on, subsys(%u) en(%u) skip", subsys, en);
+		return;
+	}
+
+	if (dpc_pm_ctrl(true))
+		return;
+
 	/* MTCMOS auto_on_off[0] both_ack[4] pwr_off_dependency[6] */
 	if (subsys == DPC_SUBSYS_DISP) {
 		writel(value | BIT(6), dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
@@ -987,8 +1012,10 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_OVL1].cfg);
 	} else if (subsys == DPC_SUBSYS_MML1) {
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML1].cfg);
-	} else
-		DPCERR("not support subsys(%u)", subsys);
+	} else {
+		dpc_pm_ctrl(false);
+		return;
+	}
 
 	if (en) {
 		/* pwr on delay default 100 + 50 us, modify to 30 us */
@@ -1005,6 +1032,8 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		// writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_OFF_PROT_CFG);
 		// writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_OFF_PROT_CFG);
 	}
+
+	dpc_pm_ctrl(false);
 }
 
 void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const bool en)
