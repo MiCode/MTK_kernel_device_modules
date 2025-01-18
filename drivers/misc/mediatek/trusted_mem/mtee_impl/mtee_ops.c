@@ -28,6 +28,7 @@
 #endif
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 #include <asm/kvm_pkvm_module.h>
+#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
 #endif
 
 #include "private/mld_helper.h"
@@ -127,10 +128,21 @@ static int pkvm_mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_de
 
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 	if (is_pkvm_enabled()) {
-		ret = pkvm_el2_mod_call(get_hvc_nr_region_protect(),
-				mtee_dev_desc->mtee_chunks_id, pa, size);
-		if (ret != 0)
-			pr_info("pKVM append reg mem failed:%d\n", ret);
+		struct arm_smccc_res res;
+		uint32_t hvc_id;
+		int ret;
+
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_TMEM_REGION_PROTECT, 0, 0, 0, 0, 0,
+						0, &res);
+		hvc_id = res.a1;
+		if (hvc_id != 0) {
+			ret = pkvm_el2_mod_call(hvc_id,
+						mtee_dev_desc->mtee_chunks_id, pa, size);
+			if (ret != 0)
+				pr_info("pKVM append reg mem failed:%d\n", ret);
+		} else
+			pr_info("%s: hvc is invalid\n", __func__);
+
 	}
 #endif
 
@@ -166,10 +178,19 @@ static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 	if (is_pkvm_enabled()) {
-		ret = pkvm_el2_mod_call(get_hvc_nr_region_unprotect(),
-				mtee_dev_desc->mtee_chunks_id);
-		if (ret != 0)
-			pr_info("pKVM release reg mem failed:%d\n", ret);
+		struct arm_smccc_res res;
+		uint32_t hvc_id;
+		int ret;
+
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_TMEM_REGION_UNPROTECT, 0, 0, 0, 0, 0,
+						0, &res);
+		hvc_id = res.a1;
+		if (hvc_id != 0) {
+			ret = pkvm_el2_mod_call(hvc_id, mtee_dev_desc->mtee_chunks_id);
+			if (ret != 0)
+				pr_info("pKVM release reg mem failed:%d\n", ret);
+		} else
+			pr_info("%s: hvc is invalid\n", __func__);
 	}
 #endif
 

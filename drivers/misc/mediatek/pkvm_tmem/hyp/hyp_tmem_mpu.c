@@ -100,11 +100,11 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 
 	if (is_enable) {
 		tmem_ops->puts("pkvm_tmem: host_donate_hyp\n");
-		rc = tmem_ops->host_donate_hyp(addr>>ONE_PAGE_OFFSET, size/ONE_PAGE_SIZE, false);
-		if (rc) {
-			tmem_ops->puts("failed to CPU EL1 Stage2 unmap");
-			return TZ_RESULT_ERROR_GENERIC;
-		}
+//		rc = tmem_ops->host_donate_hyp(addr>>ONE_PAGE_OFFSET, size/ONE_PAGE_SIZE, false);
+//		if (rc) {
+//			tmem_ops->puts("failed to CPU EL1 Stage2 unmap");
+//			return TZ_RESULT_ERROR_GENERIC;
+//		}
 
 		tmem_ops->puts("pkvm_tmem: platform_mpu_set\n");
 		rc = platform_mpu_set(zone_id, addr, size, tmem_ops);
@@ -114,7 +114,7 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		}
 	} else {
 		tmem_ops->puts("pkvm_tmem: hyp_donate_host\n");
-		tmem_ops->hyp_donate_host(rec->addr>>ONE_PAGE_OFFSET, rec->size/ONE_PAGE_SIZE);
+//		tmem_ops->hyp_donate_host(rec->addr>>ONE_PAGE_OFFSET, rec->size/ONE_PAGE_SIZE);
 
 		rc = platform_mpu_clr(zone_id, rec->addr, rec->size, tmem_ops);
 		if (rc) {
