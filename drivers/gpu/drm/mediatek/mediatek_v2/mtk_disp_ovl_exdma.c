@@ -1903,9 +1903,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	unsigned int offset;
 	unsigned int Ln_CLRFMT = 0, layer_src = 0, con = 0;
 	unsigned int lye_idx = 0, ext_lye_idx = 0;
-	unsigned int alpha;
+	unsigned int alpha = 0;
 	unsigned int alpha_con = 1;
-	unsigned int value = 0, mask = 0, fmt_ex = 0;
+	unsigned int fmt_ex = 0;
 	unsigned long long temp_bw;
 	unsigned int dim_color;
 	struct drm_crtc *crtc;
@@ -2037,13 +2037,14 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	else if (fmt == DRM_FORMAT_ABGR16161616F)
 		fmt_ex = 3;
 
+	Ln_CLRFMT |= fmt_ex << 8;
+
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
 
-		SET_VAL_MASK(value, mask, fmt_ex, OVL_CON_CLRFMT_NB);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_L0_CLRFMT(ext_lye_idx), value,
-			       mask);
+			comp->regs_pa + OVL_L0_CLRFMT(ext_lye_idx), Ln_CLRFMT, ~0);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), layer_src,
 				   ~0);
@@ -2070,10 +2071,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			       (val << (id + 4)), (1 << (id + 4)));
 		}
 	} else {
-		SET_VAL_MASK(value, mask, fmt_ex, OVL_CON_CLRFMT_NB);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + OVL_L0_CLRFMT(0), value,
-				   mask);
+			comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT, ~0);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_CON, con, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
