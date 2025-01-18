@@ -203,8 +203,7 @@ static void fixup_busy_time(struct task_struct *p, int new_cpu)
 		double_rq_unlock(src_rq, dest_rq);
 }
 
-//static void flt_android_rvh_set_task_cpu(void *unused, struct task_struct *p, unsigned int new_cpu)
-void flt_android_rvh_set_task_cpu(void *unused, struct task_struct *p, unsigned int new_cpu)
+static void flt_android_rvh_set_task_cpu(void *unused, struct task_struct *p, unsigned int new_cpu)
 {
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
@@ -1209,8 +1208,7 @@ void sched_window_nr_ticks_change(void)
 }
 EXPORT_SYMBOL(sched_window_nr_ticks_change);
 
-//static void flt_android_rvh_sched_cpu_starting(void *unused, int cpu)
-void flt_android_rvh_sched_cpu_starting(void *unused, int cpu)
+static void flt_android_rvh_sched_cpu_starting(void *unused, int cpu)
 {
 	unsigned long flags;
 	struct rq *rq = cpu_rq(cpu);
@@ -1222,8 +1220,7 @@ void flt_android_rvh_sched_cpu_starting(void *unused, int cpu)
 	raw_spin_rq_unlock_irqrestore(rq, flags);
 }
 
-//static void flt_android_rvh_new_task_stats(void *unused, struct task_struct *p)
-void flt_android_rvh_new_task_stats(void *unused, struct task_struct *p)
+static void flt_android_rvh_new_task_stats(void *unused, struct task_struct *p)
 {
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
@@ -1231,8 +1228,7 @@ void flt_android_rvh_new_task_stats(void *unused, struct task_struct *p)
 	mark_task_starting(p);
 }
 
-//static void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
-void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
+static void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 {
 	struct rq *rq = cpu_rq(task_cpu(p));
 	struct rq_flags rf;
@@ -1247,8 +1243,7 @@ void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 	rq_unlock_irqrestore(rq, &rf);
 }
 
-//static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
-void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
+static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 {
 	u64 wallclock;
 
@@ -1262,8 +1257,7 @@ void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
 }
 
-//static void flt_android_rvh_schedule(void *unused, unsigned int sched_mode,
-void flt_android_rvh_schedule(void *unused, unsigned int sched_mode,
+static void flt_android_rvh_schedule(void *unused,
 		struct task_struct *prev, struct task_struct *next, struct rq *rq)
 {
 	u64 wallclock;
@@ -1283,33 +1277,33 @@ void flt_android_rvh_schedule(void *unused, unsigned int sched_mode,
 static void flt_register_kernel_hooks(void)
 {
 	int ret = 0;
-	// need upstream, add vendor hook
-	//ret = register_trace_android_rvh_sched_cpu_starting(
-	//	flt_android_rvh_sched_cpu_starting, NULL);
+
+	ret = register_trace_android_rvh_sched_cpu_starting(
+		flt_android_rvh_sched_cpu_starting, NULL);
 	if (ret)
 		pr_info("register sched_cpu_starting hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_try_to_wake_up(
-	//	flt_android_rvh_try_to_wake_up, NULL);
+	ret = register_trace_android_rvh_try_to_wake_up(
+		flt_android_rvh_try_to_wake_up, NULL);
 	if (ret)
 		pr_info("register try_to_wake_up hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_schedule(
-	//	flt_android_rvh_schedule, NULL);
+	ret = register_trace_android_rvh_schedule(
+		flt_android_rvh_schedule, NULL);
 	if (ret)
 		pr_info("register schedule hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_set_task_cpu(
-	//	flt_android_rvh_set_task_cpu, NULL);
+	ret = register_trace_android_rvh_set_task_cpu(
+		flt_android_rvh_set_task_cpu, NULL);
 	if (ret)
 		pr_info("register set_task_cpu hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_new_task_stats(
-	//	flt_android_rvh_new_task_stats, NULL);
+	ret = register_trace_android_rvh_new_task_stats(
+		flt_android_rvh_new_task_stats, NULL);
 	if (ret)
 		pr_info("register new_task_stats hooks failed, returned %d\n", ret);
-	//ret = register_trace_android_rvh_tick_entry(
-	//	flt_android_rvh_tick_entry, NULL);
+	ret = register_trace_android_rvh_tick_entry(
+		flt_android_rvh_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
 }
