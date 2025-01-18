@@ -133,7 +133,7 @@ static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
 	return 0;
 }
 
-int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
+static int __mminfra_hwvoter_power_ctrl(struct mtk_hwv_domain *hwvd,
 			unsigned int vote_msk, bool onoff)
 {
 	u32 en_ofs;
@@ -213,7 +213,7 @@ int mtk_clk_mminfra_hwv_power_ctrl(bool onoff)
 	if (!mminfra_hwv_domain.data)
 		return 0;
 
-	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain,
+	return __mminfra_hwvoter_power_ctrl(&mminfra_hwv_domain,
 		BIT(mminfra_hwv_domain.data->en_shift), onoff);
 }
 EXPORT_SYMBOL_GPL(mtk_clk_mminfra_hwv_power_ctrl);
@@ -224,7 +224,7 @@ int mtk_clk_mminfra_hwv_power_ctrl_optional(bool onoff, u8 bit)
 	if (!mminfra_hwv_domain.data || (bit > 31))
 		return 0;
 
-	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain, BIT(bit), onoff);
+	return __mminfra_hwvoter_power_ctrl(&mminfra_hwv_domain, BIT(bit), onoff);
 }
 EXPORT_SYMBOL_GPL(mtk_clk_mminfra_hwv_power_ctrl_optional);
 
