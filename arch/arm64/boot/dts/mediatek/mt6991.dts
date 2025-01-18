@@ -10618,7 +10618,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6991-vcodec-dec";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
-			//mediatek,slc = <1>;
+			mediatek,slc = <1>;
 			support-acp = <1>;
 			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
 				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
