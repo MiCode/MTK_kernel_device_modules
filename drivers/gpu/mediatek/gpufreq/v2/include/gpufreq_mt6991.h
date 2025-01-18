@@ -124,6 +124,14 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 	}
 
 /**************************************************
+ * Enumeration
+ **************************************************/
+enum gpufreq_eco_version {
+	MT6991_A0 = 0,
+	MT6991_B0,
+};
+
+/**************************************************
  * Structure
  **************************************************/
 struct gpufreq_bus_tracker_info {
