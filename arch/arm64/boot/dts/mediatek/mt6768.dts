@@ -5561,6 +5561,10 @@ transparent_hugepage=never";
 #include "mediatek/mt6370.dtsi"
 #include "mediatek/trusty.dtsi"
 
+&hypervisor {
+	status = "okay";
+};
+
 &mt6370_backlight {
 	compatible = "mediatek,mt6372-backlight";
 	default-brightness = <4096>;
