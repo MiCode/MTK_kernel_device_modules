@@ -6525,7 +6525,7 @@ cpus {
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
 			thread-count = <24>;
-			mboxes = <&gce_m 10 0 CMDQ_THR_PRIO_1>,
+			mboxes = <&gce_m_sec 10 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 12 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 13 0 CMDQ_THR_PRIO_1>,
 				<&gce_m 14 0 CMDQ_THR_PRIO_1>,
