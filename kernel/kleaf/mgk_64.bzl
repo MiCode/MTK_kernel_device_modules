@@ -2232,6 +2232,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/slbc_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/slbc_trace.ko")
 
+        mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
+
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko")
