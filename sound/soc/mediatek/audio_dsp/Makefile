@@ -24,6 +24,11 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 
 # object code
 snd-soc-audiodsp-common-objs := audio_buf.o mtk-dsp-dai.o mtk-dsp-pcm.o mtk-dsp-common.o mtk-dsp-platform-driver.o mtk-dsp-mem-control.o
+
+#ifeq ($(CONFIG_DEVICE_MODULES_VHOST_ADSP),y)
+snd-soc-audiodsp-common-objs += mtk-dsp-platform-driver-auto.o
+#endif
+
 obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += snd-soc-audiodsp-common.o
 
 # Offload support

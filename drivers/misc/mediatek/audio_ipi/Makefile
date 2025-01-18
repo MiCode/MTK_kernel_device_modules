@@ -39,6 +39,10 @@ audio_ipi-objs += common/audio_ipi_dma.o
 audio_ipi-objs += common/audio_ringbuf.o
 audio_ipi-objs += common/audio_ipi_platform_common.o
 
+#ifeq ($(CONFIG_DEVICE_MODULES_VHOST_ADSP),y)
+audio_ipi-objs += common/audio_ipi_auto.o
+#endif
+
 ### platform codes
 IPI_PLATFORM_VERSION = v4
 audio_ipi-objs += $(IPI_PLATFORM_VERSION)/audio_ipi_platform.o

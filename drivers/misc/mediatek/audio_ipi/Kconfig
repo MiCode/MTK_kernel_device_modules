@@ -7,3 +7,15 @@ config MTK_AUDIO_IPI
 	  with subsystem.
 	  This option depends on MediaTek in-house audio DSP support
 	  or audio feature support on MediaTek in-house DSP.
+
+config DEVICE_MODULES_VHOST_ADSP
+	tristate "Host kernel accelerator for virtio blk (EXPERIMENTAL)"
+	depends on BLOCK
+	select VHOST
+	help
+	  This kernel module can be loaded in host kernel to accelerate
+	  guest block with virtio_adsp. Not to be confused with virtio_adsp
+	  module itself which needs to be loaded in guest kernel.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called vhost_adsp.
