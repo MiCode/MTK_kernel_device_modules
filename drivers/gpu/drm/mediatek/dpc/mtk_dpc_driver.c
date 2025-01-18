@@ -890,6 +890,11 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 	u32 value = en  ? 0x31 : 0x70;
 	u32 rtff_mask = 0;
 
+	if (!dpc_is_power_on()) {
+		DPCFUNC("disp vcore is not power on, subsys(%u) en(%u) skip", subsys, en);
+		return;
+	}
+
 	if (subsys == DPC_SUBSYS_DISP) {
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS0].cfg);
@@ -900,6 +905,9 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML1].cfg);
 		rtff_mask = BIT(15);
 	} else if (subsys == DPC_SUBSYS_MML0) {
+		/* FIXME: disable mml0 mtcmos auto to fix no power issue */
+		if (en)
+			return;
 		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML0].cfg);
 		rtff_mask = BIT(14);
 	} else {
@@ -1432,10 +1440,8 @@ static void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_
 
 static bool dpc_is_power_on(void)
 {
-	if (!g_priv->dispvcore_chk) {
-		DPCERR("dispvcore_chk not defined");
+	if (!g_priv->dispvcore_chk)
 		return true;
-	}
 
 	return readl(g_priv->dispvcore_chk) & g_priv->dispvcore_chk_mask;
 }

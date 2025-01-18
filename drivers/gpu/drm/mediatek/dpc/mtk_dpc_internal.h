@@ -284,6 +284,7 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread);
 static void dpc_dt_set(u16 dt, u32 counter);
 static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb);
+static bool dpc_is_power_on(void);
 
 struct mtk_dpc {
 	struct platform_device *pdev;
