@@ -746,6 +746,7 @@ mgk_64_platform_device_modules = {
     "drivers/clk/mediatek/clk-mt6893-ven1.ko": "mt6893",
     "drivers/clk/mediatek/clk-mt6893-ven2.ko": "mt6893",
     "drivers/clk/mediatek/clk-mt6893.ko": "mt6893",
+    "drivers/clk/mediatek/clk-mt6893-pg.ko": "mt6893",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6893.ko": "mt6893",
     "drivers/soc/mediatek/mtk-scpsys-mt6893.ko": "mt6893",
     "drivers/clk/mediatek/clk-chk-mt6893.ko": "mt6893",
