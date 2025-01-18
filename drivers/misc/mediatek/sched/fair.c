@@ -334,6 +334,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 
 		/* Account thermal pressure for the energy estimation */
 		pd_idx = cpu = cpumask_first(cpus);
+		eenv->gear_idx = topology_cluster_id(pd_idx);
 		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
 		/* copy arch_scale_thermal_pressure() code and add read_once to avoid data-racing */
 		cpu_thermal_cap -= READ_ONCE(per_cpu(thermal_pressure, cpu));
@@ -345,7 +346,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		}
 
 		if (trace_sched_energy_init_enabled()) {
-			trace_sched_energy_init(cpus, pd_idx, eenv->pds_cpu_cap[pd_idx],
+			trace_sched_energy_init(cpus, eenv->gear_idx, eenv->pds_cpu_cap[pd_idx],
 				eenv->pds_cap[pd_idx]);
 		}
 
@@ -354,7 +355,6 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			eenv->total_util += eenv->pds_busy_time[pd_idx];
 
 			/* get dsu_freq_base by max_util voting */
-			eenv->gear_idx = topology_cluster_id(pd_idx);
 			max_util = eenv_pd_max_util(eenv, cpus, p, -1);
 			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
