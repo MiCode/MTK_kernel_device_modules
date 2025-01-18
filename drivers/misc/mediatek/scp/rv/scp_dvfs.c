@@ -948,7 +948,7 @@ static int mt_scp_ips_proc_show(struct seq_file *m, void *v)
 
 	ipi_data.arg1 = SCP_SLEEP_IPS_GET;
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 	scp_ack_data = &scp_ipi_ackdata0;
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[%s] ipi send failed with error: %d\n",
@@ -1008,11 +1008,11 @@ static int mt_scp_dvfs_sleep_cnt_proc_show(struct seq_file *m, void *v)
 	ipi_data.arg1 = SCP_SLEEP_GET_COUNT;
 	if (g_dvfs_dev.cur_dbg_core == SCP_CORE_0) {
 		ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 		scp_ack_data = &scp_ipi_ackdata0;
 	} else if (g_dvfs_dev.cur_dbg_core == SCP_CORE_1) {
 		ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
-			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 100);
 		scp_ack_data = &scp_ipi_ackdata1;
 	} else {
 		pr_notice("[%s]: invalid scp core num: %d\n",
@@ -1118,11 +1118,11 @@ static int mt_scp_dvfs_sleep_proc_show(struct seq_file *m, void *v)
 
 	if (g_dvfs_dev.cur_dbg_core == SCP_CORE_0) {
 		ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 		scp_ack_data = &scp_ipi_ackdata0;
 	} else if (g_dvfs_dev.cur_dbg_core == SCP_CORE_1) {
 		ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
-			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 100);
 		scp_ack_data = &scp_ipi_ackdata1;
 	} else {
 		pr_notice("[%s]: invalid scp core index: %d\n",
@@ -1481,7 +1481,7 @@ bool sync_ulposc_cali_data_to_scp(void)
 					IPI_SEND_WAIT,
 					&ipi_data[0],
 					PIN_OUT_C_SIZE_SLEEP_0,
-					500);
+					100);
 		if (ret != IPI_ACTION_DONE) {
 			pr_notice("[%s]: ipi send ulposc cali val(%d, 0x%x) fail\n",
 				__func__,
@@ -2157,7 +2157,7 @@ static void mt_scp_start_res_prof(void)
 
 	ipi_data.arg1 = SCP_SLEEP_START_RES_PROF;
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
@@ -2169,7 +2169,7 @@ static void mt_scp_start_res_prof(void)
 
 	/* if there are core0 & core1 */
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
@@ -2196,7 +2196,7 @@ static void mt_scp_stop_res_prof(void)
 
 	ipi_data.arg1 = SCP_SLEEP_STOP_RES_PROF;
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
@@ -2230,7 +2230,7 @@ static void mt_scp_stop_res_prof(void)
 
 	/* if there are core0 & core1 */
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
@@ -2271,7 +2271,7 @@ static int mt_scp_dump_sleep_count(void)
 
 	ipi_data.arg1 = SCP_SLEEP_GET_COUNT;
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
@@ -2287,7 +2287,7 @@ static int mt_scp_dump_sleep_count(void)
 
 	/* if there are core0 & core1 */
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 100);
 	if (ret != IPI_ACTION_DONE) {
 		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
 			__func__, __LINE__, ret);
