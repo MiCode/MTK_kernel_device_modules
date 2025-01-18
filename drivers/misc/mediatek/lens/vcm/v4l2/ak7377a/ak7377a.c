@@ -411,7 +411,7 @@ static struct i2c_driver ak7377a_i2c_driver = {
 		.name = AK7377A_NAME,
 		.of_match_table = ak7377a_of_table,
 	},
-	.probe_new  = ak7377a_probe,
+	.probe  = ak7377a_probe,
 	.remove = ak7377a_remove,
 	.id_table = ak7377a_id_table,
 };

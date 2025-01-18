@@ -396,7 +396,7 @@ static struct i2c_driver gt9772a_i2c_driver = {
 		.name = GT9772A_NAME,
 		.of_match_table = gt9772a_of_table,
 	},
-	.probe_new  = gt9772a_probe,
+	.probe  = gt9772a_probe,
 	.remove = gt9772a_remove,
 	.id_table = gt9772a_id_table,
 };

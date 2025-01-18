@@ -400,7 +400,7 @@ static struct i2c_driver ak7375c_i2c_driver = {
 		.name = AK7375C_NAME,
 		.of_match_table = ak7375c_of_table,
 	},
-	.probe_new  = ak7375c_probe,
+	.probe  = ak7375c_probe,
 	.remove = ak7375c_remove,
 	.id_table = ak7375c_id_table,
 };

@@ -475,7 +475,7 @@ static const struct of_device_id __maybe_unused mt6375_of_match[] = {
 MODULE_DEVICE_TABLE(of, mt6375_of_match);
 
 static struct i2c_driver mt6375_driver = {
-	.probe_new = mt6375_probe,
+	.probe = mt6375_probe,
 	.remove = mt6375_remove,
 	.driver = {
 		.name = "mt6375",

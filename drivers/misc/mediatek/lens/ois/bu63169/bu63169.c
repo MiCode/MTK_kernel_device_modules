@@ -394,7 +394,7 @@ static struct i2c_driver bu63169_i2c_driver = {
 		.pm = &bu63169_pm_ops,
 		.of_match_table = bu63169_of_table,
 	},
-	.probe_new  = bu63169_probe,
+	.probe  = bu63169_probe,
 	.remove = bu63169_remove,
 	.id_table = bu63169_id_table,
 };

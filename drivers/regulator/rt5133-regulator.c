@@ -665,7 +665,7 @@ static struct i2c_driver rt5133_driver = {
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(rt5133_ofid_tbls),
 	},
-	.probe_new = rt5133_probe,
+	.probe = rt5133_probe,
 	.remove = rt5133_remove,
 };
 module_i2c_driver(rt5133_driver);

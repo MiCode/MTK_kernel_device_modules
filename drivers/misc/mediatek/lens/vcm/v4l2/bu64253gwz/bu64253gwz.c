@@ -421,7 +421,7 @@ static struct i2c_driver bu64253gwz_i2c_driver = {
 		.name = BU64253GWZ_NAME,
 		.of_match_table = bu64253gwz_of_table,
 	},
-	.probe_new  = bu64253gwz_probe,
+	.probe  = bu64253gwz_probe,
 	.remove = bu64253gwz_remove,
 	.id_table = bu64253gwz_id_table,
 };

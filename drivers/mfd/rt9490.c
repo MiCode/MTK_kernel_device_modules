@@ -311,7 +311,7 @@ static struct i2c_driver rt9490_driver = {
 		.of_match_table = rt9490_of_match_table,
 		.pm = &rt9490_pm_ops,
 	},
-	.probe_new = rt9490_probe,
+	.probe = rt9490_probe,
 	.remove = rt9490_remove,
 };
 module_i2c_driver(rt9490_driver);

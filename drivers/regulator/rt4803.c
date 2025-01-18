@@ -203,7 +203,7 @@ static struct i2c_driver rt4803_driver = {
 		.name = "rt4803",
 		.of_match_table = rt4803_device_match_table,
 	},
-	.probe_new = rt4803_probe,
+	.probe = rt4803_probe,
 };
 module_i2c_driver(rt4803_driver);
 

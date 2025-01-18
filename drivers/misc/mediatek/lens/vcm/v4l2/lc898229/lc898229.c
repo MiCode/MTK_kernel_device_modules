@@ -403,7 +403,7 @@ static struct i2c_driver lc898229_i2c_driver = {
 		.name = LC898229_NAME,
 		.of_match_table = lc898229_of_table,
 	},
-	.probe_new  = lc898229_probe,
+	.probe  = lc898229_probe,
 	.remove = lc898229_remove,
 	.id_table = lc898229_id_table,
 };

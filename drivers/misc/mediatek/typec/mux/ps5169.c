@@ -183,7 +183,7 @@ static struct i2c_driver ps5169_driver = {
 		.name = "ps5169",
 		.of_match_table = ps5169_of_match,
 	},
-	.probe_new = ps5169_probe,
+	.probe = ps5169_probe,
 	.remove	= ps5169_remove,
 	.id_table = ps5169_table,
 };

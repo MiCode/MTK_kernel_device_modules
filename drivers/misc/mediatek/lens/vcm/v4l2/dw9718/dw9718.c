@@ -437,7 +437,7 @@ static struct i2c_driver dw9718_i2c_driver = {
 		.name = DW9718_NAME,
 		.of_match_table = dw9718_of_table,
 	},
-	.probe_new  = dw9718_probe,
+	.probe  = dw9718_probe,
 	.remove = dw9718_remove,
 	.id_table = dw9718_id_table,
 };
