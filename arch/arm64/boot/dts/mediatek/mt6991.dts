@@ -56,6 +56,7 @@
 			i2c14 = &i2c14;
 			scp-i2c1 = &scp_i2c1;
 			dli-async13 = &ovl_dli_async1;
+			wdma1 = &disp_wdma1;
 			exdma0 = &disp_ovl0_exdma0;
 			exdma2 = &disp_ovl0_exdma2;
 			exdma3 = &disp_ovl0_exdma3;
@@ -8441,6 +8442,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config0>;
 			phy-names = "dphy";
+		};
+
+		disp_wdma1: disp1-wdma1@325a0000 {
+			compatible = "mediatek,disp_wdma1",
+					"mediatek,mt6991-disp-wdma";
+			reg = <0 0x325a0000 0 0x1000>;
+			interrupts = <GIC_SPI 453 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_WDMA1_DISP>;
+			fifo-size-1plane = <1208>;
+			fifo-size-2plane = <800>;
+			fifo-size-uv-2plane = <400>;
+			fifo-size-3plane = <797>;
+			fifo-size-uv-3plane = <198>;
+			mediatek,larb = <&smi_larb33 SMMU_L33_P10_DISP1_WDMA1>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L33_P10_DISP1_WDMA1)
+					 &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_WDMA1_hrt_qos";
 		};
 
 		ovlsys-config@32800000 {
