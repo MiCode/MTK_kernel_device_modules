@@ -1416,6 +1416,10 @@ static struct thermal_zone_device_ops mtk_thermal_wrapper_dev_ops = {
 	.get_crit_temp = mtk_thermal_wrapper_get_crit_temp,
 };
 
+static struct thermal_zone_params mtk_zone_params = {
+	.governor_name = "bang_bang",
+};
+
 /*mtk thermal zone register function */
 struct thermal_zone_device *mtk_thermal_zone_device_register_wrapper(
 char *type, struct thermal_trip *trips, int num_trip, void *devdata,
@@ -1461,13 +1465,16 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 			/* (void*)ops,     ///< invoker's ops pass to devdata */
 			(void *)tzdata,
 			&mtk_thermal_wrapper_dev_ops, /* /< use wrapper ops. */
-			NULL,	/* /< tzp */
+			&mtk_zone_params,	/* /< tzp */
 			passive_delay_jiffies, polling_delay_jiffies);
 
 	if (IS_ERR(tz)) {
 		pr_err("%s %s fail, err=%ld\n", __func__, type, PTR_ERR(tz));
 		return tz;
 	}
+
+	if (strcmp(tz->governor->name, mtk_zone_params.governor_name))
+		pr_err("%s %s governor %s, not match %s\n", __func__, type, tz->governor->name, mtk_zone_params.governor_name);
 
 	ret = thermal_zone_device_enable(tz);
 
@@ -1698,15 +1705,6 @@ static int mtk_cooling_wrapper_set_cur_state
 		}
 	}
 
-	list_for_each_entry(instance, &cdev->thermal_instances, cdev_node) {
-		if (!strcmp(instance->cdev->type, cdev->type)) {
-			instance->initialized = false;
-
-			if (instance->target == THERMAL_NO_TARGET)
-				state = 0;
-		}
-	}
-
 	if (state == 0) {
 		int last_temp = 0;
 		int trip_temp = 0;
@@ -1751,10 +1749,19 @@ static int mtk_cooling_wrapper_set_cur_state
 				if ((last_temp >= (int)trip_temp)
 					|| (((int)trip_temp - last_temp)
 					< mcdata->exit_threshold)) {
+
 					THRML_LOG(
 						"[.set_cur_state]not exit yet tz_type:%s cdev_type:%s trip:%d state:%lu\n",
 						mcdata->tz->type, cdev->type,
 						mcdata->trip, state);
+
+					list_for_each_entry(instance, &cdev->thermal_instances,
+							cdev_node) {
+						if (instance->target == THERMAL_NO_TARGET)
+							continue;
+
+						instance->target = cur_state;
+					}
 
 					state = cur_state;
 				}
