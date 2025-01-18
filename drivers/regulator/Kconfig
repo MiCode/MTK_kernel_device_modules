@@ -138,6 +138,16 @@ config REGULATOR_MT6373
 	  The driver can also be build as a module.
 	  If so, the module will be called mt6373_regulator
 
+config REGULATOR_MT6379
+	tristate "MT6379 SubPMIC Regulator"
+	depends on MFD_MT6379_I2C || MFD_MT6379_SPMI
+	help
+	  The MT6379 integrates one buck-boost controller that supports the
+	  wide voltage output range from 2025mV to 5200mV.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called mt6379-regulator.
+
 config REGULATOR_MT6681
 	tristate "MT6681 SPMI Regulator driver"
 	depends on MFD_MTK_SPMI_PMIC
