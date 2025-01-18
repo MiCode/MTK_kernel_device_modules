@@ -656,7 +656,6 @@ int fpsgo_ux_count_frame_info(struct render_info *thr, int target)
 void fpsgo_ux_reset(struct render_info *thr)
 {
 	struct rb_node *cur;
-	struct rb_node *next;
 	struct ux_frame_info *tmp = NULL;
 
 	fpsgo_lockprove(__func__);
@@ -668,11 +667,10 @@ void fpsgo_ux_reset(struct render_info *thr)
 	cur = rb_first(&(thr->ux_frame_info_tree));
 
 	while (cur) {
-		next = rb_next(cur);
 		tmp = rb_entry(cur, struct ux_frame_info, entry);
 		rb_erase(&tmp->entry, &(thr->ux_frame_info_tree));
 		kmem_cache_free(frame_info_cachep, tmp);
-		cur = next;
+		cur = rb_first(&(thr->ux_frame_info_tree));
 	}
 
 }
