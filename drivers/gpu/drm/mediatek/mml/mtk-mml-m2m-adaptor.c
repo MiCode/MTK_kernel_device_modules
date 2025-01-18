@@ -1521,10 +1521,17 @@ err_free_ctx:
 
 static void m2m_ctx_destroy(struct kref *kref)
 {
-	struct mml_m2m_ctx *ctx = container_of(kref, struct mml_m2m_ctx, ref);
+	struct mml_m2m_ctx *mctx = container_of(kref, struct mml_m2m_ctx, ref);
+	struct mml_ctx *ctx = &mctx->ctx;
+	u32 i;
 
-	mml_ctx_deinit(&ctx->ctx);
-	kfree(ctx);
+	mml_msg("[m2m]%s on ctx %p", __func__, ctx);
+
+	mml_ctx_deinit(ctx);
+	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
+		if (ctx->tile_cache[i].tiles)
+			vfree(ctx->tile_cache[i].tiles);
+	kfree(mctx);
 }
 
 static int mml_m2m_release(struct file *file)
