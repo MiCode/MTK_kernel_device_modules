@@ -463,12 +463,12 @@
 	pmu {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	dsu-pmu-0 {
 		compatible = "arm,dsu-pmu";
-		interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH 0>;
 		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>,
 			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
@@ -499,7 +499,7 @@
 	/* Trustonic Mobicore SW IRQ number 96 = 32 + 64 */
 	mobicore {
 		compatible = "trustonic,mobicore";
-		interrupts = <GIC_SPI 64 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 64 IRQ_TYPE_EDGE_RISING 0>;
 	};
 
 	reserved_memory: reserved-memory {
@@ -575,7 +575,7 @@
 
 	gic: interrupt-controller {
 		compatible = "arm,gic-v3";
-		#interrupt-cells = <3>;
+		#interrupt-cells = <4>;
 		#address-cells = <2>;
 		#size-cells = <2>;
 		#redistributor-regions = <1>;
@@ -583,7 +583,7 @@
 		interrupt-controller;
 		reg = <0 0x0c000000 0 0x40000>, // distributor
 		      <0 0x0c040000 0 0x200000>; // redistributor
-		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	clkitg: clkitg {
@@ -720,15 +720,15 @@
 			<6 0x8090 0x0000ff00 0x8090 68 0x8090 0x000000ff>,
 			<7 0x8090 0x0000ff00 0x8090 68 0x8090 0x000000ff>,
 			<1024 0xc8c0 0x01000000 0xc8c0 12 0xc8c8 0x00000001>;
-		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	lastbus@10001000 {
@@ -967,7 +967,7 @@
 
 	seninf_n3d_top: seninf_n3d_top@1a004000 {
 		compatible = "mediatek,seninf_n3d_top";
-		interrupts = <GIC_SPI 248 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 248 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		reg = <0 0x1a004000 0 0x100>,
 		      <0 0x1a004100 0 0x100>,
@@ -992,7 +992,7 @@
 	spmtwam: spmtwam@10006000 {
 		compatible = "mediatek,spmtwam";
 		reg = <0 0x10006000 0 0x1000>;
-		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
 		spm_twam_con = <0x970>;
 		spm_twam_window_len = <0x974>;
 		spm_twam_idle_sel = <0x978>;
@@ -1062,7 +1062,7 @@
 		compatible = "mediatek,mt6781-pwrap";
 		reg = <0 0x1000d000 0 0x1000>;
 		reg-names = "pwrap";
-		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk26m>, <&clk26m>;
 		clock-names = "spi", "wrap";
 
@@ -1113,7 +1113,7 @@
 	keypad:kp@10010000 {
 		compatible = "mediatek,kp";
 		reg = <0 0x10010000 0 0x1000>;
-		interrupts = <GIC_SPI 73 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 73 IRQ_TYPE_EDGE_RISING 0>;
 		clocks = <&clk26m>;
 		clock-names = "kpd";
 	};
@@ -1121,8 +1121,8 @@
 	/* Microtrust SW IRQ number 88(120) ~ 93(125) */
 	utos {
 		compatible = "microtrust,utos";
-		interrupts = <GIC_SPI 88 IRQ_TYPE_EDGE_RISING>,
-		<GIC_SPI 89 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 88 IRQ_TYPE_EDGE_RISING 0>,
+		<GIC_SPI 89 IRQ_TYPE_EDGE_RISING 0>;
 	};
 	utos_tester {
 		compatible = "microtrust,tester-v1";
@@ -1131,7 +1131,7 @@
 
 	amms_control {
 		compatible = "mediatek,amms";
-		interrupts = <GIC_SPI 341 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 341 IRQ_TYPE_EDGE_RISING 0>;
 	};
 
 	topmisc@10011000 {
@@ -1143,7 +1143,7 @@
 		compatible = "mediatek,dvfsrc";
 		reg = <0 0x10012000 0 0x1000>,
 			<0 0x10006000 0 0x1000>;
-		interrupts = <GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 290 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	boot_dramboost: boot_dramboost {
@@ -1185,7 +1185,7 @@
 			<0 0x1021d400 0 0x1000>, /*PD_MISC*/
 			<0 0x1021c000 0 0x1000>, /*PD_MD_MISC*/
 			<0 0x1022e000 0 0x1000>; /*SRAM*/
-		interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>; /*GIC Interrupt ID-32*/
+		interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH 0>; /*GIC Interrupt ID-32*/
 		mediatek,dpmaif_capability = <6>;
 		clocks = <&infracfg_ao INFRACFG_AO_CLDMA_BCLK_CG>;
 		clock-names = "infra-dpmaif-clk";
@@ -1197,8 +1197,8 @@
 			<0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
 		mediatek,sram_size = <512>;
 		/*CCIF_IRQ0 164, CCIF_IRQ1 165*/
-		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_CCIF_AP_CG>,
 			<&infracfg_ao INFRACFG_AO_CCIF_MD_CG>,
 			<&infracfg_ao INFRACFG_AO_CCIF1_AP_CG>,
@@ -1225,9 +1225,9 @@
 		mediatek,cldma_capability = <6>;
 		reg = <0 0x10209000 0 0x1000>, /*AP_CCIF_BASE*/
 			<0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
-		interrupts = <GIC_SPI 75 IRQ_TYPE_EDGE_RISING>, /*MDWDT*/
-			     <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>, /*CCIF0 GIC Interrupt ID 196-32*/
-			     <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>; /*CCIF0 GIC Interrupt ID 197-32*/
+		interrupts = <GIC_SPI 75 IRQ_TYPE_EDGE_RISING 0>, /*MDWDT*/
+			     <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH 0>, /*CCIF0 GIC Interrupt ID 196-32*/
+			     <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH 0>; /*CCIF0 GIC Interrupt ID 197-32*/
 		clocks = <&scpsys SCP_SYS_MD1>;
 		clock-names = "scp-sys-md1-main";
 		ccci-infracfg = <&infracfg_ao>;
@@ -1252,17 +1252,17 @@
 				"mediatek,mt6765-timer";
 		reg = <0 0x10017000 0 0x1000>;
 		reg-names = "sys_timer_base";
-		interrupts = <GIC_SPI 207 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 207 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk13m>;
 	};
 
 	timer: timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_PPI 14 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_PPI 11 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_PPI 14 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_PPI 11 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH 0>;
 		clock-frequency = <13000000>;
 	};
 
@@ -1273,7 +1273,7 @@
 				<0 0x105c0000 0 0x3000>,
 				<0 0x105c4000 0 0x1000>,
 				<0 0x105d4000 0 0x6000>;
-		interrupts = <GIC_SPI 205 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 205 IRQ_TYPE_LEVEL_HIGH 0>;
 		core_1 = "enable";
 		scp_sramSize = <0x000c0000>;
 		scp_mpuRegionId = <7>;
@@ -1385,7 +1385,7 @@
 		      <0 0x1000e000 0 0x1000>,
 		      <0 0x10033000 0 0x1000>,
 		      <0 0x0011a000 0 0x1000>;
-		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_DEVICE_APC_CG>;
 		clock-names = "devapc-infra-clock";
 	};
@@ -1399,7 +1399,7 @@
 		reg = <0 0x10208000 0 0x1000>,
 			<0 0x10001000 0 0x1000>;
 		mediatek,bus_dbg_con_offset = <0x2fc>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	soc {
@@ -1715,7 +1715,7 @@
 					<&smi_larb11 &smi_larb13 &smi_larb14>,
 					<&smi_larb16 &smi_larb17 &smi_larb18>,
 					<&smi_larb19 &smi_larb20>;
-			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys_config CLK_MM_SMI_IOMMU>;
 			clock-names = "bclk";
 			#iommu-cells = <1>;
@@ -1725,28 +1725,28 @@
 			cell-index = <0>;
 			compatible = "mediatek,bank1_m4u0";
 			reg = <0 0x14017000 0 0x1000>;
-			interrupts = <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		iommu0_bank2: m4u@14018000 {
 			cell-index = <0>;
 			compatible = "mediatek,bank2_m4u0";
 			reg = <0 0x14018000 0 0x1000>;
-			interrupts = <GIC_SPI 315 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 315 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		iommu0_bank3: m4u@14019000 {
 			cell-index = <0>;
 			compatible = "mediatek,bank3_m4u0";
 			reg = <0 0x14019000 0 0x1000>;
-			interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		iommu0_sec: m4u@1401a000 {
 			cell-index = <0>;
 			compatible = "mediatek,sec_m4u0";
 			reg = <0 0x1401a000 0 0x1000>;
-			interrupts = <GIC_SPI 317 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 317 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		disp_smi_2x1_sub_common_u0@1401b000 {
@@ -1858,7 +1858,7 @@
 		dip_a0@15021000 {
 				compatible = "mediatek,dip1";
 				reg = <0 0x15021000 0 0xc000>;
-				interrupts = <GIC_SPI 224 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 224 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		dip_a1@15022000 {
@@ -2009,7 +2009,7 @@
 		msfdl@15810000 {
 				compatible = "mediatek,msfdl";
 				reg = <0 0x15810000 0 0x1000>;
-				interrupts = <GIC_SPI 226 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 226 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		wpe_b@15811000 {
@@ -2020,13 +2020,13 @@
 		mssdl@15812000 {
 				compatible = "mediatek,mssdl";
 				reg = <0 0x15812000 0 0x1000>;
-				interrupts = <GIC_SPI 229 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 229 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		mss_b@15812000 {
 				compatible = "mediatek,mss_b";
 				reg = <0 0x15812000 0 0x1000>;
-				interrupts = <GIC_SPI 236 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 236 IRQ_TYPE_LEVEL_HIGH 0>;
 				mboxes = <&gce_mbox 17 0 CMDQ_THR_PRIO_1>;
 				mss_frame_done =
 				/bits/ 16 <CMDQ_EVENT_GCE_IMG2_EVENT23>;
@@ -2037,7 +2037,7 @@
 		msf_b@15810000 {
 				compatible = "mediatek,msf_b";
 				reg = <0 0x15810000 0 0x1000>;
-				interrupts = <GIC_SPI 233 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 233 IRQ_TYPE_LEVEL_HIGH 0>;
 				mboxes = <&gce_mbox 18 0 CMDQ_THR_PRIO_1>;
 				msf_frame_done =
 				/bits/ 16 <CMDQ_EVENT_GCE_IMG2_EVENT21>;
@@ -2151,7 +2151,7 @@
 						 <0 0x16025000 0 0x1000>;				/* VDEC_MISC */
 				iommus = <&iommu0 M4U_PORT_L4_VDEC_MC_EXT>;
 				mediatek,larb = <&smi_larb4>;
-				interrupts = <GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>;
 				mediatek,vcu = <&vcu>;
 				clocks =
 						<&vdec_gcon VDEC_VDEC>;
@@ -2164,7 +2164,7 @@
 				reg = <0 0x17020000 0 0x2000>;
 				iommus = <&iommu0 M4U_PORT_L7_VENC_RD_COMV>;
 				mediatek,larb = <&smi_larb7>;
-				interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH 0>;
 				mediatek,vcu = <&vcu>;
 				clocks =
 						<&venc_gcon VENC_GCON_VENC>;
@@ -2175,7 +2175,7 @@
 		venc@17020000 {
 				compatible = "mediatek,venc";
 				reg = <0 0x17020000 0 0x10000>;
-				interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		jpgenc@17030000 {
@@ -2185,7 +2185,7 @@
 #ifdef CONFIG_MTK_IOMMU_V2
 				iommus = <&iommu0 M4U_PORT_L7_JPGENC_Y_RDMA>;
 #endif
-				interrupts = <GIC_SPI 245 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 245 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&venc_gcon VENC_GCON_JPGENC>;
 				clock-names = "jpgenc";
 				cshot-spec = <368>;
@@ -2272,13 +2272,13 @@
 		cam1: cam1@1a030000 {
 				compatible = "mediatek,cam1";
 				reg = <0 0x1a030000 0 0x8000>;
-				interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		cam2: cam2@1a050000 {
 				compatible = "mediatek,cam2";
 				reg = <0 0x1a050000 0 0x8000>;
-				interrupts = <GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		cam3@1a070000 {
@@ -2289,37 +2289,37 @@
 		camsv3@1a092000 {
 				compatible = "mediatek,camsv3";
 				reg = <0 0x1a092000 0 0x1000>;
-				interrupts = <GIC_SPI 256 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 256 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		camsv4@1a093000 {
 				compatible = "mediatek,camsv4";
 				reg = <0 0x1a093000 0 0x1000>;
-				interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		camsv5@1a094000 {
 				compatible = "mediatek,camsv5";
 				reg = <0 0x1a094000 0 0x1000>;
-				interrupts = <GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		camsv6@1a095000 {
 				compatible = "mediatek,camsv6";
 				reg = <0 0x1a095000 0 0x1000>;
-				interrupts = <GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 259 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		camsv7@1a096000 {
 				compatible = "mediatek,camsv7";
 				reg = <0 0x1a096000 0 0x1000>;
-				interrupts = <GIC_SPI 263 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 263 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
 		camsv8@1a097000 {
 				compatible = "mediatek,camsv8";
 				reg = <0 0x1a097000 0 0x1000>;
-				interrupts = <GIC_SPI 264 IRQ_TYPE_LEVEL_HIGH>;
+				interrupts = <GIC_SPI 264 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 	};
 
@@ -2369,10 +2369,10 @@
 			<0 0x10212100 0 0x80>,
 			<0 0x10212200 0 0x80>,
 			<0 0x10212300 0 0x80>;
-		interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH 0>;
 		nr_channel = <4>;
 		clocks = <&infracfg_ao INFRACFG_AO_CQ_DMA_CG>;
 		clock-names = "cqdma";
@@ -2436,7 +2436,7 @@
 			"mediatek,common-emimpu";
 		reg = <0 0x1021b000 0 0x1000>;
 		mediatek,emi-reg = <&emicen>;
-		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH 0>;
 		region_cnt = <32>;
 		domain_cnt = <16>;
 		addr_align = <16>;
@@ -2458,7 +2458,7 @@
 		prot-base = <0x0 0x40000000>;
 		prot-size = <0x4 0x00000000>;
 		page-size = <0x200000>;
-		interrupts = <GIC_SPI 238 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 238 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
 	dvfsp@10227000 {
@@ -2545,8 +2545,8 @@
 	gce_mbox: gce_mbox@1022c000 {
 		compatible = "mediatek,mt6781-gce";
 		reg = <0 0x1022c000 0 0x4000>;
-		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH 0>;
 		#mbox-cells = <3>;
 		#gce-event-cells = <1>;
 		#gce-subsys-cells = <2>;
@@ -2678,12 +2678,12 @@
 			"mbox4_set",
 			"mbox4_clr";
 
-		interrupts = <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 218 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 218 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		interrupt-names = "ipc",
 			"mbox0",
@@ -2722,8 +2722,8 @@
 			<0 0x10630000 0 0x9000>, /* ITCM */
 			<0 0x10610000 0 0x8000>; /* DTCM */
 		system = <0 0x56000000 0 0x700000>;
-		interrupts = <GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH>, /* ADSP_WDT0_IRQ_BIT */
-			     <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH>; /* ADSP_CIRQ_C0_IRQ_BIT */
+		interrupts = <GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH 0>, /* ADSP_WDT0_IRQ_BIT */
+			     <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH 0>; /* ADSP_CIRQ_C0_IRQ_BIT */
 	};
 
 	imp_iic_wrap: imp_iic_wrap@11017000 {
@@ -2737,7 +2737,7 @@
 	auxadc: auxadc@11001000 {
 		compatible = "mediatek,mt6768-auxadc";
 		reg = <0 0x11001000 0 0x1000>;
-		interrupts = <GIC_SPI 66 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <GIC_SPI 66 IRQ_TYPE_EDGE_FALLING 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_AUXADC_CG>;
 		clock-names = "main";
 		#io-channel-cells = <1>;
@@ -2761,10 +2761,10 @@
 		      <0 0x10200e00 0 0x80>,
 		      <0 0x10200e80 0 0x80>,
 		      <0 0x10200f00 0 0x80>;
-		interrupts = <GIC_SPI 376 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 378 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 376 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 378 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "apdma";
 		#dma-cells = <1>;
@@ -2774,7 +2774,7 @@
 	apuart0: serial@11002000 {
 		compatible = "mediatek,mt6577-uart";
 		reg = <0 0x11002000 0 0x1000>;
-		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk26m>, <&infracfg_ao INFRACFG_AO_UART0_CG>;
 		clock-names = "baud", "bus";
 		dmas = <&apdma 0
@@ -2785,7 +2785,7 @@
 	apuart1: serial@11003000 {
 		compatible = "mediatek,mt6577-uart";
 		reg = <0 0x11003000 0 0x1000>;
-		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk26m>, <&infracfg_ao INFRACFG_AO_UART1_CG>;
 		clock-names = "baud", "bus";
 		dmas = <&apdma 2
@@ -2810,7 +2810,7 @@
 		id = <0>;
 		reg = <0 0x11007000 0 0x1000>,
 			<0 0x10200100 0 0x100>;
-		interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C0>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2831,7 +2831,7 @@
 		id = <1>;
 		reg = <0 0x11008000 0 0x1000>,
 			<0 0x10200200 0 0x100>;
-		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C1>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2851,7 +2851,7 @@
 		id = <2>;
 		reg = <0 0x11009000 0 0x1000>,
 			<0 0x10200300 0 0x180>;
-		interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C2>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2872,7 +2872,7 @@
 		id = <3>;
 		reg = <0 0x1100f000 0 0x1000>,
 			<0 0x10200480 0 0x100>;
-		interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C3>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2892,7 +2892,7 @@
 		id = <4>;
 		reg = <0 0x11011000 0 0x1000>,
 			<0 0x10200580 0 0x180>;
-		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C4>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2913,7 +2913,7 @@
 		id = <5>;
 		reg = <0 0x11016000 0 0x1000>,
 			<0 0x10200700 0 0x100>;
-		interrupts = <GIC_SPI 354 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 354 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C5>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2933,7 +2933,7 @@
 		id = <6>;
 		reg = <0 0x1100d000 0 0x1000>,
 			<0 0x10200800 0 0x100>;
-		interrupts = <GIC_SPI 355 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 355 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C6>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2953,7 +2953,7 @@
 		id = <7>;
 		reg = <0 0x11004000 0 0x1000>,
 			<0 0x10200900 0 0x180>;
-		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C7>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2974,7 +2974,7 @@
 		id = <8>;
 		reg = <0 0x11005000 0 0x1000>,
 			<0 0x10200a80 0 0x180>;
-		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C8>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -2995,7 +2995,7 @@
 		id = <9>;
 		reg = <0 0x11019000 0 0x1000>,
 			<0 0x10200c00 0 0x180>;
-		interrupts = <GIC_SPI 356 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 356 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&imp_iic_wrap CLK_IMP_AP_CLOCK_RO_I2C9>,
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "main", "dma";
@@ -3014,7 +3014,7 @@
 	pwm@11006000 {
 		compatible = "mediatek,pwm";
 		reg = <0 0x11006000 0 0x1000>;
-		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_PWM1_CG>,
 			<&infracfg_ao INFRACFG_AO_PWM2_CG>,
 			<&infracfg_ao INFRACFG_AO_PWM3_CG>,
@@ -3032,7 +3032,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <0>;
 		reg = <0 0x1100a000 0 0x1000>;
-		interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI0_CG>;
@@ -3042,14 +3042,14 @@
 	wifi: wifi@18000000 {
 		compatible = "mediatek,wifi";
 		reg = <0 0x18000000 0 0x100000>;
-		interrupts = <GIC_SPI 285 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 285 IRQ_TYPE_LEVEL_HIGH 0>;
 		memory-region = <&wifi_mem>;
 	};
 
 	therm_ctrl@1100b000 {
 		compatible = "mediatek,therm_ctrl";
 		reg = <0 0x1100b000 0 0x1000>;
-		interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_THERM_CG>;
 		clock-names = "therm-main";
 	};
@@ -3074,7 +3074,7 @@
 	eem_fsm: eem_fsm@1100b000 {
 		compatible = "mediatek,eem_fsm";
 		reg = <0 0x1100b000 0 0x1000>;
-		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 142 IRQ_TYPE_LEVEL_HIGH 0>;
 		eem-status = <1>;
 		eem-initmon-little = <0xf>;
 		eem-initmon-big = <0xf>;
@@ -3104,11 +3104,11 @@
 			/*btif rx dma base*/
 			<0 0x10201100 0 0x80>;
 			/*btif irq, IRQS_Sync ID, btif_irq_b*/
-		interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>,
+		interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*btif tx dma irq*/
-			<GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*btif rx dma irq*/
-			<GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_BTIF_CG>,
 			/*btif clock*/
 			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
@@ -3120,7 +3120,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <0>;
 		reg = <0 0x11010000 0 0x1000>;
-		interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI1_CG>;
@@ -3131,7 +3131,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <0>;
 		reg = <0 0x11012000 0 0x1000>;
-		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI2_CG>;
@@ -3142,7 +3142,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <0>;
 		reg = <0 0x11013000 0 0x1000>;
-		interrupts = <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI3_CG>;
@@ -3153,7 +3153,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <0>;
 		reg = <0 0x11014000 0 0x1000>;
-		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI4_CG>;
@@ -3164,7 +3164,7 @@
 		compatible = "mediatek,mt6765-spi";
 		mediatek,pad-select = <1>;
 		reg = <0 0x11015000 0 0x1000>;
-		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MAINPLL_D5>,
 			 <&topckgen TOP_MUX_SPI>,
 			 <&infracfg_ao INFRACFG_AO_SPI5_CG>;
@@ -3195,7 +3195,7 @@
 	afe: mt6781-afe-pcm@11210000 {
 		compatible = "mediatek,mt6781-sound";
 		reg = <0 0x11210000 0 0x2000>;
-		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH 0>;
 		topckgen = <&topckgen>;
 		apmixed = <&apmixed>;
 		infracfg_ao = <&infracfg_ao>;
@@ -3377,7 +3377,7 @@
 		compatible = "mediatek,mtk-btcvsd-snd";
 		reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
 		    <0 0x18080000 0 0x10000>; /*SRAM_BANK2*/
-		interrupts = <GIC_SPI 283 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 283 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,infracfg = <&infracfg_ao>;
 		/*INFRA MISC, conn_bt_cvsd_mask*/
 		/*cvsd_mcu_read, write, packet_indicator*/
@@ -3418,7 +3418,7 @@
 		compatible = "mediatek,mt6781-mmc";
 		reg = <0 0x11230000 0 0x10000>,
 		      <0 0x11cd0000 0 0x10000>;
-		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MUX_MSDC50_0_HCLK>,
 			 <&infracfg_ao INFRACFG_AO_MSDC0_CG>,
 			 <&infracfg_ao INFRACFG_AO_MSDC0_SCK_CG>,
@@ -3432,7 +3432,7 @@
 		compatible = "mediatek,mt6781-mmc";
 		reg = <0 0x11240000 0 0x10000>,
 		      <0 0x11c90000 0 0x10000>;
-		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&topckgen TOP_MUX_MSDC30_1>,
 			 <&infracfg_ao INFRACFG_AO_MSDC1_CG>,
 			 <&infracfg_ao INFRACFG_AO_MSDC1_SCK_CG>;
@@ -3444,7 +3444,7 @@
 	ufshci:ufshci@11270000 {
 		compatible = "mediatek,mt8183-ufshci";
 		reg = <0 0x11270000 0 0x2300>;
-		interrupts = <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH 0>;
 		phys = <&ufsphy>;
 
 		clocks = <&infracfg_ao INFRACFG_AO_UFS_CG>,
@@ -3544,7 +3544,7 @@
 		compatible = "mediatek,mt6781-usb20";
 		reg = <0 0x11200000 0 0x10000>,
 			<0 0x11ca0000 0 0x10000>;
-		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao INFRACFG_AO_ICUSB_CG>,
 			<&topckgen TOP_MUX_USB_TOP>,
 			<&topckgen TOP_UNIVPLL_D5_D2>;
@@ -3626,11 +3626,11 @@
 		compatible = "mediatek,mali", "arm,mali-valhall";
 		reg = <0 0x13000000 0 0x4000>;
 		interrupts =
-			<GIC_SPI 274 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 275 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 276 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 277 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI 274 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 275 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 276 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 277 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names =
 			"GPU",
 			"MMU",
@@ -3721,7 +3721,7 @@
 		compatible = "mediatek,disp_pwm0",
 				"mediatek,mt6781-disp-pwm";
 		reg = <0 0x1100e000 0 0x1000>;
-		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH 0>;
 		#pwm-cells = <2>;
 		pwm_src_base = <&sleep>;
 		pwm_src_addr = <0x420>;
@@ -3908,7 +3908,7 @@
 		compatible = "mediatek,disp_mutex0",
 					"mediatek,mt6781-disp-mutex";
 		reg = <0 0x14001000 0 0x1000>;
-		interrupts = <GIC_SPI 295 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 295 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_MUTEX0>;
 	};
 
@@ -4166,7 +4166,7 @@
 		compatible = "mediatek,disp_ovl0",
 					"mediatek,mt6781-disp-ovl";
 		reg = <0 0x14005000 0 0x1000>;
-		interrupts = <GIC_SPI 297 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 297 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_OVL0>;
 		mediatek,larb = <&smi_larb0>;
 		mediatek,smi-id = <0>;
@@ -4178,7 +4178,7 @@
 		compatible = "mediatek,disp_ovl0_2l",
 					"mediatek,mt6781-disp-ovl";
 		reg = <0 0x14006000 0 0x1000>;
-		interrupts = <GIC_SPI 298 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 298 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_OVL0_2L>;
 		mediatek,larb = <&smi_larb1>;
 		mediatek,smi-id = <1>;
@@ -4190,7 +4190,7 @@
 		compatible = "mediatek,disp_rdma0",
 					"mediatek,mt6781-disp-rdma";
 		reg = <0 0x14007000 0 0x1000>;
-		interrupts = <GIC_SPI 299 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 299 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_RDMA0>;
 		mediatek,larb = <&smi_larb1>;
 		mediatek,smi-id = <1>;
@@ -4201,7 +4201,7 @@
 		compatible = "mediatek,disp_rsz0",
 					"mediatek,mt6781-disp-rsz";
 		reg = <0 0x14008000 0 0x1000>;
-		interrupts = <GIC_SPI 300 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 300 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_RSZ0>;
 	};
 
@@ -4209,7 +4209,7 @@
 		compatible = "mediatek,disp_color0",
 					"mediatek,mt6781-disp-color";
 		reg = <0 0x14009000 0 0x1000>;
-		interrupts = <GIC_SPI 301 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 301 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_COLOR0>;
 	};
 
@@ -4222,7 +4222,7 @@
 		compatible = "mediatek,disp_ccorr0",
 					"mediatek,mt6781-disp-ccorr";
 		reg = <0 0x1400b000 0 0x1000>;
-		interrupts = <GIC_SPI 302 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 302 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_CCORR0>;
 	};
 
@@ -4230,7 +4230,7 @@
 		compatible = "mediatek,disp_aal0",
 					"mediatek,mt6781-disp-aal";
 		reg = <0 0x1400c000 0 0x1000>;
-		interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_AAL0>;
 	};
 
@@ -4238,7 +4238,7 @@
 		compatible = "mediatek,disp_gamma0",
 					"mediatek,mt6781-disp-gamma";
 		reg = <0 0x1400d000 0 0x1000>;
-		interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_GAMMA0>;
 	};
 
@@ -4246,7 +4246,7 @@
 		compatible = "mediatek,disp_postmask0",
 					"mediatek,mt6781-disp-postmask";
 		reg = <0 0x1400e000 0 0x1000>;
-		interrupts = <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_POSTMASK0>;
 		mediatek,larb = <&smi_larb0>;
 		mediatek,smi-id = <0>;
@@ -4257,7 +4257,7 @@
 		compatible = "mediatek,disp_dither0",
 					"mediatek,mt6781-disp-dither";
 		reg = <0 0x1400f000 0 0x1000>;
-		interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_DITHER0>;
 	};
 
@@ -4275,7 +4275,7 @@
 		compatible = "mediatek,disp_dsc_wrap",
 					"mediatek,mt6781-disp-dsc";
 		reg = <0 0x14012000 0 0x1000>;
-		interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_DSC_WRAP>;
 	};
 
@@ -4292,7 +4292,7 @@
 		compatible = "mediatek,dsi0",
 					"mediatek,mt6781-dsi";
 		reg = <0 0x14013000 0 0x1000>;
-		interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DSI0>,
 			<&mmsys_config CLK_MM_DSI0_DSI_CK_DOMAIN>,
 			<&mipi_tx_config0>;
@@ -4310,7 +4310,7 @@
 		compatible = "mediatek,disp_wdma0",
 					"mediatek,mt6781-disp-wdma";
 		reg = <0 0x14014000 0 0x1000>;
-		interrupts = <GIC_SPI 312 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 312 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_WDMA0>;
 		mediatek,larb = <&smi_larb1>;
 		mediatek,smi-id = <1>;
@@ -4460,11 +4460,11 @@
 			/*INFRA_AO_PERICFG_BASE */
 			<0 0x10003000 0 0x1000>;
 			/*BGF_EINT */
-		interrupts = <GIC_SPI 284 IRQ_TYPE_LEVEL_HIGH>,
+		interrupts = <GIC_SPI 284 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*WDT_EINT */
-			<GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*conn2ap_sw_irq*/
-			<GIC_SPI 287 IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI 287 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&scpsys SCP_SYS_CONN>,
 			<&infracfg_ao INFRACFG_AO_CCIF4_AP_CG>;
 		clock-names = "conn", "ccif";
@@ -4723,7 +4723,7 @@
 	fdvt@1c001000 {
 		compatible = "mediatek,fdvt";
 		reg = <0 0x1c001000 0 0x1000>;
-		interrupts = <GIC_SPI 338 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 338 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&ipesys CLK_IPE_FD>;
 		clock-names = "FD_CLK_IPE_FD";
 #if defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
@@ -4744,7 +4744,7 @@
 		compatible = "mediatek,rsc";
 		reg = <0 0x1c003000 0 0x1000>;
 		mediatek,larb = <&smi_larb20>;
-		interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 339 IRQ_TYPE_LEVEL_HIGH 0>;
 		mboxes = <&gce_mbox 13 0 CMDQ_THR_PRIO_1>;
 		gce-event-names = "rsc_eof";
 		gce-events = <&gce_mbox CMDQ_EVENT_RSC_DONE>;
