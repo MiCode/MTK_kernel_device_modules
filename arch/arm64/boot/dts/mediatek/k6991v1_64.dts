@@ -24,6 +24,10 @@ bootargs_ext = "rcu_nocbs=0-7";
 	};
 };
 
+&disp_aal0 {
+	mtk-dre30-support = <0>;
+};
+
 &ise_mbox {
 	mediatek,real-drv = <1>;
 };
