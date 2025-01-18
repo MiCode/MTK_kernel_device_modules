@@ -15,6 +15,12 @@ void timer_list_debug_exit(void);
 extern int nr_ipi_get(void);
 extern struct irq_desc **ipi_desc_get(void);
 #define __pa_nodebug(x)		__virt_to_phys_nodebug((unsigned long)(x))
+#else
+struct slp_history {
+	int cpu;
+	unsigned long long sc;
+	struct hrtimer *timer;
+};
 #endif
 
 #endif
