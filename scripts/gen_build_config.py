@@ -98,6 +98,7 @@ def main(**args):
 
     file_text = []
     file_text.append("PATH=${ROOT_DIR}/../prebuilts/perl/linux-x86/bin:${ROOT_DIR}/build/kernel/build-tools/path/linux-x86:/usr/bin:/bin")
+    file_text.append("DTC=${ROOT_DIR}/${BUILDTOOLS_PREBUILT_BIN}/dtc")
     file_text.append("TRIM_NONLISTED_KMI=")
     file_text.append("KMI_SYMBOL_LIST_STRICT_MODE=")
     file_text.append("MODULES_ORDER=")
