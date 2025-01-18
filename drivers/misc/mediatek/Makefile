@@ -19,6 +19,7 @@ obj-$(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT) += mcupm/
 obj-$(CONFIG_MTK_ET) += et/
 obj-$(CONFIG_MTK_SUBPMIC_MISC) += subpmic/
 obj-$(CONFIG_MMPROFILE) += mmp/
+obj-$(CONFIG_MMEVENT) += mme/
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apusys/
 obj-$(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM) += trusted_mem/
 obj-$(CONFIG_MTK_ENABLE_GENIEZONE) += geniezone/

@@ -1,0 +1,8 @@
+config MMEVENT
+	tristate "MMEVENT module enable or disable"
+	help
+	  Enable other module to use Multimedia event log mechanism.
+	  By enable this config, the mme/ driver is built into kernel.
+	  Otherwise other module will use empty functions in header file
+	  instead. This is to make the event log mechanism driver to be
+	  a switchable module.
