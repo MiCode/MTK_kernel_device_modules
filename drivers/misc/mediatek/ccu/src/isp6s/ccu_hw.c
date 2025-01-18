@@ -403,7 +403,7 @@ int ccu_init_hw(struct ccu_device_s *device)
 
 	ccu_dev = device;
 
-	LOG_DBG("(0x%llx),(0x%llx),(0x%llx)\n",
+	LOG_DBG("(0x%p),(0x%p),(0x%p)\n",
 		ccu_base, camsys_base, bin_base);
 
 #ifdef REQUEST_IRQ_IN_INIT
@@ -680,7 +680,7 @@ static int _ccu_powerdown(bool need_check_ccu_stat)
 			ccu_sleep =
 			 ccu_read_reg_bit(ccu_base, CCU_ST, CCU_SYS_SLEEP);
 			LOG_DBG("wait ccu shutdown done\n");
-			LOG_DBG("ccu shutdown stat: %x\n",
+			LOG_DBG("ccu shutdown stat: %x,%x\n",
 			ccu_halt,
 			ccu_sleep);
 			timeout = timeout - 1;

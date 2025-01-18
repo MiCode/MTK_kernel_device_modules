@@ -33,7 +33,7 @@ int ccu_allocate_mem(struct ccu_device_s *dev, struct CcuMemHandle *memHandle,
 
 	memHandle->align_mva = (memHandle->mva + (dsize - 1)) & ~(dsize - 1);
 
-	LOG_DBG("success: share_fd(%d), size(%x), cached(%d), va(%lx), mva(%lx) align_mva(%lx)\n",
+	LOG_DBG("success: share_fd(%d), size(%x), cached(%d), va(%p), mva(%llx) align_mva(%llx)\n",
 	memHandle->meminfo.shareFd, memHandle->meminfo.size,
 	memHandle->meminfo.cached, memHandle->meminfo.va, memHandle->mva,
 	memHandle->align_mva);

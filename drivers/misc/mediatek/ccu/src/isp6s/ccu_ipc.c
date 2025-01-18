@@ -62,8 +62,8 @@ bool ccu_ipc_getIObuffer(void **ipcInDataPtr, void **ipcOutDataPtr,
 	*ipcOutDataAddrCcu = ccu_ipc.m_ipcOutDataAddrCcu;
 	LOG_DBG("*ipcInDataPtr: %p", *ipcInDataPtr);
 	LOG_DBG("*ipcOutDataPtr: %p", *ipcOutDataPtr);
-	LOG_DBG("*ipcInDataAddrCcu: %p", *ipcInDataAddrCcu);
-	LOG_DBG("*ipcOutDataAddrCcu: %p", *ipcOutDataAddrCcu);
+	LOG_DBG("*ipcInDataAddrCcu: %08x", *ipcInDataAddrCcu);
+	LOG_DBG("*ipcOutDataAddrCcu: %08x", *ipcOutDataAddrCcu);
 	LOG_DBG("-");
 	return MTRUE;
 }
@@ -80,7 +80,7 @@ int ccu_ipc_send(struct ccu_msg *msg)
 		LOG_ERR("not initialized, invalid operation.");
 		return -1;
 	}
-	LOG_DBG("+, read_cnt1,%x", &ccu_ipc.m_ccuIpcPtr);
+	LOG_DBG("+, read_cnt1,%p", &(ccu_ipc.m_ccuIpcPtr));
 	//since ipc is synchronized, check no previous ipc
 	write_cnt = readl(&(ccu_ipc.m_ccuIpcPtr->write_cnt));
 	read_cnt = readl(&(ccu_ipc.m_ccuIpcPtr->read_cnt));
@@ -188,7 +188,7 @@ bool _resolveCmdIOBuf(struct CcuIOBufInfo *inDataBufInfo,
 			CCU_IPC_IBUF_CAPACITY);
 		return false;
 	}
-	LOG_DBG("inDataBufInfo.addr_ap: %p, addr_ccu: %p",
+	LOG_DBG("inDataBufInfo.addr_ap: %p, addr_ccu: %08x",
 		inDataBufInfo->addr_ap, inDataBufInfo->addr_ccu);
 	// Resolve Output buffer
 	if (outDataSize <= CCU_IPC_OBUF_CAPACITY) {
@@ -198,7 +198,7 @@ bool _resolveCmdIOBuf(struct CcuIOBufInfo *inDataBufInfo,
 		LOG_ERR("outDataSize excceed buffer capacity.");
 		return false;
 	}
-	LOG_DBG("outDataBufInfo.addr_ap: %p, addr_ccu: %p",
+	LOG_DBG("outDataBufInfo.addr_ap: %p, addr_ccu: %08x",
 		outDataBufInfo->addr_ap, outDataBufInfo->addr_ccu);
 	return true;
 }
@@ -241,7 +241,7 @@ bool ccuControl(
 	//check if need to copy output data
 	if (outDataSize != 0)
 		_copyCmdOutData(&outDataBufInfo, outDataPtr, outDataSize);
-	LOG_DBG("-:\n", __func__);
+	LOG_DBG("-:\n");
 	mutex_unlock(&ccu_ipc_mutex);
 	return true;
 }
