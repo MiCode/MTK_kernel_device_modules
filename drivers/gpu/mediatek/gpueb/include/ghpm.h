@@ -21,7 +21,7 @@
 #define US_TO_NS(x)                        ((x)*1000)
 
 #define GHPM_IPI_TIMEOUT                   (5000)
-#define GPUEB_WAIT_TIMEOUT                 (2000)
+#define GPUEB_WAIT_TIMEOUT                 (5000)
 
 #define GPUEB_SRAM_GPR10                   (g_gpueb_gpr_base + 0x28)
 
@@ -88,8 +88,9 @@ enum mfg0_off_state {
 };
 
 enum wait_gpueb_ret {
-	WAIT_DONE,
-	WAIT_TIMEOUT
+	WAIT_DONE         = 0,
+	WAIT_TIMEOUT      = -1,
+	WAIT_INPUT_ERROR  = -2
 };
 
 struct gpueb_slp_ipi_data {

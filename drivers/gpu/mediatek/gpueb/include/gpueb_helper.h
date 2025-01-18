@@ -14,7 +14,7 @@
 #define gpueb_pr_info(tag, fmt, args...) \
 	pr_info(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 #define gpueb_pr_debug(tag, fmt, args...) \
-	pr_info(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+	pr_debug(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 
 #define gpueb_pr_logbuf(tag, buf, len, size, fmt, args...) \
 	{ \

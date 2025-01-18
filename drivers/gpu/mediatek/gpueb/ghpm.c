@@ -34,9 +34,12 @@
 
 static int g_ipi_channel;
 static int g_gpueb_slot_size;
+static int g_power_count;  /* power count for ghpm control mfg1 on/off */
 static void __iomem *g_gpueb_gpr_base;
 static void __iomem *g_mfg_rpc_base;
 static struct gpueb_slp_ipi_data msgbuf;
+static unsigned long g_pwr_irq_flags;
+static raw_spinlock_t ghpm_lock;
 
 static void ghpm_abort(void);
 
@@ -89,6 +92,10 @@ int ghpm_init(struct platform_device *pdev)
 
 	g_gpueb_slot_size = get_gpueb_slot_size();
 
+	g_power_count = 0;
+
+	raw_spin_lock_init(&ghpm_lock);
+
 	return GHPM_SUCCESS;
 }
 
@@ -104,14 +111,26 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 	struct gpueb_slp_ipi_data data;
 	static int ghpm_off_cnt;
 
+	raw_spin_lock_irqsave(&ghpm_lock, g_pwr_irq_flags);
 	gpueb_pr_debug(GHPM_TAG, "Entry");
 
-	if (power == GHPM_ON) {
+	if (power == GHPM_ON)
+		++g_power_count;
+	else
+		--g_power_count;
+
+	if (power == GHPM_ON && g_power_count == 1) {
 		if (mfg0_pwr_sta() == MFGO_PWR_ON) {
-			if (ghpm_off_cnt == 0)
+			if (ghpm_off_cnt == 0) {
+				/*
+				 * MFG0 shutdown on from TFA after bootup, ghpm don't need to
+				 * power on mfg0 when pm_callback_power_off first time coming
+				 */
 				++ghpm_off_cnt;
-			else
+			} else {
 				gpueb_pr_err(GHPM_TAG, "MFG0 already on but receive GHPM on");
+				goto done_unlock;
+			}
 		} else {
 			/* trigger ghpm on -> reset gpueb -> warm boot -> gpueb resume */
 			gpueb_pr_debug(GHPM_TAG, "ghpm on");
@@ -119,29 +138,30 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 			/* Check GHPM IDLE state MFG_GHPM_RO0_CON [7:0] = 8'b0*/
 			if ((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) {
 				gpueb_pr_err(GHPM_TAG, "GHPM ON, check ghpm_state=idle failed");
-				dump_ghpm_info();
-				return GHPM_STATE_ERR;
+				ret = GHPM_STATE_ERR;
+				goto done_unlock;
 			}
 
 			/* Check GHPM_PWR_STATE MFG_GHPM_RO0_CON [16] = 1'b0*/
 			if ((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) == GHPM_PWR_STATE) {
 				gpueb_pr_err(GHPM_TAG, "MFG0 shutdown off not by GHPM last time");
-				dump_ghpm_info();
-				return GHPM_PWR_STATE_ERR;
+				ret = GHPM_PWR_STATE_ERR;
+				goto done_unlock;
 			}
 
+			/* Trigger GHPM on sequence */
 			writel(readl(MFG_GHPM_CFG0_CON) & ~ON_SEQ_TRI, MFG_GHPM_CFG0_CON);
 			writel(readl(MFG_GHPM_CFG0_CON) | ON_SEQ_TRI, MFG_GHPM_CFG0_CON);
 		}
 
 		ret = GHPM_SUCCESS;
-	} else if (power == GHPM_OFF) {
-		/* gpueb suspend -> eb trigger ghpm off */
+	} else if (power == GHPM_OFF && g_power_count == 0) {
 		gpueb_pr_debug(GHPM_TAG, "ghpm off");
+
+		/* IPI to gpueb for suspend flow and then trigger ghpm off */
 		data.event = SUSPEND_POWER_OFF;
 		data.off_state = off_state;
-		data.reserve = 0; /* dummy */
-
+		data.reserve = 0; /* dummy (reserve input) */
 		ret = mtk_ipi_send(
 			get_gpueb_ipidev(),
 			g_ipi_channel,
@@ -150,53 +170,63 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 			(sizeof(data) / g_gpueb_slot_size),
 			GHPM_IPI_TIMEOUT);
 
-
 		if (unlikely(ret != IPI_ACTION_DONE)) {
 			gpueb_pr_err(GHPM_TAG, "[ABORT] fail to send gpueb off IPI, ret=%d", ret);
-			ghpm_abort();
+			ret = GHPM_ERR;
+			goto done_unlock;
 		}
 
 		ret = GHPM_SUCCESS;
+	} else {
+		gpueb_pr_debug(GHPM_TAG, "power=%d, g_power_count=%d", power, g_power_count);
 	}
 
+done_unlock:
 	gpueb_pr_debug(GHPM_TAG, "EXIT");
+	raw_spin_unlock_irqrestore(&ghpm_lock, g_pwr_irq_flags);
+
+	if (ret != GHPM_SUCCESS)
+		ghpm_abort();
+
 	return ret;
 }
 EXPORT_SYMBOL(ghpm_ctrl);
 
 int wait_gpueb(enum gpueb_low_power_event event, int timeout_us)
 {
-	unsigned long long timeover;
+	unsigned int i;
 
 	gpueb_pr_debug(GHPM_TAG, "Entry");
 
-	timeover = cpu_clock(0) + US_TO_NS(timeout_us);
-
-	if (event == SUSPEND_POWER_OFF) {
-		while ((mfg0_pwr_sta() == MFGO_PWR_ON)) {
-			udelay(1);
-			if (cpu_clock(0) > timeover) {
-				gpueb_pr_err(GHPM_TAG, "Wait GPUEB timeout, event=%d", event);
-				goto timeout;
-			}
-		}
-		gpueb_pr_debug(GHPM_TAG, "GPUEB suspend done");
-	} else if (event == SUSPEND_POWER_ON) {
+	i = 0;
+	if (event == SUSPEND_POWER_ON) {
 		while ((readl(GPUEB_SRAM_GPR10) != GPUEB_ON_RESUME)) {
 			udelay(1);
-			if (cpu_clock(0) > timeover) {
-				gpueb_pr_err(GHPM_TAG, "Wait GPUEB timeout, event=%d", event);
+			if (++i > GPUEB_WAIT_TIMEOUT)
 				goto timeout;
-			}
 		}
-		gpueb_pr_debug(GHPM_TAG, "GPUEB resume done");
+		gpueb_pr_debug(GHPM_TAG, "GPUEB resume done, i=%u", i);
+	} else if (event == SUSPEND_POWER_OFF) {
+		while (((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) ||
+			((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) == GHPM_PWR_STATE) ||
+			(mfg0_pwr_sta() == MFGO_PWR_ON)) {
+			udelay(1);
+			if (++i > GPUEB_WAIT_TIMEOUT)
+				goto timeout;
+		}
+		gpueb_pr_debug(GHPM_TAG, "GPUEB suspend done, i=%u", i);
+	} else {
+		gpueb_pr_err(GHPM_TAG, "Wrong event=%d", event);
+		return WAIT_INPUT_ERROR;
 	}
 
 	gpueb_pr_debug(GHPM_TAG, "End");
 
 	return WAIT_DONE;
+
 timeout:
-	gpueb_dump_status(NULL, NULL, 0);
+	gpueb_pr_err(GHPM_TAG, "Wait GPUEB timeout, event=%d", event);
+	ghpm_abort();
 	return WAIT_TIMEOUT;
 }
 EXPORT_SYMBOL(wait_gpueb);
@@ -211,6 +241,7 @@ EXPORT_SYMBOL(dump_ghpm_info);
 
 static void ghpm_abort(void)
 {
+	dump_ghpm_info();
 	gpueb_dump_status(NULL, NULL, 0);
 	WARN_ON(1);
 }
