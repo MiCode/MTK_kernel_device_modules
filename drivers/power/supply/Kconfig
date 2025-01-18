@@ -285,6 +285,17 @@ config MTK_CHARGER_TYPE_DETECT
 	  typec attach notify.
 	  Say N to disable.
 
+config CHARGER_BQ2589X
+	tristate "TI BQ2589X battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+	  This adds support for charger IC bq2589x.
+	  Say Y to include support for Texas Instruments
+	  bq2589x charger IC Battery Charger. The base name for this driver is
+	  'bq2589x_charger.c'.
+
 config CHARGER_SGM41516D
     tristate "CHARGER_SGM41516D"
     #depends on MTK_CHARGER
