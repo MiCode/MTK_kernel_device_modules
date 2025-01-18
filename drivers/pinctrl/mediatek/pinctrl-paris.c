@@ -11,11 +11,14 @@
 
 #include <linux/gpio/driver.h>
 #include <linux/module.h>
-#include <linux/of_address.h>
-#include <linux/pinctrl/consumer.h>
 #include <linux/seq_file.h>
-#include <dt-bindings/pinctrl/mt65xx.h>
+#include <linux/of_address.h>
 #include <linux/regmap.h>
+
+#include <linux/pinctrl/consumer.h>
+
+#include <dt-bindings/pinctrl/mt65xx.h>
+
 #include "pinctrl-paris.h"
 
 /* Custom pinconf parameters */
@@ -682,7 +685,7 @@ static void mtk_pctrl_dbg_show(struct pinctrl_dev *pctldev, struct seq_file *s,
 			  unsigned int gpio)
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
-	char buf[PIN_DBG_BUF_SZ];
+	char buf[PIN_DBG_BUF_SZ] = { 0 };
 
 	(void)mtk_pctrl_show_one_pin(hw, gpio, buf, PIN_DBG_BUF_SZ);
 
@@ -951,7 +954,6 @@ static int mtk_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 	chip->set_config	= mtk_gpio_set_config;
 	chip->base		= -1;
 	chip->ngpio		= hw->soc->npins;
-	chip->of_gpio_n_cells	= 2;
 
 	ret = gpiochip_add_data(chip, hw);
 	if (ret < 0)
