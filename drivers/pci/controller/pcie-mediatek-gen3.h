@@ -12,12 +12,14 @@ enum pin_state {
 	PCIE_PINMUX_INIT,
 	PCIE_PINMUX_DEFAULT,
 	PCIE_PINMUX_SLEEP,
-	PCIE_PINMUX_PD
+	PCIE_PINMUX_PD,
+	PCIE_PINMUX_HIZ
 };
 
 bool mtk_pcie_in_use(int port);
 int mtk_pcie_probe_port(int port);
 int mtk_pcie_remove_port(int port);
+int mtk_pcie_disable_refclk(int port);
 int mtk_pcie_soft_off(struct pci_bus *bus);
 int mtk_pcie_soft_on(struct pci_bus *bus);
 int mtk_msi_unmask_to_other_mcu(struct irq_data *data, u32 group);
