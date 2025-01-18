@@ -155,7 +155,7 @@ static unsigned int cpudvfs_get_cur_freq_perCore(int core_id, bool is_mcupm)
 	return val;
 }
 
-unsigned int base_offset_read(unsigned int __iomem *base, unsigned int offs)
+unsigned int base_offset_read(void __iomem *base, unsigned int offs)
 {
 	if (IS_ERR_OR_NULL((void *)base))
 		return 0;
@@ -471,7 +471,6 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 	if (sscanf(buf, "%iu", &val) != 0) {
 		val = (val > 0) ? 1 : 0;
 
-		perf_tracker_on = val;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 		mtk_btag_mictx_enable(&ufs_mictx_id, val);
 #endif
@@ -486,18 +485,70 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		}
 #endif
 		/* do something after on/off perf_tracker */
-		if (perf_tracker_on) {
+		if (val && !perf_tracker_on) {
 			insert_freq_qos_hook();
 			check_dram_bw = qos_rec_check_sram_ext();
-		} else {
+			if (perf_timer_enable)
+				timer_on();
+			else
+				passtiveTick_on();
+		} else if (!val && perf_tracker_on) {
 			remove_freq_qos_hook();
+			if (perf_timer_enable)
+				timer_off();
+			else
+				passtiveTick_off();
 		}
+		perf_tracker_on = val;
 	}
-
 	mutex_unlock(&perf_ctl_mutex);
 
 	return count;
 }
+
+
+
+static int enable_timer(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	mutex_lock(&perf_ctl_mutex);
+
+	retval = kstrtouint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+
+	val = (val > 0) ? 1 : 0;
+
+	if (val == 1) {
+		if (!perf_timer_enable) {
+			perf_timer_enable = 1;
+			if (perf_tracker_on) {
+				timer_on();
+				passtiveTick_off();
+			}
+		}
+	} else {
+		if (perf_timer_enable) {
+			perf_timer_enable = 0;
+			if (perf_tracker_on) {
+				timer_off();
+				passtiveTick_on();
+			}
+		}
+	}
+
+	mutex_unlock(&perf_ctl_mutex);
+	return retval;
+}
+
+static const struct kernel_param_ops enable_timer_ops = {
+	.set = enable_timer,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_timer, &enable_timer_ops, &perf_timer_enable, 0664);
+MODULE_PARM_DESC(enable_timer, "Enable or disable enable_timer");
 
 static void fuel_gauge_handler(struct work_struct *work)
 {

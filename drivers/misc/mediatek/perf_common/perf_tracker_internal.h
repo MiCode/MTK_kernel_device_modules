@@ -74,6 +74,7 @@ extern void perf_tracker(u64 wallclock,
 extern u64 get_cpu_pmu(int cpu, u32 offset);
 extern bool perf_tracker_info_exist;
 extern bool is_percore;
+extern bool perf_timer_enable;
 extern bool is_perf_tracker_info_exist(void);
 extern u32 get_perf_tracker_info_from_dts(const char *property_name);
 
@@ -95,6 +96,10 @@ extern void remove_freq_qos_hook(void);
 extern void init_perf_freq_tracker(void);
 extern void exit_perf_freq_tracker(void);
 extern struct kobj_attribute perf_mcupm_freq_enable_attr;
+extern void passtiveTick_on(void);
+extern void passtiveTick_off(void);
+extern void timer_on(void);
+extern void timer_off(void);
 #else
 static inline void perf_tracker(u64 wallclock,
 				bool hit_long_check) {}
