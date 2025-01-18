@@ -1603,17 +1603,26 @@ static void mtk8250_shutdown(struct uart_port *port)
 
 static void mtk8250_disable_intrs(struct uart_8250_port *up, int mask)
 {
+	/* Port locked to synchronize UART_IER access against the console. */
+	lockdep_assert_held_once(&up->port.lock);
+
 	serial_out(up, UART_IER, serial_in(up, UART_IER) & (~mask));
 }
 
 static void mtk8250_enable_intrs(struct uart_8250_port *up, int mask)
 {
+	/* Port locked to synchronize UART_IER access against the console. */
+	lockdep_assert_held_once(&up->port.lock);
+
 	serial_out(up, UART_IER, serial_in(up, UART_IER) | mask);
 }
 
 static void mtk8250_set_flow_ctrl(struct uart_8250_port *up, int mode)
 {
 	struct uart_port *port = &up->port;
+
+	/* Port locked to synchronize UART_IER access against the console. */
+	lockdep_assert_held_once(&port->lock);
 
 	serial_out(up, MTK_UART_FEATURE_SEL, 1);
 	serial_out(up, MTK_UART_EFR, UART_EFR_ECB);
@@ -2226,7 +2235,7 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 			pr_info("probe_uart: data->line: %d:\n", data->line);
 		}
 
-	data->bus_clk = devm_clk_get(&pdev->dev, "bus");
+	data->bus_clk = devm_clk_get_enabled(&pdev->dev, "bus");
 	if (IS_ERR(data->bus_clk))
 		return PTR_ERR(data->bus_clk);
 
