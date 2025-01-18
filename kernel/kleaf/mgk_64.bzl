@@ -304,6 +304,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_virtio_mod.ko",
     "drivers/misc/mediatek/geniezone/gz_tz_system.ko",
     "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
+    "drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/iommu/iommu_debug.ko",
     "drivers/misc/mediatek/iommu/iommu_engine.ko",
