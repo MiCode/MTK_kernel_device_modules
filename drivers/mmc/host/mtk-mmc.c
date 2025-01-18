@@ -346,6 +346,29 @@ static const struct mtk_mmc_compatible mt6768_compat = {
 	},
 };
 
+static const struct mtk_mmc_compatible mt6877_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.need_gate_cg = true,
+	.new_tx_ver = 0,
+	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
+};
+
 static const struct mtk_mmc_compatible mt6765_compat = {
 	.clk_div_bits = 12,
 	.recheck_sdio_irq = false,
@@ -524,6 +547,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6779-mmc", .data = &mt6779_compat},
 	{ .compatible = "mediatek,mt6761-mmc", .data = &mt6761_compat},
 	{ .compatible = "mediatek,mt6768-mmc", .data = &mt6768_compat},
+	{ .compatible = "mediatek,mt6877-mmc", .data = &mt6877_compat},
 	{ .compatible = "mediatek,common-mmc-v2", .data = &common_v2_compat},
 	{ .compatible = "mediatek,mt6985-mmc", .data = &mt6985_compat},
 	{ .compatible = "mediatek,mt6886-mmc", .data = &mt6886_compat},
@@ -3513,6 +3537,19 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 #endif
 }
 
+static const void *mtk_get_boot_property(struct device_node *np,
+	const char *name, int *lenp)
+{
+	struct device_node *boot_node = NULL;
+
+	boot_node = of_parse_phandle(np, "bootmode", 0);
+	if (!boot_node) {
+		pr_info("boot_node is NULL\n");
+		return NULL;
+	}
+	return of_get_property(boot_node, name, lenp);
+}
+
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 static int msdc_of_clock_parse(struct platform_device *pdev,
 			       struct msdc_host *host)
@@ -3646,12 +3683,29 @@ static int msdc_drv_probe(struct platform_device *pdev)
 #endif
 	int ret;
 	int msdc_gpio = 1;
+	int host_index = -1;
+	struct tag_bootmode *tag = NULL;
 
 	dev_info(&pdev->dev, "[%s %d]mtk-mmc start\n",__func__,__LINE__);
 
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No DT found\n");
 		return -EINVAL;
+	}
+
+	/* Add check_boot_type check and return ENODEV if not eMMC boot */
+	if (device_property_read_u32(&pdev->dev, "host-index", &host_index) < 0) {
+		dev_info(&pdev->dev, "index property is missing\n");
+		host_index = -1;
+	}
+
+	/* Get boot type from bootmode */
+	tag = (struct tag_bootmode *)mtk_get_boot_property(pdev->dev.of_node, "atag,boot", NULL);
+	if (!tag)
+		dev_info(&pdev->dev, "failed to get atag,boot\n");
+	else if ((tag->boottype != BOOTDEV_SDMMC) && (host_index == 0)) {
+		dev_info(&pdev->dev, "no eMMC boot\n");
+		return -ENODEV;
 	}
 
 	/* Allocate MMC host for this device */
