@@ -950,8 +950,7 @@ err_node_put:
 	return -EINVAL;
 }
 
-static int lm3643_probe(struct i2c_client *client,
-			const struct i2c_device_id *devid)
+static int lm3643_probe(struct i2c_client *client)
 {
 	struct lm3643_flash *flash;
 	struct lm3643_platform_data *pdata = dev_get_platdata(&client->dev);
