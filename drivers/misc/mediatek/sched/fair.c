@@ -1990,10 +1990,15 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	int recent_used_cpu, target;
 	bool is_vip = false;
 	int vip_prio = NOT_VIP;
-
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
 	vip_prio = get_vip_task_prio(p);
 	is_vip = prio_is_vip(vip_prio, NOT_VIP);
+	if (vts->faster_compute_eng) {
+		in_irq = true;
+		vts->faster_compute_eng = false;
+	}
 #endif
 
 	if (!get_eas_hook())

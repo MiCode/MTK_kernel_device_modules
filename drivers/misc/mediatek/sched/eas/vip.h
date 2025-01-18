@@ -62,6 +62,7 @@ extern struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type);
 extern struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p, int vip_prio);
 extern int find_vip_backup_cpu(struct task_struct *p, struct cpumask *allowed_cpu_mask, int prev_cpu, int target);
 extern unsigned int get_adaptive_margin(unsigned int cpu);
+extern void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq);
 
 extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 

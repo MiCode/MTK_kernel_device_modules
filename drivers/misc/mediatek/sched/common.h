@@ -28,6 +28,7 @@ struct vip_task_struct {
 	int				vip_prio;
 	bool			basic_vip;
 	bool			vvip;
+	bool			faster_compute_eng;
 };
 
 struct soft_affinity_task {

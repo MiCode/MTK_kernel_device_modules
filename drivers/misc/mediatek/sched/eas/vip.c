@@ -9,7 +9,7 @@
 #include <trace/hooks/cgroup.h>
 #include "common.h"
 #include "vip.h"
-#include "eas_trace.h"
+#include "sched_trace.h"
 #include "eas_plus.h"
 
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
@@ -398,7 +398,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		struct task_struct *p = vts_to_ts(vts);
 
 		trace_sched_insert_vip_task(p, cpu_of(rq), vts->vip_prio,
-			at_front, prev_pid, next_pid, requeue, is_first_entry);
+			at_front, prev_pid, next_pid, requeue, is_first_entry, vrq->sum_num_vip_tasks);
 	}
 }
 
@@ -421,6 +421,7 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	}
 
 	vts->vip_prio = NOT_VIP;
+	vts->faster_compute_eng = false;
 
 	/* for insurance */
 	check_vip_num(rq);
@@ -429,7 +430,7 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 		pid_t prev_pid = list_head_to_pid(prev);
 		pid_t next_pid = list_head_to_pid(next);
 
-		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid);
+		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid, vrq->sum_num_vip_tasks);
 	}
 }
 
@@ -937,6 +938,7 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->vip_prio = NOT_VIP;
 	vts->basic_vip = false;
 	vts->vvip = false;
+	vts->faster_compute_eng = false;
 }
 
 void init_task_gear_hints(struct task_struct *p)
@@ -978,6 +980,70 @@ void init_vip_group(void)
 	css_for_each_child(css, top_css)
 		__init_vip_group(css);
 	rcu_read_unlock();
+}
+
+DEFINE_PER_CPU(struct task_struct *, runnable_vip);
+void vip_push_runnable(struct rq *src_rq)
+{
+	int this_cpu = cpu_of(src_rq);
+	int new_cpu = -1;
+	struct task_struct *task_to_pushed = per_cpu(runnable_vip, src_rq->cpu);
+	struct vip_task_struct *vts;
+	struct rq *dst_rq;
+
+	if (task_to_pushed == NULL)
+		goto put_task;
+
+	if (cpumask_weight(task_to_pushed->cpus_ptr) <= 1)
+		goto put_task;
+
+	vts = &((struct mtk_task *) task_to_pushed->android_vendor_data1)->vip_task;
+	vts->faster_compute_eng = true;
+	mtk_find_energy_efficient_cpu(NULL, task_to_pushed, this_cpu, 0, &new_cpu);
+
+	if (new_cpu < 0)
+		goto put_task;
+
+	if (new_cpu == this_cpu)
+		goto put_task;
+
+	dst_rq = cpu_rq(new_cpu);
+	double_lock_balance(src_rq, dst_rq);
+
+	if ((task_rq(task_to_pushed) != src_rq) ||
+		(cpu_rq(task_cpu(task_to_pushed))->curr->pid == task_to_pushed->pid) ||
+		(!task_on_rq_queued(task_to_pushed)))
+		goto unlock;
+
+	deactivate_task(src_rq, task_to_pushed, DEQUEUE_NOCLOCK);
+	set_task_cpu(task_to_pushed, new_cpu);
+	activate_task(dst_rq, task_to_pushed, 0);
+	check_preempt_curr(dst_rq, task_to_pushed, 0);
+
+	trace_sched_force_migrate(task_to_pushed, new_cpu, MIGR_SWITCH_PUSH_VIP);
+
+unlock:
+	double_unlock_balance(src_rq, dst_rq);
+put_task:
+	put_task_struct(task_to_pushed);
+}
+
+DEFINE_PER_CPU(struct balance_callback, vip_push_head);
+void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq)
+{
+	if (!task_is_vip(prev, NOT_VIP))
+		return;
+
+	if (READ_ONCE(prev->__state) != TASK_RUNNING)
+		return;
+
+	if (next->prio == 0)
+		return;
+
+	/* VIP task is runnable, push it. */
+	get_task_struct(prev);
+	per_cpu(runnable_vip, rq->cpu) = prev;
+	queue_balance_callback(rq, &per_cpu(vip_push_head, rq->cpu), vip_push_runnable);
 }
 
 void register_vip_hooks(void)

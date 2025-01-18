@@ -862,6 +862,9 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 	if (next->pid == 0)
 		per_cpu(sbb, rq->cpu)->active = 0;
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	vip_sched_switch(prev, next, rq);
+#endif /* CONFIG_MTK_SCHED_VIP_TASK */
 }
 #endif
 
