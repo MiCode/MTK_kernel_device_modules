@@ -2338,10 +2338,16 @@ static bool write_block(struct mtk_disp_aal *aal_data, const unsigned int *dre3_
 			((dre3_gain[2] & 0xff) << 16) |
 			((dre3_gain[3] & 0xff) << 24));
 		if (check && value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
 			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 			       arch_timer_read_counter());
+#else
+			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
+			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 			return return_value;
 		}
 		aal_data->primary_data->dre30_gain.dre30_gain[block_offset++] = value;
@@ -2353,10 +2359,16 @@ static bool write_block(struct mtk_disp_aal *aal_data, const unsigned int *dre3_
 			((dre3_gain[6] & 0xff) << 16) |
 			((dre3_gain[7] & 0xff) << 24));
 		if (check && value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
 			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 			       arch_timer_read_counter());
+#else
+			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
+			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 			return return_value;
 		}
 		aal_data->primary_data->dre30_gain.dre30_gain[block_offset++] = value;
@@ -2368,10 +2380,16 @@ static bool write_block(struct mtk_disp_aal *aal_data, const unsigned int *dre3_
 			((dre3_gain[10] & 0xff) << 16) |
 			((dre3_gain[11] & 0xff) << 24));
 		if (check && value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
 			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 			       arch_timer_read_counter());
+#else
+			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
+			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 			return return_value;
 		}
 		aal_data->primary_data->dre30_gain.dre30_gain[block_offset++] = value;
@@ -2383,10 +2401,16 @@ static bool write_block(struct mtk_disp_aal *aal_data, const unsigned int *dre3_
 			((dre3_gain[14] & 0xff) << 16) |
 			((dre3_gain[15] & 0xff) << 24));
 		if (check && value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
 			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 			       arch_timer_read_counter());
+#else
+			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+			       __func__, __LINE__, dre_blk_x_num, block_x, block_y, block_offset,
+			       value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 			return return_value;
 		}
 		aal_data->primary_data->dre30_gain.dre30_gain[block_offset++] = value;
@@ -2417,10 +2441,17 @@ static bool write_curve16(struct mtk_disp_aal *aal_data, const unsigned int *dre
 					return false;
 				if (check &&
 				    write_value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 					DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 					       __func__, __LINE__, dre_blk_x_num, blk_x, blk_y, block_offset,
 					       write_value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 					       arch_timer_read_counter());
+#else
+					DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+					       __func__, __LINE__, dre_blk_x_num,
+						   blk_x, blk_y, block_offset, write_value,
+						   aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 					return false;
 				}
 				aal_data->primary_data->dre30_gain.dre30_gain[block_offset++] =
@@ -2437,10 +2468,16 @@ static bool write_curve16(struct mtk_disp_aal *aal_data, const unsigned int *dre
 		if (block_offset >= AAL_DRE30_GAIN_REGISTER_NUM)
 			return false;
 		if (check && write_value != aal_data->primary_data->dre30_gain.dre30_gain[block_offset]) {
+#if IS_ENABLED(CONFIG_ARM64)
 			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x TS: 0x%08llx\n",
 			       __func__, __LINE__, dre_blk_x_num, blk_x, blk_y, block_offset,
 			       write_value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset],
 			       arch_timer_read_counter());
+#else
+			DDPAEE("%s,%d:x_max %d, blk(%d, %d) %u expect 0x%x but 0x%x\n",
+			       __func__, __LINE__, dre_blk_x_num, blk_x, blk_y, block_offset,
+			       write_value, aal_data->primary_data->dre30_gain.dre30_gain[block_offset]);
+#endif
 			return false;
 		}
 		aal_data->primary_data->dre30_gain.dre30_gain[block_offset] = write_value;

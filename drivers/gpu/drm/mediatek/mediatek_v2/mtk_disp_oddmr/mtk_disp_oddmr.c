@@ -1228,11 +1228,11 @@ static void mtk_oddmr_dbi_srt_cal(struct mtk_ddp_comp *comp, int en)
 		srt = table_size;
 		vrefresh = g_oddmr_current_timing.vrefresh;
 		//blanking ratio
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		srt *= 125;
-		do_div(srt, 100);
+		srt = DO_COMMON_DIV(srt, 100);
 		srt = srt * vrefresh;
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		oddmr_priv->qos_srt_dbir = srt;
 	} else {
 		oddmr_priv->qos_srt_dbir = 0;
@@ -1259,11 +1259,11 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 		srt = table_size;
 		vrefresh = g_oddmr_current_timing.vrefresh;
 		//blanking ratio
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		srt *= 125;
-		do_div(srt, 100);
+		srt = DO_COMMON_DIV(srt, 100);
 		srt = srt * vrefresh;
-		do_div(srt, 1000);
+		srt = DO_COMMON_DIV(srt, 1000);
 		oddmr_priv->qos_srt_dmrr = srt;
 	} else {
 		oddmr_priv->qos_srt_dmrr = 0;
