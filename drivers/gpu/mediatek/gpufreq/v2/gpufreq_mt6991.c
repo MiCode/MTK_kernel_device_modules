@@ -27,6 +27,8 @@
 #include <gpufreq_common.h>
 #include <gpufreq_mt6991.h>
 #include <gpufreq_reg_mt6991.h>
+/* GPUEB */
+#include <ghpm_wrapper.h>
 
 /**
  * ===============================================
@@ -85,7 +87,7 @@ static void __iomem *g_mfg_smmu_base;
 static void __iomem *g_mfg_vcore_ao_cfg_base;
 static void __iomem *g_mfg_vcore_devapc_base;
 static void __iomem *g_mfg_vcore_bus_trk_base;
-static void __iomem *g_mfg_gpueb_bus_trk_base;
+static void __iomem *g_mfg_eb_bus_trk_base;
 static void __iomem *g_mfg_vgpu_bus_trk_base;
 static void __iomem *g_nemi_mi32_smi;
 static void __iomem *g_nemi_mi33_smi;
@@ -437,6 +439,13 @@ unsigned int __gpufreq_bus_tracker_vio_handler(void)
 		check_mask = BIT(26);
 
 	if (vio_sta & check_mask) {
+		/* power on gpueb */
+		ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
+		if (ret) {
+			__gpufreq_abort("gpueb power on fail, ret=%d", ret);
+			return false;
+		}
+
 		/* check bus tracker violation status */
 		vcore_bus_dbg_con = DRV_Reg32(MFG_VCORE_BUS_DBG_CON_0);
 		gpueb_bus_dbg_con = DRV_Reg32(MFG_GPUEB_BUS_DBG_CON_0);
@@ -593,14 +602,23 @@ unsigned int __gpufreq_bus_tracker_vio_handler(void)
 			DRV_WriteReg32(MFG_VGPU_BUS_DBG_CON_0, (BIT(7) | BIT(16)));
 			DRV_WriteReg32(MFG_VGPU_BUS_DBG_CON_0, 0x0);
 		}
-		/* clear devapc irq when only bus slave error happened */
-		if (!(vio_sta & ~check_mask)) {
+
+		/* power off gpueb */
+		ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
+		if (ret) {
+			__gpufreq_abort("gpueb power off fail, ret=%d", ret);
+			return false;
+		}
+
+		/* clear status and bypass DEVAPC violation if only caught bus tracker violation */
+		if (vio_sta == check_mask) {
 			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_STA_0, check_mask);
 			DRV_WriteReg32(MFG_VCORE_DEVAPC_D0_VIO_MASK_0, 0x0);
 			ret = true;
 		}
 	}
 
+	/* true: bypass DEVAPC violation, false: keep handling DEVAPC */
 	return ret;
 }
 
@@ -1116,8 +1134,8 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to get resource MFG_GPUEB_BUS_TRACKER");
 		goto done;
 	}
-	g_mfg_gpueb_bus_trk_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_mfg_gpueb_bus_trk_base) {
+	g_mfg_eb_bus_trk_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_mfg_eb_bus_trk_base) {
 		GPUFREQ_LOGE("fail to ioremap MFG_GPUEB_BUS_TRACKER: 0x%llx", res->start);
 		goto done;
 	}
@@ -1374,7 +1392,7 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
-	/* set chip version  */
+	/* set chip version */
 	g_eco_version = (DRV_Reg32(MFG_VCORE_AO_MT6991_ID_CON) == 0x101) ? MT6991_B0 : MT6991_A0;
 
 	ret = GPUFREQ_SUCCESS;

@@ -75,26 +75,26 @@
 #define MFG_VGPU_BUS_AW_TRACKER_L              (g_mfg_vgpu_bus_trk_base + 0xA00)   /* 0x48800A00 */
 
 #define MFG_GPUEB_BUS_TRACKER_BASE             (0x4B190000)
-#define MFG_GPUEB_BUS_DBG_CON_0                (g_mfg_gpueb_bus_trk_base + 0x000)  /* 0x4B190000 */
-#define MFG_GPUEB_BUS_TIMEOUT_INFO             (g_mfg_gpueb_bus_trk_base + 0x028)  /* 0x4B190028 */
-#define MFG_GPUEB_BUS_SYSTIMER_LATCH_SLVERR_L  (g_mfg_gpueb_bus_trk_base + 0x040)  /* 0x4B190040 */
-#define MFG_GPUEB_BUS_SYSTIMER_LATCH_SLVERR_H  (g_mfg_gpueb_bus_trk_base + 0x044)  /* 0x4B190044 */
-#define MFG_GPUEB_BUS_SYSTIMER_LATCH_L         (g_mfg_gpueb_bus_trk_base + 0x048)  /* 0x4B190048 */
-#define MFG_GPUEB_BUS_SYSTIMER_LATCH_H         (g_mfg_gpueb_bus_trk_base + 0x04C)  /* 0x4B19004C */
-#define MFG_GPUEB_BUS_AR_SLVERR_ADDR_L         (g_mfg_gpueb_bus_trk_base + 0x080)  /* 0x4B190080 */
-#define MFG_GPUEB_BUS_AR_SLVERR_ADDR_H         (g_mfg_gpueb_bus_trk_base + 0x084)  /* 0x4B190084 */
-#define MFG_GPUEB_BUS_AR_SLVERR_ID             (g_mfg_gpueb_bus_trk_base + 0x088)  /* 0x4B190088 */
-#define MFG_GPUEB_BUS_AR_SLVERR_LOG            (g_mfg_gpueb_bus_trk_base + 0x08C)  /* 0x4B19008C */
-#define MFG_GPUEB_BUS_AW_SLVERR_ADDR_L         (g_mfg_gpueb_bus_trk_base + 0x090)  /* 0x4B190090 */
-#define MFG_GPUEB_BUS_AW_SLVERR_ADDR_H         (g_mfg_gpueb_bus_trk_base + 0x094)  /* 0x4B190094 */
-#define MFG_GPUEB_BUS_AW_SLVERR_ID             (g_mfg_gpueb_bus_trk_base + 0x098)  /* 0x4B190098 */
-#define MFG_GPUEB_BUS_AW_SLVERR_LOG            (g_mfg_gpueb_bus_trk_base + 0x09C)  /* 0x4B19009C */
-#define MFG_GPUEB_BUS_AR_TRACKER_LOG           (g_mfg_gpueb_bus_trk_base + 0x200)  /* 0x4B190200 */
-#define MFG_GPUEB_BUS_AR_TRACKER_ID            (g_mfg_gpueb_bus_trk_base + 0x300)  /* 0x4B190300 */
-#define MFG_GPUEB_BUS_AR_TRACKER_L             (g_mfg_gpueb_bus_trk_base + 0x400)  /* 0x4B190400 */
-#define MFG_GPUEB_BUS_AW_TRACKER_LOG           (g_mfg_gpueb_bus_trk_base + 0x800)  /* 0x4B190800 */
-#define MFG_GPUEB_BUS_AW_TRACKER_ID            (g_mfg_gpueb_bus_trk_base + 0x900)  /* 0x4B190900 */
-#define MFG_GPUEB_BUS_AW_TRACKER_L             (g_mfg_gpueb_bus_trk_base + 0xA00)  /* 0x4B190A00 */
+#define MFG_GPUEB_BUS_DBG_CON_0                (g_mfg_eb_bus_trk_base + 0x10000)   /* 0x4B1A0000 */
+#define MFG_GPUEB_BUS_TIMEOUT_INFO             (g_mfg_eb_bus_trk_base + 0x10028)   /* 0x4B1A0028 */
+#define MFG_GPUEB_BUS_SYSTIMER_LATCH_SLVERR_L  (g_mfg_eb_bus_trk_base + 0x10040)   /* 0x4B1A0040 */
+#define MFG_GPUEB_BUS_SYSTIMER_LATCH_SLVERR_H  (g_mfg_eb_bus_trk_base + 0x10044)   /* 0x4B1A0044 */
+#define MFG_GPUEB_BUS_SYSTIMER_LATCH_L         (g_mfg_eb_bus_trk_base + 0x10048)   /* 0x4B1A0048 */
+#define MFG_GPUEB_BUS_SYSTIMER_LATCH_H         (g_mfg_eb_bus_trk_base + 0x1004C)   /* 0x4B1A004C */
+#define MFG_GPUEB_BUS_AR_SLVERR_ADDR_L         (g_mfg_eb_bus_trk_base + 0x10080)   /* 0x4B1A0080 */
+#define MFG_GPUEB_BUS_AR_SLVERR_ADDR_H         (g_mfg_eb_bus_trk_base + 0x10084)   /* 0x4B1A0084 */
+#define MFG_GPUEB_BUS_AR_SLVERR_ID             (g_mfg_eb_bus_trk_base + 0x10088)   /* 0x4B1A0088 */
+#define MFG_GPUEB_BUS_AR_SLVERR_LOG            (g_mfg_eb_bus_trk_base + 0x1008C)   /* 0x4B1A008C */
+#define MFG_GPUEB_BUS_AW_SLVERR_ADDR_L         (g_mfg_eb_bus_trk_base + 0x10090)   /* 0x4B1A0090 */
+#define MFG_GPUEB_BUS_AW_SLVERR_ADDR_H         (g_mfg_eb_bus_trk_base + 0x10094)   /* 0x4B1A0094 */
+#define MFG_GPUEB_BUS_AW_SLVERR_ID             (g_mfg_eb_bus_trk_base + 0x10098)   /* 0x4B1A0098 */
+#define MFG_GPUEB_BUS_AW_SLVERR_LOG            (g_mfg_eb_bus_trk_base + 0x1009C)   /* 0x4B1A009C */
+#define MFG_GPUEB_BUS_AR_TRACKER_LOG           (g_mfg_eb_bus_trk_base + 0x10200)   /* 0x4B1A0200 */
+#define MFG_GPUEB_BUS_AR_TRACKER_ID            (g_mfg_eb_bus_trk_base + 0x10300)   /* 0x4B1A0300 */
+#define MFG_GPUEB_BUS_AR_TRACKER_L             (g_mfg_eb_bus_trk_base + 0x10400)   /* 0x4B1A0400 */
+#define MFG_GPUEB_BUS_AW_TRACKER_LOG           (g_mfg_eb_bus_trk_base + 0x10800)   /* 0x4B1A0800 */
+#define MFG_GPUEB_BUS_AW_TRACKER_ID            (g_mfg_eb_bus_trk_base + 0x10900)   /* 0x4B1A0900 */
+#define MFG_GPUEB_BUS_AW_TRACKER_L             (g_mfg_eb_bus_trk_base + 0x10A00)   /* 0x4B1A0A00 */
 
 #define MFG_RPC_BASE                           (0x4B800000)
 #define MFG_RPC_SLV_WAY_EN_SET                 (g_mfg_rpc_base + 0x0060)           /* 0x4B800060 */
@@ -184,7 +184,7 @@
 #define MFGSYS_PROTECT_EN_STA_0                (g_mfg_vcore_ao_cfg_base + 0x0088)  /* 0x4B860088 */
 #define MFG_VCORE_AO_CK_FAST_REF_SEL           (g_mfg_vcore_ao_cfg_base + 0x000C)  /* 0x4B86000C */
 #define MFG_VCORE_AO_RPC_DREQ_CONFIG           (g_mfg_vcore_ao_cfg_base + 0x00B4)  /* 0x4B8600B4 */
-#define MFG_VCORE_AO_MT6991_ID_CON             (g_mfg_vcore_ao_cfg_base + 0x0B28)  /* 0x4B860B28 */
+#define MFG_VCORE_AO_MT6991_ID_CON             (g_mfg_vcore_ao_cfg_base + 0x0128)  /* 0x4B860128 */
 
 #define MFG_VCORE_DEVAPC_BASE                  (0x4B8B0000)
 #define MFG_VCORE_DEVAPC_D0_VIO_MASK_0         (g_mfg_vcore_devapc_base + 0x000)   /* 0x4B8B0000 */
