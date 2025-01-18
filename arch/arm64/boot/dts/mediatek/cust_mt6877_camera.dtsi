@@ -399,6 +399,41 @@
 
 	cam1_enable_sensor = "imx576_mipi_raw";
 
+	cam0_pin_mclk = "mclk";
+	cam0_pin_pdn = "gpio";
+	cam0_pin_rst = "gpio";
+	cam0_pin_vcama = "regulator";
+	cam0_pin_vcama1 = "regulator";
+	cam0_pin_vcamd = "regulator";
+	cam0_pin_vcamio = "regulator";
+	cam0_pin_vcamaf = "regulator";
+	cam1_pin_mclk = "mclk";
+	cam1_pin_pdn = "gpio";
+	cam1_pin_rst = "gpio";
+	cam1_pin_vcama = "regulator";
+	cam1_pin_vcamd = "regulator";
+	cam1_pin_vcamio = "regulator";
+	cam2_pin_mclk = "mclk";
+	cam2_pin_pdn = "gpio";
+	cam2_pin_rst = "gpio";
+	cam2_pin_vcama = "regulator";
+	cam2_pin_vcamd = "regulator";
+	cam2_pin_vcamio = "regulator";
+	cam2_pin_vcamaf = "regulator";
+	cam3_pin_mclk = "mclk";
+	cam3_pin_pdn = "gpio";
+	cam3_pin_rst = "gpio";
+	cam3_pin_vcama = "gpio";
+	cam3_pin_vcamd = "gpio";
+	cam3_pin_vcamio = "regulator";
+	cam4_pin_mclk = "mclk";
+	cam4_pin_pdn = "gpio";
+	cam4_pin_rst = "gpio";
+	cam4_pin_vcama = "gpio";
+	cam4_pin_vcamd = "gpio";
+	cam4_pin_vcamio = "regulator";
+	cam4_pin_vcamaf = "regulator";
+
 	status = "okay";
 };
 /* CAMERA GPIO end */
