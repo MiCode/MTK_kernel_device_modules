@@ -435,6 +435,9 @@ int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id)
 	return ret;
 }
 
+static struct proc_dir_entry *mictx_ioctl_entry;
+static DEFINE_MUTEX(entry_lock);
+
 struct mictx_ioctl_info {
 	union {
 		struct mtk_btag_mictx_id mictx_id;
@@ -558,6 +561,45 @@ static const struct proc_ops mictx_ioctl_fops = {
 	.proc_release = single_release,
 };
 
+void mtk_btag_mictx_ioctl_create(struct proc_dir_entry *btag_root)
+{
+	if (!btag_root)
+		return;
+
+	mutex_lock(&entry_lock);
+
+	if (mictx_ioctl_entry) {
+		pr_notice("%s: mictx_ioctl exists\n", __func__);
+		goto unlock;
+	}
+
+	mictx_ioctl_entry = proc_create("mictx_ioctl", S_IFREG | 0444,
+					btag_root, &mictx_ioctl_fops);
+	if (IS_ERR(mictx_ioctl_entry)) {
+		pr_notice("%s: mictx_ioctl create failed %ld",
+			  __func__, PTR_ERR(mictx_ioctl_entry));
+		mictx_ioctl_entry = NULL;
+	}
+
+unlock:
+	mutex_unlock(&entry_lock);
+}
+
+void mtk_btag_mictx_ioctl_remove(void)
+{
+	mutex_lock(&entry_lock);
+
+	if (!mictx_ioctl_entry) {
+		pr_notice("%s: mictx_ioctl doesn't exist\n", __func__);
+		goto unlock;
+	}
+	proc_remove(mictx_ioctl_entry);
+	mictx_ioctl_entry = NULL;
+
+unlock:
+	mutex_unlock(&entry_lock);
+}
+
 static int mictx_alloc(enum mtk_btag_storage_type type)
 {
 	struct mtk_blocktag *btag;
@@ -673,6 +715,4 @@ void mtk_btag_mictx_init(struct mtk_blocktag *btag)
 	spin_lock_init(&btag->ctx.mictx.list_lock);
 	btag->ctx.mictx.nr_list = 0;
 	INIT_LIST_HEAD(&btag->ctx.mictx.list);
-	proc_create("mictx_ioctl", S_IFREG | 0444, btag->dentry.droot,
-		    &mictx_ioctl_fops);
 }

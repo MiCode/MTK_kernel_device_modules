@@ -692,7 +692,25 @@ static ssize_t mtk_btag_main_write(struct file *file, const char __user *ubuf,
 	size_t count, loff_t *ppos)
 {
 	struct mtk_blocktag *btag;
+	char cmd[64] = {'\0'};
 
+	if (count == 0 || count > 64)
+		goto end;
+
+	if (copy_from_user(cmd, ubuf, count)) {
+		pr_notice("%s: copy from user failed\n", __func__);
+		count = -EFAULT;
+		goto end;
+	}
+
+	pr_notice("%s: cmd = %s\n", __func__, cmd);
+
+	if (!strncmp(cmd, "mictx_test_on", strlen("mictx_test_on")))
+		mtk_btag_mictx_ioctl_create(btag_proc_root);
+	else if (!strncmp(cmd, "mictx_test_off", strlen("mictx_test_off")))
+		mtk_btag_mictx_ioctl_remove();
+
+end:
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
 		mtk_btag_clear_trace(&btag->rt);
