@@ -1539,6 +1539,7 @@ static inline void RSC_Disable_Unprepare_ccf_clock(void)
 	/* close order:RSC clk>CG_SCP_SYS_ISP>CG_MM_SMI_COMMON>CG_SCP_SYS_MM0 */
 	clk_disable_unprepare(rsc_clk.CG_IPESYS_RSC);
 	clk_disable_unprepare(rsc_clk.CG_IPESYS_LARB20);
+	pm_runtime_put_sync(RSC_devs->dev);
 /*
 	mtk_smi_larb_put(RSC_devs->larb);
 #ifdef SMI_CLK
