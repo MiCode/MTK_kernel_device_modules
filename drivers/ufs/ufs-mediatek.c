@@ -2966,7 +2966,7 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
 	struct ufs_hw_queue *hwq;
-	//u32 events;
+	u32 events;
 	int i = mcq_intr_info->qid;
 
 	hwq = &hba->uhq[i];
@@ -2975,12 +2975,12 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 	//ufshcd_vops_check_bus_status(hba);
 #endif
 
-	//events = ufshcd_mcq_read_cqis(hba, i);
-	//if (events)
-	//	ufshcd_mcq_write_cqis(hba, events, i);
+	events = ufshcd_mcq_read_cqis(hba, i);
+	if (events)
+		ufshcd_mcq_write_cqis(hba, events, i);
 
-	//if (events & UFSHCD_MCQ_CQIS_TAIL_ENT_PUSH_STS)
-	//	ufshcd_mcq_poll_cqe_lock(hba, hwq);
+	if (events & UFSHCD_MCQ_CQIS_TAIL_ENT_PUSH_STS)
+		ufshcd_mcq_poll_cqe_lock(hba, hwq);
 
 	return IRQ_HANDLED;
 }
