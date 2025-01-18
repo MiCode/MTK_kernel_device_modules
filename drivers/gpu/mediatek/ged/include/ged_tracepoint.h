@@ -659,29 +659,7 @@ TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
 	TP_printk("core_mask=%u", __entry->core_mask)
 );
 
-TRACE_EVENT(GED_EB_POLICY,
-	TP_PROTO(const char *name, const int *arg),
-	TP_ARGS(name, arg),
-	TP_STRUCT__entry(
-		__string(name, name)
-		__array(u32, arg, 8)
-	),
-	TP_fast_assign(
-		__assign_str(name, name);
-		memcpy(__entry->arg, arg, sizeof(__entry->arg));
-	),
-	TP_printk("%s={%d, %d, %d, %d, %d, %d, %d, %d}", __get_str(name),
-				__entry->arg[0],
-				__entry->arg[1],
-				__entry->arg[2],
-				__entry->arg[3],
-				__entry->arg[4],
-				__entry->arg[5],
-				__entry->arg[6],
-				__entry->arg[7])
-);
-
-TRACE_EVENT(GPU_EB_DVFS__Frequency,
+TRACE_EVENT(GPU_DVFS__EB_Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,
 		unsigned int diff),
 	TP_ARGS(virtual_stack, real_stack, real_top, diff),
@@ -697,11 +675,11 @@ TRACE_EVENT(GPU_EB_DVFS__Frequency,
 		__entry->real_top = real_top;
 		__entry->diff = diff;
 	),
-	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u, diff=%u",
+	TP_printk("virtual_stack=%u real_stack=%u real_top=%u diff=%u",
 		__entry->virtual_stack, __entry->real_stack, __entry->real_top, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Loading,
+TRACE_EVENT(GPU_DVFS__EB_Loading,
 
 	TP_PROTO(unsigned int active, unsigned int tiler, unsigned int frag,
 		unsigned int comp, unsigned int iter, unsigned int mcu, unsigned int iter_u_mcu,
@@ -731,12 +709,12 @@ TRACE_EVENT(GPU_EB_DVFS__Loading,
 		__entry->diff = diff;
 	),
 
-	TP_printk("active=%u, tiler=%u, frag=%u, comp=%u, iter=%u, mcu=%u, iter_u_mcu=%u, diff=%u",
+	TP_printk("active=%u tiler=%u frag=%u comp=%u iter=%u mcu=%u iter_u_mcu=%u diff=%u",
 		__entry->active, __entry->tiler, __entry->frag, __entry->comp,
 		__entry->iter, __entry->mcu , __entry->iter_u_mcu, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Common,
+TRACE_EVENT(GPU_DVFS__Policy__EB_Common,
 
 	TP_PROTO(unsigned int commit_type, unsigned int policy_state,
 		unsigned int diff),
@@ -755,11 +733,11 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Common,
 		__entry->diff = diff;
 	),
 
-	TP_printk("eb_commit_type=%u, policy_state=%u, diff=%u",
+	TP_printk("commit_type=%u policy_state=%u diff=%u",
 		__entry->commit_type, __entry->policy_state, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Common__Sync_Api,
+TRACE_EVENT(GPU_DVFS__Policy__EB_Common__Sync_Api,
 
 	TP_PROTO(int hint),
 
@@ -777,31 +755,31 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Common__Sync_Api,
 );
 
 /* frame-based policy tracepoints */
-TRACE_EVENT(GPU_EB_DVFS__Policy__Frame_based__monitor,
+TRACE_EVENT(GPU_DVFS__Policy__Frame_based__EB_monitor,
 
 	TP_PROTO(int cur, int target, unsigned int diff),
 
 	TP_ARGS(cur, target, diff),
 
 	TP_STRUCT__entry(
-		__field(int, cur)
-		__field(int, target)
+		__field(int, fb_t_gpu)
+		__field(int, fb_target)
 		__field(unsigned int, diff)
 	),
 
 	TP_fast_assign(
-		__entry->cur = cur;
-		__entry->target = target;
+		__entry->fb_t_gpu = cur;
+		__entry->fb_target = target;
 		__entry->diff = diff;
 	),
 
-	TP_printk("fb_t_gpu=%d, fb_target=%d, diff=%u",
-		__entry->cur, __entry->target, __entry->diff)
+	TP_printk("fb_t_gpu=%d fb_target=%d diff=%u",
+		__entry->fb_t_gpu, __entry->fb_target, __entry->diff)
 );
 
 
 /* loading-based policy tracepoints */
-TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Opp,
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Opp,
 
 	TP_PROTO(int target, unsigned int diff),
 
@@ -817,10 +795,10 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Opp,
 		__entry->diff = diff;
 	),
 
-	TP_printk("target_opp=%d, diff=%u", __entry->target, __entry->diff)
+	TP_printk("target=%d diff=%u", __entry->target, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Loading,
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Loading,
 
 	TP_PROTO(unsigned int cur, unsigned int diff),
 
@@ -836,10 +814,10 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Loading,
 		__entry->diff = diff;
 	),
 
-	TP_printk("cur_use_loading=%u, diff=%u", __entry->cur, __entry->diff)
+	TP_printk("cur=%u diff=%u", __entry->cur, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Bound,
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Bound,
 
 	TP_PROTO(int ultra_high, int high, int low, int ultra_low, unsigned int diff),
 
@@ -861,41 +839,41 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Bound,
 		__entry->diff = diff;
 	),
 
-	TP_printk("ultra_high=%d, high=%d, low=%d, ultra_low=%d, diff=%u",
+	TP_printk("ultra_high=%d high=%d low=%d ultra_low=%d diff=%u",
 		__entry->ultra_high, __entry->high, __entry->low, __entry->ultra_low, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__GPU_Time,
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_GPU_Time,
 
 	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete, unsigned int diff),
 
 	TP_ARGS(cur, target, target_hd, complete, uncomplete, diff),
 
 	TP_STRUCT__entry(
-		__field(int, cur)
-		__field(int, target)
-		__field(int, target_hd)
-		__field(int, complete)
-		__field(int, uncomplete)
+		__field(int, lb_t_gpu)
+		__field(int, lb_target)
+		__field(int, lb_target_hd)
+		__field(int, lb_complete)
+		__field(int, lb_uncomplete)
 		__field(unsigned int, diff)
 	),
 
 	TP_fast_assign(
-		__entry->cur = cur;
-		__entry->target = target;
-		__entry->target_hd = target_hd;
-		__entry->complete = complete;
-		__entry->uncomplete = uncomplete;
+		__entry->lb_t_gpu = cur;
+		__entry->lb_target = target;
+		__entry->lb_target_hd = target_hd;
+		__entry->lb_complete = complete;
+		__entry->lb_uncomplete = uncomplete;
 		__entry->diff = diff;
 	),
 
-	TP_printk("lb_t_gpu=%d, lb_target=%d, lb_target_hd=%d, lb_complete=%d, lb_uncomplete=%d, diff=%u",
-		__entry->cur, __entry->target, __entry->target_hd, __entry->complete,
-		__entry->uncomplete, __entry->diff)
+	TP_printk("lb_t_gpu=%d lb_target=%d lb_target_hd=%d lb_complete=%d lb_uncomplete=%d diff=%u",
+		__entry->lb_t_gpu, __entry->lb_target, __entry->lb_target_hd, __entry->lb_complete,
+		__entry->lb_uncomplete, __entry->diff)
 
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Margin,
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__EB_Margin,
 
 	TP_PROTO(int ceil, int cur, int floor, unsigned int diff),
 
@@ -916,11 +894,10 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__Loading_based__Margin,
 
 	),
 
-	TP_printk("margin_ceil=%d, margin_cur=%d, margin_floor=%d, diff=%u",
-			__entry->ceil, __entry->cur, __entry->floor, __entry->diff)
+	TP_printk("ceil=%d cur=%d floor=%d diff=%u", __entry->ceil, __entry->cur, __entry->floor, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__DEBUG,
+TRACE_EVENT(GPU_DVFS__Policy__EB_DEBUG,
 
 	TP_PROTO(unsigned int count, unsigned int diff),
 
@@ -937,29 +914,60 @@ TRACE_EVENT(GPU_EB_DVFS__Policy__DEBUG,
 
 	),
 
-	TP_printk("debug_count=%u, diff==%u", __entry->count, __entry->diff)
+	TP_printk("count=%u diff=%u", __entry->count, __entry->diff)
 );
 
-TRACE_EVENT(GPU_EB_DVFS__Policy__RINBUFFER,
-	TP_PROTO(const char *name, const int *arg),
-	TP_ARGS(name, arg),
+TRACE_EVENT(GPU_DVFS__Policy__EB_RINBUFFER,
+	TP_PROTO(const char *name, const int *arg, const u32 *diff_time),
+	TP_ARGS(name, arg, diff_time),
+
 	TP_STRUCT__entry(
 		__string(name, name)
-		__array(u32, arg, 8)
+		__field(unsigned int, u0)
+		__field(unsigned int, u1)
+		__field(unsigned int, u2)
+		__field(unsigned int, u3)
+		__field(unsigned int, u4)
+		__field(unsigned int, u5)
+		__field(unsigned int, u6)
+		__field(unsigned int, u7)
+		__field(unsigned int, t0)
+		__field(unsigned int, t1)
+		__field(unsigned int, t2)
+		__field(unsigned int, t3)
+		__field(unsigned int, t4)
+		__field(unsigned int, t5)
+		__field(unsigned int, t6)
+		__field(unsigned int, t7)
 	),
 	TP_fast_assign(
 		__assign_str(name, name);
-		memcpy(__entry->arg, arg, sizeof(__entry->arg));
+		__entry->u0 = arg[0];
+		__entry->u1 = arg[1];
+		__entry->u2 = arg[2];
+		__entry->u3 = arg[3];
+		__entry->u4 = arg[4];
+		__entry->u5 = arg[5];
+		__entry->u6 = arg[6];
+		__entry->u7 = arg[7];
+		__entry->t0 = diff_time[0];
+		__entry->t1 = diff_time[1];
+		__entry->t2 = diff_time[2];
+		__entry->t3 = diff_time[3];
+		__entry->t4 = diff_time[4];
+		__entry->t5 = diff_time[5];
+		__entry->t6 = diff_time[6];
+		__entry->t7 = diff_time[7];
+
 	),
-	TP_printk("%s={%d, %d, %d, %d, %d, %d, %d, %d}", __get_str(name),
-				__entry->arg[0],
-				__entry->arg[1],
-				__entry->arg[2],
-				__entry->arg[3],
-				__entry->arg[4],
-				__entry->arg[5],
-				__entry->arg[6],
-				__entry->arg[7])
+	TP_printk("name=%s u0=%u u1=%u u2=%u u3=%u u4=%u u5=%u u6=%u u7=%u t0=%u t1=%u t2=%u t3=%u t4=%u t5=%u t6=%u t7=%u",
+		 __get_str(name),
+		__entry->u0, __entry->u1, __entry->u2,
+		 __entry->u3, __entry->u4, __entry->u5,
+		 __entry->u6, __entry->u7,
+		 __entry->t0, __entry->t1, __entry->t2,
+		__entry->t3, __entry->t4, __entry->t5,
+		 __entry->t6, __entry->t7)
 );
 
 #endif /* _TRACE_GED_H */

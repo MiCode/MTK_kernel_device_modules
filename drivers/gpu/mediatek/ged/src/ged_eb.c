@@ -138,10 +138,16 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 static void ged_eb_sysram_debug_data_write(void)
 {
 	int dbg_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	u32 diff_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
 	int i, dbg_cnt;
 	u32 head = 0;
 	u32 tail =
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GPU_EB_DEBUG_WRITE_POINTER);
+	u64 soc_timer = 0;
+	u64 soc_timer_eb_hi = 0;
+	u64 soc_timer_eb = 0;
+	u32 time_diff = 0;
+	int tmp_head;
 
 	if (tail >= GPUEB_SYSRAM_DVFS_DEBUG_COUNT)
 		head = tail - GPUEB_SYSRAM_DVFS_DEBUG_COUNT;
@@ -149,9 +155,32 @@ static void ged_eb_sysram_debug_data_write(void)
 		head = GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE -
 			(GPUEB_SYSRAM_DVFS_DEBUG_COUNT -tail);
 
-	for (dbg_cnt = 0; dbg_cnt < EB_MAX_COUNT; dbg_cnt++) {
-		int tmp_head = head;
 
+	soc_timer = mtk_gpueb_read_soc_timer();
+	tmp_head = head;
+	for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
+		int cur_read_p = tmp_head * sizeof(u32);
+
+		if (tmp_head != tail) {
+			soc_timer_eb_hi = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_HI + cur_read_p);
+			soc_timer_eb = (u32) mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_LO + cur_read_p);
+			soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
+			if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
+				time_diff = (soc_timer - soc_timer_eb) / 13;
+			else
+				time_diff = 0;
+			diff_data[i] = time_diff;
+
+			tmp_head++;
+			if (tmp_head >= GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE)
+				tmp_head = 0;
+		} else {
+			diff_data[i] = 0;
+		}
+	}
+
+	for (dbg_cnt = 0; dbg_cnt < EB_MAX_COUNT; dbg_cnt++) {
+		tmp_head = head;
 		for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
 			int cur_read_p = tmp_head * sizeof(u32);
 
@@ -166,7 +195,7 @@ static void ged_eb_sysram_debug_data_write(void)
 			}
 
 		}
-		trace_GPU_EB_DVFS__Policy__RINBUFFER(gpueb_dbg_data[dbg_cnt].name, dbg_data);
+		trace_GPU_DVFS__Policy__EB_RINBUFFER(gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GPU_EB_DEBUG_READ_POINTER, tmp_head);
 	}
 

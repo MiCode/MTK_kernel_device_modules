@@ -218,7 +218,7 @@ void ged_eb_dvfs_trace_dump(void)
 	//trace_tracing_mark_write(5566, "soc_timer_ged",
 		//soc_timer);
 
-	if (eb_policy_state != 1) {
+	if (eb_policy_state != 1 && eb_policy_state != 3) {
 		soc_timer_eb_hi = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPLETE_SOC_TIMER_HI);
 		soc_timer_eb = (u32) mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPLETE_SOC_TIMER_LO);
 		soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
@@ -238,7 +238,7 @@ void ged_eb_dvfs_trace_dump(void)
 
 	ged_dvfs_cal_gpu_utilization_ex(&gpu_av_loading,
 		&gpu_block, &gpu_idle, &util_ex);
-	trace_GPU_EB_DVFS__Policy__Loading_based__Opp(
+	trace_GPU_DVFS__Policy__Loading_based__EB_Opp(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_OPP), time_diff);
 
 	if (eb_policy_state != pre_eb_policy_state ||
@@ -251,13 +251,10 @@ void ged_eb_dvfs_trace_dump(void)
 		trace_tracing_mark_write(5566, "EB_commit_type",
 			eb_policy_state);
 
-		trace_GPU_EB_DVFS__Policy__Common(eb_policy_state,
-			eCommitType, time_diff);
-
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) ged_get_cur_stack_freq() / 1000);
 
-		trace_GPU_EB_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
+		trace_GPU_DVFS__EB_Frequency(ged_get_cur_stack_freq() / 1000,
 			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000,
 			time_diff);
 
@@ -274,13 +271,13 @@ void ged_eb_dvfs_trace_dump(void)
 			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
 	}
-	trace_GPU_EB_DVFS__Policy__Loading_based__Margin(
+	trace_GPU_DVFS__Policy__Loading_based__EB_Margin(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_CEIL) * 10,
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN) * 10,
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_FLOOR) * 10,
 		time_diff);
 
-	trace_GPU_EB_DVFS__Policy__Loading_based__Bound(
+	trace_GPU_DVFS__Policy__Loading_based__EB_Bound(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_ULTRA_HIGH),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_HIGH),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_LOW),
@@ -301,7 +298,7 @@ void ged_eb_dvfs_trace_dump(void)
 
 
 
-	trace_GPU_EB_DVFS__Policy__Loading_based__GPU_Time(
+	trace_GPU_DVFS__Policy__Loading_based__EB_GPU_Time(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_RISKY_COMPLETE_TARGET_TIME),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU),
@@ -309,14 +306,14 @@ void ged_eb_dvfs_trace_dump(void)
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPOLETE_GPU),
 		time_diff);
 
-	trace_GPU_EB_DVFS__Policy__Common(eb_policy_state,
+	trace_GPU_DVFS__Policy__EB_Common(eb_policy_state,
 		eCommitType, time_diff);
 
-	trace_GPU_EB_DVFS__Policy__Frame_based__monitor(
+	trace_GPU_DVFS__Policy__Frame_based__EB_monitor(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_OVERDUE_TIME),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD) * 100,
 		time_diff);
-	trace_GPU_EB_DVFS__Policy__DEBUG(
+	trace_GPU_DVFS__Policy__EB_DEBUG(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DEBUG_COUNT), time_diff);
 
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT)
