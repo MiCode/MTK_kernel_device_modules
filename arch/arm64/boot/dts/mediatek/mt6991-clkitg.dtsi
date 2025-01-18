@@ -53,7 +53,6 @@
 			<&cksys_gp2_clk CLK_CK2_DP1_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DP0_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DISP_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MDP_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_SNOC_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>,
@@ -530,88 +529,6 @@
 			<&ccu_main_clk CLK_CCU2INFRA_GALS_CON_CCU>,
 			<&ccu_main_clk CLK_CCU2MM0_GALS_CON_CCU>;
 	};
-	bring-up-mml@c {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xc>;
-		clocks =
-			<&mdpsys_config_clk CLK_MDP_MDP_MUTEX0_MML>,
-			<&mdpsys_config_clk CLK_MDP_SMI0_MML>,
-			<&mdpsys_config_clk CLK_MDP_APB_BUS_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RDMA0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RDMA1_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RDMA2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_BIRSZ0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_HDR0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_AAL0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RSZ0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RSZ2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_TDSHP0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_COLOR0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_WROT0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_WROT1_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_WROT2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_FAKE_ENG0_MML>,
-			<&mdpsys_config_clk CLK_MDP_APB_DB_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLI_ASYNC0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLI_ASYNC1_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC1_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLI_ASYNC2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC3_MML>,
-			<&mdpsys_config_clk CLK_MDP_IMG_DL_ASYNC0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_RROT0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_MERGE0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_C3D0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_FG0_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_CLA2_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC4_MML>,
-			<&mdpsys_config_clk CLK_MDP_VPP_RSZ0_MML>,
-			<&mdpsys_config_clk CLK_MDP_VPP_RSZ1_MML>,
-			<&mdpsys_config_clk CLK_MDP_MDP_DLO_ASYNC5_MML>,
-			<&mdpsys_config_clk CLK_MDP_IMG0_MML>,
-			<&mdpsys_config_clk CLK_MDP_F26M_MML>,
-			<&mdpsys_config_clk CLK_MDP_IMG_DL_RELAY0_MML>,
-			<&mdpsys_config_clk CLK_MDP_IMG_DL_RELAY1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_MUTEX0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_APB_BUS_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RDMA0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RDMA1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RDMA2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_BIRSZ0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_HDR0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_AAL0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RSZ0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RSZ2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_TDSHP0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_COLOR0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_WROT0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_WROT1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_WROT2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_FAKE_ENG0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_APB_DB_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC3_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_IMG_DL_ASYNC0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_RROT0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_MERGE0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_C3D0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_FG0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_CLA2_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC4_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_VPP_RSZ0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_VPP_RSZ1_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC5_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_IMG0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_F26M_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_IMG_DL_RELAY0_MML>,
-			<&mdpsys1_config_clk CLK_MDP1_IMG_DL_RELAY1_MML>;
-	};
 	bring-up-uart@d {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0xd>;
@@ -1073,16 +990,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x55>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT>;
-	};
-	bring-up-pd-mml0-dormant@56 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x56>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML0_SHUTDOWN>;
-	};
-	bring-up-pd-mml1-dormant@57 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x57>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML1_SHUTDOWN>;
 	};
 	bring-up-pd-mm-infra0@58 {
 		compatible = "mediatek,scpsys-bring-up";
