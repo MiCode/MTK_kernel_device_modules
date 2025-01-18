@@ -62,14 +62,23 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram vmalloc=400M \
 		rcupdate.rcu_expedited=1 swiotlb=noforce \
+		8250.nr_uarts=2 \
 		firmware_class.path=/vendor/firmware page_owner=on \
-		loop.max_part=7 earlycon=uart8250,mmio32,0x11002000 console=ttyS0,921600n1";
+		loop.max_part=7 console=ttyS0,921600n1";
 		kaslr-seed = <0 0>;
 	};
 
 	memory {
 		device_type = "memory";
 		reg = <0 0x40000000 0 0x20000000>;
+	};
+
+	clkchk {
+		compatible = "mediatek,mt6877-clkchk";
+	};
+
+	pdchk {
+		compatible = "mediatek,mt6877-pdchk";
 	};
 
 	clocks {
@@ -823,13 +832,14 @@
 	};
 
 	pwrap: pwrap@10026000 {
-		compatible = "mediatek,mt6853-pwrap", "syscon";
-		reg = <0 0x10026000 0 0x1000>;
-		reg-names = "pwrap";
+		compatible = "mediatek,mt6853-pwrap";
+		reg = <0 0x10026000 0 0x1000>,
+		<0 0x10028000 0 0x1000>;
+		reg-names = "pwrap","spi_mst";
 		interrupts = <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP_SET>,
 			     <&infracfg_ao_clk CLK_IFRAO_PMIC_TMR_SET>,
-			     <&topckgen_clk CLK_TOP_FPWRAP_ULPOSC>,
+			 <&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
 			     <&topckgen_clk CLK_TOP_OSC_D10>;
 		clock-names = "spi", "wrap", "ulposc", "ulposc_osc";
 	};
@@ -1523,19 +1533,37 @@
 			clocks = <&clk13m>;
 		};
 
-		spmi: spmi@10027000 {
-			compatible = "mediatek,mt6853-spmi";
-			reg = <0 0x10027000 0 0x000e00>,
+		spmi_bus: spmi@10027000 {
+			compatible = "mediatek,mt6853-pmif-m";
+			reg = <0 0x10027000 0 0x000d00>,
+				  <0 0x10027e00 0 0x0001ff>,
 			      <0 0x10029000 0 0x000100>;
-			reg-names = "pmif", "spmimst";
+			reg-names = "pmif", "pmifmpu", "spmimst";
+			interrupts = <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pmif_irq";
+			irq_event_en = <0x0 0x0 0x80000000 0x00180000 0x0>;
+
 			clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP_SET>,
 				 <&infracfg_ao_clk CLK_IFRAO_PMIC_TMR_SET>,
-				 <&topckgen_clk CLK_TOP_SPMI_MST_SEL>;
+				<&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
+				<&topckgen_clk CLK_TOP_OSC_D10>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+				<&topckgen_clk CLK_TOP_SPMI_MST_SEL>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+				<&topckgen_clk CLK_TOP_OSC_D10>;
+
 			clock-names = "pmif_sys_ck",
 				      "pmif_tmr_ck",
-				      "spmimst_clk_mux";
-			assigned-clocks = <&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>;
-			assigned-clock-parents = <&topckgen_clk CLK_TOP_OSC_D10>;
+				"pmif_clk_mux",
+				"pmif_clk_osc_d10",
+				"pmif_clk26m",
+				"spmimst_clk_mux",
+				"spmimst_clk26m",
+				"spmimst_clk_osc_d10";
+			swinf_ch_start = <4>;
+			ap_swinf_no = <2>;
+			#address-cells = <2>;
+			#size-cells = <0>;
 		};
 
 		devapc: devapc@10207000 {
