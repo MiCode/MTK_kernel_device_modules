@@ -298,7 +298,7 @@ void _force_stop_touch_boost(void)
 	force_stop_boost = 0;
 }
 
-void notify_fpsgo_is_boost(int is_boosting)
+static void notify_fpsgo_is_boost(int is_boosting)
 {
 	mutex_lock(&fpsgo_boost_lock);
 	isFpsgoBoosting = is_boosting;
