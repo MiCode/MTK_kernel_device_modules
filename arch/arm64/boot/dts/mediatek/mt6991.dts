@@ -1541,6 +1541,12 @@
 		interrupts = <GIC_SPI 139 IRQ_TYPE_EDGE_RISING 0>;
 	};
 
+	/* Microtrust SW IRQ number 141(173 - 32) ~ 142(174 - 32) */
+	utos: utos {
+		compatible = "microtrust,utos";
+		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING 0>;
+	};
+
 	spmi: spmi@1c01a000 {
 		compatible = "mediatek,mt6991-spmi";
 		reg = <0 0x1c01a000 0 0x0008ff>,
