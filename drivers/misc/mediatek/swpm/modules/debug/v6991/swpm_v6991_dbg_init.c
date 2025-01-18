@@ -632,6 +632,46 @@ static const struct mtk_swpm_sysfs_op dram_bw_fops = {
 	.fs_read = dram_bw_read,
 };
 
+static ssize_t swpm_dbg_en_write(char *FromUser, size_t sz, void *priv)
+{
+	unsigned int num1 = 0, num2 = 0;
+	unsigned int out1 = 0xFF, out2 = 0xFF;
+	int ret;
+
+	ret = -EINVAL;
+
+	if (!FromUser)
+		goto out;
+
+	if (sz >= MTK_SWPM_SYSFS_BUF_WRITESZ)
+		goto out;
+
+	ret = -EPERM;
+	if (sscanf(FromUser, "%x %x", &num1, &num2) == 2) {
+		swpm_dbg_en(num1, num2, &out1, &out2);
+		if (out1 == 0 && out2 == 0) {
+			mtk_swpm_sysfs_entry_func_node_add("swpm_psp_test"
+					, 0644, &swpm_psp_test_fops, NULL, NULL);
+#if SWPM_EXT_DBG
+			mtk_swpm_sysfs_entry_func_node_add("swpm_sp_test"
+					, 0444, &swpm_sp_test_fops, NULL, NULL);
+			mtk_swpm_sysfs_entry_func_node_add("swpm_sp_ddr_idx"
+					, 0444, &swpm_sp_ddr_idx_fops, NULL, NULL);
+			mtk_swpm_sysfs_entry_func_node_add("swpm_sp_spm_sig"
+					, 0444, &swpm_sp_spm_sig_fops, NULL, NULL);
+#endif
+			ret = sz;
+		}
+	}
+
+out:
+	return ret;
+}
+
+static const struct mtk_swpm_sysfs_op swpm_dbg_en_fops = {
+	.fs_write = swpm_dbg_en_write,
+};
+
 static void swpm_v6991_dbg_fs_init(void)
 {
 	mtk_swpm_sysfs_entry_func_node_add("enable"
@@ -644,6 +684,8 @@ static void swpm_v6991_dbg_fs_init(void)
 			, 0644, &swpm_pmsr_dbg_en_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_log_interval"
 			, 0644, &swpm_pmsr_log_interval_fops, NULL, NULL);
+	mtk_swpm_sysfs_entry_func_node_add("swpm_dbg_en"
+			, 0644, &swpm_dbg_en_fops, NULL, NULL);
 
 #if SWPM_EXT_DBG
 	mtk_swpm_sysfs_entry_func_node_add("dram_bw"

@@ -150,6 +150,8 @@ struct share_subsys_data {
 
 extern spinlock_t swpm_sub_data_spinlock;
 extern struct share_subsys_data sub_idx_snap;
+extern int32_t swpm_dbg_en(uint32_t num1, uint32_t num2,
+		uint32_t *out1, uint32_t *out2);
 extern void swpm_v6991_ext_init(void);
 extern void swpm_v6991_ext_exit(void);
 

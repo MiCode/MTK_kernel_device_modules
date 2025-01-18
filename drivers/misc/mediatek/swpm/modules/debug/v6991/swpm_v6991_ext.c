@@ -368,8 +368,9 @@ static int32_t swpm_res_group_info_get(uint32_t grp, uint32_t *out1, uint32_t *o
 {
 	unsigned int ret = 0;
 
-	ret = swpm_set_and_get_cmd_v2(APMCU_SCMI_UUID_SWPM_PSP, SWPM_SCMI_GET_RES_GRP_INFO, grp,
-								0, 0, 0, out1, out2, out3);
+	ret = swpm_set_and_get_cmd_v2(APMCU_SCMI_UUID_SWPM_PSP,
+					SWPM_SCMI_GET_RES_GRP_INFO,
+					grp, 0, 0, 0, out1, out2, out3);
 
 	return ret;
 }
@@ -378,8 +379,20 @@ static int32_t swpm_res_group_id_get(uint32_t ip1, uint32_t ip2, uint32_t ip3,
 {
 	unsigned int ret = 0;
 
-	ret = swpm_set_and_get_cmd_v2(APMCU_SCMI_UUID_SWPM_PSP, SWPM_SCMI_GET_RES_GRP_ID, ip1, ip2, ip3,
-								0, out1, out2, out3);
+	ret = swpm_set_and_get_cmd_v2(APMCU_SCMI_UUID_SWPM_PSP,
+					SWPM_SCMI_GET_RES_GRP_ID,
+					ip1, ip2, ip3, 0, out1, out2, out3);
+
+	return ret;
+}
+int32_t swpm_dbg_en(uint32_t num1, uint32_t num2,
+		uint32_t *out1, uint32_t *out2)
+{
+	unsigned int ret = 0;
+
+	ret = swpm_set_and_get_cmd_v2(APMCU_SCMI_UUID_SWPM_PSP,
+					SWPM_SCMI_GET_PROCFS,
+					num1, num2, 0, 0, out1, out2, NULL);
 
 	return ret;
 }
