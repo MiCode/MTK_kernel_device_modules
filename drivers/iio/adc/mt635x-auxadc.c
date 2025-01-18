@@ -9,6 +9,7 @@
 #include <linux/iio/iio.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
+#include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6397/core.h>
@@ -132,6 +133,21 @@ struct auxadc_regs {
 		.out_reg = _chip##_##_out_reg,		\
 	}						\
 
+static const struct auxadc_regs mt6357_auxadc_regs_tbl[] = {
+	MT635x_AUXADC_REG(BATADC, MT6357, AUXADC_RQST0, 0, AUXADC_ADC0),
+	MT635x_AUXADC_REG(ISENSE, MT6357, AUXADC_RQST0, 1, AUXADC_ADC1),
+	MT635x_AUXADC_REG(VCDT, MT6357, AUXADC_RQST0, 2, AUXADC_ADC2),
+	MT635x_AUXADC_REG(BAT_TEMP, MT6357, AUXADC_RQST0, 3, AUXADC_ADC3),
+	MT635x_AUXADC_REG(CHIP_TEMP, MT6357, AUXADC_RQST0, 4, AUXADC_ADC4),
+	MT635x_AUXADC_REG(VCORE_TEMP, MT6357, AUXADC_RQST2, 5, AUXADC_ADC46),
+	MT635x_AUXADC_REG(VPROC_TEMP, MT6357, AUXADC_RQST2, 6, AUXADC_ADC47),
+	MT635x_AUXADC_REG(ACCDET, MT6357, AUXADC_RQST0, 5, AUXADC_ADC5),
+	MT635x_AUXADC_REG(TSX_TEMP, MT6357, AUXADC_RQST0, 7, AUXADC_ADC7),
+	MT635x_AUXADC_REG(HPOFS_CAL, MT6357, AUXADC_RQST0, 9, AUXADC_ADC9),
+	MT635x_AUXADC_REG(DCXO_TEMP, MT6357, AUXADC_RQST0, 4, AUXADC_ADC40),
+	MT635x_AUXADC_REG(VBIF, MT6357, AUXADC_RQST0, 11, AUXADC_ADC11),
+};
+
 static const struct auxadc_regs mt6358_auxadc_regs_tbl[] = {
 	MT635x_AUXADC_REG(BATADC, MT6358, AUXADC_RQST0, 0, AUXADC_ADC0),
 	MT635x_AUXADC_REG(VCDT, MT6358, AUXADC_RQST0, 2, AUXADC_ADC2),
@@ -161,6 +177,24 @@ static const struct auxadc_regs mt6359p_auxadc_regs_tbl[] = {
 	MT635x_AUXADC_REG(HPOFS_CAL, MT6359P, AUXADC_RQST0, 9, AUXADC_ADC9),
 	MT635x_AUXADC_REG(DCXO_TEMP, MT6359P, AUXADC_RQST0, 10, AUXADC_ADC10),
 	MT635x_AUXADC_REG(VBIF, MT6359P, AUXADC_RQST0, 11, AUXADC_ADC11),
+};
+
+static const unsigned int mt6357_en_isink_setting[][3] = {
+	{
+		MT6357_DRIVER_ANA_CON0, 0xC000, 0xC000,
+	}, {
+		MT6357_ISINK_EN_CTRL_SMPL, 0xC00, 0xC00,
+	}, {
+		MT6357_ISINK_EN_CTRL_SMPL, 0xC, 0xC,
+	}
+};
+
+static const unsigned int mt6357_dis_isink_setting[][3] = {
+	{
+		MT6357_ISINK_EN_CTRL_SMPL, 0xC, 0x0,
+	}, {
+		MT6357_ISINK_EN_CTRL_SMPL, 0xC00, 0x0,
+	}
 };
 
 static const unsigned int mt6358_en_isink_setting[][3] = {
@@ -204,6 +238,21 @@ static const unsigned int mt6359p_dis_isink_setting[][3] = {
 	}
 };
 
+#if AUXADC_DEBUG
+static const unsigned int mt6357_dbg_regs[] = {
+	MT6357_AUXADC_STA0, MT6357_AUXADC_STA1, MT6357_AUXADC_STA2,
+	MT6357_STRUP_CON6, MT6357_HK_TOP_RST_CON0,
+	MT6357_HK_TOP_CLK_CON0, MT6357_HK_TOP_CLK_CON1,
+	MT6357_AUXADC_IMP_CG0, MT6357_AUXADC_IMP0, MT6357_AUXADC_IMP1,
+};
+
+static const unsigned int mt6358_dbg_regs[] = {
+	MT6358_AUXADC_STA0, MT6358_AUXADC_STA1, MT6358_AUXADC_STA2,
+	MT6358_STRUP_CON6, MT6358_HK_TOP_RST_CON0,
+	MT6358_HK_TOP_CLK_CON0, MT6358_HK_TOP_CLK_CON1,
+	MT6358_AUXADC_CON20, /* check DATA_REUSE */
+};
+
 static const unsigned int mt6359p_dbg_regs[] = {
 	MT6359P_AUXADC_STA0, MT6359P_AUXADC_STA1, MT6359P_AUXADC_STA2,
 	MT6359P_AUXADC_CON5, MT6359P_AUXADC_CON9, MT6359P_AUXADC_CON21,
@@ -220,12 +269,16 @@ static const unsigned int mt6359p_dbg_regs[] = {
 	MT6359P_AUXADC_CON20, /* check DATA_REUSE */
 };
 
-#if AUXADC_DEBUG
-static const unsigned int mt6358_dbg_regs[] = {
-	MT6358_AUXADC_STA0, MT6358_AUXADC_STA1, MT6358_AUXADC_STA2,
-	MT6358_STRUP_CON6, MT6358_HK_TOP_RST_CON0,
-	MT6358_HK_TOP_CLK_CON0, MT6358_HK_TOP_CLK_CON1,
-	MT6358_AUXADC_CON20, /* check DATA_REUSE */
+static const unsigned int mt6357_rst_setting[][3] = {
+	{
+		MT6357_HK_TOP_RST_CON0, 0x9, 0x9,
+	}, {
+		MT6357_HK_TOP_RST_CON0, 0x9, 0,
+	}, {
+		MT6357_AUXADC_RQST0, 0x80, 0x80,
+	}, {
+		MT6357_AUXADC_RQST1, 0x400, 0x400,
+	}
 };
 
 static const unsigned int mt6358_rst_setting[][3] = {
@@ -416,6 +469,65 @@ static int auxadc_get_imp_ibat(struct mt635x_auxadc_device *adc_dev)
 	__ret ?: 0; \
 })
 
+#define MT6357_IMP_CK_SW_MODE_MASK	BIT(0)
+#define MT6357_IMP_CK_SW_EN_MASK	BIT(1)
+#define MT6357_IMP_AUTORPT_EN_MASK	BIT(15)
+#define MT6357_IMP_CLR_MASK		(BIT(14) | BIT(7))
+#define MT6357_IMP_IRQ_RDY_BIT		BIT(8)
+
+static int mt6357_imp_conv(struct mt635x_auxadc_device *adc_dev,
+			   int *vbat, int *ibat)
+{
+	int ret, val = 0;
+	bool is_timeout = false;
+
+	/* start conversion */
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP_CG0,
+			   MT6357_IMP_CK_SW_MODE_MASK,
+			   MT6357_IMP_CK_SW_MODE_MASK);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP_CG0,
+			   MT6357_IMP_CK_SW_EN_MASK, MT6357_IMP_CK_SW_EN_MASK);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP1,
+			   MT6357_IMP_AUTORPT_EN_MASK,
+			   MT6357_IMP_AUTORPT_EN_MASK);
+	/* polling IRQ status */
+	ret = auxadc_imp_poll_timeout(adc_dev->regmap,
+				      MT6357_AUXADC_IMP0,
+				      val,
+				      (val & MT6357_IMP_IRQ_RDY_BIT),
+				      IMP_POLL_DELAY_US,
+				      AUXADC_TIMEOUT_US);
+	if (ret == -ETIMEDOUT)
+		is_timeout = true;
+#if AUXADC_DEBUG
+	imp_timeout_handler(adc_dev, is_timeout);
+#endif
+	/* stop conversion */
+	adc_dev->info->imp_stop(adc_dev);
+	/* Get vbat/ibat */
+	*vbat = adc_dev->imp_vbat;
+	*ibat = auxadc_get_imp_ibat(adc_dev);
+
+	return ret;
+}
+
+static void mt6357_imp_stop(struct mt635x_auxadc_device *adc_dev)
+{
+	regmap_read(adc_dev->regmap, MT6357_AUXADC_ADC33, &adc_dev->imp_vbat);
+	adc_dev->imp_vbat &= BIT(auxadc_chans[AUXADC_IMP].res) - 1;
+	/* stop conversion after read VBAT */
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP0,
+			   MT6357_IMP_CLR_MASK, MT6357_IMP_CLR_MASK);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP0,
+			   MT6357_IMP_CLR_MASK, 0);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP1,
+			   MT6357_IMP_AUTORPT_EN_MASK, 0);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP_CG0,
+			   MT6357_IMP_CK_SW_MODE_MASK, 0);
+	regmap_update_bits(adc_dev->regmap, MT6357_AUXADC_IMP_CG0,
+			   MT6357_IMP_CK_SW_EN_MASK, MT6357_IMP_CK_SW_EN_MASK);
+}
+
 #define MT6358_IMP_CK_SW_MASK		(BIT(1) | BIT(0))
 #define MT6358_IMP_AUTORPT_EN_MASK	BIT(15)
 #define MT6358_IMP_CLR_MASK		(BIT(14) | BIT(7))
@@ -493,7 +605,7 @@ static int mt6359p_imp_conv(struct mt635x_auxadc_device *adc_dev,
 	imp_timeout_handler(adc_dev, is_timeout);
 #endif
 	/* stop conversion */
-		adc_dev->info->imp_stop(adc_dev);
+	adc_dev->info->imp_stop(adc_dev);
 	/* Get vbat/ibat */
 	*vbat = adc_dev->imp_vbat;
 	*ibat = auxadc_get_imp_ibat(adc_dev);
@@ -509,6 +621,22 @@ static void mt6359p_imp_stop(struct mt635x_auxadc_device *adc_dev)
 	regmap_read(adc_dev->regmap, MT6359P_AUXADC_IMP3, &adc_dev->imp_vbat);
 	adc_dev->imp_vbat &= BIT(auxadc_chans[AUXADC_IMP].res) - 1;
 }
+
+static const struct auxadc_info mt6357_info = {
+	.regs_tbl = mt6357_auxadc_regs_tbl,
+	.en_isink_setting = mt6357_en_isink_setting,
+	.num_en_isink_setting = ARRAY_SIZE(mt6357_en_isink_setting),
+	.dis_isink_setting = mt6357_dis_isink_setting,
+	.num_dis_isink_setting = ARRAY_SIZE(mt6357_dis_isink_setting),
+	.imp_conv = mt6357_imp_conv,
+	.imp_stop = mt6357_imp_stop,
+#if AUXADC_DEBUG
+	.dbg_regs = mt6357_dbg_regs,
+	.num_dbg_regs = ARRAY_SIZE(mt6357_dbg_regs),
+	.rst_setting = mt6357_rst_setting,
+	.num_rst_setting = ARRAY_SIZE(mt6357_rst_setting),
+#endif
+};
 
 static const struct auxadc_info mt6358_info = {
 	.regs_tbl = mt6358_auxadc_regs_tbl,
@@ -783,6 +911,35 @@ int auxadc_priv_read_channel(struct mt635x_auxadc_device *adc_dev, int channel)
 }
 
 #if AUXADC_DEBUG
+#define MT6357_DCXO_CH4_APMUX_SEL	BIT(4)
+static void mt6357_dcxo_temp_conv(struct mt635x_auxadc_device *adc_dev,
+				  unsigned char convert)
+{
+	if (convert == 1)
+		regmap_update_bits(adc_dev->regmap,
+				   MT6357_AUXADC_DCXO_MDRT_2,
+				   MT6357_DCXO_CH4_APMUX_SEL,
+				   MT6357_DCXO_CH4_APMUX_SEL);
+	else if (convert == 0)
+		regmap_update_bits(adc_dev->regmap,
+				   MT6357_AUXADC_DCXO_MDRT_2,
+				   MT6357_DCXO_CH4_APMUX_SEL, 0);
+}
+
+#define MT6357_BATON_TDET_EN		BIT(1)
+static void mt6357_vbif_conv(struct mt635x_auxadc_device *adc_dev,
+			     unsigned char convert)
+{
+	if (convert == 1)
+		regmap_update_bits(adc_dev->regmap,
+				   MT6357_AUXADC_CHR_TOP_CON2,
+				   MT6357_BATON_TDET_EN, 0);
+	else if (convert == 0)
+		regmap_update_bits(adc_dev->regmap,
+				   MT6357_AUXADC_CHR_TOP_CON2,
+				   MT6357_BATON_TDET_EN, MT6357_BATON_TDET_EN);
+}
+
 #define MT6358_VDCXO_SWITCH		BIT(7)
 static void mt6358_vdcxo_conv(struct mt635x_auxadc_device *adc_dev,
 			      unsigned char convert)
@@ -1307,7 +1464,13 @@ static int mt635x_auxadc_probe(struct platform_device *pdev)
 	register_syscore_ops(&auxadc_syscore_ops);
 #if AUXADC_DEBUG
 	switch (chip->chip_id) {
+	case MT6357_CHIP_ID:
+		auxadc_set_convert_fn(AUXADC_DCXO_TEMP, mt6357_dcxo_temp_conv);
+		auxadc_set_convert_fn(AUXADC_VBIF, mt6357_vbif_conv);
+		auxadc_set_cali_fn(AUXADC_BAT_TEMP, mt635x_bat_temp_cali);
+		break;
 	case MT6358_CHIP_ID:
+	case MT6366_CHIP_ID:
 		auxadc_set_convert_fn(AUXADC_VDCXO, mt6358_vdcxo_conv);
 		auxadc_set_convert_fn(AUXADC_VBIF, mt6358_vbif_conv);
 		auxadc_set_cali_fn(AUXADC_BATADC, mt6358_batadc_cali);
@@ -1330,6 +1493,9 @@ static int mt635x_auxadc_probe(struct platform_device *pdev)
 
 static const struct of_device_id mt635x_auxadc_of_match[] = {
 	{
+		.compatible = "mediatek,mt6357-auxadc",
+		.data = &mt6357_info,
+	}, {
 		.compatible = "mediatek,mt6358-auxadc",
 		.data = &mt6358_info,
 	}, {
