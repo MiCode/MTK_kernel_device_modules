@@ -118,7 +118,7 @@
  *	Para2: part_id = PID[31:16]
  *	Para3: data = NULL
  *****************************************/
-#define PID_TO_I3C_DEV(_pid)  (I3C_DEVICE ((_pid>>33), ((_pid>>16)&0xFFFF), (void *)NULL))
+#define PID_TO_I3C_DEV(_pid)  I3C_DEVICE ((_pid>>33), ((_pid>>16)&0xFFFF), (void *)NULL)
 
 /************************************************************************
  *
