@@ -1187,6 +1187,14 @@ cpus {
 			mediatek,eint = <&eint>;
 		};
 
+		scpsys_clk: scpsys@10006000 {
+			compatible = "mediatek,mt6893-scpsys-clk", "syscon";
+			reg =   <0 0x10006000 0 0x1000>,	/* spm */
+			<0 0x10001000 0 0x1000>,		/* infracfg_ao */
+			<0 0x10000000 0 0x1000>;	/* topckgen */
+			#clock-cells = <1>;
+	};
+
 		scpsys: power-controller@10006000 {
 			compatible = "mediatek,mt6893-scpsys", "syscon";
 			reg = <0 0x10006000 0 0x1000>;
@@ -3575,12 +3583,33 @@ cpus {
 				<&topckgen_clk CLK_TOP_MFG_SEL>,
 				<&topckgen_clk CLK_TOP_MFGPLL>, /* mfgpll_ck(1150MHz) */
 				<&topckgen_clk CLK_TOP_MAINPLL_D5_D2>, /* mainpll_d5_d2(218.4MHz) */
-				<&mfgcfg_clk CLK_MFGCFG_BG3D>;
+				<&mfgcfg_clk CLK_MFGCFG_BG3D>,
+				 /* MFG0: MFG_ASYNC */
+				<&scpsys_clk SCP_SYS_MFG0>,
+				/* MFG1: MFG_TOP */
+				 <&scpsys_clk SCP_SYS_MFG1>,
+				 /* MFG2: SHADER_STACK_0: core0 */
+				<&scpsys_clk SCP_SYS_MFG2>,
+				/* MFG3: SHADER_STACK_1: core1, core2 */
+				<&scpsys_clk SCP_SYS_MFG3>,
+				/* MFG4: SHADER_STACK_2: core3, core4 */
+				<&scpsys_clk SCP_SYS_MFG4>,
+				/* MFG5: SHADER_STACK_5: core5, core6 */
+				<&scpsys_clk SCP_SYS_MFG5>,
+				/* MFG6: SHADER_STACK_6: core7, core8 */
+				<&scpsys_clk SCP_SYS_MFG6>;
 			clock-names =
 				"clk_mux",
 				"clk_main_parent",
 				"clk_sub_parent",
-				"subsys_mfg_cg";
+				"subsys_mfg_cg",
+				"mtcmos_mfg_async",
+				"mtcmos_mfg",
+				"mtcmos_mfg_core0",
+				"mtcmos_mfg_core1_2",
+				"mtcmos_mfg_core3_4",
+				"mtcmos_mfg_core5_6",
+				"mtcmos_mfg_core7_8";
 			power-domains =
 				<&scpsys MT6893_POWER_DOMAIN_MFG0>,
 				<&scpsys MT6893_POWER_DOMAIN_MFG1>,
