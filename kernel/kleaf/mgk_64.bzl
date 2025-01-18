@@ -769,6 +769,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6893.ko": "mt6893",
     "drivers/soc/mediatek/mtk-scpsys-mt6833.ko": "mt6833",
     "drivers/soc/mediatek/mtk-scpsys-mt6893.ko": "mt6893",
+    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.ko": "mt6853",
     "drivers/soc/mediatek/mtk-scpsys-mt6853.ko": "mt6853",
     "drivers/clk/mediatek/clk-chk-mt6893.ko": "mt6893",
     "drivers/clk/mediatek/clk-chk-mt6983.ko": "mt6983",
