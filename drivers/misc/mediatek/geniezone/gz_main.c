@@ -513,14 +513,14 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 	unsigned int compat)
 {
 	struct kree_tee_service_cmd_param cparam = { 0 };
-	unsigned long cret;
-	uint32_t tmpTypes;
-	union MTEEC_PARAM param[4], oparam[4];
-	uint i;
-	TZ_RESULT ret;
-	KREE_SESSION_HANDLE handle;
-	void __user *ubuf;
-	uint32_t ubuf_sz;
+	unsigned long cret = 0UL;
+	uint32_t tmpTypes = 0U;
+	union MTEEC_PARAM param[4] = { 0 }, oparam[4] = { 0 };
+	uint i = 0U;
+	TZ_RESULT ret = 0;
+	KREE_SESSION_HANDLE handle = 0;
+	void __user *ubuf = NULL;
+	uint32_t ubuf_sz = 0U;
 
 	cret = copy_from_user(&cparam, arg, sizeof(cparam));
 	if (cret) {
@@ -611,6 +611,8 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				cret = -ENOMEM;
 				goto error;
 			}
+			KREE_INFO("%s: kmalloc[%d] (%#llx)\n",
+					__func__, i, (uint64_t)param[i].mem.buffer);
 
 			if (type != TZPT_MEM_OUTPUT) {
 				cret = copy_from_user(param[i].mem.buffer, ubuf,
@@ -678,6 +680,10 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				}
 			}
 
+			if (!!param[i].mem.buffer)
+				KREE_INFO("%s: kfree[%d] (%#llx)\n",
+						__func__, i,
+						(uint64_t)param[i].mem.buffer);
 			kfree(param[i].mem.buffer);
 			param[i].mem.buffer = NULL;
 			break;
