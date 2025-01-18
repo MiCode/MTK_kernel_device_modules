@@ -360,6 +360,7 @@ struct ssusb_mtk {
 	bool use_multi_genpd;
 	u32 eusb2_cm_l1;
 	bool utmi_8bit;
+	bool smc_req;
 };
 
 /**
