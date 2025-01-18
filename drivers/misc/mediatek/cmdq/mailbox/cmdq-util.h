@@ -27,6 +27,7 @@ enum cmdq_smc_request {
 	CMDQ_VCORE_REQ,
 	CMDQ_RETURN_DEBUG_1,
 	CMDQ_RETURN_DEBUG_2,
+	CMDQ_SET_DOMAIN_EN,
 };
 
 /* Compatibility with 32-bit shift operation */
@@ -269,6 +270,7 @@ void cmdq_util_enable_dbg(u32 id);
 void cmdq_util_return_dbg(u32 id, u64 *dbg);
 void cmdq_util_devapc_dump(void);
 void cmdq_util_dump_fast_mtcmos(void);
+void cmdq_util_set_domain(u32 hwid, u32 thrd);
 int cmdq_util_init(void);
 
 extern void mt_irq_dump_status(unsigned int irq);

@@ -423,6 +423,7 @@ void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb);
 void cmdq_get_mminfra_cb(cmdq_mminfra_power cb);
 void cmdq_get_mminfra_gce_cg_cb(cmdq_mminfra_gce_cg cb);
 void cmdq_dump_usage(void);
+bool cmdq_get_support_vm(u8 hwid);
 void cmdq_check_thread_complete(struct mbox_chan *chan);
 u8 cmdq_get_irq_long_times(void *chan);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)

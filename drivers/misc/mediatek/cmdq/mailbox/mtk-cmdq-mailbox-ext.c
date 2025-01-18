@@ -113,6 +113,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_DBG3			0x3010
 #define GCE_READ_TPR_CTL_VAL	0x500
 
+#define GCE_VM6_OFFSET		0x60000
 #define GCE_HOST_VM_IRQ_STATUS			0x3014
 #define GCE_CPR_GSIZE		0x50C4
 #define GCE_VM_ID_MAP0		0x5018
@@ -544,6 +545,12 @@ void cmdq_dump_usage(void)
 }
 EXPORT_SYMBOL(cmdq_dump_usage);
 
+bool cmdq_get_support_vm(u8 hwid)
+{
+	return g_cmdq[hwid]->gce_vm;
+}
+EXPORT_SYMBOL(cmdq_get_support_vm);
+
 static void cmdq_init_cpu(struct cmdq *cmdq)
 {
 	int i;
@@ -778,7 +785,7 @@ static int cmdq_core_reset(struct cmdq *cmdq)
 
 static void cmdq_task_hw_trace_check(struct cmdq_task *task)
 {
-	if (!cmdq_hw_trace)
+	if (!cmdq_hw_trace || hw_trace_built_in[task->cmdq->hwid])
 		return;
 
 	if (cmdq_util_is_secure_client(task->pkt->cl))
@@ -1709,7 +1716,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 {
 	struct cmdq *cmdq = dev;
-	unsigned long irq_status, flags = 0L, irq_idx_flag;
+	unsigned long irq_status, irq_status_vm, flags = 0L, irq_idx_flag;
 	int bit, i;
 	bool secure_irq = false;
 	u32 thd_cnt = 0;
@@ -1737,9 +1744,10 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	end[end_cnt++] = sched_clock();
 #endif
 	cmdq_mtcmos_by_fast(cmdq, true);
-	if (cmdq->gce_vm)
+	if (cmdq->gce_vm) {
 		irq_status = readl(cmdq->base + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
-	else
+		irq_status_vm = readl(cmdq->base + GCE_VM6_OFFSET + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
+	} else
 		irq_status = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS) & CMDQ_IRQ_MASK;
 	cmdq_mtcmos_by_fast(cmdq, false);
 	cmdq_log("gce:%lx irq: %#x, %#x",
@@ -1777,6 +1785,28 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		cmdq_mtcmos_by_fast(cmdq, false);
 		thread->irq_time = sched_clock() - irq_time;
 		thd_cnt += 1;
+	}
+	if (cmdq->gce_vm) {
+		for_each_clear_bit(bit, &irq_status_vm, fls(CMDQ_IRQ_MASK)) {
+			struct cmdq_thread *thread = &cmdq->thread[bit];
+			u64 irq_time;
+
+			cmdq_log("bit=%d, thread->base=%p", bit, thread->base);
+			if (!thread->occupied) {
+				secure_irq = true;
+				continue;
+			}
+
+			irq_time = sched_clock();
+			cmdq_mtcmos_by_fast(cmdq, true);
+			spin_lock_irqsave(&thread->chan->lock, flags);
+			thread->lock_time = sched_clock() - irq_time;
+			cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
+			spin_unlock_irqrestore(&thread->chan->lock, flags);
+			cmdq_mtcmos_by_fast(cmdq, false);
+			thread->irq_time = sched_clock() - irq_time;
+			thd_cnt += 1;
+		}
 	}
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
@@ -3238,10 +3268,25 @@ static int cmdq_probe(struct platform_device *pdev)
 #endif
 	cmdq->prebuilt_clt = cmdq_mbox_create(&pdev->dev, 0);
 	cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
+	if (cmdq->prebuilt_clt && cmdq->gce_vm && hw_trace_built_in[cmdq->hwid]) {
+		struct cmdq_thread *thread = (struct cmdq_thread *)cmdq->prebuilt_clt->chan->con_priv;
+
+		cmdq->hw_trace_clt = cmdq->prebuilt_clt;
+		cmdq->thread[thread->idx].base += GCE_VM6_OFFSET;
+		cmdq->thread[thread->idx].gce_pa += GCE_VM6_OFFSET;
+
+		cmdq_msg("%s hw_trace thrd:%d base_va:0x%lx 0x%lx", __func__, thread->idx,
+			(unsigned long)cmdq->thread[thread->idx].base,
+			(unsigned long)cmdq->thread[thread->idx].gce_pa);
+	}
+	if (cmdq->gce_vm && hw_trace_built_in[cmdq->hwid])
+		of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
-	of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);
+	else
+		of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);
 	of_property_read_u32(dev->of_node, "tf-high-addr", &cmdq->tf_high_addr);
-	cmdq_msg("%s tf_high_addr:%x", __func__, cmdq->tf_high_addr);
+	cmdq_msg("%s hw_trace_built_in:%d cmdq_hw_trace_dump:%d tf_high_addr:%x", __func__,
+		hw_trace_built_in[cmdq->hwid], cmdq_hw_trace, cmdq->tf_high_addr);
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
@@ -3463,15 +3508,25 @@ void cmdq_mbox_enable(void *chan)
 			writel(readl(cmdq->mminfra_ao_base + 0x418) | DDR_SEL_WLA,
 				cmdq->mminfra_ao_base + 0x418);
 
+		if (hw_trace_built_in[cmdq->hwid] && cmdq->gce_vm) {
+			writel(readl(cmdq->base + GCE_CPR_GSIZE) | 0x8000000F,
+				cmdq->base + GCE_CPR_GSIZE);
+		} else if (hw_trace_built_in[cmdq->hwid]) {
+			writel(readl(cmdq->base + GCE_DBG_CTL) | CMDQ_HW_TRACE_EN,
+				cmdq->base + GCE_DBG_CTL);
+		} else if (cmdq->gce_vm) {
+			writel(readl(cmdq->base + GCE_CPR_GSIZE) | 0xf,
+				cmdq->base + GCE_CPR_GSIZE);
+		}
+
 		if (cmdq->gce_vm) {
-			//config cpr size
-			writel(0xf, cmdq->base + GCE_CPR_GSIZE);
 			//config VMID
 			writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP0);
-			writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP1);
+			writel(0x3ffffdff, cmdq->base + GCE_VM_ID_MAP1); //thread 13 map to vm6
 			writel(0x3fffffff, cmdq->base + GCE_VM_ID_MAP2);
 			writel(0x3f, cmdq->base + GCE_VM_ID_MAP3);
 		}
+		cmdq_util_set_domain(cmdq->hwid, 13);
 
 		// core
 		spin_lock_irqsave(&cmdq->lock, flags);
@@ -3489,9 +3544,6 @@ void cmdq_mbox_enable(void *chan)
 		if (cmdq->prefetch)
 			writel(cmdq->prefetch,
 				cmdq->base + CMDQ_PREFETCH_GSIZE);
-		if (hw_trace_built_in[cmdq->hwid])
-			writel(readl(cmdq->base + GCE_DBG_CTL) | CMDQ_HW_TRACE_EN,
-				cmdq->base + GCE_DBG_CTL);
 		writel(CMDQ_TPR_EN, cmdq->base + CMDQ_TPR_MASK);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 

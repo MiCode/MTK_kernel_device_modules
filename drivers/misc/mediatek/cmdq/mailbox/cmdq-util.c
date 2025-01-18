@@ -656,6 +656,19 @@ bool cmdq_util_is_secure_client(struct cmdq_client *client)
 }
 EXPORT_SYMBOL(cmdq_util_is_secure_client);
 
+void cmdq_util_set_domain(u32 hwid, u32 thrd)
+{
+	struct arm_smccc_res res;
+
+	cmdq_log("%s hwid:%d thrd:%d", __func__, hwid, thrd);
+
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_SET_DOMAIN_EN,
+		hwid, thrd, 0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
+}
+EXPORT_SYMBOL(cmdq_util_set_domain);
+
 struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client)
 {
 	if (client && client->chan)
@@ -860,8 +873,13 @@ void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 		s32 i;
 		s32 size = hw_trace_built_in[hwid]?
 			CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE : CMDQ_CPR_HW_TRACE_SIZE;
-		const u16 cpr_start = hw_trace_built_in[hwid]?
+		u16 cpr_start = hw_trace_built_in[hwid]?
 			CMDQ_CPR_HW_TRACE_BUILT_IN_START : CMDQ_CPR_HW_TRACE_START;
+
+		if (cmdq_get_support_vm(hwid) && hw_trace_built_in[hwid]) {
+			size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
+			cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+		}
 
 		trace->pkt = cmdq_pkt_create(trace->clt);
 
@@ -918,8 +936,13 @@ void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram)
 	s32 i, j;
 	s32 cpr_size = hw_trace_built_in[hwid]?
 		CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE : CMDQ_CPR_HW_TRACE_SIZE;
-	const u16 cpr_start = hw_trace_built_in[hwid]?
+	u16 cpr_start = hw_trace_built_in[hwid]?
 		CMDQ_CPR_HW_TRACE_BUILT_IN_START : CMDQ_CPR_HW_TRACE_START;
+
+	if (cmdq_get_support_vm(hwid) && hw_trace_built_in[hwid]) {
+		cpr_size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
+		cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+	}
 
 	if (hwid > util.mbox_cnt || !cmdq_hw_trace) {
 		cmdq_msg("%s: hwid:%hu mbox_cnt:%u cmdq_hw_trace:%d",
