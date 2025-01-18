@@ -3122,6 +3122,14 @@ static const struct mtk_m4u_plat_data mt6768_data = {
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(iommu_port_mt6768),
 };
 
+static const struct mtk_m4u_plat_data mt6781_data = {
+	.port_list[MM_IOMMU] = mm_port_mt6781,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6781),
+	.port_list[APU_IOMMU] = apu_port_mt6781,
+	.port_nr[APU_IOMMU]   = ARRAY_SIZE(apu_port_mt6781),
+	.mm_tf_ccu_support   = 1,
+};
+
 static const struct mtk_m4u_plat_data mt6833_data = {
 	.port_list[MM_IOMMU] = mm_port_mt6833,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6833),
@@ -3256,6 +3264,7 @@ static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6761-iommu-debug", .data = &mt6761_data},
 	{ .compatible = "mediatek,mt6765-iommu-debug", .data = &mt6765_data},
 	{ .compatible = "mediatek,mt6768-iommu-debug", .data = &mt6768_data},
+	{ .compatible = "mediatek,mt6781-iommu-debug", .data = &mt6781_data},
 	{ .compatible = "mediatek,mt6833-iommu-debug", .data = &mt6833_data},
 	{ .compatible = "mediatek,mt6853-iommu-debug", .data = &mt6853_data},
 	{ .compatible = "mediatek,mt6855-iommu-debug", .data = &mt6855_data},
