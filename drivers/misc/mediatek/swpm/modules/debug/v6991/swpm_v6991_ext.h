@@ -55,6 +55,7 @@ enum spm_sig_group {
 	PMIC_REQ,
 	VCORE_REQ,
 	RC_REQ,
+	PLL_EN,
 	PWR_OFF,
 	PWR_ACT,
 	SYS_STA,

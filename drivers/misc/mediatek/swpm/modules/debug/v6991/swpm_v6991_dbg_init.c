@@ -429,7 +429,7 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 
 		if (prev_id != grp_id)
 			swpm_dbg_log("group %d\n", grp_id);
-		swpm_dbg_log("(%d)%x: %llu\n", i,
+		swpm_dbg_log("(%d)%d: %llu\n", i,
 			spm_res_sig_ptr[i].sig_id,
 			spm_res_sig_ptr[i].time);
 	}
@@ -528,7 +528,15 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ,  &out1, &out2, &out3);
 	if (ret)
 		pr_info("[SWPM] get_res_group_info fail (%d)\n", ret);
-	swpm_dbg_log("RC_REQ PLL_EN: main %u, start %u, size %u ret %d\n", out1, out2, out3, ret);
+	swpm_dbg_log("RC_REQ: main %u, start %u, size %u ret %d\n", out1, out2, out3, ret);
+
+	out1=0;
+	out2=0;
+	out3=0;
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PLL_EN,  &out1, &out2, &out3);
+	if (ret)
+		pr_info("[SWPM] get_res_group_info fail (%d)\n", ret);
+	swpm_dbg_log("PLL_EN: main %u, start %u, size %u ret %d\n", out1, out2, out3, ret);
 
 	out1=0;
 	out2=0;
