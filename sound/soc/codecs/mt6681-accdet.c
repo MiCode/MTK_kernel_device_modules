@@ -80,6 +80,7 @@ struct mt63xx_accdet_data {
 	struct platform_device *pdev;
 	struct device *dev;
 	struct accdet_priv *data;
+	struct i2c_client *i2c_client;
 	atomic_t init_once;
 	struct regmap *regmap;
 	struct iio_channel *accdet_auxadc;
@@ -531,12 +532,16 @@ static ssize_t set_reg_store(struct device_driver *ddri,
 
 static ssize_t dump_reg_show(struct device_driver *ddri, char *buf)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
 	if (buf == NULL) {
 		pr_notice("%s() *buf is NULL\n", __func__);
 		return -EINVAL;
 	}
 
+	scp_wake_request(adap);
 	cat_register(buf);
+	scp_wake_release(adap);
 	pr_info("%s() buf_size:%d\n", __func__, (int)strlen(buf));
 
 	return strlen(buf);
@@ -569,7 +574,9 @@ static ssize_t set_headset_mode_store(struct device_driver *ddri,
 {
 	int ret = 0;
 	int tmp_headset_mode = 0;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
 
+	scp_wake_request(adap);
 	if (strlen(buf) < 1) {
 		pr_notice("%s() Invalid input!\n", __func__);
 		return -EINVAL;
@@ -603,6 +610,7 @@ static ssize_t set_headset_mode_store(struct device_driver *ddri,
 		break;
 	}
 	accdet_init_once();
+	scp_wake_release(adap);
 
 	return count;
 }
@@ -705,8 +713,10 @@ static bool accdet_timeout_ns(u64 start_time_ns, u64 timeout_time_ns)
 
 static u32 accdet_get_auxadc(void)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
 	int vol = 0, ret = 0;
 
+	scp_wake_request(adap);
 	if (!IS_ERR(accdet->accdet_auxadc)) {
 		ret = iio_read_channel_processed(accdet->accdet_auxadc, &vol);
 		if (ret < 0) {
@@ -724,6 +734,7 @@ static u32 accdet_get_auxadc(void)
 	else
 		vol -= accdet->auxadc_offset;
 
+	scp_wake_release(adap);
 	return vol;
 }
 
@@ -997,14 +1008,20 @@ static void multi_key_detection(u32 cur_AB)
 
 static inline void clear_accdet_int(void)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 	/* it is safe by using polling to adjust when to clear IRQ_CLR_BIT */
 	pmic_write_set(MT6681_ACCDET_IRQ_CLR_ADDR, MT6681_ACCDET_IRQ_CLR_SHIFT);
+	scp_wake_release(adap);
 }
 
 static inline void clear_accdet_int_check(void)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
 	u64 cur_time = accdet_get_current_time();
 
+	scp_wake_request(adap);
 	while ((pmic_read(MT6681_ACCDET_IRQ_ADDR) & ACCDET_IRQ_B0) &&
 		(accdet_timeout_ns(cur_time, ACCDET_TIME_OUT)))
 		;
@@ -1019,10 +1036,15 @@ static inline void clear_accdet_int_check(void)
 			(0x1 << MT6681_RG_INT_STATUS_ACCDET_SHIFT));
 		pmic_write(MT6681_TOP_INT_STATUS0, (0x1 << RG_INT_STATUS_AUD_SFT));
 	}
+	scp_wake_release(adap);
 }
 
 static inline void clear_accdet_eint(u32 eintid)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
 	if ((eintid & PMIC_EINT0) == PMIC_EINT0) {
 		pmic_write_set(MT6681_ACCDET_EINT0_IRQ_CLR_ADDR,
 			       MT6681_ACCDET_EINT0_IRQ_CLR_SHIFT);
@@ -1031,12 +1053,15 @@ static inline void clear_accdet_eint(u32 eintid)
 		pmic_write_set(MT6681_ACCDET_EINT1_IRQ_CLR_ADDR,
 			       MT6681_ACCDET_EINT1_IRQ_CLR_SHIFT);
 	}
+	scp_wake_release(adap);
 }
 
 static inline void clear_accdet_eint_check(u32 eintid)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
 	u64 cur_time = accdet_get_current_time();
 
+	scp_wake_request(adap);
 	if ((eintid & PMIC_EINT0) == PMIC_EINT0) {
 		while ((pmic_read(MT6681_ACCDET_EINT0_IRQ_ADDR) & ACCDET_EINT0_IRQ_B2) &&
 		       (accdet_timeout_ns(cur_time, ACCDET_TIME_OUT)))
@@ -1067,6 +1092,7 @@ static inline void clear_accdet_eint_check(u32 eintid)
 		pmic_write_set(MT6681_RG_INT_STATUS_ACCDET_ADDR,
 			       MT6681_RG_INT_STATUS_ACCDET_EINT1_SHIFT);
 	}
+	scp_wake_release(adap);
 }
 
 static u32 get_moisture_det_en(void)
@@ -1377,7 +1403,6 @@ static u32 adjust_moisture_setting(u32 moistureID, u32 eintID)
 
 static u32 adjust_eint_setting(u32 eintsts)
 {
-
 	if (eintsts == M_PLUG_IN) {
 		/* adjust digital setting */
 		adjust_eint_digital_setting();
@@ -1484,6 +1509,9 @@ static void recover_eint_digital_setting(void)
 
 static void recover_moisture_analog_setting(void)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 	if (accdet_dts.moisture_detect_mode == 0x1) {
 		/* select VTH to 2v */
 		pmic_write_mset(MT6681_RG_EINTCOMPVTH_ADDR,
@@ -1499,6 +1527,7 @@ static void recover_moisture_analog_setting(void)
 		pmic_write_clr(MT6681_ACCDET_EINT0_CMPMEN_SW_ADDR,
 			       MT6681_ACCDET_EINT0_CMPMEN_SW_SHIFT);
 	}
+	scp_wake_release(adap);
 }
 
 static void recover_moisture_setting(u32 moistureID)
@@ -1594,6 +1623,9 @@ static void dis_micbias_timerhandler(struct timer_list *t)
 static void dis_micbias_work_callback(struct work_struct *work)
 {
 	u32 cur_AB = 0, eintID = 0;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 
 	/* check EINT0 status, if plug out,
 	 * not need to disable accdet here
@@ -1627,10 +1659,14 @@ static void dis_micbias_work_callback(struct work_struct *work)
 		pmic_write_clr(MT6681_ACCDET_SW_EN_ADDR, MT6681_ACCDET_SW_EN_SHIFT);
 		disable_accdet();
 	}
+	scp_wake_release(adap);
 }
 
 static void eint_work_callback(struct work_struct *work)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 	if (accdet->cur_eint_state == EINT_PIN_PLUG_IN) {
 		mutex_lock(&accdet->res_lock);
 		accdet->eint_sync_flag = true;
@@ -1667,6 +1703,7 @@ static void eint_work_callback(struct work_struct *work)
 			recover_eint_setting(accdet->eint_id);
 	} else if (HAS_CAP(accdet->data->caps, ACCDET_AP_GPIO_EINT))
 		enable_irq(accdet->gpioirq);
+	scp_wake_release(adap);
 }
 
 void accdet_set_debounce(int state, unsigned int debounce)
@@ -1725,6 +1762,9 @@ void accdet_set_debounce(int state, unsigned int debounce)
 static inline void check_cable_type(void)
 {
 	u32 cur_AB = 0;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 
 	cur_AB = pmic_read(MT6681_ACCDET_MEM_IN_ADDR) >> ACCDET_STATE_MEM_IN_OFFSET;
 	cur_AB = cur_AB & ACCDET_STATE_AB_MASK;
@@ -1850,6 +1890,7 @@ static inline void check_cable_type(void)
 		/* accdet %s Error state.Do nothing */
 		break;
 	}
+	scp_wake_release(adap);
 }
 
 static void accdet_work_callback(struct work_struct *work)
@@ -1886,8 +1927,10 @@ static void accdet_queue_work(void)
 
 static int pmic_eint_queue_work(int eintID)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
 	int ret = 0;
 
+	scp_wake_request(adap);
 	if (accdet->cur_eint_state == EINT_PIN_MOISTURE_DETECTED) {
 		pr_info("%s water in then plug out, handle plugout\r",
 			__func__);
@@ -1974,6 +2017,7 @@ static int pmic_eint_queue_work(int eintID)
 			}
 		}
 	}
+	scp_wake_release(adap);
 	return ret;
 }
 
@@ -2105,6 +2149,9 @@ static void accdet_irq_handle(void)
 {
 	u32 eintID = 0, ret = 0;
 	u32 irq_status = 0;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 
 	eintID = get_triggered_eint();
 	irq_status = pmic_read(MT6681_ACCDET_IRQ_ADDR);
@@ -2137,11 +2184,15 @@ static void accdet_irq_handle(void)
 		pmic_write_mset(MT6681_AUD_TOP_INT_MASK_CON0_CLR, 0x5, 0x7, 0x7);
 		pmic_write_mset(MT6681_AUD_TOP_INT_STATUS0, 0x5, 0x7, 0x7);
 	}
+	scp_wake_release(adap);
 }
 
 static irqreturn_t ext_eint_handler(int irq, void *data)
 {
 	u32 top_status = 0, irq_status = 0;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 
 	__pm_stay_awake(accdet->gpio_wake_lock);
 	mutex_lock(&accdet->gpio_res_lock);
@@ -2153,6 +2204,7 @@ static irqreturn_t ext_eint_handler(int irq, void *data)
 		disable_irq_nosync(accdet->gpioirq);
 		accdet_irq_handle();
 	}
+	scp_wake_release(adap);
 
 	mutex_unlock(&accdet->gpio_res_lock);
 	__pm_relax(accdet->gpio_wake_lock);
@@ -2165,6 +2217,9 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 	int ret = 0;
 	struct device_node *node = pdev->dev.of_node;
 	struct irq_data *irq_data;
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 
 	if (!node)
 		return -ENODEV;
@@ -2207,6 +2262,7 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s ret:%d\n", __func__, ret);
 	if (ret)
 		return ret;
+	scp_wake_release(adap);
 
 	return 0;
 }
@@ -2794,12 +2850,15 @@ static inline void accdet_init(void)
 		accdet_set_debounce(eint_state001, accdet_dts.pwm_deb.eint_debounce1);
 	}
 	accdet_set_debounce(eint_inverter_state000, accdet_dts.pwm_deb.eint_inverter_debounce);
-
 }
 
 /* late init for DC trim, and this API Will be called by audio */
 void mt6681_accdet_late_init(unsigned long data)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
+
 	pr_info("%s()  now init accdet!\n", __func__);
 	if (atomic_cmpxchg(&accdet_first, 1, 0)) {
 		del_timer_sync(&accdet_init_timer);
@@ -2808,6 +2867,7 @@ void mt6681_accdet_late_init(unsigned long data)
 		accdet_init_once();
 	} else
 		pr_info("%s inited dts fail\n", __func__);
+	scp_wake_release(adap);
 }
 EXPORT_SYMBOL(mt6681_accdet_late_init);
 
@@ -2818,9 +2878,13 @@ EXPORT_SYMBOL(mt6681_accdet_modify_vref_volt);
 
 static void delay_init_work_callback(struct work_struct *work)
 {
+	struct i2c_adapter *adap = accdet->i2c_client->adapter;
+
+	scp_wake_request(adap);
 	accdet_init();
 	accdet_init_debounce();
 	accdet_init_once();
+	scp_wake_release(adap);
 }
 
 static void delay_init_timerhandler(struct timer_list *t)
@@ -2905,6 +2969,7 @@ static int accdet_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct resource *res;
 	const struct of_device_id *of_id = of_match_device(accdet_of_match, &pdev->dev);
+	struct mt6681_pmic_info *mpi = NULL;
 
 	if (!of_id) {
 		dev_dbg(&pdev->dev, "Error: No device match found\n");
@@ -2953,6 +3018,14 @@ static int accdet_probe(struct platform_device *pdev)
 	}
 
 	accdet->dev = &pdev->dev;
+
+	/* get i2c client for scp_request/release */
+	mpi = dev_get_drvdata(pdev->dev.parent);
+	if (!mpi) {
+		dev_info(&pdev->dev, "Faled to get parent driver data\n");
+		return -ENODEV;
+	}
+	accdet->i2c_client = mpi->i2c;
 
 	/* get pmic auxadc iio channel handler */
 	accdet->accdet_auxadc = devm_iio_channel_get(&pdev->dev, "pmic_accdet");

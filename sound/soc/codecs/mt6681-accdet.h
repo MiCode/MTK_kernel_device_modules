@@ -8,6 +8,9 @@
 #define _ACCDET_H_
 #include <linux/ctype.h>
 #include <linux/string.h>
+#include <linux/i2c.h>
+#include <linux/mfd/mt6681.h>
+
 #define ACCDET_DEVNAME "accdet"
 /* SW ENV define */
 #define NO_KEY			(0x0)
