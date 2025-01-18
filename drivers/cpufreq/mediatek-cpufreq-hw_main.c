@@ -104,7 +104,7 @@ mtk_cpufreq_get_cpu_power(struct device *cpu_dev, unsigned long *uW,
 
 	*KHz = c->table[i].frequency;
 	*uW = readl_relaxed(c->reg_bases[REG_EM_POWER_TBL] +
-			    i * LUT_ROW_SIZE) / 1000;
+			    i * LUT_ROW_SIZE);
 
 	return 0;
 }
