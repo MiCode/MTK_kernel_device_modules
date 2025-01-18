@@ -220,6 +220,13 @@ enum gpufreq_brisket_mode {
 	BRISKET_ENABLE      = 1,
 };
 
+enum gpufreq_dfd_mode {
+	GPU_DFD_DISABLE = 0, /* default */
+	GPU_DFD2_0      = 1,
+	GPU_DFD3_6      = 2,
+	GPU_DFD6_0      = 3,
+};
+
 /**************************************************
  * Structure
  **************************************************/
@@ -414,6 +421,7 @@ struct gpufreq_shared_status {
 	unsigned int dbg_version;
 	unsigned int gpm1_mode;
 	unsigned int gpm3_mode;
+	unsigned int dfd_mode;
 	unsigned int dual_buck;
 	unsigned int segment_id;
 	unsigned int power_time_h;
