@@ -148,3 +148,4 @@ obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
 obj-$(CONFIG_MTK_PKVM_MKP) += pkvm_mkp/
 obj-$(CONFIG_MTK_PKVM_MTK_SMC_HANDLER) += pkvm_mgmt/
 obj-$(CONFIG_MTK_SPM_VHOST_DMABUF_PHYS) += vhost_dmabuf_phys/
+obj-$(CONFIG_MTK_PKVM_SMMU) += pkvm_smmu/
