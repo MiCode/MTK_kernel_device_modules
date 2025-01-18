@@ -563,6 +563,30 @@
 			reg = <0x78 0x4>;
 		};
 
+		u2_phy_data1: u2-phy-data1@1d4 {
+			reg = <0x1d4 0x4>;
+		};
+
+		u2_phy_data2: u2-phy-data2@1d8 {
+			reg = <0x1d8 0x4>;
+		};
+
+		u3_phy_data1: u3-phy-data1@1c4 {
+			reg = <0x1c4 0x4>;
+		};
+
+		u3_phy_data2: u3-phy-data2@1cc {
+			reg = <0x1cc 0x4>;
+		};
+
+		u3_phy_data3: u3-phy-data3@1c8 {
+			reg = <0x1c8 0x4>;
+		};
+
+		u3_phy_data4: u3-phy-data4@1d0 {
+			reg = <0x1d0 0x4>;
+		};
+
 		efuse_spare5: spare5@20 {
 			reg = <0x20 0x4>;
 		};
@@ -5738,6 +5762,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				#phy-cells = <1>;
 				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 				mediatek,refclk-sel;
+				mediatek,chp-en-disable;
+				mediatek,u2-sw-efuse;
+				usb2jtag = <&infracfg_ao_clk 1>;
+				nvmem-cells = <&u2_phy_data1>, <&u2_phy_data2>, <&u2_phy_data2>;
+				nvmem-cell-names = "hsrx_term_cal", "hstx_impn", "hstx_impp";
+				nvmem-cell-masks = <0xf00000 0x7c00 0xf8000>;
 			};
 		};
 
@@ -5798,6 +5828,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				clock-names = "ref";
 				#phy-cells = <1>;
 				mediatek,u3-sw-efuse;
+				nvmem-cells = <&u3_phy_data1>, <&u3_phy_data1>,
+						<&u3_phy_data2>, <&u3_phy_data2>,
+						<&u3_phy_data2>, <&u3_phy_data2>,
+						<&u3_phy_data2>, <&u3_phy_data2>,
+						<&u3_phy_data3>, <&u3_phy_data3>,
+						<&u3_phy_data4>, <&u3_phy_data4>,
+						<&u3_phy_data4>, <&u3_phy_data4>,
+						<&u3_phy_data4>, <&u3_phy_data4>;
+				nvmem-cell-names = "v2v_vtrim_n", "bias_intr_ctrl_n",
+							"tx_impsel_pmos_n", "tx_impsel_nmos_n",
+							"rx_impsel_n", "rx_leq_rl_ctle_cal_n",
+							"rx_leq_rl_vga_cal_n", "rx_leq_rl_dfe_cal_n",
+							"v2v_vtrim_f", "bias_intr_ctrl_f",
+							"tx_impsel_pmos_f", "tx_impsel_nmos_f",
+							"rx_impsel_f", "rx_leq_rl_ctle_cal_f",
+							"rx_leq_rl_vga_cal_f", "rx_leq_rl_dfe_cal_f";
+				nvmem-cell-masks = <0x3c0 0x3f \
+							0xf80000 0x1f000000 \
+							0xf 0x1f0 \
+							0x3e00 0x3e00 \
+							0x3c0 0x3f \
+							0xf80000 0x1f000000 \
+							0xf 0x1f0 \
+							0x3e00 0x3e00>;
 			};
 		};
 
@@ -5814,6 +5868,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,usb_dp_selector";
 			reg = <0 0x1002d600 0 0x4>;
 			reg-names = "usb_dp_reg";
+			phys = <&u3port0 PHY_TYPE_USB3>;
+			phy-names = "usb3-phy";
 			mediatek,uds-ver = <2>;
 			status = "okay";
 		};
