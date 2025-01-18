@@ -69,6 +69,12 @@ enum cm_mgr_display_ {
 #define IPI_CM_MGR_BCPU_LOW_OPP_BOUND_SET 37
 #endif /* CONFIG_MTK_CM_IPI */
 
+extern unsigned int *cpu_power_ratio_down;
+extern unsigned int *cpu_power_ratio_up;
+extern unsigned int *vcore_power_ratio_down;
+extern unsigned int *vcore_power_ratio_up;
+extern unsigned int *debounce_times_down_adb;
+extern unsigned int *debounce_times_up_adb;
 
 /* common api */
 #if IS_ENABLED(CONFIG_MTK_CM_IPI)
