@@ -7419,7 +7419,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		gpueb: gpueb@4b000000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
-			ghpm-support = <0>;
+			ghpm-support = <1>;
 			gpueb-logger-support = <0>;
 			mbox-count = <1>;
 			mbox-size = <160>; /* 160 slot * 4 = 640 byte */
