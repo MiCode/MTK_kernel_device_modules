@@ -1848,6 +1848,7 @@ skip_update:
 /*
  * Thread for voltage setting
  */
+__no_kcsan
 static int eem_volt_thread_handler(void *data)
 {
 	struct eem_ctrl *ctrl = (struct eem_ctrl *)data;
@@ -3251,6 +3252,7 @@ static inline void eem_isr_handler(struct eem_det *det)
 	FUNC_EXIT(FUNC_LV_LOCAL);
 }
 
+__no_kcsan
 static irqreturn_t eem_isr(int irq, void *dev_id)
 {
 	unsigned long flags;
