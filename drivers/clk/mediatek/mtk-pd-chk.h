@@ -59,4 +59,5 @@ extern struct clk *clk_chk_lookup(const char *name);
 extern int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 mask);
 extern void pdchk_debug_dump(void);
 extern struct generic_pm_domain **pdchk_get_all_genpd(void);
+extern const char *pdchk_get_pd_name(int idx);
 #endif /* __MTK_PD_CHK_H */

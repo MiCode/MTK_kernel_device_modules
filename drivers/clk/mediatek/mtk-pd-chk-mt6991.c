@@ -1043,13 +1043,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 
 	clkchk_chk_pm_state();
 
-	/* vcp no need to vote mminfra */
-	if (pwr_sta) {
-		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_on");
-	} else {
-		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_off");
-	}
-
 	for (i = 0; i < ARRAY_SIZE(mtk_subsys_check); i++) {
 		if (mtk_subsys_check[i].pd_id == id) {
 			print_subsys_reg_mt6991(mtk_subsys_check[i].chk_id);
@@ -1073,6 +1066,12 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	/* vcp no need to vote mminfra */
+	if (pwr_sta)
+		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_on");
+	else
+		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_off");
 
 	BUG_ON(1);
 }

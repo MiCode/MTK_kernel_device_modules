@@ -48,10 +48,10 @@ ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6989.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6989.o mtk-scpsys-bringup.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-spm.c),)
-obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-spm.o mtk-scpsys-bringup.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-spm.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-mmpc.c),)
-obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-mmpc.o mtk-scpsys-bringup.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-mmpc.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-ivi.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_IVI) += mtk-scpsys-mt6991-ivi.o
