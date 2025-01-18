@@ -1824,11 +1824,13 @@ static void gpufreq_init_external_callback(void)
 	mtk_get_gpu_cur_oppidx_fp = gpufreq_get_cur_oppidx;
 
 	/* register PBM callback */
-#if IS_ENABLED(CONFIG_MTK_PBM)
+//todo mark for not ready
+#if IS_ENABLED(CONFIG_MTK_PBM) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
 	register_pbm_gpu_notify(&pbm_cb);
 #endif /* CONFIG_MTK_PBM */
 
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
+//todo mark for not ready
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI) && !IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
 	register_devapc_power_callback(&devapc_cb_gpu);
 	register_devapc_power_callback(&devapc_cb_gpu1);
 #endif /* CONFIG_DEVAPC_ARCH_MULTI */
