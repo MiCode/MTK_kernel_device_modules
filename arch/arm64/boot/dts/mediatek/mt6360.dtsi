@@ -302,3 +302,15 @@ status = "okay";
 		};
 	};
 };
+&mtk_composite_v4l2_1 {
+	port@0 {
+		flashlight_0: endpoint {
+			remote-endpoint = <&fl_core_0>;
+		};
+	};
+	port@1 {
+		flashlight_1: endpoint {
+			remote-endpoint = <&fl_core_1>;
+		};
+	};
+};
