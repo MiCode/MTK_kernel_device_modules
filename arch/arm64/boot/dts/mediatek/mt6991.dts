@@ -14062,6 +14062,40 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"CLK_CAMSYS_IPE_GALS";
 		};
 
+		ips_east: ips@12a30000 {
+			compatible = "mediatek,mt6991-soc-ips-east";
+			reg = <0 0x12a30000 0 0x100>,
+				<0 0x1c013000 0 0x1000>;
+			reg-names = "ips", "dvfsrc";
+			clocks = <&cksys_clk CLK_CK_MAINPLL_D6>,
+				<&cksys_clk CLK_CK_MAINPLL_D5>,
+				<&cksys_clk CLK_CK_MAINPLL_D4>,
+				<&cksys_clk CLK_CK_MAINPLL_D3>,
+				<&cksys_clk CLK_CK_IPSEAST_SEL>;
+			clock-names = "clk_src_0",
+					"clk_src_1",
+					"clk_src_2",
+					"clk_src_3",
+					"ips-clk";
+		};
+
+		ips_west: ips@138f0000 {
+			compatible = "mediatek,mt6991-soc-ips-west";
+			reg = <0 0x138f0000 0 0x100>,
+				<0 0x1c013000 0 0x1000>;
+			reg-names = "ips", "dvfsrc";
+			clocks = <&cksys_clk CLK_CK_MAINPLL_D6>,
+				<&cksys_clk CLK_CK_MAINPLL_D5>,
+				<&cksys_clk CLK_CK_MAINPLL_D4>,
+				<&cksys_clk CLK_CK_MAINPLL_D3>,
+				<&cksys_clk CLK_CK_IPSEAST_SEL>;
+			clock-names = "clk_src_0",
+					"clk_src_1",
+					"clk_src_2",
+					"clk_src_3",
+					"ips-clk";
+		};
+
 		dvfsrc: dvfsrc@1c013000 {
 			compatible = "mediatek,mt6991-dvfsrc";
 			reg = <0 0x1c013000 0 0x1000>,
