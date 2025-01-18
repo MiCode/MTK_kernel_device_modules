@@ -16,15 +16,6 @@
 #define PD_BUG_ON(x)	WARN_ON(x)
 /*---------------------------------------------------------------------------*/
 
-#if !CONFIG_TCPC_SOURCE_VCONN
-#undef CONFIG_USB_PD_VCONN_SWAP
-#undef CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
-#undef CONFIG_USB_PD_DFP_READY_DISCOVER_ID
-#undef CONFIG_USB_PD_DISCOVER_CABLE_REQUEST_VCONN
-#undef CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN
-#undef CONFIG_USB_PD_RESET_CABLE
-#endif	/* CONFIG_TCPC_SOURCE_VCONN */
-
 #if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
 #define CONFIG_PD_DISCOVER_CABLE_ID 1
 #else
@@ -303,7 +294,7 @@
  * <12:11>  :: reserved
  * <10:8>   :: object position (1-7 valid ... used for enter/exit mode only)
  * <7:6>    :: command type (SVDM only?)
- * <5>      :: reserved (SVDM), command type (UVDM)
+ * <5>      :: reserved
  * <4:0>    :: command
  */
 
@@ -623,7 +614,6 @@
 #define USB_SID_PD		0xff00	/* power delivery */
 #define USB_SID_DISPLAYPORT	0xff01	/* display port */
 #define USB_SID_TBT		0x8087	/* Thunderbolt */
-#define USB_VID_RICHTEK		0x29cf  /* demo uvdm */
 #define USB_VID_MQP		0x1748
 
 #define DP_ALT_MODE_CABLE_SVIDS_CNT	2
@@ -781,10 +771,8 @@ struct pe_data {		/* reset after detached */
 	uint32_t local_alert;
 #endif	/* CONFIG_USB_PD_REV30_ALERT_LOCAL */
 
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	bool pd_traffic_idle;	/* source only */
 	uint8_t pd_traffic_control;
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	struct dp_data dp_data;
@@ -832,7 +820,6 @@ struct dpm_pdo_info_t {
 struct pd_port {
 	struct tcpc_device *tcpc;
 	struct mutex pd_lock;
-	struct mutex rxbuf_lock;
 
 	/* PD */
 	uint8_t state_machine;
@@ -856,9 +843,8 @@ struct pd_port {
 
 #if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	uint8_t pd_revision[2];
-#endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
-
 	uint8_t svdm_ver_min[2];
+#endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 
 #if CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP
 	uint8_t msg_id_pr_swap_last;
@@ -887,16 +873,13 @@ struct pd_port {
 	int request_v_apdo;
 	int request_i_apdo;
 	bool request_apdo;
+	uint8_t local_snk_cap_nr_pd30;
+	uint8_t local_snk_cap_nr_pd20;
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
 	struct pd_port_power_caps local_src_cap;
 	struct pd_port_power_caps local_snk_cap;
 	struct pd_port_power_caps local_src_cap_default;
-
-#if CONFIG_USB_PD_REV30_PPS_SINK
-	uint8_t local_snk_cap_nr_pd30;
-	uint8_t local_snk_cap_nr_pd20;
-#endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
 	uint16_t mode_svid;
 	uint8_t mode_obj_pos;
@@ -912,12 +895,11 @@ struct pd_port {
 	uint8_t dp_first_connected;
 	uint8_t dp_second_connected;
 
-#if CONFIG_USB_PD_CUSTOM_VDM
-	bool uvdm_wait_resp;
-	uint8_t uvdm_cnt;
-	uint16_t uvdm_svid;
-	uint32_t uvdm_data[PD_DATA_OBJ_SIZE];
-#endif	/* CONFIG_USB_PD_CUSTOM_VDM */
+	bool cvdm_wait_resp;
+	bool cvdm_cable;
+	uint8_t cvdm_cnt;
+	uint32_t cvdm_data[PD_DATA_OBJ_SIZE];
+	uint16_t cvdm_svid;
 
 #if CONFIG_USB_PD_CUSTOM_DBGACC
 	bool custom_dbgacc;
@@ -965,7 +947,9 @@ struct pd_port {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	struct pd_source_cap_ext src_cap_ext;
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#if CONFIG_USB_PD_REV30
 	struct pd_sink_cap_ext snk_cap_ext;
+#endif	/* CONFIG_USB_PD_REV30 */
 
 #if CONFIG_USB_PD_REV30_MFRS_INFO_LOCAL
 	struct pd_manufacturer_info mfrs_info;
@@ -1385,10 +1369,10 @@ static inline bool pd_put_hw_event(
 	return pd_put_event(tcpc, &evt, false);
 }
 
+#if CONFIG_USB_PD_REV30
 static inline bool pd_put_sink_tx_event(
 		struct tcpc_device *tcpc, uint8_t cc_res)
 {
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	struct pd_event evt = {
 		.event_type = PD_EVT_HW_MSG,
 		.msg = PD_HW_SINK_TX_CHANGE,
@@ -1397,10 +1381,8 @@ static inline bool pd_put_sink_tx_event(
 
 	evt.msg_sec = cc_res == TYPEC_CC_VOLT_SNK_3_0;
 	return pd_put_event(tcpc, &evt, false);
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
-
-	return true;
 }
+#endif	/* CONFIG_USB_PD_REV30 */
 
 /* ---- Handle PD Message ----*/
 
@@ -1409,17 +1391,6 @@ int pd_handle_soft_reset(struct pd_port *pd_port);
 void pd_handle_hard_reset_recovery(struct pd_port *pd_port);
 
 /* ---- Send PD Message ----*/
-
-enum tcpm_transmit_type {
-	TCPC_TX_SOP = 0,
-	TCPC_TX_SOP_PRIME = 1,
-	TCPC_TX_SOP_PRIME_PRIME = 2,
-	TCPC_TX_SOP_DEBUG_PRIME = 3,
-	TCPC_TX_SOP_DEBUG_PRIME_PRIME = 4,
-	TCPC_TX_HARD_RESET = 5,
-	TCPC_TX_CABLE_RESET = 6,
-	TCPC_TX_BIST_MODE_2 = 7
-};
 
 int pd_send_message(struct pd_port *pd_port, uint8_t sop_type,
 		uint8_t msg, bool ext, uint16_t count, const uint32_t *data);
@@ -1554,11 +1525,9 @@ static inline int pd_reply_svdm_request_simply(
 
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
-#if CONFIG_USB_PD_CUSTOM_VDM
 int pd_send_custom_vdm(struct pd_port *pd_port, uint8_t sop_type);
 int pd_reply_custom_vdm(struct pd_port *pd_port, uint8_t sop_type,
 	uint8_t cnt, uint32_t *payload);
-#endif	/* CONFIG_USB_PD_CUSTOM_VDM */
 
 #if CONFIG_USB_PD_REV30
 

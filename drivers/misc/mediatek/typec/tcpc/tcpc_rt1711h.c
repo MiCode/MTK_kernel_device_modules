@@ -1107,7 +1107,7 @@ static int rt1711_retransmit(struct tcpc_device *tcpc)
 			TCPC_V10_REG_TRANSMIT_SET(
 			tcpc->pd_retry_count, TCPC_TX_SOP));
 }
-#endif
+#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 #pragma pack(push, 1)
 struct tcpc_transmit_packet {
@@ -1258,7 +1258,6 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 		}
 	}
 
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	if (of_property_read_u32(np, "rt-tcpc,vconn-supply", &val) >= 0 ||
 	    of_property_read_u32(np, "rt-tcpc,vconn_supply", &val) >= 0) {
 		if (val >= TCPC_VCONN_SUPPLY_NR)
@@ -1269,7 +1268,6 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 		dev_info(dev, "use default VconnSupply\n");
 		desc->vconn_supply = TCPC_VCONN_SUPPLY_ALWAYS;
 	}
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	if (of_property_read_string(np, "rt-tcpc,name",
 				(char const **)&name) < 0) {

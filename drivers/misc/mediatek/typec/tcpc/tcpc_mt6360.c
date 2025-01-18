@@ -2108,7 +2108,6 @@ static int mt6360_tcpcdev_init(struct mt6360_chip *chip, struct device *dev)
 		}
 	}
 
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	if (of_property_read_u32(np, "mt-tcpc,vconn-supply", &val) >= 0 ||
 	    of_property_read_u32(np, "mt-tcpc,vconn_supply", &val) >= 0) {
 		if (val >= TCPC_VCONN_SUPPLY_NR)
@@ -2119,7 +2118,6 @@ static int mt6360_tcpcdev_init(struct mt6360_chip *chip, struct device *dev)
 		dev_info(dev, "%s use default VconnSupply\n", __func__);
 		desc->vconn_supply = TCPC_VCONN_SUPPLY_ALWAYS;
 	}
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	if (of_property_read_string(np, "mt-tcpc,name", &name) < 0)
 		dev_info(dev, "use default name\n");
@@ -2432,8 +2430,8 @@ static int __init mt6360_init(void)
 	struct device_node *np;
 
 	pr_info("%s (%s)\n", __func__, MT6360_DRV_VERSION);
-	np = of_find_node_by_name(NULL, "mt6360-typec");
-	pr_info("%s mt6360-typec node %s\n", __func__,
+	np = of_find_node_by_name(NULL, "tcpc");
+	pr_info("%s tcpc node %s\n", __func__,
 		np == NULL ? "not found" : "found");
 
 	return i2c_add_driver(&mt6360_driver);

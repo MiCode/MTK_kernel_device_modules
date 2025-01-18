@@ -101,9 +101,6 @@ static void dp_dfp_u_set_state(struct pd_port *pd_port, uint8_t state)
 bool dp_dfp_u_notify_pe_startup(
 		struct pd_port *pd_port, struct svdm_svid_data *svid_data)
 {
-	if (!pd_is_support_modal_operation(pd_port))
-		return false;
-
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_ENTER_DP_MODE)
 		dp_dfp_u_set_state(pd_port, DP_DFP_U_DISCOVER_ID);
 

@@ -6,7 +6,6 @@
 #define __LINUX_TCPC_PD30_CONFIG_H
 
 #define CONFIG_USB_PD_REV30_SYNC_SPEC_REV	1
-#define CONFIG_USB_PD_REV30_COLLISION_AVOID	1
 
 /*
  * If DUT send a PD command immediately after Policy Engine is ready,

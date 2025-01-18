@@ -216,12 +216,10 @@ static const char *const pe_state_name[] = {
 	"PE_DFP_VDM_DP_CONFIGURATION_ACKED",
 	"PE_DFP_VDM_DP_CONFIGURATION_NAKED",
 /******************* UVDM & SVDM *******************/
-#if CONFIG_USB_PD_CUSTOM_VDM
-	"PE_UFP_UVDM_RECV",
-	"PE_DFP_UVDM_SEND",
-	"PE_DFP_UVDM_ACKED",
-	"PE_DFP_UVDM_NAKED",
-#endif/* CONFIG_USB_PD_CUSTOM_VDM */
+	"PE_UFP_CVDM_RECV",
+	"PE_DFP_CVDM_SEND",
+	"PE_DFP_CVDM_ACKED",
+	"PE_DFP_CVDM_NAKED",
 	"PE_UFP_VDM_SEND_NAK",
 /******************* PD30 Common *******************/
 #if CONFIG_USB_PD_REV30
@@ -492,12 +490,10 @@ static const char *const pe_state_name[] = {
 	"D_DP_CONFIG_ACK",
 	"D_DP_CONFIG_NAK",
 /******************* UVDM & SVDM *******************/
-#if CONFIG_USB_PD_CUSTOM_VDM
-	"U_UVDM_RECV",
-	"D_UVDM_SEND",
-	"D_UVDM_ACKED",
-	"D_UVDM_NAKED",
-#endif/* CONFIG_USB_PD_CUSTOM_VDM */
+	"U_CVDM_RECV",
+	"D_CVDM_SEND",
+	"D_CVDM_ACKED",
+	"D_CVDM_NAKED",
 	"U_SEND_NAK",
 /******************* PD30 Common *******************/
 #if CONFIG_USB_PD_REV30
@@ -778,12 +774,10 @@ static const struct pe_state_actions pe_state_actions[] = {
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_configuration_acked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_configuration_naked),
 /******************* UVDM & SVDM *******************/
-#if CONFIG_USB_PD_CUSTOM_VDM
-	PE_STATE_ACTIONS(pe_ufp_uvdm_recv),
-	PE_STATE_ACTIONS(pe_dfp_uvdm_send),
-	PE_STATE_ACTIONS(pe_dfp_uvdm_acked),
-	PE_STATE_ACTIONS(pe_dfp_uvdm_naked),
-#endif/* CONFIG_USB_PD_CUSTOM_VDM */
+	PE_STATE_ACTIONS(pe_ufp_cvdm_recv),
+	PE_STATE_ACTIONS(pe_dfp_cvdm_send),
+	PE_STATE_ACTIONS(pe_dfp_cvdm_acked),
+	PE_STATE_ACTIONS(pe_dfp_cvdm_naked),
 	PE_STATE_ACTIONS(pe_ufp_vdm_send_nak),
 /******************* PD30 Common *******************/
 #if CONFIG_USB_PD_REV30
@@ -1143,18 +1137,15 @@ static inline bool pd_try_get_vdm_event(
 
 static inline bool pd_check_sink_tx_ok(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	if (pd_check_rev30(pd_port) &&
 		(pd_port->pe_data.pd_traffic_control != PD_SINK_TX_OK))
 		return false;
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 
 	return true;
 }
 
 static inline bool pd_check_source_tx_ok(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	if (!pd_check_rev30(pd_port))
 		return true;
 
@@ -1165,9 +1156,6 @@ static inline bool pd_check_source_tx_ok(struct pd_port *pd_port)
 		pd_set_sink_tx(pd_port, PD30_SINK_TX_NG);
 
 	return false;
-#else
-	return true;
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 }
 
 static inline bool pd_check_pd30_tx_ready(struct pd_port *pd_port)
@@ -1231,6 +1219,9 @@ static inline bool pd_check_tx_ready(struct pd_port *pd_port)
 {
 	/* VDM BUSY : Waiting for response */
 	if (pd_port->pe_data.vdm_state_timer < PD_TIMER_NR)
+		return false;
+
+	if (mutex_is_locked(&pd_port->tcpc->rxbuf_lock))
 		return false;
 
 #if CONFIG_USB_PD_REV30

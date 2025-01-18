@@ -19,7 +19,7 @@
 #include "inc/tcpci_core.h"
 #include "inc/std_tcpci_v10.h"
 
-#define MT6379_INFO_EN	1
+#define MT6379_INFO_EN		1
 #define MT6379_DBGINFO_EN	CONFIG_WD_DURING_PLUGGED_IN
 #define MT6379_WD1_EN		1
 #define MT6379_WD2_EN		1
@@ -2447,12 +2447,10 @@ static int mt6379_parse_dt(struct mt6379_tcpc_data *ddata)
 		}
 	}
 
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 	if ((!device_property_read_u32(dev, "tcpc,vconn-supply", &val) ||
 	     !device_property_read_u32(dev, "tcpc,vconn_supply", &val)) &&
 	    val < TCPC_VCONN_SUPPLY_NR)
 		desc->vconn_supply = val;
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	for (i = 0; i < ARRAY_SIZE(tcpc_props_bool); i++) {
 		*tcpc_props_bool[i].val_ptr =

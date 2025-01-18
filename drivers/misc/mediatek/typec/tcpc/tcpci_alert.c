@@ -187,7 +187,9 @@ static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 	else {
 		if (retry_crc_discard) {
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
+			mutex_lock(&tcpc->access_lock);
 			tcpc->pd_discard_pending = true;
+			mutex_unlock(&tcpc->access_lock);
 			tcpc_enable_timer(tcpc, PD_TIMER_DISCARD);
 #else
 			TCPC_ERR("RETRY_CRC_DISCARD\n");
@@ -204,9 +206,6 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 {
 	int rv = 0;
 	struct pd_msg *pd_msg = NULL;
-	enum tcpm_transmit_type type = TCPC_TX_SOP;
-	struct pd_port *pd_port = &tcpc->pd_port;
-	bool locked = false;
 
 	pd_msg = pd_alloc_msg(tcpc);
 	if (pd_msg == NULL) {
@@ -214,21 +213,16 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 		goto out;
 	}
 
-	rv = tcpci_get_message(tcpc, pd_msg->payload, &pd_msg->msg_hdr, &type);
+	rv = tcpci_get_message(tcpc, pd_msg->payload, &pd_msg->msg_hdr,
+			       &pd_msg->frame_type);
 	if (rv < 0 || pd_msg->msg_hdr == 0) {
 		TCPC_INFO("recv_msg failed: %d\n", rv);
 		pd_free_msg(tcpc, pd_msg);
 		goto out;
 	}
-
-	pd_msg->frame_type = type;
-	mutex_lock(&pd_port->rxbuf_lock);
-	locked = true;
 	pd_put_pd_msg_event(tcpc, pd_msg);
 out:
 	tcpci_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_MASK);
-	if (locked)
-		mutex_unlock(&pd_port->rxbuf_lock);
 
 	return rv;
 }
@@ -296,8 +290,6 @@ static const struct tcpci_alert_handler tcpci_alert_handlers[] = {
 	DECL_TCPCI_ALERT_HANDLER(5, tcpci_alert_tx_discard),
 	DECL_TCPCI_ALERT_HANDLER(6, tcpci_alert_tx_success),
 	DECL_TCPCI_ALERT_HANDLER(2, tcpci_alert_recv_msg),
-	DECL_TCPCI_ALERT_HANDLER(7, NULL),
-	DECL_TCPCI_ALERT_HANDLER(8, NULL),
 	DECL_TCPCI_ALERT_HANDLER(3, tcpci_alert_recv_hard_reset),
 	DECL_TCPCI_ALERT_HANDLER(10, tcpci_alert_rx_overflow),
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -353,16 +345,18 @@ int tcpci_alert(struct tcpc_device *tcpc)
 	if (typec_role == TYPEC_ROLE_UNKNOWN ||
 		typec_role >= TYPEC_ROLE_NR) {
 		TYPEC_INFO("Wrong TypeC-Role: %d\n", typec_role);
-		tcpci_alert_status_clear(tcpc, alert_status);
-		return 0;
+		return tcpci_alert_status_clear(tcpc, alert_status);
 	}
 
 	/* mask all alert */
 	rv = tcpci_set_alert_mask(tcpc, 0);
-	if (rv < 0) {
-		tcpci_alert_status_clear(tcpc, alert_status);
-		return rv;
-	}
+	if (rv < 0)
+		return tcpci_alert_status_clear(tcpc, alert_status);
+
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	if (alert_status & TCPC_REG_ALERT_RX_STATUS)
+		mutex_lock(&tcpc->rxbuf_lock);
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	tcpci_alert_status_clear(tcpc, alert_status & ~TCPC_REG_ALERT_RX_MASK);
 
@@ -384,15 +378,18 @@ int tcpci_alert(struct tcpc_device *tcpc)
 		wake_up(&tcpc->tx_wait_que);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
-	for (i = 0; i < ARRAY_SIZE(tcpci_alert_handlers); i++) {
-		if (tcpci_alert_handlers[i].bit_mask & alert_status) {
-			if (tcpci_alert_handlers[i].handler)
-				tcpci_alert_handlers[i].handler(tcpc);
-		}
-	}
+	for (i = 0; i < ARRAY_SIZE(tcpci_alert_handlers); i++)
+		if (tcpci_alert_handlers[i].bit_mask & alert_status)
+			tcpci_alert_handlers[i].handler(tcpc);
 
-	/* unmask alert when not receiving PD HardReset */
-	if (!(alert_status & BIT(3)))
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
+		mutex_unlock(&tcpc->rxbuf_lock);
+		tcpc_event_thread_wake_up(tcpc);
+	}
+#endif	/* CONFIG_USB_POWER_DELIVERY */
+
+	if (!(alert_status & TCPC_REG_ALERT_RX_HARD_RST))
 		rv = tcpci_set_alert_mask(tcpc, alert_mask);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10)
@@ -400,7 +397,7 @@ int tcpci_alert(struct tcpc_device *tcpc)
 
 	tcpci_vbus_level_refresh(tcpc);
 	if (vbus_level != tcpc->vbus_level)
-		tcpci_vbus_level_changed(tcpc);
+		rv = tcpci_vbus_level_changed(tcpc);
 
 	return rv;
 }

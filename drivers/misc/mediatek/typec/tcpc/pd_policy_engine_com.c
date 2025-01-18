@@ -173,16 +173,16 @@ static inline uint8_t pe20_power_ready_entry(struct pd_port *pd_port)
 		return PD_RX_CAP_PE_READY_UFP;
 }
 
+#if CONFIG_USB_PD_REV30
 static inline uint8_t pe30_power_ready_entry(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30_COLLISION_AVOID
 	dpm_reaction_clear(pd_port,
 		DPM_REACTION_DFP_FLOW_DELAY |
 		DPM_REACTION_UFP_FLOW_DELAY);
-#endif	/* CONFIG_USB_PD_REV30_COLLISION_AVOID */
 
 	return pe20_power_ready_entry(pd_port);
 }
+#endif	/* CONFIG_USB_PD_REV30 */
 
 void pe_power_ready_entry(struct pd_port *pd_port)
 {
@@ -201,9 +201,11 @@ void pe_power_ready_entry(struct pd_port *pd_port)
 	pd_port->pe_data.pd_sent_ams_init_cmd = true;
 #endif /* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
 
+#if CONFIG_USB_PD_REV30
 	if (pd_check_rev30(pd_port))
 		rx_cap = pe30_power_ready_entry(pd_port);
 	else
+#endif	/* CONFIG_USB_PD_REV30 */
 		rx_cap = pe20_power_ready_entry(pd_port);
 
 	pd_set_rx_enable(pd_port, rx_cap);
@@ -392,9 +394,13 @@ void pe_give_country_info_entry(struct pd_port *pd_port)
 
 void pe_vdm_not_supported_entry(struct pd_port *pd_port)
 {
+	struct pd_event *pd_event = pd_get_curr_pd_event(pd_port);
+	bool cable = pd_event->msg == PD_DPM_CABLE_NOT_SUPPORT;
+
 	PE_STATE_WAIT_TX_SUCCESS(pd_port);
 
-	pd_send_sop_ctrl_msg(pd_port, PD_CTRL_NOT_SUPPORTED);
+	(cable ? pd_send_sop_prime_ctrl_msg :
+		 pd_send_sop_ctrl_msg)(pd_port, PD_CTRL_NOT_SUPPORTED);
 }
 
 void pe_get_revision_entry(struct pd_port *pd_port)

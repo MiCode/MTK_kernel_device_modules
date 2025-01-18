@@ -67,10 +67,8 @@ static inline int pd_handle_tcp_event_vconn_swap(
 		return TCP_DPM_RET_DENIED_SAME_ROLE;
 
 	if (!old_role) {
-#if CONFIG_TCPC_VCONN_SUPPLY_MODE
 		if (tcpc->tcpc_vconn_supply == TCPC_VCONN_SUPPLY_NEVER)
 			return TCP_DPM_RET_DENIED_LOCAL_CAP;
-#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
 		if (pd_port->pe_data.vconn_highv_prot) {
 			PE_DBG("VC_OVER5V\n");
