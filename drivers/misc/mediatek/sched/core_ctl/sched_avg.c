@@ -906,8 +906,10 @@ static int init_attribs(void)
 {
 	int ret = 0;
 	struct kobject *kobj = NULL;
+	struct device *dev_root = bus_get_dev_root(&cpu_subsys);
 
-	kobj = kobject_create_and_add("sched-avg", &cpu_subsys.dev_root->kobj);
+	if (dev_root)
+		kobj = kobject_create_and_add("sched-avg", &dev_root->kobj);
 
 	if (kobj) {
 		ret = sysfs_create_group(kobj, &sched_avg_attr_group);

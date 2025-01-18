@@ -226,6 +226,18 @@ static unsigned int apply_limits(const struct cluster_data *cluster,
 	return min(max(cluster->min_cpus, need_cpus), cluster->max_cpus);
 }
 
+/**
+ * cpumask_complement - *dstp = ~*srcp
+ * @dstp: the cpumask result
+ * @srcp: the input to invert
+ */
+static inline void cpumask_complement(struct cpumask *dstp,
+				      const struct cpumask *srcp)
+{
+	bitmap_complement(cpumask_bits(dstp), cpumask_bits(srcp),
+					      nr_cpumask_bits);
+}
+
 int sched_isolate_count(const cpumask_t *mask, bool include_offline)
 {
 	cpumask_t count_mask = CPU_MASK_NONE;
