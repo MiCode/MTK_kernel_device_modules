@@ -9931,7 +9931,7 @@ static signed int __init ISP_Init(void)
 			for (i = 0; i < Tbl_RTBuf_MMPSize[j] * PAGE_SIZE;
 			    i += PAGE_SIZE)
 				SetPageReserved(virt_to_page(
-					((unsigned long)pTbl_RTBuf[j]) + i));
+					(void *)(((unsigned long)pTbl_RTBuf[j]) + i)));
 
 		}
 	}
@@ -10009,7 +10009,7 @@ static void __exit ISP_Exit(void)
 			for (i = 0; i < Tbl_RTBuf_MMPSize[j] * PAGE_SIZE;
 			     i += PAGE_SIZE)
 				ClearPageReserved(virt_to_page(
-					((unsigned long)pTbl_RTBuf[j]) + i));
+					(void *)(((unsigned long)pTbl_RTBuf[j]) + i)));
 
 			/* free the memory areas */
 			kfree(pBuf_kmalloc[j]);
