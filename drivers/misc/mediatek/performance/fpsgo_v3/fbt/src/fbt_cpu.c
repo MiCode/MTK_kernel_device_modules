@@ -37,6 +37,7 @@
 #include <linux/cpufreq.h>
 #include <linux/irq_work.h>
 #include "sugov/cpufreq.h"
+#include "eas/vip.h"
 
 #include <mt-plat/fpsgo_common.h>
 
@@ -108,7 +109,7 @@
 #define FPSGO_BAFFINITY_B_ADJ 2
 #define FPSGO_BAFFINITY_B_M 3
 #define FPSGO_BAFFINITY_L_R 4
-#define FPSGO_SOFTAFFINITY 5
+#define FPSGO_SOFTAFFINITY_NOT_USED 5
 #define FPSGO_BAFFINITY_USERDEFINE 6
 #define FPSGO_BAFFINITY_TOTAL 7
 
@@ -195,7 +196,7 @@ enum FPSGO_FILTER_STATE {
 
 enum FPSGO_TASK_ATTRIBUTE {
 	FPSGO_TASK_NORMAL = 0,
-	FPSGO_TASK_RT = 1,
+	FPSGO_TAKS_RT_NOT_USED = 1,
 	FPSGO_TASK_VIP = 2,
 };
 
@@ -231,9 +232,6 @@ static int adjust_loading;
 static int check_buffer_quota;
 static int boost_affinity;
 static int boost_VIP;
-static int RT_prio1;
-static int RT_prio2;
-static int RT_prio3;
 static int rescue_second_time;
 static int rescue_second_group;
 static int rescue_second_copp;
@@ -299,6 +297,7 @@ static int limit_min_cap_target_t;
 static int exp_fps_raw_enable;
 static int exp_normal_fps_pct;
 static int exp_fps_disp_enable;
+static int aal_clamp;
 static int jank_min_cap_ratio;
 static int jank_max_cap_ratio;
 static int jank_priority;
@@ -962,9 +961,7 @@ static void fbt_task_cap(int pid, int min_cap, int min_cap_heavy, int min_cap_se
 		case FPSGO_GROUP_OTHERS:
 			max_cap_other = separate_release_sec ? max_cap_heavy : max_cap_other;
 			max_util_other = separate_release_sec ? max_util_heavy : max_util_other;
-			if (action == XGF_ADD_DEP_GROUPING_VIP)
-				fbt_set_per_task_cap(pid, min_cap_second, max_cap_second, max_util_second);
-			else if (min_cap_other)
+			if (min_cap_other)
 				fbt_set_per_task_cap(pid, min_cap_other, max_cap_other, max_util_other);
 			else
 				fbt_set_per_task_cap(pid, 0, 100, 1024);
@@ -1015,12 +1012,9 @@ static int fbt_affinity_task(int affinity, int pid, int group, int llf_light,
 	if (!reset_taskmask) {
 		if (affinity != *prev_affinity && *prev_prefer != FPSGO_PREFER_NONE)
 			fbt_set_affinity(pid, FPSGO_PREFER_NONE);
-		if (affinity != *prev_affinity && *prev_affinity == FPSGO_SOFTAFFINITY)
-			fbt_set_soft_affinity(pid, *ori_ls, 0);
 	} else {
 		/* Reset task mask for each frame. */
 		fbt_set_affinity(pid, FPSGO_PREFER_NONE);
-		fbt_set_soft_affinity(pid, *ori_ls, 0);
 	}
 
 	if (llf_policy) {
@@ -1059,28 +1053,18 @@ static int fbt_affinity_task(int affinity, int pid, int group, int llf_light,
 	case FPSGO_BAFFINITY_L_R:
 		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_B_M;
-		else if (group == FPSGO_GROUP_SECOND || spid_action == XGF_ADD_DEP_GROUPING_VIP)
+		else if (group == FPSGO_GROUP_SECOND)
 			prefer = FPSGO_PREFER_M;
 		else
 			prefer = FPSGO_PREFER_L_M;
 		ret = fbt_set_affinity(pid, prefer);
 		break;
-	case FPSGO_SOFTAFFINITY:
-		if (*prev_affinity != FPSGO_SOFTAFFINITY)
-			*ori_ls = fbt_check_ls(pid) == 1 ? 1 : 0;
-		if (group == FPSGO_GROUP_HEAVY)
-			prefer = FPSGO_PREFER_NONE;
-		else
-			prefer = FPSGO_PREFER_LITTLE;
-		ret = fbt_set_soft_affinity(pid, 1, prefer);
+	case FPSGO_SOFTAFFINITY_NOT_USED:
 		break;
 	case FPSGO_BAFFINITY_USERDEFINE:
 		if (!user_mask || group < 0 || group > mask_size)
 			return -EINVAL;
-		if (spid_action == XGF_ADD_DEP_GROUPING_VIP)
-			cpu_mask = fbt_generate_user_cpu_mask(user_mask[FPSGO_GROUP_SECOND]);
-		else
-			cpu_mask = fbt_generate_user_cpu_mask(user_mask[group]);
+		cpu_mask = fbt_generate_user_cpu_mask(user_mask[group]);
 		prefer = FPSGO_PREFER_TOTAL;
 		ret = fpsgo_sched_setaffinity(pid, &cpu_mask);
 		break;
@@ -1096,113 +1080,43 @@ DONE:
 	return ret;
 }
 
-static int fbt_set_task_sched_policy(int pid, int prio, int *ori_rtprio)
-{
-	int ret = 0;
-	int policy;
-	struct task_struct *tsk;
-	struct sched_param param = {.sched_priority = prio};
-
-	policy = prio ? SCHED_RR : SCHED_NORMAL;
-	policy = policy | SCHED_RESET_ON_FORK;
-	rcu_read_lock();
-	tsk = find_task_by_vpid(pid);
-	if (tsk) {
-		get_task_struct(tsk);
-		if (ori_rtprio)
-			*ori_rtprio = rt_task(tsk) ? tsk->rt_priority : 0;
-		if (!prio && !rt_task(tsk)) {
-			put_task_struct(tsk);
-			goto unlock;
-		}
-		ret = sched_setscheduler(tsk, policy, &param);
-		put_task_struct(tsk);
-		fpsgo_systrace_c_fbt_debug(pid, 0, policy, "set_policy");
-		fpsgo_systrace_c_fbt_debug(pid, 0, prio, "rt_prio");
-		if (ret) {
-			fpsgo_systrace_c_fbt_debug(pid, 0, ret, "set_RTpolicy_fail");
-			fpsgo_systrace_c_fbt_debug(pid, 0, 0, "set_RTpolicy_fail");
-		}
-	}
-unlock:
-	rcu_read_unlock();
-	return ret;
-}
-
 static void fbt_change_task_policy(int policy, int pid, int group, int spid_action,
-	int prio1, int prio2, int prio3, int *rt_oriprio, int *ori_vip, int vip_mask, int set_vvip)
+	int *is_vip, int vip_mask, int reset)
 {
 	/*
-	 * rt_oriprio = 0, FPSGO not setting RT
-	 * rt_oriprio > 0, FPSGO setting RT, task original RT prio = rt_oriprio
-	 * rt_oriprio = -1, FPSGO setting RT, task is CFS originally
-	 */
-	if (policy == FPSGO_TASK_RT) {
-		int ori_prio = 0;
-		int sched_ret = 0;
-
-		if (group == FPSGO_GROUP_HEAVY) {
-			fbt_set_task_sched_policy(pid, prio1, &ori_prio);
-			if (!*rt_oriprio)
-				*rt_oriprio = ori_prio == 0 ? -1 : ori_prio;
-		} else if (group == FPSGO_GROUP_SECOND) {
-			fbt_set_task_sched_policy(pid, prio2, &ori_prio);
-			if (!*rt_oriprio)
-				*rt_oriprio = ori_prio == 0 ? -1 : ori_prio;
-		} else if (spid_action == XGF_ADD_DEP_GROUPING_VIP) {
-			fbt_set_task_sched_policy(pid, prio3, &ori_prio);
-			if (!*rt_oriprio)
-				*rt_oriprio = ori_prio == 0 ? -1 : ori_prio;
-		} else if (*rt_oriprio) {
-			sched_ret = fbt_set_task_sched_policy(pid,
-				*rt_oriprio == -1 ? 0 : *rt_oriprio, NULL);
-			if (!sched_ret)
-				*rt_oriprio = 0;
-		}
-	} else if (*rt_oriprio) {
-		int sched_ret = 0;
-
-		sched_ret = fbt_set_task_sched_policy(pid,
-			*rt_oriprio == -1 ? 0 : *rt_oriprio, NULL);
-		if (!sched_ret)
-			*rt_oriprio = 0;
-	}
-
-	/*
-	 * ori_vip = 0, FPSGO not setting VIP
-	 * ori_vip = 1, FPSGO setting VIP, vip is set originally
-	 * ori_vip = 2, FPSGO setting VIP, vvip is set originally
-	 * ori_vip = 3, FPSGO setting VIP, both vip & vvip are set originally
-	 * ori_vip = -1, FPSGO setting VIP, neither vip nor vvip is set origianally
+	 * prioririty based vip setting
+	 * heavy: priority 3, second: priority 2, others: priority 1
 	 */
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
 	if (policy == FPSGO_TASK_VIP && (group_bit & vip_mask)) {
-		if (!*ori_vip) {
-			if (fbt_check_vvip(pid))
-				*ori_vip |= 2;
-			if (fbt_check_vip(pid))
-				*ori_vip |= 1;
-			if ((!*ori_vip))
-				*ori_vip = -1;
+		int prio = group + MIN_PRIORITY_BASED_VIP;
+
+		if (prio >= MIN_PRIORITY_BASED_VIP && prio <= MAX_PRIORITY_BASED_VIP) {
+			set_task_priority_based_vip(pid, prio);
+			*is_vip = 1;
 		}
-		unset_task_vvip(pid);
-		unset_task_basic_vip(pid);
-		if (group == FPSGO_GROUP_HEAVY && set_vvip)
-			set_task_vvip(pid);
-		else
-			set_task_basic_vip(pid);
-	} else if (*ori_vip) {
-		unset_task_vvip(pid);
-		unset_task_basic_vip(pid);
-		if (*ori_vip == 1 || *ori_vip == 3)
-			set_task_basic_vip(pid);
-		else if (*ori_vip == 2 || *ori_vip == 3)
-			set_task_vvip(pid);
-		*ori_vip = 0;
+	} else if (reset || *is_vip) {
+		unset_task_priority_based_vip(pid);
+		*is_vip = 0;
 	}
 #endif
 }
+
+
+static void fbt_set_task_vvip(int set, int pid, int group, int *is_vvip, int reset)
+{
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (set && group == FPSGO_GROUP_HEAVY) {
+		set_task_vvip(pid);
+		*is_vvip = 1;
+	} else if (reset || *is_vvip) {
+		unset_task_vvip(pid);
+		*is_vvip = 0;
+	}
+#endif
+}
+
 
 static void fbt_set_task_ls(int set, int ls_mask, int pid, int group, int *ori_ls)
 {
@@ -1404,8 +1318,9 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	fbt_nice_task(fl->pid, 0, &fl->ori_nice);
 	fbt_affinity_task(FPSGO_BAFFINITY_NONE, fl->pid, 0, 0, 0,fl->reset_taskmask,
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
-	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action, 0, 0, 0, &fl->ori_rtprio,
-		&fl->ori_vip, 0, 0);
+	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
+		&fl->is_vip, 0, 1);
+	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
 }
 
@@ -1705,6 +1620,7 @@ static int fbt_group_dep(int group_by_lr, struct fpsgo_loading *dep_arr, int dep
 			int second_pid, int thr_pid)
 {
 	int ret = 0;
+	int i;
 
 	if (group_by_lr)
 		ret = fbt_group_by_lr(dep_arr, dep_size, heaviest_pid, second_pid, thr_pid);
@@ -1713,6 +1629,13 @@ static int fbt_group_dep(int group_by_lr, struct fpsgo_loading *dep_arr, int dep
 		ret = fbt_group_by_loading(dep_arr, dep_size, heavy_group_num, FPSGO_GROUP_HEAVY);
 		if (!ret)
 			ret = fbt_group_by_loading(dep_arr, dep_size, second_group_num, FPSGO_GROUP_SECOND);
+	}
+	// manual add to second group
+	for (i = 0; i < dep_size; i++) {
+		struct fpsgo_loading *fl = &dep_arr[i];
+
+		if (fl->heavyidx == FPSGO_GROUP_OTHERS && fl->action == XGF_ADD_DEP_FORCE_GROUPING)
+			fl->heavyidx = FPSGO_GROUP_SECOND;
 	}
 	return ret;
 }
@@ -2118,9 +2041,6 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int boost_affinity_final;
 	int boost_VIP_final;
 	int boost_LR_final;
-	int RT_prio1_final;
-	int RT_prio2_final;
-	int RT_prio3_final;
 	int set_ls_final;
 	int ls_groupmask_final;
 	int vip_mask_final;
@@ -2148,9 +2068,6 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	boost_LR_final = thr->attr.boost_lr_by_pid;
 	boost_VIP_final = thr->attr.boost_vip_by_pid;
-	RT_prio1_final = thr->attr.rt_prio1_by_pid;
-	RT_prio2_final = thr->attr.rt_prio2_by_pid;
-	RT_prio3_final = thr->attr.rt_prio3_by_pid;
 	set_ls_final = thr->attr.set_ls_by_pid;
 	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 	vip_mask_final = thr->attr.vip_mask_by_pid;
@@ -2307,9 +2224,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, user_cpumask, FPSGO_MAX_GROUP);
 
 		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
-			RT_prio1_final, RT_prio2_final, RT_prio3_final, &fl->ori_rtprio, &fl->ori_vip,
-			vip_mask_final, set_vvip_final);
-
+			&fl->is_vip, vip_mask_final, 0);
+		fbt_set_task_vvip(set_vvip_final, fl->pid, fl->heavyidx, &fl->is_vvip, 0);
 		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
 			fl->heavyidx, &fl->ori_ls);
 
@@ -2383,9 +2299,6 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->separate_pct_other_by_pid = separate_pct_other;
 	render_attr->blc_boost_by_pid = blc_boost;
 	render_attr->boost_vip_by_pid = boost_VIP;
-	render_attr->rt_prio1_by_pid = RT_prio1;
-	render_attr->rt_prio2_by_pid = RT_prio2;
-	render_attr->rt_prio3_by_pid = RT_prio3;
 	render_attr->set_ls_by_pid = set_ls;
 	render_attr->ls_groupmask_by_pid = ls_groupmask;
 	render_attr->vip_mask_by_pid = vip_mask;
@@ -2567,12 +2480,6 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 			pid_attr.expected_fps_margin_by_pid;
 	if (pid_attr.boost_vip_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->boost_vip_by_pid = pid_attr.boost_vip_by_pid;
-	if (pid_attr.rt_prio1_by_pid != BY_PID_DEFAULT_VAL)
-		render_attr->rt_prio1_by_pid = pid_attr.rt_prio1_by_pid;
-	if (pid_attr.rt_prio2_by_pid != BY_PID_DEFAULT_VAL)
-		render_attr->rt_prio2_by_pid = pid_attr.rt_prio2_by_pid;
-	if (pid_attr.rt_prio3_by_pid != BY_PID_DEFAULT_VAL)
-		render_attr->rt_prio3_by_pid = pid_attr.rt_prio3_by_pid;
 	if (pid_attr.set_ls_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->set_ls_by_pid = pid_attr.set_ls_by_pid;
 	if (pid_attr.ls_groupmask_by_pid != BY_PID_DEFAULT_VAL)
@@ -4478,6 +4385,7 @@ static int fbt_boost_policy(
 	int isolation_cap = 100, limit_max_cap = 100, limit_sys_max_cap = 100;
 	int getcap_ret = 0, filter_ret = 0, get_aa_ret = 0;
 	long aa_n, aa_b, aa_m;
+	long aa_l = 0;
 	int is_filter_frame_active;
 	int ff_window_size;
 	int ff_kmin;
@@ -4557,6 +4465,12 @@ static int fbt_boost_policy(
 		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
 	thread_info->frame_aa = loading;
 	thread_info->dep_aa = aa_n;
+
+	if (boost_info->cl_loading && cluster_num > 1)
+		get_aa_ret = fbt_cal_aa(boost_info->cl_loading[min_cap_cluster], t1, t_Q2Q, &aa_l);
+
+	if (aal_clamp && aa_m < aa_l)
+		aa_m = aa_l;
 
 	if (aa_b < aa_m)
 		aa_b = aa_m;
@@ -6294,12 +6208,10 @@ void fbt_jank_thread_uclamp(int boost, int pid, int min_cap_ratio, int max_cap_r
 
 void fbt_jank_thread_priority(int boost, int pid, int cmd)
 {
-	if (cmd == 3)
-		boost ? fbt_set_task_sched_policy(pid, RT_prio1, NULL) :
-			fbt_set_task_sched_policy(pid, 0, NULL);
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	else if (cmd == 1)
-		boost ? set_task_basic_vip(pid) : unset_task_basic_vip(pid);
+	if (cmd == 1)
+		boost ? set_task_priority_based_vip(pid, MAX_PRIORITY_BASED_VIP) :
+				unset_task_priority_based_vip(pid);
 	else if (cmd == 2)
 		boost ? set_task_vvip(pid) : unset_task_vvip(pid);
 #endif
@@ -6395,8 +6307,7 @@ static void fbt_jank_thread_restore(int pid)
 	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
 
 	fbt_change_task_policy(iter->attr.boost_vip_by_pid, fl->pid, fl->heavyidx, fl->action,
-		iter->attr.rt_prio1_by_pid, iter->attr.rt_prio2_by_pid, iter->attr.rt_prio3_by_pid,
-		&garbage, &garbage, iter->attr.vip_mask_by_pid, iter->attr.set_vvip_by_pid);
+		&fl->is_vip, iter->attr.vip_mask_by_pid, 0);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
 
 	fbt_get_user_group_setting(iter, user_cpumask);
@@ -7145,21 +7056,6 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->boost_vip_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->boost_vip_by_pid = BY_PID_DEFAULT_VAL;
-	} else if (!strcmp(cmd, "RT_prio1")) {
-		if ((val < 99 && val >= 0) && action == 's')
-			boost_attr->rt_prio1_by_pid = val;
-		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
-			boost_attr->rt_prio1_by_pid = BY_PID_DEFAULT_VAL;
-	} else if (!strcmp(cmd, "RT_prio2")) {
-		if ((val < 99 && val >= 0) && action == 's')
-			boost_attr->rt_prio2_by_pid = val;
-		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
-			boost_attr->rt_prio2_by_pid = BY_PID_DEFAULT_VAL;
-	} else if (!strcmp(cmd, "RT_prio3")) {
-		if ((val < 99 && val >= 0) && action == 's')
-			boost_attr->rt_prio3_by_pid = val;
-		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
-			boost_attr->rt_prio3_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "set_ls")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->set_ls_by_pid = val;
@@ -8595,141 +8491,6 @@ out:
 
 static KOBJ_ATTR_RW(boost_VIP);
 
-static ssize_t RT_prio1_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int val = -1;
-
-	mutex_lock(&fbt_mlock);
-	val = RT_prio1;
-	mutex_unlock(&fbt_mlock);
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
-}
-
-static ssize_t RT_prio1_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	int val = -1;
-	char *acBuffer = NULL;
-	int arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0) {
-				val = arg;
-				if (val <= 99 && val >= 0) {
-					mutex_lock(&fbt_mlock);
-					RT_prio1 = val;
-					mutex_unlock(&fbt_mlock);
-				}
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(RT_prio1);
-
-static ssize_t RT_prio2_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int val = -1;
-
-	mutex_lock(&fbt_mlock);
-	val = RT_prio2;
-	mutex_unlock(&fbt_mlock);
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
-}
-
-static ssize_t RT_prio2_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	int val = -1;
-	char *acBuffer = NULL;
-	int arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0) {
-				val = arg;
-				if (val <= 99 && val >= 0) {
-					mutex_lock(&fbt_mlock);
-					RT_prio2 = val;
-					mutex_unlock(&fbt_mlock);
-				}
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(RT_prio2);
-
-static ssize_t RT_prio3_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int val = -1;
-
-	mutex_lock(&fbt_mlock);
-	val = RT_prio3;
-	mutex_unlock(&fbt_mlock);
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
-}
-
-static ssize_t RT_prio3_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	int val = -1;
-	char *acBuffer = NULL;
-	int arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0) {
-				val = arg;
-				if (val <= 99 && val >= 0) {
-					mutex_lock(&fbt_mlock);
-					RT_prio3 = val;
-					mutex_unlock(&fbt_mlock);
-				}
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(RT_prio3);
-
 static ssize_t rl_l2q_exp_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -8976,9 +8737,6 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_second_group_num);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_group_by_lr);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_VIP);
-	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio1);
-	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio2);
-	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio3);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_second);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_others);
@@ -9059,9 +8817,6 @@ int __init fbt_cpu_init(void)
 	rescue_second_group = 1;
 	rescue_second_copp = nr_freq_cpu - 1;
 	boost_VIP = 0;
-	RT_prio1 = 12;
-	RT_prio2 = 11;
-	RT_prio3 = 10;
 
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
@@ -9119,7 +8874,7 @@ int __init fbt_cpu_init(void)
 	cpumask_others = 255;
 	set_ls = 0;
 	ls_groupmask = 7;
-	vip_mask = 6;
+	vip_mask = 7;
 	set_vvip  = 0;
 
 	rl_learning_rate_p = 10;
@@ -9214,9 +8969,6 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_second_group_num);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_group_by_lr);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_VIP);
-		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio1);
-		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio2);
-		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio3);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_second);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_others);
