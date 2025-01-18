@@ -137,12 +137,18 @@ int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
 		return 0;
 
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
+		return 0;
+
 	return disp_dpc_driver.dpc_vidle_power_keep(user);
 }
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
+		return;
+
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return;
 
 	disp_dpc_driver.dpc_vidle_power_release(user);
