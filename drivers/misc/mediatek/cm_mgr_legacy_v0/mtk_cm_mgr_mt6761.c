@@ -1175,40 +1175,40 @@ static void cm_mgr_process(struct work_struct *work)
 	icc_set_bw(cm_mgr_perf_bw_path, 0, cm_mgr_get_perfs(cm_mgr_cpu_to_dram_opp));
 }
 
-//static void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
-//{
-//	int ret = 0;
-//	int dram_opp = 0;
-//
-//	if (cm_mgr_disable_fb == 1 && cm_mgr_blank_status == 1) {
-//		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
-//			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
-//			ret = schedule_delayed_work(&cm_mgr_work, 1);
-//		}
-//		return;
-//	}
-//
-//	if (!cm_mgr_work_ready)
-//		return;
-//
-//	if (!cm_mgr_cpu_map_dram_enable) {
-//		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
-//			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
-//			ret = schedule_delayed_work(&cm_mgr_work, 1);
-//		}
-//		return;
-//	}
-//
-//	if ((cpu_opp >= 0) && (cpu_opp < cm_mgr_cpu_opp_size))
-//		dram_opp = cm_mgr_cpu_opp_to_dram[cpu_opp];
-//
-//	if (cm_mgr_cpu_to_dram_opp == dram_opp)
-//		return;
-//
-//	cm_mgr_cpu_to_dram_opp = dram_opp;
-//
-//	ret = schedule_delayed_work(&cm_mgr_work, 1);
-//}
+static void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
+{
+	int ret = 0;
+	int dram_opp = 0;
+
+	if (cm_mgr_disable_fb == 1 && cm_mgr_blank_status == 1) {
+		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
+			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
+			ret = schedule_delayed_work(&cm_mgr_work, 1);
+		}
+		return;
+	}
+
+	if (!cm_mgr_work_ready)
+		return;
+
+	if (!cm_mgr_cpu_map_dram_enable) {
+		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
+			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
+			ret = schedule_delayed_work(&cm_mgr_work, 1);
+		}
+		return;
+	}
+
+	if ((cpu_opp >= 0) && (cpu_opp < cm_mgr_cpu_opp_size))
+		dram_opp = cm_mgr_cpu_opp_to_dram[cpu_opp];
+
+	if (cm_mgr_cpu_to_dram_opp == dram_opp)
+		return;
+
+	cm_mgr_cpu_to_dram_opp = dram_opp;
+
+	ret = schedule_delayed_work(&cm_mgr_work, 1);
+}
 
 static void cm_mgr_add_cpu_opp_to_ddr_req(void)
 {
