@@ -1155,10 +1155,10 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 	/* Bypass shadow register*/
 	if (ccorr_data->data->need_bypass_shadow)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_CCORR_SHADOW, 0x1, 0x1);
+			       comp->regs_pa + DISP_REG_CCORR_SHADOW, 0x1 << 2, 0x1 << 2);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_CCORR_SHADOW, 0x0, 0x1);
+			       comp->regs_pa + DISP_REG_CCORR_SHADOW, 0x0 << 2, 0x1 << 2);
 
 	pr_notice("%s, compId: %d, ccorr_hw_valid: %d\n", __func__, comp->id, primary_data->ccorr_hw_valid);
 
