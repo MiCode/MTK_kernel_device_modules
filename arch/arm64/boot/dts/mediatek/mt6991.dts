@@ -16257,6 +16257,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 };
 /* AUDIO GPIO standardization end */
 
+&pio {
+     accdet_pins_eint_as_int: accdet-eint {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
 /* CONNV3 GPIO start */
 &pio {
 	connsys_pin_pmic_en_default: connsys-pin-pmic-en-default {
@@ -16437,12 +16447,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "mt63xx-accdet-efuse";
 			interrupt-parent = <&pio>;
-			interrupts = <20 IRQ_TYPE_LEVEL_LOW>;
+			interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
 			interrupt-names = "ap_eint";
-#if 0
 			pinctrl-names = "state_eint_as_int";
 			pinctrl-0 = <&accdet_pins_eint_as_int>;
-#endif
+			accdet-irq-gpio-enable = <1>;
 			status = "okay";
 		};
 	};
