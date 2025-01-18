@@ -408,6 +408,64 @@ TRACE_EVENT(sched_task_uclamp,
 		__entry->max_req)
 );
 
+TRACE_EVENT(sched_rq_load,
+
+	TP_PROTO(struct cfs_rq *rq),
+
+	TP_ARGS(rq),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, nr_running)
+		__field(unsigned int, h_nr_running)
+		__field(unsigned int, idle_nr_running)
+		__field(unsigned int, idle_h_nr_running)
+		__field(u64, last_update_time)
+		__field(u64, load_sum)
+		__field(u64, runnable_sum)
+		__field(u32, util_sum)
+		__field(u32, period_contrib)
+		__field(unsigned long, load_avg)
+		__field(unsigned long, runnable_avg)
+		__field(unsigned long, util_avg)
+		__field(unsigned int, enqueued)
+		__field(unsigned int, ewma)
+	),
+
+	TP_fast_assign(
+		__entry->nr_running = rq->nr_running;
+		__entry->h_nr_running = rq->h_nr_running;
+		__entry->idle_nr_running = rq->idle_nr_running;
+		__entry->idle_h_nr_running = rq->idle_h_nr_running;
+		__entry->last_update_time = rq->avg.last_update_time;
+		__entry->load_sum = rq->avg.load_sum;
+		__entry->runnable_sum = rq->avg.load_sum;
+		__entry->util_sum = rq->avg.util_sum;
+		__entry->period_contrib = rq->avg.period_contrib;
+		__entry->load_avg = rq->avg.load_avg;
+		__entry->runnable_avg = rq->avg.runnable_avg;
+		__entry->util_avg = rq->avg.util_avg;
+		__entry->enqueued = rq->avg.util_est.enqueued;
+		__entry->ewma = rq->avg.util_est.ewma;
+	),
+
+	TP_printk("nr_running=%u h_nr_running=%u idle_nr_running=%u idle_h_nr_running=%u last_update_time=%llu load_sum=%llu runnable_sum=%llu util_sum=%u period_contrib=%u load_avg=%lu runnable_avg=%lu util_avg=%lu enqueued=%d ewma=%d",
+		__entry->nr_running,
+		__entry->h_nr_running,
+		__entry->idle_nr_running,
+		__entry->idle_h_nr_running,
+		__entry->last_update_time,
+		__entry->load_sum,
+		__entry->runnable_sum,
+		__entry->util_sum,
+		__entry->period_contrib,
+		__entry->load_avg,
+		__entry->runnable_avg,
+		__entry->util_avg,
+		__entry->enqueued,
+		__entry->ewma
+	)
+);
+
 #ifdef CREATE_TRACE_POINTS
 int sched_cgroup_state_rt(struct task_struct *p, int subsys_id)
 {

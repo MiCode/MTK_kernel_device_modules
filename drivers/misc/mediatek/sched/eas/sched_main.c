@@ -125,6 +125,12 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 	}
 }
 
+static void sched_rq_load_hook(void *data, struct cfs_rq *rq)
+{
+	if (trace_sched_rq_load_enabled())
+		trace_sched_rq_load(rq);
+}
+
 static int enqueue;
 static int dequeue;
 static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct *p, int flags)
@@ -403,12 +409,17 @@ static void mtk_sched_trace_init(void)
 	ret = register_trace_pelt_se_tp(sched_task_uclamp_hook, NULL);
 	if (ret)
 		pr_info("register sched_task_uclamp_hook failed!\n");
+
+	ret = register_trace_sched_util_est_cfs_tp(sched_rq_load_hook, NULL);
+	if (ret)
+		pr_info("register sched_rq_load_hook failed!\n");
 }
 
 static void mtk_sched_trace_exit(void)
 {
 	unregister_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	unregister_trace_pelt_se_tp(sched_task_uclamp_hook, NULL);
+	unregister_trace_sched_util_est_cfs_tp(sched_rq_load_hook, NULL);
 }
 
 static unsigned long easctl_copy_from_user(void *pvTo,
