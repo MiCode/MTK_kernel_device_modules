@@ -370,8 +370,8 @@ struct gpufreq_shared_status {
 	int temper_comp_high_stack;
 	unsigned int cur_fgpu;
 	unsigned int cur_fstack;
-	unsigned int cur_con1_fgpu;
-	unsigned int cur_con1_fstack;
+	unsigned int cur_out_fgpu;
+	unsigned int cur_out_fstack;
 	unsigned int cur_fmeter_fgpu;
 	unsigned int cur_fmeter_fstack;
 	unsigned int cur_vgpu;
@@ -552,6 +552,7 @@ unsigned int gpufreq_get_segment_id(void);
 void gpufreq_dump_infra_status(void);
 void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size);
 unsigned int gpufreq_get_cur_freq(enum gpufreq_target target);
+unsigned int gpufreq_get_cur_out_freq(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_volt(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_vsram(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_power(enum gpufreq_target target);

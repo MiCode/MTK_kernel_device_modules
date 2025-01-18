@@ -318,6 +318,32 @@ done:
 EXPORT_SYMBOL(gpufreq_get_cur_freq);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_cur_out_freq
+ * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
+ * Outputs            : -
+ * Returns            : freq   - Current out freq of given target
+ * Description        : Query current out frequency of the target
+ ***********************************************************************************/
+unsigned int gpufreq_get_cur_out_freq(enum gpufreq_target target)
+{
+	unsigned int freq = 0;
+
+	if (gpufreq_validate_target(&target))
+		goto done;
+
+	if (target == TARGET_STACK && g_shared_status)
+		freq = g_shared_status->cur_out_fstack;
+	else if (target == TARGET_GPU && g_shared_status)
+		freq = g_shared_status->cur_out_fgpu;
+	else
+		GPUFREQ_LOGE("null gpufreq shared memory (ENOENT)");
+
+done:
+	return freq;
+}
+EXPORT_SYMBOL(gpufreq_get_cur_out_freq);
+
+/***********************************************************************************
  * Function Name      : gpufreq_get_cur_volt
  * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
  * Outputs            : -
@@ -1615,15 +1641,15 @@ static void gpufreq_dump_dvfs_status(char *log_buf, int *log_len, int log_size)
 			(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
 			(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")));
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
-			"GPU[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
+			"GPU[%d] Freq: %d/%d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_gpu, g_shared_status->cur_fgpu,
-			g_shared_status->cur_vgpu, vgpu_diff,
-			g_shared_status->cur_vsram_gpu);
+			g_shared_status->cur_out_fgpu, g_shared_status->cur_vgpu,
+			vgpu_diff, g_shared_status->cur_vsram_gpu);
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
-			"STACK[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
+			"STACK[%d] Freq: %d/%d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_stack, g_shared_status->cur_fstack,
-			g_shared_status->cur_vstack, vstack_diff,
-			g_shared_status->cur_vsram_stack);
+			g_shared_status->cur_out_fstack, g_shared_status->cur_vstack,
+			vstack_diff, g_shared_status->cur_vsram_stack);
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
 			"Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d",
 			g_shared_status->temperature,

@@ -79,18 +79,18 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 			g_shared_status->cur_vsram_stack);
 
 	seq_printf(m,
-		"%-16s FmeterFreq: %7d, Con1Freq: %7d, ReguVolt: %6d, ReguVsram: %6d\n",
+		"%-16s FmeterFreq: %7d, OutFreq: %7d, ReguVolt: %6d, ReguVsram: %6d\n",
 		"[GPU   REALOPP]",
 		g_shared_status->cur_fmeter_fgpu,
-		g_shared_status->cur_con1_fgpu,
+		g_shared_status->cur_out_fgpu,
 		g_shared_status->cur_regulator_vgpu,
 		g_shared_status->cur_regulator_vsram_gpu);
 	if (g_dual_buck)
 		seq_printf(m,
-			"%-16s FmeterFreq: %7d, Con1Freq: %7d, ReguVolt: %6d, ReguVsram: %6d\n",
+			"%-16s FmeterFreq: %7d, OutFreq: %7d, ReguVolt: %6d, ReguVsram: %6d\n",
 			"[STACK REALOPP]",
 			g_shared_status->cur_fmeter_fstack,
-			g_shared_status->cur_con1_fstack,
+			g_shared_status->cur_out_fstack,
 			g_shared_status->cur_regulator_vstack,
 			g_shared_status->cur_regulator_vsram_stack);
 

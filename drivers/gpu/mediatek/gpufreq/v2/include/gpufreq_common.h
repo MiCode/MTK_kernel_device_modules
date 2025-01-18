@@ -115,6 +115,7 @@ int __gpufreq_fix_custom_freq_volt_dual(unsigned int fgpu, unsigned int vgpu,
 void __gpufreq_update_temperature(void);
 /* GPU */
 unsigned int __gpufreq_get_cur_fgpu(void);
+unsigned int __gpufreq_get_cur_out_fgpu(void);
 unsigned int __gpufreq_get_cur_vgpu(void);
 unsigned int __gpufreq_get_cur_pgpu(void);
 unsigned int __gpufreq_get_max_pgpu(void);
@@ -137,6 +138,7 @@ unsigned int __gpufreq_get_cur_vsram_gpu(void);
 unsigned int __gpufreq_get_cur_vsram_stack(void);
 /* GPUSTACK */
 unsigned int __gpufreq_get_cur_fstack(void);
+unsigned int __gpufreq_get_cur_out_fstack(void);
 unsigned int __gpufreq_get_cur_vstack(void);
 unsigned int __gpufreq_get_cur_pstack(void);
 unsigned int __gpufreq_get_max_pstack(void);

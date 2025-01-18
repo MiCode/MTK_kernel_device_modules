@@ -590,6 +590,7 @@ unsigned int gpufreq_get_segment_id(void);
 void gpufreq_dump_infra_status(void);
 void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size);
 unsigned int gpufreq_get_cur_freq(enum gpufreq_target target);
+unsigned int gpufreq_get_cur_out_freq(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_volt(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_vsram(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_power(enum gpufreq_target target);

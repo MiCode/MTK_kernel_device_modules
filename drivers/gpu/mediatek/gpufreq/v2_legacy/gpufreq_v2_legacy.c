@@ -353,6 +353,19 @@ done:
 EXPORT_SYMBOL(gpufreq_get_cur_freq);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_cur_out_freq
+ * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
+ * Outputs            : -
+ * Returns            : freq   - Current out freq of given target
+ * Description        : Query current out frequency of the target
+ ***********************************************************************************/
+unsigned int gpufreq_get_cur_out_freq(enum gpufreq_target target)
+{
+	return gpufreq_get_cur_freq(target);
+}
+EXPORT_SYMBOL(gpufreq_get_cur_out_freq);
+
+/***********************************************************************************
  * Function Name      : gpufreq_get_cur_volt
  * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
  * Outputs            : -
