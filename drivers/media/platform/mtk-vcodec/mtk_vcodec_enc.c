@@ -1995,12 +1995,16 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (!ctx->has_first_input) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-			if (!(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) && vcp_get_io_device(VCP_IOMMU_ACP_VENC)) {
-				vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
-				mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_VENC domain %p", ctx->id, vq->dev);
-			} else if (vq->dev != ctx->dev->smmu_dev) {
-				vq->dev = ctx->dev->smmu_dev;
-				mtk_v4l2_debug(4, "[%d] src_vq use smmu_dev domain %p", ctx->id, vq->dev);
+			if (!ctx->enc_params.svp_mode) {
+				if (!(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
+				    vcp_get_io_device(VCP_IOMMU_ACP_VENC)) {
+					vq->dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
+					mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_ACP_VENC domain %p",
+						ctx->id, vq->dev);
+				} else if (vq->dev != ctx->dev->smmu_dev) {
+					vq->dev = ctx->dev->smmu_dev;
+					mtk_v4l2_debug(4, "[%d] src_vq use smmu_dev domain %p", ctx->id, vq->dev);
+				}
 			}
 #endif
 			ctx->has_first_input = true;
