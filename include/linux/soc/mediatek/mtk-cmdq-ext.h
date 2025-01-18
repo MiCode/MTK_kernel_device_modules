@@ -323,7 +323,7 @@ struct cmdq_flush_completion {
 struct cmdq_reuse {
 	u64 *va;
 	u32 val;
-	u16 offset;
+	u32 offset;
 	u8 op;
 };
 
