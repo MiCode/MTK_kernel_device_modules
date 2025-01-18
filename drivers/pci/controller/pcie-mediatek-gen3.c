@@ -264,6 +264,8 @@
 #define PCIE_CLKBUF_XO_ID		1
 #define BBCK2_BIND			0x2c1
 #define BBCK2_UNBIND			0x2c0
+#define LIBER_BBCK2_BIND		0x281
+#define LIBER_BBCK2_UNBIND		0x280
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -2609,6 +2611,39 @@ static const struct mtk_pcie_data mt6989_data = {
 	.clkbuf_control = mtk_pcie_clkbuf_force_bbck2,
 };
 
+static int mtk_pcie_suspend_l12_6991(struct mtk_pcie_port *port)
+{
+	int err;
+	u32 val;
+
+	/* Binding of BBCK1 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, LIBER_BBCK2_BIND);
+	if (err)
+		dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
+
+	/* Wait 400us for BBCK2 bind ready */
+	udelay(400);
+
+	/* Enable Bypass BBCK2 */
+	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
+	val |= RG_PCIE26M_BYPASS;
+	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+
+	return 0;
+}
+
+static int mtk_pcie_resume_l12_6991(struct mtk_pcie_port *port)
+{
+	int err;
+
+	/* Unbinding of BBCK1 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, LIBER_BBCK2_UNBIND);
+	if (err)
+		dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
+
+	return 0;
+}
+
 static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 {
 	u32 val;
@@ -2684,6 +2719,8 @@ static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
 static const struct mtk_pcie_data mt6991_data = {
 	.pre_init = mtk_pcie_pre_init_6991,
 	.post_init = mtk_pcie_post_init_6991,
+	.suspend_l12 = mtk_pcie_suspend_l12_6991,
+	.resume_l12 = mtk_pcie_resume_l12_6991,
 	.control_vote = mtk_pcie_control_vote_v2,
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
 };
