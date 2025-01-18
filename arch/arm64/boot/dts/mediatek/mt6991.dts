@@ -16415,9 +16415,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		conninfra-emi-addr = <0>;
 		conninfra-emi-size = <0xc00000>;
 		#thermal-sensor-cells = <1>;
+		interconnects = <&dvfsrc MT6873_MASTER_WIFI &dvfsrc MT6873_SLAVE_DDR_EMI>;
 		interconnect-names = "wifi-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>,
-				<&dvfsrc_freq_opp1>;
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>,
+				<&dvfsrc_freq_opp6>,
+				<&dvfsrc_freq_opp7>,
+				<&dvfsrc_freq_opp8>;
 	};
 
 	wifi_page_pool: wifi-page-pool {
