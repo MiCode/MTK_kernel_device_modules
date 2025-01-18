@@ -169,11 +169,11 @@ bool mtk_vdec_slc_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);
 
 /* For vdec acp switch on/off */
-bool mtk_vdec_acp_enable;
+bool mtk_vdec_acp_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_acp_enable);
 
 /* For vecn acp switch on/off */
-bool mtk_venc_acp_enable;
+bool mtk_venc_acp_enable = true;
 EXPORT_SYMBOL_GPL(mtk_venc_acp_enable);
 
 /* For vecn acp switch on/off */
