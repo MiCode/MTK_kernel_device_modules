@@ -122,7 +122,7 @@ mgk_64_device_modules = [
     "drivers/clk/mediatek/clk-common.ko",
     "drivers/clk/mediatek/clk-disable-unused.ko",
     "drivers/clk/mediatek/fhctl.ko",
-    #"drivers/clocksource/timer-mediatek.ko",
+    "drivers/clocksource/timer-mediatek.ko",
     "drivers/cpufreq/mediatek-cpufreq-hw.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
     "drivers/dma-buf/heaps/deferred-free-helper.ko",
