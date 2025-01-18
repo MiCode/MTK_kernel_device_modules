@@ -76,6 +76,12 @@ struct fpsgo_trace_event {
 	unsigned long long addr;
 };  // need align fpsgo.ko
 
+struct dep_and_prio {
+	int32_t pid;
+	int32_t prio;
+	int32_t timeout;
+};
+
 struct xgf_render_if {
 	struct hlist_node hlist;
 	int tgid;
@@ -103,6 +109,8 @@ struct xgf_dep {
 
 	pid_t tid;
 	int action;
+	int magt_prio;	/* MAGT hint */
+	unsigned int magt_timeout; /* MAGT hint */
 };
 
 struct xgf_spid {
@@ -114,6 +122,9 @@ struct xgf_spid {
 	int tid;
 	unsigned long long bufID;
 	int action;
+	int magt_prio; /* magt hint */
+	int magt_timeout; /* magt hint */
+	int input_type;
 };
 
 struct xgf_policy_cmd {
@@ -173,7 +184,7 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr,
 int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
-void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num, int action);
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, struct dep_and_prio *dep_arr, int dep_num, int action);
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID);
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts);

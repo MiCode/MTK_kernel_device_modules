@@ -1273,7 +1273,7 @@ DONE:
 }
 
 static void fbt_change_task_policy(int policy, int pid, int group, int spid_action,
-	int *is_vip, int vip_mask, int reset)
+	int spid_prio, int spid_timeout, int *is_vip, int vip_mask, int reset)
 {
 	/*
 	 * prioririty based vip setting
@@ -1281,6 +1281,14 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 	 */
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
+	if (spid_prio) {
+		if (spid_timeout)
+			set_task_priority_based_vip_and_throttle(pid, spid_prio, spid_timeout);
+		else
+			set_task_priority_based_vip(pid, spid_prio);
+		goto OUT;
+	}
+
 	if (policy == FPSGO_TASK_VIP && (group_bit & vip_mask)) {
 		int prio = group + MIN_PRIORITY_BASED_VIP;
 
@@ -1293,6 +1301,8 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 		*is_vip = 0;
 	}
 #endif
+OUT:
+	return;
 }
 
 
@@ -1527,10 +1537,19 @@ static void dep_a_except_b(
 			__incr_alt(j, size_a, &incr_j, &incr_i);
 			continue;
 		}
-
+		/*
+		 * since action, prio, time all come
+		 * from xgf, overwrite these three
+		 * with new dep from xgf
+		 */
 		if (fl_b->pid == fl_a->pid) {
-			if (fl_b->action)
-				fl_a->action = fl_b->action;
+			fl_a->action = fl_b->action;
+			fl_a->prio = fl_b->prio;
+			fl_a->timeout = fl_b->timeout;
+			/*
+			 * rest of the infos are updated from
+			 * fbt, copy them to the new dep
+			 */
 			if (copy_intersection_to_b)
 				*fl_b = *fl_a;
 			incr_i = incr_j = 1;
@@ -1566,7 +1585,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	fbt_affinity_task(FPSGO_BAFFINITY_NONE, fl->pid, 0, 0, 0,fl->reset_taskmask,
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
-		&fl->is_vip, 0, 1);
+		0, 0, &fl->is_vip, 0, 1);
 	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_gear_hint_prefer_cpu(0, fl->pid, &fl->is_prefer, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
@@ -2519,7 +2538,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
 		fbt_gear_hint_prefer_cpu(group_prefer_final, fl->pid, &fl->is_prefer, 0);
 		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
-			&fl->is_vip, vip_mask_final, 0);
+			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, 0);
 		fbt_set_task_vvip(set_vvip_final, fl->pid, fl->heavyidx, &fl->is_vvip, 0);
 		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
 			fl->heavyidx, &fl->ori_ls);
@@ -6785,7 +6804,7 @@ static void fbt_jank_thread_restore(int pid)
 	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
 
 	fbt_change_task_policy(iter->attr.boost_vip_by_pid, fl->pid, fl->heavyidx, fl->action,
-		&fl->is_vip, iter->attr.vip_mask_by_pid, 0);
+		fl->prio, fl->timeout, &fl->is_vip, iter->attr.vip_mask_by_pid, 0);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
 
 	fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx,

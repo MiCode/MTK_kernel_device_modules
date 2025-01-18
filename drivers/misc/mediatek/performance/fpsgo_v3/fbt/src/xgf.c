@@ -453,6 +453,17 @@ static void xgf_delete_spid(struct xgf_spid *iter, struct hlist_head *head)
 		xgf_wspid_list_length--;
 }
 
+static void xgf_delete_spid_list_with_type(struct hlist_head *head, int type)
+{
+	struct xgf_spid *xgf_spid_iter;
+	struct hlist_node *t;
+
+	hlist_for_each_entry_safe(xgf_spid_iter, t, head, hlist) {
+		if (xgf_spid_iter->input_type == type)
+			xgf_delete_spid(xgf_spid_iter, head);
+	}
+}
+
 static struct xgf_spid *xgf_add_spid(struct hlist_head *head)
 {
 	struct xgf_spid *iter = NULL;
@@ -843,20 +854,34 @@ static void xgf_add_pid2prev_dep(struct xgf_render_if *render, int type, int tid
 		iter->action = action;
 }
 
+/* only used when trasnfer wspid_list info to render_if */
+static void xgf_wspid_add_dep(struct xgf_render_if *render, int type, int tid, int action,
+	int prio, int timeout)
+{
+	struct xgf_dep *iter;
+
+	iter = xgf_add_dep_task(tid, render, type, 1);
+	if (iter) {
+		iter->action = action;
+		iter->magt_prio = prio;
+		iter->magt_timeout = timeout;
+	}
+}
+
 static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 {
 	struct xgf_spid *xgf_spid_iter;
 	struct hlist_node *t;
-
 	hlist_for_each_entry_safe(xgf_spid_iter, t, &xgf_wspid_list, hlist) {
 		if (xgf_spid_iter->rpid == render->pid &&
 			xgf_spid_iter->bufID == render->bufid) {
 			if (xgf_spid_iter->action == XGF_DEL_DEP ||
 				xgf_spid_iter->action == XGF_FORCE_BOOST)
 				xgf_del_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid);
-			else
-				xgf_add_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
-					xgf_spid_iter->action);
+			else {
+				xgf_wspid_add_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
+					xgf_spid_iter->action, xgf_spid_iter->magt_prio, xgf_spid_iter->magt_timeout);
+			}
 		}
 	}
 }
@@ -971,6 +996,8 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 		if (index < count && !xgf_filter_dep_task(xd_iter->tid, render_iter)) {
 			arr[index].pid = xd_iter->tid;
 			arr[index].action = xd_iter->action;
+			arr[index].prio = xd_iter->magt_prio;
+			arr[index].timeout = xd_iter->magt_timeout;
 			index++;
 		}
 	}
@@ -1661,6 +1688,26 @@ int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
 	return index;
 }
 
+/* magt add dep to wspid list */
+static void fpsgo_add_wspid_list(int tgid, int rpid, unsigned long long bufid, int tid, int action,
+	int prio, unsigned int timeout, int input_type)
+{
+	struct xgf_spid *new_spid_iter = NULL;
+
+	new_spid_iter = xgf_add_spid(&xgf_wspid_list);
+	if (new_spid_iter) {
+		new_spid_iter->pid = tgid;
+		new_spid_iter->rpid = rpid;
+		new_spid_iter->bufID = bufid;
+		new_spid_iter->tid = tid;
+		new_spid_iter->action = action;
+		new_spid_iter->magt_prio = prio;
+		new_spid_iter->magt_timeout = timeout;
+		new_spid_iter->input_type = input_type;
+	}
+}
+
+
 int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, unsigned long long *bufID_arr,
 	int rtid_num, char *specific_name, int specific_num, int action)
 {
@@ -1753,30 +1800,27 @@ malloc_err:
 	return -ENOMEM;
 }
 
-void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num, int action)
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, struct dep_and_prio *dep_arr, int dep_num, int action)
 {
 	int i;
 	struct xgf_render_if *r_iter = NULL;
 	struct hlist_node *h = NULL;
 
 	mutex_lock(&xgf_main_lock);
-
 	hlist_for_each_entry_safe(r_iter, h, &xgf_render_if_list, hlist) {
 		if (r_iter->tgid != tgid ||
 			!test_bit(FPSGO_TYPE, &r_iter->master_type))
 			continue;
 
-		xgf_reset_render_dep_list(r_iter, MAGT_TYPE);
+		xgf_delete_spid_list_with_type(&xgf_wspid_list, MAGT_TYPE);
 		if (dep_num > 0) {
 			for (i = 0; i < dep_num; i++) {
-				xgf_add_pid2prev_dep(r_iter, MAGT_TYPE,
-					dep_arr[i], action);
+				fpsgo_add_wspid_list(tgid, r_iter->pid, r_iter->bufid, dep_arr[i].pid,
+					action, dep_arr[i].prio, dep_arr[i].timeout, MAGT_TYPE);
 				xgf_trace("[xgf][%d][0x%llx] | %dth magt_dep_task:%d",
-					r_iter->pid, r_iter->bufid, i+1, dep_arr[i]);
+					r_iter->pid, r_iter->bufid, i+1, dep_arr[i].pid);
 			}
-			set_bit(MAGT_TYPE, &r_iter->master_type);
-		} else
-			clear_bit(MAGT_TYPE, &r_iter->master_type);
+		}
 	}
 
 	mutex_unlock(&xgf_main_lock);
