@@ -15,6 +15,9 @@
 #include <utilities/mdla_ipi.h>
 #include <platform/mdla_plat_api.h>
 
+#include "../../apusys_rv/apu.h"
+#include "../../apusys_rv/apu_ce_excep.h"
+
 /*
  * type0: Distinguish pwr_time, timeout, klog, or CX
  * type1: prepare to C1~C16
@@ -162,7 +165,15 @@ END:
 
 static void mdla_ipi_up_msg(u32 type, u64 val)
 {
+	struct device *mdla_dev;
+
 	mdla_err("tpye = %d, val = 0x%llx\n", type, val);
+
+	/* dump brisket debug information if ce is exist */
+	if (is_apu_ce_excep_init()) {
+		mdla_dev = mdla_get_device(0)->dev;
+		apu_ce_sram_dump(mdla_dev);
+	}
 
 	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT)
 		mdla_aee_exception("MDLA", "MDLA timeout");
