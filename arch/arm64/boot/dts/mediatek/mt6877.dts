@@ -5709,6 +5709,7 @@
 			<0 0x18002000 0 0x2c>,  /* 15. conn_therm_ctl */
 			<0 0x1802e000 0 0x4c>;  /* 16. conn_bcrm_on */
 		power-domains = <&scpsys MT6877_POWER_DOMAIN_CONN>;
+		pmic = <&pmic>;
 		memory-region = <&consys_mem>;
 	};
 
