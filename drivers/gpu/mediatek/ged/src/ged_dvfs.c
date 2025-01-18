@@ -3221,7 +3221,7 @@ static void ged_dvfs_loading_mode(int i32MarginValue)
 		gx_dvfs_loading_mode = LOADING_ACTIVE;
 	else if ((i32MarginValue >= 0) && (i32MarginValue < 100))
 		gx_dvfs_loading_mode = i32MarginValue;
-
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_LOADING_MODE,gx_dvfs_loading_mode);
 	mutex_unlock(&gsDVFSLock);
 }
 
@@ -3747,6 +3747,7 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(dvfs_loading_mode_node, "dvfs-workload-mode",
 							&gx_dvfs_workload_mode);
 	}
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_LOADING_MODE, gx_dvfs_loading_mode);
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {

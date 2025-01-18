@@ -270,6 +270,8 @@ void ged_eb_dvfs_trace_dump(void)
 		if (dcs_get_adjust_support() % 2 != 0)
 			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
+		trace_tracing_mark_write(5566, "EB side loading-base use 26m_iter_u_mcu avg_loading",
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_AVG_LOADING));
 	}
 	trace_GPU_DVFS__Policy__Loading_based__EB_Margin(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_CEIL) * 10,
