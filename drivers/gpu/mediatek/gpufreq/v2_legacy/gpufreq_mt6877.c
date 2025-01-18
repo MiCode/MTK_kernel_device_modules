@@ -1176,7 +1176,8 @@ int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key)
 	unsigned int cur_vsram = 0, target_vsram = 0;
 	int sb_idx = 0;
 	int ret = GPUFREQ_SUCCESS;
-
+//todo mark for not ready
+#if 0
 	GPUFREQ_TRACE_START("target_oppidx=%d, key=%d",
 		target_oppidx, key);
 
@@ -1294,7 +1295,7 @@ done_unlock:
 
 done:
 	GPUFREQ_TRACE_END();
-
+#endif
 	return ret;
 }
 
