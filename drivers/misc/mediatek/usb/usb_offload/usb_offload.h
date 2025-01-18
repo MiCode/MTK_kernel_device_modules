@@ -38,6 +38,7 @@
 #define ERST_NUMBER						EV_MAX_SEG
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256
 #define USB_OFFLOAD_TRB_SEGMENT_SIZE	(USB_OFFLOAD_TRBS_PER_SEGMENT*16)
+#define USB_OFFLOAD_XHCI_INTR_TARGET	1
 
 struct usb_offload_mem_info {
 	unsigned long long phy_addr;

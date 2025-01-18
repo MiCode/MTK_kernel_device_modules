@@ -240,38 +240,41 @@ static void fake_sram_pwr_ctrl(bool power)
 
 static void adsp_ee_recovery(void)
 {
+	struct xhci_intr_reg *ir_set ;
 	u32 temp, irq_pending;
 	u64 temp_64;
 
 	if (!uodev->xhci)
 		return;
 
+	ir_set = &uodev->xhci->run_regs->ir_set[USB_OFFLOAD_XHCI_INTR_TARGET];
+
 	USB_OFFLOAD_INFO("ADSP EE ++ op:0x%08x, iman:0x%08X, erdp:0x%llX\n",
 			readl(&uodev->xhci->op_regs->status),
-			readl(&uodev->xhci->run_regs->ir_set[1].irq_pending),
-			xhci_read_64(uodev->xhci, &uodev->xhci->ir_set[1].erst_dequeue));
+			readl(&ir_set->irq_pending),
+			xhci_read_64(uodev->xhci, &ir_set->erst_dequeue));
 
 	USB_OFFLOAD_INFO("// Disabling event ring interrupts\n");
 	temp = readl(&uodev->xhci->op_regs->status);
 	writel((temp & ~0x1fff) | STS_EINT, &uodev->xhci->op_regs->status);
-	temp = readl(&uodev->xhci->ir_set[1].irq_pending);
-	writel(ER_IRQ_DISABLE(temp), &uodev->xhci->ir_set[1].irq_pending);
+	temp = readl(&ir_set->irq_pending);
+	writel(ER_IRQ_DISABLE(temp), &ir_set->irq_pending);
 
-	irq_pending = readl(&uodev->xhci->run_regs->ir_set[1].irq_pending);
+	irq_pending = readl(&ir_set->irq_pending);
 	irq_pending |= IMAN_IP;
-	writel(irq_pending, &uodev->xhci->run_regs->ir_set[1].irq_pending);
+	writel(irq_pending, &ir_set->irq_pending);
 
-	temp_64 = xhci_read_64(uodev->xhci, &uodev->xhci->ir_set[1].erst_dequeue);
+	temp_64 = xhci_read_64(uodev->xhci, &ir_set->erst_dequeue);
 	/* Clear the event handler busy flag (RW1C) */
 	temp_64 |= ERST_EHB;
-	xhci_write_64(uodev->xhci, temp_64, &uodev->xhci->ir_set[1].erst_dequeue);
+	xhci_write_64(uodev->xhci, temp_64, &ir_set->erst_dequeue);
 
 	uodev->adsp_exception = false;
 
 	USB_OFFLOAD_INFO("ADSP EE -- op:0x%08x, iman:0x%08X, erdp:0x%llX\n",
 			readl(&uodev->xhci->op_regs->status),
-			readl(&uodev->xhci->run_regs->ir_set[1].irq_pending),
-			xhci_read_64(uodev->xhci, &uodev->xhci->ir_set[1].erst_dequeue));
+			readl(&ir_set->irq_pending),
+			xhci_read_64(uodev->xhci, &ir_set->erst_dequeue));
 }
 
 #ifdef CFG_RECOVERY_SUPPORT
@@ -2399,7 +2402,6 @@ FAIL_TO_ALLOC_ERST:
 	return ret;
 }
 
-#define USB_OFFLOAD_XHCI_INTR_TARGET 1
 static int xhci_initialize_ir(struct usb_offload_dev *udev)
 {
 	int ret = 0, i;
