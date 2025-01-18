@@ -27,7 +27,7 @@
 #include "mtk_cg_peak_power_throttling_table.h"
 #include "mtk_cg_peak_power_throttling_core.h"
 
-#define STR_SIZE 512
+#define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
 #define MAX_POWER_DRAM 4000
 #define MAX_POWER_DISPLAY 2000
@@ -37,6 +37,8 @@
 #define BAT_PATH_DEFAULT_RAC 50
 #define PPB_IPI_TIMEOUT_MS    3000U
 #define PPB_IPI_DATA_LEN (sizeof(struct ppb_ipi_data) / sizeof(int))
+#define MBRAIN_NOTIFY_BUDGET_THD    50000
+#define PPB_LOG_DURATION msecs_to_jiffies(20000)
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
@@ -51,8 +53,9 @@ static struct notifier_block ppb_nb;
 static int channel_id;
 static unsigned int ack_data;
 #endif
-struct xpu_dbg_t last_mbrain_xpu_dbg;
+struct xpu_dbg_t last_mbrain_xpu_dbg, last_klog_xpu_dbg;
 static ppb_mbrain_func cb_func;
+static struct timer_list ppb_dbg_timer;
 
 struct tag_bootmode {
 	u32 size;
@@ -93,6 +96,41 @@ struct ppb ppb_manual = {
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
 };
+
+int __weak cgppt_get_cpu_m_scaling_factor(void)
+{
+	return 0;
+}
+
+int __weak cgppt_get_cpu_b_scaling_factor(void)
+{
+	return 0;
+}
+
+int __weak cgppt_get_gpu_scaling_factor(void)
+{
+	return 0;
+}
+
+int __weak cgppt_get_combo_idx(void)
+{
+	return 0;
+}
+
+int __weak cgppt_get_cg_budget(void)
+{
+	return 0;
+}
+
+int __weak cgppt_get_cpu_combo_usage_count(int idx)
+{
+	return 0;
+}
+
+int __weak cgppt_get_gpu_combo_usage_count(int idx)
+{
+	return 0;
+}
 
 int ppb_set_wifi_pwr_addr(unsigned int val)
 {
@@ -243,6 +281,110 @@ static void ppb_allocate_budget_manager(void)
 		pr_info("(P_BGT/H_BGT/R_BGT)=%u,%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
 			vsys_budget_noerr, vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
 	trace_peak_power_budget(&ppb);
+}
+
+static int get_xpu_debug_info(struct xpu_dbg_t *data)
+{
+	unsigned int val;
+
+	if (!data)
+		return -EINVAL;
+
+	val = dbg_read(cpu_dbg_base, 1);
+	data->cpub_len = (val >> 16) & 0x3FF;
+	data->cpub_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 2);
+	data->cpub_th_t = val;
+	val = dbg_read(cpu_dbg_base, 5);
+	data->cpum_len = (val >> 16) & 0x3FF;
+	data->cpum_cnt = val & 0xFFFF;
+	val = dbg_read(cpu_dbg_base, 6);
+	data->cpum_th_t = val;
+	val = dbg_read(gpu_dbg_base, 0);
+	data->gpu_len = (val >> 16) & 0x3FF;
+	data->gpu_cnt = val & 0xFFFF;
+	val = dbg_read(gpu_dbg_base, 1);
+	data->gpu_th_t = val;
+
+	return 0;
+}
+
+static void ppb_print_dbg_log(struct timer_list *timer)
+{
+	unsigned long duration, time;
+	struct xpu_dbg_t dbg_data;
+	static ktime_t l_ktime;
+	ktime_t ktime;
+	unsigned int cpub_cnt, cpub_th_t, cpum_cnt, cpum_th_t, gpu_cnt, gpu_th_t;
+	int cpub_sf, cpum_sf, gpu_sf, cg_pwr, combo, cb_cnt, i, offset, ret;
+	char str[STR_SIZE];
+
+	if (!ppb_ctrl.ppb_drv_done)
+		return;
+
+	ktime = ktime_get();
+	duration = ktime_us_delta(ktime, l_ktime);
+	time = ktime_to_us(ktime);
+	l_ktime = ktime;
+
+	get_xpu_debug_info(&dbg_data);
+	cpub_cnt = dbg_data.cpub_cnt - last_klog_xpu_dbg.cpub_cnt;
+	cpub_th_t = dbg_data.cpub_th_t - last_klog_xpu_dbg.cpub_th_t;
+	cpum_cnt = dbg_data.cpum_cnt - last_klog_xpu_dbg.cpum_cnt;
+	cpum_th_t = dbg_data.cpum_th_t - last_klog_xpu_dbg.cpum_th_t;
+	gpu_cnt = dbg_data.gpu_cnt - last_klog_xpu_dbg.gpu_cnt;
+	gpu_th_t = dbg_data.gpu_th_t - last_klog_xpu_dbg.gpu_th_t;
+
+	cpub_sf = cgppt_get_cpu_b_scaling_factor();
+	cpum_sf = cgppt_get_cpu_m_scaling_factor();
+	gpu_sf = cgppt_get_gpu_scaling_factor();
+	cg_pwr = cgppt_get_cg_budget();
+	combo = cgppt_get_combo_idx();
+
+	offset = 0;
+	ret = snprintf(str + offset, STR_SIZE - offset,
+		"t[k:%lu,d:%lu(ms)] bat[soc:%d t:%d] bdt[pwr:%d noer:%d] ppt[pwr:%d cb:%d c_cb(",
+		time / 1000, duration / 1000, pb.soc, pb.temp, pb.sys_power, pb.sys_power_noerr, cg_pwr, combo);
+	if (ret < 0)
+		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+	else
+		offset = offset + ret;
+
+	for (i = 0; i < CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT; i++) {
+		cb_cnt = cgppt_get_cpu_combo_usage_count(i);
+		ret = snprintf(str + offset, STR_SIZE - offset, "%d ", cb_cnt);
+		if (ret < 0)
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+		else
+			offset = offset + ret;
+	}
+
+	ret = snprintf(str + offset, STR_SIZE - offset, ") g_cb(");
+		if (ret < 0)
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+		else
+			offset = offset + ret;
+
+	for (i = 0; i < GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT; i++) {
+		cb_cnt = cgppt_get_gpu_combo_usage_count(i);
+		ret = snprintf(str + offset, STR_SIZE - offset, "%d ", cb_cnt);
+		if (ret < 0)
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+		else
+			offset = offset + ret;
+	}
+
+	ret = snprintf(str + offset, STR_SIZE - offset,
+		")] sf[cb(%d):%d,%d cm(%d):%d,%d g(%d):%d,%d]",
+		cpub_sf, cpub_cnt, cpub_th_t, cpub_sf, cpum_cnt, cpum_th_t, gpu_sf, gpu_cnt, gpu_th_t);
+	if (ret < 0)
+		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+	else
+		offset = offset + ret;
+
+	pr_info("%s\n", str);
+	memcpy(&last_klog_xpu_dbg, &dbg_data, sizeof(struct xpu_dbg_t));
+	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
 }
 
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
@@ -742,6 +884,11 @@ static void bat_handler(struct work_struct *work)
 	}
 
 	if (temp != last_temp || soc != last_soc) {
+		if (timer_pending(&ppb_dbg_timer)) {
+			del_timer_sync(&ppb_dbg_timer);
+			ppb_print_dbg_log(NULL);
+		}
+
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
 		pb.ocv = volt / 10;
 		if (pb.version >= 2)
@@ -760,12 +907,12 @@ static void bat_handler(struct work_struct *work)
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
-		pr_info("%s: vsys-er[p=%d v=%d] vsys[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
+		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d soc=%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d\n",
 			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
 			pb.ocv_noerr, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
 			pb.cur_rac, temp, pb.temp_cur_stage);
 
-		if (pb.sys_power_noerr <= 55000 && soc != last_soc && cb_func)
+		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
 			cb_func();
 
 		last_temp = temp;
@@ -1221,38 +1368,15 @@ static ssize_t mt_ppb_manual_mode_proc_write
 	return count;
 }
 
-static int get_xpu_debug_info(struct xpu_dbg_t *data)
-{
-	unsigned int val;
-
-	if (!data)
-		return -EINVAL;
-
-	val = dbg_read(cpu_dbg_base, 1);
-	data->cpub_len = (val >> 16) & 0x3FF;
-	data->cpub_cnt = val & 0xFFFF;
-	val = dbg_read(cpu_dbg_base, 2);
-	data->cpub_th_t = val;
-	val = dbg_read(cpu_dbg_base, 5);
-	data->cpum_len = (val >> 16) & 0x3FF;
-	data->cpum_cnt = val & 0xFFFF;
-	val = dbg_read(cpu_dbg_base, 6);
-	data->cpum_th_t = val;
-	val = dbg_read(gpu_dbg_base, 0);
-	data->gpu_len = (val >> 16) & 0x3FF;
-	data->gpu_cnt = val & 0xFFFF;
-	val = dbg_read(gpu_dbg_base, 1);
-	data->gpu_th_t = val;
-
-	return 0;
-}
-
 int get_ppb_mbrain_data(struct ppb_mbrain_data *data)
 {
 	struct xpu_dbg_t dbg_data;
 	int ppb_pwr, md_pwr, wifi_pwr;
 	static ktime_t last_ktime;
 	ktime_t ktime;
+
+	if (!ppb_ctrl.ppb_drv_done)
+		return -ENODEV;
 
 	if (!data)
 		return -EINVAL;
@@ -1287,7 +1411,6 @@ int get_ppb_mbrain_data(struct ppb_mbrain_data *data)
 	data->ppb_cg_budget = cgppt_get_cg_budget();
 
 	memcpy(&last_mbrain_xpu_dbg, &dbg_data, sizeof(struct xpu_dbg_t));
-
 	return 0;
 }
 EXPORT_SYMBOL(get_ppb_mbrain_data);
@@ -1867,8 +1990,10 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	get_md_dbm_info();
 	ppb_set_wifi_pwr_addr_by_dts();
 
-	ppb_ctrl.ppb_drv_done = 1;
+	timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
+	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
 
+	ppb_ctrl.ppb_drv_done = 1;
 	return 0;
 }
 
