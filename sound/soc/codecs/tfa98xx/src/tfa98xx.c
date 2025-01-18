@@ -2958,8 +2958,7 @@ inline void tfa98xx_initialize_staic_variant(void)
 	g_tfa98xx_firmware_status = 0;
 }
 
-int tfa98xx_i2c_probe(struct i2c_client *i2c,
-	const struct i2c_device_id *id)
+int tfa98xx_i2c_probe(struct i2c_client *i2c)
 {
 	struct snd_soc_dai_driver *dai;
 	struct tfa98xx *tfa98xx;
