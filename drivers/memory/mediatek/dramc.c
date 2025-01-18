@@ -69,6 +69,7 @@ static int fmeter_v1_init(struct platform_device *pdev,
 {
 	struct device_node *dramc_node = pdev->dev.of_node;
 	int ret;
+	int ret2;
 
 	ret = of_property_read_u32(dramc_node,
 		"crystal-freq", &(fmeter_dev_ptr->crystal_freq));
@@ -114,6 +115,15 @@ static int fmeter_v1_init(struct platform_device *pdev,
 			"async-ca", (unsigned int *)(fmeter_dev_ptr->async_ca), 6);
 		ret |= of_property_read_u32_array(dramc_node,
 			"dq-ser-mode", (unsigned int *)(fmeter_dev_ptr->dq_ser_mode), 6);
+		ret2 = of_property_read_u32(dramc_node,
+			"fmeter-v3-update", &(fmeter_dev_ptr->fmeter_v3_update));
+		if (ret2) {
+			fmeter_dev_ptr->fmeter_v3_update = 0;
+			pr_info("%s: no fmeter-v3-update\n", __func__);
+		} else {
+			pr_info("%s: with fmeter-v3-update: %d\n",
+				__func__, fmeter_dev_ptr->fmeter_v3_update);
+		}
 	}
 	return ret;
 }
@@ -161,7 +171,7 @@ static ssize_t dram_data_rate_show(struct device_driver *driver, char *buf)
 
 static ssize_t dram_type_show(struct device_driver *driver, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "DRAM tpye = %d\n",
+	return snprintf(buf, PAGE_SIZE, "DRAM type = %d\n",
 		mtk_dramc_get_ddr_type());
 }
 
@@ -873,6 +883,9 @@ static unsigned int fmeter_v3(struct dramc_dev_t *dramc_dev_ptr)
 		fmeter_dev_ptr->dq_ser_mode[pll_id_val].mask) >>
 		fmeter_dev_ptr->dq_ser_mode[pll_id_val].shift;
 	ckdiv4_val = (dq_ser_mode==1); // 1: DIV4, 2: DIV8, 3: DIV16
+
+	if (fmeter_dev_ptr->fmeter_v3_update == 1)
+		posdiv_val &= ~(0x4);
 
 	vco_freq = ((fmeter_dev_ptr->crystal_freq) *
 		(sdmpcw_val >> 7)) >> posdiv_val >> 1 >> ckdiv4_val

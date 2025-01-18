@@ -36,6 +36,7 @@ struct fmeter_dev_t {
 	struct reg_ctrl_t ckdiv4_ca[2];
 	struct reg_ctrl_t async_ca[2];
 	struct reg_ctrl_t dq_ser_mode[2];
+	unsigned int fmeter_v3_update;
 };
 
 struct mr4_dev_t {
