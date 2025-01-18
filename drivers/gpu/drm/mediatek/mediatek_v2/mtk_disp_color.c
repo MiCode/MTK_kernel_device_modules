@@ -903,8 +903,7 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 
 	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			COLOR_BYPASS_ALL | (0x1 << 13), COLOR_BYPASS_ALL | (0x1 << 13));
+			comp->regs_pa + DISP_COLOR_CFG_MAIN, COLOR_BYPASS_ALL, COLOR_BYPASS_ALL);
 	mutex_unlock(&primary_data->data_lock);
 }
 
@@ -1006,12 +1005,10 @@ void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_COLOR_CFG_MAIN,
-				COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+				comp->regs_pa + DISP_COLOR_CFG_MAIN, COLOR_BYPASS_ALL, COLOR_BYPASS_ALL);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_COLOR_CFG_MAIN,
-					COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+					companion->regs_pa + DISP_COLOR_CFG_MAIN, COLOR_BYPASS_ALL, COLOR_BYPASS_ALL);
 		}
 		primary_data->relay_state |= (1 << caller);
 	} else {
@@ -1019,12 +1016,10 @@ void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 			primary_data->relay_state &= ~(1 << caller);
 			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_COLOR_CFG_MAIN,
-					(0 << 7), 0xFF);
+					comp->regs_pa + DISP_COLOR_CFG_MAIN, 0, COLOR_BYPASS_ALL);
 				if (comp->mtk_crtc->is_dual_pipe && companion)
 					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + DISP_COLOR_CFG_MAIN,
-						(0 << 7), 0xFF);
+						companion->regs_pa + DISP_COLOR_CFG_MAIN, 0, COLOR_BYPASS_ALL);
 			}
 		}
 	}

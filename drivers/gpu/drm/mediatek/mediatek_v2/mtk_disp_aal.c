@@ -97,18 +97,6 @@ static bool debug_irq_log;
 	} while (0)
 #endif
 
-static bool debug_dump_clarity_regs;
-#define AALCRT_LOG(fmt, arg...) do { \
-	if (debug_dump_clarity_regs) \
-		pr_notice("[Clarity Debug]%s:" fmt, __func__, ##arg); \
-	} while (0)
-
-static bool debug_write_cmdq_log;
-#define AALWC_LOG(fmt, arg...) do { \
-	if (debug_write_cmdq_log) \
-		pr_notice("[WC]%s:" fmt, __func__, ##arg); \
-	} while (0)
-
 #define AALDUMP_LOG(fmt, arg...) pr_notice("[AAL_DUMP]:" fmt, ##arg)
 
 /*******************************/
@@ -347,6 +335,7 @@ static bool debug_skip_set_param;
 static bool debug_dump_input_param;
 static bool debug_dump_aal_hist;
 static bool debug_dump_init_reg;
+static bool debug_dump_clarity_regs;
 
 static void print_uint_array(const char *tag, const unsigned int *arr, int length, int elements_per_line)
 {
@@ -360,7 +349,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 			offset += snprintf(buf + offset, sizeof(buf) - offset, "[%s:%d-%d] ", tag, start, end);
 			if (offset >= sizeof(buf)) {
 				buf[sizeof(buf) - 1] = '\0';  // Ensure null-termination
-				AALCRT_LOG("%s overflow\n", buf);
+				AALDUMP_LOG("%s overflow\n", buf);
 				offset = 0;
 				offset += snprintf(buf + offset, sizeof(buf) - offset, "[%s:%d-%d] ", tag, start, end);
 			}
@@ -368,7 +357,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 		offset += snprintf(buf + offset, sizeof(buf) - offset, "%u ", arr[i]);
 		if (offset >= sizeof(buf)) {
 			buf[sizeof(buf) - 1] = '\0';  // Ensure null-termination
-			AALCRT_LOG("%s overflow\n", buf);
+			AALDUMP_LOG("%s overflow\n", buf);
 			offset = 0;
 			start = i;
 			end = start + elements_per_line - 1;
@@ -377,7 +366,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 		}
 		if ((i + 1) % elements_per_line == 0 || i == length - 1) {
 			buf[offset - 1] = '\0';  // Replace the last space with a newline character
-			AALCRT_LOG("%s\n", buf);
+			AALDUMP_LOG("%s\n", buf);
 			offset = 0;  // Reset the offset
 			start = i;
 			end = start + elements_per_line - 1;
@@ -397,39 +386,6 @@ static inline void __iomem *disp_aal_dre3_va(struct mtk_ddp_comp *comp)
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 
 	return (aal_data->dre3_hw.dev) ? aal_data->dre3_hw.va : comp->regs;
-}
-
-static inline void disp_aal_hist_lock(struct mtk_ddp_comp *comp, unsigned long *flags)
-{
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
-
-	if (aal_data->data->support_cmdq_eof)
-		mutex_lock(&primary_data->hist_lock_mutex);
-	else
-		spin_lock_irqsave(&primary_data->hist_lock, *flags);
-}
-
-static inline int disp_aal_hist_trylock(struct mtk_ddp_comp *comp, unsigned long *flags)
-{
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
-
-	if (aal_data->data->support_cmdq_eof)
-		return mutex_trylock(&primary_data->hist_lock_mutex);
-	else
-		return spin_trylock_irqsave(&primary_data->hist_lock, *flags);
-}
-
-static inline void disp_aal_hist_unlock(struct mtk_ddp_comp *comp, unsigned long *flags)
-{
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
-
-	if (aal_data->data->support_cmdq_eof)
-		mutex_unlock(&primary_data->hist_lock_mutex);
-	else
-		spin_unlock_irqrestore(&primary_data->hist_lock, *flags);
 }
 
 static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
@@ -452,8 +408,7 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 	if (enable &&
 		(bypass != 1 || pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
 		/* Enable output frame end interrupt */
-		if (!aal_data->data->support_cmdq_eof)
-			mtk_ddp_write_relaxed(comp, AAL_IRQ_OF_END, DISP_AAL_INTEN, handle);
+		mtk_ddp_write_relaxed(comp, AAL_IRQ_OF_END, DISP_AAL_INTEN, handle);
 
 		atomic_set(&aal_data->primary_data->event_en, 1);
 		AALIRQ_LOG("interrupt enabled\n");
@@ -561,11 +516,11 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 						0, (0X1<<SET_BACKLIGHT_LEVEL));
 	}
 
-	disp_aal_hist_lock(comp, &flags);
+	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 	aal_data->primary_data->hist.backlight = trans_backlight;
 	aal_data->primary_data->hist.panel_nits = panel_nits;
 	aal_data->primary_data->hist.serviceFlags |= service_flags;
-	disp_aal_hist_unlock(comp, &flags);
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	// always notify aal service for LED changed
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, need_lock);
 
@@ -966,217 +921,6 @@ static bool disp_aal_read_dre3_hist(struct mtk_ddp_comp *comp,
 	return true;
 }
 
-static void disp_aal_read_hist_cmdq(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt)
-{
-	int offset = 0;
-	uint32_t cnt;
-	int i = 0;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
-	phys_addr_t color_pa = aal_data->comp_color->regs_pa;
-	phys_addr_t tdshp_pa = aal_data->comp_tdshp->regs_pa;
-	uint32_t slot_req = DISP_SLOT_AAL_GHIST_REQ, slot_done = DISP_SLOT_AAL_GHIST_DONE;
-
-	GCE_COND_DECLARE;
-	struct cmdq_operand lop, rop;
-	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = 0;
-
-	GCE_COND_ASSIGN(pkt, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
-	lop.reg = true;
-	lop.idx = var1;
-	rop.reg = false;
-	rop.idx = var2;
-	rop.value = 1;
-
-	/* 1. if req ghsit */
-	cmdq_pkt_read(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_req), var1);
-	GCE_IF(lop, R_CMDQ_EQUAL, rop);
-	/* clear req */
-	cmdq_pkt_write(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_req), 0, ~0);
-	/* 2. read ghist */
-	/* read disp ghist */
-	offset = aal_data->cmdq_dma_map[AAL_MAX_GHIST].start;
-	cnt = aal_data->cmdq_dma_map[AAL_MAX_GHIST].size / 4;
-	for (i = 0; i < cnt; i++, offset += 4)
-		cmdq_pkt_mem_move(pkt, NULL, comp->regs_pa + DISP_AAL_STATUS_00 + (i << 2),
-				  aal_data->cmdq_dma_buf.pa + offset, var1);
-	offset = aal_data->cmdq_dma_map[AAL_Y_GHIST].start;
-	cnt = aal_data->cmdq_dma_map[AAL_Y_GHIST].size / 4;
-	for (i = 0; i < cnt; i++, offset += 4)
-		cmdq_pkt_mem_move(pkt, NULL, comp->regs_pa + DISP_Y_HISTOGRAM_00 + (i << 2),
-				  aal_data->cmdq_dma_buf.pa + offset, var1);
-	/* read dmdp ghist */
-	if (aal_data->data->mdp_aal_ghist_support &&
-		aal_data->primary_data->aal_fo->mtk_dre30_support) {
-		aal_data->primary_data->hist.mdp_aal_ghist_valid = 1;
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_MAX_GHIST].start;
-		cnt = aal_data->cmdq_dma_map[DMDP_AAL_MAX_GHIST].size / 4;
-		for (i = 0; i < cnt; i++, offset += 4)
-			cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_STATUS_00 + (i << 2),
-					  aal_data->cmdq_dma_buf.pa + offset, var1);
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_Y_GHIST].start;
-		cnt = aal_data->cmdq_dma_map[DMDP_AAL_Y_GHIST].size / 4;
-		for (i = 0; i < cnt; i++, offset += 4)
-			cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_Y_HISTOGRAM_00 + (i << 2),
-					  aal_data->cmdq_dma_buf.pa + offset, var1);
-	} else
-		aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
-	/* read color hist */
-	offset = aal_data->cmdq_dma_map[COLOR_HIST].start;
-	cmdq_pkt_mem_move(pkt, NULL,
-		color_pa + disp_color_get_reg_offset("disp_color_two_d_w1_result"),
-		aal_data->cmdq_dma_buf.pa + offset, var1);
-	if (aal_data->primary_data->disp_clarity_support) {
-		/* read dmdp clarity */
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].start;
-		cnt = aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].size / 4;
-		for (i = 0; i < cnt; i++, offset += 4)
-			cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2),
-					  aal_data->cmdq_dma_buf.pa + offset, var1);
-		/* read tdshp clarity */
-		offset = aal_data->cmdq_dma_map[TDSHP_CLARITY].start;
-		cnt = aal_data->cmdq_dma_map[TDSHP_CLARITY].size / 4;
-		for (i = 0; i < cnt; i++, offset += 4)
-			cmdq_pkt_mem_move(pkt, NULL, tdshp_pa + MDP_TDSHP_STATUS_00 + (i << 2),
-					  aal_data->cmdq_dma_buf.pa + offset, var1);
-	}
-	/* 5. set ghist done flag */
-	cmdq_pkt_write(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_done), 1, ~0);
-	GCE_FI;
-}
-
-static void disp_aal_read_dre3_hist_cmdq(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt)
-{
-	int hist_offset;
-	int dma_offset = 0;
-	uint32_t size;
-	int i = 0;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	bool aal_dre3_auto_inc = aal_data->data->aal_dre3_auto_inc;
-	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
-	uint32_t slot_req = DISP_SLOT_AAL_LHIST_REQ, slot_done = DISP_SLOT_AAL_LHIST_DONE;
-	uint32_t flip_mask, sram_mask, sram_en;
-
-	GCE_COND_DECLARE;
-	struct cmdq_operand lop, rop;
-	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = 0;
-
-	flip_mask = REG_FLD_MASK(REG_FORCE_HIST_SRAM_APB) | REG_FLD_MASK(REG_FORCE_HIST_SRAM_INT);
-	sram_mask = REG_FLD_MASK(REG_FORCE_HIST_SRAM_EN) |
-		    REG_FLD_MASK(REG_FORCE_HIST_SRAM_APB) |
-		    REG_FLD_MASK(REG_FORCE_HIST_SRAM_INT);
-	sram_en = REG_FLD_VAL(REG_FORCE_HIST_SRAM_EN, 1);
-
-	GCE_COND_ASSIGN(pkt, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
-	lop.reg = true;
-	lop.idx = var1;
-	rop.reg = false;
-	rop.idx = var2;
-	rop.value = 1;
-
-	/* 1. if req local hsit */
-	cmdq_pkt_read(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_req), var1);
-	GCE_IF(lop, R_CMDQ_EQUAL, rop);
-	/* clear req */
-	cmdq_pkt_write(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_req), 0, ~0);
-	/* 2. flip hist sram */
-	cmdq_pkt_read(pkt, NULL, dre3_pa + DMDP_AAL_SRAM_CFG, var1);
-	rop.value = flip_mask;
-	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_XOR, var1, &lop, &rop);
-	/* sram en */
-	rop.value = sram_en;
-	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, var1, &lop, &rop);
-	/* write flip */
-	cmdq_pkt_write_reg_addr(pkt, dre3_pa + DMDP_AAL_SRAM_CFG, var1, sram_mask);
-	/* 3. Read Local histogram for DRE 3 */
-	hist_offset = aal_data->data->aal_dre_hist_start;
-	dma_offset = aal_data->cmdq_dma_map[AAL_LOCAL_HIST].start;
-	size = aal_data->cmdq_dma_map[AAL_LOCAL_HIST].size;
-	cmdq_pkt_write(pkt, NULL, dre3_pa + DMDP_AAL_SRAM_RW_IF_2, hist_offset, ~0);
-	for (; hist_offset <= aal_data->data->aal_dre_hist_end; hist_offset += 4, dma_offset += 4) {
-		if (dma_offset > aal_data->cmdq_dma_map[AAL_LOCAL_HIST].start + size - 4) {
-			AALERR("hist read overflow %d %d %u\n", hist_offset, dma_offset, size);
-			break;
-		}
-		if (!aal_dre3_auto_inc)
-			cmdq_pkt_write(pkt, NULL, dre3_pa + DMDP_AAL_SRAM_RW_IF_2, hist_offset, ~0);
-		cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_SRAM_RW_IF_3,
-			aal_data->cmdq_dma_buf.pa + dma_offset, var1);
-	}
-	/* 4. dual_pipe info */
-	dma_offset = aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].start;
-	size = aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].size;
-	for (i = 0; i < 8; i++, dma_offset += 4) {
-		if (dma_offset > aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].start + size - 4) {
-			AALERR("pipe info read overflow %d %u\n", dma_offset, size);
-			break;
-		}
-		cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_DUAL_PIPE00 + (i << 2),
-			aal_data->cmdq_dma_buf.pa + dma_offset, var1);
-	}
-	for (i = 0; i < 8; i++, dma_offset += 4) {
-		if (dma_offset > aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].start + size - 4) {
-			AALERR("pipe info read overflow %d %u\n", dma_offset, size);
-			break;
-		}
-		cmdq_pkt_mem_move(pkt, NULL, dre3_pa + DMDP_AAL_DUAL_PIPE08 + (i << 2),
-			aal_data->cmdq_dma_buf.pa + dma_offset, var1);
-	}
-	/* 5. set local hist done flag */
-	cmdq_pkt_write(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_done), 1, ~0);
-	GCE_FI;
-}
-
-void disp_aal_hist_cb(struct cmdq_cb_data data)
-{
-	struct mtk_ddp_comp *comp = data.data;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct cmdq_pkt *pkt = aal_data->primary_data->hist_pkt;
-	int index = 0;
-
-	index = drm_crtc_index(&comp->mtk_crtc->base);
-	atomic_set(&aal_data->primary_data->hist_done_cb, 1);
-	CRTC_MMP_MARK(index, aal_dre20_rh, (unsigned long)pkt, 2);
-	mtk_vidle_pq_power_put(__func__);
-}
-
-static void disp_read_hist_cmdq(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
-	struct cmdq_pkt *pkt = primary_data->hist_pkt;
-	int index = 0;
-	//uint32_t voter;
-
-	index = drm_crtc_index(&comp->mtk_crtc->base);
-	//if (index == 0)
-		//voter = DISP_VIDLE_USER_PQ0_CMDQ;
-	//else
-		//voter = DISP_VIDLE_USER_PQ1_CMDQ;
-	CRTC_MMP_MARK(index, aal_dre20_rh, (unsigned long)pkt, 1);
-	if (!aal_data->is_hist_reused) {
-		cmdq_pkt_clear_event(pkt, comp->mtk_crtc->gce_obj.event[EVENT_AAL_EOF]);
-		cmdq_pkt_wait_no_clear(pkt, comp->mtk_crtc->gce_obj.event[EVENT_AAL_EOF]);
-		//mtk_vidle_user_power_keep_by_gce(voter, pkt, 0);
-		disp_aal_read_hist_cmdq(comp, pkt);
-		disp_aal_read_dre3_hist_cmdq(comp, pkt);
-		//mtk_vidle_user_power_release_by_gce(voter, pkt);
-		aal_data->is_hist_reused = true;
-	}
-	mtk_vidle_pq_power_get(__func__);
-	AALFLOW_LOG("handle %p event %d client %p ghist %u,%u lhist %u,%u\n",
-		pkt, comp->mtk_crtc->gce_obj.event[EVENT_AAL_EOF], comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF],
-		readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_REQ)),
-		readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_DONE)),
-		readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_REQ)),
-		readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_DONE)));
-	cmdq_pkt_refinalize(pkt);
-	atomic_set(&aal_data->primary_data->hist_done_cb, 0);
-	cmdq_pkt_flush_threaded(pkt, disp_aal_hist_cb, comp);
-}
-
 static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned int status)
 {
 	unsigned long flags;
@@ -1192,11 +936,11 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned
 	}
 
 	CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 2);
-	if (disp_aal_hist_trylock(comp, &flags)) {
+	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
 		read_success = disp_aal_read_ghist(comp);
 		if (read_success)
 			atomic_set(&aal_data->eof_irq, 0);
-		disp_aal_hist_unlock(comp, &flags);
+		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 		if (read_success == true) {
 			atomic_set(&aal_data->dre20_hist_is_ready, 1);
 			AALIRQ_LOG("%s read_success = %d\n",mtk_dump_comp_str(comp), read_success);
@@ -1300,7 +1044,7 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	}
 	dre_blk_x_num = aal_data->primary_data->init_regs.dre_blk_x_num;
 	dre_blk_y_num = aal_data->primary_data->init_regs.dre_blk_y_num;
-	if (disp_aal_hist_trylock(comp, &flags)) {
+	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
 		disp_aal_read_dre3_hist(comp, dre_blk_x_num, dre_blk_y_num);
 		aal_data->primary_data->dre30_hist.dre_blk_x_num = dre_blk_x_num;
 		aal_data->primary_data->dre30_hist.dre_blk_y_num = dre_blk_y_num;
@@ -1309,8 +1053,8 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 			disp_aal_read_dre3_hist(comp1, dre_blk_x_num, dre_blk_y_num);
 			atomic_set(&aal1_data->hist_available, 1);
 		}
-		disp_aal_hist_unlock(comp, &flags);
-		AALIRQ_LOG("wake_up_interruptible\n");
+		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
+		AALIRQ_LOG("wake up dre3\n");
 		wake_up_interruptible(&aal_data->primary_data->hist_wq);
 	} else {
 		AALIRQ_LOG("comp %d hist not retrieved\n", comp->id);
@@ -1676,124 +1420,6 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 }
 
-static void disp_aal_sof_handle_by_cmdq(struct mtk_ddp_comp *comp)
-{
-	int pm_ret = 0;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_disp_aal_primary *primary_data = aal_data->primary_data;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	int index = 0;
-	uint32_t ghist_done, lhist_done, offset, size, *temp;
-	unsigned long flags;
-
-	/* TODO: add dualpipe support if needed */
-	index = drm_crtc_index(&comp->mtk_crtc->base);
-	CRTC_MMP_EVENT_START(index, aal_sof_thread, 0, 0);
-
-	CRTC_MMP_MARK(index, aal_sof_thread, 0, 1);
-	ghist_done = readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_DONE));
-	lhist_done = readl(mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_DONE));
-	disp_aal_hist_lock(comp, &flags);
-	if (ghist_done) {
-		offset = aal_data->cmdq_dma_map[AAL_MAX_GHIST].start;
-		size = aal_data->cmdq_dma_map[AAL_MAX_GHIST].size;
-		memcpy(primary_data->hist.aal0_maxHist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[AAL_Y_GHIST].start;
-		size = aal_data->cmdq_dma_map[AAL_Y_GHIST].size;
-		memcpy(primary_data->hist.aal0_yHist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_MAX_GHIST].start;
-		size = aal_data->cmdq_dma_map[DMDP_AAL_MAX_GHIST].size;
-		memcpy(primary_data->hist.mdp_aal0_maxHist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_Y_GHIST].start;
-		size = aal_data->cmdq_dma_map[DMDP_AAL_Y_GHIST].size;
-		memcpy(primary_data->hist.mdp_aal0_yHist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[COLOR_HIST].start;
-		size = aal_data->cmdq_dma_map[COLOR_HIST].size;
-		memcpy(&primary_data->hist.aal0_colorHist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].start;
-		size = aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].size;
-		memcpy(primary_data->hist.aal0_clarity, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[TDSHP_CLARITY].start;
-		size = aal_data->cmdq_dma_map[TDSHP_CLARITY].size;
-		memcpy(primary_data->hist.tdshp0_clarity, aal_data->cmdq_dma_buf.va + offset, size);
-		writel(0, mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_DONE));
-		offset = aal_data->cmdq_dma_map[AAL_MAX_GHIST].start;
-		size = aal_data->cmdq_dma_map[AAL_MAX_GHIST].size;
-		temp = aal_data->cmdq_dma_buf.va + offset;
-		AALFLOW_LOG("ghist start %u size %u addr %p : 0x%x 0x%x 0x%x 0x%x\n", offset, size, temp,
-			temp[0], temp[1], temp[2], temp[3]);
-	}
-	if (lhist_done) {
-		primary_data->dre30_hist.dre_blk_x_num = primary_data->init_regs.dre_blk_x_num;
-		primary_data->dre30_hist.dre_blk_y_num = primary_data->init_regs.dre_blk_y_num;
-		offset = aal_data->cmdq_dma_map[AAL_LOCAL_HIST].start;
-		size = aal_data->cmdq_dma_map[AAL_LOCAL_HIST].size;
-		memcpy(primary_data->dre30_hist.aal0_dre_hist, aal_data->cmdq_dma_buf.va + offset, size);
-		offset = aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].start;
-		size = aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].size;
-		memcpy(primary_data->hist.MaxHis_denominator_pipe0, aal_data->cmdq_dma_buf.va + offset, size);
-		writel(0, mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_DONE));
-		offset = aal_data->cmdq_dma_map[AAL_MAX_GHIST].start;
-		size = aal_data->cmdq_dma_map[AAL_MAX_GHIST].size;
-		temp = aal_data->cmdq_dma_buf.va + offset;
-		AALFLOW_LOG("local start %u size %u addr %p : 0x%x 0x%x 0x%x 0x%x\n", offset, size, temp,
-			temp[0], temp[1], temp[2], temp[3]);
-	}
-	if (ghist_done || lhist_done)
-		atomic_set(&aal_data->hist_available, 1);
-	disp_aal_hist_unlock(comp, &flags);
-	wake_up_interruptible(&aal_data->primary_data->hist_wq);
-	if (atomic_read(&aal_data->primary_data->hist_done_cb)) {
-		CRTC_MMP_MARK(index, aal_sof_thread, 0, 2);
-		DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-		if (!mtk_crtc->enabled) {
-			AALFLOW_LOG("slepted\n");
-			DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-			CRTC_MMP_EVENT_END(index, aal_sof_thread, 0, 6);
-			return;
-		}
-		mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 0);
-		/* check aal is not relay for this frame */
-		if (!(readl(comp->regs + DISP_AAL_CFG) & 0x1)) {
-			writel(1, mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_REQ));
-			if (primary_data->aal_fo->mtk_dre30_support && primary_data->dre30_enabled)
-				writel(1, mtk_get_gce_backup_slot_va(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_REQ));
-			disp_read_hist_cmdq(comp);
-		} else
-			AALFLOW_LOG("aal relayed skip hist read\n");
-		DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-		CRTC_MMP_MARK(index, aal_sof_thread, 0, 3);
-	} else
-		AALFLOW_LOG("hsit not done %d\n", atomic_read(&aal_data->primary_data->hist_done_cb));
-
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-	mutex_lock(&aal_data->primary_data->clk_lock);
-	if (atomic_read(&aal_data->is_clock_on) != 1) {
-		AALFLOW_LOG("clock is off\n");
-		mutex_unlock(&aal_data->primary_data->clk_lock);
-		CRTC_MMP_EVENT_END(index, aal_sof_thread, 0, 7);
-		if (!pm_ret)
-			mtk_vidle_pq_power_put(__func__);
-		return;
-	}
-	mutex_lock(&aal_data->primary_data->config_lock);
-	disp_aal_write_dre3_curve(comp, false);
-	mutex_unlock(&aal_data->primary_data->config_lock);
-	mutex_unlock(&aal_data->primary_data->clk_lock);
-	if (!pm_ret)
-		mtk_vidle_pq_power_put(__func__);
-	CRTC_MMP_MARK(0, aal_sof_thread, 0, 4);
-
-	if (atomic_read(&aal_data->primary_data->dre30_write) == 1) {
-		DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-			mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, FLIP_CURVE_SRAM, NULL, false);
-			mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
-			atomic_set(&aal_data->primary_data->dre30_write, 0);
-		DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-	}
-	CRTC_MMP_EVENT_END(index, aal_sof_thread, 0, 5);
-}
-
 static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
@@ -1817,8 +1443,7 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 		atomic_read(&aal_data->primary_data->change_to_dre30),
 		mtk_crtc->enabled);
 
-	if (!aal_data->data->support_cmdq_eof &&
-	    (!aal_data->primary_data->aal_fo->mtk_dre30_support || !aal_data->primary_data->dre30_enabled)) {
+	if (!aal_data->primary_data->aal_fo->mtk_dre30_support || !aal_data->primary_data->dre30_enabled) {
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_disp_aal *aal1_data = comp_to_aal(aal_data->companion);
 
@@ -1845,13 +1470,7 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) != 0x3)
 		return;
 
-	if (!atomic_read(&aal_data->primary_data->sof_irq_available) && !aal_data->data->support_cmdq_eof) {
-		atomic_set(&aal_data->primary_data->sof_irq_available, 1);
-		AALIRQ_LOG("wake up dre3\n");
-		wake_up_interruptible(&aal_data->primary_data->sof_irq_wq);
-	} else if (!atomic_read(&aal_data->primary_data->sof_irq_available) &&
-		   aal_data->data->support_cmdq_eof &&
-		   (aal_data->primary_data->relay_state == 0)) {
+	if (!atomic_read(&aal_data->primary_data->sof_irq_available)) {
 		atomic_set(&aal_data->primary_data->sof_irq_available, 1);
 		AALIRQ_LOG("wake up dre3\n");
 		wake_up_interruptible(&aal_data->primary_data->sof_irq_wq);
@@ -1870,10 +1489,7 @@ static int disp_aal_sof_kthread(void *data)
 			ret = wait_event_interruptible(aal_data->primary_data->sof_irq_wq,
 					atomic_read(&aal_data->primary_data->sof_irq_available) == 1);
 			AALFLOW_LOG("sof_irq_available = 1, waken up, ret = %d\n", ret);
-			if (aal_data->data->support_cmdq_eof)
-				disp_aal_sof_handle_by_cmdq(comp);
-			else
-				disp_aal_sof_handle_by_cpu(comp);
+			disp_aal_sof_handle_by_cpu(comp);
 		} else
 			AALFLOW_LOG("sof_irq_available = 0\n");
 		atomic_set(&aal_data->primary_data->sof_irq_available, 0);
@@ -2803,7 +2419,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	}
 
 	/* We assume only one thread will call this function */
-	disp_aal_hist_lock(comp, &flags);
+	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
 		memcpy(&dre30_hist, &aal_data->primary_data->dre30_hist, sizeof(struct DISP_DRE30_HIST));
 	aal_data->primary_data->hist.panel_type = atomic_read(&aal_data->primary_data->panel_type);
@@ -2827,7 +2443,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->hist.dre30_hist = hist->dre30_hist;
 
 	memcpy(hist, &aal_data->primary_data->hist, sizeof(aal_data->primary_data->hist));
-	disp_aal_hist_unlock(comp, &flags);
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
 		ret = copy_to_user((void *)hist->dre30_hist, &dre30_hist, sizeof(struct DISP_DRE30_HIST));
@@ -2942,13 +2558,13 @@ int disp_aal_act_set_trigger_state(struct mtk_ddp_comp *comp, void *data)
 	if (dre3EnState & 0x2) {
 		AALFLOW_LOG("dre change to open!\n");
 
-		disp_aal_hist_lock(comp, &flags);
+		spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 		if ((pdata->aal_fo->mtk_dre30_support)
 			&& (!pdata->dre30_enabled)) {
 			pdata->prv_dre30_enabled = pdata->dre30_enabled;
 			pdata->dre30_enabled = true;
 		}
-		disp_aal_hist_unlock(comp, &flags);
+		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 		if (!pdata->prv_dre30_enabled && pdata->dre30_enabled) {
 			// need flip sram to get local histogram
@@ -2961,7 +2577,7 @@ int disp_aal_act_set_trigger_state(struct mtk_ddp_comp *comp, void *data)
 	}
 
 	if (dre3EnState & 0x1) {
-		//disp_aal_hist_lock(comp, &flags);
+		//spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 		if (trigger_state->dre_frm_trigger == 0) {
 			if ((pdata->aal_fo->mtk_dre30_support)
 				&& pdata->dre30_enabled) {
@@ -2978,7 +2594,7 @@ int disp_aal_act_set_trigger_state(struct mtk_ddp_comp *comp, void *data)
 		}
 
 		trigger_state->dre3_krn_flag = pdata->dre30_enabled ? 1 : 0;
-		//disp_aal_hist_unlock(comp, &flags);
+		//spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	}
 
 	return 0;
@@ -3326,41 +2942,6 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 	atomic_set(&aal_data->eof_irq, 0);
 }
 
-static void disp_aal_cmdq_dma_init(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct cmdq_client *client = NULL;
-	uint32_t offset;
-	int i;
-
-	if (comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF]) {
-		client = comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF];
-		aal_data->cmdq_dma_buf.va = cmdq_mbox_buf_alloc(client, &aal_data->cmdq_dma_buf.pa);
-	}
-	AALFLOW_LOG("va %p pa 0x%llx\n", aal_data->cmdq_dma_buf.va, aal_data->cmdq_dma_buf.pa);
-	aal_data->cmdq_dma_buf.size = CMDQ_BUF_ALLOC_SIZE;
-	aal_data->cmdq_dma_map[AAL_LOCAL_HIST].size = AAL_DRE30_HIST_REGISTER_NUM * 4;
-	aal_data->cmdq_dma_map[AAL_DUAL_PIPE_INFO].size = AAL_DRE_BLK_NUM * 4;
-	aal_data->cmdq_dma_map[AAL_MAX_GHIST].size = AAL_HIST_BIN * 4;
-	aal_data->cmdq_dma_map[AAL_Y_GHIST].size = AAL_HIST_BIN * 4;
-	aal_data->cmdq_dma_map[DMDP_AAL_MAX_GHIST].size = AAL_HIST_BIN * 4;
-	aal_data->cmdq_dma_map[DMDP_AAL_Y_GHIST].size = AAL_HIST_BIN * 4;
-	aal_data->cmdq_dma_map[COLOR_HIST].size = 4;
-	aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].size = MDP_AAL_CLARITY_READBACK_NUM * 4;
-	aal_data->cmdq_dma_map[TDSHP_CLARITY].size = DISP_TDSHP_CLARITY_READBACK_NUM * 4;
-
-	for (i = 0, offset = 0; i < AAL_DMA_MAX; i++) {
-		aal_data->cmdq_dma_map[i].start = offset;
-		offset += aal_data->cmdq_dma_map[i].size;
-		AALFLOW_LOG("index %d-%u-%u-%u\n", i,
-				aal_data->cmdq_dma_map[i].start, aal_data->cmdq_dma_map[i].size, offset);
-		if (offset > aal_data->cmdq_dma_buf.size) {
-			AALERR("dma overflow index %d:%u is bigger than %d\n", i, offset, aal_data->cmdq_dma_buf.size);
-			break;
-		}
-	}
-}
-
 static void disp_aal_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
@@ -3372,8 +2953,6 @@ static void disp_aal_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&aal_data->force_curve_sram_apb, 0);
 	atomic_set(&aal_data->force_hist_apb, 0);
 	atomic_set(&aal_data->dre_config, 0);
-	if (aal_data->data->support_cmdq_eof)
-		disp_aal_cmdq_dma_init(comp);
 
 	if (!aal_data->is_right_pipe) {
 		aal_data->comp_tdshp = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
@@ -3417,7 +2996,6 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	init_waitqueue_head(&aal_data->primary_data->size_wq);
 
 	spin_lock_init(&aal_data->primary_data->hist_lock);
-	mutex_init(&aal_data->primary_data->hist_lock_mutex);
 
 	mutex_init(&aal_data->primary_data->config_lock);
 	mutex_init(&aal_data->primary_data->clk_lock);
@@ -3475,11 +3053,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->ess_en_cmd_id = 0;
 	aal_data->primary_data->led_type = TYPE_FILE;
 	aal_data->primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
-	if (aal_data->data->support_cmdq_eof) {
-		mtk_crtc_pkt_create(&aal_data->primary_data->hist_pkt,
-			&comp->mtk_crtc->base, comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF]);
-		atomic_set(&(aal_data->primary_data->hist_done_cb), 1);
-	}
+
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 	if (comp->id == DDP_COMPONENT_AAL0)
 		mtk_leds_register_notifier(&leds_init_notifier);
@@ -3855,12 +3429,6 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	disp_aal_init(comp, cfg, handle);
 	disp_aal_set_interrupt(comp, !!atomic_read(&aal_data->primary_data->event_en), handle);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_CMB_MAIN_0, 0, NEW_CBOOST_EN);
-	if (aal_data->data->support_cmdq_eof) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			mtk_get_gce_backup_slot_pa(comp->mtk_crtc, DISP_SLOT_AAL_GHIST_DONE), 0, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			mtk_get_gce_backup_slot_pa(comp->mtk_crtc, DISP_SLOT_AAL_LHIST_DONE), 0, ~0);
-	}
 	// for Display Clarity
 	if (aal_data->primary_data->disp_clarity_regs != NULL) {
 		mutex_lock(&aal_data->primary_data->config_lock);
@@ -3873,8 +3441,6 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 1, AAL_BYPASS_SHADOW);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 0, AAL_BYPASS_SHADOW);
-	AALWC_LOG("AAL_CFG=0x%x  compid:%d\n",
-		readl(comp->regs + DISP_AAL_CFG), comp->id);
 }
 
 void disp_aal_first_cfg(struct mtk_ddp_comp *comp,
@@ -4056,12 +3622,10 @@ static int disp_aal_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 
-	if (!priv->data->support_cmdq_eof) {
-		ret = devm_request_irq(dev, irq, disp_aal_irq_handler,
-			IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
-		if (ret)
-			dev_err(dev, "devm_request_irq fail: %d\n", ret);
-	}
+	ret = devm_request_irq(dev, irq, disp_aal_irq_handler,
+		IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
+	if (ret)
+		dev_err(dev, "devm_request_irq fail: %d\n", ret);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
@@ -4299,7 +3863,6 @@ static const struct mtk_disp_aal_data mt6989_aal_driver_data = {
 	.aal_dre3_auto_inc = true,
 	.mdp_aal_ghist_support = true,
 	.bitShift = 16,
-	.support_cmdq_eof = false,
 };
 
 static const struct mtk_disp_aal_data mt6878_aal_driver_data = {
@@ -4326,7 +3889,6 @@ static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
 	.aal_dre3_auto_inc = true,
 	.mdp_aal_ghist_support = true,
 	.bitShift = 16,
-	.support_cmdq_eof = false,
 };
 
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
@@ -4371,7 +3933,7 @@ void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level)
 	int level_command = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 
-	disp_aal_hist_lock(comp, &flags);
+	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 
 	aal_data->primary_data->ess_level_cmd_id += 1;
 	aal_data->primary_data->ess_level_cmd_id = aal_data->primary_data->ess_level_cmd_id % 64;
@@ -4379,7 +3941,7 @@ void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level)
 
 	aal_data->primary_data->ess_level = level_command;
 
-	disp_aal_hist_unlock(comp, &flags);
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("level = %d (cmd = 0x%x)\n", level, level_command);
@@ -4392,7 +3954,7 @@ void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable)
 	int level_command = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 
-	disp_aal_hist_lock(comp, &flags);
+	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 
 	aal_data->primary_data->ess_en_cmd_id += 1;
 	aal_data->primary_data->ess_en_cmd_id = aal_data->primary_data->ess_en_cmd_id % 64;
@@ -4400,7 +3962,7 @@ void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable)
 
 	aal_data->primary_data->ess_en = enable_command;
 
-	disp_aal_hist_unlock(comp, &flags);
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("en = %d (cmd = 0x%x) level = 0x%08x (cmd = 0x%x)\n",
@@ -4413,7 +3975,7 @@ void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable)
 	int enable_command = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 
-	disp_aal_hist_lock(comp, &flags);
+	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 
 	aal_data->primary_data->dre_en_cmd_id += 1;
 	aal_data->primary_data->dre_en_cmd_id = aal_data->primary_data->dre_en_cmd_id % 64;
@@ -4421,7 +3983,7 @@ void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable)
 
 	aal_data->primary_data->dre_en = enable_command;
 
-	disp_aal_hist_unlock(comp, &flags);
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("en = %d (cmd = 0x%x)\n", enable, enable_command);
@@ -4480,9 +4042,6 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 	} else if (strncmp(opt, "api_log:", 8) == 0) {
 		debug_api_log = strncmp(opt + 8, "1", 1) == 0;
 		pr_notice("[debug] debug_api_log=%d\n", debug_api_log);
-	} else if (strncmp(opt, "write_cmdq_log:", 15) == 0) {
-		debug_write_cmdq_log = strncmp(opt + 15, "1", 1) == 0;
-		pr_notice("[debug] debug_write_cmdq_log=%d\n", debug_write_cmdq_log);
 	} else if (strncmp(opt, "irq_log:", 8) == 0) {
 		debug_irq_log = strncmp(opt + 8, "1", 1) == 0;
 		pr_notice("[debug] debug_irq_log=%d\n", debug_irq_log);
@@ -4521,7 +4080,6 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 		pr_notice("[debug] dump_blk_x=%d dump_blk_y=%d\n", dump_blk_x, dump_blk_y);
 		pr_notice("[debug] debug_flow_log=%d\n", debug_flow_log);
 		pr_notice("[debug] debug_api_log=%d\n", debug_api_log);
-		pr_notice("[debug] debug_write_cmdq_log=%d\n", debug_write_cmdq_log);
 		pr_notice("[debug] debug_irq_log=%d\n", debug_irq_log);
 		pr_notice("[debug] debug_dump_aal_hist=%d\n", debug_dump_aal_hist);
 		pr_notice("[debug] debug_dump_input_param=%d\n", debug_dump_input_param);

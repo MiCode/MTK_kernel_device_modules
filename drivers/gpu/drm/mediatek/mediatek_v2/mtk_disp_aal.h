@@ -54,7 +54,6 @@ struct mtk_disp_aal_data {
 	bool aal_dre3_auto_inc;
 	bool mdp_aal_ghist_support;
 	int bitShift;
-	bool support_cmdq_eof;
 };
 
 struct dre3_node {
@@ -96,7 +95,6 @@ struct mtk_disp_aal_primary {
 	struct mutex config_lock;
 	struct mutex clk_lock;
 	spinlock_t hist_lock;
-	struct mutex hist_lock_mutex;
 	struct DISP_AAL_HIST hist;
 	atomic_t event_en;
 	atomic_t force_enable_event;
@@ -142,8 +140,6 @@ struct mtk_disp_aal_primary {
 	struct work_struct_aal_data refresh_task;
 	enum MTK_LED_TYPE led_type;
 	unsigned int fps;
-	struct cmdq_pkt *hist_pkt;
-	atomic_t hist_done_cb;
 	unsigned int relay_state;
 };
 
@@ -171,9 +167,6 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_dmdp_aal;
 	unsigned int set_partial_update;
 	unsigned int roi_height;
-	bool is_hist_reused;
-	struct pq_dma_buffer cmdq_dma_buf;
-	struct pq_dma_map cmdq_dma_map[AAL_DMA_MAX];
 };
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
