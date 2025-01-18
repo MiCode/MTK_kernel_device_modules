@@ -7151,6 +7151,43 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 	};
 
+	sap: sap@1cb20000 {
+			compatible = "mediatek,sap";
+			status = "okay";
+			core-id = <0x02>;
+			l2tcm-offset = <0x320000>;
+			secure-dump-size = <0x24000>;
+			reg = <0 0x1cf3a000 0 0x1000>,
+				<0 0x1cf00000 0 0x20000>,
+				<0 0x1cff0000 0 0x100>, /* mbox0 base, using mbox5's hw */
+				<0 0x1cff0100 0 0x4>, /* mbox0 set, using mbox5's hw */
+				<0 0x1cff010c 0 0x4>, /* mbox0 clr, using mbox5's hw */
+				<0 0x1cf2a034 0 0x4>; /* mbox0 init, using mbox5's hw */
+			reg-names = "sap_cfg_reg",
+				"sap_l1cache",
+				"mbox0_base",
+				"mbox0_set",
+				"mbox0_clr",
+				"mbox0_init";
+			interrupts = <GIC_SPI 688 IRQ_TYPE_LEVEL_HIGH 0>; /* using mbox5's hw */
+			interrupt-names = "mbox0";
+			mbox-count = <1>;
+			/* id, mbox, send_size */
+			send-table =
+				<1 0 17>; /* IPI_OUT_SENSOR_SAP_NOTIFY */
+			#recv-cells-mode = <1>;
+			/* mode 0 or no defined
+			 * mode = 4 elements : id, mbox, recv_size, recv_opt
+			 * mode 1 => 7 elements : id, mbox, recv_size, recv_opt,
+			 * lock, buf_full_opt, *cb_ctx_opt
+			 */
+			recv-table =
+				<0 0 17 0 0 0 0>; /* IPI_IN_SENSOR_SAP_NOTIFY */
+			memorydump = <0x020000>, /* l1c */
+				<0x003f00>, /* regdump */
+				<0x000100>; /* trace buffer */
+		};
+
 
 		hcp: hcp@15001000 {
 			compatible = "mediatek,hcp8";
