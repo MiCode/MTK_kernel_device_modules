@@ -11,8 +11,10 @@
 #define DCXO_CW00			(0x788)
 #define DCXO_CW08			(0x79c)
 #define DCXO_CW09			(0x79e)
+#define DCXO_CW10			(0x7a4)
 #define DCXO_CW12			(0x7a8)
 #define DCXO_CW13			(0x7aa)
+#define DCXO_CW15			(0x7ae)
 #define DCXO_CW16			(0x7b0)
 #define DCXO_CW17			(0x7b2)
 #define DCXO_CW19			(0x7b6)
@@ -38,6 +40,7 @@
 #define DCXO_ADLDO_BIAS_ELR_1		(0x209e)
 
 /* Register_TOP_REG */
+#define NULL_ADDR					(0x0)
 #define PMRC_EN_ADDR			(PMRC_CON0)
 #define PMRC_EN_MASK			(0xFFFF)
 #define PMRC_EN_SHIFT			(0)
@@ -193,11 +196,17 @@ struct reg_t mt6359p_debug_regs[] = {
 	[2] =
 		DBG_REG(dcxo_cw09, DCXO_CW09, 0xFFFF, 0)
 	[3] =
-		DBG_REG(dcxo_cw12, DCXO_CW12, 0xFFFF, 0)
+		DBG_REG(dcxo_cw10, DCXO_CW10, 0xFFFF, 0)
 	[4] =
-		DBG_REG(dcxo_cw13, DCXO_CW13, 0xFFFF, 0)
+		DBG_REG(dcxo_cw12, DCXO_CW12, 0xFFFF, 0)
 	[5] =
+		DBG_REG(dcxo_cw13, DCXO_CW13, 0xFFFF, 0)
+	[6] =
+		DBG_REG(dcxo_cw15, DCXO_CW15, 0xFFFF, 0)
+	[7] =
 		DBG_REG(dcxo_cw19, DCXO_CW19, 0xFFFF, 0)
+	[8] =
+		DBG_REG(NULL, NULL_ADDR, 0x0, 0x0)
 };
 
 struct common_regs mt6359p_com_regs = {

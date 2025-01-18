@@ -1124,55 +1124,10 @@ int __dump_pmic_debug_regs(void *data, char *buf, int len)
 	}
 
 	/****BBLPM AUXOUT****/
-	ret = get_xo_auxout(pd, 0, &out, "bblpm");
-	if (ret)
-		return len;
-	if (!buf)
-		CLKBUF_DBG("bblpm auxout: <%2d>\n", out);
+	if (pd->lock)
+		ret = get_xo_auxout(pd, 0, &out, "bblpm");
 	else
-		len += snprintf(buf + len, PAGE_SIZE - len,
-				"bblpm auxout: <%2d>\n", out);
-
-	return len;
-}
-
-int __dump_pmic_debug_regs_lv1(void *data, char *buf, int len)
-{
-	struct plat_xodata *pd = (struct plat_xodata *)data;
-	struct clkbuf_hw hw = pd->hw;
-	struct reg_t *reg_p = NULL;
-	int ret = 0;
-	int i;
-	u32 out;
-
-	reg_p = pd->debug_regs;
-	if (!reg_p) {
-		CLKBUF_DBG("read rep_p failed\n");
-		return len;
-	}
-
-	for (i = 0; strcmp((*reg_p).name, "NULL"); i++, reg_p++) {
-		//spin lock
-		ret = pmic_read(&hw, reg_p, &out);
-		//unlock
-		if (ret) {
-			CLKBUF_DBG("read debug_regs[%d] failed\n", i);
-			break;
-		}
-
-		if (!buf)
-			CLKBUF_DBG(
-				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
-				(*reg_p).name, (*reg_p).ofs, out);
-		else
-			len += snprintf(
-				buf + len, PAGE_SIZE - len,
-				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
-				(*reg_p).name, (*reg_p).ofs, out);
-	}
-
-	/****BBLPM AUXOUT****/
-	ret = get_xo_auxout_lv1(pd, 0, &out, "bblpm");
+		ret = get_xo_auxout_lv1(pd, 0, &out, "bblpm");
 	if (ret)
 		return len;
 	if (!buf)
@@ -1203,7 +1158,7 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 
 static struct clkbuf_operation clkbuf_ops_lv1 = {
 	.get_pmrcen = __get_pmrcen_lv1,
-	.dump_pmic_debug_regs = __dump_pmic_debug_regs_lv1,
+	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
 	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_lv1,
 	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_lv1,
 };
@@ -1224,7 +1179,7 @@ static struct clkbuf_hdlr pmic_hdlr_lv1 = {
 	.data = &mt6358_data,
 };
 
-static struct clkbuf_hdlr pmic_hdlr_lv3 = {
+static struct clkbuf_hdlr pmic_hdlr_lv2 = {
 	.ops = &clkbuf_ops_lv1,
 	.data = &mt6359p_data,
 };
@@ -1247,9 +1202,9 @@ static struct match_pmic mt6685_tb_match_pmic = {
 	.init = &pmic_init_v1,
 };
 
-static struct match_pmic mt6885_match_pmic = {
+static struct match_pmic mt6359p_match_pmic = {
 	.name = "mediatek,mt6359p-clkbuf",
-	.hdlr = &pmic_hdlr_lv3,
+	.hdlr = &pmic_hdlr_lv2,
 	.init = &pmic_init_lv1,
 };
 
@@ -1257,7 +1212,7 @@ static struct match_pmic *matches_pmic[] = {
 	&mt6358_match_pmic,
 	&mt6685_match_pmic,
 	&mt6685_tb_match_pmic,
-	&mt6885_match_pmic,
+	&mt6359p_match_pmic,
 	NULL,
 };
 
