@@ -6004,6 +6004,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			default-glb-pwroff-timeout-us = <10>;
 			autosuspend-delay-ms = <10>;
 			adaptive-power-policy = <2>;
+			exception-mask = <0x5>;
 		};
 
 		gpu_mali_opp: opp-table0 {
