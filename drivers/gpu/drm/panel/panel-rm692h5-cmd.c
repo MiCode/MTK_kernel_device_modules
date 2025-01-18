@@ -176,11 +176,11 @@ static int get_mode_enum(struct drm_display_mode *m)
 
 	m_vrefresh = drm_mode_vrefresh(m);
 	if (m_vrefresh == 120)
-		ret = FHD_120;
+		ret = FHD_120_360TE;
 	else if (m_vrefresh == 60)
-		ret = FHD_60;
+		ret = FHD_60_360TE;
 	else if (m_vrefresh == 90)
-		ret = FHD_90;
+		ret = FHD_90_360TE;
 	else if (m_vrefresh == 72)
 		ret = FHD_72_360TE;
 	else
@@ -229,7 +229,7 @@ static int lcm_panel_power_enable(struct lcm *ctx)
 	gpiod_set_value(ctx->reset_gpio, 0);
 	usleep_range(2000, 2100);
 	gpiod_set_value(ctx->reset_gpio, 1);
-	usleep_range(12000, 12100);
+	usleep_range(40000, 40100);
 
 	return ret;
 }
@@ -278,7 +278,7 @@ static void lcm_panel_init(struct lcm *ctx)
 		push_table(ctx, cmd_set_fps_120hz, ARRAY_SIZE(cmd_set_fps_120hz), 0);
 		break;
 	default:
-		push_table(ctx, cmd_set_fps_120hz, ARRAY_SIZE(cmd_set_fps_120hz), 0);
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
 	}
 }
@@ -1270,6 +1270,7 @@ static const struct drm_panel_funcs lcm_drm_funcs = {
 	.get_modes = lcm_get_modes,
 };
 
+#ifdef IF_ZERO
 u32 read_lcm_id_form_cmdline(void)
 {
 	struct device_node *chosen_node;
@@ -1292,9 +1293,11 @@ u32 read_lcm_id_form_cmdline(void)
 
 	return false;
 }
+#endif
 
 static u32 lcm_dvt_version_get(struct lcm *ctx)
 {
+#ifdef IF_ZERO
 	u32 id1 = 0;
 	u32 id3 = 0;
 	u32 lcm_id = read_lcm_id_form_cmdline();
@@ -1310,6 +1313,10 @@ static u32 lcm_dvt_version_get(struct lcm *ctx)
 			ctx->dvv = DV3;
 	}
 	pr_info("%s: lcm_id = %#x, dv = %#x\n", __func__, lcm_id, ctx->dvv);
+#else
+	ctx->dvv = DV3;
+	pr_info("%s: lcm_id = %#x, dv = %#x\n", __func__, 0, ctx->dvv);
+#endif
 
 	return ctx->dvv;
 }
