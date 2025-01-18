@@ -73,6 +73,7 @@ enum mdw_mem_ioctl_op {
 	MDW_MEM_IOCTL_UNMAP,
 	MDW_MEM_IOCTL_FLUSH,
 	MDW_MEM_IOCTL_INVALIDATE,
+	MDW_MEM_IOCTL_ALLOC_FB,
 };
 
 enum mdw_mem_flag {
@@ -132,6 +133,13 @@ struct mdw_mem_in {
 			uint32_t offset;
 			uint32_t size;
 		} invalidate;
+
+		/* alloc DRAM fallback */
+		struct {
+			uint32_t total_vlm_size;
+			uint32_t num_subcmds;
+			uint64_t reserved;
+		} alloc_fb;
 	};
 };
 

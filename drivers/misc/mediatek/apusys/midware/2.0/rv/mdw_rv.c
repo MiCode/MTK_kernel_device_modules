@@ -193,5 +193,5 @@ void mdw_rv_set_func(struct mdw_device *mdev)
 	mdw_rv_pb_init(mdev);
 
 	mdev->dev_funcs = &mdw_rv_func;
-	mdev->uapi_ver = 4;
+	mdev->uapi_ver = 5;
 }
