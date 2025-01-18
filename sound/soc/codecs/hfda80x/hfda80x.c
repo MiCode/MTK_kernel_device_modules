@@ -2,7 +2,7 @@
 /*
  * hfda80x.c  --  driver for HFDA80x codec
  *
- * Copyright(C) 2023  STMicroelectronics Ltd
+ * Copyright(C) 2023  STMicroelectronics Inc.
  * Author:
  */
 
@@ -85,8 +85,7 @@ static int hfda80x_init_registers(struct hfda80x_priv *hfda80x)
 		// first setup programmed - read to work, IB23[0]=1
 		ret = regmap_update_bits(hfda80x->regmap, HFDA801_IB23, 0x01, 0x01);
 		if (ret) {
-			dev_info(hfda80x->dev, "%s, first setup programmed setting failed,
-				ret:%d\n", __func__, ret);
+			dev_info(hfda80x->dev, "%s, first setup programmed setting failed, ret:%d\n", __func__, ret);
 			return ret;
 		}
 
@@ -99,13 +98,12 @@ static int hfda80x_init_registers(struct hfda80x_priv *hfda80x)
 		// first setup programmed - read to work, IB14[0]=1
 		ret = regmap_update_bits(hfda80x->regmap, HFDA803_IB14, 0x01, 0x01);
 		if (ret) {
-			dev_info(hfda80x->dev, "%s, first setup programmed setting failed,
-				ret:%d\n", __func__, ret);
+			dev_info(hfda80x->dev, "%s, first setup programmed setting failed, ret:%d\n", __func__, ret);
 			return ret;
 		}
 		break;
 	}
-
+	dev_info(hfda80x->dev, "%s done, type:%d\n", __func__, hfda80x->type);
 	return 0;
 }
 
@@ -139,7 +137,7 @@ static int hfda80x_i2c_probe(struct i2c_client *i2c)
 	hfda80x->type = id->driver_data;
 	hfda80x->dev = &i2c->dev;
 
-	dev_info(&i2c->dev, "%s, hfda80x->type:%d\n", __func__, hfda80x->type);
+	dev_info(&i2c->dev, "%s, type:%d, addr: 0x%x\n", __func__, hfda80x->type, i2c->addr);
 
 	switch (hfda80x->type) {
 	case HFDA801:
@@ -153,14 +151,14 @@ static int hfda80x_i2c_probe(struct i2c_client *i2c)
 		break;
 	}
 
-	hfda80x->mute_gpio = devm_gpiod_get_optional(&i2c->dev, "mute", GPIOD_OUT_LOW);
+	hfda80x->mute_gpio = devm_gpiod_get_optional(&i2c->dev, "st,mute", GPIOD_OUT_LOW);
 	if (IS_ERR(hfda80x->mute_gpio)) {
 		ret = PTR_ERR(hfda80x->mute_gpio);
 		dev_info(&i2c->dev, "Failed to get mute gpio: %d\n", ret);
 		goto err;
 	}
 
-	hfda80x->enable_gpio = devm_gpiod_get_optional(&i2c->dev, "enable", GPIOD_OUT_HIGH);
+	hfda80x->enable_gpio = devm_gpiod_get_optional(&i2c->dev, "st,enable", GPIOD_OUT_HIGH);
 	if (IS_ERR(hfda80x->enable_gpio)) {
 		ret = PTR_ERR(hfda80x->enable_gpio);
 		dev_info(&i2c->dev, "Failed to get enable gpio: %d\n", ret);
@@ -184,7 +182,7 @@ static int hfda80x_i2c_probe(struct i2c_client *i2c)
 	ret = hfda80x_init_registers(hfda80x);
 
 	if (hfda80x->mute_gpio)
-		gpiod_set_value(hfda80x->mute_gpio, 1);
+		gpiod_set_value(hfda80x->mute_gpio, 0);
 
 err:
 	return ret;
@@ -194,8 +192,7 @@ static void hfda80x_i2c_remove(struct i2c_client *client)
 {
 	struct hfda80x_priv *hfda80x = i2c_get_clientdata(client);
 
-	gpiod_set_value(hfda80x->mute_gpio, 0);
-
+	gpiod_set_value(hfda80x->mute_gpio, 1);
 	gpiod_set_value(hfda80x->enable_gpio, 1);
 }
 
@@ -226,6 +223,5 @@ static struct i2c_driver hfda80x_i2c_driver = {
 };
 module_i2c_driver(hfda80x_i2c_driver);
 
-MODULE_DESCRIPTION("AKM ASoC HFDA80X driver");
-MODULE_AUTHOR("mtk <garry.zhang@mediatek.com>");
+MODULE_DESCRIPTION("STMicroelectronics FDA80X driver");
 MODULE_LICENSE("GPL");
