@@ -2090,6 +2090,10 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	CCCI_DEBUG_LOG(0, TAG,
 		"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
 
+	if (md_cd_plat_val_ptr.md_gen == 6293) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] skip dummy clk enable for md gen93\n");
+		return 0;
+	}
 	/* used to match mtcmos ref count for symmetrical on-off */
 #if (IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY))
 	ret = clk_prepare_enable(clk_table[0].clk_ref);
