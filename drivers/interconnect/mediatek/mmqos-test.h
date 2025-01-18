@@ -8,12 +8,7 @@
 
 #include "mmqos-vcp.h"
 
-#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 void mmqos_kernel_test(u32 test_id);
-#else
-inline void mmqos_kernel_test(u32 test_id)
-{	return; }
-#endif /* CONFIG_MTK_MMQOS_VCP*/
 
 enum mmqos_test_id {
 	TEST_CHNN_BW_DISP_BY_LARB = VCP_TEST_NUM,	//100
@@ -22,4 +17,4 @@ enum mmqos_test_id {
 };
 
 
-#endif /* MMQOS_VCP_H */
+#endif /* MMQOS_TEST_H */

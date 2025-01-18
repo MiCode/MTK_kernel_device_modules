@@ -1451,7 +1451,10 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct larb_node *larb_node;
 	struct larb_port_node *larb_port_node;
 	struct mtk_iommu_data *smi_imu;
-	int i, j, id, num_larbs = 0, ret, ddr_type, max_freq, chn_cnt;
+	int i, j, id, num_larbs = 0, ret, ddr_type;
+#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
+	int max_freq, chn_cnt;
+#endif
 	const struct mtk_mmqos_desc *mmqos_desc;
 	const struct mtk_node_desc *node_desc;
 	struct device *larb_dev;
