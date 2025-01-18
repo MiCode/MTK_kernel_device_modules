@@ -12,7 +12,7 @@
 #define EN_ISR_LOG		(0)
 #define EEMG_BANK_SOC		(0) /* use voltage bin, so disable it */
 #define EARLY_PORTING		(0)
-#define DUMP_DATA_TO_DE		(1)
+#define DUMP_DATA_TO_DE		(0)
 #define EEMG_ENABLE		(1) /* enable; after pass HPT mini-SQC */
 #define EEMG_FAKE_EFUSE		(0)
 
