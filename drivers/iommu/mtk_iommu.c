@@ -3623,7 +3623,7 @@ static const struct mtk_iommu_plat_data mt6877_data_iommu0 = {
 
 static const struct mtk_iommu_plat_data mt6877_data_iommu1 = {
 	.m4u_plat = M4U_MT6877,
-	.flags         = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE,
+	.flags         = IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE | LINK_WITH_APU,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= APU_IOMMU,
 	.iommu_type     = APU_IOMMU,
