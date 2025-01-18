@@ -1123,9 +1123,6 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 		ret = clk_prepare_enable(sys->clk_sys_26m);
 		if (ret)
 			mml_err("%s clk_sys_26m fail %d", __func__, ret);
-
-		/* default set to hw mode */
-		mml_dpc_mtcmos_auto(comp->sysid, true);
 	}
 
 	return ret;
