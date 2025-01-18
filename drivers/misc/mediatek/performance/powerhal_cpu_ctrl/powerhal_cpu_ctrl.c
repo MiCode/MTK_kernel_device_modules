@@ -68,6 +68,7 @@ static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 #define CLUSTER_MAX 10
+#define CORE_MAX 8
 
 typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
 int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
@@ -98,8 +99,11 @@ static DEFINE_MUTEX(boost_lock);
 static DEFINE_MUTEX(cpu_boost_lock);
 static DEFINE_MUTEX(cpu_ctrl_lock);
 static struct _cpufreq freq_to_set[CLUSTER_MAX];
+static struct _cpufreq core_freq_to_set[CORE_MAX];
 struct freq_qos_request *freq_min_request;
 struct freq_qos_request *freq_max_request;
+int cpu_mapping_policy[CORE_MAX];
+int cpu_mapping_cluster[CORE_MAX];
 
 // ADPF
 #define ADPF_MAX_SESSION 64
@@ -372,8 +376,8 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 		struct file *filp, const char *ubuf,
 		size_t cnt, loff_t *_data)
 {
-	int i = 0, data;
-	unsigned int arg_num = policy_num * 2;
+	int i = 0, cpu, data;
+	unsigned int arg_num = 3;
 	char *tok, *tmp;
 	char *buf = perfmgr_copy_from_user_for_proc(ubuf, cnt);
 	//int ret = 0;
@@ -387,6 +391,11 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 
 	tmp = buf;
 	while ((tok = strsep(&tmp, " ")) != NULL) {
+		if (cpu >= CORE_MAX) {
+			pr_debug("@%s: cpu number error: %d\n", __func__, i);
+			goto out;
+		}
+
 		if (i == arg_num) {
 			pr_debug("@%s: number of arguments > %d\n", __func__, arg_num);
 			goto out;
@@ -396,10 +405,12 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 			pr_debug("@%s: invalid input: %s\n", __func__, tok);
 			goto out;
 		} else {
-			if (i % 2) /* max */
-				freq_to_set[i/2].max = data;
-			else /* min */
-				freq_to_set[i/2].min = data;
+			if (i == 0)
+				cpu = data;
+			else if (i == 1) /* min */
+				core_freq_to_set[cpu].min = data;
+			else /* max */
+				core_freq_to_set[cpu].max = data;
 			i++;
 		}
 	}
@@ -407,23 +418,20 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 	if (i < arg_num) {
 		pr_info("@%s: number of arguments %d < %d\n", __func__, i, arg_num);
 	} else {
-		for (i = 0; i < policy_num; i++) {
-			if ((update_userlimit_cpufreq_max(i, freq_to_set[i].max) < 0) ||
-					(update_userlimit_cpufreq_min(i, freq_to_set[i].min) < 0)) {
-				pr_info("update cpufreq failed.");
-				update_failed = 1;
-			}
+		if ((update_userlimit_cpufreq_max(cpu_mapping_policy[cpu], core_freq_to_set[cpu].max) < 0) ||
+		(update_userlimit_cpufreq_min(cpu_mapping_policy[cpu], core_freq_to_set[cpu].min) < 0)) {
+			pr_info("update cpufreq failed.");
+			update_failed = 1;
 		}
+
 
 		if (sf_hint_low_power_enabled) {
 			isBooting = 0;
 
-			for (i = 0; i < policy_num; i++) {
-				if (opp_count[i] <= 0)
-					continue;
-				if (freq_to_set[i].min > opp_table[i][opp_count[i]-1])
-					isBooting = 1;
-			}
+			if (opp_count[cpu] <= 0)
+				goto out;
+			if (core_freq_to_set[cpu].min > opp_table[cpu][opp_count[cpu]-1])
+				isBooting = 1;
 
 			if (isBooting)
 				notify_cpu_is_boost(1);
@@ -451,9 +459,9 @@ static ssize_t perfmgr_perfserv_freq_proc_show(struct file *file,
 	if (*ppos != 0)
 		goto out;
 
-	for (i = 0; i < policy_num; i++) {
-		if(scnprintf(_buf, 64, "%d %d ", freq_to_set[i].min,
-			freq_to_set[i].max) != strlen(_buf))
+	for (i = 0; i < CORE_MAX; i++) {
+		if(scnprintf(_buf, 64, "%d %d ", core_freq_to_set[i].min,
+			core_freq_to_set[i].max) != strlen(_buf))
 			return -EINVAL;
 		strncat(buffer, _buf, strlen(_buf));
 	}
@@ -465,7 +473,6 @@ out:
 
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
-
 
 static ssize_t perfmgr_sf_hint_low_power_enabled_proc_write(
 		struct file *filp, const char *ubuf,
@@ -1006,6 +1013,14 @@ static int __init powerhal_cpu_ctrl_init(void)
 			pr_info("%s, policy[%d]: first:%d, min:%d, max:%d",
 				__func__, cpu_num, cpu, policy->min, policy->max);
 
+			// mapping policy to cpu
+			for(i=cpu; i<=cpumask_last(policy->related_cpus); i++) {
+				pr_info("%s, cpu[%d]: policy: %d",
+					__func__, i, cpu_num);
+				cpu_mapping_policy[i] = cpu_num;
+				cpu_mapping_cluster[i] = topology_cluster_id(cpu);
+			}
+
 			cpu_num++;
 			cpu = cpumask_last(policy->related_cpus);
 			cpufreq_cpu_put(policy);
@@ -1029,6 +1044,11 @@ static int __init powerhal_cpu_ctrl_init(void)
 	for (i = 0; i < policy_num; i++) {
 		freq_to_set[i].min = 0;
 		freq_to_set[i].max = cpu_opp_tbl[i][0];
+	}
+
+	for (i = 0; i < CORE_MAX; i++) {
+		core_freq_to_set[i].min = 0;
+		core_freq_to_set[i].max = cpu_opp_tbl[cpu_mapping_policy[i]][0];
 	}
 
 	freq_min_request = kcalloc(policy_num, sizeof(struct freq_qos_request), GFP_KERNEL);
