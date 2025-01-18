@@ -412,8 +412,9 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, ".\n");
 }
 
-static void mtk_btag_seq_debug_show_ringtrace(char **buff, unsigned long *size,
-	struct seq_file *seq, struct mtk_blocktag *btag)
+static void mtk_btag_seq_debug_show_ringtrace(struct mtk_blocktag *btag,
+					      char **buff, unsigned long *size,
+					      struct seq_file *seq)
 {
 	struct mtk_btag_ringtrace *rt = BTAG_RT(btag);
 	unsigned long flags;
@@ -439,8 +440,9 @@ static void mtk_btag_seq_debug_show_ringtrace(char **buff, unsigned long *size,
 	spin_unlock_irqrestore(&rt->lock, flags);
 }
 
-static size_t mtk_btag_seq_sub_show_usedmem(char **buff, unsigned long *size,
-	struct seq_file *seq, struct mtk_blocktag *btag)
+static size_t mtk_btag_seq_sub_show_usedmem(struct mtk_blocktag *btag,
+					    char **buff, unsigned long *size,
+					    struct seq_file *seq)
 {
 	size_t used_mem = 0;
 	size_t size_l;
@@ -523,12 +525,12 @@ static int mtk_btag_seq_sub_show(struct seq_file *seq, void *v)
 	struct mtk_blocktag *btag = seq->private;
 
 	if (btag) {
-		mtk_btag_seq_debug_show_ringtrace(NULL, NULL, seq, btag);
+		mtk_btag_seq_debug_show_ringtrace(btag, NULL, NULL, seq);
 		if (btag->vops->seq_show) {
 			seq_printf(seq, "<%s: context info>\n", btag->name);
-			btag->vops->seq_show(NULL, NULL, seq);
+			btag->vops->seq_show(btag, NULL, NULL, seq);
 		}
-		mtk_btag_seq_sub_show_usedmem(NULL, NULL, seq, btag);
+		mtk_btag_seq_sub_show_usedmem(btag, NULL, NULL, seq);
 	}
 	return 0;
 }
@@ -574,7 +576,7 @@ static ssize_t mtk_btag_sub_write(struct file *file, const char __user *ubuf,
 
 	btag = seq->private;
 	if (btag->vops->sub_write)
-		return btag->vops->sub_write(ubuf, count);
+		return btag->vops->sub_write(btag, ubuf, count);
 	mtk_btag_clear_trace(&btag->rt);
 
 	return count;
@@ -597,7 +599,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, "[Trace]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
-		mtk_btag_seq_debug_show_ringtrace(buff, size, seq, btag);
+		mtk_btag_seq_debug_show_ringtrace(btag, buff, size, seq);
 	rcu_read_unlock();
 
 	BTAG_PRINTF(buff, size, seq, "[Info]\n");
@@ -606,7 +608,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 		if (btag->vops->seq_show) {
 			BTAG_PRINTF(buff, size, seq, "<%s: context info>\n",
 				    btag->name);
-			btag->vops->seq_show(buff, size, seq);
+			btag->vops->seq_show(btag, buff, size, seq);
 		}
 	rcu_read_unlock();
 
@@ -630,8 +632,8 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, "[Memory Usage]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
-		used_mem += mtk_btag_seq_sub_show_usedmem(buff, size,
-				seq, btag);
+		used_mem += mtk_btag_seq_sub_show_usedmem(btag, buff, size,
+							  seq);
 	rcu_read_unlock();
 
 	BTAG_PRINTF(buff, size, seq, "<blocktag core>\n");
@@ -716,17 +718,17 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 	unsigned long flags;
 
 	if (!name || !ringtrace_count || !ctx_size || !ctx_count)
-		return NULL;
+		return ERR_PTR(-EINVAL);
 
 	btag = mtk_btag_find_by_type(storage_type);
 	if (btag) {
 		pr_notice("blocktag %s already exists\n", name);
-		return NULL;
+		return ERR_PTR(-EEXIST);
 	}
 
 	btag = kmalloc(sizeof(struct mtk_blocktag), GFP_NOFS);
 	if (!btag)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	memset(btag, 0, sizeof(struct mtk_blocktag));
 
@@ -738,7 +740,7 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 		sizeof(struct mtk_btag_trace), GFP_NOFS);
 	if (!btag->rt.trace) {
 		kfree(btag);
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 	}
 	strncpy(btag->name, name, BTAG_NAME_LEN - 1);
 	btag->storage_type = storage_type;
@@ -750,7 +752,7 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 	if (!btag->ctx.priv) {
 		kfree(btag->rt.trace);
 		kfree(btag);
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 	}
 
 	/* vops */

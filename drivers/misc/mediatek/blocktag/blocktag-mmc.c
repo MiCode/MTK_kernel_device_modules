@@ -381,11 +381,12 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask)
 }
 EXPORT_SYMBOL_GPL(mmc_mtk_biolog_check);
 
-static size_t mmc_mtk_bio_seq_debug_show_info(char **buff, unsigned long *size,
-	struct seq_file *seq)
+static size_t mmc_mtk_bio_seq_debug_show_info(struct mtk_blocktag *btag,
+					      char **buff, unsigned long *size,
+					      struct seq_file *seq)
 {
 	int i;
-	struct mmc_mtk_bio_context *ctx = BTAG_CTX(mmc_mtk_btag);
+	struct mmc_mtk_bio_context *ctx = BTAG_CTX(btag);
 
 	if (!ctx)
 		return 0;
@@ -456,11 +457,14 @@ int mmc_mtk_biolog_init(struct mmc_host *mmc)
 				MMC_BIOLOG_CONTEXTS,
 				&mmc_mtk_btag_vops);
 
-	if (btag) {
-		mmc_mtk_btag = btag;
-		ctx = BTAG_CTX(mmc_mtk_btag);
-		mmc_mtk_bio_init_ctx(ctx);
+	if (IS_ERR_OR_NULL(btag)) {
+		pr_notice("%s: btag alloc fail %ld\n", __func__, PTR_ERR(btag));
+		return PTR_ERR(btag);
 	}
+
+	mmc_mtk_btag = btag;
+	ctx = BTAG_CTX(mmc_mtk_btag);
+	mmc_mtk_bio_init_ctx(ctx);
 
 	return 0;
 }
