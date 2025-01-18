@@ -344,7 +344,6 @@ static int rl_l2q_enable;
 static int rl_l2q_exp_us;
 static int rl_l2q_exp_times;
 static int user_vsync_fpks;
-static unsigned long long fps_drop_time;
 static int powerRL_enable;
 static int powerRL_FPS_margin;
 static int powerRL_current_unit;
@@ -3063,12 +3062,6 @@ static int fbt_check_to_jerk(
 	return FPSGO_JERK_POSTPONE;
 }
 
-unsigned long long fps_drop_hint_for_task_turbo(void)
-{
-	return fps_drop_time;
-}
-EXPORT_SYMBOL(fps_drop_hint_for_task_turbo);
-
 static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 			int blc_wt_m, int boost_group, int jerk)
 {
@@ -3088,7 +3081,6 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 		fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
 			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, 0, jerk);
 	}
-	fps_drop_time = ktime_to_ms(ktime_get());
 
 	cb_mask = 1 << GET_FPSGO_JERK_BOOST;
 	fpsgo_notify_frame_info_callback(cb_mask, thr);
