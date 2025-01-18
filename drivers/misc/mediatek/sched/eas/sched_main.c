@@ -981,8 +981,8 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register trace_android_rvh_cpu_overutilized failed\n");
 
 
-	//ret = register_trace_android_rvh_tick_entry(
-	//		mtk_tick_entry, NULL);
+	ret = register_trace_android_rvh_tick_entry(
+			mtk_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
 
