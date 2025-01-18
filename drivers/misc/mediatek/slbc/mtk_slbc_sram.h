@@ -78,6 +78,8 @@
 #define SLBC_DEBUG_14                   0xB8
 #define SLBC_DEBUG_15                   0xBC
 #define SLBC_UID_USED2                  0xC0
+#define SLBC_SCMI_RET4                  0xC4
+#define SLBC_SCMI_RET_VAL               0xC8
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)
