@@ -1091,6 +1091,11 @@ static int mt6991_scpsys_mmpc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
 		return ret;
 	}
+	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_DISP_VCORE]);
+	if (ret && IS_ENABLED(CONFIG_PM)) {
+		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
+		return ret;
+	}
 	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_CSI_BS_RX]);
 	if (ret && IS_ENABLED(CONFIG_PM)) {
 		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
