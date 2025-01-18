@@ -65,22 +65,39 @@ void set_top_grp_aware(int val, int force_ctrl)
 	char sym[KSYM_SYMBOL_LEN];
 
 	mutex_lock(&ta_ctrl_mutex);
-	/* force control, reset refcnt */
-	if (force_ctrl)
-		top_grp_ctrl_refcnt = 0;
+	/* force control enable/disable */
+	if (force_ctrl == 1) {
+		if (val == -1)
+			top_app_force_ctrl = 0;
+		else
+			top_app_force_ctrl = 1;
+	} else {
+		/* normal control enable/disable */
+		if (val)
+			++top_grp_ctrl_refcnt;
+		else
+			--top_grp_ctrl_refcnt;
+	}
 
-	if (val)
-		++top_grp_ctrl_refcnt;
-	else
-		--top_grp_ctrl_refcnt;
-
-	/* if refcnt >0 , force on flt, else follow of setting*/
-	if (top_grp_ctrl_refcnt > 0) {
-		flt_set_grp_ctrl(1);
-		top_grp_aware = 1;
-	} else if (top_grp_ctrl_refcnt <= 0) {
-		flt_set_grp_ctrl(0);
-		top_grp_aware = 0;
+	if (top_app_force_ctrl == 1) {
+		if (val == 1) {
+			flt_set_grp_ctrl(1);
+			top_grp_aware = 1;
+		} else if (val == 0) {
+			flt_set_grp_ctrl(0);
+			top_grp_aware = 0;
+			reset_grp_awr_margin();
+		}
+	} else if (top_app_force_ctrl == 0) {
+		/* if refcnt >0 , force on flt, else follow of setting*/
+		if (top_grp_ctrl_refcnt > 0) {
+			flt_set_grp_ctrl(1);
+			top_grp_aware = 1;
+		} else {
+			flt_set_grp_ctrl(0);
+			top_grp_aware = 0;
+			reset_grp_awr_margin();
+		}
 	}
 	if (trace_sugov_ext_ta_ctrl_enabled())
 		trace_sugov_ext_ta_ctrl(val, force_ctrl, top_grp_ctrl_refcnt, top_grp_aware);
@@ -116,7 +133,13 @@ void set_grp_awr_thr(int gear_id, int group_id, int freq)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
-			ps = pd_get_freq_ps(0, cpu_idx, freq, &opp);
+			if (freq == -1) {
+				converge_thr_cap[cpu_idx][group_id] = (cap_max[cpu_idx] * 64) / 100;
+				pd_get_util_ps_legacy(0, cpu_idx,
+							converge_thr_cap[cpu_idx][group_id], &opp);
+			} else
+				opp = pd_get_freq_opp_legacy_type(0, cpu_idx, freq);
+			ps = pd_get_opp_ps(0, cpu_idx, opp, true);
 			converge_thr_cap[cpu_idx][group_id] = ps->capacity;
 			converge_thr_freq[cpu_idx][group_id] = ps->freq;
 		}
@@ -126,7 +149,7 @@ int get_grp_awr_thr(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false || gear_id == -1)
+	if (grp_awr_init_finished == false)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -138,7 +161,7 @@ int get_grp_awr_thr_freq(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false || gear_id == -1)
+	if (grp_awr_init_finished == false)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -154,8 +177,17 @@ void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val)
 	if (grp_awr_init_finished == false || gear_id == -1)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
-		if (map_cpu_ger[cpu_idx] == gear_id)
-			margin_for_min_opp[cpu_idx][group_id] = val;
+		if (map_cpu_ger[cpu_idx] == gear_id) {
+			if (val == -1) {
+				if (cap_max[cpu_idx] == SCHED_CAPACITY_SCALE)
+					margin_for_min_opp[cpu_idx][group_id] =
+						SCHED_CAPACITY_SCALE;
+				else
+					margin_for_min_opp[cpu_idx][group_id] =
+						SCHED_CAPACITY_SCALE + (SCHED_CAPACITY_SCALE >> 2);
+			} else
+				margin_for_min_opp[cpu_idx][group_id] = val;
+		}
 }
 EXPORT_SYMBOL(set_grp_awr_min_opp_margin);
 
@@ -163,7 +195,7 @@ int get_grp_awr_min_opp_margin(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false || gear_id == -1)
+	if (grp_awr_init_finished == false)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -171,6 +203,26 @@ int get_grp_awr_min_opp_margin(int gear_id, int group_id)
 	return 0;
 }
 EXPORT_SYMBOL(get_grp_awr_min_opp_margin);
+
+int reset_grp_awr_margin(void)
+{
+	int cpu_idx, grp_idx, tmp = -1;
+
+
+	if (grp_awr_init_finished == false)
+		return -1;
+	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+		if (tmp == map_cpu_ger[cpu_idx])
+			continue;
+		tmp = map_cpu_ger[cpu_idx];
+		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
+			set_grp_awr_thr(map_cpu_ger[cpu_idx], grp_idx, -1);
+			set_grp_awr_min_opp_margin(map_cpu_ger[cpu_idx], grp_idx, -1);
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL(reset_grp_awr_margin);
 
 void grp_awr_update_grp_awr_util(void)
 {
@@ -341,7 +393,7 @@ EXPORT_SYMBOL(set_group_active_ratio_cap);
 
 int grp_awr_init(void)
 {
-	int cpu_idx, grp_idx, opp;
+	int cpu_idx, grp_idx;
 	struct mtk_em_perf_state *ps;
 
 	pr_info("group aware init\n");
@@ -402,19 +454,6 @@ int grp_awr_init(void)
 		cap_max[cpu_idx] = ps->capacity;
 		ps = pd_get_opp_ps(0, cpu_idx, INT_MAX, true);
 		cap_min[cpu_idx] = ps->capacity;
-		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
-			if (cap_max[cpu_idx] == SCHED_CAPACITY_SCALE)
-				margin_for_min_opp[cpu_idx][grp_idx] = SCHED_CAPACITY_SCALE;
-			else
-				margin_for_min_opp[cpu_idx][grp_idx] =
-					SCHED_CAPACITY_SCALE + (SCHED_CAPACITY_SCALE >> 2);
-			converge_thr_cap[cpu_idx][grp_idx] = (cap_max[cpu_idx] * 64) / 100;
-			pd_get_util_ps_legacy(0, cpu_idx,
-						converge_thr_cap[cpu_idx][grp_idx], &opp);
-			ps = pd_get_opp_ps(0, cpu_idx, opp, true);
-			converge_thr_freq[cpu_idx][grp_idx] = ps->freq;
-			converge_thr_cap[cpu_idx][grp_idx] = ps->capacity;
-		}
 	}
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
@@ -423,6 +462,7 @@ int grp_awr_init(void)
 	sugov_grp_awr_update_cpu_tar_util_hook = grp_awr_update_cpu_tar_util;
 
 	grp_awr_init_finished = true;
+	reset_grp_awr_margin();
 	return 0;
 }
 #endif
