@@ -38,5 +38,6 @@ void mbraink_power_suspend_prepare(void);
 
 void mbraink_power_post_suspend(void);
 
+int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo);
 
 #endif /*end of MBRAINK_POWER_H*/

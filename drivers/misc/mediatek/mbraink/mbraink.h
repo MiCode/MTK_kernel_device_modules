@@ -52,6 +52,7 @@
 #define OPERATION_MODE_INFO		'y'
 #define GNSS_LP_INFO			'z'
 #define GNSS_MCU_INFO			'A'
+#define MMDVFS_INFO				'B'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -131,6 +132,8 @@
 					struct mbraink_gnss2mbr_lp_data*)
 #define RO_GNSS_MCU		_IOR(IOC_MAGIC, GNSS_MCU_INFO, \
 					struct mbraink_gnss2mbr_mcu_data*)
+#define RO_MMDVFS_INFO	_IOR(IOC_MAGIC, MMDVFS_INFO, \
+						struct mbraink_mmdvfs_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

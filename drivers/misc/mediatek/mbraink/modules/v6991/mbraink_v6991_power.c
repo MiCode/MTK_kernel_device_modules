@@ -9,6 +9,7 @@
 #include <linux/sched/clock.h>
 #include <linux/regulator/consumer.h>
 
+#include <mtk-mmdvfs-debug.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_power.h"
 
@@ -756,6 +757,38 @@ static void mbraink_v6991_power_post_suspend(void)
 	mbraink_sys_res_plat_update();
 }
 
+static int mbraink_v6991_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
+{
+	unsigned int mmdvfs_data_size = 0;
+	int ret = 0;
+	struct mmdvfs_res_mbrain_debug_ops *res_mbrain_debug_ops = NULL;
+
+	if (mmdvfsInfo == NULL)
+		return -1;
+
+	res_mbrain_debug_ops = get_mmdvfs_mbrain_dbg_ops();
+
+	if (res_mbrain_debug_ops &&
+		res_mbrain_debug_ops->get_length &&
+		res_mbrain_debug_ops->get_data) {
+
+		mmdvfs_data_size = res_mbrain_debug_ops->get_length();
+		if (mmdvfs_data_size <= MMDVFS_TOTAL_SZ) {
+			mmdvfsInfo->size = mmdvfs_data_size;
+			ret = res_mbrain_debug_ops->get_data(mmdvfsInfo->mmdvfs_data, mmdvfsInfo->size);
+			pr_info("mmdvfs opp, size: %d", mmdvfsInfo->size);
+		} else {
+			pr_info("incorrect size: %d for mmdvfs opp", mmdvfsInfo->size);
+			ret = -1;
+		}
+	} else {
+		pr_info("failed to get mmdvfs opp");
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -771,6 +804,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getPmicVoltageInfo = mbraink_v6991_power_get_pmic_voltage_info,
 	.suspendprepare = mbraink_v6991_power_suspend_prepare,
 	.postsuspend = mbraink_v6991_power_post_suspend,
+	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
 };
 
 int mbraink_v6991_power_init(void)

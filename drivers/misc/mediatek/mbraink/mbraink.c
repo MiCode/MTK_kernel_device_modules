@@ -314,6 +314,29 @@ static long handlePmicVoltageInfo(unsigned long arg)
 	return ret;
 }
 
+static long handleMmdvfsInfo(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_mmdvfs_info mmdvfsInfo;
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(&mmdvfsInfo,
+			0,
+			sizeof(struct mbraink_mmdvfs_info));
+
+	ret = mbraink_power_get_mmdvfs_info(&mmdvfsInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_mmdvfs_info *)arg,
+						&mmdvfsInfo,
+						sizeof(mmdvfsInfo))) {
+			pr_notice("Copy mmdvfs info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -934,6 +957,12 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_MMDVFS_INFO:
+	{
+		ret = handleMmdvfsInfo(arg);
+		break;
+	}
+
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;

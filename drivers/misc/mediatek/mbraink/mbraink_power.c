@@ -25,6 +25,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
+	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	return 0;
 }
 
@@ -44,6 +45,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
+	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	return 0;
 }
 
@@ -68,6 +70,8 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getPmicVoltageInfo = ops->getPmicVoltageInfo;
 	_mbraink_power_ops.suspendprepare = ops->suspendprepare;
 	_mbraink_power_ops.postsuspend = ops->postsuspend;
+	_mbraink_power_ops.getMmdvfsInfo = ops->getMmdvfsInfo;
+
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -90,6 +94,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
+	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -305,3 +310,19 @@ void mbraink_power_post_suspend(void)
 		_mbraink_power_ops.postsuspend();
 }
 
+int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
+{
+	int ret = 0;
+
+	if (mmdvfsInfo == NULL) {
+		pr_info("%s: power mmdvfs is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getMmdvfsInfo)
+		ret = _mbraink_power_ops.getMmdvfsInfo(mmdvfsInfo);
+	else
+		pr_info("%s: Do not support ioctl get power mmdvfs info query.\n", __func__);
+
+	return ret;
+}

@@ -48,6 +48,7 @@
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
+#define MAX_POWER_MMDVFS_SEC_SZ (264)
 
 #define SPM_L2_MAX_RES_NUM (116)
 #define SPM_L2_SZ (1888)
@@ -396,4 +397,9 @@ struct mbraink_gnss2mbr_mcu_data {
 	u16 count;
 	struct mbraink_gnss2mbr_mcu_struct mcu_data[MAX_GNSS_DATA_SZ];
 };
+struct mbraink_mmdvfs_info {
+	unsigned short size;
+	unsigned char mmdvfs_data[MAX_POWER_MMDVFS_SEC_SZ];
+};
+
 #endif
