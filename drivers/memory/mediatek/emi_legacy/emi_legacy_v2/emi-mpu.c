@@ -376,11 +376,14 @@ int mtk_emimpu_set_protection(struct emimpu_region_t *rg_info)
 	unsigned int start, end;
 	unsigned int group_apc;
 	unsigned int d_group;
+	unsigned int align_mask;
 	struct arm_smccc_res smc_res;
 	int i, j;
 
-	if (!rg_info)
+	if (!rg_info) {
+		pr_info("%s: fail, invalid emimpu_region_t.\n", __func__);
 		return -EINVAL;
+	}
 
 	if (!(rg_info->apc)) {
 		pr_info("%s: fail, protect without init\n", __func__);
@@ -390,6 +393,21 @@ int mtk_emimpu_set_protection(struct emimpu_region_t *rg_info)
 	mpu = global_emi_mpu;
 	if (!mpu)
 		return -ENODEV;
+
+	/**
+	 * Check alignment of start & size.
+	 *	Take 64KB align as example (start: 0x40010000, size: 0x00020000)
+	 *		=> [start, end] = [0x40010000, 0x4002FFFF]
+	 */
+	pr_info("%s: rg(%u, [%#llx, %#llx]), align_bit(%u).\n", __func__, rg_info->rg_num,
+		rg_info->start, rg_info->end, mpu->addr_align);
+	align_mask = (0x1u << mpu->addr_align) - 1;
+	if ((0x0 != (align_mask & rg_info->start)) ||
+		(align_mask != (align_mask & rg_info->end))) {
+		panic("%s: region(%u, [%#llx, %#llx]) is not align!",
+			__func__, rg_info->rg_num, rg_info->start, rg_info->end);
+		return -EINVAL;
+	}
 
 	d_group = mpu->domain_cnt / 8;
 
