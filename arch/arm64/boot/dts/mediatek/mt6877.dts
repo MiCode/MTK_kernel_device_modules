@@ -595,11 +595,7 @@
 			compatible = "mediatek,reserve-memory-mcupm_share";
 			no-map;
 			status = "okay";
-#if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
-			size = <0 0x210000>; /* 2M + 64K */
-#else
 			size = <0 0x610000>; /* 6M + 64K */
-#endif
 			alignment = <0 0x10000>;
 			alloc-ranges = <0 0x40000000 0 0x60000000>;
 		};
@@ -607,11 +603,7 @@
 		ion-carveout-heap {
 			compatible = "mediatek,ion-carveout-heap";
 			no-map;
-#ifdef CONFIG_FPGA_EARLY_PORTING
-			size = <0 0x5000000>;
-#else
 			size = <0 0xc000>;
-#endif
 			alignment = <0 0x1000>;
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
@@ -626,11 +618,7 @@
 		reserve-memory-scp_share {
 			compatible = "mediatek,reserve-memory-scp_share";
 			no-map;
-#ifdef CONFIG_MTK_TINYSYS_SCP_LOGGER_SUPPORT
 			size = <0 0x00320000>; /*3MB + 128K share mem size */
-#else
-			size = <0 0x001A0000>;
-#endif
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x50000000 0 0x40000000>;
 		};
@@ -639,11 +627,7 @@
 			compatible = "mediatek,reserve-memory-sspm_share";
 			no-map;
 			status = "okay";
-#if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
-			size = <0 0x110000>; /* 1M + 64K */
-#else
 			size = <0 0x510000>; /* 5M + 64K */
-#endif
 			alignment = <0 0x10000>;
 			alloc-ranges = <0 0x40000000 0 0x60000000>;
 		};
@@ -1639,14 +1623,10 @@
 		      <0 0x10028000 0 0x1000>;
 		reg-names = "pwrap","spi_mst";
 		interrupts = <GIC_SPI 264 IRQ_TYPE_LEVEL_HIGH 0>;
-	#ifdef CONFIG_FPGA_EARLY_PORTING
-		clocks = <&clk26m>, <&clk26m>, <&clk26m>, <&clk26m>;
-	#else
 		clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
 			 <&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
 			 <&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
 			 <&topckgen_clk CLK_TOP_OSC_D10>;
-	#endif
 		clock-names = "spi", "wrap", "ulposc", "ulposc_osc";
 
 		main_pmic: mt6359-pmic {
@@ -1655,14 +1635,12 @@
 			interrupts = <122 IRQ_TYPE_LEVEL_HIGH 122 0>;
 			status = "okay";
 
-#ifdef CONFIG_REGULATOR_MT6315
 			mt635x_ot_debug: mt635x-ot-debug {
 				compatible = "mediatek,mt635x-ot-debug";
 				interrupts-extended =
 					<&mt6315_6_regulator INT_TEMP_H IRQ_TYPE_EDGE_RISING>,
 					<&mt6315_3_regulator INT_TEMP_H IRQ_TYPE_EDGE_RISING>;
 			};
-#endif
 
 			pmic_oc_debug: pmic-oc-debug {
 				compatible = "mediatek,pmic-oc-debug";
@@ -2047,9 +2025,7 @@
 		alias_name = "MT6359";
 	};
 
-#if (CONFIG_MTK_GAUGE_VERSION == 30)
 	#include "mediatek/bat_setting/mt6877_battery_prop.dtsi"
-#endif
 
 	pmic_clock_buffer_ctrl:pmic_clock_buffer_ctrl {
 		compatible = "mediatek,pmic_clock_buffer";
@@ -2471,7 +2447,6 @@
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
 
-#if defined(CONFIG_MTK_MT6382_BDG)
 	gce_mbox_bdg: gce_mbox_bdg {
 		compatible = "mediatek,mailbox-gce-bdg";
 		#mbox-cells = <3>;
@@ -2489,7 +2464,6 @@
 		token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 		token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 	};
-#endif
 
 	infra_dpmaif@1022c000 {
 		compatible = "mediatek,infra_dpmaif";
@@ -2810,16 +2784,6 @@
 		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "pmif_irq";
 		irq_event_en = <0x0 0x0 0x0 0x00006000 0x0>;
-#ifdef CONFIG_FPGA_EARLY_PORTING
-		clocks = <&clk26m>,
-			<&clk26m>,
-			<&clk26m>,
-			<&clk26m>,
-			<&clk26m>,
-			<&clk26m>,
-			<&clk26m>,
-			<&clk26m>;
-#else
 		clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
 			<&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
 			<&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
@@ -2828,7 +2792,6 @@
 			<&topckgen_clk CLK_TOP_SPMI_M_MST_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_OSC_D10>;
-#endif
 		clock-names = "pmif_sys_ck",
 			"pmif_tmr_ck",
 			"pmif_clk_mux",
@@ -3461,45 +3424,31 @@
 			<&gce_mbox 1 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 2 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 3 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
-#if defined(CONFIG_MTK_MT6382_BDG)
 			<&gce_mbox_bdg 0 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox_bdg 1 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox_bdg 2 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox_bdg 3 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 			<&gce_mbox_bdg 5 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
-#endif
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 6 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>,
 			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>,
 			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>;
-#else
-			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
-			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>;
-#endif
 
 		gce-client-names = "CLIENT_CFG0",
 			"CLIENT_CFG1",
 			"CLIENT_CFG2",
 			"CLIENT_TRIG_LOOP0",
-#if defined(CONFIG_MTK_MT6382_BDG)
 			"BDG_CLIENT_CFG0",
 			"BDG_CLIENT_CFG1",
 			"BDG_CLIENT_CFG2",
 			"BDG_CLIENT_TRIG_LOOP0",
 			"BDG_CLIENT_TRIG_LOOP1",
-#endif
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 			"CLIENT_SUB_CFG0",
 			"CLIENT_DSI_CFG0",
 			"CLIENT_SEC_CFG0",
 			"CLIENT_SEC_CFG1",
 			"CLIENT_SEC_CFG2";
-#else
-			"CLIENT_SUB_CFG0",
-			"CLIENT_DSI_CFG0";
-#endif
 
 		/* define subsys, see mt6877-gce.h */
 		gce-subsys = <&gce_mbox 0x14000000 SUBSYS_1400XXXX>,
@@ -3518,7 +3467,6 @@
 			"disp_token_stream_block0",
 			"disp_token_cabc_eof0",
 			"disp_wdma0_eof2",
-#if defined(CONFIG_MTK_MT6382_BDG)
 			"bdg_dsi0_sof",
 			"bdg_dsi0_eof",
 			"bdg_rdma0_sof",
@@ -3527,7 +3475,6 @@
 			"bdg_dsi0_irq",
 			"bdg_dsi0_done",
 			"bdg_dsi0_target_line",
-#endif
 			"disp_dsi0_sof0";
 
 		gce-events =
@@ -3542,7 +3489,6 @@
 			<&gce_mbox CMDQ_SYNC_TOKEN_STREAM_BLOCK>,
 			<&gce_mbox CMDQ_SYNC_TOKEN_CABC_EOF>,
 			<&gce_mbox CMDQ_EVENT_DISP_WDMA0_FRAME_DONE>,
-#if defined(CONFIG_MTK_MT6382_BDG)
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DISP_DSI0_SOF>,
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DSI_FRAME_DONE>,
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DISP_RDMA0_SOF>,
@@ -3551,7 +3497,6 @@
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DSI0_IRQ_ENG_EVENT>,
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DSI0_DONE_ENG_EVENT>,
 			<&gce_mbox_bdg CMDQ_BRIDGE_EVENT_DSI0_TARGET_LINE_EVENT>,
-#endif
 			<&gce_mbox CMDQ_EVENT_DSI0_SOF>;
 
 		helper-name = "MTK_DRM_OPT_STAGE",
