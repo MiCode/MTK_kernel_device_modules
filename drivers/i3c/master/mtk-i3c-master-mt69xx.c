@@ -386,6 +386,23 @@ struct mtk_i3c_i2c_dev_data {
 	u8 index;
 };
 
+#define I3C_DUMP_BUF(p, l, fmt, ...)						\
+	do {	\
+		int cnt_ = 0;	\
+		int len_ = (l <= MTK_I3C_MAX_DEVS ? l : MTK_I3C_MAX_DEVS);	\
+		uint8_t raw_buf[MTK_I3C_MAX_DEVS * 3 + 8];	\
+		const unsigned char *ptr = p;	\
+		for (cnt_ = 0; cnt_ < len_; ++cnt_)	\
+			(void)snprintf(raw_buf+3*cnt_, 4, "%02x_", ptr[cnt_]);	\
+		raw_buf[3*cnt_] = '\0';	\
+		if (l <= MTK_I3C_MAX_DEVS) {	\
+			pr_info("[I3C]: "fmt"[%d] %s\n", ##__VA_ARGS__, l, raw_buf);	\
+		} else {	\
+			pr_info("[I3C]: "fmt"[%d](partial) %s\n", ##__VA_ARGS__, l, raw_buf);	\
+		}	\
+	} while (0)
+
+
 static inline struct mtk_i3c_master *
 to_mtk_i3c_master(struct i3c_master_controller *master)
 {
@@ -1898,11 +1915,13 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *xfer)
 {
 	u32 intr_mask_reg = 0;
+	u32 read_mask = 0;
 	int ret = 0;
 	unsigned long time_left = 0;
 	u64 cur_time = 0;
 
 	i3c->irq_stat = 0;
+	xfer->error = I3C_ERROR_UNKNOWN;
 	if ((xfer->tx_len > MTK_I3C_FIFO_SIZE) || (xfer->rx_len > MTK_I3C_FIFO_SIZE))
 		xfer->dma_en = true;
 	else
@@ -1930,7 +1949,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		(i3c->base.bus.scl_rate.i3c > I3C_BUS_I2C_FM_PLUS_SCL_RATE))
 		intr_mask_reg = 0;
 	else
-		intr_mask_reg = I3C_INTR_HS_ACKERR | I3C_INTR_ACKERR | I3C_INTR_COMP;
+		intr_mask_reg = I3C_INTR_IBI | I3C_INTR_HS_ACKERR | I3C_INTR_ACKERR | I3C_INTR_COMP;
 	//if (xfer->dma_en)
 	//	intr_mask_reg |= I3C_INTR_DMA;
 
@@ -1938,15 +1957,30 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 	if ((xfer->mode == MTK_I3C_CCC_MODE) && (xfer->ccc_id == I3C_CCC_ENTDAA)) {
 		mtk_i3c_writel(i3c, intr_mask_reg | I3C_INTR_RS, OFFSET_INTR_MASK);
 		time_left = wait_for_completion_timeout(&i3c->msg_complete, i3c->timeout);
+		read_mask = mtk_i3c_readl(i3c, OFFSET_INTR_MASK);
+		/* make sure read intr_mask done */
+		mb();
 		mtk_i3c_writel(i3c, 0, OFFSET_INTR_MASK);
-		dev_info(i3c->dev, "[%s] irq_stat=0x%x,entdaa_count=%u\n",
-			__func__, i3c->irq_stat, i3c->entdaa_count);
-		if (time_left == 0) {
+		dev_info(i3c->dev, "[%s] irq_stat=0x%x,mask=0x%x,0x%x,daa_cnt=%u,last_addr=0x%x\n",
+			__func__, i3c->irq_stat, intr_mask_reg, read_mask,
+			i3c->entdaa_count, i3c->entdaa_last_addr);
+		if ((time_left == 0) || (i3c->irq_stat & I3C_INTR_IBI)) {
+			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
+				"entdaa_count=%u,addr:", i3c->entdaa_count);
+			I3C_DUMP_BUF(i3c->addrs, MTK_I3C_MAX_DEVS,
+				"free_pos=0x%x,addr:", i3c->free_pos);
 			mtk_i3c_dump_reg(i3c);
-			dev_info(i3c->dev, "[%s] entdaa timeout\n", __func__);
+			dev_info(i3c->dev, "[%s] entdaa timeout or sda lowed.\n", __func__);
 			mtk_i3c_init_hw(i3c);
+			dev_info(i3c->dev, "[%s] entdaa after reset DBGSTA=0x%x\n",
+				__func__, mtk_i3c_readl(i3c, OFFSET_DEBUGSTAT));
+			mtk_i3c_gpio_dump(i3c);
+			i3c->state = MTK_I3C_MASTER_IDLE;
 			xfer->error = I3C_ERROR_M0;
-			ret = -ETIMEDOUT;
+			if (time_left == 0)
+				ret = -ETIMEDOUT;
+			else
+				ret = -EBUSY;
 			goto err_exit;
 		}
 		if (i3c->irq_stat & I3C_INTR_HS_ACKERR) {
@@ -1961,6 +1995,9 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		mtk_i3c_writel(i3c, intr_mask_reg, OFFSET_INTR_MASK);
 		if (intr_mask_reg) {
 			time_left = wait_for_completion_timeout(&i3c->msg_complete, i3c->timeout);
+			read_mask = mtk_i3c_readl(i3c, OFFSET_INTR_MASK);
+			/* make sure read intr_mask done */
+			mb();
 			mtk_i3c_writel(i3c, 0, OFFSET_INTR_MASK);
 		} else {
 			//polling
@@ -1970,6 +2007,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				cpu_relax();
 			/* make sure memory order */
 			mb();
+			read_mask = mtk_i3c_readl(i3c, OFFSET_INTR_MASK);
 			i3c->irq_stat = mtk_i3c_readl(i3c, OFFSET_INTR_STAT);
 			mtk_i3c_writel(i3c, i3c->irq_stat, OFFSET_INTR_STAT);
 			i3c->state = MTK_I3C_MASTER_IDLE;
@@ -1996,12 +2034,23 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
 			}
 		}
-		if (time_left == 0) {
+		if ((time_left == 0) || (i3c->irq_stat & I3C_INTR_IBI)) {
+			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
+				"entdaa_count=%u,addr:", i3c->entdaa_count);
+			I3C_DUMP_BUF(i3c->addrs, MTK_I3C_MAX_DEVS,
+				"free_pos=0x%x,addr:", i3c->free_pos);
 			mtk_i3c_dump_reg(i3c);
-			dev_info(i3c->dev, "[%s] addr=0x%x,timeout\n", __func__, xfer->addr);
+			dev_info(i3c->dev, "[%s] addr=0x%x,mask=0x%x,0x%x,timeout or sda lowed.\n",
+				__func__, xfer->addr, intr_mask_reg, read_mask);
 			mtk_i3c_init_hw(i3c);
-			xfer->error = I3C_ERROR_UNKNOWN;
-			ret = -ETIMEDOUT;
+			dev_info(i3c->dev, "[%s] after reset DBGSTA=0x%x\n",
+				__func__, mtk_i3c_readl(i3c, OFFSET_DEBUGSTAT));
+			mtk_i3c_gpio_dump(i3c);
+			i3c->state = MTK_I3C_MASTER_IDLE;
+			if (time_left == 0)
+				ret = -ETIMEDOUT;
+			else
+				ret = -EBUSY;
 			goto err_exit;
 		}
 		if (i3c->irq_stat & I3C_INTR_HS_ACKERR) {
@@ -2010,16 +2059,18 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				xfer->error = I3C_ERROR_M2;
 				ret = -ENXIO;
 			}
-			dev_info(i3c->dev, "[%s] addr=0x%x,hsackerr=0x%x,mode=0x%x,ccc_id=0x%x\n",
-				__func__, xfer->addr, i3c->irq_stat, xfer->mode, xfer->ccc_id);
+			dev_info(i3c->dev, "[%s] addr=0x%x,hsackerr=0x%x,mask=0x%x,0x%x,0x%x,0x%x,%u\n",
+				__func__, xfer->addr, i3c->irq_stat, intr_mask_reg, read_mask,
+				xfer->mode, xfer->ccc_id, i3c->base.init_done);
 			mtk_i3c_init_hw(i3c);
 			goto err_exit;
 		}
 
 		if (i3c->irq_stat & I3C_INTR_ACKERR) {
 			//mtk_i3c_dump_reg(i3c);
-			dev_info(i3c->dev, "[%s] addr=0x%x,ackerr=0x%x,init_done=%u\n",
-				__func__, xfer->addr, i3c->irq_stat, i3c->base.init_done);
+			dev_info(i3c->dev, "[%s] addr=0x%x,ackerr=0x%x,mask=0x%x,0x%x,0x%x,0x%x,%u\n",
+				__func__, xfer->addr, i3c->irq_stat, intr_mask_reg, read_mask,
+				xfer->mode, xfer->ccc_id, i3c->base.init_done);
 			mtk_i3c_init_hw(i3c);
 			if (i3c->base.init_done) {
 				xfer->error = I3C_ERROR_M1;
@@ -2392,6 +2443,7 @@ static int mtk_i3c_master_priv_xfers(struct i3c_dev_desc *dev,
 				i3c->xfer.rx_buf = NULL;
 				i3c->xfer.left_num = 0;
 				ret = mtk_i3c_do_transfer(i3c, &(i3c->xfer));
+				i3c_xfers->err = i3c->xfer.error;
 				kfree(con_wr_buf);
 				if (ret < 0) {
 					dev_info(i3c->dev,
@@ -2619,7 +2671,7 @@ static irqreturn_t mtk_i3c_irq_thread_fn(int irqno, void *dev_id)
 		mb();
 		//for deal dummy rs irq
 		//udelay(1000);
-		mtk_i3c_writel(i3c, I3C_INTR_COMP | I3C_INTR_RS, OFFSET_INTR_MASK);
+		mtk_i3c_writel(i3c, I3C_INTR_COMP | I3C_INTR_IBI | I3C_INTR_RS, OFFSET_INTR_MASK);
 	}
 	return IRQ_HANDLED;
 }
@@ -2639,7 +2691,18 @@ static irqreturn_t mtk_i3c_irq(int irqno, void *dev_id)
 			return IRQ_HANDLED;
 		}
 		mtk_i3c_writel(i3c, 0, OFFSET_INTR_MASK);
+		if (i3c->entdaa_count >= (MTK_I3C_MAX_DEVS - 1)) {
+			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
+				"entdaa_count=%u,addr:", i3c->entdaa_count);
+			I3C_DUMP_BUF(i3c->addrs, MTK_I3C_MAX_DEVS,
+				"free_pos=0x%x,addr:", i3c->free_pos);
+			return IRQ_HANDLED;
+		}
 		return IRQ_WAKE_THREAD;
+	}
+	if (i3c->irq_stat & (I3C_INTR_IBI)) {
+		complete(&i3c->msg_complete);
+		return IRQ_HANDLED;
 	}
 	if (i3c->irq_stat & (I3C_INTR_COMP))
 		complete(&i3c->msg_complete);
