@@ -813,14 +813,10 @@ static const struct mtk_pin_soc mt6885_data = {
 };
 
 static const struct of_device_id mt6885_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt6885-pinctrl", },
+	{ .compatible = "mediatek,mt6885-pinctrl", .data = &mt6885_data  },
 	{ }
 };
 
-static int mt6885_pinctrl_probe(struct platform_device *pdev)
-{
-	return mtk_paris_pinctrl_probe(pdev, &mt6885_data);
-}
 
 static struct platform_driver mt6885_pinctrl_driver = {
 	.driver = {
@@ -828,7 +824,7 @@ static struct platform_driver mt6885_pinctrl_driver = {
 		.of_match_table = mt6885_pinctrl_of_match,
 		.pm = &mtk_paris_pinctrl_pm_ops,
 	},
-	.probe = mt6885_pinctrl_probe,
+	.probe = mtk_paris_pinctrl_probe,
 };
 
 static int __init mt6885_pinctrl_init(void)
