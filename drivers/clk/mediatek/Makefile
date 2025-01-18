@@ -219,6 +219,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek/
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/

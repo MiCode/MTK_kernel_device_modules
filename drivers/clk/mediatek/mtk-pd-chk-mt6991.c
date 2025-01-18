@@ -15,7 +15,8 @@
 #include "clkchk-mt6991.h"
 #include "clk-fmeter.h"
 #include "clk-mt6991-fmeter.h"
-
+#include "vcp_status.h"
+#include "mtk-scpsys.h"
 
 #define TAG				"[pdchk] "
 #define BUG_ON_CHK_ENABLE		0
@@ -23,9 +24,7 @@
 #define PWR_ID_SHIFT			0
 #define PWR_STA_SHIFT			8
 #define HWV_INT_MTCMOS_TRIGGER		0x0018
-#define HWV_IRQ_STATUS			0x0500
-
-#include "vcp_status.h"
+#define HWV_IRQ_STATUS			0x1500
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -993,6 +992,8 @@ static enum chk_sys_id debug_dump_id[] = {
 	mfgsc0_ao,
 	mfgsc1_ao,
 	ven1,
+	hwv,
+	mm_hwv,
 	mm_vcore_pm,
 	isp_main_pm,
 	isp_dip_pm,
@@ -1071,7 +1072,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 
-	mdelay(5000);
 	BUG_ON(1);
 }
 
@@ -1290,7 +1290,17 @@ static void check_hwv_irq_sta(void)
 {
 	u32 irq_sta;
 
-	irq_sta = get_mt6991_reg_value(hwv_ext, HWV_IRQ_STATUS);
+	irq_sta = get_mt6991_reg_value(hwv, HWV_IRQ_STATUS);
+
+	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
+		debug_dump(MT6991_CHK_PD_NUM, 0);
+}
+
+static void check_mm_hwv_irq_sta(void)
+{
+	u32 irq_sta;
+
+	irq_sta = get_mt6991_reg_value(mm_hwv, HWV_IRQ_STATUS);
 
 	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
 		debug_dump(MT6991_CHK_PD_NUM, 0);
@@ -1302,6 +1312,14 @@ static const char *get_pd_name(int idx)
 		return mt6991_chk_pd_name[idx];
 
 	return NULL;
+}
+
+static bool get_mtcmos_sw_state(struct generic_pm_domain *pd)
+{
+	struct scp_domain *scpd = container_of(pd, struct scp_domain, genpd);
+
+	pr_notice("%s is %s\n", pd->name, scpd->is_on? "on" : "off");
+	return scpd->is_on;
 }
 
 /*
@@ -1323,7 +1341,9 @@ static struct pdchk_ops pdchk_mt6991_ops = {
 	.dump_power_event = dump_power_event,
 	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.get_pd_name = get_pd_name,
+	.get_mtcmos_sw_state = get_mtcmos_sw_state,
 };
 
 static int pd_chk_mt6991_probe(struct platform_device *pdev)
