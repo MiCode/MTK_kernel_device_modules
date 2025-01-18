@@ -54,8 +54,9 @@ static ssize_t mvpu_img_show(struct kobject *kobj, struct kobj_attribute *attr,
 		return ret;
 	}
 
-	pr_info("[MVPU] %s, ptn_size = 0x%x, kerbin_size = 0x%x\n",
-		__func__, (uint32_t)ptn_total_size, (uint32_t)kerbin_total_size);
+	pr_info("[MVPU] %s, ptn_size = 0x%x, kerbin_size = 0x%x, mvpu_img_sz = 0x%x\n",
+		__func__, (uint32_t)ptn_total_size, (uint32_t)kerbin_total_size,
+		(uint32_t)(ptn_total_size + kerbin_total_size + 32));
 
 	return ret;
 }

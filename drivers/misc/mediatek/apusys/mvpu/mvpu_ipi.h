@@ -12,7 +12,7 @@
 #define mvpu_aee_warn(key, format, args...) \
 	do { \
 		pr_info(format, ##args); \
-		aee_kernel_warning("MVPU", \
+		aee_kernel_exception("MVPU", \
 			"\nCRDISPATCH_KEY:" key "\n" format, ##args); \
 	} while (0)
 #else
