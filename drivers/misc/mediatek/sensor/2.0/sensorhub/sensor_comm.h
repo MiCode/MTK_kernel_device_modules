@@ -69,7 +69,7 @@ struct sensor_comm_ctrl {
 	uint8_t command;
 	uint8_t length;
 	uint8_t crc8;
-	uint8_t data[0] __aligned(4);
+	uint8_t data[] __aligned(4);
 } __packed __aligned(4);
 
 struct sensor_comm_ack {
