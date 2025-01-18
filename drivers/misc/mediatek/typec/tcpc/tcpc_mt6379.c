@@ -46,6 +46,8 @@
 /* PMU for cc open */
 #define MT6379_REG_CORECTRL2	0x106
 #define MT6379_MSK_CCOPEN_SEL	BIT(4)
+#define MT6379_REG_PD_EVT	0x16A
+#define MT6379_REG_PD_STAT	0x18A
 
 /* Vendor Register Define */
 #define MT6379_REG_PHYCTRL1	(0x80)
@@ -2270,7 +2272,7 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 	struct mt6379_tcpc_data *ddata = data;
 	bool handled = false;
 	int ret = 0;
-	u8 rdata = 0, rdata2 = 0, rdata3 = 0;
+	u8 pd_evt = 0, pd_stat = 0;
 
 	atomic_inc(&ddata->tcpc->suspend_pending);
 	pm_stay_awake(ddata->dev);
@@ -2278,34 +2280,30 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 	tcpci_lock_typec(ddata->tcpc);
 
 	do {
-		ret = mt6379_read8(ddata, MT6379_REG_IRQ_IND, &rdata);
-		if (ret < 0)
+		ret = mt6379_read8(ddata, MT6379_REG_PD_EVT, &pd_evt);
+		ret |= mt6379_read8(ddata, MT6379_REG_PD_STAT, &pd_stat);
+		if (ret || !pd_stat)
 			break;
 
-		if (rdata & MT6379_MASK_PD_IND_EVT) {
-			mt6379_read8(ddata, 0x16a, &rdata2);
-			mt6379_read8(ddata, 0x18a, &rdata3);
-			MT6379_INFO("ind[0x0B]:0x%02x, pd_evt:0x%02x, pd_stat:0x%02x\n",
-				    rdata, rdata2, rdata3);
+		MT6379_INFO("pd_evt:0x%02X, pd_stat:0x%02X\n", pd_evt, pd_stat);
 
-			handled = true;
-			ret = tcpci_alert(ddata->tcpc);
-			if (ret < 0)
-				break;
-		} else
+		handled = true;
+		ret = tcpci_alert(ddata->tcpc);
+		if (ret < 0)
 			break;
 	} while (1);
 
 	if (handled) {
 		ret = mt6379_write8(ddata, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
 		if (ret)
-			MT6379_DBGINFO("Failed to do IRQ retrigger\n", rdata);
+			MT6379_DBGINFO("Failed to do IRQ retrigger\n");
 	}
 
 	atomic_dec_if_positive(&ddata->tcpc->suspend_pending);
 	tcpci_unlock_typec(ddata->tcpc);
 	pm_relax(ddata->dev);
 	MT6379_DBGINFO("--\n");
+
 	return IRQ_HANDLED;
 }
 
