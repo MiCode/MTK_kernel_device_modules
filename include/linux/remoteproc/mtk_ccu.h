@@ -55,6 +55,7 @@ enum mtk_ccu_feature_type {
 	MTK_CCU_FEATURE_FMCTRL,
 	MTK_CCU_FEATURE_CAMSYS,
 	MTK_CCU_FEATURE_ISPDVFS,
+	MTK_CCU_FEATURE_SENINF,
 	MTK_CCU_FEATURE_MAX,
 };
 
@@ -147,7 +148,8 @@ int mtk_ccu_rproc_get_inforeg(struct platform_device *pdev,
 #define RPROC_UID_IMG_CMDQ 5
 #define RPROC_UID_MMDVFS 6
 #define RPROC_UID_GCE 7
-#define RPROC_UID_MAX 8
+#define RPROC_UID_SENINF 8
+#define RPROC_UID_MAX 9
 
 int rproc_bootx(struct rproc *rproc, unsigned int uid);
 int rproc_shutdownx(struct rproc *rproc, unsigned int uid);
