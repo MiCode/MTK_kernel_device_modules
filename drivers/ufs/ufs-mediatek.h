@@ -288,8 +288,7 @@ struct ufs_mtk_host {
 	struct workqueue_struct *phy_dmp_workq;
 
 #ifdef CONFIG_PM_SLEEP
-	struct delayed_work rq_dwork;
-	struct workqueue_struct *rq_workq;
+	struct hrtimer rq_timer;
 #endif
 
 #ifdef CONFIG_MTK_UFS_DEBUG_BUILD
