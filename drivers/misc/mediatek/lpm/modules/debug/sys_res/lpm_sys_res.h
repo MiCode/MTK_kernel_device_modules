@@ -9,7 +9,7 @@
 
 #include <linux/types.h>
 #include <linux/spinlock.h>
-#include <swpm_module_ext.h>
+#include <swpm_module_psp.h>
 
 #define SYS_RES_SYS_RESOURCE_NUM (8)
 
