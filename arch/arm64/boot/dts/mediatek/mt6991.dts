@@ -3094,6 +3094,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		pinctrl-11 = <&connsys_pin_por_reset_trigger>;
 		pinctrl-12 = <&connsys_pin_por_reset_done>;
 		interrupt-parent = <&pio>;
+		mt6376-gpio = <&pio 245 0>,
+				<&pio 250 0>;
 		interrupts = <245 IRQ_TYPE_EDGE_FALLING>;
 	};
 
