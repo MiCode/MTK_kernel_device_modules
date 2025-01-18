@@ -210,4 +210,13 @@
 /* bus protect */
 #define VCP_BUS_PROT                    (vcpreg.bus_prot)
 
+/* sec GPR */
+#define R_GPR0_CFGREG_SEC               (vcpreg.cfg_sec_gpr)
+#define R_GPR1_CFGREG_SEC               (vcpreg.cfg_sec_gpr + 0x0004)
+#define R_GPR2_CFGREG_SEC               (vcpreg.cfg_sec_gpr + 0x0008)
+#define R_GPR3_CFGREG_SEC               (vcpreg.cfg_sec_gpr + 0x000C)
+	#define MMUP_AP_SUSPEND             (1U << 0)
+	#define VCP_AP_SUSPEND              (1U << 1)
+	#define MMUP_WARM_BOOT              (1U << 2)
+	#define VCP_WARM_BOOT               (1U << 3)
 #endif

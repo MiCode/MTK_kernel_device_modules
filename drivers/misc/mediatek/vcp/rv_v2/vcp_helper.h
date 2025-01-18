@@ -119,6 +119,7 @@ struct vcp_regs {
 	void __iomem *bus_prot;
 	void __iomem *cfg_pwr;
 	void __iomem *cfgreg_ap;
+	void __iomem *cfg_sec_gpr;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
@@ -183,6 +184,7 @@ extern unsigned int vcp_dbg_log;
 /* vcp exception */
 int vcp_excep_init(void);
 void vcp_wait_core_stop_timeout(enum vcp_core_id id);
+void vcp_wait_suspend_resume(bool suspend);
 
 /* vcp irq */
 extern irqreturn_t vcp_A_irq_handler(int irq, void *dev_id);
