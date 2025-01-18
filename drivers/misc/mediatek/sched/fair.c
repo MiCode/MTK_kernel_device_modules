@@ -213,7 +213,7 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 	int pd_idx = cpumask_first(pd_cpus);
 	int cpu, dst_idx, pd_cpu = -1, gear_cpu = -1;
 
-	for_each_cpu(cpu, get_gear_cpumask(eenv->gear_idx)) {
+	for_each_cpu_and(cpu, get_gear_cpumask(eenv->gear_idx), cpu_active_mask) {
 		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
 		unsigned long util = -1, cpu_util = -1;
 
@@ -1908,7 +1908,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 		cnt = sort_thermal_headroom(cpus, cpu_order, in_irq);
 
 		for (i = 0; i < cnt; i++) {
-			cpu = in_irq ? cpu_order[0] + i : cpu_order[i];
+			cpu = cpu_order[i];
 #else
 		for_each_cpu(cpu, cpus) {
 #endif

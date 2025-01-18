@@ -212,9 +212,13 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
 	}
 
 	if (in_irq) {
-		cpu_order[0] = cpumask_first(cpus);
-
-		return cpumask_weight(cpus);
+		i = 0;
+		for_each_cpu_and(cpu, cpus, cpu_active_mask) {
+			cpu_order[i] = cpu;
+			cnt++;
+			i++;
+		}
+		return cnt;
 	}
 
 	spin_lock(&thermal_headroom_lock);
