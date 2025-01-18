@@ -22,7 +22,7 @@
 #include "mtk_qos_sram.h"
 #include "mtk_qos_common.h"
 
-static const struct qos_ipi_cmd mt6761_qos_ipi_pin[] = {
+static const struct qos_ipi_cmd qos_legacy_ipi_pin[] = {
 	[QOS_IPI_QOS_ENABLE] = {
 			.id = 0,
 			.valid = true,
@@ -73,7 +73,7 @@ static const struct qos_ipi_cmd mt6761_qos_ipi_pin[] = {
 		},
 };
 
-static const struct qos_sram_addr mt6761_qos_sram_pin[] = {
+static const struct qos_sram_addr qos_legacy_sram_pin[] = {
 	[QOS_DEBUG_0] = {
 			.offset = 0x38,
 			.valid = true,
@@ -177,61 +177,61 @@ static const struct qos_sram_addr mt6761_qos_sram_pin[] = {
 };
 
 
-static const struct mtk_qos_soc mt6761_qos_data = {
-	.ipi_pin = mt6761_qos_ipi_pin,
-	.sram_pin = mt6761_qos_sram_pin,
+static const struct mtk_qos_soc qos_legacy_data = {
+	.ipi_pin = qos_legacy_ipi_pin,
+	.sram_pin = qos_legacy_sram_pin,
 };
 
 
-static int mt6761_qos_probe(struct platform_device *pdev)
+static int qos_legacy_probe(struct platform_device *pdev)
 {
-	return mtk_qos_probe(pdev, &mt6761_qos_data);
+	return mtk_qos_probe(pdev, &qos_legacy_data);
 }
 
 
 static const struct of_device_id mtk_qos_of_match[] = {
 	{
 		.compatible = "mediatek,mt6761-qos",
-		.data = &mt6761_qos_data,
+		.data = &qos_legacy_data,
 	}, {
 		.compatible = "mediatek,mt6765-qos",
-		.data = &mt6761_qos_data,
+		.data = &qos_legacy_data,
 	}, {
 		.compatible = "mediatek,mt6768-qos",
-		.data = &mt6761_qos_data,
+		.data = &qos_legacy_data,
 	}, {
 		/* sentinel */
 	},
 };
 
-static int mt6761_qos_remove(struct platform_device *pdev)
+static int qos_legacy_remove(struct platform_device *pdev)
 {
 	return 0;
 }
 
 
-static struct platform_driver mt6761_qos_platdrv = {
-	.probe	= mt6761_qos_probe,
-	.remove	= mt6761_qos_remove,
+static struct platform_driver qos_legacy_platdrv = {
+	.probe	= qos_legacy_probe,
+	.remove	= qos_legacy_remove,
 	.driver	= {
-		.name	= "mt6761-qos",
+		.name	= "qos_legacy",
 		.of_match_table = mtk_qos_of_match,
 	},
 };
 
-static int __init mt6761_qos_init(void)
+static int __init qos_legacy_init(void)
 {
 	int ret = 0;
 
-	ret = platform_driver_register(&mt6761_qos_platdrv);
+	ret = platform_driver_register(&qos_legacy_platdrv);
 
 	return ret;
 }
 
-late_initcall(mt6761_qos_init)
+late_initcall(qos_legacy_init)
 
-static void __exit mt6761_qos_exit(void)
+static void __exit qos_legacy_exit(void)
 {
-	platform_driver_unregister(&mt6761_qos_platdrv);
+	platform_driver_unregister(&qos_legacy_platdrv);
 }
-module_exit(mt6761_qos_exit)
+module_exit(qos_legacy_exit)
