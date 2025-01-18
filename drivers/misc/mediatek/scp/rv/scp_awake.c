@@ -30,6 +30,7 @@
 //#include <mt-plat/sync_write.h>
 #include <mt-plat/aee.h>
 #include <linux/delay.h>
+#include <linux/regmap.h>
 #include "scp_feature_define.h"
 #include "scp_ipi_pin.h"
 #include "scp_helper.h"
@@ -87,7 +88,11 @@ int scp_awake_lock(void *_scp_id)
 
 	/*set a direct IPI to awake SCP */
 	/*pr_debug("scp_awake_lock: try to awake %s\n", core_id);*/
-	writel(0xA0 | (1 << AP_AWAKE_LOCK), INFRA_IRQ_SET);
+	if (scpreg.scpsys_regmap_en)
+		regmap_write(scpreg.scpsys_regmap,
+				INFRA_IRQ_SET_OFS, 0xA0 | (1 << AP_AWAKE_LOCK));
+	else
+		writel(0xA0 | (1 << AP_AWAKE_LOCK), INFRA_IRQ_SET);
 
 	count = 0;
 	while (++count != SCP_AWAKE_TIMEOUT) {
@@ -98,10 +103,24 @@ int scp_awake_lock(void *_scp_id)
 		}
 #endif  // SCP_RECOVERY_SUPPORT
 
-		if(scpreg.read_infra_irq_sta_en)
-			tmp = readl(INFRA_IRQ_STA);
-		else
-			tmp = readl(INFRA_IRQ_SET);
+
+		if (scpreg.scpsys_regmap_en) {
+
+			if(scpreg.read_infra_irq_sta_en)
+				ret = regmap_read(scpreg.scpsys_regmap,
+						INFRA_IRQ_STA_OFS, &tmp);
+			else
+				ret = regmap_read(scpreg.scpsys_regmap,
+						INFRA_IRQ_SET_OFS, &tmp);
+
+		} else {
+
+			if(scpreg.read_infra_irq_sta_en)
+				tmp = readl(INFRA_IRQ_STA);
+			else
+				tmp = readl(INFRA_IRQ_SET);
+
+		}
 
 		if ((tmp & 0xA0) != 0xA0) {
 			pr_notice("%s: INFRA_IRQ_SET %x\n", __func__, tmp);
@@ -114,7 +133,11 @@ int scp_awake_lock(void *_scp_id)
 		udelay(10);
 	}
 	/* clear status */
-	writel(0xA0 | (1 << AP_AWAKE_LOCK), INFRA_IRQ_CLEAR);
+	if (scpreg.scpsys_regmap_en)
+		regmap_write(scpreg.scpsys_regmap,
+				INFRA_IRQ_CLEAR_OFS, 0xA0 | (1 << AP_AWAKE_LOCK));
+	else
+		writel(0xA0 | (1 << AP_AWAKE_LOCK), INFRA_IRQ_CLEAR);
 
 	/* scp lock awake success*/
 	if (ret != -1)
@@ -203,7 +226,11 @@ int scp_awake_unlock(void *_scp_id)
 
 	/* WE1: set a direct IPI to release awake SCP */
 	/*pr_debug("scp_awake_lock: try to awake %s\n", core_id);*/
-	writel(0xA0 | (1 << AP_AWAKE_UNLOCK), INFRA_IRQ_SET);
+	if (scpreg.scpsys_regmap_en)
+		regmap_write(scpreg.scpsys_regmap,
+				INFRA_IRQ_SET_OFS, 0xA0 | (1 << AP_AWAKE_UNLOCK));
+	else
+		writel(0xA0 | (1 << AP_AWAKE_UNLOCK), INFRA_IRQ_SET);
 
 	count = 0;
 	while (++count != SCP_AWAKE_TIMEOUT) {
@@ -213,10 +240,23 @@ int scp_awake_unlock(void *_scp_id)
 			break;
 		}
 #endif  // SCP_RECOVERY_SUPPORT
-		if(scpreg.read_infra_irq_sta_en)
-			tmp = readl(INFRA_IRQ_STA);
-		else
-			tmp = readl(INFRA_IRQ_SET);
+		if (scpreg.scpsys_regmap_en) {
+
+			if(scpreg.read_infra_irq_sta_en)
+				ret = regmap_read(scpreg.scpsys_regmap,
+						INFRA_IRQ_STA_OFS, &tmp);
+			else
+				ret = regmap_read(scpreg.scpsys_regmap,
+						INFRA_IRQ_SET_OFS, &tmp);
+
+		} else {
+
+			if(scpreg.read_infra_irq_sta_en)
+				tmp = readl(INFRA_IRQ_STA);
+			else
+				tmp = readl(INFRA_IRQ_SET);
+
+		}
 
 		if ((tmp & 0xA0) != 0xA0) {
 			pr_notice("%s: INFRA7_IRQ_SET %x\n", __func__, tmp);
@@ -229,7 +269,11 @@ int scp_awake_unlock(void *_scp_id)
 		udelay(10);
 	}
 	/* clear status */
-	writel(0xA0 | (1 << AP_AWAKE_UNLOCK), INFRA_IRQ_CLEAR);
+	if (scpreg.scpsys_regmap_en)
+		regmap_write(scpreg.scpsys_regmap,
+				INFRA_IRQ_CLEAR_OFS, 0xA0 | (1 << AP_AWAKE_UNLOCK));
+	else
+		writel(0xA0 | (1 << AP_AWAKE_UNLOCK), INFRA_IRQ_CLEAR);
 
 	/* scp unlock awake success*/
 	if (ret != -1) {
