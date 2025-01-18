@@ -989,8 +989,6 @@ static int vcp_pm_event(struct notifier_block *notifier
 		pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d\n", pwclkcnt, is_suspending);
 		if ((!is_suspending) && pwclkcnt) {
 			is_suspending = true;
-			writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
-			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
 #if VCP_RECOVERY_SUPPORT
 				/* make sure all reset done */
 			flush_workqueue(vcp_reset_workqueue);
@@ -1003,6 +1001,9 @@ static int vcp_pm_event(struct notifier_block *notifier
 				vcp_ready[i] = 0;
 			mutex_unlock(&vcp_ready_mutex);
 
+			writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
+			writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+
 #if VCP_LOGGER_ENABLE
 			flush_workqueue(vcp_logger_workqueue);
 #endif
@@ -1010,6 +1011,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 			for (i = 0; i < VCP_CORE_TOTAL ; i++)
 				del_timer(&vcp_ready_timer[i].tl);
 #endif
+			vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
 			vcp_wait_awake_count();
 
 			if(!vcp_ao) {
@@ -2204,52 +2206,52 @@ void vcp_awake_init(void)
 
 void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 {
-	uint32_t core0_halt = 0;
-	uint32_t core1_halt = 0;
+	uint32_t core0_halt = 1, core1_halt = 1;
+	uint32_t core0_axi = 0, core1_axi = 0;
 	uint32_t core0_status = 0, core1_status = 0;
 	/* make sure vcp is in idle state */
 	int timeout = 500; /* max wait 0.5s */
 
-	while (timeout--) {
+	while (--timeout) {
 		switch (core_id) {
 		case VCP_ID:
 			core0_status = readl(R_CORE0_STATUS);
 			core0_halt = (vcpreg.twohart ?
-				(core0_status == (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-				(core0_status == (B_CORE_GATED | B_HART0_HALT)));
-			core1_halt = 1;
+				(core0_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
+				(core0_status & (B_CORE_GATED | B_HART0_HALT)));
+			core0_axi = core0_status & (B_CORE_AXIS_BUSY);
 			break;
 		case MMUP_ID:
 			if (vcpreg.core_nums == 2) {
 				core1_status = readl(R_CORE1_STATUS);
 				core1_halt = (vcpreg.twohart_core1 ?
-					(core1_status == (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-					(core1_status == (B_CORE_GATED | B_HART0_HALT)));
-			} else
-				core1_halt = 1;
-			core0_halt = 1;
+					(core1_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
+					(core1_status & (B_CORE_GATED | B_HART0_HALT)));
+				core1_axi = core1_status & (B_CORE_AXIS_BUSY);
+			}
 			break;
 		case VCP_CORE_TOTAL:
 		default:
 			core0_status = readl(R_CORE0_STATUS);
 			core0_halt = (vcpreg.twohart ?
-				(core0_status == (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-				(core0_status == (B_CORE_GATED | B_HART0_HALT)));
+				(core0_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
+				(core0_status & (B_CORE_GATED | B_HART0_HALT)));
+			core0_axi = core0_status & (B_CORE_AXIS_BUSY);
 
 			if (vcpreg.core_nums == 2) {
 				core1_status = readl(R_CORE1_STATUS);
 				core1_halt = (vcpreg.twohart_core1 ?
-					(core1_status == (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
-					(core1_status == (B_CORE_GATED | B_HART0_HALT)));
-			} else
-				core1_halt = 1;
+					(core1_status & (B_CORE_GATED | B_HART0_HALT | B_HART1_HALT)) :
+					(core1_status & (B_CORE_GATED | B_HART0_HALT)));
+				core1_axi = core1_status & (B_CORE_AXIS_BUSY);
+			}
 			break;
 		}
 
 		pr_debug("[VCP] debug CORE_STATUS vcp: 0x%x, 0x%x\n",
 			core0_status, core1_status);
 
-		if (core0_halt && core1_halt) {
+		if (core0_halt && core1_halt && (!core0_axi) && (!core1_axi)) {
 			/* VCP stops any activities
 			 * and parks at wfi
 			 */
@@ -2258,9 +2260,11 @@ void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 		mdelay(1);
 	}
 
-	if (timeout == 0)
+	if (timeout <= 0) {
 		pr_notice("[VCP] reset timeout, still reset vcp: 0x%x, 0x%x\n",
 			core0_status, core1_status);
+		vcp_dump_last_regs(1);
+	}
 }
 
 #if VCP_RECOVERY_SUPPORT
