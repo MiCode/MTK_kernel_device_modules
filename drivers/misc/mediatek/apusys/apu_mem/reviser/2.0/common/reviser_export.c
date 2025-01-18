@@ -14,6 +14,23 @@
 #include "reviser_remote_cmd.h"
 #include "reviser_import.h"
 
+#include "apu_mem_export.h"
+
+static struct apu_mem_export_ops reviser_export_ops = {
+	.apu_mem_alloc    = reviser_alloc_mem,
+	.apu_mem_free     = reviser_free_mem,
+	.apu_mem_import   = reviser_import_mem,
+	.apu_mem_unimport = reviser_unimport_mem,
+	.apu_mem_map      = reviser_map_mem,
+	.apu_mem_unmap    = reviser_unmap_mem,
+
+	.apu_mem_rvs_get_vlm          = reviser_get_vlm,
+	.apu_mem_rvs_free_vlm         = reviser_free_vlm,
+	.apu_mem_rvs_set_context      = reviser_set_context,
+	.apu_mem_rvs_get_resource_vlm = reviser_get_resource_vlm,
+	.apu_mem_rvs_get_pool_size    = reviser_get_pool_size,
+};
+
 /**
  * reviser_get_vlm - get continuous memory which is consists of TCM/DRAM/System-Memory
  * @request_size: the request size of the memory
@@ -389,4 +406,9 @@ int reviser_unmap_mem(uint64_t session, uint32_t sid)
 out:
 	LOG_ERR("[Unmap][Fail] Mem (0x%llx/0x%x)\n", session, sid);
 	return ret;
+}
+
+int reviser_export_API_init(void)
+{
+	return apu_mem_op_init(&reviser_export_ops);
 }

@@ -37,6 +37,7 @@
 #include "apummu_remote.h"
 #include "apummu_remote_cmd.h"
 #include "apummu_mgt.h"
+#include "apummu_export.h"
 
 /* define */
 #define APUSYS_DRV_NAME "apusys_drv_apummu"
@@ -404,6 +405,11 @@ static int apummu_probe(struct platform_device *pdev)
 
 	apummu_mgt_init();
 	apummu_mem_init();
+	if (apummu_export_API_init()) {
+		AMMU_LOG_ERR("export API init fail\n");
+		ret = -EINVAL;
+		goto free_node;
+	}
 	g_adv = adv;
 
 	adv->init_done = true;

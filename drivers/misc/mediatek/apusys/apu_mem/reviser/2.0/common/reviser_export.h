@@ -23,4 +23,5 @@ int reviser_import_mem(uint64_t session, uint32_t sid);
 int reviser_unimport_mem(uint64_t session, uint32_t sid);
 int reviser_map_mem(uint64_t session, uint32_t sid, uint64_t *addr);
 int reviser_unmap_mem(uint64_t session, uint32_t sid);
+int reviser_export_API_init(void);
 #endif

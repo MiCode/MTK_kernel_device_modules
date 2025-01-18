@@ -41,6 +41,8 @@
 #include "reviser_hw_mgt.h"
 #include "reviser_remote.h"
 #include "reviser_remote_cmd.h"
+#include "reviser_export.h"
+
 /* define */
 #define APUSYS_DRV_NAME "apusys_drv_reviser"
 #define APUSYS_DEV_NAME "apusys_reviser"
@@ -559,6 +561,11 @@ static int reviser_probe(struct platform_device *pdev)
 
 	reviser_dbg_init(rdv, g_apusys->dbg_root);
 
+	if (reviser_export_API_init()) {
+		LOG_ERR("export API init fail\n");
+		ret = -EINVAL;
+		goto free_dbg;
+	}
 
 	g_rdv = rdv;
 

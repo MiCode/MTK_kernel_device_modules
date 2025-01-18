@@ -95,11 +95,15 @@ apusys-objs += edma/edma_v30.o
 apusys-objs += edma/edma_rv.o
 #apusys-objs += edma/apusys_power_dummy.o
 
+# apu_mem driver makefile
+APU_MEM_ROOT=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apu_mem
+ccflags-y   += -I$(APU_MEM_ROOT)
+apusys-objs += apu_mem/apu_mem_export.o
 
 # reviser driver makefile
 REVISER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/
-REVISER_PLAT=reviser/$(APUSYS_VERSION_REVISER)/platform
-REVISER_COMN=reviser/$(APUSYS_VERSION_REVISER)/common
+REVISER_PLAT=apu_mem/reviser/$(APUSYS_VERSION_REVISER)/platform
+REVISER_COMN=apu_mem/reviser/$(APUSYS_VERSION_REVISER)/common
 
 ccflags-y += -I$(REVISER)/$(REVISER_PLAT)
 ccflags-y += -I$(REVISER)/$(REVISER_COMN)
@@ -127,8 +131,8 @@ apusys-objs += $(REVISER_PLAT)/v_rv/reviser_plat_vrv.o
 
 # apummu driver makefile
 APUMMU_ROOT=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/
-APUMMU_PLAT=apummu/platform
-APUMMU_COMN=apummu/common
+APUMMU_PLAT=apu_mem/apummu/platform
+APUMMU_COMN=apu_mem/apummu/common
 
 ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_PLAT)
 ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_COMN)

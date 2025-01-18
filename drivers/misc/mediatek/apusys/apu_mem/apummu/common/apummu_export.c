@@ -12,10 +12,28 @@
 #include "apummu_drv.h"
 #include "apummu_remote_cmd.h"
 #include "apummu_import.h"
-
 #include "apummu_mgt.h"
 
+#include "apu_mem_export.h"
+
 extern struct apummu_dev_info *g_adv;
+
+static struct apu_mem_export_ops apummu_export_ops = {
+	.apu_mem_alloc    = apummu_alloc_mem,
+	.apu_mem_free     = apummu_free_mem,
+	.apu_mem_import   = apummu_import_mem,
+	.apu_mem_unimport = apummu_unimport_mem,
+	.apu_mem_map      = apummu_map_mem,
+	.apu_mem_unmap    = apummu_unmap_mem,
+
+
+	.apu_mem_map_iova      = apummu_iova2eva,
+	.apu_mem_iova_decode   = apummu_eva2iova,
+	.apu_mem_unmap_iova    = apummu_buffer_remove,
+	.apu_mem_table_get     = apummu_table_get,
+	.apu_mem_table_free    = apummu_table_free,
+	.apu_mem_DRAM_FB_alloc = apummu_DRAM_FB_alloc
+};
 
 int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid)
 {
@@ -408,4 +426,10 @@ int apummu_table_free(uint64_t session)
 int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
 {
 	return ammu_DRAM_FB_alloc(session, vlm_size, subcmd_num);
+}
+
+
+int apummu_export_API_init(void)
+{
+	return apu_mem_op_init(&apummu_export_ops);
 }
