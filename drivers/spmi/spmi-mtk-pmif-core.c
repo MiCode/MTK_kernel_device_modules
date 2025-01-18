@@ -422,13 +422,6 @@ static void spmi_nack_monitor_list_parse(struct platform_device *pdev)
 		return;
 	}
 
-	/* Monitor list size too large */
-	if ((nack_monitor_list_arr_size / MONITOR_PAIR_ITEM_NUM) > MAX_MONITOR_LIST_SIZE) {
-		dev_notice(&pdev->dev,
-			"SPMI nack monitor list size is too large = %d, max size is %d\n",
-			nack_monitor_list_arr_size / MONITOR_PAIR_ITEM_NUM, MAX_MONITOR_LIST_SIZE);
-	}
-
 	/* NACK monitor list are not in pair */
 	if (nack_monitor_list_arr_size % MONITOR_PAIR_ITEM_NUM != 0) {
 		dev_notice(&pdev->dev,
@@ -441,6 +434,17 @@ static void spmi_nack_monitor_list_parse(struct platform_device *pdev)
 			"nack_monitor_list_arr_size = %d, nack_monitor_list_size = %d\n",
 			nack_monitor_list_arr_size,
 			nack_monitor_list_size);
+
+	/* Monitor list size too large */
+	if (nack_monitor_list_size > MAX_MONITOR_LIST_SIZE) {
+		dev_notice(&pdev->dev,
+			"SPMI nack monitor list size is too large = %d, max size is %d\n",
+			nack_monitor_list_size, MAX_MONITOR_LIST_SIZE);
+		dev_notice(&pdev->dev,
+			"Register over number %d in spmi-nack-monitor-list will be ignored\n",
+			MAX_MONITOR_LIST_SIZE - 1);
+		nack_monitor_list_size = MAX_MONITOR_LIST_SIZE;
+	}
 
 	for (i = 0; i < nack_monitor_list_size; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
