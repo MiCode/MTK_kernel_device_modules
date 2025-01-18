@@ -79,8 +79,8 @@ struct mt6379_data {
 	/* Use lock to prevent critical section on shared led controller HW */
 	struct mutex lock;
 	u8 flash_used;
-	u8 strobe_enabled;
-	u8 torch_enabled;
+	unsigned long strobe_enabled;
+	unsigned long torch_enabled;
 	struct mt6379_flash mtflash[];
 };
 
@@ -100,7 +100,7 @@ static int mt6379_torch_set_brightness(struct led_classdev *led_cdev,
 
 	if (data->strobe_enabled) {
 		ret = -EINVAL;
-		dev_err(led_cdev->dev, "Storbe in used 0x%02x\n", data->strobe_enabled);
+		dev_err(led_cdev->dev, "Storbe in used [%lu]\n", data->strobe_enabled);
 		goto out_torch_set;
 	}
 
@@ -194,13 +194,18 @@ static int mt6379_flash_set_strobe(struct led_classdev_flash *flash, bool state)
 	struct regmap *regmap = data->regmap;
 	unsigned int mask, enable = 0;
 	unsigned long min_wait_us = 0;
-	int ret;
+	int ret = 0, idx = mtflash->idx;
 
 	mutex_lock(&data->lock);
 
+	if (!(state ^ test_bit(idx, &data->strobe_enabled))) {
+		dev_dbg(flash->led_cdev.dev, "no change for strobe, [%lu]\n", data->strobe_enabled);
+		goto out_strobe_set;
+	}
+
 	if (data->torch_enabled) {
 		ret = -EINVAL;
-		dev_err(flash->led_cdev.dev, "Torch in used 0x%02x\n",
+		dev_err(flash->led_cdev.dev, "Torch in used [%lu]\n",
 			data->torch_enabled);
 		goto out_strobe_set;
 	}
@@ -416,7 +421,7 @@ static int mt6379_cooling_set_cur_state(int channel, unsigned long state)
 	mtflash = container_of(	mt6379_flash_class[channel],
 				struct mt6379_flash, flash);
 	data = mtflash->driver_data;
-	pr_info("set thermal current:%lu torch_enabled:%u\n",
+	pr_info("set thermal current:%lu torch_enabled:%lu\n",
 		 state, data->torch_enabled);
 
 	if (state == 0) {
@@ -559,13 +564,18 @@ static int mt6379_flash_set_external_strobe(struct v4l2_flash *v4l2_flash,
 	struct mt6379_data *data = mtflash->driver_data;
 	struct regmap *regmap = data->regmap;
 	unsigned int mask, enable = 0;
-	int ret;
+	int ret = 0, idx = mtflash->idx;
 
 	mutex_lock(&data->lock);
 
+	if (!(state ^ test_bit(idx, &data->strobe_enabled))) {
+		dev_dbg(flash->led_cdev.dev, "no change for strobe, [%lu]\n", data->strobe_enabled);
+		goto out_external_strobe_set;
+	}
+
 	if (data->torch_enabled) {
 		ret = -EINVAL;
-		dev_err(flash->led_cdev.dev, "Torch in used 0x%02x\n", data->torch_enabled);
+		dev_err(flash->led_cdev.dev, "Torch in used [%lu]\n", data->torch_enabled);
 		goto out_external_strobe_set;
 	}
 
