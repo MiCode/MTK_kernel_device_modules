@@ -73,7 +73,7 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 			(enum of_gpio_flags *)&bdata->irq_flags);
 */ //kernel-6.6 not support
 	bdata->irq_gpio = of_get_named_gpio(np,"synaptics,irq-gpio", 0);
-
+	bdata->irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 	retval = of_property_read_u32(np, "synaptics,irq-on-state",
 			&value);
 	if (retval < 0)
