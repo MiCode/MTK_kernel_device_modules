@@ -8,9 +8,7 @@
 
 #include <trace/hooks/vendor_hooks.h>
 #include <trace/hooks/avc.h>
-#ifdef SUPPORT_CREDS
 #include <trace/hooks/creds.h>
-#endif
 #include <trace/hooks/selinux.h>
 #include <trace/hooks/syscall_check.h>
 #include <linux/types.h> // for list_head
@@ -345,7 +343,6 @@ static void probe_android_rvh_set_module_permit_before_init(void *ignore,
 	}
 }
 
-#ifdef SUPPORT_CREDS
 static void probe_android_rvh_commit_creds(void *ignore, const struct task_struct *task,
 	const struct cred *new)
 {
@@ -460,7 +457,6 @@ static void probe_android_rvh_revert_creds(void *ignore, const struct task_struc
 
 	MKP_HOOK_END(__func__);
 }
-#endif
 
 static void __update_cpu_avc_sbuf(unsigned long key, int index)
 {
@@ -1068,7 +1064,7 @@ int __init mkp_demo_init(void)
 	int ret = 0, ret_erri_line;
 	unsigned long size = 0x100000;
 	struct device_node *node;
-	u32 mkp_policy_default = 0x0001fffb; // disable selinux_state, TASK_CRED policy as default
+	u32 mkp_policy_default = 0x0001fffb; // disable selinux_state policy as default
 	u32 mkp_policy = 0x0001ffff;
 	const char *mkp_panic;
 
@@ -1138,7 +1134,6 @@ int __init mkp_demo_init(void)
 	if (policy_ctrl[MKP_POLICY_SELINUX_AVC])
 		avc_work = kmalloc(sizeof(struct work_struct), GFP_KERNEL);
 
-#ifdef SUPPORT_CREDS
 	if (policy_ctrl[MKP_POLICY_TASK_CRED] != 0) {
 		// Create task cred sharebuf
 		size = 0x100000;
@@ -1177,7 +1172,6 @@ int __init mkp_demo_init(void)
 			goto failed;
 		}
 	}
-#endif
 
 	if (policy_ctrl[MKP_POLICY_SELINUX_STATE] != 0) {
 		// register selinux_state
