@@ -348,23 +348,14 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	 */
 	for (i = 0; i < max_ovl_phy_layer; i++) {
 		if (mtk_crtc->usage_ovl_fmt[i]) {
-			if (i == 0 || i == 5 || i == 11) {
+			if (i == 0 || i == 5 || i == 11)
 				subcomm_bw_sum[0] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-				if (priv->last_hrt_channel_bw_sum[crtc_idx][0] != subcomm_bw_sum[0])
-					priv->hrt_channel_bw_sum[crtc_idx][0] = subcomm_bw_sum[0];
-			} else if (i == 1 || i == 4 || i == 10) {
+			else if (i == 1 || i == 4 || i == 10)
 				subcomm_bw_sum[1] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-				if (priv->last_hrt_channel_bw_sum[crtc_idx][1] != subcomm_bw_sum[1])
-					priv->hrt_channel_bw_sum[crtc_idx][1] = subcomm_bw_sum[1];
-			} else if (i == 2 || i == 7 || i == 9) {
+			else if (i == 2 || i == 7 || i == 9)
 				subcomm_bw_sum[2] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-				if (priv->last_hrt_channel_bw_sum[crtc_idx][2] != subcomm_bw_sum[2])
-					priv->hrt_channel_bw_sum[crtc_idx][2] = subcomm_bw_sum[2];
-			} else if (i == 3 || i == 6 || i == 8) {
+			else if (i == 3 || i == 6 || i == 8)
 				subcomm_bw_sum[3] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
-				if (priv->last_hrt_channel_bw_sum[crtc_idx][3] != subcomm_bw_sum[3])
-					priv->hrt_channel_bw_sum[crtc_idx][3] = subcomm_bw_sum[3];
-			}
 		}
 	}
 
@@ -372,6 +363,9 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
 		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
 	}
+	//TODO: decouple chan_hrt_bw from mtk_disp_larb_hrt_bw
+	for (i = 0; i < max_sub_comm; i++)
+		priv->hrt_channel_bw_sum[crtc_idx][i] = subcomm_bw_sum[i];
 
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
 }

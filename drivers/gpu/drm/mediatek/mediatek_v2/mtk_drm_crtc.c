@@ -222,6 +222,7 @@ unsigned int ovl_win_size;
 #define DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(n) (0x970UL + 0x4 * (n))
 
 static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
+static void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc);
 
 #define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
 
@@ -3999,6 +4000,10 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			mtk_crtc->usage_ovl_fmt[6] = 2;
 	}
 
+	if (mtk_crtc->crtc_blank)
+		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
+			mtk_crtc->usage_ovl_fmt[3] = 4;
+
 	mtk_crtc = to_mtk_crtc(crtc);
 	if (mtk_crtc) {
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt = ", __func__);
@@ -5373,7 +5378,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		if (priv->data->mmsys_id == MMSYS_MT6991)
 			channel_bw_chk = mtk_disp_check_channel_hrt_bw(mtk_crtc);
 
-		if (larb_bw > mtk_crtc->qos_ctx->last_larb_hrt_req || channel_bw_chk) {
+		if (larb_bw > mtk_crtc->qos_ctx->last_larb_hrt_req || channel_bw_chk || mtk_crtc->crtc_blank) {
 			DDPINFO("mtk_disp_set_per_larb_hrt_bw = %d\n", larb_bw);
 			mtk_disp_set_per_larb_hrt_bw(mtk_crtc, larb_bw);
 
@@ -10674,6 +10679,7 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			PMQOS_UPDATE_BW, NULL);
+	mtk_crtc_tui_ovl_bw(crtc);
 	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 	mtk_disp_channel_srt_bw(mtk_crtc);
 
@@ -16788,6 +16794,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 						FRAME_DIRTY, NULL);
 			}
 		}
+		mtk_crtc_tui_ovl_bw(crtc);
 		mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 		mtk_disp_channel_srt_bw(mtk_crtc);
 	}
@@ -20326,6 +20333,25 @@ void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
 		mtk_crtc->tui_ovl_stat.aid_setting = 0xB50;
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xE80;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
+	}
+}
+
+void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	u32 qos_bw = mtk_drm_primary_frame_bw(crtc);
+	struct mtk_ddp_comp *comp;
+
+	if (mtk_crtc->crtc_blank) {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			comp = priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5];
+
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, qos_bw, 0,
+					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+			mtk_crtc->total_srt += qos_bw;
+			priv->srt_channel_bw_sum[0][3] = qos_bw;
+		}
 	}
 }
 
