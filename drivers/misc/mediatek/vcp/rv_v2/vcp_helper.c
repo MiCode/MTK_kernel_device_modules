@@ -53,6 +53,7 @@
 #include "clk-fmeter.h"
 #endif
 #include "clk-mtk.h"
+#include "clkchk.h"
 
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
@@ -716,6 +717,7 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 		pr_notice("[VCP] Module:%s\n", get_module_by_taskname(user));
 
 		vcp_dump_last_regs(mmup_enable_count());
+		clkchk_external_dump();
 
 		/* trigger vcp dump */
 		if (vcpreg.core_nums == 2) {
