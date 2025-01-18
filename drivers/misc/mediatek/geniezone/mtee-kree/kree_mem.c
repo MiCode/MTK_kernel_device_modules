@@ -183,6 +183,27 @@ static TZ_RESULT send_shm_cmd(int round, union MTEEC_PARAM *p,
 	return ret;
 }
 
+static TZ_RESULT send_shm_first_cmd(union MTEEC_PARAM *p,
+	KREE_SESSION_HANDLE session, uint32_t cmd)
+{
+	int i;
+	uint32_t paramTypes;
+	TZ_RESULT ret = 0;
+
+	/* send ending command */
+	for (i = 0; i < MAX_NUM_OF_PARAM; i++) {
+		p[i].mem.buffer = NULL;
+		p[i].mem.size = 0;
+	}
+	p[3].value.a = -98;
+	p[3].value.b = PAGE_SIZE;
+	paramTypes = TZ_ParamTypes4(TZPT_MEM_INPUT, TZPT_MEM_INPUT,
+				    TZPT_MEM_INPUT, TZPT_VALUE_INOUT);
+	ret = KREE_TeeServiceCall(session, cmd, paramTypes, p);
+
+	return ret;
+}
+
 static TZ_RESULT send_shm_ending_cmd(union MTEEC_PARAM *p,
 	KREE_SESSION_HANDLE session, uint32_t numOfPA, uint32_t cmd,
 	uint32_t region_id)
@@ -275,6 +296,11 @@ static TZ_RESULT kree_register_cont_shm(union MTEEC_PARAM *p,
 
 	tmpAry = kmalloc((MAX_MARY_SIZE)
 			 * sizeof(struct KREE_SHM_RUNLENGTH_ENTRY), GFP_KERNEL);
+	if (tmpAry == NULL) {
+		KREE_DEBUG("[%s] tmpAry malloc fail\n", __func__);
+		return TZ_RESULT_ERROR_OUT_OF_MEMORY;
+	}
+	ret = send_shm_first_cmd(p, session, cmd);
 	tmpAry[0].high = (uint32_t) ((uint64_t) start >> 32);
 	tmpAry[0].low = (uint32_t) ((uint64_t) start & (0x00000000ffffffff));
 	tmpAry[0].size = numOfPA;
@@ -348,6 +374,8 @@ static TZ_RESULT kree_register_desc_shm(union MTEEC_PARAM *p,
 		idx, runLengAry[idx].high, runLengAry[idx].low,
 		runLengAry[idx].size);
 #endif
+
+	ret = send_shm_first_cmd(p, session, cmd);
 
 	/* start sending page tables... */
 	idx = 1;
