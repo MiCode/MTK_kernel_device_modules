@@ -5211,7 +5211,7 @@
 				   <&mmsys_config_clk CLK_MM_DISP_MUTEX0>;
 			clock-num = <3>;
 			operating-points-v2 = <&opp_table_disp>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 
 			/* define threads, see mt6853-gce.h */
 			mediatek,mailbox-gce = <&gce>;
