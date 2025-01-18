@@ -355,7 +355,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 						pfb->general_buf_fd;
 					vsi->general_buf_size =
 						pfb->dma_general_buf->size;
-					mtk_vcodec_debug(vcu, "fb->dma_general_buf = %p, mapped fd = %d, size = %lu",
+					mtk_vcodec_debug(vcu, "fb->dma_general_buf = %p, mapped fd = %d, size = %zu",
 						pfb->dma_general_buf,
 						vsi->general_buf_fd,
 						pfb->dma_general_buf->size);
@@ -750,10 +750,10 @@ int vcu_dec_set_frame_buffer(struct vdec_vcu_inst *vcu, void *fb)
 			if (pfb->dma_general_buf != 0) {
 				ipi_fb.dma_general_addr = pfb->dma_general_addr;
 				ipi_fb.general_size = pfb->dma_general_buf->size;
-				mtk_vcodec_debug(vcu, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %lu dma %llu",
+				mtk_vcodec_debug(vcu, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %zu dma %pad",
 					pfb->index, ipi_fb.y_fb_dma, ipi_fb.c_fb_dma,
 					pfb->dma_general_buf, pfb->dma_general_buf->size,
-					pfb->dma_general_addr);
+					&pfb->dma_general_addr);
 			} else {
 				ipi_fb.dma_general_addr = -1;
 				mtk_vcodec_debug(vcu, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p no general buf dmabuf",

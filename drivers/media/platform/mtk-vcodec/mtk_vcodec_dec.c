@@ -558,7 +558,7 @@ static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
 
 static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 {
-	u64 time_diff = 0, curr_time, group_time, dec_time, delay_time; // ns
+	u64 time_diff = 0, curr_time, group_time, dec_time, delay_time, limit_time; // ns
 	unsigned int limit_cnt = mtk_vdec_get_lpw_limit(ctx);
 	unsigned int delay_cnt = limit_cnt / 2;
 
@@ -566,32 +566,33 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 		return;
 
 	if (!ctx->in_group) {
+		limit_time = ctx->lpw_ts_diff * limit_cnt;
 		if (!ctx->lpw_timer_wait) {
 			curr_time = jiffies_to_nsecs(jiffies);
 			if (curr_time <= ctx->group_start_time) {
 				dec_time = MS_TO_NS(10); // 10ms
 				group_time = dec_time * ctx->group_dec_cnt;
 				delay_time = dec_time * delay_cnt;
-				mtk_lpw_err("[%d] curr_time %lld.%06lld <= group_start_time %lld.%06lld not valid, set dec_time to default %lld ms",
+				mtk_lpw_err("[%d] curr_time %lld.%06d <= group_start_time %lld.%06d not valid, set dec_time to default %lld ms",
 					ctx->id, NS_TO_MS(curr_time), NS_MOD_MS(curr_time),
 					NS_TO_MS(ctx->group_start_time),
 					NS_MOD_MS(ctx->group_start_time), NS_TO_MS(dec_time));
 			} else {
 				group_time = curr_time - ctx->group_start_time;
-				dec_time = group_time / ctx->group_dec_cnt;
+				dec_time = div_u64(group_time, ctx->group_dec_cnt);
 				delay_time = dec_time * delay_cnt;
 			}
 
-			if (ctx->lpw_ts_diff * limit_cnt > delay_time)
+			if (limit_time > delay_time)
 				time_diff = MIN(MS_TO_NS(mtk_vdec_lpw_timeout),
-					ctx->lpw_ts_diff * limit_cnt - delay_time);
+					limit_time - delay_time);
 			else {
 				time_diff = MS_TO_NS(mtk_vdec_lpw_timeout);
-				mtk_lpw_debug(1, "[%d] ts_diff %lld.%06lld * limit_cnt %d = %lld.%06lld <= delay_time %lld.%06lld(dec_time %lld.%06lld (= group_time %lld.%06lld / group_dec_cnt %d) / delay_cnt %d), use default timeout(%lld.%06lld)",
+				mtk_lpw_debug(1, "[%d] ts_diff %lld.%06d * limit_cnt %d = %lld.%06d <= delay_time %lld.%06d(dec_time %lld.%06d (= group_time %lld.%06d / group_dec_cnt %d) / delay_cnt %d), use default timeout(%lld.%06d)",
 					ctx->id,
 					NS_TO_MS(ctx->lpw_ts_diff), NS_MOD_MS(ctx->lpw_ts_diff),
-					limit_cnt, NS_TO_MS(ctx->lpw_ts_diff * limit_cnt),
-					NS_MOD_MS(ctx->lpw_ts_diff * limit_cnt),
+					limit_cnt, NS_TO_MS(limit_time),
+					NS_MOD_MS(limit_time),
 					NS_TO_MS(delay_time), NS_MOD_MS(delay_time),
 					NS_TO_MS(dec_time), NS_MOD_MS(dec_time),
 					NS_TO_MS(group_time), NS_MOD_MS(group_time),
@@ -600,11 +601,11 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 			}
 		}
 		if (time_diff > 0) {
-			mtk_lpw_debug(2, "[%d] start lpw_timer with timeout %lld.%06lld (ts_diff %lld.%06lld * limit_cnt %d = %lld.%06lld, delay_time %lld.%06lld = dec_time %lld.%06lld (= group_time %lld.%06lld / group_dec_cnt %d) / delay_cnt %d)",
+			mtk_lpw_debug(2, "[%d] start lpw_timer with timeout %lld.%06d (ts_diff %lld.%06d * limit_cnt %d = %lld.%06d, delay_time %lld.%06d = dec_time %lld.%06d (= group_time %lld.%06d / group_dec_cnt %d) / delay_cnt %d)",
 				ctx->id, NS_TO_MS(time_diff), NS_MOD_MS(time_diff),
 				NS_TO_MS(ctx->lpw_ts_diff), NS_MOD_MS(ctx->lpw_ts_diff), limit_cnt,
-				NS_TO_MS(ctx->lpw_ts_diff * limit_cnt),
-				NS_MOD_MS(ctx->lpw_ts_diff * limit_cnt),
+				NS_TO_MS(limit_time),
+				NS_MOD_MS(limit_time),
 				NS_TO_MS(delay_time), NS_MOD_MS(delay_time),
 				NS_TO_MS(dec_time), NS_MOD_MS(dec_time),
 				NS_TO_MS(group_time), NS_MOD_MS(group_time),
@@ -1266,7 +1267,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 		for (i = 0; i < MAX_META_BUF_CNT; i++) {
 			if (dmabuf == ctx->dma_meta_list[i].dmabuf) {
 				dma_addr = ctx->dma_meta_list[i].dma_meta_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %pad at %d", &dma_addr, i);
 				break;
 			}
 		}
@@ -1277,7 +1278,7 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 		for (i = 0; i < MAX_META_BUF_CNT; i++) {
 			if (dmabuf == ctx->dma_meta_list[i].dmabuf) {
 				dma_addr = ctx->dma_meta_list[i].dma_meta_addr;
-				mtk_v4l2_debug(4, "reuse dma_addr %llu at %d", dma_addr, i);
+				mtk_v4l2_debug(4, "reuse dma_addr %pad at %d", &dma_addr, i);
 				break;
 			}
 		}

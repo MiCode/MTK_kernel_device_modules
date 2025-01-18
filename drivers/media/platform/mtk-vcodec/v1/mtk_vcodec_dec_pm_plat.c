@@ -451,9 +451,9 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	mtk_v4l2_debug(8, "[VDEC] ctx = %p",  ctx);
 
 	for (i = 0; i < dev->vdec_port_cnt; i++) {
-		target_bw = (u64)dev->vdec_port_bw[i].port_base_bw *
-			dev->vdec_dvfs_params.target_freq /
-			dev->vdec_dvfs_params.min_freq;
+		target_bw = div_u64((u64)dev->vdec_port_bw[i].port_base_bw *
+			dev->vdec_dvfs_params.target_freq,
+			dev->vdec_dvfs_params.min_freq);
 		if (dev->vdec_port_bw[i].port_type < VCODEC_PORT_LARB_SUM) {
 			if (dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
 				mtk_icc_set_bw_not_update(dev->vdec_qos_req[i],
@@ -487,9 +487,9 @@ void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 	mtk_v4l2_debug(8, "[VDEC] ctx = %p",  ctx);
 
 	for (i = 0; i < dev->vdec_port_cnt; i++) {
-		target_bw = (u64)dev->vdec_port_bw[i].port_base_bw *
-			dev->vdec_dvfs_params.target_freq /
-			dev->vdec_dvfs_params.min_freq;
+		target_bw = div_u64((u64)dev->vdec_port_bw[i].port_base_bw *
+			dev->vdec_dvfs_params.target_freq,
+			dev->vdec_dvfs_params.min_freq);
 
 		if (list_empty(&dev->vdec_dvfs_inst)) /* no more instances */
 			target_bw = 0;
