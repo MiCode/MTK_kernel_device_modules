@@ -21,7 +21,7 @@ static const struct mtk_node_desc node_descs_mt6893[] = {
 	DEFINE_MNODE(common0_port5, MASTER_COMMON_PORT(0, 5), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port6, MASTER_COMMON_PORT(0, 6), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port7, MASTER_COMMON_PORT(0, 7), 0, false, 0x2, SLAVE_COMMON(0)),
-	DEFINE_MNODE(common0_port8, MASTER_COMMON_PORT(0, 8), 0, false, 0x3, SLAVE_COMMON(0)),
+	DEFINE_MNODE(common0_port8, MASTER_COMMON_PORT(0, 8), 0, false, 0x1, SLAVE_COMMON(0)),
 	/* SLAVE_COMMON(1): SMI_MDP_COMMON */
 	DEFINE_MNODE(mdp_common0_port0, MASTER_COMMON_PORT(1, 0), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port1, MASTER_COMMON_PORT(1, 1), 0, false, 0x2, SLAVE_COMMON(1)),
@@ -31,7 +31,6 @@ static const struct mtk_node_desc node_descs_mt6893[] = {
 	DEFINE_MNODE(mdp_common0_port5, MASTER_COMMON_PORT(1, 5), 0, false, 0x2, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port6, MASTER_COMMON_PORT(1, 6), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port7, MASTER_COMMON_PORT(1, 7), 0, false, 0x2, SLAVE_COMMON(1)),
-	DEFINE_MNODE(mdp_common0_port8, MASTER_COMMON_PORT(1, 8), 0, false, 0x3, SLAVE_COMMON(1)),
 	/* SMI COMMON */
 	DEFINE_MNODE(larb0, SLAVE_LARB(0), 0, false, 0x0, MASTER_COMMON_PORT(0, 0)),   //disp
 	DEFINE_MNODE(larb1, SLAVE_LARB(1), 0, false, 0x0, MASTER_COMMON_PORT(0, 1)),   //disp
