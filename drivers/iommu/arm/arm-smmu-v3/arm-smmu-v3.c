@@ -4112,7 +4112,7 @@ static void arm_smmu_rmr_install_bypass_ste(struct arm_smmu_device *smmu)
 static int arm_smmu_device_probe(struct platform_device *pdev)
 {
 	int irq, ret;
-	struct resource *res;
+	struct resource *res, *res1;
 	resource_size_t ioaddr;
 	struct arm_smmu_device *smmu;
 	struct device *dev = &pdev->dev;
@@ -4162,8 +4162,16 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		smmu->page1 = smmu->base;
 	}
 
-	smmu->wp_base = arm_smmu_ioremap(dev, ioaddr + SMMUWP_OFFSET,
-					 SMMUWP_REG_SZ);
+	res1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (res1) {
+		smmu->wp_base = arm_smmu_ioremap(dev, res1->start,
+						 SMMUWP_REG_SZ);
+		if (IS_ERR(smmu->wp_base))
+			return PTR_ERR(smmu->wp_base);
+	} else {
+		smmu->wp_base = arm_smmu_ioremap(dev, ioaddr + SMMUWP_OFFSET,
+						 SMMUWP_REG_SZ);
+	}
 
 	dev_info(smmu->dev,
 		 "[%s] resource:0x%llx~0x%llx, ioaddr:0x%llx, base:0x%llx, page1:0x%llx, wp_base:0x%llx\n",

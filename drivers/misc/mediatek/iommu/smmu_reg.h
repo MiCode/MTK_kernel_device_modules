@@ -9,13 +9,13 @@
 //=====================================================
 //SMMU wrapper all register definition
 //=====================================================
-#define SMMU_TBU_REG_NUM	(40)
+#define SMMU_TBU_REG_NUM	(39)
 
 #define SMMU_GLB_CTL0		0x000
 #define SMMU_GLB_CTL1		0x004
 #define SMMU_GLB_CTL2		0x008
-#define SMMU_GLB_CTL3		0x00C
 #define SMMU_GLB_CTL4		0x010
+#define SMMU_GLB_CTL6		0x018
 
 #define SMMU_GLB_MON0		0x050
 #define SMMU_GLB_MON1		0x054
@@ -27,19 +27,12 @@
 #define SMMU_PMU_MON0		0x074
 #define SMMU_LMU_CTL0		0x078
 
-#define SMMU_IRQ_NS_STA		0x080
-#define SMMU_IRQ_NS_ACK		0x084
-#define SMMU_IRQ_NS_ACK_CNT	0x0088
-#define SMMU_IRQ_NS_DIS		0x08C
+#define SMMU_IRQ_STA		0x080
+#define SMMU_IRQ_ACK		0x084
+#define SMMU_IRQ_ACK_CNT	0x0088
+#define SMMU_IRQ_DIS		0x08C
 
-#define SMMU_IRQ_S_STA		0x090
-#define SMMU_IRQ_S_ACK		0x094
-#define SMMU_IRQ_S_ACK_CNT	0x0098
-#define SMMU_IRQ_S_DIS		0x09C
-
-#define SMMU_IRQ_NS_CNT		0x100
-
-#define SMMU_IRQ_S_CNT		0x180
+#define SMMU_IRQ_CNT		0x100
 
 #define SMMU_TCU_CTL0		0x200
 #define SMMU_TCU_CTL1		0x204
@@ -47,8 +40,6 @@
 #define SMMU_TCU_CTL3		0x20C
 #define SMMU_TCU_CTL4		0x210
 #define SMMU_TCU_CTL5		0x214
-#define SMMU_TCU_CTL6		0x218
-#define SMMU_TCU_CTL7		0x21C
 #define SMMU_TCU_CTL8		0x220
 
 #define SMMU_TCU_MON0		0x240
@@ -69,7 +60,6 @@
 #define SMMU_TBU0_CTL0		0x300
 #define SMMU_TBU0_CTL1		0x304
 #define SMMU_TBU0_CTL2		0x308
-#define SMMU_TBU0_CTL3		0x30C
 #define SMMU_TBU0_CTL4		0x310
 #define SMMU_TBU0_CTL5		0x314
 #define SMMU_TBU0_CTL6		0x318
@@ -116,7 +106,6 @@
 #define SMMU_TBU1_CTL0		0x400
 #define SMMU_TBU1_CTL1		0x404
 #define SMMU_TBU1_CTL2		0x408
-#define SMMU_TBU1_CTL3		0x40C
 #define SMMU_TBU1_CTL4		0x410
 #define SMMU_TBU1_CTL5		0x414
 #define SMMU_TBU1_CTL6		0x418
@@ -163,7 +152,6 @@
 #define SMMU_TBU2_CTL0		0x500
 #define SMMU_TBU2_CTL1		0x504
 #define SMMU_TBU2_CTL2		0x508
-#define SMMU_TBU2_CTL3		0x50C
 #define SMMU_TBU2_CTL4		0x510
 #define SMMU_TBU2_CTL5		0x514
 #define SMMU_TBU2_CTL6		0x518
@@ -210,7 +198,6 @@
 #define SMMU_TBU3_CTL0		0x600
 #define SMMU_TBU3_CTL1		0x604
 #define SMMU_TBU3_CTL2		0x608
-#define SMMU_TBU3_CTL3		0x60C
 #define SMMU_TBU3_CTL4		0x610
 #define SMMU_TBU3_CTL5		0x614
 #define SMMU_TBU3_CTL6		0x618
@@ -263,8 +250,8 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_GLB_CTL0, "GLB_CTL0" },
 	{ SMMU_GLB_CTL1, "GLB_CTL1" },
 	{ SMMU_GLB_CTL2, "GLB_CTL2" },
-	{ SMMU_GLB_CTL3, "GLB_CTL3" },
 	{ SMMU_GLB_CTL4, "GLB_CTL4" },
+	{ SMMU_GLB_CTL6, "GLB_CTL6" },
 	{ SMMU_GLB_MON0, "GLB_MON0" },
 	{ SMMU_GLB_MON1, "GLB_MON1" },
 	{ SMMU_GLB_MON2, "GLB_MON2" },
@@ -273,24 +260,17 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_PMU_CTL0, "PMU_CTL0" },
 	{ SMMU_PMU_MON0, "PMU_MON0" },
 	{ SMMU_LMU_CTL0, "LMU_CTL0" },
-	{ SMMU_IRQ_NS_STA, "IRQ_NS_STA" },
-	{ SMMU_IRQ_NS_ACK, "IRQ_NS_ACK" },
-	{ SMMU_IRQ_NS_ACK_CNT, "IRQ_NS_ACK_CNT" },
-	{ SMMU_IRQ_NS_DIS, "IRQ_NS_DIS" },
-	{ SMMU_IRQ_S_STA, "IRQ_S_STA" },
-	{ SMMU_IRQ_S_ACK, "IRQ_S_ACK" },
-	{ SMMU_IRQ_S_ACK_CNT, "IRQ_S_ACK_CNT" },
-	{ SMMU_IRQ_S_DIS, "IRQ_S_DIS" },
-	{ SMMU_IRQ_NS_CNT, "IRQ_NS_CNT" },
-	{ SMMU_IRQ_S_CNT, "IRQ_S_CN" },
+	{ SMMU_IRQ_STA, "IRQ_STA" },
+	{ SMMU_IRQ_ACK, "IRQ_ACK" },
+	{ SMMU_IRQ_ACK_CNT, "IRQ_ACK_CNT" },
+	{ SMMU_IRQ_DIS, "IRQ_DIS" },
+	{ SMMU_IRQ_CNT, "IRQ_CNT" },
 	{ SMMU_TCU_CTL0, "TCU_CTL0" },
 	{ SMMU_TCU_CTL1, "TCU_CTL1" },
 	{ SMMU_TCU_CTL2, "TCU_CTL2" },
 	{ SMMU_TCU_CTL3, "TCU_CTL3" },
 	{ SMMU_TCU_CTL4, "TCU_CTL4" },
 	{ SMMU_TCU_CTL5, "TCU_CTL5" },
-	{ SMMU_TCU_CTL6, "TCU_CTL6" },
-	{ SMMU_TCU_CTL7, "TCU_CTL7" },
 	{ SMMU_TCU_CTL8, "TCU_CTL8" },
 	{ SMMU_TCU_MON0, "TCU_MON0" },
 	{ SMMU_TCU_MON1, "TCU_MON1" },
@@ -308,7 +288,6 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU0_CTL0, "TBU0_CTL0" },
 	{ SMMU_TBU0_CTL1, "TBU0_CTL1" },
 	{ SMMU_TBU0_CTL2, "TBU0_CTL2" },
-	{ SMMU_TBU0_CTL3, "TBU0_CTL3" },
 	{ SMMU_TBU0_CTL4, "TBU0_CTL4" },
 	{ SMMU_TBU0_CTL5, "TBU0_CTL5" },
 	{ SMMU_TBU0_CTL6, "TBU0_CTL6" },
@@ -348,7 +327,6 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU1_CTL0, "TBU1_CTL0" },
 	{ SMMU_TBU1_CTL1, "TBU1_CTL1" },
 	{ SMMU_TBU1_CTL2, "TBU1_CTL2" },
-	{ SMMU_TBU1_CTL3, "TBU1_CTL3" },
 	{ SMMU_TBU1_CTL4, "TBU1_CTL4" },
 	{ SMMU_TBU1_CTL5, "TBU1_CTL5" },
 	{ SMMU_TBU1_CTL6, "TBU1_CTL6" },
@@ -388,7 +366,6 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU2_CTL0, "TBU2_CTL0" },
 	{ SMMU_TBU2_CTL1, "TBU2_CTL1" },
 	{ SMMU_TBU2_CTL2, "TBU2_CTL2" },
-	{ SMMU_TBU2_CTL3, "TBU2_CTL3" },
 	{ SMMU_TBU2_CTL4, "TBU2_CTL4" },
 	{ SMMU_TBU2_CTL5, "TBU2_CTL5" },
 	{ SMMU_TBU2_CTL6, "TBU2_CTL6" },
@@ -428,7 +405,6 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU3_CTL0, "TBU3_CTL0" },
 	{ SMMU_TBU3_CTL1, "TBU3_CTL1" },
 	{ SMMU_TBU3_CTL2, "TBU3_CTL2" },
-	{ SMMU_TBU3_CTL3, "TBU3_CTL3" },
 	{ SMMU_TBU3_CTL4, "TBU3_CTL4" },
 	{ SMMU_TBU3_CTL5, "TBU3_CTL5" },
 	{ SMMU_TBU3_CTL6, "TBU3_CTL6" },

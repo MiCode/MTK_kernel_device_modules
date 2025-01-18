@@ -25,7 +25,6 @@
 #define SMMU_TRANS_MIX		(SMMU_TRANS_S1 | SMMU_TRANS_S2)
 #define SMMU_TRANS_PA		(1 << 2)
 #define SMMU_TRANS_BYPASS	(SMMU_TRANS_PA | SMMU_TRANS_MIX)
-#define SMMU_TRANS_WP_BYPASS	(SMMU_TRANS_PA | SMMU_TRANS_MIX | (1 << 3))
 
 // all event ids.
 #define EVENT_ID_UUT_FAULT		0x01
@@ -80,9 +79,11 @@
 #define CTL0_STTSL_DIS			F_BIT_SET(10)
 #define CTL0_CFG_TAB_DCM_EN		F_BIT_SET(11)
 #define CTL0_CPU_PARTID_DIS		F_BIT_SET(14)
-
-#define SMMUWP_GLB_CTL3			(0xc)
-#define CTL3_BP_SMMU			F_BIT_SET(0)
+/* New bits of SMMU wrapper extension */
+#define CTL0_TCU2SLC_DCM_EN		F_BIT_SET(18)
+#define CTL0_APB_DCM_EN			F_BIT_SET(19)
+#define CTL0_DVM_DCM_EN			F_BIT_SET(20)
+#define CTL0_CPU_TBU_PARTID_DIS		F_BIT_SET(21)
 
 #define SMMUWP_GLB_CTL4			(0x10)
 #define CTL4_TBU_IRQ_SEL		GENMASK(1, 0)
@@ -99,10 +100,10 @@
 #define SMMUWP_LMU_CTL0			(0x78)
 #define CTL0_LAT_MON_START		F_BIT_SET(0)
 
-#define SMMUWP_IRQ_NS_STA		(0x80)
-#define STA_NS_TCU_GLB_INTR		F_BIT_SET(0)
-#define STA_NS_TCU_CMD_SYNC_INTR	F_BIT_SET(1)
-#define STA_NS_TCU_EVTQ_INTR		F_BIT_SET(2)
+#define SMMUWP_IRQ_STA			(0x80)
+#define STA_TCU_GLB_INTR		F_BIT_SET(0)
+#define STA_TCU_CMD_SYNC_INTR		F_BIT_SET(1)
+#define STA_TCU_EVTQ_INTR		F_BIT_SET(2)
 #define STA_TCU_PRI_INTR		F_BIT_SET(3)
 #define STA_TCU_PMU_INTR		F_BIT_SET(4)
 #define STA_TCU_RAS_CRI			F_BIT_SET(5)
@@ -113,27 +114,14 @@
 #define STA_TBUx_RAS_ERI(tbu)		F_BIT_SET(12 + tbu)
 #define STA_TBUx_RAS_FHI(tbu)		F_BIT_SET(16 + tbu)
 
-#define SMMUWP_IRQ_NS_ACK		(0x84)
+#define SMMUWP_IRQ_ACK			(0x84)
 
-#define SMMUWP_IRQ_NS_ACK_CNT		(0x88)
-#define IRQ_NS_ACK_CNT_MSK		GENMASK(7, 0)
+#define SMMUWP_IRQ_ACK_CNT		(0x88)
+#define IRQ_ACK_CNT_MSK			GENMASK(7, 0)
 
 
 /* SMMU non-secure interrupt pending count register, count 20 */
-#define SMMUWP_IRQ_NS_CNTx(cnt)		(0x100 + 0x4 * (cnt))
-
-#define SMMUWP_IRQ_S_STA		(0x90)
-#define STA_S_TCU_GLB_INTR		F_BIT_SET(0)
-#define STA_S_TCU_CMD_SYNC_INTR		F_BIT_SET(1)
-#define STA_S_TCU_EVTQ_INTR		F_BIT_SET(2)
-
-#define SMMUWP_IRQ_S_ACK		(0x94)
-
-#define SMMUWP_IRQ_S_ACK_CNT		(0x98)
-#define IRQ_S_ACK_CNT_MSK		GENMASK(7, 0)
-
-/* SMMU secure interrupt pending count register, count 3 */
-#define SMMUWP_IRQ_S_CNTx(cnt)		(0x180 + 0x4 * (cnt))
+#define SMMUWP_IRQ_CNTx(cnt)		(0x100 + 0x4 * (cnt))
 
 #define SMMU_TCU_CTL1_AXSLC		(0x204)
 #define AXSLC_BIT_FIELD			GENMASK(8, 4)
