@@ -3714,7 +3714,7 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 				return -1;
 			}
 			ret = iommu_map(domain, layer_addr, layer_addr, fb_info->size,
-				IOMMU_READ | IOMMU_WRITE);
+				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			write_phy_layer_addr_cmdq(comp, handle, 0, layer_addr);
 		} else {
 			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;

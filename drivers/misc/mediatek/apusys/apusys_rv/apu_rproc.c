@@ -203,12 +203,12 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		/* Map reserved code buffer to APU_SEC_FW_IOVA */
 			ret = iommu_map(domain, APU_SEC_FW_IOVA,
 				apu->apusys_sec_mem_start,
-				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE);
+				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 		else
 		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
 			ret = iommu_map(domain, APU_SEC_FW_IOVA,
 				apu->apusys_sec_mem_start,
-				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV);
+				apu->apusys_sec_mem_size, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV, GFP_KERNEL);
 		if (ret) {
 			dev_info(dev, "%s: iommu_map fail(%d)\n", __func__, ret);
 			return ret;
@@ -247,11 +247,11 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		/* Map sg_list to MD32_BOOT_ADDR */
 		if ((apu->platdata->flags & F_SMMU_SUPPORT) == 0)
 			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
-				sgt.nents, IOMMU_READ | IOMMU_WRITE);
+				sgt.nents, IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 		else
 		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
 			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
-				sgt.nents, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV);
+				sgt.nents, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV, GFP_KERNEL);
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		dev_info(dev, "%s: map_sg_sz = %d\n", __func__, map_sg_sz);

@@ -101,7 +101,7 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 			ctx->domain = smmu_domain;
 
 			ret = iommu_map(smmu_domain, base, pa, size - ctrl_size,
-					IOMMU_READ | IOMMU_WRITE);
+					IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			if (ret){
 				pr_info("%s Failed to immu_map, ret %d\n", __func__, ret);
 				return ret;
