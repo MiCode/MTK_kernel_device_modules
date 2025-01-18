@@ -132,7 +132,6 @@ struct mml_sys {
 	/* Device data and component bindings */
 	const struct mml_data *data;
 	struct device *dev;
-	void *mml_drv;
 	struct mtk_ddp_comp ddp_comps[MML_MAX_SYS_COMPONENTS];
 	/* DDP component flags */
 	u32 ddp_comp_en;
@@ -301,7 +300,8 @@ static s32 sys_setup_framedone_events(struct mml_comp *comp, struct mml_task *ta
 		if (!sys->gce_event_sels[i].comp_id)
 			break;
 
-		comp = mml_dev_get_comp_by_id(sys->mml_drv, sys->gce_event_sels[i].comp_id);
+		comp = mml_dev_get_comp_by_id(dev_get_drvdata(sys->master),
+			sys->gce_event_sels[i].comp_id);
 		mml_msg("%s index %u comp id %u comp %#lx",
 			__func__, i, sys->gce_event_sels[i].comp_id, (unsigned long)comp);
 
@@ -2315,7 +2315,7 @@ static struct mml_sys *dbg_probed_components[2];
 static int dbg_probed_count;
 
 struct mml_sys *mml_sys_create(struct platform_device *pdev,
-			       void *mml,
+			       struct mml_dev *mml,
 			       const struct component_ops *comp_ops)
 {
 	struct device *dev = &pdev->dev;
@@ -2331,7 +2331,6 @@ struct mml_sys *mml_sys_create(struct platform_device *pdev,
 	if (!sys)
 		return ERR_PTR(-ENOMEM);
 
-	sys->mml_drv = mml;
 	ret = mml_sys_init(pdev, sys, comp_ops);
 	if (ret) {
 		dev_err(dev, "failed to init mml sys: %d\n", ret);
@@ -2364,7 +2363,7 @@ void mml_sys_destroy(struct platform_device *pdev, struct mml_sys *sys,
 	devm_kfree(&pdev->dev, sys);
 }
 
-void mml_sys_put_dle_ctx(void *mml)
+void mml_sys_put_dle_ctx(struct mml_dev *mml)
 {
 	struct mml_sys *sys = mml_get_sys(mml);
 

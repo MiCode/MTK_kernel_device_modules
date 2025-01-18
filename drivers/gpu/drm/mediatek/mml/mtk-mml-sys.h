@@ -12,7 +12,8 @@
 
 u16 mml_sys_get_reg_ready_sel(struct mml_comp *comp);
 
-struct mml_sys *mml_sys_create(struct platform_device *pdev, void *mml,
+struct mml_sys *mml_sys_create(struct platform_device *pdev,
+	struct mml_dev *mml,
 	const struct component_ops *comp_ops);
 void mml_sys_destroy(struct platform_device *pdev, struct mml_sys *sys,
 	const struct component_ops *comp_ops);
@@ -36,7 +37,7 @@ void mml_set_uid(void **mml_scmi);
  *
  * @mml:	mml driver private data
  */
-void mml_sys_put_dle_ctx(void *mml);
+void mml_sys_put_dle_ctx(struct mml_dev *mml);
 
 extern const struct of_device_id mtk_mml_of_ids[];
 

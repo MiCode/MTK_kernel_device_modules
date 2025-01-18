@@ -396,14 +396,6 @@ struct mml_task *mml_dle_disable(struct mml_dle_ctx *dctx)
 	return task;
 }
 
-static void dle_task_queue(struct mml_task *task, u32 pipe)
-{
-	if (pipe)
-		queue_work(task->ctx->wq_config[0], &task->work_config[pipe]);
-	else
-		mml_err("[dle] should not queue pipe %d", pipe);
-}
-
 static struct mml_tile_cache *dle_task_get_tile_cache(struct mml_task *task, u32 pipe)
 {
 	struct mml_ctx *ctx = task->ctx;
@@ -414,7 +406,6 @@ static struct mml_tile_cache *dle_task_get_tile_cache(struct mml_task *task, u32
 }
 
 static const struct mml_task_ops dle_task_ops = {
-	.queue = dle_task_queue,
 	.submit_done = task_submit_done,
 	.frame_err = dle_task_frame_err,
 	.dup_task = task_dup,
@@ -436,7 +427,7 @@ struct mml_dle_ctx *mml_dle_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
 		"mml_dle_done", "mml_destroy_dl",
-		"mml_work_dl", NULL,
+		NULL, NULL,
 	};
 	struct mml_dle_ctx *ctx;
 	int ret;
