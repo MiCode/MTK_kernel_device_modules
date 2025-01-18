@@ -9,11 +9,11 @@
 /**************************************************
  * GPUFREQ Local Config
  **************************************************/
-#define GPUFREQ_BRINGUP                 (1)
+#define GPUFREQ_BRINGUP                 (0)
 /*
  * 0 -> power on once then never off and disable DDK power on/off callback
  */
-#define GPUFREQ_POWER_CTRL_ENABLE       (0)
+#define GPUFREQ_POWER_CTRL_ENABLE       (1)
 /*
  * (DVFS_ENABLE, CUST_INIT)
  * (1, 1) -> DVFS enable and init to CUST_INIT_OPPIDX
@@ -21,7 +21,7 @@
  * (0, 1) -> DVFS disable but init to CUST_INIT_OPPIDX (do DVFS only onces)
  * (0, 0) -> DVFS disable
  */
-#define GPUFREQ_DVFS_ENABLE             (0)
+#define GPUFREQ_DVFS_ENABLE             (1)
 #define GPUFREQ_CUST_INIT_ENABLE        (0)
 #define GPUFREQ_CUST_INIT_OPPIDX        (0)
 
@@ -63,7 +63,7 @@
 /**************************************************
  * Power Domain Setting
  **************************************************/
-#define GPUFREQ_HWAPM_ENABLE            (0)
+#define GPUFREQ_HWAPM_ENABLE            (1)
 #define GPUFREQ_CHECK_MTCMOS_PWR_STATUS (1)
 #define PWR_STATUS_OFS                  (0xF3C)
 #define PWR_STATUS_2ND_OFS              (0xF40)
@@ -106,12 +106,12 @@
 /**************************************************
  * Power Throttling Setting
  **************************************************/
-#define GPUFREQ_BATT_OC_ENABLE          (0)
+#define GPUFREQ_BATT_OC_ENABLE          (1)
 #define GPUFREQ_BATT_PERCENT_ENABLE     (0)
-#define GPUFREQ_LOW_BATT_ENABLE         (0)
-#define GPUFREQ_BATT_OC_FREQ            (474000)
+#define GPUFREQ_LOW_BATT_ENABLE         (1)
+#define GPUFREQ_BATT_OC_FREQ            (480000)
 #define GPUFREQ_BATT_PERCENT_IDX        (0)
-#define GPUFREQ_LOW_BATT_FREQ           (474000)
+#define GPUFREQ_LOW_BATT_FREQ           (480000)
 
 /**************************************************
  * Adaptive Volt Scaling (AVS) Setting
@@ -142,6 +142,11 @@ enum gpufreq_segment {
 enum gpufreq_clk_src {
 	CLOCK_SUB = 0,
 	CLOCK_MAIN,
+};
+
+enum gpufreq_transaction_mode {
+	MERGER_OFF = 0,
+	MERGER_LIGHT,
 };
 
 /**************************************************
@@ -232,18 +237,18 @@ struct gpufreq_opp_info g_default_gpu[] = {
 	GPUOP(690000, 66250, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 22 */
 	GPUOP(675000, 65625, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 23 */
 	GPUOP(660000, 65000, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 24 sign off */
-	GPUOP(637000, 64375, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 25 */
-	GPUOP(615000, 63750, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 26 */
-	GPUOP(592000, 63125, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 27 */
-	GPUOP(570000, 62500, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 28 */
-	GPUOP(547000, 61875, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 29 */
-	GPUOP(525000, 61250, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 30 */
-	GPUOP(502000, 60625, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 31 */
-	GPUOP(480000, 60000, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 32 */
-	GPUOP(457000, 59375, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 33 */
-	GPUOP(435000, 58750, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 34 */
-	GPUOP(412000, 58125, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 35 */
-	GPUOP(390000, 57500, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 36 sign off */
+	GPUOP(637000, 65000, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 25 */
+	GPUOP(615000, 65000, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 26 */
+	GPUOP(592000, 64375, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 27 */
+	GPUOP(570000, 64375, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 28 */
+	GPUOP(547000, 64375, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 29 */
+	GPUOP(525000, 63750, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 30 */
+	GPUOP(502000, 63750, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 31 */
+	GPUOP(480000, 63750, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 32 */
+	GPUOP(457000, 63125, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 33 */
+	GPUOP(435000, 63125, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 34 */
+	GPUOP(412000, 63125, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 35 */
+	GPUOP(390000, 62500, VSRAM_LEVEL_0, POSDIV_POWER_4, 0, 0), /* 36 sign off */
 };
 
 /**************************************************
@@ -326,7 +331,6 @@ struct gpufreq_adj_info g_mcl50_adj[] = {
 #define AVS_ADJ_NUM                   ARRAY_SIZE(g_avs_adj)
 struct gpufreq_adj_info g_avs_adj[] = {
 	ADJOP(0,  0, 0, 0, 0),
-	ADJOP(8,  0, 0, 0, 0),
 	ADJOP(24, 0, 0, 0, 0),
 	ADJOP(36, 0, 0, 0, 0),
 };

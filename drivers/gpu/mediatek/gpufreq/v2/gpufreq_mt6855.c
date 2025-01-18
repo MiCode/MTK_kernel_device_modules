@@ -107,6 +107,7 @@ static int __gpufreq_clock_control(enum gpufreq_power_state power);
 static int __gpufreq_mtcmos_control(enum gpufreq_power_state power);
 static int __gpufreq_buck_control(enum gpufreq_power_state power);
 static void __gpufreq_aoc_control(enum gpufreq_power_state power);
+static void __gpufreq_transaction_control(enum gpufreq_transaction_mode mode);
 static void __gpufreq_hw_dcm_control(void);
 static void __gpufreq_hwapm_control(void);
 /* init function */
@@ -658,19 +659,23 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_hw_dcm_control();
 		__gpufreq_footprint_power_step(0x07);
 
+		/* control bus transaction mode */
+		__gpufreq_transaction_control(MERGER_LIGHT);
+		__gpufreq_footprint_power_step(0x08);
+
 		/* disable RGX secure protect */
 		gpu_set_rgx_bus_secure();
-		__gpufreq_footprint_power_step(0x08);
+		__gpufreq_footprint_power_step(0x09);
 
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x09);
-	} else if (power == POWER_OFF && g_gpu.power_count == 0) {
 		__gpufreq_footprint_power_step(0x0A);
+	} else if (power == POWER_OFF && g_gpu.power_count == 0) {
+		__gpufreq_footprint_power_step(0x0B);
 
 		/* freeze DVFS when power off */
 		g_dvfs_state |= DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x0B);
+		__gpufreq_footprint_power_step(0x0C);
 
 		/* control clock */
 		ret = __gpufreq_clock_control(POWER_OFF);
@@ -679,7 +684,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x0C);
+		__gpufreq_footprint_power_step(0x0D);
 
 		/* control MTCMOS */
 		ret = __gpufreq_mtcmos_control(POWER_OFF);
@@ -688,7 +693,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x0D);
+		__gpufreq_footprint_power_step(0x0E);
 
 		/* control Buck */
 		ret = __gpufreq_buck_control(POWER_OFF);
@@ -697,11 +702,11 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x0E);
+		__gpufreq_footprint_power_step(0x0F);
 
 		/* control AOC before MFG_0 off */
 		__gpufreq_aoc_control(POWER_OFF);
-		__gpufreq_footprint_power_step(0x0F);
+		__gpufreq_footprint_power_step(0x10);
 	}
 
 	/* return power count if successfully control power */
@@ -942,26 +947,14 @@ void __gpufreq_dump_infra_status(void)
 			g_gpu.cur_volt, g_gpu.cur_vsram);
 	}
 
-	/* 0x13FBF000, 0x13F90000 */
-	if (g_mfg_top_base && g_mfg_rpc_base) {
-		/* MFG_QCHANNEL_CON 0x13FBF0B4 [0] MFG_ACTIVE_SEL = 1'b1 */
-		val = readl(g_mfg_top_base + 0xB4);
-		val |= (1UL << 0);
-		writel(val, g_mfg_top_base + 0xB4);
-		/* MFG_DEBUG_SEL 0x13FBF170 [1:0] MFG_DEBUG_TOP_SEL = 2'b11 */
-		val = readl(g_mfg_top_base + 0x170);
-		val |= (1UL << 0);
-		val |= (1UL << 1);
-		writel(val, g_mfg_top_base + 0x170);
-
-		/* MFG_DEBUG_SEL */
-		/* MFG_DEBUG_TOP */
+	/* 0x13F90000, 0x13000000 */
+	if (g_mfg_rpc_base && g_rgx_base) {
 		/* MFG_GPU_EB_SPM_RPC_SLP_PROT_EN_STA */
-		GPUFREQ_LOGI("%-7s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+		/* RGX_CR_SYS_BUS_SECURE */
+		GPUFREQ_LOGI("%-7s (0x%x): 0x%08x, (0x%x): 0x%08x",
 			"[MFG]",
-			(0x13FBF000 + 0x170), readl(g_mfg_top_base + 0x170),
-			(0x13FBF000 + 0x178), readl(g_mfg_top_base + 0x178),
-			(0x13F90000 + 0x1048), readl(g_mfg_rpc_base + 0x1048));
+			(0x13F90000 + 0x1048), readl(g_mfg_rpc_base + 0x1048),
+			(0x13000000 + 0xA100), readl(g_rgx_base + 0xA100));
 	}
 
 	/* 0x1021C000, 0x10270000 */
@@ -1008,11 +1001,14 @@ void __gpufreq_dump_infra_status(void)
 
 	/* 0x1C001000 */
 	if (g_sleep) {
-		/* MFG0_PWR_CON - MFG2_PWR_CON */
-		GPUFREQ_LOGI("%-7s (0x%x-%x): 0x%08x 0x%08x 0x%08x",
-			"[SPM]", (0x1C001000 + 0xEB8), 0xEC0,
-			readl(g_sleep + 0xEB8), readl(g_sleep + 0xEBC),
-			readl(g_sleep + 0xEC0));
+		/* MFG0_PWR_CON */
+		/* MFG1_PWR_CON */
+		/* MFG2_PWR_CON */
+		GPUFREQ_LOGI("%-7s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+			"[SPM]",
+			(0x1C001000 + 0xEB8), readl(g_sleep + 0xEB8),
+			(0x1C001000 + 0xEBC), readl(g_sleep + 0xEBC),
+			(0x1C001000 + 0xEC0), readl(g_sleep + 0xEC0));
 		/* XPU_PWR_STATUS */
 		/* XPU_PWR_STATUS_2ND */
 		GPUFREQ_LOGI("%-7s (0x%x): 0x%08x, (0x%x): 0x%08x",
@@ -1679,9 +1675,8 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 	 * [SPM] pwr_status_2nd: 0x1C001F40
 	 * Power ON: 0000 1110 (0xE) [3:1]: MFG0-2
 	 */
-	GPUFREQ_LOGI("[GPU] RGX_CR_CORE_ID: (0x%08x, 0x%08x), MFG_TOP_CONFIG: 0x%08x",
-		readl(g_rgx_base + 0x024), readl(g_rgx_base + 0x020),
-		readl(g_mfg_top_base + 0x000));
+	GPUFREQ_LOGI("[GPU] RGX_CR_CORE_ID: (0x%08x, 0x%08x), RGX_CR_SYS_BUS_SECURE: 0x%08x",
+		readl(g_rgx_base + 0x024), readl(g_rgx_base + 0x020), readl(g_rgx_base + 0xA100));
 	GPUFREQ_LOGI("[MFG0-2] PWR_STATUS: 0x%08x, PWR_STATUS_2ND: 0x%08x",
 		readl(g_sleep + PWR_STATUS_OFS) & MFG_0_2_PWR_MASK,
 		readl(g_sleep + PWR_STATUS_2ND_OFS) & MFG_0_2_PWR_MASK);
@@ -1719,44 +1714,35 @@ static unsigned int __gpufreq_execute_fmeter(enum gpufreq_clk_src clksrc)
 	unsigned int freq = 0;
 	int i = 0;
 
-	/* clear FMETER */
-	writel(0x0, PLL4H_FQMTR_CON0);
-
 	/* de-asset FMETER reset */
-	/* PLL4H_FQMTR_CON0 0x13FA0200 [15] CLK26CALI_0: 0 -> 1 */
-	val = readl(PLL4H_FQMTR_CON0);
-	val |= (1UL << 15);
-	writel(val, PLL4H_FQMTR_CON0);
+	/* PLL4H_FQMTR_CON0 0x13FA0200 [15] CLK26CALI_0: 1 -> 0 -> 1 */
+	writel((readl(PLL4H_FQMTR_CON0) & 0xFFFF7FFF), PLL4H_FQMTR_CON0);
+	writel((readl(PLL4H_FQMTR_CON0) | 0x00008000), PLL4H_FQMTR_CON0);
 
 	/* choose target PLL */
 	/* PLL4H_FQMTR_CON0 0x13FA0200 [2:0] FQMTR_CKSEL */
-	val = readl(PLL4H_FQMTR_CON0);
+	val = readl(PLL4H_FQMTR_CON0) & 0xFFFFFFF8;
 	if (clksrc == CLOCK_MAIN)
 		val |= FQMTR_PLL1_ID;
 	else if (clksrc == CLOCK_SUB)
 		val |= FQMTR_PLL4_ID;
 	writel(val, PLL4H_FQMTR_CON0);
 
-	/* PLL4H_FQMTR_CON1 0x13FA0204 [25:16] CKGEN_LOAD_CNT = 0x1FF */
-	val = readl(PLL4H_FQMTR_CON1);
-	val |= (0x1FF << 16);
+	/* PLL4H_FQMTR_CON1 0x13FA0204 [25:16] CKGEN_LOAD_CNT = 0x3FF */
+	val = (readl(PLL4H_FQMTR_CON1) & 0xFC00FFFF) | (0x3FF << 16);
 	writel(val, PLL4H_FQMTR_CON1);
 
 	/* PLL4H_FQMTR_CON0 0x13FA0200 [31:24] CKGEN_K1 = 0x00 */
-	val = readl(PLL4H_FQMTR_CON0);
-	val &= 0x00FFFFFF;
-	writel(val, PLL4H_FQMTR_CON0);
+	writel((readl(PLL4H_FQMTR_CON0) & 0x00FFFFFF), PLL4H_FQMTR_CON0);
 
 	/* enable FMETER */
-	/* PLL4H_FQMTR_CON0 0x13FA0200 [12] CKGEN_CLK_EXC = 1'b1 */
-	val = readl(PLL4H_FQMTR_CON0);
-	val |= (1UL << 12);
+	/* PLL4H_FQMTR_CON0 0x13FA0200 [12] FMETER_EN = 1'b1 */
+	val = (readl(PLL4H_FQMTR_CON0) & 0xFFFFEFFF) | (1UL << 12);
 	writel(val, PLL4H_FQMTR_CON0);
 
 	/* trigger FMETER, auto-clear when calibration is done */
 	/* PLL4H_FQMTR_CON0 0x13FA0200 [4] CKGEN_TRI_CAL = 1'b1 */
-	val = readl(PLL4H_FQMTR_CON0);
-	val |= (1UL << 4);
+	val = (readl(PLL4H_FQMTR_CON0) & 0xFFFFFFEF) | (1UL << 4);
 	writel(val, PLL4H_FQMTR_CON0);
 
 	/* wait FMETER calibration finish */
@@ -1772,7 +1758,7 @@ static unsigned int __gpufreq_execute_fmeter(enum gpufreq_clk_src clksrc)
 	/* read CAL_CNT and CKGEN_LOAD_CNT */
 	val = readl(PLL4H_FQMTR_CON1) & 0xFFFF;
 	/* Khz */
-	freq = ((val * 26000)) / 512;
+	freq = ((val * 26000)) / 1024;
 
 	/* reset FMETER */
 	writel(0x8000, PLL4H_FQMTR_CON0);
@@ -1949,12 +1935,18 @@ static int __gpufreq_clock_control(enum gpufreq_power_state power)
 static void __gpufreq_aoc_control(enum gpufreq_power_state power)
 {
 	u32 val = 0;
+	int i = 0;
 
 	/* wait HW semaphore: SPM_SEMA_M4 0x1C0016AC [0] = 1'b1 */
 	do {
 		val = readl(g_sleep + 0x6AC);
 		val |= (1UL << 0);
 		writel(val, g_sleep + 0x6AC);
+		udelay(10);
+		if (++i > 5000) {
+			/* 50ms timeout */
+			goto hw_semaphore_timeout;
+		}
 	} while ((readl(g_sleep + 0x6AC) & 0x1) != 0x1);
 
 	/* power on: AOCISO -> AOCLHENB */
@@ -1989,6 +1981,70 @@ static void __gpufreq_aoc_control(enum gpufreq_power_state power)
 	val = readl(g_sleep + 0x6AC);
 	val |= (1UL << 0);
 	writel(val, g_sleep + 0x6AC);
+	/* read back to check SPM_SEMA_M4 is truly released */
+	udelay(10);
+	if (readl(g_sleep + 0x6AC) & 0x1)
+		__gpufreq_abort(GPUFREQ_GPU_EXCEPTION,
+			"fail to release SPM_SEMA_M4: 0x%08x", readl(g_sleep + 0x6AC));
+
+	return;
+
+hw_semaphore_timeout:
+	GPUFREQ_LOGE("M0(0x1C00169C): 0x%08x, M1(0x1C0016A0): 0x%08x",
+		readl(g_sleep + 0x69C), readl(g_sleep + 0x6A0));
+	GPUFREQ_LOGE("M2(0x1C0016A4): 0x%08x, M3(0x1C0016A8): 0x%08x",
+		readl(g_sleep + 0x6A4), readl(g_sleep + 0x6A8));
+	GPUFREQ_LOGE("M4(0x1C0016AC): 0x%08x, M5(0x1C0016B0): 0x%08x",
+		readl(g_sleep + 0x6AC), readl(g_sleep + 0x6B0));
+	GPUFREQ_LOGE("M6(0x1C0016B4): 0x%08x, M7(0x1C0016B8): 0x%08x",
+		readl(g_sleep + 0x6B4), readl(g_sleep + 0x6B8));
+	__gpufreq_abort(GPUFREQ_GPU_EXCEPTION, "acquire SPM_SEMA_M4 timeout");
+}
+
+/* Merge GPU transaction from 64byte to 128byte to maximize DRAM efficiency */
+static void __gpufreq_transaction_control(enum gpufreq_transaction_mode mode)
+{
+	if (mode == MERGER_OFF) {
+		/* merge_r */
+		writel(0x1818F780, g_mfg_top_base + 0x8A0);
+		/* merge_w */
+		writel(0x1818F780, g_mfg_top_base + 0x8B0);
+		/* QoS normal mode */
+		writel(0x00000000, g_mfg_top_base + 0x700);
+		/* ar_requestor */
+		writel(0xA0000020, g_mfg_top_base + 0x704);
+		/* aw_requestor */
+		writel(0xA0000020, g_mfg_top_base + 0x708);
+		/* QoS pre-ultra */
+		writel(0x00400400, g_mfg_top_base + 0x70C);
+
+		writel(0x00000000, g_mfg_top_base + 0x710);
+		writel(0x00000000, g_mfg_top_base + 0x714);
+		writel(0x00000000, g_mfg_top_base + 0x718);
+		writel(0x00000000, g_mfg_top_base + 0x71C);
+		writel(0x00000000, g_mfg_top_base + 0x720);
+		writel(0x00000000, g_mfg_top_base + 0x724);
+	} else if (mode == MERGER_LIGHT) {
+		/* merge_r */
+		writel(0x1818F783, g_mfg_top_base + 0x8A0);
+		/* merge_w */
+		writel(0x1818F783, g_mfg_top_base + 0x8B0);
+		/* QoS normal mode */
+		writel(0x00000000, g_mfg_top_base + 0x700);
+		/* ar_requestor */
+		writel(0xA0000020, g_mfg_top_base + 0x704);
+		/* aw_requestor */
+		writel(0xA0000020, g_mfg_top_base + 0x708);
+		/* QoS pre-ultra */
+		writel(0x00400400, g_mfg_top_base + 0x70C);
+
+		writel(0x00000000, g_mfg_top_base + 0x710);
+		writel(0x00000000, g_mfg_top_base + 0x714);
+		writel(0x00000000, g_mfg_top_base + 0x718);
+		writel(0x00000000, g_mfg_top_base + 0x71C);
+		writel(0x00000000, g_mfg_top_base + 0x720);
+		writel(0x00000000, g_mfg_top_base + 0x724);
+	}
 }
 
 static int __gpufreq_mtcmos_control(enum gpufreq_power_state power)
@@ -2630,24 +2686,27 @@ static void __gpufreq_avs_adjustment(void)
 {
 #if GPUFREQ_AVS_ENABLE
 	u32 val = 0;
-	unsigned int temp_volt = 0, temp_freq = 0;
+	unsigned int temp_volt = 0, temp_freq = 0, volt_offset = 0;
 	int i = 0, oppidx = 0;
 	int adj_num = AVS_ADJ_NUM;
 
 	/*
-	 * Read AVS efuse
-	 *
 	 * Freq (MHz) | Signedoff Volt (V) | Efuse name | Efuse address
 	 * ============================================================
 	 * 950        | 0.8                | PTPOD16    | 0x11C105C0
-	 * 900        | 0.75               | PTPOD17    | 0x11C105C4
 	 * 660        | 0.65               | PTPOD18    | 0x11C105C8
-	 * 390        | 0.575              | PTPOD19    | 0x11C105CC
+	 * 390        | 0.625              | PTPOD19    | 0x11C105CC
 	 */
 
+	/* read AVS efuse and compute Freq and Volt */
 	for (i = 0; i < adj_num; i++) {
 		oppidx = g_avs_adj[i].oppidx;
-		val = readl(g_efuse_base + 0x5C0 + (i * 0x4));
+		if (i == 0)
+			val = readl(g_efuse_base + 0x5C0);
+		else if (i == 1)
+			val = readl(g_efuse_base + 0x5C8);
+		else if (i == 2)
+			val = readl(g_efuse_base + 0x5CC);
 
 		/* if efuse value is not set */
 		if (!val)
@@ -2670,6 +2729,7 @@ static void __gpufreq_avs_adjustment(void)
 				oppidx, i, temp_freq, g_gpu.signed_table[oppidx].freq);
 			return;
 		}
+		g_avs_adj[i].freq = temp_freq;
 
 		/* compute Volt from efuse */
 		temp_volt = 0;
@@ -2678,21 +2738,52 @@ static void __gpufreq_avs_adjustment(void)
 		temp_volt |= (val & 0x0000000C) << 4;  /* Get volt[7:6] from efuse[3:2]   */
 		/* Volt is stored in efuse with 6.25mV unit */
 		temp_volt *= 625;
-		/* clamp to signoff Volt */
-		if (temp_volt > g_gpu.signed_table[oppidx].volt) {
-			GPUFREQ_LOGW("OPP[%02d*]: AVS efuse[%d].volt(%d) > signed-off.volt(%d)",
-				oppidx, i, temp_volt, g_gpu.signed_table[oppidx].volt);
-			g_avs_adj[i].volt = g_gpu.signed_table[oppidx].volt;
-		} else
-			g_avs_adj[i].volt = temp_volt;
-		g_avs_adj[i].vsram = __gpufreq_get_vsram_by_vstack(g_avs_adj[i].volt);
+		g_avs_adj[i].volt = temp_volt;
 
 		/* AVS is enabled if any OPP is adjusted by AVS */
 		g_avs_enable = true;
-
-		GPUFREQ_LOGI("OPP[%02d*]: AVS efuse[%d] freq(%d), volt(%d)",
-			oppidx, i, temp_freq, temp_volt);
 	}
+
+	/* check AVS Volt and update Vsram */
+	for (i = adj_num - 1; i >= 0; i--) {
+		oppidx = g_avs_adj[i].oppidx;
+		/* mV * 100 */
+		if (i == 0)
+			volt_offset = 1250;
+		else if (i == 1)
+			volt_offset = 1250;
+
+		/* if AVS Volt is not set */
+		if (!g_avs_adj[i].volt)
+			continue;
+
+		/*
+		 * AVS Volt reverse check, start from adj_num -2
+		 * Volt of sign-off[i] should always be larger than sign-off[i+1]
+		 * if not, add Volt offset to sign-off[i]
+		 */
+		if (i != (adj_num - 1)) {
+			if (g_avs_adj[i].volt < g_avs_adj[i+1].volt) {
+				GPUFREQ_LOGW("AVS efuse[%d].volt(%d) < efuse[%d].volt(%d)",
+					i, g_avs_adj[i].volt, i+1, g_avs_adj[i+1].volt);
+				g_avs_adj[i].volt = g_avs_adj[i+1].volt + volt_offset;
+			}
+		}
+
+		/* clamp to signoff Volt */
+		if (g_avs_adj[i].volt > g_gpu.signed_table[oppidx].volt) {
+			GPUFREQ_LOGW("OPP[%02d*]: AVS efuse[%d].volt(%d) > signed-off.volt(%d)",
+				oppidx, i, g_avs_adj[i].volt, g_gpu.signed_table[oppidx].volt);
+			g_avs_adj[i].volt = g_gpu.signed_table[oppidx].volt;
+		}
+
+		/* update Vsram */
+		g_avs_adj[i].vsram = __gpufreq_get_vsram_by_vgpu(g_avs_adj[i].volt);
+	}
+
+	for (i = 0; i < adj_num; i++)
+		GPUFREQ_LOGI("OPP[%02d*]: AVS efuse[%d] freq(%d), volt(%d)",
+			g_avs_adj[i].oppidx, i, g_avs_adj[i].freq, g_avs_adj[i].volt);
 
 	/* apply AVS to signed table */
 	__gpufreq_apply_adjust(g_avs_adj, adj_num);
@@ -2982,6 +3073,13 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	of_property_read_u32(gpufreq_dev->of_node, "aging-load", &g_aging_load);
 	of_property_read_u32(gpufreq_dev->of_node, "mcl50-load", &g_mcl50_load);
 	of_property_read_u32(of_wrapper, "gpueb-support", &g_gpueb_support);
+
+	/* 0x13000000 */
+	g_rgx_base = __gpufreq_of_ioremap("mediatek,rgx", 0);
+	if (unlikely(!g_rgx_base)) {
+		GPUFREQ_LOGE("fail to ioremap RGX");
+		goto done;
+	}
 
 	/* 0x13FBF000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_top_config");
