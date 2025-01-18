@@ -1485,4 +1485,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/power/supply/sgm41516d.ko")
         mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
 
+    if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6893")
+
 get_overlay_modules_list()
