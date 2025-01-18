@@ -165,21 +165,21 @@ static struct irq_count_stat __percpu *irq_count_data;
 static struct hrtimer __percpu *irq_count_tracer_hrtimer;
 
 /* per irq */
-struct irq_count_desc {
+struct irq_mon_desc {
 	unsigned int __percpu *count;
 	u64 __percpu *time;
 };
 
-static DEFINE_XARRAY(irqs_desc_xa);
+static DEFINE_XARRAY(imdesc_xa);
 
-static struct irq_count_desc *irq_count_desc_lookup(int irq)
+static struct irq_mon_desc *irq_mon_desc_lookup(unsigned int irq)
 {
-	return xa_load(&irqs_desc_xa, irq);
+	return xa_load(&imdesc_xa, irq);
 }
 
-static struct irq_count_desc *irq_count_desc_alloc(int irq)
+static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 {
-	struct irq_count_desc *desc;
+	struct irq_mon_desc *desc;
 	int err = 0;
 
 	desc = kzalloc(sizeof(*desc), GFP_ATOMIC);
@@ -192,10 +192,10 @@ static struct irq_count_desc *irq_count_desc_alloc(int irq)
 	if (!desc->time)
 		goto out_free_count;
 	/*
-	 * This entry might be stored by concurrent irq_count_desc_alloc()
+	 * This entry might be stored by concurrent irq_mon_desc_alloc()
 	 * Use xa_insert() to prevent override the entry.
 	 */
-	err = xa_insert(&irqs_desc_xa, irq, desc, GFP_ATOMIC);
+	err = xa_insert(&imdesc_xa, irq, desc, GFP_ATOMIC);
 	if (!err)
 		goto out;
 
@@ -206,7 +206,7 @@ out_free_desc:
 	kfree(desc);
 
 	/* Try to return the entry if it is present. */
-	desc =  (err == -EBUSY) ? xa_load(&irqs_desc_xa, irq) : NULL;
+	desc =  (err == -EBUSY) ? xa_load(&imdesc_xa, irq) : NULL;
 out:
 	return desc;
 }
@@ -214,9 +214,9 @@ out:
 /* account the irq time for current cpu */
 void irq_mon_account_irq_time(u64 time, int irq)
 {
-	struct irq_count_desc *desc = irq_count_desc_lookup(irq);
+	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
 
-	desc = (desc) ? : irq_count_desc_alloc(irq);
+	desc = (desc) ? : irq_mon_desc_alloc(irq);
 	if (desc)
 		__this_cpu_add(*desc->time, time);
 }
@@ -224,10 +224,10 @@ void irq_mon_account_irq_time(u64 time, int irq)
 static int irq_time_proc_show(struct seq_file *m, void *v)
 {
 	unsigned long index;
-	struct irq_count_desc *desc;
+	struct irq_mon_desc *desc;
 	int cpu;
 
-	xa_for_each(&irqs_desc_xa, index, desc) {
+	xa_for_each(&imdesc_xa, index, desc) {
 		seq_printf(m, "%u", (unsigned int)index);
 		for_each_possible_cpu(cpu)
 			seq_printf(m, " %llu", *per_cpu_ptr(desc->time, cpu));
@@ -238,19 +238,19 @@ static int irq_time_proc_show(struct seq_file *m, void *v)
 
 static unsigned int irq_count_irqs_cpu(int irq, int cpu)
 {
-	struct irq_count_desc *desc;
+	struct irq_mon_desc *desc;
 
-	desc = irq_count_desc_lookup(irq);
+	desc = irq_mon_desc_lookup(irq);
 	return (desc && desc->count) ? *per_cpu_ptr(desc->count, cpu) : 0;
 }
 
 static void irq_count_save_irqs_cpu(int irq, unsigned int irqs, int cpu)
 {
-	struct irq_count_desc *desc;
+	struct irq_mon_desc *desc;
 
-	desc = irq_count_desc_lookup(irq);
+	desc = irq_mon_desc_lookup(irq);
 	if (!desc)
-		desc = irq_count_desc_alloc(irq);
+		desc = irq_mon_desc_alloc(irq);
 
 	if (desc)
 		*per_cpu_ptr(desc->count, cpu) = irqs;
@@ -480,16 +480,16 @@ int irq_count_tracer_init(void)
 
 void irq_count_tracer_exit(void)
 {
-	struct irq_count_desc *desc;
+	struct irq_mon_desc *desc;
 	unsigned long index;
 
 	free_percpu(irq_count_data);
 	free_percpu(irq_count_tracer_hrtimer);
-	xa_for_each(&irqs_desc_xa, index, desc) {
+	xa_for_each(&imdesc_xa, index, desc) {
 		free_percpu(desc->count);
 		kfree(desc);
 	}
-	xa_destroy(&irqs_desc_xa);
+	xa_destroy(&imdesc_xa);
 }
 
 /* Must holding lock*/
