@@ -21,7 +21,6 @@
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
 #include <ufs/ufshcd.h>
-
 #include "ufs-mediatek-ise.h"
 #include "ufs-mediatek.h"
 #include "ufshcd-priv.h"
@@ -220,9 +219,13 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	struct request *rq = scsi_cmd_to_rq(cmd);
 	struct bio_vec bvec;
 	struct bvec_iter iter;
-
-	u8 *buf = NULL;
+	size_t bytes = 0;
+	size_t len = 0;
+	u8 *_buf = NULL;
 	struct rpmb_frame *rframe = NULL;
+
+	char buf[sizeof(struct rpmb_frame)];
+	const size_t buf_sz = sizeof(buf);
 
 	if (cmd->cmnd[0] == SECURITY_PROTOCOL_IN) {
 
@@ -233,18 +236,33 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		scsi_dma_unmap(cmd);
 
 		bio_for_each_segment(bvec, rq->bio, iter) {
-			/* expect only 1 page */
-			buf = bvec_kmap_local(&bvec);
-			rframe = (void *)buf;
 
-			/* First RPMB frame has enough info */
-			break;
+			_buf = bvec_kmap_local(&bvec);
+			if (!_buf) {
+				dev_warn(hba->dev, "empty page");
+				continue;
+			}
+
+			len =  min(buf_sz - bytes,  (size_t) bvec.bv_len);
+			memcpy(buf, _buf, len);
+
+			kunmap_local(_buf);
+			_buf = NULL;
+
+			bytes += len;
+			if (bytes >= buf_sz){
+				/* First RPMB frame has enough info */
+				break;
+			}
 		}
 
-		if (!rframe) {
-			dev_err(hba->dev, "empty rpmb frame");
-			goto out;
+		if (bytes < buf_sz) {
+			dev_warn(hba->dev, "%s: unexpected scsi data size %zu less than %zu", __func__, bytes, buf_sz);
+			WARN_ON_ONCE(true);
+			return;
 		}
+
+		rframe = (void *)buf;
 
 		dev_dbg(hba->dev, "req_resp=0x%x, result=0x%x",
 			be16_to_cpu(rframe->req_resp), be16_to_cpu(rframe->result));
@@ -267,8 +285,6 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 		/* Dump RPMB frame start from nonce to the end */
 		print_hex_dump(KERN_DEBUG, "tail", DUMP_PREFIX_OFFSET,
 			16, 8, buf + 484, 32, false);
-out:
-		kunmap_local(buf);
 	}
 
 }
