@@ -2212,9 +2212,16 @@ static int mtk_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
 {
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
+	int i;
 
-	if (inst->type == PHY_TYPE_USB2)
+	if (inst->type == PHY_TYPE_USB2) {
+		for (i = 0; i < xsphy->num_rptr; i++) {
+			if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+				phy_set_mode(xsphy->repeater[i], mode);
+		}
+
 		u2_phy_instance_set_mode(xsphy, inst, mode, submode);
+	}
 
 	return 0;
 }
