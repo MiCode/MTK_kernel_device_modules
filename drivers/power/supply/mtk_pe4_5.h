@@ -83,6 +83,7 @@ enum r_cable_range {
 
 struct pe4_power_cap {
 	uint8_t selected_cap_idx;
+	uint8_t apdo_idx;
 	uint8_t nr;
 	uint8_t pdp;
 	uint8_t pwr_limit[PD_CAP_MAX_NR];
