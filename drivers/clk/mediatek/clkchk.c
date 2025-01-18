@@ -672,14 +672,6 @@ EXPORT_SYMBOL(clk_chk_dev_pm_ops);
  * for clock exception event handling
  */
 
-static void clkchk_dump_hwv_history(struct regmap *regmap, u32 id)
-{
-	if (clkchk_ops == NULL || clkchk_ops->dump_hwv_history == NULL)
-		return;
-
-	clkchk_ops->dump_hwv_history(regmap, id);
-}
-
 static void clkchk_get_bus_reg(void)
 {
 	if (clkchk_ops == NULL || clkchk_ops->get_bus_reg == NULL)
@@ -737,6 +729,14 @@ static void clkchk_trigger_trace_dump(unsigned int enable)
 	clkchk_ops->trigger_trace_dump(enable);
 }
 
+static void clkchk_cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
+{
+	if (clkchk_ops == NULL || clkchk_ops->cg_timeout_handle == NULL)
+		return;
+
+	clkchk_ops->cg_timeout_handle(regmap, id, shift);
+}
+
 static int clkchk_evt_handling(struct notifier_block *nb,
 			unsigned long flags, void *data)
 {
@@ -750,8 +750,7 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 	switch (clkd->event_type) {
 	case CLK_EVT_HWV_CG_TIMEOUT:
 	case CLK_EVT_IPI_CG_TIMEOUT:
-		clkchk_dump_hwv_history(clkd->hwv_regmap, clkd->id);
-		clkchk_dump_bus_reg(clkd->regmap, clkd->ofs);
+		clkchk_cg_timeout_handle(clkd->hwv_regmap, clkd->id, clkd->shift);
 		break;
 	case CLK_EVT_HWV_CG_CHK_PWR:
 		if (clkchk_is_cg_chk_pwr_on())

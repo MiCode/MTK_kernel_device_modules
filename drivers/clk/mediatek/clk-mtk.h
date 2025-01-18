@@ -16,7 +16,7 @@
 #include "clk-mux.h"
 
 /* hw voter timeout configures */
-#define MTK_WAIT_HWV_PREPARE_CNT	100000
+#define MTK_WAIT_HWV_PREPARE_CNT	200
 #define MTK_WAIT_HWV_PREPARE_US		1
 #define MTK_WAIT_HWV_DONE_CNT		5000000
 #define MTK_WAIT_HWV_DONE_US		1
