@@ -55,6 +55,7 @@ int vma_dump_enable;
 int dmabuf_rb_check;
 int dump_all_attach;
 int pss_by_mmap_enable;
+int pss_by_fd_enable;
 
 #define _HEAP_FD_FLAGS_           (O_CLOEXEC|O_RDWR)
 #define DMA_HEAP_CMDLINE_LEN      (30)
@@ -137,6 +138,7 @@ const struct dma_heap_dbg heap_helper[] = {
 	{"dmabuf_rb_check:", &dmabuf_rb_check},
 	{"dump_all_attach:", &dump_all_attach},
 	{"pss_by_mmap:", &pss_by_mmap_enable},
+	{"pss_by_fd:", &pss_by_fd_enable},
 };
 
 struct heap_status_s {
@@ -299,7 +301,8 @@ static void hang_dmabuf_dump(const char *fmt, ...)
 
 static void mtk_dmabuf_dump_for_hang(void)
 {
-	mtk_dmabuf_dump_heap(NULL, HANG_DMABUF_FILE_TAG, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC);
+	mtk_dmabuf_dump_heap(NULL, HANG_DMABUF_FILE_TAG, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC |
+			     HEAP_DUMP_PSS_BY_PID);
 }
 
 #endif
@@ -780,6 +783,7 @@ static unsigned long dmabuf_rbtree_get_stats(struct rb_root *root, pid_t pid,
 	struct dmabuf_debug_node *dbg_node;
 	struct dmabuf_pid_res *pid_info;
 	struct list_head *pid_node;
+	int pid_count, pid_find;
 
 	unsigned long pss = 0;
 	unsigned long rss = 0;
@@ -791,7 +795,12 @@ static unsigned long dmabuf_rbtree_get_stats(struct rb_root *root, pid_t pid,
 		buf_pss = 0;
 		dmabuf = dbg_node->dmabuf;
 
-		if (flag & HEAP_DUMP_PSS_BY_FD) {
+		if (flag & HEAP_DUMP_PSS_BY_PID) {
+			if (!pid && list_empty(&dbg_node->pids_res)) {
+				krn_rss += dmabuf->size;
+				continue;
+			}
+		} else if (flag & HEAP_DUMP_PSS_BY_FD) {
 			if (!pid && !dbg_node->fd_cnt_total) {
 				krn_rss += dmabuf->size;
 				continue;
@@ -803,8 +812,20 @@ static unsigned long dmabuf_rbtree_get_stats(struct rb_root *root, pid_t pid,
 			}
 		}
 
+		pid_count = 0;
+		pid_find = 0;
 		list_for_each(pid_node, &dbg_node->pids_res) {
 			pid_info = list_entry(pid_node, struct dmabuf_pid_res, pid_res);
+
+			if (flag & HEAP_DUMP_PSS_BY_PID) {
+				pid_count++;
+				if (pid_info->pid == pid) {
+					rss += dmabuf->size;
+					pid_find = 1;
+				}
+				continue;
+			}
+
 			if (pid_info->pid == pid) {
 				rss += dmabuf->size;
 
@@ -821,6 +842,9 @@ static unsigned long dmabuf_rbtree_get_stats(struct rb_root *root, pid_t pid,
 				break;
 			}
 		}
+		if (pid_count && pid_find)
+			buf_pss = dmabuf->size / pid_count;
+
 		pss += buf_pss;
 	}
 
@@ -1968,6 +1992,17 @@ static ssize_t dma_heap_proc_write(struct file *file, const char *buf,
 	return count;
 }
 
+static int get_dump_flag(void)
+{
+	int flag = 0;
+
+	if (!pss_by_mmap_enable && !pss_by_fd_enable)
+		flag = HEAP_DUMP_PSS_BY_PID;
+	else if (pss_by_fd_enable)
+		flag = HEAP_DUMP_PSS_BY_FD;
+
+	return flag;
+}
 
 static int dma_heap_proc_show(struct seq_file *s, void *v)
 {
@@ -1977,31 +2012,25 @@ static int dma_heap_proc_show(struct seq_file *s, void *v)
 		return -EINVAL;
 
 	heap = (struct dma_heap *)s->private;
-	dma_heap_default_show(heap, s, 0);
+	dma_heap_default_show(heap, s, get_dump_flag());
 	return 0;
 }
 
 static int all_heaps_proc_show(struct seq_file *s, void *v)
 {
-	int flag = 0;
 	if (!s)
 		return -EINVAL;
 
-	if (!pss_by_mmap_enable)
-		flag = HEAP_DUMP_PSS_BY_FD;
-	mtk_dmabuf_dump_all(s, flag);
+	mtk_dmabuf_dump_all(s, get_dump_flag());
 	return 0;
 }
 
 static int heap_stats_proc_show(struct seq_file *s, void *v)
 {
-	int flag = 0;
 	if (!s)
 		return -EINVAL;
 
-	if (!pss_by_mmap_enable)
-		flag = HEAP_DUMP_PSS_BY_FD;
-	mtk_dmabuf_stats_show(s, flag);
+	mtk_dmabuf_stats_show(s, get_dump_flag());
 	return 0;
 }
 
@@ -2037,7 +2066,7 @@ static int heap_stat_pid_proc_show(struct seq_file *s, void *v)
 	if (pid > 0) {
 		g_stat_pid = 0;
 		dmabuf_rbtree_dump_all(NULL, HEAP_DUMP_STATS | HEAP_DUMP_EGL |
-				       HEAP_DUMP_PSS_BY_FD, s, pid);
+				       HEAP_DUMP_PSS_BY_PID, s, pid);
 	}
 
 	return 0;
@@ -2273,7 +2302,8 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 		return 0;
 
 	if ((dmabuf_total_size + pool_total_size) / PAGE_SIZE > (totalram_pages() / 2))
-		mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
+		mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS |
+				    HEAP_DUMP_PSS_BY_PID);
 
 	return 0;
 }

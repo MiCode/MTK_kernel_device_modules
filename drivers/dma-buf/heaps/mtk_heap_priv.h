@@ -32,6 +32,7 @@
 #define HEAP_DUMP_PSS_BY_FD	  (1 << 6)
 #define HEAP_DUMP_EGL		  (1 << 7)
 #define HEAP_DUMP_STATISTIC	  (1 << 8)
+#define HEAP_DUMP_PSS_BY_PID	  (1 << 9)
 
 #define HANG_DMABUF_FILE_TAG	((void *)0x1)
 typedef void (*hang_dump_cb)(const char *fmt, ...);
