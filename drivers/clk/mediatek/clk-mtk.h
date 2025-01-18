@@ -27,6 +27,8 @@
 #define MTK_HWV_STA_TMROUT		(100000)
 #define MTK_WAIT_SET_PARENT_CNT		(1000)
 #define MTK_WAIT_SET_PARENT_US		(1)
+#define MTK_WAIT_FENC_DONE_CNT		5000000
+#define MTK_WAIT_FENC_DONE_US		1
 
 struct clk;
 struct clk_onecell_data;
@@ -84,6 +86,7 @@ struct mtk_fixed_factor {
 	const char *parent_name;
 	int mult;
 	int div;
+	unsigned int flags;
 };
 
 #define FACTOR(_id, _name, _parent, _mult, _div) {	\
@@ -92,6 +95,16 @@ struct mtk_fixed_factor {
 		.parent_name = _parent,			\
 		.mult = _mult,				\
 		.div = _div,				\
+		.flags = 0,					\
+	}
+
+#define FACTOR_FLAGS(_id, _name, _parent, _mult, _div, _flags) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.mult = _mult,				\
+		.div = _div,				\
+		.flags = _flags,			\
 	}
 
 void mtk_clk_register_factors(const struct mtk_fixed_factor *clks,
@@ -228,8 +241,9 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define MUX_ROUND_CLOSEST		BIT(21)
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define CLK_ENABLE_MERGE_CONTROL	BIT(23)
-
-#define QUICK_SWITCH_CHK	BIT(24)
+#define CLK_NO_RES			BIT(24)
+#define CLK_FENC_ENABLE			BIT(25)
+#define QUICK_SWITCH_CHK		BIT(26)
 
 struct mtk_pll_div_table {
 	u32 div;

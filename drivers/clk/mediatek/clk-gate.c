@@ -355,6 +355,32 @@ static void mtk_cg_disable_unused_inv_no_setclr(struct clk_hw *hw)
 	mtk_cg_clr_bit_no_setclr(hw);
 }
 
+static int mtk_cg_bit_is_set_null(struct clk_hw *hw)
+{
+	return 1;
+}
+
+static int mtk_cg_enable_null(struct clk_hw *hw)
+{
+	return 0;
+}
+
+static void mtk_cg_disable_null(struct clk_hw *hw)
+{
+}
+
+static void mtk_cg_disable_unused_null(struct clk_hw *hw)
+{
+}
+
+const struct clk_ops mtk_clk_gate_ops_null = {
+	.is_enabled	= mtk_cg_bit_is_set_null,
+	.enable		= mtk_cg_enable_null,
+	.disable	= mtk_cg_disable_null,
+	.disable_unused = mtk_cg_disable_unused_null,
+};
+EXPORT_SYMBOL(mtk_clk_gate_ops_null);
+
 const struct clk_ops mtk_clk_gate_ops_setclr_dummy = {
 	.is_enabled	= mtk_cg_bit_is_cleared,
 	.enable		= mtk_cg_enable,
@@ -501,10 +527,15 @@ struct clk *mtk_clk_register_gate(
 	else
 		init.ops = gate->ops;
 
+	if(!init.ops)
+		init.ops = &mtk_clk_gate_ops_null;
+
 	cg->regmap = regmap;
-	cg->set_ofs = gate->regs->set_ofs;
-	cg->clr_ofs = gate->regs->clr_ofs;
-	cg->sta_ofs = gate->regs->sta_ofs;
+	if (gate->regs) {
+		cg->set_ofs = gate->regs->set_ofs;
+		cg->clr_ofs = gate->regs->clr_ofs;
+		cg->sta_ofs = gate->regs->sta_ofs;
+	}
 	cg->bit = gate->shift;
 	cg->flags = gate->flags;
 
