@@ -1267,7 +1267,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		}
 	} else {
 		hrt = false;
-		srt_bw = mml_calc_bw(cfg->mml, datasize, cache->max_pixel, throughput);
+		srt_bw = mml_calc_bw(cfg->mml, datasize, cache->max_tput_pixel, throughput);
 		if ((unlikely(mml_qos & MML_QOS_FORCE_BW_MASK)))
 			srt_bw = mml_qos_force_bw;
 		hrt_bw = 0;
@@ -1328,7 +1328,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u size %u%s%s dpc %u mode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
-		throughput, cache->max_pixel, datasize,
+		throughput, cache->max_tput_pixel, datasize,
 		hrt ? " hrt" : "", updated ? " update" : "",
 		task->config->dpc, mtk_mml_hrt_mode);
 }

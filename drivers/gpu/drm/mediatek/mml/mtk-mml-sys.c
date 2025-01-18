@@ -240,6 +240,11 @@ struct sys_frame_data {
 	u32 tile_idx;
 };
 
+struct dl_frame_data {
+	struct mml_frame_size max_size;
+	const char *name;
+};
+
 #define has_cfg_op(_comp, op) \
 	(_comp->config_ops && _comp->config_ops->op)
 #define call_cfg_op(_comp, op, ...) \
@@ -250,6 +255,11 @@ struct sys_frame_data {
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
 static inline struct sys_frame_data *sys_frm_data(struct mml_comp_config *ccfg)
+{
+	return ccfg->data;
+}
+
+static inline struct dl_frame_data *dl_frm_data(struct mml_comp_config *ccfg)
 {
 	return ccfg->data;
 }
@@ -2014,10 +2024,17 @@ static s32 dlo_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	struct dl_frame_data *dl_frm;
 
 	/* DLO use as mml-tile rrot dual input, skip tile calc */
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && comp->sysid == mml_sys_tile)
 		return 0;
+
+	dl_frm = kzalloc(sizeof(struct dl_frame_data), GFP_KERNEL);
+	if (dl_frm) {
+		dl_frm->name = "dlout";
+		ccfg->data = dl_frm;
+	}
 
 	if (cfg->dual) {
 		if (ccfg->pipe == 0)
@@ -2046,6 +2063,7 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_tile_engine *tile = config_get_tile(task->config, ccfg, idx);
+	struct dl_frame_data *dl_frm = dl_frm_data(ccfg);
 
 	u16 offset = sys->dl_relays[sys->adjacency[comp->id][comp->id]];
 	u32 dl_w = tile->in.xe - tile->in.xs + 1;
@@ -2053,6 +2071,12 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 size = (dl_h << 16) + dl_w;
 
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
+
+	if (dl_frm) {
+		dl_frm->max_size.width = dl_w;
+		dl_frm->max_size.height = dl_h;
+	}
+
 	return 0;
 }
 
@@ -2068,20 +2092,20 @@ static s32 dl_wait(struct mml_comp *comp, struct mml_task *task,
 static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		   struct mml_comp_config *ccfg)
 {
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
-		struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_frame_config *cfg = task->config;
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 		struct mml_sys *sys = comp_to_sys(comp);
-		u32 pixel;
+		struct dl_frame_data *dl_frm = dl_frm_data(ccfg);
 
-		cache->line_bubble += task->config->dl_out[ccfg->pipe].left;
-		pixel = cache_max_pixel(cache);
-		if (sys->data->px_per_tick)
-			pixel = pixel / sys->data->px_per_tick;
-		cache->max_pixel = max(cache->max_pixel, pixel);
+		if (dl_frm && dl_frm->max_size.width && dl_frm->max_size.height) {
+			u32 w = dl_frm->max_size.width / sys->data->px_per_tick;
 
-		sys_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
-			__func__, task, ccfg->pipe, cache->line_bubble,
-			cache->max_size.width, cache->max_size.height, cache->max_pixel);
+			dvfs_cache_sz(cache, w, dl_frm->max_size.height,
+				cfg->dl_out[ccfg->pipe].left);
+			dvfs_cache_log(cache, comp, dl_frm->name);
+		}
 	}
 
 	return 0;

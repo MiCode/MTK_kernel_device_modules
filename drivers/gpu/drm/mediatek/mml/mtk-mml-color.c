@@ -91,14 +91,17 @@ static const u16 colo_reg_table_mt6989[COLOR_REG_MAX_COUNT] = {
 
 struct color_data {
 	const u16 *reg_table;
+	u8 px_per_tick;
 };
 
 static const struct color_data mt6983_color_data = {
 	.reg_table = colo_reg_table_mt6983,
+	.px_per_tick = 1,
 };
 
 static const struct color_data mt6989_color_data = {
 	.reg_table = colo_reg_table_mt6989,
+	.px_per_tick = 2,
 };
 
 
@@ -112,6 +115,7 @@ struct mml_comp_color {
 /* meta data for each different frame config */
 struct color_frame_data {
 	u16 labels[COLOR_REG_NUM];
+	struct mml_frame_size max_size;
 	bool config_success;
 };
 
@@ -304,6 +308,7 @@ static s32 color_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_comp_color *color = comp_to_color(comp);
+	struct color_frame_data *color_frm = color_frm_data(ccfg);
 	const phys_addr_t base_pa = comp->base_pa;
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
@@ -315,6 +320,11 @@ static s32 color_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_WIDTH], width, U32_MAX);
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT], height, U32_MAX);
+
+	/* dvfs and qos accumulate tile pixel */
+	color_frm->max_size.width += width;
+	color_frm->max_size.height = height;
+
 	mml_pq_msg("[color] %s width [%d] height[%d]", __func__, width, height);
 	return 0;
 }
@@ -322,7 +332,18 @@ static s32 color_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 color_config_post(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
-	struct mml_frame_dest *dest = &task->config->info.dest[ccfg->node->out_idx];
+	const struct mml_comp_color *color = comp_to_color(comp);
+	struct mml_frame_config *cfg = task->config;
+	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	struct color_frame_data *color_frm = color_frm_data(ccfg);
+	u32 px_per_tick = color->data->px_per_tick;
+
+	if (dest->pq_config.en_region_pq)
+		px_per_tick = 1;
+	dvfs_cache_sz(cache, color_frm->max_size.width / px_per_tick,
+		color_frm->max_size.height, 0);
+	dvfs_cache_log(cache, comp, "color");
 
 	if (dest->pq_config.en_color)
 		mml_pq_put_comp_config_result(task);

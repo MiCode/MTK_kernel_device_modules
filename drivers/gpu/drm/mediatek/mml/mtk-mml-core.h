@@ -454,22 +454,30 @@ struct mml_comp_config {
 	void *data;
 };
 
-#define cache_max_sz(c, w, h) do { \
-	c->max_size.width = max(c->max_size.width, w); \
-	c->max_size.height = max(c->max_size.height, h); \
+#define dvfs_cache_sz(c, w, h, b) do { \
+	c->max_frame_size.width = max(c->max_frame_size.width, (w) + (b)); \
+	c->max_frame_size.height = max(c->max_frame_size.height, (h)); \
+	c->total_line_bubble += (b); \
+	c->max_tput_pixel = (c->max_frame_size.width + c->total_line_bubble) * \
+		c->max_frame_size.height; \
 } while (0)
 
-#define cache_max_pixel(c)	((c->max_size.width + c->line_bubble) * c->max_size.height)
+#define dvfs_cache_log(cache, comp, name) \
+	mml_msg("[dvfs]tput cache %5s %2u bubble %u pixel %ux%u data %u", \
+		name, comp->id, cache->total_line_bubble, \
+		cache->max_frame_size.width, cache->max_frame_size.height, \
+		cache->total_datasize)
 
 struct mml_pipe_cache {
 	/* command reuse */
 	u32 label_cnt;
 
-	/* qos part */
+	/* dvfs qos part */
 	u32 total_datasize;
-	u32 max_pixel;
-	struct mml_frame_size max_size;
-	u32 line_bubble;	/* accumulate upstream module line bubble */
+	u32 max_tput_pixel;
+
+	u32 total_line_bubble;
+	struct mml_frame_size max_frame_size;
 
 	/* Set in core and comp prepare. Used in tile prepare and make command */
 	struct mml_comp_config cfg[MML_MAX_PATH_NODES];

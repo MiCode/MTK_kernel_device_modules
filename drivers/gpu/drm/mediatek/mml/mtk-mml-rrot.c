@@ -141,8 +141,8 @@ do { \
 int rrot_binning = 1;
 module_param(rrot_binning, int, 0644);
 
-/* RROT stash leading time in us */
-int rrot_stash_leading = 20;
+/* RROT stash leading time in ns */
+int rrot_stash_leading = 12500;
 module_param(rrot_stash_leading, int, 0644);
 
 /* Debug parameter to force config stash cmd RROT_PREFETCH_CONTROL_1 and RROT_PREFETCH_CONTROL_2
@@ -212,6 +212,7 @@ static const u16 rrot_preultra_th[] = {
 
 struct rrot_data {
 	u32 tile_width;
+	u8 px_per_tick;
 	bool alpha_pq_r2y;	/* WA: fix rrot r2y to BT601 full when alpha resize */
 	bool ddren_off;		/* WA: disable ddren manually after frame done */
 
@@ -221,6 +222,7 @@ struct rrot_data {
 
 static const struct rrot_data mt6989_rrot_data = {
 	.tile_width = 4096,	/* 2048+2048 */
+	.px_per_tick = 2,
 	.alpha_pq_r2y = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -252,6 +254,7 @@ static const struct rrot_data mt6989_rrot_data = {
 
 static const struct rrot_data mt6991_rrot_data = {
 	.tile_width = 4096,	/* 2048+2048 */
+	.px_per_tick = 2,
 	.alpha_pq_r2y = true,
 	.ddren_off = true,
 	.golden = {
@@ -337,6 +340,10 @@ struct rrot_frame_data {
 	u32 stash_hrt_bw;
 	bool ultra_off;
 	bool binning;
+
+	/* dvfs */
+	u32 line_bubble;
+	struct mml_frame_size max_size;
 
 	/* array of indices to one of entry in cache entry list,
 	 * use in reuse command
@@ -1016,7 +1023,7 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	if (!mml_stash_en(cfg->info.mode))
 		goto done;
 
-	leading_pixels = round_up(w * h * fps * rrot_stash_leading, 1000000) / 1000000;
+	leading_pixels = round_up(w * h * fps * rrot_stash_leading / 1000, 1000000) / 1000000;
 
 	if (MML_FMT_COMPRESS(task->config->info.src.format)) {
 		u32 block_w, bin_hor, bin_ver;
@@ -1795,7 +1802,6 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
@@ -1940,24 +1946,11 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		/* no block align */
 		tput_w = mf_src_w;
 		tput_h = mf_src_h;
-		cache->line_bubble = 0;
 	}
 
-	if (rrot->pipe == 0) {
-		cache->line_bubble = tput_w - mf_src_w;
-		cache->max_size.width = tput_w >> cfg->bin_x;
-		cache->max_size.height = tput_h >> cfg->bin_y;
-		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
-			swap(cache->max_size.width, cache->max_size.height);
-	} else {
-		cache->line_bubble = max(cache->line_bubble, tput_w - mf_src_w);
-
-		tput_w = tput_w >> cfg->bin_x;
-		tput_h = tput_h >> cfg->bin_y;
-		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
-			swap(tput_w, tput_h);
-		cache_max_sz(cache, tput_w, tput_h);
-	}
+	rrot_frm->line_bubble += tput_w - mf_src_w;
+	rrot_frm->max_size.width += tput_w;
+	rrot_frm->max_size.height = tput_h;
 
 	/* calculate qos for later use */
 	plane = MML_FMT_PLANE(src->format);
@@ -1968,24 +1961,22 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
 	if (mf_clip_w + mf_offset_w_1 > mf_src_w || mf_clip_h + mf_offset_h_1 > mf_src_h)
-		mml_err("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
+		mml_err("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u data %u rotate %u",
 			rrot->pipe == 1 ? "_2nd" : "    ",
 			src_offset_wp, src_offset_hp,
 			mf_src_w, mf_src_h,
 			mf_offset_w_1, mf_offset_h_1,
 			mf_clip_w, mf_clip_h,
-			cache->max_size.width, cache->max_size.height,
-			cache->line_bubble, rrot_frm->datasize,
+			rrot_frm->datasize,
 			dest->rotate);
 	else
-		rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
+		rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u data %u rotate %u",
 			rrot->pipe == 1 ? "_2nd" : "    ",
 			src_offset_wp, src_offset_hp,
 			mf_src_w, mf_src_h,
 			mf_offset_w_1, mf_offset_h_1,
 			mf_clip_w, mf_clip_h,
-			cache->max_size.width, cache->max_size.height,
-			cache->line_bubble, rrot_frm->datasize,
+			rrot_frm->datasize,
 			dest->rotate);
 
 	return 0;
@@ -2039,24 +2030,32 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
-	const u32 pipe = rrot->pipe;
+	u32 cache_w = rrot_frm->max_size.width, cache_h = rrot_frm->max_size.height;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rrot_frm->datasize = (u32)div_u64((u64)rrot_frm->datasize * 7, 10);
 
-	/* Data size add to task,
-	 * it is ok for rdma to directly assign and accumulate in wrot.
-	 */
-	if (pipe == 0)
-		cache->total_datasize = rrot_frm->datasize;
-	else
-		cache->total_datasize += rrot_frm->datasize;
+	cache->total_datasize += rrot_frm->datasize;
+	cache_w = (cache_w + rrot_frm->line_bubble);
 
-	mml_msg("%s task %p pipe %u data %u", __func__, task, pipe, rrot_frm->datasize);
+	if (cfg->bin_x)
+		cache_w = cache_w / 2;
+	if (cfg->bin_y)
+		cache_h = cache_h / 2;
+
+	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+		swap(cache_w, cache_h);
+	/* add rrot rotate max latency for safe */
+	if (dest->rotate != MML_ROT_0)
+		cache_h += 32;
+
+	dvfs_cache_sz(cache, cache_w / rrot->data->px_per_tick, cache_h, 0);
+	dvfs_cache_log(cache, comp, "rrot");
 
 	rrot_backup_crc(comp, task, ccfg);
 

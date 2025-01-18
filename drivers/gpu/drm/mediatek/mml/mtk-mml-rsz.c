@@ -205,6 +205,9 @@ struct mml_comp_rsz {
 
 /* meta data for each different frame config */
 struct rsz_frame_data {
+	u32 line_bubble;
+	struct mml_frame_size max_size;
+
 	bool relay_mode:1;
 	bool use121filter:1;
 	struct rsz_fw_out fw_out;
@@ -550,7 +553,6 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 
@@ -622,13 +624,22 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 			px_per_tick + 3;
 	else
 		bubble = 2;
-	cache->line_bubble += bubble;
-	cache_max_sz(cache, rsz_input_w, rsz_input_h);
-	cache_max_sz(cache, rsz_output_w, rsz_output_h);
+	rsz_frm->line_bubble += bubble;
+	rsz_frm->max_size.width += max_t(u32, rsz_input_w, rsz_output_w);
+	rsz_frm->max_size.height = max_t(u32, rsz_input_h, rsz_output_h);
 
-	mml_msg("rsz pixel rsz bubble %u total bubble %u pixel %ux%u",
-		bubble, cache->line_bubble,
-		cache->max_size.width, cache->max_size.height);
+	return 0;
+}
+
+static s32 rsz_post(struct mml_comp *comp, struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
+	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
+
+	dvfs_cache_sz(cache, rsz_frm->max_size.width / rsz->data->px_per_tick,
+		rsz_frm->max_size.height, rsz_frm->line_bubble);
+	dvfs_cache_log(cache, comp, "rsz");
 
 	return 0;
 }
@@ -638,6 +649,7 @@ static const struct mml_comp_config_ops rsz_cfg_ops = {
 	.init = rsz_config_init,
 	.frame = rsz_config_frame,
 	.tile = rsz_config_tile,
+	.post = rsz_post,
 };
 
 static void rsz_task_done_callback(struct mml_comp *comp, struct mml_task *task,
