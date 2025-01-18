@@ -19130,7 +19130,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			chg-tmr-en;
 			ircmp-v = <30>;
 			ircmp-r = <5>;
-			wdt-time = <40000>;
+			/* 0~3, 8s, 40s, 80s, 160s */
+			wdt-time = <1>;
 			//wdt-en;
 			te-en;
 			mivr = <4400000>;	/* uV */
