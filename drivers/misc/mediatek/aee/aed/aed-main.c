@@ -1096,8 +1096,13 @@ static int compare_cmdline(void)
 
 	if (strncmp(buf, "/system_ext/bin/aee_aed", 23) &&
 		strncmp(buf, "/system/system_ext/bin/aee_aed", 30) &&
-		strncmp(buf,  "/vendor/bin/aee_aed", 19)) {
-		pr_debug("%s:open failed!\n", __func__);
+		strncmp(buf, "/vendor/bin/aee_aed", 19)
+#if IS_ENABLED(CONFIG_MTK_AEE_YOCTO)
+		&& strncmp(buf, "/usr/bin/aee_aed", 16) &&
+		strncmp(buf, "/usr/bin/aee_aed64", 18)
+#endif
+		) {
+		pr_debug("%s: open failed!\n", __func__);
 		return -1;
 	}
 	return 0;
