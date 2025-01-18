@@ -359,6 +359,7 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK2(VLPCK, FM_VLP_DUMMY1_CK, "fm_vlp_vlp_dummy1_sel", 0x03A0, 20, 1),
 	FMCLK2(VLPCK, FM_VLP_DUMMY2_CK, "fm_vlp_vlp_dummy2_sel", 0x03A0, 19, 1),
 	FMCLK(VLPCK, FM_OSC2_SYNC_CK, "fm_osc2_sync_ck", 1),
+	FMCLK(VLPCK, FM_OSC3_SYNC_CK, "fm_osc3_sync_ck", 1),
 	FMCLK(VLPCK, FM_ABIST_FQMTR_BUS_1, "fm_abist_fqmtr_bus_1", 1),
 	FMCLK(VLPCK, FM_VLP_APLL1_ORI, "fm_vlp_apll1_ori", 1),
 	FMCLK(VLPCK, FM_VLP_APLL2_ORI, "fm_vlp_apll2_ori", 1),
@@ -368,6 +369,7 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK3(VLPCK, FM_VLP_APLL2_CKDIV_CK, "fm_vlp_apll2_ckdiv_ck", 0x0290, 3, 13),
 	FMCLK(VLPCK, FM_ABIST_FQMTR_0, "fm_abist_fqmtr_0", 1),
 	FMCLK(VLPCK, FM_ULPOSC2_CK, "fm_ulposc2_ck", 1),
+	FMCLK(VLPCK, FM_ULPOSC3_CK, "fm_ulposc3_ck", 1),
 	/* SUBSYS Part */
 	FMCLK(SUBSYS, FM_MFGPLL, "fm_mfgpll", 1),
 	FMCLK(SUBSYS, FM_MFGPLL_SC0, "fm_mfgpll_sc0", 1),

@@ -195,6 +195,7 @@
 #define FM_VLP_DUMMY1_CK			44
 #define FM_VLP_DUMMY2_CK			45
 #define FM_OSC2_SYNC_CK			49
+#define FM_OSC3_SYNC_CK			50
 #define FM_ABIST_FQMTR_BUS_1			51
 #define FM_VLP_APLL1_ORI			52
 #define FM_VLP_APLL2_ORI			53
@@ -204,7 +205,8 @@
 #define FM_VLP_APLL2_CKDIV_CK			57
 #define FM_ABIST_FQMTR_0			58
 #define FM_ULPOSC2_CK				60
-#define FM_VLPCK_NUM				61
+#define FM_ULPOSC3_CK				63
+#define FM_VLPCK_NUM				64
 
 enum fm_sys_id {
 	FM_CKSYS = 0,
