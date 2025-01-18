@@ -480,6 +480,7 @@ dump_func_t p_mmc_mtk_dbg_get_aee_buffer;
 dump_func_t p_mtk_btag_get_aee_buffer;
 dump_func_t p_mtk_adsp_get_aee_buffer;
 dump_func_t p_mtk_ccu_get_aee_buffer;
+dump_func_t p_mtk_iommu_get_aee_buffer;
 
 void mrdump_set_extra_dump(enum AEE_EXTRA_FILE_ID id,
 		void (*fn)(unsigned long *vaddr, unsigned long *size))
@@ -504,6 +505,9 @@ void mrdump_set_extra_dump(enum AEE_EXTRA_FILE_ID id,
 		break;
 	case AEE_EXTRA_FILE_CCU:
 		p_mtk_ccu_get_aee_buffer = fn;
+		break;
+	case AEE_EXTRA_FILE_IOMMU:
+		p_mtk_iommu_get_aee_buffer = fn;
 		break;
 	default:
 		pr_info("mrdump: unknown extra file id\n");
@@ -556,6 +560,14 @@ void mrdump_mini_add_extra_misc(void)
 		p_mtk_ccu_get_aee_buffer(&vaddr, &size);
 		mrdump_mini_add_extra_file(vaddr, __pa_nodebug(vaddr), size,
 					   "EXTRA_CCU");
+	}
+
+	if (p_mtk_iommu_get_aee_buffer) {
+		vaddr = 0;
+		size = 0;
+		p_mtk_iommu_get_aee_buffer(&vaddr, &size);
+		mrdump_mini_add_extra_file(vaddr, __pa_nodebug(vaddr), size,
+					   "EXTRA_IOMMU");
 	}
 }
 EXPORT_SYMBOL(mrdump_mini_add_extra_misc);
