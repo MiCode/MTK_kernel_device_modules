@@ -83,8 +83,8 @@
 #define mau_assert_log_format \
 	"CRDISPATCH_KEY:IOMMU\nMAU ASRT:ASRT_ID=0x%x,FALUT_ID=0x%x(%s),ADDR=0x%x(0x%x)\n"
 
-#define iova_warnning_log_format \
-	"CRDISPATCH_KEY:%s\nIOVA_WARNNING Dev=%s,tab_id=0x%llx,dom_id=%d,count=%llu\n"
+#define iova_warn_log_format \
+	"CRDISPATCH_KEY:%s\nIOVA_WARN Dev=%s,tab_id=0x%llx,dom_id=%d,count=%llu\n"
 
 #define FIND_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
 #define MAP_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
@@ -94,9 +94,9 @@
 #define IOVA_DUMP_RS_INTERVAL		(30 * HZ)
 #define IOVA_DUMP_RS_BURST		(1)
 
-#define IOVA_WARNNING_RS_INTERVAL	(60 * HZ)
-#define IOVA_WARNNING_RS_BURST		(1)
-#define IOVA_WARNNING_COUNT		(10000)
+#define IOVA_WARN_RS_INTERVAL		(60 * HZ)
+#define IOVA_WARN_RS_BURST		(1)
+#define IOVA_WARN_COUNT			(10000)
 
 #if IS_ENABLED(CONFIG_STACKTRACE)
 #define SMMU_STACK_SKIPNR		(7)
@@ -297,8 +297,8 @@ static inline void mtk_iova_count_dec(void)
 
 static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t size)
 {
-	static DEFINE_RATELIMIT_STATE(warn_dump_rs, IOVA_WARNNING_RS_INTERVAL,
-				      IOVA_WARNNING_RS_BURST);
+	static DEFINE_RATELIMIT_STATE(warn_dump_rs, IOVA_WARN_RS_INTERVAL,
+				      IOVA_WARN_RS_BURST);
 	struct iommu_fwspec *fwspec;
 	u64 tab_id = 0;
 	u32 dom_id = 0;
@@ -306,7 +306,7 @@ static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t siz
 	if (!dev)
 		return;
 
-	if (iova_list.count < IOVA_WARNNING_COUNT)
+	if (iova_list.count < IOVA_WARN_COUNT)
 		return;
 
 	if (!__ratelimit(&warn_dump_rs))
@@ -330,7 +330,7 @@ static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t siz
 
 	if (iommu_globals.iova_warn_aee == 1) {
 		mtk_iommu_iova_alloc_dump_top(NULL, NULL);
-		m4u_aee_print(iova_warnning_log_format,
+		m4u_aee_print(iova_warn_log_format,
 			      dev_name(dev), dev_name(dev),
 			      tab_id, dom_id, iova_list.count);
 	}
@@ -345,63 +345,6 @@ static void mtk_iommu_system_time(u64 *high, u32 *low)
 	*low = do_div(temp, 1000000);
 	*high = temp;
 }
-
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-static u64 to_system_time(u64 high, u32 low)
-{
-	return (high * 1000000 + low) * 1000;
-}
-
-static void mtk_iova_map_latency_check(u64 tab_id, u64 iova, size_t size,
-				       u64 end_time_high, u64 end_time_low)
-{
-	u64 start_t, end_t, alloc_time_high, alloc_time_low, latency_time;
-	struct iova_info *plist;
-	struct iova_info *tmp_plist;
-	struct device *dev = NULL;
-	int i = 0;
-
-	if (iommu_globals.iova_alloc_list == 0 || iommu_globals.iova_map_list == 0)
-		return;
-
-	spin_lock(&iova_list.lock);
-	start_t = sched_clock();
-	list_for_each_entry_safe(plist, tmp_plist, &iova_list.head, list_node) {
-		i++;
-		if (plist->iova == iova &&
-		    plist->size == size &&
-		    plist->tab_id == tab_id) {
-			dev = plist->dev;
-			alloc_time_high = plist->time_high;
-			alloc_time_low = plist->time_low;
-			break;
-		}
-	}
-	end_t = sched_clock();
-	spin_unlock(&iova_list.lock);
-
-	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
-		pr_info_ratelimited("%s, find iova:[0x%llx 0x%llx 0x%zx] %d time:%llu\n",
-				    __func__, tab_id, iova, size, i, (end_t - start_t));
-
-	if (dev == NULL) {
-		pr_info("%s warnning, iova:[0x%llx 0x%llx 0x%zx] not find in %d\n",
-			__func__, tab_id, iova, size, i);
-	} else {
-		/* iova map latency check and print warnning log */
-		start_t = to_system_time(alloc_time_high, alloc_time_low);
-		end_t = to_system_time(end_time_high, end_time_low);
-		latency_time = end_t - start_t;
-		if (latency_time > MAP_IOVA_TIMEOUT_NS) {
-			pr_info("%s, dev:%s, %llu, %llu.%06llu, iova:[0x%llx 0x%llx 0x%zx]\n",
-				__func__, dev_name(dev), latency_time,
-				(end_time_high - alloc_time_high),
-				(end_time_low - alloc_time_low),
-				tab_id, iova, size);
-		}
-	}
-}
-#endif
 
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 {
@@ -435,10 +378,6 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	spin_lock_irqsave(&map_list.lock, flags);
 	list_add(&iova_buf->list_node, &map_list.head[id]);
 	spin_unlock_irqrestore(&map_list.lock, flags);
-
-#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-	mtk_iova_map_latency_check(tab_id, iova, size, time_high, time_low);
-#endif
 
 iova_trace:
 	mtk_iommu_iova_trace(IOMMU_MAP, iova, size, tab_id, NULL);
@@ -2673,7 +2612,7 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 		mtk_iommu_iova_alloc_dump_top(NULL, dev);
 
 		if (iommu_globals.iova_warn_aee == 1) {
-			m4u_aee_print(iova_warnning_log_format,
+			m4u_aee_print(iova_warn_log_format,
 				      dev_name(dev), dev_name(dev),
 				      tab_id, dom_id, iova_list.count);
 		}
