@@ -167,6 +167,35 @@ int32_t get_res_sig_stats(struct res_sig_stats *stats)
 }
 EXPORT_SYMBOL(get_res_sig_stats);
 
+/* Get the info of a resource group
+ * @*out1: main id of the resource group
+ * @*out2: head id in the resource group
+ * @*out3: size of the resource group
+ */
+int32_t get_res_group_info(uint32_t grp,
+		uint32_t *out1, uint32_t *out2, uint32_t *out3)
+{
+	if (SWPM_PSP_OPS &&
+	    SWPM_PSP_OPS->res_group_info_get)
+		return SWPM_PSP_OPS->res_group_info_get(grp, out1, out2, out3);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(get_res_group_info);
+
+/* Get the resource group id of at most 3 target sigals
+ */
+int32_t get_res_group_id(uint32_t ip1, uint32_t ip2, uint32_t ip3,
+		uint32_t *out1, uint32_t *out2, uint32_t *out3)
+{
+	if (SWPM_PSP_OPS &&
+	    SWPM_PSP_OPS->res_group_id_get)
+		return SWPM_PSP_OPS->res_group_id_get(ip1, ip2, ip3, out1, out2, out3);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(get_res_group_id);
+
 int mtk_register_swpm_ops(struct swpm_internal_ops *ops)
 {
 	if (!SWPM_PSP_OPS && ops)

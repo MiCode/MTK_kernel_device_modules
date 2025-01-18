@@ -109,6 +109,20 @@ struct swpm_manager {
 	struct swpm_core_internal_ops *plat_ops;
 };
 
+
+/* for APMCUPM SCMI Interface */
+enum APMCU_SWPM_SCMI_UUID {
+	APMCU_SCMI_UUID_SWPM_PSP = 0,
+	APMCU_SCMI_UUID_SWPM_NUM,
+};
+
+
+enum SWPM_SCMI_ACT {
+	SWPM_SCMI_GET_RES_GRP_INFO = 0,
+	SWPM_SCMI_GET_RES_GRP_ID,
+	SWPM_SCMI_ACT_NUM,
+};
+
 extern struct mutex swpm_mutex;
 extern struct timer_list swpm_timer;
 extern struct workqueue_struct *swpm_common_wq;
@@ -151,5 +165,12 @@ extern unsigned int swpm_set_and_get_cmd(unsigned int args_0,
 extern int swpm_register_event_notifier(struct notifier_block *nb);
 extern int swpm_unregister_event_notifier(struct notifier_block *nb);
 extern int swpm_call_event_notifier(unsigned long val, void *v);
+extern unsigned int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4);
+extern unsigned int swpm_get_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int *out1, unsigned int *out2, unsigned int *out3);
+extern unsigned int swpm_set_and_get_cmd_v2(unsigned int uuid, unsigned int act,
+		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4,
+		unsigned int *out1, unsigned int *out2, unsigned int *out3);
 
 #endif
