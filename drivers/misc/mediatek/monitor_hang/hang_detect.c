@@ -60,7 +60,7 @@
 #include "mrdump/mrdump_mini.h"
 
 #ifdef CONFIG_MTK_HANG_DETECT_DB
-#define MAX_HANG_INFO_SIZE (2*1024*1024) /* 2M info */
+#define MAX_HANG_INFO_SIZE (4*1024*1024) /* 4M info */
 #define MAX_STRING_SIZE 256
 #define MEM_BUFFER_DEFAULT_SIZE (3*1024)
 #define MSDC_BUFFER_DEFAULT_SIZE (30*1024)
@@ -132,33 +132,33 @@ struct task_info {
 };
 
 #if IS_ENABLED(CONFIG_MMU)
-static int __access_remote_vm_for_hang(struct mm_struct *mm, unsigned long addr, void *buf,
+int __access_remote_vm_for_hang(struct mm_struct *mm, unsigned long addr, void *buf,
 		int len, unsigned int gup_flags)
 {
-	struct vm_area_struct *vma;
 	void *old_buf = buf;
+
+	/* Untag the address before looking up the VMA */
+	addr = untagged_addr_remote(mm, addr);
 
 	/* ignore errors, just check how much was successfully transferred */
 	while (len) {
-		int bytes, ret, offset;
+		int bytes, offset;
 		void *maddr;
-		struct page *page = NULL;
+		struct vm_area_struct *vma = NULL;
+		struct page *page = get_user_page_vma_remote(mm, addr, gup_flags, &vma);
 
-		ret = get_user_pages_remote(mm, addr, 1,
-			gup_flags, &page, NULL);
-		if (ret <= 0) {
-#ifndef CONFIG_HAVE_IOREMAP_PROT
-			break;
-#else
+		if (IS_ERR_OR_NULL(page)) {
 			vma = vma_lookup(mm, addr);
 			if (!vma)
 				break;
+
+			bytes = 0;
+#if IS_ENABLED(CONFIG_HAVE_IOREMAP_PROT)
 			if (vma->vm_ops && vma->vm_ops->access)
-				ret = vma->vm_ops->access(vma, addr, buf, len, 0/* write */);
-			if (ret <= 0)
-				break;
-			bytes = ret;
+				bytes = vma->vm_ops->access(vma, addr, buf, len, 0);
 #endif
+			if (bytes <= 0)
+				break;
 		} else {
 			bytes = len;
 			offset = addr & (PAGE_SIZE-1);
@@ -1099,11 +1099,12 @@ static int dump_native_info_by_tid(pid_t tid,
 	unsigned long userstack_start = 0;
 	unsigned long userstack_end = 0, length = 0;
 	int ret = -1;
+	struct mm_struct *current_mm;
 	MA_STATE(mas, 0, 0, 0);
 
 	if (!current_task)
 		return -ESRCH;
-	mas.tree = &current_task->mm->mm_mt;
+
 	user_ret = task_pt_regs(current_task);
 
 	if (!user_mode(user_ret)) {
@@ -1112,13 +1113,15 @@ static int dump_native_info_by_tid(pid_t tid,
 		return ret;
 	}
 
-	if (!get_task_mm(current_task)) {
+	current_mm = get_task_mm(current_task);
+	if (!current_mm) {
 		pr_info(" %s,%d:%s, current_task->mm == NULL", __func__, tid,
 				current_task->comm);
 		return ret;
 	}
 
-	mmap_read_lock(current_task->mm);
+	mas.tree = &current_mm->mm_mt;
+	mmap_read_lock(current_mm);
 #ifndef __aarch64__		/* 32bit */
 	log_hang_info(" pc/lr/sp 0x%08lx/0x%08lx/0x%08lx\n", user_ret->ARM_pc,
 			user_ret->ARM_lr, user_ret->ARM_sp);
@@ -1363,8 +1366,8 @@ static int dump_native_info_by_tid(pid_t tid,
 #endif
 	ret = 0;
 err:
-	mmap_read_unlock(current_task->mm);
-	mmput(current_task->mm);
+	mmap_read_unlock(current_mm);
+	mmput(current_mm);
 	return ret;
 }
 
