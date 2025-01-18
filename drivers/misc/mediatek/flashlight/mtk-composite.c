@@ -43,7 +43,7 @@
 static int
 fl_async_bound(struct v4l2_async_notifier *notifier,
 		 struct v4l2_subdev *subdev,
-		 struct v4l2_async_subdev *asd)
+		 struct v4l2_async_connection *asd)
 {
 	struct mtk_composite_v4l2_device *pfdev =
 			container_of(notifier->v4l2_dev,
@@ -170,17 +170,17 @@ static int mtk_composite_probe(struct platform_device *dev)
 	}
 	platform_set_drvdata(dev, pfdev);
 
-	v4l2_async_nf_init(&pfdev->notifier);
+	v4l2_async_nf_init(&pfdev->notifier, &pfdev->v4l2_dev);
 
-	rc = v4l2_async_nf_parse_fwnode_endpoints
-		(&dev->dev, &pfdev->notifier, sizeof(struct v4l2_async_subdev), NULL);
-	if (rc < 0) {
-		pr_info("no flash endpoint\n");
-		goto mdev_end;
-	}
+	// rc = v4l2_async_nf_parse_fwnode_endpoints
+	// 	(&dev->dev, &pfdev->notifier, sizeof(struct v4l2_async_connection), NULL);
+	// if (rc < 0) {
+	// 	pr_info("no flash endpoint\n");
+	// 	goto mdev_end;
+	// }
 	pfdev->notifier.ops = &fl_async_notify_ops;
 
-	rc = v4l2_async_nf_register(&pfdev->v4l2_dev, &pfdev->notifier);
+	rc = v4l2_async_nf_register(&pfdev->notifier);
 	if (rc) {
 		pr_info("Error registering async notifier\n");
 		rc = -EINVAL;
