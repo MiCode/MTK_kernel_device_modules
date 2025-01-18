@@ -1774,7 +1774,7 @@ static irqreturn_t arm_smmu_combined_irq_thread(int irq, void *dev)
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+		dev_dbg(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return IRQ_HANDLED;
 	}
 
