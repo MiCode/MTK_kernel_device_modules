@@ -879,6 +879,7 @@ struct mtk_drm_crtc_caps {
 	struct mtk_drm_wb_caps wb_caps[MTK_DRM_DUMP_POINT_NUM];
 	unsigned int crtc_ability;
 	unsigned int ovl_csc_bit_number;
+	unsigned int rpo_support_num;
 };
 
 struct drm_mtk_session_info {
