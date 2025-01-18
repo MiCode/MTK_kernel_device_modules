@@ -10126,6 +10126,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"M4U_PORT_VDEC_LAT0_TILE",
 				"M4U_PORT_VDEC_LAT0_UFO_ENC_C",
 				"M4U_PORT_VDEC_VIDEO_UP_NOR";
+			vdec-power-in-vcp = <1>;
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
@@ -10209,6 +10210,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			clock-names = "MT_CG_VENC0",
 				"MT_CG_VENC1",
 				"MT_CG_VENC2";
+			venc-core-count = <3>;
+			venc-power-in-vcp = <1>;
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
 			//venc-slb-cpu-used-perf = <62208000>;
