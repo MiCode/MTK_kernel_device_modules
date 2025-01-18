@@ -4870,32 +4870,46 @@
 
 	dvs@1b100000 {
 		compatible = "mediatek,dvs";
+		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+		iommus = <&iommu0 M4U_PORT_L19_IPE_DVS_RDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVS_WDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVP_RDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVP_WDMA>;
 		reg = <0 0x1b100000 0 0x1000>;
+		mediatek,larbs = <&smi_larb19 &smi_larb20>;
 		interrupts = <GIC_SPI 440 IRQ_TYPE_LEVEL_HIGH 0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_IPE>;
 		mboxes = <&gce_mbox 16 0 CMDQ_THR_PRIO_1>;
 		EVENT_IPE_DVS_DONE = <CMDQ_EVENT_DVS_DONE>;
-		iommus = <&iommu0 M4U_PORT_L19_IPE_DVS_RDMA>;
-		clocks =
-				<&topckgen_clk CLK_TOP_DPE_SEL>,
-				<&ipesys_clk CLK_IPE_DPE>;
-		clock-names =
-				"DPE_TOP_MUX",
-				"DPE_CLK_IPE_DPE";
+		clocks =  <&topckgen_clk CLK_TOP_DPE_SEL>,
+		<&ipesys_clk CLK_IPE_SMI_SUBCOM>,
+		<&ipesys_clk CLK_IPE_DPE>,
+		<&ipesys_clk CLK_IPE_LARB19>,
+		<&ipesys_clk CLK_IPE_LARB20>;
+		clock-names = "DPE_TOP_MUX","DPE_CLK_IPE_SMI_SUBCOM","DPE_CLK_IPE_DPE",
+		"DPE_CLK_IPE_LARB19","DPE_CLK_IPE_LARB20";
 	};
 
 	dvp@1b100800 {
 		compatible = "mediatek,dvp";
+		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+		iommus = <&iommu0 M4U_PORT_L19_IPE_DVS_RDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVS_WDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVP_RDMA>,
+			<&iommu0 M4U_PORT_L19_IPE_DVP_WDMA>;
 		reg = <0 0x1b100000 0 0x1000>;
+		mediatek,larbs = <&smi_larb19 &smi_larb20>;
 		interrupts = <GIC_SPI 441 IRQ_TYPE_LEVEL_HIGH 0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_IPE>;
 		EVENT_IPE_DVP_DONE = <CMDQ_EVENT_DVP_DONE>;
-		iommus = <&iommu0 M4U_PORT_L19_IPE_DVS_RDMA>;
-
-		clocks =
-				<&topckgen_clk CLK_TOP_DPE_SEL>,
-				<&ipesys_clk CLK_IPE_DPE>;
-		clock-names =
-				"DPE_TOP_MUX",
-				"DPE_CLK_IPE_DPE";
+		mboxes = <&gce_mbox 16 0 CMDQ_THR_PRIO_1>;
+		clocks =  <&topckgen_clk CLK_TOP_DPE_SEL>,
+		<&ipesys_clk CLK_IPE_SMI_SUBCOM>,
+		<&ipesys_clk CLK_IPE_DPE>,
+		<&ipesys_clk CLK_IPE_LARB19>,
+		<&ipesys_clk CLK_IPE_LARB20>;
+		clock-names = "DPE_TOP_MUX","DPE_CLK_IPE_SMI_SUBCOM","DPE_CLK_IPE_DPE",
+		"DPE_CLK_IPE_LARB19","DPE_CLK_IPE_LARB20";
 	};
 
 	pseudo_m4u-ccu0 {
@@ -6211,15 +6225,23 @@
 		reg = <0 0x1b000000 0 0x1000>;
 	};
 
-	fdvt@1b001000 {
-		compatible = "mediatek,fdvt";
+	aie@1b001000 {
+		compatible = "mediatek,mt6873-aie", "mediatek,aie-hw2.0";
 		reg = <0 0x1b001000 0 0x1000>;
 		interrupts = <GIC_SPI 437 IRQ_TYPE_LEVEL_HIGH 0>;
-		clocks = <&ipesys_clk CLK_IPE_FD>;
-		clock-names = "FD_CLK_IPE_FD";
-		mboxes = <&gce_mbox 14 0 CMDQ_THR_PRIO_1>,
-			 <&gce_mbox_sec 11 0 CMDQ_THR_PRIO_1>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_IPE>;
+		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+		clocks = <&ipesys_clk CLK_IPE_FD>,
+			 <&ipesys_clk CLK_IPE_LARB20>;
+		clock-names = "aie",
+			 "FDVT_CLK_IPE_LARB20";
+		mboxes = <&gce_mbox 14 0 CMDQ_THR_PRIO_1>;
+		iommus = <&iommu0 M4U_PORT_L20_IPE_FDVT_RDA>,
+			 <&iommu0 M4U_PORT_L20_IPE_FDVT_RDB>,
+			 <&iommu0 M4U_PORT_L20_IPE_FDVT_WRA>,
+			 <&iommu0 M4U_PORT_L20_IPE_FDVT_WRB>;
 		fdvt_frame_done = <CMDQ_EVENT_FDVT_DONE>;
+		mediatek,larb = <&smi_larb20>;
 	};
 
 	rsc@1b003000 {
