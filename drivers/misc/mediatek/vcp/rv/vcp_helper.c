@@ -3503,6 +3503,14 @@ static const struct of_device_id vcp_sec_of_ids[] = {
 	{ .compatible = "mediatek,vcp-io-sec", },
 	{}
 };
+static const struct of_device_id vcp_acp_vdec_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-acp-vdec", },
+	{}
+};
+static const struct of_device_id vcp_acp_venc_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-acp-venc", },
+	{}
+};
 
 static struct platform_driver mtk_vcp_io_vdec = {
 	.probe = vcp_io_device_probe,
@@ -3564,6 +3572,26 @@ static struct platform_driver mtk_vcp_io_sec = {
 	},
 };
 
+static struct platform_driver mtk_vcp_io_acp_vdec = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_acp_vdec",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_acp_vdec_of_ids,
+	},
+};
+
+static struct platform_driver mtk_vcp_io_acp_venc = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_acp_venc",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_acp_venc_of_ids,
+	},
+};
+
 /*
  * driver initialization entry point
  */
@@ -3622,6 +3650,14 @@ static int __init vcp_init(void)
 	if (platform_driver_register(&mtk_vcp_io_sec)) {
 		pr_info("[VCP] mtk_vcp_io_sec probe fail\n");
 		goto err_io_sec;
+	}
+	if (platform_driver_register(&mtk_vcp_io_acp_vdec)) {
+		pr_info("[VCP] mtk_vcp_io_acp_vdec probe fail\n");
+		goto err_io_acp_vdec;
+	}
+	if (platform_driver_register(&mtk_vcp_io_acp_venc)) {
+		pr_info("[VCP] mtk_vcp_io_acp_venc probe fail\n");
+		goto err_io_acp_venc;
 	}
 
 	if (!vcp_support)
@@ -3726,6 +3762,10 @@ static int __init vcp_init(void)
 
 	return ret;
 err:
+	platform_driver_unregister(&mtk_vcp_io_acp_venc);
+err_io_acp_venc:
+	platform_driver_unregister(&mtk_vcp_io_acp_vdec);
+err_io_acp_vdec:
 	platform_driver_unregister(&mtk_vcp_io_sec);
 err_io_sec:
 	platform_driver_unregister(&mtk_vcp_io_work);
@@ -3777,6 +3817,8 @@ static void __exit vcp_exit(void)
 	for (i = 0; i < VCP_CORE_TOTAL ; i++)
 		del_timer(&vcp_ready_timer[i].tl);
 #endif
+	platform_driver_unregister(&mtk_vcp_io_acp_venc);
+	platform_driver_unregister(&mtk_vcp_io_acp_vdec);
 	platform_driver_unregister(&mtk_vcp_io_sec);
 	platform_driver_unregister(&mtk_vcp_io_work);
 	platform_driver_unregister(&mtk_vcp_io_venc);

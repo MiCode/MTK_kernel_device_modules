@@ -152,12 +152,17 @@ static int fops_vcodec_open(struct file *file)
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev_dec, ctx,
 		&mtk_vcodec_dec_queue_init);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	ctx->general_dev = vcp_get_io_device(VCP_IOMMU_VDEC_512MB1);
-	mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_VDEC_512MB1 domain");
+	if (vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
+		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
+		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_ACP_VDEC domain");
+	} else {
+		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_VDEC);
+		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_VDEC domain");
+	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!ctx->general_dev) {
 		ctx->general_dev = ctx->dev->smmu_dev;
-		mtk_v4l2_debug(4, "general buffer use plat_dev  domain");
+		mtk_v4l2_debug(4, "general buffer use smmu_dev domain");
 	}
 #endif
 #else
@@ -414,6 +419,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dev->ctx_list);
 	dev->plat_dev = pdev;
 	dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
+	ret = of_property_read_u32(pdev->dev.of_node, "iommu-domain-switch", &dev->iommu_domain_swtich);
+	if (ret != 0)
+		dev->iommu_domain_swtich = 0;
+	mtk_v4l2_debug(0, "iommu_domain_swtich: %d", dev->iommu_domain_swtich);
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (VCU_FPTR(vcu_get_plat_device)) {
 		dev->vcu_plat_dev = VCU_FPTR(vcu_get_plat_device)(dev->plat_dev);

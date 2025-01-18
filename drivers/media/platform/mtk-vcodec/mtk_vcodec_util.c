@@ -336,69 +336,6 @@ void __iomem *mtk_vcodec_get_enc_reg_addr(struct mtk_vcodec_ctx *data,
 EXPORT_SYMBOL_GPL(mtk_vcodec_get_enc_reg_addr);
 
 
-int mtk_vcodec_mem_alloc(struct mtk_vcodec_ctx *data,
-						 struct mtk_vcodec_mem *mem)
-{
-	unsigned long size;
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)data;
-
-	if (data == NULL || mem == NULL) {
-		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
-			(unsigned long)data, (unsigned long)mem);
-		return -EINVAL;
-	}
-	size = mem->size;
-
-	mem->va = dma_alloc_coherent(ctx->dev->smmu_dev, size, &mem->dma_addr, GFP_KERNEL);
-
-	if (!mem->va) {
-		mtk_v4l2_err("%s dma_alloc size=%ld failed!", dev_name(ctx->dev->smmu_dev),
-					 size);
-		return -ENOMEM;
-	}
-
-	memset(mem->va, 0, size);
-
-	mtk_v4l2_debug(4, "[%d]  - va      = %p", ctx->id, mem->va);
-	mtk_v4l2_debug(4, "[%d]  - dma     = 0x%lx", ctx->id,
-				   (unsigned long)mem->dma_addr);
-	mtk_v4l2_debug(4, "[%d]    size = 0x%lx", ctx->id, size);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mtk_vcodec_mem_alloc);
-
-void mtk_vcodec_mem_free(struct mtk_vcodec_ctx *data,
-						 struct mtk_vcodec_mem *mem)
-{
-	unsigned long size;
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)data;
-
-	if (data == NULL || mem == NULL) {
-		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
-			(unsigned long)data, (unsigned long)mem);
-		return;
-	}
-	size = mem->size;
-
-	if (!mem->va) {
-		mtk_v4l2_err("%s dma_free size=%ld failed!", dev_name(ctx->dev->smmu_dev),
-					 size);
-		return;
-	}
-
-	mtk_v4l2_debug(4, "[%d]  - va      = %p", ctx->id, mem->va);
-	mtk_v4l2_debug(4, "[%d]  - dma     = 0x%lx", ctx->id,
-				   (unsigned long)mem->dma_addr);
-	mtk_v4l2_debug(4, "[%d]    size = 0x%lx", ctx->id, size);
-
-	dma_free_coherent(ctx->dev->smmu_dev, size, mem->va, mem->dma_addr);
-	mem->va = NULL;
-	mem->dma_addr = 0;
-	mem->size = 0;
-}
-EXPORT_SYMBOL_GPL(mtk_vcodec_mem_free);
-
 void mtk_vcodec_set_curr_ctx(struct mtk_vcodec_dev *dev,
 	struct mtk_vcodec_ctx *ctx, unsigned int hw_id)
 {

@@ -428,10 +428,10 @@ static struct device *get_dev_by_mem_type(struct vdec_inst *inst, struct vcodec_
 	}
 
 	if (mem->type == MEM_TYPE_FOR_SW) {
-		if (inst->ctx->id & 1)
-			return vcp_get_io_device(VCP_IOMMU_256MB1);
+		if (inst->ctx->dev->iommu_domain_swtich && (inst->ctx->id & 1))
+			return vcp_get_io_device(VCP_IOMMU_VCP);
 		else
-			return vcp_get_io_device(VCP_IOMMU_WORK_256MB2);
+			return vcp_get_io_device(VCP_IOMMU_WORK);
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW)
 		return vcp_get_io_device(VCP_IOMMU_SEC);
 	else if (mem->type == MEM_TYPE_FOR_HW || mem->type == MEM_TYPE_FOR_SEC_HW)
