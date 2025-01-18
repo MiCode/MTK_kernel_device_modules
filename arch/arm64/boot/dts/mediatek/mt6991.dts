@@ -10423,7 +10423,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,mt6991-vcodec-dec";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
-			mediatek,slc = <1>;
+			//mediatek,slc = <1>;
 			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
 				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
 				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
