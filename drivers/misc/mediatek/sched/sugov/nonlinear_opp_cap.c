@@ -2217,8 +2217,8 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	}
 }
 
-void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struct cpumask *cpumask,
-		unsigned long *next_freq, int wl)
+void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
+		unsigned long *next_freq)
 {
 	int orig_util = util, gearid;
 	unsigned int cpu;

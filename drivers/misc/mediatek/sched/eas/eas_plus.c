@@ -258,8 +258,8 @@ unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 
 	arch_max_freq = pd_get_opp_freq(cpumask_first(pd_cpus), 0);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	mtk_map_util_freq(NULL, max_util, arch_max_freq, pd_cpus,
-		&freq, eenv->wl);
+	mtk_map_util_freq(NULL, max_util, pd_cpus,
+		&freq);
 #else
 	max_util = map_util_perf(max_util);
 	max_util = min(max_util, allowed_cpu_cap);
