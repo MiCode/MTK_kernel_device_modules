@@ -1428,6 +1428,22 @@
 			iommus = <&iommu1 M4U_PORT_L21_APU_FAKE_DATA>;
 		};
 
+		mtk_apu_mem_code: mtk_apu_mem_code {
+			compatible = "mediatek, apu_mem_code";
+			type = <1>;
+			mask = /bits/ 64 <0x00000003ffffffff>;
+			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
+			iommus = <&iommu1 M4U_PORT_L21_APU_FAKE_DATA>;
+		};
+
+		mtk_apu_mem_data: mtk_apu_mem_data {
+			compatible = "mediatek, apu_mem_data";
+			type = <2>;
+			mask = /bits/ 64 <0x00000003ffffffff>;
+			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
+			iommus = <&iommu1 M4U_PORT_L21_APU_FAKE_DATA>;
+		};
+
 		wpe_a@15811000 {
 			compatible = "mediatek,wpe_a";
 			reg = <0 0x15811000 0 0x1000>;
@@ -7133,6 +7149,14 @@
 		sdsp-tee-sharedmem-size = <0 0x1000000>;
 		sdsp-firmware-size = <0 0x1000000>;
 
+	};
+
+	mtk_apu_mdw: mtk_apu_mdw {
+		compatible = "mediatek, apu_mdw";
+		uapi-ver = <2>;
+		dsp_mask = <0xff>;
+		dla_mask = <0xff>;
+		dma_mask = <0xff>;
 	};
 
 	apusys_reviser@19021000 {
