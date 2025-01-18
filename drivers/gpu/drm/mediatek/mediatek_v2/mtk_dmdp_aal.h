@@ -14,4 +14,7 @@ void disp_mdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass, struct cmdq_pkt 
 void disp_mdp_aal_bypass_flag(struct mtk_ddp_comp *comp, int bypass);
 void disp_mdp_aal_init_data_update(struct mtk_ddp_comp *comp, const struct DISP_AAL_INITREG *init_regs);
 void disp_mdp_aal_set_valid(struct mtk_ddp_comp *comp, bool valid);
+// for displayPQ update to swpm tppa
+unsigned int disp_mdp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc);
+
 #endif
