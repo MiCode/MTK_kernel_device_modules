@@ -635,6 +635,7 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	if (memif->use_mmap_share_mem) {
 		kfree(substream->runtime->dma_buffer_p);
 		snd_pcm_set_runtime_buffer(substream, NULL);
+		mtk_clean_mmap_dl_buffer(afe->dev);
 		return 0;
 	}
 #endif

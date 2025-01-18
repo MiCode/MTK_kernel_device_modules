@@ -57,6 +57,13 @@ void mtk_get_mmap_ul_buffer(unsigned long *phy_addr, void **vir_addr)
 }
 EXPORT_SYMBOL_GPL(mtk_get_mmap_ul_buffer);
 
+void mtk_clean_mmap_dl_buffer(struct device *dev)
+{
+	if (dl_vir_addr != NULL)
+		memset_io(dl_vir_addr, 0, 10);
+}
+EXPORT_SYMBOL_GPL(mtk_clean_mmap_dl_buffer);
+
 static struct sg_table *mtk_map_dma_buf(struct dma_buf_attachment *attachment,
 				 enum dma_data_direction dir)
 {
@@ -109,7 +116,7 @@ static struct dma_buf *mtk_dma_buf_init(struct device *dev, void **vaddr)
 	dmabuf_dev = dev;
 
 	if (*vaddr == NULL) {
-		dev_info(dev, "%s(), kazlloc()\n", __func__);
+		dev_info(dev, "%s(), kzalloc()\n", __func__);
 		*vaddr = kzalloc(MMAP_BUFFER_SIZE, GFP_KERNEL);
 		if (!(*vaddr)) {
 			dev_info(dev, "%s() kzalloc fail!!\n", __func__);
@@ -127,7 +134,7 @@ static struct dma_buf *mtk_dma_buf_init(struct device *dev, void **vaddr)
 	dmabuf = dma_buf_export(&exp_info);
 	if (IS_ERR_OR_NULL(dmabuf)) {
 		dev_info(dev, "%s() couldn't export dma_buf", __func__);
-		kfree(vaddr);
+		kfree(*vaddr);
 		return NULL;
 	}
 	return dmabuf;
@@ -139,6 +146,8 @@ int mtk_exporter_init(struct device *dev)
 
 	dev_info(dev, "%s(), dl_alloc_vaddr %p, ul_alloc_vaddr %p\n",
 		 __func__, dl_alloc_vaddr, ul_alloc_vaddr);
+
+	mtk_clean_mmap_dl_buffer(dev);
 
 	// for DL
 	dmabuf = mtk_dma_buf_init(dev, &dl_alloc_vaddr);
@@ -166,6 +175,7 @@ int mtk_exporter_init(struct device *dev)
 			__func__, ul_vir_addr, ul_phy_addr, ul_size, ul_fd);
 	}
 
+	mtk_clean_mmap_dl_buffer(dev);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_exporter_init);
