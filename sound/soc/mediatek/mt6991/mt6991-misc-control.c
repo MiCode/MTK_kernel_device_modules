@@ -248,7 +248,7 @@ static int mt6991_sgen_set(struct snd_kcontrol *kcontrol,
 		 __func__, mode, mode_sel, mode_idx);
 
 
-	if (mode_idx > 0) {
+	if (mode_idx >= 0) {
 		regmap_update_bits(afe->regmap, AFE_SINEGEN_CON1,
 				   INNER_LOOP_BACK_MODE_MASK_SFT,
 				   mode_idx << INNER_LOOP_BACK_MODE_SFT);
