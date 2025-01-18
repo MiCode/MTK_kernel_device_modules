@@ -156,7 +156,6 @@ struct mtk8250_reg_data {
 struct mtk8250_data {
 	int			line;
 	unsigned int		rx_pos;
-	unsigned int		clk_count;
 	struct clk		*uart_clk;
 	struct clk		*bus_clk;
 	struct uart_8250_dma	*dma;
@@ -177,6 +176,7 @@ struct mtk8250_data {
 	struct mtk8250_reg_data peri_wakeup_info;
 	void __iomem *peri_wakeup_ctl;
 	void __iomem *peri_wakeup_sta;
+	atomic_t uart_clk_count;
 };
 
 struct mtk8250_comp {
@@ -800,12 +800,6 @@ int mtk8250_uart_dump(struct tty_struct *tty)
 		goto err_exit;
 	}
 	mutex_lock(&data->uart_mutex);
-	if (data->clk_count == 0) {
-		pr_info("%s: clk_count = %d, clk close, please open ttys[%d]\n", __func__,
-		data->clk_count, data->line);
-		ret = -EINVAL;
-		goto err_unlock_exit;
-	}
 
 	if (data->support_hub != 1) {
 		pr_info("%s: current port is not hub port\n", __func__);
@@ -913,11 +907,6 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 		pr_info("[%s] para error. data is NULL\n", __func__);
 		return;
 	}
-	if (data->clk_count == 0) {
-		pr_info("[%s] para error. clk_count = %d, clk close, please open ttys[%d]\n",
-			__func__, data->clk_count, data->line);
-		return;
-	}
 
 	mtk_save_uart_reg(up, uart_reg_buf);
 
@@ -977,11 +966,6 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 	data = port->private_data;
 	if (data == NULL) {
 		pr_info("[%s] para error. data is NULL\n", __func__);
-		return;
-	}
-	if (data->clk_count == 0) {
-		pr_info("[%s] para error. clk_count = %d, clk close, please open ttys[%d]\n",
-			__func__, data->clk_count, data->line);
 		return;
 	}
 
@@ -1801,12 +1785,6 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 	int mode;
 	struct mtk8250_data *data = port->private_data;
 
-	if (data->clk_count == 0) {
-		pr_info("debug: %s: clk_count = %d, please open ttys[%d]\n", __func__,
-			data->clk_count, data->line);
-		return;
-	}
-
 #ifdef CONFIG_SERIAL_8250_DMA
 	if (up->dma) {
 		if (uart_console(port)) {
@@ -2005,21 +1983,17 @@ static int __maybe_unused mtk8250_runtime_suspend(struct device *dev)
 		pr_info("%s: up is null!!\n", __func__);
 		return 0;
 	}
-
 	if (data->support_hub) {
-		dev_dbg(dev, "[%s]:clock count is[%d] support_hub, skip disable clock\n",
-		 __func__, data->clk_count);
+		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
+			__func__, data->line);
 	} else {
-		if (data->clk_count == 0U) {
-			dev_dbg(dev, "%s clock count is 0\n", __func__);
-		} else {
-			/* wait until UART in idle status */
-			while
-				(serial_in(up, MTK_UART_DEBUG0));
-
-			clk_disable_unprepare(data->bus_clk);
-			data->clk_count--;
-		}
+		atomic_dec(&data->uart_clk_count);
+		dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+			__func__, data->line, atomic_read(&data->uart_clk_count));
+		/* wait until UART in idle status */
+		while
+			(serial_in(up, MTK_UART_DEBUG0));
+		clk_disable_unprepare(data->bus_clk);
 	}
 	return 0;
 }
@@ -2029,19 +2003,19 @@ static int __maybe_unused mtk8250_runtime_resume(struct device *dev)
 	struct mtk8250_data *data = dev_get_drvdata(dev);
 	int err;
 
-	if (data->clk_count > 0U) {
-		if (data->support_hub)
-			dev_dbg(dev, "[%s]: data->line[%d] clock count is %d\n", __func__,
-				data->line, data->clk_count);
-	} else {
-		err = clk_prepare_enable(data->bus_clk);
-		if (err) {
-			dev_warn(dev, "Can't enable bus clock\n");
-			return err;
-		}
-		data->clk_count++;
+	if (data->support_hub && (atomic_read(&data->uart_clk_count)) > 0) {
+		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
+			__func__, data->line);
+		return 0;
 	}
-
+	err = clk_prepare_enable(data->bus_clk);
+	if (err) {
+		dev_dbg(dev, "Can't enable bus clock\n");
+		return err;
+	}
+	atomic_inc(&data->uart_clk_count);
+	dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+			__func__, data->line, atomic_read(&data->uart_clk_count));
 	return 0;
 }
 
@@ -2049,12 +2023,14 @@ static void
 mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 {
 	unsigned char efr = 0;
+	int ret;
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	if (!state)
-		if (!mtk8250_runtime_resume(port->dev))
-			pm_runtime_get_sync(port->dev);
-
+	if (!state) {
+		ret = pm_runtime_get_sync(port->dev);
+		if (ret)
+			dev_info(port->dev, "8250 do PM get sync fail!");
+	}
 	serial8250_rpm_get(up);
 
 	if (up->capabilities & UART_CAP_SLEEP) {
@@ -2074,9 +2050,11 @@ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 
 	serial8250_rpm_put(up);
 
-	if (state)
-		if (!pm_runtime_put_sync_suspend(port->dev))
-			mtk8250_runtime_suspend(port->dev);
+	if (state) {
+		ret = pm_runtime_put_sync_suspend(port->dev);
+		if (ret)
+			dev_info(port->dev, "8250 do PM put sync fail!");
+	}
 }
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -2326,7 +2304,7 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 			pr_info("probe_uart: data->line: %d:\n", data->line);
 		}
 
-	data->bus_clk = devm_clk_get_enabled(&pdev->dev, "bus");
+	data->bus_clk = devm_clk_get(&pdev->dev, "bus");
 	if (IS_ERR(data->bus_clk))
 		return PTR_ERR(data->bus_clk);
 
@@ -2552,7 +2530,6 @@ static int mtk8250_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev,
 			"uart support uarthub: %d\n", data->support_hub);
 
-	data->clk_count = 0;
 	mutex_init(&data->uart_mutex);
 
 	uart.port.private_data = data;
@@ -2605,12 +2582,11 @@ static int mtk8250_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 	if (data->support_hub) {
 		if (clk_prepare_enable(data->bus_clk)) {
-			pr_info("[%s]: line[%d], data->clk_count[%d], CLk enable fail!!\n",
-				__func__, data->line, data->clk_count);
+			pr_info("[%s]: line[%d], CLk enable fail!!\n",
+				__func__, data->line);
 		}
 	}
-
-	pm_runtime_enable(&pdev->dev);
+	atomic_set(&data->uart_clk_count, 0);
 	err = mtk8250_runtime_resume(&pdev->dev);
 	if (err)
 		goto err_pm_disable;
@@ -2629,7 +2605,8 @@ static int mtk8250_probe(struct platform_device *pdev)
 		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 2);
 	else
 		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 1);
-
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 	return 0;
 
 err_pm_disable:
