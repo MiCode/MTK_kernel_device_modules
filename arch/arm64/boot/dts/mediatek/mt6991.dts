@@ -14614,7 +14614,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		scp-infracfg = <&infracfg_ao_clk>;
 		/* awake timeout count plt setting */
-		awake-timeout = <30000>; /* 300 ms */
+		awake-timeout = <10000>; /* 100 ms */
 	};
 
 
