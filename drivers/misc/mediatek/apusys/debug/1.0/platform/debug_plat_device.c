@@ -29,10 +29,18 @@ static struct debug_plat_drv mt6885_drv = {
 	.total_dbg_mux_count	= TOTAL_MUX_COUNT_MT6885,
 };
 
+static struct debug_plat_drv mt6877_drv = {
+	.platform_idx = 3,
+	.apusys_base			= APUSYS_BASE,
+	.apusys_reg_size		= APUSYS_REG_SIZE,
+	.total_dbg_mux_count	= TOTAL_MUX_COUNT_MT6877,
+};
+
 static const struct of_device_id debug_of_match[] = {
 	{ .compatible = "mediatek,mt6853-debug", .data = &mt6853_drv},
 	{ .compatible = "mediatek,mt6873-debug", .data = &mt6873_drv},
 	{ .compatible = "mediatek,mt6885-debug", .data = &mt6885_drv},
+	{ .compatible = "mediatek,mt6877-debug", .data = &mt6877_drv},
 	{ /* end of list */},
 };
 MODULE_DEVICE_TABLE(of, debug_of_match);
