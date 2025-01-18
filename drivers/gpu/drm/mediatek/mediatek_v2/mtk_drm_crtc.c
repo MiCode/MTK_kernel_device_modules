@@ -623,8 +623,10 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+	}
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -770,10 +772,12 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(comp);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 done_return:
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	}
+
 	return;
 }
 
@@ -794,8 +798,10 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+	}
 
 	DDPFUNC("crtc%d\n", crtc_id);
 
@@ -1038,10 +1044,12 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(priv->ddp_comp[DDP_COMPONENT_DSC1]);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 done_return:
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	}
+
 	return;
 }
 
@@ -1084,8 +1092,10 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+	}
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -1172,10 +1182,6 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
 				mtk_dump_analysis(comp);
 		}
-
-		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 		/* MT6989 only dump OVL module and topsys in mini analysis */
 		goto done_return;
 	case MMSYS_MT6991:
@@ -1200,10 +1206,6 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 				if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)
 					mtk_dump_analysis(comp);
 			}
-
-			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-				mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 			/* MT6991 only dump EXDMA module and topsys in mini analysis */
 			goto done_return;
 	case MMSYS_MT6897:
@@ -1274,10 +1276,12 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			mtk_dump_analysis(comp);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 done_return:
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	}
+
 	return;
 }
 
@@ -1297,8 +1301,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+	}
 
 	DDPFUNC("crtc%d\n", crtc_id);
 
@@ -1585,10 +1591,12 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		mtk_drm_crtc_addon_analysis(crtc, addon_data);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-
 done_return:
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+	}
+
 	return;
 }
 
