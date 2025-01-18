@@ -264,7 +264,7 @@ static unsigned int read_efuse_by_offset(__u32 offset)
 	struct nvmem_device *nvmem_dev;
 	struct device_node *node;
 
-	node = of_find_node_by_name(NULL, "eem_fsm");
+	node = of_find_node_by_name(NULL, "eem-fsm");
 	if (node == NULL) {
 		eem_error("%s fail to get device node\n", __func__);
 		return -1;
