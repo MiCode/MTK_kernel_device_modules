@@ -289,6 +289,9 @@ extern struct tasklet_struct scp_A_irq0_tasklet;
 extern struct tasklet_struct scp_A_irq1_tasklet;
 #endif
 
+/* scp awake variable */
+extern unsigned int scp_awake_timeout;
+
 enum MTK_TINYSYS_SCP_KERNEL_OP {
 	MTK_TINYSYS_SCP_KERNEL_OP_DUMP_START = 0,
 	MTK_TINYSYS_SCP_KERNEL_OP_DUMP_POLLING,
