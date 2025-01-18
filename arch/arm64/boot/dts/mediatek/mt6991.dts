@@ -1626,6 +1626,17 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					"max_freq";
 			node-30 = "MCUPM_PMU_MGR_CPU_STALL_COUNT",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-31 = "MCUPM_PMU_MGR_LATBW",
+					"mon0_lat_CT_r_inst_tlb,mon0_bw_CT_r_inst_tlb\
+					,mon1_lat_CT_r_pre,mon1_bw_CT_r_pre\
+					,mon2_lat_CT_r_demand,mon2_bw_CT_r_demand\
+					,mon3_lat_CT_r_all,mon3_bw_CT_r_all\
+					,mon4_lat_all_w_all,mon4_bw_all_w_all\
+					,mon5_lat_Other_r_inst_tlb,mon5_bw_Other_r_inst_tlb\
+					,mon6_lat_Other_r_pre,mon6_bw_Other_r_pre\
+					,mon7_lat_Other_r_demand,mon7_bw_Other_r_demand\
+					,mon8_lat_Other_r_all,mon8_bw_Other_r_all\
+					,mon9_lat_all_r_all,mon9_bw_all_r_all";
 		};
 
 		sspm_rts_header: sspm-rts-header {
