@@ -613,8 +613,6 @@ static int tpd_probe(struct platform_device *pdev)
 	tpd->dev->phys = "ilitek/input0";
 	set_bit(EV_ABS, tpd->dev->evbit);
 	set_bit(EV_KEY, tpd->dev->evbit);
-	set_bit(ABS_X, tpd->dev->absbit);
-	set_bit(ABS_Y, tpd->dev->absbit);
 	set_bit(ABS_PRESSURE, tpd->dev->absbit);
 #if !defined(CONFIG_MTK_S3320) && !defined(CONFIG_MTK_S3320_47)\
 	&& !defined(CONFIG_MTK_S3320_50) && !defined(CONFIG_MTK_MIT200) \
