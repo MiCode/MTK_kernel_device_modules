@@ -32,6 +32,9 @@
 #include "mtk_page_pool.h"
 #include "mtk-smmu-v3.h"
 
+#define MAP_FAILED_DUMP_RS_INTERVAL      (2 * HZ)
+#define MAP_FAILED_DUMP_RS_BURST         (1)
+
 atomic64_t dma_heap_normal_total = ATOMIC64_INIT(0);
 EXPORT_SYMBOL(dma_heap_normal_total);
 
@@ -311,6 +314,8 @@ static void system_heap_detach(struct dma_buf *dmabuf,
 static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attachment,
 						enum dma_data_direction direction)
 {
+	static DEFINE_RATELIMIT_STATE(dump_rs, MAP_FAILED_DUMP_RS_INTERVAL,
+				      MAP_FAILED_DUMP_RS_BURST);
 	struct dma_heap_attachment *a = attachment->priv;
 	struct sg_table *table = a->table;
 	int attr = attachment->dma_map_attrs;
@@ -365,6 +370,9 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		pr_info("%s map fail tab:%llu, dom:%d, dev:%s\n",
 			__func__, tab_id, dom_id, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
+
+		if (!__ratelimit(&dump_rs))
+			return ERR_PTR(-ENOMEM);
 
 		if (dmabuf_rbtree_dump_by_domain)
 			dmabuf_rbtree_dump_by_domain(tab_id, dom_id);
