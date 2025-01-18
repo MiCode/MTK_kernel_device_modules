@@ -25,7 +25,11 @@ DEFINE_EVENT(dmabuf_trace_template, name,	\
 	TP_PROTO(struct va_format *vaf),	\
 	TP_ARGS(vaf))
 
+#ifdef CONFIG_ARM64
 DEFINE_DMABUF_EVENT(tracing_mark_write);
+#elif CONFIG_ARM
+DEFINE_DMABUF_EVENT(tracing_mark_write_dma32);
+#endif
 
 #endif /* _TRACE_MTK_DMABUF_EVENTS_H */
 
