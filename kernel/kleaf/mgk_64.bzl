@@ -1138,6 +1138,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/power/supply/rt9758-charger.ko")
 
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
 
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
 
