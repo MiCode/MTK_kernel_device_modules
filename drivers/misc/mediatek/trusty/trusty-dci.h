@@ -48,6 +48,7 @@ struct dciResponseHeader_t {
  * @param header Command/Response header
  * @param len Length of the data to process.
  */
+#define CMD_LEN_MAGIC_NUM 0xF00DBABE
 struct cmd_t {
 	struct dciCommandHeader_t header;
 	uint32_t                  len;
