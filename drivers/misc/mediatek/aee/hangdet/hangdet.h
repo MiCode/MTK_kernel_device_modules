@@ -6,6 +6,8 @@
 #if !defined(__HANGDET_H__)
 #define __HANGDET_H__
 
+#include <linux/sched.h>
+
 void percpu_debug_timer_init(void);
 void save_timer_list_info(void);
 void timer_list_debug_init(void);
@@ -20,6 +22,16 @@ struct slp_history {
 	int cpu;
 	unsigned long long sc;
 	struct hrtimer *timer;
+};
+#endif
+
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+struct arch_timer_caller_history_struct {
+	unsigned long timer_caller_ip;
+	u64 timer_called;
+	ktime_t now;
+	char comm[TASK_COMM_LEN];
 };
 #endif
 

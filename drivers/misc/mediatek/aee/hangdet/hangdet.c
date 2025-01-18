@@ -164,6 +164,96 @@ static struct kprobe kp_clockevents_exchange_device = {
 	.symbol_name =  "clockevents_exchange_device",
 	.pre_handler = clockevents_exchange_device_pre,
 };
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define USLEEP_RANGE_HIS_ARRAY_SIZE (50)
+#define HRTIMER_HIS_ARRAY_SIZE (50)
+
+struct arch_timer_caller_history_struct
+	usleep_range_history[USLEEP_RANGE_HIS_ARRAY_SIZE];
+struct arch_timer_caller_history_struct
+	hrtimer_history[HRTIMER_HIS_ARRAY_SIZE];
+
+static uint64_t usleep_range_count;
+static uint64_t hrtimer_count;
+
+unsigned long tick_sched_timer_addr;
+unsigned long hrtimer_wakeup_addr;
+
+static DEFINE_SPINLOCK(usleep_range_lock);
+static DEFINE_SPINLOCK(hrtimer_lock);
+
+static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs);
+static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs);
+static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs);
+
+static struct kprobe kp_aee_kernel_warning_api_func = {
+	.symbol_name = "aee_kernel_warning_api_func",
+	.pre_handler = aee_kernel_warning_api_func_pre,
+};
+
+static struct kprobe kp_usleep_range_state = {
+	.symbol_name = "usleep_range_state",
+	.pre_handler = usleep_range_state_pre,
+};
+
+static struct kprobe kp_hrtimer_expire_entry = {
+	.symbol_name = "__run_hrtimer",
+	.pre_handler = hrtimer_expire_entry_pre,
+};
+
+static struct kprobe tmp_kp;
+
+static unsigned long lookup_function_address(const char *name)
+{
+	int ret;
+	unsigned long addr = 0;
+
+	memset(&tmp_kp, 0, sizeof(struct kprobe));
+	tmp_kp.symbol_name = name;
+
+	ret = register_kprobe(&tmp_kp);
+	if (ret < 0) {
+		pr_info("register_kprobe failed for %s, returned %d\n", name, ret);
+		return 0;
+	}
+
+	addr = (unsigned long)tmp_kp.addr;
+
+	unregister_kprobe(&tmp_kp);
+
+	return addr;
+}
+
+static void dump_usleep_range_history(void)
+{
+	int i;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&usleep_range_lock, flags);
+	for (i = 0; i < USLEEP_RANGE_HIS_ARRAY_SIZE; i++)
+		pr_info("usleep_range_history[%d].caller %lx %ps, call time: %lld, comm: %s",
+			i, usleep_range_history[i].timer_caller_ip, (void *)usleep_range_history[i].timer_caller_ip,
+			usleep_range_history[i].timer_called,
+			usleep_range_history[i].comm);
+	spin_unlock_irqrestore(&usleep_range_lock, flags);
+}
+
+static void dump_hrtimer_burst_history(void)
+{
+	int i;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&hrtimer_lock, flags);
+	for (i = 0; i < HRTIMER_HIS_ARRAY_SIZE; i++)
+		pr_info("hrtimer_history[%d].caller %lx %ps, call time: %lld, now: %lld, comm: %s",
+			i, hrtimer_history[i].timer_caller_ip, (void *)hrtimer_history[i].timer_caller_ip,
+			hrtimer_history[i].timer_called,
+			hrtimer_history[i].now,
+			hrtimer_history[i].comm);
+	spin_unlock_irqrestore(&hrtimer_lock, flags);
+}
+#endif
 #endif
 
 __weak void mt_irq_dump_status(unsigned int irq)
@@ -1435,6 +1525,64 @@ static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *reg
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	char *module = (char *)regs->regs[3];
+
+	if (strstr(module, "arch_timer") != NULL) {
+		dump_usleep_range_history();
+		dump_hrtimer_burst_history();
+	}
+
+	return 0;
+}
+
+static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	u64 temp_count = 0;
+	unsigned long flags = 0;
+	unsigned int state = (unsigned int)regs->regs[2];
+
+	if (state == TASK_UNINTERRUPTIBLE) {
+		spin_lock_irqsave(&usleep_range_lock, flags);
+		usleep_range_count++;
+		temp_count = usleep_range_count % USLEEP_RANGE_HIS_ARRAY_SIZE;
+		usleep_range_history[temp_count].timer_caller_ip = ((unsigned long)__builtin_return_address(8));
+		usleep_range_history[temp_count].timer_called = sched_clock();
+		strscpy(usleep_range_history[temp_count].comm, current->comm, TASK_COMM_LEN);
+		spin_unlock_irqrestore(&usleep_range_lock, flags);
+	}
+
+	return 0;
+}
+
+static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	u64 temp_count = 0;
+	unsigned long flags = 0;
+
+	struct hrtimer *hrtimer_t = (struct hrtimer *)regs->regs[2];
+	ktime_t *now_t = (ktime_t *)regs->regs[3];
+
+	if ((unsigned long)hrtimer_t->function == tick_sched_timer_addr)
+		return 0;
+	if ((unsigned long)hrtimer_t->function == hrtimer_wakeup_addr)
+		return 0;
+
+	spin_lock_irqsave(&hrtimer_lock, flags);
+	hrtimer_count++;
+	temp_count = hrtimer_count % HRTIMER_HIS_ARRAY_SIZE;
+	hrtimer_history[temp_count].timer_caller_ip = (unsigned long)hrtimer_t->function;
+	hrtimer_history[temp_count].timer_called = sched_clock();
+	hrtimer_history[temp_count].now = *now_t;
+	strscpy(hrtimer_history[temp_count].comm, current->comm, TASK_COMM_LEN);
+	spin_unlock_irqrestore(&hrtimer_lock, flags);
+
+	return 0;
+}
+#endif
 #endif
 
 static int __init hangdet_init(void)
@@ -1560,6 +1708,32 @@ static int __init hangdet_init(void)
 	else
 		pr_info("Planted kprobe at %llx for hrtimer_start_range_ns\n",
 			(unsigned long long) kp_clockevents_exchange_device.addr);
+
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	res = register_kprobe(&kp_aee_kernel_warning_api_func);
+	if (res < 0)
+		pr_info("aee_kernel_warning_api_func kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %p for aee_kernel_warning_api_func\n",
+			kp_aee_kernel_warning_api_func.addr);
+
+	res = register_kprobe(&kp_usleep_range_state);
+	if (res < 0)
+		pr_info("usleep_range_state kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %p for usleep_range_state\n",
+			kp_usleep_range_state.addr);
+
+	res = register_kprobe(&kp_hrtimer_expire_entry);
+	if (res < 0)
+		pr_info("hrtimer_expire_entry kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %p for hrtimer_expire_entry\n",
+			kp_hrtimer_expire_entry.addr);
+
+	tick_sched_timer_addr = lookup_function_address("tick_sched_timer");
+	hrtimer_wakeup_addr = lookup_function_address("hrtimer_wakeup");
+#endif
 #endif
 
 	aee_reboot_hook_init();
@@ -1573,6 +1747,11 @@ static void __exit hangdet_exit(void)
 #if IS_ENABLED(CONFIG_ARM64)
 	unregister_kprobe(&kp_hrtimer_start_range_ns);
 	unregister_kprobe(&kp_clockevents_exchange_device);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	unregister_kprobe(&kp_aee_kernel_warning_api_func);
+	unregister_kprobe(&kp_usleep_range_state);
+	unregister_kprobe(&kp_hrtimer_expire_entry);
+#endif
 #endif
 	unregister_pm_notifier(&wdt_pm_nb);
 	kthread_stop((struct task_struct *)wk_tsk);
