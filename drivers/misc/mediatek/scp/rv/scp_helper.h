@@ -210,6 +210,11 @@ struct scp_resource_dump_info_st {
 	uint32_t dump_regs_cnt;
 };
 
+struct scp_kasan_info_st {
+	uint32_t ubsan_en;
+	uint32_t asan_en;
+};
+
 extern struct scp_regs scpreg;
 extern const struct file_operations scp_A_log_file_ops;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)

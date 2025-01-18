@@ -83,6 +83,9 @@ char msg_scp_err_info0[40], msg_scp_err_info1[40];
 /* scp ready status for notify*/
 unsigned int scp_ready[SCP_CORE_TOTAL];
 
+/* scp kasan load config info */
+struct scp_kasan_info_st scp_kasan_info;
+
 /* scp enable status*/
 unsigned int scp_enable[SCP_CORE_TOTAL];
 
@@ -862,6 +865,21 @@ static int scp_err_info_handler(unsigned int id, void *prdata, void *data,
 	return 0;
 }
 
+static int scp_check_kasan_handler(unsigned int id, void *prdata, void *data,
+				 unsigned int len)
+{
+	struct scp_kasan_info_st *info = (struct scp_kasan_info_st *)data;
+
+	if(info->ubsan_en)
+		pr_notice("[SCP] scp ubsan is enable\n");
+
+	if(info->asan_en)
+		pr_notice("[SCP] scp asan is enable\n");
+
+	return 0;
+}
+
+
 
 /*
  * @return: 1 if scp is ready for running tasks
@@ -1044,6 +1062,25 @@ end:
 }
 
 DEVICE_ATTR_RO(scp_A_reg_status);
+
+
+static inline ssize_t scp_A_get_asan_config_show(struct device *kobj
+			, struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, (scp_kasan_info.asan_en) ? "scp asan is enable\n" :
+					"scp asan is disable\n");
+}
+
+DEVICE_ATTR_RO(scp_A_get_asan_config);
+
+static inline ssize_t scp_A_get_ubsan_config_show(struct device *kobj
+			, struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, (scp_kasan_info.ubsan_en) ? "scp ubsan is enable\n" :
+					"scp ubsan is disable\n");
+}
+
+DEVICE_ATTR_RO(scp_A_get_ubsan_config);
 
 static inline ssize_t scp_A_db_test_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
@@ -1422,6 +1459,16 @@ static int create_files(void)
 
 	ret = device_create_file(scp_device.this_device
 					, &dev_attr_scp_A_status);
+	if (unlikely(ret != 0))
+		return ret;
+
+	ret = device_create_file(scp_device.this_device
+					, &dev_attr_scp_A_get_asan_config);
+	if (unlikely(ret != 0))
+		return ret;
+
+	ret = device_create_file(scp_device.this_device
+					, &dev_attr_scp_A_get_ubsan_config);
 	if (unlikely(ret != 0))
 		return ret;
 #endif
@@ -3209,6 +3256,9 @@ static int __init scp_init(void)
 
 	mtk_ipi_register(&scp_ipidev, IPI_IN_SCP_ERROR_INFO_1,
 			(void *)scp_err_info_handler, NULL, msg_scp_err_info1);
+
+	mtk_ipi_register(&scp_ipidev, IPI_IN_KASAN_CHECK,
+			(void *)scp_check_kasan_handler, NULL, &scp_kasan_info);
 
 	ret = register_pm_notifier(&scp_pm_notifier_block);
 	if (ret)
