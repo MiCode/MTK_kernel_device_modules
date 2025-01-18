@@ -52,6 +52,8 @@
 #include "mtk_disp_postmask.h"
 #include <clk-fmeter.h>
 #include <linux/pm_domain.h>
+#include "mtk_mipi_tx.h"
+
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -1820,6 +1822,61 @@ done:
 	DDPMSG("%s end -\n", __func__);
 }
 
+void ddic_dsi_read_long_cmd(u8 cm_addr)
+{
+	unsigned int i = 0, j = 0;
+	unsigned int ret_dlen = 0;
+	int ret;
+	struct mtk_ddic_dsi_msg *cmd_msg =
+		vmalloc(sizeof(struct mtk_ddic_dsi_msg));
+	u8 tx[10] = {0};
+
+	if (!cmd_msg)
+		return;
+
+	DDPMSG("%s read ddic reg:%d\n", __func__, cm_addr);
+
+	memset(cmd_msg, 0, sizeof(struct mtk_ddic_dsi_msg));
+
+	/* Read 0x0A = 0x1C */
+	cmd_msg->channel = 0;
+	cmd_msg->tx_cmd_num = 1;
+	cmd_msg->type[0] = 0x06;
+	tx[0] = cm_addr;
+	cmd_msg->tx_buf[0] = tx;
+	cmd_msg->tx_len[0] = 1;
+
+	cmd_msg->rx_cmd_num = 1;
+	cmd_msg->rx_buf[0] = kmalloc(16 * sizeof(unsigned char),
+			GFP_ATOMIC);
+	memset(cmd_msg->rx_buf[0], 0, 16);
+	cmd_msg->rx_len[0] = 16;
+
+	ret = mtk_ddic_dsi_read_cmd(cmd_msg);
+	if (ret != 0) {
+		DDPPR_ERR("%s error\n", __func__);
+		goto  done;
+	}
+
+	for (i = 0; i < cmd_msg->rx_cmd_num; i++) {
+		ret_dlen = cmd_msg->rx_len[i];
+		DDPMSG("read lcm addr:0x%x--dlen:%d--cmd_idx:%d\n",
+			*(char *)(cmd_msg->tx_buf[i]), ret_dlen, i);
+		for (j = 0; j < ret_dlen; j++) {
+			DDPMSG("read lcm addr:0x%x--byte:%d,val:0x%x\n",
+				*(char *)(cmd_msg->tx_buf[i]), j,
+				*(char *)(cmd_msg->rx_buf[i] + j));
+		}
+	}
+
+done:
+	for (i = 0; i < cmd_msg->rx_cmd_num; i++)
+		kfree(cmd_msg->rx_buf[i]);
+	vfree(cmd_msg);
+
+	DDPMSG("%s end -\n", __func__);
+}
+
 void ddic_dsi_read_cm_cmd(u8 cm_addr)
 {
 	unsigned int i = 0, j = 0;
@@ -2760,6 +2817,8 @@ static bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len)
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp *ddp;
 	struct mtk_disp_mutex *mutex;
+	struct mtk_dsi *mtk_dsi;
+	struct mtk_mipi_tx *mipi_tx;
 	int i, j;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
@@ -2832,6 +2891,16 @@ static bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len)
 			if (is_comp_addr(addr, comp)) {
 				mtk_ddp_comp_get_name(comp, comp_name, comp_name_len);
 				return true;
+			}
+			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
+				mtk_dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+				mipi_tx = phy_get_drvdata(mtk_dsi->phy);
+				if (mipi_tx->regs_pa &&
+					addr >= mipi_tx->regs_pa &&
+					addr < mipi_tx->regs_pa + 0x1000) {
+					strscpy(comp_name, "mipi_tx", comp_name_len - 1);
+					return true;
+				}
 			}
 		}
 
@@ -3878,6 +3947,18 @@ static void process_dbg_opt(const char *opt)
 		}
 		DDPMSG("read_cm:%d\n", addr);
 		ddic_dsi_read_cm_cmd((u8)addr);
+	} else if (strncmp(opt, "read_long_cm:", strlen("read_long_cm:")) == 0) {
+		unsigned int addr;
+		unsigned int ret;
+
+		ret = sscanf(opt, "read_long_cm:%x\n", &addr);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+		DDPMSG("read_long_cm:0x%x\n", addr);
+		ddic_dsi_read_long_cmd(addr);
 	}  else if (strncmp(opt, "spr_enable:", 10) == 0) {
 		unsigned int value;
 		unsigned int ret;
