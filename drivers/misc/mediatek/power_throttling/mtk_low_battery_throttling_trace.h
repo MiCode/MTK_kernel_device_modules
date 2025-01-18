@@ -50,6 +50,6 @@ TRACE_EVENT(low_battery_throttling_gpu_freq,
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
 #undef TRACE_INCLUDE_FILE
-#define TRACE_INCLUDE_PATH ../../drivers/misc/mediatek/power_throttling/
+#define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE mtk_low_battery_throttling_trace
 #include <trace/define_trace.h>
