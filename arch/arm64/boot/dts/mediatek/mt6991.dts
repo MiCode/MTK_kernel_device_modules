@@ -15507,6 +15507,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mtk,smmu-shared = <&mm_smmu_acp_disp>;
 	};
 
+	smmu-test-ktf6 {
+		compatible = "mediatek,mm-dynamic-test-ktf";
+		dynamic-iommu {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "mediatek,mm-dynamic-iommu-ktf";
+			iommus = <&mm_smmu 216>;
+			mtk,iommu-dma-range = <0x40000000 0x10000000>;
+		};
+	};
+
 	mtk-smmu-qos {
 		compatible = "mediatek,smmu-qos";
 	};
