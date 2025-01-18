@@ -457,6 +457,7 @@ struct render_info {
 	int cur_buffer_count;
 	int max_buffer_count;
 	int buffer_count_filter;
+	int rescue_more_count;
 	struct ux_rescue_check *ux_rchk;
 
 	/*fbt*/

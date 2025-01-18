@@ -42,6 +42,7 @@
 #define GAS_ENABLE_FPS 70
 #define SBE_BUFFER_FILTER_DROP_THREASHOLD 2
 #define SBE_BUFFER_FILTER_THREASHOLD 2
+#define SBE_RESCUE_MORE_THREASHOLD 5
 
 enum FPSGO_HARD_LIMIT_POLICY {
 	FPSGO_HARD_NONE = 0,
@@ -559,7 +560,6 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 	frame = get_hwui_frame_info_by_frameid(thr, frame_id);
 	if (frame) {
 		struct ux_scroll_info *scroll_info = NULL;
-		struct ux_rescue_check *rescue_check = NULL;
 
 		frame->rescue_reason = rescue_type;
 		frame->frame_status = frame_status;
@@ -581,30 +581,37 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 			return;
 
 		scroll_info->last_frame_ID = frame_id;
-
-		if (!thr->ux_rchk)
-			return;
-
 		ts = fpsgo_get_time();
 
-		rescue_check = thr->ux_rchk;
+		//try enable buffer count filter
+		if (frame->rescue
+				&& thr->buffer_count_filter == 0) {
+			//check if rescue more, if rescue, but buffer count is 3 or more
+			if (thr->cur_buffer_count > SBE_BUFFER_FILTER_THREASHOLD)
+				thr->rescue_more_count++;
 
-		// buffer_count filter lead to frame drop
-		if (scroll_info->rescue_filter_buffer_time > 0
+			//if resue more count is more than 5 times, enable buffer count filter
+			if (thr->rescue_more_count >= SBE_RESCUE_MORE_THREASHOLD)
+				thr->buffer_count_filter = SBE_BUFFER_FILTER_DROP_THREASHOLD;
+
+		}
+
+		// buffer_count filter lead to frame drop, disable it
+		if (thr->buffer_count_filter > 0
+				&& scroll_info->rescue_filter_buffer_time > 0
 				&& (ts - frame->start_ts) > scroll_info->rescue_filter_buffer_time) {
 			thr->buffer_count_filter--;
-			FPSGO_LOGI("[FBT-UX]%d doframe frame:%lld cur_frame:%lld, drop more\n",
-						thr->pid, frame_id, rescue_check->frameID);
+			//if drop more, do not check rescue more in this page
+			//will be reset to 0 after activity resume
+			if (thr->buffer_count_filter == 0) {
+				thr->buffer_count_filter = -1;
+				thr->rescue_more_count = 0;
+			}
+
+			fpsgo_main_trace("doframe end -> %d frame:%lld buffer_count:%d, drop more\n",
+					thr->pid, frame_id, thr->cur_buffer_count);
 		}
 		scroll_info->rescue_filter_buffer_time = 0;
-
-		//clear check
-		if (rescue_check && rescue_check->frameID > 0) {
-			hrtimer_cancel(&rescue_check->timer);
-			rescue_check->frameID = 0;
-			rescue_check->rescue_type = 0;
-			rescue_check->rsc_hint_ts = 0;
-		}
 	}
 }
 
@@ -1052,7 +1059,8 @@ void clear_ux_info(struct render_info *thr)
 	//when activity resume, will call this function
 	global_sbe_dy_enhance = 0;
 	global_sbe_dy_enhance_max_pid = 0;
-	thr->buffer_count_filter = SBE_BUFFER_FILTER_DROP_THREASHOLD;
+	thr->buffer_count_filter = 0;
+	thr->rescue_more_count = 0;
 	release_all_ux_info(thr);
 }
 
@@ -1160,6 +1168,26 @@ static struct ux_scroll_info *get_latest_ux_scroll_info(struct render_info *thr)
 	return list_first_entry_or_null(&(thr->scroll_list), struct ux_scroll_info, queue_list);
 }
 
+static void update_rescue_filter_info(struct render_info *thr)
+{
+	struct ux_scroll_info *last_scroll = get_latest_ux_scroll_info(thr);
+	unsigned long long target_time = 0;
+
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
+			thr->cur_buffer_count, "[ux]rescue_filter");
+
+	if (last_scroll) {
+		target_time = thr->boost_info.target_time;
+		//target_time max thinking is 10hz, incase overflow
+		// 100000000ns = 100ms * 1000 000, 100ms = 1s / 10hz
+		if (target_time > 0 && target_time <= 100000000)
+			last_scroll->rescue_filter_buffer_time =
+					(thr->cur_buffer_count - 1) * target_time - (target_time >> 1);
+
+	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]rescue_filter");
+}
+
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
@@ -1177,9 +1205,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 				&& (rescue_type & RESCUE_TYPE_OI) == 0
 				&& (rescue_type & RESCUE_RUNNING) == 0
 				&& (rescue_type & RESCUE_TYPE_SECOND_RESCUE) == 0) {
-			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-					thr->cur_buffer_count, "[ux]rescue_filter");
-			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]rescue_filter");
+			update_rescue_filter_info(thr);
 			goto leave;
 		}
 
@@ -1667,7 +1693,8 @@ void fbt_init_ux(struct render_info *info)
 	info->hwui_arr_idx = 0;
 	info->sbe_rescuing_frame_id = -1;
 	info->rescue_start_time = 0;
-	info->buffer_count_filter = SBE_BUFFER_FILTER_DROP_THREASHOLD;
+	info->buffer_count_filter = 0;
+	info->rescue_more_count = 0;
 
 	if (sbe_dy_rescue_enable) {
 		struct ux_rescue_check *m_check = (struct ux_rescue_check *)
