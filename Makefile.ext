@@ -66,6 +66,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/interconnect/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/i2c/busses/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/i3c/master/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pwm/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/spi/
