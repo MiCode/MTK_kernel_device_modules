@@ -4586,13 +4586,14 @@
 				      "TOPCKGEN_TOP_MUX_CAMTM";
 		};
 
-		cam1_legacy@1a030000 {
+		cam1_legacy: cam1_legacy@1a030000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,cam1_legacy";
 			reg = <0 0x1a030000 0 0x8000>;
 			interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6853_POWER_DOMAIN_CAM_RAWA>;
 			mediatek,larb = <&smi_larb16>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 			iommus =
 				<&iommu0 M4U_PORT_L16_CAM_IMGO_R1_A>,
 				<&iommu0 M4U_PORT_L16_CAM_RRZO_R1_A>,
@@ -4626,13 +4627,14 @@
 			#clock-cells = <1>;
 		};
 
-		cam2_legacy@1a050000 {
+		cam2_legacy: cam2_legacy@1a050000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,cam2_legacy";
 			reg = <0 0x1a050000 0 0x8000>;
 			interrupts = <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6853_POWER_DOMAIN_CAM_RAWB>;
 			mediatek,larb = <&smi_larb17>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 			iommus =
 				<&iommu0 M4U_PORT_L17_CAM_IMGO_R1_B>,
 				<&iommu0 M4U_PORT_L17_CAM_RRZO_R1_B>,
@@ -4685,46 +4687,61 @@
 			#clock-cells = <1>;
 		};
 
-		camsv2_legacy@1a092000 {
+		camsv2_legacy: camsv2_legacy@1a092000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv2_legacy";
 			reg = <0 0x1a092000 0 0x1000>;
 			interrupts = <GIC_SPI 327 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
+			iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV4>;
 		};
 
-		camsv3_legacy@1a093000 {
+		camsv3_legacy: camsv3_legacy@1a093000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv3_legacy";
 			reg = <0 0x1a093000 0 0x1000>;
 			interrupts = <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
+			iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV5>;
 		};
 
-		camsv4_legacy@1a094000 {
+		camsv4_legacy: camsv4_legacy@1a094000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv4_legacy";
 			reg = <0 0x1a094000 0 0x1000>;
 			interrupts = <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
+			iommus = <&iommu0 M4U_PORT_L13_CAM_CAMSV6>;
 		};
 
-		camsv5_legacy@1a095000 {
+		camsv5_legacy: camsv5_legacy@1a095000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv5_legacy";
 			reg = <0 0x1a095000 0 0x1000>;
 			interrupts = <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
 		};
 
-		camsv6_legacy@1a096000 {
+		camsv6_legacy: camsv6_legacy@1a096000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv6_legacy";
 			reg = <0 0x1a096000 0 0x1000>;
 			interrupts = <GIC_SPI 334 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
 		};
 
-		camsv7_legacy@1a097000 {
+		camsv7_legacy: camsv7_legacy@1a097000 {
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsv7_legacy";
 			reg = <0 0x1a097000 0 0x1000>;
 			interrupts = <GIC_SPI 335 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			mediatek,larb = <&smi_larb13>;
 		};
 
 		flashlight_core: flashlight_core {
