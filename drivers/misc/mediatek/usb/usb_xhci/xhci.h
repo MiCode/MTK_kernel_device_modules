@@ -2166,6 +2166,7 @@ int xhci_reset(struct xhci_hcd *xhci, u64 timeout_us);
 int xhci_run_(struct usb_hcd *hcd);
 int xhci_gen_setup_(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks);
 void xhci_shutdown_(struct usb_hcd *hcd);
+void xhci_stop_(struct usb_hcd *hcd);
 void xhci_init_driver_(struct hc_driver *drv,
 		      const struct xhci_driver_overrides *over);
 int xhci_add_endpoint_(struct usb_hcd *hcd, struct usb_device *udev,
@@ -2185,6 +2186,7 @@ int xhci_resume_(struct xhci_hcd *xhci, bool hibernated);
 
 irqreturn_t xhci_irq(struct usb_hcd *hcd);
 irqreturn_t xhci_msi_irq(int irq, void *hcd);
+void xhci_cleanup_msix(struct xhci_hcd *xhci);
 int xhci_alloc_dev(struct usb_hcd *hcd, struct usb_device *udev);
 int xhci_alloc_tt_info(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev,
