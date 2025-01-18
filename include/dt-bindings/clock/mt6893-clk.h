@@ -762,4 +762,36 @@
 #define CLK_MDP_IMG1_IMG_DL_ASYNC3	51
 #define CLK_MDP_NR_CLK			52
 
+/* SCP_SYS */
+#define SCP_SYS_MD1	0
+#define SCP_SYS_CONN	1
+#define SCP_SYS_MFG0	2
+#define SCP_SYS_MFG1	3
+#define SCP_SYS_MFG2	4
+#define SCP_SYS_MFG3	5
+#define SCP_SYS_MFG4	6
+#define SCP_SYS_MFG5	7
+#define SCP_SYS_MFG6	8
+#define SCP_SYS_IFR	9
+#define SCP_SYS_IFR_SUB	10
+#define SCP_SYS_DPY	11
+#define SCP_SYS_ISP	12
+#define SCP_SYS_ISP2	13
+#define SCP_SYS_IPE	14
+#define SCP_SYS_VDEC	15
+#define SCP_SYS_VDEC2	16
+#define SCP_SYS_VENC	17
+#define SCP_SYS_VENC_CORE1	18
+#define SCP_SYS_MDP	19
+#define SCP_SYS_DIS	20
+#define SCP_SYS_AUDIO	21
+#define SCP_SYS_ADSP	22
+#define SCP_SYS_CAM	23
+#define SCP_SYS_CAM_RAWA	24
+#define SCP_SYS_CAM_RAWB	25
+#define SCP_SYS_CAM_RAWC	26
+#define SCP_SYS_DP_TX	27
+#define SCP_SYS_DPY2	28
+#define SCP_SYS_VPU		29
+#define SCP_NR_SYSS	30
 #endif /* _DT_BINDINGS_CLK_MT6893_H */
