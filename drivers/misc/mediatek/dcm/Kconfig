@@ -17,6 +17,15 @@ config MTK_DCM_MT6768
 	  Select "y" if you want to change mt6768 dcm setting.
 	  Select "n" if you do not need to change
 
+config MTK_DCM_MT6877
+	tristate "Mediatek MT6877 DCM control"
+	depends on ARCH_MEDIATEK && OF
+	select MTK_DCM_COMMON
+	help
+	  For Mediatek MT6877 Dynamic Clock Management HW control. Only enable when you
+	  neet to change mt6877 dcm setting. Setting will not keep after reboot
+	  Select "y" if you want to change mt6877 dcm setting.
+	  Select "n" if you do not need to change
 
 config MTK_DCM_MT6885
 	tristate "Mediatek MT6885 DCM control"
