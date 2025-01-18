@@ -112,6 +112,17 @@ config COMMON_CLK_PG_LEGACY
 	  If you wish to use MediaTek legacy PG，
 	  say Y. Otherwise, say N.
 
+config COMMON_CLK_MT6781
+	tristate "Clock driver for Mediatek MT6781"
+	depends on ARM64 || ARM || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6781
+	help
+	  This driver supports Mediatek MT6781 clocks.
+	  Use the config to support CCF on MT6781,
+	  instead of old clkmgr architecture.
+	  MT6781 default will use CCF.
+
 config COMMON_CLK_PG_LEGACY_V1
     tristate "Clock PG driver for legacy"
     depends on ARM64 || ARM || COMPILE_TEST
