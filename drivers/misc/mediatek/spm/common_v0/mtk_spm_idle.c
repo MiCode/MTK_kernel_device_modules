@@ -15,7 +15,7 @@
 #endif
 
 #define CREATE_TRACE_POINTS
-//#include "mtk_idle_event.h"
+#include "mtk_idle_event.h"
 
 #include "mtk_idle.h"
 #include "mtk_idle_internal.h"
@@ -123,7 +123,7 @@ static void mtk_idle_gs_dump(int idle_type)
  *******************************************************************/
 
 static void print_ftrace_tag(int idle_type, int cpu, int enter)
-{/*
+{
 #if MTK_IDLE_TRACE_TAG_ENABLE
 	switch (idle_type) {
 	case IDLE_TYPE_DP:
@@ -139,7 +139,6 @@ static void print_ftrace_tag(int idle_type, int cpu, int enter)
 		break;
 	}
 #endif
-*/
 }
 
 int mtk_idle_trigger_wfi(int idle_type, unsigned int idle_flag, int cpu)

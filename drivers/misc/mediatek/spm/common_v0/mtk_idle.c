@@ -6,7 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
-//#include <trace/events/mtk_idle_event.h> /* trace header */
+#include "mtk_idle_event.h" /* trace header */
 
 /* add/remove_cpu_to/from_perfer_schedule_domain */
 //#include <linux/irqchip/mtk-gic-extend.h>
