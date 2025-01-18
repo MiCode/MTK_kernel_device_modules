@@ -181,7 +181,7 @@ extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp);
 
-extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq, int *val_s, int r_o, char *caller);
+extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq);

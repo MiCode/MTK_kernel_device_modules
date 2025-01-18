@@ -1402,12 +1402,12 @@ unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigne
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
 
-unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq, int *val_s, int r_o, char *caller)
+unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq)
 {
 	int wl = get_eas_wl(-1);
 	int opp = pd_freq2opp(cpu, freq, false, wl);
 
-	return pd_opp2cap(cpu, opp, false, wl, val_s, r_o, caller);
+	return pd_opp2cap(cpu, opp, false, wl, NULL, false, "pd_get_freq_util");
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_util);
 
@@ -1485,7 +1485,7 @@ unsigned long pd_get_freq_to(int cpu, unsigned long input, enum sugov_type out_t
 	case OPP:
 		return quant ? pd_get_freq_opp_legacy(cpu, input) : pd_get_freq_opp(cpu, input);
 	case CAP:
-		return pd_get_freq_util(cpu, input, NULL, false, caller);
+		return pd_get_freq_util(cpu, input);
 	case PWR_EFF:
 		return pd_get_freq_pwr_eff(cpu, input);
 	default:
@@ -2090,7 +2090,7 @@ int get_cpu_gear_uclamp_max_capacity(unsigned int cpu)
 	capacity = (gear_uclamp_max[topology_cluster_id(cpu)] *
 		get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
 	freq = pd_get_util_freq(cpu, capacity);
-	return pd_get_freq_util(cpu, freq, NULL, false, "get_cpu_gear_uclamp_max_capacity");
+	return pd_get_freq_util(cpu, freq);
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max_capacity);
 
