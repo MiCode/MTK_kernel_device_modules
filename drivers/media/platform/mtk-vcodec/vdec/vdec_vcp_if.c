@@ -926,6 +926,12 @@ return_vdec_ipi_ack:
 			case VCU_IPIMSG_DEC_GET_FRAME_BUFFER:
 				mtk_vcodec_err(vcu, "%d GET_FRAME_BUFFER not support", msg->msg_id);
 				break;
+			case VCU_IPIMSG_DEC_SMI_DBG_DUMP:
+				mtk_v4l2_debug(0, "[VDEC] start smi dbg dump");
+				mtk_smi_dbg_dump_for_vdec();
+				msg->msg_id = AP_IPIMSG_DEC_SMI_DBG_DUMP_DONE;
+				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+				break;
 			default:
 				mtk_vcodec_err(vcu, "invalid msg=%X", msg->msg_id);
 				break;
