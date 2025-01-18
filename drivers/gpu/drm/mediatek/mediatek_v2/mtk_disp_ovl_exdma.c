@@ -1950,7 +1950,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 				~0);
 
 			/* setting SMI for read SRAM */
-			if (comp->larb_cons)
+			if (!ovl->data->skip_larb_con && comp->larb_cons)
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->larb_cons[lye_idx],
 					       GENMASK(19, 16), GENMASK(19, 16));
 			else
@@ -2515,7 +2515,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		0, ~0);
 
 	/* setting SMI for read DRAM */
-	if (comp->larb_cons)
+	if (!ovl->data->skip_larb_con && comp->larb_cons)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->larb_cons[lye_idx], 0, GENMASK(19, 16));
 
@@ -4483,6 +4483,7 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.compr_info = &compr_info_mt6991,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.skip_larb_con = true,
 	.preultra_th_dc = 0x3ff,
 	.fifo_size = 1536,
 	.issue_req_th_dl = 511,
