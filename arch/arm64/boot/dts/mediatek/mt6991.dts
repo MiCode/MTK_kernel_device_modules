@@ -12621,6 +12621,52 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x15002000 0 0x4000>;
 		};
 
+		imgsys_acp: imgsys-acp@15003000 {
+			compatible = "mediatek,imgsys-isp8-acp-mt6991";
+			mtk,smmu-shared = <&mm_smmu_acp_cam>;
+			reg = <0 0x15003000 0 0x4000>;
+			mediatek,imgsys-coherent = "enable";
+		};
+
+		img_frm_sync: img-frm-sync@15004000 {
+			compatible = "mediatek,imgsys-frm-sync-isp8";
+			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			reg = <0 0x15003000 0 0x4000>;
+			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			dpe-sw-sync-token-pool-1 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+			dpe-sw-sync-token-pool-2 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_2>;
+			dpe-sw-sync-token-pool-3 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_3>;
+			dpe-sw-sync-token-pool-4 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_4>;
+			dpe-sw-sync-token-pool-5 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_5>;
+			dpe-sw-sync-token-pool-6 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_6>;
+			dpe-sw-sync-token-pool-7 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_7>;
+			dpe-sw-sync-token-pool-8 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_8>;
+			dpe-sw-sync-token-pool-9 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_9>;
+			dpe-sw-sync-token-pool-10 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_10>;
+			dpe-sw-sync-token-pool-11 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_11>;
+			dpe-sw-sync-token-pool-12 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_12>;
+			dpe-sw-sync-token-pool-13 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_13>;
+			dpe-sw-sync-token-pool-14 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_14>;
+			dpe-sw-sync-token-pool-15 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_15>;
+			dpe-sw-sync-token-pool-16 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_16>;
+		};
+
 		imgsys_fw: imgsys-fw@15000000 {
 			compatible = "mediatek,imgsys-isp8-mt6991";
 			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -12650,6 +12696,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<0 0x34080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
 					<0 0x34780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
 			mediatek,hcp = <&hcp>;
+			mediatek,img-frm-sync = <&img_frm_sync>;
 			mediatek,larbs = <&smi_larb15>,
 					<&smi_larb9>,
 					<&smi_larb39>,
@@ -13662,6 +13709,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek-larb-supply = <&smi_larb19>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
+			mtk,img-frm-sync = <&img_frm_sync>;
 			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
 			dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
 			clocks = <&cksys_gp2_clk CLK_CK2_DPE_SEL>,
