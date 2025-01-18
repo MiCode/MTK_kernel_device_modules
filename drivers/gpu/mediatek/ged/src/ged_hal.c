@@ -1131,6 +1131,81 @@ static ssize_t fw_idle_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
 
+static ssize_t whitebox_power_support_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int support_flag = 0;
+	int pos = 0;
+
+	support_flag = ged_get_whitebox_power_test_support();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"whitebox_power_support = %u\n", support_flag);
+
+	return pos;
+}
+
+
+static ssize_t whitebox_power_support_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_gpu_whitebox_power_test_support((int)i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(whitebox_power_support);
+
+
+static ssize_t whitebox_power_force_state_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int force_state = 0;
+	int pos = 0;
+	int state6_3 = 0;
+	int state7_3 = 0;
+	int state20_3 = 0;
+
+	force_state = ged_get_whitebox_power_test_case();
+	state6_3 = stat_mcu_store[6][3];
+	state7_3 = stat_mcu_store[7][3];
+	state20_3 = stat_mcu_store[20][3];
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"stat_mcu_store[6][3]=%d, stat_mcu_store[7][3]=%d, stat_mcu_store[20][3]=%d\n",
+					state6_3, state7_3, state20_3);
+
+	return pos;
+}
+
+static ssize_t whitebox_power_force_state_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int u32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0)
+				ged_gpu_whitebox_power_test_case((int)u32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(whitebox_power_force_state);
+
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 static ssize_t apo_thr_us_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2161,6 +2236,18 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 #endif /* MTK_GPU_SLC_POLICY */
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_whitebox_power_support);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create whitebox_power_support entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_whitebox_power_force_state);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create whitebox_power_force_state entry!\n");
+		goto ERROR;
+	}
 
 	return err;
 
