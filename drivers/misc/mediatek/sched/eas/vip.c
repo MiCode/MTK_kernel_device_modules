@@ -546,7 +546,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p,
 				bool *preempt, bool *nopreempt, int wake_flags,
 				struct sched_entity *se, struct sched_entity *pse,
-				int next_buddy_marked, unsigned int granularity)
+				int next_buddy_marked)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 	struct vip_task_struct *vts_p = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
