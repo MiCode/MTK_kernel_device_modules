@@ -49,6 +49,8 @@ struct ippeakpowertableDataRow {
 
 extern struct ippeakpowertableDataRow
 	ip_peak_power_table[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT];
+extern struct ippeakpowertableDataRow
+	ip_peak_power_table_mt6991[IP_PEAK_POWER_TABLE_IDX_ROW_COUNT];
 /*
  * -----------------------------------------------
  * Leakage Scale Table
@@ -144,6 +146,12 @@ extern struct peakpowercombotableDataRow
 extern struct peakpowercombotableDataRow
 	peak_power_combo_table_cpu_mt6989_89tt[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 
+
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_gpu_mt6991[GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+extern struct peakpowercombotableDataRow
+	peak_power_combo_table_cpu_mt6991[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+
 /*
  * -----------------------------------------------
  * SRAM Layout
@@ -154,6 +162,8 @@ struct cswrunInfo {
 	int is_fastdvfs_enabled;
 	int cpu_max_freq_m[CPU_MAX_CLUSTERS];
 	int scaling_factor[3];
+	int future[4];
+	int vision[4];
 };
 
 struct gswrunInfo {
@@ -164,6 +174,8 @@ struct gswrunInfo {
 	int combo_idx;
 	int gpu_limit_freq_m;
 	int scaling_factor;
+	int future[2];
+	int vision[2];
 };
 
 struct moInfo {
