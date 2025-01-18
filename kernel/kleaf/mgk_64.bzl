@@ -363,6 +363,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
     "drivers/misc/mediatek/lpm/modules/debug/v2/mtk-lpm-dbg-common-v2.ko",
     "drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
+    "drivers/misc/mediatek/lpm/modules/platform/v2/mtk-lpm-plat-v2.ko",
     "drivers/misc/mediatek/lpm/mtk-lpm.ko",
     "drivers/misc/mediatek/masp/sec.ko",
     "drivers/misc/mediatek/mbraink/mtk_mbraink.ko",
@@ -1306,6 +1307,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v2/mtk-lpm-dbg-common-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v2/mtk-lpm-plat-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/mtk-lpm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mdpm/mtk_mdpm.ko")
