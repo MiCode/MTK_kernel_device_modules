@@ -12391,6 +12391,7 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP) {
 		DDPMSG("%s force return for bringup\n", __func__);
+		drm_crtc_vblank_off(crtc);
 		/* release wakelock */
 		mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 		return;
