@@ -108,6 +108,12 @@ bootargs_ext = "rcu_nocbs=0-7";
 			output-low;
 		};
 	};
+
+	mtkfb_pins_lcm_dsi1_te: lcm-dsi1-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO6__FUNC_DSI1_TE>;
+		};
+	};
 };
 
 &mtkfb {
@@ -124,6 +130,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
 	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+	pinctrl-9 = <&mtkfb_pins_lcm_dsi1_te>;
 
 	status = "okay";
 };
@@ -131,6 +138,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 &dispsys_config {
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
+
 	status = "okay";
 //	enable-discrete-path = <1>;
 };
