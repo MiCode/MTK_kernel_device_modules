@@ -135,6 +135,7 @@ struct mtk_battery *get_mtk_battery(void)
 			return NULL;
 		}
 		bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+		power_supply_put(psy);
 		if (bm == NULL) {
 			pr_debug("[%s] mtk_battery_manager is not rdy\n", __func__);
 			return NULL;
@@ -2929,7 +2930,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		&is_battery_exist, 0);
 
 
-	bm_err(gm, "[%s] car[%ld,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %lld %d %d %d %lld %ld %lld, boot:%d rac:%d vbus:%d\n",
+	bm_err(gm, "[%s] car[%ld,%ld,%ld,%ld,%ld] tmp:%d soc:%d uisoc:%d vbat:%d ibat:%d baton:%d algo:%d gm3:%d %d %d %d %d %d, get_prop:%d %lld %d %d %d %lld %ld %lld, boot:%d rac:%d\n",
 		gm->gauge->name,
 		car,
 		gm->coulomb_plus.end, gm->coulomb_minus.end,
@@ -2947,8 +2948,7 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 		prop_control->max_gp, prop_control->max_get_prop_time.tv_sec,
 		prop_control->max_get_prop_time.tv_nsec/1000000,
 		prop_control->last_diff_time.tv_sec, gm->bootmode,
-		gauge_get_int_property(gm, GAUGE_PROP_PTIM_RESIST),
-		gauge_get_pmic_vbus());
+		gauge_get_int_property(gm, GAUGE_PROP_PTIM_RESIST));
 
 	fg_drv_update_daemon(gm);
 

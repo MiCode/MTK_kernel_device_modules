@@ -54,6 +54,7 @@ struct mtk_battery_manager *get_mtk_battery_manager(void)
 			return NULL;
 		}
 		bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+		power_supply_put(psy);
 		if (bm == NULL) {
 			pr_err("[%s]mtk_battery_manager is not rdy\n", __func__);
 			return NULL;
@@ -1370,6 +1371,7 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 						status.intval =
 							POWER_SUPPLY_STATUS_CHARGING;
 					}
+					power_supply_put(dv2_chg_psy);
 				}
 			} else {
 				bs_data->bat_status =

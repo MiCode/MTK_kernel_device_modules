@@ -2901,27 +2901,6 @@ static DEVICE_ATTR_RW(BAT_HEALTH);
 static DEVICE_ATTR_RW(BAT_NO_PROP_TIMEOUT);
 static DEVICE_ATTR_RW(BatteryNotify);
 static DEVICE_ATTR_RW(BAT_SHUTDOWN);
-/* temp solution */
-int gauge_get_pmic_vbus(void)
-{
-	union power_supply_propval prop;
-	static struct power_supply *chg_psy;
-	int ret;
-
-	if (chg_psy == NULL)
-		chg_psy = power_supply_get_by_name("mtk-master-charger");
-	if (chg_psy == NULL) {
-		pr_err("%s Couldn't get chg_psy\n", __func__);
-		ret = -1;
-	} else {
-		ret = power_supply_get_property(chg_psy,
-			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
-	}
-
-	pr_debug("%s vbus:%d\n", __func__,
-		prop.intval);
-	return prop.intval;
-}
 
 static int mtk_battery_setup_files(struct platform_device *pdev)
 {
@@ -3209,9 +3188,6 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_IS_CHARGER_EXIST:
 	{
 		int is_charger_exist = 0;
-		int vbus;
-
-		vbus = gauge_get_pmic_vbus();
 
 		if (gm->bm->bs_data.bat_status == POWER_SUPPLY_STATUS_CHARGING)
 			is_charger_exist = true;
@@ -4629,6 +4605,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 					POWER_SUPPLY_PROP_CAPACITY_LEVEL, &prop);
 			uisocc = prop.intval;
 		}
+		power_supply_put(psy);
 	}
 	break;
 	case FG_DAEMON_CMD_GET_BH_DATA:
@@ -5090,10 +5067,6 @@ static void bat_plugout_irq_handler(struct mtk_battery *gm)
 	gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
 		&is_bat_exist, 0);
 
-	bm_err(gm, "[%s]is_bat %d miss:%d\n",
-		__func__,
-		is_bat_exist, gm->plug_miss_count);
-
 	/* avoid battery plug status mismatch case*/
 	if (is_bat_exist == 1) {
 		fg_int_event(gm, EVT_INT_BAT_PLUGOUT);
@@ -5118,9 +5091,11 @@ static void bat_plugout_irq_handler(struct mtk_battery *gm)
 		gm->init_flag = 0;
 		gm->bat_plug_out = 1;
 		battery_update(gm->bm);
-		disable_all_irq(gm);
-		enable_gauge_irq(gm->gauge, BAT_PLUGIN_IRQ);
-		bm_err(gm, "[%s]should kernel power off init: %d\n", __func__, gm->init_flag);
+		if (gm->bm->gm_no == 2) {
+			disable_all_irq(gm);
+			enable_gauge_irq(gm->gauge, BAT_PLUGIN_IRQ);
+		} else
+			kernel_power_off();
 	}
 }
 
@@ -5143,10 +5118,6 @@ static void bat_plugin_irq_handler(struct mtk_battery *gm)
 
 	gauge_get_property_control(gm, GAUGE_PROP_BATTERY_EXIST,
 			&is_bat_exist, 0);
-
-	bm_err(gm, "[%s]is_bat %d miss:%d\n",
-			__func__,
-			is_bat_exist, gm->plug_miss_count);
 
 	fg_int_event(gm, EVT_INT_BAT_PLUGIN);
 
