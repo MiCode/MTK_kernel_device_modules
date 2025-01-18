@@ -49,6 +49,7 @@
 #define RROT_PREFETCH_CONTROL_0		0x0c8
 #define RROT_PREFETCH_CONTROL_1		0x0d0
 #define RROT_PREFETCH_CONTROL_2		0x0d8
+#define RROT_DDREN			0x0dc
 #define RROT_SRC_BASE_ADD_0		0x100
 #define RROT_SRC_BASE_ADD_1		0x108
 #define RROT_SRC_BASE_ADD_2		0x110
@@ -212,6 +213,7 @@ static const u16 rrot_preultra_th[] = {
 struct rrot_data {
 	u32 tile_width;
 	bool alpha_pq_r2y;
+	bool ddren_off;
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
@@ -250,6 +252,7 @@ static const struct rrot_data mt6989_rrot_data = {
 
 static const struct rrot_data mt6991_rrot_data = {
 	.tile_width = 4096,	/* 2048+2048 */
+	.ddren_off = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6989),
@@ -2003,7 +2006,8 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
-	u32 pipe = comp_to_rrot(comp)->pipe;
+	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	const u32 pipe = rrot->pipe;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -2024,6 +2028,16 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	/* after rdma stops read, call ddren to sleep */
 	if (ccfg->pipe == 0)
 		task->config->task_ops->ddren(task, task->pkts[0], false);
+
+	if (rrot->data->ddren_off) {
+		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+		/* shadow off, ddren_disable on, ddren_disable off, shadow on */
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_SHADOW_CTRL, 0x3, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_DDREN, 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_DDREN, 0x0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_SHADOW_CTRL, 0x1, U32_MAX);
+	}
 
 	return 0;
 }
@@ -2419,8 +2433,7 @@ static int probe(struct platform_device *pdev)
 	if (of_property_read_u8(dev->of_node, "pipe", &priv->pipe))
 		mml_err("read pipe fail");
 
-	if (of_property_read_u16(dev->of_node, "event-frame-done", &priv->event_eof))
-		mml_err("read event-frame-done fail");
+	of_property_read_u16(dev->of_node, "event-frame-done", &priv->event_eof);
 
 	/* assign ops */
 	priv->comp.tile_ops = &rrot_tile_ops;

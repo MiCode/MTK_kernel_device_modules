@@ -89,6 +89,7 @@
 #define RDMA_CHKS_SROV			0x348
 #define RDMA_CHKS_VUPI			0x350
 #define RDMA_CHKS_VUPO			0x358
+#define RDMA_DUMMY_REG			0x35c
 #define RDMA_DEBUG_CON			0x380
 #define RDMA_MON_STA_0			0x400
 #define RDMA_MON_STA_1			0x408
@@ -313,13 +314,6 @@ static const enum cpr_reg_idx rdma_preultra_th[] = {
 /* debug option to change sram read height */
 int mml_racing_rh = MML_RDMA_RACING_MAX;
 module_param(mml_racing_rh, int, 0644);
-
-/* 0: force disable
- * 1: force enable
- * 2: check by platform setting and format
- */
-int rdma_tile_reset = 2;
-module_param(rdma_tile_reset, int, 0644);
 
 enum rdma_label {
 	RDMA_LABEL_BASE_0 = 0,
@@ -2067,34 +2061,13 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct mml_frame_data *src = &task->config->info.src;
 
-	if (!rdma_tile_reset)
+	if (!rdma->data->tile_reset)
 		return;
 
-	if (rdma_tile_reset == 1)
-		goto force_reset;
-
-	if (!rdma->data->tile_reset || !MML_FMT_AFBC(task->config->info.src.format))
-		return;
-
-force_reset:
 	/* write dummy register to force rdma tick and clean up */
-	if (mml_rdma_crc) {
-		if (MML_FMT_COMPRESS(src->format))
-			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
-				(mml_rdma_dbg << 13) + 0x1, U32_MAX);
-		else
-			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
-				0x1, U32_MAX);
-	} else if (MML_FMT_COMPRESS(src->format)) {
-		/* debug for compress to dump crc */
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
-			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
-	} else {
-		/* keep disable */
-		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON, 0x0, U32_MAX);
-	}
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
 }
 
 static void rdma_backup_crc(struct mml_comp *comp, struct mml_task *task,
