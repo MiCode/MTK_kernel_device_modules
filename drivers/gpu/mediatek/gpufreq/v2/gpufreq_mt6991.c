@@ -71,13 +71,10 @@ static struct platform_driver g_gpufreq_pdrv = {
 };
 
 static void __iomem *g_cksys_base;
-static void __iomem *g_emi_base;
-static void __iomem *g_emi_infra_ao_bcrm_base;
 static void __iomem *g_emi_infra_ao_mem_base;
 static void __iomem *g_emi_infra_cfg_base;
 static void __iomem *g_infra_ao_debug_ctrl;
 static void __iomem *g_mali_base;
-static void __iomem *g_mcusys_par_wrap_base;
 static void __iomem *g_mfg_hbvc_base;
 static void __iomem *g_mfg_top_base;
 static void __iomem *g_mfg_pll_base;
@@ -93,14 +90,11 @@ static void __iomem *g_mfg_vgpu_bus_trk_base;
 static void __iomem *g_nemi_mi32_smi;
 static void __iomem *g_nemi_mi33_smi;
 static void __iomem *g_nth_emi_ao_debug_ctrl;
-static void __iomem *g_nth_emicfg_base;
 static void __iomem *g_nth_emicfg_ao_mem_base;
 static void __iomem *g_semi_mi32_smi;
 static void __iomem *g_semi_mi33_smi;
 static void __iomem *g_sth_emi_ao_debug_ctrl;
-static void __iomem *g_sth_emicfg_base;
 static void __iomem *g_sth_emicfg_ao_mem_base;
-static void __iomem *g_sub_emi_base;
 static void __iomem *g_sleep;
 static unsigned int g_eco_version;
 static unsigned int g_gpueb_support;
@@ -254,7 +248,7 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[BUS_PROT]",
-		"EMI_SLPPROT_EN_SET", DRV_Reg32(EMI_SLPPROT_EN_SET),
+		"EMI_SLPPROT_EN_SET", DRV_Reg32(EMI_IFR_AO_SLPPROT_EN_SET),
 		"MFG_RPC_SLV_SLP_PROT_RDY", DRV_Reg32(MFG_RPC_SLV_SLP_PROT_RDY_STA),
 		"MFG_RPC_SLV_WAY_EN_SET", DRV_Reg32(MFG_RPC_SLV_WAY_EN_SET),
 		"MFG_RPC_SLV_WAY_EN_CLR", DRV_Reg32(MFG_RPC_SLV_WAY_EN_CLR),
@@ -262,24 +256,22 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_GALS]",
-		"NTH_MFG_EMI1_GALS_SLV", DRV_Reg32(NTH_MFG_EMI1_GALS_SLV_DBG),
-		"NTH_MFG_EMI0_GALS_SLV", DRV_Reg32(NTH_MFG_EMI0_GALS_SLV_DBG),
-		"STH_MFG_EMI1_GALS_SLV", DRV_Reg32(STH_MFG_EMI1_GALS_SLV_DBG),
-		"STH_MFG_EMI0_GALS_SLV", DRV_Reg32(STH_MFG_EMI0_GALS_SLV_DBG));
+		"NTH_MFG_EMI1_GALS_SLV", DRV_Reg32(EMI_IFR_NTH_MFG_EMI1_GALS_SLV_DBG),
+		"NTH_MFG_EMI0_GALS_SLV", DRV_Reg32(EMI_IFR_NTH_MFG_EMI0_GALS_SLV_DBG),
+		"STH_MFG_EMI1_GALS_SLV", DRV_Reg32(EMI_IFR_STH_MFG_EMI1_GALS_SLV_DBG),
+		"STH_MFG_EMI0_GALS_SLV", DRV_Reg32(EMI_IFR_STH_MFG_EMI0_GALS_SLV_DBG));
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%08x, %s=0x%08x",
+		"[EMI_GALS]",
+		"APU_M1_NOC_GALS_SLV", DRV_Reg32(EMI_IFR_APU_M1_NOC_GALS_SLV_DBG),
+		"APU_M0_NOC_GALS_SLV", DRV_Reg32(EMI_IFR_APU_M0_NOC_GALS_SLV_DBG));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_GALS]",
-		"NTH_APU_EMI1_GALS_SLV", DRV_Reg32(NTH_APU_EMI1_GALS_SLV_DBG),
-		"NTH_APU_EMI0_GALS_SLV", DRV_Reg32(NTH_APU_EMI0_GALS_SLV_DBG),
-		"STH_APU_EMI1_GALS_SLV", DRV_Reg32(STH_APU_EMI1_GALS_SLV_DBG),
-		"STH_APU_EMI0_GALS_SLV", DRV_Reg32(STH_APU_EMI0_GALS_SLV_DBG));
-	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
-		"[EMI_GALS]",
-		"NTH_SOC_EMI_M6_GALS_SLV", DRV_Reg32(IFR_EMI_M6_NTH_GALS_SLV_DBG),
-		"NTH_SOC_EMI_M7_GALS_SLV", DRV_Reg32(IFR_EMI_M7_NTH_GALS_SLV_DBG),
-		"STH_SOC_EMI_M6_GALS_SLV", DRV_Reg32(IFR_EMI_M6_STH_GALS_SLV_DBG),
-		"STH_SOC_EMI_M7_GALS_SLV", DRV_Reg32(IFR_EMI_M7_STH_GALS_SLV_DBG));
+		"NTH_SOC_EMI_M6_GALS_SLV", DRV_Reg32(EMI_IFR_M6_NTH_GALS_SLV_DBG),
+		"NTH_SOC_EMI_M7_GALS_SLV", DRV_Reg32(EMI_IFR_M7_NTH_GALS_SLV_DBG),
+		"STH_SOC_EMI_M6_GALS_SLV", DRV_Reg32(EMI_IFR_M6_STH_GALS_SLV_DBG),
+		"STH_SOC_EMI_M7_GALS_SLV", DRV_Reg32(EMI_IFR_M7_STH_GALS_SLV_DBG));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_M6M7]",
@@ -297,10 +289,10 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_M6M7_PROT]",
-		"M6M7_IDLE_1", DRV_Reg32(M6M7_IDLE_BIT_EN_1),
-		"M6M7_IDLE_0", DRV_Reg32(M6M7_IDLE_BIT_EN_0),
-		"SLEEP_PROT", DRV_Reg32(EMI_SLEEP_PROT_START),
-		"GLITCH_PROT", DRV_Reg32(EMI_GLITCH_PROT_START));
+		"M6M7_IDLE_1", DRV_Reg32(EMI_IFR_AO_M6M7_IDLE_BIT_EN_1),
+		"M6M7_IDLE_0", DRV_Reg32(EMI_IFR_AO_M6M7_IDLE_BIT_EN_0),
+		"SLEEP_PROT", DRV_Reg32(EMI_IFR_AO_SLEEP_PROT_START),
+		"GLITCH_PROT", DRV_Reg32(EMI_IFR_AO_GLITCH_PROT_START));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_SMI]",
@@ -340,13 +332,10 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 		"NTH_EMI_BUS_DBG_CTRL", DRV_Reg32(NTH_EMI_AO_BUS_U_DEBUG_CTRL0),
 		"STH_EMI_BUS_DBG_CTRL", DRV_Reg32(STH_EMI_AO_BUS_U_DEBUG_CTRL0));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"%-11s %s=0x%08x, %s=0x%08x",
 		"[MFG_ACP]",
-		"MCUSYS_ACP_GALS", DRV_Reg32(MCUSYS_PAR_WRAP_ACP_GALS_DBG),
-		"NTH_DVM_GALS_MST", DRV_Reg32(NTH_MFG_ACP_DVM_GALS_MST_DBG),
-		"NTH_GALS_SLV", DRV_Reg32(NTH_MFG_ACP_GALS_SLV_DBG),
-		"STH_DVM_GALS_MST", DRV_Reg32(STH_MFG_ACP_DVM_GALS_MST_DBG),
-		"STH_GALS_SLV", DRV_Reg32(STH_MFG_ACP_GALS_SLV_DBG));
+		"DVM_GALS_MST", DRV_Reg32(EMI_IFR_MFG_ACP_DVM_GALS_MST_DBG),
+		"GALS_SLV", DRV_Reg32(EMI_IFR_MFG_ACP_GALS_MST_DBG));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08lx",
 		"[MISC]",
@@ -780,17 +769,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 	g_cksys_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_cksys_base) {
 		GPUFREQ_LOGE("fail to ioremap CKSYS: 0x%llx", res->start);
-		return;
-	}
-	/* 0x10645000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "emi_infra_ao_bcrm");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource EMI_INFRA_AO_BCRM");
-		return;
-	}
-	g_emi_infra_ao_bcrm_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_emi_infra_ao_bcrm_base) {
-		GPUFREQ_LOGE("fail to ioremap EMI_INFRA_AO_BCRM: 0x%llx", res->start);
 		return;
 	}
 	/* 0x1C004000 */
@@ -1240,18 +1218,6 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
-	/* 0x0C000000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcusys_par_wrap");
-	if (unlikely(!res)) {
-		GPUFREQ_LOGE("fail to get resource MCUSYS_PAR_WRAP");
-		goto done;
-	}
-	g_mcusys_par_wrap_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (unlikely(!g_mcusys_par_wrap_base)) {
-		GPUFREQ_LOGE("fail to ioremap MCUSYS_PAR_WRAP: 0x%llx", res->start);
-		goto done;
-	}
-
 	/* 0x10000000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cksys");
 	if (!res) {
@@ -1288,30 +1254,6 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
-	/* 0x10425000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "nth_emicfg");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource NTH_EMICFG");
-		goto done;
-	}
-	g_nth_emicfg_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_nth_emicfg_base) {
-		GPUFREQ_LOGE("fail to ioremap NTH_EMICFG: 0x%llx", res->start);
-		goto done;
-	}
-
-	/* 0x10469000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "emi");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource EMI");
-		goto done;
-	}
-	g_emi_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_emi_base) {
-		GPUFREQ_LOGE("fail to ioremap EMI: 0x%llx", res->start);
-		goto done;
-	}
-
 	/* 0x10504000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sth_emicfg_ao_mem");
 	if (!res) {
@@ -1333,30 +1275,6 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_sth_emi_ao_debug_ctrl = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_sth_emi_ao_debug_ctrl) {
 		GPUFREQ_LOGE("fail to ioremap STH_EMI_AO_DEBUG_CTRL: 0x%llx", res->start);
-		goto done;
-	}
-
-	/* 0x10525000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sth_emicfg");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource STH_EMICFG");
-		goto done;
-	}
-	g_sth_emicfg_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_sth_emicfg_base) {
-		GPUFREQ_LOGE("fail to ioremap STH_EMICFG: 0x%llx", res->start);
-		goto done;
-	}
-
-	/* 0x10569000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sub_emi");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource SUB_EMI");
-		goto done;
-	}
-	g_sub_emi_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_sub_emi_base) {
-		GPUFREQ_LOGE("fail to ioremap SUB_EMI: 0x%llx", res->start);
 		goto done;
 	}
 
@@ -1417,18 +1335,6 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_infra_ao_debug_ctrl = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_infra_ao_debug_ctrl) {
 		GPUFREQ_LOGE("fail to ioremap INFRA_AO_DEBUG_CTRL: 0x%llx", res->start);
-		goto done;
-	}
-
-	/* 0x10645000 */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "emi_infra_ao_bcrm");
-	if (!res) {
-		GPUFREQ_LOGE("fail to get resource EMI_INFRA_AO_BCRM");
-		goto done;
-	}
-	g_emi_infra_ao_bcrm_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
-	if (!g_emi_infra_ao_bcrm_base) {
-		GPUFREQ_LOGE("fail to ioremap EMI_INFRA_AO_BCRM: 0x%llx", res->start);
 		goto done;
 	}
 
