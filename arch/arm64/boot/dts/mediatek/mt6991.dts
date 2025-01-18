@@ -20171,7 +20171,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interrupt-names = "ap_eint";
 			pinctrl-names = "state_eint_as_int";
 			pinctrl-0 = <&accdet_pins_eint_as_int>;
-			accdet-irq-gpio-enable = <1>;
+			nvmem-cells = <&efuse_spare5>;
+			nvmem-cell-names = "efuse_spare5";
+			accdet-efuse-check = <1>;
 			status = "okay";
 		};
 	};
