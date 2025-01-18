@@ -903,6 +903,19 @@ void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx)
 }
 EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_top_idx);
 
+
+void ged_dvfs_write_sysram_virtual_commit_idx(int top_idx, int stack_idx)
+{
+	// [0:7] for stack, [8:15] for top
+	int compose_idx = stack_idx & 0xFF;
+	int tmp_top = (top_idx & 0xFF) << 8;
+
+	compose_idx += tmp_top;
+	ged_eb_dvfs_task(EB_COMMIT_LAST_KERNEL_OPP, compose_idx);
+
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_virtual_commit_idx);
+
 void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx)
 {
 	// [0:7] for stack, [8:15] for top

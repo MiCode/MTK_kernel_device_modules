@@ -756,6 +756,9 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	if (oppidx_cur > oppidx) /* freq scale up */
 		freqScaleUpFlag = true;
 
+	/* write virtual opp to sysram */
+	ged_dvfs_write_sysram_virtual_commit_idx(oppidx_tar, oppidx_tar);
+
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (oppidx > g_min_working_oppidx && g_async_ratio_support) {
 		mask_idx = g_avail_mask_num - 1;
@@ -864,6 +867,9 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	oppidx_cur = ged_get_cur_oppidx();
 	if (oppidx_cur > stack_oppidx) /* freq scale up */
 		freqScaleUpFlag = true;
+
+	/* write virtual opp to sysram */
+	ged_dvfs_write_sysram_virtual_commit_idx(gpu_oppidx, oppidx_tar);
 
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (stack_oppidx > g_min_working_oppidx && g_async_ratio_support) {

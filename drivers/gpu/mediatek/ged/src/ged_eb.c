@@ -974,8 +974,16 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 				mtk_set_fastdvfs_mode(POLICY_MODE);
 			}
 			break;
-		default:
-			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
+			case EB_COMMIT_LAST_KERNEL_OPP:
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_OPP, value);
+				soc_timer = mtk_gpueb_read_soc_timer();
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_HI,
+								(u32)(soc_timer >> 32));
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_LO,
+								(u32)(soc_timer & 0xFFFFFFFF));
+			break;
+			default:
+				GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
 			break;
 		}
 	}

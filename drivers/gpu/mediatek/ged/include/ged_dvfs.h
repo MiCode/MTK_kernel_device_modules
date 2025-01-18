@@ -320,5 +320,7 @@ void ged_dvfs_set_async_perf_model(int version);
 int ged_dvfs_get_async_perf_model(void);
 void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH);
 int ged_dvfs_get_lb_async_perf_diff(void);
+void ged_dvfs_write_sysram_virtual_commit_idx(int top_idx, int stack_idx);
+
 
 #endif
