@@ -54,7 +54,7 @@
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
 
 #define MSDC_GPIO_2 "msdc_gpio=2"
-
+#define BOOTDEV_EMMC 1
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 static void msdc_gpio_of_parse(struct msdc_host *host);
 #endif
@@ -3678,13 +3678,18 @@ static int msdc_drv_probe(struct platform_device *pdev)
 {
 	struct mmc_host *mmc;
 	struct msdc_host *host;
+	struct tag_bootmode {
+		u32 size;
+		u32 tag;
+		u32 bootmode;
+		u32 boottype;
+	} *tag = NULL;
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	struct resource *res;
 #endif
 	int ret;
 	int msdc_gpio = 1;
 	int host_index = -1;
-	struct tag_bootmode *tag = NULL;
 
 	dev_info(&pdev->dev, "[%s %d]mtk-mmc start\n",__func__,__LINE__);
 
@@ -3703,7 +3708,7 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	tag = (struct tag_bootmode *)mtk_get_boot_property(pdev->dev.of_node, "atag,boot", NULL);
 	if (!tag)
 		dev_info(&pdev->dev, "failed to get atag,boot\n");
-	else if ((tag->boottype != BOOTDEV_SDMMC) && (host_index == 0)) {
+	else if ((tag->boottype != BOOTDEV_EMMC) && (host_index == 0)) {
 		dev_info(&pdev->dev, "no eMMC boot\n");
 		return -ENODEV;
 	}
