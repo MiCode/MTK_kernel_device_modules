@@ -1041,7 +1041,7 @@ static int invert_dma_regions(struct device *dev,
 
 	dev_info(dev, "[%s] !master:%d\n", __func__, !master);
 
-	if (!master)
+	if (!master || !master->domain)
 		return -EINVAL;
 
 	if (list_empty(head)) {
