@@ -5758,8 +5758,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,mt8183-ufshci";
 			reg = <0 0x16810000 0 0x2a00>;
 			phys = <&ufsphy>;
-			interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
+			interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 331 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -5768,7 +5767,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				     <GIC_SPI 334 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 335 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 336 IRQ_TYPE_LEVEL_HIGH 0>;
-#endif
+
 			clocks =
 				<&cksys_clk CLK_CK_SEL>,
 				<&cksys_clk CLK_CK_MAINPLL_D4_D2>,
@@ -5836,10 +5835,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,ufs-rtff-mtcmos;
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
-
-			/* Should be removed after SB */
-			mediatek,ufs-disable-ah8;
-			mediatek,ufs-disable-mcq;
 
 			bootmode = <&chosen>;
 		};
