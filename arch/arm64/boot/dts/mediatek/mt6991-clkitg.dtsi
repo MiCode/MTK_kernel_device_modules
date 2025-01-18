@@ -860,21 +860,7 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_CON_1_CAMSV>;
 	};
-	bring-up-jpgenc@1f {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1f>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE29_VENC_XPC_CTRL_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_RES_FLAT_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE2_JPGENC_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE29_VENC_XPC_CTRL_JPGENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_RES_FLAT_JPGENC>;
-	};
+
 	bring-up-pda@20 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x20>;
