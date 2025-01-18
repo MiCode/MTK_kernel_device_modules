@@ -998,6 +998,10 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val);
 		p->mlvec_mode = ctrl->val;
 		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA:
+		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA");
+		p->config_data = ctrl->p_new.p_u8;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1629,6 +1633,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->frame_qp_range = &enc_params->frame_qp_range;
 	param->nal_length = &enc_params->nal_length;
 	param->mlvec_mode = enc_params->mlvec_mode;
+	param->config_data = enc_params->config_data;
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -4552,6 +4557,19 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 1;
 	cfg.step = 1;
 	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA;
+	cfg.type = V4L2_CTRL_TYPE_U8;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode config data";
+	cfg.min = 0x0;
+	cfg.max = 0xff;
+	cfg.step = 1;
+	cfg.def = 0x0;
+	cfg.dims[0] = 512;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
