@@ -107,6 +107,8 @@
 			outproc10 = &disp_ovl1_outproc4;
 			outproc11 = &disp_ovl1_outproc5;
 			dsi0 = &dsi0;
+			dsi1 = &dsi1;
+			dsi2 = &dsi2;
 			mutex0 = &disp1_mutex0;
 			wdma10 = &ovl_wdma0;
 			wdma11 = &ovl_wdma1;
@@ -8147,11 +8149,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"disp_token_stream_dirty3",
 				"disp_wait_dsi0_te",
 				"disp_wait_dsi1_te",
+				"disp_wait_dsi2_te",
 				"disp_token_stream_eof0",
 				"disp_token_stream_eof1",
 				"disp_token_stream_eof3",
 				"disp_dsi0_eof",
 				"disp_dsi1_eof",
+				"disp_dsi2_eof",
 				"disp_token_esd_eof0",
 				"disp_token_esd_eof1",
 				"disp_token_esd_eof3",
@@ -8178,6 +8182,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"disp_token_disp_prefetch_te0",
 				"disp_gpio_te0",
 				"disp_gpio_te1",
+				"disp_gpio_te2",
 				"disp_dsi0_targetline0",
 //				"disp_ovlsys_wdma0_eof0",
 				"disp_token_disp_v_idle_power_on0",
@@ -8197,11 +8202,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3>,
 				<&gce CMDQ_EVENT_DISP1_DISP_DSI0_ENG_EVENT1>,
 				<&gce CMDQ_EVENT_DISP1_DISP_DSI1_ENG_EVENT1>,
+				<&gce CMDQ_EVENT_DISP1_DISP_DSI2_ENG_EVENT1>,
 				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF>,
 				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF_1>,
 				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF_3>,
 				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL1>,
 				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL2>,
+				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL3>,
 				<&gce CMDQ_SYNC_TOKEN_ESD_EOF>,
 				<&gce CMDQ_SYNC_TOKEN_ESD_EOF_1>,
 				<&gce CMDQ_SYNC_TOKEN_ESD_EOF_3>,
@@ -8228,6 +8235,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&gce CMDQ_SYNC_TOKEN_PREFETCH_TE_0>,
 				<&gce CMDQ_EVENT_DSI0_TE_I_DSI0_TE_I>,
 				<&gce CMDQ_EVENT_DSI1_TE_I_DSI1_TE_I>,
+				<&gce CMDQ_EVENT_DSI2_TE_I_DSI2_TE_I>,
 				<&gce CMDQ_EVENT_DISP1_DISP_DSI0_ENG_EVENT2>,
 //				<&gce CMDQ_EVENT_OVL0_DISP_WDMA2_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
@@ -8441,6 +8449,34 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config0>;
 			phy-names = "dphy";
+		};
+
+		dsi1: dsi@324a0000 {
+			compatible = "mediatek,disp1_dsi1",
+					"mediatek,mt6991-dsi";
+			reg = <0 0x324a0000 0 0x1000>;
+			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1_DISP>,
+				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
+				 <&mipi_tx_config1>;
+			clock-names = "engine", "digital", "hs";
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
+			status = "disabled";
+		};
+
+		dsi2: dsi@324b0000 {
+			compatible = "mediatek,disp1_dsi2",
+					"mediatek,mt6991-dsi";
+			reg = <0 0x324b0000 0 0x1000>;
+			interrupts = <GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2_DISP>,
+				 <&dispsys1_config_clk CLK_MM1_MOD1_DISP>,
+				 <&mipi_tx_config2>;
+			clock-names = "engine", "digital", "hs";
+			phys = <&mipi_tx_config2>;
+			phy-names = "dphy";
+			status = "disabled";
 		};
 
 		disp_wdma1: disp1-wdma1@325a0000 {
@@ -9393,6 +9429,30 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx0_pll";
+		};
+
+		mipi_tx_config1: mipi-tx-config@130c0000 {
+			compatible = "mediatek,mipi_tx_config1",
+						"mediatek,mt6991-mipi-tx";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DSI_PHY1>;
+			reg = <0 0x130c0000 0 0x1000>;
+			clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx1_pll";
+			status = "disabled";
+		};
+
+		mipi_tx_config2: mipi-tx-config@130d0000 {
+			compatible = "mediatek,mipi_tx_config2",
+						"mediatek,mt6991-mipi-tx";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DSI_PHY2>;
+			reg = <0 0x130d0000 0 0x1000>;
+			clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx2_pll";
+			status = "disabled";
 		};
 
 		disp_tdshp0: disp-tdshp0@321e0000 {
