@@ -1228,6 +1228,8 @@ static void mtk_ovl_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	comp->qos_bw = 0;
 	comp->qos_bw_other = 0;
 	comp->fbdc_bw = 0;
+	comp->hrt_bw = 0;
+	comp->hrt_bw_other = 0;
 	DDPDBG("%s-\n", __func__);
 }
 
@@ -2581,7 +2583,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	unsigned int alpha;
 	unsigned int alpha_con = 1;
 	unsigned int value = 0, mask = 0, fmt_ex = 0;
-	unsigned long long temp_bw;
+	unsigned long long temp_bw, temp_peak_bw;
 	unsigned int dim_color;
 	struct mtk_panel_params *params = NULL;
 	struct drm_crtc *crtc;
@@ -2830,11 +2832,12 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		else
 			vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
+		/* query display mode anyway, would use it even in CMD mode */
 		if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
-				(output_comp->id == DDP_COMPONENT_DSI1))
-				&& !(mtk_dsi_is_cmd_mode(output_comp))) {
+				(output_comp->id == DDP_COMPONENT_DSI1)))
 			mtk_ddp_comp_io_cmd(output_comp, NULL,
 				DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
+		if (mode && !(mtk_dsi_is_cmd_mode(output_comp))) {
 			vtotal = mode->vtotal;
 			vact = mode->vdisplay;
 			ratio_tmp = vtotal * 100 / vact;
@@ -2858,8 +2861,20 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		 * layer_w * layer_h * bpp * vrefresh * max fps blanking_ratio
 		 * Sum_SRT(all layer) *= 1.33
 		 */
-		temp_bw = (unsigned long long)pending->width * pending->height;
+		/* use full frame size's peak BW request bus capability, because tiny region layer */
+		/* peak BW should be the same with full frame */
+		if (mode)
+			temp_bw = (unsigned long long)mode->vdisplay * mode->hdisplay;
+		else
+			temp_bw = (unsigned long long)pending->width * pending->height;
 		temp_bw *= mtk_get_format_bpp(fmt);
+
+		if (crtc->state)
+			temp_peak_bw = (unsigned long long)crtc->state->adjusted_mode.vdisplay *
+				crtc->state->adjusted_mode.hdisplay;
+		else
+			temp_peak_bw = (unsigned long long)pending->width * pending->height;
+		temp_peak_bw *= mtk_get_format_bpp(fmt);
 
 		/* COMPRESS ratio */
 		if (pending->prop_val[PLANE_PROP_COMPRESS]) {
@@ -2872,8 +2887,14 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		temp_bw = temp_bw * vrefresh;
 		do_div(temp_bw, 1000);
 
-		DDPDBG("comp %d bw %llu vtotal:%d vact:%d\n",
-			comp->id, temp_bw, vtotal, vact);
+		do_div(temp_peak_bw, 1000);
+		temp_peak_bw *= ratio_tmp;
+		do_div(temp_peak_bw, 100);
+		temp_peak_bw = temp_peak_bw * vrefresh;
+		do_div(temp_peak_bw, 1000);
+
+		DDPDBG("comp %d lye %u bw %llu peak %llu vtotal:%d vact:%d\n",
+			comp->id, lye_idx, temp_bw, temp_peak_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(crtc_idx == 0) && (priv->data->mmsys_id != MMSYS_MT6989)) {
@@ -2954,12 +2975,17 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 #else
 			/* so far only report one qos BW, no need to separate FBDC or normal BW */
 			if (!IS_ERR(comp->qos_req_other)) {
-				if (lye_idx % 2)
+				if (lye_idx % 2) {
 					comp->qos_bw_other += temp_bw;
-				else
+					comp->hrt_bw_other = temp_peak_bw;
+				} else {
 					comp->qos_bw += temp_bw;
-			} else
+					comp->hrt_bw = temp_peak_bw;
+				}
+			} else {
 				comp->qos_bw += temp_bw;
+				comp->hrt_bw = temp_peak_bw;
+			}
 #endif
 		}
 	}
@@ -4326,6 +4352,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4341,13 +4368,23 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (params) {
 			force_update = *(unsigned int *)params;
+			/* tricky way use variable force update */
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
 		}
 
+		if (!force_update && !update_pending) {
+			mtk_crtc->total_srt += comp->qos_bw;
+			if (!IS_ERR_OR_NULL(comp->qos_req_other))
+				mtk_crtc->total_srt += comp->qos_bw_other;
+		}
+
 		/* process normal */
-		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
+		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
+			comp->last_hrt_bw == comp->hrt_bw) {
 			if (IS_ERR(comp->qos_req_other) ||
-			    (comp->last_qos_bw_other == comp->qos_bw_other))
+			    ((comp->last_qos_bw_other == comp->qos_bw_other) &&
+				    (comp->last_hrt_bw_other == comp->hrt_bw_other)))
 				break;
 			goto other;
 		}
@@ -4356,6 +4393,14 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		comp->last_qos_bw = comp->qos_bw;
 		if (!force_update)
 			mtk_crtc->total_srt += comp->qos_bw;
+
+		if ((comp->last_hrt_bw <= comp->hrt_bw) ||
+				(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, comp->hrt_bw,
+						    DISP_BW_NORMAL_MODE);
+			comp->last_qos_bw = comp->qos_bw;
+			comp->last_hrt_bw = comp->hrt_bw;
+		}
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
 			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
@@ -4363,9 +4408,17 @@ other:
 			comp->last_qos_bw_other = comp->qos_bw_other;
 			if (!force_update)
 				mtk_crtc->total_srt += comp->qos_bw_other;
+
+			if ((comp->last_hrt_bw_other <= comp->hrt_bw_other) || (update_pending &&
+					comp->last_hrt_bw_other > comp->hrt_bw_other)) {
+				__mtk_disp_set_module_srt(comp->qos_req_other,
+					comp->id, comp->qos_bw_other, comp->hrt_bw_other, DISP_BW_NORMAL_MODE);
+				comp->last_qos_bw_other = comp->qos_bw_other;
+				comp->last_hrt_bw_other = comp->hrt_bw_other;
+			}
 		}
-		DDPINFO("update ovl fbdc_bw to %u, qos bw to %u, %u\n",
-			comp->fbdc_bw, comp->qos_bw, comp->qos_bw_other);
+		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
+			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
 		break;
 	}
 	case OVL_REPLACE_BOOTUP_MVA: {
