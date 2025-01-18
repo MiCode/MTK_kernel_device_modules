@@ -171,6 +171,44 @@ TRACE_EVENT(cpuqos_debug_info,
 
 );
 
+TRACE_EVENT(cpuqos_set_task_user_group,
+	TP_PROTO(int pid, int group),
+
+	TP_ARGS(pid, group),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, group)
+	),
+
+	TP_fast_assign(
+		__entry->pid = pid;
+		__entry->group = group;
+	),
+
+	TP_printk("p=%d, user_group=%d",
+		__entry->pid, __entry->group)
+
+);
+
+TRACE_EVENT(cpuqos_set_ccl_user_group,
+	TP_PROTO(int bitmask, int group),
+
+	TP_ARGS(bitmask, group),
+
+	TP_STRUCT__entry(
+		__field(int, bitmask)
+		__field(int, group)
+	),
+
+	TP_fast_assign(
+		__entry->bitmask = bitmask;
+		__entry->group = group;
+	),
+
+	TP_printk("bitmask=%d, user_group=%d",
+		__entry->bitmask, __entry->group)
+);
 
 #endif /* _CPUQOS_V3_TRACE_H */
 

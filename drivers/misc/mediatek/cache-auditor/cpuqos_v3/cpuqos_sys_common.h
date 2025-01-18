@@ -15,4 +15,10 @@ extern struct kobj_attribute boot_complete_attr;
 extern struct kobj_attribute show_L3m_status_attr;
 extern struct kobj_attribute resource_pct_attr;
 
+extern int set_cpuqos_mode(int mode);
+extern int set_ct_task(int pid, bool set);
+extern int set_ct_group(int group_id, bool set);
+extern int set_task_user_group(int pid, int group);
+extern int set_cache_ctl_user_group(int bitmask, int group);
+
 #endif

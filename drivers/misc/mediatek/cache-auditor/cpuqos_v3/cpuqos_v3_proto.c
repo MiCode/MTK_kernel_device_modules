@@ -32,6 +32,12 @@ static void __iomem *sram_base_addr;
 static void __iomem *l3ctl_sram_base_addr;
 #define RESOURCE_USAGE_OFS	0xC
 
+static void __iomem *cpuqos_cus_base_addr;
+#define CUS_INT_STA 0xCC
+#define PER_GRP 0x4
+#define GRP_NUM 6
+#define MAX_BITMASK 0xFF
+
 #define CREATE_TRACE_POINTS
 #include <cpuqos_v3_trace.h>
 #undef CREATE_TRACE_POINTS
@@ -241,12 +247,6 @@ static int cpuqos_v3_map_task_pd(struct task_struct *p)
 	int pd;
 	int rank = get_task_rank(p);
 
-	if (cpuqos_perf_mode == DISABLE) {
-		/* disable mode */
-		pd = PD0;
-		goto out;
-	}
-
 	if (rank == TASK_RANK) {
 		/* task rank */
 		pd = get_task_pd(p);
@@ -375,7 +375,7 @@ int set_group_pd(int group_id, int pd)
 	int new_pd;
 
 	if ((group_id >= ARRAY_SIZE(cpuqos_v3_path_pd_map)) || (group_id < 0) ||
-		(cpuqos_perf_mode == DISABLE) || (plat_enable == 0))
+		(plat_enable == 0))
 		return -1;
 
 	css_id = cpuqos_v3_group_css_map[group_id];
@@ -424,7 +424,7 @@ int set_task_pd(int pid, int pd)
 	int new_pd;
 	struct cpuqos_task_struct *cqts;
 
-	if (cpuqos_perf_mode == DISABLE || (plat_enable == 0) || (pid <= 0))
+	if ((plat_enable == 0) || (pid <= 0))
 		return -1;
 
 	rcu_read_lock();
@@ -559,6 +559,57 @@ int set_cpuqos_mode(int mode)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(set_cpuqos_mode);
+
+/*
+ * Set task to use user group
+ * pid: task pid
+ * group: if > 0, user group 1~6
+	  if < 0, set task use its group pd.
+ * Return: 0: success, -1: group over / perf mode is disable / p is not exist.
+ */
+int set_task_user_group(int pid, int group)
+{
+	int ret = -1;
+
+	if (group > 0 && group <= 6) {
+		ret = set_task_pd(pid, group + USER_GROUP_START_IDX);
+	} else if (group < 0) {
+		ret = set_task_pd(pid, -1);
+	} else
+		pr_info("cpuqos: set p=%d to group=%d is failed.\n",
+			pid, group);
+
+	trace_cpuqos_set_task_user_group(pid, group);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_task_user_group);
+
+/*
+ * Set cache control to user group
+ * group: user group 1~6
+ * bitmask: cache portion bitmap
+ * Return: 0: success
+ * -1: group over
+ */
+int set_cache_ctl_user_group(int bitmask, int group)
+{
+	int ret = -1;
+	unsigned int offset;
+
+	if (group > 0 && group <= 6 && bitmask <= MAX_BITMASK) {
+		offset = (group - 1) * PER_GRP;
+		iowrite32(bitmask, cpuqos_cus_base_addr + CUS_INT_STA + offset);
+		ret = 0;
+	} else
+		pr_info("cpuqos: set bitmask=%d to group=%d cache setting is failed.\n",
+			bitmask, group);
+
+	trace_cpuqos_set_ccl_user_group(bitmask, group);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_cache_ctl_user_group);
 
 static void cpuqos_tracer(void)
 {
@@ -737,9 +788,6 @@ static void __init __map_css_pd(struct cgroup_subsys_state *css, char *tmp, int 
 		if (!strcmp(cpuqos_v3_path_pd_map[i], tmp) && (css->id >= 0)) {
 			WRITE_ONCE(cpuqos_v3_group_css_map[i], css->id);
 
-			if (cpuqos_perf_mode == DISABLE)
-				WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], PD0);
-
 			/* init group_pd */
 			WRITE_ONCE(cpuqos_v3_css_pd_map[css->id], mtk_cpuqos_map(css->id));
 
@@ -809,7 +857,8 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
 	struct platform_device *pdev_temp;
-	struct resource *sram_res = NULL;
+	struct resource *sram_res = NULL, *ccl_res = NULL;
+	int i;
 
 	node = pdev->dev.of_node;
 
@@ -841,6 +890,19 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 	} else {
 		pr_info("%s can't get cpuqos_v3 resource\n", __func__);
 	}
+
+	ccl_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (ccl_res) {
+		cpuqos_cus_base_addr = ioremap(ccl_res->start,
+				resource_size(ccl_res));
+	} else {
+		pr_info("%s can't get cpuqos_v3 ccl resource\n", __func__);
+	}
+
+	/* Initial cache setting */
+	for (i = 1; i <= GRP_NUM; i++)
+		set_cache_ctl_user_group(MAX_BITMASK, i);
 
 	return 0;
 }
@@ -999,6 +1061,20 @@ static long cpuqos_ctl_ioctl_impl(struct file *filp,
 			return -1;
 
 		ret = set_ct_group(msgKM_cpuqos.group_id, msgKM_cpuqos.set_group);
+		break;
+	case CPUQOS_V3_SET_TASK_TO_USER_GROUP:
+		if (cpuqos_ctl_copy_from_user(&msgKM_cpuqos, ubuf_cpuqos,
+				sizeof(struct _CPUQOS_V3_PACKAGE)))
+			return -1;
+
+		ret = set_task_user_group(msgKM_cpuqos.user_pid, msgKM_cpuqos.set_user_group);
+		break;
+	case CPUQOS_V3_SET_CCL_TO_USER_GROUP:
+		if (cpuqos_ctl_copy_from_user(&msgKM_cpuqos, ubuf_cpuqos,
+				sizeof(struct _CPUQOS_V3_PACKAGE)))
+			return -1;
+
+		ret = set_cache_ctl_user_group(msgKM_cpuqos.bitmask, msgKM_cpuqos.set_user_group);
 		break;
 	default:
 		pr_info("%s: %s %d: unknown cmd %x\n",
