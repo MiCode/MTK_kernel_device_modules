@@ -64,7 +64,7 @@ struct share_mem_base {
 	uint32_t wp;
 	uint32_t buffer_size;
 	uint32_t item_size;
-	uint8_t data[0] __aligned(4);
+	uint8_t data[] __aligned(4);
 } __packed __aligned(4);
 
 struct share_mem {

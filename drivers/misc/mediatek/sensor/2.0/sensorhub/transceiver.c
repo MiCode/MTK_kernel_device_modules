@@ -30,7 +30,7 @@
 
 struct transceiver_config {
 	uint8_t length;
-	uint8_t data[0] __aligned(4);
+	uint8_t data[] __aligned(4);
 };
 
 struct transceiver_state {
