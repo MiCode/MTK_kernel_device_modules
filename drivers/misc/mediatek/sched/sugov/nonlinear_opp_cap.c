@@ -295,12 +295,6 @@ int get_nr_wl(void)
 }
 EXPORT_SYMBOL_GPL(get_nr_wl);
 
-int get_nr_wl_type(void)
-{
-	return nr_wl;
-}
-EXPORT_SYMBOL_GPL(get_nr_wl_type);
-
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 int get_nr_cpu_type(void)
 {
@@ -327,15 +321,6 @@ void set_wl_manual(int val)
 		wl_manual = -1;
 }
 EXPORT_SYMBOL_GPL(set_wl_manual);
-
-void set_wl_type_manual(int val)
-{
-	if (val >= 0 && val < nr_wl && is_wl_support())
-		wl_manual = val;
-	else
-		wl_manual = -1;
-}
-EXPORT_SYMBOL_GPL(set_wl_type_manual);
 #endif
 
 int get_wl_manual(void)
