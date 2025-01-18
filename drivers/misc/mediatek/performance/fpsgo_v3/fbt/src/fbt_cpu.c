@@ -5918,8 +5918,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;
 
-	if (!test_bit(ADPF_TYPE, &thr->master_type))
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, targettime, "expected_time");
 
 	fbt_set_render_boost_attr(thr);

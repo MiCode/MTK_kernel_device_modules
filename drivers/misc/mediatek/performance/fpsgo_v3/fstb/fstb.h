@@ -63,7 +63,7 @@ int fpsgo_ctrl2fstb_wait_fstb_active(void);
 void fpsgo_ctrl2fstb_cam_queue_time_update(unsigned long long ts);
 int fpsgo_other2fstb_check_cam_do_frame(void);
 int fpsgo_comp2fstb_do_recycle(void);
-int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
+int fpsgo_other2fstb_set_target_time(int tgid, int rtid, unsigned long long bufID,
 	unsigned long long target_time, int create);
 int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
 	unsigned long long cur_queue_end, unsigned long long prev_queue_end_ts,

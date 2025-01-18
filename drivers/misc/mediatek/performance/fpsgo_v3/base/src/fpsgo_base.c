@@ -1562,9 +1562,11 @@ static void fpsgo_check_acquire_info_status(void)
 	}
 }
 
-static void fpsgo_check_adpf_render_status(void)
+static void fpsgo_check_user_render_status(void)
 {
 	int local_tgid = 0;
+	int local_rtid = 0;
+	unsigned long long local_bufID = 0;
 	struct render_info *iter = NULL;
 	struct rb_node *rbn = NULL;
 
@@ -1572,7 +1574,7 @@ static void fpsgo_check_adpf_render_status(void)
 	while (rbn) {
 		iter = rb_entry(rbn, struct render_info, render_key_node);
 		fpsgo_thread_lock(&iter->thr_mlock);
-		if (!test_bit(ADPF_TYPE, &iter->master_type)) {
+		if (!test_bit(USER_TYPE, &iter->master_type)) {
 			rbn = rb_next(rbn);
 			fpsgo_thread_unlock(&iter->thr_mlock);
 			continue;
@@ -1583,10 +1585,13 @@ static void fpsgo_check_adpf_render_status(void)
 			rbn = rb_next(rbn);
 			fpsgo_thread_unlock(&iter->thr_mlock);
 		} else {
-			rb_erase(rbn, &render_pid_tree);
-			total_render_info_num--;
+			local_tgid = iter->tgid;
+			local_rtid = iter->pid;
+			local_bufID = iter->buffer_id;
 			fpsgo_thread_unlock(&iter->thr_mlock);
-			vfree(iter);
+			fpsgo_render_tree_unlock(__func__);
+			fpsgo_ctrl2comp_user_close(local_tgid, local_rtid, local_bufID);
+			fpsgo_render_tree_lock(__func__);
 			rbn = rb_first(&render_pid_tree);
 		}
 	}
@@ -1737,7 +1742,7 @@ int fpsgo_check_thread_status(void)
 		fpsgo_thread_lock(&iter->thr_mlock);
 
 		if (iter->t_enqueue_start < expire_ts &&
-			!test_bit(ADPF_TYPE, &iter->master_type)) {
+			!test_bit(USER_TYPE, &iter->master_type)) {
 			if (iter->pid == temp_max_pid &&
 				iter->buffer_id == temp_max_bufid)
 				check_max_blc = 1;
@@ -1782,7 +1787,7 @@ int fpsgo_check_thread_status(void)
 			if (iter->frame_type != BY_PASS_TYPE)
 				is_boosting = NON_VSYNC_ALIGNED_TYPE;
 
-			if (test_bit(ADPF_TYPE, &iter->master_type) &&
+			if (test_bit(USER_TYPE, &iter->master_type) &&
 				iter->t_enqueue_end < expire_ts)
 				fpsgo_stop_boost_by_render(iter);
 
@@ -1802,7 +1807,7 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_BQid_status();
 	fpsgo_check_connect_api_info_status();
 	fpsgo_check_acquire_info_status();
-	fpsgo_check_adpf_render_status();
+	fpsgo_check_user_render_status();
 	fpsgo_check_sbe_spid_loading_status();
 
 	fbt_ux_set_perf(local_ux_max_pid, local_ux_max_perf);

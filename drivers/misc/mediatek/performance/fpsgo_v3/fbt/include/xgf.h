@@ -181,7 +181,7 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr,
 	unsigned long long *bufID_arr, int rtid_num,
 	char *specific_name, int specific_num, int action);
-int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
+int fpsgo_other2xgf_set_critical_tasks(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
 void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, struct dep_and_prio *dep_arr, int dep_num, int action);
