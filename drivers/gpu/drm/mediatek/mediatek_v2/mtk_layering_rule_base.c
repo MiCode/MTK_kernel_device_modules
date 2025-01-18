@@ -2993,6 +2993,15 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			return DDP_COMPONENT_OVL2_2L;
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL4_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			int exdma_comp = 0;
+
+			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + layer_idx - fun_lye;
+
+			DDPINFO("%s crtc1 exdma %d,layer_idx %d, fun_lye %d\n", __func__,
+				exdma_comp,layer_idx, fun_lye);
+			return exdma_comp;
+		}
 	} else if (disp_idx == 2) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
 			int exdma_comp = 0;

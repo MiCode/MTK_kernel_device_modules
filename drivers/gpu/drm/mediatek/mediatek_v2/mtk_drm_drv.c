@@ -3121,6 +3121,26 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVLSYS_WDMA2,
 };
 
+/* CRTC1 */
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
+	DDP_COMPONENT_OVL1_EXDMA6,
+	DDP_COMPONENT_OVL1_BLENDER5,
+	DDP_COMPONENT_OVL1_EXDMA7,
+	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_OUTPROC3,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC10,
+	DDP_COMPONENT_DLI_ASYNC13,
+	DDP_COMPONENT_PQ0_IN_CB13,
+	DDP_COMPONENT_PQ0_OUT_CB7,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
+	DDP_COMPONENT_DLO_ASYNC2, DDP_COMPONENT_DLI_ASYNC22,
+	DDP_COMPONENT_SPLITTER0_IN_CB2,
+	DDP_COMPONENT_SPLITTER0_OUT_CB10,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+	DDP_COMPONENT_MERGE0_OUT_CB7,
+	DDP_COMPONENT_DP_INTF0,
+};
+
 static const enum mtk_ddp_comp_id mt6983_mtk_ddp_dual_main[] = {
 	/* Can't enable dual pipe with bypass PQ */
 	DDP_COMPONENT_OVL2_2L, /*DDP_COMPONENT_OVL3_2L,*/
@@ -3745,6 +3765,18 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 };
 
 static const struct mtk_addon_scenario_data mt6989_addon_ext[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+
+static const struct mtk_addon_scenario_data mt6991_addon_ext[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL0,
@@ -4847,12 +4879,12 @@ static const struct mtk_crtc_path_data mt6991_mtk_main_full_set_data = {
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_ext_path_data = {
-//	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_ext_dp,
-//	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_ext_dp),
-//	.path_req_hrt[DDP_MAJOR][0] = true,
-//	.dual_path[0] = mt6989_mtk_ddp_dual_ext_dp,
-//	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_ext_dp),
-//	.addon_data = mt6989_addon_ext,
+	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_ext_dp,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_ext_dp),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	// .dual_path[0] = mt6989_mtk_ddp_dual_ext_dp,
+	// .dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_ext_dp),
+	.addon_data = mt6991_addon_ext,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_dp_w_tdshp_path_data = {
@@ -7179,7 +7211,6 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 			DDPPR_ERR("invalid CRTC1\n");
 			return -EINVAL;
 		}
-
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 		if (unlikely(!output_comp)) {
 			DDPPR_ERR("%s:CRTC1 invalid output comp\n",
@@ -7192,7 +7223,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		else if (type == MTK_DP_INTF)
 			ret = mtk_drm_dp_get_info(dev, info);
 		else {
-			DDPPR_ERR("invalid comp type: %d\n", type);
+			DDPPR_ERR("invalid comp %s type: %d\n", mtk_dump_comp_str(output_comp), type);
 			ret = -EINVAL;
 		}
 		return ret;

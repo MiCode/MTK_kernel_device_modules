@@ -14,6 +14,14 @@
 #define AUX_CMD_NATIVE_R		0x09
 #define AuxWaitReplyLpCntNum		20000
 
+#if (DPTX_CHIP_ID >= DPTX_LIBER_CHIP_ID)
+#define ENCODER_IRQ				BIT(0)
+#define TRANS_IRQ				BIT(1)
+#define AUX_IRQ					BIT(2)
+#define ENCODER_IRQ_MSK				BIT(0)
+#define TRANS_IRQ_MSK				BIT(1)
+#define AUX_IRQ_MSK				BIT(2)
+#endif
 
 #define MASKBIT(a)			(BIT((1 ? a) + 1) - BIT((0 ? a)))
 #define _BITMASK(loc_msb, loc_lsb) \
@@ -27,6 +35,12 @@ enum DPTx_LANE_NUM {
 	DPTx_LANE2 = 0x2,
 	DPTx_LANE3 = 0x3,
 	DPTx_LANE_MAX,
+};
+
+enum DPTX_LANE_COUNT{
+	DPTX_1LANE = 0x01,
+	DPTX_2LANE = 0x02,
+	DPTX_4LANE = 0x04,
 };
 
 enum DPTx_LANE_Count {
@@ -196,6 +210,12 @@ void mtk_dp_write_byte(struct mtk_dp *mtk_dp, u32 addr, u8 val, u32 mask);
 void mtk_dp_mask(struct mtk_dp *mtk_dp, u32 offset, u32 val, u32 mask);
 void mtk_dp_write(struct mtk_dp *mtk_dp, u32 offset, u32 val);
 
+
+u32 mtk_dp_phy_read(struct mtk_dp *mtk_dp, u32 offset);
+void mtk_dp_phy_write_byte(struct mtk_dp *mtk_dp, u32 addr, u8 val, u32 mask);
+void mtk_dp_phy_mask(struct mtk_dp *mtk_dp, u32 offset, u32 val, u32 mask);
+void mtk_dp_phy_write(struct mtk_dp *mtk_dp, u32 offset, u32 val);
+
 #define msReadByte(mtk_dp, u32Reg) mtk_dp_read(mtk_dp, u32Reg)
 #define msRead2Byte(mtk_dp, u32Reg) mtk_dp_read(mtk_dp, u32Reg)
 #define msRead4Byte(mtk_dp, u32Reg) mtk_dp_read(mtk_dp, u32Reg)
@@ -211,6 +231,22 @@ void mtk_dp_write(struct mtk_dp *mtk_dp, u32 offset, u32 val);
 	mtk_dp_mask(mtk_dp, addr, val, mask)
 #define msWrite4ByteMask(mtk_dp, addr, val, mask) \
 	mtk_dp_mask(mtk_dp, addr, val, mask)
+
+#define msPhyReadByte(mtk_dp, u32Reg) mtk_dp_phy_read(mtk_dp, u32Reg)
+#define msPhyRead2Byte(mtk_dp, u32Reg) mtk_dp_phy_read(mtk_dp, u32Reg)
+#define msPhyRead4Byte(mtk_dp, u32Reg) mtk_dp_phy_read(mtk_dp, u32Reg)
+#define msPhyWriteByte(mtk_dp, u32Reg, u8Val) \
+	mtk_dp_phy_write_byte(mtk_dp, u32Reg, u8Val, 0xFF)
+#define msPhyWrite2Byte(mtk_dp, u32Reg, u16Val) \
+	mtk_dp_phy_mask(mtk_dp, u32Reg, u16Val, 0xFFFF)
+#define msPhyWrite4Byte(mtk_dp, u32Reg, u32Val) \
+	mtk_dp_phy_write(mtk_dp, u32Reg, u32Val)
+#define msPhyWriteByteMask(mtk_dp, addr, val, mask) \
+	mtk_dp_phy_write_byte(mtk_dp, addr, val, mask)
+#define msPhyWrite2ByteMask(mtk_dp, addr, val, mask) \
+	mtk_dp_phy_mask(mtk_dp, addr, val, mask)
+#define msPhyWrite4ByteMask(mtk_dp, addr, val, mask) \
+	mtk_dp_phy_mask(mtk_dp, addr, val, mask)
 
 extern void mdrv_DPTx_HPD_ISREvent(struct mtk_dp *mtk_dp);
 void mhal_DPTx_USBC_HPD(struct mtk_dp *mtk_dp, bool conn);
@@ -240,7 +276,7 @@ void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_AdjustPHYSetting(struct mtk_dp *mtk_dp, BYTE c0, BYTE cp1);
 void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp);
 void mhal_DPTx_PSCTRL(bool AUXNHighEnable);
-void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, int Value);
+void mhal_DPTx_SetTxLane(struct mtk_dp *mtk_dp, const enum DPTX_LANE_COUNT lane_count);
 void mhal_DPTx_SetTxLaneToLane(struct mtk_dp *mtk_dp,
 	BYTE ucLaneNum, BYTE ucSetLaneNum);
 void mhal_DPTx_SetPGMSA(struct mtk_dp *mtk_dp, BYTE Address, WORD Data);

@@ -13,6 +13,68 @@
 #define AUX_OFFSET		(0x3600)
 #define SEC_OFFSET		(0x4000)
 
+#define PHYD_DIG_GLB_OFFSET     (0x1000)
+#define PHYD_DIG_LAN0_OFFSET    (0x1100)
+#define PHYD_DIG_LAN1_OFFSET    (0x1200)
+#define PHYD_DIG_LAN2_OFFSET    (0x1300)
+#define PHYD_DIG_LAN3_OFFSET    (0x1400)
+
+/*-----------------------------------------------------*/
+#define DP_PHY_DIG_PLL_CTL_0                                              (0x10)
+#define FORCE_PWR_STATE_EN_FLDMASK                                        0x1
+#define FORCE_PWR_STATE_EN_FLDMASK_POS                                    0
+#define FORCE_PWR_STATE_EN_FLDMASK_LEN                                    1
+
+#define FORCE_PWR_STATE_VAL_FLDMASK                                       0x6
+#define FORCE_PWR_STATE_VAL_FLDMASK_POS                                   1
+#define FORCE_PWR_STATE_VAL_FLDMASK_LEN                                   2
+
+#define DP_PHY_DIG_PLL_CTL_1 (0x14)
+#define SKIP_SPLL_ON_FLDMASK                                            0x1
+#define SKIP_SPLL_ON_FLDMASK_POS                                          0
+#define SKIP_SPLL_ON_FLDMASK_LEN                                          1
+
+#define TPLL_SSC_EN_FLDMASK                                            0x8
+#define TPLL_SSC_EN_FLDMASK_POS                                        3
+#define TPLL_SSC_EN_FLDMASK_LEN                                        1
+
+#define DP_PHY_DIG_SW_RST (0x38)
+#define DP_GLB_SW_RST_B_FLDMASK                                         0xff
+#define DP_GLB_SW_RST_B_FLDMASK_POS                                       0
+#define DP_GLB_SW_RST_B_FLDMASK_LEN                                       8
+
+#define DP_PHY_DIG_BIT_RATE                                               (0x3C)
+#define BIT_RATE_FLDMASK                                                  0x3
+#define BIT_RATE_FLDMASK_POS                                              0
+#define BIT_RATE_FLDMASK_LEN                                              2
+
+#define DP_PHY_DIG_TX_CTL_0                                               (0x44)
+#define TX_LN_INIT_MANUALLY_FLDMASK                                       0x1
+#define TX_LN_INIT_MANUALLY_FLDMASK_POS                                   0
+#define TX_LN_INIT_MANUALLY_FLDMASK_LEN                                   1
+
+#define TX_LN_EN_FLDMASK                                                  0xf0
+#define TX_LN_EN_FLDMASK_POS                                              4
+#define TX_LN_EN_FLDMASK_LEN                                              4
+
+#define DRIVING_FORCE                                                     (0x18)
+#define DP_TX_FORCE_VOLT_SWING_EN_FLDMASK                                 0x1
+#define DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS                             0
+#define DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_LEN                             1
+
+#define DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK                                0x6
+#define DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS                            1
+#define DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_LEN                            2
+
+#define DP_TX_FORCE_PRE_EMPH_EN_FLDMASK                                   0x10
+#define DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS                               4
+#define DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_LEN                               1
+
+#define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK                                  0x60
+#define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS                              5
+#define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_LEN                              2
+/*-----------------------------------------------------*/
+
 #define REG_3000_DP_ENCODER0_P0              (0x3000)
 #define LANE_NUM_DP_ENCODER0_P0_FLDMASK                                 0x3
 #define LANE_NUM_DP_ENCODER0_P0_FLDMASK_POS                             0
@@ -337,6 +399,11 @@
 #define HDCP_SYNC_SW_DP_ENCODER0_P0_FLDMASK_POS                           5
 #define HDCP_SYNC_SW_DP_ENCODER0_P0_FLDMASK_LEN                           1
 
+
+#define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK                      0x80
+#define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK_POS                  7
+#define SDP_DOWN_CNT_NEW_MODE_DP_ENCODER0_P0_FLDMASK_LEN                  1
+
 #define SDP_VSYNC_RISING_MASK_DP_ENCODER0_P0_FLDMASK                      0x100
 #define SDP_VSYNC_RISING_MASK_DP_ENCODER0_P0_FLDMASK_POS                  8
 #define SDP_VSYNC_RISING_MASK_DP_ENCODER0_P0_FLDMASK_LEN                  1
@@ -382,6 +449,11 @@
 #define HDE_NUM_LAST_DP_ENCODER0_P0_FLDMASK                               0xffff
 #define HDE_NUM_LAST_DP_ENCODER0_P0_FLDMASK_POS                           0
 #define HDE_NUM_LAST_DP_ENCODER0_P0_FLDMASK_LEN                           16
+
+#define REG_307C_DP_ENCODER0_P0 (0x307C)
+#define HBLANK_SPACE_FOR_SDP_HW_EN_DP_ENCODER0_P0_FLDMASK                 0x1
+#define HBLANK_SPACE_FOR_SDP_HW_EN_DP_ENCODER0_P0_FLDMASK_POS             0
+#define HBLANK_SPACE_FOR_SDP_HW_EN_DP_ENCODER0_P0_FLDMASK_LEN             1
 
 #define REG_3088_DP_ENCODER0_P0              (0x3088)
 #define AUDIO_DETECT_EN_DP_ENCODER0_P0_FLDMASK                            0x20
@@ -1831,6 +1903,53 @@
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_POS              12
 #define AUDIO_SAMPLE_PRSENT_REGEN_DP_ENCODER1_P0_FLDMASK_LEN              1
 
+
+#define REG_3308_DP_ENCODER1_P0 (0x3308)
+#define MST_RESET_SW_DP_ENCODER1_P0_FLDMASK                               0x1
+#define MST_RESET_SW_DP_ENCODER1_P0_FLDMASK_POS                           0
+#define MST_RESET_SW_DP_ENCODER1_P0_FLDMASK_LEN                           1
+
+#define DP2P0_ENCODER_EN_DP_ENCODER1_P0_FLDMASK                           0x2
+#define DP2P0_ENCODER_EN_DP_ENCODER1_P0_FLDMASK_POS                       1
+#define DP2P0_ENCODER_EN_DP_ENCODER1_P0_FLDMASK_LEN                       1
+
+#define DP_MST_EN_DP_ENCODER1_P0_FLDMASK                                  0x4
+#define DP_MST_EN_DP_ENCODER1_P0_FLDMASK_POS                              2
+#define DP_MST_EN_DP_ENCODER1_P0_FLDMASK_LEN                              1
+
+#define DP2P0_SDP_CRC_EN_DP_ENCODER1_P0_FLDMASK                           0x8
+#define DP2P0_SDP_CRC_EN_DP_ENCODER1_P0_FLDMASK_POS                       3
+#define DP2P0_SDP_CRC_EN_DP_ENCODER1_P0_FLDMASK_LEN                       1
+
+#define MST_SDP_FIFO_RST_DP_ENCODER1_P0_FLDMASK                           0x10
+#define MST_SDP_FIFO_RST_DP_ENCODER1_P0_FLDMASK_POS                       4
+#define MST_SDP_FIFO_RST_DP_ENCODER1_P0_FLDMASK_LEN                       1
+
+#define MST_SDP_FIFO_FULL_CLR_DP_ENCODER1_P0_FLDMASK                      0x20
+#define MST_SDP_FIFO_FULL_CLR_DP_ENCODER1_P0_FLDMASK_POS                  5
+#define MST_SDP_FIFO_FULL_CLR_DP_ENCODER1_P0_FLDMASK_LEN                  1
+
+#define MST_SDP_FIFO_FULL_DP_ENCODER1_P0_FLDMASK                          0x40
+#define MST_SDP_FIFO_FULL_DP_ENCODER1_P0_FLDMASK_POS                      6
+#define MST_SDP_FIFO_FULL_DP_ENCODER1_P0_FLDMASK_LEN                      1
+
+#define VIDEO_PIXEL0_MUX_DP_ENCODER1_P0_FLDMASK                           0x300
+#define VIDEO_PIXEL0_MUX_DP_ENCODER1_P0_FLDMASK_POS                       8
+#define VIDEO_PIXEL0_MUX_DP_ENCODER1_P0_FLDMASK_LEN                       2
+
+#define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK                           0xc00
+#define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK_POS                       10
+#define VIDEO_PIXEL1_MUX_DP_ENCODER1_P0_FLDMASK_LEN                       2
+
+#define REG_3310_DP_ENCODER1_P0 (0x3310)
+#define MST_MTP_SIZE_DP_ENCODER1_P0_FLDMASK                               0x7f
+#define MST_MTP_SIZE_DP_ENCODER1_P0_FLDMASK_POS                           0
+#define MST_MTP_SIZE_DP_ENCODER1_P0_FLDMASK_LEN                           7
+
+#define MST_TIME_SLOT_DP_ENCODER1_P0_FLDMASK                              0x7f00
+#define MST_TIME_SLOT_DP_ENCODER1_P0_FLDMASK_POS                          8
+#define MST_TIME_SLOT_DP_ENCODER1_P0_FLDMASK_LEN                          7
+
 #define REG_331C_DP_ENCODER1_P0                                           (0x331C)
 #define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK                          0x1
 #define TDM_AUDIO_DATA_EN_DP_ENCODER1_P0_FLDMASK_POS                      0
@@ -2087,6 +2206,15 @@
 #define DSC_CHUNK_NUM_DP_ENCODER1_P0_FLDMASK                              0xffff
 #define DSC_CHUNK_NUM_DP_ENCODER1_P0_FLDMASK_POS                          0
 #define DSC_CHUNK_NUM_DP_ENCODER1_P0_FLDMASK_LEN                          16
+
+#define REG_3374_DP_ENCODER1_P0 (0x3374)
+#define SDP_DOWN_ASP_CNT_INIT_DP_ENCODER1_P0_FLDMASK                      0xfff
+#define SDP_DOWN_ASP_CNT_INIT_DP_ENCODER1_P0_FLDMASK_POS                  0
+#define SDP_DOWN_ASP_CNT_INIT_DP_ENCODER1_P0_FLDMASK_LEN                  12
+
+#define SDP_ASP_INSERT_IN_HBLANK_DP_ENCODER1_P0_FLDMASK                   0x1000
+#define SDP_ASP_INSERT_IN_HBLANK_DP_ENCODER1_P0_FLDMASK_POS               12
+#define SDP_ASP_INSERT_IN_HBLANK_DP_ENCODER1_P0_FLDMASK_LEN               1
 
 #define REG_33AC_DP_ENCODER1_P0              (0x33AC)
 #define TEST_CRC_R_CR_DP_ENCODER1_P0_FLDMASK                              0xffff
@@ -3517,6 +3645,14 @@
 #define MCU_REQUEST_ADDRESS_MSB_AUX_TX_P0_FLDMASK_POS                     0
 #define MCU_REQUEST_ADDRESS_MSB_AUX_TX_P0_FLDMASK_LEN                     4
 
+#define HPD_INT_THD_AUX_TX_P0_FLDMASK                                     0x3f0
+#define HPD_INT_THD_AUX_TX_P0_FLDMASK_POS                                 4
+#define HPD_INT_THD_AUX_TX_P0_FLDMASK_LEN                                 6
+
+#define HPD_STATUS_AUX_TX_P0_FLDMASK                                      0x8000
+#define HPD_STATUS_AUX_TX_P0_FLDMASK_POS                                  15
+#define HPD_STATUS_AUX_TX_P0_FLDMASK_LEN                                  1
+
 #define REG_3650_AUX_TX_P0              (0x3650)
 #define MCU_REQUEST_DATA_NUM_AUX_TX_P0_FLDMASK                            0xf000
 #define MCU_REQ_DATA_NUM_AUX_TX_P0_FLDMASK_POS                        12
@@ -3693,6 +3829,10 @@
 #define DPTX_AUXRX_L_TEST_AUX_TX_P0_FLDMASK_POS                           5
 #define DPTX_AUXRX_L_TEST_AUX_TX_P0_FLDMASK_LEN                           1
 
+#define HPD_CONN_THD_AUX_TX_P0_FLDMASK                                    0x3c0
+#define HPD_CONN_THD_AUX_TX_P0_FLDMASK_POS                                6
+#define HPD_CONN_THD_AUX_TX_P0_FLDMASK_LEN                                4
+
 #define EN_AUXRX_AUX_TX_P0_FLDMASK                                        0x400
 #define EN_AUXRX_AUX_TX_P0_FLDMASK_POS                                    10
 #define EN_AUXRX_AUX_TX_P0_FLDMASK_LEN                                    1
@@ -3769,6 +3909,11 @@
 #define RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK                          0x100
 #define RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK_POS                      8
 #define RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK_LEN                      1
+
+#define REG_36A0_AUX_TX_P0 (0x36A0)
+#define DP_TX_INT_MASK_31_TO_16_AUX_TX_P0_FLDMASK                         0xffff
+#define DP_TX_INT_MASK_31_TO_16_AUX_TX_P0_FLDMASK_POS                     0
+#define DP_TX_INT_MASK_31_TO_16_AUX_TX_P0_FLDMASK_LEN                     16
 
 #define REG_36C0_AUX_TX_P0              (0x36C0)
 #define RX_GTC_VALUE_0_AUX_TX_P0_FLDMASK                                  0xffff
@@ -4157,6 +4302,23 @@
 #define AUX_RX_FIFO_DATA15_AUX_TX_P0_FLDMASK_POS                          8
 #define AUX_RX_FIFO_DATA15_AUX_TX_P0_FLDMASK_LEN                          8
 
+#define REG_37A0_AUX_TX_P0 (0x37A0)
+#define HPD_DEB_THD_AUX_TX_P0_FLDMASK                                     0xf
+#define HPD_DEB_THD_AUX_TX_P0_FLDMASK_POS                                 0
+#define HPD_DEB_THD_AUX_TX_P0_FLDMASK_LEN                                 4
+
+#define HPD_DISC_THD_AUX_TX_P0_FLDMASK                                    0xf0
+#define HPD_DISC_THD_AUX_TX_P0_FLDMASK_POS                                4
+#define HPD_DISC_THD_AUX_TX_P0_FLDMASK_LEN                                4
+
+#define HPD_DISC_THD_OFFSET_AUX_TX_P0_FLDMASK                             0xf00
+#define HPD_DISC_THD_OFFSET_AUX_TX_P0_FLDMASK_POS                         8
+#define HPD_DISC_THD_OFFSET_AUX_TX_P0_FLDMASK_LEN                         4
+
+#define HPD_CONN_THD_OFFSET_AUX_TX_P0_FLDMASK                             0xf000
+#define HPD_CONN_THD_OFFSET_AUX_TX_P0_FLDMASK_POS                         12
+#define HPD_CONN_THD_OFFSET_AUX_TX_P0_FLDMASK_LEN                         4
+
 #define REG_37C0_AUX_TX_P0              (0x37C0)
 #define AUX_DRV_EN_TIME_THRD_AUX_TX_P0_FLDMASK                            0x1f
 #define AUX_DRV_EN_TIME_THRD_AUX_TX_P0_FLDMASK_POS                        0
@@ -4179,6 +4341,169 @@
 #define MTK_ATOP_EN_AUX_TX_P0_FLDMASK                                     0x1
 #define MTK_ATOP_EN_AUX_TX_P0_FLDMASK_POS                                 0
 #define MTK_ATOP_EN_AUX_TX_P0_FLDMASK_LEN                                 1
+
+#define REG_3800_DP_MST_DPTX (0x3800)
+#define MST_SW_RESET_DP_MST_DPTX_FLDMASK                                  0xffff
+#define MST_SW_RESET_DP_MST_DPTX_FLDMASK_POS                              0
+#define MST_SW_RESET_DP_MST_DPTX_FLDMASK_LEN                              16
+
+#define REG_3808_DP_MST_DPTX (0x3808)
+#define MST_EN_TX_DP_MST_DPTX_FLDMASK                                     0x1
+#define MST_EN_TX_DP_MST_DPTX_FLDMASK_POS                                 0
+#define MST_EN_TX_DP_MST_DPTX_FLDMASK_LEN                                 1
+
+#define LANE_NUM_TX_DP_MST_DPTX_FLDMASK                                   0xc
+#define LANE_NUM_TX_DP_MST_DPTX_FLDMASK_POS                               2
+#define LANE_NUM_TX_DP_MST_DPTX_FLDMASK_LEN                               2
+
+#define REG_3854_DP_MST_DPTX (0x3854)
+#define ID_BUF_1_OV_DP_MST_DPTX_FLDMASK                                   0xff
+#define ID_BUF_1_OV_DP_MST_DPTX_FLDMASK_POS                               0
+#define ID_BUF_1_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK                                   0xff00
+#define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK_POS                               8
+#define ID_BUF_2_OV_DP_MST_DPTX_FLDMASK_LEN                               8
+
+#define REG_3868_DP_MST_DPTX (0x3868)
+#define UPDATE_ID_BUF_TX_TRIG_DP_MST_DPTX_FLDMASK                         0x200
+#define UPDATE_ID_BUF_TX_TRIG_DP_MST_DPTX_FLDMASK_POS                     9
+#define UPDATE_ID_BUF_TX_TRIG_DP_MST_DPTX_FLDMASK_LEN                     1
+
+#define HDCP_TIMESLOT_MODE_DP_MST_DPTX_FLDMASK                            0x1000
+#define HDCP_TIMESLOT_MODE_DP_MST_DPTX_FLDMASK_POS                        12
+#define HDCP_TIMESLOT_MODE_DP_MST_DPTX_FLDMASK_LEN                        1
+
+#define REG_3884_DP_MST_DPTX (0x3884)
+#define HDCP_ECF_FIFO_OV_DP_MST_DPTX_FLDMASK                              0xff00
+#define HDCP_ECF_FIFO_OV_DP_MST_DPTX_FLDMASK_POS                          8
+#define HDCP_ECF_FIFO_OV_DP_MST_DPTX_FLDMASK_LEN                          8
+
+#define REG_3888_DP_MST_DPTX (0x3888)
+#define HDCP_ECF_FIFO_OV_VALID_DP_MST_DPTX_FLDMASK                        0x1
+#define HDCP_ECF_FIFO_OV_VALID_DP_MST_DPTX_FLDMASK_POS                    0
+#define HDCP_ECF_FIFO_OV_VALID_DP_MST_DPTX_FLDMASK_LEN                    1
+
+#define HDCP_ECF_BYPASS_DP_MST_DPTX_FLDMASK                               0x2
+#define HDCP_ECF_BYPASS_DP_MST_DPTX_FLDMASK_POS                           1
+#define HDCP_ECF_BYPASS_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define REG_3894_DP_MST_DPTX (0x3894)
+#define MST2SST_SEL_DP_MST_DPTX_FLDMASK                                   0x7
+#define MST2SST_SEL_DP_MST_DPTX_FLDMASK_POS                               0
+#define MST2SST_SEL_DP_MST_DPTX_FLDMASK_LEN                               3
+
+#define RST_MST_FIFO_WHEN_ID_CHG_DP_MST_DPTX_FLDMASK                      0x8
+#define RST_MST_FIFO_WHEN_ID_CHG_DP_MST_DPTX_FLDMASK_POS                  3
+#define RST_MST_FIFO_WHEN_ID_CHG_DP_MST_DPTX_FLDMASK_LEN                  1
+
+#define RST_MST_FIFO_WPTR_DP_MST_DPTX_FLDMASK                             0x10
+#define RST_MST_FIFO_WPTR_DP_MST_DPTX_FLDMASK_POS                         4
+#define RST_MST_FIFO_WPTR_DP_MST_DPTX_FLDMASK_LEN                         1
+
+#define RST_MST_FIFO_RPTR_DP_MST_DPTX_FLDMASK                             0x20
+#define RST_MST_FIFO_RPTR_DP_MST_DPTX_FLDMASK_POS                         5
+#define RST_MST_FIFO_RPTR_DP_MST_DPTX_FLDMASK_LEN                         1
+
+#define REG_3898_DP_MST_DPTX (0x3898)
+#define MST_SOURCE_SEL_1_DP_MST_DPTX_FLDMASK                              0x7
+#define MST_SOURCE_SEL_1_DP_MST_DPTX_FLDMASK_POS                          0
+#define MST_SOURCE_SEL_1_DP_MST_DPTX_FLDMASK_LEN                          3
+
+#define MST_SOURCE_SEL_2_DP_MST_DPTX_FLDMASK                              0x70
+#define MST_SOURCE_SEL_2_DP_MST_DPTX_FLDMASK_POS                          4
+#define MST_SOURCE_SEL_2_DP_MST_DPTX_FLDMASK_LEN                          3
+
+#define MST_SOURCE_SEL_3_DP_MST_DPTX_FLDMASK                              0x700
+#define MST_SOURCE_SEL_3_DP_MST_DPTX_FLDMASK_POS                          8
+#define MST_SOURCE_SEL_3_DP_MST_DPTX_FLDMASK_LEN                          3
+
+#define MST_SOURCE_SEL_4_DP_MST_DPTX_FLDMASK                              0x7000
+#define MST_SOURCE_SEL_4_DP_MST_DPTX_FLDMASK_POS                          12
+#define MST_SOURCE_SEL_4_DP_MST_DPTX_FLDMASK_LEN                          3
+
+#define REG_38A8_DP_MST_DPTX (0x38A8)
+#define VC_PAYLOAD_TIMESLOT_0_DP_MST_DPTX_FLDMASK                         0x7f
+#define VC_PAYLOAD_TIMESLOT_0_DP_MST_DPTX_FLDMASK_POS                     0
+#define VC_PAYLOAD_TIMESLOT_0_DP_MST_DPTX_FLDMASK_LEN                     7
+
+#define VC_PAYLOAD_TIMESLOT_1_DP_MST_DPTX_FLDMASK                         0x7f00
+#define VC_PAYLOAD_TIMESLOT_1_DP_MST_DPTX_FLDMASK_POS                     8
+#define VC_PAYLOAD_TIMESLOT_1_DP_MST_DPTX_FLDMASK_LEN                     7
+
+#define REG_3930_DP_MST_DPTX (0x3930)
+#define MST_STREAM_EN_1_DP_MST_DPTX_FLDMASK                               0x1
+#define MST_STREAM_EN_1_DP_MST_DPTX_FLDMASK_POS                           0
+#define MST_STREAM_EN_1_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_2_DP_MST_DPTX_FLDMASK                               0x2
+#define MST_STREAM_EN_2_DP_MST_DPTX_FLDMASK_POS                           1
+#define MST_STREAM_EN_2_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_3_DP_MST_DPTX_FLDMASK                               0x4
+#define MST_STREAM_EN_3_DP_MST_DPTX_FLDMASK_POS                           2
+#define MST_STREAM_EN_3_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_4_DP_MST_DPTX_FLDMASK                               0x8
+#define MST_STREAM_EN_4_DP_MST_DPTX_FLDMASK_POS                           3
+#define MST_STREAM_EN_4_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_5_DP_MST_DPTX_FLDMASK                               0x10
+#define MST_STREAM_EN_5_DP_MST_DPTX_FLDMASK_POS                           4
+#define MST_STREAM_EN_5_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_6_DP_MST_DPTX_FLDMASK                               0x20
+#define MST_STREAM_EN_6_DP_MST_DPTX_FLDMASK_POS                           5
+#define MST_STREAM_EN_6_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_7_DP_MST_DPTX_FLDMASK                               0x40
+#define MST_STREAM_EN_7_DP_MST_DPTX_FLDMASK_POS                           6
+#define MST_STREAM_EN_7_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define MST_STREAM_EN_8_DP_MST_DPTX_FLDMASK                               0x80
+#define MST_STREAM_EN_8_DP_MST_DPTX_FLDMASK_POS                           7
+#define MST_STREAM_EN_8_DP_MST_DPTX_FLDMASK_LEN                           1
+
+#define REG_3980_DP_MST_DPTX (0x3980)
+#define ACT_TRIGGER_MST_TX_DP_MST_DPTX_FLDMASK                            0x1
+#define ACT_TRIGGER_MST_TX_DP_MST_DPTX_FLDMASK_POS                        0
+#define ACT_TRIGGER_MST_TX_DP_MST_DPTX_FLDMASK_LEN                        1
+
+#define VC_PAYLOAD_TABLE_TX_UPDATE_DP_MST_DPTX_FLDMASK                    0x2
+#define VC_PAYLOAD_TABLE_TX_UPDATE_DP_MST_DPTX_FLDMASK_POS                1
+#define VC_PAYLOAD_TABLE_TX_UPDATE_DP_MST_DPTX_FLDMASK_LEN                1
+
+#define ENCRYPTION_EN_MST_TX_DP_MST_DPTX_FLDMASK                          0x4
+#define ENCRYPTION_EN_MST_TX_DP_MST_DPTX_FLDMASK_POS                      2
+#define ENCRYPTION_EN_MST_TX_DP_MST_DPTX_FLDMASK_LEN                      1
+
+#define LINK_VERIFY_PATTERN_MODE_DP_MST_DPTX_FLDMASK                      0x8
+#define LINK_VERIFY_PATTERN_MODE_DP_MST_DPTX_FLDMASK_POS                  3
+#define LINK_VERIFY_PATTERN_MODE_DP_MST_DPTX_FLDMASK_LEN                  1
+
+#define TRIG_HDCP_TIMESLOT_MST_TX_DP_MST_DPTX_FLDMASK                     0x10
+#define TRIG_HDCP_TIMESLOT_MST_TX_DP_MST_DPTX_FLDMASK_POS                 4
+#define TRIG_HDCP_TIMESLOT_MST_TX_DP_MST_DPTX_FLDMASK_LEN                 1
+
+#define REG_3984_DP_MST_DPTX (0x3984)
+#define HDCP_TIMESLOT_MST_TX_0_DP_MST_DPTX_FLDMASK                        0xffff
+#define HDCP_TIMESLOT_MST_TX_0_DP_MST_DPTX_FLDMASK_POS                    0
+#define HDCP_TIMESLOT_MST_TX_0_DP_MST_DPTX_FLDMASK_LEN                    16
+
+#define REG_3988_DP_MST_DPTX (0x3988)
+#define HDCP_TIMESLOT_MST_TX_1_DP_MST_DPTX_FLDMASK                        0xffff
+#define HDCP_TIMESLOT_MST_TX_1_DP_MST_DPTX_FLDMASK_POS                    0
+#define HDCP_TIMESLOT_MST_TX_1_DP_MST_DPTX_FLDMASK_LEN                    16
+
+#define REG_398C_DP_MST_DPTX (0x398C)
+#define HDCP_TIMESLOT_MST_TX_2_DP_MST_DPTX_FLDMASK                        0xffff
+#define HDCP_TIMESLOT_MST_TX_2_DP_MST_DPTX_FLDMASK_POS                    0
+#define HDCP_TIMESLOT_MST_TX_2_DP_MST_DPTX_FLDMASK_LEN                    16
+
+#define REG_3990_DP_MST_DPTX (0x3990)
+#define HDCP_TIMESLOT_MST_TX_3_DP_MST_DPTX_FLDMASK                        0xffff
+#define HDCP_TIMESLOT_MST_TX_3_DP_MST_DPTX_FLDMASK_POS                    0
+#define HDCP_TIMESLOT_MST_TX_3_DP_MST_DPTX_FLDMASK_LEN                    16
 
 /*-----------------------------------------------------*/
 #define DP_TX_TOP_PWR_STATE              (TOP_OFFSET + 0x00)
@@ -4659,6 +4984,7 @@
 #define DPCD_00005		0x00005
 #define DPCD_0000A		0x0000A
 #define DPCD_0000E		0x0000E
+#define DPCD_00020		0x00020
 #define DPCD_00021		0x00021
 #define DPCD_00030		0x00030
 #define DPCD_00060		0x00060
@@ -4673,10 +4999,21 @@
 #define DPCD_00106		0x00106
 #define DPCD_00107		0x00107
 #define DPCD_00111		0x00111
+#define DPCD_00112		0x00112
+#define DPCD_00113		0x00113
+#define DPCD_00114		0x00114
+#define DPCD_00115		0x00115
+#define DPCD_00116		0x00116
+#define DPCD_00117		0x00117
+#define DPCD_00118		0x00118
 #define DPCD_00120		0x00120
+#define DPCD_0015C		0x0015C
 #define DPCD_00160		0x00160
+#define DPCD_001A0		0x001A0
 #define DPCD_001A1		0x001A1
 #define DPCD_001C0		0x001C0
+#define DPCD_001C1		0x001C1
+#define DPCD_001C2		0x001C2
 #define DPCD_00200		0x00200
 #define DPCD_00201		0x00201
 #define DPCD_00202		0x00202
@@ -4689,6 +5026,7 @@
 #define DPCD_00219		0x00219
 #define DPCD_00220		0x00220
 #define DPCD_00230		0x00230
+#define DPCD_00248		0x00248
 #define DPCD_00250		0x00250
 #define DPCD_00260		0x00260
 #define DPCD_00261		0x00261
@@ -4697,6 +5035,13 @@
 #define DPCD_00281		0x00281
 #define DPCD_00282		0x00282
 #define DPCD_002C0		0x002C0
+#define DPCD_002C1		0x002C1
+#define DPCD_00300		0x00300
+#define DPCD_00400		0x00400
+#define DPCD_00500		0x00500
+#define DPCD_00503		0x00503
+#define DPCD_00509		0x00509
+#define DPCD_0050A		0x0050A
 #define DPCD_00600		0x00600
 #define DPCD_01000		0x01000
 #define DPCD_01200		0x01200

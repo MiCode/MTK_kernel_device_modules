@@ -2498,20 +2498,28 @@
 #define MT6991_MUTEX_SOF_SINGLE_MODE 0
 #define MT6991_MUTEX_SOF_DSI0 1
 #define MT6991_MUTEX_SOF_DSI1 2
-#define MT6991_MUTEX_SOF_DPI1 3
-#define MT6991_MUTEX_SOF_DPI0 4
+#define MT6991_MUTEX_SOF_DSI2 4
+#define MT6991_MUTEX_SOF_DPI0 5
+#define MT6991_MUTEX_SOF_DPI1 6
+#define MT6991_MUTEX_SOF_DVO  7
 #define MT6991_MUTEX_EOF_DSI0 (MT6991_MUTEX_SOF_DSI0 << 7)
-#define MT6991_MUTEX_EOF_DPI0 (MT6991_MUTEX_SOF_DPI0 << 7)
 #define MT6991_MUTEX_EOF_DSI1 (MT6991_MUTEX_SOF_DSI1 << 7)
+#define MT6991_MUTEX_EOF_DSI2 (MT6991_MUTEX_SOF_DSI2 << 7)
+#define MT6991_MUTEX_EOF_DPI0 (MT6991_MUTEX_SOF_DPI0 << 7)
 #define MT6991_MUTEX_EOF_DPI1 (MT6991_MUTEX_SOF_DPI1 << 7)
+#define MT6991_MUTEX_EOF_DVO (MT6991_MUTEX_SOF_DVO << 7)
 #define MT6991_MUTEX_OVLSYS_SOF_DSI0 1
 #define MT6991_MUTEX_OVLSYS_SOF_DSI1 2
-#define MT6991_MUTEX_OVLSYS_SOF_DPI0 3
-#define MT6991_MUTEX_OVLSYS_SOF_DPI1 4
+#define MT6991_MUTEX_OVLSYS_SOF_DSI2 4
+#define MT6991_MUTEX_OVLSYS_SOF_DPI0 5
+#define MT6991_MUTEX_OVLSYS_SOF_DPI1 6
+#define MT6991_MUTEX_OVLSYS_SOF_DVO 7
 #define MT6991_MUTEX_OVLSYS_EOF_DSI0 (MT6991_MUTEX_OVLSYS_SOF_DSI0 << 7)
 #define MT6991_MUTEX_OVLSYS_EOF_DSI1 (MT6991_MUTEX_OVLSYS_SOF_DSI1 << 7)
+#define MT6991_MUTEX_OVLSYS_EOF_DSI2 (MT6991_MUTEX_OVLSYS_SOF_DSI2 << 7)
 #define MT6991_MUTEX_OVLSYS_EOF_DPI0 (MT6991_MUTEX_OVLSYS_SOF_DPI0 << 7)
 #define MT6991_MUTEX_OVLSYS_EOF_DPI1 (MT6991_MUTEX_OVLSYS_SOF_DPI1 << 7)
+#define MT6991_MUTEX_OVLSYS_EOF_DVO (MT6991_MUTEX_OVLSYS_SOF_DVO << 7)
 
 #define DISP_REG_CONFIG_OVLSYS_CG_CON0_MT6991 0x100
 #define DISP_REG_CONFIG_OVLSYS_CG_CON1_MT6991 0x110
@@ -5603,8 +5611,8 @@ static const unsigned int mt6991_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_WDMA3] = MT6991_MUTEX1_MOD1_DISP_WDMA3,
 	[DDP_COMPONENT_WDMA4] = MT6991_MUTEX1_MOD1_DISP_WDMA4,
 	[DDP_COMPONENT_MDP_RDMA1] = MT6991_MUTEX1_MOD1_DISP_MDP_RDMA1,
-	[DDP_COMPONENT_DP_INTF0] = MT6991_MUTEX1_MOD1_DISP_DP_TX0,
-	[DDP_COMPONENT_DP_INTF1] = MT6991_MUTEX1_MOD1_DISP_DP_TX1,
+	[DDP_COMPONENT_DPTX] = MT6991_MUTEX1_MOD1_DISP_DP_TX0,
+	//	[DDP_COMPONENT_DP_INTF1] = MT6991_MUTEX1_MOD1_DISP_DP_TX1,
 };
 
 static const unsigned int mt6897_ovlsys_mutex_mod[DDP_COMPONENT_ID_MAX] = {
@@ -6747,7 +6755,7 @@ static const unsigned int mt6991_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_WDMA3]     = DISPSYS1,
 	[DDP_COMPONENT_WDMA4]     = DISPSYS1,
 	[DDP_COMPONENT_MDP_RDMA1] = DISPSYS1,
-	[DDP_COMPONENT_DP_INTF0]  = DISPSYS1,
+	[DDP_COMPONENT_DPTX]      = DISPSYS1,
 	[DDP_COMPONENT_DP_INTF1]  = DISPSYS1,
 
 /* crossbar */
@@ -7411,6 +7419,8 @@ static const unsigned int mt6991_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6991_MUTEX_SOF_DSI0 | MT6991_MUTEX_EOF_DSI0,
 		[DDP_MUTEX_SOF_DSI1] =
 			MT6991_MUTEX_SOF_DSI1 | MT6991_MUTEX_EOF_DSI1,
+		[DDP_MUTEX_SOF_DSI2] =
+			MT6991_MUTEX_SOF_DSI2 | MT6991_MUTEX_EOF_DSI2,
 		[DDP_MUTEX_SOF_DPI0] =
 			MT6991_MUTEX_SOF_DPI0 | MT6991_MUTEX_EOF_DPI0,
 		[DDP_MUTEX_SOF_DPI1] =
@@ -7423,12 +7433,13 @@ static const unsigned int mt6991_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6991_MUTEX_OVLSYS_SOF_DSI0 | MT6991_MUTEX_OVLSYS_EOF_DSI0,
 		[DDP_MUTEX_SOF_DSI1] =
 			MT6991_MUTEX_OVLSYS_SOF_DSI1 | MT6991_MUTEX_OVLSYS_EOF_DSI1,
+		[DDP_MUTEX_SOF_DSI2] =
+			MT6991_MUTEX_OVLSYS_SOF_DSI2 | MT6991_MUTEX_OVLSYS_EOF_DSI2,
 		[DDP_MUTEX_SOF_DPI0] =
 			MT6991_MUTEX_OVLSYS_SOF_DPI0 | MT6991_MUTEX_OVLSYS_EOF_DPI0,
 		[DDP_MUTEX_SOF_DPI1] =
 			MT6991_MUTEX_OVLSYS_SOF_DPI1 | MT6991_MUTEX_OVLSYS_EOF_DPI1,
 };
-
 static const unsigned int mt6897_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 		[DDP_MUTEX_SOF_SINGLE_MODE] = MT6897_MUTEX_SOF_SINGLE_MODE,
 		[DDP_MUTEX_SOF_DSI0] =
@@ -14887,6 +14898,29 @@ char *mtk_ddp_get_mutex_sof_name_mt6985(unsigned int regval)
 	}
 }
 
+char *mtk_ddp_get_mutex_sof_name_mt6991(unsigned int regval)
+{
+	switch (regval) {
+	case MT6991_MUTEX_SOF_SINGLE_MODE:
+		return "single";
+	case MT6991_MUTEX_SOF_DSI0:
+		return "dsi0";
+	case MT6991_MUTEX_SOF_DSI1:
+		return "dsi1";
+	case MT6991_MUTEX_SOF_DSI2:
+		return "dsi2";
+	case MT6991_MUTEX_SOF_DPI0:
+		return "dpi0";
+	case MT6991_MUTEX_SOF_DPI1:
+		return "dpi1";
+	case MT6991_MUTEX_SOF_DVO:
+		return "dvo";
+	default:
+		DDPDUMP("%s, unknown reg=%d\n", __func__, regval);
+		return "unknown";
+	}
+}
+
 char *mtk_ddp_get_mutex_sof_name_mt6897(unsigned int regval)
 {
 	switch (regval) {
@@ -21655,6 +21689,35 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		next == DDP_COMPONENT_WDMA1)) {
 		*addr = MT6991_MERGE_OUT_CB8_MOUT_EN;
 		value = MT6991_DISP_COMP_OUT_CB_TO_WDMA1;
+	// CRTC1
+	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB13 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB7)) {
+		*addr = MT6991_PQ_IN_CROSSBAR13_MOUT_EN;
+		value = MT6991_DISP_PQ_IN_TO_PQ_OUT_CB_in7;
+	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB7 &&
+		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB2)) {
+		*addr = MT6991_PQ_OUT_CROSSBAR7_MOUT_EN;
+		value = MT6991_DISP_PQ_IN_CB_TO_DISP_PANEL_COMP_OUT_CB2;
+	} else if ((cur == DDP_COMPONENT_PANEL0_COMP_OUT_CB2 &&
+		next == DDP_COMPONENT_DLO_ASYNC2)) {
+		*addr = MT6991_PANEL_COMP_OUT_CB2_MOUT_EN;
+		value = MT6991_DISP_TO_DLO_RELAY2;
+	} else if ((cur == DDP_COMPONENT_SPLITTER0_IN_CB2 &&
+		next == DDP_COMPONENT_SPLITTER0_OUT_CB10)) {
+		*addr = MT6991_SPLITTER_IN_CB2_MOUT_EN;
+		value = MT6991_DISP_DLI_RELAY_TO_SPLITTER_OUT_CB10;
+	} else if ((cur == DDP_COMPONENT_SPLITTER0_OUT_CB10 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB8)) {
+		*addr = MT6991_SPLITTER_OUT_CB10_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_COMP_OUT_CB8;
+	} else if ((cur == DDP_COMPONENT_COMP0_OUT_CB8 &&
+		next == DDP_COMPONENT_MERGE0_OUT_CB7)) {
+		*addr = MT6991_COMP_OUT_CB8_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_OUT_CB_TO_MERGE_OUT_CB7;
+	} else if ((cur == DDP_COMPONENT_MERGE0_OUT_CB7 &&
+		next == DDP_COMPONENT_DP_INTF0)) {
+		*addr = MT6991_MERGE_OUT_CB7_MOUT_EN;
+		value = MT6991_DISP_COMP_OUT_CB_TO_DP_INTF0;
 	} else {
 		value = -1;
 		DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
@@ -24239,7 +24302,7 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 		reg1 = 0;
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
-				reg_data->dispsys_map[cur] == 1)
+				reg_data->dispsys_map[cur] == DISPSYS1)
 			config_regs = mtk_crtc->side_config_regs;
 
 		if (reg_data->dispsys_map && (reg_data->dispsys_map[cur] == OVLSYS0 ||
@@ -28213,7 +28276,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 		(id == DDP_COMPONENT_DP_INTF0)) {
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
-			priv->data->mmsys_id == MMSYS_MT6989)
+			priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6991)
 			val = DDP_MUTEX_SOF_DPI0;
 		else
 			val = DDP_MUTEX_SOF_DPI1;
@@ -30241,9 +30305,9 @@ REDUMP:
 					DISP_REG_MUTEX_SOF(ddp->data, i));
 
 		len = sprintf(p, "MUTEX%d:SOF=%s,EOF=%s,WAIT=%d,module=(", i,
-				  mtk_ddp_get_mutex_sof_name_mt6985(
+				  mtk_ddp_get_mutex_sof_name_mt6991(
 					  REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_SOF, val)),
-				  mtk_ddp_get_mutex_sof_name_mt6985(
+				  mtk_ddp_get_mutex_sof_name_mt6991(
 					  REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_EOF, val)),
 				  REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_SOF_WAIT, val));
 
@@ -30320,9 +30384,9 @@ REDUMP:
 				    DISP_REG_MUTEX_SOF(ddp->data, i));
 
 		len = sprintf(p, "MUTEX%d:SOF=%s,EOF=%s,WAIT=%d,module=(", i,
-			      mtk_ddp_get_mutex_sof_name_mt6985(
+			      mtk_ddp_get_mutex_sof_name_mt6991(
 				      REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_SOF, val)),
-			      mtk_ddp_get_mutex_sof_name_mt6985(
+			      mtk_ddp_get_mutex_sof_name_mt6991(
 				      REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_EOF, val)),
 			      REG_FLD_VAL_GET(MT6991_SOF_FLD_MUTEX0_SOF_WAIT, val));
 
@@ -34494,6 +34558,18 @@ int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
 
 		if (type ==  MTK_OVL_BLENDER) {
 			*addr_begin = MT6991_OVL_BLENDER_OUT_CROSSBAR0_MOUT_EN;
+			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
+			*offset = 4;
+		}
+	} else if (crtc_id == 1) {
+		if (type == MTK_OVL_EXDMA) {
+			*addr_begin = MT6991_OVL_EXDMA_OUT_CROSSBAR7_MOUT_EN;
+			*addr_end = MT6991_OVL_EXDMA_OUT_CROSSBAR8_MOUT_EN;
+			*offset = 8;
+		}
+
+		if (type ==  MTK_OVL_BLENDER) {
+			*addr_begin = MT6991_OVL_BLENDER_OUT_CROSSBAR5_MOUT_EN;
 			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
 			*offset = 4;
 		}

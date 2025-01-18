@@ -296,6 +296,8 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 
 		if (crtc_id == 0)
 			next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
+		else if (crtc_id == 1)
+			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
 		else if (crtc_id == 2)
 			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
 
@@ -372,8 +374,8 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 			out_comp = DDP_COMPONENT_OVLSYS_DLO_ASYNC5;
 			first_blender = DDP_COMPONENT_OVL0_BLENDER1;
 		} else if  (crtc_id == 1) {
-			out_proc = DDP_COMPONENT_OVL1_OUTPROC5;
-			out_comp = DDP_COMPONENT_OVLSYS1_DLO_ASYNC12;
+			out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
+			out_comp = DDP_COMPONENT_OVLSYS1_DLO_ASYNC10;
 		} else if  (crtc_id == 2) {
 			out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
 			out_comp = DDP_COMPONENT_OVLSYS_WDMA2;
@@ -486,6 +488,13 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
 					0, 0x3ff);
+	} else if (crtc_id == 1) {
+		if (ddp->ovlsys1_regs)
+			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
+
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+						ovl1_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+						0, 0xc0);
 	} else if (crtc_id == 2) {
 		if (ddp->ovlsys1_regs)
 			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
@@ -514,6 +523,9 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 						continue;
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 							mtk_crtc->ovlsys0_regs_pa + i, 0, ~0);
+			} else if (crtc_id == 1) {
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+							mtk_crtc->ovlsys1_regs_pa + i, 0, ~0);
 			} else if (crtc_id == 2) {
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 							mtk_crtc->ovlsys1_regs_pa + i, 0, ~0);
