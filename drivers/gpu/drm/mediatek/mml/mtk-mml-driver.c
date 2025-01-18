@@ -1239,6 +1239,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up)
 {
 	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 datasize, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw;
 	bool hrt, updated = false;
@@ -1256,6 +1257,11 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
 			srt_bw = mml_calc_bw_couple(cfg->mml, datasize);
 			hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
+
+			if (cfg->panel_w > dest->data.width)
+				hrt_bw = (u32)((u64)hrt_bw * cfg->panel_w / dest->data.width);
+			if (!MML_FMT_COMPRESS(cfg->info.src.format) && cfg->rrot_dual)
+				hrt_bw *= 2;
 
 			if (mtk_mml_hrt_mode == MML_HRT_LIMIT && hrt_bw < mml_hrt_bound) {
 				srt_bw = 0;
