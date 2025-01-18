@@ -1009,7 +1009,7 @@ TRACE_EVENT(sched_set_vip,
 
 	TP_printk("id=%d done=%d type=%s vip_prio=%d throttle_time=%d, slot_id=%d",
 		  __entry->id, __entry->done,	__get_str(type),
-		  __entry->vip_prio, __entry->throttle_time/1000000, __entry->slot_id)
+		  __entry->vip_prio, __entry->throttle_time, __entry->slot_id)
 );
 
 TRACE_EVENT(sched_unset_vip,
