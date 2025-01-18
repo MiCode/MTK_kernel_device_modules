@@ -163,6 +163,7 @@ static int mt6893_apu_memmap_init(struct mtk_apu *apu)
 		dev_info(dev, "%s: md32_tcm remap base fail\n", __func__);
 		return -ENOMEM;
 	}
+	apu->md32_tcm_sz = res->end - res->start + 1;
 
 	return 0;
 }
