@@ -68,6 +68,7 @@ enum mml_hdr_reg_index {
 	HDR_B_CHANNEL_NR,
 	HDR_A_LUMINANCE,
 	HDR_DEBUG,
+	HDR_DUMMY1,
 	HDR_REG_MAX_COUNT
 };
 
@@ -100,6 +101,7 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF2] = 0x124,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
+	[HDR_DUMMY1] = 0x1d8,
 };
 
 struct hdr_data {
@@ -110,6 +112,7 @@ struct hdr_data {
 	u8 tile_loss;
 	bool vcp_readback;
 	u8 rb_mode;
+	bool enable_dummy;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -145,6 +148,7 @@ static const struct hdr_data mt6991_mmlt_hdr_data = {
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.reg_table = hdr_reg_table_mt6983,
 	.rb_mode = RB_EOF_MODE,
+	.enable_dummy = true,
 };
 
 static const struct hdr_data mt6991_mmlf_hdr_data = {
@@ -153,6 +157,7 @@ static const struct hdr_data mt6991_mmlf_hdr_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.reg_table = hdr_reg_table_mt6983,
 	.rb_mode = RB_EOF_MODE,
+	.enable_dummy = true,
 };
 
 struct mml_comp_hdr {
@@ -472,6 +477,11 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	else
 		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP],
 			1 << 28, 0x30000000);
+
+	if (hdr->data->enable_dummy && !dest->pq_config.en_fg) {
+		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_DUMMY1],
+			1, U32_MAX);
+	}
 
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
@@ -1258,7 +1268,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[17];
+	u32 value[18];
 	u32 hdr_top;
 
 	mml_err("hdr component %u dump:", comp->id);
@@ -1285,6 +1295,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[14] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF1]);
 	value[15] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF2]);
 	value[16] = read_reg_value(comp, hdr->data->reg_table[HDR_DEBUG]);
+	value[17] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1297,7 +1308,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("HDR_TILE_POS %#010x", value[12]);
 	mml_err("HDR_CURSOR_BUF0 %#010x HDR_CURSOR_BUF1 %#010x HDR_CURSOR_BUF2 %#010x",
 		value[13], value[14], value[15]);
-	mml_err("HDR_DEBUG %#010x", value[16]);
+	mml_err("HDR_DEBUG %#010x HDR_DUMMY1 %#010x", value[16], value[17]);
 }
 
 static const struct mml_comp_debug_ops hdr_debug_ops = {
