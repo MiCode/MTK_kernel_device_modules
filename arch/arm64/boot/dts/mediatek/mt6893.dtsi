@@ -3897,10 +3897,6 @@ cpus {
 			#clock-cells = <1>;
 		};
 
-		smi-bwc {
-			compatible = "mediatek,smi-legacy-bwc", "mediatek,mt6893-smi-bwc";
-		};
-
 		smi_common: smi-common@1411f000 {
 			compatible = "mediatek,mt6893-smi-common",
 					 "mediatek,smi-common", "syscon";
@@ -7065,6 +7061,7 @@ cpus {
 			mediatek,smi-supply = <&smi_common>;
 			mediatek,common-id = <7>;
 			mediatek,cmdq = <&gce_m>;
+			operating-points-v2 = <&opp_table_mdp>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
 			clocks = <&mdpsys CLK_MDP_SMI0>,
 					 <&mdpsys CLK_MDP_SMI1>,
@@ -7108,7 +7105,7 @@ cpus {
 			clock-names = "apb", "smi", "gals0";
 		};
 
-		sysram-smi-common@1f022000 {
+		sysram_smi_common: sysram-smi-common@1f022000 {
 			compatible = "mediatek,sysram_smi_common",
 				     "mediatek,mt6893-smi-common",
 					 "mediatek,smi-common";
@@ -8023,7 +8020,7 @@ cpus {
 		reg = <0 0x1f005000 0 0x1000>,
 			<0 0x1e000000 0 0x160000>;
 		interrupts = <GIC_SPI 495 IRQ_TYPE_LEVEL_HIGH 0>;
-		power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
+		mmsram-smidev = <&sysram_smi_common>;
 
 		clocks = <&mdpsys CLK_MDP_APMCU_GALS>,
 			<&mdpsys CLK_MDP_SMI0>, <&mdpsys CLK_MDP_SMI1>,
