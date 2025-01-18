@@ -5,6 +5,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/kprobes.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/module.h>
@@ -650,6 +651,55 @@ static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
 
 	stat->tracing = 0;
 }
+/* start of kprobes */
+
+/* Skip duration tracers */
+static int handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	if (!irqs_disabled())
+		return 0;
+
+	this_cpu_write(irq_handler_tracer.stat->tracing, 0);
+	this_cpu_write(ipi_tracer.stat->tracing, 0);
+	this_cpu_write(hrtimer_expire_tracer.stat->tracing, 0);
+	return 0;
+}
+
+static struct kprobe kp[] = {
+	/* for perf: interrupt took too long */
+	{.symbol_name = "perf_duration_warn"},
+	/* for _deferred */
+	{.symbol_name = "wake_up_klogd_work_func"},
+	/* for self test */
+	{.symbol_name = "irq_mon_irq_work2"},
+
+};
+
+int irq_mon_kprobes_init(void)
+{
+	int i, ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(kp); i++) {
+		kp[i].pre_handler = handler_pre;
+		ret = register_kprobe(&kp[i]);
+		if (ret) {
+			pr_info("register_kprobe failed, returned %d\n", ret);
+			while (i-- > 0)
+				unregister_kprobe(&kp[i]);
+			return ret;
+		}
+	}
+	return ret;
+}
+
+void irq_mon_kprobes_exit(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(kp); i++)
+		unregister_kprobe(&kp[i]);
+}
+/* end of kprobes */
 
 /* tracepoints */
 struct irq_mon_tracepoint {
@@ -1183,6 +1233,9 @@ static int __init irq_monitor_init(void)
 	ret = irq_log_init();
 	if (ret)
 		return ret;
+	ret = irq_mon_kprobes_init();
+	if (ret)
+		return ret;
 	ret = irq_mon_tracepoint_init();
 	if (ret)
 		return ret;
@@ -1221,6 +1274,7 @@ static void __exit irq_monitor_exit(void)
 	remove_proc_subtree("mtmon", NULL);
 	irq_count_tracer_exit();
 	irq_mon_tracepoint_exit();
+	irq_mon_kprobes_exit();
 	irq_log_exit();
 
 	free_percpu(irq_pi_stat);

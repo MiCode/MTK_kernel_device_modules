@@ -70,9 +70,7 @@ void irq_mon_test_RCU_SOFTIRQ(void)
 }
 
 /* irq_work monitor test */
-
-static struct irq_work irq_mon_irqwork;
-static void irq_mon_irq_work(struct irq_work *work)
+static void __irq_mon_irq_work(struct irq_work *work)
 {
 	irq_log_store();
 	mdelay(100);
@@ -83,10 +81,25 @@ static void irq_mon_irq_work(struct irq_work *work)
 	irq_log_store();
 }
 
+static void irq_mon_irq_work(struct irq_work *work)
+{
+	__irq_mon_irq_work(work);
+}
+
+/* for testing kprobes */
+static void irq_mon_irq_work2(struct irq_work *work)
+{
+	__irq_mon_irq_work(work);
+}
+
+static DEFINE_IRQ_WORK(irq_mon_irqwork, irq_mon_irq_work);
+static DEFINE_IRQ_WORK(irq_mon_irqwork2, irq_mon_irq_work2);
+
 void irq_mon_test_irq_work(void)
 {
-	init_irq_work(&irq_mon_irqwork, irq_mon_irq_work);
 	irq_work_queue(&irq_mon_irqwork);
+	irq_work_sync(&irq_mon_irqwork);
+	irq_work_queue(&irq_mon_irqwork2);
 }
 
 /* IRQ disable monitor test */
