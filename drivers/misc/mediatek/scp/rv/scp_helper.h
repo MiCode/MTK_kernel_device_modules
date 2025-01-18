@@ -140,6 +140,7 @@ struct scp_regs {
 	int scp_dram_region;
 	unsigned int cfgreg_ap_en;
 	unsigned int ipc_wa;
+	unsigned int read_infra_irq_sta_en;
 	struct scp_bus_tracker_status tracker_status;
 };
 

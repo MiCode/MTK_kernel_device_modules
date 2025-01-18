@@ -2600,6 +2600,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_low_pwr_dbg = NULL;
 	const char *scp_cfgreg_ap_en = NULL;
 	const char *scp_ipc_wa = NULL;
+	const char *scp_read_infra_irq_sta_en = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2778,6 +2779,17 @@ static int scp_device_probe(struct platform_device *pdev)
 		if (!strncmp(scp_low_pwr_dbg, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_low_pwr_dbg enabled\n");
 			scpreg.low_pwr_dbg = 1;
+		}
+	}
+
+	/* scp read infra irq from SCP_INFRA_IRQ_STA */
+	scpreg.read_infra_irq_sta_en = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-read-infra-irq-status", &scp_read_infra_irq_sta_en)){
+		if (!strncmp(scp_read_infra_irq_sta_en, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_read_infra_irq_sta_en enabled\n");
+			scpreg.read_infra_irq_sta_en = 1;
+			pr_notice("[SCP] scpreg.read_infra_irq_sta_en = %d\n", scpreg.read_infra_irq_sta_en);
 		}
 	}
 
