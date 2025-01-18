@@ -36,6 +36,7 @@ static const struct usb_device_id mtk_usb_quirk_list[] = {
 	{ }  /* terminating entry must be last */
 };
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 /* quirk list in /sound/usb */
 static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 		DEVICE_FLG(0x2d99, 0xa026, /* EDIFIER H180 Plus */
@@ -47,6 +48,7 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 
 		{} /* terminator */
 };
+#endif
 
 static int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 {
@@ -102,6 +104,7 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 	return quirks;
 }
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
 {
 	const struct usb_audio_quirk_flags_table *p;
@@ -119,6 +122,7 @@ static void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
 		}
 	}
 }
+#endif
 
 /* update mtk usbcore quirk */
 void xhci_mtk_apply_quirk(struct usb_device *udev)

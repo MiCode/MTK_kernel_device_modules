@@ -159,7 +159,9 @@ static struct usb_audio_dev uadev[SNDRV_CARDS];
 struct usb_offload_dev *uodev;
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 static void uaudio_disconnect_cb(struct snd_usb_audio *chip);
+#endif
 
 static int mtk_usb_offload_free_allocated(bool is_in);
 static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
