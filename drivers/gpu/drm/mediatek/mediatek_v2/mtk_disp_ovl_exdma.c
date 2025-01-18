@@ -4454,7 +4454,7 @@ mtk_ovl_exdma_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 	}
 }
 
-static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
+static int mtk_ovl_exdma_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
@@ -4471,7 +4471,11 @@ static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
 	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
 	overhead_v = to_v_info.overhead_v;
 
-	ovl->roi_height = partial_roi.height + (overhead_v * 2);
+	if (comp->mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
+		comp->mtk_crtc->scaling_ctx.scaling_en)
+		ovl->roi_height = to_v_info.in_height;
+	else
+		ovl->roi_height = partial_roi.height + (overhead_v * 2);
 
 	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
@@ -4505,7 +4509,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ovl_exdma_funcs = {
 	.unprepare = mtk_ovl_exdma_unprepare,
 	.connect = mtk_ovl_exdma_connect,
 	.config_trigger = mtk_ovl_exdma_config_trigger,
-	.partial_update = mtk_ovl_set_partial_update,
+	.partial_update = mtk_ovl_exdma_set_partial_update,
 };
 
 /* TODO: to be refactored */
