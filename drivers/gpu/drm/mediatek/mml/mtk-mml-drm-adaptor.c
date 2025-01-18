@@ -25,6 +25,12 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-pq-core.h"
 
+#define MML_MAX_W	3840
+#define MML_MAX_H	2176
+#define MML_MAX_PIXEL	8355840		/* 3840*2176 */
+#define mml_sz_out(w, h)	\
+	(w > h ? (w > MML_MAX_W || h > MML_MAX_H) : ((h > MML_MAX_W || w > MML_MAX_H)))
+
 int drm_max_cache_task = 4;
 module_param(drm_max_cache_task, int, 0644);
 
@@ -128,12 +134,22 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		}
 	}
 
+	if (mml_sz_out(info->src.width, info->src.height)) {
+		mml_msg("[drm]not support src size %u %u", info->src.width, info->src.height);
+		goto not_support;
+	}
+
 	for (i = 0; i < info->dest_cnt; i++) {
 		const struct mml_frame_dest *dest = &info->dest[i];
 		u32 destw = dest->data.width;
 		u32 desth = dest->data.height;
 		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : info->src.width;
 		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : info->src.height;
+
+		if (mml_sz_out(destw, desth)) {
+			mml_msg("[drm]not support dest size %u %u", destw, desth);
+			goto not_support;
+		}
 
 		/* color space not support for destination */
 		if (dest->data.profile == MML_YCBCR_PROFILE_BT2020 ||
