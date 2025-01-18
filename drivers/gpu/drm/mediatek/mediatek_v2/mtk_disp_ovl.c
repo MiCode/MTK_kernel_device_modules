@@ -3664,11 +3664,25 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 	} else
 		_ovl_UFOd_in(comp, 0, handle);
 
+	if (priv->data->mmsys_id == MMSYS_MT6768) {
+		if (prev == DDP_COMPONENT_OVL0 || prev == DDP_COMPONENT_OVL0_2L ||
+			prev == DDP_COMPONENT_OVL1 || prev == DDP_COMPONENT_OVL1_2L ||
+			prev == DDP_COMPONENT_OVL2_2L || prev == DDP_COMPONENT_OVL3_2L ||
+			prev == DDP_COMPONENT_OVL4_2L || prev == DDP_COMPONENT_OVL5_2L ||
+			prev == DDP_COMPONENT_OVL6_2L)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
+					DISP_OVL_BGCLR_IN_SEL, DISP_OVL_BGCLR_IN_SEL);
+		else
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
+			DISP_OVL_BGCLR_IN_SEL);
+	}
 	if (prev == -1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
-			       rsz_src_roi.height << 16 | rsz_src_roi.width,
-			       ~0);
+				comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
+				rsz_src_roi.height << 16 | rsz_src_roi.width,
+				~0);
 		_store_bg_roi(comp, rsz_src_roi.height, rsz_src_roi.width);
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6768) {

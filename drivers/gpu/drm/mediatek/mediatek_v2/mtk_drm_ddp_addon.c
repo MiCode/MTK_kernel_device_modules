@@ -566,10 +566,15 @@ void mtk_addon_connect_between(struct drm_crtc *crtc, unsigned int ddp_mode,
 	struct mtk_ddp_comp *comp = NULL;
 	enum mtk_ddp_comp_id attach_comp_id, next_attach_comp_id, prev_comp_id,
 		cur_comp_id, next_comp_id;
-	const struct mtk_addon_path_data *path_data =
-		mtk_addon_module_get_path(module_data->module);
+	const struct mtk_addon_path_data *path_data = NULL;
 	int i, j;
 	unsigned int addon_idx, prev_id;
+
+	if (module_data == NULL) {
+		DDPPR_ERR("%s: module_data is NULL!\n", __func__);
+		return;
+	}
+	path_data = mtk_addon_module_get_path(module_data->module);
 
 	attach_comp_id =
 		mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
