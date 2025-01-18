@@ -35453,7 +35453,7 @@ int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
 		if (cur == DDP_COMPONENT_OVL_EXDMA2 && next == DDP_COMPONENT_OVL0_MDP_RSZ0)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6991(cur, next, addr);
-		else if (cur == DDP_COMPONENT_OVL_EXDMA2 && mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER)
+		else if (cur == DDP_COMPONENT_OVL_EXDMA2)
 			value = mtk_ddp_ovl_exdma_out_cb_MT6991(DDP_COMPONENT_OVL0_MDP_RSZ0, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6991(cur, next, addr);

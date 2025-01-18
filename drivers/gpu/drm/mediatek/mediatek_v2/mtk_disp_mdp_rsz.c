@@ -579,7 +579,7 @@ int mtk_mdp_rsz_calc_tile_params(struct mtk_ddp_comp *comp, u32 frm_in_len, u32 
 		t[0].ori_in_len, t[0].ori_out_len);
 
 	rsz->tile_overhead.rsz_in.r2y_enable = rsz->tile_overhead.rsz_in.y2r_enable = 1;
-	rsz->tile_overhead.rsz_in.alpha_enable = 0;
+	rsz->tile_overhead.rsz_in.alpha_enable = 1;
 	rsz->tile_overhead.rsz_in.drs_lclip_en = 0;
 	rsz->tile_overhead.rsz_in.urs_clip_en = 0;
 	if (is_hor)
@@ -953,7 +953,7 @@ static void mtk_mdp_rsz_config(struct mtk_ddp_comp *comp,
 	comp->mtk_crtc->tile_overhead_v.in_height = in_h;
 	comp->mtk_crtc->tile_overhead_v.src_y = rsz_config->th[0].src_y;
 
-	con3 = 1 << 10 | rsz->tile_overhead.rsz_out.con3;
+	con3 = rsz->tile_overhead.rsz_out.con3;
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + RSZ_ETC_CONTROL, 0x0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1115,7 +1115,7 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 	comp->mtk_crtc->tile_overhead_v.src_y = rsz_config->th[0].src_y;
 
 	//con3 = task->config->info.alpha ? 1 << 10 | rsz_config->fw_out.con3 : 0;
-	con3 = 1 << 10 | rsz->tile_overhead.rsz_out.con3;
+	con3 = rsz->tile_overhead.rsz_out.con3;
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + RSZ_ETC_CONTROL, 0x0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1511,6 +1511,8 @@ int mtk_mdp_rsz_dump(struct mtk_ddp_comp *comp)
 		readl(baddr + 0x128));
 	DDPDUMP("0x200 0x208 0x20C: 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x200),
 		readl(baddr + 0x208), readl(baddr + 0x20C));
+	DDPDUMP("0x214 0x218 0x21C: 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x214),
+		readl(baddr + 0x218), readl(baddr + 0x21C));
 	DDPDUMP("0x224 0x228 0x22C: 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x224),
 		readl(baddr + 0x228), readl(baddr + 0x22C));
 	for (i = 0; i < 2; i++) {
