@@ -319,6 +319,135 @@ config COMMON_CLK_MT6853_VENC_GCON
 	  If you wish to use clock resources from the venc_gcon device,
 	  say Y. Otherwise, say N.
 
+
+config COMMON_CLK_MT6877
+	tristate "Clock driver for MediaTek MT6877"
+	depends on ARM64 || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6877
+	help
+	  This driver supports MediaTek MT6877 basic clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6877 SOC,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_APU
+	tristate "Clock driver for MediaTek MT6877 apu"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 apu clocks,
+	  which is used to control apu clock output.
+	  If you wish to use clock resources from the apu device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_AUDIOSYS
+	tristate "Clock driver for MediaTek MT6877 audiosys"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 audiosys clocks,
+	  which is used to control audiosys clock output.
+	  If you wish to use clock resources from the audiosys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_CAM
+	tristate "Clock driver for MediaTek MT6877 cam"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 cam clocks,
+	  which is used to control cam clock output.
+	  If you wish to use clock resources from the cam device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_IMG
+	tristate "Clock driver for MediaTek MT6877 img"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 img clocks,
+	  which is used to control img clock output.
+	  If you wish to use clock resources from the img device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_I2C
+	tristate "Clock driver for MediaTek MT6877 i2c"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 i2c clocks,
+	  which is used to control i2c clock output.
+	  If you wish to use clock resources from the i2c device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_IPESYS
+	tristate "Clock driver for MediaTek MT6877 ipesys"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 ipesys clocks,
+	  which is used to control ipesys clock output.
+	  If you wish to use clock resources from the ipesys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_MDPSYS
+	tristate "Clock driver for MediaTek MT6877 mdpsys"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 mdpsys clocks,
+	  which is used to control mdpsys clock output.
+	  If you wish to use clock resources from the mdpsys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_MFGCFG
+	tristate "Clock driver for MediaTek MT6877 mfgcfg"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 mfgcfg clocks,
+	  which is used to control mfgcfg clock output.
+	  If you wish to use clock resources from the mfgcfg device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_DISPSYS
+	tristate "Clock driver for MediaTek MT6877 dispsys"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 dispsys clocks,
+	  which is used to control dispsys clock output.
+	  If you wish to use clock resources from the dispsys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_MSDC
+	tristate "Clock driver for MediaTek MT6877 msdc"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 msdc clocks,
+	  which is used to control msdc clock output.
+	  If you wish to use clock resources from the msdc device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_SCP_ADSP
+	tristate "Clock driver for MediaTek MT6877 scp_adsp"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 scp_adsp clocks,
+	  which is used to control scp_adsp clock output.
+	  If you wish to use clock resources from the scp_adsp device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_VDE
+	tristate "Clock driver for MediaTek MT6877 vde"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 vde clocks,
+	  which is used to control vde clock output.
+	  If you wish to use clock resources from the vde device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6877_VEN
+	tristate "Clock driver for MediaTek MT6877 ven"
+	depends on COMMON_CLK_MT6877
+	help
+	  This driver supports MediaTek MT6877 ven clocks,
+	  which is used to control ven clock output.
+	  If you wish to use clock resources from the ven device,
+	  say Y. Otherwise, say N.
+
 config COMMON_CLK_MT6886
 	tristate "Clock driver for MediaTek MT6886"
 	depends on ARM64 || COMPILE_TEST
