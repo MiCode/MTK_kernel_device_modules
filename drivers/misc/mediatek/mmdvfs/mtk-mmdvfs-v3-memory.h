@@ -10,6 +10,7 @@
 #if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 void *mmdvfs_get_mmup_base(phys_addr_t *pa);
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
+bool mmdvfs_get_mmup_enable(void);
 bool mmdvfs_is_init_done(void);
 #else
 static inline void *mmdvfs_get_mmup_base(phys_addr_t *pa)
@@ -24,10 +25,11 @@ static inline void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 		*pa = 0;
 	return NULL;
 }
+static inline bool mmdvfs_get_mmup_enable(void) { return false; }
 static inline bool mmdvfs_is_init_done(void) { return false; }
 #endif
 
-#define MEM_BASE		mmdvfs_get_mmup_base(NULL)
+#define MEM_BASE		(mmdvfs_get_mmup_enable() ? mmdvfs_get_mmup_base(NULL) : mmdvfs_get_vcp_base(NULL))
 #define MEM_VCP_BASE		mmdvfs_get_vcp_base(NULL)
 #define MEM_LOG_FLAG		(MEM_BASE + 0x0)
 #define MEM_FREERUN		(MEM_BASE + 0x4)
