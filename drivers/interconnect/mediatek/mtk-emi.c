@@ -88,6 +88,11 @@ struct mtk_icc_desc {
 	size_t num_nodes;
 };
 
+struct mtk_icc_provider {
+	struct icc_provider provider;
+	struct device *dev;
+};
+
 #define DEFINE_MNODE(_name, _id, _ep, ...)	\
 		static struct mtk_icc_node _name = {			\
 		.name = #_name,						\
@@ -220,6 +225,8 @@ static const struct of_device_id emi_icc_of_match[] = {
 	{ .compatible = "mediatek,mt6897-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6989-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6768-dvfsrc", .data = &mt6873_icc },
+	{ .compatible = "mediatek,mt6878-dvfsrc", .data = &mt6873_icc },
+	{ .compatible = "mediatek,mt6991-dvfsrc", .data = &mt6873_icc },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, emi_icc_of_match);
@@ -308,6 +315,7 @@ static int emi_icc_probe(struct platform_device *pdev)
 	struct icc_node *node;
 	struct icc_onecell_data *data;
 	struct icc_provider *provider;
+	struct mtk_icc_provider *mtk_icc;
 	struct mtk_icc_node **mnodes;
 	size_t num_nodes, i, j;
 	int ret;
@@ -323,15 +331,17 @@ static int emi_icc_probe(struct platform_device *pdev)
 	mnodes = desc->nodes;
 	num_nodes = desc->num_nodes;
 
-	provider = devm_kzalloc(dev, sizeof(*provider), GFP_KERNEL);
-	if (!provider)
+	mtk_icc = devm_kzalloc(dev, sizeof(*mtk_icc), GFP_KERNEL);
+	if (!mtk_icc)
 		return -ENOMEM;
 
+	mtk_icc->dev = dev;
 	data = devm_kzalloc(dev, struct_size(data, nodes, num_nodes),
 			GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
+	provider = &mtk_icc->provider;
 	provider->dev = pdev->dev.parent;
 	provider->set = emi_icc_set;
 	provider->aggregate = emi_icc_aggregate;
@@ -365,21 +375,21 @@ static int emi_icc_probe(struct platform_device *pdev)
 	if (ret)
 		goto err;
 
-	platform_set_drvdata(pdev, provider);
+	platform_set_drvdata(pdev, mtk_icc);
 
 	return 0;
 err:
-	icc_provider_deregister(provider);
 	icc_nodes_remove(provider);
 	return ret;
 }
 
 static int emi_icc_remove(struct platform_device *pdev)
 {
-	struct icc_provider *provider = platform_get_drvdata(pdev);
+	struct mtk_icc_provider *mtk_icc = platform_get_drvdata(pdev);
 
-	icc_provider_deregister(provider);
-	icc_nodes_remove(provider);
+	icc_provider_deregister(&mtk_icc->provider);
+	icc_nodes_remove(&mtk_icc->provider);
+
 	return 0;
 }
 
