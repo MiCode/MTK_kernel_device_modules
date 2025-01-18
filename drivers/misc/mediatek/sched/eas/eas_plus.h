@@ -134,16 +134,14 @@ extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 
 /* arch-related API */
 #define volt_diff  5000
-extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
-		int quant, int wl, unsigned long floor_freq);
 extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
 		int quant, int wl, unsigned long floor_freq);
 
 extern unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
 extern int dsu_freq_changed(void *private);
-extern void eenv_dsu_init(void *private, unsigned int wl,
-		int PERCORE_L3_BW, unsigned int cpumask_val,
+extern void eenv_dsu_init(void *private, int quant, unsigned int wl,
+		int PERCORE_L3_BW, unsigned int cpumask_val, unsigned long *pd_base_freq,
 		unsigned int *val, unsigned int *output);
 void init_percore_l3_bw(void);
 
