@@ -528,6 +528,12 @@ static int venc_set_param(unsigned long handle,
 				sizeof(struct mtk_venc_frame_qp_range));
 		}
 
+		if (enc_prm->nal_length) {
+			memcpy(&inst->vsi->config.nal_length,
+				enc_prm->nal_length,
+				sizeof(struct mtk_venc_nal_length));
+		}
+
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
