@@ -696,9 +696,15 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
-	unsigned int fmt = plane_state->pending.format;
+	struct drm_framebuffer *fb = plane_state->base.fb;
+	unsigned int fmt = 0;
 	unsigned int phy_id = 0;
 
+	//Don't use Pending.format here. At this time, Pending is still the previous old information.
+	if (IS_ERR_OR_NULL(fb) || IS_ERR_OR_NULL(fb->format))
+		return;
+
+	fmt = fb->format->format;
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
 		if (ext_lye_id == 0)

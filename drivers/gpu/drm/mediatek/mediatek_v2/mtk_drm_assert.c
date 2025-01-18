@@ -462,8 +462,10 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	disable_attached_layer(crtc, ovl_comp, layer_id, cmdq_handle);
 
 	priv = crtc->dev->dev_private;
-	if (priv && priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv && priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_crtc->usage_ovl_fmt[6] = 4;
 		layer_id = 5;
+	}
 	if (mtk_crtc->is_dual_pipe)
 		mtk_crtc_dual_layer_config(mtk_crtc, ovl_comp, layer_id, plane_state, cmdq_handle);
 	else

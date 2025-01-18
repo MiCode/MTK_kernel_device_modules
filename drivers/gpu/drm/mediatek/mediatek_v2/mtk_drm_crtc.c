@@ -4004,7 +4004,6 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
 			mtk_crtc->usage_ovl_fmt[3] = 4;
 
-	mtk_crtc = to_mtk_crtc(crtc);
 	if (mtk_crtc) {
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt = ", __func__);
 		for (int i = 0; i < OVL_LAYER_NR ; i++)
