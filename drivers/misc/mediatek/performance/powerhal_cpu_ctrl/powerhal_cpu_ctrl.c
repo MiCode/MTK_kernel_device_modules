@@ -1126,7 +1126,11 @@ static void __exit powerhal_cpu_ctrl_exit(void)
 	kvfree(freq_max_request);
 }
 
+#if IS_BUILTIN(CONFIG_MTK_PERF_COMMON)
+late_initcall(powerhal_cpu_ctrl_init);
+#else
 module_init(powerhal_cpu_ctrl_init);
+#endif
 module_exit(powerhal_cpu_ctrl_exit);
 
 MODULE_LICENSE("GPL");
