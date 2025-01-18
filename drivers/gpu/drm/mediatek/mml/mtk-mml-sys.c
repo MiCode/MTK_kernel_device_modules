@@ -2267,6 +2267,7 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 	if (!dev_get_drvdata(dev))
 		dev_set_drvdata(dev, sys);
 
+	sys->comp_cnt = comp_cnt;
 	ret = mml_comp_add(sys->comps[0].id, dev, comp_ops);
 	if (ret)
 		return ret;
@@ -2279,7 +2280,6 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 
 		mml_msg("component add id %u sub index %u", sys->comps[i].id, i);
 	}
-	sys->comp_cnt = comp_cnt;
 
 	/* add mmlsys component to match ddp master. */
 	/* unlike to mml, to ddp register all components in one binding. */
