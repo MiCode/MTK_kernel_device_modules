@@ -1450,62 +1450,69 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+/*
+ *              width
+ * *-------------------------------*
+ * | inxs                     inxe |
+ * | *---------------------------* |
+ * | |  inxs+lumax   inxe+lumax  | |
+ * | |  *---------------------*  | |
+ * | |  |outxs           outxe|  | |
+ * | |  |                     |  | |
+ * | |  *---------------------*  | |
+ * | *---------------------------* |
+ * *-------------------------------*
+ *   ^  ^                     ^  ^
+ *   |--|                     |--|
+ *   luma                    in_crop
+ *
+ * luma: crop offset
+ * in_crop: input size crop to output size
+ *
+ * width >= inxe - inxs + 1 = outxe - outxs + luma + incrop
+ */
 static void rrot_config_left(struct mml_tile_engine *tile)
 {
-	u32 in_xe = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2 - 1;
-	u32 out_w = round_up(tile->out.xe - tile->out.xs + 1, 2);
+	u32 in_w, out_w;
 
-	tile->out.xe = tile->out.xs + out_w / 2 - 1;
-	tile->in.xe = round_up(in_xe + 1, 32) - 1;
-	tile->out.xe += tile->in.xe - in_xe;
-
-	if (tile->in.xs & 0x1) {
-		tile->in.xs -= 1;
-		tile->out.xs += 1;
-	}
+	in_w = round_up(tile->in.xe - tile->in.xs + 1, 2);
+	tile->in.xe = round_up(tile->in.xs + in_w / 2, 32) - 1;
+	out_w = tile->in.xe - tile->in.xs + 1 - tile->luma.x;
+	tile->out.xe = tile->out.xs + out_w - 1;
 }
 
 static void rrot_config_right(struct mml_tile_engine *tile)
 {
-	u32 out_left = tile->in.xs & 0x1;
-	u32 in_xs = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2;
-	u32 out_w = round_up(tile->out.xe - tile->out.xs + 1, 2);
+	u32 in_right_crop, in_left_w, out_w;
 
-	tile->out.xs = tile->out.xs + out_w / 2;
+	in_right_crop = (tile->in.xe - tile->in.xs) - (tile->out.xe - tile->out.xs) - tile->luma.x;
+	in_left_w = round_up(tile->in.xe - tile->in.xs + 1, 2);
+	tile->in.xs = round_up(tile->in.xs + in_left_w / 2, 32);
+	out_w = tile->in.xe - tile->in.xs + 1 - in_right_crop;
+	tile->out.xs = tile->out.xe + 1 - out_w;
 	tile->luma.x = 0;
-	tile->in.xs = round_up(in_xs, 32);
-	tile->out.xs += tile->in.xs - in_xs;
-	tile->out.xe += out_left;
 }
 
 static void rrot_config_top(struct mml_tile_engine *tile)
 {
-	u32 in_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
-	u32 in_ye = tile->in.ys + in_h / 2 - 1;
-	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
+	u32 in_h, out_h;
 
-	tile->out.ye = tile->out.ys + out_h / 2 - 1;
-	tile->in.ye = round_up(in_ye + 1, 16) - 1;
-	tile->out.ye += tile->in.ye - in_ye;
-
-	if (tile->in.ys & 0x1) {
-		tile->in.ys -= 1;
-		tile->out.ys += 1;
-	}
+	in_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
+	tile->in.ye = round_up(tile->in.ys + in_h / 2, 16) - 1;
+	out_h = tile->in.ye - tile->in.ys + 1 - tile->luma.y;
+	tile->out.ye = tile->out.ys + out_h - 1;
 }
 
 static void rrot_config_bottom(struct mml_tile_engine *tile)
 {
-	u32 in_top_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
-	u32 out_top = tile->in.ys & 0x1;
-	u32 in_ys = tile->in.ys + in_top_h / 2;
-	u32 out_top_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
+	u32 in_bottom_crop, in_top_h, out_h;
 
-	tile->out.ys = tile->out.ys + out_top_h / 2;
+	in_bottom_crop = (tile->in.ye - tile->in.ys) - (tile->out.ye - tile->out.ys) - tile->luma.y;
+	in_top_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
+	tile->in.ys = round_up(tile->in.ys + in_top_h / 2, 16);
+	out_h = tile->in.ye - tile->in.ys + 1 - in_bottom_crop;
+	tile->out.ys = tile->out.ye + 1 - out_h;
 	tile->luma.y = 0;
-	tile->in.ys = round_up(in_ys, 16);
-	tile->out.ys += tile->in.ys - in_ys;
-	tile->out.ye += out_top;
 }
 
 static void rrot_calc_unbin(const struct mml_frame_config *cfg,
@@ -1552,12 +1559,13 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_tile_engine tile = *tile_merge;
 
-	rrot_msg("%s frame in crop %u %u %u %u in %u %u %u %u out %u %u %u %u",
+	rrot_msg("%s frame in crop %u %u %u %u in %u %u %u %u out %u %u %u %u ofst %u %u",
 		__func__,
 		cfg->frame_in_crop[0].r.left, cfg->frame_in_crop[0].r.top,
 		cfg->frame_in_crop[0].r.width, cfg->frame_in_crop[0].r.height,
 		tile.in.xs, tile.in.xe, tile.in.ys, tile.in.ye,
-		tile.out.xs, tile.out.xe, tile.out.ys, tile.out.ye);
+		tile.out.xs, tile.out.xe, tile.out.ys, tile.out.ye,
+		tile.luma.x, tile.luma.y);
 
 	if ((dest->rotate == MML_ROT_0 && dest->flip) ||
 		(dest->rotate == MML_ROT_180 && !dest->flip) ||
@@ -1599,6 +1607,20 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		swap(tile.out.xe, tile.out.ye);
 		swap(tile.luma.x, tile.luma.y);
 		swap(tile.luma.x_sub, tile.luma.y_sub);
+	}
+
+	if (MML_FMT_COMPRESS(cfg->info.src.format)) {
+		/* align 2 for rrot compress format constraint */
+		u32 in_xs = round_down(tile.in.xs, 2);
+		u32 in_ys = round_down(tile.in.ys, 2);
+
+		/* align (xs, ys) to block position and put crop value into luma,
+		 * to make rrot_config_X more easy to calculate position.
+		 */
+		tile.luma.x += tile.in.xs - in_xs;
+		tile.luma.y += tile.in.ys - in_ys;
+		tile.in.xs = in_xs;
+		tile.in.ys = in_ys;
 	}
 
 	if (cfg->rrot_dual) {
@@ -1945,15 +1967,26 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (plane > 2)
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
-	rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
-		rrot->pipe == 1 ? "_2nd" : "    ",
-		src_offset_wp, src_offset_hp,
-		mf_src_w, mf_src_h,
-		mf_offset_w_1, mf_offset_h_1,
-		mf_clip_w, mf_clip_h,
-		cache->max_size.width, cache->max_size.height,
-		cache->line_bubble, rrot_frm->datasize,
-		dest->rotate);
+	if (mf_clip_w + mf_offset_w_1 > mf_src_w || mf_clip_h + mf_offset_h_1 > mf_src_h)
+		mml_err("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
+			rrot->pipe == 1 ? "_2nd" : "    ",
+			src_offset_wp, src_offset_hp,
+			mf_src_w, mf_src_h,
+			mf_offset_w_1, mf_offset_h_1,
+			mf_clip_w, mf_clip_h,
+			cache->max_size.width, cache->max_size.height,
+			cache->line_bubble, rrot_frm->datasize,
+			dest->rotate);
+	else
+		rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
+			rrot->pipe == 1 ? "_2nd" : "    ",
+			src_offset_wp, src_offset_hp,
+			mf_src_w, mf_src_h,
+			mf_offset_w_1, mf_offset_h_1,
+			mf_clip_w, mf_clip_h,
+			cache->max_size.width, cache->max_size.height,
+			cache->line_bubble, rrot_frm->datasize,
+			dest->rotate);
 
 	return 0;
 }
