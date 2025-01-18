@@ -571,6 +571,7 @@ static void cpuqos_tracer(void)
 
 	if (!sram_base_addr) {
 		pr_info("Remap SLC SYSRAM failed\n");
+		return;
 	}
 
 	csize = ioread32(sram_base_addr + SLC_CPU_DEBUG1_R_OFS);
