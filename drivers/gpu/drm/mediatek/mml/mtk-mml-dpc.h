@@ -15,7 +15,7 @@
 extern int mml_dl_dpc;
 
 enum mml_dl_dpc_config {
-	MML_DLDPC_VOTE = 0x1,	/* vote dpc before write and after done */
+	MML_DPC_PKT_VOTE = 0x1,	/* vote dpc before write and after done */
 	MML_DPC_MUTEX_VOTE = 0x2,	/* do release and vote between sync disp */
 };
 
@@ -33,21 +33,17 @@ void mml_dpc_register(const struct dpc_funcs *funcs);
 
 void mml_dpc_enable(bool en);
 void mml_dpc_dc_force_enable(bool en);
-void mml_dpc_group_enable(const u16 group, bool en);
+void mml_dpc_group_enable(bool en);
+void mml_dpc_mtcmos_auto(u32 sysid, const bool en);
 void mml_dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 void mml_dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys,
 			 const u8 thread, const bool en);
-int mml_dpc_power_keep(void);
-void mml_dpc_power_release(void);
-void mml_dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys,
-			const u32 bw_in_mb,
-			bool force_keep);
-void mml_dpc_srt_bw_set(const enum mtk_dpc_subsys subsys,
-			const u32 bw_in_mb,
-			bool force_keep);
-void mml_dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys,
-			   const u8 level,
-			   bool force_keep,
-			   const u32 bw_in_mb);
+int mml_dpc_power_keep(u32 sysid);
+void mml_dpc_power_release(u32 sysid);
+int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt);
+void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt);
+void mml_dpc_hrt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep);
+void mml_dpc_srt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep);
+void mml_dpc_dvfs_both_set(u32 sysid, const u8 level, bool force_keep, const u32 bw_in_mb);
 
 #endif	/* __MTK_MML_H__ */

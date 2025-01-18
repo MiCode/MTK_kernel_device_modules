@@ -213,8 +213,6 @@ struct mml_sys {
 	u16 event_racing_pipe1_next;
 	u16 event_apu_start;
 
-	u32 vlp_base;
-
 #ifndef MML_FPGA
 	/* for config sspm aid */
 	void *mml_scmi;
@@ -323,17 +321,12 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #ifndef MML_FPGA
-	struct mml_sys *sys = comp_to_sys(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc && sys->vlp_base) {
-		if (mml_dl_dpc & MML_DLDPC_VOTE) {
-			cmdq_pkt_write(pkt, NULL, sys->vlp_base + VLP_VOTE_SET,
-				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-			cmdq_pkt_write(pkt, NULL, sys->vlp_base + VLP_VOTE_SET,
-				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-		}
+	if (cfg->dpc) {
+		if (mml_dl_dpc & MML_DPC_PKT_VOTE)
+			mml_dpc_power_keep_gce(comp->sysid, pkt);
 	}
 
 	if (mml_isdc(cfg->info.mode) && !mml_dev_get_couple_cnt(cfg->mml)) {
@@ -982,6 +975,20 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
+		    struct mml_comp_config *ccfg)
+{
+	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE)) {
+#ifndef MML_FPGA
+		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+		mml_dpc_power_release_gce(comp->sysid, pkt);
+#endif
+	}
+
+	return 0;
+}
+
 static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg)
 {
@@ -1007,6 +1014,7 @@ static const struct mml_comp_config_ops sys_config_ops = {
 	.tile = sys_config_tile,
 	.wait = sys_wait,
 	.post = sys_post,
+	.done = sys_done,
 	.repost = sys_repost,
 };
 
@@ -1102,6 +1110,48 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991 = {
 	.reset = &sys_reset_current,
 };
 
+s32 mml_sys_pw_enable(struct mml_comp *comp)
+{
+	int ret;
+	struct mml_sys *sys = comp_to_sys(comp);
+	bool pwon = comp->pw_cnt == 0;
+
+	if (pwon)
+		mml_dpc_mtcmos_auto(comp->sysid, false);
+	ret = mml_comp_pw_enable(comp);
+	if (!ret && pwon) {
+		ret = clk_prepare_enable(sys->clk_sys_26m);
+		if (ret)
+			mml_err("%s clk_sys_26m fail %d", __func__, ret);
+
+		/* default set to hw mode */
+		mml_dpc_mtcmos_auto(comp->sysid, true);
+	}
+
+	return ret;
+}
+
+s32 mml_sys_pw_disable(struct mml_comp *comp)
+{
+	int ret;
+	struct mml_sys *sys = comp_to_sys(comp);
+	bool pwoff = comp->pw_cnt == 1;
+
+	if (pwoff) {
+		clk_disable_unprepare(sys->clk_sys_26m);
+		mml_dpc_mtcmos_auto(comp->sysid, false);
+	}
+
+	ret = mml_comp_pw_disable(comp);
+
+	if (pwoff) {
+		/* default set to hw mode */
+		mml_dpc_mtcmos_auto(comp->sysid, true);
+	}
+
+	return ret;
+}
+
 s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
@@ -1180,10 +1230,6 @@ static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 #ifndef MML_FPGA
 		cmdq_util_set_mml_aid_selmode();
 #endif
-
-		ret = clk_prepare_enable(sys->clk_sys_26m);
-		if (ret)
-			mml_err("%s clk_sys_26m fail %d", __func__, ret);
 	}
 
 	return 0;
@@ -1213,11 +1259,6 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 	ret = mml_comp_clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
-	if (!comp->clk_cnt) {
-		struct mml_sys *sys = comp_to_sys(comp);
-
-		clk_disable_unprepare(sys->clk_sys_26m);
-	}
 	mml_mmp(clk_disable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return 0;
@@ -1232,8 +1273,8 @@ static const struct mml_comp_hw_ops sys_hw_ops = {
 
 /* scmi(sspm) config aid/uid support */
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
+	.pw_enable = mml_sys_pw_enable,
+	.pw_disable = mml_sys_pw_disable,
 	.mminfra_pw_enable = mml_mminfra_pw_enable,
 	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
@@ -2044,17 +2085,6 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		sys_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
 			__func__, task, ccfg->pipe, cache->line_bubble,
 			cache->max_size.width, cache->max_size.height, cache->max_pixel);
-
-		if (task->config->dpc && sys->vlp_base && (mml_dl_dpc & MML_DLDPC_VOTE)) {
-#ifndef MML_FPGA
-			struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-
-			cmdq_pkt_write(pkt, NULL, sys->vlp_base + VLP_VOTE_CLR,
-				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-			cmdq_pkt_write(pkt, NULL, sys->vlp_base + VLP_VOTE_CLR,
-				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
-#endif
-		}
 	}
 
 	return 0;
@@ -2295,10 +2325,6 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 	of_property_read_u16(dev->of_node, "event-apu-start",
 			     &sys->event_apu_start);
 	sys->apu_base = mml_get_node_base_pa(pdev, "apu", 0, &sys->apu_base_va);
-
-	of_property_read_u32(dev->of_node, "vlp-base", &sys->vlp_base);
-	if (sys->vlp_base)
-		mml_log("sys support vlp base %#010x", sys->vlp_base);
 
 	return 0;
 

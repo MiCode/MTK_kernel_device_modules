@@ -484,6 +484,12 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 		call_cfg_op(comp, post, task, &ccfg[i]);
 	}
 
+	/* leave/terminate this task */
+	for (i = path->node_cnt; i > 0; i--) {
+		comp = path->nodes[i-1].comp;
+		call_cfg_op(comp, done, task, &ccfg[i-1]);
+	}
+
 	return 0;
 
 err:
@@ -685,7 +691,9 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	mml_clock_lock(cfg->mml);
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
 	call_hw_op(path->mmlsys, pw_enable);
-	mml_dpc_exc_keep(cfg->mml);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, pw_enable);
+	mml_dpc_exc_keep_task(task, path);
 	mml_clock_unlock(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
@@ -694,9 +702,11 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	}
 
 	mml_clock_lock(cfg->mml);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, pw_disable);
 	call_hw_op(path->mmlsys, pw_disable);
 	call_hw_op(path->mmlsys, mminfra_pw_disable);
-	mml_dpc_exc_release(cfg->mml);
+	mml_dpc_exc_release_task(task, path);
 	mml_clock_unlock(cfg->mml);
 }
 
@@ -715,8 +725,7 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
 	mml_trace_ex_end();
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	if (path->mmlsys)
-		call_hw_op(path->mmlsys, pw_enable);
+	call_hw_op(path->mmlsys, pw_enable);
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_enable);
 	mml_trace_ex_end();
@@ -724,24 +733,24 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	if (cfg->info.mode == MML_MODE_RACING && cfg->dpc) {
 		/* keep and release pw off until next DT */
 		mml_msg_dpc("%s dpc exception flow for IR", __func__);
-		mml_dpc_exc_keep(cfg->mml);
-		mml_dpc_exc_release(cfg->mml);
-	} else if (cfg->info.mode == MML_MODE_MML_DECOUPLE) {
-		mml_msg_dpc("%s dpc exception flow enable for DC", __func__);
-		mml_dpc_exc_keep(cfg->mml);
-		mml_dpc_dc_enable(cfg->mml, true);
+		mml_dpc_exc_keep_task(task, path);
+		mml_dpc_exc_release_task(task, path);
+	} else if (mml_isdc(cfg->info.mode)) {
+		mml_msg_dpc("%s dpc exception flow enable for mode %u", __func__, cfg->info.mode);
+		mml_dpc_exc_keep_task(task, path);
+		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, true);
+		if (path->mmlsys2)
+			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, true);
 	} else if (!cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for IR/DL no dpc", __func__);
-		mml_dpc_exc_keep(cfg->mml);
+		mml_dpc_exc_keep_task(task, path);
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, 0, 1);
 
-	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_enable);
-	if (path->mutex)
-		call_hw_op(path->mutex, clk_enable);
+	call_hw_op(path->mmlsys, clk_enable);
+	call_hw_op(path->mutex, clk_enable);
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, clk_enable);
 	if (path->mutex2)
@@ -806,20 +815,11 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	}
 
 	if (path->mutex2)
-		call_hw_op(path->mutex2, clk_disable, task->config->dpc);
+		call_hw_op(path->mutex2, clk_disable, cfg->dpc);
 	if (path->mmlsys2)
-		call_hw_op(path->mmlsys2, clk_disable, task->config->dpc);
-	if (path->mutex)
-		call_hw_op(path->mutex, clk_disable, cfg->dpc);
-	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_disable, cfg->dpc);
-
-	if (cfg->dpc) {
-		/* set dpc total hrt/srt bw to 0 */
-		mml_msg("%s dpc total_bw peak_bw to 0", __func__);
-		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0, false);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0, false);
-	}
+		call_hw_op(path->mmlsys2, clk_disable, cfg->dpc);
+	call_hw_op(path->mutex, clk_disable, cfg->dpc);
+	call_hw_op(path->mmlsys, clk_disable, cfg->dpc);
 
 	mml_trace_ex_end();
 
@@ -827,7 +827,9 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	if (cfg->info.mode == MML_MODE_MML_DECOUPLE) {
 		/* must before pw_disable */
-		mml_dpc_dc_enable(cfg->mml, false);
+		if (path->mmlsys2)
+			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, false);
+		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, false);
 	}
 
 	/* no need exception flow for DL/IR with dpc until scenario out */
@@ -835,19 +837,18 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	pw_disable_exc = cfg->dpc && cur_task_cnt == 1;
 
 	if (pw_disable_exc)
-		mml_dpc_exc_keep(cfg->mml);
+		mml_dpc_exc_keep_task(task, path);
 
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_disable);
-	if (path->mmlsys)
-		call_hw_op(path->mmlsys, pw_disable);
+	call_hw_op(path->mmlsys, pw_disable);
 
 	if (pw_disable_exc)
-		mml_dpc_exc_release(cfg->mml);
+		mml_dpc_exc_release_task(task, path);
 
 	if (cfg->info.mode == MML_MODE_MML_DECOUPLE || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow disable for DC or IR/DL no dpc", __func__);
-		mml_dpc_exc_release(cfg->mml);
+		mml_dpc_exc_release_task(task, path);
 	}
 
 	mml_trace_ex_end();
@@ -871,24 +872,53 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u32 tput_up)
 {
-	const struct mml_topology_path *path = task->config->path[pipe];
-	struct mml_pipe_cache *cache = &task->config->cache[pipe];
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[pipe];
 	struct mml_comp *comp;
-	u32 i, total_bw = 0, peak_bw = 0;
+	u32 i;
+
+	memset(&task->total_bw[0], 0, sizeof(task->total_bw));
+	memset(&task->peak_bw[0], 0, sizeof(task->peak_bw));
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
 
-		total_bw += comp->cur_bw;
-		peak_bw += comp->cur_peak;
+		task->total_bw[comp->sysid] += comp->cur_bw;
+		task->peak_bw[comp->sysid] += comp->cur_peak;
+	}
+}
+
+static void mml_core_qos_update_dpc(struct mml_frame_config *cfg)
+{
+	struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
+	struct mml_task_pipe *task_pipe;
+	struct mml_task *task;
+	u32 total_bw[mml_max_sys] = {0}, peak_bw[mml_max_sys] = {0};
+	enum mml_sys_id sysid;
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
+		task_pipe = list_first_entry_or_null(&tp->path_clts[i].tasks,
+			typeof(*task_pipe), entry_clt);
+		if (!task_pipe)
+			continue;
+		task = task_pipe->task;
+
+		for (sysid = 0; sysid < mml_max_sys; sysid++) {
+			total_bw[sysid] += task->total_bw[sysid];
+			peak_bw[sysid] += task->peak_bw[sysid];
+		}
 	}
 
-	if (task->config->dpc) {
-		/* set dpc total hrt/srt bw */
-		mml_msg("%s dpc total_bw %d peak_bw %d", __func__, total_bw, peak_bw);
-		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, total_bw, false);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, peak_bw, false);
+	/* set dpc total hrt/srt bw for all sys */
+	for (sysid = 0; sysid < mml_max_sys; sysid++) {
+		if (!total_bw[sysid])
+			continue;
+		mml_msg("%s dpc sys %d total_bw %d peak_bw %d",
+			__func__, sysid, total_bw[sysid], peak_bw[sysid]);
+		mml_dpc_bw_update(cfg->mml, sysid, total_bw[sysid], peak_bw[sysid]);
 	}
 }
 
@@ -1085,6 +1115,10 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	if (task_pipe_tmp->task->config->info.dl_pos == MML_DL_POS_RIGHT)
 		tmp_pipe = 0;
 	mml_core_qos_set(task_pipe_tmp->task, tmp_pipe, throughput, tput_up);
+	if (cfg->dpc)
+		tp->dpc_qos_ref++;
+	if (tp->dpc_qos_ref)
+		mml_core_qos_update_dpc(cfg);
 
 	mml_trace_end();
 
@@ -1108,7 +1142,7 @@ done:
 
 static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 {
-	const struct mml_frame_config *cfg = task->config;
+	struct mml_frame_config *cfg = task->config;
 	struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
 	struct mml_path_client *path_clt = core_get_path_clt(task, pipe);
 	struct mml_task_pipe *task_pipe_cur, *task_pipe_tmp;
@@ -1219,6 +1253,12 @@ done:
 		mml_core_qos_set(task_pipe_cur->task, tmp_pipe, throughput, tput_up);
 		bandwidth = task_pipe_cur->bandwidth;
 	}
+
+	/* update/clear dpc bandwidth */
+	if (tp->dpc_qos_ref)
+		mml_core_qos_update_dpc(cfg);
+	if (cfg->dpc)
+		tp->dpc_qos_ref--;
 
 	mml_msg_qos("%s task dvfs end %s %s task %p throughput %u bandwidth %u pixel %u",
 		__func__, racing_mode ? "racing" : "update",

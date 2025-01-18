@@ -123,9 +123,12 @@ void mml_comp_qos_clear(struct mml_comp *comp, bool dpc);
 s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task);
 void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task);
 void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task);
-void mml_dpc_exc_keep(struct mml_dev *mml);
-void mml_dpc_exc_release(struct mml_dev *mml);
-void mml_dpc_dc_enable(struct mml_dev *mml, bool en);
+void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid);
+void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid);
+void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path *path);
+void mml_dpc_exc_release_task(struct mml_task *task, const struct mml_topology_path *path);
+void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool en);
+void mml_dpc_bw_update(struct mml_dev *mml, enum mml_sys_id sysid, u32 total_bw, u32 peak_bw);
 
 /*
  * mml_sram_get - get sram addr from slbc and power on

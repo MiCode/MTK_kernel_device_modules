@@ -108,9 +108,14 @@ module_param(mml_freq_for_tppa, int, 0644);
 struct mml_dpc {
 	atomic_t task_cnt;
 	atomic_t addon_task_cnt;
-	atomic_t exc_pw_cnt;
-	atomic_t dc_force_cnt;
-	struct clk *mmlsys_26m_clk;
+	atomic_t exc_pw_cnt[mml_max_sys];
+	atomic_t dc_force_cnt[mml_max_sys];
+
+	/* bandwidth cache */
+	struct {
+		u32 srt;
+		u32 hrt;
+	} bandwidth[mml_max_sys];
 };
 
 struct mml_sys_state {
@@ -1023,7 +1028,6 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 	struct mml_dev *mml = task->config->mml;
 	s32 cur_task_cnt = atomic_read(&mml->dpc.task_cnt);
 	s32 cur_addon_task_cnt = atomic_read(&mml->dpc.addon_task_cnt);
-	int ret;
 
 	if (addon_task)
 		cur_addon_task_cnt = atomic_inc_return(&mml->dpc.addon_task_cnt);
@@ -1037,16 +1041,11 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		call_hw_op(path->mmlsys, pw_enable);
-		if (mml->dpc.mmlsys_26m_clk) {
-			ret = clk_prepare_enable(mml->dpc.mmlsys_26m_clk);
-			if (ret)
-				mml_err("%s clk_prepare_enable fail %d",
-					__func__, ret);
-		}
-		mml_dpc_exc_keep(task->config->mml);
+		if (path->mmlsys2)
+			call_hw_op(path->mmlsys2, pw_enable);
+		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
-		mml_dpc_config(DPC_SUBSYS_MML1, true);
-		mml_dpc_exc_release(task->config->mml);
+		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);
 	}
@@ -1080,21 +1079,20 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
-		mml_dpc_exc_keep(task->config->mml);
+		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
-		mml_dpc_config(DPC_SUBSYS_MML1, false);
-		if (mml->dpc.mmlsys_26m_clk)
-			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
+		if (path->mmlsys2)
+			call_hw_op(path->mmlsys2, pw_disable);
 		call_hw_op(path->mmlsys, pw_disable);
-		mml_dpc_exc_release(task->config->mml);
+		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);
 	}
 }
 
-void mml_dpc_exc_keep(struct mml_dev *mml)
+void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid)
 {
-	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt);
+	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt[sysid]);
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 1, 0);
 
@@ -1106,12 +1104,12 @@ void mml_dpc_exc_keep(struct mml_dev *mml)
 	}
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_START, 1, 0);
-	mml_dpc_power_keep();
+	mml_dpc_power_keep(sysid);
 }
 
-void mml_dpc_exc_release(struct mml_dev *mml)
+void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid)
 {
-	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt);
+	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt[sysid]);
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0, 0);
 
@@ -1123,16 +1121,33 @@ void mml_dpc_exc_release(struct mml_dev *mml)
 	}
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_END, 0, 0);
-	mml_dpc_power_release();
+	mml_dpc_power_release(sysid);
 }
 
-void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
+void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path *path)
+{
+	struct mml_frame_config *cfg = task->config;
+
+	mml_dpc_exc_keep(cfg->mml, path->mmlsys->sysid);
+	if (path->mmlsys2)
+		mml_dpc_exc_keep(cfg->mml, path->mmlsys2->sysid);
+}
+
+void mml_dpc_exc_release_task(struct mml_task *task, const struct mml_topology_path *path)
+{
+	struct mml_frame_config *cfg = task->config;
+
+	if (path->mmlsys2)
+		mml_dpc_exc_release(cfg->mml, path->mmlsys2->sysid);
+	mml_dpc_exc_release(cfg->mml, path->mmlsys->sysid);
+}
+
+void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 {
 	s32 cur_dc_force_cnt;
 
-	if (en) {
-		cur_dc_force_cnt =
-			atomic_inc_return(&mml->dpc.dc_force_cnt);
+	if (dcen) {
+		cur_dc_force_cnt = atomic_inc_return(&mml->dpc.dc_force_cnt[sysid]);
 
 		if (cur_dc_force_cnt > 1)
 			return;
@@ -1141,8 +1156,7 @@ void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
 			return;
 		}
 	} else {
-		cur_dc_force_cnt =
-			atomic_dec_return(&mml->dpc.dc_force_cnt);
+		cur_dc_force_cnt = atomic_dec_return(&mml->dpc.dc_force_cnt[sysid]);
 
 		if (cur_dc_force_cnt > 0)
 			return;
@@ -1152,7 +1166,22 @@ void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
 		}
 	}
 
-	mml_dpc_dc_force_enable(en);
+	if (!(mml_dl_dpc & MML_DPC_PKT_VOTE))
+		mml_dpc_mtcmos_auto(sysid, !dcen);
+	mml_dpc_group_enable(!dcen);
+}
+
+void mml_dpc_bw_update(struct mml_dev *mml, enum mml_sys_id sysid, u32 total_bw, u32 peak_bw)
+{
+	if (mml->dpc.bandwidth[sysid].srt != total_bw) {
+		mml->dpc.bandwidth[sysid].srt = total_bw;
+		mml_dpc_srt_bw_set(sysid, total_bw, false);
+	}
+
+	if (mml->dpc.bandwidth[sysid].hrt != total_bw) {
+		mml->dpc.bandwidth[sysid].hrt = peak_bw;
+		mml_dpc_hrt_bw_set(sysid, peak_bw, false);
+	}
 }
 
 /* mml_calc_bw - calculate bandwidth by giving pixel and current throughput
@@ -2059,13 +2088,6 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->racing_en) {
 		mml_log("racing mode enable");
 		mml->dle_ctx = mml_dle_ctx_create(mml);
-	}
-
-	mml->dpc.mmlsys_26m_clk = devm_clk_get(dev, "mmlsys_26m_clk");
-	if (IS_ERR_OR_NULL(mml->dpc.mmlsys_26m_clk)) {
-		mml_err("%s get dpc 26m clk failed %d",
-			__func__, (int)PTR_ERR(mml->dpc.mmlsys_26m_clk));
-		mml->dpc.mmlsys_26m_clk = NULL;
 	}
 
 	/* register v4l2 device */

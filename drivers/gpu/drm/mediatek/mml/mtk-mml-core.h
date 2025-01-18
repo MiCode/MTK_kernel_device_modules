@@ -38,6 +38,7 @@ extern int mml_qos;
 extern int mml_qos_log;
 extern int mml_dpc_log;
 extern int mml_rrot_msg;
+extern int mml_dl_dpc;
 
 /* see mml_qos in mtk-mml-core.c */
 #define MML_QOS_EN_MASK			0x1
@@ -429,6 +430,7 @@ struct mml_topology_cache {
 	const struct mml_topology_ops *op;
 	struct mml_topology_path paths[MML_MAX_PATH_CACHES];
 	struct mml_path_client path_clts[MML_MAX_CMDQ_CLTS];
+	u32 dpc_qos_ref;
 	struct mutex qos_mutex;	/* lock to qos operation */
 	struct mml_sys_qos *qos;
 };
@@ -646,6 +648,8 @@ struct mml_task {
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
 	u32 wrot_crc_idx[MML_PIPE_CNT];
 	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
+	u32 total_bw[mml_max_sys];
+	u32 peak_bw[mml_max_sys];
 
 	/* mml context */
 	struct mml_ctx *ctx;
@@ -749,6 +753,8 @@ struct mml_comp_config_ops {
 	void (*reset)(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg);
 	s32 (*post)(struct mml_comp *comp, struct mml_task *task,
+		    struct mml_comp_config *ccfg);
+	s32 (*done)(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg);
 	/* op to make command in reuse case */
 	s32 (*reframe)(struct mml_comp *comp, struct mml_task *task,
