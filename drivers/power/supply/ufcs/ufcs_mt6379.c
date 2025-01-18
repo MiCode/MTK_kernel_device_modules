@@ -275,15 +275,7 @@ static irqreturn_t mt6379_ufcs_evt_handler(int irq, void *data)
 	struct regmap *regmap = udata->regmap;
 	struct ufcs_message msg;
 	u16 events, unmask = 0, mask = 0xffff;
-	u32 regval;
 	int ret;
-
-	ret = regmap_read(udata->regmap, MT6379_REG_IRQ_IND, &regval);
-	if (ret)
-		return IRQ_NONE;
-
-	if (!(regval & MT6379_INDM_UFCS))
-		return IRQ_HANDLED;
 
 	/* Mask UFCS irqs */
 	ret = regmap_raw_write(regmap, MT6379_REG_UFCS_MASK1, &mask, sizeof(mask));
@@ -292,6 +284,9 @@ static irqreturn_t mt6379_ufcs_evt_handler(int irq, void *data)
 
 	ret = regmap_raw_read(regmap, MT6379_REG_UFCS_FLAG1, &events, sizeof(events));
 	if (ret)
+		goto out;
+
+	if (!events)
 		goto out;
 
 	ret = regmap_raw_write(regmap, MT6379_REG_UFCS_FLAG1, &events, sizeof(events));
