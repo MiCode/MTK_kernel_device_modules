@@ -300,11 +300,13 @@ struct scp_wake_info {
 	unsigned int wakeup_pre_mask;
 	unsigned int not_in_sleep_mask;
 	unsigned int power_off_stat_mask;
+	unsigned int l2_slp_stat_mask;
 	unsigned int sleep_reg;
 	unsigned int sleep_stat;
 	int count;
 	bool is_initialized;
 	bool use_power_stat;
+	bool use_l2_slp_stat;
 	spinlock_t lock;
 };
 
@@ -313,6 +315,7 @@ static struct scp_wake_info scp_wake = {
 	.scp_power_stat_va = NULL,
 	.is_initialized = false,
 	.use_power_stat = false,
+	.use_l2_slp_stat = false,
 	.count = 0,
 };
 
@@ -341,6 +344,7 @@ struct mtk_i2c {
 	struct clk *clk_arb;		/* Arbitrator clock for i2c */
 	bool have_pmic;			/* can use i2c pins from PMIC */
 	bool use_push_pull;		/* IO config push-pull mode */
+	bool wake_scp_check_en;
 
 	u16 irq_stat;			/* interrupt status */
 	unsigned int clk_src_div;
@@ -1569,8 +1573,34 @@ int scp_wake_request(struct i2c_adapter *adap)
 			} while (delay);
 
 			if ((reg & scp_wake.not_in_sleep_mask) != 0) {
-				dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n", reg);
-				goto err;
+				writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)) |
+				(scp_wake.wakeup_mask | scp_wake.wakeup_pre_mask),
+				scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+
+				delay = SCP_WAKE_TIMEOUT;
+
+				do {
+					delay--;
+					reg = readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat);
+					if ((reg & scp_wake.l2_slp_stat_mask) == 0) {
+						writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
+						(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+						break;
+					}
+
+					udelay(20);
+				} while (delay);
+
+				if (!delay) {
+					dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n, count=%d",
+						reg, scp_wake.count);
+					goto err;
+				} else {
+					scp_wake.count++;
+					dev_dbg(i2c->dev, "scp wakeup use l2 success, sleep_stat=0x%x, count=%d\n",
+						reg, scp_wake.count);
+					ret = 0;
+				}
 			} else {
 				scp_wake.count++;
 				dev_dbg(i2c->dev, "scp wakeup success, sleep_stat=0x%x, count=%d\n",
@@ -2070,15 +2100,27 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 			    struct i2c_msg msgs[], int num)
 {
 	int ret;
+	int result;
 	int left_num = num;
 	int i, j;
 	u8 *dma_multi_wr_buf;
 	struct i2c_msg multi_msg[1];
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
+	bool need_release = false;
+
+	if ((i2c->wake_scp_check_en) && (scp_wake.count == 0)) {
+		dev_dbg(i2c->dev, "[Error]:user no wake before use\n");
+		ret = scp_wake_request(adap);
+		if (ret) {
+			dev_info(i2c->dev, "%s: scp_wake_request error\n", __func__);
+			return ret;
+		}
+		need_release = true;
+	}
 
 	ret = mtk_i2c_clock_enable(i2c);
 	if (ret)
-		return ret;
+		goto err_clk;
 
 	if ((i2c->ch_offset_i2c == i2c->i2c_offset_ap) && (i2c->timeout_flag == 2)) {
 		dev_info(i2c->dev,"%s: i2c->clk_flag=%d, i2c->timeout_flag=%d, i2c->complete_flag=%d\n",
@@ -2183,6 +2225,13 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 
 err_exit:
 	mtk_i2c_clock_disable(i2c);
+
+err_clk:
+	if (i2c->wake_scp_check_en && need_release) {
+		result = scp_wake_release(adap);
+		if (result)
+			dev_info(i2c->dev, "%s: scp_wake_release error\n", __func__);
+	}
 	return ret;
 }
 
@@ -2280,6 +2329,7 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 		of_property_read_bool(np, "mediatek,use-push-pull");
 	of_property_read_u32(np, "scl-gpio-id", &i2c->scl_gpio_id);
 	of_property_read_u32(np, "sda-gpio-id", &i2c->sda_gpio_id);
+	i2c->wake_scp_check_en = of_property_read_bool(np, "mediatek,wake-scp-check-en");
 
 	if ((i2c->ch_offset_i2c == i2c->i2c_offset_scp) && (!scp_wake.is_initialized)) {
 
@@ -2290,6 +2340,7 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 		spin_lock_init(&scp_wake.lock);
 
 		scp_wake.use_power_stat = of_property_read_bool(np, "mediatek,use-power-stat");
+		scp_wake.use_l2_slp_stat = of_property_read_bool(np, "mediatek,use-l2-slp-stat");
 
 		ret = of_property_read_u32(np, "vlpcfg-base", &temp);
 		if (ret < 0) {
@@ -2332,6 +2383,14 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 		if (ret < 0) {
 			dev_info(i2c->dev, "read scp_wake not_in_sleep_mask fail, ret = %d\n", ret);
 			return ret;
+		}
+
+		if (scp_wake.use_l2_slp_stat) {
+			ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat", 2, &scp_wake.l2_slp_stat_mask);
+			if (ret < 0) {
+				dev_info(i2c->dev, "read scp_wake l2_slp_stat_mask fail, ret = %d\n", ret);
+				return ret;
+			}
 		}
 
 		if (scp_wake.use_power_stat) {
