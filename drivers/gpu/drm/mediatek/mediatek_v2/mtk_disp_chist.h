@@ -33,8 +33,8 @@ struct mtk_disp_chist_primary {
 
 	atomic_t irq_event;
 	struct wait_queue_head event_wq;
-	spinlock_t power_lock;
-	spinlock_t data_lock;
+	struct mutex clk_lock;
+	struct mutex data_lock;
 	atomic_t clock_on;
 	bool need_restore;
 	unsigned int present_fence;

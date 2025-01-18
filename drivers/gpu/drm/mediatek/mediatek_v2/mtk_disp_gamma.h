@@ -8,17 +8,16 @@
 
 #include <linux/uaccess.h>
 #include <uapi/drm/mediatek_drm.h>
+
 struct gamma_color_protect {
 	unsigned int gamma_color_protect_support;
 	unsigned int gamma_color_protect_lsb;
 };
 
-struct gamma_color_protect_mode {
-	unsigned int red_support;
-	unsigned int green_support;
-	unsigned int blue_support;
-	unsigned int black_support;
-	unsigned int white_support;
+struct mtk_disp_gamma_sb_param {
+	unsigned int gain[3];
+	unsigned int bl;
+	unsigned int gain_range;
 };
 
 struct mtk_disp_gamma_data {
@@ -36,12 +35,6 @@ struct mtk_disp_gamma_tile_overhead_v {
 	unsigned int comp_overhead_v;
 };
 
-struct mtk_disp_gamma_sb_param {
-	unsigned int gain[3];
-	unsigned int bl;
-	unsigned int gain_range;
-};
-
 struct mtk_disp_gamma_primary {
 	struct mtk_disp_gamma_sb_param sb_param;
 	struct gamma_color_protect color_protect;
@@ -49,12 +42,8 @@ struct mtk_disp_gamma_primary {
 	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut;
 
 	atomic_t irq_event;
-
-	struct mutex power_lock;
-	/* lock for hw reg & related data, inner lock of sram_lock/crtc_lock */
-	struct mutex global_lock;
-	/* lock for sram ops and data, outer lock of global_lock/crtc_lock */
-	struct mutex sram_lock;
+	struct mutex clk_lock;
+	struct mutex data_lock;
 	struct cmdq_pkt *sram_pkt;
 	struct wakeup_source *gamma_wake_lock;
 
@@ -91,9 +80,6 @@ static inline struct mtk_disp_gamma *comp_to_gamma(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_gamma, ddp_comp);
 }
-
-
-#define GAMMA_ENTRY(r10, g10, b10) (((r10) << 20) | ((g10) << 10) | (b10))
 
 void disp_gamma_get_gain_from_aal(struct mtk_ddp_comp *comp,
 	unsigned int gain[3], unsigned int bl, void *param);

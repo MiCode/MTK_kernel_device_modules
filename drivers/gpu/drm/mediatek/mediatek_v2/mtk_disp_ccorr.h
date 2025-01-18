@@ -48,14 +48,13 @@ struct mtk_disp_ccorr_primary {
 	int disp_ccorr_without_gamma;
 	int disp_ccorr_temp_linear;
 	wait_queue_head_t ccorr_get_irq_wq;
-	spinlock_t ccorr_clock_lock;
 	atomic_t ccorr_get_irq;
-	spinlock_t pq_bl_change_lock;
 	int old_pq_backlight;
 	int pq_backlight;
 	int pq_backlight_db;
 	atomic_t ccorr_is_init_valid;
-	struct mutex ccorr_global_lock;
+	struct mutex data_lock;
+	struct mutex bl_lock;
 	unsigned int ccorr_hw_valid;
 };
 

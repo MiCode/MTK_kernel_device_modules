@@ -873,7 +873,7 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 		} else
 			aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
 		read_success = disp_color_reg_get(aal_data->comp_color,
-				DISP_COLOR_TWO_D_W1_RESULT,
+				"disp_color_two_d_w1_result",
 				&aal_data->primary_data->hist.aal0_colorHist);
 
 		// for Display Clarity
@@ -913,7 +913,7 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 		} else
 			aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
 		read_success = disp_color_reg_get(aal_data->comp_color,
-				DISP_COLOR_TWO_D_W1_RESULT,
+				"disp_color_two_d_w1_result",
 				&aal_data->primary_data->hist.aal1_colorHist);
 
 		// for Display Clarity
@@ -1794,7 +1794,9 @@ static void disp_aal_read_ghist_cmdq(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 		aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
 	/* read color hist */
 	offset = aal_data->cmdq_dma_map[COLOR_HIST].start;
-	cmdq_pkt_mem_move(pkt, NULL, color_pa + DISP_COLOR_TWO_D_W1_RESULT, aal_data->cmdq_dma_buf.pa + offset, var1);
+	cmdq_pkt_mem_move(pkt, NULL,
+		color_pa + disp_color_get_reg_offset("disp_color_two_d_w1_result"),
+		aal_data->cmdq_dma_buf.pa + offset, var1);
 	if (aal_data->primary_data->disp_clarity_support) {
 		/* read dmdp clarity */
 		offset = aal_data->cmdq_dma_map[DMDP_AAL_CLARITY].start;
@@ -1813,8 +1815,6 @@ static void disp_aal_read_ghist_cmdq(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	cmdq_pkt_write(pkt, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc, slot_done), 1, ~0);
 	GCE_FI;
 }
-
-
 
 static void disp_aal_read_lhist_cmdq(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt)
 {

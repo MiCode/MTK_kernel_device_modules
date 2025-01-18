@@ -390,7 +390,8 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 		if (companion_pa) {
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 						companion_pa, wParams->val, wParams->mask);
-			if (index_table == TUNING_DISP_COLOR && offset == DISP_COLOR_POS_MAIN) {
+			if (index_table == TUNING_DISP_COLOR &&
+					offset == disp_color_get_reg_offset("disp_color_pos_main")) {
 				struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 						mtk_crtc, MTK_DISP_COLOR, 0);
 
