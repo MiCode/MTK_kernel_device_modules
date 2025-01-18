@@ -7971,13 +7971,14 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 					"%s(), adc_l calibration fail, resetting...\n",
 					__func__);
 				/* Disable audio L ADC */
-				regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON1,
-						   RG_AUDADCLPWRUP_MASK_SFT,
-						   0x0 << RG_AUDADCLPWRUP_SFT);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON0, 0x0);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON1, 0x0);
 				/* Enable audio L ADC */
-				regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON1,
-						   RG_AUDADCLPWRUP_MASK_SFT,
-						   0x1 << RG_AUDADCLPWRUP_SFT);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON0, 0x4);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON0, 0x6);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON0, 0x7);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON1, 0x40);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON1, 0x50);
 				usleep_range(500, 520);
 				regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON32,
 					    &rc_tune);
@@ -8418,13 +8419,14 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 					 "%s(), adc_r calibration fail, resetting...\n",
 					 __func__);
 				/* Disable audio R ADC */
-				regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON3,
-						   RG_AUDADCRPWRUP_MASK_SFT,
-						   0x0 << RG_AUDADCRPWRUP_SFT);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON2, 0x0);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON3, 0x0);
 				/* Enable audio R ADC */
-				regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON3,
-						   RG_AUDADCRPWRUP_MASK_SFT,
-						   0x1 << RG_AUDADCRPWRUP_SFT);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON2, 0x84);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON2, 0x86);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON2, 0x87);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON3, 0x40);
+				regmap_write(priv->regmap, MT6681_AUDENC_PMU_CON3, 0x50);
 				usleep_range(500, 520);
 				regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON33,
 					    &rc_tune);
