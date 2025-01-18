@@ -96,8 +96,6 @@ struct mtk_disp_color_primary {
 	struct DISPLAY_COLOR_REG color_reg;
 	int color_reg_valid;
 	unsigned int width;
-	//for DISP_COLOR_TUNING
-	bool legacy_color_cust;
 	struct MDP_COLOR_CAP mdp_color_cap;
 	struct DISPLAY_PQ_T color_index;
 	struct DISP_AAL_DRECOLOR_PARAM drecolor_param;

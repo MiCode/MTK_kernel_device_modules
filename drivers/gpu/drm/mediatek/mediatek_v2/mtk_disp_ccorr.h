@@ -33,10 +33,6 @@ struct mtk_disp_ccorr_primary {
 	int ccorr_fullbit_mask;
 	int ccorr_offset_mask;
 	unsigned int disp_ccorr_number;
-	unsigned int disp_ccorr_linear;
-	bool disp_aosp_ccorr;
-	bool prim_ccorr_force_linear;
-	bool prim_ccorr_pq_nonlinear;
 	bool sbd_on;
 	atomic_t ccorr_irq_en;
 	struct DRM_DISP_CCORR_COEF_T *disp_ccorr_coef;
@@ -45,7 +41,6 @@ struct mtk_disp_ccorr_primary {
 	int rgb_matrix[3][3];
 	struct DRM_DISP_CCORR_COEF_T multiply_matrix_coef;
 	int disp_ccorr_without_gamma;
-	int disp_ccorr_temp_linear;
 	wait_queue_head_t ccorr_get_irq_wq;
 	atomic_t ccorr_get_irq;
 	int old_pq_backlight;
@@ -79,11 +74,11 @@ inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp);
 void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear);
+int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, int r, int g, int b);
 int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_ccorr_set_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps);
 void disp_ccorr_regdump(struct mtk_ddp_comp *comp);

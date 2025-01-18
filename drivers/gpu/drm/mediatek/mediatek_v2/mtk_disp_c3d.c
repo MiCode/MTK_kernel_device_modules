@@ -42,6 +42,9 @@
 #define C3D_Y2R_09                         (0x0E8)
 /* ----------------------------------------------- */
 
+#define C3D_RELAY_MODE BIT(0)
+#define C3D_ENGINE_EN BIT(1)
+
 #define C3D_U32_PTR(x) ((unsigned int *)(unsigned long)(x))
 
 #define C3D_REG_3(v0, off0, v1, off1, v2, off2) \
@@ -556,8 +559,6 @@ static int disp_c3d_set_1dlut(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + C3D_C1D_030_031,
 				C3D_REG_2(lut1d[31], 0, lut1d[30], 16), ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + C3D_CFG, 0x1 << 1, 0x1 << 1);
 	}
 
 	if (lock)
@@ -602,7 +603,7 @@ static int disp_c3d_write_lut_to_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + C3D_CFG, 0x1 << 1, 0x1 << 1);
+		comp->regs_pa + C3D_CFG, C3D_ENGINE_EN, C3D_ENGINE_EN);
 
 	disp_c3d_write_1dlut_to_reg(comp, handle, c3d_lut);
 
@@ -632,10 +633,10 @@ static int disp_c3d_set_lut(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + C3D_CFG, 0x10, 0x11);
+				comp->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && comp_c3d1)
 				cmdq_pkt_write(handle, comp_c3d1->cmdq_base,
-					comp_c3d1->regs_pa + C3D_CFG, 0x10, 0x11);
+					comp_c3d1->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
 			DDPINFO("%s, set c3d unrelay\n", __func__);
 		}
 	}
@@ -658,10 +659,10 @@ static void disp_c3d_bypass(struct mtk_ddp_comp *comp, int bypass,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + C3D_CFG, 0x1, 0x1);
+				comp->regs_pa + C3D_CFG, C3D_RELAY_MODE, C3D_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + C3D_CFG, 0x1, 0x1);
+					companion->regs_pa + C3D_CFG, C3D_RELAY_MODE, C3D_RELAY_MODE);
 		}
 		primary_data->relay_state |= (1 << caller);
 	} else {
@@ -669,10 +670,10 @@ static void disp_c3d_bypass(struct mtk_ddp_comp *comp, int bypass,
 			primary_data->relay_state &= ~(1 << caller);
 			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + C3D_CFG, 0x0, 0x1);
+					comp->regs_pa + C3D_CFG, 0x0, C3D_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && companion)
 					cmdq_pkt_write(handle, companion->cmdq_base,
-						companion->regs_pa + C3D_CFG, 0x0, 0x1);
+						companion->regs_pa + C3D_CFG, 0x0, C3D_RELAY_MODE);
 			}
 		}
 	}
@@ -792,7 +793,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 	mutex_lock(&primary_data->data_lock);
 	if (primary_data->relay_state != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x11, 0x11);
+			comp->regs_pa + C3D_CFG, 0x3, C3D_ENGINE_EN | C3D_RELAY_MODE);
 		mutex_unlock(&primary_data->data_lock);
 		return;
 	}
@@ -802,7 +803,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 	disp_c3d_write_sram(comp, C3D_RESUME);
 	atomic_set(&c3d_data->c3d_force_sram_apb, 0);
 	disp_c3d_set_1dlut(comp, handle, 0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_CFG, 0x10, 0x11);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_CFG, 0x2, C3D_ENGINE_EN | C3D_RELAY_MODE);
 	mutex_unlock(&primary_data->data_lock);
 }
 

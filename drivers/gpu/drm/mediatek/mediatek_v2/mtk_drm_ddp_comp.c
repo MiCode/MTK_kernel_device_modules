@@ -1077,6 +1077,24 @@ int mtk_ddp_comp_get_alias(enum mtk_ddp_comp_id comp_id)
 	return mtk_ddp_matches[comp_id].alias_id;
 }
 
+int mtk_ddp_comp_get_total_num_by_type(struct mtk_drm_crtc *mtk_crtc,
+	enum mtk_ddp_comp_type comp_type)
+{
+	struct mtk_ddp_comp *comp;
+	int i, j, _num = 0;
+	unsigned int index;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(comp->id) == comp_type)
+			_num++;
+	}
+
+	index = drm_crtc_index(&mtk_crtc->base);
+	DDPDBG("%s crtc %d, comp type %d total_num %d\n", __func__, index, comp_type, _num);
+
+	return _num;
+}
+
 static bool mtk_drm_find_comp_in_ddp(struct mtk_ddp_comp ddp_comp,
 				     const struct mtk_crtc_path_data *path_data)
 {

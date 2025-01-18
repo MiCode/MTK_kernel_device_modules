@@ -55,7 +55,7 @@
 #define    GAMMA_MUT_EN       BIT(3)
 #define    GAMMA_LUT_TYPE     BIT(2)
 #define    GAMMA_LUT_EN       BIT(1)
-#define    GAMMA_RELAYMODE    BIT(0)
+#define    GAMMA_RELAY_MODE    BIT(0)
 
 #define DISP_GAMMA_BLOCK_SIZE 256
 #define DISP_GAMMA_GAIN_SIZE 3
@@ -278,10 +278,10 @@ static void disp_gamma_cfg_set_lut(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 		primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+				comp->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+					companion->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 			DDPINFO("%s, set gamma unrelay\n", __func__);
 		}
 	}
@@ -640,7 +640,7 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
 	if (primary_data->relay_state != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAYMODE, GAMMA_RELAYMODE);
+			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
 		return;
 	}
 
@@ -690,10 +690,11 @@ static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_GAMMA_CFG, 0x1, 0x1);
+				comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && comp_gamma1)
 				cmdq_pkt_write(handle, comp_gamma1->cmdq_base,
-					comp_gamma1->regs_pa + DISP_GAMMA_CFG, 0x1, 0x1);
+					comp_gamma1->regs_pa + DISP_GAMMA_CFG,
+					GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
 		}
 		primary_data->relay_state |= (1 << caller);
 	} else {
@@ -701,10 +702,10 @@ static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 			primary_data->relay_state &= ~(1 << caller);
 			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+					comp->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && comp_gamma1)
 					cmdq_pkt_write(handle, comp_gamma1->cmdq_base,
-						comp_gamma1->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+						comp_gamma1->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 			}
 		}
 	}
@@ -908,10 +909,10 @@ static int disp_gamma_set_gammalut(struct mtk_ddp_comp *comp,
 		gamma_data->primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
 		if (gamma_data->primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+				comp->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 			if (comp->mtk_crtc->is_dual_pipe && companion)
 				cmdq_pkt_write(handle, companion->cmdq_base,
-					companion->regs_pa + DISP_GAMMA_CFG, 0x0, 0x1);
+					companion->regs_pa + DISP_GAMMA_CFG, 0x0, GAMMA_RELAY_MODE);
 			DDPINFO("%s, set gamma unrelay\n", __func__);
 		}
 	}
