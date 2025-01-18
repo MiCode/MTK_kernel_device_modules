@@ -105,6 +105,26 @@ static unsigned long msec_low(unsigned long long nsec)
 	return do_div(nsec, 1000000);
 }
 
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+static int reg_cnt;
+static void (*p_bootprof_write_log_cb)(char *str, size_t str_len);
+
+void register_bootprof_write_log(void (*fn)(char *str, size_t str_len))
+{
+	if (!enabled || fn == NULL) {
+		p_bootprof_write_log_cb = NULL;
+		return;
+	}
+	if (reg_cnt != 0)
+		return;
+
+	reg_cnt++;
+	p_bootprof_write_log_cb = fn;
+	pr_info("[BOOTPROF] %ps register func\n", fn);
+}
+EXPORT_SYMBOL_GPL(register_bootprof_write_log);
+#endif
+
 void bootprof_log_boot(char *str)
 {
 	unsigned long long ts;
@@ -482,6 +502,10 @@ mt_bootprof_write(struct file *filp, const char *ubuf, size_t cnt, loff_t *data)
 
 	buf[copy_size] = 0;
 	bootprof_log_boot(buf);
+#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+	if (p_bootprof_write_log_cb != NULL && enabled)
+		p_bootprof_write_log_cb(buf, copy_size);
+#endif
 
 	return cnt;
 }

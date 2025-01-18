@@ -25,3 +25,15 @@ config MTK_DRAM_LOG_STORE_SIZE
 	  the default value is 1K.
 	  should equal with preloader and lk setting.
 	  need discussion with ramconsole owner.
+
+config MTK_LOG_STORE_BOOTPROF
+	bool "write to emmc enable"
+	default n
+	depends on MTK_DRAM_LOG_STORE
+	help
+	  The config item MTK_LOG_STORE_BOOTPROF is
+	  used to control the write log expdb partition.
+	  which is a debugging feature to record the
+	  bootprof log and kernel log to the partition.
+
+	  Enable this to get the bootprof log.

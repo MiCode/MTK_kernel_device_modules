@@ -11,5 +11,6 @@
 # GNU General Public License for more details.
 #
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
 
 obj-$(CONFIG_MTK_DRAM_LOG_STORE) += log_store.o
