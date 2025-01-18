@@ -1802,6 +1802,7 @@ static const struct proc_ops mmqos_debug_fops = {
 	.proc_release = single_release,
 };
 
+static bool mmqos_met_not_freerun;
 int mtk_mmqos_probe(struct platform_device *pdev)
 {
 	struct mtk_mmqos *mmqos;
@@ -2105,6 +2106,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 	of_property_read_u32(pdev->dev.of_node, "r-hrt-ostdl", &r_hrt_ostdl);
 	of_property_read_u32(pdev->dev.of_node, "w-hrt-ostdl", &w_hrt_ostdl);
+
+	mmqos_met_not_freerun = of_property_read_bool(pdev->dev.of_node, "mediatek,mmqos-met-not-freerun");
+	pr_notice("[mmqos] mediatek,mmqos-met-not-freerun: %d\n", mmqos_met_not_freerun);
 	MMQOS_DBG("hrt ostdl policy, read:%d, write:%d", r_hrt_ostdl, w_hrt_ostdl);
 
 	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
@@ -2591,6 +2595,11 @@ static int mmqos_debug_set_ftrace(const char *val,
 	static struct task_struct *kthr;
 	u32 ena = 0;
 	int ret;
+
+	if (mmqos_met_not_freerun) {
+		MMQOS_DBG("mmqos met not freerun");
+		return 0;
+	}
 
 	if (!gmmqos) {
 		ftrace_ena = false;
