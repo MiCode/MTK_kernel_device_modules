@@ -24,6 +24,7 @@
 #include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -40,6 +41,9 @@
 #include <linux/kfifo.h>
 
 #include "cqhci.h"
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)
+#include "mtk-mmc-swcqhci.h"
+#endif
 
 #define CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD	(1 << 31)
 
@@ -333,6 +337,16 @@
 #define CQHCI_RD_CMD_WND_SEL	  (0x1 << 14) /* RW */
 #define CQHCI_WR_CMD_WND_SEL	  (0x1 << 15) /* RW */
 
+/*
+ * EMMC51_CFG0 mask, host use these registers bits
+ * to send class11(CMDQ) cmds during data transmission.
+ */
+#define EMMC51_CFG_CMDQEN          (0x1    <<  0)
+#define EMMC51_CFG_NUM             (0x3F   <<  1)
+#define EMMC51_CFG_RSPTYPE         (0x7    <<  7)
+#define EMMC51_CFG_DTYPE           (0x3    << 10)
+#define EMMC51_CMDQ_MASK           (0xFFF)
+
 /* EMMC_TOP_CONTROL mask */
 #define PAD_RXDLY_SEL           (0x1 << 0)      /* RW */
 #define DELAY_EN                (0x1 << 1)      /* RW */
@@ -572,22 +586,37 @@ struct msdc_host {
 	struct msdc_tune_para def_tune_para; /* default tune setting */
 	struct msdc_tune_para saved_tune_para; /* tune result of CMD21/CMD19 */
 	struct cqhci_host *cq_host;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)
+	struct swcq_host *swcq_host;
+#endif
 	struct reg_oc_msdc sd_oc;
 	int	id;		/* host id */
 	int autok_vcore; /* vcore value when executing autok */
+	bool is_skip_hs200_tune;
 	u8 card_inserted;  /* the status of card inserted */
 	bool block_bad_card;
 	bool need_tune;
 	int retune_times;
 	int power_cycle_cnt;
+	u32 data_timeout_cont; /* data continuous timeout */
 	u32 req_vcore;
 	u32 ocr_volt;
 	struct regulator *dvfsrc_vcore_power;
+	bool use_cmd_intr;
+	bool sdcard_aggressive_pm;
 	struct pm_qos_request pm_qos_req;
+	u8 tf_ver; /* save trust frameware version. e.g: atf, tf-a */
 	struct err_info_bag err_bag;
 	atomic_t err_dropped;
 	spinlock_t err_info_lock;
 	DECLARE_KFIFO(err_info_bag_ring, struct err_info_bag, ERR_INFO_BAG_RING_SIZE);
 };
+
+/*--------------------------------------------------------------------------*/
+/* SDCard error handler                                                     */
+/*--------------------------------------------------------------------------*/
+/* if continuous data timeout reach the limit */
+/* driver will force remove card */
+#define MSDC_MAX_DATA_TIMEOUT_CONTINUOUS (100)
 
 #endif  /* _MTK_MMC_H_ */

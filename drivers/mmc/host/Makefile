@@ -18,3 +18,6 @@ obj-$(CONFIG_DEVICE_MODULES_MMC_MTK_MMC_WP)		+= mtk-mmc-wp.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_CQHCI)			+= cqhci.o
 cqhci-y					+= cqhci-core.o
 cqhci-$(CONFIG_MMC_CRYPTO)		+= cqhci-crypto.o
+obj-$(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)		+= mtk-mmc-swcqhci.o
+mtk-mmc-swcqhci-y			+= mtk-mmc-swcqhci-core.o
+mtk-mmc-swcqhci-$(CONFIG_MMC_CRYPTO)	+= mtk-mmc-swcqhci-crypto.o
