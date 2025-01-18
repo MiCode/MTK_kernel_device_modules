@@ -6197,7 +6197,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_GCE2>,
 			<&infracfg_ao_clk CLK_IFRAO_GCE_26M>;
 		clock-names = "MDP_RDMA0", "GCE", "GCE_TIMER";
-		mmsys_config = <&mdpsys_config>;
+		mmsys-config = <&mdpsys_config>;
 		thread-count = <24>;
 		mm-mutex   = <&mdp_mutex>;
 		mboxes =
