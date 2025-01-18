@@ -1,4 +1,6 @@
-load("//kernel-6.1:modules.bzl", "COMMON_GKI_MODULES_LIST")
+load("//kernel-mainline:modules.bzl", "get_gki_modules_list")
+
+COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64")
 
 mgk_module_outs = COMMON_GKI_MODULES_LIST + [
     "drivers/firmware/arm_ffa/ffa-module.ko",
@@ -16,8 +18,6 @@ mgk_module_outs = COMMON_GKI_MODULES_LIST + [
     "drivers/power/reset/syscon-reboot-mode.ko",
     "drivers/tee/tee.ko",
     "drivers/thermal/thermal-generic-adc.ko",
-    "net/wireless/cfg80211.ko",
-    "net/mac80211/mac80211.ko",
 ]
 
 mgk_module_eng_outs = [

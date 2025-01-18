@@ -16,7 +16,7 @@ for fragment in ${BUILD_CONFIG_FRAGMENTS}; do
 done
 set +a
 
-KLEAF_SUPPORTED_PROJECTS="mgk_64_k61"
+KLEAF_SUPPORTED_PROJECTS="mgk_64_kmainline"
 
 if [ -z ${PROJECT} ]
 then
