@@ -103,7 +103,7 @@ aliases {
 			required-opps = <&dvfsrc_freq_opp0>;
 
 			fbt_cpu_mask = <255 192 63 63>;
-			sbe_resceue_enable = <1>;
+			sbe-resceue-enable = <1>;
 		};
 
 		disp_pwm: disp_pwm0@1100e000 {
