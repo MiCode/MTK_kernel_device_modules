@@ -116,12 +116,12 @@
 
 /* Thermal VPU throttling support */
 #if IS_ENABLED(CONFIG_MTK_APUSYS_VPU)
-// #define THERMAL_VPU_SUPPORT
+#define THERMAL_VPU_SUPPORT
 #endif
 
 /* Thermal MDLA throttling support */
 #if IS_ENABLED(CONFIG_MTK_APUSYS_MDLA_SUPPORT)
-// #define THERMAL_MDLA_SUPPORT
+#define THERMAL_MDLA_SUPPORT
 #endif
 
 /* EARA_Thermal power budget allocation support*/

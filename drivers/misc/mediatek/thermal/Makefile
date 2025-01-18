@@ -26,8 +26,12 @@ ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/in
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/common/inc/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
 
+ifneq ($(strip $(CONFIG_MTK_APUSYS_SUPPORT)),)
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/2.5/inc/
+else
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vpu/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdla/1.0
+endif
 
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/include/
 
