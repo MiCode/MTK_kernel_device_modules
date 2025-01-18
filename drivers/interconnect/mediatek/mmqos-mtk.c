@@ -1129,6 +1129,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_1_5))
 					value = SHIFT_ROUND(value * 3, 1);
 				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_2) ||
+					(larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_1) ||
 					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_2))
 					value = value * 2;
 			}
