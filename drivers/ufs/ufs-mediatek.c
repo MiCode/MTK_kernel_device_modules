@@ -1555,6 +1555,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	const struct of_device_id *id;
 	struct device *dev = hba->dev;
 	struct ufs_mtk_host *host;
+	//struct Scsi_Host *shost = hba->host;
 	int err = 0;
 	struct arm_smccc_res res;
 	struct tag_ufs *atag;
@@ -1612,6 +1613,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
+
+	/* Set runtime pm delay to replace default */
+	//shost->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
 
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 
@@ -2584,9 +2588,6 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 {
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u16 mid = dev_info->wmanufacturerid;
-
-	/* Replace default rpm_autosuspend_delay */
-	//hba->host->hostt->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
 
 	if (is_mcq_enabled(hba)) {
 		/* Use none scheduler for mcq */
