@@ -1324,7 +1324,7 @@ int mbraink_netlink_send_msg(const char *msg)
 		genlmsg_end(skb, msg_head);
 		ret = genlmsg_unicast(&init_net, skb, mbraink_priv.client_pid);
 		if (ret < 0)
-			pr_notice("[%s] nla_put fail, ret=[%d]\n", __func__, ret);
+			pr_notice("[%s] genlmsg_unicast fail, ret=[%d]\n", __func__, ret);
 	}
 	return ret;
 }
