@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -32,4 +32,6 @@ else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
 mediatek_static_power-y += mtk_static_power_6877.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 mediatek_static_power-y += mtk_static_power_6893.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
+mediatek_static_power-y += mtk_static_power_6781.o
 endif

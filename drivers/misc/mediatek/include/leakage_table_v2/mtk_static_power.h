@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2017 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #ifndef __MTK_STATIC_POWER_H__
@@ -21,6 +21,8 @@
 #include "mtk_static_power_6877.h"
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 #include "mtk_static_power_6893.h"
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+#include "mtk_static_power_6781.h"
 #else
 #include "mtk_static_power_plat.h"
 #endif
