@@ -59,7 +59,7 @@
 #include <linux/types.h>
 
 #include "mtk-smmu-v3.h"
-#include "smmu_secure.h"
+#include "mtk-iommu-util.h"
 
 #define SMMU_PMCG_EVCNTR0               0x0
 #define SMMU_PMCG_EVCNTR(n, stride)     (SMMU_PMCG_EVCNTR0 + (n) * (stride))
@@ -365,8 +365,7 @@ static int smmu_pmu_get_event_idx(struct smmu_pmu *smmu_pmu,
 		return -EAGAIN;
 	}
 	if (idx == 0) {
-		err = smmu_pmu->smmu_type == SOC_SMMU ? 0 :
-		      mtk_smmu_pm_get(smmu_pmu->smmu_type);
+		err = mtk_smmu_rpm_get(smmu_pmu->smmu_type);
 		if (err) {
 			spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
 			pr_info("%s, pm get fail, smmu:%d.\n",
@@ -543,9 +542,8 @@ static void smmu_pmu_event_del(struct perf_event *event, int flags)
 	spin_lock_irqsave(&smmu_pmu->pmu_lock, irq_flags);
 	clear_bit(idx, smmu_pmu->used_counters);
 	cur_idx = find_first_bit(smmu_pmu->used_counters, num_ctrs);
-	if (cur_idx == num_ctrs && smmu_pmu->smmu_type != SOC_SMMU &&
-	    smmu_pmu->take_power) {
-		err = mtk_smmu_pm_put(smmu_pmu->smmu_type);
+	if (cur_idx == num_ctrs && smmu_pmu->take_power) {
+		err = mtk_smmu_rpm_put(smmu_pmu->smmu_type);
 		smmu_pmu->take_power = false;
 		if (err)
 			pr_info("%s, pm put fail, smmu:%d.\n",
