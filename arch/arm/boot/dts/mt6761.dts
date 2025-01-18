@@ -2824,7 +2824,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 	};
 
 	usb_meta: usb_meta {
-		compatible = "mediatek,usb_meta";
+		compatible = "mediatek,usb-meta";
 		udc = <&usb>;
 	};
 
