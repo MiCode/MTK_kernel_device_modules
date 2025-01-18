@@ -5340,17 +5340,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	scp_dvfs: scp-dvfs {
 		compatible = "mediatek,scp-dvfs";
-		scp-dvfs-disable; // bringup
+		scp-dvfs-disable = <1>; /* 0: enable, 1: disable */
 
 		// clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
-		// <&topckgen_clk CLK_TOP_TCK_26M_MX9>; /* 26M */
+		//  <&topckgen_clk CLK_TOP_TCK_26M_MX9>; /* 26M */
 
 		// clock-names = "clk_mux",
 		// "clk_pll_0";
 
 		scp-core-online-mask = <0x7>;
 		vlp-support;
-		vlpck-support;
 		ips-support;
 
 		dvfs-opp =
@@ -5360,11 +5359,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		< 750000	750000	0xff		0xfff		850  0	0x0>;
 
 		do-ulposc-cali;
-		//fmeter-clksys = <&vlp_cksys_clk>; // bringup disable
-		//ulposc-clksys = <&vlp_cksys_clk>; // bringup disable
+		fmeter-clksys = <&vlp_cksys_clk>;
+		ulposc-clksys = <&vlp_cksys_clk>;
 		scp-clk-ctrl = <&scp_clk_ctrl>;
 		scp-clk-hw-ver = "v1";
-		ulposc-cali-ver = "v2";
+		ulposc-cali-ver = "v3";
+		ulposc-cali-alg-ver = <2>;
+		ulposc-cali-ext-phase;
 		ulposc-cali-num = <3>;
 		ulposc-cali-target = <400 650 850>;
 		ulposc-cali-config =
@@ -5373,7 +5374,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<0x0456a540	0x10000a00	0x484a>,
 			<0x05bea540	0x10000a00	0x484a>;
 		clk-dbg-ver = "v4";
-		//ccf-fmeter-support; // bringup
+		ccf-fmeter-support;
+		fmeter-args-u2-cali =
+		/* fm_id	fm_type */
+		 < 49		0>; /* OSC2_SYNC_CK (i.e. D2) */
+		fmeter-args-u2-result =
+		/* fm_id	fm_type */
+		 < 60		0>; /* OSC2_CK */
+		ildo-freq-target = <7812>; /* 7812khz*128 = 1G */
+		fmeter-args-ildo =
+		/* fm_id	fm_type */
+		 < 58		0>; /* ildo clk */
 		scp-dvfs-flag = "disable"; /* enable/disable */
 	};
 
