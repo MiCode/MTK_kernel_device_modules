@@ -54,7 +54,7 @@ static void cpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 		return;
 	list_for_each_entry(pt_policy, &pt_policy_list, cpu_pt_list) {
 		if (pt_policy->pt_type == LBAT_POWER_THROTTLING) {
-			if (level != LOW_BATTERY_LEVEL_0 && level != LOW_BATTERY_LEVEL_1)
+			if (level != LOW_BATTERY_LEVEL_0)
 				freq_limit = pt_policy->cpu_limit[level-1];
 			else
 				freq_limit = FREQ_QOS_MAX_DEFAULT_VALUE;

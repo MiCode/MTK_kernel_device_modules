@@ -43,23 +43,21 @@ static void md_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 	if (level > md_pt_info[LBAT_POWER_THROTTLING].max_lv)
 		return;
 
-	if (level <= LOW_BATTERY_LEVEL_3) {
-		if (level != LOW_BATTERY_LEVEL_0)
-			intensity = md_pt_info[LBAT_POWER_THROTTLING].reduce_tx[level-1];
-		else
-			intensity = 0;
-		md_throttle_cmd = TMC_CTRL_CMD_TX_POWER | level << 8 |
-			PT_LOW_BATTERY_VOLTAGE << 16 | intensity << 24;
-		ret = exec_ccci_kern_func(ID_THROTTLING_CFG,
-			(char *)&md_throttle_cmd, 4);
+	if (level != LOW_BATTERY_LEVEL_0)
+		intensity = md_pt_info[LBAT_POWER_THROTTLING].reduce_tx[level-1];
+	else
+		intensity = 0;
+	md_throttle_cmd = TMC_CTRL_CMD_TX_POWER | level << 8 |
+		PT_LOW_BATTERY_VOLTAGE << 16 | intensity << 24;
+	ret = exec_ccci_kern_func(ID_THROTTLING_CFG,
+		(char *)&md_throttle_cmd, 4);
 
-		pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret,
-						md_throttle_cmd);
+	pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret,
+					md_throttle_cmd);
 
-		if (ret)
-			pr_notice("%s: error, ret=%d, cmd=0x%x l=%d\n", __func__, ret,
-				md_throttle_cmd, level);
-	}
+	if (ret)
+		pr_notice("%s: error, ret=%d, cmd=0x%x l=%d\n", __func__, ret,
+			md_throttle_cmd, level);
 }
 
 static void md_lbat_dedicate_callback(unsigned int thd)
@@ -81,6 +79,26 @@ static void md_lbat_dedicate_callback(unsigned int thd)
 }
 
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static void md_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
+{
+	unsigned int md_throttle_cmd;
+	int ret, val = 0;
+
+	if (bp_level == 0)
+		val = TMC_CTRL_LOW_POWER_RECHARGE_BATTERY_EVENT;
+	else
+		val = TMC_CTRL_LOW_POWER_LOW_BATTERY_EVENT;
+
+	md_throttle_cmd = TMC_CTRL_CMD_LOW_POWER_IND | val << 8;
+
+	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_throttle_cmd, 4);
+
+	pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_throttle_cmd);
+}
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 {
@@ -115,7 +133,7 @@ static void md_limit_default_setting(struct device *dev, enum md_pt_type type)
 
 	pt_info_p = &md_pt_info[type];
 	if (type == LBAT_POWER_THROTTLING)
-		max_lv = 2;
+		max_lv = LOW_BATTERY_LEVEL_NUM - 1;
 	else if (type == OC_POWER_THROTTLING)
 		max_lv = 1;
 	else
@@ -217,6 +235,9 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 	if (md_pt_info[OC_POWER_THROTTLING].max_lv > 0)
 		register_battery_oc_notify(&md_pt_over_current_cb, BATTERY_OC_PRIO_MD, NULL);
+#endif
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	register_bp_thl_md_notify(&md_bp_cb, BATTERY_PERCENT_PRIO_MD);
 #endif
 	return 0;
 }

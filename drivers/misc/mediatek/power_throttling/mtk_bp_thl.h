@@ -39,6 +39,9 @@ typedef void (*battery_percent_callback)(BATTERY_PERCENT_LEVEL tag);
 void register_bp_thl_notify(
 		battery_percent_callback bp_cb,
 		BATTERY_PERCENT_PRIO prio_val);
+void register_bp_thl_md_notify(
+		battery_percent_callback md_cb,
+		BATTERY_PERCENT_PRIO prio_val);
 void unregister_bp_thl_notify(BATTERY_PERCENT_PRIO prio_val);
 void set_bp_thl_ut_status(int status);
 #endif

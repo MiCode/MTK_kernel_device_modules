@@ -13,26 +13,23 @@
 #include <linux/power_supply.h>
 #include "mtk_bp_thl.h"
 #define BAT_PERCENT_LIMIT 15
-#define BAT_PERCENT_LIMIT_EXT 15
-#define BAT_PERCENT_LIMIT_RELEASE_EXT 15
 #define BPCB_MAX_NUM 16
 #define MAX_VALUE 0x7FFF
 
 
 static struct task_struct *bp_notify_thread;
 static bool bp_notify_flag;
-static bool bp_notify_flag_ext;
+static bool bp_md_notify_flag;
 static DECLARE_WAIT_QUEUE_HEAD(bp_notify_waiter);
 static struct wakeup_source *bp_notify_lock;
 struct bp_thl_callback_table {
 	void (*bpcb)(enum BATTERY_PERCENT_LEVEL_TAG);
 };
 static struct bp_thl_callback_table bpcb_tb[BPCB_MAX_NUM] = { {0} };
-static struct bp_thl_callback_table bpcb_tb_ext[BPCB_MAX_NUM] = { {0} };
+static struct bp_thl_callback_table mdcb_tb[BPCB_MAX_NUM] = { {0} };
 static struct notifier_block bp_nb;
 struct bp_thl_priv {
 	int bp_thl_lv;
-	int bp_thl_lv_ext;
 	int bp_thl_stop;
 	int max_level;
 	int *soc_limit;
@@ -47,6 +44,14 @@ struct bp_thl_priv {
 	struct power_supply *psy;
 };
 static struct bp_thl_priv *bp_thl_data;
+
+struct md_bp_priv {
+	unsigned int md_thl_enable;
+	unsigned int md_thl_lv;
+	unsigned int md_thl_l;
+	unsigned int md_thl_h;
+};
+static struct md_bp_priv *md_bp_data;
 
 void register_bp_thl_notify(
 	battery_percent_callback bp_cb,
@@ -70,27 +75,26 @@ void register_bp_thl_notify(
 }
 EXPORT_SYMBOL(register_bp_thl_notify);
 
-void register_bp_thl_notify_ext(
-	battery_percent_callback bp_cb,
+void register_bp_thl_md_notify(
+	battery_percent_callback md_cb,
 	BATTERY_PERCENT_PRIO prio_val)
 {
-	if (!bp_thl_data) {
-		pr_info("[%s] bp_thl not init\n", __func__);
+	if (!md_bp_data) {
+		pr_info("[%s] md_bp_data not init\n", __func__);
 		return;
 	}
-	if (prio_val >= BPCB_MAX_NUM) {
+
+	if (prio_val >= BPCB_MAX_NUM || prio_val < 0) {
 		pr_info("[%s] prio_val=%d, out of boundary\n", __func__, prio_val);
 		return;
 	}
-	bpcb_tb_ext[prio_val].bpcb = bp_cb;
+
+	mdcb_tb[prio_val].bpcb = md_cb;
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
-	if (bp_thl_data->bp_thl_lv_ext == 1) {
-		pr_info("[%s] level 1 happen\n", __func__);
-		if (bp_cb != NULL)
-			bp_cb(BATTERY_PERCENT_LEVEL_1);
-	}
+	if (md_bp_data->md_thl_enable && md_bp_data->md_thl_lv != 0 && md_cb)
+		md_cb(md_bp_data->md_thl_lv);
 }
-EXPORT_SYMBOL(register_bp_thl_notify_ext);
+EXPORT_SYMBOL(register_bp_thl_md_notify);
 
 void exec_bp_thl_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 {
@@ -107,16 +111,25 @@ void exec_bp_thl_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 	}
 }
 
-void exec_bp_thl_callback_ext(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
+void exec_bp_thl_md_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 {
 	int i;
+
+	if (!md_bp_data) {
+		pr_info("[%s] md_bp_data not init\n", __func__);
+		return;
+	}
+
+	if (!md_bp_data->md_thl_enable)
+		return;
+
 	if (bp_thl_data->bp_thl_stop == 1) {
 		pr_info("[%s] bp_thl_data->bp_thl_stop=%d\n"
 			, __func__, bp_thl_data->bp_thl_stop);
 	} else {
 		for (i = 0; i < BPCB_MAX_NUM; i++) {
-			if (bpcb_tb_ext[i].bpcb != NULL)
-				bpcb_tb_ext[i].bpcb(bp_level);
+			if (mdcb_tb[i].bpcb != NULL)
+				mdcb_tb[i].bpcb(bp_level);
 		}
 		pr_info("[%s] bp_level=%d\n", __func__, bp_level);
 	}
@@ -209,15 +222,15 @@ int bp_notify_handler(void *unused)
 {
 	do {
 		wait_event_interruptible(bp_notify_waiter, (bp_notify_flag == true) ||
-			(bp_notify_flag_ext == true));
+			(bp_md_notify_flag == true));
 		__pm_stay_awake(bp_notify_lock);
 		if (bp_notify_flag) {
 			exec_bp_thl_callback(bp_thl_data->bp_thl_lv);
 			bp_notify_flag = false;
 		}
-		if (bp_notify_flag_ext) {
-			exec_bp_thl_callback_ext(bp_thl_data->bp_thl_lv_ext);
-			bp_notify_flag_ext = false;
+		if (bp_md_notify_flag) {
+			exec_bp_thl_md_callback(md_bp_data->md_thl_lv);
+			bp_md_notify_flag = false;
 		}
 		__pm_relax(bp_notify_lock);
 	} while (!kthread_should_stop());
@@ -234,6 +247,23 @@ int bp_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 	bp_thl_data->psy = v;
 	schedule_work(&bp_thl_data->soc_work);
 	return NOTIFY_DONE;
+}
+
+static void check_md_throttle(int soc)
+{
+	pr_info("[%s] bp_thl_data soc=%d\n", __func__, soc);
+	if (!md_bp_data->md_thl_enable)
+		return;
+
+	if (soc <= md_bp_data->md_thl_l &&
+		md_bp_data->md_thl_lv == BATTERY_PERCENT_LEVEL_0) {
+		md_bp_data->md_thl_lv = BATTERY_PERCENT_LEVEL_1;
+		bp_md_notify_flag = true;
+	} else if (soc >= md_bp_data->md_thl_h &&
+				md_bp_data->md_thl_lv == BATTERY_PERCENT_LEVEL_1) {
+		md_bp_data->md_thl_lv = BATTERY_PERCENT_LEVEL_0;
+		bp_md_notify_flag = true;
+	}
 }
 
 static void soc_handler(struct work_struct *work)
@@ -270,6 +300,9 @@ static void soc_handler(struct work_struct *work)
 		pr_info("%s:%d return\n", __func__, __LINE__);
 		return;
 	}
+
+	check_md_throttle(soc);
+
 	if (soc == last_soc && temp == last_temp) {
 		pr_info("%s:%d soc and temperature are all the same\n", __func__, __LINE__);
 		return;
@@ -326,7 +359,7 @@ static void soc_handler(struct work_struct *work)
 	last_temp = temp;
 	last_soc = soc;
 
-	if (bp_notify_flag_ext || bp_notify_flag)
+	if (bp_md_notify_flag || bp_notify_flag)
 		wake_up_interruptible(&bp_notify_waiter);
 	return;
 }
@@ -367,8 +400,8 @@ static int soc_default_setting(struct device *dev, struct bp_thl_priv *priv)
 static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 {
 	struct device_node *np = dev->of_node;
-	int i,  num, ret;//j, offset;
-//	char buf[512];
+	int i,  num, ret;
+
 	ret = of_property_read_u32(np, "max-throttle-level", &num);
 	if (ret || num < 0 || num >= BATTERY_PERCENT_LEVEL_NUM) {
 		pr_notice("can't get soc-max-level %d\n", ret);
@@ -443,20 +476,64 @@ out:
 	return 0;
 }
 
+static int parse_md_setting(struct device *dev, struct md_bp_priv *md_priv)
+{
+	struct device_node *np = dev->of_node;
+	int ret = 0;
+
+	if (!np) {
+		pr_notice("No device tree data available.\n");
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(np, "md-soc-throttle-l", &md_priv->md_thl_l);
+	if (ret) {
+		pr_notice("Cannot get md-soc-throttle-l property %d\n", ret);
+		return 0;
+	}
+
+	ret = of_property_read_u32(np, "md-soc-throttle-h", &md_priv->md_thl_h);
+	if (ret) {
+		pr_notice("Cannot get md-soc-throttle-h property %d\n", ret);
+		return 0;
+	}
+
+	if (md_priv->md_thl_l <= 0 || md_priv->md_thl_h <= 0) {
+		pr_notice("Invalid value\n");
+		return -EINVAL;
+	}
+	md_priv->md_thl_enable = 1;
+	pr_notice("md_thl_enable:%d, thl_l:%d, thl_h:%d\n",
+			md_priv->md_thl_enable, md_priv->md_thl_l, md_priv->md_thl_h);
+	return 0;
+}
+
 static int bp_thl_probe(struct platform_device *pdev)
 {
 	struct bp_thl_priv *priv;
+	struct md_bp_priv *md_priv;
 	int ret;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+	md_priv = devm_kzalloc(&pdev->dev, sizeof(*md_priv), GFP_KERNEL);
 	dev_set_drvdata(&pdev->dev, priv);
 	ret = parse_soc_limit_table(&pdev->dev, priv);
 	if (ret) {
 		pr_notice("parse soc limit table fail\n");
 		return ret;
 	}
+
+	ret = parse_md_setting(&pdev->dev, md_priv);
+	if (ret) {
+		pr_notice("parse_md_setting fail\n");
+		return ret;
+	}
 	bp_thl_data = priv;
+	md_bp_data = md_priv;
+	pr_notice("md_thl_enable: %d\n", md_bp_data->md_thl_enable);
+
 	INIT_WORK(&bp_thl_data->soc_work, soc_handler);
+
 	bp_notify_lock = wakeup_source_register(NULL, "bp_notify_lock wakelock");
 	if (!bp_notify_lock) {
 		pr_notice("bp_notify_lock wakeup source fail\n");
