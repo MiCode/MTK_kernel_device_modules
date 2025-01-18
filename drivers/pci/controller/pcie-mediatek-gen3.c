@@ -228,7 +228,7 @@
 
 #define PCIE_RESOURCE_CTRL		0xd2c
 #define SYS_CLK_RDY_TIME		GENMASK(7, 0)
-#define SYS_CLK_RDY_TIME_TO_1US		0x1
+#define SYS_CLK_RDY_TIME_TO_10US	0xa
 #define PCIE_APSRC_ACK			BIT(10)
 
 /* pcie read completion timeout */
@@ -2801,10 +2801,10 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 	/* Set write completion timeout to 4ms */
 	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
 
-	/* reduce CLKREQ Go low to P1 time */
+	/* Adjust SYS_CLK_RDY_TIME to 10us to avoid glitch*/
 	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
 	val &= ~SYS_CLK_RDY_TIME;
-	val |= SYS_CLK_RDY_TIME_TO_1US;
+	val |= SYS_CLK_RDY_TIME_TO_10US;
 	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
 
 	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
