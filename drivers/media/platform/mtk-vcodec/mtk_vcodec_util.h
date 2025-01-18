@@ -170,6 +170,7 @@ extern bool mtk_vdec_enable_dynll;
 extern bool mtk_vdec_slc_enable;
 extern int support_svp_region;
 extern int support_wfd_region;
+extern int venc_disable_hw_break;
 
 struct VENC_SLB_CB_T {
 	atomic_t release_slbc;

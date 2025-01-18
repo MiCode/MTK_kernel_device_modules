@@ -287,6 +287,10 @@ int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 
+/* disable on legacy platform by config dts */
+int venc_disable_hw_break;
+EXPORT_SYMBOL_GPL(venc_disable_hw_break);
+
 /* VCODEC FTRACE */
 #if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG)
 void vcodec_trace(const char *fmt, ...)
