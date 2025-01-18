@@ -2107,6 +2107,9 @@ static int mml_probe(struct platform_device *pdev)
 	mml->cmdq_base = cmdq_register_device(dev);
 	for (i = 0; i < thread_cnt; i++) {
 		mml->cmdq_clts[i] = cmdq_mbox_create(dev, i);
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+		vhost_cmdq_set_client((void *)(mml->cmdq_clts[i]), 0);
+#endif
 		if (IS_ERR_OR_NULL(mml->cmdq_clts[i])) {
 			ret = PTR_ERR(mml->cmdq_clts[i]);
 			dev_err(dev, "unable to create cmdq mbox on %p:%d err %d",
