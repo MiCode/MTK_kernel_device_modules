@@ -36,12 +36,14 @@
 #define MUTEX_SOF_DPI0 3
 #define MUTEX_SOF_DPI1 4
 
+#define MUTEX_MOD_CNT	2
 #define DISP_REG_MUTEX_EN(n) (0x20 + 0x20 * (n))
-#define DISP_REG_MUTEX(n) (0x24 + 0x20 * (n))
-#define DISP_REG_MUTEX_RST(n) (0x28 + 0x20 * (n))
+#define DISP_REG_MUTEX(n)	 (0x24 + 0x20 * (n))
+#define DISP_REG_MUTEX_RST_REG		(0x28)
+#define DISP_REG_MUTEX_RST(data, n) (data->mutex_rst_reg + 0x20 * (n))
 #define DISP_REG_MUTEX_SOF(data, n) (data->mutex_sof_reg + 0x20 * (n))
-#define DISP_REG_MUTEX_MOD(data, n) (data->mutex_mod_reg + 0x20 * (n))
-#define DISP_REG_MUTEX_MOD2(n) (0x34 + 0x20 * (n))
+#define DISP_REG_MUTEX_MOD(i, data, n) (data->mutex_mod_reg[i] + 0x20 * (n))
+#define DISP_REG_MUTEX_MOD2	(0x34)
 
 #define SOF_FLD_MUTEX0_SOF REG_FLD(3, 0)
 #define SOF_FLD_MUTEX0_SOF_TIMING REG_FLD(2, 3)
@@ -49,6 +51,37 @@
 #define SOF_FLD_MUTEX0_EOF REG_FLD(3, 6)
 #define SOF_FLD_MUTEX0_FOF_TIMING REG_FLD(2, 9)
 #define SOF_FLD_MUTEX0_EOF_WAIT REG_FLD(1, 11)
+
+#define MT6991_SOF_FLD_MUTEX0_SOF REG_FLD(4, 0)
+#define MT6991_SOF_FLD_MUTEX0_SOF_TIMING REG_FLD(2, 4)
+#define MT6991_SOF_FLD_MUTEX0_SOF_WAIT REG_FLD(1, 6)
+#define MT6991_SOF_FLD_MUTEX0_EOF REG_FLD(4, 7)
+#define MT6991_SOF_FLD_MUTEX0_FOF_TIMING REG_FLD(2, 11)
+#define MT6991_SOF_FLD_MUTEX0_EOF_WAIT REG_FLD(1, 13)
+
+#define MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0	(0x090)
+#define MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1			(21)
+
+#define MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0	(0x090)
+#define MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0_WDMA0			(22)
+
+#define MT6991_DISP0_GCE_FRAME_DONE_SEL0	(0x410)
+#define MT6991_DISP0_GCE_FRAME_DONE_SEL1	(0x414)
+#define MT6991_DISP0_GCE_FRAME_DONE_SEL0_MDP_RDMA0			(9)
+#define MT6991_DISP0_GCE_FRAME_DONE_SEL1_Y2R0				(2)
+
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL0	(0xA10)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL1	(0xA14)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL2	(0xA18)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL3	(0xA1C)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL4	(0xA20)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL5	(0xA24)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL0_DP_INTF			(41)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL1_DSI0_FRAME_DONE	(31)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL2_DSI1_FRAME_DONE	(29)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL3_RDMA1_FRAME_DONE	(23)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL4_WDMA1_FRAME_DONE	(11)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE	(9)
 
 enum mtk_ddp_mutex_sof_id {
 	DDP_MUTEX_SOF_SINGLE_MODE,
@@ -83,8 +116,9 @@ struct mtk_disp_ddp_data {
 	const unsigned int *mutex_ovlsys_mod;
 	const unsigned int *mutex_sof;
 	const unsigned int *mutex_ovlsys_sof;
-	unsigned int mutex_mod_reg;
+	unsigned int mutex_mod_reg[MUTEX_MOD_CNT];
 	unsigned int mutex_sof_reg;
+	unsigned int mutex_rst_reg;
 	const unsigned int *dispsys_map;
 	bool wakeup_pf_wq;
 	bool wakeup_esd_wq;
@@ -234,6 +268,14 @@ void ovlsys_config_dump_analysis_mt6989(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6768(void __iomem *config_regs);
 void mutex_dump_analysis_mt6768(struct mtk_disp_mutex *mutex);
 
+void mutex_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
+void mutex_ovlsys_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
+void mutex_ovlsys_dump_analysis_mt6991(struct mtk_disp_mutex *mutex);
+void mutex_dump_analysis_mt6991(struct mtk_disp_mutex *mutex);
+void mmsys_config_dump_reg_mt6991(void __iomem *config_regs);
+void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs);
+void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id);
+void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs);
 void mtk_ddp_insert_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
@@ -323,5 +365,6 @@ char *mtk_ddp_get_mutex_sof_name(unsigned int regval);
 void mtk_ddp_rst_module(struct mtk_drm_crtc *mtk_crtc,
 	enum mtk_ddp_comp_id m, struct cmdq_pkt *handle);
 
+void mtk_gce_event_config_MT6991(struct drm_device *drm);
 
 #endif /* MTK_DRM_DDP_H */

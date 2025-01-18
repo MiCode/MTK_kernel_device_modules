@@ -281,6 +281,10 @@ static const struct mtk_ddp_comp_funcs ddp_split = {
 
 static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_OVL] = "ovl",
+	[MTK_OVL_EXDMA] = "exdma",
+	[MTK_OVL_BLENDER] = "blender",
+	[MTK_OVL_OUTPROC] = "outproc",
+	[MTK_DISP_VDISP_AO] = "vdisp_ao",
 	[MTK_DISP_RDMA] = "rdma",
 	[MTK_DISP_MDP_RDMA] = "mdp_rdma",
 	[MTK_DISP_WDMA] = "wdma",
@@ -723,6 +727,273 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_DSC5, MTK_DISP_DSC, 5, NULL, 0},
 	{DDP_COMPONENT_OVL5_2L_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVL4_2L_VIRTUAL0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 380 */	{DDP_COMPONENT_SPLIT_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLIT_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLIT_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLIT_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLIT_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA0, MTK_OVL_EXDMA, 0, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA2, MTK_OVL_EXDMA, 2, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA3, MTK_OVL_EXDMA, 3, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA4, MTK_OVL_EXDMA, 4, NULL, 0},
+/* 390 */	{DDP_COMPONENT_OVL_EXDMA5, MTK_OVL_EXDMA, 5, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA6, MTK_OVL_EXDMA, 6, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA7, MTK_OVL_EXDMA, 7, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA8, MTK_OVL_EXDMA, 8, NULL, 0},
+	{DDP_COMPONENT_OVL_EXDMA9, MTK_OVL_EXDMA, 9, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA0, MTK_OVL_EXDMA, 10, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA2, MTK_OVL_EXDMA, 12, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA3, MTK_OVL_EXDMA, 13, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA4, MTK_OVL_EXDMA, 14, NULL, 0},
+/* 400 */	{DDP_COMPONENT_OVL1_EXDMA5, MTK_OVL_EXDMA, 15, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA6, MTK_OVL_EXDMA, 16, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA7, MTK_OVL_EXDMA, 17, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA8, MTK_OVL_EXDMA, 18, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA9, MTK_OVL_EXDMA, 19, NULL, 0},
+	{DDP_COMPONENT_OVL0_MDP_RSZ0, MTK_DISP_MDP_RSZ, 2, NULL, 0},
+	{DDP_COMPONENT_OVL0_MDP_RSZ1, MTK_DISP_MDP_RSZ, 3, NULL, 0},
+	{DDP_COMPONENT_OVL1_MDP_RSZ0, MTK_DISP_MDP_RSZ, 4, NULL, 0},
+	{DDP_COMPONENT_OVL1_MDP_RSZ1, MTK_DISP_MDP_RSZ, 5, NULL, 0},
+	{DDP_COMPONENT_OVL0_RSZ_IN_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 410 */	{DDP_COMPONENT_OVL0_RSZ_IN_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_RSZ_IN_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_RSZ_IN_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_RSZ_IN_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_RSZ_IN_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_RSZ_IN_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_RSZ_IN_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 420 */	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 430 */	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_EXDMA_OUT_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 440 */	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_EXDMA_OUT_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER0, MTK_OVL_BLENDER, 0, NULL, 0},
+/* 450 */	{DDP_COMPONENT_OVL0_BLENDER1, MTK_OVL_BLENDER, 1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER2, MTK_OVL_BLENDER, 2, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER3, MTK_OVL_BLENDER, 3, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER4, MTK_OVL_BLENDER, 4, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER5, MTK_OVL_BLENDER, 5, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER6, MTK_OVL_BLENDER, 6, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER7, MTK_OVL_BLENDER, 7, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER8, MTK_OVL_BLENDER, 8, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER9, MTK_OVL_BLENDER, 9, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER0, MTK_OVL_BLENDER, 10, NULL, 0},
+/* 460 */	{DDP_COMPONENT_OVL1_BLENDER1, MTK_OVL_BLENDER, 11, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER2, MTK_OVL_BLENDER, 12, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER3, MTK_OVL_BLENDER, 13, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER4, MTK_OVL_BLENDER, 14, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER5, MTK_OVL_BLENDER, 15, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER6, MTK_OVL_BLENDER, 16, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER7, MTK_OVL_BLENDER, 17, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER8, MTK_OVL_BLENDER, 18, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER9, MTK_OVL_BLENDER, 19, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 470 */	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 480 */	{DDP_COMPONENT_OVL0_BLENDER_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 490 */	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BLENDER_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC0, MTK_OVL_OUTPROC, 0, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC1, MTK_OVL_OUTPROC, 1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC2, MTK_OVL_OUTPROC, 2, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC3, MTK_OVL_OUTPROC, 3, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC4, MTK_OVL_OUTPROC, 4, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC5, MTK_OVL_OUTPROC, 5, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC0, MTK_OVL_OUTPROC, 6, NULL, 0},
+/* 500 */	{DDP_COMPONENT_OVL1_OUTPROC1, MTK_OVL_OUTPROC, 7, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC2, MTK_OVL_OUTPROC, 8, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC3, MTK_OVL_OUTPROC, 9, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC4, MTK_OVL_OUTPROC, 10, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC5, MTK_OVL_OUTPROC, 11, NULL, 0},
+	{DDP_COMPONENT_OVL_BWM0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_BWM0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 510 */	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 520 */	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL1_OUTPROC_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVLSYS_DLI_ASYNC6, MTK_DISP_DLI_ASYNC, 18, NULL, 0},
+	{DDP_COMPONENT_OVLSYS_DLI_ASYNC7, MTK_DISP_DLI_ASYNC, 19, NULL, 0},
+	{DDP_COMPONENT_OVLSYS_DLI_ASYNC8, MTK_DISP_DLI_ASYNC, 20, NULL, 0},
+/* 530 */	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC0, MTK_DISP_DLI_ASYNC, 21, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC1, MTK_DISP_DLI_ASYNC, 22, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC2, MTK_DISP_DLI_ASYNC, 23, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC3, MTK_DISP_DLI_ASYNC, 24, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC4, MTK_DISP_DLI_ASYNC, 25, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC5, MTK_DISP_DLI_ASYNC, 26, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC6, MTK_DISP_DLI_ASYNC, 27, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC7, MTK_DISP_DLI_ASYNC, 28, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLI_ASYNC8, MTK_DISP_DLI_ASYNC, 29, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC0, MTK_DISP_DLO_ASYNC, 21, NULL, 0},
+/* 540 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC1, MTK_DISP_DLO_ASYNC, 22, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC2, MTK_DISP_DLO_ASYNC, 23, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC3, MTK_DISP_DLO_ASYNC, 24, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC4, MTK_DISP_DLO_ASYNC, 25, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC5, MTK_DISP_DLO_ASYNC, 26, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC6, MTK_DISP_DLO_ASYNC, 27, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC7, MTK_DISP_DLO_ASYNC, 28, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_DISP_DLO_ASYNC, 29, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC9, MTK_DISP_DLO_ASYNC, 30, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC10, MTK_DISP_DLO_ASYNC, 31, NULL, 0},
+/* 550 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC11, MTK_DISP_DLO_ASYNC, 32, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC12, MTK_DISP_DLO_ASYNC, 33, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVL_MDP_RDMA0, MTK_DISP_MDP_RDMA, 2, NULL, 0},
+	{DDP_COMPONENT_OVL_MDP_RDMA1, MTK_DISP_MDP_RDMA, 3, NULL, 0},
+	{DDP_COMPONENT_OVL1_MDP_RDMA0, MTK_DISP_MDP_RDMA, 4, NULL, 0},
+	{DDP_COMPONENT_OVL1_MDP_RDMA1, MTK_DISP_MDP_RDMA, 5, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 560 */	{DDP_COMPONENT_PQ0_IN_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_IN_CB16, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 570 */	{DDP_COMPONENT_PQ0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PQ0_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PANEL0_COMP_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PANEL0_COMP_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PANEL0_COMP_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_PANEL0_COMP_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLO_ASYNC8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC20, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC21, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 580 */	{DDP_COMPONENT_DLI_ASYNC22, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC23, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC24, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC25, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC26, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC27, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DLI_ASYNC28, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_IN_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_IN_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_IN_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 590 */	{DDP_COMPONENT_SPLITTER0_IN_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_IN_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_IN_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER2, MTK_DISP_SPLITTER, 2, NULL, 0},
+	{DDP_COMPONENT_SPLITTER3, MTK_DISP_SPLITTER, 3, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB4, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 600 */	{DDP_COMPONENT_SPLITTER0_OUT_CB5, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB6, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB7, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB8, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB9, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 610 */	{DDP_COMPONENT_SPLITTER0_OUT_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB16, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_SPLITTER0_OUT_CB17, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_MERGE0_OUT_CB16, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 620 */	{DDP_COMPONENT_MERGE0_OUT_CB17, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DISP_DVO, MTK_DISP_DVO, 0, NULL, 0},
+	{DDP_COMPONENT_RELAY2, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_RELAY3, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVLSYS_RELAY0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_OVLSYS1_RELAY0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_C3D2, MTK_DISP_C3D, 2, NULL, 0},
+	{DDP_COMPONENT_C3D3, MTK_DISP_C3D, 3, NULL, 0},
+	{DDP_COMPONENT_DSC6, MTK_DISP_DSC, 6, NULL, 0},
+	{DDP_COMPONENT_DSC7, MTK_DISP_DSC, 7, NULL, 0},
+/* 630 */	{DDP_COMPONENT_DSI0_MAC0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DSI0_MAC1, MTK_DSI, 4, NULL, 0},
+	{DDP_COMPONENT_DSI1_MAC0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DSI1_MAC1, MTK_DSI, 6, NULL, 0},
+	{DDP_COMPONENT_DSI2_MAC0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_DSI2_MAC1, MTK_DSI, 8, NULL, 0},
+	{DDP_COMPONENT_PWM3, MTK_DISP_PWM, 3, NULL, 0},
+	{DDP_COMPONENT_PWM4, MTK_DISP_PWM, 4, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
+/* 640 */	{DDP_COMPONENT_COMP0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB13, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB14, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB15, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_COMP0_OUT_CB16, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_VDISP_AO, MTK_DISP_VDISP_AO, 0, NULL, 0},
+	{DDP_COMPONENT_MML_MUTEX1, MTK_MML_MUTEX, 1, NULL, 0},
 };
 
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp)
@@ -997,7 +1268,8 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 
 	/* check if this module need larb_dev */
 	if (type != MTK_DISP_OVL && type != MTK_DISP_RDMA && type != MTK_DISP_WDMA &&
-		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR)
+		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR &&
+		type != MTK_OVL_EXDMA)
 		return;
 
 	count = of_property_count_u32_elems(node, "mediatek,larb");
@@ -1296,6 +1568,8 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 	mtk_ddp_comp_iommu_register(comp);
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
+		mtk_ddp_ovl_iommu_register(comp);
+	else if (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)
 		mtk_ddp_ovl_iommu_register(comp);
 #endif
 
@@ -2592,6 +2866,148 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	}
 }
 
+void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
+	unsigned int emi_req_val = 0, emi_req_mask = 0;
+	bool en = *((bool *)data);
+//need check
+	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
+		if (!en)
+			return;
+
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, SODI_REQ_SEL_ALL);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, SODI_REQ_VAL_ALL);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_SEL_RDMA0_PD_MODE);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_VAL_RDMA0_PD_MODE);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_SEL_RDMA1_PD_MODE);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_VAL_RDMA1_PD_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0xFF, HRT_URGENT_CTL_SEL_ALL);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_ALL);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_ALL);
+	} else if (id == DDP_COMPONENT_RDMA0) {
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask, (!(unsigned int)en),
+					SODI_REQ_SEL_RDMA0_CG_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
+				HRT_URGENT_CTL_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+				DVFS_HALT_MASK_SEL_RDMA0);
+	} else if (id == DDP_COMPONENT_RDMA1) {
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask, (!(unsigned int)en),
+					SODI_REQ_SEL_RDMA1_CG_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
+					HRT_URGENT_CTL_SEL_RDMA1);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+					DVFS_HALT_MASK_SEL_RDMA1);
+	} else if (id == DDP_COMPONENT_RDMA4) {
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
+					HRT_URGENT_CTL_SEL_RDMA4);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+					DVFS_HALT_MASK_SEL_RDMA4);
+	} else if (id == DDP_COMPONENT_RDMA5) {
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
+					HRT_URGENT_CTL_SEL_RDMA5);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+					DVFS_HALT_MASK_SEL_RDMA5);
+	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA0) ||
+				(id == DDP_COMPONENT_OVLSYS_WDMA1)) {
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
+				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
+				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
+				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
+				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
+	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA2) ||
+				(id == DDP_COMPONENT_OVLSYS_WDMA3)) {
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
+				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
+				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
+				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
+				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
+	} else
+		return;
+
+	if (handle == NULL) {
+		unsigned int v;
+		/* 0xF0/0xF4: only config on OVLSYS(HARD CODE) */
+		if (priv->ovlsys0_regs) {
+			v = readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
+			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+		}
+		if (priv->ovlsys1_regs) {
+			v = readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
+			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+		}
+	} else {
+		/* 0xF0/0xF4: config on OVLSYS(HARD CODE) */
+		if (priv->ovlsys0_regs_pa) {
+			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
+		}
+		if (priv->ovlsys1_regs_pa) {
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
+		}
+	}
+}
+
 void mt6895_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data)
 {
@@ -3220,6 +3636,257 @@ void mt6989_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
 		}
 	} else if (!reset)
 		mt6989_mtk_sodi_apsrc_enable(crtc, _cmdq_handle, crtc_id, enable);
+}
+
+static void mt6991_mtk_sodi_apsrc_enable(struct drm_crtc *crtc,
+	struct cmdq_pkt *_cmdq_handle, unsigned int id, bool on)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int v;
+	unsigned int val = 0, mask = 0;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF))
+		return;
+
+	/* APRRC settings */
+	/*Group1~Group6*/
+	/*All group setting should be zero to vote power off*/
+	/*currently design*/
+	/*Group1 (id = 0): 0x140000F4[16:15], DISP0   <-- SW defined as CRTC0*/
+	/*Group2 (id = 1): 0x140000F4[13:12], DISP0   <-- SW defined as CRTC1*/
+	/*Group3 (id = 2): 0x142000F4[16:15], DISP1   <-- SW defined as CRTC2*/
+	/*Group4 (id = 3): 0x142000F4[13:12], DISP1   <-- SW defined as CRTC3*/
+	/*Group5 (id = 4): 0x144000F4[13:12], OVL0    <-- SW defined as CRTC4*/
+	/*Group6 (id = 5): 0x146000F4[13:12], OVL1    <-- SW defined ussed to force apsrc ON */
+#define SODI_APSRC_SW_CTL_SET_0       REG_FLD_MSB_LSB(13, 12)
+#define SODI_APSRC_SW_CTL_SET_1       REG_FLD_MSB_LSB(16, 15)
+
+	if (_cmdq_handle == NULL) {
+		switch (id) {
+		case MTK_APSRC_CRTC_ID0:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+
+			v = (readl(mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK)	& (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_ID1:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+
+			v = (readl(mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK)	& (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_ID2:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+
+			v = (readl(mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_ID3:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+
+			v = (readl(mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_ID4:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+
+			v = (readl(mtk_crtc->ovlsys0_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_FORCE_ON:
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+
+			v = (readl(mtk_crtc->ovlsys1_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+
+			if (on)
+				v += (val & mask);
+
+			writel(v, mtk_crtc->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		case MTK_APSRC_CRTC_DEFAULT:
+		default:/*default turn off*/
+			/*crtc0 default power on*/
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+			v = (readl(mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			v += (val & mask);
+			writel(v, mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK);
+
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			v = (readl(mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			writel(v, mtk_crtc->config_regs + MMSYS_SODI_REQ_MASK);
+
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_1);
+			v = (readl(mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			writel(v, mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			v = (readl(mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			writel(v, mtk_crtc->side_config_regs + MMSYS_SODI_REQ_MASK);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			v = (readl(mtk_crtc->ovlsys0_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			writel(v, mtk_crtc->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			v = (readl(mtk_crtc->ovlsys1_regs + MMSYS_SODI_REQ_MASK) & (~mask));
+			writel(v, mtk_crtc->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			break;
+		}
+
+	} else {
+		switch (id) {
+		case MTK_APSRC_CRTC_ID0:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_1);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_ID1:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_ID2:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_1);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->side_config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_ID3:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->side_config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_ID4:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->ovlsys0_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_FORCE_ON:
+			if (on)
+				SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_0);
+			else
+				SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->ovlsys1_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		case MTK_APSRC_CRTC_DEFAULT:
+		default:/*default turn off*/
+			/*crtc0 default power on*/
+			SET_VAL_MASK(val, mask,	3, SODI_APSRC_SW_CTL_SET_1);
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			cmdq_pkt_write(_cmdq_handle, NULL,
+					mtk_crtc->config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_1);
+			cmdq_pkt_write(_cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_crtc->side_config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			cmdq_pkt_write(_cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_crtc->side_config_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			cmdq_pkt_write(_cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_crtc->ovlsys0_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			val = mask = 0;
+			SET_VAL_MASK(val, mask,	0x00, SODI_APSRC_SW_CTL_SET_0);
+			cmdq_pkt_write(_cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_crtc->ovlsys1_regs_pa + MMSYS_SODI_REQ_MASK,
+					val, mask);
+			break;
+		}
+	}
+}
+
+void mt6991_mtk_sodi_apsrc_config(struct drm_crtc *crtc,
+	struct cmdq_pkt *_cmdq_handle, bool reset, bool condition_check,
+	unsigned int crtc_id, bool enable)
+{
+	struct drm_crtc *crtc_local;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF))
+		return;
+
+	if (reset)
+		mt6991_mtk_sodi_apsrc_enable(crtc, _cmdq_handle,
+			MTK_APSRC_CRTC_DEFAULT, true);
+
+	if (condition_check) {
+		drm_for_each_crtc(crtc_local, crtc->dev) {
+			struct mtk_drm_crtc *mtk_crtc_local = to_mtk_crtc(crtc_local);
+			unsigned int crtc_id = drm_crtc_index(&mtk_crtc_local->base);
+
+			mt6991_mtk_sodi_apsrc_enable(crtc,
+				_cmdq_handle, crtc_id, mtk_crtc_local->enabled);
+		}
+	} else if (!reset)
+		mt6991_mtk_sodi_apsrc_enable(crtc, _cmdq_handle, crtc_id, enable);
 }
 
 void mtk_sodi_ddren(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle, bool enable)

@@ -25,11 +25,16 @@
 #define RG_DSI_PLL_EN BIT(4)
 #define FLD_RG_DSI_PLL_POSDIV (0x7 << 8)
 #define FLD_RG_DSI_PLL_POSDIV_ REG_FLD_MSB_LSB(10, 8)
+#define RG_DSI_PLL_LVROD_EN	BIT(4)
+#define RG_DSI_PLL_RST_DLY			(0x3 << 23)
+#define RG_RG_DSI_PLL_LVR_REFSEL	(0x3 << 25)
 
 #define MIPITX_PLL_CON2 (0x0034UL)
 #define RG_DSI_PLL_SDM_SSC_EN BIT(1)
 #define MIPITX_PLL_CON3 (0x0038UL)
 #define MIPITX_PLL_CON4 (0x003CUL)
+	#define RG_DSI_PLL_ICHP		(0x3 << 12)
+
 #define MIPITX_D2_SW_CTL_EN (0x0144UL)
 #define DSI_D2_SW_CTL_EN BIT(0)
 #define MIPITX_D0_SW_CTL_EN (0x0244UL)
@@ -200,6 +205,12 @@ int mtk_mipi_tx_cphy_lane_config_mt6897(struct phy *phy,
 int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
 	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
 int mtk_mipi_tx_cphy_lane_config_mt6989(struct phy *phy,
+	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
+int mtk_mipi_tx_dphy_lane_config_mt6991(void __iomem *dsi_phy_base, struct phy *phy,
+				 struct mtk_panel_ext *mtk_panel,
+				 bool is_master, struct mtk_drm_crtc *mtk_crtc);
+
+int mtk_mipi_tx_cphy_lane_config_mt6991(void __iomem *dsi_phy_base, struct phy *phy,
 	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
 
 int mtk_mipi_tx_ssc_en(struct phy *phy,

@@ -1457,7 +1457,7 @@ int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_drm_dump_vblank_config_rec(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 void mtk_crtc_default_path_rst(struct drm_crtc *crtc);
-
-
+void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
+void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 
 #endif /* MTK_DRM_CRTC_H */

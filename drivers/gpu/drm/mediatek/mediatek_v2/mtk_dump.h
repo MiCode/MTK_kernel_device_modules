@@ -9,6 +9,9 @@
 #include "mtk_drm_ddp_comp.h"
 
 int mtk_ovl_dump(struct mtk_ddp_comp *comp);
+int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp);
+int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp);
+void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp);
 int mtk_rdma_dump(struct mtk_ddp_comp *comp);
 void mtk_mdp_rdma_dump(struct mtk_ddp_comp *comp);
 int mtk_wdma_dump(struct mtk_ddp_comp *comp);
@@ -41,6 +44,9 @@ void mtk_mmlsys_bypass_dump(struct mtk_ddp_comp *comp);
 void mtk_oddmr_dump(struct mtk_ddp_comp *comp);
 
 int mtk_ovl_analysis(struct mtk_ddp_comp *comp);
+int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp);
+int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp);
+void mtk_vdisp_ao_analysis(struct mtk_ddp_comp *comp);
 int mtk_rdma_analysis(struct mtk_ddp_comp *comp);
 int mtk_mdp_rdma_analysis(struct mtk_ddp_comp *comp);
 int mtk_wdma_analysis(struct mtk_ddp_comp *comp);

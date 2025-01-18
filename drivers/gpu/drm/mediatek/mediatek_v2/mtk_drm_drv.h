@@ -82,6 +82,8 @@ struct mtk_mmsys_driver_data {
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
 	void (*disable_merge_irq)(struct drm_device *drm);
+	void (*gce_event_config)(struct drm_device *drm);
+	void (*vdisp_ao_irq_config)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
 };
 
@@ -423,6 +425,9 @@ extern struct platform_driver mtk_disp_postmask_driver;
 extern struct platform_driver mtk_disp_dither_driver;
 extern struct platform_driver mtk_disp_chist_driver;
 extern struct platform_driver mtk_disp_ovl_driver;
+extern struct platform_driver mtk_ovl_exdma_driver;
+extern struct platform_driver mtk_ovl_blender_driver;
+extern struct platform_driver mtk_vdisp_ao_driver;
 extern struct platform_driver mtk_disp_rdma_driver;
 extern struct platform_driver mtk_disp_mdp_rdma_driver;
 extern struct platform_driver mtk_disp_wdma_driver;
