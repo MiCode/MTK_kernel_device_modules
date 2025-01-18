@@ -1505,9 +1505,9 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	if (mdata->dev_comp->enhance_timing)
 		master->mode_bits |= SPI_CS_HIGH;
 	if (mdata->dev_comp->must_rx)
-		master->flags |= SPI_MASTER_MUST_RX;
+		master->flags |= SPI_CONTROLLER_MUST_RX;
 	if (mdata->dev_comp->must_tx)
-		master->flags |= SPI_MASTER_MUST_TX;
+		master->flags |= SPI_CONTROLLER_MUST_TX;
 
 	if (mdata->dev_comp->ipm_design) {
 		mdata->dev = &pdev->dev;
