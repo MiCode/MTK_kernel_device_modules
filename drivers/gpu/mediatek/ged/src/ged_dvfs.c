@@ -989,8 +989,8 @@ EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_idx_test);
 
 unsigned long ged_dvfs_write_sysram_last_commit_top_idx(void)
 {
-
-	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, g_ged_dvfs_commit_top_idx);
+	if (is_fdvfs_enable() == 0)
+		mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, g_ged_dvfs_commit_top_idx);
 
 	return g_ged_dvfs_commit_top_idx;
 }
@@ -1008,6 +1008,7 @@ EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_top_idx_test);
 void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx)
 {
 	g_ged_dvfs_commit_top_idx = commit_idx;
+	ged_eb_dvfs_task(EB_UPDATE_LAST_COMMIT_TOP_IDX, g_ged_dvfs_commit_top_idx);
 }
 EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_top_idx);
 
@@ -1036,6 +1037,7 @@ void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx)
 
 	compose_idx += tmp_top;
 	g_ged_dvfs_commit_dual = compose_idx;
+	ged_eb_dvfs_task(EB_UPDATE_LAST_COMMIT_IDX, g_ged_dvfs_commit_dual);
 }
 EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_dual_idx);
 
@@ -1044,8 +1046,7 @@ unsigned long ged_dvfs_write_sysram_last_commit_stack_idx(void)
 {
 	int fdvfs_enable = is_fdvfs_enable();
 	/* last commit idx = stack */
-	if (fdvfs_enable == 0 ||
-		(fdvfs_enable != 0 && ged_get_policy_state() == POLICY_STATE_FB))
+	if (fdvfs_enable == 0)
 		mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
 
 	return g_ged_dvfs_commit_idx;
@@ -1054,11 +1055,8 @@ EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx);
 
 unsigned long ged_dvfs_write_sysram_last_commit_dual(void)
 {
-	int fdvfs_enable = is_fdvfs_enable();
-
 	/* last commit idx = [0:7] for stack, [8:15] for top */
-	if (fdvfs_enable == 0 ||
-		(fdvfs_enable != 0 && ged_get_policy_state() == POLICY_STATE_FB))
+	if (is_fdvfs_enable() == 0)
 		mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_dual);
 
 	return g_ged_dvfs_commit_dual;
@@ -1098,6 +1096,7 @@ EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_dual_test);
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx)
 {
 	g_ged_dvfs_commit_idx = commit_idx;
+	ged_eb_dvfs_task(EB_UPDATE_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
 }
 EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_stack_idx);
 
