@@ -1200,6 +1200,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/mtk-lpm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/mdpm/mtk_mdpm.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/mdpm_v1/mtk_mdpm_v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/mmsram.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/mtk_slbc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/slbc_ipi.ko")
