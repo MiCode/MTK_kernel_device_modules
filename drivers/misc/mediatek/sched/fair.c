@@ -2088,7 +2088,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	struct cpumask effective_softmask;
 	bool in_irq = in_interrupt();
 	struct cpumask allowed_cpu_mask;
-	int order_index, end_index, weight, reverse;
+	int order_index = 0, end_index = 0, weight, reverse = 0;
 	cpumask_t *candidates;
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
@@ -2119,8 +2119,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	pd = rcu_dereference(rd->pd);
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if (is_vip)
-		vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio, &allowed_cpu_mask);
+	if (is_vip) {
+		if (vip_in_gh)
+			mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+		vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio, &allowed_cpu_mask,
+			order_index, end_index, reverse);
+	}
 #endif
 	if (!pd || READ_ONCE(rd->overutilized)) {
 		select_reason = LB_FAIL;

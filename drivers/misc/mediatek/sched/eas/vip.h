@@ -70,7 +70,7 @@ extern inline bool is_task_latency_sensitive(struct task_struct *p);
 extern int find_imbalanced_vvip_gear(void);
 extern struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type);
 extern struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p,
-		int vip_prio, struct cpumask *allowed_cpu_mask);
+		int vip_prio, struct cpumask *allowed_cpu_mask, int order_index, int end_index, int reverse);
 extern int find_vip_backup_cpu(struct task_struct *p, struct cpumask *allowed_cpu_mask, int prev_cpu, int target);
 extern unsigned int get_adaptive_margin(unsigned int cpu);
 extern void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq);
@@ -83,5 +83,7 @@ extern inline bool vip_fair_task(struct task_struct *p);
 extern void _init_tg_mask(struct cgroup_subsys_state *css);
 extern bool balance_vvip_overutilied;
 extern bool balance_vip_overutilized;
+extern struct cpumask *get_gear_cpumask(unsigned int gear);
+extern int vip_in_gh;
 
 #endif /* _VIP_H */
