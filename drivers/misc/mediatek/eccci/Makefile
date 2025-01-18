@@ -108,7 +108,7 @@ else
 
 obj-$(CCCI_OBJ) += ccci_all.o
 # common services
-ccci_all-$(CCCI_OBJ) := ccci_core.o ccci_bm.o ccci_modem.o
+ccci_all-$(CCCI_OBJ) := ccci_core.o ccci_bm.o ccci_modem.o port/port_kernel_interface.o
 
 ifneq ($(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC), n)
 ccci_all-$(CCCI_OBJ) += ccci_auxadc.o
