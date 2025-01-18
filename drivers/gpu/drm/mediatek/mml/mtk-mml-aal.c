@@ -472,6 +472,7 @@ struct aal_frame_data {
 	bool is_clarity_need_readback;
 	bool config_success;
 	bool relay_mode;
+	bool alpha_r2y;	/* if this frame enables aal r2y WA */
 };
 
 static inline struct aal_frame_data *aal_frm_data(struct mml_comp_config *ccfg)
@@ -499,6 +500,12 @@ static s32 aal_prepare(struct mml_comp *comp, struct mml_task *task,
 	aal_frm->reuse_curve.offs_size = ARRAY_SIZE(aal_frm->offs_curve);
 	aal_frm->relay_mode = !dest->pq_config.en_dre ||
 		crop->r.width < aal->data->min_tile_width;
+	/* Enable alpha r2y when resize but not RROT */
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d format:0x%08x mode:%d pq:%d dre:%d",
+		__func__, aal->data->alpha_pq_r2y, cfg->alpharsz,
+		dest->data.format, cfg->info.mode, dest->pq_config.en, dest->pq_config.en_dre);
+	aal_frm->alpha_r2y = aal->data->alpha_pq_r2y && cfg->alpharsz &&
+		dest->data.format == MML_FMT_YUVA8888 && cfg->info.mode != MML_MODE_DIRECT_LINK;
 	return 0;
 }
 
@@ -527,7 +534,7 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	func->for_func = tile_aal_for;
-	func->enable_flag = !aal_frm->relay_mode;
+	func->enable_flag = !aal_frm->relay_mode || aal_frm->alpha_r2y;
 
 	func->full_size_x_in = cfg->frame_tile_sz.width;
 	func->full_size_y_in = cfg->frame_tile_sz.height;
@@ -539,7 +546,7 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->in_tile_height = 65535;
 	func->out_tile_height = 65535;
 
-	if (aal->data->crop) {
+	if (aal->data->crop && !aal_frm->alpha_r2y) {
 		func->l_tile_loss = 8;
 		func->r_tile_loss = 8;
 	} else {
@@ -1070,12 +1077,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		__func__, tile_config_param->dre_blk_width,
 		tile_config_param->dre_blk_height);
 exit:
-	mml_msg("%s alpha_pq_r2y:%d alpha:%d format:0x%08x mode:%d pq:%d dre:%d",
-		__func__, aal->data->alpha_pq_r2y, cfg->info.alpha,
-		dest->data.format, mode, dest->pq_config.en, dest->pq_config.en_dre);
-	/* Enable alpha r2y when resize but not RROT */
-	if (aal->data->alpha_pq_r2y && cfg->alpharsz && dest->data.format == MML_FMT_YUVA8888 &&
-	    mode != MML_MODE_DIRECT_LINK) {
+	if (aal_frm->alpha_r2y) {
 		u32 r2y_00, r2y_01, r2y_02, r2y_03, r2y_04, r2y_05;
 
 		/* 31-31 r2y_en,   24-16 r2y_post_add_1_s, 8-0 r2y_post_add_0_s */
@@ -1091,9 +1093,9 @@ exit:
 		/* 26-16 r2y_c22_s, 10-0 r2y_c21_s */
 		r2y_05 = (1963 << 16) | (1610 << 0);
 
-		/* relay_mode(bit 0) = 0, AAL_HIST_EN(bit 2) = 0 */
-		/* BLK_HIST_EN(bit 5) = 0, alpha_en(bit 8) = 1 */
-		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x127);
+		/* relay_mode(bit 0) = 0, aal_engine_en(bit 1) = 1, aal_hist_en(bit 2) = 0 */
+		/* blk_hist_en(bit 5) = 0, alpha_en(bit 8) = 1, flip_en(bit 9) = 0 */
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], 0x102, 0x327);
 		/* dre_map_bypass(bit 4) = 1 */
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 		/* bilateral_flt_en(bit 1) = 0 */
