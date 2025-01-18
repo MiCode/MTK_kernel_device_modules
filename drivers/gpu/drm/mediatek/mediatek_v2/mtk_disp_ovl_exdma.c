@@ -273,12 +273,6 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_STASH_CFG0			(0xAE0UL)
 #define DISP_REG_OVL_STASH_CFG1			(0xAE4UL)
 
-#define DISP_REG_OVL_PQ_LOOP_CON		(0x2E0UL)
-	#define DISP_OVL_PQ_OUT_SIZE_SEL	BIT(0)
-#define DISP_REG_OVL_PQ_OUT_SIZE		(0x2E4UL)
-	#define FLD_OVL_PQ_OUT_SRC_W REG_FLD_MSB_LSB(12, 0)
-	#define FLD_OVL_PQ_OUT_SRC_H REG_FLD_MSB_LSB(28, 16)
-
 /* OVL Bandwidth monitor */
 #define DISP_REG_OVL_BURST_MON_CFG		(0x97CUL)
 	#define FLD_OVL_BURST_ACC_EN		REG_FLD_MSB_LSB(0, 0)
@@ -1959,9 +1953,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 
 		write_phy_layer_addr_cmdq(comp, handle, lye_idx, pending->addr + offset);
 
-		if (ovl->data->support_pq_selfloop && (pending->pq_loop_type == 2)) {
-			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-				       DISP_REG_OVL_PQ_OUT_SIZE, src_size, ~0);
+		if (pending->pq_loop_type == 2) {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 				       DISP_REG_OVL_SRC_SIZE, pending->dst_roi, ~0);
 		} else
@@ -1973,8 +1965,12 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 			~0);
 
 		if (comp->bind_comp) {
-			cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-				DISP_REG_OVL_SRC_SIZE, src_size, ~0);
+			if (pending->pq_loop_type == 2)
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
+					DISP_REG_OVL_SRC_SIZE, pending->dst_roi, ~0);
+			else
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
+					DISP_REG_OVL_SRC_SIZE, src_size, ~0);
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx), clip,
@@ -2012,7 +2008,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	unsigned int pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
 	unsigned int modifier = 0;
 
-	DDPINFO("%s, %d\n", __func__, __LINE__);
+	DDPINFO("%s, %s+\n", __func__, mtk_dump_comp_str(comp));
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
@@ -2110,7 +2106,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 	if (!pending->addr && pending->pq_loop_type == 0)
 		layer_src |= LSRC_COLOR;
-	else if (ovl->data->support_pq_selfloop && (pending->pq_loop_type != 0))
+	else if (pending->pq_loop_type == 2)
 		layer_src |= LSRC_PQ;
 
 	if (rotate) {
@@ -2185,7 +2181,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				~0);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_L_EN(0),
-				layer_src, ~0);
+				layer_src==LSRC_PQ?0:layer_src, ~0);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
 		}
@@ -2716,9 +2712,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_REG_OVL_PITCH,
 			lx_pitch, 0xffff);
 
-		if (ovl->data->support_pq_selfloop && (pending->pq_loop_type == 2)) {
-			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-				       DISP_REG_OVL_PQ_OUT_SIZE, lx_src_size, ~0);
+		if (pending->pq_loop_type == 2) {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 				       DISP_REG_OVL_SRC_SIZE, pending->dst_roi, ~0);
 		} else
@@ -2861,12 +2855,9 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
-	//u32 value = 0, mask = 0;
+	unsigned int value = 0, mask = 0;
 
 	DDPINFO("%s,%d\n", __func__, __LINE__);
-
-	if (!ovl->data->support_pq_selfloop)
-		return;
 
 	if (!comp->mtk_crtc)
 		return;
@@ -2876,6 +2867,12 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 		return;
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x2, 0x3);
+	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
+	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
+	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_REG_OVL_RDMA_BURST_CON1,
+		       value, mask);
 #ifdef IF_ZERO
 	if (idx != 0) {
 		value |= DISP_OVL_BGCLR_IN_SEL;
@@ -2886,8 +2883,6 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	SET_VAL_MASK(value, mask, 0, DISP_OVL_PQ_OUT_OPT);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
 			value, mask);
-	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
-			0, DISP_OVL_PQ_OUT_SIZE_SEL);
 #endif
 }
 
@@ -3489,31 +3484,11 @@ other:
 		break;
 	}
 	case OVL_GET_SELFLOOP_SUPPORT: {
-		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
-
-		if (ovl && ovl->data) {
-			DDPINFO("%s, support_pq_selfloop[%d]\n", __func__,
-				ovl->data->support_pq_selfloop);
-			return ovl->data->support_pq_selfloop;
-		}
+		DDPINFO("%s,SELFLOOP_SUPPORT not support\n", __func__);
 		break;
 	}
 	case OVL_SET_PQ_OUT: {
-		struct mtk_addon_config_type *c = (struct mtk_addon_config_type *)params;
-		u32 value = 0, mask = 0;
-
-		if (c->module == OVL_RSZ)
-			SET_VAL_MASK(value, mask, 1, DISP_OVL_PQ_OUT_OPT);
-
-		if (c->module != DISP_MML_DL)
-			SET_VAL_MASK(value, mask, 1, DISP_OVL_PQ_OUT_EN);
-
-		SET_VAL_MASK(value, mask, c->tgt_layer, DATAPATH_PQ_OUT_SEL);
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-			       value, mask);
-
-		cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
-			       DISP_OVL_PQ_OUT_SIZE_SEL, DISP_OVL_PQ_OUT_SIZE_SEL);
+		DDPINFO("%s,SET_PQ_OUT not support\n", __func__);
 		break;
 	}
 	case GET_OVL_SYS_NUM: {
@@ -3912,9 +3887,7 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned int src_con;
 	unsigned int ext_con, ext_en[3];
-	unsigned int addcon;
 	unsigned int path_con;
-	unsigned int pq_out_size;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -3929,9 +3902,7 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 	ext_en[1] = readl(DISP_REG_OVL_L_EN(2) + baddr);
 	ext_en[2] = readl(DISP_REG_OVL_L_EN(3) + baddr);
 	ext_con = readl(DISP_REG_OVL_DATAPATH_EXT_CON + baddr);
-	addcon = readl(DISP_REG_OVL_ADDCON_DBG + baddr);
 	path_con = readl(DISP_REG_OVL_DATAPATH_CON + baddr);
-	pq_out_size = readl(DISP_REG_OVL_PQ_OUT_SIZE + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),bg(%dx%d)\n",
@@ -3942,20 +3913,12 @@ int mtk_ovl_exdma_analysis(struct mtk_ddp_comp *comp)
 		ext_en[0] & 0x1, ext_en[1] & 0x1, ext_en[2] & 0x1,
 		(ext_con >> 16) & 0xf, (ext_con >> 20) & 0xf,
 		(ext_con >> 24) & 0xf);
-	DDPDUMP("cur_pos(%u,%u),layer_hit(%u,%u,%u,%u),bg_mode=%s,sta=0x%x\n",
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_X, addcon),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_Y, addcon),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_L0_WIN_HIT, addcon),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_L1_WIN_HIT, addcon),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_L2_WIN_HIT, addcon),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_L3_WIN_HIT, addcon),
+	DDPDUMP("bg_mode=%s,sta=0x%x\n",
 		REG_FLD_VAL_GET(FLD_DISP_OVL_BGCLR_IN_SEL, path_con) ? "DL" : "const",
 		readl(DISP_REG_OVL_STA + baddr));
-	DDPDUMP("pq_out_en(%u),sel(%u),size(%u,%u),pq_out_opt(%u)\n",
+	DDPDUMP("pq_out_en(%u),sel(%u),pq_out_opt(%u)\n",
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_EN, path_con),
 		REG_FLD_VAL_GET(DATAPATH_PQ_OUT_SEL, path_con),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_X, pq_out_size),
-		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_Y, pq_out_size),
 		REG_FLD_VAL_GET(DISP_OVL_PQ_OUT_OPT, path_con));
 
 	/* phy layer */
@@ -4498,7 +4461,6 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.aid_per_layer_setting = true,
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6991,
 	.source_bpc = 10,
-	.support_pq_selfloop = true, /* pq in out self loop */
 	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6991,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6991,

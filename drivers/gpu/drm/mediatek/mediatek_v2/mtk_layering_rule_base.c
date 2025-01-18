@@ -4192,13 +4192,13 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) && (!mtk_crtc->mml_cmd_ir) &&
 		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_SUPPORT_CMD_MODE)) {
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
-		DDPDBG("%s, mode:%d\n", __func__, mml_info->mode);
+		DDPDBG("%s, %d, mode:%d\n", __func__, __LINE__, mml_info->mode);
 	}
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (mml_ctx != NULL) {
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
-		DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+		DDPINFO("%s,q:%d,mml_drm_query_cap mode:%d\n", __func__, query_mode, mode);
 	} else
 		return ret;
 

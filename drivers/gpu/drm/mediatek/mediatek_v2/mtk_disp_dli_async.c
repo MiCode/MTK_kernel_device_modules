@@ -17,6 +17,7 @@
 #include "mtk_drm_drv.h"
 
 #define DISP_REG_OVL_DL_IN_RELAY0_SIZE 0x260
+#define DISP_REG_OVL_DL_IN_RELAY1_SIZE 0x264
 
 /**
  * struct mtk_disp_dli_async - DISP_RSZ driver structure
@@ -37,26 +38,40 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
-	DDPDBG("%s+\n", __func__);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+	u32 dli_in_relay_size = 0;
+
+	DDPINFO("%s+\n", __func__);
 
 	if (!addon_config)
 		return;
 
+	priv = mtk_crtc->base.dev->dev_private;
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		dli_in_relay_size = DISP_REG_OVL_DL_IN_RELAY1_SIZE;
+	else
+		dli_in_relay_size = DISP_REG_OVL_DL_IN_RELAY0_SIZE;
+
 	if ((addon_config->config_type.module == DISP_MML_IR_PQ_v2) ||
 	    (addon_config->config_type.module == DISP_MML_IR_PQ_v2_1) ||
 	    (addon_config->config_type.module == DISP_MML_DL) ||
-	    (addon_config->config_type.module == DISP_MML_DL_1)) {
+	    (addon_config->config_type.module == DISP_MML_DL_1) ||
+	    (addon_config->config_type.module == DISP_MML_DL_EXDMA)) {
 		u8 pipe = addon_config->addon_mml_config.pipe;
+		u32 width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
+		u32 height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
+
+		DDPINFO("%s,module:%d,dli:0x%x,p:%d,w:%d,h:%d\n", __func__, addon_config->config_type.module,
+			dli_in_relay_size, pipe, width, height);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_DL_IN_RELAY0_SIZE,
-			       (addon_config->addon_mml_config.mml_dst_roi[pipe].width |
-				addon_config->addon_mml_config.mml_dst_roi[pipe].height << 16),
-			       ~0);
+			       comp->regs_pa + dli_in_relay_size,
+			       (width | height << 16), ~0);
 	}
 }
 
-void mtk_dli_async_dump(struct mtk_ddp_comp *comp)
+void mtk_dli_async_dump_mt6991(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 
@@ -66,14 +81,35 @@ void mtk_dli_async_dump(struct mtk_ddp_comp *comp)
 	}
 	DDPINFO("%s\n", __func__);
 	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("0x26C: 0x%08x\n", readl(baddr + 0x26C));
-	DDPDUMP("0x2C8: 0x%08x 0x%08x\n", readl(baddr + 0x2C8),
-		readl(baddr + 0x2CC));
+	DDPDUMP("0x28C: 0x%08x\n", readl(baddr + 0x28C));
+	DDPDUMP("0x308: 0x%08x 0x%08x\n", readl(baddr + 0x308),
+		readl(baddr + 0x30C));
+}
+
+void mtk_dli_async_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr = comp->regs;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!baddr) {
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_dli_async_dump_mt6991(comp);
+	else {
+		DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+		DDPDUMP("0x26C: 0x%08x\n", readl(baddr + 0x26C));
+		DDPDUMP("0x2C8: 0x%08x 0x%08x\n", readl(baddr + 0x2C8),
+			readl(baddr + 0x2CC));
+	}
 }
 
 int mtk_dli_async_analysis(struct mtk_ddp_comp *comp)
 {
-	DDPINFO("%s\n", __func__);
 	return 0;
 }
 
@@ -94,6 +130,7 @@ static void mtk_dli_async_prepare(struct mtk_ddp_comp *comp)
 	DDPINFO("%s\n", __func__);
 	mtk_ddp_comp_clk_prepare(comp);
 
+	writel(0, comp->regs + DISP_REG_OVL_DL_IN_RELAY1_SIZE);
 	writel(0, comp->regs + DISP_REG_OVL_DL_IN_RELAY0_SIZE);
 }
 

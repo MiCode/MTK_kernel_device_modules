@@ -986,7 +986,8 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		DDPDUMP("%s dump nothing for null state\n", __func__);
 	else {
 		state = to_mtk_crtc_state(crtc->state);
-		if (state->lye_state.mml_dl_lye && priv->data->mmsys_id == MMSYS_MT6989) {
+		if ((state->lye_state.mml_dl_lye && priv->data->mmsys_id == MMSYS_MT6989) ||
+			(state->lye_state.mml_dl_lye && priv->data->mmsys_id == MMSYS_MT6991)){
 			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
 					MML_DL);
 			mtk_drm_crtc_addon_dump(crtc, addon_data);
@@ -20495,6 +20496,10 @@ void mtk_addon_get_comp(u32 addon, u32 *comp_id, u8 *layer_idx)
 {
 	if (addon == 0)
 		return;
+	else if (addon == DDP_COMPONENT_OVL_EXDMA0) {
+		*comp_id = DDP_COMPONENT_OVL_EXDMA0;
+		return ;
+	}
 	addon = __builtin_ffs(addon) - 1;
 
 	if (layer_idx)
@@ -20528,6 +20533,10 @@ void mtk_addon_set_comp(u32 *addon, const u32 comp_id, const u8 layer_idx)
 {
 	if (comp_id > DDP_COMPONENT_ID_MAX)
 		return;
+	else if (comp_id == DDP_COMPONENT_OVL_EXDMA0) {
+		*addon = DDP_COMPONENT_OVL_EXDMA0;
+		return;
+	}
 
 	*addon = (1 << layer_idx);
 

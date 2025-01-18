@@ -6756,6 +6756,7 @@ static const unsigned int mt6991_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_OVL0_RSZ_IN_CB1] = OVLSYS0,
 	[DDP_COMPONENT_OVL0_RSZ_IN_CB2] = OVLSYS0,
 	[DDP_COMPONENT_OVL0_RSZ_IN_CB3] = OVLSYS0,
+	[DDP_COMPONENT_OVL0_EXDMA_OUT_CB0] = OVLSYS0,
 	[DDP_COMPONENT_OVL0_EXDMA_OUT_CB1] = OVLSYS0,
 	[DDP_COMPONENT_OVL0_EXDMA_OUT_CB2] = OVLSYS0,
 	[DDP_COMPONENT_OVL0_EXDMA_OUT_CB3] = OVLSYS0,
@@ -6798,6 +6799,7 @@ static const unsigned int mt6991_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_OVL1_RSZ_IN_CB1] = OVLSYS1,
 	[DDP_COMPONENT_OVL1_RSZ_IN_CB2] = OVLSYS1,
 	[DDP_COMPONENT_OVL1_RSZ_IN_CB3] = OVLSYS1,
+	[DDP_COMPONENT_OVL1_EXDMA_OUT_CB0] = OVLSYS1,
 	[DDP_COMPONENT_OVL1_EXDMA_OUT_CB1] = OVLSYS1,
 	[DDP_COMPONENT_OVL1_EXDMA_OUT_CB2] = OVLSYS1,
 	[DDP_COMPONENT_OVL1_EXDMA_OUT_CB3] = OVLSYS1,
@@ -21262,7 +21264,11 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
-	if ((cur == DDP_COMPONENT_OVL0_EXDMA_OUT_CB3 &&
+	if ((cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC1) &&
+		(next == DDP_COMPONENT_MML_MUTEX0)) {
+		*addr = MT6991_OVL_MML_IN0_MOUT_EN;
+		value = MT6991_OVL_DLI_RELAY1_TO_OVL_EXDMA0;
+	} else if ((cur == DDP_COMPONENT_OVL0_EXDMA_OUT_CB3 &&
 		next == DDP_COMPONENT_OVL0_BLENDER0)){
 		*addr = MT6991_OVL_EXDMA_OUT_CROSSBAR3_MOUT_EN;
 		value = MT6991_DISP_OVL_EXDMA_OUT_CB_TO_OVL_BLENDER0;
@@ -23636,6 +23642,8 @@ void mtk_ddp_rst_module(struct mtk_drm_crtc *mtk_crtc,
 void mtk_gce_event_config_MT6991(struct drm_device *drm)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
+	unsigned int off = 0;
+	int value = 0, mask = 0;
 
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 
@@ -23651,10 +23659,30 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL4);
 	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE,
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL5);
-	writel(MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1,
-		priv->ovlsys0_regs + MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0);
-	writel(MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0_WDMA0,
-		priv->ovlsys1_regs + MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0);
+
+	for (off = MT6991_DISP1_GCE_FRAME_DONE_SEL6;
+			off <= MT6991_DISP1_GCE_FRAME_DONE_SEL15; off += 0x4)
+		writel(~0, priv->side_config_regs + off);
+
+	SET_VAL_MASK(value, mask,
+		MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1, GCE_FRAME_DONE_SEL0);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL1);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL2);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL3);
+	writel(value, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL0);
+	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL1);
+	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL2);
+	writel(~0, priv->ovlsys0_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL3);
+
+	SET_VAL_MASK(value, mask,
+		MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0_WDMA0, GCE_FRAME_DONE_SEL0);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL1);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL2);
+	SET_VAL_MASK(value, mask, 0x3F, GCE_FRAME_DONE_SEL3);
+	writel(value, priv->ovlsys1_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL0);
+	writel(~0, priv->ovlsys1_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL1);
+	writel(~0, priv->ovlsys1_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL2);
+	writel(~0, priv->ovlsys1_regs + MT6991_OVLSYS_GCE_FRAME_DONE_SEL3);
 
 	writel(MT6991_DISP0_GCE_FRAME_DONE_SEL0_MDP_RDMA0,
 		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL0);
@@ -23664,6 +23692,9 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL2);
 	writel(MT6991_DISP0_GCE_FRAME_DONE_SEL3_AAL1,
 		priv->config_regs + MT6991_DISP0_GCE_FRAME_DONE_SEL3);
+	for (off = MT6991_DISP0_GCE_FRAME_DONE_SEL4;
+		off <= MT6991_DISP0_GCE_FRAME_DONE_SEL15; off += 0x4)
+		writel(~0, priv->config_regs + off);
 }
 
 void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
@@ -29026,7 +29057,7 @@ void mutex_ovlsys_dump_reg_mt6991(struct mtk_disp_mutex *mutex)
 	int cnt = 0;
 
 REDUMP:
-	DDPDUMP("== DISP-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
+	DDPDUMP("== OVLSYS-%d MUTEX REGS:0x%pa ==\n", cnt, &regs_pa);
 	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
 		0x0, readl_relaxed(module_base + 0x0),
 		0x4, readl_relaxed(module_base + 0x4),
@@ -30801,25 +30832,20 @@ void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	unsigned int off = 0;
 
 /* TODO: use raw dump helper here */
-	for (off = 0x0; off <= 0x40; off += 0x10)
+	for (off = 0x0; off <= 0xF0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xF0; off <= 0x190; off += 0x10)
-		mtk_serial_dump_reg(config_regs, off, 4);
-
-	for (off = 0x1A0; off <= 0x1E0; off += 0x10)
+	for (off = 0x100; off <= 0x1E0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0x200; off <= 0x230; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	mtk_cust_dump_reg(config_regs, 0x260, 0x26c, -1, -1);
-
-	for (off = 0x280; off <= 0x2E0; off += 0x10)
+	for (off = 0x260; off <= 0x2B0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0x300; off <= 0x308; off += 0x10)
-		mtk_serial_dump_reg(config_regs, off, 3);
+	for (off = 0x300; off <= 0x3E0; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0x500; off <= 0x550; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
@@ -30827,40 +30853,31 @@ void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	for (off = 0x650; off <= 0x670; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xA00; off <= 0xA20; off += 0x10)
+	for (off = 0xA00; off <= 0xA10; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xB00; off <= 0xB24; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xE00; off <= 0xFF0; off += 0x10)
+	for (off = 0xE00; off <= 0xF80; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
+
 }
 
 void mmsys_config_dump_reg_mt6991(void __iomem *config_regs)
 {
 	unsigned int off = 0;
 
-/* TODO: use raw dump helper here */
-	for (off = 0x0; off <= 0x40; off += 0x10)
+	for (off = 0x0; off <= 0x70; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0x50; off <= 0x60; off += 0x10)
+	for (off = 0xE0; off <= 0x1F0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xF0; off <= 0x190; off += 0x10)
+	for (off = 0x200; off <= 0x300; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0x1A0; off <= 0x1E0; off += 0x10)
-		mtk_serial_dump_reg(config_regs, off, 4);
-
-	for (off = 0x200; off <= 0x230; off += 0x10)
-		mtk_serial_dump_reg(config_regs, off, 4);
-
-	for (off = 0x280; off <= 0x2D0; off += 0x10)
-		mtk_serial_dump_reg(config_regs, off, 3);
-
-	for (off = 0x300; off <= 0x308; off += 0x10)
+	for (off = 0x300; off <= 0x500; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 3);
 
 	for (off = 0x500; off <= 0x550; off += 0x10)
@@ -30869,7 +30886,7 @@ void mmsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	for (off = 0x650; off <= 0x670; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xB00; off <= 0xB24; off += 0x10)
+	for (off = 0xA00; off <= 0xB24; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xC30; off <= 0xC40; off += 0x10)
@@ -32734,11 +32751,11 @@ void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs)
 
 	DDPDUMP("[ovlsys]%s\n", clock_on);
 
-	dli_size = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_RELAY0_SIZE);
-	dlo_size = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLO_RELAY0_SIZE);
+	dli_size = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_RELAY1_SIZE);
+	dlo_size = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLO_RELAY1_SIZE);
 
 	if (dli_size != 0x3FFF3FFF) {
-		dli_cnt = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_RELAY0_CNT);
+		dli_cnt = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLI_RELAY1_CNT);
 		DDPDUMP("[ovlsys]dli(%ux%u) hcnt:%u vcnt:%u\n",
 			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dli_size),
 			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dli_size),
@@ -32747,7 +32764,7 @@ void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs)
 	}
 
 	if (dlo_size != 0x3FFF3FFF) {
-		dlo_cnt = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLO_RELAY0_CNT);
+		dlo_cnt = readl_relaxed(config_regs + MT6991_DISP_REG_OVLSYS_DLO_RELAY1_CNT);
 		DDPDUMP("[ovlsys]dlo(%ux%u) hcnt:%u vcnt:%u\n",
 			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(13, 0), dlo_size),
 			REG_FLD_VAL_GET(REG_FLD_MSB_LSB(29, 16), dlo_size),
