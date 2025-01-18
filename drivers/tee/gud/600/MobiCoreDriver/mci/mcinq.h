@@ -85,7 +85,7 @@ struct notification_queue_header {
  */
 struct notification_queue {
 	struct notification_queue_header hdr;		/** Queue header */
-	struct notification notification[MIN_NQ_ELEM];	/** Elements */
+	struct notification notification[MAX_NQ_ELEM];	/** Elements */
 };
 
 #endif /** NQ_H */
