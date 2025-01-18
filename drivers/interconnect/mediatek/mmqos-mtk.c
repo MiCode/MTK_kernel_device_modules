@@ -1131,7 +1131,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_2) ||
 					(larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_1) ||
 					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_2))
-					value = value * 2;
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw),
+						larb_port_node->bw_ratio - 1);
 			}
 		} else {
 			src->v2_max_ostd = false;
