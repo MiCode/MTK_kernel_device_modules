@@ -17,6 +17,10 @@
 
 #include <linux/ftrace.h>
 
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
+#endif
+
 #include "mmevent.h"
 
 #define MIN(x, y)   ((x) <= (y) ? (x) : (y))
@@ -43,11 +47,7 @@ unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 {
 	unsigned int unit_size = _MME_UNIT_NUM(length);
 	unsigned long flags = 0;
-	bool condition = ((module < MME_MODULE_MAX) &
-					(type < MME_BUFFER_INDEX_MAX) &
-					(unit_size < MME_MAX_UNIT_NUM)) &&
-					(g_ring_buffer_units[module][type] > 0) &&
-					mme_globals[module].start;
+	bool condition = (unit_size < MME_MAX_UNIT_NUM) && mme_globals[module].start;
 
 	if (condition) {
 		struct mme_unit_t *p_ring_buffer = p_mme_ring_buffer[module][type];
@@ -225,6 +225,7 @@ EXPORT_SYMBOL(mme_register_dump_callback);
 
 #define MME_DUMP_BLOCK_SIZE (1024*4)
 #define MME_MODULE_DUMP_SIZE (1024*4)
+#define MME_MRDUMP_BUFFER_SIZE (1024*1024*6)
 #define STRING_BUFFER_LEN 1024
 #define INVALIDE_EVENT -1
 #define SUCCESS 1
@@ -485,7 +486,7 @@ static void mme_dump_buffer(void *p_src, void *p_dst, unsigned int src_size, uns
 		src_pos = *p_total_pos - *p_region_base;
 
 		mme_fill_dump_block(p_src,
-					mme_dump_block,
+					p_dst,
 					&src_pos, p_dst_pos,
 					src_size,
 					dst_size);
@@ -608,7 +609,7 @@ static void mme_dump_buffer_string(void *p_dst, unsigned int dst_size,
 						dst_size);
 
 				if (*p_dst_pos == dst_size) {
-					MMEINFO("block_pos == MME_DUMP_BLOCK_SIZE,index:%d", index);
+					MMEINFO("block_pos == dst_size,index:%d", index);
 					s_str_buffer_dump_pointer += mme_unit_size;
 					return;
 				}
@@ -639,8 +640,8 @@ static void mme_init_android_time(void)
 	mme_header.android_time.microsecond = (unsigned int)(tv.tv_nsec / 1000);
 }
 
-static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
-	unsigned int *p_size)
+static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned int block_buf_size,
+								unsigned int *p_copy_size)
 {
 	unsigned int total_pos = start;
 	unsigned int total_index = 0;
@@ -650,16 +651,13 @@ static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 	unsigned int module, type;
 	unsigned int pid_count = 0;
 
-	*p_addr = (unsigned long)mme_dump_block;
-	*p_size = MME_DUMP_BLOCK_SIZE;
-
-	if (!bmme_init_buffer) {
-		MMEERR("RingBuffer is not initialized");
-		*p_size = 0;
+	if (!p_block_buf || block_buf_size==0) {
+		*p_copy_size = 0;
 		return;
 	}
 
-	memset(mme_dump_block, 0, MME_DUMP_BLOCK_SIZE);
+	*p_copy_size = block_buf_size;
+	memset(p_block_buf, 0, block_buf_size);
 
 	if (total_pos == 0) {
 		unsigned int dump_size = 0;
@@ -688,19 +686,19 @@ static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 		}
 	}
 
-	mme_dump_buffer(&mme_header, mme_dump_block, sizeof(mme_header),
-					MME_DUMP_BLOCK_SIZE, &total_pos, &region_base, &block_pos);
-	if (block_pos == MME_DUMP_BLOCK_SIZE)
+	mme_dump_buffer(&mme_header, p_block_buf, sizeof(mme_header),
+					block_buf_size, &total_pos, &region_base, &block_pos);
+	if (block_pos == block_buf_size)
 		return;
 
-	mme_dump_buffer(&mme_globals, mme_dump_block, sizeof(mme_globals),
-					MME_DUMP_BLOCK_SIZE, &total_pos, &region_base, &block_pos);
-	if (block_pos == MME_DUMP_BLOCK_SIZE)
+	mme_dump_buffer(&mme_globals, p_block_buf, sizeof(mme_globals),
+					block_buf_size, &total_pos, &region_base, &block_pos);
+	if (block_pos == block_buf_size)
 		return;
 
-	mme_dump_buffer(p_pid_buffer, mme_dump_block, mme_header.pid_number * sizeof(struct pid_info_t),
-					MME_DUMP_BLOCK_SIZE, &total_pos, &region_base, &block_pos);
-	if (block_pos == MME_DUMP_BLOCK_SIZE)
+	mme_dump_buffer(p_pid_buffer, p_block_buf, mme_header.pid_number * sizeof(struct pid_info_t),
+					block_buf_size, &total_pos, &region_base, &block_pos);
+	if (block_pos == block_buf_size)
 		return;
 
 	kfree(p_pid_buffer);
@@ -709,9 +707,9 @@ static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 
 	for (module=0; module<MME_MODULE_MAX; module++) {
 		if (mme_globals[module].enable) {
-			mme_dump_buffer(p_dump_buffer[module], mme_dump_block, mme_globals[module].module_dump_bytes,
-							MME_DUMP_BLOCK_SIZE, &total_pos, &region_base, &block_pos);
-			if (block_pos == MME_DUMP_BLOCK_SIZE)
+			mme_dump_buffer(p_dump_buffer[module], p_block_buf, mme_globals[module].module_dump_bytes,
+							block_buf_size, &total_pos, &region_base, &block_pos);
+			if (block_pos == block_buf_size)
 				return;
 
 			kfree(p_dump_buffer[module]);
@@ -720,10 +718,10 @@ static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 			for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
 				MMEINFO("module=%d,type=%d,total_index:0x%x,region_base:0x%x,block_pos:0x%x",
 						module, type, total_index, region_base, block_pos);
-				mme_dump_buffer(p_mme_ring_buffer[module][type], mme_dump_block,
+				mme_dump_buffer(p_mme_ring_buffer[module][type], p_block_buf,
 						mme_globals[module].buffer_bytes[type],
-						MME_DUMP_BLOCK_SIZE, &total_pos, &region_base, &block_pos);
-				if (block_pos == MME_DUMP_BLOCK_SIZE)
+						block_buf_size, &total_pos, &region_base, &block_pos);
+				if (block_pos == block_buf_size)
 					return;
 			}
 		}
@@ -736,16 +734,16 @@ static void mme_get_dump_buffer(unsigned int start, unsigned long *p_addr,
 		if (mme_globals[module].enable) {
 			for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
 				MMEINFO("dump buffer string, module:%d, type:%d", module, type);
-				mme_dump_buffer_string(mme_dump_block, MME_DUMP_BLOCK_SIZE,
+				mme_dump_buffer_string(p_block_buf, block_buf_size,
 										p_mme_ring_buffer[module][type],
 										mme_globals[module].buffer_units[type],
 										&total_index, &base_index, &block_pos);
-				if (block_pos == MME_DUMP_BLOCK_SIZE)
+				if (block_pos == block_buf_size)
 					return;
 			}
 		}
 	}
-	*p_size = block_pos;
+	*p_copy_size = block_pos;
 }
 
 static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
@@ -765,7 +763,8 @@ static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
 
 	MMEINFO("size=%ld ppos=%lld", (unsigned long)size, *ppos);
 	while (size > 0) {
-		mme_get_dump_buffer(*ppos, &addr, &copy_size);
+		addr = (unsigned long)mme_dump_block;
+		mme_get_dump_buffer(*ppos, mme_dump_block, MME_DUMP_BLOCK_SIZE, &copy_size);
 		if (copy_size == 0) {
 			mme_log_start();
 			break;
@@ -786,6 +785,28 @@ static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
 	}
 
 	return total_copy;
+}
+
+void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
+{
+	unsigned char *p_dbg_buffer = NULL;
+	unsigned int copy_size = 0;
+
+	if (!bmme_init_buffer) {
+		MMEERR("RingBuffer is not initialized");
+		return;
+	}
+
+	mme_log_pause();
+
+	p_dbg_buffer = vmalloc(MME_MRDUMP_BUFFER_SIZE);
+	if (p_dbg_buffer) {
+		int start = 0;
+
+		mme_get_dump_buffer(start, p_dbg_buffer, MME_MRDUMP_BUFFER_SIZE, &copy_size);
+		*vaddr = (unsigned long)p_dbg_buffer;
+		*size = copy_size;
+	}
 }
 
 // ------------------------------- Driver Section ---------------------------------------------
