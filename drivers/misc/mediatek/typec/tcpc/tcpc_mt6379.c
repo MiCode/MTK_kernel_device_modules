@@ -2337,6 +2337,7 @@ static int mt6379_tcpc_init_irq(struct mt6379_tcpc_data *ddata)
 		return ret;
 	}
 
+	enable_irq_wake(ddata->irq);
 	return 0;
 }
 
