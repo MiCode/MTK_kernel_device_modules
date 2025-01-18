@@ -2251,6 +2251,15 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 	Ln_CLRFMT |= fmt_ex << 8;
 
+	/*MML DL out is alwayer YUV*/
+	if (pending->mml_mode == MML_MODE_DIRECT_LINK &&
+	    (comp->id == DDP_COMPONENT_OVL_EXDMA0 || comp->id == DDP_COMPONENT_OVL_EXDMA1 ||
+	     comp->id == DDP_COMPONENT_OVL1_EXDMA0 || comp->id == DDP_COMPONENT_OVL1_EXDMA1)) {
+		con |= REG_FLD_VAL(L_CON_FLD_MTX_AUTO_DIS, 1);
+		con |= REG_FLD_VAL(L_CON_FLD_MTX_EN, 1);
+	}
+
+
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
 
@@ -2353,7 +2362,8 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER | DISP_MML_CAPS_MASK),
 		pending->mml_mode, layer_src);
 
-	DDPINFO("alpha= 0x%x, con=0x%x, blend = 0x%x, reg_ovl_pitch=0x%x\n",
+	DDPINFO("%s alpha= 0x%x, con=0x%x, blend = 0x%x, reg_ovl_pitch=0x%x\n",
+		 __func__,
 		alpha,
 		alpha_con,
 		pixel_blend_mode,

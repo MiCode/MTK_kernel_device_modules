@@ -215,7 +215,7 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 
 	if (addon_config->config_type.type == ADDON_DISCONNECT)
 		return;
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (priv->data->mmsys_id == MMSYS_MT6989 || priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_y2r_mt6989_config(mtk_crtc, comp,addon_config, handle);
 	else
 		mtk_y2r_config(mtk_crtc, comp,addon_config, handle);
