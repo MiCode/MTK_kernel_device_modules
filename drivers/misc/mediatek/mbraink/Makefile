@@ -6,6 +6,9 @@ subdir-ccflags-y += -I$(MTK_MBRAINK_FOLDER)
 ccflags-y += -I$(srctree)/drivers/android/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/
+
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/bridge
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink/bridge
 
