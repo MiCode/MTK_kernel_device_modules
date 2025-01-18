@@ -63,6 +63,49 @@ unsigned int mt6991_general_rate_transform(struct device *dev,
 	}
 }
 
+unsigned int mt6991_general_rate_transform_inverse(struct device *dev,
+		unsigned int rate)
+{
+	switch (rate) {
+	case MTK_AFE_IPM2P0_RATE_8K:
+		return 8000;
+	case MTK_AFE_IPM2P0_RATE_11K:
+		return 11025;
+	case MTK_AFE_IPM2P0_RATE_12K:
+		return 12000;
+	case MTK_AFE_IPM2P0_RATE_16K:
+		return 16000;
+	case MTK_AFE_IPM2P0_RATE_22K:
+		return 22050;
+	case MTK_AFE_IPM2P0_RATE_24K:
+		return 24000;
+	case MTK_AFE_IPM2P0_RATE_32K:
+		return 32000;
+	case MTK_AFE_IPM2P0_RATE_44K:
+		return 44100;
+	case MTK_AFE_IPM2P0_RATE_48K:
+		return 48000;
+	case MTK_AFE_IPM2P0_RATE_88K:
+		return 88200;
+	case MTK_AFE_IPM2P0_RATE_96K:
+		return 96000;
+	case MTK_AFE_IPM2P0_RATE_176K:
+		return 176400;
+	case MTK_AFE_IPM2P0_RATE_192K:
+		return 192000;
+	/* not support 260K */
+	case MTK_AFE_IPM2P0_RATE_352K:
+		return 352800;
+	case MTK_AFE_IPM2P0_RATE_384K:
+		return 384000;
+	default:
+		dev_info(dev, "%s(), rate %u invalid, use %d!!!\n",
+			 __func__,
+			 rate, 48000);
+		return 48000;
+	}
+}
+
 static unsigned int pcm_rate_transform(struct device *dev,
 				       unsigned int rate)
 {

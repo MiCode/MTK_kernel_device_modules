@@ -783,6 +783,10 @@ SND_SOC_DAILINK_DEFS(i2sin4,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN4")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(i2sin5,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN5")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sin6,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN6")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -801,6 +805,10 @@ SND_SOC_DAILINK_DEFS(i2sout2,
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sout4,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT4")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(i2sout5,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT5")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sout6,
@@ -1633,6 +1641,18 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		SND_SOC_DAILINK_REG(i2sin4),
 	},
 	{
+		.name = "I2SIN5",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
+			| SND_SOC_DAIFMT_GATED,
+		.ops = &mt6991_mt6681_i2s_ops,
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.be_hw_params_fixup = mt6991_i2s_hw_params_fixup,
+		SND_SOC_DAILINK_REG(i2sin5),
+	},
+	{
 		.name = "I2SIN6",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
 			| SND_SOC_DAIFMT_GATED,
@@ -1688,6 +1708,18 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.be_hw_params_fixup = mt6991_i2s_hw_params_fixup,
 		SND_SOC_DAILINK_REG(i2sout4),
+	},
+	{
+		.name = "I2SOUT5",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
+			| SND_SOC_DAIFMT_GATED,
+		.ops = &mt6991_mt6681_i2s_ops,
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.be_hw_params_fixup = mt6991_i2s_hw_params_fixup,
+		SND_SOC_DAILINK_REG(i2sout5),
 	},
 	{
 		.name = "I2SOUT6",

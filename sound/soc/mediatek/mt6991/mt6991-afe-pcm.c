@@ -556,7 +556,7 @@ static struct snd_soc_dai_driver mt6991_memif_dai_driver[] = {
 		.playback = {
 			.stream_name = "DL_24CH",
 			.channels_min = 1,
-			.channels_max = 8,
+			.channels_max = 16,
 			.rates = MTK_PCM_RATES,
 			.formats = MTK_PCM_FORMATS,
 		},
@@ -664,7 +664,7 @@ static struct snd_soc_dai_driver mt6991_memif_dai_driver[] = {
 		.capture = {
 			.stream_name = "UL8",
 			.channels_min = 1,
-			.channels_max = 2,
+			.channels_max = 8,
 			.rates = MTK_PCM_RATES,
 			.formats = MTK_PCM_FORMATS,
 		},
@@ -688,7 +688,7 @@ static struct snd_soc_dai_driver mt6991_memif_dai_driver[] = {
 		.capture = {
 			.stream_name = "UL10",
 			.channels_min = 1,
-			.channels_max = 2,
+			.channels_max = 32,
 			.rates = MTK_PCM_RATES,
 			.formats = MTK_PCM_FORMATS,
 		},
@@ -2379,6 +2379,9 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch1_mix[] = {
 				    I_SRC_0_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH1", AFE_CONN040_6,
 				    I_SRC_1_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN040_4,
+				    I_I2SIN4_CH1, 1, 0),
+
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN041_0,
@@ -2395,6 +2398,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch2_mix[] = {
 				    I_SRC_0_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH2", AFE_CONN041_6,
 				    I_SRC_1_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN041_4,
+				    I_I2SIN4_CH2, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN042_0,
@@ -2405,6 +2410,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch3_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN042_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH3", AFE_CONN042_4,
+				    I_I2SIN4_CH3, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN043_0,
@@ -2415,6 +2422,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch4_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN043_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH4", AFE_CONN043_4,
+				    I_I2SIN4_CH4, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch5_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN044_0,
@@ -2425,6 +2434,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch5_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN044_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH5", AFE_CONN044_4,
+				    I_I2SIN4_CH5, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch6_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN045_0,
@@ -2435,6 +2446,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch6_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN045_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH6", AFE_CONN045_4,
+				    I_I2SIN4_CH6, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch7_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN046_0,
@@ -2445,6 +2458,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch7_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN046_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH7", AFE_CONN046_4,
+				    I_I2SIN4_CH7, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm0_ch8_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN047_0,
@@ -2455,6 +2470,8 @@ static const struct snd_kcontrol_new memif_ul_cm0_ch8_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN047_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH8", AFE_CONN047_4,
+				    I_I2SIN4_CH8, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul_cm1_ch1_mix[] = {
@@ -2472,6 +2489,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch1_mix[] = {
 				    I_ADDA_UL_CH6, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH1", AFE_CONN048_6,
 				    I_SRC_0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH1", AFE_CONN048_4,
+				    I_I2SIN5_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN048_5,
 					I_I2SIN6_CH1, 1, 0),
 };
@@ -2490,6 +2509,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch2_mix[] = {
 				    I_ADDA_UL_CH6, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN049_6,
 				    I_SRC_0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH2", AFE_CONN049_4,
+				    I_I2SIN5_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN049_5,
 					I_I2SIN6_CH2, 1, 0),
 };
@@ -2506,6 +2527,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch3_mix[] = {
 				    I_ADDA_UL_CH5, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN050_0,
 				    I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH3", AFE_CONN050_4,
+				    I_I2SIN5_CH3, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN051_0,
@@ -2520,6 +2543,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch4_mix[] = {
 				    I_ADDA_UL_CH5, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN051_0,
 				    I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH4", AFE_CONN051_4,
+				    I_I2SIN5_CH4, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch5_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN052_0,
@@ -2534,6 +2559,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch5_mix[] = {
 				    I_ADDA_UL_CH5, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN052_0,
 				    I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH5", AFE_CONN052_4,
+				    I_I2SIN5_CH5, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch6_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN053_0,
@@ -2548,6 +2575,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch6_mix[] = {
 				    I_ADDA_UL_CH5, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN053_0,
 				    I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH6", AFE_CONN053_4,
+				    I_I2SIN5_CH6, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch7_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN054_0,
@@ -2558,6 +2587,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch7_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN054_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH7", AFE_CONN054_4,
+				    I_I2SIN5_CH7, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch8_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN055_0,
@@ -2568,6 +2599,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch8_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN055_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH8", AFE_CONN055_4,
+				    I_I2SIN5_CH8, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch9_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN056_0,
@@ -2578,6 +2611,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch9_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN056_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH9", AFE_CONN056_4,
+				    I_I2SIN5_CH9, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch10_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN057_0,
@@ -2588,6 +2623,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch10_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN057_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH10", AFE_CONN057_4,
+				    I_I2SIN5_CH10, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch11_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN058_0,
@@ -2598,6 +2635,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch11_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN058_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH11", AFE_CONN058_5,
+				    I_I2SIN5_CH11, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch12_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN059_0,
@@ -2608,6 +2647,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch12_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN059_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH12", AFE_CONN059_5,
+				    I_I2SIN5_CH12, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch13_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN060_0,
@@ -2618,6 +2659,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch13_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN060_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH13", AFE_CONN060_5,
+				    I_I2SIN5_CH13, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch14_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN061_0,
@@ -2628,6 +2671,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch14_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN061_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH14", AFE_CONN061_5,
+				    I_I2SIN5_CH14, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch15_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN062_0,
@@ -2638,6 +2683,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch15_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN062_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH15", AFE_CONN062_5,
+				    I_I2SIN5_CH15, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm1_ch16_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN063_0,
@@ -2648,6 +2695,8 @@ static const struct snd_kcontrol_new memif_ul_cm1_ch16_mix[] = {
 				    I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN063_0,
 				    I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH16", AFE_CONN063_5,
+				    I_I2SIN5_CH16, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul_cm2_ch1_mix[] = {
@@ -2659,6 +2708,7 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN064_0, I_ADDA_UL_CH6, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH1", AFE_CONN064_6,
 				    I_SRC_0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH1", AFE_CONN064_4, I_I2SIN5_CH1, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN065_0, I_ADDA_UL_CH1, 1, 0),
@@ -2669,6 +2719,7 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN065_0, I_ADDA_UL_CH6, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN065_6,
 				    I_SRC_0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH2", AFE_CONN065_4, I_I2SIN5_CH2, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN066_0, I_ADDA_UL_CH1, 1, 0),
@@ -2676,7 +2727,8 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN066_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN066_0, I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH5", AFE_CONN066_0, I_ADDA_UL_CH5, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN066_0, I_ADDA_UL_CH6, 1, 0)
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN066_0, I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH3", AFE_CONN066_4, I_I2SIN5_CH3, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN067_0, I_ADDA_UL_CH1, 1, 0),
@@ -2684,7 +2736,8 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN067_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN067_0, I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH5", AFE_CONN067_0, I_ADDA_UL_CH5, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN067_0, I_ADDA_UL_CH6, 1, 0)
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN067_0, I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH4", AFE_CONN067_4, I_I2SIN5_CH4, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch5_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN068_0, I_ADDA_UL_CH1, 1, 0),
@@ -2692,7 +2745,8 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch5_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN068_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN068_0, I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH5", AFE_CONN068_0, I_ADDA_UL_CH5, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN068_0, I_ADDA_UL_CH6, 1, 0)
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN068_0, I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH5", AFE_CONN068_4, I_I2SIN5_CH5, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch6_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN069_0, I_ADDA_UL_CH1, 1, 0),
@@ -2700,163 +2754,190 @@ static const struct snd_kcontrol_new memif_ul_cm2_ch6_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN069_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN069_0, I_ADDA_UL_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH5", AFE_CONN069_0, I_ADDA_UL_CH5, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN069_0, I_ADDA_UL_CH6, 1, 0)
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH6", AFE_CONN069_0, I_ADDA_UL_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH6", AFE_CONN069_4, I_I2SIN5_CH6, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch7_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN070_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN070_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN070_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN070_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH7", AFE_CONN070_4, I_I2SIN5_CH7, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch8_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN071_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN071_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN071_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN071_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH8", AFE_CONN071_4, I_I2SIN5_CH8, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch9_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN072_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN072_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN072_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN072_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH9", AFE_CONN072_4, I_I2SIN5_CH9, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch10_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN073_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN073_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN073_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN073_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH10", AFE_CONN073_4, I_I2SIN5_CH10, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch11_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN074_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN074_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN074_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN074_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH11", AFE_CONN074_5, I_I2SIN5_CH11, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch12_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN075_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN075_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN075_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN075_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH12", AFE_CONN075_5, I_I2SIN5_CH12, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch13_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN076_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN076_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN076_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN076_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH13", AFE_CONN076_5, I_I2SIN5_CH13, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch14_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN077_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN077_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN077_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN077_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH14", AFE_CONN077_5, I_I2SIN5_CH14, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch15_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN078_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN078_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN078_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN078_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH15", AFE_CONN078_5, I_I2SIN5_CH15, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch16_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN079_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN079_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN079_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN079_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN5_CH16", AFE_CONN079_5, I_I2SIN5_CH16, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch17_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN080_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN080_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN080_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN080_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN080_5, I_I2SIN6_CH1, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch18_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN081_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN081_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN081_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN081_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN081_5, I_I2SIN6_CH2, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch19_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN082_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN082_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN082_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN082_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH3", AFE_CONN082_5, I_I2SIN6_CH3, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch20_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN083_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN083_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN083_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN083_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH4", AFE_CONN083_5, I_I2SIN6_CH4, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch21_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN084_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN084_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN084_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN084_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH5", AFE_CONN084_5, I_I2SIN6_CH5, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch22_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN085_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN085_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN085_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN085_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH6", AFE_CONN085_5, I_I2SIN6_CH6, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch23_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN086_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN086_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN086_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN086_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH7", AFE_CONN086_5, I_I2SIN6_CH7, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch24_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN087_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN087_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN087_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN087_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH8", AFE_CONN087_5, I_I2SIN6_CH8, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch25_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN088_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN088_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN088_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN088_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH9", AFE_CONN088_5, I_I2SIN6_CH9, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch26_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN089_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN089_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN089_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN089_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH10", AFE_CONN089_5, I_I2SIN6_CH10, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch27_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN090_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN090_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN090_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN090_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH11", AFE_CONN090_5, I_I2SIN6_CH11, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch28_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN091_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN091_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN091_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN091_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH12", AFE_CONN091_5, I_I2SIN6_CH12, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch29_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN092_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN092_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN092_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN092_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH13", AFE_CONN092_5, I_I2SIN6_CH13, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch30_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN093_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN093_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN093_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN093_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH14", AFE_CONN093_5, I_I2SIN6_CH14, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch31_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN094_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN094_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN094_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN094_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH15", AFE_CONN094_5, I_I2SIN6_CH15, 1, 0),
 };
 static const struct snd_kcontrol_new memif_ul_cm2_ch32_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN095_0, I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN095_0, I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN095_0, I_ADDA_UL_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH4", AFE_CONN095_0, I_ADDA_UL_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH16", AFE_CONN095_5, I_I2SIN6_CH16, 1, 0),
 };
 
 static const char * const cm0_mux_map[] = {
@@ -3316,6 +3397,16 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"CM0_UL_MUX", "CM0_8CH_PATH", "UL_CM0_CH6"},
 	{"CM0_UL_MUX", "CM0_8CH_PATH", "UL_CM0_CH7"},
 	{"CM0_UL_MUX", "CM0_8CH_PATH", "UL_CM0_CH8"},
+
+	{"UL_CM0_CH1", "I2SIN4_CH1", "I2SIN4"},
+	{"UL_CM0_CH2", "I2SIN4_CH2", "I2SIN4"},
+	{"UL_CM0_CH3", "I2SIN4_CH3", "I2SIN4"},
+	{"UL_CM0_CH4", "I2SIN4_CH4", "I2SIN4"},
+	{"UL_CM0_CH5", "I2SIN4_CH5", "I2SIN4"},
+	{"UL_CM0_CH6", "I2SIN4_CH6", "I2SIN4"},
+	{"UL_CM0_CH7", "I2SIN4_CH7", "I2SIN4"},
+	{"UL_CM0_CH8", "I2SIN4_CH8", "I2SIN4"},
+
 	{"UL_CM0_CH1", NULL, "CM0_Enable"},
 	{"UL_CM0_CH2", NULL, "CM0_Enable"},
 	{"UL_CM0_CH3", NULL, "CM0_Enable"},
@@ -3350,6 +3441,24 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"CM1_UL_MUX", "CM1_16CH_PATH", "UL_CM1_CH14"},
 	{"CM1_UL_MUX", "CM1_16CH_PATH", "UL_CM1_CH15"},
 	{"CM1_UL_MUX", "CM1_16CH_PATH", "UL_CM1_CH16"},
+
+	/* I2SIN5 CH1 ~ CH16 -> CM1 CH1 ~ CH16*/
+	{"UL_CM1_CH1", "I2SIN5_CH1", "I2SIN5"},
+	{"UL_CM1_CH2", "I2SIN5_CH2", "I2SIN5"},
+	{"UL_CM1_CH3", "I2SIN5_CH3", "I2SIN5"},
+	{"UL_CM1_CH4", "I2SIN5_CH4", "I2SIN5"},
+	{"UL_CM1_CH5", "I2SIN5_CH5", "I2SIN5"},
+	{"UL_CM1_CH6", "I2SIN5_CH6", "I2SIN5"},
+	{"UL_CM1_CH7", "I2SIN5_CH7", "I2SIN5"},
+	{"UL_CM1_CH8", "I2SIN5_CH8", "I2SIN5"},
+	{"UL_CM1_CH9", "I2SIN5_CH9", "I2SIN5"},
+	{"UL_CM1_CH10", "I2SIN5_CH10", "I2SIN5"},
+	{"UL_CM1_CH11", "I2SIN5_CH11", "I2SIN5"},
+	{"UL_CM1_CH12", "I2SIN5_CH12", "I2SIN5"},
+	{"UL_CM1_CH13", "I2SIN5_CH13", "I2SIN5"},
+	{"UL_CM1_CH14", "I2SIN5_CH14", "I2SIN5"},
+	{"UL_CM1_CH15", "I2SIN5_CH15", "I2SIN5"},
+	{"UL_CM1_CH16", "I2SIN5_CH16", "I2SIN5"},
 
 	{"UL_CM1_CH1", NULL, "CM1_Enable"},
 	{"UL_CM1_CH2", NULL, "CM1_Enable"},
@@ -3414,6 +3523,43 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"CM2_UL_MUX", "CM2_32CH_PATH", "UL_CM2_CH30"},
 	{"CM2_UL_MUX", "CM2_32CH_PATH", "UL_CM2_CH31"},
 	{"CM2_UL_MUX", "CM2_32CH_PATH", "UL_CM2_CH32"},
+
+	/* I2SIN5 CH1 ~ CH16 -> CM2 CH1 ~ CH16*/
+	{"UL_CM2_CH1", "I2SIN5_CH1", "I2SIN5"},
+	{"UL_CM2_CH2", "I2SIN5_CH2", "I2SIN5"},
+	{"UL_CM2_CH3", "I2SIN5_CH3", "I2SIN5"},
+	{"UL_CM2_CH4", "I2SIN5_CH4", "I2SIN5"},
+	{"UL_CM2_CH5", "I2SIN5_CH5", "I2SIN5"},
+	{"UL_CM2_CH6", "I2SIN5_CH6", "I2SIN5"},
+	{"UL_CM2_CH7", "I2SIN5_CH7", "I2SIN5"},
+	{"UL_CM2_CH8", "I2SIN5_CH8", "I2SIN5"},
+	{"UL_CM2_CH9", "I2SIN5_CH9", "I2SIN5"},
+	{"UL_CM2_CH10", "I2SIN5_CH10", "I2SIN5"},
+	{"UL_CM2_CH11", "I2SIN5_CH11", "I2SIN5"},
+	{"UL_CM2_CH12", "I2SIN5_CH12", "I2SIN5"},
+	{"UL_CM2_CH13", "I2SIN5_CH13", "I2SIN5"},
+	{"UL_CM2_CH14", "I2SIN5_CH14", "I2SIN5"},
+	{"UL_CM2_CH15", "I2SIN5_CH15", "I2SIN5"},
+	{"UL_CM2_CH16", "I2SIN5_CH16", "I2SIN5"},
+
+	/* I2SIN6 CH1 ~ CH16 -> CM2 CH17 ~ CH32*/
+	{"UL_CM2_CH17", "I2SIN6_CH1", "I2SIN6"},
+	{"UL_CM2_CH18", "I2SIN6_CH2", "I2SIN6"},
+	{"UL_CM2_CH19", "I2SIN6_CH3", "I2SIN6"},
+	{"UL_CM2_CH20", "I2SIN6_CH4", "I2SIN6"},
+	{"UL_CM2_CH21", "I2SIN6_CH5", "I2SIN6"},
+	{"UL_CM2_CH22", "I2SIN6_CH6", "I2SIN6"},
+	{"UL_CM2_CH23", "I2SIN6_CH7", "I2SIN6"},
+	{"UL_CM2_CH24", "I2SIN6_CH8", "I2SIN6"},
+	{"UL_CM2_CH25", "I2SIN6_CH9", "I2SIN6"},
+	{"UL_CM2_CH26", "I2SIN6_CH10", "I2SIN6"},
+	{"UL_CM2_CH27", "I2SIN6_CH11", "I2SIN6"},
+	{"UL_CM2_CH28", "I2SIN6_CH12", "I2SIN6"},
+	{"UL_CM2_CH29", "I2SIN6_CH13", "I2SIN6"},
+	{"UL_CM2_CH30", "I2SIN6_CH14", "I2SIN6"},
+	{"UL_CM2_CH31", "I2SIN6_CH15", "I2SIN6"},
+	{"UL_CM2_CH32", "I2SIN6_CH16", "I2SIN6"},
+
 	{"UL_CM2_CH1", NULL, "CM2_Enable"},
 	{"UL_CM2_CH2", NULL, "CM2_Enable"},
 	{"UL_CM2_CH3", NULL, "CM2_Enable"},
@@ -5409,6 +5555,7 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case ETDM_OUT1_MON:
 	case ETDM_OUT2_MON:
 	case ETDM_OUT4_MON:
+	case ETDM_OUT5_MON:
 	case ETDM_OUT6_MON:
 	case AFE_DPTX_MON:
 	case AFE_TDM_TOP_IP_VERSION:
@@ -6298,6 +6445,9 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AUDIO_TOP_CON4, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUDIO_TOP_CON4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AUD_TOP_CFG_VLP_RG, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AUD_TOP_CFG_VLP_RG = 0x%x\n", value);
 	regmap_read(afe->regmap, AUDIO_ENGEN_CON0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUDIO_ENGEN_CON0 = 0x%x\n", value);
@@ -7357,6 +7507,39 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, ETDM_IN4_MON, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_IN4_MON = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON0 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON1 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON2 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON3, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON3 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON4 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON5 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON6 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON7, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON7 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON8, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON8 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_CON9, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_CON9 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_IN5_MON, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_IN5_MON = 0x%x\n", value);
 	regmap_read(afe->regmap, ETDM_IN6_CON0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_IN6_CON0 = 0x%x\n", value);
@@ -7402,6 +7585,9 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, ETDM_OUT4_MON, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_OUT4_MON = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_MON, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_MON = 0x%x\n", value);
 	regmap_read(afe->regmap, ETDM_OUT6_MON, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_OUT6_MON = 0x%x\n", value);
@@ -7513,6 +7699,33 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, ETDM_OUT4_CON8, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_OUT4_CON8 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON0 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON1 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON2 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON3, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON3 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON4 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON5 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON6 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON7, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON7 = 0x%x\n", value);
+	regmap_read(afe->regmap, ETDM_OUT5_CON8, &value);
+	n += scnprintf(buffer + n, size - n,
+		"ETDM_OUT5_CON8 = 0x%x\n", value);
 	regmap_read(afe->regmap, ETDM_OUT6_CON0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"ETDM_OUT6_CON0 = 0x%x\n", value);
@@ -9148,6 +9361,294 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AFE_CONN123_6, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_CONN123_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN124_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN124_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN125_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN125_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN126_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN126_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN127_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN127_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN128_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN128_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN129_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN129_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN130_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN130_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN131_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN131_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN132_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN132_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN133_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN133_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN134_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN134_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN135_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN135_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN136_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN136_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN137_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN137_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN138_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN138_6 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_0, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_1, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_1 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_2, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_2 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_4, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_4 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_5, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_5 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_CONN139_6, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_CONN139_6 = 0x%x\n", value);
 	regmap_read(afe->regmap, AFE_CONN148_0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_CONN148_0 = 0x%x\n", value);
