@@ -53,6 +53,12 @@ static u32 car_switch_gpio_value;
 
 static struct wakeup_source *switch_irq_lock;
 
+static struct workqueue_struct *send_status_wq;
+static struct work_struct sleep_stable_work;
+static struct work_struct reverse_stable_work;
+static struct work_struct switch_on_work;
+static struct work_struct reverse_work;
+
 static u32 get_status(u32 gpio_num)
 {
 	return gpio_get_value(gpio_num);
@@ -124,12 +130,9 @@ static int send_car_sleep_status(u32 portid, u32 pinval)
 	return result;
 }
 
-static enum hrtimer_restart
-sleep_gpio_stable_hrtimer_func(struct hrtimer *timer)
+static void  sleep_gpio_stable_worker(struct work_struct *work)
 {
 	u32 pin_val = get_status(car_switch_gpio);
-
-	pr_info("[carevent] sleep_gpio_stable_timer timeout\n");
 
 	if (car_sleep_status == pin_val)
 		pr_info("[carevent] previous status is the same with the current(%d)\n",
@@ -137,18 +140,29 @@ sleep_gpio_stable_hrtimer_func(struct hrtimer *timer)
 	else
 		send_car_sleep_status(sleep_target_pid, pin_val);
 
+	pr_info("[carevent] sleep gpio stable worker\n");
 	sleep_gpio_timer_running = 0;
-	return HRTIMER_NORESTART;
 }
 
 
 static enum hrtimer_restart
-reverse_gpio_stable_hrtimer_func(struct hrtimer *timer)
+sleep_gpio_stable_hrtimer_func(struct hrtimer *timer)
+{
+	int ret;
+
+	pr_info("[carevent] sleep_gpio_stable_timer timeout\n");
+
+	ret = queue_work(send_status_wq, &sleep_stable_work);
+	if (!ret)
+		pr_info("[carevent]  sleep stable work was already on a queue\n");
+
+	return HRTIMER_NORESTART;
+}
+
+static void reverse_gpio_stable_worker(struct work_struct *work)
 {
 	u32 pin_val = get_status(car_reverse_gpio);
 	int i;
-
-	pr_info("[carevent] reverse_gpio_stable_timer timeout\n");
 
 	if (car_reverse_status == pin_val)
 		pr_info("[carevent] previous status is the same with the current(%d)\n",
@@ -160,16 +174,45 @@ reverse_gpio_stable_hrtimer_func(struct hrtimer *timer)
 							pin_val);
 		}
 		car_reverse_status = pin_val;
+		pr_info("[carevent] reverse gpio stable worker\n");
 	}
 
 	reverse_gpio_timer_running = 0;
+}
+
+static enum hrtimer_restart
+reverse_gpio_stable_hrtimer_func(struct hrtimer *timer)
+{
+	int ret;
+
+	pr_info("[carevent] reverse_gpio_stable_timer timeout\n");
+
+	ret = queue_work(send_status_wq, &reverse_stable_work);
+	if (!ret)
+		pr_info("[carevent]  reverse stable work was already on a queue\n");
+
 	return HRTIMER_NORESTART;
 }
+
+static void car_reverse_worker(struct work_struct *work)
+{
+	u32 pin_val = get_status(car_reverse_gpio);
+	int i;
+
+	for (i = 0; i < PIDS_NR; i++) {
+		if (target_pids[i] > 0)
+			send_car_reverse_status(target_pids[i], pin_val);
+	}
+
+	car_reverse_status = pin_val;
+
+	pr_info("[carevent] car reverse worker\n");
+}
+
 
 static irqreturn_t car_reverse_isr(int irq, void *d)
 {
 	u32 pin_val = get_status(car_reverse_gpio);
-	int i;
 
 	pr_info("[carevent] car reverse isr, pin_val = %u\n", pin_val);
 
@@ -187,12 +230,7 @@ static irqreturn_t car_reverse_isr(int irq, void *d)
 				      ktime_set(0, 100 * 1000 * 1000),
 				      HRTIMER_MODE_REL);
 		} else {
-			for (i = 0; i < PIDS_NR; i++) {
-				if (target_pids[i] > 0)
-					send_car_reverse_status(target_pids[i],
-								pin_val);
-			}
-			car_reverse_status = pin_val;
+			queue_work(send_status_wq, &reverse_work);
 			pr_info("[carevent] start reverse_gpio_stable_timer\n");
 			hrtimer_start(&reverse_gpio_stable_timer,
 				ktime_set(reverse_gpio_timer_time, 0),
@@ -204,6 +242,16 @@ static irqreturn_t car_reverse_isr(int irq, void *d)
 	return IRQ_HANDLED;
 }
 
+
+static void car_switch_on_worker(struct work_struct *work)
+{
+	u32 pin_val;
+
+	pin_val = get_status(car_switch_gpio);
+	send_car_sleep_status(sleep_target_pid, pin_val);
+
+	pr_info("[carevent] car switch on worker\n");
+}
 
 static irqreturn_t car_switch_on_isr(int irq, void *d)
 {
@@ -232,8 +280,7 @@ static irqreturn_t car_switch_on_isr(int irq, void *d)
 					      ktime_set(0, 100 * 1000 * 1000),
 					      HRTIMER_MODE_REL);
 			} else {
-				send_car_sleep_status(sleep_target_pid,
-						      pin_val);
+				queue_work(send_status_wq, &switch_on_work);
 				/* hrtimer_cancel(&sleep_gpio_stable_timer); */
 				pr_info("[carevent] start sleep_gpio_stable_timer\n");
 				hrtimer_start(&sleep_gpio_stable_timer,
@@ -421,7 +468,7 @@ int carevent_probe(struct platform_device *pdev)
 
 	car_reverse_gpio = of_get_named_gpio(np, "carevent-gpio", 1);
 	if (car_reverse_gpio < 0)
-		pr_info("[carevent]switch-gpio is not set\n");
+		pr_info("[carevent]reverse-gpio is not set\n");
 	else
 		has_reverse = 1;
 
@@ -476,6 +523,18 @@ int carevent_probe(struct platform_device *pdev)
 
 	switch_irq_lock = wakeup_source_register(NULL, "carevent_acc_irq_lock");
 
+	send_status_wq = alloc_workqueue("carevent_send_status",
+								WQ_UNBOUND | WQ_HIGHPRI, 1);
+	if (!send_status_wq) {
+		pr_info("[carevent] failed to create worker thread\n");
+		return -ENOMEM;
+	}
+
+	INIT_WORK(&switch_on_work, car_switch_on_worker);
+	INIT_WORK(&sleep_stable_work, sleep_gpio_stable_worker);
+	INIT_WORK(&reverse_stable_work, reverse_gpio_stable_worker);
+	INIT_WORK(&reverse_work, car_reverse_worker);
+
 	return start_montior();
 }
 
@@ -516,6 +575,9 @@ static void __exit car_exit(void)
 
 	if (nl_sk)
 		netlink_kernel_release(nl_sk);
+
+	flush_workqueue(send_status_wq);
+	destroy_workqueue(send_status_wq);
 }
 module_init(car_init);
 module_exit(car_exit);
