@@ -1162,9 +1162,7 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	alarm_init(&priv->vbat0_alarm, ALARM_BOOTTIME, vbat0_alarm_poll_func);
 
 	if (priv->dinfo && priv->dinfo->shared_isink_load_supply) {
-		priv->isink_load = devm_regulator_get(&pdev->dev, "isink_load");
-		if (IS_ERR(priv->isink_load))
-			priv->isink_load = devm_regulator_get(&pdev->dev, "isink-load");
+		priv->isink_load = devm_regulator_get(&pdev->dev, "isink-load");
 	} else {
 		priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink_load");
 		if (IS_ERR(priv->isink_load))
