@@ -2633,11 +2633,6 @@ static const struct mml_data mt6991_mmlt_data = {
 		[MML_CT_DL_IN] = &dli_comp_init,
 		[MML_CT_DL_OUT] = &dl_mml_comp_init,
 	},
-	.ddp_comp_funcs = {
-		[MML_CT_SYS] = &sys_ddp_funcs,
-		[MML_CT_DL_IN] = &dl_ddp_funcs,
-		[MML_CT_DL_OUT] = &dl_ddp_funcs,
-	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
 	.hw_ops = &sys_hw_ops_mminfra,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
