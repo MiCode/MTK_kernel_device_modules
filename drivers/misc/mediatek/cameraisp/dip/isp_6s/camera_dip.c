@@ -6332,7 +6332,7 @@ static long DIP_ioctl(
 				dip_ion_list->buf = dma_buf_get(ion_mem_info.buf_fd);
 				dip_ion_list->attach = dma_buf_attach(dip_ion_list->buf,
 						dip_devs->dev);
-				dip_ion_list->sgt = dma_buf_map_attachment(dip_ion_list->attach,
+				dip_ion_list->sgt = dma_buf_map_attachment_unlocked(dip_ion_list->attach,
 						DMA_BIDIRECTIONAL);
 				dip_ion_list->dma_addr =
 					(unsigned int)sg_dma_address(dip_ion_list->sgt->sgl);
@@ -6370,7 +6370,7 @@ static long DIP_ioctl(
 				dip_ion_list = list_entry(pos, struct dip_fd_list_template, list);
 				if (fd == dip_ion_list->fd) {
 					if (dip_ion_list->buf) {
-						dma_buf_unmap_attachment(dip_ion_list->attach,
+						dma_buf_unmap_attachment_unlocked(dip_ion_list->attach,
 								dip_ion_list->sgt,
 								DMA_BIDIRECTIONAL);
 						dma_buf_detach(dip_ion_list->buf,

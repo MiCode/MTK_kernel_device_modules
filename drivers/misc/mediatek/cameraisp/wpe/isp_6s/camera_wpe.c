@@ -4389,7 +4389,7 @@ static long WPE_ioctl(struct file *pFile,
 				wpe_ion_list->buf = dma_buf_get(ion_mem_info.buf_fd);
 				wpe_ion_list->attach = dma_buf_attach(wpe_ion_list->buf,
 						WPE_devs->dev);
-				wpe_ion_list->sgt = dma_buf_map_attachment(wpe_ion_list->attach,
+				wpe_ion_list->sgt = dma_buf_map_attachment_unlocked(wpe_ion_list->attach,
 						DMA_BIDIRECTIONAL);
 				wpe_ion_list->dma_addr =
 					(unsigned int)sg_dma_address(wpe_ion_list->sgt->sgl);
@@ -4429,7 +4429,7 @@ static long WPE_ioctl(struct file *pFile,
 				wpe_ion_list = list_entry(pos, struct wpe_fd_list_template, list);
 				if (fd == wpe_ion_list->fd) {
 					if (wpe_ion_list->buf) {
-						dma_buf_unmap_attachment(wpe_ion_list->attach,
+						dma_buf_unmap_attachment_unlocked(wpe_ion_list->attach,
 								wpe_ion_list->sgt,
 								DMA_BIDIRECTIONAL);
 						dma_buf_detach(wpe_ion_list->buf,
