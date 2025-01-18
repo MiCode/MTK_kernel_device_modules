@@ -31,8 +31,6 @@
 #define VCU_IPIMSG_VENC_SEND_BASE 0x3000
 #define AP_IPIMSG_VENC_ACK_BASE 0x4000
 
-#define VENC_TF_INFO_OFFSET 0x10000
-
 enum mtk_venc_hw_id {
 	MTK_VENC_CORE_0 = 0,
 	MTK_VENC_CORE_1 = 1,
@@ -164,7 +162,7 @@ struct mtk_tf_info {
 };
 
 struct mtk_vio_info {
-	__u32	has_vio;
+	__u32	has_emi_vio; // emi mpu violation flag
 };
 
 struct mtk_smi_pwr_ctrl_info {

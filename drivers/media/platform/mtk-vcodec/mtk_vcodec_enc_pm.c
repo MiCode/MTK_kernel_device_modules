@@ -824,8 +824,8 @@ static int mtk_venc_violation_fault_callback(void *data)
 
 	mtk_v4l2_err("venc emi violation");
 	if (dev->vio_info != NULL) {
-		dev->vio_info->has_vio = 1;
-		mtk_v4l2_err("VIO set has_vio %d ", dev->vio_info->has_vio);
+		dev->vio_info->has_emi_vio = 1;
+		mtk_v4l2_err("VIO set has_emi_vio %d", dev->vio_info->has_emi_vio);
 	}
 
 	return 0;
