@@ -932,19 +932,6 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			mtk_disp_clear_channel_hrt_bw_MT6991(mtk_crtc);
 		}
 
-		/* Just for MT6989 SWRG mess panel as channel bw not enough */
-		/* TODO: Need to remove when official version */
-		if (priv->data->mmsys_id == MMSYS_MT6989) {
-			struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
-
-			dsi->ext = find_panel_ext(dsi->panel);
-			if (dsi->ext && dsi->ext->params->is_cphy && tmp1)
-				tmp1 += bw_base;
-
-			if (mtk_crtc_is_frame_trigger_mode(crtc) && tmp1)
-				tmp1 += bw_base;
-		}
-
 		mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
 
 		mtk_vidle_dvfs_bw_set(tmp1);
@@ -973,7 +960,10 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 
 	/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
-	mtk_crtc->usage_ovl_fmt[1] = 4;
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_crtc->usage_ovl_fmt[1] = 4;
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		mtk_crtc->usage_ovl_fmt[0] = 4;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 		(priv->data->mmsys_id == MMSYS_MT6989 ||

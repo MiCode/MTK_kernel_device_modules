@@ -43,6 +43,7 @@
 #include "slbc_ops.h"
 #include "../mml/mtk-mml.h"
 #include <soc/mediatek/smi.h>
+#include "mtk_drm_fb.h"
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
@@ -848,8 +849,24 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
-	unsigned int fmt = plane_state->pending.format;
+	unsigned int fmt;
 	unsigned int phy_id = 0;
+
+	if (!plane_state->base.fb) {
+		DDPINFO("%s ovl:%d,lye:%d,ext:%d, not found fb\n", __func__,
+				plane_state->comp_state.comp_id,
+				plane_state->comp_state.lye_id,
+				plane_state->comp_state.ext_lye_id);
+		return;
+	}
+	DDPINFO("%s ovl:%d,lye:%d,ext:%d,fmt:0x%x, addr:0x%llx\n", __func__,
+			plane_state->comp_state.comp_id,
+			plane_state->comp_state.lye_id,
+			plane_state->comp_state.ext_lye_id,
+			plane_state->base.fb->format->format,
+			mtk_fb_get_dma(plane_state->base.fb));
+
+	fmt = plane_state->base.fb->format->format;
 
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
@@ -2798,6 +2815,16 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		}
 	}
 
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (pending->enable) {//enable and not ext layer
+			if (ext_lye_idx == 0)
+				mtk_crtc->usage_ovl_fmt[(ovl->data->ovl_phy_mapping(comp) + lye_idx)] =
+					mtk_get_format_bpp(fmt);
+		} else {
+			mtk_crtc->usage_ovl_fmt[(ovl->data->ovl_phy_mapping(comp) + lye_idx)] = 0;
+		}
+	}
+
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
 	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d\n"
@@ -4421,9 +4448,12 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				break;
 			goto other;
 		}
-		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
-					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-		comp->last_qos_bw = comp->qos_bw;
+
+		if ((comp->last_qos_bw <= comp->qos_bw) || force_update) {
+			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
+					DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+			comp->last_qos_bw = comp->qos_bw;
+		}
 		if (!force_update)
 			mtk_crtc->total_srt += comp->qos_bw;
 
@@ -4436,9 +4466,11 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
-			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
-					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-			comp->last_qos_bw_other = comp->qos_bw_other;
+			if ((comp->last_qos_bw_other <= comp->qos_bw_other) || force_update) {
+				__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other, 0,
+					DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+				comp->last_qos_bw_other = comp->qos_bw_other;
+			}
 			if (!force_update)
 				mtk_crtc->total_srt += comp->qos_bw_other;
 
