@@ -31,10 +31,6 @@
 //#include "upmu_common.h"
 #include "mtk_static_power.h"
 
-#if IS_ENABLED(CONFIG_MTK_EEM_READY)
-#include "mtk_eem.h"
-#endif
-
 #ifndef EARLY_PORTING_SPOWER
 #include "mtk_common_static_power.h"
 #endif
