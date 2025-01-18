@@ -9965,6 +9965,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		pcie_eint: pcie-eint {
+			compatible = "mediatek,pcie-eint-wake";
+			interrupt-parent = <&pio>;
+			interrupts = <145 IRQ_TYPE_EDGE_FALLING>;
+			status = "okay";
+		};
+
 		pcie1: pcie@16940000 {
 			device_type = "pci";
 			compatible = "mediatek,mt6991-pcie";
@@ -9981,6 +9988,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
 			pextpcfg = <&pextp1cfg_ao_clk>;
+
+			eint-irq = <&pcie_eint>;
 
 			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_REF_PCIE>,
 				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_PL_P_PCIE>,
