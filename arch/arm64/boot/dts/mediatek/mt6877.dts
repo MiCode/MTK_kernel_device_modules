@@ -2686,7 +2686,7 @@
 		freq-table-hz = <0 0>, <0 0>, <0 0>,
 						<0 0>;
 
-		/* vcc-supply = <&mt_pmic_vemc_ldo_reg>; */
+		vcc-supply = <&mt6359p_vemc_reg>;
 
 		resets = <&infracfg_rst 0>, <&infracfg_rst 1>,
 				 <&infracfg_rst 2>;
@@ -2695,8 +2695,8 @@
 		bootmode = <&chosen>;
 
 		mediatek,ufs-disable-mcq;
+		mediatek,ufs-ah8-legacy;
 		mediatek,ufs-disable-ah8;
-		mediatek,ufs-support-va09;
 		mediatek,ufs-qos;
 	};
 
