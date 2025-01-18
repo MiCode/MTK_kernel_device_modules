@@ -300,6 +300,7 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 	}
 
 	// mux opp records
+	mmdvfs_debug_dump_line(file, "mux record opp/min/level\n");
 	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_MUX_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++) {
@@ -343,6 +344,14 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 		for (j = 0; j < MAX_OPP; j++)
 			mmdvfs_debug_dump_line(file, "pwr:%u opp:%u total_time:%llu\n",
 				i, j, readq(MEM_PWR_TOTAL_TIME(i, j)));
+
+	// latest mux cb
+	mmdvfs_debug_dump_line(file, "latest mux cb mux/opp\n");
+	val = readl(MEM_MUX_CB_MUX_OPP);
+	mmdvfs_debug_dump_line(file, "[%5u.%6u] mux:%lu opp:%lu\n",
+		readl(MEM_MUX_CB_SEC), readl(MEM_MUX_CB_USEC), (val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
+	mmdvfs_debug_dump_line(file, "[%5u.%6u] mux:%lu opp:%lu\n",
+		readl(MEM_MUX_CB_END_SEC), readl(MEM_MUX_CB_END_USEC), (val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 
 	// vmm ceil records
 	i = readl(MEM_REC_VMM_CEIL_CNT) % MEM_REC_CNT_MAX;

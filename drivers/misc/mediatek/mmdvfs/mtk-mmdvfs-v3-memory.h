@@ -79,10 +79,15 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 
 #define MEM_VMM_BUCK_ON		(MEM_BASE + 0x480)
 
-// MMDVFS_OPP_RECORD_NUM: POWER_NUM(3), CAM_ALONE
-// x: POWER_NUM, y: OPP
-#define MEM_PWR_TOTAL_TIME(x, y)	(MEM_BASE + 0x484 + 0x40 * (x) + 0x8 * (y))
-/* next start: 0x584 */
+#define MEM_PWR_TOTAL_TIME(x, y) \
+	(MEM_BASE + 0x484 + 0x40 * (x) + 0x8 * (y)) // POWER_NUM(4), OPP(8) (u64)
+
+#define MEM_MUX_CB_MUX_OPP	(MEM_BASE + 0x584)
+#define MEM_MUX_CB_SEC		(MEM_BASE + 0x588)
+#define MEM_MUX_CB_USEC		(MEM_BASE + 0x58C)
+#define MEM_MUX_CB_END_SEC	(MEM_BASE + 0x590)
+#define MEM_MUX_CB_END_USEC	(MEM_BASE + 0x594)
+/* next start: 0x598 */
 
 #define MEM_REC_CNT_MAX		16
 
