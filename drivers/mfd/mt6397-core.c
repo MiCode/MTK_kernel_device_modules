@@ -483,7 +483,9 @@ static const struct mfd_cell mt6359p_devs[] = {
 		.of_compatible = "mediatek,mt6359p-efuse",
 	}, {
 		.name = "mt6359p-regulator",
-		.of_compatible = "mediatek,mt6359p-regulator"
+		.of_compatible = "mediatek,mt6359p-regulator",
+		.num_resources = ARRAY_SIZE(mt6359p_regulators_resources),
+		.resources = mt6359p_regulators_resources,
 	}, {
 		.name = "mt6359p-rtc",
 		.num_resources = ARRAY_SIZE(mt6359p_rtc_resources),
