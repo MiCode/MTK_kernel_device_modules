@@ -1285,6 +1285,12 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 	uint32_t tmp_count = 0;
 	int count = 0;
 
+#if IS_ENABLED(CONFIG_64BIT)
+	/* pkvm smmu vendro moudle is not ready, so do nothing */
+	if (is_protected_kvm_enabled())
+		return 0;
+#endif
+
 	if (!ssheap || !ssheap->pmm_page) {
 		pr_err("ssheap info not ready!\n");
 		return -EINVAL;
