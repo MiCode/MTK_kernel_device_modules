@@ -821,6 +821,26 @@ struct mtk_cwb_info {
 	const struct mtk_cwb_funcs *funcs;
 };
 
+struct mtk_crtc_static_plane {
+	int index;
+	struct mtk_plane_state state[OVL_LAYER_NR];
+};
+
+struct mtk_crtc_se_plane {
+	int panel_id;
+	struct mtk_plane_state state;
+};
+
+#define MTK_FB_SE_NUM 2
+
+enum DISP_SE_STATE {
+	DISP_SE_IDLE,
+	DISP_SE_START,
+	DISP_SE_RUNNING,
+	DISP_SE_STOP,
+	DISP_SE_STOPPED,
+};
+
 #define MSYNC_MAX_RECORD 5
 #define MSYNC_LOWFRAME_THRESHOLD 3
 #define MSYNC_MIN_FPS 4610
@@ -1150,6 +1170,20 @@ struct mtk_drm_crtc {
 	atomic_t esd_notice_status;
 
 	struct mtk_tui_ovl_stat tui_ovl_stat;
+
+	bool virtual_path;
+	void *phys_mtk_crtc;
+	unsigned int panel_offset;
+	unsigned int mutex_id;
+	unsigned int offset_x;
+	unsigned int offset_y;
+
+	int se_panel;	/* 1 << */
+	int sideband_layer;
+	struct mtk_crtc_static_plane static_plane;
+	struct mtk_crtc_se_plane se_plane[MTK_FB_SE_NUM];
+	enum DISP_SE_STATE se_state;
+
 };
 
 enum BL_GAMMA_GAIN {
@@ -1207,6 +1241,7 @@ struct mtk_cmdq_cb_data {
 	struct mtk_lcm_dsi_cmd_packet *ddic_packet;
 	ktime_t signal_ts;
 	struct cb_data_store *store_cb_data;
+	uint64_t pts;
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
@@ -1276,8 +1311,13 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait);
 bool mtk_crtc_with_sub_path(struct drm_crtc *crtc, unsigned int ddp_mode);
 
+struct mtk_ddp_comp *mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
+					struct mtk_plane_state *plane_state);
+
 void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc);
+void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc,
+				   struct cmdq_pkt *cmdq_handle);
 void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait);
 void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc);

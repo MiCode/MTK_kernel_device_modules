@@ -4,6 +4,8 @@
  */
 
 #include <drm/drm_atomic_helper.h>
+#include <drm/drm_atomic_uapi.h>
+#include <drm/drm_crtc.h>
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_gem.h>
@@ -147,6 +149,15 @@ static bool no_shift;
 static int mml_hw_caps;
 static int mml_mode_caps;
 
+struct mtk_se_dma_map {
+	int fd;
+	struct dma_buf *dmabuf;
+	struct sg_table *sgt;
+	struct dma_buf_attachment *attach;
+	struct list_head list;
+};
+
+static struct mtk_se_dma_map dma_map_list;
 
 #ifdef DRM_OVL_SELF_PATTERN
 struct drm_crtc *test_crtc;
@@ -7715,6 +7726,7 @@ int mtk_drm_get_panel_info(struct drm_device *dev,
 			     struct drm_mtk_session_info *info, unsigned int crtc_id)
 {
 	int ret = 0;
+	long rotate = 0;
 	unsigned int vramsize = 0, fps = 0;
 	phys_addr_t fb_base = 0;
 	struct mtk_drm_private *private = dev->dev_private;
@@ -7724,6 +7736,8 @@ int mtk_drm_get_panel_info(struct drm_device *dev,
 	if (params) {
 		info->physicalWidthUm = params->physical_width_um;
 		info->physicalHeightUm = params->physical_height_um;
+		info->physical_width = params->physical_width;
+		info->physical_height = params->physical_height;
 	} else
 		DDPPR_ERR("Cannot get lcm_ext_params\n");
 
@@ -7732,6 +7746,12 @@ int mtk_drm_get_panel_info(struct drm_device *dev,
 		_parse_tag_videolfb(&vramsize, &fb_base, &fps);
 		info->vsyncFPS = fps;
 	}
+
+	/* kstrtol(CONFIG_MTK_LCM_PHYSICAL_ROTATION, 10, &rotate); */
+	info->rotate = (int)rotate;
+	DDPINFO("%s info->physicalWidthUm:%d, physicalHeightUm:%d, physical_width:%d, physical_height:%d, rotate:%d",
+		__func__, info->physicalWidthUm, info->physicalHeightUm, info->physical_width,info->physical_height,
+		info->rotate);
 
 	return ret;
 }
@@ -8728,6 +8748,474 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 	}
 }
 
+static struct mutex se_lock;
+
+static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_atomic_state *state;
+	struct drm_crtc_state *crtc_state;
+	struct drm_crtc *crtc;
+	struct drm_modeset_acquire_ctx ctx;
+	struct drm_display_mode *mode;
+	struct drm_connector *connector;
+	struct drm_connector_list_iter conn_iter;
+	struct drm_encoder *encoder;
+	struct drm_connector_state *conn_state;
+	int ret;
+	bool found = false;
+
+	if (mtk_crtc->enabled) {
+		DDPINFO("%s %d crtc already enable\n", __func__, __LINE__);
+		return 0;
+	}
+
+	crtc = &mtk_crtc->base;
+	DDPMSG("%s crtc%d line%d\n", __func__, drm_crtc_index(crtc), __LINE__);
+
+	if (mtk_crtc->virtual_path)
+		mtk_drm_se_enable(dev, mtk_crtc->phys_mtk_crtc);
+
+	drm_modeset_acquire_init(&ctx, 0);
+	state = drm_atomic_state_alloc(crtc->dev);
+	if (!state)
+		return -ENOMEM;
+
+	state->acquire_ctx = &ctx;
+
+	crtc_state = drm_atomic_get_crtc_state(state, crtc);
+	if (IS_ERR(crtc_state)) {
+		ret = PTR_ERR(crtc_state);
+		goto out;
+	}
+	crtc_state->active = true;
+	crtc_state->mode_changed = true;
+
+	drm_connector_list_iter_begin(dev, &conn_iter);
+	drm_for_each_connector_iter(connector, &conn_iter) {
+		drm_connector_for_each_possible_encoder(connector, encoder) {
+			if (encoder->possible_crtcs & drm_crtc_mask(crtc)) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			break;
+	}
+	drm_connector_list_iter_end(&conn_iter);
+
+	mutex_lock(&dev->mode_config.mutex);
+	connector->funcs->fill_modes(connector, dev->mode_config.max_width,
+						dev->mode_config.max_height);
+	mutex_unlock(&dev->mode_config.mutex);
+
+	conn_state = drm_atomic_get_connector_state(state, connector);
+
+	ret = drm_atomic_set_crtc_for_connector(conn_state, crtc);
+
+	mode = list_first_entry(&connector->modes, typeof(*mode), head);
+	drm_mode_debug_printmodeline(mode);
+	drm_mode_set_crtcinfo(mode, 0);
+
+	ret |= drm_atomic_set_mode_for_crtc(crtc_state, mode);
+	ret |= drm_atomic_commit(state);
+ out:
+	drm_atomic_state_put(state);
+	drm_modeset_drop_locks(&ctx);
+	drm_modeset_acquire_fini(&ctx);
+	DDPMSG("%s crtc%d ret %d\n", __func__, drm_crtc_index(crtc), ret);
+
+	return ret;
+}
+
+static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
+{
+	int index = drm_crtc_index(&mtk_crtc->base);
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_ddp_comp *comp;
+	int i = 0, ret;
+	struct mtk_plane_state tmp_state;
+	struct mtk_plane_comp_state *t_s = &tmp_state.comp_state;
+
+	DDPINFO("%s line:%d", __func__, __LINE__);
+
+	cmdq_handle = mtk_crtc_gce_commit_begin(&mtk_crtc->base, NULL, NULL, false);
+
+	//disable panel layers
+	if (mtk_crtc->se_state == DISP_SE_START) {
+		if (mtk_crtc->se_panel & (1 << MTK_PANEL_DPI_1)) {
+			t_s->comp_id = DDP_COMPONENT_OVL2_2L;
+			t_s->lye_id =  1;
+			t_s->ext_lye_id = 0;
+			comp = mtk_crtc_get_plane_comp(&mtk_crtc->base, &tmp_state);
+			mtk_ddp_comp_layer_off(comp, t_s->lye_id, 0, cmdq_handle);
+		} else if (mtk_crtc->se_panel & (1 << MTK_PANEL_DPI_0)) {
+			//if (mtk_dpi_get_split_count() > 1) {
+			//	t_s->comp_id = DDP_COMPONENT_OVL2_2L;
+			//	t_s->lye_id =  0;
+			//	t_s->ext_lye_id = 0;
+			//	comp = mtk_crtc_get_plane_comp(&mtk_crtc->base, &tmp_state);
+			//	mtk_ddp_comp_layer_off(comp, t_s->lye_id, 0, cmdq_handle);
+			//} else {
+			//	mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle, 0);
+			//}
+		} else
+			mtk_crtc_all_layer_off(mtk_crtc, cmdq_handle);
+		mtk_crtc->se_state = DISP_SE_RUNNING;
+	}
+
+	for (i = 0; i < MTK_FB_SE_NUM; i++) {
+		DDPINFO("%s %d mtk_crtc->se_plane[%d].state.comp_state.comp_id:%d", __func__, __LINE__,
+			i, mtk_crtc->se_plane[i].state.comp_state.comp_id);
+		if (mtk_crtc->se_plane[i].panel_id >= 0 &&
+		    mtk_crtc->se_plane[i].state.comp_state.comp_id != 0) {
+			comp = mtk_crtc_get_plane_comp(&mtk_crtc->base,
+				&mtk_crtc->se_plane[i].state);
+			DDPINFO("se crtc%d i%d comp%d,layer%d,size(%d %d %d %d)addr0x%lx\n",
+				index, i, mtk_crtc->se_plane[i].state.comp_state.comp_id,
+				mtk_crtc->se_plane[i].state.comp_state.lye_id,
+				mtk_crtc->se_plane[i].state.pending.dst_x,
+				mtk_crtc->se_plane[i].state.pending.dst_y,
+				mtk_crtc->se_plane[i].state.pending.width,
+				mtk_crtc->se_plane[i].state.pending.height,
+				mtk_crtc->se_plane[i].state.pending.addr);
+			//pts
+			if (mtk_crtc->se_plane[i].state.pending.pts != 0) {
+				DDPINFO("LATENCY_TEST %s t=%lld", __func__,
+					mtk_crtc->se_plane[i].state.pending.pts);
+			}
+			if (mtk_crtc->se_plane[i].state.pending.enable)
+				mtk_ddp_comp_layer_config(comp, 0,
+					&mtk_crtc->se_plane[i].state,
+					cmdq_handle);
+			else {
+				mtk_ddp_comp_layer_off(comp,
+					mtk_crtc->se_plane[i].state.comp_state.lye_id,
+					mtk_crtc->se_plane[i].state.comp_state.ext_lye_id,
+					cmdq_handle);
+				mtk_crtc->se_plane[i].panel_id = -1;
+			}
+		}
+	}
+
+	if (mtk_crtc->se_state == DISP_SE_STOP) {
+		mtk_crtc->se_panel = 0;
+		for (i = 0; i < mtk_crtc->static_plane.index; i++) {
+			comp = mtk_crtc_get_plane_comp(&mtk_crtc->base,
+				&mtk_crtc->static_plane.state[i]);
+			DDPMSG("%s: back i %d, comp %d %d layer %d %d\n", __func__, i, comp->id,
+				mtk_crtc->static_plane.state[i].comp_state.comp_id,
+				mtk_crtc->static_plane.state[i].comp_state.lye_id,
+				mtk_crtc->static_plane.state[i].comp_state.ext_lye_id);
+			if (mtk_crtc->static_plane.state[i].pending.enable)
+				mtk_ddp_comp_layer_config(comp, 0,
+					&mtk_crtc->static_plane.state[i],
+					cmdq_handle);
+		}
+		mtk_crtc->se_state = DISP_SE_STOPPED;
+	}
+
+	ret = mtk_crtc_gce_flush(&mtk_crtc->base, NULL, cmdq_handle, cmdq_handle);
+	if (!ret) {
+		cmdq_pkt_wait_complete(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+
+	} else {
+		DDPMSG("%s[%d] mtk_crtc_gce_flush failed!\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (mtk_crtc->se_state == DISP_SE_STOPPED) {
+		for (i = 0; i < MTK_FB_SE_NUM; i++) {
+			memset((void *)&mtk_crtc->se_plane[i].state, 0,
+				sizeof(struct mtk_plane_state));
+			mtk_crtc->se_plane[i].panel_id = -1;
+		}
+	}
+
+	return 0;
+}
+
+static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
+			 struct drm_file *file_priv)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_plane_state *state;
+	struct mtk_drm_layer_info *layer_info = (struct mtk_drm_layer_info *)data;
+	struct mtk_drm_private *private = dev->dev_private;
+	int i = 0, enable_cnt = 0;
+	struct mtk_panel_params *params;
+	int index = 0, crtc_id = 0;
+	struct mtk_crtc_se_plane *se_plane;
+	u64 sys_time;
+#ifdef CONFIG_MTK_ULTRARVC_SUPPORT
+		struct mtk_ddp_comp *comp = NULL;
+		static bool ultrarvc_start = true;
+#endif
+	sys_time = ktime_to_ns(ktime_get_boottime());
+	if(layer_info->pts != 0)
+		DDPINFO("LATENCY_TEST %s %lld sys_time %lld\n",
+			__func__, layer_info->pts, sys_time);
+
+	crtc_id = 0;//TODO mtk_drm_get_crtc_id(layer_info->panel_id);
+	if (crtc_id >= MAX_CRTC) {
+		DDPMSG("the crtc_id %d >= max %d\n", crtc_id, MAX_CRTC);
+		return -1;
+	}
+
+	DDPINFO("%s crtc%d L:%d\n", __func__, crtc_id, __LINE__);
+
+	if (layer_info->layer_id >= MTK_FB_SE_NUM) {
+		DDPMSG("%s: panel:%d invalid layer id:%d\n", __func__,
+			layer_info->panel_id, layer_info->layer_id);
+		return -EINVAL;
+	}
+
+	if ((layer_info->panel_id == MTK_PANEL_DPI_1 ||
+	    layer_info->panel_id == MTK_PANEL_DPI_0) &&
+	    layer_info->layer_id >= 1) {
+		DDPMSG("%s: panel:%d invalid layer id:%d\n", __func__,
+			layer_info->panel_id, layer_info->layer_id);
+		return -EINVAL;
+	}
+
+	mtk_crtc = to_mtk_crtc(private->crtc[crtc_id]);
+
+	mutex_lock(&se_lock);
+	mtk_drm_se_enable(dev, mtk_crtc);
+	mutex_unlock(&se_lock);
+
+	index = drm_crtc_index(&mtk_crtc->base);
+
+	DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+
+	if (!mtk_crtc->enabled) {
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+		DDPMSG("crtc%d still disable\n", index);
+		return 0;
+	}
+
+	if (mtk_crtc->se_state != DISP_SE_START &&
+	    mtk_crtc->se_state != DISP_SE_RUNNING &&
+	    !layer_info->layer_en) {
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+		DDPMSG("se still stop, not config\n");
+		return 0;
+	}
+
+	params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
+	if (params) {
+		if ((layer_info->panel_id == MTK_PANEL_DPI_1) ||
+			(layer_info->panel_id == MTK_PANEL_DSI0_1) ||
+			(layer_info->panel_id == MTK_PANEL_DSI1_1)) {
+			layer_info->tgt_x += params->crop_width[0];
+		} else if (layer_info->panel_id == MTK_PANEL_DPI_2) {
+			layer_info->tgt_x += (params->crop_width[0] + params->crop_width[1]);
+		}
+	}
+
+	if (layer_info->layer_en)
+		mtk_crtc->se_panel |= 1 << layer_info->panel_id;
+
+	se_plane = &mtk_crtc->se_plane[layer_info->layer_id];
+	se_plane->panel_id = layer_info->panel_id;
+	state = &se_plane->state;
+	state->pending.enable = layer_info->layer_en;
+	state->pending.src_x = layer_info->src_x;
+	state->pending.src_y = layer_info->src_y;
+	state->pending.dst_x = layer_info->tgt_x;
+	state->pending.dst_y = layer_info->tgt_y;
+	state->pending.width = layer_info->tgt_w;
+	state->pending.height = layer_info->tgt_h;
+	state->pending.format = layer_info->src_format;
+	state->pending.pitch = layer_info->src_pitch;
+	state->pending.modifier  = 1;
+	state->pending.is_sec = 0;
+	state->pending.addr = (dma_addr_t)layer_info->src_mvaddr;
+
+	state->pending.prop_val[PLANE_PROP_COMPRESS] = layer_info->compress;
+	state->base.alpha = 0xff << 8;
+
+	DDPINFO("%s line:%d panel_id:%d en:%d, (%d %d %d %d w%d h%d) fmt:%d picth:%d addr:0x%llx, compress:%d",
+		__func__, __LINE__, se_plane->panel_id, state->pending.enable, state->pending.src_x,
+		state->pending.src_y, state->pending.dst_x, state->pending.dst_y, state->pending.width,
+		state->pending.height, state->pending.format, state->pending.pitch, state->pending.addr,
+		state->pending.prop_val[PLANE_PROP_COMPRESS]);
+
+	state->pending.dirty = true;
+	state->comp_state.lye_id = layer_info->layer_id;
+	if (layer_info->panel_id == MTK_PANEL_DPI_1)
+		state->comp_state.lye_id += 1;
+	state->comp_state.ext_lye_id = LYE_NORMAL;
+	state->pending.pts = layer_info->pts;
+
+	switch (layer_info->panel_id) {
+	case MTK_PANEL_DSI0_0:
+		#if (CONFIG_MTK_MULTI_DSI_PATH == 2)
+		state->comp_state.comp_id = DDP_COMPONENT_OVL0;
+		#else
+		state->comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
+		#endif
+		break;
+	case MTK_PANEL_DSI0_1:
+		state->comp_state.comp_id = DDP_COMPONENT_OVL0_2L;
+		break;
+	case MTK_PANEL_DPI_0:
+		//state->comp_state.comp_id = DDP_COMPONENT_OVL2_2L;
+		break;
+	case MTK_PANEL_DPI_1:
+	case MTK_PANEL_DPI_2:
+		//state->comp_state.comp_id = DDP_COMPONENT_OVL2_2L;
+		break;
+	default:
+		DDPMSG("error panel id %d\n", layer_info->panel_id);
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+		return -1;
+	}
+
+#ifdef CONFIG_MTK_ULTRARVC_SUPPORT
+		/*{ultrarvc +*/
+		if ((layer_info->panel_id == MTK_PANEL_DSI0_0) &&
+			(layer_info->user_type == MTK_USER_AVM)) {
+			comp = mtk_crtc_get_plane_comp_by_id(&mtk_crtc->base, DDP_COMPONENT_OVL0);
+			if (is_ultrarvc_enable(comp)) {
+				state->comp_state.comp_id = DDP_COMPONENT_OVL0;
+#if (CONFIG_MTK_MULTI_DSI_PATH == 2)
+				state->comp_state.lye_id = 1;
+#else
+				state->comp_state.lye_id = 3;
+#endif
+			}
+		}
+		/*ultrarvc -}*/
+#endif
+
+	if (mtk_crtc->sideband_layer >= 0)
+		state->comp_state.lye_id = mtk_crtc->sideband_layer;
+
+	for (i = 0; i < MTK_FB_SE_NUM; i++) {
+		if (mtk_crtc->se_plane[i].state.pending.enable) {
+			enable_cnt++;
+			break;
+		}
+	}
+
+#ifdef CONFIG_MTK_ULTRARVC_SUPPORT
+		if (ultrarvc_start && (layer_info->user_type == MTK_USER_AVM) &&
+			(mtk_crtc->se_state == DISP_SE_RUNNING)) {
+			if (mtk_cam_fe_send_ipc_msg(MTK_CAM_FE_IPC_OPEN, CMD_RESPOND_NEEDED,
+				NULL, 0) == SUCCESS) {
+				ultrarvc_start = false;
+				mtk_cam_fe_send_ipc_msg(MTK_CAM_FE_IPC_REVERSE,
+					CMD_RESPOND_NEEDED, &ultrarvc_start, sizeof(bool));
+				DDPMSG("disable ultrarvc\n");
+			} else
+				DDPMSG("open cam be failed\n");
+		}
+#endif
+
+	DDPINFO("crtc%d panel%d comp_id%d layer_id%d\n", index,
+		layer_info->panel_id, state->comp_state.comp_id, state->comp_state.lye_id);
+
+	if ((mtk_crtc->se_state != DISP_SE_START) &&
+		(mtk_crtc->se_state != DISP_SE_RUNNING) &&
+		(enable_cnt))  {
+		DDPMSG("crtc%d se first start\n", index);
+		mtk_crtc->se_state = DISP_SE_START;
+	}
+
+	if (!enable_cnt) {
+		DDPMSG("crtc%d se stop\n", index);
+		mtk_crtc->se_state = DISP_SE_STOP;
+	}
+
+	mtk_drm_se_plane_config(mtk_crtc);
+
+	DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
+
+	return 0;
+}
+
+static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
+			 struct drm_file *file_priv)
+{
+	struct mtk_drm_dma_buf *dma_map = (struct mtk_drm_dma_buf *)data;
+	struct mtk_drm_private *private = dev->dev_private;
+	struct mtk_se_dma_map *map_list;
+	dma_addr_t mva;
+
+	dma_map->mva = 0;
+
+	if (dma_map->fd <= 0)
+		return -1;
+
+	map_list = kmalloc(sizeof(struct mtk_se_dma_map), GFP_KERNEL);
+	if (!map_list) {
+		DDPMSG("%s alloc fail\n", __func__);
+		return -1;
+	}
+
+	map_list->dmabuf = dma_buf_get(dma_map->fd);
+	if (IS_ERR(map_list->dmabuf)) {
+		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
+				__func__, __LINE__, map_list->dmabuf, dma_map->fd);
+		goto release;
+	}
+	map_list->attach = dma_buf_attach(map_list->dmabuf, private->dma_dev);
+	if (IS_ERR(map_list->attach)) {
+		DDPMSG("%s:%d error! attach:0x%p, fd:%d\n",
+				__func__, __LINE__, map_list->attach, dma_map->fd);
+		goto fail_get;
+	}
+
+	map_list->sgt = dma_buf_map_attachment(map_list->attach, DMA_BIDIRECTIONAL);
+	if (IS_ERR(map_list->sgt))
+		goto fail_detach;
+
+	mva = sg_dma_address(map_list->sgt->sgl);
+
+	dma_map->mva = mva;
+
+	DDPINFO("dma fd is %d mva 0x%lx\n", dma_map->fd, dma_map->mva);
+
+	list_add_tail(&map_list->list, &dma_map_list.list);
+
+	return 0;
+
+fail_detach:
+	dma_buf_detach(map_list->dmabuf, map_list->attach);
+fail_get:
+	dma_buf_put(map_list->dmabuf);
+release:
+	kfree(map_list);
+	map_list = NULL;
+	return -1;
+}
+
+static int mtk_drm_unmap_dma_buf(struct drm_device *dev, void *data,
+			 struct drm_file *file_priv)
+{
+	struct mtk_se_dma_map *map_list = NULL;
+	struct mtk_se_dma_map *n = NULL;
+	int *fd = (int *)data;
+
+	list_for_each_entry_safe(map_list, n, &dma_map_list.list, list) {
+		if (*fd == map_list->fd) {
+			DDPINFO("dma fd is %d\n", *fd);
+			list_del_init(&map_list->list);
+			dma_buf_unmap_attachment(map_list->attach, map_list->sgt,
+				DMA_BIDIRECTIONAL);
+			dma_buf_detach(map_list->dmabuf, map_list->attach);
+			dma_buf_put(map_list->dmabuf);
+
+			kfree(map_list);
+			map_list = NULL;
+			break;
+		}
+	}
+
+	return 0;
+}
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 int mtk_drm_fm_lcm_auto_test(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
@@ -8974,6 +9462,12 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 					DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, mtk_drm_sec_hnd_to_gem_hnd,
 			DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MTK_SET_OVL_LAYER, mtk_drm_set_ovl_layer,
+			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MTK_MAP_DMA_BUF, mtk_drm_map_dma_buf,
+			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MTK_UNMAP_DMA_BUF, mtk_drm_unmap_dma_buf,
+			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations mtk_drm_fops = {
@@ -10526,6 +11020,12 @@ SKIP_OVLSYS_CONFIG:
 	}
 
 	mtk_fence_init();
+
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
+	memset((void *)&dma_map_list, 0, sizeof(dma_map_list));
+	INIT_LIST_HEAD(&dma_map_list.list);
+#endif
+
 	DDPINFO("%s-\n", __func__);
 
 	disp_dts_gpio_init(dev, private);
