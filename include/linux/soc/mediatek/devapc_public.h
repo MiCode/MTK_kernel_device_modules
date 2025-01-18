@@ -43,7 +43,7 @@ enum devapc_cb_status {
 struct devapc_excep_callbacks {
 	struct list_head list;
 	enum devapc_type type;
-	bool (*handle_excep)(int devapc_type, int slave_type, int vio_idx);
+	bool (*handle_excep)(int slave_type);
 };
 
 struct devapc_vio_callbacks {
