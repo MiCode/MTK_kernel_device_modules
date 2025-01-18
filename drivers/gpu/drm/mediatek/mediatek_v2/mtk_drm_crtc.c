@@ -16342,6 +16342,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* disable partial update if partial roi overlap with round corner */
 	if (mtk_crtc->panel_ext->params->round_corner_en &&
+		!(mtk_crtc->panel_ext->params->corner_pattern_size_per_line) &&
 		((partial_roi.y < mtk_crtc->panel_ext->params->corner_pattern_height) ||
 		(partial_roi.y + partial_roi.height >= full_roi.height -
 		mtk_crtc->panel_ext->params->corner_pattern_height_bot))) {
@@ -16407,7 +16408,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* bypass PQ module if enable partial update */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST ||
-			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK ||
+			(mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK &&
+			!(mtk_crtc->panel_ext->params->corner_pattern_size_per_line)) ||
 			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)) {
 			if (comp->funcs && comp->funcs->bypass)
 				mtk_ddp_comp_bypass(comp, (partial_enable == 1) ? 1 : 0,
