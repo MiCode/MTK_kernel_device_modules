@@ -21124,6 +21124,9 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_dd
 {
 	int value = -1;
 
+	if (cur == DDP_COMPONENT_OVL_EXDMA0 && next == DDP_COMPONENT_DLI_ASYNC0)
+		return 0;
+
 	switch (cur) {
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
@@ -21518,7 +21521,8 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 {
 	int value = -1;
 
-	if (cur == DDP_COMPONENT_MML_MML0 || cur == DDP_COMPONENT_MML_MUTEX0)
+	if (cur == DDP_COMPONENT_MML_MML0 ||
+		cur == DDP_COMPONENT_MML_MUTEX0 || cur == DDP_COMPONENT_MML_MUTEX1)
 		return 0;
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
@@ -34447,8 +34451,11 @@ int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 			   unsigned int *addr)
 {
 	int value = -1;
+	DDPDBG("%s, cur=%s->next=%s\n", __func__,
+		mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 
-	if (cur == DDP_COMPONENT_MML_MML0 || cur == DDP_COMPONENT_MML_MUTEX0)
+	if (cur == DDP_COMPONENT_MML_MML0 ||
+		cur == DDP_COMPONENT_MML_MUTEX0 || cur == DDP_COMPONENT_MML_MUTEX1)
 		return 0;
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {

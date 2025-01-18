@@ -453,7 +453,6 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 	}
 #endif
 
-	mtk_crtc->need_change_exdma_path = 0;
 	mtk_crtc->last_blender = NULL;
 }
 
@@ -4461,6 +4460,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VDS_PATH_SWITCH) &&
 	    priv->need_vds_path_switch)
@@ -4475,6 +4475,9 @@ _mtk_crtc_atmoic_addon_module_connect(
 	/* reset ovl_pq_in_cb and ovl_pq_out_cb for safety */
 	if (lye_state->rpo_lye || lye_state->mml_ir_lye || lye_state->mml_dl_lye)
 		mtk_ddp_clean_ovl_pq_crossbar(mtk_crtc, cmdq_handle);
+
+	if (priv->data->ovl_exdma_rule && lye_state->mml_dl_lye)
+		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
 
 	_mtk_crtc_lye_addon_module_connect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
@@ -14240,16 +14243,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_msync2_switch_begin(crtc);
 	}
 
-	if ((priv->data->ovl_exdma_rule && mtk_crtc->need_change_exdma_path) || (mtk_crtc->is_mml_dl))
+	if (priv->data->ovl_exdma_rule &&
+		(old_mtk_state->prop_val[CRTC_PROP_LYE_IDX] < mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX]))
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		/**
-		 * if (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER)
-		 *	if ((!mtk_crtc->need_change_exdma_path) &&
-		 *	    (!(mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_BLANK)))
-		 *		continue;
-		 */
 		mtk_ddp_comp_config_begin(comp, mtk_crtc_state->cmdq_handle, j);
 	}
 	if (mtk_crtc->is_dual_pipe) {
@@ -16390,11 +16388,6 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		CRTC_MMP_MARK((int) index, atomic_flush, 0, 1);
 		goto end;
 	}
-
-	/**
-	 * if (priv->data->ovl_exdma_rule && mtk_crtc->need_change_exdma_path)
-	 *	mtk_drm_crtc_exdma_ovl_path_out(mtk_crtc, cmdq_handle);
-	 */
 
 	if (mtk_crtc->event)
 		mtk_crtc->pending_needs_vblank = true;
