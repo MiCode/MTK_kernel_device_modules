@@ -123,3 +123,7 @@ endif
 ifeq ($(strip $(CONFIG_FPGA_EARLY_PORTING)),y)
 ccflags-y += -DMML_FPGA
 endif
+
+ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DMML_DL_SUPPORT
+endif

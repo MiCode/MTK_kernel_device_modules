@@ -1991,9 +1991,11 @@ static int mml_probe(struct platform_device *pdev)
 			mml_err("fail to config sys dma mask %d", ret);
 	}
 
+#if defined(MML_DL_SUPPORT)
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
 	if (mml->dl_en)
 		mml_log("direct link mode enable");
+#endif
 	mml->dpc_disable = of_property_read_bool(dev->of_node, "dpc-disable");
 	if (mml->dpc_disable)
 		mml_log("dpc disable by project");
