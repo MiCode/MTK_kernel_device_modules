@@ -410,6 +410,9 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		mutex_unlock(&comm_port_node->bw_lock);
 	}
 
+	if (mmqos_state & SRT_DATA_BW)
+		avg_bw = div_u64(avg_bw * 100, 75);
+
 	comm_id = MASK_8(comm_node->base->icc_node->id);
 	if (mmqos_met_enabled())
 		trace_mmqos__bw_to_emi(comm_id,
@@ -950,8 +953,17 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 	chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
 	chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
 	chn_srt_r_bw[comm_id][chnn_id] = v2_chn_srt_r_bw[comm_id][chnn_id];
+
+	if (mmqos_state & SRT_DATA_BW) {
+		chn_hrt_w_bw[comm_id][chnn_id] = div_u64(chn_hrt_w_bw[comm_id][chnn_id] * 10, 7);
+		chn_srt_w_bw[comm_id][chnn_id] = div_u64(chn_srt_w_bw[comm_id][chnn_id] * 10, 7);
+		chn_hrt_r_bw[comm_id][chnn_id] = div_u64(chn_hrt_r_bw[comm_id][chnn_id] * 10, 7);
+		chn_srt_r_bw[comm_id][chnn_id] = div_u64(chn_srt_r_bw[comm_id][chnn_id] * 10, 7);
+	}
+
 	if (log_level & 1 << log_v2_dbg)
-		pr_notice("[mmqos][dbg][new] hrt_w_bw:%d  hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
+		pr_notice("[mmqos][dbg][new] srt_data_bw:%d hrt_w_bw:%d hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
+			mmqos_state & SRT_DATA_BW,
 			chn_hrt_w_bw[comm_id][chnn_id],
 			chn_hrt_r_bw[comm_id][chnn_id],
 			chn_srt_w_bw[comm_id][chnn_id],
