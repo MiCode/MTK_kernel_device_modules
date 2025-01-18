@@ -8,7 +8,10 @@
 #include "aputop_rpmsg.h"
 #include "mt6991_apupwr.h"
 #include "mt6991_apupwr_prot.h"
+
 #define LOCAL_DBG	(1)
+#define SERROR_LIMIT	(1)
+
 static void __iomem *spare_reg_base;
 // for saving data after sync with remote site
 static struct tiny_dvfs_opp_tbl opp_tbl;
@@ -364,6 +367,12 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 					info.buck_volt[i]);
 	}
 
+#if !SERROR_LIMIT
+	/*
+	 * due to the following codes may access rpclite even if power off to
+	 * cause SERROR exception, so we can only support it in no serror
+	 * limitation projects !
+	 */
 	for (i = 0 ; i < CLUSTER_NUM ; i++) {
 		mt6991_apu_dump_rpc_status(i, &cluster_dump[i]);
 		seq_printf(s, "%s : rpc_status 0x%08x , conn_cg 0x%08x\n",
@@ -381,6 +390,7 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 			cluster_dump[CLUSTER_NUM].conn_reg_status,
 			cluster_dump[CLUSTER_NUM].vcore_reg_status);
 	seq_puts(s, "\n");
+#endif
 
 	return 0;
 }
