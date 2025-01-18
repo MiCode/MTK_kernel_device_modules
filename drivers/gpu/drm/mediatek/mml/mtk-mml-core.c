@@ -260,7 +260,8 @@ u32 mml_topology_get_mode_caps(void)
 	mutex_lock(&tp_mutex);
 	tp_node = list_first_entry_or_null(&tp_ips, typeof(*tp_node), entry);
 	if (tp_node) {
-		if (tp_node->op->query_mode2)
+		if (tp_node->op->query_mode2 && tp_node->op->support_dc2 &&
+			tp_node->op->support_dc2())
 			modes = BIT(MML_MODE_MML_DECOUPLE) | BIT(MML_MODE_MML_DECOUPLE2);
 		else
 			/* enable mdp decouple bit if no mml dc2 support */
