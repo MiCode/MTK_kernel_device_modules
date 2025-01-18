@@ -1071,9 +1071,6 @@ int __init mkp_demo_init(void)
 	u32 mkp_policy_default = 0x0001fffb; // disable selinux_state, TASK_CRED policy as default
 	u32 mkp_policy = 0x0001ffff;
 	const char *mkp_panic;
-	struct device_node *rmem_node;
-	struct reserved_mem *rmem;
-	void *kinfo_vaddr;
 
 	ret = platform_driver_register(&mkp_driver);
 	if (ret)
@@ -1103,35 +1100,6 @@ int __init mkp_demo_init(void)
 		MKP_ERR("init mkp failed, sizeof(phys_addr_t) != sizeof(unsigned long)\n");
 		return 0;
 	}
-
-	/* Get reserved memory */
-	rmem_node = of_find_compatible_node(NULL, NULL, DEBUG_COMPATIBLE);
-	if (!rmem_node) {
-		pr_info("mkp: no node for reserved memory\n");
-		return -EINVAL;
-	}
-
-	rmem = of_reserved_mem_lookup(rmem_node);
-	if (!rmem) {
-		pr_info("mkp: cannot lookup reserved memory\n");
-		return -EINVAL;
-	}
-
-	pr_info("mkp: phys:0x%llx - 0x%llx (0x%llx)\n",
-		(unsigned long long)rmem->base,
-		(unsigned long long)rmem->base + (unsigned long long)rmem->size,
-		(unsigned long long)rmem->size);
-
-	kinfo_vaddr = memremap(rmem->base, rmem->size, MEMREMAP_WB);
-	if (!kinfo_vaddr) {
-		pr_info("mkp: failed to map debug-kinfo\n");
-		return -ENOMEM;
-	}
-
-	memset(kinfo_vaddr, 0, sizeof(struct kernel_all_info));
-	rmem->priv = kinfo_vaddr;
-	pr_info("mkp: rmem->priv = %lx\n", (unsigned long)rmem->priv);
-	ksym_init_kinfo_vaddr(kinfo_vaddr);
 
 	/* Set policy control */
 	mkp_set_policy(mkp_policy & mkp_policy_default);

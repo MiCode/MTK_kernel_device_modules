@@ -12,26 +12,17 @@
 DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
 
 static unsigned long mkp_stext, mkp_etext, mkp_init_begin;
-static void *kinfo_vaddr;
 
-void ksym_init_kinfo_vaddr(void *vaddr)
-{
-	kinfo_vaddr = vaddr;
-}
 static bool init_debug_kinfo(void)
 {
-	struct kernel_all_info *dbg_kinfo;
-	struct kernel_info *kinfo;
-
 	if (mkp_stext != 0 && mkp_etext != 0 && mkp_init_begin != 0)
 		return true;
 
-	dbg_kinfo = (struct kernel_all_info *)kinfo_vaddr;
-	kinfo = &(dbg_kinfo->info);
-	if (dbg_kinfo->magic_number == DEBUG_KINFO_MAGIC) {
-		mkp_stext = __phys_to_kimg(kinfo->_stext_pa);
-		mkp_etext = __phys_to_kimg(kinfo->_etext_pa);
-		mkp_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
+	mkp_stext = aee_get_stext();
+	mkp_etext = aee_get_etext();
+	mkp_init_begin = aee_get_init_begin();
+
+	if (mkp_stext != 0 && mkp_etext != 0 && mkp_init_begin != 0) {
 		pr_info("mkp: %s success\n", __func__);
 		return true;
 	} else {

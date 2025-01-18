@@ -42,6 +42,9 @@ static u8 *mrdump_kn;
 static unsigned int *mrdump_km;
 static u8 *mrdump_ktt;
 static u16 *mrdump_kti;
+static unsigned long p_stext;
+static unsigned long p_etext;
+static unsigned long p_init_begin;
 
 #if IS_ENABLED(CONFIG_64BIT)
 #define KALLS_ALGN	8
@@ -122,6 +125,9 @@ static void mrdump_ka_work_func(struct work_struct *work)
 		mrdump_ktt = (void *)(kinfo->_token_table_pa + kimage_voffset);
 		mrdump_kti = (void *)(kinfo->_token_index_pa + kimage_voffset);
 		mrdump_km = (void *)(kinfo->_markers_pa + kimage_voffset);
+		p_stext = __phys_to_kimg(kinfo->_stext_pa);
+		p_etext = __phys_to_kimg(kinfo->_etext_pa);
+		p_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
 		aee_base_addrs_init();
 		mrdump_cblock_late_init();
 		init_ko_addr_list_late();
@@ -204,6 +210,39 @@ static unsigned long aee_addr_find(const char *name)
 	}
 	return 0;
 }
+
+unsigned long aee_get_stext(void)
+{
+	if (p_stext)
+		return p_stext;
+
+	if (!p_stext)
+		pr_info("%s failed", __func__);
+	return p_stext;
+}
+EXPORT_SYMBOL(aee_get_stext);
+
+unsigned long aee_get_etext(void)
+{
+	if (p_etext)
+		return p_etext;
+
+	if (!p_etext)
+		pr_info("%s failed", __func__);
+	return p_etext;
+}
+EXPORT_SYMBOL(aee_get_etext);
+
+unsigned long aee_get_init_begin(void)
+{
+	if (p_init_begin)
+		return p_init_begin;
+
+	if (!p_init_begin)
+		pr_info("%s failed", __func__);
+	return p_init_begin;
+}
+EXPORT_SYMBOL(aee_get_init_begin);
 
 #ifdef CONFIG_MODULES
 static struct list_head *p_modules;
