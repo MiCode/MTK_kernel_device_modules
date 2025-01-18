@@ -15095,39 +15095,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	/* smmu test devices */
 	smmu-test-ktf1 {
-		compatible = "mediatek,soc-smmu-test-ktf1";
-		dma-mmap-reg = <0x14200000 0x40000>;
-		dma-reg-off = <0x10000>;
-		mtk,iommu-group = <&soc_iommu_group_0>;
-		iommus = <&soc_smmu 0x51>;
-		status = "disabled";
-	};
-
-	smmu-test-ktf2 {
-		compatible = "mediatek,soc-smmu-test-ktf2";
-		mtk,iommu-group = <&soc_iommu_group_0>;
-		iommus = <&soc_smmu 0x53>;
-		status = "disabled";
-	};
-
-	smmu-test-ktf3 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "mediatek,soc-smmu-test-ktf3";
-		iommus = <&soc_smmu 0x55>;
-		mtk,iommu-dma-range = <0x40000000 0x10000000>;
-		mtk,smmu-dma-mode = "bypass";
-		status = "disabled";
-	};
-
-	smmu-test-ktf4 {
-		compatible = "mediatek,soc-smmu-test-ktf4";
-		mtk,smmu-dma-mode = "disable";
-		iommus = <&soc_smmu 0x57>;
-		status = "disabled";
-	};
-
-	smmu-test-ktf5 {
 		compatible = "mediatek,mm-smmu-test-ktf1";
 		dma-mmap-reg = <0x32800000 0x1000>;
 		mtk,smmu-shared = <&mm_smmu_disp>;
@@ -15138,12 +15105,27 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,larbs-port = <SMMU_L0_P12_DISP_FAKE0>;
 	};
 
-	smmu-test-ktf6 {
+	smmu-test-ktf2 {
 		compatible = "mediatek,mm-smmu-test-ktf2";
 		mtk,smmu-shared = <&mm_smmu_svp_disp>;
 	};
 
-	smmu-test-ktf7 {
+	smmu-test-ktf3 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mediatek,mm-smmu-test-ktf3";
+		iommus = <&mm_smmu 217>;
+		mtk,iommu-dma-range = <0x40000000 0x10000000>;
+		mtk,smmu-dma-mode = "bypass";
+	};
+
+	smmu-test-ktf4 {
+		compatible = "mediatek,mm-smmu-test-ktf4";
+		mtk,smmu-dma-mode = "disable";
+		iommus = <&mm_smmu 218>;
+	};
+
+	smmu-test-ktf5 {
 		compatible = "mediatek,mm-coherent-test-ktf";
 		mtk,smmu-shared = <&mm_smmu_acp_disp>;
 	};
