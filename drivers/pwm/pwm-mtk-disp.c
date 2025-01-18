@@ -163,8 +163,10 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 					 0x0);
 
 		if (mdp->enabled) {
-			clk_disable_unprepare(mdp->clk_mm);
-			clk_disable_unprepare(mdp->clk_main);
+			if (mdp->clk_mm)
+				clk_disable_unprepare(mdp->clk_mm);
+			if (mdp->clk_main)
+				clk_disable_unprepare(mdp->clk_main);
 			if (mdp->data->need_power_on == true)
 				pwm_src_power_off(mdp);
 		}
@@ -196,19 +198,23 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 #endif
 			pwm_src_power_on(mdp);
 		}
-		err = clk_prepare_enable(mdp->clk_main);
-		if (err < 0) {
-			dev_err(chip->dev, "Can't enable mdp->clk_main: %pe\n",
-				ERR_PTR(err));
-			return err;
+		if (mdp->clk_main) {
+			err = clk_prepare_enable(mdp->clk_main);
+			if (err < 0) {
+				pr_info("Can't enable mdp->clk_main: %pe\n",
+					ERR_PTR(err));
+				return err;
+			}
 		}
 
-		err = clk_prepare_enable(mdp->clk_mm);
-		if (err < 0) {
-			dev_err(chip->dev, "Can't enable mdp->clk_mm: %pe\n",
-				ERR_PTR(err));
-			clk_disable_unprepare(mdp->clk_main);
-			return err;
+		if (mdp->clk_mm) {
+			err = clk_prepare_enable(mdp->clk_mm);
+			if (err < 0) {
+				pr_info("Can't enable mdp->clk_mm: %pe\n",
+					ERR_PTR(err));
+				clk_disable_unprepare(mdp->clk_main);
+				return err;
+			}
 		}
 	}
 
@@ -228,8 +234,10 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 			  PWM_PERIOD_BIT_WIDTH;
 	if (clk_div > PWM_CLKDIV_MAX) {
 		if (!mdp->enabled) {
-			clk_disable_unprepare(mdp->clk_mm);
-			clk_disable_unprepare(mdp->clk_main);
+			if (mdp->clk_mm)
+				clk_disable_unprepare(mdp->clk_mm);
+			if (mdp->clk_main)
+				clk_disable_unprepare(mdp->clk_main);
 			if (mdp->data->need_power_on == true)
 				pwm_src_power_off(mdp);
 		}
@@ -292,20 +300,27 @@ static int mtk_disp_pwm_get_state(struct pwm_chip *chip,
 
 	if (mdp->data->need_power_on == true)
 		pwm_src_power_on(mdp);
-	err = clk_prepare_enable(mdp->clk_main);
-	if (err < 0) {
-		dev_err(chip->dev, "Can't enable mdp->clk_main: %pe\n", ERR_PTR(err));
-		return 0;
+	if (mdp->clk_main) {
+		err = clk_prepare_enable(mdp->clk_main);
+		if (err < 0) {
+			pr_info("Can't enable mdp->clk_main: %pe\n", ERR_PTR(err));
+			return 0;
+		}
+	}
+	if (mdp->clk_mm) {
+		err = clk_prepare_enable(mdp->clk_mm);
+		if (err < 0) {
+			pr_info("Can't enable mdp->clk_mm: %pe\n", ERR_PTR(err));
+			if (mdp->clk_main)
+				clk_disable_unprepare(mdp->clk_main);
+			return 0;
+		}
 	}
 
-	err = clk_prepare_enable(mdp->clk_mm);
-	if (err < 0) {
-		dev_err(chip->dev, "Can't enable mdp->clk_mm: %pe\n", ERR_PTR(err));
-		clk_disable_unprepare(mdp->clk_main);
-		return 0;
-	}
-
-	rate = clk_get_rate(mdp->clk_main);
+	if (mdp->clk_main)
+		rate = clk_get_rate(mdp->clk_main);
+	else
+		rate = 0;
 	con0 = readl(mdp->base + mdp->data->con0);
 	con1 = readl(mdp->base + mdp->data->con1);
 	state->enabled = !!(con0 & BIT(0));
@@ -324,8 +339,10 @@ static int mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	state->duty_cycle = DIV64_U64_ROUND_UP(high_width * (clk_div + 1) * NSEC_PER_SEC,
 					       rate);
 	state->polarity = PWM_POLARITY_NORMAL;
-	clk_disable_unprepare(mdp->clk_mm);
-	clk_disable_unprepare(mdp->clk_main);
+	if (mdp->clk_mm)
+		clk_disable_unprepare(mdp->clk_mm);
+	if (mdp->clk_main)
+		clk_disable_unprepare(mdp->clk_main);
 	if (mdp->data->need_power_on == true)
 		pwm_src_power_off(mdp);
 	return 0;
@@ -358,13 +375,15 @@ static int mtk_disp_pwm_probe(struct platform_device *pdev)
 	mdp->clk_main = devm_clk_get(&pdev->dev, "main");
 	if (IS_ERR(mdp->clk_main)) {
 		pr_notice("%s clk_main is null", __func__);
-		return PTR_ERR(mdp->clk_main);
+		//return PTR_ERR(mdp->clk_main);
+		mdp->clk_main = NULL;
 	}
 
 	mdp->clk_mm = devm_clk_get(&pdev->dev, "mm");
 	if (IS_ERR(mdp->clk_mm)) {
 		pr_notice("%s clk_mm is null", __func__);
-		return PTR_ERR(mdp->clk_mm);
+		//return PTR_ERR(mdp->clk_mm);
+		mdp->clk_mm = NULL;
 	}
 
 	if (mdp->data->need_power_on == true) {
@@ -465,6 +484,16 @@ static const struct mtk_pwm_data mt6768_pwm_data = {
 	.need_power_on = true,
 };
 
+static const struct mtk_pwm_data mt6991_pwm_data = {
+	.enable_mask = BIT(0),
+	.con0 = 0x18,
+	.con0_sel = 0x0,
+	.con1 = 0x1c,
+	.has_commit = false,
+	.bls_debug = 0x80,
+	.bls_debug_mask = 0x3,
+};
+
 static const struct of_device_id mtk_disp_pwm_of_match[] = {
 	{ .compatible = "mediatek,mt2701-disp-pwm", .data = &mt2701_pwm_data},
 	{ .compatible = "mediatek,mt6595-disp-pwm", .data = &mt8173_pwm_data},
@@ -478,6 +507,7 @@ static const struct of_device_id mtk_disp_pwm_of_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-pwm", .data = &mt6768_pwm_data},
 	{ .compatible = "mediatek,mt6761-disp-pwm", .data = &mt6768_pwm_data},
 	{ .compatible = "mediatek,mt6765-disp-pwm", .data = &mt6768_pwm_data},
+	{ .compatible = "mediatek,mt6991-disp-pwm0", .data = &mt6991_pwm_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_pwm_of_match);
