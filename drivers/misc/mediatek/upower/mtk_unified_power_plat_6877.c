@@ -204,6 +204,7 @@ static unsigned int _mt_cpufreq_get_cpu_level_upower(void)
 	}
 
 	val = (*efuse_buf & 0xF); /* segment code */
+	kfree(efuse_buf);
 
 	switch (val) {
 	case 4:
