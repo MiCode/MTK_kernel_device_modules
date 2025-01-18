@@ -89,6 +89,7 @@ static unsigned int __gpufreq_get_fmeter_fgpu(void);
 static unsigned int __gpufreq_get_real_fgpu(void);
 static unsigned int __gpufreq_get_real_vgpu(void);
 static unsigned int __gpufreq_get_real_vsram(void);
+static unsigned int __gpufreq_get_vsram_by_vgpu(unsigned int vgpu);
 // static unsigned int __gpufreq_get_real_fstack(void);
 // static unsigned int __gpufreq_get_real_vstack(void);
 static enum gpufreq_posdiv __gpufreq_get_real_posdiv(void);
@@ -110,6 +111,8 @@ static int __gpufreq_init_mtcmos(struct platform_device *pdev);
 static int __gpufreq_init_pmic(struct platform_device *pdev);
 static int __gpufreq_init_platform_info(struct platform_device *pdev);
 static int __gpufreq_pdrv_probe(struct platform_device *pdev);
+static void __gpufreq_update_gpu_working_table(void);
+static int __gpufreq_map_avs_idx(int avsidx);
 
 /**
  * ===============================================
@@ -151,6 +154,7 @@ static unsigned int g_apply_mcl50_opp;
 static unsigned int g_apply_6879_opp;
 static enum gpufreq_dvfs_state g_dvfs_state;
 static DEFINE_MUTEX(gpufreq_lock_gpu);
+static DEFINE_MUTEX(ptpod_lock);
 // static DEFINE_MUTEX(gpufreq_lock_stack);
 
 static struct gpufreq_platform_fp platform_fp = {
@@ -196,6 +200,12 @@ unsigned int __gpufreq_bringup(void)
 {
 	return GPUFREQ_BRINGUP;
 }
+
+unsigned int mt_gpufreq_not_ready(void)
+{
+	return false;
+}
+EXPORT_SYMBOL(mt_gpufreq_not_ready);
 
 unsigned int __gpufreq_power_ctrl_enable(void)
 {
@@ -344,6 +354,101 @@ struct gpufreq_debug_opp_info __gpufreq_get_debug_opp_info_gpu(void)
 
 	return opp_info;
 }
+
+static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, unsigned int volt_new)
+{
+	unsigned int vsram_volt_new, vsram_volt_old;
+	int ret = GPUFREQ_SUCCESS;
+
+	volt_new = VOLT_NORMALIZATION(volt_new);
+
+	GPUFREQ_LOGD("volt_new = %d, volt_old = %d\n", volt_new, volt_old);
+
+	vsram_volt_new = __gpufreq_get_vsram_by_vgpu(volt_new);
+	vsram_volt_old = __gpufreq_get_vsram_by_vgpu(volt_old);
+
+		/* voltage scaling */
+	ret = __gpufreq_volt_scale_gpu(
+		volt_old, volt_new, vsram_volt_old, vsram_volt_new);
+	if (unlikely(ret)) {
+		GPUFREQ_LOGE("fail to scale Vgpu: (%d->%d), Vsram_gpu: (%d->%d)",
+			volt_old, volt_new, vsram_volt_old, vsram_volt_new);
+	} else {
+		g_gpu.cur_volt = volt_new;
+		g_gpu.cur_vsram = vsram_volt_new;
+	}
+}
+
+void mt_gpufreq_restore_default_volt(void)
+{
+	int i;
+	struct gpufreq_opp_info *signed_table = g_gpu.signed_table;
+
+	mutex_lock(&ptpod_lock);
+
+	GPUFREQ_LOGD("restore OPP table to default voltage\n");
+
+	for (i = 0; i < g_gpu.signed_opp_num; i++) {
+		signed_table[i].volt = g_default_gpu_segment[i].volt;
+		signed_table[i].vsram = g_default_gpu_segment[i].vsram;
+
+		GPUFREQ_LOGD("signed_table[%d].volt = %d, vsram = %d\n",
+				i,
+				signed_table[i].volt,
+				signed_table[i].vsram);
+	}
+
+	__gpufreq_update_gpu_working_table();
+
+	if (g_aging_enable)
+		__gpufreq_apply_aging(true);
+
+	__gpufreq_set_springboard();
+
+	__mt_gpufreq_volt_switch_without_vsram_volt(g_gpu.cur_volt,
+		g_gpu.working_table[g_gpu.cur_oppidx].volt);
+
+	mutex_unlock(&ptpod_lock);
+}
+EXPORT_SYMBOL(mt_gpufreq_restore_default_volt);
+
+unsigned int mt_gpufreq_get_cur_volt(void)
+{
+	return (__gpufreq_get_power_state() == GPU_PWR_ON) ? g_gpu.cur_volt : 0;
+}
+EXPORT_SYMBOL(mt_gpufreq_get_cur_volt);
+
+unsigned int mt_gpufreq_update_volt(
+		unsigned int pmic_volt[], unsigned int array_size)
+{
+	int i;
+	int target_idx;
+	struct gpufreq_opp_info *signed_table = g_gpu.signed_table;
+
+	mutex_lock(&ptpod_lock);
+
+	GPUFREQ_LOGD("update OPP table to given voltage\n");
+
+	for (i = 0; i < array_size; i++) {
+		target_idx = __gpufreq_map_avs_idx(i);
+		signed_table[target_idx].volt = pmic_volt[i];
+		signed_table[target_idx].vsram =
+			__gpufreq_get_vsram_by_vgpu(pmic_volt[i]);
+	}
+
+	// update none PTP
+	__gpufreq_interpolate_volt();
+	__gpufreq_update_gpu_working_table();
+
+	if (g_aging_enable)
+		__gpufreq_apply_aging(true);
+	else
+		__gpufreq_set_springboard();
+
+	mutex_unlock(&ptpod_lock);
+	return 0;
+}
+EXPORT_SYMBOL(mt_gpufreq_update_volt);
 
 /* API: get freq of GPU via OPP index */
 unsigned int __gpufreq_get_fgpu_by_idx(int oppidx)
@@ -1118,8 +1223,41 @@ done:
 	return ret;
 }
 
+unsigned int mt_gpufreq_get_ori_opp_idx(unsigned int idx)
+{
+
+	unsigned int ptpod_opp_idx_num;
+
+	ptpod_opp_idx_num = AVS_NUM;
+
+	if (idx < ptpod_opp_idx_num && idx >= 0)
+		return g_avs_to_opp[idx];
+	else
+		return idx;
+
+}
+EXPORT_SYMBOL(mt_gpufreq_get_ori_opp_idx);
+
+unsigned int mt_gpufreq_get_freq_by_real_idx(unsigned int idx)
+{
+	if (idx < g_gpu.signed_opp_num)
+		return g_gpu.signed_table[idx].freq;
+	else
+		return 0;
+}
+EXPORT_SYMBOL(mt_gpufreq_get_freq_by_real_idx);
+
+unsigned int mt_gpufreq_get_volt_by_real_idx(unsigned int idx)
+{
+	if (idx < g_gpu.signed_opp_num)
+		return g_gpu.signed_table[idx].volt;
+	else
+		return 0;
+}
+EXPORT_SYMBOL(mt_gpufreq_get_volt_by_real_idx);
+
 /* API: map given AVS idx to real OPP idx */
-int __gpufreq_map_avs_idx(int avsidx)
+static int __gpufreq_map_avs_idx(int avsidx)
 {
 	unsigned int avs_num = 0;
 	int signed_oppidx = 0;
@@ -2359,6 +2497,29 @@ static void __gpufreq_init_shader_present(void)
 	}
 	GPUFREQ_LOGD("segment_id: %d, shader_present: %d",
 		segment_id, g_shader_present);
+}
+
+static void __gpufreq_update_gpu_working_table(void)
+{
+	int i = 0, j = 0;
+
+	for (i = 0; i < g_gpu.opp_num; i++) {
+		j = i + g_gpu.segment_upbound;
+		g_gpu.working_table[i].freq = g_gpu.signed_table[j].freq;
+		g_gpu.working_table[i].volt = g_gpu.signed_table[j].volt;
+		g_gpu.working_table[i].vsram = g_gpu.signed_table[j].vsram;
+		g_gpu.working_table[i].posdiv = g_gpu.signed_table[j].posdiv;
+		g_gpu.working_table[i].margin = g_gpu.signed_table[j].margin;
+		g_gpu.working_table[i].power = g_gpu.signed_table[j].power;
+
+		GPUFREQ_LOGD("GPU[%02d] Freq: %d, Volt: %d, Vsram: %d, Margin: %d",
+			i, g_gpu.working_table[i].freq, g_gpu.working_table[i].volt,
+			g_gpu.working_table[i].vsram, g_gpu.working_table[i].margin);
+	}
+	if (g_aging_enable)
+		__gpufreq_apply_aging(true);
+	/* set power info to working table */
+	__gpufreq_measure_power();
 }
 
 /*

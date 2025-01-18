@@ -36,7 +36,7 @@
  * LOG
  */
 #define EEMG_TAG	 "[xxxxEEMG] "
-#define eemg_error(fmt, args...)
+#define eemg_error(fmt, args...) pr_notice(EEMG_TAG fmt, ##args)
 #define eemg_warning(fmt, args...)
 #define eemg_notice(fmt, args...)
 #define eemg_info(fmt, args...)

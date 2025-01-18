@@ -82,6 +82,9 @@ enum eemg_loo_role {
 extern u32 get_devinfo_with_index(u32 index);
 extern unsigned int eemg_corn_flag;
 extern const unsigned int reg_gpu_addr_off[DUMP_LEN];
+#if IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
+extern int tscpu_get_temp_by_bank(int ts_bank);
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define CONFIG_EEMG_AEE_RR_REC 1

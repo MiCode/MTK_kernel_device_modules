@@ -55,7 +55,7 @@
 #include "mtk_eemgpu_internal_ap.h"
 #include "mtk_eemgpu_internal.h"
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
-#include "mtk_gpufreq_plat.h"
+#include "gpu_misc.h"
 #endif
 #include <regulator/consumer.h>
 
@@ -263,6 +263,7 @@ static void _mt_eemg_aee_init(void)
 #endif
 
 #ifdef CONFIG_THERMAL
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 /* common part in thermal */
 int tscpu_get_temp_by_bank(enum thermal_bank_name ts_bank)
 {
@@ -329,6 +330,7 @@ int tscpu_get_temp_by_bank(enum thermal_bank_name ts_bank)
 	}
 	return total;
 }
+#endif
 #endif
 
 
@@ -402,6 +404,7 @@ void base_ops_disable_locked_gpu(struct eemg_det *det, int reason)
 
 		/* Clear EEM interrupt EEMGINTSTS */
 		eemg_write(EEMGINTSTS, 0x00ffffff);
+		fallthrough;
 
 	case BY_PROCFS: /* 1 */
 		det->disabled |= reason;
@@ -1083,7 +1086,6 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 	/* Check Temperature */
 	ndet->temp = ndet->ops->get_temp_gpu(det);
 
-
 	if (ndet->temp <= EXTRA_LOW_TEMP_VAL)
 		ndet->isTempInv = EEM_EXTRALOW_T;
 	else if (ndet->temp <= LOW_TEMP_VAL)
@@ -1092,7 +1094,7 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 		ndet->isTempInv = EEM_HIGH_T;
 	else
 		ndet->isTempInv = 0;
-
+	ndet->isTempInv = 0; // TODO Thermal config CONFIG_MTK_LEGACY_THERMAL is disabled currently.
 	if (ndet->ctrl_id == EEMG_CTRL_GPU) {
 		if ((ndet->isTempInv == EEM_EXTRALOW_T) ||
 			(ndet->isTempInv == EEM_LOW_T)) {
@@ -1790,7 +1792,7 @@ static inline void handle_init02_isr(struct eemg_det *det)
 
 static inline void handle_init_err_isr(struct eemg_det *det)
 {
-	int i;
+	//int i;
 	/* int *val = (int *)&eemg_devinfo; */
 
 	FUNC_ENTER(FUNC_LV_LOCAL);
@@ -1809,9 +1811,6 @@ static inline void handle_init_err_isr(struct eemg_det *det)
 		 det->turn_pt);
 
 	/* Depend on EFUSE location */
-	for (i = 0; i < sizeof(struct eemg_devinfo) / sizeof(unsigned int);
-		i++)
-		eemg_error("M_HW_RES%d= 0x%08X\n", i, val[i]);
 
 	eemg_error("EEM init err: EEMGEN(%p) = 0x%X, EEMGINTSTS(%p) = 0x%X\n",
 			 EEMGEN, eemg_read(EEMGEN),
