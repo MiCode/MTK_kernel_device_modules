@@ -40,6 +40,7 @@ struct adspsys_description {
 	const int semaphore_ctrl;
 	const int semaphore_retry;
 	const u32 axibus_idle_val;
+	const u32 mtcmos_ao_ctrl;
 };
 
 struct irq_t {

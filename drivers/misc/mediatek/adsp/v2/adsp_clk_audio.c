@@ -6,6 +6,7 @@
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include "adsp_clk_audio.h"
+#include "adsp_core.h"
 
 enum adsp_clk {
 	CLK_TOP_ADSP_SEL,
@@ -77,11 +78,13 @@ void adsp_mt_select_clock_mode(enum adsp_clk_mode mode)
 {
 	switch (mode) {
 	case CLK_LOW_POWER:
+		adsp_set_clock_mux(false);
 		adsp_set_top_mux(CLK_TOP_CLK26M);
 		break;
 	case CLK_HIGH_PERFORM:
 	case CLK_DEFAULT_INIT:
 		adsp_set_top_mux(CLK_TOP_ADSPPLL);
+		adsp_set_clock_mux(true);
 		break;
 	default:
 		break;
@@ -112,6 +115,15 @@ void adsp_mt_disable_clock(void)
 	clk_disable_unprepare(adsp_clks[CLK_TOP_ADSP_SEL].clock);
 }
 
+void adsp_mt_enable_pd(void)
+{
+	pm_runtime_get_sync(pm_dev);
+}
+
+void adsp_mt_disable_pd(void)
+{
+	pm_runtime_put_sync(pm_dev);
+}
 
 void adsp_mt6985_select_clock_mode(enum adsp_clk_mode mode)
 {
@@ -187,6 +199,9 @@ int adsp_clk_probe(struct platform_device *pdev,
 		ops->disable = adsp_mt6985_disable_clock;
 		ops->select = adsp_mt6985_select_clock_mode;
 	}
+
+	ops->enable_pd = adsp_mt_enable_pd;
+	ops->disable_pd = adsp_mt_disable_pd;
 
 	return 0;
 }

@@ -25,6 +25,7 @@
 #include "adsp_mbox.h"
 #include "adsp_core.h"
 #include "adsp_dbg_dump.h"
+#include "adsp_dbg.h"
 
 #define ADSP_MAGIC_PATTERN        (0xAD5BAD5B)
 
@@ -484,6 +485,12 @@ void adsp_slp_prot_set(bool en, enum ADSP_PD domain)
 }
 EXPORT_SYMBOL(adsp_slp_prot_set);
 
+void adsp_set_clock_mux(bool en)
+{
+	adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_CLOCK_MUX, en, 0);
+}
+EXPORT_SYMBOL(adsp_set_clock_mux);
+
 static int adsp_pd_event(struct notifier_block *nb,
 				  unsigned long flags , void *data)
 {
@@ -529,6 +536,18 @@ void adsp_disable_clock(void)
 {
 	if (adspsys)
 		adspsys->clk_ops.disable();
+}
+
+void adsp_enable_pd(void)
+{
+	if (adspsys && adspsys->clk_ops.enable_pd)
+		adspsys->clk_ops.enable_pd();
+}
+
+void adsp_disable_pd(void)
+{
+	if (adspsys && adspsys->clk_ops.disable_pd)
+		adspsys->clk_ops.disable_pd();
 }
 
 void switch_adsp_power(bool on)
@@ -674,6 +693,9 @@ static int adsp_system_init(void)
 	adspsys->workq = alloc_workqueue("adsp_wq", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
 	init_waitqueue_head(&adspsys->waitq);
 	init_adsp_exception_control(adspsys->dev, adspsys->workq, &adspsys->waitq);
+
+	/* debug file node init */
+	adsp_dbg_init(adspsys);
 
 #if IS_ENABLED(CONFIG_PM)
 	ret = register_pm_notifier(&adsp_pm_notifier_block);

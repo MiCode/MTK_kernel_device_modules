@@ -31,3 +31,4 @@ adsp-objs += adsp_qos.o
 adsp-objs += adsp_bus_monitor.o
 adsp-objs += adsp_ipic.o
 adsp-objs += adsp_dbg_dump.o
+adsp-objs += adsp_dbg.o
