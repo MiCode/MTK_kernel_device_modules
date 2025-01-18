@@ -3362,7 +3362,7 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 }
 
-static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
+/* static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct drm_framebuffer *fb;
@@ -3379,6 +3379,7 @@ static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
 	}
 	return false;
 }
+*/
 
 static void calc_mml_config(struct drm_crtc *crtc,
 	union mtk_addon_config *addon_config,
@@ -3962,9 +3963,7 @@ _mtk_crtc_wb_addon_module_connect(
 	enum addon_scenario scn;
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
-		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE] ||
-		mtk_crtc_check_fb_secure(crtc))
-		return;
+		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
@@ -4026,9 +4025,10 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_config.addon_wdma_config.pitch = fb->pitches[0];
 			addon_config.addon_wdma_config.addr = mtk_fb_get_dma(fb);
 			addon_config.addon_wdma_config.fb = fb;
+			addon_config.addon_wdma_config.is_secure = mtk_drm_fb_is_secure(fb);
 			addon_config.addon_wdma_config.p_golden_setting_context
 				= __get_golden_setting_context(mtk_crtc);
-			DDPFENCE("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
+			DDPMSG("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
 				(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
 				mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
 
@@ -15151,7 +15151,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int session_id = 0;
 	unsigned int fence_idx;
-	struct pixel_type_map *pixel_types;
+	// struct pixel_type_map *pixel_types;
 
 
 	if (!cmdq_handle) {
@@ -15401,8 +15401,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 
-		if (mtk_crtc_check_fb_secure(crtc)) {
-			/* Skip capture for secure content */
+		/* No need for DBI skip secure */
+		/* if (mtk_crtc_check_fb_secure(crtc)) {
 			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 			session_id = mtk_get_session_id(crtc);
 			if (mtk_crtc->pq_data) {
@@ -15419,6 +15419,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			kfree(wb_cb_data);
 			return 0;
 		}
+		*/
 
 		event = mtk_crtc_wb_addon_get_event(crtc);
 		mtk_crtc_pkt_create(&handle, crtc, client);

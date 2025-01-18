@@ -69,6 +69,7 @@
 #define WDMA_A_Value (0xff)
 #define WDMA_A_Sel BIT(31)
 #define DISP_REG_WDMA_DST_ADDR_OFFSETX(n) (0x0080 + 0x04 * (n))
+#define WDMA_SECURITY_DISABLE 0xF10
 
 #define DISP_REG_WDMA_FLOW_CTRL_DBG 0x00A0
 #define FLOW_CTRL_DBG_FLD_WDMA_STA_FLOW_CTRL REG_FLD_MSB_LSB(9, 0)
@@ -164,7 +165,13 @@
 #define MT6985_OVLSYS_DUMMY1_OFFSET	0x404
 
 #define MT6989_OVLSYS1_WDMA0_AID_MANU 0xB84
+#define MT6989_DISP1_AID_SEL_MANUAL 0xB10
+#define DISP_WDMA0_AID_SEL_MANUAL	BIT(2)
+#define MT6989_DISP1_WDMA0_AID_SETTING 0xB20
+
 #define MT6991_OVLSYS1_WDMA0_AID_MANU 0x000
+#define MT6991_DISP1_WDMA1_AID_SETTING 0xB20
+#define MT6991_DISP1_AID_SEL_MANUAL 0x10004
 
 /* AID offset in mmsys config */
 #define MT6895_WDMA0_AID_SEL	(0xB1CUL)
@@ -1414,7 +1421,11 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
 	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 	int src_w, src_h, clip_w, clip_h, clip_x, clip_y, pitch;
+	bool is_secure;
 	struct golden_setting_context *gsc;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	resource_size_t mmsys_reg = priv->config_regs_pa;
+
 
 	comp->fb = addon_config->addon_wdma_config.fb;
 	if (!comp->fb) {
@@ -1445,6 +1456,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	clip_x = addon_config->addon_wdma_config.wdma_dst_roi.x;
 	clip_y = addon_config->addon_wdma_config.wdma_dst_roi.y;
 	pitch = addon_config->addon_wdma_config.pitch;
+	is_secure = addon_config->addon_wdma_config.is_secure;
 
 	size = (src_w & 0x3FFFU) + ((src_h << 16U) & 0x3FFF0000U);
 	mtk_ddp_write(comp, size, DISP_REG_WDMA_SRC_SIZE, handle);
@@ -1466,6 +1478,31 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 
 	mtk_ddp_write(comp, pitch,
 		DISP_REG_WDMA_DST_WIN_BYTE, handle);
+
+	/* WDMA secure memory buffer config */
+	if (is_secure) {
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write(comp, 0x0,
+				WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6989_DISP1_AID_SEL_MANUAL,
+								DISP_WDMA0_AID_SEL_MANUAL, DISP_WDMA0_AID_SEL_MANUAL);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6989_DISP1_WDMA0_AID_SETTING, BIT(0), BIT(0));
+		} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			mtk_ddp_write(comp, 0x0,
+				WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			// DISP1_AID_SEL_MANUAL
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6991_DISP1_AID_SEL_MANUAL,
+								DISP_WDMA0_AID_SEL_MANUAL, DISP_WDMA0_AID_SEL_MANUAL);
+			// DISP1_WDMA1_AID_SETTING
+			cmdq_pkt_write(handle, comp->cmdq_base,
+							mmsys_reg + MT6991_DISP1_WDMA1_AID_SETTING, BIT(0), BIT(0));
+		}
+	}
 
 	switch (comp->fb->format->format) {
 	case DRM_FORMAT_RGBA8888:
