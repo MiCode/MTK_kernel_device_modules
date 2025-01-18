@@ -1168,7 +1168,7 @@ CONFIG_REG:
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
 		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
-		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_exit);
+		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_trail);
 
 	if (handle)
 		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
@@ -3429,8 +3429,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	}
 
 	if (status & BUFFER_UNDERRUN_INT_FLAG) {
-		if (__ratelimit(&mmp_rate))
-			DRM_MMP_MARK(dsi, underrun_cnt, status);
+		if (__ratelimit(&mmp_rate)) {
+			if (comp->id == DDP_COMPONENT_DSI0)
+				DRM_MMP_MARK(dsi, underrun_cnt|(0<<16), status);
+			else if (comp->id == DDP_COMPONENT_DSI1)
+				DRM_MMP_MARK(dsi, underrun_cnt|(1<<16), status);
+			else if (comp->id == DDP_COMPONENT_DSI2)
+				DRM_MMP_MARK(dsi, underrun_cnt|(2<<16), status);
+			}
 	} else {
 		if (comp->id == DDP_COMPONENT_DSI0)
 			DRM_MMP_MARK(dsi0, status, 0);
@@ -5830,7 +5836,8 @@ static int mtk_dsi_create_conn_enc(struct drm_device *drm, struct mtk_dsi *dsi)
 		dsi->encoder.possible_crtcs =
 			mtk_drm_find_possible_crtc_by_comp(drm, *comp);
 
-	DDPMSG("%s possible_crtcs=%d\n", __func__, dsi->encoder.possible_crtcs);
+	DDPMSG("%s %s possible_crtcs=%d\n",
+		__func__, mtk_dump_comp_str_id(comp->id), dsi->encoder.possible_crtcs);
 
 	/* If there's a bridge, attach to it and let it create the connector */
 	ret = mtk_drm_attach_bridge(dsi->bridge, &dsi->encoder);
@@ -10147,6 +10154,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 	int vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
 	int vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	int vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 
 	//For CMD mode to calculate HRT BW
 	unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
@@ -10161,7 +10169,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	if (to_info.is_support)
-		DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
+		DDPDBG("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
 					to_info.is_support, to_info.left_in_width,
 					to_info.right_in_width);
 
@@ -10183,8 +10191,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 		bw_base = DO_COMMON_DIV(bw_base * vtotal, vact);
 		bw_base = DO_COMMON_DIV(bw_base, 1000);
 
-		DDPDBG("%s vdo mode bw_base:%llu, vrefresh:%d\n",
-				__func__, bw_base, vrefresh);
+		DDPINFO("%s crtc%d, vdo mode bw_base:%llu, vrefresh:%d\n",
+				__func__, crtc_idx, bw_base, vrefresh);
 	} else {
 		//cmd mode
 		bw_base = (unsigned long long) data_rate * dsi->lanes * compress_rate * 4;
@@ -10217,7 +10225,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 			else
 				DDPPR_ERR("invalid line_time\n");
 
-			DDPINFO("%s, image_time=%d, line_time=%d\n",
+			DDPDBG("%s, image_time=%d, line_time=%d\n",
 				__func__, image_time, line_time);
 		}
 
@@ -10232,8 +10240,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 				__func__, bw_base);
 		}
 
-		DDPDBG("%s cmd mode bw_base:%llu, ps_wc:%d, bpp=%d\n",
-				__func__, bw_base, ps_wc, bpp);
+		DDPINFO("%s crtc%d cmd mode bw_base:%llu, ps_wc:%d, bpp=%d\n",
+				__func__, crtc_idx, bw_base, ps_wc, bpp);
 	}
 
 	return bw_base;

@@ -197,7 +197,8 @@ static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 	priv = mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_ddp_write_mask(comp, COMMAND_DIV,
 			DISP_REG_MDP_RDMA_GMCIF_CON, COMMAND_DIV, handle);
 
@@ -599,6 +600,11 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
 			priv->data->respective_ostdl);
+
+		if (!IS_ERR(comp->stash_qos_req)) {
+			__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val / 256,
+				priv->data->respective_ostdl);
+		}
 		ret = MDP_RDMA_REQ_HRT;
 	}
 		break;
@@ -642,6 +648,13 @@ static int mtk_disp_mdp_rdma_bind(struct device *dev, struct device *master,
 		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
 		if (!IS_ERR(priv->ddp_comp.hrt_qos_req))
 			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "stash_qos");
+		priv->ddp_comp.stash_qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.stash_qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+
 	}
 
 	return 0;
@@ -734,6 +747,7 @@ static int mtk_disp_mdp_rdma_remove(struct platform_device *pdev)
 static const struct of_device_id mtk_disp_mdp_rdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6985-disp-mdp-rdma",},
 	{.compatible = "mediatek,mt6989-disp-mdp-rdma",},
+	{.compatible = "mediatek,mt6991-disp-mdp-rdma",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_mdp_rdma_driver_dt_match);

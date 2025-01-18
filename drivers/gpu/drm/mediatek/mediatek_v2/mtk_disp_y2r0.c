@@ -13,6 +13,7 @@
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
+#include "mtk_drm_mmp.h"
 #include "mtk_rect.h"
 #include "mtk_drm_drv.h"
 #include "../mml/mtk-mml-color.h"
@@ -20,6 +21,8 @@
 #define MT6989_DISP_REG_DISP_Y2R0_EN   0x000
 	#define MT6989_Y2R0_EN BIT(0)
 #define MT6989_DISP_REG_DISP_Y2R0_RST  0x004
+#define MT6989_DISP_REG_DISP_Y2R0_INTEN  0x008
+#define MT6989_DISP_REG_DISP_Y2R0_INTSTA  0x00C
 #define MT6989_DISP_REG_DISP_Y2R0_CFG  0x018
 	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP BIT(4)
 	#define MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE BIT(5)
@@ -79,6 +82,48 @@ static inline struct mtk_disp_y2r *comp_to_y2r(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_y2r, ddp_comp);
 }
+
+#ifdef ENABLE_Y2R_IRQ
+static irqreturn_t mtk_disp_y2r_irq_handler(int irq, void *dev_id)
+{
+	struct mtk_disp_y2r *priv = dev_id;
+	struct mtk_ddp_comp *y2r = NULL;
+	unsigned int val = 0;
+	unsigned int ret = 0;
+
+	if (IS_ERR_OR_NULL(priv))
+		return IRQ_NONE;
+
+	y2r = &priv->ddp_comp;
+	if (IS_ERR_OR_NULL(y2r))
+		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get(y2r) == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	val = readl(y2r->regs + MT6989_DISP_REG_DISP_Y2R0_INTSTA);
+	if (!val) {
+		ret = IRQ_NONE;
+		goto out;
+	}
+	DRM_MMP_MARK(IRQ, y2r->regs_pa, val);
+
+	DRM_MMP_MARK(y2r, val, 0);
+
+	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(y2r), val);
+
+	writel(~val, y2r->regs + MT6989_DISP_REG_DISP_Y2R0_INTSTA);
+
+	ret = IRQ_HANDLED;
+
+out:
+	mtk_drm_top_clk_isr_put(y2r);
+
+	return ret;
+}
+#endif
 
 static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 				 struct mtk_ddp_comp *comp,
@@ -280,11 +325,11 @@ static void mtk_y2r_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	priv = mtk_crtc->base.dev->dev_private;
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
 				MT6989_Y2R0_EN, MT6989_Y2R0_EN);
-	}
 }
 
 static void mtk_y2r_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -294,7 +339,8 @@ static void mtk_y2r_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	priv = mtk_crtc->base.dev->dev_private;
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
-	if (priv->data->mmsys_id == MMSYS_MT6989)
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
 				0, MT6989_Y2R0_EN);
@@ -359,12 +405,22 @@ static int mtk_disp_y2r_probe(struct platform_device *pdev)
 	struct mtk_disp_y2r *priv;
 	enum mtk_ddp_comp_id comp_id;
 	int ret;
+#ifdef ENABLE_Y2R_IRQ
+	int irq;
+#endif
 
-	DDPINFO("%s+\n", __func__);
+	DDPMSG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
+#ifdef ENABLE_Y2R_IRQ
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(dev, "%s get irq error\n", __func__);
+		return irq;
+	}
+#endif
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_Y2R);
 	DDPINFO("comp_id:%d", comp_id);
 	if ((int)comp_id < 0) {
@@ -380,6 +436,20 @@ static int mtk_disp_y2r_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef ENABLE_Y2R_IRQ
+	/* Disable and clear pending interrupts */
+	writel(0x0, priv->ddp_comp.regs + MT6989_DISP_REG_DISP_Y2R0_INTSTA);
+	writel(0x0, priv->ddp_comp.regs + MT6989_DISP_REG_DISP_Y2R0_INTEN);
+
+	ret = devm_request_irq(dev, irq, mtk_disp_y2r_irq_handler,
+			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+			       priv);
+	if (ret < 0) {
+		dev_err(dev, "%s, failed to request irq:%d ret:%d comp_id:%d\n",
+				__func__, irq, ret, comp_id);
+		return ret;
+	}
+#endif
 	//priv->data = of_device_get_match_data(dev);
 
 	platform_set_drvdata(pdev, priv);
@@ -395,7 +465,7 @@ static int mtk_disp_y2r_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
-	DDPINFO("%s-\n", __func__);
+	DDPMSG("%s-\n", __func__);
 
 	return ret;
 }
@@ -415,6 +485,7 @@ static const struct of_device_id mtk_disp_y2r_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6895-disp-y2r",},
 	{.compatible = "mediatek,mt6985-disp-y2r",},
 	{.compatible = "mediatek,mt6989-disp-y2r",},
+	{.compatible = "mediatek,mt6991-disp-y2r",},
 	{.compatible = "mediatek,mt6886-disp-y2r",},
 	{.compatible = "mediatek,mt6897-disp-y2r",},
 	{},
