@@ -59,7 +59,6 @@ static u32 last_boot_phase = FLAG_INVALID;
 static struct regmap *map;
 static u32 pmic_addr;
 static u32 log_block_size = 512; /*default, emmc:512*/
-static u32 expdb_log_size = 0x200000;
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 static char *bootbuff;
@@ -68,6 +67,7 @@ static bool buffer_full_flag;                   /* bootbuff is full or not */
 static u32  boot_log_size;                      /* expdb is reserved for boot log */
 static u32 boot_log_write;                      /* bootbuff write pointer */
 static u32 boot_log_read;                       /* bootbuff read pointer */
+static u32 expdb_log_size = 0x200000;           /* expdb log store size, default 2M */
 static sector_t logstore_offset;                /* the offset of logstore in expdb */
 static sector_t logindex_offset;                /* the offset of logindex in expdb */
 static sector_t bootlog_offset;                 /* the offset of bootlog in expdb */
