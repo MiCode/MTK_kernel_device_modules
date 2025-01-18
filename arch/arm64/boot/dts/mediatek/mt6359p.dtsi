@@ -563,12 +563,6 @@
 			XO-CEL {
 				xo-id = <3>;
 			};
-			XO-AUD {
-				xo-id = <5>;
-			};
-			XO-PD {
-				xo-id = <6>;
-			};
 			XO-EXT {
 				xo-id = <7>;
 			};
