@@ -712,17 +712,26 @@ static const struct mtk_gate_regs mm_v_hwv_regs = {
 		.flags = CLK_USE_HW_VOTER,	\
 	}
 
+#define GATE_MM_V_DUMMY(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mm_v_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr_dummy,	\
+	}
+
 static const struct mtk_gate mm_v_clks[] = {
 	GATE_HWV_MM_V(CLK_MM_V_DISP_VDISP_AO_CONFIG, "mm_v_disp_vdisp_ao_config",
-			"ck2_disp_ck"/* parent */, 0),
+		"ck2_disp_ck"/* parent */, 0),
 	GATE_MM_V_V(CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP, "mm_v_disp_vdisp_ao_config_disp",
 		"mm_v_disp_vdisp_ao_config"/* parent */),
 	GATE_HWV_MM_V(CLK_MM_V_DISP_DPC, "mm_v_disp_dpc",
-			"ck2_disp_ck"/* parent */, 1),
+		"ck2_disp_ck"/* parent */, 1),
 	GATE_MM_V_V(CLK_MM_V_DISP_DPC_DISP, "mm_v_disp_dpc_disp",
 		"mm_v_disp_dpc"/* parent */),
-	GATE_HWV_MM_V(CLK_MM_V_SMI_SUB_SOMM0, "mm_v_smi_sub_somm0",
-			"ck2_disp_ck"/* parent */, 2),
+	GATE_MM_V_DUMMY(CLK_MM_V_SMI_SUB_SOMM0, "mm_v_smi_sub_somm0",
+		"ck2_disp_ck"/* parent */, 2),
 	GATE_MM_V_V(CLK_MM_V_SMI_SUB_SOMM0_SMI, "mm_v_smi_sub_somm0_smi",
 		"mm_v_smi_sub_somm0"/* parent */),
 };

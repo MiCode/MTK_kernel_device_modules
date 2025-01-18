@@ -26,7 +26,7 @@
 #define MTK_POLL_HWV_VOTE_US		2
 #define MTK_POLL_DELAY_US		10
 #define MTK_POLL_300MS_TIMEOUT		(300 * USEC_PER_MSEC)
-#define MTK_POLL_1S_TIMEOUT		(1000 * USEC_PER_MSEC)
+#define MTK_POLL_1S_TIMEOUT		(5000 * USEC_PER_MSEC)
 
 #define MMINFRA_DONE_STA		BIT(0)
 #define VCP_READY_STA			BIT(1)
@@ -556,11 +556,12 @@ int mtk_clk_simple_probe(struct platform_device *pdev)
 		r = of_property_read_u32(vcp_node, "warmboot-support", &support);
 
 		if (r || support == 0) {
-			pr_info("%s mmproc_sspm_vote_sync_bits_support is disabled: %d\n",
-				__func__, r);
 			mmproc_sspm_vote_sync_bits_support = false;
-		} else
+		} else {
+			pr_info("%s mmproc_sspm_vote_sync_bits_support is enabled: %d\n",
+				__func__, r);
 			mmproc_sspm_vote_sync_bits_support = true;
+		}
 	}
 
 	mcd = of_device_get_match_data(&pdev->dev);

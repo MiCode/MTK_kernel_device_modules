@@ -36,3 +36,5 @@ int clk_dbg_driver_register(struct platform_driver *drv, const char *name);
 
 extern const struct regname *get_all_regnames(void);
 extern struct provider_clk *get_all_provider_clks(bool is_internal);
+extern int pdchk_pd_is_on(int pd_id);
+
