@@ -113,6 +113,7 @@
 #define TPLL1_P_PATH_GAIN_TO_05		0xf1
 
 #define PEXTP_ANA_GLB_50_REG		0x9050
+#define PEXTP_ANA_GLB_54_REG		0x9054
 
 #define PEXTP_ANA_GLB_60		0x9060
 #define RG_XTP_GLB_BIAS_INTR_CTRL	GENMASK(5, 0)
@@ -372,49 +373,66 @@ static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 sel, u32 bus)
 static int mtk_pcie_monitor_phy(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	u32 phy_table[7] = {0};
+	void __iomem *sif = pcie_phy->sif_base;
+	u32 tbl[11] = {0};
 
-	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x0);
-	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x306);
-	phy_table[1] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0xc0d);
-	phy_table[2] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x1d1e);
-	phy_table[3] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x2021);
-	phy_table[4] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x2226);
-	phy_table[5] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x2f42);
-	phy_table[6] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x4351);
+	mtk_pcie_phy_dbg_set_partition(sif, 0x0);
+	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x306);
+	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0xc0d);
+	tbl[2] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x1d1e);
+	tbl[3] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x2021);
+	tbl[4] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x2226);
+	tbl[5] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x2f42);
+	tbl[6] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x4351);
 
 	dev_info(pcie_phy->dev, "PHY misc probe: 0x306=%#x, 0xc0d=%#x, 0x1d1e=%#x, 0x2021=%#x, 0x2226=%#x, 0x2f42=%#x, 0x4351=%#x\n",
-		 phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4], phy_table[5], phy_table[6]);
+		 tbl[0], tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6]);
 
-	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x1);
-	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_08,
-						 0xe);
-	dev_info(pcie_phy->dev, "PHY ckgen probe: 0xe=%#x\n", phy_table[0]);
+	mtk_pcie_phy_dbg_set_partition(sif, 0x101);
+	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_08, 0x8000e);
+	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_08, 0x8000e);
+	tbl[2] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_08, 0x8000e);
+	dev_info(pcie_phy->dev, "PHY ckgen probe: 0x8000e=%#x, 0x8000e=%#x, 0x8000e=%#x\n",
+		 tbl[0], tbl[1], tbl[2]);
 
-	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x404);
-	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
-						 0x650083);
 	/* 0x880089 for polling compliance */
-	phy_table[1] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
-						 0x880089);
-	phy_table[2] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
-						 0xfb010a);
-	dev_info(pcie_phy->dev, "PHY ln0 probe: 0x650083=%#x, 0x880089=%#x, 0xfb010a=%#x\n",
-		 phy_table[0], phy_table[1], phy_table[2]);
+	mtk_pcie_phy_dbg_set_partition(sif, 0x404);
+	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x20003);
+	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x40011);
+	tbl[2] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x120064);
+	tbl[3] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x650069);
+	tbl[4] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x6f0083);
+	tbl[5] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x880089);
+	tbl[6] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x8b008e);
+	tbl[7] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x8f009c);
+	tbl[8] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xa800ad);
+	tbl[9] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xba00bb);
+	tbl[10] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xbc00bd);
+	dev_info(pcie_phy->dev, "PHY ln0 probe: 0x20003=%#x, 0x40011=%#x, 0x120064=%#x, 0x650069=%#x, 0x6f0083=%#x, 0x880089=%#x, 0x8b008e=%#x, 0x8f009c=%#x, 0xa800ad=%#x, 0xba00bb=%#x, 0xbc00bd=%#x\n",
+		 tbl[0], tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6], tbl[7], tbl[8], tbl[9], tbl[10]);
 
-	/* dump Kband for PHY debug */
-	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_GLB_14_REG,
-			     GLB_TPLL0_DEBUG_SEL, 0x7);
-	phy_table[0] = readl_relaxed(pcie_phy->sif_base + PEXTP_ANA_GLB_50_REG);
+	mtk_pcie_phy_dbg_set_partition(sif, 0x404);
+	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xc000c1);
+	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xc200c3);
+	tbl[2] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xca00cb);
+	tbl[3] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xcc00d3);
+	tbl[4] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xd400d5);
+	tbl[5] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xd600d7);
+	tbl[6] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xd800d9);
+	tbl[7] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xda00db);
+	tbl[8] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xdc00dd);
+	tbl[9] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0xfb00fd);
+	tbl[10] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x10a013f);
+	dev_info(pcie_phy->dev, "PHY ln0 probe: 0xc000c1=%#x, 0xc200c3=%#x, 0xca00cb=%#x, 0xcc00d3=%#x, 0xd400d5=%#x, 0xd600d7=%#x, 0xd800d9=%#x, 0xda00db=%#x, 0xdc00dd=%#x, 0xfb00fd=%#x, 0x10a013f=%#x\n",
+		 tbl[0], tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6], tbl[7], tbl[8], tbl[9], tbl[10]);
 
-	dev_info(pcie_phy->dev, "PHY Kband = %#x\n", phy_table[0]);
+	tbl[0] = readl_relaxed(sif + PEXTP_ANA_GLB_50_REG);
+	tbl[1] = readl_relaxed(sif + PEXTP_ANA_GLB_54_REG);
+	mtk_phy_update_field(sif + PEXTP_ANA_GLB_14_REG, GLB_TPLL0_DEBUG_SEL, 0x7);
+	tbl[2] = readl_relaxed(sif + PEXTP_ANA_GLB_50_REG);
+
+	dev_info(pcie_phy->dev, "ANA_GLB_50 = %#x, ANA_GLB_54 = %#x, PHY Kband = %#x\n",
+		 tbl[0], tbl[1], tbl[2]);
 
 	return 0;
 }
