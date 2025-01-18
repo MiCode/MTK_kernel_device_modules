@@ -1508,9 +1508,21 @@ static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache 
 	return &cache->paths[scene];
 }
 
+static enum mml_mode tp_support_couple(void)
+{
+	return MML_MODE_DIRECT_LINK;
+}
+
 static bool tp_support_dc2(void)
 {
 	return true;
+}
+
+static enum mml_hw_caps support_hw_caps(void)
+{
+	return MML_HW_ALPHARSZ | MML_HW_PQ_HDR | MML_HW_PQ_MATRIX |
+		MML_HW_PQ_HDR10 | MML_HW_PQ_HDR10P | MML_HW_PQ_HLG | MML_HW_PQ_HDRVIVID |
+		MML_HW_PQ_FG;
 }
 
 static const struct mml_topology_ops tp_ops_mt6991 = {
@@ -1519,7 +1531,9 @@ static const struct mml_topology_ops tp_ops_mt6991 = {
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,
 	.get_dl_path = tp_get_dl_path,
+	.support_couple = tp_support_couple,
 	.support_dc2 = tp_support_dc2,
+	.support_hw_caps = support_hw_caps,
 };
 
 static __init int mml_topology_ip_init(void)

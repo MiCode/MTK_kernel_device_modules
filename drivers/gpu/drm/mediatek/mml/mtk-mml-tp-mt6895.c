@@ -683,11 +683,17 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 	return cache->paths[PATH_MML_NOPQ_P0 + pipe].clt;
 }
 
+static enum mml_mode support_couple(void)
+{
+	return MML_MODE_RACING;
+}
+
 static const struct mml_topology_ops tp_ops_mt6895 = {
 	.query_mode = tp_query_mode,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,
+	.support_couple = support_couple,
 };
 
 static __init int mml_topology_ip_init(void)

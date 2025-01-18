@@ -404,7 +404,9 @@ struct mml_topology_ops {
 						       struct mml_frame_info *info,
 						       u32 pipe,
 						       struct mml_frame_size *panel);
+	enum mml_mode (*support_couple)(void);
 	bool (*support_dc2)(void);
+	enum mml_hw_caps (*support_hw_caps)(void);
 };
 
 struct mml_path_client {
@@ -433,6 +435,7 @@ struct mml_topology_cache {
 	u32 dpc_qos_ref;
 	struct mutex qos_mutex;	/* lock to qos operation */
 	struct mml_sys_qos *qos;
+	u32 mode_caps;
 };
 
 struct mml_comp_config {
@@ -913,6 +916,20 @@ int mml_topology_register_ip(const char *ip, const struct mml_topology_ops *op);
  * @ip:	name of IP, like mt6983
  */
 void mml_topology_unregister_ip(const char *ip);
+
+/*
+ * mml_topology_get_mode_caps - Query mml supported modes. The mode bits refer to enum mml_mode
+ *
+ * Return:	Bits to represent enabled mode in current platform.
+ */
+u32 mml_topology_get_mode_caps(void);
+
+/*
+ * mml_topology_get_hw_caps - Query mml hardware capability.
+ *
+ * Return:	Hardware caps in bits. See enum mml_hw_caps.
+ */
+u32 mml_topology_get_hw_caps(void);
 
 /*
  * mml_topology_create - Create cache structure and set one of platform

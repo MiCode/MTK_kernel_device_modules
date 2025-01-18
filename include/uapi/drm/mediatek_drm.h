@@ -492,6 +492,9 @@ struct DISP_AAL_TRIG_STATE {
 /* DISP_CLARITY */
 #define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
 
+/* DISP to MML */
+#define DRM_MTK_MML_CTRL 0x5f
+
 #define DRM_MTK_PQ_PROXY_IOCTL 0x37
 /* The device specific ioctl range is from DRM_COMMAND_BASE(0x40) to DRM_COMMAND_END(0x9f)
  * The index of ioctl which define here must be less then 0x60
@@ -1972,6 +1975,33 @@ enum SET_BL_EXT_TYPE {
 
 #define DRM_IOCTL_MTK_HDMI_GET_CAPABILITY     DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_HDMI_GET_CAPABILITY, unsigned int)
+
+struct mtk_drm_mml_caps_info {
+	uint32_t mode_caps;
+	uint32_t hw_caps;
+};
+
+struct mtk_drm_mml_query_hw_support {
+	struct mml_frame_info *info;
+	bool support;
+};
+
+enum mtk_drm_mml_func {
+	mtk_drm_mml_func_unknown,
+	mtk_drm_mml_func_get_caps,
+	mtk_drm_mml_func_query_hw_support,
+};
+
+struct mtk_drm_mml_ctrl {
+	uint32_t func;
+	union {
+		struct mtk_drm_mml_caps_info caps;
+		struct mtk_drm_mml_query_hw_support query;
+	};
+};
+
+#define DRM_IOCTL_MTK_MML_CTRL DRM_IOWR(DRM_COMMAND_BASE + \
+	DRM_MTK_MML_CTRL, struct mtk_drm_mml_ctrl)
 
 #define MTK_DRM_ADVANCE
 #define MTK_DRM_FORMAT_DIM		fourcc_code('D', ' ', '0', '0')

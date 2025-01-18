@@ -8192,6 +8192,81 @@ int mtk_drm_fm_lcm_auto_test(struct drm_device *dev, void *data,
 }
 #endif
 
+static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct drm_device *dev)
+{
+	struct mtk_drm_private *priv = dev->dev_private;
+	struct platform_device *plat_dev;
+	struct platform_device *mml_pdev;
+	u32 mode_caps = 0;
+	int ret;
+
+	plat_dev = of_find_device_by_node(priv->mutex_node);
+	DDPFUNC("platdev %p", plat_dev);
+	if (!plat_dev) {
+		DDPMSG("%s of_find_device_by_node open fail\n", __func__);
+		return -EINVAL;
+	}
+
+	mml_pdev = mml_get_plat_device(plat_dev);
+	if (!mml_pdev) {
+		DDPMSG("%s mml_get_plat_device open fail\n", __func__);
+		return -ENXIO;
+	}
+
+	ret = mml_drm_get_hw_caps(&mode_caps, &mml_caps->hw_caps);
+	if (ret < 0)
+		return ret;
+
+	mml_caps->mode_caps = 0;
+	if (mode_caps & BIT(MML_MODE_DIRECT_LINK))
+		mml_caps->mode_caps |= MTK_MML_DISP_DECOUPLE_LAYER;
+	if (mode_caps & BIT(MML_MODE_RACING))
+		mml_caps->mode_caps |= MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
+	if (mode_caps & BIT(MML_MODE_MML_DECOUPLE))
+		mml_caps->mode_caps |= MTK_MML_DISP_DECOUPLE_LAYER;
+	if (mode_caps & BIT(MML_MODE_MML_DECOUPLE2))
+		mml_caps->mode_caps |= MTK_MML_DISP_DECOUPLE2_LAYER;
+	if (mode_caps & BIT(MML_MODE_MDP_DECOUPLE))
+		mml_caps->mode_caps |= MTK_MML_DISP_MDP_LAYER;
+
+	return 0;
+}
+
+static int mtk_drm_mml_ctrl_query_hw_support(struct mtk_drm_mml_query_hw_support *query)
+{
+	struct mml_frame_info info;
+
+	if (copy_from_user(&info, query->info, sizeof(info))) {
+		DDPINFO("%s copy_from_user mml frame info failed\n", __func__);
+		return -EINVAL;
+	}
+
+	query->support = mml_drm_query_hw_support(&info);
+
+	return 0;
+}
+
+int mtk_drm_ioctl_mml_ctrl(struct drm_device *dev, void *data, struct drm_file *file_priv)
+{
+	struct mtk_drm_mml_ctrl *mml_ctrl = data;
+	int ret;
+
+	switch (mml_ctrl->func) {
+	case mtk_drm_mml_func_get_caps:
+		ret = mtk_drm_mml_ctrl_caps(&mml_ctrl->caps, dev);
+		break;
+	case mtk_drm_mml_func_query_hw_support:
+		ret = mtk_drm_mml_ctrl_query_hw_support(&mml_ctrl->query);
+		break;
+	default:
+		DDPMSG("%s wrong func %u\n", __func__, mml_ctrl->func);
+		ret = -EINVAL;
+		break;
+	};
+
+	return ret;
+}
+
 static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_GEM_CREATE, mtk_gem_create_ioctl,
 			  DRM_UNLOCKED | DRM_AUTH | DRM_RENDER_ALLOW),
@@ -8285,6 +8360,7 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_ESD_STAT_CHK, mtk_drm_esd_recovery_check_ioctl,
 				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_MML_CTRL, mtk_drm_ioctl_mml_ctrl, DRM_UNLOCKED),
 };
 
 static const struct file_operations mtk_drm_fops = {

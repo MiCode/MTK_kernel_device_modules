@@ -90,25 +90,24 @@ static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
 	return drm_format;
 }
 
-enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
-				struct mml_frame_info *info)
+int mml_drm_get_hw_caps(u32 *mode_caps, u32 *pq_caps)
 {
-	u8 i;
-	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
-	const u32 srcw = info->src.width;
-	const u32 srch = info->src.height;
-	enum mml_mode mode;
-	u32 reason = 0;
+	*mode_caps = mml_topology_get_mode_caps();
+	*pq_caps = mml_topology_get_hw_caps();
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mml_drm_get_hw_caps);
 
-	if (mml_pq_disable) {
-		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
-			memset(&info->dest[i].pq_config, 0,
-				sizeof(info->dest[i].pq_config));
-		}
+bool mml_drm_query_hw_support(const struct mml_frame_info *info)
+{
+	static u32 hw_caps;
+	u32 i;
+
+	hw_caps = mml_topology_get_hw_caps();
+	if (!hw_caps) {
+		mml_err("[drm]mml platform not ready");
+		goto not_support;
 	}
-
-	if (info->dest_cnt > MML_MAX_OUTPUTS)
-		info->dest_cnt = MML_MAX_OUTPUTS;
 
 	if (!info->src.format) {
 		mml_err("[drm]invalid src mml color format %#010x", info->src.format);
@@ -119,8 +118,6 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 		mml_err("[drm]invalid src mml color format modifier %#010llx", info->src.modifier);
 		goto not_support;
 	}
-
-	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
 
 	if (MML_FMT_BLOCK(info->src.format)) {
 		if ((info->src.width & 0x0f) || (info->src.height & 0x1f)) {
@@ -135,8 +132,16 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 		const struct mml_frame_dest *dest = &info->dest[i];
 		u32 destw = dest->data.width;
 		u32 desth = dest->data.height;
-		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : srcw;
-		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : srch;
+		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : info->src.width;
+		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : info->src.height;
+
+		/* color space not support for destination */
+		if (dest->data.profile == MML_YCBCR_PROFILE_BT2020 ||
+			dest->data.profile == MML_YCBCR_PROFILE_FULL_BT709 ||
+			dest->data.profile == MML_YCBCR_PROFILE_FULL_BT2020) {
+			mml_err("[drm]not support output profile %d", dest->data.profile);
+			goto not_support;
+		}
 
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			swap(destw, desth);
@@ -177,6 +182,68 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 				goto not_support;
 		}
 	}
+
+	if (hw_caps & MML_HW_ALPHARSZ) {
+		/* hardware support alpha resize case */
+		if (info->alpha && !MML_FMT_IS_ARGB(info->src.format)) {
+			mml_err("[drm]alpha enable without alpha input format %#010x",
+				info->src.format);
+			goto not_support;
+		}
+	} else if (info->alpha &&
+		MML_FMT_IS_ARGB(info->src.format) &&
+		MML_FMT_IS_ARGB(info->dest[0].data.format)) {
+		/* for alpha rotate */
+		const struct mml_frame_dest *dest = &info->dest[0];
+		u32 srccw = dest->crop.r.width;
+		u32 srcch = dest->crop.r.height;
+		u32 destw = dest->data.width;
+		u32 desth = dest->data.height;
+
+		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+			swap(destw, desth);
+
+		if (srccw < 9) {
+			mml_err("[drm]exceed HW limitation src width %u < 9", srccw);
+			goto not_support;
+		}
+		if (srccw != destw || srcch != desth) {
+			mml_err(
+				"[drm]unsupport alpha rotation for resize case crop %u,%u to dest %u,%u",
+				srccw, srcch, destw, desth);
+			goto not_support;
+		}
+	}
+
+	return true;
+
+not_support:
+	return false;
+}
+EXPORT_SYMBOL_GPL(mml_drm_query_hw_support);
+
+enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
+				struct mml_frame_info *info)
+{
+	u8 i;
+	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
+	enum mml_mode mode;
+	u32 reason = 0;
+
+	if (mml_pq_disable) {
+		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+			memset(&info->dest[i].pq_config, 0,
+				sizeof(info->dest[i].pq_config));
+		}
+	}
+
+	if (info->dest_cnt > MML_MAX_OUTPUTS)
+		info->dest_cnt = MML_MAX_OUTPUTS;
+
+	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
+
+	if (!mml_drm_query_hw_support(info))
+		goto not_support;
 
 	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2))
 		goto not_support;

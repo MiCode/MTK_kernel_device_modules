@@ -21,6 +21,18 @@ struct mml_job {
 	int32_t fence;
 };
 
+enum mml_hw_caps {
+	MML_HW_ALPHARSZ		= 0x0001,
+	MML_HW_ALPHARSZ_R2R	= 0x0002,
+	MML_HW_PQ_HDR		= 0x0004,
+	MML_HW_PQ_MATRIX	= 0x0008,
+	MML_HW_PQ_HDR10		= 0x0010,
+	MML_HW_PQ_HDR10P	= 0x0020,
+	MML_HW_PQ_HLG		= 0x0040,
+	MML_HW_PQ_HDRVIVID	= 0x0080,
+	MML_HW_PQ_FG		= 0x0100,
+};
+
 enum mml_mode {
 	MML_MODE_NOT_SUPPORT = -1,
 	MML_MODE_UNKNOWN = 0,
