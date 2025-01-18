@@ -18,11 +18,6 @@
 #include "mtk_idle.h"
 #include "mtk_idle_internal.h"
 
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_SMART_PHONE)
-//#include "mtk-sp-afe-external.h"
-#define ConditionEnterSuspend mtk_audio_condition_enter_suspend
-#endif /* CONFIG_SND_SOC_MTK_SMART_PHONE */
-
 #include "mtk_mcdi_api.h"
 
 #include "mtk_lp_dts.h"
@@ -62,12 +57,8 @@ static int slp_suspend_ops_prepare(void)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_SMART_PHONE)
-bool  ConditionEnterSuspend(void);
-#endif /* MTK_SUSPEND_AUDIO_SUPPORT */
 
 #if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH)
-
 bool (*ConditionEnterSuspendCallBack)(void);
 int RegisterConditionEnterSuspend(bool (*cb)(void))
 {
@@ -76,7 +67,7 @@ int RegisterConditionEnterSuspend(bool (*cb)(void))
 }
 EXPORT_SYMBOL(RegisterConditionEnterSuspend);
 
-bool ConditionEnterSuspend(void)
+static bool ConditionEnterSuspend(void)
 {
 	if (!ConditionEnterSuspendCallBack) {
 		pr_info("name:spm&]NO %s !!!\n", __func__);
@@ -91,15 +82,14 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 	int ret = 0;
 
 #if SLP_SLEEP_DPIDLE_EN
-#if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH) \
-|| IS_ENABLED(CONFIG_SND_SOC_MTK_SMART_PHONE)
+#if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH)
 	int fm_radio_is_playing = 0;
 
 	if (ConditionEnterSuspend() == true)
 		fm_radio_is_playing = 0;
 	else
 		fm_radio_is_playing = 1;
-#endif /* CONFIG_MTK_SND_SOC_NEW_ARCH || CONFIG_SND_SOC_MTK_SMART_PHONE */
+#endif /* CONFIG_MTK_SND_SOC_NEW_ARCH */
 #endif /* SLP_SLEEP_DPIDLE_EN */
 
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
@@ -139,8 +129,7 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 	mtk_idle_cond_update_state();
 
 #if SLP_SLEEP_DPIDLE_EN
-#if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH) \
-|| IS_ENABLED(CONFIG_SND_SOC_MTK_SMART_PHONE)
+#if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH)
 	if (slp_ck26m_on | fm_radio_is_playing) {
 #else
 	if (slp_ck26m_on) {
