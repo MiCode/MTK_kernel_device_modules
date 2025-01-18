@@ -759,7 +759,6 @@ static void smi_bus_status_print_v1(struct seq_file *seq)
 
 	if(!mtk_smi_mminfra_get_if_in_use()) {
 		pr_info("%s: ===== MMinfra may off =====\n", __func__);
-		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 		return;
 	}
 
