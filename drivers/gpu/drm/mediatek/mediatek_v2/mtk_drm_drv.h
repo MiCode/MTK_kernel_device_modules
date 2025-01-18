@@ -137,6 +137,7 @@ struct mtk_drm_kernel_pm {
 	struct notifier_block nb;	/* Kernel suspend and resume event */
 	struct mutex lock;		/* To block any request after kernel suspend */
 	atomic_t status;
+	atomic_t wakelock_cnt;
 	wait_queue_head_t wq;
 };
 

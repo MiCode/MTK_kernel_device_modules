@@ -1792,6 +1792,13 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		}
 	}
 
+	if ((disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) && dsi->ext) {
+		if (dsi->ext->params->lane_swap_en)
+			writel(0x442310, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
+		else
+			writel(0x443210, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
+	}
+
 	mtk_dsi_config_null_packet(dsi, NULL, NULL);
 
 	mtk_dsi_set_LFR(dsi, NULL, NULL, 1);
@@ -2128,6 +2135,7 @@ static void mtk_dsi_cmd_type1_hs(struct mtk_dsi *dsi)
 {
 	if (dsi->ext->params->is_cphy)
 		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), CMD_CPHY_6BYTE_EN, 0);
+	mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), 0xffffffff, 0x00040000);
 }
 
 static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
@@ -2916,6 +2924,7 @@ static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
 	/* reset related setting */
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG, 0);
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON(dsi->driver_data), LDX_ULPM_AS_L0, 0);
+	mtk_dsi_mask(dsi, DSI_PHY_LD0CON(dsi->driver_data), 0xffffffff, 0x00000008);
 	mtk_dsi_mask(dsi, DSI_MODE_CTRL(dsi->driver_data), SLEEP_MODE, 0);
 	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, 0);
 

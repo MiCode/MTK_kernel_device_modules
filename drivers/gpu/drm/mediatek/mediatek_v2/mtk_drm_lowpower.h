@@ -84,6 +84,7 @@ struct mtk_drm_idlemgr {
 	struct pm_qos_request cpu_qos_req;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf;
+	unsigned int old_flag;
 };
 
 struct mtk_drm_async_cb_data {

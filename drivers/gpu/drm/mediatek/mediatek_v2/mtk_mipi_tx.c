@@ -1340,16 +1340,6 @@ int mtk_mipi_tx_dphy_lane_config_mt6897(struct phy *phy,
 		break;
 	}
 
-	/* LANE0~3 */
-	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE0_SEL, swap_base[MIPITX_PHY_LANE_0]);
-	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE1_SEL, swap_base[MIPITX_PHY_LANE_1] << 4);
-	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE2_SEL, swap_base[MIPITX_PHY_LANE_2] << 8);
-	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE3_SEL, swap_base[MIPITX_PHY_LANE_3] << 12);
-
 	/*DISABLE CPHY*/
 	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_MSB,
 		MT6897_FLD_CPHY_EN, 0x0);

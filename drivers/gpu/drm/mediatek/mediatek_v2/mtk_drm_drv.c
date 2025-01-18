@@ -9463,12 +9463,15 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
+	atomic_set(&private->kernel_pm.wakelock_cnt, 0);
 	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
 	if (ret)
 		DDPMSG("register_pm_notifier failed %d", ret);
+
+	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
 
 	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
 	if (private->dpc_dev) {

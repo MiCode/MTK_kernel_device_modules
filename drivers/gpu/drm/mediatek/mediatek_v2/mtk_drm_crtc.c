@@ -11599,7 +11599,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		mtk_disp_esd_check_switch(crtc, true);
 
-	mtk_drm_set_idlemgr(crtc, 1, false);
+	if (mtk_crtc->idlemgr && mtk_crtc->idlemgr->old_flag)
+		mtk_drm_set_idlemgr(crtc, 1, false);
 
 	/* 14. enable fake vsync if need*/
 	mtk_drm_fake_vsync_switch(crtc, true);
@@ -11634,8 +11635,18 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		if (unlikely(ret != 0))
 			DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 		__pm_stay_awake(mtk_crtc->wk_lock);
-	} else
+		atomic_inc(&priv->kernel_pm.wakelock_cnt);
+	} else {
+		if ((atomic_read(&priv->kernel_pm.status) != KERNEL_SHUTDOWN) &&
+		    (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1) &&
+		    vdisp_func.poll_power_cnt && (vdisp_func.poll_power_cnt(0) < 0)) {
+			DDPAEE_FATAL("poll_power_cnt timeout, skip wakelock release\n");
+			return;
+		}
+
 		__pm_relax(mtk_crtc->wk_lock);
+		atomic_dec(&priv->kernel_pm.wakelock_cnt);
+	}
 
 	DDPMSG("CRTC%d %s wakelock %s %d\n",
 		drm_crtc_index(crtc), (get ? "hold" : "release"),
