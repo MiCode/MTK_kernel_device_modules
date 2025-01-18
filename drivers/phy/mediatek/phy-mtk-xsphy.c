@@ -1966,12 +1966,10 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 			break;
 		case PHY_MODE_DPPULLUP_SET:
 			/* eUSB2 rptr to pullup DP */
-			if (!IS_ERR_OR_NULL(xsphy->repeater[0])) {
-				for (i = 0; i < xsphy->num_rptr; i++) {
-					if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
-						phy_set_mode_ext(xsphy->repeater[i],
-							PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_SET);
-				}
+			for (i = 0; i < xsphy->num_rptr; i++) {
+				if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+					phy_set_mode_ext(xsphy->repeater[i],
+						PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_SET);
 			}
 			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR3,
 					(P2A3_RG_USB20_PUPD_BIST_EN |
@@ -1979,12 +1977,10 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 			break;
 		case PHY_MODE_DPPULLUP_CLR:
 			/* eUSB2 rptr to pulldown DP */
-			if (!IS_ERR_OR_NULL(xsphy->repeater[0])) {
-				for (i = 0; i < xsphy->num_rptr; i++) {
-					if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
-						phy_set_mode_ext(xsphy->repeater[i],
-							PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_CLR);
-				}
+			for (i = 0; i < xsphy->num_rptr; i++) {
+				if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+					phy_set_mode_ext(xsphy->repeater[i],
+						PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_CLR);
 			}
 			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR3,
 					(P2A3_RG_USB20_PUPD_BIST_EN |
