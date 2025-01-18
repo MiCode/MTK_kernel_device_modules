@@ -210,6 +210,11 @@ enum mtk_dbi_version {
 	MTK_DBI_V2,
 };
 
+enum mtk_od_version {
+	MTK_OD_V1,
+	MTK_OD_V2,
+};
+
 struct mtk_disp_oddmr_data {
 	bool need_bypass_shadow;
 	/* dujac not support update od table */
@@ -230,6 +235,7 @@ struct mtk_disp_oddmr_data {
 	uint32_t p_num;
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 	enum mtk_dbi_version dbi_version;
+	enum mtk_od_version od_version;
 };
 
 struct mtk_disp_oddmr_od_data {
@@ -247,6 +253,7 @@ struct mtk_disp_oddmr_od_data {
 	struct mtk_drm_gem_obj *r_channel;
 	struct mtk_drm_gem_obj *g_channel;
 	struct mtk_drm_gem_obj *b_channel;
+	struct mtk_drm_gem_obj *channel;
 };
 
 struct mtk_disp_oddmr_dbi_data {
