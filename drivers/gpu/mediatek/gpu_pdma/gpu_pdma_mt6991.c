@@ -391,10 +391,14 @@ static int gpu_pdma_get_hw_sem(void)
 
 static void gpu_pdma_set_irq(int idx)
 {
-	if (g_pdma_sram_base_kva)
-		g_pdma_sram_base_kva->interrupt_status =
-			((g_pdma_sram_base_kva->interrupt_status >> 1) << 1) | (idx & 0x1);
-	else
+	if (g_pdma_sram_base_kva) {
+		/* Clear interrupt status if irq is to be disabled*/
+		if (idx != 0)
+			g_pdma_sram_base_kva->interrupt_status =
+				((g_pdma_sram_base_kva->interrupt_status >> 1) << 1) | (idx & 0x1);
+		else
+			g_pdma_sram_base_kva->interrupt_status = 0;
+	} else
 		pr_err("@%s: set irq failed\n", __func__);
 }
 
