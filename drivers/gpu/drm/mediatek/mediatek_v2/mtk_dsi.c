@@ -697,6 +697,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 		case MMSYS_MT6761:
 		case MMSYS_MT6765:
 		case MMSYS_MT6885:
+		case MMSYS_MT6853:
 		case MMSYS_MT6877:
 		case MMSYS_MT6833:
 			ui = 1000 / dsi->data_rate + 1;
@@ -787,6 +788,7 @@ CONFIG_REG:
 		case MMSYS_MT6761:
 		case MMSYS_MT6765:
 		case MMSYS_MT6885:
+		case MMSYS_MT6853:
 		case MMSYS_MT6877:
 		case MMSYS_MT6833:
 			break;
@@ -938,6 +940,7 @@ static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 		case MMSYS_MT6761:
 		case MMSYS_MT6765:
 		case MMSYS_MT6885:
+		case MMSYS_MT6853:
 		case MMSYS_MT6877:
 		case MMSYS_MT6833:
 			ui = 1000 / dsi->data_rate + 1;
@@ -1042,6 +1045,7 @@ CONFIG_REG:
 		case MMSYS_MT6761:
 		case MMSYS_MT6765:
 		case MMSYS_MT6885:
+		case MMSYS_MT6853:
 		case MMSYS_MT6877:
 		case MMSYS_MT6833:
 			break;
@@ -2145,7 +2149,8 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 					priv->data->mmsys_id == MMSYS_MT6765 ||
 					priv->data->mmsys_id == MMSYS_MT6877 ||
 					priv->data->mmsys_id == MMSYS_MT6833 ||
-					priv->data->mmsys_id == MMSYS_MT6885))
+					priv->data->mmsys_id == MMSYS_MT6885 ||
+					priv->data->mmsys_id == MMSYS_MT6853))
 				SET_VAL_MASK(value, mask, ps_wc * line_back_to_LP, DSI_PS_WC);
 			else
 				SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);

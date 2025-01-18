@@ -3728,7 +3728,8 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
-		priv->data->mmsys_id == MMSYS_MT6885) {
+		priv->data->mmsys_id == MMSYS_MT6885 ||
+		priv->data->mmsys_id == MMSYS_MT6853) {
 		if (prev == DDP_COMPONENT_OVL0 || prev == DDP_COMPONENT_OVL0_2L ||
 			prev == DDP_COMPONENT_OVL1 || prev == DDP_COMPONENT_OVL1_2L ||
 			prev == DDP_COMPONENT_OVL2_2L || prev == DDP_COMPONENT_OVL3_2L ||
@@ -3753,7 +3754,8 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
-		priv->data->mmsys_id == MMSYS_MT6761) {
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6853) {
 		struct mtk_ddp_comp *comp_ovl0 = priv->ddp_comp[DDP_COMPONENT_OVL0];
 		static char init_ovl0 = true;
 
