@@ -66,7 +66,8 @@ int fpsgo_comp2fstb_do_recycle(void);
 int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
 	unsigned long long target_time, int create);
 int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
-	unsigned long long cur_queue_end, unsigned long long *logic_head_ts, int *has_logic_head);
+	unsigned long long cur_queue_end, unsigned long long prev_queue_end_ts,
+	unsigned long long pprev_queue_end_ts, unsigned long long *logic_head_ts, int *has_logic_head);
 int fpsgo_ctrl2fstb_magt_set_target_fps(int *pid_arr, int *tid_arr, int *tfps_arr, int num);
 int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb);

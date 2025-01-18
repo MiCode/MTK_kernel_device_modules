@@ -4534,32 +4534,22 @@ void fbt_get_l2q_ns(struct render_info *iter, unsigned long long cur_queue_end_t
 	unsigned long long *logical_head_time_ns, unsigned long long *l2q_ns,
 	int *is_logic_head_alive)
 {
-	int i = -1, n_1_index = -1;
-	unsigned long long latest_queue_end_ts = 0;
+	int index = -1;
 
-	// Get Frame N-1's L2Q time not N's
-	for(i = 0; i < MAX_SF_BUFFER_SIZE; i++) {
-		if (iter->l2q_info[i].queue_end_ns > latest_queue_end_ts &&
-			iter->l2q_info[i].queue_end_ns < cur_queue_end_ts) {
-			latest_queue_end_ts = iter->l2q_info[i].queue_end_ns;
-			n_1_index = i;
-		}
-	}
-	if (n_1_index == -1)
-		goto out;
+	// Get Frame N's L2Q time.
+	index = iter->l2q_index;
 
 	if (logical_head_time_ns)
-		*logical_head_time_ns = iter->l2q_info[n_1_index].logic_head_fixed_ts;
+		*logical_head_time_ns = iter->l2q_info[index].logic_head_fixed_ts;
 	if (l2q_ns)
-		*l2q_ns = iter->l2q_info[n_1_index].l2q_ts;
+		*l2q_ns = iter->l2q_info[index].l2q_ts;
 	if (is_logic_head_alive)
-		*is_logic_head_alive = iter->l2q_info[n_1_index].is_logic_head_alive;
+		*is_logic_head_alive = iter->l2q_info[index].is_logic_head_alive;
 
-out:
-	if (n_1_index != -1)
+	if (index != -1)
 		fpsgo_main_trace("[%s] queue_end_n-1=%llu, cur_q=%llu, l2q=%llu",
-			__func__, iter->l2q_info[n_1_index].queue_end_ns, cur_queue_end_ts,
-			iter->l2q_info[n_1_index].l2q_ts);
+			__func__, iter->l2q_info[index].queue_end_ns, cur_queue_end_ts,
+			iter->l2q_info[index].l2q_ts);
 }
 
 unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,

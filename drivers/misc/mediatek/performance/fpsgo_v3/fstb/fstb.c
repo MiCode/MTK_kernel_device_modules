@@ -111,9 +111,11 @@ EXPORT_SYMBOL(fstb_check_render_info_status_fp);
 int (*fpsgo2msync_hint_frameinfo_fp)(unsigned int render_tid, unsigned int reader_bufID,
 		unsigned int target_fps, unsigned long q2q_time, unsigned long q2q_time2);
 EXPORT_SYMBOL(fpsgo2msync_hint_frameinfo_fp);
-int (*fstb_get_logical_head_fp)(int pid, unsigned long long bufID, int tgid,
-	unsigned long long cur_queue_end, unsigned long long *logic_head, int *has_logic_head);
-EXPORT_SYMBOL(fstb_get_logical_head_fp);
+int (*fstb_get_logic_head_trace_event_fp)(int pid, unsigned long long bufID, int tgid,
+	unsigned long long cur_queue_end_ts,
+	unsigned long long prev_queue_end_ts, unsigned long long pprev_queue_end_ts,
+	unsigned long long *logical_head, int *has_logic_head);
+EXPORT_SYMBOL(fstb_get_logic_head_trace_event_fp);
 
 // AutoTest
 int (*test_fstb_hrtimer_info_update_fp)(int *tmp_tid, unsigned long long *tmp_ts, int tmp_num,
@@ -1462,7 +1464,8 @@ out:
 }
 
 int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
-	unsigned long long cur_queue_end, unsigned long long *logic_head_ts, int *has_logic_head)
+	unsigned long long cur_queue_end, unsigned long long prev_queue_end_ts,
+	unsigned long long pprev_queue_end_ts, unsigned long long *logic_head_ts, int *has_logic_head)
 {
 	int get_logic_ret = 0;
 
@@ -1472,9 +1475,9 @@ int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
 	}
 
 	mutex_lock(&fstb_ko_lock);
-	if (fstb_get_logical_head_fp) {
-		get_logic_ret = fstb_get_logical_head_fp(pid, bufID, tgid, cur_queue_end,
-			logic_head_ts, has_logic_head);
+	if (fstb_get_logic_head_trace_event_fp) {
+		get_logic_ret = fstb_get_logic_head_trace_event_fp(pid, bufID, tgid, cur_queue_end,
+			prev_queue_end_ts, pprev_queue_end_ts, logic_head_ts, has_logic_head);
 	}
 	mutex_unlock(&fstb_ko_lock);
 out:

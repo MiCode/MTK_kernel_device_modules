@@ -282,18 +282,21 @@ static int fpsgo_comp_make_pair_l2q(struct render_info *f_render,
 
 		cur_l2q_info->logic_head_ts = logic_head_ts;
 		cur_l2q_info->is_logic_head_alive = is_logic_alive;
-
-		if (cur_queue_end > cur_l2q_info->logic_head_fixed_ts)
-			cur_l2q_info->l2q_ts = cur_queue_end - cur_l2q_info->logic_head_fixed_ts;
-		else  // Error handling 拿前一框L2Q
-			cur_l2q_info->l2q_ts = prev_l2q_info->l2q_ts;
-
-		fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id,
-			cur_l2q_info->logic_head_fixed_ts / 1000000, "L_fixed");
-		fpsgo_main_trace("[fstb_logical][%d]l_ts=%llu,l_fixed_ts=%llu,q=%llu,l2q_ts=%llu,exp_t=%llu,min=%llu",
-			f_render->pid, cur_l2q_info->logic_head_ts, cur_l2q_info->logic_head_fixed_ts, cur_queue_end,
-			cur_l2q_info->l2q_ts, f_render->pid, f_render->boost_info.target_time, logic_disappear_min_ts);
+	} else {
+		cur_l2q_info->logic_head_fixed_ts = prev_l2q_info->logic_head_fixed_ts +
+			f_render->boost_info.target_time;
+		is_logic_alive = 0;
 	}
+	if (cur_queue_end > cur_l2q_info->logic_head_fixed_ts)
+		cur_l2q_info->l2q_ts = cur_queue_end - cur_l2q_info->logic_head_fixed_ts;
+	else  // Error handling 拿前一框L2Q
+		cur_l2q_info->l2q_ts = prev_l2q_info->l2q_ts;
+
+	fpsgo_main_trace("[fstb_logical][%d]l_ts=%llu,l_fixed_ts=%llu,q=%llu,l2q_ts=%llu,exp_t=%llu,min=%llu",
+		f_render->pid, cur_l2q_info->logic_head_ts, cur_l2q_info->logic_head_fixed_ts, cur_queue_end,
+		cur_l2q_info->l2q_ts, f_render->pid, f_render->boost_info.target_time, logic_disappear_min_ts);
+	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id,
+			cur_l2q_info->logic_head_fixed_ts / 1000000, "L_fixed");
 	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_l2q_info->sf_buf_id,
 		"L2Q_sf_buf_id");
 	fpsgo_systrace_c_fstb_man(f_render->pid, f_render->buffer_id, cur_l2q_info->l2q_ts, "L2Q_ts");
@@ -323,7 +326,8 @@ static void fpsgo_com_receive_jank_detection(int jank, int pid)
 }
 
 static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
-		unsigned long long enqueue_end_time, unsigned long long sf_buf_id,
+		unsigned long long enqueue_end_time, unsigned long long prev_queue_end_ts,
+		unsigned long long pprev_queue_end_ts,	unsigned long long sf_buf_id,
 		struct render_info *f_render)
 {
 		unsigned long long logic_head_ts = 0;
@@ -331,8 +335,9 @@ static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 
 		if (fpsgo_touch_latency_ko_ready && fpsgo_get_rl_l2q_enable()) {
 			is_logic_valid = fpsgo_comp2fstb_get_logic_head(pid, buf_id,
-				tgid, enqueue_end_time, &logic_head_ts, &has_logic_head);
-				fpsgo_comp_make_pair_l2q(f_render, enqueue_end_time, logic_head_ts,
+				tgid, enqueue_end_time, prev_queue_end_ts, pprev_queue_end_ts,
+				&logic_head_ts, &has_logic_head);
+			fpsgo_comp_make_pair_l2q(f_render, enqueue_end_time, logic_head_ts,
 				has_logic_head, is_logic_valid, sf_buf_id);
 		}
 }
@@ -778,6 +783,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	unsigned long long raw_runtime = 0;
 	unsigned long long running_time = 0;
 	unsigned long long enq_running_time = 0;
+	unsigned long long pprev_enqueue_end = 0, prev_enqueue_end = 0;
 	struct render_info *f_render = NULL;
 
 	fpsgo_render_tree_lock(__func__);
@@ -795,6 +801,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	if (!ret)
 		goto exit;
 
+	pprev_enqueue_end = f_render->prev_t_enqueue_end;
+	prev_enqueue_end = f_render->t_enqueue_end;
+
 	f_render->hwui = fpsgo_search_and_add_hwui_info(f_render->pid, 0) ?
 			RENDER_INFO_HWUI_TYPE : RENDER_INFO_HWUI_NONE;
 	f_render->sbe_control_flag =
@@ -808,6 +817,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->control_pid_flag);
 	if (f_render->t_enqueue_end)
 		f_render->Q2Q_time = enqueue_end_time - f_render->t_enqueue_end;
+	f_render->prev_t_enqueue_end = f_render->t_enqueue_end;
 	f_render->t_enqueue_end = enqueue_end_time;
 	f_render->enqueue_length = enqueue_end_time - f_render->t_enqueue_start;
 	f_render->enqueue_length_real = f_render->enqueue_length;
@@ -836,7 +846,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		fpsgo_check_jank_detection_info_status();
 
 		fpsgo_com_get_l2q_time(pid, f_render->buffer_id, f_render->tgid,
-			enqueue_end_time, sf_buf_id, f_render);
+			enqueue_end_time, prev_enqueue_end, pprev_enqueue_end,
+			sf_buf_id, f_render);
 
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
