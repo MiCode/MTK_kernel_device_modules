@@ -2062,9 +2062,6 @@ static int update_ppm_eff(void)
 				val = div64_u64(turn_point * 100,
 					prev_cluster->ppm_data.ppm_tbl[0].capacity);
 				set_up_thres(prev_cluster, val);
-
-				pr_info("%s: update_ppm turn_pint is %u, down_thre is change to %u",
-					TAG, turn_point, val);
 			}
 
 			/* thermal case */
@@ -2079,9 +2076,6 @@ static int update_ppm_eff(void)
 					prev_cluster->ppm_data.ppm_tbl[0].capacity);
 				if (val <= 100)
 					prev_cluster->thermal_up_thres = val;
-
-				pr_info("%s: update_ppm thermal_turn_pint is %u, thermal_down_thre is change to %u",
-					TAG, turn_point, val);
 			}
 		}
 	}
