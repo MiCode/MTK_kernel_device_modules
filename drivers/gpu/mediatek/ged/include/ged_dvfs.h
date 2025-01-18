@@ -209,6 +209,8 @@ bool ged_gpu_apo_notify(void);
 
 void ged_get_predict_active_time(void);
 void ged_get_predict_idle_time(void);
+bool ged_check_predict_power_autosuspend_nolock(void);
+bool ged_check_predict_power_autosuspend(void);
 void ged_check_predict_power_duration(void);
 unsigned long long ged_get_predict_power_duration(void);
 void ged_gpu_predict_apo_init_nolock(void);
@@ -223,6 +225,7 @@ int ged_get_apo_autosuspend_delay_target_ref_count(void);
 void ged_set_apo_autosuspend_delay_target_ref_count(int apo_autosuspend_delay_target_ref_count);
 void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time);
 void ged_set_apo_autosuspend_delay_ms_ref_idletime(long long idle_time);
+void ged_set_apo_autosuspend_delay_ms_nolock(unsigned int apo_autosuspend_delay_ms);
 void ged_set_apo_autosuspend_delay_ms(unsigned int apo_autosuspend_delay_ms);
 //#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 // for autosuspend_stress
