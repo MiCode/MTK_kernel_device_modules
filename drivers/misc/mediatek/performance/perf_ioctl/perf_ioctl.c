@@ -48,6 +48,8 @@ int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		unsigned long long id,
 		int dep_mode, char *dep_name, int dep_num, long long frame_flags);
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
+int (*fpsgo_notify_ux_buffer_count_fp)(int pid,int count, int max_buffer);
+EXPORT_SYMBOL_GPL(fpsgo_notify_ux_buffer_count_fp);
 
 int (*fpsgo_notify_smart_launch_algorithm_fp)(int feedback_time,
 		int target_time, int pre_opp, int capabilty_ration);
@@ -556,6 +558,10 @@ static long device_ioctl(struct file *filp,
 			fpsgo_notify_sbe_rescue_fp(msgKM->tid, msgKM->start, msgKM->value2,
 						msgKM->identifier, msgKM->frame_time, msgKM->frame_id);
 		break;
+	case FPSGO_SBE_BUFFER_COUNT:
+		if (fpsgo_notify_ux_buffer_count_fp)
+			fpsgo_notify_ux_buffer_count_fp(msgKM->tid, msgKM->value1, msgKM->value2);
+		break;
 	case FPSGO_ACQUIRE:
 		if (fpsgo_notify_acquire_fp)
 			fpsgo_notify_acquire_fp(msgKM->pid1, msgKM->pid2,
@@ -602,6 +608,8 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_BUFFER_QUOTA:
 		[[fallthrough]];
 	case FPSGO_SBE_RESCUE:
+		[[fallthrough]];
+	case FPSGO_SBE_BUFFER_COUNT:
 		[[fallthrough]];
 	case FPSGO_ACQUIRE:
 		break;

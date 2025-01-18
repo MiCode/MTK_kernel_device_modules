@@ -4,6 +4,8 @@
  */
 
 #include <linux/rbtree.h>
+#include <linux/workqueue.h>
+#include <linux/hrtimer.h>
 
 #define SBE_AFFNITY_TASK 0
 
@@ -27,6 +29,7 @@
 #define RESCUE_TYPE_SECOND_RESCUE         (1 << 8)
 #define RESCUE_TYPE_BUFFER_FOUNT_FITLER   (1 << 9)
 #define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
+#define RESCUE_TYPE_BUFFER                (1 << 11)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -44,7 +47,16 @@ struct ux_frame_info {
 	struct rb_node entry;
 };
 
-struct ux_scroll_info{
+struct ux_rescue_check {
+	unsigned long long pid;
+	unsigned long long frameID;
+	int rescue_type;
+	unsigned long long rsc_hint_ts;
+	struct hrtimer timer;
+	struct work_struct work;
+};
+
+struct ux_scroll_info {
 	struct list_head queue_list;
 	struct list_head frame_list;
 	unsigned long long start_ts;
@@ -61,6 +73,9 @@ struct ux_scroll_info{
 	unsigned long long rescue_frame_time_count;
 	int rescue_frame_count;
 	int *score;
+
+	unsigned long long last_frame_ID;
+	unsigned long long rescue_filter_buffer_time;
 };
 
 struct hwui_frame_info{

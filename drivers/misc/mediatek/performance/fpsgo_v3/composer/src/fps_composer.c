@@ -1182,6 +1182,26 @@ void fpsgo_ctrl2comp_hint_doframe_end(int pid,
 	fpsgo_render_tree_unlock(__func__);
 }
 
+void fpsgo_ctrl2comp_hint_buffer_count(int pid, int count, int max_count)
+{
+	struct render_info *f_render;
+
+	fpsgo_render_tree_lock(__func__);
+	//find HWUI render infos, 5566 HWUI magic num
+	f_render = fpsgo_search_and_add_render_info(pid, 5566, 0);
+	if (!f_render || count < 0) {
+		fpsgo_render_tree_unlock(__func__);
+		return;
+	}
+
+	if (max_count < count)
+		max_count = count;
+
+	f_render->cur_buffer_count = count;
+	f_render->max_buffer_count = max_count;
+	fpsgo_render_tree_unlock(__func__);
+}
+
 void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	unsigned long long frameID,
 	unsigned long long frame_end_time,
