@@ -27,6 +27,7 @@
 #define SWINF_WFVLDCLR	0x06
 
 #define GET_SWINF(x)	(((x) >> 1) & 0x7)
+#define GET_SWINF_ERR(x)	(((x) >> 18) & 0x1)
 
 #define PMIF_CMD_REG_0		0
 #define PMIF_CMD_REG		1
@@ -560,6 +561,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	u32 data = 0;
 	u8 bc = len - 1;
 	unsigned long flags_m = 0;
+	int swinf_err = 0;
 
 	/* Check for argument validation. */
 	if (sid & ~(0xf))
@@ -620,9 +622,16 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		return ret;
 	}
 
+	swinf_err = GET_SWINF_ERR(data);
+
 	data = pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->rdata);
 	memcpy(buf, &data, (bc & 3) + 1);
 	pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
+
+	if (swinf_err) {
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
+		return -EIO;
+	}
 
 	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
@@ -638,6 +647,7 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	u32 data = 0;
 	u8 bc = len - 1;
 	unsigned long flags_m = 0;
+	int swinf_err = 0;
 
 	/* Check for argument validation. */
 	if (sid & ~(0xf))
@@ -686,6 +696,29 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	pmif_writel(arb->pmif_base[spmidev[sid].path], arb,
 		    (opc << 30) | BIT(29) | (sid << 24) | (bc << 16) | addr,
 		    inf_reg->ch_send);
+
+	/* Wait for Software Interface FSM state to be IDLE. */
+	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
+					data, GET_SWINF(data) == SWINF_IDLE,
+					PMIF_DELAY_US, PMIF_TIMEOUT);
+	if (ret < 0) {
+		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
+			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
+			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
+		/* set channel ready if the data has transferred */
+		if (pmif_is_fsm_vldclr(arb->pmif_base[spmidev[sid].path], arb))
+			pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
+
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
+
+		return ret;
+	}
+
+	swinf_err = GET_SWINF_ERR(data);
+	if (swinf_err) {
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
+		return -EIO;
+	}
 
 	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
