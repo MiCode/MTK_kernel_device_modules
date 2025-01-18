@@ -30125,6 +30125,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 		val = DDP_MUTEX_SOF_DSI0;
 	else if (id == DDP_COMPONENT_DSI1)
 		val = DDP_MUTEX_SOF_DSI1;
+	else if (id == DDP_COMPONENT_DSI2)
+		val = DDP_MUTEX_SOF_DSI2;
 	else if ((id == DDP_COMPONENT_DPI0) ||
 		(id == DDP_COMPONENT_DP_INTF0)) {
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
@@ -30257,6 +30259,12 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			reg = DDP_MUTEX_SOF_SINGLE_MODE;
 		else
 			reg = DDP_MUTEX_SOF_DSI1;
+		break;
+	case DDP_COMPONENT_DSI2:
+		if (is_cmd_mode)
+			reg = DDP_MUTEX_SOF_SINGLE_MODE;
+		else
+			reg = DDP_MUTEX_SOF_DSI2;
 		break;
 	case DDP_COMPONENT_DPI0:
 	case DDP_COMPONENT_DP_INTF0:

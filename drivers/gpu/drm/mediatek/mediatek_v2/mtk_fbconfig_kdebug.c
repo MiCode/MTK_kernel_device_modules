@@ -146,6 +146,11 @@ static int fbconfig_open(struct inode *inode, struct file *file)
 		pm_params->dsi_id = PM_DSI1;
 		break;
 	}
+	case DDP_COMPONENT_DSI2:
+	{
+		pm_params->dsi_id = PM_DSI2;
+		break;
+	}
 	default:
 		break;
 	}

@@ -1189,9 +1189,11 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		else
 			vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
-		if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
-				(output_comp->id == DDP_COMPONENT_DSI1))
-				&& !(mtk_dsi_is_cmd_mode(output_comp))) {
+		if (output_comp &&
+		    ((output_comp->id == DDP_COMPONENT_DSI0) ||
+		     (output_comp->id == DDP_COMPONENT_DSI1) ||
+		     (output_comp->id == DDP_COMPONENT_DSI2)) &&
+		     !(mtk_dsi_is_cmd_mode(output_comp))) {
 			mtk_ddp_comp_io_cmd(output_comp, NULL,
 				DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
 			vtotal = mode->vtotal;
