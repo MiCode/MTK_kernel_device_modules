@@ -6,24 +6,51 @@
 #include "ksym.h"
 #include <mrdump_helper.h>
 
+#include <debug_kinfo.h>
+#include <asm/memory.h>
+
 DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
 
-static void mkp_addr_find_krn_info(unsigned long *stext,
-	unsigned long *etext, unsigned long *init_begin)
+static unsigned long mkp_stext, mkp_etext, mkp_init_begin;
+static void *kinfo_vaddr;
+
+void ksym_init_kinfo_vaddr(void *vaddr)
 {
-	*stext = aee_get_stext();
-	*etext = aee_get_etext();
-	*init_begin = aee_get_init_begin();
+	kinfo_vaddr = vaddr;
 }
+static bool init_debug_kinfo(void)
+{
+	struct kernel_all_info *dbg_kinfo;
+	struct kernel_info *kinfo;
+
+	if (mkp_stext != 0 && mkp_etext != 0 && mkp_init_begin != 0)
+		return true;
+
+	dbg_kinfo = (struct kernel_all_info *)kinfo_vaddr;
+	kinfo = &(dbg_kinfo->info);
+	if (dbg_kinfo->magic_number == DEBUG_KINFO_MAGIC) {
+		mkp_stext = __phys_to_kimg(kinfo->_stext_pa);
+		mkp_etext = __phys_to_kimg(kinfo->_etext_pa);
+		mkp_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
+		pr_info("mkp: %s success\n", __func__);
+		return true;
+	} else {
+		pr_info("mkp: %s failed\n", __func__);
+		return false;
+	}
+}
+
 void mkp_get_krn_info(void **p_stext, void **p_etext,
 	void **p__init_begin)
 {
-	unsigned long stext, etext, init_begin;
+	bool done = init_debug_kinfo();
 
-	mkp_addr_find_krn_info(&stext, &etext, &init_begin);
-	*p_stext = (void *)stext;
-	*p_etext = (void *)etext;
-	*p__init_begin = (void *)init_begin;
+	if (!done)
+		return;
+
+	*p_stext = (void *)mkp_stext;
+	*p_etext = (void *)mkp_etext;
+	*p__init_begin = (void *)mkp_init_begin;
 
 	MKP_DEBUG("_stext: %p, _etext: %p\n", *p_stext, *p_etext);
 	MKP_DEBUG(" __init_begin: %p\n", *p__init_begin);
@@ -34,8 +61,13 @@ void mkp_get_krn_code(void **p_stext, void **p_etext)
 	if (*p_stext && *p_etext)
 		return;
 
-	*p_stext = (void *)aee_get_stext();
-	*p_etext = (void *)aee_get_etext();
+	bool done = init_debug_kinfo();
+
+	if (!done)
+		return;
+
+	*p_stext = (void *)mkp_stext;
+	*p_etext = (void *)mkp_etext;
 
 	if (!(*p_etext)) {
 		MKP_ERR("%s: _stext not found\n", __func__);
@@ -46,6 +78,7 @@ void mkp_get_krn_code(void **p_stext, void **p_etext)
 		return;
 	}
 	MKP_DEBUG("_stext: %p, _etext: %p\n", *p_stext, *p_etext);
+	return;
 }
 
 void mkp_get_krn_rodata(void **p_etext, void **p__init_begin)
@@ -53,8 +86,13 @@ void mkp_get_krn_rodata(void **p_etext, void **p__init_begin)
 	if (*p_etext && *p__init_begin)
 		return;
 
-	*p_etext = (void *)aee_get_etext();
-	*p__init_begin = (void *)aee_get_init_begin();
+	bool done = init_debug_kinfo();
+
+	if (!done)
+		return;
+
+	*p_etext = (void *)mkp_etext;
+	*p__init_begin = (void *)mkp_init_begin;
 
 	if (!(*p_etext)) {
 		MKP_ERR("%s: _etext not found\n", __func__);
@@ -65,4 +103,5 @@ void mkp_get_krn_rodata(void **p_etext, void **p__init_begin)
 		return;
 	}
 	MKP_DEBUG("_etext: %p, __init_begin: %p\n", *p_etext, *p__init_begin);
+	return;
 }
