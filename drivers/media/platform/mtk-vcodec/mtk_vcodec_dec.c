@@ -4179,6 +4179,16 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->lpw_last_disp_ts = 0;
 		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 
+		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
+		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+			total_frame_bufq_count = q->num_buffers;
+			if (vdec_if_set_param(ctx,
+				SET_PARAM_TOTAL_FRAME_BUFQ_COUNT,
+				&total_frame_bufq_count)) {
+				mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
+			}
+		}
+
 		vcodec_trace_begin("dvfs(stream_on)");
 		mutex_lock(&ctx->dev->dec_dvfs_mutex);
 		if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {

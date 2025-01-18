@@ -812,6 +812,11 @@ static int vdec_set_param(unsigned long h_vdec,
 		ret = vcu_dec_set_param(&inst->vcu, (unsigned int)type, in_vcu, 2U);
 		break;
 	}
+	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
+		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
+		if (inst->vsi->codec_type == 1)
+			ret = vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
+		break;
 	default:
 		mtk_vcodec_err(inst, "invalid set parameter type=%d\n", type);
 		ret = -EINVAL;

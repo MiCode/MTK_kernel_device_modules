@@ -180,6 +180,7 @@ enum vdec_set_param_type {
 	SET_PARAM_WAIT_KEY_FRAME,
 	SET_PARAM_OPERATING_RATE,
 	SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT,
+	SET_PARAM_TOTAL_FRAME_BUFQ_COUNT,
 	SET_PARAM_FRAME_BUFFER,
 	SET_PARAM_VDEC_PROPERTY,
 	SET_PARAM_VDEC_VCP_LOG_INFO,
@@ -219,19 +220,19 @@ enum vdec_get_kernel_param_type {
 #define VDEC_MSG_PREFIX	\
 	__u32 msg_id;	\
 	__u32 ctx_id;	\
-	__s32 status;	\
-	__u32 reserved;	\
 	union {	\
 		__u64 ap_inst_addr_64;		\
 		__u32 ap_inst_addr;	\
-	}
+	}; \
+	__s32 status;	\
+	__u32 reserved;
 #else
 #define VDEC_MSG_PREFIX	\
 	__u32 msg_id;	\
 	__u32 ctx_id;	\
+	__u64 ap_inst_addr;	\
 	__s32 status;	\
-	__u32 reserved;	\
-	__u64 ap_inst_addr
+	__u32 reserved
 #endif
 
 /**
@@ -472,6 +473,7 @@ struct vdec_vsi {
 	__u32 aspect_ratio;
 	__u32 fix_buffers;
 	__u32 interlacing;
+	__u32 codec_type;
 	__u8 input_driven;
 	__u8 output_async;
 	__u8 low_pw_mode;
