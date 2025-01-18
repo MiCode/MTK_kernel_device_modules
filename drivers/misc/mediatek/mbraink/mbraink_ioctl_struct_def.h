@@ -8,7 +8,7 @@
 #include <linux/kallsyms.h>
 
 #define MAX_STRUCT_SZ				64
-#define MAX_MEM_LIST_SZ				512
+#define MAX_MEM_LIST_SZ				32
 #define MAX_MONITOR_PROCESSNAME_SZ		64
 #define MAX_MONITOR_PROCESS_NUM			16
 #define MAX_DDR_FREQ_NUM			12
@@ -22,12 +22,16 @@
 #define MAX_WAKEUP_SOURCE_NUM			12
 #define MAX_NAME_SZ						64
 #define MAX_MDV_SZ						6
+#define MAX_PMIC_SPMI_SZ		64
+#define MAX_PMIC_UVLO_SZ		8
+#define MAX_GPU_OPP_INFO_SZ			64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
 #define NETLINK_EVENT_SYSRESUME		"NLEvent_SysResume"
 #define NETLINK_EVENT_SYSBINDER		"NLEvent_SysBinder"
 #define NETLINK_EVENT_SYSNOTIFIER_PS	"NLEvent_SysNotifierPS"
+#define NETLINK_EVENT_PERFTIMEOUT		"NLEvent_PERFTO"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -49,6 +53,7 @@
 #define SPM_L2_RES_SIZE (16)
 #define SPM_L2_LS_SZ (32)
 
+#define SCP_SZ (200)
 
 #define MD_HD_SZ 8
 #define MD_MDHD_SZ 8
@@ -69,10 +74,18 @@ struct mbraink_process_stat_data {
 	struct mbraink_process_stat_struct drv_data[MAX_STRUCT_SZ];
 };
 
+struct mbraink_process_memory_struct {
+	unsigned short pid;
+	u64 rss;
+	u64 rswap;
+	u64 rpage;
+};
+
 struct mbraink_process_memory_data {
 	unsigned short pid;
 	unsigned short pid_count;
-	unsigned short drv_data[MAX_MEM_LIST_SZ];
+	unsigned int current_cnt;
+	struct mbraink_process_memory_struct drv_data[MAX_MEM_LIST_SZ];
 };
 
 struct mbraink_thread_stat_struct {
@@ -237,6 +250,10 @@ struct mbraink_power_spm_l2_info {
 	unsigned char spm_data[SPM_L2_SZ];
 };
 
+struct mbraink_power_scp_info {
+	unsigned char scp_data[SCP_SZ];
+};
+
 struct mbraink_modem_raw {
 	uint8_t type;
 	uint8_t is_has_data;
@@ -271,5 +288,44 @@ struct mbraink_binder_trace_data {
 struct mbraink_voting_struct_data {
 	int voting_num;
 	unsigned int mbraink_voting_data[MAX_STRUCT_SZ];
+};
+
+struct mbraink_spmi_struct_data {
+	unsigned int spmi_count;
+	unsigned int spmi[MAX_PMIC_SPMI_SZ];
+};
+
+struct mbraink_uvlo_err_data {
+	int ot;
+	int uv;
+	int oc;
+};
+
+struct mbraink_uvlo_struct_data {
+	unsigned int uvlo_count;
+	struct mbraink_uvlo_err_data uvlo_err_data[MAX_PMIC_UVLO_SZ];
+};
+
+struct mbraink_gpu_opp_raw {
+	uint32_t data1;
+	uint64_t data2;
+	uint64_t data3;
+};
+
+struct mbraink_gpu_opp_info {
+	struct mbraink_gpu_opp_raw raw[MAX_GPU_OPP_INFO_SZ];
+	uint64_t data1;
+};
+
+struct mbraink_gpu_state_info {
+	uint64_t data1;
+	uint64_t data2;
+	uint64_t data3;
+	uint64_t data4;
+};
+
+struct mbraink_gpu_loading_info {
+	uint64_t data1;
+	uint64_t data2;
 };
 #endif

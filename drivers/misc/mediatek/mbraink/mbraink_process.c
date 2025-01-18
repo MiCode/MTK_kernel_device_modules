@@ -31,10 +31,12 @@
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
 #include <linux/mm_inline.h>
+#include <trace/hooks/binder.h>
 #include <uapi/linux/android/binder.h>
+#include <asm/page.h>
 
 #include "mbraink_process.h"
-#include "binder_internal.h"
+#include <binder_internal.h>
 
 #define PROCESS_INFO_STR	\
 	"pid=%-10u:uid=%u,priority=%d,utime=%llu,stime=%llu,cutime=%llu,cstime=%llu,name=%s\n"
@@ -87,45 +89,52 @@ static int unregister_trace_android_vh_do_exit(void *t, void *p)
 	pr_info("%s: not support yet...", __func__);
 	return 0;
 }
-
-static int register_trace_android_vh_binder_trans(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
-
-static int unregister_trace_android_vh_binder_trans(void *t, void *p)
-{
-	pr_info("%s: not support yet...", __func__);
-	return 0;
-}
 #endif
 
-void mbraink_get_process_memory_info(pid_t current_pid,
+void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 				struct mbraink_process_memory_data *process_memory_buffer)
 {
 	struct task_struct *t = NULL;
 	unsigned short pid_count = 0;
+	unsigned int current_count = 0;
 
 	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
 	process_memory_buffer->pid = 0;
+	process_memory_buffer->current_cnt = cnt;
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < current_pid)
-			continue;
-
+		task_lock(t);
 		if (t->mm) {
+			mmgrab(t->mm);
+			if (current_count < cnt) {
+				++current_count;
+				mmdrop(t->mm);
+				task_unlock(t);
+				continue;
+			}
 			pid_count = process_memory_buffer->pid_count;
-			if (pid_count < MAX_STRUCT_SZ) {
-				process_memory_buffer->drv_data[pid_count] =
-							(unsigned short)(t->pid);
+			if (pid_count < MAX_MEM_LIST_SZ) {
+				process_memory_buffer->drv_data[pid_count].pid =
+					(unsigned short)(t->pid);
+				process_memory_buffer->drv_data[pid_count].rss =
+					get_mm_rss(t->mm) * (PAGE_SIZE / 1024);
+				process_memory_buffer->drv_data[pid_count].rswap =
+					get_mm_counter(t->mm, MM_SWAPENTS) * (PAGE_SIZE / 1024);
+				process_memory_buffer->drv_data[pid_count].rpage =
+					mm_pgtables_bytes(t->mm) / 1024;
+				mmdrop(t->mm);
+				task_unlock(t);
 				process_memory_buffer->pid_count++;
+				process_memory_buffer->current_cnt++;
 			} else {
 				process_memory_buffer->pid = (unsigned short)(t->pid);
+				mmdrop(t->mm);
+				task_unlock(t);
 				break;
 			}
 		} else {
+			task_unlock(t);
 			/*pr_info("kthread case ...\n");*/
 		}
 	}
@@ -348,6 +357,11 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 	int count = 0;
 	unsigned short processlist_temp[MAX_MONITOR_PROCESS_NUM];
 	unsigned long flags;
+	unsigned int process_num = 0;
+	unsigned int i = 0;
+	unsigned int boundary = 0;
+	bool find = false;
+	pid_t pid_tmp = 0;
 
 	if (is_binder) {
 		spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
@@ -369,36 +383,59 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->mm) {
-			if (count >= MAX_MONITOR_PROCESS_NUM)
-				break;
+		if (t->mm)
+			++process_num;
+	}
+	read_unlock(&tasklist_lock);
 
-			get_task_struct(t);
-			read_unlock(&tasklist_lock);
-			/*This function might sleep*/
-			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
-			read_lock(&tasklist_lock);
-			put_task_struct(t);
-
-			if (!cmdline) {
-				pr_info("cmdline is NULL\n");
-				continue;
-			}
-
-			for (index = 0; index < monitor_process_count; index++) {
-				if (strcasestr(cmdline,
-					processname_inputlist->process_name[index])) {
-					if (count < MAX_MONITOR_PROCESS_NUM) {
-						processlist_temp[count] = (unsigned short)(t->pid);
-						count++;
-					}
+	for (boundary = 0; boundary < process_num; boundary++) {
+		i = 0;
+		find = false;
+		read_lock(&tasklist_lock);
+		for_each_process(t) {
+			task_lock(t);
+			if (t->mm) {
+				if (i < boundary)
+					++i;
+				else {
+					get_task_struct(t);
+					pid_tmp = t->pid;
+					task_unlock(t);
+					find = true;
 					break;
 				}
 			}
-			kfree(cmdline);
+			task_unlock(t);
 		}
+		read_unlock(&tasklist_lock);
+
+		if (find == false)
+			break;
+
+		/*This function might sleep*/
+		cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
+		put_task_struct(t);
+
+		if (!cmdline) {
+			pr_info("%s: cmdline is NULL\n", __func__);
+			continue;
+		}
+
+		for (index = 0; index < monitor_process_count; index++) {
+			if (strcasestr(cmdline,
+				processname_inputlist->process_name[index])) {
+				if (count < MAX_MONITOR_PROCESS_NUM) {
+					processlist_temp[count] = (unsigned short)(pid_tmp);
+					count++;
+				}
+				break;
+			}
+		}
+		kfree(cmdline);
+
+		if (count >= MAX_MONITOR_PROCESS_NUM)
+			break;
 	}
-	read_unlock(&tasklist_lock);
 
 setting:
 	if (is_binder) {
@@ -576,6 +613,7 @@ static int is_monitor_process(unsigned short pid)
 	return ret;
 }
 
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static int is_monitor_binder_process(unsigned short pid)
 {
 	int ret = 0, index = 0;
@@ -600,6 +638,7 @@ static int is_monitor_binder_process(unsigned short pid)
 	spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
 	return ret;
 }
+#endif
 
 static void mbraink_trace_android_vh_do_exit(void *data, struct task_struct *t)
 {
@@ -703,6 +742,7 @@ static void mbraink_trace_android_vh_do_fork(void *data, struct task_struct *p)
 	}
 }
 
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static void mbraink_trace_android_vh_binder_trans(void *data,
 						struct binder_proc *target_proc,
 						struct binder_proc *proc,
@@ -744,7 +784,7 @@ static void mbraink_trace_android_vh_binder_trans(void *data,
 					n = snprintf(netlink_buf,
 								NETLINK_EVENT_MESSAGE_SIZE, "%s ",
 								NETLINK_EVENT_SYSBINDER);
-					if(n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+					if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
 						break;
 					pos += n;
 				}
@@ -780,6 +820,7 @@ static void mbraink_trace_android_vh_binder_trans(void *data,
 	}
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
+#endif
 
 int mbraink_process_tracer_init(void)
 {
@@ -801,16 +842,20 @@ int mbraink_process_tracer_init(void)
 		pr_notice("register register_trace_android_vh_do_exit failed.\n");
 		goto register_trace_android_vh_do_exit;
 	}
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 	ret = register_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans,
 						NULL);
 	if (ret) {
 		pr_notice("register_trace_android_vh_binder_trans failed.\n");
 		goto register_trace_android_vh_binder_trans;
 	}
+#endif
 	return ret;
 
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 register_trace_android_vh_binder_trans:
 	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
+#endif
 register_trace_android_vh_do_exit:
 	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
 register_trace_android_vh_do_fork:
@@ -821,7 +866,9 @@ void mbraink_process_tracer_exit(void)
 {
 	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
 	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 	unregister_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans, NULL);
+#endif
 }
 
 void mbraink_get_tracing_pid_info(unsigned short current_idx,

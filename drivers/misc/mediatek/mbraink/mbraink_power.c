@@ -11,6 +11,21 @@
 
 #include "mbraink_power.h"
 
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
+#include <scp_mbrain_dbg.h>
+#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
+#include <spmi-mtk.h>
+#define MAX_SPMI_SLVID slvid_cnt
+#else
+#define MAX_SPMI_SLVID 32
+#endif
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_RT6160)
+#include <rt6160.h>
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 
@@ -34,13 +49,6 @@ unsigned int g_md_read_count;
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
-void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
-{
-	pr_info("%s: not support yet...", __func__);
-}
-#endif
-
 int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 {
 	int idx = 0, n = 0;
@@ -63,7 +71,6 @@ int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 
 	n += snprintf(buffer + n, size, "datatype:%d\n", datatype);
 
-	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_IDLE_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
 		n += snprintf(buffer + n, size, "Idle_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);
@@ -77,7 +84,6 @@ int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 				1000));
 	}
 
-	mtk_get_lp_info(&mbraink_lpm_dbg_lp_info, SPM_SUSPEND_STAT);
 	for (idx = 0; idx < NUM_SPM_STAT; idx++) {
 		n += snprintf(buffer + n, size, "Suspend_count %s:%lld\n",
 			mbraink_lp_state_name[idx], mbraink_lpm_dbg_lp_info.record[idx].count);
@@ -291,9 +297,11 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 				active_time = 0;
 			}
 
-			if (strlen(ws->name) < MAX_NAME_SZ) {
-				memcpy(wakeup_info_buffer->drv_data[i].name,
+			if (ws->name != NULL) {
+				if ((strlen(ws->name) > 0) && (strlen(ws->name) < MAX_NAME_SZ)) {
+					memcpy(wakeup_info_buffer->drv_data[i].name,
 					ws->name, strlen(ws->name));
+				}
 			}
 
 			wakeup_info_buffer->drv_data[i].active_count = active_count;
@@ -458,7 +466,7 @@ int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 			g_spm_raw = NULL;
 		}
 
-		if (g_data_size == SPM_TOTAL_SZ) {
+		if (g_data_size <= SPM_TOTAL_SZ) {
 			g_spm_raw = vmalloc(g_data_size);
 			if (g_spm_raw != NULL) {
 				memset(g_spm_raw, 0, g_data_size);
@@ -508,6 +516,55 @@ int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 }
 
 #endif
+
+#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
+int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
+{
+	pr_notice("not support scp info\n");
+	return 0;
+}
+
+#else
+int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
+{
+	struct scp_res_mbrain_dbg_ops *scp_res_mbrain_ops = NULL;
+	unsigned int data_size = 0;
+	unsigned char *ptr = NULL;
+
+	if (scp_info == NULL)
+		return -1;
+
+	scp_res_mbrain_ops = get_scp_mbrain_dbg_ops();
+
+	if (scp_res_mbrain_ops &&
+		scp_res_mbrain_ops->get_length &&
+		scp_res_mbrain_ops->get_data) {
+
+		data_size = scp_res_mbrain_ops->get_length();
+
+		if (data_size > 0 && data_size <= sizeof(scp_info->scp_data)) {
+			ptr = kmalloc(data_size, GFP_KERNEL);
+			if (ptr == NULL)
+				goto End;
+
+			scp_res_mbrain_ops->get_data(ptr, data_size);
+			if (data_size <= sizeof(scp_info->scp_data))
+				memcpy(scp_info->scp_data, ptr, data_size);
+
+		} else {
+			goto End;
+		}
+	}
+
+End:
+	if (ptr != NULL) {
+		kfree(ptr);
+		ptr = NULL;
+	}
+
+	return 0;
+}
+#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
 
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
@@ -637,3 +694,50 @@ mbraink_power_get_voting_info(struct mbraink_voting_struct_data *mbraink_vcorefs
 		pr_info("vcore voting system is not support on kernel space !\n");
 	}
 }
+
+int mbraink_power_get_spmi_info(struct mbraink_spmi_struct_data *mbraink_spmi_data)
+{
+	unsigned int Buf[MAX_SPMI_SLVID] = {0};
+	int ret = 0;
+	int num = 0;
+
+	if (mbraink_spmi_data == NULL) {
+		pr_info("mbraink_spmi_data is null\n");
+		return -1;
+	}
+
+	get_spmi_slvid_nack_cnt(Buf);
+	num = (MAX_PMIC_SPMI_SZ > MAX_SPMI_SLVID) ? MAX_SPMI_SLVID : MAX_PMIC_SPMI_SZ;
+	memcpy(mbraink_spmi_data->spmi, Buf, sizeof(unsigned int)*num);
+	mbraink_spmi_data->spmi_count = num;
+
+	return ret;
+}
+
+int mbraink_power_get_uvlo_info(struct mbraink_uvlo_struct_data *mbraink_uvlo_data)
+{
+	int num = 0;
+	int i = 0;
+	int ret = 0;
+	struct rt6160_error rt6160_err;
+
+	if (mbraink_uvlo_data == NULL) {
+		pr_info("mbraink_uvlo_data is null\n");
+		return -1;
+	}
+
+	num = rt6160_get_chip_num();
+	num = (num > MAX_PMIC_UVLO_SZ) ? MAX_PMIC_UVLO_SZ : num;
+
+	mbraink_uvlo_data->uvlo_count = num;
+	for (i = 0 ; i < num ; i++) {
+		rt6160_get_error_cnt(i, &rt6160_err);
+		mbraink_uvlo_data->uvlo_err_data[i].ot = rt6160_err.ot;
+		mbraink_uvlo_data->uvlo_err_data[i].uv = rt6160_err.uv;
+		mbraink_uvlo_data->uvlo_err_data[i].oc = rt6160_err.oc;
+	}
+
+	return ret;
+}
+
+
