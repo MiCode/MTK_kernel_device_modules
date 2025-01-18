@@ -97,7 +97,7 @@ int mtk_selected_adapter_ready(struct mtk_charger *info)
 			chr_debug("%s: run ufcs_adapter\n", __func__);
 			info->select_adapter = info->adapter_dev[UFCS];
 			info->select_adapter_idx = UFCS;
-			info->ta_capability = APDO_TA;
+			info->ta_capability = ONLY_APDO_TA;
 			ret = 1;
 		} else {
 			chr_debug("%s: note : can't find ufcs_adapter\n",

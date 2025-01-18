@@ -132,6 +132,7 @@ enum TA_CAP_STATE {
 	APDO_TA,
 	WO_APDO_TA,
 	STD_TA,
+	ONLY_APDO_TA,
 };
 
 enum chg_dev_notifier_events {

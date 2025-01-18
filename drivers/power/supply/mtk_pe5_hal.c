@@ -533,7 +533,8 @@ int pe50_hal_is_adapter_ready(struct chg_alg_device *alg)
 		if (info->select_adapter) {
 			pr_notice("%s ta_cap:%d\n", __func__, info->ta_capability);
 			hal->adapter = info->select_adapter;
-			if (info->ta_capability == APDO_TA)
+			if (info->ta_capability == APDO_TA ||
+				info->ta_capability == ONLY_APDO_TA)
 				return ALG_READY;
 			else
 				return ALG_TA_NOT_SUPPORT;
