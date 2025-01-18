@@ -862,6 +862,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->bypass_closed_loop = 0;
 
 	fbt_set_render_boost_attr(iter_thr);
+	fbt_init_ux(iter_thr);
 
 	rb_link_node(&iter_thr->render_key_node, parent, p);
 	rb_insert_color(&iter_thr->render_key_node, &render_pid_tree);
@@ -911,6 +912,7 @@ void fpsgo_delete_render_info(int pid,
 	rb_erase(&data->render_key_node, &render_pid_tree);
 	total_render_info_num--;
 	list_del(&(data->bufferid_list));
+	fbt_del_ux(data);
 	fpsgo_base2fbt_item_del(data->p_blc, data->dep_arr, data);
 	data->p_blc = NULL;
 	data->dep_arr = NULL;
@@ -1709,6 +1711,7 @@ int fpsgo_check_thread_status(void)
 			rb_erase(&iter->render_key_node, &render_pid_tree);
 			total_render_info_num--;
 			list_del(&(iter->bufferid_list));
+			fbt_del_ux(iter);
 			fpsgo_base2fbt_item_del(iter->p_blc, iter->dep_arr, iter);
 			iter->p_blc = NULL;
 			iter->dep_arr = NULL;
@@ -1795,6 +1798,7 @@ void fpsgo_clear(void)
 		rb_erase(&iter->render_key_node, &render_pid_tree);
 		total_render_info_num--;
 		list_del(&(iter->bufferid_list));
+		fbt_del_ux(iter);
 		fpsgo_base2fbt_item_del(iter->p_blc, iter->dep_arr, iter);
 		iter->p_blc = NULL;
 		iter->dep_arr = NULL;
@@ -1836,7 +1840,8 @@ int fpsgo_update_swap_buffer(int pid)
 	return 0;
 }
 
-int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long long frame_id)
+int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance,
+		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
 	struct rb_node *n;
 	struct render_info *iter;
@@ -1847,7 +1852,7 @@ int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long lon
 		fpsgo_thread_lock(&iter->thr_mlock);
 		if (iter->pid == pid) {
 			if (iter->buffer_id == 5566)
-				fpsgo_sbe_rescue(iter, start, enhance, frame_id);
+				fpsgo_sbe_rescue(iter, start, enhance, rescue_type, rescue_target, frame_id);
 			else
 				fpsgo_sbe_rescue_legacy(iter, start, enhance, frame_id);
 		}

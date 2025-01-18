@@ -117,7 +117,10 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	int buffer_quota;
 
 	int enhance;
-	unsigned long long frameID;
+	int rescue_type;
+	long long frameID;
+	long long frame_flags;
+	unsigned long long rescue_target;
 	struct list_head queue_list;
 
 	int consumer_pid;
@@ -199,12 +202,12 @@ static void fpsgo_notifier_wq_cb_swap_buffer(int pid)
 }
 
 static void fpsgo_notifier_wq_cb_sbe_rescue(int pid, int start, int enhance,
-		unsigned long long frameID)
+		int rescue_type, unsigned long long rescue_target, unsigned long long frameID)
 {
 	FPSGO_LOGI("[FPSGO_CB] sbe_rescue: %d\n", pid);
 	if (!fpsgo_is_enable())
 		return;
-	fpsgo_sbe_rescue_traverse(pid, start, enhance, frameID);
+	fpsgo_sbe_rescue_traverse(pid, start, enhance, rescue_type, rescue_target, frameID);
 }
 
 static void fpsgo_notifier_wq_cb_buffer_quota(unsigned long long curr_ts,
@@ -348,7 +351,7 @@ static void fpsgo_notifier_wq_cb_enable(int enable)
 static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 		int cur_pid, unsigned long long frameID,
 		unsigned long long curr_ts, unsigned long long id,
-		int dep_mode, char *dep_name, int dep_num)
+		int dep_mode, char *dep_name, int dep_num, long long frame_flags)
 {
 	FPSGO_LOGI("[FPSGO_CB] uxframe: %d, pid %d, ts %llu, id %llu\n",
 		qudeq, cur_pid, curr_ts, id);
@@ -371,6 +374,11 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 		FPSGO_LOGI("[FPSGO_CB] uxframe UX End: pid %d\n",
 				cur_pid);
 		fpsgo_ctrl2comp_hint_frame_end(cur_pid, frameID, curr_ts, id);
+		break;
+	case 2:
+		FPSGO_LOGI("[FPSGO_CB] uxframe UX doframe End: pid %d\n",
+				cur_pid);
+		fpsgo_ctrl2comp_hint_doframe_end(cur_pid, frameID, curr_ts, id, frame_flags);
 		break;
 	default:
 		break;
@@ -480,7 +488,6 @@ static void fpsgo_notifier_wq_cb(void)
 		mutex_unlock(&notifier_wq_lock);
 		return;
 	}
-
 	switch (vpPush->ePushType) {
 	case FPSGO_NOTIFIER_SWITCH_FPSGO:
 		fpsgo_notifier_wq_cb_enable(vpPush->enable);
@@ -512,7 +519,7 @@ static void fpsgo_notifier_wq_cb(void)
 		break;
 	case FPSGO_NOTIFIER_SBE_RESCUE:
 		fpsgo_notifier_wq_cb_sbe_rescue(vpPush->pid, vpPush->enable, vpPush->enhance,
-						vpPush->frameID);
+						vpPush->rescue_type, vpPush->rescue_target, vpPush->frameID);
 		break;
 	case FPSGO_NOTIFIER_ACQUIRE:
 		fpsgo_notify_wq_cb_acquire(vpPush->consumer_pid,
@@ -529,11 +536,12 @@ static void fpsgo_notifier_wq_cb(void)
 		fpsgo_notifier_wq_cb_hint_frame(vpPush->qudeq_cmd,
 				vpPush->pid, vpPush->frameID,
 				vpPush->cur_ts, vpPush->identifier,
-				vpPush->mode, vpPush->specific_name, vpPush->num);
+				vpPush->mode, vpPush->specific_name, vpPush->num, vpPush->frame_flags);
 		break;
 	case FPSGO_NOTIFIER_SBE_POLICY:
 		fpsgo_ctrl2comp_set_sbe_policy(vpPush->pid,
-				vpPush->name, vpPush->mask, vpPush->qudeq_cmd,
+				vpPush->name, vpPush->mask,
+				vpPush->cur_ts, vpPush->qudeq_cmd,
 				vpPush->specific_name, vpPush->num);
 		break;
 	case FPSGO_NOTIFIER_ADPF_HINT:
@@ -831,7 +839,8 @@ void fpsgo_notify_swap_buffer(int pid)
 	fpsgo_queue_work(vpPush);
 }
 
-void fpsgo_notify_sbe_rescue(int pid, int start, int enhance, unsigned long long frameID)
+void fpsgo_notify_sbe_rescue(int pid, int start, int enhance,
+		int rescue_type, unsigned long long rescue_target, unsigned long long frameID)
 {
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
@@ -858,6 +867,8 @@ void fpsgo_notify_sbe_rescue(int pid, int start, int enhance, unsigned long long
 	vpPush->pid = pid;
 	vpPush->enable = start;
 	vpPush->enhance = enhance;
+	vpPush->rescue_type = rescue_type;
+	vpPush->rescue_target = rescue_target;
 	vpPush->frameID = frameID;
 
 	fpsgo_queue_work(vpPush);
@@ -971,7 +982,7 @@ void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier
 
 int fpsgo_notify_frame_hint(int qudeq,
 	int pid, int frameID, unsigned long long id,
-	int dep_mode, char *dep_name, int dep_num)
+	int dep_mode, char *dep_name, int dep_num, long long frame_flags)
 {
 	int ret;
 	unsigned long long cur_ts;
@@ -1004,6 +1015,7 @@ int fpsgo_notify_frame_hint(int qudeq,
 	vpPush->cur_ts = cur_ts;
 	vpPush->qudeq_cmd = qudeq;
 	vpPush->frameID = frameID;
+	vpPush->frame_flags = frame_flags;
 	// FPSGO UX: bufid magic number.
 	vpPush->identifier = 5566;
 	vpPush->mode = dep_mode;
@@ -1023,6 +1035,7 @@ int fpsgo_notify_frame_hint(int qudeq,
 int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	int start, char *specific_name, int num)
 {
+	unsigned long long cur_ts;
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
 	if (!fpsgo_is_enable())
@@ -1047,8 +1060,11 @@ int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 		return sbe2fpsgo_query_is_running ? 10001 : 0;
 	}
 
+	cur_ts = fpsgo_get_time();
+
 	vpPush->ePushType = FPSGO_NOTIFIER_SBE_POLICY;
 	vpPush->pid = pid;
+	vpPush->cur_ts = cur_ts;
 	vpPush->mask = mask;
 	vpPush->qudeq_cmd = start;
 	memcpy(vpPush->name, name, 16);

@@ -12,7 +12,7 @@ extern int (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend, int pid,
 extern int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID,
 		unsigned long long id,
-		int dep_mode, char *dep_name, int dep_num);
+		int dep_mode, char *dep_name, int dep_num, long long frame_flags);
 extern void (*fpsgo_notify_connect_fp)(int pid, int connectedAPI,
 		unsigned long long identifier);
 extern void (*fpsgo_notify_bqid_fp)(int pid, unsigned long long bufID,
@@ -26,7 +26,7 @@ extern void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);
 extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern int (*fpsgo_wait_fstb_active_fp)(void);
 extern void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance,
-		unsigned long long frameID);
+		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,

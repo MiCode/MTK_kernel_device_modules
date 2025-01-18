@@ -37,7 +37,8 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
 void (*fpsgo_get_pid_fp)(int cmd, int *pid, int value1, int value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_pid_fp);
 
-void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance, unsigned long long frameID);
+void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance,
+		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
 int (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, char *specific_name, int num);
@@ -45,7 +46,7 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_policy_fp);
 int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID,
 		unsigned long long id,
-		int dep_mode, char *dep_name, int dep_num);
+		int dep_mode, char *dep_name, int dep_num, long long frame_flags);
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
 
 void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
@@ -408,7 +409,6 @@ static long device_ioctl(struct file *filp,
 	struct _FPSGO_PACKAGE smsgKM;
 	struct _FPSGO_SBE_PACKAGE *msgKM_SBE = NULL, *msgUM_SBE = NULL;
 	struct _FPSGO_SBE_PACKAGE smsgKM_SBE;
-
 	if (cmd == FPSGO_SBE_SET_POLICY || cmd == FPSGO_HINT_FRAME) {
 		msgUM_SBE = (struct _FPSGO_SBE_PACKAGE *)arg;
 		msgKM_SBE = &smsgKM_SBE;
@@ -422,14 +422,14 @@ static long device_ioctl(struct file *filp,
 		case FPSGO_SBE_SET_POLICY:
 			if (fpsgo_notify_sbe_policy_fp)
 				ret = fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
-					msgKM_SBE->mask, msgKM_SBE->start,
-					msgKM_SBE->specific_name, msgKM_SBE->num);
+						msgKM_SBE->mask, msgKM_SBE->start,
+						msgKM_SBE->specific_name, msgKM_SBE->num);
 			break;
 		case FPSGO_HINT_FRAME:
 			if (fpsgo_notify_frame_hint_fp)
 				msgKM_SBE->blc = fpsgo_notify_frame_hint_fp(msgKM_SBE->start,
 					msgKM_SBE->rtid, msgKM_SBE->frame_id, msgKM_SBE->identifier,
-					msgKM_SBE->mode, msgKM_SBE->specific_name, msgKM_SBE->num);
+					msgKM_SBE->mode, msgKM_SBE->specific_name, msgKM_SBE->num, msgKM_SBE->mask);
 			perfctl_copy_to_user(msgUM_SBE, msgKM_SBE,
 				sizeof(struct _FPSGO_SBE_PACKAGE));
 			break;
@@ -527,7 +527,7 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_SBE_RESCUE:
 		if (fpsgo_notify_sbe_rescue_fp)
 			fpsgo_notify_sbe_rescue_fp(msgKM->tid, msgKM->start, msgKM->value2,
-						msgKM->frame_id);
+						msgKM->identifier, msgKM->frame_time, msgKM->frame_id);
 		break;
 	case FPSGO_ACQUIRE:
 		if (fpsgo_notify_acquire_fp)
