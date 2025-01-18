@@ -12,6 +12,7 @@
 #include <linux/spinlock.h>
 #include <linux/dma-buf.h>
 #include <linux/iosys-map.h>
+#include <linux/remoteproc.h>
 
 // #define SECURE_CCU
 /*
@@ -199,6 +200,7 @@ struct mtk_ccu {
 	uint32_t ipc_tout_mid;
 	u64 ktime;
 	uint32_t gtick;
+	atomic_t bootcnt[RPROC_UID_MAX][3];
 };
 
 struct mtk_ccu_clk_name {
