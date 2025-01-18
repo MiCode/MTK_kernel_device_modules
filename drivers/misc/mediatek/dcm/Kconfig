@@ -65,5 +65,15 @@ config MTK_DCM_MT6989
 	help
 	  For Mediatek MT6989 Dynamic Clock Management HW control. Only enable when you
 	  neet to change mt6989 dcm setting. Setting will not keep after reboot
-	  Select "y" if you want to change mt6897 dcm setting.
+	  Select "y" if you want to change mt6989 dcm setting.
+	  Select "n" if you do not need to change
+
+config MTK_DCM_MT6991
+	tristate "Mediatek MT6991 DCM control"
+	depends on ARCH_MEDIATEK && OF
+	select MTK_DCM_COMMON
+	help
+	  For Mediatek MT6991 Dynamic Clock Management HW control. Only enable when you
+	  neet to change mt6991 dcm setting. Setting will not keep after reboot
+	  Select "y" if you want to change mt6991 dcm setting.
 	  Select "n" if you do not need to change
