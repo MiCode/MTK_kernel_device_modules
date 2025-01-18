@@ -250,6 +250,7 @@
 #define OV2650_SENSOR_ID_3                      0x2655
 #define OV20880MIPI_SENSOR_ID                   0x20880
 #define OV05A20_SENSOR_ID                       0x5305
+#define OX08B40_SENSOR_ID                       0x580841
 
 /*S5K*/
 #define S5KHP3SP_SENSOR_ID                      0x1b73
@@ -547,6 +548,7 @@
 #define SENSOR_DRVNAME_OV2650_RAW               "ov265x_raw"
 #define SENSOR_DRVNAME_OV20880_MIPI_RAW         "ov20880_mipi_raw"
 #define SENSOR_DRVNAME_OV05A20_MIPI_RAW         "ov05a20_mipi_raw"
+#define SENSOR_DRVNAME_OX08B40_MIPI_RAW         "ox08b40_mipi_raw"
 
 /*S5K*/
 #define SENSOR_DRVNAME_S5KHP3SP_MIPI_RAW        "s5khp3sp_mipi_raw"
