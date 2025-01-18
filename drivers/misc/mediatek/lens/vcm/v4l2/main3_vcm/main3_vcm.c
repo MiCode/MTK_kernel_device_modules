@@ -43,7 +43,13 @@ struct main3_vcm_device {
 	struct pinctrl_state *vcamaf_on;
 	struct pinctrl_state *vcamaf_off;
 	struct regulator *ldo[REGULATOR_MAXSIZE];
+	struct work_struct poweroff_work;
+	bool is_powered_off;
+	bool is_stop_flag;
+	wait_queue_head_t wait_queue_head;
 };
+
+static struct workqueue_struct *main3_vcm_init_wq;
 
 #define I2CCOMM_MAXSIZE 4
 
@@ -76,23 +82,51 @@ struct VcmDriverConfig {
 
 	// Uninit param
 	unsigned int origin_focus_pos;
-	unsigned int move_steps;
+	int32_t move_long_steps_pct;
+	int32_t move_short_steps_pct;
 	unsigned int move_delay_us;
+	uint32_t delay_power_off_ms;
 	char wr_rls_table[8][3];
+
+	// resume and stand-by mode setting
+	char resume_table[8][3];
+	char suspend_table[8][3];
 
 	// Capacity
 	int32_t vcm_bits;
 	int32_t af_calib_bits;
 };
 
-struct mtk_vcm_info {
-	struct VcmDriverConfig *p_vcm_info;
+struct VcmDriverList {
+	int32_t sensor_id;
+	int32_t module_id;
+	int32_t vcm_id;
+	char    vcm_drv_name[32];
+	uint64_t vcm_settling_time;
+
+	struct VcmDriverConfig vcm_config;
 };
 
-struct VcmDriverConfig g_vcmconfig;
+struct mtk_vcm_info {
+	struct VcmDriverList *p_vcm_info;
+};
+
+struct VCM_Hall_data {
+	unsigned int hall_value;
+	uint64_t hall_timestamp;
+};
+
+struct mtk_vcm_data {
+	struct VCM_Hall_data *p_vcm_data;
+};
+
+struct VcmDriverList g_vcmconfig;
 
 /* Control commnad */
 #define VIDIOC_MTK_S_LENS_INFO _IOWR('V', BASE_VIDIOC_PRIVATE + 3, struct mtk_vcm_info)
+#define VCM_IOC_POWER_ON         _IO('V', BASE_VIDIOC_PRIVATE + 4)
+#define VCM_IOC_POWER_OFF        _IO('V', BASE_VIDIOC_PRIVATE + 5)
+#define VIDIOC_MTK_G_LENS_HALL _IOWR('V', BASE_VIDIOC_PRIVATE + 6, struct mtk_vcm_data)
 
 static inline struct main3_vcm_device *to_main3_vcm_vcm(struct v4l2_ctrl *ctrl)
 {
@@ -108,6 +142,30 @@ struct regval_list {
 	unsigned char reg_num;
 	unsigned char value;
 };
+
+static void stop_background_works(struct main3_vcm_device *main3_vcm)
+{
+	LOG_INF("+\n");
+	main3_vcm->is_stop_flag = true;
+
+	wake_up_interruptible(&main3_vcm->wait_queue_head);
+
+	/* main3_vcm Workqueue */
+	if (main3_vcm_init_wq) {
+		LOG_INF("flush work queue\n");
+
+		/* flush work queue */
+		flush_work(&main3_vcm->poweroff_work);
+
+		flush_workqueue(main3_vcm_init_wq);
+		destroy_workqueue(main3_vcm_init_wq);
+		main3_vcm_init_wq = NULL;
+	}
+
+	main3_vcm->is_stop_flag = false;
+
+	LOG_INF("-\n");
+}
 
 static void register_setting(struct i2c_client *client, char table[][3], int table_size)
 {
@@ -199,34 +257,34 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 	int i = 0, j = 0;
 	int retry = 3;
 
-	for (i = 0; i < g_vcmconfig.I2CSendNum; ++i, nArrayIndex = 0) {
-		int nCommNum = g_vcmconfig.I2Cfmt[i].AddrNum +
-			g_vcmconfig.I2Cfmt[i].DataNum;
+	for (i = 0; i < g_vcmconfig.vcm_config.I2CSendNum; ++i, nArrayIndex = 0) {
+		int nCommNum = g_vcmconfig.vcm_config.I2Cfmt[i].AddrNum +
+			g_vcmconfig.vcm_config.I2Cfmt[i].DataNum;
 
 		// Fill address
-		for (j = 0; j < g_vcmconfig.I2Cfmt[i].AddrNum; ++j) {
+		for (j = 0; j < g_vcmconfig.vcm_config.I2Cfmt[i].AddrNum; ++j) {
 			if (nArrayIndex >= ARRAY_SIZE(puSendCmd)) {
 				LOG_INF("nArrayIndex(%d) exceeds the size of puSendCmd(%d)\n",
 					nArrayIndex, (int)ARRAY_SIZE(puSendCmd));
 				return -1;
 			}
-			puSendCmd[nArrayIndex] = g_vcmconfig.I2Cfmt[i].Addr[j];
+			puSendCmd[nArrayIndex] = g_vcmconfig.vcm_config.I2Cfmt[i].Addr[j];
 			++nArrayIndex;
 		}
 
 		// Fill data
-		for (j = 0; j < g_vcmconfig.I2Cfmt[i].DataNum; ++j) {
+		for (j = 0; j < g_vcmconfig.vcm_config.I2Cfmt[i].DataNum; ++j) {
 			if (nArrayIndex >= ARRAY_SIZE(puSendCmd)) {
 				LOG_INF("nArrayIndex(%d) exceeds the size of puSendCmd(%d)\n",
 					nArrayIndex, (int)ARRAY_SIZE(puSendCmd));
 				return -1;
 			}
 			puSendCmd[nArrayIndex] =
-				((((val >> g_vcmconfig.I2Cfmt[i].BitR[j]) &
-				g_vcmconfig.I2Cfmt[i].Mask1[j]) <<
-				g_vcmconfig.I2Cfmt[i].BitL[j]) &
-				g_vcmconfig.I2Cfmt[i].Mask2[j]) |
-				g_vcmconfig.I2Cfmt[i].CtrlData[j];
+				((((val >> g_vcmconfig.vcm_config.I2Cfmt[i].BitR[j]) &
+				g_vcmconfig.vcm_config.I2Cfmt[i].Mask1[j]) <<
+				g_vcmconfig.vcm_config.I2Cfmt[i].BitL[j]) &
+				g_vcmconfig.vcm_config.I2Cfmt[i].Mask2[j]) |
+				g_vcmconfig.vcm_config.I2Cfmt[i].CtrlData[j];
 			++nArrayIndex;
 		}
 
@@ -239,8 +297,8 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 		if (ret < 0) {
 			LOG_INF(
 				"puSendCmd I2C failure i2c_master_send: %d, I2Cfmt[%d].AddrNum/DataNum: %d/%d\n",
-				ret, i, g_vcmconfig.I2Cfmt[i].AddrNum,
-				g_vcmconfig.I2Cfmt[i].DataNum);
+				ret, i, g_vcmconfig.vcm_config.I2Cfmt[i].AddrNum,
+				g_vcmconfig.vcm_config.I2Cfmt[i].DataNum);
 			return ret;
 		}
 	}
@@ -250,23 +308,44 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 
 static int main3_vcm_release(struct main3_vcm_device *main3_vcm)
 {
-	int ret, val;
+	int ret = 0;
+	int long_step, short_step;
 	int diff_dac = 0;
-	int nStep_count = 0;
+	int nStep_count_long = 0, nStep_count_short = 0;
+	int val = 0;
 	int i = 0;
 
 	struct i2c_client *client = v4l2_get_subdevdata(&main3_vcm->sd);
 
-	diff_dac = g_vcmconfig.origin_focus_pos - main3_vcm->focus->val;
+	long_step = g_vcmconfig.vcm_config.move_long_steps_pct *
+			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
+	short_step = g_vcmconfig.vcm_config.move_short_steps_pct *
+			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 
-	nStep_count = (diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) /
-		g_vcmconfig.move_steps;
-
+	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main3_vcm->focus->val;
 	val = main3_vcm->focus->val;
 
-	for (i = 0; i < nStep_count; ++i) {
-		val += (diff_dac < 0 ? (g_vcmconfig.move_steps*(-1)) :
-			g_vcmconfig.move_steps);
+	if (long_step == 0) {
+		LOG_INF("no need to process long step\n");
+		goto PROCESS_SHORT_STEP;
+	}
+
+	// process long step
+	nStep_count_long = (diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) / long_step;
+	LOG_INF("long_step: %d, short_step: %d, diff_dac: %d, nStep_count_long: %d\n",
+		long_step, short_step, diff_dac, nStep_count_long);
+
+	// If the diff_dac is a multiple of long_step, the last long_step is processed using short_step
+	if (((diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) % long_step) == 0) {
+		nStep_count_long--;
+		LOG_INF("the diff_dac is a multiple of long_step, nStep_count_long: %d\n",
+			nStep_count_long);
+	}
+
+	for (i = 0; i < nStep_count_long; ++i) {
+		val += (diff_dac < 0 ? (long_step*(-1)) : long_step);
+
+		LOG_INF("long step index %d, val: %d\n", i, val);
 
 		ret = main3_vcm_set_position(main3_vcm, val);
 		if (ret < 0) {
@@ -274,19 +353,66 @@ static int main3_vcm_release(struct main3_vcm_device *main3_vcm)
 				__func__, ret);
 			return ret;
 		}
-		usleep_range(g_vcmconfig.move_delay_us,
-			g_vcmconfig.move_delay_us + 1000);
+
+		ret = wait_event_interruptible_timeout(main3_vcm->wait_queue_head,
+				main3_vcm->is_stop_flag,
+				msecs_to_jiffies(g_vcmconfig.vcm_config.move_delay_us/1000));
+		if (ret > 0) {
+			LOG_INF("back to origin, long step, interrupting, ret = %d\n", ret);
+			return ret;
+		}
 	}
 
+PROCESS_SHORT_STEP:
+	if (short_step == 0) {
+		LOG_INF("no need to process short step\n");
+		goto LAST_STEP_TO_ORIGIN;
+	}
+
+	// process short step
+	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - val;
+	nStep_count_short = (diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) / short_step;
+	LOG_INF("process short step: diff_dac: %d, nStep_count_short: %d\n",
+			diff_dac, nStep_count_short);
+
+	for (i = 0; i < nStep_count_short; ++i) {
+		val += (diff_dac < 0 ? (short_step*(-1)) : short_step);
+
+		LOG_INF("short step index %d, val: %d\n", i, val);
+
+		ret = main3_vcm_set_position(main3_vcm, val);
+		if (ret < 0) {
+			LOG_INF("%s I2C failure: %d\n",
+				__func__, ret);
+			return ret;
+		}
+
+		ret = wait_event_interruptible_timeout(main3_vcm->wait_queue_head,
+				main3_vcm->is_stop_flag,
+				msecs_to_jiffies(g_vcmconfig.vcm_config.move_delay_us/1000));
+		if (ret > 0) {
+			LOG_INF("back to origin, short step, interrupting, ret = %d\n", ret);
+			return ret;
+		}
+	}
+
+	// if diff_dac is less than short_step, it means it is very close to the origin
+	if (((diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) % short_step) == 0) {
+		LOG_INF("already back to origin\n");
+		return 0;
+	}
+
+LAST_STEP_TO_ORIGIN:
 	// last step to origin
-	ret = main3_vcm_set_position(main3_vcm, g_vcmconfig.origin_focus_pos);
+	LOG_INF("last step to origin\n");
+	ret = main3_vcm_set_position(main3_vcm, g_vcmconfig.vcm_config.origin_focus_pos);
 	if (ret < 0) {
 		LOG_INF("%s I2C failure: %d\n",
 			__func__, ret);
 		return ret;
 	}
 
-	register_setting(client, g_vcmconfig.wr_rls_table, 8);
+	register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
 
 	return 0;
 }
@@ -298,9 +424,9 @@ static int main3_vcm_init(struct main3_vcm_device *main3_vcm)
 
 	LOG_INF("+\n");
 
-	client->addr = g_vcmconfig.slave_addr >> 1;
+	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
-	register_setting(client, g_vcmconfig.wr_table, 16);
+	register_setting(client, g_vcmconfig.vcm_config.wr_table, 16);
 
 	LOG_INF("-\n");
 
@@ -315,10 +441,27 @@ static int main3_vcm_power_off(struct main3_vcm_device *main3_vcm)
 	int i = 0;
 
 	LOG_INF("+\n");
+	main3_vcm->is_stop_flag = false;
+
+	// delay power off feature
+	LOG_INF("delay power off feature start\n");
+	ret = wait_event_interruptible_timeout(main3_vcm->wait_queue_head,
+				main3_vcm->is_stop_flag,
+				msecs_to_jiffies(g_vcmconfig.vcm_config.delay_power_off_ms));
+	if (ret > 0) {
+		LOG_INF("interrupting, ret = %d\n", ret);
+		return ret;
+	}
+	LOG_INF("delay power off feature end\n");
 
 	ret = main3_vcm_release(main3_vcm);
-	if (ret)
+	if (ret < 0) {
 		LOG_INF("main3_vcm release failed!\n");
+	} else if (ret > 0) {
+		// interrupting
+		return ret;
+	}
+	LOG_INF("main3_vcm release end\n");
 
 	ldo_num = ARRAY_SIZE(ldo_names);
 	if (ldo_num > REGULATOR_MAXSIZE)
@@ -335,7 +478,26 @@ static int main3_vcm_power_off(struct main3_vcm_device *main3_vcm)
 		ret = pinctrl_select_state(main3_vcm->vcamaf_pinctrl,
 					main3_vcm->vcamaf_off);
 
+	main3_vcm->is_powered_off = true;
+
+	LOG_INF("-\n");
+
 	return ret;
+}
+
+static void main3_vcm_poweroff_work(struct work_struct *work)
+{
+	struct main3_vcm_device *main3_vcm = NULL;
+	int ret = 0;
+
+	LOG_INF("+\n");
+
+	main3_vcm = container_of(work, struct main3_vcm_device, poweroff_work);
+
+	ret = main3_vcm_power_off(main3_vcm);
+
+	LOG_INF("power off main3_vcm, return value:%d\n", ret);
+	LOG_INF("-\n");
 }
 
 static int main3_vcm_power_on(struct main3_vcm_device *main3_vcm)
@@ -360,15 +522,6 @@ static int main3_vcm_power_on(struct main3_vcm_device *main3_vcm)
 	if (main3_vcm->vcamaf_pinctrl && main3_vcm->vcamaf_on)
 		ret = pinctrl_select_state(main3_vcm->vcamaf_pinctrl,
 					main3_vcm->vcamaf_on);
-
-	if (ret < 0)
-		return ret;
-
-	/*
-	 * TODO(b/139784289): Confirm hardware requirements and adjust/remove
-	 * the delay.
-	 */
-	usleep_range(g_vcmconfig.ctrl_delay_us, g_vcmconfig.ctrl_delay_us + 100);
 
 	return ret;
 }
@@ -401,11 +554,19 @@ static int main3_vcm_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	LOG_INF("+\n");
 
-	ret = main3_vcm_power_on(main3_vcm);
-	if (ret < 0) {
-		LOG_INF("power on fail, ret = %d\n", ret);
-		return ret;
+	stop_background_works(main3_vcm);
+
+	if (main3_vcm->is_powered_off) {
+		ret = main3_vcm_power_on(main3_vcm);
+		if (ret < 0) {
+			LOG_INF("power on fail, ret = %d\n", ret);
+			return ret;
+		}
+	} else {
+		LOG_INF("no need to power on again\n");
 	}
+
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -416,7 +577,26 @@ static int main3_vcm_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	LOG_INF("+\n");
 
-	main3_vcm_power_off(main3_vcm);
+	/* main3_vcm Workqueue */
+	if (main3_vcm_init_wq == NULL) {
+		LOG_INF("create_singlethread_workqueue\n");
+		main3_vcm_init_wq =
+			create_singlethread_workqueue("main3_vcm_init_work");
+		if (!main3_vcm_init_wq) {
+			LOG_INF("create_singlethread_workqueue fail\n");
+			return -ENOMEM;
+		}
+	} else {
+		// wait work queue done
+		LOG_INF("flush work queue\n");
+
+		/* flush work queue */
+		flush_work(&main3_vcm->poweroff_work);
+	}
+
+	queue_work(main3_vcm_init_wq, &main3_vcm->poweroff_work);
+
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -425,6 +605,9 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 {
 	int ret = 0;
 	struct main3_vcm_device *main3_vcm = sd_to_main3_vcm_vcm(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(&main3_vcm->sd);
+
+	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
 	switch (cmd) {
 
@@ -432,19 +615,84 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	{
 		struct mtk_vcm_info *info = arg;
 
+		if (main3_vcm->is_powered_off == false) {
+			LOG_INF("no need to init again\n");
+			ret = 0;
+			break;
+		}
+
+		// reset power off flag
+		main3_vcm->is_powered_off = false;
+
 		if (copy_from_user(&g_vcmconfig,
 				   (void *)info->p_vcm_info,
-				   sizeof(struct VcmDriverConfig)) != 0) {
+				   sizeof(struct VcmDriverList)) != 0) {
 			LOG_INF("VIDIOC_MTK_S_LENS_INFO copy_from_user failed\n");
 			ret = -EFAULT;
 			break;
 		}
 
-		LOG_INF("slave_addr: 0x%x\n", g_vcmconfig.slave_addr);
+		// Confirm hardware requirements and adjust/remove the delay.
+		usleep_range(g_vcmconfig.vcm_config.ctrl_delay_us,
+			g_vcmconfig.vcm_config.ctrl_delay_us + 100);
+
+		LOG_INF("slave_addr: 0x%x\n", g_vcmconfig.vcm_config.slave_addr);
 
 		ret = main3_vcm_init(main3_vcm);
 		if (ret < 0)
 			LOG_INF("init error\n");
+	}
+	break;
+	case VCM_IOC_POWER_ON:
+	{
+		// customized area
+		LOG_INF("active mode, current pos:%d\n", main3_vcm->focus->val);
+
+		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
+		main3_vcm_set_position(main3_vcm, main3_vcm->focus->val);
+	}
+	break;
+	case VCM_IOC_POWER_OFF:
+	{
+		// customized area
+		LOG_INF("stand by mode\n");
+
+		register_setting(client, g_vcmconfig.vcm_config.suspend_table, 8);
+	}
+	break;
+	case VIDIOC_MTK_G_LENS_HALL:
+	{
+		struct mtk_vcm_data *data = arg;
+		struct VCM_Hall_data halldata;
+		int i2cret = 0;
+
+		if (g_vcmconfig.vcm_id != 0x7316) {
+			LOG_INF("VIDIOC_MTK_G_LENS_HALL not support\n");
+			ret = -EFAULT;
+			break;
+		}
+
+		if (copy_from_user(&halldata,
+				(void *)data->p_vcm_data,
+				sizeof(halldata)) != 0) {
+			LOG_INF("VIDIOC_MTK_G_LENS_HALL copy_from_user failed\n");
+			ret = -EFAULT;
+			break;
+		}
+
+		// customized area
+		i2cret = i2c_smbus_read_byte_data(client, 0x84);
+		halldata.hall_value = (i2cret << 5) +
+			(i2c_smbus_read_byte_data(client, 0x85) >> 3);
+		halldata.hall_value = halldata.hall_value >> 3;
+		LOG_INF("read hall value: %d\n", halldata.hall_value);
+
+		if (copy_to_user((void *)data->p_vcm_data,
+			&halldata,
+			sizeof(halldata)) != 0) {
+			LOG_INF("VIDIOC_MTK_G_LENS_HALL copy_to_user failed\n");
+			ret = -EFAULT;
+		}
 	}
 	break;
 	default:
@@ -509,6 +757,9 @@ static int main3_vcm_probe(struct i2c_client *client)
 	if (!main3_vcm)
 		return -ENOMEM;
 
+	init_waitqueue_head(&main3_vcm->wait_queue_head);
+	LOG_INF("init_waitqueue_head done\n");
+
 	ldo_num = ARRAY_SIZE(ldo_names);
 	if (ldo_num > REGULATOR_MAXSIZE)
 		ldo_num = REGULATOR_MAXSIZE;
@@ -519,6 +770,9 @@ static int main3_vcm_probe(struct i2c_client *client)
 			main3_vcm->ldo[i] = NULL;
 		}
 	}
+
+	main3_vcm->is_powered_off = true;
+	main3_vcm->is_stop_flag = false;
 
 	main3_vcm->vcamaf_pinctrl = devm_pinctrl_get(dev);
 	if (IS_ERR(main3_vcm->vcamaf_pinctrl)) {
@@ -544,6 +798,9 @@ static int main3_vcm_probe(struct i2c_client *client)
 			LOG_INF("cannot get vcamaf_off pinctrl\n");
 		}
 	}
+
+	/* init work queue */
+	INIT_WORK(&main3_vcm->poweroff_work, main3_vcm_poweroff_work);
 
 	v4l2_i2c_subdev_init(&main3_vcm->sd, client, &main3_vcm_ops);
 	main3_vcm->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
