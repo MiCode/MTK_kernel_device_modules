@@ -57,6 +57,7 @@ struct devapc_power_callbacks {
 	struct list_head list;
 	enum devapc_type type;
 	bool (*query_power)(void);
+	void (*power_off)(void);
 };
 
 uint32_t devapc_vio_check(void);

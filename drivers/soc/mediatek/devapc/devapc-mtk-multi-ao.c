@@ -131,6 +131,33 @@ static bool is_devapc_subsys_power_on(int devapc_type)
 	return false;
 }
 
+static void set_devapc_subsys_power_off(int devapc_type)
+{
+	struct devapc_power_callbacks *powercb;
+
+	if (devapc_type >= DEVAPC_TYPE_MAX) {
+		pr_info(PFX "%s: unsupport devapc_type %d!\n", __func__, devapc_type);
+		return;
+	}
+
+	if (devapc_type != DEVAPC_TYPE_ADSP &&
+		devapc_type != DEVAPC_TYPE_MMINFRA &&
+		devapc_type != DEVAPC_TYPE_MMUP &&
+		devapc_type != DEVAPC_TYPE_GPU &&
+		devapc_type != DEVAPC_TYPE_GPU1) {
+		pr_info(PFX "%s: incorrect devapc_type %d!\n", __func__, devapc_type);
+		return;
+	}
+
+	list_for_each_entry(powercb, &powercb_list, list) {
+		if (powercb->type == devapc_type) {
+			if (is_devapc_subsys_enabled(devapc_type) && powercb->power_off)
+				powercb->power_off();
+			break;
+		}
+	}
+}
+
 /*
  * mtk_devapc_pd_get - get devapc pd_types of register address.
  *
@@ -334,24 +361,22 @@ static const char *slave_type_to_string(uint32_t slave_type)
 		return slave_type_arr[slave_type_num];
 }
 
-static void print_vio_mask_sta(bool force)
+/*
+ * print_slave_vio_mask_sta - print vio_sta and vio_mask
+ * for a given slave type, need to make sure powering on the slave
+ * before calling this function.
+ */
+static void print_slave_vio_mask_sta(int slave_type)
 {
 	struct mtk_devapc_vio_info *vio_info = mtk_devapc_ctx->soc->vio_info;
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
 	const struct mtk_device_num *ndevices;
 	void __iomem *pd_vio_shift_sta_reg;
-	int slave_type, i;
+	int i;
 
 	ndevices = mtk_devapc_ctx->soc->ndevices;
 
-	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
-		/* Only dump the info of subsystem which got violation */
-		if (!is_matched_slave_type(slave_type) && !force)
-			continue;
-
-		if (!is_devapc_subsys_power_on(ndevices[slave_type].devapc_type))
-			continue;
-
+	if (slave_type < slave_type_num) {
 		pd_vio_shift_sta_reg = mtk_devapc_pd_get(slave_type,
 				VIO_SHIFT_STA, 0);
 
@@ -888,8 +913,6 @@ static void start_devapc(void)
 		}
 	}
 
-	print_vio_mask_sta(false);
-
 	/* register subsys test cb */
 	register_devapc_vio_callback(&devapc_test_handle);
 
@@ -1042,10 +1065,15 @@ static void devapc_dump_info(bool booting)
 		}
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
-				pr_info(PFX "no violation for slave:0x%x\n", slave_type);
-				continue;
-			}
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
+				vio_type = DEVAPC_VIO_NO_VIO_FOUND;
+		}
+
+		if (vio_type == DEVAPC_VIO_NO_VIO_FOUND) {
+			pr_info(PFX "no violation for slave:0x%x\n", slave_type);
+			if (false == booting)
+				set_devapc_subsys_power_off(ndevices[slave_type].devapc_type);
+			continue;
 		}
 
 		/* Ensure that violation info are written before
@@ -1094,6 +1122,9 @@ static void devapc_dump_info(bool booting)
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
 				vio_info->vio_addr, vio_type);
 		mask_module_irq(slave_type, vio_idx, false);
+
+		if (!booting)
+			set_devapc_subsys_power_off(ndevices[slave_type].devapc_type);
 	}
 }
 
@@ -1114,7 +1145,6 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	unsigned long flags;
 	uint8_t perm;
 	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
-	bool print_info = true;
 
 	spin_lock_irqsave(&devapc_lock, flags);
 
@@ -1150,6 +1180,8 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			goto out;
 	}
 
+	pr_info(PFX "devapc irq type: %d\n", mtk_devapc_ctx->current_irq_type);
+
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
 		devapc_type = ndevices[slave_type].devapc_type;
@@ -1162,18 +1194,16 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			continue;
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
-			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index)) {
+			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
 				vio_type = DEVAPC_VIO_NO_VIO_FOUND;
-				continue;
-			}
 		}
 
-		if (print_info) {
-			pr_info(PFX "irq_number: %d\n", irq_number);
-			pr_info(PFX "irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
-			print_vio_mask_sta(false);
-			print_info = false;
+		if (vio_type == DEVAPC_VIO_NO_VIO_FOUND) {
+			set_devapc_subsys_power_off(ndevices[slave_type].devapc_type);
+			continue;
 		}
+
+		print_slave_vio_mask_sta(slave_type);
 
 		/* Ensure that violation info are written before
 		 * further operations
@@ -1217,6 +1247,8 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 				device_info[slave_type][index].device);
 
 		vio_type = devapc_vio_reason(perm);
+
+		set_devapc_subsys_power_off(devapc_type);
 		break;
 	}
 
@@ -1228,7 +1260,6 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 		pr_info(PFX "WARNING: No violation found in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
 	} else {
 		pr_info(PFX "WARNING: Abnormal status in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
-		print_vio_mask_sta(false);
 		BUG_ON(1);
 	}
 
