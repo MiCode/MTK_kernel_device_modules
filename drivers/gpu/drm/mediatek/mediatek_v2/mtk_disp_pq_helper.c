@@ -193,11 +193,9 @@ int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data)
 	case SWREG_AAL_BASE_ADDRESS:
 		ret = pq_data->tuning_pa_table[TUNING_DISP_AAL].pa_base;
 		break;
-#if defined(CCORR_SUPPORT)
 	case SWREG_CCORR_BASE_ADDRESS:
-		ret = pq_data->tuning_pa_table[TUNING_DISP_CCORR].pa_base;
+		ret = pq_data->tuning_pa_table[TUNING_DISP_CCORR_LINEAR].pa_base;
 		break;
-#endif
 	case SWREG_DISP_TDSHP_BASE_ADDRESS:
 		ret = pq_data->tuning_pa_table[TUNING_DISP_TDSHP].pa_base;
 		break;
@@ -811,9 +809,10 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	return 0;
 }
 
-static void disp_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
+static void disp_pq_helper_fill_tuning_table(struct mtk_ddp_comp *comp,
 	int comp_type, int path_order, resource_size_t pa, resource_size_t companion_pa)
 {
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	unsigned int table_index = TUNING_REG_MAX;
 
@@ -822,10 +821,12 @@ static void disp_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
 		table_index = TUNING_DISP_COLOR;
 		break;
 	case MTK_DISP_CCORR:
-		if (path_order)
-			table_index = TUNING_DISP_CCORR1;
-		else
-			table_index = TUNING_DISP_CCORR;
+	{
+		struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+
+		if (ccorr_data->is_linear)
+			table_index = TUNING_DISP_CCORR_LINEAR;
+	}
 		break;
 	case MTK_DISP_AAL:
 		table_index = TUNING_DISP_AAL;
@@ -833,20 +834,18 @@ static void disp_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
 	case MTK_DISP_GAMMA:
 		table_index = TUNING_DISP_GAMMA;
 		break;
-	case MTK_DISP_DITHER:
-		table_index = TUNING_DISP_DITHER;
-		break;
 	case MTK_DISP_TDSHP:
 		table_index = TUNING_DISP_TDSHP;
-		break;
-	case MTK_DISP_C3D:
-		table_index = TUNING_DISP_C3D;
 		break;
 	case MTK_DMDP_AAL:
 		table_index = TUNING_DISP_MDP_AAL;
 		break;
 	case MTK_DISP_ODDMR:
 		table_index = TUNING_DISP_ODDMR_TOP;
+		break;
+	case MTK_DISP_DITHER:
+	case MTK_DISP_C3D:
+	case MTK_DISP_CHIST:
 		break;
 	default:
 		DDPPR_ERR("%s, unknown comp_type:%d\n", __func__, comp_type);
@@ -901,7 +900,7 @@ int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_orde
 
 		if (_companion)
 			companion_regs_pa = _companion->regs_pa;
-		disp_pq_helper_fill_tuning_table(comp->mtk_crtc, comp_type, _path_order,
+		disp_pq_helper_fill_tuning_table(comp, comp_type, _path_order,
 					comp->regs_pa, companion_regs_pa);
 	}
 	return ret;
