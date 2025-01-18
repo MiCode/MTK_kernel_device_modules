@@ -5552,6 +5552,7 @@
 #include "mediatek/mt6366.dtsi"
 #include "mediatek/cust_mt6781_msdc.dtsi"
 #include "mediatek/mt6370.dtsi"
+#include "mediatek/rt5133_for_6781.dtsi"
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif

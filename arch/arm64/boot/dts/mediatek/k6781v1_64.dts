@@ -305,5 +305,6 @@
 
 
 #include <k6781v1_64/cust.dtsi>
+#include "mediatek/cust_mt6781_camera.dtsi"
 #include "mediatek/cust_mt6781_touch_1080x2300.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
