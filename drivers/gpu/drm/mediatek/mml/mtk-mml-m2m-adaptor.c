@@ -633,8 +633,135 @@ static enum mml_ycbcr_profile m2m_map_ycbcr_prof_mplane(
 	}
 }
 
+static enum mml_gamut m2m_map_mml_gamut(enum v4l2_colorspace colorspace)
+{
+	switch (colorspace) {
+	case V4L2_COLORSPACE_DEFAULT:
+	case V4L2_COLORSPACE_SMPTE170M:
+	case V4L2_COLORSPACE_SMPTE240M:
+		return MML_GAMUT_BT601;
+
+	case V4L2_COLORSPACE_REC709:
+	case V4L2_COLORSPACE_JPEG:
+	case V4L2_COLORSPACE_SRGB:
+		return MML_GAMUT_BT709;
+
+	case V4L2_COLORSPACE_BT2020:
+		return MML_GAMUT_BT2020;
+
+	case V4L2_COLORSPACE_DCI_P3:
+		return MML_GAMUT_DISPLAY_P3;
+
+	case V4L2_COLORSPACE_OPRGB:
+		return MML_GAMUT_ADOBE_RGB;
+
+	default:
+		return MML_GAMUT_UNSUPPORTED;
+	}
+}
+
+static enum mml_ycbcr_encoding m2m_map_mml_ycbcr_enc(enum v4l2_ycbcr_encoding ycbcr_enc)
+{
+	switch (ycbcr_enc) {
+	case V4L2_YCBCR_ENC_DEFAULT:
+	case V4L2_YCBCR_ENC_601:
+		return MML_YCBCR_ENC_BT601;
+
+	case V4L2_YCBCR_ENC_709:
+		return MML_YCBCR_ENC_BT709;
+
+	case V4L2_YCBCR_ENC_BT2020:
+		return MML_YCBCR_ENC_BT2020;
+
+	case V4L2_YCBCR_ENC_BT2020_CONST_LUM:
+		return MML_YCBCR_ENC_BT2020_CON;
+
+	default:
+		return MML_YCBCR_ENC_UNSUPPORTED;
+	}
+}
+
+static enum mml_color_range m2m_map_mml_color_range(enum v4l2_quantization quant)
+{
+	switch (quant) {
+	case V4L2_QUANTIZATION_DEFAULT:
+	case V4L2_QUANTIZATION_LIM_RANGE:
+		return MML_COLOR_RANGE_LIMITED;
+
+	case V4L2_QUANTIZATION_FULL_RANGE:
+		return MML_COLOR_RANGE_FULL;
+
+	default:
+		return MML_COLOR_RANGE_UNSUPPORTED;
+	}
+}
+
+static enum mml_gamma m2m_map_mml_gamma(enum v4l2_xfer_func xfer)
+{
+	switch (xfer) {
+	case V4L2_XFER_FUNC_DEFAULT:
+	case V4L2_XFER_FUNC_709:
+		return MML_GAMMA_ITURBT709;
+
+	case V4L2_XFER_FUNC_SRGB:
+		return MML_GAMMA_GAMMA2_2CURVE;
+
+	case V4L2_XFER_FUNC_NONE:
+		return MML_GAMMA_LINEAR;
+
+	case V4L2_XFER_FUNC_SMPTE2084:
+		return MML_GAMMA_SMPTEST2084;
+
+	case V4L2_XFER_FUNC_OPRGB:
+		return MML_GAMMA_ADOBE_RGB;
+
+	case V4L2_XFER_FUNC_DCI_P3:
+		return MML_GAMMA_GAMMA2_6CURVE;
+
+	default:
+		return MML_GAMMA_UNSUPPORTED;
+	}
+}
+
+static int m2m_try_colorspace_mplane(
+	struct v4l2_pix_format_mplane *pix_mp, enum mml_color color)
+{
+	int err = 0;
+
+	if (m2m_map_mml_gamut(pix_mp->colorspace) >= MML_GAMUT_UNSUPPORTED) {
+		mml_log("[m2m] colorspace %u not support", pix_mp->colorspace);
+		err = -EINVAL;
+	}
+	if (m2m_map_mml_gamma(pix_mp->xfer_func) >= MML_GAMMA_UNSUPPORTED) {
+		mml_log("[m2m] xfer_func %u not support", pix_mp->xfer_func);
+		err = -EINVAL;
+	}
+
+	if (MML_FMT_IS_YUV(color)) {
+		if (m2m_map_mml_ycbcr_enc(pix_mp->ycbcr_enc) >= MML_YCBCR_ENC_UNSUPPORTED) {
+			mml_log("[m2m] ycbcr_enc %u not support", pix_mp->ycbcr_enc);
+			err = -EINVAL;
+		}
+		if (m2m_map_mml_color_range(pix_mp->quantization) >= MML_COLOR_RANGE_UNSUPPORTED) {
+			mml_log("[m2m] quantization %u not support", pix_mp->quantization);
+			err = -EINVAL;
+		}
+	} else {
+		if (pix_mp->ycbcr_enc != V4L2_YCBCR_ENC_DEFAULT) {
+			pix_mp->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+			mml_log("[m2m] RGB only support V4L2_YCBCR_ENC_DEFAULT");
+		}
+		if (pix_mp->quantization != V4L2_QUANTIZATION_DEFAULT) {
+			pix_mp->quantization = V4L2_QUANTIZATION_DEFAULT;
+			mml_log("[m2m] RGB only support V4L2_QUANTIZATION_DEFAULT");
+		}
+	}
+
+	return err;
+}
+
 static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
-	struct mml_m2m_param *param)
+	const struct mml_m2m_param *param)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
 	const struct mml_m2m_format *fmt;
@@ -658,11 +785,15 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 	pix_mp->field = V4L2_FIELD_NONE;
 	pix_mp->pixelformat = fmt->pixelformat;
 	if (V4L2_TYPE_IS_CAPTURE(f->type)) {
-		/* TODO: if (pix_mp->flags & V4L2_PIX_FMT_FLAG_SET_CSC) */
-		pix_mp->colorspace = V4L2_COLORSPACE_DEFAULT;
-		pix_mp->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
-		pix_mp->quantization = V4L2_QUANTIZATION_DEFAULT;
-		pix_mp->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+		if (!(pix_mp->flags & V4L2_PIX_FMT_FLAG_SET_CSC) ||
+		    m2m_try_colorspace_mplane(pix_mp, fmt->mml_color)) {
+			pix_mp->flags &= ~V4L2_PIX_FMT_FLAG_SET_CSC;
+			pix_mp->colorspace = V4L2_COLORSPACE_DEFAULT;
+			pix_mp->xfer_func = V4L2_XFER_FUNC_DEFAULT;
+			pix_mp->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+			pix_mp->quantization = V4L2_QUANTIZATION_DEFAULT;
+			mml_log("[m2m] reset CSC to default");
+		}
 	}
 
 	pix_limit = V4L2_TYPE_IS_OUTPUT(f->type) ? &param->limit->out_limit :
@@ -912,9 +1043,12 @@ static int mml_m2m_enum_fmt_mplane(struct file *file, void *fh,
 		return -EINVAL;
 
 	f->pixelformat = fmt->pixelformat;
-	f->flags = fmt->flags | /* if compressed */
-		V4L2_FMT_FLAG_CSC_COLORSPACE | V4L2_FMT_FLAG_CSC_XFER_FUNC |
-		V4L2_FMT_FLAG_CSC_YCBCR_ENC | V4L2_FMT_FLAG_CSC_QUANTIZATION;
+	f->flags = fmt->flags; /* compressed flag */
+	if (V4L2_TYPE_IS_CAPTURE(f->type)) {
+		f->flags |= V4L2_FMT_FLAG_CSC_COLORSPACE | V4L2_FMT_FLAG_CSC_XFER_FUNC;
+		if (MML_FMT_IS_YUV(fmt->mml_color))
+			f->flags |= V4L2_FMT_FLAG_CSC_YCBCR_ENC | V4L2_FMT_FLAG_CSC_QUANTIZATION;
+	}
 	return 0;
 }
 
@@ -923,16 +1057,8 @@ static int mml_m2m_g_fmt_mplane(struct file *file, void *fh,
 {
 	struct mml_m2m_ctx *ctx = fh_to_ctx(fh);
 	struct mml_m2m_frame *frame = ctx_get_frame(ctx, f->type);
-	struct mml_frame_data *mml_frame = ctx_get_submit_frame(ctx, f->type);
-	struct v4l2_pix_format_mplane *pix_mp;
 
 	*f = frame->format;
-	pix_mp = &f->fmt.pix_mp;
-	/* FIXME: mml to v4l2 enum mapping */
-	pix_mp->colorspace = mml_frame->color.gamut;
-	pix_mp->ycbcr_enc = mml_frame->color.ycbcr_enc;
-	pix_mp->quantization = mml_frame->color.color_range;
-	pix_mp->xfer_func = mml_frame->color.gamma;
 	return 0;
 }
 
@@ -1006,11 +1132,10 @@ static void m2m_set_format(struct mml_frame_data *data, struct mml_buffer *buf,
 	data->format = fmt->mml_color;
 	data->plane_cnt = fmt->num_planes;
 	data->profile = m2m_map_ycbcr_prof_mplane(pix_mp, fmt->mml_color);
-	/* FIXME: v4l2 to mml enum mapping */
-	data->color.gamut = pix_mp->colorspace;
-	data->color.ycbcr_enc = pix_mp->ycbcr_enc;
-	data->color.color_range = pix_mp->quantization;
-	data->color.gamma = pix_mp->xfer_func;
+	data->color.gamut = m2m_map_mml_gamut(pix_mp->colorspace);
+	data->color.ycbcr_enc = m2m_map_mml_ycbcr_enc(pix_mp->ycbcr_enc);
+	data->color.color_range = m2m_map_mml_color_range(pix_mp->quantization);
+	data->color.gamma = m2m_map_mml_gamma(pix_mp->xfer_func);
 
 	data->y_stride = 0;
 	data->uv_stride = 0;
@@ -1052,6 +1177,7 @@ static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 	const struct mml_m2m_format *fmt;
 	struct vb2_queue *vq;
 	struct mml_frame_dest *dest;
+	const struct mml_frame_data *mml_frame_ref; /* should be output (source) */
 
 	fmt = m2m_try_fmt_mplane(f, &ctx->param);
 	if (!fmt)
@@ -1066,6 +1192,32 @@ static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 
 	pix_mp = &f->fmt.pix_mp;
 	m2m_set_format(mml_frame, mml_buf, pix_mp, fmt);
+
+	/* Check colorspace */
+	if (V4L2_TYPE_IS_OUTPUT(f->type)) {
+		if (mml_frame->color.gamut >= MML_GAMUT_UNSUPPORTED)
+			mml_frame->color.gamut =
+				m2m_map_mml_gamut(V4L2_COLORSPACE_DEFAULT);
+		if (mml_frame->color.ycbcr_enc >= MML_YCBCR_ENC_UNSUPPORTED)
+			mml_frame->color.ycbcr_enc =
+				m2m_map_mml_ycbcr_enc(V4L2_YCBCR_ENC_DEFAULT);
+		if (mml_frame->color.color_range >= MML_COLOR_RANGE_UNSUPPORTED)
+			mml_frame->color.color_range =
+				m2m_map_mml_color_range(V4L2_QUANTIZATION_DEFAULT);
+		if (mml_frame->color.gamma >= MML_GAMMA_UNSUPPORTED)
+			mml_frame->color.gamma =
+				m2m_map_mml_gamma(V4L2_XFER_FUNC_DEFAULT);
+	} else {
+		mml_frame_ref = ctx_get_submit_frame(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+		if (pix_mp->colorspace == V4L2_COLORSPACE_DEFAULT)
+			mml_frame->color.gamut = mml_frame_ref->color.gamut;
+		if (pix_mp->ycbcr_enc == V4L2_YCBCR_ENC_DEFAULT)
+			mml_frame->color.ycbcr_enc = mml_frame_ref->color.ycbcr_enc;
+		if (pix_mp->quantization == V4L2_QUANTIZATION_DEFAULT)
+			mml_frame->color.color_range = mml_frame_ref->color.color_range;
+		if (pix_mp->xfer_func == V4L2_XFER_FUNC_DEFAULT)
+			mml_frame->color.gamma = mml_frame_ref->color.gamma;
+	}
 
 	dest = ctx_get_submit_dest(ctx, 0);
 	if (V4L2_TYPE_IS_OUTPUT(f->type)) {
@@ -1611,7 +1763,7 @@ static void mml_m2m_device_run(void *priv)
 	task->end_time = ns_to_timespec64(src_vbuf->vb2_buf.timestamp);
 	/* give default time if empty */
 	frame_check_end_time(&task->end_time);
-	mml_log("[m2m] mml job %u endTime: %2u.%03llu",
+	mml_msg("[m2m] mml job %u endTime: %2u.%03llu",
 		task->job.jobid,
 		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000));
 
