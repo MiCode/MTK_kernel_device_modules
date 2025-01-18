@@ -62,7 +62,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
     "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2/custom:mtk_cam_cal",
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:ccusys",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor:mtk_imgsensor",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys:imgsys",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp:mtk-hcp",
