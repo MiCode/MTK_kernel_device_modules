@@ -2077,6 +2077,19 @@ static const struct mtk_disp_wdma_data mt6833_wdma_driver_data = {
 	.is_support_34bits = false,
 };
 
+static const struct mtk_disp_wdma_data mt6877_wdma_driver_data = {
+	.fifo_size_1plane = 578,
+	.fifo_size_uv_1plane = 29,
+	.fifo_size_2plane = 402,
+	.fifo_size_uv_2plane = 201,
+	.fifo_size_3plane = 402,
+	.fifo_size_uv_3plane = 99,
+	.sodi_config = mt6877_mtk_sodi_config,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.is_support_34bits = false,
+};
+
 static const struct mtk_disp_wdma_data mt6879_wdma_driver_data = {
 	.fifo_size_1plane = 465,
 	.fifo_size_uv_1plane = 29,
@@ -2229,6 +2242,8 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	 .data = &mt6853_wdma_driver_data},
 	{.compatible = "mediatek,mt6833-disp-wdma",
 	 .data = &mt6833_wdma_driver_data},
+	{.compatible = "mediatek,mt6877-disp-wdma",
+	 .data = &mt6877_wdma_driver_data},
 	{.compatible = "mediatek,mt6879-disp-wdma",
 	 .data = &mt6879_wdma_driver_data},
 	{.compatible = "mediatek,mt6983-disp-wdma",
