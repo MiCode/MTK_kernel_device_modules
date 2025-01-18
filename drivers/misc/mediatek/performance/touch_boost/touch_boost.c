@@ -68,8 +68,8 @@ static struct _cpufreq freq_to_set[CLUSTER_MAX];
 static struct freq_qos_request *freq_min_request;
 static struct freq_qos_request *freq_max_request;
 static int enable = 1;
-static int gas_for_ta_enabled;
-static int gas_threshold_for_ta;
+static int gas_for_ta_enabled = 1;
+static int gas_threshold_for_ta = TA_GRP_AWARE_BOOST_THRESHOLD;
 static int boost_ta = 1;
 static int boost_fg = 1;
 static int idleprefer_ta = 1;
@@ -125,6 +125,8 @@ struct k_list {
 	int _cpufreq_c2;
 	int _boost_up;
 	int _boost_down;
+	int _gas_for_ta;
+	int _gas_threshold_for_ta;
 };
 
 static LIST_HEAD(head);
@@ -132,7 +134,7 @@ static int condition_get_cmd;
 static DEFINE_MUTEX(tch2pwr_lock);
 static DECLARE_WAIT_QUEUE_HEAD(pwr_queue);
 
-static void send_boost_cmd(int enable)
+static void send_boost_cmd(int cmd, int enable)
 {
 	static struct k_list *node;
 
@@ -142,18 +144,29 @@ static void send_boost_cmd(int enable)
 	if (node == NULL)
 		goto out;
 
-	node->_cmd = TOUCH_BOOST_CPU;
-	node->_enable = enable;
-	node->_boost_duration = boost_duration;
-	node->_idleprefer_ta = idleprefer_ta;
-	node->_idleprefer_fg = idleprefer_fg;
-	node->_util_ta = boost_ta;
-	node->_util_fg = boost_fg;
-	node->_cpufreq_c0 = freq_to_set[0].min;
-	node->_cpufreq_c1 = freq_to_set[1].min;
-	node->_cpufreq_c2 = freq_to_set[2].min;
-	node->_boost_up = boost_up;
-	node->_boost_down = boost_down;
+	node->_cmd = cmd;
+
+	switch(cmd) {
+	case TOUCH_BOOST_CPU:
+		node->_enable = enable;
+		node->_boost_duration = boost_duration;
+		node->_idleprefer_ta = idleprefer_ta;
+		node->_idleprefer_fg = idleprefer_fg;
+		node->_util_ta = boost_ta;
+		node->_util_fg = boost_fg;
+		node->_cpufreq_c0 = freq_to_set[0].min;
+		node->_cpufreq_c1 = freq_to_set[1].min;
+		node->_cpufreq_c2 = freq_to_set[2].min;
+		node->_boost_up = boost_up;
+		node->_boost_down = boost_down;
+		break;
+	case TOUCH_BOOST_GRP:
+		node->_gas_for_ta = enable;
+		node->_gas_threshold_for_ta = gas_threshold_for_ta;
+		break;
+	default:
+		break;
+	}
 
 	list_add_tail(&node->queue_list, &head);
 	condition_get_cmd = 1;
@@ -164,9 +177,10 @@ out:
 }
 
 void touch_boost_get_cmd(int *cmd, int *enable,
-	int *boost_duration,
-	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
-	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down)
+	int *boost_duration, int *idleprefer_ta, int *idleprefer_fg,
+	int *util_ta, int *util_fg, int *cpufreq_c0, int *cpufreq_c1,
+	int *cpufreq_c2, int *boost_up, int *boost_down,
+	int *gas_for_ta, int *gas_threshold_for_ta)
 {
 	static struct k_list *node;
 
@@ -189,6 +203,8 @@ void touch_boost_get_cmd(int *cmd, int *enable,
 		*cpufreq_c2 = node->_cpufreq_c2;
 		*boost_up = node->_boost_up;
 		*boost_down = node->_boost_down;
+		*gas_for_ta = node->_gas_for_ta;
+		*gas_threshold_for_ta = node->_gas_threshold_for_ta;
 
 		list_del(&node->queue_list);
 		kmem_cache_free(touch_boost_cache, node);
@@ -200,30 +216,20 @@ void touch_boost_get_cmd(int *cmd, int *enable,
 	mutex_unlock(&tch2pwr_lock);
 }
 
-void _set_gas_threshold_for_ta(int val)
-{
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-	if (val == -1)
-		group_reset_threshold(0);
-	else
-		group_set_threshold(0, gas_threshold_for_ta);
-#endif
-}
-
 void _set_gas_for_ta(int enabled)
 {
+	#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	if(!gas_for_ta_enabled)
+		return;
+
 	if (!gas_for_ta_on && enabled) {
-		#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		set_top_grp_aware(1, 0);
-		#endif
+		send_boost_cmd(TOUCH_BOOST_GRP, 1);
 		gas_for_ta_on = 1;
 	} else if (gas_for_ta_on && !enabled) {
-		#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		set_top_grp_aware(0, 0);
-		#endif
+		send_boost_cmd(TOUCH_BOOST_GRP, 0);
 		gas_for_ta_on = 0;
 	}
-
+	#endif
 }
 
 int _update_userlimit_cpufreq_min(int cid, int value)
@@ -242,7 +248,7 @@ static void notify_touch_up_timeout(struct work_struct *work)
 
 	touch_boost_on = 0;
 
-	send_boost_cmd(0);
+	send_boost_cmd(TOUCH_BOOST_CPU, 0);
 }
 
 void enable_touch_boost_timer(void)
@@ -269,7 +275,7 @@ enum hrtimer_restart mt_touch_timeout(struct hrtimer *timer)
 void _force_disable_gas_for_ta(void)
 {
 	_set_gas_for_ta(0);
-	_set_gas_threshold_for_ta(-1);
+	gas_threshold_for_ta = 0;
 	gas_for_ta_on = 0;
 	force_stop_boost = 0;
 }
@@ -282,7 +288,7 @@ void _force_stop_touch_boost(void)
 	for (i = 0 ; i < policy_num ; i++)
 		ret = _update_userlimit_cpufreq_min(i, 0);
 
-	send_boost_cmd(0);
+	send_boost_cmd(TOUCH_BOOST_CPU, 0);
 	touch_boost_on = 0;
 	force_stop_boost = 0;
 }
@@ -292,7 +298,7 @@ void touch_boost(void)
 	int i = 0, ret = -1;
 
 	// notify powerhal to set top grp aware
-	send_boost_cmd(0);
+	_set_gas_for_ta(1);
 
 	disable_touch_boost_timer();
 	enable_touch_boost_timer();
@@ -306,7 +312,7 @@ void touch_boost(void)
 
 	touch_boost_on = 1;
 
-	send_boost_cmd(1);
+	send_boost_cmd(TOUCH_BOOST_CPU, 1);
 }
 
 static int ktchboost_thread(void *ptr)
@@ -399,7 +405,7 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
-static ssize_t perfmgr_gas_for_ta_proc_write(struct file *filp,
+static ssize_t perfmgr_gas_for_ta_enable_proc_write(struct file *filp,
 		const char *ubuf, size_t cnt, loff_t *data)
 {
 	char buf[64];
@@ -415,7 +421,42 @@ static ssize_t perfmgr_gas_for_ta_proc_write(struct file *filp,
 		return ret;
 
 	gas_for_ta_enabled = value;
-	_set_gas_for_ta(gas_for_ta_enabled);
+
+	return cnt;
+}
+
+static ssize_t perfmgr_gas_for_ta_enable_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[64];
+
+	if (*ppos != 0)
+		goto out;
+	n = scnprintf(buffer, 64, "%d\n", gas_for_ta_enabled);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+
+static ssize_t perfmgr_gas_for_ta_proc_write(struct file *filp,
+		const char *ubuf, size_t cnt, loff_t *data)
+{
+	char buf[64];
+	int value;
+	int ret;
+
+	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
+		return -EINVAL;
+
+	buf[cnt] = 0;
+	ret = kstrtoint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	gas_for_ta_on = value;
 
 	return cnt;
 }
@@ -428,7 +469,7 @@ static ssize_t perfmgr_gas_for_ta_proc_show(struct file *file,
 
 	if (*ppos != 0)
 		goto out;
-	n = scnprintf(buffer, 64, "%d\n", gas_for_ta_enabled);
+	n = scnprintf(buffer, 64, "%d\n", gas_for_ta_on);
 out:
 	if (n < 0)
 		return -EINVAL;
@@ -452,7 +493,6 @@ static ssize_t perfmgr_gas_threshold_for_ta_proc_write(struct file *filp,
 		return ret;
 
 	gas_threshold_for_ta = value;
-	_set_gas_threshold_for_ta(value);
 
 	return cnt;
 }
@@ -1057,6 +1097,7 @@ PROC_FOPS_RW(boost_opp_cluster_0);
 PROC_FOPS_RW(boost_opp_cluster_1);
 PROC_FOPS_RW(boost_opp_cluster_2);
 PROC_FOPS_RW(force_stop_boost);
+PROC_FOPS_RW(gas_for_ta_enable);
 PROC_FOPS_RW(gas_for_ta);
 PROC_FOPS_RW(gas_threshold_for_ta);
 PROC_FOPS_RW(boost_up);
@@ -1085,6 +1126,7 @@ static int __init touch_boost_init(void)
 		PROC_ENTRY(boost_opp_cluster_1),
 		PROC_ENTRY(boost_opp_cluster_2),
 		PROC_ENTRY(force_stop_boost),
+		PROC_ENTRY(gas_for_ta_enable),
 		PROC_ENTRY(gas_for_ta),
 		PROC_ENTRY(gas_threshold_for_ta),
 		PROC_ENTRY(boost_up),
