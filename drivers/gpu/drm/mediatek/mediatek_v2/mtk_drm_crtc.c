@@ -483,6 +483,7 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t ovl1_mutex_regs_pa = 0;
 	unsigned int addr_begin, addr_end, offset, i = 0;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int mask = 0;
 
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
@@ -496,14 +497,15 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 		 *				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
 		 *				0, 0xfffff);
 		 */
+		mask = 0x3ff;
 		if (mtk_crtc->crtc_blank)
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+			mask &= ~ mtk_crtc->tui_ovl_stat.mutex_bit;
+		if (mtk_drm_dal_enable())
+			mask &= ~ BIT(8);
+
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-					0, 0x3ff & ~(mtk_crtc->tui_ovl_stat.mutex_bit));
-		else
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-					ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-					0, 0x3ff);
+					0, mask);
 	} else if (crtc_id == 1) {
 		if (ddp->ovlsys1_regs)
 			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;
@@ -537,6 +539,8 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 				if (mtk_crtc->crtc_blank)
 					if (i == mtk_crtc->tui_ovl_stat.cb_reg)
 						continue;
+				if (mtk_drm_dal_enable() && i == 0xE98)
+					continue;
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 							mtk_crtc->ovlsys0_regs_pa + i, 0, ~0);
 			} else if (crtc_id == 1) {
@@ -3957,6 +3961,8 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 {
 	struct drm_plane *plane = NULL;
 	unsigned int plane_mask = 0;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
 
 	if (crtc && crtc->state) {
 		plane_mask = crtc->state->plane_mask;
@@ -3976,6 +3982,14 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 					plane_state->comp_state.ext_lye_id);
 
 		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
+	if (mtk_crtc && mtk_drm_dal_enable()) {
+		DDPINFO("%s: need handle dal layer\n", __func__);
+		if (priv && priv->data->mmsys_id == MMSYS_MT6991)
+			mtk_crtc->usage_ovl_fmt[6] = 2;
 	}
 }
 
