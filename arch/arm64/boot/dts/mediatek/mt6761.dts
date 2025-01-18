@@ -2630,7 +2630,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		io-channel-names = "thermistor-ch2";
 		interconnects = <&auxadc 2>;
 	};
-	eem_fsm@1100b000 {
+	eem_fsm: eem-fsm@1100b000 {
 		compatible = "mediatek,eem_fsm";
 		reg = <0 0x1100b000 0 0x1000>;
 		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH 0>;
