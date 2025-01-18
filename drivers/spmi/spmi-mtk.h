@@ -5,9 +5,7 @@
 
 #include <linux/spmi.h>
 
-#define DEFAULT_VALUE_READ_TEST		(0x5a)
-#define DEFAULT_VALUE_WRITE_TEST	(0xa5)
-#define SPMI_RCS_SUPPORT 0
+#define slvid_cnt 16
 
 struct ch_reg {
 	u32 ch_sta;
@@ -89,7 +87,6 @@ enum spmi_regs {
 	SPMI_REC3,
 	SPMI_REC4,
 	SPMI_MST_DBG,
-	/* RCS support */
 	SPMI_MST_RCS_CTRL,
 	SPMI_MST_IRQ,
 	SPMI_SLV_3_0_EINT,
@@ -114,5 +111,7 @@ extern void spmi_dump_spmimst_all_reg(void);
 /* pmic debug API declaration */
 extern int spmi_pmif_create_attr(struct device_driver *driver);
 extern int spmi_pmif_dbg_init(struct spmi_controller *ctrl);
+extern void spmi_slvid_nack_cnt_add(unsigned int slaveID);
+extern void get_spmi_slvid_nack_cnt(unsigned int *buf);
 #endif /*__SPMI_MTK_H__*/
 

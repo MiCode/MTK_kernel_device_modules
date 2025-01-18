@@ -1344,6 +1344,7 @@ static const u32 mt6885_pmif_dbg_regs[] = {
 static char d_log_buf[2560];
 static struct spmi_controller *dbg_ctrl;
 static char *wp;
+static unsigned int slvid_nack_cnt[slvid_cnt] = {0};
 
 /* spmi & pmif debug mechanism */
 void spmi_dump_wdt_reg(void)
@@ -1704,7 +1705,7 @@ static char *get_spmimst_all_reg_dump(void)
 	int i = 0;
 
 	start = arb->spmimst_regs[SPMI_OP_ST_CTRL];
-	end = arb->spmimst_regs[SPMI_REC4];
+	end = arb->spmimst_regs[SPMI_DEC_DBG];
 
 	log_size += sprintf(wp, "\n[SPMI-M] ");
 	for (offset = start; offset <= end; offset += 4) {
@@ -1735,15 +1736,17 @@ static char *get_spmimst_all_reg_dump(void)
 			if (i % 8 == 0)
 				log_size += sprintf(wp + log_size, "\n[SPMI-P] ");
 		}
-		if (arb->dbgver != 0x1) {
-			offset = arb->spmimst_regs[SPMI_DEC_DBG];
-			tmp_dat = readl(arb->spmimst_base[1] + offset);
-			log_size += sprintf(wp + log_size, "(0x%x)=0x%x ",
-					offset, tmp_dat);
-		}
+
 		offset = arb->spmimst_regs[SPMI_MST_DBG];
 		tmp_dat = readl(arb->spmimst_base[1] + offset);
 		log_size += sprintf(wp + log_size, "(0x%x)=0x%x\n", offset, tmp_dat);
+	}
+	log_size += sprintf(wp + log_size, "\n[SPMI_MST_NACK_CNT] ");
+	for (i = 0; i < slvid_cnt; i++) {
+		log_size += sprintf(wp + log_size, "SLVID(0x%x)=%d ",
+			i, slvid_nack_cnt[i]);
+		if (i % 4 == 0)
+			log_size += sprintf(wp + log_size, "\n[SPMI_MST_NACK_CNT] ");
 	}
 	if (log_size < 0)
 		pr_notice("sprintf failed\n");
@@ -2291,6 +2294,19 @@ int spmi_pmif_create_attr(struct device_driver *driver)
 }
 EXPORT_SYMBOL_GPL(spmi_pmif_create_attr);
 
+void spmi_slvid_nack_cnt_add(unsigned int slaveID)
+{
+	slvid_nack_cnt[slaveID]++;
+}
+EXPORT_SYMBOL_GPL(spmi_slvid_nack_cnt_add);
+
+void get_spmi_slvid_nack_cnt(unsigned int *buf)
+{
+	if (buf != NULL)
+		memcpy(buf, slvid_nack_cnt, slvid_cnt*sizeof(unsigned int));
+}
+EXPORT_SYMBOL_GPL(get_spmi_slvid_nack_cnt);
+
 int spmi_pmif_dbg_init(struct spmi_controller *ctrl)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
@@ -2347,6 +2363,10 @@ int spmi_pmif_dbg_init(struct spmi_controller *ctrl)
 		arb->dbgver = 3;
 	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
 				    "mediatek,mt6989-spmi")) {
+		arb->dbgregs = mt6833_pmif_dbg_regs;
+		arb->dbgver = 4;
+	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
+				    "mediatek,mt6991-spmi")) {
 		arb->dbgregs = mt6833_pmif_dbg_regs;
 		arb->dbgver = 4;
 	} else {
