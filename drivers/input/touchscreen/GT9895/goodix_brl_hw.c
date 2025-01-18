@@ -18,6 +18,7 @@
   * Code Stability support added by MediaTek, April, 2022
   *
   */
+#include <linux/pinctrl/consumer.h>
 #include "goodix_ts_core.h"
 
 /* berlin_A SPI mode setting */

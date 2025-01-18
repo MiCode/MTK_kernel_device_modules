@@ -24,6 +24,7 @@
 #include <linux/of_platform.h>
 #include <linux/completion.h>
 #include <linux/debugfs.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/of_irq.h>
 #include <uapi/linux/sched/types.h>
 
