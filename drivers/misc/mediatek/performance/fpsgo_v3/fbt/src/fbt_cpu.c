@@ -434,6 +434,7 @@ static int down_throttle_ns;
 static int fbt_down_throttle_enable;
 static int loading_policy;
 static int llf_task_policy;
+static int vip_follow_gh;
 static int enable_ceiling;
 static int separate_aa;
 static int separate_pct_b;
@@ -2346,6 +2347,11 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	boost_info = &(thr->boost_info);
 
 	fbt_get_user_group_setting(thr, user_cpumask);
+
+	if (vip_follow_gh)
+		turn_on_vip_in_gh();
+	else
+		turn_off_vip_in_gh();
 
 	if (!min_cap) {
 		fbt_clear_min_cap(thr);
@@ -9138,6 +9144,10 @@ FBT_SYSFS_READ(limit_perf_m, fbt_mlock, limit_perf_m);
 FBT_SYSFS_WRITE_VALUE(limit_perf_m, fbt_mlock, limit_perf_m, 0, 100);
 static KOBJ_ATTR_RW(limit_perf_m);
 
+FBT_SYSFS_READ(vip_follow_gh, fbt_mlock, vip_follow_gh);
+FBT_SYSFS_WRITE_VALUE(vip_follow_gh, fbt_mlock, vip_follow_gh, 0, 1);
+static KOBJ_ATTR_RW(vip_follow_gh);
+
 FBT_SYSFS_READ(limit_cfreq2cap, fbt_mlock, limit_cfreq2cap);
 FBT_SYSFS_WRITE_VALUE(limit_cfreq2cap, fbt_mlock, limit_cfreq2cap, 0, 4000000);
 static KOBJ_ATTR_RW(limit_cfreq2cap);
@@ -9268,6 +9278,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_llf_task_policy);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_follow_gh);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_ta);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_uclamp);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_ruclamp);
@@ -9373,6 +9384,7 @@ int __init fbt_cpu_init(void)
 	run_time_percent = 50;
 	deqtime_bound = TIME_3MS;
 	loading_th = 0;
+	vip_follow_gh = 0;
 	sampling_period_MS = 256;
 	rescue_enhance_f = 25;
 	rescue_second_enhance_f = 100;
@@ -9526,6 +9538,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_llf_task_policy);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_follow_gh);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_ta);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_uclamp);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_ruclamp);
