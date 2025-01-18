@@ -14754,7 +14754,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&dvfsrc_freq_opp7>,
 				<&dvfsrc_freq_opp8>,
 				<&dvfsrc_freq_opp9>;
-		cm-mgr-enable = <0>;
+		cm-mgr-enable = <1>;
 		cm-mgr-arch = "v1p";
 
 		cm-mgr-num-array = <7>;
