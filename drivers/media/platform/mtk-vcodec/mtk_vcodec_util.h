@@ -61,6 +61,20 @@
 			pr_notice("[ERROR] %s(),%d: sprintf error\n", __func__, __LINE__);	\
 	} while (0)
 
+struct mtk_chipid {
+	__u32 size;
+	__u32 hw_code;
+	__u32 hw_subcode;
+	__u32 hw_ver;
+	__u32 sw_ver;
+};
+
+enum mtk_chipid_sw_ver {
+	MTK_CHIP_SW_VER_E1 = 0x00,
+	MTK_CHIP_SW_VER_E2 = 0x01,
+	MTK_CHIP_SW_VER_MAX
+};
+
 /**
  * enum eos_types  - encoder different eos types
  * @NON_EOS     : no eos, normal frame
@@ -346,6 +360,7 @@ enum mtk_put_buffer_type {
 	PUT_BUFFER_CALLBACK = 0,
 };
 
+int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id);
 bool mtk_vcodec_is_vcp(int type);
 bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
 bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b);
