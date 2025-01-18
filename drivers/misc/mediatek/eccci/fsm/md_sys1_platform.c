@@ -2105,6 +2105,7 @@ unsigned int ccci_get_ap_plat(void)
 
 static int ccci_modem_remove(struct platform_device *dev)
 {
+	ccci_remove_spm_resource();
 	return 0;
 }
 

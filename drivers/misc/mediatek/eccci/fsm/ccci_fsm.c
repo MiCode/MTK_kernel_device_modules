@@ -38,6 +38,8 @@ struct kern_md_state_cb {
 	void (*callback)(enum MD_STATE old_state, enum MD_STATE new_state);
 };
 
+static unsigned int spm_resource_size;
+static void *spm_resource_data;
 static struct kern_md_state_cb md_state_callbacks[KERN_MD_STAT_RCV_MAX];
 static spinlock_t state_broadcase_lock;
 static unsigned int kern_reg_cb_bitmap;
@@ -679,6 +681,9 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	} else
 		md_feature->feature_set[AMMS_DRDI_COPY].support_mask =
 			CCCI_FEATURE_NOT_SUPPORT;
+
+	md_feature->feature_set[SPM_MD_PARA].support_mask =
+		CCCI_FEATURE_OPTIONAL_SUPPORT;
 }
 
 static void ccci_sib_region_set_runtime(struct ccci_runtime_feature *rt_feature,
@@ -1312,6 +1317,20 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				append_runtime_feature(&rt_data, &rt_feature,
 				&rt_shm);
 				break;
+			case SPM_MD_PARA:
+			{
+				u32 pdata = 0;
+				u32 ulength = 4;
+
+				if (spm_resource_data && spm_resource_size) {
+					rt_feature.data_len = spm_resource_size;
+					append_runtime_feature(&rt_data, &rt_feature, spm_resource_data);
+				} else {
+					rt_feature.data_len = ulength;
+					append_runtime_feature(&rt_data, &rt_feature, &pdata);
+				}
+				break;
+			}
 			default:
 				break;
 			};
@@ -1685,6 +1704,48 @@ struct ccci_fsm_ctl *fsm_get_entity(void)
 }
 EXPORT_SYMBOL(fsm_get_entity); /* TODO: maybe no need export */
 
+void ccci_get_spm_resource(void)
+{
+	unsigned int size = 0, i = 0;
+	int ret = -1;
+	struct device_node *node;
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,spm-resource-setting");
+	if (!node) {
+		CCCI_ERROR_LOG(-1, FSM, "%s %d\n", __func__, __LINE__);
+		return;
+	}
+	ret = of_property_read_u32(node, "setting-size", &size);
+	if (ret || size == 0){
+		CCCI_ERROR_LOG(-1, FSM, "%s table size invalid\n", __func__);
+		return;
+	}
+
+	spm_resource_size = size * sizeof(unsigned int);
+	spm_resource_data = kzalloc(spm_resource_size, GFP_ATOMIC);
+	if(spm_resource_data == NULL) {
+		CCCI_ERROR_LOG(-1, FSM, "%s malloc fail\n", __func__);
+		return;
+	}
+
+	for (i = 0; i < size; i++) {
+		ret = of_property_read_u32_index(node, "setting-value-table",
+			i, ((u32 *)spm_resource_data) + i);
+		if (ret) {
+			CCCI_ERROR_LOG(-1, FSM, "%s get table fail\n", __func__);
+			kfree(spm_resource_data);
+			spm_resource_data = NULL;
+			return;
+		}
+	}
+}
+
+void ccci_remove_spm_resource(void)
+{
+	kfree(spm_resource_data);
+	spm_resource_data = NULL;
+}
+
 int ccci_fsm_init(void)
 {
 	struct ccci_fsm_ctl *ctl = NULL;
@@ -1729,6 +1790,7 @@ int ccci_fsm_init(void)
 	fsm_sys_init();
 
 	ccci_fsm_entries = ctl;
+	ccci_get_spm_resource();
 	return 0;
 }
 
