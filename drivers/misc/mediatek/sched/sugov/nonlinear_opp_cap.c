@@ -124,10 +124,14 @@ struct cpufreq_mtk {
 static struct cpu_dsu_freq_state freq_state;
 void init_eas_dsu_ctrl(void)
 {
+	unsigned int i;
+
 	freq_state.is_eas_dsu_support = true;
 	freq_state.is_eas_dsu_ctrl = true;
 	freq_state.pd_count = pd_count;
-	freq_state.cpu_freq = kcalloc(pd_count, sizeof(unsigned int), GFP_KERNEL);
+	freq_state.cpu_freq = kcalloc(MAX_NR_CPUS, sizeof(unsigned int), GFP_KERNEL);
+	for (i = 0; i < MAX_NR_CPUS; i++)
+		freq_state.cpu_freq[i] = 0;
 	freq_state.dsu_freq_vote = kcalloc(pd_count, sizeof(unsigned int), GFP_KERNEL);
 	pr_info("eas_dsu_sup.=%d\n", freq_state.is_eas_dsu_support);
 }
@@ -188,7 +192,7 @@ EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	int i, cpu, opp, dsu_target_freq = 0;
+	int i, cpu, opp, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int wl_type = get_em_wl();
@@ -197,13 +201,18 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	struct mtk_em_perf_state *ps;
 	struct cpufreq_mtk *c = policy->driver_data;
 
-	freq_state.cpu_freq[gearid] = policy->cached_target_freq;
+	for_each_cpu(cpu_idx, policy->related_cpus)
+		freq_state.cpu_freq[cpu_idx] = policy->cached_target_freq;
 	gov_pd_info = &pd_capacity_tbl[gearid];
 
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
+		if(!cpumask_intersects(&pd_info->cpus, cpu_active_mask)) {
+			freq_state.dsu_freq_vote[i] = 0;
+			continue;
+		}
 		cpu = cpumask_first(&pd_info->cpus);
-		if (pd_info->nr_cpus == 1 && gov_pd_info->nr_caps != 1) {
+		if (pd_info->nr_cpus == 1) {
 			if (available_idle_cpu(cpu)) {
 				struct sugov_rq_data *sugov_data_ptr;
 
@@ -215,7 +224,12 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 				}
 			}
 		}
-		ps = pd_get_freq_ps(wl_type, cpu, freq_state.cpu_freq[i], &opp);
+		max_freq_in_gear = 0;
+		for_each_cpu(cpu_idx, &pd_info->cpus)
+			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear && cpu_active(cpu_idx))
+				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
+
+		ps = pd_get_freq_ps(wl_type, cpu, max_freq_in_gear, &opp);
 		freq_state.dsu_freq_vote[i] = ps->dsu_freq;
 
 		if (dsu_target_freq < ps->dsu_freq)
@@ -224,7 +238,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl_type, i,
-				 freq_state.cpu_freq[i], freq_state.dsu_freq_vote[i]);
+				 max_freq_in_gear, freq_state.dsu_freq_vote[i]);
 	}
 
 	freq_state.dsu_target_freq = dsu_target_freq;
