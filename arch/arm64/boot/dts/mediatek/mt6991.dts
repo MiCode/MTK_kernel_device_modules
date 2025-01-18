@@ -6079,6 +6079,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				mediatek,refclk-sel;
 				mediatek,chp-en-disable;
 				mediatek,hsrx-vref-sel = <0x7>;
+				mediatek,fs-cr = <0x7>;
 				mediatek,u2-sw-efuse;
 				usb2jtag = <&infracfg_ao_clk 1>;
 				nvmem-cells = <&u2_phy_data1>, <&u2_phy_data2>, <&u2_phy_data2>;
@@ -19932,6 +19933,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#phy-cells = <0>;
 			mediatek,rx-sqth = <0x5>;
 			mediatek,pre-emphasis = <0x4>;
+			mediatek,usb20-fs-sr = <0x7>;
+			mediatek,eusb20-fsrx-hys-sel = <0x0>;
 			status = "okay";
 		};
 	};
