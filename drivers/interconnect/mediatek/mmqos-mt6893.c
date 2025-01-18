@@ -10,7 +10,7 @@
 #include <linux/of_platform.h>
 #include "mmqos-mtk.h"
 static const struct mtk_node_desc node_descs_mt6893[] = {
-	DEFINE_MNODE(common0, SLAVE_COMMON(0), 0, 0x0, false, MMQOS_NO_LINK),		//DISP
+	DEFINE_MNODE(common0, SLAVE_COMMON(0), 0, false, 0x0, MMQOS_NO_LINK),	//DISP
 	DEFINE_MNODE(mdp_common0, SLAVE_COMMON(1), 0, false, 0x0, MMQOS_NO_LINK),	//MDP
 	/* SLAVE_COMMON(0): SMI_DISP_COMMON */
 	DEFINE_MNODE(common0_port0, MASTER_COMMON_PORT(0, 0), 0, false, 0x0, SLAVE_COMMON(0)),
