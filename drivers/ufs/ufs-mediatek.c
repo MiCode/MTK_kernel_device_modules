@@ -1084,6 +1084,29 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 	return 0;
 }
 
+/*
+ * HW version format has been changed from 01MMmmmm to 1MMMmmmm, since
+ * project MT6878. In order to perform correct version comparison,
+ * version number is changed by SW for the following projects.
+ * IP_VER_MT6897	0x01440000 to 0x10440000
+ * IP_VER_MT6989	0x01450000 to 0x10450000
+ * IP_VER_MT6991	0x01460000 to 0x10460000
+ */
+static void ufs_mtk_get_hw_ip_version(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 hw_ip_ver;
+
+	hw_ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
+
+	if ((hw_ip_ver & 0xFF000000) == 0x01000000) {
+		hw_ip_ver &= ~0xFF000000;
+		hw_ip_ver |= 0x10000000;
+	}
+
+	host->ip_ver = hw_ip_ver;
+}
+
 static void ufs_mtk_get_controller_version(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
@@ -1588,7 +1611,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable WriteBooster */
 	hba->caps |= UFSHCD_CAP_WB_EN;
 
-	/* enable clk scaling*/
+	/* Enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
 
@@ -1629,7 +1652,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
 
-	host->ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
+	ufs_mtk_get_hw_ip_version(hba);
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	ufs_mtk_check_bus_init(host->ip_ver);
