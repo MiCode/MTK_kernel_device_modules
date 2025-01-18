@@ -461,7 +461,7 @@ static int gauge_coulomb_thread(void *arg)
 static irqreturn_t coulomb_irq(int irq, void *data)
 {
 	struct mtk_battery *gm = data;
-	if (gm->is_probe_done == false) {
+	if (gm->is_probe_done == false || gm->bm == NULL) {
 		bm_err(gm, "[%s]battery probe is not rdy:%d\n",
 			__func__, gm->is_probe_done);
 		return IRQ_HANDLED;
