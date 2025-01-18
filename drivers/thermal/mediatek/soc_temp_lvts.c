@@ -6540,8 +6540,8 @@ static void mt6991_check_cal_data(struct lvts_data *lvts_data)
 	}
 }
 
-#define COF_A_T_SLP_GLD_6991 358830
-#define COF_A_COUNT_R_GLD_6991 34389
+#define COF_A_T_SLP_GLD_6991 391460
+#define COF_A_COUNT_R_GLD_6991 34412
 #define COF_A_CONST_OFS_6991 0
 #define COF_A_OFS_6991 (COF_A_T_SLP_GLD_6991 - COF_A_CONST_OFS_6991)
 
