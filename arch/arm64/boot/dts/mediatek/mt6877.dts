@@ -4953,11 +4953,29 @@
 		iommus = <&iommu0 M4U_PORT_L0_OVL_RDMA0>;
 	};
 
-	mtk_sec_dmaheap {
-		compatible = "mediatek,dmaheap-region-base";
+	mtkheap-region-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_prot_region";
+		trusted-mem-type = <1>;
+		region-heap-align-name = "mtk_prot_region-aligned";
 		iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
 	};
 
+	mtkheap_region_svp: mtkheap-region-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_svp_region";
+		trusted-mem-type = <0>;
+		region-heap-align-name = "mtk_svp_region-aligned";
+		iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
+	};
+
+	mtkheap_region_wfd: mtkheap-region-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_wfd_region";
+		trusted-mem-type = <2>;
+		region-heap-align-name = "mtk_wfd_region-aligned";
+		iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
+	};
 	mtk_dmabufheap_debug0: dmaheap_test0{
 		compatible = "mediatek, mtk_dmabufheap, iommu0";
 		iommus = <&iommu0 M4U_PORT_L1_DISP_WDMA0>;
