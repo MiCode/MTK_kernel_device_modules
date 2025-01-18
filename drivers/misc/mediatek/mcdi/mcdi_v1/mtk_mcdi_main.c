@@ -159,10 +159,10 @@ static void mcdi_idle_state_setting(unsigned long idx, unsigned long enable)
 
 	if (enable) {
 		tbl->states[idx].flags &= ~CPUIDLE_FLAG_UNUSABLE;
-		cpuidle_driver_state_disabled(tbl, idx, false);
+
 	} else {
 		tbl->states[idx].flags |= CPUIDLE_FLAG_UNUSABLE;
-		cpuidle_driver_state_disabled(tbl, idx, true);
+
 	}
 }
 
