@@ -733,16 +733,15 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 		ctx->out_q.pix_mp.width, ctx->out_q.pix_mp.height, emi_bw);
 		if (ctx->out_q.fmt->fourcc == V4L2_PIX_FMT_YUYV ||
 			ctx->out_q.fmt->fourcc == V4L2_PIX_FMT_YVYU) {
-			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw*2),
-				kBps_to_icc(emi_bw*2));
-			mtk_icc_set_bw(jpeg->path_c_rdma, kBps_to_icc(emi_bw), kBps_to_icc(emi_bw));
+			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw*2), 0);
+			mtk_icc_set_bw(jpeg->path_c_rdma, kBps_to_icc(emi_bw), 0);
 		} else {
-			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw), kBps_to_icc(emi_bw));
+			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw), 0);
 			mtk_icc_set_bw(jpeg->path_c_rdma,
-				kBps_to_icc(emi_bw * 1/2), kBps_to_icc(emi_bw*1/2));
+				kBps_to_icc(emi_bw * 1/2), 0);
 		}
-		mtk_icc_set_bw(jpeg->path_qtbl, kBps_to_icc(emi_bw), kBps_to_icc(emi_bw));
-		mtk_icc_set_bw(jpeg->path_bsdma, kBps_to_icc(emi_bw), kBps_to_icc(emi_bw));
+		mtk_icc_set_bw(jpeg->path_qtbl, kBps_to_icc(emi_bw), 0);
+		mtk_icc_set_bw(jpeg->path_bsdma, kBps_to_icc(emi_bw), 0);
 	}
 }
 
