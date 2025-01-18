@@ -144,7 +144,7 @@ struct vcp_timer {
 };
 static struct vcp_timer vcp_ready_timer[VCP_CORE_TOTAL];
 #endif
-static struct vcp_work_struct vcp_A_notify_work;
+static struct vcp_work_struct vcp_A_notify_work[VCP_CORE_TOTAL];
 static BLOCKING_NOTIFIER_HEAD(mmup_notifier_list);
 static BLOCKING_NOTIFIER_HEAD(vcp_notifier_list);
 
@@ -611,8 +611,8 @@ static void vcp_A_set_ready(enum vcp_core_id core_id)
 #if VCP_BOOT_TIME_OUT_MONITOR
 		del_timer(&vcp_ready_timer[core_id].tl);
 #endif
-		vcp_A_notify_work.flags = core_id;
-		vcp_schedule_work(&vcp_A_notify_work);
+		vcp_A_notify_work[core_id].flags = core_id;
+		vcp_schedule_work(&vcp_A_notify_work[core_id]);
 	}
 }
 
@@ -869,47 +869,16 @@ uint32_t vcp_wait_ready_sync(void)
 			C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
 	}
 
-	if ((C0_H0 == CORE_REBOOT_OK) && (C0_H1 == CORE_REBOOT_OK)
-		&& (C1_H0 == CORE_REBOOT_OK) && (C1_H1 == CORE_REBOOT_OK)) {
-		if (vcpreg.core_nums == 2 && !is_vcp_ready_by_coreid(MMUP_ID)) {
-			vcp_A_set_ready(MMUP_ID);
-			while (!is_vcp_ready_by_coreid(MMUP_ID) && i <= VCP_SYNC_TIMEOUT_MS) {
-				i += 5;
-				mdelay(5);
-			}
-			if (i > VCP_SYNC_TIMEOUT_MS) {
-				vcp_dump_last_regs(1);
-				for (j = 0; j < NUM_FEATURE_ID; j++)
-					if (feature_table[j].enable)
-						pr_info("[MMUP] feat. id %d cnt %d\n", j, feature_table[j].enable);
-			}
-		}
-		i = 0;
-		if (!is_vcp_ready_by_coreid(VCP_ID)) {
-			vcp_A_set_ready(VCP_ID);
-			while (!is_vcp_ready_by_coreid(VCP_ID) && i <= VCP_SYNC_TIMEOUT_MS) {
-				i += 5;
-				mdelay(5);
-			}
-			if (i > VCP_SYNC_TIMEOUT_MS) {
-				vcp_dump_last_regs(1);
-				for (j = 0; j < NUM_FEATURE_ID; j++)
-					if (feature_table[j].enable)
-						pr_info("[VCP] feat. id %d cnt %d\n", j, feature_table[j].enable);
-			}
-		}
-	} else {
-		while (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
-			i += 5;
-			mdelay(5);
-			if (i > VCP_SYNC_TIMEOUT_MS) {
-				vcp_dump_last_regs(1);
-				for (j = 0; j < NUM_FEATURE_ID; j++)
-					if (feature_table[j].enable)
-						pr_info("[VCP] feat. id %d cnt %d\n",
-							j, feature_table[j].enable);
-				break;
-			}
+	while (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
+		i += 5;
+		mdelay(5);
+		if (i > VCP_SYNC_TIMEOUT_MS) {
+			vcp_dump_last_regs(1);
+			for (j = 0; j < NUM_FEATURE_ID; j++)
+				if (feature_table[j].enable)
+					pr_info("[VCP] feat. id %d cnt %d\n",
+						j, feature_table[j].enable);
+			break;
 		}
 	}
 
@@ -3317,7 +3286,8 @@ static int __init vcp_init(void)
 		goto err;
 	}
 
-	INIT_WORK(&vcp_A_notify_work.work, vcp_A_notify_ws);
+	for (i = 0; i < VCP_CORE_TOTAL; i++)
+		INIT_WORK(&vcp_A_notify_work[i].work, vcp_A_notify_ws);
 
 	mtk_ipi_register(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 		NULL, NULL, &slp_ipi_ack_data);
