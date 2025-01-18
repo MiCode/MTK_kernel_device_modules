@@ -163,7 +163,7 @@ static long handleFeatureEn(unsigned long arg)
 				MBRAINK_FEATURE_GPU_EN)
 					== MBRAINK_FEATURE_GPU_EN) {
 			pr_notice("mbraink feature enable gpu.\n");
-			ret = mbraink_gpu_init();
+			ret = mbraink_gpu_featureEnable(true);
 			if (ret)
 				pr_notice("mbraink gpu init failed.\n");
 			else
@@ -175,7 +175,7 @@ static long handleFeatureEn(unsigned long arg)
 				MBRAINK_FEATURE_AUDIO_EN)
 					== MBRAINK_FEATURE_AUDIO_EN) {
 			pr_notice("mbraink feature enable audio.\n");
-			ret = mbraink_audio_init();
+			ret = mbraink_audio_setUdmFeatureEn(true);
 			if (ret)
 				pr_notice("mbraink audio init failed.\n");
 			else
@@ -1169,14 +1169,6 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 			value,
 			retSize);
 
-	if (command == 1)
-		mbraink_gpu_setQ2QTimeoutInNS(value);
-	if (command == 2)
-		mbraink_gpu_setPerfIdxTimeoutInNS(value);
-	if (command == 3)
-		mbraink_gpu_setPerfIdxLimit(value);
-	if (command == 4)
-		mbraink_gpu_dumpPerfIdxList();
 	return count;
 }
 
@@ -1377,6 +1369,26 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink cpufreq tracer init failed.\n");
 
+	ret = mbraink_memory_init();
+	if (ret)
+		pr_notice("mbraink memory init failed.\n");
+
+	ret = mbraink_audio_init();
+	if (ret)
+		pr_notice("mbraink audio init failed.\n");
+
+	ret = mbraink_battery_init();
+	if (ret)
+		pr_notice("mbraink battery init failed.\n");
+
+	ret = mbraink_gpu_init();
+	if (ret)
+		pr_notice("mbraink gpu init failed.\n");
+
+	ret = mbraink_power_init();
+	if (ret)
+		pr_notice("mbraink power init failed.\n");
+
 	return ret;
 }
 
@@ -1423,6 +1435,11 @@ static void mbraink_exit(void)
 	mbraink_gpu_deinit();
 	mbraink_audio_deinit();
 	mbraink_cpufreq_notify_exit();
+	mbraink_memory_deinit();
+	mbraink_audio_deinit();
+	mbraink_battery_deinit();
+	mbraink_gpu_deinit();
+	mbraink_power_deinit();
 }
 
 module_init(mbraink_init);
