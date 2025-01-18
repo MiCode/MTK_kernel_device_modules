@@ -352,6 +352,8 @@ static int powerRL_total_unit;
 static int powerRL_voltage;
 static int powerRL_ko_is_ready;
 static int ux_general_policy;
+static int cm_big_cap;
+static int cm_tdiff;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -419,6 +421,8 @@ module_param(limit_min_cap_target_t, int, 0644);
 module_param(exp_fps_raw_enable, int, 0644);
 module_param(exp_normal_fps_pct, int, 0644);
 module_param(exp_fps_disp_enable, int, 0644);
+module_param(cm_big_cap, int, 0644);
+module_param(cm_tdiff, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -2009,6 +2013,16 @@ static void fbt_check_cm_limit(struct render_info *thread_info)
 
 	if (!last_blc)
 		return;
+
+	if(fbt_get_default_dram_boost_enable()) {
+		if (last_blc > cm_big_cap &&
+				thread_info->running_time
+				> (long long)thread_info->boost_info.target_time
+				+ (long long)cm_tdiff)
+			fbt_notify_CM_limit(1);
+		else
+			fbt_notify_CM_limit(0);
+	}
 }
 
 /*
@@ -3846,6 +3860,8 @@ void fbt_set_limit(int cur_pid, unsigned int blc_wt,
 		}
 	}
 
+	if (fbt_get_default_dram_boost_enable())
+		fbt_check_cm_limit(thread_info);
 BOOST:
 	if (cur_pid != pid)
 		goto EXIT2;
@@ -5289,6 +5305,9 @@ void fbt_check_max_blc_locked(int pid)
 		}
 		fbt_free_bhr();
 		memset(base_opp, 0, cluster_num * sizeof(unsigned int));
+
+		if (fbt_get_default_dram_boost_enable())
+			fbt_notify_CM_limit(0);
 		fbt_set_down_throttle_locked(-1);
 
 		if (task_turbo_enforce_ct_to_vip_fp) {
@@ -5960,6 +5979,8 @@ static void fbt_setting_reset(int reset)
 {
 	fbt_set_down_throttle_locked(-1);
 	fbt_free_bhr();
+	if (fbt_get_default_dram_boost_enable())
+		fbt_notify_CM_limit(0);
 
 	if (boost_ta || boosted_group) {
 		fbt_clear_boost_value();
@@ -6653,9 +6674,11 @@ int fbt_switch_uclamp_onoff(int enable)
 
 	mutex_unlock(&fbt_mlock);
 
-	if (!enable)
+	if (!enable) {
 		fpsgo_clear_uclamp_boost();
-
+		if (fbt_get_default_dram_boost_enable())
+			fbt_notify_CM_limit(0);
+	}
 	return 0;
 }
 
@@ -6670,9 +6693,11 @@ int fbt_switch_to_ta(int input)
 	boost_ta = input;
 	mutex_unlock(&fbt_mlock);
 
-	if (input)
+	if (input) {
 		fpsgo_clear_uclamp_boost();
-
+		if (fbt_get_default_dram_boost_enable())
+			fbt_notify_CM_limit(0);
+	}
 	return 0;
 }
 
@@ -9441,6 +9466,8 @@ int __init fbt_cpu_init(void)
 	tp_policy = 0;
 	gh_prefer = 0;
 	ux_general_policy = fbt_get_ux_scroll_policy_type();
+	cm_big_cap = 95;
+	cm_tdiff = TIME_1MS;
 
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
