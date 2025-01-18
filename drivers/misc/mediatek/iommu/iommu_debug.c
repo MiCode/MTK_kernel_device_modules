@@ -921,8 +921,8 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 				      port_name, fault_iova, fault_pa);
 		return;
 	} else if (smmu_id == GPU_SMMU) {
-		m4u_aee_print(mmu_translation_log_format, "SMMU", "GPUSYS",
-			      "GPUSYS", fault_iova, fault_pa);
+		m4u_aee_print(mmu_translation_log_format, "SMMU", "GPU",
+			      "GPU", fault_iova, fault_pa);
 		return;
 	}
 
@@ -2703,7 +2703,7 @@ static int mt6985_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 	       FIELD_GET(GENMASK(1, 0), vld_tf);
 }
 
-static int mt6989_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
+static int default_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 {
 	return F_MMU_INT_TF_LARB(port_tf) ==
 	       FIELD_GET(GENMASK(12, 8), vld_tf) &&
@@ -2711,7 +2711,7 @@ static int mt6989_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 	       FIELD_GET(GENMASK(1, 0), vld_tf);
 }
 
-static u32 mt6989_get_valid_tf_id(int tf_id, u32 type, int id)
+static u32 default_get_valid_tf_id(int tf_id, u32 type, int id)
 {
 	u32 vld_id = 0;
 
@@ -2734,7 +2734,7 @@ static bool mt6989_tf_id_is_match(int tf_id, u32 type, int id,
 	if (port.port_type == SPECIAL)
 		vld_id = tf_id & F_MMU_INT_TF_SPEC_MSK(port.port_start);
 	else if (port.port_type == NORMAL)
-		vld_id = mt6989_get_valid_tf_id(tf_id, type, id);
+		vld_id = default_get_valid_tf_id(tf_id, type, id);
 
 	if (port.tf_id == vld_id)
 		return true;
@@ -2742,7 +2742,7 @@ static bool mt6989_tf_id_is_match(int tf_id, u32 type, int id,
 	return false;
 }
 
-static const u32 mt6989_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
+static const u32 default_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
 	[MM_SMMU] = {
 		MM_SMMU_MDP,
 		MM_SMMU_MDP,
@@ -2762,12 +2762,12 @@ static const u32 mt6989_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
 	},
 };
 
-static int mt6989_smmu_common_id(u32 smmu_type, u32 tbu_id)
+static int default_smmu_common_id(u32 smmu_type, u32 tbu_id)
 {
 	if (smmu_type >= SMMU_TYPE_NUM || tbu_id >= SMMU_TBU_CNT(smmu_type))
 		return -1;
 
-	return mt6989_smmu_common_ids[smmu_type][tbu_id];
+	return default_smmu_common_ids[smmu_type][tbu_id];
 }
 
 static char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
@@ -2784,6 +2784,25 @@ static char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
 		return mt6989_soc_m6_port_name(tf_id);
 	case SOC_SMMU_M7:
 		return mt6989_soc_m7_port_name(tf_id);
+	default:
+		return "SOC_UNKNOWN";
+	}
+}
+
+static char *mt6991_smmu_soc_port_name(u32 type, int id, int tf_id)
+{
+	if (type != SOC_SMMU) {
+		pr_info("%s is not support type:%u\n", __func__, type);
+		return NULL;
+	}
+
+	switch (id) {
+	case SOC_SMMU_M4:
+		return mt6991_soc_m4_port_name(tf_id);
+	case SOC_SMMU_M6:
+		return mt6991_soc_m6_port_name(tf_id);
+	case SOC_SMMU_M7:
+		return mt6991_soc_m7_port_name(tf_id);
 	default:
 		return "SOC_UNKNOWN";
 	}
@@ -2884,11 +2903,22 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6989),
 	.port_list[APU_SMMU] = apu_port_mt6989,
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6989),
-	.get_valid_tf_id = mt6989_get_valid_tf_id,
+	.get_valid_tf_id = default_get_valid_tf_id,
 	.tf_id_is_match = mt6989_tf_id_is_match,
-	.mm_tf_is_gce_videoup = mt6989_tf_is_gce_videoup,
-	.smmu_common_id = mt6989_smmu_common_id,
+	.mm_tf_is_gce_videoup = default_tf_is_gce_videoup,
+	.smmu_common_id = default_smmu_common_id,
 	.smmu_port_name = mt6989_smmu_soc_port_name,
+};
+
+static const struct mtk_m4u_plat_data mt6991_smmu_data = {
+	.port_list[MM_SMMU] = mm_port_mt6991,
+	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6991),
+	.port_list[APU_SMMU] = apu_port_mt6991,
+	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6991),
+	.get_valid_tf_id = default_get_valid_tf_id,
+	.mm_tf_is_gce_videoup = default_tf_is_gce_videoup,
+	.smmu_common_id = default_smmu_common_id,
+	.smmu_port_name = mt6991_smmu_soc_port_name,
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
@@ -2902,6 +2932,7 @@ static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6983-iommu-debug", .data = &mt6983_data},
 	{ .compatible = "mediatek,mt6985-iommu-debug", .data = &mt6985_data},
 	{ .compatible = "mediatek,mt6989-smmu-debug", .data = &mt6989_smmu_data},
+	{ .compatible = "mediatek,mt6991-smmu-debug", .data = &mt6991_smmu_data},
 	{},
 };
 

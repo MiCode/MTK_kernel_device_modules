@@ -459,6 +459,7 @@ enum soc_smmu {
 
 enum mtk_smmu_plat {
 	SMMU_MT6989,
+	SMMU_MT6991,
 };
 
 struct smmuv3_pmu_impl {
