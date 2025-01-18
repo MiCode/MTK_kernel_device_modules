@@ -787,6 +787,14 @@ void ged_set_whitebox_power_state_store(int first, int second)
 }
 EXPORT_SYMBOL(ged_set_whitebox_power_state_store);
 
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+unsigned int ged_gpu_power_stress_test_enable(void)
+{
+	return g_ged_power_stress_test_support;
+}
+EXPORT_SYMBOL(ged_gpu_power_stress_test_enable);
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
+
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void)
 {

@@ -1131,6 +1131,40 @@ static ssize_t fw_idle_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
 
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+unsigned int g_ged_power_stress_test_support;
+
+static ssize_t gpu_power_on_off_test_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"gpu_power_on_off_test support: %d\n", g_ged_power_stress_test_support);
+
+	return pos;
+}
+
+static ssize_t gpu_power_on_off_test_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				g_ged_power_stress_test_support = i32Value;
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(gpu_power_on_off_test);
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
+
 static ssize_t whitebox_power_support_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -1145,7 +1179,6 @@ static ssize_t whitebox_power_support_show(struct kobject *kobj,
 
 	return pos;
 }
-
 
 static ssize_t whitebox_power_support_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -1164,7 +1197,6 @@ static ssize_t whitebox_power_support_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(whitebox_power_support);
-
 
 static ssize_t whitebox_power_force_state_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2103,6 +2135,15 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 #endif /* MTK_GPU_FW_IDLE */
+
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_power_on_off_test);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create gpu_power_on_off_test entry!\n");
+		goto ERROR;
+	}
+	g_ged_power_stress_test_support = 0;
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_thr_us);
