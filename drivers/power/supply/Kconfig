@@ -241,6 +241,23 @@ config GAUGE_BQ28Z610
 	  Select Alpha gauge Platform is mt6985
 	  Say N to disable.
 
+config CHARGER_TYPE_MT6357
+	tristate "MT6357 Charger Type Detection Driver"
+	depends on DEVICE_MODULES_MFD_MT6397
+	help
+	  Say yes here to enable MT6357 Charger Type
+	  Detection Driver.
+	  This driver use MT6357 to detect charger type
+	  Say no if not using MT6357 Charger Type Detection.
+
+config MT6357_DO_CTD
+	tristate "MT6370 get charger online from MT6357"
+	help
+	  Say yes here to enable mt6370 get charger online for mt6357.
+	  This will enable to get MT6370 charger online status for MT6357.
+	  This config will be enable for mt6357 charger type detection only.
+	  Say N to disable for other charger type detection chip choice.
+
 config MTK_CHARGER_TYPE_DETECT
 	tristate "Mediatek Charger Type Detect Driver"
 	depends on TCPC_CLASS

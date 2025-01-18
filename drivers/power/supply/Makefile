@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 subdir-ccflags-$(CONFIG_POWER_SUPPLY_DEBUG) := -DDEBUG
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
@@ -36,6 +37,7 @@ mt6379-battery-objs := mt6379-gauge.o mtk_battery_coulomb_service.o mtk_battery.
 obj-$(CONFIG_GAUGE_MT6379) += mtk_battery_manager.o mt6379-battery.o
 obj-$(CONFIG_CHARGER_GAUGE_MAX17332) += max1720x_battery.o
 
+obj-$(CONFIG_CHARGER_TYPE_MT6357) += mt6357-charger-type.o
 obj-$(CONFIG_MTK_CHARGER_TYPE_DETECT)	+= mtk_chg_type_det.o
 obj-$(CONFIG_MTK_HVBP_SUPPORT) += mtk_hvbpc.o
 mtk_hvbpc-objs := mtk_hvbp.o mtk_hvbp_hal.o
