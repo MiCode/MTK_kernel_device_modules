@@ -391,7 +391,9 @@ static const struct aal_data mt6991_mmlt_aal_data = {
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
+	.alpha_pq_r2y = true,
 	.rb_mode = RB_EOF_MODE,
+	.curve_ready_bit = 18,
 };
 
 static const struct aal_data mt6991_mmlf_aal_data = {
@@ -401,7 +403,9 @@ static const struct aal_data mt6991_mmlf_aal_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6897,
+	.alpha_pq_r2y = true,
 	.rb_mode = RB_EOF_MODE,
+	.curve_ready_bit = 18,
 };
 
 struct mml_comp_aal {
