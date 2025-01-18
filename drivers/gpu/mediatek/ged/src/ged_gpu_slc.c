@@ -112,6 +112,11 @@ GED_ERROR ged_gpu_slc_init(void)
 void ged_gpu_slc_dynamic_mode(unsigned int idx)
 {
 	/* clear and change mode*/
+	if (!g_slc_stat) {
+		GED_LOGE("[GPU_SLC]%s null slc stat", __func__);
+		return;
+	}
+
 	g_slc_stat->mode = idx;
 	g_slc_stat->policy_0_hit_rate_r = 0;
 	g_slc_stat->policy_1_hit_rate_r = 0;
@@ -121,6 +126,17 @@ void ged_gpu_slc_dynamic_mode(unsigned int idx)
 	g_slc_stat->hit_rate_r = 0;
 	g_slc_stat->isoverflow = 0;
 }
+EXPORT_SYMBOL_GPL(ged_gpu_slc_dynamic_mode);
+
+int ged_gpu_slc_get_dynamic_mode(void)
+{
+	if (g_slc_stat)
+		return (int)g_slc_stat->mode;
+
+	GED_LOGE("[GPU_SLC]%s null slc stat", __func__);
+	return -1;
+}
+EXPORT_SYMBOL_GPL(ged_gpu_slc_get_dynamic_mode);
 
 GED_ERROR ged_gpu_slc_exit(void)
 {
