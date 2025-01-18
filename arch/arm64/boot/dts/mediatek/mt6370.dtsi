@@ -108,13 +108,8 @@
 			tcpc,role-def = <5>;
 			tcpc,rp-level = <1>; /* 0: Default, 1: 1.5, 2: 3.0 */
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
-			tcpc,vconn-supply  = <1>;
-			/* the number of notifier supply */
-			tcpc,notifier-supply-num = <3>;
-
-			//charger = <&mt6370_chg>;
-			boot-mode = <&chosen>;
-
+			tcpc,vconn-supply = <1>;
+			charger = <&mt6370_chg>;
 			pd-data {
 				pd,vid = <0x29cf>;
 				pd,pid = <0x5081>;
@@ -133,13 +128,12 @@
 							    0x0a 0x00 0x00 0x00>;
 				pd,mfrs = "RichtekTCPC";
 
-
 				/*
 				 *	VSAFE5V = 0, MAX_POWER = 1, CUSTOM = 2,
 				 *	MAX_POWER_LV = 0x21, MAX_POWER_LVIC = 0x31
 				 *	MAX_POWER_HV = 0x41, MAX_POWER_HVIC = 0x51
 				 */
-				pd,charging_policy= <0x31>;
+				pd,charging-policy = <0x31>;
 
 				/*
 				 * Fixed 5V, 500 mA <0x00019032>
@@ -164,7 +158,7 @@
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x50810000
 							  0x61000000 0x0 0x41000000>;
-				 * With DP
+				 * With DP Sink capability
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd54029cf 0x0 0x50810000
 							  0x61000000 0x0 0x41000000>;
@@ -172,38 +166,19 @@
 
 				pd,id-vdo-size = <6>;
 				pd,id-vdo-data = <0xd14029cf 0x0 0x50810000
-						  0x61000000 0x0 0x4100000>;
+						  0x61000000 0x0 0x41000000>;
 
 				bat,nr = <1>;
-				pd,country_nr = <0>;
+				pd,country-nr = <0>;
 
 				bat-info0 {
 					bat,vid = <0x29cf>;
 					bat,pid = <0x5081>;
 					bat,mfrs = "bat1";
-					bat,design_cap = <3000>;
+					bat,design-cap = <3000>;
 				};
-
-				//bat-info1 {
-				//	bat,vid = <0x8abc>;
-				//	bat,pid = <0x5234>;
-				//	bat,mfrs = "bat2";
-				//	bat,design_cap = <4000>;
-				//};
-
-				//country0 {
-				//	pd,country_code = <0x5457>;
-				//	pd,country_len = <2>; /* max len = 26 */
-				//	pd,country_data = <0xff 0xff>;
-				//};
-
-				//country1 {
-				//	pd,country_code = <0x5553>;
-				//	pd,country_len = <3>; /* max len = 26 */
-				//	pd,country_data = <0xf1 0xf2 0xf3>;
-				//};
 			};
-			dpm_caps {
+			dpm-caps {
 				local-dr-power;
 				local-dr-data;
 				// local-ext-power;
@@ -213,7 +188,8 @@
 				// local-give-back;
 				local-no-suspend;
 
-				attempt-enter-dp-mode;
+				/* With DP Source capability */
+				// attempt-enter-dp-mode;
 				// attempt-discover-cable;
 				// attempt-discover-id;
 				// attempt-discover-svids;

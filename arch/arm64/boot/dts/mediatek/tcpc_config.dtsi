@@ -65,7 +65,7 @@
 			 *	pd,id-vdo-size = <6>;
 			 *	pd,id-vdo-data = <0xd14029cf 0x0 0x17110000
 						  0x61000000 0x0 0x41000000>;
-			 * With DP
+			 * With DP Sink capability
 			 *	pd,id-vdo-size = <6>;
 			 *	pd,id-vdo-data = <0xd54029cf 0x0 0x17110000
 						  0x61000000 0x0 0x41000000>;
@@ -95,7 +95,8 @@
 			// local-give-back;
 			local-no-suspend;
 
-			attempt-enter-dp-mode;
+			/* With DP Source capability */
+			// attempt-enter-dp-mode;
 			// attempt-discover-cable;
 			// attempt-discover-id;
 			// attempt-discover-svid;

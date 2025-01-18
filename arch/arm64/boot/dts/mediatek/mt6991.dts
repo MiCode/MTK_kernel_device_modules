@@ -16300,11 +16300,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				      <&mt6379_adc MT6379_ADC_SBU2>;
 			charger = <&mt6379_chg>;
 			tcpc,en-wd;
-			//tcpc,en-wd-dual-port;
+			// tcpc,en-wd-dual-port;
 			tcpc,en-ctd;
 			tcpc,en-fod;
 			tcpc,en-typec-otp;
-			//tcpc,en-floatgnd;
+			// tcpc,en-floatgnd;
 			wd,sbu-calib-init = <1200>;	/* mV */
 			wd,sbu-pl-bound = <200>;	/* mV */
 			wd,sbu-pl-lbound-c2c = <1100>;	/* mV */
@@ -16355,14 +16355,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
 							  0x61000000 0x0 0x41000000>;
-				 * With DP
+				 * With DP Sink capability
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63790000
 							  0x61000000 0x0 0x41000000>;
 				 */
 
 				pd,id-vdo-size = <6>;
-				pd,id-vdo-data = <0xd54029cf 0x0 0x63790000
+				pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
 						  0x61000000 0x0 0x41000000>;
 
 				bat,nr = <1>;
@@ -16382,13 +16382,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				// local-high-cap;
 				// local-give-back;
 				local-no-suspend;
-				local-vconn-supply;
 
-				// attempt-discover-cable-dfp;
+				/* With DP Source capability */
 				attempt-enter-dp-mode;
-				attempt-discover-cable;
-				//attempt-discover-id;
-				// attempt-discover-svid;
+				// attempt-discover-cable;
+				// attempt-discover-id;
+				// attempt-discover-svids;
 
 				/* 0: disable, 1: prefer-snk, 2: prefer-src */
 				pr-check = <0>;
@@ -16403,17 +16402,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				// dr-reject-as-ufp;
 			};
 			displayport {
-				/* connection type = "both", "ufp_d", "dfp_d" */
-				1st_connection = "dfp_d";
-				2nd_connection = "dfp_d";
-				signal,dp-v13;
-				//signal,dp-gen2;
-				//usbr20-not-used;
+				/* connection type = "both", "ufp-d", "dfp-d" */
+				1st-connection = "dfp-d";
+				2nd-connection = "dfp-d";
+				// usbr20-not-used;
 				typec,receptacle;
 				ufp-d {
-					//pin-assignment,mode-c;
-					//pin-assignment,mode-d;
-					//pin-assignment,mode-e;
+					// pin-assignment,mode-c;
+					// pin-assignment,mode-d;
+					// pin-assignment,mode-e;
 				};
 				dfp-d {
 					pin-assignment,mode-c;
