@@ -769,6 +769,38 @@ int swpm_arm_pmu_enable_all(unsigned int enable)
 }
 EXPORT_SYMBOL(swpm_arm_pmu_enable_all);
 
+unsigned long long swpm_pmu_get_count(unsigned int evt_id, unsigned int cpu)
+{
+	struct perf_event *event = NULL;
+	unsigned long long val = 0;
+
+	if (cpu >= num_possible_cpus())
+		return 0;
+
+	switch (evt_id) {
+	case L3DC_EVT:
+		event = per_cpu(l3dc_events, cpu);
+		break;
+	case INST_SPEC_EVT:
+		event = per_cpu(inst_spec_events, cpu);
+		break;
+	case CYCLES_EVT:
+		event = per_cpu(cycle_events, cpu);
+		break;
+	default:
+		return 0;
+	};
+
+	if (event &&
+	    event->state == PERF_EVENT_STATE_ACTIVE &&
+	    cpu_online(cpu)) {
+		perf_event_read_local(event, &val, NULL, NULL);
+	}
+
+	return val;
+}
+EXPORT_SYMBOL(swpm_pmu_get_count);
+
 int __init swpm_arm_pmu_init(void)
 {
 	int ret, i;
