@@ -15595,7 +15595,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		gcc-enable = <1>;
 		fbt-cpu-mask = <255 128 15 127 240 112>;
 		sbe-resceue-enable = <1>;
-		ux-scrol-policy-type = <1>;
+		ux-scroll-general-policy = <1>;
 		ux-smart-launch-enable = <1>;
 	};
 
