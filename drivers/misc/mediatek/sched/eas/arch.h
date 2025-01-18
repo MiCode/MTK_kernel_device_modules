@@ -116,13 +116,16 @@ unsigned long update_dsu_status(struct energy_env *eenv,
 			eenv->dsu_volt_new = eenv->dsu_volt_base;
 		}
 		dsu_volt = (unsigned long) eenv->dsu_volt_new;
+	} else if (dst_cpu == -2) {
+		dsu_volt = (unsigned long) eenv->dsu_volt_new;
 	} else
 		dsu_volt = (unsigned long) eenv->dsu_volt_base;
 
 	if (trace_sched_dsu_freq_enabled()) {
-		trace_sched_dsu_freq(eenv->gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new,
-			pd_get_util_cpufreq_wFloor_Freq(eenv, pd_cpus, max_util), dsu_freq,
-			dsu_volt);
+		trace_sched_dsu_freq(eenv->gear_idx, dst_cpu,
+			eenv->dsu_freq_new, eenv->dsu_volt_new,
+			pd_get_util_cpufreq_wFloor_Freq(eenv, pd_cpus, max_util),
+			dsu_freq, dsu_volt);
 	}
 
 	return dsu_volt;

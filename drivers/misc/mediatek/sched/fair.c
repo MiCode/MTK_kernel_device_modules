@@ -485,7 +485,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
-	unsigned long shared_pwr_base, shared_pwr_new, delta_share_pwr = 0;
+	unsigned long shared_pwr = 0;
 	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int dsu_extern_volt = 0, gear_idx;
 	int dst_idx;
@@ -520,21 +520,22 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 		/* calculate share_buck gear pwr with new DSU freq */
 		gear_idx = eenv->gear_idx;
 		eenv->gear_idx = share_buck.gear_idx;
-		shared_pwr_new = mtk_compute_energy_cpu(eenv, share_buck_pd,
+
+		if (dst_cpu >= 0)
+			shared_pwr = mtk_compute_energy_cpu(eenv, share_buck_pd,
+							share_buck.cpus, p, -2);
+		else
+			shared_pwr = mtk_compute_energy_cpu(eenv, share_buck_pd,
 							share_buck.cpus, p, -1);
 
-		/* calculate share_buck gear pwr with new old freq */
-		shared_pwr_base = mtk_compute_energy_cpu(eenv, share_buck_pd,
-							share_buck.cpus, p, -1);
 		eenv->gear_idx = gear_idx;
 
-		delta_share_pwr = max(shared_pwr_new, shared_pwr_base) - shared_pwr_base;
 calc_sharebuck_done:
 		rcu_read_unlock();
 	}
 
 	/* calc DSU power */
-	if (dst_cpu != -1 && (shared_gear(eenv->gear_idx))) {
+	if (dst_cpu >= 0 && (shared_gear(eenv->gear_idx))) {
 		dsu->dsu_freq = eenv->dsu_freq_new;
 		dsu->dsu_volt = eenv->dsu_volt_new;
 		dst_idx = 1;
@@ -564,10 +565,10 @@ calc_sharebuck_done:
 					eenv->total_util, dsu, dsu_extern_volt);
 
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
-		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, delta_share_pwr,
-					dsu_pwr, cpu_pwr + delta_share_pwr + dsu_pwr);
+		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr,
+					dsu_pwr, cpu_pwr + shared_pwr + dsu_pwr);
 
-	return cpu_pwr + delta_share_pwr + dsu_pwr;
+	return cpu_pwr + shared_pwr + dsu_pwr;
 }
 
 /*
