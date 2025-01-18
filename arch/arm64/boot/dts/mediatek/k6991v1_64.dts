@@ -12,6 +12,16 @@
 bootargs_ext = "";
 };
 
+&mtk_leds {
+	compatible = "mediatek,i2c-leds";
+
+	backlight {
+		led-mode = <6>;
+		gate-enable = <1>;
+		pwm-config = <0 1 0 0 0>;
+	};
+};
+
 &ssusb {
 	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
 	plat-type = <1>; /* FPGA */
@@ -62,16 +72,6 @@ bootargs_ext = "";
 				remote-endpoint = <&panel_in1>;
 			};
 		};
-	};
-};
-
-&mtk_leds {
-	compatible = "mediatek,i2c-leds";
-
-	backlight {
-		led_mode = <6>;
-		gate_enable = <1>;
-		pwm_config = <0 1 0 0 0>;
 	};
 };
 
