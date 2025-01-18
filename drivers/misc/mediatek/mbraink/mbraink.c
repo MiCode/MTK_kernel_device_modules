@@ -40,6 +40,11 @@
 #include <lpm_dbg_logger.h>
 
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
+#include "mbraink_auto_hv.h"
+#endif
+
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
@@ -1049,6 +1054,47 @@ static long handleLpmStateInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
+static long handle_cpu_loading_info(unsigned long arg, void *mbraink_data)
+{
+	struct nbl_trace_buf_trans *cpu_loading_buf = (struct nbl_trace_buf_trans *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(cpu_loading_buf, (struct nbl_trace_buf_trans *) arg,
+			sizeof(struct nbl_trace_buf_trans))) {
+		pr_notice("copy nbl_trace_buf_trans data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (cpu_loading_buf != NULL) {
+		switch (cpu_loading_buf->trans_type) {
+		case 0:
+		{
+			ret = mbraink_auto_set_vcpu_record(0);
+			break;
+		}
+		case 1:
+		{
+			ret = mbraink_auto_set_vcpu_record(1);
+			break;
+		}
+		case 2:
+		{
+			mbraink_auto_get_vcpu_record(cpu_loading_buf);
+			if (copy_to_user((struct nbl_trace_buf_trans *)arg,
+					cpu_loading_buf, sizeof(struct nbl_trace_buf_trans))) {
+				pr_notice("Copy cpu_loading_buf to UserSpace error!\n");
+				return -EPERM;
+			}
+			break;
+		}
+		}
+	}
+
+	return ret;
+}
+#endif
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1428,6 +1474,19 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+
+	case RO_AUTO_CPULOAD_INFO:
+	{
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
+		mbraink_data = vmalloc(sizeof(struct nbl_trace_buf_trans));
+		if (!mbraink_data)
+			goto End;
+		ret = handle_cpu_loading_info(arg, mbraink_data);
+		vfree(mbraink_data);
+#endif
+		break;
+	}
+
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;
@@ -1954,6 +2013,12 @@ static int mbraink_init(void)
 	ret = mbraink_wifi_init();
 	if (ret)
 		pr_notice("mbraink wifi init failed.\n");
+
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
+	ret = mbraink_auto_cpuload_init();
+	if (ret)
+		pr_notice("mbraink auto cpu load init failed.\n");
+#endif
 	return ret;
 }
 
@@ -2008,6 +2073,9 @@ static void mbraink_exit(void)
 	mbraink_power_deinit();
 	mbraink_gps_deinit();
 	mbraink_wifi_deinit();
+#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
+	mbraink_auto_cpuload_deinit();
+#endif
 }
 
 module_init(mbraink_init);

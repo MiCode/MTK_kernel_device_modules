@@ -59,6 +59,7 @@
 #define WIFI_LP_INFO			'F'
 #define POWER_THROTTLE_HW_INFO	'G'
 #define LPM_STATE_INFO			'H'
+#define AUTO_CPULOAD_INFO		'I'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -153,6 +154,9 @@
 						struct mbraink_power_throttle_hw_data*)
 #define RO_LPM_STATE_INFO		_IOR(IOC_MAGIC, LPM_STATE_INFO, \
 						struct mbraink_lpm_state_data*)
+
+#define RO_AUTO_CPULOAD_INFO	_IOR(IOC_MAGIC, AUTO_CPULOAD_INFO, \
+								struct nbl_trace_buf_trans*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
