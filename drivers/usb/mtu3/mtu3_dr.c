@@ -694,9 +694,6 @@ static ssize_t u3_lpm_store(struct device *dev,
 	if (of_property_read_bool(dev->of_node, "usb3-lpm-disable"))
 		return -EINVAL;
 
-	if (mtu->max_speed >= USB_SPEED_SUPER_PLUS)
-		return -EINVAL;
-
 	mtu->u3_lpm = enable ? 1 : 0;
 
 	return count;
