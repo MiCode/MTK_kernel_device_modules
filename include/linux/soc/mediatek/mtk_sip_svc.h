@@ -138,6 +138,10 @@
 #define MTK_IOMMU_SECURE_CONTROL \
 	MTK_SIP_SMC_CMD(0x514)
 
+/* APU related SMC call */
+#define MTK_SIP_APUPWR_CONTROL \
+	MTK_SIP_SMC_CMD(0x526)
+
 /* USB related SMC call */
 #define MTK_SIP_KERNEL_USB_CONTROL \
 	MTK_SIP_SMC_CMD(0x527)
