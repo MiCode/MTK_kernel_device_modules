@@ -28,6 +28,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VER
 endif
 endif
 
+obj-$(CONFIG_MTK_IOMMU_MISC) += mtk_iommu_util.o
+mtk_iommu_util-objs-y += mtk-iommu-util.o
+mtk_iommu_util-objs := $(mtk_iommu_util-objs-y)
+
 obj-$(CONFIG_MTK_IOMMU_MISC_DBG)    += iommu_debug.o
 obj-$(CONFIG_MTK_IOMMU_MISC_SECURE) += iommu_secure.o
 obj-$(CONFIG_MTK_IOMMU_MISC_TEST)   += iommu_test.o

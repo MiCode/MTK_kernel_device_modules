@@ -14,6 +14,8 @@
 #include "../../../iommu/mtk_iommu.h"
 #include "../../../iommu/arm/arm-smmu-v3/mtk-smmu-v3.h"
 
+#include "mtk-iommu-util.h"
+
 /*
  * For IOMMU EP/bring up phase, you must be enable "IOMMU_BRING_UP".
  * If you need to do some special config, you can also use this macro.
@@ -84,11 +86,9 @@ char *mtk_iommu_get_port_name(enum mtk_iommu_type type, int id, int tf_id);
 const struct mau_config_info *mtk_iommu_get_mau_config(
 	enum mtk_iommu_type type, int id,
 	unsigned int slave, unsigned int mau);
-int mtk_iommu_set_ops(const struct mtk_iommu_ops *ops);
-int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops);
+int mtk_smmu_set_debug_ops(const struct mtk_smmu_ops *ops);
 
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id);
@@ -100,7 +100,7 @@ void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type, bool dump_rawdata)
 void mtk_smmu_pgtable_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops);
 u64 mtk_smmu_iova_to_iopte(struct io_pgtable_ops *ops, u64 iova);
 #else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
-static inline int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
+static inline int mtk_smmu_set_debug_ops(const struct mtk_smmu_ops *ops)
 {
 	return 0;
 }
