@@ -66,10 +66,12 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_vdisp.h"
+
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
 #include "dvfsrc-exp.h"
 #endif
+#include "mtk_dsi.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
