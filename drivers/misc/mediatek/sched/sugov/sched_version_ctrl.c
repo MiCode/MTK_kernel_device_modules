@@ -21,6 +21,7 @@ bool _updown_migration_enable;
 bool _skip_hiIRQ_enable;
 bool _rt_aggre_preempt_enable;
 bool post_init_util_ctl;
+bool percore_l3_bw;
 
 int init_sched_ctrl(void)
 {
@@ -47,6 +48,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
 		post_init_util_ctl = false;
+		percore_l3_bw = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -58,6 +60,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
 		post_init_util_ctl = false;
+		percore_l3_bw = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -69,6 +72,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = true;
 		post_init_util_ctl = true;
+		percore_l3_bw = false;
 		break;
 	case EAS_6_5:
 		am_support = 1;
@@ -80,6 +84,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = true;
 		post_init_util_ctl = true;
+		percore_l3_bw = false;
 		break;
 	default:
 		am_support = 0;
@@ -91,6 +96,7 @@ int init_sched_ctrl(void)
 		_rt_aggre_preempt_enable = false;
 		_vip_enable = false;
 		post_init_util_ctl = false;
+		percore_l3_bw = false;
 		break;
 	}
 	return 0;
@@ -137,3 +143,15 @@ void sched_post_init_util_set(bool enable)
 	post_init_util_ctl = enable;
 }
 EXPORT_SYMBOL_GPL(sched_post_init_util_set);
+
+bool sched_percore_l3_bw_get(void)
+{
+	return percore_l3_bw;
+}
+EXPORT_SYMBOL_GPL(sched_percore_l3_bw_get);
+
+void sched_percore_l3_bw_set(bool enable)
+{
+	percore_l3_bw = enable;
+}
+EXPORT_SYMBOL_GPL(sched_percore_l3_bw_set);

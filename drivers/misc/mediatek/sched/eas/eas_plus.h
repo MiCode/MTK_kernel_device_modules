@@ -73,6 +73,7 @@ struct energy_env {
 	unsigned long min_cap;            /* min cap of task */
 	unsigned long max_cap;            /* max cap of task */
 
+	int dst_cpu;
 	unsigned int gear_idx;
 	unsigned long pds_busy_time[MAX_NR_CPUS];
 	unsigned long cpu_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/

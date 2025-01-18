@@ -30,6 +30,7 @@
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
 #include "sugov/dsu_interface.h"
+#include "dsu_pwr.h"
 #include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -910,6 +911,7 @@ static int __init mtk_scheduler_init(void)
 	init_gear_hints();
 
 	init_updown_migration();
+	init_percore_l3_bw();
 
 	ret = init_sched_common_sysfs();
 	if (ret)
