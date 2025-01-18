@@ -226,3 +226,14 @@ config MTK_GHPM_SUPPORT
 	  CONFIG_MTK_GHPM_SUPPORT defines the ghpm driver would be built as
 	  kernel module or not.
 	  Set Y or M to build ghpm kernel driver and set N to disable.
+
+config MTK_GPU_FWLOG_DEBUG
+	bool "Enable GPU FWLog By Default"
+	default n
+	help
+	  Choose this option to enable GPU FWlog by default.
+	  CONFIG_MTK_GPU_FWLOG_DEBUG defines
+	  If this config is set to Y, fw log-level will set to verbosity
+	  and increase buffer size.
+	  This is a config to enable debug feature.
+
