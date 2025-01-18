@@ -1574,6 +1574,8 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 
 		strncpy(coef[i].sensor_name, ref_name, strlen(ref_name));
 		coef[i].sensor_coef = ref_coef;
+		coef[i].record_temp = THERMAL_TEMP_INVALID;
+		coef[i].record_time = 0;
 	}
 
 	param = &plat_vtskin_info->params[skin_id];

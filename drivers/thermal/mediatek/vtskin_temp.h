@@ -17,6 +17,8 @@ enum vtskin_operation {
 struct vtskin_coef {
 	char sensor_name[THERMAL_NAME_LENGTH + 1];
 	long long sensor_coef;
+	int record_temp;
+	ktime_t record_time;
 };
 
 struct vtskin_tz_param {
