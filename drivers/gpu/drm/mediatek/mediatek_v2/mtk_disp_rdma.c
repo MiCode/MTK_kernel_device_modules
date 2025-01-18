@@ -1111,7 +1111,8 @@ static int mtk_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					GET_FRAME_HRT_BW_BY_DATARATE, &bw_val);
 			ret = RDMA_REQ_HRT;
 		}
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val);
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
+			priv->data->respective_ostdl);
 
 		break;
 	}
