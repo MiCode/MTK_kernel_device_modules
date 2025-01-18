@@ -21,6 +21,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/common/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_3/
 
 ccflags-$(CONFIG_IOMMU_API) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 

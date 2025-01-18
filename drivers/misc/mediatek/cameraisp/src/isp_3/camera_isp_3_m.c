@@ -55,9 +55,9 @@ static u32 PMQoS_BW_value[ISP_PASS1_PATH_TYPE_AMOUNT][_rt_dma_max_];
 #if IS_ENABLED(CONFIG_MTK_CMDQ_V3)
 #include <cmdq_core.h>
 #endif
-
+#ifdef P2_HELP
 #include <cmdq_helper_ext.h>
-
+#endif
 #if IS_ENABLED(CONFIG_COMPAT)
 /* 64 bit */
 #include <linux/compat.h>
@@ -8401,7 +8401,7 @@ static signed int ISP_GET_MARKtoQEURY_TIME(struct ISP_WAIT_IRQ_STRUCT *irqinfo)
 		IspInfo.IrqInfo.LastestSigTime_sec[irqinfo->UserInfo.Type][idx],
 		IspInfo.IrqInfo
 			.LastestSigTime_usec[irqinfo->UserInfo.Type][idx],
-		(int)sec, usec,
+		(int)sec, (int)usec,
 		IspInfo.IrqInfo.PassedBySigCnt[irqinfo->UserInfo.UserKey]
 						[irqinfo->UserInfo.Type][idx]);
 	return Ret;
@@ -11566,6 +11566,7 @@ EXIT:
 /*******************************************************************************
  *
  ******************************************************************************/
+#ifdef COMPAT_API_NEED_UPDATE
 static int
 compat_get_isp_read_register_data(
 				struct compat_ISP_REG_IO_STRUCT __user *data32,
@@ -11827,7 +11828,7 @@ static int compat_put_isp_register_userkey_struct_data(
 
 	return err;
 }
-
+#endif
 static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 			     unsigned long arg)
 {
@@ -11838,6 +11839,7 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 
 
 	switch (cmd) {
+#ifdef COMPAT_API_NEED_UPDATE
 	case COMPAT_ISP_READ_REGISTER: {
 		struct compat_ISP_REG_IO_STRUCT __user *data32;
 		struct ISP_REG_IO_STRUCT __user *data;
@@ -12088,6 +12090,7 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 		}
 		return ret;
 	}
+#endif
 	case COMPAT_ISP_DEBUG_FLAG: {
 		/* compat_ptr(arg) will convert the     arg     */
 		ret = filp->f_op->unlocked_ioctl(
@@ -13488,13 +13491,14 @@ static signed int __init ISP_Init(void)
 
 	/*      */
 	/* Register ISP callback */
+#ifdef P2_HELP
 #ifndef EP_CODE_MARK_CMDQ
 	log_inf("register isp callback for MDP");
 	cmdqCoreRegisterCB(mdp_get_group_isp(), ISP_MDPClockOnCallback,
 			   ISP_MDPDumpCallback, ISP_MDPResetCallback,
 			   ISP_MDPClockOffCallback);
 #endif
-
+#endif
 
 #ifdef _MAGIC_NUM_ERR_HANDLING_
 	log_inf("init m_LastMNum");
@@ -13523,11 +13527,13 @@ static void __exit ISP_Exit(void)
 	platform_driver_unregister(&IspDriver);
 	/*      */
 	/* Unregister ISP callback */
+#ifdef P2_HELP
 #ifndef EP_CODE_MARK_CMDQ
 	cmdqCoreRegisterCB(mdp_get_group_isp(), NULL, NULL, NULL, NULL);
 	/* Un-Register GCE callback */
 	log_inf("Un-register isp callback for GCE");
 	cmdqCoreRegisterDebugRegDumpCB(NULL, NULL);
+#endif
 #endif
 	/*      */
 	/* Un-Register M4U callback dump */
