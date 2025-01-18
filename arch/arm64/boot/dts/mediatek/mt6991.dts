@@ -2433,7 +2433,6 @@
 			dma-coherent;
 		};
 
-#if 0
 		soc_smmu_tbu_0_pmu: smmu-pmu@14942000 {
 			compatible = "arm,smmu-v3-pmcg";
 			reg = <0 0x14942000 0 0x1000>,
@@ -2566,7 +2565,6 @@
 			      <0 0x48622000 0 0x1000>;
 			mtk,smmu = <&gpu_smmu>;
 		};
-#endif
 
 		seninf_top: seninf-top@3a300000 {
 			compatible = "mediatek,seninf-core";
@@ -5040,7 +5038,6 @@
 		compatible = "mediatek,tfa_debug";
 	};
 
-#if 0
 	soc-smmu-lmu {
 		compatible = "mtk,smmu-v3-lmu";
 		mtk,smmu = <&soc_smmu>;
@@ -5080,10 +5077,38 @@
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&gpu_smmu>;
 	};
-#endif
+
+	mtkheap-slc {
+		compatible = "mediatek,dmaheap-mtk-slc";
+		heap-name = "mtk_slc";
+	};
+
 	mtk-iommu-debug {
 		compatible = "mediatek,mt6991-smmu-debug";
 	};
+
+	mtk_dmabufheap_debug0: dmaheap-test0 {
+		compatible = "mediatek, mtk_dmabufheap, iommu0";
+		mtk,smmu-shared = <&mm_smmu_disp>;
+	};
+
+	mtk_dmabufheap_debug1: dmaheap-test1 {
+		compatible = "mediatek, mtk_dmabufheap, iommu1";
+		mtk,smmu-shared = <&mm_smmu_svp_disp>;
+	};
+
+	/* smmu test devices */
+	smmu-test-ktf5 {
+		compatible = "mediatek,mm-smmu-test-ktf1";
+		dma-mmap-reg = <0x32800000 0x1000>;
+		mtk,smmu-shared = <&mm_smmu_disp>;
+	};
+
+	smmu-test-ktf6 {
+		compatible = "mediatek,mm-smmu-test-ktf2";
+		mtk,smmu-shared = <&mm_smmu_svp_disp>;
+	};
+
 	mm_smmu_cam: mm-smmu-cam {
 		//compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_cam";
