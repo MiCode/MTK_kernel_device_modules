@@ -468,35 +468,16 @@ export ROOT_DIR=.
 source "${ROOT_DIR}/build/build_utils.sh"
 source "${ROOT_DIR}/build/_setup_env.sh"
 
-export PATH="${ROOT_DIR}/prebuilts/build-tools/path/linux-x86:${ROOT_DIR}/prebuilts/build-tools/linux-x86/bin:${PATH}"
+# priority: low->high
+PATH="${ROOT_DIR}/${DEVICE_MODULES_DIR}/tools/build:${PATH}"
+PATH="${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/bin:${PATH}"
+PATH="${ROOT_DIR}/prebuilts/build-tools/linux-x86/bin:${PATH}"
+PATH="${ROOT_DIR}/prebuilts/build-tools/path/linux-x86:${PATH}"
+PATH="${ROOT_DIR}/../prebuilts/perl/linux-x86/bin:${PATH}"
+export PATH=${PATH}
 export GKI_PATH="${PATH}"
 export LD_LIBRARY_PATH="${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/lib64"
 export GKI_LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
-
-(
-    [[ "$KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING" == "1" ]] && exit 0 || true
-    echo     "Inferring equivalent Bazel command..."
-    bazel_command_code=0
-    eq_bazel_command=$(
-        ${ROOT_DIR}/build/kernel/kleaf/convert_to_bazel.sh # error messages goes to stderr
-    ) || bazel_command_code=$?
-    echo     "*****************************************************************************" >&2
-    echo     "* WARNING: build.sh is deprecated for this branch. Please migrate to Bazel.  " >&2
-    echo     "*   See build/kernel/kleaf/README.md                                         " >&2
-    if [[ $bazel_command_code -eq 0 ]]; then
-        echo "*          Possibly equivalent Bazel command:                                " >&2
-        echo "*" >&2
-        echo "*   \$ $eq_bazel_command" >&2
-        echo "*" >&2
-    else
-        echo "WARNING: Unable to infer an equivalent Bazel command.                        " >&2
-    fi
-    echo     "* To suppress this warning, set KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING=1" >&2
-    echo     "*****************************************************************************" >&2
-    echo >&2
-)
-# Suppress deprecation warning for recursive build.sh invocation with GKI_BUILD_CONFIG
-export KLEAF_SUPPRESS_BUILD_SH_DEPRECATION_WARNING=1
 
 MAKE_ARGS=( "$@" )
 export MAKEFLAGS="-j24 ${MAKEFLAGS}"
