@@ -118,14 +118,21 @@ int mtk_emimpu_lock_region(struct emimpu_region_t *rg_info, bool lock);
 int mtk_emimpu_set_protection(struct emimpu_region_t *rg_info);
 int mtk_emimpu_free_region(struct emimpu_region_t *rg_info);
 int mtk_emimpu_clear_protection(struct emimpu_region_t *rg_info);
-#endif
+
+/*
+ * this macro CONFIG_MTK_DEVMPU_EMI and function is for 6885/6893,
+ * which devmpu violation will need the both of
+ * emimpu and devmpu to handle it.
+ */
+
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
+int mtk_emimpu_prehandle_register(emimpu_pre_handler bypass_func);
+#endif /* CONFIG_MTK_DEVMPU_EMI */
+
+#endif /* CONFIG_MTK_EMI_LEGACY */
+
 int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
 void mtk_clear_md_violation(void);
 int mtk_clear_smpu_log(unsigned int emi_id);
 
-#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
-int mtk_emimpu_prehandle_register(emimpu_pre_handler bypass_func);
-#endif
-
 #endif /* __EMI_H__ */
-
