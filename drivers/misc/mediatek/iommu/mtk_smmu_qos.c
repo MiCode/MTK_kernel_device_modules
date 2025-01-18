@@ -617,7 +617,7 @@ static void smmu_pmu_polling(u32 smmu_type)
 {
 	struct smmu_pmu_data *pmu_data;
 	struct perf_event *ev;
-	u64 value, delta;
+	u64 value, delta, delta_trans = 0, delta_mrate;
 	int offset, ret;
 	u32 len, j, k;
 
@@ -642,6 +642,8 @@ static void smmu_pmu_polling(u32 smmu_type)
 			pmu_data->pmu_perfCurr[k] = value;
 			delta = (pmu_data->pmu_perfCurr[k] -
 				 pmu_data->pmu_perfPrev[k]);
+			if (j > 0 && pmu_data->event_list[k] == 1)
+				delta_trans = delta;
 			pmu_data->pmu_perfPrev[k] = pmu_data->pmu_perfCurr[k];
 			if (pmu_data->pmu_perfCntFirst[k] == 1) {
 				/* omit the first counter */
@@ -675,6 +677,24 @@ static void smmu_pmu_polling(u32 smmu_type)
 				return;
 			}
 			offset += ret;
+
+			if (j > 0 && pmu_data->event_list[k] == 2) {
+				if (delta_trans > 0 && delta > 0) {
+					delta_mrate = delta * 100;
+					do_div(delta_mrate, delta_trans);
+				} else {
+					delta_mrate = 0;
+				}
+				ret = snprintf(trace_buf + offset,
+					       len - offset,
+					       ", miss_rate_pct=%lld",
+					       delta_mrate);
+				if (ret >= (len - offset) || ret < 0) {
+					pr_info("%s, snprintf err:%d", __func__, ret);
+					return;
+				}
+				offset += ret;
+			}
 		}
 		if (offset == 0)
 			continue;
@@ -799,6 +819,8 @@ static void smmu_lmu_polling(u32 smmu_type)
 	u32 tbu_wlat_tot, tbu_rtrans_tot, tbu_wtrans_tot, tbu_roos_trans_tot;
 	u32 tbu_woos_trans_tot, tbu_avg_rlat, tbu_avg_wlat, tbu_r_buf_fullness;
 	u32 tbu_w_buf_fullness, regval, i;
+	u32 tbu_awostd_s, tbu_awostd_m, tbu_arostd_s, tbu_arostd_m;
+	u32 tbu_wostd_s, tbu_wostd_m;
 	struct smmu_lmu_data *lmu_data;
 	void __iomem *wp_base;
 	int written, ret;
@@ -832,9 +854,10 @@ static void smmu_lmu_polling(u32 smmu_type)
 
 	memset(trace_buf, 0, SMMU_QOS_TRACE_BUF_MAX);
 	ret = snprintf(trace_buf, sizeof(trace_buf),
-		       "lat_max=%u, pend_max=%u, trans_tot=%u, lat_avg=%u",
+		       "lat_max=%u, pend_max=%u, trans_tot=%u, lat_avg=%u, oos_trans_tot=%u",
 		       tcu_lat_max, tcu_pend_max,
-		       tcu_trans_tot, tcu_lat_avg);
+		       tcu_trans_tot, tcu_lat_avg,
+		       tcu_oos_trans_tot);
 	if (ret >= 0 || ret < sizeof(trace_buf))
 		smmu_qos_print_trace(lmu_tcu_trace_func[smmu_type], trace_buf);
 
@@ -886,11 +909,17 @@ static void smmu_lmu_polling(u32 smmu_type)
 
 		/* read and write buf fullness */
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_DBG1(i));
-		tbu_w_buf_fullness = FIELD_GET(DBG1_AWOSTD_S, regval) -
-				     FIELD_GET(DBG1_AWOSTD_M, regval);
+		tbu_awostd_s = FIELD_GET(DBG1_AWOSTD_S, regval);
+		tbu_awostd_m = FIELD_GET(DBG1_AWOSTD_M, regval);
+		tbu_w_buf_fullness = tbu_awostd_s - tbu_awostd_m;
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_DBG2(i));
-		tbu_r_buf_fullness = FIELD_GET(DBG2_AROSTD_S, regval) -
-				     FIELD_GET(DBG2_AROSTD_M, regval);
+		tbu_arostd_s = FIELD_GET(DBG2_AROSTD_S, regval);
+		tbu_arostd_m = FIELD_GET(DBG2_AROSTD_M, regval);
+		tbu_r_buf_fullness = tbu_arostd_s - tbu_arostd_m;
+
+		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_DBG3(i));
+		tbu_wostd_s = FIELD_GET(DBG3_WOSTD_S, regval);
+		tbu_wostd_m = FIELD_GET(DBG3_WOSTD_M, regval);
 
 		written = 0;
 		memset(trace_buf, 0, SMMU_QOS_TRACE_BUF_MAX);
@@ -922,13 +951,37 @@ static void smmu_lmu_polling(u32 smmu_type)
 		written += ret;
 
 		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
-			       "w_pend_max=%u, r_buf_fullness=%u, w_buf_fullness=%d",
+			       "w_pend_max=%u, r_buf_fullness=%u, w_buf_fullness=%d, ",
 			       tbu_wpend_max, tbu_r_buf_fullness, tbu_w_buf_fullness);
 		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
 			WARN_ON_ONCE(1);
 			continue;
 		}
 		written += ret;
+		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
+			       "roos_trans_tot=%u, woos_trans_tot=%u, ",
+			       tbu_roos_trans_tot, tbu_woos_trans_tot);
+		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
+			WARN_ON_ONCE(1);
+			continue;
+		}
+		written += ret;
+		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
+			       "awostd_s=%u, awostd_m=%u, arostd_s=%u, arostd_m=%u, ",
+			       tbu_awostd_s, tbu_awostd_m, tbu_arostd_s, tbu_arostd_m);
+		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
+			WARN_ON_ONCE(1);
+			continue;
+		}
+		written += ret;
+		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
+			       "wostd_s=%u, wostd_m=%u", tbu_wostd_s, tbu_wostd_m);
+		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
+			WARN_ON_ONCE(1);
+			continue;
+		}
+		written += ret;
+
 		if (ret >= 0 || ret < sizeof(trace_buf))
 			smmu_qos_print_trace(lmu_tbu_trace_func[smmu_type][i],
 					     trace_buf);
