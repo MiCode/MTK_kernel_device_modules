@@ -1987,8 +1987,8 @@ static int ppm_data_init(struct cluster_data *cluster)
 		ps = &pd->table[opp_nr-1-i];
 		ppm_tbl[i].power = em_scale_power(ps->power);
 		ppm_tbl[i].freq = ps->frequency;
-		ppm_tbl[i].leakage = mtk_get_leakage(first_cpu, i, NORMAL_TEMP);
-		ppm_tbl[i].thermal_leakage = mtk_get_leakage(first_cpu, i, THERMAL_TEMP);
+		ppm_tbl[i].leakage = pd_get_opp_leakage(first_cpu, i, NORMAL_TEMP);
+		ppm_tbl[i].thermal_leakage = pd_get_opp_leakage(first_cpu, i, THERMAL_TEMP);
 		ppm_tbl[i].capacity = pd_get_opp_capacity_legacy(first_cpu, i);
 		ppm_tbl[i].eff =
 			div64_u64(ppm_tbl[i].leakage + ppm_tbl[i].power, ppm_tbl[i].capacity);

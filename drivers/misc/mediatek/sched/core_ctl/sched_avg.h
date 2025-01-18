@@ -28,7 +28,7 @@ extern unsigned int get_cpu_util_pct(unsigned int cpu, bool orig);
 extern int set_over_threshold(unsigned int index, unsigned int val);
 unsigned int get_over_threshold(int index);
 unsigned int get_max_capacity(unsigned int cid);
-extern unsigned int mtk_get_leakage(unsigned int cpu,
+extern unsigned int pd_get_opp_leakage(unsigned int cpu,
 				    unsigned int opp,
 				    unsigned int temperature);
 extern unsigned long pd_get_opp_capacity_legacy(int cpu, int opp);
