@@ -13,13 +13,11 @@
 
 ccflags-y += -DMET_USER_EVENT_SUPPORT
 
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/hps_v3/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iccs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/extbuck/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/include/mt6335
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ppm_v3/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc/
