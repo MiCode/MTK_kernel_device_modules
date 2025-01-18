@@ -355,7 +355,7 @@ static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 sel, u32 bus)
 static int mtk_pcie_monitor_phy(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	u32 phy_table[11] = {0};
+	u32 phy_table[13] = {0};
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x404);
 	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
@@ -375,12 +375,20 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 		 "phy ln0 probe: 0x0x910090=%#x, 0x1180092=%#x, 0x11a011b=%#x, 0x11c011d=%#x, 0x11e011f=%#x, 0x880089=%#x\n",
 		 phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4], phy_table[10]);
 
+	/* phy_table[12] for L1P2 check pipe clock */
+	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x1);
+	phy_table[12] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_08,
+						 0xe);
+	dev_info(pcie_phy->dev, "phy ckgen probe: 0xe=%#x\n", phy_table[12]);
+
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x0);
-	/* phy_table[8] and phy_table[9] for L1P2*/
+	/* phy_table[8], phy_table[9] and phy_table[11] for L1P2 */
 	phy_table[8] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x2201);
+						 0xc0d);
 	phy_table[9] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
-						 0x2120);
+						 0x2021);
+	phy_table[11] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
+						 0x2226);
 
 	writel_relaxed(0x5600038e, pcie_phy->sif_base + PEXTP_ANA_GLB_6);
 	phy_table[5] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
@@ -390,8 +398,8 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 	writel_relaxed(0x98045600, pcie_phy->sif_base + PEXTP_ANA_GLB_9);
 	phy_table[6] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
 						 0x1b1a);
-	dev_info(pcie_phy->dev, "phy misc probe: 0x1a=%#x, 0x1b1a=%#x, 0x2201=%#x, 0x2120=%#x\n",
-		 phy_table[5], phy_table[6], phy_table[8], phy_table[9]);
+	dev_info(pcie_phy->dev, "phy misc probe: 0x1a=%#x, 0x1b1a=%#x, 0xc0d=%#x, 0x2021=%#x, 0x2226=%#x\n",
+		 phy_table[5], phy_table[6], phy_table[8], phy_table[9], phy_table[11]);
 
 	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x4);
 	phy_table[7] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
