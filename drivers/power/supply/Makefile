@@ -40,6 +40,7 @@ obj-$(CONFIG_GAUGE_MT6375) += mtk_battery_manager.o mt6375-battery.o
 mt6379-battery-objs := mt6379-gauge.o mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mtk_battery_daemon.o mtk_battery_interface.o
 obj-$(CONFIG_GAUGE_MT6379) += mtk_battery_manager.o mt6379-battery.o
 obj-$(CONFIG_CHARGER_GAUGE_MAX17332) += max1720x_battery.o
+obj-$(CONFIG_BATTERY_MM8013) += mm8013.o
 
 obj-$(CONFIG_CHARGER_TYPE_MT6357) += mt6357-charger-type.o
 obj-$(CONFIG_MTK_CHARGER_TYPE_DETECT)	+= mtk_chg_type_det.o

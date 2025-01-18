@@ -176,6 +176,15 @@ config BATTERY_MT6359P
 	  battery information , It issues interrupt when trigger
 	  threshold is met.
 
+config BATTERY_MM8013
+	tristate "MM8013 gauge ic support"
+	depends on I2C
+	help
+	  Say Y to enable support for MM8013 gauge driver.
+	  it measure battery current and temperature to provide
+	  battery information, It issues interrupt when trigger
+	  threshold is met.
+
 config DEVICE_MODULES_CHARGER_MT6360
 	tristate "Mediatek MT6360 Charger Driver"
 	depends on DEVICE_MODULES_MFD_MT6360
