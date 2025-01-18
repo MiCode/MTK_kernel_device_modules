@@ -37,6 +37,8 @@
 #include "flt_api.h"
 #include "group.h"
 #include "flt_cal.h"
+#include <linux/of.h>
+#include <linux/platform_device.h>
 #endif
 #include "grp_awr.h"
 

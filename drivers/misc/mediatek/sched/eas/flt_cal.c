@@ -1361,7 +1361,7 @@ void flt_set_grp_ctrl(int set)
 	if (set) {
 		/* force on grp dvfs*/
 		flt_ctrl_force_set(1);
-		set_grp_dvfs_ctrl(FLT_MODE2_EN);
+		flt_set_grp_dvfs_ctrl(1);
 	} else {
 		/* reset gear hint for grp task */
 		for (grp_id = 0; grp_id < GROUP_ID_RECORD_MAX; grp_id++) {
