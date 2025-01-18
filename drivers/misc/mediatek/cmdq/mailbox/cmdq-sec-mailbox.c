@@ -1815,25 +1815,28 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	struct cmdq_sec *cmdq;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
+	s32 i, err;
+#if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	struct platform_device *gz_pdev;
 	struct device_node *gz_node;
 	struct device_link *link;
 	unsigned int dl_flags = DL_FLAG_PM_RUNTIME |
 		DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_AUTOREMOVE_SUPPLIER;
-	s32 i, err;
+#endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
 
 	cmdq_msg("%s", __func__);
 
+#if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");
 	if (!gz_node) {
 		cmdq_err("failed to get android,trusty-virtio-v1");
-		return -EINVAL;
+		goto cmdq_sec_probe_mtee_end;
 	}
 
 	gz_pdev = of_find_device_by_node(gz_node);
 	if (!gz_pdev) {
 		cmdq_err("failed to find gz node");
-		return -EINVAL;
+		goto cmdq_sec_probe_mtee_end;
 	}
 
 	link = device_link_add(dev, &gz_pdev->dev, dl_flags);
@@ -1848,6 +1851,8 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 
 	cmdq_msg("Link consumer %s to supplier %s gz_node:%p flags:%#x",
 		dev_name(dev), dev_name(&gz_pdev->dev), gz_node, dl_flags);
+cmdq_sec_probe_mtee_end:
+#endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
 
 	cmdq = devm_kzalloc(&pdev->dev, sizeof(*cmdq), GFP_KERNEL);
 	if (!cmdq)
