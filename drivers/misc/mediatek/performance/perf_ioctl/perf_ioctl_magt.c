@@ -17,6 +17,7 @@ static int advice_bat_avg_current = -1;
 static int advice_bat_max_current = -1;
 static int targetfps_throttling_temp = -1;
 static int thermal_aware_light_threshold = -1;
+static int game_suggestion_jobworker = -1;
 
 module_param(thermal_aware_threshold, int, 0644);
 module_param(fpsdrop_aware_threshold, int, 0644);
@@ -24,6 +25,7 @@ module_param(advice_bat_avg_current, int, 0644);
 module_param(advice_bat_max_current, int, 0644);
 module_param(targetfps_throttling_temp, int, 0644);
 module_param(thermal_aware_light_threshold, int, 0644);
+module_param(game_suggestion_jobworker, int, 0644);
 
 static unsigned long perfctl_copy_from_user(void *pvTo,
 		const void __user *pvFrom, unsigned long ulBytes)
