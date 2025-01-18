@@ -7038,6 +7038,7 @@ bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
 		return mtk_dsi_is_cmd_mode(priv->ddp_comp[comp->id]);
 
 	if (comp->id == DDP_COMPONENT_DP_INTF0 ||
+		comp->id == DDP_COMPONENT_DP_INTF1 ||
 		comp->id == DDP_COMPONENT_DISP_DVO ||
 		comp->id == DDP_COMPONENT_DPI0 ||
 		comp->id == DDP_COMPONENT_DPI1) {
@@ -7104,7 +7105,7 @@ int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 		else
 			return mtk_crtc->gce_obj.event[EVENT_CMD_EOF];
 
-	} else if (comp->id == DDP_COMPONENT_DP_INTF0) {
+	} else if (comp->id == DDP_COMPONENT_DP_INTF0 || comp->id == DDP_COMPONENT_DP_INTF1) {
 		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];
 	}  else if (comp->id == DDP_COMPONENT_DISP_DVO) {
 		return mtk_crtc->gce_obj.event[EVENT_VDO_EOF];

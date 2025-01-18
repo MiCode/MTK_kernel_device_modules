@@ -179,6 +179,7 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 		mtk_dsi_dump(comp);
 		break;
 	case DDP_COMPONENT_DP_INTF0:
+	case DDP_COMPONENT_DP_INTF1:
 		mtk_dp_intf_dump(comp);
 		break;
 
@@ -393,6 +394,7 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 		mtk_dsi_analysis(comp);
 		break;
 	case DDP_COMPONENT_DP_INTF0:
+	case DDP_COMPONENT_DP_INTF1:
 		mtk_dp_intf_analysis(comp);
 		break;
 	case DDP_COMPONENT_POSTMASK0:

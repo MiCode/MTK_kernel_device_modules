@@ -81,7 +81,8 @@
 #define	IRQ_TABLE_DISP_MDP_RDMA0			(27)	//458
 
 #define	IRQ_TABLE_DISP_DP_INTF0_MT6991		(43)	//460
-#define	IRQ_TABLE_DISP_DVO0_MT6991		    (56)	//461
+#define	IRQ_TABLE_DISP_DVO0_MT6991		(56)	//461
+#define	IRQ_TABLE_DISP_DP_INTF1_MT6991		(44)	//464
 
 #define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
 #define IRQ_TABLE_DISP_DITHER1_MT6991          (22)    //470
@@ -235,6 +236,17 @@ static void mtk_vdisp_ao_int_sel_g2_MT6991(void)
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
+static void mtk_vdisp_ao_int_sel_g3_MT6991(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DP_INTF1_MT6991, CPU_INTSEL_BIT_14);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G3_MT6991);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
 static void mtk_vdisp_ao_int_sel_g4_MT6991(void)
 {
 	int value = 0, mask = 0;
@@ -279,6 +291,7 @@ void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 	mtk_vdisp_ao_int_sel_g0_MT6991();
 	mtk_vdisp_ao_int_sel_g1_MT6991();
 	mtk_vdisp_ao_int_sel_g2_MT6991();
+	mtk_vdisp_ao_int_sel_g3_MT6991();
 	mtk_vdisp_ao_int_sel_g4_MT6991();
 	mtk_vdisp_ao_int_sel_g5_MT6991();
 	mtk_vdisp_ao_int_sel_g6_MT6991();

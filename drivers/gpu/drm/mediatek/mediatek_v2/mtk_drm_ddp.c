@@ -30129,7 +30129,7 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			val = DDP_MUTEX_SOF_DPI0;
 		else
 			val = DDP_MUTEX_SOF_DPI1;
-	} else if (id == DDP_COMPONENT_DPI1)
+	} else if ((id == DDP_COMPONENT_DPI1) || (id == DDP_COMPONENT_DP_INTF1))
 		val = DDP_MUTEX_SOF_DPI1;
 	else if (id == DDP_COMPONENT_DISP_DVO)
 		val = DDP_MUTEX_SOF_DVO;
@@ -30261,6 +30261,7 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			reg = DDP_MUTEX_SOF_DPI0;
 		break;
 	case DDP_COMPONENT_DPI1:
+	case DDP_COMPONENT_DP_INTF1:
 		if (is_cmd_mode)
 			reg = DDP_MUTEX_SOF_SINGLE_MODE;
 		else
@@ -30369,6 +30370,7 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 	case DDP_COMPONENT_DPI0:
 	case DDP_COMPONENT_DP_INTF0:
 	case DDP_COMPONENT_DPI1:
+	case DDP_COMPONENT_DP_INTF1:
 	case DDP_COMPONENT_DISP_DVO:
 		writel_relaxed(
 			MUTEX_SOF_SINGLE_MODE,
@@ -30464,6 +30466,7 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	case DDP_COMPONENT_DPI0:
 	case DDP_COMPONENT_DP_INTF0:
 	case DDP_COMPONENT_DPI1:
+	case DDP_COMPONENT_DP_INTF1:
 	case DDP_COMPONENT_DISP_DVO:
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			       regs_pa +
