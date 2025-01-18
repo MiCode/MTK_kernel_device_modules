@@ -35,6 +35,7 @@
 #define MTK_SCPD_PROFILE		BIT(20)
 #define MTK_SCPD_WAIT_VCP		BIT(21)
 #define MTK_SCPD_PBUS_OPS		BIT(22)
+#define MTK_SCPD_HWV_CHK_MUX_OPT		BIT(23)
 
 #define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 20
@@ -97,6 +98,8 @@ struct scp_domain_data {
 	int extb_iso_offs;
 	u32 extb_iso_bits;
 	u32 hwv_debug_history_ofs;
+	u32 hwv_debug_mux_ofs_opt;
+	u32 hwv_debug_mux_shift_opt;
 	const char *basic_clk_name[MAX_CLKS];
 	const char *basic_lp_clk_name[MAX_CLKS];
 	const char *subsys_clk_prefix;
@@ -120,6 +123,7 @@ struct scp_domain {
 	const struct scp_domain_data *data;
 	struct regulator *supply;
 	struct regmap *hwv_regmap;
+	struct regmap *cksys2_regmap;
 	bool rtff_flag;
 	bool is_on;
 };
