@@ -552,8 +552,6 @@ static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	DDPDBG("%s %s,idx:%d,ext_idx:%d\n", __func__, mtk_dump_comp_str(comp), idx, ext_idx);
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
 }
@@ -561,8 +559,6 @@ static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx
 static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), 0x0, ~0);
 	/**
@@ -1090,13 +1086,9 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 
 	alpha = 0xFF & (state->base.alpha >> 8);
 
-	DDPDBG("Blending: state->base.alpha =0x%x, alpha = 0x%x\n", state->base.alpha, alpha);
 	if (state->base.fb) {
 		if (state->base.fb->format->has_alpha)
 			pixel_blend_mode = state->base.pixel_blend_mode;
-
-		DDPDBG("Blending: has_alpha %d pixel_blend_mode=0x%x fmt=0x%x\n",
-			state->base.fb->format->has_alpha, state->base.pixel_blend_mode, fmt);
 	}
 
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
@@ -1118,8 +1110,6 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		_get_bg_roi(comp, &bg_h, &bg_w);
 		offset = ((bg_h - pending->height - pending->dst_y) << 16) +
 			 (bg_w - pending->width - pending->dst_x);
-		DDPINFO("bg(%d,%d) (%d,%d,%dx%d)\n", bg_w, bg_h, pending->dst_x,
-			pending->dst_y, pending->width, pending->height);
 	} else {
 		offset = pending->offset;
 	}
@@ -1161,12 +1151,6 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER | DISP_MML_CAPS_MASK),
 		pending->mml_mode);
 
-	DDPINFO("alpha= 0x%x, con=0x%x, blend = 0x%x, reg_ovl_pitch=0x%x\n",
-		alpha,
-		alpha_con,
-		pixel_blend_mode,
-		disp_reg_ovl_pitch);
-
 	if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
@@ -1205,11 +1189,6 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 			ratio_tmp = vtotal * 100 / vact;
 		} else
 			ratio_tmp = 125;
-
-		DDPDBG("%s, vrefresh=%d, ratio_tmp=%d\n",
-			__func__, vrefresh, ratio_tmp);
-		DDPDBG("%s, vtotal=%d, vact=%d\n",
-			__func__, vtotal, vact);
 
 		mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, handle);
 	}
