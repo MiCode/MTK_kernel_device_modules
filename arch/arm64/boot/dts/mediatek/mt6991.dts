@@ -6735,8 +6735,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,suspend-mode-l12;
 			pextpcfg = <&pextp0cfg_ao_clk>;
 
+			clocks = <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_REF_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_PL_P_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_TL_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_AXI_250_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_AHB_APB_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_VLP_AO_P0_LP_PCIE>,
+				 <&cksys_clk CLK_CK_TL_SEL>;
 			resets = <&pextp0ao_rst 0>, <&pextp0ao_rst 1>;
 			reset-names = "mac", "phy";
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC0>;
 
 			phys = <&pciephy0>;
 			phy-names = "pcie-phy";
@@ -6771,8 +6779,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,dvfs-req-dis;
 			pextpcfg = <&pextp1cfg_ao_clk>;
 
+			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_REF_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_PL_P_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_TL_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_AXI_250_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P1_AHB_APB_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_VLP_AO_P1_LP_PCIE>,
+				 <&cksys_clk CLK_CK_TL_P1_SEL>;
 			resets = <&pextp1ao_rst 0>, <&pextp1ao_rst 1>;
 			reset-names = "mac", "phy";
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC1>;
+
 			phys = <&pciephy1>;
 			phy-names = "pcie-phy";
 
@@ -6806,8 +6823,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,dvfs-req-dis;
 			pextpcfg = <&pextp1cfg_ao_clk>;
 
+			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_REF_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_PL_P_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_TL_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_AXI_250_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_MAC_P2_AHB_APB_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_VLP_AO_P2_LP_PCIE>,
+				 <&cksys_clk CLK_CK_TL_P2_SEL>;
 			resets = <&pextp1ao_rst 2>, <&pextp1ao_rst 3>;
 			reset-names = "mac", "phy";
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_MAC2>;
 
 			phys = <&pciephy2>;
 			phy-names = "pcie-phy";
@@ -6832,8 +6857,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			      <0 0x16920000 0 0x10000>;
 			reg-names = "sif", "ckm";
 			num-lanes = <1>;
-			//mediatek,short-reach;
 			status = "disabled";
+
+			clocks = <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_PHY_P0_PEXTP_REF_PCIE>,
+				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_PHY_P0_MCU_BUS_PCIE>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY0>;
 		};
 
 		pciephy1: phy@16930000 {
@@ -6843,8 +6871,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			      <0 0x16950000 0 0x10000>;
 			reg-names = "sif", "ckm";
 			num-lanes = <2>;
-			//mediatek,short-reach;
 			status = "disabled";
+
+			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P1_PEXTP_REF_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P1_MCU_BUS_PCIE>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY1>;
 		};
 
 		pciephy2: phy@16960000 {
@@ -6855,6 +6886,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg-names = "sif", "ckm";
 			num-lanes = <1>;
 			status = "disabled";
+
+			clocks = <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P2_PEXTP_REF_PCIE>,
+				 <&pextp1cfg_ao_clk CLK_PEXT1_PEXTP_PHY_P2_MCU_BUS_PCIE>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_PEXTP_PHY2>;
 		};
 
 		infracfg-ao-mem@14126000 {
