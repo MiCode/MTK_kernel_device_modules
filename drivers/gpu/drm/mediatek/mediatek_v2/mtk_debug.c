@@ -566,6 +566,11 @@ void mtk_dump_mminfra_ck(void *_priv)
 		/* defined in clk-mt6989-fmeter.c */
 		DDPMSG("FM_MMINFRA_CK:%u VLP_VOTE_DONE:%u\n",
 			mt_get_fmeter_freq(28, CKGEN_CK2), readl(vlp_vote_done));
+	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		DDPMSG("FM_MMINFRA_CK:%u FM_DISP_CK:%u FM_EMIPLL:%u\n",
+			mt_get_fmeter_freq(22, CKGEN_CK2),
+			mt_get_fmeter_freq(20, CKGEN_CK2),
+			mt_get_fmeter_freq(9, ABIST));
 	}
 }
 
