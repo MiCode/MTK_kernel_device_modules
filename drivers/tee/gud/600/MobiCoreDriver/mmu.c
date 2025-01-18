@@ -179,7 +179,7 @@ static inline long gup_local(struct mm_struct *mm, uintptr_t start,
 	if (write)
 		gup_flags |= FOLL_WRITE;
 
-	return pin_user_pages(start, nr_pages, gup_flags, pages, NULL);
+	return pin_user_pages(start, nr_pages, gup_flags, pages);
 }
 #endif
 

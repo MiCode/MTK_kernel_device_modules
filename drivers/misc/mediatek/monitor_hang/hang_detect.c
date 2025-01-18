@@ -145,7 +145,7 @@ static int __access_remote_vm_for_hang(struct mm_struct *mm, unsigned long addr,
 		struct page *page = NULL;
 
 		ret = get_user_pages_remote(mm, addr, 1,
-			gup_flags, &page, &vma, NULL);
+			gup_flags, &page, NULL);
 		if (ret <= 0) {
 #ifndef CONFIG_HAVE_IOREMAP_PROT
 			break;
