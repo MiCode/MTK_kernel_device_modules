@@ -1590,8 +1590,6 @@ static const struct mtk_disp_color_data mt6781_color_driver_data = {
 	.color_offset = DISP_COLOR_START_REG,
 	.support_color21 = true,
 	.support_color30 = false,
-	.reg_table = {0x14009000, 0x1400B000, 0x1400C000,
-			0x1400D000, 0x1400F000},
 	.color_window = 0x40185E57,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
