@@ -2112,6 +2112,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/memory/mediatek/slc-parity.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
 
+        mgk_64_device_modules.remove("drivers/misc/mediatek/memory-amms/memory-amms.ko")
+
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/adsp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v1/adsp-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v2/adsp-v2.ko")
