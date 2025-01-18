@@ -8414,11 +8414,11 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->merge_trig_offset != 0)
-		merge_trigger_offset = mtk_crtc->panel_ext->params->merge_trig_offset;
+		merge_trigger_offset = CMDQ_US_TO_TICK(mtk_crtc->panel_ext->params->merge_trig_offset);
 
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->prefetch_offset != 0)
-		prefetch_te_offset = mtk_crtc->panel_ext->params->prefetch_offset;
+		prefetch_te_offset = CMDQ_US_TO_TICK(mtk_crtc->panel_ext->params->prefetch_offset);
 
 	if (crtc_id) {
 		DDPDBG("%s:%d invalid crtc:%ld\n", __func__, __LINE__, crtc_id);
