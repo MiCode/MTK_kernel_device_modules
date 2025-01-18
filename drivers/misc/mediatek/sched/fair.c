@@ -295,8 +295,8 @@ inline int reasonable_temp(int temp)
 }
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
-static inline void eenv_init(struct energy_env *eenv,
-			struct task_struct *p, int prev_cpu, struct perf_domain *pd)
+static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
+			int prev_cpu, struct perf_domain *pd, bool in_irq)
 {
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned int cpu, pd_idx;
@@ -306,7 +306,6 @@ static inline void eenv_init(struct energy_env *eenv,
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
 #endif
-	bool in_irq = in_interrupt();
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -2099,7 +2098,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	eenv_task_busy_time(&eenv, p, prev_cpu);
 
-	eenv_init(&eenv, p, prev_cpu, pd);
+	eenv_init(&eenv, p, prev_cpu, pd, in_irq);
 
 	if (!eenv.task_busy_time) {
 		select_reason = LB_ZERO_EENV_UTIL;
@@ -2153,16 +2152,13 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
-			int wl_type = get_em_wl();
 			unsigned long max_util;
 
 			max_util = eenv_pd_max_util(&eenv, cpus, p, cpu);
 
-			cur_delta = calc_pwr_eff(wl_type, cpu, max_util, eenv.val_s);
+			cur_delta = shared_buck_calc_pwr_eff(&eenv, cpu, max_util, cpus);
 			base_energy = 0;
 		} else {
-
-
 			eenv_pd_busy_time(&eenv, cpus, p);
 			cur_delta = mtk_compute_energy(&eenv, target_pd, cpus, p,
 								cpu);

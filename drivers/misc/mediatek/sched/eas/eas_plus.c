@@ -812,9 +812,106 @@ unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s)
 
 	return pwr_eff;
 }
+
+__always_inline
+unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long max_util,
+		struct cpumask *cpus, unsigned long extern_volt)
+{
+	int opp;
+	unsigned long static_pwr_eff, pwr_eff;
+	int cap;
+	int pd_pwr_eff;
+	unsigned long pd_volt;
+
+	opp = pd_get_util_opp_wFloor_Freq(eenv, cpus, max_util);
+	pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_CALC_PWR_EFF);
+	pd_volt = pd_opp2volt(cpu, opp, false, eenv->wl_type);
+	pd_pwr_eff = shared_buck_dyn_pwr(pd_pwr_eff, pd_volt, extern_volt);
+
+	cap = pd_opp2cap(cpu, opp, false, eenv->wl_type, eenv->val_s, false, DPT_CALL_CALC_PWR_EFF);
+	static_pwr_eff = shared_buck_lkg_pwr(eenv->wl_type, cpu, opp,
+				get_cpu_temp(cpu)/1000, extern_volt) / cap;
+	pwr_eff = pd_pwr_eff + static_pwr_eff;
+
+	if (trace_sched_calc_pwr_eff_enabled())
+		trace_sched_calc_pwr_eff(cpu, max_util, opp, cap,
+				pd_pwr_eff, static_pwr_eff, pwr_eff);
+
+	return pwr_eff;
+}
+
+__always_inline
+unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
+		unsigned long max_util, struct cpumask *cpus)
+{
+	int pd_idx = cpumask_first(cpus);
+	unsigned long pwr_eff;
+	unsigned long gear_max_util;
+	unsigned long dsu_volt, pd_volt, gear_volt, extern_volt;
+	int dst_idx, shared_buck_mode;
+
+	if (eenv->wl_support) {
+
+		if (share_buck.gear_idx == eenv->gear_idx)
+			dsu_volt = update_dsu_status(eenv, cpus, max_util, dst_cpu);
+		else
+			dsu_volt = 0;
+
+		extern_volt = dsu_volt;
+	}
+
+	/* dvfs Vin/Vout */
+	pd_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, max_util);
+
+	dst_idx = (dst_cpu >= 0) ? 1 : 0;
+	gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
+	gear_volt = pd_get_util_volt_wFloor_Freq(eenv, cpus, gear_max_util);
+
+	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
+		if (gear_volt-pd_volt < volt_diff) {
+			extern_volt = max(gear_volt, dsu_volt);
+			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+					cpus, extern_volt);
+			shared_buck_mode = 1;
+		} else {
+			extern_volt = 0;
+			pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+					cpus, extern_volt);
+			pwr_eff = pwr_eff * gear_volt / pd_volt;
+			shared_buck_mode = 2;
+		}
+	} else {
+		extern_volt = 0;
+		pwr_eff = calc_pwr_eff_v2(eenv, dst_cpu, max_util,
+				cpus, extern_volt);
+		shared_buck_mode = 0;
+	}
+
+	if (trace_sched_shared_buck_calc_pwr_eff_enabled())
+		trace_sched_shared_buck_calc_pwr_eff(dst_cpu, pd_idx, cpus, pwr_eff,
+			shared_buck_mode, gear_max_util, max_util,
+			gear_volt, pd_volt, dsu_volt, extern_volt);
+
+	return pwr_eff;
+}
+
 #else
 __always_inline
 unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util, int *val_s)
+{
+	return 0;
+}
+
+__always_inline
+unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long max_util,
+		struct cpumask *cpus, unsigned long extern_volt)
+{
+	return 0;
+}
+
+__always_inline
+unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
+		unsigned long max_util, struct cpumask *cpus)
 {
 	return 0;
 }
