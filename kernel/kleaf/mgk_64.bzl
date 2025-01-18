@@ -682,7 +682,6 @@ mgk_64_device_modules = [
     "drivers/soc/mediatek/mtk-pm-domain-disable-unused.ko",
     "drivers/soc/mediatek/mtk-pmic-wrap.ko",
     "drivers/soc/mediatek/mtk-scpsys.ko",
-    "drivers/soc/mediatek/mtk-scpsys-bringup.ko",
     "drivers/soc/mediatek/scpsys-dummy.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
     "drivers/soc/mediatek/mtk_tinysys_ipi.ko",
@@ -734,7 +733,7 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
-    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt6991 mt8192 mt8188",
+    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
     "drivers/clk/mediatek/clk-mt6893-apu0.ko": "mt6893",
@@ -973,6 +972,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
     "drivers/soc/mediatek/devapc/device-apc-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
+    "drivers/soc/mediatek/mtk-scpsys-bringup.ko": "mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188",
     "drivers/soc/mediatek/mtk-scpsys-mt6886.ko": "mt6886",
     "drivers/soc/mediatek/mtk-scpsys-mt6897.ko": "mt6897",
     "drivers/soc/mediatek/mtk-scpsys-mt6983.ko": "mt6983",
