@@ -40,7 +40,7 @@
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static struct cpu_dsu_freq_state *freq_state;
 #endif
 static void fuel_gauge_handler(struct work_struct *work);
@@ -403,7 +403,7 @@ void perf_tracker(u64 wallclock,
 		for_each_cpu_get_pmu(i, l3dc);
 		sbin_data_ctl |= SBIN_PMU_RECORD;
 	}
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support()) {
 		/* get U freq. voting */
 		freq_state = get_dsu_freq_state();
