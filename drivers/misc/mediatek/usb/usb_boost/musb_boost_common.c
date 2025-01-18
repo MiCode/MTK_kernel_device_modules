@@ -100,6 +100,7 @@ static int boost_ep[MAX_EP_NUM * 2 + 1];
 #endif
 
 #define MAX_LEN_WQ_NAME 32
+bool vcore_holding_by_others;
 static int trigger_cnt_disabled;
 static int enabled;
 static int inited;
