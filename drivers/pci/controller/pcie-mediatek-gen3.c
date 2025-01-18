@@ -148,6 +148,7 @@
 	PCIE_MONITOR_DEBUG_EN)
 
 #define PCIE_INT_ENABLE_REG		0x180
+#define PCIE_AXI_POST_ERR_ENABLE	BIT(16)
 #define PCIE_MSI_ENABLE			GENMASK(PCIE_MSI_SET_NUM + 8 - 1, 8)
 #define PCIE_MSI_SHIFT			8
 #define PCIE_INTX_SHIFT			24
@@ -157,6 +158,7 @@
 #define PCIE_INT_STATUS_REG		0x184
 #define PCIE_AXIERR_COMPL_TIMEOUT	BIT(18)
 #define PCIE_AXI_READ_ERR		GENMASK(18, 16)
+#define PCIE_AXI_POST_ERR_EVT		BIT(16)
 #define PCIE_AER_EVT			BIT(29)
 #define PCIE_ERR_RST_EVT		BIT(31)
 #define PCIE_MSI_SET_ENABLE_REG		0x190
@@ -726,6 +728,11 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 
 	mtk_pcie_enable_msi(port);
 
+	/* Enable axi post error interrupt*/
+	val = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+	val |= PCIE_AXI_POST_ERR_ENABLE;
+	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
+
 	if (port->pextpcfg) {
 		/* PCIe port0 read completion timeout is adjusted to 4ms */
 		val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
@@ -1106,6 +1113,12 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 	chained_irq_enter(irqchip, desc);
 
 	status = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
+	if (status & PCIE_AXI_POST_ERR_EVT) {
+		dev_info(port->dev, "PCIe AXI post error detected\n");
+		mtk_pcie_dump_link_info(port->port_num);
+		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
+	}
+
 	for_each_set_bit_from(irq_bit, &status, PCI_NUM_INTX +
 			      PCIE_INTX_SHIFT)
 		generic_handle_domain_irq(port->intx_domain,
