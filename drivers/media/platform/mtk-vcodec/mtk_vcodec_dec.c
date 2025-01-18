@@ -490,11 +490,15 @@ static u64 mtk_vdec_ts_update_mode_and_timestamp(struct mtk_vcodec_ctx *ctx, u64
 
 static int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 {
+	int default_limit = mtk_vdec_lpw_limit;
+
 	if (ctx->dynamic_low_latency)
 		return 1;
-	if (ctx->dec_params.svp_mode || ctx->picinfo.buf_w * ctx->picinfo.buf_h > MTK_VDEC_4K_WH)
-		return mtk_vdec_lpw_limit - 2;
-	return mtk_vdec_lpw_limit;
+
+	if (ctx->picinfo.buf_w * ctx->picinfo.buf_h > MTK_VDEC_4K_WH)
+		default_limit = mtk_vdec_lpw_limit - 2;
+
+	return (ctx->input_slot > 0) ? MAX(1, MIN(default_limit, ctx->input_slot - 2)) : default_limit;
 }
 
 static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
@@ -4846,6 +4850,9 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		mtk_v4l2_debug(ctrl->val ? 0 : 1, "[%d] V4L2_CID_MPEG_MTK_LINECOUNT_THRESHOLD id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 		break;
+	case V4L2_CID_VDEC_INPUT_SLOT:
+		ctx->input_slot = ctrl->val;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%x not support!", ctrl->id);
 		return -EINVAL;
@@ -5342,6 +5349,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.name = "Video LineCount ThresHold";
 	cfg.min = 0;
 	cfg.max = 32;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_VDEC_INPUT_SLOT;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video Input Slot";
+	cfg.min = 0;
+	cfg.max = 0x7fffffff;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
