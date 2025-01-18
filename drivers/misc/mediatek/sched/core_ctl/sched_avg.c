@@ -62,7 +62,7 @@ static int global_task_util;
 #define MAX_UTIL_TRACKER_PERIODIC_MS	8
 
 static int init_thres_table(void);
-static unsigned int over_thres[OVER_THRES_SIZE] = {80, 70};
+static unsigned int over_thres[OVER_THRES_SIZE] = {80, 50};
 static struct cluster_over_thres_stats cluster_over_thres_table[MAX_CLUSTER_NR];
 
 void sched_max_util_task(int *util)
