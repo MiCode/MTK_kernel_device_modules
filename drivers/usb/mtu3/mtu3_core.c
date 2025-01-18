@@ -133,6 +133,13 @@ int mtu3_device_enable(struct mtu3 *mtu)
 				     SSUSB_U3_PORT_DUAL_MODE);
 	}
 
+	/* Switch UTMI data bus to 16 bit. */
+	if (mtu->ssusb->fpga_phy == A60931_USB_PHY) {
+		dev_dbg(mtu->dev, "MTU3 FPGA Platform, switch UTMI mode.\n");
+		mtu3_setbits(ibase, U3D_SSUSB_SYS_CK_CTRL,
+				SSUSB_U2_UTMI_DATABUS_16_8);
+	}
+
 	return ssusb_check_clocks(mtu->ssusb, check_clk);
 }
 
