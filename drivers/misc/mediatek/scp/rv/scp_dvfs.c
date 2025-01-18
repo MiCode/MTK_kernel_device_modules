@@ -163,6 +163,8 @@ static struct regulator *dvfsrc_vscp_power;
 static struct regulator *reg_vcore;
 static struct regulator *reg_vsram;
 
+static int scp_pm_event(struct notifier_block *notifier, unsigned long pm_event, void *unused);
+
 /* ulposc calibration data */
 static void turn_onoff_ulposc2(enum ulposc_onoff_enum on);
 const char *ulposc_ver[MAX_ULPOSC_VERSION] __initconst = {
@@ -1089,6 +1091,12 @@ static ssize_t mt_scp_dvfs_sleep_cnt_proc_write(
 				__func__, ret);
 			return -ESCP_DVFS_IPI_FAILED;
 		}
+#if IS_ENABLED(CONFIG_PM)
+	} else if (!strcmp(cmd, "pm_suspend_prepare")) {
+		scp_pm_event(NULL, PM_SUSPEND_PREPARE, NULL);
+	} else if (!strcmp(cmd, "pm_post_suspend")) {
+		scp_pm_event(NULL, PM_POST_SUSPEND, NULL);
+#endif /* IS_ENABLED(CONFIG_PM) */
 	} else {
 		pr_notice("[%s]: invalid command: %s\n", __func__, cmd);
 		return -ESCP_DVFS_DBG_INVALID_CMD;
@@ -2301,12 +2309,6 @@ static int scp_pm_event(struct notifier_block *notifier,
 		unsigned long pm_event, void *unused)
 {
 	switch (pm_event) {
-	case PM_HIBERNATION_PREPARE:
-		return NOTIFY_DONE;
-	case PM_RESTORE_PREPARE:
-		return NOTIFY_DONE;
-	case PM_POST_HIBERNATION:
-		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
 		mt_scp_dump_sleep_count();
 		if (scpreg.low_pwr_dbg)
