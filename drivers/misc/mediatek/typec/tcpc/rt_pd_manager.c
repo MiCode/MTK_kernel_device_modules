@@ -581,7 +581,7 @@ static int typec_port_init(struct rt_pd_manager_data *rpmd, int idx)
 		goto out;
 	}
 	rpmd->partner_desc[idx].identity = &rpmd->partner_identity[idx];
-	rpmd->mux[idx] = typec_mux_get(rpmd->tcpc[idx]->dev.parent, NULL);
+	rpmd->mux[idx] = typec_mux_get(rpmd->tcpc[idx]->dev.parent);
 	if (IS_ERR(rpmd->mux[idx])) {
 		ret = PTR_ERR(rpmd->mux[idx]);
 		dev_notice(rpmd->dev, "%s typec mux get fail(%d)\n",
