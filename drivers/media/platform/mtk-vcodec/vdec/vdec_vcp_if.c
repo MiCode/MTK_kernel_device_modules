@@ -83,9 +83,9 @@ static void get_pic_info(struct vdec_inst *inst, struct vdec_pic_info *pic)
 
 	memcpy(pic, &inst->vsi->pic, sizeof(struct vdec_pic_info));
 
-	mtk_vcodec_debug(inst, "pic(%d, %d), buf(%d, %d), bitdepth = %d, fourcc = %d\n",
+	mtk_vcodec_debug(inst, "pic(%d, %d), buf(%d, %d), bitdepth = %d, fourcc = %s(0x%x)\n",
 		pic->pic_w, pic->pic_h, pic->buf_w, pic->buf_h,
-		pic->bitdepth, pic->fourcc);
+		pic->bitdepth, FOURCC_STR(pic->fourcc), pic->fourcc);
 	mtk_vcodec_debug(inst, "Y/C(%d, %d)", pic->fb_sz[0], pic->fb_sz[1]);
 }
 
@@ -552,22 +552,17 @@ void vdec_dump_mem_buf(unsigned long h_vdec)
 	struct list_head *list_ptr, *tmp;
 	struct vcp_dec_mem_list *mem_list = NULL;
 	unsigned int bs_fourcc;
-	char codec_fourcc[5] = {0};
 
 	if (inst == NULL || inst->ctx == inst->ctx->dev_ctx)
 		return;
 
 	bs_fourcc = inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
-	codec_fourcc[0] = bs_fourcc & 0xFF;
-	codec_fourcc[1] = (bs_fourcc >> 8) & 0xFF;
-	codec_fourcc[2] = (bs_fourcc >> 16) & 0xFF;
-	codec_fourcc[3] = (bs_fourcc >> 24) & 0xFF;
 
 	mutex_lock(inst->vcu.ctx_ipi_lock);
 	list_for_each_safe(list_ptr, tmp, &inst->vcu.bufs) {
 		mem_list = list_entry(list_ptr, struct vcp_dec_mem_list, list);
 		mtk_v4l2_err("[%d] %s working buffer va 0x%llx pa 0x%llx iova 0x%llx len %d type %d",
-			inst->ctx->id, codec_fourcc, mem_list->mem.va, mem_list->mem.pa,
+			inst->ctx->id, FOURCC_STR(bs_fourcc), mem_list->mem.va, mem_list->mem.pa,
 			mem_list->mem.iova, mem_list->mem.len,  mem_list->mem.type);
 	}
 	mutex_unlock(inst->vcu.ctx_ipi_lock);
@@ -1352,9 +1347,8 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	*(ctx->ipi_blocked) = 0;
 	ctx->low_pw_mode = inst->vsi->low_pw_mode;
 
-	mtk_v4l2_debug(0, "[%d] %c%c%c%c(%d) Decoder Instance >> %p, ap_inst_addr %llx",
-		ctx->id, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
-		(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
+	mtk_v4l2_debug(0, "[%d] %s(%d) Decoder Instance >> %p, ap_inst_addr %llx",
+		ctx->id, FOURCC_STR(fourcc),
 		inst->vcu.id, inst, msg.ap_inst_addr);
 
 	vcodec_trace_end();
@@ -1482,10 +1476,8 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 			return vdec_vcp_reset(inst, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
 	}
 
-	mtk_vcodec_debug(inst, "+ BS dma=0x%llx dmabuf=%p format=%c%c%c%c",
-		(uint64_t)bs->dma_addr, bs->dmabuf, bs_fourcc & 0xFF,
-		(bs_fourcc >> 8) & 0xFF, (bs_fourcc >> 16) & 0xFF,
-		(bs_fourcc >> 24) & 0xFF);
+	mtk_vcodec_debug(inst, "+ BS dma=0x%llx dmabuf=%p format=%s",
+		(uint64_t)bs->dma_addr, bs->dmabuf, FOURCC_STR(bs_fourcc));
 
 	inst->vsi->dec.vdec_bs_va = (u64)(uintptr_t)bs;
 	inst->vsi->dec.bs_dma = (uint64_t)bs->dma_addr;
@@ -1519,11 +1511,9 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
 
-	mtk_vcodec_debug(inst, "+ FB y_fd=%llx c_fd=%llx BS fd=%llx format=%c%c%c%c",
+	mtk_vcodec_debug(inst, "+ FB y_fd=%llx c_fd=%llx BS fd=%llx format=%s",
 		inst->vsi->dec.fb_fd[0], inst->vsi->dec.fb_fd[1],
-		inst->vsi->dec.bs_fd, fm_fourcc & 0xFF,
-		(fm_fourcc >> 8) & 0xFF, (fm_fourcc >> 16) & 0xFF,
-		(fm_fourcc >> 24) & 0xFF);
+		inst->vsi->dec.bs_fd, FOURCC_STR(fm_fourcc));
 
 
 	memset(&msg, 0, sizeof(msg));
@@ -1858,8 +1848,8 @@ static void get_supported_format(struct vdec_inst *inst,
 
 	for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 		if (video_fmt[i].fourcc != 0) {
-			mtk_vcodec_debug(inst, "video_formats[%d] fourcc %d type %d num_planes %d\n",
-				i, video_fmt[i].fourcc, video_fmt[i].type,
+			mtk_vcodec_debug(inst, "video_formats[%d] fourcc %s(0x%x) type %d num_planes %d\n",
+				i, FOURCC_STR(video_fmt[i].fourcc), video_fmt[i].fourcc, video_fmt[i].type,
 				video_fmt[i].num_planes);
 		}
 	}
@@ -1870,11 +1860,11 @@ static void get_supported_frame_intervals(struct vdec_inst *inst,
 {
 	vdec_vcp_query_cap(inst, GET_PARAM_VDEC_CAP_FRAMEINTERVALS, (uintptr_t)f_ints);
 
-	mtk_vcodec_debug(inst, "codec fourcc %d w %d h %d max %d/%d min %d/%d step %d/%d\n",
-			 f_ints->fourcc, f_ints->width, f_ints->height,
-			 f_ints->stepwise.max.numerator, f_ints->stepwise.max.denominator,
-			 f_ints->stepwise.min.numerator, f_ints->stepwise.min.denominator,
-			 f_ints->stepwise.step.numerator, f_ints->stepwise.step.denominator);
+	mtk_vcodec_debug(inst, "codec fourcc %s(0x%x) w %d h %d max %d/%d min %d/%d step %d/%d\n",
+		FOURCC_STR(f_ints->fourcc), f_ints->fourcc, f_ints->width, f_ints->height,
+		f_ints->stepwise.max.numerator, f_ints->stepwise.max.denominator,
+		f_ints->stepwise.min.numerator, f_ints->stepwise.min.denominator,
+		f_ints->stepwise.step.numerator, f_ints->stepwise.step.denominator);
 }
 
 static void get_frame_sizes(struct vdec_inst *inst,
@@ -1886,9 +1876,8 @@ static void get_frame_sizes(struct vdec_inst *inst,
 
 	for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 		if (codec_framesizes[i].fourcc != 0) {
-			mtk_vcodec_debug(inst,
-				"codec_fs[%d] fourcc %d s %d %d %d %d %d %d P %d L %d\n",
-				i, codec_framesizes[i].fourcc,
+			mtk_vcodec_debug(inst, "codec_fs[%d] fourcc %s(0x%x) s %d %d %d %d %d %d P %d L %d\n",
+				i, FOURCC_STR(codec_framesizes[i].fourcc), codec_framesizes[i].fourcc,
 				codec_framesizes[i].stepwise.min_width,
 				codec_framesizes[i].stepwise.max_width,
 				codec_framesizes[i].stepwise.step_width,

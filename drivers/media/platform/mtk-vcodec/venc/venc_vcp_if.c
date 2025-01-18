@@ -1316,14 +1316,9 @@ static int venc_encode_frame(struct venc_inst *inst,
 		return ret;
 
 	++inst->frm_cnt;
-	mtk_vcodec_debug(inst,
-		 "Format: frame_va %llx (%c%c%c%c) bs_va:%llx (%c%c%c%c)",
-		  inst->vsi->venc.venc_fb_va,
-		  fm_fourcc & 0xFF, (fm_fourcc >> 8) & 0xFF,
-		  (fm_fourcc >> 16) & 0xFF, (fm_fourcc >> 24) & 0xFF,
-		  inst->vsi->venc.venc_bs_va,
-		  bs_fourcc & 0xFF, (bs_fourcc >> 8) & 0xFF,
-		  (bs_fourcc >> 16) & 0xFF, (bs_fourcc >> 24) & 0xFF);
+	mtk_vcodec_debug(inst, "Format: frame_va %llx (%s) bs_va:%llx (%s)",
+		inst->vsi->venc.venc_fb_va, FOURCC_STR(fm_fourcc),
+		inst->vsi->venc.venc_bs_va, FOURCC_STR(bs_fourcc));
 
 	return ret;
 }
@@ -1937,7 +1932,7 @@ static int venc_vcp_set_param(unsigned long handle,
 			enc_prm->mlvec_mode;
 
 		fmt = inst->ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
-		mtk_vcodec_debug(inst, "fmt:%u", fmt);
+		mtk_vcodec_debug(inst, "fmt:%s(0x%x)", FOURCC_STR(fmt), fmt);
 
 		if (fmt == V4L2_PIX_FMT_H264) {
 			inst->vsi->config.profile = enc_prm->profile;

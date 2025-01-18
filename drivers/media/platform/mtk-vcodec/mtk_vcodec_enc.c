@@ -253,15 +253,14 @@ static void get_supported_framesizes(struct mtk_vcodec_ctx *ctx)
 
 		for (i = 0; i < MTK_MAX_ENC_CODECS_SUPPORT; i++) {
 			if (mtk_venc_framesizes[i].fourcc != 0) {
-				mtk_v4l2_debug(1,
-				"venc_fs[%d] fourcc %d s %d %d %d %d %d %d\n",
-				i, mtk_venc_framesizes[i].fourcc,
-				mtk_venc_framesizes[i].stepwise.min_width,
-				mtk_venc_framesizes[i].stepwise.max_width,
-				mtk_venc_framesizes[i].stepwise.step_width,
-				mtk_venc_framesizes[i].stepwise.min_height,
-				mtk_venc_framesizes[i].stepwise.max_height,
-				mtk_venc_framesizes[i].stepwise.step_height);
+				mtk_v4l2_debug(1, "venc_fs[%d] fourcc %s(0x%x) s %d %d %d %d %d %d\n",
+					i, FOURCC_STR(mtk_venc_framesizes[i].fourcc), mtk_venc_framesizes[i].fourcc,
+					mtk_venc_framesizes[i].stepwise.min_width,
+					mtk_venc_framesizes[i].stepwise.max_width,
+					mtk_venc_framesizes[i].stepwise.step_width,
+					mtk_venc_framesizes[i].stepwise.min_height,
+					mtk_venc_framesizes[i].stepwise.max_height,
+					mtk_venc_framesizes[i].stepwise.step_height);
 			}
 		}
 	}
@@ -414,9 +413,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 					offset_size = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 1024 :
 						(isVencAfbc10BFormat(pconfig->input_fourcc) ? 512 : 384);
 
-					mtk_v4l2_debug(0,
-						"venc dump format %d afbc 1st mb of 1st block w/h=%d/%d offset=0x%x =>",
-						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, header_size);
+					mtk_v4l2_debug(0, "venc dump format %s(0x%x) afbc 1st mb of 1st block w/h=%d/%d offset=0x%x =>",
+						FOURCC_STR(pconfig->input_fourcc), pconfig->input_fourcc,
+						pconfig->buf_w, pconfig->buf_h, header_size);
 
 					dump_size = ((header_size + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
 					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)header_size;
@@ -426,9 +425,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 						+ (offset_size * CEIL_DIV(pconfig->buf_w, superblock_width)),
 						4096);
 
-					mtk_v4l2_debug(0,
-						"venc dump format %d afbc 2nd mb of 1st block w/h=%d/%d offset=0x%x =>",
-						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
+					mtk_v4l2_debug(0, "venc dump format %s(0x%x) afbc 2nd mb of 1st block w/h=%d/%d offset=0x%x =>",
+						FOURCC_STR(pconfig->input_fourcc), pconfig->input_fourcc,
+						pconfig->buf_w, pconfig->buf_h, payload_offset);
 
 					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
 					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
@@ -438,9 +437,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 						+ (offset_size * CEIL_DIV(pconfig->buf_w, superblock_width) * 2),
 						4096);
 
-					mtk_v4l2_debug(0,
-						"venc dump format %d afbc 3rd mb of 1st block w/h=%d/%d offset=0x%x =>",
-						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
+					mtk_v4l2_debug(0, "venc dump format %s(0x%x) afbc 3rd mb of 1st block w/h=%d/%d offset=0x%x =>",
+						FOURCC_STR(pconfig->input_fourcc), pconfig->input_fourcc,
+						pconfig->buf_w, pconfig->buf_h, payload_offset);
 
 					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
 					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
@@ -451,9 +450,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 						* CEIL_DIV(pconfig->buf_h, superblock_height) - 1)),
 						4096);
 
-					mtk_v4l2_debug(0,
-						"venc dump format %d afbc last mb of 1st block w/h=%d/%d offset=0x%x =>",
-						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
+					mtk_v4l2_debug(0, "venc dump format %s(0x%x) afbc last mb of 1st block w/h=%d/%d offset=0x%x =>",
+						FOURCC_STR(pconfig->input_fourcc), pconfig->input_fourcc,
+						pconfig->buf_w, pconfig->buf_h, payload_offset);
 
 					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
 					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
@@ -509,7 +508,7 @@ static struct mtk_video_fmt *mtk_venc_find_format(struct v4l2_format *f,
 	struct mtk_video_fmt *fmt;
 	unsigned int k;
 
-	mtk_v4l2_debug(3, "fourcc %d", f->fmt.pix_mp.pixelformat);
+	mtk_v4l2_debug(2, "fourcc %s(0x%x)", FOURCC_STR(f->fmt.pix_mp.pixelformat), f->fmt.pix_mp.pixelformat);
 	for (k = 0; k < MTK_MAX_ENC_CODECS_SUPPORT &&
 	     mtk_venc_formats[k].fourcc != 0; k++) {
 		fmt = &mtk_venc_formats[k];
@@ -1223,13 +1222,13 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt,
 			return -EINVAL;
 		}
 
-		mtk_v4l2_debug(1,
-			       "pix_fmt_mp->pixelformat %d bs fmt %d min_w %d min_h %d max_w %d max_h %d\n",
-			       pix_fmt_mp->pixelformat, bs_fourcc,
-			       spec_size_info->stepwise.min_width,
-			       spec_size_info->stepwise.min_height,
-			       spec_size_info->stepwise.max_width,
-			       spec_size_info->stepwise.max_height);
+		mtk_v4l2_debug(1, "pix_fmt_mp->pixelformat %s(0x%x) bs fmt %s(0x%x) min_w %d min_h %d max_w %d max_h %d\n",
+			FOURCC_STR(pix_fmt_mp->pixelformat), pix_fmt_mp->pixelformat,
+			FOURCC_STR(bs_fourcc), bs_fourcc,
+			spec_size_info->stepwise.min_width,
+			spec_size_info->stepwise.min_height,
+			spec_size_info->stepwise.max_width,
+			spec_size_info->stepwise.max_height);
 
 		if ((spec_size_info->stepwise.step_width &
 		     (spec_size_info->stepwise.step_width - 1)) != 0)
@@ -1555,7 +1554,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 		break;
 
 	default:
-		mtk_v4l2_err("Unsupport fourcc =%d default use I420",
+		mtk_v4l2_err("Unsupport fourcc =0x%x default use I420",
 			q_data_src->fmt->fourcc);
 		param->input_yuv_fmt = VENC_YUV_FORMAT_I420;
 		break;
@@ -1740,8 +1739,8 @@ static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 		mtk_vcodec_config_group_list();
 		ret = venc_if_init(ctx, q_data->fmt->fourcc);
 		if (ret) {
-			mtk_v4l2_err("venc_if_init failed=%d, codec type=%x",
-				     ret, q_data->fmt->fourcc);
+			mtk_v4l2_err("venc_if_init failed=%d, codec type=%s(0x%x)",
+				ret, FOURCC_STR(q_data->fmt->fourcc), q_data->fmt->fourcc);
 			mtk_venc_error_handle(ctx);
 			return -EBUSY;
 		}
