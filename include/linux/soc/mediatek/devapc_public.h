@@ -40,6 +40,12 @@ enum devapc_cb_status {
 	DEVAPC_NOT_KE,
 };
 
+struct devapc_excep_callbacks {
+	struct list_head list;
+	enum devapc_type type;
+	bool (*handle_excep)(int devapc_type, int slave_type, int vio_idx);
+};
+
 struct devapc_vio_callbacks {
 	struct list_head list;
 	enum infra_subsys_id id;
@@ -55,6 +61,7 @@ struct devapc_power_callbacks {
 
 uint32_t devapc_vio_check(void);
 void dump_dbg_info(void);
+void register_devapc_exception_callback(struct devapc_excep_callbacks *excepcb);
 void register_devapc_vio_callback(struct devapc_vio_callbacks *viocb);
 void register_devapc_power_callback(struct devapc_power_callbacks *powercb);
 void devapc_catch_illegal_range(phys_addr_t phys_addr, size_t size);

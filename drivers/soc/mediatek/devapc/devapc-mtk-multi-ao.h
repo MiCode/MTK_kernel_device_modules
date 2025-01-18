@@ -91,6 +91,13 @@ enum devapc_vio_type {
 	DEVAPC_VIO_MAX,
 };
 
+enum devapc_excep_type {
+	DEVAPC_EXCEP_HANDLED_NOT_KE = 0,
+	DEVAPC_EXCEP_HANDLED,
+	DEVAPC_EXCEP_NOT_HANDLED,
+	DEVAPC_EXCEP_MAX,
+};
+
 enum devapc_get_type {
 	DEVAPC_GET_INFRA = 0,
 	DEVAPC_GET_PERI,
