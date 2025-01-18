@@ -287,7 +287,7 @@ static ssize_t led_type_store(struct device *dev,
 	if (ret)
 		goto unlock;
 
-	led_conf->led_type = state;
+	led_conf->led_type = min_t(unsigned long, state, LED_TYPE_MAX);
 	call_notifier(LED_TYPE_CHANGED, led_conf);
 
 	ret = size;
@@ -366,6 +366,9 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 		return ret;
 	pr_debug("set hw brightness(%s): %d -> %d",
 		led_dat->conf.cdev.name, led_dat->hw_brightness, brightness);
+
+	if (led_dat->conf.connector_id <= 0)
+		led_dat->mtk_conn_id_get(led_dat, led_dat->desp.index);
 	ret = led_dat->mtk_hw_brightness_set(led_dat, brightness, params, params_flag);
 	if (ret >= 0) {
 		if (brightness != led_dat->hw_brightness &&
@@ -389,6 +392,10 @@ int mtk_leds_brightness_set(int connector_id, int level,
 	struct mt_led_data *led_dat;
 	int index;
 
+	if (level < 0) {
+		pr_info("connector_id %d set invalid brightness %d", connector_id, level);
+		return -EINVAL;
+	}
 	index = get_desp_index(connector_id);
 	if (index < 0) {
 		pr_info("can not find leds by led_desp connector id %d", connector_id);
@@ -486,6 +493,11 @@ int setMaxBrightness(int connector_id, int percent, bool enable)
 	struct mt_led_data *led_dat;
 	int i = 0, index = -1;
 	bool bSetall = false;
+
+	if (percent <= 0) {
+		pr_info("connector_id %d set invalid percent %d", connector_id, percent);
+		return -EINVAL;
+	}
 
 	if (-1 == connector_id)
 		bSetall = true;
