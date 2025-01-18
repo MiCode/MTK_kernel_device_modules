@@ -93,48 +93,102 @@ EXPORT_SYMBOL(g_ring_buffer_spinlock);
 struct mme_module_t mme_globals[MME_MODULE_MAX] = {0};
 EXPORT_SYMBOL(mme_globals);
 
-bool mme_register_buffer(unsigned int module, char *module_buffer_name, unsigned int type,
+#define MME_MRDUMP_BUFFER_SIZE (3*1024*1024)
+#define MAX_MODULE_BUFFER_SIZE (10*1024*1024)
+#define DBG_BUFFER_INIT_SIZE (2880*1024)
+
+char *g_mrdump_buffer;
+char *g_dbg_buffer;
+unsigned int g_dbg_buffer_pos;
+
+static DEFINE_SPINLOCK(g_register_spinlock);
+
+bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned int type,
 						unsigned int buffer_size)
 {
+	unsigned long va;
+	unsigned long pa;
+	char module_aee_name[256];
+	unsigned long flags = 0;
+	unsigned int module_buf_size = ((buffer_size + (PAGE_SIZE - 1)) & (~(PAGE_SIZE - 1)));
+
 	DEFINE_SPINLOCK(t_spinlock);
 
-	if (module >= MME_MODULE_MAX || type >= MME_BUFFER_INDEX_MAX || buffer_size > 15*1024*1024) {
-		MMEERR("register fail, module:%d, type:%d, buffer_size:%d",
-				module, type, buffer_size);
+	if (module >= MME_MODULE_MAX || type >= MME_BUFFER_INDEX_MAX ||
+		module_buf_size > MAX_MODULE_BUFFER_SIZE) {
+		MMEERR("register fail, module:%d, type:%d, module_buf_size:%d, module_buf_name:%s",
+				module, type, module_buf_size, module_buf_name);
 		return false;
 	}
 
-	MMEMSG("module:%d,module_buffer_name:%s,type:%d,buffer_size:%d",
-			module, module_buffer_name, type, buffer_size);
-	mme_globals[module].module = module;
-	memset(mme_globals[module].module_buffer_name[type], 0, MME_MODULE_NAME_LEN);
-	if (module_buffer_name)
-		memcpy(mme_globals[module].module_buffer_name[type], module_buffer_name,
-				strlen(module_buffer_name));
-	mme_globals[module].write_pointer[type] = 0;
-	mme_globals[module].buffer_bytes[type] = ((buffer_size + (PAGE_SIZE - 1)) &
-											(~(PAGE_SIZE - 1)));
-	mme_globals[module].buffer_units[type] = mme_globals[module].buffer_bytes[type] /
-											MME_UNIT_SIZE;
-	g_ring_buffer_units[module][type] = mme_globals[module].buffer_units[type] -
-										RESERVE_BUFFER_UNITS;
+	if (p_mme_ring_buffer[module][type]) {
+		MMEERR("Duplicate register buf, module:%d, type:%d, module_buf_size:%d, module_buf_name:%s",
+				module, type, module_buf_size, module_buf_name);
+		return false;
+	}
 
-	if(!p_mme_ring_buffer[module][type]) {
-		p_mme_ring_buffer[module][type] =
-#if IS_ENABLED(CONFIG_MTK_USE_RESERVED_EXT_MEM)
-			(struct mme_unit_t *)
-			extmem_malloc_page_align(
-				mme_globals[module].buffer_bytes[type]);
-#else
-			vmalloc(mme_globals[module].buffer_bytes[type]);
+	spin_lock_irqsave(&g_register_spinlock, flags);
+	if (!g_dbg_buffer) {
+		g_dbg_buffer_pos = 0;
+		g_dbg_buffer = kzalloc(DBG_BUFFER_INIT_SIZE, GFP_KERNEL);
+
+		if (!g_dbg_buffer) {
+			MMEERR("Failed to allocate g_dbg_buffer");
+			spin_unlock_irqrestore(&g_register_spinlock, flags);
+			return false;
+		}
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+		va = (unsigned long)g_dbg_buffer;
+		pa = __pa_nodebug(va);
+
+		mrdump_mini_add_extra_file(va, pa, DBG_BUFFER_INIT_SIZE, "MME_DEBUG");
+		if (!g_mrdump_buffer) {
+			g_mrdump_buffer = kzalloc(MME_MRDUMP_BUFFER_SIZE, GFP_KERNEL);
+			if (!g_mrdump_buffer)
+				MMEERR("Failed to allocate g_mrdump_buffer");
+		}
 #endif
 	}
 
-	if (!p_mme_ring_buffer[module][type]) {
-		MMEMSG("Failed to allocate memory for ring buffer\n");
-		return false;
+	MMEMSG("module:%d,module_buf_name:%s,type:%d,module_buf_size:%d, g_dbg_buffer_pos:%d",
+			module, module_buf_name, type, module_buf_size, g_dbg_buffer_pos);
+
+	if (g_dbg_buffer_pos + module_buf_size <= DBG_BUFFER_INIT_SIZE) {
+		p_mme_ring_buffer[module][type] = (struct mme_unit_t *)(g_dbg_buffer + g_dbg_buffer_pos);
+		mme_globals[module].buffer_start_pos[type] = g_dbg_buffer_pos + 1;
+		g_dbg_buffer_pos += module_buf_size;
+	} else {
+		p_mme_ring_buffer[module][type] = kzalloc(module_buf_size, GFP_KERNEL);
+
+		if (!p_mme_ring_buffer[module][type]) {
+			MMEERR("Failed to allocate memory for ring buffer\n");
+			spin_unlock_irqrestore(&g_register_spinlock, flags);
+			return false;
+		}
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+		va = (unsigned long)p_mme_ring_buffer[module][type];
+		pa = __pa_nodebug(va);
+
+		snprintf(module_aee_name, sizeof(module_aee_name), "MME_%s", module_buf_name);
+		mrdump_mini_add_extra_file(va, pa, mme_globals[module].buffer_bytes[type], module_aee_name);
+#endif
 	}
-	memset((void *)(p_mme_ring_buffer[module][type]), 0, mme_globals[module].buffer_bytes[type]);
+
+	mme_globals[module].module = module;
+	memset(mme_globals[module].module_buffer_name[type], 0, MME_MODULE_NAME_LEN);
+	if (module_buf_name)
+		memcpy(mme_globals[module].module_buffer_name[type], module_buf_name,
+				MIN(strlen(module_buf_name), (MME_MODULE_NAME_LEN-1)));
+	mme_globals[module].write_pointer[type] = 0;
+	mme_globals[module].buffer_bytes[type] = module_buf_size;
+	mme_globals[module].buffer_units[type] = module_buf_size / MME_UNIT_SIZE;
+	g_ring_buffer_units[module][type] = mme_globals[module].buffer_units[type] -
+										RESERVE_BUFFER_UNITS;
+
+	spin_unlock_irqrestore(&g_register_spinlock, flags);
+
 	g_ring_buffer_spinlock[module][type] = t_spinlock;
 	mme_globals[module].enable = 1;
 	bmme_init_buffer = 1;
@@ -145,12 +199,10 @@ EXPORT_SYMBOL(mme_register_buffer);
 
 void mme_release_buffer(unsigned int module, unsigned int type)
 {
-
-	if (p_mme_ring_buffer[module][type]) {
+	if (mme_globals[module].buffer_start_pos[type] == 0 && p_mme_ring_buffer[module][type])
 		vfree(p_mme_ring_buffer[module][type]);
-		p_mme_ring_buffer[module][type] = 0;
-	}
 
+	p_mme_ring_buffer[module][type] = 0;
 	mme_globals[module].write_pointer[type] = 0;
 	mme_globals[module].buffer_bytes[type] = 0;
 	mme_globals[module].buffer_units[type] = 0;
@@ -162,11 +214,25 @@ static void mme_release_all_buffer(void)
 {
 	unsigned int module, type;
 
+	if (g_dbg_buffer) {
+		vfree(g_dbg_buffer);
+		g_dbg_buffer = 0;
+		g_dbg_buffer_pos = 0;
+	}
+
 	for (module=0; module<MME_MODULE_MAX; module++) {
 		for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
 			if (p_mme_ring_buffer[module][type]) {
-				vfree(p_mme_ring_buffer[module][type]);
+				if (mme_globals[module].buffer_start_pos[type] == 0)
+					vfree(p_mme_ring_buffer[module][type]);
+				else
+					mme_globals[module].buffer_start_pos[type] = 0;
+
 				p_mme_ring_buffer[module][type] = 0;
+				g_ring_buffer_units[module][type] = 0;
+				mme_globals[module].write_pointer[type] = 0;
+				mme_globals[module].buffer_bytes[type] = 0;
+				mme_globals[module].buffer_units[type] = 0;
 			}
 		}
 	}
@@ -194,17 +260,22 @@ static void mme_log_start(void)
 static void mme_scale_buffer(unsigned int module, unsigned int scale_value)
 {
 	unsigned int type;
+	char module_buf_name[MME_MODULE_NAME_LEN];
 
 	MMEMSG("module:%d, scale_value:%d", module, scale_value);
+
+
 	mme_log_pause();
 	for (type = 0; type < MME_BUFFER_INDEX_MAX; type++) {
-		char *module_buffer_name = mme_globals[module].module_buffer_name[type];
+		memcpy(module_buf_name, mme_globals[module].module_buffer_name[type],
+				MME_MODULE_NAME_LEN);
 		if (mme_globals[module].buffer_bytes[type] != 0) {
 			unsigned int new_buffer_size = mme_globals[module].buffer_bytes[type] *
 											scale_value;
 
 			mme_release_buffer(module, type);
-			mme_register_buffer(module, module_buffer_name, type, new_buffer_size);
+			mme_register_buffer(module, module_buf_name, type,
+							MIN(MAX_MODULE_BUFFER_SIZE, new_buffer_size));
 		}
 	}
 	mme_log_start();
@@ -225,7 +296,6 @@ EXPORT_SYMBOL(mme_register_dump_callback);
 
 #define MME_DUMP_BLOCK_SIZE (1024*4)
 #define MME_MODULE_DUMP_SIZE (1024*4)
-#define MME_MRDUMP_BUFFER_SIZE (1024*1024*6)
 #define STRING_BUFFER_LEN 1024
 #define INVALIDE_EVENT -1
 #define SUCCESS 1
@@ -641,7 +711,7 @@ static void mme_init_android_time(void)
 }
 
 static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned int block_buf_size,
-								unsigned int *p_copy_size)
+								unsigned int *p_copy_size, bool is_mrdump)
 {
 	unsigned int total_pos = start;
 	unsigned int total_index = 0;
@@ -657,7 +727,6 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 	}
 
 	*p_copy_size = block_buf_size;
-	memset(p_block_buf, 0, block_buf_size);
 
 	if (total_pos == 0) {
 		unsigned int dump_size = 0;
@@ -715,14 +784,17 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 			kfree(p_dump_buffer[module]);
 			p_dump_buffer[module] = 0;
 
-			for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
-				MMEINFO("module=%d,type=%d,total_index:0x%x,region_base:0x%x,block_pos:0x%x",
-						module, type, total_index, region_base, block_pos);
-				mme_dump_buffer(p_mme_ring_buffer[module][type], p_block_buf,
-						mme_globals[module].buffer_bytes[type],
-						block_buf_size, &total_pos, &region_base, &block_pos);
-				if (block_pos == block_buf_size)
-					return;
+			// If is_mrdump = true, there is no need to dump the contents of p_mme_ring_buffer.
+			if (!is_mrdump) {
+				for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
+					MMEINFO("module=%d,type=%d,total_index:0x%x,region_base:0x%x,block_pos:0x%x",
+							module, type, total_index, region_base, block_pos);
+					mme_dump_buffer(p_mme_ring_buffer[module][type], p_block_buf,
+							mme_globals[module].buffer_bytes[type],
+							block_buf_size, &total_pos, &region_base, &block_pos);
+					if (block_pos == block_buf_size)
+						return;
+				}
 			}
 		}
 	}
@@ -764,7 +836,8 @@ static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
 	MMEINFO("size=%ld ppos=%lld", (unsigned long)size, *ppos);
 	while (size > 0) {
 		addr = (unsigned long)mme_dump_block;
-		mme_get_dump_buffer(*ppos, mme_dump_block, MME_DUMP_BLOCK_SIZE, &copy_size);
+		memset(mme_dump_block, 0, MME_DUMP_BLOCK_SIZE);
+		mme_get_dump_buffer(*ppos, mme_dump_block, MME_DUMP_BLOCK_SIZE, &copy_size, false);
 		if (copy_size == 0) {
 			mme_log_start();
 			break;
@@ -789,7 +862,6 @@ static ssize_t mmevent_dbgfs_buffer_read(struct file *file, char __user *buf,
 
 void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 {
-	unsigned char *p_dbg_buffer = NULL;
 	unsigned int copy_size = 0;
 
 	if (!bmme_init_buffer) {
@@ -797,16 +869,16 @@ void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 		return;
 	}
 
+	if (!g_mrdump_buffer) {
+		MMEERR("g_mrdump_buffer is not create");
+		return;
+	}
+
 	mme_log_pause();
 
-	p_dbg_buffer = vmalloc(MME_MRDUMP_BUFFER_SIZE);
-	if (p_dbg_buffer) {
-		int start = 0;
-
-		mme_get_dump_buffer(start, p_dbg_buffer, MME_MRDUMP_BUFFER_SIZE, &copy_size);
-		*vaddr = (unsigned long)p_dbg_buffer;
-		*size = copy_size;
-	}
+	*vaddr = (unsigned long)g_mrdump_buffer;
+	mme_get_dump_buffer(0, g_mrdump_buffer, MME_MRDUMP_BUFFER_SIZE, &copy_size, true);
+	*size = copy_size;
 }
 
 // ------------------------------- Driver Section ---------------------------------------------
@@ -929,6 +1001,10 @@ static int mmevent_probe(void)
 	mme_dev = kzalloc(sizeof(*mme_dev), GFP_KERNEL);
 	if (!mme_dev)
 		return -ENOMEM;
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+		mrdump_set_extra_dump(AEE_EXTRA_FILE_MME, mmevent_mrdump_buffer);
+#endif
 
 	mme_dev->minor = MISC_DYNAMIC_MINOR;
 	mme_dev->name = "mme";
