@@ -18239,6 +18239,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mtk,mt6379-eusb2-repeater";
 			reg = <0xd00>;
 			#phy-cells = <0>;
+			mediatek,rx-sqth = <0x5>;
+			mediatek,pre-emphasis = <0x4>;
 			status = "okay";
 		};
 	};
