@@ -9,7 +9,7 @@
 			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
 			reg = <0 0x0d041000 0 0x1000>;
 
-			status = "disabled";
+			status = "ok";
 
 			clocks = <&clk26m>;
 			clock-names = "apb_pclk";
@@ -77,7 +77,7 @@
 			clocks = <&clk26m>;
 			clock-names = "apb_pclk";
 
-			status = "disabled";
+			status = "ok";
 
 			in-ports {
 				port {
@@ -103,7 +103,7 @@
 			clocks = <&clk26m>;
 			clock-names = "apb_pclk";
 
-			status = "disabled";
+			status = "ok";
 
 			in-ports {
 				port {
@@ -188,7 +188,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu0>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -203,7 +203,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu1>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -218,7 +218,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu2>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -233,7 +233,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu3>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -248,7 +248,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu4>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -263,7 +263,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu5>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -278,7 +278,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu6>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
@@ -293,7 +293,7 @@
 			compatible = "arm,embedded-trace-extension";
 			cpu = <&cpu7>;
 
-			status = "disabled";
+			status = "ok";
 
 			out-ports {
 				port {
