@@ -231,6 +231,55 @@ static int set_clkmux_memory(const u8 idx, const u8 enable)
 	return 0;
 }
 
+/* boot type definitions */
+enum boot_mode_t {
+	NORMAL_BOOT			= 0,
+	META_BOOT			= 1,
+	RECOVERY_BOOT			= 2,
+	SW_REBOOT			= 3,
+	FACTORY_BOOT			= 4,
+	ADVMETA_BOOT			= 5,
+	ATE_FACTORY_BOOT		= 6,
+	ALARM_BOOT			= 7,
+	KERNEL_POWER_OFF_CHARGING_BOOT	= 8,
+	LOW_POWER_OFF_CHARGING_BOOT	= 9,
+	DONGLE_BOOT			= 10,
+	UNKNOWN_BOOT			= 11,
+};
+static u32 bootmode = UNKNOWN_BOOT;
+
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
+static void mmdvfs_get_bootmode(void)
+{
+	struct device_node *np_chosen = of_find_node_by_path("/chosen");
+	struct tag_bootmode *tag = NULL;
+
+	if (bootmode < UNKNOWN_BOOT)
+		return;
+
+	if (!np_chosen)
+		np_chosen = of_find_node_by_path("/chosen@0");
+
+	if (!np_chosen)
+		goto get_bootmode_err;
+
+	tag = (struct tag_bootmode *)of_get_property(np_chosen, "atag,boot", NULL);
+	if (!tag)
+		goto get_bootmode_err;
+
+	bootmode = tag->bootmode;
+	return;
+
+get_bootmode_err:
+	MMDVFS_ERR("np_chosen:%p tag:%p bootmode:%u", np_chosen, tag, bootmode);
+}
+
 static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data) // ap > vcp
 {
 	struct mmdvfs_ipi_data slot = {
@@ -241,6 +290,12 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 
 	if (!mmdvfs_is_init_done())
 		return -ENODEV;
+
+	mmdvfs_get_bootmode();
+	if (bootmode == RECOVERY_BOOT) {
+		MMDVFS_ERR("bootmode:%u NOT ipi send", bootmode);
+		return -EACCES;
+	}
 
 	mutex_lock(&mmdvfs_vcp_ipi_mutex);
 	switch (func) {
