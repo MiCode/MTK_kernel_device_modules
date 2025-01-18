@@ -21,9 +21,12 @@
 #include "mt6379.h"
 
 #define MT6379_WRRD_WAIT_US	8
+#define MT6379_REG_SPMI_RCS1	0x26
+#define MT6379_REG_SPMI_RCS2	0x27
 
 struct mt6379_priv {
 	bool bypass_retrigger;
+	u32 svid;
 	u16 access_reg;
 	size_t access_len;
 	ktime_t access_time;
@@ -149,11 +152,20 @@ static void mt6379_spmi_check_of_irq(struct mt6379_data *data)
 {
 	struct mt6379_priv *priv = data->priv;
 	struct device_node *parent;
+	int ret;
 
 	priv->bypass_retrigger = false;
 
+	ret = device_property_read_u32(data->dev, "reg", &priv->svid);
+	if (ret) {
+		dev_info(data->dev, "%s, Failed to get MT6379 SPMI slave id, use default value\n",
+			 __func__);
+		priv->svid = 0x0E;
+	}
+
+	dev_info(data->dev, "%s, MT6379 SPMI slave id: 0x%02X\n", __func__, priv->svid);
 	parent = of_irq_find_parent(data->dev->of_node);
-	if(parent) {
+	if (parent) {
 		if (of_property_read_bool(parent, "gpio-controller"))
 			priv->bypass_retrigger = true;
 
@@ -197,6 +209,17 @@ static int mt6379_probe(struct spmi_device *sdev)
 	data->regmap = devm_regmap_init(dev, &mt6379_spmi_bus, data, &mt6379_spmi_config);
 	if (IS_ERR(data->regmap))
 		return dev_err_probe(dev, PTR_ERR(data->regmap), "Failed to init regmap\n");
+
+	/* If using RCS, should set RCS config */
+	if (!priv->bypass_retrigger) {
+		ret = regmap_write(data->regmap, MT6379_REG_SPMI_RCS2, priv->svid);
+		if (ret)
+			dev_info(dev, "%s, Failed to set rcs_addr\n", __func__);
+
+		ret = regmap_write(data->regmap, MT6379_REG_SPMI_RCS1, 0x91);
+		if (ret)
+			dev_info(dev, "%s, Failed to enable MT6379 RCS\n", __func__);
+	}
 
 	return mt6379_device_init(data);
 }
