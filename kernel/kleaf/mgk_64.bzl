@@ -1817,6 +1817,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mcupm/v2/mcupm.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
 
+        mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
+
         mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6338.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6368.ko")
         mgk_64_device_modules.remove("sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko")
