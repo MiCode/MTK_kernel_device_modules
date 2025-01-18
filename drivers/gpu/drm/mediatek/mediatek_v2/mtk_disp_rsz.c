@@ -1225,6 +1225,12 @@ static const struct mtk_disp_rsz_data mt6877_rsz_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_rsz_data mt6781_rsz_driver_data = {
+	.tile_length = 1200, .in_max_height = 4096,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct mtk_disp_rsz_data mt6879_rsz_driver_data = {
 	.tile_length = 1440, .in_max_height = 4096,
 	.support_shadow = false,
@@ -1298,6 +1304,8 @@ static const struct of_device_id mtk_disp_rsz_driver_dt_match[] = {
 	 .data = &mt6833_rsz_driver_data},
 	{.compatible = "mediatek,mt6877-disp-rsz",
 	 .data = &mt6877_rsz_driver_data},
+	{.compatible = "mediatek,mt6781-disp-rsz",
+	 .data = &mt6781_rsz_driver_data},
 	{.compatible = "mediatek,mt6879-disp-rsz",
 	 .data = &mt6879_rsz_driver_data},
 	{.compatible = "mediatek,mt6983-disp-rsz",
