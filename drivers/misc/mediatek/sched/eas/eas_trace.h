@@ -63,15 +63,16 @@ TRACE_EVENT(sched_big_task_rotation,
 
 TRACE_EVENT(sched_leakage,
 
-	TP_PROTO(int cpu, int opp, unsigned int temp,
+	TP_PROTO(int cpu, int opp, int buck_opp, unsigned int temp,
 		unsigned long cpu_static_pwr, unsigned long static_pwr,
 		unsigned long sum_util, unsigned long sum_cap),
 
-	TP_ARGS(cpu, opp, temp, cpu_static_pwr, static_pwr, sum_util, sum_cap),
+	TP_ARGS(cpu, opp, buck_opp, temp, cpu_static_pwr, static_pwr, sum_util, sum_cap),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(int, opp)
+		__field(int, buck_opp)
 		__field(unsigned int, temp)
 		__field(unsigned long, cpu_static_pwr)
 		__field(unsigned long, static_pwr)
@@ -82,6 +83,7 @@ TRACE_EVENT(sched_leakage,
 	TP_fast_assign(
 		__entry->cpu       = cpu;
 		__entry->opp        = opp;
+		__entry->buck_opp   = buck_opp;
 		__entry->temp       = temp;
 		__entry->cpu_static_pwr = cpu_static_pwr;
 		__entry->static_pwr = static_pwr;
@@ -89,9 +91,10 @@ TRACE_EVENT(sched_leakage,
 		__entry->sum_cap = sum_cap;
 		),
 
-	TP_printk("cpu=%d opp=%d temp=%u lkg=%lu sum_lkg=%lu, sum_util=%lu sum_cap=%lu",
+	TP_printk("cpu=%d opp=%d buck_opp=%d temp=%u lkg=%lu sum_lkg=%lu, sum_util=%lu sum_cap=%lu",
 		__entry->cpu,
 		__entry->opp,
+		__entry->buck_opp,
 		__entry->temp,
 		__entry->cpu_static_pwr,
 		__entry->static_pwr,
@@ -102,15 +105,19 @@ TRACE_EVENT(sched_leakage,
 TRACE_EVENT(sched_dsu_freq,
 
 	TP_PROTO(int gear_id, int dst_cpu, int dsu_freq_new, int dsu_volt_new,
+			int dsu_freq_base, int dsu_volt_base,
 			unsigned long cpu_freq, unsigned long dsu_freq, unsigned int dsu_volt),
 
-	TP_ARGS(gear_id, dst_cpu, dsu_freq_new, dsu_volt_new, cpu_freq, dsu_freq, dsu_volt),
+	TP_ARGS(gear_id, dst_cpu, dsu_freq_new, dsu_volt_new, dsu_freq_base, dsu_volt_base,
+			cpu_freq, dsu_freq, dsu_volt),
 
 	TP_STRUCT__entry(
 		__field(int, gear_id)
 		__field(int, dst_cpu)
 		__field(int, dsu_freq_new)
 		__field(int, dsu_volt_new)
+		__field(int, dsu_freq_base)
+		__field(int, dsu_volt_base)
 		__field(unsigned long, cpu_freq)
 		__field(unsigned long, dsu_freq)
 		__field(unsigned int, dsu_volt)
@@ -121,16 +128,20 @@ TRACE_EVENT(sched_dsu_freq,
 		__entry->dst_cpu    = dst_cpu;
 		__entry->dsu_freq_new   = dsu_freq_new;
 		__entry->dsu_volt_new   = dsu_volt_new;
+		__entry->dsu_freq_base  = dsu_freq_base;
+		__entry->dsu_volt_base  = dsu_volt_base;
 		__entry->cpu_freq  = cpu_freq;
 		__entry->dsu_freq  = dsu_freq;
 		__entry->dsu_volt  = dsu_volt;
 		),
 
-	TP_printk("gear_id=%d dst_cpu=%d dsu_freq_new=%d dsu_volt_new=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u",
+	TP_printk("gear_id=%d dst_cpu=%d dsu_freq_new=%d dsu_volt_new=%d dsu_freq_base=%d dsu_volt_base=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u",
 		__entry->gear_id,
 		__entry->dst_cpu,
 		__entry->dsu_freq_new,
 		__entry->dsu_volt_new,
+		__entry->dsu_freq_base,
+		__entry->dsu_volt_base,
 		__entry->cpu_freq,
 		__entry->dsu_freq,
 		__entry->dsu_volt)
@@ -196,9 +207,10 @@ TRACE_EVENT(dsu_pwr_cal,
 TRACE_EVENT(sched_em_cpu_energy,
 
 	TP_PROTO(int wl, int idx, unsigned long freq, const char *cost_type, unsigned long cost,
-		unsigned long scale_cpu, unsigned long dyn_pwr, unsigned long static_pwr),
+		unsigned long scale_cpu, unsigned long dyn_pwr, unsigned long static_pwr,
+		unsigned long pd_volt, unsigned long extern_volt),
 
-	TP_ARGS(wl, idx, freq, cost_type, cost, scale_cpu, dyn_pwr, static_pwr),
+	TP_ARGS(wl, idx, freq, cost_type, cost, scale_cpu, dyn_pwr, static_pwr, pd_volt, extern_volt),
 
 	TP_STRUCT__entry(
 		__field(int, wl)
@@ -209,6 +221,8 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__field(unsigned long, scale_cpu)
 		__field(unsigned long, dyn_pwr)
 		__field(unsigned long, static_pwr)
+		__field(unsigned long, pd_volt)
+		__field(unsigned long, extern_volt)
 		),
 
 	TP_fast_assign(
@@ -220,9 +234,11 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__entry->scale_cpu  = scale_cpu;
 		__entry->dyn_pwr    = dyn_pwr;
 		__entry->static_pwr = static_pwr;
+		__entry->pd_volt        = pd_volt;
+		__entry->extern_volt    = extern_volt;
 		),
 
-	TP_printk("wl=%d idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu",
+	TP_printk("wl=%d idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu pd_volt=%lu extern_volt=%lu",
 		__entry->wl,
 		__entry->idx,
 		__entry->freq,
@@ -230,52 +246,65 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__entry->cost,
 		__entry->scale_cpu,
 		__entry->dyn_pwr,
-		__entry->static_pwr)
+		__entry->static_pwr,
+		__entry->pd_volt,
+		__entry->extern_volt)
 );
 
 TRACE_EVENT(sched_calc_pwr_eff,
 
-	TP_PROTO(int cpu, unsigned long cpu_util, int opp, unsigned long cap,
-		unsigned long dyn_pwr_eff, unsigned long static_pwr_eff, unsigned long pwr_eff),
+	TP_PROTO(int cpu, unsigned long cpu_util, int opp, int buck_opp, unsigned long cap,
+		unsigned long dyn_pwr_eff, unsigned long static_pwr_eff, unsigned long pwr_eff,
+		long pd_volt, long extern_volt),
 
-	TP_ARGS(cpu, cpu_util, opp, cap, dyn_pwr_eff, static_pwr_eff, pwr_eff),
+	TP_ARGS(cpu, cpu_util, opp, buck_opp, cap, dyn_pwr_eff, static_pwr_eff, pwr_eff,
+			pd_volt, extern_volt),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(unsigned long, cpu_util)
 		__field(int, opp)
+		__field(int, buck_opp)
 		__field(unsigned long, cap)
 		__field(unsigned long, dyn_pwr_eff)
 		__field(unsigned long, static_pwr_eff)
 		__field(unsigned long, pwr_eff)
+		__field(long, pd_volt)
+		__field(long, extern_volt)
 		),
 
 	TP_fast_assign(
 		__entry->cpu            = cpu;
 		__entry->cpu_util       = cpu_util;
 		__entry->opp            = opp;
+		__entry->buck_opp       = buck_opp;
 		__entry->cap            = cap;
 		__entry->dyn_pwr_eff    = dyn_pwr_eff;
 		__entry->static_pwr_eff = static_pwr_eff;
 		__entry->pwr_eff        = pwr_eff;
+		__entry->pd_volt        = pd_volt;
+		__entry->extern_volt    = extern_volt;
 		),
 
-	TP_printk("cpu=%d cpu_util=%lu opp=%d cap=%lu dyn_pwr_eff=%lu static_pwr_eff=%lu pwr_eff=%lu",
+	TP_printk("cpu=%d cpu_util=%lu opp=%d buck_opp=%d cap=%lu dyn_pwr_eff=%lu static_pwr_eff=%lu pwr_eff=%lu pd_volt=%ld extern_volt=%ld",
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->opp,
+		__entry->buck_opp,
 		__entry->cap,
 		__entry->dyn_pwr_eff,
 		__entry->static_pwr_eff,
-		__entry->pwr_eff)
+		__entry->pwr_eff,
+		__entry->pd_volt,
+		__entry->extern_volt)
 );
 
 TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 
 	TP_PROTO(int dst_cpu, int gear_id, struct cpumask *pd_mask,
 		int wl, unsigned long pwr_eff, int shared_buck_mode,
-		unsigned long gear_max_util, unsigned long pd_max_util,
-		unsigned long gear_volt, unsigned long pd_volt, unsigned long dsu_volt, unsigned long extern_volt),
+		long gear_max_util, unsigned long pd_max_util,
+		long gear_volt, long pd_volt, long dsu_volt, long extern_volt),
 
 	TP_ARGS(dst_cpu, gear_id, pd_mask, wl, pwr_eff, shared_buck_mode, pd_max_util, gear_max_util,
 			gear_volt, pd_volt, dsu_volt, extern_volt),
@@ -287,12 +316,12 @@ TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 		__field(int, wl)
 		__field(unsigned long, pwr_eff)
 		__field(int, shared_buck_mode)
-		__field(unsigned long, gear_max_util)
+		__field(long, gear_max_util)
 		__field(unsigned long, pd_max_util)
-		__field(unsigned long, gear_volt)
-		__field(unsigned long, pd_volt)
-		__field(unsigned long, dsu_volt)
-		__field(unsigned long, extern_volt)
+		__field(long, gear_volt)
+		__field(long, pd_volt)
+		__field(long, dsu_volt)
+		__field(long, extern_volt)
 		),
 
 	TP_fast_assign(
@@ -310,7 +339,7 @@ TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 		__entry->extern_volt   = extern_volt;
 		),
 
-	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx wl=%d pwr_eff=%lu shared_buck_mode=%d gear_max_util=%lu pd_max_util=%lu gear_volt=%lu pd_volt=%lu dsu_volt=%lu extern_volt=%lu",
+	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx wl=%d pwr_eff=%lu shared_buck_mode=%d gear_max_util=%ld pd_max_util=%lu gear_volt=%ld pd_volt=%ld dsu_volt=%ld extern_volt=%ld",
 		__entry->dst_cpu,
 		__entry->gear_id,
 		__entry->cpu_mask,

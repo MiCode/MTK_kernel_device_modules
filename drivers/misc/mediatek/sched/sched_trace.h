@@ -604,9 +604,8 @@ TRACE_EVENT(sched_compute_energy,
 
 	TP_PROTO(int dst_cpu, int gear_id, struct cpumask *pd_mask,
 		unsigned long energy, int shared_buck_mode,
-		unsigned long gear_max_util, unsigned long pd_max_util, unsigned long sum_util,
-		unsigned long gear_volt, unsigned long pd_volt, unsigned long dsu_volt,
-		unsigned long extern_volt),
+		long gear_max_util, unsigned long pd_max_util, unsigned long sum_util,
+		long gear_volt, long pd_volt, long dsu_volt, long extern_volt),
 
 	TP_ARGS(dst_cpu, gear_id, pd_mask, energy, shared_buck_mode, pd_max_util, gear_max_util,
 			sum_util, gear_volt, pd_volt, dsu_volt, extern_volt),
@@ -617,13 +616,13 @@ TRACE_EVENT(sched_compute_energy,
 		__field(long, cpu_mask)
 		__field(unsigned long, energy)
 		__field(int, shared_buck_mode)
-		__field(unsigned long, gear_max_util)
+		__field(long, gear_max_util)
 		__field(unsigned long, pd_max_util)
 		__field(unsigned long, sum_util)
-		__field(unsigned long, gear_volt)
-		__field(unsigned long, pd_volt)
-		__field(unsigned long, dsu_volt)
-		__field(unsigned long, extern_volt)
+		__field(long, gear_volt)
+		__field(long, pd_volt)
+		__field(long, dsu_volt)
+		__field(long, extern_volt)
 		),
 
 	TP_fast_assign(
@@ -641,7 +640,7 @@ TRACE_EVENT(sched_compute_energy,
 		__entry->extern_volt   = extern_volt;
 		),
 
-	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx energy=%lu shared_buck_mode=%d gear_max_util=%lu pd_max_util=%lu sum_util=%lu gear_volt=%lu pd_volt=%lu dsu_volt=%lu extern_volt=%lu",
+	TP_printk("dst_cpu=%d gear_id=%d mask=0x%lx energy=%lu shared_buck_mode=%d gear_max_util=%ld pd_max_util=%lu sum_util=%lu gear_volt=%ld pd_volt=%ld dsu_volt=%ld extern_volt=%ld",
 		__entry->dst_cpu,
 		__entry->gear_id,
 		__entry->cpu_mask,
