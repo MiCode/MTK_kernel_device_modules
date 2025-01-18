@@ -4927,6 +4927,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"disp_larb_3",
 				"mdp_larb_0",
 				"mdp_larb_1";
+
+			mtk,smmu-shared = <&mm_smmu_disp>;
 		};
 
 		mmlsys0_config: mmlsys0-config@3e000000 {
