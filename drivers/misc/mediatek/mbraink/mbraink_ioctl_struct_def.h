@@ -47,7 +47,6 @@
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
 
-
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 
 #define SPM_L2_MAX_RES_NUM (116)
@@ -65,6 +64,8 @@
 #define MD_BLK_SZ 300
 #define MD_SECBLK_NUM 6
 #define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
+
+
 #define MAX_GPU_FENCE_RECORD_DATA 8
 
 enum mbraink_op_mode {

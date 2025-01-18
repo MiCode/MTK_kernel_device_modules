@@ -8,13 +8,11 @@
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
 #include <linux/regulator/consumer.h>
-#include <swpm_module_ext.h>
+
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_power.h"
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 #include <scp_mbrain_dbg.h>
-#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
@@ -27,13 +25,20 @@
 #include <rt6160.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 
-#include <lpm_sys_res_mbrain_dbg.h>
+#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
+
+#include <swpm_module_psp.h>
+
+#include "mbraink_sys_res_mbrain_dbg.h"
+#include "mbraink_sys_res_mbrain_plat.h"
+#include "mbraink_sys_res_plat.h"
 
 unsigned char *g_spm_raw;
 unsigned int g_data_size;
+int g_spm_l2_sig_tbl_size;
+unsigned int g_spm_l2_sig_num;
+unsigned char *g_spm_l2_ls_ptr = NULL, *g_spm_l2_sig_tbl_ptr = NULL;
 
 #endif
 
@@ -212,15 +217,13 @@ static void mbraink_v6991_get_power_wakeup_info(
 		wakeup_info_buffer->is_has_data = 0;
 }
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-
+#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
 {
 	int ret = -1;
 	int i = 0;
 	long long value = 0;
-	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 	unsigned char *spm_l1_data = NULL;
 	unsigned int data_size = 0;
 	int size = 0;
@@ -231,7 +234,7 @@ static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int 
 	if (spm_l1_size != SPM_L1_DATA_NUM)
 		return -1;
 
-	sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+	sys_res_mbrain_ops = get_mbraink_dbg_ops();
 	if (sys_res_mbrain_ops &&
 		sys_res_mbrain_ops->get_last_suspend_res_data) {
 
@@ -263,16 +266,19 @@ static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int 
 
 static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
 {
-	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
-	unsigned char *ptr = NULL, *sig_tbl_ptr = NULL;
-	unsigned int sig_num = 0;
+	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 	uint32_t thr[4];
+	unsigned int wpos = 0, wsize = 0;
+	unsigned int get_sig = 0;
+	bool bfree = false;
+	int res_size = (int)sizeof(struct mbraink_sys_res_sig_info);
 
 	if (spm_l2_info == NULL)
 		return 0;
 
-	sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+	pr_notice("mbraink spm get_sig(%d)\n", get_sig);
 
+	sys_res_mbrain_ops = get_mbraink_dbg_ops();
 	if (sys_res_mbrain_ops &&
 		sys_res_mbrain_ops->get_over_threshold_num &&
 		sys_res_mbrain_ops->get_over_threshold_data) {
@@ -282,40 +288,78 @@ static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info 
 		thr[2] = spm_l2_info->value[2];
 		thr[3] = spm_l2_info->value[3];
 
-		ptr = kmalloc(SPM_L2_LS_SZ, GFP_KERNEL);
-		if (ptr == NULL)
-			goto End;
-
-		if (sys_res_mbrain_ops->get_over_threshold_num(ptr,
-			SPM_L2_LS_SZ, thr, 4) == 0) {
-			memcpy(&sig_num, ptr+24, sizeof(sig_num));
-
-			if (sig_num > SPM_L2_MAX_RES_NUM)
-				goto End;
-
-			sig_tbl_ptr = kmalloc(sig_num*SPM_L2_RES_SIZE, GFP_KERNEL);
-			if (sig_tbl_ptr == NULL)
-				goto End;
-
-			if (sys_res_mbrain_ops->get_over_threshold_data(sig_tbl_ptr
-				, sig_num*SPM_L2_RES_SIZE) == 0) {
-				memcpy(spm_l2_info->spm_data, ptr, SPM_L2_LS_SZ);
-				if ((SPM_L2_LS_SZ + sig_num*SPM_L2_RES_SIZE) <= SPM_L2_SZ)
-					memcpy(spm_l2_info->spm_data + SPM_L2_LS_SZ, sig_tbl_ptr,
-					sig_num*SPM_L2_RES_SIZE);
+		memcpy(&get_sig, spm_l2_info->spm_data + 28, sizeof(get_sig));
+		if (get_sig == 0) {
+			if (g_spm_l2_ls_ptr != NULL) {
+				kfree(g_spm_l2_ls_ptr);
+				g_spm_l2_ls_ptr = NULL;
 			}
+
+			if (g_spm_l2_sig_tbl_ptr != NULL) {
+				kfree(g_spm_l2_sig_tbl_ptr);
+				g_spm_l2_sig_tbl_ptr = NULL;
+			}
+
+			g_spm_l2_ls_ptr = kmalloc(SPM_L2_LS_SZ, GFP_KERNEL);
+			if (g_spm_l2_ls_ptr == NULL) {
+				bfree = true;
+				goto End;
+			}
+
+			if (sys_res_mbrain_ops->get_over_threshold_num(g_spm_l2_ls_ptr,
+				SPM_L2_LS_SZ, thr, 4) == 0) {
+				memcpy(&g_spm_l2_sig_num, g_spm_l2_ls_ptr + 24, sizeof(g_spm_l2_sig_num));
+
+				if (g_spm_l2_sig_num > SPM_TOTAL_MAX_SIG_NUM) {
+					bfree = true;
+					goto End;
+				}
+
+				g_spm_l2_sig_tbl_size = g_spm_l2_sig_num*res_size;
+				g_spm_l2_sig_tbl_ptr = kmalloc(g_spm_l2_sig_tbl_size, GFP_KERNEL);
+				if (g_spm_l2_sig_tbl_ptr == NULL) {
+					bfree = true;
+					goto End;
+				}
+
+				if (sys_res_mbrain_ops->get_over_threshold_data(g_spm_l2_sig_tbl_ptr,
+					g_spm_l2_sig_tbl_size) != 0) {
+					bfree = true;
+					goto End;
+				}
+			}
+		}
+
+		if (g_spm_l2_ls_ptr != NULL && g_spm_l2_sig_tbl_ptr != NULL) {
+			memcpy(spm_l2_info->spm_data, g_spm_l2_ls_ptr, SPM_L2_LS_SZ);
+			wpos += SPM_L2_LS_SZ;
+
+			if ((wpos + (g_spm_l2_sig_num - get_sig)*res_size) <= SPM_L2_SZ) {
+				wsize = (g_spm_l2_sig_num - get_sig)*res_size;
+				memcpy(spm_l2_info->spm_data + wpos,
+					g_spm_l2_sig_tbl_ptr + get_sig*res_size, wsize);
+			} else {
+				wsize = (sizeof(spm_l2_info->spm_data) - SPM_L2_LS_SZ)
+					/res_size*res_size;
+				memcpy(spm_l2_info->spm_data + SPM_L2_LS_SZ, g_spm_l2_sig_tbl_ptr
+					+ get_sig*res_size, wsize);
+			}
+			get_sig += wsize/res_size;
+			memcpy(spm_l2_info->spm_data + 28, &get_sig, sizeof(get_sig));
 		}
 	}
 End:
 
-	if (ptr != NULL) {
-		kfree(ptr);
-		ptr = NULL;
-	}
+	if (get_sig == g_spm_l2_sig_num || bfree) {
+		if (g_spm_l2_ls_ptr != NULL) {
+			kfree(g_spm_l2_ls_ptr);
+			g_spm_l2_ls_ptr = NULL;
+		}
 
-	if (sig_tbl_ptr != NULL) {
-		kfree(sig_tbl_ptr);
-		sig_tbl_ptr = NULL;
+		if (g_spm_l2_sig_tbl_ptr != NULL) {
+			kfree(g_spm_l2_sig_tbl_ptr);
+			g_spm_l2_sig_tbl_ptr = NULL;
+		}
 	}
 
 	return 0;
@@ -324,7 +368,9 @@ End:
 static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 {
 	bool bfree = false;
-	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	int bufIdx = 0;
+	int size = 0;
 
 	if (spm_buffer == NULL) {
 		bfree = true;
@@ -332,8 +378,7 @@ static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_bu
 	}
 
 	if (spm_buffer->type == 1) {
-
-		sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+		sys_res_mbrain_ops = get_mbraink_dbg_ops();
 
 		if (sys_res_mbrain_ops && sys_res_mbrain_ops->get_length) {
 			g_data_size = sys_res_mbrain_ops->get_length();
@@ -351,14 +396,14 @@ static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_bu
 			g_spm_raw = NULL;
 		}
 
-		if (g_data_size <= SPM_TOTAL_SZ) {
+		if (g_data_size <= SPM_TOTAL_MAX_SIG_NUM*sizeof(struct mbraink_sys_res_sig_info)
+			*MBRAINK_SCENE_RELEASE_NUM) {
 			g_spm_raw = vmalloc(g_data_size);
 			if (g_spm_raw != NULL) {
 				memset(g_spm_raw, 0, g_data_size);
 
-				if (sys_res_mbrain_ops &&
-				   sys_res_mbrain_ops->get_data &&
-				   sys_res_mbrain_ops->get_data(g_spm_raw, g_data_size) != 0) {
+				if (sys_res_mbrain_ops && sys_res_mbrain_ops->get_data &&
+					sys_res_mbrain_ops->get_data(g_spm_raw, g_data_size) != 0) {
 					bfree = true;
 					goto End;
 				}
@@ -367,16 +412,31 @@ static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_bu
 	}
 
 	if (g_spm_raw != NULL) {
-		if (((spm_buffer->pos+spm_buffer->size) > (g_data_size)) ||
-			spm_buffer->size > sizeof(spm_buffer->spm_data)) {
-			bfree = true;
-			goto End;
-		}
-		memcpy(spm_buffer->spm_data, g_spm_raw+spm_buffer->pos, spm_buffer->size);
+		if (spm_buffer->type == 1) {
+			size = sizeof(struct mbraink_sys_res_mbrain_header);
+			bufIdx = 0;
+			if ((bufIdx + size) <= g_data_size) {
+				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw, size);
+				bufIdx += size;
+			}
 
-		if (spm_buffer->type == 0) {
-			bfree = true;
-			goto End;
+			size = sizeof(struct mbraink_sys_res_scene_info)*MBRAINK_SCENE_RELEASE_NUM;
+			if ((bufIdx + size) <= g_data_size) {
+				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw + bufIdx, size);
+				bufIdx += size;
+			}
+		} else {
+			if (((spm_buffer->pos + spm_buffer->size) > (g_data_size)) ||
+			spm_buffer->size > sizeof(spm_buffer->spm_data)) {
+				bfree = true;
+				goto End;
+			}
+			memcpy(spm_buffer->spm_data, g_spm_raw + spm_buffer->pos, spm_buffer->size);
+
+			if (spm_buffer->type == 0) {
+				bfree = true;
+				goto End;
+			}
 		}
 	}
 
@@ -391,23 +451,25 @@ End:
 
 	return 0;
 }
-
 #else
-static int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+
+static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
 {
-	pr_notice("not support spm info\n");
-	return 0;
+	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
 }
+
+static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
+{
+	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
+}
+
+static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+{
+	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
+}
+
 #endif
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
-static int mbraink_v6991_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
-{
-	pr_notice("not support scp info\n");
-	return 0;
-}
-
-#else
 static int mbraink_v6991_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
 {
 	struct scp_res_mbrain_dbg_ops *scp_res_mbrain_ops = NULL;
@@ -447,7 +509,6 @@ End:
 
 	return 0;
 }
-#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
@@ -623,7 +684,8 @@ static int mbraink_v6991_power_get_uvlo_info(
 	return ret;
 }
 
-static int mbraink_v6991_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVoltageInfo)
+static int mbraink_v6991_power_get_pmic_voltage_info(
+	struct mbraink_pmic_voltage_info *pmicVoltageInfo)
 {
 	unsigned int vcore = 0;
 	unsigned int vsram_core = 0;
@@ -668,6 +730,32 @@ static int mbraink_v6991_power_get_pmic_voltage_info(struct mbraink_pmic_voltage
 	return 0;
 }
 
+static int mbraink_v6991_power_sys_res_init(void)
+{
+	mbraink_sys_res_plat_init();
+	mbraink_sys_res_mbrain_plat_init();
+
+	return 0;
+}
+
+static int mbraink_v6991_power_sys_res_deinit(void)
+{
+	mbraink_sys_res_plat_deinit();
+	mbraink_sys_res_mbrain_plat_deinit();
+
+	return 0;
+}
+
+static void mbraink_v6991_power_suspend_prepare(void)
+{
+	mbraink_sys_res_plat_update();
+}
+
+static void mbraink_v6991_power_post_suspend(void)
+{
+	mbraink_sys_res_plat_update();
+}
+
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -681,6 +769,8 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getSpmiInfo = mbraink_v6991_power_get_spmi_info,
 	.getUvloInfo = mbraink_v6991_power_get_uvlo_info,
 	.getPmicVoltageInfo = mbraink_v6991_power_get_pmic_voltage_info,
+	.suspendprepare = mbraink_v6991_power_suspend_prepare,
+	.postsuspend = mbraink_v6991_power_post_suspend,
 };
 
 int mbraink_v6991_power_init(void)
@@ -688,6 +778,8 @@ int mbraink_v6991_power_init(void)
 	int ret = 0;
 
 	ret = register_mbraink_power_ops(&mbraink_v6991_power_ops);
+	mbraink_v6991_power_sys_res_init();
+
 	return ret;
 }
 
@@ -696,6 +788,7 @@ int mbraink_v6991_power_deinit(void)
 	int ret = 0;
 
 	ret = unregister_mbraink_power_ops();
+	mbraink_v6991_power_sys_res_deinit();
 	return ret;
 }
 

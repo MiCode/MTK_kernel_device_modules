@@ -12,9 +12,7 @@
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6989_power.h"
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 #include <scp_mbrain_dbg.h>
-#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
@@ -400,14 +398,6 @@ static int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 }
 #endif
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
-static int mbraink_v6989_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
-{
-	pr_notice("not support scp info\n");
-	return 0;
-}
-
-#else
 static int mbraink_v6989_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
 {
 	struct scp_res_mbrain_dbg_ops *scp_res_mbrain_ops = NULL;
@@ -447,7 +437,6 @@ End:
 
 	return 0;
 }
-#endif //#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 static int mbraink_v6989_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)

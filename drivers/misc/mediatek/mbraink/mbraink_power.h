@@ -34,4 +34,9 @@ int mbraink_power_get_uvlo_info(struct mbraink_uvlo_struct_data *mbraink_uvlo_da
 
 int mbraink_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVoltageInfo);
 
+void mbraink_power_suspend_prepare(void);
+
+void mbraink_power_post_suspend(void);
+
+
 #endif /*end of MBRAINK_POWER_H*/

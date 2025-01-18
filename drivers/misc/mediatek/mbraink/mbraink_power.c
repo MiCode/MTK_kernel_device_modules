@@ -23,6 +23,8 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
+	_mbraink_power_ops.suspendprepare = NULL;
+	_mbraink_power_ops.postsuspend = NULL;
 	return 0;
 }
 
@@ -40,6 +42,8 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
+	_mbraink_power_ops.suspendprepare = NULL;
+	_mbraink_power_ops.postsuspend = NULL;
 	return 0;
 }
 
@@ -62,7 +66,8 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getSpmiInfo = ops->getSpmiInfo;
 	_mbraink_power_ops.getUvloInfo = ops->getUvloInfo;
 	_mbraink_power_ops.getPmicVoltageInfo = ops->getPmicVoltageInfo;
-
+	_mbraink_power_ops.suspendprepare = ops->suspendprepare;
+	_mbraink_power_ops.postsuspend = ops->postsuspend;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -83,6 +88,8 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
+	_mbraink_power_ops.suspendprepare = NULL;
+	_mbraink_power_ops.postsuspend = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -200,6 +207,7 @@ int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
 	return ret;
 }
 
+
 int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
 {
 	int ret = 0;
@@ -284,3 +292,16 @@ int mbraink_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVo
 
 	return ret;
 }
+
+void mbraink_power_suspend_prepare(void)
+{
+	if (_mbraink_power_ops.suspendprepare)
+		_mbraink_power_ops.suspendprepare();
+}
+
+void mbraink_power_post_suspend(void)
+{
+	if (_mbraink_power_ops.postsuspend)
+		_mbraink_power_ops.postsuspend();
+}
+
