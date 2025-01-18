@@ -6247,13 +6247,19 @@
 	rsc@1b003000 {
 		compatible = "mediatek,rsc";
 		mediatek,larb = <&smi_larb20>;
+		dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_IPE>;
+		iommus = <&iommu0 M4U_PORT_L20_IPE_RSC_RDMA0>,
+			<&iommu0 M4U_PORT_L20_IPE_RSC_WDMA>;
 		reg = <0 0x1b003000 0 0x1000>;
 		interrupts = <GIC_SPI 438 IRQ_TYPE_LEVEL_HIGH 0>;
 		mboxes = <&gce_mbox 13 0 CMDQ_THR_PRIO_1>;
 		gce-event-names = "rsc_eof";
 		gce-events = <&gce_mbox CMDQ_EVENT_RSC_DONE>;
-		clocks = <&ipesys_clk CLK_IPE_RSC>;
-		clock-names = "RSC_CLK_IPE_RSC";
+		clocks = <&ipesys_clk CLK_IPE_RSC>,
+			<&ipesys_clk CLK_IPE_LARB20>;
+		clock-names = "RSC_CLK_IPE_RSC",
+			"RSC_CLK_IPE_LARB20";
 	};
 
 	mdpsys_config: mdpsys_config@1f000000 {
