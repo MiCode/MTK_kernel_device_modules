@@ -1705,5 +1705,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/mtk_smmu_qos.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6765.ko")
 
 get_overlay_modules_list()
