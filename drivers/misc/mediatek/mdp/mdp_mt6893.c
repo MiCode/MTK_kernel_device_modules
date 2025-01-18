@@ -2287,7 +2287,7 @@ static s32 mdp_dump_engine_usage(struct EngineStruct *engine_list)
 static bool mdp_is_mtee(struct cmdqRecStruct *handle)
 {
 #ifdef CMDQ_ENG_MTEE_GROUP_BITS
-	return bool(handle->engineFlag & CMDQ_ENG_MTEE_GROUP_BITS);
+	return (handle->engineFlag & CMDQ_ENG_MTEE_GROUP_BITS);
 #else
 	return false;
 #endif
@@ -2983,6 +2983,11 @@ bool mdp_eng_support_readback(u16 engine)
 	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
 }
 
+static bool mdp_svp_support_meta_data(void)
+{
+	return true;
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -3039,6 +3044,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getEngineGroupName = mdp_get_engine_group_name;
 	pFunc->mdpComposeReadback = cmdq_mdp_compose_readback;
 	pFunc->getRDMAIndex = mdp_get_rdma_idx;
+	pFunc->mdpSvpSupportMetaData = mdp_svp_support_meta_data;
 }
 
 MODULE_LICENSE("GPL");
