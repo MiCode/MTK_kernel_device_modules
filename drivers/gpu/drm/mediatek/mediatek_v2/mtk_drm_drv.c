@@ -5019,6 +5019,18 @@ static const struct mtk_crtc_path_data mt6768_mtk_ext_path_data = {
 	.addon_data = mt6768_addon_ext,
 };
 
+static const enum mtk_ddp_comp_id mt6877_mtk_ddp_ext[] = {
+	DDP_COMPONENT_OVL0_2L,
+	DDP_COMPONENT_RDMA0,
+};
+
+static const struct mtk_crtc_path_data mt6877_mtk_ext_path_data = {
+	.path[DDP_MAJOR][0] = mt6877_mtk_ddp_ext,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6877_mtk_ddp_ext),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6877_addon_ext,
+};
+
 static const struct mtk_crtc_path_data mt6885_mtk_main_path_data = {
 	.path[DDP_MAJOR][0] = mt6885_mtk_ddp_main,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6885_mtk_ddp_main),
@@ -6438,7 +6450,7 @@ static const struct mtk_mmsys_driver_data mt6833_mmsys_driver_data = {
 
 static const struct mtk_mmsys_driver_data mt6877_mmsys_driver_data = {
 	.main_path_data = &mt6877_mtk_main_path_data,
-	.ext_path_data = &mt6877_mtk_third_path_data,
+	.ext_path_data = &mt6877_mtk_ext_path_data,
 	.third_path_data = &mt6877_mtk_third_path_data,
 	.fake_eng_data = &mt6877_fake_eng_data,
 	.mmsys_id = MMSYS_MT6877,
