@@ -46,6 +46,16 @@
 			i2c14 = &i2c14;
 	};
 
+	aov: aov {
+		compatible = "mediatek,aov";
+		status = "okay";
+		op-mode = <1>;
+		mediatek,larbs-uisp = <&smi_larb27>;
+		mediatek,larbs-mae = <&smi_larb12>;
+		mae = <&mae>;
+		scp-dvfs-supply = <&scp_dvfs>;
+	};
+
 	cache-parity {
 		compatible = "mediatek,mt6985-cache-parity";
 		ecc-irq-support = <1>;
