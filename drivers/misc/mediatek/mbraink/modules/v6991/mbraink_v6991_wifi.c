@@ -32,7 +32,7 @@ void mbraink_v6991_get_wifi_rate_data(int current_idx,
 			break;
 		else if (ret == WIFI2MBR_FAILURE)
 			continue;
-		else if (ret == WIFI2MBR_SUCCESS || ret == WIFI2MBR_END) {
+		else if (ret == WIFI2MBR_SUCCESS) {
 			cnt = rate_buffer->count;
 
 			if (cnt < MAX_WIFI_RATE_SZ) {
@@ -45,16 +45,13 @@ void mbraink_v6991_get_wifi_rate_data(int current_idx,
 				rate_buffer->rate_data[cnt].retries = lls_rate.retries;
 				rate_buffer->count++;
 
-				if (ret ==  WIFI2MBR_END) {
-					rate_buffer->idx = 0;
-					break;
-				} else if (cnt == MAX_WIFI_RATE_SZ - 1) {
+				if (cnt == MAX_WIFI_RATE_SZ - 1) {
 					rate_buffer->idx = current_idx + rate_buffer->count;
 					break;
 				}
 			}
-		} else {
-			pr_info("%s: unknown return status\n", __func__);
+		} else if (ret ==  WIFI2MBR_END) {
+			rate_buffer->idx = 0;
 			break;
 		}
 	} while (loop < MAX_WIFI_DATA_CNT);
@@ -83,7 +80,7 @@ void mbraink_v6991_get_wifi_radio_data(struct mbraink_wifi2mbr_lls_radio_data *r
 			break;
 		else if (ret == WIFI2MBR_FAILURE)
 			continue;
-		else if (ret == WIFI2MBR_SUCCESS || ret == WIFI2MBR_END) {
+		else if (ret == WIFI2MBR_SUCCESS) {
 			cnt = radio_buffer->count;
 
 			if (cnt < MAX_WIFI_RADIO_SZ) {
@@ -98,17 +95,12 @@ void mbraink_v6991_get_wifi_radio_data(struct mbraink_wifi2mbr_lls_radio_data *r
 				radio_buffer->radio_data[cnt].on_time_pno_scan =
 					lls_radio.on_time_pno_scan;
 				radio_buffer->count++;
-
-				if (ret ==  WIFI2MBR_END)
-					break;
 			} else {
-				pr_info("%s: index is too much\n", __func__);
+				pr_info("%s: index is invalid\n", __func__);
 				break;
 			}
-		} else {
-			pr_info("%s: unknown return status\n", __func__);
+		} else if (ret ==  WIFI2MBR_END)
 			break;
-		}
 	} while (loop < MAX_WIFI_DATA_CNT);
 
 	if (loop == MAX_WIFI_DATA_CNT)
@@ -137,7 +129,7 @@ void mbraink_v6991_get_wifi_ac_data(struct mbraink_wifi2mbr_lls_ac_data *ac_buff
 			break;
 		else if (ret == WIFI2MBR_FAILURE)
 			continue;
-		else if (ret == WIFI2MBR_SUCCESS || ret == WIFI2MBR_END) {
+		else if (ret == WIFI2MBR_SUCCESS) {
 			cnt = ac_buffer->count;
 
 			if (cnt < MBRAINK_MBR_WIFI_AC_MAX) {
@@ -159,18 +151,12 @@ void mbraink_v6991_get_wifi_ac_data(struct mbraink_wifi2mbr_lls_ac_data *ac_buff
 				ac_buffer->ac_data[cnt].contention_num_samples =
 					lls_ac.contention_num_samples;
 				ac_buffer->count++;
-
-				if (ret ==  WIFI2MBR_END)
-					break;
 			} else {
-				pr_info("%s: index is too much\n", __func__);
+				pr_info("%s: index is invalid\n", __func__);
 				break;
 			}
-		} else {
-			pr_info("%s: unknown return status\n", __func__);
+		} else if (ret ==  WIFI2MBR_END)
 			break;
-		}
-
 	} while (loop < MAX_WIFI_DATA_CNT);
 
 	if (loop == MAX_WIFI_DATA_CNT)
@@ -199,7 +185,7 @@ void mbraink_v6991_get_wifi_lp_data(struct mbraink_wifi2mbr_lp_ratio_data *lp_bu
 			break;
 		else if (ret == WIFI2MBR_FAILURE)
 			continue;
-		else if (ret == WIFI2MBR_SUCCESS || ret == WIFI2MBR_END) {
+		else if (ret == WIFI2MBR_SUCCESS) {
 			cnt = lp_buffer->count;
 			if (cnt < MAX_WIFI_LP_SZ) {
 				lp_buffer->lp_data[cnt].timestamp = lp_ratio.timestamp;
@@ -210,17 +196,12 @@ void mbraink_v6991_get_wifi_lp_data(struct mbraink_wifi2mbr_lp_ratio_data *lp_bu
 				lp_buffer->lp_data[cnt].rx_listen_time = lp_ratio.rx_listen_time;
 				lp_buffer->lp_data[cnt].sleep_time = lp_ratio.sleep_time;
 				lp_buffer->count++;
-
-				if (ret ==  WIFI2MBR_END)
-					break;
 			} else {
-				pr_info("%s: index is too much\n", __func__);
+				pr_info("%s: index is invalid\n", __func__);
 				break;
 			}
-		} else {
-			pr_info("%s: unknown return status\n", __func__);
+		} else if (ret ==  WIFI2MBR_END)
 			break;
-		}
 	} while (loop < MAX_WIFI_DATA_CNT);
 
 	if (loop == MAX_WIFI_DATA_CNT)
