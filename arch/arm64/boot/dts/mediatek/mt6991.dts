@@ -15029,7 +15029,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,dmaheap-mtk-sec-page";
 		heap-name = "mtk_sapu_page-uncached";
 		trusted-mem-type = <14>;
-		status = "disabled";
 	};
 
 	mtkheap_page_svp: mtkheap-page-svp {
@@ -15427,6 +15426,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		#size-cells = <1>;
 		mtk,iommu-dma-range = <0xb000000 0x1000000>;
 		iommus = <&apu_smmu 0x11>;
+	};
+
+	secure_apu_smmu_device: secure-apu-smmu-device {
+		compatible = "mediatek,secure-apu-smmu-device";
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0x10>;
 	};
 
 	apu_top_3: apu-top-3@19020000 {
@@ -20041,4 +20046,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 &hypervisor {
 	status = "okay";
+};
+
+&trusty {
+	trusty-sapu {
+		compatible = "mediatek,trusty-sapu";
+		power-version = <2>;
+		datamem-type = <2>;
+		datamem-size = <0x0 0x0>;
+		smmu-device = <&secure_apu_smmu_device>;
+		status = "okay";
+	};
 };
