@@ -49,10 +49,12 @@ struct mminfra_dbg {
 	void __iomem *vlp_base;
 	void __iomem *spm_base;
 	void __iomem *vcp_gipc_in_set;
+	void __iomem *mm_cfg_base[MM_PWR_NR];
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
 	u32 gals_sel[MMINFRA_GALS_NR];
+	u32 dbg_sel_out_nr[MM_PWR_NR];
 	u32 mm_voter_base;
 	u32 mm_mtcmos_base;
 	u32 mm_mtcmos_mask;
@@ -617,7 +619,7 @@ static int vcp_mminfra_off(void)
 	return ret;
 }
 
-static void mminfra_gals_dump(void)
+static void mminfra_gals_dump_v1(void)
 {
 	u32 i;
 	u32 *mux_setting = dbg->gals_sel;
@@ -632,7 +634,62 @@ static void mminfra_gals_dump(void)
 			MMINFRA_BASE + MMINFRA_MODULE_DBG,
 			readl(dbg->mminfra_base + MMINFRA_MODULE_DBG));
 	}
+}
 
+static void mminfra_gals_dump_v3(void)
+{
+	s32 len, ret, i, j;
+	u32 dbg_sel, val;
+	char buf[LINK_MAX + 1] = {0};
+
+	for (i = 0; i < MM_PWR_NR; i++) {
+		if (!dbg->mm_cfg_base[i] || !dbg->dbg_sel_out_nr[i])
+			continue;
+		dev_info(dev, "mm_pwr:%d gals dump: (%#x,%#x)\n", i,
+						MMINFRA_DBG_SEL, MMINFRA_MODULE_DBG);
+		memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+		len = 0;
+		for (j = 0; j < dbg->dbg_sel_out_nr[i]; j++) {
+			writel(j, dbg->mm_cfg_base[i] + MMINFRA_DBG_SEL);
+			dbg_sel = readl(dbg->mm_cfg_base[i] + MMINFRA_DBG_SEL);
+			val = readl(dbg->mm_cfg_base[i] + MMINFRA_MODULE_DBG);
+			ret = snprintf(buf + len, LINK_MAX - len, " (%#x,%#x),", dbg_sel, val);
+			if (ret < 0 || ret >= LINK_MAX - len) {
+				ret = snprintf(buf + len, LINK_MAX - len, "%c", '\0');
+				if (ret < 0)
+					pr_notice("%s: ret:%d buf size:%d\n",
+						__func__, ret, LINK_MAX - len);
+				dev_info(dev, "%s\n", buf);
+
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				ret = snprintf(buf + len, LINK_MAX - len, " (%#x,%#x),",
+										dbg_sel, val);
+				if (ret < 0)
+					pr_notice("%s: ret:%d buf size:%d\n",
+						__func__, ret, LINK_MAX - len);
+			}
+			len += ret;
+		}
+		ret = snprintf(buf + len, LINK_MAX - len, "%c", '\0');
+		dev_info(dev, "%s\n", buf);
+	}
+	/* TODO: snoc gals dump */
+}
+
+static void mminfra_gals_dump(void)
+{
+	switch (mm_pwr_ver) {
+	case mm_pwr_v1:
+	case mm_pwr_v2:
+		mminfra_gals_dump_v1();
+		break;
+	case mm_pwr_v3:
+		mminfra_gals_dump_v3();
+		break;
+	default:
+		break;
+	}
 }
 
 static void vcp_debug_dump(void)
@@ -717,6 +774,7 @@ static int mminfra_get_for_smi_dbg(void *v)
 
 	/* force on mminfra power for smi dbg dump */
 	ret = pm_runtime_get_sync(dev);
+	mminfra_gals_dump();
 
 	/* return 1 if power on, others for failure */
 	return ret ? ret : 1;
@@ -851,10 +909,6 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		pr_notice("[mminfra] comm_id=%d, comm_nr=%d\n", comm_id, comm_nr);
 		dbg->comm_dev[comm_nr++] = &comm_pdev->dev;
 	}
-	dbg->nb.notifier_call = mminfra_smi_dbg_cb;
-	mtk_smi_dbg_register_notifier(&dbg->nb);
-
-	mtk_smi_dbg_register_pwr_ctrl_cb(&mminfra_pwr_ctrl);
 
 	node = pdev->dev.of_node;
 	of_property_read_u32(node, "mminfra-bkrs", &mminfra_bkrs);
@@ -890,17 +944,33 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
 	of_property_read_u32(node, "mm-pwr-ver", &mm_pwr_ver);
 
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		dbg->nb.notifier_call = mminfra_smi_dbg_cb;
+		mtk_smi_dbg_register_notifier(&dbg->nb);
+	} else if (mm_pwr_ver == mm_pwr_v3)
+		mtk_smi_dbg_register_pwr_ctrl_cb(&mminfra_pwr_ctrl);
+
 	mminfra_check_scmi_status();
 
 	dev = &pdev->dev;
 	pm_runtime_enable(dev);
 
-	for (i = 0; i < MMINFRA_GALS_NR; i++) {
-		if (!of_property_read_u32_index(dev->of_node, "mminfra-gals-sel", i, &tmp))
-			dbg->gals_sel[i] = tmp;
-		else
-			dbg->gals_sel[i] = 0;
-		pr_notice("[mminfra] gals_sel[%d]=%d\n", i, dbg->gals_sel[i]);
+	if (mm_pwr_ver <= mm_pwr_v2) {
+		for (i = 0; i < MMINFRA_GALS_NR; i++) {
+			if (!of_property_read_u32_index(dev->of_node, "mminfra-gals-sel", i, &tmp))
+				dbg->gals_sel[i] = tmp;
+			else
+				dbg->gals_sel[i] = 0;
+			pr_notice("[mminfra] gals_sel[%d]=%d\n", i, dbg->gals_sel[i]);
+		}
+	} else if (mm_pwr_ver == mm_pwr_v3) {
+		/* get mm0/mm1/mm_ao debug out sel */
+		if (!of_property_read_u32_index(dev->of_node, "mm-dbg-out-sel-nr", MM_0, &tmp))
+			dbg->dbg_sel_out_nr[MM_0] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "mm-dbg-out-sel-nr", MM_1, &tmp))
+			dbg->dbg_sel_out_nr[MM_1] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "mm-dbg-out-sel-nr", MM_AO, &tmp))
+			dbg->dbg_sel_out_nr[MM_AO] = tmp;
 	}
 
 	irq = platform_get_irq(pdev, 0);
@@ -925,10 +995,18 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		dbg->mminfra_base = ioremap(MMINFRA_BASE, 0x8f4);
 		dbg->gce_base = ioremap(GCE_BASE, 0x1000);
 		dbg->vcp_gipc_in_set = ioremap(VCP_GIPC_IN_SET, 0x100);
-	} else if (mm_pwr_ver <= mm_pwr_v3){
+	} else if (mm_pwr_ver == mm_pwr_v3){
 		of_property_read_u32(node, "mmup-gipc-in-set", &dbg->vcp_gipc_in_set_base);
 		if (dbg->vcp_gipc_in_set_base)
 			dbg->vcp_gipc_in_set = ioremap(dbg->vcp_gipc_in_set_base, 0x100);
+
+		/* get mm0/mm1/mm_ao cfg base */
+		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_0, &tmp))
+			dbg->mm_cfg_base[MM_0] = ioremap(tmp, 0x1000);
+		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_1, &tmp))
+			dbg->mm_cfg_base[MM_1] = ioremap(tmp, 0x1000);
+		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_AO, &tmp))
+			dbg->mm_cfg_base[MM_AO] = ioremap(tmp, 0x1000);
 	}
 
 	cmdq_get_mminfra_cb(is_mminfra_power_on);
