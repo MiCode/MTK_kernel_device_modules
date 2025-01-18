@@ -2962,8 +2962,8 @@ cpus {
 
 			freq-table-hz = <0 0>, <0 0>, <0 0>, <0 0>;
 
-			vcc-supply = <&mt6359p_vemc_reg>;
-			/* vcc-fixed-regulator; */
+		/*	vcc-supply = <&mt6359p_vemc_reg>; */
+			vcc-fixed-regulator;
 
 			resets = <&infracfg_rst 2>, <&infracfg_rst 3>,
 				 <&infracfg_rst 4>;
