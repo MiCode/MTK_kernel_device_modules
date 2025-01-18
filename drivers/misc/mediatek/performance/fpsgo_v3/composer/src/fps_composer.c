@@ -882,7 +882,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			enqueue_end_time);
 
 		//reset vip if ux scrolling
-		if(get_ux_general_policy() && f_render->sbe_control_flag)
+		if (get_ux_general_policy() && f_render->sbe_control_flag)
 			fpsgo_boost_non_hwui_policy(f_render, 0);
 
 		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
