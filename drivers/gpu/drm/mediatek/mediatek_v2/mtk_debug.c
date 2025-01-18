@@ -2812,7 +2812,7 @@ void mtk_drm_crtc_diagnose(void)
 		}
 
 		mtk_crtc = to_mtk_crtc(crtc);
-		if (!crtc->enabled
+		if (!mtk_crtc->enabled
 				|| mtk_crtc->ddp_mode == DDP_NO_USE)
 			continue;
 
@@ -2961,7 +2961,7 @@ static void process_dbg_opt(const char *opt)
 			}
 
 			mtk_crtc = to_mtk_crtc(crtc);
-			if (!crtc->enabled
+			if (!mtk_crtc->enabled
 				|| mtk_crtc->ddp_mode == DDP_NO_USE)
 				continue;
 
