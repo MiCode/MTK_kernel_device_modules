@@ -21,6 +21,16 @@ config MTK_CACHE_PARITY_CHECK
 	  Enable this to get the report on detection or correction
 	  of errors.
 
+config MTK_GIC_RAM_PARITY_CHECK
+	tristate "MediaTek GIC RAM PARITY CHECK"
+	help
+	This selects the device driver for the gic ram parity-check
+	module. The module detects errors or corrects errors of SPI
+	ram in the GIC.
+
+	Enable this to get the report on detection or correction
+	of errors.
+
 config MTK_DBGTOP
 	tristate "MediaTek DBGTOP driver"
 	help
