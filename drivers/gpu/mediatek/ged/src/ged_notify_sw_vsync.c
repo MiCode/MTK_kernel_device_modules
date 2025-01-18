@@ -870,7 +870,7 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 {
 	/* autosuspend_delay setting */
 	if (g_apo_autosuspend_delay_ctrl == 0) {
-		if (g_gpu_frame_time_ns >= 16666666) {
+		if (g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target) {
 			if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
 				g_apo_autosuspend_delay_ms = 0;
 			else
@@ -911,6 +911,9 @@ EXPORT_SYMBOL(ged_set_apo_autosuspend_delay_ms);
 
 void ged_get_gpu_frame_time(int frame_time)
 {
+	/* initialization */
+	g_gpu_frame_time_ns = g_ged_gpu_frame_time[0].target;
+
 	for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
 		if (frame_time <= g_ged_gpu_frame_time[i].margin) {
 			g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
