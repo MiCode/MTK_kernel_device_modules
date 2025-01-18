@@ -33,13 +33,15 @@ static const struct usb_device_id mtk_usb_quirk_list[] = {
 
 /* quirk list in /sound/usb */
 static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
+		/* Device matches */
 		DEVICE_FLG(0x2d99, 0xa026, /* EDIFIER H180 Plus */
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		DEVICE_FLG(0x12d1, 0x3a07,	/* AM33/CM33 HeadSet */
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		DEVICE_FLG(0x04e8, 0xa051,      /* SS USBC Headset (AKG) */
 		   QUIRK_FLAG_CTL_MSG_DELAY),
-		DEVICE_FLG(0x2fc6, 0xf06b,	/* MOONDROP Moonriver2 Ti */
+		/* Vendor matches */
+		VENDOR_FLG(0x2fc6,		/* Comtrue Devices */
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		{} /* terminator */
 };
