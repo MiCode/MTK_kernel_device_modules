@@ -1696,6 +1696,19 @@
 			};
 		};
 
+		typec_mux_switch: typec-mux-switch {
+			compatible = "mediatek,typec_mux_switch";
+			status = "okay";
+		};
+
+		usb_dp_selector: usb-dp-selector@1002d600 {
+			compatible = "mediatek,usb_dp_selector";
+			reg = <0 0x1002d600 0 0x4>;
+			reg-names = "usb_dp_reg";
+			mediatek,uds-ver = <2>;
+			status = "okay";
+		};
+
 		ufsphy: ufsphy@16800000 {
 			compatible = "mediatek,mt8183-ufsphy";
 			#phy-cells = <0>;
@@ -5552,6 +5565,15 @@
 				soft-start-time-sel = <1>;
 			};
 		};
+	};
+};
+
+&i2c6 {
+	ps5170: ps5170@28 {
+		compatible = "parade,ps5170";
+		reg = <0x28>;
+		// mediatek,vs-voter = <&pmic 0x189a 0x20 1>;
+		status = "okay";
 	};
 };
 
