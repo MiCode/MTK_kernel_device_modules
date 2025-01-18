@@ -715,6 +715,8 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 	if (path->mmlsys)
 		call_hw_op(path->mmlsys, pw_enable);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, pw_enable);
 	mml_trace_ex_end();
 
 	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
@@ -738,9 +740,17 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 		call_hw_op(path->mmlsys, clk_enable);
 	if (path->mutex)
 		call_hw_op(path->mutex, clk_enable);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, clk_enable);
+	if (path->mutex2)
+		call_hw_op(path->mutex2, clk_enable);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
+			continue;
+		if (path->mmlsys2 && i == path->mmlsys2_idx)
+			continue;
+		if (path->mutex2 && i == path->mutex2_idx)
 			continue;
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, clk_enable);
@@ -784,10 +794,18 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	for (i = 0; i < path->node_cnt; i++) {
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
 			continue;
+		if (path->mmlsys2 && i == path->mmlsys2_idx)
+			continue;
+		if (path->mutex2 && i == path->mutex2_idx)
+			continue;
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, clk_disable, task->config->dpc);
 	}
 
+	if (path->mutex2)
+		call_hw_op(path->mutex2, clk_disable, task->config->dpc);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, clk_disable, task->config->dpc);
 	if (path->mutex)
 		call_hw_op(path->mutex, clk_disable, task->config->dpc);
 	if (path->mmlsys)
@@ -816,6 +834,8 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	if (pw_disable_exc)
 		mml_dpc_exc_keep(task->config->mml);
 
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, pw_disable);
 	if (path->mmlsys)
 		call_hw_op(path->mmlsys, pw_disable);
 
