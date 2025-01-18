@@ -2238,6 +2238,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v0/sspm_v0.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/qos/mtk_qos_legacy.ko")
+        mgk_64_platform_device_modules.update({"drivers/power/supply/mt6357-charger-type.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/power/supply/rt9465.ko":"mt6765"})
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/cm_mgr/mtk_cm_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko")
