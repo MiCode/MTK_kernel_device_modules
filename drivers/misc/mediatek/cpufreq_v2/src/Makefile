@@ -135,3 +135,9 @@ endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 CPU_DVFS-y += plat_k6893/mtk_cpufreq_platform.o
 endif
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
+ccflags-y += \
+	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6781/	\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/include
+CPU_DVFS-y += plat_k6781/mtk_cpufreq_platform.o
+endif
