@@ -926,6 +926,25 @@ void mtk_pelt_rt_tp(void *data, struct rq *rq)
 	cpufreq_update_util(rq, 0);
 }
 
+static inline unsigned long task_util(struct task_struct *p)
+{
+	return READ_ONCE(p->se.avg.util_avg);
+}
+
+static inline unsigned long _task_util_est(struct task_struct *p)
+{
+	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+
+	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+}
+
+static inline unsigned long task_util_est(struct task_struct *p)
+{
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		return max(task_util(p), _task_util_est(p));
+	return task_util(p);
+}
+
 void mtk_sched_switch(void *data, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
@@ -939,7 +958,43 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 	vip_sched_switch(prev, next, rq);
 #endif /* CONFIG_MTK_SCHED_VIP_TASK */
 }
-#endif
+
+void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, bool *need_update)
+{
+	unsigned long util, uclamp_min, uclamp_max, capacity, misfit_task_load;
+	int fits;
+
+	*need_update = false;
+
+	if (!p || p->nr_cpus_allowed == 1) {
+		rq->misfit_task_load = 0;
+		return;
+	}
+
+	util = task_util_est(p);
+	uclamp_min = uclamp_eff_value(p, UCLAMP_MIN);
+	uclamp_max = uclamp_eff_value(p, UCLAMP_MAX);
+	capacity = capacity_of(cpu_of(rq));
+	fits = util_fits_capacity(util, uclamp_min, uclamp_max, capacity, cpu_of(rq));
+	if (fits > 0) {
+		rq->misfit_task_load = 0;
+		goto out;
+	}
+
+	/*
+	 * Make sure that misfit_task_load will not be null even if
+	 * task_h_load() returns 0.
+	 */
+	misfit_task_load = task_h_load(p);
+	rq->misfit_task_load = max_t(unsigned long, misfit_task_load, 1);
+
+out:
+	if (trace_sched_mtk_update_misfit_status_enabled())
+		trace_sched_mtk_update_misfit_status(cpu_of(rq), fits, p->pid, util,
+			uclamp_min, uclamp_max, capacity, misfit_task_load);
+
+}
+#endif /* CONFIG_MTK_EAS */
 
 int set_util_est_ctrl(bool enable)
 {

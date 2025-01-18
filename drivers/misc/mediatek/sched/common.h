@@ -195,7 +195,9 @@ int dequeue_idle_cpu(int cpu);
 __always_inline
 unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 				  struct task_struct *p,
-				  unsigned long min_cap, unsigned long max_cap);
+				  unsigned long min_cap, unsigned long max_cap,
+				  unsigned long *__min_util, unsigned long *__max_util,
+				  bool record_uclamp);
 
 #if IS_ENABLED(CONFIG_RT_GROUP_SCHED)
 static inline int rt_rq_throttled(struct rt_rq *rt_rq)

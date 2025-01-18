@@ -2036,6 +2036,45 @@ TRACE_EVENT(sched_set_uclamp,
 		__entry->value)
 );
 
+TRACE_EVENT(sched_mtk_update_misfit_status,
+	TP_PROTO(int cpu, bool fit, int pid, unsigned long util, unsigned long uclamp_min, unsigned long uclamp_max,
+	unsigned long capacity_of, unsigned long misfit_task_load),
+
+	TP_ARGS(cpu, fit, pid, util, uclamp_min, uclamp_max, capacity_of, misfit_task_load),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(bool, fit)
+		__field(int, pid)
+		__field(unsigned long, util)
+		__field(unsigned long, uclamp_min)
+		__field(unsigned long, uclamp_max)
+		__field(unsigned long, capacity_of)
+		__field(unsigned long, misfit_task_load)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->fit = fit;
+		__entry->pid = pid;
+		__entry->util = util;
+		__entry->uclamp_min = uclamp_min;
+		__entry->uclamp_max = uclamp_max;
+		__entry->capacity_of = capacity_of;
+		__entry->misfit_task_load = misfit_task_load;
+	),
+
+	TP_printk("cpu=%d fit=%d pid=%d util=%lu uclamp_min=%lu uclamp_max=%lu capacity_of=%lu misfit_task_load=%lu",
+		__entry->cpu,
+		__entry->fit,
+		__entry->pid,
+		__entry->util,
+		__entry->uclamp_min,
+		__entry->uclamp_max,
+		__entry->capacity_of,
+		__entry->misfit_task_load)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

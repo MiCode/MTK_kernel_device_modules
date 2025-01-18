@@ -359,7 +359,7 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 				goto skip_rq_uclamp;
 			}
 		}
-		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
+		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap, NULL, NULL, false);
 skip_rq_uclamp:
 		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
 			int pid = -1;
