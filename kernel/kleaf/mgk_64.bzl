@@ -2033,8 +2033,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-drm-gateic.ko")
