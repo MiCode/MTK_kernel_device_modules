@@ -3963,6 +3963,7 @@ _mtk_crtc_wb_addon_module_connect(
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
+		return;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
