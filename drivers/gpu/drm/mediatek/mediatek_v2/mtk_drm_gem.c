@@ -483,6 +483,7 @@ void mtk_drm_validate_slc(struct dma_buf *buf_hnd)
 
 	DDPDBG("%s gid:%d\n", __func__, gid);
 	slbc_data.dma_size = buf_hnd->size;
+	slbc_data.sign = SLC_DATA_MAGIC;
 	slbc_gid_request(ID_OVL_R, &gid, &slbc_data);
 	slbc_validate(ID_OVL_R, gid);
 }
