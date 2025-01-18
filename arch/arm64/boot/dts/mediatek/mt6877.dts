@@ -5913,6 +5913,8 @@
 			"TOP_UNIVPLL_D6_D8",
 			"TOP_UNIVP_D4_D2",
 			"TOP_MAINP_D5";
+		operating-points-v2 = <&opp_table_cam>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
 	cam_qos_legacy {
