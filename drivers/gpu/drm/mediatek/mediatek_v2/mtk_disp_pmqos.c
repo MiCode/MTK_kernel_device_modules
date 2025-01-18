@@ -672,6 +672,63 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 		mtk_disp_clear_channel_srt_bw_MT6991(mtk_crtc);
 }
 
+void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_ddp_comp *comp;
+	unsigned int bw_base  = 0;
+	int i, j, ret = 0;
+
+	if (mtk_crtc == NULL)
+		return;
+
+	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+		return;
+
+	bw_base = mtk_drm_primary_frame_bw(crtc);
+	for (i = 0; i < DDP_PATH_NR; i++) {
+		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+			continue;
+		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+			continue;
+		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+						   &bw_base);
+		}
+		if (!mtk_crtc->is_dual_pipe)
+			continue;
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+					&bw_base);
+	}
+}
+
+void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_ddp_comp *comp;
+	int i, j, ret = 0;
+
+	if (mtk_crtc == NULL)
+		return;
+
+	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+		return;
+
+	for (i = 0; i < DDP_PATH_NR; i++) {
+		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+			continue;
+		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+			continue;
+		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
+		}
+		if (!mtk_crtc->is_dual_pipe)
+			continue;
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
+			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
+	}
+}
 
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
@@ -779,7 +836,7 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	struct mtk_ddp_comp *comp;
 	unsigned int total = 0xFFFFFFFF, tmp1 = 0, bw_base  = 0;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
-	int i, j, ret = 0;
+	int ret = 0;
 
 	if (mtk_crtc == NULL)
 		return 0;
@@ -796,22 +853,6 @@ int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		total = bw;
 	} else
 		bw_base = mtk_drm_primary_frame_bw(crtc);
-
-	for (i = 0; i < DDP_PATH_NR; i++) {
-		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-			continue;
-		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
-			continue;
-		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
-			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-						   &bw_base);
-		}
-		if (!mtk_crtc->is_dual_pipe)
-			continue;
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
-			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-					&bw_base);
-	}
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 

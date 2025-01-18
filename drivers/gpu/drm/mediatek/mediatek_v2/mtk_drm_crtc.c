@@ -5346,6 +5346,10 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 	mtk_crtc->qos_ctx->last_hrt_req = bw;
 
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_disp_set_module_hrt(mtk_crtc);
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 		(priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6991)) {
@@ -7478,6 +7482,10 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL) =
 				NO_PENDING_HRT;
 	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_disp_clr_module_hrt(mtk_crtc);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 			(priv->data->mmsys_id == MMSYS_MT6989 ||

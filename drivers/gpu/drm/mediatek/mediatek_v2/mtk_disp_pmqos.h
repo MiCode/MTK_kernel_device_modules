@@ -44,6 +44,8 @@ int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode);
 void __mtk_disp_set_module_hrt(struct icc_path *request,
 				unsigned int bandwidth, bool respective_ostdl);
+void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc);
+void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc);
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int overlap_num);
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller);
