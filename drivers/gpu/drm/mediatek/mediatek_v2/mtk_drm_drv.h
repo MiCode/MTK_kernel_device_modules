@@ -437,6 +437,7 @@ extern struct platform_driver mtk_disp_chist_driver;
 extern struct platform_driver mtk_disp_ovl_driver;
 extern struct platform_driver mtk_ovl_exdma_driver;
 extern struct platform_driver mtk_ovl_blender_driver;
+extern struct platform_driver mtk_ovl_outproc_driver;
 extern struct platform_driver mtk_vdisp_ao_driver;
 extern struct platform_driver mtk_disp_rdma_driver;
 extern struct platform_driver mtk_disp_mdp_rdma_driver;

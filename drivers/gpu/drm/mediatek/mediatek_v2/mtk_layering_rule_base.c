@@ -72,6 +72,8 @@ static DEFINE_MUTEX(layering_info_lock);
 #define DISP_MML_LAYER_LIMIT 1
 #define DISP_LAYER_RULE_MAX_NUM 1024
 
+#define DISP_EXDMA_LAYER_LIMIT 7
+
 static struct {
 	enum LYE_HELPER_OPT opt;
 	unsigned int val;
@@ -2908,8 +2910,6 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			return DDP_COMPONENT_OVL0_2L_NWCG;
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL4_2L;
-		else if (priv->data->mmsys_id == MMSYS_MT6768)
-			return DDP_COMPONENT_OVL0_2L;
 		else
 			return DDP_COMPONENT_OVL2_2L;
 	} else if (disp_idx == 3) {
@@ -2942,6 +2942,121 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL2_2L;
+}
+
+static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
+	struct drm_device *drm_dev, int fun_lye)
+{
+	struct mtk_drm_private *priv = drm_dev->dev_private;
+
+	/* TODO: The component ID should be changed by ddp path and platforms */
+	if (disp_idx == 0) {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			int exdma_comp = 0;
+
+			if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
+				exdma_comp = DDP_COMPONENT_OVL_EXDMA3 + layer_idx - fun_lye;
+			else
+				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
+									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
+			DDPINFO("%s exdma %d,layer_idx %d, fun_lye %d\n", __func__,
+				exdma_comp,layer_idx, fun_lye);
+			return exdma_comp;
+		}
+	} else if (disp_idx == 1) {
+		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
+			struct mtk_ddp_comp *comp;
+			unsigned int i, j;
+
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
+			//disp_idx 1 does not exist multiple mode yet
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp)
+					break;
+			if (comp)
+				return comp->id;
+		} else if (priv->data->mmsys_id == MMSYS_MT6885)
+			return DDP_COMPONENT_OVL2_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6983)
+			return DDP_COMPONENT_OVL2_2L_NWCG;
+		else if (priv->data->mmsys_id == MMSYS_MT6985)
+			return DDP_COMPONENT_OVL3_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6897)
+			return DDP_COMPONENT_OVL2_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6895)
+			return DDP_COMPONENT_OVL2_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6989)
+			return DDP_COMPONENT_OVL4_2L;
+	} else if (disp_idx == 2) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_VDS_PATH_SWITCH))
+			return DDP_COMPONENT_OVL0_2L;
+		else if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
+			struct mtk_ddp_comp *comp;
+			unsigned int i, j;
+
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
+			//disp_idx 2 does not exist multiple mode yet
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp)
+					break;
+			if (comp)
+				return comp->id;
+		} else if (priv->data->mmsys_id == MMSYS_MT6983)
+			return DDP_COMPONENT_OVL1_2L_NWCG;
+		else if (priv->data->mmsys_id == MMSYS_MT6985)
+			return DDP_COMPONENT_OVL7_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6897)
+			return DDP_COMPONENT_OVL3_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6895 ||
+			 priv->data->mmsys_id == MMSYS_MT6886)
+			return DDP_COMPONENT_OVL0_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6879)
+			return DDP_COMPONENT_OVL0_2L_NWCG;
+		else if (priv->data->mmsys_id == MMSYS_MT6989)
+			return DDP_COMPONENT_OVL4_2L;
+		else
+			return DDP_COMPONENT_OVL2_2L;
+	} else if (disp_idx == 3) {
+		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
+			struct mtk_ddp_comp *comp;
+			unsigned int i, j;
+
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
+			//disp_idx 3 does not exist multiple mode yet
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp)
+					break;
+			if (comp)
+				return comp->id;
+		} else if (priv->data->mmsys_id == MMSYS_MT6983)
+			return DDP_COMPONENT_OVL0_2L_NWCG;
+		else if (priv->data->mmsys_id == MMSYS_MT6985 ||
+				priv->data->mmsys_id == MMSYS_MT6897)
+			return DDP_COMPONENT_OVL7_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6989)
+			return DDP_COMPONENT_OVL5_2L;
+		else
+			return DDP_COMPONENT_OVL2_2L;
+	}
+
+	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
+	return DDP_COMPONENT_OVL_EXDMA3;
 }
 
 static int mtk_lye_get_lye_id(int disp_idx, int disp_list, struct drm_device *drm_dev,
@@ -3079,6 +3194,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
+	int fun_lye = 0;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		idx = 0;
@@ -3133,8 +3249,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (mtk_is_gles_layer(disp_info, idx, i) &&
 		    i != disp_info->gles_head[idx]) {
 			layer_info->ovl_id = plane_idx - 1;
-			if (disp_idx == HRT_PRIMARY)
+			if (disp_idx == HRT_PRIMARY) {
 				lyeblob_ids->fbt_layer_id = plane_idx - 1;
+				fun_lye++;
+			}
 			continue;
 		}
 
@@ -3142,10 +3260,31 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			layer_map &= ~layer_map_idx;
 
 		layer_map_idx = HRT_GET_FIRST_SET_BIT(layer_map);
-		comp_state.comp_id =
-			mtk_lye_get_comp_id(disp_idx, disp_info->disp_list, drm_dev, layer_map_idx);
-		comp_state.lye_id =
-			mtk_lye_get_lye_id(disp_idx, disp_info->disp_list, drm_dev, layer_map_idx);
+		if (priv->data->ovl_exdma_rule) {
+			DDPINFO("%s disp_idx %d, i %d, fun_lye %d\n", __func__,
+				disp_idx, i, fun_lye);
+			if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER)) {
+				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA0;
+				fun_lye++;
+			} else if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_LINK_LAYER)) {
+				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA0;
+				fun_lye++;
+			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
+				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;
+				fun_lye++;
+			} else {
+				comp_state.comp_id =
+					mtk_lye_get_exdma_comp_id(disp_idx, i, drm_dev, fun_lye);
+			}
+			comp_state.lye_id = 0;
+		} else {
+			comp_state.comp_id =
+				mtk_lye_get_comp_id(disp_idx, disp_info->disp_list, drm_dev,
+							layer_map_idx);
+			comp_state.lye_id =
+				mtk_lye_get_lye_id(disp_idx, disp_info->disp_list, drm_dev,
+							layer_map_idx);
+		}
 
 		if (comp_state.comp_id > DDP_COMPONENT_ID_MAX) {
 			DDPPR_ERR("%s get invalid comp_id %d\n", __func__, comp_state.comp_id);
@@ -3705,6 +3844,10 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 		list_add_tail(&lyeblob_ids->list, &mtk_crtc->lyeblob_head);
 	else
 		list_add_tail(&lyeblob_ids->list, &priv->lyeblob_head);
+
+	if (priv->data->ovl_exdma_rule)
+		mtk_crtc->need_change_exdma_path = 1;
+
 	DRM_MMP_MARK(layering_blob, lyeblob_ids->lye_idx, lyeblob_ids->frame_weight);
 	mutex_unlock(&priv->lyeblob_list_mutex);
 }

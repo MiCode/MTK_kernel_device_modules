@@ -11,6 +11,7 @@
 int mtk_ovl_dump(struct mtk_ddp_comp *comp);
 int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp);
 int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp);
+int mtk_ovl_outproc_dump(struct mtk_ddp_comp *comp);
 void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp);
 int mtk_rdma_dump(struct mtk_ddp_comp *comp);
 void mtk_mdp_rdma_dump(struct mtk_ddp_comp *comp);

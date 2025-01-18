@@ -65,6 +65,7 @@ mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_disp_r2y0.o \
 		  mtk_disp_ovl_exdma.o \
 		  mtk_disp_ovl_blender.o \
+		  mtk_disp_ovl_outproc.o \
 		  mtk_disp_vdisp_ao.o \
 
 #ccflags-y += -DDRM_CMDQ_DISABLE

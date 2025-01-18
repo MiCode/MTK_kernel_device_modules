@@ -391,6 +391,11 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
 #define MML_SRAM_SHIFT (512*1024)
 
+#define OVL_L0_CON		(0x0054UL)
+	#define OVL_EN_3D				BIT(0)
+	#define OVL_LANDSCAPE			BIT(1)
+	#define OVL_R_FIRST				BIT(2)
+
 enum GS_OVL_FLD {
 	GS_OVL_RDMA_ULTRA_TH = 0,
 	GS_OVL_RDMA_PRE_ULTRA_TH,
@@ -612,16 +617,19 @@ static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
 	int i = 0;
-
-	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	if (keep_first_layer) {
-		if (comp->id == DDP_COMPONENT_OVL_EXDMA2)
+		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
+			DDPMSG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 			return;
+		}
 	}
 
+	/*
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_EN,
 		       DISP_OVL_FORCE_RELAY_MODE, ~0);
+	*/
 
 	for (i = 0; i < 2; i++)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -662,9 +670,11 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			comp->regs_pa + DISP_REG_OVL_FBDC_CFG1, val, val);
 	}
 
+	/*
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_EN,
 		       DISP_OVL_FORCE_RELAY_MODE, DISP_OVL_FORCE_RELAY_MODE);
+	*/
 
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
@@ -793,16 +803,18 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 
 		_store_bg_roi(comp, height, width);
 	}
-
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
+		       DISP_OVL_EN, DISP_OVL_EN);
+#ifdef IF_ZERO
 	//enable sram dbg reg:0x900~0x934
-	//cmdq_pkt_write(handle, comp->cmdq_base,
-	//			comp->regs_pa + DISP_REG_OVL_TRIG, 0x1000, 0x1000);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_TRIG, 0x1000, 0x1000);
 
-	//mtk_ddp_write(comp, (height * 9) / 10,
-	//	OVL_ROI_TIMING_0, handle);
+	mtk_ddp_write(comp, (height * 9) / 10,
+		OVL_ROI_TIMING_0, handle);
 
-	//DDPINFO("%s -> %u\n", __func__, (height * 9) / 10);
-
+	DDPINFO("%s -> %u\n", __func__, (height * 9) / 10);
+#endif
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {
 		unsigned int bw_monitor_config;
@@ -855,8 +867,12 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
 	unsigned int con;
+	DDPINFO("%s,%d, %s idx:%d, ext_idx:%d\n", __func__, __LINE__,
+		mtk_dump_comp_str(comp), idx, ext_idx);
 
-	DDPINFO("%s, %d, idx:%d, ext_idx:%d\n", __func__, __LINE__, idx, ext_idx);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
+		       DISP_OVL_EN, DISP_OVL_EN);
+
 	if (ext_idx != LYE_NORMAL) {
 		unsigned int con_mask;
 
@@ -870,19 +886,27 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_L_EN(ext_idx),
 			       DISP_OVL_L_EN, DISP_OVL_L_EN);
-		return;
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(idx), 0x1, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L_EN(ext_idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
 	}
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(idx), 0x1, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			   comp->regs_pa + DISP_REG_OVL_L_EN(ext_idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
 }
 
 static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
 	u32 wcg_mask = 0, wcg_value = 0, sel_value = 0, sel_mask = 0;
+	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+
+	DDPINFO(" %s,%d, %s idx:%d, ext_idx:%d\n", __func__, __LINE__,
+		mtk_dump_comp_str(comp), idx, ext_idx);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_RST, BIT(0), ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_RST, 0, ~0);
 
 	if (ext_idx != LYE_NORMAL) {
 		SET_VAL_MASK(wcg_value, wcg_mask, 0,
@@ -914,6 +938,12 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		       comp->regs_pa + DISP_REG_OVL_WCG_CFG1, wcg_value,
 		       wcg_mask);
 
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN,
+		       0x0, DISP_OVL_EN);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(0), 0,
+			   ~0);
+
 	if (ext_idx != LYE_NORMAL)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_L_EN(ext_idx), 0,
@@ -921,19 +951,21 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 	else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
-			       BIT(idx + 4));
-		if (idx == 0)
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_L_EN(idx), 0, DISP_OVL_L_EN);
-		else
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_SRC_CON, 0, BIT(idx));
+			       BIT(0));
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L_EN(0), 0, DISP_OVL_L_EN | DISP_OVL_L_FBCD_EN);
 
-		/* TODO: only disable RDMA with valid lye_blob information */
-		//cmdq_pkt_write(handle, comp->cmdq_base,
-		//	       comp->regs_pa + DISP_REG_OVL_RDMA_CTRL, 0,
-		//	       ~0);
 	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_ADDR(ovl, 0),
+		0x0, ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_ADDR_MSB(0),
+		0x0, 0xf);
+
+	if (comp && comp->bind_comp && comp->bind_comp->funcs
+		&& comp->bind_comp->funcs->layer_off && !comp->bind_comp->blank_mode)
+		comp->bind_comp->funcs->layer_off(comp->bind_comp, idx, ext_idx, handle);
 }
 
 static unsigned int ovl_fmt_convert(struct mtk_disp_ovl_exdma *ovl, unsigned int fmt,
@@ -1889,6 +1921,15 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx), clip,
 			~0);
+
+		if (comp->bind_comp) {
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
+				DISP_REG_OVL_SRC_SIZE, src_size, ~0);
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx), clip,
+				~0);
+		}
 	}
 }
 
@@ -1934,6 +1975,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	frame_idx = mtk_crtc_state->prop_val[CRTC_PROP_OVL_DSI_SEQ];
 	priv = crtc->dev->dev_private;
 	crtc_idx = (unsigned long)drm_crtc_index(crtc);
+
+	if (mtk_crtc->need_change_exdma_path)
+		mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, idx, handle);
 
 	/* handle dim layer for compression flag & color dim*/
 	if (fmt == DRM_FORMAT_C8) {
@@ -2043,8 +2087,8 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		unsigned int id = ext_lye_idx - 1;
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_L0_CLRFMT(ext_lye_idx), Ln_CLRFMT, ~0);
-
+				   comp->regs_pa + OVL_L0_CLRFMT(ext_lye_idx), Ln_CLRFMT,
+				   ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), layer_src,
 				   ~0);
@@ -2072,19 +2116,29 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		}
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT, ~0);
+			comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT,
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_CON, con, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L_EN(0), layer_src,
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_L0_CLR(lye_idx),
+			dim_color, ~0);
 
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_CON, con, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + DISP_REG_OVL_L_EN(0), layer_src,
-					   ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_L0_CLR(lye_idx),
-			       dim_color, ~0);
+		if (comp->bind_comp) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT,
+				~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + DISP_REG_OVL_L_EN(0),
+				layer_src, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
+		}
 
 		disp_reg_ovl_pitch = DISP_REG_OVL_PITCH;
 
@@ -2101,17 +2155,17 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			       (val << lye_idx), (1 << lye_idx));
 		}
 	}
-
-	//if (priv->data->mmsys_id == MMSYS_MT6989) {
-	//	if (pending->enable) {//enable and not ext layer
-	//		if (ext_lye_idx == 0)
-	//			mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] =
-	//				mtk_get_format_bpp(fmt);
-	//	} else {
-	//		mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] = 0;
-	//	}
-	//}
-
+#ifdef IF_ZERO
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (pending->enable) {//enable and not ext layer
+			if (ext_lye_idx == 0)
+				mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] =
+					mtk_get_format_bpp(fmt);
+		} else {
+			mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] = 0;
+		}
+	}
+#endif
 
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
@@ -2290,6 +2344,12 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 #endif
 		}
 	}
+
+	DDPINFO("%s , comp %d idx %d\n", __func__,comp->id, idx);
+
+	if (comp && comp->bind_comp && comp->bind_comp->funcs
+		&& comp->bind_comp->funcs->layer_config && !comp->bind_comp->blank_mode)
+		comp->bind_comp->funcs->layer_config(comp->bind_comp, idx, state, handle);
 }
 
 bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
@@ -2601,9 +2661,21 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx),
 			lx_clip, ~0);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_LX_HDR_PITCH(lye_idx),
 			lx_hdr_pitch, ~0);
+
+		if (comp->bind_comp) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + DISP_REG_OVL_SRC_SIZE, lx_src_size,
+				~0);
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->bind_comp->regs_pa + DISP_REG_OVL_CLIP(lye_idx),
+				lx_clip, ~0);
+		}
+
 	}
 
 	return 0;
@@ -2714,32 +2786,35 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 
 static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
-	DDPINFO("%s,%d\n", __func__, __LINE__);
-
-	//struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 	//u32 value = 0, mask = 0;
 
-	//if (!ovl->data->support_pq_selfloop)
-	//	return;
+	DDPINFO("%s,%d\n", __func__, __LINE__);
 
-	//if (!comp->mtk_crtc)
-	//	return;
+	if (!ovl->data->support_pq_selfloop)
+		return;
+
+	if (!comp->mtk_crtc)
+		return;
 
 	/* no need connect to OVL PQ_LOOP or PQ_OUT path for external display so far */
-	//if (comp->mtk_crtc->base.index != 0)
-	//	return;
+	if (comp->mtk_crtc->base.index != 0)
+		return;
 
-	//if (idx != 0) {
-	//	value |= DISP_OVL_BGCLR_IN_SEL;
-	//	mask |= DISP_OVL_BGCLR_IN_SEL;
-	//}
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x2, 0x3);
+#ifdef IF_ZERO
+	if (idx != 0) {
+		value |= DISP_OVL_BGCLR_IN_SEL;
+		mask |= DISP_OVL_BGCLR_IN_SEL;
+	}
 
-	//SET_VAL_MASK(value, mask, 0, DISP_OVL_PQ_OUT_EN);
-	//SET_VAL_MASK(value, mask, 0, DISP_OVL_PQ_OUT_OPT);
-	//cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-	//		value, mask);
-	//cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
-	//		0, DISP_OVL_PQ_OUT_SIZE_SEL);
+	SET_VAL_MASK(value, mask, 0, DISP_OVL_PQ_OUT_EN);
+	SET_VAL_MASK(value, mask, 0, DISP_OVL_PQ_OUT_OPT);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
+			value, mask);
+	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
+			0, DISP_OVL_PQ_OUT_SIZE_SEL);
+#endif
 }
 
 static void mtk_ovl_exdma_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -3528,8 +3603,10 @@ int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 			mtk_cust_dump_reg(baddr, 0xFBC, 0xFCC, 0xFDC, -1);
 		}
 	} else {
-		for (i = 0; i < 0x100; i++)
+		for (i = 0; i < 0x50; i++)
 			mtk_serial_dump_reg(baddr, 0 + 0x10*i, 4);
+		mtk_cust_dump_reg(baddr, 0xF40, 0xF44, 0xF48, 0xF4C);
+		mtk_cust_dump_reg(baddr, 0xFF0, 0xFF4, 0xFF8, 0xFFC);
 	}
 
 	mtk_ovl_exdma_dump_golden_setting(comp);
@@ -4261,9 +4338,9 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.el_hdr_addr = 0xfb4,
 	.el_hdr_addr_offset = 0x10,
 	.fmt_rgb565_is_0 = true,
-	.fmt_uyvy = 4U << 12,
-	.fmt_yuyv = 5U << 12,
-	//.compr_info = &compr_info_mt6989,
+	.fmt_uyvy = 4U,
+	.fmt_yuyv = 5U,
+	.compr_info = &compr_info_mt6991,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.preultra_th_dc = 0x3ff,
