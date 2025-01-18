@@ -178,9 +178,10 @@ int vdec_if_get_param(struct mtk_vcodec_ctx *ctx, enum vdec_get_param_type type,
 
 	if (is_query_cap && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;
-		ctx->dec_if = get_data_path_ptr();
 		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
+	if (ctx == ctx->dev_ctx)
+		ctx->dec_if = get_data_path_ptr();
 
 	if (ctx->dec_if && ctx->drv_handle)
 		ret = ctx->dec_if->get_param(ctx->drv_handle, type, out);
@@ -203,9 +204,10 @@ int vdec_if_set_param(struct mtk_vcodec_ctx *ctx, enum vdec_set_param_type type,
 
 	if (is_set_prop && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;
-		ctx->dec_if = get_data_path_ptr();
 		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
 	}
+	if (ctx == ctx->dev_ctx)
+		ctx->dec_if = get_data_path_ptr();
 
 	if (ctx->dec_if && ctx->drv_handle)
 		ret = ctx->dec_if->set_param(ctx->drv_handle, type, in);
@@ -327,9 +329,9 @@ void vdec_check_release_lock(void *ctx_check)
 			if (atomic_read(&ctx->dev->dec_clk_ref_cnt[i]))
 				mtk_v4l2_err("[%d] hw_id %d: dec_clk_ref_cnt %d",
 					ctx->id, i, atomic_read(&ctx->dev->dec_clk_ref_cnt[i]));
-		if (atomic_read(&ctx->dev->dec_larb_ref_cnt))
-			mtk_v4l2_err("[%d] dec_larb_ref_cnt %d",
-				ctx->id, atomic_read(&ctx->dev->dec_larb_ref_cnt));
+		if (atomic_read(&ctx->dev->larb_ref_cnt))
+			mtk_v4l2_err("[%d] larb_ref_cnt %d",
+				ctx->id, atomic_read(&ctx->dev->larb_ref_cnt));
 	}
 }
 

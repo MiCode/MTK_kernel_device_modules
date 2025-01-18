@@ -378,7 +378,12 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(0, "default use ipm v1");
 		dev->venc_hw_ipm = VCODEC_IPM_V1;
 	}
-	mtk_v4l2_debug(0, "hw ipm: %d", dev->venc_hw_ipm);
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-core-count", &dev->hw_max_count);
+	if (ret != 0 || dev->hw_max_count > MTK_VENC_HW_NUM) {
+		mtk_v4l2_debug(0, "default use 2 core");
+		dev->hw_max_count = 2;
+	}
+	mtk_v4l2_debug(0, "hw ipm: %d, core count %d", dev->venc_hw_ipm, dev->hw_max_count);
 
 	ret = mtk_vcodec_init_enc_pm(dev);
 	if (ret < 0) {
@@ -496,6 +501,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	dev->enc_slb_cpu_used_perf = slb_cpu_used_pref;
 	pr_info("after get venc-slb-cpu-used-perf %d\n", slb_cpu_used_pref);
 
+	atomic_set(&dev->larb_ref_cnt, 0);
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&dev->ipi_mutex);
@@ -599,7 +605,13 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	venc_vcp_probe(dev);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-power-in-vcp", &dev->power_in_vcp);
+	if (ret != 0)
+		dev->power_in_vcp = 0;
 #endif
+
+	mtk_vcodec_enc_smi_pwr_ctrl_register(dev);
 
 	ret = venc_if_dev_ctx_init(dev);
 	if (ret) {
@@ -672,6 +684,7 @@ static int mtk_vcodec_enc_remove(struct platform_device *pdev)
 		video_unregister_device(dev->vfd_enc);
 
 	v4l2_device_unregister(&dev->v4l2_dev);
+	mtk_vcodec_enc_smi_pwr_ctrl_unregister(dev);
 	mtk_vcodec_release_enc_pm(dev);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)

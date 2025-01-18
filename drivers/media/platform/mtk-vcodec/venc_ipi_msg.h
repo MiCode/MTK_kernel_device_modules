@@ -29,6 +29,7 @@ enum venc_ipi_msg_id {
 	AP_IPIMSG_ENC_DEINIT,
 	AP_IPIMSG_ENC_QUERY_CAP,
 	AP_IPIMSG_ENC_BACKUP,
+	AP_IPIMSG_ENC_PWR_CTRL,
 
 	VCU_IPIMSG_ENC_INIT_DONE = VCU_IPIMSG_VENC_ACK_BASE,
 	VCU_IPIMSG_ENC_SET_PARAM_DONE,
@@ -37,6 +38,7 @@ enum venc_ipi_msg_id {
 	VCU_IPIMSG_ENC_QUERY_CAP_DONE,
 	VCU_IPIMSG_ENC_TRACE,
 	VCU_IPIMSG_ENC_BACKUP_DONE,
+	VCU_IPIMSG_ENC_PWR_CTRL_DONE,
 
 	VCU_IPIMSG_ENC_POWER_ON = VCU_IPIMSG_VENC_SEND_BASE,
 	VCU_IPIMSG_ENC_POWER_OFF,
@@ -71,6 +73,8 @@ enum venc_get_param_type {
 	GET_PARAM_FREE_BUFFERS,
 	GET_PARAM_ROI_RC_QP,
 	GET_PARAM_RESOLUTION_CHANGE,
+	/** only for kernel **/
+	GET_PARAM_VENC_PWR_CTRL,
 	GET_PARAM_VENC_VCU_VPUD_LOG
 };
 
@@ -422,6 +426,26 @@ struct venc_vcu_ipi_mem_op {
 	VENC_MSG_PREFIX;
 	struct vcodec_mem_obj mem;
 	__u32 vcp_addr[2];
+};
+
+/**
+ * struct venc_ap_ipi_pwr_ctrl -VCU/AP bi-direction smi power contrl operation cmd structure
+ * @msg_id:   message id (VCU_IPIMSG_XXX_ENC_DEINIT_DONE)
+ * @status:   cmd status (venc_ipi_msg_status)
+ * @venc_inst:	AP encoder instance (struct venc_inst *)
+ * @struct vcodec_mem_obj: encoder memories
+ */
+struct venc_ap_ipi_pwr_ctrl {
+	VENC_MSG_PREFIX;
+#ifndef CONFIG_64BIT
+	union {
+		__u64 ap_data_addr_64;
+		__u32 ap_data_addr;
+	};
+#else
+	__u64 ap_data_addr;
+#endif
+	struct mtk_smi_pwr_ctrl_info info;
 };
 
 /*

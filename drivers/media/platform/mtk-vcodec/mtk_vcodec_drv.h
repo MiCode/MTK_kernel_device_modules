@@ -832,6 +832,7 @@ struct mtk_vcodec_dev {
 	const char *platform;
 	enum mtk_vcodec_ipm vdec_hw_ipm;
 	enum mtk_vcodec_ipm venc_hw_ipm;
+	unsigned int hw_max_count;
 
 	struct v4l2_m2m_dev *m2m_dev_dec;
 	struct v4l2_m2m_dev *m2m_dev_enc;
@@ -847,13 +848,14 @@ struct mtk_vcodec_dev {
 	void __iomem *enc_reg_base[NUM_MAX_VENC_REG_BASE];
 	void *com_vsi;
 
+	unsigned int power_in_vcp;
 	bool dec_is_power_on[MTK_VDEC_HW_NUM];
 	bool enc_is_power_on[MTK_VENC_HW_NUM];
 	spinlock_t dec_power_lock[MTK_VDEC_HW_NUM];
 	spinlock_t enc_power_lock[MTK_VENC_HW_NUM];
 	int dec_m4u_ports[NUM_MAX_VDEC_M4U_PORT];
 	atomic_t dec_clk_ref_cnt[MTK_VDEC_HW_NUM];
-	atomic_t dec_larb_ref_cnt;
+	atomic_t larb_ref_cnt;
 	unsigned int dec_ao_pw_cnt;
 
 	unsigned long id_counter;

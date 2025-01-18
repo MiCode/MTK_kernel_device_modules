@@ -1597,7 +1597,7 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 
 	mtk_v4l2_err("[%d] start error handling %s (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 		ctx->id, debug_str, dev->vdec_dvfs_params.target_freq,
-		atomic_read(&dev->dec_larb_ref_cnt),
+		atomic_read(&dev->larb_ref_cnt),
 		atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 		atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
 		atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),

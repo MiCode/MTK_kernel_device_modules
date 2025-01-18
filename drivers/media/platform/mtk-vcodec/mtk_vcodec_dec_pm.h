@@ -21,6 +21,10 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm);
 void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm);
 void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id);
 void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id);
+
+void mtk_vcodec_dec_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev);
+void mtk_vcodec_dec_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev);
+
 void mtk_vdec_uP_TF_dump_handler(struct work_struct *ws);
 void mtk_vdec_translation_fault_callback_setting(struct mtk_vcodec_dev *dev);
 int mtk_vdec_m4u_port_name_to_index(const char *name);

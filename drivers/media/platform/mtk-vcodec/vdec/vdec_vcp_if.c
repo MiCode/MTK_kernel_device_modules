@@ -164,7 +164,8 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	bool use_msg_indp = (is_ack || msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
 		msg_cmd->msg_id == AP_IPIMSG_DEC_QUERY_CAP ||
 		msg_cmd->msg_id == AP_IPIMSG_DEC_BACKUP ||
-		msg_cmd->msg_id == AP_IPIMSG_DEC_RESUME); // msg use VDEC_MSG_PREFIX
+		msg_cmd->msg_id == AP_IPIMSG_DEC_RESUME ||
+		msg_cmd->msg_id == AP_IPIMSG_DEC_PWR_CTRL); // msg use VDEC_MSG_PREFIX
 
 	if ((!use_msg_indp && msg_cmd->vcu_inst_addr == 0) ||
 	     (use_msg_indp && msg_indp->ap_inst_addr == 0 && !is_ack)) {
@@ -806,6 +807,15 @@ int vcp_dec_ipi_handler(void *arg)
 			case VCU_IPIMSG_DEC_QUERY_CAP_DONE:
 				handle_query_cap_ack_msg((void *)obj->share_buf);
 				goto return_vdec_ipi_ack;
+			case VCU_IPIMSG_DEC_PWR_CTRL_DONE: {
+				struct vdec_ap_ipi_pwr_ctrl *ack_msg =
+					(struct vdec_ap_ipi_pwr_ctrl *)obj->share_buf;
+				struct mtk_smi_pwr_ctrl_info *ctrl_info =
+					(struct mtk_smi_pwr_ctrl_info *)ack_msg->ap_data_addr;
+
+				ctrl_info->ret = ack_msg->info.ret;
+				goto return_vdec_ipi_ack;
+			}
 			case VCU_IPIMSG_DEC_START_DONE:
 			case VCU_IPIMSG_DEC_RESET_DONE:
 			case VCU_IPIMSG_DEC_SET_PARAM_DONE:
@@ -1091,7 +1101,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 			dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
-			dev->dec_ao_pw_cnt, atomic_read(&dev->dec_larb_ref_cnt));
+			dev->dec_ao_pw_cnt, atomic_read(&dev->larb_ref_cnt));
 
 		mutex_lock(&dev->ctx_mutex);
 		// release all ctx ipi
@@ -1122,7 +1132,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			dev->dec_ao_pw_cnt--;
 			mtk_vcodec_dec_pw_off(&dev->pm);
 		}
-		if (atomic_read(&dev->dec_larb_ref_cnt) != 0) {
+		if (atomic_read(&dev->larb_ref_cnt) != 0) {
 			lat_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_LAT);
 			core_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_CORE);
 			mtk_v4l2_err("dec power after VCP_EVENT_STOP: LAT %d (ctx %d)(clk ref %d), CORE %d (ctx %d)(clk red %d), ao %d, ref %d\n",
@@ -1130,7 +1140,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 				dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
 				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
-				dev->dec_ao_pw_cnt, atomic_read(&dev->dec_larb_ref_cnt));
+				dev->dec_ao_pw_cnt, atomic_read(&dev->larb_ref_cnt));
 		}
 		dev->codec_stop_done = true;
 		break;
@@ -1154,7 +1164,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		mtk_v4l2_debug(0, "%sbackup (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 			need_ipi ? "" : "no need ",
 			dev->vdec_dvfs_params.target_freq,
-			atomic_read(&dev->dec_larb_ref_cnt),
+			atomic_read(&dev->larb_ref_cnt),
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
@@ -1195,7 +1205,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		if (need_ipi) {
 			mtk_v4l2_debug(0, "restore (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 				dev->vdec_dvfs_params.target_freq,
-				atomic_read(&dev->dec_larb_ref_cnt),
+				atomic_read(&dev->larb_ref_cnt),
 				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
 				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
@@ -1548,7 +1558,27 @@ err_free_fb_out:
 	return ret;
 }
 
-void set_vdec_vcp_data(struct vdec_inst *inst, enum vcp_reserve_mem_id_t id, void *string)
+static int vdec_vcp_set_pwr_ctrl(struct vdec_inst *inst, struct mtk_smi_pwr_ctrl_info *ctrl_info)
+{
+	struct vdec_ap_ipi_pwr_ctrl msg = {0};
+
+	if (ctrl_info->type == MTK_SMI_GET_IF_IN_USE && !has_valid_vcp_inst(inst->ctx->dev)) {
+		ctrl_info->ret = 0;
+		return 0;
+	}
+
+	msg.msg_id = AP_IPIMSG_DEC_PWR_CTRL;
+	msg.ctx_id = inst->ctx->id;
+	msg.ap_inst_addr = (uintptr_t)&inst->vcu;
+	msg.ap_data_addr = (uintptr_t)ctrl_info;
+	msg.info.type = ctrl_info->type;
+	msg.info.hw_id = ctrl_info->hw_id;
+	vdec_vcp_set_vcu(&inst->vcu);
+
+	return vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+}
+
+static void set_vdec_vcp_data(struct vdec_inst *inst, enum vcp_reserve_mem_id_t id, void *string)
 {
 	//struct vdec_ap_ipi_set_param msg;
 	void *string_va = (void *)(__u64)vcp_get_reserve_mem_virt_ex(id);
@@ -1773,6 +1803,9 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	}
+	case SET_PARAM_VDEC_PWR_CTRL:
+		ret = vdec_vcp_set_pwr_ctrl(inst, (struct mtk_smi_pwr_ctrl_info *)in);
+		break;
 	default:
 		mtk_vcodec_err(inst, "invalid set parameter type=%d\n", type);
 		ret = -EINVAL;
