@@ -12,8 +12,9 @@
 #include <linux/of_reserved_mem.h>
 #include <trace/hooks/vendor_hooks.h>
 #include <trace/hooks/avc.h>
+#ifdef SUPPORT_CREDS
 #include <trace/hooks/creds.h>
-#include <trace/hooks/module.h>
+#endif
 #include <trace/hooks/selinux.h>
 #include <trace/hooks/syscall_check.h>
 #include <linux/types.h> // for list_head
@@ -452,8 +453,10 @@ int __init mkp_demo_init(void)
 
 	/* load mkp el2 module */
 	ret = pkvm_load_el2_module(__kvm_nvhe_mkp_hyp_init, &token);
-	if (ret)
+	if (ret) {
+		pr_info("%s:%d, ret: %d\n", __func__, __LINE__, ret);
 		return ret;
+	}
 
 	/* register hvc call  */
 	ret = pkvm_register_el2_mod_call(__kvm_nvhe_handle__mkp_hyp_hvc, token);

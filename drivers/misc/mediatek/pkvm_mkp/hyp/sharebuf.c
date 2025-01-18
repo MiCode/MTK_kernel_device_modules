@@ -106,7 +106,7 @@ static struct sharebuf_object *pick_sharebuf_object(u32 handle)
 		if (sb_obj_ptr->handle_obj == NULL) {
 			/* abnormal case */
 			/* dump message */
-			trace_hyp_printk("[MKP] %s failed, handle_obj is NULL", __func__);
+			// trace_hyp_printk("[MKP] %s failed, handle_obj is NULL", __func__);
 			sb_obj_ptr = NULL;
 			break;
 		}
@@ -153,7 +153,7 @@ int mkp_configure_sharebuf(u32 policy, u32 handle, u32 type, u64 num, u64 size)
 
 	/* Is handle valid */
 	if (handle_obj == NULL) {
-		trace_hyp_printk("[MKP] mkp_configure_sharebuf failed, handle_obj is NULL");
+		// trace_hyp_printk("[MKP] mkp_configure_sharebuf failed, handle_obj is NULL");
 		ret = ERR_INVALID_HANDLE;
 		goto out;
 	}
@@ -255,7 +255,7 @@ int mkp_configure_sharebuf(u32 policy, u32 handle, u32 type, u64 num, u64 size)
 out:
 	if (err_line) {
 		put_back_handle(handle_obj);
-		trace_hyp_printk("[MKP] mkp_configure_sharebuf, err_line: %d", __LINE__);
+		// trace_hyp_printk("[MKP] mkp_configure_sharebuf, err_line: %d", __LINE__);
 	}
 
 	return ret;
@@ -333,7 +333,8 @@ static sharebuf_update_t __update_disordered_sharebuf_n_args
 	if (!update_flag) {
 		if (sharebuf_obj->freelist == -1) {
 			ret.value = ERR_NO_AVAIL_SPACE;
-			trace_hyp_printk("[MKP] __update_disordered_sharebuf_n_args: No available sharebuf free entry");
+			//trace_hyp_printk("[MKP] __update_disordered_sharebuf_n_args:\
+			//			No available sharebuf free entry");
 		} else {
 			// take ith sharebuf entry
 			i = (u32)sharebuf_obj->freelist;
@@ -355,7 +356,8 @@ static sharebuf_update_t __update_disordered_sharebuf_n_args
 					sharebuf_obj->freelist = tag;	// update freelist
 				} else {
 					ret.value = ERR_NO_AVAIL_SPACE;
-					trace_hyp_printk("[MKP] __update_disordered_sharebuf_n_args: No enough space to create a sharebuf_ref_obj");
+					//trace_hyp_printk("[MKP] __update_disordered_sharebuf_n_args:\
+					//			No enough space to create a sharebuf_ref_obj");
 				}
 			}
 
@@ -446,8 +448,8 @@ static sharebuf_update_t __update_sharebuf_n_args(u32 policy, u32 handle, u64 in
 	hyp_spin_unlock(lock);
 
 out:
-	if (err_line)
-		trace_hyp_printk("[MKP] __update_sharebuf_n_args: err_line: %d", __LINE__);
+	// if (err_line)
+	//	trace_hyp_printk("[MKP] __update_sharebuf_n_args: err_line: %d", __LINE__);
 
 	return update_ret;
 }

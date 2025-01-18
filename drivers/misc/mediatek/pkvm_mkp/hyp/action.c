@@ -35,13 +35,13 @@ void do_policy_action(enum mkp_policy_id policy, const char *func, int ln)
 
 	/* OOPS or not */
 	if (ret) {
-		trace_hyp_printk("[MKP] do_policy_action: (OOPS) violation on policy, \
-			policy(%u) at", policy);
+		//trace_hyp_printk("[MKP] do_policy_action: (OOPS) violation on policy, \
+		//	policy(%u) at", policy);
 		module_ops->puts(func);
 		module_ops->putx64(ln);
 		BUG_ON(1);
 	} else {
-		trace_hyp_printk("[MKP] do_policy_action: violation on policy(%u) at", policy);
+		//trace_hyp_printk("[MKP] do_policy_action: violation on policy(%u) at", policy);
 		module_ops->puts(func);
 		module_ops->putx64(ln);
 	}

@@ -10,8 +10,8 @@
 #include "policy.h"
 
 #define cpu_reg(ctxt, r)	((ctxt)->regs.regs[r])
-#define DECLARE_REG(type, name, ctxt, reg)	\
-				(type name = (type)cpu_reg(ctxt, (reg)))
+#define DECLARE_REG(type, name, ctxt, reg)\
+			type name = (type)cpu_reg(ctxt, (reg))
 
 enum attr_type {
 	ATTR_RW = 0x0001,

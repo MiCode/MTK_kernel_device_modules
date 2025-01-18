@@ -21,8 +21,8 @@ static void __mkp_lookup_mapping_entry(u64 ipa, u64 *entry_level, u64 *permissio
 	/* Query corresponding descriptor */
 	ret = module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
 
-	if (ret)
-		trace_hyp_printk("[MKP] __mkp_lookup_mapping_entry: failed to get pte");
+	//if (ret)
+	//	trace_hyp_printk("[MKP] __mkp_lookup_mapping_entry: failed to get pte");
 
 	/*
 	 * For pkvm, there is a lazy map mechanism only happened to the pte with RWX.
@@ -66,21 +66,24 @@ static inline void lookup_entry_for_mkp_set_mapping(struct handle_object *hobj, 
 int reset_to_default_state(u64 perm, u64 start_pfn, u64 nr_pages)
 {
 	u64 pfn = start_pfn;
-	int i, ret, ret_final = 0;
+	int ret = 0;
 
 	/* Check if it is default state */
 	if ((perm & S2_MEM_DEFAULT_ATTR) != S2_MEM_DEFAULT_ATTR) {
+		/*
 		for (i = 0; i < nr_pages; i++) {
 			ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR);
 			pfn += 1;
 			ret_final = ret_final | ret;
 		}
+		*/
+		ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR, nr_pages);
 
-		if (ret_final)
-			trace_hyp_printk("[MKP] reset_to_default_state: failed to reset property, ret: %d", ret_final);
+		//if (ret_final)
+		//	trace_hyp_printk("[MKP] reset_to_default_state: failed to reset property, ret: %d", ret_final);
 	}
 
-	return ret_final;
+	return ret;
 }
 
 /* for HVC_FUNC_SET_MAPPING_RO */
@@ -106,7 +109,7 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 	/* Has RO been applied */
 	if (to_apply_ro(handle_obj->attrset)) {
 		u64 el, perm, pfn;
-		int nr_pages, i, ret, ret_final = 0;
+		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
 		bool mapped = false;
 
@@ -122,13 +125,14 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 			pfn = handle_obj->start >> PAGE_SHIFT;
 
 			/* Check if it is default state */
-			ret_final = reset_to_default_state(perm, pfn, nr_pages);
-			if (ret_final) {
-				trace_hyp_printk("[MKP] mkp_set_mapping_ro, failed to reset property, ret: %d",
-					ret_final);
+			ret = reset_to_default_state(perm, pfn, nr_pages);
+			if (ret) {
+				//trace_hyp_printk("[MKP] mkp_set_mapping_ro, failed to reset property, ret: %d",
+				//	ret_final);
 				goto out;
 			}
 
+			/*
 			for (i = 0; i < nr_pages; i++) {
 				ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR);
 				pfn += 1;
@@ -137,25 +141,33 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 
 			if (!ret_final)
 				mapped = true;
+			*/
+
+			ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR, nr_pages);
+
+			if (!ret)
+				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
-		if (!ret_final) {
+		if (!ret) {
 			handle_obj->attrset = ro_is_applied(handle_obj->attrset);
 
 			/* MPU Kernel Protection region setup */
 			// TODO: Need to resolve an issue of smc call to tfa
+			/*
 			if (policy == MKP_POLICY_KERNEL_CODE) {
 				if (emi_kp_set_protection(handle_obj->start, handle_obj->start + handle_obj->size,
 						KP_RGN_KERNEL_CODE, MKP_KERNEL))
-					trace_hyp_printk("mkp_set_mapping_ro:%d : emi_kp_set_protection failed: region id %d",
-						__LINE__, KP_RGN_KERNEL_CODE);
+					//trace_hyp_printk("mkp_set_mapping_ro:%d : emi_kp_set_protection failed:\
+					//	region id %d",	__LINE__, KP_RGN_KERNEL_CODE);
 			} else if (policy == MKP_POLICY_KERNEL_RODATA) {
 				if (emi_kp_set_protection(handle_obj->start, handle_obj->start + handle_obj->size,
 						KP_RGN_KERNEL_RODATA, MKP_KERNEL))
-					trace_hyp_printk("mkp_set_mapping_ro:%d : emi_kp_set_protection failed: region id %d\n",
-						__LINE__, KP_RGN_KERNEL_RODATA);
+					//trace_hyp_printk("mkp_set_mapping_ro:%d : emi_kp_set_protection failed:\
+					//	region id %d\n", __LINE__, KP_RGN_KERNEL_RODATA);
 			}
+			*/
 		}
 
 		/* Update mapping status of this handle_obj  TODO: */
@@ -193,7 +205,7 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 	/* Has RW been applied */
 	if (to_apply_rw(handle_obj->attrset)) {
 		u64 el, perm, pfn;
-		int nr_pages, i, ret, ret_final = 0;
+		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
 		bool mapped = false;
 
@@ -209,13 +221,14 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 			pfn = handle_obj->start >> PAGE_SHIFT;
 
 			/* Check if it is default state */
-			ret_final = reset_to_default_state(perm, pfn, nr_pages);
-			if (ret_final) {
-				trace_hyp_printk("[MKP] mkp_set_mapping_rw,  failed to reset property, ret: %d",
-					ret_final);
+			ret = reset_to_default_state(perm, pfn, nr_pages);
+			if (ret) {
+				//trace_hyp_printk("[MKP] mkp_set_mapping_rw,  failed to reset property, ret: %d",
+				//	ret_final);
 				goto out;
 			}
 
+			/*
 			for (i = 0; i < nr_pages; i++) {
 				ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW);
 				pfn += 1;
@@ -224,10 +237,15 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 
 			if (!ret_final)
 				mapped = true;
+			*/
+			ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW, nr_pages);
+
+			if (!ret)
+				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
-		if (!ret_final)
+		if (!ret)
 			handle_obj->attrset = rw_is_applied(handle_obj->attrset);
 
 		/* Update mapping status of this handle_obj  TODO: */
@@ -266,7 +284,7 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 	/* Has NX been applied */
 	if (to_apply_nx(handle_obj->attrset)) {
 		u64 el, perm, pfn;
-		int nr_pages, i, ret, ret_final = 0;
+		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
 		bool mapped = false;
 
@@ -282,13 +300,14 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 			pfn = handle_obj->start >> PAGE_SHIFT;
 
 			/* Check if it is default state */
-			ret_final = reset_to_default_state(perm, pfn, nr_pages);
-			if (ret_final) {
-				trace_hyp_printk("MKP: mkp_set_mapping_nx,  failed to reset property, ret: %d",
-					ret_final);
+			ret = reset_to_default_state(perm, pfn, nr_pages);
+			if (ret) {
+				//trace_hyp_printk("MKP: mkp_set_mapping_nx,  failed to reset property, ret: %d",
+				//	ret_final);
 				goto out;
 			}
 
+			/*
 			for (i = 0; i < nr_pages; i++) {
 				ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN);
 				pfn += 1;
@@ -297,10 +316,15 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 
 			if (!ret_final)
 				mapped = true;
+			*/
+			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN, nr_pages);
+
+			if (!ret)
+				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
-		if (!ret_final)
+		if (!ret)
 			handle_obj->attrset = nx_is_applied(handle_obj->attrset);
 
 		/* Update mapping status of this handle_obj  TODO: */
@@ -339,7 +363,7 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 	/* Has X been applied */
 	if (to_apply__x(handle_obj->attrset)) {
 		u64 el, perm, pfn;
-		int nr_pages, i, ret, ret_final = 0;
+		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
 		bool mapped = false;
 
@@ -355,13 +379,14 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 			pfn = handle_obj->start >> PAGE_SHIFT;
 
 			/* Check if it is default state */
-			ret_final = reset_to_default_state(perm, pfn, nr_pages);
-			if (ret_final) {
-				trace_hyp_printk("[MKP] mkp_set_mapping_x,  failed to reset property, ret: %d",
-					ret_final);
+			ret = reset_to_default_state(perm, pfn, nr_pages);
+			if (ret) {
+				//trace_hyp_printk("[MKP] mkp_set_mapping_x,  failed to reset property, ret: %d",
+				//	ret_final);
 				goto out;
 			}
 
+			/*
 			for (i = 0; i < nr_pages; i++) {
 				ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X);
 				pfn += 1;
@@ -370,10 +395,15 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 
 			if (!ret_final)
 				mapped = true;
+			*/
+			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X, nr_pages);
+
+			if (!ret)
+				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
-		if (!ret_final)
+		if (!ret)
 			handle_obj->attrset = _x_is_applied(handle_obj->attrset);
 
 		/* Update mapping status of this handle_obj  TODO: */
@@ -500,8 +530,8 @@ int reset_to_s2_mapping_attrs(struct handle_object *obj)
 {
 	u64 el, perm;
 	u64 pfn;
-	int ret, ret_final = 0;
-	int i, nr_pages;
+	int ret = 0;
+	int nr_pages;
 
 	/* Look up the current permission */
 	__mkp_lookup_mapping_entry(obj->start, &el, &perm);
@@ -514,11 +544,14 @@ int reset_to_s2_mapping_attrs(struct handle_object *obj)
 	/* Recover to original S2 mapping attrs for MT_MEM */
 	nr_pages = obj->size >> PAGE_SHIFT;
 	pfn = obj->start >> PAGE_SHIFT;
+	ret = module_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_RWX, nr_pages);
+	/*
 	for (i = 0; i < nr_pages; i++) {
 		ret = module_ops->host_stage2_mod_prot(pfn, KVM_PGTABLE_PROT_RWX);
 		pfn += 1;
 		ret_final = ret_final | ret;
 	}
+	*/
 
-	return ret_final;
+	return ret;
 }
