@@ -362,6 +362,9 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 		readl(OVL_BLD_DBG_STATUS0 + baddr) & 0x1fff,
 		(readl(OVL_BLD_DBG_STATUS0 + baddr) >> 16) & 0x1fff);
 
+	if (!(ovl_en & 0x1))
+		return 0;
+
 	/* 0: phy layer, 1~3: ext layer */
 	for (i = 0; i < 4; i++) {
 		if (layer_en[i] & 0x1)
