@@ -8,11 +8,11 @@
 #include <linux/module.h>
 #include <linux/printk.h>
 
-void smpu_clear_md_violation(void)
+char *smpu_clear_md_violation(void)
 {
+	char *ret = "dummy";
 	pr_info("%s: dummy for legacy!\n", __func__);
-	return;
-
+	return ret;
 }
 EXPORT_SYMBOL(smpu_clear_md_violation);
 

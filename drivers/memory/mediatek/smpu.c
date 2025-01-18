@@ -77,13 +77,62 @@ static void clear_kp_violation(unsigned int emi_id)
 		      0, 0, 0, &smc_res);
 }
 
-void smpu_clear_md_violation(void)
+char *smpu_clear_md_violation(void)
 {
-	struct smpu *smpu;
+	struct smpu *smpu = { 0 };
+	struct smpu_reg_info_t *dump_reg;
 	void __iomem *mpu_base;
-	bool flag = false;
+	bool flag = false; /* make sure md vio rg exists or not *after 6897*/
 	struct arm_smccc_res smc_res;
+	ssize_t msg_len = 0;
+	int i;
+	unsigned int parser_shift = 0x40;
+	char *ret0 = "fail", *ret1 = "clear_md_vio";
 
+	/*
+	 * get the violation log after 6897
+	 */
+	if ((global_nsmpu && (global_nsmpu->dump_md_cnt > 0)) ||
+	(global_ssmpu && (global_ssmpu->dump_md_cnt > 0))) {
+		/*
+		 * check violation from the North/South MPU
+		 */
+		smpu = global_nsmpu;
+		mpu_base = smpu->mpu_base;
+		dump_reg = smpu->dump_md_reg;
+		smpu = (readl(mpu_base + dump_reg[0].offset) > 0x2) ||
+		(readl(mpu_base + dump_reg[9].offset) > 0x2) ? global_nsmpu:global_ssmpu;
+		mpu_base = smpu->mpu_base;
+		dump_reg = smpu->dump_md_reg;
+
+		/*
+		 * Adding md register for violation info
+		 */
+		for (i = 0; i < smpu->dump_md_cnt; i++)
+			dump_reg[i].value =
+				readl(mpu_base + dump_reg[i].offset);
+
+		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
+			msg_len += scnprintf(smpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\n[SMPU]%s\n", smpu->name);
+		}
+		for (i = 0; i < smpu->dump_md_cnt; i++) {
+			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
+				msg_len += scnprintf(
+					smpu->vio_msg + msg_len,
+					MTK_SMPU_MAX_CMD_LEN - msg_len,
+					"[%x]%x;",
+					dump_reg[i].offset - parser_shift,
+					dump_reg[i].value);
+		}
+		if( (dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2 ))
+			pr_info("%s: %s", __func__, smpu->vio_msg);
+	}
+
+	/*
+	 *  clear the violation log after 6897
+	 */
 	if (global_nsmpu) {
 		smpu = global_nsmpu;
 		mpu_base = smpu->mpu_base;
@@ -101,6 +150,9 @@ void smpu_clear_md_violation(void)
 				 mpu_base);
 	}
 
+	/*
+	 *  clear the violation log before 6897
+	 */
 	if (!flag) {
 		pr_info("smpu_clear_md_vio enter\n");
 		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_MD, 0, 0,
@@ -108,9 +160,12 @@ void smpu_clear_md_violation(void)
 		if (smc_res.a0) {
 			pr_info("%s:%d failed to clear md violation, ret=0x%lx\n",
 				__func__, __LINE__, smc_res.a0);
-			return;
+			return ret0;
 		}
+		return ret1;
 	}
+
+	return smpu->vio_msg;
 }
 EXPORT_SYMBOL(smpu_clear_md_violation);
 
@@ -570,6 +625,39 @@ static int smpu_probe(struct platform_device *pdev)
 	//only for smpu node
 	if ((!(strcmp(mpu->name, "ssmpu"))) ||
 	    (!(strcmp(mpu->name, "nsmpu")))) {
+		/*
+		 *  get the md violation register content.
+		 */
+		size = of_property_count_elems_of_size(smpu_node, "dump-md",
+						       sizeof(char));
+		if (size <= 0){
+			pr_debug("No smpu node dump-md\n");
+			mpu->dump_md_cnt = 0;
+		}else{
+			dump_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+			if (!dump_list)
+				return -ENXIO;
+
+			size >>= 2;
+			mpu->dump_md_cnt = size;
+			ret = of_property_read_u32_array(smpu_node, "dump-md", dump_list, size);
+			if (ret) {
+				pr_debug("no smpu dump-md\n");
+				return -ENXIO;
+			}
+
+			mpu->dump_md_reg = devm_kmalloc(
+				&pdev->dev, size * sizeof(struct smpu_reg_info_t), GFP_KERNEL);
+			if (!(mpu->dump_md_reg))
+				return -ENOMEM;
+
+			for (i = 0; i < mpu->dump_cnt; i++) {
+				mpu->dump_md_reg[i].offset = dump_list[i];
+				mpu->dump_md_reg[i].value = 0;
+				mpu->dump_md_reg[i].leng = 0;
+			}
+		}
+		/* get md reg content end*/
 		//bypass_axi
 		size = of_property_count_elems_of_size(smpu_node, "bypass-axi",
 						       sizeof(char));
