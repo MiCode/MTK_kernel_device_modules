@@ -2498,7 +2498,7 @@ static void __mtk_smi_dbg_hang_detect(char *user)
 	/* full dump */
 	if (is_busy) {
 		pr_info("%s: ===== SMI MM bus busy =====:%s\n", __func__, user);
-		PRINT_NR = 5;
+		PRINT_NR = 3;
 	} else
 		pr_info("%s: ===== SMI MM bus NOT hang =====:%s\n", __func__, user);
 
