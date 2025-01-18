@@ -1429,8 +1429,10 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 		if (status & INTSTA_VDE)
 			irq_vdesa++;
 
-		if (status & INTSTA_UNDERFLOW)
+		if (status & INTSTA_UNDERFLOW) {
+			DPTXMSG("%s dpintf_underflow!\n", __func__);
 			irq_underflowsa++;
+		}
 
 		if (status & INTSTA_TARGET_LINE)
 			irq_tl++;

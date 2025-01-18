@@ -1617,7 +1617,10 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 
 			DPTXMSG("Power OFF %d", mtk_dp->bPowerOn);
 			pm_runtime_put_sync(mtk_dp->dev);
-
+			if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+				if (mtk_dp->priv->dpc_dev)
+					pm_runtime_put_sync(mtk_dp->priv->dpc_dev);
+			}
 			fakecablein = false;
 			fakeres = FAKE_DEFAULT_RES;
 			fakebpc = DP_COLOR_DEPTH_8BIT;
@@ -4069,6 +4072,7 @@ void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc)
 void mtk_dp_HPDInterruptSet(int bstatus)
 {
 	void *base;
+	int ret;
 
 	if (g_mtk_dp == NULL) {
 		DPTXERR("%s: dp not initial\n", __func__);
@@ -4086,11 +4090,20 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 		|| (bstatus == HPD_INT_EVNET && g_mtk_dp->bPowerOn)) {
 
 		if (bstatus == HPD_CONNECT) {
-			pm_runtime_get_sync(g_mtk_dp->dev);
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
-				/* mt6991 need to config HWCCF setiing */
+				if (g_mtk_dp->priv->dpc_dev) {
+					/* get mminfra before DPTX on */
+					ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
+					if (unlikely(ret)) {
+						DPTXMSG("request mminfra power failed\n");
+						return;
+					}
+				}
+				pm_runtime_get_sync(g_mtk_dp->dev);
 				base = ioremap(0x31b50000, 0x1000);
 				writel(0xc2fc224d, base + 0x78);
+			} else {
+				pm_runtime_get_sync(g_mtk_dp->dev);
 			}
 			mdrv_DPTx_InitPort(g_mtk_dp);
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
