@@ -14846,6 +14846,38 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		status = "okay";
 	};
 
+	pmic-ecid {
+		compatible = "mediatek,mt6363-efuse";
+		mt6363-ecid {
+			ecid = /bits/ 16 <0 0 0 0>;
+			slvid = <4>;
+		};
+		mt6373-ecid {
+			ecid = /bits/ 16 <0 0 0 0>;
+			slvid = <5>;
+		};
+		mt6685-ecid {
+			ecid =  /bits/ 16 <0 0 0 0>;
+			slvid = <9>;
+		};
+		mt6316-6-ecid {
+			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
+			slvid = <6>;
+		};
+		mt6316-7-ecid {
+			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
+			slvid = <7>;
+		};
+		mt6316-8-ecid {
+			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
+			slvid = <8>;
+		};
+		mt6316-15-ecid {
+			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
+			slvid = <15>;
+		};
+	};
+
 	extcon_usb: extcon-usb {
 		compatible = "mediatek,extcon-usb";
 		vbus-supply = <&mt6379_otg_vbus>;
