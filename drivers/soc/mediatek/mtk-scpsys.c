@@ -1199,6 +1199,8 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 
+	scpd->is_on = true;
+
 	return 0;
 
 err_vcp_ready:
@@ -1282,6 +1284,8 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 	ret = scpsys_regulator_disable(scpd);
 	if (ret < 0)
 		goto err_regulator;
+
+	scpd->is_on = false;
 
 	return 0;
 

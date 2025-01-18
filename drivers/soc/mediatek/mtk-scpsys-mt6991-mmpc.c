@@ -919,7 +919,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_en_ofs = 0x1400,
 		.hwv_set_sta_ofs = 0x1464,
 		.hwv_clr_sta_ofs = 0x1468,
-		.hwv_shift = 3,
+		.hwv_shift = 0,
 		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CSI_BS_RX] = {
@@ -960,27 +960,13 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 	},
 	[MT6991_POWER_DOMAIN_DSI_PHY1] = {
 		.name = "dsi-phy1",
-		.hwv_comp = "mm-hw-ccf-regmap",
-		.hwv_set_ofs = 0x0220,
-		.hwv_clr_ofs = 0x0224,
-		.hwv_done_ofs = 0x142C,
-		.hwv_en_ofs = 0x1420,
-		.hwv_set_sta_ofs = 0x1474,
-		.hwv_clr_sta_ofs = 0x1478,
-		.hwv_shift = 8,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.ctl_offs = 0x0F4,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DSI_PHY2] = {
 		.name = "dsi-phy2",
-		.hwv_comp = "mm-hw-ccf-regmap",
-		.hwv_set_ofs = 0x0220,
-		.hwv_clr_ofs = 0x0224,
-		.hwv_done_ofs = 0x142C,
-		.hwv_en_ofs = 0x1420,
-		.hwv_set_sta_ofs = 0x1474,
-		.hwv_clr_sta_ofs = 0x1478,
-		.hwv_shift = 9,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.ctl_offs = 0x0F8,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 };
 
@@ -1017,6 +1003,13 @@ static const struct scp_subdomain scp_subdomain_mt6991_mmpc[] = {
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML0_SHUTDOWN},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML1_SHUTDOWN},
+	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_CSI_BS_RX},
+	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_CSI_LS_RX},
+	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_DSI_PHY0},
+	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_DSI_PHY1},
+	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_DSI_PHY2},
+	{MT6991_POWER_DOMAIN_MM_INFRA_AO, MT6991_POWER_DOMAIN_MM_INFRA0},
+	{MT6991_POWER_DOMAIN_MM_INFRA0, MT6991_POWER_DOMAIN_MM_INFRA1},
 };
 
 static const struct scp_soc_data mt6991_mmpc_data = {
