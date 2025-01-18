@@ -1400,6 +1400,30 @@ void ged_gpu_autosuspend_timeout_notify(int autosuspend_timeout_ms)
 }
 EXPORT_SYMBOL(ged_gpu_autosuspend_timeout_notify);
 
+
+/* Check PM callback state in Kbase */
+int check_pm_callback_state(enum ged_gpu_power_state power_state)
+{
+	/* check now pm_callback state */
+	if (atomic_read(&trigger_pm_callback_state) == power_state)
+		return 1;
+
+	atomic_set(&trigger_pm_callback_state, power_state);
+	return 0;
+}
+EXPORT_SYMBOL(check_pm_callback_state);
+
+
+/* If power transition timeout, dump info */
+void dump_pm_callback_kbase_info(void)
+{
+	/* check trigger ghpm status */
+	pr_info("%s, trigger pm_callback state=%d", __func__,
+		atomic_read(&trigger_pm_callback_state));
+}
+EXPORT_SYMBOL(dump_pm_callback_kbase_info);
+
+
 #if IS_BUILTIN(CONFIG_MTK_GPU_SUPPORT)
 #endif /* CONFIG_MTK_GPU_SUPPORT */
 
