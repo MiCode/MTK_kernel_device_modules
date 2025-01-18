@@ -229,6 +229,7 @@ static inline bool is_util_est_enable(void)
 }
 
 void set_runnable_boost_enable(bool boost_ctrl);
+void unset_runnable_boost_enable(void);
 bool is_runnable_boost_enable(void);
 
 unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost);

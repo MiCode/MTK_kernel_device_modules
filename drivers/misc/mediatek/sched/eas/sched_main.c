@@ -813,6 +813,16 @@ static long eas_ioctl_impl(struct file *filp,
 			pr_info("dpt ctrl hook is not ready!!!\n");
 		break;
 #endif
+	case EAS_RUNNABLE_BOOST_SET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_runnable_boost_enable(val);
+		break;
+	case EAS_RUNNABLE_BOOST_UNSET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_runnable_boost_enable();
+		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
