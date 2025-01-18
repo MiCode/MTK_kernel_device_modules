@@ -69,6 +69,7 @@
 #define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
 #define PROPNAME_SCP_VLPCK_SUPPORT     "vlpck-support"
+#define PROPNAME_SCP_IPS_SUPPORT       "ips-support"
 #define PROPNAME_PMIC                  "pmic"
 #define PROPNAME_PMIC_VOW_LP_EN_GEAR   "vow-lp-en-gear"
 #define PROPNAME_PMIC_NO_RG_RW         "no-pmic-rg-access"
@@ -962,6 +963,39 @@ int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel)
 /*
  * PROC
  */
+/****************************
+ * show SCP ips
+ *****************************/
+static int mt_scp_ips_proc_show(struct seq_file *m, void *v)
+{
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	struct ipi_tx_data_t ipi_data;
+	unsigned int *scp_ack_data = NULL;
+	int ret;
+
+	if (!g_dvfs_dev.ips_support)
+		goto IPS_NOT_SUPPORT;
+
+	if (!g_dvfs_dev.sleep_init_done)
+		slp_ipi_init();
+
+	ipi_data.arg1 = SCP_SLEEP_IPS_GET;
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+	scp_ack_data = &scp_ipi_ackdata0;
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[%s] ipi send failed with error: %d\n",
+			__func__, ret);
+		return -ESCP_DVFS_IPI_FAILED;
+	}
+	seq_printf(m, "scp_ips: %u\n", *scp_ack_data);
+
+	return 0;
+IPS_NOT_SUPPORT:
+#endif
+	seq_puts(m, "scp_ips: off\n");
+	return 0;
+}
 
 /****************************
  * show SCP state
@@ -1331,6 +1365,7 @@ static const struct proc_ops mt_ ## name ## _proc_fops = {\
 
 #define PROC_ENTRY(name)	{__stringify(name), &mt_ ## name ## _proc_fops}
 
+PROC_FOPS_RO(scp_ips);
 PROC_FOPS_RO(scp_dvfs_state);
 PROC_FOPS_RO(scp_dvfs_opp);
 PROC_FOPS_RW(scp_dvfs_sleep_cnt);
@@ -1348,6 +1383,7 @@ static int mt_scp_dvfs_create_procfs(void)
 	};
 
 	const struct pentry entries[] = {
+		PROC_ENTRY(scp_ips),
 		PROC_ENTRY(scp_dvfs_state),
 		PROC_ENTRY(scp_dvfs_opp),
 		PROC_ENTRY(scp_dvfs_sleep_cnt),
@@ -2708,6 +2744,9 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		return 0;
 	}
 	atomic_set(&g_is_scp_dvfs_feature_enable, 1);
+
+	/* get scp ips support */
+	g_dvfs_dev.ips_support = of_property_read_bool(node, PROPNAME_SCP_IPS_SUPPORT);
 
 	/*
 	* if set, no VCORE DVS is needed & PMIC setting should
