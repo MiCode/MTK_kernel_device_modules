@@ -12,6 +12,8 @@
 
 #include <linux/blk_types.h>
 #include <linux/mmc/core.h>
+#include <linux/proc_fs.h>
+#include <linux/sched.h>
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
