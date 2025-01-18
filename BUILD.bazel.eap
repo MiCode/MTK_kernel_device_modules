@@ -24,7 +24,6 @@ name = "mgk_64_k66"
 build = "no_device_ko"
 mgk_defconfig = "mtk_defconfig"
 kleaf_modules = [
-    "//vendor/mediatek/kernel_modules/connectivity/connfem:connfem",
 ]
 
 filegroup(
