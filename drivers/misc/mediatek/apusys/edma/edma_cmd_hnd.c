@@ -98,6 +98,36 @@ bool edma_is_all_power_off(struct edma_device *edma_device)
 	return true;
 }
 
+static int apu_power_on_edma(struct edma_device *edma_device)
+{
+	int ret = 0;
+
+	__pm_stay_awake(edma_device->ws);
+
+	ret = apu_device_power_on(EDMA);
+	if (ret)
+		goto err;
+	return 0;
+
+err:
+	__pm_relax(edma_device->ws);
+	return ret;
+}
+
+static int apu_power_off_edma(struct edma_device *edma_device)
+{
+	int ret = 0;
+
+	ret = apu_device_power_off(EDMA);
+	if (ret)
+		goto err;
+	__pm_relax(edma_device->ws);
+	return 0;
+
+err:
+	return ret;
+}
+
 int edma_power_on(struct edma_sub *edma_sub)
 {
 	struct edma_device *edma_device;
@@ -115,7 +145,7 @@ int edma_power_on(struct edma_sub *edma_sub)
 			EDMA_POWER_ON) {
 			// already power on, do nothing
 		} else {
-			ret = apu_device_power_on(EDMA);
+			ret = apu_power_on_edma(edma_device);
 			if (!ret) {
 				LOG_DBG("%s power on success\n", __func__);
 				edma_device->power_state = EDMA_POWER_ON;
@@ -150,7 +180,7 @@ void edma_start_power_off(struct work_struct *work)
 		goto exit;
 	}
 
-	ret = apu_device_power_off(EDMA);
+	ret = apu_power_off_edma(edmaDev);
 	if (ret != 0) {
 		LOG_ERR("%s power off fail: %i\n", __func__, ret);
 	} else {

@@ -78,6 +78,8 @@ struct edma_device {
 
 	unsigned int dbgfs_reg_core;
 	unsigned int dbg_cfg;
+
+	struct wakeup_source *ws;
 };
 
 struct edma_user {
