@@ -6729,6 +6729,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c1: i2c1@11d20000 {
@@ -6740,6 +6741,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c2: i2c2@11d21000 {
@@ -6751,6 +6753,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c3: i2c3@11cb0000 {
@@ -6762,6 +6765,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c4: i2c4@11d22000 {
@@ -6773,6 +6777,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c5: i2c5@11d00000 {
@@ -6784,6 +6789,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c6: i2c6@11f00000 {
@@ -6795,6 +6801,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c7: i2c7@11d01000 {
@@ -6806,6 +6813,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c8: i2c8@11d02000 {
@@ -6817,6 +6825,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c9: i2c9@11d03000 {
@@ -6828,6 +6837,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c10: i2c10@11280000 {
@@ -6839,6 +6849,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	i2c11: i2c11@11281000 {
@@ -6850,6 +6861,7 @@
 			<&infracfg_ao_clk CLK_IFRAO_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		mediatek,control-rs-stop;
 	};
 
 	ssusb: usb0@11201000 {
