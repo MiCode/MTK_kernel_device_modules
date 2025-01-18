@@ -1932,9 +1932,9 @@ int (*get_group_hint_hook)(int group);
 EXPORT_SYMBOL(get_group_hint_hook);
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 int group_aware_dvfs_util(struct cpumask *cpumask)
 {
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	unsigned long cpu_util = 0;
 	unsigned long ret_util = 0;
 	unsigned long max_ret_util = 0;
@@ -1966,9 +1966,8 @@ skip_idle:
 			trace_sugov_ext_tar(cpu, ret_util, cpu_util, umax, am);
 	}
 	return max_ret_util;
-#endif
-	return -1;
 }
+#endif
 
 inline int update_cpu_active_ratio(int cpu_idx)
 {

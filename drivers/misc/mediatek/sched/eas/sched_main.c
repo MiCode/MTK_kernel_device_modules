@@ -441,7 +441,7 @@ static long eas_ioctl_impl(struct file *filp,
 		.mask = 0
 	};
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	int grp_id;
 	struct gas_ctrl gas_ctrl_args = {
 		.val = 0,
@@ -717,7 +717,7 @@ static long eas_ioctl_impl(struct file *filp,
 			return -1;
 		set_util_est_ctrl(val);
 		break;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	case EAS_SET_GAS_CTRL:
 		if (easctl_copy_from_user(&gas_ctrl_args, (void *)arg, sizeof(struct gas_ctrl)))
 			return -1;
@@ -884,9 +884,11 @@ static int __init mtk_scheduler_init(void)
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	init_flt_platform();
 	flt_init_res();
-	group_init();
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	group_init();
+#endif
 	sched_asym_cpucapacity_init();
 
 	get_most_powerful_pd_and_util_Th();
@@ -1051,6 +1053,9 @@ static void __exit mtk_scheduler_exit(void)
 	cleanup_sched_common_sysfs();
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	exit_flt_platform();
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	group_exit();
 #endif
 	free_cpu_array();

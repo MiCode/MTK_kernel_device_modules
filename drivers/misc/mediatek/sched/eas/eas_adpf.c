@@ -24,16 +24,21 @@ int sched_adpf_callback(struct _SESSION *session)
 {
 	unsigned int cmd = session->cmd;
 	unsigned int sid = session->sid;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	int i = 0;
+	unsigned int grp_mode = GP_MODE_0;
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	unsigned int adpf_ratio = 0;
 	unsigned int durationNanos = 0;
 	unsigned int targetDurationNanos = 0;
-	bool vip_enable = sched_vip_enable_get();
-
-	if (unlikely(group_get_mode() == GP_MODE_0) && !vip_enable)
-		return -1;
 #endif
+	bool vip_enable = sched_vip_enable_get();
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	grp_mode = group_get_mode();
+#endif
+
+	if (unlikely(grp_mode == GP_MODE_0) && !vip_enable)
+		return -1;
+
 	if(!eas_adpf_enable)
 		return 0;
 
@@ -43,15 +48,15 @@ int sched_adpf_callback(struct _SESSION *session)
 			pr_debug("[%s] sid error: %d cmd: %d", __func__, sid, cmd);
 			return -1;
 		}
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++) {
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 			__set_task_to_group(session->threadIds[i], -1);
 			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
+#endif
 			set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
-#endif
 		break;
 	case ADPF_GET_HINT_SESSION_PREFERED_RATE:
 		//TODO
@@ -64,7 +69,7 @@ int sched_adpf_callback(struct _SESSION *session)
 			pr_debug("[%s] sid error: %d cmd: %d", __func__, sid, cmd);
 			return -1;
 		}
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		mutex_lock(&adpf_mutex);
 		durationNanos = session->workDuration[session->work_duration_size - 1]->durationNanos;
 		targetDurationNanos = session->targetDurationNanos;
@@ -78,7 +83,7 @@ int sched_adpf_callback(struct _SESSION *session)
 #endif
 		break;
 	case ADPF_PAUSE:
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		set_group_active_ratio_cap(GROUP_ID_2, 0);
 #endif
 		break;
@@ -90,7 +95,7 @@ int sched_adpf_callback(struct _SESSION *session)
 			pr_debug("[%s] sid error: %d cmd: %d", __func__, sid, cmd);
 			return -1;
 		}
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++)
 			__set_task_to_group(session->threadIds[i], -1);
@@ -112,15 +117,15 @@ int sched_adpf_callback(struct _SESSION *session)
 			pr_debug("[%s] sid error: %d cmd: %d", __func__, sid, cmd);
 			return -1;
 		}
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++) {
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 			__set_task_to_group(session->threadIds[i], -1);
 			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
+#endif
 			set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
-#endif
 		break;
 	default:
 		break;
