@@ -5923,7 +5923,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1a060000 0 0x9000>, /* ITCM */
 				<0 0x1a030000 0 0x8000>, /* DTCM */
 				<0 0x1a210000 0 0x4000>; /* L2SRAM */
-			system = <0 0x50000000 0 0xe00000>;
+			system = <0 0x50000000 0 0xd00000>;
 			interrupts = <GIC_SPI 703 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 705 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 707 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5938,7 +5938,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1a0d0000 0 0x9000>, /* ITCM */
 				<0 0x1a0a0000 0 0x10000>, /* DTCM */
 				<0 0x1a214000 0 0x4000>; /* L2SRAM */
-			system = <0 0x50e00000 0 0xf00000>;
+			system = <0 0x50d00000 0 0xc00000>;
 			interrupts = <GIC_SPI 704 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 706 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 708 IRQ_TYPE_LEVEL_HIGH 0>;
