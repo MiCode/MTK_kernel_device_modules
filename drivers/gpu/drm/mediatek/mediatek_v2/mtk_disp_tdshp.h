@@ -47,10 +47,10 @@ struct mtk_disp_tdshp_primary {
 	bool get_size_available;
 	struct DISP_TDSHP_DISPLAY_SIZE tdshp_size;
 	struct mutex data_lock;
-	unsigned int relay_value;
 	struct DISP_TDSHP_REG *tdshp_regs;
 	int tdshp_reg_valid;
 	int *aal_clarity_support;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_tdshp {
@@ -67,7 +67,6 @@ struct mtk_disp_tdshp {
 	unsigned int roi_height;
 };
 
-void disp_tdshp_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_tdshp_regdump(struct mtk_ddp_comp *comp);
 // for displayPQ update to swpm tppa
 unsigned int disp_tdshp_bypass_info(struct mtk_drm_crtc *mtk_crtc);

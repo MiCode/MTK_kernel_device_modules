@@ -1058,7 +1058,7 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR||
 				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL)) {
 			if (comp->funcs && comp->funcs->bypass)
-				mtk_ddp_comp_bypass(comp, bypass, cmdq_handle);
+				mtk_ddp_comp_bypass(comp, bypass, PQ_FEATURE_KRN_DOZE, cmdq_handle);
 		}
 	}
 
@@ -1069,7 +1069,7 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR||
 				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL)) {
 				if (comp->funcs && comp->funcs->bypass)
-					mtk_ddp_comp_bypass(comp, bypass, cmdq_handle);
+					mtk_ddp_comp_bypass(comp, bypass, PQ_FEATURE_KRN_DOZE, cmdq_handle);
 			}
 		}
 	}

@@ -547,12 +547,12 @@ static void mtk_postmask_stop(struct mtk_ddp_comp *comp,
 }
 
 static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
 
-	//DDPINFO("%s, comp_id: %d, bypass: %d\n",
-	//		__func__, comp->id, bypass);
+	DDPINFO("%s, comp_id: %d, bypass: %d\n",
+			__func__, comp->id, bypass);
 
 	/* postmask bypass control by round_corner_en and bebug flag */
 	if (postmask->postmask_debug)

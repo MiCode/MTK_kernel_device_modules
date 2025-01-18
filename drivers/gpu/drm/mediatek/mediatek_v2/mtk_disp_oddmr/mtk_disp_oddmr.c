@@ -4932,7 +4932,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 }
 
 static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
-		struct cmdq_pkt *handle)
+		int caller, struct cmdq_pkt *handle)
 {
 	ODDMRAPI_LOG("+\n");
 	if (comp->id == DDP_COMPONENT_ODDMR1)
@@ -4947,8 +4947,8 @@ static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 			g_oddmr1_priv->od_enable =
 				g_oddmr1_priv->od_enable_req && !g_oddmr1_priv->pq_od_bypass;
 		}
-		ODDMRLOW_LOG("pq_od_bypass %d,od_enable %d",
-			g_oddmr_priv->pq_od_bypass, g_oddmr_priv->od_enable);
+		ODDMRLOW_LOG("pq_od_bypass %d, caller: 0x%x, od_enable %d",
+			g_oddmr_priv->pq_od_bypass, caller, g_oddmr_priv->od_enable);
 		if (bypass == 0) {
 			mtk_oddmr_set_od_enable_dual(comp,
 				g_oddmr_priv->od_enable_req, handle);

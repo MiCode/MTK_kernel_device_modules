@@ -333,7 +333,6 @@ struct mtk_disp_aal_primary {
 	atomic_t backlight_notified;
 	atomic_t initialed;
 	atomic_t allowPartial;
-	atomic_t force_relay;
 	atomic_t should_stop;
 	atomic_t dre30_write;
 	atomic_t force_delay_check_trig;
@@ -376,6 +375,7 @@ struct mtk_disp_aal_primary {
 	unsigned int fps;
 	struct cmdq_pkt *hist_pkt;
 	atomic_t hist_done_cb;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_aal {
@@ -423,7 +423,6 @@ void disp_aal_set_lcm_type(unsigned int panel_type);
 void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level);
 void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable);
 void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable);
-void disp_aal_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_aal_regdump(struct mtk_ddp_comp *comp);
 
 int mtk_drm_ioctl_aal_get_size(struct drm_device *dev, void *data,

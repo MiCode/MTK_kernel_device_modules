@@ -93,7 +93,6 @@ struct mtk_disp_color_primary {
 	unsigned int split_window_y_start;
 	unsigned int split_window_x_end;
 	unsigned int split_window_y_end;
-	int color_bypass;
 	struct DISPLAY_COLOR_REG color_reg;
 	int color_reg_valid;
 	unsigned int width;
@@ -103,6 +102,7 @@ struct mtk_disp_color_primary {
 	struct DISPLAY_PQ_T color_index;
 	struct DISP_AAL_DRECOLOR_PARAM drecolor_param;
 	struct mutex data_lock;
+	unsigned int relay_state;
 };
 
 /**
@@ -128,9 +128,8 @@ struct mtk_disp_color {
 
 bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	const char *reg_name, int *value);
-void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 	struct cmdq_pkt *handle);
-void disp_color_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_color_regdump(struct mtk_ddp_comp *comp);
 void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,

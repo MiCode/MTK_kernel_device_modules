@@ -51,7 +51,6 @@ struct mtk_dmdp_aal_data {
 };
 
 struct mtk_disp_mdp_primary {
-	atomic_t force_relay;
 	int dre30_support;
 	int blk_num_y_start;
 	int blk_num_y_end;
@@ -59,6 +58,7 @@ struct mtk_disp_mdp_primary {
 	int blk_cnt_y_end;
 	int dre_blk_height;
 	bool aal_param_valid;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_mdp_aal_tile_overhead {
@@ -100,17 +100,42 @@ static void disp_mdp_aal_start(struct mtk_ddp_comp *comp,
 }
 
 void disp_mdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+	int caller, struct cmdq_pkt *handle)
 {
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
+	struct mtk_disp_mdp_primary *primary_data = data->primary_data;
+	struct mtk_ddp_comp *companion = data->companion;
 
-	DDPINFO("%s : bypass = %d dre30_support = %d\n",
-			__func__, bypass, data->primary_data->dre30_support);
-	atomic_set(&data->primary_data->force_relay, bypass);
-	if (bypass == 1 || !data->primary_data->dre30_support)
+	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x, dre30_support: %d\n",
+		__func__, mtk_dump_comp_str(comp), bypass, caller,
+		primary_data->relay_state, primary_data->dre30_support);
+
+	if (!primary_data->dre30_support) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG, 0x00400003, ~0);
-	else
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG, 0x00400026, ~0);
+		return;
+	}
+
+	if (bypass == 1) {
+		if (primary_data->relay_state == 0) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DMDP_AAL_CFG, 0x00400003, ~0);
+			if (comp->mtk_crtc->is_dual_pipe && companion)
+				cmdq_pkt_write(handle, companion->cmdq_base,
+					companion->regs_pa + DMDP_AAL_CFG, 0x00400003, ~0);
+		}
+		primary_data->relay_state |= (1 << caller);
+	} else {
+		if (primary_data->relay_state != 0) {
+			primary_data->relay_state &= ~(1 << caller);
+			if (primary_data->relay_state == 0) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DMDP_AAL_CFG, 0x00400026, ~0);
+				if (comp->mtk_crtc->is_dual_pipe && companion)
+					cmdq_pkt_write(handle, companion->cmdq_base,
+						companion->regs_pa + DMDP_AAL_CFG, 0x00400026, ~0);
+			}
+		}
+	}
 }
 
 static void disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
@@ -194,7 +219,7 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s: size 0x%08x\n", __func__, size);
 
-	if (data->primary_data->dre30_support == 0 || atomic_read(&data->primary_data->force_relay) == 1)
+	if (data->primary_data->dre30_support == 0 || data->primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG, 0x00400003, ~0);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG, 0x00400026, ~0);
@@ -216,8 +241,8 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SHADOW_CTRL, 0, AAL_BYPASS_SHADOW);
 
-	DDPINFO("%s [comp_id:%d]: g_dmdp_aal_force_relay[%d]\n",
-		__func__, comp->id, atomic_read(&data->primary_data->force_relay));
+	DDPINFO("%s [comp_id:%d]: g_dmdp_aal_relay_state[0x%x]\n",
+		__func__, comp->id, data->primary_data->relay_state);
 }
 
 static void disp_mdp_aal_init_primary_data(struct mtk_ddp_comp *comp)
@@ -233,7 +258,7 @@ static void disp_mdp_aal_init_primary_data(struct mtk_ddp_comp *comp)
 	}
 
 	// init primary data
-	atomic_set(&(aal_data->primary_data->force_relay), 0);
+	aal_data->primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
 }
 
 void disp_mdp_aal_first_cfg(struct mtk_ddp_comp *comp,
@@ -443,6 +468,8 @@ void disp_mdp_aal_regdump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
 			&comp->regs_pa);
+	DDPDUMP("== %s RELAY_STATE: 0x%x ==\n", mtk_dump_comp_str(comp),
+			dmdp_aal->primary_data->relay_state);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x600; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -640,5 +667,5 @@ unsigned int disp_mdp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	}
 	aal_data = comp_to_dmdp_aal(comp);
 
-	return atomic_read(&aal_data->primary_data->force_relay);
+	return aal_data->primary_data->relay_state != 0 ? 1 : 0;
 }
