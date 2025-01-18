@@ -292,6 +292,30 @@ static void mtk_drm_crtc_reset(struct drm_crtc *crtc)
 	state->base.crtc = crtc;
 }
 
+static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
+{
+	unsigned int ret = 0;
+
+	switch (comp_id) {
+	case DDP_COMPONENT_OVL1_EXDMA6:
+		ret = DDP_COMPONENT_OVL1_BLENDER5;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA7:
+		ret = DDP_COMPONENT_OVL1_BLENDER6;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA8:
+		ret = DDP_COMPONENT_OVL1_BLENDER7;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA9:
+		ret = DDP_COMPONENT_OVL1_BLENDER8;
+		break;
+	default:
+		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
+	}
+
+	return ret;
+}
+
 void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle)
 {
@@ -316,7 +340,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		else if (crtc_id == 1)
 			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
 		else if (crtc_id == 2)
-			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
+			next_blender = dual_comp_blender_map_mt6991(comp->id);
 
 		value = mtk_ddp_exdma_mout_MT6991(comp->id, next_blender, &addr);
 		if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
@@ -520,7 +544,7 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					ovl1_mutex_regs_pa  + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-					0, 0xc0);
+					0, 0x3c0);
 	}
 
 	/**
@@ -4892,6 +4916,25 @@ static unsigned int dual_comp_map_mt6885(unsigned int comp_id)
 	return ret;
 }
 
+
+static unsigned int dual_comp_map_mt6991(unsigned int comp_id)
+{
+	unsigned int ret = 0;
+
+	switch (comp_id) {
+	case DDP_COMPONENT_OVL1_EXDMA6:
+		ret = DDP_COMPONENT_OVL1_EXDMA7;
+		break;
+	case DDP_COMPONENT_OVL1_EXDMA8:
+		ret = DDP_COMPONENT_OVL1_EXDMA9;
+		break;
+	default:
+		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
+	}
+
+	return ret;
+}
+
 static unsigned int dual_comp_map_mt6983(unsigned int comp_id)
 {
 	unsigned int ret = 0;
@@ -5102,6 +5145,9 @@ unsigned int dual_pipe_comp_mapping(unsigned int mmsys_id, unsigned int comp_id)
 	case MMSYS_MT6885:
 		ret = dual_comp_map_mt6885(comp_id);
 		break;
+	case MMSYS_MT6991:
+		ret = dual_comp_map_mt6991(comp_id);
+		break;
 	default:
 		DDPMSG("unknown mmsys %x for %s\n", mmsys_id, __func__);
 	}
@@ -5157,7 +5203,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 					comp_state->ext_lye_id,
 					cmdq_handle);
 
-				if (mtk_crtc->is_dual_pipe) {
+				if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) {
 					struct mtk_drm_private *priv =
 						mtk_crtc->base.dev->dev_private;
 					unsigned int index = dual_pipe_comp_mapping
@@ -10695,7 +10741,7 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 		if (comp == NULL)
 			continue;
 
-		if (mtk_crtc->is_dual_pipe)
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, i, plane_state, cmdq_handle);
 		else
 			mtk_ddp_comp_layer_config(comp, i, plane_state, cmdq_handle);
@@ -14645,7 +14691,7 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	}
 
 	if (drm_crtc_index(&mtk_crtc->base) == 2 &&
-		mtk_crtc->is_dual_pipe &&
+		(mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) &&
 		crtc_state && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
 		&& (left_bg % 2)) {
 		left_bg -= 1;
@@ -14723,6 +14769,10 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 						plane_state_r->pending.dst_x;
 	}
 
+	if (mtk_crtc->path_data->is_exdma_dual_layer)
+		plane_state_r->pending.offset = plane_state_r->pending.dst_y << 16 |
+						plane_state_r->pending.src_x;
+
 	DDPDBG("plane_r (%u,%u) (%u,%u), (%u,%u)\n",
 		plane_state_r->pending.src_x, plane_state_r->pending.src_y,
 		plane_state_r->pending.dst_x, plane_state_r->pending.dst_y,
@@ -14752,7 +14802,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 			plane->index, comp->id, plane_state->comp_state.comp_id);
 
 	if (plane_state->pending.enable) {
-		if (mtk_crtc->is_dual_pipe) {
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) {
 			comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 			if (comp)
 				mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_index,
@@ -14772,7 +14822,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 		comp_state = &(plane_state->comp_state);
 
 		if (comp_state->comp_id) {
-			if (mtk_crtc->is_dual_pipe) {
+			if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) {
 				unsigned int comp_id;
 
 				comp_id = dual_pipe_comp_mapping(priv->data->mmsys_id,
@@ -14794,7 +14844,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 			 * first component of display path
 			 */
 			if (!state->crtc && comp) {
-				if (mtk_crtc->is_dual_pipe) {
+				if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) {
 					struct mtk_ddp_comp *comp_r;
 					unsigned int comp_r_id;
 
@@ -14949,7 +14999,7 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		if (plane_state->comp_state.ext_lye_id)
 			plane_state->pending.pq_loop_type = 0;
 
-		if (mtk_crtc->is_dual_pipe)
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_index,
 					plane_state, cmdq_handle);
 		else
@@ -16524,7 +16574,7 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 			pending->enable = false;
 			comp = priv->ddp_comp[plane_state->comp_state.comp_id];
 
-			if (mtk_crtc->is_dual_pipe)
+			if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 				mtk_crtc_dual_layer_config(mtk_crtc, comp,
 							plane_state->comp_state.lye_id,
 							plane_state, state->cmdq_handle);
@@ -16602,7 +16652,7 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 		plane_state->comp_state.lye_id = idx;
 		plane_state->comp_state.ext_lye_id = 0;
 
-		if (mtk_crtc->is_dual_pipe)
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
 						plane_state, state->cmdq_handle);
 		else
@@ -16632,7 +16682,7 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 		plane_state->comp_state.lye_id = 0;
 		plane_state->comp_state.ext_lye_id = idx;
 
-		if (mtk_crtc->is_dual_pipe)
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
 						plane_state, state->cmdq_handle);
 		else
@@ -16724,7 +16774,7 @@ static void mtk_drm_crtc_disable_fake_layer(struct drm_crtc *crtc,
 		plane_state->comp_state.lye_id = idx;
 		plane_state->comp_state.ext_lye_id = 0;
 
-		if (mtk_crtc->is_dual_pipe)
+		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
 			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_state->comp_state.lye_id,
 					plane_state, state->cmdq_handle);
 		else

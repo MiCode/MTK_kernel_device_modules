@@ -3215,6 +3215,10 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVL1_BLENDER5,
 	DDP_COMPONENT_OVL1_EXDMA7,
 	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER7,
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER8,
 	DDP_COMPONENT_OVL1_OUTPROC3,
 	DDP_COMPONENT_OVLSYS_WDMA2,
 };
@@ -5016,6 +5020,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_dp_wo_tdshp_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_mem_dp_wo_tdshp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_mem_dp_wo_tdshp),
 	.addon_data = mt6989_addon_dp_wo_tdshp,
+	.is_exdma_dual_layer = true,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_secondary_path_data = {

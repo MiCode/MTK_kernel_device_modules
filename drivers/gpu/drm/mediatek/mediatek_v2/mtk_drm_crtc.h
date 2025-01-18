@@ -667,6 +667,7 @@ enum DISP_SMC_CMD {
 struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;
+	bool is_exdma_dual_layer;
 	const enum mtk_ddp_comp_id *ovl_path[DDP_MODE_NR][DDP_PATH_NR];
 	unsigned int ovl_path_len[DDP_MODE_NR][DDP_PATH_NR];
 	const enum mtk_ddp_comp_id *path[DDP_MODE_NR][DDP_PATH_NR];
