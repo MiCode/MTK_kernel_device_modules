@@ -1871,6 +1871,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					,mon7_lat_Other_r_demand,mon7_bw_Other_r_demand\
 					,mon8_lat_Other_r_all,mon8_bw_Other_r_all\
 					,mon9_lat_all_r_all,mon9_bw_all_r_all";
+			node-32 = "MCUPM_PREFETCH_THR_INFO",
+					"emi_cnt_diff,emi_bw,dram_cost,cpul_freq,cpu_cost\
+					,prefetch_enable,pass_throttle,timer_diff_ms";
 			node-33 = "MCUPM_CPUCOOLER_limiter",
 					"L_limiter,M_limiter,B_limiter";
 		};
