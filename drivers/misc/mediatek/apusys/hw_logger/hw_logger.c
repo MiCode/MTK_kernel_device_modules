@@ -42,9 +42,11 @@
 
 #define HW_LOG_DUMP_RAW_BUF (1)
 #define APUSYS_RV_DEBUG_INFO_DUMP (1)
+#define HW_LOG_INTR_THRESHOLD 20
 
 /* debug log level */
 static unsigned char g_hw_logger_log_lv = DBG_LOG_INFO;
+static int burst_intr_cnt, burst_intr_aee_triggered;
 
 /* dev */
 #define HW_LOGGER_DEV_NAME "apu_hw_logger"
@@ -412,9 +414,11 @@ static int w1c32_atf(void *addr, uint32_t *ret_val)
 	HWLOGR_DBG("arm_smccc_smc reg_w1c a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
 
 	if (res.a0 != 0) {
-		HWLOGR_ERR("arm_smccc_smc reg_w1c error ret: 0x%lx", res.a0);
-		HWLOGR_ERR("arm_smccc_smc reg_w1c op / 0x%x\n", op);
-		HWLOGR_ERR("arm_smccc_smc reg_w1c a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
+		if (burst_intr_cnt < HW_LOG_INTR_THRESHOLD) {
+			HWLOGR_ERR("arm_smccc_smc reg_w1c error ret: 0x%lx", res.a0);
+			HWLOGR_ERR("arm_smccc_smc reg_w1c op / 0x%x\n", op);
+			HWLOGR_ERR("arm_smccc_smc reg_w1c a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
+		}
 		return res.a0;
 	}
 
@@ -878,8 +882,20 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 	lbc_full_flg = !!(ctrl_flag & LBC_FULL_FLAG);
 	ovwrite_flg = !!(ctrl_flag & OVWRITE_FLAG);
 
-	if (!lbc_full_flg && !ovwrite_flg)
-		HWLOGR_INFO("intr status = 0x%x should not occur\n", ctrl_flag);
+	if (!lbc_full_flg && !ovwrite_flg) {
+		if (burst_intr_cnt < HW_LOG_INTR_THRESHOLD) {
+			HWLOGR_INFO("intr status = 0x%x should not occur, intr cnt = %d\n", ctrl_flag, burst_intr_cnt);
+			burst_intr_cnt++;
+		} else if (burst_intr_cnt == HW_LOG_INTR_THRESHOLD) {
+			if (burst_intr_aee_triggered == 0) {
+				apusys_logger_exception_aee_warn("BURST_INTR_DETECT");
+				burst_intr_aee_triggered++;
+			}
+			burst_intr_cnt++;
+		}
+	} else {
+		burst_intr_cnt = 0;
+	}
 
 	wake_up_all(&apusys_hwlog_wait);
 	HWLOGR_DBG("irq_time = %lld ns\n", sched_clock() - irq_start_time);

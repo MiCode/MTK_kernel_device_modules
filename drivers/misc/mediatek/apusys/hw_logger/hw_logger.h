@@ -161,6 +161,17 @@ enum {
 	SMC_OP_APU_LOG_BUF_NUM
 };
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	#define apusys_logger_exception_aee_warn(module) \
+	do { \
+		HWLOGR_ERR("APUSYS_RV_EXCEPTION_APUSYS_LOGGER: %s\n", module); \
+		aee_kernel_exception("APUSYS_RV_EXCEPTION_APUSYS_LOGGER", \
+			"\nCRDISPATCH_KEY:%s\n", module); \
+	} while (0)
+#else
+#define apusys_logger_exception_aee_warn(module)
+#endif
+
 /* temp define in header */
 #define APU_RPC_PHYS_BASE     0x190F0000
 #define APU_RPC_PHYS_SIZE     0x1000

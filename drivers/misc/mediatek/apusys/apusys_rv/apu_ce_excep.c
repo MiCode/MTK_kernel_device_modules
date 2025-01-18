@@ -108,6 +108,7 @@ struct apu_coredump_work_struct {
 	struct work_struct work;
 };
 
+static int burst_intr_cnt;
 static int exception_job_id = -1;
 static struct delayed_work timeout_work;
 static struct workqueue_struct *apu_workq;
@@ -116,6 +117,7 @@ static struct mtk_apu *ce_apu;
 static struct apu_coredump_work_struct apu_ce_coredump_work;
 #define APU_CE_DUMP_TIMEOUT_MS (1)
 #define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
+#define CE_EXP_INTR_THRESHOLD 5
 
 static void apu_ce_timer_dump_reg(struct work_struct *work);
 
@@ -393,8 +395,14 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 		ret = get_exception_job_id(dev, &exception_job_id, &by_pass);
 		dev_info(dev, "CE exception job id %d\n", exception_job_id);
 
-		if (by_pass || ret)
+		if (by_pass)
 			return IRQ_HANDLED;
+
+		if (ret && burst_intr_cnt < CE_EXP_INTR_THRESHOLD) {
+			dev_info(dev, "get_exception_job_id fail, intr cnt %d\n", burst_intr_cnt);
+			burst_intr_cnt++;
+			return IRQ_HANDLED;
+		}
 
 		disable_irq_nosync(apu->ce_exp_irq_number);
 
