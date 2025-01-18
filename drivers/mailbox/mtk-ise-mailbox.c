@@ -68,6 +68,7 @@ static uint32_t mailbox_poll(uint32_t addr, uint32_t mask, uint32_t expected_val
 	uint32_t retry = MAILBOX_RETRY;
 
 	while ((mlb_read(addr) & mask) != expected_value && retry) {
+		udelay(1);
 		retry--;
 	}
 
@@ -92,6 +93,9 @@ static uint32_t mailbox_check_safety(const uint32_t expected_header,
 	error = mailbox_poll(MB_HOST_SAFETY_STATUS_OFFSET, 1, 1);
 	if (error != MAILBOX_SUCCESS) {
 		pr_err(PFX "%s: poll mailbox failed\n", __func__);
+		pr_err(PFX "%s: safety status 0x%x\n", __func__, mlb_read(MB_HOST_SAFETY_STATUS_OFFSET));
+		mailbox_print_request(request);
+		WARN_ON_ONCE(1);
 		return error;
 	}
 
@@ -99,6 +103,8 @@ static uint32_t mailbox_check_safety(const uint32_t expected_header,
 	if (header != expected_header) {
 		pr_err(PFX "%s: safety failed, expected_header 0x%x, header 0x%x\n",
 			__func__, expected_header, header);
+		mailbox_print_request(request);
+		WARN_ON_ONCE(1);
 		return MAILBOX_INVALID_SAFETY;
 	}
 
@@ -108,11 +114,14 @@ static uint32_t mailbox_check_safety(const uint32_t expected_header,
 		if (value != expected_value) {
 			pr_err(PFX "%s: safety failed, expected_value 0x%x, value 0x%x\n",
 				__func__, expected_header, header);
+			mailbox_print_request(request);
+			WARN_ON_ONCE(1);
 			return MAILBOX_INVALID_SAFETY;
 		}
 	}
 
-	mlb_write(MB_HOST_SAFETY_CONTROL_OFFSET, 1);
+	while ((mlb_read(MB_HOST_SAFETY_STATUS_OFFSET) & 1) == 1)
+		mlb_write(MB_HOST_SAFETY_CONTROL_OFFSET, 1);
 
 	return error;
 }

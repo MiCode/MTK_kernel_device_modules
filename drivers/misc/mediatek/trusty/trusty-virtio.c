@@ -81,8 +81,8 @@ struct trusty_vdev {
 
 #define vdev_to_tvdev(vd)  container_of((vd), struct trusty_vdev, vdev)
 
-#define RSVD_OFFSET (0x70C)
-#define APMCU_ACK BIT(16)
+static uint32_t apmcu_offset;
+static uint32_t apmcu_ack;
 
 static void __iomem *infracfg_base;
 
@@ -738,7 +738,7 @@ static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 	unsigned long flags;
 
 	spin_lock_irqsave(&tctx->slock, flags);
-	trusty_setbits(RSVD_OFFSET, APMCU_ACK);
+	trusty_setbits(apmcu_offset, apmcu_ack);
 	trusty_notifier_call();
 	spin_unlock_irqrestore(&tctx->slock, flags);
 
@@ -859,6 +859,18 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 			IRQF_TRIGGER_NONE, "trusty_virtio", tctx);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq\n");
+		goto err_add_devices;
+	}
+
+	ret = of_property_read_u32(node, "apmcu-offset", &apmcu_offset);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to read apmcu-offset\n");
+		goto err_add_devices;
+	}
+
+	ret = of_property_read_u32(node, "apmcu-ack", &apmcu_ack);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to read apmcu-ack\n");
 		goto err_add_devices;
 	}
 

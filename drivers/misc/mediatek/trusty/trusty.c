@@ -50,6 +50,7 @@ static struct workqueue_struct *notif_call_wq;
 static struct work_struct notif_call_work;
 static struct workqueue_struct *ise_notif_call_wq;
 static struct work_struct ise_notif_call_work;
+static struct work_struct ise_check_vqs_work;
 static u32 real_drv;
 static phys_addr_t mcia_paddr;
 static size_t mcia_size;
@@ -82,17 +83,19 @@ static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 	mailbox_request_t request = {0};
 	mailbox_payload_t payload = {0};
 	mailbox_reply_t reply = {0};
+	static uint32_t payload_sn;
 
 	if (mtk_ise_awake_lock(ISE_REE)) {
 		pr_info("%s: ise power on failed\n", __func__);
 		goto out;
 	}
 
-	payload.size = 4;
+	payload.size = 5;
 	payload.fields[0] = r0;
 	payload.fields[1] = r1;
 	payload.fields[2] = r2;
 	payload.fields[3] = r3;
+	payload.fields[4] = (payload_sn++ & 0xFFFFFFFF);
 
 	reply = ise_mailbox_request(&request, &payload, REQUEST_TRUSTY,
 		TRUSTY_SR_ID_SMC, TRUSTY_SR_VER_SMC);
@@ -518,6 +521,17 @@ void ise_notifier_call(void)
 }
 EXPORT_SYMBOL(ise_notifier_call);
 
+static void ise_check_vqs_work_func(struct work_struct *work)
+{
+	atomic_notifier_call_chain(&tstate->ise_notifier, TRUSTY_CALL_CHECK_VQS, NULL);
+}
+
+void ise_check_vqs_call(void)
+{
+	queue_work(ise_notif_call_wq, &ise_check_vqs_work);
+}
+EXPORT_SYMBOL(ise_check_vqs_call);
+
 u32 is_trusty_real_driver(void)
 {
 	return real_drv;
@@ -659,6 +673,7 @@ static int trusty_probe(struct platform_device *pdev)
 		goto err_create_ise_wq;
 	}
 	INIT_WORK(&ise_notif_call_work, ise_notif_call_work_func);
+	INIT_WORK(&ise_check_vqs_work, ise_check_vqs_work_func);
 
 	return 0;
 
