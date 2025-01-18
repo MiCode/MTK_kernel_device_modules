@@ -1788,8 +1788,9 @@ cpus {
 			mediatek,gce = <&gce_m>;
 			mmsys_config = <&mmsys_config_clk>;
 			mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
-			mboxes = <&gce_m 23 0 CMDQ_THR_PRIO_1>,
-				   <&gce 23 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			mboxes = <&gce 23 0 CMDQ_THR_PRIO_1>,
+				   <&gce_m 23 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+				   //<&gce_sec 11 0 CMDQ_THR_PRIO_1>;
 			token_user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
 			token_gpr_set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 		};
@@ -1823,6 +1824,7 @@ cpus {
 			#mbox-cells = <3>;
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
+			cpr-not-support-cookie;
 			default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
@@ -1857,6 +1859,7 @@ cpus {
 			#mbox-cells = <3>;
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
+			cpr-not-support-cookie;
 			default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 				/bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
