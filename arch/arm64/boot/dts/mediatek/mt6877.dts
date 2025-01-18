@@ -8204,6 +8204,7 @@
 				regulator-min-microvolt = <300000>;
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
 			};
 		};
 	};
@@ -8233,6 +8234,7 @@
 				regulator-min-microvolt = <300000>;
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
+				regulator-always-on;
 			};
 			mt6315_3_vbuck4: 3-vbuck4 {
 				regulator-compatible = "vbuck4";
