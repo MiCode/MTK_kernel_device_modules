@@ -237,7 +237,7 @@ void grp_awr_update_grp_awr_util(void)
 		return;
 	for_each_possible_cpu(cpu_idx) {
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
-			if(userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] == 0)
+			if(userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] == -1)
 				pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
 					get_gear_max_active_ratio_cap(map_cpu_ger[cpu_idx]);
 			else
@@ -374,8 +374,11 @@ void set_cpu_group_active_ratio_pct(int cpu, int grp_idx, int val)
 {
 	if (grp_awr_init_finished == false)
 		return;
-	userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] =
-		((clamp_val(val, 0, 100) << SCHED_CAPACITY_SHIFT) / 100);
+	if (val < 0)
+		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] = -1;
+	else
+		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] =
+			((clamp_val(val, 0, 100) << SCHED_CAPACITY_SHIFT) / 100);
 }
 EXPORT_SYMBOL(set_cpu_group_active_ratio_pct);
 
@@ -383,8 +386,11 @@ void set_cpu_group_active_ratio_cap(int cpu, int grp_idx, int val)
 {
 	if (grp_awr_init_finished == false)
 		return;
-	userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] =
-		clamp_val(val, 0, SCHED_CAPACITY_SCALE);
+	if (val < 0)
+		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] = -1;
+	else
+		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] =
+			clamp_val(val, 0, SCHED_CAPACITY_SCALE);
 }
 EXPORT_SYMBOL(set_cpu_group_active_ratio_cap);
 
@@ -394,9 +400,13 @@ void set_group_active_ratio_pct(int grp_idx, int val)
 
 	if (grp_awr_init_finished == false)
 		return;
-	for_each_possible_cpu(cpu_idx)
-		userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
-			((clamp_val(val, 0, 100) << SCHED_CAPACITY_SHIFT) / 100);
+	for_each_possible_cpu(cpu_idx) {
+		if (val < 0)
+			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = -1;
+		else
+			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
+				((clamp_val(val, 0, 100) << SCHED_CAPACITY_SHIFT) / 100);
+	}
 }
 EXPORT_SYMBOL(set_group_active_ratio_pct);
 
@@ -406,9 +416,13 @@ void set_group_active_ratio_cap(int grp_idx, int val)
 
 	if (grp_awr_init_finished == false)
 		return;
-	for_each_possible_cpu(cpu_idx)
-		userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
-			clamp_val(val, 0, SCHED_CAPACITY_SCALE);
+	for_each_possible_cpu(cpu_idx) {
+		if (val < 0)
+			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = -1;
+		else
+			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
+				clamp_val(val, 0, SCHED_CAPACITY_SCALE);
+	}
 }
 EXPORT_SYMBOL(set_group_active_ratio_cap);
 
@@ -478,7 +492,7 @@ int grp_awr_init(void)
 		ps = pd_get_opp_ps(0, cpu_idx, INT_MAX, true);
 		cap_min[cpu_idx] = ps->capacity;
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
-			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = 0;
+			userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = -1;
 	}
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
