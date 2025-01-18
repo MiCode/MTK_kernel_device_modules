@@ -374,6 +374,7 @@ int audio_freq_hold(void)
 		of_device_is_compatible(np, "mediatek,mt6895-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6985-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6991-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6878-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost")) {
