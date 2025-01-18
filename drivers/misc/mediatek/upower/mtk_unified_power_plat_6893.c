@@ -181,7 +181,7 @@ int upower_bank_to_spower_bank(int upower_bank)
 static unsigned int _mt_cpufreq_get_cpu_level_upower(void)
 {
 
-	unsigned int lv = 0, val, wo_efuse;
+	unsigned int lv = 0, val = 0, wo_efuse;
 	struct nvmem_cell *efuse_cell;
 	unsigned int *efuse_buf;
 	size_t efuse_len;
