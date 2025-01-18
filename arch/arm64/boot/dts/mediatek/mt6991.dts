@@ -8491,6 +8491,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"sys_spm";
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6379_chg>;
+		bootmode = <&chosen>;
+	};
+
 	peak_power_budget:peak-power-budget@117780 {
 		compatible = "mediatek,peak_power_budget";
 		status = "disabled";
@@ -9165,6 +9172,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 	};
 };
+
+&mtk_gauge {
+	disable-mtkbattery = <1>;
+};
+
+#include "mediatek/bat_setting/mt6991_battery_prop.dtsi"
+#include "mediatek/mt6685.dtsi"
 
 /* KEY GPIO standardization start */
 &pio{
