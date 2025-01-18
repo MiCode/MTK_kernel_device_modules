@@ -466,6 +466,8 @@ static const char * const mtk_ovl_colorspace_str[] = {
 
 enum mtk_ovl_transfer { DECLARE_MTK_OVL_TRANSFER(DECLARE_NUM) };
 
+#define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
+
 static const char * const mtk_ovl_transfer_str[] = {
 	DECLARE_MTK_OVL_TRANSFER(DECLARE_STR)};
 
@@ -4058,7 +4060,8 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 				DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
 				return -1;
 			}
-			ret = iommu_map(domain, layer_addr, layer_addr, fb_info->size,
+			ret = iommu_map(domain, layer_addr, layer_addr,
+				ROUNDUP(fb_info->size, PAGE_SIZE),
 				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			write_phy_layer_addr_cmdq(comp, handle, 0, layer_addr);
 		} else {
