@@ -187,7 +187,32 @@ static void ged_eb_sysram_debug_data_write(void)
 			if (tmp_head != tail) {
 				dbg_data[i] =
 					mtk_gpueb_sysram_read(gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
-					tmp_head++;
+				switch (dbg_cnt) {
+				case EB_STACK:
+					dbg_data[i] = (dbg_data[i] >> 16) & 0xFFFF;
+					break;
+				case EB_VIRTUAL_STACK:
+					dbg_data[i] = dbg_data[i] & 0xFFFF;
+					break;
+				case EB_GPU_LOADING:
+					dbg_data[i] = (dbg_data[i] >> 24) & 0xFF;
+					break;
+				case EB_MCU_LOADING:
+					dbg_data[i] = (dbg_data[i] >> 16) & 0xFF;
+					break;
+				case EB_ITER_LOADING:
+				case EB_CUR_OPP:
+					dbg_data[i] = (dbg_data[i] >> 8) & 0xFF;
+					break;
+				case EB_AVG_LOADING:
+				case EB_TARGET_OPP:
+					dbg_data[i] = dbg_data[i] & 0xFF;
+					break;
+				default:
+					//do nothing
+					break;
+				}
+				tmp_head++;
 				if (tmp_head >= GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE)
 					tmp_head = 0;
 			} else {
@@ -974,16 +999,19 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 				mtk_set_fastdvfs_mode(POLICY_MODE);
 			}
 			break;
-			case EB_COMMIT_LAST_KERNEL_OPP:
-				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_OPP, value);
-				soc_timer = mtk_gpueb_read_soc_timer();
-				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_HI,
-								(u32)(soc_timer >> 32));
-				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_LO,
-								(u32)(soc_timer & 0xFFFFFFFF));
+		case EB_COMMIT_LAST_KERNEL_OPP:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_OPP, value);
+			soc_timer = mtk_gpueb_read_soc_timer();
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_HI,
+							(u32)(soc_timer >> 32));
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_KERNEL_COMMIT_SOC_TIMER_LO,
+							(u32)(soc_timer & 0xFFFFFFFF));
 			break;
-			default:
-				GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
+		case EB_UPDATE_PRESERVE:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_PRESERVE, value);
+			break;
+		default:
+			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
 			break;
 		}
 	}

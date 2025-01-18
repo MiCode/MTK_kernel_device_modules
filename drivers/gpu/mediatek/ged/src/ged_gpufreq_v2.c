@@ -869,7 +869,7 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 		freqScaleUpFlag = true;
 
 	/* write virtual opp to sysram */
-	ged_dvfs_write_sysram_virtual_commit_idx(gpu_oppidx, oppidx_tar);
+	ged_dvfs_write_sysram_virtual_commit_idx(gpu_oppidx, stack_oppidx);
 
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (stack_oppidx > g_min_working_oppidx && g_async_ratio_support) {

@@ -296,8 +296,6 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD));
 	}
 
-
-
 	trace_GPU_DVFS__Policy__Loading_based__EB_GPU_Time(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_RISKY_COMPLETE_TARGET_TIME),
@@ -313,6 +311,11 @@ void ged_eb_dvfs_trace_dump(void)
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_OVERDUE_TIME),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD) * 100,
 		time_diff);
+
+	trace_GPU_DVFS__Policy__EB_PRESERVE(
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE),
+		time_diff);
+
 	trace_GPU_DVFS__Policy__EB_DEBUG(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DEBUG_COUNT), time_diff);
 
