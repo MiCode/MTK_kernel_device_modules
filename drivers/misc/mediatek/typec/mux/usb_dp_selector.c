@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
+#include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/kernel.h>
