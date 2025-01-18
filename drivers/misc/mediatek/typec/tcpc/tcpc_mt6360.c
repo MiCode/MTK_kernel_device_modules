@@ -2249,8 +2249,7 @@ static inline int mt6360_check_revision(struct i2c_client *client)
 	return id;
 }
 
-static int mt6360_i2c_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+static int mt6360_i2c_probe(struct i2c_client *client)
 {
 	struct mt6360_tcpc_platform_data *pdata =
 		dev_get_platdata(&client->dev);
