@@ -530,19 +530,6 @@ static void mtk_nanohub_init_sensor_info(void)
 	strlcpy(p->name, "tiltdetector", sizeof(p->name));
 	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
 
-	p = &sensor_state[SENSOR_TYPE_IN_POCKET];
-	p->sensorType = SENSOR_TYPE_IN_POCKET;
-	p->rate = SENSOR_RATE_ONESHOT;
-	p->gain = 1;
-	strlcpy(p->name, "inpocket", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
-
-	p = &sensor_state[SENSOR_TYPE_ACTIVITY];
-	p->sensorType = SENSOR_TYPE_ACTIVITY;
-	p->gain = 1;
-	strlcpy(p->name, "activity", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
-
 	p = &sensor_state[SENSOR_TYPE_GLANCE_GESTURE];
 	p->sensorType = SENSOR_TYPE_GLANCE_GESTURE;
 	p->rate = SENSOR_RATE_ONESHOT;
@@ -564,12 +551,6 @@ static void mtk_nanohub_init_sensor_info(void)
 	strlcpy(p->name, "wake", sizeof(p->name));
 	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
 
-	p = &sensor_state[SENSOR_TYPE_ANSWER_CALL];
-	p->sensorType = SENSOR_TYPE_ANSWER_CALL;
-	p->rate = SENSOR_RATE_ONESHOT;
-	p->gain = 1;
-	strlcpy(p->name, "answercall", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
 
 	p = &sensor_state[SENSOR_TYPE_STATIONARY_DETECT];
 	p->sensorType = SENSOR_TYPE_STATIONARY_DETECT;
@@ -590,27 +571,6 @@ static void mtk_nanohub_init_sensor_info(void)
 	p->rate = SENSOR_RATE_ONCHANGE;
 	p->gain = 1;
 	strlcpy(p->name, "devori", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
-
-	p = &sensor_state[SENSOR_TYPE_GEOFENCE];
-	p->sensorType = SENSOR_TYPE_GEOFENCE;
-	p->rate = SENSOR_RATE_ONCHANGE;
-	p->gain = 1;
-	strlcpy(p->name, "geofence", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
-
-	p = &sensor_state[SENSOR_TYPE_FLOOR_COUNTER];
-	p->sensorType = SENSOR_TYPE_FLOOR_COUNTER;
-	p->rate = SENSOR_RATE_ONCHANGE;
-	p->gain = 1;
-	strlcpy(p->name, "floor", sizeof(p->name));
-	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
-
-	p = &sensor_state[SENSOR_TYPE_FLAT];
-	p->sensorType = SENSOR_TYPE_FLAT;
-	p->rate = SENSOR_RATE_ONESHOT;
-	p->gain = 1;
-	strlcpy(p->name, "flat", sizeof(p->name));
 	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
 
 	p = &sensor_state[SENSOR_TYPE_RGBW];
@@ -910,7 +870,7 @@ int mtk_nanohub_enable_to_hub(uint8_t sensor_id, int enabledisable)
 	struct ConfigCmd cmd;
 	int ret = 0;
 
-	if (enabledisable == 1 && (READ_ONCE(scp_system_ready)))
+	if (enabledisable == 1 && (atomic_read(&power_status) == SENSOR_POWER_UP))
 		scp_register_feature(SENS_FEATURE_ID);
 	mutex_lock(&sensor_state_mtx);
 	if (sensor_id >= ID_SENSOR_MAX) {
@@ -1840,7 +1800,7 @@ static int mtk_nanohub_ready_event(struct notifier_block *this,
 {
 	unsigned long flags = 0;
 
-	pr_info("notify event:%d\n", event);
+	pr_info("notify event:%lu\n", event);
 	if (event == SCP_EVENT_STOP) {
 		spin_lock_irqsave(&scp_state_lock, flags);
 		WRITE_ONCE(scp_system_ready, false);
@@ -2212,10 +2172,7 @@ static int mtk_nanohub_report_to_manager(struct data_unit_t *data)
 			break;
 		case ID_STEP_DETECTOR:
 		case ID_SIGNIFICANT_MOTION:
-		case ID_ANSWER_CALL:
-		case ID_FLAT:
 		case ID_GLANCE_GESTURE:
-		case ID_IN_POCKET:
 		case ID_MOTION_DETECT:
 		case ID_PICK_UP_GESTURE:
 		case ID_STATIONARY_DETECT:
