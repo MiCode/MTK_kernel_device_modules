@@ -424,6 +424,7 @@ struct mtk_enc_params {
 	int             ifrm_q_ltr;
 	int             pfrm_q_ltr;
 	int             bfrm_q_ltr;
+	unsigned int    mlvec_mode;
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;
@@ -516,6 +517,7 @@ struct venc_enc_param {
 	int ifrm_q_ltr;
 	int pfrm_q_ltr;
 	int bfrm_q_ltr;
+	unsigned int mlvec_mode;
 	struct mtk_venc_visual_quality *visual_quality;
 	struct mtk_venc_init_qp *init_qp;
 	struct mtk_venc_frame_qp_range *frame_qp_range;
@@ -546,6 +548,7 @@ struct venc_frm_buf {
 	dma_addr_t metabuffer_addr;
 	dma_addr_t dyparams_dma_addr;
 	struct dma_buf *dyparams_dma;
+	unsigned int dyparams_offset;
 };
 
 struct dma_gen_buf {
@@ -566,7 +569,7 @@ struct dma_meta_buf {
 enum metadata_type {
 	METADATA_HDR               = 0,
 	METADATA_QPMAP             = 1,
-	METADATA_DYNAMICPARAM    = 2
+	METADATA_DYNAMICPARAM    = 4
 };
 
 struct meta_describe {

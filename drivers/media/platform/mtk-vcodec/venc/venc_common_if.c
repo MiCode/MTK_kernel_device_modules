@@ -549,6 +549,9 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.slice_header_spacing =
 			enc_prm->slice_header_spacing;
 
+		inst->vsi->config.mlvec_mode =
+			enc_prm->mlvec_mode;
+
 		fmt = inst->ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 		mtk_vcodec_debug(inst, "fmt:%u", fmt);
 

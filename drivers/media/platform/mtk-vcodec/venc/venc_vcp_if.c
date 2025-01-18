@@ -1090,9 +1090,11 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		if (frm_buf->dyparams_dma) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);
-			mtk_vcodec_debug(inst, "vsi dynamic params addr %llx size%d",
+			vsi->dynamicparams_offset = frm_buf->dyparams_offset;
+			mtk_vcodec_debug(inst, "vsi dynamic params addr %llx size%d offset:%d",
 				vsi->dynamicparams_addr,
-				vsi->dynamicparams_size);
+				vsi->dynamicparams_size,
+				vsi->dynamicparams_offset);
 		} else {
 			vsi->dynamicparams_addr = 0;
 			vsi->dynamicparams_size = 0;
@@ -1893,7 +1895,8 @@ static int venc_vcp_set_param(unsigned long handle,
 
 		inst->vsi->config.slice_header_spacing =
 			enc_prm->slice_header_spacing;
-
+		inst->vsi->config.mlvec_mode =
+			enc_prm->mlvec_mode;
 
 		fmt = inst->ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 		mtk_vcodec_debug(inst, "fmt:%u", fmt);

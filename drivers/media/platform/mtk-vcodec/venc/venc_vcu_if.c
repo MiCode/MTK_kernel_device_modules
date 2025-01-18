@@ -724,6 +724,7 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 		if (frm_buf->dyparams_dma) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);
+			vsi->dynamicparams_offset = frm_buf->dyparams_offset;
 		} else {
 			vsi->dynamicparams_addr = 0;
 			vsi->dynamicparams_size = 0;
