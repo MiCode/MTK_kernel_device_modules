@@ -1380,7 +1380,9 @@ static void mtk_vcodec_add_list(struct task_struct *task)
 
 	for_each_thread(task, task_child) {
 		if (task_child != NULL) {
+			#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			ret = set_task_to_group(task_child->pid, GROUP_ID_1);
+			#endif
 			if (ret == -1)
 				mtk_v4l2_err("put tid %d fail", task_child->pid);
 			else {
@@ -1417,14 +1419,18 @@ void mtk_vcodec_config_group_list(void)
 {
 	int i = 0;
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
+#endif
 
 	spin_lock(&group_lock);
 	if (group_list_size != 0) {
 		//pr_info("clean group_list_size %d\n", group_list_size);
 		for (i = 0; i < group_list_size; i++) {
+			#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 			set_task_to_group( group_list[i], -1);
+			#endif
 			group_list[i] = 0;
 		}
 		group_list_size = 0;
