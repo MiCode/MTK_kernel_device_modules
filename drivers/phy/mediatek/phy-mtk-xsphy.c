@@ -60,6 +60,7 @@
 #define P2F_USB_FM_VALID	BIT(0)
 
 #define XSP_USBPHYACR0	((SSUSB_SIFSLV_U2PHY_COM) + 0x00)
+#define P2A0_RG_USB20_CHP_EN BIT(1)
 #define P2A0_RG_USB20_TX_PH_ROT_SEL		GENMASK(26, 24)
 #define P2A0_RG_INTR_EN	BIT(5)
 
@@ -122,10 +123,13 @@
 
 #define XSP_U2PHYA_RESERVE0	((SSUSB_SIFSLV_U2PHY_COM) + 0x040)
 #define P2A2R0_RG_PLL_FBKSEL         BIT(31)
+#define P2A2R0_RG_HSRX_TERM_CAL		GENMASK(19, 16)
+#define P2A2R0_RG_HSTX_IMPN		GENMASK(24, 20)
 
 #define XSP_U2PHYA_RESERVE1	((SSUSB_SIFSLV_U2PHY_COM) + 0x044)
 #define P2A2R1_RG_PLL_POSDIV    GENMASK(2, 0)
 #define P2A2R1_RG_PLL_REFCLK_SEL        BIT(5)
+#define P2A2R1_RG_HSTX_IMPP		GENMASK(12, 8)
 
 #define XSP_U2PHYDCR1		((SSUSB_SIFSLV_U2PHY_COM) + 0x064)
 #define P2C_RG_USB20_SW_PLLMODE	GENMASK(19, 18)
@@ -171,6 +175,9 @@
 
 #define SSPXTP_PHYA_GLB_00		((SSPXTP_SIFSLV_PHYA_GLB) + 0x00)
 #define RG_XTP_GLB_BIAS_INTR_CTRL		GENMASK(21, 16)
+
+#define SSPXTP_PHYA_GLB_14		((SSPXTP_SIFSLV_PHYA_GLB) + 0x14)
+#define RG_XTP_GLB_BIAS_V2V_VTRIM		GENMASK(30, 27)
 
 #define SSPXTP_DAIG_LN_TOP_04	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x04)
 
@@ -221,6 +228,15 @@
 #define SSPXTP_DAIG_LN_DAIF_2C	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x02C)
 #define RG_XTP0_DAIF_LN_G2_RX_SGDT_HF		GENMASK(23, 22)
 
+#define SSPXTP_DAIG_LN_DAIF_34	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x034)
+#define RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO	GENMASK(30, 25)
+
+#define SSPXTP_DAIG_LN_DAIF_38	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x038)
+#define RG_SSPXTP0_DAIF_LN_G1_RX_CTLE1_CSEL	GENMASK(24, 21)
+
+#define SSPXTP_DAIG_LN_DAIF_3C  ((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x03C)
+#define RG_SSPXTP0_DAIF_LN_G2_RX_CTLE1_CSEL     GENMASK(24, 21)
+
 #define SSPXTP_DAIG_LN_DAIF_44	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x044)
 #define RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN		GENMASK(15, 13)
 
@@ -231,14 +247,28 @@
 #define RG_XTP_LN0_TX_RXDET_HZ		BIT(13)
 #define RG_XTP_LN0_RX_CDR_RESERVE		GENMASK(23, 16)
 
+#define SSPXTP_PHYA_LN_0C	((SSPXTP_SIFSLV_PHYA_LN) + 0x0C)
+#define RG_XTP_LN0_RX_FE_RESERVE	BIT(31)
+
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
-#define RG_XTP_LN0_RX_IMPSEL		GENMASK(4, 0)
+#define RG_XTP_LN0_RX_IMPSEL		GENMASK(3, 0)
 
 #define SSPXTP_PHYA_LN_30	((SSPXTP_SIFSLV_PHYA_LN) + 0x030)
 #define RG_XTP_LN0_RX_AEQ_ATT		BIT(14)
 
 #define SSPXTP_PHYA_LN_3C	((SSPXTP_SIFSLV_PHYA_LN) + 0x03C)
 #define RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE		GENMASK(14, 13)
+
+#define SSPXTP_PHYA_LN_58	((SSPXTP_SIFSLV_PHYA_LN) + 0x058)
+#define RX_XTP_LN0_TX_IMPSEL_PMOS		GENMASK(5, 1)
+#define RX_XTP_LN0_TX_IMPSEL_NMOS               GENMASK(10, 6)
+
+#define SSPXTP_PHYA_LN_70	((SSPXTP_SIFSLV_PHYA_LN) + 0x070)
+#define RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL		GENMASK(17, 13)
+#define RX_XTP_LN0_RX_LEQ_RL_VGA_CAL		GENMASK(22, 18)
+
+#define SSPXTP_PHYA_LN_74       ((SSPXTP_SIFSLV_PHYA_LN) + 0x074)
+#define RX_XTP_LN0_RX_LEQ_RL_DFE_CAL		GENMASK(4, 0)
 
 #define XSP_REF_CLK		26	/* MHZ */
 #define XSP_SLEW_RATE_COEF	17
@@ -266,6 +296,9 @@
 #define XSP_MODE_UART_STR "usb2uart_mode=1"
 #define XSP_MODE_JTAG_STR "usb2jtag_mode=1"
 
+#define TCPC_NORMAL     0
+#define TCPC_FLIP       1
+
 enum mtk_xsphy_mode {
 	XSP_MODE_USB = 0,
 	XSP_MODE_UART,
@@ -279,6 +312,8 @@ enum mtk_xsphy_submode {
 	PHY_MODE_DPDMPULLDOWN_CLR,
 	PHY_MODE_DPPULLUP_SET,
 	PHY_MODE_DPPULLUP_CLR,
+	PHY_MODE_NORMAL,
+	PHY_MODE_FLIP,
 };
 
 enum mtk_xsphy_u2_lpm_parameter {
@@ -299,14 +334,52 @@ enum mtk_phy_efuse {
 	IEXT_INTR_CTRL,
 	RX_IMPSEL,
 	TX_IMPSEL,
+	V2V_VTRIM_N,
+	BIAS_INTR_CTRL_N,
+	TX_IMPSEL_PMOS_N,
+	TX_IMPSEL_NMOS_N,
+	RX_IMPSEL_N,
+	RX_LEQ_RL_CTLE_CAL_N,
+	RX_LEQ_RL_VGA_CAL_N,
+	RX_LEQ_RL_DFE_CAL_N,
+	V2V_VTRIM_F,
+	BIAS_INTR_CTRL_F,
+	TX_IMPSEL_PMOS_F,
+	TX_IMPSEL_NMOS_F,
+	RX_IMPSEL_F,
+	RX_LEQ_RL_CTLE_CAL_F,
+	RX_LEQ_RL_VGA_CAL_F,
+	RX_LEQ_RL_DFE_CAL_F,
+	HSRX_TERM_CAL,
+	HSTX_IMPN,
+	HSTX_IMPP,
 };
 
-static char *efuse_name[5] = {
+static char *efuse_name[24] = {
 	"intr_cal",
 	"term_cal",
 	"iext_intr_ctrl",
 	"rx_impsel",
 	"tx_impsel",
+	"v2v_vtrim_n",
+	"bias_intr_ctrl_n",
+	"tx_impsel_pmos_n",
+	"tx_impsel_nmos_n",
+	"rx_impsel_n",
+	"rx_leq_rl_ctle_cal_n",
+	"rx_leq_rl_vga_cal_n",
+	"rx_leq_rl_dfe_cal_n",
+	"v2v_vtrim_f",
+	"bias_intr_ctrl_f",
+	"tx_impsel_pmos_f",
+	"tx_impsel_nmos_f",
+	"rx_impsel_f",
+	"rx_leq_rl_ctle_cal_f",
+	"rx_leq_rl_vga_cal_f",
+	"rx_leq_rl_dfe_cal_f",
+	"hsrx_term_cal",
+	"hstx_impn",
+	"hstx_impp",
 };
 
 struct xsphy_instance {
@@ -354,8 +427,18 @@ struct xsphy_instance {
 	bool refclk_sel;
 	/* HWPLL mode setting */
 	bool hwpll_mode;
+	bool chp_en_disable;
 	struct proc_dir_entry *phy_root;
 	struct work_struct procfs_work;
+	/* misc */
+	int orientation;
+	bool u2_sw_efuse;
+	bool u3_sw_efuse;
+	int u3_sw_efuse_normal[8];
+	int u3_sw_efuse_flip[8];
+	int hsrx_term_cal;
+	int hstx_impn;
+	int hstx_impp;
 };
 
 struct mtk_xsphy {
@@ -1365,6 +1448,125 @@ static int mtk_xsphy_procfs_exit(struct mtk_xsphy *xsphy)
 	return 0;
 }
 
+static void u2_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
+				struct xsphy_instance *inst)
+{
+	void __iomem *pbase = inst->port_base;
+
+	if (!inst->u2_sw_efuse)
+		return;
+
+	if (inst->hsrx_term_cal)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0,
+			P2A2R0_RG_HSRX_TERM_CAL, inst->hsrx_term_cal);
+
+	if (inst->hstx_impn)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE0,
+			P2A2R0_RG_HSTX_IMPN, inst->hstx_impn);
+
+	if (inst->hstx_impp)
+		mtk_phy_update_field(pbase + XSP_U2PHYA_RESERVE1,
+			P2A2R1_RG_HSTX_IMPP, inst->hstx_impp);
+
+}
+
+static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
+				struct xsphy_instance *inst)
+{
+
+	void __iomem *pbase = inst->port_base;
+
+	if (!inst->u3_sw_efuse)
+		return;
+
+	/* RG_XTP_LN0_RX_FE_RESERVE  Bit31 = 0x1*/
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_0C, RG_XTP_LN0_RX_FE_RESERVE);
+
+	/* RG_SSPXTP0_DAIF_LN_G1_RX_CTLE1_CSEL 4'b1101 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_38, RG_SSPXTP0_DAIF_LN_G1_RX_CTLE1_CSEL, 0xd);
+
+	/* RG_SSPXTP0_DAIF_LN_G2_RX_CTLE1_CSEL 4'b1101 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_3C, RG_SSPXTP0_DAIF_LN_G2_RX_CTLE1_CSEL, 0xd);
+
+	/* RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE 2'b01 */
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_3C, RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE, 0x1);
+
+	/* RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO 6'b010000 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_34, RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO, 0x10);
+
+	switch (inst->orientation) {
+	case TCPC_NORMAL:
+		if (inst->u3_sw_efuse_normal[0])
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+				RG_XTP_GLB_BIAS_V2V_VTRIM, inst->u3_sw_efuse_normal[0]);
+
+		if (inst->u3_sw_efuse_normal[1])
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+				RG_XTP_GLB_BIAS_INTR_CTRL, inst->u3_sw_efuse_normal[1]);
+
+		if (inst->u3_sw_efuse_normal[2])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_TX_IMPSEL_PMOS, inst->u3_sw_efuse_normal[2]);
+
+		if (inst->u3_sw_efuse_normal[3])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_TX_IMPSEL_NMOS, inst->u3_sw_efuse_normal[3]);
+
+		if (inst->u3_sw_efuse_normal[4])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RG_XTP_LN0_RX_IMPSEL, inst->u3_sw_efuse_normal[4]);
+
+		if (inst->u3_sw_efuse_normal[5])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL, inst->u3_sw_efuse_normal[5]);
+
+		if (inst->u3_sw_efuse_normal[6])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_VGA_CAL, inst->u3_sw_efuse_normal[6]);
+
+		if (inst->u3_sw_efuse_normal[7])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_DFE_CAL, inst->u3_sw_efuse_normal[7]);
+		break;
+	case TCPC_FLIP:
+		if (inst->u3_sw_efuse_flip[0])
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+				RG_XTP_GLB_BIAS_V2V_VTRIM, inst->u3_sw_efuse_flip[0]);
+
+		if (inst->u3_sw_efuse_flip[1])
+			mtk_phy_update_field(xsphy->glb_base + SSPXTP_SIFSLV_PHYA_GLB,
+				RG_XTP_GLB_BIAS_INTR_CTRL, inst->u3_sw_efuse_flip[1]);
+
+		if (inst->u3_sw_efuse_flip[2])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_TX_IMPSEL_PMOS, inst->u3_sw_efuse_flip[2]);
+
+		if (inst->u3_sw_efuse_flip[3])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_TX_IMPSEL_NMOS, inst->u3_sw_efuse_flip[3]);
+
+		if (inst->u3_sw_efuse_flip[4])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RG_XTP_LN0_RX_IMPSEL, inst->u3_sw_efuse_flip[4]);
+
+		if (inst->u3_sw_efuse_flip[5])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL, inst->u3_sw_efuse_flip[5]);
+
+		if (inst->u3_sw_efuse_flip[6])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_VGA_CAL, inst->u3_sw_efuse_flip[6]);
+
+		if (inst->u3_sw_efuse_flip[7])
+			mtk_phy_update_field(pbase + SSPXTP_SIFSLV_PHYA_LN,
+				RX_XTP_LN0_RX_LEQ_RL_DFE_CAL, inst->u3_sw_efuse_flip[7]);
+		break;
+	default:
+		return;
+	}
+
+}
+
 static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 				     struct xsphy_instance *inst)
 {
@@ -1603,6 +1805,9 @@ static void u2_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	u2_phy_lpm_pll_set(xsphy, inst);
 
+	if (inst->chp_en_disable)
+		mtk_phy_clear_bits(pbase + XSP_USBPHYACR0, P2A0_RG_USB20_CHP_EN);
+
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, index);
 }
 
@@ -1733,6 +1938,39 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 	}
 }
 
+static void u3_phy_instance_set_mode(struct mtk_xsphy *xsphy,
+				     struct xsphy_instance *inst,
+				     enum phy_mode mode,
+				     int submode)
+{
+	dev_info(xsphy->dev, "%s mode(%d), submode(%d)\n", __func__,
+		mode, submode);
+
+	if (!submode) {
+		switch (mode) {
+		case PHY_MODE_USB_DEVICE:
+			break;
+		case PHY_MODE_USB_HOST:
+			break;
+		case PHY_MODE_USB_OTG:
+			break;
+		default:
+			return;
+		}
+	} else {
+		switch (submode) {
+		case PHY_MODE_NORMAL:
+			inst->orientation = TCPC_NORMAL;
+			break;
+		case PHY_MODE_FLIP:
+			inst->orientation = TCPC_FLIP;
+			break;
+		default:
+			return;
+		}
+	}
+}
+
 static u32 phy_get_efuse_value(struct xsphy_instance *inst,
 			     enum mtk_phy_efuse type)
 {
@@ -1781,6 +2019,23 @@ static void phy_parse_efuse_property(struct mtk_xsphy *xsphy,
 		val = phy_get_efuse_value(inst, TERM_CAL);
 		if (val)
 			inst->efuse_term_cal = val;
+
+		/* u2 sw efuse */
+		if (!inst->u2_sw_efuse)
+			break;
+
+		val = phy_get_efuse_value(inst, HSRX_TERM_CAL);
+		if (val)
+			inst->hsrx_term_cal = val;
+
+		val = phy_get_efuse_value(inst, HSTX_IMPN);
+		if (val)
+			inst->hstx_impn = val;
+
+		val = phy_get_efuse_value(inst, HSTX_IMPP);
+		if (val)
+			inst->hstx_impp = val;
+
 		break;
 	case PHY_TYPE_USB3:
 		val = phy_get_efuse_value(inst, IEXT_INTR_CTRL);
@@ -1794,6 +2049,76 @@ static void phy_parse_efuse_property(struct mtk_xsphy *xsphy,
 		val = phy_get_efuse_value(inst, TX_IMPSEL);
 		if (val)
 			inst->efuse_tx_imp = val;
+
+		/* u3 sw efuse side: normal */
+		if (!inst->u3_sw_efuse)
+			break;
+
+		val = phy_get_efuse_value(inst, V2V_VTRIM_N);
+		if (val)
+			inst->u3_sw_efuse_normal[0] = val;
+
+		val = phy_get_efuse_value(inst, BIAS_INTR_CTRL_N);
+		if (val)
+			inst->u3_sw_efuse_normal[1] = val;
+
+		val = phy_get_efuse_value(inst, TX_IMPSEL_PMOS_N);
+		if (val)
+			inst->u3_sw_efuse_normal[2] = val;
+
+		val = phy_get_efuse_value(inst, TX_IMPSEL_NMOS_N);
+		if (val)
+			inst->u3_sw_efuse_normal[3] = val;
+
+		val = phy_get_efuse_value(inst, RX_IMPSEL_N);
+		if (val)
+			inst->u3_sw_efuse_normal[4] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_CTLE_CAL_N);
+		if (val)
+			inst->u3_sw_efuse_normal[5] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_VGA_CAL_N);
+		if (val)
+			inst->u3_sw_efuse_normal[6] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_DFE_CAL_N);
+		if (val)
+			inst->u3_sw_efuse_normal[7] = val;
+
+		/* u3 sw efuse side: flip */
+		val = phy_get_efuse_value(inst, V2V_VTRIM_F);
+		if (val)
+			inst->u3_sw_efuse_flip[0] = val;
+
+		val = phy_get_efuse_value(inst, BIAS_INTR_CTRL_F);
+		if (val)
+			inst->u3_sw_efuse_flip[1] = val;
+
+		val = phy_get_efuse_value(inst, TX_IMPSEL_PMOS_F);
+		if (val)
+			inst->u3_sw_efuse_flip[2] = val;
+
+		val = phy_get_efuse_value(inst, TX_IMPSEL_NMOS_F);
+		if (val)
+			inst->u3_sw_efuse_flip[3] = val;
+
+		val = phy_get_efuse_value(inst, RX_IMPSEL_F);
+		if (val)
+			inst->u3_sw_efuse_flip[4] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_CTLE_CAL_F);
+		if (val)
+			inst->u3_sw_efuse_flip[5] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_VGA_CAL_F);
+		if (val)
+			inst->u3_sw_efuse_flip[6] = val;
+
+		val = phy_get_efuse_value(inst, RX_LEQ_RL_DFE_CAL_F);
+		if (val)
+			inst->u3_sw_efuse_flip[7] = val;
+
 		break;
 	default:
 		return;
@@ -1870,6 +2195,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->lpm_quirk = true;
 		inst->hwpll_mode = device_property_read_bool(dev, "mediatek,hwpll-mode");
 		inst->refclk_sel = device_property_read_bool(dev, "mediatek,refclk-sel");
+		inst->chp_en_disable = device_property_read_bool(dev, "mediatek,chp-en-disable");
+		inst->u2_sw_efuse = device_property_read_bool(dev, "mediatek,u2-sw-efuse");
 
 		dev_dbg(dev, "intr:%d, intr_ofs:%d, host_intr_ofs:%d\n",
 			inst->efuse_intr, inst->intr_ofs, inst->host_intr_ofs);
@@ -1883,8 +2210,8 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		dev_dbg(dev, "discth:%d, rx_sqth:%d, host_rx_sqth:%d, rev6:%d, rev6_host:%d\n",
 			inst->discth, inst->rx_sqth, inst->host_rx_sqth, inst->rev6,
 			inst->rev6_host);
-		dev_dbg(dev, "hwpll-mode:%d, refclk-sel:%d",
-				inst->hwpll_mode, inst->refclk_sel);
+		dev_dbg(dev, "u2-sw-efuse:%d hwpll-mode:%d, refclk-sel:%d, chp-en-disable:%d",
+				inst->u2_sw_efuse, inst->hwpll_mode, inst->refclk_sel, inst->chp_en_disable);
 		break;
 	case PHY_TYPE_USB3:
 		if (device_property_read_u32(dev, "mediatek,efuse-intr",
@@ -1907,10 +2234,14 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 			inst->tx_lctxcp1 = -EINVAL;
 		inst->u3_rx_fix = device_property_read_bool(dev, "mediatek,u3-rx-fix");
 		inst->u3_gen2_hqa = device_property_read_bool(dev, "mediatek,u3-gen2-hqa");
+		inst->u3_sw_efuse = device_property_read_bool(dev, "mediatek,u3-sw-efuse");
 
-		dev_dbg(dev, "intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d, u3_gen2_hqa:%d\n",
-			inst->efuse_intr, inst->efuse_tx_imp,
+		dev_dbg(dev, "u3-sw-efuse: %d, intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d, u3_gen2_hqa:%d\n",
+			inst->u3_sw_efuse, inst->efuse_intr, inst->efuse_tx_imp,
 			inst->efuse_rx_imp, inst->u3_rx_fix, inst->u3_gen2_hqa);
+
+		inst->orientation = 0;
+
 		break;
 	default:
 		dev_err(xsphy->dev, "incompatible phy type\n");
@@ -2143,6 +2474,7 @@ static int mtk_phy_power_on(struct phy *phy)
 	}
 
 	if (inst->type == PHY_TYPE_USB2) {
+		u2_phy_sw_efsue_set(xsphy, inst);
 		u2_phy_instance_power_on(xsphy, inst);
 		u2_phy_slew_rate_calibrate(xsphy, inst);
 		if (mode == PHY_MODE_USB_HOST)
@@ -2150,6 +2482,7 @@ static int mtk_phy_power_on(struct phy *phy)
 		else
 			u2_phy_props_set(xsphy, inst);
 	} else if (inst->type == PHY_TYPE_USB3) {
+		u3_phy_sw_efsue_set(xsphy, inst);
 		u3_phy_instance_power_on(xsphy, inst);
 		u3_phy_props_set(xsphy, inst);
 	}
@@ -2219,9 +2552,11 @@ static int mtk_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
 			if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
 				phy_set_mode_ext(xsphy->repeater[i], mode, submode);
 		}
-
 		u2_phy_instance_set_mode(xsphy, inst, mode, submode);
-	}
+	} else if (inst->type == PHY_TYPE_USB3)
+		u3_phy_instance_set_mode(xsphy, inst, mode, submode);
+
+
 
 	return 0;
 }
