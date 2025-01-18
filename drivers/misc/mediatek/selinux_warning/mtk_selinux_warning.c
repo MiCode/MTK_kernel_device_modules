@@ -100,9 +100,6 @@ static const char *skip_pattern[SKIP_PATTERN_NUM] = {
 	"scontext=u:r:untrusted_app"
 };
 
-static const char * const ne_list[] = {
-};
-
 static struct tracepoint *satp;
 
 static int mtk_check_filter(char *scontext);
@@ -314,26 +311,15 @@ void mtk_audit_hook(char *data)
 #endif
 }
 
-static void trigger_ne(void)
+static void trigger_debugger(void)
 {
 	/*
 	 * delay after signal sent
 	 * block current thread
 	 * let other thread to handle stack
 	 */
-	send_sig(SIGABRT, current, 0);
+	send_sig(35, current, 0);
 	mdelay(1000);
-}
-
-static bool mtk_check_ne(char *scontext)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(ne_list); i++) {
-		if (!strcmp(scontext, ne_list[i]))
-			return true;
-	}
-	return false;
 }
 
 /* reference avc_audit_pre_callback */
@@ -391,6 +377,7 @@ static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 
 	aee_kernel_warning_api(__FILE__, __LINE__,
 			       DB_OPT_DEFAULT, printbuf, data);
+	trigger_debugger();
 }
 
 static bool scontext_filter(char *scontext)
@@ -451,9 +438,6 @@ static void probe_selinux_audited(void *ignore, struct selinux_audit_data *sad,
 	      (!strstr(scontext, "u:r:untrusted_app") && av_filter(sad));
 	if (aee)
 		selinux_aee(sad, scontext, tcontext, tclass);
-
-	if (mtk_check_ne(scontext))
-		trigger_ne();
 }
 
 static void register_tracepoint(struct tracepoint *tp, void *ignore)
