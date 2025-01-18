@@ -21,6 +21,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6761.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6761.o mtk-scpsys-bringup.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6877.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6877.o mtk-scpsys-bringup.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6886.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6886.o mtk-scpsys-bringup.o
 endif
