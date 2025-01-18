@@ -970,6 +970,7 @@
 	scpsys_bus: syscon@1c00d000 {
 		compatible = "mediatek,mt6991-scpsys-bus", "syscon";
 		reg = <0 0x1c00d000 0 0x1000>;
+		#power-domain-cells = <1>;
 	};
 
 	scpsys: power-controller@1c004000 {
