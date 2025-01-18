@@ -160,14 +160,14 @@ static const struct regname *get_all_regnames(void)
 	return rn;
 }
 
-u32 get_mt6768_reg_value(u32 id, u32 ofs)
+u32 get_mt6761_reg_value(u32 id, u32 ofs)
 {
 	if (id >= chk_sys_num)
 		return 0;
 
 	return clk_readl(rb[id].virt + ofs);
 }
-EXPORT_SYMBOL_GPL(get_mt6768_reg_value);
+EXPORT_SYMBOL_GPL(get_mt6761_reg_value);
 
 static void  init_regbase(void)
 {
