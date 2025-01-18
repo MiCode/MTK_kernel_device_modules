@@ -2130,20 +2130,28 @@ int init_pd_topology(void)
 }
 
 static long *mtk_em_api_data;
-void init_mtk_em_api_data(void)
+long *get_mtk_em_api_data(void)
 {
 	mtk_em_api_data = kcalloc(4, sizeof(long), GFP_KERNEL);
 	mtk_em_api_data[0] = MAX_NR_CPUS;
 	mtk_em_api_data[1] = pd_count;
 	mtk_em_api_data[2] = nr_wl_type;
 	mtk_em_api_data[3] = (long)cpu2cluster_id;
-}
-
-long *get_mtk_em_api_data(void)
-{
 	return mtk_em_api_data;
 }
 EXPORT_SYMBOL(get_mtk_em_api_data);
+
+#define MALLOC_OFFSET 2
+void mtk_em_malloc(long *data)
+{
+	int i = 0;
+
+	while(data[i] != 0) {
+		data[i] = (long)kcalloc(data[i], data[i + 1], GFP_KERNEL);
+		i += MALLOC_OFFSET;
+	}
+}
+EXPORT_SYMBOL(mtk_em_malloc);
 
 void *get_dpt_sram_base(void)
 {
@@ -2299,8 +2307,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	ret = init_dpt_io();
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
-
-	init_mtk_em_api_data();
 
 	if (em_ver() == 2) {
 		ret = alloc_capacity_table();
