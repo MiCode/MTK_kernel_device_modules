@@ -13,7 +13,6 @@
 			<&cksys_clk CLK_CK_UART_SEL>,
 			<&cksys_clk CLK_CK_UARTHUB_BCLK_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&cksys_gp2_clk CLK_CK2_DPE_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CCUTM_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DP1_SEL>,
@@ -38,7 +37,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x7>;
 		clocks =
-			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>,
 			<&ccu_main_clk CLK_CCLARB30_CON_SMI>,
 			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_SMI>,
 			<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>,
