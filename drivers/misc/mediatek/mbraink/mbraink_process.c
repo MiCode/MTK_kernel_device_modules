@@ -31,13 +31,12 @@
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
 #include <linux/mm_inline.h>
-#include <trace/hooks/binder.h>
-#include <uapi/linux/android/binder.h>
 #include <asm/page.h>
 #include <linux/tracepoint.h>
 
 #include "mbraink_process.h"
 #include <binder_internal.h>
+#include <binder_trace.h>
 
 #define PROCESS_INFO_STR	\
 	"pid=%-10u:uid=%u,priority=%d,utime=%llu,stime=%llu,cutime=%llu,cstime=%llu,name=%s\n"
@@ -812,8 +811,6 @@ static void mbraink_sched_process_exit(void *data, struct task_struct *t)
 	}
 }
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
-#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 static int is_monitor_binder_process(unsigned short pid)
 {
 	int ret = 0, index = 0;
@@ -839,24 +836,26 @@ static int is_monitor_binder_process(unsigned short pid)
 	return ret;
 }
 
-static void mbraink_trace_android_vh_binder_trans(void *data,
-						struct binder_proc *target_proc,
-						struct binder_proc *proc,
-						struct binder_thread *thread,
-						struct binder_transaction_data *tr)
+static void mbraink_binder_transaction(void *data,
+					bool reply,
+					struct binder_transaction *t,
+					struct binder_node *target_node)
 {
 	unsigned long  flags;
 	int idx = 0;
 
-	if (!is_monitor_binder_process((unsigned short)(target_proc->tsk->pid)))
+	if (reply || !t->to_proc)
+		return;
+
+	if (!is_monitor_binder_process((unsigned short)(t->to_proc->pid)))
 		return;
 
 	spin_lock_irqsave(&binder_trace_lock, flags);
 	for (idx = 0; idx < MAX_BINDER_TRACE_NUM; idx++) {
 		if (mbraink_binder_tracelist_data[idx].dirty == true &&
-			mbraink_binder_tracelist_data[idx].from_pid == proc->tsk->pid &&
-			mbraink_binder_tracelist_data[idx].to_pid == target_proc->tsk->pid &&
-			mbraink_binder_tracelist_data[idx].from_tid == thread->task->pid)
+			mbraink_binder_tracelist_data[idx].from_pid == t->from_pid &&
+			mbraink_binder_tracelist_data[idx].to_pid == t->to_proc->pid &&
+			mbraink_binder_tracelist_data[idx].from_tid == t->from_tid)
 			break;
 	}
 
@@ -901,23 +900,21 @@ static void mbraink_trace_android_vh_binder_trans(void *data,
 			}
 			memset(mbraink_binder_tracelist_data, 0,
 				sizeof(struct mbraink_binder_tracelist) * MAX_BINDER_TRACE_NUM);
-			mbraink_binder_tracelist_data[0].from_pid = proc->tsk->pid;
-			mbraink_binder_tracelist_data[0].to_pid = target_proc->tsk->pid;
-			mbraink_binder_tracelist_data[0].from_tid = thread->task->pid;
+			mbraink_binder_tracelist_data[0].from_pid = t->from_pid;
+			mbraink_binder_tracelist_data[0].to_pid = t->to_proc->pid;
+			mbraink_binder_tracelist_data[0].from_tid = t->from_tid;
 			mbraink_binder_tracelist_data[0].count = 1;
 			mbraink_binder_tracelist_data[0].dirty = true;
 		} else {
-			mbraink_binder_tracelist_data[idx].from_pid = proc->tsk->pid;
-			mbraink_binder_tracelist_data[idx].to_pid = target_proc->tsk->pid;
-			mbraink_binder_tracelist_data[idx].from_tid = thread->task->pid;
+			mbraink_binder_tracelist_data[idx].from_pid = t->from_pid;
+			mbraink_binder_tracelist_data[idx].to_pid = t->to_proc->pid;
+			mbraink_binder_tracelist_data[idx].from_tid = t->from_tid;
 			mbraink_binder_tracelist_data[idx].count = 1;
 			mbraink_binder_tracelist_data[idx].dirty = true;
 		}
 	}
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
-#endif
-#endif
 
 struct tracepoints_table {
 	const char *name;
@@ -929,6 +926,7 @@ struct tracepoints_table {
 static struct tracepoints_table mbraink_tracepoints[] = {
 {.name = "sched_process_fork", .func = mbraink_sched_process_fork, .tp = NULL},
 {.name = "sched_process_exit", .func = mbraink_sched_process_exit, .tp = NULL},
+{.name = "binder_transaction", .func = mbraink_binder_transaction, .tp = NULL},
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -999,24 +997,11 @@ int mbraink_process_tracer_init(void)
 
 	mbraink_hookup_tracepoints();
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
-#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
-	ret = register_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans,
-						NULL);
-	if (ret)
-		pr_notice("register_trace_android_vh_binder_trans failed.\n");
-#endif
-#endif
 	return ret;
 }
 
 void mbraink_process_tracer_exit(void)
 {
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
-#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
-	unregister_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans, NULL);
-#endif
-#endif
 	mbraink_disconnect_tracepoints();
 }
 
@@ -1072,7 +1057,6 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }
 
-#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 void mbraink_get_binder_trace_info(unsigned short current_idx,
 				struct mbraink_binder_trace_data *binder_trace_buffer)
 {
@@ -1110,11 +1094,3 @@ void mbraink_get_binder_trace_info(unsigned short current_idx,
 	}
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
-
-#else
-void mbraink_get_binder_trace_info(unsigned short current_idx,
-				struct mbraink_binder_trace_data *binder_trace_buffer)
-{
-	pr_info("%s: Do not support mbraink binder tracing...\n", __func__);
-}
-#endif
