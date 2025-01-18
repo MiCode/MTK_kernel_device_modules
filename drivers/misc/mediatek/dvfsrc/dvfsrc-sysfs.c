@@ -194,11 +194,20 @@ static ssize_t dvfsrc_opp_table_show(struct device *dev,
 
 	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
 		j = dvfsrc->opp_desc->num_opp - (i + 1);
-		p += snprintf(p, buff_end - p,
-			"[OPP%-2d]: %-8u uv %-8u kbps\n",
-			i,
-			dvfsrc->opp_desc->opps[j].vcore_uv,
-			dvfsrc->opp_desc->opps[j].dram_kbps);
+		if (dvfsrc->dvd->dump_flag & DVFSRC_EMI_DUMP_FLAG) {
+			p += snprintf(p, buff_end - p,
+				"[OPP%d]: %-4u mv %-5u Mbps [%u]\n",
+				i,
+				(dvfsrc->opp_desc->opps[j].vcore_uv / 1000),
+				(dvfsrc->opp_desc->opps[j].dram_kbps / 1000),
+				dvfsrc->opp_desc->opps[j].emi_mbps);
+		} else {
+			p += snprintf(p, buff_end - p,
+				"[OPP%-2d]: %-8u uv %-8u kbps\n",
+				i,
+				dvfsrc->opp_desc->opps[j].vcore_uv,
+				dvfsrc->opp_desc->opps[j].dram_kbps);
+		}
 	}
 
 	return p - buf;
@@ -311,11 +320,16 @@ static inline ssize_t dvfsrc_ceiling_opp_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+	char *p = buf;
+	char *buff_end = p + PAGE_SIZE;
+	int i;
 
-	return sprintf(buf, "%d %d %d\n",
-		dvfsrc->ceil_ddr_opp[CEILING_SYSFS],
-		dvfsrc->ceil_ddr_opp[CEILING_IDX1],
-		dvfsrc->ceil_ddr_opp[CEILING_IDX2]);
+	for (i = 0; i < CEILING_ITEM_MAX; i++) {
+		p += snprintf(p, buff_end - p, "[%d] : %d\n",
+			i, dvfsrc->ceil_ddr_opp[i]);
+	}
+
+	return p - buf;
 }
 
 static inline ssize_t dvfsrc_ceiling_opp_store(struct device *dev,
@@ -329,12 +343,40 @@ static inline ssize_t dvfsrc_ceiling_opp_store(struct device *dev,
 	if (magic != 0xDEBC)
 		return -EINVAL;
 
-	pr_info("dvfsrc_max_opp_store = %d\n", ceil_ddr_opp);
 	mtk_dvfsrc_set_ceiling_freq(CEILING_SYSFS, ceil_ddr_opp);
 
 	return count;
 }
 DEVICE_ATTR_RW(dvfsrc_ceiling_opp);
+
+static struct ratelimit_state dvfsrc_force_ddr =
+	RATELIMIT_STATE_INIT_FLAGS("dvfsrc_force_ddr", HZ, 2, RATELIMIT_MSG_ON_RELEASE);
+static inline ssize_t dvfsrc_force_ddr_opp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	u32 val = 0;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	if (!dvfsrc->ceil_ddr_support)
+		return -EINVAL;
+
+	if (kstrtou32(buf, 10, &val))
+		return -EINVAL;
+
+	if (val == 9595) {
+		dvfsrc->force_ddr_en = true;
+		return count;
+	}
+
+	if (dvfsrc->force_ddr_en) {
+		if (__ratelimit(&dvfsrc_force_ddr))
+			pr_info("dvfsrc_force ddr_opp\n");
+		mtk_dvfsrc_set_ceiling_freq(CEILING_FORCE_MODE, val);
+	}
+
+	return count;
+}
+DEVICE_ATTR_WO(dvfsrc_force_ddr_opp);
 
 static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_req_bw.attr,
@@ -352,6 +394,7 @@ static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_qos_mode.attr,
 	&dev_attr_dvfsrc_md_floor_table.attr,
 	&dev_attr_dvfsrc_ceiling_opp.attr,
+	&dev_attr_dvfsrc_force_ddr_opp.attr,
 	NULL,
 };
 

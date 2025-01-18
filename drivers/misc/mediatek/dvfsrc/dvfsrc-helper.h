@@ -12,11 +12,15 @@
 
 struct mtk_dvfsrc;
 
+/* DEBUG_FLAG */
+#define DVFSRC_EMI_DUMP_FLAG         (1 << 0)
+
 /* For ceiling ddr gear operation */
 enum {
 	CEILING_SYSFS,
 	CEILING_IDX1,
 	CEILING_IDX2,
+	CEILING_FORCE_MODE, /*front of CEILING_ITEM_MAX*/
 	CEILING_ITEM_MAX,
 };
 
@@ -66,12 +70,14 @@ struct dvfsrc_config {
 	u64 (*query_dvfs_time)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_gear_info)(struct mtk_dvfsrc *dvfsrc, u32 idx);
-	void (*set_ddr_ceiling)(struct mtk_dvfsrc *dvfsrc, u32 gear);
+	void (*set_vcore_avs)(struct mtk_dvfsrc *dvfsrc, u32 enable, u32 bit);
+	void (*set_ddr_ceiling)(struct mtk_dvfsrc *dvfsrc, u32 gear, bool force_en);
 };
 
 struct dvfsrc_debug_data {
 	u32 num_opp_desc;
 	u32 version;
+	u32 dump_flag;
 	struct dvfsrc_opp_desc *opps_desc;
 	const struct dvfsrc_config *config;
 	const struct dvfsrc_qos_config *qos;
@@ -86,6 +92,8 @@ struct mtk_dvfsrc {
 	int fw_type;
 	struct dvfsrc_opp_desc *opp_desc;
 	u32 *vopp_uv_tlb;
+	u32 *dopp_kbps_tlb;
+	u32 *eopp_mbps_tlb;
 /* debug */
 	void __iomem *regs;
 	void __iomem *spm_regs;
@@ -109,9 +117,12 @@ struct mtk_dvfsrc {
 	u32 vcore_range_step;
 	u32 vcore_range_min_uV;
 	u32 qos_mode;
+	u32 vcore_avs_enable;
 	u8 ceil_ddr_opp[CEILING_ITEM_MAX];
 	bool ceil_ddr_support;
 	bool vchk_enable;
+	bool force_ddr_en;
+	u32 force_ddr_idx;
 };
 
 extern int dvfsrc_register_sysfs(struct device *dev);

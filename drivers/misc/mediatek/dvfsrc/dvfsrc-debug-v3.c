@@ -45,6 +45,7 @@ enum dvfsrc_regs {
 	DVFSRC_LEVEL_LABEL_L,
 	DVFSRC_LEVEL_LABEL_H,
 	DVFSRC_CEILING,
+	DVFSRC_CEILING_SW_REQ,
 };
 
 static const int mt6779_regs[] = {
@@ -145,6 +146,7 @@ static const int mt6989_regs[] = {
 	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
 	[DVFSRC_LEVEL_LABEL_H] = 0x6B0,
 	[DVFSRC_CEILING] = 0x6A8,
+	[DVFSRC_CEILING_SW_REQ] = 0x600,
 };
 
 enum dvfsrc_spm_regs {
@@ -599,7 +601,7 @@ static char *dvfsrc_dump_reg(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
 		dvfsrc_read(dvfsrc, DVFSRC_ISP_HRT, 0x0));
 
 	p += snprintf(p, buff_end - p,
-		"%-12s: %08x, %08x, %08x, %08x\n",
+		"%-12s: %x, %x, %x, %x\n",
 		"DEBUG_STA_0",
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x0),
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x4),
@@ -607,7 +609,7 @@ static char *dvfsrc_dump_reg(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0xC));
 
 	p += snprintf(p, buff_end - p,
-		"%-12s: %08x, %08x, %08x\n",
+		"%-12s: %x, %x, %x\n",
 		"DEBUG_STA_4",
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x10),
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x14),
@@ -615,11 +617,19 @@ static char *dvfsrc_dump_reg(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
 
 	if (dvfsrc->dvd->config->ip_version > 2) {
 		p += snprintf(p, buff_end - p,
-		"%-12s: %08x, %08x, %08x\n",
+		"%-12s: %x, %x, %x, %x\n",
 		"DEBUG_STA_7",
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x1C),
 		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x20),
-		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x24));
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x24),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x28));
+		p += snprintf(p, buff_end - p,
+		"%-12s: %x, %x, %x, %x\n",
+		"DEBUG_0",
+		dvfsrc_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST, 0x18),
+		dvfsrc_read(dvfsrc, DVFSRC_QOS_DDR_REQUEST, 0x1C));
 	}
 
 	p += snprintf(p, buff_end - p, "%-12s: %d\n",
@@ -880,9 +890,15 @@ static u32 dvfsrc_get_opp_gear_info(struct mtk_dvfsrc *dvfsrc, u32 idx)
 	return val;
 }
 
-static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear)
+static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear, bool force_en)
 {
 	u32 val;
+
+	if (force_en) {
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING_SW_REQ,
+			((dvfsrc->opp_desc->num_dram_opp - 1) << 12));
+	} else
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING_SW_REQ, 0x0);
 
 	val = dvfsrc_read(dvfsrc, DVFSRC_CEILING, 0);
 	if (gear == 0xFF)
@@ -892,6 +908,18 @@ static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear)
 		val = val | (((gear + 1) & 0xF) << 4) | (1 << 16);
 		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val);
 	}
+}
+
+static void dvfsrc_set_vcore_avs(struct mtk_dvfsrc *dvfsrc, u32 enable, u32 bit)
+{
+	u32 rsrv4;
+
+	rsrv4 = dvfsrc_read(dvfsrc, DVFSRC_RSRV_4, 0);
+
+	if (!enable)
+		dvfsrc_write(dvfsrc, DVFSRC_RSRV_4, rsrv4 | (1 << bit));
+	else
+		dvfsrc_write(dvfsrc, DVFSRC_RSRV_4, rsrv4 & ~(1 << bit));
 }
 
 static int dvfsrc_query_request_status(struct mtk_dvfsrc *dvfsrc, u32 id)
@@ -1023,6 +1051,7 @@ const struct dvfsrc_config mt6897_dvfsrc_config = {
 	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
 	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
 	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+	.set_vcore_avs = dvfsrc_set_vcore_avs,
 };
 
 const struct dvfsrc_config mt6989_dvfsrc_config = {
@@ -1041,4 +1070,5 @@ const struct dvfsrc_config mt6989_dvfsrc_config = {
 	.query_opp_count = dvfsrc_get_opp_count,
 	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
 	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
+	.set_vcore_avs = dvfsrc_set_vcore_avs,
 };
