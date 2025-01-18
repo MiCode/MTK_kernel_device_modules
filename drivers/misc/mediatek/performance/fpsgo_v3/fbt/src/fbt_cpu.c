@@ -437,6 +437,7 @@ static int suppress_ceiling;
 static int boost_ta;
 static int down_throttle_ns;
 static int fbt_down_throttle_enable;
+static int ultra_rescue;
 static int loading_policy;
 static int llf_task_policy;
 static int vip_follow_gh;
@@ -759,6 +760,19 @@ void fbt_set_down_throttle_locked(int nsec)
 	xgf_trace("fpsgo set sched_rate_ns %d", nsec);
 	fpsgo_sentcmd(FPSGO_SET_SCHED_RATE, nsec, -1);
 	down_throttle_ns = nsec;
+}
+
+static void fbt_set_ultra_rescue_locked(int input)
+{
+	if (ultra_rescue == input)
+		return;
+
+	if (ultra_rescue && !input)
+		fbt_boost_dram(0);
+
+	ultra_rescue = input;
+
+	xgf_trace("fpsgo set ultra_rescue %d", input);
 }
 
 void fbt_set_ceiling(struct cpu_ctrl_data *pld,
@@ -3134,6 +3148,9 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 		fpsgo_main_trace("pid:%d buffer_id:0x%llx tt_vip_enable:%d",
 			thr->pid, thr->buffer_id, tt_vip_enable);
 	}
+
+	if (ultra_rescue)
+		fbt_boost_dram(1);
 }
 
 static void fbt_cancel_sjerk(void)
@@ -3795,6 +3812,9 @@ static void fbt_clear_state(struct render_info *thr)
 	if (max_blc_stage != FPSGO_JERK_INACTIVE)
 		return;
 
+	if (ultra_rescue)
+		fbt_boost_dram(0);
+
 	fbt_find_max_blc(&temp_blc, &temp_blc_pid,
 		&temp_blc_buffer_id, &temp_blc_dep_num, temp_blc_dep);
 	if (temp_blc)
@@ -3837,6 +3857,9 @@ void fbt_set_limit(int cur_pid, unsigned int blc_wt,
 			final_blc_dep_num * sizeof(struct fpsgo_loading));
 	else
 		final_blc_dep_num = 0;
+
+	if (ultra_rescue)
+		fbt_boost_dram(0);
 
 	if (pid == max_blc_pid && buffer_id == max_blc_buffer_id
 			&& blc_wt < max_blc) {
@@ -5322,6 +5345,8 @@ void fbt_check_max_blc_locked(int pid)
 			boosted_group = 0;
 		}
 		fbt_free_bhr();
+		if (ultra_rescue)
+			fbt_boost_dram(0);
 		memset(base_opp, 0, cluster_num * sizeof(unsigned int));
 
 		if (fbt_get_default_dram_boost_enable())
@@ -6004,6 +6029,9 @@ static void fbt_setting_reset(int reset)
 		fbt_clear_boost_value();
 		boosted_group = 0;
 	}
+
+	if (ultra_rescue)
+		fbt_boost_dram(0);
 }
 
 void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
@@ -7816,6 +7844,58 @@ out:
 static KOBJ_ATTR_WO(fbt_attr_by_tid);
 #endif  // FPSGO_MW
 
+static ssize_t ultra_rescue_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&fbt_mlock);
+	val = ultra_rescue;
+	mutex_unlock(&fbt_mlock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t ultra_rescue_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				val = arg;
+			else
+				goto out;
+		}
+	}
+
+	mutex_lock(&fbt_mlock);
+
+	if (!fbt_enable) {
+		mutex_unlock(&fbt_mlock);
+		goto out;
+	}
+
+	fbt_set_ultra_rescue_locked(val);
+
+	mutex_unlock(&fbt_mlock);
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(ultra_rescue);
+
 static void llf_switch_policy(struct work_struct *work)
 {
 	fpsgo_main_trace("fpsgo %s and clear_llf_cpu_policy",
@@ -9370,6 +9450,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ultra_rescue);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_llf_task_policy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_follow_gh);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_ta);
@@ -9635,6 +9716,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_second_enhance_f);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ultra_rescue);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_llf_task_policy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_follow_gh);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_ta);

@@ -128,6 +128,26 @@ void fbt_notify_CM_limit(int reach_limit)
 #endif
 }
 
+void fbt_boost_dram(int boost)
+{
+	if (plat_dram_boost_enable == 2) {
+		if (boost)
+			icc_set_bw(bw_path, 0, peak_bw);
+		else
+			icc_set_bw(bw_path, 0, 0);
+	}
+
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+	if (plat_dram_boost_enable == 1) {
+		if (boost)
+			vcorefs_request_dvfs_opp(KIR_FBT, 0);
+		else
+			vcorefs_request_dvfs_opp(KIR_FBT, -1);
+	}
+#endif
+	fpsgo_systrace_c_fbt_debug(-100, 0, boost, "boost_dram");
+}
+
 void fbt_clear_boost_value(void)
 {
 	fpsgo_sentcmd(FPSGO_SET_BOOST_TA, -1, -1);
@@ -135,6 +155,7 @@ void fbt_clear_boost_value(void)
 
 	if (plat_dram_boost_enable) {
 		fbt_notify_CM_limit(0);
+		fbt_boost_dram(0);
 	}
 }
 

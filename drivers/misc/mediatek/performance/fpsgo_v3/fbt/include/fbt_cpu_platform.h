@@ -55,6 +55,7 @@ int fbt_get_default_qr_enable(void);
 int fbt_get_default_gcc_enable(void);
 int fbt_get_default_sbe_rescue_enable(void);
 int fbt_get_default_dram_boost_enable(void);
+void fbt_boost_dram(int boost);
 int fbt_get_default_powerRL_enable(void);
 int fbt_get_ux_scroll_policy_type(void);
 int fbt_get_ux_smart_launch_enable(void);
