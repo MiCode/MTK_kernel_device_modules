@@ -9934,6 +9934,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			      <0 0x487e0000 0 0x10000>;
 			interrupts = <GIC_SPI 616 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "combined";
+			interrupt-disable = <1>;
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <5 0>;
 			/* ste mpam: sid, partid, pmg */
