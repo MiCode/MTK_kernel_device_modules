@@ -368,7 +368,6 @@ static int DRAM_FB_alloc_with_size(uint32_t ctx_num_going_alloc, uint64_t *iova)
 	int ret = 0;
 	uint64_t ret_IOVA = 0;
 
-	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
 	if (g_adv->remote.vlm_size != 0) {
 		ammu_trace_begin("APUMMU: Alloc DRAM");
 		ret = apummu_dram_remap_runtime_alloc_with_size(g_adv, ctx_num_going_alloc, &ret_IOVA);
@@ -385,7 +384,6 @@ static int DRAM_FB_alloc_with_size(uint32_t ctx_num_going_alloc, uint64_t *iova)
 	*iova = ret_IOVA;
 
 out:
-	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 	return ret;
 }
 
@@ -394,16 +392,19 @@ static int partial_DRAM_FB_alloc_and_add_pool(uint64_t session, uint32_t subcmd_
 	int subcmd_refcnt_diff, ret = 0;
 	uint64_t allocated_iova;
 
-	if (!is_session_table_exist(session)) {
-		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
-		ret = -ENOMEM;
-		goto out;
-	}
-
 	AMMU_LOG_VERBO("subcmd_num = %u\n", subcmd_num);
 
 	// Count ctx number gonna alloc
+	mutex_lock(&g_ammu_table_set.table_lock);
+	if (!is_session_table_exist(session)) {
+		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
+		mutex_unlock(&g_ammu_table_set.table_lock);
+		ret = -ENOMEM;
+		goto out;
+	}
 	g_ammu_stable_ptr->subcmd_num_for_DRAM_FB += subcmd_num;
+	AMMU_LOG_VERBO("g_ammu_stable_ptr->subcmd_num_for_DRAM_FB = %u\n", g_ammu_stable_ptr->subcmd_num_for_DRAM_FB);
+	mutex_unlock(&g_ammu_table_set.table_lock);
 	g_ammu_table_set.subcmd_refcnt += subcmd_num;
 	if (g_ammu_table_set.alloc_subcmd_refcnt >= g_adv->remote.dram_max)
 		subcmd_refcnt_diff = 0;
@@ -440,7 +441,6 @@ static int partial_DRAM_FB_alloc_and_add_pool(uint64_t session, uint32_t subcmd_
 	AMMU_LOG_VERBO("subcmd_num = %u\n", subcmd_num);
 	AMMU_LOG_VERBO("g_ammu_table_set.subcmd_refcnt = %u\n", g_ammu_table_set.subcmd_refcnt);
 	AMMU_LOG_VERBO("g_ammu_table_set.alloc_subcmd_refcnt = %u\n", g_ammu_table_set.alloc_subcmd_refcnt);
-	AMMU_LOG_VERBO("g_ammu_stable_ptr->subcmd_num_for_DRAM_FB = %u\n", g_ammu_stable_ptr->subcmd_num_for_DRAM_FB);
 	AMMU_LOG_VERBO("subcmd_refcnt_diff = %d\n", subcmd_refcnt_diff);
 
 out:
@@ -472,11 +472,11 @@ int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
 	int ret = 0;
 
 	if (!g_adv->plat.alloc_DRAM_FB_in_session_create && vlm_size) {
-		mutex_lock(&g_ammu_table_set.table_lock);
+		mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
 		// ret = DRAM_and_SLB_alloc();
 		ret = partial_DRAM_FB_alloc_and_add_pool(session, subcmd_num);
 		general_SLB_alloc_and_add_pool();
-		mutex_unlock(&g_ammu_table_set.table_lock);
+		mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 	}
 
 	return ret;

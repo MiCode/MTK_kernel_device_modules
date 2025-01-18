@@ -749,8 +749,6 @@ static int mdw_mem_ioctl_alloc_fb(struct mdw_fpriv *mpriv,
 		return -EINVAL;
 	}
 
-	mutex_lock(&mpriv->mtx);
-
 	mdw_mem_debug("size(%u) num_subcmds(%u)\n",
 		in->alloc_fb.total_vlm_size, in->alloc_fb.num_subcmds);
 	mdw_trace_begin("apummu:alloc dram fb|size:%u",
@@ -764,7 +762,6 @@ static int mdw_mem_ioctl_alloc_fb(struct mdw_fpriv *mpriv,
 			in->alloc_fb.total_vlm_size, ret,
 			in->alloc_fb.num_subcmds);
 
-	mutex_unlock(&mpriv->mtx);
 	return ret;
 }
 
