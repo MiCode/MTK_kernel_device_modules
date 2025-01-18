@@ -870,21 +870,23 @@ static int mt6379_charger_get_property(struct power_supply *psy, enum power_supp
 		val->intval = cdata->psy_usb_type[cdata->active_idx];
 		return 0;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_SDP)
-			val->intval = 500000;
-		else if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
-			val->intval = 3225000;
-		else if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_CDP)
-			val->intval = 1500000;
-		else
-			val->intval = 500000;
-
-		return 0;
+		switch (cdata->psy_usb_type[cdata->active_idx]) {
+		case POWER_SUPPLY_USB_TYPE_DCP:
+			val->intval = 3225000;	/* 3225 mA */
+			return 0;
+		case POWER_SUPPLY_USB_TYPE_CDP:
+			val->intval = 1500000;	/* 1500 mA */
+			return 0;
+		case POWER_SUPPLY_USB_TYPE_SDP:
+		default:
+			val->intval = 500000;	/* 500 mA */
+			return 0;
+		}
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
-			val->intval = 22000000;
+			val->intval = 22000000;	/* 2200 mV */
 		else
-			val->intval = 5000000;
+			val->intval = 5000000;	/* 500 mV */
 
 		return 0;
 	case POWER_SUPPLY_PROP_TYPE:
@@ -917,15 +919,11 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		return mt6379_charger_field_set(cdata, F_CV, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
-		if (cdata->bypass_mode_entered)
-			return 0;
-
-		return mt6379_charger_field_set(cdata, F_IBUS_AICR, val->intval);
+		return cdata->bypass_mode_entered ?
+		       0 : mt6379_charger_field_set(cdata, F_IBUS_AICR, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
-		if (cdata->bypass_mode_entered)
-			return 0;
-
-		return mt6379_charger_field_set(cdata, F_VBUS_MIVR, val->intval);
+		return cdata->bypass_mode_entered ?
+		       0 : mt6379_charger_field_set(cdata, F_VBUS_MIVR, val->intval);
 	case POWER_SUPPLY_PROP_PRECHARGE_CURRENT:
 		return mt6379_charger_field_set(cdata, F_IPREC, val->intval);
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
