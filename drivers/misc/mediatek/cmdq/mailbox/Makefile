@@ -49,6 +49,7 @@ obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-test.o
 ifeq ($(CONFIG_MTK_CMDQ_MBOX_EXT), y)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6768) += cmdq-platform-mt6768.o
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6761) += cmdq-platform-mt6761.o
+obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6765) += cmdq-platform-mt6765.o
 else
 ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6873.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6873.o
