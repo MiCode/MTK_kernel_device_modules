@@ -455,9 +455,30 @@
 	};
 
 	ufscfg_ao_clk: syscon@168a0000 {
-		compatible = "mediatek,mt6991-ufscfg_ao", "syscon";
+		compatible = "mediatek,mt6991-ufscfg_ao", "syscon", "simple-mfd";
 		reg = <0 0x168a0000 0 0x1000>;
 		#clock-cells = <1>;
+
+		ufscfgao_rst: reset-controller {
+			compatible = "ti,syscon-reset";
+			#reset-cells = <1>;
+
+			ti,reset-bits = <
+				/* ufs mphy/ufschi/crypto/unipro reset */
+				/* 0: mphy */
+				0x48   8 0x4c   8 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				/* 1: unipro */
+				0x148  0 0x14c  0 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				/* 2: ufs-crypto */
+				0x148  1 0x14c  1 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				/* 3: ufshci */
+				0x148  2 0x14c  2 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				>;
+		};
 	};
 
 	ssr_top_clk: syscon@18000000 {
@@ -4757,7 +4778,22 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				     <GIC_SPI 334 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 335 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 336 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks =;
+#endif
+			clocks =
+				<&cksys_clk CLK_CK_SEL>,
+				<&cksys_clk CLK_CK_MAINPLL_D4_D2>,
+				<&cksys_clk CLK_CK_UNIVPLL_D5>,
+				<&cksys_clk CLK_CK_AES_UFSFDE_SEL>,
+				<&cksys_clk CLK_CK_UNIVPLL_D6>,
+				<&cksys_clk CLK_CK_MAINPLL_D4>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_PHY_SAP_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UFSHCI_UFS_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UFSHCI_AES_UFS>;
 
 			clock-names =
 				"ufs_sel",
@@ -4765,10 +4801,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"ufs_sel_max_src",
 				"ufs_fde",
 				"ufs_fde_min_src",
-				"ufs_fde_max_src";
+				"ufs_fde_max_src",
+				"unipro_tx_sym",
+				"unipro_rx_sym0",
+				"unipro_rx_sym1",
+				"unipro_sys",
+				"unipro_sap",
+				"ufs_phy_sap",
+				"ufshci_ufs",
+				"ufshci_aes";
 
 			freq-table-hz =
 				<273000000 499200000>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
@@ -4779,16 +4831,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
 			clk-scale-up-vcore-min = <650000>;
-
+#if 0
 			vcc-supply = <&mt6363_vemc>;
-
-			resets =	<&ufscfgpdn_rst 0>,
-					<&ufscfgpdn_rst 1>,
-					<&ufscfgpdn_rst 2>;
+#endif
+			resets =	<&ufscfgao_rst 1>,
+					<&ufscfgao_rst 2>,
+					<&ufscfgao_rst 3>;
 			reset-names =	"unipro_rst",
 					"crypto_rst",
 					"hci_rst";
-
+#if 0
 			/*
 			 * Control mtcmos with rtff flow by ufs driver,
 			 * Instead of scpsys by PM flow.
