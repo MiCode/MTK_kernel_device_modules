@@ -37,6 +37,8 @@ int apummu_plat_init(struct platform_device *pdev)
 
 	adv->plat.slb_wait_time = aplat->slb_wait_time;
 	adv->plat.is_general_SLB_support = aplat->is_general_SLB_support;
+	adv->plat.alloc_DRAM_FB_in_session_create = aplat->alloc_DRAM_FB_in_session_create;
+	mutex_init(&adv->plat.slb_mtx);
 
 out:
 	return ret;

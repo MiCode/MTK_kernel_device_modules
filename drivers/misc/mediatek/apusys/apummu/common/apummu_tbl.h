@@ -11,7 +11,7 @@
  * Note the fileds of vsid descirpt between iommu and smmu are different !
  */
 #define linux_ep
-#define SMMU_EN
+// #define SMMU_EN
 
 /* TCU RCX */
 #define APUMMU_CMU_TOP_REG_BASE       0x19067000
@@ -23,7 +23,7 @@
 
 /* VSID SRAM */
 #define APUMMU_VSID_SRAM_SIZE 0x5C00 //15K:Ponsot, 23K: Leroy
-#define APUMMU_VSID_TBL_SIZE  0x118 //280
+#define APUMMU_VSID_TBL_SIZE  (0xF4) // for apummu 1.0 0x118
 
 #define APUMMU_PREFIX "[apummu]"
 
@@ -80,7 +80,10 @@
  * 0:0x00, 1:0x04, 2:0x08, 3:0x0C; seg_idx: 0-9
  */
 #define APUMMU_VSID_SEGMENT_BASE_PTR(vsid_idx, seg_idx, seg_offset) \
-	(APUMMU_VSID_DESC_PTR(vsid_idx) + (seg_idx)*0x10 + (seg_offset)*0x04)
+	(APUMMU_VSID_DESC_PTR(vsid_idx) + (seg_idx)*0xC + (seg_offset)*0x04 + 0x4)
+
+#define APUMMU_VSID_SEGMENT_EN_BASE(vsid_idx) \
+			(APUMMU_VSID_DESC_PTR(vsid_idx))
 
 /* Replace String for DRV_W/R */
 #define APUMMU_CMU_TOP_BASE	    APUMMU_CMU_TOP_BASE_PTR
@@ -147,7 +150,7 @@
  * 0:0x00, 1:0x04, 2:0x08, 3:0x0C; seg_idx: 0-9
  */
 #define APUMMU_VSID_SEGMENT_BASE(vsid_idx, seg_idx, seg_offset) \
-			(APUMMU_VSID_DESC(vsid_idx) + (seg_idx)*0x10 + (seg_offset)*0x04)
+			(APUMMU_VSID_DESC(vsid_idx) + (seg_idx)*0xC + (seg_offset)*0x04 + 0x4)
 
 #endif /* Endif of #ifdef linux_ep */
 

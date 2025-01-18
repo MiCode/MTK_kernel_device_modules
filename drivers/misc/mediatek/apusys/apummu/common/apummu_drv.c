@@ -60,6 +60,70 @@ static int apummu_map_dts(struct platform_device *pdev);
 static int apummu_create_node(struct platform_device *pdev);
 static int apummu_delete_node(void *drvinfo);
 
+struct apu_ipi_apummu_rx_rpmsg_device {
+	struct rpmsg_endpoint *ept;
+	struct rpmsg_device *rpdev;
+};
+static struct apu_ipi_apummu_rx_rpmsg_device apu_ipi_apummmu_rx_rpm_dev;
+static const struct of_device_id apu_apummu_rx_rpmsg_of_match[] = {
+	{ .compatible = "mediatek,apu-apummu-rx", },
+	{ },
+};
+static int apu_ipi_apummu_rx_rpmsg_probe(struct rpmsg_device *rpdev)
+{
+	AMMU_LOG_INFO("%s: name=%s, src=%d\n",
+			__func__, rpdev->id.name, rpdev->src);
+
+	apu_ipi_apummmu_rx_rpm_dev.ept = rpdev->ept;
+	apu_ipi_apummmu_rx_rpm_dev.rpdev = rpdev;
+
+	AMMU_LOG_INFO("%s: rpdev->ept = %p\n", __func__, rpdev->ept);
+
+	return 0;
+}
+static int apu_ipi_apummu_rx_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
+		int len, void *priv, u32 src)
+{
+	struct apummu_rx_data *d = (struct apummu_rx_data *)data;
+
+	switch (d->module_id) {
+	case APUMMU_RX_TEST:
+		pr_info("%s: received APUMMU_RX_TEST from uP\n", __func__);
+		break;
+	case APUMMU_RX_APUMMU_AEE:
+		apusys_ammu_exception("APUMMU error in uP");
+		break;
+	case APUMMU_RX_HSE_AEE:
+		apusys_hse_exception("HSE error in uP");
+		break;
+	case APUMMU_RX_CBFC_AEE:
+		apusys_cbfc_exception("CBFC error in uP");
+		break;
+	default:
+		pr_info("%s: unknown cmd %d\n", __func__, d->module_id);
+		break;
+	}
+
+	rpmsg_send(apu_ipi_apummmu_rx_rpm_dev.ept, data, sizeof(struct apummu_rx_data));
+
+	return 0;
+}
+
+static void apummu_ipi_apummu_rx_rpmsg_remove(struct rpmsg_device *rpdev)
+{
+	AMMU_LOG_INFO("apummu_ipi_apummu_rx remove Done\n");
+}
+static struct rpmsg_driver apu_ipi_apummu_rx_rpmsg_driver = {
+	.drv = {
+		.name = "apu-apummu-rx",
+		.owner = THIS_MODULE,
+		.of_match_table = apu_apummu_rx_rpmsg_of_match,
+	},
+	.probe    = apu_ipi_apummu_rx_rpmsg_probe,
+	.remove   = apummu_ipi_apummu_rx_rpmsg_remove,
+	.callback = apu_ipi_apummu_rx_rpmsg_cb,
+};
+
 #if !(DRAM_FALL_BACK_IN_RUNTIME)
 /* alloc DRAM for fallback */
 static int apummu_memory_func(void *arg)
@@ -310,6 +374,9 @@ static int apummu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, adv);
 	dev_set_drvdata(dev, adv);
 
+	// add for VLM DRAM 4-16G
+	dma_set_mask_and_coherent(adv->dev, DMA_BIT_MASK(34));
+
 	adv->init_done = false;
 
 	if (apummu_plat_init(pdev)) {
@@ -453,7 +520,6 @@ static struct rpmsg_driver apummu_rpmsg_driver = {
 int apummu_init(struct apusys_core_info *info)
 {
 	int ret = 0;
-	//struct device *dev = NULL;
 
 	g_apusys = info;
 
@@ -471,12 +537,19 @@ int apummu_init(struct apusys_core_info *info)
 		goto out;
 	}
 
+	ret = register_rpmsg_driver(&apu_ipi_apummu_rx_rpmsg_driver);
+	if (ret) {
+		AMMU_LOG_ERR("failed to register RX_RMPSG driver");
+		goto out;
+	}
+
 out:
 	return ret;
 }
 
 void apummu_exit(void)
 {
+	unregister_rpmsg_driver(&apu_ipi_apummu_rx_rpmsg_driver);
 	unregister_rpmsg_driver(&apummu_rpmsg_driver);
 	platform_driver_unregister(&apummu_driver);
 }

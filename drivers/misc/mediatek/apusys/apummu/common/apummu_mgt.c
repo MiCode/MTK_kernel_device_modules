@@ -27,7 +27,9 @@ struct apummu_tbl {
 	struct kref session_tbl_cnt;
 	struct mutex table_lock;
 	struct mutex DRAM_FB_lock;
-	bool is_stable_exist;
+	uint16_t subcmd_refcnt;
+	uint8_t alloc_subcmd_refcnt;
+	bool is_VLM_info_IPI_sent; // to set VLM DRAM FB or clean setting
 	bool is_SLB_set;
 	bool is_work_canceled;
 	bool is_free_job_set;
@@ -162,12 +164,19 @@ static void free_memory(struct kref *kref)
 {
 	ammu_trace_begin("APUMMU: free memory");
 
-	AMMU_LOG_DBG("kref destroy\n");
+	AMMU_LOG_VERBO("kref destroy\n");
 #if DRAM_FALL_BACK_IN_RUNTIME
-	if (g_adv->rsc.vlm_dram.iova != 0) {
-		queue_delayed_work(ammu_workq, &DRAM_free_work,
-			msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
-		g_ammu_table_set.is_free_job_set = true;
+	if (g_adv->plat.alloc_DRAM_FB_in_session_create) {
+		if (g_adv->rsc.vlm_dram.iova != 0) {
+			queue_delayed_work(ammu_workq, &DRAM_free_work,
+				msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
+			g_ammu_table_set.is_free_job_set = true;
+		}
+	} else {
+		apummu_dram_remap_runtime_free_whole_list(g_adv);
+		g_ammu_table_set.subcmd_refcnt = 0;
+		g_ammu_table_set.alloc_subcmd_refcnt = 0;
+		AMMU_LOG_INFO("DRAM FB Free done\n");
 	}
 #endif
 
@@ -182,11 +191,272 @@ static void free_memory(struct kref *kref)
 		ammu_trace_end();
 	}
 
-	g_ammu_table_set.is_stable_exist = false;
+	g_ammu_table_set.is_VLM_info_IPI_sent = false;
 	g_ammu_table_set.is_SLB_set = false;
 
 	ammu_trace_end();
 }
+
+static int apummu_whole_DRAM_FB_alloc(void)
+{
+	int ret = 0;
+
+	/*
+	 * Alloc DRAM for VLM fall back if DRAM is not allocated
+	 * Cancel DRAM free delay workqueue if it is created
+	 */
+#if DRAM_FALL_BACK_IN_RUNTIME
+	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
+	if (g_adv->remote.vlm_size != 0) {
+		if (g_adv->rsc.vlm_dram.iova == 0) {
+			ammu_trace_begin("APUMMU: Alloc DRAM");
+			ret = apummu_dram_remap_runtime_alloc(g_adv);
+			if (ret) {
+				ammu_trace_end();
+				apusys_ammu_exception("alloc DRAM FB fail\n");
+				mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
+				goto out;
+			}
+			ammu_trace_end();
+		} else { // DRAM not free, cancel delay job
+			if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
+				g_ammu_table_set.is_work_canceled = false;
+			else
+				g_ammu_table_set.is_free_job_set = false;
+		}
+	}
+
+	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
+#endif
+
+out:
+	return ret;
+}
+
+static void apummu_general_SLB_alloc(void)
+{
+	if (!g_adv->plat.is_general_SLB_support)
+		return;
+
+	if (!g_ammu_table_set.is_SLB_alloc) { // SLB retry
+		ammu_trace_begin("APUMMU: SLB alloc");
+		/* Do not assign return value, since alloc SLB may fail */
+		if (apummu_alloc_general_SLB(g_adv))
+			AMMU_LOG_VERBO("general SLB alloc fail...\n");
+		else
+			g_ammu_table_set.is_SLB_alloc = true;
+
+		ammu_trace_end();
+	}
+}
+
+static int apummu_first_session_IPI(bool vlm_dram_condition)
+{
+	int ret = 0;
+
+	ammu_trace_begin("APUMMU: SLB + DRAM IPI");
+	// if (g_adv->rsc.vlm_dram.iova != 0 || g_ammu_table_set.is_SLB_alloc) {
+	if (vlm_dram_condition || g_ammu_table_set.is_SLB_alloc) {
+		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
+		if (ret) {
+			ammu_trace_end();
+			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
+			apusys_ammu_exception("Set DRAM FB + SLB fail\n");
+			goto out;
+		}
+	}
+	ammu_trace_end();
+
+	g_ammu_table_set.is_SLB_set = (g_ammu_table_set.is_SLB_alloc);
+	g_ammu_table_set.is_VLM_info_IPI_sent = true;
+
+out:
+	return ret;
+}
+
+static int apummu_set_general_SLB_IPI(void)
+{
+	int ret = 0;
+
+	if (!g_ammu_table_set.is_SLB_set && g_ammu_table_set.is_SLB_alloc) {
+		ammu_trace_begin("APUMMU: SLB ONLY IPI");
+		ret = apummu_remote_mem_add_pool(
+			g_adv, APUMMU_MEM_TYPE_GENERAL_S,
+			g_adv->rsc.genernal_SLB.iova,
+			g_adv->rsc.genernal_SLB.size, 0
+		);
+		if (ret) {
+			ammu_trace_end();
+			apusys_ammu_exception("Set SLB fail\n");
+			goto out;
+		}
+		ammu_trace_end();
+
+		g_ammu_table_set.is_SLB_set = true;
+	}
+
+out:
+	return ret;
+}
+
+static int DRAM_and_SLB_alloc(void)
+{
+	int ret = 0;
+
+	ret = apummu_whole_DRAM_FB_alloc();
+	if (ret)
+		goto out;
+
+	apummu_general_SLB_alloc();
+
+	if (!g_ammu_table_set.is_VLM_info_IPI_sent) {
+	#if DRAM_FALL_BACK_IN_RUNTIME
+		ret = apummu_first_session_IPI((g_adv->rsc.vlm_dram.iova != 0));
+		if (ret)
+			goto free_DRAM;
+	#else
+		ret = apummu_set_general_SLB_IPI();
+		if (ret)
+			goto free_general_SLB;
+	#endif
+	} else {
+		/* SLB retry IPI */
+		ret = apummu_set_general_SLB_IPI();
+		if (ret)
+			goto free_general_SLB;
+	}
+
+out:
+	return ret;
+
+#if DRAM_FALL_BACK_IN_RUNTIME
+free_DRAM:
+	apummu_dram_remap_runtime_free(g_adv);
+#endif
+free_general_SLB:
+	apummu_free_general_SLB(g_adv);
+	return ret;
+}
+
+static int DRAM_FB_alloc_with_size(uint32_t ctx_num_going_alloc, uint64_t *iova)
+{
+	int ret = 0;
+	uint64_t ret_IOVA = 0;
+
+	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
+	if (g_adv->remote.vlm_size != 0) {
+		ammu_trace_begin("APUMMU: Alloc DRAM");
+		ret = apummu_dram_remap_runtime_alloc_with_size(g_adv, ctx_num_going_alloc, &ret_IOVA);
+		if (ret) {
+			ammu_trace_end();
+			apusys_ammu_exception("alloc DRAM FB fail\n");
+			goto out;
+		}
+		ammu_trace_end();
+	} else {
+		AMMU_LOG_WRN("Should not call VLM alloc in VLM not supported platform\n");
+	}
+
+	*iova = ret_IOVA;
+
+out:
+	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
+	return ret;
+}
+
+static int partial_DRAM_FB_alloc_and_add_pool(uint64_t session, uint32_t subcmd_num)
+{
+	int subcmd_refcnt_diff, ret = 0;
+	uint64_t allocated_iova;
+
+	if (!is_session_table_exist(session)) {
+		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	AMMU_LOG_VERBO("subcmd_num = %u\n", subcmd_num);
+
+	// Count ctx number gonna alloc
+	g_ammu_stable_ptr->subcmd_num_for_DRAM_FB += subcmd_num;
+	g_ammu_table_set.subcmd_refcnt += subcmd_num;
+	if (g_ammu_table_set.alloc_subcmd_refcnt >= g_adv->remote.dram_max)
+		subcmd_refcnt_diff = 0;
+	else {
+		if (g_ammu_table_set.subcmd_refcnt >= g_adv->remote.dram_max)
+			subcmd_refcnt_diff =
+				g_adv->remote.dram_max -
+				g_ammu_table_set.alloc_subcmd_refcnt;
+		else
+			subcmd_refcnt_diff =
+				g_ammu_table_set.subcmd_refcnt -
+				g_ammu_table_set.alloc_subcmd_refcnt;
+	}
+
+	// if there is ctx number gonna alloc, alloc and send IPI
+	if (subcmd_refcnt_diff > 0) {
+		ret = DRAM_FB_alloc_with_size(subcmd_refcnt_diff, &allocated_iova);
+		if (ret)
+			goto out;
+
+	#if DRAM_FALL_BACK_IN_RUNTIME
+		ret = apummu_remote_mem_add_pool(
+			g_adv, APUMMU_MEM_TYPE_VLM,
+			allocated_iova, subcmd_refcnt_diff,
+			g_ammu_table_set.alloc_subcmd_refcnt
+		);
+		if (ret) {
+			AMMU_LOG_ERR("APUMMU add DRAM into pool fail\n");
+			goto free_DRAM;
+		}
+	#endif
+		g_ammu_table_set.alloc_subcmd_refcnt += subcmd_refcnt_diff;
+	}
+	AMMU_LOG_VERBO("subcmd_num = %u\n", subcmd_num);
+	AMMU_LOG_VERBO("g_ammu_table_set.subcmd_refcnt = %u\n", g_ammu_table_set.subcmd_refcnt);
+	AMMU_LOG_VERBO("g_ammu_table_set.alloc_subcmd_refcnt = %u\n", g_ammu_table_set.alloc_subcmd_refcnt);
+	AMMU_LOG_VERBO("g_ammu_stable_ptr->subcmd_num_for_DRAM_FB = %u\n", g_ammu_stable_ptr->subcmd_num_for_DRAM_FB);
+	AMMU_LOG_VERBO("subcmd_refcnt_diff = %d\n", subcmd_refcnt_diff);
+
+out:
+	return ret;
+
+free_DRAM:
+	apummu_dram_remap_runtime_free_single_node(g_adv, allocated_iova);
+	return ret;
+}
+
+static int general_SLB_alloc_and_add_pool(void)
+{
+	int ret = 0;
+
+	apummu_general_SLB_alloc();
+	ret = apummu_set_general_SLB_IPI();
+	if (ret)
+		goto free_general_SLB;
+
+	return ret;
+
+free_general_SLB:
+	apummu_free_general_SLB(g_adv);
+	return ret;
+}
+
+int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
+{
+	int ret = 0;
+
+	if (!g_adv->plat.alloc_DRAM_FB_in_session_create && vlm_size) {
+		mutex_lock(&g_ammu_table_set.table_lock);
+		// ret = DRAM_and_SLB_alloc();
+		ret = partial_DRAM_FB_alloc_and_add_pool(session, subcmd_num);
+		general_SLB_alloc_and_add_pool();
+		mutex_unlock(&g_ammu_table_set.table_lock);
+	}
+
+	return ret;
+}
+
 
 /**
  * @input:
@@ -200,6 +470,7 @@ static int session_table_alloc(void)
 {
 	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr = NULL;
+
 	ammu_trace_begin("APUMMU: session table allocate");
 
 	sTable_ptr = kvzalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
@@ -209,92 +480,20 @@ static int session_table_alloc(void)
 		goto out;
 	}
 
-	list_add_tail(&sTable_ptr->list, &g_ammu_table_set.g_stable_head);
-	g_ammu_stable_ptr = sTable_ptr;
-
-#if DRAM_FALL_BACK_IN_RUNTIME
-	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
-	if (g_adv->rsc.vlm_dram.iova == 0) {
-		ammu_trace_begin("APUMMU: Alloc DRAM");
-		ret = apummu_dram_remap_runtime_alloc(g_adv);
-		if (ret) {
-			ammu_trace_end();
-			ammu_exception("alloc DRAM FB fail\n");
-			mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
-			goto out;
-		}
-		ammu_trace_end();
-	} else { // DRAM not free, cancel delay job
-		if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
-			g_ammu_table_set.is_work_canceled = false;
-		else
-			g_ammu_table_set.is_free_job_set = false;
-	}
-
-	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
-#endif
-
-	if (!g_ammu_table_set.is_SLB_alloc) { // SLB retry
-		ammu_trace_begin("APUMMU: SLB alloc");
-		/* Do not assign return value, since alloc SLB may fail */
-		if (apummu_alloc_general_SLB(g_adv))
-			AMMU_LOG_VERBO("general SLB alloc fail...\n");
-		else
-			g_ammu_table_set.is_SLB_alloc = true;
-
-		ammu_trace_end();
-	}
-
-	if (!g_ammu_table_set.is_stable_exist) {
-	#if DRAM_FALL_BACK_IN_RUNTIME
-		ammu_trace_begin("APUMMU: SLB + DRAM IPI");
-		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
-		if (ret) {
-			ammu_trace_end();
-			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
-			ammu_exception("Set DRAM FB + SLB fail\n");
-			goto free_DRAM;
-		}
-		ammu_trace_end();
-	#else
-		if (g_ammu_table_set.is_SLB_alloc) {
-			if (apummu_remote_mem_add_pool(g_adv))
-				goto free_general_SLB;
-		}
-	#endif
-		g_ammu_table_set.is_SLB_set = (g_ammu_table_set.is_SLB_alloc);
-
+	if (list_empty(&g_ammu_table_set.g_stable_head)) {
 		AMMU_LOG_VERBO("kref init\n");
 		kref_init(&g_ammu_table_set.session_tbl_cnt);
-		g_ammu_table_set.is_stable_exist = true;
 	} else {
 		AMMU_LOG_VERBO("kref get\n");
 		kref_get(&g_ammu_table_set.session_tbl_cnt);
-
-		/* SLB retry IPI */
-		if (!g_ammu_table_set.is_SLB_set && g_ammu_table_set.is_SLB_alloc) {
-			ammu_trace_begin("APUMMU: SLB ONLY IPI");
-			ret = apummu_remote_mem_add_pool(g_adv);
-			if (ret) {
-				ammu_trace_end();
-				ammu_exception("Set SLB fail\n");
-				goto free_general_SLB;
-			}
-			ammu_trace_end();
-		}
-
-		g_ammu_table_set.is_SLB_set = true;
 	}
 
-	ammu_trace_end();
-	return ret;
+	list_add_tail(&sTable_ptr->list, &g_ammu_table_set.g_stable_head);
+	g_ammu_stable_ptr = sTable_ptr;
 
-#if DRAM_FALL_BACK_IN_RUNTIME
-free_DRAM:
-	apummu_dram_remap_runtime_free(g_adv);
-#endif
-free_general_SLB:
-	apummu_free_general_SLB(g_adv);
+	if (g_adv->plat.alloc_DRAM_FB_in_session_create)
+		ret = DRAM_and_SLB_alloc();
+
 out:
 	ammu_trace_end();
 	return ret;
@@ -313,12 +512,6 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
-		ret = -EINVAL;
-		goto out_before_lock;
-	}
-
-	if (device_va & 0xFFF) {
-		AMMU_LOG_ERR("device_va is not 4K alignment!!!\n");
 		ret = -EINVAL;
 		goto out_before_lock;
 	}
@@ -509,6 +702,11 @@ int session_table_free(uint64_t session)
 		goto out;
 	}
 
+	if (!g_adv->plat.alloc_DRAM_FB_in_session_create) {
+		g_ammu_table_set.subcmd_refcnt -= g_ammu_stable_ptr->subcmd_num_for_DRAM_FB;
+		AMMU_LOG_VERBO("--- g_ammu_table_set.subcmd_refcnt = %u\n", g_ammu_table_set.subcmd_refcnt);
+	}
+
 	list_del(&g_ammu_stable_ptr->list);
 	kvfree(g_ammu_stable_ptr);
 	AMMU_LOG_VERBO("kref put\n");
@@ -573,7 +771,7 @@ int ammu_session_table_add_SLB(uint64_t session, uint32_t type)
 	}
 
 	if (type == APUMMU_MEM_TYPE_EXT) {
-		if (!g_adv->plat.is_external_SLB_alloc) {
+		if (!g_adv->plat.external_SLB_cnt) {
 			ret = -ENOMEM;
 			AMMU_LOG_ERR("External SLB is not alloced\n");
 			goto out;
@@ -582,7 +780,7 @@ int ammu_session_table_add_SLB(uint64_t session, uint32_t type)
 		g_ammu_stable_ptr->stable_info.EXT_SLB_addr = g_adv->rsc.external_SLB.iova;
 		g_ammu_stable_ptr->stable_info.mem_mask |= (1 << SLB_EXT);
 	} else if (type == APUMMU_MEM_TYPE_RSV_S) {
-		if (!g_adv->plat.is_internal_SLB_alloc) {
+		if (!g_adv->plat.internal_SLB_cnt) {
 			ret = -ENOMEM;
 			AMMU_LOG_ERR("Internal SLB is not alloced\n");
 			goto out;
@@ -777,7 +975,7 @@ void apummu_mgt_init(void)
 {
 	char wq_name[] = "ammu_dram_free";
 
-	g_ammu_table_set.is_stable_exist = false;
+	g_ammu_table_set.is_VLM_info_IPI_sent = false;
 	g_ammu_table_set.is_SLB_set = false;
 	g_ammu_table_set.is_work_canceled = true;
 	g_ammu_table_set.is_SLB_alloc = false;

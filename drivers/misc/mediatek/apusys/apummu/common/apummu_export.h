@@ -63,4 +63,13 @@ int apummu_table_get(uint64_t session, void **tbl_kva, uint32_t *size);
  */
 int apummu_table_free(uint64_t session);
 
+/**
+ * @para:
+ *  session    -> session id
+ *  vlm_size   -> sum of the vlm size in the APUCMD
+ *  subcmd_num -> sum of the subcmd number in the APUCMD
+ * @description:
+ *  VLM DRAM FB allocated according to vlm_size and subcmd_num
+ */
+int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 #endif

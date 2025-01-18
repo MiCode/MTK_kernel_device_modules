@@ -73,9 +73,14 @@ static inline int ammu_log_level_check(int log_level)
 			AMMU_LOG_ERR("apu_ammu: %s snprintf fail(%d)\n", __func__, __LINE__); \
 		} \
 	} while (0)
-#define ammu_exception(reason) _ammu_exception("APUSYS_APUMMU", reason)
+
+#define apusys_ammu_exception(reason) _ammu_exception("APUSYS_APUMMU", reason)
+#define apusys_hse_exception(reason)  _ammu_exception("APUSYS_HSE",    reason)
+#define apusys_cbfc_exception(reason) _ammu_exception("APUSYS_CBFC",   reason)
+
 #else
-#define ammu_exception(reason)
-#endif
+#define apusys_ammu_exception(reason)
+#endif /* end of IS_ENABLED(CONFIG_MTK_AEE_FEATURE) */
+
 
 #endif /* end of __APUSYS_APUMMU_COMMON_H__ */

@@ -4,21 +4,26 @@
  */
 
 #include <linux/dma-mapping.h>
+#include <linux/dma-heap.h>
 #include <linux/dma-buf.h>
+#include <linux/dma-mapping.h>
+#include <linux/scatterlist.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/of_device.h>
 #include <linux/highmem.h>
+#include <linux/list.h>
 
 #include "apummu_cmn.h"
 #include "apummu_mem.h"
 #include "apummu_import.h"
-
-#define USING_DMA	(1)
+#include "apummu_mem_def.h"
 
 static struct apummu_mem *g_mem_sys;
 static uint32_t general_SLB_attempt_cnt;
 static uint32_t DMA_CNT;
+
+static struct list_head g_mem_list_head;
 
 struct ammu_mem_dma {
 	dma_addr_t dma_addr;
@@ -34,6 +39,7 @@ struct ammu_mem_dma {
 	struct device *mem_dev;
 };
 
+#if USING_SELF_DMA
 struct ammu_mem_dma_attachment {
 	struct sg_table *sgt;
 	struct device *dev;
@@ -265,7 +271,8 @@ static int apummu_mem_alloc_sgt(struct device *dev, struct apummu_mem *mem)
 
 	kva = vzalloc(mdbuf->dma_size);
 	if (!kva) {
-		AMMU_LOG_ERR("alloc DRAM fail\n");
+		AMMU_LOG_ERR("alloc DRAM fail, (mem size, dma size)=(0x%x, 0x%x)\n",
+			mem->size, mdbuf->dma_size);
 		ret = -ENOMEM;
 		goto free_ammu_dbuf;
 	}
@@ -399,10 +406,11 @@ static int ammu_mem_unmap(struct apummu_mem *m)
 
 	return ret;
 }
+#endif
 
 void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 {
-#if USING_DMA
+#if USING_SELF_DMA
 	int ret = 0;
 
 	ret = ammu_mem_unmap(mem);
@@ -411,15 +419,21 @@ void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 
 	dma_buf_put(mem->dbuf);
 #else
-	dma_free_coherent(dev, mem->size, (void *)mem->kva, mem->iova);
+	if (mem->iova != 0) { // To handle dma_heap_buffer_alloc fail by signal
+		dma_buf_unmap_attachment(mem->attach, mem->sgt, DMA_BIDIRECTIONAL);
+		dma_buf_detach(mem->priv, mem->attach);
+		dma_heap_buffer_free(mem->priv);
+		dma_heap_put(mem->heap);
+	}
+	// dma_free_coherent(dev, mem->size, (void *)mem->kva, mem->iova);
 #endif
 }
 
 int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 {
-#if USING_DMA
 	int ret = 0;
 
+#if USING_SELF_DMA
 	ret = apummu_mem_alloc_sgt(dev, mem);
 	if (ret) {
 		AMMU_LOG_ERR("apummu_mem_alloc_sgt fail (0x%x)\n", mem->size);
@@ -431,39 +445,57 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 		AMMU_LOG_ERR("ammu_mem_map_create fail (0x%x)\n", mem->size);
 		goto out;
 	}
-
-	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x)\n",
-			mem->iova, mem->size);
-
-out:
-	return ret;
 #else
-	int ret = 0;
-	void *kva;
-	dma_addr_t iova = 0;
-
-	/* TODO: using other API */
-	kva = dma_alloc_coherent(dev, mem->size, &iova, GFP_KERNEL);
-	if (!kva) {
-		AMMU_LOG_ERR("dma_alloc_coherent fail (0x%x)\n", mem->size);
+	mem->heap = dma_heap_find("mtk_mm-uncached");
+	if (!mem->heap) {
+		AMMU_LOG_ERR("Cannot get mtk_mm-uncached heap\n");
 		ret = -ENOMEM;
 		goto out;
 	}
 
-#ifndef MODULE
-	/*
-	 * Avoid a kmemleak false positive.
-	 * The pointer is using for debugging,
-	 * but it will be used by other apusys HW
-	 */
-	kmemleak_no_scan(kva);
+	mem->priv = dma_heap_buffer_alloc(mem->heap, mem->size, O_RDWR | O_CLOEXEC, 0);
+	if (IS_ERR_OR_NULL(mem->priv)) {
+		if (!mem->priv || mem->priv != ERR_PTR(-EINTR)) {
+			AMMU_LOG_ERR("dma_heap_buffer_alloc fail mem size = 0x%x\n", mem->size);
+			ret = -ENOMEM;
+		} else {
+			AMMU_LOG_WRN("APUMMU mem alloc fail trigger by signal...\n");
+		}
+		goto heap_alloc_err;
+	}
+
+	mem->attach = dma_buf_attach(mem->priv, dev);
+	if (IS_ERR_OR_NULL(mem->attach)) {
+		AMMU_LOG_ERR("dma_buf_attach fail\n");
+		ret = -ENOMEM;
+		goto dma_buf_attach_err;
+	}
+
+	mem->sgt = dma_buf_map_attachment(mem->attach, DMA_BIDIRECTIONAL);
+	if (IS_ERR_OR_NULL(mem->sgt)) {
+		AMMU_LOG_ERR("dma_buf_map_attachment fail\n");
+		ret = -ENOMEM;
+		goto dbuf_map_attachment_err;
+	}
+
+	mem->iova = sg_dma_address(mem->sgt->sgl);
 #endif
-	mem->kva = (uint64_t)kva;
-	mem->iova = (uint64_t)iova;
+
+	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x)\n",
+		mem->iova, mem->size);
 
 out:
 	return ret;
+
+#if !(USING_SELF_DMA)
+dbuf_map_attachment_err:
+	dma_buf_detach(mem->priv, mem->attach);
+dma_buf_attach_err:
+	dma_heap_buffer_free(mem->priv);
+heap_alloc_err:
+	dma_heap_put(mem->heap);
 #endif
+	return ret;
 }
 
 #if !(DRAM_FALL_BACK_IN_RUNTIME)
@@ -536,20 +568,18 @@ int apummu_dram_remap_runtime_alloc(void *drvinfo)
 		goto out;
 	}
 
-	mutex_init(&g_mem_sys->mtx);
 	g_mem_sys->size = (uint64_t) adv->remote.vlm_size * adv->remote.dram_max;
 
-	mutex_lock(&g_mem_sys->mtx);
 	ret = apummu_mem_alloc(adv->dev, g_mem_sys);
-	if (ret)
-		goto free_lock;
+	if (ret) {
+		kfree(g_mem_sys);
+		goto out;
+	}
 
 	adv->rsc.vlm_dram.base = (void *) g_mem_sys->kva;
 	adv->rsc.vlm_dram.size = g_mem_sys->size;
 	adv->rsc.vlm_dram.iova = g_mem_sys->iova;
 
-free_lock:
-	mutex_unlock(&g_mem_sys->mtx);
 out:
 	return ret;
 }
@@ -567,13 +597,113 @@ int apummu_dram_remap_runtime_free(void *drvinfo)
 	}
 	adv = (struct apummu_dev_info *)drvinfo;
 
-	mutex_lock(&g_mem_sys->mtx);
 	apummu_mem_free(adv->dev, g_mem_sys);
-	mutex_unlock(&g_mem_sys->mtx);
 	adv->rsc.vlm_dram.base = 0;
 	adv->rsc.vlm_dram.size = 0;
 	adv->rsc.vlm_dram.iova = 0;
+#if USING_SELF_DMA
 	g_mem_sys = NULL;
+#else
+	kfree(g_mem_sys);
+#endif
+
+out:
+	return ret;
+}
+
+int apummu_dram_remap_runtime_alloc_with_size(void *drvinfo, uint32_t ctx_num_going_alloc, uint64_t *ret_IOVA)
+{
+	struct apummu_mem *mem;
+	struct apummu_dev_info *adv = NULL;
+	int ret = 0;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	adv = (struct apummu_dev_info *)drvinfo;
+
+	if (ctx_num_going_alloc == 0) {
+		AMMU_LOG_ERR("Cannot alloc with ctx_num_going_alloc Zero\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	mem = kzalloc(sizeof(struct apummu_mem), GFP_KERNEL);
+	if (!mem) {
+		AMMU_LOG_ERR("apummu_mem alloc fail\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	mem->size = (uint64_t) adv->remote.vlm_size * ctx_num_going_alloc;
+
+	ret = apummu_mem_alloc(adv->dev, mem);
+	if (ret) {
+		kfree(mem);
+		goto out;
+	}
+
+	*ret_IOVA = mem->iova;
+	AMMU_LOG_VERBO("sbu_cmd_num = %u, mem->size = 0x%x, ret_IOVA = 0x%llx\n",
+		ctx_num_going_alloc, mem->size, *ret_IOVA);
+	list_add_tail(&mem->list, &g_mem_list_head);
+
+out:
+	return ret;
+}
+
+int apummu_dram_remap_runtime_free_single_node(void *drvinfo, uint64_t target_iova)
+{
+	int ret = -EINVAL;
+	struct list_head *list_ptr;
+	struct apummu_mem *target_mem_node;
+	struct apummu_dev_info *adv = NULL;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	adv = (struct apummu_dev_info *)drvinfo;
+
+	list_for_each(list_ptr, &g_mem_list_head) {
+		target_mem_node = list_entry(list_ptr, struct apummu_mem, list);
+		if (target_mem_node->iova == target_iova) {
+			ret = 0;
+			list_del(&target_mem_node->list);
+			apummu_mem_free(adv->dev, target_mem_node);
+			kfree(target_mem_node);
+			break;
+		}
+	}
+
+out:
+	return ret;
+}
+
+int apummu_dram_remap_runtime_free_whole_list(void *drvinfo)
+{
+	int ret = 0;
+	struct list_head *list_ptr1, *list_ptr2;
+	struct apummu_mem *mem_ptr;
+	struct apummu_dev_info *adv = NULL;
+
+	if (drvinfo == NULL) {
+		AMMU_LOG_ERR("invalid argument\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	adv = (struct apummu_dev_info *)drvinfo;
+
+	list_for_each_safe(list_ptr1, list_ptr2, &g_mem_list_head) {
+		mem_ptr = list_entry(list_ptr1, struct apummu_mem, list);
+		list_del(&mem_ptr->list);
+		apummu_mem_free(adv->dev, mem_ptr);
+		kfree(mem_ptr);
+		mem_ptr = NULL;
+	}
 
 out:
 	return ret;
@@ -605,11 +735,6 @@ int apummu_alloc_general_SLB(void *drvinfo)
 			AMMU_LOG_INFO("Overwrite SLB status manually, (addr, size) = (%llx, %x)\n",
 				adv->rsc.genernal_SLB.iova, adv->rsc.genernal_SLB.size);
 		}
-	}
-
-	if (!(adv->plat.is_general_SLB_support)) {
-		AMMU_LOG_INFO("No General SLB Support\n");
-		goto out;
 	}
 
 	ret = apummu_alloc_slb(APUMMU_MEM_TYPE_GENERAL_S, size, adv->plat.slb_wait_time,
@@ -667,6 +792,7 @@ out:
 
 void apummu_mem_init(void)
 {
+	INIT_LIST_HEAD(&g_mem_list_head);
 	general_SLB_attempt_cnt = 0;
 	DMA_CNT = 0;
 }

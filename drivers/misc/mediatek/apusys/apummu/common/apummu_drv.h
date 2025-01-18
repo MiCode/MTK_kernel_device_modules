@@ -9,6 +9,7 @@
 
 #include <linux/ioctl.h>
 #include <linux/types.h>
+#include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/wait.h>
@@ -38,9 +39,13 @@ struct apummu_remote_data {
 struct apummu_platform {
 	uint32_t slb_wait_time;
 	uint32_t boundary;
+
+	uint32_t internal_SLB_cnt;
+	uint32_t external_SLB_cnt;
+	struct mutex slb_mtx;
+
 	bool is_general_SLB_support;
-	bool is_internal_SLB_alloc;
-	bool is_external_SLB_alloc;
+	bool alloc_DRAM_FB_in_session_create; // add for DRAM FB alloc time check
 };
 
 struct apummu_resource {
@@ -70,4 +75,16 @@ struct apummu_dev_info {
 	struct apummu_remote_data remote;
 };
 
+/* for aputop module AEE data */
+struct apummu_rx_data {
+	uint8_t module_id;
+	int8_t  error_code;
+};
+enum {
+	APUMMU_RX_TEST = 0,
+	APUMMU_RX_APUMMU_AEE = 1,
+	APUMMU_RX_HSE_AEE = 2,
+	APUMMU_RX_CBFC_AEE = 3,
+	APUMMU_RX_LAST = 4,
+};
 #endif
