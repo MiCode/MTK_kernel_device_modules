@@ -1939,6 +1939,7 @@ err_mbox_create:
 		}
 err_sys_add:
 	devm_kfree(dev, mml);
+	platform_set_drvdata(pdev, NULL);
 	return ret;
 }
 
