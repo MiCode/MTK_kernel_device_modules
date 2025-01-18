@@ -48,6 +48,7 @@ struct mbraink_power_ops {
 	void (*suspendprepare)(void);
 	void (*postsuspend)(void);
 	int (*getMmdvfsInfo)(struct mbraink_mmdvfs_info *mmdvfsInfo);
+	int (*getPowerThrottleHwInfo)(struct mbraink_power_throttle_hw_data *power_throttle_hw_data);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

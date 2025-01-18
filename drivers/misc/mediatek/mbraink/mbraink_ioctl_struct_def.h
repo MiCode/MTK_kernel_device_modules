@@ -42,6 +42,7 @@
 #define NETLINK_EVENT_SYSPROCESS	"NLEvent_SysProcess"
 #define NETLINK_EVENT_LOW_BATTERY_VOLTAGE_THROTTLE		"NLEvent_LBVThro"
 #define NETLINK_EVENT_BATTERY_OVER_CURRENT_THROTTLE		"NLEvent_BOCThro"
+#define NETLINK_EVENT_PPB_NOTIFY "NLEvent_PPBNotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -488,5 +489,31 @@ struct mbraink_wifi2mbr_lp_ratio_data {
 	u32 idx;
 	struct mbraink_wifi2mbr_lp_ratio_struct lp_data[MAX_WIFI_LP_SZ];
 };
+
+struct mbraink_power_throttle_hw_data {
+	unsigned long kernel_time;
+	unsigned long duration;
+	int soc;
+	int temp;
+	int soc_rdc;
+	int soc_rac;
+	int hpt_bat_budget;
+	int hpt_cg_budget;
+	int ppb_cg_budget;
+	int hpt_cpub_thr_cnt;
+	int hpt_cpub_thr_time;
+	int hpt_cpum_thr_cnt;
+	int hpt_cpum_thr_time;
+	int hpt_gpu_thr_cnt;
+	int hpt_gpu_thr_time;
+	int hpt_cpub_sf;
+	int hpt_cpum_sf;
+	int hpt_gpu_sf;
+	int ppb_combo;
+	int ppb_c_combo0;
+	int ppb_g_combo0;
+	int ppb_g_flavor;
+};
+
 
 #endif

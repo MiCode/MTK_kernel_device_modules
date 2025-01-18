@@ -328,6 +328,30 @@ static long handleMmdvfsInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handlePowerThrottleInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_power_throttle_hw_data *power_throttle_hw_data =
+		(struct mbraink_power_throttle_hw_data *)(mbraink_data);
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(power_throttle_hw_data,
+		0,
+		sizeof(struct mbraink_power_throttle_hw_data));
+
+	ret = mbraink_power_get_power_throttle_hw_info(power_throttle_hw_data);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_power_throttle_hw_data *)arg,
+				power_throttle_hw_data,
+				sizeof(struct mbraink_power_throttle_hw_data))) {
+			pr_notice("Copy power throttle hw info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long handle_spmpower_info(unsigned long arg, void *mbraink_data)
 {
 	char *power_buffer = (char *)(mbraink_data);
@@ -1363,6 +1387,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_lp_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_THROTTLE_HW_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_throttle_hw_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePowerThrottleInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
