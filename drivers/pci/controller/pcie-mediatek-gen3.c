@@ -1588,6 +1588,15 @@ static void mtk_pcie_enable_host_bridge_rpm(struct mtk_pcie_port *port)
 	pm_runtime_put_noidle(port->dev);
 }
 
+static void mtk_pcie_disable_host_bridge_rpm(struct mtk_pcie_port *port)
+{
+	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
+
+	pm_runtime_get_noresume(port->dev);
+	pm_runtime_forbid(&host->dev);
+	pm_runtime_dont_use_autosuspend(&host->dev);
+}
+
 static int mtk_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1645,6 +1654,9 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	struct mtk_pcie_port *port = platform_get_drvdata(pdev);
 	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
 	int err = 0;
+
+	if (port->rpm)
+		mtk_pcie_disable_host_bridge_rpm(port);
 
 	pci_lock_rescan_remove();
 	pci_stop_root_bus(host->bus);
