@@ -2499,7 +2499,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,larb-id = <32>;
 		init-power-on;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
-		clocks = <&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+		clocks = <&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
 		clock-names = "apb";
 		larb-port-real-time-type = <1 1 1 1 0 0 0 0 1 0>;
 		smi-user-id = <MTK_SMI_DISP>;
@@ -3086,8 +3086,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <26>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_MAIN>;
-		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_SUB_COMMON_DCM_DIS_SMI>;
-		clock-names = "apb";
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
+			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE>,
+			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_SUB_COMMON_DCM_DIS_SMI>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 		smi-user-id = <MTK_SMI_CAMSV1 MTK_SMI_CAMSV2 MTK_SMI_CAMSV3
 					   MTK_SMI_PDA1 MTK_SMI_MRAW1 MTK_SMI_CAM_RAWA
 					   MTK_SMI_CAM_RAWC MTK_SMI_CAM_YUVB MTK_SMI_IMG_DPE>;
@@ -3201,8 +3204,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x3a013000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <44>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWB>;
-		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWC>;
+		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>;
 		clock-names = "apb";
 		larb-port-real-time-type = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_RAWC>;
@@ -3227,8 +3230,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		reg = <0 0x3a014000 0 0x1000>;
 		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
 		mediatek,larb-id = <45>;
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWC>;
-		clocks = <&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_RAWB>;
+		clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>;
 		clock-names = "apb";
 		larb-port-real-time-type = <2 2 2 2 2 2 2>;
 		smi-user-id = <MTK_SMI_CAM_YUVB>;
