@@ -2437,6 +2437,10 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"RC1_M4_0,RC1_M4_1,RC1_M5_0,RC1_M5_1,",
 				"RC1_M6_0,RC1_M6_1,RC1_M7_0,RC1_M7_1,",
 				"WD_CH0_0,WD_CH0_1,WD_CH1_0,WD_CH1_1";
+			node-126 = "SSPM_SWPM_SSPM__POWER_IDX",
+				"active_0,cpu_off_0,wfi_0,wfi_1,wfi_2,freq";
+			node-127 = "SSPM_SWPM_SCP__POWER_IDX",
+				"active_0,active_rv33_0,cpu_off_0,wfi_0,sleep_0,off_0,freq";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
