@@ -1007,9 +1007,10 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 
 	for (rbn = rb_first(&render_iter->dep_list); rbn; rbn = rb_next(rbn)) {
 		xd_iter = rb_entry(rbn, struct xgf_dep, rb_node);
-		if (index < count)
+		if (index < count) {
 			arr[index] = xd_iter->tid;
-		index++;
+			index++;
+		}
 	}
 
 	mutex_unlock(&xgf_main_lock);
