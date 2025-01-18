@@ -1046,7 +1046,7 @@
 	eint: apirq@1000b000 {
 		compatible = "mediatek,mt6983-eint";
 		reg = <0 0x1000b000 0 0x1000>;
-		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH 0>;
 		reg-name = "eint";
 		mediatek,total-pin-number = <152>;
 		mediatek,instance-num = <1>;
