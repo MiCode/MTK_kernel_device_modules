@@ -162,6 +162,7 @@ static inline unsigned int mtk_get_nr_cap(unsigned int cluster)
 	return mtk_em_pd_ptr_private[cluster].nr_perf_states;
 }
 
+struct mtk_em_perf_domain *mtk_get_em_public_table(void);
 unsigned int mtk_get_leakage(unsigned int cluster, unsigned int opp, unsigned int temperature);
 unsigned int mtk_get_dsu_freq(void);
 extern bool is_wl_support(void);
