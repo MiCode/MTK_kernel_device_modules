@@ -6,7 +6,7 @@
 #include <asm/alternative-macros.h>
 #include <asm/kvm_pkvm_module.h>
 
-#include "../../include/pkvm_mtk_smc_handler/pkvm_mtk_smc_handler.h"
+#include "../../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"
 
 // Here saves all el2 smc call ids for blocking any invalid el1 smc
