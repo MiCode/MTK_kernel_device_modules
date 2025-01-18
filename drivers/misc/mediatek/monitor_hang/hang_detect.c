@@ -17,6 +17,7 @@
 #include <linux/kthread.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/pid.h>
 #include <linux/poll.h>
 #include <linux/ptrace.h>
@@ -65,6 +66,7 @@
 #define MEM_BUFFER_DEFAULT_SIZE (3*1024)
 #define MSDC_BUFFER_DEFAULT_SIZE (30*1024)
 static int MaxHangInfoSize = MAX_HANG_INFO_SIZE;
+#define MAX_WATCHDOG_BOOT_TIMES 25
 static char *Hang_Info;
 static int Hang_Info_Size;
 static bool watchdog_thread_exist;
@@ -89,6 +91,11 @@ static struct name_list *white_list;
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 static struct pt_regs saved_regs;
 #endif
+
+unsigned int monitor_hang_boot_up_enable;
+bool detect_zygote_reboot_frequently_enable;
+pid_t watchdog_saved_pid;
+unsigned int watchdog_boot_count;
 
 struct hang_callback {
 	struct list_head hc_entry;
@@ -547,6 +554,52 @@ static const struct file_operations monitor_hang_file_fops = {
 };
 #endif /* CONFIG_MTK_HANG_PROC */
 
+#if IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB)
+void trigger_hang_db(void)
+{
+	pr_notice("[Hang_Detect] we  triger DB.\n");
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	aee_rr_rec_hang_detect_timeout_count(hd_timeout);
+	if ((!watchdog_thread_exist & system_server_exist)
+		&& reboot_flag == false)
+		aee_rr_rec_hang_detect_timeout_count(COUNT_ANDROID_REBOOT);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+		crash_setup_regs(&saved_regs, NULL);
+		mrdump_regist_hang_bt(NULL);
+		mrdump_common_die(AEE_REBOOT_MODE_HANG_DETECT,
+		"	Hang Detect", &saved_regs);
+#else
+		panic("hang_detect: system blocked");
+#endif
+
+}
+
+static void watchdog_reboot_check(void)
+{
+	if (!strncmp(current->comm, "watchdog", 8)) {
+		if (watchdog_boot_count) {
+			if (watchdog_saved_pid != current->pid) {
+				watchdog_saved_pid = current->pid;
+				watchdog_boot_count ++;
+				pr_info("monitor_hang: watchdog pid changed now, total changed %u",
+					watchdog_boot_count);
+			}
+		} else {
+			watchdog_boot_count = 1;
+			watchdog_saved_pid = current->pid;
+		}
+	}
+	if (watchdog_boot_count > MAX_WATCHDOG_BOOT_TIMES) {
+		pr_info("monitor_hang: device will reboot, due to userspace reboot too many times!");
+		trigger_hang_db();
+	}
+
+}
+#endif
+
 /******************************************************************************
  * hang detect File operations
  *****************************************************************************/
@@ -567,7 +620,7 @@ static unsigned int monitor_hang_poll(struct file *file,
 
 	hd_hang_poll = true;
 	poll_wait(file, &hang_wait, ptable);
-	if ((hd_detect_enabled == 1) && (hd_hang_trace == true)) {
+	if ((hd_detect_enabled == true) && (hd_hang_trace == true)) {
 		mask |= POLLIN;
 		hd_hang_trace = false;
 	}
@@ -638,6 +691,11 @@ static long monitor_hang_ioctl(struct file *file, unsigned int cmd,
 		}
 		pr_info("hang_detect HANG_KICK ( %d)\n", (int)arg);
 		monitor_hang_kick((int)arg);
+
+#if IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB)
+		if (detect_zygote_reboot_frequently_enable)
+			watchdog_reboot_check();
+#endif
 		return ret;
 	}
 
@@ -793,28 +851,6 @@ static void dump_mem_info(void)
 	}
 }
 #endif
-
-void trigger_hang_db(void)
-{
-	pr_notice("[Hang_Detect] we  triger DB.\n");
-
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	aee_rr_rec_hang_detect_timeout_count(hd_timeout);
-	if ((!watchdog_thread_exist & system_server_exist)
-		&& reboot_flag == false)
-		aee_rr_rec_hang_detect_timeout_count(COUNT_ANDROID_REBOOT);
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-		crash_setup_regs(&saved_regs, NULL);
-		mrdump_regist_hang_bt(NULL);
-		mrdump_common_die(AEE_REBOOT_MODE_HANG_DETECT,
-		"	Hang Detect", &saved_regs);
-#else
-		panic("hang_detect: system blocked");
-#endif
-
-}
 #endif
 
 #ifdef CONFIG_STACKTRACE
@@ -1748,21 +1784,17 @@ static int hang_detect_thread(void *arg)
 	msleep(120 * 1000);
 	pr_debug("[Hang_Detect] hang_detect thread starts.\n");
 
-#ifdef BOOT_UP_HANG
-	hd_timeout = 9;
-	hang_detect_counter = 9;
-	hd_detect_enabled = true;
-#endif
+	if (monitor_hang_boot_up_enable) {
+		hd_timeout = 9;
+		hang_detect_counter = 9;
+		hd_detect_enabled = true;
+	}
 
 	while (1) {
 		pr_info("[Hang_Detect] hang_detect thread counts down %d:%d, status %d.\n",
 			hang_detect_counter, hd_timeout, hd_detect_enabled);
-#ifdef BOOT_UP_HANG
-		if (hd_detect_enabled)
-#else
-		if (hd_detect_enabled && check_white_list())
-#endif
-		{
+
+		if (hd_detect_enabled && (monitor_hang_boot_up_enable || check_white_list())) {
 			if (hd_hang_poll && (hang_detect_counter == 2)) {
 				hd_hang_trace = true;
 				wake_up(&hang_wait);
@@ -1821,7 +1853,7 @@ void monitor_hang_kick(int lParam)
 	}
 
 	if (lParam == 0) {
-		hd_detect_enabled = 0;
+		hd_detect_enabled = false;
 		hang_detect_counter = hd_timeout;
 		pr_info("[Hang_Detect] hang_detect disabled\n");
 	} else if (lParam > 0) {
@@ -1835,7 +1867,7 @@ void monitor_hang_kick(int lParam)
 			hang_detect_counter = hd_timeout =
 			  ((long)(lParam & 0x0fff) + HD_INTER - 1) / (HD_INTER);
 		} else {
-			hd_detect_enabled = 1;
+			hd_detect_enabled = true;
 			hang_detect_counter = hd_timeout =
 			    ((long)lParam + HD_INTER - 1) / (HD_INTER);
 		}
@@ -1867,6 +1899,24 @@ int hang_detect_init(void)
 
 	return 0;
 }
+
+int from_dt_get_monitor_hang_boot_up_status(void)
+{
+	struct device_node *np_monitor_hang;
+
+	np_monitor_hang = of_find_node_by_name(NULL, "monitorhang");
+	if (np_monitor_hang) {
+		of_property_read_u32(np_monitor_hang, "enabled", &monitor_hang_boot_up_enable);
+		pr_info("monitor_hang: monitor_hang_boot_up_enable=%u.\n", monitor_hang_boot_up_enable);
+	} else {
+		pr_info("monitor_hang: can't get monitor_hang_boot_up_enable status.\n");
+	}
+	if (monitor_hang_boot_up_enable)
+		// only used for dram test case
+		detect_zygote_reboot_frequently_enable = true;
+	return 0;
+}
+
 
 static int __init monitor_hang_init(void)
 {
@@ -1910,7 +1960,7 @@ static int __init monitor_hang_init(void)
 	if (IS_ERR(err_p))
 		pr_info("debugfs_create_file monitor_hang failed!");
 #endif
-
+	from_dt_get_monitor_hang_boot_up_status();
 	return err;
 }
 
