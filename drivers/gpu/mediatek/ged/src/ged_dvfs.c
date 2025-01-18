@@ -580,9 +580,9 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us ,
 	}
 
 	if (sum_delta_time != 0){
-		window_avg_loading = div_u64(sum_loading, sum_delta_time);
+		window_avg_loading = div64_u64(sum_loading, sum_delta_time);
 		if (loading_mode == LOADING_ACTIVE)
-			window_avg_loading_comp = div_u64(sum_loading_comp, sum_delta_time);
+			window_avg_loading_comp = div64_u64(sum_loading_comp, sum_delta_time);
 	}
 
 	if (window_avg_loading > 100)
@@ -718,7 +718,7 @@ static void gpu_util_history_query_specific_loading(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_loading = div_u64(sum_loading, sum_delta_time);
+		window_avg_loading = div64_u64(sum_loading, sum_delta_time);
 
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
@@ -769,7 +769,7 @@ static unsigned int gpu_util_history_query_frequency(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_freq = div_u64(sum_freq, sum_delta_time);
+		window_avg_freq = div64_u64(sum_freq, sum_delta_time);
 
 	return window_avg_freq;
 }
@@ -1858,7 +1858,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		return (unsigned int)perf;
 	}
 
-	perf = div_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
+	perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	return (unsigned int)perf;
 }
 
