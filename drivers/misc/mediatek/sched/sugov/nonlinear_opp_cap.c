@@ -13,11 +13,8 @@
 #include <sched/autogroup.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
-#include <linux/math64.h>
 #include "common.h"
 #include "cpufreq.h"
-#include "mtk_unified_power.h"
-#include "common.h"
 #include "sugov_trace.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
@@ -32,11 +29,7 @@
 DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
 EXPORT_SYMBOL(sbb);
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static void __iomem *l3ctl_sram_base_addr;
-static unsigned int wl_type_delay_update_tick = 2;
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 static struct resource *csram_res;
 static void __iomem *sram_base_addr;
@@ -50,10 +43,10 @@ static bool freq_scaling_disabled = true;
 #endif
 static int pd_count;
 static int entry_count;
-static struct eas_info eas_node;
 static int busy_tick_boost_all;
 static int sbb_active_ratio[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 100 };
+static unsigned int wl_type_delay_update_tick = 2;
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -241,20 +234,14 @@ skip_single_idle_cpu:
 }
 
 int wl_type_delay_ch_cnt = 1; // change counter
+static struct dsu_table dsu_tbl;
 static int nr_wl_type = 1;
 static int wl_type_curr;
 static int wl_type_delay;
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-static struct dsu_table dsu_tbl;
 static int wl_type_delay_cnt;
 static int last_wl_type;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
-#endif
-
-
-
 
 int get_nr_wl_type(void)
 {
@@ -262,7 +249,6 @@ int get_nr_wl_type(void)
 }
 EXPORT_SYMBOL_GPL(get_nr_wl_type);
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 int get_nr_cpu_type(void)
 {
 	return mtk_mapping.nr_cpu_type;
@@ -363,7 +349,6 @@ unsigned int dsu_get_freq_opp(unsigned int freq)
 	return idx;
 }
 EXPORT_SYMBOL_GPL(dsu_get_freq_opp);
-#endif
 
 int get_curr_wl(void)
 {
@@ -371,13 +356,11 @@ int get_curr_wl(void)
 }
 EXPORT_SYMBOL_GPL(get_curr_wl);
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 int get_classify_wl(void)
 {
 	return get_wl(0);
 }
 EXPORT_SYMBOL_GPL(get_classify_wl);
-#endif
 
 int get_em_wl(void)
 {
@@ -385,7 +368,6 @@ int get_em_wl(void)
 }
 EXPORT_SYMBOL_GPL(get_em_wl);
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 int init_dsu(void)
 {
 	unsigned int i, t, need_alloc;
@@ -448,8 +430,6 @@ int init_dsu(void)
 	mtk_update_wl_table(0, 0);
 	return 0;
 }
-
-#endif
 
 void init_sbb_cpu_data(void)
 {
@@ -1008,10 +988,8 @@ EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 void Adaptive_module_bypass(int fpsgo_flag)
 {
 	fpsgo_boosting = fpsgo_flag;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_get_fpsgo_boosting)
 		flt_get_fpsgo_boosting(!fpsgo_boosting);
-#endif
 }
 EXPORT_SYMBOL_GPL(Adaptive_module_bypass);
 
@@ -1065,10 +1043,8 @@ inline int init_util_freq_opp_mapping_table_type(int t)
 
 	pd_capacity_tbl = pd_wl_type[t];
 	for (i = 0; i < pd_count; i++) {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		if (is_wl_support())
 			mtk_update_wl_table(i, t);
-#endif
 		pd_info = &pd_capacity_tbl[i];
 		nr_opp = pd_info->nr_caps;
 
@@ -1092,16 +1068,12 @@ inline int init_util_freq_opp_mapping_table_type(int t)
 			next_k = max_cap - pd_info->table[min(nr_opp - 1, j + 1)].capacity;
 			for (; k <= next_k; k++) {
 				pd_info->util_opp_map[k] = j;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 				for (opp = mtk_em_pd_ptr_public[i].nr_perf_states - 1;
 					opp >= 0; opp--)
 					if (mtk_em_pd_ptr_public[i].table[opp].capacity >=
 						(max_cap - k))
 						break;
 				pd_info->util_opp_map_legacy[k] = opp;
-#else
-				pd_info->util_opp_map_legacy[k] = 0;  // TODO:
-#endif
 			}
 		}
 
@@ -1112,7 +1084,7 @@ inline int init_util_freq_opp_mapping_table_type(int t)
 			min_gap = min(min_gap,
 				pd_info->table[j].freq - pd_info->table[j + 1].freq);
 		pd_info->DFreq = min_gap;
-		pd_info->inv_DFreq = (u32)div_u64((u64) UINT_MAX + pd_info->DFreq -1, pd_info->DFreq);
+		pd_info->inv_DFreq = (u32) DIV_ROUND_UP((u64) UINT_MAX, pd_info->DFreq);
 		max_freq = pd_info->table[0].freq;
 		min_freq = rounddown(pd_info->table[nr_opp - 1].freq, pd_info->DFreq);
 
@@ -1250,7 +1222,6 @@ static int init_capacity_table(void)
 	unsigned long *caps, *freqs, *powers;
 	struct pd_capacity_info *pd_info;
 	struct em_perf_domain *pd;
-	struct upower_tbl *tbl = NULL;
 
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
@@ -1261,22 +1232,10 @@ static int init_capacity_table(void)
 		caps = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
 		freqs = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
 		powers = kcalloc(pd_info->nr_caps, sizeof(unsigned long), GFP_KERNEL);
-		if (!eas_node.available) {
-#if IS_ENABLED(CONFIG_MTK_UNIFIED_POWER)
-			tbl = upower_get_core_tbl(cpu);
-#endif
-			if (!tbl)
-				goto err;
-		}
+
 		for (j = 0; j < pd_info->nr_caps; j++) {
 			/* for init caps */
-			if (eas_node.available) {
-				cap = ioread16(base + offset);
-			} else {
-				cap = tbl->row[pd_info->nr_caps - j - 1].cap;
-			}
-
-
+			cap = ioread16(base + offset);
 			if (cap == 0)
 				goto err;
 			caps[j] = cap;
@@ -1288,8 +1247,7 @@ static int init_capacity_table(void)
 			powers[j] = pd->table[j].power;
 
 			count += 1;
-			if (eas_node.available)
-				offset += CAPACITY_ENTRY_SIZE;
+			offset += CAPACITY_ENTRY_SIZE;
 		}
 
 		/* decreasing sorting */
@@ -1312,12 +1270,10 @@ static int init_capacity_table(void)
 		powers = NULL;
 
 		/* repeated last cap 0 between each cluster */
-		if (eas_node.available) {
-			end_cap = ioread16(base + offset);
-			if (end_cap != cap)
-				goto err;
-			offset += CAPACITY_ENTRY_SIZE;
-		}
+		end_cap = ioread16(base + offset);
+		if (end_cap != cap)
+			goto err;
+		offset += CAPACITY_ENTRY_SIZE;
 
 		for_each_cpu(j, &pd_info->cpus) {
 			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
@@ -1375,21 +1331,14 @@ static int alloc_capacity_table(void)
 	else
 		mtk_em_pd_ptr = mtk_em_pd_ptr_public;
 #endif
-
 	pd_count = 0;
 	for_each_possible_cpu(cpu)
 		pd_count = max(pd_count, topology_cluster_id(cpu));
 	pd_count++;
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	if (is_wl_support())
 		nr_wl_type = mtk_mapping.total_type;
 	else
 		nr_wl_type = 1;
-#else
-	nr_wl_type = 1;   // TODO:
-#endif
-
 	pd_wl_type = kcalloc(nr_wl_type, sizeof(struct pd_capacity_info *),
 			GFP_KERNEL);
 	cpu_wt = kcalloc(pd_count, sizeof(struct cpu_weighting *), GFP_KERNEL);
@@ -1463,39 +1412,30 @@ static int init_sram_mapping(void)
 	struct device_node *dvfs_node;
 	struct platform_device *pdev_temp;
 
-	// first try to read sram_base_addr from cpuhvfs
 	dvfs_node = of_find_node_by_name(NULL, "cpuhvfs");
-	if (dvfs_node != NULL) {
-		pdev_temp = of_find_device_by_node(dvfs_node);
-		if (pdev_temp == NULL) {
-			pr_info("failed to find pdev @ %s\n", __func__);
-			return -EINVAL;
-		}
-
-		csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
-
-		if (csram_res)
-			sram_base_addr = ioremap(csram_res->start + CAPACITY_TBL_OFFSET, CAPACITY_TBL_SIZE);
-		else {
-			pr_info("%s can't get resource\n", __func__);
-			return -ENODEV;
-		}
-
-		if (!sram_base_addr) {
-			pr_info("Remap capacity table failed!\n");
-			return -EIO;
-		}
-	} else {
-		pr_info("failed to find node @ %s, try to read eas-info from dts\n", __func__);
+	if (dvfs_node == NULL) {
+		pr_info("failed to find node @ %s\n", __func__);
+		return -ENODEV;
 	}
 
-	// second try to read sram_base_addr from eas-info
-	if (eas_node.available) {
-		sram_base_addr = ioremap(eas_node.csram_base + eas_node.offs_cap, CAPACITY_TBL_SIZE);
-		if (!sram_base_addr) {
-			pr_info("Remap thermal info failed in eas-info node\n");
-			return -EIO;
-		}
+	pdev_temp = of_find_device_by_node(dvfs_node);
+	if (pdev_temp == NULL) {
+		pr_info("failed to find pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	csram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (csram_res)
+		sram_base_addr = ioremap(csram_res->start + CAPACITY_TBL_OFFSET, CAPACITY_TBL_SIZE);
+	else {
+		pr_info("%s can't get resource\n", __func__);
+		return -ENODEV;
+	}
+
+	if (!sram_base_addr) {
+		pr_info("Remap capacity table failed!\n");
+		return -EIO;
 	}
 	return 0;
 }
@@ -1620,6 +1560,61 @@ void set_gear_uclamp_max(int gearid, int val)
 EXPORT_SYMBOL_GPL(set_gear_uclamp_max);
 #endif
 
+int init_opp_cap_info(struct proc_dir_entry *dir)
+{
+	int ret, i;
+
+	ret = init_sram_mapping();
+	if (ret)
+		return ret;
+
+	ret = alloc_capacity_table();
+	if (ret)
+		return ret;
+
+	ret = init_capacity_table();
+	if (ret)
+		return ret;
+
+	ret = init_util_freq_opp_mapping_table();
+	if (ret)
+		return ret;
+
+	for (i = 0; i < pd_count; i++) {
+		mtk_update_wl_table(i, 0); /* set default wl type = 0 */
+		set_target_margin(i, 20);
+		set_target_margin_low(i, 20);
+		set_turn_point_freq(i, 0);
+	}
+
+	if (is_wl_support()) {
+		ret = dsu_pwr_swpm_init();
+		if (ret) {
+			pr_info("dsu_pwr_swpm_init failed\n");
+			return ret;
+		}
+		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
+		init_dsu();
+
+		init_eas_dsu_ctrl();
+	}
+
+	init_grp_dvfs();
+
+	init_sbb_cpu_data();
+
+	init_adaptive_margin();
+
+	register_fpsgo_sugov_hooks();
+
+	return ret;
+}
+
+void clear_opp_cap_info(void)
+{
+	free_capacity_table();
+}
+
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *policy,
 		unsigned int *target_freq)
@@ -1688,9 +1683,6 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	unsigned long cap, max_cap;
 	struct cpufreq_policy *policy;
 
-	if (unlikely(!initialized))
-		return;
-
 	irq_log_store();
 
 	policy = cpufreq_cpu_get(cpu);
@@ -1700,10 +1692,7 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	}
 	cap = pd_X2Y(cpu, freq, FREQ, CAP, false);
 	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false);
-	if (max_cap == 0)
-		return;
 	*scale = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
-
 	irq_log_store();
 }
 
@@ -2093,9 +2082,6 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	unsigned int cpu;
 	struct pd_capacity_info *pd_info;
 
-	if (unlikely(!initialized))
-		return;
-
 	cpu = cpumask_first(cpumask);
 	gearid = topology_cluster_id(cpu);
 
@@ -2133,116 +2119,6 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq);
 #endif
-
-static int capacity_margin_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "%u\n", get_sched_capacity_margin_dvfs());
-	return 0;
-}
-
-static int capacity_margin_open(struct inode *in, struct file *file)
-{
-	return single_open(file, capacity_margin_show, NULL);
-}
-
-static ssize_t capacity_margin_write(struct file *filp, const char *ubuf,
-	size_t count, loff_t *data)
-{
-	char buf[16] = {0};
-	int ret;
-	unsigned int input = sysctl_sched_capacity_margin_dvfs;
-
-	if (!count)
-		return count;
-	if (count + 1 > 16)
-		return -ENOMEM;
-	ret = copy_from_user(buf, ubuf, count);
-	if (ret)
-		return -EFAULT;
-	buf[count] = '\0';
-	ret = kstrtouint(buf, 10, &input);
-	if (ret)
-		return -EFAULT;
-	ret = set_sched_capacity_margin_dvfs(input);
-	if (ret)
-		return -EFAULT;
-	return count;
-}
-
-static const struct proc_ops capacity_margin_ops = {
-	.proc_open = capacity_margin_open,
-	.proc_read = seq_read,
-	.proc_write = capacity_margin_write
-};
-
-int init_opp_cap_info(struct proc_dir_entry *dir)
-{
-	int ret, i;
-	struct proc_dir_entry *entry;
-	parse_eas_data(&eas_node);
-
-	ret = init_sram_mapping();
-	if (ret)
-		return ret;
-
-	ret = alloc_capacity_table();
-	if (ret)
-		return ret;
-
-	ret = init_capacity_table();
-	if (ret)
-		return ret;
-
-	ret = init_util_freq_opp_mapping_table();
-	if (ret)
-		return ret;
-
-	for (i = 0; i < pd_count; i++) {
-		mtk_update_wl_table(i, 0); /* set default wl type = 0 */
-		set_target_margin(i, 20);
-		set_target_margin_low(i, 20);
-		set_turn_point_freq(i, 0);
-	}
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	if (is_wl_support()) {
-		ret = dsu_pwr_swpm_init();
-		if (ret) {
-			pr_info("dsu_pwr_swpm_init failed\n");
-			return ret;
-		}
-		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
-		init_dsu();
-		init_eas_dsu_ctrl();
-	}
-#endif
-
-	initialized = true;
-	entry = proc_create("pd_capacity_tbl", 0644, dir, &pd_capacity_tbl_ops);
-	if (!entry)
-		pr_info("mtk_scheduler/pd_capacity_tbl entry create failed\n");
-
-#if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	entry = proc_create("capacity_margin", 0644, dir, &capacity_margin_ops);
-	if (!entry)
-		pr_info("mtk_scheduler/capacity_margin entry create failed\n");
-#endif
-
-	init_grp_dvfs();
-
-	init_sbb_cpu_data();
-
-	init_adaptive_margin();
-
-	register_fpsgo_sugov_hooks();
-
-	return ret;
-}
-
-void clear_opp_cap_info(void)
-{
-	free_capacity_table();
-}
-
 #else
 
 static int init_opp_cap_info(struct proc_dir_entry *dir) { return 0; }

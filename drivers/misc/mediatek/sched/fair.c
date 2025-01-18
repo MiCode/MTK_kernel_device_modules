@@ -87,6 +87,25 @@ static int sched_idle_cpu(int cpu)
 	return sched_idle_rq(cpu_rq(cpu));
 }
 
+static inline unsigned long task_util(struct task_struct *p)
+{
+	return READ_ONCE(p->se.avg.util_avg);
+}
+
+static inline unsigned long _task_util_est(struct task_struct *p)
+{
+	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+
+	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+}
+
+static inline unsigned long task_util_est(struct task_struct *p)
+{
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		return max(task_util(p), _task_util_est(p));
+	return task_util(p);
+}
+
 #ifdef CONFIG_UCLAMP_TASK
 static inline unsigned long uclamp_task_util(struct task_struct *p)
 {
@@ -106,9 +125,10 @@ int task_fits_capacity(struct task_struct *p, long capacity, unsigned int margin
 	return fits_capacity(uclamp_task_util(p), capacity, margin);
 }
 
-static unsigned long capacity_of(int cpu)
+unsigned long capacity_of(int cpu)
 {
 	return cpu_rq(cpu)->cpu_capacity;
+
 }
 
 unsigned long cpu_util(int cpu)
@@ -245,11 +265,9 @@ static inline void eenv_init(struct energy_env *eenv,
 	unsigned int cpu, pd_idx, pd_cnt;
 	struct perf_domain *pd_ptr = pd;
 	unsigned int gear_idx;
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	struct dsu_info *dsu;
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
-#endif
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -296,19 +314,15 @@ static inline void eenv_init(struct energy_env *eenv,
 	}
 
 	for_each_cpu(cpu, cpu_possible_mask) {
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		eenv->cpu_temp[cpu] = get_cpu_temp(cpu);
 		eenv->cpu_temp[cpu] /= 1000;
-#else
-		eenv->cpu_temp[cpu] = 0;
-#endif
 
 		if (!reasonable_temp(eenv->cpu_temp[cpu])) {
 			if (trace_sched_check_temp_enabled())
 				trace_sched_check_temp("cpu", cpu, eenv->cpu_temp[cpu]);
 		}
 	}
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+
 	if (eenv->wl_support) {
 		eenv->wl_type = get_em_wl();
 
@@ -332,9 +346,6 @@ static inline void eenv_init(struct energy_env *eenv,
 					eenv->dsu_freq_thermal, share_buck.gear_idx);
 	} else
 		eenv->wl_type = 0;
-#else
-	eenv->wl_type = 0;
-#endif
 }
 
 /*
@@ -465,7 +476,6 @@ static inline int shared_gear(int gear_idx)
 	return gear_idx == share_buck.gear_idx;
 }
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static inline unsigned long
 mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
@@ -534,7 +544,6 @@ calc_sharebuck_done:
 
 	return cpu_pwr + delta_share_pwr + dsu_pwr;
 }
-#endif
 
 /*
  * compute_energy(): Use the Energy Model to estimate the energy that @pd would
@@ -545,14 +554,11 @@ static inline unsigned long
 mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+
 	if (eenv->wl_support)
 		return mtk_compute_energy_cpu_dsu(eenv, pd, pd_cpus, p, dst_cpu);
 	else
 		return mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
-#else
-	return mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
-#endif
 }
 #endif
 
