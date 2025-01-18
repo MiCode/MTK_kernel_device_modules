@@ -7,6 +7,7 @@
 #include <linux/bitfield.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
+#include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6358/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6377/registers.h>
@@ -87,7 +88,14 @@ struct battery_oc_data_t {
 	int unit_fg_current;
 	struct reg_t reg_default_rfg;
 };
-
+struct battery_oc_data_t mt6357_battery_oc_data = {
+	.regmap_source = "parent_drvdata",
+	.gauge_node_name = "mtk_gauge",
+	.fg_cur_hth = {MT6357_FGADC_CUR_CON2, 0xFFFF, 1},
+	.fg_cur_lth = {MT6357_FGADC_CUR_CON1, 0xFFFF, 1},
+	.spmi_intf = false,
+	.cust_rfg = false,
+};
 struct battery_oc_data_t mt6358_battery_oc_data = {
 	.regmap_source = "parent_drvdata",
 	.gauge_node_name = "mtk_gauge",
@@ -546,7 +554,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev, unsigned int num)
 	priv->r_fg_value *= UNIT_TRANS_10;
 
 	ret = of_property_read_u32(np, "unit-multiple", &priv->unit_multiple);
-	if (ret) {
+	if (priv->ocdata->cust_rfg && ret) {
 		dev_notice(&pdev->dev, "get unit-multiple fail\n");
 		return -EINVAL;
 	}
@@ -663,6 +671,10 @@ static int battery_oc_parse_dt(struct platform_device *pdev, unsigned int num)
 	} else {
 		pmic = dev_get_drvdata(pdev->dev.parent);
 		switch (pmic->chip_id) {
+		case MT6357_CHIP_ID:
+			priv->default_rfg = MT6357_DEFAULT_RFG;
+			priv->unit_fg_cur = MT6357_UNIT_FGCURRENT;
+			break;
 		case MT6358_CHIP_ID:
 			priv->default_rfg = MT6358_DEFAULT_RFG;
 			priv->unit_fg_cur = MT6358_UNIT_FGCURRENT;
@@ -917,6 +929,9 @@ static SIMPLE_DEV_PM_OPS(battery_oc_throttling_pm_ops,
 
 static const struct of_device_id battery_oc_throttling_of_match[] = {
 	{
+		.compatible = "mediatek,mt6357-battery_oc_throttling",
+		.data = &mt6357_battery_oc_data,
+	}, {
 		.compatible = "mediatek,mt6358-battery_oc_throttling",
 		.data = &mt6358_battery_oc_data,
 	}, {
