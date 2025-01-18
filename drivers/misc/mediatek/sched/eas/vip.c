@@ -1094,6 +1094,9 @@ void vip_push_runnable(struct rq *src_rq)
 	struct vip_task_struct *vts;
 	struct rq *dst_rq;
 
+	if (in_interrupt())
+		goto put_task;
+
 	if (task_to_pushed == NULL)
 		goto put_task;
 
@@ -1113,14 +1116,23 @@ void vip_push_runnable(struct rq *src_rq)
 	dst_rq = cpu_rq(new_cpu);
 	double_lock_balance(src_rq, dst_rq);
 
+	if (in_interrupt())
+		goto unlock;
+
 	if ((task_rq(task_to_pushed) != src_rq) ||
 		(cpu_rq(task_cpu(task_to_pushed))->curr->pid == task_to_pushed->pid) ||
 		(!task_on_rq_queued(task_to_pushed)))
 		goto unlock;
 
+	/* de-queue from curr rq */
+	update_rq_clock(src_rq);
 	deactivate_task(src_rq, task_to_pushed, DEQUEUE_NOCLOCK);
 	set_task_cpu(task_to_pushed, new_cpu);
-	activate_task(dst_rq, task_to_pushed, 0);
+
+	/* en-queue to dst rq */
+	update_rq_clock(dst_rq);
+	lockdep_assert_rq_held(dst_rq);
+	activate_task(dst_rq, task_to_pushed, ENQUEUE_NOCLOCK);
 	check_preempt_curr(dst_rq, task_to_pushed, 0);
 
 	trace_sched_force_migrate(task_to_pushed, new_cpu, MIGR_SWITCH_PUSH_VIP);
@@ -1134,6 +1146,9 @@ put_task:
 DEFINE_PER_CPU(struct balance_callback, vip_push_head);
 void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq)
 {
+	if (in_interrupt())
+		return;
+
 	if (!task_is_vip(prev, NOT_VIP))
 		return;
 
