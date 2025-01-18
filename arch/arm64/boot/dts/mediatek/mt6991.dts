@@ -13766,7 +13766,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			hwqos-sync-token =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
 			mmqos-supply = <&mmqos>;
-			mediatek,imgsys-qof-ver = <3>;
+			mediatek,imgsys-qof-ver = <31>;
 		};
 
 		mae: mae@34310000 {
