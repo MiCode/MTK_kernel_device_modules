@@ -118,6 +118,7 @@ static struct mtk_slbc *slbc;
 
 static int venc_count;
 
+static bool slbc_cg_pri;
 static int slb_disable;
 static int slc_disable;
 static int slbc_sram_enable;
@@ -137,6 +138,7 @@ static u32 slbc_pmu_3;
 static u32 slbc_pmu_4;
 static u32 slbc_pmu_5;
 static u32 slbc_pmu_6;
+static u32 slbc_total_ceil_n;
 static int debug_level;
 static int uid_ref[UID_MAX];
 static int slbc_mic_num = 3;
@@ -369,13 +371,27 @@ void slbc_force_cmd(unsigned int force)
 	slbc_force_scmi_cmd(force);
 }
 
+int slbc_force_cache_ratio(enum slc_ach_uid uid, unsigned int ratio)
+{
+	unsigned int force_cmd;
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "uid:%d, ratio:%u", uid, ratio);
+
+	/* set force_cmd[31] = 0x1 to indicate setting cache ratio */
+	force_cmd = (0x1 << 31 | (ratio & 0x7fff) << 16) | (uid & 0xffff);
+	slbc_force = force_cmd;
+
+	return slbc_force_scmi_cmd(force_cmd);
+}
+
 int slbc_force_cache(enum slc_ach_uid uid, unsigned int size)
 {
 	unsigned int force_cmd;
 
 	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "uid:%d, size:%u", uid, size);
 
-	force_cmd = ((size & 0xffff) << 16) | (uid & 0xffff);
+	/* set force_cmd[31] = 0x0 to indicate setting cache size */
+	force_cmd = (0x0 << 31 | (size & 0x7fff) << 16) | (uid & 0xffff);
 	slbc_force = force_cmd;
 
 	return slbc_force_scmi_cmd(force_cmd);
@@ -1378,6 +1394,21 @@ int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
+int slbc_total_ceil(unsigned int ceil)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	int ret = 0;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "total ceil:%u", ceil);
+	ret = slbc_ctrl_scmi_info(IPI_SLBC_CACHE_USER_CEIL_SET, 0 ,ceil, 0, 0, &rvalue);
+
+	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
 int slbc_window(unsigned int window)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -1391,6 +1422,40 @@ int slbc_window(unsigned int window)
 #else
 	return 0;
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
+int slbc_cg_priority(bool gpu_first)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	int ret = 0;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "CG priority:%d", gpu_first);
+	ret = slbc_ctrl_scmi_info(IPI_SLBC_CG_PRIORITY_SET, gpu_first, 0, 0, 0, &rvalue);
+
+	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
+int slbc_disable_dcc(bool disable)
+{
+	mutex_lock(&slbc_ref_lock);
+	if (disable) {
+		if (venc_count == 0)
+			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
+		venc_count++;
+	} else {
+		venc_count--;
+		if (venc_count == 0)
+			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
+	}
+	pr_info("#@# %s(%d) venc_count %d\n",
+		__func__, __LINE__, venc_count);
+	slbc_sram_write(SLBC_DCC_COUNT, venc_count);
+	mutex_unlock(&slbc_ref_lock);
+	return 0;
 }
 
 int slbc_get_cache_size(enum slc_ach_uid uid)
@@ -1523,6 +1588,8 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	slbc_pmu_4 = slbc_sram_read(SLBC_PMU_4);
 	slbc_pmu_5 = slbc_sram_read(SLBC_PMU_5);
 	slbc_pmu_6 = slbc_sram_read(SLBC_PMU_6);
+	slbc_cg_pri = slbc_sram_read(SLBC_CG_PRIORITY);
+	slbc_total_ceil_n = slbc_sram_read(SLBC_TOTAL_CEIL);
 
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
@@ -1548,6 +1615,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "buffer_ref %x\n", buffer_ref);
 	seq_printf(m, "slbc_ref %x\n", slbc_ref);
 	seq_printf(m, "venc_count %x\n", venc_count);
+	seq_printf(m, "dcc_count %x\n", venc_count);
 	seq_printf(m, "debug_level %x\n", debug_level);
 	seq_printf(m, "slbc_sta %x\n", slbc_sta);
 	seq_printf(m, "slbc_ack_c %x\n", slbc_ack_c);
@@ -1565,6 +1633,8 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "mic_num %x\n", slbc_mic_num);
 	seq_printf(m, "inner %x\n", slbc_inner);
 	seq_printf(m, "outer %x\n", slbc_outer);
+	seq_printf(m, "cg_priority %d\n", slbc_cg_pri);
+	seq_printf(m, "total_ceil %d\n", slbc_total_ceil_n);
 	if (slbc_all_cache_mode) {
 		seq_puts(m, "gid         ");
 		for (i = 0; i < UID_MAX; i++)
@@ -1774,8 +1844,12 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_read_invalidate(val_1, val_2, val_3);
 	} else if (!strcmp(cmd, "slbc_ceil")) {
 		slbc_ceil(val_1, val_2);
+	} else if (!strcmp(cmd, "slbc_total_ceil")) {
+		slbc_total_ceil(val_1);
 	} else if (!strcmp(cmd, "slbc_window")) {
 		slbc_window(val_1);
+	} else if (!strcmp(cmd, "slbc_cg_priority")) {
+		slbc_cg_priority(val_1);
 	} else if (!strcmp(cmd, "slbc_force")) {
 		slbc_force = val_1;
 		slbc_force_cmd(slbc_force);
@@ -1788,19 +1862,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 	} else if (!strcmp(cmd, "debug_level")) {
 		debug_level = val_1;
 	} else if (!strcmp(cmd, "slc_cpu_setting")) {
-		mutex_lock(&slbc_ref_lock);
-		if (val_1) {
-			if (venc_count == 0)
-				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
-			venc_count++;
-		} else {
-			venc_count--;
-			if (venc_count == 0)
-				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
-		}
-		pr_info("#@# %s(%d) venc_count %d\n",
-				__func__, __LINE__, venc_count);
-		mutex_unlock(&slbc_ref_lock);
+		slbc_disable_dcc(val_1);
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	} else if (!strcmp(cmd, "gid_set")) {
 		slbc_table_gid_set(val_1, val_2, val_3);
@@ -2001,8 +2063,12 @@ static struct slbc_common_ops common_ops = {
 	.slbc_invalidate = slbc_invalidate,
 	.slbc_read_invalidate = slbc_read_invalidate,
 	.slbc_force_cache = slbc_force_cache,
+	.slbc_force_cache_ratio = slbc_force_cache_ratio,
 	.slbc_ceil = slbc_ceil,
+	.slbc_total_ceil = slbc_total_ceil,
 	.slbc_window = slbc_window,
+	.slbc_cg_priority = slbc_cg_priority,
+	.slbc_disable_dcc = slbc_disable_dcc,
 	.slbc_get_cache_size = slbc_get_cache_size,
 	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
 	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,
