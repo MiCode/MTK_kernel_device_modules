@@ -104,17 +104,17 @@ extern unsigned long dcm_vlp_ao_bcrm_base;
 								(bcrm_APINFRA_MEM_CTRL_AO + 0x24)
 #define CLK_FMEM_SUB_VDNR_DCM_TOP_APINFRA_MEM_INTX_BUS_u_APINFRA_MEM_INTX_BUS_CTRL_5     \
 								(bcrm_APINFRA_MEM_CTRL_AO + 0x28)
-#define E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0                               (PERI_AO_BCRM_BASE + 0x2c)
-#define E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1                               (PERI_AO_BCRM_BASE + 0x30)
-#define E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2                               (PERI_AO_BCRM_BASE + 0x34)
-#define E1_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3                               (PERI_AO_BCRM_BASE + 0x38)
+#define A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0                               (PERI_AO_BCRM_BASE + 0x2c)
+#define A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1                               (PERI_AO_BCRM_BASE + 0x30)
+#define A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2                               (PERI_AO_BCRM_BASE + 0x34)
+#define A0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3                               (PERI_AO_BCRM_BASE + 0x38)
 #define VDNR_DCM_TOP_VLP_PAR_BUS_TOP_u_VLP_PAR_BUS_TOP_CTRL_0                            (VLP_AO_BCRM_BASE + 0x5c)
 
-/* E2 Peri register offsets */
-#define E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0                               (PERI_AO_BCRM_BASE + 0x20)
-#define E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1                               (PERI_AO_BCRM_BASE + 0x24)
-#define E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2                               (PERI_AO_BCRM_BASE + 0x28)
-#define E2_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3                               (PERI_AO_BCRM_BASE + 0x2c)
+/* B0 Peri register offsets */
+#define B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_0                               (PERI_AO_BCRM_BASE + 0x20)
+#define B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_1                               (PERI_AO_BCRM_BASE + 0x24)
+#define B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_2                               (PERI_AO_BCRM_BASE + 0x28)
+#define B0_VDNR_DCM_TOP_PERI_PAR_BUS_u_PERI_PAR_BUS_CTRL_3                               (PERI_AO_BCRM_BASE + 0x2c)
 
 void dcm_mcusys_par_wrap_mcu_l3c_dcm(int on);
 bool dcm_mcusys_par_wrap_mcu_l3c_dcm_is_on(void);
@@ -132,8 +132,10 @@ void dcm_mcusys_par_wrap_mcu_bus_qdcm(int on);
 bool dcm_mcusys_par_wrap_mcu_bus_qdcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_core_qdcm(int on);
 bool dcm_mcusys_par_wrap_mcu_core_qdcm_is_on(void);
-void dcm_mcusys_par_wrap_mcu_bkr_ldcm(int on);
-bool dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on(void);
+void A0_dcm_mcusys_par_wrap_mcu_bkr_ldcm(int on);
+bool A0_dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on(void);
+void B0_dcm_mcusys_par_wrap_mcu_bkr_ldcm(int on);
+bool B0_dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_cbip_dcm(int on);
 bool dcm_mcusys_par_wrap_mcu_cbip_dcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_misc_dcm(int on);
@@ -154,10 +156,10 @@ void dcm_bcrm_apinfra_mem_intf_noc_ao_infra_bus_dcm(int on);
 bool dcm_bcrm_apinfra_mem_intf_noc_ao_infra_bus_dcm_is_on(void);
 void dcm_bcrm_apinfra_mem_ctrl_ao_infra_bus_dcm(int on);
 bool dcm_bcrm_apinfra_mem_ctrl_ao_infra_bus_dcm_is_on(void);
-void dcm_peri_ao_bcrm_peri_bus_dcm_E1(int on);
-bool dcm_peri_ao_bcrm_peri_bus_dcm_is_on_E1(void);
-void dcm_peri_ao_bcrm_peri_bus_dcm_E2(int on);
-bool dcm_peri_ao_bcrm_peri_bus_dcm_is_on_E2(void);
+void A0_dcm_peri_ao_bcrm_peri_bus_dcm(int on);
+bool A0_dcm_peri_ao_bcrm_peri_bus_dcm_is_on(void);
+void B0_dcm_peri_ao_bcrm_peri_bus_dcm(int on);
+bool B0_dcm_peri_ao_bcrm_peri_bus_dcm_is_on(void);
 void dcm_vlp_ao_bcrm_vlp_bus_dcm(int on);
 bool dcm_vlp_ao_bcrm_vlp_bus_dcm_is_on(void);
 #endif /* __MTK_DCM_AUTOGEN_H__ */
