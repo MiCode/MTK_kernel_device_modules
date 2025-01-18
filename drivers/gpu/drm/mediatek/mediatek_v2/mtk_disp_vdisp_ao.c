@@ -253,9 +253,9 @@ void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 	writel(1, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);	// disable merge irq
 	mtk_vdisp_ao_int_sel_g0_MT6991();
 	mtk_vdisp_ao_int_sel_g1_MT6991();
-//	mtk_vdisp_ao_int_sel_g4_MT6991();
-//	mtk_vdisp_ao_int_sel_g5_MT6991();
-//	mtk_vdisp_ao_int_sel_g6_MT6991();
+	mtk_vdisp_ao_int_sel_g4_MT6991();
+	mtk_vdisp_ao_int_sel_g5_MT6991();
+	mtk_vdisp_ao_int_sel_g6_MT6991();
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)
