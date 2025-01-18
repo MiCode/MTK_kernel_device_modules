@@ -97,8 +97,7 @@ struct mtk_disp_aal_primary {
 	spinlock_t hist_lock;
 	struct DISP_AAL_HIST hist;
 	atomic_t event_en;
-	atomic_t force_enable_event;
-	atomic_t eof_irq_en;
+	atomic_t eof_irq_skip;
 	atomic_t sof_irq_available;
 	atomic_t is_init_regs_valid;
 	atomic_t backlight_notified;
@@ -141,6 +140,9 @@ struct mtk_disp_aal_primary {
 	enum MTK_LED_TYPE led_type;
 	unsigned int fps;
 	unsigned int relay_state;
+	atomic_t eof_irq_en;
+	atomic_t func_flag;  // 0: ess & dre off; 1: ess | dre on
+	atomic_t hal_force_update;
 };
 
 struct mtk_disp_aal {
@@ -156,7 +158,7 @@ struct mtk_disp_aal {
 	struct _mtk_disp_aal_tile_overhead_v tile_overhead_v;
 	atomic_t hist_available;
 	atomic_t dre20_hist_is_ready;
-	atomic_t eof_irq;
+	atomic_t hw_hist_ready;
 	atomic_t first_frame;
 	atomic_t force_curve_sram_apb;
 	atomic_t force_hist_apb;

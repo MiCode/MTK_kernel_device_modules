@@ -86,7 +86,6 @@ static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
 
 static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, void *data);
 static int disp_pq_proxy_virtual_check_trigger(struct drm_crtc *crtc, void *data);
-static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data);
 
 static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node_name)
 {
@@ -1014,7 +1013,7 @@ static void disp_pq_relay_cmdq_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
-static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
+int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 {
 	int relay = 0;
 	bool wait_config_done = false;
