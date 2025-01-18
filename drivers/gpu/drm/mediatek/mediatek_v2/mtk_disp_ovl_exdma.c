@@ -4500,7 +4500,7 @@ static int mtk_ovl_exdma_set_partial_update(struct mtk_ddp_comp *comp,
 	struct total_tile_overhead_v to_v_info;
 	unsigned int overhead_v;
 
-	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	ovl->set_partial_update = enable;
