@@ -1401,12 +1401,12 @@ static void uarthub_inband_irq_worker_handler(struct work_struct *work)
 {
 	struct inband_irq_ctrl *queue = container_of(work, struct inband_irq_ctrl, inband_irq_work);
 	unsigned char esc_sta = (unsigned char) queue->esc_sta;
-	unsigned long inband_irq_ts = (unsigned long) queue->inband_irq_ts;
-	unsigned long rem_nsec;
+	uint64_t inband_irq_ts = (uint64_t) queue->inband_irq_ts;
+	uint32_t rem_nsec;
 
 	rem_nsec = do_div(inband_irq_ts, 1000000000);
 	pr_info("[%s] inband_esc_sta=[0x%x] inband_irq_time=[%5lu.%06lu]\n",
-		__func__, esc_sta, inband_irq_ts, (rem_nsec/1000));
+		__func__, esc_sta, (unsigned long)inband_irq_ts, (unsigned long)(rem_nsec/1000));
 
 	uarthub_core_debug_bus_status_info("HUB_DBG_BUS");
 
@@ -1429,8 +1429,8 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 {
 	struct assert_ctrl *queue = container_of(work, struct assert_ctrl, trigger_assert_work);
 	int err_type = (int) queue->err_type;
-	unsigned long err_ts = (unsigned long) queue->err_ts;
-	unsigned long rem_nsec;
+	uint64_t err_ts = (uint64_t) queue->err_ts;
+	uint32_t rem_nsec;
 	int id = 0;
 	int err_total = 0;
 	int err_index = 0;
@@ -1462,7 +1462,7 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 	rem_nsec = do_div(err_ts, 1000000000);
 
 	pr_info("[%s] err_type=[0x%x] err_time=[%5lu.%06lu]\n",
-		__func__, err_type, err_ts, (rem_nsec/1000));
+		__func__, err_type, (unsigned long)err_ts, (unsigned long)(rem_nsec/1000));
 	err_total = 0;
 	for (id = 0; id < irq_err_type_max; id++) {
 		if (((err_type >> id) & 0x1) == 0x1)
