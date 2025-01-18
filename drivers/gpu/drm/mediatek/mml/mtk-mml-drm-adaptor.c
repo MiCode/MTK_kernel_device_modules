@@ -25,7 +25,7 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-pq-core.h"
 
-#define MML_MAX_W	3840
+#define MML_MAX_W	4096
 #define MML_MAX_H	2176
 #define MML_MAX_PIXEL	8355840		/* 3840*2176 */
 #define mml_sz_out(w, h)	\
