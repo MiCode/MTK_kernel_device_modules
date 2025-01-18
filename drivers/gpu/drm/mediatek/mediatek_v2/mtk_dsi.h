@@ -89,7 +89,7 @@ struct mtk_dsi_driver_data {
 	//vdo ltpo
 	const u32 dsi_ltpo_vdo_con;
 	const u32 dsi_ltpo_vdo_sq0;
-
+	bool support_512byte_rx;
 };
 
 struct mtk_dsi {
