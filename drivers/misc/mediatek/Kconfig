@@ -424,7 +424,6 @@ menu "Thin MD Host Driver"
 
 config MTK_HOST_DRV_WWAN_SUPPORT
 	bool "Support WWAN port in Thin MD host driver"
-	default y
 	depends on WWAN
 	help
 	  Used to control the WWAN feature of the Thin MD host driver.
@@ -432,6 +431,6 @@ config MTK_HOST_DRV_WWAN_SUPPORT
 	  default WWAN network interface.
 	  If you want to create additional WWAN network interfaces,
 	  please use netlink API or 'ip' command.
-	  Host driver supports WWAN by default.
-	  Say 'N' here if need to disable WWAN port in host driver.
+	  Say Y here if need to enable WWAN port in host driver.
+	  If unsure, say N.
 endmenu # Host Driver
