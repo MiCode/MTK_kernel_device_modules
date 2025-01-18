@@ -193,6 +193,9 @@ struct vow_dump_info_t {
 uint32_t delay_info[NUM_DELAY_INFO];
 struct vow_dump_info_t vow_dump_info[NUM_DUMP_DATA];
 
+/* not used */
+//#define VOW_SMART_DEVICE_SUPPORT
+
 /*****************************************************************************
  * DSP IPI HANDELER
  *****************************************************************************/
@@ -1605,7 +1608,10 @@ static void vow_service_GetVowDumpData(void)
 		temp_dump_info = vow_dump_info[i];
 		idx = temp_dump_info.kernel_dump_idx;
 		if (temp_dump_info.vir_addr != NULL && temp_dump_info.scp_dump_size[0] != 0) {
-			if (vowserv.vow_mic_number == 2 && temp_dump_info.scp_dump_size[1] != 0) {
+			if ((i != DUMP_BARGEIN && vowserv.vow_mic_number == 2
+				&& temp_dump_info.scp_dump_size[1] != 0) ||
+			    (i == DUMP_BARGEIN && vowserv.vow_speaker_number == 2
+				&& temp_dump_info.scp_dump_size[1] != 0)) {
 				/* DRAM to kernel buffer and sample interleaving */
 				if ((idx + (temp_dump_info.scp_dump_size[0] * 2)) >
 				    temp_dump_info.kernel_dump_size) {
@@ -1840,6 +1846,7 @@ static void vow_service_reset(void)
 	VOWDRV_DEBUG("+%s()\n", __func__);
 	vowserv.scp_command_flag = false;
 	vowserv.tx_keyword_start = false;
+	vowserv.provider_type = 0;
 	vow_hal_reboot();
 	for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
 		if (vowserv.vow_speaker_model[I].enabled  == 1) {
@@ -2105,6 +2112,7 @@ int VowDrv_ChangeStatus(void)
 	return 0;
 }
 
+#ifdef VOW_SMART_DEVICE_SUPPORT
 void VowDrv_SetSmartDevice(bool enable)
 {
 	unsigned int eint_num;
@@ -2180,6 +2188,7 @@ void VowDrv_SetSmartDevice_GPIO(bool enable)
 		VOWDRV_DEBUG("there is no node\n");
 	}
 }
+#endif
 
 static bool VowDrv_SetFlag(int type, unsigned int set)
 {
@@ -2278,11 +2287,6 @@ static bool VowDrv_CheckProviderType(unsigned int type, bool enable)
 		return false;
 	}
 	return true;
-}
-
-void VowDrv_SetPeriodicEnable(bool enable)
-{
-	VowDrv_SetFlag(VOW_FLAG_PERIODIC_ENABLE, enable);
 }
 
 static ssize_t VowDrv_GetPhase1Debug(struct device *kobj,
@@ -3418,6 +3422,7 @@ static int VowDrv_remap_mmap(struct file *flip, struct vm_area_struct *vma)
 	return -1;
 }
 
+#ifdef VOW_SMART_DEVICE_SUPPORT
 int VowDrv_setup_smartdev_eint(struct platform_device *pdev)
 {
 	int ret;
@@ -3465,6 +3470,7 @@ int VowDrv_setup_smartdev_eint(struct platform_device *pdev)
 	}
 	return 0;
 }
+#endif
 
 bool vow_service_GetScpRecoverStatus(void)
 {
@@ -3603,7 +3609,11 @@ static struct notifier_block vow_scp_recover_notifier = {
 static int VowDrv_probe(struct platform_device *dev)
 {
 	VOWDRV_DEBUG("%s()\n", __func__);
+
+#ifdef VOW_SMART_DEVICE_SUPPORT
 	VowDrv_setup_smartdev_eint(dev);
+#endif
+
 	return 0;
 }
 
