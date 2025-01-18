@@ -8,6 +8,7 @@
 
 #include <linux/sched/cputime.h>
 #include <linux/sched.h>
+#include <linux/pid.h>
 #include <linux/module.h>
 #include <linux/printk.h>
 #include <uapi/linux/sched/types.h>
@@ -15,6 +16,7 @@
 #include <linux/futex.h>
 #include <linux/plist.h>
 #include <linux/percpu-defs.h>
+#include <linux/input.h>
 
 #include <kernel/futex/futex.h>
 #include <kernel/sched/sched.h>
@@ -30,6 +32,9 @@
 #include <trace/hooks/sys.h>
 
 #include <task_turbo.h>
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
+#include <fstb.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace_task_turbo.h>
@@ -104,6 +109,7 @@ static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
 static DEFINE_SPINLOCK(RWSEM_SPIN_LOCK);
 static DEFINE_SPINLOCK(check_lock);
 static DEFINE_MUTEX(cpu_lock);
+static DEFINE_MUTEX(wi_tbl_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
@@ -145,16 +151,29 @@ static void init_turbo_attr(struct task_struct *p);
 static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
-static int cpu_loading_thres = 95;
+static int cpu_loading_thres = 85;
+static int fps_drop_vip_throttle = 99;
+static int fps_drop_vip_enable;
 static int tt_vip_enable = 1;
-static bool ta_vip_status;
 static struct cpu_info ci;
+static bool win_vip_status;
+static bool touch_vip_status;
 static u64 checked_timestamp;
+static pid_t cam_hal_tgid = -1;
+static pid_t cam_svr_tgid = -1;
 static int max_cpus;
 static struct cpu_time *cur_wall_time, *cur_idle_time,
 						*prev_wall_time, *prev_idle_time;
 static void tt_vip_handler(struct work_struct *work);
 static DECLARE_WORK(tt_vip, tt_vip_handler);
+static struct task_struct *ts_inputDispatcher;
+atomic_long_t inputDispatcher_ptr;
+static int last_ts_inputDispatcher_tgid;
+static int touch_countdown_timer;
+static int fps_drop_countdown_timer;
+
+static struct win_info_tbl wi_tbl = { .wi = NULL, .size = 0 };
+static struct win_info_tbl last_wi_tbl = { .wi = NULL, .size = 0 };
 
 static int get_cpu_loading(struct cpu_info *_ci)
 {
@@ -192,9 +211,177 @@ static int get_cpu_loading(struct cpu_info *_ci)
 	return 0;
 }
 
+static void update_last_win_info_tbl(struct win_info_tbl *last_wi_tbl, struct win_info_tbl *new_wi_tbl)
+{
+	struct win_info *new_tbl;
+
+	kfree(last_wi_tbl->wi);
+	if (new_wi_tbl->size == 0) {
+		last_wi_tbl->wi = NULL;
+		last_wi_tbl->size = 0;
+		return;
+	}
+
+	new_tbl = kmalloc(new_wi_tbl->size * sizeof(struct win_info), GFP_KERNEL);
+	if (!new_tbl) {
+		last_wi_tbl->wi = NULL;
+		last_wi_tbl->size = 0;
+		return;
+	}
+
+	memcpy(new_tbl, new_wi_tbl->wi, new_wi_tbl->size * sizeof(struct win_info));
+	last_wi_tbl->wi = new_tbl;
+	last_wi_tbl->size = new_wi_tbl->size;
+}
+
+static int add_tgid_to_tbl(pid_t pid)
+{
+	struct win_info *new_tbl;
+	size_t new_size = wi_tbl.size + 1;
+
+	new_tbl = krealloc(wi_tbl.wi, new_size * sizeof(struct win_info), GFP_KERNEL);
+	if (!new_tbl)
+		return -ENOMEM;
+
+	wi_tbl.wi = new_tbl;
+	wi_tbl.wi[wi_tbl.size].tgid = pid;
+	wi_tbl.wi[wi_tbl.size].perf_idx = 0;
+	wi_tbl.size = new_size;
+
+	return 0;
+}
+
+static int del_tgid_from_tbl(pid_t pid)
+{
+	size_t i;
+	int found = 0;
+	struct win_info *new_tbl;
+
+	for (i = 0; i < wi_tbl.size; i++) {
+		if (wi_tbl.wi[i].tgid == pid) {
+			found = 1;
+			unset_task_basic_vip(wi_tbl.wi[i].tgid);
+			unset_tgid_basic_vip(wi_tbl.wi[i].tgid);
+			break;
+		}
+	}
+
+	if (!found)
+		return -ESRCH;
+
+	for (; i < wi_tbl.size - 1; i++)
+		wi_tbl.wi[i] = wi_tbl.wi[i + 1];
+
+	wi_tbl.size--;
+	if (wi_tbl.size == 0) {
+		kfree(wi_tbl.wi);
+		wi_tbl.wi = NULL;
+	} else {
+		new_tbl = krealloc(wi_tbl.wi, wi_tbl.size * sizeof(struct win_info), GFP_KERNEL);
+		if (!new_tbl)
+			return -ENOMEM;
+		wi_tbl.wi = new_tbl;
+	}
+	update_last_win_info_tbl(&last_wi_tbl, &wi_tbl);
+
+	return 0;
+}
+
+static char win_pid_status_param[64] = "";
+static int update_win_pid_status(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, status = 0;
+	pid_t pid;
+
+	if (sscanf(buf, "%d%d", &pid, &status) != 2)
+		return -EINVAL;
+
+	if (pid < 0 || pid > PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	mutex_lock(&wi_tbl_lock);
+	if (status == 1)
+		retval = add_tgid_to_tbl(pid);
+	else
+		retval = del_tgid_from_tbl(pid);
+	mutex_unlock(&wi_tbl_lock);
+
+	pr_info("%s: retval=%d\n", __func__, retval);
+	return 0;
+}
+
+static const struct kernel_param_ops update_win_pid_status_ops = {
+	.set = update_win_pid_status,
+	.get = param_get_charp,
+};
+
+module_param_cb(update_win_pid_status, &update_win_pid_status_ops, &win_pid_status_param, 0664);
+MODULE_PARM_DESC(update_win_pid_status, "send window pid and status to task turbo");
+
+static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+	size_t tbl_i;
+
+	retval = kstrtouint(buf, 0, &val);
+
+	if (retval)
+		return -EINVAL;
+
+	val = (val > 0) ? 1 : 0;
+	if (val == 1) {
+		tt_vip_enable = 1;
+	} else {
+		tt_vip_enable = 0;
+		if (win_vip_status) {
+			win_vip_status = false;
+			for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
+				unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+				unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+			}
+		}
+		if (cam_hal_tgid > 0) {
+			unset_task_basic_vip(cam_hal_tgid);
+			unset_tgid_basic_vip(cam_hal_tgid);
+			cam_hal_tgid = -1;
+		}
+		if (cam_svr_tgid > 0) {
+			unset_task_basic_vip(cam_svr_tgid);
+			unset_tgid_basic_vip(cam_svr_tgid);
+			cam_svr_tgid = -1;
+		}
+		if (touch_vip_status) {
+			touch_vip_status = false;
+			unset_task_basic_vip(last_ts_inputDispatcher_tgid);
+			unset_tgid_basic_vip(last_ts_inputDispatcher_tgid);
+		}
+		touch_countdown_timer = 0;
+	}
+
+	return retval;
+}
+
+static const struct kernel_param_ops enable_tt_vip_ops = {
+	.set = enable_tt_vip,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_tt_vip, &enable_tt_vip_ops, &tt_vip_enable, 0664);
+MODULE_PARM_DESC(enable_tt_vip, "Enable or disable tt vip");
+
 static void tt_vip_handler(struct work_struct *work)
 {
 	int ret = 0, i = 0, avg_cpu_loading = 0;
+	size_t tbl_i;
+	bool need_clean = false;
+	bool need_set = false;
+	bool cur_qualified = false;
+	bool content_changed = false;
+	bool status_3rd_cam = false;
+	bool touching = false;
+	struct task_struct *p;
+	bool fps_drop = false;
+
 
 	// get cpu_loading from magt
 	ret = get_cpu_loading(&ci);
@@ -206,20 +393,224 @@ static void tt_vip_handler(struct work_struct *work)
 		avg_cpu_loading += ci.cpu_loading[i];
 	avg_cpu_loading /= max_cpus;
 
-	if ((avg_cpu_loading >= cpu_loading_thres && ta_vip_status) ||
-		(avg_cpu_loading < cpu_loading_thres && !ta_vip_status)) {
-		goto out;
-	} else if (avg_cpu_loading >= cpu_loading_thres) {
-		set_top_app_vip(120);
-		ta_vip_status = true;
-	} else {
-		unset_top_app_vip();
-		ta_vip_status = false;
+	cur_qualified = avg_cpu_loading >= cpu_loading_thres;
+	status_3rd_cam = get_cam_status_for_task_turbo();
+	if (touch_countdown_timer > 0) {
+		touch_countdown_timer--;
+		touching = true;
+		p = (struct task_struct *)atomic_long_read(&inputDispatcher_ptr);
 	}
-out:
-	trace_turbo_vip(avg_cpu_loading, cpu_loading_thres, ta_vip_status);
+	mutex_lock(&wi_tbl_lock);
+	if (fps_drop_vip_enable > 0) {
+		if (fps_drop_countdown_timer > 0) {
+			cur_qualified |= true;
+			fps_drop_countdown_timer--;
+		} else {
+			for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
+				if (ktime_sub(ktime_to_ms(ktime_get()), fps_drop_hint_for_task_turbo()) <= 1000)
+					fps_drop = true;
+				if (wi_tbl.wi[tbl_i].perf_idx == 100 && fps_drop) {
+					cur_qualified |= true;
+					fps_drop_countdown_timer = fps_drop_vip_throttle;
+				}
+			}
+		}
+	} else {
+		fps_drop_countdown_timer = 0;
+	}
+	if ((!win_vip_status && !cur_qualified) || (last_wi_tbl.size == 0 && wi_tbl.size == 0) ||
+		(wi_tbl.size == 0 && !win_vip_status) || (last_wi_tbl.size == 0 && !cur_qualified))
+		goto out_unlock;
+
+	if ((last_wi_tbl.size > 0 && win_vip_status) && (wi_tbl.size == 0 || !cur_qualified))
+		need_clean = true;
+
+	if (last_wi_tbl.size == wi_tbl.size) {
+		for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
+			if (wi_tbl.wi[tbl_i].tgid != last_wi_tbl.wi[tbl_i].tgid) {
+				content_changed = true;
+				break;
+			}
+		}
+	} else
+		content_changed = true;
+
+	if (wi_tbl.size > 0 && cur_qualified) {
+		need_set = true;
+		if (last_wi_tbl.size > 0 && win_vip_status && content_changed)
+			need_clean = true;
+	}
+
+	if (need_clean) {
+		win_vip_status = false;
+		for (tbl_i = 0; tbl_i < last_wi_tbl.size; tbl_i++) {
+			unset_task_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+			unset_tgid_basic_vip(last_wi_tbl.wi[tbl_i].tgid);
+		}
+	}
+	if (cam_hal_tgid > 0 && (need_clean || !status_3rd_cam)) {
+		unset_task_basic_vip(cam_hal_tgid);
+		unset_tgid_basic_vip(cam_hal_tgid);
+		cam_hal_tgid = -1;
+	}
+	if (cam_svr_tgid > 0 && (need_clean || !status_3rd_cam)) {
+		unset_task_basic_vip(cam_svr_tgid);
+		unset_tgid_basic_vip(cam_svr_tgid);
+		cam_svr_tgid = -1;
+	}
+	if (touch_vip_status && (need_clean || !touching)) {
+		touch_vip_status = false;
+		unset_task_basic_vip(last_ts_inputDispatcher_tgid);
+		unset_tgid_basic_vip(last_ts_inputDispatcher_tgid);
+	}
+	if (need_set) {
+		win_vip_status = true;
+		for (tbl_i = 0; tbl_i < wi_tbl.size; tbl_i++) {
+			set_task_basic_vip(wi_tbl.wi[tbl_i].tgid);
+			set_tgid_basic_vip(wi_tbl.wi[tbl_i].tgid);
+		}
+		if (status_3rd_cam) {
+			if (cam_hal_tgid <= 0)
+				cam_hal_tgid = get_cam_hal_pid_for_task_turbo();
+			if (cam_hal_tgid > 0 && cam_hal_tgid <= PID_MAX_DEFAULT) {
+				set_task_basic_vip(cam_hal_tgid);
+				set_tgid_basic_vip(cam_hal_tgid);
+			}
+			if (cam_svr_tgid <= 0)
+				cam_svr_tgid = get_cam_server_pid_for_task_turbo();
+			if (cam_svr_tgid > 0 && cam_svr_tgid <= PID_MAX_DEFAULT) {
+				set_task_basic_vip(cam_svr_tgid);
+				set_tgid_basic_vip(cam_svr_tgid);
+			}
+		}
+		if (touching) {
+			touch_vip_status = true;
+			set_task_basic_vip(p->tgid);
+			set_tgid_basic_vip(p->tgid);
+			last_ts_inputDispatcher_tgid = p->tgid;
+		}
+	}
+	update_last_win_info_tbl(&last_wi_tbl, &wi_tbl);
+
+out_unlock:
+	mutex_unlock(&wi_tbl_lock);
 }
 module_param(cpu_loading_thres, int, 0644);
+module_param(fps_drop_vip_throttle, int, 0644);
+module_param(fps_drop_vip_enable, int, 0644);
+
+static void find_inputDispatcher(void)
+{
+	struct task_struct *p;
+
+	rcu_read_lock();
+	for_each_process(p) {
+		if (strstr(p->comm, "system_server")) {
+			ts_inputDispatcher = p;
+			atomic_long_set(&inputDispatcher_ptr, (long)p);
+			break;
+		}
+	}
+	rcu_read_unlock();
+}
+
+static void tt_input_event(struct input_handle *handle, unsigned int type,
+						   unsigned int code, int value)
+{
+	struct task_struct *p;
+
+	if (tt_vip_enable > 0) {
+		p = (struct task_struct *)atomic_long_read(&inputDispatcher_ptr);
+		if (type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
+			if (!(p && strstr(p->comm, "system_server")))
+				find_inputDispatcher();
+			touch_countdown_timer = 2;
+			queue_work(system_highpri_wq, &tt_vip);
+		} else {
+			touch_countdown_timer = 2;
+		}
+	}
+}
+
+static int tt_input_connect(struct input_handler *handler,
+		struct input_dev *dev,
+		const struct input_device_id *id)
+{
+	struct input_handle *handle;
+	int error;
+
+	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
+
+	if (!handle)
+		return -ENOMEM;
+
+	handle->dev = dev;
+	handle->handler = handler;
+	handle->name = "tt_touch_handle";
+
+	error = input_register_handle(handle);
+
+	if (error)
+		goto err2;
+
+	error = input_open_device(handle);
+
+	if (error)
+		goto err1;
+
+	return 0;
+err1:
+	input_unregister_handle(handle);
+err2:
+	kfree(handle);
+	return error;
+}
+
+static void tt_input_disconnect(struct input_handle *handle)
+{
+	input_close_device(handle);
+	input_unregister_handle(handle);
+	kfree(handle);
+}
+
+static const struct input_device_id tt_input_ids[] = {
+	{.driver_info = 1},
+	{},
+};
+
+static struct input_handler tt_input_handler = {
+	.event = tt_input_event,
+	.connect = tt_input_connect,
+	.disconnect = tt_input_disconnect,
+	.name = "tt_input_handler",
+	.id_table = tt_input_ids,
+};
+
+void fpsgo2tt_hint_perf_idx(int pid, unsigned long long bufID,
+	int perf_idx, int sbe_ctrl, unsigned long long ts)
+{
+	struct task_struct *p;
+	int tgid;
+	size_t i;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return;
+	}
+	tgid = p->tgid;
+	rcu_read_unlock();
+
+	mutex_lock(&wi_tbl_lock);
+	for (i = 0; i < wi_tbl.size; i++) {
+		if (wi_tbl.wi[i].tgid == tgid) {
+			wi_tbl.wi[i].perf_idx = perf_idx;
+			break;
+		}
+	}
+	mutex_unlock(&wi_tbl_lock);
+}
 
 static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct *p)
 {
@@ -1091,7 +1482,7 @@ static int set_task_turbo_feats(const char *buf,
 	return ret;
 }
 
-static struct kernel_param_ops task_turbo_feats_param_ops = {
+static const struct kernel_param_ops task_turbo_feats_param_ops = {
 	.set = set_task_turbo_feats,
 	.get = param_get_uint,
 };
@@ -1510,6 +1901,11 @@ err_cur_wall_time:
 	return -ENOMEM;
 }
 
+int init_tt_input_handler(void)
+{
+	return input_register_handler(&tt_input_handler);
+}
+
 static inline bool tt_vip_do_check(u64 wallclock)
 {
 	bool do_check = false;
@@ -1539,7 +1935,6 @@ static void tt_tick(void *data, struct rq *rq)
 		queue_work(system_highpri_wq, &tt_vip);
 	}
 }
-module_param(tt_vip_enable, int, 0644);
 
 static int __init init_task_turbo(void)
 {
@@ -1685,6 +2080,15 @@ static int __init init_task_turbo(void)
 		pr_info("%s: init cpu time failed, returned %d\n", TAG, ret);
 		goto register_failed;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
+	fpsgo_other2fstb_register_perf_callback(FPSGO_PERF_IDX,
+		fpsgo2tt_hint_perf_idx);
+#endif
+
+	ret = init_tt_input_handler();
+	if (ret)
+		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 
 failed:
 	if (ret)

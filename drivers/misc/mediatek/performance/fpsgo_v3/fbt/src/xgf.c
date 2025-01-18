@@ -1804,6 +1804,18 @@ int fpsgo_ktf2xgf_atomic_set(int op, int value)
 }
 EXPORT_SYMBOL(fpsgo_ktf2xgf_atomic_set);
 
+int get_cam_hal_pid_for_task_turbo(void)
+{
+	return cam_hal_pid;
+}
+EXPORT_SYMBOL(get_cam_hal_pid_for_task_turbo);
+
+int get_cam_server_pid_for_task_turbo(void)
+{
+	return cam_server_pid;
+}
+EXPORT_SYMBOL(get_cam_server_pid_for_task_turbo);
+
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID)
 {
 	int ret = 0;

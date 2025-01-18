@@ -317,6 +317,7 @@ static int limit_min_cap_target_t;
 static int rl_l2q_enable;
 static int rl_l2q_exp_us;
 static int rl_l2q_exp_times;
+static unsigned long long fps_drop_time;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -2848,6 +2849,12 @@ static int fbt_check_to_jerk(
 	return FPSGO_JERK_POSTPONE;
 }
 
+unsigned long long fps_drop_hint_for_task_turbo(void)
+{
+	return fps_drop_time;
+}
+EXPORT_SYMBOL(fps_drop_hint_for_task_turbo);
+
 static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 			int blc_wt_m, int boost_group, int jerk)
 {
@@ -2865,6 +2872,7 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 		fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
 			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, jerk);
 	}
+	fps_drop_time = ktime_to_ms(ktime_get());
 }
 
 static void fbt_cancel_sjerk(void)

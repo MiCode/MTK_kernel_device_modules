@@ -151,6 +151,7 @@ static int fpsgo_enable;
 static int fpsgo_force_onoff;
 static int perfserv_ta;
 static int sbe2fpsgo_query_is_running;
+static bool cam_status;
 
 int powerhal_tid;
 
@@ -911,6 +912,12 @@ int fpsgo_wait_fstb_active(void)
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
 
+bool get_cam_status_for_task_turbo(void)
+{
+	return cam_status;
+}
+EXPORT_SYMBOL(get_cam_status_for_task_turbo);
+
 void fpsgo_get_pid(int cmd, int *pid, int value1, int value2)
 {
 	unsigned long long cur_ts;
@@ -921,8 +928,11 @@ void fpsgo_get_pid(int cmd, int *pid, int value1, int value2)
 	switch (cmd) {
 	case CAMERA_CLOSE:
 		fpsgo_ctrl2base_notify_cam_close();
+		cam_status = false;
 		break;
 	case CAMERA_APK:
+		cam_status = true;
+		fallthrough;
 	case CAMERA_SERVER:
 		fpsgo_ctrl2base_get_cam_pid(cmd, pid);
 		break;
