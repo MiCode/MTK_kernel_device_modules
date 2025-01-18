@@ -19,13 +19,13 @@
 #include "mtk_idle_internal.h"
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_SMART_PHONE)
-#include <mtk-sp-afe-external.h>
+//#include "mtk-sp-afe-external.h"
 #define ConditionEnterSuspend mtk_audio_condition_enter_suspend
 #endif /* CONFIG_SND_SOC_MTK_SMART_PHONE */
 
-#include <mtk_mcdi_api.h>
+#include "mtk_mcdi_api.h"
 
-#include <mtk_lp_dts.h>
+#include "mtk_lp_dts.h"
 static DEFINE_SPINLOCK(slp_lock);
 
 unsigned long slp_dp_cnt[NR_CPUS] = {0};
@@ -66,10 +66,9 @@ static int slp_suspend_ops_prepare(void)
 bool  ConditionEnterSuspend(void);
 #endif /* MTK_SUSPEND_AUDIO_SUPPORT */
 
-
 #if IS_ENABLED(CONFIG_MTK_SND_SOC_NEW_ARCH)
 
-static bool (*ConditionEnterSuspendCallBack)(void);
+bool (*ConditionEnterSuspendCallBack)(void);
 int RegisterConditionEnterSuspend(bool (*cb)(void))
 {
 	ConditionEnterSuspendCallBack = cb;
@@ -77,7 +76,7 @@ int RegisterConditionEnterSuspend(bool (*cb)(void))
 }
 EXPORT_SYMBOL(RegisterConditionEnterSuspend);
 
-static bool ConditionEnterSuspend(void)
+bool ConditionEnterSuspend(void)
 {
 	if (!ConditionEnterSuspendCallBack) {
 		pr_info("name:spm&]NO %s !!!\n", __func__);
@@ -109,8 +108,8 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 #endif /* CONFIG_FPGA_EARLY_PORTING */
 
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
-	pll_if_on();
-	subsys_if_on();
+	//pll_if_on();
+	//subsys_if_on();
 #endif /* CONFIG_FPGA_EARLY_PORTING */
 
 	if (spm_get_is_infra_pdn() && !spm_get_is_cpu_pdn()) {
@@ -152,8 +151,6 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 		slp_dp_cnt[smp_processor_id()]++;
 	} else {
 #endif
-		mtk_suspend_cond_info();
-
 		slp_wake_reason = spm_go_to_sleep();
 	}
 
@@ -162,10 +159,10 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 LEAVE_SLEEP:
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #if IS_ENABLED(CONFIG_MTK_SYSTRACKER)
-	systracker_enable();
+	//systracker_enable();
 #endif
 #if IS_ENABLED(CONFIG_MTK_BUS_TRACER)
-	bus_tracer_enable();
+	//bus_tracer_enable();
 #endif
 #endif /* CONFIG_FPGA_EARLY_PORTING */
 
@@ -213,13 +210,13 @@ int slp_set_wakesrc(u32 wakesrc, bool enable, bool ck26m_on)
 
 #if SLP_REPLACE_DEF_WAKESRC
 	if (ck26m_on)
-		r = spm_set_dpidle_wakesrc(wakesrc, enable, true);
+		r = 0;//spm_set_dpidle_wakesrc(wakesrc, enable, true);
 	else
 		r = spm_set_sleep_wakesrc(wakesrc, enable, true);
 #else
 	if (ck26m_on)
-		r = spm_set_dpidle_wakesrc(wakesrc & ~WAKE_SRC_CFG_KEY,
-				enable, false);
+		r = 0;//spm_set_dpidle_wakesrc(wakesrc & ~WAKE_SRC_CFG_KEY,
+				//enable, false);
 	else
 		r = spm_set_sleep_wakesrc(wakesrc & ~WAKE_SRC_CFG_KEY, enable,
 				false);

@@ -1,11 +1,9 @@
-# Include mtk_idle_internal.h for MTK_IDLE_OPT_XXX
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common/
 # Include cpuidle_v3 headers mtk_cpuidle.h for atf/dormant driver
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/cpuidle/
 # Include mtk idle headers and cpuidle driver header for external modules
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/power_gs_v1/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/power_gs_v1/
 # Include mtk_eem.h
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/eem_v2/$(MTK_PLATFORM)/inc/
 # Include mmdvfs_mgr.h
@@ -31,7 +29,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/
 ifneq ($(CONFIG_MEDIATEK_CPU_DVFS),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/
 endif
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/
+# ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/
 
 obj-$(CONFIG_MTK_SPM_V0) += MTK_INTERNAL_SPM.o
 MTK_INTERNAL_SPM-y += mtk_spm.o
@@ -54,19 +52,19 @@ MTK_INTERNAL_SPM-y += mtk_spm_idle.o
 MTK_INTERNAL_SPM-y += mtk_spm_vcore_dvfs.o
 MTK_INTERNAL_SPM-y += mtk_spm_resource_req_console.o
 
-MTK_INTERNAL_SPM-y += ../common/mtk_idle.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_select.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_internal.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_profile.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_twam.o
-MTK_INTERNAL_SPM-y += ../common/mtk_spm_resource_req.o
-MTK_INTERNAL_SPM-y += ../common/mtk_sleep.o
-MTK_INTERNAL_SPM-y += ../common/mtk_sleep_init.o
-MTK_INTERNAL_SPM-y += ../common/mtk_vcore_dvfs.o
-MTK_INTERNAL_SPM-y += ../common/mtk_sodi.o
-MTK_INTERNAL_SPM-y += ../common/mtk_dpidle.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_fs/mtk_lp_sysfs_procfs.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_fs/mtk_idle_sysfs.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_fs/mtk_lp_kernfs.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_fs/mtk_lp_sysfs.o
-MTK_INTERNAL_SPM-y += ../common/mtk_idle_fs/mtk_lp_sysfs_procfs.o
+MTK_INTERNAL_SPM-y += mtk_idle.o
+MTK_INTERNAL_SPM-y += mtk_idle_select.o
+MTK_INTERNAL_SPM-y += mtk_idle_internal.o
+MTK_INTERNAL_SPM-y += mtk_idle_profile.o
+MTK_INTERNAL_SPM-y += mtk_idle_twam.o
+MTK_INTERNAL_SPM-y += mtk_spm_resource_req.o
+MTK_INTERNAL_SPM-y += mtk_sleep.o
+MTK_INTERNAL_SPM-y += mtk_sleep_init.o
+MTK_INTERNAL_SPM-y += mtk_vcore_dvfs.o
+MTK_INTERNAL_SPM-y += mtk_sodi.o
+MTK_INTERNAL_SPM-y += mtk_dpidle.o
+MTK_INTERNAL_SPM-y += mtk_idle_fs/mtk_lp_sysfs_procfs.o
+MTK_INTERNAL_SPM-y += mtk_idle_fs/mtk_idle_sysfs.o
+MTK_INTERNAL_SPM-y += mtk_idle_fs/mtk_lp_kernfs.o
+MTK_INTERNAL_SPM-y += mtk_idle_fs/mtk_lp_sysfs.o
+MTK_INTERNAL_SPM-y += mtk_idle_fs/mtk_lp_sysfs_procfs.o

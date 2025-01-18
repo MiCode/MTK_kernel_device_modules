@@ -15,7 +15,7 @@
 #endif
 
 #define CREATE_TRACE_POINTS
-#include "mtk_idle_event.h"
+//#include "mtk_idle_event.h"
 
 #include "mtk_idle.h"
 #include "mtk_idle_internal.h"
@@ -106,7 +106,7 @@ static struct pwr_ctrl *get_pwrctrl(int idle_type)
 		idle_type == IDLE_TYPE_SO3 ? &pwrctrl_so3 :
 		idle_type == IDLE_TYPE_SO ? &pwrctrl_so : NULL;
 }
-
+/*
 static void mtk_idle_gs_dump(int idle_type)
 {
 	#if defined(MTK_IDLE_GS_DUMP_READY)
@@ -116,13 +116,14 @@ static void mtk_idle_gs_dump(int idle_type)
 		mt_power_gs_dump_sodi3(GS_ALL);
 	#endif
 }
+*/
 
 /********************************************************************
  * dp/so3/so trigger wfi
  *******************************************************************/
 
 static void print_ftrace_tag(int idle_type, int cpu, int enter)
-{
+{/*
 #if MTK_IDLE_TRACE_TAG_ENABLE
 	switch (idle_type) {
 	case IDLE_TYPE_DP:
@@ -138,6 +139,7 @@ static void print_ftrace_tag(int idle_type, int cpu, int enter)
 		break;
 	}
 #endif
+*/
 }
 
 int mtk_idle_trigger_wfi(int idle_type, unsigned int idle_flag, int cpu)
@@ -161,8 +163,8 @@ int mtk_idle_trigger_wfi(int idle_type, unsigned int idle_flag, int cpu)
 	};
 
 	/* Dump low power golden setting */
-	if (idle_flag & MTK_IDLE_LOG_DUMP_LP_GS)
-		mtk_idle_gs_dump(idle_type);
+	//if (idle_flag & MTK_IDLE_LOG_DUMP_LP_GS)
+		//mtk_idle_gs_dump(idle_type);
 
 	pwrctrl = get_pwrctrl(idle_type);
 
@@ -311,7 +313,7 @@ void mtk_idle_pre_process_by_chip(
 	__spm_sync_pcm_flags(pwrctrl);
 
 	/* setup vcore dvfs before idle scenario */
-	dvfsrc_md_scenario_update(1);
+	//dvfsrc_md_scenario_update(1);
 
 	/* setup spm */
 	spm_idle_pcm_setup_before_wfi(idle_type, pwrctrl, op_cond);
@@ -357,9 +359,9 @@ void mtk_idle_post_process_by_chip(
 	spm_idle_pcm_setup_after_wfi(idle_type, pwrctrl, op_cond);
 
 	/* setup vcore dvfs after idle scenario */
-	dvfsrc_md_scenario_update(0);
+	//dvfsrc_md_scenario_update(0);
 
-	rcu_idle_exit();
+	//rcu_idle_exit();
 	/* print log */
 	wr = mtk_idle_log[idle_type](idle_type, &wakesta, op_cond, idle_flag);
 
@@ -369,7 +371,7 @@ void mtk_idle_post_process_by_chip(
 	/* unlock spm spin_lock */
 	spin_unlock_irqrestore(&__spm_lock, flags);
 
-	rcu_idle_enter();
+	//rcu_idle_enter();
 	/* [sleep dpidle only] */
 	if (op_cond & MTK_IDLE_OPT_SLEEP_DPIDLE) {
 		/* post watch dog config */

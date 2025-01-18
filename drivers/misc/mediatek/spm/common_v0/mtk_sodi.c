@@ -11,7 +11,7 @@
 #include "mtk_idle_internal.h"
 #include "mtk_spm_internal.h" /* mtk_idle_cond_check */
 
-#include <mtk_idle_fs/mtk_idle_sysfs.h>
+#include "mtk_idle_fs/mtk_idle_sysfs.h"
 
 static bool sodi_feature_enable = MTK_IDLE_FEATURE_ENABLE_SODI;
 static bool sodi_bypass_idle_cond;

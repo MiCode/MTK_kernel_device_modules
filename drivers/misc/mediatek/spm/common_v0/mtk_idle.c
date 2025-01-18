@@ -87,11 +87,6 @@ static ssize_t idle_state_read(char *ToUserBuf, size_t sz_t, void *priv)
 
 	log("\n");
 
-	log("**************** mtk_spm_arch **********************\n");
-	log("mtk_spm_arch: %s-oriented\n",
-		mtk_spm_arch_type_get() ? "resource" : "scenario");
-	log("\n");
-
 	log("*************** idle command help ****************\n");
 	log("status help:          cat %s\n", MTK_PROCFS_IDLE);
 	log("dpidle help:          cat %s\n", MTK_PROCFS_DPIDLE);
@@ -137,8 +132,6 @@ static ssize_t idle_state_write(char *FromUserBuf, size_t sz, void *priv)
 				parm == 3 ? IDLE_TYPE_SO : -1);
 		} else if (!strcmp(cmd, "screen_off_sodi3")) {
 			mtk_idle_screen_off_sodi3 = parm ? true : false;
-		} else if (!strcmp(cmd, "spm_arch_type")) {
-			mtk_spm_arch_type_set(parm ? true : false);
 		}
 		return sz;
 	} else if ((!kstrtoint(FromUserBuf, 10, &parm)) == 1) {
@@ -157,7 +150,7 @@ static void mtk_idle_init(void)
 {
 	mtk_idle_sysfs_entry_node_add("idle_state"
 			, 0644, &idle_state_fops, NULL);
-	md_notify_flightmode_cb_register(spm_set_by_flightmode);
+	//md_notify_flightmode_cb_register(spm_set_by_flightmode);
 }
 
 void mtk_cpuidle_framework_init(void)

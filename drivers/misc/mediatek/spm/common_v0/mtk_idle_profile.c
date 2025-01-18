@@ -11,7 +11,7 @@
 #include "mtk_idle_profile.h"
 
 #if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
-#include <mtk_cpufreq_api.h"
+#include "mtk_cpufreq_api.h"
 #endif
 
 #include "mtk_spm_internal.h"

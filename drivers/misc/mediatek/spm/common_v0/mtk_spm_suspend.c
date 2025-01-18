@@ -181,6 +181,15 @@ static struct notifier_block spm_suspend_pm_notifier_func = {
 	.priority = 0,
 };
 #endif
+
+static inline void spm_suspend_footprint(enum spm_suspend_step step)
+{
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	//aee_rr_rec_spm_suspend_val(step |
+		//(smp_processor_id() << CPU_FOOTPRINT_SHIFT));
+#endif
+}
+
 static struct pwr_ctrl suspend_ctrl;
 
 struct spm_lp_scen __spm_suspend = {
@@ -286,11 +295,12 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 			spm_read(SPM_POWER_ON_VAL1) & (1 << 17));
 	}
 
-
+/*
 #if IS_ENABLED(CONFIG_MTK_CCCI_DEVICES)
 		exec_ccci_kern_func_by_md_id(0, ID_DUMP_MD_SLEEP_MODE,
 			NULL, 0);
 #endif
+*/
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	if (wakesta->r12 & R12_SCP_SPM_IRQ_B) {
@@ -298,7 +308,7 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 			print_scp_ipi_id_callback();
 	}
 #endif
-
+/*
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	if (wakesta->r12 & WAKE_SRC_R12_CLDMA_EVENT_B)
@@ -314,6 +324,7 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 		NULL, 0);
 #endif
 #endif
+*/
 	//log_irq_wakeup_reason(mtk_spm_get_irq_0());
 
 #if IS_ENABLED(CONFIG_MTK_GIC_V3_EXT)
@@ -376,7 +387,7 @@ bool spm_is_enable_sleep(void)
 	return true;
 }
 
-#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6761)
+//#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6761)
 bool spm_get_is_cpu_pdn(void)
 {
 	return is_cpu_pdn(suspend_pcm_flags);
@@ -386,7 +397,7 @@ bool spm_get_is_infra_pdn(void)
 {
 	return is_infra_pdn(suspend_pcm_flags);
 }
-#else
+//#else
 bool spm_suspend_condition_check(void)
 {
 	if (is_infra_pdn(suspend_pcm_flags) && !is_cpu_pdn(suspend_pcm_flags)) {
@@ -396,7 +407,7 @@ bool spm_suspend_condition_check(void)
 
 	return true;
 }
-#endif
+//#endif
 unsigned int spm_go_to_sleep(void)
 {
 	u32 sec = 2;
@@ -416,7 +427,7 @@ unsigned int spm_go_to_sleep(void)
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #if IS_ENABLED(CONFIG_MTK_PMIC) || IS_ENABLED(CONFIG_MTK_PMIC_NEW_ARCH)
 #if !defined(DISABLE_DLPT_FEATURE)
-	get_dlpt_imix_spm();
+	//get_dlpt_imix_spm();
 #endif
 #endif
 #endif
