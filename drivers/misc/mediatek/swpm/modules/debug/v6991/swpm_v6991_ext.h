@@ -27,6 +27,7 @@ enum xpu_ip_state {
 	XPU_IP_VDEC0,
 	XPU_IP_SCP,
 	XPU_IP_ADSP,
+	XPU_IP_MCU,
 
 	NR_XPU_IP,
 };
@@ -53,6 +54,7 @@ enum spm_sig_group {
 	F26M_REQ,
 	PMIC_REQ,
 	VCORE_REQ,
+	RC_REQ,
 	PWR_OFF,
 	PWR_ACT,
 	SYS_STA,
