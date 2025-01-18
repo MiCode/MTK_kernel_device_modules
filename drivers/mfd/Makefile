@@ -17,3 +17,4 @@ ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_MFD_MTK_SPMI_PMIC)	+= mtk-spmi-pmic-debug.o
 endif
 obj-$(CONFIG_MFD_RT9490)	+= rt9490.o
+obj-$(CONFIG_REGULATOR_MT6362)	+= mt6362-core.o
