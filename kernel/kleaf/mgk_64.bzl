@@ -891,6 +891,8 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/lpm/modules/debug/mt6985/mtk-lpm-dbg-mt6985.ko": "mt6985",
     "drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko": "mt6989",
     "drivers/misc/mediatek/lpm/modules/debug/mt6991/mtk-lpm-dbg-mt6991.ko": "mt6991",
+    "drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko": "mt6989",
+    "drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko": "mt6991",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6761.ko": "mt6761",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6886.ko": "mt6886",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6893.ko": "mt6893",
@@ -1147,6 +1149,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-log.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusty/ise-trusty-virtio.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
@@ -1331,6 +1335,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mcupm/v2/mcupm.ko")
 
