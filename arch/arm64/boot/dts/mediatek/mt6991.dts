@@ -10069,7 +10069,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				  <0 0x19002000 0 0x10>,
 				  <0 0x19050000 0 0x10000>,
 				  <0 0x190f2000 0 0x1000>,
-				  <0 0x4d000000 0 0x50000>,
 				  <0 0x0d2a0000 0 0x10000>,
 				  <0 0x190f0000 0 0x1000>;
 			reg-names = "apu_mbox",
@@ -10077,7 +10076,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"apu_wdt",
 					"md32_cache_dump",
 					"apu_ao_ctl",
-					"md32_tcm",
 					"md32_debug_apb",
 					"apu_rpc";
 			mtk,iommu-group = <&apu_iommu_group_0>;
@@ -10090,6 +10088,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"mbox0_irq",
 					"mbox1_irq",
 					"ce_exp_irq";
+			up-tcm-sz = <0x50000>;
 			up-code-buf-sz = <0x100000>;
 			up-coredump-buf-sz = <0x160000>;
 			ce-coredump-buf-sz = <0x010000>;
