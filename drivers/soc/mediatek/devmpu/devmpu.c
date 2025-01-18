@@ -4,6 +4,7 @@
  */
 
 #include <asm/page.h>
+#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -14,12 +15,22 @@
 #include <linux/platform_device.h>
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <soc/mediatek/emi.h>
 #include "devmpu.h"
+
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_SLOG)
+#define CREATE_TRACE_POINTS
+#include "devmpu_trace.h"
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include "mt-plat/aee.h"
+#endif
 
 #define LOG_TAG "[DEVMPU]"
 
 #define DEVMPU_MAX_TAG_LEN 15
-#define DUMP_TAG  "dump_devmpu"
+#define DUMP_TAG "dump_devmpu"
 #define CHECK_TAG "violate_devmpu"
 
 #define DEVMPU_MAX_CTX 3
@@ -30,13 +41,11 @@
 #endif
 #define pr_fmt(fmt) LOG_TAG " " fmt
 
-#define switchValue(x) (((x << 24) & 0xff000000) | \
-			((x << 8) & 0x00ff0000)  | \
-			((x >> 8) & 0x0000ff00)  | \
-			((x >> 24) & 0x000000ff))
+#define switchValue(x)                                                         \
+	(((x << 24) & 0xff000000) | ((x << 8) & 0x00ff0000) |                  \
+	 ((x >> 8) & 0x0000ff00) | ((x >> 24) & 0x000000ff))
 
 struct devmpu_context {
-
 	/* HW register mapped base */
 	void __iomem *reg_base;
 
@@ -55,7 +64,6 @@ struct devmpu_context {
 } devmpu_ctx_ary[DEVMPU_MAX_CTX];
 
 struct devmpu_vio_stat {
-
 	/* master ID */
 	uint16_t id;
 
@@ -83,17 +91,15 @@ static int devmpu_vio_get(struct devmpu_vio_stat *vio, bool do_clear)
 	size_t vio_info;
 
 	if (unlikely(vio == NULL)) {
-		pr_err("%s:%d output pointer is NULL\n",
-				__func__, __LINE__);
+		pr_info("%s:%d output pointer is NULL\n", __func__, __LINE__);
 		return -1;
 	}
 
-
-	arm_smccc_smc(MTK_SIP_KERNEL_DEVMPU_VIO_GET,
-			do_clear, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(MTK_SIP_KERNEL_DEVMPU_VIO_GET, do_clear, 0, 0, 0, 0, 0, 0,
+		      &res);
 	if (res.a0) {
-		pr_err("%s:%d failed to get violation, ret=0x%lx\n",
-				__func__, __LINE__, res.a0);
+		pr_info("%s:%d failed to get violation, ret=0x%lx\n", __func__,
+		       __LINE__, res.a0);
 		return -1;
 	}
 
@@ -109,6 +115,21 @@ static int devmpu_vio_get(struct devmpu_vio_stat *vio, bool do_clear)
 	return 0;
 }
 
+void devmpu_vio_clear(unsigned int emi_id)
+{
+	struct arm_smccc_res smc_res;
+
+	/* clear hyp violation status */
+	arm_smccc_smc(MTK_SIP_KERNEL_DEVMPU_VIO_CLR, emi_id, 0, 0, 0, 0, 0, 0,
+		      &smc_res);
+
+	if (smc_res.a0) {
+		pr_info("%s:%d failed to clear violation, ret=0x%lx\n", __func__,
+		       __LINE__, smc_res.a0);
+	}
+}
+EXPORT_SYMBOL(devmpu_vio_clear);
+
 static int devmpu_rw_perm_get(uint64_t pa, size_t *rd_perm, size_t *wr_perm)
 {
 	struct arm_smccc_res res;
@@ -116,25 +137,23 @@ static int devmpu_rw_perm_get(uint64_t pa, size_t *rd_perm, size_t *wr_perm)
 
 	devmpu_ctx = &devmpu_ctx_ary[DEVMPU_DEFAULT_CTX];
 
-	if (unlikely(
-			pa < devmpu_ctx->prot_base
-		||	pa >= devmpu_ctx->prot_base + devmpu_ctx->prot_size)) {
-		pr_err("%s:%d invalid DRAM physical address, pa=0x%llx\n",
-				__func__, __LINE__, pa);
+	if (unlikely(pa < devmpu_ctx->prot_base ||
+		     pa >= devmpu_ctx->prot_base + devmpu_ctx->prot_size)) {
+		pr_info("%s:%d invalid DRAM physical address, pa=0x%llx\n",
+		       __func__, __LINE__, pa);
 		return -1;
 	}
 
 	if (unlikely(rd_perm == NULL || wr_perm == NULL)) {
-		pr_err("%s:%d output pointer is NULL\n",
-				__func__, __LINE__);
+		pr_info("%s:%d output pointer is NULL\n", __func__, __LINE__);
 		return -1;
 	}
 
-	arm_smccc_smc(MTK_SIP_KERNEL_DEVMPU_PERM_GET,
-			pa, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(MTK_SIP_KERNEL_DEVMPU_PERM_GET, pa, 0, 0, 0, 0, 0, 0,
+		      &res);
 	if (res.a0) {
-		pr_err("%s:%d failed to get permission, ret=0x%lx\n",
-				__func__, __LINE__, res.a0);
+		pr_info("%s:%d failed to get permission, ret=0x%lx\n", __func__,
+		       __LINE__, res.a0);
 		return -1;
 	}
 
@@ -145,17 +164,16 @@ static int devmpu_rw_perm_get(uint64_t pa, size_t *rd_perm, size_t *wr_perm)
 }
 
 int devmpu_print_violation(uint64_t vio_addr, uint32_t vio_id,
-		uint32_t vio_domain, uint32_t vio_rw)
+			   uint32_t vio_domain, uint32_t vio_rw,
+			   bool from_emimpu)
 {
 	size_t ret;
 	struct devmpu_context *devmpu_ctx;
-	struct devmpu_vio_stat vio = {
-		.id = 0,
-		.domain = 0,
-		.is_ns = false,
-		.is_write = false,
-		.addr = 0x0ULL
-	};
+	struct devmpu_vio_stat vio = { .id = 0,
+				       .domain = 0,
+				       .is_ns = false,
+				       .is_write = false,
+				       .addr = 0x0ULL };
 
 	uint32_t vio_axi_id;
 	uint32_t vio_port_id;
@@ -166,21 +184,24 @@ int devmpu_print_violation(uint64_t vio_addr, uint32_t vio_id,
 	devmpu_ctx = &devmpu_ctx_ary[DEVMPU_DEFAULT_CTX];
 
 	/* overwrite violation info. with the DeviceMPU native one */
-	ret = devmpu_vio_get(&vio, true);
-	if (ret) {
-		pr_err("%s:%d failed to get DeviceMPU violation\n",
-				__func__, __LINE__);
-		return -1;
+	if (!from_emimpu) {
+		ret = devmpu_vio_get(&vio, true);
+		if (ret) {
+			pr_info("%s:%d failed to get DeviceMPU violation\n",
+			       __func__, __LINE__);
+			return -1;
+		}
+
+		vio_id = vio.id;
+		vio_addr = vio.addr;
+		vio_domain = vio.domain;
+		/*
+		 * use 0b01/0b10 to specify write/read violation
+		 */
+		vio_rw = (vio.is_write) ? 1 : 2;
 	}
-
-	vio_id = vio.id;
-	vio_addr = vio.addr;
-	vio_domain = vio.domain;
-
-	/*
-	 * use 0b01/0b10 to specify write/read violation
-	 */
-	vio_rw = (vio.is_write) ? 1 : 2;
+	if (vio_rw == 2 && vio_domain == 0)
+		return 0;
 
 	vio_addr += devmpu_ctx->prot_base;
 
@@ -188,14 +209,12 @@ int devmpu_print_violation(uint64_t vio_addr, uint32_t vio_id,
 	vio_port_id = vio_id & 0x7;
 
 	pr_info("Device MPU violation\n");
-	pr_info("current process is \"%s \" (pid: %i)\n",
-			current->comm, current->pid);
-	pr_info("corrupted address is 0x%llx\n",
-			vio_addr);
-	pr_info("master ID: 0x%x, AXI ID: 0x%x, port ID: 0x%x\n",
-			vio_id, vio_axi_id, vio_port_id);
-	pr_info("violation domain 0x%x\n",
-			vio_domain);
+	pr_info("current process is \"%s \" (pid: %i)\n", current->comm,
+		current->pid);
+	pr_info("corrupted address is 0x%llx\n", vio_addr);
+	pr_info("master ID: 0x%x, AXI ID: 0x%x, port ID: 0x%x\n", vio_id,
+		vio_axi_id, vio_port_id);
+	pr_info("violation domain 0x%x\n", vio_domain);
 
 	if (vio_rw == 1)
 		pr_info("write violation\n");
@@ -207,15 +226,25 @@ int devmpu_print_violation(uint64_t vio_addr, uint32_t vio_id,
 	if (!devmpu_rw_perm_get(vio_addr, &rd_perm, &wr_perm)) {
 		page = vio_addr - devmpu_ctx->prot_base;
 		page /= devmpu_ctx->page_size;
-		pr_info("Page#%x RD/WR : %08zx/%08zx (%lld)\n",
-			page,
-			switchValue(rd_perm),
-			switchValue(wr_perm),
+		pr_info("Page#%x RD/WR : %08zx/%08zx (%lld)\n", page,
+			switchValue(rd_perm), switchValue(wr_perm),
 			(vio_addr / devmpu_ctx->page_size) % 4);
 	}
 
-	pr_info("%s transaction\n",
-			(vio.is_ns) ? "non-secure" : "secure");
+	pr_info("%s transaction\n", (vio.is_ns) ? "non-secure" : "secure");
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_SLOG)
+	pr_info("dump info to slog\n");
+	trace_devmpu_event(vio_addr, vio_id, vio_domain, vio_rw);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	pr_info("trigger aee exception\n");
+	aee_kernel_exception("DEVMPU",
+			     "%s\n%s(0x%x),%s(0x%x),%s(0x%x),%s(0x%llx)\n",
+			     "violation", "vio_id", vio_id, "vio_domain",
+			     vio_domain, "vio_rw", vio_rw, "vio_addr",
+			     vio_addr);
+#endif
 
 	return 0;
 }
@@ -250,22 +279,21 @@ static int devmpu_dump_perm(void)
 			pa_dump = (uint64_t)(i - 16) * devmpu_ctx->page_size;
 			pa_dump += devmpu_ctx->prot_base;
 			pr_info("%04x (%02x_%08x):  %08x/%08x %08x/%08x %08x/%08x %08x/%08x\n",
-				i - 16,
-				(uint32_t)(pa_dump >> 32),
+				i - 16, (uint32_t)(pa_dump >> 32),
 				(uint32_t)(pa_dump & 0xffffffff),
 				*((uint32_t *)rd_perm_bmp),
 				*((uint32_t *)wr_perm_bmp),
-				*((uint32_t *)rd_perm_bmp+1),
-				*((uint32_t *)wr_perm_bmp+1),
-				*((uint32_t *)rd_perm_bmp+2),
-				*((uint32_t *)wr_perm_bmp+2),
-				*((uint32_t *)rd_perm_bmp+3),
-				*((uint32_t *)wr_perm_bmp+3));
+				*((uint32_t *)rd_perm_bmp + 1),
+				*((uint32_t *)wr_perm_bmp + 1),
+				*((uint32_t *)rd_perm_bmp + 2),
+				*((uint32_t *)wr_perm_bmp + 2),
+				*((uint32_t *)rd_perm_bmp + 3),
+				*((uint32_t *)wr_perm_bmp + 3));
 		}
 
 		if (devmpu_rw_perm_get(pa, &rd_perm, &wr_perm)) {
-			pr_err("%s:%d failed to get permission\n",
-					__func__, __LINE__);
+			pr_info("%s:%d failed to get permission\n", __func__,
+			       __LINE__);
 			return -EINVAL;
 		}
 
@@ -293,14 +321,12 @@ static int devmpu_check_violation(void)
 	/* Get property from dts */
 	dn = of_find_compatible_node(NULL, NULL, "mediatek,atf-reserved");
 	if (!dn) {
-		pr_err("%s:%d failed to get device node\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get device node\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (of_property_read_u32_array(dn, "reg", prop_ary, 4)) {
-		pr_err("%s:%d failed to get property\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get property\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -311,14 +337,14 @@ static int devmpu_check_violation(void)
 
 	/* Check if 2MB addr/size alignment */
 	if (prop_addr % devmpu_ctx->page_size) {
-		pr_err("%s:%d address is not 2MB alignment 0x%x\n",
-				__func__, __LINE__, prop_addr);
+		pr_info("%s:%d address is not 2MB alignment 0x%x\n", __func__,
+		       __LINE__, prop_addr);
 		return -EINVAL;
 	}
 
 	if (prop_size % devmpu_ctx->page_size) {
-		pr_err("%s:%d size is not 2MB alignment 0x%x\n",
-				__func__, __LINE__, prop_size);
+		pr_info("%s:%d size is not 2MB alignment 0x%x\n", __func__,
+		       __LINE__, prop_size);
 		return -EINVAL;
 	}
 
@@ -366,7 +392,7 @@ static ssize_t devmpu_config_show(struct device_driver *driver, char *buf)
 }
 
 static ssize_t devmpu_config_store(struct device_driver *driver,
-	const char *buf, size_t count)
+				   const char *buf, size_t count)
 {
 	int ret = 0;
 
@@ -377,7 +403,7 @@ static ssize_t devmpu_config_store(struct device_driver *driver,
 
 	if (!strncmp(buf, DUMP_TAG, strlen(DUMP_TAG))) {
 		ret = devmpu_dump_perm();
-	}	else if (!strncmp(buf, CHECK_TAG, strlen(CHECK_TAG))) {
+	} else if (!strncmp(buf, CHECK_TAG, strlen(CHECK_TAG))) {
 		ret = devmpu_check_violation();
 	} else {
 		pr_notice("%s Invalid argument!!\n", __func__);
@@ -396,9 +422,13 @@ static DRIVER_ATTR_RW(devmpu_config);
 
 static irqreturn_t devmpu_irq_handler(int irq, void *dev_id)
 {
-	devmpu_print_violation(0, 0, 0, 0);
+	devmpu_print_violation(0, 0, 0, 0, false);
 	return IRQ_HANDLED;
 }
+
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
+int devmpu_regist_emi(void);
+#endif
 
 /* driver registration */
 static int devmpu_probe(struct platform_device *pdev)
@@ -420,48 +450,45 @@ static int devmpu_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		pr_err("%s:%d failed to get resource\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get resource\n", __func__, __LINE__);
 		return -ENOENT;
 	}
 
 	reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(reg_base)) {
-		pr_err("%s:%d unable to map DEVMPU_BASE\n",
-				__func__, __LINE__);
+		pr_info("%s:%d unable to map DEVMPU_BASE\n", __func__, __LINE__);
 		return -ENOENT;
 	}
 
 	if (of_property_read_u64(dn, "prot-base", &prot_base)) {
-		pr_err("%s:%d failed to get protected region base\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get protected region base\n", __func__,
+		       __LINE__);
 		return -ENOENT;
 	}
 
 	if (of_property_read_u64(dn, "prot-size", &prot_size)) {
-		pr_err("%s:%d failed to get protected region size\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get protected region size\n", __func__,
+		       __LINE__);
 		return -ENOENT;
 	}
 
 	if (of_property_read_u32(dn, "page-size", &page_size)) {
-		pr_err("%s:%d failed to get protected region granularity\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to get protected region granularity\n",
+		       __func__, __LINE__);
 		return -ENOENT;
 	}
 
 	virq = irq_of_parse_and_map(dn, 0);
 	rc = request_irq(virq, (irq_handler_t)devmpu_irq_handler,
-			IRQF_TRIGGER_NONE, "devmpu", NULL);
+			 IRQF_TRIGGER_NONE, "devmpu", NULL);
 	if (rc) {
-		pr_err("%s:%d failed to request irq, rc=%d\n",
-				__func__, __LINE__, rc);
+		pr_info("%s:%d failed to request irq, rc=%d\n", __func__,
+		       __LINE__, rc);
 		return -EPERM;
 	}
 
 	if ((probe_cnt + 1) > DEVMPU_MAX_CTX) {
-		pr_err("%s:%d failed to create context\n",
-				__func__, __LINE__);
+		pr_info("%s:%d failed to create context\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -483,8 +510,91 @@ static int devmpu_probe(struct platform_device *pdev)
 
 	probe_cnt++;
 
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
+	pr_info("%s:%d clear first violation\n", __func__, __LINE__);
+	devmpu_vio_clear(0);
+	rc = devmpu_regist_emi();
+	pr_info("%s:%d try to request EMI callback, rc=%d\n", __func__,
+		__LINE__, rc);
+	if (rc) {
+		pr_info("%s:%d failed to request EMI callback, rc=%d\n",
+		       __func__, __LINE__, rc);
+		return -EINVAL;
+	}
+#endif
+
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
+static irqreturn_t devmpu_irq_handler_emi(unsigned int emi_id,
+					  struct reg_info_t *dump,
+					  unsigned int leng)
+{
+	unsigned int i;
+	unsigned int mpus = 0, mput = 0, mput_2nd = 0;
+	unsigned long long vio_addr;
+	unsigned int master_id, domain_id;
+	unsigned int port_id;
+	unsigned int wr_vio, wr_oo_vio;
+	unsigned int hp_wr_vio;
+
+	for (i = 0; i < leng; i++) {
+		if (dump[i].offset == EMI_MPUS_OFFSET)
+			mpus = dump[i].value;
+
+		if (dump[i].offset == EMI_MPUT_OFFSET)
+			mput = dump[i].value;
+
+		if (dump[i].offset == EMI_MPUT_2ND_OFFSET)
+			mput_2nd = dump[i].value;
+	}
+
+	if (!mput && !mput_2nd) {
+		pr_info("%s:%d failed to get violation from emi\n", __func__,
+		       __LINE__);
+		return IRQ_NONE;
+	}
+
+	vio_addr = ((((unsigned long long)(mput_2nd & 0xF)) << 32) + mput);
+	hp_wr_vio = (mput_2nd >> 21) & 0x3;
+
+	master_id = mpus & 0xFFFF;
+	domain_id = (mpus >> 21) & 0xF;
+	wr_vio = (mpus >> 29) & 0x3;
+	wr_oo_vio = (mpus >> 27) & 0x3;
+	port_id = master_id & 0x7;
+
+	if ((wr_vio == 2) && (wr_oo_vio == 0) &&
+	    ((port_id == 0) || (port_id == 1)))
+		return IRQ_HANDLED;
+
+	/* if is hyperviosr MPU violation, deliver to DevMPU */
+	if (hp_wr_vio) {
+		devmpu_print_violation(vio_addr, master_id, domain_id,
+				       hp_wr_vio, true);
+		return IRQ_HANDLED;
+	}
+
+	return IRQ_NONE;
+}
+
+int devmpu_regist_emi(void)
+{
+	int ret = 0;
+
+	ret = mtk_emimpu_prehandle_register(devmpu_irq_handler_emi);
+	pr_info("%s:%d try to register emi prehandle, %d\n", __func__, __LINE__,
+		ret);
+	if (ret) {
+		pr_info("%s:%d failed to register emi prehandle, %d\n", __func__,
+		       __LINE__, ret);
+		return ret;
+	}
+
+	return ret;
+}
+#endif
 
 static const struct of_device_id devmpu_of_match[] = {
 	{ .compatible = "mediatek,device_mpu_low" },
@@ -508,16 +618,16 @@ static int __init devmpu_init(void)
 
 	ret = platform_driver_register(&devmpu_drv);
 	if (ret) {
-		pr_err("%s:%d failed to register devmpu driver, ret=%d\n",
-				__func__, __LINE__, ret);
+		pr_info("%s:%d failed to register devmpu driver, ret=%d\n",
+		       __func__, __LINE__, ret);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_DEVMPU_DEBUG)
 	ret = driver_create_file(&devmpu_drv.driver,
-			&driver_attr_devmpu_config);
+				 &driver_attr_devmpu_config);
 	if (ret) {
-		pr_err("%s:%d failed to create driver sysfs file, ret=%d\n",
-				__func__, __LINE__, ret);
+		pr_info("%s:%d failed to create driver sysfs file, ret=%d\n",
+		       __func__, __LINE__, ret);
 	}
 #endif
 
@@ -527,14 +637,13 @@ static int __init devmpu_init(void)
 static void __exit devmpu_exit(void)
 {
 #if IS_ENABLED(CONFIG_MTK_DEVMPU_DEBUG)
-	driver_remove_file(&devmpu_drv.driver,
-			&driver_attr_devmpu_config);
+	driver_remove_file(&devmpu_drv.driver, &driver_attr_devmpu_config);
 #endif
 
 	platform_driver_unregister(&devmpu_drv);
 }
 
-module_init(devmpu_init);
+postcore_initcall(devmpu_init);
 module_exit(devmpu_exit);
 
 MODULE_DESCRIPTION("Mediatek Device MPU Driver");

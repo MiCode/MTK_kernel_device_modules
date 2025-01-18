@@ -120,5 +120,9 @@ int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
 void mtk_clear_md_violation(void);
 int mtk_clear_smpu_log(unsigned int emi_id);
 
+#if IS_ENABLED(CONFIG_MTK_DEVMPU_EMI)
+int mtk_emimpu_prehandle_register(emimpu_pre_handler bypass_func);
+#endif
+
 #endif /* __EMI_H__ */
 

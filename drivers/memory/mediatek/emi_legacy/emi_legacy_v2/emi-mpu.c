@@ -89,7 +89,7 @@ static bool is_devmpu_violation(unsigned int emi_id,
 
 	if (dump_cnt >= 2 && dump_reg[2].offset == 0x1fc) {
 		target_dump_bit = (dump_reg[2].value >> 21) & 0x3;
-		pr_info("%s:%d emi(%d), offset(0x%lx), value(0x%lx)\n", __func__,
+		pr_info("%s:%d emi(%d), offset(0x%x), value(0x%x)\n", __func__,
 				__LINE__, emi_id, dump_reg[2].offset, dump_reg[2].value);
 	}
 	if (target_dump_bit)
