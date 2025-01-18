@@ -581,5 +581,5 @@
 	status = "okay";
 };
 /* CONSYS end */
-/*#include <k6893v1_64/cust.dtsi>*/
+#include <k6893v1_64/cust.dtsi>
 

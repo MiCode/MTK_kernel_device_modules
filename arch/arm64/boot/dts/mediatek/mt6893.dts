@@ -1346,6 +1346,9 @@
 	smart_pa: smart_pa {
 	};
 
+	mt_pmic_vcamio_ldo_reg: ldo_vcamio {
+	};
+
 };
 
 #include "mediatek/mt6360.dtsi"
