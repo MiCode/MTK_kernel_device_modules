@@ -518,6 +518,9 @@
 #define CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK		685
 #define CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK		691
 
+#define CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT		696
+#define CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET		697
+
 /* GPR access tokens (for HW register backup)
  * There are 15 32-bit GPR, 3 GPR form a set
  * (64-bit for address, 32-bit for value)
