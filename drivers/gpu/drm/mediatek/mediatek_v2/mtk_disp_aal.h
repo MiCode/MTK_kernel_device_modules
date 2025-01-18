@@ -237,6 +237,19 @@ enum MTK_LED_TYPE {
 	TYPE_MAX = 3,
 };
 
+enum AAL_CMDQ_DMA_MAP {
+	AAL_LOCAL_HIST = 0,
+	AAL_DUAL_PIPE_INFO,
+	AAL_MAX_GHIST,
+	AAL_Y_GHIST,
+	DMDP_AAL_MAX_GHIST,
+	DMDP_AAL_Y_GHIST,
+	COLOR_HIST,
+	DMDP_AAL_CLARITY,
+	TDSHP_CLARITY,
+	AAL_DMA_MAX,
+};
+
 struct DISP_DRE30_HIST {
 	unsigned int aal0_dre_hist[AAL_DRE30_HIST_REGISTER_NUM];
 	unsigned int aal1_dre_hist[AAL_DRE30_HIST_REGISTER_NUM];
@@ -259,6 +272,7 @@ struct mtk_disp_aal_data {
 	bool aal_dre3_auto_inc;
 	bool mdp_aal_ghist_support;
 	int bitShift;
+	bool support_cmdq_eof;
 };
 
 struct dre3_node {
@@ -322,28 +336,28 @@ struct mtk_disp_aal_primary {
 	int dbg_en;
 	struct wait_queue_head hist_wq;
 	struct wait_queue_head sof_irq_wq;
-	spinlock_t clock_lock;
+	struct mutex config_lock;
+	struct mutex clk_lock;
 	spinlock_t hist_lock;
+	struct mutex hist_lock_mutex;
 	struct DISP_AAL_HIST hist;
 	struct DISP_AAL_HIST hist_db;
-	atomic_t hist_wait_dualpipe;
+	atomic_t event_en;
+	atomic_t force_enable_event;
+	atomic_t eof_irq_en;
 	atomic_t sof_irq_available;
 	atomic_t is_init_regs_valid;
 	atomic_t backlight_notified;
 	atomic_t initialed;
 	atomic_t allowPartial;
-	atomic_t force_enable_irq;
 	atomic_t force_relay;
 	atomic_t should_stop;
 	atomic_t dre30_write;
-	atomic_t irq_en;
-	atomic_t eof_irq_en;
 	atomic_t force_delay_check_trig;
 	struct workqueue_struct *flip_wq;
 	struct workqueue_struct *refresh_wq;
 	int backlight_set;
 	int elvsspn_set;
-	spinlock_t dre3_gain_lock;
 	atomic_t dre_halt;
 	struct DISP_DRE30_INIT init_dre30;
 	struct DISP_DRE30_PARAM dre30_gain;
@@ -351,7 +365,6 @@ struct mtk_disp_aal_primary {
 	struct DISP_DRE30_HIST dre30_hist;
 	struct DISP_DRE30_HIST dre30_hist_db;
 	atomic_t change_to_dre30;
-	u32 sram_method;
 	struct wait_queue_head size_wq;
 	bool get_size_available;
 	struct DISP_AAL_DISPLAY_SIZE size;
@@ -363,13 +376,10 @@ struct mtk_disp_aal_primary {
 	int ess_level_cmd_id;
 	int dre_en_cmd_id;
 	int ess_en_cmd_id;
-	bool isDualPQ;
-	struct mutex sram_lock;
 	bool dre30_enabled;
 	bool prv_dre30_enabled;
 	unsigned int dre30_en;
 	struct DISP_CLARITY_REG *disp_clarity_regs;
-	struct mutex clarity_lock;
 	struct mtk_aal_feature_option *aal_fo;
 	struct DISP_AAL_PARAM aal_param;
 	struct DISP_AAL_ESS20_SPECT_PARAM ess20_spect_param;
@@ -381,11 +391,12 @@ struct mtk_disp_aal_primary {
 	struct work_struct_aal_data refresh_task;
 	enum MTK_LED_TYPE led_type;
 	unsigned int fps;
+	struct cmdq_pkt *hist_pkt;
+	atomic_t hist_done_cb;
 };
 
 struct mtk_disp_aal {
 	struct mtk_ddp_comp ddp_comp;
-	struct drm_crtc *crtc;
 	struct dre3_node dre3_hw;
 	atomic_t is_clock_on;
 	const struct mtk_disp_aal_data *data;
@@ -402,7 +413,6 @@ struct mtk_disp_aal {
 	atomic_t force_curve_sram_apb;
 	atomic_t force_hist_apb;
 	atomic_t dre_hw_init;
-	atomic_t dre_hw_prepare;
 	atomic_t dre_config;
 	struct mtk_ddp_comp *comp_tdshp;
 	struct mtk_ddp_comp *comp_gamma;
@@ -410,6 +420,9 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_dmdp_aal;
 	bool set_partial_update;
 	unsigned int roi_height;
+	bool is_hist_reused;
+	struct pq_dma_buffer cmdq_dma_buf;
+	struct pq_dma_map cmdq_dma_map[AAL_DMA_MAX];
 };
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
