@@ -320,14 +320,14 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 		memset(&rResult, 0, sizeof(rResult));
 		get_free_buffers(ctx, &rResult);
 
-		if (rResult.bs_va != 0 && virt_addr_valid(rResult.bs_va)) {
+		if (rResult.bs_va != 0 && virt_addr_valid((void *)rResult.bs_va)) {
 			pbs = (struct mtk_vcodec_mem *)rResult.bs_va;
 			bs_info = container_of(pbs,
 				struct mtk_video_enc_buf, bs_buf);
 			dst_vb2_v4l2 = &bs_info->vb;
 		}
 
-		if (rResult.frm_va != 0 && virt_addr_valid(rResult.frm_va)) {
+		if (rResult.frm_va != 0 && virt_addr_valid((void *)rResult.frm_va)) {
 			pfrm = (struct venc_frm_buf *)rResult.frm_va;
 			frm_info = container_of(pfrm,
 				struct mtk_video_enc_buf, frm_buf);
