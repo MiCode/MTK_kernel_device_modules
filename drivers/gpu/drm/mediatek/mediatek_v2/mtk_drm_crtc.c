@@ -5535,6 +5535,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
 			}
 			atomic_set(&mtk_crtc->force_high_step, 0);
+			mtk_vidle_force_power_ctrl_by_cpu(false);
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {
