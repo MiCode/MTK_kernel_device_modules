@@ -204,7 +204,8 @@ void mmc_mtk_biolog_send_command(__u16 task_id, struct mmc_request *mrq)
 	spin_unlock_irqrestore(&ctx->lock, flags);
 
 	/* mictx send logging */
-	mtk_btag_mictx_send_command(mmc_mtk_btag, tsk->t[tsk_send_cmd],
+	if (!is_sd)
+		mtk_btag_mictx_send_command(mmc_mtk_btag, tsk->t[tsk_send_cmd],
 				    tsk->dir ? BTAG_IO_WRITE : BTAG_IO_READ,
 				    tot_len, top_len, task_id, 0);
 }
