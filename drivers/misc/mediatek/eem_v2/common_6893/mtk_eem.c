@@ -82,6 +82,7 @@ wait_queue_head_t wqStress;
 struct task_struct *threadStress;
 #endif
 static unsigned int ctrl_EEM_Enable = 1;
+static int eem_fake_temp;
 /* Get time stmp to known the time period */
 static unsigned long long eem_pTime_us, eem_cTime_us, eem_diff_us;
 #if EN_EEM_THERM_CLK
@@ -277,7 +278,7 @@ static unsigned int read_efuse_by_offset(__u32 offset)
 	if (IS_ERR(nvmem_dev))
 		eem_error("%s ptpod failed to get mtk_efuse device\n",__func__);
 	nvmem_device_read(nvmem_dev, offset, sizeof(__u32), &value);
-	pr_info("[EEM_DEBUG] offset= %d, value=%d", offset,value);
+	eem_error("[EEM_DEBUG] offset= %d, value=%d", offset, value);
 	return value;
 }
 #ifndef MC50_LOAD
@@ -456,6 +457,7 @@ static int get_devinfo(void)
 	if ((read_efuse_by_offset(DEVINFO_SEG_IDX)
 				& 0xFF) == 0x40)
 		support_seg40 = 1;
+	eem_error("support_seg40 : %d", support_seg40);
 	FUNC_EXIT(FUNC_LV_HELP);
 	return ret;
 }
@@ -1252,6 +1254,10 @@ static void get_volt_table_in_thread(struct eem_det *det)
 	 */
 	/* Check Temperature */
 	ndet->temp = ndet->ops->get_temp(det);
+
+	if(eem_fake_temp)
+		ndet->temp = eem_fake_temp;
+
 #if UPDATE_TO_UPOWER
 	upower_update_degree_by_eem
 		(transfer_ptp_to_upower_bank(det_to_id(ndet)),
@@ -1366,7 +1372,6 @@ static void get_volt_table_in_thread(struct eem_det *det)
 #endif
 	if (0 == (ndet->disabled % 2))
 		ndet->ops->set_volt(ndet);
-	upower_update_tables_by_eem();
 }
 /*
  * Thread for voltage setting
@@ -2314,6 +2319,7 @@ void eem_init02(const char *str)
 	mcucfg_aging = eem_read(MCUCFG_AGING);
 	eem_aging = (((mcucfg_aging >> 31) & 0x1) &&
 		((mcucfg_aging >> 4) & 0xf)) ? 1 : 0;
+	eem_error("mcucfg_aging : %d, eem_aging : %d", mcucfg_aging, eem_aging);
 	for_each_det_ctrl(det, ctrl) {
 		if (HAS_FEATURE(det, FEA_INIT020)) {
 			unsigned long flag;
@@ -2963,6 +2969,54 @@ static int eem_freq_proc_show(struct seq_file *m, void *v)
 	FUNC_EXIT(FUNC_LV_HELP);
 	return 0;
 }
+
+static int eem_faketemp_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m,"faketemp:%d\n",eem_fake_temp);
+	return 0;
+}
+
+static ssize_t eem_faketemp_proc_write(struct file *file,
+	const char __user *buffer, size_t count, loff_t *pos)
+{
+	int ret;
+	char *buf = (char *) __get_free_page(GFP_USER);
+	int offset = 0;
+
+	FUNC_ENTER(FUNC_LV_HELP);
+
+	if (!buf) {
+		FUNC_EXIT(FUNC_LV_HELP);
+		return -ENOMEM;
+	}
+
+	ret = -EINVAL;
+
+	if (count >= PAGE_SIZE)
+		goto out;
+
+	ret = -EFAULT;
+
+	if (copy_from_user(buf, buffer, count))
+		goto out;
+
+	buf[count] = '\0';
+
+	if (!kstrtoint(buf, 10, &offset)) {
+		ret = 0;
+		eem_fake_temp = offset;
+	} else {
+		ret = -EINVAL;
+		eem_debug("bad argument_1!! argument should be \"0\"\n");
+	}
+
+out:
+	free_page((unsigned long)buf);
+	FUNC_EXIT(FUNC_LV_HELP);
+
+	return (ret < 0) ? ret : count;
+}
+
 static int eem_mar_proc_show(struct seq_file *m, void *v)
 {
 	FUNC_ENTER(FUNC_LV_HELP);
@@ -3220,6 +3274,7 @@ PROC_FOPS_RO(eem_dump);
 PROC_FOPS_RO(eem_hrid);
 PROC_FOPS_RO(eem_efuse);
 PROC_FOPS_RO(eem_freq);
+PROC_FOPS_RW(eem_faketemp);
 PROC_FOPS_RO(eem_mar);
 PROC_FOPS_RW(eem_log_en);
 PROC_FOPS_RW(eem_setmargin);
@@ -3248,6 +3303,7 @@ static int create_procfs(void)
 		PROC_ENTRY(eem_hrid),
 		PROC_ENTRY(eem_efuse),
 		PROC_ENTRY(eem_freq),
+		PROC_ENTRY(eem_faketemp),
 		PROC_ENTRY(eem_mar),
 		PROC_ENTRY(eem_log_en),
 #if ENABLE_INIT1_STRESS
@@ -3334,6 +3390,7 @@ static struct notifier_block eem_pm_notifier_func = {
 static int __init eem_init(void)
 {
 	int err = 0;
+	struct eem_det *det;
 
 #ifdef EEM_NOT_READY
 	return 0;
@@ -3367,6 +3424,17 @@ static int __init eem_init(void)
 		return err;
 	}
 #endif /* CONFIG_PM */
+
+	for_each_det(det) {
+		if(HAS_FEATURE(det, FEA_MON))
+			while (!det->set_volt_to_upower) {
+				eem_error("(%s) set_volt_to_upower not completed, sleep 100ms"
+				, det->name);
+				msleep(100);
+			}
+	}
+
+	upower_update_tables_by_eem();
 	return 0;
 }
 static void __exit eem_exit(void)
