@@ -635,6 +635,7 @@ struct drm_mtk_layering_info {
 	__u32 hrt_idx;
 	struct mml_frame_info *mml_cfg[LYE_CRTC];
 	struct wb_frame_info wb_cfg[LYE_CRTC];
+	__u32 exec_reserved_time;
 };
 
 /**
