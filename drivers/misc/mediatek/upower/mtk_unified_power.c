@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2017 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #include <linux/kernel.h>
@@ -458,7 +458,7 @@ void get_pwr_efficiency(void)
 				div64_u64(sum,
 					  (unsigned long long)tbl->row[i].cap);
 #endif
-			upower_debug("[%d] eff = %d dyn = %d lkg = %d cap = %d\n",
+			upower_debug("[%d] eff = %d dyn = %d lkg = %d cap = %llu\n",
 				     i, tbl->row[i].pwr_efficiency,
 				     tbl->row[i].dyn_pwr,
 				     tbl->row[i].lkg_pwr[LKG_IDX],
@@ -498,7 +498,7 @@ void get_L_pwr_efficiency(void)
 			div64_u64(sum, (unsigned long long)tbl->row[i].cap);
 #endif
 
-		upower_debug("L[%d] eff = %d dyn = %d lkg = %d cap = %d\n",
+		upower_debug("L[%d] eff = %d dyn = %d lkg = %d cap = %llu\n",
 			i, tbl->row[i].pwr_efficiency,
 			tbl->row[i].dyn_pwr,
 			tbl->row[i].lkg_pwr[LKG_IDX],
@@ -549,7 +549,7 @@ void get_LL_pwr_efficiency(void)
 			(unsigned long long)(LL_CORE_NUM * tbl->row[i].cap));
 #endif
 
-		upower_debug("LL[%d] eff = %d dyn = %d lkg = %d cap = %d\n",
+		upower_debug("LL[%d] eff = %d dyn = %d lkg = %d cap = %llu\n",
 			i, tbl->row[i].pwr_efficiency,
 			tbl->row[i].dyn_pwr,
 			tbl->row[i].lkg_pwr[LKG_IDX],

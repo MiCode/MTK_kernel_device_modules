@@ -1,5 +1,5 @@
 
-# Copyright (C) 2017 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -41,7 +41,7 @@ Upower-y += mtk_unified_power_api.o
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6768)),)
 Upower-y += mtk_unified_power_plat.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cpufreq_v2/src/common_v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6765/
 Upower-y += mtk_unified_power_plat_6765.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6833)),)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/cpufreq_v2/src/common_v3/
@@ -55,7 +55,3 @@ Upower-y += mtk_unified_power_plat_6739.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 Upower-y += mtk_unified_power_plat_6893.o
 endif
-
-
-
-
