@@ -202,6 +202,19 @@ static int audio_dsp_version_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int audio_dsp_type_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int audio_dsp_type_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = get_adsp_type();
+	return 0;
+}
+
 static int smartpa_swdsp_process_enable_set(struct snd_kcontrol *kcontrol,
 					    struct snd_ctl_elem_value *ucontrol)
 {
@@ -478,6 +491,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       a2dp_clear_irq_set),
 	SOC_SINGLE_EXT("ktv_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       ktv_status_get, ktv_status_set),
+	SOC_SINGLE_EXT("audio_dsp_type", SND_SOC_NOPM, 0, 0xff, 0,
+		       audio_dsp_type_get, audio_dsp_type_set),
 	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0xffff, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
 };
