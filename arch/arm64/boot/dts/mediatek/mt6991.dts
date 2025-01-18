@@ -14896,6 +14896,18 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		cm-perf-mode-thd = <5>;
 	};
 
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		interconnects = <&dvfsrc MT6873_MASTER_MCUSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "fpsgo-perf-bw";
+		required-opps = <&dvfsrc_freq_opp1>;
+		cpu-limit = <2>;
+		gcc-enable = <1>;
+		fbt-cpu-mask = <255 128 15 127 240 112>;
+		sbe-resceue-enable = <1>;
+		ux-scrol-policy-type = <1>;
+	};
+
 	soc-smmu-lmu {
 		compatible = "mtk,smmu-v3-lmu";
 		mtk,smmu = <&soc_smmu>;
