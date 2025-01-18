@@ -4230,7 +4230,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					&smi_larb40 &smi_larb41 &smi_larb42 &smi_larb43
 					&smi_larb44 &smi_larb45 &smi_larb46 &smi_larb47>;
 		mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
-		mmqos-state = <0>;
+		mmqos-state = <0x3c25>;
 		mmqos-log-level = <0>;
 		clocks = <&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
 			<&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>;
