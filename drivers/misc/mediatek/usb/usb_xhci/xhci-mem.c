@@ -1968,14 +1968,15 @@ void xhci_remove_secondary_interrupter_(struct usb_hcd *hcd, struct xhci_interru
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	unsigned int intr_num;
 
+	spin_lock_irq(&xhci->lock);
+
 	/* interrupter 0 is primary interrupter, don't touch it */
-	if (!ir || !ir->intr_num || ir->intr_num >= xhci->max_interrupters)
+	if (!ir || !ir->intr_num || ir->intr_num >= xhci->max_interrupters) {
 		xhci_dbg(xhci, "Invalid secondary interrupter, can't remove\n");
 
-	/* fixme, should we check xhci->interrupter[intr_num] == ir */
-	/* fixme locking */
-
-	spin_lock_irq(&xhci->lock);
+		spin_unlock_irq(&xhci->lock);
+		return;
+	}
 
 	intr_num = ir->intr_num;
 
