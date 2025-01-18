@@ -737,6 +737,15 @@ static void clkchk_cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 	clkchk_ops->cg_timeout_handle(regmap, id, shift);
 }
 
+int clkchk_chk_pm_state(void)
+{
+	if (clkchk_ops == NULL || clkchk_ops->chk_pm_state == NULL)
+		return 0;
+
+	return clkchk_ops->chk_pm_state();
+}
+EXPORT_SYMBOL_GPL(clkchk_chk_pm_state);
+
 static int clkchk_evt_handling(struct notifier_block *nb,
 			unsigned long flags, void *data)
 {

@@ -1041,6 +1041,8 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 
 	get_subsys_reg_dump_mt6991();
 
+	clkchk_chk_pm_state();
+
 	/* vcp no need to vote mminfra */
 	if (pwr_sta) {
 		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "scpsys_hwv_on");
@@ -1067,7 +1069,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	dump_power_event();
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+		if (fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}

@@ -237,6 +237,34 @@ const char *mt6991_chk_pd_name[MT6991_CHK_PD_NUM] = {
 	[58] = "dsi_phy2",
 };
 
+enum pm_state {
+	BUS_PROT_SET_ACK = 0,
+	SRAM_OFF_ACK = 1,
+	RTFF_BK = 2,
+	SET_ISO = 3,
+	SET_ISO_CLK_DIS = 4,
+	SET_CLK_DIS = 5,
+	SET_CLK_DIS_RSTB = 6,
+	CLR_RSTB = 7,
+	POWER_OFF_ACK = 8,
+	POWER_OFF_2ND_ACK = 9,
+	POWER_OFF_IDLE = 10,
+	POWER_ON = 11,
+	POWER_ON_ACK = 12,
+	POWER_ON_2ND = 13,
+	POWER_ON_2ND_ACK = 14,
+	CLR_CLK_DIS = 15,
+	CLR_ISO = 16,
+	CLK_ISO_RSTB = 17,
+	SET_RSTB = 18,
+	RTFF_RS = 19,
+	SRAM_ON_ACK = 20,
+	BUS_PROT_CLR_ACK = 21,
+	SRAM_REPAIR_ACK = 22,
+	POWER_ON_IDLE = 23,
+	PM_STATE_NUM = 24,
+};
+
 #ifdef CONFIG_MTK_DVFSRC_HELPER
 extern int get_sw_req_vcore_opp(void);
 #endif
