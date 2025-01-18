@@ -877,6 +877,8 @@ static struct apu_clk_gp mt688x_mdla1_clk_gp = {
 	.ops = &mt68xx_clk_ops,
 };
 
+#include "clk_def/mt6877_clk.c"
+
 static const struct apu_clk_array apu_clk_gps[] = {
 	{ .name = "mt68x3_core", .aclk_gp = &mt68x3_core_clk_gp },
 	{ .name = "mt68x3_conn", .aclk_gp = &mt68x3_conn_clk_gp },
@@ -892,6 +894,14 @@ static const struct apu_clk_array apu_clk_gps[] = {
 	{ .name = "mt688x_vpu0", .aclk_gp = &mt688x_vpu0_clk_gp },
 	{ .name = "mt688x_vpu1", .aclk_gp = &mt688x_vpu1_clk_gp },
 	{ .name = "mt688x_vpu2", .aclk_gp = &mt688x_vpu2_clk_gp },
+	{ .name = "mt6877_core", .aclk_gp = &mt6877_core_clk_gp },
+	{ .name = "mt6877_conn", .aclk_gp = &mt6877_conn_clk_gp },
+	{ .name = "mt6877_iommu", .aclk_gp = &mt6877_iommu_clk_gp },
+	{ .name = "mt6877_vpu", .aclk_gp = &mt6877_vpu_clk_gp },
+	{ .name = "mt6877_vpu0", .aclk_gp = &mt6877_vpu0_clk_gp },
+	{ .name = "mt6877_vpu1", .aclk_gp = &mt6877_vpu1_clk_gp },
+	{ .name = "mt6877_mdla", .aclk_gp = &mt6877_mdla_clk_gp },
+	{ .name = "mt6877_mdla0", .aclk_gp = &mt6877_mdla0_clk_gp },
 };
 
 struct apu_clk_gp *clk_apu_get_clkgp(struct apu_dev *ad, const char *name)
@@ -906,7 +916,9 @@ struct apu_clk_gp *clk_apu_get_clkgp(struct apu_dev *ad, const char *name)
 			return apu_clk_gps[i].aclk_gp;
 	}
 
-	aprobe_err(ad->dev, "[%s] cannot find \"%s\" clock\n", __func__, name);
+	if (ad != NULL)
+		aprobe_warn(ad->dev, "[%s] cannot find \"%s\" clock\n",
+					__func__, name);
 out:
 	return ERR_PTR(-ENOENT);
 }

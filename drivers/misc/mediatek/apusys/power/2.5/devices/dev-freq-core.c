@@ -91,7 +91,7 @@ static int core_devfreq_curFreq(struct device *dev, unsigned long *freq)
 	}
 
 	if (!*freq)
-		advfs_err(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
+		advfs_warn(dev, "[%s] fail, return %luMHz", __func__, TOMHZ(*freq));
 	return 0;
 }
 
@@ -245,10 +245,19 @@ static const struct apu_plat_data mt6853_core_data = {
 	.child_volt_limit = 600000, /* max voltage(mv) child can raise */
 };
 
+static const struct apu_plat_data mt6877_core_data = {
+	.user = APUCORE,
+	.clkgp_name = "mt6877_core",
+	.rgulgp_name = "mt6873_core",
+	.plat_ops_name = "mt68xx_platops",
+	.child_volt_limit = 600000, /* max voltage(mv) child can raise */
+};
+
 static const struct of_device_id core_devfreq_of_match[] = {
 	{ .compatible = "mtk6873,apucore", .data = &mt6873_core_data },
 	{ .compatible = "mtk6853,apucore", .data = &mt6853_core_data },
 	{ .compatible = "mtk688x,apucore", .data = &mt6853_core_data },
+	{ .compatible = "mtk6877,apucore", .data = &mt6877_core_data },
 	{ },
 };
 

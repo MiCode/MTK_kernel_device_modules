@@ -28,7 +28,7 @@ MODULE_PARM_DESC(fake_bin, "fake binning");
 int fake_raise;
 module_param(fake_raise, int, 0444);
 MODULE_PARM_DESC(fake_raise, "fake raise");
-
+#ifdef ENABLE_AVS
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 #include <linux/nvmem-consumer.h>
 #endif
@@ -50,12 +50,13 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 	unsigned int *buf = NULL;
 	size_t len;
 
+	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 	if (!strcmp(name, efuse_field[EFUSE_SEG])) {
 		/* segment name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_SEG]);
 		if (IS_ERR(cell)) {
-			aprobe_err(ad->dev, "has no \"%s\" efuse cell (%ld)",
-			efuse_field[EFUSE_SEG], ret);
+			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
+				   efuse_field[EFUSE_SEG], ret);
 			goto out;
 		}
 
@@ -63,25 +64,26 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 		nvmem_cell_put(cell);
 		if (IS_ERR_OR_NULL(buf)) {
 			ret = PTR_ERR(buf);
-			aprobe_err(ad->dev, "fail to get %s efuse data (%ld)",
+			aprobe_warn(ad->dev, "fail to get %s efuse data (%d)",
 				   efuse_field[EFUSE_SEG], ret);
 			goto out;
 		} else {
 			ret = (*buf >> oft) & mask;
-			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_SEG], *buf, oft, mask, ret);
 		}
 
 		if (fake_seg) {
 			ret = (fake_seg >> oft) & mask;
-			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_seg = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_seg = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_SEG], fake_seg, oft, mask, ret);
 		}
 	} else if (!strcmp(name, efuse_field[EFUSE_BIN])) {
 		/* bin name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_BIN]);
+		aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 		if (IS_ERR(cell)) {
-			aprobe_err(ad->dev, "has no \"%s\" efuse cell (%ld)",
+			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
 				   efuse_field[EFUSE_BIN], ret);
 			goto out;
 		}
@@ -89,7 +91,7 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 		nvmem_cell_put(cell);
 		if (IS_ERR_OR_NULL(buf)) {
 			ret = PTR_ERR(buf);
-			aprobe_err(ad->dev, "fail to get %s efuse data (%ld)",
+			aprobe_warn(ad->dev, "fail to get %s efuse data (%d)",
 				   efuse_field[EFUSE_BIN], ret);
 			goto out;
 		} else {
@@ -100,20 +102,21 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 			if (ret < 0)
 				goto out;
 			ret = (*buf >> oft) & mask;
-			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_BIN], *buf, oft, mask, ret);
 		}
 
 		if (fake_bin) {
 			ret = (fake_bin >> oft) & mask;
-			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_bin = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_bin = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_BIN], fake_bin, oft, mask, ret);
 		}
 	} else if (!strcmp(name, efuse_field[EFUSE_RAISE])) {
 		/* raise name match */
 		cell = nvmem_cell_get(ad->dev, efuse_field[EFUSE_RAISE]);
+		aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 		if (IS_ERR(cell)) {
-			aprobe_err(ad->dev, "has no \"%s\" efuse cell (%ld)",
+			aprobe_warn(ad->dev, "has no \"%s\" efuse cell (%d)",
 				  efuse_field[EFUSE_RAISE], ret);
 			goto out;
 		}
@@ -121,7 +124,7 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 		nvmem_cell_put(cell);
 		if (IS_ERR_OR_NULL(buf)) {
 			ret = PTR_ERR(buf);
-			aprobe_err(ad->dev, "fail to get %s efuse data (%ld)",
+			aprobe_warn(ad->dev, "fail to get %s efuse data (%d)",
 				   efuse_field[EFUSE_RAISE], ret);
 			goto out;
 		} else {
@@ -132,18 +135,20 @@ static u32 _get_devinfo(struct apu_dev *ad, const char *name)
 			if (ret < 0)
 				goto out;
 			ret = (*buf >> oft) & mask;
-			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get %s efuse cell, *buf = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_RAISE], *buf, oft, mask, ret);
 		}
 
 		if (fake_raise) {
 			ret = (fake_raise >> oft) & mask;
-			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_raise = 0x%x, oft = %d, mask = 0x%x (ret = %ld)",
+			aprobe_info(ad->dev, "get FAKE %s efuse cell, fake_raise = 0x%x, oft = %d, mask = 0x%x (ret = %d)",
 				    efuse_field[EFUSE_RAISE], fake_raise, oft, mask, ret);
 		}
 	}
 
 out:
+	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
+
 	kfree(buf);
 	return ret;
 }
@@ -214,7 +219,7 @@ static int _age_opp(struct apu_dev *ad)
 						(ulong)ori_vt);
 
 		if (ret) {
-			aprobe_err(ad->dev, "%s: Failed to set aging voltage, ret %d\n",
+			aprobe_warn(ad->dev, "%s: Failed to set aging voltage, ret %d\n",
 				   __func__, ret);
 			goto out;
 		}
@@ -285,7 +290,7 @@ static int __get_bin_raise_from_dts(struct apu_dev *ad, char *name, int idx)
 
 	ret = of_property_read_u32_array(ad->dev->of_node, name, tmp, count);
 	if (ret) {
-		aprobe_err(ad->dev, "%s: Error parsing %s: %d\n", __func__, name, ret);
+		aprobe_warn(ad->dev, "%s: Error parsing %s: %d\n", __func__, name, ret);
 		goto out;
 	}
 	ret = tmp[idx];
@@ -367,12 +372,14 @@ static int _bin_raise_opp(struct apu_dev *ad)
 		goto out;
 	bin_v = __get_bin_raise_from_dts(ad, "bin", idx);
 	ad->bin_idx = idx;
+	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 
 	/* get raise voltage */
 	idx = _get_devinfo(ad, efuse_field[EFUSE_RAISE]);
 	if (idx < 0)
 		goto out;
 	raise_v = __get_bin_raise_from_dts(ad, "raise", idx);
+	aprobe_info(ad->dev, "%s %d\n", __func__, __LINE__);
 
 	if ((bin_v == -ENODEV) && (raise_v == -ENODEV)) {
 		goto out;
@@ -392,13 +399,13 @@ static int _bin_raise_opp(struct apu_dev *ad)
 	if (ret)
 		goto out;
 
-	aprobe_info(ad->dev, "%s: b_v/b_f/r_v/r_f = %d/%d/%d/%d\n",
+	aprobe_info(ad->dev, "%s: b_v/b_f/r_v/r_f = %d/%lu/%d/%lu\n",
 			__func__, bin_v, bin_f, raise_v, raise_f);
 
 	if (of_property_read_string(ad->dev->of_node, "vb_mtd", &vb_mtd_name) || !intpl)
 		goto out;
 
-	if (!strncmp(vb_mtd_name, VB_MTD_INTPL, DEVFREQ_NAME_LEN)) {
+	if (!strncmp(vb_mtd_name, VB_MTD_INTPL, VB_MTD_LEN)) {
 		/* calculate other volt/bin except bin/raise points */
 		tmp_f = raise_f + 1;
 		opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
@@ -407,11 +414,11 @@ static int _bin_raise_opp(struct apu_dev *ad)
 			sign_v = dev_pm_opp_get_voltage(opp);
 			tmp_v = __inter_volt(raise_f, raise_v, bin_f, bin_v, tmp_f);
 			aprobe_info(ad->dev,
-				    "%s: \"%s\",r_f/r_v/b_f/b_v = %d/%d/%d/%d\n",
+				    "%s: \"%s\",r_f/r_v/b_f/b_v = %lu/%d/%lu/%d\n",
 				    __func__, VB_MTD_INTPL,
 				   raise_f, raise_v, bin_f, bin_v);
 			aprobe_info(ad->dev,
-				    "%s: \"%s\",t_f/t_v/s_v = %d/%d/%d\n",
+				    "%s: \"%s\",t_f/t_v/s_v = %lu/%d/%lu\n",
 				    __func__, VB_MTD_INTPL,
 				   tmp_f, tmp_v, sign_v);
 			/* change v if inerpolate_v < signed_v */
@@ -471,13 +478,13 @@ static int _segment_opp(struct apu_dev *ad)
 		if (seg_id == dis_seg) {
 			ret = dev_pm_opp_disable(ad->dev, rate);
 			if (ret) {
-				aprobe_err(ad->dev, "%s: Failed to disable %dMhz on seg %d, ret %d\n",
+				aprobe_err(ad->dev, "%s: Failed to disable %lluMhz on seg %d, ret %d\n",
 						__func__, TOMHZ(rate), seg_id,  ret);
 				goto out;
 			} else
 				/* recording seg happen */
 				ad->seg_idx = seg_id;
-				aprobe_info(ad->dev, "%s: disable %dMhz on seg %d, ret %d\n",
+				aprobe_info(ad->dev, "%s: disable %lluMhz on seg %d, ret %d\n",
 						__func__, TOMHZ(rate), seg_id,	ret);
 		}
 	}
@@ -485,7 +492,7 @@ static int _segment_opp(struct apu_dev *ad)
 out:
 	return ret;
 }
-
+#endif
 static int apu_opp_init(struct apu_dev *ad)
 {
 	int ret = 0;
@@ -504,7 +511,7 @@ static int apu_opp_init(struct apu_dev *ad)
 
 	ad->threshold_opp = -EINVAL;
 	ad->child_opp_limit = -EINVAL;
-
+#ifdef ENABLE_AVS
 	/* has regulator dts and can bin/aging/segment */
 	if (ad->user != APUCORE) {
 		ret = _segment_opp(ad);
@@ -528,7 +535,7 @@ static int apu_opp_init(struct apu_dev *ad)
 		if (ret)
 			goto out;
 	}
-
+#endif
 	ad->oppt = dev_pm_opp_get_opp_table(ad->dev);
 	if (IS_ERR_OR_NULL(ad->oppt)) {
 		ret = PTR_ERR(ad->oppt);
@@ -796,6 +803,10 @@ static int apu_misc_init(struct apu_dev *ad)
 
 	if (ad->user == APUCONN)
 		ret = apu_rpc_init_done(ad);
+
+	/* for mt6877 init ACC, which is located in vcore ao domain */
+	if (!IS_ERR_OR_NULL(ad->aclk->ops->acc_init))
+		ad->aclk->ops->acc_init(ad->aclk);
 
 	for (;;) {
 		if (apupw_dbg_get_loglvl() < VERBOSE_LVL)

@@ -6,8 +6,9 @@
 #include <linux/io.h>
 #include <linux/bitops.h>
 
-#define POLL_INTERVAL		10 /* us */
-#define POLL_TIMEOUT		50 /* us */
+#define POLL_INTERVAL           10 /* us */
+#define POLL_TIMEOUT            50 /* us */
+#define PLL_POLL_TIMEOUT        500 /* us */
 
 #define	MASK(x)	(x - 1)
 
