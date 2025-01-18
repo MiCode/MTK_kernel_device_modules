@@ -2177,7 +2177,7 @@ static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u
 	mtk_dma_buf_set_name(dbuf, "vcp_uncache");
 
 	memset(&map, 0, sizeof(struct iosys_map));
-	if (dma_buf_vmap(dbuf, &map)) {
+	if (dma_buf_vmap_unlocked(dbuf, &map)) {
 		pr_notice("[VCP] vmap fail\n");
 		return -ENOMEM;
 	}
@@ -2191,7 +2191,7 @@ static int vcp_alloc_iova(struct device *dev, __u32 size, __u64 *start_phys, __u
 		return PTR_ERR(attach);
 	}
 
-	sgt = dma_buf_map_attachment(attach, DMA_BIDIRECTIONAL);
+	sgt = dma_buf_map_attachment_unlocked(attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(sgt)) {
 		pr_notice("[VCP] buffer map failed, detach and return\n");
 		dma_buf_detach(dbuf, attach);
