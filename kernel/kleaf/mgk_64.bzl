@@ -2376,7 +2376,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-audio-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
-
+        mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4_c/imgsensor_isp4_c.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cam_cal/src/isp4_c/camera_eeprom_isp4_c.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6989.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mcupm/v2/mcupm.ko")

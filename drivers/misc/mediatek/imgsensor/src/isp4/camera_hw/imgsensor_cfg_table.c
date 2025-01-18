@@ -10,8 +10,6 @@
 /*#include "mt6306/mt6306.h"*/
 #include "mclk/mclk.h"
 
-
-
 #include "imgsensor_cfg_table.h"
 
 enum IMGSENSOR_RETURN
@@ -91,8 +89,8 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {
 
 	{IMGSENSOR_SENSOR_IDX_NONE}
 };
-
-struct IMGSENSOR_HW_CFG imgsensor_mt6768_config_alpha[] = {
+#ifdef IMGSENSOR_ISP4_T_REF
+struct IMGSENSOR_HW_CFG imgsensor_isp4_t_ref[] = {
 	{
 		IMGSENSOR_SENSOR_IDX_MAIN,
 		IMGSENSOR_I2C_DEV_0,
@@ -121,6 +119,7 @@ struct IMGSENSOR_HW_CFG imgsensor_mt6768_config_alpha[] = {
 	},
 	{IMGSENSOR_SENSOR_IDX_NONE}
 };
+#endif
 
 struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[] = {
 #ifdef MIPI_SWITCH

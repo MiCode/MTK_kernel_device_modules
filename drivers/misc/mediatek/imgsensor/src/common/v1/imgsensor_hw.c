@@ -64,7 +64,11 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 
 		if (custlen != 0 && strncmp(prj_name, imgsensor_prj_names[0], custlen)
 			== 0) {
-			pcust_pwr_cfg = imgsensor_mt6768_config_alpha;
+#ifdef IMGSENSOR_ISP4_T_REF
+			pcust_pwr_cfg = imgsensor_isp4_t_ref;
+#else
+			pcust_pwr_cfg = imgsensor_custom_config;
+#endif
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
 		}

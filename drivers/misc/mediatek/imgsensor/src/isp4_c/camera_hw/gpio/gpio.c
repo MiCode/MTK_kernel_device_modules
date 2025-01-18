@@ -53,7 +53,7 @@ static enum IMGSENSOR_RETURN gpio_release(void *pinstance)
 			mutex_lock(&pinctrl_mutex);
 			if (lookup_names != NULL &&
 				pgpio->ppinctrl_state_cam[j][i] != NULL &&
-				  !IS_ERR(pgpio->ppinctrl_state_cam[j][i]) &&
+				!IS_ERR(pgpio->ppinctrl_state_cam[j][i]) &&
 				pinctrl_select_state(pgpio->ppinctrl,
 					pgpio->ppinctrl_state_cam[j][i])) {
 				pr_info(

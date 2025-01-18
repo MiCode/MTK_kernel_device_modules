@@ -544,7 +544,7 @@ static void KD_SENSOR_PROFILE(char *tag)
 	tv1 = tv2;
 
 	spin_unlock(&kdsensor_drv_lock);
-	pr_debug("[%s]Profile = %lu us\n", tag, timespec64_to_ns(&diff));
+	pr_debug("[%s]Profile = %lld us\n", tag, timespec64_to_ns(&diff));
 }
 #else
 static void KD_SENSOR_PROFILE_INIT(void)

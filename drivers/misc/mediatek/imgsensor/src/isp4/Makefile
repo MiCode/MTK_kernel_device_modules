@@ -28,6 +28,9 @@ subdir-ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/ \
 	-DNO_I2C_MTK -DNO_CLK_METER -DIMGSENSOR_USE_RPM -DIMGSENSOR_DFS_CTRL_ENABLE -DSENINF_USE_WAKE_LOCK
 
+#For isp4_t ref only
+subdir-ccflags-y += -DIMGSENSOR_ISP4_T_REF
+
 define add_subdrv
 $(eval subdrv-rpath = $1)
 $(eval include $(srctree)/$(src)/$1/Makefile)

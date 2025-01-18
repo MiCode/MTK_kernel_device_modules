@@ -13,6 +13,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/pinctrl/pinctrl.h>
+#include <linux/pinctrl/consumer.h>
 
 #include "kd_camera_typedef.h"
 #include "imgsensor_hw.h"
