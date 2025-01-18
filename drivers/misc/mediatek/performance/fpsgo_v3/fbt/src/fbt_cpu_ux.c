@@ -977,7 +977,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 				&max_util_b, &max_util_m);
 			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
 				max_cap_b, max_cap_m, max_util, max_util_b,
-				max_util_m, FPSGO_JERK_FIRST);
+				max_util_m, 0, FPSGO_JERK_FIRST);
 		}
 
 		thr->boost_info.last_blc = blc_wt;
@@ -1027,7 +1027,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 				&max_util_b, &max_util_m);
 			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
 				max_cap_b, max_cap_m, max_util, max_util_b,
-				max_util_m, FPSGO_JERK_FIRST);
+				max_util_m, 0, FPSGO_JERK_FIRST);
 		}
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
 	}

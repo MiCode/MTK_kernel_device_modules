@@ -36,6 +36,7 @@
 #include <sched/sched.h>
 #include <linux/cpufreq.h>
 #include <linux/irq_work.h>
+#include <linux/power_supply.h>
 #include "sugov/cpufreq.h"
 #include "eas/vip.h"
 
@@ -97,7 +98,11 @@
 #define DEFAULT_SECOND_GROUP_NUM 0
 #define DEFAULT_QUOTA_V2_DIFF_CLAMP_MIN 0
 #define DEFAULT_FPSGO_EXP_L2Q_MULTIPLE_TIMES 2
-
+#define DEFAULT_POWERRL_FPS_MARGIN -20
+#define DEFAULT_POWERRL_CURRENT_UNIT 1000
+#define DEFAULT_POWERRL_VOLTAGE_UNIT 1000
+#define DEFAULT_POWERRL_TOTAL_UNIT 1000
+#define DEFAULT_POWERRL_VOLTAGE 4
 
 #define FPSGO_TPOLICY_NONE 0
 #define FPSGO_TPOLICY_AFFINITY 1
@@ -144,6 +149,26 @@ struct fbt_syslimit {
 	int ropp;	/* rescue ceiling limit */
 	int cfreq;	/* tuning ceiling */
 	int rfreq;	/* tuning rescue ceiling */
+};
+
+struct pmu_info {
+	struct rb_node entry;
+	pid_t pid;
+	unsigned long long ts;
+	struct perf_event *inst_event[MAX_NR_CPUS];
+	unsigned long long inst_new;
+	unsigned long long inst_prev;
+	unsigned long long enabled;
+	unsigned long long running;
+};
+
+static struct perf_event_attr inst_spec_event_attr = {
+	.type           = PERF_TYPE_HARDWARE,
+	.config         = PERF_COUNT_HW_INSTRUCTIONS, /* = ARMV8_PMUV3_PERFCTR_INST_RETIRED = 0x08 */
+	.size           = sizeof(struct perf_event_attr),
+	.sample_freq    = 1000,
+	.inherit        = 1,
+	.freq           = 1,
 };
 
 enum FPSGO_JERK {
@@ -214,6 +239,7 @@ enum FPSGO_TASK_GROUP {
 };
 
 static struct kobject *fbt_kobj;
+static struct power_supply *bat_psy;
 
 static int uclamp_boost_enable;
 static int bhr;
@@ -318,6 +344,13 @@ static int rl_l2q_enable;
 static int rl_l2q_exp_us;
 static int rl_l2q_exp_times;
 static unsigned long long fps_drop_time;
+static int powerRL_enable;
+static int powerRL_FPS_margin;
+static int powerRL_current_unit;
+static int powerRL_voltage_unit;
+static int powerRL_total_unit;
+static int powerRL_voltage;
+static int powerRL_ko_is_ready;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -386,6 +419,12 @@ module_param(limit_min_cap_target_t, int, 0644);
 module_param(exp_fps_raw_enable, int, 0644);
 module_param(exp_normal_fps_pct, int, 0644);
 module_param(exp_fps_disp_enable, int, 0644);
+module_param(powerRL_enable, int, 0644);
+module_param(powerRL_FPS_margin, int, 0644);
+module_param(powerRL_current_unit, int, 0644);
+module_param(powerRL_voltage_unit, int, 0644);
+module_param(powerRL_total_unit, int, 0644);
+module_param(powerRL_voltage, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -496,6 +535,14 @@ int (*fbt_cal_target_time_fp)(int pid, unsigned long long bufID, int target_fpks
 		unsigned long long l2q_ns, unsigned int is_logic_head_alive,
 		unsigned long long expected_l2q_ns, unsigned long long *target_t_ns);
 EXPORT_SYMBOL(fbt_cal_target_time_fp);
+
+int (*fbt_power_rl_fp)(int pid, unsigned long long bufID,
+		unsigned long long ts, unsigned int target_fps_ori,
+		int power_current, unsigned long long inst_frame,
+		int min_cap, int fps_margin,
+		int *uclamp, int *ruclamp,
+		int *uclamp_m, int *ruclamp_m);
+EXPORT_SYMBOL(fbt_power_rl_fp);
 
 void (*fpsgo_set_last_target_t_fp)(int pid, unsigned long long bufId,
 	unsigned long long last_target_t);
@@ -947,6 +994,143 @@ EXIT:
 		fpsgo_systrace_c_fbt(pid, 0, nice, "nice");
 
 	return ori_nice;
+}
+
+static struct pmu_info *fbt_pmu_search_add(struct rb_root *pmu_info_tree, int pid, bool isAdd)
+{
+	struct rb_node **p = &pmu_info_tree->rb_node;
+	struct rb_node *parent = NULL;
+	struct pmu_info *iter = NULL;
+	struct task_struct *task = NULL;
+	unsigned int cpu;
+
+	if (!pid)
+		return NULL;
+
+	while(*p) {
+		parent = *p;
+		iter = rb_entry(*p, struct pmu_info, entry);
+		if (pid < iter->pid)
+			p = &(*p)->rb_left;
+		else if (pid > iter->pid)
+			p = &(*p)->rb_right;
+		else
+			return iter;
+	}
+
+	if (!isAdd)
+		return NULL;
+
+	rcu_read_lock();
+	task = find_task_by_vpid(pid);
+	if (!task) {
+		rcu_read_unlock();
+		return NULL;
+	}
+	get_task_struct(task);
+	rcu_read_unlock();
+
+	iter = kzalloc(sizeof(*iter), GFP_KERNEL);
+	if (!iter) {
+		put_task_struct(task);
+		return NULL;
+	}
+
+	iter->pid = pid;
+
+	for_each_possible_cpu(cpu) {
+		if (cpu >= MAX_NR_CPUS)
+			continue;
+
+		iter->inst_event[cpu] = perf_event_create_kernel_counter(&inst_spec_event_attr, cpu, task, NULL, NULL);
+		if (IS_ERR(iter->inst_event)) {
+			FPSGO_LOGE("%s inst error", __func__);
+			put_task_struct(task);
+			kfree(iter);
+			return NULL;
+		}
+		perf_event_enable(iter->inst_event[cpu]);
+	}
+	put_task_struct(task);
+
+	rb_link_node(&iter->entry, parent, p);
+	rb_insert_color(&iter->entry, pmu_info_tree);
+	return iter;
+}
+
+static void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
+{
+	struct rb_node *cur = NULL;
+	struct rb_node *next = NULL;
+	struct pmu_info *iter = NULL;
+	unsigned int cpu;
+
+	cur = rb_first(pmu_info_tree);
+	while (cur) {
+		next = rb_next(cur);
+		iter = rb_entry(cur, struct pmu_info, entry);
+		if (iter->ts != ts) {
+			for_each_possible_cpu(cpu) {
+				if (cpu >= MAX_NR_CPUS)
+					continue;
+				perf_event_disable(iter->inst_event[cpu]);
+				perf_event_release_kernel(iter->inst_event[cpu]);
+			}
+			rb_erase(&iter->entry, pmu_info_tree);
+			kfree(iter);
+		}
+		cur = next;
+	}
+}
+
+static void fbt_task_set_pmu(struct rb_root *pmu_info_tree, int separate_aa, int light_thread,
+int action, int pid, int group, unsigned long long ts)
+{
+	struct pmu_info *iter = NULL;
+
+	if ((light_thread && action == XGF_ADD_DEP) || (action == XGF_ADD_DEP_FORCE_LLF))
+		goto EXIT;
+	else if (separate_aa) {
+		switch (group) {
+		case FPSGO_GROUP_HEAVY:
+		case FPSGO_GROUP_SECOND:
+			iter = fbt_pmu_search_add(pmu_info_tree, pid, 1);
+			if (iter)
+				iter->ts = ts;
+			break;
+		case FPSGO_GROUP_OTHERS:
+		default:
+			break;
+		}
+	}
+EXIT:
+	return;
+}
+
+static unsigned long long fbt_pmu_read(struct rb_root *pmu_info_tree)
+{
+	struct rb_node *cur = NULL;
+	struct pmu_info *iter = NULL;
+	unsigned long long inst_all_tasks = 0;
+
+	for (cur = rb_first(pmu_info_tree); cur; cur = rb_next(cur)) {
+		unsigned int cpu;
+		unsigned long long inst_cur = 0;
+
+		iter = rb_entry(cur, struct pmu_info, entry);
+		for_each_possible_cpu(cpu) {
+			if (cpu >= MAX_NR_CPUS)
+				continue;
+			inst_cur += perf_event_read_value(iter->inst_event[cpu], &iter->enabled, &iter->running);
+		}
+
+		iter->inst_new = inst_cur - iter->inst_prev;
+		iter->inst_prev = inst_cur;
+
+		inst_all_tasks += iter->inst_new;
+	}
+
+	return inst_all_tasks;
 }
 
 static void fbt_task_cap(int pid, int min_cap, int min_cap_heavy, int min_cap_second,
@@ -1825,6 +2009,7 @@ static int fbt_get_margin_max_util(int cluster, int freq)
 }
 
 static int fbt_get_limit_max_capacity(const struct fpsgo_boost_attr *attr,
+	const struct fbt_powerRL_limit *powerRL,
 	int jerk, int *limit_max_cap, int *limit_cap_b, int *limit_cap_m,
 	int  *limit_max_util, int *limit_util_b, int *limit_util_m)
 {
@@ -1835,6 +2020,7 @@ static int fbt_get_limit_max_capacity(const struct fpsgo_boost_attr *attr,
 	int limit_cfreq2cap_final, limit_rfreq2cap_final,
 		limit_cfreq2cap_m_final, limit_rfreq2cap_m_final;
 	int cluster;
+	int powerRL_enable_final;
 
 	if (!limit_max_cap || !limit_cap_b || !limit_cap_m) {
 		ret = -ENOMEM;
@@ -1846,10 +2032,19 @@ static int fbt_get_limit_max_capacity(const struct fpsgo_boost_attr *attr,
 		return ret;
 	}
 
-	limit_uclamp_final = attr->limit_uclamp_by_pid;
-	limit_ruclamp_final = attr->limit_ruclamp_by_pid;
-	limit_uclamp_m_final = attr->limit_uclamp_m_by_pid;
-	limit_ruclamp_m_final = attr->limit_ruclamp_m_by_pid;
+	powerRL_enable_final = attr->powerRL_enable_by_pid;
+
+	if (powerRL_enable_final && bat_psy) {
+		limit_uclamp_final = powerRL->uclamp;
+		limit_ruclamp_final = powerRL->ruclamp;
+		limit_uclamp_m_final = powerRL->uclamp_m;
+		limit_ruclamp_m_final = powerRL->ruclamp_m;
+	} else {
+		limit_uclamp_final = attr->limit_uclamp_by_pid;
+		limit_ruclamp_final = attr->limit_ruclamp_by_pid;
+		limit_uclamp_m_final = attr->limit_uclamp_m_by_pid;
+		limit_ruclamp_m_final = attr->limit_ruclamp_m_by_pid;
+	}
 	limit_cfreq2cap_final = attr->limit_cfreq2cap_by_pid;
 	limit_rfreq2cap_final = attr->limit_rfreq2cap_by_pid;
 	limit_cfreq2cap_m_final = attr->limit_cfreq2cap_m_by_pid;
@@ -1940,7 +2135,7 @@ void fbt_cal_min_max_cap(struct render_info *thr,
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	separate_pct_b_final = thr->attr.separate_pct_b_by_pid;
 	separate_pct_m_final = thr->attr.separate_pct_m_by_pid;
-	fbt_get_limit_max_capacity(&(thr->attr), jerk, &limit_cap,
+	fbt_get_limit_max_capacity(&(thr->attr), &(thr->powerRL), jerk, &limit_cap,
 		&limit_cap_b, &limit_cap_m, &limit_util, &limit_util_b, &limit_util_m);
 
 	// Calculate bhr/bhr_opp
@@ -2083,7 +2278,7 @@ int fbt_determine_final_dep_list(struct render_info *thr,
 void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
 			int max_cap_m, int max_util, int max_util_b, int max_util_m,
-			int jerk)
+			unsigned long long cur_ts, int jerk)
 {
 /*
  * boost_ta should be checked during the flow, not here.
@@ -2122,6 +2317,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int max_cap_other;
 	int max_util_other;
 	int user_cpumask[FPSGO_MAX_GROUP];
+	int powerRL_enable_final;
 	struct fbt_boost_info *boost_info;
 
 	if (!uclamp_boost_enable)
@@ -2150,7 +2346,9 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	bm_th_final = thr->attr.bm_th_by_pid;
 	ml_th_final = thr->attr.ml_th_by_pid;
 	gh_prefer_final = thr->attr.gh_prefer_by_pid;
+	powerRL_enable_final = thr->attr.powerRL_enable_by_pid;
 	boost_info = &(thr->boost_info);
+
 	fbt_get_user_group_setting(thr, user_cpumask);
 
 	if (!min_cap) {
@@ -2304,6 +2502,10 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, min_cap_other, "perf_idx_other");
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, max_cap_other, "perf_idx_max_other");
 
+		if (powerRL_enable_final && bat_psy && cur_ts)
+			fbt_task_set_pmu(&thr->pmu_info_tree, separate_aa_final, light_thread,
+			fl->action, fl->pid, fl->heavyidx, cur_ts);
+
 		if ((boost_LR_final && fbt_is_R_L_task(fl->pid, heaviest_pid, second_heavy_pid, thr->pid)) ||
 				(boost_affinity_final && fl->heavyidx) ||
 				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->action == XGF_ADD_DEP_NO_LLF))
@@ -2331,6 +2533,9 @@ print_log:
 			(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
 			strncat(dep_str, temp, strlen(temp));
 	}
+
+	if (powerRL_enable_final && bat_psy && cur_ts)
+		fbt_task_reset_pmu(&thr->pmu_info_tree, cur_ts);
 
 	fpsgo_main_trace("[%d] dep-list %s", thr->pid, dep_str);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
@@ -2428,6 +2633,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->limit_rfreq2cap_by_pid = limit_rfreq2cap;
 	render_attr->limit_cfreq2cap_m_by_pid = limit_cfreq2cap_m;
 	render_attr->limit_rfreq2cap_m_by_pid = limit_rfreq2cap_m;
+
+	render_attr->powerRL_enable_by_pid = powerRL_enable;
+	render_attr->powerRL_FPS_margin_by_pid = powerRL_FPS_margin;
 
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
@@ -2609,6 +2817,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	if (pid_attr.limit_min_cap_target_t_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->limit_min_cap_target_t_by_pid =
 			pid_attr.limit_min_cap_target_t_by_pid;
+	if (pid_attr.powerRL_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->powerRL_enable_by_pid = pid_attr.powerRL_enable_by_pid;
+	if (pid_attr.powerRL_FPS_margin_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->powerRL_FPS_margin_by_pid = pid_attr.powerRL_FPS_margin_by_pid;
 
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
@@ -2870,7 +3082,7 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 			thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m, &max_cap, &max_cap_b,
 			&max_cap_m, &max_util, &max_util_b, &max_util_m);
 		fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
-			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, jerk);
+			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, 0, jerk);
 	}
 	fps_drop_time = ktime_to_ms(ktime_get());
 }
@@ -4301,9 +4513,22 @@ void notify_rl_ko_is_ready(void)
 }
 EXPORT_SYMBOL(notify_rl_ko_is_ready);
 
+void notify_powerRL_ko_is_ready(void)
+{
+	mutex_lock(&fbt_mlock);
+	powerRL_ko_is_ready = 1;
+	mutex_unlock(&fbt_mlock);
+}
+EXPORT_SYMBOL(notify_powerRL_ko_is_ready);
+
 int fbt_get_rl_ko_is_ready(void)
 {
 	return rl_ko_is_ready;
+}
+
+int fbt_get_powerRL_ko_is_ready(void)
+{
+	return powerRL_ko_is_ready;
 }
 
 void fbt_get_l2q_ns(struct render_info *iter, unsigned long long cur_queue_end_ts,
@@ -4470,6 +4695,44 @@ out:
 }
 EXPORT_SYMBOL(fbt_cal_target_time_ns);
 
+int fbt_power_rl(struct render_info *thr, int is_powerRL_ready, int separate_aa_active, int powerRL_FPS_margin_final,
+	unsigned long long ts, unsigned int target_fps_ori)
+{
+	int ret = 0;
+
+	if (is_powerRL_ready && fbt_power_rl_fp) {
+		// record power current
+		unsigned long long inst_frame = 0;
+		int power_current = 0;
+		int min_cap = separate_aa_active ? thr->boost_info.last_blc_b : thr->boost_info.last_blc;
+		union power_supply_propval ps_current = { .intval = 0 }, ps_voltage = {.intval = 0};
+
+		if (power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &ps_current) < 0)
+			FPSGO_LOGE("%s Get current status fail\n", __func__);
+
+		if (power_supply_get_property(bat_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &ps_voltage) < 0)
+			FPSGO_LOGE("%s Get voltage status fail\n", __func__);
+
+		power_current = (ps_current.intval / powerRL_current_unit) *
+			(ps_voltage.intval / powerRL_voltage_unit) * -1;
+		power_current = power_current / powerRL_total_unit / powerRL_voltage;
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, power_current, "power_current");
+
+		// record instructions
+		inst_frame = fbt_pmu_read(&thr->pmu_info_tree);
+
+		// cal limit by powerRL
+		ret = fbt_power_rl_fp(thr->pid, thr->buffer_id,
+			ts, target_fps_ori,
+			power_current, inst_frame,
+			min_cap, powerRL_FPS_margin_final,
+			&thr->powerRL.uclamp, &thr->powerRL.ruclamp,
+			&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(fbt_power_rl);
+
 static int fbt_boost_policy(
 	long long t_cpu_cur,
 	long long target_time,
@@ -4511,6 +4774,8 @@ static int fbt_boost_policy(
 	int qr_t2wnt_y_p_final;
 	int blc_boost_final;
 	int expected_fps_margin_final;
+	int powerRL_enable_final;
+	int powerRL_FPS_margin_final;
 #if IS_ENABLED(CONFIG_ARM64)
 	int s32_target_time;
 #endif
@@ -4544,7 +4809,8 @@ static int fbt_boost_policy(
 	quota_v2_diff_clamp_min_final = thread_info->attr.quota_v2_diff_clamp_min_by_pid;
 	quota_v2_diff_clamp_max_final = thread_info->attr.quota_v2_diff_clamp_max_by_pid;
 	limit_min_cap_target_t_final = thread_info->attr.limit_min_cap_target_t_by_pid;
-
+	powerRL_enable_final = thread_info->attr.powerRL_enable_by_pid;
+	powerRL_FPS_margin_final = thread_info->attr.powerRL_FPS_margin_by_pid;
 
 	cur_ts = fpsgo_get_time();
 
@@ -4590,9 +4856,13 @@ static int fbt_boost_policy(
 		ff_obj, pid, buffer_id, target_fps, ff_window_size, ff_kmin, aa_n, aa_b, aa_m,
 		&filtered_aa_n, &filtered_aa_b, &filtered_aa_m);
 
+	if (powerRL_enable_final && bat_psy)
+		fbt_power_rl(thread_info, fbt_get_powerRL_ko_is_ready(), separate_aa_final, powerRL_FPS_margin_final,
+			ts, target_fps_ori);
+
 	limit_cap = check_limit_cap(0);
 	limit_sys_max_cap = fbt_get_limit_capacity(0);
-	fbt_get_limit_max_capacity(&thread_info->attr, 0, &limit_max_cap, &limit_cap_b,
+	fbt_get_limit_max_capacity(&thread_info->attr, &thread_info->powerRL, 0, &limit_max_cap, &limit_cap_b,
 		&limit_cap_m, &limit_util, &limit_util_b, &limit_util_m);
 
 	limit_max_cap = min(limit_sys_max_cap, limit_max_cap);
@@ -4721,7 +4991,7 @@ static int fbt_boost_policy(
 		if (!boost_ta) {
 			fbt_set_min_cap_locked(thread_info, blc_wt, blc_wt_b, blc_wt_m,
 				max_cap, max_cap_b, max_cap_m, max_util, max_util_b,
-				max_util_m, FPSGO_JERK_INACTIVE);
+				max_util_m, cur_ts, FPSGO_JERK_INACTIVE);
 		}
 	}
 
@@ -5495,7 +5765,7 @@ void fbt_reset_boost(struct render_info *thr)
 	mutex_lock(&fbt_mlock);
 	if (!boost_ta)
 		fbt_set_min_cap_locked(thr, 0, 0, 0, 100, 100, 100,
-			1024, 1024, 1024, FPSGO_JERK_INACTIVE);
+			1024, 1024, 1024, 0, FPSGO_JERK_INACTIVE);
 	fbt_check_max_blc_locked(cur_pid);
 	mutex_unlock(&fbt_mlock);
 
@@ -5805,7 +6075,7 @@ skip_del_pblc:
 	mutex_lock(&fbt_mlock);
 	if (!boost_ta)
 		fbt_set_min_cap_locked(thr, 0, 0, 0, 100, 100, 100,
-			1024, 1024, 1024, FPSGO_JERK_INACTIVE);
+			1024, 1024, 1024, 0, FPSGO_JERK_INACTIVE);
 	if (thr) {
 		thr->boost_info.last_blc = 0;
 		thr->boost_info.last_blc_b = 0;
@@ -5899,7 +6169,7 @@ void fpsgo_base2fbt_set_min_cap(struct render_info *thr, int min_cap,
 			thr->pid, thr->buffer_id, &min_cap, &min_cap_b, &min_cap_m,
 			&max_cap, &max_cap_b, &max_cap_m, &max_util, &max_util_b, &max_util_m);
 		fbt_set_min_cap_locked(thr, min_cap, min_cap_b, min_cap_m, max_cap,
-			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, FPSGO_JERK_INACTIVE);
+			max_cap_b, max_cap_m, max_util, max_util_b, max_util_m, 0, FPSGO_JERK_INACTIVE);
 
 		thr->boost_info.last_blc = min_cap;
 		thr->boost_info.last_blc_b = min_cap_b;
@@ -7277,6 +7547,16 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->limit_min_cap_target_t_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->limit_min_cap_target_t_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "powerRL_enable")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->powerRL_enable_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->powerRL_enable_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "powerRL_FPS_margin")) {
+		if ((val <= 100 && val >= -100) && action == 's')
+			boost_attr->powerRL_FPS_margin_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->powerRL_FPS_margin_by_pid = BY_PID_DEFAULT_VAL;
 	}
 
 delete_pid:
@@ -9069,6 +9349,14 @@ int __init fbt_cpu_init(void)
 	rl_l2q_enable = 0;
 	rl_l2q_exp_times = DEFAULT_FPSGO_EXP_L2Q_MULTIPLE_TIMES;
 
+	// powerRL related
+	powerRL_enable = fbt_get_default_powerRL_enable();
+	powerRL_FPS_margin = DEFAULT_POWERRL_FPS_MARGIN;
+	powerRL_current_unit = DEFAULT_POWERRL_CURRENT_UNIT;
+	powerRL_voltage_unit = DEFAULT_POWERRL_VOLTAGE_UNIT;
+	powerRL_total_unit= DEFAULT_POWERRL_TOTAL_UNIT;
+	powerRL_voltage = DEFAULT_POWERRL_VOLTAGE;
+
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
 
@@ -9167,6 +9455,10 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_us);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rl_l2q_exp_times);
 	}
+
+	bat_psy = power_supply_get_by_name("battery");
+	if (bat_psy == NULL || IS_ERR(bat_psy))
+		FPSGO_LOGE("%s Couldn't get bat_psy\n", __func__);
 
 	INIT_LIST_HEAD(&blc_list);
 

@@ -374,6 +374,11 @@ int fbt_get_default_sbe_rescue_enable(void)
 	return plat_sbe_rescue_enable;
 }
 
+int fbt_get_default_powerRL_enable(void)
+{
+	return 0;
+}
+
 int fbt_get_ux_scroll_policy_type(void)
 {
 	return plat_ux_scroll_policy_type;
@@ -383,4 +388,3 @@ int fbt_get_l_min_bhropp(void)
 {
 	return 0;
 }
-

@@ -48,7 +48,9 @@ void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 	unsigned long long identifier);
 void notify_rl_ko_is_ready(void);
+void notify_powerRL_ko_is_ready(void);
 int fbt_get_rl_ko_is_ready(void);
+int fbt_get_powerRL_ko_is_ready(void);
 
 int __init fbt_cpu_init(void);
 void __exit fbt_cpu_exit(void);
@@ -92,7 +94,8 @@ int fbt_get_dep_list(struct render_info *thr);
 int fbt_determine_final_dep_list(struct render_info *thr, struct fpsgo_loading *final_dep_arr);
 void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
-		int max_cap_m, int max_util, int max_util_b, int max_util_m, int jerk);
+		int max_cap_m, int max_util, int max_util_b, int max_util_m,
+		unsigned long long cur_ts, int jerk);
 unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 	unsigned int last_blc_wt, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt);
@@ -189,6 +192,8 @@ static inline void fpsgo_set_rl_l2q_enable(int enable) { }
 static inline void fpsgo_set_expected_l2q_us(int vsync_multiple,
 	unsigned long long user_expected_l2q_us) { }
 static inline int fpsgo_get_rl_l2q_enable(void) { return 0; }
+static inline void notify_powerRL_ko_is_ready(void) { }
+static inline int fbt_get_powerRL_ko_is_ready(void)  { return 0; }
 #endif
 
 #endif

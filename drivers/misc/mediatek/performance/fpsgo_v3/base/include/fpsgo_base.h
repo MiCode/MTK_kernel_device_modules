@@ -366,6 +366,18 @@ struct fpsgo_boost_attr {
 
 	/* Minus idle time*/
 	int aa_b_minus_idle_t_by_pid;
+
+	/* power RL */
+	int powerRL_enable_by_pid;
+	int powerRL_FPS_margin_by_pid;
+};
+
+
+struct fbt_powerRL_limit {
+	int uclamp;
+	int ruclamp;
+	int uclamp_m;
+	int ruclamp_m;
 };
 
 struct FSTB_FRAME_L2Q_INFO {
@@ -448,6 +460,10 @@ struct render_info {
 	int avg_freq;
 	unsigned long long buffer_quota_ts;
 	int buffer_quota;
+
+	/*powerRL*/
+	struct rb_root pmu_info_tree;
+	struct fbt_powerRL_limit powerRL;
 
 	struct mutex thr_mlock;
 

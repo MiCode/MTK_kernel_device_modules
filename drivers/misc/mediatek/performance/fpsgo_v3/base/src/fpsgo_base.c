@@ -82,6 +82,9 @@ static struct rb_root jank_detection_info_tree;
 void (*fpsgo_rl_delete_render_info_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
 
+void (*fpsgo_power_rl_delete_fp)(int pid, unsigned long long bufID);
+EXPORT_SYMBOL(fpsgo_power_rl_delete_fp);
+
 static DEFINE_MUTEX(fpsgo_render_lock);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
@@ -640,6 +643,18 @@ static int fpsgo_fbt_delete_rl_render(int pid, unsigned long long buf_id)
 	return ret;
 }
 
+static int fpsgo_fbt_delete_power_rl(int pid, unsigned long long buf_id)
+{
+	int ret = 0;
+
+	if (fpsgo_power_rl_delete_fp)
+		fpsgo_power_rl_delete_fp(pid, buf_id);
+	else
+		ret = -ENOENT;
+
+	return ret;
+}
+
 int fpsgo_base_is_finished(struct render_info *thr)
 {
 	fpsgo_lockprove(__func__);
@@ -724,6 +739,8 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->limit_rfreq2cap_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_cfreq2cap_m_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_rfreq2cap_m_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->powerRL_enable_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->powerRL_FPS_margin_by_pid = BY_PID_DEFAULT_VAL;
 	}
 }
 
@@ -860,6 +877,11 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	set_bit(FPSGO_TYPE, &local_master_type);
 	iter_thr->master_type = local_master_type;
 	iter_thr->bypass_closed_loop = 0;
+	iter_thr->pmu_info_tree = RB_ROOT;
+	iter_thr->powerRL.uclamp = 100;
+	iter_thr->powerRL.ruclamp = 100;
+	iter_thr->powerRL.uclamp_m = 100;
+	iter_thr->powerRL.ruclamp_m = 100;
 
 	fbt_set_render_boost_attr(iter_thr);
 	fbt_init_ux(iter_thr);
@@ -925,6 +947,7 @@ void fpsgo_delete_render_info(int pid,
 		fpsgo_add_linger(data);
 	}
 	fpsgo_fbt_delete_rl_render(pid, buffer_id);
+	fpsgo_fbt_delete_power_rl(pid, buffer_id);
 	fpsgo_fstb2other_info_update(data->pid,
 		data->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 	fpsgo_thread_unlock(&data->thr_mlock);
@@ -1061,7 +1084,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.limit_cfreq2cap_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.limit_rfreq2cap_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.limit_cfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL &&
-			boost_attr.limit_rfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL) {
+			boost_attr.limit_rfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.powerRL_enable_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.powerRL_FPS_margin_by_pid == BY_PID_DEFAULT_VAL) {
 		return 1;
 	}
 	return 0;
@@ -1726,6 +1751,7 @@ int fpsgo_check_thread_status(void)
 				fpsgo_add_linger(iter);
 			}
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+			fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
 			fpsgo_fstb2other_info_update(iter->pid,
 				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 			fpsgo_thread_unlock(&iter->thr_mlock);
@@ -1812,6 +1838,7 @@ void fpsgo_clear(void)
 			fpsgo_add_linger(iter);
 		}
 		fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
+		fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
 		fpsgo_fstb2other_info_update(iter->pid,
 			iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
 		fpsgo_thread_unlock(&iter->thr_mlock);
@@ -3040,6 +3067,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" powerRL_enable, powerRL_FPS_margin\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -3182,6 +3212,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d\n",
 			attr_item.aa_b_minus_idle_t_by_pid);
 		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d\n",
+			attr_item.powerRL_enable_by_pid,
+			attr_item.powerRL_FPS_margin_by_pid);
+		pos += length;
 	}
 
 	fpsgo_render_tree_unlock(__func__);
@@ -3256,6 +3292,9 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time\n");
+	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" powerRL_enable, powerRL_FPS_margin\n");
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
@@ -3369,6 +3408,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d\n",
 			attr_item.aa_b_minus_idle_t_by_pid);
+		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d\n",
+			attr_item.powerRL_enable_by_pid,
+			attr_item.powerRL_FPS_margin_by_pid);
 		pos += length;
 	}
 
