@@ -212,6 +212,8 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"HW_SRC_1_IN_CH2", "I2SIN1_CH2", "Hostless_SRC_1_DL"},
 	{"HW_SRC_1_IN_CH1", "I2SIN4_CH1", "Hostless_SRC_1_DL"},
 	{"HW_SRC_1_IN_CH2", "I2SIN4_CH2", "Hostless_SRC_1_DL"},
+	{"HW_SRC_1_IN_CH1", "I2SIN4_CH3", "Hostless_SRC_1_DL"},
+	{"HW_SRC_1_IN_CH2", "I2SIN4_CH4", "Hostless_SRC_1_DL"},
 	{"Hostless_SRC_1_UL", NULL, "HW_SRC_1_Out"},
 	{"Hostless_HW_SRC_1_IN_UL", NULL, "HW_SRC_1_Out"},
 
@@ -224,6 +226,8 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"HW_SRC_2_IN_CH2", "DL4_CH2", "Hostless_SRC_2_DL"},
 	{"HW_SRC_2_IN_CH1", "DL_24CH_CH1", "Hostless_SRC_2_DL"},
 	{"HW_SRC_2_IN_CH2", "DL_24CH_CH2", "Hostless_SRC_2_DL"},
+	{"HW_SRC_2_IN_CH1", "I2SIN4_CH5", "Hostless_SRC_2_DL"},
+	{"HW_SRC_2_IN_CH2", "I2SIN4_CH6", "Hostless_SRC_2_DL"},
 	{"I2SOUT0_CH1", "HW_SRC_2_OUT_CH1", "Hostless_SRC_2_DL"},
 	{"I2SOUT0_CH2", "HW_SRC_2_OUT_CH2", "Hostless_SRC_2_DL"},
 	{"Hostless_SRC_2_UL", NULL, "HW_SRC_2_Out"},
@@ -238,6 +242,12 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"I2SOUT4_CH1", "HW_SRC_2_OUT_CH1", "Hostless_HW_SRC_2_IN_DL"},
 	{"I2SOUT4_CH2", "HW_SRC_2_OUT_CH2", "Hostless_HW_SRC_2_IN_DL"},
 	{"Hostless_HW_SRC_2_IN_UL", NULL, "HW_SRC_2_Out"},
+
+	/* Hostless SRC 3 */
+	{"HW_SRC_3_IN_CH1", "I2SIN4_CH7", "Hostless_SRC_3_DL"},
+	{"HW_SRC_3_IN_CH2", "I2SIN4_CH8", "Hostless_SRC_3_DL"},
+	{"Hostless_SRC_3_UL", NULL, "HW_SRC_3_Out"},
+	{"Hostless_HW_SRC_3_IN_UL", NULL, "HW_SRC_3_Out"},
 
 	/* Hostless_SRC_bargein */
 	{"HW_SRC_0_IN_CH1", "I2SIN0_CH1", "Hostless_SRC_Bargein_DL"},
@@ -476,6 +486,25 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		},
 		.capture = {
 			.stream_name = "Hostless_SRC_2_UL",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.ops = &mtk_dai_hostless_ops,
+	},
+	{
+		.name = "Hostless_SRC_3_DAI",
+		.id = MT6991_DAI_HOSTLESS_SRC_3,
+		.playback = {
+			.stream_name = "Hostless_SRC_3_DL",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.capture = {
+			.stream_name = "Hostless_SRC_3_UL",
 			.channels_min = 1,
 			.channels_max = 2,
 			.rates = MTK_HOSTLESS_RATES,
