@@ -606,6 +606,9 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	uint32_t value = 0, mask = 0;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	AALFLOW_LOG("+ comd id :%d\n", comp->id);
 	if (cfg->source_bpc == 8)
@@ -622,7 +625,8 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 		SET_VAL_MASK(value, mask, 0, FLD_RELAY_MODE);
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_ENGINE_EN);
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_HIST_EN);
-	SET_VAL_MASK(value, mask, 1, FLD_BLK_HIST_EN);
+	if (priv->data->mmsys_id != MMSYS_MT6768 && priv->data->mmsys_id != MMSYS_MT6761)
+		SET_VAL_MASK(value, mask, 1, FLD_BLK_HIST_EN);
 	SET_VAL_MASK(value, mask, 0x40, FLD_FRAME_DONE_DELAY);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_CFG, value, mask);
@@ -3947,9 +3951,10 @@ static void disp_aal_dma_init(struct mtk_ddp_comp *comp)
 	uint32_t offset;
 	int i;
 
-	if (comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF])
+	if (comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF]) {
 		client = comp->mtk_crtc->gce_obj.client[CLIENT_PQ_EOF];
-	aal_data->cmdq_dma_buf.va = cmdq_mbox_buf_alloc(client, &aal_data->cmdq_dma_buf.pa);
+		aal_data->cmdq_dma_buf.va = cmdq_mbox_buf_alloc(client, &aal_data->cmdq_dma_buf.pa);
+	}
 	AALFLOW_LOG("va %p pa 0x%llx\n", aal_data->cmdq_dma_buf.va, aal_data->cmdq_dma_buf.pa);
 	aal_data->cmdq_dma_buf.size = CMDQ_BUF_ALLOC_SIZE;
 	aal_data->cmdq_dma_map[AAL_LOCAL_HIST].size = AAL_DRE30_HIST_REGISTER_NUM * 4;
@@ -3985,7 +3990,8 @@ static void disp_aal_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&aal_data->force_curve_sram_apb, 0);
 	atomic_set(&aal_data->force_hist_apb, 0);
 	atomic_set(&aal_data->dre_config, 0);
-	disp_aal_dma_init(comp);
+	if (aal_data->data->support_cmdq_eof)
+		disp_aal_dma_init(comp);
 
 	if (!aal_data->is_right_pipe) {
 		aal_data->comp_tdshp = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
