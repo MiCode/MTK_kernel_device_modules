@@ -23,8 +23,8 @@
 			"sku2_backup",			/* [14] SKU2 Backup */
 			"sku2_backup",			/* [15] SKU2 Backup TxHD160 */
 			"qm42655_qm45655",		/* [16] SKU1-1 with MXD7282 BT eFEM */
-			"qm42655_qm45655__phone",	/* [17] SKU1-1 Phone 2ant 2G+2A */
-			"qm42655_qm45655";		/* [18] SKU1-1 EVB 2ant 2G+2A */
+			"qm42655_qm45655_2g2a__phone",	/* [17] SKU1-1 Phone 2ant 2G+2A */
+			"qm42655_qm45655_2g2a";		/* [18] SKU1-1 EVB 2ant 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
