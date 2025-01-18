@@ -2706,6 +2706,14 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6853-venc.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-chk-mt6853.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-dbg-mt6853.ko")
+
+        mgk_64_device_modules.append("drivers/interconnect/mediatek/mmqos-mt6853.ko")
+
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
+
         mgk_64_device_modules.append("drivers/regulator/mt6362-regulator.ko")
         mgk_64_device_modules.append("drivers/mfd/mt6362-core.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
@@ -2716,6 +2724,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/mtk_smmu_qos.ko")
+
+        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
+
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v2/sspm.ko")
