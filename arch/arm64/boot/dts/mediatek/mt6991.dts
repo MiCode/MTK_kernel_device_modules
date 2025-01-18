@@ -12387,6 +12387,16 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		iommus = <&apu_smmu 0xa>;
 	};
 
+	mdla: mdla {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, mdla-rv";
+		core-num = <4>;
+		version = <0x69910505>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xe>;
+	};
+
 	apu_top_3: apu-top-3@19020000 {
 		compatible = "mt6991,apu_top_3";
 		reg = <0 0x19020000 0 0x1000>,          // apu_rcx
