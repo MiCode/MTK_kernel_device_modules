@@ -7055,6 +7055,7 @@
 		mediatek,syscon-wakeup = <&pericfg 0x420 101>;
 		wakeup-source;
 		cdp-block;
+		usb3-u1gou2-disable;
 		status = "okay";
 		port {
 			mtu3_drd_switch: endpoint {

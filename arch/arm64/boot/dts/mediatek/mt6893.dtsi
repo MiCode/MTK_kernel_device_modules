@@ -2794,6 +2794,8 @@ cpus {
 			mediatek,noise-still-tr;
 			mediatek,syscon-wakeup = <&infracfg_ao_clk 0x200 103>;
 			wakeup-source;
+			cdp-block;
+			usb3-u1gou2-disable;
 
 			usb_host: xhci0@11200000 {
 				compatible = "mediatek,mtk-xhci";
