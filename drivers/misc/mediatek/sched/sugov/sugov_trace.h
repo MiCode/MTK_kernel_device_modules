@@ -132,25 +132,28 @@ TRACE_EVENT(sugov_ext_util,
 );
 
 TRACE_EVENT(sugov_ext_wl,
-	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl, int wl_manual),
-	TP_ARGS(gear_id, cpu, wl, wl_manual),
+	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl, int wl_raw, int wl_manual),
+	TP_ARGS(gear_id, cpu, wl, wl_raw, wl_manual),
 	TP_STRUCT__entry(
 		__field(unsigned int, gear_id)
 		__field(unsigned int, cpu)
 		__field(unsigned int, wl)
+		__field(unsigned int, wl_raw)
 		__field(int, wl_manual)
 	),
 	TP_fast_assign(
 		__entry->gear_id = gear_id;
 		__entry->cpu = cpu;
 		__entry->wl = wl;
+		__entry->wl_raw = wl_raw;
 		__entry->wl_manual = wl_manual;
 	),
 	TP_printk(
-		"gear_id=%u cpu=%u wle=%u wl_manual=%d",
+		"gear_id=%u cpu=%u wle=%u wl_raw=%d wl_manual=%d",
 		__entry->gear_id,
 		__entry->cpu,
 		__entry->wl,
+		__entry->wl_raw,
 		__entry->wl_manual)
 );
 
@@ -557,6 +560,35 @@ TRACE_EVENT(sched_pd_util2opp,
 		__entry->val_s,
 		__entry->val_m,
 		__entry->r_o,
+		__entry->caller)
+);
+
+TRACE_EVENT(sched_update_cpu_capacity,
+	TP_PROTO(int cpu, struct rq *rq, int wl, int caller),
+
+	TP_ARGS(cpu, rq, wl, caller),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, wl)
+		__field(unsigned long, cap_orig)
+		__field(unsigned long, cap_of)
+		__field(int, caller)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->wl = wl;
+		__entry->cap_orig = rq->cpu_capacity_orig;
+		__entry->cap_of = rq->cpu_capacity;
+		__entry->caller = caller;
+	),
+
+	TP_printk("cpu=%d wl=%d cap_origin=%lu cap_normal=%lu caller=%d",
+		__entry->cpu,
+		__entry->wl,
+		__entry->cap_orig,
+		__entry->cap_of,
 		__entry->caller)
 );
 

@@ -138,7 +138,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		),
 
 	TP_printk(
-		"fit=%d cpu=%d util=%ld uclamp_min=%lu uclamp_max=%lu cap=%lu thermal=%lu ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		"fit=%d cpu=%d util=%ld uclamp_min=%lu uclamp_max=%lu cap_normal=%lu thermal=%lu ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d cap_origin=%ld adaptive_margin_ctrl=%d",
 		__entry->fit,
 		__entry->cpu,
 		__entry->util,
@@ -241,7 +241,7 @@ TRACE_EVENT(sched_util_fits_cpu,
 		),
 
 	TP_printk(
-		"cpu=%d pre_clamped_util=%ld clamped_util=%ld cpu_cap=%ld task_min_cap=%ld task_max_cap=%ld rq_min_cap=%ld rq_max_cap=%ld",
+		"cpu=%d pre_clamped_util=%ld clamped_util=%ld cap_normal=%ld task_min_cap=%ld task_max_cap=%ld rq_min_cap=%ld rq_max_cap=%ld",
 		__entry->cpu,
 		__entry->pre_clamped_util,
 		__entry->clamped_util,

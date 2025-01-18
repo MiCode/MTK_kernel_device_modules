@@ -22,6 +22,10 @@
 #define SBB_TASK 2
 #define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
 
+DECLARE_PER_CPU(unsigned long, max_freq_scale);
+DECLARE_PER_CPU(unsigned long, min_freq_scale);
+DECLARE_PER_CPU(unsigned long, min_freq);
+
 struct sbb_cpu_data {
 	unsigned int active;
 	unsigned int idle_time;
@@ -245,6 +249,7 @@ struct curr_collab_state_struct {
 	int (*ret_function)(void);
 };
 
+void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity);
 extern void *get_dpt_sram_base(void);
 extern struct curr_collab_state_struct *get_curr_collab_state(void);
 extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);

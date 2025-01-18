@@ -11,6 +11,7 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <sched/autogroup.h>
+#include <sched/pelt.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
 #include <linux/of_platform.h>
@@ -322,6 +323,77 @@ int get_wl_manual(void)
 }
 EXPORT_SYMBOL_GPL(get_wl_manual);
 
+#define CAP_UPDATED_BY_WL 0
+#define CAP_UPDATED_BY_DPT 1
+
+/************************* scheduler common ************************/
+
+DEFINE_PER_CPU(unsigned long, max_freq_scale) = SCHED_CAPACITY_SCALE;
+EXPORT_PER_CPU_SYMBOL(max_freq_scale);
+
+DEFINE_PER_CPU(unsigned long, min_freq_scale) = 0;
+EXPORT_PER_CPU_SYMBOL(min_freq_scale);
+
+DEFINE_PER_CPU(unsigned long, min_freq) = 0;
+EXPORT_PER_CPU_SYMBOL(min_freq);
+
+/************************* scheduler common ************************/
+
+/* cloned from k66 scale_rt_capacity() */
+static unsigned long mtk_scale_rt_capacity(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+	unsigned long max = arch_scale_cpu_capacity(cpu);
+	unsigned long used, free;
+	unsigned long irq;
+
+	irq = cpu_util_irq(rq);
+
+	if (unlikely(irq >= max))
+		return 1;
+
+	used = READ_ONCE(rq->avg_rt.util_avg);
+	used += READ_ONCE(rq->avg_dl.util_avg);
+	used += thermal_load_avg(rq);
+
+	if (unlikely(used >= max))
+		return 1;
+
+	free = max - used;
+
+	return scale_irq_capacity(free, irq, max);
+}
+
+/* modified from k66 update_cpu_capacity() */
+void mtk_update_cpu_capacity(int cpu, unsigned long cap_orig, int wl, int caller)
+{
+	unsigned long capacity = mtk_scale_rt_capacity(cpu);
+
+	WRITE_ONCE(per_cpu(cpu_scale, cpu), cap_orig);
+	cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
+
+	if (!capacity)
+		capacity = 1;
+
+	hook_update_cpu_capacity(NULL, cpu, &capacity);
+
+	cpu_rq(cpu)->cpu_capacity = capacity;
+
+	if (trace_sched_update_cpu_capacity_enabled())
+		trace_sched_update_cpu_capacity(cpu, cpu_rq(cpu), wl, caller);
+}
+
+/* hooked from k66 update_cpu_capacity() */
+void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
+{
+	unsigned long cap_ceiling, capacity_orig = capacity_orig_of(cpu);
+
+	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max_capacity(cpu));
+	*capacity = clamp_t(unsigned long, cap_ceiling,
+		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
+	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(thermal_pressure, cpu)));
+}
+
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal)
 {
@@ -329,13 +401,15 @@ void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal)
 
 	if (spin_trylock(&update_wl_tbl_lock)) {
 		unsigned long tmp_jiffies = jiffies;
+		int wl_raw = -1;
 
 		if (last_jiffies !=  tmp_jiffies) {
 			last_jiffies =  tmp_jiffies;
 			spin_unlock(&update_wl_tbl_lock);
-			if (wl_manual == -1)
+			if (wl_manual == -1) {
 				tmp = get_wl(0);
-			else
+				wl_raw = tmp;
+			} else
 				tmp = wl_manual;
 			if (tmp >= 0 && tmp < nr_wl)
 				wl_curr = tmp;
@@ -345,15 +419,14 @@ void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal)
 
 				for (i = 0; i < pd_count; i++) {
 					for_each_cpu(j, &pd_cpumask[i])
-						WRITE_ONCE(per_cpu(cpu_scale, j),
-							pd_opp2cap(j, 0, true, wl_curr, NULL, true,
-								DPT_CALL_UPDATE_WL_TBL));
+						mtk_update_cpu_capacity(j, pd_opp2cap(j, 0, true, wl_curr, NULL, true,
+								DPT_CALL_UPDATE_WL_TBL), wl_curr, CAP_UPDATED_BY_WL);
 				}
 			}
 			last_wl = wl_curr;
 			if (trace_sugov_ext_wl_enabled())
 				trace_sugov_ext_wl(topology_cluster_id(cpu),
-						cpu, wl_curr, wl_manual);
+						cpu, wl_curr, wl_raw, wl_manual);
 			if (wl_delay != wl_curr) {
 				wl_delay_cnt++;
 				if (wl_delay_cnt > wl_delay_update_tick) {
@@ -511,8 +584,7 @@ void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 					cap = pd_opp2cap(cpu, 0, false, wl,
 						NULL, true, DPT_CALL_UPDATE_CURR_COLLAB_STATE);
 
-				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
-				cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
+				mtk_update_cpu_capacity(cpu, cap, wl, CAP_UPDATED_BY_DPT);
 
 				if (capacity_orig_of(cpu) > sys_max_cap) {
 					sys_max_cap = capacity_orig_of(cpu);
