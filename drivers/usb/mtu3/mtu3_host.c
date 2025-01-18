@@ -380,7 +380,8 @@ static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
 
 	for_each_child_of_node(parent_dn, child) {
 		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
-		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1")) {
+		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
+		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
 			pdev = of_find_device_by_node(child);
 			if (pdev) {
 				ssusb->xhci_pdrv =
