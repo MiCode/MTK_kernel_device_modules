@@ -13,7 +13,7 @@ int mdw_rvs_set_ctx(int type, int idx, uint8_t ctx);
 int mdw_rvs_free_vlm(uint32_t ctx);
 int mdw_rvs_get_vlm(uint32_t req_size, bool force,
 		uint32_t *id, uint32_t *tcm_size);
-int mdw_rvs_get_vlm_property(uint64_t *start, uint32_t *size);
+int mdw_rvs_get_vlm_property(uint64_t *start, uint64_t *size);
 int mdw_apu_mem_alloc(uint32_t type, uint32_t size,
 	uint64_t *addr, uint32_t *sid);
 int mdw_apu_mem_free(uint32_t sid);

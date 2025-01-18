@@ -21,8 +21,8 @@
 #include "apu_mem_def.h"
 
 #define mdw_mem_show(m) \
-	mdw_mem_debug("mem(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
-	"/0x%llx/0x%x/%u/0x%llx/%d/%p)(%d)(%u)\n", \
+	mdw_mem_debug("mem(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%llx/0x%llx" \
+	"/0x%llx/0x%llx/%llu/0x%llx/%d/%p)(%d)(%u)\n", \
 	(uint64_t)m->mpriv, (uint64_t)m, m->handle, (uint64_t)m->dbuf, \
 	m->type, (uint64_t)m->vaddr, m->size, \
 	m->device_va, m->device_iova, m->dva_size, m->align, m->flags, \
@@ -212,12 +212,12 @@ long mdw_mem_set_name(struct mdw_mem *m, const char *buf)
 }
 
 struct mdw_mem *mdw_mem_alloc(struct mdw_fpriv *mpriv, enum mdw_mem_type type,
-	uint32_t size, uint32_t align, uint64_t flags, bool need_handle)
+	uint64_t size, uint64_t align, uint64_t flags, bool need_handle)
 {
 	struct mdw_mem *m = NULL;
 	int ret = -EINVAL;
 
-	mdw_trace_begin("apumdw:mem_alloc|size:%u align:%u",
+	mdw_trace_begin("apumdw:mem_alloc|size:%llu align:%llu",
 		size, align);
 
 	/* create mem struct */
@@ -267,11 +267,11 @@ out:
 
 void mdw_mem_free(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 {
-	uint32_t size = m->size, align = m->align;
+	uint64_t size = m->size, align = m->align;
 
 	mdw_mem_show(m);
 
-	mdw_trace_begin("apumdw:mem_free|size:%u align:%u",
+	mdw_trace_begin("apumdw:mem_free|size:%llu align:%llu",
 		size, align);
 
 	dma_buf_put(m->dbuf);
@@ -290,12 +290,12 @@ static void mdw_mem_map_release(struct kref *ref)
 
 	/* unmap device va */
 	mutex_lock(&m->mtx);
-	mdw_trace_begin("apumdw:detach|size:%u align:%u",
+	mdw_trace_begin("apumdw:detach|size:%llu align:%llu",
 		m->size, m->align);
 	dma_buf_unmap_attachment_unlocked(map->attach,
 		map->sgt, DMA_BIDIRECTIONAL);
 	mdw_trace_end();
-	mdw_trace_begin("apumdw:unmap|size:%u align:%u",
+	mdw_trace_begin("apumdw:unmap|size:%llu align:%llu",
 		m->size, m->align);
 	dma_buf_detach(m->dbuf, map->attach);
 	mdw_trace_end();
@@ -343,7 +343,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 
 	/* check size */
 	if (m->size > m->dbuf->size) {
-		mdw_drv_err("m(0x%llx/0x%llx/%d/0x%llx) size not match(%u/%lu)\n",
+		mdw_drv_err("m(0x%llx/0x%llx/%d/0x%llx) size not match(%llu/%lu)\n",
 			(uint64_t)m->mpriv, (uint64_t)m, m->handle, (uint64_t)m->dbuf,
 			m->size, m->dbuf->size);
 		ret = -EINVAL;
@@ -374,7 +374,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	map->put = mdw_mem_map_put;
 
 	/* attach device */
-	mdw_trace_begin("apumdw:attach|size:%u align:%u",
+	mdw_trace_begin("apumdw:attach|size:%llu align:%llu",
 		m->size, m->align);
 	map->attach = dma_buf_attach(m->dbuf, m->mdev);
 	if (IS_ERR(map->attach)) {
@@ -386,7 +386,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	mdw_trace_end();
 
 	/* map device va */
-	mdw_trace_begin("apumdw:map|size:%u align:%u",
+	mdw_trace_begin("apumdw:map|size:%llu align:%llu",
 		m->size, m->align);
 	map->sgt = dma_buf_map_attachment_unlocked(map->attach,
 		DMA_BIDIRECTIONAL);
@@ -408,7 +408,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 
 	/* check iova and size */
 	if (!m->device_iova || !m->dva_size) {
-		mdw_drv_err("can't get mem(0x%llx) iova(0x%llx/%u)\n",
+		mdw_drv_err("can't get mem(0x%llx) iova(0x%llx/%llu)\n",
 			(uint64_t)m, m->device_va, m->dva_size);
 		ret = -ENOMEM;
 		goto unmap_dbuf;
@@ -419,7 +419,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		goto skip_iova2eva;
 	}
 	/* handle iova to eva */
-	mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
+	mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%llu btype(%d)",
 		m->device_iova, m->dva_size, m->buf_type);
 	ret = apu_mem_map_iova(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva);
 	mdw_trace_end();
@@ -464,7 +464,7 @@ free_map:
 out:
 	if (ret) {
 		if (is_apummu == false)
-			mdw_exception("%s:map dva fail, type(%u) size(%u)\n",
+			mdw_exception("%s:map dva fail, type(%u) size(%llu)\n",
 				current->comm, m->type, m->size);
 		dma_buf_put(m->dbuf);
 	}
@@ -573,7 +573,7 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		return -EINVAL;
 	}
 
-	mdw_trace_begin("apumdw:mem_map|size:%u", m->size);
+	mdw_trace_begin("apumdw:mem_map|size:%llu", m->size);
 	get_dma_buf(m->dbuf);
 
 	mdw_mem_show(m);
@@ -599,7 +599,7 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		if (mpriv->mdev->uapi_ver < 4)
 			goto skip_iova2eva;
 		/* handle iova2eva */
-		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
+		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%llu btype(%d)",
 			m->device_iova, m->dva_size, m->buf_type);
 		ret = apu_mem_map_iova(m->buf_type, (uint64_t)mpriv, m->device_iova,
 				m->dva_size, &eva);
@@ -670,7 +670,7 @@ int mdw_mem_flush(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	if (m->pool)
 		return mdw_mem_pool_flush(m);
 
-	mdw_trace_begin("apumdw:mem_flush|size:%u", m->dva_size);
+	mdw_trace_begin("apumdw:mem_flush|size:%llu", m->dva_size);
 	ret = dma_buf_end_cpu_access(m->dbuf, DMA_TO_DEVICE);
 	if (ret) {
 		mdw_drv_err("Flush Fail\n");
@@ -691,7 +691,7 @@ int mdw_mem_invalidate(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	if (m->pool)
 		return mdw_mem_pool_invalidate(m);
 
-	mdw_trace_begin("apumdw:mem_invalidate|size:%u", m->dva_size);
+	mdw_trace_begin("apumdw:mem_invalidate|size:%llu", m->dva_size);
 
 	ret = dma_buf_begin_cpu_access(m->dbuf, DMA_FROM_DEVICE);
 	if (ret) {
@@ -726,7 +726,7 @@ static int mdw_mem_ioctl_alloc(struct mdw_fpriv *mpriv,
 	int ret = 0;
 
 	if (!in->alloc.size) {
-		mdw_drv_err("invalid size(%u)\n", in->alloc.size);
+		mdw_drv_err("invalid size(%llu)\n", in->alloc.size);
 		return -EINVAL;
 	}
 
@@ -783,7 +783,7 @@ static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 	struct mdw_mem *m = NULL;
 	struct dma_buf *dbuf = NULL;
 	int ret = -ENOMEM, handle = (int)in->map.handle;
-	uint32_t size = in->map.size;
+	uint64_t size = in->map.size;
 	uint64_t flags = in->map.flags;
 	bool in_highaddr = (flags & F_MDW_MEM_HIGHADDR) ? true : false;
 	bool m_highaddr = false;
@@ -983,11 +983,11 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t 
 	/* query from mpriv invoke list */
 	list_for_each_entry(m_invoke, &mpriv->invokes, u_node) {
 		m = m_invoke->m;
-		mdw_vld_debug("check mem invoke list: va(0x%llx/%u) iova(0x%llx/%u)...\n",
+		mdw_vld_debug("check mem invoke list: va(0x%llx/%llu) iova(0x%llx/%llu)...\n",
 			(uint64_t)m->vaddr, m->size, m->device_iova, m->dva_size);
 		if (iova < m->device_iova || iova + size > m->device_iova + m->dva_size)
 			continue;
-		mdw_vld_debug("check mem invoke list: va(0x%llx/%u) iova(0x%llx/%u) match\n",
+		mdw_vld_debug("check mem invoke list: va(0x%llx/%llu) iova(0x%llx/%llu) match\n",
 			(uint64_t)m->vaddr, m->size, m->device_iova, m->dva_size);
 		if (c) {
 			ret = mdw_cmd_invoke_map(c, m->map);
@@ -1006,7 +1006,7 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t 
 		iova >= mdev->minfos[MDW_MEM_TYPE_VLM].device_iova &&
 		iova + size <= mdev->minfos[MDW_MEM_TYPE_VLM].device_iova +
 		mdev->minfos[MDW_MEM_TYPE_VLM].dva_size) {
-		mdw_vld_debug("m(0x%llx/%u) in vlm range(0x%llx/%u)\n",
+		mdw_vld_debug("m(0x%llx/%u) in vlm range(0x%llx/%llu)\n",
 			iova, size,
 			mdev->minfos[MDW_MEM_TYPE_VLM].device_iova,
 			mdev->minfos[MDW_MEM_TYPE_VLM].dva_size);

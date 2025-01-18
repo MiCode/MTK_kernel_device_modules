@@ -155,7 +155,8 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	struct mdw_cmd *c)
 {
 	struct mdw_rv_cmd *rc = NULL;
-	uint32_t cb_size = 0, acc_cb = 0, i = 0, j = 0;
+	uint64_t cb_size = 0;
+	uint32_t acc_cb = 0, i = 0, j = 0;
 	uint32_t subcmds_ofs = 0, cmdbuf_infos_ofs = 0, adj_matrix_ofs = 0;
 	uint32_t exec_infos_ofs = 0, link_ofs = 0;
 	struct mdw_rv_msg_cmd *rmc = NULL;
@@ -201,12 +202,12 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	cmdbuf_infos_ofs = cb_size;
 	cb_size += (c->num_cmdbufs * sizeof(struct mdw_rv_msg_cb));
 	if (cb_size < (c->num_cmdbufs * sizeof(struct mdw_rv_msg_cb))) {
-		mdw_drv_err("cb_size overflow(%u) cmdbufs(%u*%lu)\n",
+		mdw_drv_err("cb_size overflow(%llu) cmdbufs(%u*%lu)\n",
 			cb_size, c->num_cmdbufs, sizeof(struct mdw_rv_msg_cb));
 		goto free_rc;
 	}
 	if (cb_size < c->exec_infos->size) {
-		mdw_drv_err("cb_size overflow(%u) exec_infos size(%u)\n",
+		mdw_drv_err("cb_size overflow(%llu) exec_infos size(%llu)\n",
 			cb_size, c->exec_infos->size);
 		goto free_rc;
 	}
@@ -214,7 +215,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		link_ofs = cb_size;
 		cb_size += (c->num_links * sizeof(struct mdw_rv_sc_link));
 		if (cb_size < (c->num_links * sizeof(struct mdw_rv_sc_link))) {
-			mdw_drv_err("cb_size overflow(%u) links(%u*%lu)\n",
+			mdw_drv_err("cb_size overflow(%llu) links(%u*%lu)\n",
 				cb_size, c->num_links, sizeof(struct mdw_rv_sc_link));
 			goto free_rc;
 		}
@@ -224,7 +225,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rc->cb = mdw_mem_pool_alloc(&mpriv->cmd_buf_pool, cb_size,
 		MDW_DEFAULT_ALIGN);
 	if (!rc->cb) {
-		mdw_drv_err("c(0x%llx) alloc cb size(%u) fail\n",
+		mdw_drv_err("c(0x%llx) alloc cb size(%llu) fail\n",
 			c->kid, cb_size);
 		goto free_rc;
 	}
@@ -316,7 +317,7 @@ reuse:
 	c->einfos->c.sc_rets = 0;
 
 	if (mdw_mem_flush(mpriv, rc->cb))
-		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%u) fail\n",
+		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%llu) fail\n",
 			(uint64_t)c->mpriv, c->kid, c->rvid, rc->cb->size);
 
 	mdw_rv_cmd_set_affinity(c, true);
@@ -338,7 +339,7 @@ static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
 
 	/* invalidate */
 	if (mdw_mem_invalidate(c->mpriv, rc->cb))
-		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx/0x%llx) invalidate rcbs(%u) fail\n",
+		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx/0x%llx) invalidate rcbs(%llu) fail\n",
 			(uint64_t)c->mpriv, c->uid, c->kid,
 			c->rvid, rc->cb->size);
 
@@ -351,7 +352,7 @@ static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
 			rc->cb->vaddr + rmc->exec_infos_offset,
 			c->exec_infos->size);
 	} else {
-		mdw_drv_warn("c(0x%llx/0x%llx/0x%llx) execinfos(%u/%u) links(%u/%u) not matched\n",
+		mdw_drv_warn("c(0x%llx/0x%llx/0x%llx) execinfos(%llu/%u) links(%u/%llu) not matched\n",
 			c->uid, c->kid, c->rvid,
 			rmc->exec_infos_offset + c->exec_infos->size,
 			rmc->link_offset, c->num_links,

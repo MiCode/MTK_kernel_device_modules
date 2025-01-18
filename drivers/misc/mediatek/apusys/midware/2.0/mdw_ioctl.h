@@ -103,8 +103,8 @@ struct mdw_mem_in {
 		/* alloc */
 		struct {
 			uint32_t type; //enum mdw_mem_type
-			uint32_t size;
-			uint32_t align;
+			uint64_t size;
+			uint64_t align;
 			uint64_t flags;
 		} alloc;
 		struct {
@@ -114,7 +114,7 @@ struct mdw_mem_in {
 		/* map */
 		struct {
 			uint64_t handle;
-			uint32_t size;
+			uint64_t size;
 			uint64_t flags;
 			uint64_t reserved;
 		} map;
@@ -154,7 +154,7 @@ struct mdw_mem_out {
 		} map;
 		struct {
 			uint64_t device_va;
-			uint32_t size;
+			uint64_t size;
 		} import;
 	};
 };

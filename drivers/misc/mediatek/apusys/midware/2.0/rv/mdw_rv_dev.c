@@ -346,7 +346,7 @@ static int mdw_rv_dev_send_cmd(struct mdw_rv_dev *mrdev, struct mdw_rv_cmd *rc)
 {
 	int ret = 0;
 
-	mdw_drv_debug("pid(%d) run cmd(0x%llx/0x%llx) dva(0x%llx) size(%u)\n",
+	mdw_drv_debug("pid(%d) run cmd(0x%llx/0x%llx) dva(0x%llx) size(%llu)\n",
 		task_pid_nr(current), rc->c->kid, rc->c->rvid,
 		rc->cb->device_va, rc->cb->size);
 

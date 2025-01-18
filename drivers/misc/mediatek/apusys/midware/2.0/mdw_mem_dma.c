@@ -25,7 +25,7 @@ struct mdw_mem_dma_attachment {
 
 struct mdw_mem_dma {
 	dma_addr_t dma_addr;
-	uint32_t dma_size;
+	uint64_t dma_size;
 	uint32_t size;
 
 	void *vaddr;
@@ -42,7 +42,7 @@ struct mdw_mem_dma {
 };
 
 #define mdw_mem_dma_show(d) \
-	mdw_mem_debug("mem(0x%llx/%d/0x%llx/0x%x/0x%llx/0x%x/%d/%ld)(%d)\n", \
+	mdw_mem_debug("mem(0x%llx/%d/0x%llx/0x%llx/0x%llx/0x%llx/%d/%ld)(%d)\n", \
 	(uint64_t) d->mmem, d->mmem->handle, (uint64_t)d->mmem->vaddr, d->mmem->size, \
 	d->dma_addr, d->dma_size, d->mmem->need_handle, \
 	file_count(d->mmem->dbuf->file), task_pid_nr(current))
@@ -379,7 +379,7 @@ int mdw_mem_dma_alloc(struct mdw_mem *mem)
 
 	/* alloc buffer by dma */
 	mdbuf->dma_size = PAGE_ALIGN(mem->size);
-	mdw_mem_debug("alloc mem(0x%llx)(%u/%u)\n",
+	mdw_mem_debug("alloc mem(0x%llx)(%llu/%llu)\n",
 		(uint64_t) mem, mem->size, mdbuf->dma_size);
 
 	if (mem->flags & F_MDW_MEM_HIGHADDR) {
