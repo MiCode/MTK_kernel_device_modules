@@ -32,4 +32,6 @@ int mbraink_power_get_spmi_info(struct mbraink_spmi_struct_data *mbraink_spmi_da
 
 int mbraink_power_get_uvlo_info(struct mbraink_uvlo_struct_data *mbraink_uvlo_data);
 
+int mbraink_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVoltageInfo);
+
 #endif /*end of MBRAINK_POWER_H*/

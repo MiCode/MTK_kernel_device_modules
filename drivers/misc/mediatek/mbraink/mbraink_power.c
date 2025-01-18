@@ -22,6 +22,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
+	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	return 0;
 }
 
@@ -38,6 +39,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
+	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	return 0;
 }
 
@@ -59,6 +61,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getModemInfo = ops->getModemInfo;
 	_mbraink_power_ops.getSpmiInfo = ops->getSpmiInfo;
 	_mbraink_power_ops.getUvloInfo = ops->getUvloInfo;
+	_mbraink_power_ops.getPmicVoltageInfo = ops->getPmicVoltageInfo;
 
 	return 0;
 }
@@ -79,6 +82,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
+	_mbraink_power_ops.getPmicVoltageInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -264,3 +268,19 @@ int mbraink_power_get_uvlo_info(struct mbraink_uvlo_struct_data *mbraink_uvlo_da
 	return ret;
 }
 
+int mbraink_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVoltageInfo)
+{
+	int ret = 0;
+
+	if (pmicVoltageInfo == NULL) {
+		pr_info("%s: power pmic voltage is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getPmicVoltageInfo)
+		ret = _mbraink_power_ops.getPmicVoltageInfo(pmicVoltageInfo);
+	else
+		pr_info("%s: Do not support ioctl get power pmic voltage info query.\n", __func__);
+
+	return ret;
+}
