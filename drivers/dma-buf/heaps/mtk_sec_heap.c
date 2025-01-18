@@ -387,7 +387,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			// pr_debug("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
 			++page_count;
 		}
-		memset(page_address(pmm_page), 0, page_size(pmm_page));
+		/* clean buffer in el2 */
 		__free_pages(pmm_page, get_order(PAGE_SIZE));
 	}
 	kfree(buffer->ssheap);
