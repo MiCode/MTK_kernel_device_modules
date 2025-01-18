@@ -2996,36 +2996,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int fun_lye)
 {
 	struct mtk_drm_private *priv = drm_dev->dev_private;
-	struct mtk_ddp_comp *first_exdma;
-	int first_exdma_id = DDP_COMPONENT_OVL2_2L;
-	int exdma_comp = 0;
-	struct drm_crtc *crtc = priv->crtc[disp_idx];
-	struct mtk_drm_crtc *mtk_crtc;
-
-	if (!crtc) {
-		DDPMSG("[E] %s crtc %d invalid comp_id %d\n",
-		       __func__, disp_idx, DDP_COMPONENT_OVL2_2L);
-		return DDP_COMPONENT_OVL2_2L;
-	}
-
-	mtk_crtc = to_mtk_crtc(crtc);
-
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		first_exdma = mtk_crtc->first_exdma;
-		if (!first_exdma) {
-			DDPMSG("[E] %s crtc %d there is no first exdma invalid comp_id %d\n",
-			       __func__, disp_idx, DDP_COMPONENT_OVL2_2L);
-			return DDP_COMPONENT_OVL2_2L;
-		}
-		first_exdma_id = first_exdma->id;
-
-		DDPINFO("%s crtc %d layer_idx %d fun_lye %d %s\n",
-			__func__,
-			disp_idx,
-			layer_idx,
-			fun_lye,
-			mtk_dump_comp_str(first_exdma));
-	}
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	if (disp_idx == 0) {
@@ -3033,7 +3003,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			int exdma_comp = 0;
 
 			if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
-				exdma_comp = first_exdma_id  + layer_idx - fun_lye;
+				exdma_comp = DDP_COMPONENT_OVL_EXDMA3 + layer_idx - fun_lye;
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
@@ -3041,9 +3011,15 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		}
 	} else if (disp_idx == 1) {
 		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
 			struct mtk_ddp_comp *comp;
 			unsigned int i, j;
 
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
 			//disp_idx 1 does not exist multiple mode yet
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				if (comp)
@@ -3063,22 +3039,32 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL4_2L;
 		else if (priv->data->mmsys_id == MMSYS_MT6991) {
-			exdma_comp = first_exdma_id  + layer_idx - fun_lye;
+			int exdma_comp = 0;
+
+			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + layer_idx - fun_lye;
 
 			return exdma_comp;
 		}
 	} else if (disp_idx == 2) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
-			exdma_comp = first_exdma_id + ((layer_idx - fun_lye) * 2);
+			int exdma_comp = 0;
+
+			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6 + ((layer_idx - fun_lye) * 2);
 
 			return exdma_comp;
 		} else
 			return DDP_COMPONENT_OVL2_2L;
 	} else if (disp_idx == 3) {
 		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
 			struct mtk_ddp_comp *comp;
 			unsigned int i, j;
 
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
 			//disp_idx 3 does not exist multiple mode yet
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				if (comp)
@@ -3093,7 +3079,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL5_2L;
 		else if (priv->data->mmsys_id == MMSYS_MT6991)
-			return (first_exdma_id + layer_idx - fun_lye);
+			return (DDP_COMPONENT_OVL1_EXDMA8 + layer_idx - fun_lye);
 		else
 			return DDP_COMPONENT_OVL2_2L;
 	}
