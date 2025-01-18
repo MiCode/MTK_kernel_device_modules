@@ -237,7 +237,7 @@ void grp_awr_update_grp_awr_util(void)
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 			if(userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] == -1)
 				pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
-					get_gear_max_active_ratio_cap(map_cpu_ger[cpu_idx]);
+					get_cpu_active_ratio_cap(cpu_idx);
 			else
 				pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
 					userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx];
