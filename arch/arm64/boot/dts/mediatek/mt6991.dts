@@ -2311,22 +2311,22 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,";
 			node-96 = "SSPM_SLBC_CACHE_QUOTA",
 				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,";
+				"img,cam,mae,null,";
 			node-97 = "SSPM_SLBC_CACHE_HIT",
 				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,";
+				"img,cam,mae,null,";
 			node-98 = "SSPM_SLBC_CACHE_TOTAL",
 				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,";
+				"img,cam,mae,null,";
 			node-99 = "SSPM_SLBC_CACHE_STATUS",
 				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl";
+				"img,cam,mae,null,force,ceil,window_cg,dcc_count";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
 				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,null,total,valid";
+				"img,cam,mae,null,total,valid";
 			node-101 = "SSPM_SLBC_CACHE_WAY",
 				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,smmu,aov,",
-				"img,cam,mae,dbi,gpu_ovl,null,total,buf_unused";
+				"img,cam,mae,null,total,buf_unused";
 			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
 				"SW_R3,MD,MD2,ADSP";
