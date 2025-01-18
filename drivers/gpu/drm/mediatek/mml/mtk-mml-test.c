@@ -2580,6 +2580,34 @@ static void ut_setup(struct mml_submit *task, struct mml_ut *cur)
 		__func__, cur->mmlid,
 		task->info.src.width, task->info.src.height,
 		utcfg->in_w, utcfg->in_h);
+
+	if (utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) {
+		fillin_info_data(utcfg->in1_fmt, utcfg->in1_w, utcfg->in1_w, &task->info.seg_map);
+		if (cur->use_dma)
+			fillin_buf(&task->info.seg_map, utcfg->fd_in1, utcfg->size_in1,
+				&task->buffer.seg_map);
+		else
+			fillin_buf(&task->info.src, cur->fd_in1, cur->size_in1,
+				&task->buffer.seg_map);
+		/* config dest[1] info data and buf */
+		task->info.dest_cnt = 2;
+		task->buffer.dest_cnt = 2;
+		task->info.dest[0].pq_config.en = true;
+		task->info.dest[0].pq_config.en_region_pq = true;
+		task->info.dest[0].pq_config.en_sharp = true;
+		fillin_info_data(utcfg->out1_fmt, utcfg->out1_w, utcfg->out1_h,
+			&task->info.dest[1].data);
+		if (cur->use_dma)
+			fillin_buf_dma(&task->info.dest[1].data, cur->buf_dest[1],
+				cur->dma_size_out[1], &task->buffer.dest[1]);
+		else
+			fillin_buf(&task->info.dest[1].data, cur->fd_out1, cur->size_out1,
+				&task->buffer.dest[1]);
+
+		mml_log("%s region pq size %u %u by %u %u",
+			__func__, task->info.seg_map.width, task->info.src.height,
+			utcfg->in1_w, utcfg->in1_h);
+	}
 }
 
 static void ut_config_to_user(struct mml_test_case *user_case, struct mml_ut_config *utcfg)
@@ -2619,6 +2647,9 @@ static void ut_config_to_user(struct mml_test_case *user_case, struct mml_ut_con
 	mml_log("%s in %u %u %#010x out %u %u %#010x",
 		__func__, utcfg->in_w, utcfg->in_h, utcfg->in_fmt,
 		utcfg->out_w, utcfg->out_h, utcfg->out_fmt);
+	mml_log("%s in1 %u %u %#010x out1 %u %u %#010x",
+		__func__, utcfg->in1_w, utcfg->in1_h, utcfg->in1_fmt,
+		utcfg->out1_w, utcfg->out1_h, utcfg->out1_fmt);
 }
 
 static ssize_t ut_read(struct file *filp, char __user *buf, size_t size, loff_t *offp)
@@ -2647,6 +2678,7 @@ static ssize_t ut_read(struct file *filp, char __user *buf, size_t size, loff_t 
 		return -EFAULT;
 	}
 	*offp += len;
+	mml_log("[test]copy config to user ret %d len %u", ret, len);
 
 	return 0;
 }

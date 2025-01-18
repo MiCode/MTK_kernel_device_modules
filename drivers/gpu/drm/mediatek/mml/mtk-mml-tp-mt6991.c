@@ -196,7 +196,10 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML0_RROT0, MML0_DLO2,},
 		{MML1_DLI2, MML1_MERGE0,},
 		{MML1_MERGE0, MML1_DMA0_SEL,},
-		{MML1_DMA0_SEL, MML1_WROT0,},
+		{MML1_DMA0_SEL, MML1_DLI0_SEL,},
+		{MML1_DLI0_SEL, MML1_RSZ0,},
+		{MML1_RSZ0, MML1_WROT0_SEL,},
+		{MML1_WROT0_SEL, MML1_WROT0,},
 		{MML0_DLO2,},
 		{MML1_WROT0,},
 	},
@@ -205,8 +208,7 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML1_MUTEX,},
 		{MML1_RROT0, MML1_DMA0_SEL,},
 		{MML1_DMA0_SEL, MML1_DLI0_SEL,},
-		{MML1_DLI0_SEL, MML1_RSZ0,},
-		{MML1_RSZ0, MML1_WROT0_SEL,},
+		{MML1_DLI0_SEL, MML1_WROT0_SEL,},
 		{MML1_WROT0_SEL, MML1_DLOUT0_SEL,},
 		{MML1_DLOUT0_SEL, MML1_DLO5,},
 		{MML1_DLO5,},
@@ -258,7 +260,6 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML1_COLOR0, MML1_WROT0_SEL,},
 		{MML1_WROT0_SEL, MML1_DLOUT0_SEL,},
 		{MML1_DLOUT0_SEL, MML1_DLO5,},
-		{MML1_MERGE0, MML1_DMA0_SEL,},
 		{MML1_RSZ2, MML1_WROT2,},
 		{MML1_DLO5,},
 		{MML1_WROT2,},
@@ -654,12 +655,11 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			if (!path->mmlsys) {
 				path->mmlsys = path->nodes[i].comp;
 				path->mmlsys_idx = i;
-				path->sys_en[mml_sys_frame] = true;
 			} else {
 				path->mmlsys2 = path->nodes[i].comp;
 				path->mmlsys2_idx = i;
-				path->sys_en[mml_sys_tile] = true;
 			}
+			path->sys_en[mml_sys_tile] = true;
 			continue;
 		} else if (eng == MML1_MUTEX) {
 			path->mutex2 = path->mutex;
@@ -716,6 +716,14 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 		if ((!path->nodes[i].prev[0] && !path->nodes[i].next[0]) ||
 		    engine_region_pq(path->nodes[i].id)) {
 			path->nodes[i].tile_eng_idx = ~0;
+			continue;
+		}
+
+		/* assume mml1_rrot0 always tile idx 0 */
+		if (path->sys_en[mml_sys_frame] &&
+			(path->nodes[i].comp->sysid != mml_sys_frame ||
+			path->nodes[i].id == MML1_DLI2)) {
+			path->nodes[i].tile_eng_idx = 0;
 			continue;
 		}
 
@@ -861,7 +869,7 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	u64 tput, pixel, hrt;
 
 	/* always assign dual as default */
-	*dual = true;
+	*dual = mml_rrot_single == 1 ? false : true;
 
 	/* disp not provide act time, assume throughput ok */
 	if (!info->act_time)
@@ -910,10 +918,7 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 		*dual = false;
 		goto check_hrt;
 	} else if (tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1]) {
-		if (mml_rrot_single == 1)
-			*dual = false;
-		else
-			*dual = true;
+		*dual = mml_rrot_single == 1 ? false : true;
 		goto check_hrt;
 	}
 
@@ -1014,7 +1019,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 		if (scene == PATH_MML1_PQ)
 			scene = dual ? PATH_MML1_RR2_RSZ : PATH_MML1_RR_RSZ;
 		else if (scene == PATH_MML1_NOPQ)
-			scene = PATH_MML1_RR_NOPQ;
+			scene = dual ? PATH_MML1_RR2_RSZ : PATH_MML1_RR_NOPQ;
 	}
 
 	/* check if connect to ovlsys1 */
@@ -1022,7 +1027,6 @@ static void tp_select_path(struct mml_topology_cache *cache,
 
 	cfg->rrot_dual = dual;
 
-	cfg->rrot_dual = false;
 	*path = &cache->paths[scene];
 }
 
@@ -1037,11 +1041,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		cfg->framemode = true;
 	}
-#ifndef MML_FPGA
 	cfg->shadow = mml_shadow;
-#else
-	cfg->shadow = false;
-#endif
 
 	tp_select_path(cache, cfg, &path);
 
