@@ -119,7 +119,7 @@ static void lcm_panel_get_data(struct lcm *ctx)
 #endif
 
 #if !IS_ENABLED(CONFIG_RT4831A_I2C)
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
+#if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
 
