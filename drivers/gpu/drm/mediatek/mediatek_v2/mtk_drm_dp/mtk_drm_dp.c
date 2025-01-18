@@ -6351,8 +6351,6 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 
 	DP_FUNC("start");
 
-	mtk_dp.drm_dev = drm_dev;
-
 	ret = mtk_ddp_comp_register(drm_dev, &mtk_dp->ddp_comp);
 	if (ret < 0) {
 		DP_ERR("Failed to register component %s: %d\n",
