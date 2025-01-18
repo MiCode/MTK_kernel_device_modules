@@ -57,7 +57,7 @@
 #define SMMU_EVT_DUMP_LEN_MAX		(200)
 
 #define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
-#define SMMU_FAULT_RS_BURST		(2)
+#define SMMU_FAULT_RS_BURST		(1)
 
 /* hyp-pmm smmu related SMC call */
 #define HYP_PMM_SMMU_CONTROL		(0XBB00FFAE)
@@ -133,10 +133,9 @@ static struct mtk_smmu_data *mtk_smmu_datas[SMMU_TYPE_NUM];
 static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 					unsigned int irq_bit);
 static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu);
-static struct mtk_smmu_fault_param *smmuwp_process_tf(
-		struct arm_smmu_device *smmu,
-		struct arm_smmu_master *master,
-		struct mtk_iommu_fault_event *fault_evt);
+static bool smmuwp_process_tf(struct arm_smmu_device *smmu,
+			      struct arm_smmu_master *master,
+			      struct mtk_iommu_fault_event *fault_evt);
 static void smmuwp_clear_tf(struct arm_smmu_device *smmu);
 static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu);
 static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu);
@@ -147,6 +146,8 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					 u32 sid);
 static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu);
+static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
+					struct mtk_iommu_fault_event *mtk_fault_evt);
 
 static inline unsigned int smmu_read_reg(void __iomem *base,
 					 unsigned int offset)
@@ -264,6 +265,10 @@ static const char *get_fault_reason_str(__u32 reason)
 		return "Bad SubStreamID";
 	case EVENT_ID_CD_FETCH_FAULT:
 		return "CD Fetch Fault";
+	case EVENT_ID_BAD_CD_FAULT:
+		return "Bad CD Fault";
+	case EVENT_ID_WALK_EABT_FAULT:
+		return "EABT Fault";
 	case EVENT_ID_TRANSLATION_FAULT:
 		return "Translation Fault";
 	case EVENT_ID_ADDR_SIZE_FAULT:
@@ -272,10 +277,6 @@ static const char *get_fault_reason_str(__u32 reason)
 		return "Access Flag Fault";
 	case EVENT_ID_PERMISSION_FAULT:
 		return "Permission Fault";
-	case EVENT_ID_BAD_CD_FAULT:
-		return "Bad CD Fault";
-	case EVENT_ID_WALK_EABT_FAULT:
-		return "EABT Fault";
 	case EVENT_ID_TLB_CONFLICT_FAULT:
 		return "TLB Conflict";
 	case EVENT_ID_CFG_CONFLICT_FAULT:
@@ -575,7 +576,7 @@ static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
 
 	for (n = 0; n < mpam_cfgs_cnt; n++) {
 		sid = mpam_cfgs[n].sid;
-		// make sure ste is ready
+		/* make sure ste is ready */
 		ret = arm_smmu_init_sid_strtab(smmu, sid);
 		if (ret) {
 			dev_err(smmu->dev, "%s init sid(0x%x) failed\n",
@@ -703,7 +704,7 @@ static void smmu_mpam_cmax_set(struct arm_smmu_device *smmu)
 			continue;
 		}
 
-		// use tcu camx_wd to check dts's cmax value
+		/* use tcu camx_wd to check dts's cmax value */
 		if (mpam_cmax[n].cmax > txu_mpam_data->cmax_max_int) {
 			pr_info("%s, idx:%d, cmax:%d, cmax_max_int:%d",
 				__func__, n, mpam_cmax[n].cmax,
@@ -1399,9 +1400,6 @@ static void mtk_smmu_setup_features(struct arm_smmu_master *master,
 	}
 }
 
-//=====================================================
-// SMMU IRQ rate limit setup
-//=====================================================
 static int mtk_smmu_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 {
 	u32 irqen_flags;
@@ -1456,9 +1454,6 @@ static inline void mtk_smmu_irq_setup(struct mtk_smmu_data *data, bool enable)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
 
-	pr_info("[%s] enable:%d smmu:%s\n", __func__, enable,
-		get_smmu_name(data->plat_data->smmu_type));
-
 	mtk_smmu_setup_irqs(smmu, enable);
 	mtk_smmu_sec_setup_irqs(smmu, enable);
 }
@@ -1503,8 +1498,6 @@ static int mtk_smmu_irq_pause_timer_init(struct mtk_smmu_data *data)
 
 static int mtk_smmu_irq_pause(struct mtk_smmu_data *data, int delay)
 {
-	pr_info("[%s] delay:%d\n", __func__, delay);
-
 	/* disable all intr */
 	mtk_smmu_irq_setup(data, false);
 
@@ -1574,8 +1567,10 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	struct arm_smmu_device *smmu = dev;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 gerror, gerrorn, active;
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	struct smmuv3_pmu_device *pmu_device;
 	unsigned long flags;
+#endif
 
 	gerror = readl_relaxed(smmu->base + ARM_SMMU_GERROR);
 	gerrorn = readl_relaxed(smmu->base + ARM_SMMU_GERRORN);
@@ -1588,47 +1583,57 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 			return IRQ_HANDLED;
 		}
 	} else {
-		pr_info("[%s] irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
-			__func__, irq, gerror, gerrorn, active);
+		dev_info(smmu->dev,
+			 "[%s] irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
+			 __func__, irq, gerror, gerrorn, active);
 	}
 
 	smmuwp_process_intr(smmu);
 
 	mtk_smmu_irq_record(data);
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	spin_lock_irqsave(&data->pmu_lock, flags);
 	list_for_each_entry(pmu_device, &data->pmu_devices, node) {
 		if (pmu_device->impl && pmu_device->impl->pmu_irq_handler)
 			pmu_device->impl->pmu_irq_handler(irq, pmu_device->dev);
 	}
 	spin_unlock_irqrestore(&data->pmu_lock, flags);
+#endif
 
 	return IRQ_HANDLED;
 }
 
-static void mtk_smmu_evt_dump(struct arm_smmu_device *smmu, u64 *evt)
+static void mtk_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt,
+				struct iommu_fault_event *fault_evt)
 {
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct iommu_fault *flt = &fault_evt->fault;
 	char evt_str[SMMU_EVT_DUMP_LEN_MAX] = {};
 	bool ssid_valid = (evt[0] & EVTQ_0_SSV) > 0;
 	bool stall = (evt[1] & EVTQ_1_STALL) > 0;
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
+	u32 reason = 0, perm = 0;
 	char *ptr = evt_str;
 
 	switch (FIELD_GET(EVTQ_0_ID, evt[0])) {
 	case EVT_ID_TRANSLATION_FAULT:
+		reason = IOMMU_FAULT_REASON_PTE_FETCH;
 		ptr += sprintf(ptr, "EVT_ID_TRANSLATION_FAULT");
 		break;
 	case EVT_ID_ADDR_SIZE_FAULT:
+		reason = IOMMU_FAULT_REASON_OOR_ADDRESS;
 		ptr += sprintf(ptr, "EVT_ID_ADDR_SIZE_FAULT");
 		break;
 	case EVT_ID_ACCESS_FAULT:
+		reason = IOMMU_FAULT_REASON_ACCESS;
 		ptr += sprintf(ptr, "EVT_ID_ACCESS_FAULT");
 		break;
 	case EVT_ID_PERMISSION_FAULT:
+		reason = IOMMU_FAULT_REASON_PERMISSION;
 		ptr += sprintf(ptr, "EVT_ID_PERMISSION_FAULT");
 		break;
 	default:
+		reason = IOMMU_FAULT_REASON_UNKNOWN;
 		ptr += sprintf(ptr, "EVT OTHER FAULT");
 		break;
 	}
@@ -1641,30 +1646,65 @@ static void mtk_smmu_evt_dump(struct arm_smmu_device *smmu, u64 *evt)
 	if (ssid_valid)
 		ptr += sprintf(ptr, ", ssid:%llu", FIELD_GET(EVTQ_0_SSID, evt[0]));
 
-	if (evt[1] & EVTQ_1_RnW)
+	if (evt[1] & EVTQ_1_RnW) {
+		perm |= IOMMU_FAULT_PERM_READ;
 		ptr += sprintf(ptr, ", RnW:Read");
-	else
+	} else {
+		perm |= IOMMU_FAULT_PERM_WRITE;
 		ptr += sprintf(ptr, ", RnW:Write");
+	}
 
-	if (evt[1] & EVTQ_1_InD)
+	if (evt[1] & EVTQ_1_InD) {
+		perm |= IOMMU_FAULT_PERM_EXEC;
 		ptr += sprintf(ptr, ", Ind:Instruction");
-	else
+	} else {
 		ptr += sprintf(ptr, ", Ind:Data");
+	}
 
-	if (evt[1] & EVTQ_1_PnU)
+	if (evt[1] & EVTQ_1_PnU) {
+		perm |= IOMMU_FAULT_PERM_PRIV;
 		ptr += sprintf(ptr, ", PnU:Privileged");
-	else
+	} else {
 		ptr += sprintf(ptr, ", PnU:Unprivileged");
+	}
 
 	ptr += sprintf(ptr, ", Stall:%d", stall);
 	if (stall)
 		ptr += sprintf(ptr, ", STAG:0x%llx", FIELD_GET(EVTQ_1_STAG, evt[1]));
 
+	ptr += sprintf(ptr, ", CLASS:0x%llx", FIELD_GET(EVTQ_1_CLASS, evt[1]));
 	ptr += sprintf(ptr, ", InputAddr:0x%llx", FIELD_GET(EVTQ_2_ADDR, evt[2]));
 	ptr += sprintf(ptr, ", AlignedIPA:0x%llx", evt[3] & EVTQ_3_IPA);
 
-	dev_info(smmu->dev, "smmu:%s EVTQ_INFO: %s\n",
-		 get_smmu_name(data->plat_data->smmu_type), evt_str);
+	if (stall) {
+		flt->type = IOMMU_FAULT_PAGE_REQ;
+		flt->prm = (struct iommu_fault_page_request) {
+			.flags = IOMMU_FAULT_PAGE_REQUEST_LAST_PAGE,
+			.grpid = FIELD_GET(EVTQ_1_STAG, evt[1]),
+			.perm = perm,
+			.addr = FIELD_GET(EVTQ_2_ADDR, evt[2]),
+		};
+
+		if (ssid_valid) {
+			flt->prm.flags |= IOMMU_FAULT_PAGE_REQUEST_PASID_VALID;
+			flt->prm.pasid = FIELD_GET(EVTQ_0_SSID, evt[0]);
+		}
+	} else {
+		flt->type = IOMMU_FAULT_DMA_UNRECOV;
+		flt->event = (struct iommu_fault_unrecoverable) {
+			.reason = reason,
+			.flags = IOMMU_FAULT_UNRECOV_ADDR_VALID,
+			.perm = perm,
+			.addr = FIELD_GET(EVTQ_2_ADDR, evt[2]),
+		};
+
+		if (ssid_valid) {
+			flt->event.flags |= IOMMU_FAULT_UNRECOV_PASID_VALID;
+			flt->event.pasid = FIELD_GET(EVTQ_0_SSID, evt[0]);
+		}
+	}
+
+	dev_info(smmu->dev, "EVTQ_INFO: %s\n", evt_str);
 }
 
 static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
@@ -1672,36 +1712,30 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 	static DEFINE_RATELIMIT_STATE(evtq_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu = dev;
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	u32 smmu_type = data->plat_data->smmu_type;
-	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
-	bool ssid_valid = evt[0] & EVTQ_0_SSV;
-	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
-	u32 ssid = 0;
+	struct mtk_iommu_fault_event mtk_fault_evt = { };
+	int ret;
 
-	if (!__ratelimit(&evtq_rs))
-		return IRQ_HANDLED;
-
-	if (ssid_valid)
-		ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
+	if (!__ratelimit(&evtq_rs)) {
+		smmuwp_clear_tf(smmu);
+		return 0;
+	}
 
 	dev_info(smmu->dev,
-		 "smmu:%s EVTQ_INFO: evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx, [3]:0x%llx\n",
-		 get_smmu_name(smmu_type), evt[0], evt[1], evt[2], evt[3]);
+		 "EVTQ_INFO: irq:0x%x, evt{[0]:0x%llx [1]:0x%llx [2]:0x%llx [3]:0x%llx}\n",
+		 irq, evt[0], evt[1], evt[2], evt[3]);
 
-	dev_info(smmu->dev,
-		 "smmu:%s EVTQ_INFO: irq:0x%x, id:0x%x, reason:%s, ssid_valid:%d, sid:0x%x, ssid:0x%x\n",
-		 get_smmu_name(smmu_type),
-		 irq, id, get_fault_reason_str(id),
-		 ssid_valid, sid, ssid);
-
-	mtk_smmu_evt_dump(smmu, evt);
-
+	mtk_smmu_handle_evt(smmu, evt, &mtk_fault_evt.fault_evt);
 	mtk_smmu_glbreg_dump(smmu);
-	mtk_smmu_wpreg_dump(NULL, smmu_type);
-	mtk_hyp_smmu_reg_dump(smmu);
 
-	return IRQ_HANDLED;
+	smmuwp_process_tf(smmu, NULL, &mtk_fault_evt);
+
+	mutex_lock(&smmu->streams_mutex);
+	ret = mtk_smmu_report_device_fault(smmu, evt, &mtk_fault_evt);
+	mutex_unlock(&smmu->streams_mutex);
+
+	smmuwp_clear_tf(smmu);
+
+	return ret;
 }
 
 static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu)
@@ -1778,8 +1812,11 @@ static void __maybe_unused smmu_dump_reg(void __iomem *base,
 	}
 }
 
-/* for s2 translation fault and permission fault, hyp smmu return ipa's page table entry */
-static void dump_s2_pg_table_info(uint64_t pte)
+/**
+ * hyp smmu dump ipa's page table entry for
+ * s2 translation fault and permission fault.
+ */
+static void hyp_smmu_dump_s2_pgtable(uint64_t pte)
 {
 	uint8_t memattr, s2ap, sh, af, contig, xn;
 
@@ -1894,7 +1931,7 @@ static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 		if (hyp_smmu_debug_smc(HYP_SMMU_TF_DUMP, 0, 0, smmu_type, sid,
 				       fault_ipa_32, &debug_info))
 			return SMC_SMMU_FAIL;
-		dump_s2_pg_table_info(debug_info);
+		hyp_smmu_dump_s2_pgtable(debug_info);
 		break;
 	case HYP_SMMU_REG_DUMP_EVT:
 		/* dump smmu hw reg */
@@ -1971,6 +2008,7 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 
 	tab_id = get_smmu_tab_id_by_domain(&master->domain->domain);
 
+	pr_info("smmu pgtable dump:\n");
 	for (i = 0, tf_iova_tmp = fault_iova; i < SMMU_TF_IOVA_DUMP_NUM; i++) {
 		if (i > 0)
 			tf_iova_tmp -= SZ_4K;
@@ -1978,7 +2016,7 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 		pte = smmu_iova_to_iopte(master, tf_iova_tmp);
 		fault_pa = smmu_iova_to_phys(master, tf_iova_tmp);
 
-		pr_info("error, tab_id:0x%llx, index:%d, pte:0x%llx, fault_iova:0x%llx, fault_pa:0x%llx\n",
+		pr_info("\ttab_id:0x%llx, index:%d, pte:0x%llx, fault_iova:0x%llx, fault_pa:0x%llx\n",
 			tab_id, i, pte, tf_iova_tmp, fault_pa);
 
 		if (tf_iova_tmp == 0 || (!fault_pa && i > 0))
@@ -1992,28 +2030,6 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 		mtk_iova_dump(fault_iova, smmu_tab_id_to_smmu_id(tab_id));
 	}
 #endif
-}
-
-static void mtk_smmu_fault_device_dump(struct arm_smmu_master *master,
-				       u64 *evt, struct iommu_fault *flt)
-{
-	/* when master is NULL, mean invalid evt or unknown fault, no need dump */
-	if (master == NULL)
-		return;
-
-	if (flt->type == IOMMU_FAULT_PAGE_REQ) {
-		pr_info("[%s][page request fault] evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx}, type:%d, prm{flags:0x%x, grpid:0x%x, perm:0x%x, addr:0x%llx, pasid:0x%x}\n",
-			dev_name(master->dev), evt[0], evt[1], evt[2],
-			flt->type, flt->prm.flags,
-			flt->prm.grpid, flt->prm.perm,
-			flt->prm.addr, flt->prm.pasid);
-	} else if (flt->type == IOMMU_FAULT_DMA_UNRECOV) {
-		pr_info("[%s][unrecoverable fault] evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx}, type:%d, event{reason:0x%x, flags:0x%x, perm:0x%x, addr:0x%llx, pasid:0x%x}\n",
-			dev_name(master->dev), evt[0], evt[1], evt[2],
-			flt->type, flt->event.reason,
-			flt->event.flags, flt->event.perm,
-			flt->event.addr, flt->event.pasid);
-	}
 }
 
 static void mtk_smmu_sid_dump(struct arm_smmu_device *smmu, u32 sid)
@@ -2032,115 +2048,92 @@ static void mtk_smmu_sid_dump(struct arm_smmu_device *smmu, u32 sid)
 #endif
 }
 
-static int mtk_report_device_fault(struct arm_smmu_device *smmu,
-				   struct arm_smmu_master *master,
-				   u64 *evt,
-				   struct iommu_fault_event *fault_evt)
+static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
+					struct mtk_iommu_fault_event *mtk_fault_evt)
 {
-	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
-				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	struct mtk_iommu_fault_event mtk_fault_evt = { };
-	struct mtk_smmu_fault_param *fault_param = NULL;
 	u32 smmu_type = data->plat_data->smmu_type;
+	struct mtk_smmu_fault_param *fault_param;
+	struct arm_smmu_master *master;
 	struct dev_iommu *param;
-	struct iommu_fault *flt;
-	u64 fault_iova, fault_ipa;
-	bool unknown_evt = false;
-	int id, ret = 0;
+	u64 fault_iova, fault_ipa, s2_trans;
+	u64 fault_pa = 0;
+	u32 id, sid, ssid;
 	bool ssid_valid;
-	u32 sid, ssid;
-	u64 s2_trans;
+	int ret = 0;
 
-	/* limit TF handle dump rate */
-	if (!__ratelimit(&fault_rs)) {
-		smmuwp_clear_tf(smmu);
-		return 0;
-	}
+	if (!mtk_fault_evt)
+		return -EINVAL;
 
-	mtk_fault_evt.fault_evt.fault = fault_evt->fault;
-	mtk_fault_evt.fault_evt.list = fault_evt->list;
-	flt = &mtk_fault_evt.fault_evt.fault;
-
-	fault_iova = FIELD_GET(EVTQ_2_ADDR, evt[2]);
-	fault_ipa = evt[3] & EVTQ_3_IPA;
-	ssid_valid = evt[0] & EVTQ_0_SSV;
-	sid = FIELD_GET(EVTQ_0_SID, evt[0]);
-	ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 	id = FIELD_GET(EVTQ_0_ID, evt[0]);
 	s2_trans = evt[1] & EVTQ_1_S2;
+	fault_ipa = evt[3] & EVTQ_3_IPA;
 
-	fault_param = smmuwp_process_tf(smmu, master, &mtk_fault_evt);
-
-	/**
-	 * when master is NULL, mean invalid evt content or unknown fault id,
-	 * still need to report fault by wrapper register
-	 */
-	if (master == NULL) {
-		/* No TRANSLATION FAULT detected in wrapper register */
-		if (fault_param == NULL) {
-			smmuwp_clear_tf(smmu);
-			return 0;
-		}
-
-		unknown_evt = true;
+	fault_param = mtk_fault_evt->first_fault_param;
+	if (fault_param) {
 		fault_iova = fault_param->fault_iova;
 		sid = fault_param->fault_sid;
 		ssid = fault_param->fault_ssid;
 		ssid_valid = fault_param->fault_ssidv;
-
 		/* can't get: fault_ipa, id, s2_trans */
-
-		mutex_lock(&smmu->streams_mutex);
-		master = arm_smmu_find_master(smmu, sid);
-		if (master != NULL)
-			fault_param->fault_pa = smmu_iova_to_phys(master, fault_iova);
+	} else {
+		fault_iova = FIELD_GET(EVTQ_2_ADDR, evt[2]);
+		sid = FIELD_GET(EVTQ_0_SID, evt[0]);
+		ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
+		ssid_valid = evt[0] & EVTQ_0_SSV;
 	}
+
+	master = arm_smmu_find_master(smmu, sid);
+	if (master)
+		fault_pa = smmu_iova_to_phys(master, fault_iova);
+
+	if (fault_param)
+		fault_param->fault_pa = fault_pa;
+
+	dev_info(smmu->dev,
+		 "Report_fault master:%s, fault_iova:0x%llx, ipa:0x%llx, pa:0x%llx, sid:0x%x, ssid:0x%x, ssid_valid:0x%x, evt_id:0x%x, reason:%s, s2_trans:0x%llx\n",
+		 (master ? dev_name(master->dev) : "NULL"),
+		 fault_iova, fault_ipa, fault_pa, sid, ssid, ssid_valid, id,
+		 get_fault_reason_str(id), s2_trans);
+
+	mtk_smmu_wpreg_dump(NULL, smmu_type);
 
 	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
 	mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, fault_ipa, 0, sid, id, s2_trans);
+	mtk_hyp_smmu_reg_dump(smmu);
 
-	dev_info(smmu->dev,
-		 "[%s] smmu:%s, master:%s, fault_iova=0x%llx, fault_ipa=0x%llx, sid=0x%x, ssid=0x%x, ssid_valid:0x%x, id:0x%x, reason:%s, s2_trans:0x%llx\n",
-		 __func__, get_smmu_name(smmu_type),
-		 (master != NULL ? dev_name(master->dev) : "NULL"),
-		 fault_iova, fault_ipa, sid, ssid, ssid_valid, id,
-		 get_fault_reason_str(id), s2_trans);
-
-	mtk_smmu_fault_device_dump(master, evt, flt);
+	/* Need to dump OSTD/IO info if fault_iova in page table */
+	if (fault_param && fault_param->fault_pa > 0) {
+		smmuwp_dump_outstanding_monitor(smmu);
+		smmuwp_dump_io_interface_signals(smmu);
+	}
 
 	mtk_smmu_fault_iova_dump(master, fault_iova, sid, ssid);
 
 	mtk_smmu_sid_dump(smmu, sid);
 
-	mtk_hyp_smmu_debug_dump(smmu, fault_ipa, 0, sid, id, s2_trans);
-
 	/* Report fault event to master device driver */
-	if (master != NULL) {
-		ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);
+	if (master) {
+		ret = iommu_report_device_fault(master->dev, &mtk_fault_evt->fault_evt);
 		if (ret) {
 			param = master->dev->iommu;
 			if (!param || !param->fault_param || !param->fault_param->handler) {
 				dev_dbg(smmu->dev,
-					"[%s] ret:%d, dev:%s not register device fault handler",
+					"[%s] ret:%d, dev:%s not register device fault handler\n",
 					__func__, ret, dev_name(master->dev));
 			}
 		}
 	}
 
 #ifdef MTK_SMMU_DEBUG
-	if (fault_param != NULL) {
+	if (fault_param) {
 		report_custom_smmu_fault(fault_param->fault_iova,
 					 fault_param->fault_pa,
 					 fault_param->fault_id,
 					 smmu_type);
 	}
 #endif
-
-	if (unknown_evt)
-		mutex_unlock(&smmu->streams_mutex);
-
-	smmuwp_clear_tf(smmu);
 
 	return 0;
 }
@@ -2273,7 +2266,6 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.get_resv_regions = mtk_get_resv_regions,
 	.smmu_irq_handler = mtk_smmu_irq_handler,
 	.smmu_evt_handler = mtk_smmu_evt_handler,
-	.report_device_fault = mtk_report_device_fault,
 	.iotlb_sync_map = mtk_iotlb_sync_map,
 	.iotlb_sync = mtk_iotlb_sync,
 	.tlb_flush = mtk_tlb_flush,
@@ -2594,9 +2586,7 @@ static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *d
 	return NULL;
 }
 
-//=====================================================
-//SMMU wrapper register process and dump
-//=====================================================
+/* Consume SMMU wrapper interrupt bit */
 static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 					unsigned int irq_bit)
 {
@@ -2621,6 +2611,7 @@ static void smmuwp_clear_tf(struct arm_smmu_device *smmu)
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_ABT_CNT_CLR, 0);
 }
 
+/* Process SMMU wrapper interrupt */
 static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -2628,68 +2619,77 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	void __iomem *wp_base = smmu->wp_base;
 
 	irq_sta = smmu_read_reg(wp_base, SMMUWP_IRQ_STA);
-
-	if (irq_sta > 0) {
-		pr_info("%s smmu:%s irq_sta(0x%x)=0x%x\n",
-			__func__, get_smmu_name(data->plat_data->smmu_type),
-			SMMUWP_IRQ_STA, irq_sta);
-	}
+	if (irq_sta == 0)
+		return 0;
 
 	if (irq_sta & STA_TCU_GLB_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_GLB_INTR);
-		pr_info("Non-secure TCU global interrupt detected %d\n", pend_cnt);
+		dev_info(smmu->dev,
+			 "IRQ_STA:0x%x, Non-secure TCU global interrupt detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_CMD_SYNC_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_CMD_SYNC_INTR);
-		pr_info("Non-secure TCU CMD_SYNC interrupt detected %d\n", pend_cnt);
+		dev_info(smmu->dev,
+			 "IRQ_STA:0x%x, Non-secure TCU CMD_SYNC interrupt detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_EVTQ_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_EVTQ_INTR);
-		pr_info("Non-secure TCU event queue interrupt detected %d\n",
-			pend_cnt);
+		dev_info(smmu->dev,
+			 "IRQ_STA:0x%x, Non-secure TCU EVTQ interrupt detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PRI_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PRI_INTR);
-		pr_info("TCU PRI interrupt detected %d\n", pend_cnt);
+		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU PRI interrupt detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PMU_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PMU_INTR);
-		pr_info("TCU PMU interrupt detected %d\n", pend_cnt);
+		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU PMU interrupt detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_CRI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_CRI);
-		pr_info("TCU RAS CRI detected %d\n", pend_cnt);
+		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS CRI detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_ERI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_ERI);
-		pr_info("TCU RAS ERI detected %d\n", pend_cnt);
+		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS ERI detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_FHI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_FHI);
-		pr_info("TCU RAS FHI detected %d\n", pend_cnt);
+		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS FHI detected %d\n",
+			 irq_sta, pend_cnt);
 	}
 
 	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
 		if (irq_sta & STA_TBUx_RAS_CRI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_CRI(i));
-			pr_info("TBU%d RAS CRI detected %d\n", i, pend_cnt);
+			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS CRI detected %d\n",
+				 irq_sta, i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_ERI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_ERI(i));
-			pr_info("TBU%d RAS ERI detected %d\n", i, pend_cnt);
+			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS ERI detected %d\n",
+				 irq_sta, i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_FHI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_FHI(i));
-			pr_info("TBU%d RAS FHI detected %d\n", i, pend_cnt);
+			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS FHI detected %d\n",
+				 irq_sta, i, pend_cnt);
 		}
 	}
 
@@ -2704,13 +2704,11 @@ static u32 smmuwp_fault_id(u32 axi_id, u32 tbu_id)
 }
 
 /* Process TBU translation fault Monitor */
-static struct mtk_smmu_fault_param *smmuwp_process_tf(
-		struct arm_smmu_device *smmu,
-		struct arm_smmu_master *master,
-		struct mtk_iommu_fault_event *fault_evt)
+static bool smmuwp_process_tf(struct arm_smmu_device *smmu,
+			      struct arm_smmu_master *master,
+			      struct mtk_iommu_fault_event *fault_evt)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	struct mtk_smmu_fault_param *first_fault_param = NULL;
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int sid, ssid, secsidv, ssidv;
 	u32 i, regval, va35_32, axiid, fault_id;
@@ -2737,8 +2735,9 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 		ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
-		pr_info("TBU%d %s TF read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
-			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
+		dev_info(smmu->dev,
+			 "TBU%d %s TF read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+			 i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_READ][i] = (struct mtk_smmu_fault_param) {
 			.tfm_type = SMMU_TFM_READ,
@@ -2753,8 +2752,8 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 			.tbu_id = i,
 		};
 
-		if (first_fault_param == NULL)
-			first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_READ][i];
+		if (fault_evt->first_fault_param == NULL)
+			fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_READ][i];
 
 write:
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM0(i));
@@ -2776,8 +2775,9 @@ write:
 		ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
-		pr_info("TBU%d %s TF write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
-			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
+		dev_info(smmu->dev,
+			 "TBU%d %s TF write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+			 i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i] = (struct mtk_smmu_fault_param) {
 			.tfm_type = SMMU_TFM_WRITE,
@@ -2792,14 +2792,14 @@ write:
 			.tbu_id = i,
 		};
 
-		if (first_fault_param == NULL)
-			first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i];
+		if (fault_evt->first_fault_param == NULL)
+			fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i];
 	}
 
 	if (!tf_det)
-		dev_info(smmu->dev, "[%s] No TF detected or has been cleaned\n", __func__);
+		dev_info(smmu->dev, "No TF detected or has been cleaned\n");
 
-	return first_fault_param;
+	return tf_det;
 }
 
 static int __maybe_unused smmuwp_tf_detect(struct arm_smmu_device *smmu,
@@ -2811,9 +2811,10 @@ static int __maybe_unused smmuwp_tf_detect(struct arm_smmu_device *smmu,
 	struct mtk_smmu_fault_param *fault_param;
 	enum mtk_smmu_tfm_type tfm_type;
 	u32 axid, i;
+	bool tf_det;
 
-	fault_param = smmuwp_process_tf(smmu, NULL, &fault_evt);
-	if (fault_param == NULL)
+	tf_det = smmuwp_process_tf(smmu, NULL, &fault_evt);
+	if (!tf_det)
 		return 0;
 
 	if (tbu >= SMMU_TBU_CNT_MAX)
@@ -3174,7 +3175,8 @@ static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu)
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int i, regval;
 
-	pr_info("---- %s start ----\n", __func__);
+	pr_info("smmu:%s outstanding monitor:\n",
+		get_smmu_name(data->plat_data->smmu_type));
 
 	regval = smmu_read_reg(wp_base, SMMUWP_TCU_DBG1);
 	pr_info("\tTCU_DBG1(0x%x):0x%x, AROSTD_M:0x%lx, AWOSTD_M:0x%lx\n",
@@ -3223,8 +3225,6 @@ static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu)
 			i, SMMUWP_TBUx_DBG5(i), regval, FIELD_GET(DBG5_RDAT_S, regval),
 			FIELD_GET(DBG5_RDAT_M, regval));
 	}
-
-	pr_info("---- %s end ----\n", __func__);
 }
 
 /* Used to debug hang/stability issue */
@@ -3234,7 +3234,8 @@ static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu)
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int i, regval;
 
-	pr_info("---- %s start ----\n", __func__);
+	pr_info("smmu:%s io interface signals:\n",
+		get_smmu_name(data->plat_data->smmu_type));
 
 	regval = smmu_read_reg(wp_base, SMMUWP_TCU_DBG0);
 	pr_info("\tTCU_DBG0(0x%x):0x%x, AXI_DBG_M:0x%lx\n",
@@ -3246,8 +3247,6 @@ static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu)
 			i, SMMUWP_TBUx_DBG0(i), regval, FIELD_GET(DBG0_AXI_DBG_S, regval),
 			FIELD_GET(DBG0_AXI_DBG_M, regval));
 	}
-
-	pr_info("---- %s end ----\n", __func__);
 }
 
 /*

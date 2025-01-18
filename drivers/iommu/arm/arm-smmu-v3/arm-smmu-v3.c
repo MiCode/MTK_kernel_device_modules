@@ -1516,19 +1516,6 @@ static int arm_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt)
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
 	struct iommu_fault_event fault_evt = { };
 	struct iommu_fault *flt = &fault_evt.fault;
-	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
-
-	/* invalid evt content or unknown fault id, still need to report fault */
-	if (evt[0] == 0 || (evt[1] & EVTQ_1_S2) ||
-	    (id != EVT_ID_TRANSLATION_FAULT &&
-	     id != EVT_ID_ADDR_SIZE_FAULT &&
-	     id != EVT_ID_ACCESS_FAULT &&
-	     id != EVT_ID_PERMISSION_FAULT)) {
-		if (smmu->impl && smmu->impl->report_device_fault) {
-			smmu->impl->report_device_fault(smmu, NULL, evt, &fault_evt);
-			return -EFAULT;
-		}
-	}
 
 	switch (FIELD_GET(EVTQ_0_ID, evt[0])) {
 	case EVT_ID_TRANSLATION_FAULT:
@@ -1598,10 +1585,7 @@ static int arm_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt)
 		goto out_unlock;
 	}
 
-	if (smmu->impl && smmu->impl->report_device_fault)
-		ret = smmu->impl->report_device_fault(smmu, master, evt, &fault_evt);
-	else
-		ret = iommu_report_device_fault(master->dev, &fault_evt);
+	ret = iommu_report_device_fault(master->dev, &fault_evt);
 	if (ret && flt->type == IOMMU_FAULT_PAGE_REQ) {
 		/* Nobody cared, abort the access */
 		struct iommu_page_response resp = {
@@ -1632,9 +1616,9 @@ static irqreturn_t arm_smmu_evtq_thread(int irq, void *dev)
 			u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
 
 			if (smmu->impl && smmu->impl->smmu_evt_handler)
-				smmu->impl->smmu_evt_handler(irq, dev, evt);
-
-			ret = arm_smmu_handle_evt(smmu, evt);
+				ret = smmu->impl->smmu_evt_handler(irq, dev, evt);
+			else
+				ret = arm_smmu_handle_evt(smmu, evt);
 			if (!ret || !__ratelimit(&rs))
 				continue;
 

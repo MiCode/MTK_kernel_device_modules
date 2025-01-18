@@ -26,7 +26,7 @@
 #define SMMU_TRANS_PA		(1 << 2)
 #define SMMU_TRANS_BYPASS	(SMMU_TRANS_PA | SMMU_TRANS_MIX)
 
-// all event ids.
+/* All event ids */
 #define EVENT_ID_UUT_FAULT		0x01
 #define EVENT_ID_BAD_STREAMID_FAULT	0x02
 #define EVENT_ID_STE_FETCH_FAULT	0x03
@@ -36,12 +36,12 @@
 #define EVENT_ID_TRANSL_FORBIDDEN_FAULT	0x07
 #define EVENT_ID_BAD_SUBSTREAMID_FAULT	0x08
 #define EVENT_ID_CD_FETCH_FAULT		0x09
+#define EVENT_ID_BAD_CD_FAULT		0X0A
+#define EVENT_ID_WALK_EABT_FAULT	0X0B
 #define EVENT_ID_TRANSLATION_FAULT	0x10
 #define EVENT_ID_ADDR_SIZE_FAULT	0x11
 #define EVENT_ID_ACCESS_FAULT		0x12
 #define EVENT_ID_PERMISSION_FAULT	0x13
-#define EVENT_ID_BAD_CD_FAULT		0X0A
-#define EVENT_ID_WALK_EABT_FAULT	0X0B
 #define EVENT_ID_TLB_CONFLICT_FAULT	0X20
 #define EVENT_ID_CFG_CONFLICT_FAULT	0X21
 #define EVENT_ID_PAGE_REQUEST_FAULT	0X24
@@ -50,15 +50,11 @@
 #define MTK_SMMU_HAS_FLAG(pdata, _x)	\
 			  ((((pdata)->flags) & (_x)) == (_x))
 
-//=====================================================
-//Common macro definitions
-//=====================================================
+/* Common macro definitions */
 #define F_BIT_SET(bit)			(1<<(bit))
 #define F_BIT_VAL(val, bit)		((!!(val))<<(bit))
 
-//=====================================================
-//SMMU wrapper register definition
-//=====================================================
+/* SMMU wrapper register definition */
 #define SMMU_TBU_CNT_MAX		(4)
 #define SMMU_TBU_CNT(id)		((id) == SOC_SMMU ?	\
 					 (SMMU_TBU_CNT_MAX - 1) : SMMU_TBU_CNT_MAX)
@@ -554,6 +550,7 @@ struct mtk_smmu_fault_param {
 
 struct mtk_iommu_fault_event {
 	struct mtk_smmu_fault_param mtk_fault_param[SMMU_TFM_TYPE_NUM][SMMU_TBU_CNT_MAX];
+	struct mtk_smmu_fault_param *first_fault_param;
 	struct iommu_fault_event fault_evt;
 };
 
