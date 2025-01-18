@@ -473,14 +473,12 @@ void swpm_v6991_ext_init(void)
 		share_swpm_sub_data_ptr =
 		(struct share_subsys_data *)
 		sspm_sbuf_get(wrap_d->share_swpm_sub_data_addr);
-
-		pr_notice("read: %u\n", share_swpm_sub_data_ptr->dram_bw_read);
-		pr_notice("write: %u\n", share_swpm_sub_data_ptr->dram_bw_write);
 	} else {
 		share_idx_ref_ext = NULL;
 		share_idx_ctrl_ext = NULL;
 		share_spm_sig_ptr = NULL;
 		share_spm_req_cnt = NULL;
+		share_swpm_sub_data_ptr = NULL;
 	}
 
 
