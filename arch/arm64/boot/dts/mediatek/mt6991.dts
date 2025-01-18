@@ -14747,9 +14747,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<4 0x400>, /* VENC_SET_PROP_MEM_ID 1KB */
 			<5 0x400>, /* VDEC_VCP_LOG_INFO_ID 1KB */
 			<6 0x400>, /* VENC_VCP_LOG_INFO_ID 1KB */
-			<8 0x1000>, /* MMDVFS_MEM_ID 4KB */
+			<8 0x1000>, /* MMDVFS_MMUP_MEM_ID 4KB */
 			<9 0x1000>, /* MMQOS_MEM_ID 4KB */
-			<10 0x0>; /* secure dump, its size is in secure_dump_size */
+			<10 0x0>, /* secure dump, its size is in secure_dump_size */
+			<11 0x1000>; /* MMDVFS_MMUP_MEM_ID 4KB */
 	};
 
 	vcp_io2: vcp-iommu-vdec {
@@ -15070,13 +15071,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<MMDVFS_MUX_VDE>,
 			<MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>, <MMDVFS_MUX_SMI>,
 			<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
-			<MMDVFS_MUX_SMI>;
+			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_SMI>;
 		mediatek,mmdvfs-user-names = "user-disp", "user-mdp", "user-mml",
 			"user-smi", "user-jpegdec", "user-jpegenc", "user-venc",
 			"user-vfmt", "user-img", "user-cam",
 			"user-vcore", "user-vmm", "user-vdisp", "user-vdec",
 			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
-			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam", "user-img-smi";
+			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam",
+			"user-img-smi", "user-vcp-smi";
 		mediatek,free-run;
 		mediatek,dpsw-thres = <1>;
 		//mediatek,vdec-larb = <&smi_larb5>;
