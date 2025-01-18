@@ -586,9 +586,8 @@ static void write_ttj(int user, unsigned int cpu_ttj, unsigned int gpu_ttj,
 	if (tm_data.tj_info.jatm_on == 1) {
 		if (tm_data.is_cputcm)
 			therm_intf_write_cputcm(cpu_ttj, TTJ_TCM_OFFSET);
-		else
-			therm_intf_write_csram(cpu_ttj, TTJ_OFFSET);
 
+		therm_intf_write_csram(cpu_ttj, TTJ_OFFSET);
 		therm_intf_write_csram(gpu_ttj, TTJ_OFFSET + 4);
 		therm_intf_write_csram(apu_ttj, TTJ_OFFSET + 8);
 		therm_intf_write_apu_mbox(apu_ttj, APU_MBOX_TTJ_OFFSET);
@@ -596,13 +595,15 @@ static void write_ttj(int user, unsigned int cpu_ttj, unsigned int gpu_ttj,
 		if (tm_data.is_cputcm)
 			therm_intf_write_cputcm(tm_data.tj_info.catm_cpu_ttj,
 				TTJ_TCM_OFFSET);
-		else
-			therm_intf_write_csram(tm_data.tj_info.catm_cpu_ttj,
-				TTJ_OFFSET);
 
-		therm_intf_write_csram(tm_data.tj_info.catm_gpu_ttj, TTJ_OFFSET + 4);
-		therm_intf_write_csram(tm_data.tj_info.catm_apu_ttj, TTJ_OFFSET + 8);
-		therm_intf_write_apu_mbox(tm_data.tj_info.catm_apu_ttj, APU_MBOX_TTJ_OFFSET);
+		therm_intf_write_csram(tm_data.tj_info.catm_cpu_ttj,
+			TTJ_OFFSET);
+		therm_intf_write_csram(tm_data.tj_info.catm_gpu_ttj,
+			TTJ_OFFSET + 4);
+		therm_intf_write_csram(tm_data.tj_info.catm_apu_ttj,
+			TTJ_OFFSET + 8);
+		therm_intf_write_apu_mbox(tm_data.tj_info.catm_apu_ttj,
+			APU_MBOX_TTJ_OFFSET);
 	}
 	mutex_unlock(&tm_data.lock);
 }
@@ -864,9 +865,8 @@ static void write_power_budget(unsigned int cpu_pb, unsigned int gpu_pb,
 
 	if (tm_data.is_cputcm)
 		therm_intf_write_csram(cpu_pb, POWER_BUDGET_TCM_OFFSET);
-	else
-		therm_intf_write_csram(cpu_pb, POWER_BUDGET_OFFSET);
 
+	therm_intf_write_csram(cpu_pb, POWER_BUDGET_OFFSET);
 	therm_intf_write_csram(gpu_pb, POWER_BUDGET_OFFSET + 4);
 	therm_intf_write_csram(apu_pb, POWER_BUDGET_OFFSET + 8);
 
@@ -1102,8 +1102,8 @@ static ssize_t frs_info_store(struct kobject *kobj,
 		if ((ap_headroom >= -1000) && (ap_headroom <= 1000)) {
 			if (tm_data.is_cputcm)
 				therm_intf_write_cputcm(ap_headroom, AP_NTC_HEADROOM_TCM_OFFSET);
-			else
-				therm_intf_write_csram(ap_headroom, AP_NTC_HEADROOM_OFFSET);
+
+			therm_intf_write_csram(ap_headroom, AP_NTC_HEADROOM_OFFSET);
 			frs_data.ap_headroom = ap_headroom;
 		} else {
 			pr_info("[%s] invalid ap head room input\n", __func__);
@@ -1112,8 +1112,8 @@ static ssize_t frs_info_store(struct kobject *kobj,
 
 		if (tm_data.is_cputcm)
 			therm_intf_write_cputcm(tpcb, TPCB_TCM_OFFSET);
-		else
-			therm_intf_write_csram(tpcb, TPCB_OFFSET);
+
+		therm_intf_write_csram(tpcb, TPCB_OFFSET);
 
 		frs_data.enable = enable;
 		frs_data.activated = act;
@@ -1210,11 +1210,12 @@ static ssize_t target_tpcb_store(struct kobject *kobj,
 {
 	int target_tpcb = 0;
 
-	if (kstrtoint(buf, 10, &target_tpcb) == 0)
+	if (kstrtoint(buf, 10, &target_tpcb) == 0) {
 		if (tm_data.is_cputcm)
 			therm_intf_write_cputcm(target_tpcb, TARGET_TPCB_TCM_OFFSET);
-		else
-			therm_intf_write_csram(target_tpcb, TARGET_TPCB_OFFSET);
+
+		therm_intf_write_csram(target_tpcb, TARGET_TPCB_OFFSET);
+	}
 	else {
 		pr_info("[%s] invalid input\n", __func__);
 		return -EINVAL;
