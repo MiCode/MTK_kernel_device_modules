@@ -464,6 +464,36 @@
 		#clock-cells = <1>;
 	};
 
+	efuse: efuse@13260000 {
+		compatible = "mediatek,devinfo";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+
+		efuse_spare5: spare5@20 {
+			reg = <0x20 0x4>;
+		};
+
+		lvts_e_data1: data1@304 {
+			reg = <0x304 0xc>;
+		};
+
+		lvts_e_data2: data2@350 {
+			reg = <0x350 0x14>;
+		};
+
+		lvts_e_data3: data3@43c {
+			reg = <0x43c 0x20>;
+		};
+
+		lvts_e_data4: data4@478 {
+			reg = <0x478 0x20>;
+		};
+	};
+
 	imp_iic_wrap_n_clk: syscon@13c30000 {
 		compatible = "mediatek,mt6991-imp_iic_wrap_n", "syscon";
 		reg = <0 0x13c30000 0 0x1000>;
