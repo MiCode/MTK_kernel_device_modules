@@ -4094,7 +4094,7 @@
 			type = <1>;
 			mask = /bits/ 64 <0x00000003ffffffff>;
 			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			iommus = <&iommu1 M4U_PORT_L22_APU_FAKE_DATA>;
+			iommus = <&iommu1 M4U_PORT_L22_APU_DATA>;
 		};
 
 		mtk_apu_mem_data: mtk_apu_mem_data {
@@ -4102,7 +4102,7 @@
 			type = <2>;
 			mask = /bits/ 64 <0x00000003ffffffff>;
 			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			iommus = <&iommu1 M4U_PORT_L22_APU_FAKE_DATA>;
+			iommus = <&iommu1 M4U_PORT_L22_APU_DATA>;
 		};
 
 		mtk_apu_mdw: mtk_apu_mdw {
