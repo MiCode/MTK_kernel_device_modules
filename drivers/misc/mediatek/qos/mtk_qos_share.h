@@ -34,6 +34,10 @@ static inline unsigned int qos_rec_get_hist_data_bw(unsigned int idx, unsigned i
 {
 	return 0;
 }
+static inline unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx, unsigned int type)
+{
+	return 0;
+}
 static inline unsigned int qos_rec_get_hist_idx(void)
 {
 	return 0xFFFF;
@@ -53,9 +57,17 @@ extern unsigned int qos_rec_get_hist_idx(void);
 #define QOS_SHARE_HIST_BW               0x24
 #define QOS_SHARE_HIST_DATA_BW          0xA4
 
+#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY)
+static inline unsigned int qos_rec_check_sram_ext(void)
+{
+	return 0xFFFF;
+}
+#else
 extern int qos_share_init_sram(void __iomem *regs, unsigned int bound);
 extern int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound);
 extern unsigned int qos_rec_check_sram_ext(void);
 extern u32 qos_share_sram_read(u32 id);
 extern u32 qos_share_sram_read_ext(u32 offset);
+#endif /* CONFIG_MTK_QOS_LEGACY */
+
 #endif
