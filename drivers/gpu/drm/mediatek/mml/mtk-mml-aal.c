@@ -1037,7 +1037,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	aal_frm->dre_blk_height = tile_config_param->dre_blk_height;
 	aal_hist_ctrl(comp, task, ccfg, true);
 
-	if (mode == MML_MODE_MML_DECOUPLE) {
+	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_INTSTA],
 			0x0, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_INTEN],
@@ -1605,7 +1605,7 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	aal_hist_ctrl(comp, task, ccfg, false);
 
 	idx = 0;
-	if (mode == MML_MODE_MML_DECOUPLE) {
+	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		for (i = 0; i < aal_frm->reuse_curve.idx; i++)
 			for (j = 0; j < aal_frm->reuse_curve.offs[i].cnt; j++, idx++)
 				mml_update_array(reuse, &aal_frm->reuse_curve, i, j, curve[idx]);
@@ -1643,7 +1643,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 	if (aal_frm->relay_mode)
 		goto exit;
 
-	if (mode != MML_MODE_MML_DECOUPLE)
+	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
 		goto comp_config_put;
 
 	if (vcp) {
@@ -2046,7 +2046,7 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 
 	if (aal_get_rb_mode(aal) == RB_SOF_MODE &&
-		mode != MML_MODE_MML_DECOUPLE &&
+		mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2 &&
 		aal_frm->is_aal_need_readback) {
 
 		mutex_lock(&aal->irq_wq_lock);
