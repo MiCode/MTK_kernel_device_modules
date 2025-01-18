@@ -205,12 +205,11 @@ void task_check_for_rotation(struct rq *src_rq)
 		irq_log_store();
 		return;
 	}
-	rd = NULL;
-	// need upstream, add vendor data
-	//if (!(rd->android_vendor_data1[0])) {
-	//	irq_log_store();
-	//	return;
-	//}
+
+	if (!(rd->android_vendor_data1)) {
+		irq_log_store();
+		return;
+	}
 
 	irq_log_store();
 	wc = ktime_get_raw_ns();

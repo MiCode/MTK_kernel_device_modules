@@ -2286,8 +2286,7 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 	lockdep_assert_rq_held(src_rq);
 
 	rcu_read_lock();
-	rd= NULL;
-	in_many_heavy_tasks = NULL;//rd->android_vendor_data1[0];
+	in_many_heavy_tasks = rd->android_vendor_data1;
 	src_capacity = capacity_orig_of(src_rq->cpu);
 	dst_capacity = cpu_cap_ceiling(dst_cpu);
 	list_for_each_entry_reverse(p,
