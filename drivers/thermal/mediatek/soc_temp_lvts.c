@@ -38,6 +38,8 @@
 #define NUM_LVTS_DEVICE_REG (9)
 #define LVTS_CONTROLLER_DEBUG_NUM (12)
 
+static struct tag_chipid *chip_id;
+
 static void __iomem *toprgu_base;
 #define WDT_REQ_MODE   0x30
 #define WDT_STATUS_MCU_THERMAL_RST (1<<23)
@@ -206,14 +208,28 @@ static int __used lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool
 	return max_temp;
 }
 
+static unsigned int mt6991_mcu_lvts_id_a0_convert(int id);
+static int lvts_get_chipid(void);
 static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz_id, bool in_isr)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int i, j, msr_raw;
 	unsigned int s_index = tz_id - 1;
+	unsigned int prev_s_index = s_index;
 	int current_temp;
 	void __iomem *base;
 	struct platform_ops *ops = &lvts_data->ops;
+
+	if(chip_id == NULL) {
+		pr_info("[%s] chip_id not set yet\n", __func__);
+		lvts_get_chipid();
+	}
+
+	if (lvts_data->mcu_sensor_id_remap)
+		if(chip_id != NULL && chip_id->sw_ver == 0)
+			s_index = mt6991_mcu_lvts_id_a0_convert(prev_s_index);
+
+	//pr_info("[%s](tz_id=%d, s_index=%d, prev_s_index=%d)\n", __func__, tz_id, s_index, prev_s_index);
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
@@ -1545,6 +1561,37 @@ static const struct of_device_id toprgu_of_match[] = {
 	{},
 };
 
+static int lvts_get_chipid(void)
+{
+	struct device_node *node;
+	int len;
+
+	/* chip-id already found */
+	if (!chip_id) {
+		node = of_find_node_by_path("/chosen");
+		if (!node)
+			node = of_find_node_by_path("/chosen@0");
+
+		if (node) {
+			chip_id = (struct tag_chipid *)of_get_property(node,
+									"atag,chipid",
+									&len);
+			if (!chip_id) {
+				pr_notice("[%s] could not found atag,chipid in chosen\n", __func__);
+				return -ENODEV;
+			}
+		} else {
+			pr_notice("[%s] chosen node not found in device tree\n", __func__);
+			return -ENODEV;
+		}
+		pr_info("[%s] current sw version: %u\n", __func__, chip_id->sw_ver);
+	} else {
+		pr_info("[%s] saved sw version: %u\n", __func__, chip_id->sw_ver);
+	}
+
+	return chip_id->sw_ver;
+}
+
 static int lvts_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1578,6 +1625,9 @@ static int lvts_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, lvts_data);
 
+	if (lvts_data->mcu_sensor_id_remap)
+		lvts_get_chipid();
+
 #ifdef DUMP_MORE_LOG
 	clear_lvts_register_value_array(lvts_data);
 	read_controller_reg_before_active(lvts_data);
@@ -1592,6 +1642,7 @@ static int lvts_probe(struct platform_device *pdev)
 	ret = lvts_register_thermal_zones(lvts_data);
 	if (ret)
 		return ret;
+
 
 	return 0;
 }
@@ -6392,6 +6443,7 @@ enum mt6991_lvts_sensor_enum {
 };
 
 
+
 enum mt6991_lvts_controller_enum {
 	MT6991_LVTS_MCU_CTRL0,
 	MT6991_LVTS_MCU_CTRL1,
@@ -6404,6 +6456,31 @@ enum mt6991_lvts_controller_enum {
 	MT6991_LVTS_CTRL_NUM
 };
 
+static unsigned int mt6991_mcu_a0_sensor[MT6991_TS4_3+1]  = {
+	MT6991_TS3_2,//CTRL0
+	MT6991_TS3_3,
+	MT6991_TS3_0,
+	MT6991_TS4_0,
+	MT6991_TS1_1,//CTRL1
+	MT6991_TS4_1,
+	MT6991_TS2_2,
+	MT6991_TS2_3,
+	MT6991_TS2_0,//CTRL2
+	MT6991_TS2_1,
+	MT6991_TS4_2,
+	MT6991_TS4_3,
+	MT6991_TS1_0,//CTRL3
+	MT6991_TS3_1,
+	MT6991_TS1_2,
+	MT6991_TS1_3
+};
+static unsigned int mt6991_mcu_lvts_id_a0_convert(int id)
+{
+	if (id > MT6991_TS4_3)
+		return id;
+
+	return mt6991_mcu_a0_sensor[id];
+}
 static void mt6991_efuse_to_cal_data(struct lvts_data *lvts_data)
 {
 	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
@@ -6574,10 +6651,10 @@ static struct tc_settings mt6991_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6991_TS1_0, MT6991_TS1_1, MT6991_TS1_2, MT6991_TS1_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 10, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
-		.hw_reboot_trip_point = 110900,
+		.hw_reboot_trip_point = 118800,
 		.irq_bit = BIT(1),
 		.coeff = {
 			.cali_mode = CALI_HT,
@@ -6619,10 +6696,10 @@ static struct tc_settings mt6991_tc_settings[] = {
 		.num_sensor = 4,
 		.sensor_map = {MT6991_TS4_0, MT6991_TS4_1, MT6991_TS4_2, MT6991_TS4_3},
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
-		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.tc_speed = SET_TC_SPEED_IN_US(10, 10, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = ALL_SENSING_POINTS,
-		.hw_reboot_trip_point = 118800,
+		.hw_reboot_trip_point = 114200,
 		.irq_bit = BIT(4),
 		.coeff = {
 			.cali_mode = CALI_NT,
@@ -6727,6 +6804,7 @@ static struct lvts_data mt6991_lvts_data = {
 	.dump_wo_pause = true,
 	.support_shutdown = true,
 	.gpu_power_ctrl_id = MT6991_LVTS_GPU_CTRL0,
+	.mcu_sensor_id_remap = true,
 };
 
 /*==================================================
