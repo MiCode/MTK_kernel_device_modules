@@ -3876,40 +3876,37 @@ cpus {
 
 		mmdvfs {
 			compatible = "mediatek,mmdvfs";
-
 			operating-points-v2 = <&opp_table_disp>;
-			mediatek,support_mux = "disp", "cam",
-			"img", "img2", "dpe",
-			"ipe","venc", "vdec",
-			"mdp", "ccu";
-			mediatek,mux_disp = "TOP_UNIVPLL_D5_D2",
+			mediatek,support-mux = "disp", "cam", "img", "img2", "dpe",
+			"ipe","venc", "vdec", "mdp", "ccu";
+			mediatek,mux-disp = "TOP_UNIVPLL_D5_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_cam = "TOP_UNIVPLL_D4_D2",
+			mediatek,mux-cam = "TOP_UNIVPLL_D4_D2",
 				"TOP_MMPLL_D7", "TOP_UNIVPLL_D5",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_img = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-img = "TOP_MAINPLL_D4_D2",
 				"TOP_MMPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_img2 = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-img2 = "TOP_MAINPLL_D4_D2",
 				"TOP_MMPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_dpe = "TOP_UNIVPLL_D4_D2",
+			mediatek,mux-dpe = "TOP_UNIVPLL_D4_D2",
 				"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_ipe = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-ipe = "TOP_MAINPLL_D4_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_venc = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-venc = "TOP_MAINPLL_D4_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_vdec = "TOP_UNIVPLL_D5_D2",
+			mediatek,mux-vdec = "TOP_UNIVPLL_D5_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_mdp = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-mdp = "TOP_MAINPLL_D4_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_TVDPLL_CK";
-			mediatek,mux_ccu = "TOP_UNIVPLL_D4_D2",
+			mediatek,mux-ccu = "TOP_UNIVPLL_D4_D2",
 				"TOP_MAINPLL_D6", "TOP_MMPLL_D7",
 				"TOP_UNIVPLL_D5";
 
@@ -3959,7 +3956,6 @@ cpus {
 				"TOP_MMPLL_D4_D2",	/* 19 */
 				"TOP_MMPLL_D6",	/* 20 */
 				"TOP_MAINPLL_D6";
-
 		};
 
 		mmsys_config_clk: syscon@14116000 {
