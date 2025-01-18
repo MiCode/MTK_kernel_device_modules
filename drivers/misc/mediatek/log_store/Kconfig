@@ -37,3 +37,14 @@ config MTK_LOG_STORE_BOOTPROF
 	  bootprof log and kernel log to the partition.
 
 	  Enable this to get the bootprof log.
+
+config MTK_LOG_STORE_ALWAYS_CLEAR_EMMC_FLAG
+	bool "always clear NEED_SAVE_TO_EMMC flag"
+	default n
+	depends on MTK_DRAM_LOG_STORE
+	help
+	  The config item MTK_LOG_STORE_CLEAR_EMMC_FLAG is
+	  used to always clear NEED_SAVE_TO_EMMC flag when
+	  log_store driver init, even in normal boot mode.
+	  This is used to cover the system which cannot clear
+	  this flag after boot complete.
