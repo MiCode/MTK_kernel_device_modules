@@ -377,7 +377,7 @@ void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
 {
 	void __iomem *mbase = mtu->mac_base;
 
-	if (speed > mtu->max_speed)
+	if (speed > mtu->max_speed && !mtu->ssusb->is_host)
 		speed = mtu->max_speed;
 
 	switch (speed) {
@@ -413,7 +413,7 @@ void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
 	}
 
 	mtu->speed = speed;
-	dev_dbg(mtu->dev, "set speed: %s\n", usb_speed_string(speed));
+	dev_info(mtu->dev, "set speed: %s\n", usb_speed_string(speed));
 }
 
 /* CSR registers will be reset to default value if port is disabled */
@@ -1192,6 +1192,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 	ssusb->u3d = mtu;
 	mtu->ssusb = ssusb;
 	mtu->max_speed = usb_get_maximum_speed(dev);
+	if (of_property_read_u32(dev->of_node, "maximum-speed-host", &mtu->max_speed_host) < 0)
+		mtu->max_speed_host = USB_SPEED_SUPER_PLUS;
+
 	mtu->u3_lpm = !of_property_read_bool(dev->of_node, "usb3-lpm-disable");
 	mtu->u3_u1gou2 = !of_property_read_bool(dev->of_node, "usb3-u1gou2-disable");
 

@@ -453,6 +453,7 @@ struct mtu3 {
 	struct mtu3_request ep0_req;
 	u8 setup_buf[EP0_RESPONSE_BUF];
 	enum usb_device_speed max_speed;
+	enum usb_device_speed max_speed_host;
 	enum usb_device_speed speed;
 
 	unsigned is_active:1;

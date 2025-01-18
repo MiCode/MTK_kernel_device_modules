@@ -291,8 +291,8 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		ssusb_set_noise_still_tr(ssusb);
 		ssusb_set_vbus(otg_sx, 1);
 		mtu3_check_params(mtu);
-		mtu3_set_speed(mtu, mtu->speed);
 		ssusb->is_host = true;
+		mtu3_set_speed(mtu, mtu->max_speed_host);
 		break;
 	case USB_ROLE_DEVICE:
 		/* avoid suspend when works as device */
