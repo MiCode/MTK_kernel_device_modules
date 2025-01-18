@@ -792,6 +792,7 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 	int ret = 0;
 	struct mtk_base_scp_ultra *scp_ultra =
 			snd_soc_component_get_drvdata(component);
+	struct mtk_base_afe *afe = get_afe_base();
 
 	dev_info(scp_ultra->dev, "%s()\n", __func__);
 
@@ -815,6 +816,11 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 	pcm_dump_switch = false;
 	scp_ultra->usnd_state = SCP_ULTRA_STATE_IDLE;
 	register_ultra_afe_hw_free_notifier(&ultra_afe_hw_free_notifier);
+	if (of_property_read_bool(scp_ultra->dev->of_node, "ultra-afe-with-adsp")) {
+		afe->memif[scp_ultra->scp_ultra_dl_memif_id].use_dram_only = 1;
+		afe->memif[scp_ultra->scp_ultra_ul_memif_id].use_dram_only = 1;
+		pr_info("%s() set ultrasound use_dram_only = 1\n",__func__);
+	}
 	return ret;
 }
 
