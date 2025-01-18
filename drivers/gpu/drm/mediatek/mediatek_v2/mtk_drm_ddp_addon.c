@@ -47,6 +47,16 @@ static const int ovl_rsz_path_1[] = {
 	DDP_COMPONENT_OVLSYS_RSZ2, /* right pipe */
 };
 
+static const int ovl_rsz_path_2[] = {
+	DDP_COMPONENT_OVL_EXDMA2,
+	DDP_COMPONENT_OVL0_MDP_RSZ0,
+};
+
+static const int ovl_rsz_path_3[] = {
+	DDP_COMPONENT_OVL1_EXDMA2,
+	DDP_COMPONENT_OVL1_MDP_RSZ0,
+};
+
 static const int dmdp_pq_with_rdma_path[] = {
 	DDP_COMPONENT_DMDP_RDMA0,  DDP_COMPONENT_DMDP_HDR0,
 	DDP_COMPONENT_DMDP_AAL0,   DDP_COMPONENT_DMDP_RSZ0,
@@ -271,6 +281,14 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[OVL_RSZ_1] = {
 				.path = ovl_rsz_path_1,
 				.path_len = ARRAY_SIZE(ovl_rsz_path_1),
+			},
+		[OVL_RSZ_2] = {
+				.path = ovl_rsz_path_2,
+				.path_len = ARRAY_SIZE(ovl_rsz_path_2),
+			},
+		[OVL_RSZ_3] = {
+				.path = ovl_rsz_path_3,
+				.path_len = ARRAY_SIZE(ovl_rsz_path_3),
 			},
 		[DMDP_PQ_WITH_RDMA] = {
 				.path = dmdp_pq_with_rdma_path,
@@ -792,7 +810,9 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 	int i, j;
 	unsigned int addon_idx, prev_id;
 
-	next_attach_comp_id = addon_config->config_type.tgt_comp;
+	next_attach_comp_id = ((priv->data->mmsys_id != MMSYS_MT6991) && addon_config->config_type.tgt_comp) ?
+		addon_config->config_type.tgt_comp : mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
+
 	if (module_data->attach_comp >= DDP_COMPONENT_ID_MAX) {
 		DDPPR_ERR("Invalid attach_comp value\n");
 		return;
@@ -884,8 +904,8 @@ void mtk_addon_disconnect_before(
 	enum mtk_ddp_comp_id prev_comp_id, next_comp_id, next_attach_comp_id;
 	const struct mtk_addon_path_data *path_data =
 		mtk_addon_module_get_path(module_data->module);
-
-	next_attach_comp_id = addon_config->config_type.tgt_comp;
+	next_attach_comp_id = ((priv->data->mmsys_id != MMSYS_MT6991) && addon_config->config_type.tgt_comp) ?
+		addon_config->config_type.tgt_comp : mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
 	if (next_attach_comp_id == -1 || next_attach_comp_id >= DDP_COMPONENT_ID_MAX) {
 		comp = priv->ddp_comp[module_data->attach_comp];
 		DDPPR_ERR(

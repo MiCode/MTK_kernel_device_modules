@@ -140,6 +140,10 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_MDP_RSZ0:
 	case DDP_COMPONENT_MDP_RSZ1:
+	case DDP_COMPONENT_OVL0_MDP_RSZ0:
+	case DDP_COMPONENT_OVL0_MDP_RSZ1:
+	case DDP_COMPONENT_OVL1_MDP_RSZ0:
+	case DDP_COMPONENT_OVL1_MDP_RSZ1:
 		mtk_mdp_rsz_dump(comp);
 		break;
 	case DDP_COMPONENT_DSI0:
@@ -350,6 +354,10 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_MDP_RSZ0:
 	case DDP_COMPONENT_MDP_RSZ1:
+	case DDP_COMPONENT_OVL0_MDP_RSZ0:
+	case DDP_COMPONENT_OVL0_MDP_RSZ1:
+	case DDP_COMPONENT_OVL1_MDP_RSZ0:
+	case DDP_COMPONENT_OVL1_MDP_RSZ1:
 		mtk_mdp_rsz_analysis(comp);
 		break;
 	case DDP_COMPONENT_DSI0:

@@ -3332,7 +3332,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			u8 last_lye = 0;
 			u32 last_comp = 0;
 
-			mtk_addon_get_comp(last_mml_ir_lye, &last_comp, &last_lye);
+			mtk_addon_get_comp(crtc, last_mml_ir_lye, &last_comp, &last_lye);
 			if ((comp_state.comp_id != last_comp) || (comp_state.lye_id != last_lye)) {
 				DDPMSG("MML IR layer changed\n");
 				layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
@@ -3350,13 +3350,13 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		prev_comp_id = comp_state.comp_id;
 
 		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER))
-			mtk_addon_set_comp(&lye_state->mml_ir_lye,
+			mtk_addon_set_comp(crtc, &lye_state->mml_ir_lye,
 					   comp_state.comp_id, comp_state.lye_id);
 		else if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_LINK_LAYER))
-			mtk_addon_set_comp(&lye_state->mml_dl_lye,
+			mtk_addon_set_comp(crtc, &lye_state->mml_dl_lye,
 					   comp_state.comp_id, comp_state.lye_id);
 		else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER))
-			mtk_addon_set_comp(&lye_state->rpo_lye,
+			mtk_addon_set_comp(crtc, &lye_state->rpo_lye,
 					   comp_state.comp_id, comp_state.lye_id);
 	}
 
@@ -4092,7 +4092,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 			continue;
 
 		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
-			private->data->mmsys_id != MMSYS_MT6897)
+			(private->data->mmsys_id != MMSYS_MT6897)
+			&& (private->data->mmsys_id != MMSYS_MT6991))
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)

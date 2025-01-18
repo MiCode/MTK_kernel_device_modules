@@ -48,6 +48,8 @@ enum addon_module {
 	DISP_RSZ_v6,
 	OVL_RSZ,         /* OVL_2L pq out, pq in OVL_2L */
 	OVL_RSZ_1,
+	OVL_RSZ_2,
+	OVL_RSZ_3,
 	DISP_WDMA0,
 	DISP_WDMA0_v2,
 	DISP_WDMA0_v3,
@@ -134,6 +136,7 @@ struct mtk_addon_rsz_config {
 	struct mtk_rect rsz_dst_roi;
 	struct mtk_rsz_param rsz_param;
 	uint8_t lc_tgt_layer;
+	bool is_dc; //for exdma
 };
 
 struct mtk_addon_wdma_config {
@@ -159,6 +162,32 @@ struct mtk_addon_mml_config {
 	bool y2r_en;				    /* [OUT] enable y2r */
 	bool is_entering;			    /* [OUT] state of entering or leaving */
 	u8 pipe;				    /* [OUT] pipe indicator 0:left 1:right*/
+};
+
+struct addon_total_tile_overhead {
+unsigned int left_in_width;
+unsigned int left_overhead;
+unsigned int left_overhead_scaling;
+unsigned int right_in_width;
+unsigned int right_overhead;
+unsigned int right_overhead_scaling;
+bool is_support;
+};
+
+struct mtk_addon_ddp_config {
+	void *pa;
+	unsigned int w;
+	unsigned int h;
+	unsigned int x;
+	unsigned int y;
+	unsigned int vrefresh;
+	unsigned int clock;
+	unsigned int bpc;
+	struct golden_setting_context *p_golden_setting_context;
+	unsigned int source_bpc;
+	struct addon_total_tile_overhead tile_overhead;
+	unsigned int rsz_src_w;
+	unsigned int rsz_src_h;
 };
 
 union mtk_addon_config {

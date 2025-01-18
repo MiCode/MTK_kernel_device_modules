@@ -893,6 +893,9 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			       struct mtk_plane_state *state,
 			       struct cmdq_pkt *handle)
 {
+	struct mtk_drm_private *priv;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_plane_pending_state *pending = &state->pending;
 	unsigned int fmt = pending->format;
 	unsigned int pitch = pending->pitch & 0xffff;
@@ -907,6 +910,15 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	unsigned int clip = 0;
 	unsigned int buf_size = 0;
 	int rotate = 0;
+	/* OVL comp might not attach to CRTC in layer_config(), need to check */
+	if (unlikely(!comp->mtk_crtc)) {
+		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	priv = crtc->dev->dev_private;
 
 	if (fmt == DRM_FORMAT_YUYV || fmt == DRM_FORMAT_YVYU ||
 	    fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
@@ -957,8 +969,17 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + OVL_BLD_L_PITCH(id), pitch, ~0);
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
+	DDPDBG("%s, %d\n", __func__, comp->id);
+
+	/*bind_comp == NULL => when it does not use EXDMA2, no bind_comp, config size.*/
+	/*comp->id != bind_comp->id => exdma2->bind_comp does not need to be config size again.*/
+	if ((priv->data->mmsys_id == MMSYS_MT6991) &&
+		((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
+		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp->id))) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
+	}
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_BLD_OVL_CLIP(id), clip, ~0);
 }
