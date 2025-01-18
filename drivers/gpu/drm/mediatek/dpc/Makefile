@@ -14,6 +14,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
              -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
+ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DDISP_VIDLE_ENABLE
+endif
+
 obj-$(CONFIG_MTK_DPC) := mtk_dpc.o
 
 mtk_dpc-objs += mtk_dpc_driver.o

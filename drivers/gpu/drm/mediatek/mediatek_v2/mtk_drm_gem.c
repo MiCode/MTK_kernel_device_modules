@@ -972,6 +972,7 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 	}
 
 	if (mml_ctx > 0) {
+		mtk_drm_idlemgr_kick(__func__, crtc, true);
 		DDPINFO("%s:%d mml_drm_submit +\n", __func__, __LINE__);
 		ret = mml_drm_submit(mml_ctx, submit_kernel, NULL);
 		DDPINFO("%s:%d mml_drm_submit - ret:%d, job(id,fence):(%d,%d)\n",

@@ -267,9 +267,15 @@ int mtk_vidle_update_dt_by_period(void *_crtc)
 
 	if (duration == vidle_data.te_duration)
 		return duration;
-	DDPINFO("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
+	else if ((duration > vidle_data.te_duration) || (duration != 8333)) {
+		DDPMSG("%s %d -> %d, disable ff\n", __func__, vidle_data.te_duration, duration);
+		mtk_vidle_config_ff(false);
+	} else
+		DDPINFO("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
+
 	vidle_data.te_duration = duration;
 
+#if IF_ZERO
 	/* update DTs affected by TE duration */
 	disp_dpc_driver.dpc_dt_set(1, duration - DT_OVL_OFFSET);
 	disp_dpc_driver.dpc_dt_set(5, duration - DT_DISP1_OFFSET);
@@ -277,6 +283,7 @@ int mtk_vidle_update_dt_by_period(void *_crtc)
 	disp_dpc_driver.dpc_dt_set(33, duration - DT_OVL_OFFSET);
 	disp_dpc_driver.dpc_dt_set(64, duration - DT_VCORE_OFFSET);
 	disp_dpc_driver.dpc_dt_set(73, duration - DT_VCORE_OFFSET);
+#endif
 
 	return duration;
 }

@@ -321,6 +321,8 @@ struct mtk_dpc {
 	resource_size_t voter_clr_pa;
 	void __iomem *voter_set_va;
 	void __iomem *voter_clr_va;
+	void __iomem *vcore_mode_set_va;
+	void __iomem *vcore_mode_clr_va;
 
 	void __iomem *rtff_pwr_con;
 	void __iomem *vdisp_ao_cg_con;

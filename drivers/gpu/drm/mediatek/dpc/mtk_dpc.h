@@ -48,6 +48,16 @@
 #define DT_7  (DT_OFF1 + DT_PRE_DISP1_OFF)
 #define DT_13 (DT_OFF1 + DT_PRE_MMINFRA_OFF)
 
+#define DPC2_DT_PRESZ 300
+#define DPC2_DT_POSTSZ 300
+#define DPC2_DT_MTCMOS 100
+#define DPC2_DT_INFRA 300
+#define DPC2_DT_MMINFRA 700
+#define DPC2_DT_VCORE 850
+#define DPC2_DT_DSION 1000
+#define DPC2_DT_DSIOFF 100
+#define DPC2_DT_TE_120 8300
+
 enum mtk_dpc_subsys {
 	DPC_SUBSYS_DISP = 0,
 	DPC_SUBSYS_DIS0 = 0,
