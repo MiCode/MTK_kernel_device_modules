@@ -43,6 +43,7 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_dmdp_aal.h"
+#include "mtk_drm_trace.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -1044,6 +1045,7 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	}
 	dre_blk_x_num = aal_data->primary_data->init_regs.dre_blk_x_num;
 	dre_blk_y_num = aal_data->primary_data->init_regs.dre_blk_y_num;
+	mtk_drm_trace_begin("read_dre3_hist");
 	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
 		disp_aal_read_dre3_hist(comp, dre_blk_x_num, dre_blk_y_num);
 		aal_data->primary_data->dre30_hist.dre_blk_x_num = dre_blk_x_num;
@@ -1061,7 +1063,10 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 		CRTC_MMP_MARK(0, aal_dre30_rw, comp->id, 0xEE);
 	}
 	CRTC_MMP_MARK(0, aal_dre30_rw, comp->id, 1);
+	mtk_drm_trace_end();
+
 	/* Write DRE 3.0 gain */
+	mtk_drm_trace_begin("write_dre3_curve");
 	if (!atomic_read(&aal_data->first_frame)) {
 		mutex_lock(&aal_data->primary_data->config_lock);
 		disp_aal_write_dre3_curve(comp, false);
@@ -1069,7 +1074,7 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 			disp_aal_write_dre3_curve(comp1, false);
 		mutex_unlock(&aal_data->primary_data->config_lock);
 	}
-
+	mtk_drm_trace_end();
 	CRTC_MMP_EVENT_END(0, aal_dre30_rw, comp->id, 2);
 	return 0;
 }
@@ -1370,7 +1375,7 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	struct mtk_disp_aal *aal1_data = NULL;
 
 	CRTC_MMP_EVENT_START(0, aal_sof_thread, 0, 0);
-
+	mtk_drm_trace_begin("aal_sof_thread");
 	AALIRQ_LOG("[SRAM] dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
 	pm_ret = mtk_vidle_pq_power_get(__func__);
@@ -1418,6 +1423,7 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		CRTC_MMP_MARK(0, aal_sof_thread, 0, 3);
 	}
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
+	mtk_drm_trace_end();
 }
 
 static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
