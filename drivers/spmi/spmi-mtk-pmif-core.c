@@ -1875,6 +1875,8 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	spmi_pmif_dbg_init(ctrl);
 	spmi_pmif_create_attr(&mtk_spmi_driver.driver);
 
+	spmi_nack_whitelist_parse(pdev);
+
 	if (arb->caps == 2) {
 		arb->irq = platform_get_irq_byname(pdev, "pmif_irq");
 		if (arb->irq < 0) {
@@ -1936,7 +1938,6 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 		}
 	}
 	spmi_dev_parse(pdev);
-	spmi_nack_whitelist_parse(pdev);
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	/* pmif/spmi initial setting */
 	pmif_writel(arb->pmif_base[0], arb, 0xffffffff, PMIF_INF_EN);
