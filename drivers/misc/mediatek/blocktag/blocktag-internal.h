@@ -219,15 +219,6 @@ struct mtk_btag_ringtrace {
 	__s32 max;
 };
 
-struct mtk_btag_vops {
-	size_t	(*seq_show)(struct mtk_blocktag *btag, char **buff,
-			    unsigned long *size, struct seq_file *seq);
-	ssize_t  (*sub_write)(struct mtk_blocktag *btag,
-			      const char __user *ubuf, size_t count);
-	bool	boot_device;
-	bool	earaio_enabled;
-};
-
 /* BlockTag */
 struct mtk_blocktag {
 	struct list_head list;
@@ -259,6 +250,15 @@ struct mtk_blocktag {
 	u32 tag_per_queue;
 	u32 nr_queue;
 	u32 nr_tag;
+};
+
+struct mtk_btag_vops {
+	size_t (*seq_show)(struct mtk_blocktag *btag, char **buff,
+		unsigned long *size, struct seq_file *seq);
+	ssize_t  (*sub_write)(struct mtk_blocktag *btag,
+		const char __user *ubuf, size_t count);
+	bool    boot_device;
+	bool    earaio_enabled;
 };
 
 struct mtk_blocktag *mtk_btag_find_by_type(
