@@ -1686,6 +1686,7 @@ static const struct v4l2_m2m_ops mml_m2m_ops = {
 	.device_run	= mml_m2m_device_run,
 };
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2_dev)
 {
 	struct mml_dev *mml = dev_get_drvdata(dev);
@@ -1739,9 +1740,11 @@ static void mml_m2m_device_unregister(struct mml_v4l2_dev *v4l2_dev)
 	video_unregister_device(v4l2_dev->m2m_vdev);
 	v4l2_m2m_release(v4l2_dev->m2m_dev);
 }
+#endif
 
 struct mml_v4l2_dev *mml_v4l2_dev_create(struct device *dev)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	struct mml_v4l2_dev *v4l2_dev;
 	int ret;
 
@@ -1770,6 +1773,9 @@ err_unregister:
 err_free:
 	devm_kfree(dev, v4l2_dev);
 	return ERR_PTR(ret);
+#else
+	return ERR_PTR(-EFAULT);
+#endif
 }
 
 void mml_v4l2_dev_destroy(struct device *dev, struct mml_v4l2_dev *v4l2_dev)
@@ -1777,8 +1783,10 @@ void mml_v4l2_dev_destroy(struct device *dev, struct mml_v4l2_dev *v4l2_dev)
 	if (IS_ERR_OR_NULL(v4l2_dev))
 		return;
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	mml_m2m_device_unregister(v4l2_dev);
 	v4l2_device_unregister(&v4l2_dev->v4l2_dev);
+#endif
 	devm_kfree(dev, v4l2_dev);
 }
 
