@@ -2419,7 +2419,6 @@ static int mtk_topckgen_init(struct platform_device *pdev)
 	/* Need Confirm */
 	clk_writel(CLK_SCP_CFG_0, clk_readl(CLK_SCP_CFG_0) | 0x3FF);
 	clk_writel(CLK_SCP_CFG_1, clk_readl(CLK_SCP_CFG_1) | 0x11);
-
 	return r;
 }
 
@@ -2914,7 +2913,6 @@ static int mtk_mfg_cfg_init(struct platform_device *pdev)
 		kfree(clk_data);
 	}
 	mfgcfg_base = base;
-
 #if MT_CCF_BRINGUP
 	/*clk_writel(MFG_CG_CLR, MFG_CG);*/
 #endif
@@ -3322,16 +3320,16 @@ void armpll_control(int id, int on)
 
 static const struct of_device_id of_match_clk_mt6781[] = {
 	{
-		.compatible = "mediatek,topckgen",
+		.compatible = "mediatek,mt6781-topckgen",
 		.data = mtk_topckgen_init,
 	}, {
-		.compatible = "mediatek,infracfg_ao",
+		.compatible = "mediatek,mt6781-infracfg_ao",
 		.data = mtk_infracfg_ao_init,
 	}, {
-		.compatible = "mediatek,apmixed",
+		.compatible = "mediatek,mt6781-apmixed",
 		.data = mtk_apmixedsys_init,
 	}, {
-		.compatible = "mediatek,audio",
+		.compatible = "mediatek,mt6781-audio",
 		.data = mtk_audio_init,
 	},{
 		.compatible = "mediatek,camsys",
@@ -3343,31 +3341,31 @@ static const struct of_device_id of_match_clk_mt6781[] = {
 		.compatible = "mediatek,camsys_rawb",
 		.data = mtk_camsys_rawb_init,
 	},{
-		.compatible = "mediatek,imgsys1",
+		.compatible = "mediatek,mt6781-imgsys1",
 		.data = mtk_imgsys1_init,
 	},{
-		.compatible = "mediatek,imgsys2",
+		.compatible = "mediatek,mt6781-imgsys2",
 		.data = mtk_imgsys2_init,
 	},{
-		.compatible = "mediatek,ipesys",
+		.compatible = "mediatek,mt6781-ipesys",
 		.data = mtk_ipesys_init,
 	},{
-		.compatible = "mediatek,mfgcfg",
+		.compatible = "mediatek,mt6781-mfgcfg",
 		.data = mtk_mfg_cfg_init,
 	},{
-		.compatible = "mediatek,mmsys_config",
+		.compatible = "mediatek,mt6781-mmsys_config",
 		.data = mtk_mmsys_config_init,
 	},{
 		.compatible = "mediatek,mt6781-mdpsys",
 		.data = mtk_mdpsys_config_init,
 	},{
-		.compatible = "mediatek,vdec_gcon",
+		.compatible = "mediatek,mt6781-vdec_gcon",
 		.data = mtk_vdec_top_global_con_init,
 	},{
-		 .compatible = "mediatek,venc_gcon",
+		 .compatible = "mediatek,mt6781-venc_gcon",
 		 .data = mtk_venc_global_con_init,
 	},{
-		.compatible = "mediatek,imp_iic_wrap",
+		.compatible = "mediatek,mt6781-imp_iic_wrap",
 		.data = mtk_imp_iic_wrap_init,
 	}
 };
@@ -3416,6 +3414,3 @@ module_exit(clk_mt6781_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("MTK");
 MODULE_DESCRIPTION("MTK CCF  Driver V1.0");
-
-
-
