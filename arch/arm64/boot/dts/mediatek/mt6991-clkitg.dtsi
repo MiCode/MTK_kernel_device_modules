@@ -336,11 +336,6 @@
 		reg = <0x34>;
 		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
 	};
-	bring-up-pd-ssrsys@35 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x35>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSR>;
-	};
 	bring-up-pd-cam-ccu@4e {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x4e>;
