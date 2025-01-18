@@ -176,6 +176,8 @@ struct gswrunInfo {
 	int scaling_factor;
 	int future[2];
 	int vision[2];
+	int cpu_combo_usage_count[CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
+	int gpu_combo_usage_count[GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT];
 };
 
 struct moInfo {
