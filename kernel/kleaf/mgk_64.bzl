@@ -891,6 +891,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/mdp/mdp_drv_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6768.ko": "mt6768",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6991.ko": "mt6991",
+    "drivers/misc/mediatek/mdp/mdp_drv_mt6877.ko": "mt6877",
     "drivers/misc/mediatek/slbc/slbc_mt6886.ko": "mt6886",
     "drivers/misc/mediatek/slbc/slbc_mt6893.ko": "mt6893",
     "drivers/misc/mediatek/slbc/slbc_mt6895.ko": "mt6895",
@@ -1049,6 +1050,13 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu.ko")
