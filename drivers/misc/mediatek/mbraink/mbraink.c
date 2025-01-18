@@ -904,6 +904,36 @@ static long mbraink_ioctl(struct file *filp,
 		mbraink_gpu_setOpMode(operation_mode.opMode);
 		break;
 	}
+	case RO_GNSS_LP:
+	{
+		struct mbraink_gnss2mbr_lp_data gnss_lp_buffer;
+
+		memset(&gnss_lp_buffer, 0, sizeof(struct mbraink_gnss2mbr_lp_data));
+
+		mbraink_get_gnss_lp_data(&gnss_lp_buffer);
+		if (copy_to_user((struct mbraink_gnss2mbr_lp_data *) arg,
+					&gnss_lp_buffer,
+					sizeof(gnss_lp_buffer))) {
+			pr_notice("Copy gnss_lp_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
+	case RO_GNSS_MCU:
+	{
+		struct mbraink_gnss2mbr_mcu_data gnss_mcu_buffer;
+
+		memset(&gnss_mcu_buffer, 0, sizeof(struct mbraink_gnss2mbr_mcu_data));
+
+		mbraink_get_gnss_mcu_data(&gnss_mcu_buffer);
+		if (copy_to_user((struct mbraink_gnss2mbr_mcu_data *) arg,
+					&gnss_mcu_buffer,
+					sizeof(gnss_mcu_buffer))) {
+			pr_notice("Copy gnss_mcu_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -1171,8 +1201,6 @@ static ssize_t mbraink_info_show(struct device *dev,
 								struct device_attribute *attr,
 								char *buf)
 {
-	mbraink_get_gnss_lp_data();
-	mbraink_get_gnss_mcu_data();
 	mbraink_get_wifi_data(0);
 	mbraink_get_wifi_data(1);
 

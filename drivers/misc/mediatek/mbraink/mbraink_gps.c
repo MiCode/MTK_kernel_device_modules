@@ -47,20 +47,20 @@ int unregister_mbraink_gps_ops(void)
 }
 EXPORT_SYMBOL(unregister_mbraink_gps_ops);
 
-void mbraink_get_gnss_lp_data(void)
+void mbraink_get_gnss_lp_data(struct mbraink_gnss2mbr_lp_data *gnss_lp_buffer)
 {
 	if (_mbraink_gps_ops.get_gnss_lp_data)
-		_mbraink_gps_ops.get_gnss_lp_data();
+		_mbraink_gps_ops.get_gnss_lp_data(gnss_lp_buffer);
 	else
 		pr_info("%s: Do not support ioctl get_gnss_lp_data.\n", __func__);
 
 }
 
-void mbraink_get_gnss_mcu_data(void)
+void mbraink_get_gnss_mcu_data(struct mbraink_gnss2mbr_mcu_data *gnss_mcu_buffer)
 {
 
 	if (_mbraink_gps_ops.get_gnss_mcu_data)
-		_mbraink_gps_ops.get_gnss_mcu_data();
+		_mbraink_gps_ops.get_gnss_mcu_data(gnss_mcu_buffer);
 	else
 		pr_info("%s: Do not support ioctl get_gnss_mcu_data.\n", __func__);
 }
