@@ -1355,6 +1355,7 @@ static void dpc_dt_set(u16 dt, u32 us)
 	writel(value, dpc_base + DISP_REG_DPC_DTx_COUNTER(dt));
 }
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void dpc_dt_sw_trig(u16 dt)
 {
 	DPCFUNC("dt(%u)", dt);
@@ -1365,6 +1366,7 @@ static void dpc_dt_sw_trig(u16 dt)
 	else if (dbg_mmp && dt >= DPC_DISP_DT_CNT)
 		dpc_mmp(mml_dt, MMPROFILE_FLAG_PULSE, BIT(dt - DPC_DISP_DT_CNT), 0xffffffff);
 }
+#endif
 
 static void dpc_dt_update_table(u16 dt, u32 us)
 {
@@ -3204,6 +3206,7 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void dpc_debug_event(void)
 {
 	u16 event_ovl0_on, event_ovl0_off, event_disp1_on, event_disp1_off;
@@ -3249,6 +3252,7 @@ static void dpc_debug_event(void)
 	cmdq_pkt_finalize_loop(pkt);
 	cmdq_pkt_flush_threaded(pkt, NULL, (void *)pkt);
 }
+#endif
 
 static void mtk_disp_enable_gce_vote(bool enable)
 {
