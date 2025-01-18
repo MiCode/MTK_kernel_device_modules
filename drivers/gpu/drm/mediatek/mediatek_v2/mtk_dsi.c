@@ -1792,11 +1792,20 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		}
 	}
 
-	if ((disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) && dsi->ext) {
-		if (dsi->ext->params->lane_swap_en)
-			writel(0x442310, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
-		else
-			writel(0x443210, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
+	if ((disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) && dsi->ext &&
+		(priv->data->mmsys_id == MMSYS_MT6991)) {
+		if (dsi->ext->params->is_cphy) {
+			writel(0x3f3f0001, dsi->regs + dsi->driver_data->reg_phy_base + 0x14);
+			if (dsi->ext->params->lane_swap_en)
+				DDPMSG("%s cphy lane swap need implement\n", __func__);
+			else
+				writel(0x3210, dsi->regs + dsi->driver_data->reg_phy_base + 0x1c);
+		} else {
+			if (dsi->ext->params->lane_swap_en)
+				writel(0x442310, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
+			else
+				writel(0x443210, dsi->regs + dsi->driver_data->reg_phy_base + 0x18);
+		}
 	}
 
 	mtk_dsi_config_null_packet(dsi, NULL, NULL);
@@ -2135,7 +2144,8 @@ static void mtk_dsi_cmd_type1_hs(struct mtk_dsi *dsi)
 {
 	if (dsi->ext->params->is_cphy)
 		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), CMD_CPHY_6BYTE_EN, 0);
-	mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), 0xffffffff, 0x00040000);
+	else
+		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS(dsi->driver_data), 0xffffffff, 0x00040000);
 }
 
 static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,

@@ -537,7 +537,7 @@ static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s,%s,idx:%d,ext_idx:%d\n", __func__, mtk_dump_comp_str(comp), idx, ext_idx);
+	DDPDBG("%s %s,idx:%d,ext_idx:%d\n", __func__, mtk_dump_comp_str(comp), idx, ext_idx);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
@@ -546,7 +546,7 @@ static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx
 static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	DDPINFO("%s, %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), 0x0, ~0);
@@ -562,7 +562,7 @@ static void mtk_ovl_blender_prepare(struct mtk_ddp_comp *comp)
 	int ret;
 	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
 
-	DDPDBG("%s,%s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
 	mtk_ddp_comp_clk_prepare(comp);
 
@@ -594,7 +594,7 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 
 static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 {
-	DDPINFO("%s, %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
 		comp->id == DDP_COMPONENT_OVL1_BLENDER5 ||
@@ -1259,7 +1259,7 @@ static int mtk_disp_ovl_blender_probe(struct platform_device *pdev)
 	int ret, len;
 	const __be32 *ranges = NULL;
 
-	DDPINFO("%s+\n", __func__);
+	DDPDBG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -1270,8 +1270,6 @@ static int mtk_disp_ovl_blender_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
 		return comp_id;
 	}
-
-	DDPINFO("%s comp_id:%d\n", __func__, comp_id);
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_ovl_blender_funcs);
@@ -1302,7 +1300,7 @@ static int mtk_disp_ovl_blender_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
-	DDPINFO("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return ret;
 }
 

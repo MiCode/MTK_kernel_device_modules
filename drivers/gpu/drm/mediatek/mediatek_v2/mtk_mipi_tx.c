@@ -2607,7 +2607,7 @@ static int mtk_mipi_tx_pll_cphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 
 	/* step 0 */
 	/* BG_LPF_EN / BG_CORE_EN */
-	writel(0x00FF12E0, mipi_tx->regs + MIPITX_PLL_CON4);
+	writel(0x00FF06E0, mipi_tx->regs + MIPITX_PLL_CON4);
 	/* BG_LPF_EN=0 BG_CORE_EN=1 */
 	writel(0x3FFF0088, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 	//usleep_range(1, 1); /* 1us */
