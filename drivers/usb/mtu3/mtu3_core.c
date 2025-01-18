@@ -1073,7 +1073,13 @@ static int mtu3_hw_init(struct mtu3 *mtu)
 
 	value = mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_TRUNK_VERS);
 	mtu->hw_version = IP_TRUNK_VERS(value);
-	mtu->gen2cp = !!(mtu->hw_version >= MTU3_TRUNK_VERS_1003);
+
+	if(of_property_read_bool(mtu->dev->of_node, "mediatek,gen2cp-unsupported")) {
+		mtu->gen2cp = 0;
+		dev_info(mtu->dev, "force gen2cp to be 0 ");
+	} else {
+		mtu->gen2cp = !!(mtu->hw_version >= MTU3_TRUNK_VERS_1003);
+	}
 
 	value = mtu3_readl(mtu->ippc_base, U3D_SSUSB_IP_DEV_CAP);
 	mtu->u3_capable = !!SSUSB_IP_DEV_U3_PORT_NUM(value);
