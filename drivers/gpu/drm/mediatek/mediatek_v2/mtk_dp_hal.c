@@ -3092,6 +3092,9 @@ void mhal_DPTx_SetScramble_Type(struct mtk_dp *mtk_dp, bool bSelType)
 void mhal_DPTx_VideoMute(struct mtk_dp *mtk_dp, bool bENABLE)
 {
 	DPTXFUNC("enable = %d\n", bENABLE);
+
+	mhal_DPTx_VideoMuteSW(mtk_dp, bENABLE);
+
 	if (bENABLE) {
 		msWriteByteMask(mtk_dp,
 			REG_3000_DP_ENCODER0_P0,
