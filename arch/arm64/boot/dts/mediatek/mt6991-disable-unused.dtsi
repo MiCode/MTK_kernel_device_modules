@@ -179,8 +179,6 @@
 			<&cksys_gp2_clk CLK_CK2_SENINF3_SEL>,
 			<&cksys_gp2_clk CLK_CK2_SENINF4_SEL>,
 			<&cksys_gp2_clk CLK_CK2_SENINF5_SEL>,
-			<&cksys_gp2_clk CLK_CK2_IMG1_SEL>,
-			<&cksys_gp2_clk CLK_CK2_IPE_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
 			<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DPE_SEL>,
