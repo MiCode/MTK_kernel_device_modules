@@ -6836,8 +6836,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	//				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 			#clock-cells = <1>;
 	//		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
-			pd-others = <&disp1_mutex0>, <&disp_ovl0_exdma2>;//, <&disp1_ovl0_2l>, <&disp_dpc>;
-	//		pd-names = "side_dispsys", "ovlsys", "side_ovlsys", "mminfra_in_dpc";
+			pd-others = <&disp_dpc>;
+			pd-names = "mminfra_in_dpc";
 	//		clocks = <&dispsys_config_clk CLK_MM_CONFIG>,
 	//			 <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
 	//			 <&dispsys_config_clk CLK_MM_DLI_ASYNC0>,
@@ -6888,8 +6888,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	//			 <&mmdvfs_mux MMDVFS_USER_DISP>;
 			clock-num = <48>;
 			condition-num = <2>;
-	//		operating-points-v2 = <&opp_table_disp>;
-	//		vdisp-dvfs-opp = /bits/ 8 <3>;
+			operating-points-v2 = <&opp_table_disp>;
+			vdisp-dvfs-opp = /bits/ 8 <4>;
 	//		interconnects = <&mmqos SLAVE_LARB(51) &mmqos SLAVE_COMMON(0)>,
 	//				<&mmqos SLAVE_LARB(52) &mmqos SLAVE_COMMON(1)>,
 	//				<&mmqos SLAVE_LARB(53) &mmqos SLAVE_COMMON(1)>;
@@ -7180,7 +7180,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
-				<0>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
+				<1>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_DVFS_DT_EN*/
@@ -7265,6 +7265,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			reg = <0 0x328e0000 0 0x1000>;
 		};
 
+
 		ovlsys-config@32c00000 {
 			compatible = "mediatek,ovlsys_config";
 			reg = <0 0x32c00000 0 0x1000>;
@@ -7278,6 +7279,42 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		vdisp_ao: vdisp-ao@3e800000 {
 			compatible = "mediatek,mt6991-vdisp-ao";
 			reg = <0 0x3e800000 0 0x1000>;
+		};
+
+		disp_dpc: disp-dpc@3e8f0000 {
+			compatible = "mediatek,mt6991-disp-dpc";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			reg =
+				<0 0x3e8f0000 0 0x1000>,
+				<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
+				<0 0x31bd0074 0 0x4>,             /* hfrp DISP_SW_VOTE_CLR */
+				<0 0x31a912b4 0 0x4>,             /* hfrp_dvfsrc_disp_debug_sta_6 */
+				<0 0x31ac1e50 0 0x4>,             /* hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24*/
+				<0 0x3e8f105c 0 0x4>,             /* DIS0 pwr chk */
+				<0 0x3e8f205c 0 0x4>,             /* DIS1 pwr chk */
+				<0 0x3e8f305c 0 0x4>,             /* OVL0 pwr chk */
+				<0 0x3e8f405c 0 0x4>,             /* OVL1 pwr chk */
+				<0 0x3e8f505c 0 0x4>,             /* MML1 pwr chk */
+				<0 0x3e8f605c 0 0x4>,             /* MML0 pwr chk */
+				<0 0x3e8f705c 0 0x4>,             /* EDP pwr chk */
+				<0 0x3e8f805c 0 0x4>;             /* DPTX pwr chk */
+			reg-names =
+				"DPC_BASE",
+				"disp_sw_vote_set",
+				"disp_sw_vote_clr",
+				"vdisp_dvfsrc",
+				"disp_vcore_pwr_chk",
+				"dis0_pwr_chk",
+				"dis1_pwr_chk",
+				"ovl0_pwr_chk",
+				"ovl1_pwr_chk",
+				"mml1_pwr_chk",
+				"mml0_pwr_chk",
+				"edp_pwr_chk",
+				"dptx_pwr_chk";
+			interrupts =
+				<GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>; /* DISP_VDISP_AO_MERGE_IRQ_BIT */
+			vidle-mask = <0x0>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {
@@ -9464,6 +9501,72 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "mediatek,mml-test";
 		mediatek,mml = <&mmlsys1_config>;
 		mmlsys-config-supply = <&mmlsys1_config>;
+	};
+
+	disp-vcore-vdisp-ctrl@0 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
+		clocks =
+			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
+			<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+		#clock-cells = <1>;
+		reg =
+			<0 0x31b50180 0 0x4>,             /* MMPC_BUS_PROTECT_CG_GP1 */
+			<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
+			<0 0x31bd0074 0 0x4>;             /* hfrp DISP_SW_VOTE_CLR */
+		reg-names =
+			"mmpc_bus_prot_gp1",
+			"disp_sw_vote_set",
+			"disp_sw_vote_clr";
+		disp-pd-id = <0>;
+	};
+
+	disp1-vdisp-ctrl@1 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS1_DORMANT>;
+		disp-pd-id = <1>;
+	};
+
+	disp0-vdisp-ctrl@2 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
+		disp-pd-id = <2>;
+	};
+
+	ovl1-vdisp-ctrl@3 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
+		disp-pd-id = <3>;
+	};
+
+	ovl0-vdisp-ctrl@4 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
+		disp-pd-id = <4>;
+	};
+
+	mml1-vdisp-ctrl@5 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML1_SHUTDOWN>;
+		disp-pd-id = <5>;
+	};
+
+	mml0-vdisp-ctrl@6 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML0_SHUTDOWN>;
+		disp-pd-id = <6>;
+	};
+
+	edp-vdisp-ctrl@7 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
+		disp-pd-id = <7>;
+	};
+
+	dptx-vdisp-ctrl@8 {
+		compatible = "mediatek,mt6991-vdisp-ctrl";
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT>;
+		disp-pd-id = <8>;
 	};
 
 	connscp: connscp {
