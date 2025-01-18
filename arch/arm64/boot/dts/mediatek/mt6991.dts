@@ -64,6 +64,10 @@
 			mml-wrot1 = &mml1_wrot2;
 			mml-wrot2 = &mml0_wrot0;
 			mml-wrot3 = &mml0_wrot2;
+			mtksmmu0 = &mm_smmu;
+			mtksmmu1 = &gpu_smmu;
+			mtksmmu2 = &apu_smmu;
+			mtksmmu3 = &soc_smmu;
 	};
 
 	aov: aov {
