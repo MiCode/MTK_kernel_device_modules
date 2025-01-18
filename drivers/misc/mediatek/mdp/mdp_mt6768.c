@@ -1032,6 +1032,11 @@ static bool mdp_is_isp_img(struct cmdqRecStruct *handle)
 		handle->engineFlag & (1LL << CMDQ_ENG_ISP_IMG2O));
 }
 
+static u64 cmdq_mdp_get_isp_flag(void)
+{
+	return CMDQ_ENG_ISP_GROUP_ALL_BITS;
+}
+
 static bool mdp_is_isp_camin(struct cmdqRecStruct *handle)
 {
 	return (handle->engineFlag &
@@ -1456,6 +1461,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getEngineGroupBits = cmdq_mdp_get_engine_group_bits;
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock;
 	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb;
+	pFunc->mdpGetIspFlag = cmdq_mdp_get_isp_flag;
 	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT

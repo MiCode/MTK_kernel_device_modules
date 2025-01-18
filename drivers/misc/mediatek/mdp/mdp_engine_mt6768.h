@@ -93,6 +93,13 @@ enum CMDQ_ENG_ENUM {
 				 (1LL << CMDQ_ENG_ISP_IMGO) |	\
 				 (1LL << CMDQ_ENG_ISP_IMG2O))
 
+#define CMDQ_ENG_ISP_GROUP_ALL_BITS	((1LL << CMDQ_ENG_ISP_IMGI) |	\
+				 (1LL << CMDQ_ENG_ISP_IMGO)  |	\
+				 (1LL << CMDQ_ENG_ISP_IMG2O) |	\
+				 (1LL << CMDQ_ENG_ISP_IMG3O) |	\
+				 (1LL << CMDQ_ENG_ISP_VIPI)  |	\
+				 (1LL << CMDQ_ENG_ISP_LCEI))
+
 #define CMDQ_ENG_MTEE_GROUP_BITS	((1LL << CMDQ_ENG_ISP_IMGI) |	\
 					 (1LL << CMDQ_ENG_ISP_VIPI)  | \
 					 (1LL << CMDQ_ENG_ISP_LCEI)  | \
