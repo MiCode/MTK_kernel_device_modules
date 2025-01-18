@@ -608,6 +608,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6893 = {
 		{ HRT_NONE, HRT_NONE, HRT_NONE, HRT_NONE, HRT_NONE,
 			HRT_CAM, HRT_CAM, HRT_CAM, HRT_NONE },
 	},
+	.freq_mode = NO_MMINFRA,
 };
 static const struct of_device_id mtk_mmqos_mt6893_of_ids[] = {
 	{
