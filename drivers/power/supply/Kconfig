@@ -8,6 +8,15 @@ config MTK_CHARGER
 	  maintains charging status.
 	  Say no if not using MediaTek charging driver.
 
+config CHARGER_RT9465
+	tristate "Charger Driver for Richtek RT9465 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable Richtek RT9465 driver.
+	  It is mainly used as slave IC for dual charger
+	  application.
+	  It depends on config MTK_CHARGER.
+
 config MTK_PUMP_EXPRESS_PLUS_SUPPORT
 	tristate "MediaTek PUMP EXPRESS PLUS"
 	depends on MTK_CHARGER

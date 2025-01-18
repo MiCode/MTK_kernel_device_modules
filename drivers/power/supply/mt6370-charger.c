@@ -1237,8 +1237,9 @@ static int mt6370_chg_get_status(struct mt6370_priv *priv,
 #if IS_ENABLED(CONFIG_MT6357_DO_CTD)
 	struct power_supply *chg_psy = NULL;
 
-	chg_psy = devm_power_supply_get_by_phandle(priv->dev,
-						"charger");
+	struct mt6370_chg_platform_data *pdata = dev_get_platdata(priv->dev);
+
+	chg_psy = power_supply_get_by_name(pdata->chgdev_name);
 	if (chg_psy == NULL || IS_ERR(chg_psy)) {
 		pr_info("get chg_psy fail %s\n", __func__);
 		return -1;
@@ -1579,7 +1580,6 @@ static enum power_supply_usb_type mt6370_chg_usb_types[] = {
 };
 
 static const struct power_supply_desc mt6370_chg_psy_desc = {
-	.name = "primary_chg",
 	.type = POWER_SUPPLY_TYPE_USB,
 	.properties = mt6370_chg_properties,
 	.num_properties = ARRAY_SIZE(mt6370_chg_properties),
@@ -1795,6 +1795,7 @@ static char *mt6370_psy_supplied_to[] = {
 
 static int mt6370_chg_init_psy(struct mt6370_priv *priv)
 {
+	struct mt6370_chg_platform_data *pdata = dev_get_platdata(priv->dev);
 	struct power_supply_config cfg = {
 		.drv_data = priv,
 		.of_node = dev_of_node(priv->dev),
@@ -1803,6 +1804,7 @@ static int mt6370_chg_init_psy(struct mt6370_priv *priv)
 	};
 
 	memcpy(&priv->psy_desc, &mt6370_chg_psy_desc, sizeof(priv->psy_desc));
+	priv->psy_desc.name = pdata->chgdev_name;
 	priv->psy = devm_power_supply_register(priv->dev, &priv->psy_desc, &cfg);
 
 	return PTR_ERR_OR_ZERO(priv->psy);
@@ -3486,10 +3488,8 @@ static irqreturn_t mt6370_dcdti_handler(int irq, void *data)
 
 static int mt6370_chg_init_chgdev(struct mt6370_priv *priv)
 {
-	struct mt6370_chg_platform_data *pdata = dev_get_platdata(priv->dev);
-
 	mt_dbg(priv->dev, "%s\n", __func__);
-	priv->chgdev = charger_device_register(pdata->chgdev_name, priv->dev,
+	priv->chgdev = charger_device_register("primary_chg", priv->dev,
 					       priv, &mt6370_chg_ops,
 					       &mt6370_chg_props);
 	return IS_ERR(priv->chgdev) ? PTR_ERR(priv->chgdev) : 0;
@@ -3709,10 +3709,12 @@ static int mt6370_chg_get_pdata(struct device *dev)
 			priv->ls_props.alias_name = "mt6370_ls";
 		}
 
-		if (of_property_read_string(np, "charger_name",
-			&(pdata->chgdev_name)) < 0)
-			dev_err(dev, "%s: no charger name\n", __func__);
-
+		if (of_property_read_string(np, "charger-name",
+			&(pdata->chgdev_name)) < 0) {
+			if (of_property_read_string(np, "charger_name",
+				&(pdata->chgdev_name)) < 0)
+				dev_err(dev, "%s: no charger name\n", __func__);
+		}
 		if (of_property_read_string(np, "load_switch_name",
 			&(pdata->ls_dev_name)) < 0)
 			dev_err(dev, "%s: no load switch name\n", __func__);
@@ -4036,15 +4038,16 @@ static int mt6370_chg_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to init OTG regulator\n");
 
-	ret = mt6370_chg_init_psy(priv);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init psy\n");
-
 	ret = mt6370_chg_get_pdata(dev);
 	if (ret < 0) {
 		dev_err(dev, "failed to get platform data\n");
 		return ret;
 	}
+
+	ret = mt6370_chg_init_psy(priv);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to init psy\n");
+
 	ret = mt6370_init_mutex(dev, priv);
 	if (ret < 0) {
 		dev_err(dev, "failed to init mutex\n");
