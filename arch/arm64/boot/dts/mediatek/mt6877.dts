@@ -5,6 +5,7 @@
 
 /dts-v1/;
 #include <dt-bindings/clock/mt6877-clk.h>
+#include <dt-bindings/power/mt6877-power.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/mfd/mt6315-irq.h>
 #include <dt-bindings/mfd/mt6359-irq.h>
@@ -747,6 +748,12 @@
 		reg = <0 0x0011bb00 0 0x100>;
 	};
 
+	disable_unused: disable-unused {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	clkchk {
 		compatible = "mediatek,mt6877-clkchk";
 	};
@@ -905,7 +912,7 @@
 	};
 
 	infracfg_ao: infracfg_ao@10001000 {
-		compatible = "mediatek,infracfg_ao";
+		compatible = "mediatek,infracfg_ao", "syscon";
 		reg = <0 0x10001000 0 0x1000>;
 	};
 
@@ -6816,6 +6823,7 @@
 #include "mediatek/mt6359p.dtsi"
 #include "mediatek/cust_mt6877_msdc.dtsi"
 #include "mediatek/mt6877-clkitg.dtsi"
+#include "mediatek/mt6877-disable-unused.dtsi"
 #include "mediatek/v1/mt6360_pd.dtsi"
 #include "mediatek/rt5133.dtsi"
 #include "mediatek/trusty.dtsi"
