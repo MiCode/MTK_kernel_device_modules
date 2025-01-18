@@ -90,6 +90,10 @@ struct emi_mpu {
 	unsigned int bypass_miu_reg_num;
 	struct bypass_aix_info_t *bypass_axi;
 	unsigned int bypass_axi_num;
+
+	/* bypass for legacy emimpu */
+	unsigned int bypass_r_cnt;
+	unsigned int *bypass_r_axi;
 };
 
 extern struct emi_mpu *global_emi_mpu;

@@ -90,12 +90,13 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 	struct emi_mpu *mpu = (struct emi_mpu *)dev_id;
 	struct reg_info_t *dump_reg = mpu->dump_reg;
 	void __iomem *emi_cen_base;
-	unsigned int emi_id, i;
+	unsigned int emi_id, i, axi_id;
 	ssize_t msg_len;
 	int n, nr_vio;
 	bool violation;
 	char md_str[MTK_EMI_MAX_CMD_LEN + 10] = {'\0'};
 	const unsigned int hp_mask = 0x600000;
+	const unsigned int r_vio = 0x40000000;
 
 	if (mpu->in_msg_dump)
 		goto ignore_violation;
@@ -128,6 +129,17 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 
 		if (dump_reg[2].value & hp_mask)
 			violation = false;
+
+		if ((mpu->bypass_r_cnt) && (dump_reg[0].value & r_vio)) {
+			axi_id = (dump_reg[2].value >> 4) & 0xf;
+			axi_id = (dump_reg[0].value & 0xffff) | (axi_id << 16);
+			for (i = 0; i < mpu->bypass_r_cnt; i++) {
+				if (axi_id == mpu->bypass_r_axi[i]) {
+					pr_info("%s: bypass %s", __func__, mpu->vio_msg);
+					violation = false;
+				}
+			}
+		}
 
 		if (!violation)
 			continue;
@@ -286,6 +298,7 @@ static int emimpu_probe(struct platform_device *pdev)
 	int ret, size, i;
 	struct resource *res;
 	unsigned int *dump_list;
+	unsigned int *bypass_r_list;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -304,6 +317,31 @@ static int emimpu_probe(struct platform_device *pdev)
 		"smc-clear", &smc_clear);
 	if (!ret)
 		dev_info(&pdev->dev, "Use smc to clear vio\n");
+
+	size = of_property_count_elems_of_size(emimpu_node,
+		"bypass-r-axi", sizeof(char));
+	if (size <= 0) {
+		dev_info(&pdev->dev, "No bypass read\n");
+		mpu->bypass_r_cnt = 0;
+	} else {
+		bypass_r_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+		if (!bypass_r_list)
+			return -ENOMEM;
+		size >>= 2;
+		mpu->bypass_r_cnt = size;
+		ret = of_property_read_u32_array(emimpu_node, "bypass-r-axi",
+			bypass_r_list, size);
+		if (ret) {
+			dev_info(&pdev->dev, "No bypass read\n");
+		} else {
+			mpu->bypass_r_axi = devm_kmalloc(&pdev->dev,
+				size * sizeof(unsigned int), GFP_KERNEL);
+			if (!(mpu->bypass_r_axi))
+				return -ENOMEM;
+			for (i = 0; i < mpu->bypass_r_cnt; i++)
+				mpu->bypass_r_axi[i] = bypass_r_list[i];
+		}
+	}
 
 	size = of_property_count_elems_of_size(emimpu_node,
 		"dump", sizeof(char));
