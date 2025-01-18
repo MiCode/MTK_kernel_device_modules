@@ -165,7 +165,7 @@ static void mdla_ipi_up_msg(u32 type, u64 val)
 	mdla_err("tpye = %d, val = 0x%llx\n", type, val);
 
 	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT)
-		mdla_aee_warn("MDLA", "MDLA timeout");
+		mdla_aee_exception("MDLA", "MDLA timeout");
 }
 
 static int mdla_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,

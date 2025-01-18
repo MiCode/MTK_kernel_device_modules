@@ -113,6 +113,7 @@ enum MDLA_DEBUG_FS_NODE_U32 {
 	FS_BATCH_NUM,
 	FS_PREEMPTION_TIMES,
 	FS_PREEMPTION_DBG,
+	FS_DBG_OPTIONS,
 
 	NF_MDLA_DEBUG_FS_U32
 };
@@ -169,8 +170,16 @@ void mdla_dbg_show_klog_info(struct seq_file *s, char *prefix);
 		aee_kernel_warning("MDLA", \
 			"\nCRDISPATCH_KEY:" key "\n" format, ##args); \
 	} while (0)
+
+#define mdla_aee_exception(key, format, args...) \
+	do { \
+		pr_info(format, ##args); \
+		aee_kernel_exception("MDLA", \
+			"\nCRDISPATCH_KEY:" key "\n" format, ##args); \
+	} while (0)
 #else
 #define mdla_aee_warn(key, format, args...)
+#define mdla_aee_exception(key, format, args...)
 #endif
 
 

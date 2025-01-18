@@ -68,6 +68,7 @@ static struct mdla_dbgfs_file u_dbgfs_file[NF_MDLA_DEBUG_FS_U32 + 1] = {
 	[FS_BATCH_NUM]         = { .mode = 0660, .str = "batch_number"},
 	[FS_PREEMPTION_TIMES]  = { .mode = 0660, .str = "preemption_times"},
 	[FS_PREEMPTION_DBG]    = { .mode = 0660, .str = "preemption_debug"},
+	[FS_DBG_OPTIONS]       = { .mode = 0660, .str = "dbg_options"},
 	[NF_MDLA_DEBUG_FS_U32] = { .str = "unknown"},
 };
 
@@ -194,7 +195,7 @@ void mdla_dbg_dump(struct mdla_dev *mdla_info, struct command_entry *ce)
 	mdla_debug_callback.dump_reg(mdla_info->mdla_id, NULL);
 	mdla_debug_callback.create_dump_cmdbuf(mdla_info, ce);
 	apusys_reg_dump("mdla", false);
-	mdla_aee_warn("MDLA", "MDLA timeout");
+	mdla_aee_exception("MDLA", "MDLA timeout");
 }
 
 void mdla_dbg_ce_info(u32 core_id, struct command_entry *ce)

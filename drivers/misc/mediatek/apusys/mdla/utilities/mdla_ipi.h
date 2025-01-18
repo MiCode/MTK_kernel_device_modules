@@ -31,6 +31,8 @@ enum MDLA_IPI_TYPE_0 {
 	/* sw halt */
 	MDLA_IPI_HALT_STA,
 
+	MDLA_IPI_DBG_OPTIONS,
+
 	NF_MDLA_IPI_TYPE_0
 };
 
