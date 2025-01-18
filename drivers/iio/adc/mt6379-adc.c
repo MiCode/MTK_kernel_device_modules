@@ -40,7 +40,7 @@
 #define ADC_POLL_TIMEOUT_US		1000
 
 static const char * const mt6379_adc_labels[MT6379_ADC_MAX_CHANNEL] = {
-	[MT6379_ADC_VBATMON]		= "vbatmon",
+	[MT6379_ADC_VBATMON]		= "vbatmon (must be enabled in charger driver)",
 	[MT6379_ADC_CHGVIN]		= "chg-vin",
 	[MT6379_ADC_USBDP]		= "usb-dp",
 	[MT6379_ADC_VSYS]		= "vsys",
@@ -58,7 +58,7 @@ static const char * const mt6379_adc_labels[MT6379_ADC_MAX_CHANNEL] = {
 	[MT6379_ADC_SBU2]		= "sbu2",
 	[MT6379_ADC_WLSVIN_DIV10]	= "wls-vin-div10",
 	[MT6379_ADC_WLSIIN]		= "wls-iin",
-	[MT6379_ADC_VBATMON2]		= "vbatmon2",
+	[MT6379_ADC_VBATMON2]		= "vbatmon2 (must be enabled in charger driver)",
 	[MT6379_ADC_ZCV]		= "zcv",
 };
 
@@ -72,10 +72,9 @@ struct mt6379_priv {
 
 static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 {
+	u32 regval, vbatmon_en_stat = 0;
 	int ret, retry_cnt = 1;
-	unsigned int regval;
 	__be16 be_val;
-	u32 mask;
 
 	mutex_lock(&priv->lock);
 	pm_stay_awake(priv->dev);
@@ -83,12 +82,26 @@ static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 	switch (chan) {
 	case MT6379_ADC_VBATMON:
 	case MT6379_ADC_VBATMON2:
-		mask = chan == MT6379_ADC_VBATMON ?
-		       MT6379_MASK_VBAT_MON_EN : MT6379_MASK_VBAT_MON2_EN;
-		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1, mask, mask);
-		if (ret)
-			dev_info(priv->dev, "%s, Failed to enable vbat_mon/vbat_mon2\n", __func__);
+		ret = regmap_read(priv->regmap, MT6379_REG_ADC_CONFG1, &regval);
+		if (ret) {
+			dev_info(priv->dev, "%s, Failed to read vbat_mon%s stat(ret:%d)\n",
+				 __func__, chan == MT6379_ADC_VBATMON2 ? "2" : "", ret);
+		} else {
+			vbatmon_en_stat = chan == MT6379_ADC_VBATMON ?
+					  FIELD_GET(MT6379_MASK_VBAT_MON_EN, regval) :
+					  FIELD_GET(MT6379_MASK_VBAT_MON2_EN, regval);
 
+			if (!vbatmon_en_stat)
+				dev_info(priv->dev, "%s, vbat_mon%s is not enabled\n",
+					 __func__, chan == MT6379_ADC_VBATMON2 ? "2" : "");
+		}
+
+		if (ret || !vbatmon_en_stat) {
+			*val = 0;
+			goto adc_unlock;
+		}
+
+		/* vbatmon/vbatmon2 should be enabled in charger first! */
 		usleep_range(10000, 12000);
 		retry_cnt = 50;
 
@@ -143,10 +156,6 @@ bypass_oneshot:
 	}
 
 	if (chan == MT6379_ADC_VBATMON || chan == MT6379_ADC_VBATMON2) {
-		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1, mask, 0);
-		if (ret)
-			dev_info(priv->dev, "%s, Failed to disable vbatmon/vbatmon2\n", __func__);
-
 		if (retry_cnt <= 0)
 			dev_info(priv->dev, "%s, Read vbat_mon/vbat_mon2 TIMEOUT!!\n", __func__);
 		else if (retry_cnt <= 30 && retry_cnt > 0)
