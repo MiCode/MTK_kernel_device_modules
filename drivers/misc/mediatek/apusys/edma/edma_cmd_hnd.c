@@ -104,15 +104,16 @@ int edma_power_on(struct edma_sub *edma_sub)
 	int ret = 0;
 
 	edma_device = edma_sub->edma_device;
+
+	// fix power off/on sync issue
+	del_timer_sync(&edma_device->power_timer);
+	cancel_work_sync(&edma_device->power_off_work);
+
 	mutex_lock(&edma_device->power_mutex);
 	if (edma_is_all_power_off(edma_device))	{
-		if (timer_pending(&edma_device->power_timer)) {
-			del_timer(&edma_device->power_timer);
-			LOG_DBG("%s deltimer no pwr on, state = %d\n",
-					__func__, edma_device->power_state);
-		} else if (edma_device->power_state ==
+		if (edma_device->power_state ==
 			EDMA_POWER_ON) {
-			LOG_ERR("%s power on twice\n", __func__);
+			// already power on, do nothing
 		} else {
 			ret = apu_device_power_on(EDMA);
 			if (!ret) {
@@ -142,19 +143,21 @@ void edma_start_power_off(struct work_struct *work)
 	LOG_DBG("%s: contain power_state = %d!!\n", __func__,
 		edmaDev->power_state);
 
-	if (edmaDev->power_state == EDMA_POWER_OFF)
-		LOG_ERR("%s pwr off twice\n",
-						__func__);
-
 	mutex_lock(&edmaDev->power_mutex);
+
+	if (edmaDev->power_state == EDMA_POWER_OFF) {
+		// already power off, do nothing
+		goto exit;
+	}
 
 	ret = apu_device_power_off(EDMA);
 	if (ret != 0) {
-		LOG_ERR("%s power off fail\n", __func__);
+		LOG_ERR("%s power off fail: %i\n", __func__, ret);
 	} else {
 		pr_notice("%s: power off done!!\n", __func__);
 		edmaDev->power_state = EDMA_POWER_OFF;
 	}
+exit:
 	mutex_unlock(&edmaDev->power_mutex);
 
 }
@@ -185,12 +188,13 @@ int edma_power_off(struct edma_sub *edma_sub, u8 force)
 		return 0;
 	}
 
+	// fix multiple power off sync issue
+	del_timer_sync(&edma_device->power_timer);
+	cancel_work_sync(&edma_device->power_off_work);
+
 	mutex_lock(&edma_device->power_mutex);
 	edma_sub->power_state = EDMA_POWER_OFF;
 	if (edma_is_all_power_off(edma_device)) {
-
-		if (timer_pending(&edma_device->power_timer))
-			del_timer(&edma_device->power_timer);
 
 		if (force == 1) {
 

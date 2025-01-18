@@ -137,6 +137,11 @@ static const struct {
 		.direction = IPI_HOST_INITIATE,
 		.ack = IPI_WITH_ACK,
 	},
+	[APU_IPI_EDMA_RX] = { // 23
+		.name = "edma-rx-rpmsg",
+		.direction = IPI_APU_INITIATE,
+		.ack = IPI_WITH_ACK,
+	},
 };
 
 

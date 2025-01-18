@@ -169,6 +169,8 @@ int edma_send_cmd(int cmd, void *hnd, struct apusys_device *adev)
 	}
 	case APUSYS_CMD_PREEMPT:
 		return result;
+	case APUSYS_CMD_VALIDATE:
+		return result;
 	default:
 		break;
 	}
