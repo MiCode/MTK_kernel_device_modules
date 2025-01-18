@@ -3558,8 +3558,8 @@ pwrap: pwrap@1000d000 {
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_mm>;
-		mediatek,support_mux = "mm";
-		mediatek,mux_mm = "TOP_MMPLL_D2",
+		mediatek,support-mux = "mm";
+		mediatek,mux-mm = "TOP_MMPLL_D2",
 			"TOP_UNIVPLL1_D2", "TOP_MMPLL";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		_vcore-supply = <&mt_pmic_vcore_buck_reg>;
