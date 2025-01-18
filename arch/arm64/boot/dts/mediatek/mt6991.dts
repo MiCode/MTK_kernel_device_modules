@@ -1793,15 +1793,14 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-61 = "SSPM_SLBC_SLOT",
 				"buffer_used,cached_used";
 			node-62 = "SSPM_SLBC_REF",
-				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
-				"apu";
+				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu";
 			node-63 = "SSPM_SLBC_BW",
 				"mm,apu,mm_est";
 			node-64 = "SSPM_SLBC_PMU",
 				"hit,miss,apu_r,apu_w,mm_r,mm_w";
 			node-65 = "SSPM_SLBC_WAY",
-				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
-				"apu,slb,slc,left";
+				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu,",
+				"slb,slc,left";
 			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
 				 "dsu_cycles";
 			node-67 = "SSPM_SWPM_CPU__CORE_TEMP",
@@ -1919,17 +1918,23 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"gid_32_to_35,gid_36_to_39,gid_40_to_43,gid_44_to_47,",
 				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,";
 			node-96 = "SSPM_SLBC_CACHE_QUOTA",
-				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,";
 			node-97 = "SSPM_SLBC_CACHE_HIT",
-				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,";
 			node-98 = "SSPM_SLBC_CACHE_TOTAL",
-				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+				"gid0,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,";
 			node-99 = "SSPM_SLBC_CACHE_STATUS",
-				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
-				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,total,valid";
+				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,total,valid";
 			node-101 = "SSPM_SLBC_CACHE_WAY",
-				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,total,buf_unused";
+				"pd,md,adsp,cpu,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,",
+				"img,cam,mae,dmr,od,dbi,total,buf_unused";
 			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
 				"SW_R3,MD,MD2,ADSP";
@@ -11827,6 +11832,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible =  "mediatek,vcp-io-sec";
 		vcp-support = <7>;
 		mtk,smmu-shared = <&mm_smmu_hfrp_protected>;
+	};
+
+	slbc: slbc@117800 {
+		compatible = "mediatek,mtk-slbc";
+		reg = <0 0x00117800 0 0x400>;
+		slbc-enable = <1>;
+		slbc-all-cache-enable = <1>;
+		trace-dram-base = <0x0>;
+		trace-dram-size  = <0x0>;
 	};
 
 	mmup: mmup@31a00000 {
