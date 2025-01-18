@@ -213,6 +213,7 @@ struct mml_ut_config {
 	u32 alpha;
 	u32 pq;
 	u32 videomode;
+	u32 bypass_all_alg;
 	u32 in1_fmt;
 	u32 in1_w;
 	u32 in1_h;
@@ -263,6 +264,7 @@ const char *ut_params[] = {
 	"alpha",
 	"pq",
 	"videomode",
+	"bypass_all_alg",
 	"in1_fmt",
 	"in1_w",
 	"in1_h",
@@ -523,19 +525,22 @@ static void case_general_submit_ut(struct mml_test *test,
 		pq_param->scenario = MML_PQ_MEDIA_VIDEO;
 		pq_param->src_hdr_video_mode = MML_PQ_NORMAL;
 		pq_param->video_param.video_id = 0x546;
+		pq_param->bypass_all_alg = (utcfg->bypass_all_alg) ? true : false;
 		task.pq_param[0] = pq_param;
 		task.info.dest[0].pq_config.en = 1;
 		task.info.dest[0].pq_config.en_dre = (utcfg->pq & MML_PQ_DRE_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_hdr = (utcfg->pq & MML_PQ_VIDEO_HDR_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_color = (utcfg->pq & MML_PQ_COLOR_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_sharp = (utcfg->pq & MML_PQ_SHP_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_fg = (utcfg->pq & MML_PQ_FG_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_c3d = (utcfg->pq & MML_PQ_C3D_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_dc = 0;
 		task.info.dest[0].pq_config.en_region_pq =
 			(utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
 			pq_param->src_hdr_video_mode = utcfg->videomode;
-		mml_log("[test] %s open PQ %#010x video_mode:%d", __func__,
-			utcfg->pq, utcfg->videomode);
+		mml_log("[test] %s open PQ %#010x video_mode:%d bypass_all_alg:%d", __func__,
+			utcfg->pq, utcfg->videomode, pq_param->bypass_all_alg);
 	}
 
 	task.info.alpha = utcfg->alpha;
