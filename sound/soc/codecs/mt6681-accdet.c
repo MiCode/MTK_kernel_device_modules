@@ -2534,24 +2534,30 @@ static int accdet_get_dts_data(void)
 	ret = of_property_read_u32(node, "accdet-irq-gpio-enable",
 		&accdet_dts.accdet_irq_gpio_enable);
 	if (ret) {
-		if (accdet_get_chipid() == 0x1) {
-			accdet_dts.accdet_irq_gpio_enable = 0x1;
-			pr_notice("(%s) accdet use AP EINT\n", __func__);
-		} else if (accdet_get_chipid() == 0x0) {
-			/* Set default to AP EINT */
-			accdet_dts.accdet_irq_gpio_enable = 0x1;
-			/* Check hw revision */
-			ret = of_property_read_u32(node, "accdet-efuse-check", &accdet_efuse_check);
-			if (!ret && accdet_efuse_check == 1) {
+		ret = of_property_read_u32(node, "accdet-efuse-check", &accdet_efuse_check);
+		if (ret) {
+			accdet_dts.accdet_irq_gpio_enable = 0x0;
+			pr_notice("(%s) default accdet use SCP EINT\n", __func__);
+		} else if (!ret && accdet_efuse_check == 1) {
+			if (accdet_get_chipid() == 0x1) {
+				accdet_dts.accdet_irq_gpio_enable = 0x1;
+				pr_notice("(%s) accdet use AP EINT\n", __func__);
+			} else if (accdet_get_chipid() == 0x0) {
+				/* Set default to AP EINT */
+				accdet_dts.accdet_irq_gpio_enable = 0x1;
+				/* Check hw revision */
 				accdet_get_efuse_hw_revision();
 				if (accdet_dts.accdet_irq_gpio_enable == 0x1)
 					pr_notice("(%s) accdet use AP EINT\n", __func__);
 				else
 					pr_notice("(%s) accdet use SCP EINT\n", __func__);
+			} else {
+				accdet_dts.accdet_irq_gpio_enable = 0x1;
+				pr_notice("(%s) default accdet use AP EINT\n", __func__);
 			}
 		} else {
-			accdet_dts.accdet_irq_gpio_enable = 0x1;
-			pr_notice("(%s) default accdet use AP EINT\n", __func__);
+			accdet_dts.accdet_irq_gpio_enable = 0x0;
+			pr_notice("(%s) default accdet use SCP EINT\n", __func__);
 		}
 	}
 
