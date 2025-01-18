@@ -134,11 +134,11 @@ static int fops_vcodec_open(struct file *file)
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev_enc, ctx,
 		&mtk_vcodec_enc_queue_init);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (dev->support_acp && mtk_venc_acp_enable && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
-		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
+	if (dev->support_acp && mtk_venc_acp_enable && vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC) != NULL) {
+		ctx->general_dev = vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_ACP_VENC domain");
 	} else {
-		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_VENC);
+		ctx->general_dev = vcp_get_io_device_ex(VCP_IOMMU_VENC);
 		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_VENC domain");
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)

@@ -273,7 +273,7 @@ extern struct tasklet_struct vcp_A_irq1_tasklet;
 extern u32 mt_irq_get_pending(unsigned int irq);
 #endif
 void dump_vcp_irq_status(void);
-extern void mt_irq_dump_status(int irq);
+extern void mt_irq_dump_status(unsigned int irq);
 
 
 

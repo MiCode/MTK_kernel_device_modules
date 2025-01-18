@@ -3727,7 +3727,7 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
-		struct device *io_dev = vcp_get_io_device(VCP_IOMMU_VDEC);
+		struct device *io_dev = vcp_get_io_device_ex(VCP_IOMMU_VDEC);
 
 		if (ctx->dev->support_acp && mtk_vdec_acp_enable && mtk_vdec_acp_debug && io_dev != NULL) {
 			mtkbuf->non_acp_attach = dma_buf_attach(vb->planes[0].dbuf, io_dev);
@@ -4757,14 +4757,14 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		struct vb2_queue *src_vq;
 
 		if (ctrl->val) {
-			if (vcp_get_io_device(VCP_IOMMU_SEC)) {
+			if (vcp_get_io_device_ex(VCP_IOMMU_SEC)) {
 				src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 					V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 				if (src_vq == NULL) {
 					mtk_v4l2_err("Error! src_vq is NULL!");
 					return -EINVAL;
 				}
-				src_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
+				src_vq->dev = vcp_get_io_device_ex(VCP_IOMMU_SEC);
 				mtk_v4l2_debug(4, "[%d] src_vq use VCP_IOMMU_SEC domain %p", ctx->id, src_vq->dev);
 			}
 
@@ -5482,14 +5482,14 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->lock            = &ctx->q_mutex;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (ctx->dev->support_acp && mtk_vdec_acp_enable &&
-	    !ctx->dec_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
-		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
+	    !ctx->dec_params.svp_mode && vcp_get_io_device_ex(VCP_IOMMU_ACP_VDEC) != NULL) {
+		src_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_ACP_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VDEC domain %p", name, src_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->dec_cnt & 1)) {
-		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VENC);
+		src_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VENC domain %p", name, src_vq->dev);
 	} else {
-		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_VDEC);
+		src_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_VDEC domain %p", name, src_vq->dev);
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)

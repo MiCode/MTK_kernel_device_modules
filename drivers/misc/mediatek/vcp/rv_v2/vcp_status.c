@@ -139,6 +139,15 @@ int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 }
 EXPORT_SYMBOL_GPL(vcp_register_mminfra_cb_ex);
 
+struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num)
+{
+	if (!vcp_fp || !vcp_fp->vcp_get_io_device)
+		return NULL;
+
+	return vcp_fp->vcp_get_io_device(io_num);
+}
+EXPORT_SYMBOL_GPL(vcp_get_io_device_ex);
+
 static void __exit mtk_vcp_status_exit(void)
 {
 }

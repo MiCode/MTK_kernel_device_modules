@@ -436,18 +436,18 @@ static struct device *get_dev_by_mem_type(struct vdec_inst *inst, struct vcodec_
 
 	if (mem->type == MEM_TYPE_FOR_SW) {
 		if (inst->ctx->dev->iommu_domain_swtich && (inst->ctx->id & 1))
-			return vcp_get_io_device(VCP_IOMMU_VCP);
+			return vcp_get_io_device_ex(VCP_IOMMU_VCP);
 		else
-			return vcp_get_io_device(VCP_IOMMU_WORK);
+			return vcp_get_io_device_ex(VCP_IOMMU_WORK);
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW)
-		return vcp_get_io_device(VCP_IOMMU_SEC);
+		return vcp_get_io_device_ex(VCP_IOMMU_SEC);
 	else if (mem->type == MEM_TYPE_FOR_HW || mem->type == MEM_TYPE_FOR_SEC_HW)
 		return inst->vcu.ctx->dev->smmu_dev;
 	else if (mem->type == MEM_TYPE_FOR_UBE_HW || mem->type == MEM_TYPE_FOR_SEC_UBE_HW) {
-		if (vcp_get_io_device(VCP_IOMMU_UBE_LAT) != NULL)
-			return vcp_get_io_device(VCP_IOMMU_UBE_LAT);
-		else if (vcp_get_io_device(VCP_IOMMU_UBE_CORE) != NULL)
-			return vcp_get_io_device(VCP_IOMMU_UBE_CORE);
+		if (vcp_get_io_device_ex(VCP_IOMMU_UBE_LAT) != NULL)
+			return vcp_get_io_device_ex(VCP_IOMMU_UBE_LAT);
+		else if (vcp_get_io_device_ex(VCP_IOMMU_UBE_CORE) != NULL)
+			return vcp_get_io_device_ex(VCP_IOMMU_UBE_CORE);
 		else
 			return inst->vcu.ctx->dev->smmu_dev;
 	} else

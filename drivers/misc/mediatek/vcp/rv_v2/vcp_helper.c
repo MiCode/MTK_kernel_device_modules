@@ -246,6 +246,7 @@ struct vcp_status_fp vcp_helper_fp = {
 	.is_vcp_suspending			= is_vcp_suspending,
 	.is_vcp_ao					= is_vcp_ao,
 	.get_ipidev					= get_ipidev,
+	.vcp_get_io_device			= vcp_get_io_device,
 };
 
 #undef pr_debug
