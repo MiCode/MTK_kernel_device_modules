@@ -720,7 +720,7 @@ static void bat_handler(struct work_struct *work)
 		notify_gpueb();
 #endif
 		if (mt_ppb_debug)
-			pr_info("%s: ppb[p=%d v=%d] hpt[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
+			pr_info("%s: vsys-er[p=%d v=%d] vsys[p=%d v=%d] soc=%d C,A_R=%d,%d T[Rdc,Rac]=%d,%d temp,s=%d,%d\n",
 				__func__, ppb_sys_power, pb.ppb_ocv, hpt_data.vsys_budget,
 				pb.hpt_ocv, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
 				pb.cur_rac, temp, pb.temp_cur_stage);
@@ -1701,13 +1701,6 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		hpt_ctrl_base = addr;
 
 	spin_lock_init(&ppb_lock);
-
-	if (hpt_ctrl_base)
-		hpt_ctrl_write(0x7, HPT_CTRL_SET);
-	if (ppb_sram_base) {
-		ppb_write_sram(1, HPT_SF_ENABLE);
-		ppb_write_sram(100, HPT_DELAY_TIME);
-	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpu_dbg");
 	addr = devm_ioremap_resource(&pdev->dev, res);
