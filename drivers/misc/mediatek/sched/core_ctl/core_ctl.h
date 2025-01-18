@@ -22,6 +22,13 @@ struct _CORE_CTL_PACKAGE {
 	__u32 max;
 };
 
+struct core_ctl_notif_data {
+	unsigned int cpu;
+	unsigned int is_pause;
+	unsigned int paused_mask;
+	unsigned int online_mask;
+};
+
 #define CORE_CTL_FORCE_RESUME_CPU               _IOW('g', 1,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_FORCE_PAUSE_CPU                _IOW('g', 2,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_SET_OFFLINE_THROTTLE_MS        _IOW('g', 3,  struct _CORE_CTL_PACKAGE)

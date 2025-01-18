@@ -124,6 +124,7 @@ static DEFINE_SPINLOCK(check_lock);
 static DEFINE_SPINLOCK(core_ctl_force_lock);
 static bool initialized;
 static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
+ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
 static bool debug_enable;
 module_param_named(debug_enable, debug_enable, bool, 0600);
 
@@ -690,6 +691,7 @@ EXPORT_SYMBOL(core_ctl_set_up_thres);
  *  return 0 if success, else return errno
  */
 static bool test_disable_cpu(unsigned int cpu);
+static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
 int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 {
 	int ret;
@@ -735,6 +737,7 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 	}
 	cluster->active_cpus = get_active_cpu_count(cluster);
 	spin_unlock(&state_lock);
+	core_ctl_call_notifier(cpu, is_pause);
 
 unlock:
 	spin_unlock_irqrestore(&core_ctl_force_lock, flags);
@@ -796,6 +799,18 @@ int core_ctl_set_cpu_busy_thres(unsigned int cid, unsigned int pct)
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_cpu_busy_thres);
+
+void core_ctl_notifier_register(struct notifier_block *n)
+{
+	atomic_notifier_chain_register(&core_ctl_notifier, n);
+}
+EXPORT_SYMBOL(core_ctl_notifier_register);
+
+void core_ctl_notifier_unregister(struct notifier_block *n)
+{
+	atomic_notifier_chain_unregister(&core_ctl_notifier, n);
+}
+EXPORT_SYMBOL(core_ctl_notifier_unregister);
 
 /* ==================== sysctl node ======================== */
 
@@ -1454,6 +1469,7 @@ again:
 		} else if (!ret) {
 			success = true;
 			cpumask_set_cpu(c->cpu, &cpu_pause_res);
+			core_ctl_call_notifier(cpu, 1);
 			nr_paused++;
 		} else {
 			cpumask_set_cpu(c->cpu, &cpu_pause_res);
@@ -1540,6 +1556,7 @@ again:
 		} else if (!ret) {
 			success = true;
 			cpumask_set_cpu(c->cpu, &cpu_resume_res);
+			core_ctl_call_notifier(cpu, 0);
 			nr_resumed++;
 		} else {
 			cpumask_set_cpu(c->cpu, &cpu_resume_res);
@@ -1757,6 +1774,25 @@ static void periodic_debug_handler(struct work_struct *work)
 	mod_delayed_work(system_power_efficient_wq,
 			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
 }
+
+static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause)
+{
+	struct core_ctl_notif_data ndata = {0};
+	struct notifier_block *nb;
+
+	nb = rcu_dereference_raw(core_ctl_notifier.head);
+	if(!nb)
+		return;
+
+	ndata.cpu = cpu;
+	ndata.is_pause = is_pause;
+	ndata.paused_mask = cpu_pause_mask->bits[0];
+	ndata.online_mask = cpu_online_mask->bits[0];
+	atomic_notifier_call_chain(&core_ctl_notifier, is_pause, &ndata);
+
+	trace_core_ctl_call_notifier(cpu, is_pause, cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0]);
+}
+
 /* ==================== init section ======================== */
 
 static int ppm_data_init(struct cluster_data *cluster);

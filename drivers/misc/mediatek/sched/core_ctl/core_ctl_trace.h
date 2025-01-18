@@ -170,6 +170,33 @@ TRACE_EVENT(core_ctl_periodic_debug_handler,
 		__entry->active, __entry->paused)
 );
 
+TRACE_EVENT(core_ctl_call_notifier,
+
+	TP_PROTO(
+		unsigned int cpu,
+		unsigned int is_pause,
+		unsigned int online_mask,
+		unsigned int paused_mask),
+	TP_ARGS(cpu, is_pause, online_mask, paused_mask),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, cpu)
+		__field(unsigned int, is_pause)
+		__field(unsigned int, online_mask)
+		__field(unsigned int, paused_mask)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->is_pause = is_pause;
+		__entry->online_mask = online_mask;
+		__entry->paused_mask = paused_mask;
+	),
+
+	TP_printk("cpu:%d, is_pause:%d, online_mask=0x%x, paused_mask=0x%x",
+		__entry->cpu, __entry->is_pause, __entry->online_mask, __entry->paused_mask)
+);
+
 #endif /*_CORE_CTL_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH
