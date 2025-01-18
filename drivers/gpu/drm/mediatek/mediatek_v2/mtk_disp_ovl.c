@@ -1234,12 +1234,12 @@ static void mtk_ovl_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void mtk_ovl_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, BIT(0) | BIT(28), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, 0, ~0);
-	DDPMSG("%s-\n", __func__);
+	DDPINFO("%s-\n", __func__);
 }
 
 static void _store_bg_roi(struct mtk_ddp_comp *comp, int h, int w)
