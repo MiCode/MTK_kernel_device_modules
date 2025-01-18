@@ -7,7 +7,7 @@ package(
 
 load("//build/bazel_mgk_rules:mgk.bzl", "define_mgk")
 
-mgk_kmi_symbol_list = None #"//kernel-mainline:android/abi_gki_aarch64_mtk"
+mgk_kmi_symbol_list = None #"//kernel-6.6:android/abi_gki_aarch64_mtk"
 
 filegroup(
         name = "mgk_configs",
@@ -31,8 +31,8 @@ filegroup(
         ]),
 )
 
-# mgk_64_kmainline
-load("//kernel_device_modules-mainline:kernel/kleaf/mgk_64.bzl",
+# mgk_64_k66
+load("//kernel_device_modules-6.6:kernel/kleaf/mgk_64.bzl",
      "mgk_64_defconfig",
      "mgk_64_kleaf_modules",
      "mgk_64_kleaf_eng_modules",
@@ -53,7 +53,7 @@ load("//kernel_device_modules-mainline:kernel/kleaf/mgk_64.bzl",
 )
 
 define_mgk(
-    name = "mgk_64_kmainline",
+    name = "mgk_64_k66",
     defconfig = mgk_64_defconfig,
     kleaf_modules = mgk_64_kleaf_modules,
     kleaf_eng_modules = mgk_64_kleaf_eng_modules,

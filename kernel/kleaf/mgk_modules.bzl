@@ -1,4 +1,4 @@
-load("//kernel-mainline:modules.bzl", "get_gki_modules_list")
+load("//kernel-6.6:modules.bzl", "get_gki_modules_list")
 
 COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64")
 
