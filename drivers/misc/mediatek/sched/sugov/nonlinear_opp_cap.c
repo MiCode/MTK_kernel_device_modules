@@ -450,6 +450,7 @@ void init_curr_collab_struct(void)
 }
 
 #define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
+#define USING_LAST_STATE -1
 void update_curr_collab_state(void)
 {
 	int collab_type = 0, curr_state = 0;
@@ -483,7 +484,7 @@ void update_curr_collab_state(void)
 				else
 					curr_state = curr_collab_state[collab_type].ret_function();
 
-				if (curr_state != -1)
+				if (curr_state != USING_LAST_STATE)
 					curr_collab_state[collab_type].state = curr_state;
 
 				if (!need_update_capacity_orig)
@@ -1487,7 +1488,10 @@ int collab_type_0_ret_function(void)
 		trace_collab_type_0_ret_function(val1/val2, val1, val2);
 
 	if (val1 == 0 || val2 == 0)
-		return -1;
+		return USING_LAST_STATE;
+
+	if (val1 == 0xdeadbeef || val2 == 0xdeadbeef)
+		return USING_LAST_STATE;
 
 	return val1/val2;
 }
