@@ -467,8 +467,6 @@ int apu_infra_lock(struct mtk_apu *apu, uint32_t op, enum apu_infra_bit_id id)
 	uint32_t timeout = 1000000;
 	struct device *dev = apu->dev;
 
-	dev_info(dev, "%s : op = %d\n", __func__, op);
-
 	if (op == 1) {
 		//hold hw sem for infra
 		iowrite32(BIT(id), apu->apu_infra_hwsem);
@@ -491,7 +489,6 @@ int apu_infra_lock(struct mtk_apu *apu, uint32_t op, enum apu_infra_bit_id id)
 		udelay(1);
 	}
 end:
-	dev_info(dev, "%s apu_infra_hwsem :0x%08x\n", __func__, ioread32(apu->apu_infra_hwsem));
 	return 0;
 
 }
