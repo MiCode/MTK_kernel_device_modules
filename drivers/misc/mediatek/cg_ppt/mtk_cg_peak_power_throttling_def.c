@@ -4,6 +4,16 @@
  * Author: Clouds Lee <clouds.lee@mediatek.com>
  */
 
+/*
+ * ##################################################################
+ * THIS FILE MUST BE SYNCHRONIZED WITH SYSTEM
+ *  1.mtk_cg_peak_power_throttling_def.h
+ *  2.*mtk_cg_peak_power_throttling_def.c*
+ *  3.mtk_cg_peak_power_throttling_table.h
+ *  4.mtk_cg_peak_power_throttling_table.c
+ * ##################################################################
+ */
+
 #include "mtk_cg_peak_power_throttling_def.h"
 
 /*

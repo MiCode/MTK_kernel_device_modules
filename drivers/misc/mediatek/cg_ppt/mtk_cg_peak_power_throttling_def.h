@@ -4,6 +4,16 @@
  * Author: Clouds Lee <clouds.lee@mediatek.com>
  */
 
+/*
+ * ##################################################################
+ * THIS FILE MUST BE SYNCHRONIZED WITH SYSTEM
+ *  1.*mtk_cg_peak_power_throttling_def.h*
+ *  2.mtk_cg_peak_power_throttling_def.c
+ *  3.mtk_cg_peak_power_throttling_table.h
+ *  4.mtk_cg_peak_power_throttling_table.c
+ * ##################################################################
+ */
+
 #ifndef _MTK_CG_PEAK_POWER_THROTTLING_DEF_H_
 #define _MTK_CG_PEAK_POWER_THROTTLING_DEF_H_
 
@@ -26,12 +36,26 @@
 #define DLPT_CSRAM_BASE (0x00116400)
 #define DLPT_CSRAM_SIZE (0x1400) //5KB
 #define DLPT_CSRAM_CTRL_RESERVED_SIZE                                          \
-	(128) //reserve last 128B for control purpose
+	(256) //reserve last 256B for control purpose
 #define DLPT_CSRAM_CTRL_BASE                                                   \
 	(DLPT_CSRAM_BASE + DLPT_CSRAM_SIZE - DLPT_CSRAM_CTRL_RESERVED_SIZE)
 
-#define DLPT_WIFI_DRAM_BASE (0x9D5A07F0)
-
+/*
+ * ========================================================
+ * CGPPT Mode
+ *    mode  0: CG quota control (DX3 default)
+ *    mode  1: CGPPT (DX3 sport mode)
+ *    mode  2: OFF
+ *    mode 12: CGPPT use vsys_pb + PreOC (DX4 default)
+ * ========================================================
+ */
+#define MODE_INFRA                   (1 << 0)
+#define MODE_OFF                     (1 << 1)
+#define MODE_USE_VSYS_PB             (1 << 2)
+#define MODE_PREOC                   (1 << 3)
+#define MODE_DISABLE_FREQ_LIMIT      (1 << 4)
+#define MODE_DISABLE_DRAM_ACCESS     (1 << 5)
+#define MODE_SF_SWITCH_STRESS        (1 << 6)
 
 /*
  * ========================================================
@@ -44,7 +68,14 @@
 #define MO_CPU_AVS                   (1 << 3)
 #define MO_GPU_AVS                   (1 << 4)
 #define MO_GPU_CURR_FREQ_POWER_CALC  (1 << 5)
+#define MO_ONETIME_POWER_TABLE_CALC  (1 << 6)
 
+
+/*
+ * ========================================================
+ *
+ * ========================================================
+ */
 #define CGPPT_CHECKBIT(value, bit_mask) (((value) & (bit_mask)) == (bit_mask))
 #define CGPPT_SETBIT(value, bit_mask) ((value) |= (bit_mask))
 #define CGPPT_CLEARBIT(value, bit_mask) ((value) &= ~(bit_mask))
@@ -156,6 +187,7 @@ struct ThermalCsramCtrlBlock {
 struct DlptDramMdCtrlBlock {
 	int modem_peak_power_mw;
 	int ap2md_ack;
+	int modem_l1_peak_power_mw;
 };
 
 struct DlptDramWifiCtrlBlock {
@@ -170,27 +202,42 @@ struct DlptDramWifiCtrlBlock {
  * ...................................
  */
 struct DlptCsramCtrlBlock {
+	int vsys_power_budget_noerr_mw; /*1*/
+	int scaling_factor_en; /*2*/
+	int cpub_scaling_factor_l1; /*3*/
+	int cpub_scaling_factor_l2; /*4*/
+	int cpum_scaling_factor_l1; /*5*/
+	int cpum_scaling_factor_l2; /*6*/
+	int cpul_scaling_factor_l1; /*7*/
+	int cpul_scaling_factor_l2; /*8*/
+	int gpu_scaling_factor_l1; /*9*/
+	int gpu_scaling_factor_l2; /*10*/
+	int sf_deglitch_time_ms; /*11*/
+
+	/*reserved*/
+	int reserved[33-11-1];
+
 	/* mode 0:CG no peak at same time 1:peak power budget 2:OFF*/
-	int peak_power_budget_mode; /* 1*/
-	int cg_min_power_mw; /* 2*/
-	int vsys_power_budget_mw; /* 3*/ /*include modem, wifi*/
-	int vsys_power_budget_ack; /* 4*/
-	int flash_peak_power_mw; /* 5*/
-	int audio_peak_power_mw; /* 6*/
-	int camera_peak_power_mw; /* 7*/
-	int apu_peak_power_mw; /* 8*/
-	int display_lcd_peak_power_mw; /* 9*/
-	int dram_peak_power_mw; /*10*/
-	int modem_peak_power_mw_shadow; /*11*/
-	int wifi_peak_power_mw_shadow; /*12*/
-	int reserved_4; /*13*/
-	int reserved_5; /*14*/
-	int apu_peak_power_ack; /*15*/
-	int boot_mode; /*16*/
-	int md_smem_addr; /*17*/
-	int wifi_smem_addr; /*18*/
-	int cg_power_threshold; /*19*/
-	int cg_power_threshold_count; /*20*/
+	int peak_power_budget_mode; /* 33*/
+	int cg_min_power_mw; /* 34*/
+	int vsys_power_budget_mw; /*35*/ /*include modem, wifi*/
+	int vsys_power_budget_ack; /*36*/
+	int flash_peak_power_mw; /*37*/
+	int audio_peak_power_mw; /*38*/
+	int camera_peak_power_mw; /*39*/
+	int apu_peak_power_mw; /*40*/
+	int display_lcd_peak_power_mw; /*41*/
+	int dram_peak_power_mw; /*42*/
+	int modem_peak_power_mw_shadow; /*43*/
+	int wifi_peak_power_mw_shadow; /*44*/
+	int reserved_4; /*45*/
+	int reserved_5; /*46*/
+	int apu_peak_power_ack; /*47*/
+	int boot_mode; /*48*/
+	int md_smem_addr; /*49*/
+	int wifi_smem_addr; /*50*/
+	int cg_power_threshold; /*51*/
+	int cg_power_threshold_count; /*52*/
 };
 
 

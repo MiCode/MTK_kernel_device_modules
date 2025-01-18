@@ -4,6 +4,16 @@
  * Author: Clouds Lee <clouds.lee@mediatek.com>
  */
 
+/*
+ * ##################################################################
+ * THIS FILE MUST BE SYNCHRONIZED WITH SYSTEM
+ *  1.mtk_cg_peak_power_throttling_def.h
+ *  2.mtk_cg_peak_power_throttling_def.c
+ *  3.*mtk_cg_peak_power_throttling_table.h*
+ *  4.mtk_cg_peak_power_throttling_table.c
+ * ##################################################################
+ */
+
 #ifndef _MTK_CG_PEAK_POWER_THROTTLING_TABLE_H_
 #define _MTK_CG_PEAK_POWER_THROTTLING_TABLE_H_
 
@@ -143,16 +153,17 @@ struct cswrunInfo {
 	int cg_sync_enable; /*1:enable*/
 	int is_fastdvfs_enabled;
 	int cpu_max_freq_m[CPU_MAX_CLUSTERS];
+	int scaling_factor[3];
 };
 
 struct gswrunInfo {
 	int cgppb_mw;
 	int gpu_preboost_time_us;
-
 	int cgsync_action;
 	int is_gpu_favor;
 	int combo_idx;
 	int gpu_limit_freq_m;
+	int scaling_factor;
 };
 
 struct moInfo {
@@ -162,6 +173,7 @@ struct moInfo {
 	int mo_cpu_avs;
 	int mo_gpu_avs;
 	int mo_gpu_curr_freq_power_calc;
+	int mo_onetime_power_table_calc;
 	unsigned int mo_status;
 };
 

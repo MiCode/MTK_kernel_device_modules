@@ -91,6 +91,7 @@ struct platform_data {
 	/* Platform-specific settings */
 	int default_cg_ppt_mode;
 	int default_mo_gpu_curr_freq_power_calc;
+	int default_mo_onetime_power_table_calc;
 	int default_defer_timer_period_ms;
 	int default_gacboost_mode;
 
@@ -106,6 +107,7 @@ static const struct platform_data default_platform_data = {
 	/* unknown platform settings */
 	.default_cg_ppt_mode = 2, /*OFF*/
 	.default_mo_gpu_curr_freq_power_calc = 1,
+	.default_mo_onetime_power_table_calc = 0,
 	.default_defer_timer_period_ms = 1000,
 	.default_gacboost_mode = 0,
 
@@ -120,6 +122,23 @@ static const struct platform_data mt6989_platform_data = {
 	/* MT6989-specific settings */
 	.default_cg_ppt_mode = 0,
 	.default_mo_gpu_curr_freq_power_calc = 1,
+	.default_mo_onetime_power_table_calc = 0,
+	.default_defer_timer_period_ms = 1000,
+	.default_gacboost_mode = 0,
+
+	/*combo table*/
+	.ip_peak_power_table        = ip_peak_power_table,
+	.leakage_scale_table        = leakage_scale_table,
+	.peak_power_combo_table_gpu = peak_power_combo_table_gpu,
+	.peak_power_combo_table_cpu = peak_power_combo_table_cpu,
+};
+
+static const struct platform_data mt6991_platform_data = {
+	/* MT6989-specific settings */
+	//.default_cg_ppt_mode = 2, /*TODO: OFF*/
+	.default_cg_ppt_mode = 12, /*mode 12: CGPPT use vsys_pb + PreOC (DX4 default)*/
+	.default_mo_gpu_curr_freq_power_calc = 1,
+	.default_mo_onetime_power_table_calc = 1, /*change*/
 	.default_defer_timer_period_ms = 1000,
 	.default_gacboost_mode = 0,
 
@@ -134,6 +153,7 @@ static const struct platform_data mt6989_platform_data = {
 
 static const struct of_device_id cgppt_of_ids[] = {
 	{ .compatible = "mediatek,MT6989", .data = &mt6989_platform_data },
+	{ .compatible = "mediatek,MT6991", .data = &mt6991_platform_data },
 	{ /* sentinel */ }
 };
 
@@ -292,6 +312,8 @@ static int data_init(void)
 	iowrite32(g_platform_data->default_cg_ppt_mode, &dlpt_csram_ctrl_block->peak_power_budget_mode);
 	iowrite32(g_platform_data->default_mo_gpu_curr_freq_power_calc,
 		&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc);
+	iowrite32(g_platform_data->default_mo_onetime_power_table_calc,
+		&g_dlpt_sram_layout_ptr->mo_info.mo_onetime_power_table_calc);
 	iowrite32(g_platform_data->default_gacboost_mode, &g_dlpt_sram_layout_ptr->cgsm_info.gacboost_mode);
 
 	g_defer_timer_period_ms = g_platform_data->default_defer_timer_period_ms;
@@ -651,8 +673,6 @@ static void defer_timer_kick(void)
 
 static void defer_timer_callback(struct timer_list *t)
 {
-	pr_info("[CG PPT] defer timer callback.\n");
-
 	/*
 	 * ...................................
 	 * cgppt work
@@ -952,6 +972,18 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		return count;
 	}
 
+    /*
+     * ...................................
+     * clear data_valid
+     * ...................................
+     */
+	if (strncmp(buf, "clear data_valid",
+		    min(count, strlen("clear data_valid"))) == 0) {
+		iowrite32(0, &g_dlpt_sram_layout_ptr->cpu_data_valid);
+		iowrite32(0, &g_dlpt_sram_layout_ptr->gpu_data_valid);
+		return count;
+	}
+
 	return -EINVAL;
 }
 
@@ -965,13 +997,14 @@ static ssize_t model_option_show(struct device *dev, struct device_attribute *at
 			    char *buf)
 {
 	return snprintf(buf, PAGE_SIZE,
-	"favor_cpu: %d\nfavor_gpu: %d\nfavor_multiscene: %d\ncpu_avs: %d\ngpu_avs: %d\ngpu_curr_freq_power_calc: %d\nmo_status: %u\n",
+	"favor_cpu: %d\nfavor_gpu: %d\nfavor_multiscene: %d\ncpu_avs: %d\ngpu_avs: %d\ngpu_curr_freq_power_calc: %d\nonetime_power_table_calc: %d\nmo_status: %u\n",
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_cpu),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_gpu),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_favor_multiscene),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_cpu_avs),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_avs),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc),
+	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_onetime_power_table_calc),
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_status));
 
 }
@@ -1000,7 +1033,8 @@ static ssize_t model_option_store(struct device *dev, struct device_attribute *a
 	_ASSIGN_MO_(cpu_avs, val);
 	_ASSIGN_MO_(gpu_avs, val);
 	_ASSIGN_MO_(gpu_curr_freq_power_calc, val);
-	_ASSIGN_MO_(status, val);
+	_ASSIGN_MO_(onetime_power_table_calc, val);
+	_ASSIGN_MO_(status, val); //RO. only for test
 
 	return count;
 
@@ -1023,7 +1057,7 @@ static ssize_t cgppt_dump_show(struct device *dev, struct device_attribute *attr
 
 
 	return snprintf(buf, PAGE_SIZE,
-	"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+	"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 	// Status
 	ioread32(&DlptCsramCtrlBlock_ptr->peak_power_budget_mode),//cgppt_mod
 	ioread32(&g_dlpt_sram_layout_ptr->mo_info.mo_status),//cgppt_m
@@ -1049,7 +1083,12 @@ static ssize_t cgppt_dump_show(struct device *dev, struct device_attribute *attr
 	ioread32(&g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu[1].combopeakpowerin_mw),
 	ioread32(&g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu[2].combopeakpowerin_mw),
 	ioread32(&g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu[3].combopeakpowerin_mw),
-	ioread32(&g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu[lastci].combopeakpowerin_mw)
+	ioread32(&g_dlpt_sram_layout_ptr->peak_power_combo_table_cpu[lastci].combopeakpowerin_mw),
+	//scaling factor
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[0]), //L scaling factor (no-use)
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[1]), //M scaling factor
+	ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[2]), //B scaling factor
+	ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.scaling_factor)     //GPU scaling factor
 	);
 
 }
