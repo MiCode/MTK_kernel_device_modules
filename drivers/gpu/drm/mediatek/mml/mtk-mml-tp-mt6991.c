@@ -918,6 +918,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 	struct cmdq_client **clts, u32 clt_cnt)
 {
+	struct mml_comp *comp;
 	u32 i;
 
 	if (clt_cnt < MML_CLT_MAX) {
@@ -933,14 +934,18 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 
 	/* assign sys id for mmlsys/mutex compse different behavior */
 	for (i = MML1_MMLSYS; i < MML1_ENGINE_TOTAL; i++) {
-		struct mml_comp *comp = mml_dev_get_comp_by_id(mml, i);
-
-		comp->sysid = mml_sys_frame;
+		comp = mml_dev_get_comp_by_id(mml, i);
+		if (comp)
+			comp->sysid = mml_sys_frame;
+		else
+			return -EAGAIN;
 	}
 	for (i = MML0_MMLSYS; i < MML0_ENGINE_TOTAL; i++) {
-		struct mml_comp *comp = mml_dev_get_comp_by_id(mml, i);
-
-		comp->sysid = mml_sys_tile;
+		comp = mml_dev_get_comp_by_id(mml, i);
+		if (comp)
+			comp->sysid = mml_sys_tile;
+		else
+			return -EAGAIN;
 	}
 
 	for (i = 0; i < PATH_MML_MAX; i++) {
