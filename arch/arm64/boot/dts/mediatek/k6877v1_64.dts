@@ -208,6 +208,14 @@
 	};
 };
 
+&mtk_leds {
+	compatible = "mediatek,i2c-leds";
+	backlight {
+		led-mode = <6>;
+		led-config = <8 11>;
+	};
+};
+
 &odm {
 	led0:led@0 {
 		compatible = "mediatek,red";
