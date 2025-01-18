@@ -1271,7 +1271,7 @@ static ssize_t apo_autosuspend_delay_ms_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned int apo_autosuspend_delay_ms = 0;
+	unsigned long long apo_autosuspend_delay_ms = 0;
 	int pos = 0;
 
 	apo_autosuspend_delay_ms = ged_get_apo_autosuspend_delay_ms();
@@ -1292,7 +1292,7 @@ static ssize_t apo_autosuspend_delay_ms_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value > 0) {
+				if (i32Value >= 0) {
 					ged_set_apo_autosuspend_delay_ms((unsigned int)i32Value);
 					ged_set_apo_autosuspend_delay_ctrl(1);
 				} else
@@ -1359,7 +1359,10 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	apo_autosuspend_delay_ref_count = ged_get_apo_autosuspend_delay_ref_count();
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"[APO]: %d, [Predict_APO]: %d\n", bGPUAPO, bGPUPredictAPO);
+				"[APO VERSION]: %d\n", g_ged_apo_support);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO]: %d, [Predict-APO]: %d\n", bGPUAPO, bGPUPredictAPO);
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[Dur]: %lld, [Predict_Dur]: %lld\n",
@@ -1375,8 +1378,53 @@ static ssize_t apo_status_show(struct kobject *kobj,
 
 	return pos;
 }
-static KOBJ_ATTR_RO(apo_status);
+
+static ssize_t apo_status_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_status((int)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
+static ssize_t autosuspend_stress_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", ged_get_autosuspend_stress());
+}
+
+static ssize_t autosuspend_stress_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value <= 0)
+					ged_set_autosuspend_stress(0);
+				else
+					ged_set_autosuspend_stress(i32Value);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(autosuspend_stress);
 
 //-----------------------------------------------------------------------------
 
@@ -2025,6 +2073,10 @@ GED_ERROR ged_hal_init(void)
 	}
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_autosuspend_stress);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create autosuspend_stress entry!\n");
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_loading_window_size);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
@@ -2171,6 +2223,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_ms);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_autosuspend_stress);
 #if defined(MTK_GPU_SLC_POLICY)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_slc_policy);
 #endif /* MTK_GPU_SLC_POLICY */
