@@ -51,6 +51,7 @@
 #define DISP_GAMMA_BLOCK_0_B_GAIN 0x005C
 
 #define    GAMMA_EN           BIT(0)
+#define    STALL_CG_ON        BIT(8)
 #define    GAMMA_MUT_EN       BIT(3)
 #define    GAMMA_LUT_TYPE     BIT(2)
 #define    GAMMA_LUT_EN       BIT(1)
@@ -170,6 +171,7 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 
 	disp_gamma_lock_wake_lock(comp, true);
 	cmdq_mbox_enable(client->chan);
+	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)cmdq_handle);
 
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
@@ -281,6 +283,7 @@ static void disp_gamma_cfg_set_lut(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init))
 		atomic_set(&primary_data->gamma_sram_hw_init, 1);
+	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)handle);
 }
 
 static int disp_gamma_write_12bit_lut_reg(struct mtk_ddp_comp *comp,
@@ -633,7 +636,8 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			gamma->primary_data->color_protect.gamma_color_protect_support |
 			gamma->primary_data->color_protect.gamma_color_protect_lsb, ~0);
 	}
-
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAYMODE, GAMMA_RELAYMODE);
@@ -808,7 +812,6 @@ static int disp_gamma_user_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 {
 	struct DISP_GAMMA_12BIT_LUT_T *config = data;
 
-	CRTC_MMP_MARK(0, aal_ess20_gamma, comp->id, 0);
 	if (disp_gamma_set_12bit_lut(comp, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
 		return -EFAULT;
@@ -1030,11 +1033,13 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
+	CRTC_MMP_EVENT_START(0, gamma_ioctl, 0, 0);
 	// 2. lock for protect crtc & power
 	mutex_lock(&primary_data->clk_lock);
 	if (!disp_gamma_clock_is_on(comp) || !mtk_crtc->enabled) {
 		mutex_unlock(&primary_data->clk_lock);
 		DDPMSG("%s, skip write sram, power is off!\n", __func__);
+		CRTC_MMP_EVENT_END(0, gamma_ioctl, 0, 2);
 		return 0;
 	}
 	mutex_lock(&primary_data->data_lock);
