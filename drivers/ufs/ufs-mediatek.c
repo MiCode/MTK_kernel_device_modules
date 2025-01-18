@@ -335,6 +335,9 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 				0x453000, REG_UFS_MMIO_OPT_CTRL_0);
 		}
 
+		/* Enable multi-rtt */
+		if (host->ip_ver >= IP_VER_MT6991)
+			ufshcd_rmwl(hba, MRTT_EN, MRTT_EN, REG_UFS_MMIO_OPT_CTRL_0);
 	}
 
 	return 0;
@@ -740,8 +743,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct device_node *np = hba->dev->of_node;
 	struct tag_bootmode *tag = NULL;
-	struct arm_smccc_res res;
-	bool mcq_en = false;
 
 	if (of_property_read_bool(np, "mediatek,ufs-boost-crypt"))
 		ufs_mtk_init_boost_crypt(hba);
@@ -777,11 +778,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
 		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
 #endif
-	/* Check if MCQ is allowed */
-	ufs_mtk_get_mcq_en(res);
-	mcq_en = !!res.a1;
-	if (!mcq_en)
-		host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 
 	dev_info(hba->dev, "caps=0x%x", host->caps);
 
@@ -1152,7 +1148,8 @@ static int ufs_mtk_clk_notify_handler(struct notifier_block *nb,
 	case CLK_EVT_CLK_TRACE:
 		if (clkd->id == 0) { /* turning off clock */
 			if (strncmp("ufs", clkd->name, 3) == 0) {  /* ufs clocks */
-				if (hba->clk_gating.state == CLKS_ON &&
+				if (hba->ufshcd_state == UFSHCD_STATE_OPERATIONAL &&
+					hba->clk_gating.state == CLKS_ON &&
 					!hba->clk_gating.is_suspended) { /* should be ungated */
 					/* someone still need clocks */
 					ufs_mtk_dbg_dump(10);
