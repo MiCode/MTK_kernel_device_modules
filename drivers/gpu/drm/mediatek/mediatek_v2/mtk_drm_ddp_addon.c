@@ -661,6 +661,7 @@ void mtk_addon_connect_between(struct drm_crtc *crtc, unsigned int ddp_mode,
 		mtk_crtc, path_data->path[path_data->path_len - 1], prev_id,
 		next_attach_comp_id, cmdq_handle);
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761) {
 		mtk_ddp_add_comp_to_path_with_cmdq(
 			mtk_crtc, DDP_COMPONENT_OVL0, prev_id,
@@ -769,6 +770,7 @@ void mtk_addon_disconnect_between(
 		mtk_crtc, path_data->path[path_data->path_len - 1],
 		next_attach_comp_id, cmdq_handle);
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761) {
 		mtk_ddp_remove_comp_from_path_with_cmdq(
 			mtk_crtc, DDP_COMPONENT_OVL0,
@@ -784,6 +786,7 @@ void mtk_addon_disconnect_between(
 
 	/* 4. connect original path*/
 	if (priv->data->mmsys_id != MMSYS_MT6768 &&
+		priv->data->mmsys_id != MMSYS_MT6765 &&
 		priv->data->mmsys_id != MMSYS_MT6761)
 		mtk_crtc_connect_path_between_component(crtc, ddp_mode, attach_comp_id,
 							next_attach_comp_id,

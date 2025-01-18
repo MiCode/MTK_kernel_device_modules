@@ -309,6 +309,8 @@ void mmsys_config_dump_analysis_mt6768(void __iomem *config_regs);
 void mutex_dump_analysis_mt6768(struct mtk_disp_mutex *mutex);
 void mmsys_config_dump_analysis_mt6761(void __iomem *config_regs);
 void mutex_dump_analysis_mt6761(struct mtk_disp_mutex *mutex);
+void mmsys_config_dump_analysis_mt6765(void __iomem *config_regs);
+void mutex_dump_analysis_mt6765(struct mtk_disp_mutex *mutex);
 
 void mutex_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
 void mutex_ovlsys_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
