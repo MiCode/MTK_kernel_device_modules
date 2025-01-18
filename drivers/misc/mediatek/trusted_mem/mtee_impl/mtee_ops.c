@@ -54,10 +54,6 @@
 #define MTEE_SESSION_UNLOCK()
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_GZ_KREE)
-/*
- * GZ & FF-A
- */
 static const char mem_srv_name[] = "com.mediatek.geniezone.srv.mem";
 
 struct MTEE_SESSION_DATA {
@@ -67,6 +63,133 @@ struct MTEE_SESSION_DATA {
 	struct mutex lock;
 #endif
 };
+
+/*
+ * This combination is pKVM & FF-A and GZ is disable.
+ */
+static int pkvm_mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_handle,
+		      u8 *owner, u32 id, u32 clean, void *peer_data,
+		      void *dev_desc)
+{
+	int ret;
+	struct tmem_device_description *mtee_dev_desc =
+		(struct tmem_device_description *)dev_desc;
+
+	if (is_ffa_enabled()) {
+		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
+				size, alignment, sec_handle);
+		if (*sec_handle == 0) {
+			pr_info("tmem_ffa_region_alloc,  out of memory, ret=%d!\n",  ret);
+			return -ENOMEM;
+		} else if (ret != 0) {
+			pr_info("[%d] tmem_ffa_region_alloc failed:%d\n",
+			       mtee_dev_desc->kern_tmem_type, ret);
+			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
+		}
+		*refcount = 1;
+	}
+
+	return TMEM_OK;
+}
+
+/*
+ * This combination is pKVM & FF-A and GZ is disable.
+ */
+static int pkvm_mtee_free(u64 sec_handle, u8 *owner, u32 id, void *peer_data,
+		     void *dev_desc)
+{
+	int ret;
+	struct tmem_device_description *mtee_dev_desc =
+		(struct tmem_device_description *)dev_desc;
+
+	if (is_ffa_enabled()) {
+		ret = tmem_ffa_region_free(mtee_dev_desc->mtee_chunks_id, sec_handle);
+		if (ret != 0) {
+			pr_info("[%d] tmem_ffa_region_free failed:%d\n",
+			       mtee_dev_desc->kern_tmem_type, ret);
+			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
+		}
+	}
+
+	return TMEM_OK;
+}
+
+/*
+ * This combination is pKVM & FF-A and GZ is disable.
+ */
+static int pkvm_mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
+{
+	int ret;
+	struct tmem_device_description *mtee_dev_desc =
+		(struct tmem_device_description *)dev_desc;
+
+	MTEE_SESSION_LOCK();
+
+#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
+	if (is_pkvm_enabled()) {
+		ret = pkvm_el2_mod_call(get_hvc_nr_region_protect(),
+				mtee_dev_desc->mtee_chunks_id, pa, size);
+		if (ret != 0)
+			pr_info("pKVM append reg mem failed:%d\n", ret);
+	}
+#endif
+
+	if (is_ffa_enabled()) {
+		ret = tmem_carveout_create(mtee_dev_desc->mtee_chunks_id, pa, size);
+		if (ret != 0) {
+			pr_info("[%d] tmem_carveout_create failed:%d\n",
+			       mtee_dev_desc->kern_tmem_type, ret);
+			MTEE_SESSION_UNLOCK();
+			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
+		}
+
+		pr_info("[%d] tmem_ff_heap[%d] created PASS: PA=0x%llx, size=0x%x\n",
+				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id,
+				pa, size);
+	}
+
+	MTEE_SESSION_UNLOCK();
+
+	return TMEM_OK;
+}
+
+/*
+ * This combination is pKVM & FF-A and GZ is disable.
+ */
+static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
+{
+	int ret;
+	struct tmem_device_description *mtee_dev_desc =
+		(struct tmem_device_description *)dev_desc;
+
+	MTEE_SESSION_LOCK();
+
+#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
+	if (is_pkvm_enabled()) {
+		ret = pkvm_el2_mod_call(get_hvc_nr_region_unprotect(),
+				mtee_dev_desc->mtee_chunks_id);
+		if (ret != 0)
+			pr_info("pKVM release reg mem failed:%d\n", ret);
+	}
+#endif
+
+	if (is_ffa_enabled()) {
+		ret = tmem_carveout_destroy(mtee_dev_desc->mtee_chunks_id);
+		if (ret != 0) {
+			pr_info("[%d] tmem_carveout_destroy failed:%d\n",
+			       mtee_dev_desc->kern_tmem_type, ret);
+			MTEE_SESSION_UNLOCK();
+			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
+		}
+
+		pr_info("[%d] tmem_ffa_heap[%d] destroy PASS\n",
+				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id);
+	}
+
+	MTEE_SESSION_UNLOCK();
+
+	return TMEM_OK;
+}
 
 static struct MTEE_SESSION_DATA *
 mtee_create_session_data(enum TRUSTED_MEM_TYPE mem_type)
@@ -101,6 +224,9 @@ static int mtee_session_open(void **peer_data, void *dev_desc)
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 
 	UNUSED(dev_desc);
+
+	if (is_pkvm_enabled())
+		return TMEM_OK;
 
 	sess_data = mtee_create_session_data(mtee_dev_desc->kern_tmem_type);
 	if (INVALID(sess_data)) {
@@ -141,6 +267,10 @@ static int mtee_session_close(void *peer_data, void *dev_desc)
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 
 	UNUSED(ops_data);
+
+	if (is_pkvm_enabled())
+		return TMEM_OK;
+
 	MTEE_SESSION_LOCK();
 
 	ret = KREE_CloseSession(sess_data->session_handle);
@@ -167,6 +297,14 @@ static int mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_handle,
 		(struct tmem_device_description *)dev_desc;
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 
+	if (is_pkvm_enabled()) {
+		/* pKVM & FF-A */
+		ret = pkvm_mtee_alloc(alignment, size, refcount, sec_handle, owner, id,
+				clean, peer_data, dev_desc);
+		return ret;
+	}
+
+	/* GZ & FF-A */
 	if (is_ffa_enabled()) {
 		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
 				size, alignment, sec_handle);
@@ -221,6 +359,13 @@ static int mtee_free(u64 sec_handle, u8 *owner, u32 id, void *peer_data,
 		(struct tmem_device_description *)dev_desc;
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 
+	if (is_pkvm_enabled()) {
+		/* pKVM & FF-A */
+		ret = pkvm_mtee_free(sec_handle, owner, id, peer_data, dev_desc);
+		return ret;
+	}
+
+	/* GZ & FF-A */
 	if (is_ffa_enabled()) {
 		ret = tmem_ffa_region_free(mtee_dev_desc->mtee_chunks_id, sec_handle);
 		if (ret != 0) {
@@ -257,6 +402,13 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 	KREE_SHAREDMEM_PARAM mem_param;
 
+	if (is_pkvm_enabled()) {
+		/* pKVM & FF-A */
+		ret = pkvm_mtee_mem_reg_add(pa, size, peer_data, dev_desc);
+		return ret;
+	}
+
+	/* GZ & FF-A */
 	mem_param.buffer = (void *)pa;
 	mem_param.size = size;
 	mem_param.mapAry = NULL;
@@ -318,6 +470,14 @@ static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 
 	UNUSED(ops_data);
+
+	if (is_pkvm_enabled()) {
+		/* pKVM & FF-A */
+		ret = pkvm_mtee_mem_reg_remove(peer_data, dev_desc);
+		return ret;
+	}
+
+	/* GZ & FF-A */
 	MTEE_SESSION_LOCK();
 
 	ret = KREE_ReleaseSecureMultichunkmem(sess_data->session_handle,
@@ -403,6 +563,9 @@ static int mtee_invoke_command(struct trusted_driver_cmd_params *invoke_params,
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 	struct mtee_driver_params drv_params = {0};
 
+	if (is_pkvm_enabled())
+		return TMEM_OK;
+
 	if (INVALID(invoke_params))
 		return TMEM_PARAMETER_ERROR;
 
@@ -436,152 +599,6 @@ static int mtee_invoke_command(struct trusted_driver_cmd_params *invoke_params,
 
 	return TMEM_OK;
 }
-
-#else
-/*
- * pKVM & FF-A
- */
-static int mtee_session_open(void **peer_data, void *dev_desc)
-{
-	UNUSED(peer_data);
-	UNUSED(dev_desc);
-
-	return TMEM_OK;
-}
-
-static int mtee_session_close(void *peer_data, void *dev_desc)
-{
-	UNUSED(peer_data);
-	UNUSED(dev_desc);
-
-	return TMEM_OK;
-}
-
-static int mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_handle,
-		      u8 *owner, u32 id, u32 clean, void *peer_data,
-		      void *dev_desc)
-{
-	int ret;
-	struct tmem_device_description *mtee_dev_desc =
-		(struct tmem_device_description *)dev_desc;
-
-	if (is_ffa_enabled()) {
-		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
-				size, alignment, sec_handle);
-		if (*sec_handle == 0) {
-			pr_info("tmem_ffa_region_alloc,  out of memory, ret=%d!\n",  ret);
-			return -ENOMEM;
-		} else if (ret != 0) {
-			pr_info("[%d] tmem_ffa_region_alloc failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
-		}
-		*refcount = 1;
-	}
-
-	return TMEM_OK;
-}
-
-static int mtee_free(u64 sec_handle, u8 *owner, u32 id, void *peer_data,
-		     void *dev_desc)
-{
-	int ret;
-	struct tmem_device_description *mtee_dev_desc =
-		(struct tmem_device_description *)dev_desc;
-
-	if (is_ffa_enabled()) {
-		ret = tmem_ffa_region_free(mtee_dev_desc->mtee_chunks_id, sec_handle);
-		if (ret != 0) {
-			pr_info("[%d] tmem_ffa_region_free failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
-		}
-	}
-
-	return TMEM_OK;
-}
-
-static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
-{
-	int ret;
-	struct tmem_device_description *mtee_dev_desc =
-		(struct tmem_device_description *)dev_desc;
-
-	MTEE_SESSION_LOCK();
-
-#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
-	if (is_pkvm_enabled()) {
-		ret = pkvm_el2_mod_call(get_hvc_nr_region_protect(),
-				mtee_dev_desc->mtee_chunks_id, pa, size);
-		if (ret != 0)
-			pr_info("pKVM append reg mem failed:%d\n", ret);
-	}
-#endif
-
-	if (is_ffa_enabled()) {
-		ret = tmem_carveout_create(mtee_dev_desc->mtee_chunks_id, pa, size);
-		if (ret != 0) {
-			pr_info("[%d] tmem_carveout_create failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			MTEE_SESSION_UNLOCK();
-			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
-		}
-
-		pr_info("[%d] tmem_ff_heap[%d] created PASS: PA=0x%llx, size=0x%x\n",
-				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id,
-				pa, size);
-	}
-
-	MTEE_SESSION_UNLOCK();
-
-	return TMEM_OK;
-}
-
-static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
-{
-	int ret;
-	struct tmem_device_description *mtee_dev_desc =
-		(struct tmem_device_description *)dev_desc;
-
-	MTEE_SESSION_LOCK();
-
-#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
-	if (is_pkvm_enabled()) {
-		ret = pkvm_el2_mod_call(get_hvc_nr_region_unprotect(),
-				mtee_dev_desc->mtee_chunks_id);
-		if (ret != 0)
-			pr_info("pKVM release reg mem failed:%d\n", ret);
-	}
-#endif
-
-	if (is_ffa_enabled()) {
-		ret = tmem_carveout_destroy(mtee_dev_desc->mtee_chunks_id);
-		if (ret != 0) {
-			pr_info("[%d] tmem_carveout_destroy failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			MTEE_SESSION_UNLOCK();
-			return TMEM_KPOOL_APPEND_MEMORY_FAILED;
-		}
-
-		pr_info("[%d] tmem_ffa_heap[%d] destroy PASS\n",
-				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id);
-	}
-
-	MTEE_SESSION_UNLOCK();
-
-	return TMEM_OK;
-}
-
-static int mtee_invoke_command(struct trusted_driver_cmd_params *invoke_params,
-			       void *peer_data, void *dev_desc)
-{
-	UNUSED(invoke_params);
-	UNUSED(peer_data);
-	UNUSED(dev_desc);
-
-	return TMEM_OK;
-}
-#endif
 
 static struct trusted_driver_operations mtee_peer_ops = {
 	.session_open = mtee_session_open,
