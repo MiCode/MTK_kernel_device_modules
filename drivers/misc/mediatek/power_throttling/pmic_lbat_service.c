@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/bitfield.h>
 #include <linux/delay.h>
 #include <linux/list.h>
 #include <linux/list_sort.h>
@@ -155,6 +156,54 @@ struct lbat_regs_t mt6377_lbat_regs = {
 	.min_en = {MT6377_AUXADC_LBAT5, 0x3, 1},
 	.volt_min = {MT6377_AUXADC_LBAT6, 0xFFF, 2},
 	.adc_out = {MT6377_AUXADC_ADC_AUTO3_L, 0xFFF, 2},
+	.volt_full = 1840,
+};
+
+#define MT6379_RG_CORE_CTRL0		0x001
+#define MT6379_MASK_CELL_COUNT		BIT(7)
+#define MT6379_BAT1_AUXADC_LBAT0	0x09AD
+#define MT6379_BAT1_AUXADC_LBAT1	0x09AE
+#define MT6379_BAT1_AUXADC_LBAT2	0x09AF
+#define MT6379_BAT1_AUXADC_LBAT3	0x09B0
+#define MT6379_BAT1_AUXADC_LBAT5	0x09B2
+#define MT6379_BAT1_AUXADC_LBAT6	0x09B3
+#define MT6379_BAT1_AUXADC_ADC_OUT_LBAT	0x091E
+
+static struct lbat_regs_t mt6379_lbat1_regs = {
+	.regmap_source = "dev_get_regmap",
+	.en = { MT6379_BAT1_AUXADC_LBAT0, BIT(0), 1 },
+	.debt_max = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(3, 2), 1 },
+	.debt_min = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(5, 4), 1 },
+	.det_prd = { MT6379_BAT1_AUXADC_LBAT1, GENMASK(1, 0), 1 },
+	.max_en = { MT6379_BAT1_AUXADC_LBAT2, GENMASK(1, 0), 1 },
+	.volt_max = { MT6379_BAT1_AUXADC_LBAT3, GENMASK(11, 0), 2 },
+	.min_en = { MT6379_BAT1_AUXADC_LBAT5, GENMASK(1, 0), 1 },
+	.volt_min = { MT6379_BAT1_AUXADC_LBAT6, GENMASK(11, 0), 2 },
+	.adc_out = { MT6379_BAT1_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
+	.r_ratio_node_name = "lbat-service-1",
+	.volt_full = 1840,
+};
+
+#define MT6379_BAT2_AUXADC_LBAT0	0x0CAD
+#define MT6379_BAT2_AUXADC_LBAT1	0x0CCAE
+#define MT6379_BAT2_AUXADC_LBAT2	0x0CCAF
+#define MT6379_BAT2_AUXADC_LBAT3	0x0CCB0
+#define MT6379_BAT2_AUXADC_LBAT5	0x0CCB2
+#define MT6379_BAT2_AUXADC_LBAT6	0x0CCB3
+#define MT6379_BAT2_AUXADC_ADC_OUT_LBAT	0x0CC1E
+
+static struct lbat_regs_t mt6379_lbat2_regs = {
+	.regmap_source = "dev_get_regmap",
+	.en = { MT6379_BAT2_AUXADC_LBAT0, BIT(0), 1 },
+	.debt_max = { MT6379_BAT2_AUXADC_LBAT1, GENMASK(3, 2), 1 },
+	.debt_min = { MT6379_BAT2_AUXADC_LBAT1, GENMASK(5, 4), 1 },
+	.det_prd = { MT6379_BAT2_AUXADC_LBAT1, GENMASK(1, 0), 1 },
+	.max_en = { MT6379_BAT2_AUXADC_LBAT2, GENMASK(1, 0), 1 },
+	.volt_max = { MT6379_BAT2_AUXADC_LBAT3, GENMASK(11, 0), 2 },
+	.min_en = { MT6379_BAT2_AUXADC_LBAT5, GENMASK(1, 0), 1 },
+	.volt_min = { MT6379_BAT2_AUXADC_LBAT6, GENMASK(11, 0), 2 },
+	.adc_out = { MT6379_BAT2_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
+	.r_ratio_node_name = "lbat-service-2",
 	.volt_full = 1840,
 };
 
@@ -1017,6 +1066,26 @@ static void mt6359p_lbat_init_setting(void)
 	__regmap_update_bits(regmap, &lbat_regs->det_prd, val);
 }
 
+static int mt6379_check_bat_cell_count(struct device *dev)
+{
+	unsigned int val, cell_count;
+	int ret;
+
+	if (!strstr(dev_name(dev), "mt6379") || !strstr(dev_name(dev), "lbat-service-2"))
+		return 0;
+
+	ret = regmap_read(regmap, MT6379_RG_CORE_CTRL0, &val);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to read CORE_CTRL0\n");
+
+	cell_count = FIELD_GET(MT6379_MASK_CELL_COUNT, val);
+	if (cell_count != 1)
+		return dev_err_probe(dev, -ENODEV, "%s, HW not support! (cell_cound:%d)\n",
+				     __func__, cell_count);
+
+	return 0;
+}
+
 static int pmic_lbat_service_probe(struct platform_device *pdev)
 {
 	int ret, irq;
@@ -1041,6 +1110,10 @@ static int pmic_lbat_service_probe(struct platform_device *pdev)
 		regmap = dev_get_regmap(pdev->dev.parent, NULL);
 		mt6359p_lbat_init_setting();
 	}
+
+	ret = mt6379_check_bat_cell_count(&pdev->dev);
+	if (ret)
+		return ret;
 
 	irq = platform_get_irq_byname(pdev, "bat_h");
 	if (irq < 0) {
@@ -1124,6 +1197,12 @@ static const struct of_device_id lbat_service_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6377-lbat-service",
 		.data = &mt6377_lbat_regs,
+	}, {
+		.compatible = "mediatek,mt6379-lbat-service-1",
+		.data = &mt6379_lbat1_regs,
+	}, {
+		.compatible = "mediatek,mt6379-lbat-service-2",
+		.data = &mt6379_lbat2_regs,
 	}, {
 		/* sentinel */
 	}
