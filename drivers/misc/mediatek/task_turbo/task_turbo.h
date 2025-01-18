@@ -56,6 +56,17 @@ struct cluster_info {
 	int cpu;
 };
 
+struct cpu_time {
+	u64 time;
+};
+
+struct cpu_info {
+	int *cpu_loading;
+};
+
+extern void set_top_app_vip(unsigned int prio);
+extern void unset_top_app_vip(void);
+
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every
  * nice level changed. I.e. when a CPU-bound task goes from nice 0 to

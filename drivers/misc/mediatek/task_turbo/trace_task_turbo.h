@@ -241,6 +241,27 @@ TRACE_EVENT(turbo_rtmutex_prepare_setprio,
 		__entry->prio)
 );
 
+TRACE_EVENT(turbo_vip,
+	TP_PROTO(int avg_cpu_loading, int cpu_loading_thres, bool ta_vip_status),
+	TP_ARGS(avg_cpu_loading, cpu_loading_thres, ta_vip_status),
+	TP_STRUCT__entry(
+		__field(int, avg_cpu_loading)
+		__field(int, cpu_loading_thres)
+		__field(bool, ta_vip_status)
+	),
+
+	TP_fast_assign(
+		__entry->avg_cpu_loading = avg_cpu_loading;
+		__entry->cpu_loading_thres = cpu_loading_thres;
+		__entry->ta_vip_status = ta_vip_status;
+	),
+
+	TP_printk("avg_cpu_loading=%d cpu_loading_thres=%d ta_vip_status=%d",
+		__entry->avg_cpu_loading,
+		__entry->cpu_loading_thres,
+		__entry->ta_vip_status)
+);
+
 #endif /*_TRACE_TASK_TURBO_H */
 
 #undef TRACE_INCLUDE_PATH
