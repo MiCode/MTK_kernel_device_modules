@@ -11244,6 +11244,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		udc = <&ssusb>;
 	};
 
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6991-usb-boost";
+	};
+
 	/* ATF logger */
 	atf_logger: atf-logger {
 		compatible = "mediatek,tfa_debug";
