@@ -6680,9 +6680,9 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	}
 }
 
-void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
+void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int i;
 	bool en = 1;
 	int ret;
@@ -6707,16 +6707,28 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);
-	if (atomic_read(&top_clk_ref) == 1) {
-		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-		priv->power_state = true;
 
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			CRTC_MMP_MARK(0, enter_vidle, 0xc10c, atomic_read(&top_clk_ref));
+		if (atomic_read(&top_clk_ref) == 1) {
+			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
+			priv->power_state = true;
+
 			mtk_vidle_enable(true, priv);
-			mtk_vidle_config_ff(true);
-		} else {
+			/* turn on ff only when crtc0 exsit */
+			if (drm_crtc_index(crtc) == 0)
+				mtk_vidle_config_ff(true);
+			else
+				mtk_vidle_config_ff(false);
+		} else if (atomic_read(&top_clk_ref) > 1) {
+			mtk_vidle_config_ff(false);
+		}
+
+	} else {
+		if (atomic_read(&top_clk_ref) == 1)  {
+			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
+			priv->power_state = true;
+
 			CRTC_MMP_MARK(0, leave_vidle, 0xc10c, atomic_read(&top_clk_ref));
 			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
 			if (mtk_crtc &&
@@ -6732,10 +6744,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
 			atomic_read(&top_isr_ref));
 	if (priv->data->sodi_config)
-		priv->data->sodi_config(drm, DDP_COMPONENT_ID_MAX, NULL, &en);
+		priv->data->sodi_config(crtc->dev, DDP_COMPONENT_ID_MAX, NULL, &en);
 
 	if (priv->data->disable_merge_irq)
-		priv->data->disable_merge_irq(drm);
+		priv->data->disable_merge_irq(crtc->dev);
 }
 
 void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)

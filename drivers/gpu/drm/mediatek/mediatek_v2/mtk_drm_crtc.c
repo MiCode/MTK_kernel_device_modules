@@ -2575,7 +2575,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	if (!mtk_crtc->enabled) {
 		/* 1. power on mtcmos */
-		mtk_drm_top_clk_prepare_enable(crtc->dev);
+		mtk_drm_top_clk_prepare_enable(crtc);
 
 		/*APSRC control*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
@@ -11971,10 +11971,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (crtc_id != 0 && mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-		mtk_vidle_config_ff(false);
-
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
 
@@ -12004,7 +12000,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
 		/* 1. power on mtcmos & init apsrc*/
-		mtk_drm_top_clk_prepare_enable(crtc->dev);
+		mtk_drm_top_clk_prepare_enable(crtc);
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
@@ -13063,7 +13059,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		/* 4. power on mtcmos & init apsrc*/
-		mtk_drm_top_clk_prepare_enable(crtc->dev);
+		mtk_drm_top_clk_prepare_enable(crtc);
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, false,
 			MTK_APSRC_CRTC_DEFAULT, false);
 
@@ -13252,12 +13248,6 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
-
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		if ((atomic_read(&priv->kernel_pm.wakelock_cnt) == 2) && (crtc_id != 0))
-			mtk_vidle_config_ff(true);
-	}
 
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, disable,
