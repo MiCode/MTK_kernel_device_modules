@@ -2403,6 +2403,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 		clocks = <&infracfg_ao CLK_IFR_GCE>,
 			<&infracfg_ao CLK_IFR_GCE_26M>;
 		clock-names = "gce", "gce-timer";
+		no-append-by-event;
 		power-domains = <&scpsys MT6768_POWER_DOMAIN_DISP>;
 		#mbox-cells = <3>;
 		#gce-event-cells = <1>;
