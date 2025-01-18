@@ -2509,6 +2509,10 @@ static const enum mtk_ddp_comp_id mt6877_mtk_ddp_main_minor_sub[] = {
 	DDP_COMPONENT_DSI0,     DDP_COMPONENT_PWM0,
 };
 
+static const struct mtk_addon_module_data addon_wdma0_ovl_data[] = {
+	{DISP_WDMA0, ADDON_AFTER, DDP_COMPONENT_OVL0},
+};
+
 static const struct mtk_addon_scenario_data mt6877_addon_main[ADDON_SCN_NR] = {
 		[NONE] = {
 				.module_num = 0,
@@ -2522,6 +2526,16 @@ static const struct mtk_addon_scenario_data mt6877_addon_main[ADDON_SCN_NR] = {
 		[TWO_SCALING] = {
 				.module_num = ARRAY_SIZE(addon_rsz_data),
 				.module_data = addon_rsz_data,
+				.hrt_type = HRT_TB_TYPE_GENERAL1,
+			},
+		[WDMA_WRITE_BACK] = {
+				.module_num = ARRAY_SIZE(addon_wdma0_data),
+				.module_data = addon_wdma0_data,
+				.hrt_type = HRT_TB_TYPE_GENERAL1,
+			},
+		[WDMA_WRITE_BACK_OVL] = {
+				.module_num = ARRAY_SIZE(addon_wdma0_ovl_data),
+				.module_data = addon_wdma0_ovl_data,
 				.hrt_type = HRT_TB_TYPE_GENERAL1,
 			},
 };
