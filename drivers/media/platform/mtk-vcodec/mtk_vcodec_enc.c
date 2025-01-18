@@ -1000,7 +1000,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA:
 		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA");
-		p->config_data = ctrl->p_new.p_u8;
+		ret = mtk_vcodec_enc_set_config_data(ctx, ctrl->p_new.p_u8);
 		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
@@ -1633,7 +1633,6 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->frame_qp_range = &enc_params->frame_qp_range;
 	param->nal_length = &enc_params->nal_length;
 	param->mlvec_mode = enc_params->mlvec_mode;
-	param->config_data = enc_params->config_data;
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -3758,6 +3757,21 @@ const struct v4l2_m2m_ops mtk_venc_m2m_ops = {
 	.job_abort      = m2mops_venc_job_abort,
 };
 
+int mtk_vcodec_enc_set_config_data(struct mtk_vcodec_ctx *ctx, char *data)
+{
+	int ret = 0;
+	struct venc_enc_param enc_prm;
+
+	memset(&enc_prm, 0, sizeof(enc_prm));
+	enc_prm.config_data = data;
+
+	ret = venc_if_set_param(ctx, VENC_SET_PARAM_CONFIG, &enc_prm);
+	if (ret)
+		mtk_v4l2_err("[%s] failed=%d", __func__, ret);
+
+	return ret;
+}
+
 void mtk_vcodec_enc_set_default_params(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_q_data *q_data;
@@ -4569,7 +4583,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 0xff;
 	cfg.step = 1;
 	cfg.def = 0x0;
-	cfg.dims[0] = 512;
+	cfg.dims[0] = VENC_CONFIG_LENGTH;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

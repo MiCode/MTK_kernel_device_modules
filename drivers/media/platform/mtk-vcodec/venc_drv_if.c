@@ -142,7 +142,8 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 	int ret = 0;
 	bool is_set_prop = (type == VENC_SET_PARAM_PROPERTY ||
 			    type == VENC_SET_PARAM_VCP_LOG_INFO ||
-			    type == VENC_SET_PARAM_VCU_VPUD_LOG);
+			    type == VENC_SET_PARAM_VCU_VPUD_LOG ||
+			    type == VENC_SET_PARAM_CONFIG);
 
 	if (is_set_prop && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;

@@ -33,6 +33,7 @@ enum venc_ipi_msg_id {
 	AP_IPIMSG_ENC_BACKUP,
 	AP_IPIMSG_ENC_PWR_CTRL,
 	AP_IPIMSG_ENC_RESUME,
+	AP_IPIMSG_ENC_SET_CONFIG,
 
 	VCU_IPIMSG_ENC_INIT_DONE = VCU_IPIMSG_VENC_ACK_BASE,
 	VCU_IPIMSG_ENC_SET_PARAM_DONE,
@@ -44,6 +45,7 @@ enum venc_ipi_msg_id {
 	VCU_IPIMSG_ENC_BACKUP_DONE,
 	VCU_IPIMSG_ENC_PWR_CTRL_DONE,
 	VCU_IPIMSG_ENC_RESUME_DONE,
+	VCU_IPIMSG_ENC_SET_CONFIG_DONE,
 
 	VCU_IPIMSG_ENC_POWER_ON = VCU_IPIMSG_VENC_SEND_BASE,
 	VCU_IPIMSG_ENC_POWER_OFF,
@@ -543,7 +545,6 @@ struct venc_vcu_config {
 	__s32 ifrm_q_ltr;
 	__s32 pfrm_q_ltr;
 	__s32 bfrm_q_ltr;
-	__u8 config_data[VENC_CONFIG_LENGTH];
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;
@@ -643,6 +644,10 @@ struct venc_vsi {
 	__s32 general_buf_fd;
 	__u32 general_buf_size;
 	__u32 reserved;
+};
+
+struct venc_common_vsi {
+	__u8 config_data[VENC_CONFIG_LENGTH];
 };
 
 #endif /* _VENC_IPI_MSG_H_ */
