@@ -67,10 +67,10 @@ enum {
 static struct class *richtek_spm_class;
 static int cali_status;
 
-static ssize_t richtek_spm_class_attr_show(struct class *,
-					   struct class_attribute *, char *);
-static ssize_t richtek_spm_class_attr_store(struct class *,
-				struct class_attribute *, const char *, size_t);
+static ssize_t richtek_spm_class_attr_show(const struct class *,
+					   const struct class_attribute *, char *);
+static ssize_t richtek_spm_class_attr_store(const struct class *,
+				const struct class_attribute *, const char *, size_t);
 static const struct class_attribute richtek_spm_class_attrs[] = {
 	__ATTR(status, 0664, richtek_spm_class_attr_show,
 	       richtek_spm_class_attr_store),
@@ -79,8 +79,8 @@ static const struct class_attribute richtek_spm_class_attrs[] = {
 	__ATTR_NULL,
 };
 
-static ssize_t richtek_spm_class_attr_show(struct class *cls,
-					struct class_attribute *attr, char *buf)
+static ssize_t richtek_spm_class_attr_show(const struct class *cls,
+					const struct class_attribute *attr, char *buf)
 {
 	const ptrdiff_t offset = attr - richtek_spm_class_attrs;
 	int ret = 0;
@@ -224,8 +224,8 @@ static int rt_spm_trigger_calibration(struct device *dev, void *data)
 	return 0;
 }
 
-static ssize_t richtek_spm_class_attr_store(struct class *cls,
-					    struct class_attribute *attr,
+static ssize_t richtek_spm_class_attr_store(const struct class *cls,
+					    const struct class_attribute *attr,
 					    const char *buf, size_t cnt)
 {
 	const ptrdiff_t offset = attr - richtek_spm_class_attrs;
@@ -588,8 +588,8 @@ static int __init richtek_spm_init(void)
 		return PTR_ERR(richtek_spm_class);
 	richtek_spm_class->pm = &richtek_spm_class_pm_ops;
 	for (i = 0; richtek_spm_class_attrs[i].attr.name; i++) {
-		ret = sysfs_create_file_ns(&richtek_spm_class->p->subsys.kobj,
-					   &richtek_spm_class_attrs[i].attr,
+		ret = class_create_file_ns(richtek_spm_class,
+					   &richtek_spm_class_attrs[i],
 					   NULL);
 		if (ret < 0)
 			goto out_cls_attr;
@@ -598,8 +598,8 @@ static int __init richtek_spm_init(void)
 	return 0;
 out_cls_attr:
 	while (--i >= 0) {
-		sysfs_remove_file_ns(&richtek_spm_class->p->subsys.kobj,
-				     &richtek_spm_class_attrs[i].attr, NULL);
+		class_remove_file_ns(richtek_spm_class,
+				     &richtek_spm_class_attrs[i], NULL);
 	}
 	class_destroy(richtek_spm_class);
 	return ret;
@@ -611,8 +611,8 @@ static void __exit richtek_spm_exit(void)
 	int i = 0;
 
 	for (i = 0; richtek_spm_class_attrs[i].attr.name; i++) {
-		sysfs_remove_file_ns(&richtek_spm_class->p->subsys.kobj,
-				     &richtek_spm_class_attrs[i].attr, NULL);
+		class_remove_file_ns(richtek_spm_class,
+				     &richtek_spm_class_attrs[i], NULL);
 	}
 	class_destroy(richtek_spm_class);
 }
