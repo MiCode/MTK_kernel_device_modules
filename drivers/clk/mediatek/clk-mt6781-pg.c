@@ -2901,23 +2901,23 @@ struct mtk_power_gate {
 struct mtk_power_gate scp_clks[] = {
 	PGATE(SCP_SYS_MD1, pg_md1, NULL, NULL, SYS_MD1),
 	PGATE(SCP_SYS_CONN, pg_conn, NULL, NULL, SYS_CONN),
-	PGATE(SCP_SYS_DIS, pg_dis, NULL, disp_sel, SYS_DIS),
-	PGATE(SCP_SYS_CAM, pg_cam, pg_dis, cam_sel, SYS_CAM),
-	PGATE(SCP_SYS_ISP, pg_isp, pg_dis, img1_sel, SYS_ISP),
-	PGATE(SCP_SYS_VEN, pg_ven, pg_dis, venc_sel, SYS_VEN),
-	PGATE(SCP_SYS_VDE, pg_vde, pg_dis, vdec_sel, SYS_VDE),
+	//PGATE(SCP_SYS_DIS, pg_dis, NULL, disp_sel, SYS_DIS),
+	//PGATE(SCP_SYS_CAM, pg_cam, pg_dis, cam_sel, SYS_CAM),
+	//PGATE(SCP_SYS_ISP, pg_isp, pg_dis, img1_sel, SYS_ISP),
+	//PGATE(SCP_SYS_VEN, pg_ven, pg_dis, venc_sel, SYS_VEN),
+	//PGATE(SCP_SYS_VDE, pg_vde, pg_dis, vdec_sel, SYS_VDE),
 
 	PGATE(SCP_SYS_MFG0, pg_mfg0, NULL, mfg_sel, SYS_MFG0),
 	PGATE(SCP_SYS_MFG1, pg_mfg1, pg_mfg0, NULL, SYS_MFG1),
 	PGATE(SCP_SYS_MFG2, pg_mfg2, pg_mfg1, NULL, SYS_MFG2),
 	PGATE(SCP_SYS_MFG3, pg_mfg3, pg_mfg2, NULL, SYS_MFG3),
 
-	PGATE(SCP_SYS_ISP2, pg_isp2, pg_dis, img1_sel, SYS_ISP2),
-	PGATE(SCP_SYS_IPE, pg_ipe, pg_dis, ipe_sel, SYS_IPE),
+	//PGATE(SCP_SYS_ISP2, pg_isp2, pg_dis, img1_sel, SYS_ISP2),
+	//PGATE(SCP_SYS_IPE, pg_ipe, pg_dis, ipe_sel, SYS_IPE),
 
-	PGATE(SCP_SYS_CAM_RAWA, pg_cam_rawa, pg_cam, cam_sel, SYS_CAM_RAWA),
-	PGATE(SCP_SYS_CAM_RAWB, pg_cam_rawb, pg_cam, cam_sel, SYS_CAM_RAWB),
-	PGATE(SCP_SYS_CSI, pg_csi, NULL, NULL, SYS_CSI),
+	//PGATE(SCP_SYS_CAM_RAWA, pg_cam_rawa, pg_cam, cam_sel, SYS_CAM_RAWA),
+	//PGATE(SCP_SYS_CAM_RAWB, pg_cam_rawb, pg_cam, cam_sel, SYS_CAM_RAWB),
+	//PGATE(SCP_SYS_CSI, pg_csi, NULL, NULL, SYS_CSI),
 };
 
 static int init_clk_scpsys(void __iomem *infracfg_reg,
@@ -3183,7 +3183,7 @@ void mtcmos_force_off(void)
 }
 
 static const struct of_device_id of_match_clk_mt6781_scpsys[] = {
-	{ .compatible = "mediatek,scpsys", },
+	{ .compatible = "mediatek,mt6781-scpsys-clk", },
 	{}
 };
 
