@@ -169,4 +169,17 @@ config SND_SOC_MT6681_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
+config SND_SOC_AK7709
+	tristate "Asahi Kasei Microdevices AK7709 CODEC (SPI)"
+	depends on SPI_MASTER
+	help
+	  Enable support for Asahi Kasei Microdevices AK7709 CODEC.
+	  Select this if your AK7709 is connected via an SPI bus.
+
+config SND_SOC_HFDA80X
+	tristate "ST Microelectronics hfda80x amplifier"
+	depends on I2C
+	help
+	  Config of hfda80x. It is a Smart amplifier
+	  It would be set to yes if device with HFDA801/HFDA803 on it.
 endmenu
