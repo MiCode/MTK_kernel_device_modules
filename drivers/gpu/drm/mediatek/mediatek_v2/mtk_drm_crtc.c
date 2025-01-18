@@ -16865,8 +16865,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* need to check mml is submit done */
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
+		mtk_vidle_dvfs_trigger(__func__);
+	}
 
 	if (mtk_crtc_state->lye_state.need_repaint) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);

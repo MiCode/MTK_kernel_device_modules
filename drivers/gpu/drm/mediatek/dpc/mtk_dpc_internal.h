@@ -268,6 +268,8 @@ struct mtk_dpc2_dt_usage {
 struct mtk_dpc_dvfs_bw {
 	u32 mml_bw;
 	u32 disp_bw;
+	u32 mml0_ch_bw_r;
+	u32 mml1_ch_bw_r;
 	u8 bw_level;
 	u8 mml_level;
 	u8 disp_level;
@@ -304,6 +306,7 @@ struct mtk_dpc {
 	void __iomem *mminfra_hangfree;
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
+	spinlock_t mtcmos_cfg_lock;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;
 #endif
@@ -340,6 +343,8 @@ struct mtk_dpc {
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 
 	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, bool en);
+	void (*mml_ch_bw_set)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_channel_type type,
+			      const u32 bw_in_mb, const bool force);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 };

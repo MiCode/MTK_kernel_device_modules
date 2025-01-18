@@ -314,7 +314,11 @@ void mtk_vidle_enable(bool _en, void *_drm_priv)
 
 	disp_dpc_driver.dpc_enable(en);
 }
-
+void mtk_vidle_dvfs_trigger(const char *caller)
+{
+	if (disp_dpc_driver.dpc_dvfs_trigger)
+		disp_dpc_driver.dpc_dvfs_trigger(caller);
+}
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	vidle_data.hrt_bw = bw_in_mb;

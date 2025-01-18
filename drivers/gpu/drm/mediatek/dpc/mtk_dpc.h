@@ -151,6 +151,7 @@ enum mtk_dpc2_disp_vidle {
 struct dpc_funcs {
 	/* only for display driver */
 	void (*dpc_enable)(const u8 en);
+	void (*dpc_dvfs_trigger)(const char *caller);
 
 	/* dpc driver internal use */
 	void (*dpc_ddr_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
