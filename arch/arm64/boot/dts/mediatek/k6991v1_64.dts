@@ -636,5 +636,6 @@ bootargs_ext = "";
 };
 #endif
 
+#include "k6991v1_64/cust.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
 
