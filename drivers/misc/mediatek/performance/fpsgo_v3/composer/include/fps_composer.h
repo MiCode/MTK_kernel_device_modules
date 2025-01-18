@@ -55,7 +55,8 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 			unsigned long long identifier);
 void fpsgo_ctrl2comp_enqueue_end(int pid,
 			unsigned long long enqueue_end_time,
-			unsigned long long identifier);
+			unsigned long long identifier,
+			unsigned long long sf_buf_id);
 void fpsgo_ctrl2comp_enqueue_start(int pid,
 			unsigned long long enqueue_start_time,
 			unsigned long long identifier);
@@ -107,6 +108,7 @@ int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid, unsigned long long
 	unsigned long long target_time);
 int fpsgo_ctrl2comp_adpf_set_dep_list(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num);
+int notify_fpsgo_touch_latency_ko_ready(void);
 
 #endif
 

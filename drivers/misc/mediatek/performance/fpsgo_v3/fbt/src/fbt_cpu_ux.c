@@ -179,12 +179,13 @@ static int fbt_ux_cal_perf(
 
 		if (fpsgo_ux_gcc_enable == 2) {
 			fbt_cal_target_time_ns(thread_info->pid, thread_info->buffer_id,
-				fbt_get_rl_ko_is_ready(), 2, target_fps_ori, target_fpks,
+				fbt_get_rl_ko_is_ready(), 2, target_fps_ori,
+				thread_info->target_fps_origin, target_fpks,
 				target_time, 0, boost_info->last_target_time_ns, thread_info->Q2Q_time,
 				0, 0, thread_info->attr.expected_fps_margin_by_pid, 10, 10,
 				0, thread_info->attr.quota_v2_diff_clamp_min_by_pid,
-				thread_info->attr.quota_v2_diff_clamp_max_by_pid,
-				0, aa_n, aa_n, aa_n, 100, 100, 100, &t2);
+				thread_info->attr.quota_v2_diff_clamp_max_by_pid, 0,
+				0, aa_n, aa_n, aa_n, 100, 100, 100, 0, 0, 0, 0, &t2);
 			boost_info->last_target_time_ns = t2;
 		}
 
@@ -201,6 +202,7 @@ static int fbt_ux_cal_perf(
 	boost_info->target_time = target_time;
 	boost_info->last_blc = blc_wt;
 	boost_info->last_normal_blc = blc_wt;
+	thread_info->target_fps_origin = target_fps_ori;
 	//boost_info->cur_stage = FPSGO_JERK_INACTIVE;
 	mutex_unlock(&fbt_mlock);
 	return blc_wt;

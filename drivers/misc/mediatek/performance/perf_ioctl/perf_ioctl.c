@@ -8,7 +8,8 @@
 
 int (*fpsgo_notify_qudeq_fp)(int qudeq,
 		unsigned int startend,
-		int pid, unsigned long long identifier);
+		int pid, unsigned long long identifier,
+		unsigned long long sf_buf_id);
 EXPORT_SYMBOL_GPL(fpsgo_notify_qudeq_fp);
 void (*fpsgo_notify_connect_fp)(int pid,
 		int connectedAPI, unsigned long long identifier);
@@ -264,6 +265,128 @@ static const struct proc_ops xgff_Fops = {
 	.proc_release = single_release,
 };
 
+/*--------------------------FPSGO_LR_IOCTL-----------------------*/
+int (*fpsgo_get_lr_pair_fp)(unsigned long long sf_buffer_id,
+	unsigned long long *cur_queue_ts,
+	unsigned long long *l2q_ns, unsigned long long *logic_head_ts,
+	unsigned int *is_logic_head_alive, unsigned long long *now_ts);
+EXPORT_SYMBOL(fpsgo_get_lr_pair_fp);
+
+void (*fpsgo_set_rl_expected_l2q_us_fp)(int vsync_multiple,
+	unsigned long long user_expected_l2q_us);
+EXPORT_SYMBOL(fpsgo_set_rl_expected_l2q_us_fp);
+
+void (*fpsgo_set_rl_l2q_enable_fp)(int enable);
+EXPORT_SYMBOL(fpsgo_set_rl_l2q_enable_fp);
+
+static long fpsgo_lr_ioctl_impl(struct file *filp,
+		unsigned int cmd, unsigned long arg, void *pKM)
+{
+	ssize_t ret = 0;
+	struct _FPSGO_LR_PAIR_PACKAGE *msgKM = NULL,
+		*msgUM = (struct _FPSGO_LR_PAIR_PACKAGE *)arg;
+	struct _FPSGO_LR_PAIR_PACKAGE smsgKM;
+	unsigned long long logical_head_ts = 0;
+	unsigned long long l2q_ns_ts = 0;
+	unsigned long long cur_queue_end_ts = 0;
+	unsigned int is_logic_head_alive = 0;
+	unsigned long long ktime_ns = 0;
+
+	msgKM = (struct _FPSGO_LR_PAIR_PACKAGE *)pKM;
+	if (!msgKM) {
+		msgKM = &smsgKM;
+		if (perfctl_copy_from_user(msgKM, msgUM,
+				sizeof(struct _FPSGO_LR_PAIR_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+	}
+
+	switch (cmd) {
+	case FPSGO_LR_PAIR:
+		if (!fpsgo_get_lr_pair_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		ret = fpsgo_get_lr_pair_fp(msgKM->buffer_id, &cur_queue_end_ts,
+			&l2q_ns_ts, &logical_head_ts, &is_logic_head_alive, &ktime_ns);
+
+		if (logical_head_ts)
+			msgKM->logic_head_ts = logical_head_ts;
+		if (cur_queue_end_ts)
+			msgKM->queue_ts = cur_queue_end_ts;
+		if (l2q_ns_ts)
+			msgKM->l2q_ns = l2q_ns_ts;
+		if (is_logic_head_alive)
+			msgKM->is_logic_head_valid = is_logic_head_alive;
+		if (ktime_ns)
+			msgKM->ktime_now_ns = ktime_ns;
+
+		perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_LR_PAIR_PACKAGE));
+
+		break;
+	case FPSGO_SF_TOUCH_ACTIVE:
+		if (!fpsgo_set_rl_l2q_enable_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		fpsgo_set_rl_l2q_enable_fp(msgKM->fpsgo_l2q_enable);
+		break;
+
+	case FPSGO_SF_EXP_L2Q:
+		if (!fpsgo_set_rl_expected_l2q_us_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		// default exp_vsync_multiple = 2, rl_exp_l2q_us = 33333
+		// If the value isn't equal to zero, then FPSGO will use the user tuning value.
+		// If the user set both param. at the same time, the priority of
+		// rl_exp_l2q_us value is higher than exp_vsync_multiple value.
+		fpsgo_set_rl_expected_l2q_us_fp(msgKM->exp_vsync_multiple,
+			msgKM->rl_exp_l2q_us);
+		break;
+
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n",
+			__FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static long fpsgo_lr_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	return fpsgo_lr_ioctl_impl(filp, cmd, arg, NULL);
+}
+
+static int fpsgo_lr_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static int fpsgo_lr_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fpsgo_lr_show, inode->i_private);
+}
+
+
+static const struct proc_ops fpsgo_lr_Fops = {
+	.proc_compat_ioctl = fpsgo_lr_ioctl,
+	.proc_ioctl = fpsgo_lr_ioctl,
+	.proc_open = fpsgo_lr_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+
 /*--------------------INIT------------------------*/
 
 static int device_show(struct seq_file *m, void *v)
@@ -335,13 +458,13 @@ static long device_ioctl(struct file *filp,
 		if (fpsgo_notify_qudeq_fp)
 			ret = fpsgo_notify_qudeq_fp(1,
 					msgKM->start, msgKM->tid,
-					msgKM->identifier);
+					msgKM->identifier, msgKM->sf_buf_id);
 		break;
 	case FPSGO_DEQUEUE:
 		if (fpsgo_notify_qudeq_fp)
 			fpsgo_notify_qudeq_fp(0,
 					msgKM->start, msgKM->tid,
-					msgKM->identifier);
+					msgKM->identifier, 0);
 		break;
 	case FPSGO_QUEUE_CONNECT:
 		if (fpsgo_notify_connect_fp)
@@ -507,6 +630,15 @@ static int __init init_perfctl(void)
 	}
 
 	pe = proc_create("xgff_ioctl", 0664, parent, &xgff_Fops);
+	if (!pe) {
+		pr_debug(TAG"%s failed with %d\n",
+				"Creating file node ",
+				ret_val);
+		ret_val = -ENOMEM;
+		goto out_wq;
+	}
+
+	pe = proc_create("fpsgo_lr_ioctl", 0664, parent, &fpsgo_lr_Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",

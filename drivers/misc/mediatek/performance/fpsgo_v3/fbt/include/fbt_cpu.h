@@ -99,14 +99,16 @@ unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 int fbt_cal_aa(long loading, unsigned long long t_cpu, unsigned long long t_q2q, long *aa);
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_is_ready, int rl_active, unsigned int target_fps_ori,
-	unsigned int target_fpks,
+	unsigned int last_target_fps_ori, unsigned int target_fpks,
 	unsigned long long target_t, int target_fps_margin,
 	unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
-	int quota_diff_clamp_min, int quota_diff_clamp_max,
+	int quota_diff_clamp_min, int quota_diff_clamp_max, int limit_min_cap_final,
 	int separate_aa_active, long aa_n, long aa_b,
 	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m,
+	int rl_l2q_enable_final,
+	unsigned long long expected_l2q_ns_final, unsigned long long l2q_ts, int is_logic_head_alive,
 	unsigned long long *out_target_t_ns);
 void fbt_check_max_blc_locked(int pid);
 void fpsgo_get_fbt_mlock(const char *tag);
@@ -135,6 +137,10 @@ void fbt_get_setting_info(struct fbt_setting_info *sinfo);
 
 void fpsgo_comp2fbt_jank_thread_boost(int boost, int pid);
 void fpsgo_base2fbt_jank_thread_deboost(int pid);
+
+void fpsgo_set_rl_l2q_enable(int enable);
+void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expected_l2q_us);
+int fpsgo_get_rl_l2q_enable(void);
 
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
@@ -179,6 +185,10 @@ static inline void fbt_set_render_last_cb(struct render_info *thr, unsigned long
 static inline int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 			unsigned long long identifier) { return 0; }
 static inline void notify_rl_ko_is_ready(void) { }
+static inline void fpsgo_set_rl_l2q_enable(int enable) { }
+static inline void fpsgo_set_expected_l2q_us(int vsync_multiple,
+	unsigned long long user_expected_l2q_us) { }
+static inline int fpsgo_get_rl_l2q_enable(void) { return 0; }
 #endif
 
 #endif

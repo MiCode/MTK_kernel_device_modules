@@ -98,6 +98,7 @@ struct FSTB_NOTIFIER_PUSH_TAG {
 	int only_detect;
 	unsigned long long bufid;
 	unsigned long long cur_queue_end_ts;
+	unsigned long long sf_buf_id;
 
 	struct work_struct sWork;
 };

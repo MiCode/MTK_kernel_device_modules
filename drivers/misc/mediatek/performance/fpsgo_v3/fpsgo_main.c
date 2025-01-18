@@ -87,6 +87,14 @@ struct fpsgo_magt_dep_list {
 	int dep_task_num;
 };
 
+struct fpsgo_magt_l2q_time {
+	int pid;
+	unsigned int frameid;
+	unsigned int type;
+	unsigned int status;
+	unsigned long long tv_ts;
+};
+
 /* TODO: use union*/
 struct FPSGO_NOTIFIER_PUSH_TAG {
 	enum FPSGO_NOTIFIER_PUSH_TYPE ePushType;
@@ -121,6 +129,13 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	char specific_name[1000];
 	int num;
 	int mode;
+
+	unsigned long long sf_buf_id;
+	unsigned int frameid;
+	unsigned int type;
+	unsigned int status;
+	unsigned long long tv_ts;
+	unsigned long long que_end_sys_time_ns;
 
 	struct fpsgo_adpf_session adpf_hint;
 	struct fpsgo_magt_target_fps *magt_tfps_hint;
@@ -254,7 +269,8 @@ static void fpsgo_notify_wq_cb_acquire(int consumer_pid, int consumer_tid,
 
 static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 		unsigned int startend, int cur_pid,
-		unsigned long long curr_ts, unsigned long long id)
+		unsigned long long curr_ts, unsigned long long id,
+		unsigned long long sf_buf_id)
 {
 	FPSGO_LOGI("[FPSGO_CB] qudeq: %d-%d, pid %d, ts %llu, id %llu\n",
 		qudeq, startend, cur_pid, curr_ts, id);
@@ -273,7 +289,7 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 			FPSGO_LOGI("[FPSGO_CB] QUEUE End: pid %d\n",
 					cur_pid);
 			fpsgo_ctrl2comp_enqueue_end(cur_pid, curr_ts,
-					id);
+					id, sf_buf_id);
 		}
 		break;
 	case 0:
@@ -472,7 +488,7 @@ static void fpsgo_notifier_wq_cb(void)
 	case FPSGO_NOTIFIER_QUEUE_DEQUEUE:
 		fpsgo_notifier_wq_cb_qudeq(vpPush->qudeq_cmd,
 				vpPush->queue_arg, vpPush->pid,
-				vpPush->cur_ts, vpPush->identifier);
+				vpPush->cur_ts, vpPush->identifier, vpPush->sf_buf_id);
 		break;
 	case FPSGO_NOTIFIER_CONNECT:
 		fpsgo_notifier_wq_cb_connect(vpPush->pid,
@@ -567,7 +583,7 @@ static int kfpsgo(void *arg)
 }
 int fpsgo_notify_qudeq(int qudeq,
 		unsigned int startend,
-		int pid, unsigned long long id)
+		int pid, unsigned long long id, unsigned long long sf_buf_id)
 {
 	unsigned long long cur_ts;
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
@@ -600,6 +616,7 @@ int fpsgo_notify_qudeq(int qudeq,
 	vpPush->qudeq_cmd = qudeq;
 	vpPush->queue_arg = startend;
 	vpPush->identifier = id;
+	vpPush->sf_buf_id = sf_buf_id;
 
 	fpsgo_queue_work(vpPush);
 
@@ -1505,6 +1522,10 @@ static int __init fpsgo_init(void)
 	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;
 	magt2fpsgo_notify_dep_list_fp = fpsgo_notify_magt_dep_list;
 	magt2fpsgo_get_fpsgo_frame_info = get_fpsgo_frame_info;
+
+	fpsgo_get_lr_pair_fp = fpsgo_get_lr_pair;
+	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
+	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

@@ -57,6 +57,7 @@ unsigned long long fpsgo_other2fstb_get_app_self_ctrl_time(int pid,
 void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 	unsigned long long q2q_time, unsigned long long enq_length,
 	unsigned long long deq_length);
+int fpsgo_ctrl2fstb_gblock(int tid, int start);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 void fpsgo_ctrl2fstb_dfrc_fps(int fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);
@@ -65,6 +66,8 @@ int fpsgo_other2fstb_check_cam_do_frame(void);
 int fpsgo_comp2fstb_do_recycle(void);
 int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
 	unsigned long long target_time, int create);
+int fpsgo_comp2fstb_get_logic_head(int pid, unsigned long long bufID, int tgid,
+	unsigned long long cur_queue_end, unsigned long long *logic_head_ts, int *has_logic_head);
 int fpsgo_ctrl2fstb_magt_set_target_fps(int *pid_arr, int *tid_arr, int *tfps_arr, int num);
 int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb);
