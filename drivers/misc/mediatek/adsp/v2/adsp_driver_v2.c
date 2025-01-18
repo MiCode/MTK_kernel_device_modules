@@ -50,7 +50,7 @@ const struct adspsys_description mt6991_adspsys_desc = {
 	.semaphore_ctrl = 2,
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
-	.mtcmos_ao_ctrl = 1,
+	.mtcmos_ao_ctrl = 0,
 };
 
 const struct adsp_core_description mt6983_adsp_c0_desc = {
