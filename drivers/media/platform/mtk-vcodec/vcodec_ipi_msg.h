@@ -429,6 +429,7 @@ struct vdec_dec_info {
 	__u32 fb_num_planes;
 	__u32 index;
 	__u32 error_map;
+	__u32 error_code[MTK_VDEC_HW_NUM];
 	__u64 timestamp;
 };
 

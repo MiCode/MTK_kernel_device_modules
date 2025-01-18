@@ -79,6 +79,15 @@ static void handle_query_cap_ack_msg(struct vdec_vcu_inst *vcu,
 	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%llx", vcu->inst_addr);
 }
 
+static void check_error_code(struct vdec_inst *inst, unsigned int hw_id)
+{
+	if (inst->vsi->dec.error_code[hw_id] == 0)
+		return;
+
+	mtk_vcodec_debug(inst, "hw_id %d get error_code %d", hw_id, inst->vsi->dec.error_code[hw_id]);
+	mtk_vdec_queue_error_code_event(inst->ctx, inst->vsi->dec.error_code[hw_id]);
+}
+
 static int check_codec_id(struct vdec_vcu_ipi_ack *msg, unsigned int fmt, unsigned int svp)
 {
 	int codec_id = 0, ret = 0;
@@ -396,6 +405,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
+			check_error_code(inst, MTK_VDEC_CORE);
 			mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 			ret = 1;
 			break;
