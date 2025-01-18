@@ -24,6 +24,8 @@
 #define VLP_APLL2_TUNER_CON0 0x02a8
 #define VLP_CLK_CFG_UPDATE1 0x0008
 
+#define VLP_CLK_CFG_9 0x00a0
+
 // cksys_clk: 0x10000000
 #define CLK_CFG_13 0x00e0
 #define CLK_CFG_UPDATE1 0x0008

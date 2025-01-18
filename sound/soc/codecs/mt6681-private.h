@@ -58,7 +58,31 @@ enum {
 	MUX_NUM,
 };
 
-enum { DEVICE_HP, DEVICE_LO, DEVICE_RCV, DEVICE_MIC1, DEVICE_MIC2, DEVICE_NUM };
+enum {
+	DEVICE_HP,
+	DEVICE_LO,
+	DEVICE_RCV,
+	DEVICE_MIC1,
+	DEVICE_MIC2,
+	DEVICE_MIC3,
+	DEVICE_MIC4,
+	DEVICE_MIC5,
+	DEVICE_MIC6,
+	DEVICE_HEADSET_MIC,
+	DEVICE_NUM
+};
+
+enum {
+	NO_OUTPUT_DEVICE,
+	HP_OUTPUT_DEVICE,
+	RCV_OUTPUT_DEVICE,
+	NO_INPUT_DEVICE,
+	HEADSET_MIC_INPUT_DEVICE,
+	ONE_MIC_INPUT_DEVICE,
+	DUAL_MIC_INPUT_DEVICE,
+	THREE_MIC_INPUT_DEVICE,
+	FOUR_MIC_INPUT_DEVICE,
+};
 
 enum {
 	HP_GAIN_CTL_ZCD = 0,
@@ -497,6 +521,7 @@ struct mt6681_priv {
 	int ana_gain[AUDIO_ANALOG_VOLUME_TYPE_MAX];
 	unsigned int mux_select[MUX_NUM];
 	int dev_counter[DEVICE_NUM];
+	int adc_counter;
 	int hp_gain_ctl;
 	int hp_hifi_mode;
 	int hp_plugged;
@@ -607,6 +632,9 @@ struct mt6681_priv {
 #define CODEC_MT6681_NAME "mtk-codec-mt6681"
 #define DEVICE_MT6681_NAME "mt6681-sound"
 
+int mt6681_get_adc_num(struct snd_soc_component *cmpnt);
+int mt6681_get_adda_hifi_mode(struct snd_soc_component *cmpnt, bool isDL);
+int mt6681_get_working_device(struct snd_soc_component *cmpnt, bool isDL);
 int mt6681_set_codec_ops(struct snd_soc_component *cmpnt, struct mt6681_codec_ops *ops);
 int mt6681_set_mtkaif_protocol(struct snd_soc_component *cmpnt, int mtkaif_protocol);
 void mt6681_mtkaif_calibration_enable(struct snd_soc_component *cmpnt);

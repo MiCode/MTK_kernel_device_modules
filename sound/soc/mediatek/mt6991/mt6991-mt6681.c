@@ -12,6 +12,7 @@
 #include <sound/soc.h>
 
 #include "mtk-afe-platform-driver.h"
+#include "mtk-afe-external.h"
 #include "mt6991-afe-common.h"
 #include "mt6991-afe-clk.h"
 #include "mt6991-afe-gpio.h"
@@ -242,6 +243,7 @@ static int mt6991_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 	dev_info(afe->dev, "%s(), start miso_only = %d\n", __func__, afe_priv->miso_only);
 
+	afe_priv->codec_component = codec_component;
 	pm_runtime_get_sync(afe->dev);
 
 	miso0_need_calib = mt6991_afe_gpio_is_prepared(MT6991_AFE_GPIO_DAT_MISO0_ON);
@@ -440,6 +442,8 @@ static int mt6991_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 	afe_priv->mtkaif_protocol = MTKAIF_PROTOCOL_2_CLK_P2;
 	afe_priv->audio_r_miso1_enable = priv->audio_r_miso1_enable;
 	afe_priv->miso_only = priv->miso_only;
+	register_get_power_scene_callback(mt6991_aud_get_power_scenario);
+
 	/* mtkaif calibration */
 	mt6991_mt6681_mtkaif_calibration(rtd);
 

@@ -678,6 +678,85 @@ struct mt6991_afe_private {
 	int speech_md_headversion;
 	int speech_md_version;
 	int speech_cust_param_init;
+	/* codec component */
+	struct snd_soc_component *codec_component;
+
+};
+
+struct mtk_afe_adda_priv {
+	int dl_rate;
+	int ul_rate;
+};
+
+enum audio_swpm_user_case {
+	AUDIO_USER_INVALID,
+	AUDIO_USER_PLAYBACK,
+	AUDIO_USER_RECORD,
+	AUDIO_USER_TALKING,
+};
+
+enum audio_swpm_output_device {
+	AUDIO_OUTPUT_INVALID,
+	AUDIO_OUTPUT_RECEIVER,
+	AUDIO_OUTPUT_SPEAKER,
+	AUDIO_OUTPUT_HEADPHONE,
+};
+
+enum audio_swpm_input_device {
+	AUDIO_INPUT_INVALID,
+	AUDIO_INPUT_HEADSET_MIC,
+	AUDIO_INPUT_BUILTIN_MIC_ONE,
+	AUDIO_INPUT_BUILTIN_MIC_DUAL,
+	AUDIO_INPUT_BUILTIN_MIC_THREE,
+
+	AUDIO_INPUT_ADC_1 = 1,
+	AUDIO_INPUT_ADC_2,
+	AUDIO_INPUT_ADC_3,
+	AUDIO_INPUT_ADC_4,
+	AUDIO_INPUT_ADC_5,
+	AUDIO_INPUT_ADC_6,
+
+	AUDIO_INPUT_ADC_SHIFT = 4,
+};
+
+enum audio_swpm_adda_mode {
+	AUDIO_ADDA_INVALID,
+	AUDIO_ADDA_DL_LP,
+	AUDIO_ADDA_DL_HIFI,
+
+	AUDIO_ADDA_UL_LP = 1,
+	AUDIO_ADDA_UL_HIFI,
+
+	AUDIO_ADDA_SHIFT = 4,
+};
+
+enum audio_swpm_sample_rate {
+	AUDIO_RATE_INVALID,
+	AUDIO_RATE_32K,
+	AUDIO_RATE_48K,
+	AUDIO_RATE_96K,
+	AUDIO_RATE_192K,
+	AUDIO_RATE_384K,
+};
+
+enum audio_swpm_channel_number {
+	AUDIO_CHANNEL_INVALID,
+	AUDIO_CHANNEL_DL_1,
+	AUDIO_CHANNEL_DL_2,
+	AUDIO_CHANNEL_DL_3,
+	AUDIO_CHANNEL_DL_4,
+
+	AUDIO_CHANNEL_UL_1 = 1,
+	AUDIO_CHANNEL_UL_2,
+	AUDIO_CHANNEL_UL_3,
+	AUDIO_CHANNEL_UL_4,
+
+	AUDIO_CHANNEL_SHIFT = 4,
+};
+
+enum audio_swpm_afe {
+	AUDIO_AFE_OFF,
+	AUDIO_AFE_ON,
 };
 
 struct audio_swpm_data {
@@ -688,6 +767,8 @@ struct audio_swpm_data {
 	unsigned int adda_mode;
 	unsigned int sample_rate;
 	unsigned int channel_num;
+	unsigned int freq_clock;
+	unsigned int D0_ratio;
 };
 
 int mt6991_dai_adda_register(struct mtk_base_afe *afe);
@@ -719,4 +800,10 @@ int mt6991_adda_dl_gain_control(bool mute);
 
 /* audio delay*/
 void mt6991_aud_delay(unsigned long cycles);
+
+// swpm function
+void *mt6991_aud_get_power_scenario(void);
+void mt6991_aud_update_power_scenario(void);
+void mt6991_aud_swpm_power_off(void);
+
 #endif

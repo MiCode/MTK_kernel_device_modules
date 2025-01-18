@@ -100,11 +100,6 @@ enum {
 
 #define SDM_AUTO_RESET_THRESHOLD 0x190000
 
-struct mtk_afe_adda_priv {
-	int dl_rate;
-	int ul_rate;
-};
-
 #if !defined(IS_FPGA_EARLY_PORTING)
 static struct mtk_afe_adda_priv *get_adda_priv_by_name(struct mtk_base_afe *afe,
 		const char *name)

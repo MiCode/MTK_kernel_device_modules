@@ -61,4 +61,7 @@ int register_ultra_afe_hw_free_notifier(struct notifier_block *nb);
 int unregister_ultra_afe_hw_free_notifier(struct notifier_block *nb);
 int notify_ultra_afe_hw_free(unsigned long module, void *v);
 
+void register_get_power_scene_callback(void* (*callback)(void));
+void *audio_get_power_scenario(void);
+
 #endif /* MTK_MEM_ALLOCATION_CONTROL_H_ */

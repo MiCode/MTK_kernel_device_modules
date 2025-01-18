@@ -4997,12 +4997,14 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	int device = DEVICE_RCV;
 
 	dev_info(priv->dev, "%s(), event 0x%x, mux %u\n", __func__, event,
 		 dapm_kcontrol_get_value(w->kcontrols[0]));
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if (priv->hp_hifi_mode) {
 			mt6681_set_sdm_fifo(priv, true, false);
 			mt6681_set_dl_src(priv, true, false);
@@ -5133,6 +5135,7 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 				   0x1 << RG_CLH_DYN_LOAD_SFT);
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+		priv->dev_counter[device]--;
 		// TODO: update disable flow
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON45,
 				   RG_AUDHSMUXINPUTSEL_VAUDP18_MASK_SFT,
@@ -7615,6 +7618,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio L RC tune data */
@@ -7934,6 +7938,7 @@ static int mt_adc_l_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON1,
 				   RG_AUDADCLPWRUP_MASK_SFT,
 				   0x0 << RG_AUDADCLPWRUP_SFT);
@@ -8066,6 +8071,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio R RC tune data */
@@ -8374,6 +8380,7 @@ static int mt_adc_r_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON3,
 				   RG_AUDADCRPWRUP_MASK_SFT,
 				   0x0 << RG_AUDADCRPWRUP_SFT);
@@ -8501,6 +8508,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio 3 RC tune data */
@@ -8817,6 +8825,7 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON5,
 				   RG_AUDADC3PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC3PWRUP_SFT);
@@ -8943,6 +8952,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio 4 RC tune data */
@@ -9260,6 +9270,7 @@ static int mt_adc_4_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON7,
 				   RG_AUDADC4PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC4PWRUP_SFT);
@@ -9387,6 +9398,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio 5 RC tune data */
@@ -9708,6 +9720,7 @@ static int mt_adc_5_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON3,
 				   RG_AUDADC5PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC5PWRUP_SFT);
@@ -9834,6 +9847,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		priv->adc_counter++;
 		if (priv->vow_setup) {
 			usleep_range(500, 520);
 			/* Read 5-bit audio 6 RC tune data */
@@ -10154,6 +10168,7 @@ static int mt_adc_6_event(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->adc_counter--;
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_PMU_CON5,
 				   RG_AUDADC6PWRUP_MASK_SFT,
 				   0x0 << RG_AUDADC6PWRUP_SFT);
@@ -10272,16 +10287,20 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_l;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) {
 	case PGA_MUX_AIN0:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_0];
+		device = DEVICE_MIC1;
 		break;
 	case PGA_MUX_AIN1:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_1];
+		device = DEVICE_HEADSET_MIC;
 		break;
 	case PGA_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -10300,6 +10319,7 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -10396,6 +10416,7 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -10430,16 +10451,20 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_r;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) {
 	case PGA_MUX_AIN0:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_0];
+		device = DEVICE_MIC1;
 		break;
 	case PGA_MUX_AIN1:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_1];
+		device = DEVICE_HEADSET_MIC;
 		break;
 	case PGA_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -10458,6 +10483,7 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -10554,6 +10580,7 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -10588,17 +10615,24 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_3;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) {
 	case PGA_3_MUX_AIN0:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_0];
+		device = DEVICE_MIC1;
 		break;
 	case PGA_3_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	case PGA_3_MUX_AIN3:
+		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC3;
+		break;
 	case PGA_3_MUX_AIN5:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC5;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -10615,6 +10649,7 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -10711,6 +10746,7 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -10744,15 +10780,24 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_4;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) {
 	case PGA_4_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	case PGA_4_MUX_AIN3:
+		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC3;
+		break;
 	case PGA_4_MUX_AIN4:
+		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC4;
+		break;
 	case PGA_4_MUX_AIN6:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC6;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -10771,6 +10816,7 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -10867,6 +10913,7 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -10900,17 +10947,24 @@ static int mt_pga_5_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_5;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) {
 	case PGA_5_MUX_AIN0:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_0];
+		device = DEVICE_MIC1;
 		break;
 	case PGA_5_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	case PGA_5_MUX_AIN5:
+		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC5;
+		break;
 	case PGA_5_MUX_AIN6:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC6;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -10928,6 +10982,7 @@ static int mt_pga_5_event(struct snd_soc_dapm_widget *w,
 		priv->vow_setup);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -11025,6 +11080,7 @@ static int mt_pga_5_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -11059,17 +11115,24 @@ static int mt_pga_6_event(struct snd_soc_dapm_widget *w,
 	unsigned int mic_type;
 	int mic_gain_6;
 	unsigned int pga_cara = 0;
+	int device;
 
 	switch (mux_pga) { /* update  */
 	case PGA_6_MUX_AIN1:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_1];
+		device = DEVICE_HEADSET_MIC;
 		break;
 	case PGA_6_MUX_AIN2:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_2];
+		device = DEVICE_MIC2;
 		break;
 	case PGA_6_MUX_AIN5:
+		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC5;
+		break;
 	case PGA_6_MUX_AIN6:
 		mic_type = priv->mux_select[MUX_MIC_TYPE_3];
+		device = DEVICE_MIC6;
 		break;
 	default:
 		dev_info(priv->dev, "%s(), invalid pga mux %d\n", __func__,
@@ -11088,6 +11151,7 @@ static int mt_pga_6_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		priv->dev_counter[device]++;
 		if ((priv->mic_hifi_mode) && (priv->vow_setup == 0)) {
 			/*
 			 * RG_AUDRADCFLASHIDDTEST[0]:
@@ -11185,6 +11249,7 @@ static int mt_pga_6_event(struct snd_soc_dapm_widget *w,
 		usleep_range(1000, 1020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		priv->dev_counter[device]--;
 		/* if is vow rec concurrent, MIC BIAS0 need to change to lowpower mode */
 		if ((priv->vow_enable == 1) && (priv->vow_setup == 0)) {
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON59,
@@ -16790,6 +16855,7 @@ static int hp_impedance_get(struct snd_kcontrol *kcontrol,
 
 	priv->hp_current_calibrate_val = get_hp_current_calibrate_val(priv);
 	priv->hp_impedance = detect_impedance(priv);
+	priv->adc_counter = 0;
 
 	ucontrol->value.integer.value[0] = priv->hp_impedance;
 
@@ -17355,6 +17421,77 @@ static void keylock_reset(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
 	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 }
+
+int mt6681_get_adda_hifi_mode(struct snd_soc_component *cmpnt, bool isDL)
+{
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_dbg(priv->dev, "%s() = %d, %d\n",
+			__func__, priv->hp_hifi_mode, priv->mic_hifi_mode);
+	if (isDL)
+		return priv->hp_hifi_mode;
+	else
+		return priv->mic_hifi_mode;
+}
+EXPORT_SYMBOL_GPL(mt6681_get_adda_hifi_mode);
+
+int mt6681_get_adc_num(struct snd_soc_component *cmpnt)
+{
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_dbg(priv->dev, "%s() adc coounter = %d\n",
+		__func__, priv->adc_counter);
+	return priv->adc_counter;
+}
+EXPORT_SYMBOL_GPL(mt6681_get_adc_num);
+
+int mt6681_get_working_device(struct snd_soc_component *cmpnt, bool isDL)
+{
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	int mic_counter = 0, i = 0;
+
+	dev_dbg(priv->dev,
+		"%s() mic %d/%d/%d/%d/%d/%d, mic headset %d, output hp %d, rcv %d\n",
+		__func__,
+		priv->dev_counter[DEVICE_MIC1],
+		priv->dev_counter[DEVICE_MIC2],
+		priv->dev_counter[DEVICE_MIC3],
+		priv->dev_counter[DEVICE_MIC4],
+		priv->dev_counter[DEVICE_MIC5],
+		priv->dev_counter[DEVICE_MIC6],
+		priv->dev_counter[DEVICE_HEADSET_MIC],
+		priv->dev_counter[DEVICE_RCV],
+		priv->dev_counter[DEVICE_HP]);
+
+	if (isDL) {
+		if (priv->dev_counter[DEVICE_RCV])
+			return RCV_OUTPUT_DEVICE;
+		else if (priv->dev_counter[DEVICE_HP])
+			return HP_OUTPUT_DEVICE;
+		else
+			return NO_OUTPUT_DEVICE;
+	} else {
+		for (i = DEVICE_MIC1; i<= DEVICE_MIC6; ++i) {
+			if (priv->dev_counter[i])
+				mic_counter++;
+		}
+		switch (mic_counter) {
+		case 1:
+			return ONE_MIC_INPUT_DEVICE;
+		case 2:
+			return DUAL_MIC_INPUT_DEVICE;
+		case 3:
+			return THREE_MIC_INPUT_DEVICE;
+		case 4:
+			return FOUR_MIC_INPUT_DEVICE;
+		}
+		if (priv->dev_counter[DEVICE_HEADSET_MIC])
+			return HEADSET_MIC_INPUT_DEVICE;
+		else
+			return NO_INPUT_DEVICE;
+	}
+}
+EXPORT_SYMBOL_GPL(mt6681_get_working_device);
 
 static void codec_gpio_init(struct mt6681_priv *priv)
 {
