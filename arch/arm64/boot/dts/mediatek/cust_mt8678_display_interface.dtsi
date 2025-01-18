@@ -79,7 +79,7 @@
 
 	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO79__FUNC_GPIO79>;
+			pinmux = <PINMUX_GPIO103__FUNC_GPIO103>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -177,7 +177,7 @@
 	panel2@1 {
 		compatible = "boe,jd9365da";
 		reg = <1>;
-		power-gpios = <&pio 79 0>;
+		power-gpios = <&pio 103 0>;
 		reset-gpios = <&pio 90 0>;
 		pinctrl-names = "default";
 		port {
