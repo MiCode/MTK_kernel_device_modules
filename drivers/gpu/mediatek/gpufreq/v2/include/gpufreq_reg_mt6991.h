@@ -36,6 +36,7 @@
 #define MFG_BRISKET_ST5_AO_CFG_0               (g_mfg_top_base + 0x03A4)           /* 0x485003A4 */
 #define MFG_BRISKET_ST6_AO_CFG_0               (g_mfg_top_base + 0x03A8)           /* 0x485003A8 */
 #define MFG_BRISKET_ST7_AO_CFG_0               (g_mfg_top_base + 0x03AC)           /* 0x485003AC */
+#define MFG_EARLY_DCM_CON                      (g_mfg_top_base + 0x0B24)           /* 0x48500B24 */
 #define MFG_DEFAULT_DELSEL_00                  (g_mfg_top_base + 0x0C80)           /* 0x48500C80 */
 #define MFG_POWER_TRACKER_SETTING              (g_mfg_top_base + 0x0FE0)           /* 0x48500FE0 */
 #define MFG_POWER_TRACKER_PDC_STATUS0          (g_mfg_top_base + 0x0FE4)           /* 0x48500FE4 */
