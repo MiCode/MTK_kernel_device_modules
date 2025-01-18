@@ -1254,12 +1254,12 @@
 
 	wl_info: wl-info@c2bf090 {
 		compatible = "mediatek,wl-info";
-		wl-support = <0>;
+		wl-support = <1>;
 		reg = <0 0x0c2bf090 0 0x10>, /*tcm sram base*/
 			<0 0x0c2c2f10 0 0x1520>; /*tcm wl-base sram*/
 		reg-names = "wl_sram_base",
 			"wl_tbl_base";
-	 };
+	};
 
 	flt: flt@c2c0100 {
 		compatible = "mediatek,flt";
