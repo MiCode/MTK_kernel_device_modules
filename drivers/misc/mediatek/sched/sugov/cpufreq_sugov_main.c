@@ -27,9 +27,7 @@
 #include <trace/events/power.h>
 #include <trace/hooks/sched.h>
 #include <linux/sched/topology.h>
-#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 #include <trace/hooks/topology.h>
-#endif
 #include <trace/hooks/cpufreq.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
@@ -1242,10 +1240,8 @@ static int __init cpufreq_mtk_init(void)
 	if (ret)
 		pr_info("register android_vh_cpufreq_target failed\n");
 
-#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	ret = register_trace_android_vh_arch_set_freq_scale(
 			mtk_arch_set_freq_scale, NULL);
-#endif
 	if (ret)
 		pr_info("register android_vh_arch_set_freq_scale failed\n");
 	else
