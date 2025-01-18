@@ -13,6 +13,7 @@
 #include <linux/workqueue.h>
 #include <linux/sched/task.h>
 #include <linux/sched.h>
+#include <linux/kobject.h>
 
 #define FPSGO_VERSION_CODE 7
 #define FPSGO_VERSION_MODULE "7.0"
@@ -30,7 +31,8 @@
 #define FPSGO_MAX_RECYCLE_IDLE_CNT 10
 #define FPSGO_MAX_TREE_SIZE 10
 #define FPSGO_MAX_RENDER_INFO_SIZE 20
-#define FPSGO_MAX_BQ_ID_SIZE 200
+#define FPSGO_MAX_BQ_ID_SIZE 400
+#define FPSGO_MAX_CONNECT_API_INFO_SIZE 400
 #define FPSGO_MAX_SBE_SPID_LOADING_SIZE 10
 
 enum {
@@ -39,9 +41,92 @@ enum {
 	FPSGO_SET_SCHED_RATE = 2,
 };
 
-typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
-extern int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-extern int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+enum FPSGO_FRAME_TYPE {
+	NON_VSYNC_ALIGNED_TYPE = 0,
+	BY_PASS_TYPE = 1,
+	FRAME_HINT_TYPE = 2,
+};
+
+enum FPSGO_CONNECT_API {
+	WINDOW_DISCONNECT = 0,
+	NATIVE_WINDOW_API_EGL = 1,
+	NATIVE_WINDOW_API_CPU = 2,
+	NATIVE_WINDOW_API_MEDIA = 3,
+	NATIVE_WINDOW_API_CAMERA = 4,
+};
+
+enum FPSGO_FORCE {
+	FPSGO_FORCE_OFF = 0,
+	FPSGO_FORCE_ON = 1,
+	FPSGO_FREE = 2,
+};
+
+enum FPSGO_BQID_ACT {
+	ACTION_FIND = 0,
+	ACTION_FIND_ADD,
+	ACTION_FIND_DEL,
+};
+
+enum FPSGO_RENDER_INFO_HWUI {
+	RENDER_INFO_HWUI_UNKNOWN = 0,
+	RENDER_INFO_HWUI_TYPE = 1,
+	RENDER_INFO_HWUI_NONE = 2,
+};
+
+enum FPSGO_ACQUIRE_TYPE {
+	ACQUIRE_UNKNOWN_TYPE,
+	ACQUIRE_SELF_TYPE,
+	ACQUIRE_CAMERA_TYPE,
+	ACQUIRE_OTHER_TYPE
+};
+
+enum FPSGO_CAMERA_CMD {
+	CAMERA_CLOSE = 0,
+	CAMERA_APK = 1,
+	CAMERA_SERVER = 2,
+	CAMERA_DO_FRAME = 4,
+	CAMERA_APP_MIN_FPS = 5,
+};
+
+enum FPSGO_MASTER_TYPE {
+	FPSGO_TYPE,
+	ADPF_TYPE,
+	MAGT_TYPE,
+	KTF_TYPE
+};
+
+enum FPSGO_BASE_KERNEL_NODE {
+	FPSGO_GENERAL_ENABLE = 0,
+	FPSGO_FORCE_ONOFF = 1,
+	RENDER_INFO_SHOW = 2,
+	BQID_SHOW = 3,
+	CONNECT_API_INFO_SHOW = 4,
+	ACQUIRE_INFO_SHOW = 5,
+	RENDER_TYPE_SHOW = 6,
+	RENDER_LOADING_SHOW = 7,
+	RENDER_INFO_PARAMS_SHOW = 8,
+	RENDER_ATTR_PARAMS_SHOW = 9,
+	RENDER_ATTR_PARAMS_TID_SHOW = 10,
+	FPSGO_GET_ACQUIRE_HINT_ENABLE = 11,
+	KFPS_CPU_MASK = 12,
+	PERFSERV_TA = 13,
+};
+
+enum FPSGO_STRUCTURE_TYPE {
+	FBT_RENDER_INFO = 0,
+	FSTB_RENDER = 1,
+	XGF_RENDER = 2,
+	BQ_ID = 3,
+	CONNECT_API_INFO = 4,
+	ACQUIRE_INFO = 5,
+	HWUI_INFO = 6,
+	SBE_INFO = 7,
+	FPSGO_CONTROL_INFO = 8,
+	FPSGO_ATTR_BY_PID = 9,
+	FPSGO_ATTR_BY_TID = 10,
+	MAX_FPSGO_STRUCTURE_TYPE_NUM
+};
+
 /* composite key for render_info rbtree */
 struct fbt_render_key {
 	int key1;
@@ -354,6 +439,17 @@ struct BQ_id {
 	unsigned long long ts;
 };
 
+struct connect_api_info {
+	int pid;
+	int tgid;
+	unsigned long long buffer_id;
+	int api;
+	unsigned long long ts;
+	struct fbt_render_key key;
+	struct rb_node rb_node;
+	struct list_head render_list;
+};
+
 struct acquire_info {
 	int p_pid;
 	int c_pid;
@@ -390,11 +486,6 @@ struct fps_control_pid_info {
 	unsigned long long ts;
 };
 
-struct cam_cmd_node {
-	int target_pid;
-	struct list_head queue_list;
-};
-
 #ifdef FPSGO_DEBUG
 #define FPSGO_LOGI(...)	pr_debug("FPSGO:" __VA_ARGS__)
 #else
@@ -404,6 +495,10 @@ struct cam_cmd_node {
 #define FPSGO_CONTAINER_OF(ptr, type, member) \
 	((type *)(((char *)ptr) - offsetof(type, member)))
 
+typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
+extern int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+extern int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+
 long long fpsgo_task_sched_runtime(struct task_struct *p);
 long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask);
 void *fpsgo_alloc_atomic(int i32Size);
@@ -411,11 +506,7 @@ void fpsgo_free(void *pvBuf, int i32Size);
 unsigned long long fpsgo_get_time(void);
 int fpsgo_arch_nr_clusters(void);
 int fpsgo_arch_nr_get_opp_cpu(int cpu);
-int fpsgo_arch_nr_get_cap_cpu(int cpu, int opp);
 int fpsgo_arch_nr_max_opp_cpu(void);
-int fpsgo_arch_nr_freq_cpu(void);
-unsigned int fpsgo_cpufreq_get_freq_by_idx(
-	int cpu, unsigned int opp);
 
 int fpsgo_get_tgid(int pid);
 void fpsgo_render_tree_lock(const char *tag);
@@ -455,10 +546,12 @@ struct BQ_id *fpsgo_find_BQ_id(int pid, int tgid, long long identifier,
 		int action);
 int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 		unsigned long long *buffer_id, int *queue_SF, int enqueue);
+struct connect_api_info *fpsgo_search_and_add_connect_api_info(int pid,
+	unsigned long long buffer_id, int force);
+void fpsgo_delete_connect_api_info(int pid, unsigned long long buffer_id);
 int fpsgo_get_acquire_queue_pair_by_self(int tid, unsigned long long buffer_id);
 int fpsgo_get_acquire_queue_pair_by_group(int tid, int *dep_arr, int dep_arr_num,
 		unsigned long long buffer_id);
-int fpsgo_check_cam_do_frame(void);
 int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id);
 int fpsgo_check_exist_queue_SF(int tgid);
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
@@ -467,7 +560,6 @@ struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffe
 int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
 int fpsgo_check_is_cam_apk(int tgid);
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid);
-void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc);
 void fpsgo_ctrl2base_notify_cam_close(void);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
@@ -477,7 +569,6 @@ int fpsgo_base_is_finished(struct render_info *thr);
 int fpsgo_update_swap_buffer(int pid);
 void fpsgo_sentcmd(int cmd, int value1, int value2);
 void fpsgo_ctrl2base_get_pwr_cmd(int *cmd, int *value1, int *value2);
-void fpsgo_ctrl2base_wait_cam(int cmd, int *pid);
 int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long long frame_id);
 void fpsgo_stop_boost_by_pid(int pid);
 void fpsgo_stop_boost_by_render(struct render_info *r);
@@ -490,63 +581,15 @@ int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid);
 int fpsgo_ctrl2base_query_sbe_spid_loading(void);
 int fpsgo_check_fbt_jerk_work_addr_invalid(struct work_struct *target_work);
 
+void fpsgo_ktf_test_read_node(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf,
+	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *, char *));
+void fpsgo_ktf_test_write_node(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf,
+	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *,
+			const char *, size_t));
+
 int init_fpsgo_common(void);
-
-enum FPSGO_FRAME_TYPE {
-	NON_VSYNC_ALIGNED_TYPE = 0,
-	BY_PASS_TYPE = 1,
-	FRAME_HINT_TYPE = 2,
-};
-
-enum FPSGO_CONNECT_API {
-	WINDOW_DISCONNECT = 0,
-	NATIVE_WINDOW_API_EGL = 1,
-	NATIVE_WINDOW_API_CPU = 2,
-	NATIVE_WINDOW_API_MEDIA = 3,
-	NATIVE_WINDOW_API_CAMERA = 4,
-};
-
-enum FPSGO_FORCE {
-	FPSGO_FORCE_OFF = 0,
-	FPSGO_FORCE_ON = 1,
-	FPSGO_FREE = 2,
-};
-
-enum FPSGO_BQID_ACT {
-	ACTION_FIND = 0,
-	ACTION_FIND_ADD,
-	ACTION_FIND_DEL,
-};
-
-enum FPSGO_RENDER_INFO_HWUI {
-	RENDER_INFO_HWUI_UNKNOWN = 0,
-	RENDER_INFO_HWUI_TYPE = 1,
-	RENDER_INFO_HWUI_NONE = 2,
-};
-
-enum FPSGO_ACQUIRE_TYPE {
-	ACQUIRE_UNKNOWN_TYPE,
-	ACQUIRE_SELF_TYPE,
-	ACQUIRE_CAMERA_TYPE,
-	ACQUIRE_OTHER_TYPE
-};
-
-enum FPSGO_CAMERA_CMD {
-	CAMERA_CLOSE,
-	CAMERA_APK,
-	CAMERA_SERVER,
-	CAMERA_HWUI,
-	CAMERA_DO_FRAME,
-	CAMERA_APP_MIN_FPS,
-	CAMERA_PERF_IDX
-};
-
-enum FPSGO_MASTER_TYPE {
-	FPSGO_TYPE,
-	ADPF_TYPE,
-	MAGT_TYPE,
-	KTF_TYPE
-};
 
 #endif
 

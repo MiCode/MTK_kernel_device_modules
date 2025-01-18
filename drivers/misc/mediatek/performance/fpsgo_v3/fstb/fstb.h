@@ -14,6 +14,27 @@ enum FSTB_INFO {
 	FPSGO_TARGET_FPS
 };
 
+enum FPSGO_FSTB_KERNEL_NODE {
+	FPSGO_STATUS,
+	FSTB_DEBUG,
+	FSTB_FPS_LIST,
+	FSTB_POLICY_CMD,
+	FSTB_TFPS_INFO,
+	FSTB_FRS_INFO,
+	FSTB_SELF_CTRL_FPS_ENABLE_GLOBAL,
+	FSTB_SELF_CTRL_FPS_ENABLE_BY_PID,
+	NOTIFY_FSTB_TARGET_FPS_BY_PID,
+	FSTB_NO_R_TIMER_ENABLE,
+	SET_RENDER_MAX_FPS,
+	FSTB_MARGIN_MODE,
+	FSTB_MARGIN_MODE_DBNC_A,
+	FSTB_MARGIN_MODE_DBNC_B,
+	FSTB_RESET_TOLERENCE,
+	FSTB_TUNE_QUANTILE,
+	GPU_SLOWDOWN_CHECK,
+	FSTB_SOFT_LEVEL,
+};
+
 typedef void (*time_notify_callback)(int pid, unsigned long long bufID,
 	int fps, unsigned long long time);
 
@@ -26,7 +47,9 @@ void fpsgo_comp2fstb_queue_time_update(
 void fpsgo_comp2fstb_prepare_calculate_target_fps(int pid,
 	unsigned long long bufID,
 	unsigned long long cur_queue_end_ts);
-int fpsgo_ctrl2fstb_gblock(int tid, int start);
+void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
+	unsigned long long q2q_time, unsigned long long enq_length,
+	unsigned long long deq_length);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);
 void fpsgo_ctrl2fstb_cam_queue_time_update(unsigned long long ts);
@@ -45,13 +68,8 @@ int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long 
 int switch_thread_max_fps(int pid, int set_max);
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO) || IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-int is_fstb_enable(void);
 int is_fstb_active(long long time_diff);
 int fpsgo_ctrl2fstb_switch_fstb(int value);
-int switch_fps_range(int nr_level, struct fps_level *level);
-int switch_process_fps_range(char *proc_name,
-	int nr_level, struct fps_level *level);
-int switch_thread_fps_range(pid_t pid, int nr_level, struct fps_level *level);
 int fpsgo_fbt2fstb_update_cpu_frame_info(
 	int pid,
 	unsigned long long bufID,
@@ -79,14 +97,7 @@ void eara2fstb_tfps_mdiff(int pid, unsigned long long buf_id, int diff,
 				int tfps);
 
 #else
-static inline int is_fstb_enable(void) { return 0; }
 static inline int fpsgo_ctrl2fstb_switch_fstb(int en) { return 0; }
-static inline int switch_fps_range(int nr_level,
-	struct fps_level *level) { return 0; }
-static inline int switch_process_fps_range(char *proc_name,
-	int nr_level, struct fps_level *level) { return 0; }
-static inline int switch_thread_fps_range(pid_t pid,
-	int nr_level, struct fps_level *level) { return 0; }
 static inline int fpsgo_fbt2fstb_update_cpu_frame_info(
 	int pid, unsigned long long bufID,
 	int tgid, int frame_type, unsigned long long Q2Q_time,

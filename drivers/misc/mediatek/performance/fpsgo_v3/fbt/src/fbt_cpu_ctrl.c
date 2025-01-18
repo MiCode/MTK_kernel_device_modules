@@ -14,10 +14,14 @@
 #include <linux/pm_qos.h>
 #include <linux/module.h>
 #include <linux/cpufreq.h>
+#include <linux/cgroup-defs.h>
+#include <linux/sched/cputime.h>
+#include <sched/sched.h>
 #include <mt-plat/fpsgo_common.h>
 #include "fpsgo_base.h"
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
+#include "eas/eas_plus.h"
 
 /*--------------------------------------------*/
 
@@ -202,7 +206,7 @@ static int update_cpu_loading_locked(void)
 		cur_idle_time[i].time = get_cpu_idle_time(i,
 				&cur_wall_time[i].time, 1);
 
-		if (cpu_active(i)) {
+		if (cpu_online(i) && cpu_active(i) && !cpu_paused(i)) {
 			wall_time += cur_wall_time[i].time - prev_wall_time[i].time;
 			idle_time += cur_idle_time[i].time - prev_idle_time[i].time;
 		}

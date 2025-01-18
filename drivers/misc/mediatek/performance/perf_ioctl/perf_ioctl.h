@@ -83,32 +83,6 @@ struct _XGFFRAME_PACKAGE {
 	};
 };
 
-struct _XGFFRAME_BOOST_PARAM {
-	__u32 rescue_pct_1;
-	__u32 rescue_f_1;
-	__u32 rescue_pct_2;
-	__u32 rescue_f_2;
-	__u32 gcc_std_filter;
-	__u32 gcc_history_window;
-	__u32 gcc_up_check;
-	__u32 gcc_up_thrs;
-	__u32 gcc_up_step;
-	__u32 gcc_down_check;
-	__u32 gcc_down_thrs;
-	__u32 gcc_down_step;
-};
-
-struct _XGFFRAME_BOOST_PACKAGE {
-	__u32 start;
-	__u32 group_id;
-	__u32 *dep_list;
-	__u32 dep_list_num;
-	__u32 prefer_cluster;
-	__u64 target_time;
-	struct _XGFFRAME_BOOST_PARAM param;
-};
-
-
 #define FPSGO_QUEUE                  _IOW('g', 1,  struct _FPSGO_PACKAGE)
 #define FPSGO_DEQUEUE                _IOW('g', 3,  struct _FPSGO_PACKAGE)
 #define FPSGO_VSYNC                  _IOW('g', 5,  struct _FPSGO_PACKAGE)
@@ -118,7 +92,6 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define FPSGO_BQID                   _IOW('g', 16, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_FPS                _IOW('g', 17, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_CMD                _IOW('g', 18, struct _FPSGO_PACKAGE)
-#define FPSGO_GBE_GET_CMD            _IOW('g', 19, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_FSTB_ACTIVE        _IOW('g', 20, struct _FPSGO_PACKAGE)
 #define FPSGO_WAIT_FSTB_ACTIVE       _IOW('g', 21, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_RESCUE             _IOW('g', 22, struct _FPSGO_PACKAGE)
@@ -132,10 +105,6 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_MIN_CAP            _IOW('g', 3, struct _XGFFRAME_PACKAGE)
-
-#define XGFFRAME_BOOST_START              _IOW('g', 1, struct _XGFFRAME_BOOST_PACKAGE)
-#define XGFFRAME_BOOST_END                _IOW('g', 2, struct _XGFFRAME_BOOST_PACKAGE)
-
 
 #endif
 

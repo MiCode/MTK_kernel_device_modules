@@ -22,8 +22,6 @@ void (*fpsgo_get_fps_fp)(int *pid, int *fps);
 EXPORT_SYMBOL_GPL(fpsgo_get_fps_fp);
 void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_cmd_fp);
-void (*gbe_get_cmd_fp)(int *cmd, int *value1, int *value2);
-EXPORT_SYMBOL_GPL(gbe_get_cmd_fp);
 int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 EXPORT_SYMBOL_GPL(fpsgo_get_fstb_active_fp);
 int (*fpsgo_wait_fstb_active_fp)(void);
@@ -33,8 +31,7 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_swap_buffer_fp);
 void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
-void (*fpsgo_get_pid_fp)(int cmd, int *pid, int op,
-	int value1, int value2);
+void (*fpsgo_get_pid_fp)(int cmd, int *pid, int value1, int value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_pid_fp);
 
 void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance, unsigned long long frameID);
@@ -75,142 +72,6 @@ static unsigned long perfctl_copy_to_user(void __user *pvTo,
 
 	return ulBytes;
 }
-
-/*--------------------SYNC------------------------*/
-/* XGFF BOOST*/
-int (*xgff_boost_startend_fp)(unsigned int startend,
-		int group_id,
-		int *dep_list,
-		int dep_list_num,
-		int prefer_cluster,
-		unsigned long long target_time,
-		int *param);
-EXPORT_SYMBOL(xgff_boost_startend_fp);
-static int xgff_boost_show(struct seq_file *m, void *v)
-{
-	return 0;
-}
-
-static int xgff_boost_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, xgff_boost_show, inode->i_private);
-}
-
-static long xgff_boost_ioctl(struct file *filp,
-		unsigned int cmd, unsigned long arg)
-{
-	ssize_t ret = 0;
-	int *dep_list;
-	int dep_list_num;
-	int *param;
-	struct _XGFFRAME_BOOST_PACKAGE *msgKM = NULL,
-		*msgUM = (struct _XGFFRAME_BOOST_PACKAGE *)arg;
-	struct _XGFFRAME_BOOST_PACKAGE smsgKM;
-
-
-	msgKM = &smsgKM;
-
-	if (perfctl_copy_from_user(msgKM, msgUM,
-			sizeof(struct _XGFFRAME_BOOST_PACKAGE))) {
-		ret = -EFAULT;
-		goto ret_ioctl;
-	}
-
-	switch (cmd) {
-	case XGFFRAME_BOOST_START:
-		if (!xgff_boost_startend_fp) {
-			ret = -EAGAIN;
-			goto ret_ioctl;
-		}
-
-		if (msgKM->dep_list_num <= 0 || !msgKM->dep_list) {
-			ret = -EINVAL;
-			goto ret_ioctl;
-		}
-
-		dep_list_num = msgKM->dep_list_num;
-
-		dep_list = kcalloc(dep_list_num, sizeof(int), GFP_KERNEL);
-		if (!dep_list) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		param = kzalloc(12 * sizeof(int), GFP_KERNEL);
-		if (!param) {
-			kfree(dep_list);
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-
-		if (perfctl_copy_from_user(dep_list, msgKM->dep_list,
-			dep_list_num * sizeof(__u32))) {
-			kfree(param);
-			kfree(dep_list);
-			ret = -EFAULT;
-			goto ret_ioctl;
-		}
-
-		param[0] = msgKM->param.rescue_pct_1;
-		param[1] = msgKM->param.rescue_f_1;
-		param[2] = msgKM->param.rescue_pct_2;
-		param[3] = msgKM->param.rescue_f_2;
-		param[4] = msgKM->param.gcc_std_filter;
-		param[5] = msgKM->param.gcc_history_window;
-		param[6] = msgKM->param.gcc_up_check;
-		param[7] = msgKM->param.gcc_up_thrs;
-		param[8] = msgKM->param.gcc_up_step;
-		param[9] = msgKM->param.gcc_down_check;
-		param[10] = msgKM->param.gcc_down_thrs;
-		param[11] = msgKM->param.gcc_down_step;
-
-		ret = xgff_boost_startend_fp(1, msgKM->group_id,
-			dep_list, dep_list_num, msgKM->prefer_cluster, msgKM->target_time, param);
-
-		kfree(dep_list);
-		kfree(param);
-
-		break;
-	case XGFFRAME_BOOST_END:
-		if (!xgff_boost_startend_fp) {
-			ret = -EAGAIN;
-			goto ret_ioctl;
-		}
-
-		ret = xgff_boost_startend_fp(0, msgKM->group_id, NULL, 0, msgKM->prefer_cluster,
-			msgKM->target_time, NULL);
-
-		break;
-
-	default:
-		pr_debug(TAG "%s %d: unknown cmd %x\n",
-			__FILE__, __LINE__, cmd);
-		ret = -1;
-		goto ret_ioctl;
-	}
-
-ret_ioctl:
-	return ret;
-}
-
-#if IS_ENABLED(CONFIG_COMPAT)
-static long xgff_boost_compat_ioctl(struct file *filp,
-		unsigned int cmd, unsigned long arg)
-{
-	return 0;
-}
-#endif
-
-static const struct proc_ops xgff_boost_Fops = {
-	.proc_ioctl = xgff_boost_ioctl,
-#if IS_ENABLED(CONFIG_COMPAT)
-	.proc_compat_ioctl = xgff_boost_compat_ioctl,
-#endif
-	.proc_open = xgff_boost_open,
-	.proc_read = seq_read,
-	.proc_lseek = seq_lseek,
-	.proc_release = single_release,
-};
-
 
 /*--------------------XGFFRAME------------------------*/
 int (*xgff_frame_startend_fp)(unsigned int startend,
@@ -522,17 +383,6 @@ static long device_ioctl(struct file *filp,
 		perfctl_copy_to_user(msgUM, msgKM,
 				sizeof(struct _FPSGO_PACKAGE));
 		break;
-	case FPSGO_GBE_GET_CMD:
-		if (gbe_get_cmd_fp) {
-			gbe_get_cmd_fp(&pwr_cmd, &value1, &value2);
-			msgKM->cmd = pwr_cmd;
-			msgKM->value1 = value1;
-			msgKM->value2 = value2;
-		} else
-			ret = -1;
-		perfctl_copy_to_user(msgUM, msgKM,
-				sizeof(struct _FPSGO_PACKAGE));
-		break;
 	case FPSGO_GET_FSTB_ACTIVE:
 		if (fpsgo_get_fstb_active_fp)
 			msgKM->active = fpsgo_get_fstb_active_fp(msgKM->time_diff);
@@ -563,7 +413,7 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_GET_CAM_APK_PID:
 	case FPSGO_GET_CAM_SERVER_PID:
 		if (fpsgo_get_pid_fp)
-			fpsgo_get_pid_fp(msgKM->value1, &msgKM->pid1, 0,
+			fpsgo_get_pid_fp(msgKM->value1, &msgKM->pid1,
 				msgKM->pid1, msgKM->value2);
 		perfctl_copy_to_user(msgUM, msgKM,
 			sizeof(struct _FPSGO_PACKAGE));
@@ -586,8 +436,6 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_GET_FPS:
 		 [[fallthrough]];
 	case FPSGO_GET_CMD:
-		 [[fallthrough]];
-	case FPSGO_GBE_GET_CMD:
 		 [[fallthrough]];
 	case FPSGO_GET_FSTB_ACTIVE:
 		[[fallthrough]];
@@ -651,15 +499,6 @@ static int __init init_perfctl(void)
 	}
 
 	pe = proc_create("xgff_ioctl", 0664, parent, &xgff_Fops);
-	if (!pe) {
-		pr_debug(TAG"%s failed with %d\n",
-				"Creating file node ",
-				ret_val);
-		ret_val = -ENOMEM;
-		goto out_wq;
-	}
-
-	pe = proc_create("xgff_boost_ioctl", 0664, parent, &xgff_boost_Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",

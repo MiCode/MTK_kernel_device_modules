@@ -116,10 +116,13 @@ static void fpsgo_set_deplist_policy(struct render_info *thr, int policy)
 	for (i = 0; i < local_dep_size; i++) {
 		if (local_dep_arr[i].pid <= 0)
 			continue;
+
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 		if (policy == 0)
 			unset_task_basic_vip(local_dep_arr[i].pid);
 		else if (policy == 1)
 			set_task_basic_vip(local_dep_arr[i].pid);
+#endif
 	}
 	kfree(local_dep_arr);
 }
@@ -313,7 +316,9 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
 	thr->ux_blc_cur = thr->ux_blc_next;
 
 	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		set_top_grp_aware(1,0);
+#endif
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
 	}
 	fbt_ux_set_cap_with_sbe(thr);
@@ -360,7 +365,9 @@ void fbt_ux_frame_end(struct render_info *thr,
 		targettime, "[ux]target_time");
 
 	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		set_top_grp_aware(0,0);
+#endif
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 	}
 	fpsgo_get_fbt_mlock(__func__);
@@ -419,7 +426,9 @@ unsigned long long ts)
 		return;
 
 	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		set_top_grp_aware(0,0);
+#endif
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 	}
 	thr->ux_blc_cur = 0;
@@ -527,8 +536,10 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 	fpsgo_lockprove(__func__);
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
 		set_top_grp_aware(0,0);
+#endif
 
 	cur = rb_first(&(thr->ux_frame_info_tree));
 

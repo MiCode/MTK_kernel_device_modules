@@ -6,7 +6,6 @@
 #ifndef FSTB_USEDEXT_H
 #define FSTB_USEDEXT_H
 
-#include <mt-plat/fpsgo_common.h>
 #include <linux/list.h>
 #include <linux/sched.h>
 
@@ -39,7 +38,7 @@ struct FSTB_FRAME_INFO {
 	unsigned long long bufid;
 	int target_fps_diff;
 	int target_fps_notifying;
-	int sbe_state; /*0: free run, 1: max_fps*/
+	int sbe_state;
 	unsigned long long target_time;
 
 	long long cpu_time;
@@ -61,6 +60,8 @@ struct FSTB_FRAME_INFO {
 	unsigned long long sorted_weighted_gpu_time[FRAME_TIME_BUFFER_SIZE];
 	int quantile_cpu_time;
 	int quantile_gpu_time;
+	unsigned long long app_self_ctrl_time[FRAME_TIME_BUFFER_SIZE];
+	int app_self_ctrl_time_num;
 
 	int render_idle_cnt;
 	int hwui_flag;
@@ -69,6 +70,11 @@ struct FSTB_FRAME_INFO {
 	int magt_target_fps;
 
 	unsigned long master_type;
+};
+
+struct fps_level {
+	int start;
+	int end;
 };
 
 struct FSTB_RENDER_TARGET_FPS {
