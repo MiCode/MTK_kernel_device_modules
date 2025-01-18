@@ -624,22 +624,18 @@ bool mtk_set_fastdvfs_mode(unsigned int u32Mode)
 }
 EXPORT_SYMBOL(mtk_set_fastdvfs_mode);
 
-unsigned int (*mtk_get_fastdvfs_mode_fp)(void) = NULL;
+void (*mtk_get_fastdvfs_mode_fp)(void *ipi_data) = NULL;
 EXPORT_SYMBOL(mtk_get_fastdvfs_mode_fp);
 
-bool mtk_get_fastdvfs_mode(unsigned int *pui32Mode)
+bool mtk_get_fastdvfs_mode(void *ipi_data)
 {
-	if (pui32Mode == NULL)
-		return false;
 
 	if ((mtk_get_fastdvfs_mode_fp != NULL) &&
-		(pui32Mode != NULL)) {
-
-		*pui32Mode = mtk_get_fastdvfs_mode_fp();
+		(ipi_data != NULL)) {
+		mtk_get_fastdvfs_mode_fp(ipi_data);
 		return true;
 	}
 
-	*pui32Mode = 0;
 	return false;
 }
 EXPORT_SYMBOL(mtk_get_fastdvfs_mode);
