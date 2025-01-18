@@ -3791,7 +3791,7 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		AALFLOW_LOG("size available: (w,h)=(%d,%d)+\n", width, height);
 	}
 
-	if (!aal_data->set_partial_update) {
+	if (aal_data->set_partial_update != 1) {
 		val = (width << 16) | (height);
 		out_val = (out_width << 16) | height;
 	} else {
@@ -4424,7 +4424,7 @@ static int disp_aal_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -4442,7 +4442,7 @@ static int disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (aal_data->set_partial_update) {
+	if (aal_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_AAL_SIZE, aal_data->roi_height + overhead_v * 2, 0x0FFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,

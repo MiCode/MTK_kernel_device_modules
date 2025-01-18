@@ -1160,7 +1160,7 @@ struct mtk_ddp_comp_funcs {
 	void (*mutex_sof_irq)(struct mtk_ddp_comp *comp);
 	void (*mutex_eof_irq)(struct mtk_ddp_comp *comp);
 	int (*partial_update)(struct mtk_ddp_comp *comp,
-			struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable);
+			struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable);
 	int (*first_layer)(struct mtk_ddp_comp *comp);
 };
 
@@ -1438,7 +1438,7 @@ static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
 }
 
 static inline int mtk_ddp_comp_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	int ret = 0;
 

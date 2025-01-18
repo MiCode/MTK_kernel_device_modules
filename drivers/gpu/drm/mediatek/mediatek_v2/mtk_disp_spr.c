@@ -721,7 +721,7 @@ struct mtk_disp_spr {
 	const struct mtk_disp_spr_data *data;
 	int enable;
 	struct mtk_disp_spr_tile_overhead_v tile_overhead_v;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 	enum SPR_IP_TYPE spr_ip_type;
 };
@@ -1379,7 +1379,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	} else {
 		postalign_width = cfg->w;
 		width = cfg->w;
-		if (!spr->set_partial_update) {
+		if (spr->set_partial_update != 1) {
 			height = cfg->h;
 			crop_voffset = 0;
 			out_height = cfg->h;
@@ -1495,7 +1495,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
 
-			if (!spr->set_partial_update)
+			if (spr->set_partial_update != 1)
 				mtk_ddp_write_mask(postalign_comp, out_height << 0,
 					MT6989_DISP_REG_POSTALIGN0_SIZE,
 					REG_FLD_MASK(MT6989_VSIZE), handle);
@@ -1673,7 +1673,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	width = cfg->w; //display system only support v-dir partialupdate, spr align it
 	image_pos_x = cfg->x;
 	output_pos_x = cfg->x;
-	if (!spr->set_partial_update) {
+	if (spr->set_partial_update != 1) {
 		height = cfg->h;
 		out_height = cfg->h;
 		image_pos_y = cfg->y;
@@ -1708,7 +1708,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, cfg->h,
 		MT6991_DISP_MTK_SPR_REG_SPR_PANEL_HEIGHT + offset, handle);
 	//output size config
-	mtk_ddp_write_relaxed(comp, spr->set_partial_update,
+	mtk_ddp_write_relaxed(comp, (spr->set_partial_update == 1) ? 1 : 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
 	mtk_ddp_write_relaxed(comp, output_pos_x,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X + offset, handle);
@@ -1720,7 +1720,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT + offset, handle);
 	//MTK SPR type config
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
-		if (spr->set_partial_update) {
+		if (spr->set_partial_update == 1) {
 			switch(spr_params->spr_format_type) {
 			case MTK_PANEL_RGBG_BGRG_TYPE:
 			case MTK_PANEL_BGRG_RGBG_TYPE:
@@ -2020,7 +2020,7 @@ static int mtk_spr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 
 static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	resource_size_t config_regs_pa;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
@@ -2065,9 +2065,9 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 	if (spr->data && spr->data->version == MTK_SPR_V3 &&
 		spr->spr_ip_type == DISP_MTK_SPR) {
 		offset = spr->data->mtk_spr_ip_addr_offset;
-		mtk_ddp_write_relaxed(comp, spr->set_partial_update,
+		mtk_ddp_write_relaxed(comp, (spr->set_partial_update == 1) ? 1 : 0,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_EN + offset, handle);
-		if (spr->set_partial_update) {
+		if (spr->set_partial_update == 1) {
 			//input size config
 			mtk_ddp_write_relaxed(comp, (partial_roi.y - overhead_v),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
@@ -2094,7 +2094,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 		return 0;
 	}
 
-	if (spr->set_partial_update) {
+	if (spr->set_partial_update == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991) {
 			mtk_ddp_write_mask(comp, crop_height << 16,

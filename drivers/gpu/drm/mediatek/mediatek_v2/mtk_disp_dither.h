@@ -56,7 +56,7 @@ struct mtk_disp_dither {
 	atomic_t is_clock_on;
 	struct mtk_disp_dither_tile_overhead tile_overhead;
 	struct mtk_disp_dither_tile_overhead_v tile_overhead_v;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 	uint32_t purecolor0;
 };

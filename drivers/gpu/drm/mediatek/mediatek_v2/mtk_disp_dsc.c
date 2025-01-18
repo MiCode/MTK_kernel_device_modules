@@ -135,7 +135,7 @@ struct mtk_disp_dsc {
 	struct mtk_ddp_comp	 ddp_comp;
 	const struct mtk_disp_dsc_data *data;
 	int enable;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 
@@ -436,7 +436,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		slice_width = dsc_params->slice_width;
 		slice_height = dsc_params->slice_height;
 
-		if (!dsc->set_partial_update)
+		if (dsc->set_partial_update != 1)
 			pic_height_ext_num =
 				(cfg->h + slice_height - 1) / slice_height;
 		else
@@ -528,7 +528,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		mtk_ddp_write_relaxed(comp, (pic_group_width - 1) << 16 |
 			dsc_params->slice_width * (dsc_params->slice_mode + 1),
 			DISP_REG_DSC_PIC_W + DISP_REG_DSC1_OFFSET, handle);
-		if (!dsc->set_partial_update)
+		if (dsc->set_partial_update != 1)
 			mtk_ddp_write_relaxed(comp,
 				(pic_height_ext_num * slice_height - 1) << 16 |
 				(cfg->h - 1),
@@ -1053,7 +1053,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		slice_width = dsc_params->slice_width;
 		slice_height = dsc_params->slice_height;
 
-		if (!dsc->set_partial_update)
+		if (dsc->set_partial_update != 1)
 			pic_height_ext_num =
 				(cfg->h + slice_height - 1) / slice_height;
 		else
@@ -1145,7 +1145,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		mtk_ddp_write_relaxed(comp, (pic_group_width - 1) << 16 |
 			dsc_params->slice_width * (dsc_params->slice_mode + 1),
 			DISP_REG_DSC_PIC_W, handle);
-		if (!dsc->set_partial_update)
+		if (dsc->set_partial_update != 1)
 			mtk_ddp_write_relaxed(comp,
 				(pic_height_ext_num * slice_height - 1) << 16 |
 				(cfg->h - 1),
@@ -1692,7 +1692,7 @@ int mtk_dsc_analysis(struct mtk_ddp_comp *comp)
 }
 
 static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_dsc *dsc = comp_to_dsc(comp);
 	unsigned int slice_width, slice_height;
@@ -1715,7 +1715,7 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 	slice_width = dsc_params->slice_width;
 	slice_height = dsc_params->slice_height;
 
-	if (dsc->set_partial_update) {
+	if (dsc->set_partial_update == 1) {
 		pic_height_ext_num =
 			(dsc->roi_height + slice_height - 1) / slice_height;
 

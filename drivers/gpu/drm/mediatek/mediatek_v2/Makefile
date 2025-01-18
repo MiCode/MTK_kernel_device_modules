@@ -75,6 +75,10 @@ ifeq ($(CONFIG_DRM_MEDIATEK_DEBUG_FS),y)
 mediatek-drm-y += mtk_drm_debugfs.o
 endif
 
+ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DDRM_PARTIAL_UPDATE
+endif
+
 mediatek-drm-y += mtk_dp_intf.o \
 	mtk_dp.o \
 	mtk_dp_hal.o \

@@ -122,7 +122,7 @@ struct mtk_disp_color {
 	struct mtk_disp_color_tile_overhead_v tile_overhead_v;
 	unsigned long color_dst_w;
 	unsigned long color_dst_h;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 

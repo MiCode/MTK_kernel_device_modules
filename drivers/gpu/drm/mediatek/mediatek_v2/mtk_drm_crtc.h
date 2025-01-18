@@ -1426,7 +1426,7 @@ void mtk_crtc_set_width_height(
 
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state,
-	struct cmdq_pkt *cmdq_handle, bool enable);
+	struct cmdq_pkt *cmdq_handle, unsigned int enable);
 
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);

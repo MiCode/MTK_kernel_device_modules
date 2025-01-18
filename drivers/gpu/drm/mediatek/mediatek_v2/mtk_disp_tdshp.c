@@ -687,7 +687,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 		out_width = in_width;
 	}
 
-	if (!tdshp_data->set_partial_update) {
+	if (tdshp_data->set_partial_update != 1) {
 		in_val = (in_width << 16) | (cfg->h);
 		out_val = (out_width << 16) | (cfg->h);
 	} else {
@@ -715,7 +715,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET,
 				tdshp_data->tile_overhead.comp_overhead << 16 | 0, ~0);
 	} else {
-		if (!tdshp_data->set_partial_update)
+		if (tdshp_data->set_partial_update != 1)
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
 		else
@@ -954,7 +954,7 @@ static int disp_tdshp_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int disp_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -974,7 +974,7 @@ static int disp_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPINFO("%s, %s overhead_v:%d, comp_overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
 
-	if (tdshp_data->set_partial_update) {
+	if (tdshp_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
 			tdshp_data->roi_height + overhead_v * 2, 0xffff);

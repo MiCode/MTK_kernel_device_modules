@@ -119,9 +119,6 @@
 /*Need to Fix*/
 
 
-static bool set_partial_update;
-static unsigned int roi_height;
-
 #define MAX_LAYER_NUM 1
 struct mtk_ovl_backup_info {
 	unsigned int layer;
@@ -141,6 +138,8 @@ struct mtk_disp_ovl_outproc {
 	int bg_w, bg_h;
 	struct clk *fbdc_clk;
 	struct mtk_ovl_backup_info backup_info[MAX_LAYER_NUM];
+	unsigned int set_partial_update;
+	unsigned int roi_height;
 };
 
 static inline struct mtk_disp_ovl_outproc *comp_to_ovl_outproc(struct mtk_ddp_comp *comp)
@@ -364,10 +363,10 @@ static void mtk_ovl_outproc_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
-	if (!set_partial_update)
+	if (ovl->set_partial_update != 1)
 		height = cfg->h;
 	else
-		height = roi_height;
+		height = ovl->roi_height;
 	/*out_proc wa*/
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
 		       0x1, ~0);
@@ -876,35 +875,34 @@ mtk_ovl_outproc_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 }
 
 static int mtk_ovl_outproc_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
+	struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, false);
 	struct total_tile_overhead_v to_v_info;
 	unsigned int overhead_v;
 
-	return 0;
-
 	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
+	ovl->set_partial_update = enable;
 
 	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
 	overhead_v = to_v_info.overhead_v;
 
-	roi_height = partial_roi.height + (overhead_v * 2);
+	ovl->roi_height = partial_roi.height + (overhead_v * 2);
 
 	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v, roi_height);
+			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
 
-	if (set_partial_update) {
+	if (ovl->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa +DISP_REG_OVL_OUTPROC_ROI_SIZE,
-				roi_height << 16, 0x1fff << 16);
+				comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				ovl->roi_height << 16, 0x1fff << 16);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa +DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
 				full_height << 16, 0x1fff << 16);
 	}
 

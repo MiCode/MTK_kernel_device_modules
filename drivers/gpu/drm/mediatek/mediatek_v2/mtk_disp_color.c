@@ -887,7 +887,7 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_WIDTH(color), width, ~0);
-	if (!color->set_partial_update)
+	if (color->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
 	else {
@@ -1338,7 +1338,7 @@ static int disp_color_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int disp_color_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_color *color = comp_to_color(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -1356,7 +1356,7 @@ static int disp_color_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (color->set_partial_update) {
+	if (color->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
 	} else {

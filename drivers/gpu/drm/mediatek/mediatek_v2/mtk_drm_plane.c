@@ -561,7 +561,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	}
 
 
-	if (priv && priv->data->mmsys_id == MMSYS_MT6989 &&
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991) &&
 			crtc_state->ovl_partial_dirty) {
 		struct mtk_rect layer_roi = {0, 0, 0, 0};
 		struct mtk_rect ovl_partial_roi = {0, 0, 0, 0};

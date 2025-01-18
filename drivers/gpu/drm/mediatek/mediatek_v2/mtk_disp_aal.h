@@ -399,7 +399,7 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_gamma;
 	struct mtk_ddp_comp *comp_color;
 	struct mtk_ddp_comp *comp_dmdp_aal;
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 	bool is_hist_reused;
 	struct pq_dma_buffer cmdq_dma_buf;

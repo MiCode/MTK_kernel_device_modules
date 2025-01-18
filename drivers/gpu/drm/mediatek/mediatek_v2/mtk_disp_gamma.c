@@ -612,7 +612,7 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	if (!gamma->set_partial_update)
+	if (gamma->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
 			(width << 16) | cfg->h, ~0);
@@ -1153,7 +1153,7 @@ static int disp_gamma_ioctl_transact(struct mtk_ddp_comp *comp,
 }
 
 static int disp_gamma_set_partial_update(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
@@ -1171,7 +1171,7 @@ static int disp_gamma_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (gamma->set_partial_update) {
+	if (gamma->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
 				   gamma->roi_height + overhead_v * 2, 0xffff);

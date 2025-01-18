@@ -72,7 +72,7 @@ struct mtk_disp_gamma {
 	atomic_t gamma_is_clock_on;
 	bool pkt_reused;
 	struct cmdq_reuse reuse_gamma_lut[DISP_GAMMA_12BIT_LUT_SIZE * 2 + 6];
-	bool set_partial_update;
+	unsigned int set_partial_update;
 	unsigned int roi_height;
 };
 
