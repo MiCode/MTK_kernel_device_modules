@@ -100,7 +100,7 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 
 	if (is_enable) {
 		tmem_ops->puts("pkvm_tmem: host_donate_hyp\n");
-		rc = tmem_ops->host_donate_hyp(addr>>ONE_PAGE_OFFSET, size/ONE_PAGE_SIZE);
+		rc = tmem_ops->host_donate_hyp(addr>>ONE_PAGE_OFFSET, size/ONE_PAGE_SIZE, false);
 		if (rc) {
 			tmem_ops->puts("failed to CPU EL1 Stage2 unmap");
 			return TZ_RESULT_ERROR_GENERIC;

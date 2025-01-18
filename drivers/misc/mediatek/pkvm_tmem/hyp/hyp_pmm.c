@@ -51,9 +51,15 @@ int secure_pglist_common(uint64_t pglist_pfn,
 //	tmem_ops->puts("count = ");
 //	tmem_ops->putx64(count);
 
-	tmem_ops->host_share_hyp(pglist_pfn);
-	tmem_ops->pin_shared_mem(pglist_pa, pglist_pa + ONE_PAGE_SIZE);
+	rc = tmem_ops->host_share_hyp(pglist_pfn);
+	if (rc != 0)
+		tmem_ops->puts("pkvm_tmem parse fail\n");
+
 	pmm_page = (uint32_t *)tmem_ops->hyp_va((phys_addr_t)pglist_pa);
+
+	rc = tmem_ops->pin_shared_mem(pglist_pa, pglist_pa + ONE_PAGE_SIZE);
+	if (rc != 0)
+		tmem_ops->puts("pkvm_tmem pin_shared_mem fail\n");
 
 	for (i = 0; i < count; i++) {
 		entry = pmm_page[i];
@@ -64,14 +70,17 @@ int secure_pglist_common(uint64_t pglist_pfn,
 //		tmem_ops->puts("pfn = ");
 //		tmem_ops->putx64(pfn);
 		if (enable)
-			rc = tmem_ops->host_donate_hyp(pfn, 1 << order);
+			rc = tmem_ops->host_donate_hyp(pfn, 1 << order, false);
 		else
 			rc = tmem_ops->hyp_donate_host(pfn, 1 << order);
-		if (rc) {
+		if (rc != 0) {
 			tmem_ops->puts("page-based: failed to CPU EL1 Stage2 unmap/map\n");
 			return -1;
 		}
 	}
+
+	tmem_ops->unpin_shared_mem(pglist_pa, pglist_pa + ONE_PAGE_SIZE);
+	tmem_ops->host_unshare_hyp(pglist_pfn);
 
 	return 0;
 }
