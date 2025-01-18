@@ -618,9 +618,10 @@
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG1_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 		port {
@@ -701,9 +702,10 @@
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 		port {
@@ -778,9 +780,10 @@
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG2_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 		port {
@@ -868,9 +871,10 @@
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG3_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 
 		status = "okay";
 		port {
@@ -992,9 +996,10 @@
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
 			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
 			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG4_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
 #if 0
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk",
 			      "clk1_6", "clk1_12", "clk1_13", "clk1_19.2",
