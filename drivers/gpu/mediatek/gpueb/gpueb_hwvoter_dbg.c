@@ -76,8 +76,7 @@ static ssize_t gpueb_hw_voter_dbg_proc_write(
 		return count;
 	}
 
-	ret = mtk_ipi_send_compl(
-			&gpueb_ipidev,
+	ret = mtk_ipi_send_compl_to_gpueb(
 			channel_id,
 			IPI_SEND_WAIT,
 			&ipi_data,

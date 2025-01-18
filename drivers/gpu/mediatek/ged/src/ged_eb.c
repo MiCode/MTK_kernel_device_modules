@@ -314,7 +314,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_SET_DVFS_STRESS_TEST:
 	case GPUFDVFS_IPI_SET_POWER_STATE:
 	case GPUFDVFS_IPI_SET_DVFS_REINIT:
-		ret = mtk_ipi_send_compl(get_gpueb_ipidev(),
+		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
 			FDVFS_IPI_DATA_LEN,
@@ -336,7 +336,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_GET_BOUND:
 	case GPUFDVFS_IPI_GET_MARGIM:
 	case GPUFDVFS_IPI_GET_MODE:
-		ret = mtk_ipi_send_compl(get_gpueb_ipidev(),
+		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
 			FDVFS_IPI_DATA_LEN,
@@ -352,7 +352,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	// Get
 
 	case GPUFDVFS_IPI_PMU_START:
-		ret = mtk_ipi_send_compl(get_gpueb_ipidev(),
+		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
 			FDVFS_IPI_DATA_LEN,
