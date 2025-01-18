@@ -16215,6 +16215,7 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	static struct mtk_rect full_roi;
 	int slice_height = 40;
+	int dsc_min_height = 40;
 	int y_diff = 0;
 	struct mtk_panel_spr_params *spr_params;
 	struct mtk_ddp_comp *comp;
@@ -16242,6 +16243,9 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	}
 
 	partial_roi->height += y_diff;
+	if (partial_roi->height < dsc_min_height)
+		partial_roi->height = dsc_min_height;
+
 	if (partial_roi->height % slice_height != 0) {
 		partial_roi->height =
 			((partial_roi->height / slice_height) + 1) * slice_height;
