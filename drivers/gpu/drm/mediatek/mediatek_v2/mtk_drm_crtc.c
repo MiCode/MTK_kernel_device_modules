@@ -210,6 +210,7 @@ static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_p
 #define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
 
 #define TZMP2_DT_NAME "ssheap-reserved-cma_memory"
+#define PAGE_BASE_NAME "page-based-v2-enabled"
 
 struct drm_crtc *_get_context(void)
 {
@@ -12801,10 +12802,12 @@ int mtk_crtc_check_out_sec(struct drm_crtc *crtc)
 /*====for MTEE SVP=====*/
 bool is_tzmp2_enable(void)
 {
-	struct device_node *dt_node;
+	struct device_node *dt_tzmp_node;
+	struct device_node *dt_page_base_node;
 
-	dt_node = of_find_node_by_name(NULL, TZMP2_DT_NAME);
-	if (!dt_node)
+	dt_tzmp_node = of_find_node_by_name(NULL, TZMP2_DT_NAME);
+	dt_page_base_node = of_find_node_by_name(NULL, PAGE_BASE_NAME);
+	if (!dt_tzmp_node && !dt_page_base_node)
 		return false;
 
 	return true;
