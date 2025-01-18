@@ -16,6 +16,7 @@
 #include "mtk-mml-adaptor.h"
 #include "mtk-mml-v4l2.h"
 #include "mtk-mml-v4l2-color.h"
+#include "mtk-mml-mmp.h"
 
 int m2m_max_cache_task = 4;
 module_param(m2m_max_cache_task, int, 0644);
@@ -124,11 +125,11 @@ static void m2m_task_frame_done(struct mml_task *task)
 	mml_msg("[m2m]frame done task %p state %u job %u",
 		task, task->state, task->job.jobid);
 
-	/* notice frame done to v4l2 */
-	mml_m2m_process_done(mctx, vb_state);
-
 	/* clean up */
 	task_buf_put(task);
+
+	/* notice frame done to v4l2 */
+	mml_m2m_process_done(mctx, vb_state);
 
 	mutex_lock(&ctx->config_mutex);
 
@@ -1402,14 +1403,20 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	return 0;
 }
 
-static s32 m2m_frame_buf_to_task_buf(struct mml_file_buf *fbuf,
-	struct mml_buffer *user_buf, struct vb2_v4l2_buffer *vbuf,
-	const char *name)
+static s32 m2m_frame_buf_to_task_buf(struct mml_ctx *ctx,
+	struct mml_file_buf *fbuf, struct mml_buffer *user_buf,
+	struct vb2_v4l2_buffer *vbuf, const char *name)
 {
 	struct vb2_buffer *vb = &vbuf->vb2_buf;
 	void *dbufs[MML_MAX_PLANES];
+	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, 0); /* not secure */
 	u8 i;
 	s32 ret = 0;
+
+	if (unlikely(!mmu_dev)) {
+		mml_err("%s mmu_dev is null", __func__);
+		return -EFAULT;
+	}
 
 	for (i = 0; i < vb->num_planes; i++)
 		dbufs[i] = vb->planes[i].dbuf;
@@ -1422,6 +1429,26 @@ static s32 m2m_frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 	fbuf->cnt = user_buf->cnt;
 	fbuf->flush = !(vbuf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN);
 	fbuf->invalid = !(vbuf->flags & V4L2_BUF_FLAG_NO_CACHE_INVALIDATE);
+
+	if (fbuf->dma[0].dmabuf) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			atomic_read(&ctx->job_serial), 0);
+
+		/* get iova */
+		ret = mml_buf_iova_get(mmu_dev, fbuf);
+		if (ret < 0)
+			mml_err("%s iova fail %d", __func__, ret);
+
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			atomic_read(&ctx->job_serial),
+			(unsigned long)fbuf->dma[0].iova);
+
+		mml_msg("%s %s dmabuf %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, name, fbuf->dma[0].dmabuf,
+			fbuf->dma[0].iova, fbuf->size[0],
+			fbuf->dma[1].iova, fbuf->size[1],
+			fbuf->dma[2].iova, fbuf->size[2]);
+	}
 
 	return ret;
 }
@@ -1544,7 +1571,7 @@ static void mml_m2m_device_run(void *priv)
 		task->job.jobid,
 		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000));
 
-	result = m2m_frame_buf_to_task_buf(&task->buf.src,
+	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.src,
 		&submit->buffer.src, src_vbuf,
 		"mml_m2m_rdma");
 	if (result) {
@@ -1553,7 +1580,7 @@ static void mml_m2m_device_run(void *priv)
 	}
 
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
-	result = m2m_frame_buf_to_task_buf(&task->buf.dest[0],
+	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.dest[0],
 		&submit->buffer.dest[0], dst_vbuf,
 		"mml_m2m_wrot");
 	if (result) {
