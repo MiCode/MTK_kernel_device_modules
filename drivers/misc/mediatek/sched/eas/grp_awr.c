@@ -281,7 +281,8 @@ void grp_awr_update_grp_awr_util(void)
 	}
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
-		pgrp_parallel_u[grp_idx] = flt_get_max_group(grp_idx);
+		pgrp_parallel_u[grp_idx] =
+			clamp_val(flt_get_max_group(grp_idx), 0, SCHED_CAPACITY_SCALE);
 		if (grp_awr_marg_ctrl)
 			pgrp_hint[grp_idx] = 0;
 		else
