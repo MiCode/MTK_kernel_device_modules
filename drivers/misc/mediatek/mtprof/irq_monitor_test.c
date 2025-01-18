@@ -157,6 +157,26 @@ void irq_mon_test_show_irq_count(void)
 {
 	show_irq_count_info(TO_BOTH);
 }
+
+static int test_aee_callback_fn(unsigned int irq, enum irq_mon_aee_type type)
+{
+	pr_info("%s, irq: %u, type:%d\n",__func__ , irq , type);
+	return 0;
+}
+
+#define TEST_IRQ 32343
+extern void irq_mon_aee_callback(unsigned int irq, enum irq_mon_aee_type type);
+void irq_mon_test_aee_callback(void)
+{
+	irq_mon_aee_callback(TEST_IRQ, IRQ_MON_AEE_TYPE_BURST_IRQ);
+	irq_mon_aee_callback_register(TEST_IRQ, test_aee_callback_fn);
+	irq_mon_aee_callback(TEST_IRQ, IRQ_MON_AEE_TYPE_BURST_IRQ);
+	irq_mon_aee_callback(TEST_IRQ, IRQ_MON_AEE_TYPE_IRQ_LONG);
+	irq_mon_aee_callback(TEST_IRQ, IRQ_MON_AEE_TYPE_LONG_IRQOFF);
+	irq_mon_aee_callback_unregister(TEST_IRQ);
+	irq_mon_aee_callback(TEST_IRQ, IRQ_MON_AEE_TYPE_LONG_IRQOFF);
+}
+
 struct irq_mon_test_func {
 	char name[32];
 	void (*func)(void);
@@ -172,6 +192,7 @@ struct irq_mon_test_func irq_mon_test_list[] = {
 	{"preempt_count", irq_mon_test_PREEMPT_COUNT},
 	{"smp_func_dur", irq_mon_test_smp_func},
 	{"show_irq_count", irq_mon_test_show_irq_count},
+	{"aee_callback", irq_mon_test_aee_callback},
 };
 
 static ssize_t

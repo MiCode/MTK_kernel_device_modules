@@ -27,6 +27,8 @@
 #include <mt-plat/mrdump.h>
 #include <mt-plat/mboot_params.h>
 #include <mt-plat/aee.h>
+#include <mt-plat/mtk_irq_mon.h>
+extern void irq_mon_aee_callback(unsigned int irq, enum irq_mon_aee_type type);
 
 #ifdef MODULE
 /* reference kernel/softirq.c */
@@ -432,6 +434,7 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 				char module[100];
 
 				set_bit(irq, irq_aee_state);
+				irq_mon_aee_callback(irq, IRQ_MON_AEE_TYPE_IRQ_LONG);
 				scnprintf(module, sizeof(module), "IRQ LONG:%d, %pS, %llu ms"
 					, irq, (void *)action->handler, msec_high(duration));
 				aee_kernel_warning_api(__FILE__, __LINE__,
