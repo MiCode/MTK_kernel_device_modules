@@ -194,6 +194,38 @@ struct usb_audio_stream_msg {
 	struct usb_audio_stream_info uainfo;
 };
 
+struct usb_offload_urb_msg {
+	unsigned char enable;
+	unsigned char direction;
+	unsigned int slot_id;
+	struct usb_interface_descriptor intf_desc;
+	struct usb_endpoint_descriptor ep_desc;
+	unsigned long long urb_start_addr;
+	unsigned int urb_size;
+	unsigned long long first_trb;
+	unsigned char cycle_state;
+};
+
+struct usb_offload_urb_complete {
+	unsigned char direction;
+	unsigned int slot_id;
+	unsigned int ep_id;
+	unsigned long long urb_start_addr;
+	unsigned int actual_length;
+	unsigned char more_complete;
+	unsigned long long cur_trb;
+	unsigned char cycle_state;
+	int status;
+};
+
+struct usb_offload_xhci_ep {
+	unsigned char direction;
+	unsigned int slot_id;
+	unsigned int ep_id;
+	unsigned long long cur_trb;
+	unsigned char cycle_state;
+};
+
 struct intf_info {
 	unsigned int data_ep_pipe;
 	unsigned int sync_ep_pipe;
@@ -262,7 +294,6 @@ struct usb_offload_dev {
 extern int ssusb_offload_register(struct ssusb_offload *offload);
 extern int ssusb_offload_unregister(struct device *dev);
 
-
 extern bool usb_offload_ready(void);
 
 extern struct usb_offload_dev *uodev;
@@ -293,6 +324,9 @@ extern unsigned int debug_memory_log;
 	} while (0)
 
 extern u32 sram_version;
+extern struct usb_offload_buffer *usb_offload_get_ring_buf(dma_addr_t phy);
+extern int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
+	enum usb_offload_mem_id mem_type);
 extern int soc_init_aud_intf(void);
 extern int mtk_offload_init_rsv_dram(int min_alloc_order);
 extern int mtk_offload_init_rsv_sram(int min_alloc_order);
@@ -305,4 +339,11 @@ extern bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev);
 extern int mtk_offload_get_rsv_mem_info(enum usb_offload_mem_id mem_id,
 	unsigned long long *phys, unsigned int *size);
 extern bool is_sram(enum usb_offload_mem_id id);
+
+extern unsigned int hid_disable_offload;
+extern void usb_offload_hid_probe(void);
+extern void usb_offload_hid_finish(void);
+extern bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
+extern int usb_offload_hid_start(void);
+extern void usb_offload_register_ipi_recv(void);
 #endif /* __USB_OFFLOAD_H__ */

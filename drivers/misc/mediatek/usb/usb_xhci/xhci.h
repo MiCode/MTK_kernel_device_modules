@@ -2219,6 +2219,8 @@ int xhci_queue_configure_endpoint(struct xhci_hcd *xhci,
 		bool command_must_succeed);
 int xhci_queue_evaluate_context(struct xhci_hcd *xhci, struct xhci_command *cmd,
 		dma_addr_t in_ctx_ptr, u32 slot_id, bool command_must_succeed);
+int xhci_vendor_queue_command_(struct xhci_hcd *xhci, struct xhci_command *cmd,
+		u32 field1, u32 field2, u32 field3, u32 field4, bool command_must_succeed);
 int xhci_queue_reset_ep(struct xhci_hcd *xhci, struct xhci_command *cmd,
 		int slot_id, unsigned int ep_index,
 		enum xhci_ep_reset_type reset_type);
