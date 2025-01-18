@@ -31,6 +31,7 @@
 /* RROT register offset */
 #define RROT_EN				0x000
 #define RROT_RESET			0x008
+#define RROT_VCSEL			0x01c
 #define RROT_CON			0x020
 #define RROT_SHADOW_CTRL		0x024
 #define RROT_GMCIF_CON			0x028
@@ -215,6 +216,7 @@ struct rrot_data {
 	u8 px_per_tick;
 	bool alpha_pq_r2y;	/* WA: fix rrot r2y to BT601 full when alpha resize */
 	bool ddren_off;		/* WA: disable ddren manually after frame done */
+	bool vcsel;		/* route with dedicated DISP VC channel */
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
@@ -257,6 +259,7 @@ static const struct rrot_data mt6991_rrot_data = {
 	.px_per_tick = 2,
 	.alpha_pq_r2y = true,
 	.ddren_off = true,
+	.vcsel = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6991),
@@ -1167,6 +1170,10 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 	/* disable racing dram */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DISPLAY_RACING_EN, 0, U32_MAX);
+	/* select vcsel for different mode */
+	if (rrot->data->vcsel)
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_VCSEL,
+			mml_iscouple(cfg->info.mode) ? 0x7 : 0x0, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
@@ -2034,6 +2041,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	u32 tput_w = rrot_frm->in_size.width, tput_h = rrot_frm->in_size.height;
+	u32 latency;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -2055,12 +2063,11 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 			tput_h = tput_h / rrot->data->px_per_tick;
 	}
 
-	dvfs_cache_sz(cache, tput_w, tput_h, 0);
-	dvfs_cache_log(cache, comp, "rrot");
-
 	/* add rrot rotate max latency for safe */
-	if (dest->rotate != MML_ROT_0)
-		cache->total_latency += 32;
+	latency = dest->rotate == MML_ROT_0 ? 0 : 32;
+
+	dvfs_cache_sz(cache, tput_w, tput_h, 0, latency);
+	dvfs_cache_log(cache, comp, "rrot");
 
 	rrot_backup_crc(comp, task, ccfg);
 

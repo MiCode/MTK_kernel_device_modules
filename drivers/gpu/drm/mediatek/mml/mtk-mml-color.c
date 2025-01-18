@@ -342,7 +342,7 @@ static s32 color_config_post(struct mml_comp *comp, struct mml_task *task,
 	if (dest->pq_config.en_region_pq)
 		px_per_tick = 1;
 	dvfs_cache_sz(cache, color_frm->max_size.width / px_per_tick,
-		color_frm->max_size.height, 0);
+		color_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "color");
 
 	if (dest->pq_config.en_color)

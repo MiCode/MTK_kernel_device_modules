@@ -340,7 +340,8 @@ u32 *rdma_crc_va[MML_PIPE_CNT];
 dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
-int rdma_stash_leading = 12;
+/* leading time in ns */
+int rdma_stash_leading = 12500;
 module_param(rdma_stash_leading, int, 0644);
 
 static s32 rdma_write(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
@@ -1811,7 +1812,11 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (mml_stash_en(cfg->info.mode)) {
 			u32 prefetch;
 			/* prefetch_line_cnt = src_w * src_h * FPS * 12.5us / src_w */
-			u32 prefetch_line_cnt = src->height * rdma_stash_leading * cfg->fps;
+			u32 prefetch_line_cnt = src->height * rdma_stash_leading / 1000 * cfg->fps;
+
+			/* TODO: refine the prefetch_line_cnt, update each frame since fps change
+			 * every frame in dc mode.
+			 */
 
 			if (MML_FMT_COMPRESS(src->format)) {
 				prefetch = (prefetch_line_cnt << 12) | 0x1;
@@ -2166,7 +2171,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 
 	cache->total_datasize += rdma_frm->datasize;
 	dvfs_cache_sz(cache, rdma_frm->max_size.width / rdma->data->px_per_tick,
-		rdma_frm->max_size.height, 0);
+		rdma_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "rdma");
 
 	mml_msg("%s task %p pipe %hhu data %u",

@@ -953,15 +953,17 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	struct mml_comp *comp;
 	u32 i;
 
-	memset(&task->total_bw[0], 0, sizeof(task->total_bw));
-	memset(&task->hrt_bw[0], 0, sizeof(task->hrt_bw));
+	memset(&task->dpc_srt_bw[0], 0, sizeof(task->dpc_srt_bw));
+	memset(&task->dpc_hrt_bw[0], 0, sizeof(task->dpc_hrt_bw));
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
 
-		task->total_bw[comp->sysid] += comp->cur_bw;
-		task->hrt_bw[comp->sysid] += comp->cur_peak;
+		if (cfg->dpc) {
+			task->dpc_srt_bw[comp->sysid] += comp->cur_bw;
+			task->dpc_hrt_bw[comp->sysid] += comp->cur_peak;
+		}
 	}
 }
 
@@ -984,9 +986,9 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 
 			for (sysid = 0; sysid < mml_max_sys; sysid++) {
 				task_srt_max[sysid] =
-					max_t(u32, task_srt_max[sysid], task->total_bw[sysid]);
+					max_t(u32, task_srt_max[sysid], task->dpc_srt_bw[sysid]);
 				task_hrt_max[sysid] =
-					max_t(u32, task_hrt_max[sysid], task->hrt_bw[sysid]);
+					max_t(u32, task_hrt_max[sysid], task->dpc_hrt_bw[sysid]);
 			}
 		}
 
