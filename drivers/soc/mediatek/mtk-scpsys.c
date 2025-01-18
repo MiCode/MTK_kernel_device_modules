@@ -1507,7 +1507,18 @@ static unsigned int mtk_pd_get_performance(struct generic_pm_domain *genpd,
 static int mtk_pd_get_regmap(struct platform_device *pdev, struct regmap **regmap,
 			const char *name)
 {
+	if (!strcmp("smi_comm", name)) {
+		struct device_node *smi_node;
+
+		smi_node = of_parse_phandle(pdev->dev.of_node, name, 0);
+		if (smi_node)
+			*regmap = device_node_to_regmap(smi_node);
+		else
+			*regmap = ERR_PTR(-ENODEV);
+	} else {
 		*regmap = syscon_regmap_lookup_by_phandle(pdev->dev.of_node, name);
+	}
+
 	if (PTR_ERR(*regmap) == -ENODEV) {
 		dev_notice(&pdev->dev, "%s regmap is null(%ld)\n",
 				name, PTR_ERR(*regmap));
