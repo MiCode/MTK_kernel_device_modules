@@ -31,8 +31,8 @@
 
 #endif
 
-uint32_t apu_ce_reg_dump(struct mtk_apu *apu);
-uint32_t apu_ce_sram_dump(struct mtk_apu *apu);
+uint32_t apu_ce_reg_dump(struct device *dev);
+uint32_t apu_ce_sram_dump(struct device *dev);
 int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_ce_excep_remove(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_ce_start_timer_dump_reg(void);
