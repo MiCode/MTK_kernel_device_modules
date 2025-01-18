@@ -520,8 +520,6 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 							mtk_crtc->ovlsys1_regs_pa + i, 0, ~0);
 			}
 		}
-
-	mtk_crtc->need_change_exdma_path = 0;
 }
 
 static int mtk_drm_wait_blank(struct mtk_drm_crtc *mtk_crtc,
