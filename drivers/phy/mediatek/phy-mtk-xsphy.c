@@ -2351,7 +2351,8 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 
 	glb_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	/* optional, may not exist if no u3 phys */
-	if (glb_res) {
+	/* and name is not equal to u2_port_base */
+	if (glb_res && strcmp(glb_res->name, "u2_port_base") != 0) {
 		/* get banks shared by multiple u3 phys */
 		xsphy->glb_base = devm_ioremap_resource(dev, glb_res);
 		if (IS_ERR(xsphy->glb_base)) {
