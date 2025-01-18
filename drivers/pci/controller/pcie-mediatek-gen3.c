@@ -10,6 +10,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/interrupt.h>
 #include <linux/iopoll.h>
 #include <linux/irq.h>
 #include <linux/irqchip/chained_irq.h>
@@ -20,6 +21,7 @@
 #include <linux/msi.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/pci.h>
@@ -324,6 +326,8 @@ struct mtk_msi_set {
  * @dvfs_req_en: pcie wait request to reply ack when pcie exit from P2 state
  * @peri_reset_en: clear peri pcie reset to open pcie phy & mac
  * @dump_cfg: dump info when access config space
+ * @rpm: pcie runtime suspend property
+ * @eint_irq: eint irq for runtime suspend wakeup source
  * @irq: PCIe controller interrupt number
  * @saved_irq_state: IRQ enable state saved at suspend time
  * @irq_lock: lock protecting IRQ register access
@@ -361,6 +365,8 @@ struct mtk_pcie_port {
 	bool soft_off;
 	bool dump_cfg;
 	bool skip_suspend;
+	bool rpm;
+	int eint_irq;
 	int irq;
 	u32 saved_irq_state;
 	raw_spinlock_t irq_lock;
@@ -1192,6 +1198,7 @@ static int mtk_pcie_setup_irq(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
 	struct platform_device *pdev = to_platform_device(dev);
+	struct device_node *eint_test;
 	int err;
 
 	err = mtk_pcie_init_irq_domains(port);
@@ -1204,7 +1211,54 @@ static int mtk_pcie_setup_irq(struct mtk_pcie_port *port)
 
 	irq_set_chained_handler_and_data(port->irq, mtk_pcie_irq_handler, port);
 
+	eint_test = of_parse_phandle(dev->of_node, "eint-irq", 0);
+	if (eint_test) {
+		port->eint_irq = of_irq_get(eint_test, 0);
+		if (port->eint_irq <= 0)
+			dev_info(dev, "Failed to get eint irq number, wakeup source for runtime suspend is not supported\n");
+
+		dev_info(dev, "Got PCIe EINT irq: %d\n", port->eint_irq);
+	}
+
 	return 0;
+}
+
+static irqreturn_t mtk_pcie_eint_handler(int irq, void *data)
+{
+	struct mtk_pcie_port *port = data;
+	struct device *dev = port->dev;
+	struct pci_dev *ep_pdev;
+
+	ep_pdev = pci_get_domain_bus_and_slot(port->port_num, 1, 0);
+	if (ep_pdev) {
+		dev_info(dev, "got %s\n", pci_name(ep_pdev));
+		pm_request_resume(&ep_pdev->dev);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static int mtk_pcie_request_eint_irq(struct mtk_pcie_port *port)
+{
+	int err;
+
+	if (port->eint_irq <= 0)
+		return -EINVAL;
+
+	err = request_irq(port->eint_irq, mtk_pcie_eint_handler,
+			  IRQF_TRIGGER_FALLING, "pcie-eint", port);
+	if (err < 0) {
+		dev_info(port->dev, "failed to request PCIe EINT irq\n");
+		return err;
+	}
+
+	return 0;
+}
+
+static void mtk_pcie_free_eint_irq(struct mtk_pcie_port *port)
+{
+	if (port->eint_irq)
+		free_irq(port->eint_irq, port);
 }
 
 static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
@@ -1310,6 +1364,10 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	if (port->max_link_speed > 0)
 		dev_info(dev, "max speed to GEN%d\n", port->max_link_speed);
 
+	ret = of_property_read_bool(dev->of_node, "mediatek,runtime-suspend");
+	if (ret)
+		port->rpm = true;
+
 	return 0;
 }
 
@@ -1326,6 +1384,11 @@ static int mtk_pcie_peri_reset(struct mtk_pcie_port *port, bool enable)
 			 enable ? "set" : "clear");
 
 	return res.a0;
+}
+
+static int match_any(struct device *dev, void *unused)
+{
+	return 1;
 }
 
 static int mtk_pcie_power_up(struct mtk_pcie_port *port)
@@ -1347,8 +1410,12 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	 */
 	reset_control_deassert(port->mac_reset);
 	/* MAC power on and enable transaction layer clocks */
-	pm_runtime_enable(dev);
-	pm_runtime_get_sync(dev);
+	if (!device_find_child(dev, NULL, match_any)) {
+		pm_runtime_enable(dev);
+		err = pm_runtime_get_sync(dev);
+		if (err)
+			dev_info(dev, "put_ret:%d, rpm_error:%d\n", err, dev->power.runtime_error);
+	}
 
 	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
 	if (err) {
@@ -1388,10 +1455,19 @@ err_clk_init:
 
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
+	struct device *dev = port->dev;
+	int err = 0;
+
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
 
-	pm_runtime_put_sync(port->dev);
-	pm_runtime_disable(port->dev);
+	if (!device_find_child(dev, NULL, match_any)) {
+		err = pm_runtime_put_sync(dev);
+		if (err)
+			dev_info(dev, "put_ret:%d, rpm_error:%d\n", err, dev->power.runtime_error);
+
+		pm_runtime_disable(dev);
+	}
+
 	reset_control_assert(port->mac_reset);
 
 	phy_power_off(port->phy);
@@ -1451,6 +1527,18 @@ err_setup:
 	return err;
 }
 
+static void mtk_pcie_enable_host_bridge_rpm(struct mtk_pcie_port *port)
+{
+	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
+
+	pm_runtime_forbid(&host->dev);
+	pm_runtime_set_active(&host->dev);
+
+	pm_runtime_enable(&host->dev);
+	pm_runtime_allow(&host->dev);
+	pm_runtime_put_noidle(port->dev);
+}
+
 static int mtk_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1483,6 +1571,9 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	}
 
 	port->pcidev = pci_get_slot(host->bus, 0);
+
+	if (port->rpm)
+		mtk_pcie_enable_host_bridge_rpm(port);
 
 	return 0;
 
@@ -2279,6 +2370,7 @@ EXPORT_SYMBOL(mtk_pcie_in_use);
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
+	struct pci_dev *pdev = port->pcidev;
 	int err;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
@@ -2303,6 +2395,9 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 
 		mtk_pcie_dump_pextp_info(port);
 	} else {
+		if (!device_find_child(dev, NULL, match_any))
+			return 0;
+
 		if (mtk_pcie_in_use(port->port_num)) {
 			port->skip_suspend = true;
 			dev_info(port->dev, "port%d in use, keep active\n", port->port_num);
@@ -2320,6 +2415,13 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		pinctrl_pm_select_idle_state(port->dev);
 		mtk_pcie_irq_save(port);
 		mtk_pcie_power_down(port);
+
+		if (port->dev->power.runtime_status && port->rpm) {
+			pdev->current_state = PCI_D3cold;
+			err = mtk_pcie_request_eint_irq(port);
+			if (err)
+				return err;
+		}
 	}
 
 	return 0;
@@ -2328,6 +2430,7 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
+	struct pci_dev *pdev = port->pcidev;
 	int err;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
@@ -2348,10 +2451,18 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 				return err;
 		}
 	} else {
+		if (!device_find_child(dev, NULL, match_any))
+			return 0;
+
 		if (port->port_num == 1 && port->skip_suspend) {
 			port->skip_suspend = false;
 			dev_info(port->dev, "port%d resume done\n", port->port_num);
 			return 0;
+		}
+
+		if (port->dev->power.runtime_status && port->rpm) {
+			pdev->current_state = PCI_D0;
+			mtk_pcie_free_eint_irq(port);
 		}
 
 		err = mtk_pcie_power_up(port);
@@ -2377,6 +2488,7 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 static const struct dev_pm_ops mtk_pcie_pm_ops = {
 	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mtk_pcie_suspend_noirq,
 				      mtk_pcie_resume_noirq)
+	SET_RUNTIME_PM_OPS(mtk_pcie_suspend_noirq, mtk_pcie_resume_noirq, NULL)
 };
 
 int mtk_pcie_disable_refclk(int port)
