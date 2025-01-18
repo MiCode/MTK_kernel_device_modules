@@ -65,6 +65,9 @@ module_param(mml_racing, int, 0644);
 int mml_dl;
 module_param(mml_dl, int, 0644);
 
+int mml_opp_check = 1;
+module_param(mml_opp_check, int, 0644);
+
 int mml_rrot;
 module_param(mml_rrot, int, 0644);
 
@@ -1019,6 +1022,7 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 	const enum mml_orientation rotate = info->dest[0].rotate;
 	const u32 plane = MML_FMT_PLANE(info->src.format);
 	u64 tput, hrt;
+	u32 i;
 
 	/* always assign dual as default */
 	*dual = mml_rrot_single == 1 ? false : true;
@@ -1070,13 +1074,13 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 	 */
 	pixel = max(tputw, destw) * max(tputh, desth) * 11 / 10;
 	tput = pixel / (info->act_time / 1000);
-	mml_msg("%s pixel %u tput %llu %u %u dest %u %u",
-		__func__, pixel, tput, tputw, tputh, destw, desth);
 	if (panel_width > destw)
 		tput = tput * panel_width / destw;
 	if (mml_rrot_single != 2 && tputw * tputh <= MML_DL_RROT_S_PX &&
 		tput < tp->qos[mml_sys_frame].opp_speeds[1]) {
 		*dual = false;
+		if (info_cache)
+			info_cache->dl_opp = 1;
 		goto check_hrt;
 	}
 
@@ -1084,10 +1088,22 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 	tput = pixel / (info->act_time / 1000);
 	if (tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1]) {
 		*dual = mml_rrot_single == 1 ? false : true;
-		goto check_hrt;
+		goto find_opp;
 	}
 
+	mml_msg("%s pixel %u tput %llu %u %u dest %u %u",
+		__func__, pixel, tput, tputw, tputh, destw, desth);
+
 	return false;
+
+find_opp:
+	if (info_cache) {
+		for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++) {
+			if (tput <= tp->qos[mml_sys_frame].opp_speeds[i])
+				break;
+		}
+		info_cache->dl_opp = i;
+	}
 
 check_hrt:
 	/* calculate source data size as bandwidth */
@@ -1095,10 +1111,17 @@ check_hrt:
 	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1)
 		hrt += (u64)mml_color_get_min_uv_size(info->src.format, srcw, srch) * (plane - 1);
 	hrt = hrt * 1000 / info->act_time;
-	mml_msg("%s tput %llu hrt %llu", __func__, tput, hrt);
+
+	/* check if info cache provide in only query mode path
+	 * skip log in select topology path
+	 */
+	if (info_cache)
+		mml_msg("%s pixel %u tput %llu %u %u dest %u %u hrt %llu opp %u",
+			__func__, pixel, tput, tputw, tputh, destw, desth, hrt,
+			info_cache->dl_opp);
+
 	if (hrt <= mml_max_hrt)
 		return true;
-
 	return false;
 }
 
@@ -1109,7 +1132,8 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 	u32 destw = info->dest[0].data.width;
 	u32 desth = info->dest[0].data.height;
 	const enum mml_orientation rotate = info->dest[0].rotate;
-	u32 max_clock, pixel;
+	u32 max_clock, pixel, tput;
+	u32 i;
 
 	if (!info_cache) {
 		/* not checking throughput */
@@ -1157,7 +1181,15 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 	if (info_cache->duration > MML_DC_MAX_DURATION_US)
 		return false;
 
-	mml_msg("%s pixel %u duration %u", __func__, pixel, info_cache->duration);
+	tput = pixel / info_cache->remain;
+	for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++) {
+		if (tput <= tp->qos[mml_sys_frame].opp_speeds[i])
+			break;
+	}
+	info_cache->dc_opp = i;
+
+	mml_msg("%s pixel %u duration %u tput %u opp %u remain %u",
+		__func__, pixel, info_cache->duration, tput, i, info_cache->remain);
 	return true;
 }
 
@@ -1379,7 +1411,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 
 	/* get mid opp frequency */
 	if (tp && tp->qos[mml_sys_frame].opp_cnt) {
-		if (!tp_check_tput_dl(info, tp, panel_width, panel_height, &dual, NULL)) {
+		if (!tp_check_tput_dl(info, tp, panel_width, panel_height, &dual, info_cache)) {
 			*reason = mml_query_opp_out;
 			goto decouple;
 		}
@@ -1515,6 +1547,7 @@ decouple:
 static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
+	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	enum mml_mode mode;
 
 	if (unlikely(mml_path_mode))
@@ -1530,19 +1563,22 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		    info->dest[0].compose.width <= 9)
 			goto not_support;
 		if (mml_isdc(info->mode))
-			return info->mode;
-		return MML_MODE_MML_DECOUPLE;
+			mode = info->mode;
+		else
+			mode = MML_MODE_MML_DECOUPLE;
+		goto check_dc_tput;
 	}
 
 	/* skip all racing mode check if use prefer dc */
 	if (mml_isdc(info->mode) || info->mode == MML_MODE_MDP_DECOUPLE) {
 		*reason = mml_query_userdc;
-		goto decouple_user;
+		mode = info->mode;
+		goto check_dc_tput;
 	}
 
 	if (info->mode == MML_MODE_APUDC) {
 		*reason = mml_query_apudc;
-		goto decouple_user;
+		return info->mode;
 	}
 
 	/* rotate go to racing (inline rotate) */
@@ -1552,17 +1588,24 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	else
 		mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
 
+check_dc_tput:
 	if (mml_isdc(mode)) {
-		struct mml_topology_cache *tp = mml_topology_get_cache(mml);
-
-		if (!tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache))
-			return MML_MODE_NOT_SUPPORT;
+		/* dl mode not support, check if dc support */
+		if (!tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache)) {
+			*reason = mml_query_tp;
+			mode = MML_MODE_NOT_SUPPORT;
+		}
+	} else if (mml_opp_check) {
+		/* dl mode support, compare opp with dc */
+		if (tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
+			info_cache->dl_opp > info_cache->dc_opp) {
+			*reason = mml_query_lowpower;
+			mode = MML_MODE_MML_DECOUPLE;
+		}
 	}
 
 	return mode;
 
-decouple_user:
-	return info->mode;
 not_support:
 	return MML_MODE_NOT_SUPPORT;
 }

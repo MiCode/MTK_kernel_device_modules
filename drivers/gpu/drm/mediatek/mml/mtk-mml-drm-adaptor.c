@@ -352,6 +352,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			infos[i].mode = MML_MODE_MML_DECOUPLE2;
 		else if (i > 0 && infos[i].mode == 0)
 			infos[i].mode = MML_MODE_MML_DECOUPLE;
+		/* use mml-frame remain time to compare dl/dc opp */
+		info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 		mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
 		if (mode == MML_MODE_MML_DECOUPLE) {
 			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
