@@ -417,10 +417,10 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6877 = {
 	.larb_icc_path_names = larb_icc_path_names_mt6877,
 	.max_ratio = 64,
 	.hrt_LPDDR4 = {
-		.hrt_bw = {5341, 0, 0},
-		.hrt_total_bw = 13451, /* Todo: Use DRAMC API */
-		.md_speech_bw = { 5341, 5341},
-		.hrt_ratio = {1000, 860, 880, 880},
+		.hrt_bw = {5272, 0, 0},
+		.hrt_total_bw = 17064, /* Todo: Use DRAMC API */
+		.md_speech_bw = { 5272, 5272},
+		.hrt_ratio = {1000, 880, 900, 1000},
 		.blocking = true,
 		.emi_ratio = 1000,
 	},
