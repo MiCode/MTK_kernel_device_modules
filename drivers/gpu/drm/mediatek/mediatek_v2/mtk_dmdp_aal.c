@@ -562,6 +562,12 @@ static int disp_mdp_aal_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct mtk_dmdp_aal_data mt6885_dmdp_aal_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.block_info_00_mask = 0x3FFFFFF,
+};
+
 static const struct mtk_dmdp_aal_data mt6895_dmdp_aal_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
@@ -599,6 +605,7 @@ static const struct mtk_dmdp_aal_data mt6991_dmdp_aal_driver_data = {
 };
 
 static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
+	{ .compatible = "mediatek,mt6885-dmdp-aal", .data = &mt6885_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6983-dmdp-aal", .data = &mt6983_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6895-dmdp-aal", .data = &mt6895_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6985-dmdp-aal", .data = &mt6985_dmdp_aal_driver_data},
