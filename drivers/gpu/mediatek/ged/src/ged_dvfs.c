@@ -483,6 +483,7 @@ unsigned long ged_query_info(GED_INFO eType)
 		return gpu_block;
 	case GED_PRE_FREQ:
 		ged_get_freq_by_idx(g_ui32PreFreqID);
+		fallthrough;
 	case GED_PRE_FREQ_IDX:
 		return g_ui32PreFreqID;
 	case GED_CUR_FREQ:
@@ -906,7 +907,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		// if no force opp, stack opp must equal to top opp
 		if (FORCE_OPP < 0 && FORCE_TOP_OPP < 0 &&
 			topNewFreqID != stackNewFreqID) {
-			GED_LOGE("[DVFS_ASYNC] topFreqID(%d) != stackFreqID(%d), force top = stack",
+			GED_LOGE("[DVFS_ASYNC] topFreqID(%lu) != stackFreqID(%lu), force top = stack",
 					topNewFreqID, stackNewFreqID);
 			topNewFreqID = stackNewFreqID;
 		}

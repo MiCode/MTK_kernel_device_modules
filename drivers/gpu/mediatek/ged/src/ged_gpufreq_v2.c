@@ -85,7 +85,7 @@ static int ged_get_top_idx_by_freq(int gpu_freq_tar, int minfreq_idx)
 GED_ERROR ged_gpufreq_init(void)
 {
 	int i, j, k = 0;
-	int min_freq, freq_scale = 0;
+	int min_freq = 0, freq_scale = 0;
 	unsigned int core_num = 0;
 	const struct gpufreq_opp_info *opp_table;
 	const struct gpufreq_opp_info *opp_top_table;
