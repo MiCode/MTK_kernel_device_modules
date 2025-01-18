@@ -6,6 +6,7 @@
 #ifndef MTK_UART_APDMA_H
 #define MTK_UART_APDMA_H
 
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 #define KERNEL_mtk_save_uart_apdma_reg    mtk_save_uart_apdma_reg
 #define KERNEL_mtk_uart_apdma_data_dump   mtk_uart_apdma_data_dump
 #define KERNEL_mtk_uart_rx_setting   mtk_uart_rx_setting
@@ -24,7 +25,7 @@
 #define KERNEL_mtk_uart_apdma_enable_vff  mtk_uart_apdma_enable_vff
 #define KERNEL_mtk_uart_get_apdma_handler_state  mtk_uart_get_apdma_handler_state
 #define KERNEL_mtk_uart_apdma_polling_tx_finish  mtk_uart_apdma_polling_tx_finish
-#define KERNEL_mtk_uart_set_res_status	mtk_uart_set_res_status
+#endif
 
 void mtk_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf);
 void mtk_uart_apdma_data_dump(struct dma_chan *chan);
@@ -44,5 +45,5 @@ void mtk_uart_set_apdma_rx_state (bool enable);
 void mtk_uart_apdma_enable_vff(bool enable);
 bool mtk_uart_get_apdma_handler_state(void);
 int mtk_uart_apdma_polling_tx_finish(void);
-void mtk_uart_set_res_status(unsigned int status);
+
 #endif /* MTK_UART_APDMA_H */

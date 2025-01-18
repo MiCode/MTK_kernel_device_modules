@@ -12,5 +12,5 @@
 void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cb);
 void uarthub_drv_callbacks_unregister(void);
 #endif
-#endif
 
+#endif
