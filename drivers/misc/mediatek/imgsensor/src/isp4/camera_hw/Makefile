@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2020 MediaTek Inc.
 
+ccflags-y += -I$(MTK_CUSTOM_PATH)/imgsensor/inc \
+
 IMGSENSOR_SUBDRV_OBJ := \
 	$(subdrv-rpath)/regulator/regulator.o \
 	$(subdrv-rpath)/gpio/gpio.o \
