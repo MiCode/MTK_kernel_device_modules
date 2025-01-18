@@ -1696,7 +1696,7 @@
 
 		iommu0: m4u@14016000 {
 			cell-index = <0>;
-			compatible = "mediatek,iommu_v0";
+			compatible = "mediatek,mt6781-m4u";
 			reg = <0 0x14016000 0 0x1000>;
 			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2>,
 					<&smi_larb4 &smi_larb7 &smi_larb9>,
@@ -1705,8 +1705,7 @@
 					<&smi_larb19 &smi_larb20>;
 			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&mmsys_config CLK_MM_SMI_IOMMU>,
-				 <&scpsys SCP_SYS_DIS>;
-			clock-names = "disp-iommu-ck", "power";
+			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
 
