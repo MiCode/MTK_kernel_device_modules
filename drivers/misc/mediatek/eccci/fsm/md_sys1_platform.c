@@ -2090,17 +2090,16 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	CCCI_DEBUG_LOG(0, TAG,
 		"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
 
-
-#ifdef USING_PM_RUNTIME
+	/* used to match mtcmos ref count for symmetrical on-off */
+#if (IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY))
+	ret = clk_prepare_enable(clk_table[0].clk_ref);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] dummy: clk: MD MTCMOS ON %d\n", ret);
+#else
 	pm_runtime_enable(&dev_ptr->dev);
 	dev_pm_syscore_device(&dev_ptr->dev, true);
-	if (md_cd_plat_val_ptr.md_gen > 6293) {
-		CCCI_NORMAL_LOG(0, TAG,
-			"[POWER ON] dummy: MD MTCMOS ON start\n");
-		retval = pm_runtime_get_sync(&dev_ptr->dev); /* match lk on */
-		CCCI_NORMAL_LOG(0, TAG,
-			"[POWER ON] dummy: MD MTCMOS ON end %d\n", retval);
-	}
+	retval = pm_runtime_get_sync(&dev_ptr->dev);
+	CCCI_NORMAL_LOG(0, TAG,
+		"[POWER ON] dummy: pm: MD MTCMOS ON %d\n", retval);
 #endif
 
 	return 0;
