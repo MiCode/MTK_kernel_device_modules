@@ -692,6 +692,12 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 		gs[GS_RDMA_VALID_TH_BLOCK_ULTRA] = 1;
 
 	gs[GS_RDMA_VDE_BLOCK_ULTRA] = 0;
+	if (priv->data->mmsys_id == MMSYS_MT6877) {
+		if (gsc->is_vdo_mode)
+			gs[GS_RDMA_VDE_BLOCK_ULTRA] = 1;
+		else
+			gs[GS_RDMA_VDE_BLOCK_ULTRA] = 0;
+	}
 
 	/* DISP_RDMA_FIFO_CON */
 
@@ -956,6 +962,7 @@ static void mtk_rdma_config(struct mtk_ddp_comp *comp,
 	unsigned int w;
 	struct mtk_disp_rdma *rdma = comp_to_rdma(comp);
 	bool *rdma_memory_mode = comp->comp_mode;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	//for dual pipe one layer
 	if (comp->mtk_crtc->is_dual_pipe)
@@ -991,9 +998,14 @@ static void mtk_rdma_config(struct mtk_ddp_comp *comp,
 
 	/* always set disp RDMA 10bit, no by panel(8bit/10bit) */
 	/* dither setting will set by panel */
-	mtk_ddp_write_mask(comp, RDMA_RG_PIXEL_10_BIT,
-			   DISP_REG_RDMA_GLOBAL_CON, RDMA_RG_PIXEL_10_BIT,
-			   handle);
+	if (priv->data->mmsys_id == MMSYS_MT6877)
+		mtk_ddp_write_mask(comp, 0,
+				DISP_REG_RDMA_GLOBAL_CON, RDMA_RG_PIXEL_10_BIT,
+				handle);
+	else
+		mtk_ddp_write_mask(comp, RDMA_RG_PIXEL_10_BIT,
+				DISP_REG_RDMA_GLOBAL_CON, RDMA_RG_PIXEL_10_BIT,
+				handle);
 
 #ifdef IF_ZERO
 	/*

@@ -4288,17 +4288,20 @@ same with 6873
 #define MT6877_DISP_OVL0_MOUT_EN 0xf04
 
 #define MT6877_MMSYS_OVL_CON 0xF04
-
+	#define MT6877_DISP_OVL0_GO_BLEND       BIT(0)
+	#define MT6877_DISP_OVL0_GO_BG          BIT(1)
+	#define MT6877_DISP_OVL0_2L_GO_BLEND    BIT(2)
+	#define MT6877_DISP_OVL0_2L_GO_BG       BIT(3)
 #define MT6877_DISP_RDMA2_RSZ0_RSZ1_SOUT_SEL  0xF08
 	#define MT6877_RSZ0_SOUT_TO_DISP_OVL0_2L     (0)
 	#define MT6877_RSZ0_SOUT_TO_DISP_OVL0        (1)
+#define MT6877_DISP_REG_CONFIG_DISP_RDMA0_RSZ0_SOUT_SEL 0xF0C
+	#define MT6877_RDMA0_SOUT_TO_DISP_DSI0_SEL     (0)
+	#define MT6877_RDMA0_SOUT_TO_DISP_COLOR0     (1)
 #define MT6877_DISP_REG_CONFIG_DISP_SPR0_MOUT_EN 0xF10
 	#define MT6877_SPR0_MOUT_TO_DISP_DSI0_SEL     BIT(0)
 	#define MT6877_SPR0_MOUT_TO_DISP_WDMA0_SEL     BIT(1)
 	#define MT6877_SPR0_MOUT_TO_DISP_DSC0_SEL     BIT(2)
-#define MT6877_DISP_REG_CONFIG_DISP_RDMA0_RSZ0_SOUT_SEL 0xF0C
-	#define MT6877_RDMA0_SOUT_TO_DISP_DSI0_SEL     (0)
-	#define MT6877_RDMA0_SOUT_TO_DISP_COLOR0     (1)
 #define MT6877_DISP_REG_CONFIG_DISP_TOVL0_OUT0_MOUT_EN 0xF14
 	#define MT6877_OVL0_2L_MOUT_TO_DISP_RDMA0_SEL     BIT(0)
 	#define MT6877_OVL0_2L_MOUT_TO_DISP_RSZ0_SEL     BIT(1)
@@ -4312,17 +4315,22 @@ same with 6873
 	#define MT6877_RSZ0_MOUT_TO_DISP_WDMA0_SEL              BIT(1)
 	#define MT6877_RSZ0_MOUT_TO_DISP_RDMA2_RSZ0_RSZ1_SOUT  BIT(2)
 #define MT6877_DISP_REG_CONFIG_DISP_DITHER0_MOUT_EN 0xF20
-	#define MT6877_DITHER0_MOUT_TO_DISP_DSI0_SEL     (0)
+	#define MT6877_DITHER0_MOUT_TO_DISP_DISP_BYPASS_SPR0_SEL     BIT(0)
+	#define MT6877_DITHER0_MOUT_TO_DISP_DISP_CM0       BIT(1)
 	#define MT6877_DITHER0_MOUT_TO_DISP_DISP_WDMA0       BIT(2)
 #define MT6877_DISP_REG_CONFIG_DISP_RSZ0_SEL_IN 0xF24
-	#define MT6877_RSZ0_SEL_IN_FROM_DISP_OVL0_2L     (0)
-	#define MT6877_RSZ0_SEL_IN_FROM_DISP_OVL0        (1)
+	#define MT6877_RSZ0_FROM_DISP_OVL0_2L     (0)
+	#define MT6877_RSZ0_FROM_DISP_OVL0        (1)
 #define MT6877_DISP_REG_CONFIG_DISP_RDMA0_SEL_IN 0xF28
 	#define MT6877_RDMA0_SEL_IN_FROM_DISP_OVL0     0
 	#define MT6877_RDMA0_SEL_IN_FROM_DISP_OVL0_2L       2
+#define MT6877_DISP_REG_CONFIG_DISP_BYPASS_SPR0_SEL_IN 0xF2C
+	#define MT6877_SEL_IN_FROM_DISP_DITHER0_MOUT     (0)
+	#define MT6877_SEL_IN_FROM_DISP_SPR0     (1)
 #define MT6877_DISP_REG_CONFIG_DSI0_SEL_IN 0xF30
-	#define MT6877_DSI0_SEL_IN_FROM_DISP_RDMA0_RSZ0_SOUT   (0)
-	#define MT6877_DSI0_SEL_IN_FROM_DISP_DITHER0       (1)
+	#define MT6877_SEL_IN_FROM_DISP_RDMA0_RSZ0_SOUT   (0)
+	#define MT6877_SEL_IN_FROM_DISP_SPR0_MOUT       (1)
+	#define MT6877_SEL_IN_FROM_DISP_DSC_WRAP0       (2)
 #define MT6877_DISP_REG_CONFIG_DISP_WDMA0_SEL_IN 0xF34
 	#define MT6877_WDMA0_SEL_IN_FROM_DISP_DITHER0          (0)
 	#define MT6877_WDMA0_SEL_IN_FROM_DISP_RSZ0		(1)
@@ -23868,7 +23876,11 @@ static int mtk_ddp_mout_en_MT6877(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_DITHER0 &&
 		next == DDP_COMPONENT_SPR0_VIRTUAL) {
 		*addr = MT6877_DISP_REG_CONFIG_DISP_DITHER0_MOUT_EN;
-		value = MT6877_DITHER0_MOUT_TO_DISP_DSI0_SEL;
+		value = MT6877_DITHER0_MOUT_TO_DISP_DISP_BYPASS_SPR0_SEL;
+	} else if (cur == DDP_COMPONENT_DITHER0 &&
+		next == DDP_COMPONENT_CM0) {
+		*addr = MT6877_DISP_REG_CONFIG_DISP_DITHER0_MOUT_EN;
+		value = MT6877_DITHER0_MOUT_TO_DISP_DISP_CM0;
 	} else if (cur == DDP_COMPONENT_SPR0_VIRTUAL &&
 		next == DDP_COMPONENT_DSI0) {
 		*addr = MT6877_DISP_REG_CONFIG_DISP_SPR0_MOUT_EN;
@@ -23898,11 +23910,15 @@ static int mtk_ddp_sel_in_MT6877(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_RDMA0 &&
 		next == DDP_COMPONENT_DSI0) {
 		*addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
-		value = MT6877_DSI0_SEL_IN_FROM_DISP_RDMA0_RSZ0_SOUT;
+		value = MT6877_SEL_IN_FROM_DISP_RDMA0_RSZ0_SOUT;
 	} else if (cur == DDP_COMPONENT_DITHER0 &&
 		next == DDP_COMPONENT_DSI0) {
 		*addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
-		value = MT6877_DSI0_SEL_IN_FROM_DISP_DITHER0;
+		value = MT6877_SEL_IN_FROM_DISP_SPR0_MOUT;
+	} else if (cur == DDP_COMPONENT_DSC0 &&
+		next == DDP_COMPONENT_DSI0) {
+		*addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
+		value = MT6877_SEL_IN_FROM_DISP_DSC_WRAP0;
 	/*DISP_WDMA0_SEL*/
 	} else if (cur == DDP_COMPONENT_DITHER0 &&
 		next == DDP_COMPONENT_WDMA0) {
@@ -23920,11 +23936,19 @@ static int mtk_ddp_sel_in_MT6877(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_OVL0_2L &&
 		next == DDP_COMPONENT_RSZ0) {
 		*addr = MT6877_DISP_REG_CONFIG_DISP_RSZ0_SEL_IN;
-		value = MT6877_RSZ0_SEL_IN_FROM_DISP_OVL0_2L;
+		value = MT6877_RSZ0_FROM_DISP_OVL0_2L;
 	} else if (cur == DDP_COMPONENT_OVL0 &&
 		next == DDP_COMPONENT_RSZ0) {
 		*addr = MT6877_DISP_REG_CONFIG_DISP_RSZ0_SEL_IN;
-		value = MT6877_RSZ0_SEL_IN_FROM_DISP_OVL0;
+		value = MT6877_RSZ0_FROM_DISP_OVL0;
+	} else if (cur == DDP_COMPONENT_SPR0 &&
+		next == DDP_COMPONENT_SPR0_VIRTUAL) {
+		*addr = MT6877_DISP_REG_CONFIG_DISP_BYPASS_SPR0_SEL_IN;
+		value = MT6877_SEL_IN_FROM_DISP_SPR0;
+	} else if (cur == DDP_COMPONENT_SPR0_VIRTUAL &&
+		next == DDP_COMPONENT_DSI0) {
+		*addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
+		value = MT6877_SEL_IN_FROM_DISP_SPR0_MOUT;
 	/*No cur or next component*/
 	} else {
 		value = -1;
@@ -23975,36 +23999,36 @@ static int mtk_ddp_ovl_bg_blend_en_MT6877(const struct mtk_mmsys_reg_data *data,
 	if (cur == DDP_COMPONENT_OVL0_2L &&
 		next == DDP_COMPONENT_OVL0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_2L_GO_BG;
+		value = MT6877_DISP_OVL0_2L_GO_BG;
 	} else if (cur == DDP_COMPONENT_OVL0_2L &&
 		next == DDP_COMPONENT_RSZ0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_2L_GO_BLEND;
+		value = MT6877_DISP_OVL0_2L_GO_BLEND;
 	} else if (cur == DDP_COMPONENT_OVL0_2L &&
 		next == DDP_COMPONENT_RDMA0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_2L_GO_BLEND;
+		value = MT6877_DISP_OVL0_2L_GO_BLEND;
 	} else if (cur == DDP_COMPONENT_OVL0_2L &&
 		next == DDP_COMPONENT_WDMA0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_2L_GO_BLEND;
+		value = MT6877_DISP_OVL0_2L_GO_BLEND;
 	/*OVL0*/
 	} else if (cur == DDP_COMPONENT_OVL0 &&
 		next == DDP_COMPONENT_OVL0_2L) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_GO_BG;
+		value = MT6877_DISP_OVL0_GO_BG;
 	} else if (cur == DDP_COMPONENT_OVL0 &&
 		next == DDP_COMPONENT_RSZ0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_GO_BLEND;
+		value = MT6877_DISP_OVL0_GO_BLEND;
 	} else if (cur == DDP_COMPONENT_OVL0 &&
 		next == DDP_COMPONENT_RDMA0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_GO_BLEND;
+		value = MT6877_DISP_OVL0_GO_BLEND;
 	} else if (cur == DDP_COMPONENT_OVL0 &&
 		next == DDP_COMPONENT_WDMA0) {
 		*addr = MT6877_MMSYS_OVL_CON;
-		value = DISP_OVL0_GO_BLEND;
+		value = MT6877_DISP_OVL0_GO_BLEND;
 	/*No cur or next component*/
 	} else {
 		value = -1;
@@ -26474,6 +26498,40 @@ void mtk_ddp_remove_dsc_prim_MT6853(struct mtk_drm_crtc *mtk_crtc,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 
 	addr = MT6853_DISP_REG_CONFIG_DSI0_SEL_IN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+}
+
+void mtk_ddp_insert_dsc_prim_MT6877(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* DISP_DITHER0_MOUT -> DISP_DSC_WRAP0 */
+	addr = MT6877_DISP_REG_CONFIG_DISP_SPR0_MOUT_EN;
+	value = MT6877_SPR0_MOUT_TO_DISP_DSC0_SEL;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
+	value = SEL_IN_FROM_DISP_DSC0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+}
+
+void mtk_ddp_remove_dsc_prim_MT6877(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* DISP_DITHER0_MOUT -> DISP_DSC_WRAP0 */
+	addr = MT6877_DISP_REG_CONFIG_DISP_SPR0_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	addr = MT6877_DISP_REG_CONFIG_DSI0_SEL_IN;
 	value = 0;
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
