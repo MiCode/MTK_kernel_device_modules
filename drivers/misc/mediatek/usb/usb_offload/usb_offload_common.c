@@ -2930,6 +2930,8 @@ static long usb_offload_ioctl(struct file *fp,
 		uodev->is_streaming = uodev->tx_streaming || uodev->rx_streaming;
 
 		if (!uainfo.enable && !uodev->is_streaming && sram_version == 0x3) {
+			/* stop offload hid */
+			usb_offload_hid_stop();
 			/* power-off sram if no streaming */
 			ret = xhci_backup_ir(uodev);
 			if (ret != 0) {

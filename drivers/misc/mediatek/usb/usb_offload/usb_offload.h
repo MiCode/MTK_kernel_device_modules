@@ -330,8 +330,9 @@ extern bool is_sram(enum usb_offload_mem_id id);
 
 extern unsigned int hid_disable_offload;
 extern void usb_offload_hid_probe(void);
-extern void usb_offload_hid_finish(void);
-extern bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
 extern int usb_offload_hid_start(void);
+extern void usb_offload_hid_finish(void);
+extern void usb_offload_hid_stop(void);
+extern bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
 extern void usb_offload_register_ipi_recv(void);
 #endif /* __USB_OFFLOAD_H__ */
