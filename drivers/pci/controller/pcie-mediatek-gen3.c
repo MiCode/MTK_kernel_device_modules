@@ -593,9 +593,14 @@ static void mtk_pcie_save_restore_l1ss(struct mtk_pcie_port *port, bool save)
 
 static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 {
-	struct pci_dev *pdev = port->pcidev;
+	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
+	struct pci_dev *pdev;
 	unsigned long flags;
 
+	if (!port->pcidev)
+		port->pcidev = pci_get_slot(host->bus, 0);
+
+	pdev = port->pcidev;
 	spin_lock_irqsave(&port->cfg_lock, flags);
 
 	if (port->cfg_saved && save) {
@@ -1613,7 +1618,8 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 		goto err_probe;
 	}
 
-	port->pcidev = pci_get_slot(host->bus, 0);
+	if (!port->pcidev)
+		port->pcidev = pci_get_slot(host->bus, 0);
 
 	if (port->rpm)
 		mtk_pcie_enable_host_bridge_rpm(port);
@@ -1659,7 +1665,8 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 		return err;
 	}
 
-	pci_dev_put(port->pcidev);
+	if (port->pcidev)
+		pci_dev_put(port->pcidev);
 
 	return 0;
 }
