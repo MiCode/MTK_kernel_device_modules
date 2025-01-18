@@ -112,11 +112,13 @@ void mtk_freq_limit_notifier_register(void)
 
 void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
-	unsigned long cap_ceiling;
+	unsigned long cap_ceiling, capacity_orig = capacity_orig_of(cpu);
 
 	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max_capacity(cpu));
 	*capacity = clamp_t(unsigned long, cap_ceiling,
 		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
+	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(thermal_pressure, cpu)));
+
 }
 
 unsigned long cpu_cap_ceiling(int cpu)

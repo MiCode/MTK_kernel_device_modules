@@ -1006,8 +1006,8 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_vh_set_wake_flags failed\n");
 
 
-	//ret = register_trace_android_rvh_update_cpu_capacity(
-	//		mtk_update_cpu_capacity, NULL);
+	ret = register_trace_android_rvh_update_cpu_capacity(
+			mtk_update_cpu_capacity, NULL);
 	if (ret)
 		pr_info("register android_rvh_update_cpu_capacity failed\n");
 
