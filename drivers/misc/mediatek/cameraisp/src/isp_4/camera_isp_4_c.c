@@ -109,7 +109,10 @@
 #endif
 
 #include <archcounter_timesync.h>
+
+#ifdef CCU_HELP
 #include <ccu_inc.h>
+#endif
 
 /*  */
 #ifndef MTRUE
@@ -7178,8 +7181,10 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			unsigned long long reg_trans_Time;
 			unsigned long long sum;
 
+#ifdef CCU_HELP
 			ccu_get_timestamp(&hwTickCnt_ccu_direct[0],
 				&hwTickCnt_ccu_direct[1]);
+#endif
 
 			pr_debug("hwTickCnt_ccu_direct[0]:%u,hwTickCnt_ccu_direct[1]:%u",
 				hwTickCnt_ccu_direct[0],
@@ -9939,6 +9944,7 @@ static signed int __init ISP_Init(void)
 		}
 	}
 
+#ifdef P2_HELP
 #ifndef EP_CODE_MARK_CMDQ
 	/* Register ISP callback */
 	pr_info("register isp callback for MDP");
@@ -9951,6 +9957,7 @@ static signed int __init ISP_Init(void)
 	pr_info("register isp callback for GCE");
 	cmdqCoreRegisterDebugRegDumpCB(ISP_BeginGCECallback,
 				ISP_EndGCECallback);
+#endif
 #endif
 	/* m4u_enable_tf(M4U_PORT_CAM_IMGI, 0);*/
 
