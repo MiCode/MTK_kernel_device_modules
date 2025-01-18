@@ -5962,7 +5962,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#size-cells = <2>;
 			ranges;
 			mediatek,hwrscs-vers = <2>;
-			mediatek,noise-still-tr;
 			cdp-block;
 			status = "disabled";
 
@@ -5995,7 +5994,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			#size-cells = <2>;
 			ranges;
 			mediatek,hwrscs-vers = <2>;
-			mediatek,noise-still-tr;
 			cdp-block;
 			status = "disabled";
 
