@@ -175,6 +175,7 @@ static int32_t ois_hall_cnt;
 static int32_t ois_hall_warn;
 static int32_t ois_debug_en;
 static int32_t ois_hfmgr_test;
+static int32_t ois_gyro_offset_cali;
 static u16 dw_ois_mode;
 
 static struct hf_manager_event hf_mgr_event;
@@ -483,6 +484,17 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	u16 i2c_readvalue = 0;
 	u16 i2cret_ver = 0, i2cret_date = 0;
 
+	// for gyro offset cali
+	u16 i2cret_gyroOffsetX = 0, i2cret_gyroOffsetY = 0;
+	int pt_avg = 0, i = 0;
+	s16 msg = 0;
+	int s32_dat_x = 0, s32_dat_y = 0;
+	u16 same1 = 0, same2 = 0;
+	u16 u16_read1_prv = 0, u16_read2_prv = 0;
+	u16 i2cret_temp_read_X = 0, i2cret_temp_read_Y = 0;
+	u16 ofs_x = 0, ofs_y = 0;
+	u16 static_gyro_criteria = 0x800;
+
 	m_client = client;
 	dw_ois_mode = OIS_MODEINIT;
 
@@ -606,6 +618,100 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	I2C_OPERATION_CHECK(ret);
 	mdelay(1);
 	LOG_INF("stream on, servo on dw9781d\n");
+
+	//gyro offset cali: using method 2
+	if (ois_gyro_offset_cali == 1) {
+		mdelay(20);
+
+		pt_avg = 32;
+
+		ret = ois_i2c_wr_u16(client, 0x7015, SERVO_ON);
+		I2C_OPERATION_CHECK(ret);
+
+		for (i = 0; i < pt_avg; i++) {
+			ret = ois_i2c_rd_u16(client, 0x70F0, &i2cret_temp_read_X);
+			ret = ois_i2c_rd_u16(client, 0x70F1, &i2cret_temp_read_Y);
+
+			LOG_INF("gyro offset calibration: RawX(%d), RawY(%d)\n",
+				(s16)i2cret_temp_read_X,
+				(s16)i2cret_temp_read_Y);
+
+			s32_dat_x += (s16)i2cret_temp_read_X;
+			s32_dat_y += (s16)i2cret_temp_read_Y;
+
+			if (i != 1) {
+				if (u16_read1_prv == i2cret_temp_read_X)
+					same1++;
+				if (u16_read2_prv == i2cret_temp_read_Y)
+					same2++;
+			}
+			u16_read1_prv = i2cret_temp_read_X;
+			u16_read2_prv = i2cret_temp_read_Y;
+		}
+
+		ofs_x = (u16)(s32_dat_x / pt_avg);
+		ofs_y = (u16)(s32_dat_y / pt_avg);
+
+		LOG_INF("gyro offset calibration: ofs_x(%d), ofs_y(%d)\n", ofs_x, ofs_y);
+
+		if (static_gyro_criteria <= abs((s16)ofs_x)) {
+			LOG_INF("gyro offset calibration: fail! X over spec !!\n");
+			msg = -10;
+			goto END_GYRO_OFFSET;
+		} else if (static_gyro_criteria <= abs((s16)ofs_y)) {
+			LOG_INF("gyro offset calibration: fail! Y over spec !!\n");
+			msg = -20;
+			goto END_GYRO_OFFSET;
+		}
+
+		if ((same1 >= (pt_avg-3)) || (same2 >= (pt_avg-3))) {
+			LOG_INF("gyro offset calibration: data abnormal!!!!!\n");
+			msg = -1;
+			goto END_GYRO_OFFSET;
+		}
+
+		ret = ois_i2c_wr_u16(client, 0x70F8, ofs_x);
+		I2C_OPERATION_CHECK(ret);
+		ret = ois_i2c_wr_u16(client, 0x70F9, ofs_y);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(10);
+
+		ret = ois_i2c_wr_u16(client, 0x71DD, 0x8000);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(50);
+		LOG_INF("gyro offset calibration: OK!!!!!!!\n");
+
+		// read gyro offset value X, Y
+		ret = ois_i2c_rd_u16(client, 0x70F8, &i2cret_gyroOffsetX);
+		ret = ois_i2c_rd_u16(client, 0x70F9, &i2cret_gyroOffsetY);
+		LOG_INF("Gyro offset X(0x%x), Y(0x%x)", i2cret_gyroOffsetX, i2cret_gyroOffsetY);
+
+		// save calibration data
+		ret = ois_i2c_wr_u16(client, 0x7011, 0x4000);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(1);
+		ret = ois_i2c_wr_u16(client, 0x7011, 0x00AA);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(10);
+		ret = ois_i2c_wr_u16(client, 0x7010, 0x8000);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(100);
+
+		// OIS RESET
+		LOG_INF("do reset\n");
+		ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_LOGIC_RESET, ON);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(4);
+		ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_DSP_CTRL, ON);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(25);
+		ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_USER_WRITE_PROTECT, USER_WRITE_EN);
+		mdelay(10);
+
+END_GYRO_OFFSET:
+		LOG_INF("gyro offset calibration: finished, msg(%d)\n", msg);
+
+	}
 
 	return ret;
 }
@@ -823,6 +929,7 @@ static void ois_init_fx(struct work_struct *data)
 	int err = 0;
 
 	LOG_INF("+\n");
+
 	// power on OIS pmic
 	err = dw9781d_power_on(g_dw9781d);
 	if (err < 0) {
@@ -1113,12 +1220,13 @@ static ssize_t ois_debug_store(struct device *dev,
 	ois_hall_check = (val >> 3) & 0x1;
 	ois_debug_en = (val >> 4) & 0x1;
 	ois_hfmgr_test = (val >> 5) & 0x1;
+	ois_gyro_offset_cali = (val >> 6) & 0x1;
 
 	if (ois_hall_check)
 		ois_hall_warn = 1;
 
-	LOG_INF("hfmgr(%d) dbg(%d) hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
-		ois_hfmgr_test, ois_debug_en, ois_hall_check, ois_fw_update,
+	LOG_INF("gyroOffset(%d) hfmgr(%d) dbg(%d) hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
+		ois_gyro_offset_cali, ois_hfmgr_test, ois_debug_en, ois_hall_check, ois_fw_update,
 		ois_log_dbg_en, ois_data_dbg_en, buf);
 
 	return size;
