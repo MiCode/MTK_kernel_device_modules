@@ -18,14 +18,15 @@
 #include <linux/phy/phy.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
-#include <linux/regmap.h>
 
 #include "mt6379-charger.h"
-#include "charger_class.h"
-#include <ufcs_class.h>
+#include "ufcs_class.h"
 
 #define DEFAULT_PMIC_UVLO_MV	2000
 #define DPDM_OV_THRESHOLD_MV	3850
+
+unsigned int dbg_log_level = 1;
+module_param(dbg_log_level, uint, 0644);
 
 enum {
 	CHG_STAT_SLEEP,
@@ -85,7 +86,7 @@ struct mt6379_charger_dtprop {
 }
 
 enum {
-	PORT_STAT_NOINFO,
+	PORT_STAT_NOINFO = 0,
 	PORT_STAT_APPLE_10W = 8,
 	PORT_STAT_SS_TA,
 	PORT_STAT_APPLE_5W,
@@ -254,51 +255,49 @@ static const struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 
 static int mt6379_charger_init_rmap_fields(struct mt6379_charger_data *cdata)
 {
-	int i = 0;
 	const struct mt6379_charger_field *fds = mt6379_charger_fields;
+	int i = 0;
 
 	for (i = 0; i < F_MAX; i++) {
-		cdata->rmap_fields[i] = devm_regmap_field_alloc(cdata->dev,
-							       cdata->rmap,
-							       fds[i].field);
-		if (IS_ERR(cdata->rmap_fields[i]))
-			return dev_err_probe(cdata->dev,
-					     PTR_ERR(cdata->rmap_fields[i]),
-					     "Failed to allocate regmap fields[%s]\n",
-					     fds[i].name);
+		cdata->rmap_fields[i] = devm_regmap_field_alloc(cdata->dev, cdata->rmap,
+								fds[i].field);
+		if (IS_ERR(cdata->rmap_fields[i])) {
+			dev_info(cdata->dev, "%s, Failed to allocate regmap fields[%s]\n",
+				 __func__, fds[i].name);
+			return PTR_ERR(cdata->rmap_fields[i]);
+		}
 	}
+
 	return 0;
 }
 
-int mt6379_charger_field_get(struct mt6379_charger_data *cdata,
-			     enum mt6379_charger_reg_field fd, u32 *val)
+int mt6379_charger_field_get(struct mt6379_charger_data *cdata, enum mt6379_charger_reg_field fd,
+			     u32 *val)
 {
+	u32 regval = 0, idx = fd;
 	int ret = 0;
-	u32 regval = 0;
-	u32 idx = fd;
 
 	if (!mt6379_charger_fields[idx].inited)
 		return -EOPNOTSUPP;
 
 	ret = regmap_field_read(cdata->rmap_fields[idx], &regval);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	if (mt6379_charger_fields[idx].range)
-		return linear_range_get_value(mt6379_charger_fields[idx].range,
-					      regval, val);
+		return linear_range_get_value(mt6379_charger_fields[idx].range, regval, val);
 
 	*val = regval;
 	return 0;
 }
 
-int mt6379_charger_field_set(struct mt6379_charger_data *cdata,
-			     enum mt6379_charger_reg_field fd, unsigned int val)
+int mt6379_charger_field_set(struct mt6379_charger_data *cdata, enum mt6379_charger_reg_field fd,
+			     unsigned int val)
 {
-	int ret = 0;
-	bool f;
 	const struct linear_range *r;
 	u32 idx = fd;
+	int ret = 0;
+	bool f;
 
 	if (!mt6379_charger_fields[idx].inited)
 		return -EOPNOTSUPP;
@@ -338,7 +337,6 @@ static const struct mt6379_charger_platform_data mt6379_charger_pdata_def = {
 	.usb_killer_detect = false,
 };
 
-
 static const u32 mt6379_otg_cc_ma[] = {
 	500000, 800000, 1100000, 1400000, 1700000, 2000000, 2300000,
 };
@@ -373,10 +371,10 @@ static int mt6379_get_voltage_sel(struct regulator_dev *rdev)
 
 static bool mt6379_charger_is_usb_killer(struct mt6379_charger_data *cdata)
 {
-	int i = 0, ret = 0, vdp = 0, vdm = 0;
-	bool killer = false;
-	static const u32 vdiff = 200;
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
+	int i = 0, ret = 0, vdp = 0, vdm = 0;
+	static const u32 vdiff = 200;
+	bool killer = false;
 	static const struct {
 		enum mt6379_charger_reg_field fd;
 		u32 val;
@@ -392,7 +390,7 @@ static bool mt6379_charger_is_usb_killer(struct mt6379_charger_data *cdata)
 	};
 
 	if (!pdata->usb_killer_detect) {
-		dev_info(cdata->dev, "usb killer is not set\n");
+		dev_info(cdata->dev, "%s, usb killer is not set\n", __func__);
 		return false;
 	}
 
@@ -406,23 +404,27 @@ static bool mt6379_charger_is_usb_killer(struct mt6379_charger_data *cdata)
 
 	/* check usb DPDM */
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_USBDP], &vdp);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to read usb DP voltage\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to read usb DP voltage\n", __func__);
 		goto recover;
 	}
+
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_USBDM], &vdm);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to read usb DM voltage\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to read usb DM voltage\n", __func__);
 		goto recover;
 	}
+
 	vdp = U_TO_M(vdp);
 	vdm = U_TO_M(vdm);
-	dev_info(cdata->dev, "dp = %dmV, dm = %dmV, vdiff = %dmV\n", vdp, vdm,
-		 abs(vdp - vdm));
+	dev_info(cdata->dev, "%s, dp = %dmV, dm = %dmV, vdiff = %dmV\n",
+		 __func__, vdp, vdm, abs(vdp - vdm));
+
 	if (abs(vdp - vdm) < vdiff) {
-		dev_info(cdata->dev, "suspect usb killer\n");
+		dev_info(cdata->dev, "%s, suspect usb killer\n", __func__);
 		killer = true;
 	}
+
 recover:
 	for (; i >= 0; i--) /* set to default value */
 		mt6379_charger_field_set(cdata, settings[i].fd, 0);
@@ -440,14 +442,26 @@ static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
 
 	/* disable PP_CV_FLOW_IDLE */
 	ret = mt6379_enable_hm(cdata, true);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
 	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), 0);
 	if (ret) {
 		ret = mt6379_enable_hm(cdata, false);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+
 		return -EINVAL;
 	}
-	ret = mt6379_enable_hm(cdata, false);
 
-	dev_info(cdata->dev, "%s, ret = %d\n", __func__, ret);
+	ret = mt6379_enable_hm(cdata, false);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
 	return regulator_enable_regmap(rdev);
 }
 
@@ -458,18 +472,30 @@ static int mt6379_otg_regulator_disable(struct regulator_dev *rdev)
 
 	/* enable PP_CV_FLOW_IDLE */
 	ret = mt6379_enable_hm(cdata, true);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
 	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), BIT(5));
 	if (ret) {
 		ret = mt6379_enable_hm(cdata, false);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+
 		return -EINVAL;
 	}
+
 	ret = mt6379_enable_hm(cdata, false);
-	dev_info(cdata->dev, "%s, ret = %d\n", __func__, ret);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
 	return regulator_disable_regmap(rdev);
 }
 
-static int mt6379_otg_set_current_limit(struct regulator_dev *rdev,
-					int min_uA, int max_uA)
+static int mt6379_otg_set_current_limit(struct regulator_dev *rdev, int min_uA, int max_uA)
 {
 	struct mt6379_charger_data *cdata = rdev->reg_data;
 	const struct regulator_desc *desc = rdev->desc;
@@ -479,14 +505,15 @@ static int mt6379_otg_set_current_limit(struct regulator_dev *rdev,
 		if (min_uA <= mt6379_otg_cc_ma[i])
 			break;
 	}
+
 	if (i == ARRAY_SIZE(mt6379_otg_cc_ma)) {
-		dev_notice(cdata->dev, "%s: out of current range\n", __func__);
+		dev_notice(cdata->dev, "%s, %dmA is out of valid current range\n",
+			   __func__, min_uA);
 		return -EINVAL;
 	}
-	dev_info(cdata->dev, "%s: select otg_cc = %d\n", __func__,
-		 mt6379_otg_cc_ma[i]);
-	return regmap_update_bits(cdata->rmap, desc->csel_reg, desc->csel_mask,
-				  i << shift);
+
+	dev_info(cdata->dev, "%s, select otg_cc = %dmA\n", __func__, mt6379_otg_cc_ma[i]);
+	return regmap_update_bits(cdata->rmap, desc->csel_reg, desc->csel_mask, i << shift);
 }
 
 static const struct regulator_ops mt6379_otg_regulator_ops = {
@@ -528,8 +555,7 @@ static int mt6379_init_otg_regulator(struct mt6379_charger_data *cdata)
 		.driver_data = cdata,
 	};
 
-	cdata->rdev = devm_regulator_register(cdata->dev, &mt6379_charger_otg_rdesc,
-					      &config);
+	cdata->rdev = devm_regulator_register(cdata->dev, &mt6379_charger_otg_rdesc, &config);
 	return PTR_ERR_OR_ZERO(cdata->rdev);
 }
 
@@ -569,7 +595,8 @@ static const char *const mt6379_attach_trig_names[] = {
 	"ignore", "pwr_rdy", "typec",
 };
 
-static void __maybe_unused mt6379_charger_check_dpdm_ov(struct mt6379_charger_data *cdata, int attach)
+static void __maybe_unused mt6379_charger_check_dpdm_ov(struct mt6379_charger_data *cdata,
+							int attach)
 {
 	struct chgdev_notify *mtk_chg_noti = &(cdata->chgdev->noti);
 	int ret = 0, vdp = 0, vdm = 0;
@@ -580,49 +607,51 @@ static void __maybe_unused mt6379_charger_check_dpdm_ov(struct mt6379_charger_da
 	/* Check if USB DPDM is Over Voltage */
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_USBDP], &vdp);
 	if (ret < 0)
-		dev_notice(cdata->dev, "%s: Failed to read USB DP voltage\n", __func__);
+		dev_notice(cdata->dev, "%s, Failed to read USB DP voltage\n", __func__);
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_USBDM], &vdm);
 	if (ret < 0)
-		dev_notice(cdata->dev, "%s: Failed to read USB DM voltage\n", __func__);
+		dev_notice(cdata->dev, "%s, Failed to read USB DM voltage\n", __func__);
 
 	vdp = U_TO_M(vdp);
 	vdm = U_TO_M(vdm);
 	if (vdp >= DPDM_OV_THRESHOLD_MV || vdm >= DPDM_OV_THRESHOLD_MV) {
-		dev_notice(cdata->dev, "%s: USB DPDM OV! valid: %dmV vdp: %dmV,vdm: %dmV\n",
+		dev_notice(cdata->dev, "%s, USB DPDM OV! valid: %dmV vdp: %dmV,vdm: %dmV\n",
 			   __func__, DPDM_OV_THRESHOLD_MV, vdp, vdm);
 		mtk_chg_noti->dpdmov_stat = true;
 		charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_DPDM_OVP);
 	}
 }
 
-static enum power_supply_type mt6379_charger_get_psy_type(
-	struct mt6379_charger_data *cdata, int idx)
+static enum power_supply_type mt6379_charger_get_psy_type(struct mt6379_charger_data *cdata,
+							  int idx)
 {
 	return POWER_SUPPLY_TYPE_USB;
 }
 
 static int mt6379_charger_set_online(struct mt6379_charger_data *cdata,
-				     enum mt6379_attach_trigger trig,
-				     int attach)
+				     enum mt6379_attach_trigger trig, int attach)
 {
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 	int i = 0, idx = ONLINE_GET_IDX(attach);
 	int active_idx = 0, pre_active_idx = 0;
 
-	dev_info(cdata->dev, "trig=%s,attach=0x%x\n",
-		 mt6379_attach_trig_names[trig], attach);
+	mt_dbg(cdata->dev, "%s, trig: %s, attach: 0x%x\n",
+	       __func__, mt6379_attach_trig_names[trig], attach);
+
 	/* if attach trigger is not match, ignore it */
 	if (pdata->attach_trig != trig) {
-		dev_info(cdata->dev, "trig=%s ignored\n",
-			 mt6379_attach_trig_names[trig]);
+		mt_dbg(cdata->dev, "%s, trig: %s ignored!\n",
+		       __func__, mt6379_attach_trig_names[trig]);
 		return 0;
 	}
+
 	attach = ONLINE_GET_ATTACH(attach);
 
 	mutex_lock(&cdata->attach_lock);
 	if (attach == ATTACH_TYPE_NONE)
 		cdata->bc12_dn[idx] = false;
+
 	if (!cdata->bc12_dn[idx])
 		atomic_set(&cdata->attach[idx], attach);
 
@@ -635,8 +664,7 @@ static int mt6379_charger_set_online(struct mt6379_charger_data *cdata,
 		}
 	}
 
-	if (pdata->nr_port > 1 && attach == ATTACH_TYPE_TYPEC &&
-	    !cdata->bc12_dn[idx]) {
+	if (pdata->nr_port > 1 && attach == ATTACH_TYPE_TYPEC && !cdata->bc12_dn[idx]) {
 		cdata->psy_type[idx] = mt6379_charger_get_psy_type(cdata, idx);
 		cdata->bc12_dn[idx] = true;
 		switch (cdata->psy_type[idx]) {
@@ -657,66 +685,84 @@ static int mt6379_charger_set_online(struct mt6379_charger_data *cdata,
 			break;
 		}
 	}
+
 	cdata->psy_desc.type = cdata->psy_type[active_idx];
-
 	cdata->active_idx = active_idx;
-
 	if ((attach > ATTACH_TYPE_PD && cdata->bc12_dn[idx]) ||
 	    (active_idx == pre_active_idx && idx != active_idx)) {
 		mutex_unlock(&cdata->attach_lock);
 		return 0;
 	}
+
 	mutex_unlock(&cdata->attach_lock);
 
 	if (!queue_work(cdata->wq, &cdata->bc12_work))
-		dev_notice(cdata->dev, "%s bc12 work already queued\n", __func__);
+		dev_notice(cdata->dev, "%s, bc12 work already queued\n", __func__);
+
 	return 0;
 }
 
-static int mt6379_charger_get_online(struct mt6379_charger_data *cdata,
-				     union power_supply_propval *val)
+static inline int mt6379_charger_get_online(struct mt6379_charger_data *cdata, int *online_status)
 {
-	val->intval = atomic_read(&cdata->attach[cdata->active_idx]);
+	*online_status = atomic_read(&cdata->attach[cdata->active_idx]);
 	return 0;
 }
 
-static int mt6379_get_charger_status(struct mt6379_charger_data *cdata)
+static int mt6379_get_charger_status(struct mt6379_charger_data *cdata, int *psy_status)
 {
-	int ret = 0;
 	u32 stat = 0, chg_en = 0;
-	union power_supply_propval online;
+	int ret = 0, online = 0;
+	const char *attach_name;
+
+	/* Default PSY status */
+	*psy_status = POWER_SUPPLY_STATUS_DISCHARGING;
 
 	ret = mt6379_charger_get_online(cdata, &online);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to get online status\n");
+		dev_info(cdata->dev, "%s, Failed to get online/attach_type status(ret:%d)\n",
+			 __func__, ret);
 		return ret;
 	}
 
-	if (!online.intval)
-		return POWER_SUPPLY_STATUS_DISCHARGING;
+	/* Not attach anything! */
+	if (!online)
+		return 0;
 
+	attach_name = get_attach_type_name(online);
 	ret = mt6379_charger_field_get(cdata, F_CHG_EN, &chg_en);
-	if (ret < 0)
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get CHG_EN(ret:%d)\n", __func__, ret);
 		return ret;
+	}
+
 	ret = mt6379_charger_field_get(cdata, F_IC_STAT, &stat);
-	if (ret < 0)
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get IC_STAT(ret:%d)\n", __func__, ret);
 		return ret;
+	}
+
+	mt_dbg(cdata->dev, "%s, online/attach_type: %d(%s), ic_stat: %d, chg_en: %d\n",
+	       __func__, online, attach_name, stat, chg_en);
+
 	switch (stat) {
 	case CHG_STAT_OTG:
-		return POWER_SUPPLY_STATUS_DISCHARGING;
-	case CHG_STAT_VBUS_RDY...CHG_STAT_BKGND:
-		if (chg_en)
-			return POWER_SUPPLY_STATUS_CHARGING;
-		return POWER_SUPPLY_STATUS_NOT_CHARGING;
-	case CHG_STAT_DONE:
-		return POWER_SUPPLY_STATUS_FULL;
-	case CHG_STAT_FAULT:
+		*psy_status = POWER_SUPPLY_STATUS_DISCHARGING;
+		return 0;
 	case CHG_STAT_SLEEP:
-		return POWER_SUPPLY_STATUS_NOT_CHARGING;
+	case CHG_STAT_VBUS_RDY...CHG_STAT_BKGND:
+		*psy_status = chg_en ?
+			      POWER_SUPPLY_STATUS_CHARGING : POWER_SUPPLY_STATUS_NOT_CHARGING;
+		return 0;
+	case CHG_STAT_DONE:
+		*psy_status = POWER_SUPPLY_STATUS_FULL;
+		return 0;
+	case CHG_STAT_FAULT:
+		*psy_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		return 0;
 	default:
-		return POWER_SUPPLY_STATUS_UNKNOWN;
+		*psy_status = POWER_SUPPLY_STATUS_UNKNOWN;
+		return 0;
 	};
-	return POWER_SUPPLY_STATUS_UNKNOWN;
 }
 
 static int mt6379_get_vbat_monitor(struct mt6379_charger_data *cdata, enum mt6379_batpro_src src,
@@ -775,24 +821,21 @@ out:
 	return ret;
 }
 
-static inline int mt6379_get_bat1_vbat_monitor(struct mt6379_charger_data *cdata,
-					       union power_supply_propval *val)
+static inline int mt6379_get_bat1_vbat_monitor(struct mt6379_charger_data *cdata, int *vbat_mon_val)
 {
-	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON, &val->intval);
+	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON, vbat_mon_val);
 }
 
 static inline int __maybe_unused mt6379_get_bat2_vbat_monitor(struct mt6379_charger_data *cdata,
-							      union power_supply_propval *val)
+							      int *vbat_mon_val)
 {
-	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON2, &val->intval);
+	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON2, vbat_mon_val);
 }
 
-static int mt6379_charger_get_property(struct power_supply *psy,
-				       enum power_supply_property psp,
+static int mt6379_charger_get_property(struct power_supply *psy, enum power_supply_property psp,
 				       union power_supply_propval *val)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(psy);
-	int ret = 0;
 
 	if (!cdata)
 		return -ENODEV;
@@ -800,45 +843,32 @@ static int mt6379_charger_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_MANUFACTURER:
 		val->strval = "Mediatek";
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_ONLINE:
-		ret = mt6379_charger_get_online(cdata, val);
-		break;
+		return mt6379_charger_get_online(cdata, &val->intval);
 	case POWER_SUPPLY_PROP_STATUS:
-		ret = mt6379_get_charger_status(cdata);
-		if (ret < 0)
-			return ret;
-		val->intval = ret;
-		break;
+		return mt6379_get_charger_status(cdata, &val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
-		ret = mt6379_charger_field_get(cdata, F_CC, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_CC, &val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		val->intval = linear_range_get_max_value(
-			&mt6379_charger_ranges[MT6379_RANGE_F_CC]);
-		break;
+		val->intval = linear_range_get_max_value(&mt6379_charger_ranges[MT6379_RANGE_F_CC]);
+		return 0;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
-		ret = mt6379_charger_field_get(cdata, F_CV, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_CV, &val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
-		val->intval = linear_range_get_max_value(
-			&mt6379_charger_ranges[MT6379_RANGE_F_CV]);
-		break;
+		val->intval = linear_range_get_max_value(&mt6379_charger_ranges[MT6379_RANGE_F_CV]);
+		return 0;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
-		ret = mt6379_charger_field_get(cdata, F_IBUS_AICR, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_IBUS_AICR, &val->intval);
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
-		ret = mt6379_charger_field_get(cdata, F_VBUS_MIVR, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_VBUS_MIVR, &val->intval);
 	case POWER_SUPPLY_PROP_PRECHARGE_CURRENT:
-		ret = mt6379_charger_field_get(cdata, F_IPREC, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_IPREC, &val->intval);
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
-		ret = mt6379_charger_field_get(cdata, F_IEOC, &val->intval);
-		break;
+		return mt6379_charger_field_get(cdata, F_IEOC, &val->intval);
 	case POWER_SUPPLY_PROP_USB_TYPE:
 		val->intval = cdata->psy_usb_type[cdata->active_idx];
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_SDP)
 			val->intval = 500000;
@@ -848,41 +878,37 @@ static int mt6379_charger_get_property(struct power_supply *psy,
 			val->intval = 1500000;
 		else
 			val->intval = 500000;
-		break;
+
+		return 0;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		if (cdata->psy_usb_type[cdata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
 			val->intval = 22000000;
 		else
 			val->intval = 5000000;
-		break;
+
+		return 0;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = cdata->psy_desc.type;
-		break;
+		return 0;
 	case POWER_SUPPLY_PROP_CALIBRATE: /* for Gauge */
-		ret = mt6379_get_bat1_vbat_monitor(cdata, val);
-		break;
+		return mt6379_get_bat1_vbat_monitor(cdata, &val->intval);
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		val->intval = cdata->vbat0_flag;
-		break;
+		return 0;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	}
-
-	return ret;
 }
 
-static int mt6379_charger_set_property(struct power_supply *psy,
-				       enum power_supply_property psp,
+static int mt6379_charger_set_property(struct power_supply *psy, enum power_supply_property psp,
 				       const union power_supply_propval *val)
 {
-	int ret = 0;
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(psy);
 
 	if (!cdata)
 		return -ENODEV;
 
-	dev_info(cdata->dev, "psp=%d, val = %d\n", psp, val->intval);
+	mt_dbg(cdata->dev, "%s, psp:%d, val = %d\n", __func__, psp, val->intval);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		return mt6379_charger_set_online(cdata, ATTACH_TRIG_TYPEC, val->intval);
@@ -893,10 +919,12 @@ static int mt6379_charger_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		if (cdata->bypass_mode_entered)
 			return 0;
+
 		return mt6379_charger_field_set(cdata, F_IBUS_AICR, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
 		if (cdata->bypass_mode_entered)
 			return 0;
+
 		return mt6379_charger_field_set(cdata, F_VBUS_MIVR, val->intval);
 	case POWER_SUPPLY_PROP_PRECHARGE_CURRENT:
 		return mt6379_charger_field_set(cdata, F_IPREC, val->intval);
@@ -904,12 +932,10 @@ static int mt6379_charger_set_property(struct power_supply *psy,
 		return mt6379_charger_field_set(cdata, F_IEOC, val->intval);
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		cdata->vbat0_flag = val->intval;
-		break;
+		return 0;
 	default:
-		ret = -EINVAL;
-		break;
+		return -EINVAL;
 	};
-	return ret;
 }
 
 static int mt6379_charger_property_is_writeable(struct power_supply *psy,
@@ -928,7 +954,6 @@ static int mt6379_charger_property_is_writeable(struct power_supply *psy,
 	default:
 		return 0;
 	};
-	return 0;
 }
 
 static const struct power_supply_desc mt6379_charger_psy_desc = {
@@ -948,29 +973,28 @@ static int mt6379_set_shipping_mode(struct mt6379_charger_data *cdata)
 	int ret = 0;
 
 	ret = mt6379_charger_field_set(cdata, F_SHIP_RST_DIS, 1);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to disable ship reset\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable ship reset\n", __func__);
 		return ret;
 	}
 
 	ret = mt6379_charger_field_set(cdata, F_BATFET_DISDLY, 0);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to disable ship mode delay\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable ship mode delay\n", __func__);
 		return ret;
 	}
 
 	/* To shutdown system even with TA, disable buck_en here */
 	ret = mt6379_charger_field_set(cdata, F_BUCK_EN, 0);
-	if (ret < 0) {
-		dev_notice(cdata->dev, "Failed to disable chg buck en\n");
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable chg buck en\n", __func__);
 		return ret;
 	}
 
 	return mt6379_charger_field_set(cdata, F_BATFET_DIS, 1);
 }
 
-static ssize_t shipping_mode_store(struct device *dev,
-				   struct device_attribute *attr,
+static ssize_t shipping_mode_store(struct device *dev, struct device_attribute *attr,
 				   const char *buf, size_t count)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
@@ -978,21 +1002,20 @@ static ssize_t shipping_mode_store(struct device *dev,
 	int ret = 0;
 
 	ret = kstrtoul(buf, 0, &magic);
-	if (ret < 0) {
-		dev_warn(dev, "parsing number fail\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse number\n", __func__);
 		return ret;
 	}
+
 	if (magic != 5526789)
 		return -EINVAL;
 
 	ret = mt6379_set_shipping_mode(cdata);
 	return ret < 0 ? ret : count;
-
 }
 static DEVICE_ATTR_WO(shipping_mode);
 
-static ssize_t bypass_iq_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t bypass_iq_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	unsigned int val = 0;
@@ -1002,13 +1025,12 @@ static ssize_t bypass_iq_show(struct device *dev,
 	if (ret)
 		return ret;
 
-	dev_info(dev, "%s val = 0x%02x\n", __func__, val);
+	dev_info(dev, "%s, val = 0x%02x\n", __func__, val);
 	return sysfs_emit(buf, "%d uA\n", 20 * (1 + val));
 }
 static DEVICE_ATTR_RO(bypass_iq);
 
-static ssize_t bypass_mode_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t bypass_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 
@@ -1016,17 +1038,17 @@ static ssize_t bypass_mode_show(struct device *dev,
 		return sysfs_emit(buf, "bypass mode\n");
 	if (cdata->bypass_mode_entered >= 2)
 		return sysfs_emit(buf, "bypass mode with reset\n");
+
 	return sysfs_emit(buf, "bypass mode off\n");
 }
 
-static ssize_t bypass_mode_store(struct device *dev,
-				 struct device_attribute *attr,
+static ssize_t bypass_mode_store(struct device *dev, struct device_attribute *attr,
 				 const char *buf, size_t count)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
-	int ret = 0;
+	u8 rst_code[2] = { 0xA9, 0x96 };
 	unsigned long enter = 0;
-	u8 rst_code[2] = {0xA9, 0x96};
+	int ret = 0;
 
 	ret = kstrtoul(buf, 0, &enter);
 	if (ret)
@@ -1037,30 +1059,74 @@ static ssize_t bypass_mode_store(struct device *dev,
 
 	if (enter) {
 		ret = mt6379_charger_field_set(cdata, F_VBUS_MIVR, 3900000);
-		if (ret)
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set MIVR to 3900mV\n", __func__);
 			return ret;
+		}
+
 		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, 3000000);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set AICR to 3000mA\n", __func__);
+			return ret;
+		}
+
 		ret = mt6379_charger_field_set(cdata, F_CHG_BYPASS, 1);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to enable bypass mode\n", __func__);
+			return ret;
+		}
+
 		if (enter >= 2) {
 			ret = mt6379_charger_field_set(cdata, F_MREN, 0);
+			if (ret) {
+				dev_info(cdata->dev, "%s, Failed to disable MRSTB\n", __func__);
+				return ret;
+			}
+
 			/* enter reset pas code */
-			ret |= regmap_bulk_write(cdata->rmap, MT6379_REG_RST_PAS_CODE1, rst_code, 2);
+			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_RST_PAS_CODE1, rst_code, 2);
+			if (ret) {
+				dev_info(cdata->dev, "%s, Failed to reset pas code\n", __func__);
+				return ret;
+			}
+
 			/* REG_RST */
-			ret |= regmap_write(cdata->rmap, MT6379_REG_RST1, 0x1);
+			ret = regmap_write(cdata->rmap, MT6379_REG_RST1, 0x1);
+			if (ret) {
+				dev_info(cdata->dev, "%s, Failed to reset pmu rg\n", __func__);
+				return ret;
+			}
+
 			/* PD SW_RESET */
-			ret |= regmap_write(cdata->rmap, MT6379_REG_PD_SYS_CTRL3, 0x1);
+			ret = regmap_write(cdata->rmap, MT6379_REG_PD_SYS_CTRL3, 0x1);
+			if (ret) {
+				dev_info(cdata->dev, "%s, Failed to reset pmu rg\n", __func__);
+				return ret;
+			}
+
 			mdelay(2);
 			/* PD disable OTP_HW_EN */
-			ret |= regmap_write(cdata->rmap, MT6379_REG_TYPECOTP_CTRL, 0x00);
+			ret = regmap_write(cdata->rmap, MT6379_REG_TYPECOTP_CTRL, 0x00);
+			if (ret) {
+				dev_info(cdata->dev, "%s, Failed to disable TYPEC OTP_HW_EN\n",
+					 __func__);
+				return ret;
+			}
 		}
-		if (ret)
-			return ret;
 	} else {
 		ret = mt6379_charger_field_set(cdata, F_MREN, 1);
-		ret |= mt6379_charger_field_set(cdata, F_CHG_BYPASS, 0);
-		if (ret)
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to enable MRSTB\n", __func__);
 			return ret;
+		}
+
+		ret = mt6379_charger_field_set(cdata, F_CHG_BYPASS, 0);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to disable bypass mode\n", __func__);
+			return ret;
+		}
 	}
+
 	cdata->bypass_mode_entered = enter;
 	return count;
 }
@@ -1111,103 +1177,115 @@ enum mt6379_usbsw {
 
 #define PHY_MODE_BC11_SET 1
 #define PHY_MODE_BC11_CLR 2
-static int mt6379_charger_set_usbsw(struct mt6379_charger_data *cdata,
-				    enum mt6379_usbsw usbsw)
+static int mt6379_charger_set_usbsw(struct mt6379_charger_data *cdata, enum mt6379_usbsw usbsw)
 {
+	int ret = 0, mode = (usbsw == USBSW_CHG) ? PHY_MODE_BC11_SET : PHY_MODE_BC11_CLR;
 	struct phy *phy;
-	int ret = 0, mode = (usbsw == USBSW_CHG) ? PHY_MODE_BC11_SET :
-						   PHY_MODE_BC11_CLR;
 
-	dev_info(cdata->dev, "usbsw=%d\n", usbsw);
+	mt_dbg(cdata->dev, "%s, usbsw = %d\n", __func__, usbsw);
+
 	phy = phy_get(cdata->dev, "usb2-phy");
 	if (IS_ERR_OR_NULL(phy)) {
-		dev_err(cdata->dev, "failed to get usb2-phy\n");
+		dev_info(cdata->dev, "%s, Failed to get usb2-phy\n", __func__);
 		return -ENODEV;
 	}
+
 	ret = phy_set_mode_ext(phy, PHY_MODE_USB_DEVICE, mode);
 	if (ret)
-		dev_err(cdata->dev, "failed to set phy ext mode\n");
+		dev_info(cdata->dev, "%s, Failed to set phy ext mode\n", __func__);
+
 	phy_put(cdata->dev, phy);
 	return ret;
 }
 
-static bool is_usb_rdy(struct device *dev)
+static bool mt6379_charger_is_usb_rdy(struct device *dev)
 {
-	bool ready = true;
 	struct device_node *node;
+	bool ready = true;
 
 	node = of_parse_phandle(dev->of_node, "usb", 0);
 	if (node) {
 		ready = !of_property_read_bool(node, "cdp-block");
-		dev_info(dev, "usb ready = %d\n", ready);
+		mt_dbg(dev, "%s, usb ready = %d\n", __func__,  ready);
 	} else
-		dev_warn(dev, "usb node missing or invalid\n");
+		mt_dbg(dev, "%s, usb node missing or invalid\n", __func__);
+
 	return ready;
 }
 
 static int mt6379_charger_enable_bc12(struct mt6379_charger_data *cdata, bool en)
 {
-	int i = 0, ret = 0, attach = 0;
 	static const int max_wait_cnt = 250;
+	struct device *dev = cdata->dev;
+	int i = 0, ret = 0, attach = 0;
 
-	dev_info(cdata->dev, "en=%d\n", en);
+	mt_dbg(dev, "%s, en = %d%s\n", __func__, en, en ? "check CDP block" : "");
 	if (en) {
 		/* CDP port specific process */
-		dev_info(cdata->dev, "check CDP block\n");
 		for (i = 0; i < max_wait_cnt; i++) {
-			if (is_usb_rdy(cdata->dev))
+			if (mt6379_charger_is_usb_rdy(cdata->dev))
 				break;
+
 			attach = atomic_read(&cdata->attach[0]);
-			if (attach == ATTACH_TYPE_PWR_RDY ||
-				attach == ATTACH_TYPE_TYPEC)
+			if (attach == ATTACH_TYPE_PWR_RDY || attach == ATTACH_TYPE_TYPEC)
 				msleep(100);
 			else {
-				dev_notice(cdata->dev, "%s: change attach:%d, disable bc12\n",
-					   __func__, attach);
+				mt_dbg(dev, "%s, change attach:%d, disable bc12\n",
+				       __func__, attach);
 				en = false;
 				break;
 			}
 		}
+
 		if (i == max_wait_cnt)
-			dev_notice(cdata->dev, "CDP timeout\n");
+			mt_dbg(dev, "%s, CDP timeout\n", __func__);
 		else
-			dev_info(cdata->dev, "CDP free\n");
+			mt_dbg(dev, "%s, CDP free\n", __func__);
 	}
+
 	ret = mt6379_charger_set_usbsw(cdata, en ? USBSW_CHG : USBSW_USB);
-	if (ret)
+	if (ret) {
+		mt_dbg(dev, "%s, Failed to set usbsw\n", __func__);
 		return ret;
+	}
+
 	return mt6379_charger_field_set(cdata, F_BC12_EN, en);
 }
 
 static int mt6379_charger_toggle_bc12(struct mt6379_charger_data *cdata)
 {
-	int ret;
+	int ret = 0;
 
 	ret = mt6379_charger_enable_bc12(cdata, false);
-	if (ret)
-		dev_notice(cdata->dev, "%s: failed to disable bc12(%d)\n",
-			   __func__, ret);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to disable bc12(ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
 	return mt6379_charger_enable_bc12(cdata, true);
 }
 
 static void mt6379_charger_bc12_work_func(struct work_struct *work)
 {
-	struct mt6379_charger_data *cdata = container_of(work,
-							 struct mt6379_charger_data,
+	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
 							 bc12_work);
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 	bool bc12_ctrl = !(pdata->nr_port > 1), bc12_en = false, rpt_psy = true;
 	int ret = 0, attach = ATTACH_TYPE_NONE, active_idx = 0;
+	const char *attach_name;
 	u32 val = 0;
 
 	mutex_lock(&cdata->attach_lock);
+
 	active_idx = cdata->active_idx;
 	attach = atomic_read(&cdata->attach[cdata->active_idx]);
-	dev_info(cdata->dev, "attach=%d\n", attach);
+	attach_name = get_attach_type_name(attach);
+	mt_dbg(cdata->dev, "%s, active_idx: %d, attach: %d(%s)\n",
+	       __func__, active_idx, attach, attach_name);
 
 	if (attach > ATTACH_TYPE_NONE && pdata->boot_mode == 5) {
 		/* skip bc12 to speed up ADVMETA_BOOT */
-		dev_notice(cdata->dev, "force SDP in meta mode\n");
+		mt_dbg(cdata->dev, "%s, Force SDP in meta mode\n", __func__);
 		cdata->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		cdata->psy_type[active_idx] = POWER_SUPPLY_TYPE_USB;
 		cdata->psy_usb_type[active_idx] = POWER_SUPPLY_USB_TYPE_SDP;
@@ -1236,12 +1314,14 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 			rpt_psy = false;
 			goto out;
 		}
+
 		ret = mt6379_charger_field_get(cdata, F_PORT_STAT, &val);
-		if (ret < 0) {
-			dev_err(cdata->dev, "failed to get port stat\n");
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to get bc12 port stat\n", __func__);
 			rpt_psy = false;
 			goto out;
 		}
+
 		break;
 	case ATTACH_TYPE_PD_SDP:
 		val = PORT_STAT_SDP;
@@ -1253,8 +1333,7 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 		val = PORT_STAT_UNKNOWN_TA;
 		break;
 	default:
-		dev_info(cdata->dev,
-			 "%s: using tradtional bc12 flow!\n", __func__);
+		mt_dbg(cdata->dev, "%s, Invalid attach_type: %d\n", __func__, attach);
 		break;
 	}
 
@@ -1262,7 +1341,7 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 	case PORT_STAT_NOINFO:
 		bc12_ctrl = false;
 		rpt_psy = false;
-		dev_info(cdata->dev, "%s no info\n", __func__);
+		mt_dbg(cdata->dev, "%s, No bc12 port info\n", __func__);
 		goto out;
 	case PORT_STAT_APPLE_5W:
 	case PORT_STAT_APPLE_10W:
@@ -1278,6 +1357,7 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 			cdata->wait_for_ufcs_attach = true;
 			ufcs_attach_change(cdata->ufcs, true);
 		}
+
 		break;
 	case PORT_STAT_SDP:
 		cdata->psy_desc.type = POWER_SUPPLY_TYPE_USB;
@@ -1297,19 +1377,23 @@ static void mt6379_charger_bc12_work_func(struct work_struct *work)
 	default:
 		bc12_ctrl = false;
 		rpt_psy = false;
-		dev_info(cdata->dev, "Unknown port stat %d\n", val);
+		mt_dbg(cdata->dev, "%s, Invalid port stat(%d)\n", __func__, val);
 		goto out;
 	}
-	dev_info(cdata->dev, "port stat = %s\n", mt6379_port_stat_names[val]);
+
 out:
 	mutex_unlock(&cdata->attach_lock);
 	if (bc12_ctrl) {
-		//mt6379_charger_check_dpdm_ov(cdata, attach);
+		// mt6379_charger_check_dpdm_ov(cdata, attach);
 		if (mt6379_charger_enable_bc12(cdata, bc12_en) < 0)
-			dev_notice(cdata->dev, "failed to set bc12 = %d\n", bc12_en);
+			dev_info(cdata->dev, "%s, Failed to set bc12 = %d\n", __func__, bc12_en);
 	}
-	if (rpt_psy)
+
+	if (rpt_psy) {
+		mt_dbg(cdata->dev, "%s power_supply_changed, port stat: %d(%s), attach: %d(%s)\n",
+		       __func__, val, mt6379_port_stat_names[val], attach, attach_name);
 		power_supply_changed(cdata->psy);
+	}
 }
 
 const struct mt6379_charger_dtprop mt6379_charger_dtprops[] = {
@@ -1333,24 +1417,24 @@ const struct mt6379_charger_dtprop mt6379_charger_dtprops[] = {
 void mt6379_charger_parse_dt_helper(struct device *dev, void *pdata,
 				    const struct mt6379_charger_dtprop *dp)
 {
-	int ret = 0;
 	void *val = pdata + dp->offset;
+	int ret = 0;
 
 	if (dp->type == DTPROP_BOOL)
 		*((bool *)val) = device_property_read_bool(dev, dp->name);
 	else {
 		ret = device_property_read_u32(dev, dp->name, val);
 		if (ret < 0)
-			dev_info(dev, "property %s not found\n", dp->name);
+			mt_dbg(dev, "%s, Failed to get \"%s\" property\n", __func__, dp->name);
 	}
 }
 
 static int mt6379_charger_get_pdata(struct device *dev)
 {
-	int i = 0;
-	u32 val = 0;
-	struct device_node *np = dev->of_node, *boot_np, *pmic_uvlo_np;
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(dev);
+	struct device_node *np = dev->of_node, *boot_np, *pmic_uvlo_np;
+	u32 val = 0;
+	int i = 0;
 	const struct {
 		u32 size;
 		u32 tag;
@@ -1358,156 +1442,174 @@ static int mt6379_charger_get_pdata(struct device *dev)
 		u32 boot_type;
 	} *tag;
 
-	if (np) {
-		pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
-		if (!pdata)
-			return -ENOMEM;
-		memcpy(pdata, &mt6379_charger_pdata_def, sizeof(*pdata));
-		for (i = 0; i < ARRAY_SIZE(mt6379_charger_dtprops); i++)
-			mt6379_charger_parse_dt_helper(dev, pdata,
-							&mt6379_charger_dtprops[i]);
-		pdata->usb_killer_detect =
-			device_property_read_bool(dev, "usb-killer-detect");
+	if (!np)
+		return -ENODEV;
 
-		if (of_property_read_string(np, "chgdev-name", &pdata->chgdev_name))
-			dev_notice(dev, "Failed to get chgdev_name\n");
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return -ENOMEM;
 
-		boot_np = of_parse_phandle(np, "boot-mode", 0);
-		if (!boot_np) {
-			dev_err(dev, "Failed to get boot-mode phandle\n");
-			return -ENODEV;
-		}
-		tag = of_get_property(boot_np, "atag,boot", NULL);
-		if (!tag) {
-			dev_err(dev, "Failed to get atag,boot\n");
-			return -EINVAL;
-		}
-		dev_info(dev, "sz:0x%x tag:0x%x mode:0x%x type:0x%x\n",
-			 tag->size, tag->tag, tag->boot_mode, tag->boot_type);
-		pdata->boot_mode = tag->boot_mode;
-		pdata->boot_type = tag->boot_type;
+	memcpy(pdata, &mt6379_charger_pdata_def, sizeof(*pdata));
 
-		if (of_property_read_u32(np, "bc12-sel", &val) < 0 &&
-				of_property_read_u32(np, "bc12_sel", &val) < 0) {
-			dev_err(dev, "property bc12_sel not found\n");
-			return -EINVAL;
-		}
+	for (i = 0; i < ARRAY_SIZE(mt6379_charger_dtprops); i++)
+		mt6379_charger_parse_dt_helper(dev, pdata, &mt6379_charger_dtprops[i]);
 
-		if (val != MTK_CTD_BY_SUBPMIC &&
-				val != MTK_CTD_BY_SUBPMIC_PWR_RDY)
-			pdata->attach_trig = ATTACH_TRIG_IGNORE;
-		else if (IS_ENABLED(CONFIG_TCPC_CLASS) &&
-				val == MTK_CTD_BY_SUBPMIC)
-			pdata->attach_trig = ATTACH_TRIG_TYPEC;
-		else
-			pdata->attach_trig = ATTACH_TRIG_PWR_RDY;
+	pdata->usb_killer_detect = device_property_read_bool(dev, "usb-killer-detect");
 
-		pmic_uvlo_np = of_parse_phandle(np, "pmic-uvlo", 0);
-		if (!pmic_uvlo_np)
-			dev_notice(dev, "Failed to get pmic-uvlo phandle\n");
+	if (of_property_read_string(np, "chgdev-name", &pdata->chgdev_name))
+		dev_info(dev, "%s, Failed to get \"chgdev-name\" property\n", __func__);
 
-		if (of_property_read_u32(pmic_uvlo_np, "uvlo-level", &val) < 0)
-			dev_notice(dev, "property uvlo-level not found, use default: %d mv\n",
-					DEFAULT_PMIC_UVLO_MV);
-
-		if (val != 0)
-			pdata->pmic_uvlo = val;
-		else
-			pdata->pmic_uvlo = DEFAULT_PMIC_UVLO_MV;
-
-		dev->platform_data = pdata;
+	boot_np = of_parse_phandle(np, "boot-mode", 0);
+	if (!boot_np) {
+		dev_info(dev, "%s, Failed to get \"boot-mode\" phandle\n", __func__);
+		return -ENODEV;
 	}
-	return pdata ? 0 : -ENODEV;
+
+	tag = of_get_property(boot_np, "atag,boot", NULL);
+	if (!tag) {
+		dev_info(dev, "%s, Failed to get \"atag,boot\" property\n", __func__);
+		return -EINVAL;
+	}
+
+	pdata->boot_mode = tag->boot_mode;
+	pdata->boot_type = tag->boot_type;
+	dev_info(dev, "%s, sz:0x%x tag:0x%x mode:0x%x type:0x%x\n",
+		 __func__, tag->size, tag->tag, tag->boot_mode, tag->boot_type);
+
+	if (of_property_read_u32(np, "bc12-sel", &val) < 0 &&
+	    of_property_read_u32(np, "bc12_sel", &val) < 0) {
+		dev_info(dev, "%s, Failed to get \"bc12-sel/bc12_sel\" property\n", __func__);
+		return -EINVAL;
+	}
+
+	if (val != MTK_CTD_BY_SUBPMIC && val != MTK_CTD_BY_SUBPMIC_PWR_RDY)
+		pdata->attach_trig = ATTACH_TRIG_IGNORE;
+	else if (IS_ENABLED(CONFIG_TCPC_CLASS) && val == MTK_CTD_BY_SUBPMIC)
+		pdata->attach_trig = ATTACH_TRIG_TYPEC;
+	else
+		pdata->attach_trig = ATTACH_TRIG_PWR_RDY;
+
+	pmic_uvlo_np = of_parse_phandle(np, "pmic-uvlo", 0);
+	if (!pmic_uvlo_np)
+		dev_info(dev, "%s, Failed to get \"pmic-uvlo\" phandle\n", __func__);
+
+	if (of_property_read_u32(pmic_uvlo_np, "uvlo-level", &val) < 0)
+		dev_info(dev, "%s, Failed to get \"uvlo-level\", use default uvlo level:%dmV\n",
+			 __func__, DEFAULT_PMIC_UVLO_MV);
+
+	if (val != 0)
+		pdata->pmic_uvlo = val;
+	else
+		pdata->pmic_uvlo = DEFAULT_PMIC_UVLO_MV;
+
+	dev->platform_data = pdata;
+
+	return 0;
 }
 
 static u32 pdata_get_val(void *pdata, const struct mt6379_charger_dtprop *dp)
 {
 	if (dp->type == DTPROP_BOOL)
 		return *((bool *)(pdata + dp->offset));
+
 	return *((u32 *)(pdata + dp->offset));
 }
 
 static int mt6379_charger_apply_pdata(struct mt6379_charger_data *cdata)
 {
-	int i = 0, ret = 0;
-	u32 val = 0;
 	const struct mt6379_charger_dtprop *dp;
+	u32 val = 0;
+	int i, ret;
 
 	for (i = 0; i < ARRAY_SIZE(mt6379_charger_dtprops); i++) {
 		dp = &mt6379_charger_dtprops[i];
 		if (dp->field >= F_MAX)
 			continue;
+
 		val = pdata_get_val(dev_get_platdata(cdata->dev), dp);
-		dev_info(cdata->dev, "dp-name = %s, val = %d\n", dp->name, val);
+		mt_dbg(cdata->dev, "%s, dp-name = %s, val = %d\n", __func__, dp->name, val);
+
 		ret = mt6379_charger_field_set(cdata, dp->field, val);
 		if (ret == -EOPNOTSUPP)
 			continue;
+
 		else if (ret < 0) {
-			dev_err(cdata->dev, "Failed to apply pdata %s\n", dp->name);
+			mt_dbg(cdata->dev, "%s, Failed to apply pdata %s\n", __func__, dp->name);
 			return ret;
 		}
 	}
+
 	return 0;
 }
 
 static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 {
-	int ret = 0;
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
+	struct device *dev = cdata->dev;
+	int ret = 0;
+
+	ret = mt6379_enable_hm(cdata, true);
+	if (ret) {
+		dev_info(dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+		return ret;
+	}
 
 	/* enable pre-UV function */
-	ret |= mt6379_enable_hm(cdata, true);
-	ret |= regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
-	ret |= mt6379_enable_hm(cdata, false);
+	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
+	if (ret)
+		dev_info(dev, "%s, Failed to set pre-UV function\n", __func__);
+
+	ret = mt6379_enable_hm(cdata, false);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to set pre-UV function\n");
+		dev_info(dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	ret = mt6379_charger_field_set(cdata, F_AICC_ONESHOT, 1);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to set aicc oneshot\n");
+		dev_info(dev, "%s, Failed to set aicc oneshot\n", __func__);
 		return ret;
 	}
 
 	/* Disable BC12 */
 	ret = mt6379_charger_field_set(cdata, F_BC12_EN, 0);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to disable bc12\n");
+		dev_info(dev, "%s, Failed to disable bc12\n", __func__);
 		return ret;
 	}
 
 	/* OTG LBP set 2.8 V */
 	ret = mt6379_charger_field_set(cdata, F_OTG_LBP, 2800000);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to set otb lbp 2.8V\n");
+		dev_info(dev, "%s, Failed to set otb lbp 2.8V\n", __func__);
 		return ret;
 	}
 
 	/* set aicr = 200mA in 1:META_BOOT 5:ADVMETA_BOOT */
 	if (pdata->boot_mode == 1 || pdata->boot_mode == 5) {
 		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, 200000);
-		if (ret < 0) {
-			dev_err(cdata->dev, "Failed to set aicr 200mA\n");
+		if (ret) {
+			dev_info(dev, "%s, Failed to set aicr 200mA\n", __func__);
 			return ret;
 		}
 	}
 
 	ret = mt6379_charger_apply_pdata(cdata);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to apply charger pdata\n");
+		dev_info(dev, "%s, Failed to apply charger pdata\n", __func__);
 		return ret;
 	}
+
 	ret = mt6379_charger_field_get(cdata, F_CV, &cdata->cv);
-	if (ret < 0) {
-		dev_err(cdata->dev, "Failed to get CV after apply pdata\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to get CV after apply pdata\n", __func__);
 		cdata->cv = 0;
 	}
 
 	/* Disable input current limit */
 	ret = mt6379_charger_field_set(cdata, F_ILIM_EN, 0);
 	if (ret) {
-		dev_err(cdata->dev, "Failed to disable input current limit\n");
+		dev_info(dev, "%s, Failed to disable input current limit\n", __func__);
 		return ret;
 	}
 
@@ -1517,32 +1619,53 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 	 * if it is enabled int dt property ant TA attached
 	 */
 	ret = mt6379_charger_field_set(cdata, F_WDT_EN, 0);
-	if (ret < 0)
-		dev_err(cdata->dev, "Failed to disable WDT\n");
+	if (ret)
+		dev_info(dev, "%s, Failed to disable WDT\n", __func__);
+
 	return ret;
 }
 
 static void mt6379_charger_check_pwr_rdy(struct mt6379_charger_data *cdata)
 {
-	union power_supply_propval val;
-	u32 value = 0;
-	int ret = 0;
+	struct device *dev = cdata->dev;
+	int ret = 0, attach_type = 0;
+	u32 val;
 
-	ret = mt6379_charger_field_get(cdata, F_ST_PWR_RDY, &value);
-	if (ret < 0)
+	ret = mt6379_charger_field_get(cdata, F_ST_PWR_RDY, &val);
+	if (ret)
 		return;
-	val.intval = value ? ATTACH_TYPE_PWR_RDY : ATTACH_TYPE_NONE;
-	if (val.intval == ATTACH_TYPE_NONE && !cdata->fsw_control) {
+
+	attach_type = val ? ATTACH_TYPE_PWR_RDY : ATTACH_TYPE_NONE;
+	if (attach_type == ATTACH_TYPE_NONE && !cdata->fsw_control) {
 		ret = mt6379_enable_hm(cdata, true);
-		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BOBU5,
-					 MT6379_CHG_RAMPUP_COMP_MSK,
-					 3 << MT6379_CHG_RAMPUP_COMP_SFT);
+		if (ret) {
+			dev_info(dev, "%s, Failed to enable hm(ret:%d)\n", __func__, ret);
+			return;
+		}
+
+		val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x3);
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
+					 MT6379_CHG_RAMPUP_COMP_MSK, val);
+		if (ret)
+			dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 240kOhm\n", __func__);
+
 		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_TRIM6,
 					 MT6379_CHG_IEOC_FLOW_RB_MSK, 0);
+		if (ret)
+			dev_info(dev, "%s, Failed to set no fccm in eoc flow\n", __func__);
+
 		ret = mt6379_enable_hm(cdata, false);
+		if (ret) {
+			dev_info(dev, "%s, Failed to disable hm(ret:%d)\n", __func__, ret);
+			return;
+		}
+
 		cdata->fsw_control = true;
 	}
-	mt6379_charger_set_online(cdata, ATTACH_TRIG_PWR_RDY, val.intval);
+
+	ret = mt6379_charger_set_online(cdata, ATTACH_TRIG_PWR_RDY, attach_type);
+	if (ret)
+		dev_info(dev, "%s, Failed to online status\n", __func__);
 }
 
 static irqreturn_t mt6379_fl_pwr_rdy_handler(int irq, void *data)
@@ -1565,7 +1688,7 @@ static irqreturn_t mt6379_fl_rechg_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1573,7 +1696,7 @@ static irqreturn_t mt6379_fl_chg_done_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1581,7 +1704,7 @@ static irqreturn_t mt6379_fl_bk_chg_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1589,7 +1712,7 @@ static irqreturn_t mt6379_fl_ieoc_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1597,7 +1720,7 @@ static irqreturn_t mt6379_fl_bus_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1605,7 +1728,7 @@ static irqreturn_t mt6379_fl_wlin_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1613,7 +1736,7 @@ static irqreturn_t mt6379_fl_vbus_ov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_VBUS_OVP);
 	return IRQ_HANDLED;
 }
@@ -1622,7 +1745,7 @@ static irqreturn_t mt6379_fl_chg_batov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1630,7 +1753,7 @@ static irqreturn_t mt6379_fl_chg_sysov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1638,7 +1761,7 @@ static irqreturn_t mt6379_fl_chg_tout_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_SAFETY_TIMEOUT);
 	return IRQ_HANDLED;
 }
@@ -1647,7 +1770,7 @@ static irqreturn_t mt6379_fl_chg_busuv_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1655,7 +1778,7 @@ static irqreturn_t mt6379_fl_chg_threg_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1663,7 +1786,7 @@ static irqreturn_t mt6379_fl_chg_aicr_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1671,7 +1794,7 @@ static irqreturn_t mt6379_fl_chg_mivr_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1679,7 +1802,7 @@ static irqreturn_t mt6379_fl_aicc_done_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1687,7 +1810,7 @@ static irqreturn_t mt6379_fl_pe_done_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1695,18 +1818,20 @@ static irqreturn_t mt6379_pp_pgb_evt_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_wdt_handler(int irq, void *data)
 {
-	int ret = 0;
 	struct mt6379_charger_data *cdata = data;
+	int ret = 0;
 
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	ret = mt6379_charger_field_set(cdata, F_WDT_RST, 1);
 	if (ret)
-		dev_notice(cdata->dev, "Failed to kick wdt\n");
+		dev_info(cdata->dev, "%s, Failed to kick wdt\n", __func__);
+
 	return IRQ_HANDLED;
 }
 
@@ -1714,7 +1839,7 @@ static irqreturn_t mt6379_fl_otg_fault_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1722,7 +1847,7 @@ static irqreturn_t mt6379_fl_otg_lbp_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1730,7 +1855,7 @@ static irqreturn_t mt6379_fl_otg_cc_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1739,10 +1864,12 @@ static irqreturn_t mt6379_fl_batpro_done_handler(int irq, void *data)
 	struct mt6379_charger_data *cdata = data;
 	int ret = 0;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
+
 	ret = charger_dev_enable_6pin_battery_charging(cdata->chgdev, false);
 	if (ret)
-		dev_err(cdata->dev, "%s enable 6pin failed\n", __func__);
+		dev_info(cdata->dev, "%s, Failed to disable 6pin\n", __func__);
+
 	charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_BATPRO_DONE);
 	return IRQ_HANDLED;
 }
@@ -1751,7 +1878,7 @@ static irqreturn_t mt6379_fl_otg_clear_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1759,7 +1886,7 @@ static irqreturn_t mt6379_fl_dcd_done_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
@@ -1767,29 +1894,30 @@ static irqreturn_t mt6379_fl_bc12_hvdcp_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	dev_info(cdata->dev, "%s, irq = %d\n", __func__, irq);
+	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_bc12_dn_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int attach = 0;
 	bool toggle_by_ufcs = false;
+	const char *attach_name;
+	int attach = 0;
 
-	dev_info(cdata->dev, "%s ++\n", __func__);
+
 	mutex_lock(&cdata->attach_lock);
 	attach = atomic_read(&cdata->attach[0]);
+	attach_name = get_attach_type_name(attach);
+	mt_dbg(cdata->dev, "%s, attach = %d(%s)\n", __func__, attach, attach_name);
 	if (attach == ATTACH_TYPE_NONE) {
 		cdata->bc12_dn[0] = false;
 		mutex_unlock(&cdata->attach_lock);
-		dev_notice(cdata->dev, "%s attach=%d\n", __func__, attach);
 		return IRQ_HANDLED;
 	}
 
 	/* If UFCS detect fail, BC12 will be retoggled to support HVDCP */
-	if (attach < ATTACH_TYPE_PD &&
-	    cdata->psy_desc.type == POWER_SUPPLY_TYPE_USB_DCP)
+	if (attach < ATTACH_TYPE_PD && cdata->psy_desc.type == POWER_SUPPLY_TYPE_USB_DCP)
 		toggle_by_ufcs = true;
 
 	cdata->bc12_dn[0] = true;
@@ -1797,42 +1925,46 @@ static irqreturn_t mt6379_fl_bc12_dn_handler(int irq, void *data)
 
 	if (!toggle_by_ufcs && attach < ATTACH_TYPE_PD) {
 		if (!queue_work(cdata->wq, &cdata->bc12_work))
-			dev_notice(cdata->dev, "%s bc12 work already queued\n",
-				   __func__);
+			dev_info(cdata->dev, "%s, bc12 work already queued\n", __func__);
 	}
+
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_adc_vbat_mon_ov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 	union power_supply_propval val;
+	int ret = 0;
 
-	ret = power_supply_get_property(cdata->psy,
-		POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE, &val);
-	if (ret < 0)
-		return IRQ_HANDLED;
-	dev_info(cdata->dev, "cv = %dmV\n", U_TO_M(val.intval));
+	ret = power_supply_get_property(cdata->psy, POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE,
+					&val);
+	if (ret)
+		mt_dbg(cdata->dev, "%s, Failed to get CV\n", __func__);
+	else
+		mt_dbg(cdata->dev, "%s, cv = %dmV\n", __func__, U_TO_M(val.intval));
+
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_usbid_evt_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 	u32 val = 0;
+	int ret = 0;
 
 	ret = mt6379_charger_field_get(cdata,  F_ST_USBID, &val);
 	if (ret)
-		dev_err(cdata->dev, "get F_ST_USBID failed\n");
-	dev_info(cdata->dev, "%s, usbid_stat = %d\n", __func__, val);
+		mt_dbg(cdata->dev, "%s, Failed to get USBID stat\n", __func__);
+	else
+		mt_dbg(cdata->dev, "%s, USBID stat = %d\n", __func__, val);
+
 	return IRQ_HANDLED;
 }
 
-#define DDATA_DEVM_KCALLOC(member)					\
-	(cdata->member = devm_kcalloc(cdata->dev, pdata->nr_port,	\
-				      sizeof(*cdata->member), GFP_KERNEL))\
+#define DDATA_DEVM_KCALLOC(member)						\
+	(cdata->member = devm_kcalloc(cdata->dev, pdata->nr_port,		\
+				      sizeof(*cdata->member), GFP_KERNEL))	\
 
 static int mt6379_chg_init_multi_ports(struct mt6379_charger_data *cdata)
 {
@@ -1871,6 +2003,7 @@ static int mt6379_chg_init_multi_ports(struct mt6379_charger_data *cdata)
 
 static int mt6379_charger_init_irq(struct mt6379_charger_data *cdata)
 {
+	struct device *dev = cdata->dev;
 	int i = 0, ret = 0;
 	const struct {
 		char *name;
@@ -1909,7 +2042,7 @@ static int mt6379_charger_init_irq(struct mt6379_charger_data *cdata)
 	};
 
 	if (ARRAY_SIZE(mt6379_charger_irqs) > MT6379_IRQ_MAX) {
-		dev_err(cdata->dev, "irq number out of MT6379_IRQ_MAX\n");
+		dev_info(dev, "%s, irq number out of MT6379_IRQ_MAX\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1918,18 +2051,22 @@ static int mt6379_charger_init_irq(struct mt6379_charger_data *cdata)
 					      mt6379_charger_irqs[i].name);
 		if (ret < 0) /* not declare in dts file */
 			continue;
-		dev_info(cdata->dev, "request %s, ret = %d\n", mt6379_charger_irqs[i].name, ret);
+
+		mt_dbg(dev, "%s, request \"%s\", irq number:%d\n",
+		       __func__, mt6379_charger_irqs[i].name, ret);
+
 		cdata->irq_nums[i] = ret;
 		ret = devm_request_threaded_irq(cdata->dev, ret, NULL,
 						mt6379_charger_irqs[i].handler,
 						IRQF_TRIGGER_FALLING,
-						mt6379_charger_irqs[i].name,
-						cdata);
-		if (ret)
-			return dev_err_probe(cdata->dev, ret,
-					     "Failed to request irq %s\n",
-					     mt6379_charger_irqs[i].name);
+						mt6379_charger_irqs[i].name, cdata);
+		if (ret) {
+			dev_info(dev, "%s, Failed to request irq %s\n",
+				 __func__, mt6379_charger_irqs[i].name);
+			return ret;
+		}
 	}
+
 	return 0;
 }
 
@@ -1971,37 +2108,38 @@ static void mt6379_charger_destroy_pe_lock(void *data)
 
 static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 {
-	int ret = 0;
 	struct device *dev = cdata->dev;
+	int ret = 0;
 
 	/* init mutex */
 	mutex_init(&cdata->attach_lock);
-	ret = devm_add_action_or_reset(cdata->dev,
-				       mt6379_charger_destroy_attach_lock,
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_attach_lock,
 				       &cdata->attach_lock);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init attach lock\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init attach lock\n", __func__);
+		return ret;
+	}
 
 	mutex_init(&cdata->cv_lock);
-	ret = devm_add_action_or_reset(cdata->dev,
-				       mt6379_charger_destroy_cv_lock,
-				       &cdata->cv_lock);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init cv lock\n");
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_cv_lock, &cdata->cv_lock);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init cv lock\n", __func__);
+		return ret;
+	}
 
 	mutex_init(&cdata->hm_lock);
-	ret = devm_add_action_or_reset(cdata->dev,
-				       mt6379_charger_destroy_hm_lock,
-				       &cdata->hm_lock);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init hm lock\n");
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_hm_lock, &cdata->hm_lock);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init hm lock\n", __func__);
+		return ret;
+	}
 
 	mutex_init(&cdata->pe_lock);
-	ret = devm_add_action_or_reset(cdata->dev,
-				       mt6379_charger_destroy_pe_lock,
-				       &cdata->pe_lock);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init pe lock\n");
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_pe_lock, &cdata->pe_lock);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init pe lock\n", __func__);
+		return ret;
+	}
 
 	/* init atomic */
 	atomic_set(&cdata->eoc_cnt, 0);
@@ -2011,12 +2149,10 @@ static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 	return 0;
 }
 
-static int ufcs_port_notifier_call(struct notifier_block *nb,
-				   unsigned long action, void *data)
+static int ufcs_port_notifier_call(struct notifier_block *nb, unsigned long action, void *data)
 {
-	struct mt6379_charger_data *cdata = container_of(nb, struct mt6379_charger_data,
-							 ufcs_noti);
-	int attach;
+	struct mt6379_charger_data *cdata = container_of(nb, struct mt6379_charger_data, ufcs_noti);
+	int ret = 0, attach = 0;
 
 	if (!cdata->wait_for_ufcs_attach)
 		return NOTIFY_DONE;
@@ -2028,8 +2164,11 @@ static int ufcs_port_notifier_call(struct notifier_block *nb,
 	attach = atomic_read(&cdata->attach[0]);
 
 	if (action == UFCS_NOTIFY_ATTACH_FAIL &&
-	    (attach == ATTACH_TYPE_TYPEC || attach == ATTACH_TYPE_PWR_RDY))
-		mt6379_charger_toggle_bc12(cdata);
+	    (attach == ATTACH_TYPE_TYPEC || attach == ATTACH_TYPE_PWR_RDY)) {
+		ret = mt6379_charger_toggle_bc12(cdata);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to toggle bc12\n", __func__);
+	}
 
 	mutex_unlock(&cdata->attach_lock);
 
@@ -2062,8 +2201,8 @@ static int mt6379_charger_get_iio_adc(struct mt6379_charger_data *cdata)
 
 static int mt6379_charger_probe(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
 	struct mt6379_charger_data *cdata;
+	struct device *dev = &pdev->dev;
 	int ret = 0;
 
 	cdata = devm_kzalloc(dev, sizeof(*cdata), GFP_KERNEL);
@@ -2071,77 +2210,107 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	cdata->rmap = dev_get_regmap(dev->parent, NULL);
-	if (!cdata->rmap)
-		return dev_err_probe(dev, -ENODEV, "Failed to get regmap\n");
+	if (!cdata->rmap) {
+		dev_info(dev, "%s, Failed to get regmap\n", __func__);
+		return -ENODEV;
+	}
 
 	cdata->dev = dev;
 
 	ret = mt6379_charger_init_rmap_fields(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init regmap field\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init regmap field\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_get_pdata(dev);
-	if (ret < 0)
-		dev_err_probe(dev, ret, "Failed to get platform data\n");
-
+	if (ret) {
+		dev_info(dev, "%s, Failed to get platform data\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_init_mutex(cdata);
-	if (ret < 0)
+	if (ret) {
+		dev_info(dev, "%s, Failed to init mutex\n", __func__);
 		return ret;
+	}
 
 	cdata->wq = create_singlethread_workqueue(dev_name(cdata->dev));
-	if (!cdata->wq)
-		return dev_err_probe(dev, -ENOMEM, "Failed to create WQ\n");
+	if (!cdata->wq) {
+		dev_info(dev, "%s, Failed to create WQ\n", __func__);
+		return -ENOMEM;
+	}
 
 	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_wq, cdata->wq);
-	if (ret)
-		dev_err_probe(dev, ret, "Failed to init WQ\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init WQ\n", __func__);
+		return ret;
+	}
 
-	ret = devm_work_autocancel(dev, &cdata->bc12_work,
-				   mt6379_charger_bc12_work_func);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init bc12 work\n");
+	ret = devm_work_autocancel(dev, &cdata->bc12_work, mt6379_charger_bc12_work_func);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init bc12 work\n", __func__);
+		return ret;
+	}
 
 	platform_set_drvdata(pdev, cdata);
 
 	ret = mt6379_charger_init_setting(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init mt6379 charger\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init mt6379 charger\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_get_iio_adc(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to get iio adc\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to get iio adc\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_chg_init_multi_ports(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init multi ports\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init multi ports\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_init_psy(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init psy\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init psy\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_init_otg_regulator(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init OTG regulator\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init OTG regulator\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_init_chgdev(cdata);
-	if (ret < 0)
-		return dev_err_probe(dev, ret, "Failed to init chgdev\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init chgdev\n", __func__);
+		return ret;
+	}
 
 	ret = mt6379_charger_init_irq(cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to init irq\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to init irq\n", __func__);
+		return ret;
+	}
 
 	cdata->ufcs = ufcs_port_get_by_name("port.0");
-	if (!cdata->ufcs)
-		return dev_err_probe(dev, -ENODEV, "Failed to get ufcs port\n");
+	if (!cdata->ufcs) {
+		dev_info(dev, "%s, Failed to get ufcs port\n", __func__);
+		return -ENODEV;
+	}
 
 	cdata->ufcs_noti.notifier_call = ufcs_port_notifier_call;
 	register_ufcs_dev_notifier(cdata->ufcs, &cdata->ufcs_noti);
 
 	ret = devm_add_action_or_reset(dev, mt6379_release_ufcs_port, cdata);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to add ufcs action\n");
+	if (ret) {
+		dev_info(dev, "%s, Failed to add ufcs action\n", __func__);
+		return ret;
+	}
 
 	mt6379_charger_check_pwr_rdy(cdata);
 	return 0;

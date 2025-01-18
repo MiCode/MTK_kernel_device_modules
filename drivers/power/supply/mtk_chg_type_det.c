@@ -15,6 +15,7 @@
 #include <tcpm.h>
 
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
 #include "charger_class.h"
 #endif /* CONFIG_MTK_CHARGER */
