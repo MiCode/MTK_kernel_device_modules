@@ -1,6 +1,6 @@
 DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
-KERNEL_DIR="kernel-mainline"
+KERNEL_DIR="kernel-6.6"
 # Compute the path of this project relative to KERNEL_DIR
 DEVICE_MODULES_REL_DIR=$(realpath ${DEVICE_MODULES_DIR} --relative-to ${KERNEL_DIR})
 # for builtin support
@@ -18,7 +18,7 @@ FILES="
 "
 
 EXT_MODULES+="
-kernel_device_modules-mainline
+kernel_device_modules-6.6
 ../vendor/mediatek/kernel_modules/connectivity/common
 ../vendor/mediatek/kernel_modules/connectivity/conninfra
 ../vendor/mediatek/kernel_modules/connectivity/connfem
