@@ -165,7 +165,7 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 #endif
 
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
-unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
@@ -219,8 +219,7 @@ unsigned long (*mtk_get_dsu_pwr_hook)(int wl_type, int dst_cpu, unsigned long ta
 		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
 		int dsu_pwr_enable, int PERCORE_L3_BW, void __iomem *base, int *data);
 EXPORT_SYMBOL(mtk_get_dsu_pwr_hook);
-#ifdef DSU_PWR_HOOK
-unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
+unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
 		bool dsu_pwr_enable)
 {
@@ -240,4 +239,3 @@ unsigned long get_dsu_pwr_(int wl_type, int dst_cpu, unsigned long task_util,
 	}
 	return 0;
 }
-#endif
