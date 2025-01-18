@@ -405,17 +405,27 @@ struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO {
  *  HINT FRAME_INFO
  ******************************************************************************/
 struct GED_BRIDGE_IN_HINT_FRAME_INFO {
-	int64_t BBQ_id;
+	uint64_t BBQ_id;
 	int32_t target_fps;
 	int32_t target_fps_margin;
 	int32_t enable;
+	uint32_t cmd;
+	int32_t pid;
+	int32_t tid;
+	uint64_t core;
+	bool	 by_mask;
 };
 
 struct GED_BRIDGE_OUT_HINT_FRAME_INFO {
 	GED_ERROR eError;
 	int32_t mainHead_fps_v;
 	int32_t mainHead_fps_gpu;
-	int64_t mainHead_BQ_ID;
+	uint64_t mainHead_BQ_ID;
+};
+
+enum {
+	GED_FRAME_INFO_TARGET_FPS,
+	GED_FRAME_INFO_MC,
 };
 
 /*****************************************************************************
