@@ -91,12 +91,15 @@ static int apu_ipi_apummu_rx_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		pr_info("%s: received APUMMU_RX_TEST from uP\n", __func__);
 		break;
 	case APUMMU_RX_APUMMU_AEE:
+		AMMU_LOG_ERR("APUMMU error in uP, error_code = %d\n", d->error_code);
 		apusys_ammu_exception("APUMMU error in uP");
 		break;
 	case APUMMU_RX_HSE_AEE:
+		pr_info("HSE error in uP, error_code = %d\n", d->error_code);
 		apusys_hse_exception("HSE error in uP");
 		break;
 	case APUMMU_RX_CBFC_AEE:
+		pr_info("CBFC error in uP, error_code = %d\n", d->error_code);
 		apusys_cbfc_exception("CBFC error in uP");
 		break;
 	default:
