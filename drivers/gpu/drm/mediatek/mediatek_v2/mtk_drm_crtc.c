@@ -14518,6 +14518,7 @@ static void update_frame_weight(struct drm_crtc *crtc,
 	mutex_unlock(&mtk_drm->lyeblob_list_mutex);
 }
 
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
 static void mtk_drm_check_plane_for_se(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -14548,6 +14549,7 @@ static void mtk_drm_check_plane_for_se(struct drm_crtc *crtc)
 		}
 	}
 }
+#endif
 
 static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				      struct drm_atomic_state *atomic_state)
@@ -15198,6 +15200,7 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 	}
 }
 
+#if IS_ENABLED(CONFIG_MTK_SE_SUPPORT)
 static void mtk_drm_plane_for_se(struct drm_crtc *crtc, struct drm_plane *plane,
 	struct mtk_plane_state *plane_state)
 {
@@ -15239,6 +15242,7 @@ static void mtk_drm_plane_for_se(struct drm_crtc *crtc, struct drm_plane *plane,
 		__func__, plane_state->comp_state.comp_id,
 		plane_state->pending.enable, plane_state->comp_state.lye_id);
 }
+#endif
 
 void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			       struct mtk_plane_state *plane_state)
