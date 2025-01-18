@@ -204,6 +204,11 @@ struct bitstream_buffer {
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
 };
 
+enum mtk_dbi_version {
+	MTK_DBI_V1,
+	MTK_DBI_V2,
+};
+
 struct mtk_disp_oddmr_data {
 	bool need_bypass_shadow;
 	/* dujac not support update od table */
@@ -217,11 +222,13 @@ struct mtk_disp_oddmr_data {
 	bool is_od_4_table;
 	int tile_overhead;
 	uint32_t dmr_buffer_size;
+	uint32_t dbir_buffer_size;
 	uint32_t odr_buffer_size;
 	uint32_t odw_buffer_size;
 	/*p_num: 1tNp, pixel num*/
 	uint32_t p_num;
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
+	enum mtk_dbi_version dbi_version;
 };
 
 struct mtk_disp_oddmr_od_data {

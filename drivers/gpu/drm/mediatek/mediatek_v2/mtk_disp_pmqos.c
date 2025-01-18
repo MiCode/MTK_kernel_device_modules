@@ -19,6 +19,7 @@
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <soc/mediatek/mmqos.h>
 #include <soc/mediatek/mmdvfs_v3.h>
+#include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
@@ -279,6 +280,10 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	int max_sub_comm = 4; // 6991 sub common num
 	int max_ovl_phy_layer = 12; // 6991 phy ovl layer num
 	unsigned int subcomm_bw_sum[4] = {0};
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	int oddmr_hrt = 0;
+
 	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
 	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
 	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
@@ -295,6 +300,11 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 			else if (i == 3 || i == 6 || i == 8)
 				subcomm_bw_sum[3] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 		}
+	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
+		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
 	}
 
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
