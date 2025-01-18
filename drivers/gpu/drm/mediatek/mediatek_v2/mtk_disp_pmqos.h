@@ -58,4 +58,5 @@ unsigned long mtk_drm_get_mmclk(struct drm_crtc *crtc, const char *caller);
 unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
 int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 
+void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
 #endif

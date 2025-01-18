@@ -4178,7 +4178,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		}
 	}
 
-	if (!mtk_crtc->mml_ir_enable) {
+	if (mtk_crtc->mml_prefer_dc) {
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
 		DDPDBG("%s,%d, mode:%d\n", __func__, __LINE__, mml_info->mode);
 	}
