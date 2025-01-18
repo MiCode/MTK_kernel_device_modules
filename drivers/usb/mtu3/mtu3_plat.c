@@ -218,10 +218,11 @@ static void ssusb_smc_request(struct ssusb_mtk *ssusb,
 void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
-	if (ssusb->plat_type == PLAT_FPGA || !ssusb->clk_mgr)
+	if (ssusb->plat_type == PLAT_FPGA ||
+	   (!ssusb->smc_req && !ssusb->hwrscs_vers))
 		return;
 
-	if(ssusb->smc_req) {
+	if (ssusb->smc_req) {
 		ssusb_smc_request(ssusb, state);
 		return;
 	}
@@ -1289,6 +1290,9 @@ static int mtu3_probe(struct platform_device *pdev)
 
 	device_init_wakeup(dev, true);
 
+	/* reset USB MAC/PHY */
+	ssusb_reset(ssusb);
+
 	ret = ssusb_rscs_init(ssusb);
 	if (ret)
 		goto comm_init_err;
@@ -1362,9 +1366,6 @@ static int mtu3_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&ssusb->dp_work, ssusb_dp_pullup_work);
-
-	/* reset USB MAC/PHY */
-	ssusb_reset(ssusb);
 
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
