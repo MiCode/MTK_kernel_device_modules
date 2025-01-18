@@ -10,7 +10,9 @@
 #define _ARM_SMMU_V3_H
 
 #include <linux/bitfield.h>
+#include <linux/dma-direction.h>
 #include <linux/iommu.h>
+#include <linux/io-pgtable.h>
 #include <linux/kernel.h>
 #include <linux/mmzone.h>
 #include <linux/sizes.h>
@@ -818,6 +820,10 @@ struct arm_smmu_impl {
 	void (*fault_dump)(struct arm_smmu_device *smmu);
 	bool (*skip_shutdown)(struct arm_smmu_device *smmu);
 	bool (*skip_sync_timeout)(struct arm_smmu_device *smmu);
+	struct io_pgtable_ops* (*alloc_io_pgtable_ops)(enum io_pgtable_fmt fmt,
+						       struct io_pgtable_cfg *cfg,
+						       void *cookie);
+	void (*free_io_pgtable_ops)(struct io_pgtable_ops *ops);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);
