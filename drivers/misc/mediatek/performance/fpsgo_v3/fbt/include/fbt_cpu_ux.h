@@ -25,6 +25,8 @@
 #define RESCUE_TYPE_OI                    (1 << 6)
 #define RESCUE_TYPE_MAX_ENHANCE           (1 << 7)
 #define RESCUE_TYPE_SECOND_RESCUE         (1 << 8)
+#define RESCUE_TYPE_BUFFER_FOUNT_FITLER   (1 << 9)
+#define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
