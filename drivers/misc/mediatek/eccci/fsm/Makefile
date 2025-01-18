@@ -63,9 +63,6 @@ ccci_fsm_all-y := ap_md_mem.o \
 			mdee_dumper_v2.o \
 			mdee_dumper_v3.o \
 			mdee_dumper_v5.o \
-			mdee_dumper_v6.o \
-			ap_md_reg_dump_mt6768.o \
-			ap_md_reg_dump_mt6877.o \
-			ap_md_reg_dump_mt6885.o
+			mdee_dumper_v6.o
 
 endif

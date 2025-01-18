@@ -83,9 +83,6 @@ ccci_md_all-$(CCCI_OBJ) += fsm/ccci_fsm.o \
 			fsm/mdee_dumper_v6.o \
 			fsm/modem_sys1.o \
 			fsm/md_sys1_platform.o \
-			fsm/ap_md_reg_dump_mt6768.o \
-			fsm/ap_md_reg_dump_mt6877.o \
-			fsm/ap_md_reg_dump_mt6885.o \
 			fsm/ap_md_reg_dump.o \
 			fsm/ap_md_mem.o
 
