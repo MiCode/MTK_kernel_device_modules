@@ -48,6 +48,7 @@ unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 					(unit_size < MME_MAX_UNIT_NUM)) &&
 					(g_ring_buffer_units[module][type] > 0) &&
 					mme_globals[module].start;
+
 	if (condition) {
 		struct mme_unit_t *p_ring_buffer = p_mme_ring_buffer[module][type];
 		unsigned long long index = (atomic_add_return(unit_size,
@@ -68,7 +69,7 @@ unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 								FLAG_HEADER_DATA |
 								((unsigned long long)log_level<<FLAG_LOG_LEVEL_OFFSET) |
 								((unsigned long long)module<<FLAG_MODULE_TOKEN_OFFSET));
-		return (unsigned long long)(&(p_ring_buffer[index + 2]));
+		return (unsigned long long)(&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]));
 	}
 
 	if (unit_size >= MME_MAX_UNIT_NUM)
@@ -257,7 +258,8 @@ static unsigned int mme_fill_dump_block(void *p_src, void *p_dst,
 	return dst_left;
 }
 
-static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_num)
+static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_num,
+							unsigned int *p_error_token)
 {
 	unsigned int unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
 	unsigned int module = (flag & FLAG_MODULE_TOKEN_MASK) >> FLAG_MODULE_TOKEN_OFFSET;
@@ -269,23 +271,27 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 	unsigned int i = 0;
 
 	if((flag & FLAG_HEADER_DATA_MASK)!=FLAG_HEADER_DATA) {
-		MMEERR("invalid flag header, flag:%lld", flag);
+		MMEINFO("invalid flag header, flag:%lld", flag);
+		*p_error_token = INVALID_FLAG_HEADER;
 		return false;
 	}
 
 	if (module >= MME_MODULE_MAX) {
 		MMEERR("invalid flag module token, flag:%lld", flag);
+		*p_error_token = INVALID_MODULE_TOKEN;
 		return false;
 	}
 
 	if (unit_size < (MME_HEADER_UNIT_SIZE +
 					DIV_ROUND_UP((MME_FMT_SIZE + MME_PID_SIZE), MME_UNIT_SIZE))) {
 		MMEERR("invalid unit_size, unit_size:%d", unit_size);
+		*p_error_token = INVALID_SMALL_UNIT_SIZE;
 		return false;
 	}
 
 	if (log_level >= LOG_LEVEL_MAX) {
 		MMEERR("invalid flag log level, flag:%lld", flag);
+		*p_error_token = INVALID_LOG_LEVEL;
 		return false;
 	}
 
@@ -298,6 +304,7 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 
 		if (type == DATA_FLAG_RESERVED) {
 			MMEERR("Invalid flag type: DATA_FLAG_RESERVED");
+			*p_error_token = INVALID_FLAG_TYPE;
 			return false;
 		}
 
@@ -316,6 +323,7 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 		unit_size < data_unit_size) {
 		MMEERR("invalid unit_size, unit_size:%d, data_unit_size:%d, stack_region_num:%d",
 				unit_size, data_unit_size, stack_region_num);
+		*p_error_token = INVALID_MISMATCH_UNIT_SIZE;
 		return false;
 	}
 
@@ -356,7 +364,7 @@ static int get_string_buffer(unsigned int index, char *p_buffer, unsigned int *p
 							unsigned int buffer_units)
 {
 	unsigned int data_size = 0, unit_size = 0, src_pos = 0;
-	unsigned int code_region_num = 0, i = 0;
+	unsigned int code_region_num = 0, i = 0, flag_error_token = 0;
 	unsigned long long flag = 0, time=0, p = 0;
 	char *p_str;
 
@@ -372,14 +380,24 @@ static int get_string_buffer(unsigned int index, char *p_buffer, unsigned int *p
 	flag = p_ring_buffer[index + 1].data;
 
 	unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
-	MMEINFO("dump string index:%d, flag:%lld,unit_size:%d, buffer_units:0x%x",
+	MMEINFO("dump string index:%d, flag:%llX,unit_size:%d, buffer_units:0x%x",
 			index, flag, unit_size, buffer_units);
 
 	if (time==0 ||
-		!check_log_flag(flag, &code_region_num) ||
+		!check_log_flag(flag, &code_region_num, &flag_error_token) ||
 		(index + unit_size) >= buffer_units) {
-		MMEINFO("invalid event, index:%d,flag:%lld,time:%lld,unit_size:%d",
+		MMEINFO("invalid event, index:%d,flag:%llX,time:%lld,unit_size:%d",
 				index, flag, time, unit_size);
+		if (mme_debug_on &&
+			(flag_error_token==INVALID_MISMATCH_UNIT_SIZE ||
+			flag_error_token==INVALID_FLAG_TYPE)) {
+			// print format for debug
+			p = (unsigned long long)&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]);
+			p +=  MME_PID_SIZE; // PID
+			p_str = *((char **)p);
+			if (is_valid_addr(p_str))
+				MMEINFO("format addr:%p, format:%s, len:%zu", p_str, p_str, strlen(p_str));
+		}
 		*p_mme_unit_size = 1;
 		return INVALIDE_EVENT;
 	}
@@ -480,7 +498,7 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 						struct pid_info_t *p_pid_buffer, unsigned int *p_pid_count)
 {
 	unsigned long long flag = 0, time=0, p = 0;
-	unsigned int code_region_num = 0, unit_size = 0, index=0;
+	unsigned int code_region_num = 0, unit_size = 0, index=0, flag_error_token = 0;
 	unsigned int pid, i;
 
 	for (index = 0; index < buffer_units;) {
@@ -491,7 +509,9 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 		flag = p_ring_buffer[index + 1].data;
 		unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
 
-		if (time==0 || !check_log_flag(flag, &code_region_num) || (index + unit_size) >= buffer_units) {
+		if (time==0 ||
+			!check_log_flag(flag, &code_region_num, &flag_error_token) ||
+			(index + unit_size) >= buffer_units) {
 			index += 1;
 			continue;
 		}
