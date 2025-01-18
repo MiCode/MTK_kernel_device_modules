@@ -33,6 +33,10 @@
 #include "iommu_debug.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+#include "emi.h"
+#endif
+
 /*
  * SLB activate callback, cb calls when high priority user to release SLB,
  * venc request SLB depand on whether slb is required.
@@ -813,6 +817,21 @@ static int mtk_venc_translation_fault_callback(
 }
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+static int mtk_venc_violation_fault_callback(void *data)
+{
+	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)data;
+
+	mtk_v4l2_err("venc emi violation");
+	if (dev->vio_info != NULL) {
+		dev->vio_info->has_vio = 1;
+		mtk_v4l2_err("VIO set has_vio %d ", dev->vio_info->has_vio);
+	}
+
+	return 0;
+}
+#endif
+
 void mtk_venc_translation_fault_callback_setting(
 	struct mtk_vcodec_dev *dev)
 {
@@ -825,5 +844,13 @@ void mtk_venc_translation_fault_callback_setting(
 				mtk_venc_translation_fault_callback, (void *)dev, false);
 		}
 	}
+#endif
+}
+
+void mtk_venc_violation_fault_callback_setting(
+	struct mtk_vcodec_dev *dev)
+{
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	mtk_slb_violation_register_callback(mtk_venc_violation_fault_callback, (void *)dev);
 #endif
 }

@@ -65,6 +65,8 @@ static void handle_enc_init_msg(struct mtk_vcodec_dev *dev, struct venc_vcu_inst
 
 	dev->tf_info = (struct mtk_tf_info *)
 		((__u64)vcp_get_reserve_mem_virt_ex(VENC_MEM_ID) + VENC_TF_INFO_OFFSET);
+	dev->vio_info = (struct mtk_vio_info *)
+		((__u64)dev->tf_info + sizeof(struct mtk_tf_info));
 }
 
 static void handle_query_cap_ack_msg(struct venc_vcu_ipi_query_cap_ack *msg)
