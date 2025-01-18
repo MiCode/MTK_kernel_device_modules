@@ -1607,6 +1607,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
         mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
+        mgk_64_device_modules.append("sound/soc/codecs/fs18xx/snd-soc-fsm.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6358.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/spi_slave_drv/spi_slave.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko")
