@@ -76,7 +76,11 @@
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
 #include "mtk_fbconfig_kdebug.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#include "mtk_drm_dp/mtk_drm_dp_api.h"
+#else
 #include "mtk_dp_api.h"
+#endif
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
