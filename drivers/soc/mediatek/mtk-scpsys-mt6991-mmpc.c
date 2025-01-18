@@ -907,9 +907,9 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_ofs = 0x0100,
 		.hwv_set_ofs = 0x0104,
 		.hwv_clr_ofs = 0x0108,
-		.hwv_done_ofs = 0x0118,
+		.hwv_done_ofs = 0x0144,
 		.hwv_shift = 2,
-		.sta_mask = 0,
+		.sta_mask = 1,
 		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA_AO] = {
