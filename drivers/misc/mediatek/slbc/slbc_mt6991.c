@@ -365,6 +365,29 @@ static u32 slbc_read_debug_sram(int sid)
 		return slbc_sram_read(SLBC_DEBUG_8 + (sid - 8) * 4);
 }
 
+static void slbc_dcc_ctrl(u32 dcc_flag)
+{
+	mutex_lock(&slbc_ref_lock);
+	if (dcc_flag) {
+		if (venc_count == 0) {
+			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
+			pr_info("[slbc] disable DCC\n");
+		}
+		venc_count++;
+	} else {
+		venc_count--;
+		if (venc_count == 0) {
+			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
+			pr_info("[slbc] enable DCC\n");
+		}
+	}
+	pr_info("#@# %s(%d) venc_count %d\n",
+		__func__, __LINE__, venc_count);
+	slbc_sram_write(SLBC_DCC_COUNT, venc_count);
+	slbc_sram_write(SLBC_DCC_CTRL, dcc_flag);
+	mutex_unlock(&slbc_ref_lock);
+}
+
 void slbc_force_cmd(unsigned int force)
 {
 	slbc_force = force;
@@ -2090,6 +2113,7 @@ static struct slbc_common_ops common_ops = {
 
 static struct slbc_ipi_ops ipi_ops = {
 	.slbc_buffer_cb_notify = slbc_buffer_cb_notify,
+	.slbc_dcc_ctrl = slbc_dcc_ctrl,
 };
 
 void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)

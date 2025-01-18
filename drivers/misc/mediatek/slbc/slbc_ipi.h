@@ -70,6 +70,7 @@ enum {
 	IPI_SLBC_CACHE_USAGE,
 	IPI_SLBC_SETUP_SSPM_SHARED_DRAM,
 	IPI_SLBC_CG_PRIORITY_SET,
+	IPI_SLBC_DCC_CTRL_TO_AP,
 	NR_IPI_SLBC,
 };
 
@@ -86,6 +87,7 @@ struct slbc_ipi_ops {
 	int (*slbc_release_acp)(void *ptr);
 	void (*slbc_mem_barrier)(void);
 	void (*slbc_buffer_cb_notify)(u32 arg, u32 arg2, u32 arg3);
+	void (*slbc_dcc_ctrl)(u32 arg);
 };
 
 extern int slbc_scmi_ctrl(void *buffer, void *ptr);
