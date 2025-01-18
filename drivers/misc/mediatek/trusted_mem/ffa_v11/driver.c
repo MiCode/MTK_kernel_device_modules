@@ -62,7 +62,6 @@
 #define RXTX_BUFFER_SIZE	SZ_4K
 
 #define FFA_MAX_NOTIFICATIONS		64
-#define NOTIFICATIONS_VM_ID			0
 
 static ffa_fn *invoke_ffa_fn;
 
@@ -599,7 +598,7 @@ static int ffa_notification_bitmap_create(void)
 
 	invoke_ffa_fn((ffa_value_t){
 		      .a0 = FFA_NOTIFICATION_BITMAP_CREATE,
-		      .a1 = NOTIFICATIONS_VM_ID, .a2 = vcpu_count,
+		      .a1 = drv_info->vm_id, .a2 = vcpu_count,
 		      }, &ret);
 
 	if (ret.a0 == FFA_ERROR)
@@ -655,7 +654,7 @@ static int ffa_notification_bind_common(u16 dst_id, u64 bitmap,
 					u32 flags, bool is_bind)
 {
 	ffa_value_t ret;
-	u32 func, src_dst_ids = PACK_TARGET_INFO(dst_id, NOTIFICATIONS_VM_ID);
+	u32 func, src_dst_ids = PACK_TARGET_INFO(dst_id, drv_info->vm_id);
 
 	func = is_bind ? FFA_NOTIFICATION_BIND : FFA_NOTIFICATION_UNBIND;
 
@@ -702,7 +701,7 @@ struct ffa_notify_bitmaps {
 //static int ffa_notification_get(u32 flags, struct ffa_notify_bitmaps *notify)
 //{
 //	ffa_value_t ret;
-//	u16 src_id = NOTIFICATIONS_VM_ID;
+//	u16 src_id = drv_info->vm_id;
 //	u16 cpu_id = smp_processor_id();
 //	u32 rec_vcpu_ids = PACK_NOTIFICATION_GET_RECEIVER_INFO(cpu_id, src_id);
 //
@@ -800,7 +799,9 @@ static void ffa_notification_info_get(bool is_64b)
 //			}
 //		}
 //	} while (ret.a2 & NOTIFICATION_INFO_GET_MORE_PEND_MASK);
-	__do_sched_recv_cb(0, 0, false);
+
+	/* __do_sched_recv_cb(part_id, vcpu_id,is_per_vcpu) */
+	__do_sched_recv_cb(1, 0, false);
 }
 
 static int ffa_run(struct ffa_device *dev, u16 vcpu)
@@ -1069,7 +1070,7 @@ static int ffa_notify_send(struct ffa_device *dev, int notify_id,
 	if (is_per_vcpu)
 		flags |= (PER_VCPU_NOTIFICATION_FLAG | vcpu << 16);
 
-	return ffa_notification_set(dev->vm_id, NOTIFICATIONS_VM_ID, flags,
+	return ffa_notification_set(dev->vm_id, drv_info->vm_id, flags,
 				    BIT(notify_id));
 }
 
@@ -1448,7 +1449,7 @@ static int ffa_notifications_setup(void)
 	mutex_init(&drv_info->notify_lock);
 
 	/* Register internal scheduling callback */
-	ret = ffa_sched_recv_cb_update(NOTIFICATIONS_VM_ID, ffa_self_notif_handle,
+	ret = ffa_sched_recv_cb_update(drv_info->vm_id, ffa_self_notif_handle,
 				       drv_info, true);
 	if (!ret)
 		return ret;
