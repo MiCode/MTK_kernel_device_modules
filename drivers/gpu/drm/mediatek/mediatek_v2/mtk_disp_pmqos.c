@@ -212,8 +212,8 @@ int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode,
 				bool real_srt_ostdl)
 {
-	DDPDBG("%s set %s bw = %u peak %u, srt_ostdl %d\n", __func__,
-			mtk_dump_comp_str_id(comp_id), bandwidth, peak_bw, real_srt_ostdl);
+	DDPDBG("%s set %s/%d bw = %u peak %u, srt_ostdl %d\n", __func__,
+			mtk_dump_comp_str_id(comp_id), comp_id, bandwidth, peak_bw, real_srt_ostdl);
 	if (real_srt_ostdl != true)
 		bandwidth = bandwidth * 133 / 100;
 
