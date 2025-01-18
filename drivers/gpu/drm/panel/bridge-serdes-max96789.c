@@ -739,7 +739,7 @@ void serdes_get_modes(struct drm_bridge *bridge, struct vdo_timing *disp_mode)
 	} else {
 		disp_mode->width = ser_des->desdef->disp_mode.width;
 		disp_mode->hfp = ser_des->desdef->disp_mode.hfp;
-		disp_mode->hsa = ser_des->desdef->disp_mode.vfp;
+		disp_mode->hsa = ser_des->desdef->disp_mode.hsa;
 		disp_mode->hbp = ser_des->desdef->disp_mode.hbp;
 		disp_mode->height = ser_des->desdef->disp_mode.height;
 		disp_mode->vfp = ser_des->desdef->disp_mode.vfp;

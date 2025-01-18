@@ -123,8 +123,9 @@ static void get_timing(struct lcm *ctx)
 	ctx->disp_mode.vsync_end = timing.height + timing.vfp + timing.vsa;
 	ctx->disp_mode.vtotal = timing.height + timing.vfp + timing.vsa + timing.vbp;
 
-	ctx->disp_mode.clock = ctx->disp_mode.vtotal * ctx->disp_mode.htotal * timing.fps / 1000;
-	ctx->pll = (timing.pll == 0) ? (ctx->disp_mode.clock * 3 / 1000) : timing.pll;
+	ctx->disp_mode.clock =
+		DIV_ROUND_UP_ULL(ctx->disp_mode.vtotal * ctx->disp_mode.htotal * timing.fps, 1000);
+	ctx->pll = (timing.pll == 0) ? DIV_ROUND_UP_ULL(ctx->disp_mode.clock * 3, 1000) : timing.pll;
 	ctx->lppf = timing.lppf;
 	ctx->disp_mode.width_mm = timing.physcial_w;
 	ctx->disp_mode.height_mm = timing.physcial_h;
