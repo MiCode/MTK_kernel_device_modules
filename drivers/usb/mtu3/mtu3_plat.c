@@ -729,10 +729,12 @@ void ssusb_set_force_vbus(struct ssusb_mtk *ssusb, bool vbus_on)
 	u2ctl = mtu3_readl(ssusb->ippc_base, SSUSB_U2_CTRL(0));
 	misc = mtu3_readl(ssusb->mac_base, U3D_MISC_CTRL);
 	if (vbus_on) {
-		u2ctl &= ~SSUSB_U2_PORT_OTG_SEL;
+		if (!ssusb->keep_ao)
+			u2ctl &= ~SSUSB_U2_PORT_OTG_SEL;
 		misc |= VBUS_FRC_EN | VBUS_ON;
 	} else {
-		u2ctl |= SSUSB_U2_PORT_OTG_SEL;
+		if (!ssusb->keep_ao)
+			u2ctl |= SSUSB_U2_PORT_OTG_SEL;
 		misc &= ~(VBUS_FRC_EN | VBUS_ON);
 	}
 	mtu3_writel(ssusb->ippc_base, SSUSB_U2_CTRL(0), u2ctl);
@@ -1127,6 +1129,7 @@ get_phy:
 	of_property_read_u32(node, "mediatek,polling-scdlfps-time", &ssusb->polling_scdlfps_time);
 
 	ssusb->utmi_8bit = of_property_read_bool(node, "mediatek,utmi-8bit");
+	ssusb->keep_ao = of_property_read_bool(node, "mediatek,keep-host-on");
 
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");
 	if (IS_ERR(otg_sx->vbus)) {
