@@ -139,7 +139,7 @@ static int __init wp_policy_init(void)
 		devt = find_whole_bdev("mmcblk0", start_minor, &perdev_minors);
 		if (!devt){
 			pr_info("[mtk-mmc-wp]not found mmcblk0\n");
-			return 1;
+			return -ENODEV;
 		}
 		set_ro_on_parts(devt, &wp_user);
 	}
@@ -149,7 +149,7 @@ static int __init wp_policy_init(void)
 		devt = find_whole_bdev("mmcblk0boot0", start_minor, &perdev_minors);
 		if (!devt){
 			pr_info("[mtk-mmc-wp]not found mmcblk0boot0\n");
-			return 1;
+			return -ENODEV;
 		}
 		set_ro_on_bdev(devt);
 	}
@@ -159,7 +159,7 @@ static int __init wp_policy_init(void)
 		devt = find_whole_bdev("mmcblk0boot1", start_minor, &perdev_minors);
 		if (!devt){
 			pr_info("[mtk-mmc-wp]not found mmcblk0boot1\n");
-			return 1;
+			return -ENODEV;
 		}
 		set_ro_on_bdev(devt);
 	}

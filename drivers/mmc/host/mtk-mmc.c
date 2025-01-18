@@ -53,9 +53,32 @@
 #define PAD_DS_DLY3		(0x1f << 0)	/* RW */
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
 
+#define MSDC_GPIO_2 "msdc_gpio=2"
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 static void msdc_gpio_of_parse(struct msdc_host *host);
 #endif
+
+static int msdc_get_gpio_version(void)
+{
+	struct device_node *of_chosen = NULL;
+	char *bootargs = NULL;
+	int msdc_gpio = 1;
+
+	of_chosen = of_find_node_by_path("/chosen");
+	if (of_chosen) {
+		bootargs = (char *)of_get_property(of_chosen,
+			"bootargs", NULL);
+
+		if (bootargs && strstr(bootargs, MSDC_GPIO_2))
+			msdc_gpio = 2;
+		else
+			msdc_gpio = 1;
+		of_node_put(of_chosen);
+	}
+	pr_info("msdc_gpio %d\n", msdc_gpio);
+	return msdc_gpio;
+}
 
 static const struct mtk_mmc_compatible mt8135_compat = {
 	.clk_div_bits = 8,
@@ -276,6 +299,30 @@ static const struct mtk_mmc_compatible mt6779_compat = {
 	},
 };
 
+static const struct mtk_mmc_compatible mt6761_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.need_gate_cg = true,
+	.set_crypto_enable_in_sw = true,
+	.new_tx_ver = 0,
+	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
+};
+
 static const struct mtk_mmc_compatible mt6768_compat = {
 	.clk_div_bits = 12,
 	.recheck_sdio_irq = false,
@@ -292,6 +339,11 @@ static const struct mtk_mmc_compatible mt6768_compat = {
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = true,
+	.new_tx_ver = 0,
+	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible common_v2_compat = {
@@ -447,6 +499,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt8516-mmc", .data = &mt8516_compat},
 	{ .compatible = "mediatek,mt7620-mmc", .data = &mt7620_compat},
 	{ .compatible = "mediatek,mt6779-mmc", .data = &mt6779_compat},
+	{ .compatible = "mediatek,mt6761-mmc", .data = &mt6761_compat},
 	{ .compatible = "mediatek,mt6768-mmc", .data = &mt6768_compat},
 	{ .compatible = "mediatek,common-mmc-v2", .data = &common_v2_compat},
 	{ .compatible = "mediatek,mt6985-mmc", .data = &mt6985_compat},
@@ -458,6 +511,8 @@ static const struct of_device_id msdc_of_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
 
+static const u32 msdc_ints_err = MSDC_INT_RSPCRCERR | MSDC_INT_CMDTMO |
+									MSDC_INT_DATCRCERR | MSDC_INT_DATTMO;
 static bool ra_fixed;
 static int  rw_times;
 
@@ -1656,6 +1711,7 @@ static irqreturn_t msdc_cmdq_irq(struct msdc_host *host, u32 intsts)
 	}
 
 	if (cmd_err || dat_err) {
+		writel(msdc_ints_err, host->base + MSDC_INT);
 		dev_err(host->dev, "cmd_err = %d, dat_err =%d, intsts = 0x%x",
 			cmd_err, dat_err, intsts);
 		msdc_dump_info(NULL, 0, NULL, host);
@@ -1929,6 +1985,9 @@ static void msdc_init_hw(struct msdc_host *host)
 
 	/* Configure to default data timeout */
 	sdr_set_field(host->base + SDC_CFG, SDC_CFG_DTOC, 3);
+
+	/* default write data / busy timeout */
+	sdr_set_field(host->base + SDC_CFG, SDC_CFG_WRDTOC, 100);
 
 	host->def_tune_para.iocon = readl(host->base + MSDC_IOCON);
 	host->saved_tune_para.iocon = readl(host->base + MSDC_IOCON);
@@ -3137,6 +3196,7 @@ static void msdc_hw_reset(struct mmc_host *mmc)
 {
 	struct msdc_host *host = mmc_priv(mmc);
 
+	dev_info(mmc_dev(mmc), "hw reset device\n");
 	sdr_set_bits(host->base + EMMC_IOCON, 1);
 	mdelay(10);
 	sdr_clr_bits(host->base + EMMC_IOCON, 1);
@@ -3265,6 +3325,8 @@ static void msdc_cqe_disable(struct mmc_host *mmc, bool recovery)
 	struct msdc_host *host = mmc_priv(mmc);
 	unsigned int val = 0;
 
+	val = readl(host->base + MSDC_INT);
+	writel(val, host->base + MSDC_INT);
 	/* disable cmdq irq */
 	sdr_clr_bits(host->base + MSDC_INTEN, MSDC_INT_CMDQ);
 	/* disable busy check */
@@ -3559,6 +3621,7 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	struct resource *res;
 #endif
 	int ret;
+	int msdc_gpio = 1;
 
 	dev_info(&pdev->dev, "[%s %d]mtk-mmc start\n",__func__,__LINE__);
 
@@ -3620,6 +3683,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		goto host_free;
 	}
 
+	msdc_of_property_parse(pdev, host);
+
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	host->pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR(host->pinctrl)) {
@@ -3628,30 +3693,35 @@ static int msdc_drv_probe(struct platform_device *pdev)
 		goto host_free;
 	}
 
-	host->pins_default = pinctrl_lookup_state(host->pinctrl, "default");
+	msdc_gpio = msdc_get_gpio_version();
+
+	host->pins_default = pinctrl_lookup_state(host->pinctrl,
+		(msdc_gpio == 2 && mmc->index == 0) ? "default_v2" : "default");
 	if (IS_ERR(host->pins_default)) {
 		ret = PTR_ERR(host->pins_default);
 		dev_err(&pdev->dev, "Cannot find pinctrl default!\n");
 		goto host_free;
 	}
+	pinctrl_select_state(host->pinctrl, host->pins_default);
 
-	host->pins_uhs = pinctrl_lookup_state(host->pinctrl, "state_uhs");
+	host->pins_uhs = pinctrl_lookup_state(host->pinctrl,
+		(msdc_gpio == 2 && mmc->index == 0) ? "state_uhs_v2" : "state_uhs");
 	if (IS_ERR(host->pins_uhs)) {
 		ret = PTR_ERR(host->pins_uhs);
 		dev_err(&pdev->dev, "Cannot find pinctrl uhs!\n");
 		goto host_free;
 	}
 
-	host->pins_pull_down = pinctrl_lookup_state(host->pinctrl, "pull_down");
+	host->pins_pull_down = pinctrl_lookup_state(host->pinctrl,
+		(msdc_gpio == 2 && mmc->index == 0) ? "pull_down_v2" : "pull_down");
 	if (IS_ERR(host->pins_pull_down)) {
 		ret = PTR_ERR(host->pins_pull_down);
 		dev_info(&pdev->dev, "Cannot find pinctrl pull_down!\n");
 		host->pins_pull_down = NULL;
 	}
 #endif
-	host->pins_state = PINS_DEFAULT;
 
-	msdc_of_property_parse(pdev, host);
+	host->pins_state = PINS_DEFAULT;
 
 	if (host->id == MSDC_SD) {
 		host->sd_oc.nb.notifier_call = msdc_sd_event;
@@ -3824,6 +3894,8 @@ release_mem:
 			MAX_BD_NUM * sizeof(struct mt_bdma_desc),
 			host->dma.bd, host->dma.bd_addr);
 host_free:
+	if (!IS_ERR_OR_NULL(host->pinctrl))
+		devm_pinctrl_put(host->pinctrl);
 	if (host->dev_comp->infra_check.enable &&
 		host->infra_ack_vaddr != NULL)
 		iounmap(host->infra_ack_vaddr);
@@ -4080,10 +4152,14 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 static int __maybe_unused msdc_suspend(struct device *dev)
 {
 	struct mmc_host *mmc = dev_get_drvdata(dev);
-	int ret;
+	struct msdc_host *host = mmc_priv(mmc);
+	u32 val = 0;
+	int ret = 0;
 
 	if (mmc->caps2 & MMC_CAP2_CQE) {
 		ret = cqhci_suspend(mmc);
+		val = readl(host->base + MSDC_INT);
+		writel(val, host->base + MSDC_INT);
 		if (ret)
 			return ret;
 	}

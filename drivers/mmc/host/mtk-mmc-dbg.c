@@ -995,12 +995,16 @@ int mmc_dbg_register(struct mmc_host *mmc)
 	 * command history dump in procfs.
 	 */
 	mmc_aee_buffer = kzalloc(MMC_AEE_BUFFER_SIZE, GFP_NOFS);
-
+	if (mmc_aee_buffer == NULL)
+		return -ENOMEM;
 	/* Blocktag */
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	ret = mmc_mtk_biolog_init(mmc);
-	if (ret)
+	if (ret) {
+		kfree(mmc_aee_buffer);
+		mmc_aee_buffer = NULL;
 		return ret;
+	}
 #endif
 
 	spin_lock_init(&cmd_hist_lock);
@@ -1014,6 +1018,8 @@ int mmc_dbg_register(struct mmc_host *mmc)
 				interests[i].name);
 			/* Unload previously loaded */
 			mmc_dbg_cleanup();
+			kfree(mmc_aee_buffer);
+			mmc_aee_buffer = NULL;
 			return -EINVAL;
 		}
 
