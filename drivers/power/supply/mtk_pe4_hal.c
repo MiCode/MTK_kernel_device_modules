@@ -63,10 +63,21 @@
 /* dependent on platform */
 #include "mtk_charger.h"
 
+#define MAX_WAIT_TA_TIMES 2
+
+enum adapter_driver_type {
+	MTK_RUN_ON_PD,
+	MTK_RUN_ON_UFCS,
+};
+
 struct pe40_hal {
 	struct charger_device *chg1_dev;
 	struct charger_device *chg2_dev;
+	struct adapter_device *ufcs_adapter;
+	struct adapter_device *pd_adapter;
 	struct adapter_device *adapter;
+	int adapter_type;
+	int wait_times;
 };
 
 int pe4_hal_init_hardware(struct chg_alg_device *alg)
@@ -106,11 +117,23 @@ int pe4_hal_init_hardware(struct chg_alg_device *alg)
 		pe4_err("%s: Error : can't find secondary charger\n",
 			__func__);
 
-	hal->adapter = get_adapter_by_name("pd_adapter");
-	if (hal->adapter)
+	hal->pd_adapter = get_adapter_by_name("pd_adapter");
+	if (hal->pd_adapter)
 		pe4_dbg("%s: Found pd adapter\n", __func__);
-	else {
-		pe4_err("%s: Error : can't find pd adapter\n",
+	else
+		pe4_err("%s: note : can't find pd adapter\n",
+			__func__);
+
+
+	hal->ufcs_adapter = get_adapter_by_name("ufcs_adapter");
+	if (hal->ufcs_adapter)
+		pe4_dbg("%s: Found ufcs adapter\n", __func__);
+	else
+		pe4_err("%s: note : can't find ufcs adapter\n",
+			__func__);
+
+	if (!hal->pd_adapter && !hal->ufcs_adapter) {
+		pe4_err("%s: Error : can't find pd, ufcs adapter\n",
 			__func__);
 		return -ENODEV;
 	}
@@ -119,16 +142,24 @@ int pe4_hal_init_hardware(struct chg_alg_device *alg)
 }
 
 int pe4_hal_set_adapter_cap_end(struct chg_alg_device *alg,
-	int mV, int mA)
+	int mV, int mA, int exit_mode)
 {
 	struct pe40_hal *hal;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
 
-	pe4_dbg("%s %d %d\n", __func__, mV, mA);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	adapter_dev_set_cap(hal->adapter, MTK_PD_APDO_END, mV, mA);
+	if (exit_mode) {
+		ret = adapter_dev_exit_mode(hal->adapter);
+		pe4_dbg("%s: exit_mode\n", __func__);
+	}
+	if (ret < 0 || !exit_mode) {
+		ret = adapter_dev_set_cap(hal->adapter, MTK_PD_APDO_END, mV, mA);
+		pe4_dbg("%s %d %d\n", __func__, mV, mA);
+	}
+	pe4_dbg("%s: ret = %d\n", __func__, ret);
 	return 0;
 }
 
@@ -194,7 +225,7 @@ int pe4_hal_enable_termination(struct chg_alg_device *alg,
 int pe4_hal_get_uisoc(struct chg_alg_device *alg)
 {
 	union power_supply_propval prop = {0};
-	struct power_supply *bat_psy = NULL;
+	struct power_supply *bat_manager_psy = NULL;
 	int ret = 0;
 	struct mtk_pe40 *pe4;
 
@@ -202,19 +233,19 @@ int pe4_hal_get_uisoc(struct chg_alg_device *alg)
 		return -EINVAL;
 
 	pe4 = dev_get_drvdata(&alg->dev);
-	bat_psy = pe4->bat_psy;
+	bat_manager_psy = pe4->bat_manager_psy;
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s retry to get pe4->bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
-		pe4->bat_psy = bat_psy;
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s retry to get pe4->bat_manager_psy\n", __func__);
+		bat_manager_psy = power_supply_get_by_name("battery");
+		pe4->bat_manager_psy = bat_manager_psy;
 	}
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
 		pr_notice("%s Couldn't get bat_psy\n", __func__);
 		ret = 50;
 	} else {
-		ret = power_supply_get_property(bat_psy,
+		ret = power_supply_get_property(bat_manager_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &prop);
 		ret = prop.intval;
 	}
@@ -224,36 +255,40 @@ int pe4_hal_get_uisoc(struct chg_alg_device *alg)
 	return ret;
 }
 
-int pe4_hal_is_pd_adapter_ready(struct chg_alg_device *alg)
+int pe4_hal_is_adapter_ready(struct chg_alg_device *alg)
 {
-	struct mtk_pe40 *pe4;
+	struct mtk_charger *info = NULL;
+	struct power_supply *chg_psy = NULL;
 	struct pe40_hal *hal;
-	int type;
 
 	if (alg == NULL) {
 		pe4_err("%s: alg is null\n", __func__);
 		return -EINVAL;
 	}
 
-	pe4 = dev_get_drvdata(&alg->dev);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	type = adapter_dev_get_property(hal->adapter, PD_TYPE);
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
 
-	pe4_dbg("%s type:%d\n", __func__, type);
-
-	if (type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
-		return ALG_READY;
-	else if (type == MTK_PD_CONNECT_TYPEC_ONLY_SNK ||
-				type == MTK_PD_CONNECT_PE_READY_SNK ||
-				type == MTK_PD_CONNECT_PE_READY_SNK_PD30)
-		return ALG_TA_NOT_SUPPORT;
+	if (chg_psy == NULL || IS_ERR(chg_psy))
+		pe4_err("%s Couldn't get chg_psy\n", __func__);
+	else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info->select_adapter) {
+			pe4_dbg("%s ta_cap:%d\n", __func__, info->ta_capability);
+			hal->adapter = info->select_adapter;
+			if (info->ta_capability == APDO_TA)
+				return ALG_READY;
+			else
+				return ALG_TA_NOT_SUPPORT;
+		}
+	}
 	return ALG_TA_CHECKING;
 }
 
 int pe4_hal_get_battery_temperature(struct chg_alg_device *alg)
 {
 	union power_supply_propval prop = {0};
-	struct power_supply *bat_psy = NULL;
+	struct power_supply *bat_manager_psy = NULL;
 	int ret = 0;
 	struct mtk_pe40 *pe4;
 
@@ -261,19 +296,19 @@ int pe4_hal_get_battery_temperature(struct chg_alg_device *alg)
 		return -EINVAL;
 
 	pe4 = dev_get_drvdata(&alg->dev);
-	bat_psy = pe4->bat_psy;
+	bat_manager_psy = pe4->bat_manager_psy;
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s retry to get pe4->bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
-		pe4->bat_psy = bat_psy;
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s retry to get pe4->bat_manager_psy\n", __func__);
+		bat_manager_psy = power_supply_get_by_name("battery");
+		pe4->bat_manager_psy = bat_manager_psy;
 	}
 
-	if (bat_psy == NULL || IS_ERR(bat_psy)) {
-		chr_err("%s Couldn't get bat_psy\n", __func__);
+	if (bat_manager_psy == NULL || IS_ERR(bat_manager_psy)) {
+		chr_err("%s Couldn't get bat_manager_psy\n", __func__);
 		ret = 27;
 	} else {
-		ret = power_supply_get_property(bat_psy,
+		ret = power_supply_get_property(bat_manager_psy,
 			POWER_SUPPLY_PROP_TEMP, &prop);
 		if (ret != -EINVAL)
 			ret = prop.intval / 10;
@@ -559,7 +594,7 @@ int pe40_hal_get_adapter_status(struct chg_alg_device *alg,
 static int get_pmic_vbus(int *vchr)
 {
 	union power_supply_propval prop = {0};
-	static struct power_supply *chg_psy;
+	struct power_supply *chg_psy = NULL;
 	int ret = 0;
 
 	if (chg_psy == NULL)
@@ -602,7 +637,7 @@ int pe4_hal_get_vbus(struct chg_alg_device *alg)
 int pe4_hal_get_vbat(struct chg_alg_device *alg)
 {
 	union power_supply_propval prop = {0};
-	struct power_supply *bat_psy = NULL;
+	struct power_supply *bat1_psy = NULL;
 	int ret = 0;
 	struct mtk_pe40 *pe4;
 
@@ -610,19 +645,19 @@ int pe4_hal_get_vbat(struct chg_alg_device *alg)
 		return -EINVAL;
 
 	pe4 = dev_get_drvdata(&alg->dev);
-	bat_psy = pe4->bat_psy;
+	bat1_psy = pe4->bat1_psy;
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s retry to get pe4->bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
-		pe4->bat_psy = bat_psy;
+	if (IS_ERR_OR_NULL(bat1_psy)) {
+		pr_notice("%s retry to get pe4->bat1_psy\n", __func__);
+		bat1_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
+		pe4->bat1_psy = bat1_psy;
 	}
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s Couldn't get bat_psy\n", __func__);
+	if (IS_ERR_OR_NULL(bat1_psy)) {
+		pr_notice("%s Couldn't get bat1_psy\n", __func__);
 		ret = 3999;
 	} else {
-		ret = power_supply_get_property(bat_psy,
+		ret = power_supply_get_property(bat1_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
 		if (ret != -EINVAL)
 			ret = prop.intval / 1000;
@@ -664,7 +699,7 @@ int pe4_hal_dump_registers(struct chg_alg_device *alg)
 int pe4_hal_get_ibat(struct chg_alg_device *alg)
 {
 	union power_supply_propval prop = {0};
-	struct power_supply *bat_psy = NULL;
+	struct power_supply *bat1_psy = NULL;
 	int ret = 0;
 	struct mtk_pe40 *pe4;
 
@@ -673,19 +708,19 @@ int pe4_hal_get_ibat(struct chg_alg_device *alg)
 		return -EINVAL;
 
 	pe4 = dev_get_drvdata(&alg->dev);
-	bat_psy = pe4->bat_psy;
+	bat1_psy = pe4->bat1_psy;
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s retry to get pe4->bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
-		pe4->bat_psy = bat_psy;
+	if (IS_ERR_OR_NULL(bat1_psy)) {
+		pr_notice("%s retry to get pe4->bat1_psy\n", __func__);
+		bat1_psy = devm_power_supply_get_by_phandle(&pe4->pdev->dev, "gauge");
+		pe4->bat1_psy = bat1_psy;
 	}
 
-	if (IS_ERR_OR_NULL(bat_psy)) {
-		pr_notice("%s Couldn't get bat_psy\n", __func__);
+	if (IS_ERR_OR_NULL(bat1_psy)) {
+		pr_notice("%s Couldn't get bat1_psy\n", __func__);
 		ret = 0;
 	} else {
-		ret = power_supply_get_property(bat_psy,
+		ret = power_supply_get_property(bat1_psy,
 			POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
 		if (ret != -EINVAL)
 			ret = prop.intval;

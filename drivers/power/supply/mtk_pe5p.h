@@ -315,7 +315,7 @@ extern int pe5p_hal_reset_vbusovp_alarm(struct chg_alg_device *alg,
 extern int pe5p_hal_get_adc(struct chg_alg_device *alg, enum chg_idx chgidx,
 			    enum pe5p_adc_channel chan, int *val);
 extern int pe5p_hal_get_soc(struct chg_alg_device *alg, u32 *soc);
-extern int pe5p_hal_is_pd_adapter_ready(struct chg_alg_device *alg);
+extern int pe5p_hal_is_adapter_ready(struct chg_alg_device *alg);
 extern int pe5p_hal_set_ichg(struct chg_alg_device *alg, enum chg_idx chgidx,
 			     u32 mA);
 extern int pe5p_hal_set_aicr(struct chg_alg_device *alg, enum chg_idx chgidx,

@@ -68,12 +68,12 @@ int get_uisoc(struct mtk_charger *info)
 	struct power_supply *bat_psy = NULL;
 	int ret;
 
-	bat_psy = info->bat_psy;
+	bat_psy = info->bat_manager_psy;
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
-		info->bat_psy = bat_psy;
+		bat_psy = power_supply_get_by_name("battery");
+		info->bat_manager_psy = bat_psy;
 	}
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
@@ -87,6 +87,16 @@ int get_uisoc(struct mtk_charger *info)
 
 	chr_debug("%s:%d\n", __func__,
 		ret);
+	return ret;
+}
+
+int get_chg_output_vbat(struct mtk_charger *info, int *vbat)
+{
+	int ret = 0;
+
+	ret = charger_dev_get_vbat(info->chg1_dev, vbat);
+	if (ret < 0)
+		chr_err("%s failed to get vbat from chgIC\n", __func__);
 	return ret;
 }
 
@@ -115,6 +125,40 @@ int get_battery_voltage(struct mtk_charger *info)
 
 	chr_debug("%s:%d\n", __func__,
 		ret);
+	return ret;
+}
+
+int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat)
+{
+	union power_supply_propval prop;
+	struct power_supply *bat_psy = NULL;
+	int ret;
+	int tmp_ret;
+
+	bat_psy = info->bat2_psy;
+
+	if (bat_psy == NULL || IS_ERR(bat_psy)) {
+		chr_err("%s retry to get bat_psy\n", __func__);
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge2");
+		info->bat2_psy = bat_psy;
+	}
+
+	if (bat_psy == NULL || IS_ERR(bat_psy)) {
+		chr_err("%s Couldn't get bat_psy\n", __func__);
+		ret = charger_dev_get_vbat(info->cschg1_dev, vbat);
+		if (ret < 0)
+			*vbat = 3999;
+		else
+			ret = FROM_CS_ADC;
+	} else {
+		tmp_ret = power_supply_get_property(bat_psy,
+			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
+		*vbat = prop.intval / 1000;
+		ret = FROM_CHG_IC;
+	}
+
+	chr_debug("%s:%d %d\n", __func__,
+		ret, *vbat);
 	return ret;
 }
 
@@ -173,6 +217,40 @@ int get_battery_current(struct mtk_charger *info)
 
 	chr_debug("%s:%d\n", __func__,
 		ret);
+	return ret;
+}
+
+int get_cs_side_battery_current(struct mtk_charger *info, int *ibat)
+{
+	union power_supply_propval prop;
+	struct power_supply *bat_psy = NULL;
+	int ret = 0;
+	int tmp_ret = 0;
+	/* return 1: MTK ADC, return 2: SC ADC*/
+	bat_psy = info->bat2_psy;
+
+	if (bat_psy == NULL || IS_ERR(bat_psy)) {
+		chr_err("%s retry to get bat_psy\n", __func__);
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge2");
+		info->bat2_psy = bat_psy;
+	}
+
+	if (bat_psy == NULL || IS_ERR(bat_psy)) {
+		chr_err("%s Couldn't get bat_psy\n", __func__);
+		ret = charger_cs_get_ibat(info->cschg1_dev, ibat);
+		if (ret < 0)
+			*ibat = 0;
+		else
+			ret = FROM_CS_ADC;
+	} else {
+		tmp_ret = power_supply_get_property(bat_psy,
+			POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
+		*ibat = prop.intval / 1000;
+		ret = FROM_CHG_IC;
+	}
+
+	chr_debug("%s:%d %d\n", __func__,
+		ret, *ibat);
 	return ret;
 }
 
@@ -255,7 +333,7 @@ bool is_battery_exist(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = power_supply_get_by_name("battery");
 		info->bat_psy = bat_psy;
 	}
 

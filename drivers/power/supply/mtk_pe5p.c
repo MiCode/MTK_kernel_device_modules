@@ -3773,7 +3773,7 @@ static int pe5p_is_algo_ready(struct chg_alg_device *alg)
 	}
 
 	if (!pe5p_is_ta_rdy(info)) {
-		ret = pe5p_hal_is_pd_adapter_ready(alg);
+		ret = pe5p_hal_is_adapter_ready(alg);
 		if (!data->ta_ready)
 			ret = ALG_TA_NOT_SUPPORT;
 		goto out;

@@ -3737,7 +3737,7 @@ static int pe50_is_algo_ready(struct chg_alg_device *alg)
 	}
 
 	if (!pe50_is_ta_rdy(info)) {
-		ret = pe50_hal_is_pd_adapter_ready(alg);
+		ret = pe50_hal_is_adapter_ready(alg);
 		goto out;
 	}
 	ret = ALG_READY;

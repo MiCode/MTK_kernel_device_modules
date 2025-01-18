@@ -74,7 +74,7 @@ int pe4_get_debug_level(void)
 	return pe4_dbg_level;
 }
 
-void mtk_pe40_reset(struct chg_alg_device *alg)
+void mtk_pe40_reset(struct chg_alg_device *alg, int exit_mode)
 {
 	struct mtk_pe40 *pe40;
 
@@ -82,7 +82,8 @@ void mtk_pe40_reset(struct chg_alg_device *alg)
 
 	if (pe40->state == PE4_RUN || pe40->state == PE4_INIT ||
 	    pe40->state == PE4_TUNING || pe40->state == PE4_POSTCC) {
-		pe4_hal_set_adapter_cap_end(alg, 5000, 2000);
+		pe4_hal_set_input_current(alg, CHG1, 2000000);
+		pe4_hal_set_adapter_cap_end(alg, 5000, 2000, exit_mode);
 
 		pe4_hal_set_mivr(alg, CHG1, pe40->min_charger_voltage);
 		pe4_hal_enable_vbus_ovp(alg, true);
@@ -124,7 +125,7 @@ static int _pe4_init_algo(struct chg_alg_device *alg)
 		pe4_err("%s:init hw fail\n", __func__);
 	} else
 		pe4->state = PE4_HW_READY;
-	mtk_pe40_reset(alg);
+	mtk_pe40_reset(alg, 0);
 
 	if (alg->config == DUAL_CHARGERS_IN_PARALLEL) {
 		pe4_err("%s does not support DUAL_CHARGERS_IN_PARALLEL\n",
@@ -143,6 +144,8 @@ static int _pe4_init_algo(struct chg_alg_device *alg)
 	pr_notice("%s: log_level=%d", __func__, log_level);
 	if (log_level > 0)
 		pe4_dbg_level = log_level;
+
+	pe4->wait_adapter_times = 0;
 
 	mutex_unlock(&pe4->access_lock);
 	return 0;
@@ -201,7 +204,7 @@ static int _pe4_is_algo_ready(struct chg_alg_device *alg)
 	case PE4_INIT:
 	case PE4_HW_READY:
 		uisoc = pe4_hal_get_uisoc(alg);
-		ret = pe4_hal_is_pd_adapter_ready(alg);
+		ret = pe4_hal_is_adapter_ready(alg);
 		ret_value = ret;
 		if (ret == ALG_READY) {
 			uisoc = pe4_hal_get_uisoc(alg);
@@ -500,6 +503,7 @@ int mtk_pe40_pd_request(struct chg_alg_device *alg,
 	int mivr;
 	int adapter_mv, adapter_ma;
 	struct mtk_pe40 *pe40;
+	struct pe4_pps_status ta_status;
 
 #ifdef PE4_DUAL_CHARGER_IN_PARALLEL
 	bool chg2_enable = false;
@@ -545,6 +549,12 @@ int mtk_pe40_pd_request(struct chg_alg_device *alg,
 	}
 
 	ret = pe4_hal_set_adapter_cap(alg, adapter_mv, *adapter_ibus);
+	ret = pe40_hal_get_adapter_output(alg, &ta_status);
+
+	if (ta_status.output_ma < 500 && *adapter_ibus >= 1000) {
+		*adapter_ibus -= 500;
+		ret = pe4_hal_set_adapter_cap(alg, adapter_mv, *adapter_ibus);
+	}
 
 	pe4_dbg("%s: vbus:%d ibus:%d ibus2:%d input_current:%d pdp:%d ret:%d\n",
 		__func__, adapter_mv, adapter_ma, *adapter_ibus, ma,
@@ -728,7 +738,7 @@ int mtk_pe40_get_init_watt(struct chg_alg_device *alg)
 
 void mtk_pe40_end(struct chg_alg_device *alg, int type)
 {
-	mtk_pe40_reset(alg);
+	mtk_pe40_reset(alg, 1);
 	pe4_dbg("%s: retry:%d\n", __func__, type);
 }
 
@@ -1559,7 +1569,7 @@ static int _pe4_start_algo(struct chg_alg_device *alg)
 			break;
 		case PE4_HW_READY:
 			uisoc = pe4_hal_get_uisoc(alg);
-			ret = pe4_hal_is_pd_adapter_ready(alg);
+			ret = pe4_hal_is_adapter_ready(alg);
 			ret_value = ret;
 			if (ret == ALG_READY) {
 				uisoc = pe4_hal_get_uisoc(alg);
@@ -1652,6 +1662,7 @@ static int pe4_plugout_reset(struct chg_alg_device *alg)
 	struct mtk_pe40 *pe4;
 
 	pe4 = dev_get_drvdata(&alg->dev);
+	pe4->wait_adapter_times = 0;
 	switch (pe4->state) {
 	case PE4_HW_UNINIT:
 	case PE4_HW_FAIL:
@@ -2005,25 +2016,27 @@ int _pe4_set_setting(struct chg_alg_device *alg_dev,
 
 	pe4 = dev_get_drvdata(&alg_dev->dev);
 
-	pe4_dbg("%s cv:%d icl:%d,%d cc:%d,%d, 6pin_en:%d\n",
+	pe4_dbg("%s cv:%d icl:%d,%d cc:%d,%d, 6pin:%d, ta_pri:%d\n",
 		__func__,
 		setting->cv,
 		setting->input_current_limit1,
 		setting->input_current_limit2,
 		setting->charging_current_limit1,
 		setting->charging_current_limit2,
-		setting->vbat_mon_en);
+		setting->vbat_mon_en,
+		setting->adapter_priority);
 
 	mutex_lock(&pe4->access_lock);
 	__pm_stay_awake(pe4->suspend_lock);
 	pe4->cv = setting->cv;
 	pe4->pe4_6pin_en = setting->vbat_mon_en;
+	pe4->adapter_priority = setting->adapter_priority;
 	pe4->input_current_limit1 = setting->input_current_limit1;
 	pe4->input_current_limit2 = setting->input_current_limit2;
 	pe4->charging_current_limit1 = setting->charging_current_limit1;
 	pe4->charging_current_limit2 = setting->charging_current_limit2;
 
-	pe4_dbg("%s cv:%d icl1:%d:%d icl2:%d:%d icl:%d:%d cc:%d:%d, pe4_6pin_en:%d\n",
+	pe4_dbg("%s cv:%d icl1:%d:%d icl2:%d:%d icl:%d:%d cc:%d:%d, 6pin_en:%d, ta_pri:%d\n",
 		__func__,
 		setting->cv,
 		pe4->input_current1,
@@ -2034,7 +2047,8 @@ int _pe4_set_setting(struct chg_alg_device *alg_dev,
 		pe4->pe4_input_current_limit_setting,
 		pe4->charger_current1,
 		pe4->charger_current2,
-		pe4->pe4_6pin_en);
+		pe4->pe4_6pin_en,
+		pe4->adapter_priority);
 
 	__pm_relax(pe4->suspend_lock);
 	mutex_unlock(&pe4->access_lock);
@@ -2094,10 +2108,10 @@ static int mtk_pe4_probe(struct platform_device *pdev)
 		wakeup_source_register(NULL, "PE4.0 suspend wakelock");
 
 	mtk_pe4_parse_dt(pe4, &pdev->dev);
-	pe4->bat_psy = devm_power_supply_get_by_phandle(&pdev->dev, "gauge");
+	pe4->bat1_psy = devm_power_supply_get_by_phandle(&pdev->dev, "gauge");
 
-	if (IS_ERR_OR_NULL(pe4->bat_psy))
-		pe4_err("%s: devm power fail to get pe4->bat_psy\n", __func__);
+	if (IS_ERR_OR_NULL(pe4->bat1_psy))
+		pe4_err("%s: devm power fail to get pe4->bat1_psy\n", __func__);
 
 	pe4->alg = chg_alg_device_register("pe4", &pdev->dev,
 					pe4, &pe4_alg_ops, NULL);

@@ -119,29 +119,33 @@ int pd_hal_init_hardware(struct chg_alg_device *alg)
 	return 0;
 }
 
-int pd_hal_is_pd_adapter_ready(struct chg_alg_device *alg)
+int pd_hal_is_adapter_ready(struct chg_alg_device *alg)
 {
-	struct mtk_pd *pd;
+	struct mtk_charger *info = NULL;
+	struct power_supply *chg_psy = NULL;
 	struct pd_hal *hal;
-	int type;
 
 	if (alg == NULL) {
 		pd_err("%s: alg is null\n", __func__);
 		return -EINVAL;
 	}
 
-	pd = dev_get_drvdata(&alg->dev);
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	type = adapter_dev_get_property(hal->adapter, PD_TYPE);
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
 
-	pd_dbg("%s type:%d\n", __func__, type);
-
-	if (type == MTK_PD_CONNECT_PE_READY_SNK ||
-		type == MTK_PD_CONNECT_PE_READY_SNK_PD30 ||
-		type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
-		return ALG_READY;
-	else if (type == MTK_PD_CONNECT_TYPEC_ONLY_SNK)
-		return ALG_TA_NOT_SUPPORT;
+	if (chg_psy == NULL || IS_ERR(chg_psy))
+		pd_err("%s Couldn't get chg_psy\n", __func__);
+	else {
+		info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+		if (info->select_adapter) {
+			pd_dbg("%s ta_cap:%d\n", __func__, info->ta_capability);
+			hal->adapter = info->select_adapter;
+			if (info->ta_capability == APDO_TA)
+				return ALG_READY;
+			else
+				return ALG_TA_NOT_SUPPORT;
+		}
+	}
 	return ALG_TA_CHECKING;
 }
 
@@ -636,7 +640,7 @@ int pd_hal_get_uisoc(struct chg_alg_device *alg)
 
 	if (bat_psy == NULL) {
 		pr_notice("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&pd->pdev->dev, "gauge");
+		bat_psy = power_supply_get_by_name("battery");
 		pd->bat_psy = bat_psy;
 	}
 

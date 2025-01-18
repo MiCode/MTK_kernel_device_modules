@@ -110,7 +110,9 @@ struct mtk_pe40 {
 	bool can_query;
 	int state;
 	struct pe4_power_cap cap;
-	struct power_supply *bat_psy;
+	struct power_supply *bat1_psy;
+	struct power_supply *bat2_psy;
+	struct power_supply *bat_manager_psy;
 
 	int avbus;
 	int vbus;
@@ -144,6 +146,10 @@ struct mtk_pe40 {
 	int input_current_limit2;
 	int charging_current_limit1;
 	int charging_current_limit2;
+
+	/* pd, ufcs priority */
+	int adapter_priority;
+	int wait_adapter_times;
 
 	/* Current setting value */
 	int charger_current1;
@@ -184,7 +190,8 @@ struct mtk_pe40 {
 extern int pe4_hal_init_hardware(struct chg_alg_device *alg);
 extern int pe4_hal_enable_vbus_ovp(struct chg_alg_device *alg, bool enable);
 extern int pe4_hal_get_uisoc(struct chg_alg_device *alg);
-extern int pe4_hal_is_pd_adapter_ready(struct chg_alg_device *alg);
+extern int pe4_hal_set_adapter_driver(struct chg_alg_device *alg);
+extern int pe4_hal_is_adapter_ready(struct chg_alg_device *alg);
 extern int pe4_hal_get_battery_temperature(struct chg_alg_device *alg);
 extern int pe4_hal_set_input_current(struct chg_alg_device *alg,
 	enum chg_idx chgidx, u32 ua);
@@ -195,7 +202,7 @@ extern int pe4_hal_1st_set_adapter_cap(struct chg_alg_device *alg,
 extern int pe4_hal_set_adapter_cap(struct chg_alg_device *alg,
 	int mV, int mA);
 extern int pe4_hal_set_adapter_cap_end(struct chg_alg_device *alg,
-	int mV, int mA);
+	int mV, int mA, int exit_mode);
 extern int pe40_hal_get_adapter_status(struct chg_alg_device *alg,
 	struct pe4_adapter_status *pe4_sta);
 extern int pe4_hal_get_adapter_cap(struct chg_alg_device *alg,

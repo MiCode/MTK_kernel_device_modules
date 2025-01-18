@@ -204,9 +204,7 @@ static bool pchr_select_charging_current_limit(struct mtk_charger *info,
 	} else
 		info->setting.input_current_limit1 = -1;
 
-	if (info->pd_type == MTK_PD_CONNECT_PE_READY_SNK ||
-		info->pd_type == MTK_PD_CONNECT_PE_READY_SNK_PD30 ||
-		info->pd_type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
+	if (info->ta_status[info->select_adapter_idx] == TA_ATTACH)
 		is_basic = false;
 
 done:
@@ -219,12 +217,13 @@ done:
 	if (ret != -ENOTSUPP && pdata->input_current_limit < aicr1_min)
 		pdata->input_current_limit = 0;
 
-	chr_err("thermal:%d %d setting:%d %d type:%d:%d usb_unlimited:%d usbif:%d usbsm:%d aicl:%d atm:%d bm:%d b:%d\n",
+	chr_err("thermal:%d %d setting:%d %d type:%d:%d:%d usb_unlimited:%d usbif:%d usbsm:%d aicl:%d atm:%d bm:%d b:%d\n",
 		_uA_to_mA(pdata->thermal_input_current_limit),
 		_uA_to_mA(pdata->thermal_charging_current_limit),
 		_uA_to_mA(pdata->input_current_limit),
 		_uA_to_mA(pdata->charging_current_limit),
-		info->chr_type, info->pd_type,
+		info->chr_type, info->select_adapter_idx,
+		info->ta_status[info->select_adapter_idx],
 		info->usb_unlimited,
 		IS_ENABLED(CONFIG_USBIF_COMPLIANCE), info->usb_state,
 		pdata->input_current_limit_by_aicl, info->atm_enabled,

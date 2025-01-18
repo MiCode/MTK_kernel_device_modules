@@ -96,6 +96,10 @@ struct charger_ops {
 	int (*set_constant_voltage)(struct charger_device *dev, u32 uV);
 	int (*get_constant_voltage)(struct charger_device *dev, u32 *uV);
 
+	int (*check_cs_temp)(struct charger_device *dev);
+	int (*cs_status_control)(struct charger_device *chg_dev, bool enable);
+	int (*cs_enable_lowpower)(struct charger_device *chg_dev, bool enable);
+
 	/* set input_current */
 	int (*get_input_current)(struct charger_device *dev, u32 *uA);
 	int (*set_input_current)(struct charger_device *dev, u32 uA);
@@ -178,16 +182,22 @@ struct charger_ops {
 	int (*safety_check)(struct charger_device *dev, u32 polling_ieoc);
 
 	int (*is_charging_done)(struct charger_device *dev, bool *done);
+	int (*set_cs_regVal)(struct charger_device *dev, int setVal);
 	int (*set_pe20_efficiency_table)(struct charger_device *dev);
 	int (*dump_registers)(struct charger_device *dev);
+	int (*dump_init_setting)(struct charger_device *dev);
 
 	int (*get_adc)(struct charger_device *dev, enum adc_channel chan,
 		       int *min, int *max);
 	int (*get_adc_accuracy)(struct charger_device *dev,
 				enum adc_channel chan, int *min, int *max);
 	int (*get_vbus_adc)(struct charger_device *dev, u32 *vbus);
+	int (*get_vbat_adc)(struct charger_device *dev, u32 *vbat);
 	int (*get_ibus_adc)(struct charger_device *dev, u32 *ibus);
 	int (*get_ibat_adc)(struct charger_device *dev, u32 *ibat);
+	int (*get_cs_current)(struct charger_device *chg_dev, int *ibat);
+	int (*parallel_mode_setting)(struct charger_device *chg_dev, int mode);
+	int (*cs_init_setting)(struct charger_device *chg_dev);
 	int (*get_tchg_adc)(struct charger_device *dev, int *tchg_min,
 		int *tchg_max);
 	int (*get_zcv)(struct charger_device *dev, u32 *uV);
@@ -268,6 +278,8 @@ extern int charger_dev_set_constant_voltage(
 	struct charger_device *charger_dev, u32 uV);
 extern int charger_dev_get_constant_voltage(
 	struct charger_device *charger_dev, u32 *uV);
+extern int charger_dev_dump_init_setting(
+	struct charger_device *charger_dev);
 extern int charger_dev_dump_registers(
 	struct charger_device *charger_dev);
 extern int charger_dev_enable_vbus_ovp(
@@ -280,8 +292,12 @@ extern int charger_dev_get_mivr_state(
 	struct charger_device *charger_dev, bool *in_loop);
 extern int charger_dev_do_event(
 	struct charger_device *charger_dev, u32 event, u32 args);
+extern int cs_dev_do_event(
+	struct charger_device *charger_dev, u32 event, u32 args);
 extern int charger_dev_enable_6pin_battery_charging(
 	struct charger_device *charger_dev, bool en);
+extern int cs_dev_check_cs_temp(
+	struct charger_device *chg_dev);
 extern int charger_dev_is_powerpath_enabled(
 	struct charger_device *charger_dev, bool *en);
 extern int charger_dev_is_safety_timer_enabled(
@@ -289,6 +305,8 @@ extern int charger_dev_is_safety_timer_enabled(
 extern int charger_dev_enable_termination(
 	struct charger_device *charger_dev, bool en);
 extern int charger_dev_is_charging_done(
+	struct charger_device *charger_dev, bool *done);
+extern int cs_dev_is_charging_done(
 	struct charger_device *charger_dev, bool *done);
 extern int charger_dev_enable_powerpath(
 	struct charger_device *charger_dev, bool en);
@@ -349,10 +367,22 @@ extern int charger_dev_get_adc_accuracy(struct charger_device *charger_dev,
 /* Prefer use charger_dev_get_adc api */
 extern int charger_dev_get_vbus(
 	struct charger_device *charger_dev, u32 *vbus);
+extern int charger_dev_get_vbat(
+	struct charger_device *charger_dev, u32 *vbat);
 extern int charger_dev_get_ibus(
 	struct charger_device *charger_dev, u32 *ibus);
 extern int charger_dev_get_ibat(
 	struct charger_device *charger_dev, u32 *ibat);
+extern int charger_cs_get_ibat(
+	struct charger_device *chg_dev, int *ibat);
+extern int charger_cs_parallel_mode_setting(
+	struct charger_device *chg_dev, int mode);
+extern int charger_cs_init_setting(
+	struct charger_device *chg_dev);
+extern int charger_cs_status_control(
+	struct charger_device *charger_dev, bool enable);
+extern int charger_cs_enable_lowpower(
+	struct charger_device *charger_dev, bool enable);
 extern int charger_dev_get_temperature(
 	struct charger_device *charger_dev, int *tchg_min,
 		int *tchg_max);
