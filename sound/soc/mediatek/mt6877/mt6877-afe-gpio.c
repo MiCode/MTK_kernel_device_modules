@@ -48,10 +48,8 @@ static struct audio_gpio_attr aud_gpios[MT6877_AFE_GPIO_GPIO_NUM] = {
 	[MT6877_AFE_GPIO_I2S8_ON] = {"aud_gpio_i2s8_on", false, NULL},
 	[MT6877_AFE_GPIO_I2S9_OFF] = {"aud_gpio_i2s9_off", false, NULL},
 	[MT6877_AFE_GPIO_I2S9_ON] = {"aud_gpio_i2s9_on", false, NULL},
-	[MT6877_AFE_GPIO_VOW_DAT_OFF] = {"vow_dat_miso_off", false, NULL},
-	[MT6877_AFE_GPIO_VOW_DAT_ON] = {"vow_dat_miso_on", false, NULL},
-	[MT6877_AFE_GPIO_VOW_CLK_OFF] = {"vow_clk_miso_off", false, NULL},
-	[MT6877_AFE_GPIO_VOW_CLK_ON] = {"vow_clk_miso_on", false, NULL},
+	[MT6877_AFE_GPIO_VOW_OFF] = {"vow_gpio_off", false, NULL},
+	[MT6877_AFE_GPIO_VOW_ON] = {"vow_gpio_on", false, NULL},
 };
 
 static DEFINE_MUTEX(gpio_request_mutex);
@@ -237,17 +235,9 @@ int mt6877_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6877_afe_gpio_select(afe, MT6877_AFE_GPIO_I2S9_OFF);
 		break;
 	case MT6877_DAI_VOW:
-		if (enable) {
-			mt6877_afe_gpio_select(afe,
-					       MT6877_AFE_GPIO_VOW_CLK_ON);
-			mt6877_afe_gpio_select(afe,
-					       MT6877_AFE_GPIO_VOW_DAT_ON);
-		} else {
-			mt6877_afe_gpio_select(afe,
-					       MT6877_AFE_GPIO_VOW_CLK_OFF);
-			mt6877_afe_gpio_select(afe,
-					       MT6877_AFE_GPIO_VOW_DAT_OFF);
-		}
+		mt6877_afe_gpio_select(afe, enable ?
+			       MT6877_AFE_GPIO_VOW_ON :
+			       MT6877_AFE_GPIO_VOW_OFF);
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);

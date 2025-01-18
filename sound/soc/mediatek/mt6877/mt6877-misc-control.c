@@ -595,7 +595,7 @@ static int mt6877_afe_vow_bargein_get(struct snd_kcontrol *kcontrol,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	int id;
 
-	id = get_scp_vow_memif_id();
+	id = MT6877_BARGEIN_MEMIF;
 	ucontrol->value.integer.value[0] = afe->memif[id].vow_barge_in_enable;
 #endif
 	return 0;
@@ -610,7 +610,7 @@ static int mt6877_afe_vow_bargein_set(struct snd_kcontrol *kcontrol,
 	int id;
 	int val;
 
-	id = get_scp_vow_memif_id();
+	id = MT6877_BARGEIN_MEMIF;
 	val = ucontrol->value.integer.value[0];
 	dev_info(afe->dev, "%s(), %d\n", __func__, val);
 

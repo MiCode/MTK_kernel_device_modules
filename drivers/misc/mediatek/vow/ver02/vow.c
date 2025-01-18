@@ -667,7 +667,11 @@ static void vow_service_Init(void)
 {
 	int I;
 	int ipi_ret;
-	//unsigned int vow_ipi_buf[3];
+	struct device_node *scp_node = NULL;
+	const char *scp_dram_region = NULL;
+	int scp_dram_region_support = 1; // default support SCP DRAM region since T
+	unsigned int vow_ipi_buf[4];
+	int ipi_size = 0;
 	unsigned long rec_queue_flags;
 
 	VOWDRV_DEBUG("%s(): %x\n", __func__, init_flag);
@@ -816,10 +820,46 @@ static void vow_service_Init(void)
 				vowserv.vow_speaker_model[I].enabled = 0;
 			}
 		}
+		/* check if SCP support dram region feature, compatible with legacy platform */
+		scp_node = of_find_compatible_node(NULL, NULL, "mediatek,scp");
+		if (scp_node) {
+			if (of_property_read_string(scp_node, "scp-dram-region", &scp_dram_region) == 0) {
+				VOWDRV_DEBUG("%s(), scp-dram-region: %s\n", __func__, scp_dram_region);
+				if (!strncmp(scp_dram_region, "enable", strlen("enable")))
+					scp_dram_region_support = 1;
+				else
+					scp_dram_region_support = 0;
+			} else {
+				VOWDRV_DEBUG("%s(), Cannot read scp-dram-region property.\n", __func__);
+				scp_dram_region_support = 0;
+				of_node_put(scp_node);
+			}
+		} else {
+			VOWDRV_DEBUG("%s(), Cannot find scp node in device tree\n", __func__);
+		}
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+		// For legacy platform need to send reserve memory infor to SCP with IPI message
+		if (scp_dram_region_support == 0) {
+			dma_addr_t vow_vir_addr = scp_get_reserve_mem_phys(VOW_MEM_ID);
+			unsigned int vow_mem_size = scp_get_reserve_mem_size(VOW_MEM_ID);
+			dma_addr_t vow_bargein_vir_addr = scp_get_reserve_mem_phys(VOW_BARGEIN_MEM_ID);
+			unsigned int vow_bargein_mem_size = scp_get_reserve_mem_size(VOW_BARGEIN_MEM_ID);
+
+			vow_ipi_buf[0] = vow_vir_addr;
+			vow_ipi_buf[1] = vow_mem_size;
+			vow_ipi_buf[2] = vow_bargein_vir_addr;
+			vow_ipi_buf[3] = vow_bargein_mem_size;
+			ipi_size = 4;
+			VOWDRV_DEBUG("[VOW_MEM_ID]vir: 0x%llx, size: 0x%x, [VOW_BARGEIN_MEM_ID]vir: 0x%llx, 0x%x\n",
+				vow_vir_addr, vow_mem_size, vow_bargein_vir_addr, vow_bargein_mem_size);
+		}
+#else
+		VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
+#endif
 		ipi_ret = vow_ipi_send(IPIMSG_VOW_APINIT,
-				       0,
-				       NULL,
-				       VOW_IPI_BYPASS_ACK);
+					ipi_size,
+					&vow_ipi_buf[0],
+					VOW_IPI_BYPASS_ACK);
 #if VOW_PRE_LEARN_MODE
 		VowDrv_SetFlag(VOW_FLAG_PRE_LEARN, true);
 #endif
