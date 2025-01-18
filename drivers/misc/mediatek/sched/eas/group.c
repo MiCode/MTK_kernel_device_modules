@@ -44,6 +44,16 @@ static int grp_threshold_util[GROUP_ID_RECORD_MAX] = {DEFAULT_GRP_THRESHOLD_UTIL
 
 static DEFINE_RWLOCK(related_thread_group_lock);
 
+char *cgrp_map_str[CGRP_NUM] = {
+	"",
+	"foreground",
+	"background",
+	"top-app",
+	"rt",
+	"system",
+	"system-background"
+};
+
 static inline unsigned long task_util(struct task_struct *p)
 {
 	return READ_ONCE(p->se.avg.util_avg);
@@ -232,17 +242,7 @@ static void init_topapp_tg(struct task_group *tg)
 
 	cgrptg->colocate = true;
 	cgrptg->groupid = GROUP_ID_1;
-	set_group_pd(TA_GRPID, cgrptg->groupid + FLT_GROUP_START_IDX);
-}
-
-static void init_foreground_tg(struct task_group *tg)
-{
-	struct cgrp_tg *cgrptg;
-
-	cgrptg = &((struct mtk_tg *)tg->android_vendor_data1)->cgrp_tg;
-
-	cgrptg->colocate = false;
-	cgrptg->groupid = -1;
+	set_group_pd(CGRP_TA, cgrptg->groupid + FLT_GROUP_START_IDX);
 }
 
 static void init_tg(struct task_group *tg)
@@ -255,6 +255,70 @@ static void init_tg(struct task_group *tg)
 	cgrptg->groupid = -1;
 }
 
+int group_get_cgroup_colocate(int cgrp_id)
+{
+	struct task_group *tg;
+	struct cgrp_tg *cgrptg;
+	int res = 0;
+
+	if (cgrp_id < 0 || cgrp_id >= CGRP_NUM || unlikely(group_get_mode() == GP_MODE_0))
+		return -1;
+
+	tg = search_tg_by_name(cgrp_map_str[cgrp_id]);
+
+	if (tg == &root_task_group)
+		return -1;
+
+	cgrptg = &((struct mtk_tg *)tg->android_vendor_data1)->cgrp_tg;
+
+	res = (cgrptg->groupid  << 16) | cgrptg->colocate;
+
+	return res;
+}
+EXPORT_SYMBOL(group_get_cgroup_colocate);
+
+int group_set_cgroup_colocate(int cgrp_id, int grp_id)
+{
+	struct task_group *tg;
+	struct cgrp_tg *cgrptg;
+	unsigned long ip;
+	char sym[KSYM_SYMBOL_LEN];
+	int res = -1;
+
+	if (cgrp_id < 0 ||
+	    cgrp_id >= CGRP_NUM ||
+	    grp_id >= GROUP_ID_RECORD_MAX  ||
+	    unlikely(group_get_mode() == GP_MODE_0))
+		goto out;
+
+	tg = search_tg_by_name(cgrp_map_str[cgrp_id]);
+
+	if (tg == &root_task_group)
+		goto out;
+	res = 0;
+	cgrptg = &((struct mtk_tg *)tg->android_vendor_data1)->cgrp_tg;
+
+	if (grp_id < 0) {
+		cgrptg->colocate = false;
+		cgrptg->groupid = -1;
+		set_group_pd(cgrp_id, cgrptg->groupid);
+	} else {
+		cgrptg->colocate = true;
+		cgrptg->groupid = grp_id;
+		set_group_pd(cgrp_id, cgrptg->groupid + FLT_GROUP_START_IDX);
+	}
+
+out:
+	if (trace_sched_cgrp_to_fltgrp_enabled()) {
+		ip = (unsigned long)ftrace_return_address(0);
+		memset(sym, 0, KSYM_SYMBOL_LEN);
+		sprint_symbol(sym, ip);
+		trace_sched_cgrp_to_fltgrp(cgrp_id, grp_id, sym);
+	}
+	return res;
+}
+EXPORT_SYMBOL(group_set_cgroup_colocate);
+
 static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 {
 	return css ? container_of(css, struct task_group, css) : NULL;
@@ -264,8 +328,6 @@ static void group_update_tg_pointer(struct cgroup_subsys_state *css)
 {
 	if (!strcmp(css->cgroup->kn->name, "top-app"))
 		init_topapp_tg(css_tg(css));
-	else if (!strcmp(css->cgroup->kn->name, "foreground"))
-		init_foreground_tg(css_tg(css));
 	else
 		init_tg(css_tg(css));
 }
@@ -332,7 +394,7 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 	struct cgroup_subsys_state *css;
 	struct task_group *tg;
 	struct cgrp_tg *cgrptg;
-	int ret, grp_id;
+	int ret, grp_id, cgrp_id;
 	struct gp_task_struct *gts;
 
 	if (unlikely(group_get_mode() == GP_MODE_0))
@@ -356,9 +418,13 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 	}
 
 	if (cgrptg->colocate) {
-		if ((!strcmp(css->cgroup->kn->name, "top-app")))
-			set_group_pd(TA_GRPID, grp_id + FLT_GROUP_START_IDX);
+		for (cgrp_id = 0; cgrp_id < CGRP_NUM; cgrp_id++)
+			if ((!strcmp(css->cgroup->kn->name, cgrp_map_str[cgrp_id]))) {
+				set_group_pd(cgrp_id, grp_id + FLT_GROUP_START_IDX);
+				break;
+			}
 	}
+
 }
 
 void group_android_rvh_try_to_wake_up_success(void *unused,
