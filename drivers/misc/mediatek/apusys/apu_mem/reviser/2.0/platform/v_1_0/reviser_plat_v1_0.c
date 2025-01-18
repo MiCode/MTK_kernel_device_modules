@@ -36,6 +36,7 @@ int reviser_v1_0_init(struct platform_device *pdev)
 
 	hw_cb->isr_cb = reviser_isr;
 	hw_cb->set_int = reviser_enable_interrupt;
+	hw_cb->init_ip = reviser_init_ip;
 
 	//Set TCM Info
 	rdv->plat.pool_type[REVSIER_POOL_TCM] = REVISER_MEM_TYPE_TCM;

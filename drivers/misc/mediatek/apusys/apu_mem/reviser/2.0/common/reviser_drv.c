@@ -176,6 +176,10 @@ static void reviser_power_on_cb(void *para)
 		LOG_ERR("Set Default IOVA Fail\n");
 		return;
 	}
+	if (reviser_mgt_init_ip()) {
+		LOG_ERR("Init IP Fail\n");
+		return;
+	}
 
 	LOG_INFO("reviser power-on callback Done\n");
 }

@@ -125,6 +125,19 @@ int reviser_mgt_isr_cb(void *drvinfo)
 	return ret;
 }
 
+int reviser_mgt_init_ip(void)
+{
+	int ret = 0;
+
+	if (g_rvr_hw_mgr.hops.init_ip == NULL) {
+		LOG_WARN("ByPass\n");
+		return ret;
+	}
+	ret = g_rvr_hw_mgr.hops.init_ip();
+
+	return ret;
+}
+
 int reviser_mgt_set_int(void *drvinfo, uint8_t enable)
 {
 	int ret = 0;

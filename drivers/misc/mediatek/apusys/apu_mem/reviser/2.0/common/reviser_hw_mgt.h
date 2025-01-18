@@ -24,4 +24,5 @@ int reviser_mgt_set_rmp(void *drvinfo, int index, uint8_t valid, uint8_t ctx,
 
 int reviser_mgt_isr_cb(void *drvinfo);
 int reviser_mgt_set_int(void *drvinfo, uint8_t enable);
+int reviser_mgt_init_ip(void);
 #endif
