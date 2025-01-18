@@ -231,6 +231,10 @@ static int g_async_opp_diff;
 static int g_lb_async_perf_diff_th = LB_ASYNC_PERF_DIFF_TH;
 static int g_enable_lb_async;
 
+static unsigned int protm_cnt;
+static unsigned int protm_status;
+static unsigned int protm_enable;
+
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
 	g_ui32TargetPeriod_us = t_gpu_target;
@@ -1109,6 +1113,34 @@ unsigned long ged_dvfs_get_last_commit_dual_idx(void)
 	return g_ged_dvfs_commit_dual;
 }
 EXPORT_SYMBOL(ged_dvfs_get_last_commit_dual_idx);
+
+unsigned int ged_dvfs_write_sysram_protm_enter(void)
+{
+	if(protm_cnt == 0x7FFFFFFF)
+		protm_cnt = 0;
+
+	protm_cnt++;
+	protm_status = protm_cnt|0x80000000;
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_P_MODE_STATUS, protm_status);
+	protm_enable = 1;
+	trace_tracing_mark_write(5566, "p-mode",protm_enable);
+
+	return protm_status;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_protm_enter);
+
+unsigned int ged_dvfs_write_sysram_protm_exit(void)
+{
+	protm_status = protm_status&0x7FFFFFFF;
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_P_MODE_STATUS, protm_status);
+	if (protm_enable) {
+		protm_enable = 0;
+		trace_tracing_mark_write(5566, "p-mode",protm_enable);
+	}
+
+	return protm_status;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_protm_exit);
 
 int ged_write_sysram_pwr_hint(int pwr_hint)
 {
