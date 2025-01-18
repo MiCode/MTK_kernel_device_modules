@@ -45,6 +45,8 @@
 #define EMIMPUVER1			1
 #define EMIMPUVER2			2
 
+#define SLB_VIOLATION_CB_MAX		10
+
 struct emi_addr_map {
 	int emi;
 	int channel;
@@ -92,6 +94,14 @@ struct emimpu_dbg_cb {
 	emimpu_debug_dump func;
 	struct emimpu_dbg_cb *next_dbg_cb;
 };
+
+typedef int (*mtk_slb_violation_callback_t)(void *cb_data);
+
+struct mtk_slb_violation_cb {
+	mtk_slb_violation_callback_t fault_fn;
+	void *fault_data;
+};
+int mtk_slb_violation_register_callback(mtk_slb_violation_callback_t fn, void *cb_data);
 
 /* mtk emicen api */
 unsigned int mtk_emicen_get_ch_cnt(void);
