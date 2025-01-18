@@ -256,7 +256,7 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
  * Return: the sum of the energy consumed by the CPUs of the domain assuming
  * a capacity state satisfying the max utilization of the domain.
  */
-unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
+unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long max_util, unsigned long sum_util,
 		unsigned long allowed_cpu_cap, struct energy_env *eenv)
 {
@@ -269,6 +269,9 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	struct dsu_info *dsu = &eenv->dsu;
 	unsigned int dsu_opp;
 	struct dsu_state *dsu_ps;
+	int pd_volt;
+	int pd_freq;
+	int pd_dsu_freq;
 #else
 	int i;
 #endif
@@ -277,9 +280,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 	int *cpu_temp = eenv->cpu_temp;
 #endif
-	int pd_volt __maybe_unused;
-	int pd_freq __maybe_unused;
-	int pd_dsu_freq __maybe_unused;
+	struct cpumask *pd_cpus = to_cpumask(pd->cpus);
 
 	if (!sum_util)
 		return 0;
@@ -289,11 +290,11 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	 * the most utilized CPU of the performance domain to a requested
 	 * frequency, like schedutil.
 	 */
-	this_cpu = cpu = cpumask_first(to_cpumask(pd->cpus));
+	this_cpu = cpu = cpumask_first(pd_cpus);
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 	ps = &pd->table[pd->nr_perf_states - 1];
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	mtk_map_util_freq(NULL, max_util, ps->frequency, to_cpumask(pd->cpus), &freq,
+	mtk_map_util_freq(NULL, max_util, ps->frequency, pd_cpus, &freq,
 			eenv->wl_type);
 #else
 	max_util = map_util_perf(max_util);
@@ -325,7 +326,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
-	for_each_cpu_and(cpu, to_cpumask(pd->cpus), cpu_online_mask) {
+	for_each_cpu_and(cpu, pd_cpus, cpu_online_mask) {
 		unsigned int cpu_static_pwr;
 
 		cpu_static_pwr = pd_get_opp_leakage(cpu, opp, cpu_temp[cpu]);
@@ -386,7 +387,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	dyn_pwr = pwr_eff * sum_util;
 
 	if (eenv->wl_support) {
-		if (share_buck.gear_idx == gear_idx) {
+		if (share_buck.gear_idx == eenv->gear_idx) {
 			cpu_volt = pd_volt;
 			share_volt = (dsu->dsu_volt > cpu_volt) ? dsu->dsu_volt : cpu_volt;
 		}
@@ -399,8 +400,8 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 		wl_type = eenv->wl_type;
 
 		if (trace_sched_dsu_freq_enabled())
-			trace_sched_dsu_freq(gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new, freq,
-					pd_freq, dyn_pwr, share_volt, cpu_volt);
+			trace_sched_dsu_freq(eenv->gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new,
+					freq, pd_freq, dyn_pwr, share_volt, cpu_volt);
 
 		if (share_volt > cpu_volt)
 			dyn_pwr = (unsigned long long)dyn_pwr * (unsigned long long)share_volt *
