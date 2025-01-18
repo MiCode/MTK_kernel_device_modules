@@ -1834,6 +1834,77 @@ static int mt6991_audio_vip_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+// ALPS08907586: media.swcodec set VIP
+static pid_t find_process_by_name(const char *name)
+{
+	struct task_struct *task;
+	struct task_struct *thread;
+
+	for_each_process(task) {
+		for_each_thread(task, thread) {
+			if (strcmp(thread->comm, name) == 0)
+				return task->pid;
+		}
+	}
+
+	return -1; // Process not found
+}
+
+static void set_swcodec_vip(const struct mtk_base_afe *afe,
+		const char *name, const pid_t pid, const int enable)
+{
+	struct task_struct *task;
+	struct task_struct *thread;
+
+	dev_info(afe->dev, "%s(), pid %d, enable %d\n", __func__, pid, enable);
+	for_each_process(task) {
+		if ( pid != task->pid)
+			continue;
+
+		for_each_thread(task, thread) {
+			if (strcmp(thread->comm, name) != 0)
+				continue;
+
+			if (enable == 1)
+				set_task_basic_vip(thread->pid);
+			else
+				unset_task_basic_vip(thread->pid);
+			dev_info(afe->dev, "%s(), Found thread, %s %d\n",
+				 __func__, thread->comm, thread->pid);
+		}
+		return;
+	}
+	dev_info(afe->dev, "%s(), can't Found process\n", __func__);
+}
+
+static int mt6991_swcodec_vip_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int mt6991_swcodec_vip_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	static pid_t PidMediaSWCodec = -1;
+	char name[20] = "oid.aac.encoder";
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int enable = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), enable %d, pid %d\n", __func__,
+		 enable, PidMediaSWCodec);
+	if (enable == 1)
+		PidMediaSWCodec = find_process_by_name(name);
+
+	if (PidMediaSWCodec != -1)
+		set_swcodec_vip(afe, name, PidMediaSWCodec, enable);
+	dev_info(afe->dev, "%s()-\n", __func__);
+
+	return 0;
+}
+
 static const char *const off_on_function[] = {"Off", "On"};
 
 static const struct soc_enum mt6991_pcm_type_enum[] = {
@@ -2016,6 +2087,8 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		     record_miso1_en_get, record_miso1_en_set),
 	SOC_SINGLE_EXT("audio_vip", SND_SOC_NOPM, 0, 0x3fffff, 0,
 		       mt6991_audio_vip_get, mt6991_audio_vip_set),
+	SOC_SINGLE_EXT("SWCODEC_VIP", SND_SOC_NOPM, 0, 0x3fffff, 0,
+		       mt6991_swcodec_vip_get, mt6991_swcodec_vip_set),
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	SND_SOC_BYTES_EXT("use_dram_only", MT6991_MEMIF_NUM,
 		      mt6991_use_dram_only_get, NULL),
