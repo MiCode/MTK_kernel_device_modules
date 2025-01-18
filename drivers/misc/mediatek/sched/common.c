@@ -190,3 +190,8 @@ void parse_eas_data(struct eas_info *info)
 		info->available = false;
 	}
 }
+
+void mtk_cpu_util_cfs_boost_hook(void *data, int cpu, unsigned long *util)
+{
+	*util = mtk_cpu_util_cfs_boost(cpu);
+}

@@ -1070,6 +1070,10 @@ static int __init mtk_scheduler_init(void)
 
 #endif
 
+	ret = register_trace_android_rvh_cpu_util_cfs_boost(mtk_cpu_util_cfs_boost_hook, NULL);
+	if (ret)
+		pr_info("register mtk_cpu_util_cfs_boost_hook hooks failed, returned %d\n", ret);
+
 	ret = register_trace_android_vh_scheduler_tick(hook_scheduler_tick, NULL);
 	if (ret)
 		pr_info("scheduler: register scheduler_tick hooks failed, returned %d\n", ret);
