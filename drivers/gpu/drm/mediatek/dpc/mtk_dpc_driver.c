@@ -1490,16 +1490,6 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-	if (unlikely(g_priv->skip_force_power)) {
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user %u skip force power", user);
-		return -1;
-	}
-	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-
 	if (dpc_pm_ctrl(true))
 		return -1;
 
@@ -1513,16 +1503,6 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
-	if (unlikely(g_priv->skip_force_power)) {
-		spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-		DPCFUNC("user %u skip force power", user);
-		return;
-	}
-	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
-
 	mtk_disp_vlp_vote(VOTE_CLR, user);
 	dpc_pm_ctrl(false);
 }
