@@ -121,6 +121,7 @@ void mt_print_much_log(void)
 {
 	unsigned long long t1 = 0;
 	unsigned long long t2 = 0;
+	unsigned long long t3 = 0;
 	unsigned long print_num = 0;
 	unsigned long long result = 0;
 
@@ -135,7 +136,10 @@ void mt_print_much_log(void)
 			break;
 		pr_info("printk debug log: the %ld line, time: %lld.\n",
 			print_num++, t2);
-		__delay(5);
+		t3 = sched_clock();
+		result = (t3 - t2) / 1000;
+		if (result < 1000)
+			usleep_range(1000 - result, 1000 - result + 100); // sleep 1000 us
 	}
 	pr_info("mt log total write %ld line in 10 second.\n", print_num);
 }
