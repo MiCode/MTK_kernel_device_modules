@@ -123,23 +123,54 @@ int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *he
 
 const char **mtk_refill_heap_names(void);
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 void heap_monitor_init(void);
 void heap_monitor_exit(void);
 ssize_t heap_monitor_proc_write(struct file *file, const char *buf,
 				size_t count, loff_t *data);
 int heap_monitor_proc_open(struct inode *inode, struct file *file);
 int mtk_register_refill_order_callback(mtk_refill_order_cb cb);
-#endif
 
-void dmabuf_log_alloc_time(struct mtk_dmabuf_page_pool *pool, u64 tm, u64 tm_alloc,
-			   bool success, bool from_pool);
-void dmabuf_log_allocate(struct dma_heap *heap, u64 tm, u32 nent, u32 pages, u32 inode);
-void dmabuf_log_refill(int heap_tag, u64 tm, int ret, u32 order, u32 pages_refill, u32 pages_new);
-void dmabuf_log_recycle(int heap_tag, u64 tm, u32 order, u32 pages_remove, u32 pages_new);
-void dmabuf_log_shrink(struct mtk_dmabuf_page_pool *pool, u64 tm, int freed, int scan);
-void dmabuf_log_pool_size(struct dma_heap *heap);
+void dmabuf_log_allocate(struct dma_heap *heap, u64 tm, u32 nent, u64 size);
+void dmabuf_log_refill(struct mtk_dmabuf_page_pool *pool, u64 tm, int ret, u32 pages_refill);
+void dmabuf_log_recycle(struct mtk_dmabuf_page_pool *pool, u64 tm, u32 pages_recycle);
 void dmabuf_log_prefill(struct dma_heap *heap, u64 tm, int ret, u32 size);
+
+void dmabuf_log_map(struct dma_buf *dmabuf);
+void dmabuf_log_mmap(struct dma_buf *dmabuf);
+void dmabuf_log_begin_cpu(struct dma_buf *dmabuf);
+void dmabuf_log_end_cpu(struct dma_buf *dmabuf);
+void dmabuf_log_begin_cpu_partial(struct dma_buf *dmabuf, u32 sync_size);
+void dmabuf_log_end_cpu_partial(struct dma_buf *dmabuf, u32 sync_size);
+
+u32 dmabuf_trace_level(void);
+int dmabuf_trace_mark_write(char *fmt, ...);
+
+#define DMABUF_TRACE_HIGH	1
+#define DMABUF_TRACE_ALL	2
+
+#define DMABUF_TRACE_BEGIN(fmt, args...) do { \
+	if (dmabuf_trace_level()) { \
+		dmabuf_trace_mark_write("B|%d|" fmt, current->tgid, ##args); \
+	} \
+} while (0)
+
+#define DMABUF_TRACE_END(fmt, args...) do { \
+	if (dmabuf_trace_level()) { \
+		dmabuf_trace_mark_write("E|%d|" fmt, current->tgid, ##args); \
+	} \
+} while (0)
+
+#define DMABUF_TRACE_LOW_BEGIN(fmt, args...) do { \
+	if (dmabuf_trace_level() > DMABUF_TRACE_HIGH) { \
+		dmabuf_trace_mark_write("B|%d|" fmt, current->tgid, ##args); \
+	} \
+} while (0)
+
+#define DMABUF_TRACE_LOW_END(fmt, args...) do { \
+	if (dmabuf_trace_level() > DMABUF_TRACE_HIGH) { \
+		dmabuf_trace_mark_write("E|%d|" fmt, current->tgid, ##args); \
+	} \
+} while (0)
 
 /* common function */
 static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)

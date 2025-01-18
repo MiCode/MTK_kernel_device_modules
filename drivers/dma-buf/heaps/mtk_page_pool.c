@@ -81,22 +81,13 @@ EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_fetch);
 struct page *mtk_dmabuf_page_pool_alloc(struct mtk_dmabuf_page_pool *pool)
 {
 	struct page *page = NULL;
-	u64 tm1, tm2 = 0, tm3;
 
 	if (WARN_ON(!pool))
 		return NULL;
 
-	tm1 = sched_clock();
 	page = mtk_dmabuf_page_pool_fetch(pool);
-	if (!page) {
-		tm2 = sched_clock();
+	if (!page)
 		page = mtk_dmabuf_page_pool_alloc_pages(pool);
-	}
-	tm3 = sched_clock();
-
-	if (tm3 - tm1 > 20000000)
-		dmabuf_log_alloc_time(pool, tm3 - tm1, (tm2 > 0)?(tm3-tm2):0, page, (tm2 == 0));
-
 	return page;
 }
 
