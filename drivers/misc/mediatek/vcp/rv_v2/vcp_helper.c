@@ -492,6 +492,7 @@ void vcp_A_register_notify(enum feature_id id, struct notifier_block *nb)
 	default:
 		break;
 	}
+	mutex_unlock(&vcp_A_notify_mutex);
 }
 EXPORT_SYMBOL_GPL(vcp_A_register_notify);
 
@@ -519,6 +520,7 @@ void vcp_A_unregister_notify(enum feature_id id, struct notifier_block *nb)
 	default:
 		break;
 	}
+	mutex_unlock(&vcp_A_notify_mutex);
 }
 EXPORT_SYMBOL_GPL(vcp_A_unregister_notify);
 
