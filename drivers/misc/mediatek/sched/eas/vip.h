@@ -9,7 +9,8 @@
 extern bool vip_enable;
 
 #define VIP_TIME_SLICE     3000000U
-#define VIP_TIME_LIMIT     (4 * VIP_TIME_SLICE)
+#define VIP_TIME_LIMIT_DEFAULT     (4 * VIP_TIME_SLICE)
+#define VIP_TIME_LIMIT_MAX         (5 * VIP_TIME_LIMIT_DEFAULT)
 
 enum {
 	WORKER_VIP,
@@ -42,6 +43,9 @@ enum vip_group {
 	VIP_GROUP_NUM
 };
 
+extern void set_task_vvip_and_throttle(int pid, unsigned int throttle_time);
+extern void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time);
+extern void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time);
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
 extern void set_task_vvip(int pid);
