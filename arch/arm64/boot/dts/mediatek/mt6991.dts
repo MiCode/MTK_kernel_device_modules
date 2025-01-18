@@ -16982,6 +16982,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		pinctrl-4 = <&wf_rst_pta_uart_off>;
 		conninfra-emi-addr = <0>;
 		conninfra-emi-size = <0xc00000>;
+		ppb-emi-offset = <0x01605800>;
 		#thermal-sensor-cells = <1>;
 		interconnects = <&dvfsrc MT6873_MASTER_WIFI &dvfsrc MT6873_SLAVE_DDR_EMI>;
 		interconnect-names = "wifi-perf-bw";
