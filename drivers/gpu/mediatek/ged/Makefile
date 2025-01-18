@@ -33,6 +33,9 @@ ccflags-y += -DMTK_GPU_BM_2
 ccflags-y += -DCONFIG_MTK_GPU_FW_IDLE
 ccflags-y += -DCONFIG_MTK_GPU_APO_SUPPORT
 ccflags-y += -DMTK_GPU_SLC_POLICY
+ifndef CONFIG_MTK_GPU_MT6768_SUPPORT
+ccflags-y += -DMTK_GPU_EB_SUPPORT
+endif
 
 ifeq ($(CONFIG_MTK_ENABLE_GMO), y)
 ccflags-y += -DGED_BUFFER_LOG_DISABLE
