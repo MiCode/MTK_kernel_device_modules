@@ -383,6 +383,7 @@ static int test_set_val(struct cluster_data *cluster, unsigned int val)
 	cpumask_clear(&disable_mask);
 	cpumask_complement(&disable_mask, cpu_online_mask);
 	cpumask_or(&disable_mask, &disable_mask, cpu_pause_mask);
+	cpumask_and(&disable_mask, &disable_mask, cpu_possible_mask);
 	disable_cpus = cpumask_weight(&disable_mask);
 	if (disable_cpus >= (nr_cpu_ids-2))
 		return -EINVAL;
