@@ -31,11 +31,10 @@
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
 #include <linux/mm_inline.h>
-#include <trace/hooks/binder.h>
 #include <uapi/linux/android/binder.h>
 
 #include "mbraink_process.h"
-#include "../../../../../kernel-6.1/drivers/android/binder_internal.h"
+#include "binder_internal.h"
 
 #define PROCESS_INFO_STR	\
 	"pid=%-10u:uid=%u,priority=%d,utime=%llu,stime=%llu,cutime=%llu,cstime=%llu,name=%s\n"
@@ -84,6 +83,18 @@ static int unregister_trace_android_vh_do_fork(void *t, void *p)
 	return 0;
 }
 static int unregister_trace_android_vh_do_exit(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+
+static int register_trace_android_vh_binder_trans(void *t, void *p)
+{
+	pr_info("%s: not support yet...", __func__);
+	return 0;
+}
+
+static int unregister_trace_android_vh_binder_trans(void *t, void *p)
 {
 	pr_info("%s: not support yet...", __func__);
 	return 0;

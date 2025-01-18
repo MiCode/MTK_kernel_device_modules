@@ -884,14 +884,13 @@ static const struct dev_pm_ops mbraink_class_dev_pm_ops = {
 #define MBRAINK_CLASS_DEV_PM_OPS NULL
 #endif /*end of CONFIG_PM_SLEEP*/
 
-static void class_create_release(struct class *cls)
+static void class_create_release(const struct class *cls)
 {
 	/*do nothing because the mbraink class is not from malloc*/
 }
 
 static struct class mbraink_class = {
 	.name		= "mbraink_host",
-	.owner		= THIS_MODULE,
 	.class_release	= class_create_release,
 	.pm		= MBRAINK_CLASS_DEV_PM_OPS,
 };
