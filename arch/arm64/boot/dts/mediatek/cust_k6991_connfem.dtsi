@@ -1,0 +1,782 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+/* Connsys FEM Start */
+&connfem {
+	sku-mtk {
+		hw-names =
+			"qm42655_qm45655__phone",	/* [0] SKU1-1 Phone */
+			"qm42655_qm45655",		/* [1] SKU1-1 EVB */
+			"sky55208_sky55714",		/* [2] SKU1-2 Phone (N/A) */
+			"sky55208_sky55714",		/* [3] SKU1-2 EVB */
+			"ipa_qm45655__phone",		/* [4] SKU2 Phone */
+			"ipa_qm45655",			/* [5] SKU2 EVB */
+			"sku1_backup",			/* [6] SKU1 Backup Phone (N/A) */
+			"sku1_backup",			/* [7] SKU1 Backup EVB */
+			"sku3__phone",			/* [8] SKU3 Phone */
+			"sku3",				/* [9] SKU3 EVB */
+			"qm42655_qm45655__phone",	/* [10] Reserved Phone (Set to SKU1-1 Phone) */
+			"qm42655_qm45655",		/* [11] Reserved EVB (Set to SKU1-1 EVB) */
+			"ipa_sky55714",			/* [12] SKU2 with SKY55714 */
+			"sku1_backup",			/* [13] SKU1 Backup TxHD160 */
+			"sku2_backup",			/* [14] SKU2 Backup */
+			"sku2_backup",			/* [15] SKU2 Backup TxHD160 */
+			"qm42655_qm45655";		/* [16] SKU1-1 with MXD7282 BT eFEM */
+
+		hwid {
+			/* HWID bit[0]
+			 *	0: Phone
+			 *	1: EVB
+			 */
+			gpio = <&mt6373_pio 8 0x0>;
+
+			/* HWID bit[3:1]
+			 *	3'b000: SKU1-1
+			 *	3'b001: SKU1-2
+			 *	3'b010: SKU2
+			 *	3'b011: SKU1 Backup
+			 *	3'b100: SKU3
+			 *	3'b101: Reserved
+			 */
+			pmic {
+				channel-name = "pmic_vin6";
+				range-0 = <110 320 540 750 960>;
+			};
+		};
+
+		/***************************************************************
+		 * [HW][0] SKU1-1 Phone
+		 **************************************************************/
+		hw-0 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][1] SKU1-1 EVB
+		 **************************************************************/
+		hw-1 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][2] SKU1-2 Phone (N/A)
+		 **************************************************************/
+		hw-2 {
+			using-fems =
+				<&sky55208>,
+				<&sky55714>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_sky55208>,
+				<&sku1_g_wf1_bt1_sky55208>,
+				<&sku1_a_wf0_sky55714>,
+				<&sku1_a_wf1_sky55714>,
+				<&sku1_a_wf2_bt0_sky55714>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&sky55208_rxl>,
+					<&sky55714_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][3] SKU1-2 EVB
+		 **************************************************************/
+		hw-3 {
+			using-fems =
+				<&sky55208>,
+				<&sky55714>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_sky55208>,
+				<&sku1_g_wf1_bt1_sky55208>,
+				<&sku1_a_wf0_sky55714>,
+				<&sku1_a_wf1_sky55714>,
+				<&sku1_a_wf2_bt0_sky55714>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&sky55208_rxl>,
+					<&sky55714_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][4] SKU2 Phone
+		 **************************************************************/
+		hw-4 {
+			using-fems = <&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku2_a_wf0_qm45655>,
+				<&sku2_a_wf12_emlsr_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku2_spdt_a1_a2_tx>,
+				<&sku2_spdt_a1_a2_rx>,
+				<&sku2_sp3t_g0_ipa>,
+				<&sku2_sp3t_g1_ipa>;
+
+			common {
+				flags {
+					fe-ant-cnt = [81];
+					fe-conn-dpdt-sp3t = [e0];
+					fe-conn-spdt = [83];
+					fe-bt-wf-usage = [88];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states = <&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][5] SKU2 EVB
+		 **************************************************************/
+		hw-5 {
+			using-fems = <&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku2_a_wf0_qm45655>,
+				<&sku2_a_wf12_emlsr_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku2_spdt_a1_a2_tx>,
+				<&sku2_spdt_a1_a2_rx>,
+				<&sku2_sp3t_g0_ipa>,
+				<&sku2_sp3t_g1_ipa>;
+
+			common {
+				flags {
+					fe-ant-cnt = [81];
+					fe-conn-dpdt-sp3t = [e0];
+					fe-conn-spdt = [83];
+					fe-bt-wf-usage = [88];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states = <&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][6] SKU1 Backup Phone (N/A)
+		 **************************************************************/
+		hw-6 {
+			using-fems =
+				<&qm42195>,
+				<&qm45639>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42195>,
+				<&sku1_g_wf1_bt1_qm42195>,
+				<&sku1_a_wf0_qm45639>,
+				<&sku1_a_wf1_qm45639>,
+				<&sku1_a_wf2_bt0_qm45639>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42195_default>,
+					<&qm45639_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][7] SKU1 Backup EVB
+		 **************************************************************/
+		hw-7 {
+			using-fems =
+				<&qm42195>,
+				<&qm45639>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42195>,
+				<&sku1_g_wf1_bt1_qm42195>,
+				<&sku1_a_wf0_qm45639>,
+				<&sku1_a_wf1_qm45639>,
+				<&sku1_a_wf2_bt0_qm45639>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42195_default>,
+					<&qm45639_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][8] SKU3 Phone
+		 **************************************************************/
+		hw-8 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][9] SKU3 EVB
+		 **************************************************************/
+		hw-9 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][10] Reserved Phone (Set to SKU1-1 Phone)
+		 **************************************************************/
+		hw-10 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][11] Reserved EVB (Set to SKU1-1 EVB)
+		 **************************************************************/
+		hw-11 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][12] SKU2 with SKY55714
+		 **************************************************************/
+		hw-12 {
+			using-fems = <&sky55714>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku2_a_wf0_sky55714>,
+				<&sku2_a_wf12_emlsr_bt0_sky55714>;
+
+			layout-spdt =
+				<&sku2_spdt_a1_a2_tx>,
+				<&sku2_spdt_a1_a2_rx>,
+				<&sku2_sp3t_g0_ipa>,
+				<&sku2_sp3t_g1_ipa>;
+
+			common {
+				flags {
+					fe-ant-cnt = [81];
+					fe-conn-dpdt-sp3t = [e0];
+					fe-conn-spdt = [83];
+					fe-bt-wf-usage = [88];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states = <&sky55714_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][13] SKU1 Backup TxHD160
+		 **************************************************************/
+		hw-13 {
+			using-fems =
+				<&qm42195>,
+				<&qm45639>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42195>,
+				<&sku1_g_wf1_bt1_qm42195>,
+				<&sku1_a_wf0_qm45639>,
+				<&sku1_a_wf1_qm45639>,
+				<&sku1_a_wf2_bt0_qm45639>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42195_default>,
+					<&qm45639_rxl>;
+
+				flags {
+					epa-option = [02]; /* 1:BW160 use TxM, 2:BW160 use TxHD */
+				};
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][14] SKU2 Backup
+		 **************************************************************/
+		hw-14 {
+			using-fems = <&qm45639>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku2_a_wf0_qm45639>,
+				<&sku2_a_wf12_emlsr_bt0_qm45639>;
+
+			layout-spdt =
+				<&sku2_spdt_a1_a2_tx>,
+				<&sku2_spdt_a1_a2_rx>,
+				<&sku2_sp3t_g0_ipa>,
+				<&sku2_sp3t_g1_ipa>;
+
+			common {
+				flags {
+					fe-ant-cnt = [81];
+					fe-conn-dpdt-sp3t = [e0];
+					fe-conn-spdt = [83];
+					fe-bt-wf-usage = [88];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states = <&qm45639_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][15] SKU2 Backup TxHD160
+		 **************************************************************/
+		hw-15 {
+			using-fems = <&qm45639>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku2_a_wf0_qm45639>,
+				<&sku2_a_wf12_emlsr_bt0_qm45639>;
+
+			layout-spdt =
+				<&sku2_spdt_a1_a2_tx>,
+				<&sku2_spdt_a1_a2_rx>,
+				<&sku2_sp3t_g0_ipa>,
+				<&sku2_sp3t_g1_ipa>;
+
+			common {
+				flags {
+					fe-ant-cnt = [81];
+					fe-conn-dpdt-sp3t = [e0];
+					fe-conn-spdt = [83];
+					fe-bt-wf-usage = [88];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states = <&qm45639_rxl>;
+
+				flags {
+					epa-option = [02]; /* 1:BW160 use TxM, 2:BW160 use TxHD */
+				};
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][16] SKU1-1 with MXD7282 BT eFEM
+		 **************************************************************/
+		hw-16 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>,
+				<&mxd7282>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>,
+				<&sku1_a_wf2_bt0_qm45655>,
+				<&sku1_g_bt1_mxd7282>;
+
+			layout-spdt =
+				<&sku1_spdt_a2_filter>,
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [82];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+	};
+};
+/* Connsys FEM End */
