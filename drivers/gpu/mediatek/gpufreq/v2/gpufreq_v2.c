@@ -862,7 +862,7 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 		else
 			ret = GPUFREQ_EINVAL;
 		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_ipi_irq_flags);
-		goto done;
+		goto done_unlock;
 	}
 
 	/* implement on AP */
@@ -873,13 +873,14 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
 	}
 
-done:
+done_unlock:
 	if (unlikely(ret < 0))
 		GPUFREQ_LOGE("fail to control power state: %s (%d)",
 			power ? "GPU_PWR_ON" : "GPU_PWR_OFF", ret);
 
 	mutex_unlock(&gpufreq_power_lock);
 
+done:
 	GPUFREQ_TRACE_END();
 
 	return ret;
