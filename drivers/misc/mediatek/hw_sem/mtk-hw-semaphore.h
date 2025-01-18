@@ -12,19 +12,18 @@ enum sema_type {
 	SEMA_TYPE_NR,
 };
 
+enum master {
+	MASTER_AP = 0,
+	MASTER_VCP,
+};
+
 #if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
 
-int mtk_hw_semaphore_get(u32 mtcmos_id);
-int mtk_hw_semaphore_release(u32 mtcmos_id);
+int mtk_hw_semaphore_ctrl(u32 master_id, bool is_get);
 
 #else
 
-static inline int mtk_hw_semaphore_get(u32 mtcmos_id)
-{
-	return 0;
-}
-
-static inline int mtk_hw_semaphore_release(u32 mtcmos_id)
+static inline int mtk_hw_semaphore_ctrl(u32 master_id, bool is_get)
 {
 	return 0;
 }

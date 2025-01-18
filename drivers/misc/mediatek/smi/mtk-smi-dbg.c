@@ -19,6 +19,9 @@
 #include <linux/slab.h>
 #include <soc/mediatek/smi.h>
 #include "mtk-smi-dbg.h"
+#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
+#include <mtk-hw-semaphore.h>
+#endif
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
 #endif
@@ -393,8 +396,8 @@ struct mtk_smi_dbg_node {
 	atomic_t	mon_ref_cnt[MAX_MON_REQ];
 	atomic_t	is_on;
 	bool	skip_tcms_check;
-	int	user[SMI_LARB_USER_NR];
-	int	user_nr;
+	int	user[SMI_LARB_USER_NR];		// for dbg v2
+	int	user_nr;			// for dbg v2
 	struct mtk_smi_dbg_init_setting init_setting;
 };
 
@@ -415,6 +418,13 @@ struct mm_smi_subsys {
 
 #define MTK_SMI_TYPE_NR (3)
 #define MTK_SMI_NR_MAX (64)
+
+struct mtk_smi_dbg_v2 {
+	int	user_pwr_stat[MTK_SMI_USER_ID_NR];
+	int	larb_pm_stat[MTK_SMI_NR_MAX];
+	int	comm_pm_stat[MTK_SMI_NR_MAX];
+};
+
 struct mtk_smi_dbg {
 	bool			probe;
 	bool			is_shutdown;
@@ -434,7 +444,7 @@ struct mtk_smi_dbg {
 	struct mm_smi_subsys subsys[SMI_USER_NR];
 	u64	larb_skip;
 	u64	comm_skip;
-	int	user_pwr_stat[MTK_SMI_USER_ID_NR];
+	struct mtk_smi_dbg_v2	v2;
 };
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
@@ -488,18 +498,19 @@ static int mtk_smi_dbg_larb_disable(struct device *dev)
 }
 
 #define USER_REPORT_PWR_ON	(0xff)
-static int __mtk_smi_pwr_chk_v2(struct mtk_smi_dbg_node *node, bool is_put)
+static int __mtk_smi_pwr_chk_v2(struct mtk_smi_dbg_node *node)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 	int i, ret = 0;
 
 	for (i = 0; i < node->user_nr; i++)
-		ret |= smi->user_pwr_stat[node->user[i]];
+		ret |= smi->v2.user_pwr_stat[node->user[i]];
 
-	if (!is_put)
-		return ret ? USER_REPORT_PWR_ON : pm_runtime_get_if_in_use(node->dev);
-	else
-		return ret ? USER_REPORT_PWR_ON : pm_runtime_put(node->dev);
+	if (ret)
+		return USER_REPORT_PWR_ON;
+
+	return (node->smi_type == SMI_LARB) ?
+			smi->v2.larb_pm_stat[node->id] : smi->v2.comm_pm_stat[node->id];
 }
 
 static int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
@@ -515,7 +526,7 @@ static int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
 		ret = pm_runtime_get_if_in_use(node->dev);
 		break;
 	case SMI_DBG_VER_2:
-		ret = __mtk_smi_pwr_chk_v2(node, false);
+		ret = __mtk_smi_pwr_chk_v2(node);
 		break;
 	default:
 		break;
@@ -534,9 +545,6 @@ static int mtk_smi_put(struct mtk_smi_dbg_node *node)
 	switch (dbg_version) {
 	case SMI_DBG_VER_1:
 		ret = pm_runtime_put(node->dev);
-		break;
-	case SMI_DBG_VER_2:
-		ret = __mtk_smi_pwr_chk_v2(node, true);
 		break;
 	default:
 		break;
@@ -688,7 +696,7 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 		return;
 
 	if (bus_type != SMI_RSI) {
-		ret = pm_runtime_get_if_in_use(node.dev);
+		ret = mtk_smi_get_if_in_use(&node);
 		if (ret)
 			seq_printf(seq, "%s:===== %s%u rpm:%d =====\n"
 				, dev_name(node.dev), name, id, ret);
@@ -698,7 +706,7 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 		if (of_property_read_u32(node.dev->of_node,
 			"mediatek,dump-with-comm", &comm_id))
 			return;
-		if (pm_runtime_get_if_in_use(smi->comm[comm_id].dev) <= 0)
+		if (mtk_smi_get_if_in_use(&smi->comm[comm_id]) <= 0)
 			return;
 		dump_with = true;
 	}
@@ -733,20 +741,16 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 	seq_printf(seq, "%s:%s\n", dev_name(node.dev), buf);
 
 	if (dump_with) {
-		pm_runtime_put(smi->comm[comm_id].dev);
+		mtk_smi_put(&smi->comm[comm_id]);
 		return;
 	}
-	pm_runtime_put(node.dev);
+	mtk_smi_put(&node);
 }
 
-static int smi_bus_status_print(struct seq_file *seq, void *data)
+static void smi_bus_status_print_v1(struct seq_file *seq)
 {
 	int i, j, ret, PRINT_NR = 5;
 	struct mtk_smi_dbg	*smi = gsmi;
-
-	seq_puts(seq, "dump SMI bus status\n");
-
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 
 	smi->larb_skip = 0;
 	smi->comm_skip = 0;
@@ -754,7 +758,7 @@ static int smi_bus_status_print(struct seq_file *seq, void *data)
 	if(!mtk_smi_mminfra_get_if_in_use()) {
 		pr_info("%s: ===== MMinfra may off =====\n", __func__);
 		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-		return 0;
+		return;
 	}
 
 	/* vote disp on for disp_fast_on_off */
@@ -780,23 +784,8 @@ static int smi_bus_status_print(struct seq_file *seq, void *data)
 
 	mtk_smi_mminfra_put();
 
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
-	return 0;
+	return;
 }
-
-static int smi_bus_status_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, smi_bus_status_print, inode->i_private);
-}
-
-static const struct file_operations smi_bus_status_fops = {
-	.owner = THIS_MODULE,
-	.open = smi_bus_status_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
 
 static void mtk_smi_dbg_hang_detect_single(
 	struct mtk_smi_dbg *smi, const bool larb, const u32 id)
@@ -1025,6 +1014,183 @@ static char	*mtk_smi_dbg_comp[] = {
 	"mediatek,smi-larb", "mediatek,smi-common", "mediatek,smi-rsi"
 };
 
+static LIST_HEAD(smi_user_pwr_ctrl_list);
+void call_smi_user_pwr_ctrl(u32 action, char *caller)
+{
+	struct smi_user_pwr_ctrl *entry;
+	struct mtk_smi_dbg	*smi = gsmi;
+	int ret;
+
+	list_for_each_entry(entry, &smi_user_pwr_ctrl_list, list) {
+		entry->caller = caller;
+		switch (action) {
+		case ACTION_GET_IF_IN_USE:
+			if (!entry->smi_user_get_if_in_use || !entry->smi_user_put)
+				break;
+			ret = entry->smi_user_get_if_in_use(entry->data);
+			if (ret < 0) {
+				pr_notice("id:%d name:%s get_if_in_use fail, ret=%d\n",
+						entry->smi_user_id, entry->name, ret);
+				ret = 0;
+			}
+			smi->v2.user_pwr_stat[entry->smi_user_id] = ret;
+			pr_notice("id:%d name:%s get_if_in_use result=%d\n",
+						entry->smi_user_id, entry->name, ret);
+			break;
+		case ACTION_PUT_IF_IN_USE:
+			if (!entry->smi_user_get_if_in_use || !entry->smi_user_put)
+				break;
+			if (smi->v2.user_pwr_stat[entry->smi_user_id] > 0)
+				entry->smi_user_put(entry->data);
+			break;
+		case ACTION_FORCE_ALL_ON:
+			if (entry->smi_user_get && entry->smi_user_put)
+				entry->smi_user_get(entry->data);
+			break;
+		case ACTION_FORCE_ALL_PUT:
+			if (entry->smi_user_get && entry->smi_user_put)
+				entry->smi_user_put(entry->data);
+			break;
+		default:
+			pr_notice("unknown action %u\n", action);
+			break;
+		}
+	}
+}
+
+void call_smi_pm_get_if_in_use(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 i;
+	int ret;
+
+	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
+		if (!smi->larb[i].dev)
+			continue;
+		ret = pm_runtime_get_if_in_use(smi->larb[i].dev);
+		if (ret < 0)
+			dev_notice(smi->larb[i].dev, "%s err: rpm:%d\n", __func__, ret);
+		smi->v2.larb_pm_stat[i] = (ret > 0) ? 1 : 0;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev)
+			continue;
+		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
+		if (ret < 0)
+			dev_notice(smi->comm[i].dev, "%s err: rpm:%d\n", __func__, ret);
+		smi->v2.comm_pm_stat[i] = (ret > 0) ? 1 : 0;
+	}
+}
+
+void call_smi_pm_put_if_in_use(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
+		if (!smi->larb[i].dev)
+			continue;
+		if (smi->v2.larb_pm_stat[i])
+			pm_runtime_put(smi->larb[i].dev);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev)
+			continue;
+		if (smi->v2.comm_pm_stat[i])
+			pm_runtime_put(smi->comm[i].dev);
+	}
+}
+
+void call_smi_user_get_if_in_use(char *caller)
+{
+	call_smi_user_pwr_ctrl(ACTION_GET_IF_IN_USE, caller);
+}
+
+void call_smi_user_put_if_in_use(char *caller)
+{
+	call_smi_user_pwr_ctrl(ACTION_PUT_IF_IN_USE, caller);
+}
+
+void call_smi_user_force_all_on(char *caller)
+{
+	call_smi_user_pwr_ctrl(ACTION_FORCE_ALL_ON, caller);
+}
+
+void call_smi_user_force_all_put(char *caller)
+{
+	call_smi_user_pwr_ctrl(ACTION_FORCE_ALL_PUT, caller);
+}
+
+static RAW_NOTIFIER_HEAD(force_on_notifier_list);
+int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&force_on_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_register_force_on_notifier);
+
+int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32 i, ret;
+
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	smi_enter_met = true;
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+	pr_notice("%s enable vcp\n", __func__);
+	raw_notifier_call_chain(&force_on_notifier_list,
+		true, NULL);
+	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
+		if (!smi->larb[i].dev)
+			continue;
+		ret = mtk_smi_dbg_larb_enable(smi->larb[i].dev);
+		if (ret < 0)
+			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
+	}
+	call_smi_user_force_all_on("SMI_FORCE_ALL_ON");
+	pr_notice("[smi] larb force all on\n");
+	return 0;
+}
+
+static const struct kernel_param_ops smi_larb_force_all_on_ops = {
+	.get = smi_larb_force_all_on,
+};
+module_param_cb(smi_force_all_on, &smi_larb_force_all_on_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_force_all_on, "smi larb force all on");
+
+int smi_larb_force_all_put(char *buf, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32 i;
+
+	if (smi_enter_met) {
+		call_smi_user_force_all_put("SMI_FORCE_ALL_PUT");
+		for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
+			if (!smi->larb[i].dev)
+				continue;
+			mtk_smi_dbg_larb_disable(smi->larb[i].dev);
+		}
+		pr_notice("[smi] larb force all put\n");
+		pr_notice("disable vcp\n");
+		raw_notifier_call_chain(&force_on_notifier_list,
+			false, NULL);
+
+		spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+		smi_enter_met = false;
+		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_larb_force_all_put_ops = {
+	.get = smi_larb_force_all_put,
+};
+module_param_cb(smi_force_all_put, &smi_larb_force_all_put_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_force_all_put, "smi larb force all put");
+
 static int smi_dbg_suspend_cb(struct notifier_block *nb,
 		unsigned long value, void *v)
 {
@@ -1033,6 +1199,12 @@ static int smi_dbg_suspend_cb(struct notifier_block *nb,
 	if (value == TRIGGER_SMI_HANG_DETECT) {
 		pr_notice("[SMI] %s: hang detect triggered from smi driver\n", __func__);
 		mtk_smi_dbg_hang_detect("SMI DRIVER");
+		return 0;
+	} else if (value == TRIGGER_SMI_FORCE_ALL_ON) {
+		smi_larb_force_all_on(NULL, NULL);
+		return 0;
+	} else if (value == TRIGGER_SMI_FORCE_ALL_PUT) {
+		smi_larb_force_all_put(NULL, NULL);
 		return 0;
 	}
 
@@ -1101,6 +1273,45 @@ static void smi_dbg_init_v2(struct mtk_smi_dbg_node *node)
 	node->user_nr = i;
 }
 
+/* vcodec smi get if in use for mt6991 */
+static struct smi_user_pwr_ctrl_data vcodec_dbg_data;
+static int smi_mt6991_vcodec_get_if_in_use(void *v)
+{
+	struct smi_user_pwr_ctrl_data *data = (struct smi_user_pwr_ctrl_data *)v;
+	u32 i, pwr_status;
+	int ret;
+
+#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
+	ret = mtk_hw_semaphore_ctrl(MASTER_AP, true);
+	if (ret < 0) {
+		for (i = 0; i < data->id_nr; i++)
+			gsmi->v2.user_pwr_stat[data->id_list[i]] = 0;
+		return ret;
+	}
+#endif
+	pwr_status = readl_relaxed(data->pwr_sta_rg);
+	for (i = 0; i < data->id_nr; i++)
+		gsmi->v2.user_pwr_stat[data->id_list[i]] = (pwr_status >> (data->id_list[i])) & 0x1;
+
+	return 1;
+}
+
+static int smi_mt6991_vcodec_put(void *v)
+{
+#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
+	mtk_hw_semaphore_ctrl(MASTER_AP, false);
+#endif
+	return 0;
+}
+
+static struct smi_user_pwr_ctrl smi_vcodec_pwr_ctrl = {
+	.name = "vcodec_smi",
+	.smi_user_id = MTK_SMI_VCODEC_SMI,
+	.data = &vcodec_dbg_data,
+	.smi_user_get_if_in_use = smi_mt6991_vcodec_get_if_in_use,
+	.smi_user_put = smi_mt6991_vcodec_put,
+};
+
 static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 {
 	struct device *dev = &dbg_pdev->dev;
@@ -1109,7 +1320,7 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	struct platform_device	*pdev;
 	struct resource		*res;
 	void __iomem		*va;
-	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i, ostd_bits;
+	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i, ostd_bits, tmp;
 
 	smi->dev = dev;
 
@@ -1223,6 +1434,17 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	if (of_property_read_bool(dev->of_node, "no-pm-runtime"))
 		no_pm_runtime = true;
 
+	if ((dbg_version == SMI_DBG_VER_2) &&
+			!of_property_read_u32(dev->of_node, "vcodec-pwr-sta-rg", &tmp)) {
+		vcodec_dbg_data.pwr_sta_rg = ioremap(tmp, 0x4);
+		vcodec_dbg_data.id_nr = of_property_count_u32_elems(dev->of_node,
+									"vcodec-pwr-chk-id");
+		vcodec_dbg_data.id_list = kcalloc(vcodec_dbg_data.id_nr, sizeof(u32), GFP_KERNEL);
+		for (i = 0; i < vcodec_dbg_data.id_nr; i++)
+			of_property_read_u32_index(dev->of_node, "vcodec-pwr-chk-id",
+								i, &vcodec_dbg_data.id_list[i]);
+		mtk_smi_dbg_register_pwr_ctrl_cb(&smi_vcodec_pwr_ctrl);
+	}
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 	if (smmu_v3_enabled() && !of_property_read_bool(dev->of_node, "hwccf-support"))
 		mtk_smmu_set_pm_ops(MM_SMMU, &mtk_smi_pm_ops);
@@ -1282,82 +1504,14 @@ int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_unregister_notifier);
 
-static RAW_NOTIFIER_HEAD(force_on_notifier_list);
-int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb)
-{
-	return raw_notifier_chain_register(&force_on_notifier_list, nb);
-}
-EXPORT_SYMBOL_GPL(mtk_smi_dbg_register_force_on_notifier);
-
 int mtk_smi_dbg_unregister_force_on_notifier(struct notifier_block *nb)
 {
 	return raw_notifier_chain_unregister(&force_on_notifier_list, nb);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_unregister_force_on_notifier);
 
-static LIST_HEAD(smi_user_pwr_ctrl_list);
-void call_smi_user_pwr_ctrl(u32 action)
-{
-	struct smi_user_pwr_ctrl *entry;
-	struct mtk_smi_dbg	*smi = gsmi;
-	int ret;
-
-	list_for_each_entry(entry, &smi_user_pwr_ctrl_list, list) {
-		switch (action) {
-		case ACTION_GET_IF_IN_USE:
-			ret = entry->smi_user_get_if_in_use(entry->data);
-			if (ret < 0) {
-				pr_notice("id:%d name:%s get_if_in_use fail, ret=%d\n",
-						entry->smi_user_id, entry->name, ret);
-				ret = 0;
-			}
-			smi->user_pwr_stat[entry->smi_user_id] = ret;
-			pr_notice("id:%d name:%s get_if_in_use result=%d\n",
-						entry->smi_user_id, entry->name, ret);
-			break;
-		case ACTION_PUT_IF_IN_USE:
-			if (smi->user_pwr_stat[entry->smi_user_id] > 0)
-				entry->smi_user_put(entry->data);
-			break;
-		case ACTION_FORCE_ALL_ON:
-			if (entry->smi_user_get && entry->smi_user_put)
-				entry->smi_user_get(entry->data);
-			break;
-		case ACTION_FORCE_ALL_PUT:
-			if (entry->smi_user_get && entry->smi_user_put)
-				entry->smi_user_put(entry->data);
-			break;
-		default:
-			pr_notice("unknown action %u\n", action);
-			break;
-		}
-	}
-}
-
-void call_smi_user_get_if_in_use(void)
-{
-	call_smi_user_pwr_ctrl(ACTION_GET_IF_IN_USE);
-}
-
-void call_smi_user_put_if_in_use(void)
-{
-	call_smi_user_pwr_ctrl(ACTION_PUT_IF_IN_USE);
-}
-
-void call_smi_user_force_all_on(void)
-{
-	call_smi_user_pwr_ctrl(ACTION_FORCE_ALL_ON);
-}
-
-void call_smi_user_force_all_put(void)
-{
-	call_smi_user_pwr_ctrl(ACTION_FORCE_ALL_PUT);
-}
-
 int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 {
-	struct smi_user_pwr_ctrl *new_ctrl;
-
 	if (!cb) {
 		pr_notice("%s: cb is NULL\n", __func__);
 		return -EINVAL;
@@ -1370,20 +1524,13 @@ int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 		pr_notice("%s: invalid smi_user_id:%d\n", __func__, cb->smi_user_id);
 		return -EINVAL;
 	}
-	if (!cb->smi_user_get_if_in_use || !cb->smi_user_put) {
-		pr_notice("%s: cb NUll, smi_user_id:%d\n", __func__, cb->smi_user_id);
+	if (!cb->smi_user_get_if_in_use && !cb->smi_user_get && !cb->smi_user_put) {
+		pr_notice("%s: all cb NUll, smi_user_id:%d\n", __func__, cb->smi_user_id);
 		return -EINVAL;
 	}
 
-	new_ctrl = kmalloc(sizeof(*new_ctrl), GFP_KERNEL);
-	if (!new_ctrl)
-		return -ENOMEM;
-
-	memcpy(new_ctrl, cb, sizeof(*new_ctrl));
-	INIT_LIST_HEAD(&new_ctrl->list);
-
-	list_add(&new_ctrl->list, &smi_user_pwr_ctrl_list);
-
+	INIT_LIST_HEAD(&cb->list);
+	list_add(&cb->list, &smi_user_pwr_ctrl_list);
 	pr_notice("%s:name:%s user:%d register cb done\n", __func__, cb->name, cb->smi_user_id);
 
 	return 0;
@@ -1410,6 +1557,60 @@ int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_unregister_pwr_ctrl_cb);
+
+static void smi_bus_status_print_v2(struct seq_file *seq)
+{
+	int i, j, PRINT_NR = 5;
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	call_smi_pm_get_if_in_use();
+	call_smi_user_get_if_in_use("AEE_SMI_DBG_PRINT_DEBUGFS");
+	for (j = 0; j < PRINT_NR; j++) {
+		for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
+			mtk_smi_dbg_print_debugfs(seq, SMI_LARB, i);
+
+		for (i = 0; i < ARRAY_SIZE(smi->comm); i++)
+			mtk_smi_dbg_print_debugfs(seq, SMI_COMMON, i);
+
+		for (i = 0; i < ARRAY_SIZE(smi->rsi); i++)
+			mtk_smi_dbg_print_debugfs(seq, SMI_RSI, i);
+	}
+	call_smi_user_put_if_in_use("AEE_SMI_DBG_PRINT_DEBUGFS");
+	call_smi_pm_put_if_in_use();
+}
+
+static int smi_bus_status_print(struct seq_file *seq, void *data)
+{
+	seq_puts(seq, "dump SMI bus status\n");
+
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	switch (dbg_version) {
+	case SMI_DBG_VER_1:
+		smi_bus_status_print_v1(seq);
+		break;
+	case SMI_DBG_VER_2:
+		smi_bus_status_print_v2(seq);
+		break;
+	default:
+		break;
+	}
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+	return 0;
+}
+
+static int smi_bus_status_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, smi_bus_status_print, inode->i_private);
+}
+
+static const struct file_operations smi_bus_status_fops = {
+	.owner = THIS_MODULE,
+	.open = smi_bus_status_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 static void read_smi_ostd_status(struct mtk_smi_dbg_node node[])
 {
@@ -1721,6 +1922,178 @@ static int __init mtk_smi_dbg_init(void)
 	return platform_register_drivers(smi_dbg_drivers, ARRAY_SIZE(smi_dbg_drivers));
 }
 
+int smi_ostdl_change_type(const char *val, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32		result, larb_id, ostdl_type;
+
+	result = sscanf(val, "%d %d", &larb_id, &ostdl_type);
+	if (result != 2 || larb_id < 0 || larb_id >= MTK_SMI_NR_MAX || ostdl_type > 1) {
+		pr_notice("SMI ostdl type%d change fail: %d\n", ostdl_type, result);
+		return result;
+	}
+	if (!smi->larb[larb_id].dev) {
+		pr_notice("%s: can not find larb%d type%d\n", __func__, larb_id, ostdl_type);
+		return -EINVAL;
+	}
+
+	mtk_smi_set_ostdl_type(smi->larb[larb_id].dev, ostdl_type);
+
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_ostdl_change_ops = {
+	.set = smi_ostdl_change_type,
+};
+module_param_cb(smi_ostdl_change_type, &smi_ostdl_change_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_ostdl_change_type, "modify smi ostdl type");
+
+int smi_larb_set(const char *val, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 result, larb_id;
+	int offset, value;
+
+	result = sscanf(val, "%d %x %x", &larb_id, &offset, &value);
+	if (result != 3 || larb_id < 0 || larb_id >= MTK_SMI_NR_MAX) {
+		pr_notice("SMI larb%d offset:%#x value:%#x set fail\n",
+				larb_id, offset, value);
+		return result;
+	}
+	if (!smi->larb[larb_id].dev) {
+		pr_notice("%s: can not find larb%d offset:%#x value:%#x\n",
+				__func__, larb_id, offset, value);
+		return -EINVAL;
+	}
+
+	mtk_smi_set_larb_value(smi->larb[larb_id].dev, offset, value);
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_larb_set_ops = {
+	.set = smi_larb_set,
+};
+module_param_cb(smi_larb_set, &smi_larb_set_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_larb_set, "modify smi larb setting");
+
+int smi_comm_set(const char *val, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 result, comm_id;
+	int offset, value;
+
+	result = sscanf(val, "%d %x %x", &comm_id, &offset, &value);
+	if (result != 3 || comm_id < 0 || comm_id >= MTK_SMI_NR_MAX) {
+		pr_notice("SMI comm%d offset:%#x value:%#x set fail\n",
+				comm_id, offset, value);
+		return result;
+	}
+	if (!smi->comm[comm_id].dev) {
+		pr_notice("%s: can not find comm%d offset:%#x value:%#x\n",
+				__func__, comm_id, offset, value);
+		return -EINVAL;
+	}
+
+	mtk_smi_set_comm_value(smi->comm[comm_id].dev, offset, value);
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_comm_set_ops = {
+	.set = smi_comm_set,
+};
+module_param_cb(smi_comm_set, &smi_comm_set_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_comm_set, "modify smi comm setting");
+
+int smi_larb_clear(const char *val, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 result, larb_id;
+	int i;
+
+	result = kstrtoint(val, 0, &larb_id);
+	if (result != 1 || larb_id < 0) {
+		pr_notice("%s: SMI larb%d clear fail\n", __func__, larb_id);
+		return result;
+	}
+
+	if (larb_id >= ARRAY_SIZE(smi->larb)) {
+		for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
+			if (smi->larb[larb_id].dev)
+				mtk_smi_clear_larb_set_value(smi->larb[larb_id].dev);
+	} else {
+		if (!smi->larb[larb_id].dev) {
+			pr_notice("%s: can not find larb%d\n", __func__, larb_id);
+			return -EINVAL;
+		}
+		mtk_smi_clear_larb_set_value(smi->larb[larb_id].dev);
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_larb_clear_ops = {
+	.set = smi_larb_clear,
+};
+module_param_cb(smi_larb_clear, &smi_larb_clear_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_larb_clear, "clear smi larb setting");
+
+int smi_comm_clear(const char *val, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	u32 result, comm_id;
+	int i;
+
+	result = kstrtoint(val, 0, &comm_id);
+	if (result != 1 || comm_id < 0) {
+		pr_notice("%s: SMI comm%d clear fail\n", __func__, comm_id);
+		return result;
+	}
+
+	if (comm_id >= ARRAY_SIZE(smi->comm)) {
+		for (i = 0; i < ARRAY_SIZE(smi->comm); i++)
+			if (smi->comm[comm_id].dev)
+				mtk_smi_clear_comm_set_value(smi->comm[comm_id].dev);
+	} else {
+		if (!smi->comm[comm_id].dev) {
+			pr_notice("%s: can not find comm%d\n", __func__, comm_id);
+			return -EINVAL;
+		}
+		mtk_smi_clear_comm_set_value(smi->comm[comm_id].dev);
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_comm_clear_ops = {
+	.set = smi_comm_clear,
+};
+module_param_cb(smi_comm_clear, &smi_comm_clear_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_comm_clear, "clear smi common setting");
+
+int smi_dump_all_setting(char *buf, const struct kernel_param *kp)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++)
+		if (smi->comm[i].dev)
+			mtk_smi_dump_all_setting(smi->comm[i].dev, false);
+	for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
+		if (smi->larb[i].dev)
+			mtk_smi_dump_all_setting(smi->larb[i].dev, true);
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_dump_all_setting_ops = {
+	.get = smi_dump_all_setting,
+};
+module_param_cb(smi_dump_all_setting, &smi_dump_all_setting_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_dump_all_setting, "dump all smi setting");
+
 #define SMI_DUMMY_VAL	(0x1)
 static int smi_ut_chk_dummy(void)
 {
@@ -1763,7 +2136,6 @@ int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	call_smi_user_force_all_on();
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
@@ -1771,6 +2143,7 @@ int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 		if (ret < 0)
 			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
 	}
+	call_smi_user_force_all_on("SMI_UT");
 
 	switch(action) {
 	case SMI_UT_DUMP:
@@ -1788,12 +2161,12 @@ int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 		break;
 	}
 
+	call_smi_user_force_all_put("SMI_UT");
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
 		mtk_smi_dbg_larb_disable(smi->larb[i].dev);
 	}
-	call_smi_user_force_all_put();
 
 	return ret;
 }
@@ -2164,9 +2537,11 @@ static void mtk_smi_dbg_hang_detect_v1(char *user)
 
 static void mtk_smi_dbg_hang_detect_v2(char *user)
 {
-	call_smi_user_get_if_in_use();
+	call_smi_pm_get_if_in_use();
+	call_smi_user_get_if_in_use(user);
 	__mtk_smi_dbg_hang_detect(user);
-	call_smi_user_put_if_in_use();
+	call_smi_user_put_if_in_use(user);
+	call_smi_pm_put_if_in_use();
 }
 
 s32 mtk_smi_dbg_hang_detect(char *user)
@@ -2286,67 +2661,6 @@ s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_golden_set);
-
-int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
-{
-	struct mtk_smi_dbg	*smi = gsmi;
-	s32 i, ret;
-
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-	smi_enter_met = true;
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
-	pr_notice("%s enable vcp\n", __func__);
-	raw_notifier_call_chain(&force_on_notifier_list,
-		true, NULL);
-	call_smi_user_force_all_on();
-	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
-		if (!smi->larb[i].dev)
-			continue;
-		ret = mtk_smi_dbg_larb_enable(smi->larb[i].dev);
-		if (ret < 0)
-			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
-	}
-	pr_notice("[smi] larb force all on\n");
-	return 0;
-}
-
-static struct kernel_param_ops smi_larb_force_all_on_ops = {
-	.get = smi_larb_force_all_on,
-};
-module_param_cb(smi_force_all_on, &smi_larb_force_all_on_ops, NULL, 0644);
-MODULE_PARM_DESC(smi_force_all_on, "smi larb force all on");
-
-int smi_larb_force_all_put(char *buf, const struct kernel_param *kp)
-{
-	struct mtk_smi_dbg	*smi = gsmi;
-	s32 i;
-
-	if (smi_enter_met) {
-		for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
-			if (!smi->larb[i].dev)
-				continue;
-			mtk_smi_dbg_larb_disable(smi->larb[i].dev);
-		}
-		call_smi_user_force_all_put();
-		pr_notice("[smi] larb force all put\n");
-		pr_notice("disable vcp\n");
-		raw_notifier_call_chain(&force_on_notifier_list,
-			false, NULL);
-
-		spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-		smi_enter_met = false;
-		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-	}
-
-	return 0;
-}
-
-static struct kernel_param_ops smi_larb_force_all_put_ops = {
-	.get = smi_larb_force_all_put,
-};
-module_param_cb(smi_force_all_put, &smi_larb_force_all_put_ops, NULL, 0644);
-MODULE_PARM_DESC(smi_force_all_put, "smi larb force all put");
 
 int smi_bw_monitor_ut(const char *val, const struct kernel_param *kp)
 {
