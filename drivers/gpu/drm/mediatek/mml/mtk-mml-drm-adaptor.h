@@ -53,20 +53,21 @@ struct mml_drm_param {
 	/* [in]set true if display uses vdo mode, false for cmd mode */
 	bool vdo_mode;
 
-	/* submit done callback api */
+	/* [in]submit done callback api */
 	void (*submit_cb)(void *cb_param);
 
-	/* ddren callback api */
-	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *ddren_param);
+	/* [in]ddren callback api */
+	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *disp_crtc);
 
-	/* parameter send back to ddren_cb */
-	void *ddren_param;
-
-	/* dispen callback api, helps mml driver turn on dispsys clock */
+	/* [in]dispen callback api, helps mml driver turn on dispsys clock */
 	void (*dispen_cb)(bool enable, void *dispen_param);
 
-	/* parameter send back to ddren_cb */
+	/* [in]display kick idle interface, which helps mml ask display power on */
+	void (*kick_idle_cb)(void *disp_crtc);
+
+	/* [in]parameter send back to disp callback */
 	void *dispen_param;
+	void *disp_crtc;
 
 	/* [out]The height of racing mode for each output tile in pixel. */
 	u8 racing_height;
