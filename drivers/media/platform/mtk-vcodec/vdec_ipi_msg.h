@@ -77,8 +77,9 @@ enum vdec_ipi_msg_id {
 	VCU_IPIMSG_DEC_MEM_ALLOC,
 	VCU_IPIMSG_DEC_MEM_FREE,
 	VCU_IPIMSG_DEC_WAITISR,
-	VCU_IPIMSG_DEC_GET_FRAME_BUFFER,
 	VCU_IPIMSG_DEC_CHECK_CODEC_ID,
+	/** only support in vcu **/
+	VCU_IPIMSG_DEC_GET_FRAME_BUFFER,
 	VCU_IPIMSG_DEC_SLICE_DONE_ISR,
 
 	AP_IPIMSG_DEC_PUT_FRAME_BUFFER_DONE = AP_IPIMSG_VDEC_ACK_BASE,
@@ -250,13 +251,15 @@ struct vdec_ap_ipi_cmd_indp {
  * struct vdec_vcu_ipi_ack - generic VCU to AP ipi command format
  * @msg_id      : vdec_ipi_msg_id
  * @status      : VCU execution result, carries hw id when lock/unlock
- * @payload     : extra data for ack
+ * @id          : s32 id data for ack: codec_id for CHECK_ID
+ * @data        : u32 extra data for ack: no_need_put flag for put frame, dvfs_update for lock & unlock
+ * @payload     : u64 extra data for ack
  * @ap_inst_addr        : AP video decoder instance address
  */
 struct vdec_vcu_ipi_ack {
 	VDEC_MSG_PREFIX;
-	__s32 codec_id;
-	__u32 no_need_put;
+	__s32 id;
+	__u32 data;
 	__u64 payload;
 };
 

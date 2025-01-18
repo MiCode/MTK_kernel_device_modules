@@ -4549,7 +4549,6 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VDEC_RESOURCE_METRICS: {
 		struct v4l2_vdec_resource_metrics *metrics = ctrl->p_new.p;
 		struct vdec_resource_info res_info;
-		int i;
 
 		if (vdec_if_get_param(ctx, GET_PARAM_RES_INFO, &res_info)) {
 			mtk_v4l2_err(
@@ -4558,10 +4557,10 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 			break;
 		}
-		for (i = MTK_VDEC_CORE; i < MTK_VDEC_LAT; i++) {
-			if (res_info.hw_used[i])
-				metrics->core_used |= (1 << (i - MTK_VDEC_CORE));
-		}
+		if (res_info.hw_used[MTK_VDEC_CORE])
+			metrics->core_used |= (1 << 0);
+		if (res_info.hw_used[MTK_VDEC_CORE1])
+			metrics->core_used |= (1 << 1);
 
 		metrics->core_usage = res_info.usage;
 		metrics->gce = res_info.gce;
