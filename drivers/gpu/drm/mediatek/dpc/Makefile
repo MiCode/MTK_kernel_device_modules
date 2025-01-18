@@ -14,6 +14,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
              -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
+endif
+
 ifeq ($(strip $(MGK_INTERNAL)),true)
 ccflags-y += -DDISP_VIDLE_ENABLE
 endif

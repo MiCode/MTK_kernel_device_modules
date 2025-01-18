@@ -1234,12 +1234,12 @@ static void mtk_ovl_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void mtk_ovl_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, BIT(0) | BIT(28), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_RST, 0, ~0);
-	DDPDBG("%s-\n", __func__);
+	DDPMSG("%s-\n", __func__);
 }
 
 static void _store_bg_roi(struct mtk_ddp_comp *comp, int h, int w)
@@ -5005,6 +5005,25 @@ static void ovl_dump_layer_info(struct mtk_ddp_comp *comp, int layer,
 			readl(comp->regs + 0x888));
 
 	ovl_dump_layer_info_compress(comp, layer, is_ext_layer);
+}
+
+void mtk_ovl_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	unsigned int addcon;
+	void __iomem *baddr;
+
+	if (!comp || comp->blank_mode)
+		return;
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	addcon = readl(DISP_REG_OVL_ADDCON_DBG + baddr);
+
+	DDPMSG("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_X, addcon),
+		REG_FLD_VAL_GET(ADDCON_DBG_FLD_ROI_Y, addcon));
 }
 
 int mtk_ovl_analysis(struct mtk_ddp_comp *comp)

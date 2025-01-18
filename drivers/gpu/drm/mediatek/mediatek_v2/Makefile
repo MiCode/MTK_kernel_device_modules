@@ -179,6 +179,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
 	     -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
+endif
+
 ifneq ($(filter y m, $(CONFIG_MTK_MDP)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/
 ccflags-y += -DSHARE_WROT_SRAM

@@ -783,7 +783,7 @@ void print_mml_frame_buffer(struct mml_frame_buffer frame_buf)
 			frame_buf.src.fd[0], frame_buf.src.size[0],
 			frame_buf.src.fd[1], frame_buf.src.size[1],
 			frame_buf.src.fd[2], frame_buf.src.size[2]);
-	DDPMSG("cnt:%d, fence:%d, flush:%d, invalid:%d\n",
+	DDP_EXTEND_MSG("cnt:%d, fence:%d, flush:%d, invalid:%d\n",
 			frame_buf.src.cnt, frame_buf.src.fence,
 			frame_buf.src.flush, frame_buf.src.invalid);
 	DDPMSG("dest:(cnt:%d)\n", frame_buf.dest_cnt);
@@ -794,7 +794,7 @@ void print_mml_frame_buffer(struct mml_frame_buffer frame_buf)
 			frame_buf.dest[i].fd[1], frame_buf.dest[i].size[1],
 			frame_buf.dest[i].fd[2], frame_buf.dest[i].size[2]);
 
-		DDPMSG("cnt:%d, fence:%d, flush:%d, invalid:%d\n",
+		DDP_EXTEND_MSG("cnt:%d, fence:%d, flush:%d, invalid:%d\n",
 			frame_buf.dest[i].cnt, frame_buf.dest[i].fence,
 			frame_buf.dest[i].flush, frame_buf.dest[i].invalid);
 	}
@@ -835,13 +835,13 @@ void print_mml_frame_info(struct mml_frame_info info)
 		DDPMSG("l:%d, t:%d, w:%d, h:%d\n",
 			info.dest[i].compose.left, info.dest[i].compose.top,
 			info.dest[i].compose.width, info.dest[i].compose.height);
-		DDPMSG("[MMLPQParamParser] en_sharp[%d], en_ur[%d], en_dc[%d],",
+		DDP_EXTEND_MSG("[MMLPQParamParser] en_sharp[%d], en_ur[%d], en_dc[%d],",
 			info.dest[i].pq_config.en_sharp, info.dest[i].pq_config.en_ur,
 			info.dest[i].pq_config.en_dc);
-		DDPMSG("en_color[%d], en_hdr[%d], en_ccorr[%d], en_dre[%d]",
+		DDP_EXTEND_MSG("en_color[%d], en_hdr[%d], en_ccorr[%d], en_dre[%d]",
 			info.dest[i].pq_config.en_color, info.dest[i].pq_config.en_hdr,
 			info.dest[i].pq_config.en_ccorr, info.dest[i].pq_config.en_dre);
-		DDPMSG("rotate:%d, flip:%d, pq_config.en:%d\n",
+		DDP_EXTEND_MSG("rotate:%d, flip:%d, pq_config.en:%d\n",
 			info.dest[i].rotate, info.dest[i].flip,
 			info.dest[i].pq_config.en);
 	}
@@ -876,7 +876,7 @@ void print_mml_submit(struct mml_submit *args)
 				args->pq_param[i]->src_hdr_video_mode,
 				args->pq_param[i]->video_param.video_id,
 				args->pq_param[i]->video_param.time_stamp);
-			DDPMSG("ishdr2sdr:%d, param_table:%d, pq_user_info:%d\n",
+			DDP_EXTEND_MSG("ishdr2sdr:%d, param_table:%d, pq_user_info:%d\n",
 				args->pq_param[i]->video_param.ishdr2sdr,
 				args->pq_param[i]->video_param.param_table,
 				args->pq_param[i]->user_info);

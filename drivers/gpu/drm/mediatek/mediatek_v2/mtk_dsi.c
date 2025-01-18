@@ -298,6 +298,10 @@
 #define DSI_BYPASS_SHADOW BIT(1)
 #define DSI_READ_WORKING BIT(2)
 
+#define DSI_INPUT_DBG		0x1d4
+#define DSI_DBG_FLD_ROI_X	REG_FLD_MSB_LSB(12, 0)
+#define DSI_DBG_FLD_ROI_Y	REG_FLD_MSB_LSB(28, 16)
+
 #define DSI_SCRAMBLE_CON(data)	(data->dsi_scramble_con ? data->dsi_scramble_con : 0x1d8)
 #define DATA_SCRAMBLE_EN BIT(31)
 
@@ -3135,6 +3139,37 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	return 1;
 }
 
+void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr;
+	unsigned int reg_val;
+
+	if(!comp)
+		return;
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	reg_val = readl(DSI_INPUT_DBG + baddr);
+	DDPINFO("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_X, reg_val),
+		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_Y, reg_val));
+}
+
+void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i = 0, j = 0;
+	struct mtk_ddp_comp *comp;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		mtk_dump_cur_pos(comp);
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
+			mtk_dump_cur_pos(comp);
+	}
+}
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -3213,8 +3248,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			unsigned long long aee_now_ts = sched_clock();
 			int trigger_aee = 0;
 			int en = 0;
-
+#if IS_ENABLED(CONFIG_ARM64)
+			u32 arch_timer_cnt = (u32)arch_timer_read_counter();
+#endif
 			++underrun_cnt;
+			dump_cur_pos(mtk_crtc);
 
 			if (mtk_crtc->last_aee_trigger_ts == 0 ||
 				(aee_now_ts - mtk_crtc->last_aee_trigger_ts
@@ -3227,7 +3265,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 #if IS_ENABLED(CONFIG_ARM64)
 				DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
 					mtk_dump_comp_str(comp),
-					(u32)arch_timer_read_counter());
+					arch_timer_cnt);
 #else
 				DDPAEE("[IRQ] %s:buffer underrun\n",
 					mtk_dump_comp_str(comp));
