@@ -19669,8 +19669,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			io-channel-names = "pmic_hpofs_cal";
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "pmic-hp-efuse";
+			nvmem-cells = <&efuse_spare5>;
+			nvmem-cell-names = "efuse_spare5";
 			reg-vaud18-supply = <&mt6681_vaud18>;
-			audio-r-miso1-enable = <1>;
+			accdet-efuse-check = <1>;
 		};
 		regulators {
 			compatible = "mediatek,mt6681-regulator";
