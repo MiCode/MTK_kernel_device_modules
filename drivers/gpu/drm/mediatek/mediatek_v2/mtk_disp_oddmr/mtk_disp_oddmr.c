@@ -416,6 +416,11 @@
 #define MT6991_OD_ODDMR_WRITE_OUT_PRE_ULTRA(size)   (120 * 1 / 4)
 #define MT6991_OD_ODDMR_WRITE_OUT_ULTRA(size)       (120 * 2 / 4)
 
+/* DMR ultra&preultra in mt6991 */
+#define MT6991_ODDMR_DMR_PRE_ULTRA_RISE_LV(size)    (size * 1 / 3) //67%
+#define MT6991_ODDMR_DMR_PRE_ULTRA_FAIL_LV(size)    (size * 1 / 4) //75%
+#define MT6991_ODDMR_DMR_ULTRA_RISE_LV(size)        (size * 2 / 3) //33%
+#define MT6991_ODDMR_DMR_ULTRA_FAIL_LV(size)        (size * 2 / 4) //50%
 
 /* ultra&preultra in mt6991 */
 #define MT6991_ODDMR_PRE_ULTRA_RISE_LV(size)    (size * (1 - 2 / 3))
@@ -2237,7 +2242,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	if (is_oddmr_dmr_support == true && g_oddmr_priv->dmr_state == ODDMR_INIT_DONE) {
 		mtk_oddmr_dmr_common_init(comp, handle);
 		if (!(g_oddmr_priv->spr_enable == 0 || g_oddmr_priv->spr_relay == 1)) {
-			if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+			if (g_oddmr_priv->data->dmr_version == MTK_DMR_V2) {
 				switch(g_oddmr_priv->spr_format) {
 				case MTK_PANEL_RGBG_BGRG_TYPE:
 				case MTK_PANEL_BGRG_RGBG_TYPE:
@@ -2293,7 +2298,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 			handle, dbi_dbv_node, dbi_fps_node, dmr_cfg_data);
 		//set dmr table
 		addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
-		if (oddmr_priv->data->dmr_version == MTK_DBI_V2) {
+		if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
 			mtk_oddmr_write(default_comp, addr >> 4,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, handle);
 			mtk_oddmr_write(default_comp, addr >> 20,
@@ -3887,30 +3892,35 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 
 static void mtk_oddmr_dmr_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
-	uint32_t value, mask, buf_size;
+	uint32_t value, mask, buf_size, smi_level;
 	struct mtk_disp_oddmr *oddmr = comp_to_oddmr(comp);
 
 	/* dmr */
 	value = 0;
 	mask = 0;
 	if (oddmr->data->dmr_version == MTK_DMR_V2) {
+		value = 0; mask = 0;
 		SET_VAL_MASK(value, mask, 4, MT6991_REG_DMR_RE_ULTRA_MODE);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_SMI_SB_FLG_DMR, mask, pkg);
 		buf_size = oddmr->data->dmr_buffer_size;
-		value = MT6991_ODDMR_PRE_ULTRA_RISE_LV(buf_size);//pre-ultra rise level
-		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_PREULTRA_RISE_LV);
+		value = 0; mask = 0;
+		smi_level = MT6991_ODDMR_DMR_PRE_ULTRA_RISE_LV(buf_size);//pre-ultra rise level
+		SET_VAL_MASK(value, mask, smi_level, MT6991_REG_DMR_REQ_PREULTRA_RISE_LV);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL21,
 			mask, pkg);
-		value = MT6991_ODDMR_PRE_ULTRA_FAIL_LV(buf_size);//pre-ultra fail level
-		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_PREULTRA_FAIL_LV);
+		value = 0; mask = 0;
+		smi_level = MT6991_ODDMR_DMR_PRE_ULTRA_FAIL_LV(buf_size);//pre-ultra fail level
+		SET_VAL_MASK(value, mask, smi_level, MT6991_REG_DMR_REQ_PREULTRA_FAIL_LV);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL21,
 			mask, pkg);
-		value = MT6991_ODDMR_ULTRA_RISE_LV(buf_size);//ultra rise level
-		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_ULTRA_RISE_LV);
+		value = 0; mask = 0;
+		smi_level = MT6991_ODDMR_DMR_ULTRA_RISE_LV(buf_size);//ultra rise level
+		SET_VAL_MASK(value, mask, smi_level, MT6991_REG_DMR_REQ_ULTRA_RISE_LV);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL22,
 			mask, pkg);
-		value = MT6991_ODDMR_ULTRA_FAIL_LV(buf_size);//ultra fail level
-		SET_VAL_MASK(value, mask, value, MT6991_REG_DMR_REQ_ULTRA_FAIL_LV);
+		value = 0; mask = 0;
+		smi_level = MT6991_ODDMR_DMR_ULTRA_FAIL_LV(buf_size);//ultra fail level
+		SET_VAL_MASK(value, mask, smi_level, MT6991_REG_DMR_REQ_ULTRA_FAIL_LV);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL22,
 			mask, pkg);
 	} else {
@@ -7196,7 +7206,7 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 	}
 	if (g_oddmr_priv->dmr_state != ODDMR_INVALID) {
 		ODDMRFLOW_LOG("dmr can not init, state %d\n", g_oddmr_priv->dmr_state);
-		return -1;
+		//return -1;
 	}
 	if (g_oddmr_priv->dmr_enable > 0) {
 		ODDMRFLOW_LOG("dmr can not init when running\n");
@@ -7265,11 +7275,11 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 
 		//set dmr table
 		addr = g_oddmr_priv->dmr_data.mura_table[dbv_table_idx][fps_table_idx]->dma_addr;
-		if (g_oddmr_priv->data->dbi_version == MTK_DBI_V2) {
+		if (g_oddmr_priv->data->dmr_version == MTK_DMR_V2) {
 			mtk_oddmr_write(default_comp, addr >> 4,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0, NULL);
+				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, NULL);
 			mtk_oddmr_write(default_comp, addr >> 20,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1, NULL);
+				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1, NULL);
 		} else {
 			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, NULL);
 			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, NULL);
