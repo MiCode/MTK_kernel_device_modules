@@ -20,7 +20,7 @@ enum C3D_IOCTL_CMD {
 
 enum C3D_CMDQ_TYPE {
 	C3D_USERSPACE = 0,
-	C3D_PREPARE,
+	C3D_RESUME,
 };
 
 static bool debug_flow_log;
@@ -236,7 +236,7 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 			cmdq_mbox_disable(client->chan);
 		break;
 
-	case C3D_PREPARE:
+	case C3D_RESUME:
 		cmdq_pkt_refinalize(cmdq_handle);
 		if (async == false) {
 			cmdq_pkt_flush(cmdq_handle);
@@ -360,34 +360,6 @@ static int disp_c3d_act_get_bin_num(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-static int disp_c3d_wait_irq(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	int ret = 0;
-
-	if (atomic_read(&primary_data->c3d_get_irq) == 0 ||
-			atomic_read(&primary_data->c3d_eventctl) == 0) {
-		C3DFLOW_LOG("wait_event_interruptible +++\n");
-		ret = wait_event_interruptible(primary_data->c3d_get_irq_wq,
-				(atomic_read(&primary_data->c3d_get_irq) == 1) &&
-				(atomic_read(&primary_data->c3d_eventctl) == 1));
-
-		if (ret >= 0) {
-			C3DFLOW_LOG("wait_event_interruptible ---\n");
-			C3DFLOW_LOG("get_irq = 1, wake up, ret = %d\n", ret);
-		} else {
-			DDPINFO("%s: interrupted unexpected\n", __func__);
-		}
-	} else {
-		C3DFLOW_LOG("get_irq = 0");
-	}
-
-	atomic_set(&primary_data->c3d_get_irq, 0);
-
-	return ret;
-}
-
 static void disp_c3d_update_sram(struct mtk_ddp_comp *comp,
 	 bool check_sram)
 {
@@ -476,51 +448,6 @@ static int disp_c3d_write_3dlut_to_reg(struct mtk_ddp_comp *comp,
 	mutex_unlock(&primary_data->c3d_lut_lock);
 
 	return 0;
-}
-
-int disp_c3d_act_get_irq(struct mtk_ddp_comp *comp, void *data)
-{
-	int ret = 0;
-
-	C3DAPI_LOG("line: %d\n", __LINE__);
-	ret = disp_c3d_wait_irq(comp);
-
-	return ret;
-}
-
-int disp_c3d_cfg_eventctl(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, void *data, unsigned int data_size)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	int ret = 0;
-	int *enabled = (int *)data;
-
-	C3DFLOW_LOG("%d\n", *enabled);
-	atomic_set(&primary_data->c3d_eventctl, *enabled);
-
-	if (atomic_read(&primary_data->c3d_eventctl) == 1)
-		wake_up_interruptible(&primary_data->c3d_get_irq_wq);
-
-	return ret;
-}
-
-int disp_c3d_act_eventctl(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	int ret = 0;
-	int *enabled = (int *)data;
-
-	C3DFLOW_LOG("%d\n", *enabled);
-
-	atomic_set(&primary_data->c3d_eventctl, *enabled);
-	C3DFLOW_LOG("%d\n", atomic_read(&primary_data->c3d_eventctl));
-
-	if (*enabled)
-		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
-
-	return ret;
 }
 
 int disp_c3d_act_set_lut(struct mtk_ddp_comp *comp, void *data)
@@ -619,29 +546,6 @@ int disp_c3d_act_bypass_c3d(struct mtk_ddp_comp *comp, void *data)
 
 	mtk_crtc_check_trigger(mtk_crtc, true, false);
 	return ret;
-}
-
-static void disp_c3d_on_start_of_frame(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-
-	if (!comp)
-		return;
-	atomic_set(&primary_data->c3d_get_irq, 1);
-
-	if (atomic_read(&primary_data->c3d_eventctl) == 1)
-		wake_up_interruptible(&primary_data->c3d_get_irq_wq);
-}
-
-static void disp_c3d_on_end_of_frame(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-
-	if (!comp)
-		return;
-	atomic_set(&primary_data->c3d_get_irq, 0);
 }
 
 static int disp_c3d_set_1dlut(struct mtk_ddp_comp *comp,
@@ -960,30 +864,42 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_R2Y_09, 0, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_Y2R_09, 0, 0x1);
+
+	/* Bypass shadow register*/
+	if (c3d_data->data->need_bypass_shadow)
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_SHADOW_CTL, 0x1, 0x1);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_SHADOW_CTL, 0x0, 0x1);
+
+	if (atomic_read(&primary_data->c3d_sram_hw_init) == 0) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_CFG, 0x3, 0x3);
+		C3DFLOW_LOG("compID: %d, c3d_sram_hw_init == 0\n", comp->id);
+		return;
+	}
+
+	if (atomic_read(&primary_data->c3d_force_relay) == 1)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_CFG, 0x3, 0x3);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_CFG, 0x2, 0x3);
+
+	mutex_lock(&primary_data->c3d_lut_lock);
+	disp_c3d_write_with_mask(comp->regs + C3D_SRAM_CFG,
+		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
+	disp_c3d_write_sram(comp, C3D_RESUME);
+	atomic_set(&c3d_data->c3d_force_sram_apb, 0);
+	mutex_unlock(&primary_data->c3d_lut_lock);
+
+	disp_c3d_set_1dlut(comp, handle, 0);
 }
 
 
 static void disp_c3d_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-
 	C3DFLOW_LOG("line: %d\n", __LINE__);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_EN, 0x1, ~0);
-
-	if (atomic_read(&primary_data->c3d_force_relay) == 1 ||
-			atomic_read(&primary_data->c3d_sram_hw_init) == 0) {
-		// Set reply mode
-		DDPINFO("c3d_force_relay\n");
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x3, 0x3);
-	} else {
-		// Disable reply mode
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_CFG, 0x2, 0x3);
-	}
-
-	disp_c3d_set_1dlut(comp, handle, 0);
 }
 
 static void disp_c3d_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -995,55 +911,24 @@ static void disp_c3d_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 static void disp_c3d_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	struct mtk_disp_c3d *priv = dev_get_drvdata(comp->dev);
-	unsigned long long time[2] = {0};
-	// create cmdq_pkt
-
-	time[0] = sched_clock();
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&c3d_data->c3d_is_clock_on, 1);
-
-	if (atomic_read(&primary_data->c3d_sram_hw_init) == 0) {
-		mtk_ddp_write_mask_cpu(comp, 0x1, C3D_CFG, 0x1);
-		time[1] = sched_clock();
-		C3DFLOW_LOG("compID:%d, timediff: %llu\n", comp->id, time[1] - time[0]);
-		return;
-	}
-	/* Bypass shadow register and read shadow register */
-	if (priv->data->need_bypass_shadow)
-		mtk_ddp_write_mask_cpu(comp, C3D_BYPASS_SHADOW,
-			C3D_SHADOW_CTL, C3D_BYPASS_SHADOW);
-	else
-		mtk_ddp_write_mask_cpu(comp, 0,
-			C3D_SHADOW_CTL, C3D_BYPASS_SHADOW);
-
-	mutex_lock(&primary_data->c3d_lut_lock);
-	disp_c3d_write_with_mask(comp->regs + C3D_SRAM_CFG,
-		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
-	disp_c3d_write_sram(comp, C3D_PREPARE);
-	atomic_set(&c3d_data->c3d_force_sram_apb, 0);
-	mutex_unlock(&primary_data->c3d_lut_lock);
-
-	time[1] = sched_clock();
-	C3DFLOW_LOG("compID:%d, timediff: %llu\n", comp->id, time[1] - time[0]);
 }
 
 static void disp_c3d_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
-	unsigned long flags;
 
 	c3d_data->has_set_1dlut = false;
 
 	C3DFLOW_LOG("line: %d\n", __LINE__);
 
 	mutex_lock(&primary_data->c3d_power_lock);
-	spin_lock_irqsave(&primary_data->c3d_clock_lock, flags);
+	mutex_lock(&primary_data->c3d_clock_lock);
 	atomic_set(&c3d_data->c3d_is_clock_on, 0);
-	spin_unlock_irqrestore(&primary_data->c3d_clock_lock, flags);
+	mutex_unlock(&primary_data->c3d_clock_lock);
 	mtk_ddp_comp_clk_unprepare(comp);
 	mutex_unlock(&primary_data->c3d_power_lock);
 }
@@ -1067,8 +952,7 @@ static void disp_c3d_init_primary_data(struct mtk_ddp_comp *comp)
 	}
 	memcpy(&primary_data->c3d_lut1d, &c3d_lut1d_init,
 			sizeof(c3d_lut1d_init));
-	init_waitqueue_head(&primary_data->c3d_get_irq_wq);
-	spin_lock_init(&primary_data->c3d_clock_lock);
+	mutex_init(&primary_data->c3d_clock_lock);
 	mutex_init(&primary_data->c3d_global_lock);
 	mutex_init(&primary_data->c3d_power_lock);
 	mutex_init(&primary_data->c3d_lut_lock);
@@ -1228,11 +1112,6 @@ static int disp_c3d_frame_config(struct mtk_ddp_comp *comp,
 	int ret = -1;
 	/* will only call left path */
 	switch (cmd) {
-	/* TYPE1 no user cmd */
-	case PQ_C3D_EVENTCTL:
-		/*TODO check trigger ??*/
-		ret = disp_c3d_cfg_eventctl(comp, handle, data, data_size);
-		break;
 	case PQ_C3D_BYPASS:
 		ret = disp_c3d_cfg_bypass(comp, handle, data, data_size);
 		break;
@@ -1253,12 +1132,6 @@ static int disp_c3d_ioctl_transact(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 	case PQ_C3D_GET_BIN_NUM:
 		ret = disp_c3d_act_get_bin_num(comp, data);
-		break;
-	case PQ_C3D_GET_IRQ:
-		ret = disp_c3d_act_get_irq(comp, data);
-		break;
-	case PQ_C3D_EVENTCTL:
-		ret = disp_c3d_act_eventctl(comp, data);
 		break;
 	case PQ_C3D_SET_LUT:
 		ret = disp_c3d_act_set_lut(comp, data);
@@ -1315,8 +1188,6 @@ static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.config_overhead_v = disp_c3d_config_overhead_v,
 	.io_cmd = disp_c3d_io_cmd,
 	.pq_frame_config = disp_c3d_frame_config,
-	.mutex_eof_irq = disp_c3d_on_end_of_frame,
-	.mutex_sof_irq = disp_c3d_on_start_of_frame,
 	.pq_ioctl_transact = disp_c3d_ioctl_transact,
 	.partial_update = disp_c3d_set_partial_update,
 };

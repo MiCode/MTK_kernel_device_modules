@@ -61,9 +61,7 @@ struct mtk_disp_gamma_primary {
 	atomic_t clock_on;
 	atomic_t sof_filp;
 	atomic_t force_delay_check_trig;
-
 	atomic_t force_relay;
-	unsigned int back_up_cfg;
 	unsigned int data_mode;
 	unsigned int table_config_sel;
 	unsigned int table_out_sel;

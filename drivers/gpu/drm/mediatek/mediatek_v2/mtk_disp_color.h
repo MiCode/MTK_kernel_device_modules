@@ -166,15 +166,10 @@ struct mtk_disp_color_data {
  */
 
 #define DISP_COLOR_S_GAIN_BY_Y0_0	0xCF4
-#define DISP_COLOR_LSP_1			0xD58
-#define DISP_COLOR_LSP_2			0xD5C
-
-#define DISP_COLOR_START_MT2701		0x0f00
-#define DISP_COLOR_START_MT6779		0x0c00
-#define DISP_COLOR_START_MT6885		0x0c00
-#define DISP_COLOR_START_MT8173		0x0c00
-#define DISP_COLOR_START_MT6873		0x0c00
-#define DISP_COLOR_START(module)		((module)->data->color_offset)
+#define DISP_COLOR_LSP_1		0xD58
+#define DISP_COLOR_LSP_2		0xD5C
+#define DISP_COLOR_START_REG		0xC00
+#define DISP_COLOR_START(module)	((module)->data->color_offset)
 #define DISP_COLOR_INTEN(reg)		(DISP_COLOR_START(reg) + 0x4UL)
 #define DISP_COLOR_OUT_SEL(reg)		(DISP_COLOR_START(reg) + 0xCUL)
 #define DISP_COLOR_WIDTH(reg)		(DISP_COLOR_START(reg) + 0x50UL)

@@ -33,9 +33,9 @@ struct mtk_disp_tdshp_primary {
 	bool get_size_available;
 	struct DISP_TDSHP_DISPLAY_SIZE tdshp_size;
 	struct mutex global_lock;
-	spinlock_t clock_lock;
 	unsigned int relay_value;
 	struct DISP_TDSHP_REG *tdshp_regs;
+	int tdshp_reg_valid;
 	int *aal_clarity_support;
 };
 
@@ -49,7 +49,6 @@ struct mtk_disp_tdshp {
 	struct mtk_disp_tdshp_primary *primary_data;
 	struct mtk_disp_tdshp_tile_overhead tile_overhead;
 	struct mtk_disp_tdshp_tile_overhead_v tile_overhead_v;
-	atomic_t is_clock_on;
 	bool set_partial_update;
 	unsigned int roi_height;
 };
@@ -347,6 +346,7 @@ static int disp_tdshp_set_reg(struct mtk_ddp_comp *comp,
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
 		ret = disp_tdshp_write_reg(comp, handle, 0);
 
+		primary_data->tdshp_reg_valid = 1;
 		mutex_unlock(&primary_data->global_lock);
 
 		if (old_tdshp_regs != NULL)
@@ -560,6 +560,13 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x1 << 13, 0x1 << 13);
 
+	if (tdshp_data->data->need_bypass_shadow)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_SHADOW_CTRL, 0x1, 0x1);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_SHADOW_CTRL, 0x0, 0x1);
+
 	// for Display Clarity
 	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -570,6 +577,12 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_CFG, 0, 0x1 << 12);
 	}
+
+	if (primary_data->tdshp_reg_valid)
+		disp_tdshp_write_reg(comp, handle, 0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_CFG, 0x1, 0x1);
 
 	primary_data->tdshp_size.height = cfg->h;
 	primary_data->tdshp_size.width = cfg->w;
@@ -653,9 +666,9 @@ static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 static void disp_tdshp_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	DDPINFO("line: %d\n", __LINE__);
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CTRL, DISP_TDSHP_EN, 0x1);
-	disp_tdshp_write_reg(comp, handle, 0);
 }
 
 static void disp_tdshp_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -667,34 +680,13 @@ static void disp_tdshp_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void disp_tdshp_prepare(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
-
 	DDPINFO("id(%d)\n", comp->id);
 	mtk_ddp_comp_clk_prepare(comp);
-	atomic_set(&tdshp_data->is_clock_on, 1);
-
-	if (tdshp_data->data->need_bypass_shadow)
-		mtk_ddp_write_mask_cpu(comp, TDSHP_BYPASS_SHADOW,
-			DISP_TDSHP_SHADOW_CTRL, TDSHP_BYPASS_SHADOW);
-	else
-		mtk_ddp_write_mask_cpu(comp, 0,
-			DISP_TDSHP_SHADOW_CTRL, TDSHP_BYPASS_SHADOW);
 }
 
 static void disp_tdshp_unprepare(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
-	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
-	unsigned long flags;
-
 	DDPINFO("id(%d)\n", comp->id);
-	spin_lock_irqsave(&primary_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_trylock_irqsave -- ",
-		__func__, __LINE__);
-	atomic_set(&tdshp_data->is_clock_on, 0);
-	spin_unlock_irqrestore(&primary_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_unlock_irqrestore ",
-		__func__, __LINE__);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
@@ -717,7 +709,6 @@ static void disp_tdshp_init_primary_data(struct mtk_ddp_comp *comp)
 		primary_data->aal_clarity_support = &aal_data->primary_data->disp_clarity_support;
 	}
 	init_waitqueue_head(&primary_data->size_wq);
-	spin_lock_init(&primary_data->clock_lock);
 	mutex_init(&primary_data->global_lock);
 }
 
@@ -1039,11 +1030,6 @@ static const struct mtk_disp_tdshp_data mt6879_tdshp_driver_data = {
 	.need_bypass_shadow = true,
 };
 
-static const struct mtk_disp_tdshp_data mt6855_tdshp_driver_data = {
-	.support_shadow = false,
-	.need_bypass_shadow = true,
-};
-
 static const struct mtk_disp_tdshp_data mt6985_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
@@ -1076,8 +1062,6 @@ static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
 	  .data = &mt6895_tdshp_driver_data},
 	{ .compatible = "mediatek,mt6879-disp-tdshp",
 	  .data = &mt6879_tdshp_driver_data},
-	{ .compatible = "mediatek,mt6855-disp-tdshp",
-	  .data = &mt6855_tdshp_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-tdshp",
 	  .data = &mt6985_tdshp_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-tdshp",

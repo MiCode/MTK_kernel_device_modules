@@ -84,7 +84,7 @@ enum GAMMA_MODE {
 
 enum GAMMA_CMDQ_TYPE {
 	GAMMA_USERSPACE = 0,
-	GAMMA_PREPARE,
+	GAMMA_RESUME,
 };
 
 static int disp_gamma_create_gce_pkt(struct mtk_ddp_comp *comp, struct cmdq_pkt **pkt)
@@ -180,7 +180,7 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 		cmdq_mbox_disable(client->chan);
 		break;
 
-	case GAMMA_PREPARE:
+	case GAMMA_RESUME:
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_mbox_disable(client->chan);
@@ -192,102 +192,6 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	disp_gamma_lock_wake_lock(comp, false);
 
 	return true;
-}
-
-static void disp_gamma_init(struct mtk_ddp_comp *comp,
-	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
-{
-	unsigned int width;
-	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
-	unsigned int overhead_v;
-
-	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
-		width = gamma->tile_overhead.width;
-	else {
-		if (comp->mtk_crtc->is_dual_pipe)
-			width = cfg->w / 2;
-		else
-			width = cfg->w;
-	}
-
-	if (!gamma->set_partial_update)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_SIZE,
-			(width << 16) | cfg->h, ~0);
-	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : gamma->tile_overhead_v.overhead_v;
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_SIZE,
-			(width << 16) | (gamma->roi_height + overhead_v * 2), ~0);
-	}
-	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
-		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_BANK,
-			(gamma->primary_data->data_mode - 1) << 2, 0x4);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_PURE_COLOR,
-			gamma->primary_data->color_protect.gamma_color_protect_support |
-			gamma->primary_data->color_protect.gamma_color_protect_lsb, ~0);
-	}
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_EN, GAMMA_EN, ~0);
-}
-
-
-static void disp_gamma_config_overhead(struct mtk_ddp_comp *comp,
-	struct mtk_ddp_config *cfg)
-{
-	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
-
-	DDPINFO("line: %d\n", __LINE__);
-
-	if (cfg->tile_overhead.is_support) {
-		/*set component overhead*/
-		if (!gamma->is_right_pipe) {
-			gamma->tile_overhead.comp_overhead = 0;
-			/*add component overhead on total overhead*/
-			cfg->tile_overhead.left_overhead += gamma->tile_overhead.comp_overhead;
-			cfg->tile_overhead.left_in_width += gamma->tile_overhead.comp_overhead;
-			/*copy from total overhead info*/
-			gamma->tile_overhead.width = cfg->tile_overhead.left_in_width;
-		} else {
-			gamma->tile_overhead.comp_overhead = 0;
-			/*add component overhead on total overhead*/
-			cfg->tile_overhead.right_overhead +=
-				gamma->tile_overhead.comp_overhead;
-			cfg->tile_overhead.right_in_width +=
-				gamma->tile_overhead.comp_overhead;
-			/*copy from total overhead info*/
-			gamma->tile_overhead.width = cfg->tile_overhead.right_in_width;
-		}
-	}
-
-}
-
-static void disp_gamma_config_overhead_v(struct mtk_ddp_comp *comp,
-	struct total_tile_overhead_v  *tile_overhead_v)
-{
-	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
-
-	DDPDBG("line: %d\n", __LINE__);
-
-	/*set component overhead*/
-	gamma->tile_overhead_v.comp_overhead_v = 0;
-	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
-		gamma->tile_overhead_v.comp_overhead_v;
-	/*copy from total overhead info*/
-	gamma->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
-}
-
-static void disp_gamma_config(struct mtk_ddp_comp *comp,
-			     struct mtk_ddp_config *cfg,
-			     struct cmdq_pkt *handle)
-{
-	/* TODO: only call init function if frame dirty */
-	disp_gamma_init(comp, cfg, handle);
 }
 
 static int disp_gamma_write_lut_reg(struct mtk_ddp_comp *comp,
@@ -667,38 +571,99 @@ static void disp_gamma_init_primary_data(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->global_lock);
 	mutex_init(&primary_data->sram_lock);
 
-	// default relay mode
-	primary_data->back_up_cfg = 1;
-
 	primary_data->gamma_12b_lut.hw_id = DISP_GAMMA_TOTAL;
 	primary_data->gamma_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 
 	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt);
 }
 
-static void disp_gamma_backup(struct mtk_ddp_comp *comp)
+static void disp_gamma_config_overhead(struct mtk_ddp_comp *comp,
+	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
-	gamma->primary_data->back_up_cfg =
-		readl(comp->regs + DISP_GAMMA_CFG);
+	DDPINFO("line: %d\n", __LINE__);
+
+	if (cfg->tile_overhead.is_support) {
+		/*set component overhead*/
+		if (!gamma->is_right_pipe) {
+			gamma->tile_overhead.comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.left_overhead += gamma->tile_overhead.comp_overhead;
+			cfg->tile_overhead.left_in_width += gamma->tile_overhead.comp_overhead;
+			/*copy from total overhead info*/
+			gamma->tile_overhead.width = cfg->tile_overhead.left_in_width;
+		} else {
+			gamma->tile_overhead.comp_overhead = 0;
+			/*add component overhead on total overhead*/
+			cfg->tile_overhead.right_overhead +=
+				gamma->tile_overhead.comp_overhead;
+			cfg->tile_overhead.right_in_width +=
+				gamma->tile_overhead.comp_overhead;
+			/*copy from total overhead info*/
+			gamma->tile_overhead.width = cfg->tile_overhead.right_in_width;
+		}
+	}
+
 }
 
-static void disp_gamma_restore(struct mtk_ddp_comp *comp)
+static void disp_gamma_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
-	writel(gamma->primary_data->back_up_cfg, comp->regs + DISP_GAMMA_CFG);
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	gamma->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		gamma->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	gamma->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
-static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void disp_gamma_config(struct mtk_ddp_comp *comp,
+			     struct mtk_ddp_config *cfg,
+			     struct cmdq_pkt *handle)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
+	unsigned int overhead_v;
+	unsigned int width;
 
-	DDPINFO("%s\n", __func__);
+	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
+		width = gamma->tile_overhead.width;
+	else {
+		if (comp->mtk_crtc->is_dual_pipe)
+			width = cfg->w / 2;
+		else
+			width = cfg->w;
+	}
+
+	if (!gamma->set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_SIZE,
+			(width << 16) | cfg->h, ~0);
+	else {
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : gamma->tile_overhead_v.overhead_v;
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_SIZE,
+			(width << 16) | (gamma->roi_height + overhead_v * 2), ~0);
+	}
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
+		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_BANK,
+			(gamma->primary_data->data_mode - 1) << 2, 0x4);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_PURE_COLOR,
+			gamma->primary_data->color_protect.gamma_color_protect_support |
+			gamma->primary_data->color_protect.gamma_color_protect_lsb, ~0);
+	}
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -706,8 +671,6 @@ static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		return;
 	}
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_EN, GAMMA_EN, ~0);
 	if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] ||
 		gamma->primary_data->hwc_ctl_silky_brightness_support)
 		disp_gamma_write_gain_reg(comp, handle, 1);
@@ -719,10 +682,16 @@ static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	}
 
 	if (primary_data->need_refinalize) {
-		disp_gamma_write_sram(comp, GAMMA_PREPARE);
+		disp_gamma_write_sram(comp, GAMMA_RESUME);
 		primary_data->need_refinalize = false;
 	}
 	disp_gamma_flip_sram(comp, handle);
+}
+
+static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_GAMMA_EN, GAMMA_EN, ~0);
 }
 
 static void disp_gamma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -930,6 +899,7 @@ static int disp_gamma_disable_mul_en(struct mtk_ddp_comp *comp,
 	if (comp->mtk_crtc->is_dual_pipe && companion)
 		cmdq_pkt_write(handle, companion->cmdq_base,
 			companion->regs_pa + DISP_GAMMA_CFG, 0, GAMMA_MUT_EN);
+
 	return 0;
 }
 
@@ -1009,7 +979,6 @@ static void disp_gamma_prepare(struct mtk_ddp_comp *comp)
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&gamma->gamma_is_clock_on, 1);
-	disp_gamma_restore(comp);
 }
 
 static void disp_gamma_unprepare(struct mtk_ddp_comp *comp)
@@ -1027,7 +996,6 @@ static void disp_gamma_unprepare(struct mtk_ddp_comp *comp)
 	DDPINFO("%s @ %d......... spin_unlock_irqrestore ",
 		__func__, __LINE__);
 	primary_data->need_refinalize = true;
-	disp_gamma_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
@@ -1534,8 +1502,6 @@ struct mtk_disp_gamma_data mt6991_driver_data = {
 };
 
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
-	{ .compatible = "mediatek,mt6779-disp-gamma",
-	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6761-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6768-disp-gamma",
@@ -1543,8 +1509,6 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6885-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6877-disp-gamma",
-	  .data = &legacy_driver_data,},
-	{ .compatible = "mediatek,mt6873-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6853-disp-gamma",
 	  .data = &legacy_driver_data,},
@@ -1555,8 +1519,6 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6895-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6879-disp-gamma",
-	  .data = &legacy_driver_data,},
-	{ .compatible = "mediatek,mt6855-disp-gamma",
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6985-disp-gamma",
 	  .data = &mt6985_driver_data,},

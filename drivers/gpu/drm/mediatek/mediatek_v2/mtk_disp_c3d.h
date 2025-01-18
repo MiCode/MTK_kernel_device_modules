@@ -112,15 +112,12 @@ struct mtk_disp_c3d_primary {
 	unsigned int c3d_lut1d[DISP_C3D_1DLUT_SIZE];
 	struct DISP_C3D_LUT c3d_ioc_data;
 	atomic_t c3d_force_relay;
-	atomic_t c3d_get_irq;
-	atomic_t c3d_eventctl;
-	wait_queue_head_t c3d_get_irq_wq;
 	struct wakeup_source *c3d_wake_lock;
 	bool c3d_wake_locked;
 	bool set_lut_flag;
 	bool update_sram_ignore;
 	bool skip_update_sram;
-	spinlock_t c3d_clock_lock;
+	struct mutex c3d_clock_lock;
 	struct mutex c3d_global_lock;
 	struct mutex c3d_power_lock;
 	struct mutex c3d_lut_lock;
