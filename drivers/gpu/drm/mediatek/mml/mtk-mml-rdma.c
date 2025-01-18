@@ -2414,6 +2414,23 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	else {
 		u32 shadow_ctrl;
 
+		value[0] = readl(base + RDMA_SRC_CON);
+		value[1] = readl(base + RDMA_SRC_BASE_0_MSB);
+		value[2] = readl(base + RDMA_SRC_BASE_0);
+		value[3] = readl(base + RDMA_SRC_BASE_1_MSB);
+		value[4] = readl(base + RDMA_SRC_BASE_1);
+		value[5] = readl(base + RDMA_SRC_BASE_2_MSB);
+		value[6] = readl(base + RDMA_SRC_BASE_2);
+
+		mml_err("shadow RDMA_SRC_CON %#010x",
+			value[0]);
+		mml_err("shadow RDMA_SRC BASE_0_MSB %#010x BASE_0 %#010x",
+			value[1], value[2]);
+		mml_err("shadow RDMA_SRC BASE_1_MSB %#010x BASE_1 %#010x",
+			value[3], value[4]);
+		mml_err("shadow RDMA_SRC BASE_2_MSB %#010x BASE_2 %#010x",
+			value[5], value[6]);
+
 		/* Enable shadow read working */
 		shadow_ctrl = readl(base + RDMA_SHADOW_CTRL);
 		shadow_ctrl |= 0x4;

@@ -2678,9 +2678,21 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[0] = readl(base + wrot->reg[VIDO_CTRL]);
 	value[1] = readl(base + wrot->reg[VIDO_IN_SIZE]);
 	value[2] = readl(base + wrot->reg[VIDO_TAR_SIZE]);
+	value[3] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH]);
+	value[4] = readl(base + wrot->reg[VIDO_BASE_ADDR]);
+	value[5] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_C]);
+	value[6] = readl(base + wrot->reg[VIDO_BASE_ADDR_C]);
+	value[7] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_V]);
+	value[8] = readl(base + wrot->reg[VIDO_BASE_ADDR_V]);
 
 	mml_err("shadow VIDO_CTRL %#010x VIDO_IN_SIZE %#010x VIDO_TAR_SIZE %#010x",
 		value[0], value[1], value[2]);
+	mml_err("shadow VIDO_BASE ADDR_HIGH   %#010x ADDR   %#010x",
+		value[3], value[4]);
+	mml_err("shadow VIDO_BASE ADDR_HIGH_C %#010x ADDR_C %#010x",
+		value[5], value[6]);
+	mml_err("shadow VIDO_BASE ADDR_HIGH_V %#010x ADDR_V %#010x",
+		value[7], value[8]);
 
 	/* Enable shadow read working */
 	shadow_ctrl = readl(base + wrot->reg[VIDO_SHADOW_CTRL]);
