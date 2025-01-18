@@ -94,7 +94,7 @@ static struct gpufreq_ipi_data g_recv_msg;
 static unsigned long g_ipi_irq_flags;
 static unsigned long g_pwr_irq_flags;
 static raw_spinlock_t gpufreq_ipi_lock;
-static raw_spinlock_t gpufreq_power_lock;
+static DEFINE_MUTEX(gpufreq_power_lock);
 
 #if !defined(MTK_GPU_EB_SUPPORT)
 static phys_addr_t g_status_shared_mem_va;
@@ -302,10 +302,11 @@ EXPORT_SYMBOL(gpufreq_get_segment_id);
  ***********************************************************************************/
 void gpufreq_dump_infra_status(void)
 {
-	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
-	gpufreq_dump_infra_status_no_lock(NULL, NULL, 0);
-	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
+	mutex_lock(&gpufreq_power_lock);
 
+	gpufreq_dump_infra_status_no_lock(NULL, NULL, 0);
+
+	mutex_unlock(&gpufreq_power_lock);
 }
 EXPORT_SYMBOL(gpufreq_dump_infra_status);
 
@@ -318,11 +319,11 @@ EXPORT_SYMBOL(gpufreq_dump_infra_status);
  ***********************************************************************************/
 void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size)
 {
-	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
+	mutex_lock(&gpufreq_power_lock);
 
 	gpufreq_dump_infra_status_no_lock(log_buf, log_len, log_size);
 
-	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
+	mutex_unlock(&gpufreq_power_lock);
 }
 EXPORT_SYMBOL(gpufreq_dump_infra_status_logbuffer);
 
@@ -848,7 +849,7 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 		goto done;
 	}
 
-	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
+	mutex_lock(&gpufreq_power_lock);
 
 	/* implement on EB */
 	if (g_gpueb_support) {
@@ -877,7 +878,7 @@ done:
 		GPUFREQ_LOGE("fail to control power state: %s (%d)",
 			power ? "GPU_PWR_ON" : "GPU_PWR_OFF", ret);
 
-	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
+	mutex_unlock(&gpufreq_power_lock);
 
 	GPUFREQ_TRACE_END();
 
@@ -2311,7 +2312,6 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 
 	/* init spinlock */
 	raw_spin_lock_init(&gpufreq_ipi_lock);
-	raw_spin_lock_init(&gpufreq_power_lock);
 
 #if defined(MTK_GPU_EB_SUPPORT)
 	/* init shared memory */
