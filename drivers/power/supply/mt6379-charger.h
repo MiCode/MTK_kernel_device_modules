@@ -215,6 +215,25 @@ enum mt6379_attach_trigger {
 	ATTACH_TRIG_TYPEC,
 };
 
+/* For F_WDT_TIME Field */
+enum {
+	MT6379_WDT_TIME_8S,
+	MT6379_WDT_TIME_40S,
+	MT6379_WDT_TIME_80S,
+	MT6379_WDT_TIME_160S,
+};
+
+/* For F_CHGIN_OV Field */
+enum {
+	MT6379_CHGIN_OV_4_7V,
+	MT6379_CHGIN_OV_5_8V,
+	MT6379_CHGIN_OV_6_5V,
+	MT6379_CHGIN_OV_11V,
+	MT6379_CHGIN_OV_14_5V,
+	MT6379_CHGIN_OV_18V,
+	MT6379_CHGIN_OV_22_5V,
+};
+
 struct mt6379_charger_platform_data {
 	u32 aicr;
 	u32 mivr;
@@ -224,7 +243,6 @@ struct mt6379_charger_platform_data {
 	u32 wdt_time;
 	u32 ircmp_v;
 	u32 ircmp_r;
-	u32 vbus_ov;
 	u32 vrec;
 	u32 chgin_ov;
 	u32 chg_tmr;
