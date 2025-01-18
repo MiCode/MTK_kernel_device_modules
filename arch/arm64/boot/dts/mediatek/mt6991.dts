@@ -4742,6 +4742,37 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"vlp_ao_bcrm";
 		};
 
+		dfd_mcu: dfd-mcu {
+			compatible = "mediatek,dfd_mcu";
+			enabled = <1>;
+			hw-version = <35>;
+			sw-version = <1>;
+			dfd-timeout = <0x2710>;
+			dump-to-dramc-channel = <1>;
+			buf-addr-align = <0x1000000>;
+			buf-addr-max = <0xffffffff>;
+			buf-length = <0x280000>;
+			nr-max-core = <8>;
+			nr-big-core = <4>;
+			nr-rs-entry-little = <16>;
+			nr-rs-entry-big = <32>;
+			nr-header-row = <4>;
+			chip-id-offset = <0x38>;
+			check-pattern-offset = <0x20>;
+			dfd-disable-efuse = <25 12>;
+			/* dfd-disable-efuse = <(-1) (-1)>; */
+			dfd_cache: dfd-cache {
+				enabled = <1>;
+				/* dfd-timeout = <0x3a980>; */ /* 120 sec for full cache dump */
+				/* dfd-timeout = <0x1d4c0>; */ /* 60 sec for full cache dump */
+				dfd-timeout = <0xc000>; /* 24.6 sec */
+				/* buf-length = <0x2000000>; */ /* for full cache dump */
+				buf-length = <0x280000>;
+				/* tap-en = <0xfff7fff>; *//* for full cache dump */
+				tap-en = <0x8004000>; /* for CPU EB and GIC SRAM dump */
+			};
+		};
+
 		dfd_soc: dfd-soc {
 			compatible = "mediatek,dfd_soc";
 			enabled = <1>;
