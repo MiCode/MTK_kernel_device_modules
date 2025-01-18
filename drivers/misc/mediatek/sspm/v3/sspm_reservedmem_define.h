@@ -6,15 +6,16 @@
 #define _SSPM_RESERVEDMEM_DEFINE_H_
 #include <sspm_reservedmem.h>
 
-enum {
-	SSPM_MEM_ID = 0,
-	PWRAP_MEM_ID,
-	PMIC_MEM_ID,
-	UPD_MEM_ID,
-	QOS_MEM_ID,
-	SWPM_MEM_ID,
-	SMI_MEM_ID,
-	GPU_MEM_ID,
+enum sspm_reserve_mem_id {
+	SSPM_MEM_ID   = 0,
+	PWRAP_MEM_ID  = 1,
+	PMIC_MEM_ID   = 2,
+	UPD_MEM_ID    = 3,
+	QOS_MEM_ID    = 4,
+	SWPM_MEM_ID   = 5,
+	SMI_MEM_ID    = 6,
+	GPU_MEM_ID    = 7,
+	SLBC_MEM_ID   = 8,
 	NUMS_MEM_ID,
 };
 
@@ -57,6 +58,10 @@ static struct sspm_reserve_mblock sspm_reserve_mblock[NUMS_MEM_ID] = {
 	{
 		.num = GPU_MEM_ID,
 		.size = 0x1000,  /* 4K */
+	},
+	{
+		.num = SLBC_MEM_ID,
+		.size = 0x0,  /* 0K */
 	},
 	/* TO align 64K, total is 1M+64K.  */
 };
