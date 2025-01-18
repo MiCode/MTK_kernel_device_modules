@@ -6404,6 +6404,10 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_ETDM_IN6_CON0:
 	case AFE_HDMI_OUT_CON0:
 	case AFE_CUSTOM_IRQ0_MCU_CFG0:
+	case AFE_CUSTOM_IRQ0_MCU_CFG1:
+	case AFE_CUSTOM_IRQ_MCU_EN:
+	case AFE_CUSTOM_IRQ_MCU_DSP_EN:
+	case AFE_CUSTOM_IRQ_MCU_DSP2_EN:
 #endif
 		return true;
 	default:
