@@ -6111,7 +6111,7 @@ static int mt6991_afe_runtime_suspend(struct device *dev)
 	unsigned int tmp_reg = 0;
 	int ret = 0, i;
 
-	dev_dbg_ratelimited(afe->dev, "%s() ready to stop\n", __func__);
+	dev_info_ratelimited(afe->dev, "%s() ready to stop\n", __func__);
 
 	if (!afe->regmap) {
 		dev_info(afe->dev, "%s() skip regmap\n", __func__);
@@ -6177,7 +6177,7 @@ static int mt6991_afe_runtime_resume(struct device *dev)
 	int ret = 0;
 
 	ret = mt6991_afe_enable_clock(afe);
-	dev_dbg_ratelimited(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
+	dev_info_ratelimited(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
 
 	if (ret)
 		return ret;

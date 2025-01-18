@@ -318,13 +318,15 @@ int mt6991_afe_apll_init(struct mtk_base_afe *afe)
 {
 	struct mt6991_afe_private *afe_priv = afe->platform_priv;
 
-	/* VLP_APLL1_CON0 = 0x6f28bd4c
+	/* VLP_APLL1_CON2 = 0x6f28bd4c
 	 * VLP_APLL2_CON2 = 0x78FD5264
 	 * VLP_APLL1_TUNER_CON0 = 0x6f28bd4d
 	 * VLP_APLL2_TUNER_CON0 = 0x78fd5265
 	 */
 	if (afe_priv->vlp_ck) {
+		regmap_write(afe_priv->vlp_ck, VLP_APLL1_CON2, 0x6f28bd4c);
 		regmap_write(afe_priv->vlp_ck, VLP_APLL1_TUNER_CON0, 0x6f28bd4d);
+		regmap_write(afe_priv->vlp_ck, VLP_APLL2_CON2, 0x78fd5264);
 		regmap_write(afe_priv->vlp_ck, VLP_APLL2_TUNER_CON0, 0x78fd5265);
 	} else {
 		dev_warn(afe->dev, "%s vlp_ck regmap is null ptr\n", __func__);
