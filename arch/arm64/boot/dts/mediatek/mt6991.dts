@@ -8085,6 +8085,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		camisp_vcore: camisp-vcore {
 			compatible = "mediatek,mt6991-camisp-vcore";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_CAM_VCORE>;
+			mtk,smmu-shared-acp = <&mm_smmu_acp_cam>;
 			clocks = <&cksys_gp2_clk CLK_CK2_CAM>,
 				<&cksys_gp2_clk CLK_CK2_CAMTM>,
 				<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
@@ -11845,7 +11846,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_acp_cam: mm-smmu-acp-cam {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_acp_cam";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 219>;
