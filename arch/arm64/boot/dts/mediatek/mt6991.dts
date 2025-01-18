@@ -18899,6 +18899,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	pps: pps {
 		compatible = "pps-gpio";
 	};
+
+	nebula_mbox: nebula-mbox@0 {
+		compatible = "grt,ipc-mbox";
+		#mbox-cells = <1>;
+		status = "disabled";
+	};
 };
 
 /* WF GPIO start */
