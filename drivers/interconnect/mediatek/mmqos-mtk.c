@@ -382,6 +382,7 @@ static bool is_srt_comm_port(u8 hrt_type)
 static void set_total_bw_to_emi(struct common_node *comm_node)
 {
 	u32 avg_bw = 0, peak_bw = 0, total_bw_to_vcp = 0;
+	u32 sum_up_avg_bw = 0, sum_up_peak_bw = 0;
 	u64 normalize_peak_bw;
 	struct common_port_node *comm_port_node;
 	u32 comm_id;
@@ -419,32 +420,34 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		mutex_unlock(&comm_port_node->bw_lock);
 	}
 
-	if (mmqos_state & SRT_DATA_BW)
-		avg_bw = div_u64(avg_bw * 100, 75);
-	if (mmqos_state & SMMU_TCU_BW) {
-		avg_bw = div_u64(avg_bw * 103, 100);
-		peak_bw = div_u64(peak_bw * 103, 100);
-	}
+	sum_up_avg_bw = avg_bw;
+	sum_up_peak_bw = peak_bw;
+	if (avg_bw != comm_node->sum_up_avg_bw || peak_bw != comm_node->sum_up_peak_bw) {
+		if (mmqos_state & SRT_DATA_BW)
+			avg_bw = div_u64(avg_bw * 100, 75);
+		if (mmqos_state & SMMU_TCU_BW) {
+			avg_bw = div_u64(avg_bw * 103, 100);
+			peak_bw = div_u64(peak_bw * 103, 100);
+		}
 
-	comm_id = MASK_8(comm_node->base->icc_node->id);
-	if (mmqos_met_enabled())
-		trace_mmqos__bw_to_emi(comm_id,
-			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+		comm_id = MASK_8(comm_node->base->icc_node->id);
+		if (mmqos_met_enabled())
+			trace_mmqos__bw_to_emi(comm_id,
+				icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 
-	if (log_level & 1 << log_bw)
-		MMQOS_DBG("comm%d avg %d peak %d",
-			comm_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
-	if (MEM_BASE != NULL) {
-		writel(total_bw_to_vcp, MEM_APMCU_TOTAL_BW);
 		if (log_level & 1 << log_bw)
-			MMQOS_DBG("total_bw_to_vcp:%d", total_bw_to_vcp);
+			MMQOS_DBG("comm%d avg %d peak %d",
+				comm_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
+
+		MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
+			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+			icc_set_bw(comm_node->icc_path, avg_bw, 0);
+			icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
+		MMQOS_SYSTRACE_END();
 	}
 
-	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
-		icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
-	icc_set_bw(comm_node->icc_path, avg_bw, 0);
-	icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
-	MMQOS_SYSTRACE_END();
+	comm_node->sum_up_peak_bw = sum_up_peak_bw;
+	comm_node->sum_up_avg_bw = sum_up_avg_bw;
 }
 
 static u32 get_max_channel_bw_in_common(u32 comm_id)
