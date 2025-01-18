@@ -10931,13 +10931,13 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	int index = drm_crtc_index(crtc);
 	struct mtk_crtc_state *mtk_state;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	CRTC_MMP_EVENT_START(index, check_trigger, 0, 0);
 	drm_trace_tag_start("check_trigger");
 
 	if (!mtk_crtc->enabled) {
 		CRTC_MMP_EVENT_END(index, check_trigger, 0, 1);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 		return 0;
 	}
@@ -10954,7 +10954,7 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 	CRTC_MMP_EVENT_END(index, check_trigger, 0, 0);
 	drm_trace_tag_end("check_trigger");
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 
 	return 0;
 }
@@ -11095,7 +11095,7 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 	}
 
 	if (need_lock)
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	CRTC_MMP_EVENT_START(index, kick_trigger, (unsigned long)crtc, 0);
 	drm_trace_tag_start("kick_trigger");
 
@@ -11151,7 +11151,7 @@ err:
 	CRTC_MMP_EVENT_END(index, kick_trigger, 0, 0);
 	drm_trace_tag_end("kick_trigger");
 	if (need_lock)
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 }
 
 void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
