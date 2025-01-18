@@ -86,6 +86,8 @@ enum FPSGO_CAMERA_CMD {
 	CAMERA_SERVER = 2,
 	CAMERA_DO_FRAME = 4,
 	CAMERA_APP_MIN_FPS = 5,
+	CAMERA_APP_SELF_CTRL = 7,
+	CAMERA_FPSGO_CONTROL = 8,
 };
 
 enum FPSGO_MASTER_TYPE {
@@ -561,6 +563,7 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
 int fpsgo_check_is_cam_apk(int tgid);
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid);
 void fpsgo_ctrl2base_notify_cam_close(void);
+unsigned long long fpsgo_ctrl2base_get_app_self_ctrl_time(int tgid, unsigned long long ts);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
 void fpsgo_clear_llf_cpu_policy(void);

@@ -568,10 +568,8 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 	gtsk = find_task_by_vpid(tgid);
 	if (gtsk) {
 		get_task_struct(gtsk);
-		list_for_each_entry(sib, &gtsk->thread_group, thread_group) {
-
+		for_each_thread(gtsk, sib) {
 			get_task_struct(sib);
-
 			hlist_for_each_entry(xgf_spid_iter, &xgf_spid_list, hlist) {
 				if (strcmp(xgf_spid_iter->process_name, SP_PASS_PROC_NAME_CHECK) &&
 					strncmp(gtsk->comm, xgf_spid_iter->process_name, 16))
@@ -975,6 +973,12 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 			arr[index].action = xd_iter->action;
 			index++;
 		}
+	}
+
+	if (test_bit(KTF_TYPE, &render_iter->master_type) && index < count) {
+		arr[index].pid = xd_iter->tid;
+		arr[index].action = xd_iter->action;
+		index++;
 	}
 
 	mutex_unlock(&xgf_main_lock);
@@ -1395,22 +1399,19 @@ int xgf_get_logical_tid(int rpid, int tgid, int *l_tid,
 	gtsk = find_task_by_vpid(tgid);
 	if (gtsk) {
 		get_task_struct(gtsk);
-		list_for_each_entry(sib, &gtsk->thread_group, thread_group) {
+		for_each_thread(gtsk, sib) {
 			tmp_runtime = 0;
 
 			get_task_struct(sib);
-
 			if (sib->pid == rpid) {
 				put_task_struct(sib);
 				continue;
 			}
-
 			tmp_runtime = (u64)fpsgo_task_sched_runtime(sib);
 			if (tmp_runtime > max_runtime) {
 				max_runtime = tmp_runtime;
 				max_tid = sib->pid;
 			}
-
 			put_task_struct(sib);
 		}
 		put_task_struct(gtsk);
@@ -1515,15 +1516,13 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 		return;
 
 	mutex_lock(&xgf_main_lock);
-	if (!xgf_is_enable()) {
-		mutex_unlock(&xgf_main_lock);
-		return;
-	}
+	if (!xgf_is_enable())
+		goto out;
 
 	set_bit(FPSGO_TYPE, &local_master_type);
 	iter = xgf_get_render_if(pid, bufID, local_master_type, t_enqueue_end, 1);
 	if (!iter)
-		return;
+		goto out;
 
 	xgf_get_specific_action_spid(XGF_ADD_DEP_FORCE_CPU_TIME, iter);
 
@@ -1531,16 +1530,16 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	iter->cur_queue_end_ts = def_end_ts;
 
 	if (skip)
-		goto by_pass_skip;
+		goto out;
 
 	local_dep_list = xgf_alloc_array(max_local_dep_list_num, sizeof(int));
 	if (!local_dep_list)
-		goto by_pass_skip;
+		goto out;
 
 	if (iter->magt_dep_list_size > 0) {
 		local_magt_dep_list = xgf_alloc_array(iter->magt_dep_list_size, sizeof(int));
 		if (!local_magt_dep_list)
-			goto by_pass_skip;
+			goto out;
 
 		local_magt_dep_list_num = xgf_get_magt_dep_list(local_magt_dep_list,
 			iter->magt_dep_list_size, iter);
@@ -1550,7 +1549,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 		max_raw_dep_list_num = xgf_max_dep_path_num * xgf_max_dep_task_num;
 		raw_dep_list = xgf_alloc_array(max_raw_dep_list_num, sizeof(int));
 		if (!raw_dep_list)
-			goto by_pass_skip;
+			goto out;
 	}
 
 	iter->ema2_enable = xgf_ema2_enable;
@@ -1611,7 +1610,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 
 	xgf_print_critical_path_info(iter->pid, iter->bufid, raw_dep_list, raw_dep_list_num);
 
-by_pass_skip:
+out:
 	xgf_free(raw_dep_list);
 	xgf_free(local_magt_dep_list);
 	xgf_free(local_dep_list);
@@ -1643,7 +1642,7 @@ int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
 		tg = find_task_by_vpid(tgid);
 		if (tg) {
 			get_task_struct(tg);
-			list_for_each_entry(sib, &tg->thread_group, thread_group) {
+			for_each_thread(tg, sib) {
 				get_task_struct(sib);
 				if (!strncmp(sib->comm, local_thread_name, 16)) {
 					if (index < dep_num) {
@@ -2745,10 +2744,10 @@ XGF_SYSFS_READ(xgf_force_set_perf_min, 1, xgf_force_set_perf_min);
 XGF_SYSFS_WRITE_VALUE(xgf_force_set_perf_min, xgf_global_var_lock, xgf_force_set_perf_min, 0, 100);
 static KOBJ_ATTR_RW(xgf_force_set_perf_min);
 
-XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_main_lock, 0, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_policy_cmd_lock, 0, 0, 1);
 static KOBJ_ATTR_WO(xgf_ema2_enable_by_pid);
 
-XGF_SYSFS_WRITE_POLICY_CMD(xgf_filter_dep_task_enable_by_pid, xgf_main_lock, 1, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_filter_dep_task_enable_by_pid, xgf_policy_cmd_lock, 1, 0, 1);
 static KOBJ_ATTR_WO(xgf_filter_dep_task_enable_by_pid);
 
 static ssize_t xgf_policy_cmd_show(struct kobject *kobj,

@@ -17,7 +17,7 @@
 #define DEFAULT_RESET_TOLERENCE 3
 #define FSTB_IDLE_DBNC 10
 #define MAX_FSTB_POLICY_CMD_NUM 10
-#define MAX_Q2Q_TIME_CALLBACK 5
+#define MAX_INFO_CALLBACK 5
 
 extern void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu,
 	unsigned int cur_freq, unsigned int cur_max_freq, u64 ulID);
@@ -60,8 +60,6 @@ struct FSTB_FRAME_INFO {
 	unsigned long long sorted_weighted_gpu_time[FRAME_TIME_BUFFER_SIZE];
 	int quantile_cpu_time;
 	int quantile_gpu_time;
-	unsigned long long app_self_ctrl_time[FRAME_TIME_BUFFER_SIZE];
-	int app_self_ctrl_time_num;
 
 	int render_idle_cnt;
 	int hwui_flag;
@@ -97,6 +95,7 @@ struct FSTB_NOTIFIER_PUSH_TAG {
 	int target_fps_margin;
 	int target_fps_hint;
 	int eara_is_active;
+	int only_detect;
 	unsigned long long bufid;
 	unsigned long long cur_queue_end_ts;
 
@@ -110,6 +109,16 @@ struct FSTB_POLICY_CMD {
 	int self_ctrl_fps_enable;
 	int notify_target_fps;
 	unsigned long long ts;
+};
+
+struct fstb_app_time_info {
+	int pid;
+	unsigned long long bufid;
+	unsigned long long app_self_ctrl_time[FRAME_TIME_BUFFER_SIZE];
+	int app_self_ctrl_time_num;
+	int app_self_ctrl_time_update;
+	unsigned long long ts;
+	struct rb_node rb_node;
 };
 
 #endif

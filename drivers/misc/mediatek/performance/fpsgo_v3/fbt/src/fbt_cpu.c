@@ -226,7 +226,6 @@ static int loading_adj_cnt;
 static int loading_debnc_cnt;
 static int loading_time_diff;
 static int adjust_loading;
-static int check_running;
 static int check_buffer_quota;
 static int boost_affinity;
 static int boost_VIP;
@@ -314,7 +313,6 @@ module_param(loading_adj_cnt, int, 0644);
 module_param(loading_debnc_cnt, int, 0644);
 module_param(loading_time_diff, int, 0644);
 module_param(adjust_loading, int, 0644);
-module_param(check_running, int, 0644);
 module_param(check_buffer_quota, int, 0644);
 module_param(boost_affinity, int, 0644);
 module_param(rescue_second_time, int, 0644);
@@ -1274,11 +1272,6 @@ static inline void __incr_alt(int t, int max, int *incr_t, int *incr_c)
 		*incr_t = 1;
 	else
 		*incr_c = 1;
-}
-
-static int cmpint(const void *a, const void *b)
-{
-	return *(int *)a - *(int *)b;
 }
 
 /* compare function for fbt_loading_info */
@@ -2692,169 +2685,6 @@ unsigned int fbt_get_new_base_blc(struct cpu_ctrl_data *pld,
 	return blc_wt;
 }
 
-static void fbt_pidlist_add(int pid, struct list_head *dest_list)
-{
-	struct fbt_pid_list *obj = NULL;
-
-	obj = kzalloc(sizeof(struct fbt_pid_list), GFP_ATOMIC);
-	if (!obj)
-		return;
-
-	INIT_LIST_HEAD(&obj->entry);
-	obj->pid = pid;
-	list_add_tail(&obj->entry, dest_list);
-}
-
-static int fbt_task_running_locked(struct task_struct *tsk)
-{
-	unsigned int tsk_state = READ_ONCE(tsk->__state);
-
-	if (tsk_state == TASK_RUNNING)
-		return 1;
-
-	return 0;
-}
-
-static int fbt_query_running(int tgid, struct list_head *proc_list)
-{
-	int ret = 0;
-	struct task_struct *gtsk, *tsk;
-	int hit = 0;
-	int pid;
-
-	rcu_read_lock();
-
-	gtsk = find_task_by_vpid(tgid);
-	if (!gtsk) {
-		rcu_read_unlock();
-		return 0;
-	}
-
-	get_task_struct(gtsk);
-	hit = fbt_task_running_locked(gtsk);
-	if (hit) {
-		ret = 1;
-		goto EXIT;
-	}
-
-	fbt_pidlist_add(gtsk->pid, proc_list);
-
-	list_for_each_entry(tsk, &gtsk->thread_group, thread_group) {
-		if (tsk) {
-			get_task_struct(tsk);
-			hit = fbt_task_running_locked(tsk);
-			pid = tsk->pid;
-			put_task_struct(tsk);
-
-			if (hit) {
-				ret = 1;
-				break;
-			}
-
-			fbt_pidlist_add(pid, proc_list);
-		}
-	}
-
-EXIT:
-	put_task_struct(gtsk);
-
-	rcu_read_unlock();
-
-	return ret;
-}
-
-#define MAX_RQ_COUNT 200
-static int fbt_query_rq(int tgid, struct list_head *proc_list)
-{
-	int ret = 0;
-	unsigned long flags;
-	struct task_struct *p;
-	int cpu;
-	struct fbt_pid_list *pos, *next;
-	int *rq_pid;
-	int rq_idx = 0, i;
-
-	/* get rq */
-	rq_pid = kcalloc(MAX_RQ_COUNT, sizeof(int), GFP_KERNEL);
-	if (!rq_pid)
-		return 0;
-
-	for_each_possible_cpu(cpu) {
-		raw_spin_lock_irqsave(&cpu_rq(cpu)->__lock, flags);
-		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
-			rq_pid[rq_idx] = p->pid;
-			rq_idx++;
-
-			if (rq_idx >= MAX_RQ_COUNT) {
-				fpsgo_systrace_c_fbt(tgid, 0, rq_idx, "rq_shrink");
-				raw_spin_unlock_irqrestore(&cpu_rq(cpu)->__lock, flags);
-				goto NEXT;
-			}
-		}
-		raw_spin_unlock_irqrestore(&cpu_rq(cpu)->__lock, flags);
-	}
-
-NEXT:
-	if (!rq_idx)
-		goto EXIT;
-
-	sort(rq_pid, rq_idx, sizeof(int), cmpint, NULL);
-
-	/* compare */
-	pos = list_first_entry_or_null(proc_list, typeof(*pos), entry);
-	if (!pos)
-		goto EXIT;
-
-	for (i = 0; i < rq_idx; i++) {
-		list_for_each_entry_safe_from(pos, next, proc_list, entry) {
-			if (rq_pid[i] == pos->pid) {
-				ret = 1;
-				goto EXIT;
-			}
-
-			if (rq_pid[i] < pos->pid)
-				break;
-		}
-	}
-
-EXIT:
-	kfree(rq_pid);
-
-	return ret;
-}
-
-static int fbt_query_state(int pid, int tgid)
-{
-	int hit = 0;
-	struct list_head proc_list;
-	struct fbt_pid_list *pos, *next;
-
-	if (!tgid) {
-		tgid = fpsgo_get_tgid(pid);
-		if (!tgid)
-			return 0;
-	}
-
-	INIT_LIST_HEAD(&proc_list);
-
-	hit = fbt_query_running(tgid, &proc_list);
-	if (hit)
-		goto EXIT;
-
-	if (list_empty(&proc_list))
-		goto EXIT;
-
-	hit = fbt_query_rq(tgid, &proc_list);
-
-EXIT:
-	list_for_each_entry_safe(pos, next, &proc_list, entry) {
-		list_del(&pos->entry);
-		kfree(pos);
-	}
-
-	return hit;
-}
-
 void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 				unsigned long long t_duration)
 {
@@ -2933,10 +2763,6 @@ static int fbt_check_to_jerk(
 		unsigned long long buffer_quota_ts, int buffer_quota,
 		int check_buffer_quota_final)
 {
-	/*not running*/
-	if (check_running && !fbt_query_state(pid, tgid))
-		return FPSGO_JERK_DISAPPEAR;
-
 	/*buffer quota enough*/
 	if (check_buffer_quota_final &&
 		((buffer_quota_ts && buffer_quota_ts <= enq_end) || buffer_quota != 0))
