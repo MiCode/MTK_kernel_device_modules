@@ -60,4 +60,17 @@ config MTK_MT6382_BDG
 	  Normal project will disable it first
 	  If you are not sure about this, do not set it to y
 
+config MTK_SE_SUPPORT
+	bool "Support auto RVC and AVM"
+	help
+	  This option enables support for the SurfaceEngine functionality within
+	  the driver. The SurfaceEngine is responsible for handling specific
+	  rendering tasks such as Rear View Camera (RVC) and Around View Monitoring
+	  (AVM) features. Enabling this option will include the necessary APIs and
+	  driver support required for these features to function correctly.
+	  If your project requires RVC or AVM capabilities, or if you need to take
+	  advantage of the SurfaceEngine's hardware acceleration for rendering,
+	  you should enable this option. Otherwise, it can be left disabled to
+	  reduce the driver's footprint.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
