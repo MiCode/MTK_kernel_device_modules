@@ -1299,6 +1299,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp6s_mon/imgsensor_isp6s_mon.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
