@@ -63,6 +63,7 @@ struct ged_opp_info {
 struct gpufreq_core_mask_info *g_mask_table;	// DCS table
 struct gpufreq_opp_info *g_working_table;		// real opp table from eb
 struct gpufreq_opp_info *g_virtual_table;		// real opp table + DCS opp [stack]
+struct gpufreq_opp_info *g_working_top_table;		// real opp table from eb
 struct gpufreq_opp_info *g_virtual_top_table;	// real opp table + DCS opp [top]
 struct ged_opp_info *g_virtual_async_table;		// async ratio's own opp table [top & stack]
 
@@ -117,14 +118,18 @@ GED_ERROR ged_gpufreq_init(void)
 	opp_top_table  = gpufreq_get_working_table(TARGET_GPU);
 	g_working_table = kcalloc(g_working_oppnum,
 						sizeof(struct gpufreq_opp_info), GFP_KERNEL);
+	g_working_top_table = kcalloc(g_working_oppnum,
+						sizeof(struct gpufreq_opp_info), GFP_KERNEL);
 
-	if (!g_working_table || !opp_table) {
+	if (!g_working_table || !opp_table || !g_working_top_table) {
 		GED_LOGE("%s: Failed to init opp table", __func__);
 		return GED_ERROR_FAIL;
 	}
 
-	for (i = 0; i < g_working_oppnum; i++)
+	for (i = 0; i < g_working_oppnum; i++) {
 		*(g_working_table + i) = *(opp_table + i);
+		*(g_working_top_table + i) = *(opp_top_table + i);
+	}
 
 	for (i = 0; i < g_working_oppnum; i++) {
 		GED_LOGD("[%02d*] Freq: %d, Volt: %d, Vsram: %d",
@@ -352,6 +357,7 @@ void ged_gpufreq_exit(void)
 {
 	mutex_destroy(&g_ud_DCS_lock);
 	kfree(g_working_table);
+	kfree(g_working_top_table);
 	kfree(g_virtual_table);
 	kfree(g_mask_table);
 	kfree(g_virtual_async_table);
@@ -431,7 +437,13 @@ int ged_get_top_freq_by_virt_opp(int oppidx)
 	if (is_dcs_enable() && g_virtual_top_table)
 		return g_virtual_top_table[oppidx].freq;
 
-	return gpufreq_get_freq_by_idx(TARGET_GPU, oppidx);
+	if (g_working_top_table == NULL)
+		return gpufreq_get_freq_by_idx(TARGET_GPU, oppidx);
+
+	if (unlikely(oppidx > g_min_working_oppidx))
+		oppidx = g_min_working_oppidx;
+
+	return g_working_top_table[oppidx].freq;
 }
 
 unsigned int ged_get_cur_top_freq(void)
