@@ -352,6 +352,7 @@ struct mtk_disp_oddmr {
 	int od_force_off;
 	int dmr_enable_req;
 	int dmr_enable;
+	int dmr_clk_en_req;
 	int dbi_enable_req;
 	int dbi_enable;
 	unsigned int spr_enable;
