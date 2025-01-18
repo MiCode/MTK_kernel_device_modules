@@ -110,4 +110,10 @@ void cmdq_driver_dump_readback(dma_addr_t *addrs, u32 count, u32 *values);
 /* for mdp_fence.c header */
 int mdp_sync_device_init(void);
 
+/*
+ * mdp_mme_init - mdp debug log init
+ *
+ */
+void mdp_mme_init(void);
+
 #endif				/* __MDP_DRIVER_H__ */

@@ -12,6 +12,10 @@
 #include <linux/trace_events.h>
 #include <linux/kref.h>
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#endif
+
 #include "mdp_def.h"
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -52,11 +56,18 @@ enum TASK_STATE_ENUM {
 #define CMDQ_MAX_WRITE_ADDR_COUNT	(PAGE_SIZE / sizeof(u32))
 #define CMDQ_MAX_DBG_STR_LEN		(1024)
 #define CMDQ_MAX_USER_PROP_SIZE		(1024)
+#define MDP_LOG_SIZE			(160 * 1024)
 
 extern struct cmdq_client *cmdq_clients[CMDQ_MAX_THREAD_COUNT];
 extern struct ContextStruct cmdq_ctx; /* cmdq driver context */
 extern struct CmdqCBkStruct *cmdq_group_cb;
 extern struct CmdqDebugCBkStruct cmdq_debug_cb;
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#define CMDQ_MME_MSG(fmt, args...) MME_INFO(MME_MODULE_MMSYS, MME_BUFFER_INDEX_0, fmt, ##args)
+#else
+#define CMDQ_MME_MSG(fmt, args...)
+#endif
 
 #define CMDQ_LOG_PQ(string, args...) \
 do { \

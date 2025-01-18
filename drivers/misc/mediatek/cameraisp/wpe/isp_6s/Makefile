@@ -21,6 +21,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme/
+endif
+
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/

@@ -1173,10 +1173,20 @@ static int cmdq_create_debug_entries(void)
 	return 0;
 }
 
+void mdp_mme_init(void)
+{
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+	MME_REGISTER_BUFFER(MME_MODULE_MMSYS, "MDP", MME_BUFFER_INDEX_0, MDP_LOG_SIZE);
+#endif
+}
+
 static int cmdq_probe(struct platform_device *pDevice)
 {
 	int status;
 	struct device *object;
+
+	/* mdp mme log init */
+	mdp_mme_init();
 
 	CMDQ_LOG("[MDP] MDP driver probe begin\n");
 
