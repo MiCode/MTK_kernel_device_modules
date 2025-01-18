@@ -1367,6 +1367,7 @@ def get_overlay_modules_list():
     if "mt6781_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+        mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6781.ko":"mt6781"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6781.ko":"mt6781"})
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.remove("drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko")
