@@ -39,6 +39,7 @@ const char *gpueb_mbox_pin_recv_name[20];
 unsigned int g_mbox_size = 0;
 unsigned int g_slot_size = 0;
 unsigned int g_ts_mbox;
+static void __iomem *g_gpueb_mbox_ipi;
 
 #if IPI_TEST
 struct test_msg {
@@ -311,6 +312,9 @@ int gpueb_ipi_init(struct platform_device *pdev)
 	int i = 0;
 	int ret;
 
+	struct device *gpueb_dev = &pdev->dev;
+	struct resource *res = NULL;
+
 	ret = gpueb_ipi_table_init(pdev);
 	if (ret == 0)
 		return -ENODEV;
@@ -379,6 +383,17 @@ int gpueb_ipi_init(struct platform_device *pdev)
 		return ret;
 	}
 #endif
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
+	if (unlikely(!res)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to get resource MBOX0_SEND");
+		return -1;
+	}
+	g_gpueb_mbox_ipi = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+	if (unlikely(!g_gpueb_mbox_ipi)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", res->start);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -507,3 +522,14 @@ int get_gpueb_slot_size(void)
 	return g_slot_size;
 }
 EXPORT_SYMBOL_GPL(get_gpueb_slot_size);
+
+void gpueb_clr_mbox1_irq(void)
+{
+	if (g_gpueb_mbox_ipi) {
+
+		/* GPUEB to APMCU IRQ[1] SW INT Clear */
+		writel(1, (g_gpueb_mbox_ipi + 0x84));
+	} else
+		gpueb_pr_info(GPUEB_TAG, "null g_gpueb_mbox_ipi");
+}
+EXPORT_SYMBOL_GPL(gpueb_clr_mbox1_irq);
