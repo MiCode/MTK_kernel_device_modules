@@ -18076,7 +18076,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_RSZ;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
-			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_FBDC;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CWB;
@@ -18099,6 +18098,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			}
 		}
 		mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_OVL_WCG))
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
 	}
 	if (check_comp_in_crtc(path_data, MTK_DISP_CCORR) &&
 			check_comp_in_crtc(path_data, MTK_DISP_AAL))
