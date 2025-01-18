@@ -27,6 +27,10 @@ static struct work_struct mddp_unhook_work;
 // Global variables.
 //------------------------------------------------------------------------------
 static struct wfpm_deactivate_md_func_rsp_t deact_rsp_metadata_s;
+/* To handle one of the corner case,
+ * where DRV_NOTIFY sent to MD before smem layout lead to MD crash
+ */
+bool is_smem_layout_config;  // "true" after sending smem layout to MD
 
 //------------------------------------------------------------------------------
 // Private variables.
@@ -370,6 +374,8 @@ static void mddpw_wfpm_send_smem_layout(void)
 			smem_num * sizeof(struct wfpm_smem_info_t));
 
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
+	/* This is required to block DRV_NOTIFY to MD till SMEM layout not configured */
+	is_smem_layout_config = true;
 }
 
 static int32_t mddpw_wfpm_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len)
@@ -476,6 +482,10 @@ static int32_t mddpw_wfpm_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len)
 	case IPC_MSG_ID_WFPM_RESET_IND:
 		MDDP_S_LOG(MDDP_LL_WARN,
 				"%s: Received WFPM RESET IND\n", __func__);
+
+		/* To reset variable in any unexpected WFPM_RESET_IND other than bootup */
+		is_smem_layout_config = false;
+
 		msleep(MDDP_RESET_READY_TIME_MS);
 		mddp_sm_on_event(app, MDDP_EVT_MD_RESET);
 		break;
@@ -698,10 +708,10 @@ static int32_t mddpw_drv_notify_info(
 	// Send WIFI Notify to MD
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 
-	if (!app->is_config) {
+	if (!app->is_config || !is_smem_layout_config) {
 		MDDP_S_LOG(MDDP_LL_ERR,
-				"%s: app_type(MDDP_APP_TYPE_WH) not configured!\n",
-				__func__);
+			"%s: app_type(MDDP_APP_TYPE_WH) not configured! smem status - %d]\n",
+				__func__, is_smem_layout_config);
 		return -ENODEV;
 	}
 
