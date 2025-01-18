@@ -2347,7 +2347,8 @@ transparent_hugepage=never clk_ignore_unused=1";
 		sram-share-event = <710>;
 		thread-count = <16>;
 		mediatek,mailbox-gce = <&gce_mbox>;
-		mboxes = <&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
+		mboxes = <&gce_mbox_sec 10 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 11 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox 5 0 CMDQ_THR_PRIO_1>;
 		clocks = <&infracfg_ao CLK_IFR_GCE>,
 			<&infracfg_ao CLK_IFR_GCE_26M>;
