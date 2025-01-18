@@ -30,6 +30,8 @@ GED_ERROR ged_kpi_hw_vsync(void);
 int ged_kpi_get_uncompleted_count(void);
 
 unsigned int ged_kpi_get_cur_fps(void);
+unsigned int dump_gpu_fps_table(void);
+void update_gpu_fps_table(int i32MarginValue);
 unsigned int ged_kpi_get_cur_avg_cpu_time(void);
 unsigned int ged_kpi_get_cur_avg_gpu_time(void);
 unsigned int ged_kpi_get_cur_avg_response_time(void);
@@ -68,6 +70,7 @@ struct ged_risky_bq_info {
 	struct {
 		long long t_gpu;
 		int t_gpu_target;
+		int t_gpu_fps;
 		unsigned long long risk;
 		unsigned long long ullWnd;
 		bool useTimeStampD;
@@ -79,6 +82,8 @@ struct ged_risky_bq_info {
 struct ged_sysram_info {
 	unsigned int last_tgpu_uncompleted;
 	unsigned int uncompleted_count;
+	unsigned int last_tgpu_uncompleted_target;
+	unsigned long long last_uncomplete_soc_timer;
 	unsigned long long current_timestamp;
 };
 
@@ -87,15 +92,21 @@ void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size);
 
 GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info);
 int ged_kpi_get_main_bq_uncomplete_count(void);
+GED_ERROR ged_kpi_eb_dvfs_get_time(struct ged_risky_bq_info *info);
 
 /* For Gift Usage */
 GED_ERROR ged_kpi_query_dvfs_freq_pred(int *gpu_freq_cur
 	, int *gpu_freq_max, int *gpu_freq_pred);
 GED_ERROR ged_kpi_query_gpu_dvfs_info(struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO *out);
+GED_ERROR ged_kpi_hint_frame_info(struct GED_BRIDGE_OUT_HINT_FRAME_INFO *out);
 GED_ERROR ged_kpi_set_gift_status(int mode);
 GED_ERROR ged_kpi_set_gift_target_pid(int pid);
 unsigned long long ged_kpi_get_fb_timestamp(void);
 unsigned long ged_kpi_get_fb_ulMask(void);
+void update_fb_timer_set_count(void);
+void reset_fb_timer_set_count(void);
+void ged_kpi_fastdvfs_update_dcs(void);
+
 extern spinlock_t gsGpuUtilLock;
 
 // extern unsigned int g_gpufreqv2;

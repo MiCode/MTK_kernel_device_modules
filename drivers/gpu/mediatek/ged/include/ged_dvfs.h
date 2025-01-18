@@ -105,6 +105,7 @@ struct GpuUtilization_Ex {
 	unsigned int util_compute;
 	unsigned int util_iter;
 	unsigned int util_mcu;
+	unsigned int util_iter_u_mcu;
 
 	unsigned int util_active_raw;
 	unsigned int util_iter_raw;
@@ -115,6 +116,15 @@ struct GpuUtilization_Ex {
 
 	unsigned long long delta_time;   // unit: ns
 	unsigned int freq;   // unit: kHz
+};
+
+enum ged_loading_type {
+	GED_ACTIVE,
+	GED_3D,
+	GED_TA,
+	GED_COMPUTE,
+	GED_ITER,
+	GED_MCU
 };
 
 bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
@@ -162,29 +172,42 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
 
 //#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void);
-unsigned long long ged_get_apo_threshold_us(void);
-void ged_set_apo_threshold_us(unsigned long long apo_threshold_us);
+unsigned long long ged_get_apo_thr_ns(void);
+void ged_set_apo_thr_ns(unsigned long long apo_thr_ns);
 unsigned long long ged_get_apo_wakeup_us(void);
-void ged_set_apo_wakeup_us(unsigned long long apo_wakeup_us);
-unsigned long long ged_get_apo_lp_threshold_us(void);
-void ged_set_apo_lp_threshold_us(unsigned long long apo_lp_threshold_us);
+unsigned long long ged_get_apo_wakeup_ns(void);
+void ged_set_apo_wakeup_ns(unsigned long long apo_wakeup_ns);
+unsigned long long ged_get_apo_lp_thr_ns(void);
+void ged_set_apo_lp_thr_ns(unsigned long long apo_lp_thr_ns);
 int ged_get_apo_hint(void);
 int ged_get_apo_force_hint(void);
 void ged_set_apo_force_hint(int apo_force_hint);
 
+void ged_check_gpu_frame_time(void);
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
 void ged_check_power_duration(void);
-long long ged_get_power_duration(void);
+unsigned long long ged_get_power_duration(void);
+void ged_gpu_apo_init_nolock(void);
+void ged_gpu_apo_reset_nolock(void);
 void ged_gpu_apo_reset(void);
 bool ged_gpu_apo_notify(void);
 
 void ged_get_predict_active_time(void);
 void ged_get_predict_idle_time(void);
 void ged_check_predict_power_duration(void);
-long long ged_get_predict_power_duration(void);
+unsigned long long ged_get_predict_power_duration(void);
+void ged_gpu_predict_apo_init_nolock(void);
+void ged_gpu_predict_apo_reset_nolock(void);
 void ged_gpu_predict_apo_reset(void);
 bool ged_gpu_predict_apo_notify(void);
+
+unsigned int ged_get_apo_autosuspend_delay_ms(void);
+int ged_get_apo_autosuspend_delay_ref_count(void);
+void ged_set_apo_autosuspend_delay_ctrl(int ctrl);
+int ged_get_apo_autosuspend_delay_target_ref_count(void);
+void ged_set_apo_autosuspend_delay_target_ref_count(int apo_autosuspend_delay_target_ref_count);
+void ged_set_apo_autosuspend_delay_ms(unsigned int apo_autosuspend_delay_ms);
 //#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 GED_ERROR ged_dvfs_system_init(void);
@@ -205,6 +228,9 @@ void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx);
 void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx);
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx);
 int ged_write_sysram_pwr_hint(int pwr_hint);
+int ged_dvfs_update_step_size(int low_step, int med_step, int high_step);
+void ged_dvfs_record_soc_timer(u64 soc_timer);
+
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
 	int boost_accum_gpu);
@@ -216,6 +242,8 @@ extern int (*ged_kpi_check_if_fallback_mode_fp)(void);
 
 extern void mtk_gpu_ged_hint(int a, int b);
 int ged_dvfs_boost_value(void);
+void start_mewtwo_timer(void);
+void cancel_mewtwo_timer(void);
 
 extern void (*mtk_dvfs_margin_value_fp)(int i32MarginValue);
 extern int (*mtk_get_dvfs_margin_value_fp)(void);
@@ -232,17 +260,22 @@ int ged_dvfs_get_tb_dvfs_margin_cur(void);
 unsigned int ged_dvfs_get_tb_dvfs_margin_mode(void);
 void set_api_sync_flag(int flag);
 int get_api_sync_flag(void);
+void ged_reset_api_sync_ts(void);
+unsigned long long ged_get_api_sync_ts(void);
 #define LOADING_ACTIVE 0
 #define LOADING_MAX_3DTA_COM 1
 #define LOADING_MAX_3DTA 2
 #define LOADING_3D 3
 #define LOADING_ITER 4
 #define LOADING_MAX_ITERMCU 5
+#define LOADING_UNION_ITERMCU 6
+
 
 #define WORKLOAD_ACTIVE 0
 #define WORKLOAD_3D 3
 #define WORKLOAD_ITER 4
 #define WORKLOAD_MAX_ITERMCU 5
+#define WORKLOAD_UNION_ITERMCU 6
 
 extern void (*mtk_dvfs_loading_mode_fp)(int i32LoadingMode);
 extern int (*mtk_get_dvfs_loading_mode_fp)(void);
@@ -261,21 +294,32 @@ extern unsigned int g_gpufreq_v2;
 extern void (*mtk_set_fastdvfs_mode_fp)(unsigned int u32Mode);
 extern unsigned int (*mtk_get_fastdvfs_mode_fp)(void);
 extern unsigned int g_eb_workload;
-extern unsigned int mips_support_flag;
+extern unsigned int eb_policy_dts_flag;
+
+enum ged_step_size_freq_th {
+	GED_STEP_FREQ_LOW,
+	GED_STEP_FREQ_MID,
+	GED_STEP_FREQ_HIGH,
+};
 
 void ged_dvfs_enable_async_ratio(int enableAsync);
+void ged_dvfs_enable_lb_async_ratio(int enableAsync);
 void ged_dvfs_force_top_oppidx(int idx);
 void ged_dvfs_force_stack_oppidx(int idx);
 void ged_dvfs_set_async_log_level(unsigned int level);
 int ged_dvfs_get_async_ratio_support(void);
+int ged_dvfs_get_lb_async_ratio_support(void);
 int ged_dvfs_get_top_oppidx(void);
 int ged_dvfs_get_stack_oppidx(void);
-int ged_dvfs_get_recude_mips_policy_state(void);
 unsigned int ged_dvfs_get_async_log_level(void);
 void ged_dvfs_set_slide_window_size(int size);
 void ged_dvfs_set_uncomplete_ts_type(int type);
 void ged_dvfs_notify_power_off(void);
 void ged_dvfs_set_fallback_tuning(int tuning);
 int ged_dvfs_get_fallback_tuning(void);
+void ged_dvfs_set_async_perf_model(int version);
+int ged_dvfs_get_async_perf_model(void);
+void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH);
+int ged_dvfs_get_lb_async_perf_diff(void);
 
 #endif

@@ -24,12 +24,27 @@ static const long async_coeff[11] = {
 	102668
 };
 
+static const long async_coeff_1[11] = {
+	-28787,
+	3013,
+	32423,
+	12284,
+	-177,
+	-1653,
+	-53661,
+	15228,
+	39169,
+	-9916,
+	89720
+};
+
 struct async_counter {
 	long gpuactive;
 	long iter;
 	long compute;
 	long l2ext;
 	long irq;
+	long mcu;
 };
 
 struct GpuRawCounter {

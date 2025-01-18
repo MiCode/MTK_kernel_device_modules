@@ -154,6 +154,7 @@ unsigned long g_desire_freq_stack, g_desire_freq_top;
 unsigned int g_ged_pre_fence_chk;
 unsigned int g_default_log_level;
 
+
 /******************************************************************************
  * GED File operations
  *****************************************************************************/
@@ -318,6 +319,10 @@ static long ged_dispatch(struct file *pFile,
 			VALIDATE_ARG(QUERY_GPU_DVFS_INFO, QUERY_GPU_DVFS_INFO);
 			ret = ged_bridge_query_gpu_dvfs_info(pvIn, pvOut);
 			break;
+		case GED_BRIDGE_COMMAND_HINT_FRAME_INFO:
+			VALIDATE_ARG(HINT_FRAME_INFO, HINT_FRAME_INFO);
+			ret = ged_bridge_hint_frame_info(pvIn, pvOut);
+			break;
 		case GED_BRIDGE_COMMAND_GE_ALLOC:
 			VALIDATE_ARG(GE_ALLOC, GE_ALLOC);
 			ret = ged_bridge_ge_alloc(pvIn, pvOut);
@@ -388,6 +393,7 @@ static int ged_validate_cmd(unsigned int ioctlCmd)
 		GED_IOWR(GED_BRIDGE_COMMAND_HINT_FORCE_MDP),
 		GED_IOWR(GED_BRIDGE_COMMAND_QUERY_DVFS_FREQ_PRED),
 		GED_IOWR(GED_BRIDGE_COMMAND_QUERY_GPU_DVFS_INFO),
+		GED_IOWR(GED_BRIDGE_COMMAND_HINT_FRAME_INFO),
 		GED_IOWR(GED_BRIDGE_COMMAND_GE_ALLOC),
 		GED_IOWR(GED_BRIDGE_COMMAND_GE_GET),
 		GED_IOWR(GED_BRIDGE_COMMAND_GE_SET),
@@ -429,6 +435,7 @@ static int ged_validate_cmd_32(unsigned int ioctlCmd)
 		GED_IOWR_32(GED_BRIDGE_COMMAND_HINT_FORCE_MDP),
 		GED_IOWR_32(GED_BRIDGE_COMMAND_QUERY_DVFS_FREQ_PRED),
 		GED_IOWR_32(GED_BRIDGE_COMMAND_QUERY_GPU_DVFS_INFO),
+		GED_IOWR_32(GED_BRIDGE_COMMAND_HINT_FRAME_INFO),
 		GED_IOWR_32(GED_BRIDGE_COMMAND_GE_ALLOC),
 		GED_IOWR_32(GED_BRIDGE_COMMAND_GE_GET),
 		GED_IOWR_32(GED_BRIDGE_COMMAND_GE_SET),
@@ -709,7 +716,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	g_ged_gpu_freq_notify_support = 0;
 	g_fastdvfs_mode		= 0;
 	g_fastdvfs_margin   = 0;
-	g_ged_pre_fence_chk = 1;
+	g_ged_pre_fence_chk = 0;
 
 	err = check_eb_config();
 	if (unlikely(err != GED_OK)) {
@@ -731,13 +738,12 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-#if defined(MTK_GPU_EB_SUPPORT)
+
 	if (g_ged_gpueb_support) {
 		fastdvfs_proc_init();
 		fdvfs_init();
 		GED_LOGI("@%s: fdvfs init done\n", __func__);
 	}
-#endif /*MTK_GPU_EB_SUPPORT*/
 
 	err = ged_sysfs_init();
 	if (unlikely(err != GED_OK)) {
@@ -878,12 +884,10 @@ static int ged_pdrv_remove(struct platform_device *pdev)
 	ghLogBuf_DVFS = 0;
 #endif
 
-#if defined(MTK_GPU_EB_SUPPORT)
 	if (g_ged_gpueb_support) {
 		fastdvfs_proc_exit();
 		fdvfs_exit();
 	}
-#endif
 
 	ged_log_buf_free(ghLogBuf_ftrace);
 	ghLogBuf_ftrace = 0;

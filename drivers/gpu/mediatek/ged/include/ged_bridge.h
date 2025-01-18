@@ -77,6 +77,10 @@ int ged_bridge_query_gpu_dvfs_info(
 	struct GED_BRIDGE_IN_QUERY_GPU_DVFS_INFO *QueryGPUDVFSInfoIn,
 	struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO *QueryGPUDVFSInfoOut);
 
+int ged_bridge_hint_frame_info(
+	struct GED_BRIDGE_IN_HINT_FRAME_INFO *HintFrameInfoIn,
+	struct GED_BRIDGE_OUT_HINT_FRAME_INFO *HintFrameInfoOut);
+
 int ged_bridge_ge_alloc(
 	struct GED_BRIDGE_IN_GE_ALLOC *psALLOC_IN,
 	struct GED_BRIDGE_OUT_GE_ALLOC *psALLOC_OUT);

@@ -28,6 +28,7 @@
 
 #define CREATE_TRACE_POINTS
 #include "ged_tracepoint.h"
+#include "ged_eb.h"
 
 enum {
 	/* 0x00 - 0xff reserved for internal buffer type */
@@ -1194,6 +1195,15 @@ void ged_log_dump(GED_LOG_BUF_HANDLE hLogBuf)
 }
 EXPORT_SYMBOL(ged_log_dump);
 
+int ged_timer_or_trace_enable(void)
+{
+	int fdvfs_enable = is_fdvfs_enable();
+
+	/* timer enable if no EB dvfs or EB dvfs need to dump trace*/
+	return (fdvfs_enable == 0) ||
+		(fdvfs_enable && ged_log_perf_trace_enable);
+}
+
 static int set_ged_log_perf_trace_enable(const char *val,
 	const struct kernel_param *kp)
 {
@@ -1207,6 +1217,8 @@ static int set_ged_log_perf_trace_enable(const char *val,
 		trace_set_clr_event("ged", NULL, 0);
 	else if (ged_log_perf_trace_enable == 1)
 		trace_set_clr_event("ged", NULL, 1);
+
+	ged_eb_dvfs_task(EB_SET_FTRACE, ged_log_perf_trace_enable);
 
 	return 0;
 }

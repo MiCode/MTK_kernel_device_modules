@@ -703,6 +703,23 @@ bool mtk_set_gpu_idle(unsigned int val)
 }
 EXPORT_SYMBOL(mtk_set_gpu_idle);
 
+/* ----------------------------get system timer--------------------------------- */
+
+u64 (*mtk_get_system_timer_fp)(void) = NULL;
+EXPORT_SYMBOL(mtk_get_system_timer_fp);
+
+bool mtk_get_system_timer(u64 *psys_timer)
+{
+	if (mtk_get_system_timer_fp != NULL) {
+		if (psys_timer) {
+			*psys_timer = mtk_get_system_timer_fp();
+			return true;
+		}
+	}
+	return false;
+}
+EXPORT_SYMBOL(mtk_get_system_timer);
+
 /* -----------------------------adaptive power notify--------------------------------- */
 
 bool (*mtk_adaptive_power_notify_fp)(void) = NULL;
