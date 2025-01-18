@@ -2047,7 +2047,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	sleep@1c004000 {
 		compatible = "mediatek,sleep";
-		reg = <0 0x1c004000 0 0x1000>;
+		reg = <0 0x1c004000 0 0xa000>;
 		interrupts = <GIC_SPI 797 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
