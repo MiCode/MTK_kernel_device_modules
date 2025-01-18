@@ -11,6 +11,37 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 
+TRACE_EVENT(sugov_ext_act_sbb,
+	TP_PROTO(int flag, int pid,
+		int set, int success, int gear_id,
+		int sbb_active_ratio),
+	TP_ARGS(flag, pid, set, success, gear_id, sbb_active_ratio),
+	TP_STRUCT__entry(
+		__field(int, flag)
+		__field(int, pid)
+		__field(int, set)
+		__field(int, success)
+		__field(int, gear_id)
+		__field(int, sbb_active_ratio)
+	),
+	TP_fast_assign(
+		__entry->flag = flag;
+		__entry->pid = pid;
+		__entry->set = set;
+		__entry->success = success;
+		__entry->gear_id = gear_id;
+		__entry->sbb_active_ratio = sbb_active_ratio;
+	),
+	TP_printk(
+		"flag=%d pid=%d set=%d success=%d gear_id=%d, sbb_active_ratio=%d",
+		__entry->flag,
+		__entry->pid,
+		__entry->set,
+		__entry->success,
+		__entry->gear_id,
+		__entry->sbb_active_ratio)
+);
+
 TRACE_EVENT(sugov_ext_curr_uclamp,
 	TP_PROTO(int cpu, int pid,
 		int util_ori, int util, int u_min,

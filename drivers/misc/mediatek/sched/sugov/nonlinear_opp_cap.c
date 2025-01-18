@@ -464,10 +464,12 @@ EXPORT_SYMBOL_GPL(get_system_sbb);
 void set_sbb(int flag, int pid, bool set)
 {
 	struct task_struct *p, *group_leader;
+	int success = 0;
 
 	switch (flag) {
 	case SBB_ALL:
 		set_system_sbb(set);
+		success = 1;
 		break;
 	case SBB_GROUP:
 		rcu_read_lock();
@@ -483,6 +485,7 @@ void set_sbb(int flag, int pid, bool set)
 					group_leader->android_vendor_data1)->sbb_task;
 				sts->set_group = set;
 				put_task_struct(group_leader);
+				success = 1;
 			}
 			put_task_struct(p);
 		}
@@ -498,9 +501,12 @@ void set_sbb(int flag, int pid, bool set)
 			sts = &((struct mtk_task *) p->android_vendor_data1)->sbb_task;
 			sts->set_task = set;
 			put_task_struct(p);
+			success = 1;
 		}
 		rcu_read_unlock();
 	}
+	if (trace_sugov_ext_act_sbb_enabled())
+		trace_sugov_ext_act_sbb(flag, pid, set, success, -1, -1);
 }
 EXPORT_SYMBOL_GPL(set_sbb);
 
@@ -536,13 +542,15 @@ void set_sbb_active_ratio(int val)
 	int i;
 
 	for (i = 0; i < pd_count; i++)
-		sbb_active_ratio[i] = val;
+		set_sbb_active_ratio_gear(i, val);
 }
 EXPORT_SYMBOL_GPL(set_sbb_active_ratio);
 
 void set_sbb_active_ratio_gear(int gear_id, int val)
 {
 	sbb_active_ratio[gear_id] = val;
+	if (trace_sugov_ext_act_sbb_enabled())
+		trace_sugov_ext_act_sbb(-1, -1, -1, -1, gear_id, val);
 }
 EXPORT_SYMBOL_GPL(set_sbb_active_ratio_gear);
 
