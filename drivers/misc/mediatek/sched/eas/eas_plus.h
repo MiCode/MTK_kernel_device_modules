@@ -78,8 +78,10 @@ struct energy_env {
 	unsigned long pds_cap[MAX_NR_CPUS];
 	unsigned long total_util;
 
+#if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
 	/* temperature for each cpu*/
 	int cpu_temp[MAX_NR_CPUS];
+#endif
 
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
