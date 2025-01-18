@@ -1446,7 +1446,9 @@ static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int u
 		}
 
 		if (timer_change == 1) {
-			trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_QUEUE);
+			trace_GPU_DVFS__Policy__Common__SOC_Timer_LB(SOC_QUEUE,
+				(u32)(soc_timer >> 32),
+				(u32)(soc_timer & 0xFFFFFFFF));
 			g_ged_eb_uncomplete_info.last_uncomplete_type = ulMask;
 			g_ged_eb_uncomplete_info.last_uncomplete_soc_timer = soc_timer;
 			g_ged_eb_uncomplete_info.last_uncomplete_target = psHead->t_gpu_target;

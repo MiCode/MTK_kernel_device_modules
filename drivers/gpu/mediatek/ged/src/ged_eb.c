@@ -56,6 +56,7 @@ int g_is_fulltrace_enable;
 
 int g_is_stability_enable;
 static unsigned int eb_policy_mode;
+static unsigned int sysram_size;
 #endif
 
 bool need_to_refresh_mode = true;
@@ -80,6 +81,8 @@ static struct ged_last_timer g_ged_last_timer;
 
 #if defined(MTK_GPU_EB_SUPPORT)
 #define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
+#define EB_DVFS_FALLBACK 5566
+#define EB_DVFS_DUMP_TH 0x800
 
 static struct workqueue_struct *g_psEBWorkQueue;
 static struct mutex gsEBLock;
@@ -138,6 +141,12 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 static void ged_eb_sysram_debug_data_write(void)
 {
 	int dbg_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int dbg_data2[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int dbg_data3[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int dbg_data4[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int dbg_data5[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	int dbg_data6[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+
 	u32 diff_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
 	int i, dbg_cnt;
 	u32 head = 0;
@@ -147,6 +156,7 @@ static void ged_eb_sysram_debug_data_write(void)
 	u64 soc_timer_eb_hi = 0;
 	u64 soc_timer_eb = 0;
 	u32 time_diff = 0;
+	u32 is_fb = 1;
 	int tmp_head;
 
 	if (tail >= GPUEB_SYSRAM_DVFS_DEBUG_COUNT)
@@ -162,8 +172,10 @@ static void ged_eb_sysram_debug_data_write(void)
 		int cur_read_p = tmp_head * sizeof(u32);
 
 		if (tmp_head != tail) {
-			soc_timer_eb_hi = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_HI + cur_read_p);
-			soc_timer_eb = (u32) mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_LO + cur_read_p);
+			soc_timer_eb_hi = mtk_gpueb_sysram_read(
+				SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_HI + cur_read_p);
+			soc_timer_eb = (u32) mtk_gpueb_sysram_read(
+				SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_LO + cur_read_p);
 			soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
 			if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
 				time_diff = (soc_timer - soc_timer_eb) / 13;
@@ -179,50 +191,212 @@ static void ged_eb_sysram_debug_data_write(void)
 		}
 	}
 
+	trace_GPU_DVFS__Policy__EBRB_TIME(diff_data);
+
 	for (dbg_cnt = 0; dbg_cnt < EB_MAX_COUNT; dbg_cnt++) {
 		tmp_head = head;
 		for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
 			int cur_read_p = tmp_head * sizeof(u32);
-
 			if (tmp_head != tail) {
-				dbg_data[i] =
-					mtk_gpueb_sysram_read(gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
 				switch (dbg_cnt) {
-				case EB_STACK:
-					dbg_data[i] = (dbg_data[i] >> 16) & 0xFFFF;
+				case EB_FREQ:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_TOP_FREQ + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_STACK_FREQ + cur_read_p);
 					break;
-				case EB_VIRTUAL_STACK:
-					dbg_data[i] = dbg_data[i] & 0xFFFF;
+				case EB_LOADING:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_LOADING1 + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_LOADING2 + cur_read_p);
 					break;
-				case EB_GPU_LOADING:
-					dbg_data[i] = (dbg_data[i] >> 24) & 0xFF;
+				case EB_ASYNC_COUNTER:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_GPU + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_ITER + cur_read_p);
+					dbg_data3[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_COMPUTE + cur_read_p);
+					dbg_data4[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_L2EXT + cur_read_p);
+					dbg_data5[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_IRQ + cur_read_p);
+					dbg_data6[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_MCU + cur_read_p);
 					break;
-				case EB_MCU_LOADING:
+				case EB_ASYNC_MCU_INDEX:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_INDEX1 + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_INDEX2 + cur_read_p);
+					break;
+				case EB_ASYNC_POLICY:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_INDEX2 + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_INDEX3 + cur_read_p);
+					break;
 				case EB_COMMIT_TYPE:
-					dbg_data[i] = (dbg_data[i] >> 16) & 0xFF;
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
+					if (dbg_data[i] != GED_DVFS_FRAME_BASE_COMMIT)
+						is_fb = 0;
 					break;
-				case EB_ITER_LOADING:
-				case EB_CUR_OPP:
-					dbg_data[i] = (dbg_data[i] >> 8) & 0xFF;
+				case EB_DEBUG_COUNT:
+				case EB_POWER_STATE:
+				case EB_PRESERV:
+				case EB_OPP:
+				case EB_BOUND:
+				case EB_MARGIN:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
 					break;
 				case EB_AVG_LOADING:
-				case EB_ITER_U_MCU_LOADING:
-				case EB_TARGET_OPP:
-					dbg_data[i] = dbg_data[i] & 0xFF;
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_LOADING1 + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_DELTA_TIME + cur_read_p);
+					break;
+				case EB_FB_MONITOR:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_FB_MONITOR + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_FB_TARGET + cur_read_p);
+					break;
+				case EB_GPU_TIME:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_UN_TIME + cur_read_p);
+					dbg_data2[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_COM_TIME + cur_read_p);
+					dbg_data3[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_UN_TIME_TARGET + cur_read_p);
+					dbg_data4[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_COM_TIME_TARGE + cur_read_p);
+					dbg_data5[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_GPU_TIME + cur_read_p);
+					dbg_data6[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_TIME_TARGET + cur_read_p);
 					break;
 				default:
-					//do nothing
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
 					break;
 				}
+
 				tmp_head++;
 				if (tmp_head >= GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE)
 					tmp_head = 0;
 			} else {
 				dbg_data[i] = 0;
 			}
-
 		}
-		trace_GPU_DVFS__Policy__EB_RINBUFFER(gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
+
+		if (is_fb) {
+			switch (dbg_cnt) {
+			case EB_LOADING:
+				trace_GPU_DVFS__EBRB_LOADING(dbg_data, dbg_data2);
+				break;
+			case EB_COMMIT_TYPE:
+				trace_GPU_DVFS__EBRB_COMMON(dbg_data);
+				break;
+			case EB_POWER_STATE:
+				trace_GPU_DVFS__EBRB_POWER_STATE(dbg_data);
+				break;
+			case EB_FB_MONITOR:
+				trace_GPU_DVFS__EBRB_FB_MONITOR(dbg_data, dbg_data2);
+				break;
+			case EB_DEBUG_COUNT:
+				trace_GPU_DVFS__EBRB_DEBUG(dbg_data);
+				break;
+			default:
+				trace_GPU_DVFS__Policy__EB_RINBUFFER(
+					gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
+				break;
+			}
+		} else {
+			switch (dbg_cnt) {
+			case EB_FREQ:
+				trace_GPU_DVFS__EBRB_FREQ(dbg_data, dbg_data2);
+				break;
+			case EB_LOADING:
+				trace_GPU_DVFS__EBRB_LOADING(dbg_data, dbg_data2);
+				break;
+			case EB_AVG_LOADING:
+				trace_GPU_DVFS__EBRB_AVG_LOADING(dbg_data, dbg_data2);
+				break;
+			case EB_COMMIT_TYPE:
+				trace_GPU_DVFS__EBRB_COMMON(dbg_data);
+				break;
+			case EB_POWER_STATE:
+				trace_GPU_DVFS__EBRB_POWER_STATE(dbg_data);
+				break;
+			case EB_PRESERV:
+				trace_GPU_DVFS__EBRB_PRESERVE(dbg_data);
+				break;
+			case EB_OPP:
+				trace_GPU_DVFS__EBRB_OPP(dbg_data);
+				break;
+			case EB_BOUND:
+				trace_GPU_DVFS__EBRB_BOUND(dbg_data);
+				break;
+			case EB_MARGIN:
+				trace_GPU_DVFS__EBRB_MARGIN(dbg_data);
+				break;
+			case EB_FB_MONITOR:
+				trace_GPU_DVFS__EBRB_FB_MONITOR(dbg_data, dbg_data2);
+			break;
+			case EB_GPU_TIME:
+				trace_GPU_DVFS__EBRB_GPU_TIME(
+					dbg_data, dbg_data2, dbg_data3, dbg_data4, dbg_data5, dbg_data6);
+				break;
+			case EB_ASYNC_COUNTER:
+				trace_GPU_DVFS__EBRB_ASYNC_COUNTER(
+					dbg_data, dbg_data2, dbg_data3, dbg_data4, dbg_data5, dbg_data6);
+				break;
+			case EB_ASYNC_MCU_INDEX:
+				trace_GPU_DVFS__EBRB_ASYNC_MCU_INDEX(dbg_data, dbg_data2);
+				break;
+			case EB_ASYNC_POLICY:
+				trace_GPU_DVFS__EBRB_ASYNC_POLICY(dbg_data, dbg_data2);
+				break;
+			case EB_DEBUG_COUNT:
+				trace_GPU_DVFS__EBRB_DEBUG(dbg_data);
+				break;
+			default:
+				trace_GPU_DVFS__Policy__EB_RINBUFFER(
+					gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
+				break;
+			}
+		}
+
 		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GPU_EB_DEBUG_READ_POINTER, tmp_head);
 	}
 
@@ -252,11 +426,11 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 		cmd = event_data->cmd;
 		if (cmd == GPUFDVFS_IPI_EVENT_DEBUG_DATA) {
 			dbg_data_len = event_data->u.set_para.arg[0];
-			if (dbg_data_len == 5566) {
+			if (dbg_data_len == EB_DVFS_FALLBACK) {
 				ged_eb_dvfs_trace_dump();
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 				ged_cancel_backup_timer();
-			} else {
+			} else if (sysram_size >= EB_DVFS_DUMP_TH) {
 				ged_eb_sysram_debug_data_write();
 			}
 			return 0;
@@ -940,12 +1114,14 @@ static void ged_eb_dvfs_udpate_gpu_time(void)
 				(u32)(info_sysram.last_uncomplete_soc_timer >> 32));
 		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO,
 				(u32)(info_sysram.last_uncomplete_soc_timer & 0xFFFFFFFF));
-		trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_DONE);
+		trace_GPU_DVFS__Policy__Common__SOC_Timer_LB(SOC_DONE,
+			(u32)(info_sysram.last_uncomplete_soc_timer >> 32),
+			(u32)(info_sysram.last_uncomplete_soc_timer & 0xFFFFFFFF));
 
 	} else {
 		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_HI, 0);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_RISKY_UNCOMPLETE_SOC_TIMER_LO, 0);
-		trace_tracing_mark_write(5566, "lb_soc_timer_update", SOC_RESET);
+		trace_GPU_DVFS__Policy__Common__SOC_Timer_LB(SOC_RESET, 0, 0);
 	}
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_UNCOMPLETE_COUNT, info_sysram.uncompleted_count);
 
@@ -1006,7 +1182,9 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 					(u32)(soc_timer >> 32));
 			mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_SOC_TIMER_LO,
 					(u32)(soc_timer & 0xFFFFFFFF));
-			trace_tracing_mark_write(5566, "fb_soc_timer_update", SOC_FB);
+			trace_GPU_DVFS__Policy__Common__SOC_Timer_FB(SOC_FB,
+				(u32)(soc_timer >> 32),
+				(u32)(soc_timer & 0xFFFFFFFF));
 			break;
 		case EB_UPDATE_FB_TARGET_TIME_DONE:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_HD, value);
@@ -1014,7 +1192,7 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 			if (fb_uncomplete_cnt == 1) {
 				mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_SOC_TIMER_HI,0);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_SOC_TIMER_LO,0);
-				trace_tracing_mark_write(5566, "fb_soc_timer_update", SOC_RESET);
+				trace_GPU_DVFS__Policy__Common__SOC_Timer_FB(SOC_RESET, 0, 0);
 			}
 			fb_uncomplete_cnt = 0;
 			break;
@@ -1248,12 +1426,17 @@ static void __iomem *_gpu_fastdvfs_of_ioremap(const char *node_name)
 {
 	struct device_node *node = NULL;
 	void __iomem *mapped_addr = NULL;
+	struct resource res;
+	int rc = 0;
 
 	node = of_find_compatible_node(NULL, NULL, node_name);
 
 	if (node) {
 		mapped_addr = of_iomap(node, 0);
 		GPUFDVFS_LOGI("@%d mapped_addr: %p\n", __LINE__, mapped_addr);
+		rc = of_address_to_resource(node, 0, &res);
+		sysram_size = resource_size(&res);
+
 		of_node_put(node);
 	} else
 		GPUFDVFS_LOGE("#@# %s:(%s::%d) Cannot find [%s] of_node\n", "FDVFS",

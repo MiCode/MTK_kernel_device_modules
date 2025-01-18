@@ -235,48 +235,6 @@ void ged_eb_dvfs_trace_dump(void)
 	else
 		eCommitType = GED_DVFS_FALLBACK_COMMIT;
 
-	// get current soc timer
-	soc_timer = mtk_gpueb_read_soc_timer();
-	//trace_tracing_mark_write(5566, "soc_timer_ged",
-		//soc_timer);
-
-	if (eb_policy_state != 1 && eb_policy_state != 3) {
-		soc_timer_eb_hi = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPLETE_SOC_TIMER_HI);
-		soc_timer_eb = (u32) mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPLETE_SOC_TIMER_LO);
-		soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
-		if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
-			time_diff = (soc_timer - soc_timer_eb) / 13;
-		else
-			time_diff = 0;
-	} else {
-		soc_timer_eb_hi = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_SOC_TIMER_HI);
-		soc_timer_eb = (u32) mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_SOC_TIMER_LO);
-		soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
-		if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
-			time_diff = (soc_timer - soc_timer_eb) / 13;
-		else
-			time_diff = 0;
-	}
-
-	//ged_dvfs_cal_gpu_utilization_ex(&gpu_av_loading,
-		//&gpu_block, &gpu_idle, &util_ex);
-	trace_GPU_DVFS__EB_Loading(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING),
-		0,
-		0,
-		0,
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_LOADING),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING),
-		time_diff);
-
-	trace_GPU_DVFS__Policy__Loading_based__EB_Loading(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_LOADING),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DELTA_TIME), time_diff);
-
-	trace_GPU_DVFS__Policy__Loading_based__EB_Opp(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_OPP), time_diff);
-
 	if (eb_policy_state != pre_eb_policy_state ||
 		ged_policy_state != pre_ged_policy_state ||
 		pre_freq_id != freq_id) {
@@ -290,9 +248,8 @@ void ged_eb_dvfs_trace_dump(void)
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) ged_get_cur_stack_freq() / 1000);
 
-		trace_GPU_DVFS__EB_Frequency(ged_get_cur_stack_freq() / 1000,
-			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000,
-			time_diff);
+		trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
+			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
 			ged_get_freq_by_idx(ui32CeilingID) / 1000);
@@ -309,82 +266,23 @@ void ged_eb_dvfs_trace_dump(void)
 		trace_tracing_mark_write(5566, "26m_replace",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
 	}
-	trace_GPU_DVFS__Policy__Loading_based__EB_Margin(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_CEIL) * 10,
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN) * 10,
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_FLOOR) * 10,
-		time_diff);
-
-	trace_GPU_DVFS__Policy__Loading_based__EB_Bound(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_ULTRA_HIGH),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_HIGH),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_LOW),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_BOUND_ULTRA_LOW),
-		time_diff);
 
 	if (ged_policy_state != POLICY_STATE_FB) {
 		trace_tracing_mark_write(5566, "t_gpu",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU));
 		trace_tracing_mark_write(5566, "t_gpu_target",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU));
-	} else {
-		trace_tracing_mark_write(5566, "fb_overdue",
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_OVERDUE_TIME));
-		trace_tracing_mark_write(5566, "fb_target",
-			mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD));
 	}
-
-	trace_GPU_DVFS__Policy__Loading_based__EB_GPU_Time(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU_HD),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_COMPLETE_GPU),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPOLETE_GPU),
-		time_diff);
-
-	trace_GPU_DVFS__Policy__EB_Common(eb_policy_state,
-		eCommitType, time_diff);
-
-	trace_GPU_DVFS__Policy__Frame_based__EB_monitor(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_OVERDUE_TIME),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD),
-		time_diff);
-
-	trace_GPU_DVFS__Policy__EB_PRESERVE(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE),
-		time_diff);
-
-	trace_GPU_DVFS__Policy__EB_DEBUG(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DEBUG_COUNT), time_diff);
 
 	// LB async ratio on EB
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT) {
-		trace_GPU_DVFS__Policy__Loading_based__Async_Ratio__MCU_index(
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_IS_MCU),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_AVG_MCU),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_MCU),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_AVG_MCU_TH),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_MCU_TH));
-
 		apply_lb_async = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_APPLY_LB_ASYNC);
 		if (apply_lb_async) {
-			trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_GPU_ACTIVE),
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_ITER),
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_COMPUTE),
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_L2EXT),
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_IRQ),
-				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_MCU));
 			trace_tracing_mark_write(5566, "async_perf_high",
 				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
 		}
 	}
 	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
-		trace_GPU_DVFS__Policy__Loading_based__Async_Ratio__Policy(
-			apply_lb_async,
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
 		trace_tracing_mark_write(5566, "async_opp_diff",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
 	}
