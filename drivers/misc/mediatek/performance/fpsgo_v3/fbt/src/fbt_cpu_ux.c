@@ -362,8 +362,8 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long frameid, uns
 		return;
 
 	thr->ux_blc_cur = thr->ux_blc_next;
-
-	fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+	if (ux_general_policy)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
 
 	fbt_ux_set_cap_with_sbe(thr);
 
@@ -1619,7 +1619,7 @@ int __init fbt_cpu_ux_init(void)
 	fpsgo_ux_gcc_enable = 0;
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
 	init_smart_launch_engine();
-	ux_general_policy = 1;
+	ux_general_policy = fbt_get_ux_scroll_policy_type();
 	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
