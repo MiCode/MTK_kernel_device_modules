@@ -32,6 +32,7 @@
 #include "ghpm.h"
 
 
+static bool first_on_after_bootup;
 static int g_ipi_channel;
 static int g_gpueb_slot_size;
 static int g_power_count;  /* power count for ghpm control mfg1 on/off */
@@ -94,6 +95,8 @@ int ghpm_init(struct platform_device *pdev)
 
 	g_power_count = 0;
 
+	first_on_after_bootup = false;
+
 	raw_spin_lock_init(&ghpm_lock);
 
 	return GHPM_SUCCESS;
@@ -104,12 +107,12 @@ enum mfg0_pwr_sta mfg0_pwr_sta(void)
 	return ((readl(MFG_RPC_MFG0_PWR_CON) & MFG0_PWR_ACK_BIT) == MFG0_PWR_ACK_BIT)?
 		MFGO_PWR_ON : MFG0_PWR_OFF;
 }
+EXPORT_SYMBOL(mfg0_pwr_sta);
 
 int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 {
 	int ret = GHPM_ERR;
 	struct gpueb_slp_ipi_data data;
-	static int ghpm_off_cnt;
 
 	raw_spin_lock_irqsave(&ghpm_lock, g_pwr_irq_flags);
 	gpueb_pr_debug(GHPM_TAG, "Entry");
@@ -121,14 +124,15 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 
 	if (power == GHPM_ON && g_power_count == 1) {
 		if (mfg0_pwr_sta() == MFGO_PWR_ON) {
-			if (ghpm_off_cnt == 0) {
+			if (first_on_after_bootup == false) {
 				/*
 				 * MFG0 shutdown on from TFA after bootup, ghpm don't need to
-				 * power on mfg0 when pm_callback_power_off first time coming
+				 * power on mfg0 again when ghpm on first time coming
 				 */
-				++ghpm_off_cnt;
+				first_on_after_bootup = true;
 			} else {
 				gpueb_pr_err(GHPM_TAG, "MFG0 already on but receive GHPM on");
+				ret = GHPM_DUPLICATE_ON_ERR;
 				goto done_unlock;
 			}
 		} else {
@@ -172,13 +176,14 @@ int ghpm_ctrl(enum ghpm_state power, enum mfg0_off_state off_state)
 
 		if (unlikely(ret != IPI_ACTION_DONE)) {
 			gpueb_pr_err(GHPM_TAG, "[ABORT] fail to send gpueb off IPI, ret=%d", ret);
-			ret = GHPM_ERR;
+			ret = GHPM_OFF_EBB_IPI_ERR;
 			goto done_unlock;
 		}
 
 		ret = GHPM_SUCCESS;
 	} else {
 		gpueb_pr_debug(GHPM_TAG, "power=%d, g_power_count=%d", power, g_power_count);
+		ret = GHPM_PWRCNT_ERR;
 	}
 
 done_unlock:

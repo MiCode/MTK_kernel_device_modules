@@ -61,10 +61,13 @@ enum mfg0_pwr_sta {
 };
 
 enum ghpm_return {
-	GHPM_SUCCESS   = 0,
-	GHPM_ERR       = -1,
-	GHPM_STATE_ERR = -2,
-	GHPM_PWR_STATE_ERR = -3
+	GHPM_SUCCESS           = 0,
+	GHPM_ERR               = -1,
+	GHPM_STATE_ERR         = -2,
+	GHPM_PWR_STATE_ERR     = -3,
+	GHPM_DUPLICATE_ON_ERR  = -4,
+	GHPM_PWRCNT_ERR        = -5,
+	GHPM_OFF_EBB_IPI_ERR   = -6
 };
 
 enum ghpm_state {
