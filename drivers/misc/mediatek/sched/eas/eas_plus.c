@@ -950,7 +950,7 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 
 __always_inline
 unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
-		unsigned long max_util, struct cpumask *cpus)
+		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered)
 {
 	int pd_idx = cpumask_first(cpus);
 	unsigned long pwr_eff;
@@ -962,7 +962,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	floor_freq = per_cpu(min_freq, pd_idx);
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
-	if (eenv->wl_support) {
+	if (eenv->wl_support && is_dsu_pwr_triggered) {
 		if (!pd_freq)
 			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
 					eenv->pds_cpu_cap[pd_idx], scale_cpu);
@@ -972,6 +972,8 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 
 		if (share_buck.gear_idx != eenv->gear_idx)
 			dsu_volt = 0;
+	} else {
+		dsu_volt = 0;
 	}
 
 	if (!cpumask_equal(cpus, get_gear_cpumask(eenv->gear_idx))) {
@@ -1032,7 +1034,7 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 
 __always_inline
 unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
-		unsigned long max_util, struct cpumask *cpus)
+		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered)
 {
 	return 0;
 }
