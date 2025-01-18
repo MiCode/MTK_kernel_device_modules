@@ -27,6 +27,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v051:gps_drv_dl_v051",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v060:gps_drv_dl_v060",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v061:gps_drv_dl_v061",
+    "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v062:gps_drv_dl_v062",
     "//vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr:gps_pwr",
     "//vendor/mediatek/kernel_modules/connectivity/gps/gps_scp:gps_scp",
     "//vendor/mediatek/kernel_modules/connectivity/gps/gps_stp:gps_drv_stp",
@@ -39,6 +40,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639:wlan_drv_gen4m_6989_6639",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639_dppm:wlan_drv_gen4m_6989_6639_dppm",
     #"//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639_offload:wlan_drv_gen4m_6989_6639_offload",
+    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653:wlan_drv_gen4m_6991_6653",
     "//vendor/mediatek/kernel_modules/cpufreq_cus:cpu_freq",
     "//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest",
     "//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus",
@@ -801,6 +803,7 @@ mgk_64_platform_device_modules = {
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko": "mt6983",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko": "mt6985",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko": "mt6989",
+    "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko": "mt6886",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6897.ko": "mt6897",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6985.ko": "mt6985",
@@ -813,6 +816,7 @@ mgk_64_platform_device_modules = {
     "drivers/interconnect/mediatek/mmqos-mt6983.ko": "mt6983",
     "drivers/interconnect/mediatek/mmqos-mt6985.ko": "mt6985",
     "drivers/interconnect/mediatek/mmqos-mt6989.ko": "mt6989",
+    "drivers/interconnect/mediatek/mmqos-mt6991.ko": "mt6991",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6855.ko": "mt6855",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6879.ko": "mt6879",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6886.ko": "mt6886",
@@ -837,6 +841,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/dcm/mt6897_dcm.ko": "mt6897",
     "drivers/misc/mediatek/dcm/mt6985_dcm.ko": "mt6985",
     "drivers/misc/mediatek/dcm/mt6989_dcm.ko": "mt6989",
+    "drivers/misc/mediatek/dcm/mt6991_dcm.ko": "mt6991",
     "drivers/misc/mediatek/lpm/modules/debug/mt6886/mtk-lpm-dbg-mt6886.ko": "mt6886",
     "drivers/misc/mediatek/lpm/modules/debug/mt6897/mtk-lpm-dbg-mt6897.ko": "mt6897",
     "drivers/misc/mediatek/lpm/modules/debug/mt6983/mtk-lpm-dbg-mt6983.ko": "mt6983",
@@ -849,6 +854,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/mdp/mdp_drv_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6768.ko": "mt6768",
+    "drivers/misc/mediatek/mdp/mdp_drv_mt6991.ko": "mt6991",
     "drivers/misc/mediatek/slbc/slbc_mt6886.ko": "mt6886",
     "drivers/misc/mediatek/slbc/slbc_mt6893.ko": "mt6893",
     "drivers/misc/mediatek/slbc/slbc_mt6895.ko": "mt6895",
@@ -862,6 +868,7 @@ mgk_64_platform_device_modules = {
     "drivers/pinctrl/mediatek/pinctrl-mt6983.ko": "mt6983",
     "drivers/pinctrl/mediatek/pinctrl-mt6985.ko": "mt6985",
     "drivers/pinctrl/mediatek/pinctrl-mt6989.ko": "mt6989",
+    "drivers/pinctrl/mediatek/pinctrl-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/devapc/device-apc-mt6879.ko": "mt6879",
     "drivers/soc/mediatek/devapc/device-apc-mt6886.ko": "mt6886",
@@ -889,6 +896,8 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko": "mt6985",
     "sound/soc/mediatek/mt6989/mt6989-mt6681.ko": "mt6989",
     "sound/soc/mediatek/mt6989/snd-soc-mt6989-afe.ko": "mt6989",
+    "sound/soc/mediatek/mt6991/mt6991-mt6681.ko": "mt6991",
+    "sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko": "mt6991",
     "sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko": "mt6893",
     "sound/soc/mediatek/mt6885/mt6885-mt6359p.ko": "mt6893",
 }
@@ -1213,6 +1222,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6768.ko":"mt6768"})
 
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6768.ko":"mt6768"})
