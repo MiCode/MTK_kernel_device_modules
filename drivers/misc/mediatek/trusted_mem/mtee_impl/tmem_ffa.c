@@ -26,6 +26,8 @@
 #include "private/tmem_utils.h"
 #include "ssmr/memory_ssmr.h"
 
+extern struct ffa_device *get_tee_ffa_dev(void);
+
 typedef u16 ffa_partition_id_t;
 
 struct tmem_carveout_heap {
@@ -516,6 +518,11 @@ int tmem_register_ffa_module(void)
 	if (ret) {
 		pr_info("%s: failed to get FFA-ops\n", __func__);
 		return TMEM_KPOOL_FFA_INIT_FAILED;
+	}
+
+	if (tmem_ffa_dev == NULL) {
+		tmem_ffa_dev = get_tee_ffa_dev();
+		tmem_ffa_ops = tmem_ffa_dev->ops;
 	}
 
 	pr_info("%s:%d (end)\n", __func__, __LINE__);
