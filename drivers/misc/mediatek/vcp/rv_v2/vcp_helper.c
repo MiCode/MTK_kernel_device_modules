@@ -3084,6 +3084,10 @@ static const struct of_device_id vcp_acp_venc_of_ids[] = {
 	{ .compatible = "mediatek,vcp-io-acp-venc", },
 	{}
 };
+static const struct of_device_id vcp_acp_codec_of_ids[] = {
+	{ .compatible = "mediatek,vcp-io-acp-codec", },
+	{}
+};
 
 static struct platform_driver mtk_vcp_io_vdec = {
 	.probe = vcp_io_device_probe,
@@ -3165,6 +3169,16 @@ static struct platform_driver mtk_vcp_io_acp_venc = {
 	},
 };
 
+static struct platform_driver mtk_vcp_io_acp_codec = {
+	.probe = vcp_io_device_probe,
+	.remove = vcp_io_device_remove,
+	.driver = {
+		.name = "vcp_io_acp_codec",
+		.owner = THIS_MODULE,
+		.of_match_table = vcp_acp_codec_of_ids,
+	},
+};
+
 /*
  * driver initialization entry point
  */
@@ -3231,6 +3245,10 @@ static int __init vcp_init(void)
 	if (platform_driver_register(&mtk_vcp_io_acp_venc)) {
 		pr_info("[VCP] mtk_vcp_io_acp_venc probe fail\n");
 		goto err_io_acp_venc;
+	}
+	if (platform_driver_register(&mtk_vcp_io_acp_codec)) {
+		pr_info("[VCP] mtk_vcp_io_acp_codec probe fail\n");
+		goto err_io_acp_codec;
 	}
 
 	if (!vcp_support)
@@ -3324,6 +3342,8 @@ static int __init vcp_init(void)
 
 	return ret;
 err:
+	platform_driver_unregister(&mtk_vcp_io_acp_codec);
+err_io_acp_codec:
 	platform_driver_unregister(&mtk_vcp_io_acp_venc);
 err_io_acp_venc:
 	platform_driver_unregister(&mtk_vcp_io_acp_vdec);
@@ -3379,6 +3399,7 @@ static void __exit vcp_exit(void)
 	for (i = 0; i < VCP_CORE_TOTAL ; i++)
 		del_timer(&vcp_ready_timer[i].tl);
 #endif
+	platform_driver_unregister(&mtk_vcp_io_acp_codec);
 	platform_driver_unregister(&mtk_vcp_io_acp_venc);
 	platform_driver_unregister(&mtk_vcp_io_acp_vdec);
 	platform_driver_unregister(&mtk_vcp_io_sec);
