@@ -29,6 +29,7 @@
 #define MAX_WIFI_RADIO_SZ			3
 #define MAX_WIFI_RATE_SZ			32
 #define MAX_WIFI_LP_SZ				5
+#define MAX_LPM_STATE_NUM				16
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -515,5 +516,14 @@ struct mbraink_power_throttle_hw_data {
 	int ppb_g_flavor;
 };
 
+struct mbraink_lpm_state_info {
+	u64 count;
+	u64 duration;
+};
+
+struct mbraink_lpm_state_data {
+	u16 state_num;
+	struct mbraink_lpm_state_info lpm_state_info[MAX_LPM_STATE_NUM];
+};
 
 #endif
