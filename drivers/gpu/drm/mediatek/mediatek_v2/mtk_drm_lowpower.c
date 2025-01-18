@@ -229,6 +229,14 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 	}
 
 	switch (priv->data->mmsys_id) {
+	case MMSYS_MT6991:
+		data->cpu_mask = 0xf; //cpu0~3
+		data->cpu_freq = 1000000; // 1Ghz
+		data->cpu_dma_latency = PM_QOS_DEFAULT_VALUE;
+		data->vblank_async = false;
+		data->hw_async = true;
+		data->sram_sleep = false;
+		break;
 	case MMSYS_MT6989:
 		data->cpu_mask = 0xf; //cpu0~3
 		data->cpu_freq = 1000000; // 1Ghz
