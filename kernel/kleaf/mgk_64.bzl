@@ -345,6 +345,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     "drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
+    "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
     "drivers/misc/mediatek/iommu/mtk_iommu_util.ko",
     "drivers/misc/mediatek/iommu/iommu_debug.ko",
     "drivers/misc/mediatek/iommu/iommu_engine.ko",
@@ -1285,6 +1286,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp6s_mon/imgsensor_isp6s_mon.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
@@ -1382,6 +1385,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4/imgsensor_isp4.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
