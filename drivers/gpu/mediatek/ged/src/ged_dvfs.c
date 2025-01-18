@@ -1297,7 +1297,6 @@ static void ged_fastdvfs_update_dcs(void)
 	virtual_min_opp = ged_get_min_oppidx();
 
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_VIRTUAL_OPP, cur_virtual_opp);
-	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DCS_CORE_NUM, cur_core_num);
 
 	if (g_async_ratio_support) {
 		unsigned int g_desire_stack_id;
@@ -2334,6 +2333,7 @@ void set_api_sync_flag(int flag)
 {
 	if (flag == 1 || flag == 0) {
 		api_sync_flag = flag;
+		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, api_sync_flag);
 		if (flag)
 			g_latest_api_sync_ts_ms = ged_get_time() / 1000000;
 	} else if (flag == 3) {
@@ -3515,9 +3515,22 @@ GED_ERROR ged_dvfs_probe(int pid)
 
 void ged_dvfs_enable_async_ratio(int enableAsync)
 {
+	unsigned int tmp_sysram_val = 0;
+
 	GED_LOGI("[DVFS_ASYNC] %s async ratio in ged_dvfs",
 			enableAsync ? "enable" : "disable");
 	g_async_ratio_support = enableAsync;
+
+	// update sysram value
+	if (g_async_ratio_support && g_oppnum_eachmask) {
+		// [0:7] for oppnum_eachmask, [8:15] for enable async ratio, [16:31] for lb async
+		tmp_sysram_val = g_oppnum_eachmask << COMMON_LOW_BIT;
+		tmp_sysram_val += g_async_ratio_support << COMMON_MID_BIT;
+		tmp_sysram_val += g_enable_lb_async << COMMON_HIGH_BIT;
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
+	} else
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
 }
 
 void ged_dvfs_force_top_oppidx(int idx)
@@ -3602,7 +3615,19 @@ int ged_dvfs_get_lb_async_ratio_support(void)
 
 void ged_dvfs_enable_lb_async_ratio(int enableAsync)
 {
+	unsigned int tmp_sysram_val = 0;
 	g_enable_lb_async = enableAsync;
+
+	// update sysram value
+	if (g_async_ratio_support && g_oppnum_eachmask) {
+		// [0:7] for oppnum_eachmask, [8:15] for enable async ratio, [16:31] for lb async
+		tmp_sysram_val = g_oppnum_eachmask << COMMON_LOW_BIT;
+		tmp_sysram_val += g_async_ratio_support << COMMON_MID_BIT;
+		tmp_sysram_val += g_enable_lb_async << COMMON_HIGH_BIT;
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
+	} else
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
 }
 
 int ged_dvfs_get_lb_async_perf_diff(void)
@@ -3627,6 +3652,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	struct device_node *reduce_mips_dvfs_node = NULL;
 	struct device_node *dvfs_loading_mode_node = NULL;
 	struct device_node *gpu_mewtwo_node = NULL;
+	unsigned int tmp_sysram_val = 0;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
@@ -3732,7 +3758,6 @@ GED_ERROR ged_dvfs_system_init(void)
 	/* get min oppidx (limit min oppidx in gpueb) */
 	if (eb_policy_dts_flag == 1) {
 		get_min_oppidx = ged_get_min_oppidx();
-		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_MIN_OPPIDX, get_min_oppidx);
 		GED_LOGI("dts support gpueb dvfs, min_oppidx=%u", get_min_oppidx);
 		mtk_set_fastdvfs_mode(POLICY_MODE);
 	} else
@@ -3761,6 +3786,20 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(async_dvfs_node, "async-oppnum-eachmask", &g_oppnum_eachmask);
 		g_enable_lb_async = g_async_ratio_support;
 	}
+	// write dcs related data to sysram for EB dvfs
+	ged_eb_dvfs_task(EB_DCS_ENABLE, ged_gpufreq_get_dcs_sysram());
+	// write oppnum_eachmask to sysram if g_async_ratio_support
+	if (g_async_ratio_support && g_oppnum_eachmask) {
+		// [0:7] for oppnum_eachmask, [8:15] for enable async ratio, [16:31] for lb async
+		tmp_sysram_val = g_oppnum_eachmask << COMMON_LOW_BIT;
+		tmp_sysram_val += g_async_ratio_support << COMMON_MID_BIT;
+		tmp_sysram_val += g_enable_lb_async << COMMON_HIGH_BIT;
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
+	} else
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+	// set api boost initial value
+	ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
 	// Find the largest oppidx whose stack freq does not repeat
 	g_async_id_threshold = get_max_oppidx_with_same_stack(ged_get_min_oppidx_real());
 	if (g_async_id_threshold != ged_get_min_oppidx_real())

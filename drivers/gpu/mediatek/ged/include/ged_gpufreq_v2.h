@@ -49,5 +49,6 @@ int ged_get_max_freq_in_opp(void);
 // for async ratio
 int ged_get_sc_freq_by_virt_opp(int oppidx);
 int ged_get_top_freq_by_virt_opp(int oppidx);
+unsigned int ged_gpufreq_get_dcs_sysram(void);
 
 #endif /* __GED_GPUFREQ_V2_H__ */

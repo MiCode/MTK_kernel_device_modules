@@ -202,6 +202,7 @@ void ged_eb_dvfs_trace_dump(void)
 	u64 soc_timer_eb = 0;
 	u32 time_diff = 0;
 	GED_DVFS_COMMIT_TYPE eCommitType;
+	static int apply_lb_async;
 
 	struct GpuUtilization_Ex util_ex;
 
@@ -320,6 +321,38 @@ void ged_eb_dvfs_trace_dump(void)
 
 	trace_GPU_DVFS__Policy__EB_DEBUG(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DEBUG_COUNT), time_diff);
+
+	// LB async ratio on EB
+	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT) {
+		trace_GPU_DVFS__Policy__Loading_based__Async_Ratio__MCU_index(
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_IS_MCU),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_AVG_MCU),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_MCU),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_AVG_MCU_TH),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MAX_MCU_TH));
+
+		apply_lb_async = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_APPLY_LB_ASYNC);
+		if (apply_lb_async) {
+			trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_GPU_ACTIVE),
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_ITER),
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_COMPUTE),
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_L2EXT),
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_IRQ),
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_MCU));
+			trace_tracing_mark_write(5566, "async_perf_high",
+				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
+		}
+	}
+	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
+		trace_GPU_DVFS__Policy__Loading_based__Async_Ratio__Policy(
+			apply_lb_async,
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
+		trace_tracing_mark_write(5566, "async_opp_diff",
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
+	}
 
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT)
 		eb_timeout_value = lb_timeout;

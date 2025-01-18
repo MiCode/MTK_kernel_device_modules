@@ -1009,7 +1009,22 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 			break;
 		case EB_UPDATE_PRESERVE:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_PRESERVE, value);
-			break;
+		break;
+		case EB_DCS_ENABLE:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DCS_ENABLE, value);
+		break;
+		case EB_DCS_CORE_NUM:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DCS_CORE_NUM, value);
+		break;
+		case EB_ASYNC_RATIO_ENABLE:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_ASYNC_RATIO_ENABLE, value);
+		break;
+		case EB_ASYNC_PARAM:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_ASYNC_PARAM, value);
+		break;
+		case EB_UPDATE_API_BOOST:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_API_BOOST, value);
+		break;
 		default:
 			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
 			break;
