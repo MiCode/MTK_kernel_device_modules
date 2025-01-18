@@ -12,6 +12,12 @@
 #define MTK_SIP_VCOREFS_SET_FREQ 16
 #define NUM_DRAM_OPP 6
 
+int ddr_level_to_step(int opp)
+{
+	unsigned int step[] = {0, 1, 3, 5, 7, 9};
+	return step[opp];
+}
+
 static int __init dvfsrc_opp_init(void)
 {
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
@@ -21,7 +27,7 @@ static int __init dvfsrc_opp_init(void)
 	for (i = 0; i < NUM_DRAM_OPP; i++) {
 		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL,
 			MTK_SIP_VCOREFS_SET_FREQ,
-			i, mtk_dramc_get_steps_freq(i), 0, 0, 0, 0,
+			i, mtk_dramc_get_steps_freq(ddr_level_to_step(i)), 0, 0, 0, 0,
 			&ares);
 	}
 #endif
