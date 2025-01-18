@@ -280,7 +280,7 @@ int mtk_vcu_free_buffer(struct mtk_vcu_queue *vcu_queue,
 			if (vcu_buffer->dbuf != NULL)
 				continue;
 			if (vcu_buffer->mem_priv == NULL || vcu_buffer->size == 0) {
-				pr_info("[VCU][Error] %s remove invalid vcu_queue bufs[%u] in num_buffers %u (mem_priv 0x%lx size %lu ref_cnt %d)\n",
+				pr_info("[VCU][Error] %s remove invalid vcu_queue bufs[%u] in num_buffers %u (mem_priv 0x%lx size %zu ref_cnt %d)\n",
 					__func__, buffer, num_buffers,
 					(unsigned long)vcu_buffer->mem_priv, vcu_buffer->size,
 					atomic_read(&vcu_buffer->ref_cnt));
@@ -367,8 +367,8 @@ void mtk_vcu_buffer_ref_dec(struct mtk_vcu_queue *vcu_queue,
 
 			if (atomic_read(&vcu_buffer->ref_cnt) == 0
 				&& vcu_buffer->dbuf != NULL) {
-				pr_debug("Free IO buff = %d iova = %llx mem_priv = %llx, queue_num = %d\n",
-					buffer, vcu_buffer->iova,
+				pr_debug("Free IO buff = %d iova = %pad mem_priv = %llx, queue_num = %d\n",
+					buffer, &vcu_buffer->iova,
 					(unsigned long long)vcu_buffer->mem_priv, num_buffers);
 				fput(vcu_buffer->dbuf->file);
 				vcu_buf_remove(vcu_queue, buffer);

@@ -441,8 +441,8 @@ static void remove_all_iova_node(struct mtk_vcu *vcu)
 		dma_buf_unmap_attachment_unlocked(curr_node->buf_att, curr_node->sgt, DMA_TO_DEVICE);
 		dma_buf_detach(display_dma_buf, curr_node->buf_att);
 
-		vcu_dbg_log("[VCU] free node with mapped_iova:x%llx wdma_dma_buf_addr:0x%lx",
-			curr_node->mapped_iova, curr_node->wdma_dma_buf_addr);
+		vcu_dbg_log("[VCU] free node with mapped_iova:x%pad wdma_dma_buf_addr:0x%lx",
+			&curr_node->mapped_iova, curr_node->wdma_dma_buf_addr);
 		kfree(curr_node);
 	}
 	mutex_unlock(&iova_node_list.node_iova_lock);
@@ -502,8 +502,8 @@ static dma_addr_t find_iova_node_by_dam_buf(uintptr_t in_wdma_dma_buf_addr)
 
 	while (curr_node != NULL) {
 		if (curr_node->wdma_dma_buf_addr == in_wdma_dma_buf_addr) {
-			vcu_dbg_log("This dma_buf 0x%lx has been mapped, iova is 0x%llx",
-				in_wdma_dma_buf_addr, curr_node->mapped_iova);
+			vcu_dbg_log("This dma_buf 0x%lx has been mapped, iova is 0x%pad",
+				in_wdma_dma_buf_addr, &curr_node->mapped_iova);
 			ret = curr_node->mapped_iova;
 			break;
 		}
@@ -1373,7 +1373,7 @@ static long vcu_get_disp_mapped_iova(struct mtk_vcu *vcu, unsigned long arg)
 	sgt = dma_buf_map_attachment_unlocked(buf_att, DMA_FROM_DEVICE);
 	vcu_dbg_log("%s %d", __func__, __LINE__);
 	mapped_iova = sg_dma_address(sgt->sgl);
-	vcu_dbg_log("[VCU] mapped_iova=0x%llx", mapped_iova);
+	vcu_dbg_log("[VCU] mapped_iova=0x%pad", &mapped_iova);
 
 	// add this mapped iova in list
 	add_new_iova_node(wdma_dma_buf_addr, mapped_iova, buf_att, sgt);
