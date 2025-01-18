@@ -1158,6 +1158,7 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl_exdma *ovl, unsigned int
 			return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_ABGR8888:
+	case DRM_FORMAT_Y410:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
 			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN |
 			       OVL_CON_RGB_SWAP;
@@ -2317,6 +2318,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_DATASPACE];
 
 		con |= mtk_ovl_yuv_matrix_convert((enum mtk_drm_dataspace)prop);
+	} else if (fmt == DRM_FORMAT_Y410) {
+		DDPDBG("%s: DRM_FORMAT_Y410, dataspace set as BT601_FULL\n", __func__);
+		con |= mtk_ovl_yuv_matrix_convert(MTK_DRM_DATASPACE_V0_JFIF);
 	}
 
 	if (!pending->addr && pending->pq_loop_type == 0)
@@ -2353,6 +2357,12 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		con |= REG_FLD_VAL(L_CON_FLD_MTX_EN, 1);
 	}
 
+	if (fmt == DRM_FORMAT_Y410) {
+		DDPDBG("%s: DRM_FORMAT_Y410, enable OVL Y2R\n", __func__);
+		con |= REG_FLD_VAL(L_CON_FLD_MTX_AUTO_DIS, 1);
+		con |= REG_FLD_VAL(L_CON_FLD_MTX_EN, 1);
+		/* if format is DRM_FORMAT_Y410, enable Y2R inside OVL */
+	}
 
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
