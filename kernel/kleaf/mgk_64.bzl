@@ -1694,6 +1694,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
