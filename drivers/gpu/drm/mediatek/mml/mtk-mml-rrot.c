@@ -1819,6 +1819,8 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		/* Alignment Y top in block boundary */
 		in_ys = ((in_ys >> rrot_frm->vdo_blk_shift_h) <<
 			rrot_frm->vdo_blk_shift_h);
+
+		mml_msg("block align to in xs %llu ys %llu", in_xs, in_ys);
 	}
 
 	if (MML_FMT_AFBC(src->format) || MML_FMT_HYFBC(src->format)) {
