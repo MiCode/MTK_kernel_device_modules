@@ -28,6 +28,8 @@ struct em_base_info {
 	void *eemsn_log;
 	bool curve_adj_support;
 	bool wl_support;
+	unsigned int *cpu_cluster_id;
+	cpumask_t **cpu_cluster_mask;
 	struct mtk_mapping mtk_mapping;
 };
 
