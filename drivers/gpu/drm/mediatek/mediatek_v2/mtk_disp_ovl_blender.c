@@ -100,9 +100,6 @@
 #define OVL_BLD_L0_CLRFMT(n)	(0x0050 + 0x30 * (n))
 	#define OVL_CON_CLRFMT_MAN		BIT(4)
 
-#define OVL_CON_MTX_JPEG_TO_RGB		(4UL << 16)
-#define OVL_CON_MTX_BT601_TO_RGB	(6UL << 16)
-#define OVL_CON_MTX_BT709_TO_RGB	(7UL << 16)
 	#define OVL_CON_CLRFMT_RGB (1UL)
 	#define OVL_CON_CLRFMT_RGBA8888 (2)
 	#define OVL_CON_CLRFMT_ARGB8888 (3)
@@ -860,55 +857,6 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl_blender *ovl, unsigned i
 	}
 }
 
-static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
-{
-	int ret = 0;
-
-	switch (plane_ds & MTK_DRM_DATASPACE_STANDARD_MASK) {
-	case MTK_DRM_DATASPACE_STANDARD_BT601_625:
-	case MTK_DRM_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
-	case MTK_DRM_DATASPACE_STANDARD_BT601_525:
-	case MTK_DRM_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
-		switch (plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) {
-		case MTK_DRM_DATASPACE_RANGE_UNSPECIFIED:
-		case MTK_DRM_DATASPACE_RANGE_LIMITED:
-			ret = OVL_CON_MTX_BT601_TO_RGB;
-			break;
-		default:
-			ret = OVL_CON_MTX_JPEG_TO_RGB;
-			break;
-		}
-		break;
-
-	case MTK_DRM_DATASPACE_STANDARD_BT709:
-	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
-	case MTK_DRM_DATASPACE_STANDARD_BT2020:
-	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-		ret = OVL_CON_MTX_BT709_TO_RGB;
-		break;
-
-	case 0:
-		switch (plane_ds & 0xffff) {
-		case MTK_DRM_DATASPACE_JFIF:
-		case MTK_DRM_DATASPACE_BT601_625:
-		case MTK_DRM_DATASPACE_BT601_525:
-			ret = OVL_CON_MTX_BT601_TO_RGB;
-			break;
-
-		case MTK_DRM_DATASPACE_SRGB_LINEAR:
-		case MTK_DRM_DATASPACE_SRGB:
-		case MTK_DRM_DATASPACE_BT709:
-			ret = OVL_CON_MTX_BT709_TO_RGB;
-			break;
-		}
-	}
-
-	if (ret)
-		return ret;
-
-	return OVL_CON_MTX_BT601_TO_RGB;
-}
-
 /* config addr, pitch, src_size */
 static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			       struct mtk_plane_state *state,
@@ -1107,12 +1055,6 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	Ln_CLRFMT = ovl_fmt_convert(ovl, fmt, modifier,
 			pending->prop_val[PLANE_PROP_COMPRESS]);
 	con |= (alpha_con << 12) | alpha;
-
-	if (fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV) {
-		unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_DATASPACE];
-
-		con |= mtk_ovl_yuv_matrix_convert((enum mtk_drm_dataspace)prop);
-	}
 
 	if (rotate) {
 		unsigned int bg_w = 0, bg_h = 0;
