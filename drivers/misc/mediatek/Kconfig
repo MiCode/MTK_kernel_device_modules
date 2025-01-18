@@ -372,3 +372,43 @@ config MTK_ENABLE_AGO
 
 endmenu # Memory
 
+menu "devlink"
+
+config MTK_DEVLINK
+	bool "mtk devlink support"
+	help
+	  Used to control the whole devlink on the platform, whitch
+	  include flash, coredump, and logdump.
+	  When enable this option, devlink framework will be enabled.
+	  This option must be used in conjunction with other sub options.
+	  Say Y here if you need devlink support.
+	  If unsure, say N
+
+config MTK_DEVLINK_COREDUMP_SUPPORT
+	bool "mtk devlink coredump support"
+	help
+	  Used to control the devlink coredump mode of the platform.
+	  When enable this option, CoreDump port's type will change to internal.
+	  PCI-e coredump will be enabled.
+	  Say Y here if you need devlink coredump support.
+	  If unsure, say N
+
+config MTK_DEVLINK_FLASH_SUPPORT
+	bool "mtk devlink flash support"
+	help
+	  Used to control the devlink flash mode of the platform.
+	  When enable this option, FBootDownload port's type will change to internal.
+	  PCI-e flash will be enabled.
+	  Say Y here if you need devlink flash support.
+	  If unsure, say N
+
+config MTK_DEVLINK_LOGDUMP_SUPPORT
+	bool "mtk devlink logdump support"
+	help
+	  Used to control the devlink region on the platform.
+	  When enable this option, devlink region will be enabled.
+	  ThinMD can get device bootup log through devlink.
+	  Say Y here if you need devlink region support.
+	  If unsure, say N
+endmenu # devlink
+
