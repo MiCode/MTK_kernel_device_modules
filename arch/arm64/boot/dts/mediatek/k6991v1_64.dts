@@ -605,7 +605,6 @@ bootargs_ext = "";
 /* usb typec mux end */
 #if 0
 
-#include "mediatek/cust_mt6985_touch_1080x2400.dtsi"
 #include "mediatek/cust_k6991_connfem.dtsi"
 
 &i2c6 {
@@ -636,7 +635,10 @@ bootargs_ext = "";
 &pdc {
 	pd_vbus_upper_bound = <12000000>;
 };
+
+#include "mediatek/cust_mt6991_touch_1080x2400_mult.dtsi"
 #endif
+
 
 #include "k6991v1_64/cust.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
