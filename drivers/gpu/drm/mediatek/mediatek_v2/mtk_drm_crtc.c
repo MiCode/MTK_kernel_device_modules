@@ -14929,7 +14929,7 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 
 	if (mtk_crtc->path_data->is_exdma_dual_layer)
 		plane_state_r->pending.offset = plane_state_r->pending.dst_y << 16 |
-						plane_state_r->pending.src_x;
+						(plane_state_l->pending.dst_x + plane_state_l->pending.width);
 
 	DDPDBG("plane_r (%u,%u) (%u,%u), (%u,%u)\n",
 		plane_state_r->pending.src_x, plane_state_r->pending.src_y,
