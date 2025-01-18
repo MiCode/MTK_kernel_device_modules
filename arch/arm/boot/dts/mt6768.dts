@@ -4107,6 +4107,12 @@ transparent_hugepage=never clk_ignore_unused=1";
 		mediatek,larb = <&smi_larb2>;
 	};
 
+	smi-dbg {
+		compatible = "mediatek,mtk-smi-dbg";
+		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3 &smi_larb4>;
+		mediatek-common-supply = <&smi_common>;
+	};
+
 	smi_larb2: smi_larb2@15021000 {
 		compatible = "mediatek,smi_larb2",
 				"mediatek,mt6768-smi-larb", "mediatek,smi-larb";
