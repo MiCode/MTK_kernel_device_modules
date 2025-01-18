@@ -193,9 +193,9 @@ trustonic,real-drv = <1>;
 	};
 };
 
-&mt6370_pmu {
-	mt6370,intr_gpio_num = <11>; /* direct defined GPIO num */
-	mt6370,intr_gpio = <&pio 11 0x0>;
+&mt6370 {
+	interrupt-parent = <&pio>;
+	interrupts = <11 IRQ_TYPE_LEVEL_LOW 11 0>;
 };
 
 &mt6370_chg {
