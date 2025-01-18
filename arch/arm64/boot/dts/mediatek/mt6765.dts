@@ -3209,8 +3209,8 @@ pwrap: pwrap@1000d000 {
 		udc = <&usb>;
 	};
 
-	usb_boost: usb_boost_manager {
-		compatible = "mediatek,usb_boost", "mediatek,mt6765-usb_boost";
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6765-usb-boost";
 		interconnects = <&dvfsrc MT6873_MASTER_DBGIF &dvfsrc MT6873_SLAVE_DDR_EMI>;
 		interconnect-names = "icc-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
