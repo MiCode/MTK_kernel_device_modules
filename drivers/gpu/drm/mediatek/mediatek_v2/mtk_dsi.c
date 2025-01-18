@@ -3255,6 +3255,32 @@ void clear_dsi_underrun_event(void)
 	dsi_underrun_trigger = 1;
 }
 
+unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_connector_state *mtk_conn_state = NULL;
+	struct mtk_dsi *dsi;
+	unsigned long long cur_bl = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!output_comp)) {
+		DDPMSG("%s: invalid output comp\n", __func__);
+		return cur_bl;
+	}
+	dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+
+	mtk_conn_state = to_mtk_connector_state(dsi->conn.state);
+	if (mtk_conn_state == NULL) {
+		DDPMSG("%s, mtk_conn_state is null\n", __func__);
+		return cur_bl;
+	}
+	cur_bl = mtk_conn_state->prop_val[dsi->conn.index][CONNECTOR_PROP_CSC_BL];
+
+	return cur_bl;
+}
+EXPORT_SYMBOL(mtk_get_cur_backlight);
+
 void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 {
 	struct mtk_connector_state *mtk_conn_state = NULL;

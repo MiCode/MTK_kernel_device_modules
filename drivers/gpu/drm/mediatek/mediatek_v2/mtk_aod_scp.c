@@ -16,9 +16,7 @@
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
 #include "mtk_disp_pmqos.h"
-
-
-
+#include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
 struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
@@ -32,6 +30,7 @@ static unsigned int aod_mmsys_id;
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 #define MTK_FB_ALIGNMENT 32
 #define CFG_DISPLAY_ALIGN_WIDTH   ALIGN_TO(CFG_DISPLAY_WIDTH, MTK_FB_ALIGNMENT)
+#define AOD_TEMP_BACKLIGHT 1800
 
 #define DRAM_ADDR_DIGITS_OFFSET		0x3080000
 #define LK_DGT_SZ_OFFSET		0x1fa40
@@ -191,6 +190,11 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 
 		iounmap(va);
 	}
+
+	DDPMSG("%s, bl: %lld, fps: %d\n", __func__, mtk_get_cur_backlight(crtc), CFG_DISPLAY_VREFRESH);
+	mtk_drm_dbi_backup(crtc, scp_get_reserve_mem_phys,
+		scp_get_reserve_mem_virt, scp_get_reserve_mem_size,
+		AOD_TEMP_BACKLIGHT, CFG_DISPLAY_VREFRESH);
 
 	AOD_STAT_SET(AOD_STAT_CONFIGED);
 }
@@ -490,7 +494,7 @@ int mtk_aod_scp_doze_update(int doze)
 	if (doze) {
 		if (aod_mmsys_id == MMSYS_MT6989 ||
 			aod_mmsys_id == MMSYS_MT6991) {
-			mtkfb_set_backlight_level_AOD(1800);
+			mtkfb_set_backlight_level_AOD(AOD_TEMP_BACKLIGHT);
 			//mtk_aod_scp_set_BW();
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
@@ -628,8 +632,10 @@ static int aod_scp_resume(struct device *dev)
 
 static int aod_scp_suspend_noirq(struct device *dev)
 {
-	if (AOD_STAT_MATCH(AOD_STAT_ACTIVE))
+	if (AOD_STAT_MATCH(AOD_STAT_ACTIVE)) {
 		mtk_aod_scp_ipi_send(0);
+		mtk_oddmr_scp_status(1);
+	}
 
 	//mtk_aod_scp_set_semaphore_noirq(0);
 	return 0;
@@ -639,6 +645,7 @@ static int aod_scp_resume_noirq(struct device *dev)
 {
 	//if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
 	//	DDPAEE("[AOD]:failed to get semaphore\n");
+	mtk_oddmr_scp_status(0);
 	return 0;
 }
 
