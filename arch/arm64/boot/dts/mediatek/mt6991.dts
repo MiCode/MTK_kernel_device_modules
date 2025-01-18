@@ -954,6 +954,10 @@
 		compatible = "mediatek,mt6991-hfrpsys-hwv", "syscon";
 		reg = <0 0x31b50000 0 0x1000>;
 		#power-domain-cells = <1>;
+		clocks =
+				/* CCU */
+				<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>;
+		clock-names = "ccusys";
 		mmpc = <&hfrpsys>;
 		mm-hw-ccf-regmap = <&mm_hwv>;
 		mminfra-hwv-regmap = <&mminfra_hwv>;
