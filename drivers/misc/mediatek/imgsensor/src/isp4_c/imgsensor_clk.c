@@ -25,14 +25,9 @@ char *gimgsensor_mclk_name[IMGSENSOR_CCF_MAX_NUM] = {
 	"CLK_MIPI_C0_26M_CG",
 	"CLK_MIPI_C1_26M_CG",
 	"CLK_MIPI_ANA_0A_CG",
-	"CLK_MIPI_ANA_0B_CG",
-	"CLK_MIPI_ANA_1A_CG",
-	"CLK_MIPI_ANA_1B_CG",
-	"CLK_MIPI_ANA_2A_CG",
-	"CLK_MIPI_ANA_2B_CG",
 	"CLK_TOP_CAMTM_SEL_CG",
 	"CLK_TOP_CAMTM_208_CG",
-#ifndef SENINF_USE_RPM
+#ifndef IMGSENSOR_USE_RPM
 	"CLK_SCP_SYS_CAM",
 #endif
 };
@@ -95,7 +90,7 @@ int imgsensor_dfs_init(struct imgsensor_dfs_ctx *ctx, struct device *dev)
 	freq = 0;
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
 		freq_hz = freq;
-		freq_hz /= 1000000; /*Hz->MHz*/
+		freq_hz /= 1000000;  /* Hz->MHz */
 		ctx->freqs[ctx->cnt-1-i] = freq_hz;
 		ctx->volts[ctx->cnt-1-i] = dev_pm_opp_get_voltage(opp);
 		freq++;
@@ -123,7 +118,6 @@ int imgsensor_dfs_ctrl(struct imgsensor_dfs_ctx *ctx, enum DFS_OPTION option, vo
 			return IMGSENSOR_RETURN_ERROR;
 		}
 	}
-	/*pr_info("%s\n", __func__);*/
 
 	switch (option) {
 	case DFS_CTRL_ENABLE:
@@ -154,7 +148,7 @@ int imgsensor_dfs_ctrl(struct imgsensor_dfs_ctx *ctx, enum DFS_OPTION option, vo
 	case DFS_SUPPORTED_ISP_CLOCKS:
 	{
 		struct IMAGESENSOR_GET_SUPPORTED_ISP_CLK *pIspclks;
-		int i;
+		unsigned int i;
 
 		pIspclks = (struct IMAGESENSOR_GET_SUPPORTED_ISP_CLK *) pbuff;
 
@@ -166,8 +160,13 @@ int imgsensor_dfs_ctrl(struct imgsensor_dfs_ctx *ctx, enum DFS_OPTION option, vo
 			break;
 		}
 
-		for (i = 0; i < pIspclks->clklevelcnt; i++)
+		for (i = 0; i < pIspclks->clklevelcnt; i++) {
+			/* Save clk from low to high */
 			pIspclks->clklevel[i] = ctx->freqs[i];
+			/*pr_debug("DFS Clk level[%d]:%d",
+			 *	i, pIspclks->clklevel[i]);
+			 */
+		}
 	}
 		break;
 	case DFS_CUR_ISP_CLOCK:
@@ -388,7 +387,6 @@ void imgsensor_clk_disable_all(struct IMGSENSOR_CLK *pclk)
 {
 	unsigned int i;
 
-	pr_info("%s\n", __func__);
 	for (i = IMGSENSOR_CCF_MCLK_TG_MIN_NUM;
 		i < IMGSENSOR_CCF_MAX_NUM;
 		i++) {
@@ -398,6 +396,7 @@ void imgsensor_clk_disable_all(struct IMGSENSOR_CLK *pclk)
 			atomic_dec(&pclk->enable_cnt[i]);
 		}
 	}
+	pr_info("%s X\n", __func__);
 }
 
 int imgsensor_clk_ioctrl_handler(void *pbuff)
