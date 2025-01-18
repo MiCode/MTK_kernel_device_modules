@@ -96,9 +96,9 @@ struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
 	u8 px_per_tick;
-	bool aal_crop_disable;
-	bool wrot_pending;
-	bool alpha_rsz_crop;
+	bool aal_crop_disable;	/* WA: crop aal loss from rsz */
+	bool wrot_pending;	/* WA: enable wrot yuv422/420 pending zero */
+	bool alpha_rsz_crop;	/* WA: align rdma crop size when alpha resize */
 };
 
 static const struct rsz_data mt6893_rsz_data = {

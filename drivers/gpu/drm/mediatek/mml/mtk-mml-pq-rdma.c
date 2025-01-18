@@ -396,8 +396,8 @@ enum rdma_golden_fmt {
 
 struct rdma_data {
 	u32 tile_width;
-	bool write_sec_reg;
-	bool tile_reset;
+	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
+	bool tile_reset;	/* WA: write dummy register to clean up states */
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -935,6 +935,7 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 	if (!rdma->data->tile_reset)
 		return;
 
+	/* write dummy register to force rdma tick and clean up */
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
 }
@@ -1067,13 +1068,14 @@ static void rdma_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
+	const bool write_sec = rdma->data->write_sec_reg;
 	u32 value[33];
 	u32 state, greq;
 	u32 i;
 
 	mml_err("rdma component %u dump:", comp->id);
 
-	if (rdma->data->write_sec_reg)
+	if (write_sec)
 		cmdq_util_prebuilt_dump(0, CMDQ_TOKEN_PREBUILT_MML_WAIT);
 	else {
 		u32 shadow_ctrl;
@@ -1103,7 +1105,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[8] = readl(base + RDMA_MF_OFFSET_1);
 	value[9] = readl(base + RDMA_SF_BKGD_SIZE_IN_BYTE);
 	value[10] = readl(base + RDMA_MF_BKGD_H_SIZE_IN_PXL);
-	if (!rdma->data->write_sec_reg) {
+	if (!write_sec) {
 		value[11] = readl(base + RDMA_SRC_OFFSET_0_MSB);
 		value[12] = readl(base + RDMA_SRC_OFFSET_0);
 		value[13] = readl(base + RDMA_SRC_OFFSET_1_MSB);
@@ -1134,7 +1136,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[6], value[7], value[8]);
 	mml_err("RDMA_SF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_H_SIZE_IN_PXL %#010x",
 		value[9], value[10]);
-	if (!rdma->data->write_sec_reg) {
+	if (!write_sec) {
 		mml_err("RDMA_SRC OFFSET_0_MSB %#010x OFFSET_0 %#010x",
 			value[11], value[12]);
 		mml_err("RDMA_SRC OFFSET_1_MSB %#010x OFFSET_1 %#010x",

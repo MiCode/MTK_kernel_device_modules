@@ -343,10 +343,10 @@ struct wrot_data {
 	u32 fifo;
 	u32 tile_width;
 	u32 sram_size;
-	u8 rb_swap;	/* version for rb channel swap behavior */
 	u8 read_mode;
 	u8 px_per_tick;
-	bool yuv_pending;
+	u8 rb_swap;		/* WA: version for rb channel swap behavior */
+	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -373,8 +373,8 @@ static const struct wrot_data mt6989_wrot_data = {
 	.sram_size = 512 * 1024,
 	.read_mode = MML_PQ_SOF_MODE,
 	.px_per_tick = 2,
-	.yuv_pending = true,
 	/* .rb_swap = 2 */
+	.yuv_pending = true,
 };
 
 static const struct wrot_data mt6878_wrot_data = {

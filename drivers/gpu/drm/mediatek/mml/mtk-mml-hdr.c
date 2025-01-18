@@ -110,9 +110,9 @@ struct hdr_data {
 	u16 gpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	u8 tile_loss;
-	bool vcp_readback;
 	u8 rb_mode;
-	bool enable_dummy;
+	bool vcp_readback;	/* WA: use vcp to replace gce readback */
+	bool enable_dummy;	/* WA: enable dummy to ignore fg out_mask */
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -128,10 +128,10 @@ static const struct hdr_data mt6895_hdr_data = {
 	.min_tile_width = 16,
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.vcp_readback = true,
 	.reg_table = hdr_reg_table_mt6983,
 	.tile_loss = 8,
 	.rb_mode = RB_EOF_MODE,
+	.vcp_readback = true,
 };
 
 static const struct hdr_data mt6985_hdr_data = {
