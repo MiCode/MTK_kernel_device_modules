@@ -357,6 +357,7 @@ static ssize_t stmmac_store(struct device *dev,
 	void __iomem *tmp_addr;
 	int reg, data, devid, origin, i, reg_addr, phy_addr, dev_addr;
 	struct phy_device *phy_dev = of_phy_find_device(priv->plat->phy_node);
+	struct mediatek_dwmac_plat_data *priv_plat = priv->plat->bsp_priv;
 
 	if (!strncmp(buf, "er", 2) &&
 	    (sscanf(buf + 2, "%x %x", &reg, &data) == 2)) {
@@ -589,6 +590,23 @@ static ssize_t stmmac_store(struct device *dev,
 		writel(data, tmp_addr);
 		dev_info(dev, "reg%#x, value:%#x -> %#x\n",
 			 reg, origin, readl(tmp_addr));
+	} else if (!strncmp(buf, "pager", 5)) {
+		if (sscanf(buf + 5, "%x %x", &phy_addr, &reg) == 2) {
+			dev_info(dev, "pager page_addr:%#x, reg:%#x, %#x\n",
+				 phy_addr,
+				 reg,
+				 phy_read_paged(phy_dev, phy_addr, reg));
+		}
+	} else if (!strncmp(buf, "pagew", 5)) {
+		if (sscanf(buf + 5, "%x %x %x", &phy_addr, &reg, &data) == 3) {
+			origin = phy_read_paged(phy_dev, phy_addr, reg);
+			phy_write_paged(phy_dev, phy_addr, reg, data);
+			dev_info(dev, "pagew page_addr:%#x, reg:%#x, %#x -> %#x\n",
+				 phy_addr,
+				 reg,
+				 origin,
+				 phy_read_paged(phy_dev, phy_addr, reg));
+		}
 	} else if (!strncmp(buf, "dump_mac", 8)) {
 		for (i = 0; i < 0x1300 / 0x10 + 1; i++) {
 			pr_info("%08x:\t%08x\t%08x\t%08x\t%08x\t\n",
@@ -605,6 +623,19 @@ static ssize_t stmmac_store(struct device *dev,
 			__loopback_test(priv, reg, 10000, true, data);
 		else if (sscanf(buf + 2, "%d", &reg) == 1)
 			__loopback_test(priv, reg, 10000, true, 1500);
+	} else if (!strncmp(buf, "sgmii", 5) &&
+		   (sscanf(buf + 5, "%x", &reg) == 1)) {
+		if (reg == 1) {
+			priv_plat->sgmii->flags = BIT(31);
+			mediatek_sgmii_path_setup(priv_plat->sgmii);
+			dev_info(dev, "set SGMII to 1G AN mode\n");
+		} else if (reg == 2) {
+			priv_plat->sgmii->flags = BIT(1);
+			mediatek_sgmii_path_setup(priv_plat->sgmii);
+			dev_info(dev, "set SGMII to 2.5G fix mode\n");
+		} else {
+			dev_info(dev, "Error: parameter not support\n");
+		}
 	} else if (!strncmp(buf, "carrier_on", 10)) {
 		netif_carrier_on(priv->dev);
 	} else if (!strncmp(buf, "carrier_off", 11)) {
