@@ -431,7 +431,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->mmpc_bus_prot_gp1 = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->mmpc_bus_prot_gp1) {
-			VDISPERR("fail to ioremap mmpc_bus_prot_gp1: 0x%llx", res->start);
+			VDISPERR("fail to ioremap mmpc_bus_prot_gp1: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 	}
@@ -440,7 +440,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->vdisp_ao_merge_irq = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->vdisp_ao_merge_irq) {
-			VDISPERR("fail to ioremap vdisp_ao_merge_irq: 0x%llx", res->start);
+			VDISPERR("fail to ioremap vdisp_ao_merge_irq: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 	}
@@ -449,7 +449,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->vdisp_ao_cg_con = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->vdisp_ao_cg_con) {
-			VDISPERR("fail to ioremap vdisp_ao_cg_con: 0x%llx", res->start);
+			VDISPERR("fail to ioremap vdisp_ao_cg_con: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 	}
@@ -458,7 +458,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (res) {
 		priv->hwccf_base = devm_ioremap(dev, res->start, resource_size(res));
 		if (!priv->hwccf_base) {
-			VDISPERR("fail to ioremap hwccf_base: 0x%llx", res->start);
+			VDISPERR("fail to ioremap hwccf_base: 0x%pa", &res->start);
 			return -EINVAL;
 		}
 	}
