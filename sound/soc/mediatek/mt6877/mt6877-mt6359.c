@@ -665,7 +665,7 @@ SND_SOC_DAILINK_DEFS(btcvsd,
 SND_SOC_DAILINK_DEFS(dspoffload,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_offload_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("mt_soc_offload_common")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("mt-soc-offload-common")));
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 SND_SOC_DAILINK_DEFS(dspvoip,
@@ -724,7 +724,7 @@ SND_SOC_DAILINK_DEFS(vow,
 SND_SOC_DAILINK_DEFS(ultra,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_scp_ultra")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-scp-ultra")));
 #endif
 
 static struct snd_soc_dai_link mt6877_mt6359_dai_links[] = {

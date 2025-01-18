@@ -83,6 +83,7 @@ void adsp_set_clock_mux(bool en);
 void adsp_set_sram_sleep_mode(bool en);
 
 /* wakelock */
+int adsp_awake_init(struct adsp_priv *pdata);
 int adsp_awake_lock(u32 cid);
 int adsp_awake_unlock(u32 cid);
 

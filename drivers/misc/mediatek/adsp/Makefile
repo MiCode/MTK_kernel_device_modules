@@ -12,6 +12,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed
 
 # target object
 obj-${CONFIG_MTK_AUDIODSP_SUPPORT} += adsp.o
+obj-${CONFIG_MTK_ADSP_V0} += v0/
 obj-${CONFIG_MTK_ADSP_V1} += v1/
 obj-${CONFIG_MTK_ADSP_V2} += v2/
 
