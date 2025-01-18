@@ -743,6 +743,8 @@ static void bat_handler(struct work_struct *work)
 	if (temp != last_temp || soc != last_soc) {
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
 		pb.ppb_ocv = volt / 10;
+		if (pb.version >= 2)
+			pb.cur_rdc = soc_to_rdc(soc * 100 - pb.soc_err, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
 		ppb_sys_power = get_sys_power_budget(pb.ppb_ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 		last_temp = temp;
 		last_soc = soc;
