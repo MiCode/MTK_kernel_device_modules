@@ -2221,6 +2221,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/mt6765_clkmgr.ko":"mt6765"})
+        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/qos/mtk_qos_legacy.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
