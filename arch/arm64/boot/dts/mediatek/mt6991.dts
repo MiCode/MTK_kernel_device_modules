@@ -677,6 +677,685 @@
 		#size-cells = <0>;
 	};
 
+	met {
+		met_emi: met-emi {
+			compatible = "mediatek,met_emi";
+			emi-num = <2>;
+			dram-num = <2>;
+			dramc-ver = <2>;
+			slc-ver = <3>;
+			/* 0: dram ebg, 1:emi_freq, 2: DRAMC_DCM_CTRL 3:chn_emi_low_effi */
+			/* 4: SLC, 5: DRAMC BUS MON trigger, 6: SSPM register write */
+			/* 7: EMI_RESUME_DISABLE 8: Disable SLC DCM for BMEN*/
+			met-emi-support-list = <0x1f3>;
+			cen-emi-reg-base = <0x10429000 0x10529000>;
+			cen-emi-reg-size = <0x1000>;
+			chn-emi-reg-base = <0x10201000 0x10205000 0x10209000 0x1020d000>;
+			chn-emi-reg-size = <0xa90>;
+			dramc-nao-reg-base = <0x10234000 0x10244000 0x10254000 0x10264000>;
+			dramc-nao-reg-size = <0xf08>;
+			dramc-ao-reg-base = <0x10230000 0x10240000 0x10250000 0x10260000>;
+			dramc-ao-reg-size = <0x2000>;
+			dramc-ao-bus-mon1 = <0x118>;
+			ddrphy-ao-reg-base = <0x10238000 0x10248000 0x10258000 0x10268000>;
+			ddrphy-ao-reg-size = <0x1650>;
+			ddrphy-ao-misc-cg-ctrl0 = <0x0>;
+			ddrphy-ao-misc-cg-ctrl2 = <0xad4>;
+			dram-freq-default = <6400>;
+			ddr-ratio-default = <8>;
+			dram-type-default = <8>;
+			apmixedsys-reg-base = <0x10000800>;
+			apmixedsys-reg-size = <0x1000>;
+			apmixedsys-emipll-con1 = <0xaa4>;
+			slc-pmu-reg-base = <0x1042e000 0x1052e000>;
+			slc-pmu-reg-size = <0x1000>;
+			slc-pmu-2nd-reg-base = <0x10400000 0x10500000>;
+			slc-pmu-2nd-reg-size = <0x1000>;
+			slc-pmu-ch-num = <1>;
+		};
+
+		met-res-ram {
+			compatible = "mediatek,met_res_ram";
+			met-res-ram-sspm {
+				size = <0x400000>; /* 4M: only reserve on userdebug/eng load */
+				start = <0x0>; /* start addr of reserved ram */
+			};
+			met-res-ram-mcupm {
+				size = <0x400000>; /* 4M: only reserve on userdebug/eng load */
+				start = <0x0>; /* start addr of reserved ram */
+			};
+			met-res-ram-gpueb {
+				size = <0x400000>; /* 4M: only reserve on userdebug/eng load */
+				start = <0x0>; /* start addr of reserved ram */
+			};
+		};
+
+		met-config {
+			compatible = "mediatek,met_config";
+			/* 0: resource ctrl */
+			met-config-list = <0x1>;
+		};
+
+		mcupm_rts_header:mcupm-rts-header {
+			node-0 = "MCUPM_MET_UNIT_TEST", "test";
+
+			node-1 = "__MCUPM_MET_L3CTL__", "op_policy,ct_portion,nct_portion,\
+cpuqos_mode,dnth0,dnth1,upth0,upth1,\
+hit0,hit1,hit2,hit3,mis0,mis1,mis2,mis3,\
+l3_hit,l3_mis,pmu_cyc_cnt";
+
+			node-2 = "__MCUPM_MET_TEST__", "taskId,isrId,dvfs";
+
+			node-3 = "MCUPM_DSU_DVFS_ACTIVE",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-4 = "MCUPM_DSU_DVFS_L3_STALL",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-5 = "MCUPM_DSU_DVFS_EMI_STALL",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-6 = "MCUPM_DSU_DVFS_NON_WFX",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-7 = "MCUPM_DSU_DVFS_OPP",
+					"CPU_L_opp,CPU_M_opp,CPU_B_opp,DSU_opp";
+
+			node-8 = "MCUPM_PMU_MGR_L3_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-9 = "MCUPM_PMU_MGR_EMI_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-10 = "MCUPM_PMU_MGR_CPU_STALL_RATIO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-11 = "MCUPM_PMU_MGR_NON_WFX",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-12 = "MCUPM_WLC_TYPE",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,sys_type";
+			node-13 = "MCUPM_WLC_PMU0",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-14 = "MCUPM_WLC_PMU1",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-15 = "MCUPM_WLC_PMU2",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-16 = "MCUPM_WLC_PMU3",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-17 = "MCUPM_WLC_PMU4",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-18 = "MCUPM_WLC_PMU5",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-19 = "MCUPM_WLC_PMU6",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-20 = "MCUPM_WLC_PMU7",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-21 = "MCUPM_WLC_PMU8",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-22 = "MCUPM_WLC_PMU9",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-23 = "MCUPM_WLC_PMU10",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-24 = "MCUPM_CPUCOOLER_LDRO",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-25 = "MCUPM_CPUCOOLER_FREQ_IN",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-26 = "MCUPM_CPUCOOLER_TARGET_SCALE_OUT",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-27 = "MCUPM_CPUCOOLER_FREQ_OUT",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-28 = "MCUPM_CPUCOOLER_CTT_ENABLE",
+					"L,M,B";
+			node-29 = "MCUPM_CPUCOOLER_DSU_MAX_FREQ",
+					"max_freq";
+			node-30 = "MCUPM_PMU_MGR_CPU_STALL_COUNT",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+		};
+
+		sspm_rts_header: sspm-rts-header {
+			node-0 = "SSPM_PTPOD",
+			"_id,voltage";
+
+			node-1 = "SSPM_MET_UNIT_TEST",
+				"test";
+
+			node-2 = "SSPM_QOS_BOUND_STATE",
+				"ver,apu_num,idx,state,num,event,emibw_mon_total,",
+				"emibw_mon_cpu,emibw_mon_gpu,emibw_mon_mm,",
+				"emibw_mon_md,smibw_mon_gpu,smibw_mon_apu,",
+				"apubw_mon_vpu0,apubw_mon_vpu1,apubw_mon_mdla0,",
+				"apubw_mon_mdla1,apubw_mon_mdla2,apubw_mon_mdla3,",
+				"apubw_mon_edma0,apubw_mon_edma1,",
+				"apulat_mon_vpu0,apulat_mon_vpu1,apulat_mon_mdla0,",
+				"apulat_mon_mdla1,apulat_mon_mdla2,apulat_mon_mdla3,",
+				"apulat_mon_edma0,apulat_mon_edma1,",
+				"ddr_lv,",
+				"PMQOS_BW0,PMQOS_BW1,PMQOS_BW2,PMQOS_BW3,PMQOS_BW4,PMQOS_BW_TOTAL,",
+				"EMI_Occupy_TOTAL,",
+				"EMI_data_CPU,EMI_data_GPU,EMI_data_MM,EMI_data_MD,EMI_data_TOTAL";
+
+			node-3 = "SSPM_CM_MGR_NON_WFX",
+				"non_wfx_0,non_wfx_1,non_wfx_2,non_wfx_3,",
+				"non_wfx_4,non_wfx_5,non_wfx_6,non_wfx_7";
+
+			node-4 = "SSPM_CM_MGR_LOADING",
+				"ratio,cps";
+
+			node-5 = "SSPM_CM_MGR_POWER",
+				"c_up_array_0,c_up_array_1,c_up_array_2,c_down_array_0,c_down_array_1,",
+				"c_down_array_2,c_up_0,c_up_1,c_up_2,c_down_0,c_down_1,c_down_2,c_up,",
+				"c_down,v_up,v_down,v2f_0,v2f_1,v2f_2";
+
+			node-6 = "SSPM_CM_MGR_OPP",
+				"v_dram_opp,v_dram_opp_cur,c_eas_opp_cur_0,c_eas_opp_cur_1,c_eas_opp_cur_2,",
+				"c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,d_times_up,d_times_down,",
+				"c_map_dram_enable,perf_mode_enable,perf_mode_ceiling_opp,",
+				"perf_mode_thd,mode";
+
+			node-7 = "SSPM_CM_MGR_RATIO",
+				"stall_0,stall_1,stall_2,stall_3,stall_4,",
+				"stall_5,stall_6,stall_7,",
+				"active_0,active_1,active_2,active_3,active_4,",
+				"active_5,active_6,active_7";
+
+			node-8 = "SSPM_CM_MGR_BW",
+				"total_bw";
+
+			node-9 = "SSPM_CM_MGR_CP_RATIO",
+				"up0,up1,up2,up3,up4,up5,",
+				"down0,down1,down2,down3,down4,down5";
+
+			node-10 = "SSPM_CM_MGR_VP_RATIO",
+				"up0,up1,up2,up3,up4,up5,",
+				"down0,down1,down2,down3,down4,down5";
+
+			node-11 = "SSPM_CM_MGR_DE_TIMES",
+				"up0,up1,up2,up3,up4,up5,",
+				"down0,down1,down2,down3,down4,down5,reset";
+
+			node-12 = "SSPM_CM_MGR_DSU_DVFS_PWR",
+				"up_L,up_B,up_BB,up_DSU,cur_L,cur_B,cur_BB,cur_DSU,down_L,down_B,",
+				"down_BB,down_DSU,total_up,total_cur,total_down";
+
+			node-13 = "SSPM_CM_MGR_DSU_DVFS_ACT_STALL_PWR",
+				"up_L_a,up_B_a,up_BB_a,cur_L_a,cur_B_a,",
+				"cur_BB_a,down_L_a,down_B_a,down_BB_a,",
+				"up_L_s,up_B_s,up_BB_s,cur_L_s,cur_B_s,",
+				"cur_BB_s,down_L_s,down_B_s,down_BB_s";
+
+			node-14 = "SSPM_CM_MGR_DSU_DVFS_STALL",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,l3_bw_val";
+
+			node-15 = "SSPM_CM_MGR_DSU_DVFS_ACTIVE",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-16 = "SSPM_CM_MGR_DSU_DVFS_OPP",
+				"map_opp_50,map_opp_70,final,",
+				"orig,L3_vote_opp,debounce_up,debounce_down";
+
+			node-17 = "SSPM_CM_MGR_DSU_DVFS_THRESHOLD_FLAG",
+				"up_L,up_B,up_BB,down_L,down_B,down_BB,",
+				"up_L_flag,up_B_flag,up_BB_flag,",
+				"down_L_flag,down_B_flag,down_BB_flag";
+
+			node-18 = "SSPM_SWPM_CPU__CORE_ACTIVE_RATIO",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-19 = "SSPM_SWPM_CPU__CORE_IDLE_RATIO",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-20 = "SSPM_SWPM_CPU__CORE_OFF_RATIO",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-21 = "SSPM_SWPM_CPU__CORE_STALL_RATIO",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-22 = "SSPM_SWPM_CPU__CORE_PMU_L3DC",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-23 = "SSPM_SWPM_CPU__CORE_PMU_INST_SPEC",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-24 = "SSPM_SWPM_CPU__CORE_PMU_CYCLES",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-25 = "SSPM_SWPM_CPU__CORE_NON_WFX_CTR",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-26 = "SSPM_SWPM_CPU__DSU_STATE_RATIO",
+				"active,idle,dormant,off";
+
+			node-27 = "SSPM_SWPM_CPU__DSU_L3_BW",
+				"L3_BW";
+
+			node-28 = "SSPM_SWPM_CPU__MCUSYS_STATE_RATIO",
+				"active,idle,off";
+
+			node-29 = "SSPM_SWPM_CPU__MCUSYS_EMI_BW",
+				"cpu_emi_bw";
+
+			node-30 = "SSPM_SWPM_CPU__DVFS",
+				"vproc3,vproc2,vproc1,cpuL_freq,cpuBL_freq,cpuB_freq,cpu_L_opp,",
+				"cpu_BL_opp,cpu_B_opp,cci_volt,cci_freq,cci_opp";
+
+			node-31 = "SSPM_SWPM_CPU__LKG_POWER",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,dsu";
+
+			node-32 = "SSPM_SWPM_CPU__POWER",
+				"cpu_L,cpu_B,cpu_BB,dsu,mcusys";
+
+			node-33 = "SSPM_SWPM_GPU__GPU_STATE_RATIO",
+				"active,idle,off";
+
+			node-34 = "SSPM_SWPM_GPU__LOADING",
+				"top_loading,stack_loading,iterator_loading";
+
+			node-35 = "SSPM_SWPM_GPU__DVFS",
+				"top_freq,stack_freq,vgpu,vstack,core_num";
+
+			node-36 = "SSPM_SWPM_GPU__URATE",
+				"alu_fma,alu_cvt,alu_sfu,tex,lsc,l2c,vary,tiler,rast";
+
+			node-37 = "SSPM_SWPM_GPU__THERMAL",
+				"thermal,top_lkg,stack_lkg";
+
+			node-38 = "SSPM_SWPM_GPU__COUNTER",
+				"GPU_ACTIVE,EXEC_CORE_ACTIVE,EXEC_INSTR_FMA,EXEC_INSTR_CVT,EXEC_INSTR_SFU,",
+				"TEX,VARY_SLOT,L20,L21,ITER_TILER_ACTIVE,ITER_COMPUTE_ACTIVE,",
+				"ITER_FRAG_ACTIVE,VARY16_SLOT,ITERATOR_ACTIVE";
+
+			node-39 = "SSPM_SWPM_GPU__POWER",
+				"gpu";
+			node-40 = "SSPM_SWPM_CORE__CAM_STATE_RATIO",
+				"RAW_A_active,RAW_B_active,RAW_C_active,idle,off";
+
+			node-41 = "SSPM_SWPM_CORE__IMG_STATE_RATIO",
+				"P2_active,P2_idle,MFB_active,WPE_active,off";
+
+			node-42 = "SSPM_SWPM_CORE__IPE_STATE_RATIO",
+				"FDVT_active,DVP_active,DVS_active,DV_idle,off";
+
+			node-43 = "SSPM_SWPM_CORE__MDP_STATE_RATIO",
+				"active,off";
+
+			node-44 = "SSPM_SWPM_CORE__DISP_STATE_RATIO",
+				"active,off";
+
+			node-45 = "SSPM_SWPM_CORE__ADSP_STATE_RATIO",
+				"active,off";
+
+			node-46 = "SSPM_SWPM_CORE__VENC_STATE_RATIO",
+				"active,idle,off";
+
+			node-47 = "SSPM_SWPM_CORE__VDEC_STATE_RATIO",
+				"active,idle,off";
+
+			node-48 = "SSPM_SWPM_CORE__INFRA_STATE_RATIO",
+				"dact,cact,idle,dcm";
+
+			node-49 = "SSPM_SWPM_CORE__VDO_CODING_TYPE",
+				"venc,vdec";
+
+			node-50 = "SSPM_SWPM_CORE__DVFS",
+				"vcore,ddr_freq,vcore_opp,ddr_opp";
+
+			node-51 = "SSPM_SWPM_CORE__POWER",
+				"dramc,infra_top,aphy_vcore";
+
+			node-52 = "SSPM_SWPM_CORE__LKG_POWER",
+				 "infra_top,dramc,thermal";
+
+			node-53 = "SSPM_SWPM_DRAM__MEM_IDX",
+				"read_bw_0,read_bw_1,write_bw_0,write_bw_1,",
+				"dramc_read_bw_0,dramc_read_bw_1,dramc_write_bw_0,dramc_write_bw_1,",
+				"srr_pct,ssr_pct,pdir_pct_0,pdir_pct_1,",
+				"phr_pct_0,phr_pct_1,util_0,util_1,",
+				"trans_0,trans_1,mr4,ddr_freq,ddr_opp,",
+				"predir_pct_0,predir_pct_1";
+
+			node-54 = "SSPM_SWPM_DRAM__DVFS",
+				"ddr_freq";
+
+			node-55 = "SSPM_SWPM_DRAM__POWER",
+				"aphy_vddq_0p6v,aphy_vm_0p75v,aphy_vio_1p2v,dram_vddq_0p6v,",
+				"dram_vdd2l_0p9v,dram_vdd2h_1p05v,dram_vdd1_1p8v";
+
+			node-56 = "SSPM_SWPM_ME__POWER",
+				"disp,mdp,venc,vdec";
+
+			node-57 = "SSPM_SWPM_ME__IDX",
+				"vdec_fps,venc_fps,disp_fps,disp_resolution";
+
+			node-58 = "SSPM_SWPM_VPU__VPU0_STATE_RATIO",
+				"active,idle,off";
+
+			node-59 = "SSPM_SWPM_VPU__VPU1_STATE_RATIO",
+				"active,idle,off";
+
+			node-60 = "__SSPM_GPU_APU_SSC_CNT__",
+				"N_APU_0_R,N_APU_0_W,N_GPU_0_R,N_GPU_0_W,",
+				"N_APU_1_R,N_APU_1_W,N_GPU_1_R,",
+				"N_GPU_1_W,S_APU_0_R,S_APU_0_W,S_GPU_0_R,",
+				"S_GPU_0_W,S_APU_1_R,S_APU_1_W,",
+				"S_GPU_1_R,S_GPU_1_W";
+			node-61 = "SSPM_SLBC_SLOT",
+				"buffer_used,cached_used";
+			node-62 = "SSPM_SLBC_REF",
+				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
+				"apu";
+			node-63 = "SSPM_SLBC_BW",
+				"mm,apu,mm_est";
+			node-64 = "SSPM_SLBC_PMU",
+				"hit,miss,apu_r,apu_w,mm_r,mm_w";
+			node-65 = "SSPM_SLBC_WAY",
+				"aov_dc,sh_p1,sh_apu,mml,disp,venc,venc_sl,sensor,aov_apu,ainr,",
+				"apu,slb,slc,left";
+			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
+				 "dsu_cycles";
+			node-67 = "SSPM_SWPM_CPU__CORE_TEMP",
+				 "cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,DSU";
+			node-68 = "SSPM_SWPM_SOC__SMAP",
+				 "i2max,imax";
+			node-69 = "SSPM_SWPM_CPU__PMU_TIMES",
+				 "idx_cnt,lock,idx_rechk,lock_rechk,valid,off_hint,diff_us";
+			node-70 = "SSPM_SWPM_CORE__MEM_RAW_IDX",
+				"diff_us,data_rate,ddr_ratio,emi_freq,s1_ratio,",
+				"wact_0,wact_1,bcnt_0,bcnt_1,",
+				"dcm_ctrl_0,dcm_ctrl_1,",
+				"stb_0_0,stb_0_1,stb_1_0,stb_1_1,",
+				"stb_2_0,stb_2_1,stb_3_0,stb_3_1,",
+				"pd_0_0,pd_0_1,pd_1_0,pd_1_1,",
+				"pd_2_0,pd_2_1,pd_3_0,pd_3_1";
+			node-71 = "SSPM_SPM_RES__DDREN_REQ",
+				"cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,dpm,",
+				"emisys,infrasys,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-72 = "SSPM_SPM_RES__APSRC_REQ",
+				"cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,dpm,",
+				"ccif,emisys,infrasys,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-73 = "SSPM_SPM_DBG__PWR_OFF",
+				"cam_ccu_ao,cam_ccu,cam_main,cam_subc,cam_subb,cam_suba,cam_mraw,isp_main,isp_dip1,",
+				"isp_traw,infra,ufs_phy,peri_usb,pextp_mac1,pextp_mac0,south_emi,north_emi,adsp_infra,",
+				"scp,mm_proc,mminfra,ufs,peri_audio,peri,ovl1,ovl0,mml1,mml0,cam_vcore,isp_vcore,",
+				"venc2,venc1,venc0,vdec1,vdec0,dis1,dis0,dpm,mcu";
+			node-74 = "SSPM_SPM_DBG__PWR_ACT",
+				"scp,adsp,venc0,venc1,audio,cam,img,mminfra,",
+				"sspm,disp0,disp1,ovl0,ovl1,md0,md1,conn";
+			node-75 = "SSPM_SPM_DBG__SYS_STA",
+				"s0_p,s0,s1,spm_res7,spm_res6,spm_res5,",
+				"spm_res4,spm_res3,spm_res2,spm_res1,spm_res0";
+			node-76 = "SSPM_SWPM_DRAM__MEM_RAW_IDX",
+				"diff_us,data_rate,ddr_ratio,emi_freq,s1_ratio,",
+				"wact_0,wact_1,bact_0,bact_1,bcnt_0,bcnt_1,tact_0,tact_1,",
+				"pgh_0,pgh_1,pgh_2,pgh_3,",
+				"pgm_0,pgm_1,pgm_2,pgm_3,",
+				"intb_0,intb_1,intb_2,intb_3,",
+				"stb_0_0,stb_0_1,stb_1_0,stb_1_1,",
+				"stb_2_0,stb_2_1,stb_3_0,stb_3_1,",
+				"mr4_idx_0_0,mr4_idx_0_1,mr4_idx_1_0,mr4_idx_1_1,",
+				"mr4_idx_2_0,mr4_idx_2_1,mr4_idx_3_0,mr4_idx_3_1";
+			node-77 = "SSPM_SWPM_CORE__SLC_IDX",
+				"pmu_17,pmu_18,pmu_19,pmu_20,pmu_21,pmu_22,pmu_23,pmu_24,",
+				"pmu_25,pmu_26,pmu_27,pmu_28,pmu_29";
+			node-78 = "SSPM_GPU_BM",
+				"bw,bw_max,predict,ctx,freq,frame,job_id";
+			node-79 = "SSPM_SPM_RES__EMI_REQ",
+				"cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,dpm,",
+				"ccif,emisys,infrasys,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-80 = "SSPM_SPM_RES__MAINPLL_REQ",
+				"cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,dpm,",
+				"ccif,ipic,infrasys,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-81 = "SSPM_SPM_RES__INFRA_REQ",
+				"srcclkeni,cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,dpm,",
+				"ccif,ipic,infrasys,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-82 = "SSPM_SPM_RES__26M_REQ",
+				"srcclkeni,cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,dpm,",
+				"ccif,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,connb,conna,md2,md1,md";
+			node-83 = "SSPM_SPM_RES__VCORE_REQ",
+				"cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,uart_hub,dpm,",
+				"pcie0,audio,scp,conn,md";
+			node-84 = "SSPM_SPM_RES__PMIC_REQ",
+				"srcclkeni,cg_check,vlpcfg_rsv1,vlpcfg_rsv0,hwccf,mcu,spu_hwrot,spu_ise,ssrsys,uart_hub,dpm,",
+				"ccif,perisys,dpmaif,pcie0,venc,vdec,img,cam,ccu,gce,mm_proc,",
+				"disp1,disp0,ufs,gpueb,cpu,apu,audio,scp,sspm,conn,md";
+			node-85 = "WLA_NTH_IDLE_CNT",
+				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
+				"wla11,wla12,wla13,wla14,wla15";
+			node-86 = "WLA_STH_IDLE_CNT",
+				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
+				"wla11,wla12,wla13,wla14,wla15";
+			node-87 = "SSPM_SWPM_APU__MDLA",
+				"mdla_pdx0,mdla_pdx1,mdla_pdx2,mdla_pdx3,",
+				"mdla_freq0,mdla_freq1,mdla_freq2,mdla_freq3,",
+				"mdla_on_ratio0,mdla_on_ratio1,mdla_on_ratio2,mdla_on_ratio3";
+			node-88 = "SSPM_SWPM_APU__MVPU",
+				"mvpu_pdx0,mvpu_pdx1,",
+				"mvpu_freq0,mvpu_freq1,",
+				"mvpu_on_ratio0,mvpu_on_ratio1";
+			node-89 = "SSPM_SWPM_APU__TOP_FRQ_AND_RATIO",
+				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio";
+			node-90 = "SSPM_SWPM_APU__TOP_BW",
+				"top_bw,eDPAbw,tcmbw,rcxbw,acx0bw,acx1bw,acx2bw";
+			node-91 = "SSPM_SWPM_CPU__CORE_PMU_AI_GROUP0",
+				"0x04_c0,0x04_c1,0x04_c2,0x04_c3,0x04_c4,0x04_c5,0x04_c6,0x04_c7,",
+				"0x10_c0,0x10_c1,0x10_c2,0x10_c3,0x10_c4,0x10_c5,0x10_c6,0x10_c7,",
+				"0x14_c0,0x14_c1,0x14_c2,0x14_c3,0x14_c4,0x14_c5,0x14_c6,0x14_c7,",
+				"0x16_c0,0x16_c1,0x16_c2,0x16_c3,0x16_c4,0x16_c5,0x16_c6,0x16_c7,";
+			node-92 = "SSPM_SWPM_CPU__CORE_PMU_AI_GROUP1",
+				"0x17_c0,0x17_c1,0x17_c2,0x17_c3,0x17_c4,0x17_c5,0x17_c6,0x17_c7,",
+				"0x18_c0,0x18_c1,0x18_c2,0x18_c3,0x18_c4,0x18_c5,0x18_c6,0x18_c7,",
+				"0x21_c0,0x21_c1,0x21_c2,0x21_c3,0x21_c4,0x21_c5,0x21_c6,0x21_c7,",
+				"0x3B_c0,0x3B_c1,0x3B_c2,0x3B_c3,0x3B_c4,0x3B_c5,0x3B_c6,0x3B_c7,";
+			node-93 = "SSPM_SWPM_CPU__CORE_PMU_AI_GROUP2",
+				"0x3D_c0,0x3D_c1,0x3D_c2,0x3D_c3,0x3D_c4,0x3D_c5,0x3D_c6,0x3D_c7,",
+				"80C1_c0,80C1_c1,80C1_c2,80C1_c3,80C1_c4,80C1_c5,80C1_c6,80C1_c7,",
+				"80EF_c0,80EF_c1,80EF_c2,80EF_c3,80EF_c4,80EF_c5,80EF_c6,80EF_c7,";
+			/* SLBC */
+			node-94 = "SSPM_SLBC_GID_USED",
+				"gid_00_to_03,gid_04_to_07,gid_08_to_11,gid_12_to_15,",
+				"gid_16_to_19,gid_20_to_23,gid_24_to_27,gid_28_to_31,",
+				"gid_32_to_35,gid_36_to_39,gid_40_to_43,gid_44_to_47,",
+				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,";
+			node-95 = "SSPM_SLBC_GID_VALID",
+				"gid_00_to_03,gid_04_to_07,gid_08_to_11,gid_12_to_15,",
+				"gid_16_to_19,gid_20_to_23,gid_24_to_27,gid_28_to_31,",
+				"gid_32_to_35,gid_36_to_39,gid_40_to_43,gid_44_to_47,",
+				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,";
+			node-96 = "SSPM_SLBC_CACHE_QUOTA",
+				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+			node-97 = "SSPM_SLBC_CACHE_HIT",
+				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+			node-98 = "SSPM_SLBC_CACHE_TOTAL",
+				"gid0,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+			node-99 = "SSPM_SLBC_CACHE_STATUS",
+				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov";
+			node-100 = "SSPM_SLBC_CACHE_SIZE",
+				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,total,valid";
+			node-101 = "SSPM_SLBC_CACHE_WAY",
+				"pd,cpu,md,adsp,gpu,vdec_frame,vdec_ube,gpu_ovl,smmu,aov,total,buf_unused";
+			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
+				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
+				"SW_R3,MD,MD2,ADSP";
+			node-103 = "SSPM_VCORE_DVFS__VCORE_DETAIL",
+				"SW_R3,SW_R4,SW_R7";
+			node-104 = "SSPM_VCORE_DVFS__MISC_DETAIL",
+				"PS_B0,PS_B1,PS_B2,PS_B3,",
+				"PS_B4,PS_B5,PS_B6,PS_DPC,",
+				"PS_TOTAL,MD_SCE,MD_STA,EMI_OPP,",
+				"HR_DB,HR_IB,HR_MB,HR_BASE,",
+				"CEIL_MISC";
+			node-105 = "SSPM_SWPM_GPU__STATE_RATIO",
+				"gpueb_active,gpueb_idle,gpueb_off,",
+				"top_active,top_idle_1,top_idle_2,top_off,",
+				"smmu_active,smmu_idle,smmu_off,",
+				"stack_active,stack_idle,stack_off,",
+				"other_exec_core_active,other_gpu_active_2,other_gpu_active_3";
+			node-106 = "SSPM_VCORE_DVFS__DDR",
+				"EMI_MON,QOS_B,HR_BW";
+			node-107 = "SSPM_VCORE_DVFS__VCORE",
+				"SW_R3";
+			node-108 = "SSPM_VCORE_DVFS__OPP",
+				"FREQ,VOLT";
+			node-109 = "SSPM_VCORE_DVFS__MISC",
+				"PS_B0,PS_B1,PS_B2,PS_B3,",
+				"PS_B4,PS_B5,PS_B6,PS_DPC,",
+				"PS_TOTAL";
+			node-110 = "SSPM_SWPM_AUDIO__SCENARIO_IDX",
+				"afe_on,user_case,output_device,input_device,adda_mode,sample_rate,",
+				"channel_num,freq_clock,D0_ratio";
+			node-111 = "SSPM_SWPM_ADSP__CORE_STATE_RATIO",
+				"active_0_1,active_0_wfi_1,wfi_0_active_1,wfi_0_1,active_0_off_1,",
+				"wfi_0_off_1,off_0_1,core_freq";
+			node-112 = "SSPM_SWPM_TSFDC__POWER_STATE",
+				"active_ratio10,active_ratio9,active_ratio8,active_ratio7,",
+				"active_ratio6,active_ratio5,active_ratio4,active_ratio3,",
+				"active_ratio2,active_ratio1,active_ratio0,Freq";
+			node-113 = "SSPM_SWPM_DISP__PWR_STA",
+				"off,act,disp_clk,time,dsi_off,dsi_lp_pll_on,dsi_act,dsi_lane_num,",
+				"dsi_phy_type,dsi_clk";
+			node-114 = "SSPM_SWPM_USB",
+				"sspxtp_active,sspxtp_d11_powerdown_b1,sspxtp_d10_powerdown_b0,",
+				"sspxtp_d9_G1U3,sspxtp_d8_G2U3,sspxtp_d7_G1U2,sspxtp_d6_G1U1,",
+				"sspxtp_d5_G2U2,sspxtp_d4_G2U1,sspxtp_d3_G1UXEXIT,sspxtp_d2_G2UXEXIT,",
+				"sspxtp_d1_G1U0,sspxtp_d0_G2U0,ssusb_u2_phy_l0_fsrx_ip1,ssusb_u2_phy_l0_fstx_ip1,",
+				"ssusb_u2_phy_l0_hsrx_ip1,ssusb_u2_phy_l0_hstx_ip1,ssusb_u2_phy_l0_idle_ip1,",
+				"ssusb_u2_phy_l0_ip1,ssusb_u2_phy_l1_ip1,ssusb_u2_phy_l2_ip1,",
+				"ssusb_usb2_l2_ip1,ssusb_usb2_l1_ip1,ssusb_usb2_l0_ip1,",
+				"ssusb_u2_phy_l0_fsrx_ip0,ssusb_u2_phy_l0_fstx_ip0,",
+				"ssusb_u2_phy_l0_hsrx_ip0,ssusb_u2_phy_l0_hstx_ip0,ssusb_u2_phy_l0_idle_ip0,",
+				"ssusb_u2_phy_l0_ip0,ssusb_u2_phy_l1_ip0,ssusb_u2_phy_l2_ip0,",
+				"ssusb_usb2_l2_ip0,ssusb_usb2_l1_ip0,ssusb_usb2_l0_ip0,ssusb_usb3_u3_ip0,ssusb_usb3_u2_ip0,",
+				"ssusb_usb3_u1_ip0,ssusb_usb3_u0_ip0,usb_ck_freq";
+			node-115 = "SSPM_SWPM_INFRA",
+				"socsys_freq,socsys_bw,socsys_d0_ratio,socsys_d2_ratio,",
+				"peri_freq,peri_m0_busy_ratio,peri_m1_busy_ratio,peri_d1_ratio,peri_d2_ratio";
+			node-116 = "SSPM_SWPM_VCP__POWER_STATE", "hfrp_active,hfrp_sleep,hfrp_wfi,",
+				"hfrp_pwr,hfrp_frequency";
+			node-117 = "SSPM_SWPM_MML__ENG_ACTIVE",
+				"MML_ACTIVE,MML_FREQ,",
+				"WROT0_ACTIVE,WROT1_ACTIVE,WROT2_ACTIVE,WROT3_ACTIVE,",
+				"RROT0,RROT0_2ND,RDMA0,RDMA1,RDMA2,RDMA3,FG0,HDR0,HDR1,AAL0,AAL1,C3D0,",
+				"RSZ0,RSZ1,RSZ2,RSZ3,BIRSZ0,BIRSZ1,THSHP0,TDSHP1,COLOR0,COLOR1,",
+				"WROT0,WROT1,WROT2,WROT3";
+			node-118 = "SSPM_SWPM_PCIE__SCENARIO_IDX",
+				"p0_G4_L0_BUSY,p0_IDLE,p0_G1_L0_BUSY,p0_L0S_TX,",
+				"p0_L0S_RX,p0_L0S_TRX,p0_L1,p0_L1_1,",
+				"p0_L1_2,p0_L1_2_DEEP,p0_L2,p0_L1_2_EXIT,",
+				"p0_RECOVER_A_1,p0_RECOVER_A_2,p0_RECOVER_B,p0_RECOVER_C,",
+				"p1_G4_L0_BUSY,p1_IDLE,p1_G1_L0_BUSY,p1_L0S_TX,",
+				"p1_L0S_RX,p1_L0S_TRX,p1_L1,p1_L1_1,",
+				"p1_L1_2,p1_L1_2_DEEP,p1_L2,p1_L1_2_EXIT,",
+				"p1_RECOVER_A_1,p1_RECOVER_A_2,p1_RECOVER_B,p1_RECOVER_C,",
+				"pcie_ck_freq";
+			node-119 = "SSPM_SWPM_VDEC__STATE_RATIO",
+				"vdec_core_active,vdec_core_idle,vdec_core_off,",
+				"vdec_soc_active,vdec_soc_idle,vdec_soc_off,vdec_frequency";
+			node-120 = "SSPM_SWPM_MMINFRA__INDEX",
+				"vcore,freq,emi_read_bw,emi_write_bw,slb_read_bw,slb_write_bw,active";
+			node-121 = "SSPM_SWPM_UFS__STATE_RATIO",
+				"g4_txrx,g4_tx,g4_rx,g4_idle,g5_txrx,g5_tx,g5_rx,g5_idle,",
+				"h8_ckoff,h8_ckon,off,frequency";
+			node-122 = "SSPM_SWPM_SOCPLL__ACTIVE_RATIO",
+				"APLL2_EN,APLL1_EN,EMIPLL2_EN,UNIVPLL_EN,TVDPLL_EN,MSDCPLL_EN,",
+				"MMPLL_EN,MAINPLL_EN,EMIPLL_EN,IMGPLL_EN,MMPLL2_EN,UNIVPLL2_EN,",
+				"MAINPLL2_EN,ADSPPLL_EN,",
+				"APLL2_PD,APLL1_PD,EMIPLL2_PD,UNIVPLL_PD,TVDPLL_PD,MSDCPLL_PD,",
+				"MMPLL_PD,MAINPLL_PD,EMIPLL_PD,IMGPLL_PD,MMPLL2_PD,UNIVPLL2_PD,",
+				"MAINPLL2_PD,ADSPPLL_PD,",
+				"APLL2_PCW,APLL1_PCW,EMIPLL2_PCW,UNIVPLL_PCW,TVDPLL_PCW,",
+				"MSDCPLL_PCW,MMPLL_PCW,MAINPLL_PCW,EMIPLL_PCW,IMGPLL_PCW,",
+				"MMPLL2_PCW,UNIVPLL2_PCW,MAINPLL2_PCW,",
+				"ADSPPLL_PCW,freq,dvdd_sys_voltage";
+			node-123 = "SSPM_SWPM_VENC__INFO",
+				"venc0_hevc_active,venc0_h264_active,venc0_off,",
+				"venc1_hevc_active,venc1_h264_active,venc1_off,",
+				"venc2_hevc_active,venc2_h264_active,venc2_off,",
+				"spec,resolution,fps,frequency,",
+				"vcore_voltage,venc_frequency";
+		};
+
+		gpueb_rts_header:gpueb-rts-header {
+			node-0 = "GPUEB_MET_UNIT_TEST", "test";
+			node-1 = "GPUEB_PTP3_CC_FC_PING",
+				"cc0_ping,cc1_ping,cc4_ping,cc5_ping,cc6_ping,\
+fc0_ping,fc1_ping,fc4_ping,fc5_ping,fc6_ping";
+			node-2 = "GPUEB_PTP3_CC_FC_SW", "CC_TOP,FC_TOP,CC_STACK,FC_STACK";
+			node-3 = "GPUEB_PTP3_FSM", "FLL0,FLL1,FLL4,FLL5,FLL6";
+			node-4 = "GPUEB_PTP3_FLL_ENABLE", "FLL0,FLL1,FLL4,FLL5,FLL6";
+			node-5 = "GPUEB_PTP3_FREQ", "gpu_cur_freq,stack_cur_freq";
+			node-6 = "GPUEB_PTP3_VOLT", "gpu_work_volt,gpu_cur_volt,stack_work_volt,stack_cur_volt";
+			node-7 = "GPUEB_PTP3_INVALID_FMETER", "val";
+			node-8 = "GPUEB_PTP3_FREQ_MONITOR", "ST0_in,ST1_in,ST3_in,ST4_in,ST5_in,ST6_in,\
+TOP_in,ST0_out,ST1_out,ST3_out,ST4_out,ST5_out,ST6_out,TOP_out";
+			node-9 = "GPUEB_PTP3_VOLT_MONITOR", "inVolt,outVolt";
+			node-10 = "GPUEB_MET_LOADING", "taskId,isrId";
+			node-11 = "GPUFREQ_CMD", "cmdId";
+			node-12 = "GPUEB__GPUFREQ_enter", "cmdId";
+			node-13 = "GPUEB__GPUFREQ_leave", "cmdId";
+			node-14 = "GPUEB__TASK_enter", "taskId";
+			node-15 = "GPUEB__TASK_leave", "taskId";
+			node-16 = "GPUEB__ISR_enter", "isrId";
+			node-17 = "GPUEB__ISR_leave", "isrId";
+			node-18 = "GPUEB__BUSY_enter", "isBusy";
+			node-19 = "GPUEB__BUSY_leave", "isBusy";
+			node-20 = "GPUEB__GPUON_enter", "isGpuOn";
+			node-21 = "GPUEB__GPUON_leave", "isGpuOn";
+			node-22 = "GPUEB__GPUON_busy_enter", "isGpuOnBusy";
+			node-23 = "GPUEB__GPUON_busy_leave", "isGpuOnBusy";
+			node-24 = "GPUEB_PTP3_CPMETER", "ST0_POWER,ST1_POWER,ST3_POWER,ST4_POWER,ST5_POWER,\
+ST6_POWER,TOP_POWER,ST0_CURRENT,ST1_CURRENT,ST3_CURRENT,ST4_CURRENT,ST5_CURRENT,ST6_CURRENT,\
+TOP_CURRENT";
+			node-25 = "GPUEB_PTP3_VOLTMETER", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-26 = "GPUEB_PTP3_TEMPMETER", "ST0_MAX,ST1_MAX,ST3_MAX,ST4_MAX,ST5_MAX,ST6_MAX,\
+TOP_MAX,ST0_MIN,ST1_MIN,ST3_MIN,ST4_MIN,ST5_MIN,ST6_MIN,TOP_MIN";
+			node-27 = "GPUEB_PTP3_CC_FC_PS", "ST0_CC,ST1_CC,ST3_CC,ST4_CC,ST5_CC,\
+ST6_CC,TOP_CC,ST0_FC,ST1_FC,ST3_FC,ST4_FC,ST5_FC,ST6_FC,TOP_FC,ST0_PS,ST1_PS,ST3_PS,ST4_PS,\
+ST5_PS,ST6_PS,TOP_PS";
+			node-28 = "GPUEB_PTP3_AUTOMINFC", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-29 = "GPUEB_PTP3_MINFC", "ST0_CC0,ST1_CC0,ST3_CC0,ST4_CC0,ST5_CC0,ST6_CC0,\
+TOP_CC0,ST0_CC1,ST1_CC1,ST3_CC1,ST4_CC1,ST5_CC1,ST6_CC1,TOP_CC1,ST0_CC2,ST1_CC2,ST3_CC2,ST4_CC2,\
+ST5_CC2,ST6_CC2,TOP_CC2,ST0_CC3,ST1_CC3,ST3_CC3,ST4_CC3,ST5_CC3,ST6_CC3,TOP_CC3,ST0_CC4,ST1_CC4,\
+ST3_CC4,ST4_CC4,ST5_CC4,ST6_CC4,TOP_CC4";
+			node-30 = "GPUEB_GPU_FREQ", "real_top,real_stack,virtual_stack";
+			node-31 = "GPUEB_LOADING", "gpu_loading,mcu_loading,iter_loading,avg_loading";
+			node-32 = "GPUEB_COUNTER", "gpu_active,mcu_active,iter_active";
+			node-33 = "GPUEB_COMMIT_TYPE", "commit_type,policy_state";
+			node-34 = "GPUEB_DCS_INFO", "max_core_num,core_num";
+			node-35 = "GPUEB_MARGIN_INFO", "ceil,current,floor";
+			node-36 = "GPUEB_BOUND_INFO", "high,low,ultra_high,ultra_low";
+			node-37 = "GPUEB_GPU_TIME", "complete,cur,target,target_hd,uncomplete";
+			node-38 = "GPUEB_PTP3_TMAX", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-39 = "GPUEB_PTP3_IMAX", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-40 = "GPUEB_PTP3_TARGET_SCALE", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-41 = "GPUEB_PTP3_INC_DEC_SIGNAL", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-42 = "GPUEB_PTP3_TEMPMETER__detail", "ST0_LDRO0,ST0_LDRO1,ST0_LDRO2,ST0_LDRO3,\
+ST0_LDRO4,ST0_LDRO5,ST0_LDRO6,ST0_LDRO7,ST0_LDRO8,ST0_LDRO9,ST0_LDRO10,ST0_LDRO11,ST0_LDRO12,\
+ST0_LDRO13,ST0_LDRO14,ST0_LDRO15,ST1_LDRO0,ST1_LDRO1,ST1_LDRO2,ST1_LDRO3,ST1_LDRO4,ST1_LDRO5,\
+ST1_LDRO6,ST1_LDRO7,ST1_LDRO8,ST1_LDRO9,ST1_LDRO10,ST1_LDRO11,ST1_LDRO12,ST1_LDRO13,ST1_LDRO14,\
+ST1_LDRO15,ST3_LDRO0,ST3_LDRO1,ST3_LDRO2,ST3_LDRO3,ST3_LDRO4,ST3_LDRO5,ST3_LDRO6,ST3_LDRO7,\
+ST3_LDRO8,ST3_LDRO9,ST3_LDRO10,ST3_LDRO11,ST3_LDRO12,ST3_LDRO13,ST3_LDRO14,ST3_LDRO15,ST4_LDRO0,\
+ST4_LDRO1,ST4_LDRO2,ST4_LDRO3,ST4_LDRO4,ST4_LDRO5,ST4_LDRO6,ST4_LDRO7,ST4_LDRO8,ST4_LDRO9,\
+ST4_LDRO10,ST4_LDRO11,ST4_LDRO12,ST4_LDRO13,ST4_LDRO14,ST4_LDRO15,ST5_LDRO0,ST5_LDRO1,ST5_LDRO2,\
+ST5_LDRO3,ST5_LDRO4,ST5_LDRO5,ST5_LDRO6,ST5_LDRO7,ST5_LDRO8,ST5_LDRO9,ST5_LDRO10,ST5_LDRO11,\
+ST5_LDRO12,ST5_LDRO13,ST5_LDRO14,ST5_LDRO15,ST6_LDRO0,ST6_LDRO1,ST6_LDRO2,ST6_LDRO3,ST6_LDRO4,\
+ST6_LDRO5,ST6_LDRO6,ST6_LDRO7,ST6_LDRO8,ST6_LDRO9,ST6_LDRO10,ST6_LDRO11,ST6_LDRO12,ST6_LDRO13,\
+ST6_LDRO14,ST6_LDRO15,TOP_LDRO0,TOP_LDRO1,TOP_LDRO2,TOP_LDRO3,TOP_LDRO4,TOP_LDRO5,TOP_LDRO6,\
+TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LDRO14,TOP_LDRO15";
+			node-43 = "GPUEB_PTP3_Cerr", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-44 = "GPUEB_PTP3_Ferr", "ST0,ST1,ST3,ST4,ST5,ST6,TOP";
+			node-45 = "GPUEB_PTP3_HBVC_VOLT", "gpu_Vc,stack_Vc,gpu_Vt,stack_Vt";
+			node-46 = "GPUEB_PTP3_HBVC_VOLT__detail", "ST0_Vt,ST1_Vt,ST3_Vt,ST4_Vt,ST5_Vt,ST6_Vt,TOP_Vt";
+			node-47 = "GPUEB_POWER_STATE", "power_state";
+			node-48 = "GPUEB_OPP", "pow_restore,desire_sys,desire_opp,virtual_min,cur";
+		};
+	};
+
 	sleep@1c004000 {
 		compatible = "mediatek,sleep";
 		reg = <0 0x1c004000 0 0x1000>;
