@@ -589,9 +589,9 @@ void sched_pause_init(void)
 				hook_rvh_get_nohz_timer_target,	NULL);
 	register_trace_android_rvh_can_migrate_task(hook_rvh_can_migrate_task, NULL);
 	register_trace_android_rvh_find_busiest_queue(hook_rvh_find_busiest_queue, NULL);
-	/* need upstream, add vendor hook
+#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	register_trace_android_rvh_find_new_ilb(hook_rvh_find_new_ilb, NULL);
-	*/
+#endif
 }
 
 static ssize_t show_sched_core_pause_info(struct kobject *kobj,
