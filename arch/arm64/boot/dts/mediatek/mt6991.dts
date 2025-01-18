@@ -2365,27 +2365,20 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-111 = "SSPM_SWPM_ADSP__CORE_STATE_RATIO",
 				"active_0,wfi_0,off_0,active_1,wfi_1,off_1,",
 				"active_ao_infra,off_ao_infra,core_freq";
-			node-112 = "SSPM_SWPM_TSFDC__POWER_STATE",
-				"active_ratio10,active_ratio9,active_ratio8,active_ratio7,",
-				"active_ratio6,active_ratio5,active_ratio4,active_ratio3,",
-				"active_ratio2,active_ratio1,active_ratio0,Freq";
+			node-112 = "SSPM_SWPM_ISP__ISP",
+				"p1_V,p1_freq,p1_fps,",
+				"p1_data,p1_exp,p1_raw,",
+				"p2_V,p2_freq,p2_data,",
+				"p2_fps,p2_ds,p2_eis_type,p2_vr_data,",
+				"p2_disp_fps,p2_disp_ds,p2_disp_eis_type,p2_disp_data";
 			node-113 = "SSPM_SWPM_DISP__PWR_STA",
 				"off,act,disp_clk,dsi_off,dsi_lp_pll_on,dsi_act,dsi_lane_num,",
 				"dsi_phy_type,dsi_clk,DISP_AAL,DISP_CCORR,DISP_C3D,DISP_GAMMA,",
 				"DISP_COLOR,DISP_TDSHP,DISP_DITHER";
-			node-114 = "SSPM_SWPM_USB",
-				"sspxtp_active,sspxtp_d11_powerdown_b1,sspxtp_d10_powerdown_b0,",
-				"sspxtp_d9_G1U3,sspxtp_d8_G2U3,sspxtp_d7_G1U2,sspxtp_d6_G1U1,",
-				"sspxtp_d5_G2U2,sspxtp_d4_G2U1,sspxtp_d3_G1UXEXIT,sspxtp_d2_G2UXEXIT,",
-				"sspxtp_d1_G1U0,sspxtp_d0_G2U0,ssusb_u2_phy_l0_fsrx_ip1,ssusb_u2_phy_l0_fstx_ip1,",
-				"ssusb_u2_phy_l0_hsrx_ip1,ssusb_u2_phy_l0_hstx_ip1,ssusb_u2_phy_l0_idle_ip1,",
-				"ssusb_u2_phy_l0_ip1,ssusb_u2_phy_l1_ip1,ssusb_u2_phy_l2_ip1,",
-				"ssusb_usb2_l2_ip1,ssusb_usb2_l1_ip1,ssusb_usb2_l0_ip1,",
-				"ssusb_u2_phy_l0_fsrx_ip0,ssusb_u2_phy_l0_fstx_ip0,",
-				"ssusb_u2_phy_l0_hsrx_ip0,ssusb_u2_phy_l0_hstx_ip0,ssusb_u2_phy_l0_idle_ip0,",
-				"ssusb_u2_phy_l0_ip0,ssusb_u2_phy_l1_ip0,ssusb_u2_phy_l2_ip0,",
-				"ssusb_usb2_l2_ip0,ssusb_usb2_l1_ip0,ssusb_usb2_l0_ip0,ssusb_usb3_u3_ip0,ssusb_usb3_u2_ip0,",
-				"ssusb_usb3_u1_ip0,ssusb_usb3_u0_ip0,usb_ck_freq";
+			node-114 = "SSPM_SWPM_CSI__CSI",
+				"vcore_V,csi_clk,fps,ulps_mode,c_d_phy,",
+				"phy_data_lane_num,bit_data_rate,frm_W,frm_H,",
+				"data_bit,HB,VB";
 			node-115 = "SSPM_SWPM_INFRA",
 				"socsys_freq,socsys_bw,socsys_d0_ratio,socsys_d1_ratio,socsys_d2_ratio,",
 				"peri_freq,peri_m0_busy_ratio,peri_m1_busy_ratio,peri_d1_ratio,peri_d2_ratio";
