@@ -20,6 +20,7 @@
 #include "mbraink_v6991_power.h"
 #include "mbraink_v6991_gpu.h"
 #include "mbraink_v6991_gps.h"
+#include "mbraink_v6991_wifi.h"
 
 //static DEFINE_MUTEX(power_lock);
 //static DEFINE_MUTEX(pmu_lock);
@@ -220,6 +221,10 @@ static int mbraink_v6991_init(void)
 	ret = mbraink_v6991_gps_init();
 	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 gps init failed.\n");
+
+	ret = mbraink_v6991_wifi_init();
+	if (ret)
+		pr_notice("[MBK_v6991] mbraink v6991 wifi init failed.\n");
 	return ret;
 }
 
@@ -249,6 +254,7 @@ static void mbraink_v6991_exit(void)
 	mbraink_v6991_power_deinit();
 	mbraink_v6991_gpu_deinit();
 	mbraink_v6991_gps_deinit();
+	mbraink_v6991_wifi_deinit();
 }
 
 module_init(mbraink_v6991_init);
