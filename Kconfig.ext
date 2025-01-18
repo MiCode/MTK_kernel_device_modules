@@ -102,6 +102,8 @@ source "$(KCONFIG_EXT_PREFIX)sound/soc/codecs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)sound/soc/mediatek/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)sound/virtio/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"

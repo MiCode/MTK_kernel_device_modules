@@ -102,6 +102,8 @@ obj-y += sound/soc/codecs/
 
 obj-y += sound/soc/mediatek/
 
+obj-y += sound/virtio/
+
 obj-y += drivers/pci/controller/
 
 obj-y += drivers/media/virtio/
