@@ -25,6 +25,8 @@ enum FPSGO_CPU_LIMIT {
 	FPSGO_LIMIT_CPU = 2,
 };
 
+extern int set_gear_indices(int pid, int gear_start, int num_gear, int reverse);
+extern int unset_gear_indices(int pid);
 extern void set_task_ls(int pid);
 extern void unset_task_ls(int pid);
 extern bool is_task_latency_sensitive(struct task_struct *p);
@@ -41,6 +43,7 @@ int fbt_get_default_boost_ta(void);
 int fbt_get_default_adj_loading(void);
 int fbt_get_default_adj_count(void);
 int fbt_get_default_adj_tdiff(void);
+int get_fbt_cpu_mask(int prefer_type, int *get_mask);
 int fbt_set_affinity(pid_t pid, unsigned int prefer_type);
 int fbt_check_ls(int pid);
 struct cpumask fbt_generate_user_cpu_mask(int mask_int);
