@@ -915,6 +915,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
 
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie")
