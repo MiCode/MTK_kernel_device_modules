@@ -2101,7 +2101,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				   ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), layer_src,
-				   ~0);
+				   L_CON_FLD_LSRC);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_EL_CON(id), con,
@@ -2132,7 +2132,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			comp->regs_pa + DISP_REG_OVL_CON, con, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_L_EN(0), layer_src,
-			~0);
+			L_CON_FLD_LSRC);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2145,7 +2145,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				~0);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_L_EN(0),
-				layer_src, ~0);
+				layer_src, L_CON_FLD_LSRC);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
 		}
@@ -2437,8 +2437,8 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		       DISP_OVL_L_FBCD_EN);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-			lx_fbdc_en << (lye_idx + 4), BIT(lye_idx + 4));
+			comp->regs_pa + DISP_REG_OVL_L_EN(0),
+			lx_fbdc_en << 4, DISP_OVL_L_FBCD_EN);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_OVL_SYSRAM_CFG(lye_idx), 0,
