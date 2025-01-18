@@ -681,6 +681,8 @@ static struct kretprobe kp[] = {
 	{.kp.symbol_name = "perf_duration_warn"},
 	/* for _deferred */
 	{.kp.symbol_name = "wake_up_klogd_work_func"},
+	/* sysrq l */
+	{.kp.symbol_name = "showacpu"},
 	/* for self test */
 	{.kp.symbol_name = "irq_mon_irq_work2"},
 };
