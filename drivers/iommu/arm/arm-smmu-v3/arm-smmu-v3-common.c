@@ -78,6 +78,11 @@ static int arm_smmu_device_dt_probe(struct platform_device *pdev,
 	if (of_dma_is_coherent(dev->of_node))
 		smmu->features |= ARM_SMMU_FEAT_COHERENCY;
 
+	dev_info(dev, "[%s] coherent:%d(%d), options:0x%x, features:0x%x\n",
+		 __func__, of_dma_is_coherent(dev->of_node),
+		 smmu->features & ARM_SMMU_FEAT_COHERENCY,
+		 smmu->options, smmu->features);
+
 	return 0;
 }
 
@@ -189,6 +194,9 @@ int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 
 	/* IDR0 */
 	reg = readl_relaxed(smmu->base + ARM_SMMU_IDR0);
+
+	dev_info(smmu->dev, "[%s] coherent:%d, IDR0:0x%x=0x%x, split:%d\n",
+		 __func__, coherent, ARM_SMMU_IDR0, reg, split);
 
 	/* 2-level structures */
 	if (FIELD_GET(IDR0_ST_LVL, reg) == IDR0_ST_LVL_2LVL)
@@ -341,11 +349,11 @@ int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 
 	/* Page sizes */
 	if (reg & IDR5_GRAN64K)
-		smmu->pgsize_bitmap |= SZ_64K | SZ_512M;
+		smmu->pgsize_bitmap |= SZ_64K | SZ_2M | SZ_512M;
 	if (reg & IDR5_GRAN16K)
-		smmu->pgsize_bitmap |= SZ_16K | SZ_32M;
+		smmu->pgsize_bitmap |= SZ_16K | SZ_2M | SZ_32M;
 	if (reg & IDR5_GRAN4K)
-		smmu->pgsize_bitmap |= SZ_4K | SZ_2M | SZ_1G;
+		smmu->pgsize_bitmap |= SZ_4K | SZ_64K | SZ_2M | SZ_1G;
 
 	/* Input address size */
 	if (FIELD_GET(IDR5_VAX, reg) == IDR5_VAX_52_BIT)
@@ -405,10 +413,24 @@ int arm_smmu_write_reg_sync(struct arm_smmu_device *smmu, u32 val,
 			    unsigned int reg_off, unsigned int ack_off)
 {
 	u32 reg;
+	int ret;
 
 	writel_relaxed(val, smmu->base + reg_off);
-	return readl_relaxed_poll_timeout(smmu->base + ack_off, reg, reg == val,
-					  1, ARM_SMMU_POLL_TIMEOUT_US);
+	ret = readl_relaxed_poll_timeout(smmu->base + ack_off, reg, reg == val,
+					 1, ARM_SMMU_POLL_TIMEOUT_US);
+
+	if (ret && smmu->impl && smmu->impl->fault_dump)
+		smmu->impl->fault_dump(smmu);
+
+	if (ret && smmu->impl && smmu->impl->skip_sync_timeout &&
+	    smmu->impl->skip_sync_timeout(smmu)) {
+		dev_info(smmu->dev,
+			 "[%s] reg_off:0x%x ack_off:0x%x val:0x%x ret:%d\n",
+			 __func__, reg_off, ack_off, val, ret);
+		return 0;
+	}
+
+	return ret;
 }
 
 /* GBPA is "special" */
@@ -462,17 +484,30 @@ bool arm_smmu_capable(struct device *dev, enum iommu_cap cap)
 
 struct iommu_group *arm_smmu_device_group(struct device *dev)
 {
+	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
+	struct arm_smmu_device *smmu;
 	struct iommu_group *group;
+
+	if (!master) {
+		dev_info(dev, "[%s] no smmu master\n", __func__);
+		return NULL;
+	}
+
+	smmu = master->smmu;
 
 	/*
 	 * We don't support devices sharing stream IDs other than PCI RID
 	 * aliases, since the necessary ID-to-device lookup becomes rather
 	 * impractical given a potential sparse 32-bit stream ID space.
 	 */
-	if (dev_is_pci(dev))
+	if (dev_is_pci(dev)) {
 		group = pci_device_group(dev);
-	else
-		group = generic_device_group(dev);
+	} else {
+		if (smmu && smmu->impl && smmu->impl->device_group)
+			group = smmu->impl->device_group(dev);
+		else
+			group = generic_device_group(dev);
+	}
 
 	return group;
 }
@@ -760,6 +795,8 @@ void arm_smmu_probe_irq(struct platform_device *pdev,
 	int irq;
 
 	irq = platform_get_irq_byname_optional(pdev, "combined");
+	dev_info(smmu->dev, "[%s] combined irq:%d\n", __func__, irq);
+
 	if (irq > 0)
 		smmu->combined_irq = irq;
 	else {

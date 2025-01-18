@@ -32,6 +32,7 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
+#include "mtk-io-pgtable-arm.h"
 
 #define LINK_WITH_APU			BIT(0)
 /* For SMMU EP/bring up phase: smi not ready */

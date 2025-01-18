@@ -7,7 +7,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/bits.h>
-#include <linux/io-pgtable.h>
+#include <linux/io-pgtable-arm.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -26,7 +26,6 @@
 #include "mtk_iommu.h"
 #include "iommu_debug.h"
 #include "iommu_port.h"
-#include "io-pgtable-arm.h"
 #include "smmu_reg.h"
 
 #include "../../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
@@ -1027,78 +1026,9 @@ EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
 //=====================================================
 // SMMU private data for Dump Page Table start
 //=====================================================
-#define ARM_LPAE_MAX_LEVELS		4
-
-/* Struct accessors */
-#define io_pgtable_to_data(x)						\
-	container_of((x), struct arm_lpae_io_pgtable, iop)
-
-#define io_pgtable_ops_to_data(x)					\
-	io_pgtable_to_data(io_pgtable_ops_to_pgtable(x))
-
-/*
- * Calculate the right shift amount to get to the portion describing level l
- * in a virtual address mapped by the pagetable in d.
- */
-#define ARM_LPAE_LVL_SHIFT(l, d)					\
-	(((ARM_LPAE_MAX_LEVELS - (l)) * (d)->bits_per_level) +		\
-	ilog2(sizeof(arm_lpae_iopte)))
-
-#define ARM_LPAE_GRANULE(d)						\
-	(sizeof(arm_lpae_iopte) << (d)->bits_per_level)
-#define ARM_LPAE_PGD_SIZE(d)						\
-	(sizeof(arm_lpae_iopte) << (d)->pgd_bits)
-
-/*
- * Calculate the index at level l used to map virtual address a using the
- * pagetable in d.
- */
-#define ARM_LPAE_PGD_IDX(l, d)						\
-	((l) == (d)->start_level ? (d)->pgd_bits - (d)->bits_per_level : 0)
-
-#define ARM_LPAE_LVL_IDX(a, l, d)					\
-	(((u64)(a) >> ARM_LPAE_LVL_SHIFT(l, d)) &			\
-	 ((1 << ((d)->bits_per_level + ARM_LPAE_PGD_IDX(l, d))) - 1))
-
-/* Calculate the block/page mapping size at level l for pagetable in d. */
-#define ARM_LPAE_BLOCK_SIZE(l,d)	(1ULL << ARM_LPAE_LVL_SHIFT(l,d))
-
-/* Page table bits */
-#define ARM_LPAE_PTE_TYPE_SHIFT		0
-#define ARM_LPAE_PTE_TYPE_MASK		0x3
-
-#define ARM_LPAE_PTE_TYPE_BLOCK		1
-#define ARM_LPAE_PTE_TYPE_TABLE		3
-#define ARM_LPAE_PTE_TYPE_PAGE		3
-
-#define ARM_LPAE_PTE_ADDR_MASK		GENMASK_ULL(47, 12)
 
 /* IOPTE accessors */
 #define iopte_deref(pte, d) __va(iopte_to_paddr(pte, d))
-
-#define iopte_type(pte)					\
-	(((pte) >> ARM_LPAE_PTE_TYPE_SHIFT) & ARM_LPAE_PTE_TYPE_MASK)
-
-struct arm_lpae_io_pgtable {
-	struct io_pgtable	iop;
-
-	int			pgd_bits;
-	int			start_level;
-	int			bits_per_level;
-
-	void			*pgd;
-};
-
-typedef u64 arm_lpae_iopte;
-
-static inline bool iopte_leaf(arm_lpae_iopte pte, int lvl,
-			      enum io_pgtable_fmt fmt)
-{
-	if (lvl == (ARM_LPAE_MAX_LEVELS - 1) && fmt != ARM_MALI_LPAE)
-		return iopte_type(pte) == ARM_LPAE_PTE_TYPE_PAGE;
-
-	return iopte_type(pte) == ARM_LPAE_PTE_TYPE_BLOCK;
-}
 
 static phys_addr_t iopte_to_paddr(arm_lpae_iopte pte,
 				  struct arm_lpae_io_pgtable *data)
