@@ -1868,7 +1868,7 @@ void xhci_free_command_(struct xhci_hcd *xhci,
 }
 EXPORT_SYMBOL_GPL(xhci_free_command_);
 
-int xhci_alloc_erst_(struct xhci_hcd *xhci,
+static int xhci_alloc_erst_(struct xhci_hcd *xhci,
 		    struct xhci_ring *evt_ring,
 		    struct xhci_erst *erst,
 		    gfp_t flags)
@@ -1897,7 +1897,6 @@ int xhci_alloc_erst_(struct xhci_hcd *xhci,
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(xhci_alloc_erst_);
 
 static void
 xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
