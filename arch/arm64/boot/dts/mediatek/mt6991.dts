@@ -3447,7 +3447,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb";
 		is-default-ostdl;
 		is-real-time-perm;
-		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
+		larb-port-real-time-type = <1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 0 1 1>;
 		smi-user-id = <MTK_SMI_MML0>;
 	};
 
@@ -3462,7 +3462,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		clock-names = "apb";
 		is-default-ostdl;
 		is-real-time-perm;
-		larb-port-real-time-type = <2 2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 1 2>;
+		larb-port-real-time-type = <1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 0 1 1>;
 		smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
 	};
 
