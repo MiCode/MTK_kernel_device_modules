@@ -1522,7 +1522,9 @@ free_drv_info:
 	kfree(drv_info);
 ffa_bus_exit:
 	arm_ffa_bus_exit();
-	return ret;
+
+	/* ignore all error */
+	return 0;
 }
 subsys_initcall(ffa_init);
 
