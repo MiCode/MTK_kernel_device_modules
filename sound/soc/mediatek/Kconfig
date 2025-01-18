@@ -293,6 +293,37 @@ config MTK_ULTRASND_PROXIMITY
 	  IPI interface to communicate with SCP side and
 	  be controlled by sensor hal.
 
+config MTK_SND_SOC_NEW_ARCH
+	bool "Support new audio architecture"
+	help
+	  If you say Y, enable MTK_SND_SOC_NEW_ARCH.
+	  Only enable this when you use refactored audio driver architecture.
+	  If new chip after mt6757, we will enable this config.
+	  Audio driver refactor to common folder and platform folder.
+
+config MTK_SND_SOC_NEW_ARCH_COMMON
+	tristate "ASoc support for common drivers"
+	help
+	  This adds support for common drivers
+	  that can be used if MTK_SND_SOC_NEW_ARCH is enabled.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_CODEC_MT6357
+	tristate "ASoc Audio driver for MT6357 codec"
+	help
+	  This adds ASoC driver for Mediatek boards
+	  with the MT6357 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT6765
+	tristate "ASoC support for Mediatek MT6765 chip"
+	help
+	  This adds ASoC driver for Mediatek MT6765 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
 
 config SND_SOC_MT8188
 	tristate "ASoC support for Mediatek MT8188 chip"

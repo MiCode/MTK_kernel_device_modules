@@ -371,6 +371,9 @@ static const struct mfd_cell mt6323_devs[] = {
 
 static const struct mfd_cell mt6357_devs[] = {
 	{
+		.name = "mt6357-sound",
+		.of_compatible = "mediatek,mt6357-sound"
+	}, {
 		.name = "mt635x-auxadc",
 		.of_compatible = "mediatek,mt6357-auxadc",
 		.num_resources = ARRAY_SIZE(mt6357_auxadc_resources),

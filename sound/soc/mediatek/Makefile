@@ -52,3 +52,29 @@ subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/inclu
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/
+# New architecture
+ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH),y)
+obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
+# flags for not ready feature, uncomment after ready
+subdir-ccflags-y += -DAUDIO_USING_WRAP_DRIVER
+subdir-ccflags-y += -D_MT_IDLE_HEADER
+subdir-ccflags-y += -D_REG_SYNC_WRITE
+# PMIC include path
+ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH),y)
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/codec
+# AP include path
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common_int
+
+ifeq ($(CONFIG_SND_SOC_MT6739),m)
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6739
+else
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6765
+endif
+
+subdir-ccflags-y += -Wno-incompatible-pointer-types
+endif
+# Update pmic built flow to avoid codec init later than codec probe
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += codec/
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += common_int/
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += mt6765/
+endif

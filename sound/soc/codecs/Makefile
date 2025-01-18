@@ -20,6 +20,7 @@ snd-soc-mt6368-objs := mt6368.o
 snd-soc-mt6681-objs := mt6681.o
 snd-soc-mt6681-accdet-objs := mt6681-accdet.o
 snd-soc-hdmi-codec-objs := hdmi-codec.o
+snd-soc-rt5509-objs += rt5509.o rt5509-calib.o
 
 obj-$(CONFIG_SND_SOC_MT6338)	+= snd-soc-mt6338.o
 obj-$(CONFIG_SND_SOC_MT6338_ACCDET) += mt6338-accdet.o
@@ -38,3 +39,4 @@ obj-$(CONFIG_SND_SOC_MT6681_ACCDET) += mt6681-accdet.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_HDMI_CODEC)	+= snd-soc-hdmi-codec.o
 obj-$(CONFIG_SND_SOC_RT5512)	+= richtek/
 obj-$(CONFIG_SND_SOC_TFA9874)	+= tfa98xx/
+obj-$(CONFIG_SND_SOC_RT5509) 	+= snd-soc-rt5509.o
