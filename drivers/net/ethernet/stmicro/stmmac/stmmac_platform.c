@@ -320,6 +320,7 @@ out:
 static int stmmac_dt_phy(struct plat_stmmacenet_data *plat,
 			 struct device_node *np, struct device *dev)
 {
+	u32 bus_id;
 	bool mdio = !of_phy_is_fixed_link(np);
 	static const struct of_device_id need_mdio_ids[] = {
 		{ .compatible = "snps,dwc-qos-ethernet-4.10" },
@@ -343,6 +344,9 @@ static int stmmac_dt_phy(struct plat_stmmacenet_data *plat,
 	if (plat->mdio_node) {
 		dev_dbg(dev, "Found MDIO subnode\n");
 		mdio = true;
+
+		if(!of_property_read_u32(plat->mdio_node, "bus-id", &bus_id))
+			plat->bus_id = bus_id;
 	}
 
 	if (mdio) {
