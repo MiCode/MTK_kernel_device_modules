@@ -797,7 +797,7 @@ static const struct dev_pm_ops flt_pm_ops = {
 static int platform_flt_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
-	u32 flt_mode = FLT_MODE_0;
+	u32 flt_mode = FLT_MODE_0, version = 0;
 	struct device_node *node;
 
 	if (!of_have_populated_dt())
@@ -808,11 +808,14 @@ static int platform_flt_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(node, "mode", &retval);
 	if (!ret)
 		flt_mode = retval;
-
+	ret = of_property_read_u32(node, "version", &retval);
+	if (!ret)
+		version = retval;
 flt_exit:
-		pr_info("FLT flt_mode=%d\n", flt_mode);
-		flt_set_mode(flt_mode);
-		return 0;
+	pr_info("FLT flt_mode=%u version=%u", flt_mode, version);
+	flt_set_mode(flt_mode);
+	flt_set_version(version);
+	return 0;
 }
 
 static const struct of_device_id platform_flt_match[] = {

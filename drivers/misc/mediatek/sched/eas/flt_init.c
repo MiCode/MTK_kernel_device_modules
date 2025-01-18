@@ -70,9 +70,12 @@
 #define ROE	0x3fc
 #define AMI	0x3ff
 
+#define HAV	0x101
+
 unsigned int EKV[GKEL][RT] = {0};
 
 static u32 flt_mode = FLT_MODE_0;
+static u32 flt_version;
 static void __iomem *flt_xrg;
 static unsigned long long flt_xrg_size;
 static bool is_flt_io_enable;
@@ -102,6 +105,17 @@ u32 flt_get_mode(void)
 	return flt_mode;
 }
 EXPORT_SYMBOL(flt_get_mode);
+
+void  flt_set_version(u32 version)
+{
+	flt_version = version;
+}
+
+u32 flt_get_version(void)
+{
+	return flt_version;
+}
+EXPORT_SYMBOL(flt_get_version);
 
 static void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
 {
@@ -366,6 +380,9 @@ static void flt_fei(int wl, int ctp)
 		XHR[i] = clamp_t(unsigned int, XHR[i], 0, AMI);
 	}
 
+	if (flt_version > HAV)
+		goto HA_EXIT;
+
 	for (i = 0; i < (XLO - 1); ++i) {
 		if (XU[i] >= AMI)
 			HA = i;
@@ -385,6 +402,7 @@ static void flt_fei(int wl, int ctp)
 		}
 	}
 
+HA_EXIT:
 	flt_kh(XHR, XLO, XLA, EKV[ctp], ctp);
 	flt_kh(XHR, XLO + YLO, YLA, EKV[ctp], ctp);
 	flt_kh(XHR, TLO, ZLA, EKV[ctp], ctp);
