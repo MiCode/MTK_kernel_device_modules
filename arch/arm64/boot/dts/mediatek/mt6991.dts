@@ -27,6 +27,8 @@
 #include <dt-bindings/memory/mtk-smi-user.h>
 #include <dt-bindings/memory/mt6991-larb-port.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
+#include <dt-bindings/clock/mt6991-ivi-clk.h>
+#include <dt-bindings/power/mt6991-ivi-power.h>
 
 / {
 	model = "MT6991";
@@ -829,6 +831,52 @@
 		compatible = "mediatek,mt6991-ptppll_pll_ctrl", "syscon";
 		reg = <0 0xc1e4000 0 0x1000>;
 		#clock-cells = <1>;
+	};
+
+	ivi_clkitg: ivi-clkitg {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	ivi_disable_unused: ivi-disable-unused {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	ivi_cksys_clk: ivi-cksys@10000000 {
+		compatible = "mediatek,mt6991-ivi-cksys", "syscon";
+		reg = <0 0x10000000 0 0x0800>;
+		#clock-cells = <1>;
+		status = "disabled";
+	};
+
+	ivi_cksys2_clk: ivi-cksys2@1000c000 {
+		compatible = "mediatek,mt6991-ivi-cksys2", "syscon";
+		reg = <0 0x1000c000 0 0x0800>;
+		#clock-cells = <1>;
+		status = "disabled";
+	};
+
+	ivi_apmixedsys_clk: ivi-apmixedsys@10000800 {
+		compatible = "mediatek,mt6991-ivi-apmixedsys", "syscon";
+		reg = <0 0x10000800 0 0x1000>;
+		#clock-cells = <1>;
+		status = "disabled";
+	};
+
+	ivi_scpsys: ivi-scpsys@1c004000 {
+		compatible = "mediatek,mt6991-ivi-scpsys", "syscon";
+		reg = <0 0x1c004000 0 0x1000>;
+		#power-domain-cells = <1>;
+		spm = <&scpsys_bus>;
+		mmpc = <&hfrpsys>;
+		clocks = <&ivi_cksys_clk CLK_CK_GMAC_125M_SEL>;
+		clock-names = "gmac125";
+		status = "disabled";
 	};
 
 	lastbus: lastbus {
