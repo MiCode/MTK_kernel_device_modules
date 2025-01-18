@@ -8073,6 +8073,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			};
 		};
 
+		camera-camsys-ccu {
+			compatible = "mediatek,camera-camsys-ccu";
+			mediatek,ccu-rproc = <&ccu_rproc>;
+		};
+
 		remoteproc_ccd: remoteproc-ccd@3a001000 {
 			compatible = "mediatek,ccd";
 			reg =	<0 0x3a001000 0 0x10>;
@@ -11731,7 +11736,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_cam_protected: mm-smmu-cam-protected {
-		//compatible = "mediatek,smmu-share-group";
+		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_cam_protected";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 137>;
