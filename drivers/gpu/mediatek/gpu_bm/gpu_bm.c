@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <linux/slab.h>
@@ -234,7 +234,7 @@ void MTKGPUQoS_mode(int seg_flag)
 		return;
 	}
 
-	/* default prediction  */
+	/* default avg prediction */
 	if (g_mode == GPU_BW_DEFAULT_MODE) {
 		/*
 		 * if gpu loading < 40% and gpu freq is lowest,
