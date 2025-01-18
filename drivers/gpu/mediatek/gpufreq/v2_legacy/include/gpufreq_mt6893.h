@@ -169,16 +169,13 @@ struct gpufreq_clk_info {
 	struct clk *clk_main_parent;
 	struct clk *clk_sub_parent;
 	struct clk *subsys_mfg_cg;
-};
-
-struct gpufreq_mtcmos_info {
-	struct device *mfg0_dev;
-	struct device *mfg1_dev;
-	struct device *mfg2_dev;
-	struct device *mfg3_dev;
-	struct device *mfg4_dev;
-	struct device *mfg5_dev;
-	struct device *mfg6_dev;
+	struct clk *mtcmos_mfg_async;
+	struct clk *mtcmos_mfg;
+	struct clk *mtcmos_mfg_core0;
+	struct clk *mtcmos_mfg_core1_2;
+	struct clk *mtcmos_mfg_core3_4;
+	struct clk *mtcmos_mfg_core5_6;
+	struct clk *mtcmos_mfg_core7_8;
 };
 
 struct gpufreq_sb_info {
