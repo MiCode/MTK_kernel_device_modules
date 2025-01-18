@@ -7,6 +7,7 @@
 #include <linux/proc_fs.h>
 #include <linux/kthread.h>
 #include <linux/irq_work.h>
+#include <linux/cpufreq.h>
 
 #define MAX_CAP_ENTRYIES 168
 
