@@ -1592,7 +1592,6 @@ static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 
 	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
 	result_size = mtk_jpeg_enc_get_file_size(jpeg->reg_base, jpeg->support_34bits);
-	pr_info("%s %d result_size %u\n", __func__, __LINE__, result_size);
 	vb2_set_plane_payload(&dst_buf->vb2_buf, 0, result_size);
 
 	buf_state = VB2_BUF_STATE_DONE;
