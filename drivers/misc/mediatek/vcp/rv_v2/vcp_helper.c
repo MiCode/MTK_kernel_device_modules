@@ -3050,6 +3050,7 @@ void dump_vcp_irq_status(void)
 		dump_mmup_irq_status();
 
 }
+EXPORT_SYMBOL_GPL(dump_vcp_irq_status);
 
 static int vcp_device_remove(struct platform_device *pdev)
 {
