@@ -475,6 +475,10 @@ extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
 extern struct mtk_vdisp_funcs vdisp_func;
 extern struct mtk_drm_disp_mtee_cb disp_mtee_cb;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
+extern struct platform_driver mtk_dp_phy_driver;
+extern struct platform_driver mtk_dvo_driver;
+#endif
 
 /* For overlay bandwidth monitor */
 extern struct layer_compress_ratio_data

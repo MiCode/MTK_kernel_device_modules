@@ -131,6 +131,7 @@ enum mtk_ddp_mutex_sof_id {
 	DDP_MUTEX_SOF_DPI1,
 	DDP_MUTEX_SOF_DSI2,
 	DDP_MUTEX_SOF_DSI3,
+	DDP_MUTEX_SOF_DVO,
 	DDP_MUTEX_SOF_MAX,
 };
 
