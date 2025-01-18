@@ -12,6 +12,8 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/i2c.h>
+#include <linux/mfd/mt6681.h>
 
 #include <dt-bindings/iio/mt635x-auxadc.h>
 
@@ -32,6 +34,7 @@ struct mt6681_auxadc_device {
 	unsigned int nchannels;
 	struct iio_chan_spec *iio_chans;
 	struct mutex lock;
+	struct i2c_client *i2c_client;
 	const struct auxadc_info *info;
 	/* regulator */
 	struct regulator *reg_vaud18;
@@ -213,10 +216,12 @@ static int mt6681_auxadc_read_raw(struct iio_dev *indio_dev,
 	const struct auxadc_channels *auxadc_chan;
 	int auxadc_out = 0;
 	int ret;
+	struct i2c_adapter *adap = adc_dev->i2c_client->adapter;
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 5);
 #if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
+	scp_wake_request(adap);
 
 #if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	if (!IS_ERR(adc_dev->reg_vaud18)) {
@@ -226,7 +231,7 @@ static int mt6681_auxadc_read_raw(struct iio_dev *indio_dev,
 				__func__, status);
 	}
 #else
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+	regmap_update_bits(adc_dev->regmap, MT6681_LDO_VAUD18_CON0,
 		   RG_LDO_VAUD18_EN_0_MASK_SFT,
 		   0x1 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
@@ -279,10 +284,12 @@ err:
 				__func__, status);
 	}
 #else
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+	regmap_update_bits(adc_dev->regmap, MT6681_LDO_VAUD18_CON0,
 		   RG_LDO_VAUD18_EN_0_MASK_SFT,
 		   0x0 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
+	scp_wake_release(adap);
+
 	return ret;
 }
 
@@ -407,6 +414,7 @@ static int mt6681_auxadc_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	struct mt6681_auxadc_device *adc_dev;
 	struct iio_dev *indio_dev;
+	struct mt6681_pmic_info *mpi = NULL;
 	int ret;
 
 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*adc_dev));
@@ -444,6 +452,14 @@ static int mt6681_auxadc_probe(struct platform_device *pdev)
 		return ret;
 	}
 	dev_info(&pdev->dev, "%s successfully done\n", __func__);
+
+	/* get i2c client for scp_request/release */
+	mpi = dev_get_drvdata(pdev->dev.parent);
+	if (!mpi) {
+		dev_info(&pdev->dev, "Faled to get parent driver data\n");
+		return -ENODEV;
+	}
+	adc_dev->i2c_client = mpi->i2c;
 
 	return 0;
 }
