@@ -840,7 +840,7 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt),
 			vcu->ctx->later_cnt_once);
 	}
-
+	vcu->ctx->sysram_enable = vcu->ctx->use_slbc;
 	vcu_enc_set_ctx(vcu, frm_buf, bs_buf);
 	ret = vcu_enc_send_msg(vcu, &out, sizeof(out));
 	mutex_unlock(vcu->ctx_ipi_lock);
