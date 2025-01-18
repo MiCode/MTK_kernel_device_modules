@@ -2510,7 +2510,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 #endif
 
 	if (am_ctrl == 0 || am_ctrl == 9)
-		for_each_cpu(i, policy->related_cpus)
+		for_each_cpu(i, cpumask)
 			WRITE_ONCE(adaptive_margin[i], util_scale);
 	pelt_util_with_margin =
 		(util * READ_ONCE(adaptive_margin[first_cpu])) >> SCHED_CAPACITY_SHIFT;
