@@ -435,19 +435,20 @@ static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 	char dbg_msg[512] = {0};
 	int written = 0;
 
-	if (mtk_disp_get_logger_enable()) {
+	if (mtk_disp_get_logger_enable())
 		written = scnprintf(dbg_msg, 512, "%s = ", __func__);
-		for (i = 0; i < BW_CHANNEL_NR; i++) {
-			for (j = 0; j < MAX_CRTC; j++)
-				channel_sum += priv->srt_channel_bw_sum[j][i];
-			mtk_vidle_channel_bw_set(channel_sum, (i * 4)); //0, 4, 8, 12
 
+	for (i = 0; i < BW_CHANNEL_NR; i++) {
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->srt_channel_bw_sum[j][i];
+		mtk_vidle_channel_bw_set(channel_sum, (i * 4)); //0, 4, 8, 12
+
+		if (mtk_disp_get_logger_enable())
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]", channel_sum);
 
-			channel_sum = 0;
-		}
-		DDPINFO("%s\n", dbg_msg);
+		channel_sum = 0;
 	}
+	DDPINFO("%s\n", dbg_msg);
 }
 
 static void mtk_disp_clear_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
