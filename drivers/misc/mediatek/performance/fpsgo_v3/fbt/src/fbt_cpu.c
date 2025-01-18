@@ -474,6 +474,7 @@ static unsigned int max_blc_cur;
 static struct fpsgo_loading max_blc_dep[MAX_DEP_NUM];
 static int max_blc_dep_num;
 static int boosted_group;
+static int tt_vip_enable;
 
 static unsigned int *clus_obv;
 static unsigned int *clus_status;
@@ -562,6 +563,9 @@ void (*fbt_cpufreq_cb_cap_fp)(int cid, int cap, unsigned long long *freq_lastest
 	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
 	unsigned long long fake_time_ns);
 EXPORT_SYMBOL(fbt_cpufreq_cb_cap_fp);
+
+int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
+EXPORT_SYMBOL(task_turbo_enforce_ct_to_vip_fp);
 
 static unsigned long long nsec_to_100usec_ull(unsigned long long nsec)
 {
@@ -3102,6 +3106,14 @@ static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt, int blc_wt_b,
 
 	cb_mask = 1 << GET_FPSGO_JERK_BOOST;
 	fpsgo_notify_frame_info_callback(cb_mask, thr);
+
+	if (task_turbo_enforce_ct_to_vip_fp &&
+		jerk == FPSGO_JERK_SECOND && !tt_vip_enable) {
+		task_turbo_enforce_ct_to_vip_fp(1, 1);
+		tt_vip_enable = 1;
+		fpsgo_main_trace("pid:%d buffer_id:0x%llx tt_vip_enable:%d",
+			thr->pid, thr->buffer_id, tt_vip_enable);
+	}
 }
 
 static void fbt_cancel_sjerk(void)
@@ -5277,6 +5289,12 @@ void fbt_check_max_blc_locked(int pid)
 		fbt_free_bhr();
 		memset(base_opp, 0, cluster_num * sizeof(unsigned int));
 		fbt_set_down_throttle_locked(-1);
+
+		if (task_turbo_enforce_ct_to_vip_fp) {
+			task_turbo_enforce_ct_to_vip_fp(0, 1);
+			tt_vip_enable = 0;
+			fpsgo_main_trace("%s tt_vip_enable:%d", __func__, tt_vip_enable);
+		}
 	} else
 		fbt_set_limit(pid, max_blc, max_blc_pid, max_blc_buffer_id,
 			max_blc_dep_num, max_blc_dep, NULL, 0);
@@ -5926,6 +5944,16 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 		thr->tgid, thr->frame_type,
 		thr->Q2Q_time, runtime, targettime,
 		blc_wt, limited_cap, thr->enqueue_length, thr->dequeue_length);
+
+	mutex_lock(&fbt_mlock);
+	if (task_turbo_enforce_ct_to_vip_fp && tt_vip_enable &&
+		thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
+		task_turbo_enforce_ct_to_vip_fp(0, 1);
+		tt_vip_enable = 0;
+		fpsgo_main_trace("pid:%d buffer_id:0x%llx tt_vip_enable:%d",
+			thr->pid, thr->buffer_id, tt_vip_enable);
+	}
+	mutex_unlock(&fbt_mlock);
 }
 
 static void fbt_setting_reset(int reset)
