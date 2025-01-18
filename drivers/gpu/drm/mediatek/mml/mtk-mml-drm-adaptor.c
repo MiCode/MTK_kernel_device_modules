@@ -185,14 +185,14 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 
 	if (hw_caps & MML_HW_ALPHARSZ) {
 		/* hardware support alpha resize case */
-		if (info->alpha && !MML_FMT_IS_ARGB(info->src.format)) {
+		if (info->alpha && !MML_FMT_ALPHA(info->src.format)) {
 			mml_err("[drm]alpha enable without alpha input format %#010x",
 				info->src.format);
 			goto not_support;
 		}
 	} else if (info->alpha &&
-		MML_FMT_IS_ARGB(info->src.format) &&
-		MML_FMT_IS_ARGB(info->dest[0].data.format)) {
+		MML_FMT_ALPHA(info->src.format) &&
+		MML_FMT_ALPHA(info->dest[0].data.format)) {
 		/* for alpha rotate */
 		const struct mml_frame_dest *dest = &info->dest[0];
 		u32 srccw = dest->crop.r.width;

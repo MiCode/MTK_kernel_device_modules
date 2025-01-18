@@ -31,7 +31,6 @@ struct mml_v4l2_dev {
 	struct mutex m2m_mutex;
 };
 
-#define MML_M2M_MAX_CAPTURES	MML_MAX_OUTPUTS
 #define MML_M2M_MAX_CTRLS	10
 
 enum {
@@ -47,9 +46,8 @@ struct mml_m2m_frame {
 
 struct mml_m2m_param {
 	const struct mml_m2m_limit *limit;
-	struct mml_m2m_frame output; /* src buffer */
-	struct mml_m2m_frame captures[MML_M2M_MAX_CAPTURES]; /* dst buffers */
-	u32 num_captures;
+	struct mml_m2m_frame output;	/* src buffer */
+	struct mml_m2m_frame capture;	/* dst buffer */
 
 	s32 rotation;
 	u32 hflip:1;
@@ -78,6 +76,7 @@ struct mml_m2m_ctx {
 	u32 frame_count[MML_M2M_FRAME_MAX];
 
 	struct mutex q_mutex;
+	struct kref ref;
 };
 
 static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state vb_state)
@@ -113,9 +112,6 @@ static void m2m_task_frame_done(struct mml_task *task)
 	/* clean up */
 	task_buf_put(task);
 
-	/* notice frame done to v4l2 */
-	mml_m2m_process_done(mctx, vb_state);
-
 	mutex_lock(&ctx->config_mutex);
 
 	if (unlikely(!task->pkts[0] || (cfg->dual && !task->pkts[1]))) {
@@ -128,6 +124,7 @@ static void m2m_task_frame_done(struct mml_task *task)
 			task->state);
 		task->err = true;
 		cfg->err = true;
+		vb_state = VB2_BUF_STATE_ERROR;
 		mml_record_track(mml, task);
 		kref_put(&task->ref, task_move_to_destroy);
 	} else {
@@ -171,18 +168,19 @@ static void m2m_task_frame_done(struct mml_task *task)
 done:
 	mutex_unlock(&ctx->config_mutex);
 
+	/* notice frame done to v4l2 */
+	mml_m2m_process_done(mctx, vb_state);
+
 	mml_lock_wake_lock(mml, false);
 
 	mml_trace_ex_end();
 }
 
 static const struct mml_task_ops m2m_task_ops = {
-	.queue = task_queue,
 	.submit_done = task_submit_done,
 	.frame_done = m2m_task_frame_done,
 	.dup_task = task_dup,
 	.get_tile_cache = task_get_tile_cache,
-	.kt_setsched = ctx_kt_setsched,
 };
 
 static const struct mml_config_ops m2m_config_ops = {
@@ -197,7 +195,7 @@ static struct mml_m2m_frame *ctx_get_frame(struct mml_m2m_ctx *ctx,
 	if (V4L2_TYPE_IS_OUTPUT(type))
 		return &ctx->param.output;
 	else
-		return &ctx->param.captures[0];
+		return &ctx->param.capture;
 }
 
 static struct mml_frame_dest *ctx_get_submit_dest(struct mml_m2m_ctx *ctx, int index)
@@ -858,8 +856,7 @@ static int m2m_param_init(struct mml_m2m_param *param)
 	frame->format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, param);
 
-	param->num_captures = 1;
-	frame = &param->captures[0];
+	frame = &param->capture;
 	frame->format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	frame->mml_fmt = m2m_try_fmt_mplane(&frame->format, param);
 
@@ -1472,6 +1469,8 @@ static int mml_m2m_open(struct file *file)
 	v4l2_fh_add(&ctx->fh);
 
 	mutex_init(&ctx->q_mutex);
+	kref_init(&ctx->ref);
+
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(v4l2_dev->m2m_dev, ctx, m2m_queue_init);
 	if (IS_ERR(ctx->m2m_ctx)) {
 		mml_err("Failed to initialize m2m context");
@@ -1514,6 +1513,14 @@ err_free_ctx:
 	return ret;
 }
 
+static void m2m_ctx_destroy(struct kref *kref)
+{
+	struct mml_m2m_ctx *ctx = container_of(kref, struct mml_m2m_ctx, ref);
+
+	mml_ctx_deinit(&ctx->ctx);
+	kfree(ctx);
+}
+
 static int mml_m2m_release(struct file *file)
 {
 	struct mml_m2m_ctx *ctx = fh_to_ctx(file->private_data);
@@ -1526,8 +1533,7 @@ static int mml_m2m_release(struct file *file)
 	v4l2_fh_exit(&ctx->fh);
 	mutex_unlock(&v4l2_dev->m2m_mutex);
 
-	mml_ctx_deinit(&ctx->ctx);
-	kfree(ctx);
+	kref_put(&ctx->ref, m2m_ctx_destroy);
 	return 0;
 }
 
@@ -1823,8 +1829,15 @@ static void mml_m2m_device_run(void *priv)
 	/* kick vdisp power on */
 	mml_pw_kick_idle(task->config->mml);
 
+	/* hold mctx to avoid release from v4l2 before call submit_done */
+	kref_get(&mctx->ref);
+
 	/* config to core */
-	mml_core_config_task(cfg, task);
+	mml_core_submit_task(cfg, task);
+
+	/* note that m2m task is not queued to another thread so we can put mctx here */
+	kref_put(&mctx->ref, m2m_ctx_destroy);
+
 	if (cfg->err) {
 		result = -EINVAL;
 		goto err_buf_exit;
