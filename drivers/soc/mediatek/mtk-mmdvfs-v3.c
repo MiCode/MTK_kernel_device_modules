@@ -1422,9 +1422,9 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		return -EACCES;
 
 	ready = is_vcp_ready_ex(vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID);
-	if (!ready || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
-		MMDVFS_ERR("vcp_ready:%d mmdvfs_vcp_cb_ready:%d mmdvfs_rst_clk_done:%d",
-			ready, mmdvfs_vcp_cb_ready, mmdvfs_rst_clk_done);
+	if (!ready || !mmdvfs_vcp_cb_ready || mmdvfs_release_step_done || mmdvfs_rst_clk_done) {
+		MMDVFS_ERR("vcp_ready:%d mmdvfs_vcp_cb_ready:%d mmdvfs_release_step_done:%d mmdvfs_rst_clk_done:%d",
+			ready, mmdvfs_vcp_cb_ready, mmdvfs_release_step_done, mmdvfs_rst_clk_done);
 		return -EACCES;
 	}
 
@@ -1466,6 +1466,9 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		((opp < 0 || opp >= mmdvfs_mux[mux_idx].freq_num) &&
 		(*last >= 0 && *last < mmdvfs_mux[mux_idx].freq_num)))
 		mtk_mmdvfs_enable_vmm(false);
+
+	if (last)
+		*last = opp;
 
 	MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%d vcp:%hhu", ret, func, idx, opp, vcp);
 	return ret;
@@ -1572,13 +1575,13 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 {
 	int last, i;
 
+	if (enable_vcp)
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
+
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		if (last_vote_step[i] != -1) {
 			last = last_vote_step[i];
-			if (enable_vcp)
-				mtk_mmdvfs_v3_set_vote_step(i, -1, false);
-			else
-				mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
+			mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
 			last_vote_step[i] = last;
 		}
 
@@ -1590,13 +1593,31 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 			}
 
 			last = last_force_step[i];
-			if (enable_vcp)
-				mtk_mmdvfs_v3_set_force_step(i, -1, false);
-			else
-				mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
+			mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
 			last_force_step[i] = last;
 		}
 	}
+
+	for (i = 0; i < MMDVFS_USER_NUM; i++) {
+		u8 mux_idx = mmdvfs_user[i].target_id;
+		s8 level = mmdvfs_mux[mux_idx].freq_num - 1;
+
+		if (last_test_set_rate[i]) {
+			mmdvfs_vcp_ipi_send_ex(TEST_SET_RATE, (i << 4), 0, NULL, true);
+			last_test_set_rate[i] = 0;
+		}
+		if (last_test_ap_set_opp[i] != -1) {
+			mmdvfs_mux_set_opp(mmdvfs_user[i].name, mmdvfs_mux[mux_idx].freq[level]);
+			last_test_ap_set_opp[i] = -1;
+		}
+		if (last_test_ap_set_rate[i] != -1) {
+			clk_set_rate(mmdvfs_user_clk[i], mmdvfs_mux[mux_idx].freq[level]);
+			last_test_ap_set_rate[i] = -1;
+		}
+	}
+
+	if (enable_vcp)
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 
 	if (vmm_power) {
 		MMDVFS_ERR("enable:%d vmm_power:%d should be zero", false, vmm_power);
