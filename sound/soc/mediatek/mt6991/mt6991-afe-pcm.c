@@ -47,7 +47,11 @@
 #include <sched.h>
 #include "vip.h"
 
-
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+#include <linux/nebula/hvcall.h>
+#include <linux/irq.h>
+static int hwirq;
+#endif
 
 /* FORCE_FPGA_ENABLE_IRQ use irq in fpga */
 #define FORCE_FPGA_ENABLE_IRQ
@@ -1242,6 +1246,7 @@ static int mt6991_echo_ref_xrun_assert_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 static int mt6991_sram_size_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -1254,6 +1259,7 @@ static int mt6991_sram_size_get(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+#endif
 
 static int mt6991_vow_barge_in_irq_id_get(struct snd_kcontrol *kcontrol,
 					  struct snd_ctl_elem_value *ucontrol)
@@ -1490,6 +1496,7 @@ static int mt6991_adsp_mem_set(struct snd_kcontrol *kcontrol,
 }
 #endif
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 static int mt6991_mmap_dl_scene_get(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -1627,6 +1634,153 @@ static int mt6991_ul_mmap_fd_set(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
+#endif
+
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+static int mt6991_set_memif_sram_mode(struct device *dev,
+				      enum mtk_audio_sram_mode sram_mode);
+static int mt6991_set_sram_mode(struct device *dev,
+				enum mtk_audio_sram_mode sram_mode);
+
+static int mt6991_use_dram_only_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int i;
+
+	for (i = 0; i < MT6991_MEMIF_NUM; i++)
+		ucontrol->value.bytes.data[i] = afe->memif[i].use_dram_only;
+
+	return 0;
+}
+
+static int mt6991_sram_mode_set(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int rc = 0;
+
+	rc = mt6991_set_sram_mode(afe->dev, ucontrol->value.bytes.data[0]);
+
+	return rc;
+}
+
+#define VIRTIO_PASSTHROUGH_SHM_CMD_REG_DRAM 0
+#define VIRTIO_PASSTHROUGH_SHM_CMD_UNREG_DRAM 1
+#define VIRTIO_PASSTHROUGH_SHM_CMD_REG_SRAM 2
+#define VIRTIO_PASSTHROUGH_SHM_CMD_UNREG_SRAM 3
+
+struct virtio_passthrough_shm_msg {
+	uint8_t cmd;
+	uint8_t pcm_id;
+	uint8_t padding[6];
+	uint64_t pa;
+	uint64_t bytes;
+};
+
+// according to mt6991_mt6681_dai_links
+// c0d15c -> capture 9 -> UL9 -> memif id 24
+unsigned int virtio_id_memif_index_mapping[MT6991_MEMIF_NUM] = {
+	MT6991_MEMIF_DL0,
+	MT6991_MEMIF_DL1,
+	MT6991_MEMIF_DL2,
+	MT6991_MEMIF_DL3,
+	MT6991_MEMIF_DL4,
+	MT6991_MEMIF_DL5,
+	MT6991_MEMIF_DL6,
+	MT6991_MEMIF_DL7,
+	MT6991_MEMIF_DL8,
+	MT6991_MEMIF_DL23,
+	MT6991_MEMIF_DL24,
+	MT6991_MEMIF_DL25,
+	MT6991_MEMIF_DL26,
+	MT6991_MEMIF_DL_4CH,
+	MT6991_MEMIF_DL_24CH,
+	MT6991_MEMIF_VUL9,
+	MT6991_MEMIF_VUL1,
+	MT6991_MEMIF_VUL0,
+	MT6991_MEMIF_VUL3,
+	MT6991_MEMIF_VUL7,
+	MT6991_MEMIF_VUL4,
+	MT6991_MEMIF_VUL2,
+	MT6991_MEMIF_VUL5,
+	MT6991_MEMIF_VUL_CM0,
+	MT6991_MEMIF_VUL_CM1,
+	MT6991_MEMIF_VUL_CM2,
+	MT6991_MEMIF_VUL10,
+	MT6991_MEMIF_VUL6,
+	MT6991_MEMIF_VUL25,
+	MT6991_MEMIF_VUL26,
+	MT6991_MEMIF_VUL8,
+	MT6991_MEMIF_VUL24,
+	MT6991_MEMIF_ETDM_IN0,
+	MT6991_MEMIF_ETDM_IN1,
+	MT6991_MEMIF_ETDM_IN2,
+	MT6991_MEMIF_ETDM_IN3,
+	MT6991_MEMIF_ETDM_IN4,
+	MT6991_MEMIF_ETDM_IN6,
+	MT6991_MEMIF_HDMI
+};
+
+static int mt6991_passthrough_shm_set(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct virtio_passthrough_shm_msg *shm =
+			(struct virtio_passthrough_shm_msg *)ucontrol->value.bytes.data;
+	struct mtk_base_afe_memif *memif;
+	int rc = 0;
+	int ret;
+	int memif_id = 0;
+
+	if (shm->pcm_id >= MT6991_MEMIF_NUM)
+		pr_info("%s(), shm->pcm_id = %d is invalid\n", __func__, shm->pcm_id);
+
+	memif_id = virtio_id_memif_index_mapping[shm->pcm_id];
+	if (!(memif_id >= 0 && memif_id < MT6991_MEMIF_NUM))
+		return -EINVAL;
+
+	// TODO check pa is in valid range
+
+	memif = &afe->memif[memif_id];
+
+	switch(shm->cmd) {
+	case VIRTIO_PASSTHROUGH_SHM_CMD_REG_DRAM:
+		if (shm->pa && shm->bytes) {
+			unreg_dram_passthrough_shm(memif);
+			memif->dram_dma_area = phys_to_virt(shm->pa);
+			memif->dram_dma_addr = shm->pa;
+			memif->dram_dma_bytes = shm->bytes;
+		} else {
+			rc = -EINVAL;
+		}
+		break;
+	case VIRTIO_PASSTHROUGH_SHM_CMD_UNREG_DRAM:
+		unreg_dram_passthrough_shm(memif);
+		break;
+	case VIRTIO_PASSTHROUGH_SHM_CMD_REG_SRAM:
+		if (shm->pa && shm->bytes) {
+			unreg_sram_passthrough_shm(memif);
+			memif->sram_dma_area = ioremap(shm->pa, shm->bytes);
+			memif->sram_dma_addr = shm->pa;
+			memif->sram_dma_bytes = shm->bytes;
+		} else {
+			rc = -EINVAL;
+		}
+		break;
+	case VIRTIO_PASSTHROUGH_SHM_CMD_UNREG_SRAM:
+		unreg_sram_passthrough_shm(memif);
+		break;
+	default:
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+#endif
 
 static int record_miso1_en_get(struct snd_kcontrol *kcontrol,
 			   struct snd_ctl_elem_value *ucontrol)
@@ -1707,8 +1861,10 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       mt6991_primary_scene_get, mt6991_primary_scene_set),
 	SOC_SINGLE_EXT("voip_rx_scenario", SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6991_voip_scene_get, mt6991_voip_scene_set),
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	SOC_SINGLE_EXT("sram_size", SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6991_sram_size_get, NULL),
+#endif
 	SOC_SINGLE_EXT("vow_barge_in_irq_id", SND_SOC_NOPM, 0, 0x3ffff, 0,
 		       mt6991_vow_barge_in_irq_id_get, NULL),
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) && !defined(SKIP_SB_DSP)
@@ -1835,6 +1991,7 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       mt6991_adsp_mem_set),
 #endif
 #endif
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	SOC_SINGLE_EXT("mmap_play_scenario", SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6991_mmap_dl_scene_get, mt6991_mmap_dl_scene_set),
 	SOC_SINGLE_EXT("mmap_record_scenario", SND_SOC_NOPM, 0, 0x1, 0,
@@ -1851,10 +2008,20 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6991_ul_mmap_fd_get,
 		       mt6991_ul_mmap_fd_set),
+#endif
 	SOC_ENUM_EXT("MTK_RECORD_MISO1", mt6991_pcm_type_enum[0],
 		     record_miso1_en_get, record_miso1_en_set),
 	SOC_SINGLE_EXT("audio_vip", SND_SOC_NOPM, 0, 0x3fffff, 0,
 		       mt6991_audio_vip_get, mt6991_audio_vip_set),
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	SND_SOC_BYTES_EXT("use_dram_only", MT6991_MEMIF_NUM,
+		      mt6991_use_dram_only_get, NULL),
+	SND_SOC_BYTES_EXT("sram_mode", 1,
+		      NULL, mt6991_sram_mode_set),
+	SND_SOC_BYTES_EXT("passthrough_shm",
+		      sizeof(struct virtio_passthrough_shm_msg),
+		      NULL, mt6991_passthrough_shm_set),
+#endif
 };
 
 enum {
@@ -6001,6 +6168,38 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_VUL_CM0_END_MSB:
 	case AFE_VUL_CM0_END:
 	case AFE_VUL_CM0_CON0:
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	/* these reg would change in hypervisor */
+	case AFE_DL0_CON0:
+	case AFE_DL1_CON0:
+	case AFE_DL2_CON0:
+	case AFE_DL3_CON0:
+	case AFE_DL4_CON0:
+	case AFE_DL7_CON0:
+	case AFE_DL8_CON0:
+	case AFE_DL24_CON0:
+	case AFE_DL25_CON0:
+	case AFE_DL26_CON0:
+	case AFE_DL_4CH_CON0:
+	case AFE_VUL0_CON0:
+	case AFE_VUL2_CON0:
+	case AFE_VUL6_CON0:
+	case AFE_VUL7_CON0:
+	case AFE_VUL8_CON0:
+	case AFE_VUL10_CON0:
+	case AFE_VUL24_CON0:
+	case AFE_VUL26_CON0:
+	case AFE_VUL_CM1_CON0:
+	case AFE_VUL_CM2_CON0:
+	case AFE_ETDM_IN0_CON0:
+	case AFE_ETDM_IN1_CON0:
+	case AFE_ETDM_IN2_CON0:
+	case AFE_ETDM_IN3_CON0:
+	case AFE_ETDM_IN4_CON0:
+	case AFE_ETDM_IN6_CON0:
+	case AFE_HDMI_OUT_CON0:
+	case AFE_CUSTOM_IRQ0_MCU_CFG0:
+#endif
 		return true;
 	default:
 		return false;
@@ -6039,6 +6238,7 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	/* one interrupt period = 5ms */
 	unsigned long long timeout_limit = 5000000;
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	/* get irq that is sent to MCU */
 	regmap_read(afe->regmap, AFE_IRQ_MCU_EN, &mcu_en);
 	regmap_read(afe->regmap, AFE_CUSTOM_IRQ_MCU_EN, &cus_mcu_en);
@@ -6067,6 +6267,23 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 		}
 		return IRQ_HANDLED;
 	}
+#else
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000000, hwirq, 0, 0, 0, 0, 0, &res);
+	mcu_en = 1;
+
+	status = res.a0;//regmap_read(afe->regmap, AFE_IRQ_MCU_STATUS, &status);
+	/* only care IRQ which is sent to MCU */
+	status_mcu = status /*& mcu_en*/ & AFE_IRQ_STATUS_BITS;
+
+	if (status_mcu == 0) {
+		dev_info(afe->dev, "%s(), irq status err, ret %d, status 0x%x, mcu_en 0x%x\n",
+			__func__, ret, status, mcu_en);
+
+		goto err_irq;
+	}
+#endif
 
 	ktime_get_ts64(&ts64);
 	t1 = timespec64_to_ns(&ts64);
@@ -6101,6 +6318,7 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 	}
 
 	/* clear irq */
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	for (i = 0; i < MT6991_IRQ_NUM; ++i) {
 		if (((cus_status_mcu & (0x1 << irq_data[i].id)) && i == MT6991_IRQ_31) ||
 		    ((status_mcu & (0x1 << irq_data[i].id)) && i != MT6991_IRQ_31)) {
@@ -6110,6 +6328,10 @@ static irqreturn_t mt6991_afe_irq_handler(int irq_id, void *dev)
 					tmp_reg^0xc0000000);
 		}
 	}
+#else
+	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, 0, 0, 0,
+				  0, &res);
+#endif
 	return IRQ_HANDLED;
 }
 #endif
@@ -11669,6 +11891,9 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct platform_device *pmic_pdev = NULL;
 	struct regmap *map;
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	struct irq_desc *desc;
+#endif
 
 	pr_info("+%s()\n", __func__);
 
@@ -11743,6 +11968,7 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(dev, "init gpio error\n");
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	/* init sram */
 	afe->sram = devm_kzalloc(&pdev->dev, sizeof(struct mtk_audio_sram),
 				 GFP_KERNEL);
@@ -11752,7 +11978,7 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 	ret = mtk_audio_sram_init(dev, afe->sram, &mt6991_sram_ops);
 	if (ret)
 		return ret;
-
+#endif
 	/* init memif */
 	/* IPM2.0 no need banding */
 	afe->is_memif_bit_banding = 0;
@@ -11792,6 +12018,14 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 		dev_info(dev, "%pOFn no irq found\n", dev->of_node);
 		return irq_id < 0 ? irq_id : -ENXIO;
 	}
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	desc = irq_to_desc(irq_id);
+	if (!desc){
+		dev_info(dev, "failed to get irq_desc\n");
+		return -EINVAL;
+	}
+	hwirq = desc->irq_data.hwirq;
+#endif
 	ret = devm_request_irq(dev, irq_id, mt6991_afe_irq_handler,
 			       IRQF_TRIGGER_NONE,
 			       "Afe_ISR_Handle", (void *)afe);

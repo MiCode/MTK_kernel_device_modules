@@ -49,8 +49,9 @@
 #include "../ultrasound/ultra_common/mtk-scp-ultra.h"
 #endif
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 #include "mtk-mmap-ion.h"
-
+#endif
 
 #define AFE_BASE_END_OFFSET 8
 #define AFE_AGENT_SET_OFFSET 4
@@ -257,6 +258,7 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 	struct snd_dma_buffer *dmab = NULL;
 	bool using_dram = false;
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	// mmap don't alloc buffer
 	if (memif->use_mmap_share_mem != 0) {
 		unsigned long phy_addr;
@@ -286,8 +288,86 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 		}
 		goto MEM_ALLOCATE_DONE;
 	}
+#endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_SRAM)
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+		// if (memif->using_passthrough) {
+		if (memif_has_sram_passthrough_shm(memif)
+			|| memif_has_dram_passthrough_shm(memif)) {
+			substream->runtime->dma_addr = 0;
+			substream->runtime->dma_area = NULL;
+			substream->runtime->dma_bytes = 0;
+			memif->using_passthrough = 0;
+		} else {
+			snd_pcm_lib_free_pages(substream);
+		}
+
+		substream->runtime->dma_bytes = params_buffer_bytes(params);
+
+		if (memif->use_dram_only == 0) {
+			if (memif_has_sram_passthrough_shm(memif)) {
+				// Handle sram passthrough.
+				substream->runtime->dma_addr = memif->sram_dma_addr;
+				substream->runtime->dma_area = memif->sram_dma_area;
+				// TODO check nbl_vmm set_hw_params function
+				substream->runtime->dma_bytes = memif->sram_dma_bytes;
+				memif->using_sram = 1;
+				memif->using_passthrough = 1;
+			}
+			if (memif_has_dram_passthrough_shm(memif)) {
+				// Handle dram passthrough.
+				substream->runtime->dma_addr = memif->dram_dma_addr;
+				substream->runtime->dma_area = memif->dram_dma_area;
+				substream->runtime->dma_bytes = memif->dram_dma_bytes;
+				memif->using_sram = 0;
+				memif->using_passthrough = 1;
+		} else	{
+#if	IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+			if (memif->use_adsp_share_mem == true)
+				ret = mtk_adsp_allocate_mem(substream,
+							params_buffer_bytes(params));
+			else
+				ret = snd_pcm_lib_malloc_pages(substream,
+					params_buffer_bytes(params));
+#else
+				ret = snd_pcm_lib_malloc_pages(substream,
+					params_buffer_bytes(params));
+#endif
+			if (ret < 0)
+				return ret;
+			memif->using_sram = 0;
+			memif->using_passthrough = 0;
+			using_dram = true;
+			}
+		} else {
+			if (memif_has_dram_passthrough_shm(memif)) { // Handle dram passthrough.
+				substream->runtime->dma_addr = memif->dram_dma_addr;
+				substream->runtime->dma_area = memif->dram_dma_area;
+				// TODO check nbl_vmm set_hw_params function
+				substream->runtime->dma_bytes = memif->dram_dma_bytes;
+				memif->using_passthrough = 1;
+		} else {
+#if	IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+			if (memif->use_adsp_share_mem == true)
+				ret = mtk_adsp_allocate_mem(substream,
+						params_buffer_bytes(params));
+			else
+				ret = snd_pcm_lib_malloc_pages(substream,
+						params_buffer_bytes(params));
+#else
+				ret = snd_pcm_lib_malloc_pages(substream,
+						params_buffer_bytes(params));
+#endif
+			if (ret < 0)
+				return ret;
+			memif->using_passthrough = 0;
+			using_dram = true;
+			}
+			memif->using_sram = 0;
+		}
+		goto MEM_ALLOCATE_DONE;
+#else //CONFIG_NEBULA_SND_PASSTHROUGH
 	/*
 	 * hw_params may be called several time,
 	 * free sram of this substream first
@@ -310,7 +390,8 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 		}
 #endif
 	} else
-#endif
+#endif //CONFIG_NEBULA_SND_PASSTHROUGH
+#endif //CONFIG_SND_SOC_MTK_SRAM
 	{
 		memif->using_sram = 0;
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
@@ -453,6 +534,45 @@ MEM_ALLOCATE_DONE:
 }
 EXPORT_SYMBOL_GPL(mtk_afe_fe_hw_params);
 
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+void unreg_dram_passthrough_shm(struct mtk_base_afe_memif *memif)
+{
+	//if (memif->using_passthrough
+	//		&& memif->dram_dma_addr
+	//		&& memif->substream->runtime->dma_addr == memif->dram_dma_addr) {
+	//	memif->substream->runtime->dma_area = NULL;
+	//	memif->substream->runtime->dma_addr = 0;
+	//	memif->substream->runtime->dma_bytes = 0;
+	//	memif->using_passthrough = 0;
+	//}
+
+	//memif->dram_dma_area = NULL;
+	//memif->dram_dma_addr = 0;
+	//memif->dram_dma_bytes = 0;
+}
+EXPORT_SYMBOL_GPL(unreg_dram_passthrough_shm);
+
+void unreg_sram_passthrough_shm(struct mtk_base_afe_memif *memif)
+{
+	//if (memif->using_passthrough
+	//		&& memif->sram_dma_addr
+	//		&& memif->substream->runtime->dma_addr == memif->sram_dma_addr) {
+	//	memif->substream->runtime->dma_area = NULL;
+	//	memif->substream->runtime->dma_addr = 0;
+	//	memif->substream->runtime->dma_bytes = 0;
+	//	memif->using_passthrough = 0;
+	//}
+
+	if (memif->sram_dma_area)
+		iounmap(memif->sram_dma_area);
+
+	//memif->sram_dma_area = NULL;
+	//memif->sram_dma_addr = 0;
+	//memif->sram_dma_bytes = 0;
+}
+EXPORT_SYMBOL_GPL(unreg_sram_passthrough_shm);
+#endif
+
 int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 		       struct snd_soc_dai *dai)
 {
@@ -510,20 +630,36 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	if (memif->using_sram == 0 && afe->release_dram_resource)
 		afe->release_dram_resource(afe->dev);
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	// mmap do not free buffer
 	if (memif->use_mmap_share_mem) {
 		kfree(substream->runtime->dma_buffer_p);
 		snd_pcm_set_runtime_buffer(substream, NULL);
 		return 0;
 	}
+#endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_SRAM)
 	if (memif->using_sram) {
 		memif->using_sram = 0;
 		kfree(substream->runtime->dma_buffer_p);
 		snd_pcm_set_runtime_buffer(substream, NULL);
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+		unreg_dram_passthrough_shm(memif);
+		unreg_sram_passthrough_shm(memif);
+		return 0;
+#else
 		return mtk_audio_sram_free(afe->sram, substream);
-	} else
+#endif
+	}
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	else if (memif->using_passthrough){
+		unreg_dram_passthrough_shm(memif);
+		unreg_sram_passthrough_shm(memif);
+		return 0;
+	}
+#endif
+	else
 #endif
 	{
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)

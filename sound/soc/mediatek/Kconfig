@@ -366,3 +366,11 @@ config MTK_SCP_AUDIO
 	  This option enable mtk-usip driver support.
 	  Select Y if need support mtk-usip driver.
 	  If unsure select "N".
+
+config NEBULA_SND_PASSTHROUGH
+	tristate "ASoC support for Hypervisor Passthrough"
+	help
+	  This adds hypervisor passthrough path for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".

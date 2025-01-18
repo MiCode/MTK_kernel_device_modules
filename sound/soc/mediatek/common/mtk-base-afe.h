@@ -216,7 +216,9 @@ struct mtk_base_afe {
 			  int dai_id, unsigned int rate);
 	int (*get_memif_pbuf_size)(struct snd_pcm_substream *substream);
 
+#if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	void *sram;
+#endif
 	int (*request_dram_resource)(struct device *dev);
 	int (*release_dram_resource)(struct device *dev);
 
@@ -255,6 +257,15 @@ struct mtk_base_afe_memif {
 	bool scp_ultra_enable;
 	int use_scp_share_mem;
 	int fast_palyback;
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+	unsigned char *sram_dma_area;
+	dma_addr_t sram_dma_addr;
+	size_t sram_dma_bytes;
+	unsigned char *dram_dma_area;
+	dma_addr_t dram_dma_addr;
+	size_t dram_dma_bytes;
+	int using_passthrough;
+#endif
 
 	int pid;
 	int tid;
@@ -280,5 +291,19 @@ struct mtk_base_afe_dai {
 	struct list_head list;
 };
 
+#if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
+static inline int memif_has_sram_passthrough_shm(
+		struct mtk_base_afe_memif *memif) {
+	return !!memif->sram_dma_bytes;
+}
+
+static inline int memif_has_dram_passthrough_shm(
+		struct mtk_base_afe_memif *memif) {
+	return !!memif->dram_dma_bytes;
+}
+
+void unreg_dram_passthrough_shm(struct mtk_base_afe_memif *memif);
+void unreg_sram_passthrough_shm(struct mtk_base_afe_memif *memif);
+#endif
 #endif
 
