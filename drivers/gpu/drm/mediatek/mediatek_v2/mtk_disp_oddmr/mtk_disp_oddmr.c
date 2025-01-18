@@ -309,10 +309,10 @@
 #define ODDMR_WRITE_OUT_ULTRA(size)       (size * 2 / 4)
 
 /* ultra&preultra in mt6991 */
-#define MT6991_ODDMR_PRE_ULTRA_RISE_LV(size)    (size * (1 - 2 / 3))
-#define MT6991_ODDMR_PRE_ULTRA_FAIL_LV(size)    (size * (1 - 3 / 4))
-#define MT6991_ODDMR_ULTRA_RISE_LV(size)        (size * (1 - 1 / 3))
-#define MT6991_ODDMR_ULTRA_FAIL_LV(size)        (size * (1 - 2 / 4))
+#define MT6991_ODDMR_DBI_PRE_ULTRA_RISE_LV(size)    (size * (1 - 2 / 3))
+#define MT6991_ODDMR_DBI_PRE_ULTRA_FAIL_LV(size)    (size * (1 - 3 / 4))
+#define MT6991_ODDMR_DBI_ULTRA_RISE_LV(size)        (size * (1 - 1 / 3))
+#define MT6991_ODDMR_DBI_ULTRA_FAIL_LV(size)        (size * (1 - 2 / 4))
 
 
 #define ODDMR_ENABLE_IRQ
@@ -3392,25 +3392,25 @@ static void mtk_oddmr_dbi_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	uint32_t value, mask, buf_size;
 	struct mtk_disp_oddmr *oddmr = comp_to_oddmr(comp);
 
-	/* dbi */
+	/* dbir */
 	value = 0;
 	mask = 0;
 	SET_VAL_MASK(value, mask, 4, MT6991_REG_DBI_RE_ULTRA_MODE);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_SMI_SB_FLG_DBI, mask, pkg);
 	buf_size = oddmr->data->dbir_buffer_size;
-	value = MT6991_ODDMR_PRE_ULTRA_RISE_LV(buf_size);//pre-ultra rise level
+	value = MT6991_ODDMR_DBI_PRE_ULTRA_RISE_LV(buf_size);//pre-ultra rise level
 	SET_VAL_MASK(value, mask, 4, MT6991_REG_REQ_PREULTRA_RISE_LV);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DBI_CTRL21,
 		mask, pkg);
-	value = MT6991_ODDMR_PRE_ULTRA_FAIL_LV(buf_size);//pre-ultra fail level
+	value = MT6991_ODDMR_DBI_PRE_ULTRA_FAIL_LV(buf_size);//pre-ultra fail level
 	SET_VAL_MASK(value, mask, 4, MT6991_REG_REQ_PREULTRA_FAIL_LV);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DBI_CTRL21,
 		mask, pkg);
-	value = MT6991_ODDMR_ULTRA_RISE_LV(buf_size);//ultra rise level
+	value = MT6991_ODDMR_DBI_ULTRA_RISE_LV(buf_size);//ultra rise level
 	SET_VAL_MASK(value, mask, 4, MT6991_REG_REQ_ULTRA_RISE_LV);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DBI_CTRL22,
 		mask, pkg);
-	value = MT6991_ODDMR_ULTRA_FAIL_LV(buf_size);//ultra fail level
+	value = MT6991_ODDMR_DBI_ULTRA_FAIL_LV(buf_size);//ultra fail level
 	SET_VAL_MASK(value, mask, 4, MT6991_REG_REQ_ULTRA_FAIL_LV);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DBI_CTRL22,
 		mask, pkg);
@@ -7995,7 +7995,7 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.p_num = 2,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 458,
-	.dbir_buffer_size = 458,
+	.dbir_buffer_size = 72,
 	.odr_buffer_size = 960,
 	.odw_buffer_size = 960,
 	.irq_handler = mtk_oddmr_check_framedone,
