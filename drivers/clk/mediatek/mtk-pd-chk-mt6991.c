@@ -23,7 +23,7 @@
 #define EVT_LEN				40
 #define PWR_ID_SHIFT			0
 #define PWR_STA_SHIFT			8
-#define HWV_INT_MTCMOS_TRIGGER		0x0018
+#define HWV_INT_TMOUT_TRIGGER		0x7D007D
 #define HWV_IRQ_STATUS			0x1500
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
@@ -1032,7 +1032,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	const struct fmeter_clk *fclks;
 	int i, parent_id = PD_NULL;
 
-	if (id >= MT6991_CHK_PD_NUM)
+	if (id > MT6991_CHK_PD_NUM)
 		return;
 
 	fclks = mt_get_fmeter_clks();
@@ -1291,8 +1291,9 @@ static void check_hwv_irq_sta(void)
 	u32 irq_sta;
 
 	irq_sta = get_mt6991_reg_value(hwv, HWV_IRQ_STATUS);
+	pr_notice("hwv irq: %x\n", irq_sta);
 
-	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
+	if ((irq_sta & HWV_INT_TMOUT_TRIGGER) == HWV_INT_TMOUT_TRIGGER)
 		debug_dump(MT6991_CHK_PD_NUM, 0);
 }
 
@@ -1301,8 +1302,9 @@ static void check_mm_hwv_irq_sta(void)
 	u32 irq_sta;
 
 	irq_sta = get_mt6991_reg_value(mm_hwv, HWV_IRQ_STATUS);
+	pr_notice("mm hwv irq: %x\n", irq_sta);
 
-	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
+	if ((irq_sta & HWV_INT_TMOUT_TRIGGER) != 0)
 		debug_dump(MT6991_CHK_PD_NUM, 0);
 }
 
