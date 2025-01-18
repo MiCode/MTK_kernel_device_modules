@@ -529,6 +529,8 @@ struct hwui_info {
 
 struct sbe_info {
 	int pid;
+	int ux_crtl_type;
+	int ux_scrolling;
 	struct rb_node entry;
 };
 
@@ -653,7 +655,7 @@ int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance,
 void fpsgo_stop_boost_by_pid(int pid);
 void fpsgo_stop_boost_by_render(struct render_info *r);
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
-	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	int *out_tid_arr, unsigned long long *out_bufID_arr, unsigned long long *out_idf_arr,
 	int *out_tid_num, int out_tid_max_num);
 struct sbe_spid_loading *fpsgo_get_sbe_spid_loading(int tgid, int create);
 int fpsgo_delete_sbe_spid_loading(int tgid);

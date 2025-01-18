@@ -10,6 +10,7 @@
 #include <linux/types.h>
 #include <linux/math64.h>
 #include <linux/math.h>
+#include <linux/cpufreq.h>
 
 #include <mt-plat/fpsgo_common.h>
 
@@ -27,6 +28,7 @@
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
 #include "fbt_cpu_ux.h"
+#include "sugov/cpufreq.h"
 
 #define TARGET_UNLIMITED_FPS 240
 #define NSEC_PER_HUSEC 100000
@@ -52,11 +54,6 @@ enum FPSGO_TASK_POLICY {
 	FPSGO_TASK_VIP = 1,
 };
 
-enum UX_SCROLL_POLICY_TYPE {
-	SCROLL_POLICY_FPSGO_CTL = 1,
-	SCROLL_POLICY_EAS_CTL = 2,
-};
-
 static DEFINE_MUTEX(fbt_mlock);
 
 static struct kmem_cache *frame_info_cachep __ro_after_init;
@@ -65,7 +62,6 @@ static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
 
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
-static int ux_scroll_policy_type;
 static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
@@ -75,10 +71,9 @@ static int sbe_dy_frame_threshold;
 static int scroll_cnt;
 static int global_ux_blc;
 static int global_ux_max_pid;
-static int set_ux_uclampmin;
-static int set_ux_uclampmax;
 static int set_deplist_vip;
-static int rescue_cpu_mask;
+static int ux_general_policy;
+
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
 
@@ -88,10 +83,8 @@ module_param(sbe_dy_frame_threshold, int, 0644);
 module_param(sbe_dy_rescue_enable, int, 0644);
 module_param(sbe_dy_max_enhance, int, 0644);
 module_param(scroll_cnt, int, 0644);
-module_param(set_ux_uclampmin, int, 0644);
-module_param(set_ux_uclampmax, int, 0644);
 module_param(set_deplist_vip, int, 0644);
-module_param(rescue_cpu_mask, int, 0644);
+module_param(ux_general_policy, int, 0644);
 
 static void update_hwui_frame_info(struct render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -109,6 +102,11 @@ static int nsec_to_100usec(unsigned long long nsec)
 	return (int)husec;
 }
 
+int get_ux_general_policy(void)
+{
+	return ux_general_policy;
+}
+
 int fpsgo_ctrl2ux_get_perf(void)
 {
 	return global_ux_blc;
@@ -120,11 +118,21 @@ void fbt_ux_set_perf(int cur_pid, int cur_blc)
 	global_ux_max_pid = cur_pid;
 }
 
+void fpsgo_set_affnity_on_rescue(int pid, int r_cpu_mask)
+{
+	if (fbt_set_affinity(pid, r_cpu_mask))
+		FPSGO_LOGE("[comp] %s %d setaffinity fail\n",
+				__func__, r_cpu_mask);
+}
+
 static void fpsgo_set_deplist_policy(struct render_info *thr, int policy)
 {
 	int i;
 	int local_dep_size = 0;
 	struct fpsgo_loading *local_dep_arr = NULL;
+
+	if (!thr)
+		return;
 
 	if (!set_deplist_vip)
 		return;
@@ -139,13 +147,28 @@ static void fpsgo_set_deplist_policy(struct render_info *thr, int policy)
 		if (local_dep_arr[i].pid <= 0)
 			continue;
 
+		if (policy == FPSGO_TASK_NONE) {
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-		if (policy == 0)
 			unset_task_basic_vip(local_dep_arr[i].pid);
-		else if (policy == 1)
+#endif
+
+#if SBE_AFFNITY_TASK
+			fpsgo_set_affnity_on_rescue(local_dep_arr[i].pid, FPSGO_PREFER_NONE);
+#endif //SBE_AFFNITY_TASK
+		}
+
+		if (policy == FPSGO_TASK_VIP) {
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			set_task_basic_vip(local_dep_arr[i].pid);
 #endif
+
+#if SBE_AFFNITY_TASK
+			fpsgo_set_affnity_on_rescue(local_dep_arr[i].pid, FPSGO_PREFER_M);
+#endif //SBE_AFFNITY_TASK
+		}
 	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, policy, "[ux]set_vip");
+
 	kfree(local_dep_arr);
 }
 
@@ -294,31 +317,12 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 
 	fpsgo_get_fbt_mlock(__func__);
 
-	switch (ux_scroll_policy_type) {
-	case SCROLL_POLICY_EAS_CTL:
-		if (!set_ux_uclampmin)
-			local_min_cap = thr->sbe_enhance;
-		else
-			local_min_cap = set_blc_wt;
+	local_min_cap = set_blc_wt;
 
-		if (thr->sbe_enhance > 0 || !set_ux_uclampmax || thr->ux_blc_cur <= 0)
-			local_max_cap = 100;
-		else
-			local_max_cap = fbt_ux_get_max_cap(thr->pid,
-				thr->buffer_id, set_blc_wt);
-		break;
-	default:
-	case SCROLL_POLICY_FPSGO_CTL:
-		local_min_cap = set_blc_wt;
-		if (local_min_cap != 0) {
-			if (thr->sbe_enhance > 0)
-				local_max_cap = 100;
-			else
-				local_max_cap = fbt_ux_get_max_cap(thr->pid,
-					thr->buffer_id, set_blc_wt);
-		}
-		break;
-	}
+	if (thr->sbe_enhance > 0)
+		local_max_cap = 100;
+	else
+		local_max_cap = fbt_ux_get_max_cap(thr->pid, thr->buffer_id, set_blc_wt);
 
 	if (local_min_cap == 0 && local_max_cap == 100)
 		fbt_check_max_blc_locked(thr->pid);
@@ -339,12 +343,7 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long frameid, uns
 
 	thr->ux_blc_cur = thr->ux_blc_next;
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		set_top_grp_aware(1,0);
-#endif
-		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
-	}
+	fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
 
 	fbt_ux_set_cap_with_sbe(thr);
 
@@ -362,11 +361,11 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 		unsigned long long start_ts, unsigned long long end_ts)
 {
 	struct fbt_boost_info *boost;
+	struct sbe_info *s_info =NULL;
 	long long runtime;
 	int targettime, targetfps, targetfps_ori, targetfpks, fps_margin, cooler_on;
 	int loading = 0L;
 	int q_c_time = 0L, q_g_time = 0L;
-	int ret;
 
 	if (!thr)
 		return;
@@ -397,22 +396,27 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		targettime, "[ux]target_time");
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		set_top_grp_aware(0,0);
-#endif
-		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
-	}
-	fpsgo_get_fbt_mlock(__func__);
-	ret = fbt_get_dep_list(thr);
-	if (ret) {
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-			ret, "[UX] fail dep-list");
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-			0, "[UX] fail dep-list");
-	}
-	fpsgo_put_fbt_mlock(__func__);
+	if (ux_general_policy) {
+		s_info = fpsgo_search_and_add_sbe_info(thr->tgid, 0);
 
+		if (!s_info) {
+			fpsgo_main_trace("%d: not find sbe_info ", __func__);
+			goto label;
+		}
+
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+
+		if(s_info->ux_scrolling){
+			fpsgo_get_fbt_mlock(__func__);
+			if (fbt_get_dep_list(thr))
+				fpsgo_main_trace("[%d] fail get dep-list", thr->pid);
+			fpsgo_put_fbt_mlock(__func__);
+
+			fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+		}
+	}
+
+label:
 	fpsgo_get_blc_mlock(__func__);
 	if (thr->p_blc) {
 		thr->p_blc->dep_num = thr->dep_valid_size;
@@ -458,6 +462,8 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 		thr->pid == global_ux_max_pid)
 		fbt_ux_set_perf(thr->pid, thr->ux_blc_next);
 
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->ux_blc_next, "[ux]ux_blc_next");
+
 EXIT:
 	thr->ux_blc_cur = 0;
 	fbt_ux_set_cap_with_sbe(thr);
@@ -473,13 +479,8 @@ void fbt_ux_frame_err(struct render_info *thr, int frame_count,
 	if (!thr)
 		return;
 
-	if (frame_count == 0) {
-		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-			set_top_grp_aware(0,0);
-#endif
-			fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
-		}
+	if (frame_count == 0 && ux_general_policy) {
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 		thr->ux_blc_cur = 0;
 		fbt_ux_set_cap_with_sbe(thr);
 	}
@@ -610,10 +611,9 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 	fpsgo_lockprove(__func__);
 
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
-		set_top_grp_aware(0,0);
-#endif
+	if(!thr)
+		return;
+	thr->scroll_status = 0;
 
 	cur = rb_first(&(thr->ux_frame_info_tree));
 
@@ -627,11 +627,80 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 }
 
-void fpsgo_set_affnity_on_rescue(int pid, int r_cpu_mask)
+void fpsgo_reset_deplist_task_priority(struct render_info *thr)
 {
-	if (fbt_set_affinity(pid, r_cpu_mask))
-		FPSGO_LOGE("[comp] %s %d setaffinity fail\n",
-				__func__, r_cpu_mask);
+	if (!thr) {
+		FPSGO_LOGE("%s: NON render info!!!!\n", __func__);
+		return;
+	}
+
+	fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
+}
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+void fpsgo_set_group_dvfs(int start)
+{
+	if (start){
+		//disable group dvfs when scroll begin
+		group_set_mode(0);
+		flt_ctrl_force_set(1);
+		set_grp_dvfs_ctrl(0);
+	}else{
+		//enable group dvfs when scroll end
+		flt_ctrl_force_set(0);
+		group_set_mode(1);
+	}
+}
+#endif
+
+void fpsgo_boost_non_hwui_policy(struct render_info *thr)
+{
+	if (!thr) {
+		fpsgo_main_trace("%s: NON render info!!!!\n",
+			__func__);
+		return;
+	}
+
+	fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+}
+
+void fpsgo_set_ux_general_policy(int scrolling)
+{
+	int pid;
+
+	if (scrolling) {
+		//enable sched run-time power table
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+		set_wl_manual(0);
+		// set_wl_type_manual(0);
+#endif
+		if (change_dpt_support_driver_hook)
+			change_dpt_support_driver_hook(1);
+
+
+	} else {
+		//disable sched run-time power table
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+		set_wl_manual(-1);
+		// set_wl_type_manual(-1);
+#endif
+		if (change_dpt_support_driver_hook)
+			change_dpt_support_driver_hook(0);
+	}
+
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	//set kfps process priority to vip
+	pid = fpsgo_get_kfpsgo_tid();
+	if (scrolling)
+		set_task_basic_vip(pid);
+	else
+		unset_task_basic_vip(pid);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	set_ignore_idle_ctrl(scrolling);
+	fpsgo_set_group_dvfs(scrolling);
+#endif
 }
 
 int fpsgo_sbe_dy_enhance(struct render_info *thr)
@@ -814,7 +883,6 @@ void clear_ux_info(struct render_info *thr)
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
-	int cpu_mask;
 	unsigned long long ts = 0;
 	int sbe_dy_enhance = -1;
 
@@ -854,18 +922,16 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 				thr->boost_info.sbe_rescue_target_time = (thr->boost_info.target_time >> 1);
 
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
-
 		}
 
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
 
-		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL && rescue_cpu_mask == 1){
-			cpu_mask = FPSGO_PREFER_M;
-			fpsgo_set_affnity_on_rescue(thr->tgid, cpu_mask);
-			fpsgo_set_affnity_on_rescue(thr->pid, cpu_mask);
-		}
+#if SBE_AFFNITY_TASK
+		fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_M);
+		fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_M);
+#endif
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	} else {
@@ -876,12 +942,11 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		sbe_rescuing_frame_id = -1;
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
-		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL && rescue_cpu_mask == 1){
-			cpu_mask = FPSGO_PREFER_NONE;
-			fpsgo_set_affnity_on_rescue(thr->tgid,cpu_mask);
-			fpsgo_set_affnity_on_rescue(thr->pid, cpu_mask);
-		}
 
+#if SBE_AFFNITY_TASK
+		fpsgo_set_affnity_on_rescue(thr->tgid,FPSGO_PREFER_NONE);
+		fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_NONE);
+#endif
 		if (sbe_dy_rescue_enable ) {
 			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
 			//update rescue end time
@@ -1300,6 +1365,11 @@ void fbt_init_ux(struct render_info *info)
 
 void fbt_del_ux(struct render_info *info)
 {
+	if (ux_general_policy) {
+		info->scroll_status = 0;
+		fpsgo_reset_deplist_task_priority(info);
+	}
+
 	if (sbe_dy_rescue_enable) {
 		clear_ux_info(info);
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
@@ -1321,6 +1391,7 @@ int __init fbt_cpu_ux_init(void)
 {
 	fpsgo_ux_gcc_enable = 0;
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
+	ux_general_policy = 1;
 	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
@@ -1328,11 +1399,7 @@ int __init fbt_cpu_ux_init(void)
 	sbe_dy_frame_threshold = 2;
 	sbe_dy_rescue_enable = 1;
 	scroll_cnt = 6;
-	ux_scroll_policy_type = fbt_get_ux_scroll_policy_type();
-	set_ux_uclampmin = 0;
-	set_ux_uclampmax = 0;
 	set_deplist_vip = 1;
-	rescue_cpu_mask = 1;
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
 	ux_scroll_info_cachep = kmem_cache_create("ux_scroll_info",

@@ -5,6 +5,8 @@
 
 #include <linux/rbtree.h>
 
+#define SBE_AFFNITY_TASK 0
+
 //high 16bit for frame status
 #define FRAME_MASK 0xFFFF0000
 #define FRAME_STATUS_OBTAINVIEW    (1 << 0)
@@ -101,6 +103,11 @@ struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr
 		unsigned long long frameID, unsigned long long start_ts, int action);
 struct ux_frame_info *fpsgo_ux_get_next_frame_info(struct render_info *thr);
 int fpsgo_ux_count_frame_info(struct render_info *thr, int target);
+void fpsgo_boost_non_hwui_policy(struct render_info *thr);
+void fpsgo_set_ux_general_policy(int scrolling);
+int get_ux_general_policy(void);
+void fpsgo_reset_deplist_task_priority(struct render_info *thr);
+void fpsgo_set_group_dvfs(int start);
 
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id);
@@ -109,6 +116,16 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 
 int fpsgo_ctrl2ux_get_perf(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
+
+
+extern void set_ignore_idle_ctrl(bool val);
+extern void set_grp_dvfs_ctrl(int set);
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+extern void flt_ctrl_force_set(int set);
+#endif
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+extern void group_set_mode(u32 mode);
+#endif
 
 void __exit fbt_cpu_ux_exit(void);
 int __init fbt_cpu_ux_init(void);

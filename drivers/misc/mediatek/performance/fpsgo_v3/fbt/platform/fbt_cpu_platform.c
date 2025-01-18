@@ -25,12 +25,12 @@ static struct device_node *node;
 static unsigned int peak_bw;
 static int plat_gcc_enable;
 static int plat_sbe_rescue_enable;
-static int plat_ux_scroll_policy_type;
+static int plat_ux_scroll_general_policy;
 static int plat_cpu_limit;
 
 static int generate_cpu_mask(void);
 static int generate_sbe_rescue_enable(void);
-static int generate_ux_scroll_policy_type(void);
+static int generate_ux_scroll_general_policy(void);
 static int platform_fpsgo_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
@@ -63,7 +63,7 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 
 	generate_cpu_mask();
 	generate_sbe_rescue_enable();
-	generate_ux_scroll_policy_type();
+	generate_ux_scroll_general_policy();
 
 	return 0;
 }
@@ -254,17 +254,17 @@ static int generate_sbe_rescue_enable(void)
 	return ret;
 }
 
-static int generate_ux_scroll_policy_type(void)
+static int generate_ux_scroll_general_policy(void)
 {
 	int ret = 0, retval = 0;
 
-	plat_ux_scroll_policy_type = 1;
+	plat_ux_scroll_general_policy = 0;
 	ret = of_property_read_u32(node,
-		 "ux-scrol-policy-type", &retval);
+				"ux-scroll-general-policy", &retval);
 	if (!ret)
-		plat_ux_scroll_policy_type = retval;
+		plat_ux_scroll_general_policy = retval;
 	else
-		FPSGO_LOGE("%s unable to get plat_ux_scroll_policy_type\n", __func__);
+		FPSGO_LOGE("%s unable to get plat_ux_scroll_general_policy\n", __func__);
 
 	return ret;
 }
@@ -381,7 +381,11 @@ int fbt_get_default_powerRL_enable(void)
 
 int fbt_get_ux_scroll_policy_type(void)
 {
-	return plat_ux_scroll_policy_type;
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	return plat_ux_scroll_general_policy;
+#else
+	return 0;
+#endif
 }
 
 int fbt_get_l_min_bhropp(void)

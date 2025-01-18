@@ -31,6 +31,7 @@
 #include "fstb.h"
 #include "xgf.h"
 #include "mini_top.h"
+#include "fbt_cpu_platform.h"
 
 #define MAX_FPSGO_CB_NUM 5
 
@@ -50,6 +51,10 @@ static int total_fpsgo_com_policy_cmd_num;
 static int fpsgo_is_boosting;
 static int jank_detection_is_ready;
 static unsigned long long last_update_sbe_dep_ts;
+
+//UX SCROLLING
+static int ux_general_policy;
+static int ux_scroll_count;
 
 // touch latency
 static int fpsgo_touch_latency_ko_ready;
@@ -835,6 +840,10 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
+
+		if (get_ux_general_policy() && f_render->scroll_status)
+			fpsgo_boost_non_hwui_policy(f_render);
+
 		fpsgo_comp2fstb_queue_time_update(pid,
 			f_render->buffer_id,
 			f_render->frame_type,
@@ -1355,19 +1364,21 @@ out:
 }
 
 int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
-				   unsigned long long ts, int start,
-				   char *specific_name, int num)
+				unsigned long long ts, int start,
+				char *specific_name, int num)
 {
 	char *thread_name = NULL;
 	int ret;
 	int i;
 	int *final_pid_arr =  NULL;
 	unsigned long long *final_bufID_arr = NULL;
+	unsigned long long *final_idf_arr = NULL;
 	int final_pid_arr_idx = 0;
 	int *local_specific_tid_arr = NULL;
 	int local_specific_tid_num = 0;
 	struct fpsgo_attr_by_pid *attr_iter = NULL;
 	struct render_info *thr = NULL;
+	struct sbe_info *sbe_info = NULL;
 
 	if (tgid <= 0 || !name || !mask) {
 		ret = -EINVAL;
@@ -1396,10 +1407,47 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		goto out;
 	ret = 0;
 
+	final_idf_arr = kcalloc(10, sizeof(unsigned long long), GFP_KERNEL);
+	if (!final_idf_arr) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
 	fpsgo_get_render_tid_by_render_name(tgid, thread_name,
-		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, 10);
-	fpsgo_main_trace("[comp] sbe tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d",
-		tgid, name, mask, start, final_pid_arr_idx);
+		final_pid_arr, final_bufID_arr, final_idf_arr, &final_pid_arr_idx, 10);
+
+	ux_general_policy = get_ux_general_policy();
+	fpsgo_main_trace("[comp] sbe tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d ux_general_policy:%d",
+				tgid, name, mask, start, final_pid_arr_idx, ux_general_policy);
+
+	if (ux_general_policy) {
+		fpsgo_render_tree_lock(__func__);
+		sbe_info = fpsgo_search_and_add_sbe_info(tgid, 1);
+
+		if (sbe_info) {
+			if (test_bit(FPSGO_HWUI, &mask))
+				sbe_info->ux_crtl_type = FPSGO_HWUI;
+
+			if (test_bit(FPSGO_NON_HWUI, &mask))
+				sbe_info->ux_crtl_type = FPSGO_NON_HWUI;
+
+			if (start && !sbe_info->ux_scrolling) {
+				sbe_info->ux_scrolling = start;
+				if (!ux_scroll_count)
+					fpsgo_set_ux_general_policy(start);
+
+				ux_scroll_count++;
+			}
+
+			if (!start && sbe_info->ux_scrolling) {
+				sbe_info->ux_scrolling = start;
+				ux_scroll_count--;
+				if (!ux_scroll_count)
+					fpsgo_set_ux_general_policy(start);
+			}
+		}
+		fpsgo_render_tree_unlock(__func__);
+	}
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(FPSGO_CONTROL, &mask))
@@ -1409,6 +1457,8 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 
 		fpsgo_render_tree_lock(__func__);
 		thr = fpsgo_search_and_add_render_info(final_pid_arr[i], final_bufID_arr[i], 0);
+		if (thr != NULL)
+			thr->scroll_status = start;
 
 		if (test_bit(FPSGO_CLEAR_SCROLLING_INFO, &mask) && thr != NULL) {
 			clear_ux_info(thr);
@@ -1455,6 +1505,8 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 				}
 			}
 		} else {
+			if (ux_general_policy && thr)
+				fpsgo_reset_deplist_task_priority(thr);
 
 			//update scroll_info when scroll end
 			if (test_bit(FPSGO_HWUI, &mask) && thr != NULL) {
@@ -1497,6 +1549,7 @@ out:
 	kfree(thread_name);
 	kfree(final_pid_arr);
 	kfree(final_bufID_arr);
+	kfree(final_idf_arr);
 	kfree(local_specific_tid_arr);
 	return ret;
 }

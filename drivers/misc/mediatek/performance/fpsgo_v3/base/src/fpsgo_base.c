@@ -1329,6 +1329,7 @@ struct sbe_info *fpsgo_search_and_add_sbe_info(int pid, int force)
 		return NULL;
 
 	tmp->pid = pid;
+	tmp->ux_scrolling = 0;
 
 	rb_link_node(&tmp->entry, parent, p);
 	rb_insert_color(&tmp->entry, &sbe_info_tree);
@@ -2363,6 +2364,7 @@ int fpsgo_check_is_cam_apk(int tgid)
 
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	unsigned long long *out_idf_arr,
 	int *out_tid_num, int out_tid_max_num)
 {
 	int i;
@@ -2372,7 +2374,8 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	struct rb_node *rbn = NULL;
 	struct task_struct *tsk = NULL;
 
-	if (tgid <= 0 || !name || !out_tid_arr || !out_bufID_arr ||
+	if (tgid <= 0 || !name ||
+		!out_tid_arr || !out_bufID_arr || !out_idf_arr ||
 		!out_tid_num || out_tid_max_num <= 0)
 		return -EINVAL;
 
@@ -2397,13 +2400,15 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 
 		for (i = 0; i < local_index; i++) {
 			if (out_tid_arr[i] == render_iter->pid &&
-				out_bufID_arr[i] == render_iter->buffer_id)
+				out_bufID_arr[i] == render_iter->buffer_id &&
+				out_idf_arr[i] == render_iter->identifier)
 				break;
 		}
 
 		if (i == local_index && local_index < out_tid_max_num) {
 			out_tid_arr[local_index] = render_iter->pid;
 			out_bufID_arr[local_index] = render_iter->buffer_id;
+			out_idf_arr[local_index] = render_iter->identifier;
 			local_index++;
 		}
 		find_flag = 0;
