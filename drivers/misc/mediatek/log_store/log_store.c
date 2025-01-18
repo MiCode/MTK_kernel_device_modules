@@ -249,8 +249,11 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 
 	if (write_remain <= 0) {
 		pr_err("the buffer is empty.\n");
-		return 0;
+		return -1;
 	}
+
+	if (expdb_logstore == NULL)
+		return -1;
 
 	if (expdb_logstore->bdev == NULL)
 		if (get_partition_info() != 0)
