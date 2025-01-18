@@ -119,7 +119,7 @@ mgk_64_device_modules = [
     "drivers/cpufreq/mediatek-cpufreq-hw.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
     "drivers/dma-buf/heaps/deferred-free-helper.ko",
-    #"drivers/dma-buf/heaps/mtk_heap_debug.ko",
+    "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_heap_refill.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
     "drivers/dma-buf/heaps/page_pool.ko",
