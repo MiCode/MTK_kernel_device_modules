@@ -5971,6 +5971,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,gen1-txdeemph;
 			mediatek,ux-exit-lfps = <0x1e>;
 			mediatek,polling-scdlfps-time = <0x21>;
+			mediatek,ux-exit-lfps-gen2 = <0x44>;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
 			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
