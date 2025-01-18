@@ -22,6 +22,8 @@ static int ffa_device_match(struct device *dev, struct device_driver *drv)
 {
 	const struct ffa_device_id *id_table;
 	struct ffa_device *ffa_dev;
+	const struct ffa_device_id tmem_id_table = { UUID_INIT(0xd9d08fba, 0x8740,
+			0x8f4f, 0xa1, 0xe4, 0xb4, 0x5c, 0x58, 0x08, 0x12, 0xa1) };
 
 	id_table = to_ffa_driver(drv)->id_table;
 	ffa_dev = to_ffa_dev(dev);
@@ -37,6 +39,8 @@ static int ffa_device_match(struct device *dev, struct device_driver *drv)
 			ffa_device_match_uuid(ffa_dev, &id_table->uuid);
 
 		if (uuid_equal(&ffa_dev->uuid, &id_table->uuid))
+			return 1;
+		if (uuid_equal(&tmem_id_table.uuid, &id_table->uuid))
 			return 1;
 		id_table++;
 	}
