@@ -408,7 +408,7 @@ aliases {
 			ccorr-num-per-pipe = <1>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
-			ccorr-linear = <0>;
+			ccorr-linear = <1>;
 		};
 
 		disp_aal0: disp_aal0@14011000 {
