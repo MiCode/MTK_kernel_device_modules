@@ -1458,7 +1458,7 @@
 			dram-type-default = <8>;
 			apmixedsys-reg-base = <0x10000800>;
 			apmixedsys-reg-size = <0x1000>;
-			apmixedsys-emipll-con1 = <0xaa4>;
+			apmixedsys-emipll-con1 = <0x2a4>;
 			slc-pmu-reg-base = <0x1042e000 0x1052e000>;
 			slc-pmu-reg-size = <0x1000>;
 			slc-pmu-2nd-reg-base = <0x10400000 0x10500000>;
