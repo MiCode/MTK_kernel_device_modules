@@ -462,3 +462,11 @@ config MTK_HOST_DRV_WWAN_SUPPORT
 	  Say Y here if need to enable WWAN port in host driver.
 	  If unsure, say N.
 endmenu # Host Driver
+
+config MTK_AUTO_SUPPORT
+       tristate "smart platform modules"
+       help
+         Which is used for smart platform modules.
+         When the modules/codes only for auto project.
+         Say m here if is auto project.
+         If unsure, say N.
