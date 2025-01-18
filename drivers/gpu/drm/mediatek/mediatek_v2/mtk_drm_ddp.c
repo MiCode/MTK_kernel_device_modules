@@ -36880,6 +36880,18 @@ int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
 			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
 			*offset = 4;
 		}
+	} else if (crtc_id == 3) {
+		if (type == MTK_OVL_EXDMA) {
+			*addr_begin = MT6991_OVL_EXDMA_OUT_CROSSBAR9_MOUT_EN;
+			*addr_end = MT6991_OVL_EXDMA_OUT_CROSSBAR10_MOUT_EN;
+			*offset = 8;
+		}
+
+		if (type ==  MTK_OVL_BLENDER) {
+			*addr_begin = MT6991_OVL_BLENDER_OUT_CROSSBAR8_MOUT_EN;
+			*addr_end = MT6991_OVL_BLENDER_OUT_CROSSBAR9_MOUT_EN;
+			*offset = 4;
+		}
 	}
 
 	return 0;

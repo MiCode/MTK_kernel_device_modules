@@ -3076,6 +3076,8 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			return DDP_COMPONENT_OVL7_2L;
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			return DDP_COMPONENT_OVL5_2L;
+		else if (priv->data->mmsys_id == MMSYS_MT6991)
+			return (DDP_COMPONENT_OVL1_EXDMA8 + layer_idx - fun_lye);
 		else
 			return DDP_COMPONENT_OVL2_2L;
 	}

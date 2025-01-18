@@ -3341,9 +3341,30 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_DP_INTF0,
 };
 
+/* CRTC3 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_secondary[] = {
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER8,
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER9,
+	DDP_COMPONENT_OVL1_OUTPROC4,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC11,
+
+	DDP_COMPONENT_DLI_ASYNC14,
+	DDP_COMPONENT_PQ0_IN_CB14,
+	DDP_COMPONENT_PQ0_OUT_CB11,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB7,
+	DDP_COMPONENT_DLO_ASYNC6,
+
+	DDP_COMPONENT_DLI_ASYNC26,
+	DDP_COMPONENT_SPLITTER0_IN_CB6,
+	DDP_COMPONENT_SPLITTER0_OUT_CB14,
+	DDP_COMPONENT_COMP0_OUT_CB7,
+	DDP_COMPONENT_MERGE0_OUT_CB1,
+	DDP_COMPONENT_DSI1,
 };
 
+/* CRTC3 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_discrete_chip[] = {
 	DDP_COMPONENT_MDP_RDMA0,
 	DDP_COMPONENT_Y2R0,
@@ -5264,7 +5285,7 @@ static const struct mtk_crtc_path_data mt6991_mtk_secondary_path_data = {
 	.path_req_hrt[DDP_MAJOR][0] = true,
 //	.dual_path[0] = mt6989_mtk_ddp_dual_secondary_dp,
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_secondary_dp),
-//	.addon_data = mt6989_addon_secondary_path,
+	.addon_data = mt6989_addon_secondary_path,
 //	.addon_data_dual = mt6989_addon_secondary_path_dual,
 };
 

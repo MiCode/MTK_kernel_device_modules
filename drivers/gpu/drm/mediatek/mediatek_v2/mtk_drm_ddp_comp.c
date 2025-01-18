@@ -1436,10 +1436,10 @@ unsigned int mtk_drm_find_possible_crtc_by_comp(struct drm_device *drm,
 	    true) {
 		ret = BIT(0);
 	} else if (mtk_drm_find_comp_in_ddp(
-			   ddp_comp, private->data->ext_path_data) == true) {
+			ddp_comp, private->data->ext_path_data) == true) {
 		ret = BIT(1);
 	} else if (mtk_drm_find_comp_in_ddp(
-			   ddp_comp, private->data->third_path_data) == true) {
+			ddp_comp, private->data->third_path_data) == true) {
 		ret = BIT(2);
 	} else if (mtk_drm_find_comp_in_ddp(
 			ddp_comp, private->data->fourth_path_data_secondary) == true) {
