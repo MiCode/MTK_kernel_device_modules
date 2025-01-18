@@ -743,6 +743,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_lt_addr = (void *)top_rc_pattern,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
@@ -821,6 +823,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_lt_addr = (void *)top_rc_pattern,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
@@ -899,6 +903,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_lt_addr = (void *)top_rc_pattern,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
@@ -977,6 +983,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_lt_addr = (void *)top_rc_pattern,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
