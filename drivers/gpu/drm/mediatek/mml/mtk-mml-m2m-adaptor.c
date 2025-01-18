@@ -1150,8 +1150,11 @@ static void m2m_set_format(struct mml_frame_data *data, struct mml_buffer *buf,
 			data->y_stride = stride;
 		else if (i == 1)
 			data->uv_stride = stride;
-		buf->size[i] = mml_fmt_get_plane_size(fmt,
-			stride, pix_mp->height, i);
+		if (i == 0 && MML_FMT_COMPRESS(fmt->mml_color))
+			buf->size[i] = pix_mp->plane_fmt[i].sizeimage;
+		else
+			buf->size[i] = mml_fmt_get_plane_size(fmt,
+				stride, pix_mp->height, i);
 		data->plane_offset[i] = 0;
 	}
 	for (; i < buf->cnt; i++) {
