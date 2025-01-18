@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/seq_file.h>
 #include <dt-bindings/pinctrl/mt65xx.h>
 #include <linux/regmap.h>
 #include "pinctrl-paris.h"
