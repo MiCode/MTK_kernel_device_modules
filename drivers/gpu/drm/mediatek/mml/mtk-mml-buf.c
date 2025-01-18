@@ -76,7 +76,7 @@ static inline int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
 	}
 
 	dma->attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
-	dma->sgt = dma_buf_map_attachment(dma->attach, DMA_BIDIRECTIONAL);
+	dma->sgt = dma_buf_map_attachment_unlocked(dma->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(dma->sgt)) {
 		err = PTR_ERR(dma->sgt);
 		mml_err("%s map failed err %d attach %p dev %p",
@@ -148,7 +148,7 @@ int mml_buf_va_get(struct mml_file_buf *buf)
 	for (i = 0; i < buf->cnt; i++) {
 		if (!buf->dma[i].dmabuf || buf->dma[i].va)
 			continue;
-		ret = dma_buf_vmap(buf->dma[i].dmabuf, &map);
+		ret = dma_buf_vmap_unlocked(buf->dma[i].dmabuf, &map);
 		if (ret)
 			return -ENOMEM;
 		buf->dma[i].va = map.vaddr;
@@ -159,7 +159,7 @@ int mml_buf_va_get(struct mml_file_buf *buf)
 
 static inline void dmabuf_iova_free(struct mml_dma_buf *dma)
 {
-	dma_buf_unmap_attachment(dma->attach, dma->sgt, DMA_FROM_DEVICE);
+	dma_buf_unmap_attachment_unlocked(dma->attach, dma->sgt, DMA_FROM_DEVICE);
 	dma_buf_detach(dma->dmabuf, dma->attach);
 
 	dma->sgt = NULL;
@@ -176,7 +176,7 @@ void mml_buf_put(struct mml_file_buf *buf)
 			continue;
 		if (buf->dma[i].va) {
 			map.vaddr = buf->dma[i].va;
-			dma_buf_vunmap(buf->dma[i].dmabuf, &map);
+			dma_buf_vunmap_unlocked(buf->dma[i].dmabuf, &map);
 		}
 		if (buf->dma[i].attach)
 			dmabuf_iova_free(&buf->dma[i]);
