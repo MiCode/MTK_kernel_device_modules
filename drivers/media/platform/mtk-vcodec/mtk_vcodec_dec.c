@@ -2870,7 +2870,7 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv, struct v4l2_buffer *b
 				ctx->input_max_ts);
 		}
 	} else {
-		if (buf->reserved == 0xFFFFFFFF)
+		if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
 			mtkbuf->general_user_fd = -1;
 		else
 			mtkbuf->general_user_fd = (int)buf->reserved;
