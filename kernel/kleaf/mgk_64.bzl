@@ -1147,6 +1147,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v2/sspm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/cm_mgr/mtk_cm_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_lpm/ise_lpm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mm-fake-engine.ko")
@@ -1254,8 +1255,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/upower/Upower.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/subpmic/generic_debugfs.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/subpmic/mt6360-dbg.ko":"mt6877"})
+        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6877.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dcm/mt6877_dcm.ko":"mt6877"})
-
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6991/mtk-lpm-dbg-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6886.ko")
