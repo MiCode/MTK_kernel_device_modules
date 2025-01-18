@@ -590,6 +590,12 @@ int ged_get_max_oppidx(void)
 	return g_max_working_oppidx;
 }
 
+/* get the largest oppidx whose stack freq does not repeat */
+int ged_get_min_stack_oppidx(void)
+{
+	return g_min_stack_oppidx;
+}
+
 int ged_get_min_oppidx_real(void)
 {
 	if (g_async_virtual_table_support && g_min_stack_oppidx)

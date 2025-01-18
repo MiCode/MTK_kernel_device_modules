@@ -297,7 +297,7 @@ void ged_eb_dvfs_trace_dump(void)
 
 	pre_eb_policy_state = eb_policy_state;
 	pre_ged_policy_state = ged_policy_state;
-	freq_id = pre_freq_id;
+	pre_freq_id = freq_id;
 #endif
 }
 
