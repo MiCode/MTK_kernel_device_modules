@@ -16,6 +16,9 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
+#if IS_ENABLED(CONFIG_STACKTRACE)
+#include <linux/stacktrace.h>
+#endif
 #include <linux/export.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
 #include <trace/hooks/iommu.h>
@@ -91,6 +94,13 @@
 #define IOVA_WARNNING_RS_INTERVAL	(60 * HZ)
 #define IOVA_WARNNING_RS_BURST		(1)
 #define IOVA_WARNNING_COUNT		(10000)
+
+#if IS_ENABLED(CONFIG_STACKTRACE)
+#define SMMU_STACK_SKIPNR		(7)
+#define SMMU_STACK_DEPTH		(10)
+#define SMMU_STACK_LINE_MAX_LEN		(100)
+#define SMMU_STACK_MAX_LEN		(400)
+#endif
 
 struct mtk_iommu_cb {
 	int port;
@@ -168,6 +178,7 @@ struct iommu_global_t {
 	unsigned int iova_alloc_list;
 	unsigned int iova_map_list;
 	unsigned int iova_warn_aee;
+	unsigned int iova_stack_trace;
 	unsigned int start;
 	unsigned int write_pointer;
 	spinlock_t	lock;
@@ -213,6 +224,7 @@ struct iova_info {
 	size_t size;
 	u64 time_high;
 	u32 time_low;
+	char *trace_info;
 	struct list_head list_node;
 };
 
@@ -1881,6 +1893,16 @@ static int m4u_debug_set(void *data, u64 val)
 			mtk_iommu_iova_map_dump(NULL, 0, APU_TABLE);
 		}
 		break;
+#if IS_ENABLED(CONFIG_STACKTRACE)
+	case 13:	/* enable alloc iova stacktrace */
+		if (smmu_v3_enable)
+			iommu_globals.iova_stack_trace = 1;
+		break;
+	case 14:	/* disable alloc iova stacktrace */
+		if (smmu_v3_enable)
+			iommu_globals.iova_stack_trace = 0;
+		break;
+#endif
 	default:
 		pr_err("%s error,val=%llu\n", __func__, val);
 		break;
@@ -2050,6 +2072,7 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 	iommu_globals.write_pointer = 0;
 	iommu_globals.iova_evt_enable = 1;
 	iommu_globals.iova_warn_aee = 0;
+	iommu_globals.iova_stack_trace = 0;
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	iommu_globals.iova_alloc_list = 1;
@@ -2425,8 +2448,10 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 
 	if (smmu_v3_enable) {
 		iommu_dump(s, "smmu iova alloc dump:\n");
-		iommu_dump(s, "%-9s %-10s %-10s %-18s %-14s %17s, %s\n",
-			   "smmu_id", "stream_id", "asid", "iova", "size", "time", "dev");
+		iommu_dump(s, "%-9s %-10s %-10s %-18s %-14s %17s, %-20s %s\n",
+			   "smmu_id", "stream_id", "asid", "iova", "size",
+			   "time", "dev", iommu_globals.iova_stack_trace == 1 ?
+			   "alloc_trace" : "");
 	} else {
 		iommu_dump(s, "iommu iova alloc dump:\n");
 		iommu_dump(s, "%6s %6s %-18s %-10s %17s %s\n",
@@ -2438,7 +2463,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 		if (dev == NULL ||
 		    (plist->dom_id == dom_id && plist->tab_id == tab_id)) {
 			if (smmu_v3_enable)
-				iommu_dump(s, "%-9u 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %s\n",
+				iommu_dump(s, "%-9u 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %-20s %s\n",
 					   smmu_tab_id_to_smmu_id(plist->tab_id),
 					   get_smmu_stream_id(plist->dev),
 					   smmu_tab_id_to_asid(plist->tab_id),
@@ -2446,7 +2471,9 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 					   plist->size,
 					   plist->time_high,
 					   plist->time_low,
-					   dev_name(plist->dev));
+					   dev_name(plist->dev),
+					   plist->trace_info ?
+					   plist->trace_info : "");
 			else
 				iommu_dump(s, "%6llu %6u %-18pa 0x%-8zx %10llu.%06u %s\n",
 					   plist->tab_id,
@@ -2520,6 +2547,74 @@ static void mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
 	spin_unlock(&iova_list.lock);
 }
 
+#if IS_ENABLED(CONFIG_STACKTRACE)
+static char *generate_trace_info(const unsigned long *entries,
+				 unsigned int nr_entries)
+{
+	char *trace_info, *plus_str;
+	char ent_str[SMMU_STACK_LINE_MAX_LEN] = {0};
+	size_t len, size = SMMU_STACK_MAX_LEN;
+	int i;
+
+	if (!entries || !nr_entries)
+		return NULL;
+
+	trace_info = kcalloc(SMMU_STACK_MAX_LEN, sizeof(char),
+			     GFP_ATOMIC);
+	if (!trace_info)
+		return NULL;
+
+	for (i = nr_entries - 1; i >= 0; i--) {
+		if (snprintf(ent_str, SMMU_STACK_LINE_MAX_LEN, "%pS",
+		    (void *)entries[i]) < 0)
+			continue;
+
+		plus_str = strchr(ent_str, '+');
+
+		if (plus_str != NULL)
+			len = plus_str - ent_str;
+		else
+			len = strlen(ent_str);
+
+		if (i != nr_entries - 1) {
+			if (len + 4 < len || size <= len + 4)
+				break;
+
+			strncat(trace_info, " -> ", 4);
+			size -= 4;
+		} else if (size <= len) {
+			break;
+		}
+
+		strncat(trace_info, ent_str, len);
+		size -= len;
+	}
+
+	return trace_info;
+}
+
+void mtk_iova_add_trace_info(struct iova_info *iova_buf)
+{
+	unsigned long stack_entries[SMMU_STACK_DEPTH];
+	unsigned int nr_entries;
+
+	if (!smmu_v3_enable || !iova_buf)
+		return;
+
+	nr_entries = stack_trace_save(stack_entries, ARRAY_SIZE(stack_entries),
+				      SMMU_STACK_SKIPNR);
+	iova_buf->trace_info = generate_trace_info(stack_entries, nr_entries);
+}
+
+static void mtk_iova_del_trace_info(struct iova_info *iova_buf)
+{
+	if (smmu_v3_enable && iova_buf && iova_buf->trace_info) {
+		kfree(iova_buf->trace_info);
+		iova_buf->trace_info = NULL;
+	}
+}
+#endif
+
 static void mtk_iova_dbg_alloc(struct device *dev,
 	struct iova_domain *iovad, dma_addr_t iova, size_t size)
 {
@@ -2585,6 +2680,10 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	iova_buf->iovad = iovad;
 	iova_buf->iova = iova;
 	iova_buf->size = size;
+#if IS_ENABLED(CONFIG_STACKTRACE)
+	if (iommu_globals.iova_stack_trace == 1)
+		mtk_iova_add_trace_info(iova_buf);
+#endif
 	spin_lock(&iova_list.lock);
 	mtk_iova_count_inc();
 	list_add(&iova_buf->list_node, &iova_list.head);
@@ -2629,6 +2728,10 @@ static void mtk_iova_dbg_free(
 			tab_id = plist->tab_id;
 			dev = plist->dev;
 			list_del(&plist->list_node);
+#if IS_ENABLED(CONFIG_STACKTRACE)
+			if (iommu_globals.iova_stack_trace == 1)
+				mtk_iova_del_trace_info(plist);
+#endif
 			kfree(plist);
 			mtk_iova_count_dec();
 			break;
