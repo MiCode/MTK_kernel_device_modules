@@ -2582,7 +2582,7 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("I2SOUT6_GPIO", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SOUT6_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
