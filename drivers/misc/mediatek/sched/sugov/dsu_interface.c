@@ -10,6 +10,7 @@
 #include <linux/cpufreq.h>
 #include <linux/kthread.h>
 #include <linux/irq_work.h>
+#include <linux/of_platform.h>
 #include "sugov/cpufreq.h"
 #include "dsu_interface.h"
 
