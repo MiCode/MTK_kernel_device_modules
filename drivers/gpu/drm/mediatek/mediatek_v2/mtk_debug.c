@@ -487,7 +487,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...)
 {
 	int n = 0;
 	unsigned long flags = 0;
-	uint64_t time = get_current_time_us();
+	uint64_t time;
 	unsigned long rem_nsec;
 	char **buf_arr;
 	char *buf = NULL;
@@ -502,6 +502,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...)
 	if (atomic_read(&is_buffer_init) != 1)
 		return -1;
 
+	time = get_current_time_us();
 	spin_lock_irqsave(dprec_logger_lock(type), flags);
 	if (dprec_logger_buffer[type].len < 128) {
 		dprec_logger_buffer[type].id++;
@@ -5942,4 +5943,9 @@ int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	else if (switch_log == MTK_DRM_IRQ_LOG)
 		g_irq_log = 1;
 	return 0;
+}
+
+bool mtk_disp_get_logger_enable(void)
+{
+	return logger_enable;
 }

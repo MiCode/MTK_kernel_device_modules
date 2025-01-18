@@ -659,12 +659,14 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.width,	mtk_plane_state->pending.height,
 		mtk_plane_state->pending.mml_mode);
 
-	written = scnprintf(dbg_msg, 512, "prop_val:");
-	for (i = 0; i < PLANE_PROP_MAX; i++) {
-		written += scnprintf(dbg_msg + written, 512 - written, "[%d]%d ",
-				     i, (unsigned int)mtk_plane_state->pending.prop_val[i]);
+	if (mtk_disp_get_logger_enable()){
+		written = scnprintf(dbg_msg, 512, "prop_val:");
+		for (i = 0; i < PLANE_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 512 - written, "[%d]%d ",
+						i, (unsigned int)mtk_plane_state->pending.prop_val[i]);
+		}
+		DDPINFO("%s\n", dbg_msg);
 	}
-	DDPINFO("%s\n", dbg_msg);
 
 	DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
 		mtk_crtc_index_spy(crtc_index),
