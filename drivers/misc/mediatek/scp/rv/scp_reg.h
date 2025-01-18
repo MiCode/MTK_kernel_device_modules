@@ -58,6 +58,9 @@
 #define R_CORE1_WDT_CFG		(scpreg.cfg_core1 + 0x0034)
 	#define V_INSTANT_WDT	0x80000000
 
+#define R_CORE0_WDT_CUR_VAL	(scpreg.cfg_core0 + 0x003c)
+#define R_CORE1_WDT_CUR_VAL	(scpreg.cfg_core1 + 0x003c)
+
 #define R_CORE0_STATUS			(scpreg.cfg_core0 + 0x0070)
 	#define B_CORE_GATED		(1 << 0)
 	#define B_CORE_HALT		(1 << 1)

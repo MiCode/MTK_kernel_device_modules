@@ -1222,6 +1222,31 @@ static inline ssize_t scp_reset_counts_show(struct device *kobj
 DEVICE_ATTR_RO(scp_reset_counts);
 #endif
 
+
+static void scp_write_reset_register_with_retry(int cpu_id)
+{
+	unsigned int wdt_cur_val = 0, retry_cnt = 100;
+
+	do {
+		switch (cpu_id) {
+		case 0:
+			writel(V_INSTANT_WDT, R_CORE0_WDT_CFG);
+			wdt_cur_val = readl(R_CORE0_WDT_CUR_VAL);
+			break;
+		case 1:
+			writel(V_INSTANT_WDT, R_CORE1_WDT_CFG);
+			wdt_cur_val = readl(R_CORE1_WDT_CUR_VAL);
+			break;
+		default:
+			pr_notice("[SCP] %s: invalid cpu id: %d\n", __func__, cpu_id);
+		}
+		retry_cnt--;
+	} while (wdt_cur_val !=0 && retry_cnt != 0);
+
+	if (retry_cnt == 0)
+		pr_notice("[SCP] manually wdt reset not work.\n");
+}
+
 void scp_wdt_reset(int cpu_id)
 {
 	int scp_awake_flag = 0;
@@ -1249,14 +1274,8 @@ void scp_wdt_reset(int cpu_id)
 #else
 	{
 #endif
-	switch (cpu_id) {
-	case 0:
-		writel(V_INSTANT_WDT, R_CORE0_WDT_CFG);
-		break;
-	case 1:
-		writel(V_INSTANT_WDT, R_CORE1_WDT_CFG);
-		break;
-	}
+
+	scp_write_reset_register_with_retry(cpu_id);
 
 	if (sap_enabled() && cpu_id == sap_get_core_id())
 		sap_wdt_reset();
