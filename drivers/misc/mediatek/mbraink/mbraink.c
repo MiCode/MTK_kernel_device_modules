@@ -35,9 +35,7 @@
 #include "mbraink_gps.h"
 #include "mbraink_wifi.h"
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT) && \
-	(MBRAINK_LANDING_FEATURE_CHECK == 0)
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
 #include <lpm_dbg_logger.h>
 
@@ -45,6 +43,7 @@
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
+long long last_resume_timestamp;
 
 static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info);
 
@@ -1470,7 +1469,7 @@ static int mbraink_resume(struct device *dev)
 
 #if IS_ENABLED(CONFIG_PM)
 
-static void mbraink_post_suspend(void)
+static int mbraink_post_suspend(void)
 {
 	struct timespec64 tv = { 0 };
 	ktime_t resume_ktime;
@@ -1479,15 +1478,15 @@ static void mbraink_post_suspend(void)
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT) && \
-	(MBRAINK_LANDING_FEATURE_CHECK == 0)
-
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 	struct lpm_logger_mbrain_dbg_ops *logger_mbrain_ops = NULL;
 	long long wakeup_event = 0;
 #else
 	long long wakeup_event = 0;
 #endif
+
+	if (mbraink_priv.last_suspend_timestamp == 0 || mbraink_priv.last_suspend_ktime == 0)
+		return -1;
 
 	memset(&resume_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
@@ -1501,9 +1500,7 @@ static void mbraink_post_suspend(void)
 
 	mbraink_get_battery_info(&resume_battery_buffer, mbraink_priv.last_resume_timestamp);
 
-#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
-		IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT) && \
-		(MBRAINK_LANDING_FEATURE_CHECK == 0)
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
 	logger_mbrain_ops = get_lpm_logger_mbrain_dbg_ops();
 	if (logger_mbrain_ops && logger_mbrain_ops->get_last_suspend_wakesrc)
@@ -1540,13 +1537,14 @@ static void mbraink_post_suspend(void)
 
 	mbraink_netlink_send_msg(netlink_buf);
 
-#if !IS_ENABLED(CONFIG_PM)
+	last_resume_timestamp = mbraink_priv.last_resume_timestamp;
 	mbraink_priv.last_resume_timestamp = 0;
-#endif
 	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.last_suspend_ktime = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
+
+	return 0;
 }
 
 static void mbraink_post_suspend_get_spm(void)
@@ -1556,20 +1554,15 @@ static void mbraink_post_suspend_get_spm(void)
 	long long spm_l1_info[SPM_L1_DATA_NUM];
 	int n = 0;
 
-	if (mbraink_priv.last_resume_timestamp == 0)
-		return;
-
 	memset(spm_l1_info, 0, sizeof(spm_l1_info));
 	ret = mbraink_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
-	if (ret) {
-		mbraink_priv.last_resume_timestamp = 0;
+	if (ret)
 		return;
-	}
 
 	n += snprintf(netlink_buf, MAX_BUF_SZ,
 			"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
 			NETLINK_EVENT_SYSNOTIFIER_PS,
-			mbraink_priv.last_resume_timestamp,
+			last_resume_timestamp,
 			spm_l1_info[0],
 			spm_l1_info[1],
 			spm_l1_info[2],
@@ -1586,7 +1579,7 @@ static void mbraink_post_suspend_get_spm(void)
 			spm_l1_info[13]
 	);
 
-	mbraink_priv.last_resume_timestamp = 0;
+	last_resume_timestamp = 0;
 	mbraink_netlink_send_msg(netlink_buf);
 }
 
@@ -1601,10 +1594,11 @@ static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
 		pr_notice("mbraink_PM_POST_SUSPEND\n");
-		mbraink_post_suspend();
-		//spm : 1.update (mbraink_power_post_suspend) 2.get spm data
-		mbraink_power_post_suspend();
-		mbraink_post_suspend_get_spm();
+		if (mbraink_post_suspend() == 0) {
+			//spm : 1.update (mbraink_power_post_suspend) 2.get spm data
+			mbraink_power_post_suspend();
+			mbraink_post_suspend_get_spm();
+		}
 		pr_notice("mbraink_PM_POST_SUSPEND exit\n");
 		return NOTIFY_DONE;
 	default:
