@@ -1094,6 +1094,7 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 
 	u32 i = 0, sum = 0;
 	u32 expect_value_letter = 0, expect_value_crop = 0, expect_value_hist = 0;
+	u32 expect_value_letter_1 = 0;
 	u32 letter_up = 0, letter_down = 0, letter_height = 0;
 	u32 crop_width =
 		task->config->frame_tile_sz.width;
@@ -1109,7 +1110,7 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 		0x0000FFFF) >> 0);
 	letter_down = ((task->pq_task->hdr_hist[pipe]->va[57] &
 		0xFFFF0000) >> 16);
-	letter_height = letter_down - letter_up;
+	letter_height = letter_down - letter_up + 1;
 
 	if (vcp) {
 		hist_up = ((readl(base + hdr->data->reg_table[HDR_HIST_CTRL_0]) &
@@ -1122,26 +1123,32 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 		hist_down = ((task->pq_task->hdr_hist[pipe]->va[59] &
 			0xFFFF0000) >> 16);
 	}
-	hist_height = hist_down - hist_up;
+	hist_height = hist_down - hist_up + 1;
 
 	if (task->config->dual) {
 		if (pipe) {
-			expect_value_hist = (hist_height+1) *
+			expect_value_hist = (hist_height) *
 				(crop_width - hdr_frm->cut_pos_x) * 8;
-			expect_value_letter = (letter_height+1) *
+			expect_value_letter = (letter_height) *
 				(crop_width - hdr_frm->cut_pos_x) * 8;
+			expect_value_letter_1 = (letter_height) *
+				(crop_width - hdr_frm->cut_pos_x + 1) * 8;
 			expect_value_crop = crop_height *
 				(crop_width - hdr_frm->cut_pos_x) * 8;
 		} else {
 			expect_value_hist =
-				(hist_height+1) * hdr_frm->cut_pos_x * 8;
+				(hist_height) * hdr_frm->cut_pos_x * 8;
 			expect_value_letter =
-				(letter_height+1) * hdr_frm->cut_pos_x * 8;
+				(letter_height) * hdr_frm->cut_pos_x * 8;
+			expect_value_letter_1 =
+				(letter_height) * (hdr_frm->cut_pos_x + 1) * 8;
 			expect_value_crop =
 				crop_height * hdr_frm->cut_pos_x * 8;
 		}
 	} else {
-		expect_value_letter = (letter_height+1) * crop_width * 8;
+		expect_value_hist = hist_height * crop_width * 8;
+		expect_value_letter = letter_height * crop_width * 8;
+		expect_value_letter_1 = letter_height * (crop_width + 1) * 8;
 		expect_value_crop = crop_height * crop_width * 8;
 	}
 
@@ -1152,11 +1159,20 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 		__func__, task->job.jobid, pipe, letter_height, letter_down,
 		letter_up);
 
-	if (sum != expect_value_letter &&
-		sum != expect_value_crop &&
-		sum != expect_value_hist) {
-		mml_pq_err("%s sum[%u] expect_value_letter[%u] job_id[%d] pipe[%d]",
-			__func__, sum, expect_value_letter, task->job.jobid, pipe);
+	/* histogram sum should be equal to the following two value:
+	 * 1. hist_height * crop_width * 8
+	 * 2. hist_height * (crop_width + 1) * 8
+	 *    -> if the n tile is in the n-1 tile
+	 */
+	if (sum != expect_value_hist &&
+		sum != expect_value_hist + hist_height * 8) {
+		mml_pq_err("%s sum[%u] job_id[%d] pipe[%d]",
+			__func__, sum, task->job.jobid, pipe);
+		mml_pq_err("%s expect_value_letter[%u] expect_value_crop[%u] expect_value_hist[%u]",
+			__func__, expect_value_letter, expect_value_crop, expect_value_hist);
+		mml_pq_err("%s expect_value_letter_1[%u]",
+			__func__, expect_value_letter_1);
+
 		for (i = 0; i < HDR_HIST_CNT-1; i += 4)
 			mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
 				__func__, i, i+3,
@@ -1165,14 +1181,17 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 				task->pq_task->hdr_hist[pipe]->va[offset/4+i+2],
 				task->pq_task->hdr_hist[pipe]->va[offset/4+i+3]);
 
-			mml_pq_err("%s hist[56-57] = [%d, %d]",
-				__func__, task->pq_task->hdr_hist[pipe]->va[offset/4+56],
-				task->pq_task->hdr_hist[pipe]->va[offset/4+i+57]);
+		mml_pq_err("%s job_id[%d] pipe[%d] letter_height[%d] down[%d] up[%d]",
+			__func__, task->job.jobid, pipe, letter_height, letter_down, letter_up);
+		mml_pq_err("%s crop_height[%d] crop_width[%d]",
+			__func__, crop_height, crop_width);
+		mml_pq_err("%s hist_height[%d] hdr_frm->cut_pos_x[%d]",
+			__func__, hist_height, hdr_frm->cut_pos_x);
 
-			if (mml_pq_debug_mode & MML_PQ_HIST_CHECK)
-				mml_pq_util_aee("MML_PQ_HDR_Histogram Error",
-					"HDR Histogram error need to check jobid:%d",
-					task->job.jobid);
+		if (mml_pq_debug_mode & MML_PQ_HIST_CHECK)
+			mml_pq_util_aee("MML_PQ_HDR_Histogram Error",
+				"HDR Histogram error need to check jobid:%d",
+				task->job.jobid);
 	}
 }
 
@@ -1262,7 +1281,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[18];
+	u32 value[20];
 	u32 hdr_top;
 
 	mml_err("hdr component %u dump:", comp->id);
@@ -1290,6 +1309,8 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[15] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF2]);
 	value[16] = read_reg_value(comp, hdr->data->reg_table[HDR_DEBUG]);
 	value[17] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
+	value[18] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
+	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1303,6 +1324,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("HDR_CURSOR_BUF0 %#010x HDR_CURSOR_BUF1 %#010x HDR_CURSOR_BUF2 %#010x",
 		value[13], value[14], value[15]);
 	mml_err("HDR_DEBUG %#010x HDR_DUMMY1 %#010x", value[16], value[17]);
+	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[18], value[19]);
 }
 
 static const struct mml_comp_debug_ops hdr_debug_ops = {
