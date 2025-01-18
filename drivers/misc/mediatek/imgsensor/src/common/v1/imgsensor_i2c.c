@@ -32,21 +32,21 @@ static const struct of_device_id gof_device_id_2[] = {
 #endif
 
 static int
-imgsensor_i2c_probe_0(struct i2c_client *client, const struct i2c_device_id *id)
+imgsensor_i2c_probe_0(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_0].pi2c_client = client;
 	return 0;
 }
 
 static int
-imgsensor_i2c_probe_1(struct i2c_client *client, const struct i2c_device_id *id)
+imgsensor_i2c_probe_1(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_1].pi2c_client = client;
 	return 0;
 }
 
 static int
-imgsensor_i2c_probe_2(struct i2c_client *client, const struct i2c_device_id *id)
+imgsensor_i2c_probe_2(struct i2c_client *client)
 {
 	gi2c.inst[IMGSENSOR_I2C_DEV_2].pi2c_client = client;
 	return 0;
