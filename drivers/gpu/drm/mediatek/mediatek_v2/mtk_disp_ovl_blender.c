@@ -412,10 +412,10 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
 	int i = 0;
-	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1){
-		DDPMSG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
+		DDPDBG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
 
