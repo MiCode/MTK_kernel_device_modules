@@ -18,7 +18,7 @@
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/power/mt6768-power.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/power/mtk-charger.h>
 

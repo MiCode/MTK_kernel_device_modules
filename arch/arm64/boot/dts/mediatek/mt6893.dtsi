@@ -12,7 +12,7 @@
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6885-pinfunc.h>
 #include <dt-bindings/power/mt6893-power.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/gce/mt6893-gce.h>
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>

@@ -22,7 +22,7 @@
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/spmi/spmi.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/mml/mml-mt6991.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
 #include <dt-bindings/memory/mt6991-larb-port.h>
