@@ -22,10 +22,13 @@ struct mtk_devinfo_priv {
 
 struct devinfo_tag {
 	unsigned int data_size;
-	unsigned int data[];
+	unsigned int data[0];
 };
 
-static int devinfo_parse_dt(struct mtk_devinfo_priv *priv, struct device *dev)
+static int __used mtk_devinfo_probe(struct platform_device *pdev);
+static int __used devinfo_parse_dt(struct mtk_devinfo_priv *priv, struct device *dev);
+
+static int __used devinfo_parse_dt(struct mtk_devinfo_priv *priv, struct device *dev)
 {
 	struct device_node *chosen_node;
 	struct devinfo_tag *tags;
@@ -81,7 +84,7 @@ static int mtk_reg_read(void *context,
 	return 0;
 }
 
-static int mtk_devinfo_probe(struct platform_device *pdev)
+static int __used mtk_devinfo_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct nvmem_device *nvmem;
