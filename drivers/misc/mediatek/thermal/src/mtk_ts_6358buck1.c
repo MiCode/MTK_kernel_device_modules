@@ -30,7 +30,7 @@
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 /**
@@ -55,6 +55,7 @@ static struct thermal_cooling_device *cl_dev_sysrst;
 static int kernelmode;
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 static int num_trip = 1;
 static char g_bind0[20] = "sysrst.6358buck1";
@@ -194,19 +195,6 @@ static int mt6358tsbuck1_change_mode
 	kernelmode = mode;
 	return 0;
 }
-static int mt6358tsbuck1_get_trip_type
-(struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mt6358tsbuck1_get_trip_temp
-(struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
 
 static int mt6358tsbuck1_get_crit_temp
 (struct thermal_zone_device *thermal, int *temperature)
@@ -221,8 +209,6 @@ static struct thermal_zone_device_ops mt6358tsbuck1_dev_ops = {
 	.unbind = mt6358tsbuck1_unbind,
 	.get_temp = mt6358tsbuck1_get_temp,
 	.change_mode = mt6358tsbuck1_change_mode,
-	.get_trip_type = mt6358tsbuck1_get_trip_type,
-	.get_trip_temp = mt6358tsbuck1_get_trip_temp,
 	.get_crit_temp = mt6358tsbuck1_get_crit_temp,
 };
 
@@ -445,6 +431,11 @@ static ssize_t mt6358tsbuck1_write
 		mtktspmic_dprintk(
 			"[%s] mt6358tsbuck1_register_thermal\n", __func__);
 
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mt6358tsbuck1_register_thermal();
 		up(&sem_mutex);
 		kfree(ptr_mt6358tsbuck1_data);
@@ -512,7 +503,7 @@ static int mt6358tsbuck1_register_thermal(void)
 
 	/* trips : trip 0~2 */
 	thz_dev = mtk_thermal_zone_device_register(
-			"mt6358tsbuck1", num_trip, NULL,
+			"mt6358tsbuck1", trips, num_trip, NULL,
 			&mt6358tsbuck1_dev_ops, 0, 0, 0, interval * 1000);
 
 	return 0;
@@ -552,6 +543,7 @@ static const struct proc_ops mt6358tsbuck1_fops = {
 static int mt6358_ts_buck1_probe(struct platform_device *pdev)
 {
 	int err = 0;
+	int i = 0;
 
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mt6358tsbuck1_dir = NULL;
@@ -568,6 +560,12 @@ static int mt6358_ts_buck1_probe(struct platform_device *pdev)
 		pr_info("%s, err=%d\n", __func__, err);
 		return err;
 	}
+
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
+
 	err = mt6358tsbuck1_register_thermal();
 	if (err)
 		goto err_unreg;

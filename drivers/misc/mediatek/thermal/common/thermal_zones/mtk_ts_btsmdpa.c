@@ -51,7 +51,7 @@ IMM_GetOneChannelValue(int dwChannel, int data[4], int *rawdata)
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 
 static unsigned int interval = 1;	/* seconds, 0 : no auto polling */
 static int trip_temp[10] = { 120000, 110000, 100000, 90000, 80000,
@@ -61,6 +61,7 @@ static struct thermal_zone_device *thz_dev;
 static int mtkts_btsmdpa_debug_log;
 static int kernelmode;
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 static int num_trip;
 static char g_bind0[20] = {"mtk-cl-shutdown02"};
@@ -886,19 +887,6 @@ static int mtkts_btsmdpa_change_mode(struct thermal_zone_device *thermal,
 	kernelmode = mode;
 	return 0;
 }
-static int mtkts_btsmdpa_get_trip_type(
-struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mtkts_btsmdpa_get_trip_temp(
-struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
 
 static int mtkts_btsmdpa_get_crit_temp(
 struct thermal_zone_device *thermal, int *temperature)
@@ -913,8 +901,6 @@ static struct thermal_zone_device_ops mtkts_btsmdpa_dev_ops = {
 	.unbind = mtkts_btsmdpa_unbind,
 	.get_temp = mtkts_btsmdpa_get_temp,
 	.change_mode = mtkts_btsmdpa_change_mode,
-	.get_trip_type = mtkts_btsmdpa_get_trip_type,
-	.get_trip_temp = mtkts_btsmdpa_get_trip_temp,
 	.get_crit_temp = mtkts_btsmdpa_get_crit_temp,
 };
 
@@ -1105,6 +1091,12 @@ struct file *file, const char __user *buffer, size_t count, loff_t *data)
 
 		mtkts_btsmdpa_dprintk(
 			"[%s] mtkts_btsmdpa_register_thermal\n", __func__);
+
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mtkts_btsmdpa_register_thermal();
 		up(&sem_mutex);
 
@@ -1310,7 +1302,7 @@ static int mtkts_btsmdpa_register_thermal(void)
 	mtkts_btsmdpa_dprintk("[%s]\n", __func__);
 
 	/* trips : trip 0~1 */
-	thz_dev = mtk_thermal_zone_device_register("mtktsbtsmdpa", num_trip,
+	thz_dev = mtk_thermal_zone_device_register("mtktsbtsmdpa", trips, num_trip,
 					NULL, &mtkts_btsmdpa_dev_ops, 0, 0, 0,
 					interval * 1000);
 
@@ -1441,7 +1433,7 @@ static struct platform_driver mtk_thermal_btsmdpa_driver = {
 
 int mtkts_btsmdpa_init(void)
 {
-
+	int i = 0;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC)
 	int err = 0;
 #else
@@ -1451,6 +1443,10 @@ int mtkts_btsmdpa_init(void)
 
 	mtkts_btsmdpa_dprintk("[%s]\n", __func__);
 
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC)
 	err = platform_driver_register(&mtk_thermal_btsmdpa_driver);

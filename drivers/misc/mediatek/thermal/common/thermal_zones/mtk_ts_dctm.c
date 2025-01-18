@@ -58,7 +58,7 @@ static void mtkts_dctm_unregister_thermal(void);
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 
 static unsigned int interval = 1;	/* seconds, 0 : no auto polling */
 static struct thermal_zone_device *thz_dev;
@@ -68,6 +68,7 @@ static int num_trip = 1;
 static int trip_temp[10] = { 120000, 110000, 100000, 90000,
 	80000, 70000, 65000, 60000, 55000, 50000 };
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 static char g_bind[10][20] = {"mtktsdctm-sysrst", "no-cooler",
 "no-cooler", "no-cooler", "no-cooler", "no-cooler", "no-cooler",
 "no-cooler", "no-cooler", "no-cooler"};
@@ -359,20 +360,6 @@ static int mtkts_dctm_change_mode(struct thermal_zone_device *thermal,
 	return 0;
 }
 
-static int mtkts_dctm_get_trip_type(struct thermal_zone_device *thermal,
-	int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mtkts_dctm_get_trip_temp(struct thermal_zone_device *thermal,
-	int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
-
 static int mtkts_dctm_get_crit_temp(struct thermal_zone_device *thermal,
 	int *temperature)
 {
@@ -386,8 +373,6 @@ static struct thermal_zone_device_ops mtkts_dctm_dev_ops = {
 	.unbind = mtkts_dctm_unbind,
 	.get_temp = mtkts_dctm_get_temp,
 	.change_mode = mtkts_dctm_change_mode,
-	.get_trip_type = mtkts_dctm_get_trip_type,
-	.get_trip_temp = mtkts_dctm_get_trip_temp,
 	.get_crit_temp = mtkts_dctm_get_crit_temp,
 };
 
@@ -546,6 +531,11 @@ static ssize_t mtkts_dctm_write(struct file *file, const char __user *buffer,
 		mtkts_dctm_dprintk("[%s] mtkts_dctm_register_thermal\n",
 			__func__);
 
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mtkts_dctm_register_thermal();
 		up(&sem_mutex);
 
@@ -596,7 +586,7 @@ static int mtkts_dctm_register_thermal(void)
 	mtkts_dctm_dprintk("[%s]\n", __func__);
 
 	/* trips : trip 0~1 */
-	thz_dev = mtk_thermal_zone_device_register("mtktsdctm", num_trip, NULL,
+	thz_dev = mtk_thermal_zone_device_register("mtktsdctm", trips, num_trip, NULL,
 						   &mtkts_dctm_dev_ops, 0, 0, 0,
 						   interval * 1000);
 
@@ -891,6 +881,7 @@ static const struct proc_ops tzdctm_drc_cfg_fops = {
 
 int mtkts_dctm_init(void)
 {
+	int i = 0;
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mtkts_dir = NULL;
 #if IS_ENABLED(CONFIG_PM)
@@ -927,6 +918,11 @@ int mtkts_dctm_init(void)
 
 	mtkts_dctm_drc_reset = 1;
 	tskinInit(tpcbinit);
+
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 
 	mtkts_dctm_register_thermal();
 #if IS_ENABLED(CONFIG_PM)

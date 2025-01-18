@@ -37,7 +37,7 @@
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 static unsigned int interval;	/* seconds, 0 : no auto polling */
@@ -45,6 +45,8 @@ static unsigned int trip_temp[10] = { 85000, 80000, 70000, 60000, 50000,
 					40000, 30000, 20000, 10000, 5000 };
 
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+static struct thermal_trip trips[10];
 
 static int cl_dev_sysrst_state;
 static struct thermal_zone_device *thz_dev;
@@ -357,20 +359,6 @@ struct thermal_zone_device *thermal, enum thermal_device_mode mode)
 	return 0;
 }
 
-static int mtktspa_get_trip_type(
-struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int mtktspa_get_trip_temp(
-struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
-
 static int mtktspa_get_crit_temp(
 struct thermal_zone_device *thermal, int *temperature)
 {
@@ -384,8 +372,6 @@ static struct thermal_zone_device_ops mtktspa_dev_ops = {
 	.unbind = mtktspa_unbind,
 	.get_temp = mtktspa_get_temp,
 	.change_mode = mtktspa_change_mode,
-	.get_trip_type = mtktspa_get_trip_type,
-	.get_trip_temp = mtktspa_get_trip_temp,
 	.get_crit_temp = mtktspa_get_crit_temp,
 };
 
@@ -611,6 +597,13 @@ struct file *file, const char __user *buffer, size_t count, loff_t *data)
 						trip_temp[9], interval * 1000);
 
 		mtktspa_dprintk("[%s] mtktspa_register_thermal\n", __func__);
+
+
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		mtktspa_register_thermal();
 		up(&sem_mutex);
 
@@ -719,7 +712,7 @@ static int mtktspa_register_thermal(void)
 
 	/* trips */
 	thz_dev = mtk_thermal_zone_device_register(
-						"mtktspa", num_trip, NULL,
+						"mtktspa", trips, num_trip, NULL,
 						&mtktspa_dev_ops, 0, 0, 0,
 						interval * 1000);
 
@@ -749,6 +742,7 @@ static void mtktspa_unregister_thermal(void)
 int  mtktspa_init(void)
 {
 	int err = 0;
+	int i = 0;
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mtktspa_dir = NULL;
 #if Feature_Thro_update
@@ -760,6 +754,11 @@ int  mtktspa_init(void)
 	err = mtktspa_register_cooler();
 	if (err)
 		return err;
+
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 
 	err = mtktspa_register_thermal();
 	if (err)

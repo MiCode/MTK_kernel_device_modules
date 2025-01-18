@@ -97,7 +97,7 @@
  */
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
-static DEFINE_SEMAPHORE(sem_mutex);
+static DEFINE_SEMAPHORE(sem_mutex, 1);
 static int isTimerCancelled;
 
 #if !IS_ENABLED(CONFIG_MTK_CLKMGR)
@@ -157,6 +157,7 @@ static int trip_temp[10] = { 117000, 100000, 85000, 75000, 65000,
 static bool talking_flag;
 static int kernelmode;
 static int g_THERMAL_TRIP[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static struct thermal_trip trips[10];
 
 #if defined(TZCPU_SET_INIT_CFG)
 static int num_trip = TZCPU_INITCFG_NUM_TRIPS;
@@ -464,20 +465,6 @@ static int tscpu_change_mode
 	return 0;
 }
 
-static int tscpu_get_trip_type
-(struct thermal_zone_device *thermal, int trip, enum thermal_trip_type *type)
-{
-	*type = g_THERMAL_TRIP[trip];
-	return 0;
-}
-
-static int tscpu_get_trip_temp
-(struct thermal_zone_device *thermal, int trip, int *temp)
-{
-	*temp = trip_temp[trip];
-	return 0;
-}
-
 static int tscpu_get_crit_temp
 (struct thermal_zone_device *thermal, int *temperature)
 {
@@ -590,8 +577,6 @@ static struct thermal_zone_device_ops mtktscpu_dev_ops = {
 	.unbind = tscpu_unbind,
 	.get_temp = tscpu_get_temp,
 	.change_mode = tscpu_change_mode,
-	.get_trip_type = tscpu_get_trip_type,
-	.get_trip_temp = tscpu_get_trip_temp,
 	.get_crit_temp = tscpu_get_crit_temp,
 };
 
@@ -1347,6 +1332,12 @@ static ssize_t tscpu_write
 		 *  set_high_low_threshold(trip_temp[i-1], trip_temp[i]);
 		 */
 		tscpu_dprintk("%s tscpu_register_thermal\n", __func__);
+
+		for (i = 0; i < num_trip; i++) {
+			trips[i].temperature = trip_temp[i];
+			trips[i].type = g_THERMAL_TRIP[i];
+		}
+
 		tscpu_register_thermal();
 		up(&sem_mutex);
 
@@ -1371,7 +1362,7 @@ static int tscpu_register_thermal(void)
 	tscpu_dprintk("%s\n", __func__);
 
 	/* trips : trip 0~3 */
-	thz_dev = mtk_thermal_zone_device_register("mtktscpu", num_trip, NULL,
+	thz_dev = mtk_thermal_zone_device_register("mtktscpu", trips, num_trip, NULL,
 			&mtktscpu_dev_ops, 0, 0, 0, interval);
 
 	return 0;
@@ -2502,7 +2493,7 @@ static void tscpu_create_fs(void)
 /*must wait until AUXADC initial ready*/
 static int tscpu_thermal_probe(struct platform_device *dev)
 {
-	int err = 0, ret = -1;
+	int err = 0, ret = -1, i = 0;
 
 	tscpu_printk("thermal_prob\n");
 
@@ -2650,6 +2641,11 @@ static int tscpu_thermal_probe(struct platform_device *dev)
 		tscpu_warn("devm_regulator_get_optional vcore_reg_id failed\n");
 #endif
 #endif
+
+	for (i = 0; i < num_trip; i++) {
+		trips[i].temperature = trip_temp[i];
+		trips[i].type = g_THERMAL_TRIP[i];
+	}
 
 	err = tscpu_register_thermal();
 	if (err) {
