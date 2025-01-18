@@ -315,6 +315,9 @@ static s32 fill_luma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 		memset(fg_data->allocated_grain_y_va, 0, LUMA_GRAIN_HEIGHT * LUMA_GRAIN_WIDTH * 2);
 	}
 
+	if (fg_data->en_hw_ar)
+		return 0;
+
 	/* apply auto-regressive filter to white noise */
 	shift = fg_data->metadata->ar_coeff_shift;
 
@@ -392,6 +395,9 @@ static s32 fill_chroma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 		memset(cr_start_addr, 0,
 			fg_data->chroma_grain_height * fg_data->chroma_grain_width * 2);
 	}
+
+	if (fg_data->en_hw_ar)
+		return 0;
 
 	/* apply auto-regressive filter to cb & cr white noise */
 	shift = fg_data->metadata->ar_coeff_shift;
@@ -547,7 +553,8 @@ static s32 fill_scaling_lut(struct mml_pq_fg_alg_data *fg_data)
 }
 
 void mml_pq_fg_calc(struct mml_pq_dma_buffer **lut,
-	struct mml_pq_film_grain_params *metadata, bool is_yuv_444, s32 bit_depth)
+	struct mml_pq_film_grain_params *metadata, bool is_yuv_444, s32 bit_depth,
+	bool en_hw_ar)
 {
 	struct mml_pq_fg_alg_data fg_data = {0};
 
@@ -571,6 +578,7 @@ void mml_pq_fg_calc(struct mml_pq_dma_buffer **lut,
 	fg_data.allocated_scaling_va = (char *)lut[3]->va;
 	fg_data.metadata = metadata;
 	fg_data.random_register = metadata->grain_seed;
+	fg_data.en_hw_ar = en_hw_ar;
 
 	mml_pq_msg("%s is_yuv_444:%d bit_depth:%d", __func__, is_yuv_444, bit_depth);
 

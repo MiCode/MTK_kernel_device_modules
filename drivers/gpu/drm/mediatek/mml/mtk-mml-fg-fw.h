@@ -32,10 +32,13 @@ struct mml_pq_fg_alg_data {
 	char *allocated_grain_cb_va;
 	char *allocated_grain_cr_va;
 	char *allocated_scaling_va;
+
+	bool en_hw_ar;
 };
 
 void mml_pq_fg_calc(struct mml_pq_dma_buffer **lut,
-	struct mml_pq_film_grain_params *metadata, bool isYUV444, s32 bitDepth);
+	struct mml_pq_film_grain_params *metadata, bool isYUV444, s32 bitDepth,
+	bool en_hw_ar);
 
 u32 mml_pq_fg_get_pps0(struct mml_pq_film_grain_params *metadata);
 u32 mml_pq_fg_get_pps1(struct mml_pq_film_grain_params *metadata);

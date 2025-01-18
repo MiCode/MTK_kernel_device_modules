@@ -53,6 +53,27 @@ enum mml_fg_reg_index {
 	FG_IRQ_STATUS,
 	FG_SRAM_CTRL,
 	FG_SRAM_STATUS,
+	FG_AR_COEFF_CFG,
+	FG_AR_COEFF_Y_0,
+	FG_AR_COEFF_Y_1,
+	FG_AR_COEFF_Y_2,
+	FG_AR_COEFF_Y_3,
+	FG_AR_COEFF_Y_4,
+	FG_AR_COEFF_Y_5,
+	FG_AR_COEFF_CB_0,
+	FG_AR_COEFF_CB_1,
+	FG_AR_COEFF_CB_2,
+	FG_AR_COEFF_CB_3,
+	FG_AR_COEFF_CB_4,
+	FG_AR_COEFF_CB_5,
+	FG_AR_COEFF_CB_6,
+	FG_AR_COEFF_CR_0,
+	FG_AR_COEFF_CR_1,
+	FG_AR_COEFF_CR_2,
+	FG_AR_COEFF_CR_3,
+	FG_AR_COEFF_CR_4,
+	FG_AR_COEFF_CR_5,
+	FG_AR_COEFF_CR_6,
 	FG_REG_MAX_COUNT
 };
 
@@ -91,7 +112,8 @@ static const u16 fg_reg_table_mt6897[FG_REG_MAX_COUNT] = {
 	[FG_IRQ_CTRL] = 0x018,
 	[FG_IRQ_STATUS] = 0x01c,
 	[FG_SRAM_CTRL] = REG_NOT_SUPPORT,
-	[FG_SRAM_STATUS] = REG_NOT_SUPPORT
+	[FG_SRAM_STATUS] = REG_NOT_SUPPORT,
+	[FG_AR_COEFF_CFG ... FG_AR_COEFF_CR_6] = REG_NOT_SUPPORT
 };
 
 static const u16 fg_reg_table_mt6989[FG_REG_MAX_COUNT] = {
@@ -129,12 +151,76 @@ static const u16 fg_reg_table_mt6989[FG_REG_MAX_COUNT] = {
 	[FG_IRQ_CTRL] = 0x018,
 	[FG_IRQ_STATUS] = 0x01c,
 	[FG_SRAM_CTRL] = 0x070,
-	[FG_SRAM_STATUS] = 0x074
+	[FG_SRAM_STATUS] = 0x074,
+	[FG_AR_COEFF_CFG ... FG_AR_COEFF_CR_6] = REG_NOT_SUPPORT
+};
+
+
+static const u16 fg_reg_table_mt6991[FG_REG_MAX_COUNT] = {
+	[FG_TRIGGER] = 0x000,
+	[FG_STATUS] = 0x004,
+	[FG_CTRL_0] = 0x020,
+	[FG_CK_EN] = 0x024,
+	[FG_SHADOW_CTRL] = 0x028,
+	[FG_BACK_DOOR_0] = 0x02c,
+	[FG_CRC_TBL_0] = 0x030,
+	[FG_CRC_TBL_1] = 0x034,
+	[FG_PIC_INFO_0] = 0x400,
+	[FG_PIC_INFO_1] = 0x404,
+	[FG_TILE_INFO_0] = 0x46C,
+	[FG_TILE_INFO_1] = 0x470,
+	[FG_DEBUG_0] = 0x500,
+	[FG_DEBUG_1] = 0x504,
+	[FG_DEBUG_2] = 0x508,
+	[FG_DEBUG_3] = 0x50c,
+	[FG_DEBUG_4] = 0x510,
+	[FG_DEBUG_5] = 0x514,
+	[FG_DEBUG_6] = 0x518,
+	[FG_PPS_0] = 0x408,
+	[FG_PPS_1] = 0x40C,
+	[FG_PPS_2] = 0x410,
+	[FG_PPS_3] = 0x414,
+	[FG_LUMA_TBL_BASE] = 0x008,
+	[FG_CB_TBL_BASE] = 0x00c,
+	[FG_CR_TBL_BASE] = 0x010,
+	[FG_LUT_BASE] = 0x014,
+	[FG_LUMA_TBL_BASE_MSB] = 0x05c,
+	[FG_CB_TBL_BASE_MSB] = 0x060,
+	[FG_CR_TBL_BASE_MSB] = 0x064,
+	[FG_LUT_BASE_MSB] = 0x068,
+	[FG_IRQ_CTRL] = 0x018,
+	[FG_IRQ_STATUS] = 0x01c,
+	[FG_SRAM_CTRL] = 0x070,
+	[FG_SRAM_STATUS] = 0x074,
+	[FG_AR_COEFF_CFG] = 0x418,
+	[FG_AR_COEFF_Y_0] = 0x41C,
+	[FG_AR_COEFF_Y_1] = 0x420,
+	[FG_AR_COEFF_Y_2] = 0x424,
+	[FG_AR_COEFF_Y_3] = 0x428,
+	[FG_AR_COEFF_Y_4] = 0x42C,
+	[FG_AR_COEFF_Y_5] = 0x430,
+	[FG_AR_COEFF_CB_0] = 0x434,
+	[FG_AR_COEFF_CB_1] = 0x438,
+	[FG_AR_COEFF_CB_2] = 0x43C,
+	[FG_AR_COEFF_CB_3] = 0x440,
+	[FG_AR_COEFF_CB_4] = 0x444,
+	[FG_AR_COEFF_CB_5] = 0x448,
+	[FG_AR_COEFF_CB_6] = 0x44C,
+	[FG_AR_COEFF_CR_0] = 0x450,
+	[FG_AR_COEFF_CR_1] = 0x454,
+	[FG_AR_COEFF_CR_2] = 0x458,
+	[FG_AR_COEFF_CR_3] = 0x45C,
+	[FG_AR_COEFF_CR_4] = 0x460,
+	[FG_AR_COEFF_CR_5] = 0x464,
+	[FG_AR_COEFF_CR_6] = 0x468
 };
 
 struct fg_data {
 	u16 gpr[MML_PIPE_CNT];
 	const u16 *reg_table;
+	u32 tile_width;
+	bool sram_pp; /* support SRAM ping-pong */
+	bool hw_ar; /* HW support auto regressive */
 };
 
 static const struct fg_data mt6893_fg_data = {
@@ -148,16 +234,23 @@ static const struct fg_data mt6897_fg_data = {
 static const struct fg_data mt6989_fg_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.reg_table = fg_reg_table_mt6989,
+	.sram_pp = true,
 };
 
 static const struct fg_data mt6991_mmlt_fg_data = {
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
-	.reg_table = fg_reg_table_mt6989,
+	.reg_table = fg_reg_table_mt6991,
+	.tile_width = 640,
+	.sram_pp = true,
+	.hw_ar = true,
 };
 
 static const struct fg_data mt6991_mmlf_fg_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
-	.reg_table = fg_reg_table_mt6989,
+	.reg_table = fg_reg_table_mt6991,
+	.tile_width = 3872,
+	.sram_pp = true,
+	.hw_ar = true,
 };
 
 struct mml_comp_fg {
@@ -185,6 +278,27 @@ enum fg_label_index {
 	FG_CK_EN_LABEL,
 	FG_TRIGGER_LABEL_0,
 	FG_TRIGGER_LABEL_1,
+	FG_AR_COEFF_CFG_LABEL,
+	FG_AR_COEFF_Y_0_LABEL,
+	FG_AR_COEFF_Y_1_LABEL,
+	FG_AR_COEFF_Y_2_LABEL,
+	FG_AR_COEFF_Y_3_LABEL,
+	FG_AR_COEFF_Y_4_LABEL,
+	FG_AR_COEFF_Y_5_LABEL,
+	FG_AR_COEFF_CB_0_LABEL,
+	FG_AR_COEFF_CB_1_LABEL,
+	FG_AR_COEFF_CB_2_LABEL,
+	FG_AR_COEFF_CB_3_LABEL,
+	FG_AR_COEFF_CB_4_LABEL,
+	FG_AR_COEFF_CB_5_LABEL,
+	FG_AR_COEFF_CB_6_LABEL,
+	FG_AR_COEFF_CR_0_LABEL,
+	FG_AR_COEFF_CR_1_LABEL,
+	FG_AR_COEFF_CR_2_LABEL,
+	FG_AR_COEFF_CR_3_LABEL,
+	FG_AR_COEFF_CR_4_LABEL,
+	FG_AR_COEFF_CR_5_LABEL,
+	FG_AR_COEFF_CR_6_LABEL,
 	FG_LABEL_TOTAL
 };
 
@@ -303,6 +417,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	bool is_yuv_444 = true;
 	bool buf_ready = true;
 	dma_addr_t fg_table_pa[FG_BUF_NUM] = {0};
+	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d]", __func__, comp->id,
@@ -335,7 +450,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	if (buf_ready) {
-		mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+		mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth, en_hw_ar);
 		/* sync dmabuf for lumn, cb, cr */
 		for (int i = 0; i < FG_BUF_NUM-1; i++)
 			dma_sync_single_range_for_device(
@@ -411,21 +526,69 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_3], mml_pq_fg_get_pps3(fg_meta),
 		0x00FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_3_LABEL]);
 
-	/* trigger FG load table */
+	if (fg->data->hw_ar) {
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CFG],
+			en_hw_ar << 0 |
+			fg_meta->ar_coeff_lag << 1 |
+			fg_meta->ar_coeff_shift << 3 |
+			bit_depth << 7 |
+			!is_yuv_444 << 11 |
+			fg_meta->chroma_scaling_from_luma << 12 |
+			fg_meta->num_y_points << 13 |
+			fg_meta->num_cb_points << 17 |
+			fg_meta->num_cr_points << 21,
+			U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CFG_LABEL]);
+
+		for (i = 0; i < 6; i++) {
+			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_Y_0 + i],
+				fg_meta->ar_coeffs_y[i*4] << 0 |
+				fg_meta->ar_coeffs_y[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_y[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_y[i*4 + 3] << 24,
+				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i]);
+
+			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_0 + i],
+				fg_meta->ar_coeffs_cb[i*4] << 0 |
+				fg_meta->ar_coeffs_cb[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_cb[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_cb[i*4 + 3] << 24,
+				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i]);
+
+			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_0 + i],
+				fg_meta->ar_coeffs_cr[i*4] << 0 |
+				fg_meta->ar_coeffs_cr[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_cr[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_cr[i*4 + 3] << 24,
+				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i]);
+		}
+
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_6],
+				fg_meta->ar_coeffs_cb[24] << 0,
+				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_6_LABEL]);
+
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_6],
+				fg_meta->ar_coeffs_cr[24] << 0,
+				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_6_LABEL]);
+	}
+
+	if (fg->data->sram_pp)
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SRAM_CTRL], 0x0, 0x3);
+
 	if (buf_ready) {
+		/* trigger FG load table */
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
 	} else {
+		/* since buffer is not available, we do not trigger FG load table */
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
 	}
 
-	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
-		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SRAM_CTRL], 0x0, 0x3);
+	if (fg->data->sram_pp) {
 		cmdq_pkt_poll(pkt, NULL,
 			0x1, base_pa + fg->data->reg_table[FG_SRAM_STATUS], 0x1, gpr);
 	}
@@ -473,6 +636,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
 	bool is_yuv_444 = true;
 	dma_addr_t fg_table_pa[FG_BUF_NUM];
+	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 
@@ -504,7 +668,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
 	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
 
-	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth, en_hw_ar);
 
 	/* sync dmabuf for lumn, cb, cr */
 	for (int i = 0; i < FG_BUF_NUM-1; i++)
@@ -538,15 +702,54 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
 		DO_SHIFT_RIGHT(fg_table_pa[3], 32));
 
-	/* trigger FG load table */
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
-
 	/* config pps */
 	mml_update(reuse, fg_frm->labels[FG_PPS_0_LABEL], mml_pq_fg_get_pps0(fg_meta));
 	mml_update(reuse, fg_frm->labels[FG_PPS_1_LABEL], mml_pq_fg_get_pps1(fg_meta));
 	mml_update(reuse, fg_frm->labels[FG_PPS_2_LABEL], mml_pq_fg_get_pps2(fg_meta));
 	mml_update(reuse, fg_frm->labels[FG_PPS_3_LABEL], mml_pq_fg_get_pps3(fg_meta));
+
+	if (fg->data->hw_ar) {
+		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CFG_LABEL],
+			en_hw_ar << 0 |
+			fg_meta->ar_coeff_lag << 1 |
+			fg_meta->ar_coeff_shift << 3 |
+			bit_depth << 7 |
+			!is_yuv_444 << 11 |
+			fg_meta->chroma_scaling_from_luma << 12 |
+			fg_meta->num_y_points << 13 |
+			fg_meta->num_cb_points << 17 |
+			fg_meta->num_cr_points << 21);
+
+		for (i = 0; i < 6; i++) {
+			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i],
+				fg_meta->ar_coeffs_y[i*4] << 0 |
+				fg_meta->ar_coeffs_y[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_y[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_y[i*4 + 3] << 24);
+
+			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i],
+				fg_meta->ar_coeffs_cb[i*4] << 0 |
+				fg_meta->ar_coeffs_cb[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_cb[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_cb[i*4 + 3] << 24);
+
+			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i],
+				fg_meta->ar_coeffs_cr[i*4] << 0 |
+				fg_meta->ar_coeffs_cr[i*4 + 1] << 8 |
+				fg_meta->ar_coeffs_cr[i*4 + 2] << 16 |
+				fg_meta->ar_coeffs_cr[i*4 + 3] << 24);
+		}
+
+		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_6_LABEL],
+				fg_meta->ar_coeffs_cb[24] << 0);
+
+		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CR_6_LABEL],
+				fg_meta->ar_coeffs_cr[24] << 0);
+	}
+
+	/* trigger FG load table */
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
 
 exit:
 	mml_pq_trace_ex_end();
@@ -643,7 +846,7 @@ static void fg_debug_dump(struct mml_comp *comp)
 	value[27] = readl(base + fg->data->reg_table[FG_PPS_3]);
 	value[28] = readl(base + fg->data->reg_table[FG_IRQ_STATUS]);
 
-	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
+	if (fg->data->sram_pp) {
 		value[29] = readl(base + fg->data->reg_table[FG_SRAM_CTRL]);
 		value[30] = readl(base + fg->data->reg_table[FG_SRAM_STATUS]);
 	}
@@ -654,7 +857,7 @@ static void fg_debug_dump(struct mml_comp *comp)
 		value[0], value[1]);
 	mml_err("FG_CTRL_0 %#010x FG_CK_EN %#010x",
 		value[2], value[3]);
-	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
+	if (fg->data->sram_pp) {
 		mml_err("FG_SRAM_CTRL %#010x FG_SRAM_STATUS %#010x",
 			value[29], value[30]);
 	}
