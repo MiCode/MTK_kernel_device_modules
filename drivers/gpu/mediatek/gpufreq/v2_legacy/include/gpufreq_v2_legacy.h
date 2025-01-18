@@ -642,4 +642,16 @@ const struct gpufreq_opp_info *gpufreq_get_signed_table(enum gpufreq_target targ
 int gpufreq_set_test_mode(unsigned int mode);
 int gpufreq_set_stress_test(unsigned int mode);
 
+#if IS_ENABLED(CONFIG_MTK_GPU_MT6877_SUPPORT)
+#define MT_GPUFREQ_SHADER_PWR_CTL_WA    1
+/**
+ * MTK GPUFREQ API
+ */
+#if MT_GPUFREQ_SHADER_PWR_CTL_WA
+extern void _gpufreq_clock_parking_lock(unsigned long *pFlags);
+extern void _gpufreq_clock_parking_unlock(unsigned long *pFlags);
+extern unsigned int _gpufreq_clock_parking(int clksrc);
+#endif
+#endif
+
 #endif /* __GPUFREQ_V2_LEGACY_H__ */

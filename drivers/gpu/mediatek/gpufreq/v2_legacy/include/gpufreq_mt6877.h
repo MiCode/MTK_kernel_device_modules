@@ -52,7 +52,14 @@
 #define MFGPLL4_CON1_OFS                (0x3C)
 #define MFGPLL4_CON2_OFS                (0x40)
 #define MFGPLL4_CON3_OFS                (0x44)
-#define MFGPLL_CON1				        (g_apmixed_base + 0x24C)
+#define MFGPLL1_CON0                    (g_gpu_pll_ctrl + MFGPLL1_CON0_OFS)
+#define MFGPLL1_CON1                    (g_gpu_pll_ctrl + MFGPLL1_CON1_OFS)
+#define MFGPLL1_CON2                    (g_gpu_pll_ctrl + MFGPLL1_CON2_OFS)
+#define MFGPLL1_CON3                    (g_gpu_pll_ctrl + MFGPLL1_CON3_OFS)
+#define MFGPLL4_CON0                    (g_gpu_pll_ctrl + MFGPLL4_CON0_OFS)
+#define MFGPLL4_CON1                    (g_gpu_pll_ctrl + MFGPLL4_CON1_OFS)
+#define MFGPLL4_CON2                    (g_gpu_pll_ctrl + MFGPLL4_CON2_OFS)
+#define MFGPLL4_CON3                    (g_gpu_pll_ctrl + MFGPLL4_CON3_OFS)
 #define PLL4H_FQMTR_CON0_OFS            (0x200)
 #define PLL4H_FQMTR_CON1_OFS            (0x204)
 #define PWR_STATUS_OFS                  (0xEF8)
@@ -61,66 +68,68 @@
 /**************************************************
  * Frequency Hopping Setting
  **************************************************/
-//TODO:GKI enable when FHCTL ready
+ //todo disable until CONFIG_COMMON_CLK_MTK_FREQ_HOPPING ready
 #define GPUFREQ_FHCTL_ENABLE            (0)
-#define MFG_PLL_NAME                    "mfgpll"
+#define MFG_PLL_NAME                    "mfgpll1"
+//todo will remove when hopping ready
+static int FH_GPU_PLL0  = 13;
 
 /**************************************************
  * Power Domain Setting
  **************************************************/
 #define GPUFREQ_CHECK_MTCMOS_PWR_STATUS (0)
+#define MT_GPUFREQ_STATIC_PWR_READY2USE         1
+
 
 /**************************************************
  * Shader Core Setting
  **************************************************/
 #define SHADER_CORE_NUM                 (2)
 
-#define MFG2_SHADER_STACK0              (T0C0)          /* MFG0 */
-#define MFG3_SHADER_STACK1              (T1C0)          /* MFG1 */
-
-#define GPU_SHADER_PRESENT_1 \
-	(MFG2_SHADER_STACK0)
-#define GPU_SHADER_PRESENT_2 \
-	(MFG2_SHADER_STACK0 | MFG3_SHADER_STACK1)
-
-struct gpufreq_core_mask_info g_core_mask_table_6768[] = {
-	{2, GPU_SHADER_PRESENT_2},
-	{1, GPU_SHADER_PRESENT_1},
-};
+#define MFG2_SHADER_STACK0         (T0C0)
+#define MFG3_SHADER_STACK2         (T2C0)
+#define MFG4_SHADER_STACK4         (T4C0)
+#define MFG5_SHADER_STACK6         (T6C0)
+#define MT_GPU_SHADER_PRESENT_4    (T0C0 | T2C0 | T4C0 | T6C0)
 
 /**************************************************
- * Reference Power Setting MT6768 TBD
+ * Reference Power Setting MT6877
  **************************************************/
-#define GPU_ACT_REF_POWER			(1285)		/* mW  */
-#define GPU_ACT_REF_FREQ			(900000)	/* KHz */
-#define GPU_ACT_REF_VOLT			(90000)		/* mV x 100 */
-#define GPU_DVFS_PTPOD_DISABLE_VOLT	(80000)		/* mV x 100 */
-#define GPU_DVFS_PTPOD_DISABLE_VSRAM_VOLT (90000)
+#define GPU_ACT_REF_POWER			(1223)		/* mW  */
+#define GPU_ACT_REF_FREQ			(950000)	/* KHz */
+#define GPU_ACT_REF_VOLT			(78125)		/* mV x 100 */
+
 #define GPU_LEAKAGE_POWER               (71)
 
 /**************************************************
- * PMIC Setting MT6768
+ * PMIC Setting MT6877
  **************************************************/
-#define VGPU_MAX_VOLT		(95000)         /* mV x 100 */
-#define VGPU_MIN_VOLT       (61250)         /* mV x 100 */
-#define VSRAM_MAX_VOLT      (105000)        /* mV x 100 */
-#define VSRAM_MIN_VOLT      (85000)         /* mV x 100 */
-#define DELAY_FACTOR		(625)
-/*
- * (0)mv <= (VSRAM - VGPU) <= (250)mV
- */
-#define MAX_BUCK_DIFF                   (25000)         /* mV x 100 */
-#define MIN_BUCK_DIFF                   (10000)        /* mV x 100 */
+#define VGPU_MAX_VOLT		(119375)         /* mV x 100 */
+#define VGPU_MIN_VOLT       (40000)         /* mV x 100 */
+#define VSRAM_MAX_VOLT      (129375)        /* mV x 100 */
+#define VSRAM_MIN_VOLT      (50000)         /* mV x 100 */
+#define PMIC_STEP		(625)
 
 /*
- * (Vgpu > THRESH): Vsram = Vgpu + DIFF
- * (Vgpu <= THRESH): Vsram = FIXED_VOLT
+ * (0)mv <= (VSRAM - VGPU) <= (200)mV
+ */
+#define MAX_BUCK_DIFF                   (20000)         /* mV x 100 */
+#define MIN_BUCK_DIFF                   (0)        /* mV x 100 */
+
+/* On opp table, low vgpu will use the same vsram.
+ * And hgih vgpu will have the same diff with vsram.
+ *
+ * if (vgpu <= FIXED_VSRAM_VOLT_THSRESHOLD) {
+ *     vsram = FIXED_VSRAM_VOLT;
+ * } else {
+ *     vsram = vgpu + FIXED_VSRAM_VOLT_DIFF;
+ * }
  */
 #define VSRAM_FIXED_THRESHOLD           (75000)
-#define VSRAM_FIXED_VOLT                (85000)
-#define VSRAM_FIXED_DIFF                (10000)
+#define VSRAM_FIXED_VOLT                (75000)
+#define VSRAM_FIXED_DIFF                (0)
 #define VOLT_NORMALIZATION(volt) \
-	((volt % 625) ? (volt - (volt % 625) + 625) : volt)
+	((volt % PMIC_STEP) ? (volt - (volt % PMIC_STEP) + PMIC_STEP) : volt)
 
 
 /*
@@ -151,12 +160,6 @@ struct gpufreq_core_mask_info g_core_mask_table_6768[] = {
  **************************************************/
 #define GPUFREQ_AGING_MOST_AGRRESIVE    (0)
 
-#define MFG2_SHADER_STACK0         (T0C0)
-#define MFG3_SHADER_STACK2         (T2C0)
-#define MFG4_SHADER_STACK4         (T4C0)
-#define MFG5_SHADER_STACK6         (T6C0)
-#define MT_GPU_SHADER_PRESENT_4    (T0C0 | T2C0 | T4C0 | T6C0)
-
 /**************************************************
  * Enumeration MT6877
  **************************************************/
@@ -168,6 +171,7 @@ enum gpufreq_segment {
 enum gpufreq_clk_src {
 	CLOCK_MAIN = 0,
 	CLOCK_SUB,
+	CLOCK_SUB2,
 };
 
 /**************************************************
@@ -346,12 +350,30 @@ struct gpufreq_opp_info g_opp_table_segment_3[] = {
  * Aging Adjustment
  **************************************************/
 unsigned int g_aging_table[][SIGNED_OPP_GPU_NUM] = {
-	{ /* aging table 0 */
-		1875, 1875, 1875, 1875, 1875, 1875, 1875, 1875, 1875, 1875, /* OPP 0~9   */
-		1250, 1250, 1250, 1250, 1250, 1250, 1250, 625, 625, 625,    /* OPP 10~19 */
-		 625,  625,  625,  625,  625,  625,  625, 625, 625, 625,    /* OPP 20~29 */
-		 625,  625,                                                 /* OPP 30~31 */
-	},
+	/* Aging Table 0 */
+	{1875, 1875, 1875, 1875, 1875, 1875, 1875, 1875,
+	 1875, 1875, 1875, 1875, 1875, 1875, 1875, 1250,
+	 1250, 1250, 1250, 1250, 1250, 1250, 1250, 1250,
+	 1250, 1250, 1250,  625,  625,  625,  625,  625,
+	  625,  625,  625,  625,  625,  625},
+	/* Aging Table 1 */
+	{1250, 1250, 1250, 1250, 1250, 1250, 1250, 1250,
+	 1250, 1250, 1250, 1250, 1250, 1250, 1250,  625,
+	  625,  625,  625,  625,  625,  625,  625,  625,
+	  625,  625,  625,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0},
+	/* Aging Table 2 */
+	{ 625,  625,  625,  625,  625,  625,  625,  625,
+	  625,  625,  625,  625,  625,  625,  625,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0},
+	/* Aging Table 3 */
+	{   0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0,    0,    0,
+	    0,    0,    0,    0,    0,    0},
 };
 
 /**************************************************
@@ -359,10 +381,10 @@ unsigned int g_aging_table[][SIGNED_OPP_GPU_NUM] = {
  **************************************************/
 #define PTPOD_OPP_GPU_NUM              ARRAY_SIZE(g_ptpod_opp_idx_table)
 unsigned int g_ptpod_opp_idx_table[] = {
-	0, 2, 4, 6,
-	8, 10, 12, 14,
-	16, 18, 20, 23,
-	25, 27, 29, 31
+	0,  3,  5,  9,
+	12, 15, 18, 21,
+	23, 25, 27, 29,
+	31, 33, 35, 37
 };
 
 #define MT_GPU_SHADER_PRESENT_4    (T0C0 | T2C0 | T4C0 | T6C0)
