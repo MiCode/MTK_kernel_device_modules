@@ -78,6 +78,7 @@ static atomic_t clk_ref_cnt = ATOMIC_INIT(0);
 static atomic_t vcp_ref_cnt = ATOMIC_INIT(0);
 static struct device *dev;
 static struct mminfra_dbg *dbg;
+static struct task_struct *mminfra_power_mon_thread;
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
 static u32 mm_pwr_ver;
@@ -613,8 +614,17 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 		kthread_run(mminfra_voter_mon, NULL, "mminfra_voter_mon");
 		break;
 	case 3:
-		pr_notice("%s: test_case(%d) enable mminfra_power_mon\n", __func__, test_case);
-		kthread_run(mminfra_power_mon, NULL, "mminfra_power_mon");
+		pr_notice("%s: test_case(%d) arg0:%d mminfra_power_mon\n", __func__, test_case, arg0);
+		if (!arg0) {
+			if (!mminfra_power_mon_thread)
+				mminfra_power_mon_thread = kthread_run(mminfra_power_mon, NULL,
+								"mminfra_power_mon");
+		} else {
+			if (mminfra_power_mon_thread) {
+				kthread_stop(mminfra_power_mon_thread);
+				mminfra_power_mon_thread = NULL;
+			}
+		}
 		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
