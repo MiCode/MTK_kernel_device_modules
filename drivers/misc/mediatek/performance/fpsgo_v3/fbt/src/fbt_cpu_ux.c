@@ -73,6 +73,8 @@ static int global_ux_blc;
 static int global_ux_max_pid;
 static int set_deplist_vip;
 static int ux_general_policy;
+static int global_sbe_dy_enhance;
+static int global_sbe_dy_enhance_max_pid;
 
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
@@ -116,6 +118,12 @@ void fbt_ux_set_perf(int cur_pid, int cur_blc)
 {
 	global_ux_blc = cur_blc;
 	global_ux_max_pid = cur_pid;
+}
+
+void fbt_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance)
+{
+	global_sbe_dy_enhance = cur_dy_enhance;
+	global_sbe_dy_enhance_max_pid = cur_pid;
 }
 
 void fpsgo_set_affnity_on_rescue(int pid, int r_cpu_mask)
@@ -507,6 +515,7 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 	int frame_status = (frame_flags & FRAME_MASK) >> 16;
 	int rescue_type = frame_flags & RESCUE_MASK;
 	struct hwui_frame_info *frame;
+	unsigned long long rescue_time = 0;
 
 	if (!thr || !sbe_dy_rescue_enable)
 		return;
@@ -515,6 +524,16 @@ void fpsgo_ux_doframe_end(struct render_info *thr, unsigned long long frame_id,
 	if (frame) {
 		frame->rescue_reason = rescue_type;
 		frame->frame_status = frame_status;
+		//this frame meet buffer count filter
+		if (!frame->rescue
+				&& ((rescue_type & RESCUE_WAITING_ANIMATION_END) != 0
+				|| (rescue_type & RESCUE_TYPE_TRAVERSAL_DYNAMIC) != 0
+				|| (rescue_type & RESCUE_TYPE_OI) != 0)
+				&& frame->start_ts != 0 && thr->boost_info.target_time > 0) {
+			//thinking rescue time is 1/2 vsync rescue
+			rescue_time = frame->start_ts + (thr->boost_info.target_time >> 1);
+			update_hwui_frame_info(thr, frame, frame_id, 0, 0, rescue_time, 0, 0);
+		}
 	}
 }
 
@@ -770,7 +789,7 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 
 	if (new_enhance > 0 && new_enhance != last_enhance) {
 		int max_monitor_drop_frame = RESCUE_MAX_MONITOR_DROP_ARR_SIZE - 1;
-		unsigned long long new_dur;
+		long long new_dur;
 		long long old_tmp;
 		int *oldScore;
 		int benifit_f_up = 0;
@@ -792,19 +811,30 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 				if (!hwui_info->rescue)
 					continue;
 
-				int old = clamp((hwui_info->perf_idx + last_enhance), 0, 100);
-				int new = clamp((hwui_info->perf_idx + new_enhance), 0, 100);
+				int before = clamp((hwui_info->perf_idx + last_enhance), 0, 100);
+				int after = clamp((hwui_info->perf_idx + new_enhance), 0, 100);
 
 				if (new_enhance > last_enhance && hwui_info->dur_ts <= target_time) {
 					new_dur = hwui_info->dur_ts;
 					tempScore[0] += 1;
 					drop = 0;
 				} else {
-					old_tmp = old * ((long long)hwui_info->dur_ts - (long long)rescue_target_time);
-					new_dur = div64_s64(old_tmp, new) + rescue_target_time;
+					if (hwui_info->dur_ts < rescue_target_time) {
+						old_tmp = before * (long long)hwui_info->dur_ts;
+						new_dur = div64_s64(old_tmp, after);
+					} else {
+						old_tmp = before * ((long long)hwui_info->dur_ts
+							- (long long)rescue_target_time);
+						new_dur = div64_s64(old_tmp, after) + (long long)rescue_target_time;
+					}
 					drop = (int)div64_u64(new_dur, target_time);
-					if (drop < 0)
+
+					if (drop < 0) {
+						FPSGO_LOGE("[SBE_UX] %s old_dur:%llu old_e:%d new_e:%d rescue_t %lld\n",
+								__func__, hwui_info->dur_ts, last_enhance,
+								new_enhance, rescue_target_time);
 						drop = 0;
+					}
 
 					if (drop < max_monitor_drop_frame)
 						tempScore[drop]++;
@@ -835,8 +865,8 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 			}
 		}
 
-		if (benifit_f_up > threshold || benifit_f_down) {
-			FPSGO_LOGI("SBE_UX enhance change from %d to %d\n",
+		if (benifit_f_up >= threshold || benifit_f_down) {
+			fpsgo_main_trace("SBE_UX enhance change from %d to %d",
 					last_enhance, new_enhance);
 			result = new_enhance;
 		}
@@ -851,6 +881,11 @@ void fpsgo_ux_scrolling_end(struct render_info *thr)
 		return;
 
 	thr->sbe_dy_enhance_f = fpsgo_sbe_dy_enhance(thr);
+	if (thr->sbe_dy_enhance_f > 0
+			&& ((thr->pid != global_sbe_dy_enhance_max_pid
+			&& thr->sbe_dy_enhance_f > global_sbe_dy_enhance)
+			|| thr->pid == global_sbe_dy_enhance_max_pid))
+		fbt_ux_set_perf(thr->pid, thr->sbe_dy_enhance_f);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_dy_enhance_f, "[ux]sbe_dy_enhance_f");
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]sbe_dy_enhance_f");
 }
@@ -869,17 +904,25 @@ static void release_scroll(struct ux_scroll_info *info)
 	kmem_cache_free(ux_scroll_info_cachep, info);
 }
 
-void clear_ux_info(struct render_info *thr)
+static void release_all_ux_info(struct render_info *thr)
 {
 	struct ux_scroll_info *pos, *tmp;
 
 	// clear ux scroll infos for new activity
-	FPSGO_LOGI("SBE_UX clear_ux %d\n", thr->pid);
+	fpsgo_main_trace("SBE_UX clear_ux %d", thr->pid);
 	list_for_each_entry_safe(pos, tmp, &thr->scroll_list, queue_list) {
 		release_scroll(pos);
 	}
 	// reset sbe dy enhance
 	thr->sbe_dy_enhance_f = -1;
+}
+
+void clear_ux_info(struct render_info *thr)
+{
+	//when activity resume, will call this function
+	global_sbe_dy_enhance = 0;
+	global_sbe_dy_enhance_max_pid = 0;
+	release_all_ux_info(thr);
 }
 
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
@@ -894,10 +937,13 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 	mutex_lock(&fbt_mlock);
 	if (start) {
 		sbe_rescuing_frame_id = frame_id;
-		if (sbe_dy_max_enhance > 0 && ((rescue_type & SBE_RESCUE_TYPE_MAX_ENHANCE) != 0))
+		if (sbe_dy_max_enhance > 0 && ((rescue_type & RESCUE_TYPE_MAX_ENHANCE) != 0))
 			sbe_dy_enhance = sbe_dy_max_enhance;
-		else if (!sbe_dy_rescue_enable || thr->sbe_dy_enhance_f <= 0)
+		else if (!sbe_dy_rescue_enable)
 			sbe_dy_enhance = sbe_enhance_f;
+		else if (thr->sbe_dy_enhance_f <= 0)
+			//dy_rescue is enable, try use global_sbe_dy_enhance
+			sbe_dy_enhance = global_sbe_dy_enhance > 0 ? global_sbe_dy_enhance : sbe_enhance_f;
 		else
 			sbe_dy_enhance = thr->sbe_dy_enhance_f;
 
@@ -905,13 +951,16 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->sbe_enhance = enhance < 0 ?  sbe_dy_enhance : (enhance + sbe_dy_enhance);
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
 
-		if (sbe_dy_rescue_enable ) {
+		if (sbe_dy_rescue_enable
+				&& ((rescue_type & RESCUE_WAITING_ANIMATION_END) != 0
+				|| (rescue_type & RESCUE_TYPE_TRAVERSAL_DYNAMIC) != 0
+				|| (rescue_type & RESCUE_TYPE_OI) != 0)) {
 			unsigned long long target_time;
 			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
 
-			FPSGO_LOGI("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d\n",
+			fpsgo_main_trace("%d SBE_UX: rescue frameid %lld sbe_dy_e:%d final_e %d rescue_t:%llu",
 					thr->pid, frame_id,
-					thr->sbe_dy_enhance_f, sbe_dy_enhance);
+					thr->sbe_dy_enhance_f, sbe_dy_enhance, rescue_target);
 
 			//update rescue start time
 			ts = fpsgo_get_time();
@@ -931,7 +980,8 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
 		}
 
-		if (thr->boost_info.sbe_rescue != 0)
+		//if sbe mark second rescue, then rescue again
+		if (thr->boost_info.sbe_rescue != 0 && ((rescue_type & RESCUE_TYPE_SECOND_RESCUE) == 0))
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
 
@@ -962,6 +1012,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		}
 
 		fbt_ux_set_cap_with_sbe(thr);
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "[ux]rescue_type");
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	}
 leave:
@@ -1360,7 +1411,7 @@ void count_scroll_rescue_info(struct render_info *thr, struct hwui_frame_info *h
 				scroll_info->score[max_monitor_drop_frame] += 1;
 		}
 		scroll_info->jank_count++;
-		FPSGO_LOGI("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d\n",
+		fpsgo_main_trace("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d",
 					thr->pid, hwui_info->frameID,
 					hwui_info->perf_idx, hwui_info->dur_ts, drop);
 	}
@@ -1376,7 +1427,7 @@ void fbt_init_ux(struct render_info *info)
 void fbt_del_ux(struct render_info *info)
 {
 	if (sbe_dy_rescue_enable) {
-		clear_ux_info(info);
+		release_all_ux_info(info);
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
 			if (info->tmp_hwui_frame_info_arr[i])
 				kmem_cache_free(hwui_frame_info_cachep, info->tmp_hwui_frame_info_arr[i]);

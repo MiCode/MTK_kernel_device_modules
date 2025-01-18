@@ -23,7 +23,8 @@
 #define RESCUE_WAITING_VSYNC              (1 << 4)
 #define RESCUE_TYPE_TRAVERSAL_DYNAMIC     (1 << 5)
 #define RESCUE_TYPE_OI                    (1 << 6)
-#define SBE_RESCUE_TYPE_MAX_ENHANCE       (1 << 7)
+#define RESCUE_TYPE_MAX_ENHANCE           (1 << 7)
+#define RESCUE_TYPE_SECOND_RESCUE         (1 << 8)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -116,6 +117,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 
 int fpsgo_ctrl2ux_get_perf(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
+void fbt_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance);
 
 extern int get_dpt_default_status(void);
 extern void set_ignore_idle_ctrl(bool val);
