@@ -951,7 +951,6 @@ static int mtk_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 	chip->set_config	= mtk_gpio_set_config;
 	chip->base		= -1;
 	chip->ngpio		= hw->soc->npins;
-	chip->of_node		= np;
 	chip->of_gpio_n_cells	= 2;
 
 	ret = gpiochip_add_data(chip, hw);
@@ -1588,7 +1587,6 @@ static int mt63xx_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 	chip->set               = mt63xx_gpio_set;
 	chip->base              = -1;
 	chip->ngpio             = hw->soc->npins;
-	chip->of_node           = np;
 	chip->of_gpio_n_cells   = 2;
 
 	ret = gpiochip_add_data(chip, hw);
