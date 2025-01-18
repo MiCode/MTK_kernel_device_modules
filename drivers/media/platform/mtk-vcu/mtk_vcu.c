@@ -961,9 +961,9 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 			pr_info("[VCU] CMD_WRITE wrong addr: 0x%llx 0x%llx 0x%x\n",
 				addr, data, mask);
 	break;
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 	case CMD_SEC_WRITE:
-#if defined(CONFIG_MTK_CMDQ_MBOX_EXT)
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 		if (vcu_check_reg_base(vcu, addr, 4) == 0)
 			cmdq_sec_pkt_write_reg(pkt,
 				addr,
@@ -1059,10 +1059,33 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 		vcu->cbf.enc_pmqos_gce_end(vcu->gce_info[j].v4l2_ctx, core_id,
 				vcu->gce_job_cnt[i][core_id].counter);
 	if (atomic_dec_and_test(&vcu->gce_job_cnt[i][core_id]) &&
-		vcu->gce_info[j].v4l2_ctx != NULL){
-		if (i == VCU_VENC && vcu->cbf.enc_unprepare != NULL)
+		vcu->gce_info[j].v4l2_ctx != NULL) {
+		if (i == VCU_VENC && vcu->cbf.enc_unprepare != NULL) {
 			vcu->cbf.enc_unprepare(vcu->gce_info[j].v4l2_ctx,
 				buff->cmdq_buff.core_id, &vcu->flags[i]);
+
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+			if (buff->cmdq_buff.secure != 0)
+				cmdq_sec_mbox_switch_normal(vcu->clt_venc_sec[0], true);
+#endif
+		}
+		if (i == VCU_VENC) {
+			if (buff->cmdq_buff.secure == 0) {
+				if (vcu->clt_venc[core_id] != NULL)
+					cmdq_mbox_disable(vcu->clt_venc[core_id]->chan);
+			} else {
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+				if (vcu->clt_venc_sec[0] != NULL)
+					cmdq_sec_mbox_disable(vcu->clt_venc_sec[0]->chan);
+#endif
+				if (vcu->clt_venc[1] != NULL)
+					cmdq_mbox_disable(vcu->clt_venc[1]->chan);
+			}
+		} else if (i == VCU_VDEC) {
+			if (vcu->clt_vdec[core_id] != NULL)
+				cmdq_mbox_disable(vcu->clt_vdec[core_id]->chan);
+		}
+
 	}
 	mutex_unlock(&vcu->vcu_gce_mutex[i]);
 
@@ -1164,7 +1187,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 		vcu->clt_vdec[core_id] :
 		vcu->clt_venc[core_id];
 
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 	if (buff.cmdq_buff.codec_type == VCU_VENC) {
 		if (buff.cmdq_buff.secure != 0)
 			cl = vcu->clt_venc_sec[0];
@@ -1203,11 +1226,29 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 	time_check_start();
 	mutex_lock(&vcu->vcu_gce_mutex[i]);
 	if (atomic_read(&vcu->gce_job_cnt[i][core_id]) == 0 &&
-		vcu->gce_info[j].v4l2_ctx != NULL){
+		vcu->gce_info[j].v4l2_ctx != NULL) {
 		if (i == VCU_VENC && vcu->cbf.enc_prepare != NULL) {
 			vcu->cbf.enc_prepare(vcu->gce_info[j].v4l2_ctx,
 				core_id, &vcu->flags[i]);
 		}
+
+		if (i == VCU_VENC) {
+			if (buff.cmdq_buff.secure == 0) {
+				if (vcu->clt_venc[core_id] != NULL)
+					cmdq_mbox_enable(vcu->clt_venc[core_id]->chan);
+			} else {
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+				if (vcu->clt_venc_sec[0] != NULL)
+					cmdq_sec_mbox_enable(vcu->clt_venc_sec[0]->chan);
+#endif
+				if (vcu->clt_venc[1] != NULL)
+					cmdq_mbox_enable(vcu->clt_venc[1]->chan);
+			}
+		} else if (i == VCU_VDEC) {
+			if (vcu->clt_vdec[core_id] != NULL)
+				cmdq_mbox_enable(vcu->clt_vdec[core_id]->chan);
+		}
+
 	}
 	vcu_dbg_log("vcu gce_info[%d].v4l2_ctx %p\n",
 		j, vcu->gce_info[j].v4l2_ctx);
@@ -1234,7 +1275,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 		ret = -EINVAL;
 	}
 
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 	if (buff.cmdq_buff.codec_type == VCU_VENC) {
 		if (buff.cmdq_buff.secure != 0) {
 			const u64 dapc_engine =
@@ -1259,7 +1300,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 			pr_debug("[VCU] dapc_engine: 0x%llx, port_sec_engine: 0x%llx\n",
 				dapc_engine, port_sec_engine);
-#if defined(CONFIG_MTK_CMDQ_MBOX_EXT)
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 			cmdq_sec_pkt_set_data(pkt_ptr, dapc_engine,
 				port_sec_engine, CMDQ_SEC_KERNEL_CONFIG_GENERAL,
 				CMDQ_METAEX_VENC);
@@ -2913,7 +2954,7 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 	for (i = 0; i < vcu->gce_th_num[VCU_VENC]; i++)
 		vcu->clt_venc[i] = cmdq_mbox_create(dev, i + vcu->gce_th_num[VCU_VDEC]);
 
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
 	if (vcu->gce_th_num[VCU_VENC] > 0)
 		vcu->clt_venc_sec[0] =
 		    cmdq_mbox_create(dev, vcu->gce_th_num[VCU_VDEC] + vcu->gce_th_num[VCU_VENC]);
