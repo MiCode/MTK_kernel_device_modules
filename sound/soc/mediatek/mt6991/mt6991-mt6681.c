@@ -1008,6 +1008,15 @@ SND_SOC_DAILINK_DEFS(dspmdul,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_mdul_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspcalldl,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_calldl_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspcallul,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_callul_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+
 #endif
 
 static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
@@ -2004,6 +2013,16 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.name = "DSP_Playback_MDUL",
 		.stream_name = "DSP_Playback_MDUL",
 		SND_SOC_DAILINK_REG(dspmdul),
+	},
+	{
+		.name = "DSP_Playback_CALLDL",
+		.stream_name = "DSP_Playback_CALLDL",
+		SND_SOC_DAILINK_REG(dspcalldl),
+	},
+	{
+		.name = "DSP_Capture_CALLUL",
+		.stream_name = "DSP_Capture_CALLUL",
+		SND_SOC_DAILINK_REG(dspcallul),
 	},
 #endif
 };

@@ -1373,7 +1373,13 @@ int Get_dma_channel_memid(unsigned int mem_id)
 		dma_id = USB_AUDIO_DMA_ID;
 		break;
 	case EFFECT_MEM_ID:
-	dma_id = EFFECT_DMA_ID;
+		dma_id = EFFECT_DMA_ID;
+		break;
+	case CALL_DL_MEM_ID:
+		dma_id = CALL_DL_DMA_ID;
+		break;
+	case CALL_UL_MEM_ID:
+		dma_id = CALL_UL_DMA_ID;
 		break;
 	default:
 		AUD_LOG_D("%s not suppoer mem_id %d\n", __func__, mem_id);
