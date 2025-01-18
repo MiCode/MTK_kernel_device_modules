@@ -426,12 +426,10 @@ static bool mtk_delay_hw_init(struct arm_smmu_device *smmu)
 	return delay_hw_init;
 }
 
-static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
+static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	void __iomem *wp_base;
-	u32 regval;
-	int ret;
 
 	wp_base = smmu->wp_base;
 	dev_info(smmu->dev, "[%s] start, wp_base:0x%llx\n",
@@ -468,16 +466,6 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 		smmu_write_field(wp_base, SMMUWP_TBU0_MOGH0, MOGH_EN | MOGH_RW,
 				 MOGH_EN | MOGH_RW);
 
-	/* Connect DVM */
-	smmu_write_field(wp_base, SMMUWP_TCU_CTL4, TCU_DVM_EN_REQ, TCU_DVM_EN_REQ);
-	ret = smmu_read_reg_poll_timeout((void *)(wp_base + SMMUWP_TCU_CTL4),
-					 regval,
-					 FIELD_GET(TCU_DVM_EN_ACK, regval),
-					 1, SMMUWP_POLL_DVM_TIMEOUT_US);
-	if (ret)
-		dev_info(smmu->dev, "[%s] ret:%d, Connecting DVM is not responding\n",
-			 __func__, ret);
-
 	/* Set AXSLC */
 	if (data->axslc) {
 		smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
@@ -494,32 +482,15 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	}
 
 	dev_info(smmu->dev,
-		 "[%s] ret:%d, GLB_CTL0(0x%llx)=0x%x\n",
-		 __func__, ret,
+		 "[%s] GLB_CTL0(0x%llx)=0x%x\n",
+		 __func__,
 		 (unsigned long long)wp_base + SMMUWP_GLB_CTL0,
 		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0));
-
-	return ret;
 }
 
-static int smmu_deinit_wpcfg(struct arm_smmu_device *smmu)
+static void smmu_deinit_wpcfg(struct arm_smmu_device *smmu)
 {
-	void __iomem *wp_base = smmu->wp_base;
-	int ret = 0;
-	u32 regval;
-
 	smmuwp_clear_tf(smmu);
-
-	/* Disconnect DVM */
-	smmu_write_field(wp_base, SMMUWP_TCU_CTL4, TCU_DVM_EN_REQ, 0);
-	ret = smmu_read_reg_poll_timeout((void *)(wp_base + SMMUWP_TCU_CTL4),
-					 regval, !FIELD_GET(TCU_DVM_EN_ACK, regval),
-					 1, SMMUWP_POLL_DVM_TIMEOUT_US);
-	if (ret)
-		dev_info(smmu->dev, "[%s] ret:%d, Disconnecting DVM not responding\n",
-			 __func__, ret);
-
-	return ret;
 }
 
 static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
@@ -851,7 +822,6 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
-	int ret;
 
 	dev_info(smmu->dev,
 		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s}\n",
@@ -862,18 +832,17 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	arm_smmu_init_sid_strtab(smmu, 0);
 	data->hw_init_flag = 1;
 
-	ret = smmu_init_wpcfg(smmu);
+	smmu_init_wpcfg(smmu);
 
 	smmu_mpam_register(smmu);
 
-	return ret;
+	return 0;
 }
 
 static int mtk_smmu_hw_deinit(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
-	int ret;
 
 	dev_info(smmu->dev,
 		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s}\n",
@@ -882,9 +851,9 @@ static int mtk_smmu_hw_deinit(struct arm_smmu_device *smmu)
 
 	data->hw_init_flag = 0;
 
-	ret = smmu_deinit_wpcfg(smmu);
+	smmu_deinit_wpcfg(smmu);
 
-	return ret;
+	return 0;
 }
 
 static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
