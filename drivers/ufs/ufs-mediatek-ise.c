@@ -148,7 +148,7 @@ static int ise_rpmb_prepare_kp(struct ufs_hba *hba)
 		return ret;
 	}
 
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 
 	ret = ufshcd_block_io(hba);
 	if (ret) {

@@ -742,7 +742,7 @@ int ufsf_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 
 	BUG_ON(!hba);
 
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 	mutex_lock(&hba->dev_cmd.lock);
 	ufsf_init_query(hba, &request, &response, opcode, idn, index,
 			selector);
@@ -868,7 +868,7 @@ static int __ufsf_issue_tm_cmd(struct ufs_hba *hba,
 		return PTR_ERR(req);
 
 	req->end_io_data = &wait;
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 
 	spin_lock_irqsave(host->host_lock, flags);
 	blk_mq_start_request(req);
@@ -983,7 +983,7 @@ int ufsf_wait_for_doorbell_clr(struct ufs_hba *hba, u64 wait_timeout_us)
 	bool timeout = false, do_last_check = false;
 	ktime_t start;
 
-	ufshcd_hold(hba, false);
+	ufshcd_hold(hba);
 	spin_lock_irqsave(hba->host->host_lock, flags);
 	/*
 	 * Wait for all the outstanding tasks/transfer requests.
