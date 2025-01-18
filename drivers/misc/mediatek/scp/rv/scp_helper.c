@@ -47,6 +47,10 @@
 #include "scp_reservedmem_define.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+#include "soc/mediatek/emi.h"
+#endif
+
 /* scp mbox/ipi related */
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "scp_ipi.h"
@@ -1790,6 +1794,30 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+void set_scp_mpu(void)
+{
+	struct emimpu_region_t md_region = {};
+
+	int ret = mtk_emimpu_init_region(&md_region, MPU_REGION_ID_SCP_SMEM);
+
+	if (ret == -1) {
+		pr_notice("[SCP] %s: emimpu_region init fail\n", __func__);
+		WARN_ON(1);
+	} else {
+		mtk_emimpu_set_addr(&md_region, scp_mem_base_phys,
+			scp_mem_base_phys + scp_mem_size - 1);
+		mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D0,
+			MTK_EMIMPU_NO_PROTECTION);
+		mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D3,
+			MTK_EMIMPU_NO_PROTECTION);
+		if (mtk_emimpu_set_protection(&md_region))
+			pr_notice("[SCP]mtk_emimpu_set_protection fail\n");
+		mtk_emimpu_free_region(&md_region);
+	}
+}
+#endif
+
 static void scp_control_feature(enum feature_id id, bool enable)
 {
 	int ret = 0;
@@ -3364,6 +3392,11 @@ static int __init scp_init(void)
 		goto err;
 	}
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	set_scp_mpu();
+#endif
+
 	/* scp chre manager init for channel and device node */
 	scp_chre_manager_init();
 
