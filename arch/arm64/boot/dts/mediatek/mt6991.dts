@@ -5196,6 +5196,24 @@
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
+	mm_smmu_svp_disp: mm-smmu-svp-disp {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_svp_disp";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 145>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+	};
+	mm_smmu_hdcp_disp: mm-smmu-hdcp-disp {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_hdcp_disp";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 147>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+	};
 	mm_smmu_hfrp: mm-smmu-hfrp {
 		//compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_hfrp";
@@ -5203,11 +5221,27 @@
 		iommus = <&mm_smmu 160>;
 		smmu-supply = <&mm_smmu>;
 	};
+	mm_smmu_hfrp_protected: mm-smmu-hfrp-protected {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_hfrp_protected";
+		mtk,iommu-dma-range = <0x1 0x0 0x0 0x40000000>;
+		iommus = <&mm_smmu 161>;
+		smmu-supply = <&mm_smmu>;
+	};
 	mm_smmu_codec: mm-smmu-codec {
 		//compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_codec";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 176>;
+		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+	};
+	mm_smmu_codec_protected: mm-smmu-codec-protected {
+		//compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_codec_protected";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 177>;
 		mtk,iommu-group = <&mm_iommu_group_0>;
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
