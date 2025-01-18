@@ -190,6 +190,7 @@ struct common_port_node *create_fake_comm_port_node(int hrt_type,
 	int srt_r, int srt_w, int hrt_r, int hrt_w);
 void set_mmqos_state(const u32 new_state);
 int get_mmqos_state(void);
+void mmqos_hrt_dump(void);
 
 /* For MET */
 bool mmqos_met_enabled(void);
