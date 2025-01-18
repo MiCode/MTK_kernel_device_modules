@@ -193,7 +193,9 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
     "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos.ko",
-    "drivers/gpu/mediatek/gpueb/gpueb.ko",
+    "drivers/gpu/mediatek/gpueb/mtk_gpueb.ko",
+    "drivers/gpu/mediatek/gpueb/mtk_ghpm.ko",
+    "drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_wrapper.ko",
     "drivers/gpu/mediatek/hal/mtk_gpu_hal.ko",
     "drivers/i2c/busses/i2c-mt65xx.ko",
@@ -1371,7 +1373,9 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6358.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/spi_slave_drv/spi_slave.ko")
-        mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/gpueb.ko")
+        mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
+        mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm.ko")
+        mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_wrapper.ko")
         mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_wrapper_legacy.ko")
 
