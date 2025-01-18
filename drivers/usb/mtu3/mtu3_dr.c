@@ -250,10 +250,16 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		spin_lock_irqsave(&mtu->lock, flags);
 		mtu3_stop(mtu);
 		/* report disconnect */
-		if (mtu->g.speed != USB_SPEED_UNKNOWN) {
+		if (mtu->g.speed != USB_SPEED_UNKNOWN)
 			mtu3_gadget_disconnect(mtu);
-			if (ssusb->force_vbus)
+		if (atomic_read(&ssusb->dev->power.usage_count) >= 3) {
+			/* Workaround for abnormal disconnect */
+			if (atomic_read(&ssusb->dev->power.usage_count) > 3) {
+				dev_info(ssusb->dev, "WA - Disable PD (cnt:%d)\n",
+						atomic_read(&ssusb->dev->power.usage_count));
 				pm_runtime_put(ssusb->dev);
+			}
+			pm_runtime_put(ssusb->dev);
 		}
 		spin_unlock_irqrestore(&mtu->lock, flags);
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
