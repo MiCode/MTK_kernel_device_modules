@@ -25,7 +25,7 @@
 #include <linux/kmsg_dump.h>
 #include <linux/suspend.h>
 #include <linux/platform_device.h>
-#include <printk/printk_ringbuffer.h>
+
 #include "log_store_kernel.h"
 #include "mrdump_helper.h"
 
@@ -399,6 +399,7 @@ static int __init log_store_late_init(void)
 /* need mapping virtual address to phy address */
 void store_printk_buff(void)
 {
+	/*
 	struct printk_ringbuffer **pprb;
 	struct printk_ringbuffer *prb;
 	char *buff;
@@ -427,6 +428,8 @@ void store_printk_buff(void)
 		sram_dram_buff->klog_addr,
 		sram_dram_buff->klog_size,
 		sram_dram_buff->flag);
+	*/
+	return;
 }
 EXPORT_SYMBOL_GPL(store_printk_buff);
 
