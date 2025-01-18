@@ -628,6 +628,13 @@ static unsigned int mtk_ovl_phy_mapping_MT6991(struct mtk_ddp_comp *comp)
 		return 10;
 	case DDP_COMPONENT_OVL1_EXDMA5:
 		return 11;
+	case DDP_COMPONENT_OVL_EXDMA0:
+	case DDP_COMPONENT_OVL1_EXDMA0:
+	case DDP_COMPONENT_OVL1_EXDMA6:
+	case DDP_COMPONENT_OVL1_EXDMA7:
+	case DDP_COMPONENT_OVL1_EXDMA8:
+	case DDP_COMPONENT_OVL1_EXDMA9:
+		return 12; // no use
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
