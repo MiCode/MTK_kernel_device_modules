@@ -26,7 +26,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi \
-             -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
+             -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec
 
 obj-$(CONFIG_MTK_MML_LEGACY) := mtk-mml.o
 obj-$(CONFIG_MTK_MML) := mtk-mml.o

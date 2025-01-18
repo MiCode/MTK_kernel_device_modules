@@ -27,11 +27,11 @@
 
 #define MML_DEFAULT_END_NS	15000000
 
-int mml_max_cache_task = 4;
-module_param(mml_max_cache_task, int, 0644);
+int drm_max_cache_task = 4;
+module_param(drm_max_cache_task, int, 0644);
 
-int mml_max_cache_cfg = 2;
-module_param(mml_max_cache_cfg, int, 0644);
+int drm_max_cache_cfg = 2;
+module_param(drm_max_cache_cfg, int, 0644);
 
 /* dc mode enable control
  * 0: disable
@@ -305,18 +305,6 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 }
 EXPORT_SYMBOL_GPL(mml_drm_try_frame);
 
-static struct mml_frame_config *frame_config_create(
-	struct mml_ctx *ctx,
-	struct mml_submit *submit)
-{
-	struct mml_frame_config *cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
-
-	if (!cfg)
-		return ERR_PTR(-ENOMEM);
-	frame_config_init(cfg, ctx, submit);
-	return cfg;
-}
-
 static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *info,
 	u32 layer_w, u32 layer_h)
 {
@@ -432,7 +420,7 @@ static void drm_task_move_to_idle(struct mml_task *task)
 		mml_dev_get_couple_cnt(dctx->ctx.mml));
 }
 
-static void task_frame_done(struct mml_task *task)
+static void drm_task_frame_done(struct mml_task *task)
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_config *tmp;
@@ -466,7 +454,7 @@ static void task_frame_done(struct mml_task *task)
 		mml_record_track(mml, task);
 	}
 
-	if (cfg->done_task_cnt > mml_max_cache_task) {
+	if (cfg->done_task_cnt > drm_max_cache_task) {
 		task = list_first_entry(&cfg->done_tasks, typeof(*task), entry);
 		list_del_init(&task->entry);
 		cfg->done_task_cnt--;
@@ -479,7 +467,7 @@ static void task_frame_done(struct mml_task *task)
 	}
 
 	/* still have room to cache, done */
-	if (ctx->config_cnt <= mml_max_cache_cfg)
+	if (ctx->config_cnt <= drm_max_cache_cfg)
 		goto done;
 
 	/* must pick cfg from list which is not running */
@@ -494,7 +482,7 @@ static void task_frame_done(struct mml_task *task)
 			cfg, ctx->config_cnt);
 
 		/* check cache num again */
-		if (ctx->config_cnt <= mml_max_cache_cfg)
+		if (ctx->config_cnt <= drm_max_cache_cfg)
 			break;
 	}
 
@@ -515,7 +503,7 @@ static void frame_check_end_time(struct timespec64 *endtime)
 }
 
 s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
-	void *cb_param)
+		   void *cb_param)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct mml_frame_config *cfg;
@@ -877,30 +865,6 @@ void mml_drm_dump(struct mml_drm_ctx *ctx, struct mml_submit *submit)
 }
 EXPORT_SYMBOL_GPL(mml_drm_dump);
 
-static void drm_task_queue(struct mml_task *task, u32 pipe)
-{
-	queue_work(task->ctx->wq_config[pipe], &task->work_config[pipe]);
-}
-
-static struct mml_tile_cache *drm_task_get_tile_cache(struct mml_task *task, u32 pipe)
-{
-	return &task->ctx->tile_cache[pipe];
-}
-
-static void drm_kt_setsched(struct mml_ctx *ctx)
-{
-	struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
-	int ret;
-
-	if (ctx->kt_priority)
-		return;
-
-	ret = sched_setscheduler(ctx->kt_done->task, SCHED_FIFO, &kt_param);
-	mml_log("[drm]%s set kt done priority %d ret %d",
-		__func__, kt_param.sched_priority, ret);
-	ctx->kt_priority = true;
-}
-
 static void drm_task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool enable)
 {
 	struct mml_drm_ctx *ctx = task_ctx_to_drm(task);
@@ -930,25 +894,20 @@ static void drm_task_dispen(struct mml_task *task, bool enable)
 }
 
 static const struct mml_task_ops drm_task_ops = {
-	.queue = drm_task_queue,
+	.queue = task_queue,
 	.submit_done = task_submit_done,
-	.frame_done = task_frame_done,
+	.frame_done = drm_task_frame_done,
 	.dup_task = task_dup,
-	.get_tile_cache = drm_task_get_tile_cache,
-	.kt_setsched = drm_kt_setsched,
+	.get_tile_cache = task_get_tile_cache,
+	.kt_setsched = ctx_kt_setsched,
 	.ddren = drm_task_ddren,
 	.dispen = drm_task_dispen,
 };
 
-static void drm_config_free(struct mml_frame_config *cfg)
-{
-	kfree(cfg);
-}
-
 static const struct mml_config_ops drm_config_ops = {
 	.get = frame_config_get,
 	.put = frame_config_put,
-	.free = drm_config_free,
+	.free = frame_config_free,
 };
 
 static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,

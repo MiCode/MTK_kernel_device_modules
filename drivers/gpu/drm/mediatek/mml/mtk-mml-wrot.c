@@ -983,8 +983,8 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	/* HW_SUPPORT_10BIT_PATH */
 	case MML_FMT_RGBA1010102:
 	case MML_FMT_BGRA1010102:
-	case MML_FMT_ARGB1010102:
-	case MML_FMT_ABGR1010102:
+	case MML_FMT_ARGB2101010:
+	case MML_FMT_ABGR2101010:
 	/* DMA_SUPPORT_AFBC */
 	case MML_FMT_RGBA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:

@@ -89,7 +89,7 @@ static struct mml_task *task_get_idle_or_running(struct mml_frame_config *cfg)
 	return task;
 }
 
-static void task_frame_err(struct mml_task *task)
+static void dle_task_frame_err(struct mml_task *task)
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_ctx *ctx = task->ctx;
@@ -185,7 +185,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 {
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct mml_frame_config *cfg;
-	struct mml_task *task;
+	struct mml_task *task = NULL;
 	s32 result;
 	u32 i;
 
@@ -416,7 +416,7 @@ static struct mml_tile_cache *dle_task_get_tile_cache(struct mml_task *task, u32
 static const struct mml_task_ops dle_task_ops = {
 	.queue = dle_task_queue,
 	.submit_done = task_submit_done,
-	.frame_err = task_frame_err,
+	.frame_err = dle_task_frame_err,
 	.dup_task = task_dup,
 	.get_tile_cache = dle_task_get_tile_cache,
 };

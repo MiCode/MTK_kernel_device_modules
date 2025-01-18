@@ -105,8 +105,8 @@ enum mml_color {
 	/* Packed 10-bit formats */
 	MML_FMT_RGBA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 1, 2),
 	MML_FMT_BGRA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 0, 2),
-	MML_FMT_ARGB1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 1, 3),
-	MML_FMT_ABGR1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 0, 3),
+	MML_FMT_ARGB2101010	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 1, 3),
+	MML_FMT_ABGR2101010	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 0, 0, 3),
 
 	MML_FMT_YUVA1010102	= MML_FMT(0, 1, 0, 0, 1, 0, 0, 32, 1, 1, 2),
 	MML_FMT_NV15		= MML_FMT(0, 1, 0, 0, 2, 1, 1, 10, 1, 0, 12),

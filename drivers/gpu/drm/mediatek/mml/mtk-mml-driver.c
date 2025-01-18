@@ -608,6 +608,11 @@ exit:
 	return ctx;
 }
 
+struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml)
+{
+	return mml->v4l2_dev;
+}
+
 struct mml_topology_cache *mml_topology_get_cache(struct mml_dev *mml)
 {
 	return IS_ERR(mml->topology) ? NULL : mml->topology;
@@ -2069,6 +2074,7 @@ static int mml_probe(struct platform_device *pdev)
 		mml->dpc.mmlsys_26m_clk = NULL;
 	}
 
+	/* register v4l2 device */
 	if (mml->v4l2_en) {
 		mml_log("v4l2 device enable");
 		mml->v4l2_dev = mml_v4l2_dev_create(dev);
