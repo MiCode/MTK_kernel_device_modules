@@ -470,7 +470,7 @@ static irqreturn_t fg_cur_h_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	if (priv->oc_level >= BATTERY_OC_LEVEL_NUM || priv->oc_level < BATTERY_OC_LEVEL_1
-		 || bat_oc.ppb_mode != 0) {
+		 || bat_oc.ppb_mode == 1) {
 		pr_info("%s: wrong oc_level=%d, ppb_mode=%d\n", __func__, priv->oc_level,
 			bat_oc.ppb_mode);
 		return IRQ_HANDLED;
@@ -488,7 +488,7 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	// filter wrong level
-	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || bat_oc.ppb_mode != 0) {
+	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || bat_oc.ppb_mode == 1) {
 		pr_info("%s: wrong oc_level=%d, ppb=%d\n", __func__, priv->oc_level,
 			bat_oc.ppb_mode);
 		return IRQ_HANDLED;
@@ -836,7 +836,7 @@ int bat_oc_set_ppb_mode(unsigned int mode)
 	bat_oc.ppb_mode = mode;
 
 	mutex_lock(&exe_thr_lock);
-	if (mode != 0) {
+	if (mode == 1) {
 		for (i = 0; i < bat_oc.intr_num; i++) {
 			priv = bat_oc.oc_priv[i];
 			priv->oc_level = 0;

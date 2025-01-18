@@ -357,7 +357,7 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 		else
 			low_bat_thl_data->lbat_thl_intr_level = low_bat_thl_data->lbat_level[INTR_1];
 
-		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
+		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode == 1) {
 			pr_info("[%s] throttle not apply, low_bat_thl_stop=%d, ppb_mode=%d\n",
 			__func__, low_bat_thl_data->low_bat_thl_stop,
 			low_bat_thl_data->ppb_mode);
@@ -369,7 +369,7 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 		mutex_unlock(&exe_thr_lock);
 	} else if (user == LVSYS_INTR) {
 		low_bat_thl_data->lvsys_thl_intr_level = input;
-		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
+		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode == 1) {
 			pr_info("[%s] low_bat_thl_stop=%d, ppb_mode=%d\n",
 			__func__, low_bat_thl_data->low_bat_thl_stop,
 			low_bat_thl_data->ppb_mode);
@@ -385,7 +385,7 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 			pr_info("[%s] ppb not apply, low_bat_thl_stop=%d\n", __func__,
 				low_bat_thl_data->low_bat_thl_stop);
 			mutex_unlock(&exe_thr_lock);
-		} else if (low_bat_thl_data->ppb_mode > 0) {
+		} else if (low_bat_thl_data->ppb_mode == 1) {
 			low_bat_thl_data->lbat_thl_intr_level = 0;
 			exec_throttle(0);
 			mutex_unlock(&exe_thr_lock);
@@ -812,7 +812,7 @@ static void temp_handler(struct work_struct *work)
 
 	if (temp_stage <= low_bat_thl_data->temp_max_stage &&
 		temp_stage != low_bat_thl_data->temp_cur_stage) {
-		if (low_bat_thl_data->ppb_mode == 0 && !low_bat_thl_data->low_bat_thd_modify) {
+		if (low_bat_thl_data->ppb_mode != 1 && !low_bat_thl_data->low_bat_thd_modify) {
 			pre_thd_info =
 				&low_bat_thl_data->lbat_thd_info[INTR_1][low_bat_thl_data->temp_cur_stage];
 			thd_info = &low_bat_thl_data->lbat_thd_info[INTR_1][temp_stage];
