@@ -76,6 +76,7 @@ static void clear_kp_violation(unsigned int emi_id)
 	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_KP, emi_id, 0, 0,
 		      0, 0, 0, &smc_res);
 }
+
 void smpu_clear_md_violation(void)
 {
 	struct smpu *smpu;
@@ -175,36 +176,25 @@ int mtk_smpu_md_handling_register(smpu_md_handler md_handling_func)
 }
 EXPORT_SYMBOL(mtk_smpu_md_handling_register);
 
-static void smpu_violation_callback(struct work_struct *work)
+static irqreturn_t smpu_violation_thread(int irq, void *dev_id)
 {
-	struct smpu *ssmpu, *nsmpu, *skp, *nkp, *mpu;
+	struct smpu *mpu = (struct smpu *)dev_id;
 	struct arm_smccc_res smc_res;
+	unsigned int prefetch_mask = 0x200000; //e00/e80's b[21] = 1 -> prefetch
+
+	/*
+	 * CPU will cause WCE violation
+	 */
 	struct device_node *smpu_node = of_find_node_by_name(NULL, "smpu");
 	int by_pass_aid[3] = { 240, 241, 243 };
 	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
 	int i, j, by_pass_flag = 0;
-	unsigned int prefetch_mask = 0x200000; //e00/e80's b[21] = 1 -> prefetch
-
-	ssmpu = global_ssmpu;
-	nsmpu = global_nsmpu;
-	skp = global_skp;
-	nkp = global_nkp;
-
-	if (nsmpu && nsmpu->vio_msg && nsmpu->is_vio)
-		mpu = nsmpu;
-	else if (ssmpu && ssmpu->vio_msg && ssmpu->is_vio)
-		mpu = ssmpu;
-	else if (nkp && nkp->vio_msg && nkp->is_vio)
-		mpu = nkp;
-	else if (skp && skp->vio_msg && skp->is_vio)
-		mpu = skp;
-	else
-		return;
+	/*var for WCE violation end*/
 
 	pr_info("%s: %s", __func__, mpu->vio_msg);
 
 	/* check vio region addr */
-	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
+	if (!(strcmp(mpu->name, "nsmpu")) || !(strcmp(mpu->name, "ssmpu"))) {
 		if (mpu->dump_reg[7].value != 0) {
 			/*type(0 start_addr, 1 end_addr) region aid_shift*/
 			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
@@ -222,12 +212,11 @@ static void smpu_violation_callback(struct work_struct *work)
 				      1, mpu->dump_reg[16].value, 0, 0, 0, 0,
 				      &smc_res);
 		}
-	}
 
-	msleep(30);
+		msleep(30);
 
-	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
-		for (i = 0; i < 3; i++) {
+		for (i = 0; i < 3;
+		     i++) { // by pass WCE, this will be temp patch
 			for (j = 0; j < 10; j++) {
 				if (mpu->dump_reg[5].value == by_pass_aid[i] &&
 				    mpu->dump_reg[7].value ==
@@ -242,11 +231,12 @@ static void smpu_violation_callback(struct work_struct *work)
 		//add prefetch mask
 		if ((mpu->dump_reg[0].value & prefetch_mask) ||
 		    (mpu->dump_reg[9].value & prefetch_mask) ||
-			(mpu->is_prefetch == true)){
+		    (mpu->is_prefetch == true)) {
 			pr_info("%s:Prefetch without KERNEL_API!!\n", __func__);
-		} else if (by_pass_flag > 0 && // by pass WCE, this will be temp patch
-		    of_property_count_elems_of_size(smpu_node, "bypass-wce",
-						    sizeof(char))) {
+		} else if (by_pass_flag >
+				   0 && // by pass WCE, this will be temp patch
+			   of_property_count_elems_of_size(
+				   smpu_node, "bypass-wce", sizeof(char))) {
 			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
 				__func__, mpu->dump_reg[5].value,
 				mpu->dump_reg[7].value);
@@ -256,21 +246,14 @@ static void smpu_violation_callback(struct work_struct *work)
 	} else
 		aee_kernel_exception("SMPU", mpu->vio_msg); // for KP case
 
-	if (nsmpu)
-		clear_violation(nsmpu);
-	if (ssmpu)
-		clear_violation(ssmpu);
-	if (nkp)
-		clear_violation(nkp);
-	if (skp)
-		clear_violation(skp);
-
-	smpu_clear_md_violation();
+	/* for chip before 6989/6897 might need to remove the kp clear node in dts */
+	clear_violation(mpu);
 
 	mpu->is_bypass = false;
 	mpu->is_vio = false;
+
+	return IRQ_HANDLED;
 }
-static DECLARE_WORK(smpu_work, smpu_violation_callback);
 
 static irqreturn_t smpu_violation(int irq, void *dev_id)
 {
@@ -325,7 +308,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	if (violation) {
 		if (vio_type == VIO_TYPE_NSMPU || vio_type == VIO_TYPE_SSMPU) {
 			//smpu violation
-			if (mpu->by_plat_isr_hook) {
+			if (mpu->by_plat_isr_hook) { // move it to bottom half?
 				irqret = mpu->by_plat_isr_hook(
 					dump_reg, mpu->dump_cnt, vio_type);
 
@@ -357,16 +340,17 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 					"[%x]%x;", dump_reg[i].offset,
 					dump_reg[i].value);
 		}
-		printk_deferred("%s: %s", __func__, mpu->vio_msg);
 	}
 
 clear_violation:
 	mask_irq(mpu);
-	if (violation)
-		schedule_work(&smpu_work);
-
+	/*for chip before 6989/6897 */
 	if (vio_type == VIO_TYPE_NKP || vio_type == VIO_TYPE_SKP)
 		clear_kp_violation(vio_type % 2);
+
+	/* if there is violation happened, wake up the thread */
+	if (violation)
+		return IRQ_WAKE_THREAD;
 
 	return IRQ_HANDLED;
 }
@@ -387,18 +371,33 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 	int sec_cpu_aid = 240;
 	int ns_cpu_aid = 241;
 	int hyp_cpu_aid = 243;
-	bool slc_enable  = mpu->slc_b_mode;
+	bool slc_enable = mpu->slc_b_mode;
 	int i;
 	void __iomem *mpu_base = mpu->mpu_base;
 	struct smpu_reg_info_t *dump_reg = mpu->dump_reg;
+	int vio_type = 6, prefetch = 0;
 	ssize_t msg_len = 0;
 
 	/* smpu check violation */
 	if (slc_enable) {
+		if (!(strcmp(mpu->name, "nsmpu")))
+			vio_type = VIO_TYPE_NSMPU;
+		else if (!(strcmp(mpu->name, "ssmpu")))
+			vio_type = VIO_TYPE_SSMPU;
+		else if (!(strcmp(mpu->name, "nkp")))
+			vio_type = VIO_TYPE_NKP;
+		else if (!(strcmp(mpu->name, "skp")))
+			vio_type = VIO_TYPE_SKP;
 		/* read SMPU/KP vio reg */
 		for (i = 0; i < mpu->dump_cnt; i++)
-			dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);
+			dump_reg[i].value =
+				readl(mpu_base + dump_reg[i].offset);
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
+			prefetch = mtk_clear_smpu_log(vio_type % 2);
+			mpu->is_prefetch = prefetch == 1 ? true : false;
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\ncpu-prefetch:%d", prefetch);
 			msg_len += scnprintf(mpu->vio_msg + msg_len,
 					     MTK_SMPU_MAX_CMD_LEN - msg_len,
 					     "\n[SMPU]%s\n", mpu->name);
@@ -413,7 +412,8 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 		}
 
 		/* check whether cpu type master lead this smpu violation */
-		if ((mpu == global_ssmpu) || (mpu == global_nsmpu)) {
+		if (!(strcmp(mpu->name, "nsmpu")) ||
+		    !(strcmp(mpu->name, "ssmpu"))) {
 			/* check smpu write violation aid reg */
 			if ((mpu->dump_reg[5].value == sec_cpu_aid) ||
 			    (mpu->dump_reg[5].value == ns_cpu_aid) ||
@@ -423,14 +423,17 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 			}
 		} else {
 			/* check kp write violation aid reg */
-			if ((MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == sec_cpu_aid) ||
-			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == ns_cpu_aid) ||
-			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == hyp_cpu_aid)) {
+			if ((MTK_SMPU_KP_AID(mpu->dump_reg[1].value) ==
+			     sec_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) ==
+			     ns_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) ==
+			     hyp_cpu_aid)) {
 				pr_info("%s: %s", __func__, mpu->vio_msg);
 				clear_violation(mpu);
 			}
 		}
-		pr_info("%s: WCE dump finish!!\n",__func__);
+		pr_info("%s: WCE dump finish!!\n", __func__);
 	}
 }
 
@@ -694,9 +697,12 @@ static int smpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
-
-	ret = request_irq(mpu->irq, (irq_handler_t)smpu_violation,
-			  IRQF_TRIGGER_NONE, "smpu", mpu);
+	/*
+	 * change it to threaded irq
+	 */
+	ret = request_threaded_irq(mpu->irq, (irq_handler_t)smpu_violation,
+				   (irq_handler_t)smpu_violation_thread,
+				   IRQF_ONESHOT, "smpu", mpu);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq");
 		return -EINVAL;
