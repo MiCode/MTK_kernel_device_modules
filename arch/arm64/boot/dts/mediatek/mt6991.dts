@@ -4655,6 +4655,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			};
 		};
 
+		touch: touch {
+			compatible = "mediatek,touch";
+		};
+
 		typec_mux_switch: typec-mux-switch {
 			compatible = "mediatek,typec_mux_switch";
 			status = "okay";
