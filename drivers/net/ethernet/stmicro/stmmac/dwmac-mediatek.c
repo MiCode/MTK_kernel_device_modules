@@ -1055,9 +1055,10 @@ static int mt8678_set_interface(struct mediatek_dwmac_plat_data *plat)
 		intf_val |= FIELD_PREP(MT8678_ETH_INTF_SEL, PHY_INTF_RGMII);
 				intf_val |= MT8678_EXT_PHY_MODE;
 		break;
+	case PHY_INTERFACE_MODE_2500BASEX:
 	case PHY_INTERFACE_MODE_SGMII:
 		intf_val |= MT8678_SGMII_CLK_INTERNAL;
-
+		intf_val &= ~MT8678_EXT_PHY_MODE;
 		plat->sgmii = devm_kzalloc(plat->dev, sizeof(*plat->sgmii),
 					   GFP_KERNEL);
 		if (!plat->sgmii)
@@ -1074,8 +1075,6 @@ static int mt8678_set_interface(struct mediatek_dwmac_plat_data *plat)
 		return -EINVAL;
 	}
 
-	/* MT8678 only support external PHY */
-	intf_val |= MT8678_EXT_PHY_MODE;
 	intf_val |= MT8678__TXC_OUT_OP;
 	intf_val |= MT8678_RMII_CLK_SRC_INTERNAL;
 	regmap_write(plat->peri_regmap, offset_ctrl, intf_val);
