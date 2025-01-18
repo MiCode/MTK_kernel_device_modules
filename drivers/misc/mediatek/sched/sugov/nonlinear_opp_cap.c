@@ -1628,6 +1628,9 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	for (int i = 0; i < pd_count; i++) {
 		mtk_update_wl_table(i, 0); /* set default wl type = 0 */
+	}
+
+	for (int i = 0; i < MAX_NR_CPUS; i++) {
 		set_target_margin(i, 20);
 		set_target_margin_low(i, 20);
 		set_turn_point_freq(i, 0);
@@ -1770,76 +1773,111 @@ unsigned int get_sched_capacity_margin_dvfs(void)
 }
 EXPORT_SYMBOL_GPL(get_sched_capacity_margin_dvfs);
 
-int set_target_margin(int gearid, int margin)
+int set_target_margin(int cpu, int margin)
 {
-	if (gearid < 0 || gearid > pd_count)
+	struct cpufreq_policy *policy;
+	int i = 0;
+
+	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
 	if (margin < 0 || margin > 95)
 		return -1;
-	target_margin[gearid] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			target_margin[i] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+		}
+		cpufreq_cpu_put(policy);
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(set_target_margin);
 
-int set_target_margin_low(int gearid, int margin)
+int set_target_margin_low(int cpu, int margin)
 {
-	if (gearid < 0 || gearid > pd_count)
+	struct cpufreq_policy *policy;
+	int i = 0;
+
+	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
 	if (margin < 0 || margin > 95)
 		return -1;
-	target_margin_low[gearid] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			target_margin_low[i] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+		}
+		cpufreq_cpu_put(policy);
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(set_target_margin_low);
 
-unsigned int get_target_margin(int gearid)
+unsigned int get_target_margin(int cpu)
 {
-	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin[gearid]);
+	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin[cpu]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin);
 
-unsigned int get_target_margin_low(int gearid)
+unsigned int get_target_margin_low(int cpu)
 {
-	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin_low[gearid]);
+	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin_low[cpu]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin_low);
 
 /*
  *for vonvenient, pass freq, but converty to util
  */
-int set_turn_point_freq(int gearid, unsigned long freq)
+int set_turn_point_freq(int cpu, unsigned long freq)
 {
 	int idx;
+	int i = 0;
+	struct cpufreq_policy *policy;
+	unsigned int gearid = topology_cluster_id(cpu);
 	struct pd_capacity_info *pd_info;
 
-	if (gearid < 0 || gearid > pd_count)
+	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
 	if (freq == 0) {
-		turn_point_util[gearid] = 0;
+		turn_point_util[cpu] = 0;
 		return 0;
 	}
 
 	pd_info = &pd_capacity_tbl[gearid];
 	idx = map_freq_idx_by_tbl(pd_info, freq);
 	idx = pd_info->freq_opp_map[idx];
-	turn_point_util[gearid] = pd_info->table[idx].capacity;
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			turn_point_util[i] = pd_info->table[idx].capacity;
+		}
+		cpufreq_cpu_put(policy);
+	}
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(set_turn_point_freq);
 
-inline unsigned long get_turn_point_freq(int gearid)
+inline unsigned long get_turn_point_freq(int cpu)
 {
 	int idx;
 	struct pd_capacity_info *pd_info;
-	if (turn_point_util[gearid] == 0)
+	unsigned int gearid = topology_cluster_id(cpu);
+
+	if (turn_point_util[cpu] == 0)
 		return 0;
 	pd_info = &pd_capacity_tbl[gearid];
-	idx = map_util_idx_by_tbl(pd_info, turn_point_util[gearid]);
+	idx = map_util_idx_by_tbl(pd_info, turn_point_util[cpu]);
 	idx = pd_info->util_opp_map[idx];
+
 	return max(pd_info->table[idx].freq, pd_info->freq_min);
 }
 EXPORT_SYMBOL_GPL(get_turn_point_freq);
@@ -2134,19 +2172,19 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	gearid = topology_cluster_id(cpu);
 
 	pd_info = &pd_capacity_tbl[gearid];
-	if (!turn_point_util[gearid] && (am_ctrl || grp_dvfs_ctrl_mode)) {
+	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
 		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask);
 		return;
 	}
 
 	util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
-	if (turn_point_util[gearid] &&
-		util > turn_point_util[gearid])
-		util = max(turn_point_util[gearid], orig_util * target_margin[gearid]
+	if (turn_point_util[cpu] &&
+		util > turn_point_util[cpu])
+		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
 					>> SCHED_CAPACITY_SHIFT);
-	else if (turn_point_util[gearid] &&
-		util < turn_point_util[gearid])
-		util = min(turn_point_util[gearid], orig_util * target_margin_low[gearid]
+	else if (turn_point_util[cpu] &&
+		util < turn_point_util[cpu])
+		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
 
 	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false);
