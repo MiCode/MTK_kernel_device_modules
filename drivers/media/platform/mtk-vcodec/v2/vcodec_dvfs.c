@@ -757,6 +757,10 @@ void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
 			cur_dvfs_param->cpu_top_grp_aware = 1;
 			#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 			set_top_grp_aware(1, 0);
+			set_grp_awr_min_opp_margin(0, 0, 2048);
+			set_grp_awr_thr(0, 0, 800000);
+			set_grp_awr_min_opp_margin(1, 0, 2048);
+			set_grp_awr_thr(1, 0, 1100000);
 			#endif
 			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] enable CPU top grp aware!\n",
 				__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id);
