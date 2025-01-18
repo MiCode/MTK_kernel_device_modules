@@ -72,6 +72,10 @@ static struct wrapper_data wrapper_data_mt6877 = {
 	.max_ostd = 40,
 	.icc_dst_id = SLAVE_COMMON(0),
 };
+static struct wrapper_data wrapper_data_mt6833 = {
+	.max_ostd = 40,
+	.icc_dst_id = SLAVE_COMMON(0),
+};
 static struct wrapper_data *mmqos_wrapper;
 static struct device *dev;
 static BLOCKING_NOTIFIER_HEAD(hrt_bw_throttle_notifier);
@@ -296,13 +300,16 @@ static const struct of_device_id of_mmqos_wrapper_match_tbl[] = {
 		.compatible = "mediatek,mt6877-mmqos-wrapper",
 		.data = &wrapper_data_mt6877,
 	},
+	{
+		.compatible = "mediatek,mt6833-mmqos-wrapper",
+		.data = &wrapper_data_mt6833,
+	},
 	{}
 };
 static int mmqos_wrapper_probe(struct platform_device *pdev)
 {
 	dev = &pdev->dev;
-	mmqos_wrapper =
-		(struct wrapper_data *)of_device_get_match_data(&pdev->dev);
+	mmqos_wrapper = (struct wrapper_data *)of_device_get_match_data(&pdev->dev);
 	/* 256:Write BW, 2: HRT */
 	max_bw_bound = mmqos_wrapper->max_ostd * 256 * 2;
 	return 0;
@@ -321,9 +328,7 @@ static int __init mtk_mmqos_wrapper_init(void)
 
 	status = platform_driver_register(&mmqos_wrapper_drv);
 	if (status) {
-		pr_notice(
-			"Failed to register MMQoS wrapper driver(%d)\n",
-			status);
+		pr_notice("Failed to register MMQoS wrapper driver(%d)\n", status);
 		return -ENODEV;
 	}
 	return 0;
