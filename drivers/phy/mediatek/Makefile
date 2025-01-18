@@ -12,3 +12,5 @@ obj-$(CONFIG_DEVICE_MODULES_PHY_MTK_PCIE)		+= phy-mtk-pcie.o
 obj-$(CONFIG_DEVICE_MODULES_PHY_MTK_TPHY)		+= phy-mtk-tphy.o
 obj-$(CONFIG_DEVICE_MODULES_PHY_MTK_UFS)              += phy-mtk-ufs.o
 obj-$(CONFIG_DEVICE_MODULES_PHY_MTK_XSPHY)		+= phy-mtk-xsphy.o
+obj-$(CONFIG_PHY_MTK_NXP_EUSB2_REPEATER)	+= phy-mtk-nxp-eusb2-repeater.o
+obj-$(CONFIG_PHY_MTK_MT6379_EUSB2_REPEATER) 	+= phy-mtk-mt6379-eusb2-repeater.o

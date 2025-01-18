@@ -356,12 +356,14 @@ struct mtk_xsphy {
 	void __iomem *glb_base;	/* only shared u3 sif */
 	struct xsphy_instance **phys;
 	int nphys;
+	int num_rptr;
 	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
 	int src_coef;    /* coefficient for slew rate calibrate */
 	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
 	bool bc11_switch_disable; /* Force usb control dpdm */
 	struct proc_dir_entry *root;
 	struct workqueue_struct *wq;
+	struct phy **repeater;
 	int (*suspend)(struct device *dev);
 	int (*resume)(struct device *dev);
 };
@@ -1893,12 +1895,17 @@ static int mtk_phy_init(struct phy *phy)
 {
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
-	int ret;
+	int ret, i;
 
 	ret = clk_prepare_enable(inst->ref_clk);
 	if (ret) {
 		dev_err(xsphy->dev, "failed to enable ref_clk\n");
 		return ret;
+	}
+
+	for (i = 0; i < xsphy->num_rptr; i++) {
+		if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+			phy_init(xsphy->repeater[i]);
 	}
 
 	switch (inst->type) {
@@ -1945,6 +1952,12 @@ static int mtk_phy_power_on(struct phy *phy)
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
 	void __iomem *pbase = inst->port_base;
 	enum phy_mode mode = inst->phy->attrs.mode;
+	int i;
+
+	for (i = 0; i < xsphy->num_rptr; i++) {
+		if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+			phy_power_on(xsphy->repeater[i]);
+	}
 
 	if (inst->type == PHY_TYPE_USB2) {
 		u2_phy_instance_power_on(xsphy, inst);
@@ -1971,6 +1984,13 @@ static int mtk_phy_power_off(struct phy *phy)
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
 	void __iomem *pbase = inst->port_base;
+	int i;
+
+	for (i = 0; i < xsphy->num_rptr; i++) {
+		if (!IS_ERR_OR_NULL(xsphy->repeater[i])) {
+			phy_power_off(xsphy->repeater[i]);
+		}
+	}
 
 	if (xsphy->tx_chirpK_disable) {
 		dev_info(xsphy->dev, "Enable tx_chirpK.\n");
@@ -1988,11 +2008,18 @@ static int mtk_phy_power_off(struct phy *phy)
 static int mtk_phy_exit(struct phy *phy)
 {
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
+	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
+	int i;
 
 	if (inst->type == PHY_TYPE_USB2)
 		u2_phy_procfs_exit(inst);
 	else if (inst->type == PHY_TYPE_USB3)
 		u3_phy_procfs_exit(inst);
+
+	for (i = 0; i < xsphy->num_rptr; i++) {
+		if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+			phy_exit(xsphy->repeater[i]);
+	}
 
 	clk_disable_unprepare(inst->ref_clk);
 	return 0;
@@ -2288,7 +2315,7 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 	struct resource *glb_res;
 	struct mtk_xsphy *xsphy;
 	struct resource res;
-	int port, retval;
+	int port, retval, i;
 
 	xsphy = devm_kzalloc(dev, sizeof(*xsphy), GFP_KERNEL);
 	if (!xsphy)
@@ -2301,6 +2328,25 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	xsphy->dev = dev;
+
+	xsphy->num_rptr = of_count_phandle_with_args(np,
+			"phys", "#phy-cells");
+
+	if (xsphy->num_rptr > 0) {
+		xsphy->repeater = devm_kcalloc(dev, xsphy->num_rptr,
+					sizeof(*xsphy->repeater), GFP_KERNEL);
+		if (!xsphy->repeater)
+			return -ENOMEM;
+	} else {
+		xsphy->num_rptr = 0;
+	}
+
+	for (i = 0; i < xsphy->num_rptr; i++) {
+		xsphy->repeater[i] = devm_of_phy_get_by_index(dev, np, i);
+		if (IS_ERR(xsphy->repeater[i]))
+			dev_info(dev, "failed to get repeater-%d\n", i);
+	}
+
 	platform_set_drvdata(pdev, xsphy);
 
 	glb_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
