@@ -14,7 +14,11 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
 # common driver
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MEDIATEK) += snd-soc-mtk-common.o
 snd-soc-mtk-common-objs += mtk-afe-platform-driver.o mtk-afe-fe-dai.o mtk-mmap-ion.o mtk-usb-offload-ops.o
-snd-soc-mtk-common-$(CONFIG_MTK_ECCCI_DRIVER) += mtk-usip.o
+ifeq ($(CONFIG_MTK_USIP_DRIVER), m)
+    snd-soc-mtk-common-m += mtk-usip.o
+else
+    snd-soc-mtk-common-$(CONFIG_MTK_ECCCI_DRIVER) += mtk-usip.o
+endif
 snd-soc-mtk-common-$(CONFIG_SND_SOC_MTK_SRAM) += mtk-sram-manager.o
 snd-soc-mtk-common-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-pcm-ops.o mtk-afe-debug.o
 

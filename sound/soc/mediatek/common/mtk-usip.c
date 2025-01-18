@@ -31,8 +31,9 @@
 #define GET_USIP_EMI_SIZE _IOWR(USIP_EMP_IOC_MAGIC, 0xF0, unsigned long long)
 #define GET_USIP_ADSP_PHONE_CALL_ENH_CONFIG _IOWR(USIP_EMP_IOC_MAGIC, 0xF1, unsigned long long)
 #define SET_USIP_ADSP_PHONE_CALL_ENH_CONFIG _IOWR(USIP_EMP_IOC_MAGIC, 0xF2, unsigned long long)
-#define SCP_REGISTER_FEATURE_FOR_VOICE_CALL _IOWR(USIP_EMP_IOC_MAGIC, 0xF3, unsigned long long)
-#define SCP_DEREGISTER_FEATURE_FOR_VOICE_CALL _IOWR(USIP_EMP_IOC_MAGIC, 0xF4, unsigned long long)
+#define GET_USIP_ADSP_PHONE_CALL_HWIF       _IOWR(USIP_EMP_IOC_MAGIC, 0xF3, unsigned long long)
+
+#define GET_BIT(val, bit) ((val) & (0x1 << (bit)))
 
 #define NUM_MPU_REGION 3
 
@@ -41,8 +42,7 @@ static void usip_send_emi_info_to_dsp(void);
 static void usip_send_emi_info_to_dsp_ble(void);
 #endif
 
-int EMI_TABLE[3][3]
-	= {{0, 0, 0x30000}, {1, 0x30000, 0x8000}, {2, 0x38000, 0x28000} };
+int EMI_TABLE[3][3] = {{0, 0, 0x30000}, {1, 0x30000, 0x8000}, {2, 0x38000, 0x28000}};
 
 enum {
 	SP_EMI_AP_USIP_PARAMETER,
@@ -56,6 +56,17 @@ enum {
 	SP_EMI_SIZE
 };
 
+enum DSP_ENH_CFG_BIT_T {
+	DSP_ENH_CFG_BIT_ADSP_ENH,
+	DSP_ENH_CFG_BIT_CORE_SEPARATE,
+	DSP_ENH_CFG_BIT_RUN_ON_SCP,
+	DSP_ENH_CFG_BIT_FRM_BASE_SCH,
+};
+
+enum DSP_BLE_CFG_BIT_T {
+	DSP_BLE_CFG_BIT_ENABLE,
+};
+
 struct usip_info {
 	bool memory_ready;
 	size_t memory_size;
@@ -65,6 +76,7 @@ struct usip_info {
 	phys_addr_t addr_phy;
 
 	unsigned int adsp_phone_call_enh_config;
+	unsigned int adsp_phone_call_hwif;
 	unsigned int adsp_ble_phone_call_config;
 };
 
@@ -75,7 +87,7 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	int ret = 0;
 	long size_for_spe = 0;
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-	unsigned int temp_confg = usip.adsp_phone_call_enh_config;
+	unsigned int prev_config = usip.adsp_phone_call_enh_config;
 #endif
 
 	pr_info("%s(), cmd 0x%x, arg %lu, memory_size = %ld addr_phy = 0x%lx\n",
@@ -117,23 +129,20 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 			__func__,
 			usip.adsp_phone_call_enh_config);
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-		if ((usip.adsp_phone_call_enh_config & 0x1) > (temp_confg & 0x1))
+		if ((GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_CORE_SEPARATE))
+		    > (GET_BIT(prev_config, DSP_ENH_CFG_BIT_CORE_SEPARATE)))
 			usip_send_emi_info_to_dsp();
 #endif
 		break;
 
-	case SCP_REGISTER_FEATURE_FOR_VOICE_CALL:
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-		if ((usip.adsp_phone_call_enh_config & 0x4) == 0x4)
-			scp_register_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
-		break;
-
-	case SCP_DEREGISTER_FEATURE_FOR_VOICE_CALL:
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-		if ((usip.adsp_phone_call_enh_config & 0x4) == 0x4)
-			scp_deregister_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
+	case GET_USIP_ADSP_PHONE_CALL_HWIF:
+		if (copy_to_user((void __user *)arg,
+		    &(usip.adsp_phone_call_hwif),
+		    sizeof(usip.adsp_phone_call_hwif))) {
+			pr_info("%s(), Fail copy hwif to user Ptr: %p\n",
+				__func__, (char *)&usip.adsp_phone_call_hwif);
+			ret = -1;
+		}
 		break;
 
 	default:
@@ -252,7 +261,7 @@ static void usip_send_emi_info_to_dsp_ble(void)
 	long long usip_emi_info[2]; //idx0 for addr, idx1 for size
 	phys_addr_t offset = 0;
 
-	if ((usip.adsp_ble_phone_call_config & 0x1) == 0) {
+	if (!GET_BIT(usip.adsp_ble_phone_call_config, DSP_BLE_CFG_BIT_ENABLE)) {
 		pr_info("%s(), adsp_ble_phone_call_config(%d) is close",
 			__func__,
 			usip.adsp_ble_phone_call_config);
@@ -332,7 +341,7 @@ static void usip_send_emi_info_to_dsp(void)
 	long long usip_emi_info[2]; //idx0 for addr, idx1 for size
 	phys_addr_t offset = 0;
 
-	if ((usip.adsp_phone_call_enh_config & 0x1) == 0) {
+	if (!GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_ADSP_ENH)) {
 		pr_info("%s(), adsp_phone_call_enh_config(%d) is close",
 			__func__,
 			usip.adsp_phone_call_enh_config);
@@ -353,6 +362,9 @@ static void usip_send_emi_info_to_dsp(void)
 	usip_emi_info[1] = EMI_TABLE[SP_EMI_ADSP_USIP_PHONECALL][SP_EMI_SIZE] +
 		EMI_TABLE[SP_EMI_ADSP_USIP_SMARTPA][SP_EMI_SIZE];
 
+	pr_info("%s(), usip_emi_info[0] 0x%llx, usip_emi_info[1] 0x%llx\n",
+		__func__, usip_emi_info[0], usip_emi_info[1]);
+
 	ipi_msg.magic      = IPI_MSG_MAGIC_NUMBER;
 	ipi_msg.task_scene = TASK_SCENE_PHONE_CALL;
 	ipi_msg.source_layer  = AUDIO_IPI_LAYER_FROM_KERNEL;
@@ -364,15 +376,11 @@ static void usip_send_emi_info_to_dsp(void)
 	ipi_msg.param2     = 0;
 
 	/* [Call_Main]Send EMI Address to Hifi3 Via IPI*/
-	if ((usip.adsp_phone_call_enh_config & 0x4) == 0) {
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+	if (!GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_RUN_ON_SCP))
 		adsp_register_feature(VOICE_CALL_FEATURE_ID);
 #endif
-	} else {
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-		scp_register_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
-	}
+
 	send_result = audio_send_ipi_msg(
 					 &ipi_msg, TASK_SCENE_PHONE_CALL,
 					 AUDIO_IPI_LAYER_TO_DSP,
@@ -382,15 +390,11 @@ static void usip_send_emi_info_to_dsp(void)
 					 sizeof(usip_emi_info),
 					 0,
 					 (char *)&usip_emi_info);
-	if ((usip.adsp_phone_call_enh_config & 0x4) == 0) {
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+	if (!GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_RUN_ON_SCP))
 		adsp_deregister_feature(VOICE_CALL_FEATURE_ID);
 #endif
-	} else {
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-		scp_deregister_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
-	}
 
 	if (send_result != 0)
 		pr_info("%s(), scp_ipi send fail\n", __func__);
@@ -398,13 +402,14 @@ static void usip_send_emi_info_to_dsp(void)
 		pr_debug("%s(), scp_ipi send succeed\n", __func__);
 
 	/* [Call_Sub] Send EMI Address to Hifi3 Via IPI*/
-	if ((usip.adsp_phone_call_enh_config & 0x2) == 0x2) {
+	if (GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_CORE_SEPARATE)) {
 		ipi_msg.task_scene = TASK_SCENE_PHONE_CALL_SUB;
-	if ((usip.adsp_phone_call_enh_config & 0x4) == 0) {
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
-		adsp_register_feature(VOICE_CALL_FEATURE_ID);
+		if (!GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_RUN_ON_SCP))
+			adsp_register_feature(VOICE_CALL_FEATURE_ID);
 #endif
-	}
+
 		send_result = audio_send_ipi_msg(
 					 &ipi_msg, TASK_SCENE_PHONE_CALL_SUB,
 					 AUDIO_IPI_LAYER_TO_DSP,
@@ -414,11 +419,12 @@ static void usip_send_emi_info_to_dsp(void)
 					 sizeof(usip_emi_info),
 					 0,
 					 (char *)&usip_emi_info);
-	if ((usip.adsp_phone_call_enh_config & 0x4) == 0) {
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
-		adsp_deregister_feature(VOICE_CALL_FEATURE_ID);
+		if (!GET_BIT(usip.adsp_phone_call_enh_config, DSP_ENH_CFG_BIT_RUN_ON_SCP))
+			adsp_deregister_feature(VOICE_CALL_FEATURE_ID);
 #endif
-	}
+
 		if (send_result != 0)
 			pr_info("%s(), scp_ipi send sub fail\n", __func__);
 		else
@@ -499,13 +505,13 @@ static const struct file_operations usip_fops = {
 	.mmap = usip_mmap,
 };
 
-#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+
 static struct miscdevice usip_miscdevice = {
 	.minor      = MISC_DYNAMIC_MINOR,
 	.name       = "usip",
 	.fops       = &usip_fops,
 };
-#endif
+
 static const struct of_device_id usip_dt_match[] = {
 	{ .compatible = "mediatek,speech-usip-mem", },
 	{},
@@ -522,6 +528,15 @@ static int speech_usip_dev_probe(struct platform_device *pdev)
 	else
 		pr_debug("%s adsp_phone_call_enh_enable is %d\n",
 				__func__, usip.adsp_phone_call_enh_config);
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+				   "adsp-phone-call-hwif",
+				   &(usip.adsp_phone_call_hwif));
+	if (ret != 0)
+		pr_info("%s adsp-phone-call-hwif error\n", __func__);
+	else
+		pr_debug("%s adsp-phone-call-hwif is %d\n",
+				__func__, usip.adsp_phone_call_hwif);
 
 	ret = of_property_read_u32(pdev->dev.of_node,
 				   "adsp-ble-phone-call-enable",
@@ -562,16 +577,12 @@ static int __init usip_init(void)
 	usip.memory_size = 0;
 	usip.addr_phy = 0;
 
-#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ret = misc_register(&usip_miscdevice);
 	if (ret) {
 		pr_err("%s(), cannot register miscdev on minor %d, ret %d\n",
 		       __func__, usip_miscdevice.minor, ret);
 		ret = -ENODEV;
 	}
-#else
-	ret = -ENODEV;
-#endif
 
 	/* init usip info */
 	usip.memory_addr = 0x11220000L;
@@ -591,9 +602,7 @@ static int __init usip_init(void)
 
 static void __exit usip_exit(void)
 {
-#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	misc_deregister(&usip_miscdevice);
-#endif
 }
 
 module_init(usip_init);
