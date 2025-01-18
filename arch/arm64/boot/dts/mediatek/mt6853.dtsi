@@ -3351,7 +3351,7 @@
 		};
 
 		mtk_iommu_pseudo {
-			compatible = "mediatek,mt6893-iommu-pseudo";
+			compatible = "mediatek,mt6853-iommu-pseudo";
 			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2
 					  &smi_larb4 &smi_larb7 &smi_larb9
 					  &smi_larb11 &smi_larb13 &smi_larb14
