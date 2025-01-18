@@ -466,6 +466,8 @@ static void rsz_auto_coef_trunc(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		} else if (vert_ratio > 64 && vert_ratio <= 128) {
 			cal_param->vert_luma_cubic_trunc_bit = 7;
 			cal_param->vert_chroma_cubic_trunc_bit = 5;
+		} else if (vert_ratio >= 32 && vert_ratio <= 64) {
+			out->vert_cubic_trunc = 0;
 		}
 	}
 }
@@ -554,8 +556,7 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 		    (in->crop.r.height == in->out_height && in->crop.r.top == 0))
 			out->vert_algo = 0;
 		else if (in->crop.r.height > RSZ_ALG_TH1 * in->out_height ||
-		    (in->crop.r.height - 1) > 4096 * (in->out_height - 1) ||
-		    (!in->power_saving && (63 * in->crop.r.height + 1) >= 1024 * in->out_height))
+		    (in->crop.r.height - 1) > 4096 * (in->out_height - 1))
 			out->vert_algo = 1;
 		else
 			out->vert_algo = 2;
