@@ -8527,8 +8527,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
 					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMRAWA>,
-					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>,
-				    <&mmdvfs_mux MMDVFS_USER_CAM>;
+					<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>;
+				    //<&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "camsys_cam_cgpdn",
 				"camsys_camtg_cgpdn",
 				"camsys_adlrd_cgpdn",
@@ -8541,8 +8541,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"camsys_cam2mm0_gals_cgpdn",
 				"camsys_cam2mm1_gals_cgpdn",
 				"camsys_cam2sys_gals_cgpdn",
-				"camsys_cam2mm2_gals_cgpdn",
-				"mmdvfs_mux";
+				"camsys_cam2mm2_gals_cgpdn";
+				//"mmdvfs_mux";
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
 		};
 
@@ -8587,6 +8587,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L16_P14_GMPO_R1>,
 					<SMMU_L16_P15_DRZB2NCO_R1>,
 					<SMMU_L16_P16_AWBO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L16_P0_CQI_R1)
 						&mmqos SLAVE_COMMON(0)>,
@@ -8628,6 +8629,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
 					"awbo_r1";
+#endif
 		};
 
 		cam-rms-a@3a840000 {
@@ -8668,6 +8670,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L17_P3_DRZH2NO_R1>,
 					<SMMU_L17_P4_YUVO_R4>,
 					<SMMU_L17_P5_DRZH1NO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L17_P0_YUVO_R1)
 						&mmqos SLAVE_COMMON(1)>,
@@ -8684,6 +8687,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interconnect-names =
 					"yuvo_r1", "yuvo_r3", "yuvo_r2",
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
+#endif
 		};
 
 		cam-raw-b@3a900000 {
@@ -8727,6 +8731,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L43_P14_GMPO_R1>,
 					<SMMU_L43_P15_DRZB2NCO_R1>,
 					<SMMU_L43_P16_AWBO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L43_P0_CQI_R1)
 						&mmqos SLAVE_COMMON(1)>,
@@ -8768,6 +8773,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
 					"awbo_r1";
+#endif
 		};
 
 		cam-rms-b@3a940000 {
@@ -8808,6 +8814,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L45_P3_DRZH2NO_R1>,
 					<SMMU_L45_P4_YUVO_R4>,
 					<SMMU_L45_P5_DRZH1NO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L45_P0_YUVO_R1)
 						&mmqos SLAVE_COMMON(0)>,
@@ -8824,6 +8831,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interconnect-names =
 					"yuvo_r1", "yuvo_r3", "yuvo_r2",
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
+#endif
 		};
 
 		cam-raw-c@3aa00000 {
@@ -8867,6 +8875,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L44_P14_GMPO_R1>,
 					<SMMU_L44_P15_DRZB2NCO_R1>,
 					<SMMU_L44_P16_AWBO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L44_P0_CQI_R1)
 						&mmqos SLAVE_COMMON(0)>,
@@ -8908,6 +8917,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					"grmgi_r1", "lsci_r1", "imgo_r1", "imgo_r2",
 					"drzb2no_r1", "drzb2nbo_r1", "gmpo_r1", "drzb2nco_r1",
 					"awbo_r1";
+#endif
 		};
 
 		cam-rms-c@3aa40000 {
@@ -8948,6 +8958,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L46_P3_DRZH2NO_R1>,
 					<SMMU_L46_P4_YUVO_R4>,
 					<SMMU_L46_P5_DRZH1NO_R1>;
+#if 0
 			interconnects =
 					<&mmqos MASTER_LARB_PORT(SMMU_L46_P0_YUVO_R1)
 						&mmqos SLAVE_COMMON(1)>,
@@ -8964,6 +8975,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			interconnect-names =
 					"yuvo_r1", "yuvo_r3", "yuvo_r2",
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
+#endif
 		};
 
 		camsv1@3a500000 {
@@ -9006,6 +9018,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L14_P0_CAMSV_A_CQI_E1>,
 					<SMMU_L14_P1_CAMSV_A0_WDMA>,
 					<SMMU_L14_P2_CAMSV_A1_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L14_P0_CAMSV_A_CQI_E1)
 					&mmqos SLAVE_COMMON(1)>,
@@ -9035,6 +9048,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l14_stg1_disp_a",
 				"l14_imgo1_mdp_a",
 				"l14_stg1_mdp_a";
+#endif
 		};
 
 		camsv2@3a510000 {
@@ -9077,6 +9091,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<SMMU_L13_P0_CAMSV_B_CQI_E1>,
 					<SMMU_L13_P1_CAMSV_B0_WDMA>,
 					<SMMU_L13_P2_CAMSV_B1_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L13_P0_CAMSV_B_CQI_E1)
 					&mmqos SLAVE_COMMON(1)>,
@@ -9106,6 +9121,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l13_stg1_disp_b",
 				"l13_imgo1_mdp_b",
 				"l13_stg1_mdp_b";
+#endif
 		};
 
 		camsv3@3a520000 {
@@ -9147,6 +9163,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P0_CAMSV_C_CQI_E1>,
 					<SMMU_L29_P4_CAMSV_C_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L29_P0_CAMSV_C_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9158,6 +9175,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l29_cqi_c",
 				"l29_imgo_c",
 				"l29_stg_c";
+#endif
 		};
 
 		camsv4@3a530000 {
@@ -9199,6 +9217,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P1_CAMSV_D_CQI_E1>,
 					<SMMU_L29_P5_CAMSV_D_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L29_P1_CAMSV_D_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9210,6 +9229,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l29_cqi_d",
 				"l29_imgo_d",
 				"l29_stg_d";
+#endif
 		};
 
 		camsv5@3a540000 {
@@ -9251,6 +9271,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P2_CAMSV_E_CQI_E1>,
 					<SMMU_L29_P6_CAMSV_E_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L29_P2_CAMSV_E_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9262,6 +9283,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l29_cqi_e",
 				"l29_imgo_e",
 				"l29_stg_e";
+#endif
 		};
 
 		camsv6@3a550000 {
@@ -9303,6 +9325,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L29_P3_CAMSV_F_CQI_E1>,
 					<SMMU_L29_P7_CAMSV_F_WDMA>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L29_P3_CAMSV_F_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9314,6 +9337,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l29_cqi_f",
 				"l29_imgo_f",
 				"l29_stg_f";
+#endif
 		};
 
 		mraw1@3a700000 {
@@ -9353,6 +9377,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L25_P0_CQI_M1>,
 					<SMMU_L25_P1_IMGO_M1>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L25_P0_CQI_M1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9364,6 +9389,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l25_cqi_m1_0",
 				"l25_imgbo_m1_0",
 				"l25_stg_m1_0";
+#endif
 		};
 
 		mraw2@3a710000 {
@@ -9403,6 +9429,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L26_P0_CQI_M1>,
 					<SMMU_L26_P1_IMGO_M1>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L26_P0_CQI_M1)
 					&mmqos SLAVE_COMMON(1)>,
@@ -9414,6 +9441,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l26_cqi_m1_1",
 				"l26_imgbo_m1_1",
 				"l26_stg_m1_1";
+#endif
 		};
 
 		mraw3@3a720000 {
@@ -9453,6 +9481,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L25_P2_CQI_M1>,
 					<SMMU_L25_P3_IMGO_M1>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L25_P2_CQI_M1)
 					&mmqos SLAVE_COMMON(0)>,
@@ -9464,6 +9493,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l25_cqi_m1_2",
 				"l25_imgbo_m1_2",
 				"l25_stg_m1_2";
+#endif
 		};
 
 		mraw4@3a730000 {
@@ -9503,6 +9533,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,smmu-dma-axid =
 					<SMMU_L26_P2_CQI_M1>,
 					<SMMU_L26_P3_IMGO_M1>;
+#if 0
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L26_P2_CQI_M1)
 					&mmqos SLAVE_COMMON(1)>,
@@ -9514,6 +9545,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"l26_cqi_m1_3",
 				"l26_imgbo_m1_3",
 				"l26_stg_m1_3";
+#endif
 		};
 	};
 
