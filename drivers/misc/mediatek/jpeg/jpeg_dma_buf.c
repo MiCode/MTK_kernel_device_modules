@@ -18,7 +18,7 @@ int jpg_dmabuf_get_iova(struct dma_buf *dbuf, u64 *iova,
 		return -1;
 	}
 
-	*sgt = dma_buf_map_attachment(*attach, DMA_BIDIRECTIONAL);
+	*sgt = dma_buf_map_attachment_unlocked(*attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(*sgt)) {
 		JPEG_LOG(0, "map failed, detach and return");
 		dma_buf_detach(dbuf, *attach);
@@ -37,7 +37,7 @@ void jpg_dmabuf_free_iova(struct dma_buf *dbuf,
 		JPEG_LOG(0, "dbuf or attach or sgt null, not need to free iova");
 		return;
 	}
-	dma_buf_unmap_attachment(attach, sgt, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(attach, sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(dbuf, attach);
 }
 
@@ -70,12 +70,12 @@ void jpg_dmabuf_put(struct dma_buf *dbuf)
 
 int jpg_dmabuf_vmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
-	return dma_buf_vmap(dbuf, map);
+	return dma_buf_vmap_unlocked(dbuf, map);
 }
 
 void jpg_dmabuf_vunmap(struct dma_buf *dbuf, struct iosys_map *map)
 {
-	dma_buf_vunmap(dbuf, map);
+	dma_buf_vunmap_unlocked(dbuf, map);
 }
 
 struct dma_buf *jpg_dmabuf_alloc(size_t size, size_t align, unsigned int flags)
