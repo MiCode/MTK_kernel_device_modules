@@ -143,6 +143,13 @@ bool mml_drm_ctx_idle(struct mml_drm_ctx *dctx);
 void mml_drm_put_context(struct mml_drm_ctx *dctx);
 
 /*
+ * mml_drm_kick_done - Check all cmdq client hold by mml, to complete tasks.
+ *
+ * @dctx:	The drm context instance.
+ */
+void mml_drm_kick_done(struct mml_drm_ctx *dctx);
+
+/*
  * mml_drm_set_panel_pixel - Set pixel count of display panel (lcm) pixel count
  * This value helps mml calculate HRT bandwidth. See frame_calc_layer_hrt for
  * more detail.

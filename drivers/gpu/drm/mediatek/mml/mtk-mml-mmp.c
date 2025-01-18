@@ -55,6 +55,8 @@ void mml_mmp_init(void)
 	mml_mmp_events.irq_stop = mmprofile_register_event(mml, "irq_stop");
 	mml_mmp_events.fence_sig = mmprofile_register_event(mml, "fence_sig");
 	mml_mmp_events.exec = mmprofile_register_event(mml, "exec");
+	mml_mmp_events.couple = mmprofile_register_event(mml, "couple");
+	mml_mmp_events.kick = mmprofile_register_event(mml, "kick");
 
 	command = mml_mmp_events.command;
 	mml_mmp_events.command0 = mmprofile_register_event(command, "command0");

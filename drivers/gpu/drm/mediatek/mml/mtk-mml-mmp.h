@@ -72,6 +72,8 @@ struct mml_mmp_events_t {
 	mmp_event irq_stop;
 	mmp_event fence_sig;
 	mmp_event exec;
+	mmp_event couple;
+	mmp_event kick;
 
 	/* events for command (dle and pipes) */
 	mmp_event command0;

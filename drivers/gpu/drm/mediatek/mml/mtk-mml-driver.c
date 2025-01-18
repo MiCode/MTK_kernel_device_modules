@@ -251,10 +251,15 @@ s32 mml_dev_get_couple_cnt(struct mml_dev *mml)
 	mutex_lock(&mml->sys_state_mutex);
 
 	cnt = atomic_read(&mml->sys_state[mml_sys_frame].dl_ref);
-	if (cnt)
+	if (cnt) {
+		mml_mmp(couple, MMPROFILE_FLAG_PULSE,
+			(MML_MODE_DIRECT_LINK << 16) | mml_sys_frame, cnt);
 		goto done;
+	}
 
 	cnt = atomic_read(&mml->sys_state[mml_sys_frame].racing_ref);
+	mml_mmp(couple, MMPROFILE_FLAG_PULSE,
+			(MML_MODE_RACING << 16) | mml_sys_frame, cnt);
 done:
 	mutex_unlock(&mml->sys_state_mutex);
 
@@ -273,6 +278,7 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
 	else if (mode == MML_MODE_RACING)
 		cnt = atomic_inc_return(&mml->sys_state[sys_id].racing_ref);
 
+	mml_mmp(couple, MMPROFILE_FLAG_PULSE, (mode << 16) | sys_id, cnt);
 	mutex_unlock(&mml->sys_state_mutex);
 
 	return cnt;
@@ -293,6 +299,7 @@ s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 	if (!cnt)
 		mml_msg("%s sys id %u", __func__, mml->sys_state[sys_id].sys_id);
 
+	mml_mmp(couple, MMPROFILE_FLAG_PULSE, (mode << 16) | sys_id, cnt);
 	mutex_unlock(&mml->sys_state_mutex);
 
 	return cnt;
