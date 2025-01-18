@@ -7886,7 +7886,8 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 
 	/* Load emi efficiency table for ovl bandwidht monitor */
 	if ((private->data->mmsys_id == MMSYS_MT6897) ||
-		(private->data->mmsys_id == MMSYS_MT6989))
+		(private->data->mmsys_id == MMSYS_MT6989) ||
+		(private->data->mmsys_id == MMSYS_MT6991))
 		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);
