@@ -1493,7 +1493,7 @@ int init_dpt_io(void)
 #define VAL2_OFFSET 0x4
 int collab_type_0_ret_function(void)
 {
-	unsigned int val1, val2;
+	unsigned int val1, val2, status = 0;
 
 	if (collab_type_0_sram_base == NULL)
 		return 0;
@@ -1501,8 +1501,11 @@ int collab_type_0_ret_function(void)
 	val1 = ioread32(collab_type_0_sram_base + VAL1_OFFSET);
 	val2 = ioread32(collab_type_0_sram_base + VAL2_OFFSET);
 
-	if (trace_collab_type_0_ret_function_enabled())
-		trace_collab_type_0_ret_function(val1/val2, val1, val2);
+	if (trace_collab_type_0_ret_function_enabled()) {
+		if (is_dpt_support_driver_hook)
+			status = is_dpt_support_driver_hook();
+		trace_collab_type_0_ret_function(val1/val2, val1, val2, status);
+	}
 
 	if (val1 == 0 || val2 == 0)
 		return USING_LAST_STATE;

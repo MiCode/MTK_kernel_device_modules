@@ -345,25 +345,28 @@ TRACE_EVENT(sugov_ext_turn_point_margin,
 
 TRACE_EVENT(collab_type_0_ret_function,
 
-	TP_PROTO(unsigned int val, unsigned int val1, unsigned int val2),
+	TP_PROTO(unsigned int val, unsigned int val1, unsigned int val2, unsigned int status),
 
-	TP_ARGS(val, val1, val2),
+	TP_ARGS(val, val1, val2, status),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, val)
 		__field(unsigned int, val1)
 		__field(unsigned int, val2)
+		__field(unsigned int, status)
 	),
 	TP_fast_assign(
 		__entry->val = val;
 		__entry->val1 = val1;
 		__entry->val2 = val2;
+		__entry->status = status;
 	),
 	TP_printk(
-		"val=%d val1=%d val2=%d",
+		"val=%d val1=%d val2=%d status=%d",
 		__entry->val,
 		__entry->val1,
-		__entry->val2)
+		__entry->val2,
+		__entry->status)
 );
 
 TRACE_EVENT(sched_pd_opp2cap,
