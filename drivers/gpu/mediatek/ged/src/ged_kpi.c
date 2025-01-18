@@ -683,7 +683,7 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 		do_div(fps, psHead->ullElapsed_time_per_sec);
 		psHead->t_gpu_fps = fps;
 
-		for (int i = 0; i < GED_FPS_CONFIG_NUM; i++) {
+		for (int i = 1; i < GED_FPS_CONFIG_NUM; i++) {
 			if (g_target_fps_default == g_ged_gpu_fps[i].fps) {
 				fps_margin = g_ged_gpu_fps[i-1].fps_margin;
 				break;
@@ -1117,7 +1117,7 @@ static GED_BOOL ged_kpi_update_TargetTimeAndTargetFps(
 	if (ignore_fpsgo_enable) {
 		psHead->target_fps_margin = GED_KPI_DEFAULT_FPS_MARGIN;
 		if (psHead->t_gpu_target == 0)
-			psHead->t_gpu_target = (int)((int)GED_KPI_SEC_DIVIDER/g_target_fps_default);
+			psHead->t_gpu_target = g_gpu_target_default;
 	} else {
 		psHead->t_gpu_target = psHead->t_cpu_target;
 	}
