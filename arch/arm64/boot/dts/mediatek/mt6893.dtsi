@@ -777,6 +777,16 @@ cpus {
 		clock-names = "spi", "wrap", "ulposc", "ulposc_osc";
 	};
 
+	pwraph: pwraphal@10026000 {
+		compatible = "mediatek,pwraph";
+		mediatek,pwrap-regmap = <&pwrap>;
+	};
+
+	pwrapmpu@10026000 {
+		compatible = "mediatek,pwrap_mpu";
+		reg = <0 0x10026000 0 0x1000>;
+	};
+
 	thermal_zones: thermal-zones {
 		soc_max {
 			polling-delay = <100>; /* milliseconds */
@@ -1556,19 +1566,40 @@ cpus {
 			clocks = <&clk13m>;
 		};
 
-		spmi: spmi@10027000 {
-			compatible = "mediatek,mt6893-spmi";
+		spmi_bus: spmi@10027000 {
+			compatible = "mediatek,mt6893-spmi-m";
 			reg = <0 0x10027000 0 0x000e00>,
-			      <0 0x10029000 0 0x000100>;
-			reg-names = "pmif", "spmimst";
+				<0 0x10027f00 0 0x00008c>,
+				<0 0x10029000 0 0x000100>;
+			reg-names = "pmif", "pmifmpu", "spmimst";
+			interrupts = <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "pmif_irq";
+			irq-event-en = <0x0 0x0 0x00300000 0x00000100 0x0>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
-				 <&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
-				 <&topckgen_clk CLK_TOP_SPMI_MST_SEL>;
+				<&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
+				<&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
+				<&topckgen_clk CLK_TOP_OSC_D10>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+				<&topckgen_clk CLK_TOP_SPMI_MST_SEL>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+				<&topckgen_clk CLK_TOP_OSC_D10>;
 			clock-names = "pmif_sys_ck",
-				      "pmif_tmr_ck",
-				      "spmimst_clk_mux";
-			assigned-clocks = <&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>;
-			assigned-clock-parents = <&topckgen_clk CLK_TOP_OSC_D10>;
+				"pmif_tmr_ck",
+				"pmif_clk_mux",
+				"pmif_clk_osc_d10",
+				"pmif_clk26m",
+				"spmimst_clk_mux",
+				"spmimst_clk26m",
+				"spmimst_clk_osc_d10";
+			swinf-ch-start = <4>;
+			ap-swinf-no = <2>;
+			#address-cells = <2>;
+			#size-cells = <0>;
+		};
+
+		spmimpu@10027000 {
+			compatible = "mediatek,spmi_mpu";
+			reg = <0 0x10027000 0 0x0e00>;
 		};
 
 		devapc: devapc@10207000 {
@@ -2963,8 +2994,7 @@ cpus {
 
 			freq-table-hz = <0 0>, <0 0>, <0 0>, <0 0>;
 
-		/*	vcc-supply = <&mt6359p_vemc_reg>; */
-			vcc-fixed-regulator;
+			vcc-supply = <&mt6359p_vemc_reg>;
 
 			resets = <&infracfg_rst 2>, <&infracfg_rst 3>,
 				 <&infracfg_rst 4>;
@@ -7986,7 +8016,7 @@ cpus {
 			compatible = "mediatek,mt6885-clkbuf";
 			pmic = <&mt6359p_clkbuf>;
 			pmif = <&pwrap 0>,
-			       <&spmi 0>;
+			       <&spmi_bus 0>;
 			srclken-rc = <&srclken_rc>;
 		};
 

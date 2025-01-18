@@ -12,6 +12,7 @@
 #include "mediatek/cust_mt6893_msdc.dtsi"
 #include "mediatek/bat_setting/mt6893_battery_prop.dtsi"
 #include "mediatek/trusty.dtsi"
+#include <dt-bindings/power/mtk-charger.h>
 
 / {
 
@@ -1286,8 +1287,9 @@
 
 	mtk_ctd: mtk_ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mt6360_chg>;
-		bc12_sel = <0>;
+		nr-port = <1>;
+		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
+		bc12-psy-port0 = <&mt6360_chg>;
 	};
 
 	typec_mux_switch: typec_mux_switch {
@@ -1351,6 +1353,7 @@
 &pmic {
 	interrupt-parent = <&pio>;
 	interrupts = <222 IRQ_TYPE_LEVEL_HIGH 222 0>;
+	status = "okay";
 
 	mt6359p_batoc_throttle: mtk_battery_oc_throttling {
 		compatible = "mediatek,mt6359p-battery_oc_throttling";
@@ -1396,7 +1399,10 @@
 	};
 };
 
-&spmi {
+
+
+&spmi_bus {
+	grpid = <11>;
 	mt6315_3: mt6315@3 {
 		compatible = "mediatek,mt6315", "mtk,spmi-pmic";
 		reg = <0x3 0 0xb 1>;
@@ -1404,12 +1410,13 @@
 		extbuck_debug {
 			compatible = "mediatek,extbuck-debug";
 		};
-		mt6315_3_regulator: mt6315_3_regulator {
+
+		mt6315_3_regulator: mt6315-3-regulator {
 			compatible = "mediatek,mt6315_3-regulator";
 			buck-size = <3>;
 			buck1-modeset-mask = <0x3>;
 
-			mt6315_3_vbuck1: 3_vbuck1 {
+			mt6315_3_vbuck1: 3-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "3_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -1419,7 +1426,7 @@
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck3: 3_vbuck3 {
+			mt6315_3_vbuck3: 3-vbuck3 {
 				regulator-compatible = "vbuck3";
 				regulator-name = "3_vbuck3";
 				regulator-min-microvolt = <300000>;
@@ -1429,7 +1436,7 @@
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck4: 3_vbuck4 {
+			mt6315_3_vbuck4: 3-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "3_vbuck4";
 				regulator-min-microvolt = <300000>;
@@ -1448,12 +1455,13 @@
 		extbuck_debug {
 			compatible = "mediatek,extbuck-debug";
 		};
-		mt6315_6_regulator: mt6315_6_regulator {
+
+		mt6315_6_regulator: mt6315-6-regulator {
 			compatible = "mediatek,mt6315_6-regulator";
 			buck-size = <1>;
 			buck1-modeset-mask = <0xF>;
 
-			mt6315_6_vbuck1: 6_vbuck1 {
+			mt6315_6_vbuck1: 6-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "6_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -1472,12 +1480,12 @@
 		extbuck_debug {
 			compatible = "mediatek,extbuck-debug";
 		};
-		mt6315_7_regulator: mt6315_7_regulator {
+		mt6315_7_regulator: mt6315-7-regulator {
 			compatible = "mediatek,mt6315_7-regulator";
 			buck-size = <3>;
 			buck1-modeset-mask = <0x3>;
 
-			mt6315_7_vbuck1: 7_vbuck1 {
+			mt6315_7_vbuck1: 7-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "7_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -1486,7 +1494,7 @@
 				regulator-allowed-modes = <0 1 2>;
 			};
 
-			mt6315_7_vbuck3: 7_vbuck3 {
+			mt6315_7_vbuck3: 7-vbuck3 {
 				regulator-compatible = "vbuck3";
 				regulator-name = "7_vbuck3";
 				regulator-min-microvolt = <300000>;
@@ -1495,7 +1503,7 @@
 				regulator-always-on;
 			};
 
-			mt6315_7_vbuck4: 7_vbuck4 {
+			mt6315_7_vbuck4: 7-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "7_vbuck4";
 				regulator-min-microvolt = <300000>;
