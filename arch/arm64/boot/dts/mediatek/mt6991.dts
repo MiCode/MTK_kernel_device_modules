@@ -8145,7 +8145,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				"camsys_cam2sys_gals_cgpdn",
 				"camsys_cam2mm2_gals_cgpdn",
 				"mmdvfs_mux";
-				//mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
+			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
 		};
 
 		cam_raw_a: cam-raw-a@3a800000 {
