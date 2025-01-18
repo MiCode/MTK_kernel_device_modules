@@ -489,9 +489,9 @@ static const char *mt6991_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0xf) == 0x7)
 				return "MMINFRA_HRE2";
 			else if ((bus_id & 0xf) == 0x9)
-				return "GCED";
-			else if ((bus_id & 0xf) == 0xb)
 				return "HFRP";
+			else if ((bus_id & 0xf) == 0xb)
+				return "GCED";
 			else
 				return mminfra_domain[domain];
 
