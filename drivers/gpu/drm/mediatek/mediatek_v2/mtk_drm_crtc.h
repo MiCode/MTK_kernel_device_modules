@@ -173,9 +173,14 @@ enum DISP_VBLANK_REC_JOB_TYPE {
 
 #define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_PANEL_SPR_EN + 0x4)
 
+/* For idlemgr by wb*/
+#define DISP_SLOT_IDLEMGR_BY_WB_STATUS (DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE + 0x4)
+#define DISP_SLOT_IDLEMGR_BY_WB_TRACE (DISP_SLOT_IDLEMGR_BY_WB_STATUS + 0x4)
+#define DISP_SLOT_IDLEMGR_BY_WB_BREAK  (DISP_SLOT_IDLEMGR_BY_WB_TRACE + 0x4)
+
 /* reset OVL log */
 #define OVL_RT_LOG_NR 10
-#define DISP_SLOT_OVL_COMP_ID(n) (DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE + 0x4 + (0x4 * (n)))
+#define DISP_SLOT_OVL_COMP_ID(n) (DISP_SLOT_IDLEMGR_BY_WB_BREAK + 0x4 + (0x4 * (n)))
 #define DISP_SLOT_OVL_GREQ_CNT(n) (DISP_SLOT_OVL_COMP_ID(OVL_RT_LOG_NR) + (0x4 * (n)))
 #define DISP_SLOT_OVL_RT_LOG_END DISP_SLOT_OVL_GREQ_CNT(OVL_RT_LOG_NR)
 
@@ -606,6 +611,9 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_Y2R_EOF,
 	EVENT_MML_DISP_DONE_EVENT,
 	EVENT_AAL_EOF,
+	EVENT_UFBC_WDMA1_EOF,
+	EVENT_UFBC_WDMA3_EOF,
+	EVENT_OVLSYS_UFBC_WDMA0_EOF,
 	EVENT_TYPE_MAX,
 };
 
@@ -1269,6 +1277,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait);
 void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_disconnect_default_path(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc);
+void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc);
 bool mtk_crtc_set_status(struct drm_crtc *crtc, bool status);
 int mtk_crtc_attach_addon_path_comp(struct drm_crtc *crtc,
@@ -1360,6 +1369,18 @@ bool mtk_drm_get_hdr_property(void);
 int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level);
 int mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(struct drm_crtc *crtc);
 
+int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_ddp_comp *comp);
+void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
+void _mtk_crtc_atmoic_addon_module_connect(
+				      struct drm_crtc *crtc,
+				      unsigned int ddp_mode,
+				      struct mtk_lye_ddp_state *lye_state,
+				      struct cmdq_pkt *cmdq_handle);
+void _mtk_crtc_atmoic_addon_module_disconnect(
+	struct drm_crtc *crtc, unsigned int ddp_mode,
+	struct mtk_lye_ddp_state *lye_state, struct cmdq_pkt *cmdq_handle);
+
 int mtk_drm_crtc_wait_blank(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_crtc_init_para(struct drm_crtc *crtc);
 void trigger_without_cmdq(struct drm_crtc *crtc);
@@ -1430,6 +1451,10 @@ void mtk_crtc_set_width_height(
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state,
 	struct cmdq_pkt *cmdq_handle, unsigned int enable);
+
+bool msync_is_on(struct mtk_drm_private *priv, struct mtk_panel_params *params,
+		unsigned int crtc_id, struct mtk_crtc_state *state,
+		struct mtk_crtc_state *old_state);
 
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);

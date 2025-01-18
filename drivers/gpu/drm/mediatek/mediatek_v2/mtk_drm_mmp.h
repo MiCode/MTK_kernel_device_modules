@@ -41,6 +41,8 @@ struct DRM_MMP_Events {
 	mmp_event wdma0;
 	mmp_event wdma1;
 	mmp_event wdma12;
+	mmp_event ufbc_wdma0;
+	mmp_event ufbc_wdma1;
 	mmp_event dsi;
 	mmp_event dsi0;
 	mmp_event dsi1;
