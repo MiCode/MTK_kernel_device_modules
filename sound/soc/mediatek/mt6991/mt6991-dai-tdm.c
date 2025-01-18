@@ -372,9 +372,6 @@ static const struct snd_soc_dapm_widget mtk_dai_tdm_widgets[] = {
 			 &hdmi_out_mux_control),
 	SND_SOC_DAPM_MUX("DPTX_OUT_MUX", SND_SOC_NOPM, 0, 0,
 			 &dptx_out_mux_control),
-#if !defined(SKIP_SB_AUDIO)
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_tdmout_b_ck_peri"),
-#endif
 
 	SND_SOC_DAPM_SUPPLY_S("TDM_BCK", SUPPLY_SEQ_TDM_BCK_EN,
 			      SND_SOC_NOPM, 0, 0,
@@ -510,15 +507,9 @@ static const struct snd_soc_dapm_route mtk_dai_tdm_routes[] = {
 	{"DPTX_OUT_MUX", "Connect", "HDMI_CH7_MUX"},
 
 	{"TDM", NULL, "HDMI_OUT_MUX"},
-#if !defined(SKIP_SB_AUDIO)
-	{"TDM", NULL, "aud_tdmout_b_ck_peri"},
-#endif
 	{"TDM", NULL, "TDM_BCK"},
 
 	{"TDM_DPTX", NULL, "DPTX_OUT_MUX"},
-#if !defined(SKIP_SB_AUDIO)
-	{"TDM_DPTX", NULL, "aud_tdmout_b_ck_peri"},
-#endif
 	{"TDM_DPTX", NULL, "TDM_DPTX_BCK"},
 
 	{"TDM_BCK", NULL, "TDM_MCK"},

@@ -186,14 +186,14 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 				if (mt6991_is_need_enable_cm(afe, CM2))
 					mt6991_enable_cm(afe, CM2, 1);
 			}
-			// VUL24~VUL26 need to set on use to avoid out con being CM2
-			if (memif->data->out_on_use_reg > 0 && (!strcmp(memif->data->name, "VUL24")
-				|| !strcmp(memif->data->name, "VUL25")
-				|| !strcmp(memif->data->name, "VUL26"))) {
-				mtk_regmap_update_bits(afe->regmap, memif->data->out_on_use_reg,
-							memif->data->out_on_use_mask, 0x1,
-							memif->data->out_on_use_shift);
-			}
+		}
+		// VUL24~VUL26 need to set on use to avoid out con being CM2
+		if (memif->data->out_on_use_reg > 0 && (!strcmp(memif->data->name, "VUL24")
+			|| !strcmp(memif->data->name, "VUL25")
+			|| !strcmp(memif->data->name, "VUL26"))) {
+			mtk_regmap_update_bits(afe->regmap, memif->data->out_on_use_reg,
+						memif->data->out_on_use_mask, 0x1,
+						memif->data->out_on_use_shift);
 		}
 
 		/*
@@ -253,14 +253,6 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 				mt6991_enable_cm(afe, CM1, 0);
 			if (!strcmp(memif->data->name, "VUL10"))
 				mt6991_enable_cm(afe, CM2, 0);
-			// VUL24~VUL26 need to set on use to avoid out con being CM2
-			if (memif->data->out_on_use_reg > 0 && (!strcmp(memif->data->name, "VUL24")
-				|| !strcmp(memif->data->name, "VUL25")
-				|| !strcmp(memif->data->name, "VUL26"))) {
-				mtk_regmap_update_bits(afe->regmap, memif->data->out_on_use_reg,
-							memif->data->out_on_use_mask, 0x0,
-							memif->data->out_on_use_shift);
-			}
 		}
 
 		if (!runtime->no_period_wakeup) {
@@ -272,6 +264,15 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 			regmap_update_bits(afe->regmap, irq_data->irq_clr_reg,
 					   0xc0000000,
 					   tmp_reg^0xc0000000);
+		}
+
+		// VUL24~VUL26 need to set on use to avoid out con being CM2
+		if (memif->data->out_on_use_reg > 0 && (!strcmp(memif->data->name, "VUL24")
+			|| !strcmp(memif->data->name, "VUL25")
+			|| !strcmp(memif->data->name, "VUL26"))) {
+			mtk_regmap_update_bits(afe->regmap, memif->data->out_on_use_reg,
+						memif->data->out_on_use_mask, 0x0,
+						memif->data->out_on_use_shift);
 		}
 
 		return ret;
@@ -5301,6 +5302,7 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AUDIO_TOP_CON2:
 	case AUDIO_TOP_CON3:
 	case AUDIO_TOP_CON4:
+	case AUD_TOP_MON_RG:
 	case AFE_APLL1_TUNER_MON0:
 	case AFE_APLL2_TUNER_MON0:
 	case AFE_SPM_CONTROL_ACK:
@@ -5467,6 +5469,8 @@ static bool mt6991_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_VUL24_CUR:
 	case AFE_VUL25_CUR_MSB:
 	case AFE_VUL25_CUR:
+	case AFE_VUL25_RCH_MON:
+	case AFE_VUL25_LCH_MON:
 	case AFE_VUL26_CUR_MSB:
 	case AFE_VUL26_CUR:
 	case AFE_VUL_CM0_CUR_MSB:
@@ -5845,11 +5849,11 @@ static int mt6991_afe_pcm_copy(struct snd_pcm_substream *substream,
 	if (!component)
 		return -EINVAL;
 	afe = snd_soc_component_get_drvdata(component);
-	//mt6991_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4);
+	// mt6991_set_audio_int_bus_parent(afe, CLK_CK_MAINPLL_D4_D4);
 
 	ret = sp_copy(substream, channel, hwoff, buf, bytes);
 
-	//mt6991_set_audio_int_bus_parent(afe, CLK_CLK26M);
+	// mt6991_set_audio_int_bus_parent(afe, CLK_CLK26M);
 
 	return ret;
 }
@@ -6304,6 +6308,12 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AUDIO_ENGEN_CON0_MON, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUDIO_ENGEN_CON0_MON = 0x%x\n", value);
+	regmap_read(afe->regmap, AUD_TOP_CFG_VLP_RG, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AUD_TOP_CFG_VLP_RG = 0x%x\n", value);
+	regmap_read(afe->regmap, AUD_TOP_MON_RG, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AUD_TOP_MON_RG = 0x%x\n", value);
 	regmap_read(afe->regmap, AUDIO_USE_DEFAULT_DELSEL0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUDIO_USE_DEFAULT_DELSEL0 = 0x%x\n", value);
@@ -10051,6 +10061,12 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AFE_VUL25_CON0, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_VUL25_CON0 = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_VUL25_RCH_MON, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_VUL25_RCH_MON = 0x%x\n", value);
+	regmap_read(afe->regmap, AFE_VUL25_LCH_MON, &value);
+	n += scnprintf(buffer + n, size - n,
+		"AFE_VUL25_LCH_MON = 0x%x\n", value);
 	regmap_read(afe->regmap, AFE_VUL26_BASE_MSB, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AFE_VUL26_BASE_MSB = 0x%x\n", value);
