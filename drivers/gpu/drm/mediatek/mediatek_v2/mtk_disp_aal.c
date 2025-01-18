@@ -327,7 +327,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 			offset += snprintf(buf + offset, sizeof(buf) - offset, "[%s:%d-%d] ", tag, start, end);
 			if (offset >= sizeof(buf)) {
 				buf[sizeof(buf) - 1] = '\0';  // Ensure null-termination
-				AALDUMP_LOG("%s overflow\n", buf);
+				AALCRT_LOG("%s overflow\n", buf);
 				offset = 0;
 				offset += snprintf(buf + offset, sizeof(buf) - offset, "[%s:%d-%d] ", tag, start, end);
 			}
@@ -335,7 +335,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 		offset += snprintf(buf + offset, sizeof(buf) - offset, "%u ", arr[i]);
 		if (offset >= sizeof(buf)) {
 			buf[sizeof(buf) - 1] = '\0';  // Ensure null-termination
-			AALDUMP_LOG("%s overflow\n", buf);
+			AALCRT_LOG("%s overflow\n", buf);
 			offset = 0;
 			start = i;
 			end = start + elements_per_line - 1;
@@ -344,7 +344,7 @@ static void print_uint_array(const char *tag, const unsigned int *arr, int lengt
 		}
 		if ((i + 1) % elements_per_line == 0 || i == length - 1) {
 			buf[offset - 1] = '\0';  // Replace the last space with a newline character
-			AALDUMP_LOG("%s\n", buf);
+			AALCRT_LOG("%s\n", buf);
 			offset = 0;  // Reset the offset
 			start = i;
 			end = start + elements_per_line - 1;
@@ -3686,8 +3686,10 @@ static int disp_aal_cfg_clarity_set_reg(struct mtk_ddp_comp *comp,
 	memcpy(aal_data->primary_data->disp_clarity_regs, (struct DISP_CLARITY_REG *)data,
 		sizeof(struct DISP_CLARITY_REG));
 
-	disp_aal_dump_algo_clarity_output_reg(*aal_data->primary_data->disp_clarity_regs);
-	disp_aal_dump_algo_tdshp_output_reg(*aal_data->primary_data->disp_clarity_regs);
+	if (debug_dump_clarity_regs) {
+		disp_aal_dump_algo_clarity_output_reg(*aal_data->primary_data->disp_clarity_regs);
+		disp_aal_dump_algo_tdshp_output_reg(*aal_data->primary_data->disp_clarity_regs);
+	}
 
 	CRTC_MMP_EVENT_START(0, clarity_set_regs, 0, 0);
 	if (disp_aal_set_clarity_reg(comp, handle, aal_data->primary_data->disp_clarity_regs) < 0) {
