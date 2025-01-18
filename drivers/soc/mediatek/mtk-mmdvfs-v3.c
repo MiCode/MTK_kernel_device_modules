@@ -2134,6 +2134,10 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 		last_vote_step[i] = -1;
 		last_force_step[i] = -1;
 	}
+	for (i = 0; i < MMDVFS_USER_NUM; i++) {
+		last_test_ap_set_opp[i] = -1;
+		last_test_ap_set_rate[i] = -1;
+	}
 
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
