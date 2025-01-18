@@ -146,7 +146,7 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 			goto datamem_dmabuf_put;
 		}
 
-		dmem_sgt = dma_buf_map_attachment(dmem_attach,
+		dmem_sgt = dma_buf_map_attachment_unlocked(dmem_attach,
 					DMA_BIDIRECTIONAL);
 		if (IS_ERR(dmem_sgt)) {
 			pr_info("%s map failed, detach and return\n", __func__);
@@ -163,7 +163,7 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 		if (ret)
 			pr_info("%s call to HA failed (%d)\n", __func__, ret);
 
-		dma_buf_unmap_attachment(dmem_attach,
+		dma_buf_unmap_attachment_unlocked(dmem_attach,
 					dmem_sgt, DMA_BIDIRECTIONAL);
 datamem_dmabuf_detach:
 		dma_buf_detach(dmem_dmabuf, dmem_attach);

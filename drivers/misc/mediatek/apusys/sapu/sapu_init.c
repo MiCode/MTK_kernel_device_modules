@@ -150,10 +150,10 @@ static int dram_fb_register(void)
 		goto dmabuf_free;
 	}
 
-	dmem_sgt = dma_buf_map_attachment(sapu->dram_fb_info.dram_fb_attach,
+	dmem_sgt = dma_buf_map_attachment_unlocked(sapu->dram_fb_info.dram_fb_attach,
 					  DMA_BIDIRECTIONAL);
 	if (IS_ERR(dmem_sgt)) {
-		pr_info("[%s]dma_buf_map_attachment fail\n", __func__);
+		pr_info("[%s]dma_buf_map_attachment_unlocked fail\n", __func__);
 		ret = PTR_ERR(dmem_sgt);
 		goto dmabuf_detach;
 	}
