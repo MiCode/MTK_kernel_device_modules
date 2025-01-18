@@ -254,51 +254,19 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 	return ret;
 }
 
-// boost range : 100 ~ 0 (from fast to slow)
-// opp range : 1 ~ USER_MIN_OPP_VAL (from fast to slow) , opp0 is turbo boost
-static int _apu_boost_to_opp(int boost)
-{
-	int opp, sec;
-	int opp_min_num = USER_MIN_OPP_VAL;
-
-	if (boost > 100)
-		return TURBO_BOOST_OPP;
-
-	if (boost < 0)
-		boost = 0;
-
-	// not include opp 0, adjust here to handle the part of not divisible
-	sec = 100 / opp_min_num;
-	opp = opp_min_num - (boost / sec);
-
-	if (opp > opp_min_num)
-		opp = opp_min_num;
-
-	if (opp <= TURBO_BOOST_OPP)
-		opp = TURBO_BOOST_OPP + 1;
-
-	return opp;
-}
-
 static void plat_dump_boost_mapping(struct seq_file *s)
 {
-	int boost, opp, i;
-	int opp_cnt[USER_MIN_OPP_VAL + 1] = {};
-	int begin, end;
-
-	for (boost = TURBO_BOOST_VAL ; boost >= 0 ; boost--) {
-		opp = _apu_boost_to_opp(boost);
-		opp_cnt[opp]++;
-	}
-
-	begin = TURBO_BOOST_VAL;
-
-	for (i = 0 ; i < USER_MIN_OPP_VAL + 1; i++) {
-		end = begin - opp_cnt[i] + 1;
-		seq_printf(s, "opp%d : boost %d ~ %d (%d)\n",
-					i, begin, end, opp_cnt[i]);
-		begin -= opp_cnt[i];
-	}
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 0, 100, 100);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 1,  99,  90);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 2,  89,  80);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 3,  79,  70);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 4,  69,  60);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 5,  59,  50);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 6,  49,  40);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 7,  39,  30);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 8,  29,  20);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 9,  19,  10);
+	seq_printf(s, "opp%02d : boost %03d ~ %03d\n", 10,  9,   0);
 }
 
 static int aputop_show_opp_tbl(struct seq_file *s, void *unused)
@@ -310,14 +278,14 @@ static int aputop_show_opp_tbl(struct seq_file *s, void *unused)
 	memcpy(&tbl, &opp_tbl, sizeof(struct tiny_dvfs_opp_tbl));
 	size = tbl.tbl_size;
 	// first line
-	seq_printf(s, "\n| # | %s | %s|", buck_name[0], buck_name[1]);
+	seq_printf(s, "\n| #  | %s | %s|", buck_name[0], buck_name[1]);
 
 	for (i = 0 ; i < PLL_NUM ; i++)
 		seq_printf(s, " %s |", pll_name[i]);
 	seq_puts(s, "\n");
 
 	for (i = 0 ; i < size ; i++) {
-		seq_printf(s, "| %d |   %06d  |   %06d  |",
+		seq_printf(s, "| %01d |   %06d  |   %06d  |",
 			i, tbl.opp[i].vapu, tbl.opp[i].vsram);
 		for (j = 0 ; j < PLL_NUM ; j++)
 			seq_printf(s, "  %07d |", tbl.opp[i].pll_freq[j]);
@@ -327,7 +295,7 @@ static int aputop_show_opp_tbl(struct seq_file *s, void *unused)
 	size = tbl.tbl_size;
 
 	for (k = 0; size > 0 ; size--, i++, k++) {
-		seq_printf(s, "| %d |   %06d  |   %06d  |",
+		seq_printf(s, "| %01d |   %06d  |   %06d  |",
 			i, tbl.opp[k].vapu, tbl.opp[k].vsram);
 		for (j = 0 ; j < PLL_NUM ; j++)
 			seq_printf(s, "  %07d |", tbl.opp[k].pll_freq[j]);
