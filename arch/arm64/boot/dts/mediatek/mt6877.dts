@@ -3265,14 +3265,13 @@
 			"mbox2",
 			"mbox3";
 		#mbox-cells = <1>;
-		clocks = <&scpsys SCP_SYS_ADSP_DORMANT>,
-			<&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_ADSP_DORMANT>;
+		clocks = <&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>,
 			<&topckgen_clk CLK_TOP_ADSP_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_ADSPPLL>,
 			<&topckgen_clk CLK_TOP_SCP_SEL>;
-		clock-names = "scp_sys_adsp",
-			"clk_adsp_ck_cg",
+		clock-names = "clk_adsp_ck_cg",
 			"clk_top_adsp_sel",
 			"clk_top_clk26m",
 			"clk_top_adsppll",
@@ -3501,11 +3500,11 @@
 		fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
 				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 
-		clocks = <&scpsys SCP_SYS_DISP>,
-			    <&mmsys_config_clk CLK_MM_DISP_26M>,
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_DISP>;
+		clocks = <&mmsys_config_clk CLK_MM_DISP_26M>,
 			   <&mmsys_config_clk CLK_MM_APB_BUS>,
 			   <&mmsys_config_clk CLK_MM_DISP_MUTEX0>;
-		clock-num = <4>;
+		clock-num = <3>;
 		pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 
 		/* define threads, see mt6877-gce.h */
@@ -4781,12 +4780,11 @@
 		compatible = "mediatek,ccu";
 		reg = <0 0x1a101000 0 0x1000>;
 		interrupts = <GIC_SPI 403 IRQ_TYPE_LEVEL_HIGH 0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_CAM>;
 		clocks = <&camsys_main_clk CLK_CAM_M_CCU0>,
-					<&topckgen_clk CLK_TOP_CCU_SEL>,
-					<&scpsys SCP_SYS_CAM>;
+					<&topckgen_clk CLK_TOP_CCU_SEL>;
 		clock-names = "CCU_CLK_CAM_CCU",
-						"CCU_CLK_TOP_MUX",
-						"CAM_PWR";
+						"CCU_CLK_TOP_MUX";
 	};
 
 	iommu0: m4u@14016000 {
@@ -4800,9 +4798,9 @@
 				<&smi_larb16 &smi_larb17 &smi_larb18>,
 				<&smi_larb19 &smi_larb20>;
 		interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
-		clocks = <&mmsys_config_clk CLK_MM_SMI_IOMMU>,
-			 <&scpsys SCP_SYS_DISP>;
-		clock-names = "disp-iommu-ck", "power";
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_DISP>;
+		clocks = <&mmsys_config_clk CLK_MM_SMI_IOMMU>;
+		clock-names = "disp-iommu-ck";
 		#iommu-cells = <1>;
 	};
 
@@ -4812,8 +4810,7 @@
 		iommu_id = <1>;
 		iommu_type = "apu";
 		interrupts = <GIC_SPI 481 IRQ_TYPE_LEVEL_HIGH 0>;
-		clocks = <&scpsys SCP_SYS_APU>;
-		clock-names = "power";
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_APU>;
 		#iommu-cells = <1>;
 	};
 
@@ -4946,15 +4943,14 @@
 		compatible = "mediatek,wpe_a";
 		reg = <0 0x15811000 0 0x1000>;
 		interrupts = <GIC_SPI 431 IRQ_TYPE_LEVEL_HIGH 0>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>;
 		clocks =
 			<&imgsys2_clk CLK_IMGSYS2_LARB9>,
-			<&imgsys2_clk CLK_IMGSYS2_WPE>,
-			<&scpsys SCP_SYS_ISP0>;
+			<&imgsys2_clk CLK_IMGSYS2_WPE>;
 
 		clock-names =
 			"WPE_CLK_IMG_LARB9",
-			"WPE_CLK_IMG_WPE_A",
-			"WPE_CLK_IMG";
+			"WPE_CLK_IMG_WPE_A";
 	};
 
 	smi_larb11: smi-larb11@1582e000 {
@@ -5031,16 +5027,15 @@
 		/bits/ 16 <CMDQ_EVENT_MFB_DONE_LINK_MISC>;
 		msf_token =
 		/bits/ 16 <CMDQ_SYNC_TOKEN_MSF>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_ISP0>;
 		clocks =
 				<&imgsys2_clk CLK_IMGSYS2_LARB9>,
 				<&imgsys2_clk CLK_IMGSYS2_MSS>,
-				<&imgsys2_clk CLK_IMGSYS2_MFB>,
-				<&scpsys SCP_SYS_ISP0>;
+				<&imgsys2_clk CLK_IMGSYS2_MFB>;
 		clock-names =
 				"MFB_CG_IMG2_LARB11",
 				"MFB_CG_IMG2_MSS",
-				"MFB_CG_IMG2_MFB",
-				"MFB_CG_IMG1_GALS";
+				"MFB_CG_IMG2_MFB";
 	};
 
 	imgsys_mfb_b@15820000 {
@@ -5307,8 +5302,7 @@
 			<0 0x11ea0000 0 0xa14>, /* 14. IOCFG_RT */
 			<0 0x18002000 0 0x2c>,  /* 15. conn_therm_ctl */
 			<0 0x1802e000 0 0x4c>;  /* 16. conn_bcrm_on */
-		clocks = <&scpsys SCP_SYS_CONN>;
-		clock-names = "conn";
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_CONN>;
 		memory-region = <&consys_mem>;
 	};
 
@@ -5469,9 +5463,12 @@
 	seninf_top@1a004000 {
 		compatible = "mediatek,seninf_top";
 		reg = <0 0x1a004000 0 0x1000>;
-		clocks =<&scpsys SCP_SYS_CSI>,
-			<&scpsys SCP_SYS_CAM>,
-			<&camsys_main_clk CLK_CAM_M_SENINF>,
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_CSI>,
+					<&scpsys MT6877_POWER_DOMAIN_CAM>;
+		power-domain-names =
+			"pd_csi",
+			"pd_cam";
+		clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
 			<&topckgen_clk CLK_TOP_SENINF_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF1_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF2_SEL>,
@@ -5490,9 +5487,7 @@
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
 			<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D5>;
-		clock-names = "SCP_SYS_CSI",
-			"SCP_SYS_CAM",
-			"CAMSYS_SENINF_CGPDN",
+		clock-names = "CAMSYS_SENINF_CGPDN",
 			"TOP_MUX_SENINF",
 			"TOP_MUX_SENINF1",
 			"TOP_MUX_SENINF2",
@@ -5516,11 +5511,15 @@
 	camsys: camsys@1a000000 {
 		compatible = "mediatek,camsys", "syscon";
 		reg = <0 0x1a000000 0 0x10000>;
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_CAM>,
+					<&scpsys MT6877_POWER_DOMAIN_CAM_RAWA>,
+					<&scpsys MT6877_POWER_DOMAIN_CAM_RAWB>;
+		power-domain-names =
+			"pd_cam",
+			"pd_cam_rawa",
+			"pd_cam_rawb";
 		/* Camera CCF */
-		clocks = <&scpsys SCP_SYS_CAM>,
-				<&scpsys SCP_SYS_CAM_RAWA>,
-				<&scpsys SCP_SYS_CAM_RAWB>,
-				<&camsys_main_clk CLK_CAM_M_CAM>,
+		clocks = <&camsys_main_clk CLK_CAM_M_CAM>,
 				<&camsys_main_clk CLK_CAM_M_CAMTG>,
 				<&camsys_main_clk CLK_CAM_M_CAMSV0>,
 				<&camsys_main_clk CLK_CAM_M_CAMSV1>,
@@ -5539,10 +5538,7 @@
 				<&camsys_rawb_clk CLK_CAM_RB_CAMTG>,
 				<&topckgen_clk CLK_TOP_CCU_SEL>,
 				<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-		clock-names = "ISP_SCP_SYS_CAM",
-				"ISP_SCP_SYS_RAWA",
-				"ISP_SCP_SYS_RAWB",
-				"CAMSYS_CAM_CGPDN",
+		clock-names = "CAMSYS_CAM_CGPDN",
 				"CAMSYS_CAMTG_CGPDN",
 				"CAMSYS_CAMSV0_CGPDN",
 				"CAMSYS_CAMSV1_CGPDN",
@@ -6173,8 +6169,8 @@
 		/* vvpu-supply = <&mt_pmic_vproc1_buck_reg>; */
 		/* vsram_apu-supply = <&mt_pmic_vsram_others_ldo_reg>; */
 		/* vcore-supply = <&mt_pmic_vgpu11_buck_reg>; */
-		clocks = <&scpsys SCP_SYS_APU>,
-			 <&topckgen_clk CLK_TOP_DSP>,
+		power-domains = <&scpsys MT6877_POWER_DOMAIN_APU>;
+		clocks = <&topckgen_clk CLK_TOP_DSP>,
 			 <&topckgen_clk CLK_TOP_DSP1>,
 			 <&topckgen_clk CLK_TOP_DSP2>,
 			 <&topckgen_clk CLK_TOP_DSP4>,
@@ -6182,8 +6178,7 @@
 			 <&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
 			 <&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
 			 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>;
-		clock-names = "mtcmos_scp_sys_vpu",
-			      "clk_top_dsp_sel",
+		clock-names = "clk_top_dsp_sel",
 			      "clk_top_dsp1_sel",
 			      "clk_top_dsp2_sel",
 			      "clk_top_dsp5_sel",
