@@ -41,7 +41,8 @@ struct mtk_drm_qos_ctx {
 void mtk_disp_pmqos_get_icc_path_name(char *buf, int buf_len,
 				struct mtk_ddp_comp *comp, char *qos_event);
 int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
-				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode);
+				unsigned int bandwidth, unsigned int peak_bw, unsigned int bw_mode,
+				bool real_srt_ostdl);
 void __mtk_disp_set_module_hrt(struct icc_path *request,
 				unsigned int bandwidth, bool respective_ostdl);
 void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc);

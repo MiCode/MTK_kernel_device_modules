@@ -84,6 +84,7 @@ struct mtk_mmsys_driver_data {
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;
+	bool real_srt_ostdl;
 };
 
 struct mtk_drm_lyeblob_ids {
