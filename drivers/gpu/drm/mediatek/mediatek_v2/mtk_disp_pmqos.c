@@ -334,20 +334,26 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 		return 0;
 
-	for (i = 0; i < DDP_PATH_NR; i++) {
-		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-			continue;
-		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
-			continue;
-		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
-			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-						   &tmp);
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6765) {
+		DDPMSG("%s: no need to set module hrt bw for legacy!\n", __func__);
+	} else {
+		for (i = 0; i < DDP_PATH_NR; i++) {
+			if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+				continue;
+			if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+				continue;
+			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+							&tmp);
+			}
+			if (!mtk_crtc->is_dual_pipe)
+				continue;
+			for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
+				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+						&tmp);
 		}
-		if (!mtk_crtc->is_dual_pipe)
-			continue;
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
-			ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-					&tmp);
 	}
 
 	if (ret == RDMA_REQ_HRT)
