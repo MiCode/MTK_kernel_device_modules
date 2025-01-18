@@ -37,8 +37,10 @@ extern struct mtk_smi_lock smi_lock;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
-#define MTK_SMI_MMU_EN(port)	BIT(port)
-#define TRIGGER_SMI_HANG_DETECT	(0xff)
+#define MTK_SMI_MMU_EN(port)		BIT(port)
+#define TRIGGER_SMI_HANG_DETECT		(0xff)
+#define TRIGGER_SMI_FORCE_ALL_ON	(0xfe)
+#define TRIGGER_SMI_FORCE_ALL_PUT	(0xfd)
 
 struct mtk_smi_larb_iommu {
 	struct device *dev;
@@ -76,6 +78,12 @@ int mtk_smi_larb_enable(struct device *larbdev, u32 smi_user_id);
 int mtk_smi_larb_disable(struct device *larbdev, u32 smi_user_id);
 s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port);
 int smi_ut_dump_get(const char *val, const struct kernel_param *kp);
+int mtk_smi_set_ostdl_type(struct device *larbdev, u32 ostdl_type);
+int mtk_smi_set_larb_value(struct device *larbdev, u32 offset, u32 value);
+int mtk_smi_set_comm_value(struct device *dev, u32 offset, u32 value);
+int mtk_smi_clear_larb_set_value(struct device *larbdev);
+int mtk_smi_clear_comm_set_value(struct device *dev);
+int mtk_smi_dump_all_setting(struct device *dev, bool is_larb);
 #else
 
 
@@ -166,6 +174,37 @@ int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 {
 	return 0;
 }
+static inline
+int mtk_smi_set_ostdl_type(struct device *larbdev, u32 ostdl_type)
+{
+	return 0;
+}
+static inline
+int mtk_smi_set_larb_value(struct device *larbdev, u32 offset, u32 value)
+{
+	return 0;
+}
+static inline
+int mtk_smi_set_comm_value(struct device *dev, u32 offset, u32 value)
+{
+	return 0;
+}
+static inline
+int mtk_smi_clear_larb_set_value(struct device *larbdev)
+{
+	return 0;
+}
+static inline
+int mtk_smi_clear_comm_set_value(struct device *dev)
+{
+	return 0;
+}
+static inline
+int mtk_smi_dump_all_setting(struct device *dev, bool is_larb)
+{
+	return 0;
+}
+
 #endif
 
 #endif
