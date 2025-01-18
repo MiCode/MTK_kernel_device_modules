@@ -275,6 +275,54 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	}
 }
 
+static void __iomem *SPM_SEMA_AP;
+#define KEY_HOLE    BIT(1)
+static void mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
+{
+	SPM_SEMA_AP = _SPM_SEMA_AP;
+	VDISPDBG("%s:0x%llx\n", __func__, (long long)SPM_SEMA_AP);
+}
+
+static void vdisp_set_aod_scp_semaphore(int lock)
+{
+	int i = 0;
+	bool key = false;
+
+	if (SPM_SEMA_AP == NULL)
+		return;
+
+	key = ((readl(SPM_SEMA_AP) & KEY_HOLE) == KEY_HOLE);
+	if (key == lock) {
+		VDISPDBG("%s, skip %s sema\n", __func__, lock ? "get" : "put");
+		return;
+	}
+
+	if (lock) {
+		do {
+			/* 40ms timeout */
+			if (unlikely(++i > 4000))
+				goto fail;
+			writel(KEY_HOLE, SPM_SEMA_AP);
+			udelay(10);
+		} while ((readl(SPM_SEMA_AP) & KEY_HOLE) != KEY_HOLE);
+	} else {
+		writel(KEY_HOLE, SPM_SEMA_AP);
+		do {
+			/* 10ms timeout */
+			if (unlikely(++i > 1000))
+				goto fail;
+			udelay(10);
+		} while (readl(SPM_SEMA_AP) & KEY_HOLE);
+	}
+
+	return;
+fail:
+	VDISPERR("%s: %s sema:0x%lx fail(0x%x), retry:%d\n",
+		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
+		readl(SPM_SEMA_AP), i);
+}
+
+
 static int genpd_event_notifier(struct notifier_block *nb,
 			  unsigned long event, void *data)
 {
@@ -285,9 +333,10 @@ static int genpd_event_notifier(struct notifier_block *nb,
 	case GENPD_NOTIFY_PRE_ON:
 		mutex_lock(&g_mtcmos_cnt_lock);
 
-		if (priv->pd_id == DISP_PD_DISP_VCORE)
+		if (priv->pd_id == DISP_PD_DISP_VCORE) {
 			__pm_stay_awake(g_vdisp_wake_lock);
-
+			vdisp_set_aod_scp_semaphore(1); //protect AOD SCP flow
+		}
 		mminfra_hwv_pwr_ctrl(priv, true);
 
 		if (atomic_read(&g_mtcmos_cnt) == 0)
@@ -369,9 +418,10 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 		mminfra_hwv_pwr_ctrl(priv, false);
 
-		if (priv->pd_id == DISP_PD_DISP_VCORE)
+		if (priv->pd_id == DISP_PD_DISP_VCORE) {
+			vdisp_set_aod_scp_semaphore(0); //protect AOD SCP flow
 			__pm_relax(g_vdisp_wake_lock);
-
+		}
 		atomic_dec(&g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
@@ -401,6 +451,7 @@ static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
+	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
