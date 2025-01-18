@@ -46,7 +46,7 @@
 #include <uapi/linux/dma-heap.h>
 #include <linux/mtk_vcu_controls.h>
 #include "mtk_vcu.h"
-#include "vcp_helper.h"
+#include "vcp_status.h"
 #include "mtk_heap.h"
 #include "iommu_pseudo.h"
 
@@ -2511,7 +2511,7 @@ static long mtk_vcu_allocation(
 		struct device *io_dev = vcu_queue->dev;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-		vcu_queue->dev = vcp_get_io_device(VCP_IOMMU_UBE_LAT);
+		vcu_queue->dev = vcp_get_io_device_ex(VCP_IOMMU_UBE_LAT);
 #endif
 		if (vcu_queue->dev == NULL)
 			vcu_queue->dev = io_dev;
@@ -2578,7 +2578,7 @@ static long mtk_vcu_free(
 		struct device *io_dev = vcu_queue->dev;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-		vcu_queue->dev = vcp_get_io_device(VCP_IOMMU_UBE_LAT);
+		vcu_queue->dev = vcp_get_io_device_ex(VCP_IOMMU_UBE_LAT);
 #endif
 		if (vcu_queue->dev == NULL)
 			vcu_queue->dev = io_dev;

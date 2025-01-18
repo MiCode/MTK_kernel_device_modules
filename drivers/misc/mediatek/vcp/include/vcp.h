@@ -8,6 +8,7 @@
 
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 
+#define VCP_SYNC_TIMEOUT_MS             (1000)
 #define VCP_MBOX_TOTAL 5
 
 /* core0 system */
@@ -101,6 +102,21 @@ enum VCP_NOTIFY_EVENT {
 	VCP_EVENT_RESUME,
 };
 
+/* vcp iommus */
+enum VCP_IOMMU_DEV {
+	VCP_IOMMU_VCP = 0,
+	VCP_IOMMU_VDEC = 1,
+	VCP_IOMMU_VENC = 2,
+	VCP_IOMMU_WORK = 3,
+	VCP_IOMMU_UBE_LAT = 4,
+	VCP_IOMMU_UBE_CORE = 5,
+	VCP_IOMMU_SEC = 6,
+	VCP_IOMMU_ACP_VDEC = 7,
+	VCP_IOMMU_ACP_VENC = 8,
+	VCP_IOMMU_ACP_CODEC = 9,
+	VCP_IOMMU_DEV_NUM,
+};
+
 /* vcp reserve memory ID definition*/
 enum vcp_reserve_mem_id_t {
 	VDEC_MEM_ID,
@@ -134,7 +150,6 @@ enum feature_id {
 	NUM_FEATURE_ID,
 };
 
-
 /* vcp cmd ID definition */
 enum vcp_cmd_id {
 	VCP_SET_HALT         = 0,
@@ -149,39 +164,6 @@ extern struct mtk_ipi_device vcp_ipidev;
 extern struct mtk_mbox_info *vcp_mbox_info;
 extern struct mtk_mbox_pin_send *vcp_mbox_pin_send;
 extern struct mtk_mbox_pin_recv *vcp_mbox_pin_recv;
-
-
-/* An API to get vcp status */
-extern unsigned int is_vcp_ready(enum feature_id id);
-extern unsigned int get_vcp_generation(void);
-
-/* APIs to lock vcp and make vcp awaken */
-extern int vcp_awake_lock(void *_vcp_id);
-extern int vcp_awake_unlock(void *_vcp_id);
-
-/* APIs for register notification */
-extern void vcp_A_register_notify(enum feature_id id, struct notifier_block *nb);
-extern void vcp_A_unregister_notify(enum feature_id id, struct notifier_block *nb);
-
-extern unsigned int is_vcp_suspending(void);
-extern unsigned int is_vcp_ao(void);
-
-/* APIs for hardware semaphore */
-extern int get_vcp_semaphore(int flag);
-extern int release_vcp_semaphore(int flag);
-
-/* APIs for reserved memory */
-extern phys_addr_t vcp_get_reserve_mem_phys(enum vcp_reserve_mem_id_t id);
-extern phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id);
-extern phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id);
-
-/* APIs for registering function of features */
-extern int vcp_register_feature(enum feature_id id);
-extern int vcp_deregister_feature(enum feature_id id);
-
-/* APIs for reset vcp */
-extern void vcp_wdt_reset(int cpu_id);
-extern unsigned int vcp_cmd(enum feature_id id, enum vcp_cmd_id cmd_id, char *user);
 
 #endif
 

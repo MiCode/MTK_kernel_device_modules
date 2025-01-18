@@ -403,9 +403,6 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 					/* performance class WA for VP8 */
 					inst->op_rate = 60;
 				} else if (
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-					feature_table[VENC_FEATURE_ID].enable > 0 &&
-#endif
 					inst->codec_fmt == 875967048 && dev->dec_cnt > 1 &&
 					(inst->width * inst->height <= 1920 * 1088)) {
 					inst->op_rate = 174;

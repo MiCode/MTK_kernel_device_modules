@@ -218,8 +218,6 @@ void vcp_dump_last_regs(int mmup_enable)
 
 	/* mmup2infra RX and TX reg dump */
 	pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_TO_INFRA_TX));
-	if (mminfra_debug_dump)
-		mminfra_debug_dump();
 
 	vcp_do_tbufdump();
 	if (vcpreg.core_nums == 2)

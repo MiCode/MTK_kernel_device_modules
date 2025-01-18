@@ -13,10 +13,10 @@
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include "vcp_reg.h"
 #include "vcp_feature_define.h"
+#include "vcp_status.h"
 #include "vcp.h"
 
 #define ROUNDUP(a, b)		        (((a) + ((b)-1)) & ~((b)-1))
-#define VCP_SYNC_TIMEOUT_MS		(1000)
 
 /* vcp dram shared memory */
 #define DRAM_VDEC_VSI_BUF_LEN		(480 * 1024)
@@ -66,21 +66,6 @@ enum VCP_RESET_TYPE {
 	RESET_TYPE_AWAKE = 1,
 	RESET_TYPE_CMD = 2,
 	RESET_TYPE_TIMEOUT = 3,
-};
-
-/* vcp iommus */
-enum VCP_IOMMU_DEV {
-	VCP_IOMMU_VCP = 0,
-	VCP_IOMMU_VDEC = 1,
-	VCP_IOMMU_VENC = 2,
-	VCP_IOMMU_WORK = 3,
-	VCP_IOMMU_UBE_LAT = 4,
-	VCP_IOMMU_UBE_CORE = 5,
-	VCP_IOMMU_SEC = 6,
-	VCP_IOMMU_ACP_VDEC = 7,
-	VCP_IOMMU_ACP_VENC = 8,
-	VCP_IOMMU_ACP_CODEC = 9,
-	VCP_IOMMU_DEV_NUM,
 };
 
 enum mtk_tinysys_vcp_kernel_op {
@@ -156,6 +141,7 @@ struct vcp_reserve_mblock {
 
 /* vcp helper varriable */
 extern bool driver_init_done;
+extern bool is_suspending;
 
 extern struct vcp_regs vcpreg;
 extern const struct file_operations vcp_A_log_file_ops;
@@ -205,10 +191,27 @@ extern void memcpy_from_vcp(void *trg, const void __iomem *src,
 extern int reset_vcp(void);
 extern struct device *vcp_get_io_device(enum VCP_IOMMU_DEV io_num);
 
-void trigger_vcp_halt(enum vcp_core_id id, char *user);
+extern unsigned int vcp_cmd(enum feature_id id, enum vcp_cmd_id cmd_id, char *user);
+extern void trigger_vcp_halt(enum vcp_core_id id, char *user);
+
+/* APIs for reserved memory */
+extern phys_addr_t vcp_get_reserve_mem_phys(enum vcp_reserve_mem_id_t id);
+extern phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id);
+extern phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id);
 extern phys_addr_t vcp_mem_base_phys;
 extern phys_addr_t vcp_mem_base_virt;
 extern phys_addr_t vcp_mem_size;
+
+/* APIs for registering function of features */
+extern int vcp_register_feature(enum feature_id id);
+extern int vcp_deregister_feature(enum feature_id id);
+
+/* APIs to lock vcp and make vcp awaken */
+extern int vcp_awake_lock(void *_vcp_id);
+extern int vcp_awake_unlock(void *_vcp_id);
+
+extern unsigned int is_vcp_ready(enum feature_id id);
+extern unsigned int get_vcp_generation(void);
 extern atomic_t vcp_reset_status;
 extern spinlock_t vcp_awake_spinlock;
 extern struct mutex  vcp_pw_clk_mutex;
@@ -218,11 +221,19 @@ extern struct tasklet_struct vcp_A_irq1_tasklet;
 void dump_vcp_irq_status(void);
 extern void mt_irq_dump_status(unsigned int irq);
 
-
+extern struct mtk_ipi_device *get_ipidev(enum feature_id id);
+extern int mmup_enable_count(void);
+extern bool is_mmup_enable(void);
+extern unsigned int is_vcp_suspending(void);
+extern unsigned int is_vcp_ao(void);
+extern int vcp_register_mminfra_cb(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
+	mminfra_dump_ptr mminfra_dump_func);
 
 /*extern vcp notify*/
 extern void vcp_send_reset_wq(enum vcp_core_id core_id, enum VCP_RESET_TYPE type);
 extern void vcp_extern_notify(enum vcp_core_id core_id, enum VCP_NOTIFY_EVENT notify_status);
+extern void vcp_A_register_notify(enum feature_id id, struct notifier_block *nb);
+extern void vcp_A_unregister_notify(enum feature_id id, struct notifier_block *nb);
 
 extern void vcp_status_set(unsigned int value);
 extern void vcp_logger_init_set(unsigned int value);

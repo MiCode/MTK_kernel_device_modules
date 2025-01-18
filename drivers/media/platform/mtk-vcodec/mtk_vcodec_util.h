@@ -14,9 +14,6 @@
 #include <linux/math64.h>
 #include <linux/mtk_vcu_controls.h>
 #include "vcodec_ipi_msg.h"
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-#include "vcp_helper.h"
-#endif
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 #include "mtk_vcu.h"
 #endif
