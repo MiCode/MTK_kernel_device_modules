@@ -73,6 +73,9 @@ void mtk_vdec_slc_get_gid_from_dma(struct mtk_vcodec_ctx *ctx, struct dma_buf *d
 {
 	struct slc_param *param = &ctx->dev->dec_slc_frame;
 
+	if (!dbuf)
+		return;
+
 	mutex_lock(&param->param_mutex);
 	if (!ctx->dev->queued_frame) {
 		if (param->gid == -1) {

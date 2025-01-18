@@ -3885,7 +3885,8 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		}
 
 		if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1 &&
-			mtk_vcodec_is_state(ctx, MTK_STATE_HEADER)) {
+			mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) &&
+			vb->planes[0].dbuf) {
 			mtk_vdec_slc_get_gid_from_dma(ctx, vb->planes[0].dbuf);
 		}
 
