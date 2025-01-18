@@ -26,8 +26,6 @@
 #define CALI_DIV_VAL            (512)
 #define CAL_U2_DIVIIDER         (2)
 
-#define ILDO_MIS_RATE           (50)
-
 #define REG_DEFINE_WITH_INIT(reg, offset, mask, shift, init, set_clr)	\
 	._##reg = {							\
 		.ofs = offset,						\
@@ -151,14 +149,6 @@ enum scp_dvfs_chip_hw_enum {
 	MAX_SCP_DVFS_CHIP_HW,
 };
 
-enum clk_dbg_ver_enum {
-	CLK_DBG_VER_1,
-	CLK_DBG_VER_2,
-	CLK_DBG_VER_3,
-	CLK_DBG_VER_4,
-	MAX_CLK_DBG_VERSION,
-};
-
 enum scp_clk_ver_enum {
 	SCP_CLK_VER_1,
 	MAX_SCP_CLK_VERSION,
@@ -198,30 +188,11 @@ struct ulposc_cali_config {
 	unsigned int con2_val;
 };
 
-struct clk_cali_regs {
-	struct reg_info _clk_misc_cfg0;
-	struct reg_info _meter_div;
-
-	struct reg_info _clk_dbg_cfg;
-	struct reg_info _fmeter_ck_sel;
-	struct reg_info _abist_clk;
-
-	struct reg_info _clk26cali_0;
-	struct reg_info _fmeter_rst; /* using carefully, if set to 0, fmeter will reset */
-	struct reg_info _fmeter_en;
-	struct reg_info _trigger_cal;
-
-	struct reg_info _clk26cali_1;
-	struct reg_info _cal_cnt;
-	struct reg_info _load_cnt;
-};
-
 struct ulposc_cali_hw {
 	struct regmap *fmeter_regmap;
 	struct regmap *ulposc_regmap;
 	struct ulposc_cali_regs *ulposc_regs;
 	struct ulposc_cali_config *cali_configs;
-	struct clk_cali_regs *clkdbg_regs;
 	unsigned int ulposc_reg_ver;
 	unsigned int cali_nums;
 	unsigned int cali_alg_ver;
@@ -273,8 +244,6 @@ struct scp_dvfs_hw {
 	int ccf_fmeter_type;
 	int ccf_fmeter_id_result;
 	int ccf_fmeter_type_result;
-	int ccf_fmeter_id_ildo;
-	int ccf_fmeter_type_ildo;
 	bool vlp_support; /* Moving regulator & PMIC setting into SCP side */
 	bool ips_support;
 	bool has_pll_opp;
