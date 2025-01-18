@@ -86,7 +86,7 @@ static int ise_rpmb_program_key(struct ufs_hba *hba)
 	mailbox_reply_t reply = {0};
 	uint32_t result = ISE_RPMB_MB_STA_FAILED;
 
-	if (mtk_ise_awake_lock(ISE_REE)) {
+	if (mtk_ise_awake_lock(ISE_REE_RPMB)) {
 		dev_err(hba->dev, "%s: ise power on failed\n", __func__);
 		goto out;
 	}
@@ -101,7 +101,7 @@ static int ise_rpmb_program_key(struct ufs_hba *hba)
 	else
 		result = reply.payload.fields[0];
 
-	if (mtk_ise_awake_unlock(ISE_REE))
+	if (mtk_ise_awake_unlock(ISE_REE_RPMB))
 		dev_err(hba->dev, "%s: ise power off failed\n", __func__);
 
 out:
