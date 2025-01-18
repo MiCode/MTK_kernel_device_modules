@@ -220,6 +220,11 @@ hwv_done_fail:
 
 	pr_err("%s cg enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
 	pr_err("%s cg rewrite(%x)\n", clk_hw_get_name(hw), val3);
+	if ((inv && (val3 & BIT(cg->bit)) != 0) || (!inv && (val3 & BIT(cg->bit)) == 0))
+		pr_notice("cg rewrite success!\n");
+	else
+		pr_notice("cg rewrite failed!\n");
+
 hwv_prepare_fail:
 	regmap_read(cg->regmap, cg->hwv_sta_ofs, &val);
 	pr_err("%s cg prepare timeout(%x)\n", clk_hw_get_name(hw), val);
