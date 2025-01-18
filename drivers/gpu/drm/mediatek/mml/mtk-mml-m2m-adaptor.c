@@ -40,22 +40,6 @@ enum {
 	MML_M2M_FRAME_MAX,
 };
 
-struct mml_m2m_pix_limit {
-	u32 wmin;
-	u32 hmin;
-	u32 wmax;
-	u32 hmax;
-};
-
-struct mml_m2m_limit {
-	struct mml_m2m_pix_limit out_limit;
-	struct mml_m2m_pix_limit cap_limit;
-	u32 h_scale_up_max;
-	u32 v_scale_up_max;
-	u32 h_scale_down_max;
-	u32 v_scale_down_max;
-};
-
 struct mml_m2m_frame {
 	struct v4l2_format format;
 	const struct mml_m2m_format *mml_fmt;
@@ -484,25 +468,6 @@ static const struct vb2_ops mml_m2m_qops = {
 	.buf_out_validate = mml_m2m_buf_out_validate,
 };
 
-static const struct mml_m2m_limit mml_m2m_def_limit = {
-	.out_limit = {
-		.wmin	= 32, /* min of HW limitation and all format steps */
-		.hmin	= 32, /* min of HW limitation and all format steps */
-		.wmax	= 65504,
-		.hmax	= 65504,
-	},
-	.cap_limit = {
-		.wmin	= 32,
-		.hmin	= 32,
-		.wmax	= 65504,
-		.hmax	= 65504,
-	},
-	.h_scale_up_max = 32,
-	.v_scale_up_max = 32,
-	.h_scale_down_max = 20,
-	.v_scale_down_max = 24,
-};
-
 static struct mml_m2m_ctx *fh_to_ctx(struct v4l2_fh *fh)
 {
 	return container_of(fh, struct mml_m2m_ctx, fh);
@@ -728,6 +693,9 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 		u32 min_si, max_si;
 		u32 si = pix_mp->plane_fmt[i].sizeimage;
 
+		if (fmt->pixelformat == V4L2_PIX_FMT_YVU420A)
+			min_bpl = round_up(min_bpl, 16);
+
 		bpl = clamp(bpl, min_bpl, max_bpl);
 		pix_mp->plane_fmt[i].bytesperline = bpl;
 
@@ -735,6 +703,9 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 			 fmt->row_depth[i];
 		max_si = (bpl * pix_limit->hmax * fmt->depth[i]) /
 			 fmt->row_depth[i];
+
+		if (fmt->pixelformat == V4L2_PIX_FMT_YVU420A)
+			min_si = (bpl + round_up(bpl / 2, 16)) * pix_mp->height;
 
 		si = clamp(si, min_si, max_si);
 		pix_mp->plane_fmt[i].sizeimage = si;
@@ -965,6 +936,8 @@ static u32 mml_fmt_get_stride(const struct mml_m2m_format *fmt,
 	u32 stride;
 
 	stride = (bytesperline * MML_FMT_BITS_PER_PIXEL(c)) / fmt->row_depth[0];
+	if (fmt->pixelformat == V4L2_PIX_FMT_YVU420A)
+		stride = round_up(stride, 16);
 	if (plane == 0)
 		return stride;
 	if (plane < MML_FMT_PLANE(c)) {
@@ -986,7 +959,9 @@ static u32 mml_fmt_get_stride_contig(const struct mml_m2m_format *fmt,
 		return stride;
 	if (plane < MML_FMT_PLANE(c)) {
 		stride = stride >> MML_FMT_H_SUBSAMPLE(c);
-		if (MML_FMT_UV_COPLANE(c) && !MML_FMT_BLOCK(c))
+		if (fmt->pixelformat == V4L2_PIX_FMT_YVU420A)
+			stride = round_up(stride, 16);
+		else if (MML_FMT_UV_COPLANE(c) && !MML_FMT_BLOCK(c))
 			stride = stride * 2;
 		return stride;
 	}
@@ -1028,6 +1003,11 @@ static void m2m_set_format(struct mml_frame_data *data, struct mml_buffer *buf,
 	data->color.ycbcr_enc = pix_mp->ycbcr_enc;
 	data->color.color_range = pix_mp->quantization;
 	data->color.gamma = pix_mp->xfer_func;
+
+	data->y_stride = 0;
+	data->uv_stride = 0;
+	memset(data->plane_offset, 0, sizeof(data->plane_offset));
+	memset(buf->size, 0, sizeof(buf->size));
 
 	buf->cnt = MML_FMT_PLANE(fmt->mml_color);
 	for (i = 0; i < pix_mp->num_planes; i++) {

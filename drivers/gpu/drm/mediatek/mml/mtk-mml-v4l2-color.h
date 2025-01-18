@@ -8,6 +8,8 @@
 #define __MTK_MML_V4L2_COLOR_H__
 
 #include <mtk-v4l2-vcodec.h>
+
+#include "mtk-mml-v4l2.h"
 #include "mtk-mml-color.h"
 
 #define MML_M2M_FMT_OUTPUT	BIT(0)
@@ -24,6 +26,22 @@ struct mml_m2m_format {
 	u8	salign;
 	u32	types;
 	u32	flags;
+};
+
+struct mml_m2m_pix_limit {
+	u32 wmin;
+	u32 hmin;
+	u32 wmax;
+	u32 hmax;
+};
+
+struct mml_m2m_limit {
+	struct mml_m2m_pix_limit out_limit;
+	struct mml_m2m_pix_limit cap_limit;
+	u32 h_scale_up_max;
+	u32 v_scale_up_max;
+	u32 h_scale_down_max;
+	u32 v_scale_down_max;
 };
 
 static const struct mml_m2m_format mml_m2m_formats[] = {
@@ -213,6 +231,15 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.walign		= 1,
 		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
 	}, {
+		.pixelformat	= V4L2_PIX_FMT_YVU420A,
+		.mml_color	= MML_FMT_YV12,
+		.depth		= { 12 },
+		.row_depth	= { 8 },
+		.num_planes	= 1,
+		.walign		= 1,
+		.halign		= 1,
+		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
+	}, {
 		.pixelformat	= V4L2_PIX_FMT_YUV420,
 		.mml_color	= MML_FMT_I420,
 		.depth		= { 12 },
@@ -313,6 +340,25 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.halign		= 1,
 		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
 	},
+};
+
+static const struct mml_m2m_limit mml_m2m_def_limit = {
+	.out_limit = {
+		.wmin	= 32, /* max of HW limitation and all format steps */
+		.hmin	= 32, /* max of HW limitation and all format steps */
+		.wmax	= 65504,
+		.hmax	= 65504,
+	},
+	.cap_limit = {
+		.wmin	= 32,
+		.hmin	= 32,
+		.wmax	= 65504,
+		.hmax	= 65504,
+	},
+	.h_scale_up_max = 32,
+	.v_scale_up_max = 32,
+	.h_scale_down_max = 20,
+	.v_scale_down_max = 24,
 };
 
 #endif	/* __MTK_MML_V4L2_COLOR_H__ */
