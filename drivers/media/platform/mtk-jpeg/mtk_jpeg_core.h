@@ -33,6 +33,14 @@
 
 #define MTK_JPEG_HW_TIMEOUT_MSEC 1000
 
+#define MTK_JPEG_DVFS_BW_SUPPORT 1
+
+#if IS_ENABLED(CONFIG_JPEG_V4L2_DECODE)
+#define MTK_JPEG_DEC_SUPPORT 1
+#else
+#define MTK_JPEG_DEC_SUPPORT 0
+#endif
+
 #define MTK_JPEG_MAX_EXIF_SIZE	(64 * 1024)
 
 #define SNPRINTF(args...)							\
@@ -67,6 +75,18 @@ enum mtk_jpeg_support_34bits {
 	MTK_JPEG_NON_SUPPORT_34BITS = 0,
 	MTK_JPEG_SUPPORT_34BITS,
 	MTK_JPEG_FAKE_34BITS,
+};
+
+struct JpegDecClk {
+	struct clk *clk_jpgDec;
+	struct clk *clk_jpgDec_c1;
+	struct clk *clk_jpgDec_c2;
+};
+
+enum mtk_jpeg_drv_type {
+	MTK_JPEG_DEC_C0 = 0,
+	MTK_JPEG_DEC_C1,
+	MTK_JPEG_ENC,
 };
 
 /**
@@ -135,6 +155,8 @@ struct mtk_jpeg_dev {
 	struct regulator *jpegenc_reg;
 	struct clk *jpegenc_mmdvfs_clk;
 	int freq_cnt;
+	int jpeg_dev_type;
+	struct JpegDecClk jpegDecClk;
 	unsigned long freqs[MTK_JPEG_MAX_FREQ];
 	enum mtk_jpeg_support_34bits support_34bits;
 	struct device *smmu_dev;
