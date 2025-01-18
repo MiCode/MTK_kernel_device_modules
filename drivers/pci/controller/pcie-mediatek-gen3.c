@@ -190,6 +190,10 @@
 #define PCIE_AXI0_ERR_INFO		0xe08
 #define PCIE_ERR_STS_CLEAR		BIT(0)
 
+#define PCIE_ERR_ADDR_L			0xe40
+#define PCIE_ERR_ADDR_H			0xe44
+#define PCIE_ERR_INFO			0xe48
+
 #define PCIE_LOW_POWER_CTRL		0x194
 #define PCIE_ICMD_PM_REG		0x198
 #define PCIE_TURN_OFF_LINK		BIT(4)
@@ -199,6 +203,8 @@
 
 #define PCIE_AXI_IF_CTRL		0x1a8
 #define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
+
+#define PCIE_ISTATUS_PENDING_ADT	0x1d4
 
 #define PCIE_WCPL_TIMEOUT		0x340
 #define WCPL_TIMEOUT_4MS		0x4
@@ -1823,7 +1829,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, phy err=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, phy err=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -1839,6 +1845,10 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
 		readl_relaxed(port->base + PCIE_RES_STATUS),
+		readl_relaxed(port->base + PCIE_ISTATUS_PENDING_ADT),
+		readl_relaxed(port->base + PCIE_ERR_ADDR_L),
+		readl_relaxed(port->base + PCIE_ERR_ADDR_H),
+		readl_relaxed(port->base + PCIE_ERR_INFO),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
 
 	/* Capature PCIe L1P2 issue for debug */
