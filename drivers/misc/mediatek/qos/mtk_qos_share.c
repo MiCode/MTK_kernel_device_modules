@@ -7,7 +7,7 @@
 #include <mtk_qos_ipi.h>
 #include <mtk_qos_share.h>
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V3)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #include <sspm_reservedmem.h>
 #include <sspm_reservedmem_define.h>
 #endif
@@ -51,7 +51,7 @@ static void qos_get_rec_addr(phys_addr_t *phys,
 		       phys_addr_t *virt,
 		       unsigned long long *size)
 {
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V3)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	/* get sspm reserved mem */
 	*phys = sspm_reserve_mem_get_phys(QOS_MEM_ID);
 	*virt = sspm_reserve_mem_get_virt(QOS_MEM_ID);
