@@ -961,7 +961,7 @@ void __gpufreq_set_timestamp(void)
 {
 	/* write 1 into 0x13fb_f130 bit 0 to enable timestamp register */
 	/* timestamp will be used by clGetEventProfilingInfo*/
-	writel(0x00000001, g_mfg_base + 0x130);
+	writel(0x00000003, g_mfg_base + 0x130);
 }
 
 void __gpufreq_check_bus_idle(void)
