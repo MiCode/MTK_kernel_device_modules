@@ -935,7 +935,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		fpsgo_comp2fbt_frame_start(f_render,
 				enqueue_end_time);
 
-		if (get_ux_general_policy() && f_render->scroll_status)
+		if (get_ux_general_policy())
 			fpsgo_boost_non_hwui_policy(f_render);
 
 		fpsgo_comp2fstb_queue_time_update(pid,
@@ -1530,7 +1530,6 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 
 		if (sbe_info) {
 			if (test_bit(FPSGO_HWUI, &mask) || test_bit(FPSGO_NON_HWUI, &mask)) {
-
 				if (start && !sbe_info->ux_scrolling) {
 					sbe_info->ux_scrolling = start;
 					if (!ux_scroll_count) {
@@ -1561,8 +1560,6 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 
 		fpsgo_render_tree_lock(__func__);
 		thr = fpsgo_search_and_add_render_info(final_pid_arr[i], final_bufID_arr[i], 0);
-		if (thr != NULL)
-			thr->scroll_status = start;
 
 		if (test_bit(FPSGO_CLEAR_SCROLLING_INFO, &mask) && thr != NULL) {
 			clear_ux_info(thr);
