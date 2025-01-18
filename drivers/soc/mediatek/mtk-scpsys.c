@@ -1273,8 +1273,8 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_HWV_CHK_MUX_OPT)) {
 		/* chk mux is on */
-		regmap_read(cksys2_regmap, scpd->data->hwv_debug_mux_ofs_opt, &val);
-		if ((val & BIT(scpd->data->hwv_debug_mux_shift_opt)) == 0)
+		regmap_read(cksys2_regmap, scpd->data->chk_data.hwv_debug_mux_ofs_opt, &val);
+		if ((val & scpd->data->chk_data.hwv_debug_mux_shift_opt) == 0)
 			goto err_mux_off;
 	}
 
@@ -1324,7 +1324,7 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 	return 0;
 
 err_mux_off:
-	regmap_read(cksys2_regmap, scpd->data->hwv_debug_mux_ofs_opt, &val);
+	regmap_read(cksys2_regmap, scpd->data->chk_data.hwv_debug_mux_ofs_opt, &val);
 	dev_err(scp->dev, "Mux is off %s(%x)\n", genpd->name, val);
 err_vcp_ready:
 	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);

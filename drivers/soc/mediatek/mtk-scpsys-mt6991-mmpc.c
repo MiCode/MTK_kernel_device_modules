@@ -538,7 +538,11 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 2,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.chk_data = {
+			.hwv_debug_mux_ofs_opt = 0x174,
+			.hwv_debug_mux_shift_opt = 0x3000000,
+		},
+		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -670,8 +674,10 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 13,
-		.hwv_debug_mux_ofs_opt = 0x174,
-		.hwv_debug_mux_shift_opt = 21,
+		.chk_data = {
+			.hwv_debug_mux_ofs_opt = 0x174,
+			.hwv_debug_mux_shift_opt = 0x200000,
+		},
 		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWA] = {
