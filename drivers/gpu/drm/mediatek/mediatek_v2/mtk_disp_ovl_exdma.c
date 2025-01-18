@@ -3724,8 +3724,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		/* process normal */
-		if (!force_update && comp->last_qos_bw == comp->qos_bw &&
-			comp->last_hrt_bw == comp->hrt_bw)
+		if (!force_update && comp->last_qos_bw == comp->qos_bw)
 			break;
 
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
@@ -3735,15 +3734,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			mtk_crtc->total_srt += comp->qos_bw;
 			if (channel_id < 4)
 				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
-		}
-
-		if ((comp->last_hrt_bw <= comp->hrt_bw) ||
-				(update_pending && comp->last_hrt_bw > comp->hrt_bw)) {
-			__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, comp->hrt_bw,
-						    DISP_BW_NORMAL_MODE);
-
-			comp->last_qos_bw = comp->qos_bw;
-			comp->last_hrt_bw = comp->hrt_bw;
 		}
 
 		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
