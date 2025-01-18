@@ -11,10 +11,17 @@
 
 #define DPTX_CheckSinkCap_TimeOutCnt		0x3
 
+#if (DPTX_USE_USBC == 0)
 #define HPD_INT_EVNET			BIT(2)
 #define HPD_CONNECT			BIT(0)
 #define HPD_DISCONNECT			BIT(10)
 #define HPD_INITIAL_STATE		0
+#elif (DPTX_USE_USBC == 1)
+#define HPD_INT_EVNET		BIT(3)
+#define HPD_CONNECT		BIT(2)
+#define HPD_DISCONNECT		BIT(1)
+#define HPD_INITIAL_STATE	0
+#endif
 
 #define DPTX_TBC_SELBUF_CASE		2
 #define DPTX_TBC_BUF_SIZE		DPTX_TBC_SELBUF_CASE
