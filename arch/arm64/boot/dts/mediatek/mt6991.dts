@@ -8583,21 +8583,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_RDMA2)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_RDMA2)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P0_OVL_RDMA2_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P8_OVL_RDMA2_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_RDMA2)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA2_qos",
-					     "DDP_COMPONENT_OVL_EXDMA2_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA2_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA2_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA2_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA2_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA2_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA2_stash_qos";
 		};
 
 		disp_ovl0_exdma3: disp-ovl0-exdma3@32860000 {
@@ -8618,21 +8612,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P2_OVL_RDMA3)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L1_P2_OVL_RDMA3)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P0_OVL_RDMA3_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P9_OVL_RDMA3_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L1_P2_OVL_RDMA3)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA3_qos",
-					     "DDP_COMPONENT_OVL_EXDMA3_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA3_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA3_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA3_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA3_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA3_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA3_stash_qos";
 		};
 
 		disp_ovl0_exdma4: disp-ovl0-exdma4@32870000 {
@@ -8650,21 +8638,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P3_OVL_RDMA4)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L20_P3_OVL_RDMA4)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P0_OVL_RDMA4_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P10_OVL_RDMA4_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L20_P3_OVL_RDMA4)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA4_qos",
-					     "DDP_COMPONENT_OVL_EXDMA4_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA4_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA4_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA4_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA4_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA4_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA4_stash_qos";
 		};
 
 		disp_ovl0_exdma5: disp-ovl0-exdma5@32880000 {
@@ -8682,21 +8664,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P3_OVL_RDMA5)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L21_P3_OVL_RDMA5)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P0_OVL_RDMA5_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P13_OVL_RDMA5_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L21_P3_OVL_RDMA5)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA5_qos",
-					     "DDP_COMPONENT_OVL_EXDMA5_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA5_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA5_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA5_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA5_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA5_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA5_stash_qos";
 		};
 
 		disp_ovl0_exdma6: disp-ovl0-exdma6@32890000 {
@@ -8714,21 +8690,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_RDMA6)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_RDMA6)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P1_OVL_RDMA6_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P10_OVL_RDMA6_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_RDMA6)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA6_qos",
-					     "DDP_COMPONENT_OVL_EXDMA6_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA6_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA6_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA6_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA6_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA6_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA6_stash_qos";
 		};
 
 		disp_ovl0_exdma7: disp-ovl0-exdma7@328a0000 {
@@ -8746,21 +8716,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA7)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA7)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P1_OVL_RDMA7_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P9_OVL_RDMA7_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA7)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA7_qos",
-					     "DDP_COMPONENT_OVL_EXDMA7_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA7_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA7_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA7_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA7_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA7_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA7_stash_qos";
 		};
 
 		disp_ovl0_exdma8: disp-ovl0-exdma8@328b0000 {
@@ -8778,21 +8742,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P4_OVL_RDMA8)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L21_P4_OVL_RDMA8)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P1_OVL_RDMA8_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P14_OVL_RDMA8_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L21_P4_OVL_RDMA8)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA8_qos",
-					     "DDP_COMPONENT_OVL_EXDMA8_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA8_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA8_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA8_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA8_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA8_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA8_stash_qos";
 		};
 
 		disp_ovl0_exdma9: disp-ovl0-exdma9@328c0000 {
@@ -8810,21 +8768,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P4_OVL_RDMA9)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L20_P4_OVL_RDMA9)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA9_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P11_OVL_RDMA9_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L20_P4_OVL_RDMA9)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL_EXDMA9_qos",
-					     "DDP_COMPONENT_OVL_EXDMA9_qos_other",
 					     "DDP_COMPONENT_OVL_EXDMA9_fbdc_qos",
 					     "DDP_COMPONENT_OVL_EXDMA9_hrt_qos",
 					     "DDP_COMPONENT_OVL_EXDMA9_hdr_qos",
-					     "DDP_COMPONENT_OVL_EXDMA9_stash_qos",
-					     "DDP_COMPONENT_OVL_EXDMA9_hrt_qos_other";
+					     "DDP_COMPONENT_OVL_EXDMA9_stash_qos";
 		};
 
 		disp_ovl0_blender0: disp-ovl0-blender0@328d0000 {
@@ -8993,21 +8945,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_RDMA2)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_RDMA2)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P0_OVL_RDMA2_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P8_OVL_RDMA2_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_RDMA2)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA2_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA2_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA2_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA2_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA2_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA2_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA2_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA2_stash_qos";
 		};
 
 		disp_ovl1_exdma3: disp-ovl1-exdma3@32c60000 {
@@ -9026,21 +8972,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_RDMA3)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_RDMA3)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P0_OVL_RDMA3_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P9_OVL_RDMA3_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_RDMA3)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA3_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA3_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA3_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA3_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA3_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA3_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA3_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA3_stash_qos";
 		};
 
 		disp_ovl1_exdma4: disp-ovl1-exdma4@32c70000 {
@@ -9058,21 +8998,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P3_OVL_RDMA4)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L36_P3_OVL_RDMA4)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P0_OVL_RDMA4_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P10_OVL_RDMA4_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L36_P3_OVL_RDMA4)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA4_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA4_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA4_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA4_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA4_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA4_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA4_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA4_stash_qos";
 		};
 
 		disp_ovl1_exdma5: disp-ovl1-exdma5@32c80000 {
@@ -9090,21 +9024,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P3_OVL_RDMA5)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L37_P3_OVL_RDMA5)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P0_OVL_RDMA5_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P13_OVL_RDMA5_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L37_P3_OVL_RDMA5)
-					 &mmqos SLAVE_COMMON(1)>;
+					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA5_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA5_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA5_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA5_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA5_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA5_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA5_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA5_stash_qos";
 		};
 
 		disp_ovl1_exdma6: disp-ovl1-exdma6@32c90000 {
@@ -9122,21 +9050,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P1_OVL_RDMA6_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P10_OVL_RDMA6_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_RDMA6)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA6_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA6_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA6_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA6_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA6_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA6_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA6_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA6_stash_qos";
 		};
 
 		disp_ovl1_exdma7: disp-ovl1-exdma7@32ca0000 {
@@ -9154,21 +9076,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
 					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
-					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA7_HDR)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P9_OVL_RDMA7_STASH)
-					 &mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA7)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA7_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA7_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA7_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA7_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA7_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA7_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA7_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA7_stash_qos";
 		};
 
 		disp_ovl1_exdma8: disp-ovl1-exdma8@32cb0000 {
@@ -9186,21 +9102,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P4_OVL_RDMA8)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L37_P4_OVL_RDMA8)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P1_OVL_RDMA8_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P14_OVL_RDMA8_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L37_P4_OVL_RDMA8)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA8_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA8_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA8_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA8_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA8_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA8_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA8_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA8_stash_qos";
 		};
 
 		disp_ovl1_exdma9: disp-ovl1-exdma9@32cc0000 {
@@ -9218,21 +9128,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P4_OVL_RDMA9)
 					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L36_P4_OVL_RDMA9)
-					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P1_OVL_RDMA9_HDR)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P11_OVL_RDMA9_STASH)
-					 &mmqos SLAVE_COMMON(1)>,
-					<&mmqos MASTER_LARB_PORT(SMMU_L36_P4_OVL_RDMA9)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_EXDMA9_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA9_qos_other",
 					     "DDP_COMPONENT_OVL1_EXDMA9_fbdc_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA9_hrt_qos",
 					     "DDP_COMPONENT_OVL1_EXDMA9_hdr_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA9_stash_qos",
-					     "DDP_COMPONENT_OVL1_EXDMA9_hrt_qos_other";
+					     "DDP_COMPONENT_OVL1_EXDMA9_stash_qos";
 		};
 
 		disp_ovl1_blender0: disp-ovl1-blender0@32cd0000 {
