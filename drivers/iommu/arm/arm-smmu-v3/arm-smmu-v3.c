@@ -3155,12 +3155,14 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu, bool bypass)
 		       smmu->base + ARM_SMMU_STRTAB_BASE);
 	writel_relaxed(smmu->strtab_cfg.strtab_base_cfg,
 		       smmu->base + ARM_SMMU_STRTAB_BASE_CFG);
-
+	if (smmu->impl && smmu->impl->smmu_mem_share)
+		smmu->impl->smmu_mem_share(smmu, HYP_SMMU_STE_SHARE);
 	/* Command queue */
 	writeq_relaxed(smmu->cmdq.q.q_base, smmu->base + ARM_SMMU_CMDQ_BASE);
 	writel_relaxed(smmu->cmdq.q.llq.prod, smmu->base + ARM_SMMU_CMDQ_PROD);
 	writel_relaxed(smmu->cmdq.q.llq.cons, smmu->base + ARM_SMMU_CMDQ_CONS);
-
+	if (smmu->impl && smmu->impl->smmu_mem_share)
+		smmu->impl->smmu_mem_share(smmu, HYP_SMMU_CMDQ_SHARE);
 	enables = CR0_CMDQEN;
 	ret = arm_smmu_write_reg_sync(smmu, enables, ARM_SMMU_CR0,
 				      ARM_SMMU_CR0ACK);

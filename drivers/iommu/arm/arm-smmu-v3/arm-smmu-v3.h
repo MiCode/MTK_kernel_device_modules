@@ -100,6 +100,10 @@
 #define ARM_SMMU_FEAT_TCU_PF			(1 << ARM_SMMU_FEAT_IMPL(1))
 #define ARM_SMMU_FEAT_DIS_EVTQ			(1 << ARM_SMMU_FEAT_IMPL(2))
 
+/* MTK impl share smmu structure memory to hypervisor */
+#define HYP_SMMU_CMDQ_SHARE	(0U)
+#define HYP_SMMU_STE_SHARE	(1U)
+
 struct arm_smmu_ll_queue {
 	union {
 		u64			val;
@@ -367,6 +371,8 @@ struct arm_smmu_impl {
 						       struct io_pgtable_cfg *cfg,
 						       void *cookie);
 	void (*free_io_pgtable_ops)(struct io_pgtable_ops *ops);
+	void (*smmu_mem_share)(struct arm_smmu_device *smmu,
+			       unsigned int mem_type);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);
