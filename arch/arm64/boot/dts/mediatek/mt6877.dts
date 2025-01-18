@@ -7012,12 +7012,15 @@
 	};
 
 	apusys_reviser@19021000 {
-		compatible = "mediatek,apusys_reviser";
+		compatible = "mediatek, mt6877-reviser";
 		reg = <0 0x19021000 0 0x1000>,		/* apu_sctrl_reviser  */
 			  <0 0x1d800000 0 0x200000>,	/* VLM          */
 			  <0 0x1d000000 0 0x000000>,	/* TCM          */
 			  <0 0x19001000 0 0x1000>;		/* apusys int */
 		interrupts = <GIC_SPI 494 IRQ_TYPE_LEVEL_HIGH 0>;
+		default-dram = <0x1>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+		boundary = <0x3>;
 		iommus = <&iommu1 M4U_PORT_L21_APU_FAKE_VLM>;
 	};
 
@@ -7028,13 +7031,16 @@
 	};
 
 	apusys_mnoc@1906e000 {
-		compatible = "mediatek,apusys_mnoc";
+		compatible = "mediatek,mt6877-mnoc";
 		reg = <0 0x1906e000 0 0x2000>,	/* mnoc reg  */
 		      <0 0x19001000 0 0x1000>,	/* apusys int */
 		      <0 0x19020000 0 0x1000>,	/* apu_conn_config */
 		      <0 0x10001000 0 0x1000>,	/* slp prot 1 */
 		      <0 0x10215000 0 0x1000>;	/* slp prot 2 */
 		interrupts = <GIC_SPI 494 IRQ_TYPE_LEVEL_HIGH 0>;
+		interconnects = <&dvfsrc MT6873_MASTER_VPUSYS
+				&dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "apu-bw";
 	};
 
 	edma0: edma0@19025000 {
