@@ -25,6 +25,7 @@
 
 #include "mtk_cg_peak_power_throttling_table.h"
 #include "mtk_cg_peak_power_throttling_def.h"
+#include "mtk_peak_power_budget_cgppt.h"
 
 /*
  * -----------------------------------------------
@@ -1299,7 +1300,7 @@ void cgppt_set_mo_multiscene(int value)
 }
 EXPORT_SYMBOL(cgppt_set_mo_multiscene);
 
-int cgppt_get_cpu_combo_usage_count(int idx)
+static int cgppt_get_cpu_combo_usage_count(int idx)
 {
 	int value = 0;
 
@@ -1310,9 +1311,8 @@ int cgppt_get_cpu_combo_usage_count(int idx)
 	}
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_cpu_combo_usage_count);
 
-int cgppt_get_gpu_combo_usage_count(int idx)
+static int cgppt_get_gpu_combo_usage_count(int idx)
 {
 	int value = 0;
 
@@ -1323,9 +1323,8 @@ int cgppt_get_gpu_combo_usage_count(int idx)
 	}
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_gpu_combo_usage_count);
 
-int cgppt_get_cpu_m_scaling_factor(void)
+static int cgppt_get_cpu_m_scaling_factor(void)
 {
 	int value = 0;
 
@@ -1334,9 +1333,8 @@ int cgppt_get_cpu_m_scaling_factor(void)
 	return value;
 
 }
-EXPORT_SYMBOL(cgppt_get_cpu_m_scaling_factor);
 
-int cgppt_get_cpu_b_scaling_factor(void)
+static int cgppt_get_cpu_b_scaling_factor(void)
 {
 	int value = 0;
 
@@ -1344,9 +1342,8 @@ int cgppt_get_cpu_b_scaling_factor(void)
 		value = ioread32(&g_dlpt_sram_layout_ptr->cswrun_info.scaling_factor[2]); //B scaling factor
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_cpu_b_scaling_factor);
 
-int cgppt_get_gpu_scaling_factor(void)
+static int cgppt_get_gpu_scaling_factor(void)
 {
 	int value = 0;
 
@@ -1354,9 +1351,8 @@ int cgppt_get_gpu_scaling_factor(void)
 		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.scaling_factor);    //GPU scaling factor
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_gpu_scaling_factor);
 
-int cgppt_get_combo_idx(void)
+static int cgppt_get_combo_idx(void)
 {
 	int value = 0;
 
@@ -1364,9 +1360,8 @@ int cgppt_get_combo_idx(void)
 		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.combo_idx);
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_combo_idx);
 
-int cgppt_get_cg_budget(void)
+static int cgppt_get_cg_budget(void)
 {
 	int value = 0;
 
@@ -1374,8 +1369,6 @@ int cgppt_get_cg_budget(void)
 		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.cgppb_mw);
 	return value;
 }
-EXPORT_SYMBOL(cgppt_get_cg_budget);
-
 
 
 /*
@@ -1491,6 +1484,16 @@ static int nvram_get_segment_id(struct platform_device *pdev)
 	return ret;
 }
 
+static struct ppb_cgppt_dbg_operation cgppt_dbg_op_t = {
+	.get_cpub_sf = cgppt_get_cpu_b_scaling_factor,
+	.get_cpum_sf = cgppt_get_cpu_m_scaling_factor,
+	.get_gpu_sf = cgppt_get_gpu_scaling_factor,
+	.get_cg_pwr = cgppt_get_cg_budget,
+	.get_combo = cgppt_get_combo_idx,
+	.get_cpucb_cnt = cgppt_get_cpu_combo_usage_count,
+	.get_gpucb_cnt = cgppt_get_gpu_combo_usage_count,
+	.get_cg_bgt = cgppt_get_cg_budget,
+};
 
 /*
  * ========================================================
@@ -1552,6 +1555,7 @@ static int cgppt_driver_probe(struct platform_device *pdev)
 	//trace work
 	trace_work_init();
 
+	register_ppb_cgppt_cb(&cgppt_dbg_op_t);
 
 	return 0; // Return 0 means success, negative values indicate failure
 }
