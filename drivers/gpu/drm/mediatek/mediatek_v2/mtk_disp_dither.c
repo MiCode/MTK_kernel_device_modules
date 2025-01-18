@@ -916,7 +916,7 @@ static const struct mtk_disp_dither_data mt6885_dither_driver_data = {
 
 static const struct mtk_disp_dither_data mt6877_dither_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_dither_data mt6853_dither_driver_data = {

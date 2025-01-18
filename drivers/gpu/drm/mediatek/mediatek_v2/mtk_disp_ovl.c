@@ -3715,6 +3715,7 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885) {
 		if (prev == DDP_COMPONENT_OVL0 || prev == DDP_COMPONENT_OVL0_2L ||
 			prev == DDP_COMPONENT_OVL1 || prev == DDP_COMPONENT_OVL1_2L ||
@@ -3737,6 +3738,7 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 		_store_bg_roi(comp, rsz_src_roi.height, rsz_src_roi.width);
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6761) {
 		struct mtk_ddp_comp *comp_ovl0 = priv->ddp_comp[DDP_COMPONENT_OVL0];
 		static char init_ovl0 = true;
@@ -5575,7 +5577,7 @@ static const struct mtk_disp_ovl_data mt6877_ovl_driver_data = {
 	.fmt_yuyv = 5U << 12,
 	.compr_info = &compr_info_mt6877,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.preultra_th_dc = 0xe0,
 	.fifo_size = 288,
 	.issue_req_th_dl = 191,
