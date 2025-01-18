@@ -788,7 +788,6 @@ struct rdma_frame_data {
 	u32 crc_inst_offset;
 
 	/* dvfs */
-	u32 line_bubble;
 	struct mml_frame_size max_size;
 
 	bool ultra_off;
@@ -2076,7 +2075,6 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 		rdma_frm->max_size.width += w;
 		rdma_frm->max_size.height = h;
-		rdma_frm->line_bubble += w - mf_src_w;
 	} else {
 		/* no block align */
 		rdma_frm->max_size.width += mf_src_w;
@@ -2168,7 +2166,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 
 	cache->total_datasize += rdma_frm->datasize;
 	dvfs_cache_sz(cache, rdma_frm->max_size.width / rdma->data->px_per_tick,
-		rdma_frm->max_size.height, rdma_frm->line_bubble / rdma->data->px_per_tick);
+		rdma_frm->max_size.height, 0);
 	dvfs_cache_log(cache, comp, "rdma");
 
 	mml_msg("%s task %p pipe %hhu data %u",

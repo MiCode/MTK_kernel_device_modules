@@ -36,6 +36,7 @@ extern int mtk_mml_msg;
 extern int mml_cmdq_err;
 extern int mml_qos;
 extern int mml_qos_log;
+extern int mml_stash_bw;
 extern int mml_dpc_log;
 extern int mml_rrot_msg;
 extern int mml_dl_dpc;
@@ -48,7 +49,7 @@ extern int rdma_stash_leading;
 #define MML_QOS_FORCE_CLOCK_SH		2
 #define MML_QOS_FORCE_BW_MASK		(BIT(17))
 #define MML_QOS_FORCE_BW_SH		18
-#define MML_QOS_FORCE_MASK		0xfff
+#define MML_QOS_FORCE_MASK		0x3fff
 
 /* get force throughput (clock) or bandwidth helper */
 #define mml_qos_force_clk	((mml_qos >> MML_QOS_FORCE_CLOCK_SH) & MML_QOS_FORCE_MASK)
@@ -455,11 +456,11 @@ struct mml_comp_config {
 };
 
 #define dvfs_cache_sz(c, w, h, b) do { \
-	c->max_frame_size.width = max(c->max_frame_size.width, (w) + (b)); \
+	c->max_frame_size.width = max(c->max_frame_size.width, (w)); \
 	c->max_frame_size.height = max(c->max_frame_size.height, (h)); \
 	c->total_line_bubble += (b); \
 	c->max_tput_pixel = (c->max_frame_size.width + c->total_line_bubble) * \
-		c->max_frame_size.height; \
+		(c->max_frame_size.height + c->total_latency); \
 } while (0)
 
 #define dvfs_cache_log(cache, comp, name) \
@@ -477,6 +478,7 @@ struct mml_pipe_cache {
 	u32 max_tput_pixel;
 
 	u32 total_line_bubble;
+	u32 total_latency;
 	struct mml_frame_size max_frame_size;
 
 	/* Set in core and comp prepare. Used in tile prepare and make command */

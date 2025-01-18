@@ -1265,6 +1265,11 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 			srt_bw = 0;
 			hrt_bw = 0;
 		}
+
+		if ((unlikely(mml_qos & MML_QOS_FORCE_BW_MASK))) {
+			srt_bw = mml_qos_force_bw;
+			hrt_bw = srt_bw;
+		}
 	} else {
 		hrt = false;
 		srt_bw = mml_calc_bw(cfg->mml, datasize, cache->max_tput_pixel, throughput);
@@ -1276,6 +1281,11 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	stash_srt_bw = srt_bw;
 	stash_hrt_bw = hrt_bw;
 	comp->hw_ops->qos_stash_bw_get(task, ccfg, &stash_srt_bw, &stash_hrt_bw);
+
+	if (mml_stash_bw) {
+		stash_srt_bw = mml_stash_bw & 0xfffe;
+		stash_hrt_bw = (mml_stash_bw >> 16) & 0xfffe;
+	}
 
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);

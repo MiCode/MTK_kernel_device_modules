@@ -342,8 +342,7 @@ struct rrot_frame_data {
 	bool binning;
 
 	/* dvfs */
-	u32 line_bubble;
-	struct mml_frame_size max_size;
+	struct mml_frame_size in_size;
 
 	/* array of indices to one of entry in cache entry list,
 	 * use in reuse command
@@ -1109,7 +1108,8 @@ done:
 	else
 		con2 = (prefetch_line_cnt[2] << 16) | prefetch_line_cnt[3];
 
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, 0x43000000, U32_MAX);
+	/* enable stash port urgent/ultra/pre-ultra, monitor normal threshold */
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, 0x5f000000, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, con1, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, con2, U32_MAX);
 	mml_msg("rrot stash con %#010x %#010x", con1, con2);
@@ -1948,9 +1948,8 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		tput_h = mf_src_h;
 	}
 
-	rrot_frm->line_bubble += tput_w - mf_src_w;
-	rrot_frm->max_size.width += tput_w;
-	rrot_frm->max_size.height = tput_h;
+	rrot_frm->in_size.width += tput_w;
+	rrot_frm->in_size.height = tput_h;
 
 	/* calculate qos for later use */
 	plane = MML_FMT_PLANE(src->format);
@@ -2034,28 +2033,34 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
-	u32 cache_w = rrot_frm->max_size.width, cache_h = rrot_frm->max_size.height;
+	u32 tput_w = rrot_frm->in_size.width, tput_h = rrot_frm->in_size.height;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rrot_frm->datasize = (u32)div_u64((u64)rrot_frm->datasize * 7, 10);
 
 	cache->total_datasize += rrot_frm->datasize;
-	cache_w = (cache_w + rrot_frm->line_bubble);
-
-	if (cfg->bin_x)
-		cache_w = cache_w / 2;
-	if (cfg->bin_y)
-		cache_h = cache_h / 2;
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
-		swap(cache_w, cache_h);
+		swap(tput_w, tput_h);
+
+	/* bound binning or output 1t2p */
+	tput_w = tput_w / rrot->data->px_per_tick;
+	/* output height after binning */
+	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+		if (cfg->bin_y)
+			tput_h = tput_h / rrot->data->px_per_tick;
+	} else {
+		if (cfg->bin_x)
+			tput_h = tput_h / rrot->data->px_per_tick;
+	}
+
+	dvfs_cache_sz(cache, tput_w, tput_h, 0);
+	dvfs_cache_log(cache, comp, "rrot");
+
 	/* add rrot rotate max latency for safe */
 	if (dest->rotate != MML_ROT_0)
-		cache_h += 32;
-
-	dvfs_cache_sz(cache, cache_w / rrot->data->px_per_tick, cache_h, 0);
-	dvfs_cache_log(cache, comp, "rrot");
+		cache->total_latency += 32;
 
 	rrot_backup_crc(comp, task, ccfg);
 
