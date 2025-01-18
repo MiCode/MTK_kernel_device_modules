@@ -62,6 +62,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_ULTRA_EN			BIT(0)
 #define CMDQ_PREULTRA_EN		BIT(1)
 #define CMDQ_DDR_URGENT			BIT(19)
+#define DDR_SEL_WLA			BIT(0)
 
 #define CMDQ_THR_BASE			0x100
 #define CMDQ_THR_SIZE			0x80
@@ -283,9 +284,11 @@ struct cmdq {
 	bool		smmu_v3_enabled;
 	bool		err_irq;
 	void __iomem	*dram_pwr_base;
+	void __iomem	*mminfra_ao_base;
 	bool		error_irq_sw_req;
 	bool		gce_vm;
 	bool		spr3_timer;
+	bool		gce_ddr_sel_wla;
 };
 
 struct gce_plat {
@@ -2753,7 +2756,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	struct gce_plat *plat_data;
 	static u8 hwid;
 	int port;
-	u32 dram_pwr_pa;
+	u32 dram_pwr_pa, mminfra_ao_pa;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -3037,6 +3040,14 @@ static int cmdq_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (of_property_read_bool(dev->of_node, "gce-ddr-sel-wla")) {
+		cmdq->gce_ddr_sel_wla = true;
+		if (!of_property_read_u32(dev->of_node, "mminfra-ao-base", &mminfra_ao_pa)) {
+			cmdq_msg("mminfra-ao-base:%#x", mminfra_ao_pa);
+			cmdq->mminfra_ao_base = ioremap(mminfra_ao_pa, 0x1000);
+		}
+	}
+
 	return 0;
 }
 
@@ -3195,6 +3206,10 @@ void cmdq_mbox_enable(void *chan)
 		if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))
 			cmdq_err("hwid:%hu usage:%d gce clock not enable",
 				cmdq->hwid, usage);
+
+		if (cmdq->mminfra_ao_base && cmdq->gce_ddr_sel_wla)
+			writel(readl(cmdq->mminfra_ao_base + 0x418) | DDR_SEL_WLA,
+				cmdq->mminfra_ao_base + 0x418);
 
 		if (cmdq->gce_vm) {
 			//config cpr size
