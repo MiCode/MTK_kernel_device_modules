@@ -53,9 +53,15 @@ do { \
 #define MERGE_LABEL_TOTAL		0
 
 struct merge_data {
+	u8 px_per_tick;
 };
 
 static const struct merge_data mt6989_merge_data = {
+	.px_per_tick = 2,
+};
+
+static const struct merge_data mt6991_merge_data = {
+	.px_per_tick = 4,
 };
 
 struct mml_comp_merge {
@@ -134,6 +140,7 @@ static u32 merge_get_label_count(struct mml_comp *comp, struct mml_task *task,
 static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
+	const struct mml_comp_merge *merge = comp_to_merge(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
@@ -143,8 +150,13 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 
 	if (cfg->rrot_dual) {
-		/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
-		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 24, U32_MAX);
+		if (merge->data->px_per_tick == 4 && !cfg->merge2p) {
+			/* bit[7:0] 8'd23:  CFG_2PI_2PI_4PO_0PO_MERGE */
+			cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 23, U32_MAX);
+		} else {
+			/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
+			cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 24, U32_MAX);
+		}
 	} else {
 		/* bit[7:0] 8'd08 : CFG_2PI_0PI_2PO_0PO_BUF_MODE */
 		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 8, U32_MAX);
@@ -156,6 +168,7 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg, u32 idx)
 {
+	const struct mml_comp_merge *merge = comp_to_merge(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
@@ -192,7 +205,7 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_27, input1, U32_MAX);
 
 	/* qos accumulate tile pixel */
-	cache_max_sz(cache, width, height);
+	cache_max_sz(cache, width / merge->data->px_per_tick, height);
 
 	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
 		cfg->rrot_out[0].height == height &&
@@ -355,7 +368,7 @@ const struct of_device_id mml_merge_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6991-mml1_merge",
-		.data = &mt6989_merge_data,
+		.data = &mt6991_merge_data,
 	},
 	{},
 };

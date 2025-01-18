@@ -26,7 +26,7 @@
 #define MML_IR_RSZ_MIN_RATIO	375	/* resize must lower than this ratio */
 #define MML_OUT_MIN_W		784	/* wqhd 1440/2+64=784 */
 #define MML_DL_MAX_W		3840
-#define MML_DL_MAX_H		2176
+#define MML_DL_MAX_H		2400
 #define MML_DL_RROT_S_PX	(1920 * 1088)
 #define MML_MIN_SIZE		480
 
@@ -79,7 +79,7 @@ int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
 #ifndef MML_FPGA
-int mml_dpc = 1;
+int mml_dpc;
 #else
 int mml_dpc;
 #endif
@@ -280,7 +280,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML1_RROT0, MML1_DMA0_SEL,},
 		{MML1_DMA0_SEL, MML1_DLI0_SEL,},
 		{MML1_DLI0_SEL, MML1_RSZ0,},
-		{MML1_RSZ0, MML1_WROT0_SEL,},
+		{MML1_RSZ0, MML1_TDSHP0,},
+		{MML1_TDSHP0, MML1_WROT0_SEL,},
 		{MML1_WROT0_SEL, MML1_DLOUT0_SEL,},
 		{MML1_DLOUT0_SEL, MML1_DLO5,},
 		{MML1_DLO5,},
@@ -370,7 +371,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML1_MERGE0, MML1_DMA0_SEL,},
 		{MML1_DMA0_SEL, MML1_DLI0_SEL,},
 		{MML1_DLI0_SEL, MML1_RSZ0,},
-		{MML1_RSZ0, MML1_WROT0_SEL,},
+		{MML1_RSZ0, MML1_TDSHP0,},
+		{MML1_TDSHP0, MML1_WROT0_SEL,},
 		{MML1_WROT0_SEL, MML1_DLOUT0_SEL,},
 		{MML1_DLOUT0_SEL, MML1_DLO5,},
 		{MML0_DLO2,},
@@ -653,7 +655,7 @@ static const u8 clt_dispatch[PATH_MML_MAX] = {
 	[PATH_MML1_DL2_RSZ]	= MML_CLT_PIPE0,
 	[PATH_MML1_DL2]		= MML_CLT_PIPE0,
 	[PATH_MML1_DL2_AIPQ]	= MML_CLT_PIPE0,
-	[PATH_MML1_DL2]		= MML_CLT_PIPE0,
+	[PATH_MML1_DL2_HDR]	= MML_CLT_PIPE0,
 	[PATH_MML0_NOPQ]	= MML_CLT_PIPE1,
 	[PATH_MML0_RSZ]		= MML_CLT_PIPE1,
 	[PATH_MML0_PQ]		= MML_CLT_PIPE1,
@@ -692,7 +694,7 @@ static const u8 grp_dispatch[PATH_MML_MAX] = {
 	[PATH_MML1_DL2_RSZ]	= MUX_SOF_GRP1,
 	[PATH_MML1_DL2]		= MUX_SOF_GRP1,
 	[PATH_MML1_DL2_AIPQ]	= MUX_SOF_GRP1,
-	[PATH_MML1_DL2]		= MUX_SOF_GRP1,
+	[PATH_MML1_DL2_HDR]	= MUX_SOF_GRP1,
 	[PATH_MML0_NOPQ]	= MUX_SOF_GRP2,
 	[PATH_MML0_RSZ]		= MUX_SOF_GRP2,
 	[PATH_MML0_PQ]		= MUX_SOF_GRP2,
@@ -1191,6 +1193,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	scene = scene_to_ovl1(cfg->info.ovlsys_id, scene);
 
 	cfg->rrot_dual = dual;
+	cfg->merge2p = scene == PATH_MML1_DL2_NOPQ;
 
 	*path = &cache->paths[scene];
 }
@@ -1298,14 +1301,14 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 
 	/* get mid opp frequency */
 	tp = mml_topology_get_cache(mml);
-	if (!tp || !tp->qos[mml_sys_frame].opp_cnt) {
-		mml_err("not support dl due to opp not ready");
-		goto decouple;
-	}
-
-	if (!tp_check_tput(info, tp, panel_width, panel_height, &dual)) {
-		*reason = mml_query_opp_out;
-		goto decouple;
+	if (tp && tp->qos[mml_sys_frame].opp_cnt) {
+		if (!tp_check_tput(info, tp, panel_width, panel_height, &dual)) {
+			*reason = mml_query_opp_out;
+			goto decouple;
+		}
+	} else {
+		/* still support dl for mmdvfs not ready case */
+		dual = true;
 	}
 
 dl_force:
@@ -1448,11 +1451,6 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (info->mode == MML_MODE_APUDC) {
 		*reason = mml_query_apudc;
 		goto decouple_user;
-	}
-
-	if (!MML_FMT_COMPRESS(info->src.format)) {
-		*reason = mml_query_format;
-		return MML_MODE_MML_DECOUPLE;
 	}
 
 	/* rotate go to racing (inline rotate) */

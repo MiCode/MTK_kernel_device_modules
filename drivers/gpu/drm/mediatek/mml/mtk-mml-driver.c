@@ -111,8 +111,8 @@ struct mml_dpc {
 };
 
 struct mml_sys_state {
-	struct kref dl_ref;
-	struct kref racing_ref;
+	atomic_t dl_ref;
+	atomic_t racing_ref;
 	u8 sys_id;
 };
 
@@ -245,11 +245,11 @@ s32 mml_dev_get_couple_cnt(struct mml_dev *mml)
 
 	mutex_lock(&mml->sys_state_mutex);
 
-	cnt = kref_read(&mml->sys_state[mml_sys_frame].dl_ref);
+	cnt = atomic_read(&mml->sys_state[mml_sys_frame].dl_ref);
 	if (cnt)
 		goto done;
 
-	cnt = kref_read(&mml->sys_state[mml_sys_frame].racing_ref);
+	cnt = atomic_read(&mml->sys_state[mml_sys_frame].racing_ref);
 done:
 	mutex_unlock(&mml->sys_state_mutex);
 
@@ -263,31 +263,14 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
 
 	mutex_lock(&mml->sys_state_mutex);
 
-	if (mode == MML_MODE_DIRECT_LINK) {
-		kref_get(&mml->sys_state[sys_id].dl_ref);
-		cnt = kref_read(&mml->sys_state[mml_sys_frame].dl_ref);
-	} else if (mode == MML_MODE_RACING) {
-		kref_get(&mml->sys_state[sys_id].racing_ref);
-		cnt = kref_read(&mml->sys_state[mml_sys_frame].racing_ref);
-	}
+	if (mode == MML_MODE_DIRECT_LINK)
+		cnt = atomic_inc_return(&mml->sys_state[sys_id].dl_ref);
+	else if (mode == MML_MODE_RACING)
+		cnt = atomic_inc_return(&mml->sys_state[sys_id].racing_ref);
 
 	mutex_unlock(&mml->sys_state_mutex);
 
 	return cnt;
-}
-
-void mml_dev_couple_release_dl(struct kref *kref)
-{
-	struct mml_sys_state *state = container_of(kref, struct mml_sys_state, dl_ref);
-
-	mml_log("%s sys id %u", __func__, state->sys_id);
-}
-
-void mml_dev_couple_release_racing(struct kref *kref)
-{
-	struct mml_sys_state *state = container_of(kref, struct mml_sys_state, racing_ref);
-
-	mml_log("%s sys id %u", __func__, state->sys_id);
 }
 
 s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
@@ -297,13 +280,13 @@ s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 
 	mutex_lock(&mml->sys_state_mutex);
 
-	if (mode == MML_MODE_DIRECT_LINK) {
-		kref_put(&mml->sys_state[sys_id].dl_ref, mml_dev_couple_release_dl);
-		cnt = kref_read(&mml->sys_state[sys_id].dl_ref);
-	} else if (mode == MML_MODE_RACING) {
-		kref_put(&mml->sys_state[sys_id].racing_ref, mml_dev_couple_release_racing);
-		cnt = kref_read(&mml->sys_state[sys_id].racing_ref);
-	}
+	if (mode == MML_MODE_DIRECT_LINK)
+		cnt = atomic_dec_return(&mml->sys_state[sys_id].dl_ref);
+	else if (mode == MML_MODE_RACING)
+		cnt = atomic_dec_return(&mml->sys_state[sys_id].racing_ref);
+
+	if (!cnt)
+		mml_msg("%s sys id %u", __func__, mml->sys_state[sys_id].sys_id);
 
 	mutex_unlock(&mml->sys_state_mutex);
 
@@ -1974,8 +1957,11 @@ static int mml_probe(struct platform_device *pdev)
 	mutex_init(&mml->clock_mutex);
 	mutex_init(&mml->wake_ref_mutex);
 
-	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++)
+	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++) {
 		mml->sys_state[i].sys_id = i;
+		atomic_set(&mml->sys_state[i].dl_ref, 0);
+		atomic_set(&mml->sys_state[i].racing_ref, 0);
+	}
 
 	/* init sram request parameters */
 	mutex_init(&mml->sram_mutex);
@@ -2082,6 +2068,7 @@ static int mml_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mutex_init(&mml->frm_dump_mutex);
+	mml->frm_dump_opt_sysid = mml_sys_frame; /* default set to mml1 for timeout dump */
 	mml->frm_dumps[mml_sys_frame][mml_frm_dump_src0].prefix = "in";
 	mml->frm_dumps[mml_sys_frame][mml_frm_dump_src1].prefix = "in1";
 	mml->frm_dumps[mml_sys_frame][mml_frm_dump_dest0].prefix = "out";

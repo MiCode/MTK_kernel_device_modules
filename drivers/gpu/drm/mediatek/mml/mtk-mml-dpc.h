@@ -16,6 +16,7 @@ extern int mml_dl_dpc;
 
 enum mml_dl_dpc_config {
 	MML_DLDPC_VOTE = 0x1,	/* vote dpc before write and after done */
+	MML_DPC_MUTEX_VOTE = 0x2,	/* do release and vote between sync disp */
 };
 
 #define VLP_VOTE_SET		0x414

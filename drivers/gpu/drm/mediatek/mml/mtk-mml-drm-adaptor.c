@@ -215,7 +215,7 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 	}
 
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE, info->mode, mode, 0, reason);
-	mml_msg("query mode %u result mode %u reason %u", info->mode, mode, reason);
+	mml_msg("query mode %u result mode %u reason %d", info->mode, mode, (s32)reason);
 	return mode;
 
 not_support:
@@ -525,6 +525,16 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	if (submit->info.ovlsys_id != MML_DLO_OVLSYS0)
 		mml_err("[drm]%s submit ovlsys id %u", __func__, submit->info.ovlsys_id);
 
+	if (submit->info.mode == MML_MODE_DIRECT_LINK && !submit->info.act_time) {
+		static bool logonce;
+
+		if (!logonce) {
+			mml_err("[drm]empty active time will result wrong bandwidth");
+			logonce = true;
+		}
+		submit->info.act_time = 1000;
+	}
+
 	/* always fixup dest_cnt > MML_MAX_OUTPUTS */
 	if (submit->info.dest_cnt > MML_MAX_OUTPUTS)
 		submit->info.dest_cnt = MML_MAX_OUTPUTS;
@@ -683,8 +693,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 
 	/* copy per-frame info */
 	task->ctx = ctx;
-	if (cfg->info.mode == MML_MODE_MML_DECOUPLE ||
-	    cfg->info.mode == MML_MODE_MML_DECOUPLE2) {
+	if (mml_isdc(cfg->info.mode)) {
 		task->end_time.tv_sec = submit->end.sec;
 		task->end_time.tv_nsec = submit->end.nsec;
 		/* give default time if empty */
@@ -865,7 +874,7 @@ static void drm_task_ddren(struct mml_task *task, struct cmdq_pkt *pkt, bool ena
 		return;
 
 	/* no need ddren for srt case */
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
+	if (mml_isdc(mode))
 		return;
 
 	ctx->ddren_cb(pkt, enable, ctx->ddren_param);
@@ -880,7 +889,7 @@ static void drm_task_dispen(struct mml_task *task, bool enable)
 		return;
 
 	/* no need ddren so no dispen */
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
+	if (mml_isdc(mode))
 		return;
 
 	ctx->dispen_cb(enable, ctx->dispen_param);

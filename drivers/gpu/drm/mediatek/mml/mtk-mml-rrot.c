@@ -1147,10 +1147,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("use config %p rrot %p", cfg, rrot);
 
-#ifdef MML_FPGA
-	/* clear event in fpga, to avoid cmdq init issue */
+	/* clear event */
 	cmdq_pkt_clear_event(pkt, rrot->event_eof);
-#endif
 
 	/* before everything start, make sure ddr enable */
 	if (ccfg->pipe == 0 && cfg->task_ops->ddren)
