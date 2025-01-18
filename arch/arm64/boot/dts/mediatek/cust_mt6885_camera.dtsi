@@ -435,10 +435,10 @@
 	pinctrl-51 = <&camera_pins_cam4_mclk_6ma>;
 	pinctrl-52 = <&camera_pins_cam4_mclk_8ma>;
 
-	cam0_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
-	cam1_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
-	cam2_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
-	cam4_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+	cam0_vcamio-supply = <&mt6359p_vcamio_reg>;
+	cam1_vcamio-supply = <&mt6359p_vcamio_reg>;
+	cam2_vcamio-supply = <&mt6359p_vcamio_reg>;
+	cam4_vcamio-supply = <&mt6359p_vcamio_reg>;
 
 	cam0_pin_mclk = "mclk";
 	cam0_pin_pdn = "gpio";
@@ -508,9 +508,9 @@
 
 /* CAMERA AF */
 &camera_af_hw_node {
-	camaf_m1_pmic-supply = <&mt_pmic_vcamio_ldo_reg>;
-	camaf_m2_pmic-supply = <&mt_pmic_vcamio_ldo_reg>;
-	camaf_m3_pmic-supply = <&mt_pmic_vcamio_ldo_reg>;
+	camaf_m1_pmic-supply = <&mt6359p_vcamio_reg>;
+	camaf_m2_pmic-supply = <&mt6359p_vcamio_reg>;
+	camaf_m3_pmic-supply = <&mt6359p_vcamio_reg>;
 	status = "okay";
 };
 /* CAMERA AF end */
