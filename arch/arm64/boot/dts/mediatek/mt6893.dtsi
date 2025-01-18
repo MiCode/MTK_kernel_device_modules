@@ -5485,12 +5485,10 @@ cpus {
 
 		mtk_apu_mdw: mtk_apu_mdw {
 			compatible = "mediatek, apu_mdw";
-			version = <1>;
+			uapi-ver = <2>;
 			dsp_mask = <0xff>;
 			dla_mask = <0xff>;
 			dma_mask = <0xff>;
-			//dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			//iommus = <&iommu3 M4U_PORT_L21_APU_FAKE_DATA>;
 		};
 		mtk_apu_mem_code: mtk_apu_mem_code {
 			compatible = "mediatek, apu_mem_code";
