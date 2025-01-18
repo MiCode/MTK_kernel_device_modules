@@ -6,6 +6,10 @@
 #ifndef __MTK_DPC_INTERNAL_H__
 #define __MTK_DPC_INTERNAL_H__
 
+#define MMSYS_MT6989  0x6989
+#define MMSYS_MT6878  0x6878
+#define MMSYS_MT6991  0x6991
+
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 
@@ -69,10 +73,6 @@
 #define DISP_REG_DPC_MML_EXT_INPUT_EN                    0x0C8UL
 #define DISP_REG_DPC_DISP_DT_CFG                         0x0D0UL
 #define DISP_REG_DPC_MML_DT_CFG                          0x0D4UL
-#define DISP_REG_DPC_DISP_DT_EN                          0x0D8UL
-#define DISP_REG_DPC_DISP_DT_SW_TRIG_EN                  0x0DCUL
-#define DISP_REG_DPC_MML_DT_EN                           0x0E0UL
-#define DISP_REG_DPC_MML_DT_SW_TRIG_EN                   0x0E4UL
 #define DISP_REG_DPC_DISP_DT_FOLLOW_CFG                  0x0E8UL
 #define DISP_REG_DPC_MML_DT_FOLLOW_CFG                   0x0ECUL
 #define DISP_REG_DPC_DTx_COUNTER(n)                      (0x100UL + 0x4 * (n))	// n = 0 ~ 56
@@ -143,6 +143,25 @@
 #define DISP_REG_DPC_DEBUG_SEL                           0x870UL
 #define DISP_REG_DPC_DEBUG_STA                           0x874UL
 
+#define DISP_REG_DPC_DISP_DT_EN                          0x0D8UL //  0 ~ 31 : BIT0 ~ BIT31
+#define DISP_REG_DPC_MML_DT_EN                           0x0E0UL // 32 ~ 56 : BIT0 ~ BIT24
+#define DISP_REG_DPC2_DISP_DT_EN                         0x0F0UL // 57 ~ 65 : BIT0 ~ BIT8
+#define DISP_REG_DPC2_MML_DT_EN                          0x0F4UL // 66 ~ 74 : BIT0 ~ BIT8
+#define DISP_REG_DPC2_DISP_DT_EN                         0x0F0UL // 75 ~ 77 : BIT9 ~ BIT11
+
+#define DISP_REG_DPC_DISP_DT_SW_TRIG_EN                  0x0DCUL //  0 ~ 31 : BIT0 ~ BIT31
+#define DISP_REG_DPC_MML_DT_SW_TRIG_EN                   0x0E4UL // 32 ~ 56 : BIT0 ~ BIT24
+#define DISP_REG_DPC2_DISP_DT_SW_TRIG_EN                 0x0F8UL // 57 ~ 65 : BIT0 ~ BIT8
+#define DISP_REG_DPC2_MML_DT_SW_TRIG_EN                  0x0FCUL // 66 ~ 74 : BIT0 ~ BIT8
+#define DISP_REG_DPC2_DISP_DT_SW_TRIG_EN                 0x0F8UL // 75 ~ 77 : BIT9 ~ BIT11
+#define DISP_REG_DPC2_DTx_SW_TRIG(n)                     (0x300UL + 0x4 * (n))	// n = 0 ~ 77
+
+#define DISP_DPC2_DISP_26M_PMIC_VCORE_OFF_CFG            0xA08UL
+#define DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG             0xA0CUL
+#define DISP_DPC_MIPI_SODI5_EN                           0xE00UL
+#define DISP_DPC_ON2SOF_DT_EN                            0xE40UL
+#define DISP_DPC_ON2SOF_DSI0_SOF_COUNTER                 0xE48UL
+
 #define DISP_DPC_INT_DISP1_ON                            BIT(31)
 #define DISP_DPC_INT_DISP1_OFF                           BIT(30)
 #define DISP_DPC_INT_DISP0_ON                            BIT(29)
@@ -177,6 +196,7 @@
 #define DISP_DPC_INT_DT0                                 BIT(0)
 
 #define DISP_DPC_VDO_MODE                                BIT(16)
+#define DISP_DPC_MMQOS_ALWAYS_SCAN_EN                    BIT(4)
 #define DISP_DPC_DT_EN                                   BIT(1)
 #define DISP_DPC_EN                                      BIT(0)
 
@@ -193,11 +213,28 @@ enum mtk_dpc_sp_type {
 	DPC_SP_RROT_DONE,
 };
 
+enum mtk_dpc_cap_id {
+	DPC_CAP_MTCMOS,
+	DPC_CAP_APSRC,
+	DPC_CAP_VDISP,
+	DPC_CAP_QOS,
+	DPC_CAP_MMINFRA_PLL,
+	DPC_CAP_PMIC_VCORE,
+	DPC_CAP_DSI,
+	DPC_CAP_CNT
+};
+#define has_cap(id) (g_priv && (g_priv->vidle_mask & BIT(id)))
+
 struct mtk_dpc_dt_usage {
 	s16 index;
 	enum mtk_dpc_sp_type sp;		/* start point */
 	u16 ep;					/* end point in us */
 	u16 group;
+};
+
+struct mtk_dpc2_dt_usage {
+	u8 en;
+	u32 val;
 };
 
 struct mtk_dpc_dvfs_bw {
@@ -209,8 +246,64 @@ struct mtk_dpc_dvfs_bw {
 	struct mutex lock;
 };
 
-static void dpc_dt_enable(u16 dt, bool en);
+struct mtk_dpc_mtcmos_cfg {
+	u16 cfg;
+	u16 thread_set;
+	u16 thread_clr;
+	resource_size_t chk_pa;
+	void __iomem *chk_va;
+};
+
+struct mtk_dpc_channel_bw_cfg {
+	u16 offset;
+	u8 shift;
+};
+
+static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread);
 static void dpc_dt_set(u16 dt, u32 counter);
-static void dpc_dt_sw_trig(u16 dt);
+static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb);
+
+struct mtk_dpc {
+	struct platform_device *pdev;
+	struct device *dev;
+	struct device *pd_dev;
+	struct notifier_block pm_nb;
+	int disp_irq;
+	int mml_irq;
+	resource_size_t dpc_pa;
+	void __iomem *mminfra_hangfree;
+	bool skip_force_power;
+	spinlock_t skip_force_power_lock;
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	struct dentry *fs;
+#endif
+	struct mtk_dpc_dvfs_bw dvfs_bw;
+
+	unsigned int mmsys_id;
+	u32 vidle_mask;
+	u32 dt_follow_cfg;
+	u32 total_srt_unit;
+	u32 total_hrt_unit;
+
+	void __iomem *vdisp_dvfsrc;
+	u32 vdisp_dvfsrc_idle_mask;
+
+	void __iomem *dispvcore_chk;
+	u32 dispvcore_chk_mask;
+
+	resource_size_t voter_set_pa;
+	resource_size_t voter_clr_pa;
+	void __iomem *voter_set_va;
+	void __iomem *voter_clr_va;
+
+	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
+	struct mtk_dpc_dt_usage *disp_dt_usage;
+	struct mtk_dpc_dt_usage *mml_dt_usage;
+	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
+
+	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
+	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
+};
 
 #endif
