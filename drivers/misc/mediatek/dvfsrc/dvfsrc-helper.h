@@ -127,6 +127,8 @@ struct mtk_dvfsrc {
 
 extern int dvfsrc_register_sysfs(struct device *dev);
 extern void dvfsrc_unregister_sysfs(struct device *dev);
+extern int dvfsrc_register_debugfs(struct device *dev);
+extern void dvfsrc_unregister_debugfs(struct device *dev);
 
 extern const struct dvfsrc_config mt6768_dvfsrc_config;
 extern const struct dvfsrc_qos_config mt6768_qos_config;

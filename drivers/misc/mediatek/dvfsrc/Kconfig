@@ -69,3 +69,12 @@ config MTK_DVFSRC_LEGACY
 	  This kernel config can be used to enable LEGACY DVFSRC support.
 	  When enable this option, it support compatibility with MTK legacy chip.
 	  If unsure, say N.
+
+config MTK_DVFSRC_DEBUGFS
+	tristate "MTK DVFSRC DEBUGFS Support"
+	depends on MTK_DVFSRC_HELPER
+	help
+	  This kernel config can be used to debug dvfsrc (dynamic voltage
+	  and frequency scaling resource collector) for Mediatek vcore_dvfs.
+	  When enable this option, we can use dvfsrc debug.
+	  If unsure, say N.
