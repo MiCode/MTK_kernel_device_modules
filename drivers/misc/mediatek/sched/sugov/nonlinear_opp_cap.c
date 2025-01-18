@@ -248,7 +248,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		for_each_cpu(cpu_idx, &pd_cpumask[i])
 			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
 				cpu_active(cpu_idx) &&
-				!available_idle_cpu(cpu))
+				!available_idle_cpu(cpu_idx))
 				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 
 		freq_state.dsu_freq_vote[i]
