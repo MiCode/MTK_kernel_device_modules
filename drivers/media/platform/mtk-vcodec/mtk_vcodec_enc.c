@@ -13,6 +13,9 @@
 #include <linux/module.h>
 #include <mtk_heap.h>
 
+#include "mtk_heap.h"
+#include "iommu_pseudo.h"
+
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_enc.h"
 #include "mtk_vcodec_intr.h"
@@ -40,6 +43,55 @@ struct mtk_codec_framesizes
 static unsigned int default_out_fmt_idx;
 static unsigned int default_cap_fmt_idx;
 static struct vb2_mem_ops venc_dma_contig_memops;
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+static struct vb2_mem_ops venc_sec_dma_contig_memops;
+
+static int mtk_venc_sec_dc_map_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to pin a non attached buffer\n");
+		return -EINVAL;
+	}
+
+	if (WARN_ON(buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already pinned\n");
+		return 0;
+	}
+
+	buf->dma_addr = dmabuf_to_secure_handle(buf->db_attach->dmabuf);
+	buf->dma_sgt = NULL;
+	buf->vaddr = NULL;
+
+	return 0;
+}
+
+static void mtk_venc_sec_dc_unmap_dmabuf(void *mem_priv)
+{
+	struct vb2_dc_buf *buf = mem_priv;
+
+	if (WARN_ON(!buf->db_attach)) {
+		mtk_v4l2_err("trying to unpin a not attached buffer\n");
+		return;
+	}
+
+	if (WARN_ON(!buf->dma_addr)) {
+		mtk_v4l2_err("dmabuf buffer is already unpinned\n");
+		return;
+	}
+
+	if (buf->vaddr) {
+		mtk_v4l2_err("dmabuf buffer vaddr not null\n");
+		dma_buf_vunmap(buf->db_attach->dmabuf, buf->vaddr);
+		buf->vaddr = NULL;
+	}
+
+	buf->dma_addr = 0;
+	buf->dma_sgt = NULL;
+}
+#endif
 
 static bool mtk_venc_is_vcu(void)
 {
@@ -642,6 +694,10 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 				return -EINVAL;
 			}
 			src_vq->mem_ops = &venc_dma_contig_memops;
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+			if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu())
+				src_vq->mem_ops = &venc_sec_dma_contig_memops;
+#endif
 		}
 		break;
 	case V4L2_CID_MPEG_MTK_ENCODE_NONREFP:
@@ -2354,7 +2410,7 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 	unsigned int i;
 
 	if (IS_ERR_OR_NULL(vq) || IS_ERR_OR_NULL(nbuffers) ||
-	    IS_ERR_OR_NULL(nplanes) || IS_ERR_OR_NULL(alloc_devs)) {
+		IS_ERR_OR_NULL(nplanes) || IS_ERR_OR_NULL(alloc_devs)) {
 		mtk_v4l2_err("vq %p, nbuffers %p, nplanes %p, alloc_devs %p",
 			vq, nbuffers, nplanes, alloc_devs);
 		return -EINVAL;
@@ -2363,7 +2419,7 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 	ctx = vb2_get_drv_priv(vq);
 	q_data = mtk_venc_get_q_data(ctx, vq->type);
 	if (q_data == NULL || q_data->fmt == NULL ||
-	    (*nplanes) > MTK_VCODEC_MAX_PLANES) {
+		(*nplanes) > MTK_VCODEC_MAX_PLANES) {
 		mtk_v4l2_err("vq->type=%d nplanes %d err", vq->type, *nplanes);
 		return -EINVAL;
 	}
@@ -2382,6 +2438,14 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 		ctx->id, *nplanes, *nbuffers, sizes[0], sizes[1], sizes[2],
 		q_data->sizeimage[0], q_data->sizeimage[1], q_data->sizeimage[2],
 		mtk_vcodec_get_state(ctx));
+
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu()) {
+		vq->mem_ops = &venc_sec_dma_contig_memops;
+		mtk_v4l2_debug(1, "[%d] hook sec mem_ops.map_dmabuf for queue type %d",
+			ctx->id, vq->type);
+	}
+#endif
 
 	// previously stream off with task not empty
 	mtk_vcodec_set_state_from(ctx, MTK_STATE_FLUSH, MTK_STATE_STOP);
@@ -4453,7 +4517,16 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	venc_dma_contig_memops = vb2_dma_contig_memops;
 	venc_dma_contig_memops.attach_dmabuf = mtk_venc_dc_attach_dmabuf;
 	src_vq->mem_ops         = &venc_dma_contig_memops;
-	mtk_v4l2_debug(4, "[%s] src_vq use vb2_dma_contig_memops", name);
+	mtk_v4l2_debug(4, "[%s] src_vq use venc_dma_contig_memops", name);
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu()) {
+		venc_sec_dma_contig_memops = venc_dma_contig_memops;
+		venc_sec_dma_contig_memops.map_dmabuf   = mtk_venc_sec_dc_map_dmabuf;
+		venc_sec_dma_contig_memops.unmap_dmabuf = mtk_venc_sec_dc_unmap_dmabuf;
+		src_vq->mem_ops = &venc_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "src_vq use venc_sec_dma_contig_memops");
+	}
+#endif
 	src_vq->bidirectional = 1;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
@@ -4476,6 +4549,12 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops             = &mtk_venc_vb2_ops;
 	dst_vq->mem_ops         = &venc_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] dst_vq use venc_dma_contig_memops", name);
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+	if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu()) {
+		dst_vq->mem_ops     = &venc_sec_dma_contig_memops;
+		mtk_v4l2_debug(4, "dst_vq use venc_sec_dma_contig_memops");
+	}
+#endif
 	dst_vq->bidirectional = 1;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;
@@ -4513,29 +4592,48 @@ void mtk_venc_unlock(struct mtk_vcodec_ctx *ctx, u32 hw_id)
 	if (hw_id >= MTK_VENC_HW_NUM)
 		return;
 
-	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d",
-		ctx, ctx->id, hw_id, ctx->dev->enc_sem[hw_id].count);
+	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d, lock: %d",
+		ctx, ctx->id, hw_id, ctx->dev->enc_sem[hw_id].count,
+		ctx->dev->enc_hw_locked[hw_id]);
+
 
 	if (hw_id < MTK_VENC_HW_NUM) {
 		ctx->core_locked[hw_id] = 0;
 		up(&ctx->dev->enc_sem[hw_id]);
 	}
+
+	ctx->dev->enc_hw_locked[hw_id] = VENC_LOCK_NONE;
 }
 
-void mtk_venc_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id)
+int mtk_venc_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id, bool sec)
 {
 	int ret = -1;
+	enum venc_lock lock = VENC_LOCK_NONE;
 
 	if (hw_id >= MTK_VENC_HW_NUM)
-		return;
+		return ret;
 
-	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d",
-		ctx, ctx->id, hw_id, ctx->dev->enc_sem[hw_id].count);
+	if (sec != 0)
+		lock = VENC_LOCK_SEC;
+	else
+		lock = VENC_LOCK_NORMAL;
 
-	ret = down_interruptible(&ctx->dev->enc_sem[hw_id]);
-	ctx->core_locked[hw_id] = 1;
+	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d, sec: %d, lock: %d",
+		ctx, ctx->id, hw_id, ctx->dev->enc_sem[hw_id].count, sec,
+		ctx->dev->enc_hw_locked[hw_id]);
+
+	if (lock != ctx->dev->enc_hw_locked[hw_id])
+		ret = down_trylock(&ctx->dev->enc_sem[hw_id]);
+	else
+		ret = 0;
+
+	if (ret == 0) {
+		ctx->dev->enc_hw_locked[hw_id] = lock;
+		ctx->core_locked[hw_id] = 1;
+	}
+
+	return ret;
 }
-
 
 void mtk_vcodec_enc_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx)
 {

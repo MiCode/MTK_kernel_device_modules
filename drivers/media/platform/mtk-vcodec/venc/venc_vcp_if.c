@@ -652,6 +652,7 @@ int vcp_enc_ipi_handler(void *arg)
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;
 		case VCU_IPIMSG_ENC_POWER_ON:
+			venc_lock(ctx, msg->status, 0);
 			ctx->sysram_enable = vsi->config.sysram_enable;
 			venc_encode_prepare(ctx, msg->status, &flags);
 			msg->msg_id = AP_IPIMSG_ENC_POWER_ON_DONE;
@@ -660,6 +661,7 @@ int vcp_enc_ipi_handler(void *arg)
 		case VCU_IPIMSG_ENC_POWER_OFF:
 			ctx->sysram_enable = vsi->config.sysram_enable;
 			venc_encode_unprepare(ctx, msg->status, &flags);
+			venc_unlock(ctx, msg->status);
 			msg->msg_id = AP_IPIMSG_ENC_POWER_OFF_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 			break;

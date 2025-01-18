@@ -14,6 +14,7 @@
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_enc.h"
+#include "mtk_heap.h"
 
 static void handle_enc_init_msg(struct venc_vcu_inst *vcu, void *data)
 {
@@ -151,6 +152,7 @@ int vcu_enc_ipi_handler(void *data, unsigned int len, void *priv)
 	struct list_head *p, *q;
 	struct mtk_vcodec_ctx *temp_ctx;
 	int msg_valid = 0;
+	int lock = -1;
 
 	BUILD_BUG_ON(sizeof(struct venc_ap_ipi_msg_init) > SHARE_BUF_SIZE);
 	BUILD_BUG_ON(sizeof(struct venc_ap_ipi_query_cap) > SHARE_BUF_SIZE);
@@ -229,14 +231,27 @@ int vcu_enc_ipi_handler(void *data, unsigned int len, void *priv)
 	case VCU_IPIMSG_ENC_POWER_ON:
 		/*use status to store core ID*/
 		ctx->sysram_enable = vsi->config.sysram_enable;
+		VCU_FPTR(vcu_get_gce_lock)(vcu->dev, VCU_VENC);
+		while (lock != 0) {
+			lock = venc_lock(ctx, 0, true);
+			if (lock != 0) {
+				VCU_FPTR(vcu_put_gce_lock)(vcu->dev, VCU_VENC);
+				usleep_range(1000, 2000);
+				VCU_FPTR(vcu_get_gce_lock)(vcu->dev, VCU_VENC);
+			}
+		}
 		venc_encode_prepare(ctx, msg->status, &flags);
+		VCU_FPTR(vcu_put_gce_lock)(vcu->dev, VCU_VENC);
 		msg->status = VENC_IPI_MSG_STATUS_OK;
 		ret = 1;
 		break;
 	case VCU_IPIMSG_ENC_POWER_OFF:
 		/*use status to store core ID*/
+		VCU_FPTR(vcu_get_gce_lock)(vcu->dev, VCU_VENC);
 		ctx->sysram_enable = vsi->config.sysram_enable;
 		venc_encode_unprepare(ctx, msg->status, &flags);
+		venc_unlock(ctx, 0);
+		VCU_FPTR(vcu_put_gce_lock)(vcu->dev, VCU_VENC);
 		msg->status = VENC_IPI_MSG_STATUS_OK;
 		ret = 1;
 		break;
@@ -729,6 +744,13 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 		vsi->venc.bs_addr = bs_buf->dma_addr;
 		vsi->venc.bs_dma = bs_buf->dma_addr;
 		out.bs_size = bs_buf->size;
+
+		if (vsi->config.svp_mode) {
+			out.sec_mem_handle = dmabuf_to_secure_handle(bs_buf->dmabuf);
+			pr_info("%s %d out.sec_mem_handle 0x%x", __func__,
+				 __LINE__, out.sec_mem_handle);
+		}
+
 		mtk_vcodec_debug(vcu, " output (dma:%lx)",
 			(unsigned long)bs_buf->dmabuf);
 	} else {
