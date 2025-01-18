@@ -912,8 +912,10 @@ int vcp_enable_pm_clk(enum feature_id id)
 		vcp_enable_irqs();
 
 		if (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
-			if (reset_vcp())
+			if (reset_vcp()) {
+				mutex_unlock(&vcp_pw_clk_mutex);
 				return -1;
+			}
 		}
 	}
 	pwclkcnt++;
