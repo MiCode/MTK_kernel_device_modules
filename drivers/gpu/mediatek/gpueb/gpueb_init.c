@@ -4,7 +4,7 @@
  */
 
 /**
- * @file    mtk_common_init.c
+ * @file    gpueb_init.c
  * @brief   GPUEB driver init and probe
  */
 
@@ -38,6 +38,8 @@
 #include "gpueb_debug.h"
 #include "gpueb_timesync.h"
 
+#include "ghpm.h"
+
 /*
  * ===============================================
  * SECTION : Local functions declaration
@@ -52,7 +54,6 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev);
  * ===============================================
  */
 
-static bool g_probe_done;
 static struct platform_device *g_pdev;
 static struct workqueue_struct *gpueb_logger_workqueue;
 
@@ -112,7 +113,7 @@ static int gpueb_create_files(void)
 
 	ret = misc_register(&gpueb_device);
 	if (unlikely(ret != 0)) {
-		gpueb_pr_info("misc register failed");
+		gpueb_pr_info(GPUEB_TAG, "misc register failed");
 		return ret;
 	}
 
@@ -130,34 +131,35 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	unsigned int gpueb_support = 0;
+	unsigned int ghpm_support = 0;
 	unsigned int gpueb_logger_support = 0;
 	struct device_node *node;
 
-	gpueb_pr_info("GPUEB driver probe start");
+	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe start");
 
 	node = of_find_matching_node(NULL, g_gpueb_of_match);
 	if (!node)
-		gpueb_pr_info("find GPUEB node failed");
+		gpueb_pr_info(GPUEB_TAG, "find GPUEB node failed");
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-support",
 			&gpueb_support);
 	if (gpueb_support == 0) {
-		gpueb_pr_info("Bypass the GPUEB driver probe");
+		gpueb_pr_info(GPUEB_TAG, "Bypass the GPUEB driver probe");
 		return 0;
 	}
 
 	ret = gpueb_ipi_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("ipi init fail");
+		gpueb_pr_info(GPUEB_TAG, "ipi init fail");
 
 	ret = gpueb_reserved_mem_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("reserved mem init fail");
+		gpueb_pr_info(GPUEB_TAG, "reserved mem init fail");
 
 	/*
 	ret = gpueb_plat_service_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("plat service init fail");
+		gpueb_pr_info(GPUEB_TAG, "plat service init fail");
 	*/
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-logger-support",
@@ -167,33 +169,45 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 		if (gpueb_logger_init(pdev,
 				gpueb_get_reserve_mem_virt(0),
 				gpueb_get_reserve_mem_size(0)) == -1) {
-			gpueb_pr_info("logger init fail");
+			gpueb_pr_info(GPUEB_TAG, "logger init fail");
 			goto err;
 		}
 
 		ret = gpueb_create_files();
 		if (unlikely(ret != 0)) {
-			gpueb_pr_info("create files fail");
+			gpueb_pr_info(GPUEB_TAG, "create files fail");
 			goto err;
 		}
 	} else {
-		gpueb_pr_info("gpueb no logger support.");
+		gpueb_pr_info(GPUEB_TAG, "gpueb no logger support.");
 	}
 
-	gpueb_hw_voter_dbg_init();
+	of_property_read_u32(pdev->dev.of_node, "ghpm-support",
+			&ghpm_support);
+	if (ghpm_support == 1) {
+		ret = ghpm_init(pdev);
+		if (ret) {
+			gpueb_pr_err(GPUEB_TAG, "ghpm_init fail, ret=%d", ret);
+			goto err;
+		}
+	} else {
+		gpueb_pr_info(GPUEB_TAG, "no ghpm support.");
+	}
 
+#if !IPI_TEST
+	gpueb_hw_voter_dbg_init();
+#endif
 	/* init gpufreq debug */
 	gpueb_debug_init(pdev);
 
 	ret = gpueb_timesync_init();
 	if (ret) {
-		gpueb_pr_info("GPUEB timesync init fail");
-		return ret;
+		gpueb_pr_err(GPUEB_TAG, "GPUEB timesync init fail, ret=%d", ret);
+		goto err;
 	}
 
 	g_pdev = pdev;
-	g_probe_done = true;
-	gpueb_pr_info("GPUEB driver probe done");
+	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe done");
 
 	return 0;
 
@@ -208,16 +222,12 @@ static int __init __mt_gpueb_init(void)
 {
 	int ret = 0;
 
-	gpueb_pr_debug("start to initialize gpueb driver");
-
-#ifdef CONFIG_PROC_FS
-	// Create PROC FS
-#endif
+	gpueb_pr_debug(GPUEB_TAG, "start to initialize gpueb driver");
 
 	// Register platform driver
 	ret = platform_driver_register(&g_gpueb_pdrv);
 	if (ret)
-		gpueb_pr_info("fail to register gpueb driver");
+		gpueb_pr_info(GPUEB_TAG, "fail to register gpueb driver");
 
 	return ret;
 }

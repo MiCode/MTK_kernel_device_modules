@@ -36,7 +36,7 @@ const char *gpueb_reserve_mblock_ary_name[20];
 
 int gpueb_reserve_mem_of_init(struct reserved_mem *rmem)
 {
-	gpueb_pr_debug("%pa %pa", &rmem->base, &rmem->size);
+	gpueb_pr_debug(GPUEB_TAG, "%pa %pa", &rmem->base, &rmem->size);
 	gpueb_mem_base_phys = (phys_addr_t) rmem->base;
 	gpueb_mem_size = (phys_addr_t) rmem->size;
 
@@ -48,7 +48,7 @@ RESERVEDMEM_OF_DECLARE(gpueb_reserve_mem_init,
 phys_addr_t gpueb_get_reserve_mem_phys(unsigned int id)
 {
 	if (id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d", id);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d", id);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].start_phys;
@@ -58,7 +58,7 @@ EXPORT_SYMBOL_GPL(gpueb_get_reserve_mem_phys);
 phys_addr_t gpueb_get_reserve_mem_virt(unsigned int id)
 {
 	if (id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d", id);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d", id);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].start_virt;
@@ -68,7 +68,7 @@ EXPORT_SYMBOL_GPL(gpueb_get_reserve_mem_virt);
 phys_addr_t gpueb_get_reserve_mem_size(unsigned int id)
 {
 	if (id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d", id);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d", id);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].size;
@@ -86,7 +86,7 @@ phys_addr_t gpueb_get_reserve_mem_phys_by_name(char *mem_id_name)
 	}
 
 	if (id < 0 || id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d (%s)", id, mem_id_name);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d (%s)", id, mem_id_name);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].start_phys;
@@ -104,7 +104,7 @@ phys_addr_t gpueb_get_reserve_mem_virt_by_name(char *mem_id_name)
 	}
 
 	if (id < 0 || id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d (%s)", id, mem_id_name);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d (%s)", id, mem_id_name);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].start_virt;
@@ -122,7 +122,7 @@ phys_addr_t gpueb_get_reserve_mem_size_by_name(char *mem_id_name)
 	}
 
 	if (id < 0 || id >= gpueb_mem_num) {
-		gpueb_pr_debug("no reserve memory for %d (%s)", id, mem_id_name);
+		gpueb_pr_debug(GPUEB_TAG, "no reserve memory for %d (%s)", id, mem_id_name);
 		return 0;
 	} else
 		return gpueb_reserve_mblock_ary[id].size;
@@ -140,12 +140,12 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 	of_property_read_u64(of_gpueb, "gpueb_mem_size", &gpueb_mem_size);
 
 	if (!gpueb_mem_base_phys || !gpueb_mem_size) {
-		gpueb_pr_debug("invalid gpueb_mem_base_phys (0x%llx), gpueb_mem_size (%llx)",
+		gpueb_pr_debug(GPUEB_TAG, "invalid gpueb_mem_base_phys (0x%llx), gpueb_mem_size (%llx)",
 			gpueb_mem_base_phys, gpueb_mem_size);
 		return -EINVAL;
 	}
 
-	gpueb_pr_debug("base_phys = 0x%llx, size = 0x%llx",
+	gpueb_pr_debug(GPUEB_TAG, "base_phys = 0x%llx, size = 0x%llx",
 		gpueb_mem_base_phys, gpueb_mem_size);
 
 	if ((gpueb_mem_base_phys >= 0x800000000ULL) || (gpueb_mem_base_phys < 0x40000000ULL)) {
@@ -153,7 +153,7 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 		 * The gpueb remapped region is fixed, only
 		 * 0x4000_0000 ~ 0x7_FFFF_FFFF is accessible.
 		 */
-		gpueb_pr_debug("Error: Wrong Address (0x%llx)", gpueb_mem_base_phys);
+		gpueb_pr_debug(GPUEB_TAG, "Error: Wrong Address (0x%llx)", gpueb_mem_base_phys);
 		BUG_ON(1);
 		return -1;
 	}
@@ -164,7 +164,7 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 			"gpueb-mem-table")
 			/ MEMORY_TBL_ELEM_NUM;
 	if (gpueb_mem_num <= 0) {
-		gpueb_pr_debug("gpueb-mem-table not found");
+		gpueb_pr_debug(GPUEB_TAG, "gpueb-mem-table not found");
 		gpueb_mem_num = 0;
 	}
 
@@ -174,12 +174,12 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 			gpueb_reserve_mblock_ary_name,
 			gpueb_mem_num);
 	if (ret < 0) {
-		gpueb_pr_debug("gpueb-mem-name-table not found");
+		gpueb_pr_debug(GPUEB_TAG, "gpueb-mem-name-table not found");
 		return -1;
 	}
 
 	for (i = 0; i < gpueb_mem_num; i++) {
-		gpueb_pr_debug("gpueb_reserve_mblock_ary_name[%d] = %s",
+		gpueb_pr_debug(GPUEB_TAG, "gpueb_reserve_mblock_ary_name[%d] = %s",
 			i, gpueb_reserve_mblock_ary_name[i]);
 	}
 
@@ -192,7 +192,7 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 				i * MEMORY_TBL_ELEM_NUM,
 				&m_idx);
 		if (ret) {
-			gpueb_pr_debug("Cannot get memory index(%d)", i);
+			gpueb_pr_debug(GPUEB_TAG, "Cannot get memory index(%d)", i);
 			return -1;
 		}
 		gpueb_reserve_mblock_ary[m_idx].num = m_idx;
@@ -203,23 +203,23 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 				(i * MEMORY_TBL_ELEM_NUM) + 1,
 				&m_size);
 		if (ret) {
-			gpueb_pr_debug("Cannot get memory size(%d)", i);
+			gpueb_pr_debug(GPUEB_TAG, "Cannot get memory size(%d)", i);
 			return -1;
 		}
 
 		if (m_idx >= gpueb_mem_num) {
-			gpueb_pr_debug("Skip unexpected index, %d", m_idx);
+			gpueb_pr_debug(GPUEB_TAG, "Skip unexpected index, %d", m_idx);
 			continue;
 		}
 
 		gpueb_reserve_mblock_ary[m_idx].size = m_size;
-		gpueb_pr_debug("Reserved block <%d  %d>", m_idx, m_size);
+		gpueb_pr_debug(GPUEB_TAG, "Reserved block <%d  %d>", m_idx, m_size);
 	}
 
 	// Transfer physical address to virtual address
 	gpueb_mem_base_virt = (phys_addr_t)(size_t)ioremap_wc(
 			gpueb_mem_base_phys, gpueb_mem_size);
-	gpueb_pr_debug("Reserved phy_base = 0x%llx, len:0x%llx, Reserved virt_base = 0x%llx",
+	gpueb_pr_debug(GPUEB_TAG, "Reserved phy_base = 0x%llx, len:0x%llx, Reserved virt_base = 0x%llx",
 		gpueb_mem_base_phys, gpueb_mem_size, gpueb_mem_base_virt);
 
 	// Init the access address for each block
@@ -229,13 +229,13 @@ int gpueb_reserved_mem_init(struct platform_device *pdev)
 		gpueb_reserve_mblock_ary[i].start_virt = gpueb_mem_base_virt +
 			accumlate_memory_size;
 		accumlate_memory_size += gpueb_reserve_mblock_ary[i].size;
-		gpueb_pr_debug("Reserved block[%d] phys:0x%llx, virt:0x%llx, len:0x%llx",
+		gpueb_pr_debug(GPUEB_TAG, "Reserved block[%d] phys:0x%llx, virt:0x%llx, len:0x%llx",
 			i, gpueb_reserve_mblock_ary[i].start_phys,
 			gpueb_reserve_mblock_ary[i].start_virt, gpueb_reserve_mblock_ary[i].size);
 	}
 
 	if (accumlate_memory_size > gpueb_mem_size)
-		gpueb_pr_debug("Total memory in memory table is more than reserved");
+		gpueb_pr_debug(GPUEB_TAG, "Total memory in memory table is more than reserved");
 
 	return 0;
 }
