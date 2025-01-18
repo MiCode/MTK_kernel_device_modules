@@ -37,6 +37,7 @@ struct platform_device *mcupm_pdev;
 spinlock_t mcupm_mbox_lock[MCUPM_MBOX_TOTAL];
 
 int mcupm_plt_ackdata;
+//int mcupm_mcdi_ackdata;
 static int mtk_ipi_init(struct platform_device *pdev)
 {
 	int ret;
