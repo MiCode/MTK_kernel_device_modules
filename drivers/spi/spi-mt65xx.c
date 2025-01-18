@@ -37,6 +37,7 @@
 #define SPI_TX_SRC_REG_64                 0x002c
 #define SPI_RX_DST_REG_64                 0x0030
 #define SPI_CFG3_REG                      0x0040
+#define SPI_SLICE_EN_REG                  0x005c
 #define SPI_CFG5_REG                      0x0068
 
 #define SPI_CFG0_SCK_HIGH_OFFSET          0
@@ -85,6 +86,8 @@
 #define SPI_CMD_GET_TICKDLY_OFFSET    22
 
 #define SPI_CMD_GET_TICKDLY_MASK	GENMASK(24, 22)
+#define SPI_CMD_GET_TICKDLY_SLICE_ON_MASK	GENMASK(28, 22)
+
 
 #define PIN_MODE_CFG(x)	((x) / 2)
 
@@ -105,8 +108,14 @@
 
 #define SPI_PACKET_LENGTH_HIGH_OFFSET		16
 
-#define MT8173_SPI_MAX_PAD_SEL 3
-#define MTK_SPI_MAX_TICK_DLY   8
+#define SPI_SLICE_EN_RX_WIDTH_MASK         GENMASK(2, 0)
+#define SPI_SLICE_EN_TX_WIDTH_MASK         GENMASK(5, 3)
+#define SPI_SLICE_EN_RX_OFFSET              0
+#define SPI_SLICE_EN_TX_OFFSET              3
+
+#define MT8173_SPI_MAX_PAD_SEL          3
+#define MTK_SPI_MAX_TICK_DLY            8
+#define MTK_SPI_SLICE_EN_MAX_TICK_DLY   128
 #define MTK_SPI_PAD_SEL   0
 
 
@@ -145,6 +154,8 @@ struct mtk_spi_compatible {
 	bool sw_cs;
 	/* some IC enhance patcket length to 4GB*/
 	bool enhance_packet_len;
+	/* some IC use slice enable for high speed timing*/
+	bool slice_en;
 };
 
 struct mtk_spi {
@@ -180,6 +191,19 @@ static const struct mtk_spi_compatible mt2712_compat = {
 	.must_tx = true,
 };
 
+static const struct mtk_spi_compatible mt6991_compat = {
+	.need_pad_sel = true,
+	.must_rx = false,
+	.must_tx = false,
+	.enhance_timing = true,
+	.dma_ext = true,
+	.ipm_design = true,
+	.support_quad = true,
+	.sw_cs = true,
+	.enhance_packet_len = true,
+	.slice_en = true,
+};
+
 static const struct mtk_spi_compatible mt6989_compat = {
 	.need_pad_sel = true,
 	.must_rx = false,
@@ -190,6 +214,7 @@ static const struct mtk_spi_compatible mt6989_compat = {
 	.support_quad = true,
 	.sw_cs = true,
 	.enhance_packet_len = true,
+	.slice_en = false,
 };
 
 static const struct mtk_spi_compatible mt6985_compat = {
@@ -201,6 +226,7 @@ static const struct mtk_spi_compatible mt6985_compat = {
 	.ipm_design = true,
 	.support_quad = true,
 	.sw_cs = true,
+	.slice_en = false,
 };
 
 static const struct mtk_spi_compatible mt6983_compat = {
@@ -264,6 +290,9 @@ static const struct of_device_id mtk_spi_of_match[] = {
 	},
 	{ .compatible = "mediatek,mt6765-spi",
 		.data = (void *)&mt6765_compat,
+	},
+	{ .compatible = "mediatek,mt6991-spi",
+		.data = (void *)&mt6991_compat,
 	},
 	{ .compatible = "mediatek,mt6983-spi",
 		.data = (void *)&mt6983_compat,
@@ -366,6 +395,8 @@ static void spi_dump_reg(struct mtk_spi *mdata, struct spi_master *master)
 	spi_debug("rx_d_64:0x%.8x\n", readl(mdata->base + SPI_RX_DST_REG_64));
 	spi_debug("status1:0x%.8x\n", readl(mdata->base + SPI_STATUS1_REG));
 	spi_debug("pad_sel:0x%.8x\n", readl(mdata->base + SPI_PAD_SEL_REG));
+	if (mdata->dev_comp->slice_en)
+		spi_debug("slice_en:0x%.8x\n", readl(mdata->base + SPI_SLICE_EN_REG));
 	spi_debug("||**************%s end**************||\n", __func__);
 }
 
@@ -545,18 +576,39 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 	writel(reg_val, mdata->base + SPI_CMD_REG);
 
 	/* pad select */
-	if (mdata->dev_comp->need_pad_sel)
-		writel(mdata->pad_sel[spi->chip_select],
+	if (mdata->dev_comp->need_pad_sel) {
+		writel(mdata->pad_sel[MTK_SPI_PAD_SEL],
 		       mdata->base + SPI_PAD_SEL_REG);
+		if (mdata->dev_comp->slice_en) {
+			/* open slice_en rx and tx */
+			reg_val = readl(mdata->base + SPI_SLICE_EN_REG);
+			/* do RX slice_en setting */
+			reg_val &= ~SPI_SLICE_EN_RX_WIDTH_MASK;
+			reg_val |= ((0x1 << mdata->pad_sel[MTK_SPI_PAD_SEL])
+					<< SPI_SLICE_EN_RX_OFFSET);
+			/* do TX slice en setting */
+			reg_val &= ~SPI_SLICE_EN_TX_WIDTH_MASK;
+			reg_val |= ((0x1 << mdata->pad_sel[MTK_SPI_PAD_SEL])
+					<< SPI_SLICE_EN_TX_OFFSET);
+			writel(reg_val, mdata->base + SPI_SLICE_EN_REG);
+		}
+	}
 
 	/* tick delay */
 	if (mdata->dev_comp->enhance_timing) {
 		if (mdata->dev_comp->ipm_design) {
 			reg_val = readl(mdata->base + SPI_CMD_REG);
-			reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
-			reg_val |= ((chip_config->tick_delay & 0x7)
-				    << SPI_CMD_GET_TICKDLY_OFFSET);
-			writel(reg_val, mdata->base + SPI_CMD_REG);
+			if (!mdata->dev_comp->slice_en){
+				reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
+				reg_val |= ((chip_config->tick_delay & 0x7)
+						<< SPI_CMD_GET_TICKDLY_OFFSET);
+				writel(reg_val, mdata->base + SPI_CMD_REG);
+			} else {
+				reg_val &= ~SPI_CMD_GET_TICKDLY_SLICE_ON_MASK;
+				reg_val |= ((chip_config->tick_delay & 0x7F)
+						<< SPI_CMD_GET_TICKDLY_OFFSET);
+				writel(reg_val, mdata->base + SPI_CMD_REG);
+			}
 		} else {
 			reg_val = readl(mdata->base + SPI_CFG1_REG);
 			reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
@@ -650,18 +702,39 @@ static int mtk_spi_hw_init(struct spi_master *master,
 	writel(reg_val, mdata->base + SPI_CMD_REG);
 
 	/* pad select */
-	if (mdata->dev_comp->need_pad_sel)
+	if (mdata->dev_comp->need_pad_sel) {
 		writel(mdata->pad_sel[MTK_SPI_PAD_SEL],
 		       mdata->base + SPI_PAD_SEL_REG);
+		if (mdata->dev_comp->slice_en) {
+			/* open slice_en rx and tx */
+			reg_val = readl(mdata->base + SPI_SLICE_EN_REG);
+			/* do RX slice_en setting */
+			reg_val &= ~SPI_SLICE_EN_RX_WIDTH_MASK;
+			reg_val |= ((0x1 << mdata->pad_sel[MTK_SPI_PAD_SEL])
+					<< SPI_SLICE_EN_RX_OFFSET);
+			/* do TX slice en setting */
+			reg_val &= ~SPI_SLICE_EN_TX_WIDTH_MASK;
+			reg_val |= ((0x1 << mdata->pad_sel[MTK_SPI_PAD_SEL])
+					<< SPI_SLICE_EN_TX_OFFSET);
+			writel(reg_val, mdata->base + SPI_SLICE_EN_REG);
+		}
+	}
 
 	/* tick delay */
 	if (mdata->dev_comp->enhance_timing) {
 		if (mdata->dev_comp->ipm_design) {
 			reg_val = readl(mdata->base + SPI_CMD_REG);
-			reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
-			reg_val |= ((chip_config->tick_delay & 0x7)
-				    << SPI_CMD_GET_TICKDLY_OFFSET);
-			writel(reg_val, mdata->base + SPI_CMD_REG);
+			if (!mdata->dev_comp->slice_en) {
+				reg_val &= ~SPI_CMD_GET_TICKDLY_MASK;
+				reg_val |= ((chip_config->tick_delay & 0x7)
+						<< SPI_CMD_GET_TICKDLY_OFFSET);
+				writel(reg_val, mdata->base + SPI_CMD_REG);
+			} else {
+				reg_val &= ~SPI_CMD_GET_TICKDLY_SLICE_ON_MASK;
+				reg_val |= ((chip_config->tick_delay & 0x7F)
+						<< SPI_CMD_GET_TICKDLY_OFFSET);
+				writel(reg_val, mdata->base + SPI_CMD_REG);
+			}
 		} else {
 			reg_val = readl(mdata->base + SPI_CFG1_REG);
 			reg_val &= ~SPI_CFG1_GET_TICK_DLY_MASK;
@@ -1078,7 +1151,7 @@ static int mtk_spi_setup(struct spi_device *spi)
 		if (!of_property_read_u32_index(np, "mediatek,tickdly",
 						mdata->pad_sel[MTK_SPI_PAD_SEL],
 						&prop)) {
-			if (prop < MTK_SPI_MAX_TICK_DLY) {
+			if (prop < (mdata->dev_comp->slice_en ? MTK_SPI_SLICE_EN_MAX_TICK_DLY : MTK_SPI_MAX_TICK_DLY)) {
 				spicfg->tick_delay = prop;
 				dev_info(&spi->dev, "setup pad[%d] tickdly[%d] by dts\n",
 					mdata->pad_sel[MTK_SPI_PAD_SEL], spicfg->tick_delay);
