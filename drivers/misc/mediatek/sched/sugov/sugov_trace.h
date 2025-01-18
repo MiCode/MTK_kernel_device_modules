@@ -274,30 +274,33 @@ TRACE_EVENT(sugov_ext_group_dvfs,
 );
 
 TRACE_EVENT(sugov_ext_turn_point_margin,
-	TP_PROTO(unsigned int gear_id, unsigned int orig_util, unsigned int margin_util,
-	unsigned int turn_point, unsigned int target_margin),
-	TP_ARGS(gear_id, orig_util, margin_util, turn_point, target_margin),
+	TP_PROTO(unsigned int cpu, unsigned int orig_util, unsigned int margin_util,
+	unsigned int turn_point, unsigned int target_margin, unsigned int target_margin_low),
+	TP_ARGS(cpu, orig_util, margin_util, turn_point, target_margin, target_margin_low),
 	TP_STRUCT__entry(
-		__field(unsigned int, gear_id)
+		__field(unsigned int, cpu)
 		__field(unsigned int, orig_util)
 		__field(unsigned int, margin_util)
 		__field(unsigned int, turn_point)
 		__field(unsigned int, target_margin)
+		__field(unsigned int, target_margin_low)
 	),
 	TP_fast_assign(
-		__entry->gear_id = gear_id;
+		__entry->cpu = cpu;
 		__entry->orig_util = orig_util;
 		__entry->margin_util = margin_util;
 		__entry->turn_point = turn_point;
 		__entry->target_margin = target_margin;
+		__entry->target_margin_low = target_margin_low;
 	),
 	TP_printk(
-		"gear_id=%u orig_util=%u margin_util=%u turn_point=%d target_margin=%d",
-		__entry->gear_id,
+		"cpu=%u orig_util=%u margin_util=%u turn_point=%d target_margin=%d target_margin_low=%d",
+		__entry->cpu,
 		__entry->orig_util,
 		__entry->margin_util,
 		__entry->turn_point,
-		__entry->target_margin)
+		__entry->target_margin,
+		__entry->target_margin_low)
 );
 #endif /* _TRACE_SCHEDULER_H */
 
