@@ -7,8 +7,7 @@ package(
 
 load("//build/bazel_mgk_rules:mgk.bzl", "define_mgk")
 
-mgk_kmi_symbol_list = "" #"//kernel-mainline:android/abi_gki_aarch64_mtk"
-
+mgk_kmi_symbol_list = None #"//kernel-mainline:android/abi_gki_aarch64_mtk"
 
 filegroup(
         name = "mgk_configs",
@@ -31,7 +30,6 @@ filegroup(
             "include/dtc/**",
         ]),
 )
-
 
 # mgk_64_kmainline
 load("//kernel_device_modules-mainline:kernel/kleaf/mgk_64.bzl",
