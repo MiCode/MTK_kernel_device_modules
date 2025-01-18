@@ -30,7 +30,7 @@
 #include <sugov/cpufreq.h>
 #include <linux/of_platform.h>
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-#include "mtk_energy_model/v2/energy_model.h"
+#include "mtk_energy_model/v3/energy_model.h"
 #else
 #include "mtk_energy_model/v1/energy_model.h"
 #endif

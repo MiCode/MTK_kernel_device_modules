@@ -34,21 +34,6 @@ cpufreq_sugov_ext-y += sugov/dsu_interface.o
 cpufreq_sugov_ext-y += sugov/sched_version_ctrl.o
 cpufreq_sugov_ext-y += common.o
 
-obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext_ot.o
-cpufreq_sugov_ext_ot-y += sugov/cpufreq_sugov_main.o
-ifeq ($(CONFIG_MTK_GEARLESS_SUPPORT),y)
-	cpufreq_sugov_ext_ot-y += mtk_energy_model/v2/static_power.o
-else
-	cpufreq_sugov_ext_ot-y += mtk_energy_model/v1/static_power.o
-	ifeq ($(CONFIG_MTK_LEAKAGE_HIT),y)
-		subdir-ccflags-y += -DCFG_LKG_HIT
-	endif
-endif
-cpufreq_sugov_ext_ot-y += sugov/nonlinear_opp_cap.o
-cpufreq_sugov_ext_ot-y += sugov/dsu_interface.o
-cpufreq_sugov_ext_ot-y += sugov/sched_version_ctrl.o
-cpufreq_sugov_ext_ot-y += common.o
-
 subdir-ccflags-y += -I$(srctree)/kernel/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/

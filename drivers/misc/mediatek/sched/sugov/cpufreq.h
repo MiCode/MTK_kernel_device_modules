@@ -30,55 +30,11 @@ struct sbb_cpu_data {
 	unsigned int cpu_utilize;
 };
 
-#if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-struct mtk_em_perf_state {
-	/* Performance state setting */
-	unsigned int freq;
-	unsigned int volt;
-	unsigned int capacity;
-	unsigned int dyn_pwr;
-	unsigned int pwr_eff;
-	unsigned int dsu_freq;
-};
-#endif
-
 enum sugov_type {
 	OPP,
 	CAP,
 	FREQ,
 	PWR_EFF,
-};
-
-struct cpu_weighting {
-	unsigned int dsu_weighting;
-	unsigned int emi_weighting;
-};
-
-struct pd_capacity_info {
-	unsigned int nr_cpus;
-	unsigned int dsu_weighting;
-	unsigned int emi_weighting;
-	int nr_caps;
-	int nr_caps_legacy;
-	unsigned int freq_max;
-	unsigned int freq_min;
-	/* table[0].freq => the max freq.
-	 * table[0].capacity => the max capacity.
-	 */
-	struct mtk_em_perf_state *table;
-	struct mtk_em_perf_state *table_legacy;
-
-	// for util mapping in O(1)
-	int nr_util_opp_map;
-	int *util_opp_map;
-	int *util_opp_map_legacy;
-
-	// for freq mapping in O(1)
-	unsigned int DFreq;
-	u32 inv_DFreq;
-	int nr_freq_opp_map;
-	int *freq_opp_map;
-	int *freq_opp_map_legacy;
 };
 
 struct sugov_tunables {
@@ -144,7 +100,7 @@ struct cpu_dsu_freq_state {
 
 extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
 extern unsigned int dsu_get_freq_opp(unsigned int freq);
-extern int init_dsu(void);
+
 extern void update_wl_tbl(unsigned int cpu);
 extern int get_curr_wl(void);
 extern int get_classify_wl(void);
@@ -156,7 +112,6 @@ extern int get_nr_cpu_type(void);
 extern int get_cpu_type(int type);
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 int init_opp_cap_info(struct proc_dir_entry *dir);
-void clear_opp_cap_info(void);
 
 extern int get_eas_hook(void);
 extern int pd_opp2freq(int cpu, int opp, int quant, int wl);
@@ -172,7 +127,6 @@ extern int pd_util2freq(unsigned int cpu, int util, bool quant, int wl);
 extern int pd_cpu_opp2dsu_freq(int cpu, int opp, int quant, int wl);
 extern int pd_dsu_volt2opp(int volt);
 extern int pd_get_dsu_freq(void);
-unsigned long pd_cpu_freq2dsu_freq(unsigned int cpu, int freq, bool quant, int wl);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
 		enum sugov_type out_type, bool quant, int caller);
 
@@ -274,14 +228,6 @@ extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 DECLARE_PER_CPU(struct mtk_rq *, rq_data);
-
-__weak extern unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx,
-	unsigned int degree)
-{
-	return 0;
-}
-__weak extern unsigned int mtk_get_dsu_freq(void) { return 0; }
-__weak int em_ver(void) { return 2; }
 
 /* DPT */
 struct curr_collab_state_struct {

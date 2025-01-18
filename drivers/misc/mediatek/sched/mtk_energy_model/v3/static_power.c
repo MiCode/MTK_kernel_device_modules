@@ -47,11 +47,6 @@ struct leakage_data info;
 static struct em_base_info *mtk_em_base_info;
 static bool wl_support, curve_adj_support;
 
-int em_ver(void)
-{
-	return 3;
-}
-
 bool is_wl_support(void)
 {
 	return wl_support;

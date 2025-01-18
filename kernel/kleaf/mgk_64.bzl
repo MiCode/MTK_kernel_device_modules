@@ -437,7 +437,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/qos/mtk_qos.ko",
     "drivers/misc/mediatek/rps/rps_perf.ko",
     "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
-	"drivers/misc/mediatek/sched/cpufreq_sugov_ext_ot.ko",
     "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
     "drivers/misc/mediatek/sched/scheduler.ko",
     "drivers/misc/mediatek/scp/rv/scp.ko",
