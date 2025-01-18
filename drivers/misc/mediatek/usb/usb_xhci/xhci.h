@@ -2149,10 +2149,12 @@ struct xhci_container_ctx *xhci_alloc_container_ctx(struct xhci_hcd *xhci,
 		int type, gfp_t flags);
 void xhci_free_container_ctx(struct xhci_hcd *xhci,
 		struct xhci_container_ctx *ctx);
+void
+xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir);
 struct xhci_interrupter *
 xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg);
 void xhci_remove_secondary_interrupter_(struct usb_hcd
-		*hcd, struct xhci_interrupter *ir);
+				*hcd, struct xhci_interrupter *ir);
 void xhci_link_segments_(struct xhci_segment *prev,
 		struct xhci_segment *next,
 		enum xhci_ring_type type, bool chain_links);
@@ -2324,6 +2326,9 @@ struct xhci_vendor_ops {
 	void (*alloc_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx,
 				    int type, gfp_t flags);
 	void (*free_container_ctx)(struct xhci_hcd *xhci, struct xhci_container_ctx *ctx);
+	struct xhci_interrupter *(*alloc_interrupter)(struct xhci_hcd *xhci,
+			int num_seg, gfp_t mem_flags);
+	void (*free_interrupter)(struct xhci_hcd *xhci, struct xhci_interrupter *ir);
 	bool (*is_streaming)(struct xhci_hcd *xhci);
 	void (*usb_offload_connect)(struct snd_usb_audio *chip);
 	void (*usb_offload_disconnect)(struct snd_usb_audio *chip);
