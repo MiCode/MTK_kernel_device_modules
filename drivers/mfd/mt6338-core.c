@@ -174,8 +174,7 @@ void mt6338_InitSetting(struct mt6338_pmic_info *mpi)
 
 static const unsigned short mt6338_slave_addr = MT6338_PMIC_SLAVEID;
 
-static int mt6338_pmic_probe(struct i2c_client *client,
-			    const struct i2c_device_id *id)
+static int mt6338_pmic_probe(struct i2c_client *client)
 {
 	struct mt6338_pmic_info *mpi;
 	struct regmap_config *regmap_config = &mt6338_regmap_config;
