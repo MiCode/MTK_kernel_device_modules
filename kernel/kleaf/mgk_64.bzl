@@ -2003,7 +2003,7 @@ def get_overlay_modules_list():
         mgk_64_common_userdebug_modules.append("drivers/mfd/mt6360-core.ko")
         mgk_64_common_user_modules.append("drivers/mfd/mt6360-core.ko")
 
-        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6873_dcm.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6885_dcm.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
