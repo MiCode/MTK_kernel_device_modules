@@ -158,12 +158,13 @@ TRACE_EVENT(sugov_ext_wl,
 );
 
 TRACE_EVENT(sugov_ext_dsu_freq_vote,
-	TP_PROTO(unsigned int wl, unsigned int gear_id,
+	TP_PROTO(unsigned int wl, unsigned int gear_id, bool dsu_idle_ctrl,
 		unsigned int cpu_freq, unsigned int dsu_freq_vote, unsigned int freq_thermal),
-	TP_ARGS(wl, gear_id, cpu_freq, dsu_freq_vote, freq_thermal),
+	TP_ARGS(wl, gear_id, dsu_idle_ctrl, cpu_freq, dsu_freq_vote, freq_thermal),
 	TP_STRUCT__entry(
 		__field(unsigned int, wl)
 		__field(unsigned int, gear_id)
+		__field(bool, dsu_idle_ctrl)
 		__field(unsigned int, cpu_freq)
 		__field(unsigned int, dsu_freq_vote)
 		__field(unsigned int, freq_thermal)
@@ -171,14 +172,16 @@ TRACE_EVENT(sugov_ext_dsu_freq_vote,
 	TP_fast_assign(
 		__entry->wl = wl;
 		__entry->gear_id = gear_id;
+		__entry->dsu_idle_ctrl = dsu_idle_ctrl;
 		__entry->cpu_freq = cpu_freq;
 		__entry->dsu_freq_vote = dsu_freq_vote;
 		__entry->freq_thermal = freq_thermal;
 	),
 	TP_printk(
-		"wl=%u gear_id=%u cpu_freq=%u dsu_freq_vote=%u freq_thermal=%u",
+		"wl=%u gear_id=%u dsu_idle_ctrl=%d cpu_freq=%u dsu_freq_vote=%u freq_thermal=%u",
 		__entry->wl,
 		__entry->gear_id,
+		__entry->dsu_idle_ctrl,
 		__entry->cpu_freq,
 		__entry->dsu_freq_vote,
 		__entry->freq_thermal)

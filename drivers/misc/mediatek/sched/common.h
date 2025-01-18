@@ -228,6 +228,10 @@ static inline bool is_util_est_enable(void)
 #endif
 }
 
+void set_dsu_idle_enable(bool boost_ctrl);
+void unset_dsu_idle_enable(void);
+bool is_dsu_idle_enable(void);
+
 void set_runnable_boost_enable(bool boost_ctrl);
 void unset_runnable_boost_enable(void);
 bool is_runnable_boost_enable(void);
