@@ -335,6 +335,9 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 		ufshcd_rmwl(hba, MON_EN, MON_EN, REG_UFS_MMIO_OPT_CTRL_0);
 #endif
 
+		if (host->legacy_ip_ver)
+			return 0;
+
 		/* DDR_EN setting */
 		if (host->ip_ver >= IP_VER_MT6989) {
 			ufshcd_rmwl(hba, UFS_MASK(0x7FFF, 8),
@@ -482,7 +485,7 @@ static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if (host->ip_ver >= IP_VER_MT6983) {
+	if (!host->legacy_ip_ver && host->ip_ver >= IP_VER_MT6983) {
 		ufshcd_writel(hba, 0x820820, REG_UFS_DEBUG_SEL);
 		ufshcd_writel(hba, 0x0, REG_UFS_DEBUG_SEL_B0);
 		ufshcd_writel(hba, 0x55555555, REG_UFS_DEBUG_SEL_B1);
@@ -510,7 +513,7 @@ static void ufs_mtk_wait_idle_state(struct ufs_hba *hba,
 
 	do {
 		time_checked = ktime_get_mono_fast_ns();
-		if (host->ip_ver < IP_VER_MT6899) {
+		if (host->legacy_ip_ver || host->ip_ver < IP_VER_MT6899) {
 			ufs_mtk_dbg_sel(hba);
 			val = ufshcd_readl(hba, REG_UFS_PROBE);
 		} else {
@@ -550,7 +553,7 @@ static int ufs_mtk_wait_link_state(struct ufs_hba *hba, u32 state,
 	do {
 		time_checked = ktime_get();
 
-		if (host->ip_ver < IP_VER_MT6899) {
+		if (host->legacy_ip_ver || host->ip_ver < IP_VER_MT6899) {
 			ufs_mtk_dbg_sel(hba);
 			val = ufshcd_readl(hba, REG_UFS_PROBE);
 			val = val >> 28;
@@ -1077,6 +1080,21 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 	return 0;
 }
 
+static bool ufs_mtk_is_legacy_chipset(struct ufs_hba *hba, u32 hw_ip_ver)
+{
+	bool is_legacy = false;
+
+	switch (hw_ip_ver) {
+	case IP_LEGACY_VER_MT6893:
+		/* can add other legacy chipset ID here accordingly */
+		is_legacy = true;
+		break;
+	default:
+		break;
+	}
+	dev_info(hba->dev, "legacy IP version - 0x%x, is legacy : %d", hw_ip_ver, is_legacy);
+	return is_legacy;
+}
 /*
  * HW version format has been changed from 01MMmmmm to 1MMMmmmm, since
  * project MT6878. In order to perform correct version comparison,
@@ -1100,6 +1118,8 @@ static void ufs_mtk_get_hw_ip_version(struct ufs_hba *hba)
 	}
 
 	host->ip_ver = hw_ip_ver;
+
+	host->legacy_ip_ver = ufs_mtk_is_legacy_chipset(hba, hw_ip_ver);
 }
 
 static void ufs_mtk_get_controller_version(struct ufs_hba *hba)

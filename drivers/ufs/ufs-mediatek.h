@@ -314,6 +314,7 @@ struct ufs_mtk_host {
 	struct tag_ufs *atag;
 	int cpuhp_state;
 	struct hlist_node cpuhp_node;
+	bool legacy_ip_ver;
 };
 
 #define UFSHCD_MAX_TAG	256
@@ -346,6 +347,11 @@ enum {
 	IP_VER_MT6989 = 0x10450000,
 	IP_VER_MT6899 = 0x10450100,
 	IP_VER_MT6991 = 0x10460000
+};
+
+enum ip_ver_legacy {
+	IP_LEGACY_VER_MT6893 = 0x20160706,
+
 };
 
 struct tag_bootmode {
