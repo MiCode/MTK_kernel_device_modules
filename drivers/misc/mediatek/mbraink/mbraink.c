@@ -1477,7 +1477,9 @@ static int mbraink_resume(struct device *dev)
 	return ret;
 }
 
-static void mbraink_complete(struct device *dev)
+#if IS_ENABLED(CONFIG_PM)
+
+static void mbraink_post_suspend(void)
 {
 	struct timespec64 tv = { 0 };
 	ktime_t resume_ktime;
@@ -1548,8 +1550,7 @@ static void mbraink_complete(struct device *dev)
 		sizeof(struct mbraink_battery_data));
 }
 
-#if IS_ENABLED(CONFIG_PM)
-static void mbraink_notifier_post_suspend(void)
+static void mbraink_post_suspend_get_spm(void)
 {
 	int ret;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
@@ -1601,8 +1602,10 @@ static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
 		pr_notice("mbraink_PM_POST_SUSPEND\n");
+		mbraink_post_suspend();
+		//spm : 1.update (mbraink_power_post_suspend) 2.get spm data
 		mbraink_power_post_suspend();
-		mbraink_notifier_post_suspend();
+		mbraink_post_suspend_get_spm();
 		pr_notice("mbraink_PM_POST_SUSPEND exit\n");
 		return NOTIFY_DONE;
 	default:
@@ -1622,7 +1625,6 @@ static const struct dev_pm_ops mbraink_class_dev_pm_ops = {
 	.prepare	= mbraink_prepare,
 	.suspend	= mbraink_suspend,
 	.resume		= mbraink_resume,
-	.complete	= mbraink_complete,
 };
 
 
