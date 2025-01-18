@@ -37,6 +37,9 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+#include <thermal_interface.h>
+#endif
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "dvfsrc-exp.h"
 #endif /* CONFIG_MTK_DVFSRC */
@@ -172,6 +175,14 @@ static void check_cm_mgr_status_mt6991(unsigned int cluster, unsigned int freq,
 
 	spin_unlock_irqrestore(&cm_mgr_lock, spinlock_save_flag);
 	cm_mgr_update_dram_by_cpu_opp(bcpu_opp_max);
+}
+
+static void cm_mgr_thermal_hint(int is_thermal)
+{
+	pr_info("%s(%d): is_thermal %d.\n", __func__, __LINE__, is_thermal);
+	cm_mgr_set_perf_mode_enable(!is_thermal);
+	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
+			       cm_mgr_get_perf_mode_enable());
 }
 
 static int cm_mgr_check_dts_setting_mt6991(struct platform_device *pdev)
@@ -314,6 +325,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	cm_mgr_register_hook(&local_hk);
 	dev_pm_genpd_set_performance_state(&pdev->dev, 0);
 
+	cm_thermal_hint_register(cm_mgr_thermal_hint);
+
 	cm_mgr_get_sspm_version();
 
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
@@ -335,6 +348,7 @@ ERROR:
 static int platform_cm_mgr_remove(struct platform_device *pdev)
 {
 	cm_mgr_unregister_hook(&local_hk);
+	cm_thermal_hint_unregister();
 	cm_mgr_common_exit();
 	icc_put(cm_mgr_get_bw_path());
 
@@ -381,6 +395,7 @@ static void __exit platform_cm_mgr_exit(void)
 subsys_initcall(platform_cm_mgr_init);
 module_exit(platform_cm_mgr_exit);
 
+MODULE_SOFTDEP("pre: thermal_interface.ko");
 MODULE_DESCRIPTION("Mediatek cm_mgr driver");
 MODULE_AUTHOR("Carlos Hung<carlos.hung@mediatek.com>");
 MODULE_LICENSE("GPL");
