@@ -103,6 +103,52 @@ static int fl_async_complete(struct v4l2_async_notifier *notifier)
 	return fl_probe_complete(pfdev);
 }
 
+static struct v4l2_async_connection *
+mtk_get_pdata(struct platform_device *pdev,
+	struct mtk_composite_v4l2_device *pfdev)
+{
+	struct device_node *endpoint = NULL;
+	struct v4l2_async_notifier *notifier;
+	unsigned int i;
+
+	if (!IS_ENABLED(CONFIG_OF) || !pdev->dev.of_node) {
+		pr_info("pdev->dev.of_node %p\n", pdev->dev.of_node);
+		return pdev->dev.platform_data;
+	}
+
+	notifier = &pfdev->notifier;
+
+	for (i = 0; ; i++) {
+		struct device_node *rem;
+
+		endpoint = of_graph_get_next_endpoint(pdev->dev.of_node,
+						endpoint);
+		if (!endpoint)
+			break;
+
+		rem = of_graph_get_remote_port_parent(endpoint);
+		if (!rem) {
+			pr_info("Remote device at %s not found\n",
+				endpoint->full_name);
+			goto done;
+		}
+
+		pr_info("rem name %s, full_name %s\n",
+				rem->name, rem->full_name);
+		pfdev->dnode[i] = rem;
+		pfdev->asd[i] = __v4l2_async_nf_add_fwnode(notifier,
+				of_fwnode_handle(pfdev->dnode[i]),
+				sizeof(struct v4l2_async_connection));
+	}
+
+	of_node_put(endpoint);
+	return pfdev->asd[0];
+
+done:
+	of_node_put(endpoint);
+	return NULL;
+}
+
 static void mtk_composite_unregister_entities(
 		struct mtk_composite_v4l2_device *pfdev)
 {
@@ -174,12 +220,7 @@ static int mtk_composite_probe(struct platform_device *dev)
 
 	v4l2_async_nf_init(&pfdev->notifier, &pfdev->v4l2_dev);
 
-	// rc = v4l2_async_nf_parse_fwnode_endpoints
-	// 	(&dev->dev, &pfdev->notifier, sizeof(struct v4l2_async_connection), NULL);
-	// if (rc < 0) {
-	// 	pr_info("no flash endpoint\n");
-	// 	goto mdev_end;
-	// }
+	mtk_get_pdata(dev, pfdev);
 	pfdev->notifier.ops = &fl_async_notify_ops;
 
 	rc = v4l2_async_nf_register(&pfdev->notifier);
