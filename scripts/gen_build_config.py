@@ -120,6 +120,9 @@ def main(**args):
     file_text.append("  export SOURCE_DATE_EPOCH=0")
     file_text.append("  export GKI_SOURCE_DATE_EPOCH=0")
     file_text.append("fi")
+    if kernel_arch == 'arm':
+        file_text.append("ARCH=arm")
+        file_text.append("NDK_TRIPLE=arm-linux-androideabi31")
     file_text.append("LLD_COMPILER_RT=\"-fuse-ld=lld --rtlib=compiler-rt\"")
     file_text.append("NDK_DIR=${ROOT_DIR}/prebuilts/ndk-r23")
     file_text.append("USERCFLAGS=\"--target=${NDK_TRIPLE} \"")
@@ -131,9 +134,6 @@ def main(**args):
     file_text.append("sysroot_flags+=\"--sysroot=${ROOT_DIR}/build/kernel/build-tools/sysroot\"")
     file_text.append("export HOSTCFLAGS=\"${sysroot_flags} -I${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/include\"")
     file_text.append("export HOSTLDFLAGS=\"${sysroot_flags} ${LLD_COMPILER_RT} -L ${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/lib64\"")
-    if kernel_arch == 'arm':
-        file_text.append("ARCH=arm")
-        file_text.append("NDK_TRIPLE=arm-linux-androideabi31")
 
     file_text.append("\nDEFCONFIG=olddefconfig")
     all_defconfig = '${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig'
