@@ -1218,6 +1218,7 @@ int get_fpsgo_frame_info(int max_num, unsigned long mask,
 
 	return ret;
 }
+EXPORT_SYMBOL(get_fpsgo_frame_info);
 
 void dfrc_fps_limit_cb(unsigned int fps_limit)
 {

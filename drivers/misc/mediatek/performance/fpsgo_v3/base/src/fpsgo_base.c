@@ -919,6 +919,7 @@ void fpsgo_delete_render_info(int pid,
 	int max_pid = 0;
 	unsigned long long max_buffer_id = 0;
 	int max_ret;
+	unsigned long cb_mask = 0;
 
 	fpsgo_lockprove(__func__);
 
@@ -949,8 +950,13 @@ void fpsgo_delete_render_info(int pid,
 	fpsgo_fbt_delete_rl_render(pid, buffer_id);
 	fpsgo_fbt_delete_power_rl(pid, buffer_id);
 	fbt_task_reset_pmu(&data->pmu_info_tree, 0);
+
+	// legacy version, phase out in future
 	fpsgo_fstb2other_info_update(data->pid,
 		data->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
+	cb_mask = 1 << GET_FPSGO_DELETE_INFO;
+	fpsgo_notify_frame_info_callback(cb_mask, data);
+
 	fpsgo_thread_unlock(&data->thr_mlock);
 
 	fpsgo_delete_hwui_info(data->pid);
@@ -1714,6 +1720,7 @@ int fpsgo_check_thread_status(void)
 	int is_boosting = BY_PASS_TYPE;
 	int local_ux_max_perf = 0;
 	int local_ux_max_pid = 0;
+	unsigned long cb_mask = 0;
 
 	if (ts < TIME_1S)
 		return 0;
@@ -1755,8 +1762,13 @@ int fpsgo_check_thread_status(void)
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 			fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
 			fbt_task_reset_pmu(&iter->pmu_info_tree, 0);
+
+			// legacy version, phase out in future
 			fpsgo_fstb2other_info_update(iter->pid,
 				iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
+			cb_mask = 1 << GET_FPSGO_DELETE_INFO;
+			fpsgo_notify_frame_info_callback(cb_mask, iter);
+
 			fpsgo_thread_unlock(&iter->thr_mlock);
 
 			fpsgo_delete_hwui_info(iter->pid);
@@ -1814,6 +1826,7 @@ int fpsgo_check_thread_status(void)
 void fpsgo_clear(void)
 {
 	int delete = 0;
+	unsigned long cb_mask = 0;
 	struct rb_node *n;
 	struct render_info *iter;
 
@@ -1843,8 +1856,13 @@ void fpsgo_clear(void)
 		fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
 		fpsgo_fbt_delete_power_rl(iter->pid, iter->buffer_id);
 		fbt_task_reset_pmu(&iter->pmu_info_tree, 0);
+
+		// legacy version, phase out in future
 		fpsgo_fstb2other_info_update(iter->pid,
 			iter->buffer_id, FPSGO_DELETE, 0, 0, 0, 0);
+		cb_mask = 1 << GET_FPSGO_DELETE_INFO;
+		fpsgo_notify_frame_info_callback(cb_mask, iter);
+
 		fpsgo_thread_unlock(&iter->thr_mlock);
 
 		fpsgo_delete_hwui_info(iter->pid);

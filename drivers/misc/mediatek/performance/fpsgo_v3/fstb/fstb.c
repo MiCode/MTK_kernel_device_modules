@@ -1893,6 +1893,7 @@ void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 		fpsgo2msync_hint_frameinfo_fp(pid, bufID,
 			local_final_tfps, q2q_time, q2q_time - enq_length - deq_length);
 
+	// legacy version, phase out in future
 	fpsgo_fstb2other_info_update(pid, bufID, FPSGO_Q2Q_TIME, 0, q2q_time, 0, 0);
 
 	mutex_unlock(&fstb_lock);
@@ -2179,8 +2180,10 @@ static void fstb_fps_stats(struct work_struct *work)
 
 			iter->render_idle_cnt = 0;
 
+			// legacy version, phase out in future
 			fpsgo_fstb2other_info_update(iter->pid, iter->bufid,
 				FPSGO_QUEUE_FPS, iter->queue_fps, 0, 0, 0);
+			// legacy version, phase out in future
 			fpsgo_fstb2other_info_update(iter->pid, iter->bufid,
 				FPSGO_TARGET_FPS,
 				(iter->self_ctrl_fps_enable ? iter->target_fps_v2 : iter->target_fps),
