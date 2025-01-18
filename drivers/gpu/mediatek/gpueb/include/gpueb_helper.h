@@ -28,8 +28,7 @@
 #define gpueb_pr_debug(tag, fmt, args...) \
 	pr_info(tag"[DEBUG][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 #else
-#define gpueb_pr_debug(tag, fmt, args...) \
-	pr_debug_ratelimited(tag"[DEBUG][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#define gpueb_pr_debug(tag, fmt, args...)
 #endif
 
 #define gpueb_pr_logbuf(tag, buf, len, size, fmt, args...) \
