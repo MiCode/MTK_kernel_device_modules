@@ -128,7 +128,11 @@ unsigned int cm_hint;
 unsigned int dsu_perf;
 unsigned int cm_lmode;
 #endif
+#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
+int debounce_times_reset_adb = 1;
+#else
 int debounce_times_reset_adb;
+#endif
 int light_load_cps = 1000;
 
 static int debounce_times_perf_down_local = -1;
@@ -143,8 +147,13 @@ int total_bw_value;
 int cm_mgr_use_bcpu_weight;
 int cm_mgr_use_cpu_to_dram_map = 1;
 static int cm_mgr_use_cpu_to_dram_map_new;
+#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
+int cpu_power_bcpu_weight_max = 350;
+int cpu_power_bcpu_weight_min = 100;
+#else
 int cpu_power_bcpu_weight_max = 100;
 int cpu_power_bcpu_weight_min = 100;
+#endif
 int cpu_power_bbcpu_weight_max = 100;
 int cpu_power_bbcpu_weight_min = 100;
 int cm_mgr_cpu_map_dram_enable;
