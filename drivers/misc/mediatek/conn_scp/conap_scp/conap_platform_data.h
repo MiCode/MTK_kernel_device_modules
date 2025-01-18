@@ -20,6 +20,11 @@ struct conap_scp_batching_config {
 	uint32_t buff_size;
 };
 
+struct conap_dfd_config {
+	phys_addr_t addr;
+	uint32_t size;
+};
+
 int connsys_scp_plt_data_init(struct platform_device *pdev);
 
 struct conap_scp_shm_config *conap_scp_get_shm_info(void);
@@ -33,5 +38,11 @@ phys_addr_t connsys_scp_shm_get_batching_addr(void);
 uint32_t connsys_scp_shm_get_batching_size(void);
 
 uint32_t connsys_scp_ipi_mbox_size(void);
+
+/* dfd support */
+phys_addr_t connsys_scp_get_dfd_cmd_addr(void);
+uint32_t connsys_scp_get_dfd_cmd_size(void);
+phys_addr_t connsys_scp_get_dfd_value_addr(void);
+uint32_t connsys_scp_get_dfd_value_size(void);
 
 #endif
