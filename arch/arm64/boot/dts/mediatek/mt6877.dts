@@ -6195,10 +6195,10 @@
 		interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config_clk CLK_MM_DISP_CCORR1>;
 		ccorr-bit = <12>;
-		ccorr-num-per-pipe = <1>;
+		ccorr-num-per-pipe = <2>;
 		ccorr-linear-per-pipe = <0x01>;
 		ccorr-prim-force-linear = <0x0>;
-		ccorr-linear = <1>;
+		ccorr-linear = <0>;
 	};
 
 	disp_ccorr0: disp_ccorr0@1400b000 {
@@ -6208,7 +6208,7 @@
 		interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config_clk CLK_MM_DISP_CCORR0>;
 		ccorr-bit = <12>;
-		ccorr-num-per-pipe = <1>;
+		ccorr-num-per-pipe = <2>;
 		ccorr-linear-per-pipe = <0x01>;
 		ccorr-prim-force-linear = <0x0>;
 		ccorr-linear = <1>;
@@ -6222,6 +6222,7 @@
 		clocks = <&mmsys_config_clk CLK_MM_DISP_AAL0>;
 		mtk-aal-support = <1>;
 		mtk-dre30-support = <0>;
+		mtk-cabc-no-support = <1>;
 	};
 
 	disp_gamma0: disp_gamma0@1400d000 {
