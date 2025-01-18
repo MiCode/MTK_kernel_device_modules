@@ -166,6 +166,9 @@ struct mtk_dsi {
 	unsigned int force_resync_after_idle;
 	unsigned int mode_switch_delay;
 	unsigned int dummy_cmd_en;
+	bool set_partial_update;
+	unsigned int roi_y_offset;
+	unsigned int roi_height;
 };
 
 enum dsi_porch_type;
