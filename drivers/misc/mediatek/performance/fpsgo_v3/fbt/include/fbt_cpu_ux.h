@@ -107,10 +107,12 @@ struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr
 struct ux_frame_info *fpsgo_ux_get_next_frame_info(struct render_info *thr);
 int fpsgo_ux_count_frame_info(struct render_info *thr, int target);
 void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip);
-void fpsgo_set_ux_general_policy(int scrolling);
+void fpsgo_set_ux_general_policy(int scrolling, unsigned long ux_mask);
 int get_ux_general_policy(void);
 void fpsgo_reset_deplist_task_priority(struct render_info *thr);
 void fpsgo_set_group_dvfs(int start);
+void fpsgo_set_gas_policy(int start);
+void update_ux_general_policy(void);
 
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id);
@@ -120,7 +122,10 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 int fpsgo_ctrl2ux_get_perf(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
 void fbt_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance);
+void fpsgo_ctrl2uxfbt_dfrc_fps(int fps_limit);
 
+extern int group_set_threshold(int grp_id, int val);
+extern int group_reset_threshold(int grp_id);
 extern int get_dpt_default_status(void);
 extern void set_ignore_idle_ctrl(bool val);
 extern void set_grp_dvfs_ctrl(int set);

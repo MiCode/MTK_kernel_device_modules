@@ -228,6 +228,7 @@ static void fpsgo_notifier_wq_cb_dfrc_fps(int dfrc_fps)
 
 	fpsgo_ctrl2fstb_dfrc_fps(dfrc_fps);
 	fpsgo_ctrl2fbt_dfrc_fps(dfrc_fps);
+	fpsgo_ctrl2uxfbt_dfrc_fps(dfrc_fps);
 }
 
 static void fpsgo_notifier_wq_cb_connect(int pid,

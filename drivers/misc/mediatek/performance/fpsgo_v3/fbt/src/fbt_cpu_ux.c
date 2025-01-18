@@ -15,6 +15,7 @@
 #include <mt-plat/fpsgo_common.h>
 
 #include "eas/grp_awr.h"
+#include "eas/group.h"
 #include "fpsgo_usedext.h"
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
@@ -34,6 +35,8 @@
 #define NSEC_PER_HUSEC 100000
 #define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
 #define RESCUE_MAX_MONITOR_DROP_ARR_SIZE 10
+#define UX_TARGET_DEFAULT_FPS 60
+#define GAS_ENABLE_FPS 70
 
 enum FPSGO_HARD_LIMIT_POLICY {
 	FPSGO_HARD_NONE = 0,
@@ -72,8 +75,14 @@ static int global_ux_blc;
 static int global_ux_max_pid;
 static int set_deplist_vip;
 static int ux_general_policy;
+static int ux_general_policy_type;
+static int ux_general_policy_dpt_setwl;
+static int gas_threshold;
+static int gas_threshold_for_low_TLP;
+static int gas_threshold_for_high_TLP;
 static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
+static int global_dfrc_fps_limit;
 
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
@@ -98,6 +107,10 @@ module_param(sbe_dy_max_enhance, int, 0644);
 module_param(scroll_cnt, int, 0644);
 module_param(set_deplist_vip, int, 0644);
 module_param(ux_general_policy, int, 0644);
+module_param(ux_general_policy_type, int, 0644);
+module_param(ux_general_policy_dpt_setwl, int, 0644);
+module_param(gas_threshold_for_low_TLP, int, 0644);
+module_param(gas_threshold_for_high_TLP, int, 0644);
 
 static void update_hwui_frame_info(struct render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -688,7 +701,43 @@ void fpsgo_set_group_dvfs(int start)
 		group_set_mode(1);
 	}
 }
+
+void fpsgo_set_gas_policy(int start)
+{
+	if (start){
+		group_set_mode(1);
+		group_set_threshold(0, gas_threshold);
+		set_top_grp_aware(1,0);
+		flt_ctrl_force_set(1);
+		set_grp_dvfs_ctrl(9);
+	}else{
+		group_reset_threshold(0);
+		set_top_grp_aware(0,0);
+	}
+	fpsgo_main_trace("gas enabled : %d, %d", start, gas_threshold);
+}
+
+void update_ux_general_policy(void)
+{
+	if (ux_general_policy_type == 1) {
+		//update threshold for multi window, multi window is hight TLP scenario
+		group_set_threshold(0, gas_threshold_for_high_TLP);
+	}
+}
 #endif
+
+void fpsgo_ctrl2uxfbt_dfrc_fps(int fps_limit)
+{
+	if (!fps_limit || fps_limit > TARGET_UNLIMITED_FPS)
+		return;
+
+	mutex_lock(&fbt_mlock);
+	global_dfrc_fps_limit = fps_limit;
+
+	fpsgo_main_trace("global_dfrc_fps_limit %d", global_dfrc_fps_limit);
+
+	mutex_unlock(&fbt_mlock);
+}
 
 void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip)
 {
@@ -703,24 +752,54 @@ void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip)
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 }
 
-void fpsgo_set_ux_general_policy(int scrolling)
+void fpsgo_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 {
 	int pid;
+	int need_gas_policy = 1;
 
-	if (scrolling) {
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		set_wl_manual(0);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	set_ignore_idle_ctrl(scrolling);
+	fpsgo_set_group_dvfs(scrolling);
 #endif
-		if (change_dpt_support_driver_hook)
-			change_dpt_support_driver_hook(1);
-	} else {
+
+	if (ux_general_policy_type == 0) {
+		if (scrolling) {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		fpsgo_main_trace("set_wl_manual: -1");
-		set_wl_manual(-1);
+			if (ux_general_policy_dpt_setwl) {
+				set_wl_manual(0);
+				fpsgo_main_trace("set_wl_manual: 0");
+			}
 #endif
-		if (change_dpt_support_driver_hook)
-			change_dpt_support_driver_hook(0);
-		fpsgo_main_trace("end runtime power talbe");
+			if (change_dpt_support_driver_hook)
+				change_dpt_support_driver_hook(1);
+			fpsgo_main_trace("start runtime power talbe");
+		} else {
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+			if (ux_general_policy_dpt_setwl) {
+				set_wl_manual(-1);
+				fpsgo_main_trace("set_wl_manual: -1");
+			}
+#endif
+			if (change_dpt_support_driver_hook)
+				change_dpt_support_driver_hook(0);
+			fpsgo_main_trace("end runtime power talbe");
+		}
+	} else if (ux_general_policy_type == 1) {
+		fpsgo_main_trace("gas will call, fps = %d", global_dfrc_fps_limit);
+		//If GAS policy, we will set gas_threshold for different ux type
+		if (test_bit(FPSGO_HWUI, &ux_mask)) {
+			gas_threshold = gas_threshold_for_low_TLP;
+			// If dfrc < limit, dont enable gas policy
+			if (global_dfrc_fps_limit < GAS_ENABLE_FPS)
+				need_gas_policy = 0;
+		} else if (test_bit(FPSGO_NON_HWUI, &ux_mask)) {
+			gas_threshold = gas_threshold_for_high_TLP;
+		}
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+		if (need_gas_policy)
+			fpsgo_set_gas_policy(scrolling);
+#endif
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
@@ -730,11 +809,6 @@ void fpsgo_set_ux_general_policy(int scrolling)
 		set_task_basic_vip(pid);
 	else
 		unset_task_basic_vip(pid);
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-	set_ignore_idle_ctrl(scrolling);
-	fpsgo_set_group_dvfs(scrolling);
 #endif
 }
 
@@ -1663,6 +1737,8 @@ int __init fbt_cpu_ux_init(void)
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
 	init_smart_launch_engine();
 	ux_general_policy = fbt_get_ux_scroll_policy_type();
+	ux_general_policy_type = 0;
+	ux_general_policy_dpt_setwl = 0;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
 	sbe_dy_max_enhance = 80;
@@ -1670,6 +1746,10 @@ int __init fbt_cpu_ux_init(void)
 	sbe_dy_rescue_enable = 1;
 	scroll_cnt = 6;
 	set_deplist_vip = 1;
+	gas_threshold = 10;
+	gas_threshold_for_low_TLP = 10;
+	gas_threshold_for_high_TLP = 5;
+	global_dfrc_fps_limit = UX_TARGET_DEFAULT_FPS;
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
 	ux_scroll_info_cachep = kmem_cache_create("ux_scroll_info",
