@@ -808,7 +808,7 @@ s32 mml_subcomp_init(struct platform_device *comp_pdev,
 		ret = snprintf(name, sizeof(name), "%s-clock-names", comp->name);
 		if (ret >= sizeof(name)) {
 			dev_err(dev, "len:%d over name size:%lu",
-				ret, sizeof(name));
+				ret, (unsigned long)sizeof(name));
 			name[sizeof(name) - 1] = '\0';
 		}
 		name_ptr = name;

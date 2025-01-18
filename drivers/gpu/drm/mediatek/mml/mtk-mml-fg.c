@@ -326,9 +326,9 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
-		if ((task->pq_task->fg_table[i]->pa >> 34) > 0) {
-			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%llx]",
-				__func__, task->job.jobid, i, fg_table_pa[i]);
+		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 34)) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%pad]",
+				__func__, task->job.jobid, i, &fg_table_pa[i]);
 			buf_ready = false;
 			break;
 		}
@@ -362,10 +362,10 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		smi_sw_reset << 0 | crc_cg_enable << 4, 1 << 0 | 1 << 4);
 
 	/* set FilmGrain Table Address */
-	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%llx]", __func__, fg_table_pa[0]);
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__, fg_table_pa[1]);
-	mml_pq_msg("%s FG_CR_TBL_ADDR[%llx]", __func__, fg_table_pa[2]);
-	mml_pq_msg("%s FG_LUT_TBL_ADDR[%llx]", __func__, fg_table_pa[3]);
+	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%pad]", __func__, &fg_table_pa[0]);
+	mml_pq_msg("%s FG_CB_TBL_ADDR[%pad]", __func__, &fg_table_pa[1]);
+	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
+	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
 
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
 		(u32)(fg_table_pa[0]),
@@ -381,16 +381,16 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_LABEL]);
 
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB],
-		(fg_table_pa[0]) >> 32,
+		DO_SHIFT_RIGHT((fg_table_pa[0]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE_MSB],
-		(fg_table_pa[1]) >> 32,
+		DO_SHIFT_RIGHT((fg_table_pa[1]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE_MSB],
-		(fg_table_pa[2]) >> 32,
+		DO_SHIFT_RIGHT((fg_table_pa[2]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE_MSB],
-		(fg_table_pa[3]) >> 32,
+		DO_SHIFT_RIGHT((fg_table_pa[3]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_MSB_LABEL]);
 
 	/* bit_depth & is yuv420 or yuv444 */
@@ -493,9 +493,9 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 
 		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
-		if ((task->pq_task->fg_table[i]->pa >> 34) > 0) {
-			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%llx]",
-				__func__, task->job.jobid, i, fg_table_pa[i]);
+		if ((DO_SHIFT_RIGHT(task->pq_task->fg_table[i]->pa, 34)) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%pad]",
+				__func__, task->job.jobid, i, &fg_table_pa[i]);
 			goto buf_err_exit;
 		}
 	}
@@ -515,10 +515,10 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
 	/* set FilmGrain Table Address */
-	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%llx]", __func__, fg_table_pa[0]);
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__, fg_table_pa[1]);
-	mml_pq_msg("%s FG_CR_TBL_ADDR[%llx]", __func__, fg_table_pa[2]);
-	mml_pq_msg("%s FG_LUT_TBL_ADDR[%llx]", __func__, fg_table_pa[3]);
+	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%pad]", __func__, &fg_table_pa[0]);
+	mml_pq_msg("%s FG_CB_TBL_ADDR[%pad]", __func__, &fg_table_pa[1]);
+	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
+	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
 
 	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_LABEL],
 		(u32)(fg_table_pa[0]));
@@ -530,13 +530,13 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		(u32)(fg_table_pa[3]));
 
 	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL],
-		(fg_table_pa[0]) >> 32);
+		DO_SHIFT_RIGHT(fg_table_pa[0], 32));
 	mml_update(reuse, fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL],
-		(fg_table_pa[1]) >> 32);
+		DO_SHIFT_RIGHT(fg_table_pa[1], 32));
 	mml_update(reuse, fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL],
-		(fg_table_pa[2]) >> 32);
+		DO_SHIFT_RIGHT(fg_table_pa[2], 32));
 	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
-		(fg_table_pa[3]) >> 32);
+		DO_SHIFT_RIGHT(fg_table_pa[3], 32));
 
 	/* trigger FG load table */
 	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);

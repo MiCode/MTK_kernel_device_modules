@@ -7,6 +7,7 @@
 
 #include <linux/printk.h>
 #include <linux/types.h>
+#include <linux/math64.h>
 #include <linux/bug.h>
 #include "mtk-mml.h"
 #include "mtk-mml-color.h"

@@ -144,7 +144,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		max_nm = 1;
 		max_nm_prec = max_nm * prec;
 
-		coeff_step = mult_frac(max_nm_prec, m_m1_zoom, n_m1_zoom);
+		coeff_step = mult_frac((s64)max_nm_prec, m_m1_zoom, n_m1_zoom);
 
 		shift = offset >> RSZ_PREC_SHIFT;
 		coeff_index_approx_ini = (offset * prec -
@@ -159,8 +159,8 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		if (n_m1_zoom == m_m1_zoom) {
 			coeff_step = max_nm_prec;
 		} else {
-			coeff_step = mult_frac(max_nm_prec, n_m1_zoom, m_m1_zoom);
-			if (max_nm_prec != mult_frac(coeff_step, m_m1_zoom, n_m1_zoom))
+			coeff_step = mult_frac((s64)max_nm_prec, n_m1_zoom, m_m1_zoom);
+			if (max_nm_prec != mult_frac((s64)coeff_step, m_m1_zoom, n_m1_zoom))
 				coeff_step += 1; /* ceiling */
 		}
 
@@ -515,7 +515,7 @@ static void rsz_ultra_res(struct rsz_fw_out *out,
 	if (max_step < 4096) /* scaling ratio > 8x */
 		ratio = 1 << 13; /* ratio = 8196: 8x */
 	else /* 1x < scaling ratio < 8x */
-		ratio = ((prec << RSZ_PREC_SHIFT) / max_step) >>
+		ratio = (u32)(div_u64((prec << RSZ_PREC_SHIFT), max_step)) >>
 			(RSZ_PREC_SHIFT - 10);
 
 	cal_param->tap_adapt_slope = rsz_ultra_res_reg(
@@ -662,8 +662,8 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 
 		subpix_x = ((s64)cal_param.hori_luma_int_ofst <<
 			RSZ_TILE_SUBPIXEL_BITS) + cal_param.hori_luma_sub_ofst;
-		subpix_x = ((subpix_x << RSZ_TILE_SUBPIXEL_BITS) +
-			out->hori_step - 1) / out->hori_step;
+		subpix_x = (s64)div_s64(((subpix_x << RSZ_TILE_SUBPIXEL_BITS) +
+			out->hori_step - 1), out->hori_step);
 
 		out->hori_int_ofst = subpix_x >> RSZ_TILE_SUBPIXEL_BITS;
 		out->hori_sub_ofst = subpix_x -

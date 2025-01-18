@@ -51,11 +51,11 @@ void birsz_fw(struct birsz_fw_in *in, struct birsz_fw_out *out)
 		in->in_height, in->out_height, out->vert_step, BIRSZ_FW_UNIT);
 
 	if (hori_ofst >= 0) {
-		out->hori_int_ofst = hori_ofst / (1 << BIRSZ_FW_UNIT);
-		out->hori_sub_ofst = hori_ofst % (1 << BIRSZ_FW_UNIT);
+		out->hori_int_ofst = (s32)div_s64_rem(hori_ofst, 1 << BIRSZ_FW_UNIT,
+			&out->hori_sub_ofst);
 	} else {
 		out->hori_int_ofst =
-			-(((-hori_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)) / (1 << BIRSZ_FW_UNIT));
+			-((s32)(div_s64(((-hori_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)), (1 << BIRSZ_FW_UNIT))));
 		out->hori_sub_ofst =
 			(1 << BIRSZ_FW_UNIT) * (-out->hori_int_ofst) + hori_ofst;
 	}
@@ -63,11 +63,11 @@ void birsz_fw(struct birsz_fw_in *in, struct birsz_fw_out *out)
 		out->hori_int_ofst, out->hori_sub_ofst);
 
 	if (vert_ofst >= 0) {
-		out->vert_int_ofst = vert_ofst / (1 << BIRSZ_FW_UNIT);
-		out->vert_sub_ofst = vert_ofst % (1 << BIRSZ_FW_UNIT);
+		out->vert_int_ofst = (s32)div_s64_rem(vert_ofst, 1 << BIRSZ_FW_UNIT,
+			&out->vert_sub_ofst);
 	} else {
 		out->vert_int_ofst =
-			-(((-vert_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)) / (1 << BIRSZ_FW_UNIT));
+			-((s32)(div_s64(((-vert_ofst) + ((1 << BIRSZ_FW_UNIT) - 1)), (1 << BIRSZ_FW_UNIT))));
 		out->vert_sub_ofst =
 			(1 << BIRSZ_FW_UNIT) * (-out->vert_int_ofst) + vert_ofst;
 	}

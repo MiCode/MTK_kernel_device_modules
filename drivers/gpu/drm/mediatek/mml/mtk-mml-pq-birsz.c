@@ -90,7 +90,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (start <= (s64)3 * precision) {
 		*in_start = 0;
 	} else {
-		start = start / precision - 3;
+		start = div_s64(start, precision) - 3;
 		if (!(start & 0x1))
 			*in_start = (s32)start;
 		else /* must be even */
@@ -102,7 +102,7 @@ static void birsz_first_6_taps(s32 out_start,
 	if (end > (s64)in_max * precision) {
 		*in_end = in_max;
 	} else {
-		end = end / precision;
+		end = div_s64(end, precision);
 		if (end & 0x1)
 			*in_end = (s32)end;
 		else /* must be odd */
@@ -129,7 +129,7 @@ static void birsz_second_6_taps(s32 in_start,
 	offset = (s64)back_out_start * coeff +
 		(s64)crop * precision + crop_frac - (s64)in_start * precision;
 
-	*luma = (s32)(offset / precision);
+	*luma = (s32)div_s64(offset, precision);
 	*luma_frac = (s32)(offset - *luma * precision);
 
 	if (*luma_frac < 0) {
@@ -264,11 +264,11 @@ static s32 birsz_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	birsz_fw(&fw_in, &birsz_frm->fw_out);
 	birsz_frm->fw_out.hori_sub_ofst =
-		((s64)birsz_frm->fw_out.hori_sub_ofst << MML_SUBPIXEL_BITS) /
-		birsz_frm->fw_out.precision;
+		(s32)(div_s64(((s64)birsz_frm->fw_out.hori_sub_ofst << MML_SUBPIXEL_BITS),
+		birsz_frm->fw_out.precision));
 	birsz_frm->fw_out.vert_sub_ofst =
-		((s64)birsz_frm->fw_out.vert_sub_ofst << MML_SUBPIXEL_BITS) /
-		birsz_frm->fw_out.precision;
+		(s32)(div_s64(((s64)birsz_frm->fw_out.vert_sub_ofst << MML_SUBPIXEL_BITS),
+		birsz_frm->fw_out.precision));
 	return 0;
 }
 
@@ -603,8 +603,8 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  -         larb_port: %d @%llx pw: %d clk: %d\n",
-				comp->larb_port, comp->larb_base,
+				"  -         larb_port: %d @%pa pw: %d clk: %d\n",
+				comp->larb_port, &comp->larb_base,
 				comp->pw_cnt, comp->clk_cnt);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -     ddp comp_id: %d bound: %d\n",

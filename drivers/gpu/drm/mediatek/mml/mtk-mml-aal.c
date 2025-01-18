@@ -1054,8 +1054,8 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		!aal->data->is_linear)
 		aal_write_curve(comp, task, ccfg, curve, true);
 
-	mml_pq_msg("%s is_aal_need_readback[%d] base_pa[%llx] reuses[%u]",
-		__func__, result->is_aal_need_readback, base_pa,
+	mml_pq_msg("%s is_aal_need_readback[%d] base_pa[%pa] reuses[%u]",
+		__func__, result->is_aal_need_readback, &base_pa,
 		aal_frm->reuse_curve.idx);
 
 	mml_pq_msg("%s: success dre_blk_width[%d], dre_blk_height[%d]",
@@ -1378,7 +1378,7 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 
 	mml_assign(pkt, idx_out, (u32)pa,
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)(pa >> 32),
+	mml_assign(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &aal_frm->labels[AAL_POLLGPR_1]);
 
 
@@ -1469,13 +1469,13 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, task->job.jobid, comp->id, task->pq_task->aal_hist[pipe]->va,
-		task->pq_task->aal_hist[pipe]->pa, pkt);
+		&task->pq_task->aal_hist[pipe]->pa, pkt);
 
-	mml_pq_rb_msg("%s end job_id[%d] condi:offset[%u] inst[%p], begin:offset[%u] pa[%llx]",
+	mml_pq_rb_msg("%s end job_id[%d] condi:offset[%u] inst[%p], begin:offset[%u] pa[%pad]",
 		__func__, task->job.jobid, aal_frm->condi_offset, condi_inst,
-		aal_frm->begin_offset, begin_pa);
+		aal_frm->begin_offset, &begin_pa);
 }
 
 static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
@@ -1519,9 +1519,9 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 	add_reuse_label(reuse, &aal_frm->labels[AAL_POLLGPR_0],
 		task->pq_task->aal_hist[pipe]->va_offset);
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p] offset[%d]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] offset[%d]",
 			__func__, task->job.jobid, comp->id, task->pq_task->aal_hist[pipe]->va,
-			task->pq_task->aal_hist[pipe]->pa, pkt,
+			&task->pq_task->aal_hist[pipe]->pa, pkt,
 			task->pq_task->aal_hist[pipe]->va_offset);
 }
 
@@ -1669,9 +1669,9 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 
 		cmdq_pkt_reuse_poll(pkt, &aal_frm->polling_reuse);
 
-		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p] offset[%d]",
+		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] offset[%d]",
 			__func__, task->job.jobid, comp->id, task->pq_task->aal_hist[pipe]->va,
-			task->pq_task->aal_hist[pipe]->pa, pkt,
+			&task->pq_task->aal_hist[pipe]->pa, pkt,
 			task->pq_task->aal_hist[pipe]->va_offset);
 
 	} else {
@@ -1686,7 +1686,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_0],
 			(u32)task->pq_task->aal_hist[pipe]->pa);
 		mml_update(reuse, aal_frm->labels[AAL_POLLGPR_1],
-			(u32)(task->pq_task->aal_hist[pipe]->pa >> 32));
+			(u32)DO_SHIFT_RIGHT(task->pq_task->aal_hist[pipe]->pa, 32));
 
 		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, aal_frm->begin_offset);
 		condi_inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, aal_frm->condi_offset);
@@ -1695,13 +1695,13 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 
 		*condi_inst = (u32)CMDQ_REG_SHIFT_ADDR(begin_pa);
 
-		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 			__func__, task->job.jobid, comp->id, task->pq_task->aal_hist[pipe]->va,
-			task->pq_task->aal_hist[pipe]->pa, pkt);
+			&(task->pq_task->aal_hist[pipe]->pa), pkt);
 
-		mml_pq_rb_msg("%s end job_id[%d]condi:offset[%u]inst[%p],begin:offset[%u]pa[%llx]",
+		mml_pq_rb_msg("%s end job_id[%d]condi:offset[%u]inst[%p],begin:offset[%u]pa[%pad]",
 			__func__, task->job.jobid, aal_frm->condi_offset, condi_inst,
-			aal_frm->begin_offset, begin_pa);
+			aal_frm->begin_offset, &begin_pa);
 	}
 
 comp_config_put:
@@ -1800,6 +1800,7 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 		return true;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static void aal_hist_blk_calc(struct mml_comp_aal *aal, u32 *dre_blk_x_num,
 			u32 *dre_blk_y_num)
 {
@@ -1833,6 +1834,7 @@ static void aal_hist_blk_calc(struct mml_comp_aal *aal, u32 *dre_blk_x_num,
 		}
 	}
 }
+
 static bool aal_ir_hist_check(struct mml_comp_aal *aal)
 {
 	u32 blk_x_num = 0, blk_y_num = 0, blk_x_start = 0, blk_x_cut = 0, blk_x_comp = 0,
@@ -1874,6 +1876,7 @@ static bool aal_ir_hist_check(struct mml_comp_aal *aal)
 	}
 	return true;
 }
+#endif
 
 static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg, u32 *phist)
@@ -1934,6 +1937,7 @@ static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 	return true;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static bool aal_hist_read(struct mml_comp_aal *aal)
 {
 	struct mml_comp *comp = &aal->comp;
@@ -1994,8 +1998,10 @@ static bool aal_hist_read(struct mml_comp_aal *aal)
 		phist[dual_info_start++] =
 			readl(base + aal->data->reg_table[AAL_DUAL_PIPE_15]);
 	}
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	mml_pq_ir_aal_readback(aal->pq_task, aal->frame_data, aal->pipe, aal->phist,
 		aal->jobid, aal->dual);
+#endif
 
 	if (mml_pq_debug_mode & MML_PQ_HIST_CHECK) {
 		if (!aal_ir_hist_check(aal)) {
@@ -2008,6 +2014,7 @@ static bool aal_hist_read(struct mml_comp_aal *aal)
 
 	return true;
 }
+#endif
 
 static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 					 struct mml_comp_config *ccfg)
@@ -2058,10 +2065,10 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 
 	offset = vcp ? task->pq_task->aal_hist[pipe]->va_offset/4 : 0;
 
-	mml_pq_rb_msg("%s job_id[%d] id[%d] pipe[%d] en_dre[%d] va[%p] pa[%llx] offset[%d]",
+	mml_pq_rb_msg("%s job_id[%d] id[%d] pipe[%d] en_dre[%d] va[%p] pa[%pad] offset[%d]",
 		__func__, task->job.jobid, comp->id, ccfg->pipe,
 		dest->pq_config.en_dre, task->pq_task->aal_hist[pipe]->va,
-		task->pq_task->aal_hist[pipe]->pa,
+		&task->pq_task->aal_hist[pipe]->pa,
 		task->pq_task->aal_hist[pipe]->va_offset);
 
 
@@ -2099,10 +2106,11 @@ static void aal_task_done_readback(struct mml_comp *comp, struct mml_task *task,
 			task->pq_task->aal_hist[pipe]->va[offset+614]);
 	}
 
-
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	/*remain code for ping-pong in the feature*/
 	if (!dest->pq_config.en_dre)
 		aal_hist_read(aal);
+#endif
 
 	if (aal_frm->is_aal_need_readback) {
 		mml_pq_dc_aal_readback(task, ccfg->pipe,
@@ -2314,7 +2322,9 @@ static void aal_readback_work(struct work_struct *work_item)
 	writel(0x0, base + aal->data->reg_table[AAL_INTEN]);
 	mutex_unlock(&aal->irq_wq_lock);
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	aal_hist_read(aal);
+#endif
 
 	mml_pq_put_pq_task(aal->pq_task);
 
@@ -2339,6 +2349,7 @@ static void aal_readback_work(struct work_struct *work_item)
 
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static void clarity_histdone_cb(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
@@ -2370,9 +2381,11 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 		aal->clarity_hist[pipe]->va[6],
 		aal->clarity_hist[pipe]->va[7]);
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	mml_pq_ir_clarity_readback(aal->pq_task, aal->frame_data, aal->pipe,
 		&(aal->clarity_hist[pipe]->va[0]), aal->jobid, AAL_CLARITY_STATUS_NUM,
 		AAL_CLARITY_HIST_START, aal->dual);
+#endif
 
 	if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 		mml_clock_lock(aal->mml);
@@ -2395,7 +2408,7 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 		__func__, aal->jobid, pkt, aal, pipe);
 	mml_trace_end();
 }
-
+#endif
 
 static void clarity_hist_work(struct work_struct *work_item)
 {
@@ -2454,7 +2467,7 @@ static void clarity_hist_work(struct work_struct *work_item)
 
 	/* readback to this pa */
 	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
-	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
+	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32));
 
 	if (aal->data->reg_table[AAL_BILATERAL_STATUS_00] != REG_NOT_SUPPORT) {
 		for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
@@ -2471,15 +2484,15 @@ static void clarity_hist_work(struct work_struct *work_item)
 		}
 	}
 
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, aal->jobid, comp->id, aal->clarity_hist[pipe]->va,
-		aal->clarity_hist[pipe]->pa, pkt);
+		&aal->clarity_hist[pipe]->pa, pkt);
 
 	aal->hist_cmd_done = true;
 
-	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%pad] pkt[%p]",
 		__func__, comp->id, aal->clarity_hist[pipe]->va,
-		aal->clarity_hist[pipe]->pa, pkt);
+		&aal->clarity_hist[pipe]->pa, pkt);
 
 	pkt->user_data = aal;
 	mutex_unlock(&aal->hist_cmd_lock);
@@ -2489,7 +2502,9 @@ aal_hist_cmd_done:
 		wait_for_completion(&aal->pq_task->hdr_curve_ready[aal->pipe]);
 
 	cmdq_pkt_refinalize(pkt);
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	cmdq_pkt_flush_threaded(pkt, clarity_histdone_cb, (void *)aal->hist_pkts[pipe]);
+#endif
 
 	mml_pq_ir_log("%s job_id[%d] hist_pkts[%p %p] id[%d] buf_size[%zu] hist_cmd_done[%d]",
 		__func__, aal->jobid,
@@ -2702,12 +2717,12 @@ static s32 dbg_get(char *buf, const struct kernel_param *kp)
 			struct mml_comp *comp = &dbg_probed_components[i]->comp;
 
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  - [%d] mml comp_id: %d.%d @%llx name: %s bound: %d\n", i,
-				comp->id, comp->sub_idx, comp->base_pa,
+				"  - [%d] mml comp_id: %d.%d @%pa name: %s bound: %d\n", i,
+				comp->id, comp->sub_idx, &comp->base_pa,
 				comp->name ? comp->name : "(null)", comp->bound);
 			length += snprintf(buf + length, PAGE_SIZE - length,
-				"  -         larb_port: %d @%llx pw: %d clk: %d\n",
-				comp->larb_port, comp->larb_base,
+				"  -         larb_port: %d @%pa pw: %d clk: %d\n",
+				comp->larb_port, &comp->larb_base,
 				comp->pw_cnt, comp->clk_cnt);
 			length += snprintf(buf + length, PAGE_SIZE - length,
 				"  -     ddp comp_id: %d bound: %d\n",

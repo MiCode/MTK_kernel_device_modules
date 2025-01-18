@@ -1179,10 +1179,10 @@ static void cmdq_test_mbox_prebuilt_instr_ext_table(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
 		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base),
 		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base +
-			pkt->cmd_buf_size));
+			(unsigned long)pkt->cmd_buf_size));
 
 	for (i = 0; i < pkt->cmd_buf_size / CMDQ_INST_SIZE; i++)
 		cmdq_msg(",%d,%#llx,", i, *((u64 *)buf->va_base + i));
@@ -1321,10 +1321,10 @@ static void cmdq_test_mbox_prebuilt_instr(struct cmdq_test *test,
 	}
 
 	cmdq_msg("%s: pkt:%p pa:%#lx cmd_buf_size:%#lx pc:%#lx end:%#lx",
-		__func__, pkt, (unsigned long)buf->pa_base, pkt->cmd_buf_size,
+		__func__, pkt, (unsigned long)buf->pa_base, (unsigned long)pkt->cmd_buf_size,
 		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base),
 		(unsigned long)CMDQ_REG_SHIFT_ADDR(buf->pa_base +
-			pkt->cmd_buf_size));
+			(unsigned long)pkt->cmd_buf_size));
 
 	for (i = 0; i < pkt->cmd_buf_size / CMDQ_INST_SIZE; i++)
 		cmdq_msg(",%d,%#llx,", i, *((u64 *)buf->va_base + i));

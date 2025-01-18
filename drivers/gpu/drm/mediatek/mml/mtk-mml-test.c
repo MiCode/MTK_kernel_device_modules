@@ -294,6 +294,7 @@ struct test_case_op {
 	void (*run)(struct mml_test *test, struct mml_ut *cur);
 };
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 void *mml_test_get_mml(struct platform_device *pdev)
 {
 	struct platform_device *mml_master_pdev = mml_get_plat_device(pdev);
@@ -326,6 +327,7 @@ static void check_fence(int32_t fd, const char *func)
 	put_unused_fd(fd);
 #endif
 }
+#endif
 
 #define mml_afbc_align(p) (((p + 31) >> 5) << 5)
 
@@ -386,6 +388,7 @@ static void fillin_buf_dma(struct mml_frame_data *data, void *dmabuf, u32 size,
 	buf->use_dma = true;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static bool mml_test_check_data_valid(struct mml_frame_data *data)
 {
 	if (!(data->width >= 64 && data->width <= 8192)) {
@@ -600,11 +603,13 @@ err_done:
 err:
 	mml_log("[test]%s end", __func__);
 }
+#endif
 
 static void case_general_submit(struct mml_test *test,
 	struct mml_ut *cur,
 	void (*setup)(struct mml_submit *task, struct mml_ut *cur))
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	struct mml_ut_config utcfg = {
 		.round = mml_test_round <= 0 ? 1 : (u32)mml_test_round,
 		.interval = mml_test_interval,
@@ -617,6 +622,7 @@ static void case_general_submit(struct mml_test *test,
 	cur->mmlid = mml_sys_frame;
 
 	case_general_submit_ut(test, cur, &utcfg, setup);
+#endif
 }
 
 
@@ -1861,6 +1867,7 @@ static void mml_test_fill_frame_rgba1010102(u8 *va, u32 width, u32 height)
 
 static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	void *mml = mml_test_get_mml(main_test->pdev);
 	struct mml_frm_dump_data *frm = mml_dump_read_data_lock(mml);
 	bool ret = true;
@@ -1878,6 +1885,9 @@ static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 done:
 	mml_dump_read_data_unlock(mml);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 static struct dma_buf *mml_test_create_buf(struct dma_heap *heap, u32 size)
@@ -2140,7 +2150,9 @@ static const struct file_operations mml_inst_dump_fops = {
 
 static int frame_dump_open(struct inode *inode, struct file *file)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	file->private_data = mml_test_get_mml(main_test->pdev);
+#endif
 	return 0;
 }
 
@@ -2199,6 +2211,7 @@ done:
 
 static ssize_t frame_dump_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	void *mml = file->private_data;
 	struct mml_frm_dump_data *frm = mml_dump_read_data_lock(mml);
 	ssize_t len = 0;
@@ -2218,6 +2231,9 @@ static ssize_t frame_dump_read(struct file *file, char __user *buf, size_t count
 	mml_dump_read_data_unlock(mml);
 
 	return len;
+#else
+	return 0;
+#endif
 }
 
 static const struct file_operations mml_frame_fops = {
@@ -2590,6 +2606,7 @@ static const struct kernel_param_ops ut_param_ops = {
 module_param_cb(ut, &ut_param_ops, NULL, 0644);
 MODULE_PARM_DESC(ut, "mml driver unit test interface");
 
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 static void ut_setup(struct mml_submit *task, struct mml_ut *cur)
 {
 	struct mml_ut_config *utcfg = &mml_ut_cfg[cur->mmlid];
@@ -2660,6 +2677,7 @@ static void ut_setup(struct mml_submit *task, struct mml_ut *cur)
 			utcfg->in1_w, utcfg->in1_h);
 	}
 }
+#endif
 
 static void ut_config_to_user(struct mml_test_case *user_case, struct mml_ut_config *utcfg)
 {
@@ -2736,6 +2754,7 @@ static ssize_t ut_read(struct file *filp, char __user *buf, size_t size, loff_t 
 
 static ssize_t ut_write(struct file *filp, const char __user *buf, size_t size, loff_t *offp)
 {
+#if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
 	struct mml_test *test = (struct mml_test *)filp->f_inode->i_private;
 	struct mml_test_case user_case = {0};
 	struct mml_ut cur = {0};
@@ -2778,6 +2797,9 @@ static ssize_t ut_write(struct file *filp, const char __user *buf, size_t size, 
 	case_general_submit_ut(test, &cur, &mml_ut_cfg[user_case.mmlid], ut_setup);
 
 	return size;
+#else
+	return 0;
+#endif
 }
 
 static const struct file_operations ut_fops = {

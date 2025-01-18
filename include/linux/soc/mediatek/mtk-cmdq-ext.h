@@ -99,11 +99,39 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 #define CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE		184
 #define CMDQ_CPR_HW_TRACE_BUILT_IN_START		0x8184
 
+/* Compatible with 32bit division and mold operation */
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+#define DO_COMMON_DIV(x, base) ((x) / (base))
+#define DO_COMMMON_MOD(x, base) ((x) % (base))
+#else
+#define DO_COMMON_DIV(x, base) ({                   \
+	uint64_t result = 0;                        \
+	if (sizeof(x) < sizeof(uint64_t))           \
+		result = ((x) / (base));            \
+	else {                                      \
+		uint64_t __x = (x);                 \
+		do_div(__x, (base));                \
+		result = __x;                       \
+	}                                           \
+	result;                                     \
+})
+#define DO_COMMMON_MOD(x, base) ({                  \
+	uint32_t result = 0;                        \
+	if (sizeof(x) < sizeof(uint64_t))           \
+		result = ((x) % (base));            \
+	else {                                      \
+		uint64_t __x = (x);                 \
+		result = do_div(__x, (base));       \
+	}                                           \
+	result;                                     \
+})
+#endif
+
 /* GCE provide 26M timer, thus each tick 1/26M second,
  * which is, 1 microsecond = 26 ticks
  */
 #define CMDQ_US_TO_TICK(_t)		(_t * 26)
-#define CMDQ_TICK_TO_US(_t)		(do_div(_t, 26))
+#define CMDQ_TICK_TO_US(_t)		(DO_COMMON_DIV(_t, 26))
 
 extern int gce_shift_bit;
 extern unsigned long long gce_mminfra;
