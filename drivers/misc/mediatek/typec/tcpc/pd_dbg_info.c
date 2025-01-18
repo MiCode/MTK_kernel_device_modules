@@ -107,15 +107,15 @@ int pd_dbg_info(const char *fmt, ...)
 		return -ENOMEM;
 
 	size = snprintf(mn->msg, ts_size + 1, "<%5lu.%03lu>", (unsigned long)ts, rem_msec);
-	WARN(ts_size != size, "different return values (%lu and %lu) from pd_dbg_info()",
-	     ts_size, size);
+	WARN(ts_size != size, "different return values (%zu and %zu) from %s()",
+	     ts_size, size, __func__);
 
 	va_start(args, fmt);
 	size = vsnprintf(mn->msg + ts_size, msg_size + 1, fmt, args);
 	va_end(args);
 	WARN(msg_size != size,
-	     "different return values (%lu and %lu) from pd_dbg_info(\"%s\", ...)",
-	     msg_size, size, fmt);
+	     "different return values (%zu and %zu) from %s(\"%s\", ...)",
+	     msg_size, size, __func__, fmt);
 
 	mutex_lock(&list_lock);
 	list_add_tail(&mn->list, &msg_list);
