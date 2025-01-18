@@ -18,18 +18,21 @@ bool vip_enable;
 #define link_with_others(lh) (!list_empty(lh))
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
-inline unsigned int num_vvip_in_cpu(int cpu)
+inline unsigned int num_vip_in_cpu(int cpu, int vip_prio)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
 
-	return vrq->num_vvip_tasks;
+	return vrq->num_vip_tasks[vip_prio];
 }
 
-inline unsigned int num_vip_in_cpu(int cpu)
+inline unsigned int get_num_higher_prio_vip(int cpu, int vip_prio)
 {
-	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
+	int sum_num = 0;
 
-	return vrq->num_vip_tasks;
+	for (vip_prio+=1; vip_prio<NUM_VIP_PRIO; vip_prio++)
+		sum_num += num_vip_in_cpu(cpu, vip_prio);
+
+	return sum_num;
 }
 
 struct task_struct *vts_to_ts(struct vip_task_struct *vts)
@@ -47,6 +50,167 @@ pid_t list_head_to_pid(struct list_head *lh)
 	if (!pid)
 		pid = 0;
 	return pid;
+}
+
+struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_cpu_mask_for_slow)
+{
+	int cpu, num_same_vip, num_higher_vip, min_num_same_vip = UINT_MAX, min_num_higher_vip = UINT_MAX;
+	struct cpumask vip_candidate;
+
+	for_each_cpu(cpu, allowed_cpu_mask_for_slow) {
+		num_higher_vip = get_num_higher_prio_vip(cpu, vip_prio);
+		if (num_higher_vip > min_num_higher_vip)
+			continue;
+
+		if (num_higher_vip < min_num_higher_vip) {
+			min_num_higher_vip = num_higher_vip;
+			min_num_same_vip = UINT_MAX;
+		}
+		num_same_vip = num_vip_in_cpu(cpu, vip_prio);
+
+		if (num_same_vip <= min_num_same_vip) {
+			if (num_same_vip < min_num_same_vip) {
+				cpumask_clear(&vip_candidate);
+				min_num_same_vip = num_same_vip;
+			}
+			/* only record min higher & min same */
+			cpumask_set_cpu(cpu, &vip_candidate);
+		}
+	}
+
+	return vip_candidate;
+}
+
+/* utilize 4 bit to represent max num VIP in CPU is 16. */
+#define MAX_NUM_VIP_IN_CPU_BIT 4
+/* the objective is to find min num same prio VIP within min num higher prio VIP
+ * e.g. CPU0 HP(higher prio): 1, SP(same prio): 0, CPU1 HP:0 SP:1
+ * we should choice CPU1 since VIP can task turns with same prio.
+ */
+#define ret_first_vip(vrq) (link_with_others(&vrq->vip_tasks) ? \
+	container_of(vrq->vip_tasks.next, struct vip_task_struct, vip_list) : NULL)
+struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct *p,
+		int vip_prio)
+{
+	unsigned int cpu, num_same_vip, min_num_same_vip = UINT_MAX;
+	struct cpumask vip_candidate;
+	struct perf_domain *pd_ptr = pd;
+	unsigned int num_vip_in_cpu_arr[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
+	bool failed = false;
+	struct cpumask allowed_cpu_mask_for_slow;
+
+	if (!pd_ptr) {
+		failed = true;
+		goto backup;
+	}
+
+	cpumask_clear(&allowed_cpu_mask_for_slow);
+	/* fast path: find min num SP(Same Prio) VIP within CPUs don't have higher prio */
+	for (; pd_ptr; pd_ptr = pd_ptr->next) {
+		for_each_cpu_and(cpu, perf_domain_span(pd_ptr), cpu_active_mask) {
+			struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
+			struct vip_task_struct *first_vip = NULL;
+
+			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
+				continue;
+
+			if (cpu_paused(cpu))
+				continue;
+
+			if (cpu_high_irqload(cpu))
+				continue;
+
+			if (cpu_rq(cpu)->rt.rt_nr_running >= 1 &&
+						!rt_rq_throttled(&(cpu_rq(cpu)->rt)))
+				continue;
+
+			cpumask_set_cpu(cpu, &allowed_cpu_mask_for_slow);
+			first_vip = ret_first_vip(vrq);
+			if (first_vip && first_vip->vip_prio > vip_prio)
+				continue;
+
+			num_same_vip = vrq->num_vip_tasks[vip_prio];
+			/* the VIP selecting CPU is on this CPU */
+			if (task_is_vip(p, NOT_VIP) && task_cpu(p) == cpu)
+				num_same_vip -= 1;
+			num_vip_in_cpu_arr[cpu] = num_same_vip;
+			if (num_same_vip > min_num_same_vip)
+				continue;
+
+			if (num_same_vip < min_num_same_vip) {
+				cpumask_clear(&vip_candidate);
+				min_num_same_vip = num_same_vip;
+			}
+
+			cpumask_set_cpu(cpu, &vip_candidate);
+		}
+	}
+
+	if (!cpumask_empty(&vip_candidate))
+		goto out;
+
+	/* slow path: only enter when all allowed CPUs have HP(Higher Prio) VIP.
+	 * compare num HP VIP with each CPUs to find min num HP CPUs,
+	 * and find min num SP(Same Prio) CPUs within min num HP CPUs.
+	 */
+	if (cpumask_weight(&allowed_cpu_mask_for_slow) != 0)
+		vip_candidate = find_min_num_vip_cpus_slow(vip_prio, &allowed_cpu_mask_for_slow);
+
+backup:
+	if (!cpumask_weight(&vip_candidate))
+		cpumask_copy(&vip_candidate, cpu_possible_mask);
+
+out:
+	if (trace_sched_find_min_num_vip_cpus_enabled()) {
+		u64 num_vip_in_cpu_bit = 0;
+
+		for(cpu=0; cpu<MAX_NR_CPUS; cpu++) {
+			num_vip_in_cpu_bit <<= MAX_NUM_VIP_IN_CPU_BIT;
+			if (num_vip_in_cpu_arr[cpu] != -1)
+				num_vip_in_cpu_bit |= (num_vip_in_cpu_arr[cpu]<<1);
+			else
+				num_vip_in_cpu_bit |= 1;
+		}
+		trace_sched_find_min_num_vip_cpus(failed, p->pid, &vip_candidate, num_vip_in_cpu_bit);
+	}
+	return vip_candidate;
+}
+
+int find_vip_backup_cpu(struct task_struct *p, struct cpumask *allowed_cpu_mask, int prev_cpu, int target)
+{
+	unsigned long best_cap = 0;
+	int cpu, best_cpu = -1;
+
+	/* Search CPUs starting from the first bit of the mask until meet target.
+	 * 0 1 2 3 4 5 6 7
+	 * |-start |-target
+	 * CPU4~7 have searched in mtk_select_idle_capacity, here we search CPUs0~3
+	 */
+	for_each_cpu(cpu, allowed_cpu_mask) {
+		unsigned long cpu_cap = capacity_of(cpu);
+
+		if (cpu == target)
+			break;
+
+		if (task_fits_capacity(p, cpu_cap, get_adaptive_margin(cpu)))
+			return cpu;
+
+		if (cpu_cap > best_cap) {
+			best_cap = cpu_cap;
+			best_cpu = cpu;
+		}
+	}
+
+	if (best_cpu != -1)
+		return best_cpu;
+
+	/* all CPUs have no spare capacity, find cache benefit CPU */
+	if (cpumask_test_cpu(target, allowed_cpu_mask))
+		return target;
+	else if (prev_cpu != target && cpumask_test_cpu(prev_cpu, allowed_cpu_mask))
+		return prev_cpu;
+
+	return cpumask_first(allowed_cpu_mask);
 }
 
 struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type)
@@ -84,6 +248,19 @@ void turn_off_vvip_balance_overutilized(void)
 }
 EXPORT_SYMBOL_GPL(turn_off_vvip_balance_overutilized);
 
+bool balance_vip_overutilized;
+void turn_on_vip_balance_overutilized(void)
+{
+	balance_vip_overutilized = true;
+}
+EXPORT_SYMBOL_GPL(turn_on_vip_balance_overutilized);
+
+void turn_off_vip_balance_overutilized(void)
+{
+	balance_vip_overutilized = false;
+}
+EXPORT_SYMBOL_GPL(turn_off_vip_balance_overutilized);
+
 int find_imbalanced_vvip_gear(void)
 {
 	int gear = -1;
@@ -101,7 +278,7 @@ int find_imbalanced_vvip_gear(void)
 	for (gear = num_sched_clusters-1; gear >= 0 ; gear--) {
 		cpumask_and(&cpus, perf_domain_span(pd), cpu_active_mask);
 		for_each_cpu(cpu, &cpus) {
-			num_vvip_in_gear += num_vvip_in_cpu(cpu);
+			num_vvip_in_gear += num_vip_in_cpu(cpu, VVIP);
 			num_cpu += 1;
 
 			if (trace_sched_find_imbalanced_vvip_gear_enabled())
@@ -155,15 +332,19 @@ static inline unsigned int vip_task_limit(struct task_struct *p)
 void check_vip_num(struct rq *rq)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+	int vip_prio = 0;
 
+	/* temp patch for counter issue*/
 	if (list_empty(&vrq->vip_tasks)) {
-		if (vrq->num_vvip_tasks != 0 ) {
-			vrq->num_vvip_tasks = 0;
-			pr_info("cpu=%d error VVIP number\n", cpu_of(rq));
-		}
-		if (vrq->num_vip_tasks != 0) {
-			vrq->num_vip_tasks = 0;
+		if (vrq->sum_num_vip_tasks != 0) {
+			vrq->sum_num_vip_tasks = 0;
 			pr_info("cpu=%d error VIP number\n", cpu_of(rq));
+		}
+		for (; vip_prio<NUM_VIP_PRIO; vip_prio++) {
+			if (vrq->num_vip_tasks[vip_prio] != 0) {
+				vrq->num_vip_tasks[vip_prio] = 0;
+			pr_info("cpu=%d error vip_prio=%d number\n", cpu_of(rq), vrq->num_vip_tasks[vip_prio]);
+			}
 		}
 	}
 	/* end of temp patch*/
@@ -202,9 +383,8 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	}
 	list_add(&vts->vip_list, pos->prev);
 	if (!requeue) {
-		vrq->num_vip_tasks += 1;
-		if (vts->vip_prio == VVIP)
-			vrq->num_vvip_tasks += 1;
+		vrq->num_vip_tasks[vts->vip_prio] += 1;
+		vrq->sum_num_vip_tasks += 1;
 	}
 
 	/* vip inserted trace event */
@@ -231,10 +411,12 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 		return;
 
 	list_del_init(&vts->vip_list);
-	if (vts->vip_prio == VVIP)
-		vrq->num_vvip_tasks -= 1;
-	if (vts->vip_prio != NOT_VIP)
-		vrq->num_vip_tasks -= 1;
+
+	if (vts->vip_prio != NOT_VIP) {
+		vrq->num_vip_tasks[vts->vip_prio] -= 1;
+		vrq->sum_num_vip_tasks -= 1;
+	}
+
 	vts->vip_prio = NOT_VIP;
 
 	/* for insurance */
@@ -566,7 +748,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 	}
 
 	/* only this vip task in rq, skip re-queue section */
-	if (vrq->num_vip_tasks == 1)
+	if (vrq->sum_num_vip_tasks == 1)
 		return;
 
 	/* slice expired. re-queue the task */
@@ -828,6 +1010,7 @@ void vip_init(void)
 	int cpu;
 
 	balance_vvip_overutilied = false;
+	balance_vip_overutilized = false;
 
 	/* init vip related value to group*/
 	init_vip_group();
@@ -843,10 +1026,14 @@ void vip_init(void)
 	/* init vip related value to each rq */
 	for_each_possible_cpu(cpu) {
 		struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
+		int vip_prio = 0;
 
 		INIT_LIST_HEAD(&vrq->vip_tasks);
-		vrq->num_vip_tasks = 0;
-		vrq->num_vvip_tasks = 0;
+		vrq->sum_num_vip_tasks = 0;
+		for (; vip_prio<NUM_VIP_PRIO; vip_prio++) {
+			vrq->num_vip_tasks[vip_prio] = 0;
+			vrq->sum_num_vip_tasks = 0;
+		}
 
 		/*
 		 * init vip related value to idle thread.

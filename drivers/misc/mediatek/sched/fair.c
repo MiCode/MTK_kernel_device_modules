@@ -1228,7 +1228,8 @@ static int mtk_wake_affine(struct task_struct *p, int this_cpu, int prev_cpu, in
  * maximize capacity.
  */
 static int
-mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask, int target)
+mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask, int target,
+	bool is_vip)
 {
 	unsigned long task_util, best_cap = 0;
 	int cpu, best_cpu = -1;
@@ -1238,7 +1239,7 @@ mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask,
 	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
 		unsigned long cpu_cap = capacity_of(cpu);
 
-		if (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu))
+		if (!is_vip && (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
 			continue;
 		if (fits_capacity(task_util, cpu_cap, get_adaptive_margin(cpu)))
 			return cpu;
@@ -1747,7 +1748,6 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	bool is_vvip = false;
 	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	unsigned int (*num_vip_in_cpu_fn)(int cpu) = num_vip_in_cpu;
 	int target_balance_cluster;
 #endif
 	bool latency_sensitive = fbc_params->latency_sensitive;
@@ -1765,11 +1765,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 	if (is_vvip) {
 		target_balance_cluster = find_imbalanced_vvip_gear();
-		if (target_balance_cluster != -1) {
-			order_index = target_balance_cluster;
-			end_index = 0;
-			num_vip_in_cpu_fn = num_vvip_in_cpu;
-		}
+		order_index = target_balance_cluster;
+		end_index = 0;
 	}
 #endif
 
@@ -1835,8 +1832,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			if (is_vip) {
-				num_vip = num_vip_in_cpu_fn(cpu);
-				if (!is_vvip && num_vvip_in_cpu(cpu))
+				num_vip = num_vip_in_cpu(cpu, vip_prio);
+				if (!is_vvip && num_vip_in_cpu(cpu, VVIP))
 					continue;
 
 				if (num_vip > min_num_vip)
@@ -1993,10 +1990,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	int recent_used_cpu, target;
 	bool is_vip = false;
 	int vip_prio = NOT_VIP;
-#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	int min_num_vvip_cpu = -1;
-	unsigned int num_vvip = 0, min_num_vvip_in_cpu = UINT_MAX;
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vip_prio = get_vip_task_prio(p);
 	is_vip = prio_is_vip(vip_prio, NOT_VIP);
 #endif
@@ -2181,26 +2176,21 @@ fail:
 	rcu_read_lock();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	/* iterrate from biggest cpu, find CPU with minimum num VVIP.
-	 * if all CPU have the same num of VVIP, min_num_vvip_cpu = biggest_cpu.
-	 */
-	if (prio_is_vip(vip_prio, VVIP) && balance_vvip_overutilied && pd) {
-		for (; pd; pd = pd->next) {
-			cpumask_and(cpus, perf_domain_span(pd), &allowed_cpu_mask);
-			for_each_cpu(cpu, cpus) {
-				num_vvip = num_vvip_in_cpu(cpu);
-				if (min_num_vvip_in_cpu > num_vvip) {
-					min_num_vvip_cpu = cpu;
-					min_num_vvip_in_cpu = num_vvip;
-				}
-			}
-		}
+	if (is_vip) {
+		struct cpumask temp_mask;
+		struct cpumask vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio);
 
-		if (min_num_vvip_cpu != -1) {
-			*new_cpu = min_num_vvip_cpu;
+		/* for VVIP, select biggest CPU */
+		if (prio_is_vip(vip_prio , VVIP)) {
+			*new_cpu = cpumask_last(&vip_candidate);
 			backup_reason = LB_BACKUP_VVIP;
 			goto backup_unlock;
 		}
+
+		/* for other VIPs */
+		cpumask_copy(&temp_mask, &allowed_cpu_mask);
+		if (!cpumask_and(&allowed_cpu_mask, &allowed_cpu_mask, &vip_candidate))
+			cpumask_copy(&allowed_cpu_mask, &temp_mask);
 	}
 #endif
 
@@ -2210,7 +2200,8 @@ fail:
 		target = prev_cpu;
 
 	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
-	    (available_idle_cpu(target) || sched_idle_cpu(target)) &&
+		/* Don't check CPU idle state if task is VIP, since idle is not critical for VIP*/
+	    (is_vip || (available_idle_cpu(target) || sched_idle_cpu(target))) &&
 	    task_fits_capacity(p, capacity_of(target), get_adaptive_margin(target))) {
 		*new_cpu = target;
 		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
@@ -2222,7 +2213,7 @@ fail:
 	 */
 	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
 		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
-	    (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu)) &&
+	    (is_vip || (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu))) &&
 	    task_fits_capacity(p, capacity_of(prev_cpu), get_adaptive_margin(prev_cpu))) {
 		*new_cpu = prev_cpu;
 		backup_reason = LB_BACKUP_PREV;
@@ -2257,7 +2248,7 @@ fail:
 	if (recent_used_cpu != prev_cpu && recent_used_cpu != target &&
 		mtk_cpus_share_cache(recent_used_cpu, target) &&
 		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
-	    (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu)) &&
+	    (is_vip || (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu))) &&
 	    task_fits_capacity(p, capacity_of(recent_used_cpu), get_adaptive_margin(recent_used_cpu))) {
 		*new_cpu = recent_used_cpu;
 		/*
@@ -2271,11 +2262,21 @@ fail:
 
 	irq_log_store();
 
-	*new_cpu = mtk_select_idle_capacity(p, &allowed_cpu_mask, target);
+	*new_cpu = mtk_select_idle_capacity(p, &allowed_cpu_mask, target, is_vip);
 	if (*new_cpu < nr_cpumask_bits) {
 		backup_reason = LB_BACKUP_IDLE_CAP;
 		goto backup_unlock;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (is_vip) {
+		*new_cpu = find_vip_backup_cpu(p, &allowed_cpu_mask, prev_cpu, target);
+		if (*new_cpu < nr_cpumask_bits) {
+			backup_reason = LB_BACKUP_VIP_IN_MASK;
+			goto backup_unlock;
+		}
+	}
+#endif
 
 	if (*new_cpu == -1 && cpumask_test_cpu(target, p->cpus_ptr)) {
 		*new_cpu = target;
@@ -2503,10 +2504,10 @@ void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf
 
 			src_rq = cpu_rq(cpu);
 
-			if (num_vvip_in_cpu(cpu) < 1)
+			if (num_vip_in_cpu(cpu, VVIP) < 1)
 				continue;
 
-			else if (num_vvip_in_cpu(cpu) == 1) {
+			else if (num_vip_in_cpu(cpu, VVIP) == 1) {
 				/* the only one VVIP in cpu is running */
 				if (src_rq->curr) {
 					vip_prio = get_vip_task_prio(src_rq->curr);
