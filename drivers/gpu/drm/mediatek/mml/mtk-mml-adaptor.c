@@ -5,6 +5,7 @@
  */
 
 #include <linux/sched.h>
+#include <linux/time64.h>
 #include <uapi/linux/sched/types.h>
 
 #include "mtk-mml-adaptor.h"
@@ -14,6 +15,8 @@
 #include "mtk-mml-driver.h"
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-pq-core.h"
+
+#define MML_DEFAULT_END_NS	15000000
 
 /* set to 0 to disable reuse config */
 int mml_reuse = 1;
@@ -579,3 +582,10 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 			kfree(ctx->tile_cache[i].func_list[j]);
 }
 
+void frame_check_end_time(struct timespec64 *endtime)
+{
+	if (!endtime->tv_sec && !endtime->tv_nsec) {
+		ktime_get_real_ts64(endtime);
+		timespec64_add_ns(endtime, MML_DEFAULT_END_NS);
+	}
+}
