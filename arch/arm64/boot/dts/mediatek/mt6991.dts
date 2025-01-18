@@ -4865,7 +4865,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			enabled = <1>;
 			dfd-timeout = <0x1000>;
 			dfd-timeout-debug = <0x1000>;
-			buf-length = <0xe00000>;
+			buf-length = <0xa00000>;
 			buf-length-debug = <0x1c00000>;
 			buf-addr-align = <0x400000>;
 			buf-addr-max = <0xffffffff>;
