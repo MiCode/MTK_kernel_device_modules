@@ -28981,7 +28981,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					irq_time[irq_time_index].time = sched_clock();
 					irq_time_index++;
 				}
-				//notify_vb_audio_control(NOTIFIER_VP_AUDIO_TRIGGER, NULL);
+				notify_vb_audio_control(NOTIFIER_VP_AUDIO_TRIGGER, NULL);
 				if (irq_time_index < IRQ_DEBUG_MAX) {
 					irq_time[irq_time_index].comp = NULL;
 					irq_time[irq_time_index].time = sched_clock();
