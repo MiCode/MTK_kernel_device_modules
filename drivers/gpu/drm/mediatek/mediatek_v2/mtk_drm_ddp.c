@@ -28622,7 +28622,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			DRM_MMP_MARK(mutex[m_id], val, 1);
 			if (m_id == 0)
 				drm_trace_tag_mark("mutex0_eof");
-#ifndef DRM_BYPASS_PQ
 			mtk_crtc = NULL;
 			for (i = 0; i < MAX_CRTC; i++) {
 				if (ddp->mtk_crtc[i] && &ddp->mutex[m_id] ==
@@ -28642,7 +28641,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					mtk_ddp_comp_mutex_eof_irq(comp, irq_time, &irq_time_index);
 				}
 			}
-#endif
 		}
 		if (val & (0x1 << m_id)) {
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
@@ -28703,7 +28701,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				}
 			}
 
-#ifndef DRM_BYPASS_PQ
 			mtk_crtc = NULL;
 			for (i = 0; i < MAX_CRTC; i++) {
 				if (ddp->mtk_crtc[i] && &ddp->mutex[m_id] ==
@@ -28719,7 +28716,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					mtk_ddp_comp_mutex_sof_irq(comp, irq_time, &irq_time_index);
 				}
 			}
-#endif
 		}
 	}
 
