@@ -28,6 +28,7 @@
 
 #include "mtk-mml-dpc.h"
 #include "mtk-mml-dle-adaptor.h"
+#include "mtk-mml-m2m-adaptor.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-core.h"
 #include "mtk-mml-pq-core.h"
@@ -137,6 +138,7 @@ struct mml_dev {
 	bool dl_en;
 	bool racing_en;
 	bool dpc_disable;
+	bool v4l2_en;
 
 	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
@@ -173,6 +175,7 @@ struct mml_dev {
 
 	struct device *mmu_dev; /* for dmabuf to iova */
 	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
+	struct mml_v4l2_dev *v4l2_dev;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mutex frm_dump_mutex;
@@ -585,6 +588,26 @@ void mml_dev_put_dle_ctx(struct mml_dev *mml,
 	WARN_ON(cnt < 0);
 }
 
+struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
+	struct mml_m2m_ctx *(*ctx_create)(struct mml_dev *mml))
+{
+	struct mml_m2m_ctx *ctx;
+
+	mutex_lock(&mml->ctx_mutex);
+
+	create_dev_topology_locked(mml);
+	if (IS_ERR(mml->topology)) {
+		ctx = ERR_CAST(mml->topology);
+		goto exit;
+	}
+
+	ctx = ctx_create(mml);
+
+exit:
+	mutex_unlock(&mml->ctx_mutex);
+	return ctx;
+}
+
 struct mml_topology_cache *mml_topology_get_cache(struct mml_dev *mml)
 {
 	return IS_ERR(mml->topology) ? NULL : mml->topology;
@@ -784,7 +807,6 @@ s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp)
 	of_mml_read_comp_name_index(node, 0, &comp->name);
 	return comp_init(comp_pdev, comp, comp_clock_names);
 }
-EXPORT_SYMBOL_GPL(mml_comp_init);
 
 s32 mml_subcomp_init(struct platform_device *comp_pdev,
 	int subcomponent, struct mml_comp *comp)
@@ -817,7 +839,6 @@ s32 mml_subcomp_init(struct platform_device *comp_pdev,
 	}
 	return comp_init(comp_pdev, comp, name_ptr);
 }
-EXPORT_SYMBOL_GPL(mml_subcomp_init);
 
 s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 {
@@ -1342,7 +1363,6 @@ struct device *mml_get_mmu_dev(struct mml_dev *mml, bool secure)
 {
 	return secure ? mml->mmu_dev_sec : mml->mmu_dev;
 }
-EXPORT_SYMBOL_GPL(mml_get_mmu_dev);
 
 bool mml_dl_enable(struct mml_dev *mml)
 {
@@ -1451,7 +1471,6 @@ s32 mml_register_comp(struct device *master, struct mml_comp *comp)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mml_register_comp);
 
 void mml_unregister_comp(struct device *master, struct mml_comp *comp)
 {
@@ -1462,7 +1481,6 @@ void mml_unregister_comp(struct device *master, struct mml_comp *comp)
 		comp->bound = false;
 	}
 }
-EXPORT_SYMBOL_GPL(mml_unregister_comp);
 
 static void mml_record_crc_check(struct mml_task *task)
 {
@@ -1982,36 +2000,34 @@ static int mml_probe(struct platform_device *pdev)
 			mml_err("fail to config sys dma mask %d", ret);
 	}
 
-	thread_cnt = of_count_phandle_with_args(
-		dev->of_node, "mboxes", "#mbox-cells");
-	if (thread_cnt <= 0 || thread_cnt > MML_MAX_CMDQ_CLTS)
-		thread_cnt = MML_MAX_CMDQ_CLTS;
-
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
 	if (mml->dl_en)
 		mml_log("direct link mode enable");
-
 	mml->dpc_disable = of_property_read_bool(dev->of_node, "dpc-disable");
 	if (mml->dpc_disable)
 		mml_log("dpc disable by project");
 
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
+	mml->v4l2_en = of_property_read_bool(dev->of_node, "v4l2-enable");
+
 	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
 
 	if (of_property_read_u8(dev->of_node, "racing-height", &mml->racing_height))
 		mml->racing_height = 64;	/* default height 64px */
 
 	if (!of_property_read_u16(dev->of_node, "event-ir-mml-ready", &mml->event_mml_ready))
-		mml_log("racing event event_mml_ready %u", mml->event_mml_ready);
-
+		mml_log("racing event_mml_ready %u", mml->event_mml_ready);
 	if (!of_property_read_u16(dev->of_node, "event-ir-disp-ready", &mml->event_disp_ready))
-		mml_log("racing event event_disp_ready %u", mml->event_disp_ready);
-
+		mml_log("racing event_disp_ready %u", mml->event_disp_ready);
 	if (!of_property_read_u16(dev->of_node, "event-ir-mml-stop", &mml->event_mml_stop))
-		mml_log("racing event event_mml_stop %u", mml->event_mml_stop);
-
+		mml_log("racing event_mml_stop %u", mml->event_mml_stop);
 	if (!of_property_read_u16(dev->of_node, "event-ir-eof", &mml->event_mml_target))
-		mml_log("racing event event_mml_target %u", mml->event_mml_target);
+		mml_log("racing event_mml_target %u", mml->event_mml_target);
+
+	thread_cnt = of_count_phandle_with_args(
+		dev->of_node, "mboxes", "#mbox-cells");
+	if (thread_cnt <= 0 || thread_cnt > MML_MAX_CMDQ_CLTS)
+		thread_cnt = MML_MAX_CMDQ_CLTS;
 
 	mml->cmdq_base = cmdq_register_device(dev);
 	for (i = 0; i < thread_cnt; i++) {
@@ -2053,6 +2069,11 @@ static int mml_probe(struct platform_device *pdev)
 		mml->dpc.mmlsys_26m_clk = NULL;
 	}
 
+	if (mml->v4l2_en) {
+		mml_log("v4l2 device enable");
+		mml->v4l2_dev = mml_v4l2_dev_create(dev);
+	}
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mutex_init(&mml->frm_dump_mutex);
 	mml->frm_dumps[mml_sys_frame][mml_frm_dump_src0].prefix = "in";
@@ -2087,6 +2108,7 @@ static int mml_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_dev *mml = platform_get_drvdata(pdev);
 
+	mml_v4l2_dev_destroy(dev, mml->v4l2_dev);
 	wakeup_source_unregister(mml->wake_lock);
 	comp_master_deinit(dev);
 	mml_sys_destroy(pdev, mml->sys, &sys_comp_ops);
