@@ -178,3 +178,12 @@ int apu_mem_table_free(uint64_t session)
 
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_table_free(session);
 }
+
+int apu_mem_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
+{
+	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_DRAM_FB_alloc == NULL)
+		return -EOPNOTSUPP;
+
+	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_DRAM_FB_alloc(session,
+		vlm_size, subcmd_num);
+}
