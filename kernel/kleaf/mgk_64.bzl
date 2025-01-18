@@ -139,6 +139,7 @@ mgk_64_device_modules = [
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
     #"drivers/dma-buf/heaps/page_pool.ko",
     "drivers/dma-buf/heaps/system_heap.ko",
+    "drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
     "drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko",
