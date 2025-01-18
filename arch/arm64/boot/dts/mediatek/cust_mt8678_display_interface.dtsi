@@ -123,11 +123,20 @@
 
 &disp1_dp_intf0 {
 	status = "disabled";
-	ports {
-		port {
-			disp1_dp_intf0_out: endpoint {
-				remote-endpoint = <&dptx_in>;
-			};
+
+	port {
+		disp1_dp_intf0_out: endpoint {
+			remote-endpoint = <&dptx_in0>;
+		};
+	};
+};
+
+&disp1_dp_intf1 {
+	status = "disabled";
+
+	port {
+		disp1_dp_intf1_out: endpoint {
+			remote-endpoint = <&dptx_in1>;
 		};
 	};
 };
@@ -141,14 +150,15 @@
 	ports {
 		port@0 {
 			reg = <0>;
-			dptx_in: endpoint {
+			dptx_in0: endpoint {
 				remote-endpoint = <&disp1_dp_intf0_out>;
 			};
 		};
+
 		port@1 {
 			reg = <1>;
-			dptx_out: endpoint {
-				remote-endpoint = <&panel_dp_in>;
+			dptx_in1: endpoint {
+				remote-endpoint = <&disp1_dp_intf1_out>;
 			};
 		};
 	};
@@ -1053,22 +1063,6 @@
 			max96851-dual-link-setting{
 			};
 			max96851-dp-mst-setting{
-			};
-		};
-
-		ports {
-			port@0 {
-				reg = <0>;
-				serdes_dp_in: endpoint {
-					remote-endpoint = <&dptx_out>;
-				};
-			};
-
-			port@1 {
-				reg = <1>;
-				serdes_dp_out: endpoint {
-					remote-endpoint = <&panel_dp_in>;
-				};
 			};
 		};
 	};
@@ -2198,12 +2192,6 @@
 					vback-porch = <8>;
 					vsync-len = <4>;
 				};
-			};
-		};
-
-		port {
-			panel_dp_in: endpoint {
-				remote-endpoint = <&dptx_out>;
 			};
 		};
 	};

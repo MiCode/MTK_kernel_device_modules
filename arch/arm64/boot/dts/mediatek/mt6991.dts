@@ -126,7 +126,8 @@
 			mtksmmu1 = &gpu_smmu;
 			mtksmmu2 = &apu_smmu;
 			mtksmmu3 = &soc_smmu;
-			intf0 = &disp1_dp_intf0;
+			dp-intf0 = &disp1_dp_intf0;
+			dp-intf1 = &disp1_dp_intf1;
 			tdshp0 = &disp_tdshp0;
 			tdshp1 = &disp_tdshp1;
 			color0 = &disp_color0;
@@ -8684,6 +8685,31 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_gp2_clk CLK_CK2_TVDPLL1_D8>,
 				<&cksys_gp2_clk CLK_CK2_TVDPLL1_D16>,
 				<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL1>,
+				<&cksys_clk CLK_CK_TCK_26M_MX9>;
+			clock-names = "hf_fmm_ck",
+					"hf_fdp_ck",
+					"MUX_DP",
+					"TVDPLL_D4",
+					"TVDPLL_D8",
+					"TVDPLL_D16",
+					"DPI_CK",
+					"DPI_26M";
+			phys = <&dp_tx>;
+			phy-names = "dp_tx";
+		};
+
+		disp1_dp_intf1: disp1-dp-intf1@32440000 {
+			compatible = "mediatek,disp1_dp_intf1",
+						"mediatek,mt6991-dp-intf";
+			reg = <0 0x32440000 0 0x1000>;
+			interrupts = <GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DP_INTF1>,
+				<&dispsys1_config_clk CLK_MM1_MOD4>,
+				<&cksys_gp2_clk CLK_CK2_DP1_SEL>,
+				<&cksys_gp2_clk CLK_CK2_TVDPLL2_D4>,
+				<&cksys_gp2_clk CLK_CK2_TVDPLL2_D8>,
+				<&cksys_gp2_clk CLK_CK2_TVDPLL2_D16>,
+				<&apmixedsys_gp2_clk CLK_APMIXED2_TVDPLL2>,
 				<&cksys_clk CLK_CK_TCK_26M_MX9>;
 			clock-names = "hf_fmm_ck",
 					"hf_fdp_ck",

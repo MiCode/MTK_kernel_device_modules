@@ -11,6 +11,10 @@
 	status = "okay";
 };
 
+&disp1_dp_intf1 {
+	status = "okay";
+};
+
 &dispsys_config {
 	enable-secondary-path = <1>;
 };
