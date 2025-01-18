@@ -992,6 +992,7 @@ static enum chk_sys_id debug_dump_id[] = {
 	mfg_ao,
 	mfgsc0_ao,
 	mfgsc1_ao,
+	ven1,
 	mm_vcore_pm,
 	isp_main_pm,
 	isp_dip_pm,
@@ -1220,8 +1221,6 @@ static int off_mtcmos_id[] = {
 	MT6991_CHK_PD_DSI_PHY0,
 	MT6991_CHK_PD_DSI_PHY1,
 	MT6991_CHK_PD_DSI_PHY2,
-	MT6991_CHK_PD_SSUSB_DP_PHY_P0,
-	MT6991_CHK_PD_SSUSB_P0,
 	PD_NULL,
 };
 
@@ -1239,6 +1238,8 @@ static int notice_mtcmos_id[] = {
 	MT6991_CHK_PD_ADSP_INFRA,
 	MT6991_CHK_PD_ADSP_AO,
 	MT6991_CHK_PD_MM_PROC,
+	MT6991_CHK_PD_SSUSB_DP_PHY_P0,
+	MT6991_CHK_PD_SSUSB_P0,
 	PD_NULL,
 };
 
