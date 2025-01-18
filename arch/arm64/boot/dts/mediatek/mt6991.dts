@@ -5989,7 +5989,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
 				<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>;
 			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P23>;
+			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P23>,
+					<&scpsys MT6991_POWER_DOMAIN_SSUSB_PHY_P2>;
+			power-domain-names = "u2", "u3";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -6058,7 +6060,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			compatible = "mediatek,mt6991-xsphy", "mediatek,xsphy";
 			#address-cells = <2>;
 			#size-cells = <2>;
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_PHY_P2>;
 			ranges;
 			status = "disabled";
 
