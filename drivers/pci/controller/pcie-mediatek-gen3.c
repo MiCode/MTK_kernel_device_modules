@@ -2874,12 +2874,10 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 
 	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
 
-	/* port 1 and 2 bypass PMRC signal */
-	if (port->port_num == 1 || port->port_num == 2) {
-		val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
-		val |= RG_PCIE26M_BYPASS;
-		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
-	}
+	/* bypass PMRC signal */
+	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
+	val |= RG_PCIE26M_BYPASS;
+	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 
 	return 0;
 }
