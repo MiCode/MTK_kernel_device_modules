@@ -26,9 +26,13 @@
 #define PEXTP_DIG_GLB_10		0x10
 #define PEXTP_DIG_GLB_20		0x20
 #define RG_XTP_BYPASS_PIPE_RST		BIT(4)
+#define RG_XTP_BYPASS_PIPE_RST_RC	BIT(17)
 #define PEXTP_DIG_GLB_28		0x28
 #define RG_XTP_PCIE_MODE		BIT(3)
 #define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
+#define PEXTP_DIG_GLB_30		0x30
+#define RG_XTP_CKBG_STAL_STB_T_SEL	GENMASK(25, 16)
+#define CKBG_STAL_STB_T_SEL_TO_0	0x0
 #define PEXTP_DIG_GLB_38		0x38
 #define RG_XTP_TPLL_SET_STB_T_SEL	GENMASK(7, 2)
 #define TPLL_SET_STB_T_SEL_TO_3F	0x3f
@@ -892,8 +896,19 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 				     RG_XTP_TPLL_ISO_EN_STB_T_SEL,
 				     TPLL_ISO_EN_STB_T_SEL_TO_3);
 
-		dev_info(dev, "CKM_38=%#x\n",
-			 readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_38));
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_30,
+				     RG_XTP_CKBG_STAL_STB_T_SEL,
+				     CKBG_STAL_STB_T_SEL_TO_0);
+
+		/* not bypass pipe reset, pipe reset will reset TPLL */
+		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_20, RG_XTP_BYPASS_PIPE_RST_RC);
+
+		dev_info(dev, "CKM_38=%#x, GLB_20=%#x, GLB_30=%#x, GLB_38=%#x, GLB_F4=%#x\n",
+			 readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_38),
+			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_20),
+			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_30),
+			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_38),
+			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_F4));
 	}
 
 	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_GLB_2C,
