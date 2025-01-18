@@ -896,9 +896,19 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, bool en)
 {
 	u32 value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x31 : 0x70;
 	u32 rtff_mask = 0;
+	u8 power_on = dpc_is_power_on() | mminfra_is_power_on() << 1;
 
-	if (!dpc_is_power_on()) {
-		DPCFUNC("disp vcore is not power on, subsys(%u) en(%u) skip", subsys, en);
+	if (power_on != 0b11) {
+		static bool called;
+
+		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, "subsys(%u) en(%u) skipped due to no power(%#x)\n",
+				    subsys, en, power_on);
+		if (!called) {
+			called = true;
+			DPCERR("subsys(%u) en(%u) skipped due to no power(%#x)",
+				    subsys, en, power_on);
+			dump_stack();
+		}
 		return;
 	}
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, en);
