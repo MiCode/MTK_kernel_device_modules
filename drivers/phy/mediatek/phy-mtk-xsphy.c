@@ -1904,8 +1904,10 @@ static int mtk_phy_init(struct phy *phy)
 	}
 
 	for (i = 0; i < xsphy->num_rptr; i++) {
-		if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+		if (!IS_ERR_OR_NULL(xsphy->repeater[i])) {
+			lockdep_set_subclass(&xsphy->repeater[i]->mutex, 1);
 			phy_init(xsphy->repeater[i]);
+		}
 	}
 
 	switch (inst->type) {
