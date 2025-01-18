@@ -1203,7 +1203,7 @@ static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 	/* skip dump when fault iova = 0 */
 	if (fault_iova)
-		mtk_iova_map_dump(fault_iova, data->plat_data->tab_id);
+		mtk_iova_dump(fault_iova, data->plat_data->tab_id);
 #endif
 }
 
