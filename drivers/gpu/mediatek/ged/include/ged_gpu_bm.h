@@ -25,8 +25,10 @@ enum gpu_bm_counter {
 	NR_BM_COUNTER
 };
 
+#ifndef FASTDVFS_POWERMODEL_SYSRAM_BASE
 /* 6983 0x112000~0x112400 */
 #define FASTDVFS_POWERMODEL_SYSRAM_BASE 0x112000U
+#endif
 
 #define SYSRAM_GPUBM_CURRENT_VERSION                        \
 (                                                    \
