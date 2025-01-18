@@ -2217,7 +2217,7 @@ static int mtk_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
 	if (inst->type == PHY_TYPE_USB2) {
 		for (i = 0; i < xsphy->num_rptr; i++) {
 			if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
-				phy_set_mode(xsphy->repeater[i], mode);
+				phy_set_mode_ext(xsphy->repeater[i], mode, submode);
 		}
 
 		u2_phy_instance_set_mode(xsphy, inst, mode, submode);
