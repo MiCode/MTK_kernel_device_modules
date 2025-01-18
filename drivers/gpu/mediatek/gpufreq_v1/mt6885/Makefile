@@ -10,18 +10,18 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/gpufreq_v1/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/leakage_table_v2/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/mach/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/gpu/ged/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sda/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/gpu/hal/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/gpufreq_v1/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/leakage_table_v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/mach/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/freqhopping/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/ged/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sda/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/gpu/hal/
 ccflags-y += -I$(srctree)/drivers/clk/mediatek/
 
 ccflags-y += -Wno-unused-variable

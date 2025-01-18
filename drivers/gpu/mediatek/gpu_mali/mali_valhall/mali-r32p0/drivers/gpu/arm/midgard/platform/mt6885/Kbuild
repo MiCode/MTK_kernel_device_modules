@@ -25,9 +25,9 @@ mali_kbase-y += \
 	platform/$(MALI_PLATFORM_DIR)/mali_kbase_config_mt6885.o
 
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/base/power/include
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
 # /*set interval to 9600-10000us */
 ccflags-y += -DDEFAULT_PM_POWEROFF_TICK_SHADER=25
