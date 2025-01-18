@@ -1303,19 +1303,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		pm_runtime_disable(dev);
 	}
 
-	ret = clk_prepare_enable(dp_intf->pclk);
-	if (ret < 0)
-		DDPMSG("%s Failed to enable pclk: %d\n",
-			__func__, ret);
-
-	ret = clk_set_parent(dp_intf->pclk, dp_intf->pclk_src[TCK_26M]);
-	if (ret < 0)
-		DDPMSG("%s Failed to clk_set_parent: %d\n",
-			__func__, ret);
-
-	DDPMSG("%s dpintf->pclk =  %ld\n",
-		__func__, clk_get_rate(dp_intf->pclk));
-
 	g_dp_intf = dp_intf;
 	DPTXMSG("%s-\n", __func__);
 	return ret;
