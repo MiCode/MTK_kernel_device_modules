@@ -234,6 +234,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int freq_thermal = 0;
+	struct sugov_rq_data *sugov_data_ptr;
 
 	for_each_cpu(cpu_idx, policy->related_cpus)
 		freq_state.cpu_freq[cpu_idx] = policy->cached_target_freq;
@@ -246,7 +247,6 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		cpu = cpumask_first(&pd_cpumask[i]);
 		if (cpumask_weight(&pd_cpumask[i]) == 1) {
 			if (available_idle_cpu(cpu)) {
-				struct sugov_rq_data *sugov_data_ptr;
 
 				sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
 				if (READ_ONCE(sugov_data_ptr->enq_ing) == 0) {
@@ -258,11 +258,20 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		}
 		max_freq_in_gear = 0;
 		for_each_cpu(cpu_idx, &pd_cpumask[i])
-			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear && cpu_active(cpu_idx))
+			if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
+				cpu_active(cpu_idx) &&
+				!available_idle_cpu(cpu))
 				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 
-		freq_state.dsu_freq_vote[i]
-			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
+		if(max_freq_in_gear != 0)
+			freq_state.dsu_freq_vote[i]
+				= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
+		else {
+			sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
+			freq_state.dsu_freq_vote[i] = 0;
+			WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, true);
+			goto skip_single_idle_cpu;
+		}
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		freq_thermal = get_cpu_ceiling_freq(gearid);
