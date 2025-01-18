@@ -3315,6 +3315,7 @@ static const struct mtk_m4u_plat_data mt6991_smmu_data = {
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
+	{ .compatible = "mediatek,mt6761-iommu-debug", .data = &mt6761_data},
 	{ .compatible = "mediatek,mt6765-iommu-debug", .data = &mt6765_data},
 	{ .compatible = "mediatek,mt6768-iommu-debug", .data = &mt6768_data},
 	{ .compatible = "mediatek,mt6833-iommu-debug", .data = &mt6833_data},
