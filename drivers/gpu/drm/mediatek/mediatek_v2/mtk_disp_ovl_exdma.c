@@ -710,8 +710,11 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	fmt = fb->format->format;
 	if (ovl->data->ovl_phy_mapping) {
 		phy_id = ovl->data->ovl_phy_mapping(comp);
-		if (ext_lye_id == 0)
+		if (ext_lye_id == 0) {
 			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
+			mtk_crtc->usage_ovl_compr[(phy_id + lye_id)] =
+					plane_state->prop_val[PLANE_PROP_COMPRESS];
+		}
 	}
 }
 
