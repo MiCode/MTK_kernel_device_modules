@@ -3222,9 +3222,10 @@
 		/* use_cpu_to_dram_map_new = "enable"; */
 	};
 
-	scp_dvfs {
-		compatible = "mediatek,scp_dvfs";
-		scp-dvfs-feature = "enable";
+	scp_dvfs: scp-dvfs {
+		compatible = "mediatek,scp-dvfs";
+		scp-dvfs-disable = <0>; /* 0: enable, 1: disable */
+		pmic = <&pmic>;
 		clocks =
 			<&topckgen_clk CLK_TOP_SCP_SEL>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
@@ -3247,12 +3248,16 @@
 			"clk_pll_6",
 			"clk_pll_7";
 
+		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
+		sshub-vcore-supply = <&mt6359p_vcore_sshub_reg>;
+		sshub-vsram-supply = <&mt6359p_vsram_others_sshub_ldo>;
+
 		dvfs-opp =
-		/* vcore vsram dvfsrc spm   freq  mux resource uv_index */
-		< 550000 750000	 0    0x008  310   0	 0       4>,
-		< 600000 750000	 1    0x104  360   7	 0       3>,
-		< 650000 750000	 2    0x202  400   3	 0       2>,
-		< 725000 750000	 3    0x301  624   1     0x3     1>;
+		/* vcore vsram dvfsrc spm   freq  mux resource */
+		< 550000 750000	 0    0x008  310   0	 0 >,
+		< 600000 750000	 1    0x104  360   7	 0 >,
+		< 650000 750000	 2    0x202  400   3	 0 >,
+		< 725000 750000	 3    0x301  624   1     0x3 >;
 
 		scp-cores = <1>;
 
@@ -3261,12 +3266,19 @@
 
 		do-ulposc-cali;
 		ccf-fmeter-support;
+		fmeter-args-u2-cali =
+		/* fm_id	fm_type */
+		 < 36		1>; /* OSC2_SYNC_CK (i.e. D2) */
+		fmeter-args-u2-result =
+		/* fm_id	fm_type */
+		 < 36		1>; /* OSC2_CK */
 		fmeter-id-ulposc2 = <36>;
 		fmeter-id-26M = <25>;
-		ulposc_clksys = <&apmixedsys_clk>;
-		scp_clk_ctrl = <&scp_clk_ctrl>;
+		ulposc-clksys = <&apmixedsys_clk>;
+		scp-clk-ctrl = <&scp_clk_ctrl>;
 		scp-clk-hw-ver = "v1";
 		ulposc-cali-ver = "v1";
+		ulposc-cali-alg-ver = <0>;
 		ulposc-cali-num = <3>;
 		ulposc-cali-target = <310 360 400>;
 		ulposc-cali-config =
@@ -3274,6 +3286,7 @@
 			<0x48a940	0x2900		0x41>,
 			<0x56a940	0x2900		0x41>,
 			<0x5ea940	0x2900		0x41>;
+		scp-dvfs-flag = "enable"; /* enable/disable */
 	};
 
 	sspm@10400000 {
