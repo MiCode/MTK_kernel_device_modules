@@ -5631,6 +5631,8 @@ void xhci_init_driver_(struct hc_driver *drv,
 			drv->reset_bandwidth = over->reset_bandwidth;
 		if (over->update_hub_device)
 			drv->update_hub_device = over->update_hub_device;
+		if (over->hub_control)
+			drv->hub_control = over->hub_control;
 		if (over->address_device)
 			drv->address_device = over->address_device;
 		if (over->bus_suspend)
