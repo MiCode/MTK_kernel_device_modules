@@ -4947,7 +4947,7 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	struct drm_crtc *crtc = dsi->encoder.crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned int crtc_idx = 0;
+	unsigned int crtc_idx = 0, tmp1 = 0, tmp2 = 0;
 	bool skip_panel_switch = mtk_dsi_skip_panel_switch(dsi);
 
 	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
@@ -5014,6 +5014,19 @@ SKIP_WAIT_FRAME_DONE:
 	mtk_dsi_enter_ulps(dsi, false);
 	mtk_dsi_disable(dsi);
 	mtk_dsi_stop(dsi);
+	//todo: debug patch, need remove
+	if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6991 &&
+			mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+		if (priv && priv->side_config_regs) {
+			tmp1 = readl(priv->side_config_regs + 0x200);
+			tmp2 = readl(dsi->regs + 0x0f8); //1e0, 1e4
+			DDPMSG("dispsys1 0x200=0x%x, dsi 0x0f8=0x%x\n", tmp1, tmp2);
+			if (tmp1 != 0 && tmp2 != 0)
+				DDPMSG("DSI_INTEN = 0x%x\n", readl(dsi->regs + DSI_INTEN));
+			else
+				DDPMSG("dispsys1 or dsi expected to be 0\n");
+		}
+	}
 	mtk_dsi_poweroff(dsi);
 
 	if (dsi->slave_dsi) {
