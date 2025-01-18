@@ -454,12 +454,13 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 			break;
 	}
 	if (r != mreq) {
-		dev_dbg(mtu->dev, "req=%p not queued to %s\n", req, ep->name);
+		dev_info(mtu->dev, "req=%p not queued to %s\n", req, ep->name);
 		ret = -EINVAL;
 		goto done;
 	}
 
 	if (mreq->mep != mep) {
+		dev_info(mtu->dev, "mreq->mep != mep, not queued.\n");
 		ret = -EINVAL;
 		goto done;
 	}
