@@ -2329,8 +2329,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"afe_on,user_case,output_device,input_device,adda_mode,sample_rate,",
 				"channel_num,freq_clock,D0_ratio";
 			node-111 = "SSPM_SWPM_ADSP__CORE_STATE_RATIO",
-				"active_0_1,active_0_wfi_1,wfi_0_active_1,wfi_0_1,active_0_off_1,",
-				"wfi_0_off_1,off_0_1,core_freq";
+				"active_0,wfi_0,off_0,active_1,wfi_1,off_1,",
+				"active_ao_infra,off_ao_infra,core_freq";
 			node-112 = "SSPM_SWPM_TSFDC__POWER_STATE",
 				"active_ratio10,active_ratio9,active_ratio8,active_ratio7,",
 				"active_ratio6,active_ratio5,active_ratio4,active_ratio3,",
