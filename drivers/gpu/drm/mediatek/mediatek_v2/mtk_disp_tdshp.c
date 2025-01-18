@@ -216,6 +216,9 @@
 #define DISP_TDSHP_EN BIT(0)
 #define TDSHP_RELAY_MODE BIT(0)
 
+static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
+	int caller, struct cmdq_pkt *handle);
+
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
@@ -507,20 +510,6 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
 		ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
-
-		if (!primary_data->tdshp_reg_valid) {
-			primary_data->relay_state &= ~(0x1 << PQ_FEATURE_DEFAULT);
-			if (primary_data->relay_state == 0) {
-				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_TDSHP_CFG, 0x0, TDSHP_RELAY_MODE);
-				DDPINFO("%s, set tdshp unrelay\n", __func__);
-			}
-
-			if (!comp->mtk_crtc->is_dual_pipe)
-				primary_data->tdshp_reg_valid = 1;
-			else if (tdshp_data->is_right_pipe)
-				primary_data->tdshp_reg_valid = 1;
-		}
 		mutex_unlock(&primary_data->data_lock);
 	}
 
@@ -552,6 +541,7 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 	int ret = 0;
 	struct DISP_TDSHP_REG *config = data;
 	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
+	struct mtk_disp_tdshp_primary *primary_data = tdshp->primary_data;
 
 	if (disp_tdshp_update_param(comp, handle, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
@@ -565,6 +555,12 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 			return -EFAULT;
 		}
 	}
+
+	if (!primary_data->tdshp_reg_valid) {
+		disp_tdshp_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+		primary_data->tdshp_reg_valid = 1;
+	}
+
 	return ret;
 }
 
@@ -742,9 +738,10 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_TDSHP_CFG, 0x0 << 12, 0x1 << 12);
 	}
 
-	if (primary_data->relay_state == 0)
+	if (primary_data->tdshp_reg_valid)
 		disp_tdshp_write_tdshp_reg(comp, handle, 0);
-	else
+
+	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_CFG, TDSHP_RELAY_MODE, TDSHP_RELAY_MODE);
 
@@ -790,7 +787,7 @@ static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
 	} else {
 		if (primary_data->relay_state != 0) {
 			primary_data->relay_state &= ~ (0x1 << caller);
-			if (primary_data->relay_state) {
+			if (primary_data->relay_state == 0) {
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_TDSHP_CFG, 0x0, TDSHP_RELAY_MODE);
 				if (comp->mtk_crtc->is_dual_pipe && companion)
@@ -1081,10 +1078,8 @@ void disp_tdshp_regdump(struct mtk_ddp_comp *comp)
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
 	for (k = 0; k <= 0x720; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
-			readl(baddr + k),
-			readl(baddr + k + 0x4),
-			readl(baddr + k + 0x8),
-			readl(baddr + k + 0xc));
+			readl(baddr + k), readl(baddr + k + 0x4),
+			readl(baddr + k + 0x8), readl(baddr + k + 0xc));
 	}
 	DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(comp));
 	if (comp->mtk_crtc->is_dual_pipe && tdshp->companion) {
@@ -1094,10 +1089,8 @@ void disp_tdshp_regdump(struct mtk_ddp_comp *comp)
 		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(tdshp->companion));
 		for (k = 0; k <= 0x720; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
-				readl(baddr + k),
-				readl(baddr + k + 0x4),
-				readl(baddr + k + 0x8),
-				readl(baddr + k + 0xc));
+				readl(baddr + k), readl(baddr + k + 0x4),
+				readl(baddr + k + 0x8), readl(baddr + k + 0xc));
 		}
 		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(tdshp->companion));
 	}
