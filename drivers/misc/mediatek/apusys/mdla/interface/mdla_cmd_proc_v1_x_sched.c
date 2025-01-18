@@ -31,7 +31,7 @@
 
 static void mdla_cmd_prepare_v1_x_sched(struct mdla_run_cmd *cd,
 					struct apusys_cmd_handle *apusys_hd,
-					struct command_entry *ce, int priority)
+					struct command_entry *ce, uint32_t priority)
 {
 	ce->state = CE_NONE;
 	ce->flags = CE_NOP;
@@ -58,8 +58,11 @@ static void mdla_cmd_prepare_v1_x_sched(struct mdla_run_cmd *cd,
 	apusys_hd->ip_time = 0;
 
 	ce->cmdbuf = &apusys_hd->cmdbufs[CMD_CODEBUF_IDX];
-	ce->kva = ce->cmdbuf->kva + cd->offset;
-	ce->mva = apusys_mem_query_iova((u64)ce->kva);
+
+
+	/* Have acquired the addresses at the beginning of mdla_cmd_run_sync_v1_x_sched() */
+	//ce->kva = ce->cmdbuf->kva + cd->offset;
+	//ce->mva = apusys_mem_query_iova((u64)ce->kva);
 
 	if (apusys_hd->multicore_total == 2) {
 		ce->cmd_id = apusys_hd->kid;
@@ -152,6 +155,32 @@ static int mdla_cmd_wrong_count_handler(struct mdla_dev *mdla_info,
 	return -REASON_MDLA_TIMEOUT;
 }
 
+static int mdla_cmd_get_codebuf_addr(struct mdla_run_cmd *cd, struct apusys_cmdbuf *codebuf,
+					void **kva, u32 *mva)
+{
+	if ((cd->count == 0) ||
+	    (cd->count * MREG_CMD_SIZE > codebuf->size) ||
+	    (cd->offset >= codebuf->size)) {
+		mdla_err("%s: %d count/offset check fail\n", __func__, __LINE__);
+		return -1;
+	}
+
+	if (codebuf->kva == 0) {
+		mdla_err("%s: %d codefuf kva = 0\n", __func__, __LINE__);
+		return -1;
+	}
+
+	*kva = (void *)(codebuf->kva + cd->offset);
+	*mva = apusys_mem_query_iova((u64)*kva);
+
+	if (*mva == 0) {
+		mdla_err("%s: %d query mva = 0\n", __func__, __LINE__);
+		return -1;
+	}
+
+	return 0;
+}
+
 int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 				 struct mdla_dev *mdla_info,
 				 struct apusys_cmd_handle *apusys_hd,
@@ -164,22 +193,27 @@ int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 	struct mdla_run_cmd *cd = &cmd_data->req;
 	struct command_entry *ce;
 	struct mdla_scheduler *sched = mdla_info->sched;
-	u32 core_id = mdla_info->mdla_id;
+	u32 codebuf_mva, core_id = mdla_info->mdla_id;
+	void *codebuf_kva;
 
 	if (!cd || (apusys_hd->cmdbufs[CMD_INFO_IDX].size <
-		    sizeof(struct mdla_run_cmd)))
+		    sizeof(struct mdla_run_cmd))) {
+		mdla_err("%s: %d mdla_run_cmd null check fail\n", __func__, __LINE__);
 		return -EINVAL;
+	}
 
-	if ((cd->count == 0) ||
-	    (cd->offset >= apusys_hd->cmdbufs[CMD_CODEBUF_IDX].size))
-		return -1;
+	if (mdla_cmd_get_codebuf_addr(cd, &apusys_hd->cmdbufs[CMD_CODEBUF_IDX],
+			&codebuf_kva, &codebuf_mva) != 0)
+		return -EINVAL;
 
 	/* need to define error code for scheduler is NULL */
 	if (!sched)
 		return -REASON_MDLA_NULLPOINT;
 
-	if (unlikely(priority >= PRIORITY_LEVEL))
+	if (unlikely(priority >= PRIORITY_LEVEL)) {
+		mdla_err("%s: %d illegal priority level\n", __func__, __LINE__);
 		return -EINVAL;
+	}
 
 	ret = mdla_pwr_ops_get()->on(core_id, false);
 	if (ret)
@@ -191,6 +225,7 @@ int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 
 	if (unlikely(sched->ce[priority])) {
 		spin_unlock_irqrestore(&sched->lock, flags);
+		mdla_err("%s: %d has ce with same priority\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -208,16 +243,32 @@ int mdla_cmd_run_sync_v1_x_sched(struct mdla_run_cmd_sync *cmd_data,
 	mdla_pwr_ops_get()->wake_lock(core_id);
 
 	/* prepare CE */
+	ce->kva = codebuf_kva;
+	ce->mva = codebuf_mva;
 	mdla_cmd_prepare_v1_x_sched(cd, apusys_hd, ce, priority);
 
 	ce->poweron_t = pwron_t;
 
 	mdla_cmd_set_opp(core_id, ce, pro_boost_val);
 
-	if (priority == MDLA_LOW_PRIORITY && ce->cmd_batch_size < ce->count)
-		mdla_sched_plat_cb()->split_alloc_cmd_batch(ce);
-	else
-		ce->batch_list_head = NULL;
+	ce->batch_list_head = NULL;
+	if (priority == MDLA_LOW_PRIORITY && ce->cmd_batch_size < ce->count) {
+		ce->cmd_int_backup = kcalloc(ce->count, sizeof(uint32_t), GFP_KERNEL);
+
+		if (ce->cmd_int_backup != NULL) {
+			ce->cmd_ctrl_1_backup = kcalloc(ce->count, sizeof(uint32_t), GFP_KERNEL);
+
+			if (ce->cmd_ctrl_1_backup != NULL) {
+				mdla_sched_plat_cb()->backup_cmd_batch(ce);
+				mdla_sched_plat_cb()->split_alloc_cmd_batch(ce);
+				if (ce->batch_list_head == NULL) {
+					kfree(ce->cmd_int_backup);
+					kfree(ce->cmd_ctrl_1_backup);
+				}
+			} else
+				kfree(ce->cmd_int_backup);
+		}
+	}
 
 	mdla_util_apu_pmu_handle(mdla_info, apusys_hd, (u16)priority);
 
@@ -268,6 +319,12 @@ error_handle:
 	mdla_trace_end(core_id, 0, ce);
 	mdla_prof_iter(core_id);
 	mdla_util_apu_pmu_update(mdla_info, apusys_hd, (u16)priority);
+
+	if (priority == MDLA_LOW_PRIORITY && ce->batch_list_head != NULL) {
+		mdla_sched_plat_cb()->restore_cmd_batch(ce);
+		kfree(ce->cmd_int_backup);
+		kfree(ce->cmd_ctrl_1_backup);
+	}
 
 	spin_lock_irqsave(&sched->lock, flags);
 

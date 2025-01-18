@@ -72,6 +72,8 @@ static int apusys_mdla_handler(int type, void *hnd, struct apusys_device *dev)
 				.kva,
 			mdla_info, cmd_hnd, MDLA_LOW_PRIORITY);
 		break;
+	case APUSYS_CMD_VALIDATE:
+		break;
 	case APUSYS_CMD_PREEMPT:
 		ret = -EINVAL;
 		break;

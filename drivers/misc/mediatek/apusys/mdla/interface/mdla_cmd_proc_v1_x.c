@@ -79,11 +79,15 @@ int mdla_cmd_run_sync_v1_x(struct mdla_run_cmd_sync *cmd_data,
 	int ret = 0, boost_val;
 	u32 core_id = mdla_info->mdla_id;
 
-	if (!cd || (apusys_hd->cmdbufs[CMD_INFO_IDX].size < sizeof(struct mdla_run_cmd)))
+	if (!cd || (apusys_hd->cmdbufs[CMD_INFO_IDX].size < sizeof(struct mdla_run_cmd))) {
+		mdla_err("%s: %d mdla_run_cmd null check fail\n", __func__, __LINE__);
 		return -EINVAL;
+	}
 
-	if ((cd->count == 0) || (cd->offset >= apusys_hd->cmdbufs[CMD_CODEBUF_IDX].size))
-		return -1;
+	if ((cd->count == 0) || (cd->offset >= apusys_hd->cmdbufs[CMD_CODEBUF_IDX].size)) {
+		mdla_err("%s: %d count/offset check fail\n", __func__, __LINE__);
+		return -EINVAL;
+	}
 
 	memset(&ce, 0, sizeof(struct command_entry));
 	ce.queue_t = sched_clock();
@@ -94,6 +98,10 @@ int mdla_cmd_run_sync_v1_x(struct mdla_run_cmd_sync *cmd_data,
 
 	mdla_cmd_prepare_v1_x(cd, apusys_hd, &ce);
 
+	if (((uint64_t)ce.kva == 0) || (ce.mva == 0)) {
+		mdla_err("%s: %d query kva/mva = 0\n", __func__, __LINE__);
+		return -EINVAL;
+	}
 	deadline = get_jiffies_64()
 			+ msecs_to_jiffies(mdla_dbg_read_u32(FS_TIMEOUT));
 
