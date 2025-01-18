@@ -86,6 +86,10 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_target_nl;
 	const u32 dsi_buf_con_base;
 	const u32 dsi_phy_syncon;
+	//vdo ltpo
+	const u32 dsi_ltpo_vdo_con;
+	const u32 dsi_ltpo_vdo_sq0;
+
 };
 
 struct mtk_dsi {
