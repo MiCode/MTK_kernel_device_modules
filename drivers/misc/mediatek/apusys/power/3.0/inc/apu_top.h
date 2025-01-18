@@ -33,6 +33,7 @@ enum aputop_func_id {
 	APUTOP_FUNC_ARE_DUMP1, /* 7 */
 	APUTOP_FUNC_ARE_DUMP2,
 	APUTOP_FUNC_BOOT_HOST,	// to support multi-user
+	APUTOP_FUNC_GET_UP_DATA,// get remote data which send by apupw drv in uP
 	APUTOP_FUNC_MAX_ID,
 };
 
@@ -55,6 +56,7 @@ struct apupwr_plat_data {
 	int (*plat_aputop_func)(struct platform_device *pdev,
 			enum aputop_func_id func_id,
 			struct aputop_func_param *aputop);
+	uint32_t (*plat_aputop_func_return_val)(int func_id);
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	int (*plat_aputop_dbg_open)(struct inode *inode,
 			struct file *file);
@@ -84,6 +86,7 @@ extern const struct apupwr_plat_data mt6985_plat_data;
 extern const struct apupwr_plat_data mt6886_plat_data;
 extern const struct apupwr_plat_data mt8188_plat_data;
 extern const struct apupwr_plat_data mt6989_plat_data;
+extern const struct apupwr_plat_data mt6991_plat_data;
 
 static inline void apu_writel(const unsigned int val,
 		void __force __iomem *regs)
