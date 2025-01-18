@@ -158,6 +158,12 @@ extern unsigned int mt_ppm_get_leakage_mw(enum ppm_cluster_lkg cluster);
 /* CPI */
 extern unsigned int ppm_get_cluster_cpi(unsigned int cluster);
 
+/* Callbacks */
+extern void ppm_cpufreq_get_cur_volt_register(unsigned int (*cb)(unsigned int));
+extern void ppm_cpufreq_get_cur_phy_freq_no_lock_register(unsigned int (*cb)(unsigned int));
+extern void ppm_cpu_level_register(unsigned int (*cb)(void));
+extern void ppm_cpufreq_get_volt_by_idx_register(unsigned int (*cb)(unsigned int cluster_id, int idx));
+
 #ifdef __cplusplus
 }
 #endif
