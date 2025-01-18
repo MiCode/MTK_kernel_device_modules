@@ -1704,7 +1704,7 @@
 					<&smi_larb16 &smi_larb17 &smi_larb18>,
 					<&smi_larb19 &smi_larb20>;
 			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&mmsys_config CLK_MM_SMI_IOMMU>,
+			clocks = <&mmsys_config CLK_MM_SMI_IOMMU>;
 			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
@@ -1755,7 +1755,7 @@
 
 		mtk_iommu_debug {
 			compatible = "mediatek,mt6877-iommu-debug";
-			mediatek,iommus = <&iommu0 &iommu1>;
+			mediatek,iommus = <&iommu0 &iommu0>;
 		};
 
 		iommu_test {
@@ -1803,7 +1803,7 @@
 		};
 
 		mtk_dmabufheap_debug1: dmaheap_test1{
-			compatible = "mediatek, mtk_dmabufheap, iommu1";
+			compatible = "mediatek, mtk_dmabufheap, iommu0";
 			iommus = <&iommu0 M4U_PORT_L1_DISP_FAKE1>;
 		};
 
