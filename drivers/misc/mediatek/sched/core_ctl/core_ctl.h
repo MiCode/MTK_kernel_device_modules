@@ -41,5 +41,6 @@ struct core_ctl_notif_data {
 
 extern void core_ctl_notifier_register(struct notifier_block *n);
 extern void core_ctl_notifier_unregister(struct notifier_block *n);
+extern int pd_freq2opp(int cpu, int opp, int quant, int wl);
 
 #endif /* _CORE_CTL_H */
