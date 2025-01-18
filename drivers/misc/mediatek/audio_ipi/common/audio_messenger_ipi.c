@@ -175,6 +175,9 @@ bool check_print_msg_info(const struct ipi_msg_t *p_ipi_msg)
 	     p_ipi_msg->task_scene == TASK_SCENE_CAPTURE_RAW ||
 	     p_ipi_msg->task_scene == TASK_SCENE_BLEUL ||
 	     p_ipi_msg->task_scene == TASK_SCENE_BTUL ||
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	     p_ipi_msg->task_scene == TASK_SCENE_CAPTURE_MCH ||
+#endif
 	     p_ipi_msg->task_scene == TASK_SCENE_UL_PROCESS) &&
 	    (p_ipi_msg->msg_id == AUDIO_DSP_TASK_ULCOPY))
 		return false;
@@ -197,6 +200,26 @@ bool check_print_msg_info(const struct ipi_msg_t *p_ipi_msg)
 	    p_ipi_msg->ack_type == AUDIO_IPI_MSG_ACK_BACK)
 		return true;
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	if ((p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK0 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK1 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK2 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK3 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK4 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK5 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK6 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK7 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK8 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK9 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK10 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK11 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK12 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK13 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK14 ||
+	    p_ipi_msg->task_scene == TASK_SCENE_PLAYBACK15) &&
+	    (p_ipi_msg->msg_id == AUDIO_DSP_TASK_DLCOPY))
+		return false;
+#endif
 	return false;
 }
 
@@ -575,5 +598,3 @@ RECV_BUF_EXIT:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(audio_recv_ipi_buf_from_dsp);
-
-

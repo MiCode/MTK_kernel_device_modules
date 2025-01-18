@@ -78,6 +78,38 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_MDUL_ID]        = "mtk-dsp-mdul",
 	[AUDIO_TASK_CALLDL_ID]      = "mtk-dsp-calldl",
 	[AUDIO_TASK_CALLUL_ID]      = "mtk-dsp-callul",
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	[AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID]      = "mtk-dsp-hfp-client-rx",
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	[AUDIO_TASK_ANC_ADSP_ID]    = "mtk-dsp-anc",
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	[AUDIO_TASK_EXTSTREAM1_ADSP_ID]   = "mtk-dsp-extstream1",
+	[AUDIO_TASK_EXTSTREAM2_ADSP_ID]   = "mtk-dsp-extstream2",
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	[AUDIO_TASK_SUB_PLAYBACK_ID]   = "mtk-dsp-sub-playback",
+#endif
+	[AUDIO_TASK_PLAYBACK0_ID]   = "mtk-dsp-playback0",
+	[AUDIO_TASK_PLAYBACK1_ID]   = "mtk-dsp-playback1",
+	[AUDIO_TASK_PLAYBACK2_ID]   = "mtk-dsp-playback2",
+	[AUDIO_TASK_PLAYBACK3_ID]   = "mtk-dsp-playback3",
+	[AUDIO_TASK_PLAYBACK4_ID]   = "mtk-dsp-playback4",
+	[AUDIO_TASK_PLAYBACK5_ID]   = "mtk-dsp-playback5",
+	[AUDIO_TASK_PLAYBACK6_ID]   = "mtk-dsp-playback6",
+	[AUDIO_TASK_PLAYBACK7_ID]   = "mtk-dsp-playback7",
+	[AUDIO_TASK_PLAYBACK8_ID]   = "mtk-dsp-playback8",
+	[AUDIO_TASK_PLAYBACK9_ID]   = "mtk-dsp-playback9",
+	[AUDIO_TASK_PLAYBACK10_ID]   = "mtk-dsp-playback10",
+	[AUDIO_TASK_PLAYBACK11_ID]   = "mtk-dsp-playback11",
+	[AUDIO_TASK_PLAYBACK12_ID]   = "mtk-dsp-playback12",
+	[AUDIO_TASK_PLAYBACK13_ID]   = "mtk-dsp-playback13",
+	[AUDIO_TASK_PLAYBACK14_ID]   = "mtk-dsp-playback14",
+	[AUDIO_TASK_PLAYBACK15_ID]   = "mtk-dsp-playback15",
+	[AUDIO_TASK_CAPTURE_MCH_ID] = "mtk-dsp-capture-mch",
+#endif
 };
 
 static int dsp_pcm_taskattr_init(struct platform_device *pdev)

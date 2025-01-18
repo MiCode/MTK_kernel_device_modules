@@ -349,6 +349,278 @@ static struct audio_dsp_dram
 		},
 };
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+static struct audio_dsp_dram
+	adsp_sharemem_hfp_client_rx_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+static struct audio_dsp_dram
+	adsp_sharemem_anc_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+static struct audio_dsp_dram
+	adsp_sharemem_extstream1_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_extstream2_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+static struct audio_dsp_dram
+	adsp_sharemem_sub_playback_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+#endif
+static struct audio_dsp_dram
+	adsp_sharemem_playback0_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback1_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback2_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback3_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback4_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback5_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback6_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback7_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback8_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback9_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback10_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback11_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback12_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback13_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback14_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
+	adsp_sharemem_playback15_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+static struct audio_dsp_dram
+	adsp_sharemem_capture_mch_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+#endif
+
 static struct mtk_adsp_task_attr adsp_task_attr[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_VOIP_ID] = {true, -1, -1, -1,
 				VOIP_FEATURE_ID, false},
@@ -403,6 +675,60 @@ static struct mtk_adsp_task_attr adsp_task_attr[AUDIO_TASK_DAI_NUM] = {
 				VOICE_CALL_SUB_FEATURE_ID, false},
 	[AUDIO_TASK_CALLUL_ID] = {true, -1, -1, -1,
 				VOICE_CALL_FEATURE_ID, false},
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	[AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID] = {true, -1, -1, -1,
+				HFP_CLIENT_RX_FEATURE_ID, false},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	[AUDIO_TASK_ANC_ADSP_ID] = {true, -1, -1, -1,
+				   ANC_FEATURE_ID, false},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	[AUDIO_TASK_EXTSTREAM1_ADSP_ID] = {true, -1, -1, -1,
+				EXTSTREAM1_FEATURE_ID, false},
+	[AUDIO_TASK_EXTSTREAM2_ADSP_ID] = {true, -1, -1, -1,
+				EXTSTREAM2_FEATURE_ID, false},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	[AUDIO_TASK_SUB_PLAYBACK_ID] = {false, -1, -1, -1,
+				    SUB_PLAYBACK_FEATURE_ID, false},
+#endif
+	[AUDIO_TASK_PLAYBACK0_ID] = {true, -1, -1, -1,
+				   PLAYBACK0_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK1_ID] = {true, -1, -1, -1,
+				   PLAYBACK1_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK2_ID] = {true, -1, -1, -1,
+				   PLAYBACK2_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK3_ID] = {true, -1, -1, -1,
+				   PLAYBACK3_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK4_ID] = {true, -1, -1, -1,
+				   PLAYBACK4_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK5_ID] = {true, -1, -1, -1,
+				   PLAYBACK5_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK6_ID] = {true, -1, -1, -1,
+				   PLAYBACK6_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK7_ID] = {true, -1, -1, -1,
+				   PLAYBACK7_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK8_ID] = {true, -1, -1, -1,
+				   PLAYBACK8_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK9_ID] = {true, -1, -1, -1,
+				   PLAYBACK9_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK10_ID] = {true, -1, -1, -1,
+				   PLAYBACK10_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK11_ID] = {true, -1, -1, -1,
+				   PLAYBACK11_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK12_ID] = {true, -1, -1, -1,
+				   PLAYBACK12_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK13_ID] = {true, -1, -1, -1,
+				   PLAYBACK13_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK14_ID] = {true, -1, -1, -1,
+				   PLAYBACK14_FEATURE_ID, false},
+	[AUDIO_TASK_PLAYBACK15_ID] = {true, -1, -1, -1,
+				   PLAYBACK15_FEATURE_ID, false},
+	[AUDIO_TASK_CAPTURE_MCH_ID] = {true, -1, -1, -1,
+				   CAPTURE_MCH_FEATURE_ID, false},
+#endif
 };
 
 static struct audio_dsp_dram *mtk_get_adsp_sharemem_block(int audio_task_id)
@@ -465,6 +791,60 @@ static struct audio_dsp_dram *mtk_get_adsp_sharemem_block(int audio_task_id)
 		return adsp_sharemem_calldl_mblock;
 	case AUDIO_TASK_CALLUL_ID:
 		return adsp_sharemem_callul_mblock;
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	case AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID:
+		return adsp_sharemem_hfp_client_rx_mblock;
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	case AUDIO_TASK_ANC_ADSP_ID:
+		return adsp_sharemem_anc_mblock;
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	case AUDIO_TASK_EXTSTREAM1_ADSP_ID:
+		return adsp_sharemem_extstream1_mblock;
+	case AUDIO_TASK_EXTSTREAM2_ADSP_ID:
+		return adsp_sharemem_extstream2_mblock;
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	case AUDIO_TASK_SUB_PLAYBACK_ID:
+		return adsp_sharemem_sub_playback_mblock;
+#endif
+	case AUDIO_TASK_PLAYBACK0_ID:
+		return adsp_sharemem_playback0_mblock;
+	case AUDIO_TASK_PLAYBACK1_ID:
+		return adsp_sharemem_playback1_mblock;
+	case AUDIO_TASK_PLAYBACK2_ID:
+		return adsp_sharemem_playback2_mblock;
+	case AUDIO_TASK_PLAYBACK3_ID:
+		return adsp_sharemem_playback3_mblock;
+	case AUDIO_TASK_PLAYBACK4_ID:
+		return adsp_sharemem_playback4_mblock;
+	case AUDIO_TASK_PLAYBACK5_ID:
+		return adsp_sharemem_playback5_mblock;
+	case AUDIO_TASK_PLAYBACK6_ID:
+		return adsp_sharemem_playback6_mblock;
+	case AUDIO_TASK_PLAYBACK7_ID:
+		return adsp_sharemem_playback7_mblock;
+	case AUDIO_TASK_PLAYBACK8_ID:
+		return adsp_sharemem_playback8_mblock;
+	case AUDIO_TASK_PLAYBACK9_ID:
+		return adsp_sharemem_playback9_mblock;
+	case AUDIO_TASK_PLAYBACK10_ID:
+		return adsp_sharemem_playback10_mblock;
+	case AUDIO_TASK_PLAYBACK11_ID:
+		return adsp_sharemem_playback11_mblock;
+	case AUDIO_TASK_PLAYBACK12_ID:
+		return adsp_sharemem_playback12_mblock;
+	case AUDIO_TASK_PLAYBACK13_ID:
+		return adsp_sharemem_playback13_mblock;
+	case AUDIO_TASK_PLAYBACK14_ID:
+		return adsp_sharemem_playback14_mblock;
+	case AUDIO_TASK_PLAYBACK15_ID:
+		return adsp_sharemem_playback15_mblock;
+	case AUDIO_TASK_CAPTURE_MCH_ID:
+		return adsp_sharemem_capture_mch_mblock;
+#endif
 	default:
 		pr_info("%s err audio_task_id = %d\n", __func__, audio_task_id);
 	}
@@ -1362,5 +1742,3 @@ int mtk_init_adsp_latency(struct mtk_base_dsp *dsp)
 	return 0;
 
 }
-
-

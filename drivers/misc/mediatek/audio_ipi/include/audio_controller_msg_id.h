@@ -35,10 +35,14 @@ enum aud_ctl_msg_id_t {
 	/* IRQ, DSP to DSP, 0xDDD- */
 	AUD_CTL_MSG_D2D_IRQ = AUD_CTL_MSG_D2D_BASE + 0x00,
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	/*sw_mixer route msg*/
+	AUD_CTL_MSG_A2D_SW_MIXER_SET_ROUTES  = AUD_CTL_MSG_A2D_BASE + 0xF0,
+#endif
+
 	/* uint16_t  */
 	AUD_CTL_MSG_MAX = 0xFFFF
 };
 
 
 #endif /* end of AUDIO_CONTROLLER_MSG_ID_H */
-

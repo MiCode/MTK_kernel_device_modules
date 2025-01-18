@@ -39,18 +39,39 @@
 static DEFINE_MUTEX(adsp_wakelock_lock);
 
 #define IPIMSG_SHARE_MEM (1024)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#define DSP_IRQ_LOOP_COUNT (16)
+#else
 #define DSP_IRQ_LOOP_COUNT (3)
+#endif
 static int adsp_wakelock_count;
 static struct wakeup_source *adsp_audio_wakelock;
 static int ktv_status;
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+static int hfp_client_rx_status;
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+static int anc_status;
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+static int extstream1_status;
+static int extstream2_status;
+#endif
 
 //#define DEBUG_VERBOSE
 //#define DEBUG_VERBOSE_IRQ
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+static inline unsigned long long clr_bit(int bit, unsigned long long *addr)
+{
+	return (*addr & ~(1ULL << bit));
+}
+#else
 static inline unsigned long clr_bit(int bit, unsigned long *addr)
 {
 	return (*addr & ~(1UL << bit));
 }
+#endif
 
 static int dsp_task_attr_set(struct snd_kcontrol *kcontrol,
 			     struct snd_ctl_elem_value *ucontrol)
@@ -270,6 +291,75 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+static int hfp_client_rx_status_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	hfp_client_rx_status = ucontrol->value.integer.value[0];
+	pr_debug("%s() hfp_client_rx_status = %d\n", __func__, hfp_client_rx_status);
+	return 0;
+}
+
+static int hfp_client_rx_status_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = hfp_client_rx_status;
+	pr_debug("%s() hfp_client_rx_status = %d\n", __func__, hfp_client_rx_status);
+	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+static int anc_status_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	anc_status = ucontrol->value.integer.value[0];
+	pr_debug("%s() anc_status = %d\n", __func__, anc_status);
+	return 0;
+}
+
+static int anc_status_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = anc_status;
+	pr_debug("%s() anc_status = %d\n", __func__, anc_status);
+	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+static int extstream1_status_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	extstream1_status = ucontrol->value.integer.value[0];
+	pr_debug("%s() extstream1_status = %d\n", __func__, extstream1_status);
+	return 0;
+}
+
+static int extstream1_status_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = extstream1_status;
+	pr_debug("%s() extstream1_status = %d\n", __func__, extstream1_status);
+	return 0;
+}
+static int extstream2_status_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	extstream2_status = ucontrol->value.integer.value[0];
+	pr_debug("%s() extstream2_status = %d\n", __func__, extstream2_status);
+	return 0;
+}
+
+static int extstream2_status_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = extstream2_status;
+	pr_debug("%s() extstream2_status = %d\n", __func__, extstream2_status);
+	return 0;
+}
+#endif
+
 /* not support set */
 static int audio_dsp_latency_support_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
@@ -389,12 +479,22 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_spatializer_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_SINGLE_EXT("dsp_ktv_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#else
 	SOC_SINGLE_EXT("dsp_ktv_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
 	SOC_SINGLE_EXT("dsp_captureraw_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	SOC_SINGLE_EXT("dsp_fm_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#else
 	SOC_SINGLE_EXT("dsp_fm_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
 	SOC_SINGLE_EXT("dsp_ulproc_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_echoref_default_en", SND_SOC_NOPM, 0, 0x1, 0,
@@ -413,6 +513,58 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_callul_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	SOC_SINGLE_EXT("dsp_hfp_client_rx_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	SOC_SINGLE_EXT("dsp_anc_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	SOC_SINGLE_EXT("dsp_extstream1_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_extstream2_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	SOC_SINGLE_EXT("dsp_subpb_default_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+	SOC_SINGLE_EXT("dsp_pb0_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb1_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb2_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb3_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb4_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb5_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb6_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb7_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb8_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb9_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb10_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb11_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb12_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb13_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb14_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb15_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
 	SOC_SINGLE_EXT("dsp_primary_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_deepbuf_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
@@ -479,6 +631,60 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_callul_ref_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	SOC_SINGLE_EXT("dsp_hfp_client_rx_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	SOC_SINGLE_EXT("dsp_anc_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	SOC_SINGLE_EXT("dsp_extstream1_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_extstream2_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	SOC_SINGLE_EXT("dsp_subpb_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
+	SOC_SINGLE_EXT("dsp_pb0_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb1_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb2_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb3_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb4_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb5_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb6_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb7_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb8_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb9_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb10_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb11_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb12_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb13_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb14_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_pb15_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_capture_mch_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
+#endif
 	SOC_SINGLE_EXT("audio_dsp_version", SND_SOC_NOPM, 0, 0xff, 0,
 		       audio_dsp_version_get, audio_dsp_version_set),
 	SOC_SINGLE_EXT("audio_dsp_latency_support", SND_SOC_NOPM, 0, 0xff, 0,
@@ -495,6 +701,20 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       audio_dsp_type_get, audio_dsp_type_set),
 	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0xffff, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	SOC_SINGLE_EXT("hfp_client_rx_status", SND_SOC_NOPM, 0, 0x1, 0,
+		       hfp_client_rx_status_get, hfp_client_rx_status_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	SOC_SINGLE_EXT("anc_status", SND_SOC_NOPM, 0, 0x1, 0,
+		       anc_status_get, anc_status_set),
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	SOC_SINGLE_EXT("extstream1_status", SND_SOC_NOPM, 0, 0x1, 0,
+		       extstream1_status_get, extstream1_status_set),
+	SOC_SINGLE_EXT("extstream2_status", SND_SOC_NOPM, 0, 0x1, 0,
+		       extstream2_status_get, extstream2_status_set),
+#endif
 };
 
 static snd_pcm_uframes_t mtk_dsphw_pcm_pointer_ul
@@ -1471,7 +1691,11 @@ void audio_irq_handler(int irq, void *data, int core_id)
 	struct mtk_base_dsp *dsp = (struct mtk_base_dsp *)data;
 	unsigned long task_value;
 	int dsp_scene, task_id, loop_count;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	unsigned long long *pdtoa;
+#else
 	unsigned long *pdtoa;
+#endif
 
 	if (!dsp) {
 		pr_info("%s dsp[%p]\n", __func__, dsp);
@@ -1492,9 +1716,12 @@ void audio_irq_handler(int irq, void *data, int core_id)
 	if (get_adsp_semaphore(SEMA_AUDIO))
 		pr_info("%s get semaphore fail\n", __func__);
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	pdtoa = (unsigned long long *)&dsp->core_share_mem.ap_adsp_core_mem[core_id]->dtoa_flag;
+#else
 	pdtoa = (unsigned long *)
 		&dsp->core_share_mem.ap_adsp_core_mem[core_id]->dtoa_flag;
-
+#endif
 	loop_count = DSP_IRQ_LOOP_COUNT;
 
 	/* rmb() ensure pdtoa read correct dram data */
@@ -1502,7 +1729,11 @@ void audio_irq_handler(int irq, void *data, int core_id)
 
 	do {
 		/* valid bits */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+		task_value = fls64(*pdtoa);
+#else
 		task_value = fls(*pdtoa);
+#endif
 
 		/* rmb() ensure task_value read dram(pdtoa) after fls */
 		rmb();
@@ -1548,6 +1779,28 @@ static int audio_send_reset_event(void)
 		if ((i == TASK_SCENE_DEEPBUFFER) ||
 			(i == TASK_SCENE_VOIP) ||
 			(i == TASK_SCENE_PRIMARY) ||
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+			(i == TASK_SCENE_SUB_PLAYBACK) ||
+#endif
+			(i == TASK_SCENE_PLAYBACK0) ||
+			(i == TASK_SCENE_PLAYBACK1) ||
+			(i == TASK_SCENE_PLAYBACK2) ||
+			(i == TASK_SCENE_PLAYBACK3) ||
+			(i == TASK_SCENE_PLAYBACK4) ||
+			(i == TASK_SCENE_PLAYBACK5) ||
+			(i == TASK_SCENE_PLAYBACK6) ||
+			(i == TASK_SCENE_PLAYBACK7) ||
+			(i == TASK_SCENE_PLAYBACK8) ||
+			(i == TASK_SCENE_PLAYBACK9) ||
+			(i == TASK_SCENE_PLAYBACK10) ||
+			(i == TASK_SCENE_PLAYBACK11) ||
+			(i == TASK_SCENE_PLAYBACK12) ||
+			(i == TASK_SCENE_PLAYBACK13) ||
+			(i == TASK_SCENE_PLAYBACK14) ||
+			(i == TASK_SCENE_PLAYBACK15) ||
+			(i == TASK_SCENE_CAPTURE_MCH) ||
+#endif
 			(i == TASK_SCENE_FAST) ||
 			(i == TASK_SCENE_SPATIALIZER) ||
 			(i == TASK_SCENE_CAPTURE_RAW) ||

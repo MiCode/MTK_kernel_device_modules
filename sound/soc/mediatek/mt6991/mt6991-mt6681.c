@@ -917,6 +917,16 @@ SND_SOC_DAILINK_DEFS(hostless_src_aaudio,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless SRC AAudio DAI")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+SND_SOC_DAILINK_DEFS(hostless_ul5,
+	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_UL5 DAI")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(hostless_ul6,
+	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_UL6 DAI")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#endif
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MTK_BTCVSD) && !defined(SKIP_SB_BTCVSD)
 SND_SOC_DAILINK_DEFS(btcvsd,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -1040,7 +1050,100 @@ SND_SOC_DAILINK_DEFS(dspcallul,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_callul_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
-
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+SND_SOC_DAILINK_DEFS(dsphfpclientrx,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfp_client_rx_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+SND_SOC_DAILINK_DEFS(dspanc,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_anc_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+SND_SOC_DAILINK_DEFS(dspextstream1,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_extstream1_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspextstream2,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_extstream2_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+SND_SOC_DAILINK_DEFS(dsp_sub_playback,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_Sub_Playback_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
+SND_SOC_DAILINK_DEFS(dspplayback0,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback0_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback1,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback1_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback2,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback2_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback3,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback3_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback4,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback4_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback5,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback5_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback6,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback6_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback7,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback7_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback8,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback8_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback9,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback9_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback10,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback10_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback11,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback11_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback12,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback12_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback13,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback13_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback14,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback14_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspplayback15,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_playback15_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+#endif
 #endif
 
 static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
@@ -1918,6 +2021,22 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(hostless_src_aaudio),
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	{
+		.name = "Hostless_UL5",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(hostless_ul5),
+	},
+	{
+		.name = "Hostless_UL6",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(hostless_ul6),
+	},
+#endif
 	/* BTCVSD */
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MTK_BTCVSD) && !defined(SKIP_SB_BTCVSD)
 	{
@@ -2072,6 +2191,121 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.stream_name = "DSP_Capture_CALLUL",
 		SND_SOC_DAILINK_REG(dspcallul),
 	},
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	{
+		.name = "DSP_Playback_HFP_CLIENT_RX",
+		.stream_name = "DSP_Playback_HFP_CLIENT_RX",
+		SND_SOC_DAILINK_REG(dsphfpclientrx),
+	},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+	{
+		.name = "DSP_Playback_ANC",
+		.stream_name = "DSP_Playback_ANC",
+		SND_SOC_DAILINK_REG(dspanc),
+	},
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
+	{
+		.name = "DSP_Playback_EXTSTREAM1",
+		.stream_name = "DSP_Playback_EXTSTREAM1",
+		SND_SOC_DAILINK_REG(dspextstream1),
+	},
+	{
+		.name = "DSP_Playback_EXTSTREAM2",
+		.stream_name = "DSP_Playback_EXTSTREAM2",
+		SND_SOC_DAILINK_REG(dspextstream2),
+	},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
+	{
+		.name = "DSP_Playback_Sub_Playback",
+		.stream_name = "DSP_Playback_Sub_Playback",
+		SND_SOC_DAILINK_REG(dsp_sub_playback),
+	},
+#endif
+	{
+		.name = "DSP_Playback_Playback0",
+		.stream_name = "DSP_Playback_Playback0",
+		SND_SOC_DAILINK_REG(dspplayback0),
+	},
+	{
+		.name = "DSP_Playback_Playback1",
+		.stream_name = "DSP_Playback_Playback1",
+		SND_SOC_DAILINK_REG(dspplayback1),
+	},
+	{
+		.name = "DSP_Playback_Playback2",
+		.stream_name = "DSP_Playback_Playback2",
+		SND_SOC_DAILINK_REG(dspplayback2),
+	},
+	{
+		.name = "DSP_Playback_Playback3",
+		.stream_name = "DSP_Playback_Playback3",
+		SND_SOC_DAILINK_REG(dspplayback3),
+	},
+	{
+		.name = "DSP_Playback_Playback4",
+		.stream_name = "DSP_Playback_Playback4",
+		SND_SOC_DAILINK_REG(dspplayback4),
+	},
+	{
+		.name = "DSP_Playback_Playback5",
+		.stream_name = "DSP_Playback_Playback5",
+		SND_SOC_DAILINK_REG(dspplayback5),
+	},
+	{
+		.name = "DSP_Playback_Playback6",
+		.stream_name = "DSP_Playback_Playback6",
+		SND_SOC_DAILINK_REG(dspplayback6),
+	},
+	{
+		.name = "DSP_Playback_Playback7",
+		.stream_name = "DSP_Playback_Playback7",
+		SND_SOC_DAILINK_REG(dspplayback7),
+	},
+	{
+		.name = "DSP_Playback_Playback8",
+		.stream_name = "DSP_Playback_Playback8",
+		SND_SOC_DAILINK_REG(dspplayback8),
+	},
+	{
+		.name = "DSP_Playback_Playback9",
+		.stream_name = "DSP_Playback_Playback9",
+		SND_SOC_DAILINK_REG(dspplayback9),
+	},
+	{
+		.name = "DSP_Playback_Playback10",
+		.stream_name = "DSP_Playback_Playback10",
+		SND_SOC_DAILINK_REG(dspplayback10),
+	},
+	{
+		.name = "DSP_Playback_Playback11",
+		.stream_name = "DSP_Playback_Playback11",
+		SND_SOC_DAILINK_REG(dspplayback11),
+	},
+	{
+		.name = "DSP_Playback_Playback12",
+		.stream_name = "DSP_Playback_Playback12",
+		SND_SOC_DAILINK_REG(dspplayback12),
+	},
+	{
+		.name = "DSP_Playback_Playback13",
+		.stream_name = "DSP_Playback_Playback13",
+		SND_SOC_DAILINK_REG(dspplayback13),
+	},
+	{
+		.name = "DSP_Playback_Playback14",
+		.stream_name = "DSP_Playback_Playback14",
+		SND_SOC_DAILINK_REG(dspplayback14),
+	},
+	{
+		.name = "DSP_Playback_Playback15",
+		.stream_name = "DSP_Playback_Playback15",
+		SND_SOC_DAILINK_REG(dspplayback15),
+	},
+#endif
 #endif
 };
 
@@ -2226,4 +2460,3 @@ MODULE_DESCRIPTION("MT6991 mt6681 ALSA SoC machine driver");
 MODULE_AUTHOR("Shane Chien <shane.chien@mediatek.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("mt6991 mt6681 soc card");
-
