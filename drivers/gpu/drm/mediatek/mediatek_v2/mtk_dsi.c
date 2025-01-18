@@ -1705,7 +1705,6 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc;
 	unsigned int refresh_rate;
 
-	DDPMSG("%s+, en=%d\n", __func__, en);
 
 	if (dsi->is_slave) {
 		dev_info(dsi->dev, "is slave\n");
@@ -1731,7 +1730,7 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		dsi->ext->params->ltpo_vm_minimum_fps != 0) {
 		ltpo_vm_max_skip_num =
 			(refresh_rate / dsi->ext->params->ltpo_vm_minimum_fps) - 1;
-		DDPMSG("%s+, ltpo_vm_max_skip_num=%d, refresh_rate =%d\n", __func__,
+		DDPDBG("%s+, ltpo_vm_max_skip_num=%d, refresh_rate =%d\n", __func__,
 			ltpo_vm_max_skip_num, refresh_rate);
 	}
 
@@ -1783,7 +1782,7 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		}
 	}
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 
 	return 0;
 }
@@ -1792,8 +1791,6 @@ static int mtk_dsi_LTPO_VM_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp
 	void *handle)
 {
 	u32 val = 0, mask = 0;
-
-	DDPDBG("%s+\n", __func__);
 
 	if (!mtk_dsi_is_LTPO_VM_Enable(dsi))
 		return -1;
