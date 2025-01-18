@@ -9,6 +9,14 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/pinctrl/mt6781-pinfunc.h>
 
+&mtkheap_region_svp {
+	status = "ok";
+};
+
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
 &reserved_memory {
 };
 
