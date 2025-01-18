@@ -9,6 +9,14 @@ CFLAGS_md_cooling.o := -I$(srctree)/drivers/thermal
 CFLAGS_soc_temp_lvts.o := -I$(srctree)/drivers/thermal
 CFLAGS_thermal_trace.o := -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
 
+ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+ifneq ($(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT),)
+ccflags-y += \
+	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
+ccflags-y += -DGPU_POWERCHK
+endif
+endif
+
 obj-$(CONFIG_MTK_SOC_THERMAL)	+= soc_temp.o
 obj-$(CONFIG_MTK_SOC_THERMAL_LVTS)	+= soc_temp_lvts.o
 obj-$(CONFIG_MTK_PMIC_THERMAL) += pmic_temp.o
