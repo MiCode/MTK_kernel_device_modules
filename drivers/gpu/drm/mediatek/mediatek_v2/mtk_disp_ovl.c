@@ -2907,7 +2907,8 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->id, lye_idx, temp_bw, temp_peak_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			(crtc_idx == 0) && (priv->data->mmsys_id != MMSYS_MT6989)) {
+			(crtc_idx == 0) && (pending->prop_val[PLANE_PROP_COMPRESS]) &&
+			(priv->data->mmsys_id != MMSYS_MT6989)) {
 			uint64_t key = 0;
 			int fbt_layer_id = -1;
 			unsigned long long temp_bw_old = temp_bw;
@@ -2926,6 +2927,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						fbt_layer_compress_ratio_tb[i].average_ratio;
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
@@ -2945,6 +2949,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
 						have_get_ratio = 1;
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
@@ -2962,6 +2969,9 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 						normal_layer_compress_ratio_tb[i].average_ratio;
 						temp_bw = temp_bw * avg_ratio;
 						do_div(temp_bw, 1000);
+						/* After BWM no need *0.7,So need to make up for it */
+						temp_bw *= 10;
+						do_div(temp_bw, 7);
 						break;
 					}
 				}
@@ -2972,7 +2982,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			if (temp_bw <= 0)
 				temp_bw = 1;
 
-			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
+			DDPDBG_BWM("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);
 		}
 

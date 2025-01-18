@@ -7825,7 +7825,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			unsigned long record4 = 0;
 			unsigned long record5 = 0;
 
-			DDPINFO("BWM:p:%u f:%u i:%d l:%d e:%d w:%d c:%d b:%d s:%d s:%d a:%u p:%u\n",
+			DDPDBG_BWM("BWM:p:%u f:%u i:%d l:%d e:%d w:%d c:%d b:%d s:%d s:%d a:%u p:%u\n",
 				plane_index, fn, index, lye_id, ext_lye_id,
 				ovl_win_size, is_compress, bpp, src_w_align, src_h_align,
 				avg_inter_value, peak_inter_value);
@@ -8139,13 +8139,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 
 /* This section is for debugging */
 #ifndef BWMT_DEBUG
-	DDPDBG("BWM: fn:%u frame_idx:%u\n", fn, frame_idx);
+	DDPDBG_BWM("BWM: fn:%u frame_idx:%u\n", fn, frame_idx);
 
-	DDPDBG("BWMT===== normal_layer_compress_ratio_tb =====\n");
-	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
+	DDPDBG_BWM("BWMT===== normal_layer_compress_ratio_tb =====\n");
+	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < 60; i++) {
 		if (normal_layer_compress_ratio_tb[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
+			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				normal_layer_compress_ratio_tb[i].frame_idx,
 				normal_layer_compress_ratio_tb[i].key_value,
 				normal_layer_compress_ratio_tb[i].average_ratio,
@@ -8154,11 +8154,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 				normal_layer_compress_ratio_tb[i].active);
 	}
 
-	DDPDBG("BWMT===== fbt_layer_compress_ratio_tb =====\n");
-	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
+	DDPDBG_BWM("BWMT===== fbt_layer_compress_ratio_tb =====\n");
+	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < 5; i++) {
 		if (fbt_layer_compress_ratio_tb[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
+			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				fbt_layer_compress_ratio_tb[i].frame_idx,
 				fbt_layer_compress_ratio_tb[i].key_value,
 				fbt_layer_compress_ratio_tb[i].average_ratio,
@@ -8166,11 +8166,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(unsigned int frame_idx)
 				fbt_layer_compress_ratio_tb[i].valid,
 				fbt_layer_compress_ratio_tb[i].active);
 	}
-	DDPDBG("BWMT===== unchanged_compress_ratio_table =====\n");
-	DDPDBG("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
+	DDPDBG_BWM("BWMT===== unchanged_compress_ratio_table =====\n");
+	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 		if (unchanged_compress_ratio_table[i].key_value)
-			DDPDBG("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
+			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
 				unchanged_compress_ratio_table[i].frame_idx,
 				unchanged_compress_ratio_table[i].key_value,
 				unchanged_compress_ratio_table[i].average_ratio,
