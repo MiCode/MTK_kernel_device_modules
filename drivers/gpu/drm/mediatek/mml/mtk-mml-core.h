@@ -39,68 +39,122 @@ extern int mml_qos_log;
 extern int mml_dpc_log;
 extern int mml_rrot_msg;
 
+/* see mml_qos in mtk-mml-core.c */
+#define MML_QOS_EN_MASK			0x1
+#define MML_QOS_FORCE_CLOCK_MASK	(BIT(1))
+#define MML_QOS_FORCE_CLOCK_SH		2
+#define MML_QOS_FORCE_BW_MASK		(BIT(17))
+#define MML_QOS_FORCE_BW_SH		18
+#define MML_QOS_FORCE_MASK		0xfff
+
+/* get force throughput (clock) or bandwidth helper */
+#define mml_qos_force_clk	((mml_qos >> MML_QOS_FORCE_CLOCK_SH) & MML_QOS_FORCE_MASK)
+#define mml_qos_force_bw	((mml_qos >> MML_QOS_FORCE_BW_SH) & MML_QOS_FORCE_MASK)
+
+/* 513 to ensure port has good ostd
+ * 1536 is the worst bw calculated by DE
+ */
+#define MML_QOS_MIN_BW		513
+#define MML_QOS_MAX_BW		1536
+
+/* MML couple mode HRT mode, HRT bandwidth to MMQoS and DPC
+ * MML_HRT_ENABLE:	default, config srt and hrt to mmqos and dpc
+ * MML_HRT_OSTD_MAX:	report hrt to dpc, report srt and MAX OSTD hrt to smi.
+ * MML_HRT_OSTD_ONLY:	max ostd only mode, report 0 srt and max hrt to mmqos, but no bw to dpc
+ *			this prevent mminfra or dram opp raise
+ * MML_HRT_LIMIT:	hrt lower than mtk_mml_hrt_bound, follow MML_HRT_OSTD_ONLY,
+ *			config srt and hrt instead.
+ * MML_HRT_MMQOS:	set srt and hrt to mmqos, but skip dpc
+ *
+ * note: this symbol export to mtk-mml-mt6xxx to do platform config.
+ */
+enum mml_hrt_mode {
+	MML_HRT_ENABLE = 0,
+	MML_HRT_OSTD_MAX,
+	MML_HRT_OSTD_ONLY,
+	MML_HRT_LIMIT,
+	MML_HRT_MMQOS,
+};
+extern int mtk_mml_hrt_mode;
+extern int mml_hrt_bound;
+
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
 extern int mml_rrot_debug;
 
-#define MML_LOG_SIZE	(1 << 20)
+enum mml_log_buf_setting {
+	mml_logbuf_krn = 0x1,	/* print mml_log to kernel log by pr_notice */
+	mml_logbuf_log = 0x2,	/* save log to buffer and output by mml-record */
+	mml_logbuf_msg = 0x4,	/* save mml_msg to buffer and output by mml-record */
+};
 extern int mml_log_rec;
+#define MML_LOG_SIZE	(1 << 20)
 
 void mml_save_log_record(const char *fmt, ...);
 void mml_print_log_record(struct seq_file *seq);
 
+#define _mml_save_log(fmt, args...) do { \
+	struct timespec64 curr_time; \
+	ktime_get_boottime_ts64(&curr_time); \
+	mml_save_log_record("[%5lld.%06llu]" fmt, \
+		curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000), ##args); \
+} while (0)
+
+#define _mml_log(fmt, args...) do { \
+	if (mml_log_rec & mml_logbuf_krn) \
+		pr_notice("[mml]" fmt "\n", ##args); \
+	if (mml_log_rec & mml_logbuf_log) \
+		_mml_save_log(fmt "\n", ##args); \
+} while (0)
+
 #define mml_msg(fmt, args...) \
 do { \
-	if (mtk_mml_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
-	} \
+	if (mml_log_rec & mml_logbuf_msg) \
+		_mml_save_log(fmt "\n", ##args); \
+	if (mtk_mml_msg && (mml_log_rec & mml_logbuf_krn)) \
+		pr_notice("[mml]" fmt "\n", ##args); \
 } while (0)
 
 #define mml_log(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record(fmt "\n", ##args); \
-	else \
-		pr_notice("[mml]" fmt "\n", ##args); \
+	_mml_log(fmt, ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_err(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[err]" fmt "\n", ##args); \
-	else \
-		pr_notice("[mml][err]" fmt "\n", ##args); \
+	_mml_log("[err]" fmt, ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_msg_qos(fmt, args...) \
 do { \
-	if (mml_qos_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
-	} \
+	if (mml_qos_log) \
+		_mml_log("[qos]" fmt, ##args); \
+	else \
+		mml_msg("[qos]" fmt, ##args); \
 } while (0)
 
 #define mml_msg_dpc(fmt, args...) \
 do { \
-	if (mml_dpc_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[dpc]" fmt "\n", ##args); \
-		else \
-			pr_notice("[mml][dpc]" fmt "\n", ##args); \
-	} \
+	if (mml_dpc_log) \
+		_mml_log("[dpc]" fmt, ##args); \
+	else \
+		mml_msg("[dpc]" fmt, ##args); \
 } while (0)
 
 #define DB_OPT_MML	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \
 	DB_OPT_MMPROFILE_BUFFER | DB_OPT_FTRACE | DB_OPT_DUMP_DISPLAY)
+
+#ifdef MML_FPGA
+#define _aee_api(...)
+#else
+#define _aee_api(opt, tag, fmt, args...) \
+	(aee_kernel_warning_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define mml_aee(key, fmt, args...) \
 	do { \
@@ -111,8 +165,7 @@ do { \
 				__func__, __LINE__, len, LINK_MAX); \
 		cmdq_aee(fmt, ##args); \
 		cmdq_util_error_save("[mml][aee] "fmt"\n", ##args); \
-		aee_kernel_warning_api(__FILE__, __LINE__, \
-			DB_OPT_MML, tag, fmt, ##args); \
+		_aee_api(DB_OPT_MML, tag, fmt, ##args); \
 	} while (0)
 #else
 #define mml_aee(key, fmt, args...) \
@@ -135,16 +188,16 @@ extern int mml_trace;
 #define MML_TID_IRQ		0	/* trace on <idle>-0 process */
 
 #define mml_trace_begin_tid(tid, fmt, args...) \
-	mml_tracing_mark_write("B|%d|" fmt, tid, ##args)
+	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
 
 #define mml_trace_begin(fmt, args...) \
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	mml_tracing_mark_write("E")
+	tracing_mark_write("E\n")
 
 #define mml_trace_c(tag, c) \
-	mml_tracing_mark_write("C|%d|%s|%d", current->tgid, tag, c)
+	tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
 
 #define mml_trace_tag_start(tag) mml_trace_c(tag, 1)
 
@@ -178,7 +231,7 @@ extern u32 *rdma_crc_va[MML_PIPE_CNT];
 extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
-#define MML_MAX_PATH_NODES	22 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
+#define MML_MAX_PATH_NODES	27 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	32 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_AID_COMPS	10
 #define MML_MAX_CMDQ_CLTS	4
@@ -193,6 +246,7 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 
 
 struct mml_topology_cache;
+struct mml_ctx;
 struct mml_frame_config;
 struct mml_task;
 struct mml_frame_tile;
@@ -205,7 +259,7 @@ struct mml_task_ops {
 	void (*frame_err)(struct mml_task *task);
 	s32 (*dup_task)(struct mml_task *task, u32 pipe);
 	struct mml_tile_cache *(*get_tile_cache)(struct mml_task *task, u32 pipe);
-	void (*kt_setsched)(void *adaptor_ctx);
+	void (*kt_setsched)(struct mml_ctx *ctx);
 	void (*ddren)(struct mml_task *task, struct cmdq_pkt *pkt, bool enable);
 	void (*dispen)(struct mml_task *task, bool enable);
 };
@@ -213,6 +267,7 @@ struct mml_task_ops {
 struct mml_config_ops {
 	void (*get)(struct mml_frame_config *cfg);
 	void (*put)(struct mml_frame_config *cfg);
+	void (*free)(struct mml_frame_config *cfg);
 };
 
 struct mml_cap {
@@ -240,6 +295,7 @@ struct mml_topology_info {
 };
 
 struct mml_topology_path {
+	u8 path_id;
 	struct mml_topology_info info;
 	bool alpharot;
 
@@ -258,6 +314,12 @@ struct mml_topology_path {
 	struct mml_comp *mutex;
 	u8 mutex_idx;
 
+	/* another mmlsys, which dli into current mmlsys */
+	struct mml_comp *mmlsys2;
+	u8 mmlsys2_idx;
+	struct mml_comp *mutex2;
+	u8 mutex2_idx;
+
 	/* Index of engine array,
 	 * which represent only engines in data path.
 	 * These engines join tile driver calculate.
@@ -272,8 +334,18 @@ struct mml_topology_path {
 	/* Describe which engine is out0 and which is out1 */
 	u32 out_engine_ids[MML_MAX_OUTPUTS];
 
-	u8 aid_engine_ids[MML_MAX_AID_COMPS];
-	u8 aid_eng_cnt;
+	union {
+		/* compatible single sys */
+		struct {
+			u8 aid_engine_ids[MML_MAX_AID_COMPS];
+			u8 aid_eng_cnt;
+		};
+
+		struct {
+			u8 ids[MML_MAX_AID_COMPS];
+			u8 cnt;
+		} aid_engine_sys[mml_max_sys];
+	};
 
 	/* cmdq client to compose command */
 	u8 clt_id;
@@ -282,18 +354,41 @@ struct mml_topology_path {
 	/* Path configurations */
 	u8 mux_group;
 	union {
-		u64 reset_bits;
+		/* multi-sys define */
+		u64 reset_bits_sys[mml_max_sys];
 		struct {
 			u32 reset0;
 			u32 reset1;
+		} reset_sys[mml_max_sys];
+
+		/* backward compatible only 1 mmlsys case */
+		union {
+			u64 reset_bits;
+			struct {
+				u32 reset0;
+				u32 reset1;
+			};
 		};
 	};
+
+	/* engine flag for this path */
+	u64 engine_flags;
+
+	/* The flag to show which mmlsys enable in this path.
+	 * Indexed by enum mml_sys_id, could be mml_sys_frame or mml_sys_tile
+	 */
+	bool sys_en[mml_max_sys];
 };
 
 struct mml_topology_ops {
 	enum mml_mode (*query_mode)(struct mml_dev *mml,
 				    struct mml_frame_info *info,
 				    u32 *reason);
+	enum mml_mode (*query_mode2)(struct mml_dev *mml,
+				     struct mml_frame_info *info,
+				     u32 *reason,
+				     u32 panel_width,
+				     u32 panel_height);
 	s32 (*init_cache)(struct mml_dev *mml,
 			  struct mml_topology_cache *cache,
 			  struct cmdq_client **clts,
@@ -304,29 +399,36 @@ struct mml_topology_ops {
 					      u32 pipe);
 	const struct mml_topology_path *(*get_dl_path)(struct mml_topology_cache *cache,
 						       struct mml_frame_info *info,
-						       u32 pipe);
+						       u32 pipe,
+						       struct mml_frame_size *panel);
+	bool (*support_dc2)(void);
 };
 
 struct mml_path_client {
 	/* running tasks on same cients from all configs */
 	struct list_head tasks;
-	/* lock to this client */
-	struct mutex clt_mutex;
 	/* current throughput */
 	u32 throughput;
+	u32 sys_en_ref[mml_max_sys];
 };
 
-struct mml_topology_cache {
-	const struct mml_topology_ops *op;
-	struct mml_topology_path paths[MML_MAX_PATH_CACHES];
-	struct mml_path_client path_clts[MML_MAX_CMDQ_CLTS];
+struct mml_sys_qos {
 	struct regulator *reg;
 	struct clk *dvfs_clk;
 	u32 opp_cnt;
 	u32 opp_speeds[MML_MAX_OPPS];
 	int opp_volts[MML_MAX_OPPS];
 	u64 freq_max;
+	u32 current_volt;
 	struct mutex qos_mutex;
+};
+
+struct mml_topology_cache {
+	const struct mml_topology_ops *op;
+	struct mml_topology_path paths[MML_MAX_PATH_CACHES];
+	struct mml_path_client path_clts[MML_MAX_CMDQ_CLTS];
+	struct mutex qos_mutex;	/* lock to qos operation */
+	struct mml_sys_qos *qos;
 };
 
 struct mml_comp_config {
@@ -364,6 +466,7 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
+	enum mml_sys_id sysid;		/* main mmlsys used for this config */
 	/* frame input pixel size after rrot binning and rotate */
 	struct mml_frame_size frame_in;
 	struct mml_frame_size rrot_out[MML_PIPE_CNT];
@@ -377,8 +480,8 @@ struct mml_frame_config {
 	/* frame output pixel size */
 	struct mml_frame_size frame_out[MML_MAX_OUTPUTS];
 	/* direct-link input roi offset and output rect */
-	struct mml_rect dl_in[MML_DL_OUT_CNT];
-	struct mml_rect dl_out[MML_DL_OUT_CNT];
+	struct mml_rect dl_in[MML_PIPE_CNT];
+	struct mml_rect dl_out[MML_PIPE_CNT];
 	struct list_head tasks;
 	struct list_head await_tasks;
 	struct list_head done_tasks;
@@ -392,6 +495,8 @@ struct mml_frame_config {
 	/* see more detail in frame_calc_layer_hrt */
 	u16 layer_w;
 	u16 layer_h;
+	u16 panel_w;
+	u16 panel_h;
 	u32 disp_hrt;
 
 	/* display parameter */
@@ -399,7 +504,7 @@ struct mml_frame_config {
 	bool disp_vdo;
 
 	/* platform driver */
-	void *ctx;
+	struct mml_ctx *ctx;
 	struct mml_dev *mml;
 
 	/* adaptor */
@@ -426,6 +531,7 @@ struct mml_frame_config {
 	const struct mml_topology_path *path[MML_PIPE_CNT];
 	bool dual:1;
 	bool alpharot:1;
+	bool alpharsz:1;
 	bool shadow:1;
 	bool framemode:1;
 	bool nocmd:1;
@@ -539,7 +645,7 @@ struct mml_task {
 	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 
 	/* mml context */
-	void *ctx;
+	struct mml_ctx *ctx;
 	void *cb_param;
 
 	/* command */
@@ -649,6 +755,7 @@ struct mml_comp_config_ops {
 };
 
 struct mml_comp_hw_ops {
+	void (*init_frame_done_event)(struct mml_comp *comp, u32 event);
 	s32 (*pw_enable)(struct mml_comp *comp);
 	s32 (*pw_disable)(struct mml_comp *comp);
 	s32 (*mminfra_pw_enable)(struct mml_comp *comp);
@@ -674,6 +781,7 @@ struct mml_comp_debug_ops {
 struct mml_comp {
 	u32 id;
 	u32 sub_idx;
+	enum mml_sys_id sysid;
 	void __iomem *base;
 	phys_addr_t base_pa;
 	struct clk *clks[2];
@@ -947,7 +1055,7 @@ s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 void mml_update_array(struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value);
 
-int mml_tracing_mark_write(char *fmt, ...);
+int tracing_mark_write(char *fmt, ...);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 

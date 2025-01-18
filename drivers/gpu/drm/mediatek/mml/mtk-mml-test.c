@@ -59,6 +59,7 @@ struct mml_test_case {
 	uint32_t size_out1;
 
 	uint32_t dump_dest;
+	uint8_t mmlid;
 };
 
 /* kernel level test case struct */
@@ -99,6 +100,7 @@ struct mml_ut {
 	};
 
 	bool use_dma;
+	u8 mmlid;
 };
 
 static struct mml_ut the_case;
@@ -175,6 +177,99 @@ module_param(mml_test_dump_dest, int, 0644);
 int mml_test_use_last;
 module_param(mml_test_use_last, int, 0644);
 
+int mml_test_mode;
+module_param(mml_test_mode, int, 0644);
+
+/* MML unit test config, share with user space mdp_ut bin.
+ *
+ * NOTE:
+ * 1. the mml_ut_config MUST align with ut_params
+ * 2. add more parameter in mml_ut_config.data must change size for mml_ut_config.raw
+ */
+struct mml_ut_config {
+	u32 round;
+	u32 interval;
+	u32 mode;
+	u32 in_fmt;
+	u32 in_profile;
+	u32 in_w;
+	u32 in_h;
+	u32 out_fmt;
+	u32 out_profile;
+	u32 out_w;
+	u32 out_h;
+	u32 crop_left;
+	u32 crop_top;
+	u32 crop_w;
+	u32 crop_h;
+	u32 comp_left;
+	u32 comp_top;
+	u32 comp_w;
+	u32 comp_h;
+	u32 rot;
+	u32 flip;
+	u32 alpha;
+	u32 pq;
+	u32 in1_fmt;
+	u32 in1_w;
+	u32 in1_h;
+	u32 out1_fmt;
+	u32 out1_w;
+	u32 out1_h;
+	u32 rot1;
+	u32 racing_ut;
+	u32 extension;
+	u32 dump;
+
+	/* following items not exist in ut_params */
+	atomic_t protect;
+	int fd_in;
+	u32 size_in;
+	int fd_out;
+	u32 size_out;
+	int fd_in1;
+	u32 size_in1;
+	int fd_out1;
+	u32 size_out1;
+};
+static struct mml_ut_config mml_ut_cfg[mml_max_sys];
+
+const char *ut_params[] = {
+	"round",
+	"interval",
+	"mode",
+	"in_fmt",
+	"in_profile",
+	"in_w",
+	"in_h",
+	"out_fmt",
+	"out_profile",
+	"out_w",
+	"out_h",
+	"crop_left",
+	"crop_top",
+	"crop_w",
+	"crop_h",
+	"comp_left",
+	"comp_top",
+	"comp_w",
+	"comp_h",
+	"rot",
+	"flip",
+	"alpha",
+	"pq",
+	"in1_fmt",
+	"in1_w",
+	"in1_h",
+	"out1_fmt",
+	"out1_w",
+	"out1_h",
+	"rot1",
+	"racing_ut",
+	"extension",
+	"dump",
+};
+
 static u64 apu_ut_handle;
 
 struct mml_test {
@@ -183,6 +278,7 @@ struct mml_test {
 	struct platform_device *mml_plat_dev;
 	struct mml_drm_ctx *drm_ctx;
 	struct dentry *fs;
+	struct dentry *fs_ut;
 	struct dentry *fs_inst;
 	struct dentry *fs_frame_in;
 	struct dentry *fs_frame_out;
@@ -315,16 +411,15 @@ static bool mml_test_check_info_valid(struct mml_frame_info *info)
 	return true;
 }
 
-static void case_general_submit(struct mml_test *test,
-	struct mml_ut *cur,
+static void case_general_submit_ut(struct mml_test *test,
+	struct mml_ut *cur, struct mml_ut_config *utcfg,
 	void (*setup)(struct mml_submit *task, struct mml_ut *cur))
 {
 	struct platform_device *mml_pdev;
-	struct mml_drm_ctx *mml_ctx;
+	struct mml_drm_ctx *ctx;
 	struct mml_job job = {};
 	struct mml_pq_param *pq_param;
 	struct mml_submit task = {.job = &job};
-	u32 run_cnt = mml_test_round <= 0 ? 1 : (u32)mml_test_round;
 	struct mml_drm_param disp = {
 		.vdo_mode = true,
 	};
@@ -347,10 +442,10 @@ static void case_general_submit(struct mml_test *test,
 		return;
 	}
 
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
-	if (IS_ERR_OR_NULL(mml_ctx)) {
+	ctx = mml_drm_get_context(mml_pdev, &disp);
+	if (IS_ERR_OR_NULL(ctx)) {
 		kfree(pq_param);
-		mml_err("[test]get mml context failed %pe", mml_ctx);
+		mml_err("[test]get mml context failed %pe", ctx);
 		return;
 	}
 
@@ -373,8 +468,16 @@ static void case_general_submit(struct mml_test *test,
 		fillin_buf(&task.info.dest[0].data, cur->fd_out, cur->size_out,
 			&task.buffer.dest[0]);
 
+	if (cur->mmlid == mml_sys_tile && utcfg->mode == MML_MODE_UNKNOWN)
+		task.info.mode = MML_MODE_MML_DECOUPLE2;
+	else
+		task.info.mode = utcfg->mode;
+
+	/* data/color space */
+	task.info.src.profile = utcfg->in_profile;
+	task.info.dest[0].data.profile = utcfg->out_profile;
+
 	task.info.dest_cnt = 1;
-	task.info.mode = MML_MODE_MML_DECOUPLE;
 	task.info.ovlsys_id = 0;
 	task.buffer.dest_cnt = 1;
 
@@ -389,62 +492,63 @@ static void case_general_submit(struct mml_test *test,
 	task.buffer.dest[1].invalid = true;
 	task.buffer.dest[1].fence = -1;
 
-	if (mml_test_pq) {
+	if (utcfg->pq) {
 		pq_param->enable = 1;
 		pq_param->scenario = MML_PQ_MEDIA_VIDEO;
 		pq_param->src_hdr_video_mode = MML_PQ_NORMAL;
 		pq_param->video_param.video_id = 0x546;
 		task.pq_param[0] = pq_param;
 		task.info.dest[0].pq_config.en = 1;
-		task.info.dest[0].pq_config.en_dre = (mml_test_pq & MML_PQ_DRE_EN) ? 1 : 0;
-		task.info.dest[0].pq_config.en_hdr = (mml_test_pq & MML_PQ_VIDEO_HDR_EN) ? 1 : 0;
-		task.info.dest[0].pq_config.en_color = (mml_test_pq & MML_PQ_COLOR_EN) ? 1 : 0;
-		task.info.dest[0].pq_config.en_sharp = (mml_test_pq & MML_PQ_SHP_EN) ? 1 : 0;
-		task.info.dest[0].pq_config.en_dc = (mml_test_pq & MML_PQ_DYN_CONTRAST_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_dre = (utcfg->pq & MML_PQ_DRE_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_hdr = (utcfg->pq & MML_PQ_VIDEO_HDR_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_color = (utcfg->pq & MML_PQ_COLOR_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_sharp = (utcfg->pq & MML_PQ_SHP_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_dc = (utcfg->pq & MML_PQ_DYN_CONTRAST_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_region_pq =
-			(mml_test_pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
+			(utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
 			pq_param->src_hdr_video_mode = MML_PQ_HDR10;
-		mml_log("[test] %s open PQ", __func__);
+		mml_log("[test] %s open PQ %#010x", __func__, utcfg->pq);
 	}
 
-	task.info.alpha = mml_test_alpha;
+	task.info.alpha = utcfg->alpha;
 
 	if (setup)
 		setup(&task, cur);
-	mode = task.info.mode;
 
-	mml_drm_try_frame(mml_ctx, &task.info);
+	mml_drm_try_frame(ctx, &task.info);
 	if (!mml_test_check_info_valid(&task.info)) {
 		mml_err("[test]%s parameter not valid", __func__);
 		goto err_done;
 	}
 
-	if (mml_drm_query_cap(mml_ctx, &task.info) == MML_MODE_NOT_SUPPORT) {
+	mode = mml_drm_query_cap(ctx, &task.info);
+	if (mode == MML_MODE_NOT_SUPPORT) {
 		mml_err("[test]%s not support", __func__);
 		goto err_done;
 	}
 
 	/* for ut do not fall to inline rotate unless force use */
-	if (mode == MML_MODE_RACING || mode == MML_MODE_SRAM_READ || mode == MML_MODE_APUDC)
+	if (task.info.mode == MML_MODE_UNKNOWN) { /* auto query */
 		task.info.mode = mode;
-	else
-		task.info.mode = MML_MODE_MML_DECOUPLE;
+		mml_log("[test]query mode auto %u", mode);
+	} else
+		mml_log("[test]query mode %u but force use config mode %u", mode, task.info.mode);
 
-	if (mode == MML_MODE_RACING) {
+	if (task.info.mode == MML_MODE_RACING) {
 		struct mml_submit nouse_submit = {0};
 
 		mml_drm_split_info(&task, &nouse_submit);
 	}
 
-	task.info.act_time = mml_test_interval * 1000000;
+	task.info.act_time = utcfg->interval * 1000000;
 
-	fences = kcalloc(run_cnt, sizeof(*fences), GFP_KERNEL);
+	fences = kcalloc(utcfg->round, sizeof(*fences), GFP_KERNEL);
 	ktime_get_real_ts64((struct timespec64 *)&task.end);
-	for (i = 0; i < run_cnt; i++) {
+	for (i = 0; i < utcfg->round; i++) {
 		timespec64_add_ns((struct timespec64 *)&task.end,
-			mml_test_interval * 1000000);
-		ret = mml_drm_submit(mml_ctx, &task, NULL);
+			utcfg->interval * 1000000);
+		ret = mml_drm_submit(ctx, &task, NULL);
 		if (ret) {
 			mml_err("[test]%s submit failed: %d round: %u",
 				__func__, ret, i);
@@ -452,36 +556,55 @@ static void case_general_submit(struct mml_test *test,
 		} else {
 			fences[i] = task.job->fence;
 		}
-		msleep_interruptible(mml_test_interval);
+		msleep_interruptible(utcfg->interval);
 		if (i > max_running && fences[i-max_running] >= 0) {
 			check_fence(fences[i-max_running], __func__);
 			fences[i-max_running] = -1;
 		}
 
 		if (mml_racing_ut == 2 || mml_racing_ut == 3)
-			mml_drm_stop(mml_ctx, &task, false);
+			mml_drm_stop(ctx, &task, false);
 	}
 
-	for (i = 0; i < run_cnt; i++) {
+	for (i = 0; i < utcfg->round; i++) {
 		if (fences[i] >= 0)
 			check_fence(fences[i], __func__);
 	}
 
 	kfree(fences);
-	for (i = 0; i < 5000 && !mml_drm_ctx_idle(mml_ctx); i++) {
+	for (i = 0; i < 1000 && !mml_drm_ctx_idle(ctx); i++) {
 		mml_log("[test]wait for ctx idle...");
-		msleep_interruptible(1);	/* make sure mml stops */
+		msleep_interruptible(5);	/* make sure mml stops */
 	}
 
 err_done:
-	if (mml_drm_ctx_idle(mml_ctx))
-		mml_drm_put_context(mml_ctx);
+	if (mml_drm_ctx_idle(ctx))
+		mml_drm_put_context(ctx);
 	else
 		mml_err("[test]fail to put ctx");
 	kfree(pq_param);
 err:
 	mml_log("[test]%s end", __func__);
 }
+
+static void case_general_submit(struct mml_test *test,
+	struct mml_ut *cur,
+	void (*setup)(struct mml_submit *task, struct mml_ut *cur))
+{
+	struct mml_ut_config utcfg = {
+		.round = mml_test_round <= 0 ? 1 : (u32)mml_test_round,
+		.interval = mml_test_interval,
+		.mode = mml_test_mode ? mml_test_mode : MML_MODE_MML_DECOUPLE,
+		.pq = mml_test_pq,
+		.alpha = mml_test_alpha,
+		.racing_ut = mml_racing_ut,
+	};
+
+	cur->mmlid = mml_sys_frame;
+
+	case_general_submit_ut(test, cur, &utcfg, setup);
+}
+
 
 /* case_config_rgb/case_run_general
  * most simple test case
@@ -1152,13 +1275,13 @@ static void case_run_read_sram(struct mml_test *test, struct mml_ut *cur)
 {
 	struct platform_device *mml_pdev;
 	struct device *dev;
-	struct mml_drm_ctx *mml_ctx;
+	struct mml_drm_ctx *ctx;
 	struct mml_drm_param disp = {.vdo_mode = true};
 	void *mml;
 
 	/* create context */
 	mml_pdev = mml_get_plat_device(test->pdev);
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
+	ctx = mml_drm_get_context(mml_pdev, &disp);
 
 	/* hold sram, for wrot out and rdma in */
 	dev = &mml_pdev->dev;
@@ -1182,7 +1305,7 @@ static void case_run_read_sram(struct mml_test *test, struct mml_ut *cur)
 
 	/* release */
 	mml_sram_put(mml, mml_sram_racing);
-	mml_drm_put_context(mml_ctx);
+	mml_drm_put_context(ctx);
 }
 
 /* case_config_wr_sram / case_run_wr_sram
@@ -1220,7 +1343,7 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 {
 	struct platform_device *mml_pdev;
 	struct device *dev;
-	struct mml_drm_ctx *mml_ctx;
+	struct mml_drm_ctx *ctx;
 	struct mml_drm_param disp = {.vdo_mode = true};
 	void *mml;
 	int32_t fd = -1;
@@ -1235,15 +1358,15 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 		mml_err("%s mml_pdev = null", __func__);
 		return;
 	}
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
-	if (unlikely(!mml_ctx)) {
+	ctx = mml_drm_get_context(mml_pdev, &disp);
+	if (unlikely(!ctx)) {
 		mml_err("%s mml_ctx = null", __func__);
 		return;
 	}
 	/* hold sram, for wrot out and rdma in */
 	dev = &mml_pdev->dev;
 	if (unlikely(!dev)) {
-		mml_drm_put_context(mml_ctx);
+		mml_drm_put_context(ctx);
 		mml_err("%s dev = null", __func__);
 		return;
 	}
@@ -1267,7 +1390,7 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 
 	/* release */
 	mml_sram_put(mml, mml_sram_racing);
-	mml_drm_put_context(mml_ctx);
+	mml_drm_put_context(ctx);
 }
 
 /* case_config_rgb_up1_5
@@ -1388,7 +1511,7 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 {
 	struct platform_device *mml_pdev;
 	struct device *dev;
-	struct mml_drm_ctx *mml_ctx;
+	struct mml_drm_ctx *ctx;
 	struct mml_drm_param disp = {.vdo_mode = true};
 	void *mml;
 
@@ -1398,7 +1521,7 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 		mml_err("%s mml_pdev = null", __func__);
 		return;
 	}
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp);
+	ctx = mml_drm_get_context(mml_pdev, &disp);
 
 	/* hold sram, for wrot out and rdma in */
 	dev = &mml_pdev->dev;
@@ -1414,7 +1537,7 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 
 	/* release */
 	mml_sram_put(mml, mml_sram_racing);
-	mml_drm_put_context(mml_ctx);
+	mml_drm_put_context(ctx);
 }
 
 
@@ -1558,7 +1681,7 @@ static ssize_t test_read(struct file *filep, char __user *buf, size_t size,
 	int ret;
 
 	if (size < sizeof(user_case)) {
-		mml_err("[test] buf size not match %zu %u",
+		mml_err("[test]buf size not match %zu %u",
 			sizeof(user_case), len);
 		return -EFAULT;
 	}
@@ -2327,6 +2450,258 @@ static const struct file_operations apu_ut_fops = {
 	.write = apu_ut_write,
 };
 
+static s32 ut_test_get(char *buf, const struct kernel_param *kp)
+{
+	s32 length = 0;
+
+	length += snprintf(buf + length, PAGE_SIZE - length, "mml unit test");
+
+	return length;
+}
+
+static void process_ut_cmd(const char *cmd, u32 mmlid)
+{
+	struct mml_ut_config *utcfg = &mml_ut_cfg[mmlid];
+	char scan_buf[32] = {0};
+	int ret = 0;
+	u32 i, val;
+
+	if (strncmp(cmd, "reset", 5) == 0) {
+		memset((void *)utcfg, 0, sizeof(*utcfg));
+		utcfg->dump = 1;
+		return;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ut_params); i++) {
+		u32 param_len = strlen(ut_params[i]);
+		char temp[10] = {0};
+
+		if (strncmp(cmd, ut_params[i], strlen(ut_params[i])) != 0)
+			continue;
+
+		memcpy(temp, cmd, min_t(u32, 9, (u32)strlen(cmd)));
+		mml_log("%s checking %s", __func__, temp);
+
+		if (strlen(cmd) > param_len && strncmp(cmd + param_len, ":0x", 3) == 0) {
+			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%i", ut_params[i]);
+			ret = sscanf(cmd, scan_buf, &val);
+			mml_log("scan %s %#010x idx %u ret %d", scan_buf, val, i, ret);
+		} else {
+			snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%u", ut_params[i]);
+			ret = sscanf(cmd, scan_buf, &val);
+			mml_log("scan %s %u idx %u ret %d", scan_buf, val, i, ret);
+		}
+
+		if (ret != 1)
+			break;
+		((u32 *)utcfg)[i] = val;
+		break;
+	}
+}
+
+static int ut_test_set(const char *val, const struct kernel_param *kp)
+{
+	char cmd_buffer[512] = {0};
+	char *tok, *buf = cmd_buffer;
+	u32 mmlid = 1;
+
+	memcpy(cmd_buffer, val, min_t(u32, strlen(val), ARRAY_SIZE(cmd_buffer) - 1));
+	mml_msg("mml ut set:%s", cmd_buffer);
+	if (strlen(val) >= ARRAY_SIZE(cmd_buffer))
+		mml_err("%s command size %zu out of buffer size %u",
+			__func__, strlen(val), (u32)ARRAY_SIZE(cmd_buffer));
+
+	/* check mml id first */
+	tok = strsep(&buf, " ");
+	if (!tok)
+		return -EINVAL;
+
+	if (strncmp(tok, "mml0", 4) == 0) {
+		mmlid = mml_sys_tile;
+	} else if (strncmp(tok, "mml1", 4) == 0) {
+		mmlid = mml_sys_frame;
+	} else {
+		/* as default and do not miss this command */
+		mmlid = mml_sys_frame;
+		process_ut_cmd(tok, mmlid);
+	}
+
+	while ((tok = strsep(&buf, " ")))
+		process_ut_cmd(tok, mmlid);
+
+	return 0;
+}
+
+static const struct kernel_param_ops ut_param_ops = {
+	.get = ut_test_get,
+	.set = ut_test_set,
+};
+module_param_cb(ut, &ut_param_ops, NULL, 0644);
+MODULE_PARM_DESC(ut, "mml driver unit test interface");
+
+static void ut_setup(struct mml_submit *task, struct mml_ut *cur)
+{
+	struct mml_ut_config *utcfg = &mml_ut_cfg[cur->mmlid];
+	u32 size_out;
+
+	task->info.src.format = utcfg->in_fmt;
+	task->info.src.width = utcfg->in_w;
+	task->info.src.height = utcfg->in_h;
+	task->info.dest[0].data.format = utcfg->out_fmt;
+	task->info.dest[0].data.width = utcfg->out_w;
+	task->info.dest[0].data.height = utcfg->out_h;
+	task->info.dest[0].crop.r.left = utcfg->crop_left;
+	task->info.dest[0].crop.r.top = utcfg->crop_top;
+	task->info.dest[0].crop.r.width = utcfg->crop_w;
+	task->info.dest[0].crop.r.height = utcfg->crop_h;
+	task->info.dest[0].compose.left = utcfg->comp_left;
+	task->info.dest[0].compose.top = utcfg->comp_top;
+	task->info.dest[0].compose.width = utcfg->comp_w;
+	task->info.dest[0].compose.height = utcfg->comp_h;
+	task->info.dest[0].rotate = utcfg->rot;
+	task->info.dest[0].flip = utcfg->flip;
+
+	if (cur->use_dma)
+		size_out = cur->dma_size_out[0];
+	else
+		size_out = cur->size_out;
+
+	/* check dest 0 with 2 plane size */
+	if (task->buffer.dest[0].size[0] +
+	    task->buffer.dest[0].size[1] +
+	    task->buffer.dest[0].size[2] !=
+	    size_out)
+		mml_err("[test]%s dest size total %u plane %u %u %u",
+			__func__, size_out,
+			task->buffer.dest[0].size[0], task->buffer.dest[0].size[1],
+			task->buffer.dest[0].size[2]);
+
+	mml_log("%s mmlid %u size %u %u by %u %u",
+		__func__, cur->mmlid,
+		task->info.src.width, task->info.src.height,
+		utcfg->in_w, utcfg->in_h);
+}
+
+static void ut_config_to_user(struct mml_test_case *user_case, struct mml_ut_config *utcfg)
+{
+	/* before start, auto fill empty data */
+	if (!utcfg->crop_w)
+		utcfg->crop_w = utcfg->in_w;
+	if (!utcfg->crop_h)
+		utcfg->crop_h = utcfg->in_h;
+	if (!utcfg->out_w)
+		utcfg->out_w = utcfg->in_w;
+	if (!utcfg->out_h)
+		utcfg->out_h = utcfg->in_h;
+	if (!utcfg->comp_w)
+		utcfg->comp_w = utcfg->out_w;
+	if (!utcfg->comp_h)
+		utcfg->comp_h = utcfg->out_h;
+	if (!utcfg->out1_w)
+		utcfg->out1_w = utcfg->in1_w;
+	if (!utcfg->out1_h)
+		utcfg->out1_h = utcfg->in1_h;
+
+	user_case->cfg_src_format = utcfg->in_fmt;
+	user_case->cfg_src_w = utcfg->in_w;
+	user_case->cfg_src_h = utcfg->in_h;
+	user_case->cfg_src1_format = utcfg->in1_fmt;
+	user_case->cfg_src1_w = utcfg->in1_w;
+	user_case->cfg_src1_h = utcfg->in1_h;
+	user_case->cfg_dest_format = utcfg->out_fmt;
+	user_case->cfg_dest_w = utcfg->out_w;
+	user_case->cfg_dest_h = utcfg->out_h;
+	user_case->cfg_dest1_format = utcfg->out1_fmt;
+	user_case->cfg_dest1_w = utcfg->out1_w;
+	user_case->cfg_dest1_h = utcfg->out1_h;
+	user_case->dump_dest = utcfg->dump;
+
+	mml_log("%s in %u %u %#010x out %u %u %#010x",
+		__func__, utcfg->in_w, utcfg->in_h, utcfg->in_fmt,
+		utcfg->out_w, utcfg->out_h, utcfg->out_fmt);
+}
+
+static ssize_t ut_read(struct file *filp, char __user *buf, size_t size, loff_t *offp)
+{
+	struct mml_test_case user_case[mml_max_sys] = {0};
+	u32 len = sizeof(user_case);
+	u32 i;
+	int ret;
+
+	if (size < len) {
+		mml_err("[test]%s buf size not match %zu %u", __func__, size, len);
+		return -EFAULT;
+	}
+
+	for (i = 0; i < mml_max_sys; i++) {
+		ut_config_to_user(&user_case[i], &mml_ut_cfg[i]);
+		user_case[i].mmlid = i;
+
+		mml_log("%s mmlid %u size %u %u",
+			__func__, i, user_case[i].cfg_src_w, user_case[i].cfg_src_h);
+	}
+
+	ret = copy_to_user(buf, (void *)user_case, len);
+	if (ret) {
+		mml_err("[test]%s copy ut config fail %d", __func__, ret);
+		return -EFAULT;
+	}
+	*offp += len;
+
+	return 0;
+}
+
+static ssize_t ut_write(struct file *filp, const char __user *buf, size_t size, loff_t *offp)
+{
+	struct mml_test *test = (struct mml_test *)filp->f_inode->i_private;
+	struct mml_test_case user_case = {0};
+	struct mml_ut cur = {0};
+
+	if (size > sizeof(user_case)) {
+		mml_err("[test]%s buf size not match %zu %zu", __func__, size, sizeof(user_case));
+		return 0;
+	}
+
+	if (copy_from_user(&user_case, buf, size)) {
+		mml_err("[test]copy_from_user failed len:%zu", size);
+		return 0;
+	}
+
+	mml_log("%s mmlid %u size %u %u",
+		__func__, user_case.mmlid, user_case.cfg_src_w, user_case.cfg_src_h);
+
+	cur.cfg_src_format = user_case.cfg_src_format;
+	cur.cfg_src_w = user_case.cfg_src_w;
+	cur.cfg_src_h = user_case.cfg_src_h;
+	cur.cfg_src1_format = user_case.cfg_src1_format;
+	cur.cfg_src1_w = user_case.cfg_src1_w;
+	cur.cfg_src1_h = user_case.cfg_src1_h;
+	cur.cfg_dest_format = user_case.cfg_dest_format;
+	cur.cfg_dest_w = user_case.cfg_dest_w;
+	cur.cfg_dest_h = user_case.cfg_dest_h;
+	cur.cfg_dest1_format = user_case.cfg_dest1_format;
+	cur.cfg_dest1_w = user_case.cfg_dest1_w;
+	cur.cfg_dest1_h = user_case.cfg_dest1_h;
+	cur.fd_in = user_case.fd_in;
+	cur.size_in = user_case.size_in;
+	cur.fd_in1 = user_case.fd_in1;
+	cur.size_in1 = user_case.size_in1;
+	cur.fd_out = user_case.fd_out;
+	cur.size_out = user_case.size_out;
+	cur.fd_out1 = user_case.fd_out1;
+	cur.size_out1 = user_case.size_out1;
+	cur.mmlid = user_case.mmlid;
+
+	case_general_submit_ut(test, &cur, &mml_ut_cfg[user_case.mmlid], ut_setup);
+
+	return size;
+}
+
+static const struct file_operations ut_fops = {
+	.read = ut_read,
+	.write = ut_write,
+};
+
 static int probe(struct platform_device *pdev)
 {
 	struct mml_test *test;
@@ -2357,6 +2732,12 @@ static int probe(struct platform_device *pdev)
 		mml_err("[test]debugfs_create_file mml-test failed:%ld",
 			PTR_ERR(test->fs));
 		return PTR_ERR(test->fs);
+	}
+
+	test->fs_ut = debugfs_create_file("ut", 0444, dir, test, &ut_fops);
+	if (IS_ERR(test->fs_ut)) {
+		mml_err("[test]debugfs_create_file ut failed:%ld", PTR_ERR(test->fs_ut));
+		return PTR_ERR(test->fs_ut);
 	}
 
 	test->fs_inst = debugfs_create_file(

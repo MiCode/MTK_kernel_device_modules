@@ -13,7 +13,7 @@
 
 #include <linux/tracepoint.h>
 
-TRACE_EVENT(mml_tracing_mark_write,
+TRACE_EVENT(tracing_mark_write,
 
 	TP_PROTO(char *str),
 

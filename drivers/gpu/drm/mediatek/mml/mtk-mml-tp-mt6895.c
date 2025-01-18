@@ -638,7 +638,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 	/* get mid opp frequency */
 	tp = mml_topology_get_cache(mml);
-	if (!tp || !tp->opp_cnt) {
+	if (!tp || !tp->qos[mml_sys_frame].opp_cnt) {
 		mml_err("not support racing due to opp not ready");
 		goto decouple;
 	}
@@ -647,7 +647,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (!info->act_time)
 		info->act_time = 3375 * info->dest[0].data.height;
 
-	freq = tp->opp_speeds[MML_IR_MAX_OPP];
+	freq = tp->qos[mml_sys_frame].opp_speeds[MML_IR_MAX_OPP];
 	if (!freq) {
 		mml_err("no opp table support");
 		goto decouple;

@@ -16,12 +16,14 @@ struct mml_drm_ctx;
 struct cmdq_pkt;
 
 /* default lcm pixel, helps calculate HRT bandwidth */
-#define MML_DEFAULT_PANEL_PX	(1080 * 2412)
+#define MML_DEFAULT_PANEL_W	1440
+#define MML_DEFAULT_PANEL_H	3200
 #define MML_HRT_FPS		120
 
 enum mml_query_mode_reason {
 	mml_query_default,
 	mml_query_userdc,
+	mml_query_userdc2,
 	mml_query_norsz,
 	mml_query_sec,
 	mml_query_pqen,
@@ -40,6 +42,8 @@ enum mml_query_mode_reason {
 	mml_query_flip,
 	mml_query_alpha,
 	mml_query_min_size,
+	mml_query_dc_off,
+	mml_query_not_support,
 };
 
 struct mml_drm_param {
@@ -127,9 +131,10 @@ void mml_drm_put_context(struct mml_drm_ctx *ctx);
  * panel pixel count.
  *
  * @ctx:	The drm context instance.
- * @pixel:	Pixel count of panel. Default value is 1080 * 2412.
+ * @panel_width:	Pixel count width of panel. Default value is 1440 (wqhd).
+ * @panel_height:	Pixel count height of panel. Default value is 3200 (wqhd).
  */
-void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 pixel);
+void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 panel_width, u32 panel_height);
 
 /*
  * mml_drm_racing_config_sync - append event sync instructions to disp pkt

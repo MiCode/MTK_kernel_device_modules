@@ -25,10 +25,6 @@ struct mml_dle_param {
 	void (*config_cb)(struct mml_task *task, void *cb_param);
 };
 
-struct mml_dle_frame_info {
-	struct mml_rect dl_out[MML_DL_OUT_CNT];
-};
-
 /*
  * mml_dle_ctx_create - Create dle context structure
  *
@@ -71,7 +67,7 @@ void mml_dle_put_context(struct mml_dle_ctx *ctx);
  * Return:	Result of config. In value < 0 case job was not configured.
  */
 s32 mml_dle_config(struct mml_dle_ctx *ctx, struct mml_submit *submit,
-		   struct mml_dle_frame_info *dle_info, void *cb_param);
+		   void *cb_param);
 
 /*
  * mml_dle_start - tell mml dle to start hw task

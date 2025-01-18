@@ -403,7 +403,6 @@ struct rdma_data {
 
 static const struct rdma_data mt6985_pq_rdma_data = {
 	.tile_width = 1760,
-	.write_sec_reg = false,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -422,7 +421,24 @@ static const struct rdma_data mt6985_pq_rdma_data = {
 
 static const struct rdma_data mt6989_pq_rdma_data = {
 	.tile_width = 3520,
-	.write_sec_reg = false,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6983),
+			.settings = th_argb_mt6983,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6983),
+			.settings = th_rgb_mt6983,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6983),
+			.settings = th_yuv420_mt6983,
+		},
+	},
+};
+
+static const struct rdma_data mt6991_pq_rdma_data = {
+	.tile_width = 516,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6983),
@@ -501,27 +517,29 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 
 	mml_trace_ex_begin("%s sram or iova", __func__);
 
-	mml_mmp(buf_map, MMPROFILE_FLAG_START,
-		((u64)task->job.jobid << 16) | comp->id, 0);
+	if (!task->buf.seg_map.dma[0].iova) {
+		mml_mmp(buf_map, MMPROFILE_FLAG_START,
+			((u64)task->job.jobid << 16) | comp->id, 0);
 
-	/* get iova */
-	ret = mml_buf_iova_get(cfg->info.src.secure ? rdma->mmu_dev_sec : rdma->mmu_dev,
-		&task->buf.seg_map);
-	if (ret < 0)
-		mml_err("%s iova fail %d", __func__, ret);
+		/* get iova */
+		ret = mml_buf_iova_get(cfg->info.src.secure ? rdma->mmu_dev_sec : rdma->mmu_dev,
+			&task->buf.seg_map);
+		if (ret < 0)
+			mml_err("%s iova fail %d", __func__, ret);
 
-	mml_mmp(buf_map, MMPROFILE_FLAG_END,
-		((u64)task->job.jobid << 16) | comp->id,
-		(unsigned long)task->buf.seg_map.dma[0].iova);
+		mml_mmp(buf_map, MMPROFILE_FLAG_END,
+			((u64)task->job.jobid << 16) | comp->id,
+			(unsigned long)task->buf.seg_map.dma[0].iova);
 
-	mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-		__func__, comp->id,
-		task->buf.seg_map.dma[0].iova,
-		task->buf.seg_map.size[0],
-		task->buf.seg_map.dma[1].iova,
-		task->buf.seg_map.size[1],
-		task->buf.seg_map.dma[2].iova,
-		task->buf.seg_map.size[2]);
+		mml_msg("%s comp %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, comp->id,
+			task->buf.seg_map.dma[0].iova,
+			task->buf.seg_map.size[0],
+			task->buf.seg_map.dma[1].iova,
+			task->buf.seg_map.size[1],
+			task->buf.seg_map.dma[2].iova,
+			task->buf.seg_map.size[2]);
+	}
 
 	mml_trace_ex_end();
 
@@ -687,7 +705,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		/* Enable engine */
 		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_EN, 0x1, 0x00000001);
 		/* Enable shadow */
-		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_SHADOW_CTRL, 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_SHADOW_CTRL,
+			(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 	}
 
 	rdma_color_fmt(cfg, rdma_frm);
@@ -897,9 +916,6 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg, u32 idx)
 {
-	if (unlikely(mml_wrot_bkgd_en))
-		return 0;
-
 	/* wait rdma frame done */
 	cmdq_pkt_wfe(task->pkts[ccfg->pipe], comp_to_rdma(comp)->event_eof);
 	return 0;
@@ -980,7 +996,16 @@ u32 pq_rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return task->config->info.seg_map.format;
 }
 
+static void rdma_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+
+	if (!rdma->event_eof)
+		rdma->event_eof = event;
+}
+
 static const struct mml_comp_hw_ops rdma_hw_ops = {
+	.init_frame_done_event = &rdma_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &pq_rdma_datasize_get,
@@ -1227,9 +1252,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -1252,6 +1275,10 @@ const struct of_device_id mml_pq_rdma_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_pq_rdma",
 		.data = &mt6989_pq_rdma_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml_pq_rdma",
+		.data = &mt6991_pq_rdma_data
 	},
 	{},
 };

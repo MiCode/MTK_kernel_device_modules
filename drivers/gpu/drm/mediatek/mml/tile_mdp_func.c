@@ -819,6 +819,8 @@ enum isp_tile_message tile_rdma_back(struct tile_func_block *func,
 
 	/* Specific handle for block format */
 	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		int alignment = data->align_x ? data->align_x : func->in_const_x;
+
 		if (func->in_pos_xe + 1 > data->crop.left + data->crop.width)
 			func->in_pos_xe = data->crop.left + data->crop.width - 1;
 
@@ -838,18 +840,21 @@ enum isp_tile_message tile_rdma_back(struct tile_func_block *func,
 				func->in_pos_xe = func->full_size_x_in - 1;
 		}
 
-		if (func->in_const_x > 1) {
-			remain = TILE_MOD(func->in_pos_xe + 1, func->in_const_x);
+		if (alignment > 1) {
+			remain = TILE_MOD(func->in_pos_xe + 1, alignment);
 			if (remain)
-				func->in_pos_xe += func->in_const_x - remain;
+				func->in_pos_xe += alignment - remain;
 
-			remain = TILE_MOD(func->in_pos_xs, func->in_const_x);
+			remain = TILE_MOD(func->in_pos_xs, alignment);
 			if (remain)
 				func->in_pos_xs -= remain;
 
 			if (func->in_tile_width &&
 			    func->in_pos_xe + 1 > func->in_pos_xs + func->in_tile_width)
 				func->in_pos_xe = func->in_pos_xs + func->in_tile_width - 1;
+
+			if (func->in_pos_xe + 1 > func->full_size_x_in)
+				func->in_pos_xe = func->full_size_x_in - 1;
 		}
 	}
 
@@ -1121,7 +1126,7 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
 			}
 		}
 
-		if (data->alpharot) {
+		if (data->alpha) {
 			if (func->out_pos_xe + 1 < full_size_x_out &&
 			    func->out_pos_xe + 9 + 1 > full_size_x_out &&
 			    func->out_pos_xe != func->out_pos_xs) {

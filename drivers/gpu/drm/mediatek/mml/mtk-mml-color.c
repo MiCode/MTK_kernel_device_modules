@@ -165,7 +165,8 @@ static const struct mml_comp_tile_ops color_tile_ops = {
 	.prepare = color_tile_prepare,
 };
 
-static void color_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa)
+static void color_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
+	bool shadow)
 {
 	struct mml_comp_color *color = comp_to_color(comp);
 
@@ -177,8 +178,8 @@ static void color_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_a
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + color->data->reg_table[COLOR_CM2_EN], 0, 0x00000001);
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + color->data->reg_table[COLOR_SHADOW_CTRL], 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_SHADOW_CTRL],
+		(shadow ? 0 : 1) | 0x2, U32_MAX);
 }
 
 static u32 color_get_label_count(struct mml_comp *comp, struct mml_task *task,
@@ -199,7 +200,7 @@ static u32 color_get_label_count(struct mml_comp *comp, struct mml_task *task,
 static s32 color_config_init(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
-	color_init(comp, task->pkts[ccfg->pipe], comp->base_pa);
+	color_init(comp, task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
 }
 
@@ -260,7 +261,9 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			color_frm->config_success = false;
-			mml_pq_err("get color param timeout: %d in %dms",
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
+			mml_pq_err("%s: get color param timeout: %d in %dms", __func__,
 				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
 			goto exit;
@@ -268,6 +271,9 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		result = get_color_comp_config_result(task);
 		if (!result) {
+			color_frm->config_success = false;
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -309,7 +315,7 @@ static s32 color_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_WIDTH], width, U32_MAX);
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT], height, U32_MAX);
-
+	mml_pq_msg("[color] %s width [%d] height[%d]", __func__, width, height);
 	return 0;
 }
 
@@ -517,9 +523,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -562,6 +566,14 @@ const struct of_device_id mml_color_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_color",
+		.data = &mt6989_color_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_color",
+		.data = &mt6983_color_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml_color",
 		.data = &mt6989_color_data,
 	},
 	{},

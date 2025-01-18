@@ -150,6 +150,16 @@ static const struct fg_data mt6989_fg_data = {
 	.reg_table = fg_reg_table_mt6989,
 };
 
+static const struct fg_data mt6991_mmlt_fg_data = {
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.reg_table = fg_reg_table_mt6989,
+};
+
+static const struct fg_data mt6991_mmlf_fg_data = {
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = fg_reg_table_mt6989,
+};
+
 struct mml_comp_fg {
 	struct mml_comp comp;
 	const struct fg_data *data;
@@ -261,7 +271,8 @@ static s32 fg_init(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 0, U32_MAX);
 
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SHADOW_CTRL], 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SHADOW_CTRL],
+		(task->config->shadow ? 0 : 1) | 0x2, U32_MAX);
 
 	return 0;
 }
@@ -741,9 +752,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -766,6 +775,14 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_fg",
 		.data = &mt6989_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_fg",
+		.data = &mt6991_mmlt_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_fg",
+		.data = &mt6991_mmlf_fg_data
 	},
 	{},
 };

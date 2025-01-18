@@ -7,11 +7,13 @@
 #ifndef __MTK_MML_DRIVER_H__
 #define __MTK_MML_DRIVER_H__
 
+#include <linux/component.h>
 #include <linux/platform_device.h>
 #include <linux/mailbox_client.h>
 #include <linux/mailbox/mtk-cmdq-mailbox-ext.h>
 #include <linux/mailbox_controller.h>
 #include <linux/of.h>
+#include "mtk-mml.h"
 
 #define MML_MAX_COMPONENTS	50
 
@@ -24,6 +26,13 @@ struct mml_dle_param;
 struct mml_topology_cache;
 struct mml_task;
 struct mml_comp_config;
+struct mml_topology_path;
+
+enum mml_sys_id {
+	mml_sys_tile = 0,	/* in most case, mml-tile, for mml_decouple_2, mmlsys0 */
+	mml_sys_frame,		/* in most case, mml-frame, mmlsys1 */
+	mml_max_sys
+};
 
 struct platform_device *mml_get_plat_device(struct platform_device *pdev);
 
@@ -38,6 +47,8 @@ static inline int of_mml_read_comp_id_index(const struct device_node *np,
 	return of_property_read_u32_index(np, "comp-ids", index, id);
 }
 
+int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops);
+
 enum mml_sram_mode {
 	mml_sram_racing,
 	mml_sram_apudc,
@@ -45,14 +56,46 @@ enum mml_sram_mode {
 };
 
 /*
+ *
+ */
+s32 mml_dev_get_couple_cnt(struct mml_dev *mml);
+
+s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode);
+
+s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode);
+
+/*
+ * mml_qos_init - init mmlsys mmqos and mmdvfs from dts property
+ *
+ * @mml: The mml driver instance
+ * @pdev: mmlsys platform device
+ * @sysid: one of enum mml_sys_id
+ */
+void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid);
+
+/*
+ * mml_qos_update_sys - check all mmlsys and update throughput
+ *
+ * @mml: The mml driver instance
+ * @dpc: mml using dpc or not
+ * @path: current topology path for task
+ * @enable: begin task or end task
+ *
+ * Return: throughput upper bound from opp table
+ */
+u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc, u32 peak_bw,
+	const struct mml_topology_path *path, bool enable);
+
+/*
  * mml_qos_update_tput - scan throughputs in all path client and update the max one
  *
  * @mml: The mml driver instance
  * @dpc: mml using dpc or not
+ * @sysid: mmlsys which want to update throughput
  *
  * Return: throughput upper bound from opp table
  */
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc);
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys_id sysid);
 
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 
@@ -109,6 +152,15 @@ void mml_sram_put(struct mml_dev *mml, enum mml_sram_mode mode);
 u8 mml_sram_get_racing_height(struct mml_dev *mml);
 
 /*
+ * mml_get_mmu_dev - get mmlsys mmu device
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	The smmu or dmabuf device instance
+ */
+struct device *mml_get_mmu_dev(struct mml_dev *mml, bool secure);
+
+/*
  * mml_dl_enable - enable direct link mode or not
  *
  * @mml:	The mml driver instance
@@ -134,6 +186,15 @@ bool mml_dpc_disable(struct mml_dev *mml);
  * Return:	True for enable, false for disable.
  */
 bool mml_racing_enable(struct mml_dev *mml);
+
+/*
+ * mml_tablet_ext - current is tablet project or not
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	True for tablet project, false for not tablet project.
+ */
+bool mml_tablet_ext(struct mml_dev *mml);
 
 /*
  * mml_ir_get_mml_ready_event - get inline rot sync event mml_ready
@@ -285,6 +346,7 @@ phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
 void mml_init_swpm_comp(u32 idx, struct mml_comp *comp);
 void mml_update_comp_status(u32 idx, u32 status);
 void mml_update_freq_status(u32 freq);
+void mml_update_pq_status(const void *pq);
 struct mml_swpm_func *mml_get_swpm_func(void);
 
 struct mml_swpm_func {
@@ -292,6 +354,7 @@ struct mml_swpm_func {
 	void (*update_wrot)(u32 wrot0_sts, u32 wrot1_sts, u32 wrot2_sts, u32 wrot3_sts);
 	void (*update_cg)(u32 cg_con0, u32 cg_con1);
 	void (*update_freq)(u32 freq);
+	void (*update_pq)(u32 pq);
 };
 
 enum mml_mon_mods {

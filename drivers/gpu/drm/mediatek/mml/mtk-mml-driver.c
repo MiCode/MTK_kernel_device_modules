@@ -17,8 +17,11 @@
 #include <linux/regulator/consumer.h>
 #include <linux/debugfs.h>
 #include <linux/minmax.h>
+#include <linux/dma-mapping.h>
+#include <mtk-smmu-v3.h>
 
 #include <soc/mediatek/mmdvfs_v3.h>
+#include <soc/mediatek/mmqos.h>
 #include <soc/mediatek/smi.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <slbc_ops.h>
@@ -94,6 +97,9 @@ int mml_crc_cmp_p1;
 module_param(mml_crc_cmp_p1, int, 0644);
 int mml_crc_err;
 module_param(mml_crc_err, int, 0644);
+int mml_crc_test;
+module_param(mml_crc_test, int, 0644);
+
 
 struct mml_dpc {
 	atomic_t task_cnt;
@@ -103,9 +109,18 @@ struct mml_dpc {
 	struct clk *mmlsys_26m_clk;
 };
 
+struct mml_sys_state {
+	struct kref dl_ref;
+	struct kref racing_ref;
+	u8 sys_id;
+};
+
 struct mml_dev {
 	struct platform_device *pdev;
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
+	struct mml_sys_state sys_state[mml_max_sys];
+	struct mml_sys_qos qos[mml_max_sys];
+	struct mutex sys_state_mutex;
 	struct mml_sys *sys;
 	struct cmdq_base *cmdq_base;
 	struct cmdq_client *cmdq_clts[MML_MAX_CMDQ_CLTS];
@@ -118,7 +133,6 @@ struct mml_dev {
 	struct mml_topology_cache *topology;
 	struct mutex ctx_mutex;
 	struct mutex clock_mutex;
-	u32 current_volt;
 
 	bool dl_en;
 	bool racing_en;
@@ -155,10 +169,23 @@ struct mml_dev {
 	dma_addr_t crc_pa[MML_PIPE_CNT];
 	u32 crc_idx[MML_PIPE_CNT];
 #endif
+	bool tablet_ext;
+
+	struct device *mmu_dev; /* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 };
 
-int mml_racing_bw;
-module_param(mml_racing_bw, int, 0644);
+int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
+{
+	int ret = component_add(dev, ops);
+
+	if (ret)
+		mml_err("failed to add comp %u", id);
+	else
+		mml_msg("component add id %u", id);
+
+	return ret;
+}
 
 struct platform_device *mml_get_plat_device(struct platform_device *pdev)
 {
@@ -168,6 +195,7 @@ struct platform_device *mml_get_plat_device(struct platform_device *pdev)
 
 	mml_node = of_parse_phandle(dev->of_node, "mediatek,mml", 0);
 	if (!mml_node) {
+		mml_err("%s cannot get mml node", __func__);
 		dev_err(dev, "cannot get mml node\n");
 		return NULL;
 	}
@@ -175,6 +203,7 @@ struct platform_device *mml_get_plat_device(struct platform_device *pdev)
 	mml_pdev = of_find_device_by_node(mml_node);
 	of_node_put(mml_node);
 	if (WARN_ON(!mml_pdev)) {
+		mml_err("%s cannot get mml node", __func__);
 		dev_err(dev, "mml pdev failed\n");
 		return NULL;
 	}
@@ -183,34 +212,116 @@ struct platform_device *mml_get_plat_device(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(mml_get_plat_device);
 
-static void mml_qos_init(struct mml_dev *mml)
+static enum mml_sys_id mml_mode_to_sysid(enum mml_mode mode)
 {
-	struct device *dev = &mml->pdev->dev;
-	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+	/* In current implementation, only decouple2 uses mml-tile, which is mml_sys_tile.
+	 * Other mml modes use mml_sys_frame.
+	 *
+	 * This rule maybe change if mml-tile support direct link or racing.
+	 */
+
+	return mode == MML_MODE_MML_DECOUPLE2 ? mml_sys_tile : mml_sys_frame;
+}
+
+s32 mml_dev_get_couple_cnt(struct mml_dev *mml)
+{
+	s32 cnt;
+
+	/* In current implementation, only mml_sys_frame support direct link or racing mode.
+	 * Thus only check sys primary.
+	 */
+
+	mutex_lock(&mml->sys_state_mutex);
+
+	cnt = kref_read(&mml->sys_state[mml_sys_frame].dl_ref);
+	if (cnt)
+		goto done;
+
+	cnt = kref_read(&mml->sys_state[mml_sys_frame].racing_ref);
+done:
+	mutex_unlock(&mml->sys_state_mutex);
+
+	return cnt;
+}
+
+s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
+{
+	s32 cnt = -1;
+	enum mml_sys_id sys_id = mml_mode_to_sysid(mode);
+
+	mutex_lock(&mml->sys_state_mutex);
+
+	if (mode == MML_MODE_DIRECT_LINK) {
+		kref_get(&mml->sys_state[sys_id].dl_ref);
+		cnt = kref_read(&mml->sys_state[mml_sys_frame].dl_ref);
+	} else if (mode == MML_MODE_RACING) {
+		kref_get(&mml->sys_state[sys_id].racing_ref);
+		cnt = kref_read(&mml->sys_state[mml_sys_frame].racing_ref);
+	}
+
+	mutex_unlock(&mml->sys_state_mutex);
+
+	return cnt;
+}
+
+void mml_dev_couple_release_dl(struct kref *kref)
+{
+	struct mml_sys_state *state = container_of(kref, struct mml_sys_state, dl_ref);
+
+	mml_log("%s sys id %u", __func__, state->sys_id);
+}
+
+void mml_dev_couple_release_racing(struct kref *kref)
+{
+	struct mml_sys_state *state = container_of(kref, struct mml_sys_state, racing_ref);
+
+	mml_log("%s sys id %u", __func__, state->sys_id);
+}
+
+s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
+{
+	s32 cnt = 0;
+	enum mml_sys_id sys_id = mml_mode_to_sysid(mode);
+
+	mutex_lock(&mml->sys_state_mutex);
+
+	if (mode == MML_MODE_DIRECT_LINK) {
+		kref_put(&mml->sys_state[sys_id].dl_ref, mml_dev_couple_release_dl);
+		cnt = kref_read(&mml->sys_state[sys_id].dl_ref);
+	} else if (mode == MML_MODE_RACING) {
+		kref_put(&mml->sys_state[sys_id].racing_ref, mml_dev_couple_release_racing);
+		cnt = kref_read(&mml->sys_state[sys_id].racing_ref);
+	}
+
+	mutex_unlock(&mml->sys_state_mutex);
+
+	return cnt;
+}
+
+void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
+{
+	struct device *dev = &pdev->dev;
+	struct mml_sys_qos *sysqos = &mml->qos[sysid];
 	struct dev_pm_opp *opp;
 	int num;
 	unsigned long freq = 0;
 	u32 i;
 
-	if (!tp) {
-		mml_err("%s topology fail so stop qos", __func__);
-		return;
-	}
-
-	mutex_init(&tp->qos_mutex);
+	mml_msg("%s sysid %u", __func__, sysid);
+	mutex_init(&sysqos->qos_mutex);
 
 	/* Create opp table from dts */
 	dev_pm_opp_of_add_table(dev);
 
 	/* Get regulator instance by name. */
-	tp->reg = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
-	if (IS_ERR_OR_NULL(tp->reg)) {
-		tp->reg = NULL;
-		tp->dvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
-		if (IS_ERR_OR_NULL(tp->dvfs_clk)) {
+	sysqos->reg = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
+	if (IS_ERR_OR_NULL(sysqos->reg)) {
+		sysqos->reg = NULL;
+		sysqos->dvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
+		if (IS_ERR_OR_NULL(sysqos->dvfs_clk)) {
 			mml_err("%s get mmdvfs clk failed %d",
-				__func__, (int)PTR_ERR(tp->dvfs_clk));
-			tp->dvfs_clk = NULL;
+				__func__, (int)PTR_ERR(sysqos->dvfs_clk));
+			sysqos->dvfs_clk = NULL;
 			return;
 		}
 		mml_log("%s support mmdvfs clk", __func__);
@@ -224,97 +335,140 @@ static void mml_qos_init(struct mml_dev *mml)
 		return;
 	}
 
-	tp->opp_cnt = (u32)num;
-	if (tp->opp_cnt > ARRAY_SIZE(tp->opp_speeds)) {
+	sysqos->opp_cnt = (u32)num;
+	if (sysqos->opp_cnt > ARRAY_SIZE(sysqos->opp_speeds)) {
 		mml_err("%s opp num more than table size %u %u",
-			__func__, tp->opp_cnt, (u32)ARRAY_SIZE(tp->opp_speeds));
-		tp->opp_cnt = ARRAY_SIZE(tp->opp_speeds);
+			__func__, sysqos->opp_cnt, (u32)ARRAY_SIZE(sysqos->opp_speeds));
+		sysqos->opp_cnt = ARRAY_SIZE(sysqos->opp_speeds);
 	}
 
 	i = 0;
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
 
-		if (i >= tp->opp_cnt)
+		if (i >= sysqos->opp_cnt)
 			break;
 
 		/* available freq from table, store in MHz */
-		tp->opp_speeds[i] = (u32)div_u64(freq, 1000000) - 5;
-		tp->opp_volts[i] = dev_pm_opp_get_voltage(opp);
-		tp->freq_max = tp->opp_speeds[i];
-		mml_log("mml opp %u: %uMHz\t%d",
-			i, tp->opp_speeds[i], tp->opp_volts[i]);
+		sysqos->opp_speeds[i] = (u32)div_u64(freq, 1000000) - 5;
+		sysqos->opp_volts[i] = dev_pm_opp_get_voltage(opp);
+		sysqos->freq_max = sysqos->opp_speeds[i];
+		mml_log("mml%u opp %u: %uMHz\t%d",
+			sysid, i, sysqos->opp_speeds[i], sysqos->opp_volts[i]);
 		freq++;
 		i++;
 		dev_pm_opp_put(opp);
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys_id sysid)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+	struct mml_sys_qos *sysqos = &tp->qos[sysid];
 	u32 tput = 0, i;
-	int volt, ret;
+	int volt;
 
-	if (!tp || (!tp->reg && !tp->dvfs_clk))
+	if (!sysqos->reg && !sysqos->dvfs_clk)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
+		if (!tp->path_clts[sysid].sys_en_ref[sysid])
+			continue;
 		/* select max one across clients */
 		tput = max(tput, tp->path_clts[i].throughput);
 	}
 
-	for (i = 0; i < tp->opp_cnt; i++) {
-		if (tput < tp->opp_speeds[i])
+	for (i = 0; i < sysqos->opp_cnt; i++) {
+		if (tput < sysqos->opp_speeds[i])
 			break;
 	}
-	i = min(i, tp->opp_cnt - 1);
-	volt = tp->opp_volts[i];
+	i = min(i, sysqos->opp_cnt - 1);
+	volt = sysqos->opp_volts[i];
 
-	if (mml->current_volt == volt)	/* skip for better performance */
+	if (sysqos->current_volt == volt)	/* skip for better performance */
 		goto done;
 
-	mml_msg_qos("%s dvfs update %u to %u(%u)",
-		__func__, mml->current_volt, volt, tp->opp_speeds[i]);
-	mml->current_volt = volt;
+	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)",
+		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i]);
+	tp->qos[sysid].current_volt = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
+#ifndef MML_FPGA
 	if (dpc) {
 		/* dpc set voltage */
 		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
-			__func__, tp->opp_speeds[i], volt, i, tput);
+			__func__, sysqos->opp_speeds[i], volt, i, tput);
 
-		mml_dpc_dvfs_set(DPC_SUBSYS_MML, i, false);
+		if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY ||
+			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
+			/* dpc off case set bw to 0 */
+			peak_bw = 0;
+		} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+			/* no dpc if lower than hrt bound */
+			if (peak_bw < mml_hrt_bound)
+				peak_bw = 0;
+		}
+
+		mml_dpc_dvfs_both_set(DPC_SUBSYS_MML, i, false, peak_bw);
 	} else {
-		if (tp->reg) {
-			ret = regulator_set_voltage(tp->reg, volt, INT_MAX);
+		int ret;
+
+		if (sysqos->reg) {
+			ret = regulator_set_voltage(sysqos->reg, volt, INT_MAX);
 			if (ret)
-				mml_err("%s fail to set volt %d",
-					__func__, volt);
+				mml_err("%s sys %u fail to set volt %d",
+					__func__, sysid, volt);
 			else
-				mml_msg("%s volt %d (%u) tput %u",
-					__func__, volt, i, tput);
-		} else if (tp->dvfs_clk) {
+				mml_msg("%s sys %u volt %d (%u) tput %u",
+					__func__, sysid, volt, i, tput);
+		} else if (sysqos->dvfs_clk) {
 			/* set dvfs clock rate by unit Hz */
-			if (mmdvfs_get_version())
-				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
-			ret = clk_set_rate(tp->dvfs_clk,
-				tp->opp_speeds[i] * 1000000);
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
+			ret = clk_set_rate(sysqos->dvfs_clk,
+				sysqos->opp_speeds[i] * 1000000);
 			if (ret)
-				mml_err("%s fail to set rate %uMHz error %d",
-					__func__, tp->opp_speeds[i], ret);
+				mml_err("%s sys %u fail to set rate %uMHz error %d",
+					__func__, sysid, sysqos->opp_speeds[i], ret);
 			else
-				mml_msg("%s rate %uMHz (%u) tput %u",
-					__func__, tp->opp_speeds[i], i, tput);
-			if (mmdvfs_get_version())
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+				mml_msg("%s sys %u rate %uMHz (%u) tput %u",
+					__func__, sysid, sysqos->opp_speeds[i], i, tput);
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
 		}
 	}
+#endif
 	mml_trace_end();
 
-	mml_update_freq_status(tp->opp_speeds[i]);
+	mml_update_freq_status(sysqos->opp_speeds[i]);
 
 done:
-	return tp->opp_speeds[i];
+	return volt;
+}
+
+u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc, u32 peak_bw,
+	const struct mml_topology_path *path, bool enable)
+{
+	u32 sysid, tput = 0;
+	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+
+	/* for all mmlsys, update the count to current path client reference count,
+	 * so that mml_qos_update_tput api could update throughput to running client.
+	 */
+	for (sysid = 0; sysid < mml_max_sys; sysid++) {
+		if (!path->sys_en[sysid])
+			continue;
+		if (enable)
+			tp->path_clts[path->clt_id].sys_en_ref[sysid]++;
+		else
+			tp->path_clts[path->clt_id].sys_en_ref[sysid]--;
+	}
+
+	/* update throughput to the mmlsys(s) which used in this path */
+	for (sysid = 0; sysid < mml_max_sys; sysid++) {
+		if (!path->sys_en[sysid])
+			continue;
+		tput = max(tput, mml_qos_update_tput(mml, dpc, peak_bw, sysid));
+	}
+
+	return tput;
 }
 
 static void create_dev_topology_locked(struct mml_dev *mml)
@@ -323,7 +477,8 @@ static void create_dev_topology_locked(struct mml_dev *mml)
 	if (!mml->topology) {
 		mml->topology = mml_topology_create(mml, mml->pdev,
 			mml->cmdq_clts, mml->cmdq_clt_cnt);
-		mml_qos_init(mml);
+		if (mml->topology)
+			mml->topology->qos = mml->qos;
 	}
 	if (IS_ERR(mml->topology))
 		mml_err("topology create fail %ld", PTR_ERR(mml->topology));
@@ -664,7 +819,9 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	/* parse larb node and port from dts */
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
 		1, 0, &larb_args)) {
-		mml_err("%s fail to parse mediatek,larb", __func__);
+		mml_err("%s fail to parse mediatek,larb comp %u %s",
+			__func__, comp->id,
+			comp->name ? comp->name : "");
 		return -ENOENT;
 	}
 	comp->larb_port = larb_args.args[0];
@@ -987,12 +1144,14 @@ void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
  */
 static u32 mml_calc_bw(u64 data, u32 pixel, u64 throughput)
 {
-	/* ocucpied bw efficiency is 1.33 while accessing DRAM */
-	data = (u64)div_u64(data * 4 * throughput, 3);
+	/* ocucpied bw efficiency is 1.33 while accessing DRAM
+	 * also 1.3 overhead to secure ostd
+	 */
+	data = (u64)div_u64(data * 4 * throughput * 13, 3 * 10);
 	if (!pixel)
 		pixel = 1;
-	/* 1536 is the worst bw calculated by DE */
-	return min_t(u32, div_u64(data, pixel), 1536);
+
+	return max_t(u32, MML_QOS_MIN_BW, min_t(u32, div_u64(data, pixel), MML_QOS_MAX_BW));
 }
 
 static u32 mml_calc_bw_racing(u32 datasize)
@@ -1014,7 +1173,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 bandwidth, datasize, hrt_bw;
-	bool hrt;
+	bool hrt, updated = false;
 
 	datasize = comp->hw_ops->qos_datasize_get(task, ccfg);
 	if (!datasize) {
@@ -1023,21 +1182,26 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		hrt_bw = 0;
 	} else if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		hrt = true;
-		bandwidth = mml_calc_bw_racing(datasize);
-		hrt_bw = cfg->disp_hrt;
-		if (unlikely(mml_racing_bw)) {
-			bandwidth = mml_racing_bw;
-			hrt_bw = mml_racing_bw * 1000;
+		if (likely(mtk_mml_hrt_mode == MML_HRT_ENABLE) ||
+			mtk_mml_hrt_mode == MML_HRT_OSTD_MAX ||
+			mtk_mml_hrt_mode == MML_HRT_LIMIT ||
+			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
+			bandwidth = mml_calc_bw_racing(datasize);
+			hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
+
+			if (mtk_mml_hrt_mode == MML_HRT_LIMIT && hrt_bw < mml_hrt_bound) {
+				bandwidth = 0;
+				hrt_bw = 0;
+			}
+		} else {	/* MML_HRT_OSTD_ONLY */
+			bandwidth = 0;
+			hrt_bw = 0;
 		}
 	} else {
 		hrt = false;
 		bandwidth = mml_calc_bw(datasize, cache->max_pixel, throughput);
-		if (unlikely(mml_qos)) {
-			u32 qos = mml_qos >> 16;
-
-			if (qos)
-				bandwidth = qos;
-		}
+		if ((unlikely(mml_qos & MML_QOS_FORCE_BW_MASK)))
+			bandwidth = mml_qos_force_bw;
 		hrt_bw = 0;
 	}
 
@@ -1047,26 +1211,48 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	if (comp->cur_bw != bandwidth || comp->cur_peak != hrt_bw) {
 		mml_trace_begin("mml_bw_%u_%u", bandwidth, hrt_bw);
 #ifndef MML_FPGA
-		if (task->config->dpc)
-			mtk_icc_set_bw(comp->icc_dpc_path,
-					MBps_to_icc(bandwidth),
-					hrt_bw);
-		else
+		if (task->config->dpc) {
+			u32 srt_icc, hrt_icc;
+
+			if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
+				srt_icc = MBps_to_icc(bandwidth);
+				hrt_icc = hrt_bw <= mml_hrt_bound ?
+					MTK_MMQOS_MAX_BW : MBps_to_icc(hrt_bw);
+			} else if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY) {
+				srt_icc = 0;
+				hrt_icc = MTK_MMQOS_MAX_BW;
+			} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+				if (hrt_bw < mml_hrt_bound) {
+					srt_icc = 0;
+					hrt_icc = MTK_MMQOS_MAX_BW;
+				} else {
+					srt_icc = MBps_to_icc(bandwidth);
+					hrt_icc = MBps_to_icc(hrt_bw);
+				}
+			} else {
+				/* MML_HRT_ENABLE, MML_HRT_MMQOS */
+				srt_icc = MBps_to_icc(bandwidth);
+				hrt_icc = MBps_to_icc(hrt_bw);
+			}
+
+			mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
+		} else
 			mtk_icc_set_bw(comp->icc_path,
-				MBps_to_icc(bandwidth),
-				hrt_bw);
+				MBps_to_icc(bandwidth), MBps_to_icc(hrt_bw));
 #endif
 		comp->cur_bw = bandwidth;
 		comp->cur_peak = hrt_bw;
 		mml_trace_end();
+		updated = true;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
 
-	mml_msg_qos("%s comp %u %s qos bw %u(%u) by throughput %u pixel %u size %u%s",
-		__func__, comp->id, comp->name, bandwidth, hrt_bw / 1000,
+	mml_msg_qos("%s comp %u %s qos bw %u(%u %u) by throughput %u pixel %u size %u%s%s mode %d",
+		__func__, comp->id, comp->name, bandwidth, hrt_bw, cfg->disp_hrt,
 		throughput, cache->max_pixel, datasize,
-		hrt ? " hrt" : "");
+		hrt ? " hrt" : "", updated ? " update" : "",
+		mtk_mml_hrt_mode);
 }
 
 void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)
@@ -1143,6 +1329,12 @@ done:
 #endif
 }
 
+struct device *mml_get_mmu_dev(struct mml_dev *mml, bool secure)
+{
+	return secure ? mml->mmu_dev_sec : mml->mmu_dev;
+}
+EXPORT_SYMBOL_GPL(mml_get_mmu_dev);
+
 bool mml_dl_enable(struct mml_dev *mml)
 {
 	return mml->dl_en;
@@ -1160,6 +1352,12 @@ bool mml_racing_enable(struct mml_dev *mml)
 	return mml->racing_en;
 }
 EXPORT_SYMBOL_GPL(mml_racing_enable);
+
+bool mml_tablet_ext(struct mml_dev *mml)
+{
+	return mml->tablet_ext;
+}
+EXPORT_SYMBOL_GPL(mml_tablet_ext);
 
 u8 mml_sram_get_racing_height(struct mml_dev *mml)
 {
@@ -1317,6 +1515,13 @@ void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 	if (MML_PIPE_CNT > 1)
 		mml_pipe1_dest_crc = task->dest_crc[1];
 
+	if (unlikely(mml_crc_test)) {
+		mml_log("%s mml_crc_test %d job %u", __func__, mml_crc_test, task->job.jobid);
+		record->src_crc[0] = mml_crc_test;
+		record->dest_crc[0] = task->job.jobid;
+		mml_crc_test = 0;
+	}
+
 	mml->record_idx = (mml->record_idx + 1) & MML_RECORD_NUM_MASK;
 
 	mutex_unlock(&mml->record_mutex);
@@ -1432,7 +1637,8 @@ void mml_record_dump(struct mml_dev *mml)
 
 static int mml_record_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mml_record_print, inode->i_private);
+	return single_open_size(file, mml_record_print, inode->i_private,
+		PAGE_SIZE + MML_LOG_SIZE);
 }
 
 static const struct file_operations mml_record_fops = {
@@ -1610,11 +1816,16 @@ static int mml_probe(struct platform_device *pdev)
 	mml = devm_kzalloc(dev, sizeof(*mml), GFP_KERNEL);
 	if (!mml)
 		return -ENOMEM;
+	platform_set_drvdata(pdev, mml);
 
 	mml->pdev = pdev;
+	mutex_init(&mml->sys_state_mutex);
 	mutex_init(&mml->ctx_mutex);
 	mutex_init(&mml->clock_mutex);
 	mutex_init(&mml->wake_ref_mutex);
+
+	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++)
+		mml->sys_state[i].sys_id = i;
 
 	/* init sram request parameters */
 	mutex_init(&mml->sram_mutex);
@@ -1625,11 +1836,23 @@ static int mml_probe(struct platform_device *pdev)
 	mml->sram_data[mml_sram_apudc].type = TP_BUFFER;
 	mml->sram_data[mml_sram_apudc].flag = FG_POWER;
 
-	mml->sys = mml_sys_create(pdev, &sys_comp_ops);
+	mml->sys = mml_sys_create(pdev, mml, &sys_comp_ops);
 	if (IS_ERR(mml->sys)) {
 		ret = PTR_ERR(mml->sys);
 		dev_err(dev, "failed to init mml sys: %d\n", ret);
 		goto err_sys_add;
+	}
+
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		mml->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		mml->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		mml->mmu_dev = dev;
+		mml->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config sys dma mask %d", ret);
 	}
 
 	thread_cnt = of_count_phandle_with_args(
@@ -1646,6 +1869,7 @@ static int mml_probe(struct platform_device *pdev)
 		mml_log("dpc disable by project");
 
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
+	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
 
 	if (of_property_read_u8(dev->of_node, "racing-height", &mml->racing_height))
 		mml->racing_height = 64;	/* default height 64px */
@@ -1678,7 +1902,6 @@ static int mml_probe(struct platform_device *pdev)
 	}
 	mml->cmdq_clt_cnt = i;
 
-	platform_set_drvdata(pdev, mml);
 	dbg_probed = true;
 
 	ret = comp_master_init(dev, mml);
@@ -1799,6 +2022,8 @@ static struct platform_driver *mml_drivers[] = {
 static int __init mml_driver_init(void)
 {
 	int ret;
+
+	mml_msg("%s register drivers", __func__);
 
 	ret = platform_register_drivers(mml_drivers, ARRAY_SIZE(mml_drivers));
 	if (ret) {

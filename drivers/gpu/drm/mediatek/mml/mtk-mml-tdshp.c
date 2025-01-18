@@ -52,6 +52,7 @@ enum mml_tdshp_reg_index {
 	TDSHP_SHADOW_CTRL,
 	CONTOUR_HIST_00,
 	TDSHP_STATUS_00,
+	TDHSP_C_BOOST_MAIN,
 	TDSHP_REG_MAX_COUNT
 };
 
@@ -73,7 +74,8 @@ static const u16 tdshp_reg_table_mt6983[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_REGION_PQ_PARAM] = REG_NOT_SUPPORT,
 	[TDSHP_SHADOW_CTRL] = 0x67c,
 	[CONTOUR_HIST_00] = 0x3dc,
-	[TDSHP_STATUS_00] = REG_NOT_SUPPORT
+	[TDSHP_STATUS_00] = REG_NOT_SUPPORT,
+	[TDHSP_C_BOOST_MAIN] = 0x0E0
 };
 
 static const u16 tdshp_reg_table_mt6985[TDSHP_REG_MAX_COUNT] = {
@@ -94,7 +96,8 @@ static const u16 tdshp_reg_table_mt6985[TDSHP_REG_MAX_COUNT] = {
 	[TDSHP_REGION_PQ_PARAM] = 0x680,
 	[TDSHP_SHADOW_CTRL] = 0x724,
 	[CONTOUR_HIST_00] = 0x3dc,
-	[TDSHP_STATUS_00] = 0x644
+	[TDSHP_STATUS_00] = 0x644,
+	[TDHSP_C_BOOST_MAIN] = 0x0E0
 };
 
 struct tdshp_data {
@@ -158,6 +161,23 @@ static const struct tdshp_data mt6886_tdshp_data = {
 static const struct tdshp_data mt6989_tdshp_data = {
 	.tile_width = 3332,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = tdshp_reg_table_mt6985,
+	.rb_mode = RB_EOF_MODE,
+	.wrot_pending = true,
+};
+
+static const struct tdshp_data mt6878_tdshp_data = {
+	.tile_width = 528,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
+};
+
+static const struct tdshp_data mt6991_mmlt_tdshp_data = {
+	.tile_width = 528,
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6985,
 	.rb_mode = RB_EOF_MODE,
@@ -304,15 +324,16 @@ static u32 tdshp_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	return TDSHP_LABEL_TOTAL;
 }
 
-static void tdshp_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa)
+static void tdshp_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
+	bool shadow)
 {
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CTRL], 0x1, 0x00000001);
 	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG], 0x2, 0x00000002);
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + tdshp->data->reg_table[TDSHP_SHADOW_CTRL], 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_SHADOW_CTRL],
+		(shadow ? 0 : 1) | 0x2, U32_MAX);
 }
 
 static void tdshp_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
@@ -354,7 +375,7 @@ static void tdshp_config_region_pq(struct mml_comp *comp, struct cmdq_pkt *pkt,
 static s32 tdshp_config_init(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
-	tdshp_init(comp, task->pkts[ccfg->pipe], comp->base_pa);
+	tdshp_init(comp, task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
 }
 
@@ -518,7 +539,21 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			tdshp_frm->config_success = false;
-			mml_pq_err("get ds param timeout: %d in %dms",
+			if (dest->pq_config.en_region_pq) {
+				// DON'T relay hardware, but disable sub-module
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_00],
+					1 << 31|1 << 28, 1 << 31|1 << 28);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
+					1 << 13, 1 << 13);
+				// enable map input, disable map output
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+					0x5C1B0, U32_MAX);
+			} else
+				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
+			mml_pq_err("%s:get ds param timeout: %d in %dms", __func__,
 				ret, TDSHP_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
 			goto exit;
@@ -526,6 +561,21 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		result = get_tdshp_comp_config_result(task);
 		if (!result) {
+			tdshp_frm->config_success = false;
+			if (dest->pq_config.en_region_pq) {
+				// DON'T relay hardware, but disable sub-module
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_00],
+					1 << 31|1 << 28, 1 << 31|1 << 28);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
+					1 << 13, 1 << 13);
+				// enable map input, disable map output
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+					0x5C1B0, U32_MAX);
+			} else
+				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -704,16 +754,18 @@ static void tdshp_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* read tdshp clarity status */
-	for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt, base_pa +
-			tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (tdshp->data->reg_table[TDSHP_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt, base_pa +
+				tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 
@@ -949,8 +1001,16 @@ exit:
 	mml_pq_trace_ex_end();
 }
 
+static void tdshp_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+
+	if (!tdshp->event_eof)
+		tdshp->event_eof = event;
+}
 
 static const struct mml_comp_hw_ops tdshp_hw_ops = {
+	.init_frame_done_event = &tdshp_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.task_done = tdshp_task_done_readback,
@@ -1252,16 +1312,18 @@ static void tdshp_hist_work(struct work_struct *work_item)
 	}
 
 	/* read tdshp clarity status */
-	for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt, base_pa +
-			tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	if (tdshp->data->reg_table[TDSHP_STATUS_00] != REG_NOT_SUPPORT) {
+		for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
+			cmdq_pkt_read_addr(pkt, base_pa +
+				tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
+			cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+			lop.reg = true;
+			lop.idx = idx_out;
+			rop.reg = false;
+			rop.value = 4;
+			cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+		}
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
@@ -1332,9 +1394,7 @@ static int probe(struct platform_device *pdev)
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
-	ret = component_add(dev, &mml_comp_ops);
-	if (ret)
-		dev_err(dev, "Failed to add component: %d\n", ret);
+	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
 	return ret;
 }
@@ -1377,6 +1437,18 @@ const struct of_device_id mml_tdshp_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_tdshp",
+		.data = &mt6989_tdshp_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_tdshp",
+		.data = &mt6878_tdshp_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml0_tdshp",
+		.data = &mt6991_mmlt_tdshp_data,
+	},
+	{
+		.compatible = "mediatek,mt6991-mml1_tdshp",
 		.data = &mt6989_tdshp_data,
 	},
 	{},

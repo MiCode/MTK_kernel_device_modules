@@ -575,33 +575,38 @@ void destroy_frame_tile(struct mml_frame_tile *frame_tile)
 	kfree(frame_tile);
 }
 
-static void dump_tile_region(char *prefix, struct mml_tile_region *region)
+static void dump_tile_region(const char *prefix, struct mml_tile_region *region)
 {
-	mml_log("\t\t\t%s: x:(%4u, %4u), y:(%4u, %4u)",
+	mml_log("\t%s x:(%4u, %4u), y:(%4u, %4u)",
 		prefix, region->xs, region->xe, region->ys, region->ye);
 }
 
-static void dump_tile_offset(char *prefix, struct mml_tile_offset *offset)
+static void dump_tile_offset(const char *prefix, struct mml_tile_offset *offset)
 {
-	mml_log("\t\t\t%s: x:(%4u, %4u), y:(%4u, %4u)",
+	mml_log("\t%s x:(%4u, %4u), y:(%4u, %4u)",
 		prefix, offset->x, offset->x_sub, offset->y, offset->y_sub);
 }
 
 static void dump_tile_engine(struct mml_tile_engine *engine)
 {
 	static const struct mml_tile_offset zero = {0};
+	bool inout;
+	char prefix[16];
+	int ret;
 
-	mml_log("\t\tcomp %u", engine->comp_id);
-	if (memcmp(&engine->in, &engine->out, sizeof(engine->in))) {
-		dump_tile_region("  in", &engine->in);
-		dump_tile_region(" out", &engine->out);
-	} else {
-		dump_tile_region("size", &engine->in);
-	}
+	inout = memcmp(&engine->in, &engine->out, sizeof(engine->in));
+	ret = snprintf(prefix, sizeof(prefix), "%3u %s",
+		engine->comp_id, inout ? "  in" : "size");
+	if (ret < 0)
+		prefix[0] = 0;
+
+	dump_tile_region(prefix, &engine->in);
+	if (inout)
+		dump_tile_region("     out", &engine->out);
 	if (memcmp(&engine->luma, &zero, sizeof(engine->luma)))
-		dump_tile_offset("luma", &engine->luma);
+		dump_tile_offset("    luma", &engine->luma);
 	if (memcmp(&engine->luma, &engine->chroma, sizeof(engine->luma)))
-		dump_tile_offset("chro", &engine->chroma);
+		dump_tile_offset("    chro", &engine->chroma);
 }
 
 static void dump_tile_config(struct mml_tile_config *tile)
@@ -609,7 +614,7 @@ static void dump_tile_config(struct mml_tile_config *tile)
 	u32 engine_cnt = tile->engine_cnt;
 	u32 i;
 
-	mml_log("\ttile_no:%u (h:%u v:%u), eng_cnt:%u, eol:%d",
+	mml_log("tile %u: (h:%u v:%u) engines:%u eol:%d",
 		tile->tile_no, tile->h_tile_no, tile->v_tile_no, engine_cnt,
 		tile->eol);
 	for (i = 0; i < engine_cnt; i++)
@@ -621,7 +626,7 @@ void dump_frame_tile(struct mml_frame_tile *frame_tile)
 	u32 tile_cnt = frame_tile->tile_cnt;
 	u32 i;
 
-	mml_log("tile_cnt:%u (h:%u v:%u)",
+	mml_log("tiles:%u (h:%u v:%u)",
 		tile_cnt, frame_tile->h_tile_cnt, frame_tile->v_tile_cnt);
 	for (i = 0; i < tile_cnt; i++)
 		dump_tile_config(&frame_tile->tiles[i]);

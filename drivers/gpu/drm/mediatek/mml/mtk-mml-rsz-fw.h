@@ -9,13 +9,6 @@
 #include <linux/types.h>
 #include "mtk-mml-core.h"
 
-#define mult_frac_bit(x, number, bit)\
-({\
-	typeof(x) quot = (x) >> (bit);\
-	typeof(x) rem = (x) & ((1 << (bit)) - 1);\
-	quot * (number) + ((rem * (number)) >> (bit));\
-})
-
 struct rsz_fw_in {
 	u32 in_width;
 	u32 in_height;
@@ -56,33 +49,6 @@ struct rsz_fw_out {
 	u32 etc_sim_port_gaincon2;
 	u32 etc_sim_port_gaincon3;
 	u32 etc_blend;
-};
-
-struct rsz_cal_param {
-	u32 yuv_422_t_yuv_444;
-	s32 hori_luma_int_ofst;
-	s32 hori_luma_sub_ofst;
-	s32 vert_luma_int_ofst;
-	s32 vert_luma_sub_ofst;
-	bool int_wclr_en;
-	bool tap_adapt_en;
-	s32 tap_adapt_slope;
-	u32 tap_adapt_fallback_ratio;
-	u32 tap_adapt_var_coring;
-	u32 tap_adapt_dc_coring;
-	u32 tap_adapt_edge_thr;
-	u32 signal_enhance_mode;
-	u32 hori_tbl;
-	u32 vert_tbl;
-	u32 hori_alpha_tbl;
-	u32 vert_alpha_tbl;
-	bool hori_cubic_trunc_en;
-	u32 hori_luma_cubic_trunc_bit;
-	u32 hori_chroma_cubic_trunc_bit;
-	u32 vert_luma_cubic_trunc_bit;
-	u32 vert_chroma_cubic_trunc_bit;
-	s32 hori_trunc_bit;
-	s32 vert_trunc_bit;
 };
 
 /* rsz_fw - RSZ firmware calculate RSZ settings
