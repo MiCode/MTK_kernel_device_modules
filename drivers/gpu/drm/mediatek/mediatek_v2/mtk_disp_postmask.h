@@ -11,4 +11,6 @@ struct mtk_disp_postmask_data {
 	bool need_bypass_shadow;
 };
 
+void mtk_postmask_relay_debug(struct mtk_ddp_comp *comp, unsigned int relay);
+
 #endif

@@ -128,6 +128,7 @@ struct mtk_disp_postmask {
 	unsigned int abnormal_cnt;
 	const struct mtk_disp_postmask_data *data;
 	unsigned int postmask_force_relay;
+	unsigned int postmask_debug;
 };
 
 struct mtk_disp_postmark_tile_overhead {
@@ -297,6 +298,8 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	if (!panel_ext)
 		DDPPR_ERR("%s:panel_ext not found\n", __func__);
 
+	DDPINFO("postmask_en[%d]\n", panel_ext->round_corner_en);
+
 	if (panel_ext && panel_ext->round_corner_en) {
 		value = (REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
 				     panel_ext->corner_pattern_height) |
@@ -376,14 +379,16 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 			addr = gem->dma_addr;
 			size = panel_ext->corner_pattern_tp_size;
 		}
+		DDPINFO("POSTMASK_DRAM_MODE\n");
 
 		if (addr == 0 || size == 0) {
 			DDPPR_ERR("invalid postmaks addr/size\n");
 			force_relay = 1;
 		} else if (postmask->postmask_force_relay) {
-			DDPDBG("postmask force relay\n");
+			DDPMSG("postmask force relay\n");
 			force_relay = 1;
 		}
+
 		value = (REG_FLD_VAL((CFG_FLD_RELAY_MODE), force_relay) |
 			 REG_FLD_VAL((CFG_FLD_DRAM_MODE), 1) |
 			 REG_FLD_VAL((CFG_FLD_BGCLR_IN_SEL), 1) |
@@ -546,14 +551,31 @@ static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
 {
 	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
 
-	DDPINFO("%s, comp_id: %d, bypass: %d\n",
-			__func__, comp->id, bypass);
+	//DDPINFO("%s, comp_id: %d, bypass: %d\n",
+	//		__func__, comp->id, bypass);
 
-	postmask->postmask_force_relay = bypass;
+	/* postmask bypass control by round_corner_en and bebug flag */
+	if (postmask->postmask_debug)
+		return;
+
+	postmask->postmask_force_relay = 0;
 
 	/* config relay mode*/
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_POSTMASK_CFG, bypass, 0x1);
+	//cmdq_pkt_write(handle, comp->cmdq_base,
+	//	       comp->regs_pa + DISP_POSTMASK_CFG, bypass, 0x1);
+}
+
+void mtk_postmask_relay_debug(struct mtk_ddp_comp *comp, unsigned int relay)
+{
+	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
+
+	if (!comp) {
+		DDPPR_ERR("postmask comp is NULL\n");
+		return;
+	}
+
+	postmask->postmask_force_relay = relay;
+	postmask->postmask_debug = 1;
 }
 
 static int mtk_disp_postmask_bind(struct device *dev, struct device *master,
