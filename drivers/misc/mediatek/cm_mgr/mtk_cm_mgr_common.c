@@ -354,6 +354,7 @@ void cm_mgr_unregister_hook(struct cm_mgr_hook *hook)
 }
 EXPORT_SYMBOL_GPL(cm_mgr_unregister_hook);
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 static int cm_mgr_fb_notifier_callback(struct notifier_block *nb,
 				       unsigned long value, void *v)
 {
@@ -382,6 +383,7 @@ static int cm_mgr_fb_notifier_callback(struct notifier_block *nb,
 static struct notifier_block cm_mgr_fb_notifier = {
 	.notifier_call = cm_mgr_fb_notifier_callback,
 };
+#endif
 
 #if !IS_ENABLED(CONFIG_MTK_CM_IPI)
 int cm_mgr_to_sspm_command(u32 cmd, int val)
@@ -1219,12 +1221,14 @@ int cm_mgr_common_init(void)
 fail_reg_cpu_frequency_entry:
 
 	if (cm_mgr_arch == CM_MGR_ARCH_V1) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		ret = mtk_disp_notifier_register("cm_mgr", &cm_mgr_fb_notifier);
 		if (ret) {
 			CM_DBG_PRINT("%s(%d): fail to register fb client. ret %d\n",
 				__func__, __LINE__, ret);
 			return ret;
 		}
+#endif
 
 		cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, cm_mgr_enable);
 
@@ -1272,19 +1276,23 @@ EXPORT_SYMBOL_GPL(cm_mgr_common_init);
 
 void cm_mgr_common_exit(void)
 {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	int ret;
+#endif
 
 	kfree(cm_mgr_cpu_opp_to_dram);
 	kfree(cm_mgr_buf);
 
 	kobject_put(cm_mgr_kobj);
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	if (cm_mgr_arch == CM_MGR_ARCH_V1) {
 		ret = mtk_disp_notifier_unregister(&cm_mgr_fb_notifier);
 		if (ret)
 			CM_DBG_PRINT("%s(%d): fail to unregister fb client. ret %d\n",
 				__func__, __LINE__, ret);
 	}
+#endif
 }
 EXPORT_SYMBOL_GPL(cm_mgr_common_exit);
 MODULE_LICENSE("GPL");
