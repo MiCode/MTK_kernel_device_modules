@@ -829,6 +829,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.msync2_enable = 1,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 	.real_te_duration = 2778,
 	.round_corner_en = 1,
@@ -894,6 +896,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.msync2_enable = 1,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 	.real_te_duration = 2778,
 	.round_corner_en = 1,
@@ -959,6 +963,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.msync2_enable = 1,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 	.real_te_duration = 2778,
 	.round_corner_en = 1,
@@ -1024,6 +1030,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.msync2_enable = 1,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 	.real_te_duration = 2778,
 	.round_corner_en = 1,
@@ -1089,6 +1097,8 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.msync2_enable = 1,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
+			.is_gce_delay = 1,
+			.te_step_time = 2777,
 		},
 	.real_te_duration = 2778,
 	.round_corner_en = 1,
