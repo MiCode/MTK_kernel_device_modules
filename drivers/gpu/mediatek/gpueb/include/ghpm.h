@@ -46,7 +46,7 @@
 
 /* MT6991 E2_ID_CON CODA meaning: E1->A0, E2->B0 */
 #define MFG_MT6991_E1_ID                   (0)
-#define MFG_MT6991_E2_ID                   (5)
+#define MFG_MT6991_E2_ID                   (0x101)
 
 enum mfg_mt6991_e2_con {
 	MFG_MT6991_A0,
