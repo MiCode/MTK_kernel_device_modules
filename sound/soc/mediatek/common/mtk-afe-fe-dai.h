@@ -56,6 +56,8 @@ int mtk_memif_set_format(struct mtk_base_afe *afe,
 			 int id, snd_pcm_format_t format);
 int mtk_memif_set_pbuf_size(struct mtk_base_afe *afe,
 			    int id, int pbuf_size);
+int mtk_memif_set_min_max_len(struct mtk_base_afe *afe, int id,
+			      int min_l, int max_l);
 
 /* using samephore to ensure ap/dsp sync */
 int mtk_memif_set_enable(struct mtk_base_afe *afe, int id);
