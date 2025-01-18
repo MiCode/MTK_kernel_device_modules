@@ -396,11 +396,11 @@ struct SCP_SENSOR_HUB_SET_FACTORY {
 struct SCP_SENSOR_HUB_SET_CALI {
 	enum CUST_ACTION action;
 	union {
-		int8_t int8_data[0];
-		uint8_t uint8_data[0];
-		int16_t int16_data[0];
-		uint16_t uint16_data[0];
-		int32_t int32_data[0];
+		int8_t int8_data[SCP_SENSOR_HUB_AXES_NUM];
+		uint8_t uint8_data[SCP_SENSOR_HUB_AXES_NUM];
+		int16_t int16_data[SCP_SENSOR_HUB_AXES_NUM];
+		uint16_t uint16_data[SCP_SENSOR_HUB_AXES_NUM];
+		int32_t int32_data[SCP_SENSOR_HUB_AXES_NUM];
 		uint32_t uint32_data[SCP_SENSOR_HUB_AXES_NUM];
 	};
 };
@@ -425,11 +425,11 @@ struct SCP_SENSOR_HUB_SETPS_THRESHOLD {
 struct SCP_SENSOR_HUB_GET_RAW_DATA {
 	enum CUST_ACTION action;
 	union {
-		int8_t int8_data[0];
-		uint8_t uint8_data[0];
-		int16_t int16_data[0];
-		uint16_t uint16_data[0];
-		int32_t int32_data[0];
+		int8_t int8_data[SCP_SENSOR_HUB_AXES_NUM];
+		uint8_t uint8_data[SCP_SENSOR_HUB_AXES_NUM];
+		int16_t int16_data[SCP_SENSOR_HUB_AXES_NUM];
+		uint16_t uint16_data[SCP_SENSOR_HUB_AXES_NUM];
+		int32_t int32_data[SCP_SENSOR_HUB_AXES_NUM];
 		uint32_t uint32_data[SCP_SENSOR_HUB_AXES_NUM];
 	};
 };
