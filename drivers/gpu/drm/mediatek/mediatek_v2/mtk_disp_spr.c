@@ -1991,11 +1991,13 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 	struct mtk_ddp_comp *spr0_comp = priv->ddp_comp[DDP_COMPONENT_SPR0];
 	struct mtk_panel_dsc_params *dsc_params;
 	struct mtk_panel_spr_params *spr_params;
+	struct mtk_disp_spr *spr = comp_to_spr(spr0_comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&spr0_comp->mtk_crtc->base, spr0_comp, true);
 	unsigned int slice_height = 8;
+	unsigned int spr_over_height = 0;
 	int slice_diff, line_diff;
-	struct mtk_disp_spr *spr = comp_to_spr(spr0_comp);
+	unsigned int is_nvt_spr = 0;
 
 	dsc_params = &spr0_comp->mtk_crtc->panel_ext->params->dsc_params;
 	spr_params = &spr0_comp->mtk_crtc->panel_ext->params->spr_params;
@@ -2006,6 +2008,44 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 
 	DDPDBG("%s, calculate spr valid size\n", __func__);
 	slice_diff = 0;
+
+	if (!spr->data)
+		return;
+
+	if (spr->data->version == MTK_SPR_V2) {
+		is_nvt_spr = 1;
+		spr_over_height = 4;
+	} else if (spr->data->version == MTK_SPR_V3) {
+		if (spr->spr_ip_type == DISP_MTK_SPR) {
+			is_nvt_spr = 0;
+			spr_over_height = 2;
+		} else if (spr->spr_ip_type == DISP_NVT_SPR) {
+			is_nvt_spr = 1;
+			spr_over_height = 4;
+		}
+	}
+
+	/* add over height for spr pu */
+	partial_roi->y = (partial_roi->y > spr_over_height) ?
+		(partial_roi->y - spr_over_height) : 0;
+	partial_roi->height = partial_roi->height + spr_over_height * 2;
+	if(partial_roi->y + partial_roi->height > full_height) {
+		partial_roi->y = 0;
+		partial_roi->height = full_height;
+	}
+
+	/* spr roi size must be greater than 120 lines*/
+	if (is_nvt_spr == 1 && partial_roi->height < 120) { //extension upwards first
+		line_diff = (partial_roi->y + partial_roi->height - full_height / 2) -
+			(full_height / 2 - partial_roi->y);
+		if (partial_roi->y > full_height / 2) //fill in the diff & average the remain line to 120
+			partial_roi->y -= (120 - partial_roi->height);
+		else if (line_diff > 0)
+			partial_roi->y -= (line_diff + (120 - partial_roi->height - line_diff) / 2);
+		if (partial_roi->y < 0)
+			partial_roi->y = 0;
+		partial_roi->height = 120;
+	}
 
 	/* align to slice_height*/
 	if (partial_roi->y % slice_height != 0) {
@@ -2021,22 +2061,6 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 
 		if (partial_roi->height > full_height)
 			partial_roi->height = full_height;
-	}
-
-	if (spr->data && spr->data->version == MTK_SPR_V3 &&
-		spr->spr_ip_type == DISP_MTK_SPR)
-		return;
-
-	/* spr roi size must be greater than 120 lines*/
-	if (partial_roi->height < 120) { //extension upwards first
-		line_diff = (partial_roi->y + partial_roi->height - full_height / 2) -
-			(full_height / 2 - partial_roi->y);
-		if (partial_roi->y > full_height / 2) { //fill in the diff & average the remain line to 120
-			partial_roi->y -= (120 - partial_roi->height);
-		} else if (line_diff > 0) {
-			partial_roi->y -= (line_diff + (partial_roi->height - line_diff)/2);
-		}
-		partial_roi->height = 120;
 	}
 }
 
