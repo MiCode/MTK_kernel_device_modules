@@ -500,7 +500,7 @@ int flt_tul(void)
 
 	bool BKV[GKEL] = {false};
 
-	nr_wl = get_nr_wl_type();
+	nr_wl = get_nr_wl();
 	nr_cpu = get_nr_cpu_type();
 
 	for (wl = 0; wl < nr_wl; ++wl) {

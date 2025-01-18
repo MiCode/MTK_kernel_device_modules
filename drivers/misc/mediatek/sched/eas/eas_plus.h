@@ -90,7 +90,7 @@ struct energy_env {
 
 	/* WL-based CPU+DSU ctrl */
 	unsigned int wl_support;
-	unsigned int wl_type;
+	unsigned int wl;
 
 	int val_s[10];
 
@@ -138,9 +138,9 @@ extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 /* should hide later */
 #define volt_diff  5000
 extern unsigned long pd_get_dsu_freq_wFloor_Freq(int cpu, unsigned long freq,
-		int quant, int wl_type, unsigned long floor_freq);
+		int quant, int wl, unsigned long floor_freq);
 extern unsigned long pd_get_volt_wFloor_Freq(int cpu, unsigned long freq,
-		int quant, int wl_type, unsigned long floor_freq);
+		int quant, int wl, unsigned long floor_freq);
 extern unsigned long update_dsu_status_(struct energy_env *eenv, int quant,
 		unsigned long freq, unsigned long floor_freq, int this_cpu, int dst_cpu);
 extern unsigned long update_dsu_status(struct energy_env *eenv, int quant,
@@ -299,7 +299,7 @@ extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,
 #endif
 
 extern unsigned long calc_pwr(int cpu, unsigned long task_util);
-extern unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util, int *val_s);
+extern unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s);
 extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
 		int cpu, unsigned long max_util, struct cpumask *cpus);
 #endif

@@ -186,13 +186,13 @@ EXPORT_SYMBOL_GPL(update_pelt_data);
 /* get workload type */
 unsigned int get_wl(unsigned int wl_idx)
 {
-	unsigned int wl_type;
+	unsigned int wl;
 	unsigned int offset;
 
-	wl_type = ioread32(wlc_sram_base_addr);
+	wl = ioread32(wlc_sram_base_addr);
 	offset = wl_idx * 0x8;
-	wl_type = (wl_type >> offset) & 0xff;
+	wl = (wl >> offset) & 0xff;
 
-	return wl_type;
+	return wl;
 }
 

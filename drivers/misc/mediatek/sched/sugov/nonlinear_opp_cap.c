@@ -45,7 +45,7 @@ static int busy_tick_boost_all;
 static int sbb_active_ratio[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 100 };
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-static unsigned int wl_type_delay_update_tick = 2;
+static unsigned int wl_delay_update_tick = 2;
 #endif
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
@@ -168,7 +168,7 @@ bool get_eas_dsu_ctrl(void)
 }
 EXPORT_SYMBOL_GPL(get_eas_dsu_ctrl);
 
-static int wl_type_manual = -1;
+static int wl_manual = -1;
 // eas dsu ctrl on / off
 void set_eas_dsu_ctrl(bool set)
 {
@@ -224,7 +224,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
-	unsigned int wl_type = get_em_wl();
+	unsigned int wl = get_em_wl();
 	struct cpufreq_mtk *c = policy->driver_data;
 	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
@@ -257,7 +257,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 				max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 
 		freq_state.dsu_freq_vote[i]
-			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl_type, &dsu_target_freq);
+			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		freq_thermal = get_cpu_ceiling_freq(gearid);
@@ -266,7 +266,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 #endif
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
-			trace_sugov_ext_dsu_freq_vote(wl_type, i,
+			trace_sugov_ext_dsu_freq_vote(wl, i,
 					max_freq_in_gear, freq_state.dsu_freq_vote[i], freq_thermal);
 	}
 
@@ -276,20 +276,26 @@ skip_single_idle_cpu:
 #endif
 }
 
-int wl_type_delay_ch_cnt = 1; // change counter
-static int nr_wl_type = 1;
-static int wl_type_curr;
+int wl_delay_ch_cnt = 1; // change counter
+static int nr_wl = 1;
+static int wl_curr;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-static int wl_type_delay;
-static int wl_type_delay_cnt;
-static int last_wl_type;
+static int wl_delay;
+static int wl_delay_cnt;
+static int last_wl;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
 #endif
 
+int get_nr_wl(void)
+{
+	return nr_wl;
+}
+EXPORT_SYMBOL_GPL(get_nr_wl);
+
 int get_nr_wl_type(void)
 {
-	return nr_wl_type;
+	return nr_wl;
 }
 EXPORT_SYMBOL_GPL(get_nr_wl_type);
 
@@ -311,21 +317,30 @@ EXPORT_SYMBOL_GPL(get_cpu_type);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+void set_wl_manual(int val)
+{
+	if (val >= 0 && val < nr_wl && is_wl_support())
+		wl_manual = val;
+	else
+		wl_manual = -1;
+}
+EXPORT_SYMBOL_GPL(set_wl_manual);
+
 void set_wl_type_manual(int val)
 {
-	if (val >= 0 && val < nr_wl_type && is_wl_support())
-		wl_type_manual = val;
+	if (val >= 0 && val < nr_wl && is_wl_support())
+		wl_manual = val;
 	else
-		wl_type_manual = -1;
+		wl_manual = -1;
 }
 EXPORT_SYMBOL_GPL(set_wl_type_manual);
 #endif
 
-int get_wl_type_manual(void)
+int get_wl_manual(void)
 {
-	return wl_type_manual;
+	return wl_manual;
 }
-EXPORT_SYMBOL_GPL(get_wl_type_manual);
+EXPORT_SYMBOL_GPL(get_wl_manual);
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 void update_wl_tbl(unsigned int cpu)
@@ -338,36 +353,36 @@ void update_wl_tbl(unsigned int cpu)
 		if (last_jiffies !=  tmp_jiffies) {
 			last_jiffies =  tmp_jiffies;
 			spin_unlock(&update_wl_tbl_lock);
-			if (wl_type_manual == -1)
+			if (wl_manual == -1)
 				tmp = get_wl(0);
 			else
-				tmp = wl_type_manual;
-			if (tmp >= 0 && tmp < nr_wl_type)
-				wl_type_curr = tmp;
-			if (last_wl_type != wl_type_curr && wl_type_curr >= 0
-					&& wl_type_curr < nr_wl_type) {
+				tmp = wl_manual;
+			if (tmp >= 0 && tmp < nr_wl)
+				wl_curr = tmp;
+			if (last_wl != wl_curr && wl_curr >= 0
+					&& wl_curr < nr_wl) {
 				int i, j;
 
 				for (i = 0; i < pd_count; i++) {
 					for_each_cpu(j, &pd_cpumask[i])
 						WRITE_ONCE(per_cpu(cpu_scale, j),
-							pd_opp2cap(j, 0, true, wl_type_curr, NULL, true,
+							pd_opp2cap(j, 0, true, wl_curr, NULL, true,
 								DPT_CALL_UPDATE_WL_TBL));
 				}
 			}
-			last_wl_type = wl_type_curr;
-			if (trace_sugov_ext_wl_type_enabled())
-				trace_sugov_ext_wl_type(topology_cluster_id(cpu),
-						cpu, wl_type_curr);
-			if (wl_type_delay != wl_type_curr) {
-				wl_type_delay_cnt++;
-				if (wl_type_delay_cnt > wl_type_delay_update_tick) {
-					wl_type_delay_cnt = 0;
-					wl_type_delay = wl_type_curr;
-					wl_type_delay_ch_cnt++;
+			last_wl = wl_curr;
+			if (trace_sugov_ext_wl_enabled())
+				trace_sugov_ext_wl(topology_cluster_id(cpu),
+						cpu, wl_curr);
+			if (wl_delay != wl_curr) {
+				wl_delay_cnt++;
+				if (wl_delay_cnt > wl_delay_update_tick) {
+					wl_delay_cnt = 0;
+					wl_delay = wl_curr;
+					wl_delay_ch_cnt++;
 				}
 			} else
-				wl_type_delay_cnt = 0;
+				wl_delay_cnt = 0;
 		} else
 			spin_unlock(&update_wl_tbl_lock);
 	}
@@ -377,7 +392,7 @@ EXPORT_SYMBOL_GPL(update_wl_tbl);
 
 int get_curr_wl(void)
 {
-	return clamp_val(wl_type_curr, 0, nr_wl_type - 1);
+	return clamp_val(wl_curr, 0, nr_wl - 1);
 }
 EXPORT_SYMBOL_GPL(get_curr_wl);
 
@@ -390,7 +405,7 @@ EXPORT_SYMBOL_GPL(get_classify_wl);
 int get_em_wl(void)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	return clamp_val(wl_type_delay, 0, nr_wl_type - 1);
+	return clamp_val(wl_delay, 0, nr_wl - 1);
 #endif
 	return -1;
 }
@@ -451,7 +466,7 @@ void update_curr_collab_state(void)
 	int cpu = 0;
 	unsigned long cap;
 	bool need_update_capacity_orig = false;
-	int wl_type = get_em_wl();
+	int wl = get_em_wl();
 
 	if (spin_trylock(&update_dpt_lock)) {
 		unsigned long tmp_jiffies_dpt = jiffies;
@@ -483,16 +498,16 @@ void update_curr_collab_state(void)
 
 				if (!need_update_capacity_orig)
 					need_update_capacity_orig = is_bit_set(
-						wl_collab_type_mapping_mask[collab_type],wl_type);
+						wl_collab_type_mapping_mask[collab_type],wl);
 			}
 
 			/* update capacity_orig_of */
 			for_each_possible_cpu(cpu) {
 				if (need_update_capacity_orig)
-					cap = pd_opp2cap(cpu, 0, false, wl_type,
+					cap = pd_opp2cap(cpu, 0, false, wl,
 						NULL, false, DPT_CALL_UPDATE_CURR_COLLAB_STATE);
 				else
-					cap = pd_opp2cap(cpu, 0, false, wl_type,
+					cap = pd_opp2cap(cpu, 0, false, wl,
 						NULL, true, DPT_CALL_UPDATE_CURR_COLLAB_STATE);
 
 				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
@@ -652,8 +667,8 @@ EXPORT_SYMBOL_GPL(get_gear_cpumask);
 
 inline int get_eas_wl(int wl)
 {
-	if (wl < 0 || wl >= nr_wl_type)
-		wl = wl_type_curr;
+	if (wl < 0 || wl >= nr_wl)
+		wl = wl_curr;
 	return wl;
 }
 
@@ -1072,9 +1087,9 @@ unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy);
 
-unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq)
+unsigned long pd_get_freq_opp_legacy_type(int wl, unsigned int cpu, unsigned long freq)
 {
-	return pd_freq2opp(cpu, freq, true, wl_type);
+	return pd_freq2opp(cpu, freq, true, wl);
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
 
@@ -1374,7 +1389,7 @@ long *get_mtk_em_api_data(void)
 	mtk_em_api_data = kcalloc(4, sizeof(long), GFP_KERNEL);
 	mtk_em_api_data[0] = MAX_NR_CPUS;
 	mtk_em_api_data[1] = pd_count;
-	mtk_em_api_data[2] = nr_wl_type;
+	mtk_em_api_data[2] = nr_wl;
 	mtk_em_api_data[3] = (long)cpu2cluster_id;
 	return mtk_em_api_data;
 }
@@ -1516,7 +1531,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	if (ret)
 		return ret;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	nr_wl_type = mtk_mapping.total_type;
+	nr_wl = mtk_mapping.total_type;
 #endif
 
 	ret = init_dpt_io();
@@ -2047,7 +2062,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode &&
-			(wl_type_curr != 4 || grp_high_freq[gearid]))
+			(wl_curr != 4 || grp_high_freq[gearid]))
 		flt_util = group_aware_dvfs_util(cpumask);
 	if (grp_dvfs_ctrl_mode == 9)
 		flt_util = 0;
@@ -2075,7 +2090,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 }
 
 void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struct cpumask *cpumask,
-		unsigned long *next_freq, int wl_type)
+		unsigned long *next_freq, int wl)
 {
 	int orig_util = util, gearid;
 	unsigned int cpu;
