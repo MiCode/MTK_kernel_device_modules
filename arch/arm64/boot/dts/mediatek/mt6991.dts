@@ -6302,6 +6302,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mminfra-ao-base = <0x30080000>;
 			gce-ddr-sel-wla;
 			gce-fast-mtcmos;
+			cmdq-dump-buf-size = <1>;
 		};
 
 		gce_sec: gce-mbox-sec@300c0000 {
@@ -6348,6 +6349,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			axid = <0x1802>;
 			mminfra-ao-base = <0x30080000>;
 			gce-ddr-sel-wla;
+			cmdq-dump-buf-size = <1>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@30140000 {
@@ -6366,9 +6368,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			cmdq-supply = <&gce_sec>;
 			mediatek,gce-subsys = <99>, <SUBSYS_1400XXXX>;
 			mboxes = <&gce 14 0 CMDQ_THR_PRIO_1>,
-				<&gce 28 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-				<&gce 9 0 CMDQ_THR_PRIO_1>,
-				<&gce_sec 8 0 CMDQ_THR_PRIO_1>;
+				<&gce 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+				<&gce 28 0 CMDQ_THR_PRIO_1>,
+				<&gce_sec 9 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "token_user_0";
 			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
 			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
