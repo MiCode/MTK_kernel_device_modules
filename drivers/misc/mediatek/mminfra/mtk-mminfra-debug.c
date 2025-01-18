@@ -121,11 +121,11 @@ static bool mmpc_src_ctrl;
 #define	MM_INFRA_OFF		GIPC4_SETCLR_BIT_2
 #define	MM_INFRA_LOG		GIPC4_SETCLR_BIT_3
 
-#define MM_MON_CNT		(100)
+#define MM_MON_CNT		(1000)
 
 #define CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA	(27)
 
-u32 mm_pwr_cnt;
+u32 mm_pwr_cnt[MM_PWR_NR];
 u32 voter_cnt[32] = {0};
 
 static bool mminfra_check_scmi_status(void)
@@ -433,28 +433,90 @@ static int mminfra_voter_mon(void *data)
 static int mminfra_power_mon(void *data)
 {
 	void __iomem *mtcmos_addr;
+	void __iomem *mmpc_src_addr;
+	void __iomem *mmpc_hw_req_addr[MMPC_NR];
 	u32 val;
 	u32 cnt = 0;
 
-	if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
-		pr_notice("%s skip\n", __func__);
-		return 0;
-	}
-
-	mtcmos_addr = ioremap(dbg->mm_mtcmos_base, 0x4);
-	while (!kthread_should_stop()) {
-		val = readl(mtcmos_addr);
-		if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
-			mm_pwr_cnt++;//pwr on;
-		cnt++;
-		if (cnt == MM_MON_CNT) {
-			pr_notice("%s mminfra power_on ratio[%u/%u]\n",
-				__func__, mm_pwr_cnt, MM_MON_CNT);
-			mm_pwr_cnt = 0;
-			cnt = 0;
+	if (mm_pwr_ver == mm_pwr_v2) {
+		if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
+			pr_notice("%s skip\n", __func__);
+			return 0;
 		}
-		mdelay(1);
-	}
+
+		mtcmos_addr = ioremap(dbg->mm_mtcmos_base, 0x4);
+		while (!kthread_should_stop()) {
+			val = readl(mtcmos_addr);
+			if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
+				mm_pwr_cnt[MM_0]++;//pwr on;
+			cnt++;
+			if (cnt == MM_MON_CNT) {
+				pr_notice("%s mminfra power_on ratio[%u/%u]\n",
+					__func__, mm_pwr_cnt[MM_0], MM_MON_CNT);
+				mm_pwr_cnt[MM_0] = 0;
+				cnt = 0;
+			}
+			mdelay(1);
+		}
+	} else if (mm_pwr_ver == mm_pwr_v3) {
+		if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask ||
+			!dbg->mmpc_src_ctrl_base) {
+			pr_notice("%s skip\n", __func__);
+			return 0;
+		}
+
+		mmpc_src_addr = ioremap(dbg->mmpc_src_ctrl_base, 0x1000);
+		mmpc_hw_req_addr[MM_DDRSRC] = mmpc_src_addr + 0x1C;
+		mmpc_hw_req_addr[MM_EMI] = mmpc_src_addr + 0x3C;
+		mmpc_hw_req_addr[MM_BUSPLL] = mmpc_src_addr + 0x5C;
+		mmpc_hw_req_addr[MM_INFRA] = mmpc_src_addr + 0x7C;
+		mmpc_hw_req_addr[MM_CK26M] = mmpc_src_addr + 0x9C;
+		mmpc_hw_req_addr[MM_PMIC] = mmpc_src_addr + 0xBC;
+		mmpc_hw_req_addr[MM_VCORE] = mmpc_src_addr + 0xDC;
+		while (!kthread_should_stop()) {
+			val = readl(dbg->mminfra_mtcmos_base);
+			if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
+				mm_pwr_cnt[MM_0]++;//pwr on;
+
+			val = readl(dbg->mminfra_mtcmos_base + 0x4);
+			if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
+				mm_pwr_cnt[MM_1]++;//pwr on;
+
+			val = readl(dbg->mminfra_mtcmos_base + 0x8);
+			if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
+				mm_pwr_cnt[MM_AO]++;//pwr on;
+
+			cnt++;
+			if (cnt == MM_MON_CNT) {
+				pr_notice("%s mminfra power_on ratio: MM_0[%u/%u], MM_1[%u/%u], MM_AO[%u/%u]\n",
+					__func__,
+					mm_pwr_cnt[MM_0], MM_MON_CNT,
+					mm_pwr_cnt[MM_1], MM_MON_CNT,
+					mm_pwr_cnt[MM_AO], MM_MON_CNT);
+				mm_pwr_cnt[MM_0] = 0;
+				mm_pwr_cnt[MM_1] = 0;
+				mm_pwr_cnt[MM_AO] = 0;
+				cnt = 0;
+				pr_notice("%s MM_DDRSRC[0x%x] MM_EMI[0x%x] MM_BUSPLL[0x%x].\n",
+					__func__,
+					readl(mmpc_hw_req_addr[MM_DDRSRC]),
+					readl(mmpc_hw_req_addr[MM_EMI]),
+					readl(mmpc_hw_req_addr[MM_BUSPLL]));
+				pr_notice("%s MM_INFRA[0x%x] MM_CK26M[0x%x] MM_PMIC[0x%x].\n",
+					__func__,
+					readl(mmpc_hw_req_addr[MM_INFRA]),
+					readl(mmpc_hw_req_addr[MM_CK26M]),
+					readl(mmpc_hw_req_addr[MM_PMIC]));
+				pr_notice("%s MM_VCORE[0x%x].\n",
+					__func__,
+					readl(mmpc_hw_req_addr[MM_VCORE]));
+			}
+			mdelay(1);
+		}
+		iounmap(mmpc_src_addr);
+	} else
+		pr_notice("%s not supported\n", __func__);
+
 	return 0 ;
 }
 #endif
