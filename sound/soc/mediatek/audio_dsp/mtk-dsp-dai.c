@@ -26,6 +26,9 @@ static int mtk_dai_stub_compress_new(struct snd_soc_pcm_runtime *rtd, int num)
 	return 0;
 }
 
+static const struct snd_soc_dai_ops mtk_dai_dsp_driver_ops = {
+	.compress_new = mtk_dai_stub_compress_new,
+};
 
 static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 	{
@@ -60,7 +63,7 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 			.rates = MTK_I2S_RATES,
 			.formats = MTK_I2S_FORMATS,
 		},
-		.compress_new = mtk_dai_stub_compress_new,
+		.ops = &mtk_dai_dsp_driver_ops,
 	},
 	{
 		.name = "audio_task_deepbuf_dai",

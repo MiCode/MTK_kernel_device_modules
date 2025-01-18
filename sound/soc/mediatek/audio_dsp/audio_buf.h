@@ -240,7 +240,7 @@ int set_audiobuffer_attribute(struct audio_hw_buffer *audio_buf,
 void RingBuf_copyFromUserLinear(struct RingBuf *RingBuf1, void __user *buf,
 				unsigned int count);
 
-void ringbuf_copyto_user_linear(void __user *buf, struct RingBuf *RingBuf1,
+void ringbuf_copyto_user_linear(struct iov_iter *buf, struct RingBuf *RingBuf1,
 			  unsigned int count);
 #endif
 
