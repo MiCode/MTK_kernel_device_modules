@@ -5760,6 +5760,38 @@ void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,
 	}
 }
 
+void mtk_ovl_set_aod_scp_hrt(void)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *ovl_comp;
+	u32 bw_base;
+	unsigned int i, j, k;
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return;
+	}
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	bw_base = mtk_drm_primary_frame_bw(crtc);
+	memset(mtk_crtc->usage_ovl_fmt, 0,
+				sizeof(mtk_crtc->usage_ovl_fmt));
+	for (i = 0; i < OVL_LAYER_NR; i++)
+		mtk_crtc->usage_ovl_fmt[i] = 4;
+
+	for_each_comp_in_cur_crtc_path(ovl_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(ovl_comp->id) == MTK_OVL_EXDMA) {
+			mtk_ddp_comp_io_cmd(ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+			DDPMSG("AOD SCP set icc, id[%d]\n", ovl_comp->id);
+		}
+	}
+
+}
+EXPORT_SYMBOL(mtk_ovl_set_aod_scp_hrt);
 
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv)

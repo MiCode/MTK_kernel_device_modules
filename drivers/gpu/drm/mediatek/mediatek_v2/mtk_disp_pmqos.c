@@ -831,6 +831,20 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	return ret;
 }
 
+void mtk_aod_scp_set_BW(void)
+{
+	mtk_ovl_set_aod_scp_hrt();
+	mtk_vidle_hrt_bw_set(7000);
+	mtk_vidle_srt_bw_set(7000);
+	mtk_vidle_dvfs_set(5);
+	mtk_vidle_dvfs_bw_set(7000);
+	mtk_vidle_channel_bw_set(7000, 0);
+	mtk_vidle_channel_bw_set(7000, 1);
+	mtk_vidle_channel_bw_set(7000, 2);
+	mtk_vidle_channel_bw_set(7000, 3);
+}
+EXPORT_SYMBOL(mtk_aod_scp_set_BW);
+
 int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;

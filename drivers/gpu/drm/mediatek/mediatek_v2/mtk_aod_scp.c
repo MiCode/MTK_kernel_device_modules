@@ -15,6 +15,10 @@
 #include "scp.h"
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
+#include "mtk_disp_pmqos.h"
+
+
+
 
 struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
@@ -484,10 +488,15 @@ int mtk_aod_scp_doze_update(int doze)
 		return 0;
 
 	if (doze) {
-		if (aod_mmsys_id == MMSYS_MT6989) {
+		if (aod_mmsys_id == MMSYS_MT6989 ||
+			aod_mmsys_id == MMSYS_MT6991) {
 			mtkfb_set_backlight_level_AOD(1800);
+			//mtk_aod_scp_set_BW();
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
+			mtk_aod_scp_ipi_send(0);
+			mtk_aod_scp_set_semaphore_noirq(0);
+			mdelay(10000);
 		} else {
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
