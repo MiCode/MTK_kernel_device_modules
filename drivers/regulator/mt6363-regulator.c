@@ -1045,6 +1045,25 @@ static int mt6363_backup_op_setting(struct regmap *map, struct mt6363_regulator_
 	return 0;
 }
 
+/* Clear UVLO info from LK2 */
+static void pmic_clear_uvlo_info(struct regulator_dev *rdev)
+{
+	unsigned int val = 0;
+
+	val = 0x29;
+	regmap_write(rdev->regmap, MT6363_CPSWKEY, val);
+	val = 0x47;
+	regmap_write(rdev->regmap, MT6363_CPSWKEY_H, val);
+
+	val = 0;
+	regmap_write(rdev->regmap, MT6363_CPSDSA31, val);
+	regmap_write(rdev->regmap, MT6363_CPSDSA32, val);
+	regmap_write(rdev->regmap, MT6363_CPSDSA33, val);
+
+	regmap_write(rdev->regmap, MT6363_CPSWKEY, val);
+	regmap_write(rdev->regmap, MT6363_CPSWKEY_H, val);
+}
+
 static int mt6363_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_config config = {};
@@ -1088,6 +1107,7 @@ static int mt6363_regulator_probe(struct platform_device *pdev)
 			continue;
 		}
 	}
+	pmic_clear_uvlo_info(rdev);
 
 	return 0;
 }
