@@ -350,6 +350,15 @@ int slbc_disable_dcc(bool disable)
 }
 EXPORT_SYMBOL_GPL(slbc_disable_dcc);
 
+int slbc_disable_slc(bool disable)
+{
+	if (common_ops && common_ops->slbc_disable_slc)
+		return common_ops->slbc_disable_slc(disable);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_disable_slc);
+
 int slbc_get_cache_size(enum slc_ach_uid uid)
 {
 	if (common_ops && common_ops->slbc_get_cache_size)
