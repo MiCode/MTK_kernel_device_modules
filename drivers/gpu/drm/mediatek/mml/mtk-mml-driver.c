@@ -147,6 +147,7 @@ struct mml_dev {
 	bool racing_en;
 	bool dpc_disable;
 	bool v4l2_en;
+	bool smmu_en;
 
 	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
@@ -1208,19 +1209,23 @@ void mml_pw_kick_idle(struct mml_dev *mml)
  *	which represents necessary cycle (or frequency in MHz) to process
  *	pixels in this time slot (before end time from current time).
  */
-static u32 mml_calc_bw(u64 data, u32 pixel, u64 throughput)
+static u32 mml_calc_bw(struct mml_dev *mml, u64 data, u32 pixel, u64 throughput)
 {
 	/* ocucpied bw efficiency is 1.33 while accessing DRAM
 	 * also 1.3 overhead to secure ostd
 	 */
-	data = (u64)div_u64(data * 4 * throughput * 13, 3 * 10);
+
+	if (mml->smmu_en)
+		data = (u64)div_u64(data * throughput * 13, 10);
+	else
+		data = (u64)div_u64(data * 4 * throughput * 13, 3 * 10);
 	if (!pixel)
 		pixel = 1;
 
 	return max_t(u32, MML_QOS_MIN_BW, min_t(u32, div_u64(data, pixel), MML_QOS_MAX_BW));
 }
 
-static u32 mml_calc_bw_racing(u32 datasize)
+static u32 mml_calc_bw_couple(struct mml_dev *mml, u32 datasize)
 {
 	/* hrt bw: width * height * bpp * fps * 1.25 * 1.75 = HRT MB/s
 	 *
@@ -1230,7 +1235,10 @@ static u32 mml_calc_bw_racing(u32 datasize)
 	 *
 	 * so div_u64((u64)(datasize * 120 * 10 * 7) >> 3, 4 * 1000000)
 	 */
-	return (u32)div_u64((u64)datasize * 21, 80000);
+	if (mml->smmu_en)
+		return (u32)div_u64((u64)datasize * 3, 20000);
+	else
+		return (u32)div_u64((u64)datasize * 21, 80000);
 }
 
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
@@ -1252,7 +1260,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 			mtk_mml_hrt_mode == MML_HRT_OSTD_MAX ||
 			mtk_mml_hrt_mode == MML_HRT_LIMIT ||
 			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
-			bandwidth = mml_calc_bw_racing(datasize);
+			bandwidth = mml_calc_bw_couple(cfg->mml, datasize);
 			hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
 
 			if (mtk_mml_hrt_mode == MML_HRT_LIMIT && hrt_bw < mml_hrt_bound) {
@@ -1265,7 +1273,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		}
 	} else {
 		hrt = false;
-		bandwidth = mml_calc_bw(datasize, cache->max_pixel, throughput);
+		bandwidth = mml_calc_bw(cfg->mml, datasize, cache->max_pixel, throughput);
 		if ((unlikely(mml_qos & MML_QOS_FORCE_BW_MASK)))
 			bandwidth = mml_qos_force_bw;
 		hrt_bw = 0;
@@ -2031,6 +2039,7 @@ static int mml_probe(struct platform_device *pdev)
 		/* shared smmu device, setup 34bit in dts */
 		mml->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
 		mml->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+		mml->smmu_en = true;
 	} else {
 		mml->mmu_dev = dev;
 		mml->mmu_dev_sec = dev;
