@@ -5056,9 +5056,10 @@
 			"mbox3",
 			"mbox4";
 	};
-	adsp_common: adsp_common@10800000 {
-		compatible = "mediatek,adsp_common";
-		reg = <0 0x1080b000 0 0x50>, /* CFG SECURE */
+	adspsys: adspsys@10800000 {
+		compatible = "mediatek,mt6877-adspsys";
+		reg = <0 0x10800000 0 0x6000>, /* CFG */
+			<0 0x1080b000 0 0x50>, /* CFG SECURE */
 			<0 0x10806000 0 0x100>, /* MBOX0 base */
 			<0 0x10806100 0 0x4>, /* MBOX0 set */
 			<0 0x1080610c 0 0x4>, /* MBOX0 clr */
@@ -5075,7 +5076,8 @@
 			<0 0x10809100 0 0x4>, /* MBOX3 set */
 			<0 0x1080910c 0 0x4>, /* MBOX3 clr */
 			<0 0x1080b05c 0 0x4>; /* MBOX3 init */
-		reg-names = "cfg_secure",
+		reg-names = "cfg",
+			"cfg_secure",
 			"mbox0_base",
 			"mbox0_set",
 			"mbox0_clr",
@@ -5113,6 +5115,7 @@
 			"clk_top_clk26m",
 			"clk_top_adsppll",
 			"clk_top_scp_sel";
+		core-num = <1>;    /* core number */
 		adsp-rsv-ipidma-a = <0x200000>;
 		adsp-rsv-logger-a = <0x80000>;
 		adsp-rsv-dbg-dump-a = <0x80000>;
@@ -5121,16 +5124,16 @@
 	};
 
 	adsp_core0: adsp_core0@10820000 {
-		compatible = "mediatek,adsp_core_0";
-		reg = <0 0x10800000 0 0x6000>, /* CFG */
-			<0 0x10840000 0 0x9000>, /* ITCM */
+		compatible = "mediatek,mt6877-adsp_core_0";
+		reg = <0 0x10840000 0 0x9000>, /* ITCM */
 			<0 0x10820000 0 0x8000>; /* DTCM */
 		system = <0 0x56000000 0 0xA00000>;
 		interrupts = <GIC_SPI 532 IRQ_TYPE_LEVEL_HIGH 0>, /* ADSP_CIRQ_C0_IRQ_BIT */
 			<GIC_SPI 534 IRQ_TYPE_LEVEL_HIGH 0>, /* ADSP_WDT0_IRQ_BIT */
 			<GIC_SPI 536 IRQ_TYPE_LEVEL_HIGH 0>; /* ADSP2AFE_CIRQ_C0_IRQ_BIT */
-		mboxes = <&adsp_common 0>, /*channel 0*/
-			<&adsp_common 1>; /*channel 1*/
+		mboxes = <&adspsys 0>, /*channel 0*/
+			<&adspsys 1>; /*channel 1*/
+		feature-control-bits = /bits/ 64 <0xffffffffffffffff>;
 	};
 
 	dramc_ch1_rsv@10900000 {
@@ -8210,10 +8213,10 @@
 		mtk-dsp-mem-afe = <0x1 0x40000>; /* always enable */
 	};
 
-	snd_scp_ultra: snd_scp_ultra {
-		compatible = "mediatek,snd_scp_ultra";
-		scp_ultra_dl_memif_id = <0x7>;
-		scp_ultra_ul_memif_id = <0xf>;
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0xf>;
 	};
 
 	audio_sram@11212000 {
