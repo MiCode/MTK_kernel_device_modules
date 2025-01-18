@@ -4687,6 +4687,9 @@ static void process_dbg_opt(const char *opt)
 		int ret;
 		unsigned int i, j;
 		unsigned int *spr_ip_params;
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		struct device_node *node = NULL;
+		int val = 0;
 
 		DDPINFO("set spr ip start\n");
 
@@ -4700,11 +4703,24 @@ static void process_dbg_opt(const char *opt)
 
 		mtk_crtc = to_mtk_crtc(crtc);
 
-		if (!mtk_crtc->panel_ext->params->spr_params.spr_ip_params) {
-			DDPINFO("spr_ip_params is null\n");
-			return;
+		node = of_find_node_by_path("dsi0");
+		if (node)
+			if (of_property_read_u32(node, "spr-ip-type", &val))
+				DDPMSG("[E] %s %d, get spr ip type failed from dts\n", __func__, __LINE__);
+
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			DDPINFO("%s %d spr-ip-type=%d\n", __func__, __LINE__, val);
+			if (val == 0)
+				spr_ip_params = mtk_crtc->panel_ext->params->spr_params.mtk_spr_ip_params;
+			else if (val == 1)
+				spr_ip_params = mtk_crtc->panel_ext->params->spr_params.spr_ip_shrink_params;
+		} else {
+			if (!mtk_crtc->panel_ext->params->spr_params.spr_ip_params) {
+				DDPINFO("spr_ip_params is null\n");
+				return;
+			}
+			spr_ip_params = mtk_crtc->panel_ext->params->spr_params.spr_ip_params;
 		}
-		spr_ip_params = mtk_crtc->panel_ext->params->spr_params.spr_ip_params;
 
 		tmp = (char *)(opt + 11);
 		len = strlen(tmp);
