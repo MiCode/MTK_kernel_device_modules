@@ -241,6 +241,7 @@ mgk_64_device_modules = [
     "drivers/mfd/mt6360-core.ko",
     "drivers/mfd/mt6370.ko",
     "drivers/mfd/mt6375.ko",
+    "drivers/mfd/mt6379s.ko",
     "drivers/mfd/mt6397.ko",
     "drivers/mfd/mt63xx-debug.ko",
     "drivers/mfd/mt6681-core.ko",
