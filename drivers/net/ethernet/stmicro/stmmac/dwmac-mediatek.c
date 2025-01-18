@@ -13,6 +13,7 @@
 #include <linux/regmap.h>
 #include <linux/stmmac.h>
 
+#include "mtk_sgmii_core.h"
 #include "stmmac.h"
 #include "stmmac_platform.h"
 
@@ -77,6 +78,7 @@
 #define MT8678_MAC1_PERI_ETH_CTRL1	0x314
 #define MT8678_MAC1_PERI_ETH_CTRL2	0x318
 
+#define MT8678_SGMII_CLK_INTERNAL	BIT(29)
 #define MT8678_RMII_CLK_SRC_INTERNAL	BIT(28)
 #define MT8678_RMII_CLK_SRC_RXC		BIT(27)
 #define MT8678_ETH_INTF_SEL		GENMASK(26, 24)
@@ -112,10 +114,13 @@ struct mediatek_dwmac_plat_data {
 	const struct mediatek_dwmac_variant *variant;
 	struct mac_delay_struct mac_delay;
 	struct clk *rmii_internal_clk;
+	struct clk *sgmii_sel_clk;
+	struct clk *sgmii_sbus_sel_clk;
 	struct clk_bulk_data *clks;
 	struct regmap *peri_regmap;
 	struct device_node *np;
 	struct device *dev;
+	struct mtk_sgmii *sgmii;
 	phy_interface_t phy_mode;
 	bool rmii_clk_from_mac;
 	bool rmii_rxc;
@@ -633,6 +638,19 @@ static void eth_remove_attr(struct device *dev)
 }
 #endif
 
+static void sgmii_polling_link_status(void *vpriv)
+{
+	struct stmmac_priv *priv = vpriv;
+	struct mediatek_dwmac_plat_data *priv_plat = priv->plat->bsp_priv;
+	int ret;
+
+	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+		ret = mediatek_sgmii_polling_link_status(priv_plat->sgmii);
+		if (ret)
+			pr_err("%s: sgmii link up fail", __func__);
+	}
+}
+
 static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
 {
 	int rmii_clk_from_mac = plat->rmii_clk_from_mac ? RMII_CLK_SRC_INTERNAL : 0;
@@ -981,6 +999,7 @@ static int mt8678_set_interface(struct mediatek_dwmac_plat_data *plat)
 	int rmii_clk_from_mac = plat->rmii_clk_from_mac ? MT8678_RMII_CLK_SRC_INTERNAL : 0;
 	int rmii_rxc = plat->rmii_rxc ? MT8678_RMII_CLK_SRC_RXC : 0;
 	u32 intf_val = 0, offset_ctrl = 0;
+	int ret = 0;
 
 	if (of_device_is_compatible(plat->np, "mediatek,mt8678-gmac0"))
 		offset_ctrl = MT8678_MAC0_PERI_ETH_CTRL0;
@@ -991,16 +1010,33 @@ static int mt8678_set_interface(struct mediatek_dwmac_plat_data *plat)
 	switch (plat->phy_mode) {
 	case PHY_INTERFACE_MODE_MII:
 		intf_val |= FIELD_PREP(MT8678_ETH_INTF_SEL, PHY_INTF_MII);
+		intf_val |= MT8678_EXT_PHY_MODE;
 		break;
 	case PHY_INTERFACE_MODE_RMII:
 		intf_val |= (rmii_rxc | rmii_clk_from_mac);
 		intf_val |= FIELD_PREP(MT8678_ETH_INTF_SEL, PHY_INTF_RMII);
+		intf_val |= MT8678_EXT_PHY_MODE;
 		break;
 	case PHY_INTERFACE_MODE_RGMII:
 	case PHY_INTERFACE_MODE_RGMII_TXID:
 	case PHY_INTERFACE_MODE_RGMII_RXID:
 	case PHY_INTERFACE_MODE_RGMII_ID:
 		intf_val |= FIELD_PREP(MT8678_ETH_INTF_SEL, PHY_INTF_RGMII);
+				intf_val |= MT8678_EXT_PHY_MODE;
+		break;
+	case PHY_INTERFACE_MODE_SGMII:
+		intf_val |= MT8678_SGMII_CLK_INTERNAL;
+
+		plat->sgmii = devm_kzalloc(plat->dev, sizeof(*plat->sgmii),
+					   GFP_KERNEL);
+		if (!plat->sgmii)
+			return -ENOMEM;
+
+		ret = mediatek_sgmii_init(plat->sgmii, plat->np, plat->dev);
+		if (ret) {
+			dev_err(plat->dev, "SGMII init failed\n");
+			return -EINVAL;
+		}
 		break;
 	default:
 		dev_err(plat->dev, "phy interface not supported\n");
@@ -1221,6 +1257,19 @@ static int mediatek_dwmac_clk_init(struct mediatek_dwmac_plat_data *plat)
 		plat->rmii_internal_clk = NULL;
 	}
 
+	if (plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+		plat->sgmii_sel_clk = devm_clk_get(plat->dev, "sgmii_sel");
+		if (IS_ERR(plat->sgmii_sel_clk))
+			ret = PTR_ERR(plat->sgmii_sel_clk);
+
+		plat->sgmii_sbus_sel_clk = devm_clk_get(plat->dev, "sgmii_sbus_sel");
+		if (IS_ERR(plat->sgmii_sbus_sel_clk))
+			ret = PTR_ERR(plat->sgmii_sbus_sel_clk);
+	} else {
+		plat->sgmii_sel_clk = NULL;
+		plat->sgmii_sbus_sel_clk = NULL;
+	}
+
 	return ret;
 }
 
@@ -1267,7 +1316,21 @@ static int mediatek_dwmac_clks_config(void *priv, bool enabled)
 			dev_err(plat->dev, "failed to enable rmii internal clk, err = %d\n", ret);
 			return ret;
 		}
+
+		ret = clk_prepare_enable(plat->sgmii_sel_clk);
+		if (ret) {
+			dev_err(plat->dev, "failed to enable sgmii_sel clk, err = %d\n", ret);
+			return ret;
+		}
+
+		ret = clk_prepare_enable(plat->sgmii_sbus_sel_clk);
+		if (ret) {
+			dev_err(plat->dev, "failed to enable sgmii_sbus_sel clk, err = %d\n", ret);
+			return ret;
+		}
 	} else {
+		clk_disable_unprepare(plat->sgmii_sbus_sel_clk);
+		clk_disable_unprepare(plat->sgmii_sel_clk);
 		clk_disable_unprepare(plat->rmii_internal_clk);
 		clk_bulk_disable_unprepare(variant->num_clks, plat->clks);
 	}
@@ -1292,6 +1355,7 @@ static int mediatek_dwmac_common_data(struct platform_device *pdev,
 	plat->bsp_priv = priv_plat;
 	plat->init = mediatek_dwmac_init;
 	plat->clks_config = mediatek_dwmac_clks_config;
+	plat->sgmii_polling_link_status = sgmii_polling_link_status;
 
 	plat->safety_feat_cfg = devm_kzalloc(&pdev->dev,
 					     sizeof(*plat->safety_feat_cfg),
@@ -1363,6 +1427,14 @@ static int mediatek_dwmac_probe(struct platform_device *pdev)
 	ret = mediatek_dwmac_clks_config(priv_plat, true);
 	if (ret)
 		goto err_remove_config_dt;
+
+	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+		ret = mediatek_sgmii_path_setup(priv_plat->sgmii);
+		if (ret) {
+			dev_err(priv_plat->dev, "failed to set sgmii path, err = %d\n", ret);
+			goto err_remove_config_dt;
+		}
+	}
 
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
 	if (ret)
