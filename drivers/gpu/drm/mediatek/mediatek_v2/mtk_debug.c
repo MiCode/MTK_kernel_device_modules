@@ -2688,10 +2688,14 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 static bool is_comp_addr(uint32_t addr, struct mtk_ddp_comp *comp)
 {
 	uint32_t range = 0x1000;
+	uint32_t offset = 0x0;
 
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
 		range = 0x2000;
-	if (addr >= comp->regs_pa && addr < comp->regs_pa + range)
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR)
+		offset = 0x10000;
+	if (addr >= (comp->regs_pa + offset) &&
+		addr < (comp->regs_pa + offset + range))
 		return true;
 	return false;
 }
