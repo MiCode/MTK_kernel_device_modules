@@ -523,9 +523,15 @@ static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request
 	return 0;
 }
 
+static int mtk_clk_mux_determine_rate_dummy(struct clk_hw *hw, struct clk_rate_request *req)
+{
+	return 0;
+}
+
 const struct clk_ops mtk_mux_ops = {
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_ops);
 
@@ -533,12 +539,14 @@ EXPORT_SYMBOL_GPL(mtk_mux_ops);
 const struct clk_ops mtk_mux_clr_set_ops = {
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_clr_set_ops);
 
 const struct clk_ops mtk_mux_clr_set_upd_ops = {
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_clr_set_upd_ops);
 
@@ -548,6 +556,7 @@ const struct clk_ops mtk_mux_gate_ops = {
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_ops);
 
@@ -567,6 +576,7 @@ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_clr_set_upd_ops);
 
@@ -576,6 +586,7 @@ const struct clk_ops mtk_hwv_mux_ops = {
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_hwv_mux_ops);
 
@@ -604,6 +615,7 @@ const struct clk_ops mtk_ipi_mux_ops = {
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_ipi_mux_ops);
 
