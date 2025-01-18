@@ -7448,7 +7448,6 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		break;
 	}
 	case  ISP_SET_SEC_DAPC_REG:
-		pr_info("ISP_SET_SEC_DAPC_REG = %d\n", ISP_SET_SEC_DAPC_REG);
 		if (copy_from_user(
 		    Dapc_Reg,
 		    (void *)Param,
@@ -7531,162 +7530,131 @@ EXIT:
  *
  *****************************************************************************/
 static int compat_get_isp_read_register_data(
-	struct compat_ISP_REG_IO_STRUCT __user *data32,
-	struct ISP_REG_IO_STRUCT __user *data)
+	unsigned long arg,
+	struct compat_ISP_REG_IO_STRUCT *data32,
+	struct ISP_REG_IO_STRUCT *data)
 {
-	compat_uint_t count;
-	compat_uptr_t uptr;
-	int err = 0;
+	long ret = 0;
 
-	err = get_user(uptr, &data32->pData);
-	err |= put_user(compat_ptr(uptr), &data->pData);
-	err |= get_user(count, &data32->Count);
-	err |= put_user(count, &data->Count);
-	return err;
+	ret = (long)copy_from_user(data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_ISP_REG_IO_STRUCT));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->Count = data32->Count;
+	data->pData = compat_ptr(data32->pData);
+
+	return ret;
 }
 
 static int compat_put_isp_read_register_data(
-	struct compat_ISP_REG_IO_STRUCT __user *data32,
-	struct ISP_REG_IO_STRUCT __user *data)
+	unsigned long arg,
+	struct compat_ISP_REG_IO_STRUCT *data32,
+	struct ISP_REG_IO_STRUCT *data)
 {
-	compat_uint_t count;
-	/*      compat_uptr_t uptr;*/
-	int err = 0;
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(compat_ptr(uptr),     &data->pData); */
-	/* err |= put_user(uptr, &data32->pData); */
-	err |= get_user(count, &data->Count);
-	err |= put_user(count, &data32->Count);
-	return err;
+	long ret = 0;
+
+	data32->Count = data->Count;
+
+	if (copy_to_user(compat_ptr(arg), data32,
+		sizeof(struct compat_ISP_REG_IO_STRUCT)) != 0) {
+		LOG_INF("copy_to_user failed\n");
+		ret = -EFAULT;
+	}
+
+	return ret;
 }
 
-
-
-
-
 static int compat_get_isp_buf_ctrl_struct_data(
-	struct compat_ISP_BUFFER_CTRL_STRUCT __user *data32,
-	struct ISP_BUFFER_CTRL_STRUCT __user *data)
+	unsigned long arg,
+	struct compat_ISP_BUFFER_CTRL_STRUCT *data32,
+	struct ISP_BUFFER_CTRL_STRUCT *data)
 {
-	compat_uint_t tmp, tmp2, tmp3;
-	compat_uptr_t uptr;
-	int err = 0;
+	long ret = 0;
 
-	err = get_user(tmp, &data32->ctrl);
-	err |= put_user(tmp, &data->ctrl);
-	err |= get_user(tmp2, &data32->module);
-	err |= put_user(tmp2, &data->module);
-	err |= get_user(tmp3, &data32->buf_id);
-	err |= put_user(tmp3, &data->buf_id);
-	err |= get_user(uptr, &data32->data_ptr);
-	err |= put_user(compat_ptr(uptr), &data->data_ptr);
-	err |= get_user(uptr, &data32->ex_data_ptr);
-	err |= put_user(compat_ptr(uptr), &data->ex_data_ptr);
-	err |= get_user(uptr, &data32->pExtend);
-	err |= put_user(compat_ptr(uptr), &data->pExtend);
+	ret = (long)copy_from_user(data32, compat_ptr(arg),
+			(unsigned long)sizeof(struct compat_ISP_BUFFER_CTRL_STRUCT));
 
-	return err;
+	if (ret != 0L) {
+		LOG_INF("Copy data to user failed!\n");
+		return ret;
+	}
+	data->ctrl = data32->ctrl;
+	data->module = data32->module;
+	data->buf_id = data32->buf_id;
+	data->data_ptr = compat_ptr(data32->data_ptr);
+	data->ex_data_ptr = compat_ptr(data32->ex_data_ptr);
+	data->pExtend = compat_ptr(data32->pExtend);
+	return ret;
 }
 
 static int compat_put_isp_buf_ctrl_struct_data(
-	struct compat_ISP_BUFFER_CTRL_STRUCT __user *data32,
-	struct ISP_BUFFER_CTRL_STRUCT __user *data)
+	unsigned long arg,
+	struct compat_ISP_BUFFER_CTRL_STRUCT  *data32,
+	struct ISP_BUFFER_CTRL_STRUCT *data)
 {
-	compat_uint_t tmp, tmp2, tmp3;
-	/*      compat_uptr_t uptr;*/
-	int err = 0;
+	long ret = 0;
 
-	err = get_user(tmp, &data->ctrl);
-	err |= put_user(tmp, &data32->ctrl);
-	err |= get_user(tmp2, &data->module);
-	err |= put_user(tmp2, &data32->module);
-	err |= get_user(tmp3, &data->buf_id);
-	err |= put_user(tmp3, &data32->buf_id);
-	/* Assume data pointer is unchanged. */
-	/* err |= get_user(compat_ptr(uptr), &data->data_ptr); */
-	/* err |= put_user(uptr, &data32->data_ptr); */
-	/* err |= get_user(compat_ptr(uptr), &data->ex_data_ptr); */
-	/* err |= put_user(uptr, &data32->ex_data_ptr); */
-	/* err |= get_user(compat_ptr(uptr), &data->pExtend); */
-	/* err |= put_user(uptr, &data32->pExtend); */
+	data32->ctrl = data->ctrl;
+	data32->module = data->module;
+	data32->buf_id = data->buf_id;
 
-	return err;
-}
-
-static int compat_get_isp_ref_cnt_ctrl_struct_data(
-	struct compat_ISP_REF_CNT_CTRL_STRUCT __user *data32,
-	struct ISP_REF_CNT_CTRL_STRUCT __user *data)
-{
-	compat_uint_t tmp, tmp2;
-	compat_uptr_t uptr;
-	int err = 0;
-
-	err = get_user(tmp, &data32->ctrl);
-	err |= put_user(tmp, &data->ctrl);
-	err |= get_user(tmp2, &data32->id);
-	err |= put_user(tmp2, &data->id);
-	err |= get_user(uptr, &data32->data_ptr);
-	err |= put_user(compat_ptr(uptr), &data->data_ptr);
-
-	return err;
-}
-
-static int compat_put_isp_ref_cnt_ctrl_struct_data(
-	struct compat_ISP_REF_CNT_CTRL_STRUCT __user *data32,
-	struct ISP_REF_CNT_CTRL_STRUCT __user *data)
-{
-	compat_uint_t tmp, tmp2;
-	/*      compat_uptr_t uptr;*/
-	int err = 0;
-
-	err = get_user(tmp, &data->ctrl);
-	err |= put_user(tmp, &data32->ctrl);
-	err |= get_user(tmp2, &data->id);
-	err |= put_user(tmp2, &data32->id);
-	/* Assume data pointer is unchanged. */
-	/* err |= get_user(compat_ptr(uptr), &data->data_ptr); */
-	/* err |= put_user(uptr, &data32->data_ptr); */
-
-	return err;
+	if (copy_to_user(compat_ptr(arg), data32,
+			sizeof(struct compat_ISP_BUFFER_CTRL_STRUCT)) != 0) {
+		LOG_INF("copy_to_user failed");
+		ret = -EFAULT;
+	}
+	return ret;
 }
 
 static int compat_get_isp_dump_buffer(
-	struct compat_ISP_DUMP_BUFFER_STRUCT __user *data32,
-	struct ISP_DUMP_BUFFER_STRUCT __user *data)
+	unsigned long arg,
+	struct ISP_DUMP_BUFFER_STRUCT *data)
 {
-	compat_uint_t count;
-	compat_uint_t cmd;
-	compat_uptr_t uptr;
-	int err = 0;
 
-	err = get_user(cmd, &data32->DumpCmd);
-	err |= put_user(cmd, &data->DumpCmd);
-	err |= get_user(uptr, &data32->pBuffer);
-	err |= put_user(compat_ptr(uptr), &data->pBuffer);
-	err |= get_user(count, &data32->BytesofBufferSize);
-	err |= put_user(count, &data->BytesofBufferSize);
-	return err;
+	long ret = -1;
+	struct compat_ISP_DUMP_BUFFER_STRUCT data32;
+
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_ISP_DUMP_BUFFER_STRUCT));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->DumpCmd = data32.DumpCmd;
+	data->pBuffer = compat_ptr(data32.pBuffer);
+	data->BytesofBufferSize = data32.BytesofBufferSize;
+
+	return ret;
 }
 
 static int compat_get_isp_mem_info(
-	struct compat_ISP_MEM_INFO_STRUCT __user *data32,
-	struct ISP_MEM_INFO_STRUCT __user *data)
+	unsigned long arg,
+	struct ISP_MEM_INFO_STRUCT *data)
 {
-	compat_uint_t cmd;
-	compat_uint_t mempa;
-	compat_uptr_t uptr;
-	compat_uint_t size;
-	int err = 0;
 
-	err = get_user(cmd, &data32->MemInfoCmd);
-	err |= put_user(cmd, &data->MemInfoCmd);
-	err |= get_user(mempa, &data32->MemPa);
-	err |= put_user(mempa, &data->MemPa);
-	err |= get_user(uptr, &data32->MemVa);
-	err |= put_user(compat_ptr(uptr), &data->MemVa);
-	err |= get_user(size, &data32->MemSizeDiff);
-	err |= put_user(size, &data->MemSizeDiff);
-	return err;
+	long ret = -1;
+	struct compat_ISP_MEM_INFO_STRUCT data32;
+
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(struct compat_ISP_MEM_INFO_STRUCT));
+
+	if (ret != 0L) {
+		LOG_INF("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->MemInfoCmd = data32.MemInfoCmd;
+	data->MemPa = data32.MemPa;
+	data->MemVa = compat_ptr(data32.MemVa);
+	data->MemSizeDiff = data32.MemSizeDiff;
+
+	return ret;
 }
 
 static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
@@ -7699,103 +7667,67 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 
 	switch (cmd) {
 	case COMPAT_ISP_READ_REGISTER: {
-		struct compat_ISP_REG_IO_STRUCT __user *data32;
-		struct ISP_REG_IO_STRUCT __user *data;
-
+		struct compat_ISP_REG_IO_STRUCT data32;
+		struct ISP_REG_IO_STRUCT data;
 		int err = 0;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
-
-		err = compat_get_isp_read_register_data(data32, data);
-		if (err) {
-			pr_info("compat_get_isp_read_register_data error!!!\n");
+		err = compat_get_isp_read_register_data(arg, &data32, &data);
+		if (err != 0L) {
+			LOG_INF("compat_get_isp_read_register_data error!!!\n");
 			return err;
 		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_READ_REGISTER,
-			(unsigned long)data);
-		err = compat_put_isp_read_register_data(data32, data);
-		if (err) {
-			pr_info("compat_put_isp_read_register_data error!!!\n");
+
+		ret = ISP_ReadReg(&data);
+
+		err = compat_put_isp_read_register_data(arg, &data32, &data);
+		if (err != 0L) {
+			LOG_INF("compat_put_isp_read_register_data error!!!\n");
 			return err;
 		}
 		return ret;
 	}
 	case COMPAT_ISP_WRITE_REGISTER: {
-		struct compat_ISP_REG_IO_STRUCT __user *data32;
-		struct ISP_REG_IO_STRUCT __user *data;
-
+		struct compat_ISP_REG_IO_STRUCT data32;
+		struct ISP_REG_IO_STRUCT data;
 		int err = 0;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
-
-		err = compat_get_isp_read_register_data(data32, data);
-		if (err) {
-			pr_info("COMPAT_ISP_WRITE_REGISTER error!!!\n");
+		err = compat_get_isp_read_register_data(arg, &data32, &data);
+		if (err != 0L) {
+			LOG_INF("COMPAT_ISP_WRITE_REGISTER error!!!\n");
 			return err;
 		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_WRITE_REGISTER,
-			(unsigned long)data);
+
+		ret = ISP_WriteReg(&data);
+
 		return ret;
 	}
 	case COMPAT_ISP_BUFFER_CTRL: {
-		struct compat_ISP_BUFFER_CTRL_STRUCT __user *data32;
-		struct ISP_BUFFER_CTRL_STRUCT __user *data;
+		struct compat_ISP_BUFFER_CTRL_STRUCT data32;
+		struct ISP_BUFFER_CTRL_STRUCT data;
 
 		int err = 0;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
+		err = compat_get_isp_buf_ctrl_struct_data(arg, &data32, &data);
 
-		err = compat_get_isp_buf_ctrl_struct_data(data32, data);
-		if (err)
-			return err;
-
-		if (err) {
-			pr_info("compat_get_isp_buf_ctrl error!!!\n");
+		if (err != 0L) {
+			LOG_INF(
+				"compat_get_isp_buf_ctrl_struct_data error!!!\n");
 			return err;
 		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_BUFFER_CTRL,
-			(unsigned long)data);
-		err = compat_put_isp_buf_ctrl_struct_data(data32, data);
 
-		if (err) {
-			pr_info("compat_put_isp_buf_ctrl error!!!\n");
+		ret = ISP_Buf_CTRL_FUNC((unsigned long)&data);
+
+		err = compat_put_isp_buf_ctrl_struct_data(arg, &data32, &data);
+
+		if (err != 0L) {
+			LOG_INF(
+				"compat_put_isp_buf_ctrl_struct_data error!!!\n");
 			return err;
 		}
 		return ret;
-
 	}
 	case COMPAT_ISP_REF_CNT_CTRL: {
-		struct compat_ISP_REF_CNT_CTRL_STRUCT __user *data32;
-		struct ISP_REF_CNT_CTRL_STRUCT __user *data;
-
-		int err = 0;
-
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
-
-		err = compat_get_isp_ref_cnt_ctrl_struct_data(data32, data);
-		if (err) {
-			pr_info("compat_get_isp_ref_cnt_ctrl error!!!\n");
-			return err;
-		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_REF_CNT_CTRL,
-			(unsigned long)data);
-		err = compat_put_isp_ref_cnt_ctrl_struct_data(data32, data);
-		if (err) {
-			pr_info("compat_put_isp_ref_cnt_ctrl_ error!!!\n");
-			return err;
-		}
+		pr_info("ISP_REF_CNT_CTRL is not supported.\n");
 		return ret;
 	}
 	case COMPAT_ISP_DEBUG_FLAG: {
@@ -7861,41 +7793,33 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 		return ret;
 	}
 	case COMPAT_ISP_DUMP_BUFFER: {
-		struct compat_ISP_DUMP_BUFFER_STRUCT __user *data32;
-		struct ISP_DUMP_BUFFER_STRUCT __user *data;
-
+		struct ISP_DUMP_BUFFER_STRUCT data;
 		int err = 0;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
-
-		err = compat_get_isp_dump_buffer(data32, data);
+		err = compat_get_isp_dump_buffer(arg, &data);
 		if (err) {
-			pr_info("COMPAT_ISP_DUMP_BUFFER error!!!\n");
+			LOG_INF("COMPAT_ISP_DUMP_BUFFER error!!!\n");
 			return err;
 		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_DUMP_BUFFER,
-			(unsigned long)data);
+
+		ret = filp->f_op->unlocked_ioctl(filp,
+			ISP_DUMP_BUFFER,
+			(unsigned long)&data);
 		return ret;
 	}
 	case COMPAT_ISP_SET_MEM_INFO: {
-		struct compat_ISP_MEM_INFO_STRUCT __user *data32;
-		struct ISP_MEM_INFO_STRUCT __user *data;
+		struct ISP_MEM_INFO_STRUCT data;
 		int err = 0;
 
-		data32 = compat_ptr(arg);
-		data = compat_alloc_user_space(sizeof(*data));
-		if (data == NULL)
-			return -EFAULT;
-		err = compat_get_isp_mem_info(data32, data);
+		err = compat_get_isp_mem_info(arg, &data);
 		if (err) {
-			pr_info("COMPAT_ISP_SET_MEM_INFO error!!!\n");
+			LOG_INF("COMPAT_DIP_SET_MEM_INFO error!!!\n");
 			return err;
 		}
-		ret = filp->f_op->unlocked_ioctl(filp, ISP_SET_MEM_INFO,
-			(unsigned long)data);
+
+		ret = filp->f_op->unlocked_ioctl(filp,
+			ISP_SET_MEM_INFO,
+			(unsigned long)&data);
 		return ret;
 	}
 	case ISP_GET_DUMP_INFO:
@@ -8475,7 +8399,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case UNI_A_BASE_HW:
 		if (length > ISP_REG_RANGE) {
 			LOG_INF(
-				"mmap range error :module(0x%x) length(0x%lx), ISP_REG_RANGE(0x%lx)!\n",
+				"mmap range error :module(0x%x) length(0x%lx), ISP_REG_RANGE(0x%x)!\n",
 				pfn, length, ISP_REG_RANGE);
 			return -EAGAIN;
 		}
@@ -8483,7 +8407,7 @@ static signed int ISP_mmap(struct file *pFile, struct vm_area_struct *pVma)
 	case DIP_A_BASE_HW:
 		if (length > ISP_REG_PER_DIP_RANGE) {
 			LOG_INF(
-				"mmap range error :module(0x%x),length(0x%lx), ISP_REG_PER_DIP_RANGE(0x%lx)!\n",
+				"mmap range error :module(0x%x),length(0x%lx), ISP_REG_PER_DIP_RANGE(0x%x)!\n",
 				pfn, length, ISP_REG_PER_DIP_RANGE);
 			return -EAGAIN;
 		}
