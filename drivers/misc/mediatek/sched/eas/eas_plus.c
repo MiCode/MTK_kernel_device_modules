@@ -291,6 +291,8 @@ int pd_get_efficient_state_opp(struct em_perf_domain *pd, int cpu,
 	return opp;
 }
 
+DEFINE_PER_CPU(cpumask_var_t, em_energy_mask);
+
 static inline
 unsigned long estimate_energy(struct em_perf_domain *pd,
 		int opp, unsigned long sum_util, struct energy_env *eenv,
@@ -309,6 +311,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	unsigned int mtk_em, get_lkg;
 	unsigned long output[MAX_NR_CPUS + 4] = {0};
 	unsigned long data[4] = {0};
+	struct cpumask *cpus = this_cpu_cpumask_var_ptr(em_energy_mask);
 
 	this_cpu = cpu = cpumask_first(to_cpumask(pd->cpus));
 
@@ -334,14 +337,15 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	get_lkg = 0;
 #endif
 
-	cpumask_and(pd_cpus, pd_cpus, cpu_online_mask);
+	cpumask_and(cpus, pd_cpus, cpu_online_mask);
+
 	data[0] = sum_util;
 	data[1] = extern_volt;
 	data[2] = cap;
 	data[3] = scale_cpu;
 	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl,
 		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
-		this_cpu, cpu_temp, opp, pd_cpus->bits[0],
+		this_cpu, cpu_temp, opp, cpus->bits[0],
 		data, output);
 
 	if (get_lkg) {
