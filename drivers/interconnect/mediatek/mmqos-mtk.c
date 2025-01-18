@@ -2688,8 +2688,10 @@ static int mmqos_debug_set_ftrace(const char *val,
 	ftrace_ena = ena;
 	if (mmqos_state & VCP_ENABLE) {
 		if (ena) {
-			kthr = kthread_run(
-				mmqos_dbg_ftrace_thread, NULL, "mmqos-dbg-ftrace");
+			MMQOS_DBG("enable");
+			if (!kthr)
+				kthr = kthread_run(
+					mmqos_dbg_ftrace_thread, NULL, "mmqos-dbg-ftrace");
 		} else {
 			MMQOS_DBG("disable");
 			if (kthr) {
