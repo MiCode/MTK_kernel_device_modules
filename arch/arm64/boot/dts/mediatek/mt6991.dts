@@ -12777,7 +12777,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mediatek,imgsys-ddr-en = <4>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
-			#if 0
+			#if 1
 			imgsys-supply = <&gce_m_sec>;
 			#endif
 			mboxes =
@@ -12802,9 +12802,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* qos thread */
-					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* secure thread */
-					//<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 					/* thread list end */
 				traw-cq-thread0-frame-done =
 					/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
