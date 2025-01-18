@@ -13344,8 +13344,10 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			}
 		}
 	}
-
-	cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
+	if (priv->data->mmsys_id == MMSYS_MT6768)
+		DDPINFO("skip reset ovl for legacy chip\n");
+	else
+		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
 
 	/* BW monitor: Read and Save BW info */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
