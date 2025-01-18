@@ -438,15 +438,22 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	unsigned long energy, extern_volt = 0;
 	unsigned long dsu_volt, pd_volt = 0, gear_volt = 0;
 	int dst_idx, shared_buck_mode;
+	unsigned long pd_freq = 0, gear_freq, floor_freq, scale_cpu;
+
+	floor_freq = per_cpu(min_freq, pd_idx);
+	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
 	if (dst_cpu >= 0)
 		busy_time = min(eenv->pds_cap[pd_idx], busy_time + eenv->task_busy_time);
 
 	if (eenv->wl_support) {
+		if (share_buck.gear_idx == eenv->gear_idx) {
+			if (!pd_freq)
+				pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
+						eenv->pds_cpu_cap[pd_idx], scale_cpu);
 
-		if (share_buck.gear_idx == eenv->gear_idx)
-			dsu_volt = update_dsu_status(eenv, pd_cpus, pd_max_util, dst_cpu);
-		else
+			dsu_volt = update_dsu_status(eenv, pd_freq, floor_freq, pd_idx, dst_cpu);
+		} else
 			dsu_volt = 0;
 
 		extern_volt = dsu_volt;
@@ -455,11 +462,16 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		pd_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, pd_max_util);
+		if (!pd_freq)
+			pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
+					eenv->pds_cpu_cap[pd_idx], scale_cpu);
+		pd_volt = pd_get_volt_wFloor_Freq(pd_idx, pd_freq, eenv->wl_type, floor_freq);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
-		gear_volt = pd_get_util_volt_wFloor_Freq(eenv, pd_cpus, gear_max_util);
+		gear_freq = pd_get_util_cpufreq(eenv, pd_cpus, gear_max_util,
+				eenv->pds_cpu_cap[pd_idx], scale_cpu);
+		gear_volt = pd_get_volt_wFloor_Freq(pd_idx, gear_freq, eenv->wl_type, floor_freq);
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
@@ -538,6 +550,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	int dst_idx;
 	int pd_idx = cpumask_first(pd_cpus);
 	unsigned long total_util;
+	unsigned long share_buck_freq, floor_freq;
 
 	cpu_pwr = mtk_compute_energy_cpu(eenv, pd, pd_cpus, p, dst_cpu);
 
@@ -623,8 +636,13 @@ calc_sharebuck_done:
 
 	gear_idx = eenv->gear_idx;
 	eenv->gear_idx = share_buck.gear_idx;
-	dsu_extern_volt = pd_get_util_volt_wFloor_Freq(eenv, share_buck.cpus,
-			eenv->gear_max_util[share_buck.gear_idx][dst_idx]);
+	pd_idx = cpumask_first(share_buck.cpus);
+	share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
+			eenv->gear_max_util[share_buck.gear_idx][dst_idx],
+			eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+	floor_freq = per_cpu(min_freq, pd_idx);
+	dsu_extern_volt = pd_get_volt_wFloor_Freq(cpumask_first(share_buck.cpus),
+			share_buck_freq, eenv->wl_type, floor_freq);
 	eenv->gear_idx = gear_idx;
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
