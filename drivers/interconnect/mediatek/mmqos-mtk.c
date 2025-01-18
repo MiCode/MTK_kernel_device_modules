@@ -44,6 +44,10 @@
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
 
+#if !defined(UINT64_MAX)
+#define UINT64_MAX ((uint64_t)0xFFFFFFFFFFFFFFFFULL)
+#endif
+
 #define SHIFT_ROUND(a, b)	((((a) - 1) >> (b)) + 1)
 #define icc_to_MBps(x)		div_u64((x), 1000)
 #define MASK_8(a)		((a) & 0xff)
@@ -138,12 +142,14 @@ struct chn_bw_record {
 
 struct larb_port_bw_record {
 	u8 idx[MAX_RECORD_LARB_NUM];
-	u64 time[MAX_RECORD_LARB_NUM][RECORD_NUM];
-	u32 port_id[MAX_RECORD_LARB_NUM][RECORD_NUM];
-	u32 avg_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
-	u32 peak_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
-	u32 mix_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
-	u8 ostdl[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u64 time[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 port_id[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 avg_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 peak_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 mix_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u8 ostdl[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u8 larb_port_cnt[MAX_RECORD_LARB_NUM][MMQOS_MAX_LARB_PORT_NUM];
+	u8 was_hrt[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
 };
 
 struct comm_port_bw_record *comm_port_bw_rec;
@@ -158,6 +164,7 @@ struct larb_port_node {
 	u8 channel;
 	bool is_max_ostd;
 	bool is_write;
+	bool was_hrt;
 };
 
 struct mtk_mmqos {
@@ -887,18 +894,48 @@ static void record_chn_bw(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w, u32 hr
 	chn_bw_rec->idx[comm_id][chnn_id] = (idx + 1) % RECORD_NUM;
 }
 
-static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw, u32 peak_bw, u32 mix_bw, u8 ostdl)
+static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw,
+	u32 peak_bw, u32 mix_bw, u8 ostdl, bool was_hrt)
 {
-	u32 idx;
+	u32 idx, old_idx;
 
 	idx = larb_port_bw_rec->idx[larb_id];
+	old_idx = idx;
+
+	if (was_hrt && larb_port_bw_rec->larb_port_cnt[larb_id][port_id] > 1) {
+		u64 min_time = UINT64_MAX;
+		u32 idx_list[RECORD_NUM_LARB_PORT], idx_cnt = 0;
+
+		for (int i = 0; i < RECORD_NUM_LARB_PORT; i++) {
+			if (larb_port_bw_rec->port_id[larb_id][i] == port_id
+				&& idx_cnt < RECORD_NUM_LARB_PORT)
+				idx_list[idx_cnt++] = i;
+		}
+		for (int i = 0; i < idx_cnt; i++) {
+			if (min_time > larb_port_bw_rec->time[larb_id][idx_list[i]]) {
+				min_time = larb_port_bw_rec->time[larb_id][idx_list[i]];
+				idx = idx_list[i];
+			}
+		}
+		larb_port_bw_rec->larb_port_cnt[larb_id][port_id]--;
+	} else if (larb_port_bw_rec->was_hrt[larb_id][idx]) {
+		while (larb_port_bw_rec->was_hrt[larb_id][idx] && idx < RECORD_NUM_LARB_PORT) {
+			idx = (idx + 1) % RECORD_NUM_LARB_PORT;
+			if (old_idx == idx)
+				break;
+		}
+	}
+
 	larb_port_bw_rec->time[larb_id][idx] = sched_clock();
 	larb_port_bw_rec->port_id[larb_id][idx] = port_id;
 	larb_port_bw_rec->avg_bw[larb_id][idx] = avg_bw;
 	larb_port_bw_rec->peak_bw[larb_id][idx] = peak_bw;
 	larb_port_bw_rec->mix_bw[larb_id][idx] = mix_bw;
 	larb_port_bw_rec->ostdl[larb_id][idx] = ostdl;
-	larb_port_bw_rec->idx[larb_id] = (idx + 1) % RECORD_NUM;
+	larb_port_bw_rec->was_hrt[larb_id][idx] = was_hrt;
+	if (was_hrt)
+		larb_port_bw_rec->larb_port_cnt[larb_id][port_id]++;
+	larb_port_bw_rec->idx[larb_id] = (idx + 1) % RECORD_NUM_LARB_PORT;
 }
 
 void update_channel_bw(const u32 comm_id, const u32 chnn_id,
@@ -1186,11 +1223,14 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		}
 #endif
 		if (mmqos_state & OSTD_ENABLE) {
+			if (src->peak_bw)
+				larb_port_node->was_hrt = true;
 			record_larb_port_bw_ostdl(MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
 				icc_to_MBps(src->v2_mix_bw),
-				value);
+				value,
+				larb_port_node->was_hrt);
 			if (mmqos_state & REAL_TIME_PERM_ENABLE) {
 				if (larb_port_node->base->icc_node->peak_bw)
 					mtk_smi_set_hrt_perm(larb_node->larb_dev,
@@ -1385,10 +1425,11 @@ static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
 		larb_port_bw_rec->ostdl[larb_id][i] == 0)
 		return;
 
-	mmqos_debug_dump_line(file, "[%5llu.%06llu] larb%2d port%2d %8d %8d %8d %8d\n",
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] larb%2d port%2d %s %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		larb_id,
 		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
 		larb_port_bw_rec->avg_bw[larb_id][i],
 		larb_port_bw_rec->peak_bw[larb_id][i],
 		larb_port_bw_rec->mix_bw[larb_id][i],
@@ -1401,16 +1442,17 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 	u32 i, start;
 	s32 len = 0, ret = 0;
 	char	buf[MAX_BUF_LEN] = {0};
+	bool record = false;
 
 	start = larb_port_bw_rec->idx[larb_id];
 
 	ret = snprintf(buf + len, MAX_BUF_LEN - len,
-		"larb%2d ", larb_id);
+		"[mmqos] larb%2d ", larb_id);
 	if (ret < 0)
 		pr_notice("Failed to print larb id");
 	len += ret;
 
-	for (i = start; i < RECORD_NUM; i++) {
+	for (i = start; i < RECORD_NUM_LARB_PORT; i++) {
 		ts = larb_port_bw_rec->time[larb_id][i];
 		rem_nsec = do_div(ts, 1000000000);
 
@@ -1418,12 +1460,13 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 			larb_port_bw_rec->port_id[larb_id][i] == 0 &&
 			larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
 			larb_port_bw_rec->peak_bw[larb_id][i] == 0)
-			return;
+			break;
 
 		ret = snprintf(buf + len, MAX_BUF_LEN - len,
-			"[%5llu.%06llu] port%2d %8d %8d ",
+			"[%5llu.%06llu] port%2d %s %8d %8d ",
 			(u64)ts, rem_nsec / 1000,
 			larb_port_bw_rec->port_id[larb_id][i],
+			larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
 			larb_port_bw_rec->avg_bw[larb_id][i],
 			larb_port_bw_rec->peak_bw[larb_id][i]);
 		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
@@ -1432,6 +1475,7 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
 		}
 		len += ret;
+		record = true;
 	}
 	for (i = 0; i < start; i++) {
 		ts = larb_port_bw_rec->time[larb_id][i];
@@ -1444,9 +1488,10 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 			return;
 
 		ret = snprintf(buf + len, MAX_BUF_LEN - len,
-			"[%5llu.%06llu] port%2d %8d %8d ",
+			"[%5llu.%06llu] port%2d %s %8d %8d ",
 			(u64)ts, rem_nsec / 1000,
 			larb_port_bw_rec->port_id[larb_id][i],
+			larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
 			larb_port_bw_rec->avg_bw[larb_id][i],
 			larb_port_bw_rec->peak_bw[larb_id][i]);
 		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
@@ -1455,8 +1500,10 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
 		}
 		len += ret;
+		record = true;
 	}
-	pr_notice("%s\n", buf);
+	if (record)
+		pr_notice("%s\n", buf);
 }
 
 static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u32 i)
@@ -1530,7 +1577,7 @@ static void larb_port_ostdl_full_dump(struct seq_file *file, u32 larb_id)
 	u32 i, start;
 
 	start = larb_port_bw_rec->idx[larb_id];
-	for (i = start; i < RECORD_NUM; i++)
+	for (i = start; i < RECORD_NUM_LARB_PORT; i++)
 		larb_port_ostdl_dump(file, larb_id, i);
 
 	for (i = 0; i < start; i++)
@@ -1645,7 +1692,7 @@ static void mmpc_subsys_hw_mode_full_dump_line(int sid)
 	u32 hw_bw = 0;
 
 	ret = snprintf(buf + len, MAX_BUF_LEN - len,
-		"sid:%d, Total HRT: %5u, SRT: %5u, ",
+		"[mmqos] sid:%d, Total HRT: %5u, SRT: %5u, ",
 		sid, read_register(SUBSYS_HW_BW_HRT(sid)),
 		read_register(SUBSYS_HW_BW_SRT(sid)));
 	if (ret < 0)
@@ -1697,7 +1744,7 @@ static void mmpc_total_bw_full_dump_line(void)
 	char buf[MAX_BUF_LEN] = {0};
 
 	ret = snprintf(buf + len, MAX_BUF_LEN - len,
-		"       Total HRT: %5u, SRT: %5u, ",
+		"[mmqos]        Total HRT: %5u, SRT: %5u, ",
 		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
 	if (ret < 0)
 		pr_notice("%s Failed to print subsys hw mode\n", __func__);
@@ -1768,7 +1815,7 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 			comm_port_bw_full_dump(file, comm_id, port_id);
 	}
 
-	seq_printf(file, "MMQoS OSTDL Dump r:%2d w:%2d   %8s %8s %8s %8s\n",
+	seq_printf(file, "MMQoS OSTDL Dump r:%2d w:%2d       %8s %8s %8s %8s\n",
 		r_hrt_ostdl, w_hrt_ostdl,
 		"avg_bw", "peak_bw", "mix_bw", "ostdl");
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
