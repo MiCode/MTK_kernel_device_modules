@@ -15,6 +15,7 @@
 #include "gpueb_ipi.h"
 #include "gpueb_helper.h"
 #include "ghpm_wrapper.h"
+#include "gpueb_common.h"
 
 #define TIMESYNC_TAG	"[GPUEB_TS]"
 
@@ -137,12 +138,18 @@ static void timesync_sync_base_internal(unsigned int flag)
 	freeze = (flag & TIMESYNC_FLAG_FREEZE) ? 1 : 0;
 	unfreeze = (flag & TIMESYNC_FLAG_UNFREEZE) ? 1 : 0;
 
+#if GPUEB_TIMESYNC_ENABLE
 	/* store latest values, sync with gpueb when pwr on */
 	latest_ts = ts;
 	latest_tick = tick;
 	latest_freeze = freeze;
 	if (!g_ghpm_support)
 		gpueb_timesync_update();
+#else
+	if (mfg0_pwr_sta() == MFG0_PWR_ON)
+		/* sync with gpueb */
+		gpueb_ts_update(freeze, tick, ts);
+#endif /* GPUEB_TIMESYNC_ENABLE */
 
 	spin_unlock_irqrestore(&timesync_ctx.lock, irq_flags);
 
