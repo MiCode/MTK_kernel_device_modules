@@ -702,9 +702,9 @@
 
 	low_battery_throttling {
 		compatible = "mediatek,low_battery_throttling";
-		hv_thd_volt = <3400>;
-		lv1_thd_volt = <3250>;
-		lv2_thd_volt = <3100>;
+		thd-volts-l = <3250 3100 2900>;
+		thd-volts-h = <3400 3250 3100>;
+		vbat-thd-enable = <1>;
 	};
 
 	cpu_power_throttling: cpu-power-throttling {
