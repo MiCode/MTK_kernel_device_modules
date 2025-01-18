@@ -4962,16 +4962,14 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 		DDP_PROFILE("[PROFILE] %s before notify end\n", __func__);
 	}
 
-	CRTC_MMP_MARK(index, dsi_resume, 1, 0);
-
-	mtk_output_dsi_enable(dsi, false);
-
-	CRTC_MMP_MARK(index, dsi_resume, 2, 0);
-
 	if (is_bdg_supported())
 		mtk_output_bdg_enable(dsi, false);
 
+	CRTC_MMP_MARK(index, dsi_resume, 1, 0);
+
 	mtk_output_dsi_enable(dsi, false);
+	CRTC_MMP_MARK(index, dsi_resume, 2, 0);
+
 	DDPINFO("%s-\n", __func__);
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		DDP_PROFILE("[PROFILE] %s after notify start\n", __func__);

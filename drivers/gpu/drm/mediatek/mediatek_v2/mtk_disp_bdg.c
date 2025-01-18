@@ -108,6 +108,7 @@ struct lcm_setting_table {
 #define BURST_MODE 3
 
 static int is_support_bdg = -1;
+static unsigned int clk_xo_id = 2; /* 6382 clk pin id: 2 internal, 6 alpha */
 static unsigned int bdg_mm_clk = MM_CLK;
 static unsigned int hs_dco_enable = 1; /* _Disable_HS_DCO_ */
 static unsigned int lp_tx_l023_enable = 1; /* _Disable_LP_TX_L023_ */
@@ -149,6 +150,14 @@ static void clk_buf_disp_ctrl(bool enable, struct mtk_dsi *dsi)
 static void bdg_config_init(struct device_node *node)
 {
 	int ret = 0;
+
+	ret = of_property_read_u32(node, "clk-xo-id", &clk_xo_id);
+	if (!ret) {
+		DDPINFO("%s: read clk_xo_id:%d,", __func__, clk_xo_id);
+	} else {
+		clk_xo_id = 2;
+		DDPINFO("%s: not find clk_xo_id, set as: %d!", __func__, clk_xo_id);
+	}
 
 	ret = of_property_read_u32(node, "bdg-mm-clk", &bdg_mm_clk);
 	if (!ret) {
@@ -5420,8 +5429,8 @@ int bdg_common_init(enum DISP_BDG_ENUM module,
 
 	/* open 26m clk */
 	if (priv->data->mmsys_id == MMSYS_MT6768) {
-		clkbuf_xo_ctrl("SET_XO_MODE", 2, 0);
-		clkbuf_xo_ctrl("SET_XO_EN_M", 2, 1);
+		clkbuf_xo_ctrl("SET_XO_MODE", clk_xo_id, 0);
+		clkbuf_xo_ctrl("SET_XO_EN_M", clk_xo_id, 1);
 	} else
 		clk_buf_disp_ctrl(true, dsi);
 	bdg_tx_pull_6382_reset_pin(dsi);
@@ -5559,8 +5568,8 @@ int bdg_common_deinit(enum DISP_BDG_ENUM module, void *cmdq, struct mtk_dsi *dsi
 	set_LDO_off(cmdq);
 	need_6382_init = 1;
 	if (priv->data->mmsys_id == MMSYS_MT6768) {
-		clkbuf_xo_ctrl("SET_XO_EN_M", 2, 0);
-		clkbuf_xo_ctrl("SET_XO_MODE", 2, 0);
+		clkbuf_xo_ctrl("SET_XO_EN_M", clk_xo_id, 0);
+		clkbuf_xo_ctrl("SET_XO_MODE", clk_xo_id, 0);
 	} else
 		clk_buf_disp_ctrl(false, dsi);
 	return ret;
