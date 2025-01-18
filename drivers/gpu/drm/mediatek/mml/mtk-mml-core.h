@@ -188,16 +188,16 @@ extern int mml_trace;
 #define MML_TID_IRQ		0	/* trace on <idle>-0 process */
 
 #define mml_trace_begin_tid(tid, fmt, args...) \
-	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+	mml_tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
 
 #define mml_trace_begin(fmt, args...) \
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	tracing_mark_write("E\n")
+	mml_tracing_mark_write("E\n")
 
 #define mml_trace_c(tag, c) \
-	tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
+	mml_tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
 
 #define mml_trace_tag_start(tag) mml_trace_c(tag, 1)
 
@@ -1053,7 +1053,7 @@ s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 void mml_update_array(struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value);
 
-int tracing_mark_write(char *fmt, ...);
+int mml_tracing_mark_write(char *fmt, ...);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 
