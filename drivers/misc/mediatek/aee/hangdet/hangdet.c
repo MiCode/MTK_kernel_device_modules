@@ -44,6 +44,7 @@
 #if !IS_ENABLED(CONFIG_ARM64)
 #include <asm/arch_timer.h>
 #endif
+#include "hangdet.h"
 
 void sysrq_sched_debug_show_at_AEE(void);
 
@@ -62,7 +63,7 @@ extern struct irq_desc **ipi_desc_get(void);
  *************************************************************************/
 #define WK_MAX_MSG_SIZE (1024)
 #define MAX_CPUNR 16
-#define SOFT_KICK_RANGE     (100*1000) // 100ms
+#define SOFT_KICK_RANGE     (100741) // 100741us, use magic num to check wdtk in which hrtimer
 
 #define WDT_MODE		0x0
 #define WDT_MODE_EN		0x1
@@ -702,6 +703,7 @@ static void kwdt_dump_func(void)
 	save_irq_info();
 #endif
 	sysrq_sched_debug_show_at_AEE();
+	save_timer_list_info();
 
 	if (toprgu_base)
 		iowrite32(WDT_RST_RELOAD, toprgu_base + WDT_RST);
@@ -1013,6 +1015,7 @@ static int kwdt_thread(void *arg)
 	sched_setscheduler(current, SCHED_FIFO, &param);
 	set_current_state(TASK_INTERRUPTIBLE);
 
+	percpu_debug_timer_init();
 	for (;;) {
 		if (kthread_should_stop()) {
 			pr_info("[wdk] kthread_should_stop do !!\n");
@@ -1387,6 +1390,7 @@ static int __init hangdet_init(void)
 #endif
 
 	aee_reboot_hook_init();
+	timer_list_debug_init();
 
 	return 0;
 }
@@ -1397,6 +1401,7 @@ static void __exit hangdet_exit(void)
 	kthread_stop((struct task_struct *)wk_tsk);
 	aee_reboot_hook_exit();
 	kfree(hwt_irq_info);
+	timer_list_debug_exit();
 }
 
 module_init(hangdet_init);
