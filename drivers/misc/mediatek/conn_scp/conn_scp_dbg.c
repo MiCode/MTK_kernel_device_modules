@@ -75,7 +75,7 @@ static void dfd_emi_dump_value_buf(phys_addr_t addr, uint32_t count)
 	uint32_t *val_ptr;
 	uint32_t i;
 
-	pr_info("[%s] addr[%llx] size=[%d]", __func__, addr, count);
+	pr_info("[%s] addr[%p] size=[%d]", __func__, (void *)(unsigned long)addr, count);
 
 	vir_addr = ioremap(addr, count);
 	if (!vir_addr) {
@@ -115,7 +115,7 @@ static int dfd_emi_dump(unsigned int par1, unsigned int par2, unsigned int par3)
 	uint32_t cmd_size = connsys_scp_get_dfd_cmd_size();
 
 	size = sizeof(hdr);
-	pr_info("[%s] cmd addr=[%llx] size=[%x]", __func__, cmd_addr, cmd_size);
+	pr_info("[%s] cmd addr=[%p] size=[%x]", __func__, (void *)(unsigned long)cmd_addr, cmd_size);
 
 	vir_addr = ioremap(cmd_addr, size);
 	if (!vir_addr) {
@@ -162,7 +162,7 @@ static int dfd_value_buf_info(unsigned int par1, unsigned int par2, unsigned int
 
 	conap_scp_dfd_get_value_info(&addr, &size);
 
-	pr_info("[%s] value buffer addr=[%llx] size=[%x]", __func__, addr, size);
+	pr_info("[%s] value buffer addr=[%p] size=[%x]", __func__, (void *)(unsigned long)addr, size);
 	return 0;
 }
 
