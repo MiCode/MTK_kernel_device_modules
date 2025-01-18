@@ -34,6 +34,9 @@ extern u32 *disp_perfs;
 int debug_vidle_bw;
 module_param(debug_vidle_bw, int, 0644);
 
+int debug_channel_bw[4];
+module_param_array(debug_channel_bw, int, NULL, 0644);
+
 #define CRTC_NUM		4
 static struct drm_crtc *dev_crtc;
 /* add for mm qos */
@@ -382,10 +385,13 @@ static void mtk_disp_channel_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 	for (i = 0; i < BW_CHANNEL_NR; i++) {
 		for (j = 0; j < MAX_CRTC; j++)
 			channel_sum += priv->hrt_channel_bw_sum[j][i];
+		if (debug_channel_bw[i])
+			channel_sum = debug_channel_bw[i];
 		mtk_vidle_channel_bw_set(channel_sum, 2 + (i * 4)); //2, 6, 10, 14
 		DDPINFO("%s, total hrt bw %d\n", __func__, channel_sum);
 
 		priv->last_hrt_channel_bw_sum[crtc_idx][i] = priv->hrt_channel_bw_sum[crtc_idx][i];
+		channel_sum = 0;
 	}
 }
 
@@ -401,6 +407,8 @@ static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 			channel_sum += priv->srt_channel_bw_sum[j][i];
 		mtk_vidle_channel_bw_set(channel_sum, (i * 4)); //0, 4, 8, 12
 		DDPINFO("%s, total srt bw %d\n", __func__, channel_sum);
+
+		channel_sum = 0;
 	}
 
 }
