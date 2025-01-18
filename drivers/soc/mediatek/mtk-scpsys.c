@@ -1404,11 +1404,6 @@ static int scpsys_pbus_power_off(struct generic_pm_domain *genpd)
 		return 0;
 	}
 
-	/* Enable P-Bus Mode RTFF */
-	val = readl(ctl_addr);
-	val |= SSYS_RTFF_GRP_EN;
-	writel(val, ctl_addr);
-
 	/* Disable P-Bus Mode Tie Value */
 	val = readl(ctl_addr);
 	val &= ~SSYSPM_MTCMOS_DEFAULT_ON;
