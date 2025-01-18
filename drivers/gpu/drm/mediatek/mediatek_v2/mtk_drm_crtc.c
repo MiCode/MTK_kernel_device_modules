@@ -14123,7 +14123,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_msync2_switch_begin(crtc);
 	}
 
-	if (priv->data->ovl_exdma_rule && mtk_crtc->need_change_exdma_path)
+	if ((priv->data->ovl_exdma_rule && mtk_crtc->need_change_exdma_path) || (mtk_crtc->is_mml_dl))
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
