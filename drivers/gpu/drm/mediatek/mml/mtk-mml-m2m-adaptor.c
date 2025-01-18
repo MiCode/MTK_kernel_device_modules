@@ -81,17 +81,17 @@ struct mml_m2m_ctx {
 
 static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state vb_state)
 {
-	struct vb2_v4l2_buffer *src_vbuf, *dst_vbuf;
+	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
 
-	src_vbuf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
-	dst_vbuf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
-	src_vbuf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
-	dst_vbuf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
-	v4l2_m2m_buf_copy_metadata(src_vbuf, dst_vbuf, true);
+	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
+	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
+	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
+	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
+	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 
-	v4l2_m2m_buf_done(src_vbuf, vb_state);
-	v4l2_m2m_buf_done(dst_vbuf, vb_state);
+	v4l2_m2m_buf_done(src_buf, vb_state);
+	v4l2_m2m_buf_done(dst_buf, vb_state);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
 }
 
@@ -274,17 +274,19 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 	pq_config = &ctx->pq_submit.pq_config;
 
 	get_frame_str(frame, sizeof(frame), src);
-	mml_log("[m2m] in v4l2:(%u, %u) mml:%s",
+	mml_log("[m2m] in v4l2:(%u, %u) mml:%s plane:%hhu",
 		output->format.fmt.pix_mp.width, output->format.fmt.pix_mp.height,
-		frame);
+		frame,
+		src->plane_cnt);
 
 	get_frame_str(frame, sizeof(frame), &dest->data);
-	mml_log("[m2m]out v4l2:(%u, %u) mml:%s r:%hu%s",
+	mml_log("[m2m]out v4l2:(%u, %u) mml:%s plane:%hhu r:%hu%s",
 		capture->format.fmt.pix_mp.width, capture->format.fmt.pix_mp.height,
 		frame,
+		dest->data.plane_cnt,
 		dest->rotate,
 		dest->flip ? " flip" : "");
-	mml_log("[m2m]crop:(%u, %u, %u, %u) compose:(%u, %u, %u, %u)",
+	mml_log("[m2m]    crop:(%u, %u, %u, %u) compose:(%u, %u, %u, %u)",
 		dest->crop.r.left,
 		dest->crop.r.top,
 		dest->crop.r.width,
@@ -294,10 +296,11 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 		dest->compose.width,
 		dest->compose.height);
 
-	mml_log("[m2m]v4l2: rotate:%d/%d hflip:%u vflip:%u secure:%d alpha:%d pq %u: %s%s%s%s%s%s%s",
-		ctx->ctrls.rotate->val, ctx->param.rotation,
-		ctx->param.hflip, ctx->param.vflip,
-		ctx->param.secure,
+	mml_log("[m2m]v4l2-ctrl: r:%d%s%s%s alpha:%d pq %u:%s%s%s%s%s%s%s%s%s%s",
+		ctx->param.rotation,
+		ctx->param.hflip ? " hflip" : "",
+		ctx->param.vflip ? " vflip" : "",
+		ctx->param.secure ? " sec" : "",
 		ctx->param.alpha,
 		ctx->pq_submit.id,
 		pq_config->en ? " PQ" : "",
@@ -306,7 +309,10 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 		pq_config->en_ccorr ? " CCORR" : "",
 		pq_config->en_dre ? " DRE" : "",
 		pq_config->en_sharp ? " SHP" : "",
-		pq_config->en_color ? " COLOR" : "");
+		pq_config->en_ur ? " UR" : "",
+		pq_config->en_dc ? " DC" : "",
+		pq_config->en_color ? " COLOR" : "",
+		pq_config->en_c3d ? " C3D" : "");
 }
 
 static int mml_check_scaling_ratio(const struct mml_rect *crop,
@@ -1688,7 +1694,7 @@ static void mml_m2m_device_run(void *priv)
 	struct mml_task *task = NULL;
 	s32 result;
 	u32 i;
-	struct vb2_v4l2_buffer *src_vbuf, *dst_vbuf;
+	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	enum vb2_buffer_state vb_state = VB2_BUF_STATE_ERROR;
 
 	mml_trace_begin("%s", __func__);
@@ -1781,16 +1787,16 @@ static void mml_m2m_device_run(void *priv)
 	/* copy per-frame info */
 	task->ctx = ctx;
 
-	src_vbuf = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
-	dst_vbuf = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
-	if (!src_vbuf || !dst_vbuf) {
+	src_buf = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
+	dst_buf = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
+	if (!src_buf || !dst_buf) {
 		mml_err("[m2m]%s get next buf fail src %p dst %p", __func__,
-			src_vbuf, dst_vbuf);
+			src_buf, dst_buf);
 		goto err_buf_exit;
 	}
 
 	/* update endTime here */
-	task->end_time = ns_to_timespec64(src_vbuf->vb2_buf.timestamp);
+	task->end_time = ns_to_timespec64(src_buf->vb2_buf.timestamp);
 	/* give default time if empty */
 	frame_check_end_time(&task->end_time);
 	mml_msg("[m2m] mml job %u endTime: %2u.%03llu",
@@ -1798,7 +1804,7 @@ static void mml_m2m_device_run(void *priv)
 		(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000));
 
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.src,
-		&submit->buffer.src, src_vbuf,
+		&submit->buffer.src, src_buf,
 		"mml_m2m_rdma", mctx->param.secure);
 	if (result) {
 		mml_err("[m2m]%s get src dma buf fail", __func__);
@@ -1807,7 +1813,7 @@ static void mml_m2m_device_run(void *priv)
 
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
 	result = m2m_frame_buf_to_task_buf(ctx, &task->buf.dest[0],
-		&submit->buffer.dest[0], dst_vbuf,
+		&submit->buffer.dest[0], dst_buf,
 		"mml_m2m_wrot", mctx->param.secure);
 	if (result) {
 		mml_err("[m2m]%s get dest dma buf fail", __func__);
