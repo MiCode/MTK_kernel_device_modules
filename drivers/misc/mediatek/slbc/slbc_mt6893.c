@@ -721,11 +721,9 @@ int slbc_request(struct slbc_data *d)
 
 	if ((d->type) == TP_BUFFER)
 		slbc_request_buffer(d);
-
-	if ((d->type) == TP_CACHE)
+	else if ((d->type) == TP_CACHE)
 		slbc_request_cache(d);
-
-	if ((d->type) == TP_ACP)
+	else if ((d->type) == TP_ACP)
 		slbc_request_acp(d);
 
 	slbc_set_slot_by_data(d);
@@ -912,11 +910,9 @@ int slbc_release(struct slbc_data *d)
 
 	if ((d->type) == TP_BUFFER)
 		slbc_release_buffer(d);
-
-	if ((d->type) == TP_CACHE)
+	else if ((d->type) == TP_CACHE)
 		slbc_release_cache(d);
-
-	if ((d->type) == TP_ACP)
+	else if ((d->type) == TP_ACP)
 		slbc_release_acp(d);
 
 	slbc_clr_slot_by_data(d);
