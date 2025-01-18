@@ -4772,6 +4772,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			adsp-rsv-dbg-dump-b = <0x80000>;
 			adsp-rsv-core-dump-a = <0x400>;
 			adsp-rsv-core-dump-b = <0x400>;
+			adsp-rsv-pcie = <0x0>;
 			adsp-rsv-l2sram = <0x80>;
 			adsp-rsv-xhci = <0x80000>;
 			adsp-rsv-audio = <0x5c0000>;
