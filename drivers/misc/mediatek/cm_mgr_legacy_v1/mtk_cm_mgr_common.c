@@ -436,6 +436,9 @@ int cm_mgr_to_sspm_command(u32 cmd, int val)
 	case IPI_CM_MGR_OPP_VOLT_SET:
 	case IPI_CM_MGR_BCPU_WEIGHT_MAX_SET:
 	case IPI_CM_MGR_BCPU_WEIGHT_MIN_SET:
+	case IPI_CM_MGR_BCPU_MIN_OPP_WEIGHT_SET:
+	case IPI_CM_MGR_BCPU_LOW_OPP_WEIGHT_SET:
+	case IPI_CM_MGR_BCPU_LOW_OPP_BOUND_SET:
 		cm_mgr_d.cmd = cmd;
 		cm_mgr_d.arg = val;
 		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_CM,
