@@ -1388,13 +1388,6 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		return -EINVAL;
 	}
 
-	ready = is_vcp_ready_ex(vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID);
-	if (!ready || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
-		MMDVFS_ERR("vcp_ready:%d mmdvfs_vcp_cb_ready:%d mmdvfs_rst_clk_done:%d",
-			ready, mmdvfs_vcp_cb_ready, mmdvfs_rst_clk_done);
-		return -EACCES;
-	}
-
 	if (func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) {
 		if (idx >= MMDVFS_USER_NUM) {
 			MMDVFS_ERR("invalid idx:%hhu opp:%d", idx, opp);
@@ -1418,11 +1411,22 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		last = &last_test_ap_set_rate[idx];
 
 	if (func == TEST_SET_RATE && opp && !*last)
-		mtk_mmdvfs_enable_vmm(true);
+		ret = mtk_mmdvfs_enable_vmm(true);
 	else if ((func == TEST_AP_SET_OPP || func == TEST_AP_SET_USER_RATE) &&
 		((opp >= 0 && opp < mmdvfs_mux[mux_idx].freq_num) &&
 		(*last < 0 || *last >= mmdvfs_mux[mux_idx].freq_num)))
-		mtk_mmdvfs_enable_vmm(true);
+		ret = mtk_mmdvfs_enable_vmm(true);
+	else
+		ret = 0;
+	if (ret)
+		return -EACCES;
+
+	ready = is_vcp_ready_ex(vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID);
+	if (!ready || !mmdvfs_vcp_cb_ready || mmdvfs_rst_clk_done) {
+		MMDVFS_ERR("vcp_ready:%d mmdvfs_vcp_cb_ready:%d mmdvfs_rst_clk_done:%d",
+			ready, mmdvfs_vcp_cb_ready, mmdvfs_rst_clk_done);
+		return -EACCES;
+	}
 
 	switch (func) {
 	case TEST_SET_RATE:
