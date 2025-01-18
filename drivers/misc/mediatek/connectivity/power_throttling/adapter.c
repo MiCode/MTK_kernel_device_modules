@@ -521,7 +521,7 @@ static int conn_pwr_dev_init(void)
 		goto err1;
 	}
 
-	pConnPwrClass = class_create(THIS_MODULE, CONN_PWR_DEVICE_NAME);
+	pConnPwrClass = class_create(CONN_PWR_DEVICE_NAME);
 	if (IS_ERR(pConnPwrClass)) {
 		pr_info("class create fail, error code(%ld)\n",
 						PTR_ERR(pConnPwrClass));

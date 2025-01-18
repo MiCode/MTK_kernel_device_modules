@@ -3730,7 +3730,7 @@ static int adc_cali_cdev_init(struct platform_device *pdev)
 		bm_err("adc_cali Error: cdev_add\n");
 
 	bat_cali_major = MAJOR(bat_cali_devno);
-	bat_cali_class = class_create(THIS_MODULE, BAT_CALI_DEVNAME);
+	bat_cali_class = class_create(BAT_CALI_DEVNAME);
 	class_dev = (struct class_device *)device_create(bat_cali_class,
 		NULL,
 		bat_cali_devno,

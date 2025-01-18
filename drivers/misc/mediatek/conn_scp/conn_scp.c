@@ -74,7 +74,7 @@ int conn_scp_init(void)
 		pr_info("cdev_add fail: %d\n", err);
 		goto err_out;
 	}
-	g_conn_scp_dev->cls = class_create(THIS_MODULE, "conn_scp");
+	g_conn_scp_dev->cls = class_create("conn_scp");
 	if (IS_ERR(g_conn_scp_dev->cls)) {
 		pr_info("Unable to create class, err = %d\n", (int)PTR_ERR(g_conn_scp_dev->cls));
 		goto err_out;

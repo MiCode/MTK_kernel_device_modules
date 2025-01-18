@@ -2394,7 +2394,7 @@ static int imgsensor_probe(struct platform_device *pplatform_device)
 		return -EAGAIN;
 	}
 
-	pimgsensor->pclass = class_create(THIS_MODULE, "sensordrv");
+	pimgsensor->pclass = class_create("sensordrv");
 	if (IS_ERR(pimgsensor->pclass)) {
 		int ret = PTR_ERR(pimgsensor->pclass);
 

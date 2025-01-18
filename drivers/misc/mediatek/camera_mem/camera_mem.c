@@ -1046,7 +1046,7 @@ static int cam_mem_probe(struct platform_device *pDev)
 			pDev->dev.of_node->name);
 
 	/* Create class register */
-	pCamMemClass = class_create(THIS_MODULE, "CamMemDrv");
+	pCamMemClass = class_create("CamMemDrv");
 	if (IS_ERR(pCamMemClass)) {
 		Ret = PTR_ERR(pCamMemClass);
 		LOG_NOTICE("Unable to create class, err = %d\n", Ret);

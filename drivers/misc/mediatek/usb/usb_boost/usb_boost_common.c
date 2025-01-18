@@ -637,7 +637,7 @@ static int create_sys_fs(void)
 	int n, ret;
 
 	USB_BOOST_NOTICE("\n");
-	usb_boost_class = class_create(THIS_MODULE, USB_BOOST_CLASS_NAME);
+	usb_boost_class = class_create(USB_BOOST_CLASS_NAME);
 	if (IS_ERR(usb_boost_class))
 		return PTR_ERR(usb_boost_class);
 

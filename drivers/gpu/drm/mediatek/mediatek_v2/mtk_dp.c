@@ -141,7 +141,7 @@ static DEVICE_ATTR_RO(name);
 static int create_switch_class(void)
 {
 	if (!switch_class) {
-		switch_class = class_create(THIS_MODULE, "switch");
+		switch_class = class_create("switch");
 		if (IS_ERR(switch_class))
 			return PTR_ERR(switch_class);
 		atomic_set(&device_count, 0);

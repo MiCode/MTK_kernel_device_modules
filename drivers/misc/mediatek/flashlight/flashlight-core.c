@@ -1784,7 +1784,7 @@ static int flashlight_probe(struct platform_device *dev)
 	}
 
 	/* create class */
-	flashlight_class = class_create(THIS_MODULE, FLASHLIGHT_CORE);
+	flashlight_class = class_create(FLASHLIGHT_CORE);
 	if (IS_ERR(flashlight_class)) {
 		pr_info("Failed to create class (%d)\n",
 				(int)PTR_ERR(flashlight_class));

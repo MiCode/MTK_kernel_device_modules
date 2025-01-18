@@ -175,7 +175,7 @@ int ccci_util_pin_broadcast_init(void)
 		goto _exit_2;
 	}
 
-	s_ccci_pin_class = class_create(THIS_MODULE, "ccci_pin_sta");
+	s_ccci_pin_class = class_create("ccci_pin_sta");
 	device_create(s_ccci_pin_class, NULL, s_pin_status_dev, NULL, "ccci_pin_sta");
 
 	return 0;

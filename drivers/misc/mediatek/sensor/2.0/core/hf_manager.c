@@ -1727,7 +1727,7 @@ static int __init hf_manager_init(void)
 		goto err_exit;
 	}
 
-	hf_manager_class = class_create(THIS_MODULE, "hf_manager");
+	hf_manager_class = class_create("hf_manager");
 	if (IS_ERR(hf_manager_class)) {
 		pr_err("Failed to create class\n");
 		ret = PTR_ERR(hf_manager_class);

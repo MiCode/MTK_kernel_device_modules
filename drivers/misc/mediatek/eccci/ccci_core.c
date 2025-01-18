@@ -111,7 +111,7 @@ int ccci_register_dev_node(const char *name, int major_id, int minor)
 static int __init ccci_init(void)
 {
 	CCCI_INIT_LOG(-1, CORE, "ccci core init\n");
-	dev_class = class_create(THIS_MODULE, "ccci_node");
+	dev_class = class_create("ccci_node");
 	ccci_subsys_bm_init();
 	return 0;
 }
@@ -126,7 +126,7 @@ MODULE_LICENSE("GPL");
 int ccci_init(void)
 {
 	CCCI_INIT_LOG(-1, CORE, "ccci core init\n");
-	dev_class = class_create(THIS_MODULE, "ccci_node");
+	dev_class = class_create("ccci_node");
 	ccci_subsys_bm_init();
 	return 0;
 }

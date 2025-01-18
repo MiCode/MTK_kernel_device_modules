@@ -794,7 +794,7 @@ static int device_driver_init(void)
 	struct class *cl;
 	int rc;
 
-	cl = class_create(THIS_MODULE, GZ_FFA_DEV_NAME);
+	cl = class_create(GZ_FFA_DEV_NAME);
 	if (IS_ERR(cl))
 		return PTR_ERR(cl);
 

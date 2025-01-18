@@ -224,7 +224,7 @@ int teei_fp_init(void)
 		return result;
 
 	driver_class = NULL;
-	driver_class = class_create(THIS_MODULE, DEV_NAME);
+	driver_class = class_create(DEV_NAME);
 	if (IS_ERR(driver_class)) {
 		result = -ENOMEM;
 		IMSG_ERROR("class_create failed %d.\n", result);

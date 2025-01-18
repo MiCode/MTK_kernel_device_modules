@@ -437,7 +437,7 @@ static int reviser_create_node(struct platform_device *pdev)
 	}
 
 	/* Create class register */
-	reviser_class = class_create(THIS_MODULE, APUSYS_DRV_NAME);
+	reviser_class = class_create(APUSYS_DRV_NAME);
 	if (IS_ERR(reviser_class)) {
 		ret = PTR_ERR(reviser_class);
 		LOG_ERR("Unable to create class, err = %d\n", ret);

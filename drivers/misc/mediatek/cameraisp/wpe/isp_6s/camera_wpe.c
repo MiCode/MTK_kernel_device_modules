@@ -5245,7 +5245,7 @@ static signed int WPE_probe(struct platform_device *pDev)
 #endif
 #endif
 		/* Create class register */
-		pWPEClass = class_create(THIS_MODULE, "WPEdrv");
+		pWPEClass = class_create("WPEdrv");
 		if (IS_ERR(pWPEClass)) {
 			Ret = PTR_ERR(pWPEClass);
 			LOG_ERR("Unable to create class, err = %d", Ret);

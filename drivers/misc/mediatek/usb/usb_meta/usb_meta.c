@@ -1318,7 +1318,7 @@ static int usb_meta_probe(struct platform_device *pdev)
 
 	pr_info("%s: config %d", __func__, config);
 
-	android_class = class_create(THIS_MODULE, "android_usb_meta");
+	android_class = class_create("android_usb_meta");
 	if (IS_ERR(android_class))
 		return PTR_ERR(android_class);
 

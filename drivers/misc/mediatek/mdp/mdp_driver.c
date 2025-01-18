@@ -1211,7 +1211,7 @@ static int cmdq_probe(struct platform_device *pDevice)
 
 	status = cdev_add(gMdpCDev, gMdpDevNo, 1);
 
-	gMDPClass = class_create(THIS_MODULE, MDP_DRIVER_DEVICE_NAME);
+	gMDPClass = class_create(MDP_DRIVER_DEVICE_NAME);
 	object = device_create(gMDPClass, NULL, gMdpDevNo, NULL,
 		MDP_DRIVER_DEVICE_NAME);
 

@@ -405,7 +405,7 @@ int aol_geofence_init(void)
 		goto err_out;
 	}
 
-	g_aol_geofence_devobj->cls = class_create(THIS_MODULE, "aol_geofence");
+	g_aol_geofence_devobj->cls = class_create("aol_geofence");
 	if (IS_ERR(g_aol_geofence_devobj->cls)) {
 		pr_info("Unable to create class, err = %d",
 						(int)PTR_ERR(g_aol_geofence_devobj->cls));

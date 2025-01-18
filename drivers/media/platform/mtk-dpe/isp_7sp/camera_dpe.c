@@ -8443,7 +8443,7 @@ if (DPE_dev->irq > 0) {
 #endif
 #endif
 		/* Create class register */
-		pDPEClass = class_create(THIS_MODULE, "DPEdrv");
+		pDPEClass = class_create("DPEdrv");
 		if (IS_ERR(pDPEClass)) {
 			Ret = PTR_ERR(pDPEClass);
 			LOG_ERR("Unable to create class, err = %d", Ret);

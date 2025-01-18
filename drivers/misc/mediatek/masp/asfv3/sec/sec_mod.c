@@ -173,7 +173,7 @@ static int sec_init(struct platform_device *dev)
 		return ret;
 	}
 
-	sec_class = class_create(THIS_MODULE, SEC_DEV_NAME);
+	sec_class = class_create(SEC_DEV_NAME);
 	if (IS_ERR(sec_class)) {
 		ret = PTR_ERR(sec_class);
 		pr_notice("[%s] Create class failed(0x%x)\n",

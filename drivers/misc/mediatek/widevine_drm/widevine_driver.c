@@ -146,7 +146,7 @@ static int wv_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	wv_class = class_create(THIS_MODULE, WV_DEVNAME);
+	wv_class = class_create(WV_DEVNAME);
 	if (!wv_class) {
 		ret = -1;
 		WV_LOG(0, "class_create error\n");

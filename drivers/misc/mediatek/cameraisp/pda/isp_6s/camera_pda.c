@@ -1945,7 +1945,7 @@ static inline int PDA_RegCharDev(void)
 		return nRet;
 	}
 
-	actuator_class = class_create(THIS_MODULE, "PDAdrv");
+	actuator_class = class_create("PDAdrv");
 	if (IS_ERR(actuator_class)) {
 		int ret = PTR_ERR(actuator_class);
 

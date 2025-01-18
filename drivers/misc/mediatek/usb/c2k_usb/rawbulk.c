@@ -711,7 +711,7 @@ static int __init rawbulk_init(void)
 	int ret = 0;
 
 	C2K_NOTE("rawbulk functions go!!!\n");
-	rawbulk_class = class_create(THIS_MODULE, "usb_rawbulk");
+	rawbulk_class = class_create("usb_rawbulk");
 	if (IS_ERR(rawbulk_class))
 		return PTR_ERR(rawbulk_class);
 

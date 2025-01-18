@@ -3194,7 +3194,7 @@ static signed int RSC_probe(struct platform_device *pDev)
 #endif
 
 		/* Create class register */
-		pRSCClass = class_create(THIS_MODULE, "RSCdrv");
+		pRSCClass = class_create("RSCdrv");
 		if (IS_ERR(pRSCClass)) {
 			Ret = PTR_ERR(pRSCClass);
 			LOG_ERR("Unable to create class, err = %d", Ret);

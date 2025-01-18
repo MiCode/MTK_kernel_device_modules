@@ -34,7 +34,7 @@ static inline int teeperf_device_common_init(void)
 		return ret;
 	}
 
-	main_ctx.class = class_create(THIS_MODULE, "teeperf");
+	main_ctx.class = class_create("teeperf");
 	if (IS_ERR(main_ctx.class)) {
 		ret = PTR_ERR(main_ctx.class);
 		pr_info(PFX "class_create failed, ret %d\n", ret);

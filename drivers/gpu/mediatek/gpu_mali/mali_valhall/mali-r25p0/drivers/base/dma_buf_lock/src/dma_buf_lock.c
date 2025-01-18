@@ -791,7 +791,7 @@ static int __init dma_buf_lock_init(void)
 
 		if (0 == err)
 		{
-			dma_buf_lock_class = class_create(THIS_MODULE, dma_buf_lock_dev_name);
+			dma_buf_lock_class = class_create(dma_buf_lock_dev_name);
 			if (IS_ERR(dma_buf_lock_class))
 			{
 				err = PTR_ERR(dma_buf_lock_class);
