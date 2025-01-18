@@ -2998,8 +2998,7 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	}
 	if (src_on & DISP_OVL_L_EN) {
 		layer_addr = read_phy_layer_addr(comp, 0);
-		//if (comp->id == DDP_COMPONENT_OVL_EXDMA2) {
-		if (0) {
+		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			domain = iommu_get_domain_for_dev(comp->dev);
 			if (domain == NULL) {
