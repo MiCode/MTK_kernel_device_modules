@@ -712,6 +712,7 @@ static int flashlight_cooling_set_cur_state(
 			continue;
 
 		fl_dev_arg.arg = state;
+		fl_dev_arg.channel = fdev->dev_id.channel;
 		fdev->ops->flashlight_ioctl(
 			FLASH_IOC_SET_THERMAL_CUR_STATE,
 			(unsigned long)&fl_dev_arg);

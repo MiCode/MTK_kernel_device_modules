@@ -265,7 +265,6 @@ static int lm3644_torch_brt_ctrl(struct lm3644_flash *flash,
 		}
 	}
 
-	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_TORCH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -297,7 +296,6 @@ static int lm3644_flash_brt_ctrl(struct lm3644_flash *flash,
 		pr_info("thermal limit current:%d\n", brt);
 	}
 
-	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_FLASH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -697,48 +695,33 @@ static int lm3644_flash_release(void)
 	return 0;
 }
 
-static int lm3644_cooling_get_cur_state(unsigned long *state)
-{
-	struct lm3644_flash *flash = lm3644_flash_data;
-
-	*state = flash->target_state;
-
-	return 0;
-}
-
-static int lm3644_cooling_set_cur_state(unsigned long state)
+static int lm3644_cooling_set_cur_state(int channel, unsigned long state)
 {
 	struct lm3644_flash *flash = lm3644_flash_data;
 	int ret = 0;
 
 	/* Request state should be less than max_state */
-	if (state > flash->max_state)
+	if (state > FLASHLIGHT_COOLER_MAX_STATE)
 		return -EINVAL;
 
-	if (flash->target_state == state)
-		return 0;
+	if (channel < 0 || channel >= LM3644_LED_MAX) {
+		pr_info("channel error\n");
+		return -EINVAL;
+	}
 
-	flash->target_state = state;
-	pr_info("set thermal current:%lu\n", flash->target_state);
+	pr_info("set thermal current:%lu\n", state);
 
-	if (flash->target_state == 0) {
+	if (state == 0) {
 		flash->need_cooler = 0;
-		flash->target_current[LM3644_LED0] = LM3644_FLASH_BRT_MAX;
-		flash->target_current[LM3644_LED1] = LM3644_FLASH_BRT_MAX;
-		ret = lm3644_torch_brt_ctrl(flash, LM3644_LED0,
-					LM3644_TORCH_BRT_MAX);
-		ret = lm3644_torch_brt_ctrl(flash, LM3644_LED1,
+		flash->target_current[channel] = LM3644_FLASH_BRT_MAX;
+		ret = lm3644_torch_brt_ctrl(flash, channel,
 					LM3644_TORCH_BRT_MAX);
 	} else {
 		flash->need_cooler = 1;
-		flash->target_current[LM3644_LED0] =
-			flash_state_to_current_limit[flash->target_state - 1];
-		flash->target_current[LM3644_LED1] =
-			flash_state_to_current_limit[flash->target_state - 1];
-		ret = lm3644_torch_brt_ctrl(flash, LM3644_LED0,
-					flash->target_current[LM3644_LED0]);
-		ret = lm3644_torch_brt_ctrl(flash, LM3644_LED1,
-					flash->target_current[LM3644_LED1]);
+		flash->target_current[channel] =
+			flash_state_to_current_limit[state - 1];
+		ret = lm3644_torch_brt_ctrl(flash, channel,
+					flash->target_current[channel]);
 	}
 
 	return 0;
@@ -748,7 +731,6 @@ static int lm3644_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
 	int channel, scenario;
-	unsigned long state = 0;
 
 	fl_arg = (struct flashlight_dev_arg *)arg;
 	channel = fl_arg->channel;
@@ -784,17 +766,10 @@ static int lm3644_ioctl(unsigned int cmd, unsigned long arg)
 		}
 #endif
 		break;
-	case FLASH_IOC_GET_THERMAL_MAX_STATE:
-		fl_arg->arg = FLASHLIGHT_COOLER_MAX_STATE;
-		pr_info("max state:%d\n", fl_arg->arg);
-		break;
-	case FLASH_IOC_GET_THERMAL_CUR_STATE:
-		lm3644_cooling_get_cur_state(&state);
-		fl_arg->arg = state;
-		pr_info("cur state:%d\n", fl_arg->arg);
-		break;
 	case FLASH_IOC_SET_THERMAL_CUR_STATE:
-		lm3644_cooling_set_cur_state(fl_arg->arg);
+		pr_info_ratelimited("FLASH_IOC_SET_THERMAL_CUR_STATE(%d): %d\n",
+				channel, (int)fl_arg->arg);
+		lm3644_cooling_set_cur_state(channel, fl_arg->arg);
 		break;
 	default:
 		pr_info("No such command and arg(%d): (%d, %d)\n",
@@ -973,8 +948,6 @@ static int lm3644_probe(struct i2c_client *client)
 
 	i2c_set_clientdata(client, flash);
 
-	flash->max_state = FLASHLIGHT_COOLER_MAX_STATE;
-	flash->target_state = 0;
 	flash->need_cooler = 0;
 	flash->target_current[LM3644_LED0] = LM3644_FLASH_BRT_MAX;
 	flash->target_current[LM3644_LED1] = LM3644_FLASH_BRT_MAX;
