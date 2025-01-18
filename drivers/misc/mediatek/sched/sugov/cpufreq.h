@@ -204,7 +204,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 				unsigned long freq, unsigned long max, unsigned long *scale);
 extern int set_sched_capacity_margin_dvfs(int capacity_margin);
-extern unsigned int get_sched_capacity_margin_dvfs(void);
+extern int get_sched_capacity_margin_dvfs(void);
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 extern void mtk_uclamp_eff_get(void *data, struct task_struct *p, enum uclamp_id clamp_id,
 		struct uclamp_se *uc_max, struct uclamp_se *uc_eff, int *ret);
