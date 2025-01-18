@@ -7,17 +7,12 @@
  */
 
 #include <linux/usb/quirks.h>
-/* #include <trace/hooks/audio_usboffload.h> */
 #include "quirks.h"
 #include "xhci-mtk.h"
 #include "xhci-trace.h"
 
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 #include <sound/asound.h>
 #include "card.h"
-
-static struct snd_offload_operations offload_ops;
-#endif
 
 struct usb_audio_quirk_flags_table {
 	u32 id;
@@ -36,7 +31,6 @@ static const struct usb_device_id mtk_usb_quirk_list[] = {
 	{ }  /* terminating entry must be last */
 };
 
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
 /* quirk list in /sound/usb */
 static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 		DEVICE_FLG(0x2d99, 0xa026, /* EDIFIER H180 Plus */
@@ -49,7 +43,6 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		{} /* terminator */
 };
-#endif
 
 static int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 {
@@ -105,8 +98,7 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 	return quirks;
 }
 
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-static void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
+void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 {
 	const struct usb_audio_quirk_flags_table *p;
 
@@ -123,7 +115,6 @@ static void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
 		}
 	}
 }
-#endif
 
 /* update mtk usbcore quirk */
 void xhci_mtk_apply_quirk(struct usb_device *udev)
@@ -133,41 +124,6 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 
 	udev->quirks = usb_detect_static_quirks(udev, mtk_usb_quirk_list);
 }
-
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-void xhci_mtk_snd_connect(struct usb_interface *intf, struct snd_usb_audio *chip)
-{
-	struct xhci_hcd *xhci;
-	struct xhci_vendor_ops *ops;
-
-	if (!chip)
-		return;
-
-	snd_usb_init_quirk_flags(chip);
-
-	xhci = hcd_to_xhci(bus_to_hcd(chip->dev->bus));
-	ops = xhci_vendor_get_ops_(xhci);
-
-	if (ops && ops->offload_connect)
-		return ops->offload_connect(intf, chip);
-}
-
-static void xhci_mtk_snd_disconnect(struct usb_interface *intf)
-{
-	struct snd_usb_audio *chip = usb_get_intfdata(intf);
-	struct xhci_hcd *xhci;
-	struct xhci_vendor_ops *ops;
-
-	if (!chip)
-		return;
-
-	xhci = hcd_to_xhci(bus_to_hcd(chip->dev->bus));
-	ops = xhci_vendor_get_ops_(xhci);
-
-	if (ops && ops->offload_connect)
-		return ops->offload_disconnect(intf);
-}
-#endif
 
 static void xhci_trace_ep0_urb(void *data, struct urb *urb)
 {
@@ -204,26 +160,10 @@ static void xhci_trace_ep0_urb(void *data, struct urb *urb)
 
 void xhci_mtk_trace_init(struct device *dev)
 {
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-	offload_ops.connect_cb = xhci_mtk_snd_connect;
-	offload_ops.disconnect_cb = xhci_mtk_snd_disconnect;
-	offload_ops.suspend_cb = NULL;
-
-	snd_usb_register_offload_ops(&offload_ops);
-#else
-	/* WARN_ON(register_trace_android_vh_audio_usb_offload_connect( */
-	/*	xhci_mtk_sound_usb_connect, NULL)); */
-#endif
 	WARN_ON(register_trace_xhci_urb_enqueue_(xhci_trace_ep0_urb, dev));
 }
 
 void xhci_mtk_trace_deinit(struct device *dev)
 {
-#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD_DEBUG)
-	snd_usb_unregister_offload_ops();
-#else
-	/* WARN_ON(unregister_trace_android_vh_audio_usb_offload_connect( */
-	/*	xhci_mtk_sound_usb_connect, NULL)); */
-#endif
 	WARN_ON(unregister_trace_xhci_urb_enqueue_(xhci_trace_ep0_urb, dev));
 }

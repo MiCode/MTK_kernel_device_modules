@@ -357,6 +357,43 @@ static void xhci_mtk_procfs_exit(struct xhci_hcd_mtk *mtk)
 	proc_remove(mtk->root);
 }
 
+static void xhci_mtk_snd_connect(struct snd_usb_audio *chip)
+{
+	struct xhci_hcd *xhci;
+	struct xhci_vendor_ops *ops;
+
+	if (!chip)
+		return;
+
+	xhci_mtk_init_snd_quirk(chip);
+
+	xhci = hcd_to_xhci(bus_to_hcd(chip->dev->bus));
+	ops = xhci_vendor_get_ops_(xhci);
+
+	if (ops && ops->usb_offload_connect)
+		return ops->usb_offload_connect(chip);
+}
+
+static void xhci_mtk_snd_disconnect(struct snd_usb_audio *chip)
+{
+	struct xhci_hcd *xhci;
+	struct xhci_vendor_ops *ops;
+
+	if (!chip)
+		return;
+
+	xhci = hcd_to_xhci(bus_to_hcd(chip->dev->bus));
+	ops = xhci_vendor_get_ops_(xhci);
+
+	if (ops && ops->usb_offload_disconnect)
+		return ops->usb_offload_disconnect(chip);
+}
+
+static struct snd_usb_platform_ops snd_ops = {
+	.connect_cb = xhci_mtk_snd_connect,
+	.disconnect_cb = xhci_mtk_snd_disconnect,
+};
+
 static int xhci_mtk_host_enable(struct xhci_hcd_mtk *mtk)
 {
 	struct mu3c_ippc_regs __iomem *ippc = mtk->ippc_regs;
@@ -899,6 +936,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 	pm_runtime_put_autosuspend(dev);
 	pm_runtime_forbid(dev);
 
+	snd_usb_register_platform_ops(&snd_ops);
 	xhci_mtk_trace_init(dev);
 
 	return 0;
@@ -965,6 +1003,7 @@ static void xhci_mtk_remove(struct platform_device *pdev)
 	pm_runtime_put_noidle(dev);
 	pm_runtime_set_suspended(dev);
 
+	snd_usb_unregister_platform_ops();
 	xhci_mtk_trace_deinit(dev);
 }
 
