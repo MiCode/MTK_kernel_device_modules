@@ -4587,7 +4587,7 @@ static void DPE_add_device_link(struct platform_device *pDev)
 			continue;
 		}
 
-		if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
+		if (of_property_read_u32(larb_node, "mediatek,larb-id", &larb_id))
 			LOG_INF("Error: get larb id from DTS fail!!\n");
 		else
 			LOG_INF("%s gets larb_id=%d\n",
@@ -4668,14 +4668,14 @@ static signed int DPE_probe(struct platform_device *pDev)
 /* parse hardware event */
 //dvs_event_id = cmdq_dev_get_event(&pDev->dev, "EVENT_IPE_DVS_DONE");
 		of_property_read_u32(pDev->dev.of_node,
-				"event_ipe_dvs_done",
+				"EVENT_IPE_DVS_DONE",
 				&dvs_event_id);
 		LOG_INF("[Debug]dvs_event_id %d\n", dvs_event_id);
 	} else if (nr_DPE_devs == 2) {
 /* parse hardware event */
 //dvp_event_id = cmdq_dev_get_event(&pDev->dev, "event_ipe_dvp_done");
 		of_property_read_u32(pDev->dev.of_node,
-				"event_ipe_dvp_done",
+				"EVENT_IPE_DVP_DONE",
 				&dvp_event_id);
 		LOG_INF("[Debug]dvp_event_id %d\n", dvp_event_id);
 	}
