@@ -46,18 +46,6 @@
 			<&dispsys1_config_clk CLK_MM1_DISP_POSTALIGN0_PQ>,
 			<&dispsys1_config_clk CLK_MM1_DISP_DITHER2_PQ>;
 	};
-	bring-up-uart@d {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xd>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAO_UART0_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_UART1_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_UART2_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_UART3_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_UART4_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_UART5_BCLK_UART>,
-			<&pericfg_ao_clk CLK_PERAO_AP_DMA_X32W_BCLK_UART>;
-	};
 	bring-up-pd-mm-proc-dormant@34 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x34>;
