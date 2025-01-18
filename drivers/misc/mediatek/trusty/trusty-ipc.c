@@ -27,6 +27,7 @@
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_ipc.h>
 #include <linux/trusty/trusty_shm.h>
+#include <linux/bug.h>
 
 #include <uapi/linux/trusty/ipc.h>
 
@@ -743,6 +744,13 @@ static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 	if (!ret) {
 		/* no reply from remote */
 		dn->state = TIPC_STALE;
+		pr_err("%s: Met time-out!! empty %d in iSE\n", __func__,
+					list_empty(&dn->rx_msg_queue));
+#if IS_ENABLED(CONFIG_TRUSTY_BUG_ON_WARN)
+		BUG_ON(1);
+#else
+		WARN_ON(1);
+#endif
 		ret = -ETIMEDOUT;
 	} else {
 		/* got reply */
