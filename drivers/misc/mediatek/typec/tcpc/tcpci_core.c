@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.28_MTK"
+#define TCPC_CORE_VERSION		"2.0.29_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -48,27 +48,29 @@ static int bootmode;
 static struct device_type tcpc_dev_type;
 
 static struct device_attribute tcpc_device_attributes[] = {
-	TCPC_DEVICE_ATTR(role_def, 0444),
-	TCPC_DEVICE_ATTR(rp_lvl, 0444),
-	TCPC_DEVICE_ATTR(pd_test, 0664),
-	TCPC_DEVICE_ATTR(info, 0444),
-	TCPC_DEVICE_ATTR(timer, 0664),
-	TCPC_DEVICE_ATTR(caps_info, 0444),
-	TCPC_DEVICE_ATTR(pe_ready, 0444),
+	TCPC_DEVICE_ATTR(typec_role, 0664),
+	TCPC_DEVICE_ATTR(local_rp_level, 0664),
+	TCPC_DEVICE_ATTR(timer, 0220),
 	TCPC_DEVICE_ATTR(vbus_level, 0444),
 	TCPC_DEVICE_ATTR(cc_high, 0444),
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	TCPC_DEVICE_ATTR(pd_test, 0664),
+	TCPC_DEVICE_ATTR(caps_info, 0444),
+	TCPC_DEVICE_ATTR(pe_ready, 0444),
+#endif /* CONFIG_USB_POWER_DELIVERY */
 };
 
 enum {
-	TCPC_DESC_ROLE_DEF = 0,
-	TCPC_DESC_RP_LEVEL,
-	TCPC_DESC_PD_TEST,
-	TCPC_DESC_INFO,
+	TCPC_DESC_TYPEC_ROLE = 0,
+	TCPC_DESC_LOCAL_RP_LEVEL,
 	TCPC_DESC_TIMER,
-	TCPC_DESC_CAP_INFO,
-	TCPC_DESC_PE_READY,
 	TCPC_TCPM_VBUS_LEVEL,
 	TCPC_TCPM_CC_HIGH,
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	TCPC_DESC_PD_TEST,
+	TCPC_DESC_CAP_INFO,
+	TCPC_DESC_PE_READY,
+#endif /* CONFIG_USB_POWER_DELIVERY */
 };
 
 static struct attribute *__tcpc_attrs[ARRAY_SIZE(tcpc_device_attributes) + 1];
@@ -81,13 +83,10 @@ static const struct attribute_group *tcpc_attr_groups[] = {
 	NULL,
 };
 
-static const char * const role_text[] = {
-	"Unknown",
-	"SNK Only",
-	"SRC Only",
-	"DRP",
-	"Try.SRC",
-	"Try.SNK",
+static const char *const local_rp_level_names[] = {
+	"Default",
+	"1.5A",
+	"3A",
 };
 
 static ssize_t tcpc_show_property(struct device *dev,
@@ -95,15 +94,47 @@ static ssize_t tcpc_show_property(struct device *dev,
 {
 	struct tcpc_device *tcpc = to_tcpc_device(dev);
 	const ptrdiff_t offset = attr - tcpc_device_attributes;
-	int i = 0, ret;
+	int ret = 0;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	int i = 0;
 	struct pe_data *pe_data;
 	struct pd_port *pd_port;
 	struct tcpm_power_cap_val cap;
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	switch (offset) {
+	case TCPC_DESC_TYPEC_ROLE:
+		ret = snprintf(buf, 256, "%s\n",
+			       typec_role_name[tcpc->typec_role]);
+		if (ret < 0)
+			break;
+		break;
+	case TCPC_DESC_LOCAL_RP_LEVEL:
+		ret = snprintf(buf, 256, "%s\n",
+			local_rp_level_names[tcpc->typec_local_rp_level]);
+		if (ret < 0)
+			break;
+		break;
+	case TCPC_TCPM_VBUS_LEVEL:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_vbus_level(tcpc, true));
+		if (ret < 0)
+			return ret;
+		break;
+	case TCPC_TCPM_CC_HIGH:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_cc_high(tcpc));
+		if (ret < 0)
+			return ret;
+		break;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	case TCPC_DESC_PD_TEST:
+		ret = snprintf(buf, 256, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+				"1: pr_swap", "2: dr_swap", "3: vconn_swap",
+				"4: soft reset", "5: hard reset",
+				"6: get_src_cap", "7: get_sink_cap",
+				"8: discover_id", "9: discover_cable_id");
+		if (ret < 0)
+			dev_dbg(dev, "%s: ret=%d\n", __func__, ret);
+		break;
 	case TCPC_DESC_CAP_INFO:
 		pd_port = &tcpc->pd_port;
 		pe_data = &pd_port->pe_data;
@@ -164,60 +195,6 @@ static ssize_t tcpc_show_property(struct device *dev,
 				break;
 		}
 		break;
-#endif	/* CONFIG_USB_POWER_DELIVERY */
-	case TCPC_DESC_ROLE_DEF:
-		ret = snprintf(buf, 256, "%s\n", role_text[tcpc->desc.role_def]);
-		if (ret < 0)
-			break;
-		break;
-	case TCPC_DESC_RP_LEVEL:
-		if (tcpc->typec_local_rp_level == TYPEC_RP_DFT) {
-			ret = snprintf(buf, 256, "%s\n", "Default");
-			if (ret < 0)
-				break;
-		} else if (tcpc->typec_local_rp_level == TYPEC_RP_1_5) {
-			ret = snprintf(buf, 256, "%s\n", "1.5");
-			if (ret < 0)
-				break;
-		} else if (tcpc->typec_local_rp_level == TYPEC_RP_3_0) {
-			ret = snprintf(buf, 256, "%s\n", "3.0");
-			if (ret < 0)
-				break;
-		}
-		break;
-	case TCPC_DESC_PD_TEST:
-		ret = snprintf(buf, 256, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-				"1: pr_swap", "2: dr_swap", "3: vconn_swap",
-				"4: soft reset", "5: hard reset",
-				"6: get_src_cap", "7: get_sink_cap",
-				"8: discover_id", "9: discover_cable_id");
-		if (ret < 0)
-			dev_dbg(dev, "%s: ret=%d\n", __func__, ret);
-		break;
-	case TCPC_DESC_INFO:
-		i += snprintf(buf + i,
-			256, "|^|==( %s info )==|^|\n", tcpc->desc.name);
-		if (i < 0)
-			break;
-		i += snprintf(buf + i,
-			256, "role = %s\n", role_text[tcpc->desc.role_def]);
-		if (i < 0)
-			break;
-		if (tcpc->typec_local_rp_level == TYPEC_RP_DFT) {
-			i += snprintf(buf + i, 256, "rplvl = %s\n", "Default");
-			if (i < 0)
-				break;
-		} else if (tcpc->typec_local_rp_level == TYPEC_RP_1_5) {
-			i += snprintf(buf + i, 256, "rplvl = %s\n", "1.5");
-			if (i < 0)
-				break;
-		} else if (tcpc->typec_local_rp_level == TYPEC_RP_3_0) {
-			i += snprintf(buf + i, 256, "rplvl = %s\n", "3.0");
-			if (i < 0)
-				break;
-		}
-		break;
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	case TCPC_DESC_PE_READY:
 		pd_port = &tcpc->pd_port;
 		if (pd_port->pe_data.pe_ready) {
@@ -230,17 +207,7 @@ static ssize_t tcpc_show_property(struct device *dev,
 				break;
 		}
 		break;
-#endif
-	case TCPC_TCPM_VBUS_LEVEL:
-		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_vbus_level(tcpc, true));
-		if (ret < 0)
-			return ret;
-		break;
-	case TCPC_TCPM_CC_HIGH:
-		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_cc_high(tcpc));
-		if (ret < 0)
-			return ret;
-		break;
+#endif /* CONFIG_USB_POWER_DELIVERY */
 	default:
 		break;
 	}
@@ -279,25 +246,38 @@ static ssize_t tcpc_store_property(struct device *dev,
 	unsigned long val;
 
 	switch (offset) {
-	case TCPC_DESC_ROLE_DEF:
-		ret = get_parameters((char *)buf, &val, 1);
-		if (ret < 0) {
-			dev_err(dev, "get parameters fail\n");
-			return -EINVAL;
-		}
-
-		tcpm_typec_change_role(tcpc, val);
-		break;
+	case TCPC_DESC_TYPEC_ROLE:
+	case TCPC_DESC_LOCAL_RP_LEVEL:
 	case TCPC_DESC_TIMER:
 		ret = get_parameters((char *)buf, &val, 1);
 		if (ret < 0) {
 			dev_err(dev, "get parameters fail\n");
 			return -EINVAL;
 		}
-		if (val < PD_TIMER_NR)
-			tcpc_enable_timer(tcpc, val);
+		switch (offset) {
+		case TCPC_DESC_TYPEC_ROLE:
+			tcpm_typec_change_role(tcpc, val);
+			break;
+		case TCPC_DESC_LOCAL_RP_LEVEL:
+			switch (val) {
+			case TYPEC_RP_DFT:
+			case TYPEC_RP_1_5:
+			case TYPEC_RP_3_0:
+				tcpc->typec_local_rp_level = val;
+				break;
+			default:
+				break;
+			}
+			break;
+		case TCPC_DESC_TIMER:
+			if (val < PD_TIMER_NR)
+				tcpc_enable_timer(tcpc, val);
+			break;
+		default:
+			break;
+		}
 		break;
-	#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	case TCPC_DESC_PD_TEST:
 		ret = get_parameters((char *)buf, &val, 1);
 		if (ret < 0) {
@@ -351,7 +331,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 			break;
 		}
 		break;
-	#endif /* CONFIG_USB_POWER_DELIVERY */
+#endif /* CONFIG_USB_POWER_DELIVERY */
 	default:
 		break;
 	}
@@ -571,9 +551,8 @@ static void tcpc_event_init_work(struct work_struct *work)
 		return;
 	}
 #endif /* CONFIG_USB_PD_WAIT_BC12 */
-	tcpc->pd_inited_flag = 1; /* MTK Only */
-	pr_info("%s typec attach new = %d\n",
-			__func__, tcpc->typec_attach_new);
+	tcpc->pd_inited_flag = 1;
+	pr_info("%s typec attach new = %d\n", __func__, tcpc->typec_attach_new);
 	if (tcpc->typec_attach_new)
 		pd_put_cc_attached_event(tcpc, tcpc->typec_attach_new);
 	tcpci_unlock_typec(tcpc);
@@ -878,6 +857,16 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.29_MTK
+ * (1) Revise wakeup source of pps_request
+ * (2) Unlock typec_lock in tcpm_shutdown()
+ * (3) Remove unnecessary preprocessor directives
+ * (4) Revise struct pe_data
+ * (5) Revise NoRp.SRC support again
+ * (6) Not response NAK when receiving PD DP Status Update
+ * (7) Revise code related to typec_state, typec_attach_*
+ * (8) Revise sink vbus
+ *
  * 2.0.28_MTK
  * (1) Revise rx_pending, rxbuf_lock, and discard_pending
  * (2) Revise macros

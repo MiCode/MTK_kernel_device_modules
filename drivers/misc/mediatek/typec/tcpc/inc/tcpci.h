@@ -163,6 +163,7 @@ int tcpci_notify_cc_hi(struct tcpc_device *tcpc, int cc_hi);
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 
 int tcpci_notify_hard_reset_state(struct tcpc_device *tcpc, uint8_t state);
+int tcpci_notify_wait_new_cap(struct tcpc_device *tcpc);
 
 int tcpci_enter_mode(struct tcpc_device *tcpc,
 	uint16_t svid, uint8_t ops, uint32_t mode);

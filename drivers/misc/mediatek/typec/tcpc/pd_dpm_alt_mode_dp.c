@@ -346,7 +346,7 @@ bool dp_dfp_u_notify_discover_modes(
 		pd_port->cable_mode_svid = 0;
 		pd_port->cable_mode_obj_pos = 0;
 		pd_port->cable_svid_to_discover = 0;
-		pd_port->pe_data.discover_id_counter = 0;
+		pd_port->pe_data.discover_cable_id_counter = 0;
 		pd_port->pe_data.cable_discovered_state = CABLE_DISCOVERED_NONE;
 		dp_dfp_u_set_state(pd_port, DP_DFP_U_DISCOVER_CABLE);
 		dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_CABLE_FLOW);
@@ -915,7 +915,7 @@ bool dp_ufp_u_request_exit_mode(
 	return false;
 }
 
-static inline bool dp_ufp_u_update_dp_connected(struct pd_port *pd_port)
+static inline void dp_ufp_u_update_dp_connected(struct pd_port *pd_port)
 {
 	bool valid_connected = false;
 	uint32_t dp_connected, dp_local_connected;
@@ -940,12 +940,13 @@ static inline bool dp_ufp_u_update_dp_connected(struct pd_port *pd_port)
 		break;
 	}
 
-	return valid_connected;
+	DP_DBG("dp_connected: 0x%x\n", dp_connected);
+	DP_DBG("dp_local_connected: 0x%x\n", dp_local_connected);
+	DP_DBG("valid_connected: %d\n", valid_connected);
 }
 
 static inline int dp_ufp_u_request_dp_status(struct pd_port *pd_port)
 {
-	bool ack;
 	struct dp_data *dp_data = pd_get_dp_data(pd_port);
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 
@@ -956,31 +957,25 @@ static inline int dp_ufp_u_request_dp_status(struct pd_port *pd_port)
 
 	switch (dp_data->ufp_u_state) {
 	case DP_UFP_U_WAIT:
-		ack = dp_ufp_u_update_dp_connected(pd_port);
+		dp_ufp_u_update_dp_connected(pd_port);
 		break;
 
 	case DP_UFP_U_STARTUP:
 	case DP_UFP_U_OPERATION:
-		ack = true;
 		tcpci_dp_status_update(
 			pd_port->tcpc, dp_data->remote_status);
 		break;
 
 	default:
-		ack = false;
 		break;
 	}
 
-	if (ack) {
-		dp_data->local_status |= DPSTS_DP_ENABLED;
-		if (pd_port->dpm_caps & DPM_CAP_DP_PREFER_MF)
-			dp_data->local_status |= DPSTS_DP_MF_PREF;
+	dp_data->local_status |= DPSTS_DP_ENABLED;
+	if (pd_port->dpm_caps & DPM_CAP_DP_PREFER_MF)
+		dp_data->local_status |= DPSTS_DP_MF_PREF;
 
-		return pd_reply_svdm_request(pd_port,
-			CMDT_RSP_ACK, 1, &dp_data->local_status);
-	} else {
-		return dpm_vdm_reply_svdm_nak(pd_port);
-	}
+	return pd_reply_svdm_request(pd_port,
+		CMDT_RSP_ACK, 1, &dp_data->local_status);
 }
 
 static bool dp_ufp_u_is_valid_dp_config(struct pd_port *pd_port,

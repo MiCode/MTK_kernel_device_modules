@@ -18,11 +18,6 @@ enum pd_pe_state_machine {
 	PE_STATE_MACHINE_VCONN_SWAP,
 };
 
-#define PE_STATE_DISCARD_AND_UNEXPECTED(pd_port) {\
-	pd_port->pe_data.pe_state_flags = \
-	PE_STATE_FLAG_HRESET_IF_SR_TIMEOUT |\
-	PE_STATE_FLAG_IGNORE_UNKNOWN_EVENT; }
-
 /* ---- Policy Engine Runtime Flags ---- */
 
 #define PE_STATE_FLAG_BACK_READY_IF_RECV_WAIT		(1<<0)
@@ -31,8 +26,17 @@ enum pd_pe_state_machine {
 #define PE_STATE_FLAG_BACK_READY_IF_TX_FAILED		(1<<3)
 #define PE_STATE_FLAG_HRESET_IF_SR_TIMEOUT		(1<<4)
 #define PE_STATE_FLAG_HRESET_IF_TX_FAILED		(1<<5)
-#define PE_STATE_FLAG_IGNORE_UNKNOWN_EVENT		(1<<6)
-#define PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER	(1<<7)
+#define PE_STATE_FLAG_ER_IF_TX_FAILED			(1<<6)
+#define PE_STATE_FLAG_IGNORE_UNKNOWN_EVENT		(1<<7)
+#define PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER	(1<<8)
+#define PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<9)
+#define PE_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<10)
+#define PE_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<11)
+
+#define PE_STATE_DISCARD_AND_UNEXPECTED(pd_port) {\
+	pd_port->pe_data.pe_state_flags = \
+	PE_STATE_FLAG_HRESET_IF_SR_TIMEOUT |\
+	PE_STATE_FLAG_IGNORE_UNKNOWN_EVENT; }
 
 #define PE_STATE_WAIT_RESPONSE(pd_port) {\
 	pd_port->pe_data.pe_state_flags = \
@@ -67,9 +71,9 @@ enum pd_pe_state_machine {
 	PE_STATE_FLAG_BACK_READY_IF_SR_TIMER_TOUT |\
 	PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER; }
 
-#define PE_STATE_HRESET_IF_TX_FAILED(pd_port) {\
+#define PE_STATE_ER_IF_TX_FAILED(pd_port) {\
 	pd_port->pe_data.pe_state_flags = \
-	PE_STATE_FLAG_HRESET_IF_TX_FAILED; }
+	PE_STATE_FLAG_ER_IF_TX_FAILED; }
 
 #define PE_STATE_IGNORE_UNKNOWN_EVENT(pd_port) {\
 	pd_port->pe_data.pe_state_flags = \
@@ -87,37 +91,32 @@ enum pd_pe_state_machine {
 	PE_STATE_FLAG_IGNORE_UNKNOWN_EVENT |\
 	PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER; }
 
-#define PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<0)
-#define PE_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<1)
-#define PE_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<7)
-
 #define PE_STATE_WAIT_TX_SUCCESS(pd_port)	{\
-	pd_port->pe_data.pe_state_flags2 = \
+	pd_port->pe_data.pe_state_flags = \
 	PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define PE_STATE_WAIT_TX_SUCCESS_OR_FAILED(pd_port)	{\
 	pd_port->pe_data.pe_state_flags = \
-	PE_STATE_FLAG_BACK_READY_IF_TX_FAILED; \
-	pd_port->pe_data.pe_state_flags2 = \
+	PE_STATE_FLAG_BACK_READY_IF_TX_FAILED |\
 	PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define PE_STATE_DPM_INFORMED(pd_port)	{\
-	pd_port->pe_data.pe_state_flags2 = \
+	pd_port->pe_data.pe_state_flags = \
 	PE_STATE_FLAG_BACK_READY_IF_DPM_ACK |\
 	PE_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
 
 #define PE_STATE_WAIT_DPM_ACK(pd_port) {\
-	pd_port->pe_data.pe_state_flags2 = \
+	pd_port->pe_data.pe_state_flags = \
 	PE_STATE_FLAG_BACK_READY_IF_DPM_ACK; }
 
 #define PE_STATE_DPM_ACK_IMMEDIATELY(pd_port) {\
-	pd_port->pe_data.pe_state_flags2 |= \
+	pd_port->pe_data.pe_state_flags |= \
 	PE_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
 
 #define VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER	(1<<0)
-#define VDM_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<4)
-#define VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<6)
-#define VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<7)
+#define VDM_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<1)
+#define VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<2)
+#define VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<3)
 
 #define VDM_STATE_DPM_INFORMED(pd_port)	{\
 	pd_port->pe_data.vdm_state_flags = \
@@ -126,15 +125,15 @@ enum pd_pe_state_machine {
 
 #define VDM_STATE_REPLY_SVDM_REQUEST(pd_port)	{\
 	pd_port->pe_data.vdm_state_flags = \
-		VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
+	VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define VDM_STATE_NORESP_CMD(pd_port)	{\
 	pd_port->pe_data.vdm_state_flags = \
-		VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
+	VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define VDM_STATE_RESPONSE_CMD(pd_port, timer_id)	{\
 	pd_port->pe_data.vdm_state_flags = \
-		VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER; \
+	VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER; \
 	pd_port->pe_data.vdm_state_timer = timer_id; }
 
 static inline bool pd_check_pe_during_hard_reset(struct pd_port *pd_port)
@@ -164,14 +163,10 @@ enum pd_pe_state {
 	PE_SRC_SOFT_RESET,
 
 /* Source Startup Discover Cable */
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
-#if CONFIG_PD_SRC_RESET_CABLE
 	PE_SRC_CBL_SEND_SOFT_RESET,
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 	PE_SRC_VDM_IDENTITY_REQUEST,
 	PE_SRC_VDM_IDENTITY_ACKED,
 	PE_SRC_VDM_IDENTITY_NAKED,
-#endif	/* PD_CAP_PE_SRC_STARTUP_DISCOVER_ID */
 
 /* Source for PD30 */
 #if CONFIG_USB_PD_REV30
@@ -350,10 +345,8 @@ enum pd_pe_state {
 	PE_DFP_VDM_MODE_EXIT_ACKED,
 	PE_DFP_VDM_ATTENTION_REQUEST,
 
-#if CONFIG_PD_DFP_RESET_CABLE
 	PE_DFP_CBL_SEND_SOFT_RESET,
 	PE_DFP_CBL_SEND_CABLE_RESET,
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 
 	PE_DFP_VDM_DP_STATUS_UPDATE_REQUEST,
 	PE_DFP_VDM_DP_STATUS_UPDATE_ACKED,
@@ -413,10 +406,6 @@ enum pd_pe_state {
 #if CONFIG_USB_PD_CUSTOM_DBGACC
 	PE_DBG_READY,
 #endif/* CONFIG_USB_PD_CUSTOM_DBGACC */
-
-#if CONFIG_USB_PD_RECV_HRESET_COUNTER
-	PE_OVER_RECV_HRESET_LIMIT,
-#endif/* CONFIG_USB_PD_RECV_HRESET_COUNTER */
 
 	PE_REJECT,
 	PE_ERROR_RECOVERY,
@@ -506,18 +495,14 @@ void pe_src_soft_reset_entry(
 	struct pd_port *pd_port);
 
 /* Source Startup Discover Cable */
-#if CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID
-#if CONFIG_PD_SRC_RESET_CABLE
 void pe_src_cbl_send_soft_reset_entry(
 	struct pd_port *pd_port);
-#endif	/* CONFIG_PD_SRC_RESET_CABLE */
 void pe_src_vdm_identity_request_entry(
 	struct pd_port *pd_port);
 void pe_src_vdm_identity_acked_entry(
 	struct pd_port *pd_port);
 void pe_src_vdm_identity_naked_entry(
 	struct pd_port *pd_port);
-#endif	/* PD_CAP_PE_SRC_STARTUP_DISCOVER_ID */
 
 /* Source for PD30 */
 #if CONFIG_USB_PD_REV30
@@ -851,12 +836,10 @@ void pe_dfp_vdm_mode_exit_acked_entry(
 void pe_dfp_vdm_attention_request_entry(
 	struct pd_port *pd_port);
 
-#if CONFIG_PD_DFP_RESET_CABLE
 void pe_dfp_cbl_send_soft_reset_entry(
 	struct pd_port *pd_port);
 void pe_dfp_cbl_send_cable_reset_entry(
 	struct pd_port *pd_port);
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 void pe_dfp_vdm_dp_status_update_request_entry(
 	struct pd_port *pd_port);
 void pe_dfp_vdm_dp_status_update_acked_entry(
@@ -949,10 +932,6 @@ void pe_dbg_ready_entry(
 	struct pd_port *pd_port);
 #endif/* CONFIG_USB_PD_CUSTOM_DBGACC */
 
-#if CONFIG_USB_PD_RECV_HRESET_COUNTER
-void pe_over_recv_hreset_limit_entry(
-	struct pd_port *pd_port);
-#endif/* CONFIG_USB_PD_RECV_HRESET_COUNTER */
 void pe_reject_entry(
 	struct pd_port *pd_port);
 void pe_error_recovery_entry(

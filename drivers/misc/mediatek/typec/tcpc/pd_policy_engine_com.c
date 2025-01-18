@@ -27,10 +27,10 @@ static void pe_idle_reset_data(struct pd_port *pd_port)
 	pd_port->state_machine = PE_STATE_MACHINE_IDLE;
 
 	pd_enable_bist_test_mode(pd_port, false);
-
 #if !CONFIG_USB_PD_TRANSMIT_BIST2
 	pd_disable_bist_mode2(pd_port);
 #endif	/* CONFIG_USB_PD_TRANSMIT_BIST2 */
+	pd_noitfy_pe_bist_mode(pd_port, PD_BIST_MODE_DISABLE);
 
 	pd_enable_timer(pd_port, PD_TIMER_PE_IDLE_TOUT);
 }
@@ -90,30 +90,23 @@ void pe_error_recovery_once_entry(struct pd_port *pd_port)
 }
 #endif	/* CONFIG_USB_PD_ERROR_RECOVERY_ONCE */
 
-#if CONFIG_USB_PD_RECV_HRESET_COUNTER
-void pe_over_recv_hreset_limit_entry(struct pd_port *pd_port)
-{
-	PE_INFO("OverHResetLimit++\n");
-	pe_idle_reset_data(pd_port);
-	pd_notify_pe_over_recv_hreset(pd_port);
-	PE_INFO("OverHResetLimit--\n");
-}
-#endif	/* CONFIG_USB_PD_RECV_HRESET_COUNTER */
-
 void pe_bist_test_data_entry(struct pd_port *pd_port)
 {
 	PE_STATE_IGNORE_UNKNOWN_EVENT(pd_port);
 
+	pd_noitfy_pe_bist_mode(pd_port, PD_BIST_MODE_TEST_DATA);
 	pd_enable_bist_test_mode(pd_port, true);
 }
 
 void pe_bist_test_data_exit(struct pd_port *pd_port)
 {
 	pd_enable_bist_test_mode(pd_port, false);
+	pd_noitfy_pe_bist_mode(pd_port, PD_BIST_MODE_DISABLE);
 }
 
 void pe_bist_carrier_mode_2_entry(struct pd_port *pd_port)
 {
+	pd_noitfy_pe_bist_mode(pd_port, PD_BIST_MODE_CARRIER_2);
 	pd_send_bist_mode2(pd_port);
 	pd_enable_pe_state_timer(pd_port, PD_TIMER_BIST_CONT_MODE);
 }
@@ -121,6 +114,7 @@ void pe_bist_carrier_mode_2_entry(struct pd_port *pd_port)
 void pe_bist_carrier_mode_2_exit(struct pd_port *pd_port)
 {
 	pd_disable_bist_mode2(pd_port);
+	pd_noitfy_pe_bist_mode(pd_port, PD_BIST_MODE_DISABLE);
 }
 
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
@@ -187,18 +181,19 @@ static inline uint8_t pe30_power_ready_entry(struct pd_port *pd_port)
 void pe_power_ready_entry(struct pd_port *pd_port)
 {
 	uint8_t rx_cap;
+	struct pe_data *pe_data = &pd_port->pe_data;
 
 	pd_port->state_machine = PE_STATE_MACHINE_NORMAL;
 
-	pd_port->pe_data.during_swap = false;
-	pd_port->pe_data.explicit_contract = true;
+	pe_data->explicit_contract = true;
+	pe_data->during_swap = false;
 
 #if CONFIG_USB_PD_RENEGOTIATION_COUNTER
-	pd_port->pe_data.renegotiation_count = 0;
+	pe_data->renegotiation_count = 0;
 #endif	/* CONFIG_USB_PD_RENEGOTIATION_COUNTER */
 
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
-	pd_port->pe_data.pd_sent_ams_init_cmd = true;
+	pe_data->pd_sent_ams_init_cmd = true;
 #endif /* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
 
 #if CONFIG_USB_PD_REV30

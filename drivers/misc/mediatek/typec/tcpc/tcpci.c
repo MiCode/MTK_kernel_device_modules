@@ -332,6 +332,7 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 		}
 	}
 
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	/* [Workaround]
 	 * rx_buffer can't clear, try to reset protocol before disable bmc clock
 	 */
@@ -345,6 +346,7 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 					  __func__, i);
 		}
 	}
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 	if (tcpc->ops->set_low_power_mode)
 		ret = tcpc->ops->set_low_power_mode(tcpc, en, pull);
 
@@ -659,11 +661,11 @@ int tcpci_notify_typec_state(struct tcpc_device *tcpc)
 {
 	struct tcp_notify tcp_noti;
 
+	tcp_noti.typec_state.rp_level = tcpc->typec_remote_rp_level;
+	tcp_noti.typec_state.local_rp_level = tcpc->typec_local_rp_level;
 	tcp_noti.typec_state.polarity = tcpc->typec_polarity;
 	tcp_noti.typec_state.old_state = tcpc->typec_attach_old;
 	tcp_noti.typec_state.new_state = tcpc->typec_attach_new;
-	tcp_noti.typec_state.rp_level = tcpc->typec_remote_rp_level;
-	tcp_noti.typec_state.local_rp_level = tcpc->typec_local_rp_level;
 
 	return tcpc_check_notify_time(tcpc, &tcp_noti,
 		TCP_NOTIFY_IDX_USB, TCP_NOTIFY_TYPEC_STATE);
@@ -773,11 +775,15 @@ int tcpci_sink_vbus(
 			ma = 0;
 	}
 
-	tcp_noti.vbus_state.ma = ma;
+	tcpc->sink_vbus_mv = mv;
+	tcpc->sink_vbus_ma = ma;
+	tcpc->sink_vbus_type = type;
+
 	tcp_noti.vbus_state.mv = mv;
+	tcp_noti.vbus_state.ma = ma;
 	tcp_noti.vbus_state.type = type;
 
-	TCPC_DBG("sink_vbus: %d mV, %d mA\n", mv, ma);
+	TCPC_DBG("sink_vbus(0x%02X): %d mV, %d mA\n", type, mv, ma);
 	return tcpc_check_notify_time(tcpc, &tcp_noti,
 		TCP_NOTIFY_IDX_VBUS, TCP_NOTIFY_SINK_VBUS);
 }
@@ -939,6 +945,16 @@ int tcpci_notify_hard_reset_state(struct tcpc_device *tcpc, uint8_t state)
 		TCP_NOTIFY_IDX_MISC, TCP_NOTIFY_HARD_RESET_STATE);
 }
 EXPORT_SYMBOL(tcpci_notify_hard_reset_state);
+
+int tcpci_notify_wait_new_cap(struct tcpc_device *tcpc)
+{
+	struct tcp_notify tcp_noti;
+
+	memset(&tcp_noti, 0, sizeof(tcp_noti));
+	return tcpc_check_notify_time(tcpc, &tcp_noti,
+		TCP_NOTIFY_IDX_MISC, TCP_NOTIFY_WAIT_NEW_CAP);
+}
+EXPORT_SYMBOL(tcpci_notify_wait_new_cap);
 
 int tcpci_enter_mode(struct tcpc_device *tcpc,
 	uint16_t svid, uint8_t ops, uint32_t mode)

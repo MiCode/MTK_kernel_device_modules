@@ -5,8 +5,6 @@
 #ifndef __LINUX_TCPC_PD30_CONFIG_H
 #define __LINUX_TCPC_PD30_CONFIG_H
 
-#define CONFIG_USB_PD_REV30_SYNC_SPEC_REV	1
-
 /*
  * If DUT send a PD command immediately after Policy Engine is ready,
  * it may interrupt the compliance test process and getting a failed result.

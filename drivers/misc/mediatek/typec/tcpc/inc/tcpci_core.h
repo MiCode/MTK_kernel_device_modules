@@ -30,7 +30,6 @@
 
 /* The switch of log message */
 #define TYPEC_INFO_ENABLE	1
-#define TYPEC_INFO2_ENABLE	1
 #define PE_EVENT_DBG_ENABLE	1
 #define PE_STATE_INFO_ENABLE	1
 #define TCPC_INFO_ENABLE	1
@@ -110,7 +109,7 @@ struct tcpc_desc {
 #if CONFIG_TYPEC_NOTIFY_ATTACHWAIT_SRC
 #undef CONFIG_TYPEC_NOTIFY_ATTACHWAIT
 #define CONFIG_TYPEC_NOTIFY_ATTACHWAIT 1
-#endif	/* CONFIG_TYPEC_NOTIFY_ATTACHWAIT_SNK */
+#endif	/* CONFIG_TYPEC_NOTIFY_ATTACHWAIT_SRC */
 
 
 #if CONFIG_TCPC_FORCE_DISCHARGE_EXT
@@ -334,7 +333,6 @@ struct tcpc_device {
 	bool typec_drp_try_timeout;
 	bool typec_lpm;
 	bool typec_power_ctrl;
-	bool typec_is_attached_src;
 
 	int typec_usb_sink_curr;
 
@@ -431,7 +429,11 @@ struct tcpc_device {
 	u8 vbus_level:2;
 	bool vbus_safe0v;
 	bool vbus_present;
-	u8 pd_inited_flag:1; /* MTK Only */
+	u8 pd_inited_flag:1;
+
+	int sink_vbus_mv;
+	int sink_vbus_ma;
+	uint8_t sink_vbus_type;
 
 	int bootmode;
 #if CONFIG_CABLE_TYPE_DETECTION
@@ -455,7 +457,7 @@ struct tcpc_device {
 static inline uint8_t pd_get_rev(struct pd_port *pd_port, uint8_t sop_type)
 {
 	uint8_t pd_rev = PD_REV20;
-#if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
+#if CONFIG_USB_PD_REV30
 	struct pe_data *pe_data = &pd_port->pe_data;
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
@@ -467,7 +469,7 @@ static inline uint8_t pd_get_rev(struct pd_port *pd_port, uint8_t sop_type)
 		else if (tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
 			pd_rev = PD_REV30;
 	}
-#endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
+#endif	/* CONFIG_USB_PD_REV30 */
 
 	return pd_rev;
 }
@@ -503,13 +505,6 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "TYPEC:" format, ##args)
 #else
 #define TYPEC_INFO(format, args...)
-#endif /* TYPEC_INFO_ENABLE */
-
-#if TYPEC_INFO2_ENABLE
-#define TYPEC_INFO2(format, args...)	\
-	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "TYPEC:" format, ##args)
-#else
-#define TYPEC_INFO2(format, args...)
 #endif /* TYPEC_INFO_ENABLE */
 
 #if TCPC_INFO_ENABLE

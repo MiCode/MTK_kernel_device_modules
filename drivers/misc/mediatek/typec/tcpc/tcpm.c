@@ -23,7 +23,7 @@ static int tcpm_check_typec_attached(struct tcpc_device *tcpc)
 		tcpc->typec_attach_new == TYPEC_UNATTACHED)
 		return TCPM_ERROR_UNATTACHED;
 
-	return 0;
+	return TCPM_SUCCESS;
 }
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -189,6 +189,15 @@ uint8_t tcpm_inquire_typec_local_rp(struct tcpc_device *tcpc)
 	return tcpc->typec_local_rp_level;
 }
 EXPORT_SYMBOL(tcpm_inquire_typec_local_rp);
+
+void tcpm_inquire_sink_vbus(struct tcpc_device *tcpc,
+			    int *mv, int *ma, uint8_t *type)
+{
+	*mv = tcpc->sink_vbus_mv;
+	*ma = tcpc->sink_vbus_ma;
+	*type = tcpc->sink_vbus_type;
+}
+EXPORT_SYMBOL(tcpm_inquire_sink_vbus);
 
 int tcpm_typec_set_usb_sink_curr(struct tcpc_device *tcpc, int curr)
 {
@@ -1952,7 +1961,7 @@ static const char * const bk_event_ret_name[] = {
 	"SameRole",
 	"InvalidReq",
 	"RepeatReq",
-	"WrongDR",
+	"WrongR",
 	"PDRev",
 	"ModalOperation",
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY

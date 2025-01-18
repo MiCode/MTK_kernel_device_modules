@@ -109,19 +109,17 @@ static inline int pd_handle_tcp_event_softreset(struct pd_port *pd_port)
 	return TCP_DPM_RET_SENT;
 }
 
-#if CONFIG_PD_DFP_RESET_CABLE
 static inline int pd_handle_tcp_event_cable_softreset(struct pd_port *pd_port)
 {
 	if (!pd_check_pe_state_ready(pd_port))
 		return TCP_DPM_RET_DENIED_NOT_READY;
 
 	if (!pd_is_cable_communication_available(pd_port))
-		return TCP_DPM_RET_DENIED_WRONG_DATA_ROLE;
+		return TCP_DPM_RET_DENIED_WRONG_ROLE;
 
 	PE_TRANSIT_STATE(pd_port, PE_DFP_CBL_SEND_SOFT_RESET);
 	return TCP_DPM_RET_SENT;
 }
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 
 static inline int pd_handle_tcp_event_get_source_cap(struct pd_port *pd_port)
 {
@@ -382,9 +380,7 @@ static inline int pd_handle_tcp_dpm_event(
 		break;
 
 	case TCP_DPM_EVT_CABLE_SOFTRESET:
-#if CONFIG_PD_DFP_RESET_CABLE
 		ret = pd_handle_tcp_event_cable_softreset(pd_port);
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 		break;
 
 	case TCP_DPM_EVT_GET_SOURCE_CAP:

@@ -189,10 +189,15 @@ void pd_dpm_inform_cable_modes(struct pd_port *pd_port, bool ack)
 	struct pe_data *pe_data = &pd_port->pe_data;
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
-	uint16_t svid = 0, expected_svid = pd_port->cable_mode_svid;
+	uint16_t svid = dpm_vdm_get_svid(pd_port);
+	uint16_t expected_svid = pd_port->cable_mode_svid;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 	int i = 0;
 	char buf[100];
+
+	if (svid != expected_svid)
+		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
+			 svid, expected_svid);
 
 	if (ack && payload) {
 		buf[0] = '\0';
@@ -204,17 +209,12 @@ void pd_dpm_inform_cable_modes(struct pd_port *pd_port, bool ack)
 		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
 		DPM_DBG("%s", buf);
 
-		svid = dpm_vdm_get_svid(pd_port);
-		if (svid != expected_svid)
-			DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
-				 svid, expected_svid);
-		else
+		if (svid == expected_svid)
 			pe_data->cable_discovered_state =
 				CABLE_DISCOVERED_MODES;
 	}
 
 	svdm_dfp_inform_cable_modes(pd_port, svid, ack, payload, cnt);
-
 	VDM_STATE_DPM_INFORMED(pd_port);
 }
 
@@ -1013,14 +1013,13 @@ void pd_dpm_ufp_request_svid_info(struct pd_port *pd_port)
 void pd_dpm_ufp_request_mode_info(struct pd_port *pd_port)
 {
 	uint16_t svid = dpm_vdm_get_svid(pd_port);
-	bool ack = dpm_get_svdm_svid_data(pd_port, svid) != NULL;
 
-	if (!ack) {
-		dpm_vdm_reply_svdm_nak(pd_port);
+	if (dpm_get_svdm_svid_data(pd_port, svid)) {
+		dpm_vdm_ufp_response_modes(pd_port);
 		return;
 	}
 
-	dpm_vdm_ufp_response_modes(pd_port);
+	dpm_vdm_reply_svdm_nak(pd_port);
 }
 
 void pd_dpm_ufp_request_enter_mode(struct pd_port *pd_port)
@@ -1045,13 +1044,14 @@ static inline void dpm_dfp_update_partner_id(
 			struct pd_port *pd_port, uint32_t *payload)
 {
 #if CONFIG_USB_PD_KEEP_PARTNER_ID
+	struct pe_data *pe_data = &pd_port->pe_data;
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
 	uint32_t size = sizeof(uint32_t) * (cnt);
 
-	pd_port->pe_data.partner_id_present = true;
-	memcpy(pd_port->pe_data.partner_vdos, payload, size);
-	memset((char *)pd_port->pe_data.partner_vdos + size, 0,
+	memcpy(pe_data->partner_vdos, payload, size);
+	memset((char *)pe_data->partner_vdos + size, 0,
 		sizeof(uint32_t) * VDO_MAX_NR - size);
+	pe_data->partner_id_present = true;
 #endif	/* CONFIG_USB_PD_KEEP_PARTNER_ID */
 }
 static inline void dpm_dfp_update_svid_data_exist(
@@ -1094,14 +1094,11 @@ static inline void dpm_dfp_update_svid_data_modes(struct pd_port *pd_port,
 		return;
 
 	svid_data->remote_mode.mode_cnt = count;
-
-	if (count != 0) {
-		memcpy(svid_data->remote_mode.mode_vdo,
-			mode_list, sizeof(uint32_t) * count);
-	}
+	memcpy(svid_data->remote_mode.mode_vdo, mode_list,
+	       sizeof(uint32_t) * count);
 }
 
-static inline void dpm_dfp_update_svid_enter_mode(
+static inline void dpm_dfp_update_svid_data_enter_mode(
 	struct pd_port *pd_port, uint16_t svid, uint8_t ops)
 {
 	struct svdm_svid_data *svid_data;
@@ -1157,7 +1154,7 @@ void pd_dpm_dfp_inform_id(struct pd_port *pd_port, bool ack)
 		 * For PD compliance test,
 		 * If device doesn't reply discoverID
 		 * or doesn't support modal operation,
-		 * then don't send discoverSVID
+		 * then don't send discoverSVIDs
 		 */
 		if (!ack || !payload)
 			dpm_reaction_clear(pd_port,
@@ -1232,66 +1229,62 @@ void pd_dpm_dfp_inform_modes(struct pd_port *pd_port, bool ack)
 {
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
-	uint16_t svid = 0, expected_svid = pd_port->mode_svid;
+	uint16_t svid = dpm_vdm_get_svid(pd_port);
+	uint16_t expected_svid = pd_port->mode_svid;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (ack && payload) {
-		svid = dpm_vdm_get_svid(pd_port);
+	if (svid != expected_svid)
+		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
+			 svid, expected_svid);
 
-		if (svid != expected_svid) {
-			ack = false;
-			DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
-				 svid, expected_svid);
-		} else {
-			dpm_dfp_update_svid_data_modes(
-					pd_port, svid, payload, cnt);
-		}
-	}
+	if (ack && payload)
+		dpm_dfp_update_svid_data_modes(pd_port, svid, payload, cnt);
 
-	svdm_dfp_inform_modes(pd_port, expected_svid, ack);
+	svdm_dfp_inform_modes(pd_port, svid, ack);
 	VDM_STATE_DPM_INFORMED(pd_port);
 }
 
 void pd_dpm_dfp_inform_enter_mode(struct pd_port *pd_port, bool ack)
 {
-	uint8_t ops = 0;
-	uint16_t svid = 0;
+	uint16_t svid = dpm_vdm_get_svid(pd_port);
 	uint16_t expected_svid = pd_port->mode_svid;
+	uint8_t ops = dpm_vdm_get_ops(pd_port);
+	uint8_t expected_ops = pd_port->mode_obj_pos;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (ack) {
-		ops = dpm_vdm_get_ops(pd_port);
-		svid = dpm_vdm_get_svid(pd_port);
+	if (svid != expected_svid)
+		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
+			 svid, expected_svid);
+	else if (ops != expected_ops)
+		DPM_INFO("Not expected ops (%d, %d)\n", ops, expected_ops);
 
-		/* TODO: check ops later ?! */
-		if (svid != expected_svid) {
-			ack = false;
-			DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
-				svid, expected_svid);
-		} else {
-			dpm_dfp_update_svid_enter_mode(pd_port, svid, ops);
-		}
-	}
+	if (ack)
+		dpm_dfp_update_svid_data_enter_mode(pd_port, svid, ops);
 
-	svdm_dfp_inform_enter_mode(pd_port, expected_svid, ops, ack);
+	svdm_dfp_inform_enter_mode(pd_port, svid, ops, ack);
 	VDM_STATE_DPM_INFORMED(pd_port);
 }
 
 void pd_dpm_dfp_inform_exit_mode(struct pd_port *pd_port)
 {
+	bool ack = PD_VDO_CMDT(pd_get_msg_vdm_hdr(pd_port)) == CMDT_RSP_ACK;
 	uint16_t svid = dpm_vdm_get_svid(pd_port);
-	uint8_t ops = dpm_vdm_get_ops(pd_port);
 	uint16_t expected_svid = pd_port->mode_svid;
+	uint8_t ops = dpm_vdm_get_ops(pd_port);
 	uint8_t expected_ops = pd_port->mode_obj_pos;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if ((expected_svid != svid) || (expected_ops != ops))
-		DPM_DBG("expected_svid & ops wrong\n");
+	if (svid != expected_svid)
+		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
+			 svid, expected_svid);
+	else if (ops != expected_ops)
+		DPM_INFO("Not expected ops (%d, %d)\n", ops, expected_ops);
 
-	dpm_dfp_update_svid_data_exit_mode(
-		pd_port, expected_svid, expected_ops);
+	if (ack) {
+		dpm_dfp_update_svid_data_exit_mode(pd_port, svid, ops);
+		svdm_dfp_inform_exit_mode(pd_port, svid, ops);
+	}
 
-	svdm_dfp_inform_exit_mode(pd_port, expected_svid, expected_ops);
 	VDM_STATE_DPM_INFORMED(pd_port);
 }
 
@@ -1351,26 +1344,22 @@ void pd_dpm_dfp_send_cvdm(struct pd_port *pd_port)
 
 void pd_dpm_dfp_inform_cvdm(struct pd_port *pd_port, bool ack)
 {
-	uint16_t svid;
+	uint16_t svid = dpm_vdm_get_svid(pd_port);
 	uint16_t expected_svid = pd_port->cvdm_svid;
 	struct svdm_svid_data *svid_data = pd_port->cvdm_cable ?
-				   dpm_get_svdm_svid_data_via_cable_svids(pd_port, expected_svid) :
-				   dpm_get_svdm_svid_data(pd_port, expected_svid);
+			dpm_get_svdm_svid_data_via_cable_svids(pd_port, svid) :
+			dpm_get_svdm_svid_data(pd_port, svid);
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
-	if (ack) {
-		svid = dpm_vdm_get_svid(pd_port);
+	if (svid != expected_svid)
+		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
+			 svid, expected_svid);
 
-		if (svid != expected_svid) {
-			ack = false;
-			DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
-				 svid, expected_svid);
-		} else {
-			pd_port->cvdm_cnt = pd_get_msg_data_count(pd_port);
-			memcpy(pd_port->cvdm_data,
-			       pd_get_msg_data_payload(pd_port),
-			       pd_get_msg_data_size(pd_port));
-		}
+	if (ack) {
+		pd_port->cvdm_cnt = pd_get_msg_data_count(pd_port);
+		memcpy(pd_port->cvdm_data,
+		       pd_get_msg_data_payload(pd_port),
+		       pd_get_msg_data_size(pd_port));
 	}
 
 	if (svid_data) {
@@ -1456,10 +1445,8 @@ void pd_dpm_drs_evaluate_swap(struct pd_port *pd_port, uint8_t role)
 
 void pd_dpm_drs_change_role(struct pd_port *pd_port, uint8_t role)
 {
-#if CONFIG_USB_PD_RESET_CABLE
 	if (role == PD_ROLE_DFP)
 		dpm_reaction_set(pd_port, DPM_REACTION_CAP_RESET_CABLE);
-#endif	/* CONFIG_USB_PD_RESET_CABLE */
 
 	pd_set_data_role(pd_port, role);
 
@@ -2179,8 +2166,6 @@ int pd_dpm_notify_pe_hardreset(struct pd_port *pd_port)
 	struct pe_data *pe_data = &pd_port->pe_data;
 
 	svdm_reset_state(pd_port);
-
-	pe_data->pe_ready = false;
 
 #if CONFIG_USB_PD_REV30
 	pe_data->pd_traffic_idle = false;

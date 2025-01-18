@@ -184,7 +184,6 @@ static uint8_t dpm_reaction_request_vconn_source(struct pd_port *pd_port)
 }
 #endif	/* CONFIG_USB_PD_DISCOVER_CABLE_REQUEST_VCONN */
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 static uint8_t pd_dpm_reaction_discover_cable(struct pd_port *pd_port)
 {
 	struct pe_data *pe_data = &pd_port->pe_data;
@@ -192,10 +191,8 @@ static uint8_t pd_dpm_reaction_discover_cable(struct pd_port *pd_port)
 	if (!pd_is_cable_communication_available(pd_port))
 		return 0;
 
-#if CONFIG_PD_DFP_RESET_CABLE
 	if (pd_is_reset_cable(pd_port))
 		return TCP_DPM_EVT_CABLE_SOFTRESET;
-#endif	/* CONFIG_PD_DFP_RESET_CABLE */
 
 	switch (pe_data->cable_discovered_state) {
 	case CABLE_DISCOVERED_NONE:
@@ -215,7 +212,6 @@ static uint8_t pd_dpm_reaction_discover_cable(struct pd_port *pd_port)
 		return 0;
 	}
 }
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
 #if CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN
 static uint8_t dpm_reaction_return_vconn_source(struct pd_port *pd_port)
@@ -566,11 +562,9 @@ static const struct dpm_ready_reaction dpm_reactions[] = {
 		dpm_reaction_vconn_stable_delay),
 #endif	/* CONFIG_USB_PD_VCONN_STABLE_DELAY */
 
-#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	DECL_DPM_REACTION_CHECK_ONCE_LIMITED_RETRIES(
 		DPM_REACTION_DISCOVER_CABLE,
 		pd_dpm_reaction_discover_cable),
-#endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
 #if CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN
 	DECL_DPM_REACTION_RUN_ONCE(
