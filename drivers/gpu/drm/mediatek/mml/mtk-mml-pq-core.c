@@ -103,6 +103,23 @@ static struct mml_pq_dev_data *dev_data[MML_MAX_OUTPUTS];
 
 #define MML_CLARITY_RB_ENG_NUM (2)
 
+int check_pq_buf_limit(u32 buffer_num,int default_buf_limit)
+{
+	int exceed_flag = 0;
+	int buf_limit;
+
+	if (mml_pq_debug_mode & MML_PQ_BUFFER_CHECK)
+		buf_limit = mml_pq_buf_num;
+	else
+		buf_limit = default_buf_limit;
+
+	if (buffer_num > buf_limit) {
+		mml_pq_err("%s buf_num[%d] exceeds limit[%d]",
+			__func__, buffer_num, buf_limit);
+			exceed_flag = 1;
+	}
+	return exceed_flag;
+}
 static void init_pq_chan(struct mml_pq_chan *chan)
 {
 	init_waitqueue_head(&chan->msg_wq);
@@ -505,7 +522,7 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
 {
 	struct cmdq_client *clt = task->config->path[pipe]->clt;
 	struct mml_pq_readback_buffer *temp_buffer = NULL;
-	int rb_buf_limit;
+	int is_buf_limit_exceed = 0;
 
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
 
@@ -528,15 +545,8 @@ void mml_pq_get_readback_buffer(struct mml_task *task, u8 pipe,
 		}
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
 		buffer_num++;
+		is_buf_limit_exceed = check_pq_buf_limit(buffer_num, RB_BUF_LIMIT);
 
-	if (mml_pq_debug_mode & MML_PQ_BUFFER_CHECK)
-		rb_buf_limit = mml_pq_buf_num;
-	else
-		rb_buf_limit = RB_BUF_LIMIT;
-	if (buffer_num > rb_buf_limit) {
-		mml_pq_msg("%s readback_buf_num[%d] exceeds limit[%d]",
-			__func__, buffer_num, rb_buf_limit);
-	}
 		*hist = temp_buffer;
 		mml_pq_rb_msg("%s aal reallocate jobid[%d] va[%p] pa[%pad]", __func__,
 			task->job.jobid, temp_buffer->va, &temp_buffer->pa);
@@ -556,8 +566,8 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 				struct mml_pq_readback_buffer **hist)
 {
 
-	int rb_buf_limit;
 	struct cmdq_client *clt = task->config->path[pipe]->clt;
+	int is_buf_limit_exceed = 0;
 
 	if (!(*hist)) {
 		mml_pq_err("%s buffer hist is null jobid[%d]", __func__, task->job.jobid);
@@ -568,18 +578,11 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 		__func__, task->job.jobid, (*hist)->va, &(*hist)->pa);
 	mutex_lock(&rb_buf_list_mutex);
 
-	if (mml_pq_debug_mode & MML_PQ_BUFFER_CHECK)
-		rb_buf_limit = mml_pq_buf_num;
-	else
-		rb_buf_limit = RB_BUF_LIMIT;
-
-	if (buffer_num > rb_buf_limit) {
-		mml_pq_msg("%s readback_buf_num[%d] exceeds limit[%d]",
-			__func__, buffer_num, rb_buf_limit);
-	cmdq_mbox_buf_free(clt, (*hist)->va, (*hist)->pa);
-	kfree(*hist);
-
-	buffer_num--;
+	is_buf_limit_exceed = check_pq_buf_limit(buffer_num, RB_BUF_LIMIT);
+	if (is_buf_limit_exceed) {
+		cmdq_mbox_buf_free(clt, (*hist)->va, (*hist)->pa);
+		kfree(*hist);
+		buffer_num--;
 	} else {
 		list_add_tail(&((*hist)->buffer_list), &rb_buf_list);
 	}
@@ -592,7 +595,7 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 {
 	struct mml_pq_dma_buffer *temp_buffer = NULL;
 	struct mutex *list_lock = NULL;
-	int dma_buf_limit;
+	int is_buf_limit_exceed = 0;
 
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
 
@@ -626,15 +629,7 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
 		dma_buf_num++;
 
-		if (mml_pq_debug_mode & MML_PQ_BUFFER_CHECK)
-			dma_buf_limit = mml_pq_buf_num;
-		else
-			dma_buf_limit = DMA_BUF_NUM_LIMIT;
-
-		if (dma_buf_num > dma_buf_limit) {
-			mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
-				__func__, dma_buf_num, dma_buf_limit);
-		}
+		is_buf_limit_exceed = check_pq_buf_limit(buffer_num, DMA_BUF_LIMIT);
 		*buf = temp_buffer;
 	}
 
@@ -659,7 +654,7 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 	struct device *dev, struct mml_pq_dma_buffer **buf, u32 size)
 {
 	struct mutex *list_lock = NULL;
-	int dma_buf_limit;
+	int is_buf_limit_exceed = 0;
 
 	if (!(*buf)) {
 		mml_pq_err("%s buffer buf is null jobid[%d]", __func__, task->job.jobid);
@@ -677,14 +672,8 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 	if (list_lock)
 		mutex_lock(list_lock);
 
-	if (mml_pq_debug_mode & MML_PQ_BUFFER_CHECK) {
-		dma_buf_limit = mml_pq_buf_num;
-	} else {
-		dma_buf_limit = DMA_BUF_NUM_LIMIT;
-	}
-	if (dma_buf_num > dma_buf_limit) {
-		mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
-			__func__, dma_buf_num, dma_buf_limit);
+	is_buf_limit_exceed = check_pq_buf_limit(buffer_num, DMA_BUF_LIMIT);
+	if (is_buf_limit_exceed) {
 		dma_free_noncoherent(dev, size, (*buf)->va, (*buf)->pa, DMA_TO_DEVICE);
 		kfree(*buf);
 		dma_buf_num--;
