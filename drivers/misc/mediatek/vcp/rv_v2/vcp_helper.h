@@ -185,7 +185,7 @@ void vcp_wait_core_stop_timeout(enum vcp_core_id id);
 /* vcp irq */
 extern irqreturn_t vcp_A_irq_handler(int irq, void *dev_id);
 extern void vcp_A_irq_init(void);
-extern void wait_vcp_ready_to_reboot(void);
+extern void wait_vcp_ready_to_reboot(enum vcp_core_id core_id);
 
 /* vcp helper */
 unsigned int is_vcp_ready_by_coreid(enum vcp_core_id id);

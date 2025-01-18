@@ -13,17 +13,29 @@
 	#define B_GIPC0_SETCLR_2            (1 << 2)
 	#define B_GIPC0_SETCLR_3            (1 << 3)
 	#define B_GIPC1_SETCLR_0            (1 << 4)
+	#define GIPC_VCP_HART1_HALT         B_GIPC1_SETCLR_0
 	#define B_GIPC1_SETCLR_1            (1 << 5)
+	#define GIPC_VCP_HART1_SWI          B_GIPC1_SETCLR_1
 	#define B_GIPC1_SETCLR_2            (1 << 6)
+	#define GIPC_VCP_HART1_SHUT         B_GIPC1_SETCLR_2
 	#define B_GIPC1_SETCLR_3            (1 << 7)
+	#define GIPC_VCP_HART1_DUMP         B_GIPC1_SETCLR_3
 	#define B_GIPC2_SETCLR_0            (1 << 8)
+	#define GIPC_MMUP_HALT              B_GIPC2_SETCLR_0
 	#define B_GIPC2_SETCLR_1            (1 << 9)
+	#define GIPC_MMUP_SWI               B_GIPC2_SETCLR_1
 	#define B_GIPC2_SETCLR_2            (1 << 10)
+	#define GIPC_MMUP_SHUT              B_GIPC2_SETCLR_2
 	#define B_GIPC2_SETCLR_3            (1 << 11)
+	#define GIPC_MMUP_DUMP              B_GIPC2_SETCLR_3
 	#define B_GIPC3_SETCLR_0            (1 << 12)
+	#define GIPC_VCP_HART0_HALT         B_GIPC3_SETCLR_0
 	#define B_GIPC3_SETCLR_1            (1 << 13)
+	#define GIPC_VCP_HART0_SWI          B_GIPC3_SETCLR_1
 	#define B_GIPC3_SETCLR_2            (1 << 14)
+	#define GIPC_VCP_HART0_SHUT         B_GIPC3_SETCLR_2
 	#define B_GIPC3_SETCLR_3            (1 << 15)
+	#define GIPC_VCP_HART0_DUMP         B_GIPC3_SETCLR_3
 	#define B_GIPC4_SETCLR_0            (1 << 16)
 	#define B_GIPC4_SETCLR_1            (1 << 17)
 	#define B_GIPC4_SETCLR_2            (1 << 18)
