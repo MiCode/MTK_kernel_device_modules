@@ -56,14 +56,9 @@ static const struct mtk_pin_soc mt6768_data = {
 };
 
 static const struct of_device_id mt6768_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt6768-pinctrl", },
+	{ .compatible = "mediatek,mt6768-pinctrl", .data = &mt6768_data },
 	{ }
 };
-
-static int mt6768_pinctrl_probe(struct platform_device *pdev)
-{
-	return mtk_paris_pinctrl_probe(pdev, &mt6768_data);
-}
 
 static struct platform_driver mt6768_pinctrl_driver = {
 	.driver = {
@@ -71,7 +66,7 @@ static struct platform_driver mt6768_pinctrl_driver = {
 		.of_match_table = mt6768_pinctrl_of_match,
 		.pm = &mtk_paris_pinctrl_pm_ops,
 	},
-	.probe = mt6768_pinctrl_probe,
+	.probe = mtk_paris_pinctrl_probe,
 };
 
 static int __init mt6768_pinctrl_init(void)
