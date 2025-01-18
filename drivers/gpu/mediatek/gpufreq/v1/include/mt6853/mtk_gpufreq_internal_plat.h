@@ -142,7 +142,7 @@
 		return single_open(	\
 				file,	\
 				mt_ ## name ## _proc_show,	\
-				PDE_DATA(inode));	\
+				pde_data(inode));	\
 	}	\
 	static const struct proc_ops mt_ ## name ## _proc_fops =	\
 	{	\
@@ -160,7 +160,7 @@
 		return single_open(	\
 				file,	\
 				mt_ ## name ## _proc_show,	\
-				PDE_DATA(inode));	\
+				pde_data(inode));	\
 	}	\
 	static const struct proc_ops mt_ ## name ## _proc_fops =	\
 	{	\
