@@ -2367,6 +2367,11 @@ void cmdqMdpInitialSetting(struct platform_device *pdev)
 	larb3 = mdp_init_larb(pdev, 1);
 }
 
+uint32_t cmdq_mdp_get_larb_count(void)
+{
+	return 2;
+}
+
 uint32_t cmdq_mdp_rdma_get_reg_offset_src_addr(void)
 {
 	return 0xF00;
@@ -2999,6 +3004,7 @@ void cmdq_mdp_platform_function_setting(void)
 	// pFunc->parseHandleErrModByEngFlag = cmdq_mdp_parse_handle_error_module;
 	pFunc->getEngineGroupBits = cmdq_mdp_get_engine_group_bits;
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock;
+	pFunc->mdpGetLarbCount = cmdq_mdp_get_larb_count;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine;
