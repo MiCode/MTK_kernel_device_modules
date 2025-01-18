@@ -15,6 +15,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
+#include <linux/pm_domain.h>
 #include <linux/regmap.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/mfd/syscon.h>
@@ -757,6 +758,82 @@ out:
 	return 0;
 }
 
+
+static int ssusb_genpd_init(struct device *dev,
+					struct ssusb_mtk *ssusb)
+{
+	int genpd_num = 0;
+	int err = 0;
+
+
+	ssusb->use_multi_genpd = false;
+	genpd_num = of_count_phandle_with_args(dev->of_node,
+						"power-domains",
+						"#power-domain-cells");
+
+	if (genpd_num < 0) {
+		dev_info(dev, "no need to control power domain.\n");
+		return 0;
+	}
+
+	/* Only need to control one power domain */
+	/* It is attached at platform_probe() level */
+	if (genpd_num == 1) {
+		dev_info(dev, "only one power domain.\n");
+		return 0;
+	}
+
+	ssusb->use_multi_genpd = true;
+
+	ssusb->genpd_u2 = dev_pm_domain_attach_by_name(dev, "u2");
+	if (IS_ERR_OR_NULL(ssusb->genpd_u2)) {
+		err = PTR_ERR(ssusb->genpd_u2) ? : -ENODATA;
+		dev_info(dev, "failed to get u2 pm-domain: %d\n", err);
+		return err;
+	}
+
+	ssusb->genpd_u3 = dev_pm_domain_attach_by_name(dev, "u3");
+	if (IS_ERR_OR_NULL(ssusb->genpd_u3)) {
+		err = PTR_ERR(ssusb->genpd_u3) ? : -ENODATA;
+		dev_info(dev, "failed to get u3 pm-domain: %d\n", err);
+		return err;
+	}
+
+	ssusb->genpd_dl_u2 = device_link_add(dev, ssusb->genpd_u2,
+					DL_FLAG_PM_RUNTIME |
+					DL_FLAG_STATELESS);
+
+	if (!ssusb->genpd_dl_u2) {
+		dev_info(dev, "failed to add usb genpd u2 link\n");
+		return -ENODEV;
+	}
+
+	ssusb->genpd_dl_u3 = device_link_add(dev, ssusb->genpd_u3,
+					DL_FLAG_PM_RUNTIME |
+					DL_FLAG_STATELESS);
+
+	if (!ssusb->genpd_dl_u3) {
+		dev_info(dev, "failed to add usb genpd u3 link\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static void ssusb_genpd_remove(struct ssusb_mtk *ssusb)
+{
+
+	if (ssusb->genpd_u2)
+		device_link_del(ssusb->genpd_dl_u2);
+	if (ssusb->genpd_u3)
+		device_link_del(ssusb->genpd_dl_u3);
+	if (ssusb->genpd_u2)
+		dev_pm_domain_detach(ssusb->genpd_u2, true);
+	if (ssusb->genpd_u3)
+		dev_pm_domain_detach(ssusb->genpd_u3, true);
+
+}
+
 static int mtu3_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -783,6 +860,11 @@ static int mtu3_probe(struct platform_device *pdev)
 		return ret;
 
 	ssusb_debugfs_create_root(ssusb);
+
+	/* get usb power domain */
+	ret = ssusb_genpd_init(dev, ssusb);
+	if (ret)
+		goto put_powerdomains;
 
 	/* enable power domain */
 	pm_runtime_set_active(dev);
@@ -870,7 +952,8 @@ comm_init_err:
 	pm_runtime_put_noidle(dev);
 	pm_runtime_disable(dev);
 	ssusb_debugfs_remove_root(ssusb);
-
+put_powerdomains:
+	ssusb_genpd_remove(ssusb);
 	return ret;
 }
 
@@ -900,6 +983,7 @@ static int mtu3_remove(struct platform_device *pdev)
 
 	ssusb_rscs_exit(ssusb);
 	ssusb_debugfs_remove_root(ssusb);
+	ssusb_genpd_remove(ssusb);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
