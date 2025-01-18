@@ -26,7 +26,21 @@ config TOUCHSCREEN_ILITEK_TOUCH
          Set Y or M to select this feature for touch compile,
          and set N to disable.
 
+config TOUCHSCREEN_BOTAI_MULTI_TOUCH
+       tristate "GT9XX MULTIPLE TOUCHSCREEN"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.for BoTai touch feature.
+
+config TOUCHSCREEN_GT9XX
+       tristate "GT9XX TOUCHSCREEN FOR CAR SERDES TOUCH"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.for car serdes touch feature.
+
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/BoTai_Multi_Touch/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/gt9xx/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/ILITEK/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96789/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96851/Kconfig"
