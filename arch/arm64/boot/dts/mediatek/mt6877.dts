@@ -5229,34 +5229,42 @@
 		reg = <0 0x0d100000 0 0x80000>;
 	};
 
-        efuse: efuse@11c10000 {
-                compatible = "mediatek,devinfo";
-                reg = <0 0x11f10000 0 0x10000>;
-                #address-cells = <1>;
-                #size-cells = <1>;
+	efuse: efuse@11c10000 {
+			compatible = "mediatek,devinfo";
+			reg = <0 0x11f10000 0 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 
-                efuse_segment: segment@78 {
-                        reg = <0x78 0x4>;
-                };
-				u3_phy_data: u3_phy_data {
-					reg = <0x1ac 0x4>;
-				};
+			efuse_segment: segment@78 {
+					reg = <0x78 0x4>;
+			};
+			u3_phy_data: u3_phy_data {
+				reg = <0x1ac 0x4>;
+			};
 
-				u2_phy_data: u2_phy_data {
-					reg = <0x1b0 0x4>;
-				};
+			u2_phy_data: u2_phy_data {
+				reg = <0x1b0 0x4>;
+			};
 
-		efuse_srm_rp136: efuse-srm-rp136 {
-			reg = <0x2d4 0x4>;
-		};
+			efuse_srm_rp136: efuse-srm-rp136 {
+				reg = <0x2d4 0x4>;
+			};
 
-		efuse_srm_rp137: efuse-srm-rp137 {
-			reg = <0x2d8 0x4>;
-		};
+			efuse_srm_rp137: efuse-srm-rp137 {
+				reg = <0x2d8 0x4>;
+			};
 
-		efuse_ptpod28: efuse-ptpod28 {
-			reg = <0x2dc 0x4>;
-		};
+			efuse_ptpod28: efuse-ptpod28 {
+				reg = <0x2dc 0x4>;
+			};
+
+			lvts_e_data1: data1 {
+				reg = <0x1D0 0x10>;
+			};
+
+			lvts_e_data2: data2 {
+				reg = <0x2F8 0x48>;
+			};
 	};
 
 	dcm: dcm@10001000 {
@@ -6496,14 +6504,18 @@
 		interrupts = <GIC_SPI 637 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	therm_ctrl@1100b000 {
-		compatible = "mediatek,therm_ctrl";
+	lvts@1100b000 {
+		compatible = "mediatek,mt6877-lvts";
 		reg = <0 0x1100b000 0 0x26e200>;
 		interrupts =
 			<GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_THERM>;
-		clock-names = "therm-main";
+		clock-names = "lvts_clk";
+		resets = <&infracfg_rst 0>,
+				 <&infracfg_rst 1>;
+		nvmem-cells = <&lvts_e_data1 &lvts_e_data2>;
+		nvmem-cell-names = "e_data1","e_data2";
 	};
 
 	tboard_thermistor1: thermal-sensor1 {
