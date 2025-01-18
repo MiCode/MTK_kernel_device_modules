@@ -5108,6 +5108,11 @@ static int mtk_dp_connector_get_modes(struct drm_connector *connector)
 	mtk_connector = container_of(connector, struct mtk_dp_connector, connector);
 	mtk_dp = mtk_connector->mtk_dp;
 
+	if (mtk_dp->next_bridge) {
+		DP_MSG("getting timing mode from next bridge\n");
+		return mtk_dp->next_bridge->funcs->get_modes(mtk_dp->next_bridge, &mtk_connector->connector);
+	}
+
 	if (mtk_connector->edid)
 		return drm_add_edid_modes(&mtk_connector->connector, mtk_connector->edid);
 
@@ -5219,6 +5224,11 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 	DP_FUNC();
 
 	sink_count = mtk_dp_get_sink_count(mtk_dp);
+
+#if ENABLE_SERDES_MST
+	if (mtk_dp->mst_enable)
+		sink_count = DP_ENCODER_NUM; // serdes always report 1 sink count, so set it as 2 here
+#endif
 
 	for (i = 0; i < DP_ENCODER_NUM; i++) {
 		kfree(mtk_dp->mtk_connector[i]);
@@ -6109,7 +6119,14 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 
 	ret = mtk_dp_vsvoter_parse(mtk_dp, dev->of_node);
 	if (ret)
-		dev_info(dev, "failed to parse vsv property\n");
+		DP_MSG("failed to parse vsv property\n");
+
+	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
+	if (!mtk_dp->next_bridge) {
+		DP_ERR("Can not find next_bridge %d\n", ret);
+		return -EPROBE_DEFER;
+	}
+	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
 
 	return 0;
 }
@@ -6350,6 +6367,8 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 	int ret;
 
 	DP_FUNC("start");
+
+	mtk_dp->drm_dev = drm_dev;
 
 	ret = mtk_ddp_comp_register(drm_dev, &mtk_dp->ddp_comp);
 	if (ret < 0) {
