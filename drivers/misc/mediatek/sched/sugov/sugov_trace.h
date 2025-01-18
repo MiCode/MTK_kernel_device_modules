@@ -106,26 +106,29 @@ TRACE_EVENT(sugov_ext_gear_uclamp,
 
 TRACE_EVENT(sugov_ext_util,
 	TP_PROTO(int cpu, unsigned long util,
-		unsigned int min, unsigned int max),
-	TP_ARGS(cpu, util, min, max),
+		unsigned int min, unsigned int max, int idle),
+	TP_ARGS(cpu, util, min, max, idle),
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(unsigned long, util)
 		__field(unsigned int, min)
 		__field(unsigned int, max)
+		__field(int, idle)
 	),
 	TP_fast_assign(
 		__entry->cpu = cpu;
 		__entry->util = util;
 		__entry->min = min;
 		__entry->max = max;
+		__entry->idle = idle;
 	),
 	TP_printk(
-		"cpu=%d util=%lu min=%u max=%u",
+		"cpu=%d util=%lu min=%u max=%u ignore_idle_util=%d",
 		__entry->cpu,
 		__entry->util,
 		__entry->min,
-		__entry->max)
+		__entry->max,
+		__entry->idle)
 );
 
 TRACE_EVENT(sugov_ext_wl_type,

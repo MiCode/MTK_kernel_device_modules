@@ -652,7 +652,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		if (gu_ctrl)
 			umax = min_t(unsigned long,
 				umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
-		trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax);
+		trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax, 0);
 	}
 
 	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max);
@@ -710,7 +710,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 			if (gu_ctrl)
 				umax = min_t(unsigned long,
 					umax, get_cpu_gear_uclamp_max(j));
-			trace_sugov_ext_util(j, idle ? 0 : j_sg_cpu->util, umin, umax);
+			trace_sugov_ext_util(j, idle ? 0 : j_sg_cpu->util, umin, umax, idle);
 		}
 		if (idle)
 			continue;
