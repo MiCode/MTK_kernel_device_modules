@@ -29,7 +29,7 @@ struct check_feature_rsp {
 	uint16_t        major_version;
 	uint16_t        minor_version;
 	uint32_t        num;
-	struct          feature_set fs[0]; // Unfixed size
+	struct          feature_set fs[]; // Unfixed size
 };
 
 //------------------------------------------------------------------------------

@@ -22,7 +22,7 @@ struct mtk_devinfo_priv {
 
 struct devinfo_tag {
 	unsigned int data_size;
-	unsigned int data[0];
+	unsigned int data[];
 };
 
 static int devinfo_parse_dt(struct mtk_devinfo_priv *priv, struct device *dev)

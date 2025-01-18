@@ -330,7 +330,7 @@ struct ufs_ioctl_query_data {
 	 * For Read/Write Attribute you will have to allocate 4 bytes
 	 * For Read/Write Flag you will have to allocate 1 byte
 	 */
-	__u8 buffer[0];
+	__u8 buffer[];
 };
 
 enum {

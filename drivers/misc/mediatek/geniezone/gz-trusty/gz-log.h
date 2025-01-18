@@ -15,7 +15,7 @@ struct log_rb {
 	uint32_t alloc;
 	uint32_t put;
 	uint32_t sz;
-	char data[0];
+	char data[];
 } __packed;
 
 #define TRUSTY_LOG_API_VERSION		(1)

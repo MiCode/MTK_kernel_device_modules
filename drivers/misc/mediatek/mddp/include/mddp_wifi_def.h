@@ -21,7 +21,7 @@ struct mddpw_txd_t {
 	uint8_t sta_idx;
 	uint8_t aucMacAddr[MAC_ADDR_LEN];
 	uint8_t txd_length;
-	uint8_t txd[0];
+	uint8_t txd[];
 } __packed;
 
 struct mddpw_net_stat_t {
@@ -107,21 +107,21 @@ enum mddpw_drv_info_id {
 struct mddpw_drv_info_t {
 	uint8_t         info_id;
 	uint8_t         info_len;
-	uint8_t         info[0];
+	uint8_t         info[];
 };
 
 struct mddpw_drv_notify_info_t {
 	uint8_t         version;
 	uint8_t         buf_len;
 	uint8_t         info_num;
-	uint8_t         buf[0];
+	uint8_t         buf[];
 };
 
 struct mddpw_md_notify_info_t {
 	uint8_t         version;      /* current ver = 0 */
 	uint8_t         info_type;    /* ref enum mddp_md_notify_info_type */
 	uint8_t         buf_len;      /* length start from buf[0] */
-	uint8_t         buf[0];       /* content that MD need to send to DRV */
+	uint8_t         buf[];       /* content that MD need to send to DRV */
 };
 
 #define STATS_LLS_MAX_NSS_NUM 2
@@ -261,7 +261,7 @@ struct wfpm_enable_md_func_req_t {
 	uint8_t                 mode;
 	uint8_t                 version;
 	uint16_t                smem_num;
-	struct wfpm_smem_info_t smem_info[0];
+	struct wfpm_smem_info_t smem_info[];
 } __packed;
 
 struct wfpm_enable_md_func_rsp_t {

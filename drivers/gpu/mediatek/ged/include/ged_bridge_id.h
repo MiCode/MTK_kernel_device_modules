@@ -405,7 +405,7 @@ struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO {
 /* Bridge in structure for GE_ALLOC */
 struct GED_BRIDGE_IN_GE_ALLOC {
 	int region_num;
-	uint32_t region_sizes[0];
+	uint32_t region_sizes[];
 };
 
 /* Bridge out structure for GE_ALLOC */
@@ -428,7 +428,7 @@ struct GED_BRIDGE_IN_GE_GET {
 /* Bridge out structure for GE_GET */
 struct GED_BRIDGE_OUT_GE_GET {
 	GED_ERROR eError;
-	uint32_t data[0];
+	uint32_t data[];
 };
 
 /* Bridge in structure for GE_SET */
@@ -440,7 +440,7 @@ struct GED_BRIDGE_IN_GE_SET {
 	 */
 	int uint32_offset;
 	int uint32_size;
-	uint32_t data[0];
+	uint32_t data[];
 };
 
 /* Bridge out structure for GE_SET */

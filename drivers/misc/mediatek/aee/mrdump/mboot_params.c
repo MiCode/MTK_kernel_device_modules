@@ -94,11 +94,7 @@ struct last_reboot_reason {
 
 struct reboot_reason_pl {
 	u32 wdt_status;
-	u32 data[0];
-};
-
-struct reboot_reason_lk {
-	u32 data[0];
+	u32 data[];
 };
 
 struct mboot_params_buffer {

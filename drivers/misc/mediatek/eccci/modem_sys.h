@@ -56,7 +56,7 @@ enum LOGGING_MODE {
 struct ccci_force_assert_shm_fmt {
 	unsigned int  error_code;
 	unsigned int  param[3];
-	unsigned char reserved[0];
+	unsigned char reserved[];
 };
 
 extern int current_time_zone;

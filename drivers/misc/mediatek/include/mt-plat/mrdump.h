@@ -78,7 +78,7 @@ struct mrdump_crash_record {
 	union {
 		struct mrdump_arm32_reg arm32_reg;
 		struct mrdump_arm64_reg arm64_reg;
-	} cpu_reg[0];
+	} cpu_reg[];
 };
 
 /* mrdump_ksyms_param->flag */

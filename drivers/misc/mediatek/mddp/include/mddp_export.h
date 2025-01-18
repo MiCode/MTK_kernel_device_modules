@@ -132,7 +132,7 @@ struct mddp_dev_req_common_t {
 	enum mddp_app_type_e    app_type;
 	enum mddp_ctrl_msg_e    msg;
 	uint32_t                data_len;
-	uint8_t                 data[0];
+	uint8_t                 data[];
 };
 
 struct mddp_dev_req_enable_t {
@@ -177,7 +177,7 @@ struct mddp_dev_rsp_common_t {
 	enum mddp_app_type_e    app_type;
 	enum mddp_ctrl_msg_e    msg;
 	uint32_t                data_len;
-	uint8_t                 data[0];
+	uint8_t                 data[];
 };
 
 struct mddp_dev_rsp_enable_t {

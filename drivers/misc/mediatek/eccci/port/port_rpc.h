@@ -67,7 +67,7 @@ struct rpc_buffer {
 	struct ccci_header header;
 	u32 op_id;
 	u32 para_num;
-	u8 buffer[0];
+	u8 buffer[];
 } __packed;
 
 struct rpc_fe_vpa_public_ecid_info {
