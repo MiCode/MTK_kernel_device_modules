@@ -1725,6 +1725,8 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	u32 end_cnt = 0;
 #endif
 
+	cmdq_trace_begin("%s hwid:%d", __func__, cmdq->hwid);
+
 	cmdq_mtcmos_by_fast(cmdq, true);
 	if (atomic_read(&cmdq->usage) <= 0 ||
 		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
@@ -1738,24 +1740,23 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		cmdq_mtcmos_by_fast(cmdq, false);
 		return IRQ_HANDLED;
 	}
-	cmdq_mtcmos_by_fast(cmdq, false);
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
-	cmdq_mtcmos_by_fast(cmdq, true);
 	if (cmdq->gce_vm) {
 		irq_status = readl(cmdq->base + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
 		irq_status_vm = readl(cmdq->base + GCE_VM6_OFFSET + GCE_HOST_VM_IRQ_STATUS) & CMDQ_IRQ_MASK;
 	} else
 		irq_status = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS) & CMDQ_IRQ_MASK;
-	cmdq_mtcmos_by_fast(cmdq, false);
 	cmdq_log("gce:%lx irq: %#x, %#x",
 		(unsigned long)cmdq->base_pa, (u32)irq_status,
 		(u32)(irq_status ^ CMDQ_IRQ_MASK));
 	if (!(irq_status ^ CMDQ_IRQ_MASK)) {
 		cmdq_msg("not handle for empty status:0x%x",
 			(u32)irq_status);
+		cmdq_mtcmos_by_fast(cmdq, false);
+		cmdq_trace_end();
 		return IRQ_NONE;
 	}
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1777,12 +1778,10 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		}
 
 		irq_time = sched_clock();
-		cmdq_mtcmos_by_fast(cmdq, true);
 		spin_lock_irqsave(&thread->chan->lock, flags);
 		thread->lock_time = sched_clock() - irq_time;
 		cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
-		cmdq_mtcmos_by_fast(cmdq, false);
 		thread->irq_time = sched_clock() - irq_time;
 		thd_cnt += 1;
 	}
@@ -1798,16 +1797,16 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 			}
 
 			irq_time = sched_clock();
-			cmdq_mtcmos_by_fast(cmdq, true);
 			spin_lock_irqsave(&thread->chan->lock, flags);
 			thread->lock_time = sched_clock() - irq_time;
 			cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
 			spin_unlock_irqrestore(&thread->chan->lock, flags);
-			cmdq_mtcmos_by_fast(cmdq, false);
 			thread->irq_time = sched_clock() - irq_time;
 			thd_cnt += 1;
 		}
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
@@ -1849,6 +1848,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	if (end[end_cnt] - start >= 5000000)
 		cmdq->irq_long_times += 1;
 #endif
+	cmdq_trace_end();
 	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
 }
 
