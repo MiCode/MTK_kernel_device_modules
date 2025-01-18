@@ -539,4 +539,5 @@ void mtk_vidle_multi_crtc_stop(unsigned int crtc_id);
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
 void **mtk_drm_disp_mtee_cb_init(void);
 bool mtk_disp_is_svp_on_mtee(void);
+void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP);
 #endif /* MTK_DRM_DRV_H */

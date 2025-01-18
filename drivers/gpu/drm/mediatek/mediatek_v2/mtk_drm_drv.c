@@ -9639,6 +9639,15 @@ bool mtk_disp_is_svp_on_mtee(void)
 }
 EXPORT_SYMBOL_GPL(mtk_disp_is_svp_on_mtee);
 
+void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
+{
+	if (vdisp_func.sent_aod_scp_sema)
+		vdisp_func.sent_aod_scp_sema(_SPM_SEMA_AP);
+	else
+		DDPMSG("WARNING: sent aod scp semaphore fail!\n");
+}
+EXPORT_SYMBOL_GPL(_mtk_sent_aod_scp_sema);
+
 static bool init_secure_static_path_switch(struct device *dev, struct mtk_drm_private *priv)
 {
 	struct device_node *dt_node;

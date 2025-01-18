@@ -494,9 +494,9 @@ int mtk_aod_scp_doze_update(int doze)
 			//mtk_aod_scp_set_BW();
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
-			mtk_aod_scp_ipi_send(0);
-			mtk_aod_scp_set_semaphore_noirq(0);
-			mdelay(10000);
+			//mtk_aod_scp_ipi_send(0);
+			//mtk_aod_scp_set_semaphore_noirq(0);
+			//mdelay(10000);
 		} else {
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
@@ -569,6 +569,8 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 				DDPPR_ERR("%s: fail to ioremap SPM: 0x%llx", __func__, res->start);
 				return 0;
 			}
+			//sent AOD SCP sema to vsidp
+			_mtk_sent_aod_scp_sema(spm_base + OFST_M6_AP);
 		}
 
 		mtk_module_backup_setup(pdev->dev.of_node);
@@ -629,14 +631,14 @@ static int aod_scp_suspend_noirq(struct device *dev)
 	if (AOD_STAT_MATCH(AOD_STAT_ACTIVE))
 		mtk_aod_scp_ipi_send(0);
 
-	mtk_aod_scp_set_semaphore_noirq(0);
+	//mtk_aod_scp_set_semaphore_noirq(0);
 	return 0;
 }
 
 static int aod_scp_resume_noirq(struct device *dev)
 {
-	if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
-		DDPAEE("[AOD]:failed to get semaphore\n");
+	//if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
+	//	DDPAEE("[AOD]:failed to get semaphore\n");
 	return 0;
 }
 
