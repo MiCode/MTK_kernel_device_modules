@@ -52,7 +52,7 @@
 #define VOW_MODEL_SIZE_THRES           (0x2800)
 #define VOW_MODEL_SIZE                 (0x16800)
 #define VOW_VOICEDATA_OFFSET           (VOW_MODEL_SIZE * MAX_VOW_SPEAKER_MODEL)
-#define VOW_VOICEDATA_SIZE             (0x12500) /* 74880, need over 2.3sec */
+#define VOW_VOICEDATA_SIZE             (0x12C00) /* 74880 + 6*320, need over 2.3sec */
 #define VOW_NORMAL_REC_SIZE            (0x12480) /* 2.3sec(74880B) can be divided by 320byte */
 /* IPI return value definition */
 #define WORD_H                         (16)
@@ -72,7 +72,7 @@
 #define VOW_DEFAULT_SPEAKER_NUM        (1)
 
 /* length limitation sync by audio hal */
-#define VOW_VBUF_LENGTH      (0x12E80)  /* 0x12480 + 0x0A00 */
+#define VOW_VBUF_LENGTH                (0x12E80)  /* 0x12480 + 0x0A00 */
 
 #define VOW_FRM_LEN                    (160)
 #define AECOUT_DUMP_SMPL_CNT           (VOW_FRM_LEN * 16)
@@ -146,6 +146,8 @@
 #define DEFAULT_GOOGLE_ENGINE_VER         (1235201314)  /* set meaningless default value */
 #define MAGIC_PROVIDER_NUMBER             (0xABCD)      /* set meaningless default value */
 #define MAGIC_IOCTL_NUMBER                (0xDEADBEEF)  /* set meaningless default value */
+
+#define REC_QUEUE_NUM                     (10)
 
 enum { /* dump_data_t */
 	DUMP_AECOUT = 0,
@@ -331,6 +333,10 @@ struct vow_eint_data_struct_t {
 	char data[RESERVED_DATA];    /* reserved for future extension */
 };
 
+struct vow_rec_queue_info_t {
+	unsigned int rec_buf_offset;
+	unsigned int rec_buf_length;
+};
 
 #if IS_ENABLED(CONFIG_COMPAT)
 
