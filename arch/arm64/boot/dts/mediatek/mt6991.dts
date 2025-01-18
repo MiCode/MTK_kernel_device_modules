@@ -19997,8 +19997,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts-extended = <&mt6379_auxadc_1 RG_INT_STATUS_BAT_H>,
 					      <&mt6379_auxadc_1 RG_INT_STATUS_BAT_L>;
 			interrupt-names = "bat_h", "bat_l";
-			io-channels = <&mt6379_adc MT6379_ADC_VBAT>;
-			io-channel-names = "chg_vbat";
 			resistance-ratio = <4 1>;
 		};
 
@@ -20073,8 +20071,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts-extended = <&mt6379_auxadc_2 RG_INT_STATUS_BAT_H>,
 					      <&mt6379_auxadc_2 RG_INT_STATUS_BAT_L>;
 			interrupt-names = "bat_h", "bat_l";
-			io-channels = <&mt6379_adc MT6379_ADC_VBAT>;
-			io-channel-names = "chg_vbat";
 			resistance-ratio = <4 1>;
 		};
 
