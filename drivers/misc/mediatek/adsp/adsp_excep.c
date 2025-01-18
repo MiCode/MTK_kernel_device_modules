@@ -426,6 +426,11 @@ void adsp_aed_worker(struct work_struct *ws)
 #endif
 }
 
+bool is_aed_work_busy(void)
+{
+	return !!work_busy(&excep_ctrl.aed_work);
+}
+
 bool adsp_aed_dispatch(enum adsp_excep_id type, void *data)
 {
 	struct adsp_exception_control *ctrl = &excep_ctrl;

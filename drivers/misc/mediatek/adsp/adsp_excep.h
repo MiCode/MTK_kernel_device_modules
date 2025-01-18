@@ -63,5 +63,6 @@ int init_adsp_exception_control(struct device *dev,
 				struct workqueue_struct *wq,
 				struct wait_queue_head *waitq);
 int deinit_adsp_exception_control(void);
+bool is_aed_work_busy(void);
 
 #endif
