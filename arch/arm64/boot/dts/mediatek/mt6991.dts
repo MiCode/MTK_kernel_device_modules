@@ -2091,8 +2091,9 @@ TOP_CC0,ST0_CC1,ST1_CC1,ST3_CC1,ST4_CC1,ST5_CC1,ST6_CC1,TOP_CC1,ST0_CC2,ST1_CC2,
 ST5_CC2,ST6_CC2,TOP_CC2,ST0_CC3,ST1_CC3,ST3_CC3,ST4_CC3,ST5_CC3,ST6_CC3,TOP_CC3,ST0_CC4,ST1_CC4,\
 ST3_CC4,ST4_CC4,ST5_CC4,ST6_CC4,TOP_CC4";
 			node-30 = "GPUEB_GPU_FREQ", "real_top,real_stack,virtual_stack";
-			node-31 = "GPUEB_LOADING", "gpu_loading,mcu_loading,iter_loading,avg_loading";
-			node-32 = "GPUEB_COUNTER", "gpu_active,mcu_active,iter_active";
+			node-31 = "GPUEB_LOADING",
+				"gpu_loading,mcu_loading,iter_loading,avg_loading,iter_u_mcu_loading";
+			node-32 = "GPUEB_COUNTER", "gpu_active,mcu_active,iter_active,iter_u_mcu_active";
 			node-33 = "GPUEB_COMMIT_TYPE", "commit_type,policy_state";
 			node-34 = "GPUEB_DCS_INFO", "max_core_num,core_num";
 			node-35 = "GPUEB_MARGIN_INFO", "ceil,current,floor";
