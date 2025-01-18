@@ -86,6 +86,8 @@ static int last_force_volt[PWR_MMDVFS_NUM];
 static int dpsw_thr;
 static int vmm_ceil_step;
 static bool mmdvfs_mux_version;
+static void __iomem *vcore_check_rg;
+static u32 vcore_check_offset;
 
 enum {
 	log_pwr,
@@ -1553,6 +1555,12 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 		}
 
 		if (last_force_step[i] != -1) {
+			if (i == PWR_MMDVFS_VCORE && vcore_check_rg &&
+				(readl(vcore_check_rg) & (0x1 << vcore_check_offset))) {
+				MMDVFS_DBG("skip release vcore force");
+				continue;
+			}
+
 			last = last_force_step[i];
 			if (enable_vcp)
 				mtk_mmdvfs_v3_set_force_step(i, -1, false);
@@ -2235,6 +2243,7 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	struct task_struct *kthr_vcp;
 	const char *name = NULL;
 	int i, j, ret;
+	u32 val;
 
 	mmdvfs_mux_version = true;
 	mmdvfs_swrgo = of_property_read_bool(node, "mediatek,mmdvfs-swrgo");
@@ -2260,6 +2269,13 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		}
 		pm_runtime_enable(mmdvfs_v3_dev);
 		of_node_put(larb);
+	}
+
+	if (!of_property_read_u32(pdev->dev.of_node, "mediatek,vcore-check-rg", &val)) {
+		vcore_check_rg = ioremap(val, 4);
+		if (of_property_read_u32(pdev->dev.of_node,
+			"mediatek,vcore-check-offset", &vcore_check_offset))
+			MMDVFS_ERR("mediatek,vcore-check-offset missing");
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++) {
