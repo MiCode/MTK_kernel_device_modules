@@ -4606,6 +4606,9 @@ void fbt_update_freq_qos_min(int policy_id, unsigned int freq)
 {
 	int freq_qos_cap_temp = 0, cluster_min_freq = 0;
 
+	if (policy_id >= cluster_num)
+		return;
+
 	mutex_lock(&fbt_mlock);
 	freq_qos_cap_temp = fbt_cluster_X2Y(policy_id, freq, FREQ, CAP, 1, __func__);
 	cluster_min_freq = fbt_cluster_X2Y(policy_id, cpu_dvfs[policy_id].num_opp - 1, OPP, FREQ, 0, __func__);
