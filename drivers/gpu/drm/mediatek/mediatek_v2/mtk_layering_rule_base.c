@@ -3278,10 +3278,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (mtk_is_gles_layer(disp_info, idx, i) &&
 		    i != disp_info->gles_head[idx]) {
 			layer_info->ovl_id = plane_idx - 1;
-			if (disp_idx == HRT_PRIMARY) {
+			fun_lye++;
+			if (disp_idx == HRT_PRIMARY)
 				lyeblob_ids->fbt_layer_id = plane_idx - 1;
-				fun_lye++;
-			}
+
 			continue;
 		}
 
