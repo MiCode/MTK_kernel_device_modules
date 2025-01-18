@@ -1689,7 +1689,7 @@ static inline void MFB_Prepare_Enable_ccf_clock(void)
 			LOG_ERR("cannot prepare and enable CG_MFB_IMG_2 clock\n");
 	}
 
-	if(mfb_clk.CG_MFB_IMG_3 != NULL) {	
+	if(mfb_clk.CG_MFB_IMG_3 != NULL) {
 		ret = clk_prepare_enable(mfb_clk.CG_MFB_IMG_3);
 		if (ret)
 			LOG_ERR("cannot prepare and enable CG_MFB_IMG_3 clock\n");
@@ -3992,7 +3992,7 @@ static void MFB_add_device_link(struct platform_device *pDev)
 			continue;
 		}
 
-		if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
+		if (of_property_read_u32(larb_node, "mediatek,larb-id", &larb_id))
 			LOG_INF("Error: get larb id from DTS fail!!\n");
 		else
 			LOG_INF("%s gets larb_id=%d\n",

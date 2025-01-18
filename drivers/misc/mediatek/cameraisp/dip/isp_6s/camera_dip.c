@@ -7169,10 +7169,10 @@ static void DIP_add_device_link(struct platform_device *pDev)
 				continue;
 				}
 
-			if (of_property_read_u32(larb_node, "mediatek,smi-id", &larb_id))
-				LOG_INF(" WPE Error: get larb id from DTS fail!!\n");
+			if (of_property_read_u32(larb_node, "mediatek,larb-id", &larb_id))
+				LOG_INF(" DIP Error: get larb id from DTS fail!!\n");
 			else
-				LOG_INF("WPE %s gets larb_id=%d\n",
+				LOG_INF("DIP %s gets larb_id=%d\n",
 				pDev->dev.of_node->name, larb_id);
 
 			of_node_put(larb_node);
@@ -7181,7 +7181,7 @@ static void DIP_add_device_link(struct platform_device *pDev)
 				DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 
 			if (!link)
-				LOG_INF("WPE %s: [%d]: unable to link smi larb %d\n",
+				LOG_INF("DIP %s: [%d]: unable to link smi larb %d\n",
 				pDev->dev.of_node->name, i, larb_id);
 		}
 }
