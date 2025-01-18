@@ -2161,7 +2161,9 @@ static int ul_cm1_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* remove so we fix in normal mode */
-		// mt6991_enable_cm_bypass(afe, CM1, 0x1);
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		mt6991_enable_cm_bypass(afe, CM1, 0x1);
+#endif
 		break;
 	default:
 		break;
@@ -2188,7 +2190,9 @@ static int ul_cm2_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* remove so we fix in normal mode */
-		// mt6991_enable_cm_bypass(afe, CM2, 0x1);
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		mt6991_enable_cm_bypass(afe, CM2, 0x1);
+#endif
 		break;
 	default:
 		break;
@@ -3682,7 +3686,19 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 			ul_cm0_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SND_SOC_DAPM_SUPPLY("CM1_Enable",
+			AFE_CM1_CON0, AFE_CM1_ON_SFT, 0,
+			ul_cm1_event,
+			SND_SOC_DAPM_PRE_PMU |
+			SND_SOC_DAPM_PRE_PMD),
 
+	SND_SOC_DAPM_SUPPLY("CM2_Enable",
+			AFE_CM2_CON0, AFE_CM2_ON_SFT, 0,
+			ul_cm2_event,
+			SND_SOC_DAPM_PRE_PMU |
+			SND_SOC_DAPM_PRE_PMD),
+#else
 	SND_SOC_DAPM_SUPPLY("CM1_Enable",
 			SND_SOC_NOPM, 0, 0,
 			ul_cm1_event,
@@ -3694,6 +3710,7 @@ static const struct snd_soc_dapm_widget mt6991_memif_widgets[] = {
 			ul_cm2_event,
 			SND_SOC_DAPM_PRE_PMU |
 			SND_SOC_DAPM_PRE_PMD),
+#endif
 
 	SND_SOC_DAPM_INPUT("UL1_VIRTUAL_INPUT"),
 	SND_SOC_DAPM_INPUT("UL2_VIRTUAL_INPUT"),
