@@ -19,9 +19,6 @@
 #include <linux/slab.h>
 #include <soc/mediatek/smi.h>
 #include "mtk-smi-dbg.h"
-#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
-#include <mtk-hw-semaphore.h>
-#endif
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
 #endif
@@ -441,6 +438,7 @@ struct mtk_smi_dbg {
 	u8			frame;
 	struct notifier_block suspend_nb;
 	const struct smi_disp_ops	*disp_ops;
+	const struct smi_hw_sema_ops	*hw_sema_ops;
 	struct mm_smi_subsys subsys[SMI_USER_NR];
 	u64	larb_skip;
 	u64	comm_skip;
@@ -1281,14 +1279,17 @@ static int smi_mt6991_vcodec_get_if_in_use(void *v)
 	u32 i, pwr_status;
 	int ret;
 
-#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
-	ret = mtk_hw_semaphore_ctrl(MASTER_AP, true);
+	if (!gsmi->hw_sema_ops || !gsmi->hw_sema_ops->hw_sema_ctrl)
+		return 0;
+
+	ret = gsmi->hw_sema_ops->hw_sema_ctrl(SMI_DBG_MASTER_AP, true);
 	if (ret < 0) {
 		for (i = 0; i < data->id_nr; i++)
 			gsmi->v2.user_pwr_stat[data->id_list[i]] = 0;
+		gsmi->hw_sema_ops->hw_sema_ctrl(SMI_DBG_MASTER_AP, false);
 		return ret;
 	}
-#endif
+
 	pwr_status = readl_relaxed(data->pwr_sta_rg);
 	for (i = 0; i < data->id_nr; i++)
 		gsmi->v2.user_pwr_stat[data->id_list[i]] = (pwr_status >> (data->id_list[i])) & 0x1;
@@ -1298,9 +1299,11 @@ static int smi_mt6991_vcodec_get_if_in_use(void *v)
 
 static int smi_mt6991_vcodec_put(void *v)
 {
-#if IS_ENABLED(CONFIG_MTK_HW_SEMAPHORE)
-	mtk_hw_semaphore_ctrl(MASTER_AP, false);
-#endif
+	if (!gsmi->hw_sema_ops || !gsmi->hw_sema_ops->hw_sema_ctrl)
+		return 0;
+
+	gsmi->hw_sema_ops->hw_sema_ctrl(SMI_DBG_MASTER_AP, false);
+
 	return 0;
 }
 
@@ -1778,6 +1781,22 @@ s32 mtk_smi_dbg_cg_status(void)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_cg_status);
+
+int mtk_smi_set_hw_sema_ops(const struct smi_hw_sema_ops *ops)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	if (ops == NULL) {
+		dev_notice(smi->dev, "%s Null ops\n", __func__);
+		return -1;
+	}
+
+	smi->hw_sema_ops = ops;
+	dev_notice(smi->dev, "%s register smi cb\n", __func__);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_hw_sema_ops);
 
 int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
 {

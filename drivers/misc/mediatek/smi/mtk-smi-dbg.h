@@ -24,6 +24,15 @@ struct smi_disp_ops {
 	int (*disp_put)(void);
 };
 
+struct smi_hw_sema_ops {
+	int (*hw_sema_ctrl)(u32 master_id, bool is_get);
+};
+
+enum smi_hw_sema_master {
+	SMI_DBG_MASTER_AP = 0,
+	SMI_DBG_MASTER_VCP,
+};
+
 enum smi_pwr_ctrl_action {
 	ACTION_GET_IF_IN_USE,
 	ACTION_PUT_IF_IN_USE,
@@ -56,6 +65,7 @@ enum SMI_DBG_VER {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops);
+int mtk_smi_set_hw_sema_ops(const struct smi_hw_sema_ops *ops);
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb);
@@ -70,6 +80,11 @@ int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
 #else
 
 static inline int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
+{
+	return 0;
+}
+
+static inline int mtk_smi_set_hw_sema_ops(const struct smi_hw_sema_ops *ops)
 {
 	return 0;
 }
