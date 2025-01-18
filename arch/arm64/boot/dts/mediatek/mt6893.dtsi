@@ -3948,6 +3948,14 @@ cpus {
 			iommus = <&iommu0 M4U_PORT_L0_OVL_RDMA0>;
 		};
 
+		mtk_iommu_pseudo {
+			compatible = "mediatek,mt6893-iommu-pseudo";
+			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3
+					  &smi_larb4 &smi_larb5 &smi_larb7 &smi_larb8 &smi_larb9
+					  &smi_larb11 &smi_larb13 &smi_larb14 &smi_larb16
+					  &smi_larb17 &smi_larb18 &smi_larb19 &smi_larb20>;
+		};
+
 		mtk_sec_dmaheap {
 			compatible = "mediatek,dmaheap-region-base";
 			iommus = <&iommu0 M4U_PORT_L0_DISP_POSTMASK0>;
