@@ -11,9 +11,6 @@
 		reg = <0x0>;
 		clocks =
 			<&cksys_clk CLK_CK_UART_SEL>,
-			<&cksys_clk CLK_CK_USB_TOP_1P_SEL>,
-			<&cksys_clk CLK_CK_USB_XHCI_1P_SEL>,
-			<&cksys_clk CLK_CK_USB_FMCNT_P1_SEL>,
 			<&cksys_clk CLK_CK_I2C_P_SEL>,
 			<&cksys_clk CLK_CK_I2C_EAST_SEL>,
 			<&cksys_clk CLK_CK_I2C_WEST_SEL>,
@@ -67,9 +64,7 @@
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG5_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG6_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG7_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_USB_TOP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_USB_XHCI_SEL>;
+			<&vlp_cksys_clk CLK_VLP_CK_MMINFRA_VLP_SEL>;
 	};
 	bring-up-smi@1 {
 		compatible = "mediatek,clk-bring-up";
@@ -923,31 +918,6 @@
 		reg = <0x24>;
 		clocks =
 			<&ccu_main_clk CLK_CCUSYS_CCU0_CON_CCU0>;
-	};
-	bring-up-pd-ssusb-dp-phy-p0@25 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x25>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_DP_PHY_P0>;
-	};
-	bring-up-pd-ssusb-p0@26 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x26>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P0>;
-	};
-	bring-up-pd-ssusb-p1@27 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P1>;
-	};
-	bring-up-pd-ssusb-p23@28 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_P23>;
-	};
-	bring-up-pd-ssusb-phy-p2@29 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x29>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_SSUSB_PHY_P2>;
 	};
 	bring-up-pd-pextp-mac0@2a {
 		compatible = "mediatek,scpsys-bring-up";
