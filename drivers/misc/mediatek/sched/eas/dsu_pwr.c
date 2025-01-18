@@ -43,7 +43,8 @@ unsigned int predict_emi_bw(int wl_type, int dst_cpu, unsigned long task_util,
 	return ret;
 }
 
-unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
+unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw,
+		unsigned int extern_volt)
 {
 	int dsu_opp = 0;
 	int real_co_point;
@@ -52,12 +53,13 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
 	struct dsu_state *dsu_tbl;
 	int perbw_pwr_a, perbw_pwr_b;
 	unsigned int ret = 0;
-	unsigned int volt_temp;
+	unsigned int volt_temp, shared_volt;
 
-	real_bw = p_dsu_bw/10;/* to gb/s */
+	dsu_opp = dsu_get_freq_opp(p->dsu_freq);
+	real_bw = p_dsu_bw;
 	dsu_tbl = dsu_get_opp_ps(wl_type, dsu_opp);
-	old_bw = dsu_tbl->BW/10;/* to gb/s */
-	real_co_point = CO_POINT * p->dsu_freq / 1000000;/* to ghz */
+	old_bw = dsu_tbl->BW;
+	real_co_point = CO_POINT * p->dsu_freq / 100000;/* to 100mb/s */
 
 #ifdef SEPA_DSU_EMI
 	perbw_pwr_a = L3_PERBW_PWR_A;
@@ -82,27 +84,35 @@ unsigned int dsu_dyn_pwr(int wl_type, struct dsu_info *p, unsigned int p_dsu_bw)
 	}
 
 	/* mw to uw */
-	volt_temp = 1000 * p->dsu_volt/100000 * p->dsu_volt/100000;
+	shared_volt = max(p->dsu_volt, extern_volt);
+	volt_temp = 1000 * shared_volt/100000 * shared_volt/100000;
 	pwr_delta = volt_temp * (real_bw_pwr - golden_bw_pwr);
 
-	ret = dsu_tbl->dyn_pwr + pwr_delta;
+	ret = dsu_tbl->dyn_pwr + pwr_delta/10;
 
 	return ret;
 
 }
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p)
+unsigned int dsu_lkg_pwr(int wl_type, struct dsu_info *p, unsigned int extern_volt)
 {
 	int temperature;
-	unsigned int coef_ab = 0, coef_a = 0, coef_b = 0, coef_c = 0, type, opp;
+	unsigned int coef_ab = 0, coef_a = 0, coef_b = 0, coef_c = 0, type, opp = 0;
 	void __iomem *clkg_sram_base_addr;
+	unsigned int shared_volt;
+	struct dsu_state *dsu_tbl;
 
 	clkg_sram_base_addr = get_clkg_sram_base_addr();
 	temperature = p->temp;
 	type = DSU_LKG;
-	/* freq to opp for calculating offset */
-	opp = dsu_get_freq_opp(p->dsu_freq);
+	// /* volt to opp for calculating offset */
+	shared_volt = max(p->dsu_volt, extern_volt);
+	dsu_tbl = dsu_get_opp_ps(wl_type, opp);
+	while (shared_volt < dsu_tbl->volt) {
+		opp++;
+		dsu_tbl = dsu_get_opp_ps(wl_type, opp);
+	}
 	/* read coef from sysram, real value = value/10000 */
 	coef_ab = ioread32(clkg_sram_base_addr + LKG_BASE_OFFSET +
 			type * LKG_TYPES_OFFSET + opp * 8);
@@ -142,7 +152,7 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu)
+		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt)
 {
 	unsigned int dsu_pwr[RES_PWR];
 	unsigned int p_dsu_bw, p_emi_bw; /* predict dsu and emi bw */
@@ -163,9 +173,9 @@ unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
 
 	/*SWPM in uw */
 	dsu_pwr[DSU_PWR_TAL] = 0;
-	dsu_pwr[DSU_DYN_PWR] = dsu_dyn_pwr(wl_type, dsu, p_dsu_bw);
+	dsu_pwr[DSU_DYN_PWR] = dsu_dyn_pwr(wl_type, dsu, p_dsu_bw, extern_volt);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-	dsu_pwr[DSU_LKG_PWR] = dsu_lkg_pwr(wl_type, dsu);
+	dsu_pwr[DSU_LKG_PWR] = dsu_lkg_pwr(wl_type, dsu, extern_volt);
 #else
 	dsu_pwr[DSU_LKG_PWR] = 0;
 #endif
