@@ -173,7 +173,8 @@ static int mvpu_validation(void *hnd)
 		goto END;
 	}
 
-	algo_in_img = get_ptn_hash(batch_name_hash);
+	if (mvpu_algo_available == true)
+		algo_in_img = get_ptn_hash(batch_name_hash);
 
 	if (algo_in_img == true && get_mvpu_algo_available() == false) {
 		pr_info("[MVPU][IMG] [ERROR] get HASH 0x%08x but mvpu_algo.img is wrong, please check\n",
