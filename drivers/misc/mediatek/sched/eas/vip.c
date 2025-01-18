@@ -15,6 +15,8 @@
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
 bool vip_enable;
 
+#define link_with_others(lh) (!list_empty(lh))
+
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 inline unsigned int num_vvip_in_cpu(int cpu)
 {
@@ -127,6 +129,14 @@ out:
 	return gear;
 }
 
+bool prio_is_vip(int vip_prio, int type)
+{
+	if (type == VVIP)
+		return (vip_prio == VVIP);
+
+	return (vip_prio != NOT_VIP);
+}
+
 bool task_is_vip(struct task_struct *p, int type)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
@@ -142,11 +152,42 @@ static inline unsigned int vip_task_limit(struct task_struct *p)
 	return VIP_TIME_LIMIT;
 }
 
+void check_vip_num(struct rq *rq)
+{
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+
+	if (list_empty(&vrq->vip_tasks)) {
+		if (vrq->num_vvip_tasks != 0 ) {
+			vrq->num_vvip_tasks = 0;
+			pr_info("cpu=%d error VVIP number\n", cpu_of(rq));
+		}
+		if (vrq->num_vip_tasks != 0) {
+			vrq->num_vip_tasks = 0;
+			pr_info("cpu=%d error VIP number\n", cpu_of(rq));
+		}
+	}
+	/* end of temp patch*/
+}
+
 static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
-					bool at_front, bool requeue)
+					bool at_front, bool requeue, int vip_prio)
 {
 	struct list_head *pos;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+
+
+	if (link_with_others(&vts->vip_list))
+		return;
+
+	/* change vip_prio inside lock to prevent NOT_VIP inserted.
+	 * it could happened if we set vip_prio outside lock, and user unset,
+	 * then insert VIP.
+	 */
+	if (vip_prio != NOT_VIP)
+		vts->vip_prio = vip_prio;
+
+	if (vts->vip_prio == NOT_VIP)
+		return;
 
 	list_for_each(pos, &vrq->vip_tasks) {
 		struct vip_task_struct *tmp_vts = container_of(pos, struct vip_task_struct,
@@ -175,6 +216,35 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 
 		trace_sched_insert_vip_task(p, cpu_of(rq), vts->vip_prio,
 			at_front, prev_pid, next_pid, requeue, is_first_entry);
+	}
+}
+
+static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
+{
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+	struct list_head *prev = vts->vip_list.prev;
+	struct list_head *next = vts->vip_list.next;
+
+
+	if (!link_with_others(&vts->vip_list))
+		return;
+
+	list_del_init(&vts->vip_list);
+	if (vts->vip_prio == VVIP)
+		vrq->num_vvip_tasks -= 1;
+	if (vts->vip_prio != NOT_VIP)
+		vrq->num_vip_tasks -= 1;
+	vts->vip_prio = NOT_VIP;
+
+	/* for insurance */
+	check_vip_num(rq);
+
+	if (trace_sched_deactivate_vip_task_enabled()) {
+		pid_t prev_pid = list_head_to_pid(prev);
+		pid_t next_pid = list_head_to_pid(next);
+
+		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid);
 	}
 }
 
@@ -335,6 +405,7 @@ void unset_task_vvip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->vvip = false;
+
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -377,6 +448,7 @@ void unset_task_basic_vip(int pid)
 		get_task_struct(p);
 		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 		vts->basic_vip = false;
+
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -416,14 +488,12 @@ out:
 void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-
-	if (vts->vip_prio == NOT_VIP)
-		vts->vip_prio = get_vip_task_prio(p);
+	int vip_prio = get_vip_task_prio(p);
 
 	if (unlikely(!vip_enable))
 		return;
 
-	if (vts->vip_prio == NOT_VIP)
+	if (vip_prio == NOT_VIP)
 		return;
 
 	/*
@@ -434,7 +504,7 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 	if (vts->total_exec > vip_task_limit(p))
 		return;
 
-	insert_vip_task(rq, vts, task_on_cpu(rq, p), false);
+	insert_vip_task(rq, vts, task_on_cpu(rq, p), false, vip_prio);
 
 	/*
 	 * We inserted the task at the appropriate position. Take the
@@ -443,45 +513,6 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 	 */
 	if (!vts->total_exec) /* queue after sleep */
 		vts->sum_exec_snapshot = p->se.sum_exec_runtime;
-}
-
-void check_vip_num(struct rq *rq)
-{
-	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
-
-	/* temp patch for counter issue*/
-	if (list_empty(&vrq->vip_tasks)) {
-		if (vrq->num_vvip_tasks != 0 ) {
-			vrq->num_vvip_tasks = 0;
-			pr_info("cpu=%d error VVIP number\n", cpu_of(rq));
-		}
-		if (vrq->num_vip_tasks != 0) {
-			vrq->num_vip_tasks = 0;
-			pr_info("cpu=%d error VIP number\n", cpu_of(rq));
-		}
-	}
-	/* end of temp patch*/
-}
-
-static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
-{
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
-	struct list_head *prev = vts->vip_list.prev;
-	struct list_head *next = vts->vip_list.next;
-
-	list_del_init(&vts->vip_list);
-	if (vts->vip_prio == VVIP)
-		vrq->num_vvip_tasks -= 1;
-	vts->vip_prio = NOT_VIP;
-	vrq->num_vip_tasks -= 1;
-
-	if (trace_sched_deactivate_vip_task_enabled()) {
-		pid_t prev_pid = list_head_to_pid(prev);
-		pid_t next_pid = list_head_to_pid(next);
-
-		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid);
-	}
 }
 
 /*
@@ -539,8 +570,8 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 		return;
 
 	/* slice expired. re-queue the task */
-	list_del(&vts->vip_list);
-	insert_vip_task(rq, vts, false, true);
+	list_del_init(&vts->vip_list);
+	insert_vip_task(rq, vts, false, true, NOT_VIP);
 }
 
 void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p,
@@ -560,8 +591,8 @@ void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p
 	if (unlikely(!vip_enable))
 		return;
 
-	p_is_vip = !list_empty(&vts_p->vip_list) && vts_p->vip_list.next;
-	curr_is_vip = !list_empty(&vts_c->vip_list) && vts_c->vip_list.next;
+	p_is_vip = link_with_others(&vts_p->vip_list);
+	curr_is_vip = link_with_others(&vts_c->vip_list);
 	/*
 	 * current is not VIP, so preemption decision
 	 * is simple.
@@ -608,7 +639,7 @@ void vip_cfs_tick(struct rq *rq)
 
 	rq_lock(rq, &rf);
 
-	if (list_empty(&vts->vip_list) || (vts->vip_list.next == NULL))
+	if (!link_with_others(&vts->vip_list))
 		goto out;
 	account_vip_runtime(rq, rq->curr);
 	/*
@@ -662,7 +693,7 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 		return;
 
 	/* We don't have VIP tasks queued */
-	if (list_empty(&vrq->vip_tasks)) {
+	if (!link_with_others(&vrq->vip_tasks)) {
 		/* we should pull VIPs from other CPU */
 		return;
 	}
@@ -689,10 +720,8 @@ void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int fl
 	if (unlikely(!vip_enable))
 		return;
 
-	if (!list_empty(&vts->vip_list) && vts->vip_list.next)
+	if (link_with_others(&vts->vip_list))
 		deactivate_vip_task(p, rq);
-
-	check_vip_num(rq);
 
 	/*
 	 * Reset the exec time during sleep so that it starts

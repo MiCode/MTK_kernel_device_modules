@@ -1279,7 +1279,7 @@ void get_most_powerful_pd_and_util_Th(void)
 
 bool gear_hints_enable;
 static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p_uclamp_min,
-		bool latency_sensitive, int cpu, struct cpumask *bcpus)
+		bool latency_sensitive, int cpu, struct cpumask *bcpus, int vip_prio)
 {
 	bool cpu_in_bcpus;
 	unsigned long task_util;
@@ -1304,7 +1304,7 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	if (!cpu_in_bcpus || !fits_capacity(task_util, util_Th, get_adaptive_margin(cpu)))
 		return 0;
 
-	if (cpu_in_bcpus && task_is_vip(p, VVIP))
+	if (cpu_in_bcpus && prio_is_vip(vip_prio, VVIP))
 		return 0;
 
 	return 1;
@@ -1724,6 +1724,8 @@ struct find_best_candidates_parameters {
 	int end_index;
 	int reverse;
 	int fbc_reason;
+	bool is_vip;
+	int vip_prio;
 };
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
@@ -1742,11 +1744,9 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	long sys_max_spare_cap = LONG_MIN, idle_max_spare_cap = LONG_MIN;
 	unsigned long min_cap = eenv->min_cap;
 	unsigned long max_cap = eenv->max_cap;
-	bool is_vip = false;
 	bool is_vvip = false;
 	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	struct vip_task_struct *vts;
 	unsigned int (*num_vip_in_cpu_fn)(int cpu) = num_vip_in_cpu;
 	int target_balance_cluster;
 #endif
@@ -1756,13 +1756,12 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int order_index = fbc_params->order_index;
 	int end_index = fbc_params->end_index;
 	int reverse = fbc_params->reverse;
+	bool is_vip = fbc_params->is_vip;
+	int vip_prio = fbc_params->vip_prio;
 
 	num_vip = prev_min_num_vip = min_num_vip = UINT_MAX;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-	vts->vip_prio = get_vip_task_prio(p);
-	is_vip = task_is_vip(p, NOT_VIP);
-	is_vvip = task_is_vip(p, VVIP);
+	is_vvip = prio_is_vip(vip_prio, VVIP);
 
 	if (is_vvip) {
 		target_balance_cluster = find_imbalanced_vvip_gear();
@@ -1814,7 +1813,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			cpumask_set_cpu(cpu, allowed_cpu_mask);
 
 			if (in_irq &&
-				task_can_skip_this_cpu(p, min_cap, latency_sensitive, cpu, &bcpus))
+				task_can_skip_this_cpu(p, min_cap, latency_sensitive, cpu, &bcpus, vip_prio))
 				continue;
 
 			if (cpu_rq(cpu)->rt.rt_nr_running >= 1 &&
@@ -1992,9 +1991,14 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
 	int recent_used_cpu, target;
+	bool is_vip = false;
+	int vip_prio = NOT_VIP;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int min_num_vvip_cpu = -1;
 	unsigned int num_vvip = 0, min_num_vvip_in_cpu = UINT_MAX;
+
+	vip_prio = get_vip_task_prio(p);
+	is_vip = prio_is_vip(vip_prio, NOT_VIP);
 #endif
 
 	if (!get_eas_hook())
@@ -2064,6 +2068,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	fbc_params.end_index = end_index;
 	fbc_params.reverse = reverse;
 	fbc_params.fbc_reason = 0;
+	fbc_params.is_vip = is_vip;
+	fbc_params.vip_prio = vip_prio;
 
 	/* Pre-select a set of candidate CPUs. */
 	candidates = this_cpu_ptr(&energy_cpus);
@@ -2178,7 +2184,7 @@ fail:
 	/* iterrate from biggest cpu, find CPU with minimum num VVIP.
 	 * if all CPU have the same num of VVIP, min_num_vvip_cpu = biggest_cpu.
 	 */
-	if (task_is_vip(p, VVIP) && balance_vvip_overutilied && pd) {
+	if (prio_is_vip(vip_prio, VVIP) && balance_vvip_overutilied && pd) {
 		for (; pd; pd = pd->next) {
 			cpumask_and(cpus, perf_domain_span(pd), &allowed_cpu_mask);
 			for_each_cpu(cpu, cpus) {
@@ -2465,7 +2471,7 @@ void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf
 	struct perf_domain *pd;
 	struct rq *src_rq, *this_rq;
 	struct task_struct *p;
-	int cpu;
+	int cpu, vip_prio;
 
 	if (!cpumask_test_cpu(this_cpu, &bcpus))
 		return;
@@ -2502,8 +2508,11 @@ void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf
 
 			else if (num_vvip_in_cpu(cpu) == 1) {
 				/* the only one VVIP in cpu is running */
-				if (src_rq->curr && task_is_vip(src_rq->curr, VVIP))
-					continue;
+				if (src_rq->curr) {
+					vip_prio = get_vip_task_prio(src_rq->curr);
+					if (prio_is_vip(vip_prio, VVIP))
+						continue;
+				}
 			}
 
 			/* There are runnables in cpu */
