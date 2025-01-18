@@ -10,6 +10,9 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/i2c.h>
+#include <linux/mfd/mt6681.h>
+
 /* PMIC EFUSE registers definition */
 #define MT6681_TOP_CKPDN_CON0	0x10b
 #define MT6681_TOP_CKHWEN_CON0	0x117
@@ -47,10 +50,12 @@ struct mt6681_efuse {
 	struct device *dev;
 	struct regmap *regmap;
 	struct mutex lock;
+	struct i2c_client *i2c_client;
 	unsigned int base;
 	const struct efuse_chip_data *data;
 	int trig_sta;
 };
+
 static int mt6681_efuse_poll_busy(struct mt6681_efuse *efuse)
 {
 	int ret;
@@ -80,8 +85,11 @@ static int mt6681_efuse_read(void *context, unsigned int offset,
 	unsigned char *val = _val;
 	unsigned short otp_pa_val;
 	int ret;
+	struct i2c_adapter *adap = efuse->i2c_client->adapter;
 
 	mutex_lock(&efuse->lock);
+
+	scp_wake_request(adap);
 	/* Enable the efuse ctrl engine clock */
 	ret = regmap_write(efuse->regmap,
 			   efuse->data->ck_pdn_hwen + CLR_OFFSET,
@@ -131,7 +139,9 @@ disable_efuse:
 	regmap_write(efuse->regmap, efuse->data->ck_pdn + SET_OFFSET,
 		     RG_EFUSE_CK_PDN_MASK);
 unlock_efuse:
+	scp_wake_release(adap);
 	mutex_unlock(&efuse->lock);
+
 	return ret;
 }
 static int mt6681_efuse_probe(struct platform_device *pdev)
@@ -139,7 +149,10 @@ static int mt6681_efuse_probe(struct platform_device *pdev)
 	struct nvmem_config econfig = { };
 	struct nvmem_device *nvmem;
 	struct mt6681_efuse *efuse;
+	struct mt6681_pmic_info *mpi = NULL;
+
 	int ret;
+
 
 	efuse = devm_kzalloc(&pdev->dev, sizeof(*efuse), GFP_KERNEL);
 	if (!efuse)
@@ -154,6 +167,15 @@ static int mt6681_efuse_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "failed to get efuse data\n");
 		return -ENODEV;
 	}
+
+	/* get i2c client for scp_request/release */
+	mpi = dev_get_drvdata(pdev->dev.parent);
+	if (!mpi) {
+		dev_info(&pdev->dev, "Faled to get parent driver data\n");
+		return -ENODEV;
+	}
+	efuse->i2c_client = mpi->i2c;
+
 	ret = regmap_read(efuse->regmap, efuse->data->base + RG_OTP_RD_TRIG,
 			  &efuse->trig_sta);
 	if (ret)
