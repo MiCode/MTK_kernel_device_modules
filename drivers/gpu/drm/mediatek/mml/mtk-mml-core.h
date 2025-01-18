@@ -39,8 +39,6 @@ extern int mml_qos_log;
 extern int mml_dpc_log;
 extern int mml_rrot_msg;
 extern int mml_dl_dpc;
-extern int mml_stash;
-extern int rdma_stash_leading;
 
 /* see mml_qos in mtk-mml-core.c */
 #define MML_QOS_EN_MASK			0x1
@@ -249,9 +247,6 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 
 /* mode decision */
 #define mml_isdc(mode)		(mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
-#define mml_iscouple(mode)	(mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING)
-#define mml_stash_en(mode)	((mml_isdc(mode) && (mml_stash & 0x1)) || \
-				(mml_iscouple(mode) && (mml_stash & 0x2)))
 
 struct mml_topology_cache;
 struct mml_ctx;
@@ -510,10 +505,6 @@ struct mml_frame_config {
 	u16 panel_w;
 	u16 panel_h;
 	u32 disp_hrt;
-
-	/* dvfs and qos */
-	u32 duration;
-	u32 fps;
 
 	/* display parameter */
 	bool disp_dual;
@@ -785,9 +776,6 @@ struct mml_comp_hw_ops {
 	s32 (*clk_disable)(struct mml_comp *comp, bool dpc);
 	u32 (*qos_datasize_get)(struct mml_task *task,
 				struct mml_comp_config *ccfg);
-	u32 (*qos_stash_bw_get)(struct mml_task *task,
-				struct mml_comp_config *ccfg,
-				u32 *srt_bw, u32 *hrt_bw);
 	u32 (*qos_format_get)(struct mml_task *task,
 			      struct mml_comp_config *ccfg);
 	void (*qos_set)(struct mml_comp *comp, struct mml_task *task,
@@ -819,8 +807,6 @@ struct mml_comp {
 	u32 cur_peak;
 	struct icc_path *icc_path;
 	struct icc_path *icc_dpc_path;
-	struct icc_path *icc_stash_path;
-	struct icc_path *icc_dpc_stash_path;
 	const struct mml_comp_tile_ops *tile_ops;
 	const struct mml_comp_config_ops *config_ops;
 	const struct mml_comp_hw_ops *hw_ops;
@@ -960,16 +946,6 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 					       struct platform_device *pdev,
 					       struct cmdq_client **clts,
 					       u32 clts_cnt);
-
-/*
- * mml_core_time_dur_us - duration between 2 time spec
- *
- * @lhs:	end time
- * @rhs:	start time
- *
- * Return: Topology cache struct which alloc by giving pdev.
- */
-u64 mml_core_time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rhs);
 
 /*
  * mml_core_dump_buf - dump mml frame data into cache buffer
