@@ -100,6 +100,27 @@ bool check_hifi_status(u32 mask)
 	return !!(readl(ADSP_SLEEP_STATUS_REG) & mask);
 }
 
+u32 read_adsp_sys_status(u32 cid)
+{
+	if (cid == ADSP_A_ID)
+		return readl(ADSP_CFGREG_RSV_RW_REG0);
+	else
+		return readl(ADSP_CFGREG_RSV_RW_REG1);
+}
+
+u32 get_adsp_sys_status(struct adsp_priv *pdata)
+{
+	u32 status;
+
+	if (has_system_l2sram())
+		status = read_adsp_sys_status(pdata->id);
+	else
+		adsp_copy_from_sharedmem(pdata,
+				 ADSP_SHAREDMEM_SYS_STATUS,
+				 &status, sizeof(status));
+	return status;
+}
+
 bool is_adsp_axibus_idle(u32 *backup)
 {
 	u32 value = readl(ADSP_DBG_PEND_CNT);

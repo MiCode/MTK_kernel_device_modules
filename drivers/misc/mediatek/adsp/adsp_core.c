@@ -110,6 +110,27 @@ bool is_adsp_system_running(void)
 	return false;
 }
 
+bool has_system_l2sram(void)
+{
+	unsigned int id;
+	struct adsp_priv *pdata = NULL;
+
+	if (unlikely(!adspsys))
+		return false;
+
+	if (!adspsys->system_l2sram)
+		return false;
+
+	for (id = 0; id < get_adsp_core_total(); id++) {
+		pdata = get_adsp_core_by_id(id);
+		if ((!pdata->l2sram) || (!pdata->l2sram_size))
+			return false;
+	}
+
+	return true;
+}
+EXPORT_SYMBOL(has_system_l2sram);
+
 int adsp_copy_to_sharedmem(struct adsp_priv *pdata, int id, const void *src,
 			   int count)
 {
@@ -120,8 +141,14 @@ int adsp_copy_to_sharedmem(struct adsp_priv *pdata, int id, const void *src,
 		return 0;
 
 	item = pdata->mapping_table + id;
-	if (item->offset)
-		dst = pdata->dtcm + pdata->dtcm_size - item->offset;
+
+	if (has_system_l2sram()) {
+		if (item->offset && item->offset <= pdata->l2sram_size)
+			dst = pdata->l2sram + pdata->l2sram_size - item->offset;
+	} else {
+		if (item->offset)
+			dst = pdata->dtcm + pdata->dtcm_size - item->offset;
+	}
 
 	if (unlikely(!dst || !src))
 		return 0;
@@ -145,9 +172,13 @@ int adsp_copy_from_sharedmem(struct adsp_priv *pdata, int id, void *dst,
 		return 0;
 
 	item = pdata->mapping_table + id;
-	if (item->offset)
-		src = pdata->dtcm + pdata->dtcm_size - item->offset;
-
+	if (has_system_l2sram()) {
+		if (item->offset && item->offset <= pdata->l2sram_size)
+			src = pdata->l2sram + pdata->l2sram_size - item->offset;
+	} else {
+		if (item->offset)
+			src = pdata->dtcm + pdata->dtcm_size - item->offset;
+	}
 	if (unlikely(!dst || !src))
 		return 0;
 
@@ -265,11 +296,15 @@ static irqreturn_t adsp_irq_top_handler(int irq, void *data)
 
 	pdata->clear_irq(pdata->cid);
 
+#ifndef CFG_FPGA
 	irq_log_store();
+#endif
 	if (pdata->irq_cb)
 		pdata->irq_cb(irq, pdata->data, pdata->cid);
 
+#ifndef CFG_FPGA
 	irq_log_store();
+#endif
 	/* wake up bottom half if necessary */
 	return pdata->thread_fn ? IRQ_WAKE_THREAD : IRQ_HANDLED;
 }
@@ -434,13 +469,28 @@ void adsp_pow_clk_dump(void)
 	adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, 0, 0);
 }
 
+void adsp_slp_prot_set(bool en, enum ADSP_PD domain)
+{
+	if ((domain >= ADSP_PD_NUM) || (domain < 0)) {
+		pr_info("[ADSP] %s: invalid domain %u", __func__, domain);
+		return;
+	}
+
+	if (en)
+		adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, SET_BUS_PROTECT, domain);
+	else
+		adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, RELEASE_BUS_PROTECT, domain);
+
+}
+EXPORT_SYMBOL(adsp_slp_prot_set);
+
 static int adsp_pd_event(struct notifier_block *nb,
 				  unsigned long flags , void *data)
 {
 	switch (flags) {
 	case GENPD_NOTIFY_ON:
 		if (adspsys && adspsys->slp_prot_ctrl)
-			adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, RELEASE_BUS_PROTECT, 0);
+			adsp_slp_prot_set(false, ADSP_TOP);
 
 		pr_info("%s() pwr on\n", __func__);
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
@@ -450,7 +500,7 @@ static int adsp_pd_event(struct notifier_block *nb,
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
 
 		if (adspsys && adspsys->slp_prot_ctrl)
-			adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, SET_BUS_PROTECT, 0);
+			adsp_slp_prot_set(true, ADSP_TOP);
 		break;
 	default:
 		break;
@@ -459,7 +509,7 @@ static int adsp_pd_event(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
-struct notifier_block adsp_pd_notifier_block = {
+static struct notifier_block adsp_pd_notifier_block = {
 	.notifier_call = adsp_pd_event,
 	.priority = 0,
 };
