@@ -25,9 +25,6 @@ static int mbraink_pmu_get_inst_count(int cpu)
 	per_cpu(inst_spec_count, cpu) = new;
 	spec_instructions[cpu] += diff;
 
-	pr_info("perf event read on CPU %d, new: %llu, old: %llu, diff: %llu\n",
-			cpu, new, old, diff);
-
 	return diff;
 }
 
