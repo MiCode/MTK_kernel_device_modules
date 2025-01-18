@@ -48,6 +48,13 @@ static int channel_id;
 static unsigned int ack_data;
 #endif
 
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
+};
+
 struct ppb_ctrl ppb_ctrl = {
 	.ppb_stop = 0,
 	.ppb_drv_done = 0,
@@ -84,6 +91,18 @@ struct ppb ppb_manual = {
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
 };
+
+int ppb_set_wifi_pwr_addr(unsigned int val)
+{
+	if (!ppb_sram_base) {
+		pr_info("%s: ppb_sram_base error %p\n", __func__, ppb_sram_base);
+		return -1;
+	}
+
+	writel(val, (void __iomem *)(ppb_sram_base + PPB_WIFI_SMEM_ADDR * 4));
+	return 0;
+}
+EXPORT_SYMBOL(ppb_set_wifi_pwr_addr);
 
 static int __used ppb_read_sram(int offset)
 {
@@ -1365,8 +1384,6 @@ static int mt_hpt_debug_proc_show(struct seq_file *m, void *v)
 		ppb_read_sram(HPT_GPU_SF_L1),
 		ppb_read_sram(HPT_GPU_SF_L2));
 
-	//TODO: list mode12 C/G status by PPB and SF status
-
 	return 0;
 }
 
@@ -1375,8 +1392,6 @@ static int mt_hpt_dump_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "%u, %u\n",
 		ppb_read_sram(HPT_SF_ENABLE),
 		ppb_read_sram(HPT_VSYS_PWR));
-
-	//TODO: list mode12 C/G status by PPB and SF status
 
 	return 0;
 }

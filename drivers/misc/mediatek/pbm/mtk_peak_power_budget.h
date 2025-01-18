@@ -135,17 +135,11 @@ struct fg_cus_data {
 	struct fg_info_t fg_info[11];
 };
 
-struct tag_bootmode {
-	u32 size;
-	u32 tag;
-	u32 bootmode;
-	u32 boottype;
-};
 struct ppb_ipi_data {
 	unsigned int cmd;
 };
 
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
-
+extern int ppb_set_wifi_pwr_addr(unsigned int val);
 
 #endif /* __MTK_PEAK_POWER_BUDGETING_H__ */
