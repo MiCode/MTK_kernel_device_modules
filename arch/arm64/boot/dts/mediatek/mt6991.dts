@@ -2185,7 +2185,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-71 = "SSPM_SPM_RES__DDREN_REQ",
 				"emisys,audio,cg_check,cksys_2,cksys_1,infrasys,ssusb,cksys,dpm,",
 				"spm_s1,pmsr,hwccf,ifr,spu_ise,spu_hwrot,ccu,mcupm,mdp1,mdp0,",
-				"pcie1,emi,ssr,ifr_trace,dpmaif,infrasys_cqdma,pextp,peri,ufs,",
+				"ovl1,pcie1,emi,ssr,ifr_trace,dpmaif,infrasys_cqdma,pextp,peri,ufs,",
 				"img,cam,spm,scp,sspm,venc,vdec,mm_proc,gce,disp1,apu,gpueb,mcu,",
 				"mcusys_idle_to_infra,mcusys_idle_to_emi3,mcusys_idle_to_emi2,",
 				"mcusys_idle_to_emi1,mcusys_idle_to_emi,audio_dsp,mdsys,conn";
