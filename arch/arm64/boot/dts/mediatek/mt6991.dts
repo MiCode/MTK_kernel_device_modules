@@ -4166,6 +4166,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
 					&smi_ccu_sub_comm1 &smi_ccu_sub_comm0>;
 		dbg-version = <2>;
+		hwccf-support;
 		vcodec-pwr-sta-rg = <0x31a0a05c>;  /* vcp gpr for mt6991 vcodec dbg dump*/
 		vcodec-pwr-chk-id = <MTK_SMI_VDEC0_SMI MTK_SMI_VDEC1_SMI MTK_SMI_VENC0_SMI
 						MTK_SMI_VENC1_SMI MTK_SMI_VENC2_SMI>;
