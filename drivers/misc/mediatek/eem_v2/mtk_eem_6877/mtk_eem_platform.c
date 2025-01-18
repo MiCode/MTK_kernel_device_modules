@@ -53,7 +53,7 @@ int get_volt_cpu(struct eemsn_det *det)
 	FUNC_ENTER(FUNC_LV_HELP);
 	/* unit mv * 100 = 10uv */
 	cpudvfsindex = detid_to_dvfsid(det);
-#if IS_ENABLED(CONFIG_MTK_CPU_FREQ)
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
 #if SET_PMIC_VOLT_TO_DVFS
 	value = mt_cpufreq_get_cur_volt(cpudvfsindex);
 #endif
@@ -65,7 +65,7 @@ int get_volt_cpu(struct eemsn_det *det)
 
 void get_freq_table_cpu(struct eemsn_det *det)
 {
-#if IS_ENABLED(CONFIG_MTK_CPU_FREQ)
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
 	int i = 0;
 	enum mt_cpu_dvfs_id cpudvfsindex;
 
@@ -102,7 +102,7 @@ void get_orig_volt_table_cpu(struct eemsn_det *det)
 	cpudvfsindex = detid_to_dvfsid(det);
 
 	for (i = 0; i < det->num_freq_tbl; i++) {
-#if IS_ENABLED(CONFIG_MTK_CPU_FREQ)
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
 		volt = mt_cpufreq_get_volt_by_idx(cpudvfsindex, i);
 #endif
 		det->volt_tbl_orig[i] =

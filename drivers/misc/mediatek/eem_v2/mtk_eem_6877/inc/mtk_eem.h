@@ -101,8 +101,6 @@ enum eem_loo_role {
 	NR_EEM_LOO_BANK,
 };
 
-
-extern u32 get_devinfo_with_index(u32 index);
 extern unsigned int eem_corn_flag;
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)

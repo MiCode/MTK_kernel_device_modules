@@ -40,9 +40,11 @@
 #include <linux/uaccess.h>
 #include <linux/unistd.h>
 #include <linux/rtc.h>
+#include <linux/nvmem-consumer.h>
 
 #if IS_ENABLED(CONFIG_OF)
 	#include <linux/cpu.h>
+	#include <linux/of_platform.h>
 	#include <linux/of.h>
 	#include <linux/of_irq.h>
 	#include <linux/of_address.h>
@@ -50,15 +52,12 @@
 	#include <mt-plat/aee.h>
 #endif
 
-#include <mt-plat/mtk_chip.h>
-/* #include <mt-plat/mtk_gpio.h> */
-#include "upmu_common.h"
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 #include "mtk_gpufreq.h"
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-#include "mtk_thermal.h"
+#include "mach/mtk_thermal.h"
 #endif
 #include "mtk_ppm_api.h"
 #include "mtk_cpufreq_api.h"
@@ -70,13 +69,10 @@
 
 #include "mtk_eem_internal.h"
 
-#include <mt-plat/mtk_devinfo.h>
 #include <regulator/consumer.h>
-#include "pmic_regulator.h"
-#include "pmic_api_buck.h"
 
 #if UPDATE_TO_UPOWER
-#include "mtk_upower.h"
+#include "mtk_unified_power.h"
 #endif
 
 #include "mtk_mcdi_api.h"
@@ -218,7 +214,7 @@ static unsigned int eem_to_cputoeb(unsigned int cmd,
 	eem_data->cmd = cmd;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
-	ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_EEMSN,
+	ret = mtk_ipi_send_compl(get_mcupm_ipidev(), CH_S_EEMSN,
 		/*IPI_SEND_WAIT*/IPI_SEND_POLLING, eem_data,
 		sizeof(struct eem_ipi_data)/MBOX_SLOT_SIZE, 2000);
 #else
@@ -245,6 +241,31 @@ static struct eemsn_det *id_to_eem_det(enum eemsn_det_id id)
 		return &eemsn_detectors[id];
 	else
 		return NULL;
+}
+
+static unsigned int read_efuse_by_offset(__u32 offset)
+{
+	__u32 value;
+	struct platform_device *pdev;
+	struct nvmem_device *nvmem_dev;
+	struct device_node *node;
+
+	node = of_find_node_by_name(NULL, "eem-fsm");
+	if (node == NULL) {
+		eem_error("%s fail to get device node\n", __func__);
+		return -1;
+	}
+	pdev = of_find_device_by_node(node);
+	if (pdev == NULL) {
+		eem_error("%s failed to get pdev\n", __func__);
+		return -1;
+	}
+	nvmem_dev = nvmem_device_get(&pdev->dev, "mtk_efuse");
+	if (IS_ERR(nvmem_dev))
+		eem_error("%s ptpod failed to get mtk_efuse device\n", __func__);
+	nvmem_device_read(nvmem_dev, offset, sizeof(__u32), &value);
+	eem_error("[EEM_DEBUG] offset= %d, value=%d", offset, value);
+	return value;
 }
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
@@ -283,28 +304,28 @@ static int get_devinfo(void)
 	val = (int *)&eem_devinfo;
 
 	/* FTPGM */
-	val[0] = get_devinfo_with_index(DEVINFO_IDX_0);
-	val[1] = get_devinfo_with_index(DEVINFO_IDX_1);
-	val[2] = get_devinfo_with_index(DEVINFO_IDX_2);
-	val[3] = get_devinfo_with_index(DEVINFO_IDX_3);
-	val[4] = get_devinfo_with_index(DEVINFO_IDX_4);
-	val[5] = get_devinfo_with_index(DEVINFO_IDX_5);
-	val[6] = get_devinfo_with_index(DEVINFO_IDX_6);
-	val[7] = get_devinfo_with_index(DEVINFO_IDX_7);
-	val[8] = get_devinfo_with_index(DEVINFO_IDX_8);
-	val[9] = get_devinfo_with_index(DEVINFO_IDX_9);
-	val[10] = get_devinfo_with_index(DEVINFO_IDX_10);
-	val[11] = get_devinfo_with_index(DEVINFO_IDX_11);
-	val[12] = get_devinfo_with_index(DEVINFO_IDX_12);
-	val[13] = get_devinfo_with_index(DEVINFO_IDX_13);
-	val[14] = get_devinfo_with_index(DEVINFO_IDX_14);
-	val[15] = get_devinfo_with_index(DEVINFO_IDX_15);
-	val[16] = get_devinfo_with_index(DEVINFO_IDX_16);
-	val[17] = get_devinfo_with_index(DEVINFO_IDX_17);
-	val[18] = get_devinfo_with_index(DEVINFO_IDX_18);
-	val[19] = get_devinfo_with_index(DEVINFO_IDX_19);
-	val[20] = get_devinfo_with_index(DEVINFO_IDX_20);
-	val[21] = get_devinfo_with_index(DEVINFO_IDX_21);
+	val[0] = read_efuse_by_offset(DEVINFO_IDX_0);
+	val[1] = read_efuse_by_offset(DEVINFO_IDX_1);
+	val[2] = read_efuse_by_offset(DEVINFO_IDX_2);
+	val[3] = read_efuse_by_offset(DEVINFO_IDX_3);
+	val[4] = read_efuse_by_offset(DEVINFO_IDX_4);
+	val[5] = read_efuse_by_offset(DEVINFO_IDX_5);
+	val[6] = read_efuse_by_offset(DEVINFO_IDX_6);
+	val[7] = read_efuse_by_offset(DEVINFO_IDX_7);
+	val[8] = read_efuse_by_offset(DEVINFO_IDX_8);
+	val[9] = read_efuse_by_offset(DEVINFO_IDX_9);
+	val[10] = read_efuse_by_offset(DEVINFO_IDX_10);
+	val[11] = read_efuse_by_offset(DEVINFO_IDX_11);
+	val[12] = read_efuse_by_offset(DEVINFO_IDX_12);
+	val[13] = read_efuse_by_offset(DEVINFO_IDX_13);
+	val[14] = read_efuse_by_offset(DEVINFO_IDX_14);
+	val[15] = read_efuse_by_offset(DEVINFO_IDX_15);
+	val[16] = read_efuse_by_offset(DEVINFO_IDX_16);
+	val[17] = read_efuse_by_offset(DEVINFO_IDX_17);
+	val[18] = read_efuse_by_offset(DEVINFO_IDX_18);
+	val[19] = read_efuse_by_offset(DEVINFO_IDX_19);
+	val[20] = read_efuse_by_offset(DEVINFO_IDX_20);
+	val[21] = read_efuse_by_offset(DEVINFO_IDX_21);
 
 
 #if EEM_FAKE_EFUSE
@@ -337,30 +358,6 @@ static int get_devinfo(void)
 	for (i = 0; i < NR_HW_RES_FOR_BANK; i++)
 		eem_debug("[PTP_DUMP] RES%d: 0x%X\n",
 			i, val[i]);
-
-#ifdef EEM_AEE_RR_REC
-	aee_rr_rec_ptp_e0((unsigned int)val[0]);
-	aee_rr_rec_ptp_e1((unsigned int)val[1]);
-	aee_rr_rec_ptp_e2((unsigned int)val[2]);
-	aee_rr_rec_ptp_e3((unsigned int)val[3]);
-	aee_rr_rec_ptp_e4((unsigned int)val[4]);
-	aee_rr_rec_ptp_e5((unsigned int)val[5]);
-	aee_rr_rec_ptp_e6((unsigned int)val[6]);
-	aee_rr_rec_ptp_e7((unsigned int)val[7]);
-	aee_rr_rec_ptp_e8((unsigned int)val[8]);
-	aee_rr_rec_ptp_e9((unsigned int)val[9]);
-	aee_rr_rec_ptp_e10((unsigned int)val[10]);
-	aee_rr_rec_ptp_e11((unsigned int)val[11]);
-	aee_rr_rec_ptp_devinfo_0((unsigned int)val[12]);
-	aee_rr_rec_ptp_devinfo_1((unsigned int)val[13]);
-	aee_rr_rec_ptp_devinfo_2((unsigned int)val[14]);
-	aee_rr_rec_ptp_devinfo_3((unsigned int)val[15]);
-	aee_rr_rec_ptp_devinfo_4((unsigned int)val[16]);
-	aee_rr_rec_ptp_devinfo_5((unsigned int)val[17]);
-	aee_rr_rec_ptp_devinfo_6((unsigned int)val[18]);
-	aee_rr_rec_ptp_devinfo_7((unsigned int)val[19]);
-#endif
-
 
 	if (val[0] == 0) {
 		ret = 1;
@@ -433,30 +430,6 @@ static int get_devinfo(void)
  * Local function definition
  *=============================================================
  */
-#ifdef EEM_AEE_RR_REC
-static void _mt_eem_aee_init(void)
-{
-	aee_rr_rec_ptp_vboot(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_big_volt(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_big_volt_1(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_big_volt_2(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_big_volt_3(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_little_volt(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_little_volt_1(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_little_volt_2(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_little_volt_3(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_2_little_volt(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_2_little_volt_1(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_2_little_volt_2(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_2_little_volt_3(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_cci_volt(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_cci_volt_1(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_cci_volt_2(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_cpu_cci_volt_3(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_temp(0xFFFFFFFFFFFFFFFF);
-	aee_rr_rec_ptp_status(0xFF);
-}
-#endif
 
 #if IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 /* common part in thermal */
@@ -532,168 +505,6 @@ static void eem_buck_set_mode(unsigned int mode)
 }
 #endif
 #endif
-
-#if UPDATE_TO_UPOWER
-static void eem_save_final_volt_aee(struct eemsn_det *ndet)
-{
-#ifdef EEM_AEE_RR_REC
-	int i;
-
-	if (ndet == NULL)
-		return;
-
-	for (i = 0; i < NR_FREQ; i++) {
-		switch (ndet->det_id) {
-		case EEMSN_DET_L:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_little_volt_2(
-				((unsigned long long)(ndet->volt_tbl_pmic[i])
-				<< (8 * i)) |
-				(aee_rr_curr_ptp_cpu_little_volt_2() & ~
-				((unsigned long long)(0xFF) << (8 * i)))
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_little_volt_3(
-				((unsigned long long)(ndet->volt_tbl_pmic[i])
-				 << (8 * (i - 8))) |
-				(aee_rr_curr_ptp_cpu_little_volt_3() & ~
-					((unsigned long long)(0xFF)
-					<< (8 * (i - 8))))
-				);
-			}
-			break;
-
-		case EEMSN_DET_B:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_big_volt_2(
-					((unsigned long long)
-					(ndet->volt_tbl_pmic[i])
-					 << (8 * i)) |
-					(aee_rr_curr_ptp_cpu_big_volt_2() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * i))
-					)
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_big_volt_3(
-					((unsigned long long)
-					(ndet->volt_tbl_pmic[i])
-					 << (8 * (i - 8))) |
-					(aee_rr_curr_ptp_cpu_big_volt_3() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * (i - 8)))
-					)
-				);
-			}
-			break;
-		case EEMSN_DET_CCI:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_cci_volt_2(
-					((unsigned long long)
-					(ndet->volt_tbl_pmic[i])
-					 << (8 * i)) |
-					(aee_rr_curr_ptp_cpu_cci_volt_2() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * i))
-					)
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_cci_volt_3(
-					((unsigned long long)
-					(ndet->volt_tbl_pmic[i])
-					 << (8 * (i - 8))) |
-					(aee_rr_curr_ptp_cpu_cci_volt_3() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * (i - 8)))
-					)
-				);
-			}
-			break;
-		default:
-			break;
-		}
-	}
-#endif
-}
-#endif
-
-static void eem_save_init2_volt_aee(struct eemsn_det *ndet)
-{
-#ifdef EEM_AEE_RR_REC
-	int i;
-
-	if (ndet == NULL)
-		return;
-
-	for (i = 0; i < NR_FREQ; i++) {
-		switch (ndet->det_id) {
-		case EEMSN_DET_L:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_little_volt(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-				<< (8 * i)) |
-				(aee_rr_curr_ptp_cpu_little_volt() & ~
-				((unsigned long long)(0xFF) << (8 * i)))
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_little_volt_1(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-				 << (8 * (i - 8))) |
-				(aee_rr_curr_ptp_cpu_little_volt_1() & ~
-					((unsigned long long)(0xFF)
-					<< (8 * (i - 8))))
-				);
-			}
-			break;
-
-		case EEMSN_DET_B:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_big_volt(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-					 << (8 * i)) |
-					(aee_rr_curr_ptp_cpu_big_volt() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * i))
-					)
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_big_volt_1(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-					 << (8 * (i - 8))) |
-					(aee_rr_curr_ptp_cpu_big_volt_1() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * (i - 8)))
-					)
-				);
-			}
-			break;
-		case EEMSN_DET_CCI:
-			if (i < 8) {
-				aee_rr_rec_ptp_cpu_cci_volt(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-					 << (8 * i)) |
-					(aee_rr_curr_ptp_cpu_cci_volt() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * i))
-					)
-				);
-			} else {
-				aee_rr_rec_ptp_cpu_cci_volt_1(
-				((unsigned long long)(ndet->volt_tbl_init2[i])
-					 << (8 * (i - 8))) |
-					(aee_rr_curr_ptp_cpu_cci_volt_1() & ~
-						((unsigned long long)(0xFF)
-						 << (8 * (i - 8)))
-					)
-				);
-			}
-			break;
-		default:
-			break;
-		}
-	}
-#endif
-}
 
 static void inherit_base_det(struct eemsn_det *det)
 {
@@ -913,11 +724,6 @@ static int eem_probe(struct platform_device *pdev)
 #endif
 #endif
 
-#ifdef EEM_AEE_RR_REC
-	_mt_eem_aee_init();
-#endif
-
-
 	for_each_det(det)
 		inherit_base_det(det);
 
@@ -984,7 +790,7 @@ static int eem_probe(struct platform_device *pdev)
 			}
 			eem_update_init2_volt_to_upower(det,
 				det->volt_tbl_pmic);
-			eem_save_final_volt_aee(det);
+			// eem_save_final_volt_aee(det);
 		}
 	} else {
 		for_each_det(det) {
@@ -1028,7 +834,7 @@ static int eem_probe(struct platform_device *pdev)
 		memcpy(det->volt_tbl_init2,
 			eemsn_log->det_log[det->det_id].volt_tbl_init2,
 			sizeof(det->volt_tbl_init2));
-		eem_save_init2_volt_aee(det);
+		// eem_save_init2_volt_aee(det);
 	}
 
 
@@ -1056,13 +862,13 @@ static const struct of_device_id mt_eem_of_match[] = {
 #endif
 
 static struct platform_driver eem_driver = {
-	.remove	 = NULL,
-	.shutdown   = NULL,
-	.probe	  = eem_probe,
+	.remove		= NULL,
+	.shutdown	= NULL,
+	.probe		= eem_probe,
 	.suspend	= NULL,
-	.resume	 = NULL,
-	.driver	 = {
-	.name   = "mt-eem",
+	.resume		= NULL,
+	.driver		= {
+	.name		= "mt-eem",
 #if IS_ENABLED(CONFIG_OF)
 	.of_match_table = mt_eem_of_match,
 #endif
@@ -1136,7 +942,7 @@ static ssize_t eem_debug_proc_write(struct file *file,
 	int ret;
 	int enabled = 0;
 	char *buf = (char *) __get_free_page(GFP_USER);
-	struct eemsn_det *det = (struct eemsn_det *)PDE_DATA(file_inode(file));
+	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	struct eem_ipi_data eem_data;
 	int ipi_ret = 0;
 
@@ -1211,7 +1017,7 @@ static ssize_t eem_setmargin_proc_write(struct file *file,
 	int i = 0;
 	int start_oft, end_oft;
 	char *buf = (char *) __get_free_page(GFP_USER);
-	struct eemsn_det *det = (struct eemsn_det *)PDE_DATA(file_inode(file));
+	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	char *tok;
 	char *cmd_str = NULL;
 
@@ -1570,7 +1376,7 @@ static int eem_hrid_proc_show(struct seq_file *m, void *v)
 	FUNC_ENTER(FUNC_LV_HELP);
 	for (i = 0; i < 4; i++)
 		seq_printf(m, "%s[HRID][%d]: 0x%08X\n", EEM_TAG, i,
-			get_devinfo_with_index(DEVINFO_HRID_0 + i));
+			read_efuse_by_offset(DEVINFO_HRID_0 + i));
 
 	FUNC_EXIT(FUNC_LV_HELP);
 	return 0;
@@ -1584,7 +1390,7 @@ static int eem_efuse_proc_show(struct seq_file *m, void *v)
 	FUNC_ENTER(FUNC_LV_HELP);
 	for (i = 0; i < IDX_HW_RES_SN; i++)
 		seq_printf(m, "%s[PTP_DUMP] ORIG_RES%d: 0x%08X\n", EEM_TAG, i,
-			get_devinfo_with_index(DEVINFO_IDX_0 + i));
+			read_efuse_by_offset(DEVINFO_IDX_0 + i));
 
 	/* Depend on EFUSE location */
 	for (i = 0; i < NR_HW_RES_FOR_BANK; i++)
@@ -1968,7 +1774,7 @@ static ssize_t eem_offset_proc_write(struct file *file,
 	int ret;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	int offset = 0;
-	struct eemsn_det *det = (struct eemsn_det *)PDE_DATA(file_inode(file));
+	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	unsigned int ipi_ret = 0;
 	struct eem_ipi_data eem_data;
 
@@ -2013,38 +1819,49 @@ out:
 	return (ret < 0) ? ret : count;
 }
 
+#if IS_ENABLED(CONFIG_PROC_FS)
 #define PROC_FOPS_RW(name)					\
-	static int name ## _proc_open(struct inode *inode,	\
+	static int name ## _proc_open(				\
+		struct inode *inode,				\
 		struct file *file)				\
 	{							\
-		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+		return single_open(				\
+			file,					\
+			name ## _proc_show,			\
+			pde_data(inode));			\
 	}							\
-	static const struct file_operations name ## _proc_fops = {	\
-		.owner		= THIS_MODULE,				\
-		.open		= name ## _proc_open,			\
-		.read		= seq_read,				\
-		.llseek		= seq_lseek,				\
-		.release	= single_release,			\
-		.write		= name ## _proc_write,			\
+	static const struct proc_ops name ## _proc_fops =	\
+	{								\
+		.proc_open	= name ## _proc_open,			\
+		.proc_read	= seq_read,				\
+		.proc_lseek	= seq_lseek,				\
+		.proc_release	= single_release,			\
+		.proc_write	= name ## _proc_write,			\
 	}
 
 #define PROC_FOPS_RO(name)					\
-	static int name ## _proc_open(struct inode *inode,	\
+	static int name ## _proc_open(				\
+		struct inode *inode,				\
 		struct file *file)				\
 	{							\
-		return single_open(file, name ## _proc_show,	\
-			PDE_DATA(inode));			\
+		return single_open(				\
+			file,					\
+			name ## _proc_show,			\
+			pde_data(inode));			\
 	}							\
-	static const struct file_operations name ## _proc_fops = {	\
-		.owner		= THIS_MODULE,				\
-		.open		= name ## _proc_open,			\
-		.read		= seq_read,				\
-		.llseek		= seq_lseek,				\
-		.release	= single_release,			\
+	static const struct proc_ops name ## _proc_fops = {	\
+		.proc_open	= name ## _proc_open,			\
+		.proc_read	= seq_read,				\
+		.proc_lseek	= seq_lseek,				\
+		.proc_release	= single_release,			\
 	}
 
-#define PROC_ENTRY(name)	{__stringify(name), &name ## _proc_fops}
+#define PROC_ENTRY(name)					\
+	{							\
+		__stringify(name),				\
+		&name ## _proc_fops				\
+	}
+#endif /* CONFIG_PROC_FS */
 
 PROC_FOPS_RW(eem_debug);
 PROC_FOPS_RO(eem_status);
@@ -2072,7 +1889,7 @@ static int create_procfs(void)
 
 	struct pentry {
 		const char *name;
-		const struct file_operations *fops;
+		const struct proc_ops *fops;
 	};
 
 	struct pentry det_entries[] = {
@@ -2183,7 +2000,7 @@ struct eemsn_det *det;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
 
-	err = mtk_ipi_register(&mcupm_ipidev, CH_S_EEMSN, NULL, NULL,
+	err = mtk_ipi_register(get_mcupm_ipidev(), CH_S_EEMSN, NULL, NULL,
 		(void *)&ipi_ackdata);
 	if (err != 0) {
 		eem_error("%s error ret:%d\n", __func__, err);
@@ -2204,7 +2021,7 @@ struct eemsn_det *det;
 
 	memcpy(&(eemsn_log->efuse_devinfo), &eem_devinfo,
 		sizeof(struct eemsn_devinfo));
-	eemsn_log->segCode = get_devinfo_with_index(DEVINFO_SEG_IDX)
+	eemsn_log->segCode = read_efuse_by_offset(DEVINFO_SEG_IDX)
 			& 0xFF;
 
 #if SUPPORT_PICACHU
@@ -2249,7 +2066,7 @@ struct eemsn_det *det;
 	return 0;
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
-	eem_debug("AP:eem_log_size:%d, eemsn_log:%d\n",
+	eem_debug("AP:eem_log_size:%d, eemsn_log:%lu\n",
 		eem_data.u.data.arg[1], sizeof(struct eemsn_log));
 #endif
 	eem_debug("AP:%d, %d, %d, %d, %d\n",
@@ -2292,8 +2109,15 @@ static void __exit eem_exit(void)
 	FUNC_EXIT(FUNC_LV_MODULE);
 }
 
-late_initcall(eem_init); /* late_initcall */
 #endif /* EN_EEM */
+
+#if IS_BUILTIN(CONFIG_MTK_PTPOD_LEGACY)
+late_initcall(eem_init);
+#else
+module_init(eem_init);
+#endif
+module_exit(eem_exit);
+
 
 MODULE_DESCRIPTION("MediaTek EEM Driver v0.3");
 MODULE_LICENSE("GPL");

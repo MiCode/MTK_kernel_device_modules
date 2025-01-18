@@ -5,9 +5,6 @@
 #ifndef _MTK_EEM_CONFIG_H_
 #define _MTK_EEM_CONFIG_H_
 
-#include "mtk_eem_prj_config.h"
-
-
 /* CONFIG (SW related) */
 #define EEM_NOT_READY		(0)
 #define EARLY_PORTING		(0)
@@ -46,7 +43,7 @@
  * ############################
  */
 #define SUPPORT_DCONFIG		(1)
-#define SUPPORT_PICACHU		(1)
+#define SUPPORT_PICACHU		(0)
 #define EEM_IPI_ENABLE		(1)
 #define ENABLE_INIT_TIMER	(1)
 
@@ -92,33 +89,40 @@
 /*
  * ##########################
  * safe efuse
- * ############################
+ * ##########################
  */
-#define DEVINFO_HRID_0 12
-#define DEVINFO_SEG_IDX 30
 
-#define DEVINFO_IDX_0 50
-#define DEVINFO_IDX_1 51
-#define DEVINFO_IDX_2 52
-#define DEVINFO_IDX_3 53
-#define DEVINFO_IDX_4 54
-#define DEVINFO_IDX_5 55
-#define DEVINFO_IDX_6 56
-#define DEVINFO_IDX_7 57
-#define DEVINFO_IDX_8 58
-#define DEVINFO_IDX_9 59
-#define DEVINFO_IDX_10 60
-#define DEVINFO_IDX_11 61
-#define DEVINFO_IDX_12 62
-#define DEVINFO_IDX_13 63
-#define DEVINFO_IDX_14 165
-#define DEVINFO_IDX_15 166
-#define DEVINFO_IDX_16 167
-#define DEVINFO_IDX_17 168
-#define DEVINFO_IDX_18 169
-#define DEVINFO_IDX_19 170
-#define DEVINFO_IDX_20 173
-#define DEVINFO_IDX_21 174
+/* ##################################################################################################
+ * Adapt to the updated efuse interface by replacing
+ * the index-based reading method with an offset-based approach for IC efuse values.
+ * ##################################################################################################
+ */
+
+#define DEVINFO_HRID_0 0x30
+#define DEVINFO_SEG_IDX 0x78
+
+#define DEVINFO_IDX_0 0xC8
+#define DEVINFO_IDX_1 0xCC
+#define DEVINFO_IDX_2 0xD0
+#define DEVINFO_IDX_3 0xD4
+#define DEVINFO_IDX_4 0xD8
+#define DEVINFO_IDX_5 0xDC
+#define DEVINFO_IDX_6 0xE0
+#define DEVINFO_IDX_7 0xE4
+#define DEVINFO_IDX_8 0xE8
+#define DEVINFO_IDX_9 0xEC
+#define DEVINFO_IDX_10 0xF0
+#define DEVINFO_IDX_11 0xF4
+#define DEVINFO_IDX_12 0xF8
+#define DEVINFO_IDX_13 0xFC
+#define DEVINFO_IDX_14 0x294
+#define DEVINFO_IDX_15 0x298
+#define DEVINFO_IDX_16 0x29C
+#define DEVINFO_IDX_17 0x2A0
+#define DEVINFO_IDX_18 0x2A4
+#define DEVINFO_IDX_19 0x2A8
+#define DEVINFO_IDX_20 0x2B4
+#define DEVINFO_IDX_21 0x2B8
 
 
 #define DEVINFO_TIME_IDX 132

@@ -25,7 +25,7 @@
 #include <linux/platform_device.h>
 
 /* local include */
-#if IS_ENABLED(CONFIG_MTK_CPU_FREQ)
+#if IS_ENABLED(CONFIG_MEDIATEK_CPU_DVFS)
 #include "inc/mtk_cpufreq_api.h"
 #endif
 #include "mtk_unified_power.h"

@@ -9,7 +9,6 @@
  *
  */
 #define __MTK_EEM_INTERNAL_C__
-#include "mtk_eem_prj_config.h"
 #include "mtk_defeem.h"
 #include "mtk_eem_config.h"
 #include "mtk_eem.h"
