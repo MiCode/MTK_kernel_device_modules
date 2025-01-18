@@ -652,10 +652,6 @@ static int map_phy_to_kernel(struct rt_smem_region_lk_fmt *tbl, u32 num)
 	int ret;
 
 	for (i = 0; i < num; i++) {
-
-		if (tbl[i].inf.flags & SMEM_ATTR_PADDING)
-			continue;
-
 		if (tbl[i].inf.id < SMEM_USER_MAX)
 			s_smem_hash_tbl[tbl[i].inf.id] = &tbl[i];
 		else
@@ -685,6 +681,7 @@ static int map_phy_to_kernel(struct rt_smem_region_lk_fmt *tbl, u32 num)
 
 	return 0;
 }
+
 
 static void smem_layout_dump(const char name[], struct rt_smem_region_lk_fmt *rt_tbl, u32 num)
 {
