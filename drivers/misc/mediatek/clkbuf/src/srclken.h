@@ -41,26 +41,42 @@ struct srclken_rc_cfg {
 	struct reg_t _sw_rc_req;
 	struct reg_t _sw_fpm_en;
 	struct reg_t _sw_bblpm_en;
+
+	/*RC V2 feature, start form*/
+	struct reg_t _start_bypass_cfg;
+	struct reg_t _start_dis_cfg;
+	struct reg_t _multi_master_cfg;
+	struct reg_t _start_mask_cfg;
+	struct reg_t _start_on_cnt;
+	struct reg_t _start_off_cnt;
 };
 
 /*srclken_rc_sta only allow registers*/
 struct srclken_rc_sta {
 	struct reg_t _cmd_sta_0;
 	struct reg_t _cmd_sta_1;
-	struct reg_t _spi_sta;
 	struct reg_t _fsm_sta;
 	struct reg_t _popi_sta;
 	struct reg_t _m00_sta;
+
+	/*RC V1 feature*/
+	struct reg_t _spi_sta;
+	struct reg_t _spmi_p_sta;
 	struct reg_t _trace_lsb;
 	struct reg_t _trace_msb;
 	struct reg_t _timer_lsb;
 	struct reg_t _timer_msb;
-
-	struct reg_t _spmi_p_sta;
 	struct reg_t _trace_p_msb;
 	struct reg_t _trace_p_lsb;
 	struct reg_t _timer_p_msb;
 	struct reg_t _timer_p_lsb;
+
+	/*RC V2 feature*/
+	struct reg_t _cmd_sta_2;
+	struct reg_t _cmd_sta_3;
+	struct reg_t _cmd_sta_4;
+	struct reg_t _spi_sta_1;
+	struct reg_t _spmi_p_sta_1;
 };
 
 struct srclken_meta_data {
@@ -73,15 +89,27 @@ struct srclken_meta_data {
 	int num_dump_timer;
 };
 
+struct rc_debug_regs {
+	struct reg_t *debug_trace;
+	struct reg_t *sys_timer;
+	struct reg_t *debug_p_trace;
+	struct reg_t *sys_timer_p;
+};
+
 struct plat_rcdata {
 	struct srclken_rc_cfg *cfg;
 	struct srclken_rc_sta *sta;
 	struct srclken_meta_data *meta;
+
 	/*rc hw type could change to be sta or cfg*/
 	struct clkbuf_hw hw;
 	spinlock_t *lock;
+
+	/* extend for RC V2 */
+	struct rc_debug_regs *rc_debug_regs;
 };
 
 extern struct plat_rcdata rc_data_v1;
+extern struct plat_rcdata rc_data_v2;
 
 #endif /* SRCLKEN_RC_HW_H */

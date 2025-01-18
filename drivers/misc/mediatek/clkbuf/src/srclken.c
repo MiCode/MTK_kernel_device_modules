@@ -568,6 +568,99 @@ DUMP_FAIL:
 	return len;
 }
 
+/* dump with RC array format for non-continuous debug reg address*/
+ssize_t __dump_srclken_trace_v2(void *data, char *buf, int is_dump_max)
+{
+	struct plat_rcdata *pd = (struct plat_rcdata *)data;
+	struct clkbuf_hw hw;
+	struct srclken_rc_sta *sta;
+	struct srclken_meta_data *meta;
+	struct reg_t *trace;
+	struct rc_debug_regs *reg_d = NULL;
+	int i, len = 0, num_dump = 0, num_dump_timer = 0;
+	u32 out = 0, sta_ofs = 0;
+
+	if (!IS_RC_HW((pd->hw).hw_type))
+		goto DUMP_FAIL;
+
+	hw = pd->hw;
+
+	/*switch to RC STA*/
+	hw.hw_type = SRCLKEN_STA;
+	sta = pd->sta;
+	if (!sta) {
+		CLKBUF_DBG("sta is null");
+		goto DUMP_FAIL;
+	}
+
+	meta = pd->meta;
+	if (!meta) {
+		CLKBUF_DBG("meta data is null");
+		goto DUMP_FAIL;
+	}
+	sta_ofs = meta->sta_base_ofs;
+
+	reg_d = pd->rc_debug_regs;
+	if (!reg_d) {
+		CLKBUF_DBG("read rc_debug_regs failed\n");
+		return len;
+	}
+
+	if (is_dump_max && buf) {
+	/* just a remind message for sysfs*/
+		CLKBUF_DBG("%12s, %10s, %10s\n", "Trace","Addr","Val");
+
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"%s\n", "4K PAGE limited, so use dmesg | grep CLKBUF to check logs");
+	}
+
+	num_dump = is_dump_max ? meta->max_dump_trace : meta->num_dump_trace;
+
+	for (i = 0, trace = reg_d->debug_trace; trace && (trace->name) && ( i < num_dump );
+			i++, trace++) {
+
+		if (rc_read(&hw, trace, &out))
+			goto DUMP_FAIL;
+
+		if (!is_dump_max && buf) {
+		/* consider suspend & resume */
+			len += snprintf(buf + len, PAGE_SIZE - len,
+				"%12s, 0x%08x, 0x%08x %s",
+				trace->name, trace->ofs + sta_ofs, out, "");
+		} else {
+		/* consider sysfs and anywhere API call */
+			CLKBUF_DBG("%12s, 0x%08x, 0x%08x\n",
+				trace->name, trace->ofs + sta_ofs, out);
+		}
+	}
+
+	num_dump_timer = is_dump_max ? meta->max_dump_timer : meta->num_dump_timer;
+
+	for (i = 0, trace = reg_d->sys_timer; trace && (trace->name) && ( i < num_dump_timer );
+			i++, trace++) {
+
+		if (rc_read(&hw, trace, &out))
+			goto DUMP_FAIL;
+
+		if (!is_dump_max && buf) {
+		/* consider suspend & resume */
+			len += snprintf(buf + len, PAGE_SIZE - len,
+				"%12s, 0x%08x, 0x%08x %s",
+				trace->name, trace->ofs + sta_ofs, out, "");
+		} else {
+		/* consider sysfs and anywhere API call */
+			CLKBUF_DBG("%12s, 0x%08x, 0x%08x\n",
+				trace->name, trace->ofs + sta_ofs, out);
+		}
+	}
+
+	return len;
+
+DUMP_FAIL:
+	CLKBUF_DBG("HW_TYPE is not RC HW or READ FAIL\n");
+	return len;
+}
+
 static struct clkbuf_operation clkbuf_ops_v1 = {
 	.dump_srclken_status = __dump_srclken_status,
 	.dump_srclken_trace = __dump_srclken_trace,
@@ -587,8 +680,28 @@ static struct match_srclken match_srclken_v1 = {
 	.init = &srclken_init_v1,
 };
 
+static struct clkbuf_operation clkbuf_ops_v2 = {
+	.dump_srclken_status = __dump_srclken_status,
+	.dump_srclken_trace = __dump_srclken_trace_v2,
+	.srclken_subsys_ctrl = __srclken_subsys_ctrl,
+	.get_rc_MXX_req_sta = __get_rc_MXX_req_sta,
+	.get_rc_MXX_cfg = __get_rc_MXX_cfg,
+};
+
+static struct clkbuf_hdlr clkbuf_hdlr_v2 = {
+	.ops = &clkbuf_ops_v2,
+	.data = &rc_data_v2,
+};
+
+static struct match_srclken match_srclken_v2 = {
+	.name = "mediatek,srclken-rc-v2", // v2 support 4 byte pmrc_en
+	.hdlr = &clkbuf_hdlr_v2,
+	.init = &srclken_init_v1,
+};
+
 static struct match_srclken *matches_srclken[] = {
 	&match_srclken_v1,
+	&match_srclken_v2,
 	NULL,
 };
 

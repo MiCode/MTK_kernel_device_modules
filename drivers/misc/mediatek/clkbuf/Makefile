@@ -27,3 +27,4 @@ clkbuf-y += src/dcxo-6685-tb.o
 clkbuf-y += src/dcxo-6359p.o
 clkbuf-y += src/pmif-data-v1.o
 clkbuf-y += src/src-data-v1.o
+clkbuf-y += src/src-data-v2.o
