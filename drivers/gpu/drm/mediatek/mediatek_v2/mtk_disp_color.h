@@ -193,34 +193,9 @@ struct DISP_PQ_PARAM *get_Color_config(int id);
 struct DISPLAY_PQ_T *get_Color_index(struct mtk_ddp_comp *comp);
 bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	unsigned long addr, int *value);
-void disp_color_set_window(struct mtk_ddp_comp *comp,
-	unsigned int sat_upper, unsigned int sat_lower,
-	unsigned int hue_upper, unsigned int hue_lower);
 
-void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle);
-
-int mtk_drm_ioctl_set_pqparam(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_set_pqindex(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_set_color_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_mutex_control(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_read_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_write_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_bypass_color(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_read_sw_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
-		struct drm_file *file_priv);
-
 
 // SW Reg
 /* ------------------------------------------------------------------------- */
@@ -405,7 +380,7 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 /* ------------------------------------------------------------------------- */
 
 void disp_color_set_bypass(struct drm_crtc *crtc, int bypass);
-void mtk_color_regdump(struct mtk_ddp_comp *comp);
+void disp_color_regdump(struct mtk_ddp_comp *comp);
 void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
 	unsigned int pa, unsigned int pa1);

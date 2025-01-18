@@ -188,7 +188,7 @@ static void disp_ccorr_multiply_3x3(struct mtk_ddp_comp *comp,
 	}
 }
 
-static int disp_ccorr_color_matrix_to_dispsys(struct mtk_ddp_comp *comp,
+static int disp_ccorr_set_color_matrix_to_dispsys(struct mtk_ddp_comp *comp,
 		struct drm_device *dev)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -369,7 +369,7 @@ static void disp_ccorr_on_start_of_frame(struct mtk_ddp_comp *comp)
 	}
 }
 
-static irqreturn_t mtk_disp_ccorr_irq_handler(int irq, void *dev_id)
+static irqreturn_t disp_ccorr_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_ccorr *ccorr = dev_id;
 	struct mtk_ddp_comp *comp = &ccorr->ddp_comp;
@@ -424,7 +424,7 @@ static int disp_ccorr_wait_irq(struct mtk_ddp_comp *comp)
 	return ret;
 }
 
-static int disp_pq_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *backlight)
+static int disp_ccorr_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *backlight)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -447,7 +447,7 @@ static int disp_pq_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *backli
 	return ret;
 }
 
-void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
+void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -479,7 +479,7 @@ void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 		}
 	}
 }
-EXPORT_SYMBOL(disp_pq_notify_backlight_changed);
+EXPORT_SYMBOL(disp_ccorr_notify_backlight_changed);
 
 static int disp_ccorr_set_coef(
 	const struct DRM_DISP_CCORR_COEF_T *user_color_corr,
@@ -524,7 +524,7 @@ static int disp_ccorr_set_coef(
 	return ret;
 }
 
-static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
+static int disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -623,14 +623,14 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		hint, identity_matrix, fte_flag, mtk_dump_comp_str(comp), ccorr_data->bypass_color);
 	if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
 		if (ccorr_data->bypass_color == true) {
-			mtk_color_bypass(ccorr_data->color_comp, false, handle);
+			disp_color_bypass(ccorr_data->color_comp, false, handle);
 			ccorr_data->bypass_color = false;
 		}
 	} else {
 		if ((ccorr_data->bypass_color == false) &&
 				(primary_data->disp_ccorr_number == 1) &&
 				(!(primary_data->disp_ccorr_linear & 0x01))) {
-			mtk_color_bypass(ccorr_data->color_comp, true, handle);
+			disp_color_bypass(ccorr_data->color_comp, true, handle);
 			ccorr_data->bypass_color = true;
 		}
 	}
@@ -736,7 +736,7 @@ int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
+int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -797,7 +797,7 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-int mtk_drm_ioctl_set_ccorr_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_ccorr_act_set_ccorr(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -852,26 +852,6 @@ int mtk_drm_ioctl_set_ccorr_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 }
 
-int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp;
-	int i, j, ret = -1;
-
-	for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)
-			ret = mtk_drm_ioctl_set_ccorr_impl(comp, data);
-		if (ret < 0) {
-			DDPPR_ERR("%s:%d, failed, comp:%d\n", __func__, __LINE__, comp->id);
-			break;
-		}
-	}
-
-	return ret;
-}
-
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long event,
 	void *v)
@@ -887,7 +867,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		DDPPR_ERR("%s: led_conf is NULL!\n", __func__);
 		return -1;
 	}
-	crtc = get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
+	crtc = disp_pq_get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
 	if (crtc == NULL) {
 		led_conf->aal_enable = 0;
 		DDPPR_ERR("%s: failed to get crtc!\n", __func__);
@@ -915,7 +895,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
 			break;
 
-		disp_pq_notify_backlight_changed(comp, trans_level);
+		disp_ccorr_notify_backlight_changed(comp, trans_level);
 		DDPINFO("%s: brightness changed: %d(%d)\n",
 			__func__, trans_level, led_conf->cdev.brightness);
 		break;
@@ -923,7 +903,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
 			break;
 
-		disp_pq_notify_backlight_changed(comp, 0);
+		disp_ccorr_notify_backlight_changed(comp, 0);
 		break;
 	case LED_TYPE_CHANGED:
 		pr_info("[leds -> ccorr] led type changed: %d", led_conf->led_type);
@@ -940,7 +920,7 @@ static struct notifier_block leds_init_notifier = {
 };
 #endif
 
-int mtk_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
+int disp_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	int ret = 0;
@@ -952,12 +932,12 @@ int mtk_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
 
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
 
-	mtk_disp_ccorr_set_interrupt(comp, data);
+	disp_ccorr_set_interrupt(comp, data);
 
 	return ret;
 }
 
-int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_ccorr_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
 	/* TODO: dual pipe */
@@ -972,23 +952,12 @@ int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
-	mtk_disp_ccorr_set_interrupt(comp, enabled);
+	disp_ccorr_set_interrupt(comp, enabled);
 
 	return ret;
 }
 
-int mtk_drm_ioctl_ccorr_eventctl(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
-
-	return mtk_drm_ioctl_ccorr_eventctl_impl(comp, data);
-}
-
-int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -998,7 +967,7 @@ int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data)
 
 	disp_ccorr_wait_irq(comp);
 
-	if (disp_pq_copy_backlight_to_user(comp, (int *) data) < 0) {
+	if (disp_ccorr_copy_backlight_to_user(comp, (int *) data) < 0) {
 		DDPPR_ERR("%s: failed", __func__);
 		ret = -EFAULT;
 	}
@@ -1006,18 +975,7 @@ int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_ccorr_get_irq(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
-
-	return mtk_drm_ioctl_ccorr_get_irq_impl(comp, data);
-}
-
-int mtk_drm_ioctl_aibld_cv_mode_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_ccorr_act_sbd_cv_mode(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1026,18 +984,7 @@ int mtk_drm_ioctl_aibld_cv_mode_impl(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
-int mtk_drm_ioctl_aibld_cv_mode(struct drm_device *dev, void *data,
-		struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
-
-	return mtk_drm_ioctl_aibld_cv_mode_impl(comp, data);
-}
-
-int mtk_drm_ioctl_support_color_matrix_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_ccorr_act_support_color_matrix(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1094,7 +1041,7 @@ int mtk_drm_ioctl_support_color_matrix_impl(struct mtk_ddp_comp *comp, void *dat
 	return ret;
 }
 
-int mtk_drm_ioctl_support_color_matrix(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
 	struct mtk_drm_private *private = dev->dev_private;
@@ -1105,10 +1052,10 @@ int mtk_drm_ioctl_support_color_matrix(struct drm_device *dev, void *data,
 	if (IS_ERR_OR_NULL(comp))
 		return -EFAULT;
 
-	return mtk_drm_ioctl_support_color_matrix_impl(comp, data);
+	return disp_ccorr_act_support_color_matrix(comp, data);
 }
 
-int mtk_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps)
+int disp_ccorr_act_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1117,7 +1064,7 @@ int mtk_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *cco
 	return 0;
 }
 
-static int mtk_set_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps)
+static int disp_ccorr_act_set_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1130,7 +1077,7 @@ static int mtk_set_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_ca
 	return 0;
 }
 
-int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_get_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv)
 {
 	struct mtk_drm_private *private = dev->dev_private;
@@ -1142,10 +1089,10 @@ int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
 	if (IS_ERR_OR_NULL(comp))
 		return -EFAULT;
 
-	return mtk_get_ccorr_caps(comp, &pq_info->ccorr_caps);
+	return disp_ccorr_act_get_ccorr_caps(comp, &pq_info->ccorr_caps);
 }
 
-int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_ccorr_set_pq_caps(struct drm_device *dev, void *data,
 	struct drm_file *file_priv)
 {
 	struct mtk_drm_private *private = dev->dev_private;
@@ -1156,12 +1103,12 @@ int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
 
 	for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)
-			mtk_set_ccorr_caps(comp, &pq_info->ccorr_caps);
+			disp_ccorr_act_set_ccorr_caps(comp, &pq_info->ccorr_caps);
 	}
 	return 0;
 }
 
-static void mtk_disp_ccorr_config_overhead(struct mtk_ddp_comp *comp,
+static void disp_ccorr_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1198,7 +1145,7 @@ static void mtk_disp_ccorr_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_disp_ccorr_config_overhead_v(struct mtk_ddp_comp *comp,
+static void disp_ccorr_config_overhead_v(struct mtk_ddp_comp *comp,
 	struct total_tile_overhead_v  *tile_overhead_v)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1214,7 +1161,7 @@ static void mtk_disp_ccorr_config_overhead_v(struct mtk_ddp_comp *comp,
 	ccorr_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
-static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
+static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 			     struct mtk_ddp_config *cfg,
 			     struct cmdq_pkt *handle)
 {
@@ -1254,7 +1201,7 @@ static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_ccorr_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void disp_ccorr_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1280,7 +1227,7 @@ static void mtk_ccorr_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		       comp->regs_pa + DISP_REG_CCORR_EN, 0x1, 0x1);
 }
 
-static void mtk_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
+static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1293,7 +1240,7 @@ static void mtk_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 	primary_data->ccorr_relay_value = bypass;
 }
 
-static int mtk_ccorr_user_cmd(struct mtk_ddp_comp *comp,
+static int disp_ccorr_user_cmd(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1323,7 +1270,7 @@ static int mtk_ccorr_user_cmd(struct mtk_ddp_comp *comp,
 
 	case SET_INTERRUPT:
 	{
-		mtk_disp_ccorr_set_interrupt(comp, data);
+		disp_ccorr_set_interrupt(comp, data);
 	}
 	break;
 
@@ -1336,12 +1283,12 @@ static int mtk_ccorr_user_cmd(struct mtk_ddp_comp *comp,
 
 		for_each_comp_in_cur_crtc_path(cur_comp, mtk_crtc, i, j) {
 			if (mtk_ddp_comp_get_type(cur_comp->id) == MTK_DISP_CCORR)
-				mtk_ccorr_bypass(cur_comp, *value, handle);
+				disp_ccorr_bypass(cur_comp, *value, handle);
 		}
 		if (mtk_crtc->is_dual_pipe) {
 			for_each_comp_in_dual_pipe(cur_comp, mtk_crtc, i, j) {
 				if (mtk_ddp_comp_get_type(cur_comp->id) == MTK_DISP_CCORR)
-					mtk_ccorr_bypass(cur_comp, *value, handle);
+					disp_ccorr_bypass(cur_comp, *value, handle);
 			}
 		}
 	}
@@ -1354,7 +1301,7 @@ static int mtk_ccorr_user_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static void ddp_ccorr_backup(struct mtk_ddp_comp *comp)
+static void disp_ccorr_backup(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1363,7 +1310,7 @@ static void ddp_ccorr_backup(struct mtk_ddp_comp *comp)
 			readl(comp->regs + DISP_REG_CCORR_CFG);
 }
 
-static void ddp_ccorr_restore(struct mtk_ddp_comp *comp)
+static void disp_ccorr_restore(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1372,7 +1319,7 @@ static void ddp_ccorr_restore(struct mtk_ddp_comp *comp)
 			comp->regs + DISP_REG_CCORR_CFG);
 }
 
-static void mtk_ccorr_prepare(struct mtk_ddp_comp *comp)
+static void disp_ccorr_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1389,15 +1336,15 @@ static void mtk_ccorr_prepare(struct mtk_ddp_comp *comp)
 	else
 		mtk_ddp_write_mask_cpu(comp, 0,
 			DISP_REG_CCORR_SHADOW, CCORR_BYPASS_SHADOW);
-	ddp_ccorr_restore(comp);
+	disp_ccorr_restore(comp);
 }
 
-static void mtk_ccorr_unprepare(struct mtk_ddp_comp *comp)
+static void disp_ccorr_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
-	ddp_ccorr_backup(comp);
+	disp_ccorr_backup(comp);
 
 	atomic_set(&ccorr_data->is_clock_on, 0);
 	wake_up_interruptible(&primary_data->ccorr_get_irq_wq); // wake up who's waiting isr
@@ -1407,7 +1354,7 @@ static void mtk_ccorr_unprepare(struct mtk_ddp_comp *comp)
 
 }
 
-static void mtk_ccorr_data_init(struct mtk_ddp_comp *comp)
+static void disp_ccorr_init_data(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_ddp_comp *color_comp;
@@ -1421,7 +1368,7 @@ static void mtk_ccorr_data_init(struct mtk_ddp_comp *comp)
 	ccorr_data->color_comp = color_comp;
 }
 
-static void mtk_ccorr_primary_data_init(struct mtk_ddp_comp *comp)
+static void disp_ccorr_init_primary_data(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1439,7 +1386,7 @@ static void mtk_ccorr_primary_data_init(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->ccorr_global_lock);
 }
 
-static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
 	switch (cmd) {
@@ -1453,18 +1400,18 @@ static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
+		ret = disp_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
 			companion_data = comp_to_ccorr(data->companion);
 			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
-		mtk_ccorr_data_init(comp);
-		mtk_ccorr_primary_data_init(comp);
+		disp_ccorr_init_data(comp);
+		disp_ccorr_init_primary_data(comp);
 		if (comp->mtk_crtc->is_dual_pipe && data->companion) {
-			mtk_ccorr_data_init(data->companion);
-			mtk_ccorr_primary_data_init(data->companion);
+			disp_ccorr_init_data(data->companion);
+			disp_ccorr_init_primary_data(data->companion);
 		}
 	}
 		break;
@@ -1474,13 +1421,13 @@ static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return 0;
 }
 
-void mtk_ccorr_first_cfg(struct mtk_ddp_comp *comp,
+void disp_ccorr_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_ccorr_config(comp, cfg, handle);
+	disp_ccorr_config(comp, cfg, handle);
 }
 
-static int mtk_ccorr_pq_frame_config(struct mtk_ddp_comp *comp,
+static int disp_ccorr_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
 	int ret = -1;
@@ -1489,10 +1436,10 @@ static int mtk_ccorr_pq_frame_config(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 
 	case PQ_CCORR_EVENTCTL:
-		ret = mtk_ccorr_cfg_eventctl(comp, handle, data, data_size);
+		ret = disp_ccorr_cfg_eventctl(comp, handle, data, data_size);
 		break;
 	case PQ_CCORR_SET_CCORR:
-		ret = mtk_ccorr_cfg_set_ccorr(comp, handle, data, data_size);
+		ret = disp_ccorr_cfg_set_ccorr(comp, handle, data, data_size);
 		break;
 	default:
 		break;
@@ -1500,7 +1447,7 @@ static int mtk_ccorr_pq_frame_config(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-static int mtk_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
+static int disp_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 		unsigned int cmd, void *data, unsigned int data_size)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1514,27 +1461,27 @@ static int mtk_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 
 	switch (cmd) {
 	case PQ_CCORR_SET_CCORR:
-		ret = mtk_drm_ioctl_set_ccorr_impl(comp, data);
+		ret = disp_ccorr_act_set_ccorr(comp, data);
 		break;
 	case PQ_CCORR_EVENTCTL:
-		ret = mtk_drm_ioctl_ccorr_eventctl_impl(comp, data);
+		ret = disp_ccorr_act_eventctl(comp, data);
 		break;
 	case PQ_CCORR_GET_IRQ:
-		ret = mtk_drm_ioctl_ccorr_get_irq_impl(comp, data);
+		ret = disp_ccorr_act_get_irq(comp, data);
 		break;
 	case PQ_CCORR_SUPPORT_COLOR_MATRIX:
-		ret = mtk_drm_ioctl_support_color_matrix_impl(comp, data);
+		ret = disp_ccorr_act_support_color_matrix(comp, data);
 		break;
 	case PQ_CCORR_AIBLD_CV_MODE:
-		ret = mtk_drm_ioctl_aibld_cv_mode_impl(comp, data);
+		ret = disp_ccorr_act_sbd_cv_mode(comp, data);
 		break;
 	case PQ_CCORR_GET_PQ_CAPS:
 		pq_info = (struct mtk_drm_pq_caps_info *)data;
-		ret = mtk_get_ccorr_caps(comp, &pq_info->ccorr_caps);
+		ret = disp_ccorr_act_get_ccorr_caps(comp, &pq_info->ccorr_caps);
 		break;
 	case PQ_CCORR_SET_PQ_CAPS:
 		pq_info = (struct mtk_drm_pq_caps_info *)data;
-		ret = mtk_set_ccorr_caps(comp, &pq_info->ccorr_caps);
+		ret = disp_ccorr_act_set_ccorr_caps(comp, &pq_info->ccorr_caps);
 		break;
 	default:
 		break;
@@ -1542,7 +1489,7 @@ static int mtk_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-static int mtk_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
+static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1575,23 +1522,23 @@ static int mtk_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 }
 
 static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
-	.config = mtk_ccorr_config,
-	.first_cfg = mtk_ccorr_first_cfg,
-	.start = mtk_ccorr_start,
-	.bypass = mtk_ccorr_bypass,
-	.user_cmd = mtk_ccorr_user_cmd,
-	.io_cmd = mtk_ccorr_io_cmd,
-	.prepare = mtk_ccorr_prepare,
-	.unprepare = mtk_ccorr_unprepare,
-	.config_overhead = mtk_disp_ccorr_config_overhead,
-	.config_overhead_v = mtk_disp_ccorr_config_overhead_v,
-	.pq_frame_config = mtk_ccorr_pq_frame_config,
+	.config = disp_ccorr_config,
+	.first_cfg = disp_ccorr_first_cfg,
+	.start = disp_ccorr_start,
+	.bypass = disp_ccorr_bypass,
+	.user_cmd = disp_ccorr_user_cmd,
+	.io_cmd = disp_ccorr_io_cmd,
+	.prepare = disp_ccorr_prepare,
+	.unprepare = disp_ccorr_unprepare,
+	.config_overhead = disp_ccorr_config_overhead,
+	.config_overhead_v = disp_ccorr_config_overhead_v,
+	.pq_frame_config = disp_ccorr_frame_config,
 	.mutex_sof_irq = disp_ccorr_on_start_of_frame,
-	.pq_ioctl_transact = mtk_ccorr_ioctl_transact,
-	.partial_update = mtk_ccorr_set_partial_update,
+	.pq_ioctl_transact = disp_ccorr_ioctl_transact,
+	.partial_update = disp_ccorr_set_partial_update,
 };
 
-static int mtk_disp_ccorr_bind(struct device *dev, struct device *master,
+static int disp_ccorr_bind(struct device *dev, struct device *master,
 			       void *data)
 {
 	struct mtk_disp_ccorr *priv = dev_get_drvdata(dev);
@@ -1609,11 +1556,11 @@ static int mtk_disp_ccorr_bind(struct device *dev, struct device *master,
 		return ret;
 	}
 
-	disp_ccorr_color_matrix_to_dispsys(&priv->ddp_comp, drm_dev);
+	disp_ccorr_set_color_matrix_to_dispsys(&priv->ddp_comp, drm_dev);
 	return 0;
 }
 
-static void mtk_disp_ccorr_unbind(struct device *dev, struct device *master,
+static void disp_ccorr_unbind(struct device *dev, struct device *master,
 				  void *data)
 {
 	struct mtk_disp_ccorr *priv = dev_get_drvdata(dev);
@@ -1623,11 +1570,11 @@ static void mtk_disp_ccorr_unbind(struct device *dev, struct device *master,
 }
 
 static const struct component_ops mtk_disp_ccorr_component_ops = {
-	.bind	= mtk_disp_ccorr_bind,
-	.unbind = mtk_disp_ccorr_unbind,
+	.bind	= disp_ccorr_bind,
+	.unbind = disp_ccorr_unbind,
 };
 
-void mtk_ccorr_dump(struct mtk_ddp_comp *comp)
+void disp_ccorr_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 
@@ -1641,7 +1588,7 @@ void mtk_ccorr_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, -1, -1);
 }
 
-static int mtk_update_ccorr_base(struct mtk_ddp_comp *comp)
+static int disp_ccorr_update_ccorr_base(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1675,7 +1622,7 @@ static int mtk_update_ccorr_base(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
-static void mtk_get_ccorr_property(struct mtk_ddp_comp *comp, struct device_node *node)
+static void disp_ccorr_get_property_value(struct mtk_ddp_comp *comp, struct device_node *node)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -1717,10 +1664,10 @@ static void mtk_get_ccorr_property(struct mtk_ddp_comp *comp, struct device_node
 	else
 		primary_data->prim_ccorr_force_linear = false;
 
-	mtk_update_ccorr_base(comp);
+	disp_ccorr_update_ccorr_base(comp);
 }
 
-static int mtk_disp_ccorr_probe(struct platform_device *pdev)
+static int disp_ccorr_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_ccorr *priv;
@@ -1753,7 +1700,7 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 	priv->primary_data->disp_ccorr_caps.ccorr_linear = 0x01;
 	priv->primary_data->prim_ccorr_force_linear = false;
 	priv->primary_data->prim_ccorr_pq_nonlinear = false;
-	mtk_get_ccorr_property(&priv->ddp_comp, dev->of_node);
+	disp_ccorr_get_property_value(&priv->ddp_comp, dev->of_node);
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_ccorr_funcs);
@@ -1768,7 +1715,7 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq >= 0)
-		ret = devm_request_irq(dev, irq, mtk_disp_ccorr_irq_handler,
+		ret = devm_request_irq(dev, irq, disp_ccorr_irq_handler,
 			       IRQF_TRIGGER_NONE | IRQF_SHARED,
 			       dev_name(dev), priv);
 
@@ -1796,7 +1743,7 @@ error_dev_init:
 	return ret;
 }
 
-static int mtk_disp_ccorr_remove(struct platform_device *pdev)
+static int disp_ccorr_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_ccorr *priv = dev_get_drvdata(&pdev->dev);
 
@@ -1945,8 +1892,8 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 MODULE_DEVICE_TABLE(of, mtk_disp_ccorr_driver_dt_match);
 
 struct platform_driver mtk_disp_ccorr_driver = {
-	.probe = mtk_disp_ccorr_probe,
-	.remove = mtk_disp_ccorr_remove,
+	.probe = disp_ccorr_probe,
+	.remove = disp_ccorr_remove,
 	.driver = {
 
 			.name = "mediatek-disp-ccorr",
@@ -1971,7 +1918,7 @@ void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass)
 	DDPINFO("%s : ret = %d", __func__, ret);
 }
 
-void mtk_ccorr_regdump(struct mtk_ddp_comp *comp)
+void disp_ccorr_regdump(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
 	void __iomem *baddr = comp->regs;

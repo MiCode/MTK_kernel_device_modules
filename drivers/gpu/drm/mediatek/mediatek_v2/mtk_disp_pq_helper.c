@@ -84,9 +84,9 @@ static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
 	"mediatek,disp1_oddmr0",
 };
 
-static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data);
-static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data);
-static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data);
+static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, void *data);
+static int disp_pq_proxy_virtual_check_trigger(struct drm_crtc *crtc, void *data);
+static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data);
 
 static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node_name)
 {
@@ -109,7 +109,7 @@ static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node
 	return true;
 }
 
-void mtk_pq_wake_get(unsigned int cmd, struct pq_common_data *pq_data)
+void disp_pq_wake_get(unsigned int cmd, struct pq_common_data *pq_data)
 {
 	s32 ref;
 
@@ -123,7 +123,7 @@ void mtk_pq_wake_get(unsigned int cmd, struct pq_common_data *pq_data)
 		DDPPR_ERR("%s  get invalid cnt %d\n", __func__, ref);
 }
 
-void mtk_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
+void disp_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
 {
 	s32 ref;
 
@@ -137,7 +137,7 @@ void mtk_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
 		DDPPR_ERR("%s  put invalid cnt %d\n", __func__, ref);
 }
 
-void mtk_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
 #ifndef DRM_BYPASS_PQ
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
@@ -167,7 +167,7 @@ void mtk_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 #endif
 }
 
-int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data)
+int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data)
 {
 	struct DISP_READ_REG *rParams = data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -263,7 +263,7 @@ int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data)
 	return ret;
 }
 
-int mtk_drm_ioctl_sw_write_impl(struct drm_crtc *crtc, void *data)
+int disp_pq_proxy_virtual_sw_write(struct drm_crtc *crtc, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -276,7 +276,7 @@ int mtk_drm_ioctl_sw_write_impl(struct drm_crtc *crtc, void *data)
 	return 0;
 }
 
-static int mtk_drm_get_table_index(struct drm_crtc *crtc, unsigned int pa)
+static int disp_pq_get_table_index(struct drm_crtc *crtc, unsigned int pa)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -290,7 +290,7 @@ static int mtk_drm_get_table_index(struct drm_crtc *crtc, unsigned int pa)
 	return -1;
 }
 
-static bool mtk_drm_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
+static bool disp_pq_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
 {
 	int i;
 	struct resource res;
@@ -303,7 +303,7 @@ static bool mtk_drm_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
 		DDPPR_ERR("addr is not 4-byte aligned!\n");
 		return false;
 	}
-	if (mtk_drm_get_table_index(crtc, pa) >= 0)
+	if (disp_pq_get_table_index(crtc, pa) >= 0)
 		return true;
 
 	for (i = 0; i < TUNING_COMPS_MAX_COUNT; i ++) {
@@ -315,7 +315,7 @@ static bool mtk_drm_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
 	return false;
 }
 
-int mtk_drm_ioctl_hw_read_impl(struct drm_crtc *crtc, void *data)
+int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
@@ -325,7 +325,7 @@ int mtk_drm_ioctl_hw_read_impl(struct drm_crtc *crtc, void *data)
 
 	pa = (unsigned int)rParams->reg;
 
-	if (!mtk_drm_tuning_pa_valid(crtc, pa)) {
+	if (!disp_pq_tuning_pa_valid(crtc, pa)) {
 		DDPPR_ERR("reg read, addr invalid, pa:0x%x\n", pa);
 		return -EFAULT;
 	}
@@ -350,7 +350,7 @@ static void frame_cmdq_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
-int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
+int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct DISP_WRITE_REG *wParams = data;
@@ -359,7 +359,7 @@ int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
 	struct mtk_cmdq_cb_data *cb_data = NULL;
 	struct cmdq_pkt *cmdq_handle = NULL;
 
-	if (!mtk_drm_tuning_pa_valid(crtc, pa)) {
+	if (!disp_pq_tuning_pa_valid(crtc, pa)) {
 		DDPPR_ERR("reg write, addr invalid, pa:0x%x\n", pa);
 		return -EFAULT;
 	}
@@ -380,7 +380,7 @@ int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
 	if (mtk_crtc->is_dual_pipe) {
 		unsigned int companion_pa = 0;
 		int offset = pa & 0xfff;
-		int index_table = mtk_drm_get_table_index(crtc, pa);
+		int index_table = disp_pq_get_table_index(crtc, pa);
 
 		if (index_table >= 0) {
 			companion_pa = pq_data->tuning_pa_table[index_table].companion_pa_base;
@@ -421,7 +421,7 @@ int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
 	return 0;
 }
 
-static int wait_crtc_ready(struct drm_crtc *crtc, void *data)
+static int disp_pq_proxy_virtual_wait_crtc_ready(struct drm_crtc *crtc, void *data)
 {
 	int *ready = (int *)data;
 	struct pq_common_data *pq_data = to_mtk_crtc(crtc)->pq_data;
@@ -457,7 +457,7 @@ static int mtk_drm_ioctl_get_spr_type_by_fence(struct drm_crtc *crtc, void *data
 	return ret;
 }
 
-int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
+int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		unsigned int cmd, char *kdata, struct drm_file *file_priv)
 {
 	struct mtk_ddp_comp *comp;
@@ -465,7 +465,7 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 
 	switch (cmd) {
 	case PQ_VIRTUAL_SET_PROPERTY:
-		ret = mtk_drm_ioctl_pq_get_persist_property_impl(crtc, kdata);
+		ret = disp_pq_proxy_virtual_get_persist_property(crtc, kdata);
 		break;
 	case PQ_VIRTUAL_GET_MASTER_INFO:
 		ret = mtk_drm_get_master_info_ioctl(dev, kdata, file_priv);
@@ -473,28 +473,28 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	case PQ_VIRTUAL_GET_IRQ:
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 				to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
-		ret = mtk_drm_ioctl_ccorr_get_irq_impl(comp, kdata);
+		ret = disp_ccorr_act_get_irq(comp, kdata);
 		break;
 	case PQ_COLOR_WRITE_REG:
-		ret = mtk_drm_ioctl_hw_write_impl(crtc, kdata);
+		ret = disp_pq_proxy_virtual_hw_write(crtc, kdata);
 		break;
 	case PQ_COLOR_WRITE_SW_REG:
-		ret = mtk_drm_ioctl_sw_write_impl(crtc, kdata);
+		ret = disp_pq_proxy_virtual_sw_write(crtc, kdata);
 		break;
 	case PQ_COLOR_READ_REG:
-		ret = mtk_drm_ioctl_hw_read_impl(crtc, kdata);
+		ret = disp_pq_proxy_virtual_hw_read(crtc, kdata);
 		break;
 	case PQ_COLOR_READ_SW_REG:
-		ret = mtk_drm_ioctl_sw_read_impl(crtc, kdata);
+		ret = disp_pq_proxy_virtual_sw_read(crtc, kdata);
 		break;
 	case PQ_VIRTUAL_CHECK_TRIGGER:
-		ret = mtk_drm_ioctl_pq_check_trigger(crtc, kdata);
+		ret = disp_pq_proxy_virtual_check_trigger(crtc, kdata);
 		break;
 	case PQ_VIRTUAL_RELAY_ENGINES:
-		ret = mtk_drm_ioctl_pq_relay_engines(crtc, kdata);
+		ret = disp_pq_proxy_virtual_relay_engines(crtc, kdata);
 		break;
 	case PQ_VIRTUAL_WAIT_CRTC_READY:
-		ret = wait_crtc_ready(crtc, kdata);
+		ret = disp_pq_proxy_virtual_wait_crtc_ready(crtc, kdata);
 		break;
 	case PQ_VIRTUAL_GET_SPR_TYPE_BY_FENCE:
 		ret = mtk_drm_ioctl_get_spr_type_by_fence(crtc, kdata);
@@ -505,7 +505,7 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	return ret;
 }
 
-bool is_pq_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
+bool disp_pq_is_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 {
 	bool ret = true;
 
@@ -573,12 +573,12 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
-	if (is_pq_cmd_need_pm(cmd)) {
-		mtk_pq_wake_get(cmd, to_mtk_crtc(crtc)->pq_data);
+	if (disp_pq_is_cmd_need_pm(cmd)) {
+		disp_pq_wake_get(cmd, to_mtk_crtc(crtc)->pq_data);
 		pm_ret = mtk_vidle_pq_power_get(__func__);
 	}
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
-		ret = mtk_drm_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
+		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
 	} else {
 		for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
 			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {
@@ -590,10 +590,10 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 			}
 		}
 	}
-	if (is_pq_cmd_need_pm(cmd)) {
+	if (disp_pq_is_cmd_need_pm(cmd)) {
 		if (!pm_ret)
 			mtk_vidle_pq_power_put(__func__);
-		mtk_pq_wake_put(cmd, to_mtk_crtc(crtc)->pq_data);
+		disp_pq_wake_put(cmd, to_mtk_crtc(crtc)->pq_data);
 	}
 	if (cmd > PQ_GET_CMD_START) {
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
@@ -636,11 +636,11 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 		return -1;
 	}
 
-	ret = mtk_pq_helper_frame_config(crtc, NULL, data, true);
+	ret = disp_pq_helper_frame_config(crtc, NULL, data, true);
 	return ret;
 }
 
-int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
+int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
 	void *data, bool user_lock)
 {
 	struct mtk_drm_pq_config_ctl *params = data;
@@ -657,7 +657,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	int pm_ret = 0;
 
 	DDPDBG("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
-	mtk_drm_trace_begin("mtk_pq_helper_frame_config");
+	mtk_drm_trace_begin("disp_pq_helper_frame_config");
 
 	if (!cmds_len || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
 		DDPPR_ERR("%s:%d, invalid requests for pq config\n",
@@ -693,7 +693,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 	/* call comp frame config */
-	mtk_pq_wake_get(~0, to_mtk_crtc(crtc)->pq_data);
+	disp_pq_wake_get(~0, to_mtk_crtc(crtc)->pq_data);
 	pm_ret = mtk_vidle_pq_power_get(__func__);
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int pq_type = requests[index].cmd >> 16;
@@ -741,7 +741,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	}
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
-	mtk_pq_wake_put(~0, to_mtk_crtc(crtc)->pq_data);
+	disp_pq_wake_put(~0, to_mtk_crtc(crtc)->pq_data);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {
@@ -793,7 +793,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	return 0;
 }
 
-static void mtk_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
+static void disp_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
 	int comp_type, int path_order, resource_size_t pa, resource_size_t companion_pa)
 {
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -841,7 +841,7 @@ static void mtk_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
 	}
 }
 
-int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
+int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
 	bool *is_right_pipe, struct mtk_ddp_comp **companion)
 {
 	int _path_order, ret;
@@ -883,13 +883,13 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 
 		if (_companion)
 			companion_regs_pa = _companion->regs_pa;
-		mtk_pq_helper_fill_tuning_table(comp->mtk_crtc, comp_type, _path_order,
+		disp_pq_helper_fill_tuning_table(comp->mtk_crtc, comp_type, _path_order,
 					comp->regs_pa, companion_regs_pa);
 	}
 	return ret;
 }
 
-static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data)
+static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, void *data)
 {
 	int i;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -944,17 +944,7 @@ static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, voi
 	return 0;
 }
 
-int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_pq_get_persist_property_impl(crtc, data);
-}
-
-
-struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *drm_dev)
+struct drm_crtc *disp_pq_get_crtc_from_connector(int connector_id, struct drm_device *drm_dev)
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
@@ -975,7 +965,7 @@ struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *dr
 	return NULL;
 }
 
-static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data)
+static int disp_pq_proxy_virtual_check_trigger(struct drm_crtc *crtc, void *data)
 {
 
 	int ret = 0;
@@ -1001,7 +991,7 @@ static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data)
 	return ret;
 }
 
-static bool mtk_drm_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engine)
+static bool disp_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engine)
 {
 	bool ret = false;
 
@@ -1019,7 +1009,7 @@ static bool mtk_drm_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engi
 	return ret;
 }
 
-static void relay_cmdq_cb(struct cmdq_cb_data data)
+static void disp_pq_relay_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
@@ -1034,7 +1024,7 @@ static void relay_cmdq_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
-static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data)
+static int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 {
 	int relay = 0;
 	bool wait_config_done = false;
@@ -1079,14 +1069,14 @@ static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data)
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && comp->funcs && comp->funcs->bypass
-			&& mtk_drm_pq_is_relay_engines(comp, relay_engines))
+			&& disp_pq_is_relay_engines(comp, relay_engines))
 			mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			if (comp && comp->funcs && comp->funcs->bypass
-				&& mtk_drm_pq_is_relay_engines(comp, relay_engines))
+				&& disp_pq_is_relay_engines(comp, relay_engines))
 				mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
 		}
 	}
@@ -1103,7 +1093,7 @@ static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data)
 
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
-	if (cmdq_pkt_flush_threaded(cmdq_handle, relay_cmdq_cb, cb_data) < 0) {
+	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	}

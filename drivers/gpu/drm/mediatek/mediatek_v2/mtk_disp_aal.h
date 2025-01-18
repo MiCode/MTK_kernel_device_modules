@@ -427,25 +427,11 @@ void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level);
 void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable);
 void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable);
 void disp_aal_set_bypass(struct drm_crtc *crtc, int bypass);
-void mtk_aal_regdump(struct mtk_ddp_comp *comp);
+void disp_aal_regdump(struct mtk_ddp_comp *comp);
 
-int mtk_drm_ioctl_aal_eventctl(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_get_hist(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_init_reg(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_init_dre30(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
 int mtk_drm_ioctl_aal_get_size(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_set_param(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_set_trigger_state(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_aal_set_ess20_spect_param(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_clarity_set_reg(struct drm_device *dev, void *data,
+int mtk_drm_ioctl_aal_set_clarity_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 
 #endif

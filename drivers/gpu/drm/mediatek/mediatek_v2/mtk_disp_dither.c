@@ -138,7 +138,7 @@ static inline struct mtk_disp_dither *comp_to_dither(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_dither, ddp_comp);
 }
 
-static int mtk_disp_dither_set_interrupt(struct mtk_ddp_comp *comp, int enabled)
+static int disp_dither_set_interrupt(struct mtk_ddp_comp *comp, int enabled)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
@@ -234,11 +234,11 @@ static void disp_dither_purecolor_detection(struct mtk_ddp_comp *comp)
 		}
 	} else {
 		disp_dither_set_bypass(crtc, 0);
-		mtk_disp_dither_set_interrupt(comp, 0);
+		disp_dither_set_interrupt(comp, 0);
 	}
 }
 
-static void dither_pure_detect_work(struct work_struct *work_item)
+static void disp_dither_pure_detect_work(struct work_struct *work_item)
 {
 	struct work_struct_data *work_data = container_of(work_item,
 			struct work_struct_data, pure_detect_task);
@@ -291,7 +291,7 @@ static void disp_dither_on_end_of_frame(struct mtk_ddp_comp *comp)
 	}
 }
 
-static irqreturn_t mtk_disp_dither_irq_handler(int irq, void *dev_id)
+static irqreturn_t disp_dither_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_dither *priv = dev_id;
 	struct mtk_ddp_comp *dither = &priv->ddp_comp;
@@ -301,7 +301,7 @@ static irqreturn_t mtk_disp_dither_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static void mtk_disp_dither_config_overhead(struct mtk_ddp_comp *comp,
+static void disp_dither_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -323,7 +323,7 @@ static void mtk_disp_dither_config_overhead(struct mtk_ddp_comp *comp,
 			dither_data->tile_overhead.overhead =
 					cfg->tile_overhead.left_overhead;
 
-			mtk_chist_set_tile_overhead(comp->mtk_crtc,
+			disp_chist_set_tile_overhead(comp->mtk_crtc,
 				dither_data->tile_overhead.overhead, false);
 		} else {
 			dither_data->tile_overhead.comp_overhead = 0;
@@ -338,13 +338,13 @@ static void mtk_disp_dither_config_overhead(struct mtk_ddp_comp *comp,
 			dither_data->tile_overhead.overhead =
 					cfg->tile_overhead.right_overhead;
 
-			mtk_chist_set_tile_overhead(comp->mtk_crtc,
+			disp_chist_set_tile_overhead(comp->mtk_crtc,
 				dither_data->tile_overhead.overhead, true);
 		}
 	}
 }
 
-static void mtk_disp_dither_config_overhead_v(struct mtk_ddp_comp *comp,
+static void disp_dither_config_overhead_v(struct mtk_ddp_comp *comp,
 	struct total_tile_overhead_v  *tile_overhead_v)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -360,7 +360,7 @@ static void mtk_disp_dither_config_overhead_v(struct mtk_ddp_comp *comp,
 	dither_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
-static void mtk_dither_config(struct mtk_ddp_comp *comp,
+static void disp_dither_config(struct mtk_ddp_comp *comp,
 			      struct mtk_ddp_config *cfg,
 			      struct cmdq_pkt *handle)
 {
@@ -510,7 +510,7 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
 }
 
-static void mtk_dither_primary_data_init(struct mtk_ddp_comp *comp)
+static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither *companion_data = comp_to_dither(dither_data->companion);
@@ -532,19 +532,19 @@ static void mtk_dither_primary_data_init(struct mtk_ddp_comp *comp)
 	primary_data->dither_mode = 1;
 	primary_data->pure_detect_wq =
 		create_singlethread_workqueue("pure_detect_wq");
-	INIT_WORK(&primary_data->work_data.pure_detect_task, dither_pure_detect_work);
+	INIT_WORK(&primary_data->work_data.pure_detect_task, disp_dither_pure_detect_work);
 	spin_lock_init(&primary_data->clock_lock);
 }
 
-static void mtk_dither_first_cfg(struct mtk_ddp_comp *comp,
+static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	DDPINFO("%s cfg->bpc=%d\n", __func__, cfg->bpc);
 
-	mtk_dither_config(comp, cfg, handle);
+	disp_dither_config(comp, cfg, handle);
 }
 
-static void mtk_dither_start(struct mtk_ddp_comp *comp,
+static void disp_dither_start(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -555,10 +555,10 @@ static void mtk_dither_start(struct mtk_ddp_comp *comp,
 
 	priv->pwr_sta = 1;
 	if (primary_data->pure_clr_param->pure_clr_det)
-		mtk_disp_dither_set_interrupt(comp, 1);
+		disp_dither_set_interrupt(comp, 1);
 }
 
-static void mtk_dither_stop(struct mtk_ddp_comp *comp,
+static void disp_dither_stop(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -569,10 +569,10 @@ static void mtk_dither_stop(struct mtk_ddp_comp *comp,
 
 	priv->pwr_sta = 0;
 	if (primary_data->pure_clr_param->pure_clr_det)
-		mtk_disp_dither_set_interrupt(comp, 0);
+		disp_dither_set_interrupt(comp, 0);
 }
 
-static void mtk_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
+static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 			      struct cmdq_pkt *handle)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -594,7 +594,7 @@ static void mtk_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 }
 
-static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+static int disp_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
 
@@ -609,16 +609,16 @@ static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
+		ret = disp_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
 			companion_data = comp_to_dither(data->companion);
 			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
-		mtk_dither_primary_data_init(comp);
+		disp_dither_init_primary_data(comp);
 		if (comp->mtk_crtc->is_dual_pipe && data->companion)
-			mtk_dither_primary_data_init(data->companion);
+			disp_dither_init_primary_data(data->companion);
 	}
 		break;
 	default:
@@ -627,7 +627,7 @@ static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return 0;
 }
 
-static void ddp_dither_backup(struct mtk_ddp_comp *comp)
+static void disp_dither_backup(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
@@ -637,7 +637,7 @@ static void ddp_dither_backup(struct mtk_ddp_comp *comp)
 		readl(comp->regs + DISP_REG_DITHER_CFG);
 }
 
-static void ddp_dither_restore(struct mtk_ddp_comp *comp)
+static void disp_dither_restore(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
@@ -649,7 +649,7 @@ static void ddp_dither_restore(struct mtk_ddp_comp *comp)
 	}
 }
 
-static void mtk_dither_prepare(struct mtk_ddp_comp *comp)
+static void disp_dither_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
@@ -664,10 +664,10 @@ static void mtk_dither_prepare(struct mtk_ddp_comp *comp)
 	else
 		mtk_ddp_write_mask_cpu(comp, 0,
 			DITHER_REG(0), DITHER_BYPASS_SHADOW);
-	ddp_dither_restore(comp);
+	disp_dither_restore(comp);
 }
 
-static void mtk_dither_unprepare(struct mtk_ddp_comp *comp)
+static void disp_dither_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
@@ -682,7 +682,7 @@ static void mtk_dither_unprepare(struct mtk_ddp_comp *comp)
 	spin_unlock_irqrestore(&primary_data->clock_lock, flags);
 	DDPINFO("%s @ %d......... spin_unlock_irqrestore ",
 		__func__, __LINE__);
-	ddp_dither_backup(comp);
+	disp_dither_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
@@ -700,7 +700,7 @@ static void mtk_dither_unprepare(struct mtk_ddp_comp *comp)
  * return 0;
  * }
  *
- * static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp,
+ * static int disp_dither_io_cmd(struct mtk_ddp_comp *comp,
  * struct cmdq_pkt *handle,
  * enum mtk_ddp_io_cmd io_cmd,
  * void *params)
@@ -714,7 +714,7 @@ static void mtk_dither_unprepare(struct mtk_ddp_comp *comp)
  * }
  */
 
-void mtk_dither_select(struct mtk_ddp_comp *comp,
+void disp_dither_user_select(struct mtk_ddp_comp *comp,
 				       struct cmdq_pkt *handle,
 				       unsigned int bpc)
 {
@@ -757,7 +757,7 @@ void mtk_dither_select(struct mtk_ddp_comp *comp,
 	writel(enable << 1 | (~enable), comp->regs + DISP_REG_DITHER_CFG);
 }
 
-void mtk_dither_set_param(struct mtk_ddp_comp *comp,
+void disp_dither_set_param(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle,
 			bool relay, uint32_t mode)
 {
@@ -782,7 +782,7 @@ void mtk_dither_set_param(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DITHER_REG(6), dither_mode, ~0);
 }
 
-static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
+static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -795,7 +795,7 @@ static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		unsigned int bpc = *((unsigned int *)data);
 
-		mtk_dither_select(comp, NULL, bpc);
+		disp_dither_user_select(comp, NULL, bpc);
 	}
 	break;
 	case SET_PARAM:
@@ -807,11 +807,11 @@ static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
 		primary_data->dither_mode = (unsigned int)(ditherParam->mode);
 		pr_notice("%s: relay: %d, mode: %d", __func__, relay, mode);
 
-		mtk_dither_set_param(comp, handle, relay, mode);
+		disp_dither_set_param(comp, handle, relay, mode);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
 
-			mtk_dither_set_param(comp_dither1, handle, relay, mode);
+			disp_dither_set_param(comp_dither1, handle, relay, mode);
 		}
 	}
 	break;
@@ -819,11 +819,11 @@ static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		int *value = data;
 
-		mtk_dither_bypass(comp, *value, handle);
+		disp_dither_bypass(comp, *value, handle);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
 
-			mtk_dither_bypass(comp_dither1, *value, handle);
+			disp_dither_bypass(comp_dither1, *value, handle);
 		}
 	}
 	break;
@@ -831,11 +831,11 @@ static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
 	{
 		int *value = data;
 
-		mtk_disp_dither_set_interrupt(comp, *value);
+		disp_dither_set_interrupt(comp, *value);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
 
-			mtk_disp_dither_set_interrupt(comp_dither1, *value);
+			disp_dither_set_interrupt(comp_dither1, *value);
 		}
 	}
 	break;
@@ -873,7 +873,7 @@ static int mtk_dither_user_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-int mtk_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
+int disp_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -888,35 +888,24 @@ int mtk_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
 	primary_data->dither_mode = (unsigned int)(ditherParam->mode);
 	DDPINFO("%s: relay: %d, mode: %d", __func__, relay, mode);
 
-	mtk_dither_set_param(comp, handle, relay, mode);
+	disp_dither_set_param(comp, handle, relay, mode);
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_dither1 = dither->companion;
 
-		mtk_dither_set_param(comp_dither1, handle, relay, mode);
+		disp_dither_set_param(comp_dither1, handle, relay, mode);
 	}
 
 	return ret;
 }
 
-int mtk_drm_ioctl_set_dither_param_impl(struct mtk_ddp_comp *comp, void *data)
+int disp_dither_act_set_dither_param(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 
 	return mtk_crtc_user_cmd(&mtk_crtc->base, comp, SET_PARAM, data);
 }
 
-int mtk_drm_ioctl_set_dither_param(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_DITHER, 0);
-
-	return mtk_drm_ioctl_set_dither_param_impl(comp, data);
-}
-
-static int mtk_dither_pq_frame_config(struct mtk_ddp_comp *comp,
+static int disp_dither_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
 	int ret = -1;
@@ -924,7 +913,7 @@ static int mtk_dither_pq_frame_config(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 	/* TYPE1 no user cmd */
 	case PQ_DITHER_SET_DITHER_PARAM:
-		ret = mtk_dither_cfg_set_dither_param(comp, handle, data, data_size);
+		ret = disp_dither_cfg_set_dither_param(comp, handle, data, data_size);
 		break;
 	default:
 		break;
@@ -932,14 +921,14 @@ static int mtk_dither_pq_frame_config(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-static int mtk_dither_ioctl_transact(struct mtk_ddp_comp *comp,
+static int disp_dither_ioctl_transact(struct mtk_ddp_comp *comp,
 		unsigned int cmd, void *data, unsigned int data_size)
 {
 	int ret = -1;
 
 	switch (cmd) {
 	case PQ_DITHER_SET_DITHER_PARAM:
-		ret = mtk_drm_ioctl_set_dither_param_impl(comp, data);
+		ret = disp_dither_act_set_dither_param(comp, data);
 		break;
 	default:
 		break;
@@ -947,7 +936,7 @@ static int mtk_dither_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
-static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
+static int disp_dither_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -980,26 +969,26 @@ static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
 }
 
 static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
-	.config = mtk_dither_config,
-	.first_cfg = mtk_dither_first_cfg,
-	.start = mtk_dither_start,
-	.stop = mtk_dither_stop,
-	.bypass = mtk_dither_bypass,
-	.user_cmd = mtk_dither_user_cmd,
-	.prepare = mtk_dither_prepare,
-	.unprepare = mtk_dither_unprepare,
-	.config_overhead = mtk_disp_dither_config_overhead,
-	.config_overhead_v = mtk_disp_dither_config_overhead_v,
+	.config = disp_dither_config,
+	.first_cfg = disp_dither_first_cfg,
+	.start = disp_dither_start,
+	.stop = disp_dither_stop,
+	.bypass = disp_dither_bypass,
+	.user_cmd = disp_dither_user_cmd,
+	.prepare = disp_dither_prepare,
+	.unprepare = disp_dither_unprepare,
+	.config_overhead = disp_dither_config_overhead,
+	.config_overhead_v = disp_dither_config_overhead_v,
 	/* partial update
-	 * .io_cmd = mtk_dither_io_cmd,
+	 * .io_cmd = disp_dither_io_cmd,
 	 */
-	.io_cmd = mtk_dither_io_cmd,
-	.pq_frame_config = mtk_dither_pq_frame_config,
-	.pq_ioctl_transact = mtk_dither_ioctl_transact,
-	.partial_update = mtk_dither_set_partial_update,
+	.io_cmd = disp_dither_io_cmd,
+	.pq_frame_config = disp_dither_frame_config,
+	.pq_ioctl_transact = disp_dither_ioctl_transact,
+	.partial_update = disp_dither_set_partial_update,
 };
 
-static int mtk_disp_dither_bind(struct device *dev, struct device *master,
+static int disp_dither_bind(struct device *dev, struct device *master,
 				void *data)
 {
 	struct mtk_disp_dither *priv = dev_get_drvdata(dev);
@@ -1018,7 +1007,7 @@ static int mtk_disp_dither_bind(struct device *dev, struct device *master,
 	return 0;
 }
 
-static void mtk_disp_dither_unbind(struct device *dev, struct device *master,
+static void disp_dither_unbind(struct device *dev, struct device *master,
 				   void *data)
 {
 	struct mtk_disp_dither *priv = dev_get_drvdata(dev);
@@ -1028,11 +1017,11 @@ static void mtk_disp_dither_unbind(struct device *dev, struct device *master,
 }
 
 static const struct component_ops mtk_disp_dither_component_ops = {
-	.bind	= mtk_disp_dither_bind,
-	.unbind = mtk_disp_dither_unbind,
+	.bind	= disp_dither_bind,
+	.unbind = disp_dither_unbind,
 };
 
-void mtk_dither_dump(struct mtk_ddp_comp *comp)
+void disp_dither_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 
@@ -1046,7 +1035,7 @@ void mtk_dither_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x24, 0x28, -1, -1);
 }
 
-void mtk_dither_regdump(struct mtk_ddp_comp *comp)
+void disp_dither_regdump(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither = comp_to_dither(comp);
 	void __iomem *baddr = comp->regs;
@@ -1079,7 +1068,7 @@ void mtk_dither_regdump(struct mtk_ddp_comp *comp)
 	}
 }
 
-static void mtk_disp_dither_dts_parse(const struct device_node *np,
+static void disp_dither_parse_dts(const struct device_node *np,
 	enum mtk_ddp_comp_id comp_id, struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
@@ -1108,7 +1097,7 @@ static void mtk_disp_dither_dts_parse(const struct device_node *np,
 	}
 }
 
-static int mtk_disp_dither_probe(struct platform_device *pdev)
+static int disp_dither_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_dither *priv;
@@ -1153,7 +1142,7 @@ static int mtk_disp_dither_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 
-	ret = devm_request_irq(dev, irq, mtk_disp_dither_irq_handler,
+	ret = devm_request_irq(dev, irq, disp_dither_irq_handler,
 		IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
 	if (ret)
 		dev_err(dev, "devm_request_irq fail: %d\n", ret);
@@ -1164,7 +1153,7 @@ static int mtk_disp_dither_probe(struct platform_device *pdev)
 		ret = -1;
 		goto error_primary;
 	}
-	mtk_disp_dither_dts_parse(dev->of_node, comp_id, &priv->ddp_comp);
+	disp_dither_parse_dts(dev->of_node, comp_id, &priv->ddp_comp);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
@@ -1186,7 +1175,7 @@ error_dev_init:
 	return ret;
 }
 
-static int mtk_disp_dither_remove(struct platform_device *pdev)
+static int disp_dither_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_dither *priv = dev_get_drvdata(&pdev->dev);
 
@@ -1331,8 +1320,8 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 MODULE_DEVICE_TABLE(of, mtk_disp_dither_driver_dt_match);
 
 struct platform_driver mtk_disp_dither_driver = {
-	.probe = mtk_disp_dither_probe,
-	.remove = mtk_disp_dither_remove,
+	.probe = disp_dither_probe,
+	.remove = disp_dither_remove,
 	.driver = {
 			.name = "mediatek-disp-dither",
 			.owner = THIS_MODULE,
@@ -1341,7 +1330,7 @@ struct platform_driver mtk_disp_dither_driver = {
 };
 
 
-void dither_test(const char *cmd, char *debug_output, struct mtk_ddp_comp *comp)
+void disp_dither_test(const char *cmd, char *debug_output, struct mtk_ddp_comp *comp)
 {
 	unsigned int bpc;
 
@@ -1351,19 +1340,19 @@ void dither_test(const char *cmd, char *debug_output, struct mtk_ddp_comp *comp)
 	if (strncmp(cmd, "sel:", 4) == 0) {
 		if (cmd[4] == '0') {
 			bpc = 0;
-			mtk_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
+			disp_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
 			DDPINFO("bpc = 0\n");
 		} else if (cmd[4] == '1') {
 			bpc = 5;
-			mtk_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
+			disp_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
 			DDPINFO("bpc = 5\n");
 		} else if (cmd[4] == '2') {
 			bpc = 6;
-			mtk_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
+			disp_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
 			DDPINFO("bpc = 6\n");
 		} else if (cmd[4] == '3') {
 			bpc = 7;
-			mtk_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
+			disp_dither_user_cmd(comp, NULL, DITHER_SELECT, &bpc);
 			DDPINFO("bpc = 7\n");
 		} else {
 			DDPINFO("unknown bpc\n");

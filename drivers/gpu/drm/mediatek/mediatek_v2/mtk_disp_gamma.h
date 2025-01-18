@@ -95,24 +95,16 @@ static inline struct mtk_disp_gamma *comp_to_gamma(struct mtk_ddp_comp *comp)
 
 #define GAMMA_ENTRY(r10, g10, b10) (((r10) << 20) | ((g10) << 10) | (b10))
 
-int mtk_drm_ioctl_set_gammalut(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_set_12bit_gammalut(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_bypass_disp_gamma(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-int mtk_drm_ioctl_gamma_mul_disable(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
-void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
+void disp_gamma_get_gain_from_aal(struct mtk_ddp_comp *comp,
 	unsigned int gain[3], unsigned int bl, void *param);
-int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
+int disp_gamma_cfg_get_gain_from_aal(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param);
 void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass);
-void mtk_gamma_regdump(struct mtk_ddp_comp *comp);
-void mtk_disp_gamma_debug(struct drm_crtc *crtc, const char *opt);
+void disp_gamma_regdump(struct mtk_ddp_comp *comp);
+void disp_gamma_debug(struct drm_crtc *crtc, const char *opt);
 
 // for HWC LayerBrightness, backlight & gamma gain update by atomic
-int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+int disp_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int gain[3], unsigned int gain_range);
 #endif
 

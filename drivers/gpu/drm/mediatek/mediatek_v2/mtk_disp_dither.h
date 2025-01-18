@@ -13,5 +13,5 @@ struct mtk_disp_dither_data {
 
 void disp_dither_set_bypass(struct drm_crtc *crtc, int bypass);
 void disp_dither_set_color_detect(struct drm_crtc *crtc, int enable);
-void mtk_dither_regdump(struct mtk_ddp_comp *comp);
+void disp_dither_regdump(struct mtk_ddp_comp *comp);
 #endif

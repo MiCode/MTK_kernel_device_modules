@@ -488,8 +488,6 @@ extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_
 				 unsigned int cfg_flag);
 extern int mtkfb_set_backlight_level_AOD(unsigned int level);
 
-int mtk_drm_ioctl_set_dither_param(struct drm_device *dev, void *data,
-	struct drm_file *file_priv);
 void mtk_atomic_state_put_queue(struct drm_atomic_state *state);
 void mtk_drm_fence_update(unsigned int fence_idx, unsigned int index);
 void drm_trigger_repaint(enum DRM_REPAINT_TYPE type,
