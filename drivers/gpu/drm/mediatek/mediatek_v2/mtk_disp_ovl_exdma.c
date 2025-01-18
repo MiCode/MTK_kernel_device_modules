@@ -2176,8 +2176,10 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), layer_src,
 			LSRC_PQ);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(ext_lye_idx), 0x1, ~0);
+			comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(ext_lye_idx),
+			(pending->addr)?0x1:0x0, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_EL_CON(id), con,
@@ -2216,7 +2218,8 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			dim_color, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(0), 0x1, ~0);
+			comp->regs_pa + DISP_REG_OVL_RDMA_CTRL(0),
+			(pending->addr)?0x1:0x0, ~0);
 
 		if (comp->bind_comp) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2224,7 +2227,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				~0);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_L_EN(0),
-				layer_src, LSRC_PQ);
+				(layer_src==LSRC_PQ)?0:layer_src, LSRC_PQ);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->bind_comp->regs_pa + DISP_REG_OVL_OFFSET, offset, ~0);
 		}
@@ -2258,13 +2261,13 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
-	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d\n"
+	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d layer_src:%d\n"
 	DDPINFO(_LAYER_CONFIG_FMT, __func__,
 		mtk_dump_comp_str_id(comp->id), idx, lye_idx, ext_lye_idx,
 		pending->enable, pending->format, (unsigned long)pending->addr,
 		(unsigned int)pending->prop_val[PLANE_PROP_COMPRESS], con, offset,
 		state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER | DISP_MML_CAPS_MASK),
-		pending->mml_mode);
+		pending->mml_mode, layer_src);
 
 	DDPINFO("alpha= 0x%x, con=0x%x, blend = 0x%x, reg_ovl_pitch=0x%x\n",
 		alpha,
@@ -2321,9 +2324,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */
-//		if (!pending->addr)
-//			cmdq_pkt_write(handle, comp->cmdq_base,
-//		       comp->regs_pa + DISP_REG_OVL_RDMA_CTRL, 0x0, ~0);
 		/* TODO: consider FBDC */
 		/* SRT BW (one layer) =
 		 * layer_w * layer_h * bpp * vrefresh * max fps blanking_ratio
