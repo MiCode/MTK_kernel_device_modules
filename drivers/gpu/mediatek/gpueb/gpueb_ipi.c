@@ -24,6 +24,7 @@
 
 #include "gpueb_ipi.h"
 #include "gpueb_helper.h"
+#include "ghpm_wrapper.h"
 
 // MTK common IPI/MBOX
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
@@ -311,7 +312,6 @@ int gpueb_ipi_init(struct platform_device *pdev)
 {
 	int i = 0;
 	int ret;
-
 	struct device *gpueb_dev = &pdev->dev;
 	struct resource *res = NULL;
 
@@ -383,6 +383,7 @@ int gpueb_ipi_init(struct platform_device *pdev)
 		return ret;
 	}
 #endif
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
 	if (unlikely(!res)) {
 		gpueb_pr_info(GPUEB_TAG, "fail to get resource MBOX0_SEND");
@@ -548,3 +549,38 @@ void gpueb_clr_mbox1_irq(unsigned int val)
 		gpueb_pr_info(GPUEB_TAG, "null g_gpueb_mbox_ipi");
 }
 EXPORT_SYMBOL_GPL(gpueb_clr_mbox1_irq);
+
+int mtk_ipi_send_compl_to_gpueb(int ipi_id, int opt, void *data, int len, unsigned long timeout)
+{
+	int ret;
+
+	gpueb_pr_debug(GHPM_TAG, "ENTRY, ipi_id=%d", ipi_id);
+
+	/* On mfg0 and gpueb */
+	ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
+	if (ret) {
+		gpueb_pr_err(GHPM_TAG, "gpueb on fail, return value=%d\n", ret);
+		return ret;
+	}
+
+	gpueb_pr_debug(GHPM_TAG, "gpueb ctrl on finish and ready to mtk_ipi_send_compl");
+
+	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), ipi_id, opt, data, len, timeout);
+	if (unlikely(ret != IPI_ACTION_DONE)) {
+		gpueb_pr_err(GHPM_TAG, "[ABORT] fail to send IPI: ipi_id=%d ret=%d", ipi_id, ret);
+		return ret;
+	}
+	gpueb_pr_debug(GHPM_TAG, "mtk_ipi_send_compl success\n");
+
+	/* Off mfg0 and gpueb */
+	ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
+	if (ret) {
+		gpueb_pr_err(GHPM_TAG, "gpueb off fail, return value=%d\n", ret);
+		return ret;
+	}
+
+	gpueb_pr_debug(GHPM_TAG, "Exit, ipi_id=%d\n", ipi_id);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_ipi_send_compl_to_gpueb);

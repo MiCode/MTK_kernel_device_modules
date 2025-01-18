@@ -23,17 +23,14 @@
 #define GPUEB_CFGREG_WDT_CON                  (GPUEB_CFGREG_BASE + 0x0018)
 #define GPUEB_CFGREG_WDT_KICK                 (GPUEB_CFGREG_BASE + 0x001C)
 #define GPUEB_CFGREG_MDSP_CFG                 (GPUEB_CFGREG_BASE + 0x0034)
+#define MDSP_HALT_BIT                         (0x1U << 4)
+#define MDSP_GATED_BIT                        (0x1U << 5)
+#define GPUEB_ON_WFI_BITS                     (MDSP_HALT_BIT | MDSP_GATED_BIT)
 #define GPUEB_CFGREG_DBG_APB_PC               (GPUEB_CFGREG_BASE + 0x011C)
 #define GPUEB_CFGREG_DBG_APB_LR               (GPUEB_CFGREG_BASE + 0x0120)
 #define GPUEB_CFGREG_DBG_APB_SP               (GPUEB_CFGREG_BASE + 0x0124)
 #define MFG_GPUEB_AXI_BIST_CON_DEBUG          (GPUEB_CFGREG_BASE + 0x01D0)
 #define MFG_GPUEB_GPUEB_AXI_BIST_CON_CONFIG   (GPUEB_CFGREG_BASE + 0x01D4)
-
-#define GPUEB_GPR_BASE                        (g_gpueb_gpr_base)
-#define GPUEB_LP_FOOTPRINT_GPR                (g_gpueb_gpr_base + 0x14)     /* GPUEB_SRAM_GPR5 */
-#define GPUEB_DRAM_RES_STA_GPR                (g_gpueb_gpr_base + 0x40)     /* GPUEB_SRAM_GPR16 */
-#define GPUFREQ_FOOTPRINT_GPR                 (g_gpueb_gpr_base + 0x44)     /* GPUEB_SRAM_GPR17 */
-#define GPUEB_DIAGNOSIS_GPR                   (g_gpueb_gpr_base + 0x48)     /* GPUEB_SRAM_GPR18 */
 
 #if defined(CONFIG_PROC_FS)
 #define PROC_FOPS_RW(name)            \
@@ -99,8 +96,5 @@ static char *gpueb_dram_user_name[] = {
 void gpueb_debug_init(struct platform_device *pdev);
 void gpueb_trigger_wdt(const char *name);
 void gpueb_dump_status(char *log_buf, int *log_len, int log_size);
-void gpuhre_read_backup(void);
-void gpuhre_write_random(void);
-void gpuhre_check_restore(void);
 
 #endif /* __GPUEB_DEBUG_H__ */

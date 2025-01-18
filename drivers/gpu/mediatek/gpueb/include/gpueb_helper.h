@@ -6,15 +6,31 @@
 #ifndef __GPUEB_HELPER_H__
 #define __GPUEB_HELPER_H__
 
-#define GPUEB_TAG   "[GPU/EB]"
-#define GHPM_TAG    "[GPU/GHPM]"
+#ifndef GENMASK
+#define GENMASK(h, l)       (((1U << ((h) - (l) + 1)) - 1) << (l))
+#endif
+
+#ifndef BIT
+#define BIT(n)              (1U << (n))
+#endif
+
+#define GPUEB_TAG           "[GPU/EB]"
+#define GHPM_TAG            "[GPU/GHPM]"
+#define GHPM_SWWA_TAG       "[GPU/GHPM_SWWA]"
+
+#define GPUEB_DEBUG_ENABLE  (0)
 
 #define gpueb_pr_err(tag, fmt, args...) \
-	pr_err(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+	pr_err(tag"[ERROR][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 #define gpueb_pr_info(tag, fmt, args...) \
-	pr_info(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+	pr_info(tag"[INFO][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#if GPUEB_DEBUG_ENABLE
 #define gpueb_pr_debug(tag, fmt, args...) \
-	pr_debug(tag"[%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+	pr_info(tag"[DEBUG][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#else
+#define gpueb_pr_debug(tag, fmt, args...) \
+	pr_debug_ratelimited(tag"[DEBUG][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
+#endif
 
 #define gpueb_pr_logbuf(tag, buf, len, size, fmt, args...) \
 	{ \

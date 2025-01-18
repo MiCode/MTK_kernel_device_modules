@@ -25,21 +25,13 @@
 #include "gpueb_helper.h"
 #include "gpueb_debug.h"
 #include "gpueb_ipi.h"
-#include "ghpm.h"
+#include "gpueb_common.h"
 
 /**
  * ===============================================
  * Local Variable Definition
  * ===============================================
  */
-enum gpueb_smc_op {
-	GPUEB_SMC_OP_TRIGGER_WDT    = 0,
-	GPUACP_SMC_OP_CPUPM_PWR     = 1,
-	GPUEB_SMC_OP_NUMBER         = 2,
-	GPUHRE_SMP_OP_READ_BACKUP   = 3,
-	GPUHRE_SMP_OP_WRITE_RANDOM  = 4,
-	GPUHRE_SMP_OP_CHECK_RESTORE = 5
-};
 
 static void __iomem *g_gpueb_gpr_base;
 static void __iomem *g_gpueb_cfgreg_base;
@@ -95,13 +87,15 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 
 	if (g_gpueb_gpr_base) {
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
-			"GPUEB_LP_FOOTPRINT_GPR: 0x%08x", readl(GPUEB_LP_FOOTPRINT_GPR));
+			"GPUEB_LP_FOOTPRINT_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR5)));
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
-			"GPUFREQ_FOOTPRINT_GPR: 0x%08x", readl(GPUFREQ_FOOTPRINT_GPR));
+			"GPUEB_LP_STATE_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR10)));
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
-			"GPUEB_DRAM_RES_STA_GPR: 0x%08x", readl(GPUEB_DRAM_RES_STA_GPR));
+			"GPUFREQ_FOOTPRINT_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR17)));
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
-			"GPUEB_DIAGNOSIS_GPR: 0x%08x", readl(GPUEB_DIAGNOSIS_GPR));
+			"GPUEB_DRAM_RES_STA_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR16)));
+		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
+			"GPUEB_DIAGNOSIS_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR18)));
 	} else {
 		gpueb_pr_info(GPUEB_TAG, "skip null g_gpueb_gpr_base");
 	}
@@ -121,43 +115,6 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 	}
 }
 EXPORT_SYMBOL(gpueb_dump_status);
-
-void gpuhre_read_backup(void)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(
-		MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
-		GPUHRE_SMP_OP_READ_BACKUP,     /* a1 */
-		0, 0, 0, 0, 0, 0, &res);
-
-	gpueb_pr_info(GPUEB_TAG, "done");
-}
-EXPORT_SYMBOL(gpuhre_read_backup);
-
-void gpuhre_write_random(void)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(
-		MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
-		GPUHRE_SMP_OP_WRITE_RANDOM,    /* a1 */
-		0, 0, 0, 0, 0, 0, &res);
-	gpueb_pr_info(GPUEB_TAG, "done");
-}
-EXPORT_SYMBOL(gpuhre_write_random);
-
-void gpuhre_check_restore(void)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(
-		MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
-		GPUHRE_SMP_OP_CHECK_RESTORE,   /* a1 */
-		0, 0, 0, 0, 0, 0, &res);
-	gpueb_pr_info(GPUEB_TAG, "done");
-}
-EXPORT_SYMBOL(gpuhre_check_restore);
 
 void gpueb_trigger_wdt(const char *name)
 {
@@ -212,9 +169,15 @@ static int gpueb_status_proc_show(struct seq_file *m, void *v)
 
 	if (g_gpueb_gpr_base) {
 		seq_printf(m, "@%s: GPUEB_LP_FOOTPRINT_GPR: 0x%08x\n", __func__,
-			readl(GPUEB_LP_FOOTPRINT_GPR));
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR5)));
+		seq_printf(m, "@%s: GPUEB_LP_STATE_GPR: 0x%08x\n", __func__,
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR10)));
 		seq_printf(m, "@%s: GPUFREQ_FOOTPRINT_GPR: 0x%08x\n", __func__,
-			readl(GPUFREQ_FOOTPRINT_GPR));
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR17)));
+		seq_printf(m, "@%s: GPUEB_DRAM_RES_STA_GPR: 0x%08x\n", __func__,
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR16)));
+		seq_printf(m, "@%s: GPUEB_DIAGNOSIS_GPR: 0x%08x\n", __func__,
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR18)));
 	} else {
 		seq_printf(m, "@%s: skip null g_gpueb_gpr_base\n", __func__);
 	}
@@ -241,7 +204,7 @@ static int gpueb_dram_user_status_proc_show(struct seq_file *m, void *v)
 	int user_id = 0;
 
 	if (g_gpueb_gpr_base) {
-		dram_res = readl(g_gpueb_gpr_base + 0x40);
+		dram_res = readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR16));
 		seq_printf(m, "@%s: GPUEB_DRAM_RES_STA_GPR: 0x%08x\n",
 			__func__, dram_res);
 
@@ -330,108 +293,12 @@ done:
 }
 #endif
 
-#if GHPM_TEST
-static int ghpm_ctrl_test_proc_show(struct seq_file *m, void *v)
-{
-	int ret = 0;
-
-	seq_puts(m, "GHPM TEST\n");
-
-	ret = ghpm_ctrl(GHPM_OFF, MFG1_OFF);
-	if (ret)
-		gpueb_pr_err(GPUEB_TAG, "ghpm_ctrl off failed, ret=%d", ret);
-	else
-		gpueb_pr_info(GPUEB_TAG, "ghpm_ctrl off done");
-
-	ret = wait_gpueb(SUSPEND_POWER_OFF, GPUEB_WAIT_TIMEOUT);
-	if (ret)
-		gpueb_pr_err(GPUEB_TAG, "wait_gpueb suspend failed, ret=%d", ret);
-	else
-		gpueb_pr_info(GPUEB_TAG, "wait_gpueb suspend done");
-
-	ret = ghpm_ctrl(GHPM_ON, MFG1_OFF);
-	if (ret)
-		gpueb_pr_err(GPUEB_TAG, "ghpm_ctrl on failed, ret=%d", ret);
-	else
-		gpueb_pr_info(GPUEB_TAG, "ghpm_ctrl on done");
-
-	ret = wait_gpueb(SUSPEND_POWER_ON, GPUEB_WAIT_TIMEOUT);
-	if (ret)
-		gpueb_pr_err(GPUEB_TAG, "wait_gpueb resume failed, ret=%d", ret);
-	else
-		gpueb_pr_info(GPUEB_TAG, "wait_gpueb resume done");
-
-	return 0;
-}
-
-static ssize_t ghpm_ctrl_test_proc_write(struct file *file,
-		const char __user *buffer, size_t count, loff_t *data)
-{
-	int ret = 0;
-	char buf[64];
-	unsigned int len = 0;
-	int state, vcore_off_allow;
-
-	len = (count < (sizeof(buf) - 1)) ? count : (sizeof(buf) - 1);
-	if (copy_from_user(buf, buffer, len)) {
-		ret = -1;
-		goto done;
-	}
-	buf[len] = '\0';
-
-	if (sscanf(buf, "%d %d", &state, &vcore_off_allow) == 2) {
-		ret = ghpm_ctrl(state, vcore_off_allow);
-		if (ret)
-			gpueb_pr_err(GPUEB_TAG, "ghpm_ctrl failed, ret=%d", ret);
-		else
-			gpueb_pr_info(GPUEB_TAG, "ghpm_ctrl done");
-
-		ret = wait_gpueb(state, GPUEB_WAIT_TIMEOUT);
-		if (ret)
-			gpueb_pr_err(GPUEB_TAG, "wait_gpueb failed, ret=%d", ret);
-		else
-			gpueb_pr_info(GPUEB_TAG, "wait_gpueb done");
-	}
-
-done:
-	return (ret < 0) ? ret : count;
-}
-
-static int gpuhre_read_backup_proc_show(struct seq_file *m, void *v)
-{
-	gpueb_pr_info(GPUEB_TAG, "read reg");
-	gpuhre_read_backup();
-	return 0;
-}
-
-static int gpuhre_write_random_proc_show(struct seq_file *m, void *v)
-{
-	gpueb_pr_info(GPUEB_TAG, "write random value");
-	gpuhre_write_random();
-	return 0;
-}
-
-static int gpuhre_check_restore_proc_show(struct seq_file *m, void *v)
-{
-	gpueb_pr_info(GPUEB_TAG, "check restore");
-	gpuhre_check_restore();
-	return 0;
-}
-
-#endif
-
 /* PROCFS : initialization */
 PROC_FOPS_RO(gpueb_status);
 PROC_FOPS_RO(gpueb_dram_user_status);
 PROC_FOPS_RW(force_trigger_wdt);
 #if IPI_TEST
 PROC_FOPS_RW(gpueb_ipi_test);
-#endif
-#if GHPM_TEST
-PROC_FOPS_RW(ghpm_ctrl_test);
-PROC_FOPS_RO(gpuhre_read_backup);
-PROC_FOPS_RO(gpuhre_write_random);
-PROC_FOPS_RO(gpuhre_check_restore);
 #endif
 
 static int gpueb_create_procfs(void)
@@ -450,12 +317,6 @@ static int gpueb_create_procfs(void)
 		PROC_ENTRY(force_trigger_wdt),
 #if IPI_TEST
 		PROC_ENTRY(gpueb_ipi_test),
-#endif
-#if GHPM_TEST
-		PROC_ENTRY(ghpm_ctrl_test),
-		PROC_ENTRY(gpuhre_read_backup),
-		PROC_ENTRY(gpuhre_write_random),
-		PROC_ENTRY(gpuhre_check_restore)
 #endif
 	};
 
@@ -494,58 +355,48 @@ void gpueb_debug_init(struct platform_device *pdev)
 		return;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_gpr_base");
-	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_GPR_BASE");
-		return;
-	}
-	g_gpueb_gpr_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+	g_gpueb_gpr_base = gpueb_get_gpr_base();
 	if (unlikely(!g_gpueb_gpr_base)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap gpr base: 0x%llx", (u64) res->start);
+		gpueb_pr_err(GPUEB_TAG, "fail to get g_gpueb_gpr_base");
 		return;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_cfgreg_base");
-	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_CFGREG_BASE");
-		return;
-	}
-	g_gpueb_cfgreg_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+	g_gpueb_cfgreg_base = gpueb_get_cfgreg_base();
 	if (unlikely(!g_gpueb_cfgreg_base)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap cfgreg base: 0x%llx", (u64) res->start);
+		gpueb_pr_err(GPUEB_TAG, "fail to get g_gpueb_cfgreg_base");
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_intc_base");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_INTC_BASE");
+		gpueb_pr_err(GPUEB_TAG, "fail to get resource GPUEB_INTC_BASE");
 		return;
 	}
 	g_gpueb_intc_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_intc_base)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap intc base: 0x%llx", (u64) res->start);
+		gpueb_pr_err(GPUEB_TAG, "fail to ioremap intc base: 0x%llx", (u64) res->start);
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource MBOX0_SEND");
+		gpueb_pr_err(GPUEB_TAG, "fail to get resource MBOX0_SEND");
 		return;
 	}
 	g_gpueb_mbox_ipi = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_mbox_ipi)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", (u64) res->start);
+		gpueb_pr_err(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", (u64) res->start);
 		return;
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_recv");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource MBOX0_RECV");
+		gpueb_pr_err(GPUEB_TAG, "fail to get resource MBOX0_RECV");
 		return;
 	}
 	g_gpueb_mbox_sw_int = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_mbox_sw_int)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap MBOX0_RECV: 0x%llx", (u64) res->start);
+		gpueb_pr_err(GPUEB_TAG, "fail to ioremap MBOX0_RECV: 0x%llx", (u64) res->start);
 		return;
 	}
 }

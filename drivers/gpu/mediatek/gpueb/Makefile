@@ -17,11 +17,11 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
 #subdir-ccflags-y += -Wno-error
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-obj-m += gpueb.o
+obj-$(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT) += mtk_gpueb.o
 endif
 
-gpueb-y += \
-    gpueb_init.o \
+mtk_gpueb-y += \
+    gpueb.o \
     gpueb_ipi.o \
     gpueb_logger.o \
     gpueb_plat_service.o \
@@ -30,4 +30,23 @@ gpueb-y += \
     gpueb_hwvoter_dbg.o \
     gpueb_debug.o \
     gpueb_timesync.o \
-    ghpm.o
+    ghpm_wrapper.o \
+    ghpm_debug.o
+
+mtk_ghpm-y := \
+	ghpm.o \
+
+mtk_ghpm_swwa-y := \
+	ghpm_swwa.o \
+
+ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+ifneq ($(wildcard $(srctree)/$(src)/ghpm.c),)
+obj-$(CONFIG_MTK_GHPM_SUPPORT) += mtk_ghpm.o
+endif
+endif
+
+ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+ifneq ($(wildcard $(srctree)/$(src)/ghpm_swwa.c),)
+obj-$(CONFIG_MTK_GHPM_SUPPORT) += mtk_ghpm_swwa.o
+endif
+endif

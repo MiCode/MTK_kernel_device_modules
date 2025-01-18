@@ -4,7 +4,7 @@
  */
 
 /**
- * @file    gpueb_init.c
+ * @file    gpueb.c
  * @brief   GPUEB driver init and probe
  */
 
@@ -29,6 +29,7 @@
 #include <linux/uaccess.h>
 #include <mboot_params.h>
 
+#include "gpueb_common.h"
 #include "gpueb_helper.h"
 #include "gpueb_ipi.h"
 #include "gpueb_logger.h"
@@ -38,8 +39,7 @@
 #include "gpueb_debug.h"
 #include "gpueb_timesync.h"
 #include "gpueb_common.h"
-
-#include "ghpm.h"
+#include "ghpm_wrapper.h"
 
 /*
  * ===============================================
@@ -47,7 +47,7 @@
  * ===============================================
  */
 
-static int __mt_gpueb_pdrv_probe(struct platform_device *pdev);
+static int __gpueb_pdrv_probe(struct platform_device *pdev);
 
 /*
  * ===============================================
@@ -55,9 +55,10 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev);
  * ===============================================
  */
 
-static struct platform_device *g_pdev;
 static struct workqueue_struct *gpueb_logger_workqueue;
 static void __iomem *g_gpueb_gpr_base;
+static void __iomem *g_gpueb_cfgreg_base;
+static void __iomem *g_mfg0_pwr_con;
 
 #if IS_ENABLED(CONFIG_PM)
 static int gpueb_suspend(struct device *dev)
@@ -84,7 +85,7 @@ static const struct of_device_id g_gpueb_of_match[] = {
 };
 
 static struct platform_driver g_gpueb_pdrv = {
-	.probe = __mt_gpueb_pdrv_probe,
+	.probe = __gpueb_pdrv_probe,
 	.remove = NULL,
 	.driver = {
 		.name = "gpueb",
@@ -109,12 +110,6 @@ static struct miscdevice gpueb_device = {
 	.fops = &gpueb_log_file_ops
 };
 
-void __iomem *gpueb_get_gpr_addr(enum gpueb_sram_gpr_id gpr_id)
-{
-	return g_gpueb_gpr_base + gpr_id * SRAM_GPR_SIZE_4B;
-}
-EXPORT_SYMBOL(gpueb_get_gpr_addr);
-
 static int gpueb_create_files(void)
 {
 	int ret = 0;
@@ -132,14 +127,51 @@ static int gpueb_create_files(void)
 
 	return 0;
 }
+
+void __iomem *gpueb_get_gpr_base(void)
+{
+	return g_gpueb_gpr_base;
+}
+EXPORT_SYMBOL(gpueb_get_gpr_base);
+
+void __iomem *gpueb_get_gpr_addr(enum gpueb_sram_gpr_id gpr_id)
+{
+	return g_gpueb_gpr_base + gpr_id * SRAM_GPR_SIZE_4B;
+}
+EXPORT_SYMBOL(gpueb_get_gpr_addr);
+
+void __iomem *gpueb_get_cfgreg_base(void)
+{
+	return g_gpueb_cfgreg_base;
+}
+EXPORT_SYMBOL(gpueb_get_cfgreg_base);
+
+int get_mfg0_pwr_con(void)
+{
+	return readl(g_mfg0_pwr_con);
+}
+EXPORT_SYMBOL(get_mfg0_pwr_con);
+
+int mfg0_pwr_sta(void)
+{
+	return ((readl(g_mfg0_pwr_con) & MFG0_PWR_ACK_BITS) == MFG0_PWR_ACK_BITS)?
+		MFG0_PWR_ON : MFG0_PWR_OFF;
+}
+EXPORT_SYMBOL(mfg0_pwr_sta);
+
+int is_gpueb_wfi(void)
+{
+	return ((readl(GPUEB_CFGREG_MDSP_CFG) & GPUEB_ON_WFI_BITS) == GPUEB_ON_WFI_BITS)? 1: 0;
+}
+EXPORT_SYMBOL(is_gpueb_wfi);
+
 /*
  * GPUEB driver probe
  */
-static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
+static int __gpueb_pdrv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	unsigned int gpueb_support = 0;
-	unsigned int ghpm_support = 0;
 	unsigned int gpueb_logger_support = 0;
 	struct device_node *node;
 	struct resource *res = NULL;
@@ -157,14 +189,39 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+	/* get gpueb gpr base*/
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_gpr_base");
-	if (!res) {
+	if (unlikely(!res)) {
 		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_GPR_BASE");
 		goto err;
 	}
 	g_gpueb_gpr_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-	if (!g_gpueb_gpr_base) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap GPUEB_GPR_BASE: 0x%llx", res->start);
+	if (unlikely(!g_gpueb_gpr_base)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to ioremap gpr base: 0x%llx", (u64) res->start);
+		goto err;
+	}
+
+	/* get gpueb_cfgreg_base */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_cfgreg_base");
+	if (unlikely(!res)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_CFGREG_BASE");
+		goto err;
+	}
+	g_gpueb_cfgreg_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (unlikely(!g_gpueb_cfgreg_base)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to ioremap cfgreg base: 0x%llx", (u64) res->start);
+		goto err;
+	}
+
+	/* get mfg0_pwr_con */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg0_pwr_con");
+	if (unlikely(!res)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to get resource mfg0_pwr_con");
+		goto err;
+	}
+	g_mfg0_pwr_con = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg0_pwr_con)) {
+		gpueb_pr_info(GPUEB_TAG, "fail to ioremap mfg0_pwr_con: 0x%llx", (u64) res->start);
 		goto err;
 	}
 
@@ -175,12 +232,6 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 	ret = gpueb_reserved_mem_init(pdev);
 	if (ret != 0)
 		gpueb_pr_info(GPUEB_TAG, "reserved mem init fail");
-
-	/*
-	ret = gpueb_plat_service_init(pdev);
-	if (ret != 0)
-		gpueb_pr_info(GPUEB_TAG, "plat service init fail");
-	*/
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-logger-support",
 			&gpueb_logger_support);
@@ -202,21 +253,6 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 		gpueb_pr_info(GPUEB_TAG, "gpueb no logger support.");
 	}
 
-	of_property_read_u32(pdev->dev.of_node, "ghpm-support",
-			&ghpm_support);
-	if (ghpm_support == 1) {
-		ret = ghpm_init(pdev);
-		if (ret) {
-			gpueb_pr_err(GPUEB_TAG, "ghpm_init fail, ret=%d", ret);
-			goto err;
-		}
-	} else {
-		gpueb_pr_info(GPUEB_TAG, "no ghpm support.");
-	}
-
-#if !IPI_TEST
-	gpueb_hw_voter_dbg_init();
-#endif
 	/* init gpufreq debug */
 	gpueb_debug_init(pdev);
 
@@ -226,7 +262,12 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	g_pdev = pdev;
+#if !IPI_TEST
+	gpueb_hw_voter_dbg_init();
+#endif
+
+	ghpm_wrapper_init(pdev);
+
 	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe done");
 
 	return 0;
@@ -238,7 +279,7 @@ err:
 /*
  * Register the GPUEB driver
  */
-static int __init __mt_gpueb_init(void)
+static int __init __gpueb_init(void)
 {
 	int ret = 0;
 
@@ -255,13 +296,13 @@ static int __init __mt_gpueb_init(void)
 /*
  * Unregister the GPUEB driver
  */
-static void __exit __mt_gpueb_exit(void)
+static void __exit __gpueb_exit(void)
 {
 	platform_driver_unregister(&g_gpueb_pdrv);
 }
 
-module_init(__mt_gpueb_init);
-module_exit(__mt_gpueb_exit);
+module_init(__gpueb_init);
+module_exit(__gpueb_exit);
 
 MODULE_DEVICE_TABLE(of, g_gpueb_of_match);
 MODULE_DESCRIPTION("MediaTek GPUEB-PLAT driver");

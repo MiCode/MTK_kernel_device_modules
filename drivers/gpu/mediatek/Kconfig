@@ -200,3 +200,11 @@ config MTK_GPU_DIAGNOSIS_DEBUG
 	  If this config is set to Y, config nodes for gpu error hook and DB
 	  dump level are available.
 	  This is a config to decide exported debug function.
+
+config MTK_GHPM_SUPPORT
+	tristate "Support MTK GHPM"
+	help
+	  Choose this option to enable GHPM.
+	  CONFIG_MTK_GHPM_SUPPORT defines the ghpm driver would be built as
+	  kernel module or not.
+	  Set Y or M to build ghpm kernel driver and set N to disable.
