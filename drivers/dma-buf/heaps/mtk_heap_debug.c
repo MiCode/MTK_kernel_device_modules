@@ -59,10 +59,11 @@ int pss_by_mmap_enable;
 #define _HEAP_FD_FLAGS_           (O_CLOEXEC|O_RDWR)
 #define DMA_HEAP_CMDLINE_LEN      (30)
 #define DMA_HEAP_DUMP_ALLOC_GFP   (GFP_ATOMIC)
-#define OOM_DUMP_INTERVAL         (2000)  /* unit: ms */
 #define SET_PID_CMDLINE_LEN       (16)
 #define EGL_DUMP_INTERVAL         (500)  /* unit: ms */
 #define DMABUF_DUMP_TOP_MAX       (10)
+#define OOM_DUMP_RS_INTERVAL      (2 * HZ)
+#define OOM_DUMP_RS_BURST         (1)
 
 /* Bit map for error */
 #define DBG_ALLOC_MEM_FAIL        (1 << 0)
@@ -232,7 +233,6 @@ struct proc_dir_entry *dma_heaps_monitor;
 
 
 int oom_nb_status; /* 0 means register pass */
-unsigned long long last_oom_time;/* ms */
 
 static unsigned long long egl_last_time;
 static unsigned long long egl_dmabuf_total_size;
@@ -2247,27 +2247,19 @@ static inline void dma_buf_uninit_procfs(void)
 static int dma_heap_oom_notify(struct notifier_block *nb,
 			       unsigned long nb_val, void *nb_freed)
 {
-	unsigned long long oom_time = get_current_time_ms();
-	long dmabuf_total_size = 0;
-	long pool_total_size = 0;
-
-	if (oom_time - last_oom_time < OOM_DUMP_INTERVAL) {
-		last_oom_time = oom_time;
-		pr_info("%s: less than %dms since last dump, return\n",
-			__func__, OOM_DUMP_INTERVAL);
-		return 0;
-	}
-
-	dmabuf_total_size = get_dma_heap_buffer_total(NULL);
-	pool_total_size = get_dma_heap_pool_total();
+	static DEFINE_RATELIMIT_STATE(dump_rs, OOM_DUMP_RS_INTERVAL,
+				      OOM_DUMP_RS_BURST);
+	long dmabuf_total_size = get_dma_heap_buffer_total(NULL);
+	long pool_total_size = get_dma_heap_pool_total();
 
 	pr_info("%s: dmabuf buffer total: %ld KB, page pool total: %ld KB\n",
 		__func__, dmabuf_total_size / 1024,  pool_total_size / 1024);
 
+	if (!__ratelimit(&dump_rs))
+		return 0;
+
 	if ((dmabuf_total_size + pool_total_size) / PAGE_SIZE > (totalram_pages() / 2))
 		mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
-
-	last_oom_time = oom_time;
 
 	return 0;
 }
