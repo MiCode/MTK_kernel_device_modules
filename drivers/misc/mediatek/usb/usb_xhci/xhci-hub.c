@@ -427,25 +427,38 @@ static unsigned int xhci_port_speed(unsigned int port_status)
  */
 #define	XHCI_PORT_RZ	((1<<2) | (1<<24) | (0xf<<28))
 
-/*
+/**
+ * xhci_port_state_to_neutral() - Clean up read portsc value back into writeable
+ * @state: u32 port value read from portsc register to be cleanup up
+ *
  * Given a port state, this function returns a value that would result in the
  * port being in the same state, if the value was written to the port status
  * control register.
  * Save Read Only (RO) bits and save read/write bits where
  * writing a 0 clears the bit and writing a 1 sets the bit (RWS).
  * For all other types (RW1S, RW1CS, RW, and RZ), writing a '0' has no effect.
+ *
+ * Return: u32 value that can be written back to portsc register without
+ * changing port state.
  */
-u32 xhci_port_state_to_neutral(u32 state)
+
+u32 xhci_port_state_to_neutral_(u32 state)
 {
 	/* Save read-only status and port state */
 	return (state & XHCI_PORT_RO) | (state & XHCI_PORT_RWS);
 }
+EXPORT_SYMBOL_GPL(xhci_port_state_to_neutral_);
 
-/*
- * find slot id based on port number.
- * @port: The one-based port number from one of the two split roothubs.
+/**
+ * xhci_find_slot_id_by_port() - Find slot id of a usb device on a roothub port
+ * @hcd: pointer to hcd of the roothub
+ * @xhci: pointer to xhci structure
+ * @port: one-based port number of the port in this roothub.
+ *
+ * Return: Slot id of the usb device connected to the root port, 0 if not found
  */
-int xhci_find_slot_id_by_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
+
+int xhci_find_slot_id_by_port_(struct usb_hcd *hcd, struct xhci_hcd *xhci,
 		u16 port)
 {
 	int slot_id;
@@ -466,6 +479,7 @@ int xhci_find_slot_id_by_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
 
 	return slot_id;
 }
+EXPORT_SYMBOL_GPL(xhci_find_slot_id_by_port_);
 
 /*
  * Stop device
@@ -590,7 +604,7 @@ static void xhci_disable_port(struct xhci_hcd *xhci, struct xhci_port *port)
 	}
 
 	portsc = readl(port->addr);
-	portsc = xhci_port_state_to_neutral(portsc);
+	portsc = xhci_port_state_to_neutral_(portsc);
 
 	/* Write 1 to disable the port */
 	writel(portsc | PORT_PE, port->addr);
@@ -678,7 +692,7 @@ static void xhci_set_port_power(struct xhci_hcd *xhci, struct xhci_port *port,
 	xhci_dbg(xhci, "set port power %d-%d %s, portsc: 0x%x\n",
 		 hcd->self.busnum, port->hcd_portnum + 1, on ? "ON" : "OFF", temp);
 
-	temp = xhci_port_state_to_neutral(temp);
+	temp = xhci_port_state_to_neutral_(temp);
 
 	if (on) {
 		/* Power on */
@@ -783,7 +797,7 @@ void xhci_set_link_state(struct xhci_hcd *xhci, struct xhci_port *port,
 	u32 portsc;
 
 	portsc = readl(port->addr);
-	temp = xhci_port_state_to_neutral(portsc);
+	temp = xhci_port_state_to_neutral_(portsc);
 	temp &= ~PORT_PLS_MASK;
 	temp |= PORT_LINK_STROBE | link_state;
 	writel(temp, port->addr);
@@ -799,7 +813,7 @@ static void xhci_set_remote_wake_mask(struct xhci_hcd *xhci,
 	u32 temp;
 
 	temp = readl(port->addr);
-	temp = xhci_port_state_to_neutral(temp);
+	temp = xhci_port_state_to_neutral_(temp);
 
 	if (wake_mask & USB_PORT_FEAT_REMOTE_WAKE_CONNECT)
 		temp |= PORT_WKCONN_E;
@@ -827,7 +841,7 @@ void xhci_test_and_clear_bit(struct xhci_hcd *xhci, struct xhci_port *port,
 
 	temp = readl(port->addr);
 	if (temp & port_bit) {
-		temp = xhci_port_state_to_neutral(temp);
+		temp = xhci_port_state_to_neutral_(temp);
 		temp |= port_bit;
 		writel(temp, port->addr);
 	}
@@ -978,7 +992,7 @@ static int xhci_handle_usb2_port_link_resume(struct xhci_port *port,
 		spin_lock_irqsave(&xhci->lock, *flags);
 
 		if (time_left) {
-			slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+			slot_id = xhci_find_slot_id_by_port_(hcd, xhci,
 							    wIndex + 1);
 			if (!slot_id) {
 				xhci_dbg(xhci, "slot_id is zero\n");
@@ -1300,7 +1314,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			retval = -ENODEV;
 			break;
 		}
-		temp = xhci_port_state_to_neutral(temp);
+		temp = xhci_port_state_to_neutral_(temp);
 		/* FIXME: What new port features do we need to support? */
 		switch (wValue) {
 		case USB_PORT_FEAT_SUSPEND:
@@ -1328,7 +1342,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				goto error;
 			}
 
-			slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+			slot_id = xhci_find_slot_id_by_port_(hcd, xhci,
 					portnum1);
 			if (!slot_id) {
 				xhci_warn(xhci, "slot_id is zero\n");
@@ -1354,7 +1368,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			if (link_state == USB_SS_PORT_LS_SS_DISABLED) {
 				xhci_dbg(xhci, "Disable port %d-%d\n",
 					 hcd->self.busnum, portnum1);
-				temp = xhci_port_state_to_neutral(temp);
+				temp = xhci_port_state_to_neutral_(temp);
 				/*
 				 * Clear all change bits, so that we get a new
 				 * connection event.
@@ -1459,7 +1473,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 			if (link_state == USB_SS_PORT_LS_U3) {
 				int retries = 16;
-				slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+				slot_id = xhci_find_slot_id_by_port_(hcd, xhci,
 								    portnum1);
 				if (slot_id) {
 					/* unlock to execute stop endpoint
@@ -1556,7 +1570,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			break;
 		}
 		/* FIXME: What new port features do we need to support? */
-		temp = xhci_port_state_to_neutral(temp);
+		temp = xhci_port_state_to_neutral_(temp);
 		switch (wValue) {
 		case USB_PORT_FEAT_SUSPEND:
 			if (xhci_vendor_is_streaming(xhci)) {
@@ -1584,7 +1598,7 @@ int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			}
 			bus_state->port_c_suspend |= 1 << wIndex;
 
-			slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+			slot_id = xhci_find_slot_id_by_port_(hcd, xhci,
 					portnum1);
 			if (!slot_id) {
 				xhci_dbg(xhci, "slot_id is zero\n");
@@ -1751,7 +1765,7 @@ int xhci_bus_suspend_(struct usb_hcd *hcd)
 		int retries = 10;
 retry:
 		t1 = readl(ports[port_index]->addr);
-		t2 = xhci_port_state_to_neutral(t1);
+		t2 = xhci_port_state_to_neutral_(t1);
 		portsc_buf[port_index] = 0;
 
 		/*
@@ -1810,7 +1824,7 @@ retry:
 		} else
 			t2 &= ~PORT_WAKE_BITS;
 
-		t1 = xhci_port_state_to_neutral(t1);
+		t1 = xhci_port_state_to_neutral_(t1);
 		if (t1 != t2)
 			portsc_buf[port_index] = t2;
 	}
@@ -1823,7 +1837,7 @@ retry:
 		if (test_bit(port_index, &bus_state->bus_suspended)) {
 			int slot_id;
 
-			slot_id = xhci_find_slot_id_by_port(hcd, xhci,
+			slot_id = xhci_find_slot_id_by_port_(hcd, xhci,
 							    port_index + 1);
 			if (slot_id) {
 				spin_unlock_irqrestore(&xhci->lock, flags);
@@ -1927,7 +1941,7 @@ int xhci_bus_resume_(struct usb_hcd *hcd)
 		if (test_bit(port_index, &bus_state->bus_suspended))
 			switch (portsc & PORT_PLS_MASK) {
 			case XDEV_U3:
-				portsc = xhci_port_state_to_neutral(portsc);
+				portsc = xhci_port_state_to_neutral_(portsc);
 				portsc &= ~PORT_PLS_MASK;
 				portsc |= PORT_LINK_STROBE | next_state;
 				break;
@@ -1971,7 +1985,7 @@ int xhci_bus_resume_(struct usb_hcd *hcd)
 			continue;
 		}
 		xhci_test_and_clear_bit(xhci, ports[port_index], PORT_PLC);
-		slot_id = xhci_find_slot_id_by_port(hcd, xhci, port_index + 1);
+		slot_id = xhci_find_slot_id_by_port_(hcd, xhci, port_index + 1);
 		if (slot_id)
 			xhci_ring_device(xhci, slot_id);
 	}

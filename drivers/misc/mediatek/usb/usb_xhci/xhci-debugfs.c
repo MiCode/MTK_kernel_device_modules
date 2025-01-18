@@ -385,7 +385,7 @@ static ssize_t xhci_port_write(struct file *file,  const char __user *ubuf,
 			spin_unlock_irqrestore(&xhci->lock, flags);
 			return -EPERM;
 		}
-		portsc = xhci_port_state_to_neutral(portsc);
+		portsc = xhci_port_state_to_neutral_(portsc);
 		portsc &= ~PORT_PLS_MASK;
 		portsc |= PORT_LINK_STROBE | XDEV_COMP_MODE;
 		writel(portsc, port->addr);
