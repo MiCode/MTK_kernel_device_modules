@@ -835,6 +835,7 @@ struct mtk_vcodec_dev {
 	struct video_device *vfd_dec;
 	struct video_device *vfd_enc;
 	struct iommu_domain *io_domain;
+	unsigned int support_acp;
 
 	const char *platform;
 	enum mtk_vcodec_ipm vdec_hw_ipm;

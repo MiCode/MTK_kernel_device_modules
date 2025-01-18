@@ -35,6 +35,7 @@
 module_param(mtk_v4l2_dbg_level, int, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_dbg, bool, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_vcp, int, 0644); //S_IRUGO | S_IWUSR
+module_param(mtk_venc_acp_enable, bool, 0644);
 char mtk_venc_property_prev[LOG_PROPERTY_SIZE];
 char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
 
@@ -132,7 +133,7 @@ static int fops_vcodec_open(struct file *file)
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev_enc, ctx,
 		&mtk_vcodec_enc_queue_init);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
+	if (dev->support_acp && mtk_venc_acp_enable && vcp_get_io_device(VCP_IOMMU_ACP_VENC) != NULL) {
 		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_ACP_VENC domain");
 	} else {
@@ -509,6 +510,12 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 
 	dev->enc_slb_extra = slb_extra;
 	pr_info("after get venc-slb-extra %d\n", slb_extra);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
+	if (ret != 0)
+		dev->support_acp = 0;
+	mtk_v4l2_debug(0, "venc slb_cpu_used_pref %d, slb_extra %d, support acp %d",
+		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra, dev->support_acp);
 
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);

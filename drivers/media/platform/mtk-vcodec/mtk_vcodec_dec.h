@@ -74,6 +74,10 @@ struct mtk_video_dec_buf {
 	int     meta_user_fd;
 	int     vpeek;
 	struct hdr10plus_info hdr10plus_buf;
+
+	// for acp debug
+	struct dma_buf_attachment *non_acp_attach;
+	struct sg_table *non_acp_sgt;
 };
 
 extern const struct v4l2_ioctl_ops mtk_vdec_ioctl_ops;

@@ -46,6 +46,8 @@ module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
 module_param(mtk_vdec_enable_dynll, bool, 0644);
 module_param(mtk_vdec_slc_enable, bool, 0644);
+module_param(mtk_vdec_acp_enable, bool, 0644);
+module_param(mtk_vdec_acp_debug, int, 0644);
 
 static struct mtk_vcodec_dev *dev_ptr;
 
@@ -152,7 +154,7 @@ static int fops_vcodec_open(struct file *file)
 	ctx->m2m_ctx = v4l2_m2m_ctx_init(dev->m2m_dev_dec, ctx,
 		&mtk_vcodec_dec_queue_init);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
+	if (dev->support_acp && mtk_vdec_acp_enable && vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
 		ctx->general_dev = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
 		mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_ACP_VDEC domain");
 	} else {
@@ -676,7 +678,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(0, "vdec default not support SLC");
 		dev->dec_slc_ver = VDEC_SLC_NOT_SUPPORT;
 	}
-	mtk_v4l2_debug(0, "vdec slc ver: %d", dev->dec_slc_ver);
+	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
+	if (ret != 0)
+		dev->support_acp = 0;
+	mtk_v4l2_debug(0, "vdec slc ver: %d, support acp %d", dev->dec_slc_ver, dev->support_acp);
 	dev->queued_frame = false;
 	mtk_vdec_init_slc(&dev->dec_slc_frame, ID_VDEC_FRAME);
 	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);

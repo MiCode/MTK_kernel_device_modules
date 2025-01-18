@@ -3608,7 +3608,7 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 #endif
 
 	vcodec_trace_begin("%s(%s)", __func__,
-		vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
+		V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) ? "out" : "in");
 
 	mtk_v4l2_debug(4, "[%d] (%d) id=%d",
 				   ctx->id, vb->vb2_queue->type, vb->index);
@@ -3626,7 +3626,7 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 	// Check if need to proceed cache operations
 	vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 	mtkbuf = container_of(vb2_v4l2, struct mtk_video_dec_buf, vb);
-	if (vb->vb2_queue->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		set_general_buffer(ctx, &mtkbuf->frame_buffer, mtkbuf->general_user_fd);
 		mtk_v4l2_debug(4, "general_buf fd=%d, dma_buf=%p, DMA=%pad",
 			mtkbuf->general_user_fd,
@@ -3681,6 +3681,21 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 			mtkbuf->frame_buffer.dma_meta_buf,
 			&mtkbuf->frame_buffer.dma_meta_addr);
 	}
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		struct device *io_dev = vcp_get_io_device(VCP_IOMMU_VDEC);
+
+		if (ctx->dev->support_acp && mtk_vdec_acp_enable && mtk_vdec_acp_debug && io_dev != NULL) {
+			mtkbuf->non_acp_attach = dma_buf_attach(vb->planes[0].dbuf, io_dev);
+			mtkbuf->non_acp_sgt = dma_buf_map_attachment(mtkbuf->non_acp_attach, DMA_BIDIRECTIONAL);
+			mtkbuf->bs_buffer.non_acp_iova = (__u64)sg_dma_address(mtkbuf->non_acp_sgt->sgl);
+		} else {
+			mtkbuf->non_acp_attach = NULL;
+			mtkbuf->non_acp_sgt = NULL;
+			mtkbuf->bs_buffer.non_acp_iova = 0;
+		}
+	}
+#endif
 	if (vb->vb2_queue->memory == VB2_MEMORY_DMABUF &&
 		!(mtkbuf->flags & NO_CAHCE_CLEAN) &&
 		!(ctx->dec_params.svp_mode)) {
@@ -4048,6 +4063,21 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
+		mtkbuf = container_of(vb2_v4l2, struct mtk_video_dec_buf, vb);
+		if (!IS_ERR_OR_NULL(mtkbuf->non_acp_attach)) {
+			if (!IS_ERR_OR_NULL(mtkbuf->non_acp_sgt))
+				dma_buf_unmap_attachment(
+					mtkbuf->non_acp_attach, mtkbuf->non_acp_sgt, DMA_BIDIRECTIONAL);
+			dma_buf_detach(vb->planes[0].dbuf, mtkbuf->non_acp_attach);
+			mtkbuf->non_acp_attach = NULL;
+			mtkbuf->non_acp_sgt = NULL;
+		}
+	}
+#endif
 
 	if (vb->vb2_queue->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		vcodec_trace_end();
@@ -5407,7 +5437,8 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock            = &ctx->q_mutex;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (!ctx->dec_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
+	if (ctx->dev->support_acp && mtk_vdec_acp_enable &&
+	    !ctx->dec_params.svp_mode && vcp_get_io_device(VCP_IOMMU_ACP_VDEC) != NULL) {
 		src_vq->dev     = vcp_get_io_device(VCP_IOMMU_ACP_VDEC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VDEC domain %p", name, src_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->dec_cnt & 1)) {
