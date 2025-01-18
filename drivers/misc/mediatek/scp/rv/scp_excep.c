@@ -457,7 +457,7 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 			scpdump_cal[idx].start = ktime_get_boottime_ns();
 #endif
 
-			scp_do_dump();
+			scp_do_dump(DO_DUMP);
 
 #if SCP_SECURE_DUMP_MEASURE
 			scpdump_cal[idx].end = ktime_get_boottime_ns();
@@ -685,6 +685,7 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 
 	if (!scp_ee_enable) {
 		pr_debug("[SCP]ee disable value=%d\n", scp_ee_enable);
+		scp_do_dump(SKIP_DUMP);
 		return;
 	}
 
