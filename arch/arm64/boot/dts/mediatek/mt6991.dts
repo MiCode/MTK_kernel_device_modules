@@ -1105,7 +1105,7 @@
 		};
 
 		pio: pinctrl@1002d000 {
-			compatible = "mediatek,mt6989-pinctrl";
+			compatible = "mediatek,mt6991-pinctrl";
 			reg = <0 0x1002d000 0 0x1000>,
 				<0 0x12000000 0 0x1000>,
 				<0 0x12020000 0 0x1000>,
