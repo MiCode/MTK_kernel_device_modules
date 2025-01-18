@@ -2887,6 +2887,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "arm,physical-memory-group-manager";
 	};
 
+	aod_scp: aod-scp {
+		compatible = "mediatek,aod_scp";
+		dsi0 = <&dsi0 0x1000>;
+		dsc0 = <&disp_dsc_wrap0 0x1000>;
+		mipitx0 = <&mipi_tx_config0 0x1000>;
+	};
+
 	ged: ged {
 		compatible = "mediatek,ged";
 		gpufreq-supply = <&gpufreq>;
@@ -13879,6 +13886,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			<11 0x100 0x0>, /* sensor custom writer */
 			<12 0x100 0x0>, /* sensor custom reader */
 			<13 0x780000 0x0>, /* aov */
+			<15 0x10000 0x0>, /* aod */
 			<17 0x8000 0x0>, /* scp chre from */
 			<18 0x8000 0x0>, /* scp chre to */
 			<19 0x200 0x0>;  /* low power debug */
