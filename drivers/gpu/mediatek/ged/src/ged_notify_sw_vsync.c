@@ -106,6 +106,10 @@ static struct ged_gpu_frame_time_table g_ged_gpu_frame_time[GED_FRAME_TIME_CONFI
 
 #define GED_APO_LP_THR_NS 4000000
 
+#define GED_APO_WAKEUP_THR_NS (GED_APO_THR_NS + 1000000)
+
+#define GED_APO_LONG_WAKEUP_THR_NS 100000000
+
 #define GED_APO_AUTOSUSPEND_DELAY_TARGET_REF_COUNT 3
 
 static spinlock_t g_sApoLock;
@@ -773,13 +777,19 @@ unsigned long long ged_get_apo_wakeup_ns(void)
 }
 EXPORT_SYMBOL(ged_get_apo_wakeup_ns);
 
+void ged_set_apo_wakeup_ns_nolock(unsigned long long apo_wakeup_ns)
+{
+	g_apo_wakeup_ns = apo_wakeup_ns;
+}
+EXPORT_SYMBOL(ged_set_apo_wakeup_ns_nolock);
+
 void ged_set_apo_wakeup_ns(unsigned long long apo_wakeup_ns)
 {
 	unsigned long ulIRQFlags;
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
-	g_apo_wakeup_ns = apo_wakeup_ns;
+	ged_set_apo_wakeup_ns_nolock(apo_wakeup_ns);
 
 	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
@@ -981,12 +991,30 @@ void ged_get_idle_time(void)
 }
 EXPORT_SYMBOL(ged_get_idle_time);
 
+
+bool ged_gpu_is_heavy(void)
+{
+	unsigned int gpu_loading;
+	int freq_id = ged_get_cur_oppidx();
+
+	mtk_get_gpu_loading(&gpu_loading);
+
+	return ((gpu_loading >= 85) && (freq_id == 0));
+}
+EXPORT_SYMBOL(ged_gpu_is_heavy);
+
 void ged_check_power_duration(void)
 {
 	unsigned long ulIRQFlags;
+	bool bforce = false;
 	bool bLast_I_to_A = false;
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	/* Condition-1 */
+	bforce = ged_gpu_is_heavy();
+	if (true == bforce)
+		goto direct_check;
 
 	if (g_ns_gpu_I_to_A_duration <= 0) { // directly return when L2 off as GPU sleep to GPU power-down
 		spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
@@ -996,7 +1024,8 @@ void ged_check_power_duration(void)
 	/* Condition */
 	bLast_I_to_A = g_ns_gpu_I_to_A_duration < g_apo_thr_ns;
 
-	if (bLast_I_to_A)
+direct_check:
+	if (bforce || bLast_I_to_A)
 		g_bGPUAPO = true;
 	else {
 		if (g_apo_thr_ns == 0) {
@@ -1179,11 +1208,19 @@ EXPORT_SYMBOL(ged_check_predict_power_autosuspend);
 void ged_check_predict_power_duration(void)
 {
 	unsigned long ulIRQFlags;
-	// Default set "true" to discard Condition-1.
-	bool bPredict_current_I_to_A = true;
+	bool bPredict_force = false;
+	bool bPredict_current_I_to_A = true; /* Default set "true" to discard */
 	bool bPredict_last_I_to_A = false;
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	/* Condition-1 */
+	bPredict_force = ged_gpu_is_heavy();
+	if (true == bPredict_force) {
+		ged_set_apo_wakeup_ns_nolock(GED_APO_LONG_WAKEUP_THR_NS);
+		goto direct_check;
+	} else
+		ged_set_apo_wakeup_ns_nolock(GED_APO_WAKEUP_THR_NS);
 
 	//Directly return when glb_idle_irq is received as GPU sleep to GPU power-down
 	if (g_ns_gpu_predict_A_to_I_duration <= 0) {
@@ -1191,16 +1228,18 @@ void ged_check_predict_power_duration(void)
 		return;
 	}
 
-	/* Condition-1 */
+	/* Condition-2 */
 	bPredict_current_I_to_A = ged_check_predict_power_autosuspend_nolock();
 
-	/* Condition-2 */
+	/* Condition-3 */
 	bPredict_last_I_to_A = ((g_ns_gpu_predict_I_to_A_duration > 0) &&
 		(g_ns_gpu_predict_I_to_A_duration < g_apo_thr_ns));
 	trace_GPU_Power__Policy__APO_cond_1(bPredict_current_I_to_A);
 	trace_GPU_Power__Policy__APO_cond_2(bPredict_last_I_to_A);
 
-	if (bPredict_current_I_to_A && bPredict_last_I_to_A)
+direct_check:
+	if (bPredict_force ||
+		(bPredict_current_I_to_A && bPredict_last_I_to_A))
 		g_bGPUPredictAPO = true;
 	else {
 		if (g_ged_apo_support == APO_NORMAL_AND_LP_SUPPORT &&
@@ -1482,7 +1521,8 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 	g_apo_hint = APO_NORMAL_HINT;
 	g_apo_force_hint = APO_INVALID_HINT;
 
-	ged_set_all_apo_thr_ns_nolock(GED_APO_THR_NS);
+	g_apo_thr_ns = GED_APO_THR_NS;
+	g_apo_wakeup_ns = GED_APO_WAKEUP_THR_NS;
 
 	g_apo_autosuspend_delay_ref_count = 0;
 	g_apo_autosuspend_delay_ctrl = 0;
