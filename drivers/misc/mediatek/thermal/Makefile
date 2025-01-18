@@ -44,6 +44,9 @@ thermal_monitor-y += common/mtk_thermal_platform.o
 thermal_monitor-y += common/ap_thermal_limit.o
 thermal_monitor-y += common/mtk_thermal_timer.o
 thermal_monitor-y += mtk_cooler_shutdown.o
+ifneq ($(strip $(CONFIG_LEDS_MTK)),)
+thermal_monitor-y += mtk_cooler_backlight.o
+endif
 thermal_monitor-y += mtk_cooler_kshutdown.o
 thermal_monitor-y += mtk_cooler_cam.o
 
@@ -92,6 +95,30 @@ endif
 thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
 thermal_monitor-y += src/mtk_pmic_efuse.o
 thermal_monitor-y += src/mtk_thermal_ipi.o
+endif
+
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
+include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/src/Makefile
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/include
+thermal_monitor-y += v2/mtk_thermal_monitor.o
+thermal_monitor-y += v2/src/mtk_ts_6359vcore.o
+thermal_monitor-y += v2/src/mtk_ts_6359vproc.o
+thermal_monitor-y += v2/src/mtk_ts_6359vgpu.o
+thermal_monitor-y += v2/src/mtk_ts_6359tsx.o
+thermal_monitor-y += v2/src/mtk_ts_6359dcxo.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_imgsensor.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_btsnrpa.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_dctm.o
+thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
+ifeq ($(CONFIG_MTK_THERMAL_PA_VIA_ATCMD),y)
+thermal_monitor-y += common/coolers/mtk_cooler_mutt_gen97.o
+endif
+thermal_monitor-y += v2/src/mtk_thermal_ipi.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_cpu_noBankv2.o
+thermal_monitor-y += v2/src/mtk_thermal_ipi.o
+thermal_monitor-y += v2/src/mtk_lvts_tc.o
+thermal_monitor-y += v2/src/mtk_tc_wrapper.o
+thermal_monitor-y += v2/src/mtk_pmic_efuse.o
 endif
 
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)

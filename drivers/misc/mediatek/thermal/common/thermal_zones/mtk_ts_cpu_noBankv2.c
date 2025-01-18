@@ -2662,6 +2662,8 @@ static int tscpu_thermal_probe(struct platform_device *dev)
 
 	tscpu_create_fs();
 
+	set_tscpu_init_done(1);
+
 	return 0;
 }
 
