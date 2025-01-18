@@ -385,7 +385,7 @@ static void handle_query_cap_ack_msg(struct vdec_vcu_ipi_query_cap_ack *msg)
 	__u64 shmem_pa_start = (__u64)vcp_get_reserve_mem_phys_ex(VDEC_MEM_ID);
 	__u64 data_offset = ((msg->vcu_data_addr & 0x0FFFFFFF) - (shmem_pa_start & 0x0FFFFFFF));
 
-	if (vcu == NULL)
+	if (vcu == NULL || msg->vcu_data_addr == 0)
 		return;
 	mtk_vcodec_debug(vcu, "+ ap_inst_addr = 0x%lx, vcu_data_addr = 0x%llx, id = %d",
 		(uintptr_t)msg->ap_inst_addr, msg->vcu_data_addr, msg->id);
