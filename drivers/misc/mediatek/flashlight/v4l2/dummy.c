@@ -12,7 +12,6 @@
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include <linux/pm_runtime.h>
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
 #include "flashlight-core.h"
@@ -433,15 +432,7 @@ static void dummy_v4l2_i2c_subdev_init(struct v4l2_subdev *sd,
 
 static int dummy_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
-
 	pr_info("%s open\n", __func__);
-
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
 
 	return 0;
 }
@@ -449,8 +440,6 @@ static int dummy_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 static int dummy_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	pr_info("%s close\n", __func__);
-
-	pm_runtime_put(sd->dev);
 
 	return 0;
 }
@@ -667,8 +656,7 @@ err_node_put:
 	return -EINVAL;
 }
 
-static int dummy_probe(struct i2c_client *client,
-			const struct i2c_device_id *devid)
+static int dummy_probe(struct i2c_client *client)
 {
 	struct dummy_flash *flash;
 	struct dummy_platform_data *pdata = dev_get_platdata(&client->dev);
@@ -716,8 +704,6 @@ static int dummy_probe(struct i2c_client *client,
 	if (rval < 0)
 		return rval;
 
-	pm_runtime_enable(flash->dev);
-
 	rval = dummy_parse_dt(flash);
 
 	i2c_set_clientdata(client, flash);
@@ -726,7 +712,7 @@ static int dummy_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int dummy_remove(struct i2c_client *client)
+static void dummy_remove(struct i2c_client *client)
 {
 	struct dummy_flash *flash = i2c_get_clientdata(client);
 	unsigned int i;
@@ -736,31 +722,6 @@ static int dummy_remove(struct i2c_client *client)
 		v4l2_ctrl_handler_free(&flash->ctrls_led[i]);
 		media_entity_cleanup(&flash->subdev_led[i].entity);
 	}
-
-	pm_runtime_disable(&client->dev);
-
-	pm_runtime_set_suspended(&client->dev);
-	return 0;
-}
-
-static int __maybe_unused dummy_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct dummy_flash *flash = i2c_get_clientdata(client);
-
-	pr_info("%s %d", __func__, __LINE__);
-
-	return dummy_uninit(flash);
-}
-
-static int __maybe_unused dummy_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct dummy_flash *flash = i2c_get_clientdata(client);
-
-	pr_info("%s %d", __func__, __LINE__);
-
-	return dummy_init(flash);
 }
 
 static const struct i2c_device_id dummy_id_table[] = {
@@ -776,16 +737,9 @@ static const struct of_device_id dummy_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, dummy_of_table);
 
-static const struct dev_pm_ops dummy_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(dummy_suspend, dummy_resume, NULL)
-};
-
 static struct i2c_driver dummy_i2c_driver = {
 	.driver = {
 		   .name = DUMMY_NAME,
-		   .pm = &dummy_pm_ops,
 		   .of_match_table = dummy_of_table,
 		   },
 	.probe = dummy_probe,
