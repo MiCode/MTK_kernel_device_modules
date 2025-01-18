@@ -1005,7 +1005,7 @@ const char * const *get_mt6991_all_clk_names(void)
 
 		/* ptppll_pll_ctrl */
 		"ptppll",
-
+		NULL
 
 	};
 

@@ -3,7 +3,8 @@
 // Copyright (c) 2020 MediaTek Inc.
 // Author: Owen Chen <owen.chen@mediatek.com>
 
-#define pr_fmt(fmt) "[clkchk] " fmt
+#define pr_dbg(fmt, ...) \
+	pr_notice("[CLKDBG] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 #include <linux/interrupt.h>
 #include <linux/notifier.h>
