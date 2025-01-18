@@ -74,7 +74,8 @@ int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
 	int mode, int fps, unsigned long long time, int blc, int sbe_ctrl);
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	int *qfps_arr, int *qfps_num, int max_qfps_num,
-	int *tfps_arr, int *tfps_num, int max_tfps_num);
+	int *tfps_arr, int *tfps_num, int max_tfps_num,
+	int *diff_arr, int *diff_num, int max_diff_num);
 int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long bufID,
 	int target_fps, int queue_fps);
 int switch_thread_max_fps(int pid, int set_max);
@@ -98,7 +99,7 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		int *target_fps, int *target_fps_ori, int *target_cpu_time, int *fps_margin,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on);
-void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time);
+long long fpsgo_base2fstb_get_gpu_time(int pid, unsigned long long bufID);
 
 /* EARA */
 void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long long *buf_id,
@@ -118,7 +119,7 @@ static inline void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		int *target_fps, int *target_fps_ori, int *target_cpu_time, int *fps_margin,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on) { }
-static inline void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time) { }
+long long fpsgo_base2fstb_get_gpu_time(int pid, unsigned long long bufID) { }
 
 /* EARA */
 static inline void eara2fstb_get_tfps(int max_cnt, int *pid,

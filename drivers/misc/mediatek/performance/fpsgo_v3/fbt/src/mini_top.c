@@ -832,6 +832,32 @@ int fpsgo_fbt2minitop_query_single(pid_t pid)
 	return -1;
 }
 
+int fpsgo_other2minitop_get_list(int max_num, int *tid_arr, unsigned long long *ratio_arr)
+{
+	int index = 0;
+	struct minitop_rec *mr = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (max_num <= 0 || !tid_arr || !ratio_arr)
+		return -EINVAL;
+
+	if (!minitop_if_active_then_lock())
+		return index;
+
+	for (rbn = rb_first(&minitop_root); rbn; rbn = rb_next(rbn)) {
+		mr = rb_entry(rbn, struct minitop_rec, node);
+		if (mr->source & MINITOP_SCHED && index < max_num) {
+			tid_arr[index] = mr->tid;
+			ratio_arr[index] = mr->ratio;
+			index++;
+		}
+	}
+
+	minitop_unlock(__func__);
+
+	return index;
+}
+
 #define MINITOP_SYSFS_WRITE(name, lb, ub); \
 static ssize_t name##_store(struct kobject *kobj, \
 		struct kobj_attribute *attr, \

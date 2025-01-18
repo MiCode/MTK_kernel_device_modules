@@ -394,6 +394,8 @@ struct render_info {
 	unsigned long long raw_runtime;
 	unsigned long long idle_time_b_us;
 	unsigned long long wall_b_runtime_us;
+	long frame_aa;
+	long dep_aa;
 
 	/*ux*/
 	unsigned long long t_last_start;

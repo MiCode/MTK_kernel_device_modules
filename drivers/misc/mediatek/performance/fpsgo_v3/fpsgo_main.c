@@ -33,6 +33,7 @@
 #include "mtk_drm_arr.h"
 #include "powerhal_cpu_ctrl.h"
 #include "fbt_cpu_ux.h"
+#include "fpsgo_frame_info.h"
 
 #define CREATE_TRACE_POINTS
 #define MAX_MAGT_TARGET_FPS_NUM 10
@@ -1161,6 +1162,20 @@ int fpsgo_notify_magt_dep_list(int pid, int *dep_task_arr, int dep_task_num)
 	return 0;
 }
 
+int get_fpsgo_frame_info(int max_num, unsigned long mask,
+	struct render_frame_info *frame_info_arr)
+{
+	int ret = 0;
+
+	if (max_num <= 0 || mask == 0 ||
+		mask >= 1 << FPSGO_FRAME_INFO_MAX_NUM || !frame_info_arr)
+		return -EINVAL;
+
+	ret = fpsgo_ctrl2base_get_render_frame_info(max_num, mask, frame_info_arr);
+
+	return ret;
+}
+
 void dfrc_fps_limit_cb(unsigned int fps_limit)
 {
 	unsigned int vTmp = TARGET_UNLIMITED_FPS;
@@ -1489,6 +1504,7 @@ static int __init fpsgo_init(void)
 	unregister_get_fpsgo_is_boosting_fp = unregister_get_fpsgo_is_boosting;
 	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;
 	magt2fpsgo_notify_dep_list_fp = fpsgo_notify_magt_dep_list;
+	magt2fpsgo_get_fpsgo_frame_info = get_fpsgo_frame_info;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

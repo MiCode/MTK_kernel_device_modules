@@ -32,6 +32,8 @@
 #include "xgf.h"
 #include "fbt_cpu_ux.h"
 #include "fstb.h"
+#include "fpsgo_frame_info.h"
+#include "mini_top.h"
 
 #include <linux/preempt.h>
 #include <linux/trace_events.h>
@@ -2680,6 +2682,105 @@ void fpsgo_check_jank_detection_info_status(void)
 			rbn = rb_first(&jank_detection_info_tree);
 		}
 	}
+}
+
+int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
+	struct render_frame_info *frame_info_arr)
+{
+	int i;
+	int index = 0;
+	int tmp_qfps_num = 0, tmp_tfps_num = 0, tmp_diff_num = 0;
+	int tmp_qfps[1], tmp_tfps[1], tmp_diff[1];
+	int bg_num = 0;
+	int *bg_tid_arr = NULL;
+	unsigned long long *bg_loading_arr = NULL;
+	struct render_frame_info *f_iter = NULL;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		fpsgo_thread_lock(&r_iter->thr_mlock);
+		if (r_iter->frame_type == BY_PASS_TYPE) {
+			fpsgo_thread_unlock(&r_iter->thr_mlock);
+			continue;
+		}
+
+		if (index >= max_num) {
+			fpsgo_thread_unlock(&r_iter->thr_mlock);
+			break;
+		}
+
+		f_iter = &frame_info_arr[index];
+		f_iter->tgid = r_iter->tgid;
+		f_iter->pid = r_iter->pid;
+		f_iter->buffer_id = r_iter->buffer_id;
+
+		if (test_bit(GET_FPSGO_RAW_CPU_TIME, &mask))
+			f_iter->raw_t_cpu = r_iter->raw_runtime;
+		if (test_bit(GET_FPSGO_EMA_CPU_TIME, &mask))
+			f_iter->ema_t_cpu = r_iter->running_time;
+		if (test_bit(GET_FPSGO_FRAME_AA, &mask))
+			f_iter->frame_aa = r_iter->frame_aa;
+		if (test_bit(GET_FPSGO_DEP_AA, &mask))
+			f_iter->dep_aa = r_iter->dep_aa;
+		if (test_bit(GET_FPSGO_AVG_FRAME_CAP, &mask))
+			f_iter->avg_frame_cap = r_iter->avg_freq;
+		if (test_bit(GET_FPSGO_PERF_IDX, &mask))
+			f_iter->blc = r_iter->boost_info.last_normal_blc;
+		if (test_bit(GET_FPSGO_DEP_LIST, &mask) && r_iter->dep_arr) {
+			f_iter->dep_num = r_iter->dep_valid_size;
+			for (i = 0; i < r_iter->dep_valid_size; i++) {
+				f_iter->dep_arr[i].pid = r_iter->dep_arr[i].pid;
+				f_iter->dep_arr[i].loading = r_iter->dep_arr[i].loading;
+			}
+		}
+
+		index++;
+		fpsgo_thread_unlock(&r_iter->thr_mlock);
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+	fpsgo_main_trace("[base] get_fpsgo_frame_info max_num:%d mask:%lu index:%d",
+		max_num, mask, index);
+
+	for (i = 0; i < index; i++) {
+		f_iter = &frame_info_arr[i];
+		if (test_bit(GET_FPSGO_QUEUE_FPS, &mask) ||
+			test_bit(GET_FPSGO_TARGET_FPS, &mask) ||
+			test_bit(GET_FRS_TARGET_FPS_DIFF, &mask)) {
+			tmp_qfps[0] = 0;
+			tmp_tfps[0] = 0;
+			tmp_diff[0] = 0;
+			fpsgo_other2fstb_get_fps(f_iter->pid, f_iter->buffer_id,
+				tmp_qfps, &tmp_qfps_num, 1,
+				tmp_tfps, &tmp_tfps_num, 1,
+				tmp_diff, &tmp_diff_num, 1);
+			f_iter->queue_fps = tmp_qfps[0];
+			f_iter->target_fps = tmp_tfps[0];
+			f_iter->target_fps_diff = tmp_diff[0];
+		}
+		if (test_bit(GET_FPSGO_MINITOP_LIST, &mask)) {
+			bg_tid_arr = kcalloc(FPSGO_MAX_TASK_NUM, sizeof(int), GFP_KERNEL);
+			bg_loading_arr = kcalloc(FPSGO_MAX_TASK_NUM, sizeof(unsigned long long), GFP_KERNEL);
+			if (!bg_tid_arr || !bg_loading_arr)
+				goto bg_malloc_fail;
+			bg_num = fpsgo_other2minitop_get_list(FPSGO_MAX_TASK_NUM, bg_tid_arr, bg_loading_arr);
+			f_iter->non_dep_num = bg_num;
+			for (i = 0; i < bg_num; i++) {
+				f_iter->non_dep_arr[i].pid = bg_tid_arr[i];
+				f_iter->non_dep_arr[i].loading = (int)bg_loading_arr[i];
+			}
+bg_malloc_fail:
+			kfree(bg_loading_arr);
+			kfree(bg_tid_arr);
+		}
+		if (test_bit(GET_GED_GPU_TIME, &mask))
+			f_iter->t_gpu = fpsgo_base2fstb_get_gpu_time(f_iter->pid, f_iter->buffer_id);
+	}
+
+	return index;
 }
 
 static ssize_t fpsgo_enable_show(struct kobject *kobj,
