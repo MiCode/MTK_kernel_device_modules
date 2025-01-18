@@ -372,10 +372,6 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	struct list_head *pos;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 
-
-	if (link_with_others(&vts->vip_list))
-		return;
-
 	/* change vip_prio inside lock to prevent NOT_VIP inserted.
 	 * it could happened if we set vip_prio outside lock, and user unset,
 	 * then insert VIP.
@@ -422,8 +418,7 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	struct list_head *prev = vts->vip_list.prev;
 	struct list_head *next = vts->vip_list.next;
 
-
-	if (!link_with_others(&vts->vip_list))
+	if (vts->vip_list.next == NULL || !link_with_others(&vts->vip_list))
 		return;
 
 	list_del_init(&vts->vip_list);
@@ -926,8 +921,8 @@ void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p
 	if (unlikely(!vip_enable))
 		return;
 
-	p_is_vip = link_with_others(&vts_p->vip_list);
-	curr_is_vip = link_with_others(&vts_c->vip_list);
+	p_is_vip = vts_p->vip_list.next && link_with_others(&vts_p->vip_list);
+	curr_is_vip = vts_c->vip_list.next && link_with_others(&vts_c->vip_list);
 	/*
 	 * current is not VIP, so preemption decision
 	 * is simple.
@@ -974,7 +969,7 @@ void vip_cfs_tick(struct rq *rq)
 
 	rq_lock(rq, &rf);
 
-	if (!link_with_others(&vts->vip_list))
+	if (vts->vip_list.next && !link_with_others(&vts->vip_list))
 		goto out;
 	account_vip_runtime(rq, rq->curr);
 	/*
