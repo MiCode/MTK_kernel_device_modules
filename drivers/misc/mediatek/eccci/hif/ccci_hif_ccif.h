@@ -124,9 +124,9 @@ struct md_ccif_ctrl {
 	unsigned long long isr_cnt[CCIF_CH_NUM];
 
 	unsigned int ccif_hw_reset_ver;
-	void __iomem *infracfg_base;
 	unsigned int ccif_hw_reset_bit;
-
+	void __iomem *ccif_hw_reset_addr;
+	void __iomem *infracfg_base;
 	unsigned int ccif_clk_free_run;
 };
 

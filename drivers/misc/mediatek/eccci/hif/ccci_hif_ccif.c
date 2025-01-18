@@ -1113,6 +1113,13 @@ void ccci_reset_ccif_hw(int ccif_id, void __iomem *baseA,
 
 		/* set ccif0 reset bit */
 		ccci_write32(ccif_ctrl->infracfg_base, 0xF54, 1 << reset_bit);
+	} else if (ccif_ctrl->ccif_hw_reset_ver == 2) {
+		reset_bit = ccif_ctrl->ccif_hw_reset_bit;
+		/* set ccif0 reset bit */
+		if(ccif_ctrl->ccif_hw_reset_addr) {
+			ccci_write32(ccif_ctrl->ccif_hw_reset_addr, 0xF40, 1 << reset_bit);
+			ccci_write32(ccif_ctrl->ccif_hw_reset_addr, 0xF44, 1 << reset_bit);
+		}
 	} else {
 		switch (ccif_id) {
 		case AP_MD1_CCIF:
@@ -1643,6 +1650,12 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *ccif_ctrl)
 	}
 	ccif_ctrl->ccif_ap_base = of_iomap(node, 0);
 	ccif_ctrl->ccif_md_base = of_iomap(node, 1);
+	ccif_ctrl->ccif_hw_reset_addr = of_iomap(node, 2);
+	if (!ccif_ctrl->ccif_hw_reset_addr) {
+		CCCI_ERROR_LOG(-1, TAG,
+			"[%s] ccif_hw_reset_addr fail\n", __func__);
+	}
+
 	if (!ccif_ctrl->ccif_ap_base || !ccif_ctrl->ccif_md_base) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"ap_ccif_base=NULL or ccif_md_base NULL\n");
@@ -1728,7 +1741,16 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *ccif_ctrl)
 				"[%s] error: infracfg_base fail\n", __func__);
 			return -8;
 		}
+	} else if (ccif_ctrl->ccif_hw_reset_ver == 2) {
+		ret = of_property_read_u32(node, "mediatek,ccif-hw-reset-bit",
+				&ccif_ctrl->ccif_hw_reset_bit);
+		if (ret < 0) {
+			CCCI_ERROR_LOG(-1, TAG, "[%s] error: ccif-hw-reset-bit not exist\n",
+				__func__);
+			return -8;
+		}
 	}
+
 	/* get data from other node */
 	node = of_find_compatible_node(NULL, NULL, "mediatek,md_ccif4");
 	if (node) {

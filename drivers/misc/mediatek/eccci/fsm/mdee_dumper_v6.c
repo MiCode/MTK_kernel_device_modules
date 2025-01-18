@@ -95,7 +95,10 @@ err_exit1:
 		ex_log_len = mdss_dbg->size;
 		if (md && md->hw_info && md->hw_info->md_l2sram_base) {
 			md_dump_addr = md->hw_info->md_l2sram_base;
-			md_dump_len = MD_L2SRAM_SIZE;
+			if (ccci_get_ap_plat() == 6991)
+				md_dump_len = md->hw_info->md_l2sram_size;
+			else
+				md_dump_len = MD_L2SRAM_SIZE;
 		}
 	}
 	if (dump_flag & CCCI_AED_DUMP_EX_PKT) {
@@ -363,9 +366,12 @@ static void mdee_info_dump_v6(struct ccci_fsm_ee *mdee)
 				mdss_dbg->base_ap_view_vir, mdss_dbg->size);
 		if (md && md->hw_info && md->hw_info->md_l2sram_base) {
 			md_cd_lock_modem_clock_src(1);
-
-			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-				md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
+			if (ccci_get_ap_plat() == 6991)
+				ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+					md->hw_info->md_l2sram_base, md->hw_info->md_l2sram_size);
+			else
+				ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+					md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
 
 			md_cd_lock_modem_clock_src(0);
 		}
@@ -858,10 +864,12 @@ static void mdee_dumper_v6_dump_ee_info(struct ccci_fsm_ee *mdee,
 						mdss_dbg->size);
 				if (md && md->hw_info && md->hw_info->md_l2sram_base) {
 					md_cd_lock_modem_clock_src(1);
-
-					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-						md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
-
+					if (ccci_get_ap_plat() == 6991)
+						ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+							md->hw_info->md_l2sram_base, md->hw_info->md_l2sram_size);
+					else
+						ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+							md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
 					md_cd_lock_modem_clock_src(0);
 				}
 
@@ -881,9 +889,12 @@ static void mdee_dumper_v6_dump_ee_info(struct ccci_fsm_ee *mdee,
 			if (md && md->hw_info && md->hw_info->md_l2sram_base) {
 				md_cd_lock_modem_clock_src(1);
 
-				ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
-					md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
-
+				if (ccci_get_ap_plat() == 6991)
+					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+						md->hw_info->md_l2sram_base, md->hw_info->md_l2sram_size);
+				else
+					ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
+						md->hw_info->md_l2sram_base, MD_L2SRAM_SIZE);
 				md_cd_lock_modem_clock_src(0);
 			}
 
