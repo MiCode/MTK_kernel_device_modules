@@ -442,6 +442,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/performance/uload_ind/uload_ind.ko",
     "drivers/misc/mediatek/pgboost/pgboost.ko",
     "drivers/misc/mediatek/pidmap/pidmap.ko",
+    "drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     "drivers/misc/mediatek/pmsr/pmsr.ko",
     "drivers/misc/mediatek/pmsr/twam/spmtwam.ko",
