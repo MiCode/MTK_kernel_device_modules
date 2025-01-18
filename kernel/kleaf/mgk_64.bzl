@@ -1936,6 +1936,12 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v1/sspm_v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko")
+
+        mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp3_m/imgsensor_isp3_m.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cam_cal/src/isp3_m/camera_eeprom_isp3_m.ko")
+
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v1/mtk-swpm-dbg-common-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v1/mtk-swpm-isp-wrapper.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6886/mtk-swpm-core-dbg-v6886.ko")
