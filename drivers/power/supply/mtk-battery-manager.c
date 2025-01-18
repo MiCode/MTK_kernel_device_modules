@@ -63,29 +63,6 @@ struct mtk_battery_manager *get_mtk_battery_manager(void)
 	return bm;
 }
 
-int get_charger_vbat(struct mtk_battery_manager *bm)
-{
-	struct power_supply *psy;
-	union power_supply_propval val;
-	int ret;
-
-	psy = power_supply_get_by_name("mtk-master-charger");
-	if (psy) {
-		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CHARGE_NOW, &val);
-		if (ret >= 0)
-			ret = val.intval / 1000;
-		else
-			pr_err("[%s] get POWER_SUPPLY_PROP_CHARGE_NOW fail\n", __func__);
-
-		power_supply_put(psy);
-	} else {
-		pr_err("[%s] get charger power supply fail\n", __func__);
-		ret = 4000;
-	}
-
-	return ret;
-}
-
 /* ============================================================ */
 /* power supply: battery */
 /* ============================================================ */
@@ -103,20 +80,6 @@ int check_cap_level(int uisoc)
 		return POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 	else
 		return POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN;
-}
-
-void set_shutdown_cond_flag(struct mtk_battery *gm, int val)
-{
-	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
-
-	sdu->shutdown_cond_flag = val;
-}
-
-int get_shutdown_cond_flag(struct mtk_battery *gm)
-{
-	struct battery_shutdown_unit *sdu = &gm->bm->sdc.bat[gm->id];
-
-	return sdu->shutdown_cond_flag;
 }
 
 int next_waketime(int polling)
@@ -147,9 +110,8 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 
 	now = ktime_get_boottime();
 
-	pr_err("%s,%s:soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
-		__func__,
-		gm->gauge->name,
+	pr_debug("%s, %s:soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
+		gm->gauge->name, __func__,
 		sdu->shutdown_status.is_soc_zero_percent,
 		sdu->shutdown_status.is_uisoc_one_percent,
 		sdu->shutdown_status.is_dlpt_shutdown,
@@ -196,14 +158,13 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 				return next_waketime(polling);
 			}
 		} else if (now_current > 0 && current_soc > 0) {
-			polling = 0;
 			sdu->shutdown_status.is_uisoc_one_percent = 0;
 			pr_err("disable uisoc_one_percent shutdown cur:%d soc:%d\n",
 				now_current, current_soc);
-			return next_waketime(polling);
+		} else {
+			/* ui_soc is not zero, check it after 10s */
+			polling++;
 		}
-		/* ui_soc is not zero, check it after 10s */
-		polling++;
 
 	}
 
@@ -225,8 +186,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		if (gm->disableGM30)
 			vbat = 4000;
 		else
-			vbat = gauge_get_int_property(gm,
-				GAUGE_PROP_BATTERY_VOLTAGE);
+			vbat = bm_get_vsys(gm->bm);
 
 		sdu->batdata[sdu->batidx] = vbat;
 
@@ -235,8 +195,8 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		sdu->avgvbat = vbatcnt / gm->avgvbat_array_size;
 		tmp = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
 
-		pr_err("lbatcheck vbat:%d avgvbat:%d %d,%d tmp:%d,bound:%d,th:%d %d,en:%d\n",
-			vbat,
+		pr_debug("%s, lbatcheck vbat:%d avgvbat:%d %d,%d tmp:%d,bound:%d,th:%d %d,en:%d\n",
+			gm->gauge->name, vbat,
 			sdu->avgvbat,
 			sdu->vbat_lt,
 			sdu->vbat_lt_lv1,
@@ -256,21 +216,24 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 					LOW_TEMP_DISABLE_LOW_BAT_SHUTDOWN)) {
 					if (tmp >= LOW_TEMP_THRESHOLD) {
 						sdu->down_to_low_bat = 1;
-						pr_err("normal tmp, battery voltage is low shutdown\n");
+						pr_err("%s, normal tmp, battery voltage is low shutdown\n",
+							gm->gauge->name);
 						battery_set_property(gm,
 							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 					} else if (sdu->avgvbat <=
 						gm->low_tmp_bat_voltage_low_bound) {
 						sdu->down_to_low_bat = 1;
-						pr_err("cold tmp, battery voltage is low shutdown\n");
+						pr_err("%s, cold tmp, battery voltage is low shutdown\n",
+							gm->gauge->name);
 						battery_set_property(gm,
 							BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 					} else
-						pr_err("low temp disable low battery sd\n");
+						pr_err("%s, low temp disable low battery sd\n",
+							gm->gauge->name);
 				} else {
 					sdu->down_to_low_bat = 1;
-					pr_err("[%s]avg vbat is low to shutdown\n",
-						__func__);
+					pr_err("%s, [%s]avg vbat is low to shutdown\n",
+						gm->gauge->name, __func__);
 					battery_set_property(gm,
 						BAT_PROP_WAKEUP_FG_ALGO, FG_INTR_SHUTDOWN);
 				}
@@ -287,7 +250,6 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 					now, sdu->pre_time[LOW_BAT_VOLT]);
 
 				tmp_duraction  = ktime_to_timespec64(duraction);
-				polling++;
 				if (is_single && tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
 					pr_err("low bat shutdown, over %d second\n",
 						SHUTDOWN_TIME);
@@ -305,8 +267,8 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		}
 
 		polling++;
-			pr_err("[%s][UT] V %d ui_soc %d dur %d [%d:%d:%d:%d] batdata[%d] %d %d\n",
-				__func__,
+		pr_debug("%s, [%s][UT] V %d ui_soc %d dur %d [%d:%d:%d:%d] batdata[%d] %d %d\n",
+			gm->gauge->name, __func__,
 			sdu->avgvbat, current_ui_soc,
 			(int)tmp_duraction.tv_sec,
 			sdu->down_to_low_bat, sdu->ui_zero_time_flag,
@@ -319,14 +281,13 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			sdu->batidx = 0;
 	}
 
-	pr_err(
-		"%s %d avgvbat:%d sec:%d lowst:%d\n",
-		__func__,
+	pr_debug(
+		"%s, %s %d avgvbat:%d sec:%d lowst:%d\n",
+		gm->gauge->name, __func__,
 		polling, sdu->avgvbat,
 		(int)tmp_duraction.tv_sec, sdu->lowbatteryshutdown);
 
 	return polling;
-
 }
 
 static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
@@ -338,12 +299,8 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 	int current_ui_soc = bm->uisoc;
 	int current_gm1_soc = bm->gm1->soc;
 	int current_gm2_soc = bm->gm2->soc;
-	int current_gm1_uisoc = bm->gm1->ui_soc;
-	int current_gm2_uisoc = bm->gm2->ui_soc;
 	int vbat1 = 0, vbat2 = 0, chg_vbat = 0;
 	int tmp = 25;
-	//struct shutdown_controller *sdd = &gm->sdc;
-	//struct shutdown_controller *sdc = &gm->bm->sdc;
 	struct battery_shutdown_unit *sdu = &bm->sdc.bmsdu;
 	struct battery_shutdown_unit *sdu1 = &bm->sdc.bat[bm->gm1->id];
 	struct battery_shutdown_unit *sdu2 = &bm->sdc.bat[bm->gm2->id];
@@ -353,7 +310,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 
 	now = ktime_get_boottime();
 
-	pr_err("%s,BM:soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
+	pr_debug("%s,BM:soc_zero:%d,ui 1percent:%d,dlpt_shut:%d,under_shutdown_volt:%d\n",
 		__func__,
 		sdu->shutdown_status.is_soc_zero_percent,
 		sdu->shutdown_status.is_uisoc_one_percent,
@@ -380,15 +337,15 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 				kernel_power_off();
 				return polling;
 			}
-		} else if (current_gm1_uisoc > 0 && current_gm2_uisoc > 0) { //????
+		} else if (current_gm1_soc > 0 && current_gm2_soc > 0) {
 			sdu->shutdown_status.is_soc_zero_percent = false;
 			sdu->pre_time[SOC_ZERO_PERCENT] = 0;
 		} else {
 			/* ui_soc is not zero, check it after 10s */
 			polling++;
 		}
-		pr_err("%s, !!! SOC_ZERO_PERCENT, vbat1:%d, vbat2:%d, current_gm1_uisoc:%d, current_gm2_uisoc:%d\n",
-			__func__, vbat1, vbat2, current_gm1_uisoc, current_gm2_uisoc);
+		pr_debug("%s, !!! SOC_ZERO_PERCENT, vbat1:%d, vbat2:%d, current_gm1_soc:%d, current_gm2_soc:%d\n",
+			__func__, vbat1, vbat2, current_gm1_soc, current_gm2_soc);
 	}
 
 	if (sdu->shutdown_status.is_uisoc_one_percent) {
@@ -397,22 +354,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 		now_current2 = gauge_get_int_property(bm->gm2,
 			GAUGE_PROP_BATTERY_CURRENT);
 
-		if (current_ui_soc == 1) {
-			if (sdu->pre_time[SHUTDOWN_1_TIME] == 0)
-				sdu->pre_time[SHUTDOWN_1_TIME] = now;
-
-			duraction =
-				ktime_sub(
-				now, sdu->pre_time[SHUTDOWN_1_TIME]);
-
-			polling++;
-			tmp_duraction = ktime_to_timespec64(duraction);
-			if (tmp_duraction.tv_sec >= 60 * bm->gm1->fg_cust_data.shutdown_1_time) {
-				pr_err("force uisoc zero percent\n");
-				bm->force_ui_zero = 1;
-				return polling;
-			}
-		} else if (current_ui_soc == 0) {
+		if (current_ui_soc == 0) {
 			if (sdu->pre_time[UISOC_ONE_PERCENT] == 0)
 				sdu->pre_time[UISOC_ONE_PERCENT] = now;
 
@@ -429,7 +371,6 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			}
 		} else if (now_current1 > 0 && now_current2 > 0 &&
 			current_gm1_soc > 0 && current_gm2_soc > 0) {
-			polling = 0;
 			sdu->shutdown_status.is_uisoc_one_percent = 0;
 			sdu->pre_time[UISOC_ONE_PERCENT] = 0;
 			sdu->pre_time[SHUTDOWN_1_TIME] = 0;
@@ -459,7 +400,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 		if (bm->gm1->disableGM30)
 			chg_vbat = 4000;
 		else
-			chg_vbat = get_charger_vbat(bm);
+			chg_vbat = bm_get_vsys(bm);
 
 		sdu->batdata[sdu->batidx] = chg_vbat;
 
@@ -470,7 +411,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 		tmp += battery_get_int_property(bm->gm2, BAT_PROP_TEMPERATURE);
 		tmp = tmp / 2;
 
-		pr_err("lbatcheck vbat:%d avgvbat:%d tmp:%d,bound:%d,th:%d %d,en:%d\n",
+		pr_debug("lbatcheck vbat:%d avgvbat:%d tmp:%d,bound:%d,th:%d %d,en:%d\n",
 			chg_vbat,
 			sdu->avgvbat,
 			tmp,
@@ -548,7 +489,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 		}
 
 		polling++;
-		pr_err("[%s][UT] V %d ui_soc %d dur %d [%d:%d:%d:%d] batdata[%d] %d %d\n",
+		pr_debug("[%s][UT] V %d ui_soc %d dur %d [%d:%d:%d:%d] batdata[%d] %d %d\n",
 			__func__,
 			sdu->avgvbat, current_ui_soc,
 			(int)tmp_duraction.tv_sec,
@@ -562,7 +503,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			sdu->batidx = 0;
 	}
 
-	pr_err(
+	pr_debug(
 		"%s %d avgvbat:%d sec:%d lowst:%d\n",
 		__func__,
 		polling, sdu->avgvbat,
@@ -617,15 +558,44 @@ static enum alarmtimer_restart power_misc_kthread_gm1_timer_func(
 	return ALARMTIMER_NORESTART;
 }
 
-static void check_bm_shutdonw(struct mtk_battery_manager *bm)
+
+static ktime_t check_power_misc_time(struct mtk_battery_manager *bm)
 {
-	if (bm->gm_no == 2) {
-		if (bm->gm1->ui_soc == 0 || bm->gm2->ui_soc == 0)
-			set_bm_shutdown_cond(bm, SOC_ZERO_PERCENT);
-		if (bm->uisoc == 1)
-			set_bm_shutdown_cond(bm, UISOC_ONE_PERCENT);
+	ktime_t ktime;
+	int vsys = 0;
+
+
+	if (bm->disable_quick_shutdown == 1) {
+		ktime = ktime_set(10, 0);
+		goto out;
 	}
 
+	if (bm->gm_no == 1) {
+		if (bm->sdc.bat[bm->gm1->id].down_to_low_bat == 1) {
+			ktime = ktime_set(10, 0);
+			goto out;
+		}
+	} else {
+		if (bm->sdc.bmsdu.down_to_low_bat == 1) {
+			ktime = ktime_set(10, 0);
+			goto out;
+		}
+	}
+
+	vsys = bm_get_vsys(bm);
+	if (vsys > bm->vsys_det_voltage1)
+		ktime = ktime_set(10, 0);
+	else if (vsys > bm->vsys_det_voltage2)
+		ktime = ktime_set(1, 0);
+	else
+		ktime = ktime_set(0, 100 * NSEC_PER_MSEC);
+
+out:
+	pr_debug("%s check average timer vsys:%d, time(msec):%lld disable: %d bound: %d %d\n",
+		__func__, vsys, ktime_to_ms(ktime),
+			bm->disable_quick_shutdown, bm->vsys_det_voltage1, bm->vsys_det_voltage2);
+
+	return ktime;
 }
 
 static int power_misc_routine_thread(void *arg)
@@ -648,8 +618,6 @@ static int power_misc_routine_thread(void *arg)
 		spin_unlock_irqrestore(&bm->sdc.slock, flags);
 
 		pr_err("[%s] before %d\n", __func__, pending_flags);
-		//power_misc_handler(bm);
-		check_bm_shutdonw(bm);
 
 		if(pending_flags & 1<<BATTERY_MAIN)
 			polling[BATTERY_MAIN] = shutdown_event_handler(bm->gm1);
@@ -666,7 +634,7 @@ static int power_misc_routine_thread(void *arg)
 
 		pr_err("[%s] after %d M:%d F:%d S:%d\n", __func__,pending_flags, polling[0], polling[1], polling[2]);
 		time_now  = ktime_get_boottime();
-		ktime = ktime_set(10, 0);
+		ktime = check_power_misc_time(bm);
 		for (i = 0; i < BATTERY_SDC_MAX; i++ ) {
 			if (pending_flags & (1 << i) || polling[i]) {
 				bm->sdc.endtime[i] = ktime_add(time_now, ktime);
@@ -741,13 +709,12 @@ void bm_check_bootmode(struct device *dev,
 static void bm_update_status(struct mtk_battery_manager *bm)
 {
 
-	int vbat1, vbat2, ibat1, ibat2, vbat3 =0;
+	int vbat1, vbat2, ibat1, ibat2, vbat3 =0, vbat4 = 0;
 	int car1, car2;
 	struct mtk_battery *gm1;
 	struct mtk_battery *gm2;
 	struct fgd_cmd_daemon_data *d1;
 	struct fgd_cmd_daemon_data *d2;
-	int test = 0;
 
 	if (bm->gm_no == 2) {
 
@@ -756,7 +723,7 @@ static void bm_update_status(struct mtk_battery_manager *bm)
 		d1 = &gm1->daemon_data;
 		d2 = &gm2->daemon_data;
 		vbat3 = get_charger_vbat(bm);
-
+		vbat4 = bm_get_vsys(bm);
 
 		vbat1 = gauge_get_int_property(bm->gm1,
 				GAUGE_PROP_BATTERY_VOLTAGE);
@@ -771,14 +738,11 @@ static void bm_update_status(struct mtk_battery_manager *bm)
 		car2 = gauge_get_int_property(bm->gm2,
 				GAUGE_PROP_COULOMB);
 
-		test = (bm->gm1->ui_soc * 2000 + bm->gm2->ui_soc* 800) /2800;
-
-		pr_err("[%s] uisoc:%d %d %d %d soc:%d %d vbat:%d %d %d ibat:%d %d car:%d %d\n",
-			__func__,
-			test, bm->uisoc,
+		pr_err("[%s] uisoc:%d %d %d soc:%d %d vbat:%d %d %d %d ibat:%d %d car:%d %d\n", __func__,
+			bm->uisoc,
 			bm->gm1->ui_soc, bm->gm2->ui_soc,
 			bm->gm1->soc, bm->gm2->soc,
-			vbat1, vbat2, vbat3,
+			vbat1, vbat2, vbat3, vbat4,
 			ibat1, ibat2,
 			car1, car2);
 
@@ -1779,6 +1743,32 @@ static int mtk_bm_create_netlink(struct platform_device *pdev)
 	return 0;
 }
 
+void bm_custom_init_from_header(struct mtk_battery_manager *bm)
+{
+	bm->vsys_det_voltage1  = VSYS_DET_VOLTAGE1;
+	bm->vsys_det_voltage2  = VSYS_DET_VOLTAGE2;
+}
+
+void bm_custom_init_from_dts(struct platform_device *pdev, struct mtk_battery_manager *bm)
+{
+	struct device *dev = &pdev->dev;
+	int ret = 0;
+
+	ret = device_property_read_u32(dev, "disable-quick-shutdown", &bm->disable_quick_shutdown);
+	if (ret)
+		pr_debug("%s: disable-quick-shutdown get fail\n", __func__);
+
+	ret = device_property_read_u32(dev, "vsys-det-voltage1", &bm->vsys_det_voltage1);
+	if (ret)
+		pr_debug("%s: vsys-det-voltage1 get fail\n", __func__);
+
+	ret = device_property_read_u32(dev, "vsys-det-voltage2", &bm->vsys_det_voltage2);
+	if (ret)
+		pr_debug("%s: vsys-det-voltage2 get fail\n", __func__);
+
+	pr_debug("%s: %d %d %d n", __func__,
+		bm->disable_quick_shutdown, bm->vsys_det_voltage1, bm->vsys_det_voltage2);
+}
 
 static int mtk_bm_probe(struct platform_device *pdev)
 {
@@ -1794,6 +1784,9 @@ static int mtk_bm_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, bm);
 	bm->dev = &pdev->dev;
+
+	bm_custom_init_from_header(bm);
+	bm_custom_init_from_dts(pdev, bm);
 
 	psy = devm_power_supply_get_by_phandle(&pdev->dev,
 								 "gauge1");
@@ -1840,6 +1833,14 @@ static int mtk_bm_probe(struct platform_device *pdev)
 	if (bm->gm1 == NULL && bm->gm2 == NULL) {
 		pr_err("[%s]disable gauge because can not find gm!\n", __func__);
 		return 0;
+	}
+
+
+	bm->chan_vsys = devm_iio_channel_get(
+		&pdev->dev, "vsys");
+	if (IS_ERR(bm->chan_vsys)) {
+		ret = PTR_ERR(bm->chan_vsys);
+		pr_err("vsys auxadc get fail, ret=%d\n", ret);
 	}
 
 	bm_check_bootmode(&pdev->dev, bm);

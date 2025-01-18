@@ -1817,6 +1817,33 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 			set_shutdown_cond(gm, LOW_BAT_VOLT);
 		}
 		break;
+	case 809:
+		{
+			set_shutdown_cond(gm, UISOC_ONE_PERCENT);
+		}
+		break;
+	case 810:
+		{
+			set_shutdown_cond(gm, SOC_ZERO_PERCENT);
+		}
+		break;
+	case 811:
+		{
+			set_shutdown_cond(gm, DLPT_SHUTDOWN);
+		}
+		break;
+	case 812:
+		{
+			set_bm_shutdown_cond(gm->bm, UISOC_ONE_PERCENT);
+		}
+		break;
+	case 813:
+		{
+			wakeup_fg_algo_cmd(
+				gm, FG_INTR_KERNEL_CMD,
+				FG_KERNEL_CMD_UISOC_UPDATE_TYPE, 0);
+		}
+		break;
 	default:
 		bm_err(gm,
 			"exe_BAT_EC cmd %d, param %d, default\n",
@@ -2313,18 +2340,18 @@ static ssize_t Power_Off_Voltage_store(
 	return size;
 }
 
-#ifdef POWER_MISC_OFF
 static ssize_t shutdown_condition_enable_show(
 	struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct mtk_battery *gm;
 	struct mtk_gauge *gauge;
 
-	bm_err(gm, "[%s] into\n", __func__);
+
+
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
 
-	bm_trace(gm,
+	bm_err(gm,
 		"[FG] %s : %d\n",
 		__func__,
 		get_shutdown_cond_flag(gm));
@@ -2358,7 +2385,7 @@ static ssize_t shutdown_condition_enable_store(
 
 	return size;
 }
-#endif
+
 static ssize_t reset_battery_cycle_show(
 	struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -2712,9 +2739,7 @@ static DEVICE_ATTR_RW(FG_daemon_disable);
 static DEVICE_ATTR_RW(FG_Battery_CurrentConsumption);
 static DEVICE_ATTR_RW(Power_On_Voltage);
 static DEVICE_ATTR_RW(Power_Off_Voltage);
-#ifdef POWER_MISC_OFF
 static DEVICE_ATTR_RW(shutdown_condition_enable);
-#endif
 static DEVICE_ATTR_RW(reset_battery_cycle);
 static DEVICE_ATTR_RW(reset_aging_factor);
 static DEVICE_ATTR_RW(BAT_EC);
@@ -2800,12 +2825,9 @@ static int mtk_battery_setup_files(struct platform_device *pdev)
 	if (ret)
 		goto _out;
 
-#ifdef POWER_MISC_OFF
-	ret = device_create_file(&(pdev->dev),
-		&dev_attr_shutdown_condition_enable);
+	ret = device_create_file(&(pdev->dev), &dev_attr_shutdown_condition_enable);
 	if (ret)
 		goto _out;
-#endif
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_reset_battery_cycle);
 	if (ret)
