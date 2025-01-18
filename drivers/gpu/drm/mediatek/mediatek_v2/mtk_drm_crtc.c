@@ -7596,6 +7596,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp;
+	static u32 pre_rpo_lye;
 	unsigned int cur_hrt_bw, cur_larb_hrt_bw, hrt_idx, crtc_idx, flag = DISP_BW_UPDATE_PENDING;
 	int i, j;
 
@@ -7608,7 +7609,14 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 				NULL, PMQOS_SET_BW, NULL);
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 				NULL, PMQOS_UPDATE_BW, &flag);
+		} else if ((priv->data->mmsys_id == MMSYS_MT6991)
+			&& pre_rpo_lye) { //exit RPO
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_SET_BW, NULL);
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
+				NULL, PMQOS_UPDATE_BW, &flag);
 		}
+		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
 				i, j, ddp_mode, 0) {
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_BW, NULL);
@@ -11611,8 +11619,7 @@ skip:
 
 	/* 4. Set QOS BW to 0 */
 	//EXDMA2 is not on the list of basic main data path, need extra setting
-	if ((priv->data->mmsys_id == MMSYS_MT6991)
-		&& mtk_crtc_state->lye_state.rpo_lye) {
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 			NULL, PMQOS_SET_BW, NULL);
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
@@ -12114,8 +12121,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 
 	/* 10. Set QOS BW */
-	if ((priv->data->mmsys_id == MMSYS_MT6991)
-		&& mtk_state->lye_state.rpo_lye) {
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 			NULL, PMQOS_SET_BW, NULL);
 	}
