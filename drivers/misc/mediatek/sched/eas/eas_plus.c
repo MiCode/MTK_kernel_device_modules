@@ -733,7 +733,6 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	int this_cpu = smp_processor_id();
-	struct rq *this_rq = cpu_rq(this_cpu);
 	struct sugov_rq_data *sugov_data_ptr;
 	struct sugov_rq_data *sugov_data_ptr2;
 
@@ -751,8 +750,8 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	irq_log_store();
-	sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-	sugov_data_ptr2 = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr = &per_cpu(rq_data, rq->cpu)->sugov_data;
+	sugov_data_ptr2 = &per_cpu(rq_data, this_cpu)->sugov_data;
 	if (READ_ONCE(sugov_data_ptr->enq_update_dsu_freq) == true
 			|| READ_ONCE(sugov_data_ptr2->enq_dvfs) == true) {
 		cpufreq_update_util(rq, 0);

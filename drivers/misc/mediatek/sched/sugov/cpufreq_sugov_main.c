@@ -60,6 +60,8 @@ struct sugov_cpu {
 };
 
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
+DEFINE_PER_CPU(struct mtk_rq *, rq_data);
+EXPORT_SYMBOL(rq_data);
 
 /*
  * dynamic control util_est
@@ -318,7 +320,7 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 
 			umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 			umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
-			sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+			sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
 			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MIN], umin);
 			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MAX], umax);
 			p = NULL;
@@ -619,12 +621,11 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	unsigned long umin, umax;
 	unsigned int next_f;
 	int this_cpu = smp_processor_id();
-	struct rq *this_rq = cpu_rq(this_cpu);
 	struct sugov_rq_data *sugov_data_ptr;
 
 	raw_spin_lock(&sg_policy->update_lock);
 
-	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr = &per_cpu(rq_data, this_cpu)->sugov_data;
 	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
 
 	sugov_iowait_boost(sg_cpu, time, flags);
@@ -695,9 +696,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		j_util = j_sg_cpu->util;
 		j_max = j_sg_cpu->max;
 		if (_ignore_idle_ctrl) {
-			rq = cpu_rq(j);
-			sugov_data_ptr =
-				&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;
 			idle = (available_idle_cpu(j)
 				&& ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) ? 1 : 0));
 		}
@@ -729,12 +728,11 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
 	int this_cpu = smp_processor_id();
-	struct rq *this_rq = cpu_rq(this_cpu);
 	struct sugov_rq_data *sugov_data_ptr;
 
 	raw_spin_lock(&sg_policy->update_lock);
 
-	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr = &per_cpu(rq_data, this_cpu)->sugov_data;
 	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
 
 	sugov_iowait_boost(sg_cpu, time, flags);
@@ -1171,11 +1169,32 @@ struct cpufreq_governor mtk_gov = {
 	.limits			= sugov_limits,
 };
 
+int init_mtk_rq_data(void)
+{
+	int cpu;
+	struct mtk_rq *data;
+
+	for_each_possible_cpu(cpu) {
+		data = kcalloc(1, sizeof(struct mtk_rq), GFP_KERNEL);
+		if (data)
+			per_cpu(rq_data, cpu) = data;
+		else
+			return -ENOMEM;
+	}
+	return 0;
+}
+
 static int __init cpufreq_mtk_init(void)
 {
 	int ret = 0;
 	struct proc_dir_entry *dir;
 
+	ret = init_mtk_rq_data();
+	if (ret) {
+		pr_info("%s: failed to allocate init_mtk_rq_data, ret: %d\n",
+			__func__, ret);
+		return ret;
+	}
 	ret = mtk_static_power_init();
 	if (ret) {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
