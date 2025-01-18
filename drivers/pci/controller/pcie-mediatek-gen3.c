@@ -379,6 +379,8 @@ struct mtk_pcie_port {
 	spinlock_t cfg_lock;
 	bool ep_hw_mode_en;
 	bool rc_hw_mode_en;
+	u32 saved_l1ss_ctl1;
+	u32 saved_l1ss_ctl2;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_IRQS_NUM);
 };
 
@@ -563,6 +565,30 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 		readl_relaxed(port->pextpcfg + PEXTP_SLPPROT_RDY));
 }
 
+static void mtk_pcie_save_restore_l1ss(struct mtk_pcie_port *port, bool save)
+{
+	struct pci_dev *pdev = port->pcidev;
+	u16 l1ss_cap;
+
+	l1ss_cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_L1SS);
+	if (!l1ss_cap) {
+		dev_info(port->dev, "Can't find L1SS capability\n");
+		return;
+	}
+
+	if (save) {
+		pci_read_config_dword(pdev, l1ss_cap + PCI_L1SS_CTL2, &port->saved_l1ss_ctl2);
+		pci_read_config_dword(pdev, l1ss_cap + PCI_L1SS_CTL1, &port->saved_l1ss_ctl1);
+		dev_info(port->dev, "Save L1SS CTL1=%#x, CTL2=%#x\n", port->saved_l1ss_ctl1,
+				port->saved_l1ss_ctl2);
+	} else {
+		pci_write_config_dword(pdev, l1ss_cap + PCI_L1SS_CTL2, port->saved_l1ss_ctl2);
+		pci_write_config_dword(pdev, l1ss_cap + PCI_L1SS_CTL1, port->saved_l1ss_ctl1);
+		dev_info(port->dev, "Restore L1SS CTL1=%#x, CTL2=%#x\n", port->saved_l1ss_ctl1,
+				port->saved_l1ss_ctl2);
+	}
+}
+
 static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 {
 	struct pci_dev *pdev = port->pcidev;
@@ -577,6 +603,8 @@ static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 	}
 
 	dev_info(port->dev, "Preparing %s config space\n", save ? "save" : "restore");
+
+	mtk_pcie_save_restore_l1ss(port, save);
 
 	if (save) {
 		port->cfg_saved = true;
