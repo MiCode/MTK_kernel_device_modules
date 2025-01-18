@@ -69,6 +69,7 @@ extern int mnoc_log_level;
 
 extern struct mnoc_plat_drv mnoc_drv;
 
+extern int nr_apu_qos_engine;
 int mnoc_rv_setup(struct apusys_core_info *info);
 void mnoc_rv_clear(void);
 

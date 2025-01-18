@@ -29,7 +29,7 @@ unsigned long sum_start, sum_suspend, sum_end, sum_work_func;
 unsigned int cnt_start, cnt_suspend, cnt_end, cnt_work_func;
 #endif
 
-static struct engine_pm_qos_counter engine_pm_qos_counter[NR_APU_QOS_ENGINE];
+static struct engine_pm_qos_counter *engine_pm_qos_counter;
 
 #include <mtk_qos_bound.h>
 #include <mtk_qos_sram.h>
@@ -87,8 +87,8 @@ static struct work_struct qos_work;
 
 /* indicate engine running or not based on cmd cntr for pm qos */
 /* increase 1 when cmd enque, decrease 1 when cmd dequeue */
-static int engine_cmd_cntr[NR_APU_QOS_ENGINE];
-static int engine_boost_val[NR_APU_QOS_ENGINE];
+static int *engine_cmd_cntr;
+static int *engine_boost_val;
 static bool qos_timer_exist;
 
 #if MNOC_QOS_BOOST_ENABLE
@@ -164,7 +164,7 @@ static void apu_qos_timer_start(void)
 		return;
 	}
 
-	for (i = 0; i < NR_APU_QOS_ENGINE; i++) {
+	for (i = 0; i < nr_apu_qos_engine; i++) {
 		engine_pm_qos_counter[i].last_report_bw = 0;
 		engine_pm_qos_counter[i].last_idx = get_qos_bound_idx();
 	}
@@ -233,7 +233,7 @@ void apu_qos_off(void)
 	mutex_unlock(&(qos_counter.list_mtx));
 	/* make sure no work_func running after timer delete */
 	cancel_work_sync(&qos_work);
-	for (i = 0; i < NR_APU_QOS_ENGINE; i++)
+	for (i = 0; i < nr_apu_qos_engine; i++)
 		icc_set_bw(engine_pm_qos_counter[i].emi_icc_path, 0, 0);
 #endif
 #if MNOC_QOS_BOOST_ENABLE
@@ -256,14 +256,14 @@ static void update_cmd_qos(struct qos_bound *qos_info, struct cmd_qos *cmd_qos)
 	int idx = 0, qos_smi_idx = 0;
 
 	/* sample device has no BW */
-	if (cmd_qos->core < NR_APU_QOS_ENGINE)
+	if (cmd_qos->core < nr_apu_qos_engine)
 		qos_smi_idx = get_qosbound_enum(cmd_qos->core);
 
 	/* sum current bw value to cmd_qos */
 	mutex_lock(&cmd_qos->mtx);
 	idx = cmd_qos->last_idx;
 	while (idx != ((get_qos_bound_idx() + 1) % MTK_QOS_BUF_SIZE)) {
-		if (cmd_qos->core < NR_APU_QOS_ENGINE)
+		if (cmd_qos->core < nr_apu_qos_engine)
 			cmd_qos->total_bw += get_qos_bound_apubw_mon(idx, qos_smi_idx);
 		cmd_qos->count++;
 		idx = (idx + 1) % MTK_QOS_BUF_SIZE;
@@ -310,7 +310,7 @@ static int enque_cmd_qos(uint64_t cmd_id,
 		cmd_id, sub_cmd_id, core, boost_val);
 
 	/* sample device has no BW */
-	if (core < NR_APU_QOS_ENGINE) {
+	if (core < nr_apu_qos_engine) {
 		engine_cmd_cntr[core] += 1;
 		/* only allow boost val ascendance for work_func processing */
 		if (engine_cmd_cntr[core] == 0 ||
@@ -381,7 +381,7 @@ static int deque_cmd_qos(struct cmd_qos *cmd_qos)
 		cmd_qos->sub_cmd_id, avg_bw, cmd_qos->total_bw);
 
 	/* sample device has no BW */
-	if (cmd_qos->core < NR_APU_QOS_ENGINE) {
+	if (cmd_qos->core < nr_apu_qos_engine) {
 		engine_cmd_cntr[cmd_qos->core] -= 1;
 		/*
 		 * if (engine_cmd_cntr[cmd_qos->core] == 0)
@@ -427,8 +427,7 @@ static void qos_work_func(struct work_struct *work)
 	}
 
 	current_idx = get_qos_bound_idx();
-
-	for (i = 0; i < NR_APU_QOS_ENGINE; i++)	{
+	for (i = 0; i < nr_apu_qos_engine; i++)	{
 		peak_bw = 0;
 		total_bw = 0;
 		cnt = 0;
@@ -838,7 +837,7 @@ int apu_cmd_qos_end(uint64_t cmd_id, uint64_t sub_cmd_id,
 
 			if (cmd_qos->total_bw < total_bw) {
 				/* ignore sample device */
-				if (cmd_qos->core < NR_APU_QOS_ENGINE)
+				if (cmd_qos->core < nr_apu_qos_engine)
 					LOG_ERR(
 						"cmd(0x%llx/0x%llx/%d) total_bw(%d) < %d",
 						cmd_qos->cmd_id,
@@ -851,7 +850,7 @@ int apu_cmd_qos_end(uint64_t cmd_id, uint64_t sub_cmd_id,
 
 			if (cmd_qos->count < total_count) {
 				/* ignore sample device */
-				if (cmd_qos->core < NR_APU_QOS_ENGINE)
+				if (cmd_qos->core < nr_apu_qos_engine)
 					LOG_ERR(
 						"cmd(0x%llx/0x%llx/%d) count(%d) < %d",
 						cmd_qos->cmd_id,
@@ -877,7 +876,7 @@ int apu_cmd_qos_end(uint64_t cmd_id, uint64_t sub_cmd_id,
 	if (!qos_timer_exist) {
 		/* make sure no work_func running after timer delete */
 		cancel_work_sync(&qos_work);
-		for (i = 0; i < NR_APU_QOS_ENGINE; i++)
+		for (i = 0; i < nr_apu_qos_engine; i++)
 			icc_set_bw(engine_pm_qos_counter[i].emi_icc_path, 0, 0);
 	}
 #if MNOC_QOS_BOOST_ENABLE
@@ -977,6 +976,13 @@ void apu_qos_counter_init(struct device *dev)
 	apu_vcore_bw_opp_tab = mnoc_drv->vcore_bw_opp_tab;
 	nr_apu_vcore_opp = mnoc_drv->nr_vcore_opp;
 
+	engine_pm_qos_counter =
+			devm_kzalloc(dev, (nr_apu_qos_engine * sizeof(*engine_pm_qos_counter)), GFP_KERNEL);
+	engine_cmd_cntr =
+			devm_kzalloc(dev, (nr_apu_qos_engine * sizeof(*engine_cmd_cntr)), GFP_KERNEL);
+	engine_boost_val =
+			devm_kzalloc(dev, (nr_apu_qos_engine * sizeof(*engine_boost_val)), GFP_KERNEL);
+
 	/*
 	 * put engine_pm_qos_counter to struct apu_mnoc
 	 * such that mnoc_qos_sys.c can get it from dev_get_drvdata
@@ -995,7 +1001,7 @@ void apu_qos_counter_init(struct device *dev)
 
 	/* init work and pm_qos_request */
 	INIT_WORK(&qos_work, &qos_work_func);
-	for (i = 0; i < NR_APU_QOS_ENGINE; i++) {
+	for (i = 0; i < nr_apu_qos_engine; i++) {
 		/* init engine_cmd_cntr for each engine */
 		engine_cmd_cntr[i] = 0;
 		counter = &engine_pm_qos_counter[i];
@@ -1059,7 +1065,7 @@ void apu_qos_counter_destroy(struct device *dev)
 	cancel_work_sync(&qos_work);
 
 	/* remove pm_qos_request */
-	for (i = 0; i < NR_APU_QOS_ENGINE; i++) {
+	for (i = 0; i < nr_apu_qos_engine; i++) {
 		counter = &engine_pm_qos_counter[i];
 		if (counter == NULL) {
 			LOG_ERR("get counter(%d) fail\n", i);

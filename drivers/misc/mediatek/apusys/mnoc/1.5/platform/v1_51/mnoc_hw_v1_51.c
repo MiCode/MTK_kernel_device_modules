@@ -789,6 +789,7 @@ void mnoc_hw_v1_51_init(void)
 		mnoc_int_dump[grp_idx].sw_irq_sta.reg_val = 0;
 		mnoc_int_dump[grp_idx].sw_irq_sta.timestamp = 0;
 	}
+	nr_apu_qos_engine = NR_APU_QOS_ENGINE;
 
 	LOG_DEBUG("-\n");
 }
