@@ -1474,7 +1474,7 @@ void bm_battery_service_init(struct mtk_battery_manager *bm)
 	bs_data->bat_health = POWER_SUPPLY_HEALTH_GOOD,
 	bs_data->bat_present = 1,
 	bs_data->bat_technology = POWER_SUPPLY_TECHNOLOGY_LION,
-	bs_data->bat_capacity = 50,
+	bs_data->bat_capacity = -1,
 	bs_data->bat_batt_vol = 0,
 	bs_data->bat_batt_temp = 0,
 
@@ -1703,18 +1703,6 @@ void mtk_bm_netlink_handler(struct sk_buff *skb)
 	data = NLMSG_DATA(nlh);
 
 	fgd_msg = (struct afw_header *)data;
-
-	pr_notice("rcv: iid:%d dtype:%d cmd:%d hash:%d subcmd:%d subcmdp1:%d data_len:%d rdata_len%d id:%d pid:%d\n",
-		fgd_msg->instance_id,
-		fgd_msg->datatype,
-		fgd_msg->cmd,
-		fgd_msg->hash,
-		fgd_msg->subcmd,
-		fgd_msg->subcmd_para1,
-		fgd_msg->data_len,
-		fgd_msg->ret_data_len,
-		fgd_msg->identity,
-		pid);
 
 	if (fgd_msg->identity != AFW_MAGIC) {
 		pr_err("[%s]not correct MTKFG netlink packet!%d\n",
