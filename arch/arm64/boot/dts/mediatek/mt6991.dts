@@ -2768,6 +2768,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,larb-id = <4>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE1>;
 		skip-busy-check;
+		skip-rpm-cb;
+		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE>;
 	};
@@ -2780,6 +2782,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,larb-id = <5>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE0>;
 		skip-busy-check;
+		skip-rpm-cb;
+		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1 1 1 1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT>;
 	};
@@ -2792,6 +2796,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mediatek,larb-id = <6>;
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VDE0>;
 		skip-busy-check;
+		skip-rpm-cb;
+		skip-tcms-check;
 		larb-port-real-time-type = <1 1 1>;
 		smi-user-id = <MTK_SMI_VDEC_CORE>;
 	};
