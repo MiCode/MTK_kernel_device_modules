@@ -101,7 +101,13 @@ static DEFINE_SPINLOCK(scp_A_log_buf_spinlock);
 static struct scp_work_struct scp_logger_notify_work[SCP_CORE_TOTAL];
 
 /*scp last log info*/
-#define LAST_LOG_BUF_SIZE  4095
+#define LOGGER_BUF_ENLARGE  2048
+#ifdef LOGGER_BUF_ENLARGE
+#define LAST_LOG_BUF_SIZE   (4095 + LOGGER_BUF_ENLARGE)
+#else
+#define LAST_LOG_BUF_SIZE   4095
+#endif
+
 static struct SCP_LOG_INFO last_log_info;
 
 static char *scp_A_last_log;
@@ -495,10 +501,25 @@ DEVICE_ATTR_RW(scp_A_logger_wakeup_AP);
 static ssize_t scp_A_get_last_log_show(struct device *kobj,
 		struct device_attribute *attr, char *buf)
 {
-	scp_A_get_last_log(last_log_info.scp_log_buf_maxlen);
-	return sprintf(buf, "scp_log_buf_maxlen=%u, log=%s\n",
-			last_log_info.scp_log_buf_maxlen,
-			scp_A_last_log ? scp_A_last_log : "");
+	ssize_t size;
+	uint32_t max = last_log_info.scp_log_buf_maxlen;
+
+	pr_notice("%s: max=%x, PAGE_SIZE=%lx\n",__func__, max, PAGE_SIZE);
+	scp_A_get_last_log(max);
+	if (max > PAGE_SIZE) {
+		if (scp_A_last_log) {
+			memcpy(buf, &scp_A_last_log[max - PAGE_SIZE], PAGE_SIZE - 1);
+			buf[PAGE_SIZE - 1] = '\0';
+			size = PAGE_SIZE - 1;
+		} else {
+			size = 0;
+		}
+		return size;
+	} else {
+		return sprintf(buf, "scp_log_buf_maxlen=%u, log=%s\n",
+		last_log_info.scp_log_buf_maxlen,
+		scp_A_last_log ? scp_A_last_log : "");
+	}
 }
 
 DEVICE_ATTR_RO(scp_A_get_last_log);
