@@ -937,7 +937,7 @@ disable_pm:
 	return ret;
 }
 
-static int xhci_mtk_remove(struct platform_device *pdev)
+static void xhci_mtk_remove(struct platform_device *pdev)
 {
 	struct xhci_hcd_mtk *mtk = platform_get_drvdata(pdev);
 	struct usb_hcd	*hcd = mtk->hcd;
@@ -972,8 +972,6 @@ static int xhci_mtk_remove(struct platform_device *pdev)
 	pm_runtime_set_suspended(dev);
 
 	xhci_mtk_trace_deinit(dev);
-
-	return 0;
 }
 
 static int __maybe_unused xhci_mtk_suspend(struct device *dev)
@@ -1118,7 +1116,7 @@ MODULE_DEVICE_TABLE(of, mtk_xhci_p2_of_match);
 
 static struct platform_driver mtk_xhci_p2_driver = {
 	.probe	= xhci_mtk_probe,
-	.remove	= xhci_mtk_remove,
+	.remove_new	= xhci_mtk_remove,
 	.driver	= {
 		.name = "xhci-mtk-p2",
 		.pm = DEV_PM_OPS,
@@ -1134,7 +1132,7 @@ MODULE_DEVICE_TABLE(of, mtk_xhci_p1_of_match);
 
 static struct platform_driver mtk_xhci_p1_driver = {
 	.probe	= xhci_mtk_probe,
-	.remove	= xhci_mtk_remove,
+	.remove_new = xhci_mtk_remove,
 	.driver	= {
 		.name = "xhci-mtk-p1",
 		.pm = DEV_PM_OPS,
@@ -1152,7 +1150,7 @@ MODULE_DEVICE_TABLE(of, mtk_xhci_of_match);
 
 static struct platform_driver mtk_xhci_driver = {
 	.probe	= xhci_mtk_probe,
-	.remove	= xhci_mtk_remove,
+	.remove_new = xhci_mtk_remove,
 	.driver	= {
 		.name = "xhci-mtk",
 		.pm = DEV_PM_OPS,
