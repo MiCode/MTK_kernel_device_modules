@@ -27,9 +27,9 @@
 	no-sdio;
 	no-sd;
 	hs400-ds-delay = <0x12814>;
-	mediatek,cqhci;
 	vmmc-supply = <&mt_pmic_vemc_ldo_reg>;
 	non-removable;
+	supports-cqe;
 	dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	req-vcore = <800000>;
 	cap-mmc-hw-reset;
@@ -224,6 +224,7 @@
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
+	sdcard-aggressive-pm;
 	cd-debounce-delay-ms = <0>;
 	cd-gpios = <&pio 1 GPIO_ACTIVE_LOW>;
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
