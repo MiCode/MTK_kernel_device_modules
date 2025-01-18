@@ -17165,6 +17165,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		emi-size = <0x1900000>;
 		emi-alignment = <0x1000000>;
 		emi-max-addr = <0xc0000000>;
+		flavor-bin = "2g2a";
 		pinctrl-names = "wf_rst_off",
 				"wf_rst_on",
 				"wf_rst_pta_uart_init",
