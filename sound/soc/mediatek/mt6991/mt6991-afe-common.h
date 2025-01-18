@@ -156,6 +156,7 @@ enum {
 	/* use for mtkaif calibration specail setting */
 	MT6991_DAI_MTKAIF = MT6991_DAI_NUM,
 	MT6991_DAI_MISO_ONLY,
+	MT6991_GPIO_EXT_HP_AMP,
 };
 
 #define MT6991_DAI_I2S_MAX_NUM 13 //depends each platform's max i2s num

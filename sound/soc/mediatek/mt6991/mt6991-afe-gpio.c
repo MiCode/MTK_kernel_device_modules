@@ -54,6 +54,8 @@ static struct audio_gpio_attr aud_gpios[MT6991_AFE_GPIO_GPIO_NUM] = {
 	[MT6991_AFE_GPIO_DAT_MOSI_CH34_ON] = {"aud-dat-mosi-ch34-on", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MISO_ONLY_OFF] = {"aud-dat-miso-only-off", false, NULL},
 	[MT6991_AFE_GPIO_DAT_MISO_ONLY_ON] = {"aud-dat-miso-only-on", false, NULL},
+	[MT6991_GPIO_EXT_HP_AMP_OFF] = {"aud-gpio-ext-hp-amp-off", false, NULL},
+	[MT6991_GPIO_EXT_HP_AMP_ON] = {"aud-gpio-ext-hp-amp-on", false, NULL},
 };
 
 static DEFINE_MUTEX(gpio_request_mutex);
@@ -313,6 +315,12 @@ int mt6991_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		//	mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC1_ON);
 		// else
 		//	mt6991_afe_gpio_select(afe, MT6991_AFE_GPIO_AP_DMIC1_OFF);
+		break;
+	case MT6991_GPIO_EXT_HP_AMP:
+		if (enable)
+			mt6991_afe_gpio_select(afe, MT6991_GPIO_EXT_HP_AMP_ON);
+		else
+			mt6991_afe_gpio_select(afe, MT6991_GPIO_EXT_HP_AMP_OFF);
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);
