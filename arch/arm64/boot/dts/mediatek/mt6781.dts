@@ -3919,6 +3919,8 @@
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		interconnects = <&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "disp_hrt_qos";
+		pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
+
 		/* define threads, see mt6781-gce.h */
 		mediatek,mailbox-gce = <&gce_mbox>;
 		mboxes = <&gce_mbox 0 0 CMDQ_THR_PRIO_4>,
@@ -3926,32 +3928,17 @@
 			<&gce_mbox 2 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 3 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 			<&gce_mbox 1 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_6>,
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
-			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
-			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>,
-			<&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>,
-			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>,
-			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>;
-#else
 			<&gce_mbox 4 0 CMDQ_THR_PRIO_4>,
 			<&gce_mbox 6 0 CMDQ_THR_PRIO_3>;
-#endif
 
 		gce-client-names = "CLIENT_CFG0",
 			"CLIENT_CFG1",
 			"CLIENT_CFG2",
 			"CLIENT_TRIG_LOOP0",
 			"CLIENT_SODI_LOOP0",
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
-			"CLIENT_SUB_CFG0",
-			"CLIENT_DSI_CFG0",
-			"CLIENT_SEC_CFG0",
-			"CLIENT_SEC_CFG1",
-			"CLIENT_SEC_CFG2";
-#else
 			"CLIENT_SUB_CFG0",
 			"CLIENT_DSI_CFG0";
-#endif
+
 		/* define subsys, see mt6781-gce.h */
 		gce-subsys = <&gce_mbox 0x14000000 SUBSYS_1400XXXX>,
 			<&gce_mbox 0x14010000 SUBSYS_1401XXXX>,
@@ -4027,7 +4014,15 @@
 			"MTK_DRM_OPT_CLEAR_LAYER",
 			"MTK_DRM_OPT_LFR",
 			"MTK_DRM_OPT_DYN_MIPI_CHANGE",
-			"MTK_DRM_OPT_SF_PF";
+			"MTK_DRM_OPT_SF_PF",
+			"MTK_DRM_OPT_PRIM_DUAL_PIPE",
+			"MTK_DRM_OPT_MSYNC2_0",
+			"MTK_DRM_OPT_MML_PRIMARY",
+			"MTK_DRM_OPT_DUAL_TE",
+			"MTK_DRM_OPT_VIRTUAL_DISP",
+			"MTK_DRM_OPT_RES_SWITCH",
+			"MTK_DRM_OPT_SHARE_SRAM",
+			"MTK_DRM_OPT_SPHRT";
 
 		helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 			<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -4069,7 +4064,28 @@
 			<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
 			<1>, /*MTK_DRM_OPT_LFR*/
 			<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
-			<1>; /*MTK_DRM_OPT_SF_PF*/
+			<0>, /*MTK_DRM_OPT_SF_PF*/
+			<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
+			<0>, /*MTK_DRM_OPT_MSYNC2_0*/
+			<0>, /*MTK_DRM_OPT_MML_PRIMARY*/
+			<0>, /*MTK_DRM_OPT_DUAL_TE*/
+			<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
+			<0>, /*MTK_DRM_OPT_RES_SWITCH*/
+			<0>, /*MTK_DRM_OPT_SHARE_SRAM*/
+			<1>; /*MTK_DRM_OPT_SPHRT*/
+	};
+
+	disp_mtee_sec: disp_mtee_sec {
+		compatible = "mediatek,disp_mtee";
+
+		mediatek,mailbox-gce = <&gce_mbox>;
+		mboxes = <&gce_mbox_sec 8 0 CMDQ_THR_PRIO_3>,
+			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>,
+			<&gce_mbox_sec 9 0 CMDQ_THR_PRIO_3>;
+
+		gce-client-names = "CLIENT_SEC_CFG0",
+				"CLIENT_SEC_CFG1",
+				"CLIENT_SEC_CFG2";
 	};
 
 	disp_mutex0: disp_mutex@14001000 {
@@ -4495,9 +4511,9 @@
 		mediatek,smi-id = <1>;
 		iommus = <&iommu0 M4U_PORT_L1_DISP_RDMA0>;
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_DISP_RDMA0	)
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_DISP_RDMA0)
 					&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_DISP_RDMA0	)
+			<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_DISP_RDMA0)
 					&mmqos SLAVE_COMMON(0)>;
 		interconnect-names = "DDP_COMPONENT_RDMA0_qos",
 					"DDP_COMPONENT_RDMA0_hrt_qos";
@@ -4530,6 +4546,11 @@
 		reg = <0 0x1400b000 0 0x1000>;
 		interrupts = <GIC_SPI 302 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_CCORR0>;
+		ccorr-bit = <12>;
+		ccorr-num-per-pipe = <1>;
+		ccorr-linear-per-pipe = <0x01>;
+		ccorr-prim-force-linear = <0x0>;
+		ccorr-linear = <1>;
 	};
 
 	disp_aal0: disp_aal0@1400c000 {
@@ -4538,6 +4559,9 @@
 		reg = <0 0x1400c000 0 0x1000>;
 		interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_AAL0>;
+		mtk-aal-support = <1>;
+		mtk-dre30-support = <0>;
+		mtk-cabc-no-support = <1>;
 	};
 
 	disp_gamma0: disp_gamma0@1400d000 {
@@ -4546,6 +4570,13 @@
 		reg = <0 0x1400d000 0 0x1000>;
 		interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_GAMMA0>;
+		gamma-data-mode = <0>;
+		color-protect-red = <0>;
+		color-protect-green = <0>;
+		color-protect-blue = <0>;
+		color-protect-white = <0>;
+		color-protect-black = <0>;
+		color-protect-lsb = <0>;
 	};
 
 	disp_postmask0: disp_postmask0@1400e000 {
@@ -4565,6 +4596,15 @@
 		reg = <0 0x1400f000 0 0x1000>;
 		interrupts = <GIC_SPI 307 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&mmsys_config CLK_MM_DISP_DITHER0>;
+		pure-clr-det = <0>;
+		pure-clr-num = <7>;
+		pure-clr-rgb = <255 0 0
+			0 255 0
+			0 0 255
+			255 255 0
+			255 0 255
+			0 255 255
+			255 255 255>;
 	};
 
 	reserved@14010000 {
