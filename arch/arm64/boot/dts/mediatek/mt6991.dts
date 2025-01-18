@@ -3094,6 +3094,24 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <1 0>;
+			/* ste mpam: sid, partid, pmg */
+			mtk,mpam-cfg = <128 1 0>,
+				       <130 1 0>,
+				       <131 1 0>,
+				       <132 1 0>,
+				       <137 1 0>,
+				       <138 1 0>,
+				       <139 1 0>,
+				       <140 1 0>,
+				       <144 1 0>,
+				       <145 1 0>,
+				       <147 1 0>,
+				       <160 1 0>,
+				       <161 1 0>,
+				       <176 1 0>,
+				       <177 1 0>,
+				       <183 1 0>,
+				       <199 1 0>;
 
 			iommu-groups {
 				mm_iommu_group_0: mm-iommu-group-common {
@@ -5938,6 +5956,68 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		heap-name = "mtk_slc";
 	};
 
+	mtkheap-page-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_prot_page-uncached";
+		trusted-mem-type = <10>;
+	};
+
+	mtkheap-region-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_prot_region";
+		trusted-mem-type = <1>;
+		region-heap-align-name = "mtk_prot_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_cam_protected>;
+	};
+
+	mtkheap-page-sapu {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_sapu_page-uncached";
+		trusted-mem-type = <16>;
+		status = "disabled";
+	};
+
+	mtkheap_page_svp: mtkheap-page-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_svp_page-uncached";
+		trusted-mem-type = <9>;
+		status = "disabled";
+	};
+
+	mtkheap_page_wfd: mtkheap-page-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_wfd_page-uncached";
+		trusted-mem-type = <11>;
+		status = "disabled";
+	};
+
+	mtkheap_region_svp: mtkheap-region-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_svp_region";
+		trusted-mem-type = <0>;
+		region-heap-align-name = "mtk_svp_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_codec_protected>;
+		status = "disabled";
+	};
+
+	mtkheap_region_wfd: mtkheap-region-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_wfd_region";
+		trusted-mem-type = <2>;
+		region-heap-align-name = "mtk_wfd_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_codec_protected>;
+		status = "disabled";
+	};
+
+	mtkheap_region_tui: mtkheap-region-tui {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_tui_region";
+		trusted-mem-type = <8>;
+		region-heap-align-name = "mtk_tui_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_svp_disp>;
+		status = "disabled";
+	};
+
 	mtk-iommu-debug {
 		compatible = "mediatek,mt6991-smmu-debug";
 	};
@@ -5953,6 +6033,39 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	};
 
 	/* smmu test devices */
+	smmu-test-ktf1 {
+		compatible = "mediatek,soc-smmu-test-ktf1";
+		dma-mmap-reg = <0x14200000 0x40000>;
+		dma-reg-off = <0x10000>;
+		mtk,iommu-group = <&soc_iommu_group_0>;
+		iommus = <&soc_smmu 0x51>;
+		status = "disabled";
+	};
+
+	smmu-test-ktf2 {
+		compatible = "mediatek,soc-smmu-test-ktf2";
+		mtk,iommu-group = <&soc_iommu_group_0>;
+		iommus = <&soc_smmu 0x53>;
+		status = "disabled";
+	};
+
+	smmu-test-ktf3 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mediatek,soc-smmu-test-ktf3";
+		iommus = <&soc_smmu 0x55>;
+		mtk,iommu-dma-range = <0x40000000 0x10000000>;
+		mtk,smmu-dma-mode = "bypass";
+		status = "disabled";
+	};
+
+	smmu-test-ktf4 {
+		compatible = "mediatek,soc-smmu-test-ktf4";
+		mtk,smmu-dma-mode = "disable";
+		iommus = <&soc_smmu 0x57>;
+		status = "disabled";
+	};
+
 	smmu-test-ktf5 {
 		compatible = "mediatek,mm-smmu-test-ktf1";
 		dma-mmap-reg = <0x32800000 0x1000>;
@@ -5962,6 +6075,11 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	smmu-test-ktf6 {
 		compatible = "mediatek,mm-smmu-test-ktf2";
 		mtk,smmu-shared = <&mm_smmu_svp_disp>;
+	};
+
+	smmu-test-ktf7 {
+		compatible = "mediatek,mm-coherent-test-ktf";
+		mtk,smmu-shared = <&mm_smmu_acp_disp>;
 	};
 
 	mm_smmu_cam: mm-smmu-cam {
