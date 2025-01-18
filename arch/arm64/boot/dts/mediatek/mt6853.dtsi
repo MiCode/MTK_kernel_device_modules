@@ -3065,50 +3065,44 @@
 
 		mmdvfs {
 			compatible = "mediatek,mmdvfs";
-
 			operating-points-v2 = <&opp_table_disp>;
-			mediatek,support_mux = "disp", "cam",
-			"img", "img2", "dpe",
-			"ipe","venc", "vdec",
-			"mdp", "ccu";
-			mediatek,mux_disp = "TOP_UNIVPLL_D6_D2",
+			mediatek,support_mux = "disp", "cam", "img", "img2", "dpe",
+			"ipe","venc", "vdec", "mdp", "ccu";
+			mediatek,mux-disp = "TOP_UNIVPLL_D6_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_cam = "TOP_MAINPLL_D4_D2",
+			mediatek,mux-cam = "TOP_MAINPLL_D4_D2",
 				"TOP_MMPLL_D7", "TOP_UNIVPLL_D5",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_img = "TOP_MMPLL_D5_D2",
+			mediatek,mux-img = "TOP_MMPLL_D5_D2",
 				"TOP_MMPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_img2 = "TOP_MMPLL_D5_D2",
+			mediatek,mux-img2 = "TOP_MMPLL_D5_D2",
 				"TOP_MMPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_dpe = "TOP_UNIVPLL_D5_D2",
+			mediatek,mux-dpe = "TOP_UNIVPLL_D5_D2",
 				"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_ipe = "TOP_MMPLL_D5_D2",
+			mediatek,mux-ipe = "TOP_MMPLL_D5_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_venc = "TOP_UNIVPLL_D5_D2",
+			mediatek,mux-venc = "TOP_UNIVPLL_D5_D2",
 				"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
 				"TOP_UNIVPLL_D4";
-			mediatek,mux_vdec = "TOP_MAINPLL_D5_D2",
+			mediatek,mux-vdec = "TOP_MAINPLL_D5_D2",
 				"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 				"TOP_MAINPLL_D4";
-			mediatek,mux_mdp = "TOP_MMPLL_D5_D2",
+			mediatek,mux-mdp = "TOP_MMPLL_D5_D2",
 				"TOP_MMPLL_D4_D2", "TOP_MAINPLL_D5",
 				"TOP_TVDPLL_CK";
-			mediatek,mux_ccu = "TOP_MMPLL_D5_D2",
+			mediatek,mux-ccu = "TOP_MMPLL_D5_D2",
 				"TOP_MAINPLL_D6", "TOP_MMPLL_D7",
 				"TOP_UNIVPLL_D5";
-
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-
 			mediatek,support_hopping = "clk_mmpll_ck";
 			mediatek,hopping_clk_mmpll_ck = <2290000000 2750000000
 				 2750000000 2750000000>;
 			mediatek,action = <1>;
-
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>,	/* 0 */
 				<&topckgen_clk CLK_TOP_CAM_SEL>,	/* 1 */
 				<&topckgen_clk CLK_TOP_IMG1_SEL>,	/* 2 */
