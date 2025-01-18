@@ -3145,8 +3145,8 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_mm>;
-		mediatek,support_mux = "mm";
-		mediatek,mux_mm = "TOP_MMPLL_D2",
+		mediatek,support-mux = "mm";
+		mediatek,mux-mm = "TOP_MMPLL_D2",
 			"TOP_UNIVPLL1_D2", "TOP_MMPLL";
 
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
@@ -3177,10 +3177,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	mmqos: interconnect {
 		compatible = "mediatek,mt6761-mmqos";
 		#mtk-interconnect-cells = <1>;
-		mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2>;
-		mediatek,commons = <&smi_common>;
-		disable-ostd;
-		disable-bwl;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2>;
+		mediatek,commons-supply = <&smi_common>;
+		mmqos-state = <0x4>;
+		mmqos-log-level = <0>;
 		clocks = <&topckgen CLK_TOP_MM_SEL>;
 		clock-names = "mm";
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
@@ -3193,7 +3193,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb0", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x14003000 0 0x1000>;
-		mediatek,smi = <&smi_common>;
+		mediatek,smi-supply = <&smi_common>;
 		mediatek,larb-id = <0>;
 		init-power-on;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_DIS>;
@@ -3434,7 +3434,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb2", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x15001000 0 0x1000>;
-		mediatek,smi = <&smi_common>;
+		mediatek,smi-supply = <&smi_common>;
 		mediatek,larb-id = <2>;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_CAM>;
 		clocks = <&mmsys_config CLK_MM_SMI_IMG>,
@@ -3620,7 +3620,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,smi_larb1", "mediatek,smi-larb",
 			     "mediatek,mt6761-smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
-		mediatek,smi = <&smi_common>;
+		mediatek,smi-supply = <&smi_common>;
 		mediatek,larb-id = <1>;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_VCODEC>;
 		clocks = <&vcodecsys CLK_VENC_SET1_VENC>,
