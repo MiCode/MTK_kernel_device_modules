@@ -2363,6 +2363,23 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			};
 		};
 
+		spm_resource_setting: spm-resource-setting {
+			compatible = "mediatek,spm-resource-setting";
+			setting-size = <11>;
+			setting-value-table =
+					<0x53504d00>,
+					<0x00000424>,
+					<0x000000a0>,
+					<0x00000bfe>,
+					<0x00000001>,
+					<0x00000ac8>,
+					<0x00000001>,
+					<0x00000be0>,
+					<0x00000001>,
+					<0x000002d0>,
+					<0x00000001>;
+		};
+
 	};
 
 	nfc:nfc {
