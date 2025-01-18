@@ -1465,6 +1465,11 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		goto decouple_user;
 	}
 
+	if (info->src.format == MML_FMT_P010_HYFBC) {
+		*reason = mml_query_format;
+		return MML_MODE_MML_DECOUPLE;
+	}
+
 	/* rotate go to racing (inline rotate) */
 	if (mml_racing == 1 &&
 		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
