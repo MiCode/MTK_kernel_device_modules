@@ -957,6 +957,15 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 		return -1;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	if ((id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
+		mutex_lock(&slc_mutex);
+		if (get_slc_counter() == 0)
+			request_slc(id);
+		set_slc_counter(1);
+		mutex_unlock(&slc_mutex);
+	}
+#endif
 RETRY:
 	/* send to task with open information */
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,
@@ -997,6 +1006,16 @@ static int mtk_dsp_pcm_close(struct snd_soc_component *component,
 	const char *task_name = get_str_by_dsp_dai_id(id);
 
 	pr_info("%s() %s\n", __func__, task_name);
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	if ((id == AUDIO_TASK_VOIP_ID || id == AUDIO_TASK_DEEPBUFFER_ID)){
+		mutex_lock(&slc_mutex);
+		if (get_slc_counter() == 1)
+			release_slc(id);
+		if (get_slc_counter() > 0)
+			set_slc_counter(0);
+		mutex_unlock(&slc_mutex);
+	}
+#endif
 
 	/* send to task with close information */
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,

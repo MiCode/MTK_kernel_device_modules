@@ -360,6 +360,13 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 #endif
 	snd_compr_use_pause_in_draining(stream);
 
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	mutex_lock(&slc_mutex);
+	if (get_slc_counter() == 0)
+		request_slc(ID);
+	set_slc_counter(1);
+	mutex_unlock(&slc_mutex);
+#endif
 	mtk_scp_ipi_send(TASK_SCENE_PLAYBACK_MP3,
 			 AUDIO_IPI_MSG_ONLY,
 			 AUDIO_IPI_MSG_NEED_ACK,
@@ -428,6 +435,14 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	mutex_lock(&slc_mutex);
+	if (get_slc_counter() == 1)
+		release_slc(ID);
+	if (get_slc_counter() > 0)
+		set_slc_counter(0);
+	mutex_unlock(&slc_mutex);
+#endif
 	offloadservice_setwriteblocked(false);
 
 	if (dsp)

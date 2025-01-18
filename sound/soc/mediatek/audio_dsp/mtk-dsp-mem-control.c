@@ -773,6 +773,17 @@ int set_task_attr(int dsp_id, int task_enum, int param)
 	case ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT:
 		task_attr->kernel_dynamic_config = param;
 		break;
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	case ADSP_TASK_ATTR_ADSP_SLC_SIGN:
+		task_attr->slbc_gid_adsp_data.sign = param;
+		break;
+	case ADSP_TASK_ATTR_ADSP_SLC_DMASIZE:
+		task_attr->slbc_gid_adsp_data.dma_size = param;
+		break;
+	case ADSP_TASK_ATTR_ADSP_SLC_BW:
+		task_attr->slbc_gid_adsp_data.bw = param;
+		break;
+#endif
 	}
 	return 0;
 }
@@ -823,6 +834,14 @@ int get_task_attr(int dsp_id, int task_enum)
 		return task_attr->task_latency.adsp_support_latency;
 	case ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT:
 		return task_attr->kernel_dynamic_config;
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	case ADSP_TASK_ATTR_ADSP_SLC_SIGN:
+		return task_attr->slbc_gid_adsp_data.sign;
+	case ADSP_TASK_ATTR_ADSP_SLC_DMASIZE:
+		return task_attr->slbc_gid_adsp_data.dma_size;
+	case ADSP_TASK_ATTR_ADSP_SLC_BW:
+		return task_attr->slbc_gid_adsp_data.bw;
+#endif
 	default:
 		return -1;
 	}
