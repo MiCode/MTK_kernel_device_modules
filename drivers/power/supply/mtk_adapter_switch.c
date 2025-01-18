@@ -140,48 +140,30 @@ int mtk_selected_adapter_ready(struct mtk_charger *info)
 	return ret;
 }
 
-int mtk_is_adapter_ready(struct mtk_charger *info, int index)
-{
-	adapter_switch_dbg("%s %s:%d\n", __func__, adapter_type_names[index]
-				, info->ta_status[index]);
-
-	if (info->ta_status[index] == TA_ATTACH)
-		return TA_READY;
-	else if (info->ta_status[index] == TA_DETECT_FAIL)
-		return TA_NOT_SUPPORT;
-	else
-		return TA_CHECKING;
-}
-
 int mtk_adapter_switch_control(struct mtk_charger *info)
 {
-	int ta_status[MAX_TA_IDX];
 	int ret = 0;
-	int i = 0;
-
-	for (i = 0; i < MAX_TA_IDX; i++)
-		ta_status[i] = mtk_is_adapter_ready(info, i);
 
 	switch (info->setting.adapter_priority) {
 	case UFCS_FIRST:
-		if (ta_status[UFCS] == TA_READY) {		// UFCS
+		if (info->ta_status[UFCS] == TA_ATTACH) {		// UFCS
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_UFCS;
-		} else if (ta_status[PD] == TA_READY) {		// PD
+		} else if (info->ta_status[PD] == TA_ATTACH) {		// PD
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_PD;
-		} else if (ta_status[UFCS] == TA_NOT_SUPPORT
-			&& ta_status[PD] == TA_NOT_SUPPORT)		// BOTH FAILED
+		} else if (info->ta_status[UFCS] == TA_DETECT_FAIL
+			&& info->ta_status[PD] == TA_DETECT_FAIL)		// BOTH FAILED
 			ret = TA_NOT_SUPPORT;
 		else
 			ret = TA_NOT_SUPPORT;
 	break;
 	case UFCS_FIRST_AND_WAIT:
-		if (ta_status[UFCS] == TA_READY) {
+		if (info->ta_status[UFCS] == TA_ATTACH) {
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_UFCS;
-		} else if (ta_status[PD] == TA_READY) {
-			if (ta_status[UFCS] == TA_NOT_SUPPORT) {
+		} else if (info->ta_status[PD] == TA_ATTACH) {
+			if (info->ta_status[UFCS] == TA_DETECT_FAIL) {
 				ret = TA_READY;
 				info->protocol_state = RUN_ON_PD;
 			} else {
@@ -193,18 +175,18 @@ int mtk_adapter_switch_control(struct mtk_charger *info)
 					ret = TA_NOT_READY;
 				}
 			}
-		} else if (ta_status[UFCS] == TA_NOT_SUPPORT
-			&& ta_status[PD] == TA_NOT_SUPPORT)
+		} else if (info->ta_status[UFCS] == TA_DETECT_FAIL
+			&& info->ta_status[PD] == TA_DETECT_FAIL)
 			ret = TA_NOT_SUPPORT;
 		else
 			ret = TA_NOT_SUPPORT;
 	break;
 	case PD_FIRST_AND_WAIT:
-		if (ta_status[PD] == TA_READY) {
+		if (info->ta_status[PD] == TA_ATTACH) {
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_PD;
-		} else if (ta_status[UFCS] == TA_READY) {
-			if (ta_status[PD] == TA_NOT_SUPPORT) {
+		} else if (info->ta_status[UFCS] == TA_ATTACH) {
+			if (info->ta_status[PD] == TA_DETECT_FAIL) {
 				ret = TA_READY;
 				info->protocol_state = RUN_ON_UFCS;
 			} else {
@@ -216,21 +198,21 @@ int mtk_adapter_switch_control(struct mtk_charger *info)
 					ret = TA_NOT_READY;
 				}
 			}
-		} else if (ta_status[UFCS] == TA_NOT_SUPPORT
-			&& ta_status[PD] == TA_NOT_SUPPORT)
+		} else if (info->ta_status[UFCS] == TA_DETECT_FAIL
+			&& info->ta_status[PD] == TA_DETECT_FAIL)
 			ret = TA_NOT_SUPPORT;
 		else
 			ret = TA_NOT_SUPPORT;
 	break;
 	default:
-		if (ta_status[PD] == TA_READY) {
+		if (info->ta_status[PD] == TA_ATTACH) {
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_PD;
-		} else if (ta_status[UFCS] == TA_READY) {
+		} else if (info->ta_status[UFCS] == TA_ATTACH) {
 			ret = TA_READY;
 			info->protocol_state = RUN_ON_UFCS;
-		} else if (ta_status[UFCS] == TA_NOT_SUPPORT
-			&& ta_status[PD] == TA_NOT_SUPPORT)
+		} else if (info->ta_status[UFCS] == TA_DETECT_FAIL
+			&& info->ta_status[PD] == TA_DETECT_FAIL)
 			ret = TA_NOT_SUPPORT;
 		else
 			ret = TA_NOT_SUPPORT;
@@ -238,7 +220,7 @@ int mtk_adapter_switch_control(struct mtk_charger *info)
 	}
 
 	adapter_switch_err("%s pd_type:%d, ufcs_type:%d, ret:%d, state: %d, set_pri:%d, cnt:%d\n"
-		, __func__, ta_status[PD], ta_status[UFCS], ret
+		, __func__, info->ta_status[PD], info->ta_status[UFCS], ret
 		, info->protocol_state, info->setting.adapter_priority, info->wait_times);
 
 	return ret;

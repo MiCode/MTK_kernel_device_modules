@@ -354,6 +354,7 @@ struct mtk_charger {
 
 	int ta_status[MAX_TA_IDX];
 	int select_adapter_idx;
+	int ta_hardreset;
 	int chr_type;
 	int usb_type;
 	int usb_state;
