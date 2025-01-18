@@ -172,6 +172,11 @@ extern inline int util_fits_capacity(unsigned long util, unsigned long uclamp_mi
 	unsigned long uclamp_max, unsigned long capacity, int cpu);
 extern unsigned long task_h_load(struct task_struct *p);
 
+enum {
+	SKIP_COMPARE_FIT,
+	COMPARE_FIT
+};
+
 extern void set_wake_sync(unsigned int sync);
 extern unsigned int get_wake_sync(void);
 extern void set_uclamp_min_ls(unsigned int val);

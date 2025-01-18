@@ -961,7 +961,7 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 
 void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, bool *need_update)
 {
-	unsigned long util, uclamp_min, uclamp_max, capacity, misfit_task_load;
+	unsigned long util, uclamp_min, uclamp_max, capacity, misfit_task_load = 0;
 	int fits;
 
 	*need_update = false;
