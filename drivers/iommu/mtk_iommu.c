@@ -33,14 +33,14 @@
 #include <linux/arm-smccc.h>
 #include <asm/barrier.h>
 #include <soc/mediatek/smi.h>
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-#include <../misc/mediatek/smi/mtk-smi-dbg.h>
-#endif
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include <../misc/mediatek/iommu/iommu_debug.h>
 #endif
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #include <../misc/mediatek/iommu/iommu_secure.h>
+#endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
+#include <../misc/mediatek/smi/mtk-smi-dbg.h>
 #endif
 
 #include "mtk_iommu.h"
@@ -987,7 +987,9 @@ static void mtk_iommu_tlb_flush_check(struct mtk_iommu_data *data, bool range)
 		pr_warn("%s, TLB flush Range timed out, need to extend time!!(%d, %d)\n",
 			__func__, data->plat_data->iommu_type, data->plat_data->iommu_id);
 		mtk_dump_reg_for_hang_issue(data);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 		mtk_smi_dbg_hang_detect("iommu");
+#endif
 		pr_warn("%s, dump: 0x20:0x%x, 0x12c:0x%x\n",
 			__func__, readl_relaxed(data->base + REG_MMU_INVALIDATE),
 			readl_relaxed(data->base + REG_MMU_CPE_DONE));
@@ -996,7 +998,9 @@ static void mtk_iommu_tlb_flush_check(struct mtk_iommu_data *data, bool range)
 		pr_warn("%s, TLB flush All timed out, need to extend time!!(%d, %d)\n",
 			__func__, data->plat_data->iommu_type, data->plat_data->iommu_id);
 		mtk_dump_reg_for_hang_issue(data);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 		mtk_smi_dbg_hang_detect("iommu");
+#endif
 		pr_warn("%s, dump: 0x20:0x%x, 0x12c:0x%x\n",
 			__func__, readl_relaxed(data->base + REG_MMU_INVALIDATE),
 			readl_relaxed(data->base + REG_MMU_CPE_DONE));
@@ -2277,6 +2281,7 @@ static int mtk_iommu_pm_status_update(u32 type, u32 id, bool pm_sta)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 static int mtk_iommu_dbg_hang_cb(struct notifier_block *nb,
 				 unsigned long action, void *data)
 {
@@ -2292,6 +2297,7 @@ static int register_dbg_notifier;
 static struct notifier_block mtk_iommu_dbg_hang_nb = {
 		.notifier_call = mtk_iommu_dbg_hang_cb,
 };
+#endif
 
 /********** mtk iommu MAU start **********/
 static inline void iommu_set_field_by_mask(void __iomem *m4u_base,
@@ -3015,7 +3021,7 @@ skip_smi:
 		apu_pm_sta[data->plat_data->iommu_id] = POWER_OFF_STA;
 	}
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 	if (data->plat_data->iommu_type == MM_IOMMU) {
 		if (register_dbg_notifier != 1) {
 			mtk_smi_dbg_register_notifier(&mtk_iommu_dbg_hang_nb);

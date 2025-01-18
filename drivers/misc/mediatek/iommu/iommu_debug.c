@@ -5,12 +5,6 @@
 
 #define pr_fmt(fmt)    "mtk_iommu: debug " fmt
 
-/*
- * For IOMMU EP/bring up phase, you must be enable "IOMMU_BRING_UP".
- * If you need to do some special config, you can also use this macro.
- */
-#define IOMMU_BRING_UP	(0)
-
 #include <linux/bitfield.h>
 #include <linux/bits.h>
 #include <linux/io-pgtable.h>
@@ -25,9 +19,7 @@
 #include <linux/export.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
 #include <trace/hooks/iommu.h>
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !IOMMU_BRING_UP
-#include <aee.h>
-#endif
+
 #include "mtk_iommu.h"
 #include "iommu_debug.h"
 #include "iommu_port.h"
@@ -35,6 +27,10 @@
 #include "smmu_reg.h"
 
 #include "../../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !IOMMU_BRING_UP
+#include <aee.h>
+#endif
 
 #define ERROR_LARB_PORT_ID		0xFFFF
 #define F_MMU_INT_TF_MSK		GENMASK(12, 2)

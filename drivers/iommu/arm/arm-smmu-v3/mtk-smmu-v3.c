@@ -26,7 +26,7 @@
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #include "smmu_secure.h"
 #endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 #include "../../../misc/mediatek/smi/mtk-smi-dbg.h"
 #endif
 
@@ -2318,6 +2318,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.skip_sync_timeout = mtk_smmu_skip_sync_timeout,
 };
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 {
 	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
@@ -2328,7 +2329,6 @@ static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	smmu_debug_dump(&data->smmu, true, true);
 }
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 static int mtk_smmu_dbg_hang_cb(struct notifier_block *nb,
 				unsigned long action, void *data)
 {
@@ -2491,7 +2491,7 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 
 	mtk_smmu_config_translation(data);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HANG_DETECT)) {
 		if (register_dbg_notifier != 1) {
 			mtk_smi_dbg_register_notifier(&mtk_smmu_dbg_hang_nb);
