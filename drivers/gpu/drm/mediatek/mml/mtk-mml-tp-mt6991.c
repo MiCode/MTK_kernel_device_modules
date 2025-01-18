@@ -79,7 +79,7 @@ int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
 #ifndef MML_FPGA
-int mml_dpc;
+int mml_dpc = 1;
 #else
 int mml_dpc;
 #endif

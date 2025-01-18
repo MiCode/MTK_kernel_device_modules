@@ -110,12 +110,6 @@ struct mml_dpc {
 	atomic_t addon_task_cnt;
 	atomic_t exc_pw_cnt[mml_max_sys];
 	atomic_t dc_force_cnt[mml_max_sys];
-
-	/* bandwidth cache */
-	struct {
-		u32 srt;
-		u32 hrt;
-	} bandwidth[mml_max_sys];
 };
 
 struct mml_sys_state {
@@ -366,7 +360,7 @@ void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys_id sysid)
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	struct mml_sys_qos *sysqos = &tp->qos[sysid];
@@ -395,6 +389,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys
 
 	if (sysqos->current_volt == volt)	/* skip for better performance */
 		goto done;
+	sysqos->current_level = i;
 
 	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)",
 		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i]);
@@ -402,23 +397,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw, enum mml_sys
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
-	if (dpc) {
-		/* dpc set voltage */
-		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
-			__func__, sysqos->opp_speeds[i], volt, i, tput);
-
-		if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY ||
-			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
-			/* dpc off case set bw to 0 */
-			peak_bw = 0;
-		} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
-			/* no dpc if lower than hrt bound */
-			if (peak_bw < mml_hrt_bound)
-				peak_bw = 0;
-		}
-
-		mml_dpc_dvfs_both_set(DPC_SUBSYS_MML, i, false, peak_bw);
-	} else {
+	if (!dpc) {
 		int ret;
 
 		if (sysqos->reg) {
@@ -452,7 +431,7 @@ done:
 	return volt;
 }
 
-u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc, u32 peak_bw,
+u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
 	const struct mml_topology_path *path, bool enable)
 {
 	u32 sysid, tput = 0;
@@ -474,7 +453,7 @@ u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc, u32 peak_bw,
 	for (sysid = 0; sysid < mml_max_sys; sysid++) {
 		if (!path->sys_en[sysid])
 			continue;
-		tput = max(tput, mml_qos_update_tput(mml, dpc, peak_bw, sysid));
+		tput = max(tput, mml_qos_update_tput(mml, dpc, sysid));
 	}
 
 	return tput;
@@ -1097,7 +1076,7 @@ void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid)
 {
 	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt[sysid]);
 
-	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 1, 0);
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0x10000 | sysid, cur_exc_pw_cnt);
 
 	if (cur_exc_pw_cnt > 1)
 		return;
@@ -1114,7 +1093,7 @@ void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid)
 {
 	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt[sysid]);
 
-	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0, 0);
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, sysid, cur_exc_pw_cnt);
 
 	if (cur_exc_pw_cnt > 0)
 		return;
@@ -1158,6 +1137,8 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 			mml_err("%s  cnt %d", __func__, cur_dc_force_cnt);
 			return;
 		}
+
+		mml_mmp(dpc_dc, MMPROFILE_FLAG_START, sysid, 0);
 	} else {
 		cur_dc_force_cnt = atomic_dec_return(&mml->dpc.dc_force_cnt[sysid]);
 
@@ -1167,22 +1148,11 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 			mml_err("%s  cnt %d", __func__, cur_dc_force_cnt);
 			return;
 		}
+
+		mml_mmp(dpc_dc, MMPROFILE_FLAG_END, sysid, 0);
 	}
 
 	mml_dpc_group_enable(!dcen);
-}
-
-void mml_dpc_bw_update(struct mml_dev *mml, enum mml_sys_id sysid, u32 total_bw, u32 peak_bw)
-{
-	if (mml->dpc.bandwidth[sysid].srt != total_bw) {
-		mml->dpc.bandwidth[sysid].srt = total_bw;
-		mml_dpc_srt_bw_set(sysid, total_bw, false);
-	}
-
-	if (mml->dpc.bandwidth[sysid].hrt != total_bw) {
-		mml->dpc.bandwidth[sysid].hrt = peak_bw;
-		mml_dpc_hrt_bw_set(sysid, peak_bw, false);
-	}
 }
 
 void mml_pw_set_kick_cb(struct mml_dev *mml,
@@ -1322,8 +1292,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
 
-	mml_msg_qos("%s comp %u %s qos bw %u(%u %u) by throughput %u pixel %u size %u%s%s mode %d",
-		__func__, comp->id, comp->name, bandwidth, hrt_bw, cfg->disp_hrt,
+	mml_msg_qos("%s comp %u %s qos bw %u peak %u by throughput %u pixel %u size %u%s%s mode %d",
+		__func__, comp->id, comp->name, bandwidth, hrt_bw,
 		throughput, cache->max_pixel, datasize,
 		hrt ? " hrt" : "", updated ? " update" : "",
 		mtk_mml_hrt_mode);

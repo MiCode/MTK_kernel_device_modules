@@ -104,6 +104,10 @@ struct mml_mmp_events_t {
 	mmp_event dpc_exception_flow;
 	mmp_event dpc_pm_runtime_get;
 	mmp_event dpc_pm_runtime_put;
+	mmp_event dpc_dc;
+	mmp_event dpc_bw_hrt;
+	mmp_event dpc_bw_srt;
+	mmp_event dpc_dvfs;
 };
 
 void mml_mmp_init(void);

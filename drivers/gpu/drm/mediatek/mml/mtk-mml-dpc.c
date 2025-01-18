@@ -93,7 +93,7 @@ int mml_dpc_power_keep(u32 sysid)
 		return -1;
 	}
 
-	mml_msg_dpc("%s exception flow keep", __func__);
+	mml_msg_dpc("%s exception flow keep sys id %u user %d", __func__, sysid, user);
 	return mml_dpc_funcs.dpc_vidle_power_keep(user);
 }
 
@@ -106,7 +106,7 @@ void mml_dpc_power_release(u32 sysid)
 		return;
 	}
 
-	mml_msg_dpc("%s exception flow release", __func__);
+	mml_msg_dpc("%s exception flow release sys id %u user %d", __func__, sysid, user);
 	mml_dpc_funcs.dpc_vidle_power_release(user);
 }
 
@@ -159,6 +159,16 @@ void mml_dpc_srt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep)
 	mml_dpc_funcs.dpc_srt_bw_set(mml_sysid_to_dpc_subsys(sysid), bw_in_mb, force_keep);
 }
 
+void mml_dpc_dvfs_set(const u8 level, bool force)
+{
+	if (mml_dpc_funcs.dpc_dvfs_set == NULL) {
+		mml_msg_dpc("%s dpc_dvfs_set not exist", __func__);
+		return;
+	}
+
+	mml_dpc_funcs.dpc_dvfs_set(DPC_SUBSYS_MML, level, force);
+}
+
 void mml_dpc_dvfs_both_set(u32 sysid, const u8 level, bool force_keep, const u32 bw_in_mb)
 {
 	if (mml_dpc_funcs.dpc_dvfs_both_set == NULL) {
@@ -166,7 +176,26 @@ void mml_dpc_dvfs_both_set(u32 sysid, const u8 level, bool force_keep, const u32
 		return;
 	}
 
-	mml_dpc_funcs.dpc_dvfs_both_set(
-		mml_sysid_to_dpc_subsys(sysid), level, force_keep, bw_in_mb);
+	mml_dpc_funcs.dpc_dvfs_both_set(mml_sysid_to_dpc_subsys(sysid),
+		level, force_keep, bw_in_mb);
 }
 
+void mml_dpc_dvfs_trigger(void)
+{
+	if (mml_dpc_funcs.dpc_dvfs_trigger == NULL) {
+		mml_msg_dpc("%s dpc_dvfs_trigger not exist", __func__);
+		return;
+	}
+
+	mml_dpc_funcs.dpc_dvfs_trigger("MML");
+}
+
+void mml_dpc_dump(void)
+{
+	if (!mml_dpc_funcs.dpc_analysis) {
+		mml_msg_dpc("%s dpc_analysis not exist", __func__);
+		return;
+	}
+
+	mml_dpc_funcs.dpc_analysis();
+}

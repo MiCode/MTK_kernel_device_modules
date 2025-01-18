@@ -756,6 +756,9 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_dbg_op(comp, dump);
 	}
 
+	if (cnt >= 0)
+		mml_dpc_dump();
+
 	mml_clock_lock(cfg->mml);
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_disable);
@@ -932,47 +935,84 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	u32 i;
 
 	memset(&task->total_bw[0], 0, sizeof(task->total_bw));
-	memset(&task->peak_bw[0], 0, sizeof(task->peak_bw));
+	memset(&task->hrt_bw[0], 0, sizeof(task->hrt_bw));
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
 
 		task->total_bw[comp->sysid] += comp->cur_bw;
-		task->peak_bw[comp->sysid] += comp->cur_peak;
+		task->hrt_bw[comp->sysid] += comp->cur_peak;
 	}
 }
 
-static void mml_core_qos_update_dpc(struct mml_frame_config *cfg)
+static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
 	struct mml_task_pipe *task_pipe;
 	struct mml_task *task;
-	u32 total_bw[mml_max_sys] = {0}, peak_bw[mml_max_sys] = {0};
+	u32 srt_bw[mml_max_sys] = {0}, hrt_bw[mml_max_sys] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
+	u32 dpc_dvfs_lv = 0;
 	enum mml_sys_id sysid;
 	u32 i;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
-		task_pipe = list_first_entry_or_null(&tp->path_clts[i].tasks,
-			typeof(*task_pipe), entry_clt);
-		if (!task_pipe)
-			continue;
-		task = task_pipe->task;
+		u32 task_srt_max[mml_max_sys] = {0}, task_hrt_max[mml_max_sys] = {0};
+
+		/* scan all tasks in this cmdq client and find max srt hrt */
+		list_for_each_entry(task_pipe, &tp->path_clts[i].tasks, entry_clt) {
+			task = task_pipe->task;
+
+			for (sysid = 0; sysid < mml_max_sys; sysid++) {
+				task_srt_max[sysid] =
+					max_t(u32, task_srt_max[sysid], task->total_bw[sysid]);
+				task_hrt_max[sysid] =
+					max_t(u32, task_hrt_max[sysid], task->hrt_bw[sysid]);
+			}
+		}
 
 		for (sysid = 0; sysid < mml_max_sys; sysid++) {
-			total_bw[sysid] += task->total_bw[sysid];
-			peak_bw[sysid] += task->peak_bw[sysid];
+			srt_bw[sysid] += task_srt_max[sysid];
+			hrt_bw[sysid] += task_hrt_max[sysid];
 		}
 	}
 
-	/* set dpc total hrt/srt bw for all sys */
 	for (sysid = 0; sysid < mml_max_sys; sysid++) {
-		if (!total_bw[sysid])
-			continue;
-		mml_msg("%s dpc sys %d total_bw %d peak_bw %d",
-			__func__, sysid, total_bw[sysid], peak_bw[sysid]);
-		mml_dpc_bw_update(cfg->mml, sysid, total_bw[sysid], peak_bw[sysid]);
+		srt_bw_max = max_t(u32, srt_bw_max, srt_bw[sysid]);
+		hrt_bw_max = max_t(u32, hrt_bw_max, hrt_bw[sysid]);
+		dpc_dvfs_lv = max_t(u32, dpc_dvfs_lv, tp->qos[sysid].current_level);
 	}
+
+	mml_msg_dpc("%s dpc dvfs level %u srt %u hrt %u hrt_mode %u trigger %s",
+		__func__, dpc_dvfs_lv, srt_bw_max, hrt_bw_max, mtk_mml_hrt_mode,
+		trigger ? "true" : "false");
+	hrt_bw_max = hrt_bw_max ? max_t(u32, hrt_bw_max, cfg->disp_hrt) : 0;
+	if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY || mtk_mml_hrt_mode == MML_HRT_MMQOS) {
+		/* dpc off case set bw to 0 */
+		hrt_bw_max = 0;
+	} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+		/* no dpc if lower than hrt bound */
+		if (hrt_bw_max < mml_hrt_bound)
+			hrt_bw_max = 0;
+	}
+
+	/* set dpc hrt/srt bw */
+	for (sysid = 0; sysid < mml_max_sys; sysid++) {
+		mml_dpc_srt_bw_set(sysid, srt_bw[sysid], false);
+		mml_dpc_hrt_bw_set(sysid, hrt_bw_max, false);
+
+		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, sysid, srt_bw[sysid]);
+		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, sysid, hrt_bw_max);
+	}
+
+	/* set dpc dvfs (mminfra, bus) */
+	mml_dpc_dvfs_set(dpc_dvfs_lv, false);
+
+	/* and update in dvfs end case */
+	if (trigger)
+		mml_dpc_dvfs_trigger();
+
+	mml_mmp(dpc_dvfs, MMPROFILE_FLAG_PULSE, trigger, dpc_dvfs_lv);
 }
 
 static u64 time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rhs)
@@ -1154,7 +1194,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mml_trace_begin("%u_%llu_%llu", throughput, duration, boost_time);
 	task->freq_time[pipe] = sched_clock();
 	path_clt->throughput = throughput;
-	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, cfg->disp_hrt, cfg->path[pipe], true);
+	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, cfg->path[pipe], true);
 
 	/* note the running task not always current begin task */
 	task_pipe_tmp = list_first_entry_or_null(&path_clt->tasks,
@@ -1170,8 +1210,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mml_core_qos_set(task_pipe_tmp->task, tmp_pipe, throughput, tput_up);
 	if (cfg->dpc)
 		tp->dpc_qos_ref++;
-	if (tp->dpc_qos_ref)
-		mml_core_qos_update_dpc(cfg);
+	mml_core_qos_update_dpc(cfg, false);
 
 	mml_trace_end();
 
@@ -1200,7 +1239,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	struct mml_path_client *path_clt = core_get_path_clt(task, pipe);
 	struct mml_task_pipe *task_pipe_cur, *task_pipe_tmp;
 	struct timespec64 curr_time;
-	u32 throughput = 0, tput_up, max_pixel = 0, bandwidth = 0, peak;
+	u32 throughput = 0, tput_up, max_pixel = 0, bandwidth = 0;
 	bool racing_mode = true;
 	bool overdue = false;
 	u32 tmp_pipe = pipe;
@@ -1295,8 +1334,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 done:
 	path_clt->throughput = throughput;
 
-	peak = (cfg->dpc && throughput) ? cfg->disp_hrt : 0;
-	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, peak, cfg->path[pipe], false);
+	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, cfg->path[pipe], false);
 	if (throughput) {
 		/* clear so that qos set api report max bw */
 		task_pipe_cur->bandwidth = 0;
@@ -1308,8 +1346,7 @@ done:
 	}
 
 	/* update/clear dpc bandwidth */
-	if (tp->dpc_qos_ref)
-		mml_core_qos_update_dpc(cfg);
+	mml_core_qos_update_dpc(cfg, true);
 	if (cfg->dpc)
 		tp->dpc_qos_ref--;
 
@@ -1548,10 +1585,12 @@ static void core_taskdone(struct work_struct *work)
 	mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
 
 	/* remove task in qos list and setup next */
+	mml_dpc_exc_keep_task(task, path);
 	if (task->pkts[0])
 		mml_core_dvfs_end(task, 0);
 	if (cfg->dual && task->pkts[1])
 		mml_core_dvfs_end(task, 1);
+	mml_dpc_exc_release_task(task, path);
 
 	if (mml_hw_perf && task->pkts[0]) {
 		perf = cmdq_pkt_get_perf_ret(task->pkts[0]);
@@ -1934,7 +1973,9 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	}
 
 	/* do dvfs/bandwidth calc right before flush to cmdq */
+	mml_dpc_exc_keep_task(task, path);
 	mml_core_dvfs_begin(task, pipe);
+	mml_dpc_exc_release_task(task, path);
 	mml_core_mminfra_disable(cfg->mml, pipe, path->mmlsys);
 
 	mml_trace_ex_begin("%s_cmdq", __func__);
