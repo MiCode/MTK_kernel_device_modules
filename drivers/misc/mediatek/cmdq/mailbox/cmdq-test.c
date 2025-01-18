@@ -786,7 +786,7 @@ static void cmdq_test_mbox_write(
 
 	if (clk_prepare_enable(test->gce.clk)) {
 		cmdq_err("clk fail");
-#if IS_ENABLED(CONFIG_VHOST_CMDQ) || IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 		return;
 #endif
 	}
@@ -818,8 +818,9 @@ static void cmdq_test_mbox_write(
 
 	cmdq_pkt_destroy(pkt);
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	clk_disable_unprepare(test->gce.clk);
-
+#endif
 }
 
 static void cmdq_test_mbox_handshake_event(struct cmdq_test *test)
