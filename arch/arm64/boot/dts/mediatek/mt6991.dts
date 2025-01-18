@@ -12630,6 +12630,15 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		iommus = <&apu_smmu 0xd>;
 	};
 
+	mvpu {
+		compatible = "mediatek, mt6991-mvpu";
+		core-num = <2>;
+		version = <0x0>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xf>;
+	};
+
 	mtk_apu_mem_code: mtk-apu-mem-code {
 		#address-cells = <2>;
 		#size-cells = <2>;
