@@ -7,6 +7,7 @@
 /dts-v1/;
 #include <dt-bindings/mmc/mt6781-msdc.h>
 #include <dt-bindings/clock/mt6781-clk.h>
+#include <dt-bindings/power/mt6781-power.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -672,8 +673,24 @@
 			"cpccfg_reg";
 	};
 
-	scpsys: scpsys@10001000 {
-		compatible = "mediatek,scpsys";
+
+	scpsys: power-controller@10006000 {
+		compatible = "mediatek,mt6781-scpsys","syscon";
+		reg = <0 0x10006000 0 0x1000>;
+		#power-domain-cells = <1>;
+		clocks = <&topckgen TOP_MUX_DISP>,
+			 <&topckgen TOP_MUX_MFG>,
+			 <&topckgen TOP_MUX_CAM>,
+			 <&topckgen TOP_MUX_IMG1>,
+			 <&topckgen TOP_MUX_IPE>,
+			 <&topckgen TOP_MUX_VENC>,
+			 <&topckgen TOP_MUX_VDEC>;
+		clock-names = "disp","mfg","cam","isp", "ipe", "ven", "vde";
+		infracfg = <&infracfg_ao>;
+	};
+
+	scpsys_clk: scpsys@10001000 {
+		compatible = "mediatek,mt6781-scpsys-clk","syscon";
 		reg = <0 0x10001000 0 0x1000>,
 				<0 0x10006000 0 0x1000>,
 				<0 0x1020e000 0 0x1000>,
@@ -921,9 +938,9 @@
 	seninf_top@1a004000 {
 		compatible = "mediatek,seninf_top";
 		reg = <0 0x1a004000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_CAM>,
-			<&scpsys SCP_SYS_CSI>,
-			<&camsys CLK_CAM_M_SENINF>,
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>,
+			<&scpsys MT6781_POWER_DOMAIN_CSI>;
+		clocks = <&camsys CLK_CAM_M_SENINF>,
 			<&topckgen TOP_MUX_SENINF>,
 			<&topckgen TOP_MUX_SENINF1>,
 			<&topckgen TOP_MUX_SENINF2>,
@@ -943,9 +960,7 @@
 			<&topckgen TOP_UNIVP_192M_D4>,
 			<&topckgen TOP_UNIVPLL_D3_D8>;
 
-		clock-names = "SCP_SYS_CAM",
-			"SCP_SYS_CSI",
-			"CAMSYS_SENINF_CGPDN",
+		clock-names = "CAMSYS_SENINF_CGPDN",
 			"TOP_MUX_SENINF",
 			"TOP_MUX_SENINF1",
 			"TOP_MUX_SENINF2",
@@ -981,12 +996,10 @@
 		reg-names = "seninf_top",
 			    "seninf_n3d_a",
 			    "seninf_n3d_b";
-
-		clocks = <&scpsys SCP_SYS_CAM>,
-			 <&camsys CLK_CAM_M_SENINF>,
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>;
+		clocks = <&camsys CLK_CAM_M_SENINF>,
 			 <&camsys CLK_CAM_M_CAMTG>;
-		clock-names = "SCP_SYS_CAM",
-			      "CAMSYS_SENINF_CGPDN",
+		clock-names = "CAMSYS_SENINF_CGPDN",
 			      "CAMSYS_CAMTG_CGPDN";
 	};
 
@@ -1296,7 +1309,7 @@
 		interrupts = <GIC_SPI 75 IRQ_TYPE_EDGE_RISING 0>, /*MDWDT*/
 			     <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH 0>, /*CCIF0 GIC Interrupt ID 196-32*/
 			     <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH 0>; /*CCIF0 GIC Interrupt ID 197-32*/
-		clocks = <&scpsys SCP_SYS_MD1>;
+		clocks = <&scpsys_clk SCP_SYS_MD1>;
 		clock-names = "scp-sys-md1-main";
 		ccci-infracfg = <&infracfg_ao>;
 	};
@@ -1843,8 +1856,7 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,smi-sub-common",
 			"mediatek,disp_smi_2x1_sub_common_u0", "mediatek,smi_common";
 		reg = <0 0x1401b000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <22>;
 	};
 
@@ -1852,8 +1864,7 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,smi-sub-common",
 			"mediatek,disp_smi_2x1_sub_common_u1", "mediatek,smi_common";
 		reg = <0 0x1401c000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <23>;
 	};
 
@@ -1920,8 +1931,7 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,smi-sub-common",
 			"mediatek,img1_smi_2x1_sub_common", "mediatek,smi_common";
 		reg = <0 0x1401e000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <24>;
 	};
 
@@ -2013,8 +2023,7 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,img0_smi_2x1_sub_comm",
 			"mediatek,smi_common", "mediatek,smi-sub-common";
 		reg = <0 0x1502f000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_ISP>;
-		clock-names = "scp-isp";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP>;
 		mediatek,smi-id = <28>;
 		common-clamp = <1>;
 	};
@@ -2137,16 +2146,13 @@
 				/bits/ 16 <CMDQ_EVENT_GCE_IMG2_EVENT21>;
 				msf_token =
 				/bits/ 16 <CMDQ_SYNC_TOKEN_MSF>;
-				clocks =
-								<&imgsys2 CLK_IMGSYS2_LARB9>,
+				power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP>;
+				clocks =			<&imgsys2 CLK_IMGSYS2_LARB9>,
 								<&imgsys2 CLK_IMGSYS2_MSS>,
-								<&imgsys2 CLK_IMGSYS2_MFB>,
-								<&scpsys SCP_SYS_ISP>;
-				clock-names =
-								"MFB_CG_IMG2_LARB11",
+								<&imgsys2 CLK_IMGSYS2_MFB>;
+				clock-names =		"MFB_CG_IMG2_LARB11",
 								"MFB_CG_IMG2_MSS",
-								"MFB_CG_IMG2_MFB",
-								"MFB_CG_IMG1_GALS";
+								"MFB_CG_IMG2_MFB";
 		};
 
 		imgsys_mfb_b@15820000 {
@@ -2293,10 +2299,10 @@
 				compatible = "mediatek,camisp", "syscon";
 				reg = <0 0x1a000000 0 0x10000>;
 				/* Camera CCF */
-				clocks = <&scpsys SCP_SYS_CAM>,
-								<&scpsys SCP_SYS_CAM_RAWA>,
-								<&scpsys SCP_SYS_CAM_RAWB>,
-								<&camsys CLK_CAM_M_CAM>,
+				power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>,
+					<&scpsys MT6781_POWER_DOMAIN_CAM_RAWA>,
+					<&scpsys MT6781_POWER_DOMAIN_CAM_RAWB>;
+				clocks =			<&camsys CLK_CAM_M_CAM>,
 								<&camsys CLK_CAM_M_CAMTG>,
 								<&camsys CLK_CAM_M_CAMSV1>,
 								<&camsys CLK_CAM_M_CAMSV2>,
@@ -2312,10 +2318,7 @@
 								<&camsys_rawb CLK_CAM_RB_CAM>,
 								<&camsys_rawb CLK_CAM_RB_CAMTG>,
 								<&topckgen TOP_MUX_CAMTM>;
-				clock-names = "ISP_SCP_SYS_CAM",
-								"ISP_SCP_SYS_RAWA",
-								"ISP_SCP_SYS_RAWB",
-								"CAMSYS_CAM_CGPDN",
+				clock-names =		"CAMSYS_CAM_CGPDN",
 								"CAMSYS_CAMTG_CGPDN",
 								"CAMSYS_CAMSV0_CGPDN",
 								"CAMSYS_CAMSV1_CGPDN",
@@ -3662,10 +3665,10 @@
 			<&topckgen TOP_MFGPLL_CK>,
 			<&topckgen TOP_MAINPLL_D5>,
 			<&mfgcfg MFGCFG_BG3D>,
-			<&scpsys SCP_SYS_MFG0>,
-			<&scpsys SCP_SYS_MFG1>,
-			<&scpsys SCP_SYS_MFG2>,
-			<&scpsys SCP_SYS_MFG3>;
+			<&scpsys_clk SCP_SYS_MFG0>,
+			<&scpsys_clk SCP_SYS_MFG1>,
+			<&scpsys_clk SCP_SYS_MFG2>,
+			<&scpsys_clk SCP_SYS_MFG3>;
 		clock-names =
 			"clk_mux",		/* switch main/sub */
 			"clk_main_parent",	/* main pll freq */
@@ -3759,12 +3762,11 @@
 		mediatek,larb = <&smi_larb1>;
 		fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
 				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
-
-		clocks = <&scpsys SCP_SYS_DIS>,
-			    <&mmsys_config CLK_MM_DISP_26M>,
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
+		clocks =   <&mmsys_config CLK_MM_DISP_26M>,
 			   <&mmsys_config CLK_MM_APB_BUS>,
 			   <&mmsys_config CLK_MM_DISP_MUTEX0>;
-		clock-num = <4>;
+		clock-num = <3>;
 		operating-points-v2 = <&opp_table_disp0>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		interconnects = <&mmqos SLAVE_LARB(21) &mmqos SLAVE_COMMON(0)>;
@@ -3934,12 +3936,13 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,disp_smi_common",
 				"mediatek,smi_common";
 		reg = <0 0x14002000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_DIS>,
-			<&mmsys_config CLK_MM_SMI_COMMON>,
+	    power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
+		clocks = <&mmsys_config CLK_MM_SMI_COMMON>,
 			<&mmsys_config CLK_MM_SMI_GALS>,
 			<&mmsys_config CLK_MM_SMI_INFRA>,
 			<&mmsys_config CLK_MM_SMI_IOMMU>;
-		clock-names = "scp-dis", "mm-comm", "mm-gals","mm-infra", "mm-iommu";
+		clock-names ="mm-comm", "mm-gals",
+			"mm-infra", "mm-iommu";
 		mediatek,smi-id = <21>;
 		mediatek,smi-cnt = <29>;
 		mmsys_config = <&mmsys_config>;
@@ -3950,8 +3953,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x14003000 0 0x1000>;
 		mediatek,larb-id = <0>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <0>;
 	};
 
@@ -3960,8 +3962,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x14004000 0 0x1000>;
 		mediatek,larb-id = <1>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <1>;
 	};
 
@@ -3970,8 +3971,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1b002000 0 0x1000>;
 		mediatek,larb-id = <2>;
-		clocks = <&scpsys SCP_SYS_DIS>, <&mdpsys_config CLK_MDP_SMI0>;
-		clock-names = "scp-dis", "mdp-smi";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
+		clocks = <&mdpsys_config CLK_MDP_SMI0>;
+		clock-names = "mdp-smi";
 		mediatek,smi-id = <2>;
 	};
 
@@ -3980,8 +3982,7 @@
 				 "mediatek,smi-larb";
 		reg = <0 0x1f00f000 0 0x1000>;
 		mediatek,larb-id = <3>;
-		clocks = <&scpsys SCP_SYS_DIS>;
-		clock-names = "scp-dis";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_DIS>;
 		mediatek,smi-id = <3>;
 	};
 
@@ -3990,8 +3991,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1602e000 0 0x1000>;
 		mediatek,larb-id = <4>;
-		clocks = <&scpsys SCP_SYS_VDE>, <&vdec_gcon VDEC_VDEC>;
-		clock-names = "scp-vdec", "vdec-larb";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_VDE>;
+		clocks = <&vdec_gcon VDEC_VDEC>;
+		clock-names = "vdec-larb";
 		mediatek,smi-id = <4>;
 	};
 
@@ -4000,8 +4002,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x16030000 0 0x1000>;
 		mediatek,larb-id = <5>;
-		clocks = <&scpsys SCP_SYS_VDE>;
-		clock-names = "scp-vdec";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_VDE>;
 		mediatek,smi-id = <5>;
 	};
 
@@ -4010,8 +4011,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x16031000 0 0x1000>;
 		mediatek,larb-id = <6>;
-		clocks = <&scpsys SCP_SYS_VDE>;
-		clock-names = "scp-vdec";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_VDE>;
 		mediatek,smi-id = <6>;
 	};
 
@@ -4020,9 +4020,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a001000 0 0x1000>;
 		mediatek,larb-id = <13>;
-		clocks = <&scpsys SCP_SYS_CAM>,
-			<&camsys CLK_CAM_M_LARB13>;
-		clock-names = "scp-cam", "cam-larb13";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>;
+		clocks = <&camsys CLK_CAM_M_LARB13>;
+		clock-names = "cam-larb13";
 		mediatek,smi-id = <13>;
 	};
 
@@ -4031,9 +4031,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a002000 0 0x1000>;
 		mediatek,larb-id = <14>;
-		clocks = <&scpsys SCP_SYS_CAM>,
-			<&camsys CLK_CAM_M_LARB14>;
-		clock-names = "scp-cam", "cam-larb14";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>;
+		clocks = <&camsys CLK_CAM_M_LARB14>;
+		clock-names = "cam-larb14";
 		mediatek,smi-id = <14>;
 	};
 
@@ -4042,8 +4042,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a003000 0 0x1000>;
 		mediatek,larb-id = <15>;
-		clocks = <&scpsys SCP_SYS_CAM>;
-		clock-names = "scp-cam";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>;
 		mediatek,smi-id = <15>;
 	};
 
@@ -4052,9 +4051,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a00f000 0 0x1000>;
 		mediatek,larb-id = <16>;
-		clocks = <&scpsys SCP_SYS_CAM_RAWA>,
-			<&camsys_rawa CLK_CAM_RA_LARBX>;
-		clock-names = "scp-cam-rawa", "cam-rawa-larbx";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM_RAWA>;
+		clocks = <&camsys_rawa CLK_CAM_RA_LARBX>;
+		clock-names = "cam-rawa-larbx";
 		mediatek,smi-id = <16>;
 		power-reset = <0x1a04f00c 0>;
 		common-reset = <0x1a00c000 2>;
@@ -4065,9 +4064,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a010000 0 0x1000>;
 		mediatek,larb-id = <17>;
-		clocks = <&scpsys SCP_SYS_CAM_RAWB>,
-			<&camsys_rawb CLK_CAM_RB_LARBX>;
-		clock-names = "scp-cam-rawb", "cam-rawb-larbx";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM_RAWB>;
+		clocks = <&camsys_rawb CLK_CAM_RB_LARBX>;
+		clock-names = "cam-rawb-larbx";
 		mediatek,smi-id = <17>;
 		power-reset = <0x1a06f00c 0>;
 		common-reset = <0x1a00d000 3>;
@@ -4078,8 +4077,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1a011000 0 0x1000>;
 		mediatek,larb-id = <18>;
-		clocks = <&scpsys SCP_SYS_CAM_RAWB>;
-		clock-names = "scp-cam-rawb";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM_RAWB>;
 		mediatek,smi-id = <18>;
 	};
 
@@ -4088,9 +4086,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1c10f000 0 0x1000>;
 		mediatek,larb-id = <19>;
-		clocks = <&scpsys SCP_SYS_IPE>,
-			<&ipesys CLK_IPE_LARB19>;
-		clock-names = "scp-ipe", "ipe-larb19";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_IPE>;
+		clocks = <&ipesys CLK_IPE_LARB19>;
+		clock-names = "ipe-larb19";
 		mediatek,smi-id = <19>;
 	};
 
@@ -4099,9 +4097,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1c00f000 0 0x1000>;
 		mediatek,larb-id = <20>;
-		clocks = <&scpsys SCP_SYS_IPE>,
-			<&ipesys CLK_IPE_LARB20>;
-		clock-names = "scp-ipe", "ipe-larb20";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_IPE>;
+		clocks = <&ipesys CLK_IPE_LARB20>;
+		clock-names = "ipe-larb20";
 		mediatek,smi-id = <20>;
 	};
 
@@ -4513,9 +4511,9 @@
 				"mediatek,smi-larb";
 		reg = <0 0x1502e000 0 0x1000>;
 		mediatek,larb-id = <9>;
-		clocks = <&scpsys SCP_SYS_ISP>,
-			<&imgsys1 CLK_IMGSYS1_LARB9>;
-		clock-names = "scp-isp", "img1-larb9";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP>;
+		clocks = <&imgsys1 CLK_IMGSYS1_LARB9>;
+		clock-names = "img1-larb9";
 		mediatek,smi-id = <9>;
 	};
 
@@ -4524,8 +4522,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x15030000 0 0x1000>;
 		mediatek,larb-id = <10>;
-		clocks = <&scpsys SCP_SYS_ISP>;
-		clock-names = "scp-isp";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP>;
 		mediatek,smi-id = <10>;
 	};
 
@@ -4534,9 +4531,9 @@
 				 "mediatek,smi-larb";
 		reg = <0 0x1582e000 0 0x1000>;
 		mediatek,larb-id = <11>;
-		clocks = <&scpsys SCP_SYS_ISP2>,
-			<&imgsys2 CLK_IMGSYS2_LARB9>;
-		clock-names = "scp-isp2", "img2-larb9";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP2>;
+		clocks = <&imgsys2 CLK_IMGSYS2_LARB9>;
+		clock-names = "img2-larb9";
 		mediatek,smi-id = <11>;
 		power-reset = <0x1502000c 2>,
 				<0x1582000c 0>;
@@ -4548,8 +4545,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x15830000 0 0x1000>;
 		mediatek,larb-id = <12>;
-		clocks = <&scpsys SCP_SYS_ISP2>;
-		clock-names = "scp-isp2";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_ISP2>;
 		mediatek,smi-id = <12>;
 	};
 
@@ -4576,10 +4572,10 @@
 				"mediatek,smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
 		mediatek,larb-id = <7>;
-		clocks = <&scpsys SCP_SYS_VEN>,
-			<&venc_gcon VENC_GCON_VENC>,
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_CONN>;
+		clocks = <&venc_gcon VENC_GCON_VENC>,
 			<&venc_gcon VENC_GCON_JPGENC>;
-		clock-names = "scp-venc", "venc-set1", "venc-set2";
+		clock-names = "venc-set1", "venc-set2";
 		mediatek,smi-id = <7>;
 	};
 
@@ -4622,9 +4618,9 @@
 			<GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*conn2ap_sw_irq*/
 			<GIC_SPI 287 IRQ_TYPE_LEVEL_HIGH 0>;
-		clocks = <&scpsys SCP_SYS_CONN>,
+		clocks = <&scpsys_clk SCP_SYS_CONN>,
 			<&infracfg_ao INFRACFG_AO_CCIF4_AP_CG>;
-		clock-names = "conn", "ccif";
+		clock-names = "conn","ccif";
 		memory-region = <&consys_mem>;
 	};
 
@@ -4632,8 +4628,7 @@
 		compatible = "mediatek,mt6781-smi-common", "mediatek,smi-sub-common",
 				"mediatek,cam_smi_subcom", "mediatek,smi_common";
 		reg = <0 0x1a00c000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_CAM>;
-		clock-names = "scp-cam";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_IPE>;
 		mediatek,smi-id = <26>;
 		common-clamp = <2>;
 	};
@@ -4905,9 +4900,9 @@
 	ipe_smi_subcom: ipe-smi-subcom@1c00e000 {
 		compatible = "mediatek,ipe_smi_subcom", "mediatek,smi_common";
 		reg = <0 0x1c00e000 0 0x1000>;
-		clocks = <&scpsys SCP_SYS_IPE>,
-			<&ipesys CLK_IPE_SMI_SUBCOM>;
-		clock-names = "scp-ipe", "ipe-smisubcom";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_IPE>;
+		clocks = <&ipesys CLK_IPE_SMI_SUBCOM>;
+		clock-names = "ipe-smisubcom";
 		mediatek,smi-id = <25>;
 	};
 
@@ -4916,8 +4911,7 @@
 				"mediatek,smi-larb";
 		reg = <0 0x17011000 0 0x1000>;
 		mediatek,larb-id = <8>;
-		clocks = <&scpsys SCP_SYS_VEN>;
-		clock-names = "scp-venc";
+		power-domains = <&scpsys MT6781_POWER_DOMAIN_VEN>;
 		mediatek,smi-id = <8>;
 	};
 
@@ -5472,4 +5466,3 @@
 &mt_pmic_va09_ldo_reg {
 	regulator-always-on;
 };
-
