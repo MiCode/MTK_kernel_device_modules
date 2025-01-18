@@ -1546,7 +1546,7 @@ static s32 aal_config_post(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s start engine_id[%d] en_dre[%d] mode[%d]", __func__, comp->id,
 			dest->pq_config.en_dre, mode);
 
-	if (aal_frm->relay_mode || !aal_frm->is_aal_need_readback)
+	if (aal_frm->relay_mode)
 		goto exit;
 
 	if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK)
@@ -1644,7 +1644,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s engine_id[%d] en_dre[%d]", __func__, comp->id,
 			dest->pq_config.en_dre);
 
-	if (aal_frm->relay_mode || !aal_frm->is_aal_need_readback)
+	if (aal_frm->relay_mode)
 		goto exit;
 
 	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
