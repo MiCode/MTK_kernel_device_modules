@@ -159,7 +159,7 @@ static struct pll_dts *parse_dt(struct platform_device *pdev)
 	return array;
 }
 
-static int fh_plt_drv_probe(struct platform_device *pdev)
+static int NO_OPTIMIZE fh_plt_drv_probe(struct platform_device *pdev)
 {
 	int i;
 	int num_pll;
