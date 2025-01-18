@@ -357,7 +357,7 @@ static ssize_t clkscale_control_store(struct device *dev,
 	if (!strncmp(buf, "powerhal_set: ", 14))
 		opcode = buf + 14;
 
-	if (kstrtou32(opcode, 0, &value) || value > 2)
+	if (kstrtou32(opcode, 0, &value) || value > 5)
 		return -EINVAL;
 
 	/* Only UFS 4.0 device need  */
@@ -377,6 +377,21 @@ static ssize_t clkscale_control_store(struct device *dev,
 
 	case 2: /* scale up */
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_UP);
+		break;
+
+	case 3: /* scale down and not allow change anymore */
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_DOWN);
+		host->clk_scale_forbid = true;
+		break;
+
+	case 4: /* scale up and not allow change anymore */
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_UP);
+		host->clk_scale_forbid = true;
+		break;
+
+	case 5: /* free run and allow change */
+		host->clk_scale_forbid = false;
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
 		break;
 
 	default:
