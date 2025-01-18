@@ -40,4 +40,14 @@ config MTK_LPM_MT6893
 	  Select MediaTek Low Power Module Platform is MT6893
 	  for power management.
 	  Set Y to select this feature for specific platform-mt6893.
+
+config MTK_LPM_MT6877
+	tristate "Specify Mediatek LPM Platform is mt6877"
+	depends on MTK_LOW_POWER_MODULE
+	select MTK_LPM_DBG_COMMON
+	help
+	  Select MediaTek Low Power Module Platform is mt6877
+	  for power management.
+	  Set Y to select this feature for specific platform-mt6877.
 	  If unsure, set N to disable.
+
