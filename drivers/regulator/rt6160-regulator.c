@@ -13,6 +13,8 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 
+#include "rt6160.h"
+
 #define RT6160_MODE_AUTO	0
 #define RT6160_MODE_FPWM	1
 
@@ -41,11 +43,24 @@
 
 #define RT6160_I2CRDY_TIMEUS	100
 
+#define RT6160_POLLING_RG_TIME	10000
+
+#define RT6160_MAX	(10)
+static int ot_cnt[RT6160_MAX];
+static int uv_cnt[RT6160_MAX];
+static int oc_cnt[RT6160_MAX];
+
+static int rt6160_cnt;
+
 struct rt6160_priv {
 	struct regulator_desc desc;
+	struct i2c_client *i2c;
 	struct gpio_desc *enable_gpio;
+	struct regulator_dev *rdev;
 	struct regmap *regmap;
+	struct delayed_work polling_error;
 	bool enable_state;
+	uint8_t id;
 };
 
 static int rt6160_enable(struct regulator_dev *rdev)
@@ -170,6 +185,7 @@ static int rt6160_set_ramp_delay(struct regulator_dev *rdev, int target)
 
 static int rt6160_get_error_flags(struct regulator_dev *rdev, unsigned int *flags)
 {
+	struct rt6160_priv *priv = rdev_get_drvdata(rdev);
 	struct regmap *regmap = rdev_get_regmap(rdev);
 	unsigned int val, events = 0;
 	int ret;
@@ -178,14 +194,20 @@ static int rt6160_get_error_flags(struct regulator_dev *rdev, unsigned int *flag
 	if (ret)
 		return ret;
 
-	if (val & (RT6160_HDSTAT_MASK | RT6160_TSDSTAT_MASK))
+	if (val & (RT6160_HDSTAT_MASK | RT6160_TSDSTAT_MASK)) {
 		events |= REGULATOR_ERROR_OVER_TEMP;
+		ot_cnt[priv->id]++;
+	}
 
-	if (val & RT6160_UVSTAT_MASK)
+	if (val & RT6160_UVSTAT_MASK) {
 		events |= REGULATOR_ERROR_UNDER_VOLTAGE;
+		uv_cnt[priv->id]++;
+	}
 
-	if (val & RT6160_OCSTAT_MASK)
+	if (val & RT6160_OCSTAT_MASK) {
 		events |= REGULATOR_ERROR_OVER_CURRENT;
+		oc_cnt[priv->id]++;
+	}
 
 	if (val & RT6160_PGSTAT_MASK)
 		events |= REGULATOR_ERROR_FAIL;
@@ -209,6 +231,18 @@ static const struct regulator_ops rt6160_regulator_ops = {
 	.set_ramp_delay = rt6160_set_ramp_delay,
 	.get_error_flags = rt6160_get_error_flags,
 };
+
+static void rt6160_polling_error_func(struct work_struct *work)
+{
+	struct rt6160_priv *priv = container_of(work, struct rt6160_priv, polling_error.work);
+	int ret = 0;
+	unsigned int flags = 0;
+
+	schedule_delayed_work(&priv->polling_error, msecs_to_jiffies(RT6160_POLLING_RG_TIME));
+	ret = rt6160_get_error_flags(priv->rdev, &flags);
+	if (!ret)
+		dev_info(&priv->i2c->dev, "%s flags = %x\n", __func__, flags);
+}
 
 static unsigned int rt6160_of_map_mode(unsigned int mode)
 {
@@ -252,7 +286,6 @@ static int rt6160_probe(struct i2c_client *i2c)
 {
 	struct rt6160_priv *priv;
 	struct regulator_config regulator_cfg = {};
-	struct regulator_dev *rdev;
 	bool vsel_active_low;
 	unsigned int devid;
 	int ret;
@@ -280,6 +313,8 @@ static int rt6160_probe(struct i2c_client *i2c)
 		dev_err(&i2c->dev, "Failed to init regmap (%d)\n", ret);
 		return ret;
 	}
+
+	priv->i2c = i2c;
 
 	ret = regmap_read(priv->regmap, RT6160_REG_DEVID, &devid);
 	if (ret)
@@ -311,10 +346,10 @@ static int rt6160_probe(struct i2c_client *i2c)
 	regulator_cfg.init_data = of_get_regulator_init_data(&i2c->dev, i2c->dev.of_node,
 							     &priv->desc);
 
-	rdev = devm_regulator_register(&i2c->dev, &priv->desc, &regulator_cfg);
-	if (IS_ERR(rdev)) {
+	priv->rdev = devm_regulator_register(&i2c->dev, &priv->desc, &regulator_cfg);
+	if (IS_ERR(priv->rdev)) {
 		dev_err(&i2c->dev, "Failed to register regulator\n");
-		return PTR_ERR(rdev);
+		return PTR_ERR(priv->rdev);
 	}
 
 	ret = devm_of_platform_populate(&i2c->dev);
@@ -323,8 +358,29 @@ static int rt6160_probe(struct i2c_client *i2c)
 		return ret;
 	}
 
+	if (rt6160_cnt < RT6160_MAX) {
+		priv->id = rt6160_cnt;
+		rt6160_cnt++;
+		INIT_DELAYED_WORK(&priv->polling_error, rt6160_polling_error_func);
+		schedule_delayed_work(&priv->polling_error, msecs_to_jiffies(RT6160_POLLING_RG_TIME));
+	};
 	return 0;
 }
+
+int rt6160_get_chip_num(void)
+{
+	return rt6160_cnt;
+}
+EXPORT_SYMBOL(rt6160_get_chip_num);
+
+void rt6160_get_error_cnt(int id, struct rt6160_error *error)
+{
+	error->ot = ot_cnt[id];
+	error->uv = uv_cnt[id];
+	error->oc = oc_cnt[id];
+	ot_cnt[id] = uv_cnt[id] = oc_cnt[id] = 0;
+}
+EXPORT_SYMBOL(rt6160_get_error_cnt);
 
 static const struct of_device_id __maybe_unused rt6160_of_match_table[] = {
 	{ .compatible = "richtek,rt6160", },
