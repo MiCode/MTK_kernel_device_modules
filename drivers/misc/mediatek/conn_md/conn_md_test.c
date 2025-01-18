@@ -132,7 +132,7 @@ static int conn_md_test_rx_cb(struct ipc_ilm *ilm)
 	int i = 0;
 
 	pr_info("%s, ilm:0x%p\n", __func__, ilm);
-	pr_info("%s, ilm:src_id(%d), dst_id(%d), msg_id(%d)\n", __func__,
+	pr_info("%s, ilm:src_id(%u), dst_id(%u), msg_id(%u)\n", __func__,
 		ilm->src_mod_id, ilm->dest_mod_id, ilm->msg_id);
 
 	pr_info("%s, local_para_ptr:0x%p, msg_len:%d\n",
