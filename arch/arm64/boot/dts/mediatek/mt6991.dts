@@ -12817,7 +12817,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	sap: sap@1cb20000 {
 			compatible = "mediatek,sap";
 			status = "okay";
-			core-id = <0x02>;
+			core-id = /bits/8 <0x02>;
 			l2tcm-offset = <0x320000>;
 			secure-dump-size = <0x24000>;
 			reg = <0 0x1cf3a000 0 0x1000>,
