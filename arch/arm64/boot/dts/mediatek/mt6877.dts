@@ -6099,8 +6099,17 @@
 		mediatek,spm-mgr;
 		mediatek,usb3-drd;
 		mediatek,noise-still-tr;
+		mediatek,gen2cp-unsupported;
 		usb-role-switch;
+		mediatek,syscon-wakeup = <&pericfg 0x420 101>;
+		wakeup-source;
+		cdp-block;
 		status = "okay";
+		port {
+			mtu3_drd_switch: endpoint {
+				remote-endpoint = <&usb_role>;
+			};
+		};
 
 		usb_host: xhci0@11200000 {
 			compatible = "mediatek,mtk-xhci";
@@ -6138,6 +6147,7 @@
 			nvmem-cells = <&u2_phy_data>;
 			nvmem-cell-names = "intr_cal";
 			nvmem-cell-masks = <0x1f>;
+			mediatek,set-efuse-v1;
 			status = "okay";
 		};
 
@@ -6147,6 +6157,7 @@
 			nvmem-cells = <&u3_phy_data>, <&u3_phy_data>, <&u3_phy_data>;
 			nvmem-cell-names = "iext_intr_ctrl", "rx_impsel", "tx_impsel";
 			nvmem-cell-masks = <0x3f0000 0x1f00 0x1f>;
+			mediatek,set-efuse-v1;
 			status = "okay";
 		};
 	};
@@ -6154,8 +6165,16 @@
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
 		charger = <&mt6360_chg>;
-		dev-conn = <&ssusb>;
+		vbus-supply = <&otg_vbus>;
+		vbus-voltage = <5000000>;
+		vbus-current = <1800000>;
+		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
+		port {
+			usb_role: endpoint@0 {
+				remote-endpoint = <&mtu3_drd_switch>;
+			};
+		};
 	};
 
 	usb_boost_manager {
