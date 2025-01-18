@@ -2555,14 +2555,19 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
 		irq-remain = <&edge_keypad>,
-					 <&level_spi0>,
-					 <&level_spi1>,
-					 <&level_spi2>,
-					 <&level_spi3>,
-					 <&level_spi4>,
-					 <&level_spi5>,
-					 <&level_spi6>,
-					 <&level_spi7>;
+					<&level_spi0>,
+					<&level_spi1>,
+					<&level_spi2>,
+					<&level_spi3>,
+					<&level_spi4>,
+					<&level_spi5>,
+					<&level_spi6>,
+					<&level_spi7>,
+					<&level_apusys_rv_apu_wdt>,
+					<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
+					<&level_apusys_rv_ce_exp>,
+					<&level_apusys_hw_apu_logtop>;
+
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
@@ -2627,6 +2632,26 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			};
 			level_spi7: level-spi7 {
 				target = <&spi7>;
+				value = <0 0 0 0>;
+			};
+			level_apusys_rv_apu_wdt: level-apusys-rv-apu-wdt {
+				target = <&apusys_rv>;
+				value = <0 0 0 0>;
+			};
+			level_apusys_rv_mbox0: level-apusys-rv-mbox0 {
+				target = <&apusys_rv>;
+				value = <0 1 0 0>;
+			};
+			level_apusys_rv_mbox1: level-apusys-rv-mbox1 {
+				target = <&apusys_rv>;
+				value = <0 2 0 0>;
+			};
+			level_apusys_rv_ce_exp: level-apusys-rv-ce-exp {
+				target = <&apusys_rv>;
+				value = <0 3 0 0>;
+			};
+			level_apusys_hw_apu_logtop: level-apusys-hw-apu-logtop {
+				target = <&apusys_hw_logger>;
 				value = <0 0 0 0>;
 			};
 		};
