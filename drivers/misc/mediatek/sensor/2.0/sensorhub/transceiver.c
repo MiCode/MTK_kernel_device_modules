@@ -147,10 +147,7 @@ static bool transceiver_wakeup_check(uint8_t action, uint8_t sensor_type)
 			sensor_type == SENSOR_TYPE_GLANCE_GESTURE ||
 			sensor_type == SENSOR_TYPE_PICK_UP_GESTURE ||
 			sensor_type == SENSOR_TYPE_STATIONARY_DETECT ||
-			sensor_type == SENSOR_TYPE_MOTION_DETECT ||
-			sensor_type == SENSOR_TYPE_IN_POCKET ||
-			sensor_type == SENSOR_TYPE_ANSWER_CALL ||
-			sensor_type == SENSOR_TYPE_FLAT))
+			sensor_type == SENSOR_TYPE_MOTION_DETECT))
 		return true;
 
 	return false;
