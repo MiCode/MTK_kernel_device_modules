@@ -37,6 +37,7 @@
 #include "gpueb_hwvoter_dbg.h"
 #include "gpueb_debug.h"
 #include "gpueb_timesync.h"
+#include "gpueb_common.h"
 
 #include "ghpm.h"
 
@@ -56,6 +57,7 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev);
 
 static struct platform_device *g_pdev;
 static struct workqueue_struct *gpueb_logger_workqueue;
+static void __iomem *g_gpueb_gpr_base;
 
 #if IS_ENABLED(CONFIG_PM)
 static int gpueb_suspend(struct device *dev)
@@ -107,6 +109,12 @@ static struct miscdevice gpueb_device = {
 	.fops = &gpueb_log_file_ops
 };
 
+void __iomem *gpueb_get_gpr_addr(enum gpueb_sram_gpr_id gpr_id)
+{
+	return g_gpueb_gpr_base + gpr_id * SRAM_GPR_SIZE_4B;
+}
+EXPORT_SYMBOL(gpueb_get_gpr_addr);
+
 static int gpueb_create_files(void)
 {
 	int ret = 0;
@@ -134,6 +142,7 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 	unsigned int ghpm_support = 0;
 	unsigned int gpueb_logger_support = 0;
 	struct device_node *node;
+	struct resource *res = NULL;
 
 	gpueb_pr_info(GPUEB_TAG, "GPUEB driver probe start");
 
@@ -146,6 +155,17 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 	if (gpueb_support == 0) {
 		gpueb_pr_info(GPUEB_TAG, "Bypass the GPUEB driver probe");
 		return 0;
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_gpr_base");
+	if (!res) {
+		gpueb_pr_info(GPUEB_TAG, "fail to get resource GPUEB_GPR_BASE");
+		goto err;
+	}
+	g_gpueb_gpr_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (!g_gpueb_gpr_base) {
+		gpueb_pr_info(GPUEB_TAG, "fail to ioremap GPUEB_GPR_BASE: 0x%llx", res->start);
+		goto err;
 	}
 
 	ret = gpueb_ipi_init(pdev);
