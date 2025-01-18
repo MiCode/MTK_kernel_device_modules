@@ -64,10 +64,10 @@ void cmdq_helper_set_fp(struct cmdq_util_helper_fp *cust_cmdq_util);
 #define CMDQ_CPR_DDR_USR_CNT		0x8002
 #define CMDQ_CPR_SLP_GPR_MAX		0x8003
 /* 0x8128 to 0x812f use by MML */
-#define CMDQ_CPR_MML_PQ0_ADDR		0x8128
-#define CMDQ_CPR_MML_PQ0_ADDRH		0x8129
-#define CMDQ_CPR_MML_PQ1_ADDR		0x812a
-#define CMDQ_CPR_MML_PQ1_ADDRH		0x812b
+#define CMDQ_CPR_MML_PQ0_ADDR		0x8008
+#define CMDQ_CPR_MML_PQ0_ADDRH		0x8009
+#define CMDQ_CPR_MML_PQ1_ADDR		0x800A
+#define CMDQ_CPR_MML_PQ1_ADDRH		0x800B
 #define CMDQ_CPR64			0x4e0
 
 #define CMDQ_CPR_TO_CPR64(cpr)		(((cpr - CMDQ_CPR_STRAT_ID) >> 1) + \
@@ -143,6 +143,7 @@ extern bool cmdq_tfa_read_dbg;
 extern bool hw_trace_built_in[2];
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
+extern int cmdq_proc_debug_off;
 
 #define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
 #define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)
@@ -407,6 +408,8 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt);
  * @pkt:	the CMDQ packet
  */
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt);
+
+struct cmdq_pkt *cmdq_pkt_create_with_id(struct cmdq_client *client, u32 debug_id);
 
 u64 *cmdq_pkt_get_va_by_offset(struct cmdq_pkt *pkt, size_t offset);
 
