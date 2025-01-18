@@ -26,7 +26,7 @@
 #define PERFINDEX_LIMIT 100
 #define PERFINDEX_BUF 30
 #define PERFINDEX_SLOT 20
-#define PERFINDEX_LO_ALARM_COUNT 30
+#define PERFINDEX_LO_ALARM_COUNT 60
 
 struct mbraink_gpu_perfidx_info {
 	struct hlist_node hlist;
@@ -50,7 +50,7 @@ static unsigned long long gperfIdxTimeoutInNs = PERFINDEX_TIMEOUT;
 static int gperfIdxLimit = PERFINDEX_LIMIT;
 
 static int gOpMode = mbraink_op_mode_normal;
-static int gPerfLoAlarmCount = PERFINDEX_LO_ALARM_COUNT;
+static int gPerfLoAlarmCount = 1;
 
 static HLIST_HEAD(mbk_g_perfidx_list);
 static DEFINE_MUTEX(mbk_g_perfidx_lock);
@@ -538,6 +538,7 @@ static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 			gpu2mbrain_hint_fenceTimeoutNotify);
 		ged_mali_event_register_gpu_reset_done_callback(
 			gpu2mbrain_hint_GpuResetDoneNotify);
+		gPerfLoAlarmCount = 0;
 #endif
 	} else {
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
@@ -556,6 +557,7 @@ static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 			gpu2mbrain_hint_fenceTimeoutNotify);
 		ged_mali_event_unregister_gpu_reset_done_callback(
 			gpu2mbrain_hint_GpuResetDoneNotify);
+		gPerfLoAlarmCount = 0;
 #endif
 
 	}
