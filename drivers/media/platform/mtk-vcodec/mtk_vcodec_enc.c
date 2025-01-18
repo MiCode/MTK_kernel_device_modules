@@ -4337,7 +4337,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video temporal layer count";
 	cfg.min = 0;
-	cfg.max = 4;
+	cfg.max = 6;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.dims[0] = 2;
