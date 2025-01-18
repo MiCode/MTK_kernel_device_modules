@@ -7831,6 +7831,9 @@ int stmmac_resume(struct device *dev)
 	rtnl_lock();
 	mutex_lock(&priv->lock);
 
+	if (priv->plat->sgmii_setup)
+		priv->plat->sgmii_setup(priv);
+
 	stmmac_reset_queues_param(priv);
 
 	stmmac_free_tx_skbufs(priv);

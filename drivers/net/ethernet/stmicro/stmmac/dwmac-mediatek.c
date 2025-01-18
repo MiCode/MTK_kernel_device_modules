@@ -84,7 +84,7 @@
 #define MT8678_ETH_INTF_SEL		GENMASK(26, 24)
 #define MT8678_RGMII_TXC_PHASE_CTRL	BIT(22)
 #define MT8678_EXT_PHY_MODE		BIT(21)
-#define MT8678__TXC_OUT_OP		BIT(20)
+#define MT8678_TXC_OUT_OP		BIT(20)
 #define MT8678_DLY_GTXC_INV		BIT(12)
 #define MT8678_DLY_GTXC_ENABLE		BIT(5)
 #define MT8678_DLY_GTXC_STAGES		GENMASK(4, 0)
@@ -683,6 +683,20 @@ static void sgmii_polling_link_status(void *vpriv)
 	}
 }
 
+static void sgmii_setup(void *vpriv)
+{
+	struct stmmac_priv *priv = vpriv;
+	struct mediatek_dwmac_plat_data *priv_plat = priv->plat->bsp_priv;
+	int ret;
+
+	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII ||
+	    priv_plat->phy_mode == PHY_INTERFACE_MODE_2500BASEX) {
+		ret = mediatek_sgmii_path_setup(priv_plat->sgmii);
+		if (ret)
+			pr_err("%s: sgmii link up fail", __func__);
+	}
+}
+
 static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
 {
 	int rmii_clk_from_mac = plat->rmii_clk_from_mac ? RMII_CLK_SRC_INTERNAL : 0;
@@ -1076,7 +1090,7 @@ static int mt8678_set_interface(struct mediatek_dwmac_plat_data *plat)
 		return -EINVAL;
 	}
 
-	intf_val |= MT8678__TXC_OUT_OP;
+	intf_val |= MT8678_TXC_OUT_OP;
 	intf_val |= MT8678_RMII_CLK_SRC_INTERNAL;
 	regmap_write(plat->peri_regmap, offset_ctrl, intf_val);
 
@@ -1391,6 +1405,7 @@ static int mediatek_dwmac_common_data(struct platform_device *pdev,
 	plat->init = mediatek_dwmac_init;
 	plat->clks_config = mediatek_dwmac_clks_config;
 	plat->sgmii_polling_link_status = sgmii_polling_link_status;
+	plat->sgmii_setup = sgmii_setup;
 
 	plat->safety_feat_cfg = devm_kzalloc(&pdev->dev,
 					     sizeof(*plat->safety_feat_cfg),
