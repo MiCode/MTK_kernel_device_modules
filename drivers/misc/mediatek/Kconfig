@@ -273,6 +273,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/conn_scp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/memory-amms/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mddp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/network/Kconfig"
 endmenu # Modem
 
 menu "Other Peripherals"
