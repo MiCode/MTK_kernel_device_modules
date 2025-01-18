@@ -1014,6 +1014,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
 
+        mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
+
         mgk_64_device_modules.append("drivers/misc/mediatek/cpufreq_v2/src/CPU_DVFS.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuidle/mtk_cpuidle.ko")
