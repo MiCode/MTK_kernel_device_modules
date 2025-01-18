@@ -40,12 +40,12 @@ void mtk_dmabuf_page_pool_add(struct mtk_dmabuf_page_pool *pool, struct page *pa
 	else
 		index = POOL_LOWPAGE;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	list_add_tail(&page->lru, &pool->items[index]);
 	pool->count[index]++;
+	spin_unlock(&pool->lock);
 	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
 			    1 << pool->order);
-	mutex_unlock(&pool->mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_add);
 
@@ -53,16 +53,18 @@ static struct page *mtk_dmabuf_page_pool_remove(struct mtk_dmabuf_page_pool *poo
 {
 	struct page *page;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	page = list_first_entry_or_null(&pool->items[index], struct page, lru);
 	if (page) {
 		pool->count[index]--;
 		list_del(&page->lru);
+		spin_unlock(&pool->lock);
 		mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
 				    -(1 << pool->order));
+		goto out;
 	}
-	mutex_unlock(&pool->mutex);
-
+	spin_unlock(&pool->lock);
+out:
 	return page;
 }
 
@@ -90,6 +92,7 @@ struct page *mtk_dmabuf_page_pool_alloc(struct mtk_dmabuf_page_pool *pool)
 		page = mtk_dmabuf_page_pool_alloc_pages(pool);
 	return page;
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_alloc);
 
 void mtk_dmabuf_page_pool_free(struct mtk_dmabuf_page_pool *pool, struct page *page)
 {
@@ -98,16 +101,17 @@ void mtk_dmabuf_page_pool_free(struct mtk_dmabuf_page_pool *pool, struct page *p
 
 	mtk_dmabuf_page_pool_add(pool, page);
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_free);
 
 int mtk_dmabuf_page_pool_total(struct mtk_dmabuf_page_pool *pool, bool high)
 {
 	int count;
 
-	mutex_lock(&pool->mutex);
+	spin_lock(&pool->lock);
 	count = pool->count[POOL_LOWPAGE];
 	if (high)
 		count += pool->count[POOL_HIGHPAGE];
-	mutex_unlock(&pool->mutex);
+	spin_unlock(&pool->lock);
 
 	return count << pool->order;
 }
@@ -145,7 +149,7 @@ struct mtk_dmabuf_page_pool *mtk_dmabuf_page_pool_create(gfp_t gfp_mask, unsigne
 	}
 	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
-	mutex_init(&pool->mutex);
+	spin_lock_init(&pool->lock);
 
 	mutex_lock(&pool_list_lock);
 	list_add(&pool->list, &pool_list);
@@ -153,6 +157,7 @@ struct mtk_dmabuf_page_pool *mtk_dmabuf_page_pool_create(gfp_t gfp_mask, unsigne
 
 	return pool;
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_create);
 
 void mtk_dmabuf_page_pool_destroy(struct mtk_dmabuf_page_pool *pool)
 {
@@ -172,6 +177,22 @@ void mtk_dmabuf_page_pool_destroy(struct mtk_dmabuf_page_pool *pool)
 
 	kfree(pool);
 }
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_destroy);
+
+unsigned long mtk_dmabuf_page_pool_get_size(struct mtk_dmabuf_page_pool *pool)
+{
+	int i;
+	unsigned long num_pages = 0;
+
+	spin_lock(&pool->lock);
+	for (i = 0; i < POOL_TYPE_SIZE; ++i)
+		num_pages += pool->count[i];
+	spin_unlock(&pool->lock);
+	num_pages <<= pool->order; /* pool order is immutable */
+
+	return num_pages * PAGE_SIZE;
+}
+EXPORT_SYMBOL_GPL(mtk_dmabuf_page_pool_get_size);
 
 int mtk_dmabuf_page_pool_do_shrink(struct mtk_dmabuf_page_pool *pool, gfp_t gfp_mask,
 				      int nr_to_scan)
