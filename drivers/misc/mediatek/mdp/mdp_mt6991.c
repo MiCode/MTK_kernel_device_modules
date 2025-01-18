@@ -22,7 +22,6 @@
 #endif
 
 #undef MTK_M4U_ID
-#include <dt-bindings/memory/mt6989-larb-port.h>
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include <soc/mediatek/smi.h>
@@ -1259,13 +1258,6 @@ void cmdqMdpInitialSetting(struct platform_device *pdev)
 #ifdef MDP_IOMMU_DEBUG
 	CMDQ_LOG("[MDP] %s\n", __func__);
 
-	/* Register ION Translation Fault function */
-	mtk_iommu_register_fault_callback(SMMU_L2_P0_MDP_RDMA0,
-		cmdq_TranslationFault_callback, (void *)pdev, false);
-	mtk_iommu_register_fault_callback(SMMU_L2_P4_MDP_RDMA2,
-		cmdq_TranslationFault_callback, (void *)pdev, false);
-	mtk_iommu_register_fault_callback(SMMU_L2_P1_MDP_WROT0,
-		cmdq_TranslationFault_callback, (void *)pdev, false);
 #endif
 
 	/* must porting in dts */
@@ -1376,15 +1368,6 @@ u64 cmdq_mdp_get_secure_engine(u64 engine_flags)
 
 static u32 cmdq_mdp_qos_translate_port(u32 engine_id)
 {
-	switch (engine_id) {
-	case CMDQ_ENG_MDP_RDMA0:
-		return SMMU_L2_P0_MDP_RDMA0;
-	case CMDQ_ENG_MDP_RDMA2:
-		return SMMU_L2_P4_MDP_RDMA2;
-	case CMDQ_ENG_MDP_WROT0:
-		return SMMU_L2_P1_MDP_WROT0;
-	}
-
 	return 0;
 }
 
@@ -1409,16 +1392,6 @@ static void *mdp_qos_get_path(u32 thread_id, u32 port)
 {
 	if (!port)
 		return NULL;
-
-	switch (port) {
-	/* mdp part */
-	case SMMU_L2_P0_MDP_RDMA0:
-		return path_mdp_rdma0[thread_id];
-	case SMMU_L2_P4_MDP_RDMA2:
-		return path_mdp_rdma2[thread_id];
-	case SMMU_L2_P1_MDP_WROT0:
-		return path_mdp_wrot0[thread_id];
-	}
 
 	CMDQ_ERR("%s pmqos invalid port %d\n", __func__, port);
 	return NULL;
