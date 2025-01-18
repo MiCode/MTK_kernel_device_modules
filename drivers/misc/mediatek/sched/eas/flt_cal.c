@@ -72,6 +72,9 @@ DEFINE_PER_CPU(struct flt_rq, flt_rq);
 /* Debug */
 //#define FLT_DEBUG 1
 
+/* update for flt tul */
+static bool update_flt_tul = true;
+
 #ifdef FLT_DEBUG
 #define FLT_LOGI(...)	pr_info("FLT:" __VA_ARGS__)
 #else
@@ -1246,11 +1249,17 @@ static void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 {
 	u64 wallclock;
+	int res = -1;
 
 	lockdep_assert_rq_held(rq);
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
 
+	if (unlikely(update_flt_tul && get_eas_hook())) {
+		res = flt_tul();
+		if (res == 0)
+			update_flt_tul = false;
+	}
 	set_window_start(rq);
 	wallclock = get_current_time();
 
