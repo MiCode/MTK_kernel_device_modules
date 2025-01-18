@@ -106,7 +106,7 @@ struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr
 		unsigned long long frameID, unsigned long long start_ts, int action);
 struct ux_frame_info *fpsgo_ux_get_next_frame_info(struct render_info *thr);
 int fpsgo_ux_count_frame_info(struct render_info *thr, int target);
-void fpsgo_boost_non_hwui_policy(struct render_info *thr);
+void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip);
 void fpsgo_set_ux_general_policy(int scrolling);
 int get_ux_general_policy(void);
 void fpsgo_reset_deplist_task_priority(struct render_info *thr);
