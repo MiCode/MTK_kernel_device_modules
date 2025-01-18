@@ -17,6 +17,12 @@
 #include "mdw_rv_events.h"
 #include "mdw_cmn.h"
 
+/* 64-bit Subcmd information : [subcmd type(32bit) | subcmd index(32bit)] */
+#define MDW_SUBCMD_GEN_INFO(sc_type, sc_idx) ((sc_type << 32) | sc_idx)
+
+#define MDW_SUBCMD_GEN_INDEX(sc_info) (sc_info & 0xffffffff)
+#define MDW_SUBCMD_GEN_TYPE(sc_info) (sc_info >> 32)
+
 static struct apu_tags *mdw_rv_tags;
 
 enum mdw_tag_type {
@@ -96,18 +102,21 @@ probe_rv_mdw_cmd(void *data, uint32_t status, pid_t pid,
 	apu_tag_add(mdw_rv_tags, &t);
 }
 
-void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
+void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx, uint64_t vsid,
 		uint32_t history_iptime, uint64_t sync_info, uint32_t status)
 {
 
 	struct mdw_subcmd_exec_info *sc_einfo = NULL;
+	uint64_t sc_type = 0, sc_info = 0;
 
 	sc_einfo = &c->einfos->sc;
+	sc_type = c->subcmds[sc_idx].type;
+	sc_info = MDW_SUBCMD_GEN_INFO(sc_type, sc_idx);
 
 	trace_mdw_rv_subcmd(status,
 		c->rvid, c->inference_id,
-		c->subcmds[sc_idx].type,
-		sc_idx,
+		sc_info,
+		vsid,
 		sc_einfo[sc_idx].ip_start_ts,
 		sc_einfo[sc_idx].ip_end_ts,
 		sc_einfo[sc_idx].was_preempted,
@@ -121,8 +130,8 @@ void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
 static void
 probe_rv_mdw_subcmd(void *data, uint32_t status,
 		uint64_t rvid, uint64_t inf_id,
-		uint32_t sc_type,
-		uint32_t sc_idx,
+		uint64_t sc_info,
+		uint64_t vsid,
 		uint32_t ipstart_ts,
 		uint32_t ipend_ts,
 		uint32_t was_preempted,
@@ -140,8 +149,9 @@ probe_rv_mdw_subcmd(void *data, uint32_t status,
 	t.d.subcmd.status = status;
 	t.d.subcmd.rvid = rvid;
 	t.d.subcmd.inf_id = inf_id;
-	t.d.subcmd.sc_type = sc_type;
-	t.d.subcmd.sc_idx = sc_idx;
+	t.d.subcmd.sc_idx = MDW_SUBCMD_GEN_INDEX(sc_info);
+	t.d.subcmd.sc_type = MDW_SUBCMD_GEN_TYPE(sc_info);
+	t.d.subcmd.vsid = vsid;
 	t.d.subcmd.ipstart_ts = ipstart_ts;
 	t.d.subcmd.ipend_ts = ipend_ts;
 	t.d.subcmd.was_preempted = was_preempted;
@@ -280,8 +290,8 @@ static void mdw_rv_tag_seq_subcmd(struct seq_file *s, struct mdw_rv_tag *t)
 	seq_printf(s, "%s,", status);
 	seq_printf(s, "inf_id=0x%llx,rvid=0x%llx,%s",
 		t->d.subcmd.inf_id, t->d.subcmd.rvid, sc_idx);
-	seq_printf(s, "type=%u,ipstart_ts=0x%x,ipend_ts=0x%x,",
-		t->d.subcmd.sc_type ,t->d.subcmd.ipstart_ts,
+	seq_printf(s, "type=%u,vsid=0x%llx,ipstart_ts=0x%x,ipend_ts=0x%x,",
+		t->d.subcmd.sc_type , t->d.subcmd.vsid, t->d.subcmd.ipstart_ts,
 		t->d.subcmd.ipend_ts);
 	seq_printf(s, "was_preempted=0x%x,exc_core_bmp=0x%x,",
 		t->d.subcmd.was_preempted,

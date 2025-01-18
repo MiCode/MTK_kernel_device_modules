@@ -185,7 +185,7 @@ struct mdw_subcmd_exec_info {
 	int32_t ret;
 	uint32_t was_preempted;
 	uint32_t executed_core_bitmap;
-	uint32_t reserved;
+	uint32_t vsid;
 };
 
 struct mdw_cmd_exec_info {
