@@ -2665,9 +2665,6 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 			dev_info(smmu->dev, "[%s] set_bit bypass for dev:%s",
 				 __func__, dev_name(dev));
 		}
-	} else {
-		dev_info(smmu->dev, "[%s] smmu-dma-mode not found for dev:%s",
-			 __func__, dev_name(dev));
 	}
 
 	arm_smmu_install_ste_for_dev(master);
