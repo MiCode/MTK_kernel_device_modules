@@ -46,6 +46,7 @@
 #define UNIT_TRANS_10		10
 #define CURRENT_CONVERT_RATIO	95
 #define OCCB_MAX_NUM		16
+#define OC_INTR_MAX_NUM		2
 
 /* Get r-fg-value/car-tune-value from gauge dts node */
 #define	MT6357_DEFAULT_RFG		(100)
@@ -147,15 +148,12 @@ struct battery_oc_data_t mt6379_bat2_battery_oc_data = {
 	.reg_default_rfg = {MT6379_BAT2_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1},
 };
 
-
 struct battery_oc_priv {
 	struct device *dev;
 	struct regmap *regmap;
 	unsigned int oc_level;
 	unsigned int oc_thd_h[BATTERY_OC_LEVEL_NUM];
 	unsigned int oc_thd_l[BATTERY_OC_LEVEL_NUM];
-	unsigned int oc_enb_h[BATTERY_OC_LEVEL_NUM];
-	unsigned int oc_enb_l[BATTERY_OC_LEVEL_NUM];
 	int fg_cur_h_irq;
 	int fg_cur_l_irq;
 	int r_fg_value;
@@ -164,7 +162,13 @@ struct battery_oc_priv {
 	int unit_fg_cur;
 	int unit_multiple;
 	const struct battery_oc_data_t *ocdata;
+};
+
+struct battery_oc {
+	unsigned int intr_num;
+	unsigned int oc_cur_level;
 	int ppb_mode;
+	struct battery_oc_priv *oc_priv[OC_INTR_MAX_NUM];
 };
 
 struct battery_oc_callback_table {
@@ -174,7 +178,8 @@ struct battery_oc_callback_table {
 
 static struct battery_oc_callback_table occb_tb[OCCB_MAX_NUM] = { {0}, {0} };
 static int g_battery_oc_stop;
-static struct battery_oc_priv *bat_oc_data;
+static struct battery_oc bat_oc;
+static DEFINE_MUTEX(exe_thr_lock);
 
 static int __regmap_update_bits(struct regmap *regmap, const struct reg_t *reg,
 				unsigned int val)
@@ -240,18 +245,17 @@ static int battery_oc_throttling_open(struct inode *inode, struct file *fp)
 static ssize_t battery_oc_protect_ut_read(struct file *fp, char __user *ubuf,
 					  size_t cnt, loff_t *ppos)
 {
-	struct battery_oc_priv *priv = fp->private_data;
 	char *buf;
 	u32 len;
 	ssize_t ret;
 
-	pr_debug("[%s] g_battery_oc_level=%d\n", __func__, priv->oc_level);
+	pr_debug("[%s] oc_cur_level=%d\n", __func__, bat_oc.oc_cur_level);
 
 	buf = kzalloc(DEFAULT_BUF_LEN, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
-	len = scnprintf(buf, DEFAULT_BUF_LEN, "%u\n", priv->oc_level);
+	len = scnprintf(buf, DEFAULT_BUF_LEN, "%u\n", bat_oc.oc_cur_level);
 
 	ret = simple_read_from_buffer(ubuf, cnt, ppos, buf, len);
 	kfree(buf);
@@ -291,7 +295,9 @@ static ssize_t battery_oc_protect_ut_write(struct file *fp,
 
 	if (val < BATTERY_OC_LEVEL_NUM) {
 		dev_info(priv->dev, "[%s] your input is %d\n", __func__, val);
+		mutex_lock(&exe_thr_lock);
 		exec_battery_oc_callback(val);
+		mutex_unlock(&exe_thr_lock);
 	} else {
 		dev_info(priv->dev, "[%s] wrong number (%d)\n", __func__, val);
 	}
@@ -369,13 +375,13 @@ static ssize_t battery_oc_protect_level_read(struct file *fp, char __user *ubuf,
 	ssize_t ret;
 
 	dev_info(priv->dev, "[%s] g_battery_oc_level=%d\n", __func__,
-		 priv->oc_level);
+		 bat_oc.oc_cur_level);
 
 	buf = kzalloc(DEFAULT_BUF_LEN, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
-	len = scnprintf(buf, DEFAULT_BUF_LEN, "%d\n", priv->oc_level);
+	len = scnprintf(buf, DEFAULT_BUF_LEN, "%d\n", bat_oc.oc_cur_level);
 
 	ret = simple_read_from_buffer(ubuf, cnt, ppos, buf, len);
 	kfree(buf);
@@ -390,7 +396,7 @@ static ssize_t battery_oc_protect_level_write(struct file *fp,
 	struct battery_oc_priv *priv = fp->private_data;
 
 	dev_info(priv->dev, "[%s] g_battery_oc_level = %d\n", __func__,
-		 priv->oc_level);
+		 bat_oc.oc_cur_level);
 
 	return cnt;
 }
@@ -421,17 +427,29 @@ static unsigned int to_fg_code(struct battery_oc_priv *priv, u64 cur_mA)
 	return (0xFFFF - cur_mA);
 }
 
-static void switch_bat_oc_level(struct battery_oc_priv *priv, int step)
+static void switch_bat_oc_level(struct battery_oc_priv *priv, int step, int throttle)
 {
-	if (step && priv->oc_enb_h[priv->oc_level])
+	int i, new_lv = 0;
+
+	if (step && priv->oc_thd_h[priv->oc_level])
 		disable_irq_nosync(priv->fg_cur_h_irq);
 
-	if (step && priv->oc_enb_l[priv->oc_level])
+	if (step && priv->oc_thd_l[priv->oc_level])
 		disable_irq_nosync(priv->fg_cur_l_irq);
 
 	// update current level
 	priv->oc_level = priv->oc_level + step;
-	exec_battery_oc_callback(priv->oc_level);
+	if (throttle) {
+		for (i = 0; i < bat_oc.intr_num; i++) {
+			if (new_lv < bat_oc.oc_priv[i]->oc_level)
+				new_lv = bat_oc.oc_priv[i]->oc_level;
+		}
+
+		if (new_lv != bat_oc.oc_cur_level) {
+			bat_oc.oc_cur_level = new_lv;
+			exec_battery_oc_callback(bat_oc.oc_cur_level);
+		}
+	}
 
 	// config new battery current threshold
 	__regmap_update_bits(priv->regmap, &priv->ocdata->fg_cur_hth,
@@ -440,10 +458,10 @@ static void switch_bat_oc_level(struct battery_oc_priv *priv, int step)
 		to_fg_code(priv, priv->oc_thd_l[priv->oc_level]));
 
 	// set property battery current interrupt
-	if (priv->oc_enb_l[priv->oc_level])
+	if (priv->oc_thd_l[priv->oc_level])
 		enable_irq(priv->fg_cur_l_irq);
 
-	if (priv->oc_enb_h[priv->oc_level])
+	if (priv->oc_thd_h[priv->oc_level])
 		enable_irq(priv->fg_cur_h_irq);
 }
 
@@ -452,13 +470,15 @@ static irqreturn_t fg_cur_h_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	if (priv->oc_level >= BATTERY_OC_LEVEL_NUM || priv->oc_level < BATTERY_OC_LEVEL_1
-		 || priv->ppb_mode != 0) {
+		 || bat_oc.ppb_mode != 0) {
 		pr_info("%s: wrong oc_level=%d, ppb_mode=%d\n", __func__, priv->oc_level,
-			priv->ppb_mode);
+			bat_oc.ppb_mode);
 		return IRQ_HANDLED;
 	}
 
-	switch_bat_oc_level(priv, -1);
+	mutex_lock(&exe_thr_lock);
+	switch_bat_oc_level(priv, -1, 1);
+	mutex_unlock(&exe_thr_lock);
 
 	return IRQ_HANDLED;
 }
@@ -468,18 +488,20 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	// filter wrong level
-	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || priv->ppb_mode != 0) {
+	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || bat_oc.ppb_mode != 0) {
 		pr_info("%s: wrong oc_level=%d, ppb=%d\n", __func__, priv->oc_level,
-			priv->ppb_mode);
+			bat_oc.ppb_mode);
 		return IRQ_HANDLED;
 	}
 
-	switch_bat_oc_level(priv, 1);
+	mutex_lock(&exe_thr_lock);
+	switch_bat_oc_level(priv, 1, 1);
+	mutex_unlock(&exe_thr_lock);
 
 	return IRQ_HANDLED;
 }
 
-static int battery_oc_parse_dt(struct platform_device *pdev)
+static int battery_oc_parse_dt(struct platform_device *pdev, unsigned int num)
 {
 	struct battery_oc_priv *priv = dev_get_drvdata(&pdev->dev);
 	struct mt6397_chip *pmic;
@@ -506,7 +528,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	priv->r_fg_value *= UNIT_TRANS_10;
 
 	ret = of_property_read_u32(np, "unit-multiple", &priv->unit_multiple);
-	if (priv->ocdata->cust_rfg && ret) {
+	if (ret) {
 		dev_notice(&pdev->dev, "get unit-multiple fail\n");
 		return -EINVAL;
 	}
@@ -526,9 +548,15 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 	 */
 	np = of_find_node_by_name(pdev->dev.parent->of_node,
 				  "mtk_battery_oc_throttling");
-	if (!np)
-		np = of_find_node_by_name(pdev->dev.parent->of_node, "mtk-battery-oc-throttling2");
-
+	if (!np) {
+		if (num == 1) {
+			np = of_find_node_by_name(pdev->dev.parent->of_node,
+				"mtk-battery-oc-throttling2");
+		} else  {
+			np = of_find_node_by_name(pdev->dev.parent->of_node,
+				"mtk-battery-oc-throttling");
+		}
+	}
 	if (!np) {
 		dev_notice(&pdev->dev, "get mtk battery oc node fail\n");
 		return -EINVAL;
@@ -545,20 +573,14 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 		}
 
 		/* init level_0 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_0] = 1;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_0] = 0;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_0] = oc_thd[1];
 		priv->oc_thd_h[BATTERY_OC_LEVEL_0] = 0;
 
 		/* init level_1 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_1] = 1;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_1] = 1;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_1] = oc_thd[2];
 		priv->oc_thd_h[BATTERY_OC_LEVEL_1] = oc_thd[0];
 
 		/* init level_2 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_2] = 0;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_2] = 1;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_2] = 0;
 		priv->oc_thd_h[BATTERY_OC_LEVEL_2] = oc_thd[1];
 
@@ -574,28 +596,21 @@ static int battery_oc_parse_dt(struct platform_device *pdev)
 		}
 
 		/* init level_0 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_0] = 1;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_0] = 0;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_0] = oc_thd[1];
 		priv->oc_thd_h[BATTERY_OC_LEVEL_0] = 0;
 
 		/* init level_1 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_1] = 0;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_1] = 1;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_1] = 0;
 		priv->oc_thd_h[BATTERY_OC_LEVEL_1] = oc_thd[0];
 
 		/* init level_2 oc table */
-		priv->oc_enb_l[BATTERY_OC_LEVEL_2] = 0;
-		priv->oc_enb_h[BATTERY_OC_LEVEL_2] = 0;
 		priv->oc_thd_l[BATTERY_OC_LEVEL_2] = 0;
 		priv->oc_thd_h[BATTERY_OC_LEVEL_2] = 0;
 	}
 
 	for (i = 0; i < BATTERY_OC_LEVEL_NUM; i++) {
-		dev_notice(&pdev->dev, "[%s] intr_info[%d]: l[%d %d] h[%d %d]\n",
-			__func__, i, priv->oc_enb_l[i], priv->oc_thd_l[i],
-			priv->oc_enb_h[i], priv->oc_thd_h[i]);
+		dev_notice(&pdev->dev, "[%s] intr_info[%d]: l[%d] h[%d]\n",
+			__func__, i, priv->oc_thd_l[i], priv->oc_thd_h[i]);
 	}
 
 	/* Get DEFAULT_RFG/UNIT_FGCURRENT from pre-defined MACRO */
@@ -759,19 +774,31 @@ static int battery_oc_throttling_probe(struct platform_device *pdev)
 	if (ret < 0)
 		dev_notice(&pdev->dev, "request fg_cur_l irq fail\n");
 
-	ret = battery_oc_parse_dt(pdev);
+	if (bat_oc.intr_num >= OC_INTR_MAX_NUM) {
+		dev_notice(&pdev->dev, "OC intr items too large %d\n", bat_oc.intr_num);
+		return -EINVAL;
+	}
+
+	ret = battery_oc_parse_dt(pdev, bat_oc.intr_num);
 	if (ret < 0) {
 		dev_notice(&pdev->dev, "bat_oc parse dt fail, ret=%d\n", ret);
 		return ret;
 	}
 
-	switch_bat_oc_level(priv, 0);
+	bat_oc.oc_priv[bat_oc.intr_num] = priv;
+	bat_oc.intr_num++;
+
+	mutex_lock(&exe_thr_lock);
+	if (bat_oc.intr_num == 1)
+		switch_bat_oc_level(priv, 0, 1);
+	else
+		switch_bat_oc_level(priv, 0, 0);
+
+	mutex_unlock(&exe_thr_lock);
 
 	dev_info(&pdev->dev, "%dmA(0x%x), %dmA(0x%x) Done\n",
 		 priv->oc_thd_h[priv->oc_level], to_fg_code(priv, priv->oc_thd_h[priv->oc_level]),
 		 priv->oc_thd_l[priv->oc_level], to_fg_code(priv, priv->oc_thd_l[priv->oc_level]));
-
-	bat_oc_data = priv;
 
 	return battery_oc_throttling_create_proc(priv);
 }
@@ -780,15 +807,15 @@ static int battery_oc_throttle_enable(struct battery_oc_priv *priv, int en)
 {
 	if (!en) {
 		//disable all interrupt
-		if (priv->oc_enb_l[priv->oc_level])
+		if (priv->oc_thd_l[priv->oc_level])
 			disable_irq_nosync(priv->fg_cur_l_irq);
-		if (priv->oc_enb_h[priv->oc_level])
+		if (priv->oc_thd_h[priv->oc_level])
 			disable_irq_nosync(priv->fg_cur_h_irq);
 	} else {
 		//enable property interrupt
-		if (priv->oc_enb_l[priv->oc_level])
+		if (priv->oc_thd_l[priv->oc_level])
 			enable_irq(priv->fg_cur_l_irq);
-		if (priv->oc_enb_h[priv->oc_level])
+		if (priv->oc_thd_h[priv->oc_level])
 			enable_irq(priv->fg_cur_h_irq);
 	}
 	return 0;
@@ -797,22 +824,36 @@ static int battery_oc_throttle_enable(struct battery_oc_priv *priv, int en)
 int bat_oc_set_ppb_mode(unsigned int mode)
 {
 	struct battery_oc_priv *priv;
+	int i;
 
-	if (!bat_oc_data) {
+	priv = bat_oc.oc_priv[0];
+
+	if (!priv) {
 		pr_info("[%s] get battery oc data fail\n", __func__);
 		return 0;
 	}
-	priv = bat_oc_data;
-	priv->ppb_mode = mode;
 
+	bat_oc.ppb_mode = mode;
+
+	mutex_lock(&exe_thr_lock);
 	if (mode != 0) {
-		battery_oc_throttle_enable(priv, 0);
-		if (priv->oc_level) {
+		for (i = 0; i < bat_oc.intr_num; i++) {
+			priv = bat_oc.oc_priv[i];
 			priv->oc_level = 0;
-			exec_battery_oc_callback(priv->oc_level);
+			battery_oc_throttle_enable(priv, 0);
 		}
-	} else
-		switch_bat_oc_level(priv, 0);
+		if (bat_oc.oc_cur_level != 0) {
+			bat_oc.oc_cur_level = 0;
+			exec_battery_oc_callback(bat_oc.oc_cur_level);
+		}
+	} else {
+		for (i = 0; i < bat_oc.intr_num; i++) {
+			priv = bat_oc.oc_priv[i];
+			priv->oc_level = 0;
+			switch_bat_oc_level(priv, 0, 0);
+		}
+	}
+	mutex_unlock(&exe_thr_lock);
 
 	return 0;
 }
@@ -829,10 +870,10 @@ static int __maybe_unused battery_oc_throttling_suspend(struct device *d)
 	struct battery_oc_priv *priv = dev_get_drvdata(d);
 
 	//disable all interrupt
-	if (priv->oc_enb_l[priv->oc_level])
+	if (priv->oc_thd_l[priv->oc_level])
 		disable_irq_nosync(priv->fg_cur_l_irq);
 
-	if (priv->oc_enb_h[priv->oc_level])
+	if (priv->oc_thd_h[priv->oc_level])
 		disable_irq_nosync(priv->fg_cur_h_irq);
 
 	return 0;
@@ -843,10 +884,10 @@ static int __maybe_unused battery_oc_throttling_resume(struct device *d)
 	struct battery_oc_priv *priv = dev_get_drvdata(d);
 
 	//enable property interrupt
-	if (priv->oc_enb_l[priv->oc_level])
+	if (priv->oc_thd_l[priv->oc_level])
 		enable_irq(priv->fg_cur_l_irq);
 
-	if (priv->oc_enb_h[priv->oc_level])
+	if (priv->oc_thd_h[priv->oc_level])
 		enable_irq(priv->fg_cur_h_irq);
 
 	return 0;
