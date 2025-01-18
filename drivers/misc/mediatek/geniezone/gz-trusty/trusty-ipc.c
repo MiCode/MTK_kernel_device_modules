@@ -67,6 +67,9 @@
 #define TIPC_IOC_MAGIC			'r'
 #define TIPC_IOC_CONNECT		_IOW(TIPC_IOC_MAGIC, 0x80, char *)
 
+#define TIPC_READ_MAX_RETRY_CNT		5
+#define TIPC_READ_MAX_TIMEOUT_MS	1000
+
 struct tipc_virtio_dev;
 
 struct tipc_msg_hdr {
@@ -1469,9 +1472,15 @@ ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 	struct tipc_msg_buf *mb;
 	struct tipc_dn_chan *dn = (struct tipc_dn_chan *)h->dn;
 
+	int retry;
+	bool read_ok = false;
+	struct device *trusty_dev = dn->chan->vds->vdev->dev.parent->parent;
+
 	mutex_lock(&dn->lock);
 
 	while (list_empty(&dn->rx_msg_queue)) {
+		retry = TIPC_READ_MAX_RETRY_CNT;
+		read_ok = false;
 		if (dn->state != TIPC_CONNECTED) {
 			if (dn->state == TIPC_CONNECTING)
 				ret = -ENOTCONN;
@@ -1489,7 +1498,25 @@ ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 		if (flags & O_NONBLOCK)
 			return -EAGAIN;
 
-		if (wait_event_interruptible(dn->readq, _got_rx(dn)))
+		/* During stress testing with AVF and mTEE, there are chance that the stdcall
+		 * thread is switched to a different CPU core, causing tasks to return to the
+		 * host before being fully processed in EL2, resulting in the host hanging.
+		 *
+		 * Therefore, we have implemented a timeout and retry mechanism that triggers a
+		 * resend of nop when the host hangs.
+		 */
+		while (--retry && !read_ok) {
+			if (!wait_event_interruptible_timeout(dn->readq, _got_rx(dn),
+			    msecs_to_jiffies(TIPC_READ_MAX_TIMEOUT_MS))) {
+				preempt_disable();
+				trusty_enqueue_nop(trusty_dev, NULL, smp_processor_id());
+				preempt_enable();
+				continue;
+			}
+			read_ok = true;
+		}
+
+		if (!retry && !read_ok)
 			return -ERESTARTSYS;
 
 		mutex_lock(&dn->lock);
