@@ -1418,182 +1418,6 @@ static int smmu_test_translation(int dma_engine, struct platform_device *pdev)
 	return 0;
 }
 
-static int smmu_test_performance(int dma_engine, struct platform_device *pdev)
-{
-	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
-	unsigned long tcu_tot = 0, tbu_tot = 0;
-	struct device *dev = &pdev->dev;
-	int ret;
-
-	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
-	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-
-	pr_info("--- Dump transaction commmand counter for performance debug ---\n");
-
-	/* Start TCU and TBU counter then translation */
-	ret = mtk_smmu_start_transaction_counter(dev);
-	if (ret)
-		goto out;
-
-	engine_access(dma_engine, dev, res);
-
-	/* TCU counters are expected to increase after 1st translation */
-	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
-	ret = tcu_tot ? 0 : -1;
-	pr_info("--- TCU counters increase as expected:%d ---\n", ret);
-	if (ret)
-		goto out;
-
-	ret = mtk_smmu_start_transaction_counter(dev);
-	if (ret)
-		goto out;
-
-	pr_info("%s dma access start again, dev:%s\n", __func__, dev_name(dev));
-	engine_access(dma_engine, dev, res);
-	pr_info("%s dma access done again, dev:%s\n", __func__, dev_name(dev));
-
-	/* TBU counters are expected to increase after 2nd translation
-	 * since access data via TLB
-	 */
-	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
-	ret = tbu_tot ? 0 : -1;
-	pr_info("--- TBU counters increase as expected:%d ---\n", ret);
-	if (ret)
-		goto out;
-
-	ret = mtk_smmu_start_transaction_counter(dev);
-	if (ret)
-		goto out;
-
-	mtk_iommu_tlb_flush_all(dev);
-
-	/* TCU counters are expected to increase after 3rd translation
-	 * since invalid all
-	 */
-	mtk_smmu_end_transaction_counter(dev, &tcu_tot, &tbu_tot);
-	ret = tcu_tot ? 0 : -1;
-	pr_info("--- TCU counters increase in TLB INV ALL case as expected:%d ---\n",
-		ret);
-
-out:
-	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
-
-	return ret;
-}
-
-static int smmu_test_latency(int dma_engine, struct platform_device *pdev)
-{
-	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
-	struct device *dev = &pdev->dev;
-	int ret, mon_axiid, lat_spec;
-	unsigned int maxlat_axiid = 0;
-	unsigned long tcu_rlat_tots = 0, tbu_lat_tots = 0, oos_trans_tot = 0;
-
-	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
-	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-
-	pr_info("--- Dump latency monitor for performance debug ---\n");
-
-	/* Start TCU and TBU latency monitor then translation */
-	ret = mtk_smmu_start_latency_monitor(dev, -1, -1);
-	if (ret)
-		goto out;
-
-	engine_access(dma_engine, dev, res);
-
-	/* TCU latency meters are expected to increase after 1st translation */
-	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
-				     &tbu_lat_tots, &oos_trans_tot);
-	ret = tcu_rlat_tots ? 0 : -1;
-	pr_info("--- TCU latency meters increase as expected:%d ---\n", ret);
-	if (ret)
-		goto out;
-
-	ret = mtk_smmu_start_latency_monitor(dev, -1, -1);
-	if (ret)
-		goto out;
-
-	engine_access(dma_engine, dev, res);
-
-	/*
-	 * TBU latency meters are expected to increase after 2nd translation
-	 * since access data via TLB
-	 */
-	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
-				     &tbu_lat_tots, &oos_trans_tot);
-	ret = tbu_lat_tots ? 0 : -1;
-	pr_info("--- TBU latency meters increase as expected:%d ---\n", ret);
-
-	/* Monitor a specified AXI id */
-	mon_axiid = maxlat_axiid;
-	ret = mtk_smmu_start_latency_monitor(dev, mon_axiid, -1);
-	if (ret)
-		goto out;
-
-	engine_access(dma_engine, dev, res);
-
-	/* TBU latency meters are expected to increase after 3rd translation */
-	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
-				     &tbu_lat_tots, &oos_trans_tot);
-	ret = (tbu_lat_tots && (mon_axiid == maxlat_axiid)) ? 0 : -1;
-	pr_info("--- TBU latency meters increase in monitor AXI ID case as expected:%d ---\n",
-		ret);
-	if (ret)
-		goto out;
-
-	/* Set a minimum latency water level and monitor how many commands exceed */
-	lat_spec = 0;
-	ret = mtk_smmu_start_latency_monitor(dev, -1, lat_spec);
-	if (ret)
-		goto out;
-
-	mtk_iommu_tlb_flush_all(dev);
-
-	engine_access(dma_engine, dev, res);
-
-	/*
-	 * 1. TCU latency meters are expected to increase after 4th translation
-	 * since invalid all
-	 * 2. Total command count over latency water mark is not expected
-	 * to be 0 since a min walter mark is set
-	 */
-	mtk_smmu_end_latency_monitor(dev, &maxlat_axiid, &tcu_rlat_tots,
-				     &tbu_lat_tots, &oos_trans_tot);
-	ret = (tcu_rlat_tots && oos_trans_tot) ? 0 : -1;
-	pr_info("--- TCU latency meters increase & Latency water mark meters increase in TLB INV ALL case as expected:%d ---\n",
-		ret);
-
-out:
-	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
-
-	return ret;
-}
-
-static int smmu_test_stability(int dma_engine, struct platform_device *pdev)
-{
-	struct dma_device_res res[TEST_SMMU_ADDRESS_NUM];
-	struct device *dev = &pdev->dev;
-	int ret = 0;
-
-	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
-	dma_alloc(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-
-	mtk_smmu_dump_outstanding_monitor(dev);
-	mtk_smmu_dump_io_interface_signals(dev);
-
-	engine_access(dma_engine, dev, res);
-
-	mtk_smmu_dump_outstanding_monitor(dev);
-	mtk_smmu_dump_io_interface_signals(dev);
-
-	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 0, res);
-	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
-
-	return ret;
-}
-
 static int smmu_test_stress(int dma_engine, struct platform_device *pdev)
 {
 	int ret, test_times = 1000;
@@ -1605,18 +1429,6 @@ static int smmu_test_stress(int dma_engine, struct platform_device *pdev)
 		if (ret)
 			break;
 	}
-
-	return ret;
-}
-
-static int smmu_test_dcm_state(int dma_engine, struct platform_device *pdev)
-{
-	struct device *dev = &pdev->dev;
-	int ret = 0;
-
-	pr_info("--- Dump DCM enable state for power consumption debug ---\n");
-
-	mtk_smmu_dump_dcm_en(dev);
 
 	return ret;
 }
@@ -1676,10 +1488,6 @@ static int smmu_test_cqdma(int dma_engine, struct platform_device *pdev)
 
 	pr_info("%s start, dev:%s\n", __func__, dev_name(dev));
 
-	ret = smmu_test_dcm_state(dma_engine, pdev);
-	if (ret)
-		pr_info("ret:%d, smmu_test_dcm_state fail\n", ret);
-
 	ret = smmu_test_translation(dma_engine, pdev);
 	if (ret)
 		pr_info("ret:%d, smmu_test_trans fail\n", ret);
@@ -1688,21 +1496,9 @@ static int smmu_test_cqdma(int dma_engine, struct platform_device *pdev)
 	if (ret)
 		pr_info("ret:%d, smmu_test_cqdma_tf fail\n", ret);
 
-	ret = smmu_test_performance(dma_engine, pdev);
-	if (ret)
-		pr_info("ret:%d, smmu_test_performance fail\n", ret);
-
-	ret = smmu_test_latency(dma_engine, pdev);
-	if (ret)
-		pr_info("ret:%d, smmu_test_latency fail\n", ret);
-
-	ret = smmu_test_stability(dma_engine, pdev);
-	if (ret)
-		pr_info("ret:%d, smmu_test_stability fail\n", ret);
-
 	ret = smmu_test_stress(dma_engine, pdev);
 	if (ret)
-		pr_info("ret:%d, smmu_test_performance fail\n", ret);
+		pr_info("ret:%d, smmu_test_stress fail\n", ret);
 
 	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));
 

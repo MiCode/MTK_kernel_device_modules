@@ -1000,38 +1000,6 @@ static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 	return ret;
 }
 
-static int mtk_smmu_runtime_suspend(struct device *dev)
-{
-#ifdef MTK_SMMU_DEBUG
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-	struct mtk_smmu_data *data;
-
-	if (!smmu)
-		return -1;
-
-	data = to_mtk_smmu_data(smmu);
-	mtk_iommu_pm_trace(IOMMU_SUSPEND, data->plat_data->smmu_type, 0, 0, dev);
-#endif
-
-	return 0;
-}
-
-static int mtk_smmu_runtime_resume(struct device *dev)
-{
-#ifdef MTK_SMMU_DEBUG
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-	struct mtk_smmu_data *data;
-
-	if (!smmu)
-		return -1;
-
-	data = to_mtk_smmu_data(smmu);
-	mtk_iommu_pm_trace(IOMMU_RESUME, data->plat_data->smmu_type, 0, 0, dev);
-#endif
-
-	return 0;
-}
-
 struct device_node *parse_iommu_group_phandle(struct device *dev)
 {
 	struct device_node *np;
@@ -1848,6 +1816,8 @@ static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu)
 		 readq_relaxed(smmu->base + ARM_SMMU_EVTQ_BASE),
 		 readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_PROD),
 		 readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_CONS));
+
+	smmuwp_dump_dcm_en(smmu);
 }
 
 static void __maybe_unused smmu_dump_reg(void __iomem *base,
@@ -2395,8 +2365,6 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.smmu_device_reset = mtk_smmu_device_reset,
 	.smmu_power_get = mtk_smmu_power_get,
 	.smmu_power_put = mtk_smmu_power_put,
-	.smmu_runtime_suspend = mtk_smmu_runtime_suspend,
-	.smmu_runtime_resume = mtk_smmu_runtime_resume,
 	.smmu_setup_features = mtk_smmu_setup_features,
 	.get_resv_regions = mtk_get_resv_regions,
 	.smmu_irq_handler = mtk_smmu_irq_handler,
@@ -2996,326 +2964,6 @@ static int __maybe_unused smmuwp_tf_detect(struct arm_smmu_device *smmu,
 	return 0;
 }
 
-static void smmuwp_check_transaction_counter(struct arm_smmu_device *smmu,
-					     unsigned long *tcu_tot,
-					     unsigned long *tbu_tot)
-{
-	unsigned int i, tcu_send_rcmd, tcu_send_wcmd, tcu_recv_dvmcmd;
-	unsigned int tbu_rcmd_trans[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_wcmd_trans[SMMU_TBU_CNT_MAX];
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	void __iomem *wp_base = smmu->wp_base;
-
-	*tcu_tot = 0;
-	tcu_send_rcmd = smmu_read_reg(wp_base, SMMUWP_TCU_MON5);
-	tcu_send_wcmd = smmu_read_reg(wp_base, SMMUWP_TCU_MON6);
-	tcu_recv_dvmcmd = smmu_read_reg(wp_base, SMMUWP_TCU_MON7);
-	*tcu_tot += tcu_send_rcmd + tcu_send_wcmd + tcu_recv_dvmcmd;
-
-	*tbu_tot = 0;
-	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
-		tbu_rcmd_trans[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON7(i));
-		tbu_wcmd_trans[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON8(i));
-		*tbu_tot += tbu_rcmd_trans[i] + tbu_wcmd_trans[i];
-	}
-
-	if (*tcu_tot > 0 || *tbu_tot > 0) {
-		pr_info("---- %s start ----\n", __func__);
-		pr_info("\tTCU send read cmd total(0x%x):%u, write cmd total(0x%x):%u, receive DVM cmd total(0x%x):%u\n",
-			SMMUWP_TCU_MON5, tcu_send_rcmd, SMMUWP_TCU_MON6, tcu_send_wcmd,
-			SMMUWP_TCU_MON7, tcu_recv_dvmcmd);
-		for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++)
-			pr_info("\tTBU%u read cmd trans total(0x%x):%u, write cmd trans total(0x%x):%u\n",
-				i, SMMUWP_TBUx_MON7(i), tbu_rcmd_trans[i], SMMUWP_TBUx_MON8(i),
-				tbu_wcmd_trans[i]);
-		pr_info("---- %s end, tcu_tot:%lu, tbu_tot:%lu ----\n",
-			__func__, *tcu_tot, *tbu_tot);
-	}
-}
-
-/* TCU only support measure read command, donot support write command */
-static void smmuwp_check_latency_counter(struct arm_smmu_device *smmu,
-					 unsigned int *maxlat_axiid,
-					 unsigned long *tcu_rlat_tots,
-					 unsigned long *tbu_lat_tots,
-					 unsigned long *oos_trans_tot)
-{
-	unsigned int i, regval, tcu_lat_max, tcu_pend_max, tbu_maxlat = 0;
-	unsigned int tcu_lat_tot, tcu_trans_tot, tcu_oos_trans_tot, tcu_avg_lat;
-	unsigned int tbu_rlat_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_wlat_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_id_rlat_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_id_wlat_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_rpend_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_wpend_max[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_rlat_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_wlat_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_rtrans_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_wtrans_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_roos_trans_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_woos_trans_tot[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_avg_rlat[SMMU_TBU_CNT_MAX];
-	unsigned int tbu_avg_wlat[SMMU_TBU_CNT_MAX];
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	void __iomem *wp_base = smmu->wp_base;
-
-	regval = smmu_read_reg(wp_base, SMMUWP_TCU_MON1);
-	tcu_lat_max = FIELD_GET(TCU_LAT_MAX, regval);
-	tcu_pend_max = FIELD_GET(TCU_PEND_MAX, regval);
-	tcu_lat_tot = smmu_read_reg(wp_base, SMMUWP_TCU_MON2);
-	tcu_trans_tot = smmu_read_reg(wp_base, SMMUWP_TCU_MON3);
-	tcu_oos_trans_tot = smmu_read_reg(wp_base, SMMUWP_TCU_MON4);
-	tcu_avg_lat = tcu_trans_tot > 0 ? tcu_lat_tot/tcu_trans_tot : 0;
-	*tcu_rlat_tots = tcu_lat_tot;
-	*oos_trans_tot = tcu_oos_trans_tot;
-
-	*tbu_lat_tots = 0;
-	*maxlat_axiid = 0;
-	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_MON1(i));
-		tbu_rlat_max[i] = FIELD_GET(MON1_RLAT_MAX, regval);
-		tbu_wlat_max[i] = FIELD_GET(MON1_WLAT_MAX, regval);
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_MON2(i));
-		tbu_id_rlat_max[i] = FIELD_GET(MON2_ID_RLAT_MAX, regval);
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_MON3(i));
-		tbu_id_wlat_max[i] = FIELD_GET(MON3_ID_WLAT_MAX, regval);
-		if (tbu_rlat_max[i] > tbu_maxlat) {
-			tbu_maxlat = tbu_rlat_max[i];
-			*maxlat_axiid = tbu_id_rlat_max[i];
-		}
-		if (tbu_wlat_max[i] > tbu_maxlat) {
-			tbu_maxlat = tbu_wlat_max[i];
-			*maxlat_axiid = tbu_id_wlat_max[i];
-		}
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_MON4(i));
-		tbu_rpend_max[i] = FIELD_GET(MON4_RPEND_MAX, regval);
-		tbu_wpend_max[i] = FIELD_GET(MON4_WPEND_MAX, regval);
-		tbu_rlat_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON5(i));
-		tbu_wlat_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON6(i));
-		tbu_rtrans_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON7(i));
-		tbu_wtrans_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON8(i));
-		tbu_roos_trans_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON9(i));
-		tbu_woos_trans_tot[i] = smmu_read_reg(wp_base, SMMUWP_TBUx_MON10(i));
-		*oos_trans_tot += tbu_roos_trans_tot[i] + tbu_woos_trans_tot[i];
-		tbu_avg_rlat[i] = tbu_rtrans_tot[i] > 0 ?
-				  tbu_rlat_tot[i]/tbu_rtrans_tot[i] : 0;
-		tbu_avg_wlat[i] = tbu_wtrans_tot[i] > 0 ?
-				  tbu_wlat_tot[i]/tbu_wtrans_tot[i] : 0;
-		*tbu_lat_tots += tbu_rlat_tot[i] + tbu_wlat_tot[i];
-	}
-
-	if (*tcu_rlat_tots > 0 || *tbu_lat_tots > 0 || *oos_trans_tot > 0) {
-		pr_info("---- %s start ----\n", __func__);
-		pr_info("\tTCU read cmd max latency(0x%x[15:0]):%uT\n",
-			SMMUWP_TCU_MON1, tcu_lat_max);
-		pr_info("\tTCU read cmd max pend latency(0x%x[31:16]):%uT\n",
-			SMMUWP_TCU_MON1, tcu_pend_max);
-		pr_info("\tSUM of total TCU read cmds latency(0x%x):%uT\n",
-			SMMUWP_TCU_MON2, tcu_lat_tot);
-		pr_info("\tAverage TCU read cmd latency:%uT\n", tcu_avg_lat);
-		pr_info("\tTotal TCU read cmd count(0x%x):%u\n",
-			SMMUWP_TCU_MON3, tcu_trans_tot);
-		pr_info("\tTotal TCU read cmd count over latency water mark(0x%x):%u\n",
-			SMMUWP_TCU_MON4, tcu_oos_trans_tot);
-
-		for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
-			pr_info("\tTBU%u read cmd max latency(0x%x[15:0]):%uT\t|\tTBU%u write cmd max latency(0x%x[31:16]):%uT\n",
-				i, SMMUWP_TBUx_MON1(i), tbu_rlat_max[i],
-				i, SMMUWP_TBUx_MON1(i), tbu_wlat_max[i]);
-			pr_info("\tAXI id of TBU%u read cmd max latency(0x%x):%u\t|\tAXI id of TBU%u write cmd max latency(0x%x):%u\n",
-				i, SMMUWP_TBUx_MON2(i), tbu_id_rlat_max[i],
-				i, SMMUWP_TBUx_MON3(i), tbu_id_wlat_max[i]);
-			pr_info("\tTBU%u read cmd max pend latency(0x%x[15:0]):%uT\t|\tTBU%u write cmd max pend latency(0x%x[31:16]):%uT\n",
-				i, SMMUWP_TBUx_MON4(i), tbu_rpend_max[i],
-				i, SMMUWP_TBUx_MON4(i), tbu_wpend_max[i]);
-			pr_info("\tSUM of total TBU%u read cmds latency(0x%x):%uT\t|\tSUM of total TBU%u write cmds latency(0x%x):%uT\n",
-				i, SMMUWP_TBUx_MON5(i), tbu_rlat_tot[i],
-				i, SMMUWP_TBUx_MON6(i), tbu_wlat_tot[i]);
-			pr_info("\tAverage TBU%u read cmd latency:%uT\t|\tAverage TBU%u write cmd latency:%uT\n",
-				i, tbu_avg_rlat[i], i, tbu_avg_wlat[i]);
-			pr_info("\tTotal TBU%u read cmd count(0x%x):%u\t|\tTotal TBU%u write cmd count(0x%x):%u\n",
-				i, SMMUWP_TBUx_MON7(i), tbu_rtrans_tot[i],
-				i, SMMUWP_TBUx_MON8(i), tbu_wtrans_tot[i]);
-			pr_info("\tTBU%u read cmd trans total over latency water mark(0x%x):%u\t|\tTBU%u write cmd trans total over latency water mark(0x%x):%u\n",
-				i, SMMUWP_TBUx_MON9(i), tbu_roos_trans_tot[i],
-				i, SMMUWP_TBUx_MON10(i), tbu_woos_trans_tot[i]);
-		}
-
-		pr_info("---- %s end, maxlat_axiid:%u, tcu_rlat_tots:%lu, tbu_lat_tots:%lu, oos_trans_tot:%lu ----\n",
-			__func__, *maxlat_axiid, *tcu_rlat_tots,
-			*tbu_lat_tots, *oos_trans_tot);
-	}
-}
-
-/**
- * Used to performance debug:
- * Start TCU and TBU counter before translation.
- */
-static int __maybe_unused smmuwp_start_transaction_counter(struct arm_smmu_device *smmu)
-{
-	void __iomem *wp_base = smmu->wp_base;
-	unsigned int lmu_ctl0, glb_ctl0;
-	unsigned long tcu_tot, tbu_tot;
-
-	lmu_ctl0 = smmu_read_reg(wp_base, SMMUWP_LMU_CTL0);
-	glb_ctl0 = smmu_read_reg(wp_base, SMMUWP_GLB_CTL0);
-
-	/* Clear TCU MON5,6,7 counter which default enabled */
-	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_MON_DIS, CTL0_MON_DIS);
-	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_MON_DIS, 0);
-
-	/* Clear TBUx MON7,8 counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START,
-			 CTL0_LAT_MON_START);
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START, 0);
-
-	/* Both TCU MON5,6,7 and TBU MON7,8 count are expected to be 0 now */
-	smmuwp_check_transaction_counter(smmu, &tcu_tot, &tbu_tot);
-	if (tcu_tot || tbu_tot) {
-		dev_err(smmu->dev, "%s clear counter failed\n", __func__);
-		return -1;
-	}
-
-	/* Start TBUx MON7,8 counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START,
-			 CTL0_LAT_MON_START);
-	dev_info(smmu->dev,
-		 "%s, LMU_CTL0(0x%x):0x%x->0x%x, GLB_CTL0(0x%x)=0x%x->0x%x\n",
-		 __func__, SMMUWP_LMU_CTL0, lmu_ctl0,
-		 smmu_read_reg(wp_base, SMMUWP_LMU_CTL0),
-		 SMMUWP_GLB_CTL0, glb_ctl0,
-		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0));
-
-	return 0;
-}
-
-/**
- * Used to performance debug:
- * TBU or TCU counters are expected to increase after translation
- * when stop TCU and TBU counter.
- */
-static void __maybe_unused smmuwp_end_transaction_counter(struct arm_smmu_device *smmu,
-							  unsigned long *tcu_tot,
-							  unsigned long *tbu_tot)
-{
-	void __iomem *wp_base = smmu->wp_base;
-
-	/* End TBUx MON7,8 counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START, 0);
-
-	smmuwp_check_transaction_counter(smmu, tcu_tot, tbu_tot);
-}
-
-/*
- * In order to get the information of how many cycles spent for masters
- * or a particular master in the SMMU in issue analysis.
- * HW provide the function(for both read and write) below:
- * Average latency(Unit is T, 1T = a few ns(diff. on each subsys,
- * the range is about 0.6ns ~ 38ns)) Max. latency and its AxID ID mask.
- *
- * @mon_axiid: the monitoring AXI ID, -1 mean monitor all
- * @lat_spec: latency water mark, used with SMMUWP_TCU_MON4,
- * SMMUWP_TBUx_MON9, SMMUWP_TBUx_MON10
- */
-static int __maybe_unused smmuwp_start_latency_monitor(struct arm_smmu_device *smmu,
-						       int mon_axiid,
-						       int lat_spec)
-{
-	unsigned long tcu_rlat_tots, tbu_lat_tots, oos_trans_tot;
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
-	void __iomem *wp_base = smmu->wp_base;
-	unsigned int i, maxlat_axiid;
-
-	dev_info(smmu->dev, "%s, mon_axiid:%d, lat_spec:%d\n",
-		 __func__, mon_axiid, lat_spec);
-
-	if (lat_spec >= 0)
-		smmu_write_field(wp_base, SMMUWP_GLB_CTL4, CTL4_LAT_SPEC,
-				 FIELD_PREP(CTL4_LAT_SPEC, lat_spec));
-	else
-		smmu_write_field(wp_base, SMMUWP_GLB_CTL4, CTL4_LAT_SPEC,
-				 FIELD_PREP(CTL4_LAT_SPEC, LAT_SPEC_DEF_VAL));
-
-	if (mon_axiid >= 0) {
-		smmu_write_field(wp_base, SMMUWP_TCU_CTL8, TCU_MON_ID,
-				 FIELD_PREP(TCU_MON_ID, mon_axiid));
-		smmu_write_field(wp_base, SMMUWP_TCU_CTL8, TCU_MON_ID_MASK,
-				 TCU_MON_ID_MASK);
-	} else {
-		smmu_write_field(wp_base, SMMUWP_TCU_CTL8, TCU_MON_ID, 0);
-		smmu_write_field(wp_base, SMMUWP_TCU_CTL8, TCU_MON_ID_MASK, 0);
-	}
-	pr_info("\tTCU_CTL8(0x%x):0x%x, GLB_CTL4(0x%x):0x%x\n",
-		SMMUWP_TCU_CTL8, smmu_read_reg(wp_base, SMMUWP_TCU_CTL8),
-		SMMUWP_GLB_CTL4, smmu_read_reg(wp_base, SMMUWP_GLB_CTL4));
-
-	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
-		if (mon_axiid >= 0) {
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL4(i),
-					 CTL4_RLAT_MON_ID,
-					 FIELD_PREP(CTL4_RLAT_MON_ID, mon_axiid));
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL6(i),
-					 CTL6_RLAT_MON_ID_MASK,
-					 CTL6_RLAT_MON_ID_MASK);
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL5(i),
-					 CTL5_WLAT_MON_ID,
-					 FIELD_PREP(CTL5_WLAT_MON_ID, mon_axiid));
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL7(i),
-					 CTL7_WLAT_MON_ID_MASK,
-					 CTL7_WLAT_MON_ID_MASK);
-		} else {
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL4(i),
-					CTL4_RLAT_MON_ID, 0);
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL6(i),
-					 CTL6_RLAT_MON_ID_MASK, 0);
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL5(i),
-					 CTL5_WLAT_MON_ID, 0);
-			smmu_write_field(wp_base, SMMUWP_TBUx_CTL7(i),
-					 CTL7_WLAT_MON_ID_MASK, 0);
-		}
-		pr_info("\tTBU%u_CTL4(0x%x):0x%x, TBU%u_CTL5(0x%x):0x%x, TBU%u_CTL6(0x%x):0x%x, TBU%u_CTL7(0x%x):0x%x\n",
-			i, SMMUWP_TBUx_CTL4(i), smmu_read_reg(wp_base, SMMUWP_TBUx_CTL4(i)),
-			i, SMMUWP_TBUx_CTL5(i), smmu_read_reg(wp_base, SMMUWP_TBUx_CTL5(i)),
-			i, SMMUWP_TBUx_CTL6(i), smmu_read_reg(wp_base, SMMUWP_TBUx_CTL6(i)),
-			i, SMMUWP_TBUx_CTL7(i), smmu_read_reg(wp_base, SMMUWP_TBUx_CTL7(i)));
-	}
-
-	/* Clear latency counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START,
-			 CTL0_LAT_MON_START);
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START, 0);
-
-	/* Both TCU and TBU latency count are expected to be 0 now */
-	smmuwp_check_latency_counter(smmu, &maxlat_axiid, &tcu_rlat_tots,
-				     &tbu_lat_tots, &oos_trans_tot);
-	if (tcu_rlat_tots || tbu_lat_tots || oos_trans_tot) {
-		pr_info("%s clear counter failed\n", __func__);
-		return -1;
-	}
-
-	/* Start latency counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START,
-			 CTL0_LAT_MON_START);
-
-	return 0;
-}
-
-/* Used to performance debug */
-static void __maybe_unused smmuwp_end_latency_monitor(struct arm_smmu_device *smmu,
-						      unsigned int *maxlat_axiid,
-						      unsigned long *tcu_rlat_tots,
-						      unsigned long *tbu_lat_tots,
-						      unsigned long *oos_trans_tot)
-{
-	void __iomem *wp_base = smmu->wp_base;
-
-	/* End latency counter */
-	smmu_write_field(wp_base, SMMUWP_LMU_CTL0, CTL0_LAT_MON_START, 0);
-
-	smmuwp_check_latency_counter(smmu, maxlat_axiid, tcu_rlat_tots,
-				     tbu_lat_tots, oos_trans_tot);
-}
-
 /* Used to debug hang/stability issue */
 static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu)
 {
@@ -3403,15 +3051,15 @@ static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu)
  * If the power consumption issue still exists after DCM is enabled,
  * you can consider turning off SMMU to check power consumption.
  */
-static void __maybe_unused smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
+static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 {
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int regval;
 
 	regval = smmu_read_reg(wp_base, SMMUWP_GLB_CTL0);
 	dev_info(smmu->dev,
-		 "[%s] GLB_CTL0(0x%x):0x%x, DCM_EN:0x%x, CFG_TAB_DCM_EN:0x%x\n",
-		 __func__, SMMUWP_GLB_CTL0, regval, FIELD_GET(CTL0_DCM_EN, regval),
+		 "GLB_CTL0(0x%x):0x%x, DCM_EN:0x%x, CFG_TAB_DCM_EN:0x%x\n",
+		 SMMUWP_GLB_CTL0, regval, FIELD_GET(CTL0_DCM_EN, regval),
 		 FIELD_GET(CTL0_CFG_TAB_DCM_EN, regval));
 }
 
@@ -3432,19 +3080,13 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		return;
 
 	data = mkt_get_smmu_data(type);
-	if (!data)
+	if (!data || data->hw_init_flag != 1)
 		return;
 
 	if (!__ratelimit(&dbg_rs))
 		return;
 
 	smmu = &data->smmu;
-	if (data->hw_init_flag != 1) {
-		dev_info(smmu->dev, "[%s] smmu:%s hw not init\n",
-			 __func__, get_smmu_name(type));
-		return;
-	}
-
 	ret = mtk_smmu_power_get(smmu);
 	if (ret) {
 		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
@@ -3461,6 +3103,9 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 
 	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
+
+	smmuwp_dump_outstanding_monitor(smmu);
+	smmuwp_dump_io_interface_signals(smmu);
 	mtk_hyp_smmu_reg_dump(smmu);
 
 	if (sid_valid) {
@@ -3486,20 +3131,12 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 	u64 sid_max;
 	int ret = 0;
 
-	if (!master_dev || type >= SMMU_TYPE_NUM || !param)
+	if (!master_dev || type >= SMMU_TYPE_NUM || tbu >= SMMU_TBU_CNT(type) ||
+	    num_axids == 0 || !axids || !param)
 		return -EINVAL;
 
 	data = mkt_get_smmu_data(type);
-	if (!data)
-		return -EINVAL;
-
-	if (data->hw_init_flag != 1)
-		return -1;
-
-	if (tbu >= SMMU_TBU_CNT(type))
-		return -EINVAL;
-
-	if (num_axids == 0)
+	if (!data || data->hw_init_flag != 1)
 		return -EINVAL;
 
 	smmu = &data->smmu;
@@ -3520,159 +3157,6 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_tf_detect);
-
-int mtk_smmu_start_transaction_counter(struct device *dev)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return -1;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return -1;
-	}
-
-	ret = smmuwp_start_transaction_counter(smmu);
-
-	mtk_smmu_power_put(smmu);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_start_transaction_counter);
-
-void mtk_smmu_end_transaction_counter(struct device *dev,
-				      unsigned long *tcu_tot,
-				      unsigned long *tbu_tot)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	smmuwp_end_transaction_counter(smmu, tcu_tot, tbu_tot);
-
-	mtk_smmu_power_put(smmu);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_end_transaction_counter);
-
-int mtk_smmu_start_latency_monitor(struct device *dev,
-				   int mon_axiid,
-				   int lat_spec)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return -1;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return -1;
-	}
-
-	ret = smmuwp_start_latency_monitor(smmu, mon_axiid, lat_spec);
-
-	mtk_smmu_power_put(smmu);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_start_latency_monitor);
-
-void mtk_smmu_end_latency_monitor(struct device *dev,
-				  unsigned int *maxlat_axiid,
-				  unsigned long *tcu_rlat_tots,
-				  unsigned long *tbu_lat_tots,
-				  unsigned long *oos_trans_tot)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	smmuwp_end_latency_monitor(smmu, maxlat_axiid,
-			tcu_rlat_tots, tbu_lat_tots, oos_trans_tot);
-
-	mtk_smmu_power_put(smmu);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_end_latency_monitor);
-
-void mtk_smmu_dump_outstanding_monitor(struct device *dev)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	smmuwp_dump_outstanding_monitor(smmu);
-
-	mtk_smmu_power_put(smmu);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_dump_outstanding_monitor);
-
-void mtk_smmu_dump_io_interface_signals(struct device *dev)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	smmuwp_dump_io_interface_signals(smmu);
-
-	mtk_smmu_power_put(smmu);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_dump_io_interface_signals);
-
-void mtk_smmu_dump_dcm_en(struct device *dev)
-{
-	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret;
-
-	if (!smmu)
-		return;
-
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	smmuwp_dump_dcm_en(smmu);
-
-	mtk_smmu_power_put(smmu);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_dump_dcm_en);
 
 static struct arm_smmu_device *get_smmu_dev_for_pmu(struct smmuv3_pmu_device *pmu_device)
 {

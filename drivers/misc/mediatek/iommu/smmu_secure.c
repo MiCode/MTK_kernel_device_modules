@@ -44,10 +44,8 @@ enum smmu_atf_cmd {
 
 static int mtk_smmu_hw_is_valid(uint32_t smmu_type)
 {
-	if (smmu_type >= SMMU_TYPE_NUM) {
-		pr_info("%s type is invalid, %u\n", __func__, smmu_type);
+	if (smmu_type >= SMMU_TYPE_NUM)
 		return SMC_SMMU_FAIL;
-	}
 
 	return SMC_SMMU_SUCCESS;
 }
