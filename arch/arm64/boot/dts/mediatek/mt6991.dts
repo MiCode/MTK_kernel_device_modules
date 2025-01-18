@@ -15631,7 +15631,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		fmeter-id =	/bits/ 8 <22 23 27 15  9  7  8 11 12 20 21>;
 		fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5  5  5>;
 		clk-base = <0x1000c000>;
-		clk-offsets = <0x0020>, <0x0030>, <0x0040>, <0x0050>, <0x0060>;
+		clk-offsets = <0x0020>, <0x0030>, <0x0040>, <0x0050>, <0x0060>,
+			<0x0174>, <0x0f8>;
 		vcore-supply = <&mt6316_8_vbuck1>;
 		vmm-pmic-supply = <&mt6363_vbuck2>;
 		vdisp-pmic-supply = <&mt6363_vbuck1>;
