@@ -1220,6 +1220,14 @@
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	gic_ram_parity: gic-ram-parity {
+		compatible = "mediatek,gic-ram-parity";
+		interrupts = <GIC_SPI 139 IRQ_TYPE_EDGE_RISING 0>,
+				<GIC_SPI 140 IRQ_TYPE_EDGE_RISING 0>;
+		interrupt-names = "fault_handling_interrupt",
+				"error_recovery_interrupt";
+	};
+
 	spmi: spmi@1c01a000 {
 		compatible = "mediatek,mt6991-spmi";
 		reg = <0 0x1c01a000 0 0x0008ff>,
