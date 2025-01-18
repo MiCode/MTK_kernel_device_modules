@@ -1023,7 +1023,7 @@ static ssize_t md_cd_parameter_show(struct ccci_modem *md, char *buf)
 
 	count += scnprintf(buf + count, 128,
 		"PACKET_HISTORY_DEPTH=%d\n", PACKET_HISTORY_DEPTH);
-	count += scnprintf(buf + count, 128, "BD_NUM=%ld\n", MAX_BD_NUM);
+	count += scnprintf(buf + count, 128, "BD_NUM=%d\n", MAX_BD_NUM);
 
 	return count;
 }
