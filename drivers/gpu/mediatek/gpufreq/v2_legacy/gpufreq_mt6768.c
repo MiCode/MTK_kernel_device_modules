@@ -268,7 +268,7 @@ unsigned int __gpufreq_get_shader_present(void)
 /* API: get current Freq of GPU */
 unsigned int __gpufreq_get_cur_fgpu(void)
 {
-	return g_gpu.cur_freq;
+	return READ_ONCE(g_gpu.cur_freq);
 }
 
 /* API: get current Freq of STACK */
