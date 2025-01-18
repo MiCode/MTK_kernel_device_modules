@@ -1005,6 +1005,27 @@ static inline unsigned long task_util_est(struct task_struct *p)
 	return task_util(p);
 }
 
+static inline s64 entity_key(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+	return (s64)(se->vruntime - cfs_rq->min_vruntime);
+}
+
+int entity_eligible(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+	struct sched_entity *curr = cfs_rq->curr;
+	s64 avg = cfs_rq->avg_vruntime;
+	long load = cfs_rq->avg_load;
+
+	if (curr && curr->on_rq) {
+		unsigned long weight = scale_load_down(curr->load.weight);
+
+		avg += entity_key(cfs_rq, curr) * weight;
+		load += weight;
+	}
+
+	return avg >= entity_key(cfs_rq, se) * load;
+}
+
 void mtk_sched_switch(void *data, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
@@ -1013,6 +1034,15 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 
 	if (next->pid == 0)
 		per_cpu(sbb, rq->cpu)->active = 0;
+
+	if (trace_sched_stat_vdeadline_enabled()) {
+		if (prev->pid != 0 && next->pid != 0) {
+			if (prev->prio > 99 && next->prio > 99) {
+				if (entity_eligible(&(rq->cfs), &(prev->se)))
+					trace_sched_stat_vdeadline(prev, next);
+			}
+		}
+	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vip_sched_switch(prev, next, rq);

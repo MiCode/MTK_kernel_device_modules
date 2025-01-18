@@ -2166,6 +2166,40 @@ TRACE_EVENT(sched_mtk_update_misfit_status,
 		__entry->misfit_task_load)
 );
 
+TRACE_EVENT(sched_stat_vdeadline,
+	TP_PROTO(struct task_struct *prev, struct task_struct *next),
+	TP_ARGS(prev, next),
+	TP_STRUCT__entry(
+		__field(int, prev_pid)
+		__field(u64, prev_deadline)
+		__field(u64, prev_slice)
+		__field(int, next_pid)
+		__field(u64, next_deadline)
+		__field(u64, next_slice)
+		__field(bool, expected)
+	),
+
+	TP_fast_assign(
+		__entry->prev_pid = prev->pid;
+		__entry->prev_deadline = (prev->se).deadline;
+		__entry->prev_slice = (prev->se).slice;
+		__entry->next_pid = next->pid;
+		__entry->next_deadline = (next->se).deadline;
+		__entry->next_slice = (next->se).slice;
+		__entry->expected = (prev->se).deadline > (next->se).deadline;
+	),
+
+	TP_printk("prev_pid=%d prev_deadline=%llu prev_slice=%llu next_pid=%d next_deadline=%llu next_slice=%llu expected=%d",
+		__entry->prev_pid,
+		__entry->prev_deadline,
+		__entry->prev_slice,
+		__entry->next_pid,
+		__entry->next_deadline,
+		__entry->next_slice,
+		__entry->expected
+	)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH
