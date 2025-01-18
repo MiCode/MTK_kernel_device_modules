@@ -1,19 +1,14 @@
-#
-# Copyright (C) 2019 MediaTek Inc.
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as
-# published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2020 MediaTek Inc.
 
-#obj-y += s5k4h7_mipiraw_Sensor.o
-imgsensor_isp6s-objs += \
-        $(subdrv-rpath)/s5k4h7_mipiraw_Sensor.o
-imgsensor_isp6s-objs += \
-        $(subdrv-rpath)/s5k4h7otp.o
+IMGSENSOR_SUBDRV_OBJ := \
+	$(subdrv-rpath)/s5k4h7_mipiraw_Sensor.o \
+	$(subdrv-rpath)/s5k4h7otp.o \
 
+ifneq (,$(filter $(CONFIG_MTK_IMGSENSOR), m y))
+imgsensor_isp6s-objs += $(IMGSENSOR_SUBDRV_OBJ)
+endif
+
+ifneq (,$(filter $(CONFIG_MTK_IMGSENSOR_ISP6S_MON), m y))
+imgsensor_isp6s_mon-objs += $(IMGSENSOR_SUBDRV_OBJ)
+endif
