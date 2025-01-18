@@ -12752,7 +12752,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<8 0x002fa000>, /* MNL/MPE BIN data */
 			<9 0x000d6000>, /* Connsys/SCP shared */
 			<10 0x000a0000>, /* WF MISC */
-			<11 0x05000000>; /* WFDMA1 */
+			<11 0x01900000>; /* WFDMA1 */
 
 		/* block_name start_idx end_idx mapping */
 		emi-alloc-block =
@@ -17145,7 +17145,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg = <0 0x40000000 0 0x700000>;
 		interrupts = <GIC_SPI 617 IRQ_TYPE_LEVEL_HIGH 0>;
 		emi-addr = <0>;
-		emi-size = <0x5000000>;
+		emi-size = <0x1900000>;
 		emi-alignment = <0x1000000>;
 		emi-max-addr = <0xc0000000>;
 		pinctrl-names = "wf_rst_off",
