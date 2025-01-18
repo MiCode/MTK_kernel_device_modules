@@ -63,6 +63,8 @@ char *slbc_uid_str[UID_MAX + 1] = {
 	"UID_BIF",
 	"UID_MM_VENC_SL",
 	"UID_SENSOR",
+	"UID_MM_VENC_FHD",
+	"UID_MM_VENC_8K",
 	"UID_MAX",
 };
 EXPORT_SYMBOL_GPL(slbc_uid_str);
@@ -80,6 +82,12 @@ char *slc_ach_uid_str[ID_MAX + 1] = {
 	"ID_MD",
 	"ID_ADSP",
 	"ID_AOV",
+	"ID_IMG",
+	"ID_CAM",
+	"ID_MAE",
+	"ID_DMR",
+	"ID_OD",
+	"ID_DBI",
 	"ID_MAX",
 };
 EXPORT_SYMBOL_GPL(slc_ach_uid_str);

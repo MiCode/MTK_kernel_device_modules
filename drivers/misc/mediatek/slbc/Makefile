@@ -17,6 +17,7 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3 \
 	-I$(srctree)/include \
 	-I$(srctree)/$(src) \
 
@@ -55,6 +56,10 @@ endif
 
 ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6989.c),)
 obj-${CONFIG_MTK_SLBC_MT6989} += slbc_mt6989.o
+endif
+
+ifneq ($(wildcard $(srctree)/$(src)/slbc_mt6991.c),)
+obj-${CONFIG_MTK_SLBC_MT6991} += slbc_mt6991.o
 endif
 obj-${CONFIG_MTK_SLBC_IPI} += slbc_ipi.o
 obj-${CONFIG_MTK_SLBC_TRACE} += slbc_trace.o

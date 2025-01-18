@@ -68,14 +68,16 @@ enum {
 	IPI_SLBC_CACHE_WINDOW_SET,
 	IPI_SLBC_CACHE_WINDOW_GET,
 	IPI_SLBC_CACHE_USAGE,
+	IPI_SLBC_SETUP_SSPM_SHARED_DRAM,
 	NR_IPI_SLBC,
 };
 
 struct slbc_ipi_data {
 	unsigned int cmd;
-	unsigned int arg;
+	unsigned int arg1;
 	unsigned int arg2;
 	unsigned int arg3;
+	unsigned int arg4;
 };
 
 struct slbc_ipi_ops {
@@ -85,8 +87,7 @@ struct slbc_ipi_ops {
 	void (*slbc_buffer_cb_notify)(u32 arg, u32 arg2, u32 arg3);
 };
 
-extern int slbc_scmi_set(void *buffer);
-extern int slbc_scmi_get(void *buffer, void *ptr);
+extern int slbc_scmi_ctrl(void *buffer, void *ptr);
 
 #define SLBC_IPI(x, y)			((x) & 0xffff | ((y) & 0xffff) << 16)
 #define SLBC_IPI_CMD_GET(x)		((x) & 0xffff)
@@ -102,8 +103,8 @@ extern int slbc_force_scmi_cmd(unsigned int force);
 extern int slbc_mic_num_cmd(unsigned int num);
 extern int slbc_inner_cmd(unsigned int inner);
 extern int slbc_outer_cmd(unsigned int outer);
-extern int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3);
-extern int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr);
+extern int slbc_ctrl_scmi_info(unsigned int cmd, unsigned int arg1,
+		unsigned int arg2, unsigned int arg3, unsigned int arg4, void *ptr);
 extern int _slbc_request_cache_scmi(void *ptr);
 extern int _slbc_release_cache_scmi(void *ptr);
 extern int _slbc_buffer_status_scmi(void *ptr);
@@ -130,9 +131,10 @@ extern int emi_gid_pmu_read_counter(void *ptr);
 extern int emi_slc_test_result(void);
 extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data);
+extern int _slbc_sspm_shared_dram_scmi(unsigned int phys_addr, unsigned int mem_size);
 
 #else
-__weak int slbc_suspend_resume_notify(int suspend) { return 0; }
+__weak int slbc_suspend_resume_notify(int) { return 0; }
 __weak int slbc_scmi_init(void) { return 0; }
 __weak int slbc_sspm_slb_disable(int disable) { return 0; }
 __weak int slbc_sspm_slc_disable(int disable) { return 0; }
@@ -141,8 +143,11 @@ __weak int slbc_force_scmi_cmd(unsigned int force) { return 0; }
 __weak int slbc_mic_num_cmd(unsigned int num) { return 0; }
 __weak int slbc_inner_cmd(unsigned int inner) { return 0; }
 __weak int slbc_outer_cmd(unsigned int outer) { return 0; }
-__weak int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3) { return 0; }
-__weak int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr) { return 0; }
+__weak int slbc_ctrl_scmi_info(unsigned int cmd, unsigned int arg1,
+		unsigned int arg2, unsigned int arg3, unsigned int arg4, void *ptr)
+{
+	return 0;
+}
 __weak int slbc_get_cache_user_pmu(int uid, void *ptr) { return 0; }
 __weak int slbc_get_cache_user_status(int uid, void *ptr) { return 0; }
 __weak int _slbc_request_cache_scmi(void *ptr) { return 0; }
