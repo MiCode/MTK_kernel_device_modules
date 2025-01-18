@@ -13,6 +13,7 @@
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 
 obj-$(CONFIG_MTK_JPEG) += jpeg-driver.o
 
