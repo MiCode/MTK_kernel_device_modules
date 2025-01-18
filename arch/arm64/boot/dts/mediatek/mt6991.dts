@@ -12106,15 +12106,13 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	};
 
 	mmdvfs_mux: mmdvfs-mux {
-#if 0
 		compatible = "mediatek,mtk-mmdvfs-mux";
-		clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>,
-			 <&topckgen_clk CLK_TOP_MDP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			 <&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
-			 <&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
+		clocks = <&cksys_gp2_clk CLK_CK2_DISP_SEL>, <&cksys_gp2_clk CLK_CK2_MDP_SEL>,
+			 <&cksys_gp2_clk CLK_CK2_MDP_SEL>, <&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
+			 <&cksys_gp2_clk CLK_CK2_VENC_SEL>, <&cksys_gp2_clk CLK_CK2_VDEC_SEL>,
+			 <&cksys_gp2_clk CLK_CK2_IMG1_SEL>, <&cksys_gp2_clk CLK_CK2_CAM_SEL>;
 		clock-names = "mux-dis", "mux-mdp", "mux-mml", "mux-smi", "mux-ven",
 				"mux-vde", "mux-img", "mux-cam";
-#endif
 		mediatek,mmdvfs-opp-table =
 			<&opp_table_disp>, <&opp_table_disp>, <&opp_table_disp>,
 			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_vdec>,
@@ -12137,14 +12135,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			"user-vcore", "user-vmm", "user-vdisp", "user-vdec",
 			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
 			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam", "user-img-smi";
-		mediatek,free-run;
+		//mediatek,free-run;
 		mediatek,dpsw-thres = <1>;
 		//mediatek,vdec-larb = <&smi_larb5>;
 		mediatek,restore-step;
 	};
 
 	mmdvfs-user {
-		//compatible = "mediatek,mtk-mmdvfs-user";
+		compatible = "mediatek,mtk-mmdvfs-user";
 		clocks = <&mmdvfs_mux MMDVFS_USER_VCORE>, <&mmdvfs_mux MMDVFS_USER_VMM>,
 			 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>,
 			 <&mmdvfs_mux DUMMY_USER_DIS>, <&mmdvfs_mux DUMMY_USER_MDP>,
@@ -12157,10 +12155,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	};
 
 	mmdvfs_debug: mmdvfs-debug {
-		//compatible = "mediatek,mmdvfs-debug";
+		compatible = "mediatek,mmdvfs-debug";
 		debug-version = <2>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
-		fmeter-id =	/bits/ 8 <22 23 15  9  7  8 11 12 20 21>;
-		fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5  5>;
+		fmeter-id =	/bits/ 8 <22 23 27 15  9  7  8 11 12 20 21>;
+		fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5  5  5>;
 		clk-base = <0x1000c000>;
 		clk-offsets = <0x0020>, <0x0030>, <0x0040>, <0x0050>, <0x0060>;
 	};
