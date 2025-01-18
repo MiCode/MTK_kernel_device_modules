@@ -1042,6 +1042,11 @@ static u32 pq_rdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task
 	/* stash command for every 4KB size */
 	*srt_bw_out = *srt_bw_out / 256;
 	*hrt_bw_out = *hrt_bw_out / 256;
+
+	*srt_bw_out = max_t(u32, MML_QOS_MIN_STASH_BW, *srt_bw_out);
+	if (*hrt_bw_out)
+		*hrt_bw_out= max_t(u32, MML_QOS_MIN_STASH_BW, *hrt_bw_out);
+
 	return 0;
 }
 

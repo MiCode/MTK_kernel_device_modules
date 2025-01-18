@@ -2567,6 +2567,10 @@ static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	wrot_frm->stash_srt_bw = srt_bw / burst;
 	wrot_frm->stash_hrt_bw = hrt_bw / burst;
 
+	wrot_frm->stash_srt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_srt_bw);
+	if (wrot_frm->stash_hrt_bw)
+		wrot_frm->stash_hrt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_hrt_bw);
+
 done:
 	*srt_bw_out = wrot_frm->stash_srt_bw;
 	*hrt_bw_out = wrot_frm->stash_hrt_bw;
