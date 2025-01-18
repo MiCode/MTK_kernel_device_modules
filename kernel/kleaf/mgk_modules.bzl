@@ -2,7 +2,9 @@ load("//kernel-mainline:modules.bzl", "get_gki_modules_list")
 
 COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64")
 
-mgk_module_outs = COMMON_GKI_MODULES_LIST + [
+mgk_module_outs = COMMON_GKI_MODULES_LIST
+
+mgk_module_ext_outs = [
     "drivers/firmware/arm_ffa/ffa-module.ko",
     "drivers/gpu/drm/display/drm_display_helper.ko",
     "drivers/gpu/drm/drm_dma_helper.ko",
@@ -20,15 +22,15 @@ mgk_module_outs = COMMON_GKI_MODULES_LIST + [
     "drivers/thermal/thermal-generic-adc.ko",
 ]
 
-mgk_module_eng_outs = [
+mgk_module_eng_outs = mgk_module_ext_outs + [
     "fs/pstore/pstore_blk.ko",
     "fs/pstore/pstore_zone.ko",
 ]
 
-mgk_module_userdebug_outs = [
+mgk_module_userdebug_outs = mgk_module_ext_outs + [
     "fs/pstore/pstore_blk.ko",
     "fs/pstore/pstore_zone.ko",
 ]
 
-mgk_module_user_outs = [
+mgk_module_user_outs = mgk_module_ext_outs + [
 ]
