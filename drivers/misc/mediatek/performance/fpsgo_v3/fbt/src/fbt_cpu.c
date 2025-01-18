@@ -293,6 +293,10 @@ static int limit_cfreq2cap;
 static int limit_rfreq2cap;
 static int limit_cfreq2cap_m;
 static int limit_rfreq2cap_m;
+static int jank_min_cap_ratio;
+static int jank_max_cap_ratio;
+static int jank_priority;
+static int jank_cpu_mask;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -2264,6 +2268,9 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			fpsgo_systrace_c_fbt_debug(fl->pid, 0, 0, "is_heavy");
 		}
 
+		if (fpsgo_get_jank_detection_info(fl->pid, 0))
+			goto print_log;
+
 		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
 
 		min_cap_other = min_cap_m * separate_pct_other_final / 100;
@@ -2296,6 +2303,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
 			fl->heavyidx, &fl->ori_ls);
 
+print_log:
 		if (strlen(dep_str) == 0)
 			print_ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
 		else
@@ -6137,6 +6145,168 @@ static int fbt_set_separate_aa(int enable)
 	return 0;
 }
 
+void fbt_jank_thread_uclamp(int boost, int pid, int min_cap_ratio, int max_cap_ratio)
+{
+	int local_min_cap = 0;
+	int local_max_cap = 100;
+
+	if (boost) {
+		mutex_lock(&fbt_mlock);
+		local_min_cap = max_blc;
+		mutex_unlock(&fbt_mlock);
+
+		local_min_cap = local_min_cap * min_cap_ratio / 100;
+		local_min_cap = clamp(local_min_cap, 1, 100);
+		if (local_min_cap < 100) {
+			local_max_cap = fbt_get_max_cap(local_min_cap, bhr_opp, bhr, pid, 0);
+			local_max_cap = local_max_cap * max_cap_ratio / 100;
+			local_max_cap = clamp(local_max_cap, local_min_cap, 100);
+		}
+
+		fpsgo_systrace_c_fbt(pid, 0, local_min_cap, "jank_perf_min");
+		fpsgo_systrace_c_fbt(pid, 0, local_max_cap, "jank_perf_max");
+	} else {
+		fpsgo_systrace_c_fbt(pid, 0, -1, "jank_perf_min");
+		fpsgo_systrace_c_fbt(pid, 0, -1, "jank_perf_max");
+	}
+
+	fbt_set_per_task_cap(pid, local_min_cap, local_max_cap, 1024);
+}
+
+void fbt_jank_thread_priority(int boost, int pid, int cmd)
+{
+	if (cmd == 3)
+		boost ? fbt_set_task_sched_policy(pid, RT_prio1, NULL) :
+			fbt_set_task_sched_policy(pid, 0, NULL);
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	else if (cmd == 1)
+		boost ? set_task_basic_vip(pid) : unset_task_basic_vip(pid);
+	else if (cmd == 2)
+		boost ? set_task_vvip(pid) : unset_task_vvip(pid);
+#endif
+	fpsgo_systrace_c_fbt(pid, 0, (boost ? cmd : 0), "jank_priority");
+}
+
+void fbt_jank_thread_affinity(int pid, int mask)
+{
+	int ret = 0;
+	int cpu;
+	struct cpumask local_mask;
+
+	cpumask_clear(&local_mask);
+	for_each_possible_cpu(cpu) {
+		if (!mask || (mask & (1 << cpu)))
+			cpumask_set_cpu(cpu, &local_mask);
+	}
+	ret = fpsgo_sched_setaffinity(pid, &local_mask);
+	if (ret) {
+		fpsgo_systrace_c_fbt(pid, 0, ret, "jank_affinity_fail");
+		fpsgo_systrace_c_fbt(pid, 0, 0, "jank_affinity_fail");
+	}
+	fpsgo_systrace_c_fbt(pid, 0, mask, "jank_affinity");
+}
+
+static void fbt_jank_thread_boost(int boost, int pid)
+{
+	fbt_jank_thread_uclamp(boost, pid,
+		jank_min_cap_ratio, jank_max_cap_ratio);
+	fbt_jank_thread_priority(boost, pid, jank_priority);
+	fbt_jank_thread_affinity(pid, (boost ? jank_cpu_mask : 0));
+}
+
+static void fbt_jank_thread_restore(int pid)
+{
+	int i;
+	int garbage;
+	int is_dep = 0;
+	int min_cap_final = 0, max_cap_final = 100;
+	int user_cpumask[FPSGO_MAX_GROUP];
+	struct render_info *iter = NULL;
+	struct fpsgo_loading *fl = NULL;
+
+	mutex_lock(&fbt_mlock);
+	iter = fpsgo_get_render_info_by_bufID(max_blc_pid, max_blc_buffer_id);
+	mutex_unlock(&fbt_mlock);
+
+	if (!iter || !iter->dep_arr)
+		return;
+
+	for (i = 0; i < iter->dep_valid_size; i++) {
+		if (iter->dep_arr[i].pid == pid) {
+			fl = &iter->dep_arr[i];
+			is_dep = 1;
+			break;
+		}
+	}
+	fpsgo_systrace_c_fbt(pid, 0, is_dep, "restore_setting");
+	if (!is_dep)
+		return;
+
+	min_cap_final = iter->boost_info.last_blc;
+	if (iter->attr.separate_aa_by_pid) {
+		switch (fl->heavyidx) {
+		case FPSGO_GROUP_HEAVY:
+			min_cap_final = iter->boost_info.last_blc_b;
+			break;
+		case FPSGO_GROUP_SECOND:
+			min_cap_final = iter->boost_info.last_blc_m;
+			break;
+		case FPSGO_GROUP_OTHERS:
+			min_cap_final = iter->boost_info.last_blc_m *
+					iter->attr.separate_pct_other_by_pid / 100;
+			break;
+		}
+	}
+	// [TODO] max_cap_final consider by group
+	if (min_cap_final < 100) {
+		switch (max_blc_stage) {
+		case FPSGO_JERK_INACTIVE:
+			max_cap_final = fbt_get_max_cap(min_cap_final, 0, bhr, fl->pid, 0);
+			break;
+		case FPSGO_JERK_FIRST:
+			max_cap_final = fbt_get_max_cap(min_cap_final, 0, 100, fl->pid, 0);
+			break;
+		case FPSGO_JERK_SECOND:
+			max_cap_final = fbt_get_max_cap(min_cap_final, 0, 100, fl->pid, 0);
+			break;
+		}
+	}
+	fbt_set_per_task_cap(pid, min_cap_final, max_cap_final, 1024);
+	fpsgo_systrace_c_fbt(pid, 0, min_cap_final, "restore_perf_min");
+	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
+
+	fbt_change_task_policy(iter->attr.boost_vip_by_pid, fl->pid, fl->heavyidx, fl->action,
+		iter->attr.rt_prio1_by_pid, iter->attr.rt_prio2_by_pid, iter->attr.rt_prio3_by_pid,
+		&garbage, &garbage, iter->attr.vip_mask_by_pid, iter->attr.set_vvip_by_pid);
+	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
+
+	fbt_get_user_group_setting(iter, user_cpumask);
+	fbt_affinity_task(iter->attr.boost_affinity_by_pid, fl->pid, fl->heavyidx,
+		0, iter->attr.llf_task_policy_by_pid, 0, fl->action, &garbage, &garbage, &garbage,
+		user_cpumask, FPSGO_MAX_GROUP);
+	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_affinity_by_pid, "restore_affinity");
+}
+
+void fpsgo_comp2fbt_jank_thread_boost(int boost, int pid)
+{
+	struct jank_detection_info *iter = NULL;
+
+	iter = fpsgo_get_jank_detection_info(pid, boost);
+	if (!iter)
+		return;
+
+	fbt_jank_thread_boost(boost, pid);
+	if (!boost) {
+		fbt_jank_thread_restore(iter->pid);
+		fpsgo_delete_jank_detection_info(iter);
+	}
+}
+
+void fpsgo_base2fbt_jank_thread_deboost(int pid)
+{
+	fbt_jank_thread_boost(0, pid);
+}
+
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts)
 {
@@ -8452,6 +8622,22 @@ FBT_SYSFS_READ(limit_rfreq2cap_m, fbt_mlock, limit_rfreq2cap_m);
 FBT_SYSFS_WRITE_VALUE(limit_rfreq2cap_m, fbt_mlock, limit_rfreq2cap_m, 0, 4000000);
 static KOBJ_ATTR_RW(limit_rfreq2cap_m);
 
+FBT_SYSFS_READ(jank_min_cap_ratio, fbt_mlock, jank_min_cap_ratio);
+FBT_SYSFS_WRITE_VALUE(jank_min_cap_ratio, fbt_mlock, jank_min_cap_ratio, 1, 100000);
+static KOBJ_ATTR_RW(jank_min_cap_ratio);
+
+FBT_SYSFS_READ(jank_max_cap_ratio, fbt_mlock, jank_max_cap_ratio);
+FBT_SYSFS_WRITE_VALUE(jank_max_cap_ratio, fbt_mlock, jank_max_cap_ratio, 1, 100000);
+static KOBJ_ATTR_RW(jank_max_cap_ratio);
+
+FBT_SYSFS_READ(jank_priority, fbt_mlock, jank_priority);
+FBT_SYSFS_WRITE_VALUE(jank_priority, fbt_mlock, jank_priority, 0, 3);
+static KOBJ_ATTR_RW(jank_priority);
+
+FBT_SYSFS_READ(jank_cpu_mask, fbt_mlock, jank_cpu_mask);
+FBT_SYSFS_WRITE_VALUE(jank_cpu_mask, fbt_mlock, jank_cpu_mask, 1, 0xFFF);
+static KOBJ_ATTR_RW(jank_cpu_mask);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0, err_exit = 0;
@@ -8557,7 +8743,10 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_rfreq2cap);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_cfreq2cap_m);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_rfreq2cap_m);
-
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_jank_min_cap_ratio);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_jank_max_cap_ratio);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_jank_priority);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_jank_cpu_mask);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
@@ -8692,6 +8881,10 @@ int __init fbt_cpu_init(void)
 
 	aa_b_minus_idle_time = 0;
 
+	jank_min_cap_ratio = 100;
+	jank_max_cap_ratio = 100;
+	jank_cpu_mask = 0xFFF;
+
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
 
@@ -8781,6 +8974,10 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_pid);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_tid);
 #endif  // FPSGO_MW
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_jank_min_cap_ratio);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_jank_max_cap_ratio);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_jank_priority);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_jank_cpu_mask);
 	}
 
 	INIT_LIST_HEAD(&blc_list);

@@ -132,6 +132,9 @@ void fbt_set_max_blc_stage(int stage);
 void fbt_set_max_blc_cur(unsigned int blc);
 void fbt_get_setting_info(struct fbt_setting_info *sinfo);
 
+void fpsgo_comp2fbt_jank_thread_boost(int boost, int pid);
+void fpsgo_base2fbt_jank_thread_deboost(int pid);
+
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }
