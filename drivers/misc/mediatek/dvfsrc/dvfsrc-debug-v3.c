@@ -91,6 +91,30 @@ static const int mt6873_regs[] = {
 	[DVFSRC_RSRV_4] = 0x610,
 };
 
+static const int mt6877_regs[] = {
+	[DVFSRC_BASIC_CONTROL] = 0x0,
+	[DVFSRC_SW_REQ1] = 0x4,
+	[DVFSRC_INT] = 0xC4,
+	[DVFSRC_INT_EN] = 0xC8,
+	[DVFSRC_SW_BW_0] = 0x260,
+	[DVFSRC_ISP_HRT] = 0x290,
+	[DVFSRC_DEBUG_STA_0] = 0x700,
+	[DVFSRC_VCORE_REQUEST] = 0x6C,
+	[DVFSRC_CURRENT_LEVEL] = 0xD44,
+	[DVFSRC_TARGET_LEVEL] = 0xD48,
+	[DVFSRC_LAST] = 0xAE4,
+	[DVFSRC_RECORD_0] = 0xAF0,
+	[DVFSRC_DDR_REQUEST] = 0xA00,
+	[DVSFRC_HRT_REQ_MD_URG] = 0xA64,
+	[DVFSRC_HRT_REQ_MD_BW_0] = 0xA68,
+	[DVFSRC_HRT_REQ_MD_BW_8] = 0xA88,
+	[DVFSRC_MD_TURBO] = 0xDC,
+	[DVFSRC_95MD_SCEN_BWU] = 0x544,
+	[DVFSRC_95MD_SCEN_BW0] = 0x524,
+	[DVFSRC_95MD_SCEN_BW0_T] = 0x534,
+	[DVFSRC_RSRV_4] = 0x610,
+};
+
 static const int mt6983_regs[] = {
 	[DVFSRC_BASIC_CONTROL] = 0x0,
 	[DVFSRC_SW_REQ1] = 0x10,
@@ -199,9 +223,9 @@ static const int mt6877_spm_regs[] = {
 	[POWERON_CONFIG_EN] = 0x0,
 	[SPM_PC_STA] = 0x0194,
 	[SPM_SW_FLAG] = 0x600,
-	[SPM_DVFS_LEVEL] = 0x0390,
+	[SPM_DVFS_LEVEL] = 0x038C,
 	[SPM_DVFS_STA] = 0x0388,
-	[SPM_DVS_DFS_LEVEL] = 0x038C,
+	[SPM_DVS_DFS_LEVEL] = 0x0390,
 	[SPM_DVFS_CMD0] = 0x0310,
 	[SPM_DVFS_CMD1] = 0x0314,
 	[SPM_DVFS_CMD2] = 0x0318,
@@ -1013,7 +1037,7 @@ const struct dvfsrc_config mt6893_dvfsrc_config = {
 
 const struct dvfsrc_config mt6877_dvfsrc_config = {
 	.ip_version = 2, /*mt6873 series*/
-	.regs = mt6873_regs,
+	.regs = mt6877_regs,
 	.spm_regs = mt6877_spm_regs,
 	.dump_record = dvfsrc_dump_record,
 	.dump_reg = dvfsrc_dump_reg,
