@@ -627,10 +627,10 @@ int uarthub_core_dev0_is_uarthub_ready(const char *tag)
 	if (state == 1) {
 		uarthub_core_crc_ctrl(1);
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_clk_info(tag);
+		uarthub_core_debug_clk_info((tag == NULL) ? "HUB_DBG_SetTRX_E" : tag);
 #endif
 #if UARTHUB_INFO_LOG
-		uarthub_core_debug_byte_cnt_info(tag);
+		uarthub_core_debug_byte_cnt_info((tag == NULL) ? "HUB_DBG_SetTRX_E" : tag);
 #endif
 	}
 
@@ -1701,7 +1701,7 @@ int uarthub_core_get_bt_sleep_flow_hw_mech_en(void)
 
 	state = g_plat_ic_core_ops->uarthub_plat_get_bt_sleep_flow_hw_mech_en();
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] state=[%d]\n", __func__, state);
 #endif
 
@@ -1749,7 +1749,7 @@ int uarthub_core_get_host_awake_sta(int dev_index)
 
 	state = g_plat_ic_core_ops->uarthub_plat_get_host_awake_sta(dev_index);
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
 #endif
 
@@ -1774,7 +1774,7 @@ int uarthub_core_set_host_awake_sta(int dev_index)
 
 	state = g_plat_ic_core_ops->uarthub_plat_set_host_awake_sta(dev_index);
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
 #endif
 
@@ -1799,7 +1799,7 @@ int uarthub_core_clear_host_awake_sta(int dev_index)
 
 	state = g_plat_ic_core_ops->uarthub_plat_clear_host_awake_sta(dev_index);
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
 #endif
 
@@ -1824,7 +1824,7 @@ int uarthub_core_get_host_bt_awake_sta(int dev_index)
 
 	state = g_plat_ic_core_ops->uarthub_plat_get_host_bt_awake_sta(dev_index);
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] dev_index=[%d], state=[%d]\n", __func__, dev_index, state);
 #endif
 
@@ -1849,7 +1849,7 @@ int uarthub_core_get_cmm_bt_awake_sta(void)
 
 	state = g_plat_ic_core_ops->uarthub_plat_get_cmm_bt_awake_sta();
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] state=[%d]\n", __func__, state);
 #endif
 
@@ -1874,7 +1874,7 @@ int uarthub_core_get_bt_awake_sta(void)
 
 	state = g_plat_ic_core_ops->uarthub_plat_get_bt_awake_sta();
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] state=[%d]\n", __func__, state);
 #endif
 

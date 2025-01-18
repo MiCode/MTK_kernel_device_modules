@@ -24,6 +24,7 @@ ifneq ($(KERNELRELEASE),)
     subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/pinctrl/mediatek/
     subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/uarthub/common
     subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
+    subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
 
     # Do Nothing, move to standalone repo
     MODULE_NAME := uarthub_drv
