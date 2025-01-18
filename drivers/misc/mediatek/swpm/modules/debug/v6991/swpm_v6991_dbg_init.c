@@ -644,16 +644,8 @@ static void swpm_v6991_dbg_fs_init(void)
 			, 0644, &swpm_pmsr_dbg_en_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_log_interval"
 			, 0644, &swpm_pmsr_log_interval_fops, NULL, NULL);
-	mtk_swpm_sysfs_entry_func_node_add("swpm_psp_test"
-			, 0644, &swpm_psp_test_fops, NULL, NULL);
 
 #if SWPM_EXT_DBG
-	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_ddr_idx"
-			, 0444, &swpm_sp_ddr_idx_fops, NULL, NULL);
-	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_test"
-			, 0444, &swpm_sp_test_fops, NULL, NULL);
-	mtk_swpm_sysfs_entry_func_node_add("swpm_sp_spm_sig"
-			, 0444, &swpm_sp_spm_sig_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("dram_bw"
 			, 0444, &dram_bw_fops, NULL, NULL);
 #endif
