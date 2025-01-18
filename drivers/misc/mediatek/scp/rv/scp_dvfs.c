@@ -82,6 +82,7 @@
 #define PROPNAME_DO_U2_CALI            "do-ulposc-cali"
 #define PROPNAME_FM_CLK                "fmeter-clksys"
 #define PROPNAME_ULPOSC_CLK            "ulposc-clksys"
+#define PROPNAME_SCP_CLK_CTRL_VLP      "scp-clk-ctrl-vlp"
 #define PROPNAME_SCP_CLK_CTRL          "scp-clk-ctrl"
 #define PROPNAME_SCP_CLK_HW_VER        "scp-clk-hw-ver"
 #define PROPNAME_U2_CALI_VER           "ulposc-cali-ver"
@@ -2620,6 +2621,8 @@ static int __init mt_scp_dts_ulposc_cali_init(struct device_node *node,
 		pr_notice("[%s]: get scp clk regmap failed\n", __func__);
 		return ret;
 	}
+	g_dvfs_dev.clk_hw->vlp_scp_clk_regmap = syscon_regmap_lookup_by_phandle(node,
+						PROPNAME_SCP_CLK_CTRL_VLP);
 
 	/* Get the version of hw reg & the version of algorithm */
 	ret = mt_scp_dts_get_cali_hw_regs(node, cali_hw);

@@ -235,6 +235,7 @@ struct ulposc_cali_hw {
 
 struct scp_clk_hw {
 	struct regmap *scp_clk_regmap;
+	struct regmap *vlp_scp_clk_regmap;
 	struct reg_info _clk_high_en;
 	struct reg_info _ulposc2_en;
 	struct reg_info _ulposc2_cg;
