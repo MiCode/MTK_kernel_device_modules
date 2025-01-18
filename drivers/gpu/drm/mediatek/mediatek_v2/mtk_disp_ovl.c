@@ -5489,6 +5489,7 @@ const struct mtk_disp_ovl_data mt6761_ovl_driver_data = {
 	.issue_req_th_urg_dc = 15,
 	.greq_num_dl = 0x7777,
 	.is_support_34bits = false,
+	.source_bpc = 8,
 };
 
 static const struct compress_info compr_info_mt6765  = {
@@ -5541,6 +5542,7 @@ const struct mtk_disp_ovl_data mt6768_ovl_driver_data = {
 	.issue_req_th_urg_dc = 15,
 	.greq_num_dl = 0x7777,
 	.is_support_34bits = false,
+	.source_bpc = 8,
 };
 
 static const struct compress_info compr_info_mt6779  = {
