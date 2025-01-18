@@ -899,7 +899,7 @@ static const struct snd_pcm_ops mtk_scp_voice_ops = {
 	.prepare = mtk_pcm_scp_voice_prepare,
 	.trigger = mtk_pcm_scp_voice_trigger,
 	.pointer = mtk_pcm_scp_voice_pointer,
-	.copy_user = mtk_pcm_scp_voice_copy,
+	.copy = mtk_pcm_scp_voice_copy,
 };
 
 static const struct snd_soc_component_driver mtk_scp_voice_soc_component = {

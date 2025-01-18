@@ -977,7 +977,7 @@ static const struct snd_pcm_ops mtk_afe_ops = {
 	.hw_free = mtk_anc_hw_free,
 	.prepare = mtk_anc_prepare,
 	.trigger = mtk_anc_trigger,
-	.copy_user = mtk_anc_copy,
+	.copy = mtk_anc_copy,
 	.fill_silence = mtk_anc_silence,
 	.page = mtk_anc_page,
 };

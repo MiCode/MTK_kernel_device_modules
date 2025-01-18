@@ -1580,7 +1580,7 @@ const struct snd_soc_component_driver mtk_scp_audio_pcm_platform = {
 	.prepare = mtk_scp_audio_pcm_hw_prepare,
 	.trigger = mtk_scp_audio_pcm_hw_trigger,
 	.pointer = mtk_scp_audiohw_pcm_pointer,
-	.copy_user = mtk_scp_audio_pcm_copy,
+	.copy = mtk_scp_audio_pcm_copy,
 };
 EXPORT_SYMBOL_GPL(mtk_scp_audio_pcm_platform);
 

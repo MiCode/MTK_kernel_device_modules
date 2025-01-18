@@ -322,7 +322,7 @@ static int mtk_capture2_pcm_trigger(struct snd_soc_component *component,
 static int mtk_capture2_pcm_copy(struct snd_soc_component *component,
 				 struct snd_pcm_substream *substream,
 				 int channel, unsigned long pos,
-				 void __user *dst, unsigned long count)
+				 struct iov_iter *dst, unsigned long count)
 {
 	return mtk_memblk_copy(substream, channel, pos, dst, count,
 			       VUL2_Control_context,
