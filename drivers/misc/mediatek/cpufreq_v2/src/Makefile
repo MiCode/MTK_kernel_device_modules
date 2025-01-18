@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -17,7 +17,6 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ppm_v3/inc/	\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/	\
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/	\
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/common/include
 
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6768)),)
 ccflags-y += -I$(CPUFREQ_ROOT_DIR)/src/plat_k68
@@ -72,10 +71,10 @@ endif
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6761)),)
 ccflags-y += \
 	-I$(CPUFREQ_ROOT_DIR)/inc \
-	-I$(srctree)/drivers/misc/mediatek/include \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/common/include	\
-	-I$(srctree)/drivers/misc/mediatek/cpufreq_v2/src/platform   \
-	-I$(srctree)/drivers/misc/mediatek/mcupm/common/
+	-I$(CPUFREQ_ROOT_DIR)/src/plat_k6761   \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/common/include	\
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcupm/common/
 
 endif
 
@@ -87,11 +86,13 @@ ccflags-y += \
 endif
 
 #sspm
+
+#sspm for mt6768
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V1)),)
 	ccflags-y += -DUSE_SSPM_VER_V1
 	ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v1/
 endif
-#sspm for k6765
+#sspm for k6765,mt6761
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -DUSE_SSPM_VER_V1
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v0/
@@ -126,7 +127,7 @@ ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6833)),)
 CPU_DVFS-y += common_v3/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6761)),)
-CPU_DVFS-y += platform/mtk_cpufreq_platform.o
+CPU_DVFS-y += plat_k6761/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6877)),)
 CPU_DVFS-y += plat_k6877/mtk_cpufreq_platform.o

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 /* system includes */
@@ -32,7 +32,6 @@
 #include <linux/topology.h>
 #include <linux/math64.h>
 #include <mt-plat/sync_write.h>
-/* #include <mt-plat/mtk_io.h> */	// not ready
 #include <mt-plat/aee.h>
 #include <trace/events/power.h>
 /* #include <trace/events/mtk_events.h> */
@@ -79,7 +78,7 @@
 
 
 #if IS_ENABLED(CONFIG_MTK_CPU_MSSV)
-unsigned int __attribute__((weak)) cpumssv_get_state(void) { return 0; }
+__weak unsigned int cpumssv_get_state(void) { return 0; }
 #endif
 
 #ifdef HYBRID_CPU_DVFS

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2020 MediaTek Inc.
+ * Copyright (C) 2024 MediaTek Inc.
  */
 
 #ifndef __MTK_CPUFREQ_INTERNAL_H__
@@ -31,7 +31,6 @@
 #include <linux/suspend.h>
 #include <linux/topology.h>
 #include <mt-plat/sync_write.h>
-/* #include <mt-plat/mtk_io.h> */	// not ready
 #include <mt-plat/aee.h>
 
 #if IS_ENABLED(CONFIG_OF)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 #include <linux/cpufreq.h>
 #include <linux/cpumask.h>
@@ -14,6 +14,7 @@
  */
 /* project includes */
 #include "mtk_ppm_api.h"
+
 /* local includes */
 #include "mtk_cpufreq_internal.h"
 #include "mtk_cpufreq_platform.h"
@@ -32,11 +33,6 @@ struct opp_idx_tbl opp_tbl_m[NR_OPP_IDX];
 int dvfs_disable_flag;
 unsigned int dvfs_init_flag;
 int new_idx_bk;
-
-extern void mt_ppm_set_dvfs_table(unsigned int cpu,
-			struct cpufreq_frequency_table *tbl,
-			unsigned int num, enum dvfs_table_type type);
-
 
 #ifdef ENABLE_DOE
 static void modify_kernel_opp_table_by_doe
@@ -1824,7 +1820,9 @@ static int __init _mt_cpufreq_pdrv_init(void)
 	struct cpumask cpu_mask;
 	unsigned int cluster_num;
 	int i;
-	pr_info("@@~ %s start ! \n", __func__);
+
+	tag_pr_notice("[START]:%s\n", __func__);
+
 	_mt_cpufreq_tbl_init();
 #ifdef ENABLE_DOE
 	tag_pr_notice("@@~ %s DVFS state = %d\n", __func__, dvfs_doe.state);
@@ -1873,7 +1871,7 @@ static int __init _mt_cpufreq_pdrv_init(void)
 
 	ret = platform_driver_register(&_mt_cpufreq_pdrv);
 
-	pr_info("@@~ %s end ! \n", __func__);
+	tag_pr_notice("[END]:%s\n", __func__);
 
 	if (ret) {
 		tag_pr_notice("fail to register cpufreq driver @ %s()\n",

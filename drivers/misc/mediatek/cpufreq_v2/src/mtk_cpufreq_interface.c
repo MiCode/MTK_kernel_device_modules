@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  */
 
 #include <linux/proc_fs.h>
@@ -13,7 +13,7 @@
 #include "mtk_cpufreq_platform.h"
 
 #if IS_ENABLED(CONFIG_MTK_CPU_MSSV)
-unsigned int __attribute__((weak)) cpumssv_get_state(void) { return 0; }
+__weak unsigned int cpumssv_get_state(void) { return 0; }
 #endif
 
 unsigned int func_lv_mask;
