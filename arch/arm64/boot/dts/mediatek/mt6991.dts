@@ -19236,6 +19236,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		#mbox-cells = <1>;
 		status = "disabled";
 	};
+
+	pkvm: pkvm {
+		status = "disable";
+	};
 };
 
 /* WF GPIO start */
