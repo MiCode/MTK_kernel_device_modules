@@ -23,7 +23,7 @@
 #endif
 
 #undef MTK_M4U_ID
-#include <dt-bindings/memory/mt6885-larb-port.h>
+#include <dt-bindings/memory/mt6893-larb-port.h>
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include <soc/mediatek/smi.h>
