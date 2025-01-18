@@ -2125,9 +2125,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 	gpufreq_wrapper: gpufreq-wrapper {
 		compatible = "mediatek,gpufreq_wrapper";
 		gpufreq-version = <2>;
-		dual-buck = <0>;
-		gpueb-support = <0>;
-		gpufreq-bringup = <1>;
+		dual-buck = <1>;
+		gpueb-support = <1>;
+		gpufreq-bringup = <0>;
 	};
 
 	pextp0cfg_ao_clk: syscon@169b0000 {
