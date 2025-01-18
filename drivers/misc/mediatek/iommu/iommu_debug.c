@@ -2915,6 +2915,7 @@ static const struct mtk_m4u_plat_data mt6991_smmu_data = {
 	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6991),
 	.port_list[APU_SMMU] = apu_port_mt6991,
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6991),
+	.mm_tf_ccu_support = 1,
 	.get_valid_tf_id = default_get_valid_tf_id,
 	.mm_tf_is_gce_videoup = default_tf_is_gce_videoup,
 	.smmu_common_id = default_smmu_common_id,
