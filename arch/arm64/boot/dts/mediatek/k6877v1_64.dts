@@ -50,19 +50,16 @@
 	};
 }; /* IRTX GPIO Settings -End */
 
-&mt6360_pmu {
+&subpmic_mtk {
 	mt6360,intr_gpio_num = <4>; /* direct defined GPIO num */
 	mt6360,intr_gpio = <&pio 4 0x0>;
 };
 
-&mt6360_pmic {
+&mt6360_regulator {
 	pwr_off_seq = [04 00 00 02];
 };
 
-&mt6360_typec {
-	mt6360pd,intr_gpio_num = <5>; /* direct defined GPIO num */
-	mt6360pd,intr_gpio = <&pio 5 0x0>;
-};
+
 
 &pio {
 	mtkfb_pins_lcm_led_en1: lcm_led_en1_gpio {
