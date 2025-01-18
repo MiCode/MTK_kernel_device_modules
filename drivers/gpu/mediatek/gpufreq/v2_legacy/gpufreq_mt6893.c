@@ -444,9 +444,10 @@ unsigned int __gpufreq_get_vsram_by_vgpu(unsigned int vgpu)
 }
 
 /* API: get leakage power of GPU */
-unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pgpu(unsigned int volt, int temper)
 {
 	GPUFREQ_UNREFERENCED(volt);
+	GPUFREQ_UNREFERENCED(temper);
 
 	return GPU_LEAKAGE_POWER;
 }
@@ -918,7 +919,7 @@ int __gpufreq_get_idx_by_pstack(unsigned int power)
 }
 
 /* API: get leakage power of STACK */
-unsigned int __gpufreq_get_lkg_pstack(unsigned int volt)
+unsigned int __gpufreq_get_lkg_pstack(unsigned int volt, int temper)
 {
 	return 0;
 }
@@ -981,7 +982,7 @@ void __gpufreq_check_bus_idle(void)
 	} while ((val & 0x4) != 0x4);
 }
 
-void __gpufreq_dump_infra_status(void)
+void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
 	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
 	GPUFREQ_LOGI("[%d] freq: %d, vgpu: %d, vsram: %d",
@@ -2261,7 +2262,7 @@ static void __gpufreq_measure_power(void)
 		freq = g_gpu.working_table[i].freq;
 		volt = g_gpu.working_table[i].volt;
 
-		p_leakage = __gpufreq_get_lkg_pgpu(volt);
+		p_leakage = __gpufreq_get_lkg_pgpu(volt, 30);
 		p_dynamic = __gpufreq_get_dyn_pgpu(freq, volt);
 		p_total = p_dynamic + p_leakage;
 
@@ -2915,7 +2916,7 @@ register_fp:
 	gpufreq_register_gpufreq_fp(&platform_fp);
 
 	/* init gpu ppm */
-	ret = gpuppm_init(TARGET_GPU, g_gpueb_support, 0);
+	ret = gpuppm_init(TARGET_GPU, g_gpueb_support);
 	if (unlikely(ret)) {
 		GPUFREQ_LOGE("fail to init gpuppm (%d)", ret);
 		goto done;
