@@ -1041,12 +1041,13 @@ static void mminfra_devapc_power_off_cb(void)
 	}
 	if (mm_pwr_ver == mm_pwr_v3) {
 		if (dbg->irq_safe) {
-			pr_info("mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x\n",
+			pr_info("%s mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x, mm_dapc_pwr_on = %d, is_mminfra_shutdown = %d\n",
+				__func__,
 				readl(dbg->mminfra_mtcmos_base),
-				readl(dbg->mminfra_mtcmos_base + 0x4));
+				readl(dbg->mminfra_mtcmos_base + 0x4),
+				mm_dapc_pwr_on,
+				is_mminfra_shutdown);
 
-			pr_info("%s mm_dapc_pwr_on = %d\n", __func__, mm_dapc_pwr_on);
-			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
 			if (!is_mminfra_shutdown) {
 				pr_info("%s set mminfra pwr off\n", __func__);
 				ret = pm_runtime_put_sync(dev);
@@ -1086,17 +1087,18 @@ static bool mminfra_devapc_power_cb(void)
 		}
 	} else if (mm_pwr_ver == mm_pwr_v3) {
 		if (dbg->irq_safe) {
-			pr_info("mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x\n",
+			pr_info("%s mm0 mtcmos = 0x%x, mm1 mtcmos = 0x%x, mm_dapc_pwr_on = %d, is_mminfra_shutdown = %d\n",
+				__func__,
 				readl(dbg->mminfra_mtcmos_base),
-				readl(dbg->mminfra_mtcmos_base + 0x4));
+				readl(dbg->mminfra_mtcmos_base + 0x4),
+				mm_dapc_pwr_on,
+				is_mminfra_shutdown);
 			if ((readl(dbg->mminfra_mtcmos_base) & dbg->mm_mtcmos_mask)
 				== dbg->mm_mtcmos_mask) {
 				spin_unlock_irqrestore(&mm_dapc_lock, flags);
 				return true;
 			}
 
-			pr_info("%s mm_dapc_pwr_on = %d\n", __func__, mm_dapc_pwr_on);
-			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
 			if (!is_mminfra_shutdown && !mm_dapc_pwr_on) {
 				pr_info("%s set mminfra pwr on\n", __func__);
 				ret = pm_runtime_get_sync(dev);
