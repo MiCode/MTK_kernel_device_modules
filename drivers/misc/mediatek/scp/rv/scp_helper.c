@@ -1928,11 +1928,12 @@ void scp_reset_wait_timeout(void)
 	uint32_t core0_halt = 0;
 	uint32_t core1_halt = 0;
 	uint32_t sap_halt = 1;
-
+	unsigned long c0, c1;
+	unsigned long core_sap = CORE_RDY_TO_REBOOT;
 	/* make sure scp is in idle state */
 	int timeout = 50; /* max wait 1s */
 
-	while (timeout--) {
+	while (timeout) {
 		core0_halt = readl(R_CORE0_STATUS) & B_CORE_HALT;
 		core1_halt = scpreg.core_nums == 2? readl(R_CORE1_STATUS) & B_CORE_HALT: 1;
 		if (sap_enabled())
@@ -1941,13 +1942,25 @@ void scp_reset_wait_timeout(void)
 			/* SCP stops any activities
 			 * and parks at wfi
 			 */
+			pr_notice("[SCP] check cpu stauts WFI OK\n");
 			break;
 		}
 		mdelay(20);
+		timeout--;
 	}
 
-	if (timeout == 0)
-		pr_notice("[SCP] reset timeout, still reset scp\n");
+	/* print log check scp ee GPR_COREX_REBOOT status*/
+	c0 = readl(SCP_GPR_CORE0_REBOOT);
+	c1 = scpreg.core_nums == 2 ? readl(SCP_GPR_CORE1_REBOOT) :
+			CORE_RDY_TO_REBOOT;
+	if (sap_enabled())
+		core_sap = sap_cfg_reg_read(CFG_GPR5_OFFSET);
+	pr_notice("[SCP] %s() SCP GPR in wfi c0:%lx c1:%lx sap:%lx\n", __func__, c0, c1, core_sap);
+
+	if (timeout == 0) {
+		pr_notice("[SCP] reset timeout...\n");
+		BUG_ON(1);
+	}
 
 }
 
@@ -2013,6 +2026,7 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	if (scpreg.secure_dump) {
 		if ((scp_reset_type == RESET_TYPE_TIMEOUT) ||
 			(scp_reset_type == RESET_TYPE_AWAKE)) {
+			scp_reset_wait_timeout();
 			scp_do_rstn_set(0);
 			pr_notice("[SCP] rstn core0 %x core1 %x\n",
 			readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
