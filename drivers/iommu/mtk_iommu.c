@@ -1443,8 +1443,8 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 		}
 		fault_larb = data->plat_data->larbid_remap[fault_larb][sub_comm];
 
-		if (report_iommu_fault(&dom->domain, data->dev, fault_iova,
-					write ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ)) {
+		if (!dom || report_iommu_fault(&dom->domain, data->dev, fault_iova,
+					       write ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ)) {
 			dev_err_ratelimited(
 				dev,
 				"fault type=0x%x iova=0x%llx pa=0x%llx larb=%d port=%d layer=%d %s\n",
