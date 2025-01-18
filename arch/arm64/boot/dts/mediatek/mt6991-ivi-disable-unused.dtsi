@@ -5,7 +5,7 @@
  */
 
 &ivi_disable_unused {
-	status = "disabled";
+	status = "okay";
 	disable-unused-clk-ivi@e4 {
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0xe4>;
