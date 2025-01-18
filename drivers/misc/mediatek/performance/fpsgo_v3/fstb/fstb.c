@@ -107,7 +107,7 @@ static perf_notify_callback delete_notify_callback_list[MAX_INFO_CALLBACK];
 int (*fstb_get_target_fps_fp)(int pid, unsigned long long bufID, int tgid,
 	int dfps_ceiling, int max_dep_path_num, int max_dep_task_num,
 	int *target_fps_margin, int *ctrl_fps_tid, int *ctrl_fps_flag,
-	unsigned long long cur_queue_end_ts, int eara_is_active);
+	unsigned long long cur_queue_end_ts, int eara_is_active, int detect_mode);
 EXPORT_SYMBOL(fstb_get_target_fps_fp);
 void (*fstb_check_render_info_status_fp)(int clear, unsigned long long cur_ts);
 EXPORT_SYMBOL(fstb_check_render_info_status_fp);
@@ -573,7 +573,7 @@ static int fstb_enter_delete_render_info(int clear)
 
 static int fstb_enter_get_target_fps(int pid, unsigned long long bufID, int tgid,
 	int *target_fps_margin, unsigned long long cur_queue_end_ts,
-	int eara_is_active)
+	int eara_is_active, int detect_mode)
 {
 	int ret = 0;
 	int ctrl_fps_tid = 0, ctrl_fps_flag = 0;
@@ -584,7 +584,7 @@ static int fstb_enter_get_target_fps(int pid, unsigned long long bufID, int tgid
 		ret = fstb_get_target_fps_fp(pid, bufID, tgid,
 			dfps_ceiling, fstb_max_dep_path_num, fstb_max_dep_task_num,
 			target_fps_margin, &ctrl_fps_tid, &ctrl_fps_flag,
-			cur_queue_end_ts, eara_is_active);
+			cur_queue_end_ts, eara_is_active, detect_mode);
 	else {
 		ret = -ENOENT;
 		mtk_fstb_dprintk_always("fstb_get_target_fps_fp is NULL\n");
@@ -1450,7 +1450,7 @@ static void fstb_calculate_target_fps(int tgid, int pid, unsigned long long bufI
 	} else {
 		margin = target_fps_margin;
 		local_tfps = fstb_enter_get_target_fps(pid, bufID, tgid,
-			&margin, cur_queue_end_ts, eara_is_active);
+			&margin, cur_queue_end_ts, eara_is_active, 0);
 	}
 
 	mutex_lock(&fstb_lock);
@@ -1494,7 +1494,8 @@ static void fstb_notifier_wq_cb(struct work_struct *psWork)
 
 	if (vpPush->only_detect)
 		fstb_enter_get_target_fps(vpPush->pid, vpPush->bufid, vpPush->tgid,
-			&vpPush->target_fps_margin, vpPush->cur_queue_end_ts, vpPush->eara_is_active);
+			&vpPush->target_fps_margin, vpPush->cur_queue_end_ts, vpPush->eara_is_active,
+			vpPush->only_detect);
 	else
 		fstb_calculate_target_fps(vpPush->tgid, vpPush->pid, vpPush->bufid,
 			vpPush->target_fps_margin, vpPush->target_fps_hint, vpPush->eara_is_active,

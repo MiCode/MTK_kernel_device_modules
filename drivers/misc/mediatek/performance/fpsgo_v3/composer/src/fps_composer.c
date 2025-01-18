@@ -234,7 +234,8 @@ static void fpsgo_com_delete_policy_cmd(struct fpsgo_com_policy_cmd *iter)
 		if (iter->bypass_non_SF_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->control_api_mask_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->control_hwui_by_pid == BY_PID_DEFAULT_VAL &&
-			iter->app_cam_meta_min_fps == BY_PID_DEFAULT_VAL) {
+			iter->app_cam_meta_min_fps == BY_PID_DEFAULT_VAL &&
+			iter->dep_loading_thr_by_pid == BY_PID_DEFAULT_VAL) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -294,6 +295,7 @@ static struct fpsgo_com_policy_cmd *fpsgo_com_get_policy_cmd(int tgid,
 	iter->control_api_mask_by_pid = BY_PID_DEFAULT_VAL;
 	iter->control_hwui_by_pid = BY_PID_DEFAULT_VAL;
 	iter->app_cam_meta_min_fps = BY_PID_DEFAULT_VAL;
+	iter->dep_loading_thr_by_pid = BY_PID_DEFAULT_VAL;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -319,6 +321,8 @@ static void fpsgo_com_set_policy_cmd(int cmd, int value, int tgid,
 			iter->control_api_mask_by_pid = value;
 		else if (cmd == 2)
 			iter->control_hwui_by_pid = value;
+		else if (cmd == 3)
+			iter->dep_loading_thr_by_pid = value;
 
 		if (!op)
 			fpsgo_com_delete_policy_cmd(iter);
@@ -465,6 +469,36 @@ out:
 	return ret;
 }
 
+static void fpsgo_com_check_bypass_closed_loop(struct render_info *iter)
+{
+	int local_loading = 0;
+	int loading_thr;
+	struct fpsgo_com_policy_cmd *policy_iter = NULL;
+
+	iter->bypass_closed_loop = 0;
+
+	mutex_lock(&fpsgo_com_policy_cmd_lock);
+	policy_iter = fpsgo_com_get_policy_cmd(iter->tgid, 0, 0);
+	loading_thr = policy_iter ? policy_iter->dep_loading_thr_by_pid : -1;
+	mutex_unlock(&fpsgo_com_policy_cmd_lock);
+
+	if (loading_thr < 0)
+		return;
+
+	if (iter->running_time > 0 && iter->Q2Q_time > 0) {
+		local_loading = (int)div64_u64(iter->running_time * 100, iter->Q2Q_time);
+		if (local_loading < loading_thr)
+			iter->bypass_closed_loop = 1;
+	}
+
+	fpsgo_systrace_c_fbt(iter->pid, iter->buffer_id,
+		iter->bypass_closed_loop, "bypass_closed_loop");
+	fpsgo_main_trace("[comp][%d][0x%llx] run:%llu q2q:%llu thr:%d bypass_closed_loop:%d",
+		iter->pid, iter->buffer_id,
+		iter->running_time, iter->Q2Q_time,
+		loading_thr, iter->bypass_closed_loop);
+}
+
 static void fpsgo_com_determine_cam_object(struct render_info *iter)
 {
 	int pre_cond = 0;
@@ -482,6 +516,10 @@ static void fpsgo_com_determine_cam_object(struct render_info *iter)
 
 		if (iter->frame_type == NON_VSYNC_ALIGNED_TYPE)
 			iter->frame_type = fpsgo_check_exist_queue_SF(iter->tgid);
+
+		if (iter->frame_type == NON_VSYNC_ALIGNED_TYPE)
+			fpsgo_comp2fstb_detect_app_self_ctrl(iter->tgid, iter->pid,
+				iter->buffer_id, iter->t_enqueue_end);
 	}
 }
 
@@ -678,6 +716,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		f_render->raw_runtime = raw_runtime;
 		if (running_time != 0)
 			f_render->running_time = running_time;
+		if (f_render->bq_type == ACQUIRE_CAMERA_TYPE)
+			fpsgo_com_check_bypass_closed_loop(f_render);
 
 		fpsgo_check_jank_detection_info_status();
 		fpsgo_comp2fbt_frame_start(f_render,
@@ -1784,6 +1824,9 @@ static KOBJ_ATTR_WO(control_api_mask_by_pid);
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(control_hwui_by_pid, 2, 0, 1);
 static KOBJ_ATTR_WO(control_hwui_by_pid);
 
+FPSGO_COM_SYSFS_WRITE_POLICY_CMD(dep_loading_thr_by_pid, 3, 0, 100);
+static KOBJ_ATTR_WO(dep_loading_thr_by_pid);
+
 static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -1807,13 +1850,14 @@ static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		iter = rb_entry(rbn, struct fpsgo_com_policy_cmd, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tapp_min_fps:%d\tts:%llu\n",
+			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tapp_min_fps:%d\tdep_loading_thr_by_pid:%d\tts:%llu\n",
 			i,
 			iter->tgid,
 			iter->bypass_non_SF_by_pid,
 			iter->control_api_mask_by_pid,
 			iter->control_hwui_by_pid,
 			iter->app_cam_meta_min_fps,
+			iter->dep_loading_thr_by_pid,
 			iter->ts);
 		pos += length;
 		i++;
@@ -2102,6 +2146,7 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_bypass_non_SF_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_dep_loading_thr_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 
@@ -2131,6 +2176,7 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_bypass_non_SF_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_dep_loading_thr_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 	}

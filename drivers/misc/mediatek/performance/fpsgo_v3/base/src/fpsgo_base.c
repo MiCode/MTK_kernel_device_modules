@@ -855,6 +855,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->t_last_start = 0;
 	set_bit(FPSGO_TYPE, &local_master_type);
 	iter_thr->master_type = local_master_type;
+	iter_thr->bypass_closed_loop = 0;
 
 	fbt_set_render_boost_attr(iter_thr);
 
