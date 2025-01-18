@@ -12699,7 +12699,6 @@ const struct mtk_dsi_driver_data mt6761_dsi_driver_data = {
 	.need_wait_fifo = true,
 	.dsi_buffer = false,
 	.max_vfp = 0,
-	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V1,
 };
 
 const struct mtk_dsi_driver_data mt6765_dsi_driver_data = {
