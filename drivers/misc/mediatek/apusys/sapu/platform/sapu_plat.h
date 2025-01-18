@@ -60,11 +60,10 @@ struct sapu_private {
 	bool dram_register;
 };
 
-struct sapu_datamem_info {
+struct sapu_mem_info {
 	int fd;
 	char haSrvName[MTEE_SESSION_NAME_LEN];
 	int command;
-	uint64_t model_hd_ha;
 };
 
 struct sapu_power_ctrl {
