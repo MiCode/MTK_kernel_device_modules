@@ -22,7 +22,9 @@
 			"sku1_backup",			/* [13] SKU1 Backup TxHD160 */
 			"sku2_backup",			/* [14] SKU2 Backup */
 			"sku2_backup",			/* [15] SKU2 Backup TxHD160 */
-			"qm42655_qm45655";		/* [16] SKU1-1 with MXD7282 BT eFEM */
+			"qm42655_qm45655",		/* [16] SKU1-1 with MXD7282 BT eFEM */
+			"qm42655_qm45655__phone",	/* [17] SKU1-1 Phone 2ant 2G+2A */
+			"qm42655_qm45655";		/* [18] SKU1-1 EVB 2ant 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
@@ -67,7 +69,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -111,7 +113,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -155,7 +157,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -199,7 +201,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -241,7 +243,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [81];
+					fe-ant-cnt = [95];
 					fe-conn-dpdt-sp3t = [e0];
 					fe-conn-spdt = [83];
 					fe-bt-wf-usage = [88];
@@ -281,7 +283,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [81];
+					fe-ant-cnt = [95];
 					fe-conn-dpdt-sp3t = [e0];
 					fe-conn-spdt = [83];
 					fe-bt-wf-usage = [88];
@@ -323,7 +325,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -367,7 +369,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -412,7 +414,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -457,7 +459,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -501,7 +503,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -545,7 +547,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -587,7 +589,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [81];
+					fe-ant-cnt = [95];
 					fe-conn-dpdt-sp3t = [e0];
 					fe-conn-spdt = [83];
 					fe-bt-wf-usage = [88];
@@ -629,7 +631,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -675,7 +677,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [81];
+					fe-ant-cnt = [95];
 					fe-conn-dpdt-sp3t = [e0];
 					fe-conn-spdt = [83];
 					fe-bt-wf-usage = [88];
@@ -715,7 +717,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [81];
+					fe-ant-cnt = [95];
 					fe-conn-dpdt-sp3t = [e0];
 					fe-conn-spdt = [83];
 					fe-bt-wf-usage = [88];
@@ -763,7 +765,7 @@
 
 			common {
 				flags {
-					fe-ant-cnt = [82];
+					fe-ant-cnt = [96];
 					fe-conn-dpdt-sp3t = [80];
 					fe-conn-spdt = [98];
 					fe-bt-wf-usage = [98];
@@ -781,6 +783,91 @@
 				flags {
 					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
 					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+
+		/***************************************************************
+		 * [HW][17] SKU1-1 Phone 2ant 2G+2A
+		 **************************************************************/
+		hw-17 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [90];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][18] SKU1-1 EVB 2ant 2G+2A
+		 **************************************************************/
+		hw-18 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&sku1_g_wf0_bt0_qm42655>,
+				<&sku1_g_wf1_bt1_qm42655>,
+				<&sku1_a_wf0_qm45655>,
+				<&sku1_a_wf1_qm45655>;
+
+			layout-spdt =
+				<&sku1_spdt_bt_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [90];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
 				};
 			};
 		};
