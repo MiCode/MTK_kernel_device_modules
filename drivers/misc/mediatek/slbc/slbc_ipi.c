@@ -692,7 +692,9 @@ int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid, struct slbc_
 	slbc_ipi_d.cmd		= cmd;
 	slbc_ipi_d.arg1		= uid;
 	slbc_ipi_d.arg2		= gid;
-	if (cmd == IPI_SLBC_GID_REQUEST_FROM_AP || cmd == IPI_SLBC_ROI_UPDATE_FROM_AP) {
+	if (cmd == IPI_SLBC_GID_REQUEST_FROM_AP) {
+		slbc_ipi_d.arg3 = data->flag;
+	} else if (cmd == IPI_SLBC_ROI_UPDATE_FROM_AP) {
 		slbc_ipi_d.arg3		= data->bw;
 		slbc_ipi_d.arg4		= data->dma_size;
 	} else if (cmd == IPI_SLBC_GID_READ_INVALID_FROM_AP) {
