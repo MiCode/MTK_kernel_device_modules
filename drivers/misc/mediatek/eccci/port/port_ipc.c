@@ -3,12 +3,6 @@
  * Copyright (C) 2016 MediaTek Inc.
  */
 #include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/wait.h>
-#include <linux/module.h>
-#include <linux/kthread.h>
 #include <linux/poll.h>
 #include <linux/bitops.h>
 #include <linux/time64.h>

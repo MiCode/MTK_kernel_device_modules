@@ -38,7 +38,7 @@ struct local_para {
 	u8 ref_count;
 	u8 _stub; /* MD complier will align ref_count to 16bit */
 	u16 msg_len;
-	u8 data[0];
+	u8 data[];
 } __packed;
 
 struct peer_buff {

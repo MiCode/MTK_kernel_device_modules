@@ -72,19 +72,11 @@ static struct ctl_table devalloc_threshold_table[] = {
 	},
 	{}
 };
-static struct ctl_table devalloc_threshold_root[] = {
-	{
-		.procname	= "net",
-		.mode		= 0555,
-		.child		= devalloc_threshold_table,
-	},
-	{}
-};
 
 static struct ctl_table_header *sysctl_header;
 static int register_devalloc_threshold_sysctl(void)
 {
-	sysctl_header = register_sysctl_table(devalloc_threshold_root);
+	sysctl_header = register_sysctl("net", devalloc_threshold_table);
 	if (sysctl_header == NULL) {
 		pr_info("CCCI:dpmaif:register devalloc_threshold failed\n");
 		return -1;
