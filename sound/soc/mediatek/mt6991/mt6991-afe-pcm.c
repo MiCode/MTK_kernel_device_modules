@@ -39,6 +39,14 @@
 #if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(SKIP_SB_ULTRA)
 #include "../ultrasound/ultra_scp/mtk-scp-ultra-common.h"
 #endif
+
+// ALPS08709395: AudioQOS, set VIP
+#include <linux/sched/cputime.h>
+#include <sched.h>
+#include "vip.h"
+
+
+
 /* FORCE_FPGA_ENABLE_IRQ use irq in fpga */
 #define FORCE_FPGA_ENABLE_IRQ
 
@@ -1636,6 +1644,29 @@ static int record_miso1_en_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+// ALPS08709395: AudioQOS, set VIP
+static int mt6991_audio_vip_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int mt6991_audio_vip_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int pid = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), set VIP, thread %d\n", __func__, pid);
+
+	// API has no return value
+	set_task_basic_vip(pid);
+
+	return 0;
+}
+
 static const char *const off_on_function[] = {"Off", "On"};
 
 static const struct soc_enum mt6991_pcm_type_enum[] = {
@@ -1812,6 +1843,8 @@ static const struct snd_kcontrol_new mt6991_pcm_kcontrols[] = {
 		       mt6991_ul_mmap_fd_set),
 	SOC_ENUM_EXT("MTK_RECORD_MISO1", mt6991_pcm_type_enum[0],
 		     record_miso1_en_get, record_miso1_en_set),
+	SOC_SINGLE_EXT("audio_vip", SND_SOC_NOPM, 0, 0x3fffff, 0,
+		       mt6991_audio_vip_get, mt6991_audio_vip_set),
 };
 
 enum {
