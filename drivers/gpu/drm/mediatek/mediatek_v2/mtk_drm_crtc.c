@@ -4415,6 +4415,10 @@ _mtk_crtc_lye_addon_module_connect(
 		addon_config.addon_rsz_config.lc_tgt_layer = lye_state->lc_tgt_layer;
 
 		//for exdma
+		if (!addon_module[0]) {
+			DDPMSG("%s addon_module is NULL\n", __func__);
+			return;
+		}
 		addon_config.config_type.module = addon_module[0]->module;
 		addon_config.config_type.type = addon_module[0]->type;
 		if (mtk_crtc_is_dc_mode(crtc))
