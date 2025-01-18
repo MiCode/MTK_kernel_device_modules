@@ -7092,34 +7092,290 @@
 		interrupts = <GIC_SPI 501 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
-	apusys_power: apusys_power@0x190f0000 {
+	vcore_opp_table: opp_tbl0 {
+		compatible = "operating-points-v2";
+
+		opp-312000000 {
+			opp-hz = /bits/ 64 <312000000>;
+			opp-microvolt = <600000>;
+		};
+
+		opp-273000000 {
+			opp-hz = /bits/ 64 <273000000>;
+			opp-microvolt = <575000>;
+		};
+	};
+
+	conn_opp_table: opp_tbl1 {
+		compatible = "operating-points-v2";
+		opp-689000000 {
+			opp-hz = /bits/ 64 <689000000>;
+			opp-microvolt = <800000>;
+			aging-volt = <0>;
+		};
+
+		opp-688000000 {
+			opp-hz = /bits/ 64 <688000000>;
+			opp-microvolt = <775000>;
+			aging-volt = <0>;
+		};
+
+		opp-624000000 {
+			opp-hz = /bits/ 64 <624000000>;
+			opp-microvolt = <750000>;
+			aging-volt = <0>;
+		};
+
+		opp-500000000 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <700000>;
+			aging-volt = <0>;
+		};
+
+		opp-343000000 {
+			opp-hz = /bits/ 64 <343000000>;
+			opp-microvolt = <650000>;
+			aging-volt = <0>;
+		};
+
+		opp-250000000 {
+			opp-hz = /bits/ 64 <250000000>;
+			opp-microvolt = <600000>;
+			aging-volt = <0>;
+		};
+
+		opp-208000000 {
+			opp-hz = /bits/ 64 <208000000>;
+			opp-microvolt = <575000>;
+			aging-volt = <0>;
+		};
+	};
+
+	iommu_opp_table: opp_tbl2 {
+		compatible = "operating-points-v2";
+		opp-689000000 {
+			opp-hz = /bits/ 64 <689000000>;
+			opp-microvolt = <800000>;
+			aging-volt = <0>;
+		};
+
+		opp-688000000 {
+			opp-hz = /bits/ 64 <688000000>;
+			opp-microvolt = <775000>;
+			aging-volt = <0>;
+		};
+
+		opp-624000000 {
+			opp-hz = /bits/ 64 <624000000>;
+			opp-microvolt = <750000>;
+			aging-volt = <0>;
+		};
+
+		opp-500000000 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <700000>;
+			aging-volt = <0>;
+		};
+
+		opp-343000000 {
+			opp-hz = /bits/ 64 <343000000>;
+			opp-microvolt = <650000>;
+			aging-volt = <0>;
+		};
+
+		opp-250000000 {
+			opp-hz = /bits/ 64 <250000000>;
+			opp-microvolt = <600000>;
+			aging-volt = <0>;
+		};
+
+		opp-208000000 {
+			opp-hz = /bits/ 64 <208000000>;
+			opp-microvolt = <575000>;
+			aging-volt = <0>;
+		};
+	};
+
+	vpu_opp_table: opp_tbl3 {
+		compatible = "operating-points-v2";
+		opp-shared;
+		opp-833000000 {
+			opp-hz = /bits/ 64 <833000000>;
+			opp-microvolt = <800000>;
+			aging-volt = <0>;
+		};
+
+		opp-832000000 {
+			opp-hz = /bits/ 64 <832000000>;
+			opp-microvolt = <775000>;
+			aging-volt = <0>;
+		};
+
+		opp-728000000 {
+			opp-hz = /bits/ 64 <728000000>;
+			opp-microvolt = <750000>;
+			aging-volt = <0>;
+		};
+
+		opp-624000000 {
+			opp-hz = /bits/ 64 <624000000>;
+			opp-microvolt = <700000>;
+			aging-volt = <0>;
+		};
+
+		opp-525000000 {
+			opp-hz = /bits/ 64 <525000000>;
+			opp-microvolt = <650000>;
+			aging-volt = <0>;
+		};
+
+		opp-360000000 {
+			opp-hz = /bits/ 64 <360000000>;
+			opp-microvolt = <600000>;
+			aging-volt = <0>;
+		};
+
+		opp-273000000 {
+			opp-hz = /bits/ 64 <273000000>;
+			opp-microvolt = <575000>;
+			aging-volt = <0>;
+		};
+	};
+
+	mdla_opp_table: opp_tbl4 {
+		compatible = "operating-points-v2";
+		opp-950000000 {
+			opp-hz = /bits/ 64 <950000000>;
+			opp-microvolt = <800000>;
+			aging-volt = <0>;
+		};
+		opp-880000000 {
+			opp-hz = /bits/ 64 <880000000>;
+			opp-microvolt = <775000>;
+			aging-volt = <0>;
+		};
+
+		opp-832000000 {
+			opp-hz = /bits/ 64 <832000000>;
+			opp-microvolt = <750000>;
+			aging-volt = <0>;
+		};
+
+		opp-688000000 {
+			opp-hz = /bits/ 64 <688000000>;
+			opp-microvolt = <700000>;
+			aging-volt = <0>;
+		};
+
+		opp-546000000 {
+			opp-hz = /bits/ 64 <546000000>;
+			opp-microvolt = <650000>;
+			aging-volt = <0>;
+		};
+
+		opp-425000000 {
+			opp-hz = /bits/ 64 <425000000>;
+			opp-microvolt = <600000>;
+			aging-volt = <0>;
+		};
+
+		opp-360000000 {
+			opp-hz = /bits/ 64 <360000000>;
+			opp-microvolt = <575000>;
+			aging-volt = <0>;
+		};
+	};
+
+	apu_rpc: apu_rpc@190f0000 {
+		compatible = "mtk68xx,apurpc";
+		reg = <0 0x190f0000 0 0x1000>, <0 0x10000000 0 0x2000>,
+		      <0 0x10006000 0 0x1000>;
+		cg-names = "vcore_cg_con", "conn_cg_con",
+			  "vpu0_cg_con", "vpu1_cg_con", "mdla0_cg_con";
+		cgs = <0 0x19029000 0 0x0>, <0 0x19020000 0 0x0>,
+			  <0 0x19030000 0 0x100>, <0 0x19031000 0 0x100>,
+			  <0 0x19034000 0 0x0>;
+		atf-clock-names = "mt6877_conn", "mt6877_vpu0",
+				  "mt6877_mdla0", "mt6877_iommu";
+		voltage-names = "vvpu", "vcore", "vsram";
+		vcore-supply = <&mt6359p_vgpu11_reg>;
+		vvpu-supply = <&mt6359p_vproc1_reg>;
+		vsram-supply = <&mt6359p_vsram_others_reg>;
+	};
+
+	apucore: APUCORE {
+		compatible = "mtk6877,apucore";
+		operating-points-v2 = <&vcore_opp_table>;
+		vcore-supply = <&dvfsrc_vcore>;
+		top-mux = <&topckgen_clk CLK_TOP_DSP_SEL>;
+		gov = "apuuser";
+		depth = <4>;
+		apuconn: APUCONN {
+			compatible = "mtk6877,apucon";
+			operating-points-v2 = <&conn_opp_table>;
+			vvpu-supply = <&mt6359p_vproc1_reg>;
+			vsram-supply = <&mt6359p_vsram_others_reg>;
+			top-mux = <&topckgen_clk CLK_TOP_DSP_SEL>;
+			devfreq = <&apucore>;
+			gov = "apuconstrain";
+			depth = <3>;
+			apuiommu: APUIOMMU {
+				compatible = "mtk6877,apuiommu";
+				operating-points-v2 = <&iommu_opp_table>;
+				top-mux = <&topckgen_clk CLK_TOP_DSP7_SEL>;
+				devfreq = <&apuconn>;
+				gov = "apupassive";
+				depth = <2>;
+				consumer = <&iommu1>;
+			};
+		};
+	};
+
+	apusys_power: apusys_power {
 		compatible = "mediatek,apusys_power";
-		reg = <0 0x190f0000 0 0x1000>,
-		      <0 0x190f1000 0 0x1000>,
-		      <0 0x19029000 0 0x1000>;
-		reg-names = "apusys_rpc",
-			    "apusys_pcu",
-			    "apusys_vcore";
-		/* vvpu-supply = <&mt_pmic_vproc1_buck_reg>; */
-		/* vsram_apu-supply = <&mt_pmic_vsram_others_ldo_reg>; */
-		/* vcore-supply = <&mt_pmic_vgpu11_buck_reg>; */
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_APU>;
-		clocks = <&topckgen_clk CLK_TOP_DSP>,
-			 <&topckgen_clk CLK_TOP_DSP1>,
-			 <&topckgen_clk CLK_TOP_DSP2>,
-			 <&topckgen_clk CLK_TOP_DSP4>,
-			 <&topckgen_clk CLK_TOP_DSP7>,
-			 <&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
-			 <&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
-			 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>;
-		clock-names = "clk_top_dsp_sel",
-			      "clk_top_dsp1_sel",
-			      "clk_top_dsp2_sel",
-			      "clk_top_dsp5_sel",
-			      "clk_top_ipu_if_sel",
-			      "clk_top_mainpll_d4_d2",
-			      "clk_top_univpll_d4_d2",
-			      "clk_top_univpll_d6_d2";
+		user: APUCB {
+			compatible = "mediatek,apusys_cb";
+		};
+		mdla: APUMDLA {
+			compatible = "mtk6877,apumdla";
+			operating-points-v2 = <&mdla_opp_table>;
+			top-mux = <&topckgen_clk CLK_TOP_DSP4_SEL>;
+			devfreq = <&apuiommu>;
+			gov = "apupassive";
+			depth = <1>;
+			APUMDLA@0 {
+				compatible = "mtk6877,apumdla0";
+				operating-points-v2 = <&mdla_opp_table>;
+				top-mux = <&topckgen_clk CLK_TOP_DSP4_SEL>;
+				devfreq = <&mdla>;
+				gov = "apupassive-pe";
+				depth = <0>;
+			};
+		};
+		vpu: APUVPU {
+			compatible = "mtk6877,apuvpu";
+			operating-points-v2 = <&vpu_opp_table>;
+			top-mux = <&topckgen_clk CLK_TOP_DSP1_SEL>;
+			devfreq = <&apuiommu>;
+			gov = "apupassive";
+			depth =<1>;
+			APUVPU@0 {
+				compatible = "mtk6877,apuvpu0";
+				operating-points-v2 = <&vpu_opp_table>;
+				top-mux = <&topckgen_clk CLK_TOP_DSP1_SEL>;
+				devfreq = <&vpu>;
+				gov = "apupassive";
+				depth =<0>;
+			};
+			APUVPU@1 {
+				compatible = "mtk6877,apuvpu1";
+				operating-points-v2 = <&vpu_opp_table>;
+				top-mux = <&topckgen_clk CLK_TOP_DSP2_SEL>;
+				devfreq = <&vpu>;
+				gov = "apupassive";
+				depth =<0>;
+			};
+		};
 	};
 
 	apu_acc: syscon@190f4000 {
