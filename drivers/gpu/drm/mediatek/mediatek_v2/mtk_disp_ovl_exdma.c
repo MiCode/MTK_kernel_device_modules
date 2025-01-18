@@ -647,7 +647,14 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 	const struct exdma_compress_info *compr_info = ovl->data->compr_info;
 	unsigned int value = 0, mask = 0;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
 	//struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	priv = crtc->dev->dev_private;
 
 	DDPINFO("%s+%s\n", __func__, mtk_dump_comp_str(comp));
 
@@ -677,7 +684,10 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	*/
 
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
-	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
+	if ((priv->data->mmsys_id == MMSYS_MT6991) && drm_crtc_index(crtc) == 2)
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
+	else
+		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_RDMA_BURST_CON1,

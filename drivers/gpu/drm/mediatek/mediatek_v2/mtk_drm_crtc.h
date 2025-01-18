@@ -903,6 +903,12 @@ struct mtk_vblank_config_node {
 	struct list_head link;
 };
 
+struct mtk_tui_ovl_stat {
+	unsigned int aid_setting;
+	unsigned int cb_reg;
+	unsigned int mutex_bit;
+};
+
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
  * @base: crtc object.
@@ -1115,6 +1121,7 @@ struct mtk_drm_crtc {
 	wait_queue_head_t esd_notice_wq;
 	atomic_t esd_notice_status;
 
+	struct mtk_tui_ovl_stat tui_ovl_stat;
 };
 
 enum BL_GAMMA_GAIN {

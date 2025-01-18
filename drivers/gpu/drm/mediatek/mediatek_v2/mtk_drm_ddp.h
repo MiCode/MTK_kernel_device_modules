@@ -379,7 +379,7 @@ int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 			   unsigned int *addr);
 
 int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
-			   unsigned int *addr_begin, unsigned int *addr_end);
+			   unsigned int *addr_begin, unsigned int *addr_end, int crtc_id);
 
 void mtk_gce_event_config_MT6991(struct drm_device *drm);
 
