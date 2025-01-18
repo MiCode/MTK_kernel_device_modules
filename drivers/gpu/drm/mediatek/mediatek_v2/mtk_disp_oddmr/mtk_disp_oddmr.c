@@ -735,6 +735,9 @@ typedef phys_addr_t (*scp_get_reserve_mem_phys_by_id)(enum scp_reserve_mem_id_t 
 typedef phys_addr_t (*scp_get_reserve_mem_virt_by_id)(enum scp_reserve_mem_id_t id);
 typedef phys_addr_t (*scp_get_reserve_mem_size_by_id)(enum scp_reserve_mem_id_t id);
 
+scp_get_reserve_mem_phys_by_id get_mem_phys;
+scp_get_reserve_mem_virt_by_id get_mem_virt;
+scp_get_reserve_mem_size_by_id get_mem_size;
 
 static void mtk_oddmr_od_hsk_force_clk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
@@ -790,6 +793,7 @@ static void mtk_oddmr_dbi_dbv_table_cfg(struct mtk_ddp_comp *comp,
 static void mtk_oddmr_dbi_gain_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
 		struct mtk_drm_dbi_cfg_info *cfg_info, unsigned int gain_ratio);
+static int mtk_dbi_scp_set_semaphore_noirq(bool lock);
 
 static void mtk_oddmr_dbi_smi_dual(struct cmdq_pkt *pkg);
 static inline struct mtk_disp_oddmr *comp_to_oddmr(struct mtk_ddp_comp *comp);
@@ -7528,14 +7532,67 @@ void mtk_oddmr_scp_status(bool enable)
 }
 EXPORT_SYMBOL(mtk_oddmr_scp_status);
 
+#define OFST_M0_AP 0x69C
+#define OFST_M1_SCP  0x6A0
+#define KEY_HOLE    BIT(7)
+
+static int mtk_dbi_scp_set_semaphore_noirq(bool lock)
+{
+	int i = 0;
+	bool key = false;
+	void __iomem *SPM_SEMA_AP = NULL, *SPM_SEMA_SCP = NULL;
+
+	if (!g_oddmr_priv->dbi_data.spm_base) {
+		DDPPR_ERR("%s, invalid spm base\n", __func__);
+		goto fail;
+	}
+
+	SPM_SEMA_AP = g_oddmr_priv->dbi_data.spm_base + OFST_M0_AP;
+	SPM_SEMA_SCP = g_oddmr_priv->dbi_data.spm_base + OFST_M1_SCP;
+
+	key = ((readl(SPM_SEMA_AP) & KEY_HOLE) == KEY_HOLE);
+	if (key == lock) {
+		DDPINFO("%s, skip %s sema\n", __func__, lock ? "get" : "put");
+		//mutex_unlock(&spm_sema_lock);
+		return 1;
+	}
+
+	if (lock) {
+		do {
+			/* 40ms timeout */
+			if (unlikely(++i > 4000))
+				goto fail;
+			writel(KEY_HOLE, SPM_SEMA_AP);
+			udelay(10);
+		} while ((readl(SPM_SEMA_AP) & KEY_HOLE) != KEY_HOLE);
+	} else {
+		writel(KEY_HOLE, SPM_SEMA_AP);
+		do {
+			/* 10ms timeout */
+			if (unlikely(++i > 1000))
+				goto fail;
+			udelay(10);
+		} while (readl(SPM_SEMA_AP) & KEY_HOLE);
+	}
+
+	return 1;
+fail:
+	DDPPR_ERR("%s: %s sema:0x%lx/0x%lx fail(0x%x), retry:%d\n",
+		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
+		(unsigned long)SPM_SEMA_SCP, readl(SPM_SEMA_AP), i);
+	return 0;
+}
+
+
 #define share_lifecycle_offset (0x10000)
-bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, void *get_size)
+bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
+	void *get_size, unsigned int curr_fps, unsigned int curr_bl)
 {
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 
-	scp_get_reserve_mem_phys_by_id get_mem_phys = get_phys;
-	scp_get_reserve_mem_virt_by_id get_mem_virt = get_virt;
-	scp_get_reserve_mem_size_by_id get_mem_size = get_size;
+	get_mem_phys = get_phys;
+	get_mem_virt = get_virt;
+	get_mem_size = get_size;
 	struct mtk_drm_dbi_share_info *share_mem;
 	unsigned int width, height, scale_factor_h, scale_factor_v;
 	unsigned int *tmp_addr;
@@ -7562,6 +7619,9 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, v
 
 	share_mem->counting_info.size = 0;
 
+	share_mem->curr_fps = curr_fps;
+	share_mem->curr_bl = curr_bl;
+
 	DDPMSG("dbi-scp %d/%d\n", share_mem->dbi_init_done, share_mem->dbi_hw_enable);
 
 	if (share_mem->dbi_init_done) {
@@ -7575,6 +7635,9 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, v
 
 		share_mem->lifecycle_addr_pa= share_lifecycle_offset + get_mem_phys(SCP_DBI_MEM_ID);
 		share_mem->lifecycle_addr_va= share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID);
+
+		g_oddmr_priv->dbi_data.scp_lifecycle_size
+			= width*height*4*3/scale_factor_h/scale_factor_v;
 
 		share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
 			width*height*4*3/scale_factor_h/scale_factor_v;
@@ -7599,11 +7662,11 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt, v
 		DDPMSG("dbi-scp table_addr (0x%llx)\n", (unsigned long long)table_addr);
 		if (atomic_read(&g_oddmr_priv->dbi_data.cur_table_idx)) {
 			memcpy(table_addr,
-				g_oddmr_priv->dbi_data.dbi_table[0]->kvaddr,
+				g_oddmr_priv->dbi_data.dbi_table[1]->kvaddr,
 				g_oddmr_priv->dbi_data.table_size);
 		} else {
 			memcpy(table_addr,
-				g_oddmr_priv->dbi_data.dbi_table[1]->kvaddr,
+				g_oddmr_priv->dbi_data.dbi_table[0]->kvaddr,
 				g_oddmr_priv->dbi_data.table_size);
 		}
 
@@ -8616,6 +8679,43 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		if(temp)
 			atomic_set(&g_oddmr_priv->dbi_data.enter_scp, 0);
 		break;
+	case PQ_DBI_GET_SCP_LIFECYCLE:
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.spm_base));
+		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.scp_lifecycle));
+		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.scp_lifecycle_size));
+		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.support_scp));
+		if(!g_oddmr_priv->dbi_data.scp_lifecycle_size){
+			DDPMSG("%s, scp_lifecycle_size is null\n", __func__);
+			return -1;
+		}
+		if(!get_mem_virt) {
+			DDPMSG("%s, get_mem_virt is null\n", __func__);
+			return -1;
+		}
+
+		if(mtk_dbi_scp_set_semaphore_noirq(1)) {
+			DDPMSG("%s, get semaphore\n", __func__);
+			g_oddmr_priv->dbi_data.scp_lifecycle =
+				(void *)(share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID));
+
+			DDPMSG("%s, get semaphore %xll\n", __func__, (unsigned long)(*((void **)params)));
+			if (copy_to_user(*((void **)params),
+				g_oddmr_priv->dbi_data.scp_lifecycle, g_oddmr_priv->dbi_data.scp_lifecycle_size)) {
+				DDPPR_ERR("%s:%d, copy_to_user fail\n", __func__, __LINE__);
+				mtk_dbi_scp_set_semaphore_noirq(0);
+				return -1;
+			}
+			memset(g_oddmr_priv->dbi_data.scp_lifecycle, 0,g_oddmr_priv->dbi_data.scp_lifecycle_size);
+			mtk_dbi_scp_set_semaphore_noirq(0);
+		} else {
+			DDPMSG("%s, get semaphore fail\n", __func__);
+			return -1;
+		}
+#else
+		return -1;
+#endif
+		break;
 	case PQ_DBI_SET_GAIN_RATIO:
 		ret = 0;
 		gain_ratio = params;
@@ -9131,6 +9231,9 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	struct sched_param param = {.sched_priority = 85 };
 	struct cpumask mask;
 	int ret_scp;
+	struct device_node *smp_node = NULL;
+	struct platform_device *spm_pdev = NULL;
+	struct resource *res = NULL;
 
 	DDPMSG("%s+\n", __func__);
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -9245,6 +9348,25 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	else {
 		DDPMSG("%s do not support scp-aod\n", __func__);
 		priv->dbi_data.support_scp = 0;
+	}
+
+	if (priv->dbi_data.support_scp) {
+		smp_node = of_find_compatible_node(NULL, NULL, "mediatek,sleep");
+		if (smp_node) {
+			spm_pdev = of_find_device_by_node(smp_node);
+			of_node_put(smp_node);
+			if (!spm_pdev) {
+				DDPPR_ERR("%s: invalid spm device\n", __func__);
+				priv->dbi_data.support_scp = 0;
+			}
+			res = platform_get_resource(spm_pdev, IORESOURCE_MEM, 0);
+			priv->dbi_data.spm_base = devm_ioremap(&spm_pdev->dev, res->start, resource_size(res));
+			if (unlikely(!priv->dbi_data.spm_base )) {
+				DDPPR_ERR("%s: fail to ioremap SPM: 0x%llx\n", __func__, res->start);
+				priv->dbi_data.support_scp = 0;
+			}
+		} else
+			DDPPR_ERR("%s: fail to get smp_node\n", __func__);
 	}
 
 	atomic_set(&priv->dbi_data.cur_table_idx, 0);
