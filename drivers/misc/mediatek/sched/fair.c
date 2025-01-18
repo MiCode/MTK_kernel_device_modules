@@ -133,44 +133,6 @@ unsigned long capacity_of(int cpu)
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
 /*
- * Predicts what cpu_util(@cpu) would return if @p was migrated (and enqueued)
- * to @dst_cpu.
- */
-static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu)
-{
-	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
-	unsigned long util_est, util = READ_ONCE(cfs_rq->avg.util_avg);
-
-	/*
-	 * If @p migrates from @cpu to another, remove its contribution. Or,
-	 * if @p migrates from another CPU to @cpu, add its contribution. In
-	 * the other cases, @cpu is not impacted by the migration, so the
-	 * util_avg should already be correct.
-	 */
-	if (task_cpu(p) == cpu && dst_cpu != cpu)
-		lsub_positive(&util, task_util(p));
-	else if (task_cpu(p) != cpu && dst_cpu == cpu)
-		util += task_util(p);
-
-	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
-		util_est = READ_ONCE(cfs_rq->avg.util_est.enqueued);
-
-		/*
-		 * During wake-up, the task isn't enqueued yet and doesn't
-		 * appear in the cfs_rq->avg.util_est.enqueued of any rq,
-		 * so just add it (if needed) to "simulate" what will be
-		 * cpu_util() after the task has been enqueued.
-		 */
-		if (dst_cpu == cpu)
-			util_est += _task_util_est(p);
-
-		util = max(util, util_est);
-	}
-
-	return min(util, capacity_orig_of(cpu) + 1);
-}
-
-/*
  * Compute the task busy time for compute_energy(). This time cannot be
  * injected directly into effective_cpu_util() because of the IRQ scaling.
  * The latter only makes sense with the most recent CPUs where the task has
@@ -222,7 +184,7 @@ static inline void eenv_pd_busy_time(int gear_idx, struct energy_env *eenv,
 		return;
 
 	for_each_cpu(cpu, pd_cpus) {
-		unsigned long util = cpu_util_next(cpu, p, -1);
+		unsigned long util = mtk_cpu_util_next(cpu, p, -1, 0);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 		busy_time += mtk_cpu_util(cpu, util, ENERGY_UTIL,
@@ -376,7 +338,7 @@ eenv_pd_max_util(int gear_idx, struct energy_env *eenv, struct cpumask *pd_cpus,
 
 	for_each_cpu(cpu, pd_cpus) {
 		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
-		unsigned long util = cpu_util_next(cpu, p, dst_cpu);
+		unsigned long util = mtk_cpu_util_next(cpu, p, dst_cpu, 1);
 		unsigned long cpu_util;
 
 		/*
@@ -400,7 +362,7 @@ eenv_pd_max_util(int gear_idx, struct energy_env *eenv, struct cpumask *pd_cpus,
 			trace_sched_max_util(gear_idx, dst_cpu, max_util, cpu, util, cpu_util);
 
 		if (dst_cpu != -1) {
-			unsigned long util_base = cpu_util_next(cpu, p, -1);
+			unsigned long util_base = mtk_cpu_util_next(cpu, p, -1, 1);
 			unsigned long cpu_util_base;
 
 			cpu_util_base = mtk_cpu_util(cpu, util_base, FREQUENCY_UTIL, NULL,
@@ -1813,8 +1775,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 					continue;
 			}
 
-			cpu_util = cpu_util_next(cpu, p, cpu);
-			cpu_util_without_p = cpu_util_next(cpu, p, -1);
+			cpu_util = mtk_cpu_util_next(cpu, p, cpu, 0);
+			cpu_util_without_p = mtk_cpu_util_next(cpu, p, -1, 0);
 			cpu_cap = capacity_of(cpu);
 			spare_cap = cpu_cap;
 			spare_cap_without_p = cpu_cap;
