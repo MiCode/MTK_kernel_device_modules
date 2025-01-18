@@ -74,10 +74,10 @@ static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 #endif /* CONFIG_SND_SOC_TFA9874 */
 };
 
-static int mtk_spk_i2c_probe(struct i2c_client *client,
-			     const struct i2c_device_id *id)
+static int mtk_spk_i2c_probe(struct i2c_client *client)
 {
 	int i, ret = 0;
+	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 
 	dev_info(&client->dev, "%s()\n", __func__);
 
