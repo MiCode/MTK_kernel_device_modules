@@ -2426,8 +2426,6 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 	if (!mtk_vcodec_is_state(ctx, MTK_STATE_FREE))
 		return 0;
 
-	mtk_vcodec_config_group_list();
-
 	ret = vdec_if_init(ctx, q_data->fmt->fourcc);
 	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
 	if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)

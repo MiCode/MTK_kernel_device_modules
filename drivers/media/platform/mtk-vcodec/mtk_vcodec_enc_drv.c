@@ -638,7 +638,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dev->log_param_list);
 	INIT_LIST_HEAD(&dev->prop_param_list);
 	dev_ptr = dev;
-	mtk_vcodec_init_group_list_lock();
 
 	return 0;
 
