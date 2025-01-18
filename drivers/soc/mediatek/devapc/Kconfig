@@ -30,6 +30,15 @@ config MTK_SERROR_HOOK
 	  violation log in case of slave error happened.
 	  This is for debug purpose.
 
+config DEVAPC_MT6761
+	 tristate "Mediatek MT6761 Device APC driver"
+	 select DEVICE_MODULES_MTK_DEVAPC
+	 help
+	  say yes here to enable support Mediatek MT6761
+	  Device APC driver.
+	  This is no need co-work with DEVAPC_ARCH_COMMON
+	  and DEVAPC_ARCH_MULTI common handle flow.
+
 config DEVAPC_MT6768
 	tristate "Mediatek MT6768 Device APC driver"
 	select DEVICE_MODULES_MTK_DEVAPC
