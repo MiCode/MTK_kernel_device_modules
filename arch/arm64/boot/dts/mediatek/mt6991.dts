@@ -2617,7 +2617,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ranges;
 		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
-		common-sodi = <0>;
+		common-sodi = <1>;
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
