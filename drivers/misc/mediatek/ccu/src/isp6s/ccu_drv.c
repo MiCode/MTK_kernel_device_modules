@@ -1330,7 +1330,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			"[CCU_IOCTL_GET_IOVA] dma_buf_attach va=%llx\n",
 			(uint64_t)ccu_iova[iova_buf_count].attach);
 		ccu_iova[iova_buf_count].sgt =
-			dma_buf_map_attachment(ccu_iova[iova_buf_count].attach, DMA_BIDIRECTIONAL);
+			dma_buf_map_attachment_unlocked(ccu_iova[iova_buf_count].attach, DMA_BIDIRECTIONAL);
 		if (IS_ERR(ccu_iova[iova_buf_count].sgt)) {
 			LOG_ERR(
 			"[CCU_IOCTL_GET_IOVA] dma_buf_map_attachment failed, sgt=%llx va=%d\n",
@@ -1494,7 +1494,7 @@ static int ccu_release(struct inode *inode, struct file *flip)
 	ccu_force_powerdown();
 	for (i = 0; i < CCU_IOVA_BUFFER_MAX; i++) {
 		if (ccu_iova[i].dma_buf) {
-			dma_buf_unmap_attachment(ccu_iova[i].attach, ccu_iova[i].sgt,
+			dma_buf_unmap_attachment_unlocked(ccu_iova[i].attach, ccu_iova[i].sgt,
 							DMA_BIDIRECTIONAL);
 			dma_buf_detach(ccu_iova[i].dma_buf, ccu_iova[i].attach);
 			dma_buf_put(ccu_iova[i].dma_buf);

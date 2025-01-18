@@ -248,11 +248,11 @@ mtk_ccu_deallocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle,
 
 dealloc_with_smmu:
 	if ((memHandle->dmabuf) && (memHandle->meminfo.va)) {
-		dma_buf_vunmap(memHandle->dmabuf, &memHandle->map);
+		dma_buf_vunmap_unlocked(memHandle->dmabuf, &memHandle->map);
 		memHandle->meminfo.va = NULL;
 	}
 	if ((memHandle->attach) && (memHandle->sgt)) {
-		dma_buf_unmap_attachment(memHandle->attach, memHandle->sgt,
+		dma_buf_unmap_attachment_unlocked(memHandle->attach, memHandle->sgt,
 			DMA_FROM_DEVICE);
 		memHandle->sgt = NULL;
 	}
@@ -332,7 +332,7 @@ alloc_with_smmu:
 		goto err_out;
 	}
 
-	memHandle->sgt = dma_buf_map_attachment(memHandle->attach, DMA_FROM_DEVICE);
+	memHandle->sgt = dma_buf_map_attachment_unlocked(memHandle->attach, DMA_FROM_DEVICE);
 	if (IS_ERR(memHandle->sgt)) {
 		dev_err(dev, "fail to map attachment");
 		memHandle->sgt = NULL;
@@ -341,7 +341,7 @@ alloc_with_smmu:
 
 	memHandle->meminfo.mva = sg_dma_address(memHandle->sgt->sgl);
 
-	ret = dma_buf_vmap(memHandle->dmabuf, &memHandle->map);
+	ret = dma_buf_vmap_unlocked(memHandle->dmabuf, &memHandle->map);
 	memHandle->meminfo.va = memHandle->map.vaddr;
 	if ((ret) || (memHandle->meminfo.va == NULL)) {
 		dev_err(dev, "fail to map va");
