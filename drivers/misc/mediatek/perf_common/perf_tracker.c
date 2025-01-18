@@ -33,9 +33,9 @@
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
-
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 static struct cpu_dsu_freq_state *freq_state;
-
+#endif
 static void fuel_gauge_handler(struct work_struct *work);
 static int fuel_gauge_enable;
 static int fuel_gauge_delay;
@@ -178,10 +178,12 @@ static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 	if (IS_ERR_OR_NULL((void *)csram_base))
 		return 0;
 
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (is_gearless_support())
 		offset = OFFS_MCUPM_CUR_FREQ_S;
 	else
 		offset = OFFS_MCUPM_CUR_OPP_S;
+#endif
 
 	if (is_mcupm)
 		val = __raw_readl(csram_base +
@@ -190,8 +192,10 @@ static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 		val = __raw_readl(csram_base +
 				(OFFS_DVFS_CUR_OPP_S + (cluster_id * 0x120)));
 
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (is_gearless_support())
 		return val;
+#endif
 
 	if (p->init && val < p->opp_nr)
 		return p->dvfs_tbl[val].frequency;
@@ -377,7 +381,7 @@ void perf_tracker(u64 wallclock,
 		for_each_cpu_get_pmu(i, l3dc);
 		sbin_data_ctl |= SBIN_PMU_RECORD;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	if (is_wl_support()) {
 		/* get U freq. voting */
 		freq_state = get_dsu_freq_state();
@@ -386,7 +390,7 @@ void perf_tracker(u64 wallclock,
 		sbin_lens += u_voting_record_nums;
 		sbin_data_ctl |= SBIN_U_VOTING_RECORD;
 	}
-
+#endif
 	if (perf_tracker_info_exist) {
 		/* get U A, E */
 		u_aff = base_offset_read(u_tcm_base, U_AFFO);
