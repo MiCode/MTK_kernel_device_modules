@@ -5,8 +5,6 @@
 // Copyright (c) 2018 MediaTek Inc.
 // Author: Michael Hsiao <michael.hsiao@mediatek.com>
 
-#define FPGA_EARLY_PORTING
-
 #include <linux/clk.h>
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
