@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/mailbox_controller.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/debugfs.h>
@@ -35,6 +36,7 @@
 #define CMDQ_HW_MAX			2
 #define CMDQ_RECORD_NUM			512
 #define CMDQ_BUF_RECORD_NUM		60
+#define CMDQ_USER_BUF_RECORD_NUM	128
 #define CMDQ_IRQ_HISTORY_MAX_SIZE		5000
 
 #define CMDQ_CURR_IRQ_STATUS		0x10
@@ -47,7 +49,7 @@
 #define GCE_DBG2			0x300C
 #define GCE_DBG3			0x3010
 
-#define CMDQ_BUF_REC_BUFFER_SIZE		(PAGE_SIZE * 8)
+#define CMDQ_BUF_REC_BUFFER_SIZE		(PAGE_SIZE * 11)
 #define log_length		128
 
 #define util_time_to_us(start, end, duration)	\
@@ -110,6 +112,14 @@ struct cmdq_hw_trace {
 	struct cmdq_pkt_buffer *buf;
 };
 
+struct cmdq_user_buf_record {
+	u8	hwid;
+	u8	thrd_idx;
+	u8	is_alloc;
+	u64	nsec;
+	dma_addr_t pa;
+};
+
 struct cmdq_util {
 	struct cmdq_util_error	err[CMDQ_HW_MAX];
 	struct cmdq_util_dentry	fs;
@@ -123,7 +133,9 @@ struct cmdq_util {
 	struct cmdq_client *prebuilt_clt[CMDQ_HW_MAX];
 	struct cmdq_hw_trace hw_trace[CMDQ_HW_MAX];
 	u16 buf_record_idx;
+	u16 user_buf_record_idx;
 	struct cmdq_buf_record buf_record[CMDQ_BUF_RECORD_NUM];
+	struct cmdq_user_buf_record ussr_buf_record[CMDQ_USER_BUF_RECORD_NUM];
 	u8	cmdq_irq_thrd_history[CMDQ_HW_MAX][CMDQ_IRQ_HISTORY_MAX_SIZE];
 	u16	cmdq_irq_thrd_history_idx[CMDQ_HW_MAX];
 	char	*buf_rec_buffer;
@@ -534,9 +546,41 @@ static int cmdq_util_record_print(struct seq_file *seq, void *data)
 	return 0;
 }
 
+char *cmdq_util_user_buf_record_print(char *buf_start, char *buf_end)
+{
+	struct cmdq_user_buf_record *user_buf_rec;
+
+	s32		arr_idx, idx;
+	u64		sec = 0;
+	unsigned long	nsec = 0;
+
+	idx = util.user_buf_record_idx;
+	for (arr_idx = 0; arr_idx < ARRAY_SIZE(util.ussr_buf_record); arr_idx++) {
+		idx--;
+		if (idx < 0)
+			idx = ARRAY_SIZE(util.ussr_buf_record) - 1;
+		user_buf_rec = &util.ussr_buf_record[idx];
+
+		if(!user_buf_rec->nsec)
+			continue;
+
+		sec = user_buf_rec->nsec;
+		nsec = do_div(sec, 1000000000);
+
+		buf_start += scnprintf(buf_start, buf_end - buf_start,
+			"[%5llu.%06lu] hwid:%d thrd:%d %s pa:%pa\n",
+			sec, nsec, user_buf_rec->hwid, user_buf_rec->thrd_idx,
+			user_buf_rec->is_alloc ? "alloc" : "free",
+			&user_buf_rec->pa);
+	}
+
+	return buf_start;
+}
+
 void cmdq_util_buf_record_save(void)
 {
 	struct cmdq_buf_record *buf_rec;
+
 	s32 i, j, arr_idx, idx;
 	u64		sec = 0;
 	unsigned long	nsec = 0;
@@ -546,13 +590,17 @@ void cmdq_util_buf_record_save(void)
 	buf_va = (char *)(util.buf_rec_buffer);
 	buf_va_end = (char *)(util.buf_rec_buffer + CMDQ_BUF_REC_BUFFER_SIZE);
 	buf_va = cmdq_dump_buffer_size_seq(buf_va, buf_va_end);
-
+	buf_va = cmdq_util_user_buf_record_print(buf_va, buf_va_end);
 	idx = util.buf_record_idx;
 	for (arr_idx = 0; arr_idx < ARRAY_SIZE(util.buf_record); arr_idx++) {
 		idx--;
 		if (idx < 0)
 			idx = ARRAY_SIZE(util.buf_record) - 1;
 		buf_rec = &util.buf_record[idx];
+
+		if(!buf_rec->nsec)
+			continue;
+
 		sec = buf_rec->nsec;
 		nsec = do_div(sec, 1000000000);
 		for (i = 0; i < CMDQ_HW_MAX; i++) {
@@ -571,7 +619,6 @@ void cmdq_util_buf_record_save(void)
 		}
 	}
 }
-
 
 void cmdq_util_buf_record_aee_dump(unsigned long *vaddr, unsigned long *size)
 {
@@ -592,7 +639,6 @@ static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
 	cmdq_util_buf_record_save();
 	seq_printf(seq, "%s", util.buf_rec_buffer);
 	mutex_unlock(&cmdq_buf_record_mutex);
-
 	return 0;
 }
 
@@ -1083,6 +1129,28 @@ void cmdq_util_return_dbg(u32 id, u64 *dbg)
 	}
 }
 EXPORT_SYMBOL(cmdq_util_return_dbg);
+
+void cmdq_util_user_buf_track(struct cmdq_client *cl, dma_addr_t pa, bool alloc)
+{
+	struct cmdq_user_buf_record *user_buf_record_unit;
+	struct cmdq_thread *thread;
+	s32 hwid;
+
+	mutex_lock(&cmdq_buf_record_mutex);
+	user_buf_record_unit = &util.ussr_buf_record[util.user_buf_record_idx++];
+	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	thread = (struct cmdq_thread *)((struct mbox_chan *)cl->chan)->con_priv;
+	user_buf_record_unit->hwid = hwid;
+	user_buf_record_unit->thrd_idx = thread->idx;
+	user_buf_record_unit->is_alloc = alloc;
+	user_buf_record_unit->pa = pa;
+	user_buf_record_unit->nsec = sched_clock();
+
+	if (util.user_buf_record_idx >= CMDQ_USER_BUF_RECORD_NUM)
+		util.user_buf_record_idx = 0;
+	mutex_unlock(&cmdq_buf_record_mutex);
+}
+EXPORT_SYMBOL(cmdq_util_user_buf_track);
 
 void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
 {

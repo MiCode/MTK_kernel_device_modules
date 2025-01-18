@@ -3,6 +3,7 @@
  * Copyright (c) 2015 MediaTek Inc.
  */
 
+#include "linux/stddef.h"
 #include <linux/completion.h>
 #include <linux/errno.h>
 #include <linux/of_address.h>
@@ -932,6 +933,7 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
 		if(tf_high_addr &&CMDQ_GET_ADDR_HIGH(pa) == tf_high_addr)
 			cmdq_err("hwid:%d thrd_id:%d iova:%pad", hwid, thread->idx, &pa);
+		cmdq_util_user_buf_track(cl, pa, true);
 	}
 #endif
 	return va;
@@ -967,6 +969,7 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 		if(tf_high_addr &&
 			CMDQ_GET_ADDR_HIGH((pa - gce_mminfra)) == tf_high_addr)
 			cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa - gce_mminfra);
+		cmdq_util_user_buf_track(cl, pa, false);
 	}
 #endif
 }

@@ -261,6 +261,7 @@ const char *cmdq_util_get_first_err_mod(void *chan);
 struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client);
 int cmdq_proc_create(void);
 void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols);
+void cmdq_util_user_buf_track(struct cmdq_client *cl, dma_addr_t pa, bool alloc);
 
 /* function support in platform */
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread);
