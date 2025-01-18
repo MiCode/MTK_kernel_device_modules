@@ -523,6 +523,7 @@ void kicker_pbm_by_cpu(unsigned int loading)
 	mrpmgr.loading_cpu = loading;
 	mtk_power_budget_manager(KR_CPU, &mrpmgr);
 }
+EXPORT_SYMBOL(kicker_pbm_by_cpu);
 
 void kicker_pbm_by_gpu(bool status, unsigned int loading, int voltage)
 {

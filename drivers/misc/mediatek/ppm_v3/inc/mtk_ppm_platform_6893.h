@@ -125,7 +125,7 @@ extern void ppm_cobra_dump_tbl(struct seq_file *m);
 extern void ppm_cobra_lookup_get_result(
 		struct seq_file *m, enum ppm_cobra_lookup_type type);
 extern unsigned int get_sb_pwr(unsigned int tbl_pwr, unsigned int tbl_volt, unsigned int sb_volt);
-
+extern void *get_cpuhop_ppm_callback(void);
 static inline int ppm_get_nr_clusters(void) { return NR_PPM_CLUSTERS; }
 static inline void ppm_get_cl_cpus(struct cpumask *cpu_mask, unsigned int cid)
 {

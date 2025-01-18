@@ -121,10 +121,10 @@ void ppm_init_qos_request(void)
 			cpu = cpu + ppm_main_info.cluster_info[num].core_num;
 		pr_info("ppm init qos request cluster %d, cpu = %d\n", num, cpu);
 		cpufreq_cpu_put(ppm_cpufreq_policy);
+		cpu--;
 		num++;
 	}
 }
-
 
 int ppm_main_freq_to_idx(unsigned int cluster_id,
 			unsigned int freq, unsigned int relation)

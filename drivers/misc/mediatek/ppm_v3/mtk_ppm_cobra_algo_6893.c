@@ -45,21 +45,17 @@ unsigned int volt_bl[COBRA_OPP_NUM] = { 91250, 89375, 86250, 83125,
 unsigned int g_curr_bb_opp;
 unsigned int g_curr_bl_opp;
 
-static unsigned int (*mt_cpufreq_get_volt_by_idx_cb)(unsigned int cluster_id, int idx);
 void ppm_cpufreq_get_volt_by_idx_register(unsigned int (*cb)(unsigned int, int))
 {
-	mt_cpufreq_get_volt_by_idx_cb = cb;
+	int j = 0;
+
+	for (j = 0; j < DVFS_OPP_NUM; j++) {
+		volt_bb[j] = cb(2, j);
+		volt_bl[j] = cb(1, j);
+	}
 }
 EXPORT_SYMBOL(ppm_cpufreq_get_volt_by_idx_register);
 
-unsigned int ppm_cpufreq_get_volt_by_idx_cb_get(unsigned int cluster_id, int idx)
-{
-	if (!mt_cpufreq_get_volt_by_idx_cb) {
-		 ppm_ver("mt_cpufreq_get_volt_by_idx_cb not init\n");
-		return 0;
-	}
-	return mt_cpufreq_get_volt_by_idx_cb(cluster_id, idx);
-}
 struct ppm_cobra_data *ppm_cobra_pass_tbl(void)
 {
 	if (cobra_init_done)
@@ -989,11 +985,6 @@ void ppm_cobra_init(void)
 		}
 	}
 #endif
-
-	for (j = 0; j < DVFS_OPP_NUM; j++) {
-		volt_bb[j] = ppm_cpufreq_get_volt_by_idx_cb_get(2, j);
-		volt_bl[j] = ppm_cpufreq_get_volt_by_idx_cb_get(1, j);
-	}
 
 	cobra_init_done = 1;
 
