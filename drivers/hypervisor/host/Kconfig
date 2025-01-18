@@ -85,3 +85,14 @@ config VHOST_IOMMU
 	  for hypervisor project. The vhost driver is located at virt/grt,
 	  Also used to isolate the conflicting part of the iommu driver
 	  on main project, default is n.
+
+config DEVICE_MODULES_VHOST_SPI
+	tristate "Hypervisor for virtio spi"
+	select VHOST
+	help
+	  This kernel module can be loaded in host kernel to accelerate
+	  guest block with virtio_spi. Not to be confused with virtio_spi
+	  module itself which needs to be loaded in guest kernel.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called vhost_spi.
