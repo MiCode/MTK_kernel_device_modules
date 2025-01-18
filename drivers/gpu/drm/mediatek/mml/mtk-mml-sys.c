@@ -2196,6 +2196,9 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 		}
 	}
 
+	if (!dev_get_drvdata(dev))
+		dev_set_drvdata(dev, sys);
+
 	ret = mml_comp_add(sys->comps[0].id, dev, comp_ops);
 	if (ret)
 		return ret;
@@ -2449,7 +2452,6 @@ static int probe(struct platform_device *pdev)
 			PTR_ERR(priv));
 		return PTR_ERR(priv);
 	}
-	platform_set_drvdata(pdev, priv);
 	return 0;
 }
 
