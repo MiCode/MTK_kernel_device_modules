@@ -64,7 +64,7 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 	s32 thread)
 {
 	switch (event) {
-	case CMDQ_EVENT_GPR_TIMER ... CMDQ_EVENT_GPR_TIMER + 32:
+	case CMDQ_EVENT_SPR_TIMER ... CMDQ_EVENT_SPR_TIMER + 32:
 		return cmdq_thread_module_dispatch(gce_pa, thread);
 	}
 
@@ -109,10 +109,12 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_EVENT_VDEC1_VDEC_LAT_GCE_CNT_OP_THR:
 			return "MM_VDEC";
 		case CMDQ_EVENT_IMG_IMG_EVENT_0:
+			return "MM_IMGSYS";
 		case CMDQ_EVENT_IMG_OMC_TNR_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_OMC_TNR_CQ_THR_DONE_P2_5:
 		case CMDQ_EVENT_IMG_OMC_LITE_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_OMC_LITE_CQ_THR_DONE_P2_5:
+			return "MM_OMC";
 		case CMDQ_EVENT_IMG_IMG_EVENT_126
 			... CMDQ_EVENT_IMG_IMG_EVENT_127:
 			return "MM_IMGSYS";
@@ -176,6 +178,10 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_221:
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_222
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_250:
+			return "MM_IMGSYS";
+		case CMDQ_SYNC_TOKEN_DPE_POOL_1
+			... CMDQ_SYNC_TOKEN_DPE_POOL_16:
+			return "MM_IMG_FRM";
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_251
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_300:
 			return "MM_IMGSYS";
