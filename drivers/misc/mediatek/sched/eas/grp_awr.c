@@ -56,55 +56,87 @@ int get_grp_awr_marg_ctrl(void)
 }
 EXPORT_SYMBOL(get_grp_awr_marg_ctrl);
 
-static int top_grp_aware;
-static int top_grp_ctrl_refcnt;
-static int top_app_force_ctrl;
+static int gas_enable;
+static int gas_ctrl_refcnt;
+static int gas_force_ctrl;
 
 #include <linux/ftrace.h>
 #include <linux/kallsyms.h>
+
+/*
+ * GAS enable/disable control function
+ * force_ctrl = 0 => normal control GAS by val, enable/disable by refcnt
+ * force_ctrl = 1
+ * val:1 => force enable GAS
+ * val:0 => force disable GAS
+ * val:-1 => reset force ctrl,  enable/disable by refcnt
+ */
 void set_top_grp_aware(int val, int force_ctrl)
 {
 	int i = 0;
 	unsigned long ip;
 	char sym[KSYM_SYMBOL_LEN];
 
+	/* sanity check for input*/
+	if (unlikely((force_ctrl != 0 && force_ctrl != 1) ||
+		(val != 1 && val != 0 &&  val != -1)))
+		return;
+
 	mutex_lock(&ta_ctrl_mutex);
-	/* force control enable/disable */
+
+	/* force control enable/disable/reset */
 	if (force_ctrl == 1) {
-		if (val == -1)
-			top_app_force_ctrl = 0;
-		else
-			top_app_force_ctrl = 1;
+		if (val == -1) {
+			gas_force_ctrl = 0;
+			if (gas_ctrl_refcnt > 0) {
+				if (!gas_enable) {
+					flt_set_grp_ctrl(1);
+					gas_enable = 1;
+				}
+			} else {
+				if (gas_enable) {
+					flt_set_grp_ctrl(0);
+					gas_enable = 0;
+					reset_grp_awr_margin();
+				}
+			}
+		} else {
+			gas_force_ctrl = 1;
+			if (val == 1) {
+				if (!gas_enable) {
+					flt_set_grp_ctrl(1);
+					gas_enable = 1;
+				}
+			} else if (val == 0) {
+				if (gas_enable) {
+					flt_set_grp_ctrl(0);
+					gas_enable = 0;
+					reset_grp_awr_margin();
+				}
+			}
+		}
 	} else {
-		/* normal control enable/disable */
+		/* increase/decrease refcnt for normal control usage */
 		if (val)
-			++top_grp_ctrl_refcnt;
+			++gas_ctrl_refcnt;
 		else
-			--top_grp_ctrl_refcnt;
+			--gas_ctrl_refcnt;
 	}
 
-	if (top_app_force_ctrl == 1) {
-		if (val == 1) {
+	/* normal control (enable/disable) GAS by refcnt */
+	if (force_ctrl == 0 && gas_force_ctrl == 0) {
+		/* if refcnt >0 , force on flt, else follow of setting */
+		if (gas_ctrl_refcnt > 0 && !gas_enable) {
 			flt_set_grp_ctrl(1);
-			top_grp_aware = 1;
-		} else if (val == 0) {
+			gas_enable = 1;
+		} else if (gas_enable) {
 			flt_set_grp_ctrl(0);
-			top_grp_aware = 0;
-			reset_grp_awr_margin();
-		}
-	} else if (top_app_force_ctrl == 0) {
-		/* if refcnt >0 , force on flt, else follow of setting*/
-		if (top_grp_ctrl_refcnt > 0) {
-			flt_set_grp_ctrl(1);
-			top_grp_aware = 1;
-		} else {
-			flt_set_grp_ctrl(0);
-			top_grp_aware = 0;
+			gas_enable = 0;
 			reset_grp_awr_margin();
 		}
 	}
 	if (trace_sugov_ext_ta_ctrl_enabled())
-		trace_sugov_ext_ta_ctrl(val, force_ctrl, top_grp_ctrl_refcnt, top_grp_aware);
+		trace_sugov_ext_ta_ctrl(val, force_ctrl, gas_ctrl_refcnt, gas_enable);
 
 	if (trace_sugov_ext_ta_ctrl_caller_enabled()) {
 		ip = (unsigned long) ftrace_return_address(i);
@@ -117,13 +149,13 @@ void set_top_grp_aware(int val, int force_ctrl)
 EXPORT_SYMBOL(set_top_grp_aware);
 int get_top_grp_aware(void)
 {
-	return top_grp_aware;
+	return gas_enable;
 }
 EXPORT_SYMBOL(get_top_grp_aware);
 
 int get_top_grp_aware_refcnt(void)
 {
-	return top_grp_ctrl_refcnt;
+	return gas_ctrl_refcnt;
 }
 EXPORT_SYMBOL(get_top_grp_aware_refcnt);
 
@@ -132,7 +164,10 @@ void set_grp_awr_thr(int gear_id, int group_id, int freq)
 	unsigned int cpu_idx;
 	int opp;
 
-	if (grp_awr_init_finished == false || gear_id == -1)
+	if (grp_awr_init_finished == false ||
+		gear_id == -1 ||
+		gas_force_ctrl == 1 ||
+		group_id >= GROUP_ID_RECORD_MAX)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
@@ -177,7 +212,10 @@ void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false || gear_id == -1)
+	if (grp_awr_init_finished == false ||
+		gear_id == -1 ||
+		gas_force_ctrl == 1 ||
+		group_id >= GROUP_ID_RECORD_MAX)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
@@ -302,17 +340,17 @@ void grp_awr_update_grp_awr_util(void)
 		grp_awr_update_group_util_hook(FLT_NR_CPUS, GROUP_ID_RECORD_MAX,
 			pcpu_pgrp_u, pger_pgrp_u, pgrp_hint,
 			pcpu_pgrp_marg, pcpu_pgrp_adpt_rto, pcpu_pgrp_tar_u, map_cpu_ger,
-			top_grp_aware, pcpu_pgrp_wetin, pcpu_grp_wetin_sum, pcpu_pgrp_tar_u_grp_m,
+			gas_enable, pcpu_pgrp_wetin, pcpu_grp_wetin_sum, pcpu_pgrp_tar_u_grp_m,
 			pcpu_o_u, margin_for_min_opp, converge_thr_cap, grp_margin,
 			cap_min, pgrp_tar_u_m, cpu_tar_util, 3, weighting, pgrp_parallel_u);
 
 	if (weighting) {
 		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
-			if (cpu_tar_util[cpu_idx] > cap_max[cpu_idx] && top_grp_aware)
+			if (cpu_tar_util[cpu_idx] > cap_max[cpu_idx] && gas_enable)
 				set_grp_high_freq(map_cpu_ger[cpu_idx], true);
 	} else {
 		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
-			if (top_grp_aware)
+			if (gas_enable)
 				set_grp_high_freq(map_cpu_ger[cpu_idx], true);
 	}
 
