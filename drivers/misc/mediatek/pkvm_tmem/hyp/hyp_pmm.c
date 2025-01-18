@@ -57,7 +57,7 @@ int secure_pglist_common(uint64_t pglist_pfn,
 
 	pmm_page = (uint32_t *)tmem_ops->hyp_va((phys_addr_t)pglist_pa);
 
-	rc = tmem_ops->pin_shared_mem(pglist_pa, pglist_pa + ONE_PAGE_SIZE);
+	rc = tmem_ops->pin_shared_mem(pmm_page, pmm_page + ONE_PAGE_SIZE);
 	if (rc != 0)
 		tmem_ops->puts("pkvm_tmem pin_shared_mem fail\n");
 
@@ -79,7 +79,7 @@ int secure_pglist_common(uint64_t pglist_pfn,
 		}
 	}
 
-	tmem_ops->unpin_shared_mem(pglist_pa, pglist_pa + ONE_PAGE_SIZE);
+	tmem_ops->unpin_shared_mem(pmm_page, pmm_page + ONE_PAGE_SIZE);
 	tmem_ops->host_unshare_hyp(pglist_pfn);
 
 	return 0;
