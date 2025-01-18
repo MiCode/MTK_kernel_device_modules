@@ -46,6 +46,8 @@ enum vip_group {
 extern void set_task_vvip_and_throttle(int pid, unsigned int throttle_time);
 extern void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time);
 extern void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time);
+extern void set_tgid_basic_vip(int tgid);
+extern void unset_tgid_basic_vip(int tgid);
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
 extern void set_task_vvip(int pid);

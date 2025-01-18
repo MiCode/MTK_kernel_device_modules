@@ -687,6 +687,47 @@ void unset_task_priority_based_vip(int pid)
 EXPORT_SYMBOL_GPL(unset_task_priority_based_vip);
 /* priority based VIP interface */
 
+/* TGID */
+void set_tgid_basic_vip(int tgid)
+{
+	struct task_struct *group_leader, *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	group_leader = find_task_by_vpid(tgid);
+	if (group_leader) {
+		list_for_each_entry(p, &group_leader->thread_group, thread_group) {
+			get_task_struct(p);
+			vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+			vts->basic_vip = true;
+			put_task_struct(p);
+		}
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(set_tgid_basic_vip);
+
+void unset_tgid_basic_vip(int tgid)
+{
+	struct task_struct *group_leader, *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	group_leader = find_task_by_vpid(tgid);
+	if (group_leader) {
+		list_for_each_entry(p, &group_leader->thread_group, thread_group) {
+			get_task_struct(p);
+			vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+			vts->basic_vip = false;
+			put_task_struct(p);
+		}
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_tgid_basic_vip);
+
+/* end of TGID */
+
 /* basic vip interace */
 void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time)
 {
