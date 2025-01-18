@@ -515,8 +515,10 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
 	if (ret != 0)
 		dev->support_acp = 0;
-	mtk_v4l2_debug(0, "venc slb_cpu_used_pref %d, slb_extra %d, support acp %d",
-		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra, dev->support_acp);
+	if (!mtk_venc_acp_enable)
+		mtk_venc_acp_enable = of_property_read_bool(pdev->dev.of_node, "venc-dynamic-enable-acp");
+	mtk_v4l2_debug(0, "venc slb_cpu_used_pref %d, slb_extra %d, support acp %d, mtk_venc_acp_enable %d",
+		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra, dev->support_acp, mtk_venc_acp_enable);
 
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);

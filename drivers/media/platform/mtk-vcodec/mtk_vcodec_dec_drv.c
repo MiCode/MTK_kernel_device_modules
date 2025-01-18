@@ -683,7 +683,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
 	if (ret != 0)
 		dev->support_acp = 0;
-	mtk_v4l2_debug(0, "vdec slc ver: %d, support acp %d", dev->dec_slc_ver, dev->support_acp);
+	if (!mtk_vdec_acp_enable)
+		mtk_vdec_acp_enable = of_property_read_bool(pdev->dev.of_node, "vdec-dynamic-enable-acp");
+	mtk_v4l2_debug(0, "vdec slc ver: %d, support acp %d, mtk_vdec_acp_enable %d",
+		dev->dec_slc_ver, dev->support_acp, mtk_vdec_acp_enable);
 	dev->queued_frame = false;
 	mtk_vdec_init_slc(&dev->dec_slc_frame, ID_VDEC_FRAME);
 	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);
