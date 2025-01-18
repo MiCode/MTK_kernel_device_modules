@@ -1428,7 +1428,8 @@ static int mediatek_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_remove_config_dt;
 
-	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
+	if (priv_plat->phy_mode == PHY_INTERFACE_MODE_SGMII ||
+	    priv_plat->phy_mode == PHY_INTERFACE_MODE_2500BASEX) {
 		ret = mediatek_sgmii_path_setup(priv_plat->sgmii);
 		if (ret) {
 			dev_err(priv_plat->dev, "failed to set sgmii path, err = %d\n", ret);
