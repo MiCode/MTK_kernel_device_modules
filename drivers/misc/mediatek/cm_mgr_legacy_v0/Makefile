@@ -22,11 +22,10 @@ ccflags-y += \
 
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6761
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/dramc/mt6761
 endif
 
 ifneq ($(filter y m,$(CONFIG_INTERCONNECT_MTK_EXTENSION)),)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
 endif
 
 obj-${CONFIG_MTK_CM_MGR_LEGACY_V0} += mtk_cm_mgr_v0.o

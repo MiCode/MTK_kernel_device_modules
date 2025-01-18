@@ -47,7 +47,7 @@
 #include <linux/fb.h>
 #include <linux/notifier.h>
 #if IS_ENABLED(CONFIG_INTERCONNECT_MTK_EXTENSION)
-//#include "mtk-interconnect.h"
+#include "mtk-interconnect.h"
 #endif
 
 //#include <linux/soc/mediatek/mtk-pm-qos.h>
@@ -622,7 +622,7 @@ static void cm_mgr_set_dram_level(int level)
 	else
 		dram_level = level;
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
-	//dvfsrc_set_power_model_ddr_request(&(dvfsrc_pdev->dev), dram_level);
+	dvfsrc_set_power_model_ddr_request(&(dvfsrc_pdev->dev), dram_level);
 	//icc_set_bw(cm_mgr_polling_bw_path, 0, cm_mgr_get_perfs(dram_level));
 #endif /* CONFIG_MTK_DVFSRC */
 }
