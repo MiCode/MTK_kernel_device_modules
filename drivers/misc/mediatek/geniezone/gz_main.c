@@ -611,8 +611,6 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				cret = -ENOMEM;
 				goto error;
 			}
-			KREE_INFO("%s: kmalloc[%d] (%#llx)\n",
-					__func__, i, (uint64_t)param[i].mem.buffer);
 
 			if (type != TZPT_MEM_OUTPUT) {
 				cret = copy_from_user(param[i].mem.buffer, ubuf,
@@ -680,10 +678,6 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				}
 			}
 
-			if (!!param[i].mem.buffer)
-				KREE_INFO("%s: kfree[%d] (%#llx)\n",
-						__func__, i,
-						(uint64_t)param[i].mem.buffer);
 			kfree(param[i].mem.buffer);
 			param[i].mem.buffer = NULL;
 			break;
