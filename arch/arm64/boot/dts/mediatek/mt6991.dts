@@ -48,7 +48,8 @@
 			    androidboot.hardware=mt6991 \
 			    vmalloc=400M swiotlb=noforce \
 			    initcall_debug=1 \
-			    firmware_class.path=/vendor/firmware";
+			    firmware_class.path=/vendor/firmware \
+			    maxcpus=7";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
 	};
@@ -63,14 +64,18 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
+			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						//&system_vcore &s2idle>;
 		};
-/*
+
 		cpu1: cpu@1 {
 			device_type = "cpu";
 			reg = <0x0100>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
+			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						//&system_vcore &s2idle>;
 		};
 
 		cpu2: cpu@2 {
@@ -79,6 +84,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
+			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						//&system_vcore &s2idle>;
 		};
 
 		cpu3: cpu@3 {
@@ -87,6 +94,8 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <742>;
+			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						//&system_vcore &s2idle>;
 		};
 
 		cpu4: cpu@100 {
@@ -95,6 +104,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
+			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						//&system_vcore &s2idle>;
 		};
 
 		cpu5: cpu@101 {
@@ -103,6 +114,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
+			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						//&system_vcore &s2idle>;
 		};
 
 		cpu6: cpu@102 {
@@ -111,6 +124,8 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1022>;
+			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						//&system_vcore &s2idle>;
 		};
 
 		cpu7: cpu@200 {
@@ -119,6 +134,8 @@
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
+			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						//&system_vcore &s2idle>;
 		};
 
 		cpu-map {
@@ -155,7 +172,98 @@
 				};
 			};
 		};
-*/
+
+		idle-states {
+			entry-method = "arm,psci";
+			cpuoff_l: cpuoff-l {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x00010000>;
+				local-timer-stop;
+				entry-latency-us = <97>;
+				exit-latency-us = <252>;
+				min-residency-us = <6710>;
+			};
+			cpuoff_m: cpuoff-m {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x00010000>;
+				local-timer-stop;
+				entry-latency-us = <53>;
+				exit-latency-us = <143>;
+				min-residency-us = <2120>;
+			};
+			cpuoff_b: cpuoff-b {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x00010000>;
+				local-timer-stop;
+				entry-latency-us = <40>;
+				exit-latency-us = <107>;
+				min-residency-us = <2580>;
+			};
+			clusteroff_l: clusteroff-l {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x01010001>;
+				local-timer-stop;
+				entry-latency-us = <109>;
+				exit-latency-us = <325>;
+				min-residency-us = <6710>;
+			};
+			clusteroff_m: clusteroff-m {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x01010001>;
+				local-timer-stop;
+				entry-latency-us = <59>;
+				exit-latency-us = <188>;
+				min-residency-us = <2120>;
+			};
+			clusteroff_b: clusteroff-b {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x01010001>;
+				local-timer-stop;
+				entry-latency-us = <43>;
+				exit-latency-us = <138>;
+				min-residency-us = <2580>;
+			};
+			mcusysoff_l: mcusysoff-l {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x02010007>;
+				local-timer-stop;
+				entry-latency-us = <1357>;
+				exit-latency-us = <835>;
+				min-residency-us = <6710>;
+			};
+			mcusysoff_m: mcusysoff-m {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x02010007>;
+				local-timer-stop;
+				entry-latency-us = <1202>;
+				exit-latency-us = <679>;
+				min-residency-us = <2120>;
+			};
+			mcusysoff_b: mcusysoff-b {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x02010007>;
+				local-timer-stop;
+				entry-latency-us = <1143>;
+				exit-latency-us = <611>;
+				min-residency-us = <2580>;
+			};
+			system_vcore: system-vcore {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x020100ff>;
+				local-timer-stop;
+				entry-latency-us = <940>;
+				exit-latency-us = <3500>;
+				min-residency-us = <35200>;
+			};
+			s2idle: s2idle {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0x020180ff>;
+				local-timer-stop;
+				entry-latency-us = <10000>;
+				exit-latency-us = <10000>;
+				min-residency-us = <4294967295>;
+			};
+		};
 	};
 
 	psci {
@@ -569,8 +677,7 @@
 		#size-cells = <0>;
 	};
 
-/*
-	sleep@1c001000 {
+	sleep@1c004000 {
 		compatible = "mediatek,sleep";
 		reg = <0 0x1c004000 0 0x1000>;
 		interrupts = <GIC_SPI 797 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -583,6 +690,7 @@
 		ranges;
 		lpm-kernel-suspend = <0>;
 		suspend-method = "disable";
+		common-sodi = <0>;
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
@@ -591,7 +699,7 @@
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
-		constraints = <&rc_vcore>;
+		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
 		cg-shift = <0>; // cg blocking index
 		pll-shift = <0>; // pll blocking index
 
@@ -656,6 +764,18 @@
 			};
 		};
 		constraint-list {
+			rc_syspll: rc-syspll {
+				rc-name = "syspll";
+				id = <0x00000002>;
+				value = <0>;
+				cond-info = <1>;
+			};
+			rc_bus26m: rc-bus26m {
+				rc-name = "bus26m";
+				id = <0x00000001>;
+				value = <0>;
+				cond-info = <1>;
+			};
 			rc_vcore: rc-vcore {
 				rc-name = "vcore";
 				id = <0x00000000>;
@@ -665,7 +785,6 @@
 		};
 
 	};
-*/
 
 	odm: odm {
 		compatible = "simple-bus";
