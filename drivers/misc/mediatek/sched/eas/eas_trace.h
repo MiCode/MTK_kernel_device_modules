@@ -2229,6 +2229,37 @@ TRACE_EVENT(sched_stat_vdeadline,
 	)
 );
 
+TRACE_EVENT(sched_update_thermal_pressure_capacity,
+	TP_PROTO(int cpu, unsigned long th_pressure, unsigned long max_capacity,
+		unsigned long thermal_max_capacity, int wl),
+
+	TP_ARGS(cpu, th_pressure, max_capacity, thermal_max_capacity, wl),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long, th_pressure)
+		__field(unsigned long, max_capacity)
+		__field(unsigned long, thermal_max_capacity)
+		__field(int, wl)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->th_pressure = th_pressure;
+		__entry->max_capacity = max_capacity;
+		__entry->thermal_max_capacity = thermal_max_capacity;
+		__entry->wl = wl;
+	),
+
+	TP_printk("cpu=%d th_pressure=%lu max_capacity=%lu thermal_max_capacity=%lu wl=%d",
+		__entry->cpu,
+		__entry->th_pressure,
+		__entry->max_capacity,
+		__entry->thermal_max_capacity,
+		__entry->wl)
+);
+
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

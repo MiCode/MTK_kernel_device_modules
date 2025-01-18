@@ -518,29 +518,67 @@ int init_sram_info(void)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
+{
+	unsigned int gear_id, cpu, first_cpu;
+	unsigned long max_capacity, thermal_max_capacity;
+	unsigned long last_th_pressure, th_pressure;
+	struct cpumask *cpus;
+	unsigned int freq_thermal;
+	int wl = get_em_wl();
+
+	for (gear_id = 0; gear_id < num_sched_clusters; gear_id++) {
+		cpus = get_gear_cpumask(gear_id);
+		first_cpu = cpumask_first(cpus);
+		if (!update_all && (this_cpu != first_cpu))
+			continue;
+
+		freq_thermal = get_cpu_ceiling_freq(gear_id);
+		trace_sched_frequency_limits(first_cpu, freq_thermal);
+
+		thermal_max_capacity = pd_freq2util(first_cpu, freq_thermal, true, wl, NULL, 0);
+		max_capacity = arch_scale_cpu_capacity(first_cpu);
+		th_pressure = max_capacity - thermal_max_capacity;
+		last_th_pressure = READ_ONCE(per_cpu(thermal_pressure, first_cpu));
+
+		if (trace_sched_update_thermal_pressure_capacity_enabled())
+			trace_sched_update_thermal_pressure_capacity(first_cpu,
+				th_pressure, max_capacity, thermal_max_capacity, wl);
+
+		if (th_pressure == last_th_pressure)
+			continue;
+
+		for_each_cpu(cpu, cpus)
+			WRITE_ONCE(per_cpu(thermal_pressure, cpu), th_pressure);
+	}
+}
+#endif
+
 void mtk_tick_entry(void *data, struct rq *rq)
 {
-
-	struct em_perf_domain *pd;
-	unsigned int this_cpu = cpu_of(rq), gear_id;
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-	unsigned int freq_thermal;
-#endif
-	bool sbb_trigger;
+	unsigned int this_cpu = cpu_of(rq);
+	bool sbb_trigger, is_cpu_to_update_thermal, update_all = true;
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
-
 	if (!get_eas_hook())
 		return;
 
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	/* WL & DPT need update here.
+	 * If WL supported, update DPT after WL is finish.
+	 * If WL not supported, update DPT independently.
+	 */
 	if (is_wl_support())
-		update_wl_tbl(this_cpu);
+		update_wl_tbl(this_cpu, &is_cpu_to_update_thermal);
+	else
+		update_curr_collab_state(&is_cpu_to_update_thermal);
+#else
+	/* If gearless is not support, update collab state dependently. */
+	update_curr_collab_state(&is_cpu_to_update_thermal);
 #endif
-
-	update_curr_collab_state();
 
 	sbb_trigger = is_sbb_trigger(rq);
 
@@ -577,25 +615,26 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		sbb_data->boost_factor = 1;
 	}
 
+	/* Check who should update thermal pressure.
+	 * if WL or DPT is on, the CPU which update WL or DPT should update thermal for all CPUs.
+	 * if both are off, the first CPU of the pd should update thermal for pd CPUs.
+	 */
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	if (!is_wl_support() && !DPT_TURN_ON)
+#else
+	if (!DPT_TURN_ON)
+#endif
+		update_all = false;
+	else if (!is_cpu_to_update_thermal)
+		return;
+
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 	update_thermal_headroom(this_cpu);
 #endif
 
-	irq_log_store();
-	pd = em_cpu_get(this_cpu);
-	if (!pd)
-		return;
-
-	if (this_cpu != cpumask_first(to_cpumask(pd->cpus)))
-		return;
-
-	gear_id = topology_cluster_id(this_cpu);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 	irq_log_store();
-	freq_thermal = get_cpu_ceiling_freq (gear_id);
-	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
-
-	trace_sched_frequency_limits(this_cpu, freq_thermal);
+	update_thermal_pressure_capacity(update_all, this_cpu);
 	irq_log_store();
 #endif
 }

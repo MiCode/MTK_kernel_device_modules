@@ -102,7 +102,7 @@ struct cpu_dsu_freq_state {
 extern struct dsu_state *dsu_get_opp_ps(int wl, int opp);
 extern unsigned int dsu_get_freq_opp(unsigned int freq);
 
-extern void update_wl_tbl(unsigned int cpu);
+extern void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal);
 extern int get_curr_wl(void);
 extern int get_classify_wl(void);
 extern int get_em_wl(void);
@@ -247,7 +247,7 @@ struct curr_collab_state_struct {
 
 extern void *get_dpt_sram_base(void);
 extern struct curr_collab_state_struct *get_curr_collab_state(void);
-extern void update_curr_collab_state(void);
+extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 extern struct curr_collab_state_struct *curr_collab_state;
 extern int nr_collab_type;
 extern int get_nr_collab_type(void);

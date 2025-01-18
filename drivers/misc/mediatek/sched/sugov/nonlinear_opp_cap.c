@@ -335,7 +335,7 @@ int get_wl_manual(void)
 EXPORT_SYMBOL_GPL(get_wl_manual);
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-void update_wl_tbl(unsigned int cpu)
+void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal)
 {
 	int tmp = 0;
 
@@ -375,6 +375,8 @@ void update_wl_tbl(unsigned int cpu)
 				}
 			} else
 				wl_delay_cnt = 0;
+			*is_cpu_to_update_thermal = true;
+			update_curr_collab_state(is_cpu_to_update_thermal);
 		} else
 			spin_unlock(&update_wl_tbl_lock);
 	}
@@ -453,7 +455,7 @@ void init_curr_collab_struct(void)
 
 #define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
 #define USING_LAST_STATE -1
-void update_curr_collab_state(void)
+void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 {
 	int collab_type = 0, curr_state = 0;
 	int cpu = 0;
@@ -506,6 +508,7 @@ void update_curr_collab_state(void)
 				WRITE_ONCE(per_cpu(cpu_scale, cpu), cap);
 				cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
 			}
+			*is_cpu_to_update_thermal = true;
 		} else
 			spin_unlock(&update_dpt_lock);
 	}
