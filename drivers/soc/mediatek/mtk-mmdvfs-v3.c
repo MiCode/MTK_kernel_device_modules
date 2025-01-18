@@ -1708,6 +1708,11 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 
 static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
+	switch (action) {
+	case VCP_EVENT_READY:
+		mmdvfs_vcp_ipi_send_ex(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL, true);
+		break;
+	}
 	return NOTIFY_DONE;
 }
 
