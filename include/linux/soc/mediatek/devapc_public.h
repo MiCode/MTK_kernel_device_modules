@@ -32,6 +32,7 @@ enum devapc_type {
 	DEVAPC_TYPE_MMUP,
 	DEVAPC_TYPE_GPU,
 	DEVAPC_TYPE_GPU1,
+	DEVAPC_TYPE_MAX,
 };
 
 enum devapc_cb_status {

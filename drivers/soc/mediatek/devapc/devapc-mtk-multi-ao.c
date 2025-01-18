@@ -29,7 +29,7 @@ static struct mtk_devapc_context {
 
 	/* HW reg mapped addr */
 	void __iomem *devapc_pd_base[SLAVE_TYPE_NUM_MAX];
-	void __iomem *devapc_ao_base[SLAVE_TYPE_NUM_MAX];
+	void __iomem *devapc_ao_base[IRQ_TYPE_NUM_MAX];
 	void __iomem *infracfg_base;
 	void __iomem *sramrom_base;
 
@@ -37,7 +37,7 @@ static struct mtk_devapc_context {
 	struct mutex viocb_list_lock;
 	struct mtk_devapc_pd_reg pd_reg[SLAVE_TYPE_NUM_MAX];
 
-	unsigned long subsys_enabled[SLAVE_TYPE_NUM_MAX];
+	unsigned long subsys_enabled[DEVAPC_TYPE_MAX];
 } mtk_devapc_ctx[1];
 
 static LIST_HEAD(viocb_list);
@@ -63,7 +63,7 @@ static struct devapc_vio_callbacks devapc_test_handle = {
 	.debug_dump_adv = devapc_test_adv_cb,
 };
 
-static bool is_matched_devapc_type(int slave_type)
+static bool is_matched_slave_type(int slave_type)
 {
 	const struct mtk_device_num *ndevices = mtk_devapc_ctx->soc->ndevices;
 	int current_irq_type = mtk_devapc_ctx->current_irq_type;
@@ -75,49 +75,59 @@ static bool is_matched_devapc_type(int slave_type)
 	return ret;
 }
 
-static void query_devapc_subsys_status(int slave_type)
+static void query_devapc_subsys_status(int devapc_type)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(MTK_SIP_KERNEL_DAPC_SUBSYS_GET,
-		slave_type, 0, 0, 0, 0, 0, 0, &res);
-	mtk_devapc_ctx->subsys_enabled[slave_type] = res.a0;
+		devapc_type, 0, 0, 0, 0, 0, 0, &res);
+	mtk_devapc_ctx->subsys_enabled[devapc_type] = res.a0;
 }
 
-static bool is_devapc_subsys_enabled(int slave_type)
+static bool is_devapc_subsys_enabled(int devapc_type)
 {
-	return mtk_devapc_ctx->subsys_enabled[slave_type];
+	if (devapc_type >= DEVAPC_TYPE_MAX) {
+		pr_info(PFX "%s: unsupport devapc_type %d!\n", __func__, devapc_type);
+		return false;
+	}
+
+	return mtk_devapc_ctx->subsys_enabled[devapc_type];
 }
 
-static bool is_devapc_subsys_power_on(int slave_type)
+static bool is_devapc_subsys_power_on(int devapc_type)
 {
 	struct devapc_power_callbacks *powercb;
 
-	if (slave_type != DEVAPC_TYPE_ADSP &&
-		slave_type != DEVAPC_TYPE_MMINFRA &&
-		slave_type != DEVAPC_TYPE_MMUP &&
-		slave_type != DEVAPC_TYPE_GPU &&
-		slave_type != DEVAPC_TYPE_GPU1) {
-		pr_info(PFX "%s: skip slave_type %d power check!\n", __func__, slave_type);
+	if (devapc_type >= DEVAPC_TYPE_MAX) {
+		pr_info(PFX "%s: unsupport devapc_type %d!\n", __func__, devapc_type);
+		return false;
+	}
+
+	if (devapc_type != DEVAPC_TYPE_ADSP &&
+		devapc_type != DEVAPC_TYPE_MMINFRA &&
+		devapc_type != DEVAPC_TYPE_MMUP &&
+		devapc_type != DEVAPC_TYPE_GPU &&
+		devapc_type != DEVAPC_TYPE_GPU1) {
+		pr_info(PFX "%s: skip devapc_type %d power check!\n", __func__, devapc_type);
 		return true;
 	}
 
 	list_for_each_entry(powercb, &powercb_list, list) {
 
-		if (powercb->type == slave_type) {
+		if (powercb->type == devapc_type) {
 			bool ret = false;
-			if (is_devapc_subsys_enabled(slave_type) && powercb->query_power)
+			if (is_devapc_subsys_enabled(devapc_type) && powercb->query_power)
 				ret = powercb->query_power();
 
-			pr_info(PFX "%s: slave_type %d power status: %d!\n",
-					__func__, slave_type, ret);
+			pr_info(PFX "%s: devapc_type %d power status: %d!\n",
+					__func__, devapc_type, ret);
 
 			return ret;
 		}
 	}
 
-	if (is_devapc_subsys_enabled(slave_type)) {
-		if (slave_type == DEVAPC_TYPE_MMINFRA) {
+	if (is_devapc_subsys_enabled(devapc_type)) {
+		if (devapc_type == DEVAPC_TYPE_MMINFRA) {
 			pr_info(PFX "%s: mminfra powercb hasn't registered, force dump!\n",
 						__func__);
 			return true;
@@ -334,15 +344,18 @@ static void print_vio_mask_sta(bool force)
 {
 	struct mtk_devapc_vio_info *vio_info = mtk_devapc_ctx->soc->vio_info;
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
+	const struct mtk_device_num *ndevices;
 	void __iomem *pd_vio_shift_sta_reg;
 	int slave_type, i;
 
+	ndevices = mtk_devapc_ctx->soc->ndevices;
+
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
 		/* Only dump the info of subsystem which got violation */
-		if (!is_matched_devapc_type(slave_type) && !force)
+		if (!is_matched_slave_type(slave_type) && !force)
 			continue;
 
-		if (!is_devapc_subsys_power_on(slave_type))
+		if (!is_devapc_subsys_power_on(ndevices[slave_type].devapc_type))
 			continue;
 
 		pd_vio_shift_sta_reg = mtk_devapc_pd_get(slave_type,
@@ -609,7 +622,7 @@ static uint8_t get_permission(int slave_type, int module_index, int domain)
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
 	const struct mtk_device_info **device_info;
 	const struct mtk_device_num *ndevices;
-	int sys_index, ctrl_index, vio_index, irq_type;
+	int sys_index, ctrl_index, vio_index, perm_get_type;
 	uint32_t ret, apc_set_index;
 	struct arm_smccc_res res;
 
@@ -629,7 +642,7 @@ static uint8_t get_permission(int slave_type, int module_index, int domain)
 	sys_index = device_info[slave_type][module_index].sys_index;
 	ctrl_index = device_info[slave_type][module_index].ctrl_index;
 	vio_index = device_info[slave_type][module_index].vio_index;
-	irq_type = ndevices[slave_type].irq_type;
+	perm_get_type = ndevices[slave_type].perm_get_type;
 
 	if (sys_index == -1 || ctrl_index == -1) {
 		pr_err(PFX "%s: cannot get sys_index & ctrl_index\n",
@@ -641,7 +654,7 @@ static uint8_t get_permission(int slave_type, int module_index, int domain)
 	}
 
 	arm_smccc_smc(MTK_SIP_KERNEL_DAPC_PERM_GET, slave_type, sys_index,
-			domain, ctrl_index, vio_index, irq_type, 0, &res);
+			domain, ctrl_index, vio_index, perm_get_type, 0, &res);
 	ret = res.a0;
 
 	if (ret == DEAD) {
@@ -814,7 +827,7 @@ static void start_devapc(void)
 	device_info = mtk_devapc_ctx->soc->device_info;
 
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
-		if (!is_devapc_subsys_enabled(slave_type))
+		if (!is_devapc_subsys_enabled(ndevices[slave_type].devapc_type))
 			continue;
 
 		pd_apc_con_reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
@@ -1001,12 +1014,14 @@ static void devapc_dump_info(bool booting)
 {
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
 	const struct mtk_device_info **device_info;
+	const struct mtk_device_num *ndevices;
 	struct mtk_devapc_vio_info *vio_info;
 	int slave_type, vio_idx, index;
 	const char *vio_master;
 	uint8_t perm;
 	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
 
+	ndevices = mtk_devapc_ctx->soc->ndevices;
 	device_info = mtk_devapc_ctx->soc->device_info;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
 	vio_idx = index = -1;
@@ -1014,10 +1029,10 @@ static void devapc_dump_info(bool booting)
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
 		if (booting) {
-			if (!is_devapc_subsys_enabled(slave_type))
+			if (!is_devapc_subsys_enabled(ndevices[slave_type].devapc_type))
 				continue;
 		} else {
-			if (!is_devapc_subsys_power_on(slave_type))
+			if (!is_devapc_subsys_power_on(ndevices[slave_type].devapc_type))
 				continue;
 		}
 
@@ -1086,6 +1101,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	uint32_t slave_type_num = mtk_devapc_ctx->soc->slave_type_num;
 	uint32_t irq_type_num = IRQ_TYPE_NUM_DEFAULT;
 	const struct mtk_device_info **device_info;
+	const struct mtk_device_num *ndevices;
 	struct mtk_devapc_vio_info *vio_info;
 	int slave_type, vio_idx, index;
 	int irq_type;
@@ -1120,6 +1136,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	print_vio_mask_sta(false);
 
 	device_info = mtk_devapc_ctx->soc->device_info;
+	ndevices = mtk_devapc_ctx->soc->ndevices;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
 	normal = false;
 	vio_idx = index = -1;
@@ -1127,10 +1144,10 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
 		/* Only dump the info of subsystem which got violation */
-		if (!is_matched_devapc_type(slave_type))
+		if (!is_matched_slave_type(slave_type))
 			continue;
 
-		if (!is_devapc_subsys_power_on(slave_type))
+		if (!is_devapc_subsys_power_on(ndevices[slave_type].devapc_type))
 			continue;
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index))
@@ -1752,6 +1769,7 @@ int mtk_devapc_probe(struct platform_device *pdev,
 	uint32_t irq_type_num = IRQ_TYPE_NUM_DEFAULT;
 	uint32_t dt_index;
 	int slave_type;
+	int devapc_type;
 	int irq_type;
 	int ret;
 
@@ -1774,15 +1792,13 @@ int mtk_devapc_probe(struct platform_device *pdev,
 	if (mtk_devapc_ctx->soc->irq_type_num)
 		irq_type_num = mtk_devapc_ctx->soc->irq_type_num;
 
-	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
-		query_devapc_subsys_status(slave_type);
-		pr_info(PFX "subsys_enabled[%d]:%lu\n", slave_type,
-			mtk_devapc_ctx->subsys_enabled[slave_type]);
+	for (devapc_type = 0; devapc_type < DEVAPC_TYPE_MAX; devapc_type++) {
+		query_devapc_subsys_status(devapc_type);
+		pr_info(PFX "subsys_enabled[%d]:%lu\n", devapc_type,
+			mtk_devapc_ctx->subsys_enabled[devapc_type]);
 	}
 
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
-		if (!is_devapc_subsys_enabled(slave_type))
-			continue;
 		mtk_devapc_ctx->devapc_pd_base[slave_type] = of_iomap(node,
 				slave_type);
 		if (unlikely(mtk_devapc_ctx->devapc_pd_base[slave_type]
