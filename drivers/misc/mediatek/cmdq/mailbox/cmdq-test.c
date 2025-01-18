@@ -19,6 +19,9 @@
 #include "cmdq-util.h"
 #include "cmdq-sec.h"
 #include "cmdq-sec-mailbox.h"
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+#include "cmdq.h"
+#endif
 
 #define CMDQ_THR_SPR3(base, id)		((base) + (0x80 * (id)) + 0x16c)
 #define CMDQ_GPR_R32(base, id)		((base) + (0x4 * (id)) + 0x80)
@@ -783,7 +786,9 @@ static void cmdq_test_mbox_write(
 
 	if (clk_prepare_enable(test->gce.clk)) {
 		cmdq_err("clk fail");
+#if IS_ENABLED(CONFIG_VHOST_CMDQ) || IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 		return;
+#endif
 	}
 
 	writel(0, (void *)va);
@@ -1572,12 +1577,16 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec, const
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_mbox_enable(test->clt->chan);
+#else
 	cmdq_mbox_enable(test->clt->chan);
 	if (test->loop)
 		cmdq_mbox_enable(test->loop->chan);
 #ifdef CMDQ_SECURE_SUPPORT
 	if (test->sec)
 		cmdq_sec_mbox_enable(test->sec->chan);
+#endif
 #endif
 
 	switch (id) {
@@ -1742,6 +1751,10 @@ static const struct file_operations cmdq_test_fops = {
 	.write = cmdq_test_write,
 };
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+extern void set_cmdq_client(void *client, uint32_t hwid);
+#endif
+
 static int cmdq_test_probe(struct platform_device *pdev)
 {
 	struct cmdq_test	*test;
@@ -1803,6 +1816,9 @@ static int cmdq_test_probe(struct platform_device *pdev)
 		if (!test->clt)
 			return -ENXIO;
 	}
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	set_cmdq_client((void *)(test->clt), 0);
+#endif
 
 	test->loop = cmdq_mbox_create(&pdev->dev, 1);
 	/*
@@ -1811,12 +1827,21 @@ static int cmdq_test_probe(struct platform_device *pdev)
 			return -ENXIO;
 	}
 	*/
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (test->loop)
+		set_cmdq_client((void *)(test->loop), 0);
+#endif
+
 	// clt2
 	test->clt2 = cmdq_mbox_create(&pdev->dev, 2);
 	if (IS_ERR(test->clt2) || !test->clt2) {
 		if (!test->clt2)
 			cmdq_err("no test->clt2");
 	}
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (test->clt2)
+		set_cmdq_client((void *)(test->clt2), 0);
+#endif
 
 #ifdef CMDQ_SECURE_SUPPORT
 	test->sec = cmdq_mbox_create(&pdev->dev, 3);
