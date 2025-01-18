@@ -2544,7 +2544,7 @@
 		reg = <0 0x0c530000 0 0x10000>;
 	};
 
-	eem_fsm: eem_fsm@11278000 {
+	eem_fsm: eem-fsm@11278000 {
 		compatible = "mediatek,eem_fsm";
 		reg = <0 0x11278000 0 0x1000>;
 		interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>;
