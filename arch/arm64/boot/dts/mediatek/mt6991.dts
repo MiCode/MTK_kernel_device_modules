@@ -2901,6 +2901,17 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		ghpm-supply = <&ghpm>;
 	};
 
+	gpupdma: gpupdma@48540000 {
+		compatible = "mediatek,gpupdma";
+		reg =
+			<0 0x48540000 0 0x2000>,
+			<0 0x4b800704 0 0x4>,
+			<0 0x13f840 0 0x28>;
+		ringbuf-page-order = <3>;
+		config-mode = <1>;
+		hw-semaphore-bit = <1>;
+	};
+
 	pextp0cfg_ao_clk: syscon@169b0000 {
 		compatible = "mediatek,mt6991-pextp0cfg_ao", "syscon", "simple-mfd";
 		reg = <0 0x169b0000 0 0x1000>;
@@ -7143,6 +7154,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			autosuspend-delay-ms = <10>;
 			adaptive-power-policy = <2>;
 			exception-mask = <0x5>;
+			iter-trace-enable = <1>;
 			gpu-frame-base-optimize = <1>;
 			pbha {
 				propagate-bits = /bits/ 8 <0xf>;
