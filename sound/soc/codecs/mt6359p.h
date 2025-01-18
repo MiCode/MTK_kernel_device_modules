@@ -4826,6 +4826,12 @@ enum {
 };
 
 enum {
+	AUDIO_ANALOG_CHANNELS_L = 0,
+	AUDIO_ANALOG_CHANNELS_R,
+	AUDIO_ANALOG_CHANNELS_3,
+};
+
+enum {
 	MUX_MIC_TYPE_0,	/* ain0, micbias 0 */
 	MUX_MIC_TYPE_1,	/* ain1, micbias 1 */
 	MUX_MIC_TYPE_2,	/* ain2/3, micbias 2 */
@@ -4860,6 +4866,7 @@ enum {
 	SUPPLY_SEQ_HP_PULL_DOWN,
 	SUPPLY_SEQ_CLKSQ,
 	SUPPLY_SEQ_ADC_CLKGEN,
+	SUPPLY_SEQ_DEC_CLK,
 	SUPPLY_SEQ_TOP_CK,
 	SUPPLY_SEQ_TOP_CK_LAST,
 	SUPPLY_SEQ_DCC_CLK,
@@ -4888,13 +4895,13 @@ enum {
 	SUPPLY_SEQ_UL_SRC_DMIC,
 	SUPPLY_SEQ_UL_SRC,
 	/* vow */
-	SUPPLY_SEQ_VOW_AUD_LPW,
 	SUPPLY_SEQ_AUD_VOW,
 	SUPPLY_SEQ_VOW_CLK,
 	SUPPLY_SEQ_VOW_LDO,
 	SUPPLY_SEQ_AUD_GLB_VOW,
 	SUPPLY_SEQ_VOW_DIG_CFG,
 	SUPPLY_SEQ_VOW_PERIODIC_CFG,
+	SUPPLY_SEQ_VOW_AUD_LPW,
 };
 
 enum {
@@ -4955,12 +4962,14 @@ enum {
 	MIC_TYPE_MUX_DCC,
 	MIC_TYPE_MUX_DCC_ECM_DIFF,
 	MIC_TYPE_MUX_DCC_ECM_SINGLE,
-	MIC_TYPE_MUX_VOW_ACC,
-	MIC_TYPE_MUX_VOW_DMIC,
-	MIC_TYPE_MUX_VOW_DMIC_LP,
-	MIC_TYPE_MUX_VOW_DCC,
-	MIC_TYPE_MUX_VOW_DCC_ECM_DIFF,
-	MIC_TYPE_MUX_VOW_DCC_ECM_SINGLE,
+};
+
+enum {
+	MIC_INDEX_IDLE = 0,
+	MIC_INDEX_MAIN,
+	MIC_INDEX_REF,
+	MIC_INDEX_THIRD,
+	MIC_INDEX_HEADSET,
 };
 
 enum {
@@ -5161,6 +5170,12 @@ struct mt6359_priv {
 	int reg_afe_vow_periodic;
 	unsigned int vow_channel;
 	struct mt6359_vow_periodic_on_off_data vow_periodic_param;
+	/* vow dmic low power mode, 1: enable, 0: disable */
+	int vow_dmic_lp;
+	int vow_single_mic_select;
+
+	/* regulator */
+	struct regulator *reg_vaud18;
 };
 
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id) \
@@ -5194,16 +5209,12 @@ struct mt6359_priv {
 #define DL_GAIN_REG_MASK 0x0f9f
 
 /* mic type */
-#define IS_VOW_DCC_BASE(x) (x == MIC_TYPE_MUX_VOW_DCC || \
-			    x == MIC_TYPE_MUX_VOW_DCC_ECM_DIFF || \
-			    x == MIC_TYPE_MUX_VOW_DCC_ECM_SINGLE)
 
 #define IS_DCC_BASE(x) (x == MIC_TYPE_MUX_DCC || \
 			x == MIC_TYPE_MUX_DCC_ECM_DIFF || \
-			x == MIC_TYPE_MUX_DCC_ECM_SINGLE || \
-			IS_VOW_DCC_BASE(x))
+			x == MIC_TYPE_MUX_DCC_ECM_SINGLE)
 
-#define IS_VOW_AMIC_BASE(x) (x == MIC_TYPE_MUX_VOW_ACC || IS_VOW_DCC_BASE(x))
+#define IS_AMIC_BASE(x) (x == MIC_TYPE_MUX_ACC || IS_DCC_BASE(x))
 
 /* VOW MTKIF TX setting */
 #define VOW_MCLK 13000
@@ -5228,7 +5239,7 @@ struct mt6359_priv {
 
 int mt6359_set_codec_ops(struct snd_soc_component *cmpnt,
 			 struct mt6359_codec_ops *ops);
-void mt6359_set_mtkaif_protocol(struct snd_soc_component *cmpnt,
+int mt6359_set_mtkaif_protocol(struct snd_soc_component *cmpnt,
 			       int mtkaif_protocol);
 void mt6359_mtkaif_calibration_enable(struct snd_soc_component *cmpnt);
 void mt6359_mtkaif_calibration_disable(struct snd_soc_component *cmpnt);
