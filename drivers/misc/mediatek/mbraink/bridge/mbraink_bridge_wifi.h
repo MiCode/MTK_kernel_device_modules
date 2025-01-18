@@ -106,7 +106,7 @@ struct mbraink2wifi_ops {
 				enum mbr2wifi_reason reason,
 				enum wifi2mbr_tag tag,
 				void *data, unsigned short *real_len);
-				void *priv;
+	void *priv;
 };
 
 void mbraink_bridge_wifi_init(void);

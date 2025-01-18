@@ -173,12 +173,7 @@ enum {
 struct mbraink_data {
 #define CHRDEV_NAME     "mbraink_chrdev"
 	struct cdev mbraink_cdev;
-	char power_buffer[MAX_BUF_SZ * 3];
-	char suspend_power_buffer[MAX_BUF_SZ];
-	char resume_power_buffer[MAX_BUF_SZ];
 	char suspend_power_info_en[2];
-	int suspend_power_data_size;
-	int resume_power_data_size;
 	long long last_suspend_timestamp;
 	long long last_resume_timestamp;
 	long long last_suspend_ktime;

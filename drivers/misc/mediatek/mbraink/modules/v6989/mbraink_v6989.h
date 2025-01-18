@@ -6,13 +6,10 @@
 #ifndef MBRAINK_V6989_H
 #define MBRAINK_V6989_H
 
-#include <linux/ioctl.h>
-#include <linux/cdev.h>
-#include <linux/pid.h>
-
-struct mbraink_v6989_data {
-#define CHRDEV_NAME     "mbraink_v6989_chrdev"
-	struct cdev mbraink_v6989_cdev;
-};
+#include "mbraink_v6989_memory.h"
+#include "mbraink_v6989_audio.h"
+#include "mbraink_v6989_battery.h"
+#include "mbraink_v6989_power.h"
+#include "mbraink_v6989_gpu.h"
 
 #endif /*end of MBRAINK_V6989_H*/

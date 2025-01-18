@@ -7,7 +7,11 @@
 #include <linux/power_supply.h>
 #include <mbraink_ioctl_struct_def.h>
 
-int mbraink_v6989_battery_init(void);
+struct battery_drv_data {
+	struct power_supply *bat1_psy;
+};
+
+int mbraink_v6989_battery_init(struct device *dev);
 int mbraink_v6989_battery_deinit(void);
 
 extern int power_supply_get_property(struct power_supply *psy,
