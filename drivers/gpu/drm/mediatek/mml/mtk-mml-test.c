@@ -520,7 +520,7 @@ static void case_general_submit_ut(struct mml_test *test,
 		task.info.dest[0].pq_config.en_hdr = (utcfg->pq & MML_PQ_VIDEO_HDR_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_color = (utcfg->pq & MML_PQ_COLOR_EN) ? 1 : 0;
 		task.info.dest[0].pq_config.en_sharp = (utcfg->pq & MML_PQ_SHP_EN) ? 1 : 0;
-		task.info.dest[0].pq_config.en_dc = (utcfg->pq & MML_PQ_DYN_CONTRAST_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_dc = 0;
 		task.info.dest[0].pq_config.en_region_pq =
 			(utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
