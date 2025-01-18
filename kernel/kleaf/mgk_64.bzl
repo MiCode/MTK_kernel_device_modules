@@ -1106,8 +1106,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/slc-parity.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
