@@ -13,6 +13,8 @@ void ged_gpufreq_exit(void);
 unsigned int ged_get_cur_freq(void);
 unsigned int ged_get_cur_top_freq(void);
 unsigned int ged_get_cur_stack_freq(void);
+unsigned int ged_get_cur_top_out_freq(void);
+unsigned int ged_get_cur_stack_out_freq(void);
 unsigned int ged_get_cur_real_stack_freq(void);
 unsigned int ged_get_cur_volt(void);
 int ged_get_cur_oppidx(void);

@@ -189,20 +189,26 @@ TRACE_EVENT(GPU_Power__Policy__APO_Frame_Time,
 
 
 TRACE_EVENT(GPU_DVFS__Frequency,
-	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top),
-	TP_ARGS(virtual_stack, real_stack, real_top),
+	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,
+			int d_stack, int d_top),
+	TP_ARGS(virtual_stack, real_stack, real_top, d_stack, d_top),
 	TP_STRUCT__entry(
 		__field(unsigned int, virtual_stack)
 		__field(unsigned int, real_stack)
 		__field(unsigned int, real_top)
+		__field(int, d_stack)
+		__field(int, d_top)
 	),
 	TP_fast_assign(
 		__entry->virtual_stack = virtual_stack;
 		__entry->real_stack = real_stack;
 		__entry->real_top = real_top;
+		__entry->d_stack = d_stack;
+		__entry->d_top = d_top;
 	),
-	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u",
-		__entry->virtual_stack, __entry->real_stack, __entry->real_top)
+	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u, d_stack=%d, d_top=%d",
+		__entry->virtual_stack, __entry->real_stack, __entry->real_top,
+		__entry->d_stack, __entry->d_top)
 );
 
 TRACE_EVENT(GPU_DVFS__Loading,
