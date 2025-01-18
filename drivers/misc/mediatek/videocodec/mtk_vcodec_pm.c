@@ -8,6 +8,7 @@
 #include <linux/uaccess.h>
 #include <linux/module.h>
 #include <soc/mediatek/smi.h>
+#include <linux/pm_runtime.h>
 int mtk_vcodec_init_pm(struct mtk_vcodec_dev *mtkdev)
 {
 	struct platform_device *pdev;
@@ -47,6 +48,16 @@ int mtk_vcodec_init_pm(struct mtk_vcodec_dev *mtkdev)
 		pr_info("larbvencs[%d] = %p", larb_index, pm->larbvencs[larb_index]);
 		pr_info("larbvdecs[%d] = %p", larb_index, pm->larbvencs[larb_index]);
 		pdev = mtkdev->plat_dev;
+		if (!device_link_add(&pdev->dev, pm->larbvdecs[larb_index],
+					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			pr_info("%s larbvdecs(%d) device link fail\n", __func__, larb_index);
+			return -1;
+		}
+		if (!device_link_add(&pdev->dev, pm->larbvencs[larb_index],
+					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			pr_info("%s larbvencs(%d) device link fail\n", __func__, larb_index);
+			return -1;
+		}
 	}
 
 	memset(clks_data, 0x00, sizeof(struct mtk_clks_data));
@@ -79,18 +90,16 @@ void mtk_vcodec_clock_on(enum mtk_instance_type type, struct mtk_vcodec_dev *mtk
 	clks_data = &pm->clks_data;
 	if (type == MTK_INST_ENCODER) {
 		if (pm->larbvencs[0]) {
-			//TODO:check mtk_smi_larb_get
-			//ret = mtk_smi_larb_get(pm->larbvencs[0]);
-			//if (ret)
-			//	pr_info("Failed to get venc larb");
+			ret = pm_runtime_resume_and_get(pm->larbvencs[0]);
+			if (ret)
+				pr_info("Failed to get venc larb");
 		}
 	}
 	if (type == MTK_INST_DECODER) {
 		if (pm->larbvdecs[0]) {
-			//TODO:check mtk_smi_larb_get
-			//ret = mtk_smi_larb_get(pm->larbvdecs[0]);
-			//if (ret)
-			//	pr_info("Failed to get vdec larb");
+			ret = pm_runtime_resume_and_get(pm->larbvdecs[0]);
+			if (ret)
+				pr_info("Failed to get vdec larb");
 		}
 	}
 	for (j = 0; j < clks_data->core_clks_len; j++) {
@@ -134,14 +143,12 @@ void mtk_vcodec_clock_off(enum mtk_instance_type type, struct mtk_vcodec_dev *mt
 			}
 		}
 	if (type == MTK_INST_ENCODER) {
-		//TODO:check mtk_smi_larb_put
-		//if (pm->larbvencs[0])
-			//mtk_smi_larb_put(pm->larbvencs[0]);
+		if (pm->larbvencs[0])
+			pm_runtime_put_sync(pm->larbvencs[0]);
 	}
 	if (type == MTK_INST_DECODER) {
-		//TODO:check mtk_smi_larb_put
-		//if (pm->larbvdecs[0])
-			//mtk_smi_larb_put(pm->larbvdecs[0]);
+		if (pm->larbvdecs[0])
+			pm_runtime_put_sync(pm->larbvdecs[0]);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_clock_off);

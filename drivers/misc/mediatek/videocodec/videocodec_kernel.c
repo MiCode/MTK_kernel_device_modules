@@ -61,34 +61,27 @@ unsigned long pmem_user_v2p_video(unsigned long va)
 		spin_unlock(&current->mm->page_table_lock);
 		return 0;
 	}
-
-	p4dp = p4d_alloc(current->mm, pgd, va);
+	p4dp = p4d_offset(pgd, va);
 	if (p4d_none(*p4dp)) {
 		pr_info("[ERROR] v2p, va=0x%lx, p4dp invalid!\n", va);
 		spin_unlock(&current->mm->page_table_lock);
 		return 0;
-		}
-
-	pud = pud_alloc(current->mm, p4dp, va);
+}
+	pud = pud_offset(p4dp, va);
 	if (pud_none(*pud) || pud_bad(*pud)) {
 		pr_info("[ERROR] v2p, va=0x%lx, pud invalid!\n", va);
 		spin_unlock(&current->mm->page_table_lock);
 		return 0;
 	}
 
-	pmd = pmd_alloc(current->mm, pud, va);
+	pmd = pmd_offset(pud, va);
 	if (pmd_none(*pmd) || pmd_bad(*pmd)) {
 		pr_info("[ERROR] v2p(), va=0x%lx, pmd invalid!\n", va);
 		spin_unlock(&current->mm->page_table_lock);
 		return 0;
 	}
 
-	//TODO: pte_alloc_map (pte_offset_map undefined)
-	//pte = pte_alloc_map(current->mm, pmd, va);
-	pte = NULL;
-	if (!pte)
-		return -1;
-
+	pte = pte_alloc_kernel(pmd, va);
 	if (pte_present(*pte)) {
 		pa = (pte_val(*pte) & PHYS_MASK & (PAGE_MASK)) | pageOffset;
 		pte_unmap(pte);
