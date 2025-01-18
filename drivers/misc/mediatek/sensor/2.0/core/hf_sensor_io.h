@@ -77,22 +77,41 @@ struct custom_cmd {
 	};
 } __packed __aligned(4);
 
-struct ioctl_packet {
+struct common_packet {
 	uint8_t sensor_type;
 	uint8_t padding[3];
-	union {
-		bool status;
-		int8_t byte[64];
-	};
+	bool status;
 } __packed __aligned(4);
 
-#define HF_MANAGER_REQUEST_REGISTER_STATUS  _IOWR('a', 1, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_BIAS_DATA        _IOW('a', 2, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_CALI_DATA        _IOW('a', 3, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_TEMP_DATA        _IOW('a', 4, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_TEST_DATA        _IOW('a', 5, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_SENSOR_INFO      _IOWR('a', 6, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 7, struct ioctl_packet)
-#define HF_MANAGER_REQUEST_READY_STATUS     _IOWR('a', 8, struct ioctl_packet)
+struct info_packet {
+	uint8_t sensor_type;
+	uint8_t padding[3];
+	struct sensor_info info;
+} __packed __aligned(4);
+
+struct cust_packet {
+	uint8_t sensor_type;
+	uint8_t padding[3];
+	struct custom_cmd cust_cmd;
+} __packed __aligned(4);
+
+struct debug_packet {
+	uint8_t sensor_type;
+	uint8_t padding[3];
+	uint8_t *write_buffer;
+	uint32_t write_size;
+	uint8_t *read_buffer;
+	uint32_t read_size;
+} __packed __aligned(4);
+
+#define HF_MANAGER_REQUEST_REGISTER_STATUS  _IOWR('a', 1, struct common_packet)
+#define HF_MANAGER_REQUEST_BIAS_DATA        _IOW('a', 2, struct common_packet)
+#define HF_MANAGER_REQUEST_CALI_DATA        _IOW('a', 3, struct common_packet)
+#define HF_MANAGER_REQUEST_TEMP_DATA        _IOW('a', 4, struct common_packet)
+#define HF_MANAGER_REQUEST_TEST_DATA        _IOW('a', 5, struct common_packet)
+#define HF_MANAGER_REQUEST_SENSOR_INFO      _IOWR('a', 6, struct info_packet)
+#define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 7, struct cust_packet)
+#define HF_MANAGER_REQUEST_READY_STATUS     _IOWR('a', 8, struct common_packet)
+#define HF_MANAGER_REQUEST_DEBUG_INFO       _IOWR('a', 9, struct debug_packet)
 
 #endif

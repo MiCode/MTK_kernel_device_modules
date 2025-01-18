@@ -117,11 +117,11 @@ static int hf_manager_report_event(struct hf_client *client,
 			hf_fifo->buffull = false;
 			hf_fifo->head = 0;
 			hf_fifo->tail = 0;
-			pr_err_ratelimited("[%s][%d:%d] buffer reset %lld\n",
+			pr_err_ratelimited("[%s][%d:%d] Buffer reset %lld\n",
 				client->proc_comm, client->leader_pid,
 				client->ppid, hang_time);
 		} else {
-			pr_err_ratelimited("[%s][%d:%d] buffer full %d %lld\n",
+			pr_err_ratelimited("[%s][%d:%d] Buffer full %d %lld\n",
 				client->proc_comm, client->leader_pid,
 				client->ppid, event->sensor_type,
 				event->timestamp);
@@ -137,7 +137,7 @@ static int hf_manager_report_event(struct hf_client *client,
 	/* only data action run filter event */
 	if (likely(event->action == DATA_ACTION) &&
 			unlikely(filter_event_by_timestamp(hf_fifo, event))) {
-		pr_err_ratelimited("[%s][%d:%d] buffer filter %d %lld\n",
+		pr_err_ratelimited("[%s][%d:%d] Buffer filter %d %lld\n",
 			client->proc_comm, client->leader_pid,
 			client->ppid, event->sensor_type, event->timestamp);
 		spin_unlock_irqrestore(&hf_fifo->buffer_lock, flags);
@@ -1023,36 +1023,6 @@ err_out:
 	return ret;
 }
 
-static int hf_manager_custom_cmd(struct hf_client *client,
-		uint8_t sensor_type, struct custom_cmd *cust_cmd)
-{
-	struct hf_manager *manager = NULL;
-	struct hf_device *device = NULL;
-	int ret = 0;
-
-	if (cust_cmd->tx_len > sizeof(cust_cmd->data) ||
-		cust_cmd->rx_len > sizeof(cust_cmd->data))
-		return -EINVAL;
-
-	mutex_lock(&client->core->manager_lock);
-	manager = hf_manager_find_manager(client->core, sensor_type);
-	if (!manager) {
-		ret = -EINVAL;
-		goto err_out;
-	}
-	device = manager->hf_dev;
-	if (!device || !device->dev_name) {
-		ret = -EINVAL;
-		goto err_out;
-	}
-	if (device->custom_cmd)
-		ret = device->custom_cmd(device, sensor_type, cust_cmd);
-
-err_out:
-	mutex_unlock(&client->core->manager_lock);
-	return ret;
-}
-
 static int hf_manager_drive_device(struct hf_client *client,
 		struct hf_manager_cmd *cmd)
 {
@@ -1129,6 +1099,60 @@ static int hf_manager_get_sensor_info(struct hf_client *client,
 		uint8_t sensor_type, struct sensor_info *info)
 {
 	return hf_manager_device_info(client, sensor_type, info);
+}
+
+static int hf_manager_custom_cmd(struct hf_client *client,
+		uint8_t sensor_type, struct custom_cmd *cust_cmd)
+{
+	struct hf_manager *manager = NULL;
+	struct hf_device *device = NULL;
+	int ret = 0;
+
+	if (cust_cmd->tx_len > sizeof(cust_cmd->data) ||
+		cust_cmd->rx_len > sizeof(cust_cmd->data))
+		return -EINVAL;
+
+	mutex_lock(&client->core->manager_lock);
+	manager = hf_manager_find_manager(client->core, sensor_type);
+	if (!manager) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	device = manager->hf_dev;
+	if (!device || !device->dev_name) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (device->custom_cmd)
+		ret = device->custom_cmd(device, sensor_type, cust_cmd);
+
+err_out:
+	mutex_unlock(&client->core->manager_lock);
+	return ret;
+}
+
+static int hf_manager_debug(struct hf_client *client, uint8_t sensor_type,
+		uint8_t *debug_buffer, unsigned int debug_len)
+{
+	struct hf_manager *manager = NULL;
+	struct hf_device *device = NULL;
+	int ret = 0;
+
+	mutex_lock(&client->core->manager_lock);
+	manager = hf_manager_find_manager(client->core, sensor_type);
+	if (!manager) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	device = manager->hf_dev;
+	if (!device || !device->dev_name) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	ret = device->debug(device, sensor_type, debug_buffer, debug_len);
+err_out:
+	mutex_unlock(&client->core->manager_lock);
+	return ret;
 }
 
 static int hf_client_destroy_disable(struct hf_client *client,
@@ -1352,6 +1376,19 @@ int hf_client_custom_cmd(struct hf_client *client,
 }
 EXPORT_SYMBOL_GPL(hf_client_custom_cmd);
 
+int hf_client_debug(struct hf_client *client, uint8_t sensor_type,
+		uint8_t *debug_buffer, unsigned int debug_len)
+{
+	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+	if (!debug_buffer || !debug_len)
+		return -EINVAL;
+	return hf_manager_debug(client, sensor_type, debug_buffer, debug_len);
+}
+EXPORT_SYMBOL_GPL(hf_client_debug);
+
 static int hf_manager_open(struct inode *inode, struct file *filp)
 {
 	struct hf_client *client = hf_client_create();
@@ -1435,88 +1472,251 @@ static unsigned int hf_manager_poll(struct file *filp,
 	return mask;
 }
 
-static long hf_manager_ioctl(struct file *filp,
+static long hf_manager_ioctl_request_register(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct common_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	packet.status = test_bit(packet.sensor_type, sensor_list_bitmap);
+	if (copy_to_user(ubuf, &packet, sizeof(packet)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_bias(struct file *filp,
 			unsigned int cmd, unsigned long arg)
 {
 	struct hf_client *client = filp->private_data;
 	unsigned int size = _IOC_SIZE(cmd);
 	void __user *ubuf = (void __user *)arg;
-	uint8_t sensor_type = 0;
-	struct ioctl_packet packet;
-	struct sensor_info info;
-	struct custom_cmd *cust_cmd = NULL;
-	struct hf_device *device = NULL;
+	struct common_packet packet;
 
-	memset(&packet, 0, sizeof(packet));
-
-	if (size != sizeof(struct ioctl_packet))
+	if (size != sizeof(packet))
 		return -EINVAL;
 	if (copy_from_user(&packet, ubuf, sizeof(packet)))
 		return -EFAULT;
-	sensor_type = packet.sensor_type;
-	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	hf_manager_update_bias(client, packet.sensor_type, packet.status);
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_cali(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct common_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	hf_manager_update_cali(client, packet.sensor_type, packet.status);
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_temp(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct common_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	hf_manager_update_temp(client, packet.sensor_type, packet.status);
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_test(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct common_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	hf_manager_update_test(client, packet.sensor_type, packet.status);
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_info(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct info_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(packet.sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+	if (hf_manager_get_sensor_info(client, packet.sensor_type,
+			&packet.info))
+		return -EINVAL;
+	if (copy_to_user(ubuf, &packet, sizeof(packet)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_cust(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct cust_packet packet;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(packet.sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+	if (hf_manager_custom_cmd(client, packet.sensor_type, &packet.cust_cmd))
+		return -EINVAL;
+	if (copy_to_user(ubuf, &packet, sizeof(packet)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_ready(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	void __user *ubuf = (void __user *)arg;
+	struct common_packet packet;
+	struct hf_device *device = NULL;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	mutex_lock(&client->core->device_lock);
+	packet.status = true;
+	list_for_each_entry(device, &client->core->device_list, list) {
+		if (!READ_ONCE(device->ready)) {
+			pr_err_ratelimited("Device:%s not ready\n",
+				device->dev_name);
+			packet.status = false;
+			break;
+		}
+	}
+	mutex_unlock(&client->core->device_lock);
+	if (copy_to_user(ubuf, &packet, sizeof(packet)))
+		return -EFAULT;
+
+	return 0;
+}
+
+static long hf_manager_ioctl_request_debug(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	struct debug_packet packet;
+	void __user *ubuf = (void __user *)arg;
+	uint8_t *read_buffer = NULL;
+
+	if (size != sizeof(struct debug_packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(packet.sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+	if (!packet.read_buffer || !packet.read_size)
 		return -EINVAL;
 
+	read_buffer = kzalloc(packet.read_size, GFP_KERNEL);
+	if (!read_buffer)
+		return -ENOMEM;
+	ret = hf_manager_debug(client, packet.sensor_type,
+			read_buffer, packet.read_size);
+	if (ret < 0)
+		goto err_out;
+	if (copy_to_user(packet.read_buffer, read_buffer, ret)) {
+		ret = -EFAULT;
+		goto err_out;
+	}
+	packet.read_size = ret;
+	if (copy_to_user(ubuf, &packet, sizeof(packet))) {
+		ret = -EFAULT;
+		goto err_out;
+	}
+
+err_out:
+	kfree(read_buffer);
+	return ret;
+}
+
+static long hf_manager_ioctl(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
 	switch (cmd) {
 	case HF_MANAGER_REQUEST_REGISTER_STATUS:
-		packet.status = test_bit(sensor_type, sensor_list_bitmap);
-		if (copy_to_user(ubuf, &packet, sizeof(packet)))
-			return -EFAULT;
-		break;
+		return hf_manager_ioctl_request_register(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_BIAS_DATA:
-		hf_manager_update_bias(client, sensor_type, packet.status);
-		break;
+		return hf_manager_ioctl_request_bias(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_CALI_DATA:
-		hf_manager_update_cali(client, sensor_type, packet.status);
-		break;
+		return hf_manager_ioctl_request_cali(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_TEMP_DATA:
-		hf_manager_update_temp(client, sensor_type, packet.status);
-		break;
+		return hf_manager_ioctl_request_temp(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_TEST_DATA:
-		hf_manager_update_test(client, sensor_type, packet.status);
-		break;
+		return hf_manager_ioctl_request_test(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_SENSOR_INFO:
-		if (!test_bit(sensor_type, sensor_list_bitmap))
-			return -EINVAL;
-		memset(&info, 0, sizeof(info));
-		if (hf_manager_get_sensor_info(client, sensor_type, &info))
-			return -EINVAL;
-		if (sizeof(packet.byte) < sizeof(info))
-			return -EINVAL;
-		memcpy(packet.byte, &info, sizeof(info));
-		if (copy_to_user(ubuf, &packet, sizeof(packet)))
-			return -EFAULT;
-		break;
+		return hf_manager_ioctl_request_info(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_CUST_DATA:
-		if (!test_bit(sensor_type, sensor_list_bitmap))
-			return -EINVAL;
-		if (sizeof(packet.byte) < sizeof(*cust_cmd))
-			return -EINVAL;
-		cust_cmd = (struct custom_cmd *)packet.byte;
-		if (hf_manager_custom_cmd(client, sensor_type, cust_cmd))
-			return -EINVAL;
-		if (copy_to_user(ubuf, &packet, sizeof(packet)))
-			return -EFAULT;
-		break;
+		return hf_manager_ioctl_request_cust(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_READY_STATUS:
-		mutex_lock(&client->core->device_lock);
-		packet.status = true;
-		list_for_each_entry(device, &client->core->device_list, list) {
-			if (!READ_ONCE(device->ready)) {
-				pr_err_ratelimited("Device:%s not ready\n",
-					device->dev_name);
-				packet.status = false;
-				break;
-			}
-		}
-		mutex_unlock(&client->core->device_lock);
-		if (copy_to_user(ubuf, &packet, sizeof(packet)))
-			return -EFAULT;
-		break;
+		return hf_manager_ioctl_request_ready(filp, cmd, arg);
+	case HF_MANAGER_REQUEST_DEBUG_INFO:
+		return hf_manager_ioctl_request_debug(filp, cmd, arg);
 	default:
 		pr_err("Unknown command %u\n", cmd);
 		return -EINVAL;
 	}
+
 	return 0;
 }
 
