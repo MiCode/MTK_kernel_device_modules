@@ -18,8 +18,8 @@
 #define FLAG_INVALID 0xdeaddead
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-#define FLAG_VERSION_1 0x76657231
-#define FLAG_VERSION_0 0x76657248
+#define FLAG_VERSION_0 0x76657248 /* total 2M size*/
+#define FLAG_VERSION_1 0x76657231 /* bootlog 1M + logstore 4M*/
 #endif
 #define KEDUMP_ENABLE (1)
 #define KEDUMP_DISABLE (0)
@@ -121,10 +121,8 @@ enum EMMC_STORE_FLAG_TYPE {
 	PRINTK_RATELIMIT = 0X02,
 	KEDUMP_CTL = 0x03,
 	BOOT_STEP = 0x04,
-#if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 	EXPDB_SIZE_VER = 0x05,
 	BOOT_PROF_OFFSET = 0x06,
-#endif
 	EMMC_STORE_FLAG_TYPE_NR,
 };
 
@@ -173,19 +171,36 @@ u32 get_pmic_boot_phase(void);
 void store_log_to_emmc_enable(bool value);
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
+/* log store write partition info*/
+struct log_store_partition {
+	struct block_device *bdev;
+	unsigned int block_size;
+	loff_t part_size;
+	sector_t logstore_offset;     /* the offset of logstore in expdb */
+	sector_t logindex_offset;     /* the offset of logindex in expdb */
+	sector_t bootlog_offset;
+	u32 bootlog_size;
+	u32 logstore_size;
+	char *bootbuff;
+	u32 log_offset;
+	u32 store_offset;
+};
+
 int set_emmc_config(int type, int value);
 int read_emmc_config(struct log_emmc_header *log_header);
-int get_kernel_log(void);
+void close_monitor_thread(void);
 #endif
 
 void set_boot_phase(u32 step);
 u32 get_last_boot_phase(void);
 void log_store_bootup(void);
+int logstore_reset(struct notifier_block *nb, unsigned long action, void *data);
+int log_store_late_init(void);
 void store_printk_buff(void);
 void disable_early_log(void);
 int dt_get_log_store(struct mem_desc_ls *data);
 void *get_sram_header(void);
-
+int log_store_sram_init(void);
 #else
 static inline bool get_pmic_interface(void)
 {
@@ -217,10 +232,10 @@ static inline int read_emmc_config(struct log_emmc_header *log_header)
 	return 0;
 }
 
-static inline int get_kernel_log(void)
+static inline void close_monitor_thread(void)
 {
-	return 0;
 }
+
 #endif
 
 static inline void set_boot_phase(u32 step)
@@ -228,6 +243,16 @@ static inline void set_boot_phase(u32 step)
 }
 
 static inline u32 get_last_boot_phase(void)
+{
+	return 0;
+}
+
+static inline int log_store_late_init(void)
+{
+	return 0;
+}
+
+static inline int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
 {
 	return 0;
 }
@@ -252,6 +277,11 @@ static inline int dt_get_log_store(struct mem_desc_ls *data)
 static inline void *get_sram_header(void)
 {
 	return NULL;
+}
+
+static inline int log_store_sram_init(void)
+{
+	return 0;
 }
 
 #endif
