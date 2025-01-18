@@ -13327,6 +13327,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				compatible = "mediatek,dvfsrc-helper";
 				vcore-supply = <&mt6316_8_vbuck1>;
 				rc-vcore-supply = <&dvfsrc_vcore>;
+				set-test-hrt-bw-unit = <2>;
 				interconnects = <&dvfsrc MT6873_MASTER_DBGIF
 							&dvfsrc MT6873_SLAVE_DDR_EMI>,
 						<&dvfsrc MT6873_MASTER_DBGIF
