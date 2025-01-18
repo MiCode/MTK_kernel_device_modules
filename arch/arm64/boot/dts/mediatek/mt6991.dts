@@ -15525,7 +15525,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	usb_meta: usb-meta {
 		compatible = "mediatek,usb-meta";
 		udc = <&ssusb>;
-		status = "disabled";
 	};
 
 	usb_boost: usb-boost-manager {
