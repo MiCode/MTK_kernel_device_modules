@@ -332,7 +332,7 @@ static int xhci_disable_interrupter(struct xhci_interrupter *ir)
 
 #ifdef CONFIG_USB_PCI
 
-static void __maybe_unused xhci_msix_sync_irqs(struct xhci_hcd *xhci)
+void __maybe_unused xhci_msix_sync_irqs_(struct xhci_hcd *xhci)
 {
 	struct usb_hcd *hcd = xhci_to_hcd(xhci);
 
@@ -344,6 +344,7 @@ static void __maybe_unused xhci_msix_sync_irqs(struct xhci_hcd *xhci)
 			synchronize_irq(pci_irq_vector(pdev, i));
 	}
 }
+EXPORT_SYMBOL_GPL(xhci_msix_sync_irqs_);
 
 #else
 static inline void xhci_msix_sync_irqs(struct xhci_hcd *xhci)
@@ -982,10 +983,6 @@ int xhci_suspend_(struct xhci_hcd *xhci, bool do_wakeup)
 				"%s: compliance mode recovery timer deleted",
 				__func__);
 	}
-
-	/* step 5: remove core well power */
-	/* synchronize irq when using MSI-X */
-	xhci_msix_sync_irqs(xhci);
 
 	return rc;
 }
