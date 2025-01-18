@@ -1140,6 +1140,10 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 	int local_cnt = 0;
 	int ret = 0;
 
+	/* block GPU_OVL */
+	if (*gid == GID_GPU_OVL)
+		return -EINVAL;
+
 	if (data->sign != SLC_DATA_MAGIC) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, -EINVAL, "uid:%d ,invalid sign:%#x", uid, data->sign);
 		return -EINVAL;
@@ -1194,6 +1198,10 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 	int local_cnt = 0;
 	int ret = 0;
 
+	/* block GPU_OVL */
+	if (gid == GID_GPU_OVL)
+		return -EINVAL;
+
 	ret = slbc_check_uid_gid(uid, gid);
 	if (ret) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "uid:%d or gid:%d unrecognized", uid, gid);
@@ -1244,6 +1252,10 @@ int slbc_validate(enum slc_ach_uid uid, int gid)
 	int local_cnt = 0;
 	int ret = 0;
 
+	/* block GPU_OVL */
+	if (gid == GID_GPU_OVL)
+		return -EINVAL;
+
 	ret = slbc_check_uid_gid(uid, gid);
 	if (ret) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "uid:%d or gid:%d unrecognized", uid, gid);
@@ -1280,6 +1292,10 @@ int slbc_invalidate(enum slc_ach_uid uid, int gid)
 {
 	int local_cnt = 0;
 	int ret = 0;
+
+	/* block GPU_OVL */
+	if (gid == GID_GPU_OVL)
+		return -EINVAL;
 
 	ret = slbc_check_uid_gid(uid, gid);
 	if (ret) {
