@@ -17,32 +17,39 @@
 #define MME_RELEASE_BUFFER(module, type) \
 		mme_release_buffer(module, type)
 
-#define MME_SLOW_ERROR(module, type, fmt, ...) \
+#define MME_EXTEND_ERROR(module, type, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
 		MME_ERROR(module, type, "%s", buf); \
 	} while(0)
 
-#define MME_SLOW_WARN(module, type, fmt, ...) \
+#define MME_EXTEND_WARN(module, type, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
 		MME_WARN(module, type, "%s", buf); \
 	} while(0)
 
-#define MME_SLOW_INFO(module, type, fmt, ...) \
+#define MME_EXTEND_INFO(module, type, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
 		MME_INFO(module, type, "%s", buf); \
 	} while(0)
 
-#define MME_SLOW_DEBUG(module, type, fmt, ...) \
+#define MME_EXTEND_DEBUG(module, type, fmt, ...) \
 	do { \
 		char buf[STRING_BUFFER_SIZE]; \
 		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
 		MME_DEBUG(module, type, "%s", buf); \
+	} while(0)
+
+#define _MME_EXTEND_LOG(module, type, log_level, fmt, ...) \
+	do { \
+		char buf[STRING_BUFFER_SIZE]; \
+		mme_vsprintf(buf, fmt, ##__VA_ARGS__); \
+		_MMEVENT_LOG_CHOICE_2(module, type, log_level, "%s", buf); \
 	} while(0)
 
 #define MME_ERROR(module, type, ...) \
@@ -143,6 +150,39 @@
 #define _MMEVENT_LOG_CHOICE_16(module, type, log_level, format, ...) \
 		_MMEVENT_LOG_PORXY(15, module, type, log_level, format, ##__VA_ARGS__)
 
+#define _MMEVENT_LOG_CHOICE_17(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_18(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_19(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_20(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_21(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_22(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_23(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_24(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_25(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_26(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_27(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_28(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_29(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_30(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_31(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+#define _MMEVENT_LOG_CHOICE_32(module, type, log_level, format, ...) \
+		_MME_EXTEND_LOG(module, type, log_level, format, ##__VA_ARGS__)
+
 #define MME_UNSUPPORTED_NUM_ARGS(type, ...)
 
 #define _NUM_ARGS(...)  _NUM_ARGS_IMPL(__VA_ARGS__, \
@@ -194,7 +234,7 @@
 	do { \
 		if (flag_data == DATA_FLAG_STACK_REGION_STRING) { \
 			*((char **)p) = (char *)(unsigned long)(data); \
-			strscpy((char *)(p+sizeof(char *)), ((char *)(unsigned long)(data)), str_len); \
+			strscpy((char *)(p+sizeof(char *)), ((char *)(unsigned long)(data)), str_len+1); \
 		} else if (flag_data < DATA_FLAG_SIZE_8) { \
 			*((unsigned int *)p) = (unsigned int)(unsigned long)(data); \
 		} else { \

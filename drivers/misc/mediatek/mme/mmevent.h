@@ -72,7 +72,7 @@ struct mme_module_t {
 	unsigned int enable;
 	unsigned int start;
 	unsigned int module;
-	char module_name[MME_MODULE_NAME_LEN];
+	char module_buffer_name[MME_BUFFER_INDEX_MAX][MME_MODULE_NAME_LEN];
 	unsigned int write_pointer[MME_BUFFER_INDEX_MAX];
 	unsigned int buffer_units[MME_BUFFER_INDEX_MAX];
 	unsigned int buffer_bytes[MME_BUFFER_INDEX_MAX];
@@ -136,7 +136,7 @@ typedef void (*mme_dump_callback)(char *buf, int buf_size, int *dump_size);
 extern void mme_register_dump_callback(unsigned int module, mme_dump_callback func);
 extern bool mme_register_buffer(
 								unsigned int module,
-								char *module_name,
+								char *module_buffer_name,
 								unsigned int type,
 								unsigned int buffer_size
 								);

@@ -93,7 +93,7 @@ EXPORT_SYMBOL(g_ring_buffer_spinlock);
 struct mme_module_t mme_globals[MME_MODULE_MAX] = {0};
 EXPORT_SYMBOL(mme_globals);
 
-bool mme_register_buffer(unsigned int module, char *module_name, unsigned int type,
+bool mme_register_buffer(unsigned int module, char *module_buffer_name, unsigned int type,
 						unsigned int buffer_size)
 {
 	DEFINE_SPINLOCK(t_spinlock);
@@ -104,12 +104,13 @@ bool mme_register_buffer(unsigned int module, char *module_name, unsigned int ty
 		return false;
 	}
 
-	MMEMSG("module:%d,module_name:%s,type:%d,buffer_size:%d",
-			module, module_name, type, buffer_size);
+	MMEMSG("module:%d,module_buffer_name:%s,type:%d,buffer_size:%d",
+			module, module_buffer_name, type, buffer_size);
 	mme_globals[module].module = module;
-	memset(mme_globals[module].module_name, 0, MME_MODULE_NAME_LEN);
-	if (module_name)
-		memcpy(mme_globals[module].module_name, module_name, strlen(module_name));
+	memset(mme_globals[module].module_buffer_name[type], 0, MME_MODULE_NAME_LEN);
+	if (module_buffer_name)
+		memcpy(mme_globals[module].module_buffer_name[type], module_buffer_name,
+				strlen(module_buffer_name));
 	mme_globals[module].write_pointer[type] = 0;
 	mme_globals[module].buffer_bytes[type] = ((buffer_size + (PAGE_SIZE - 1)) &
 											(~(PAGE_SIZE - 1)));
@@ -176,7 +177,7 @@ static void mme_log_pause(void)
 	unsigned int module;
 
 	for (module=0; module<MME_MODULE_MAX; module++) {
-		MMEMSG("%s before pause, module:%d,start:%d",
+		MMEINFO("%s before pause, module:%d,start:%d",
 				__func__, module, mme_globals[module].start);
 		mme_globals[module].start = 0;
 	}
@@ -193,17 +194,17 @@ static void mme_log_start(void)
 static void mme_scale_buffer(unsigned int module, unsigned int scale_value)
 {
 	unsigned int type;
-	char *module_name = mme_globals[module].module_name;
 
 	MMEMSG("module:%d, scale_value:%d", module, scale_value);
 	mme_log_pause();
 	for (type = 0; type < MME_BUFFER_INDEX_MAX; type++) {
+		char *module_buffer_name = mme_globals[module].module_buffer_name[type];
 		if (mme_globals[module].buffer_bytes[type] != 0) {
 			unsigned int new_buffer_size = mme_globals[module].buffer_bytes[type] *
 											scale_value;
 
 			mme_release_buffer(module, type);
-			mme_register_buffer(module, module_name, type, new_buffer_size);
+			mme_register_buffer(module, module_buffer_name, type, new_buffer_size);
 		}
 	}
 	mme_log_start();
@@ -277,20 +278,20 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 	}
 
 	if (module >= MME_MODULE_MAX) {
-		MMEERR("invalid flag module token, flag:%lld", flag);
+		MMEMSG("invalid flag module token, flag:%lld", flag);
 		*p_error_token = INVALID_MODULE_TOKEN;
 		return false;
 	}
 
 	if (unit_size < (MME_HEADER_UNIT_SIZE +
 					DIV_ROUND_UP((MME_FMT_SIZE + MME_PID_SIZE), MME_UNIT_SIZE))) {
-		MMEERR("invalid unit_size, unit_size:%d", unit_size);
+		MMEMSG("invalid unit_size, unit_size:%d", unit_size);
 		*p_error_token = INVALID_SMALL_UNIT_SIZE;
 		return false;
 	}
 
 	if (log_level >= LOG_LEVEL_MAX) {
-		MMEERR("invalid flag log level, flag:%lld", flag);
+		MMEMSG("invalid flag log level, flag:%lld", flag);
 		*p_error_token = INVALID_LOG_LEVEL;
 		return false;
 	}
@@ -622,12 +623,12 @@ static void mme_dump_buffer_string(void *p_dst, unsigned int dst_size,
 
 static void mme_init_android_time(void)
 {
-	struct rtc_time tm;
+	struct tm tm;
 	struct timespec64 tv = { 0 };
 
 	mme_header.kernel_time = sched_clock();
 	ktime_get_real_ts64(&tv);
-	rtc_time64_to_tm(tv.tv_sec, &tm);
+	time64_to_tm(tv.tv_sec, 0, &tm);
 
 	mme_header.android_time.year = tm.tm_year + 1900;
 	mme_header.android_time.month = tm.tm_mon + 1;
