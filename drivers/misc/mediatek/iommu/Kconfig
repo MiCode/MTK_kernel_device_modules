@@ -48,3 +48,14 @@ config MTK_IOMMU_DEBUG
 	  Select this to see the detailed log message that shows what
 	  happens in the IOMMU driver.
 	  If unsure, say N.
+
+config DEVICE_MODULES_MTK_SMMU_QOS
+	tristate "Mediatek SMMU QoS support"
+	depends on DEVICE_MODULES_ARM_SMMU_V3
+	depends on DEVICE_MODULES_MTK_SMMU_V3_PMU
+	depends on DEVICE_MODULES_MTK_SMMU_V3_MPAM_MON
+	help
+	  Chosse this option to enable smmu_qos driver.
+	  This feature will get smmu pmu event counter, mpam cache storage
+	  usage couners and latency meter countesr, and write to ftrace for
+	  debug purpose.

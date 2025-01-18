@@ -16,6 +16,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 ccflags-y += -I$(srctree)/drivers/iommu
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 
 ifneq ($(filter y m, $(CONFIG_MTK_TEE_GP_COORDINATOR)),)
@@ -34,6 +35,7 @@ obj-$(CONFIG_MTK_IOMMU_MISC_TEST)   += iommu_engine.o
 ifneq ($(filter y m, $(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)),)
 obj-$(CONFIG_MTK_IOMMU_MISC_SECURE) += smmu_secure.o
 endif
+obj-$(CONFIG_DEVICE_MODULES_MTK_SMMU_QOS) += mtk_smmu_qos.o
 
 ifeq ($(filter y m, $(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)),)
 obj-$(CONFIG_MTK_IOMMU_MISC)        += iommu_gz.o
