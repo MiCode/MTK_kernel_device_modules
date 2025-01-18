@@ -767,6 +767,7 @@ mgk_64_platform_device_modules = {
     "drivers/clk/mediatek/clk-mt6893-pg.ko": "mt6893",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6893.ko": "mt6893",
     "drivers/soc/mediatek/mtk-scpsys-mt6893.ko": "mt6893",
+    "drivers/soc/mediatek/mtk-scpsys-mt6853.ko": "mt6853",
     "drivers/clk/mediatek/clk-chk-mt6893.ko": "mt6893",
     "drivers/clk/mediatek/clk-chk-mt6983.ko": "mt6983",
     "drivers/clk/mediatek/clk-chk-mt6985.ko": "mt6985",
@@ -2745,7 +2746,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6853-venc.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-chk-mt6853.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-dbg-mt6853.ko")
-
         mgk_64_device_modules.append("drivers/interconnect/mediatek/mmqos-mt6853.ko")
 
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
