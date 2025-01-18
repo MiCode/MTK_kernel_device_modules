@@ -44,9 +44,40 @@
 #include "mtk_disp_gamma.h"
 #include "mtk_dmdp_aal.h"
 
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#include "mmevent_function.h"
+#define MME_AAL_BUFFER_SIZE (240 * 1024)
+#endif
+
 #undef pr_fmt
 #define pr_fmt(fmt) "[disp_aal]" fmt
 #define AALERR(fmt, arg...) pr_notice("[ERR]%s:" fmt, __func__, ##arg)
+
+
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+static bool debug_flow_log;
+#define AALFLOW_LOG(fmt, arg...) do { \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_9, fmt, ##arg);      \
+	if (debug_flow_log) \
+		pr_notice("[FLOW]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+static bool debug_api_log;
+#define AALAPI_LOG(fmt, arg...) do { \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_9, fmt, ##arg);      \
+	if (debug_api_log) \
+		pr_notice("[API]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+static bool debug_irq_log;
+#define AALIRQ_LOG(fmt, arg...) do { \
+	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_9, fmt, ##arg);      \
+	if (debug_irq_log) \
+		pr_notice("[IRQ]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+#else
+
 static bool debug_flow_log;
 #define AALFLOW_LOG(fmt, arg...) do { \
 	if (debug_flow_log) \
@@ -59,22 +90,23 @@ static bool debug_api_log;
 		pr_notice("[API]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
-static bool debug_write_cmdq_log;
-#define AALWC_LOG(fmt, arg...) do { \
-	if (debug_write_cmdq_log) \
-		pr_notice("[WC]%s:" fmt, __func__, ##arg); \
-	} while (0)
-
 static bool debug_irq_log;
 #define AALIRQ_LOG(fmt, arg...) do { \
 	if (debug_irq_log) \
 		pr_notice("[IRQ]%s:" fmt, __func__, ##arg); \
 	} while (0)
+#endif
 
 static bool debug_dump_clarity_regs;
 #define AALCRT_LOG(fmt, arg...) do { \
 	if (debug_dump_clarity_regs) \
 		pr_notice("[Clarity Debug]%s:" fmt, __func__, ##arg); \
+	} while (0)
+
+static bool debug_write_cmdq_log;
+#define AALWC_LOG(fmt, arg...) do { \
+	if (debug_write_cmdq_log) \
+		pr_notice("[WC]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
 #define AALDUMP_LOG(fmt, arg...) pr_notice("[AAL_DUMP]:" fmt, ##arg)
@@ -3983,6 +4015,13 @@ void disp_aal_regdump(struct mtk_ddp_comp *comp)
 	}
 }
 
+static void init_mme_log(struct device *dev)
+{
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_AAL", MME_BUFFER_INDEX_9, MME_AAL_BUFFER_SIZE);
+#endif
+}
+
 static int disp_aal_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -4145,6 +4184,9 @@ static int disp_aal_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
+	init_mme_log(dev);
+#endif
 	AALFLOW_LOG("-\n");
 error_primary:
 	if (ret < 0)
