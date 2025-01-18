@@ -43,7 +43,7 @@ static int ufcs_get_property(struct adapter_device *adap,  enum adapter_property
 	struct mtk_ufcs_adapter_info *info = adapter_dev_get_drvdata(adap);
 
 	switch (prop) {
-	case UFCS_TYPE:
+	case CAP_TYPE:
 		return atomic_read(&info->ufcs_type);
 	default:
 		return -EINVAL;
@@ -200,21 +200,23 @@ static int ufcs_notifier_call(struct notifier_block *nb, unsigned long event,
 
 	switch (event) {
 	case UFCS_NOTIFY_ATTACH_PASS:
-		evt = MTK_UFCS_ATTACH;
+		evt = TA_ATTACH;
 		ufcs_type = MTK_UFCS;
 		break;
 	case UFCS_NOTIFY_ATTACH_FAIL:
-		evt = MTK_UFCS_FAIL;
+		evt = TA_DETECT_FAIL;
 		ufcs_type = MTK_CAP_TYPE_UNKNOWN;
 		break;
 	case UFCS_NOTIFY_ATTACH_NONE:
-		evt = MTK_UFCS_DETACH;
+		evt = TA_DETACH;
 		ufcs_type = MTK_CAP_TYPE_UNKNOWN;
 		break;
 	default:
 		return NOTIFY_DONE;
 	}
+
 	atomic_set(&info->ufcs_type, ufcs_type);
+
 	/* Notify the adapter user */
 	srcu_notifier_call_chain(&adapter->evt_nh, evt, NULL);
 
@@ -227,6 +229,7 @@ static int mtk_ufcs_adapter_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	int ret;
 
+	dev_info(&pdev->dev, "%s, probe++\n", __func__);
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return -ENOMEM;
