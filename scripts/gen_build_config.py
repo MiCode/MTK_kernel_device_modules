@@ -223,7 +223,7 @@ def main(**args):
         file_handle.write('BUILD_GKI_ARTIFACTS=\n')
         file_handle.write('FILES=\"${FILES} vmlinux.symvers modules.builtin modules.builtin.modinfo\"')
         file_handle.close()
-        gki_build_config_fragments = 'GKI_BUILD_CONFIG_FRAGMENTS=${REL_GEN_BUILD_CONFIG_DIR}/build.config.arm'
+        gki_build_config_fragments = 'GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_arm)
 
         file_text.append("fi")
         file_text.append(gki_build_config_fragments)
