@@ -24,6 +24,7 @@
 #include <sched/sched.h>
 #include <linux/cpumask.h>
 #include <linux/mutex.h>
+#include "fpsgo_frame_info.h"
 
 #define max_cpus 8
 #define MAX_MAGT_TARGET_FPS_NUM  10
@@ -32,6 +33,12 @@
 #define MAGT_GET_PERF_INDEX               _IOR('r', 1, struct cpu_info)
 #define MAGT_SET_TARGET_FPS               _IOW('g', 2, struct target_fps_info)
 #define MAGT_SET_DEP_LIST                 _IOW('g', 3, struct dep_list_info)
+#define MAGT_GET_FPSGO_SUPPORT            _IOWR('g', 4, struct fpsgo_pid_support)
+#define MAGT_GET_FPSGO_STATUS             _IOWR('g', 5, struct fpsgo_render_status)//TODO
+#define MAGT_GET_FPSGO_CRITICAL_THREAD_BG _IOWR('g', 6, struct fpsgo_bg_info)
+#define MAGT_GET_FPSGO_CPU_FRAMETIME      _IOWR('g', 7, struct fpsgo_cpu_frametime)
+#define MAGT_GET_FPSGO_THREAD_LOADING     _IOWR('g', 8, struct fpsgo_thread_loading)
+#define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
 
 struct cpu_time {
 	u64 time;
@@ -53,6 +60,45 @@ struct dep_list_info {
 	__u32 pid;
 	__u32 user_dep_arr[MAGT_DEP_LIST_NUM];
 	__u32 user_dep_num;
+};
+
+struct fpsgo_pid_support {
+	int32_t pid;
+	bool isSupport;
+};
+
+struct fpsgo_render_status {
+	int32_t pid;
+	int32_t curFps;
+	int32_t targetFps;
+	int32_t targetFps_diff;
+	long long t_gpu;
+};
+
+struct fpsgo_bg_info {
+	int32_t pid;
+	int32_t bg_num;
+	int32_t bg_pid[FPSGO_MAX_TASK_NUM];
+	int32_t bg_loading[FPSGO_MAX_TASK_NUM];
+};
+
+struct fpsgo_cpu_frametime {
+	int32_t pid;
+	unsigned long long raw_t_cpu;
+	unsigned long long ema_t_cpu;
+};
+
+struct fpsgo_thread_loading {
+	int32_t pid;
+	int32_t avg_freq;
+	int32_t dep_num;
+	int32_t dep_pid[FPSGO_MAX_TASK_NUM];
+	int32_t dep_loading[FPSGO_MAX_TASK_NUM];
+};
+
+struct fpsgo_render_perf {
+	int32_t pid;
+	int32_t perf_idx;
 };
 
 extern int get_cpu_loading(struct cpu_info *_ci);
