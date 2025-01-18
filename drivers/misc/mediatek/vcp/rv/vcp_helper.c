@@ -3643,7 +3643,7 @@ static int __init vcp_init(void)
 		vcp_enable[i] = 0;
 		vcp_ready[i] = 0;
 	}
-	vcp_support = 1;
+	vcp_support = 0;
 	vcp_dbg_log = 0;
 	halt_user = NULL;
 
