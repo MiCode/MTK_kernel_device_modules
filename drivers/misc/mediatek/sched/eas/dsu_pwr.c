@@ -170,11 +170,15 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 
 /* bw : 100 mb/s, temp : degree, freq : khz, volt : 10uv */
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt)
+		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		bool dsu_pwr_enable)
 {
 	unsigned int dsu_pwr[RES_PWR];
 	unsigned int p_dsu_bw, p_emi_bw; /* predict dsu and emi bw */
 	int i;
+
+	if (!dsu_pwr_enable)
+		return 0;
 
 	/* predict task bw */
 	if (dst_cpu >= 0) {

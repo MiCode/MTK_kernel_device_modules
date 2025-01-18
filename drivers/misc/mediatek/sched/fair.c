@@ -519,6 +519,12 @@ static inline int shared_gear(int gear_idx)
 	return gear_idx == share_buck.gear_idx;
 }
 
+bool dsu_pwr_enable;
+void init_dsu_pwr_enable(void)
+{
+	dsu_pwr_enable = sched_dsu_pwr_enable_get();
+}
+
 static inline unsigned long
 mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
@@ -635,7 +641,7 @@ calc_sharebuck_done:
 		total_util = eenv->total_util;
 
 	dsu_pwr = get_dsu_pwr(eenv->wl_type, dst_cpu, eenv->task_busy_time,
-					total_util, dsu, dsu_extern_volt);
+					total_util, dsu, dsu_extern_volt, dsu_pwr_enable);
 
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
 		trace_sched_compute_energy_cpu_dsu(dst_cpu, cpu_pwr, shared_pwr,

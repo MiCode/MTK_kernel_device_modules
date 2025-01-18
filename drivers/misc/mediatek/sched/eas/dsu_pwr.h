@@ -61,5 +61,6 @@ unsigned int mcusys_dyn_pwr(int wl_type, struct dsu_info *p,
 		unsigned int p_emi_bw);
 #endif
 unsigned long get_dsu_pwr(int wl_type, int dst_cpu, unsigned long task_util,
-		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt);
+		unsigned long total_util, struct dsu_info *dsu, unsigned int extern_volt,
+		bool dsu_pwr_enable);
 #endif

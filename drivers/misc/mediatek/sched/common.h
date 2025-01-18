@@ -151,6 +151,8 @@ extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *
 			int *reverse);
 extern bool sched_gear_hints_enable_get(void);
 extern void init_gear_hints(void);
+extern bool sched_dsu_pwr_enable_get(void);
+extern void init_dsu_pwr_enable(void);
 
 
 extern bool sched_updown_migration_enable_get(void);
