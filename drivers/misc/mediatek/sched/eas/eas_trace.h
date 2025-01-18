@@ -1683,10 +1683,11 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 
 	TP_PROTO(int cpu, int *pcpu_pgrp_u, int *pcpu_pgrp_adpt_rto, int *pcpu_pgrp_marg,
 	int pcpu_o_u, int *pcpu_pgrp_wetin, int *pcpu_pgrp_tar_u,
-	int cpu_tar_util, int *grp_margin),
+	int cpu_tar_util, int *grp_margin, int weighting, int *pgrp_parallel_u, int grp_high_freq),
 
 	TP_ARGS(cpu, pcpu_pgrp_u, pcpu_pgrp_adpt_rto, pcpu_pgrp_marg, pcpu_o_u,
-	pcpu_pgrp_wetin, pcpu_pgrp_tar_u, cpu_tar_util, grp_margin),
+	pcpu_pgrp_wetin, pcpu_pgrp_tar_u, cpu_tar_util, grp_margin,
+	weighting, pgrp_parallel_u, grp_high_freq),
 
 	TP_STRUCT__entry(
 		__field(int,		cpu)
@@ -1716,6 +1717,12 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__field(int,		grp_margin1)
 		__field(int,		grp_margin2)
 		__field(int,		grp_margin3)
+		__field(int,		weighting)
+		__field(int,		pgrp_parallel_u0)
+		__field(int,		pgrp_parallel_u1)
+		__field(int,		pgrp_parallel_u2)
+		__field(int,		pgrp_parallel_u3)
+		__field(int,		grp_high_freq)
 	),
 
 	TP_fast_assign(
@@ -1746,9 +1753,15 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__entry->grp_margin1		= grp_margin[1];
 		__entry->grp_margin2		= grp_margin[2];
 		__entry->grp_margin3		= grp_margin[3];
+		__entry->weighting		= weighting;
+		__entry->pgrp_parallel_u0		= pgrp_parallel_u[0];
+		__entry->pgrp_parallel_u1		= pgrp_parallel_u[1];
+		__entry->pgrp_parallel_u2		= pgrp_parallel_u[2];
+		__entry->pgrp_parallel_u3		= pgrp_parallel_u[3];
+		__entry->grp_high_freq		= grp_high_freq;
 	),
 
-	TP_printk("cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d rto[0]=%d rto[1]=%d rto[2]=%d rto[3]=%d marg[0]=%d marg[1]=%d marg[2]=%d marg[3]=%d ot=%d wt[0]=%d wt[1]=%d wt[2]=%d wt[3]=%d tar_u[0]=%d tar_u[1]=%d tar_u[2]=%d tar_u[3]=%d cpu_tar_util=%d grp_m[0]=%d grp_m[1]=%d grp_m[2]=%d grp_m[3]=%d",
+	TP_printk("cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d rto[0]=%d rto[1]=%d rto[2]=%d rto[3]=%d marg[0]=%d marg[1]=%d marg[2]=%d marg[3]=%d ot=%d wt[0]=%d wt[1]=%d wt[2]=%d wt[3]=%d tar_u[0]=%d tar_u[1]=%d tar_u[2]=%d tar_u[3]=%d cpu_tar_util=%d grp_m[0]=%d grp_m[1]=%d grp_m[2]=%d grp_m[3]=%d wt=%d para_u[0]=%d para_u[1]=%d para_u[2]=%d para_u[3]=%d grp_high_freq=%d",
 		__entry->cpu,
 		__entry->gu0,
 		__entry->gu1,
@@ -1775,7 +1788,13 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__entry->grp_margin0,
 		__entry->grp_margin1,
 		__entry->grp_margin2,
-		__entry->grp_margin3)
+		__entry->grp_margin3,
+		__entry->weighting,
+		__entry->pgrp_parallel_u0,
+		__entry->pgrp_parallel_u1,
+		__entry->pgrp_parallel_u2,
+		__entry->pgrp_parallel_u3,
+		__entry->grp_high_freq)
 );
 
 TRACE_EVENT(sugov_ext_pger_pgrp_u,
