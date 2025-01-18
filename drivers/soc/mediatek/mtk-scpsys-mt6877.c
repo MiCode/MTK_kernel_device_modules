@@ -40,7 +40,6 @@
 #define DIS0_PROT_STEP2_1_MASK			(BIT(1) | BIT(3) | BIT(15) | BIT(17) \
 						| BIT(25) | BIT(27))
 #define AUDIO_PROT_STEP1_0_MASK			(BIT(4))
-#define ADSP_PROT_STEP1_0_MASK			(BIT(3))
 #define CAM_PROT_STEP1_0_MASK			(BIT(0))
 #define CAM_PROT_STEP1_1_MASK			(BIT(0) | BIT(2))
 #define CAM_PROT_STEP2_0_MASK			(BIT(22))
@@ -179,20 +178,6 @@ static const struct scp_domain_data scp_domain_data_mt6877[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0714, 0x0718, 0x0710, 0x0724,
 				AUDIO_PROT_STEP1_0_MASK),
 		},
-	},
-
-	[MT6877_POWER_DOMAIN_ADSP_DORMANT] = {
-		.name = "adsp_dormant",
-		.sta_mask = BIT(22),
-		.ctl_offs = 0x0E58,
-		.sram_slp_bits = GENMASK(9, 9),
-		.sram_slp_ack_bits = GENMASK(13, 13),
-		.basic_clk_name = {"adsp"},
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x0714, 0x0718, 0x0710, 0x0724,
-				ADSP_PROT_STEP1_0_MASK),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP,
 	},
 
 	[MT6877_POWER_DOMAIN_CAM] = {
