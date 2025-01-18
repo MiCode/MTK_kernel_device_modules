@@ -1124,15 +1124,33 @@ static struct devapc_power_callbacks devapc_power_handle = {
 
 static bool mminfra_devapc_excep_cb(int slave_type)
 {
+	int i;
+	bool ret = false;
 	unsigned int vio_sta_22;
 
 	if (mm_pwr_ver == mm_pwr_v3) {
 		vio_sta_22 = readl(dbg->mminfra_devapc_vio_sta + 0x458);
 		if ((vio_sta_22 & MMINFRA_DEVAPC_VIO_STA_BIT_19) == MMINFRA_DEVAPC_VIO_STA_BIT_19)
 			return true;
+
+		for (i = 0; ;i++) {
+			if(!(readl(dbg->mminfra_devapc_vio_sta + 0x400 + i*4) &
+				(~readl(dbg->mminfra_devapc_vio_sta + i*4))))
+				ret = true;
+			else {
+				pr_info("%s (%d) vio_mask = 0x%x, vio_sta = 0x%x\n", __func__,
+					i, readl(dbg->mminfra_devapc_vio_sta + i*4),
+					readl(dbg->mminfra_devapc_vio_sta + 0x400 + i*4));
+				return false;
+			}
+
+			if ((dbg->mminfra_devapc_vio_sta + 0x400 + i*4)
+				== dbg->mminfra_devapc_vio_sta + 0x458)
+				break;
+		}
 	}
 
-	return false;
+	return ret;
 }
 
 struct devapc_excep_callbacks devapc_excep_handle = {
