@@ -37,6 +37,10 @@ void mrdump_arch_fill_machdesc(struct mrdump_machdesc *machdesc_p)
 		>> TCR_T1SZ_OFFSET;
 	machdesc_p->kernel_pac_mask = (uint64_t)system_supports_address_auth() ?
 		ptrauth_kernel_pac_mask() : 0;
+#if defined(KIMAGE_VADDR)
+	machdesc_p->kimage_vaddr = KIMAGE_VADDR;
+#endif
+	machdesc_p->kimage_offset = kaslr_offset();
 	machdesc_p->kimage_voffset = (unsigned long)kimage_voffset;
 	machdesc_p->page_size = (unsigned long)PAGE_SIZE;
 }

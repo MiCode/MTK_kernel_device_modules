@@ -107,11 +107,11 @@ struct mrdump_machdesc {
 	uint64_t tcr_el1_t1sz;
 
 	uint64_t kimage_vaddr;
-	uint64_t dram_start; /* deprecated */
+	uint64_t kimage_offset;
 	uint64_t dram_end; /* deprecated */
-	uint64_t kimage_stext;
-	uint64_t kimage_etext;
-	uint64_t kimage_stext_real;
+	uint64_t kimage_stext; /* deprecated */
+	uint64_t kimage_etext; /* deprecated */
+	uint64_t kimage_stext_real; /* deprecated */
 	uint64_t kimage_voffset;
 	uint64_t kernel_pac_mask;
 	uint64_t page_size;
@@ -129,7 +129,7 @@ struct mrdump_machdesc {
 	uint64_t pageflags;
 	uint32_t struct_page_size;
 
-	uint64_t dfdmem_pa;
+	uint64_t dfdmem_pa; /* deprecated */
 
 	struct mrdump_ksyms_param kallsyms;
 };
