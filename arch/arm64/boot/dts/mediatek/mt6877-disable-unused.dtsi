@@ -194,13 +194,6 @@
 			power-domains = <&scpsys MT6877_POWER_DOMAIN_VENC>;
 	};
 
-	disable-unused-clk-adspsys@12 {
-		compatible = "mediatek,clk-disable-unused";
-		reg = <0x12>;
-		clocks = <&scp_par_top_clk CLK_SCP_PAR_RG_AUDIODSP>;
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_ADSP_DORMANT>;
-	};
-
 	disable-unused-clk-i2csys@13 {
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x13>;
@@ -413,12 +406,6 @@
 		compatible = "mediatek,scpsys-disable-unused";
 		reg = <0x23>;
 		power-domains = <&scpsys MT6877_POWER_DOMAIN_AUDIO>;
-	};
-
-	disable-unused-pd-adsp-dormant@24 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0x24>;
-		power-domains = <&scpsys MT6877_POWER_DOMAIN_ADSP_DORMANT>;
 	};
 
 	disable-unused-pd-cam@25 {
