@@ -501,18 +501,18 @@ unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 unsigned int mtk_wdma_hrt_channel_MT6991(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
-	case DDP_COMPONENT_OVLSYS_WDMA3:
+	case DDP_COMPONENT_OVLSYS_WDMA2:
 		return 3;
 	case DDP_COMPONENT_WDMA0:
 	case DDP_COMPONENT_OVLSYS_WDMA1:
 		return 7;
+	case DDP_COMPONENT_OVLSYS_WDMA0:
+		return 11;
 	case DDP_COMPONENT_WDMA1:
 	case DDP_COMPONENT_WDMA2:
 	case DDP_COMPONENT_WDMA3:
 	case DDP_COMPONENT_WDMA4:
-	case DDP_COMPONENT_OVLSYS_WDMA2:
-		return 11;
-	case DDP_COMPONENT_OVLSYS_WDMA0:
+	case DDP_COMPONENT_OVLSYS_WDMA3:
 		return 15;
 	default:
 		return 0;
