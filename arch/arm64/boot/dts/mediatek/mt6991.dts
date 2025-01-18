@@ -12751,49 +12751,89 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	disp1-vdisp-ctrl@1 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS1_DORMANT>;
+		reg =
+			<0 0x3e8f2050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <1>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	disp0-vdisp-ctrl@2 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
+		reg =
+			<0 0x3e8f1050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <2>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	ovl1-vdisp-ctrl@3 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
+		reg =
+			<0 0x3e8f4050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <3>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	ovl0-vdisp-ctrl@4 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
+		reg =
+			<0 0x3e8f3050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <4>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	mml1-vdisp-ctrl@5 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML1_SHUTDOWN>;
+		reg =
+			<0 0x3e8f5050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <5>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	mml0-vdisp-ctrl@6 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML0_SHUTDOWN>;
+		reg =
+			<0 0x3e8f6050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <6>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	edp-vdisp-ctrl@7 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
+		reg =
+			<0 0x3e8f7050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <7>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	dptx-vdisp-ctrl@8 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT>;
+		reg =
+			<0 0x3e8f8050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
+		reg-names =
+			"pwr_ack_wait_con";
 		disp-pd-id = <8>;
+		pwr-ack-wait-time = <0x1030c>;                   /* 1st=30us, 2nd=1tick (38.46ns) */
 	};
 
 	connscp: connscp {
