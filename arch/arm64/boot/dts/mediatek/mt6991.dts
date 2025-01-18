@@ -649,9 +649,19 @@
 		#clock-cells = <1>;
 	};
 
+	usbcfg_ao_mbist_clk:syscon@16781000 {
+		compatible = "mediatek,mt6991-usbcfg-ao-mbist", "syscon";
+		reg = <0 0x16781000 0 0x1000>;
+	};
+
 	usbcfg_ao_clk: syscon@16790000 {
 		compatible = "mediatek,mt6991-usbcfg-ao", "syscon";
 		reg = <0 0x16790000 0 0x100>;
+	};
+
+	usbwkcfg_ao_clk: syscon@167a0000 {
+		compatible = "mediatek,mt6991-usbwkcfg-ao", "syscon";
+		reg = <0 0x167a0000 0 0x1000>;
 	};
 
 	ufscfg_ao_sec_clk: syscon@16890000 {
@@ -5928,6 +5938,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			mediatek,polling-scdlfps-time = <0x21>;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
+			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
+			mediatek,usb-ao-cfg = <&usbwkcfg_ao_clk>;
 			cdp-block;
 			port {
 				mtu3_drd_switch: endpoint {
