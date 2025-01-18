@@ -20,4 +20,7 @@ struct mtee_peer_ops_data {
 
 void get_mtee_peer_ops(struct trusted_driver_operations **ops);
 
+int get_hvc_nr_region_protect(void);
+int get_hvc_nr_region_unprotect(void);
+
 #endif /* MTEE_OPS_H_ */

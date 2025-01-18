@@ -113,27 +113,18 @@ endif
 #==========================================================================
 # MTEE Multiple Chunk Devices & Geniezone Peer Driver
 #==========================================================================
-ifneq ($(filter y m,$(CONFIG_MTK_PROT_MEM_SUPPORT)\
-					$(CONFIG_MTK_MTEE_MULTI_CHUNK_SUPPORT)\
-					$(CONFIG_MTK_SECURE_MEM_SUPPORT)),)
 trusted_mem-y += mtee_devices.o
-ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
-tmem_ffa-y += mtee_devices.o
-endif
-ccflags-y += -DMTEE_DEVICES_SUPPORT
-endif
-ifneq ($(filter y m,$(CONFIG_MTK_GZ_KREE)),)
 trusted_mem-y += mtee_impl/mtee_ops.o
 trusted_mem-y += mtee_impl/mtee_invoke.o
+trusted_mem-y += mtee_impl/tmem_carveout_heap.o
+ccflags-y += -DMTEE_DEVICES_SUPPORT
+
 ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
+tmem_ffa-y += mtee_devices.o
 tmem_ffa-y += mtee_impl/mtee_ops.o
 tmem_ffa-y += mtee_impl/mtee_invoke.o
-endif
-endif
-ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
 tmem_ffa-y += mtee_impl/tmem_ffa.o
 endif
-trusted_mem-y += mtee_impl/tmem_carveout_heap.o
 endif # !CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 
 #==========================================================================

@@ -45,6 +45,7 @@ int apscp_ssmr_init(struct platform_device *pdev);
 bool is_page_based_memory(enum TRUSTED_MEM_TYPE mem_type);
 bool is_svp_on_mtee(void);
 bool is_svp_enabled(void);
+bool is_pkvm_enabled(void);
 bool is_ffa_enabled(void);
 bool is_page_based_v2_enabled(void);
 bool is_tee_mmap_by_page_enabled(void);

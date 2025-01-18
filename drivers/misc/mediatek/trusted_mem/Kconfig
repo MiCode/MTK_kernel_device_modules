@@ -6,7 +6,6 @@
 config MTK_PROT_MEM_SUPPORT
 	bool "MTK Protect Memory Support"
 	default y
-	depends on MTK_GZ_KREE
 	help
 	  Enable the support of MediaTek protect memory driver.
 	  This driver is in charge of protect memory region require/release

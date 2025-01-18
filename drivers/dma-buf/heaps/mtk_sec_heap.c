@@ -23,6 +23,9 @@
 #include <linux/slab.h>
 #include <linux/list_sort.h>
 #include <linux/vmalloc.h>
+#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
+#include <asm/kvm_pkvm_module.h>
+#endif
 
 #include <public/trusted_mem_api.h>
 #include "page_pool.h"
@@ -424,11 +427,15 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			if (bitmap[i] != 0)
 				pr_debug("%#4x: %#32x ", i, bitmap[i]);
 		}
-		arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
-				0, 0, 0, 0, 0, 0, &smc_res);
-		if (smc_res.a0 != 0) {
-			pr_err("smc_res.a0=%#lx\n", smc_res.a0);
-			return -EINVAL;
+		if (is_pkvm_enabled()) {
+			/* pkvm doesn't need to merge cpu pgtbl, so directly do nothing */
+		} else {
+			arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
+					0, 0, 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0 != 0) {
+				pr_err("smc_res.a0=%#lx\n", smc_res.a0);
+				return -EINVAL;
+			}
 		}
 		memset(page_address(sec_heap->bitmap), 0, PAGE_SIZE);
 	}
@@ -1309,10 +1316,8 @@ static struct page *alloc_largest_available(unsigned long size,
 static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 				 int lock)
 {
-	struct arm_smccc_res smc_res;
 	struct page *pmm_page, *tmp_page;
-	uint32_t smc_id = lock == 1 ? HYP_PMM_ASSIGN_BUFFER_V2 :
-				      HYP_PMM_UNASSIGN_BUFFER_V2;
+	uint32_t smc_id;
 	uint32_t tmp_count = 0;
 	int count = 0;
 
@@ -1329,13 +1334,37 @@ static int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap, u8 pmm_attr,
 			count >= PMM_MSG_ENTRIES_PER_PAGE ?
 				(uint32_t)PMM_MSG_ENTRIES_PER_PAGE :
 				(uint32_t)(count % PMM_MSG_ENTRIES_PER_PAGE);
-		arm_smccc_smc(smc_id, page_to_pfn(pmm_page), pmm_attr,
-			      tmp_count, 0, 0, 0, 0, &smc_res);
-		if (smc_res.a0 != 0) {
-			pr_err("smc_id=%#x smc_res.a0=%#lx\n", smc_id,
-			       smc_res.a0);
-			return -EINVAL;
+
+#if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
+		if (is_pkvm_enabled()) {
+			int ret;
+
+			smc_id = lock == 1 ? get_hvc_nr_page_protect() :
+								get_hvc_nr_page_unprotect();
+
+			ret = pkvm_el2_mod_call(smc_id, page_to_pfn(pmm_page), pmm_attr, tmp_count);
+			if (ret != 0) {
+				pr_err("smc_id=%#x ret=%x\n", smc_id, ret);
+				return -EINVAL;
+			}
+		} else {
+			pr_err("Not enable pKvm dts\n");
 		}
+#else
+		{
+			struct arm_smccc_res smc_res;
+
+			smc_id = lock == 1 ? HYP_PMM_ASSIGN_BUFFER_V2 :
+							HYP_PMM_UNASSIGN_BUFFER_V2;
+			arm_smccc_smc(smc_id, page_to_pfn(pmm_page), pmm_attr,
+				      tmp_count, 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0 != 0) {
+				pr_err("smc_id=%#x smc_res.a0=%#lx\n", smc_id,
+					   smc_res.a0);
+				return -EINVAL;
+			}
+		}
+#endif
 		count -= PMM_MSG_ENTRIES_PER_PAGE;
 	}
 	return 0;

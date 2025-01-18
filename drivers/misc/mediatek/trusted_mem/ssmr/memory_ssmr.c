@@ -34,6 +34,7 @@
 #include "ssmr_internal.h"
 
 #define SSMR_FEATURES_DT_UNAME "memory-ssmr-features"
+#define PKVM_ENABLED_DT_UNAME "pkvm-enabled"
 #define FFA_ENABLED_DT_UNAME "memory-ffa-enabled"
 #define TEE_MMAP_BY_PAGE_ENABLED_DT_UNAME "tee-mmap-by-page-enabled"
 #define PAGE_BASED_V2_ENABLED_DT_UNAME "page-based-v2-enabled"
@@ -604,6 +605,18 @@ bool is_svp_enabled(void)
 
 	return true;
 }
+
+bool is_pkvm_enabled(void)
+{
+	struct device_node *dt_node;
+
+	dt_node = of_find_node_by_name(NULL, PKVM_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return false;
+
+	return true;
+}
+EXPORT_SYMBOL(is_pkvm_enabled);
 
 bool is_ffa_enabled(void)
 {

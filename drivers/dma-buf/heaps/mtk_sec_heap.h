@@ -23,4 +23,8 @@
 #define HYP_PMM_UNASSIGN_BUFFER_V2 (0XBB00FFAC)
 #define HYP_PMM_MERGED_TABLE (0XBB00FFAD)
 
+bool is_pkvm_enabled(void);
+int get_hvc_nr_page_protect(void);
+int get_hvc_nr_page_unprotect(void);
+
 #endif /* _MTK_SEC_HEAP_H */
