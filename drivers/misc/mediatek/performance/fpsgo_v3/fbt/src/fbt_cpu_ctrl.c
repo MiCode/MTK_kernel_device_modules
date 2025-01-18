@@ -22,6 +22,7 @@
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
 #include "eas/eas_plus.h"
+#include "fbt_cpu.h"
 
 /*--------------------------------------------*/
 
@@ -375,6 +376,8 @@ static void fbt_cpu_ctrl_notifier_wq_cb(struct work_struct *psWork)
 	__update_cpu_freq_locked();
 
 	mutex_unlock(&cpu_ctrl_lock);
+
+	fbt_update_freq_qos_min(vpPush->policy_id, vpPush->freq);
 
 	fpsgo_free(vpPush, sizeof(struct FBT_CPU_CTRL_NOTIFIER_PUSH_TAG));
 }

@@ -497,6 +497,8 @@ static struct fbt_sjerk sjerk;
 
 static struct workqueue_struct *wq_jerk;
 
+static int freq_qos_cap;
+
 /* for recording CPU capacity when CPU freq. changed cb is called. */
 static unsigned long long lastest_ts[LOADING_CNT];
 static unsigned long long prev_cb_ts[LOADING_CNT];
@@ -4563,13 +4565,14 @@ out:
 }
 
 unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,
-	unsigned int target_fpks, unsigned int target_raw_10fps,
+	unsigned int target_fpks, unsigned int target_raw_fpks,
 	unsigned long long vsync_period_ns, unsigned int normalized_target_fps,
-	int display_fps_enable, int target_raw_fps_enable, int normalized_fps_pct)
+	int display_fps_enable, int target_raw_fps_enable, int normalized_fps_pct,
+	int cooler_on)
 {
 	unsigned long long vsync_period_us;
 	unsigned int vsync_fpks;
-	unsigned int final_expect_fpks = target_fpks;
+	unsigned int final_expect_fpks = INT_MAX;
 
 	if (display_fps_enable && vsync_period_ns) {
 		vsync_period_us = vsync_period_ns / 1000;
@@ -4577,17 +4580,62 @@ unsigned int fbt_get_expected_fpks(int pid, unsigned long long bufID,
 		final_expect_fpks = min(vsync_fpks, final_expect_fpks);
 		fpsgo_systrace_c_fbt(pid, bufID, vsync_fpks, "vsync_fpks");
 	}
-	if (target_raw_fps_enable && target_raw_10fps) {
-		final_expect_fpks = min(final_expect_fpks, target_raw_10fps * 100);
-		fpsgo_systrace_c_fbt(pid, bufID, target_raw_10fps, "target_raw_10fps");
+	if (target_raw_fps_enable && target_raw_fpks) {
+		final_expect_fpks = min(final_expect_fpks, target_raw_fpks);
+		fpsgo_systrace_c_fbt(pid, bufID, target_raw_fpks, "target_raw_fpks");
 	}
 	if (normalized_fps_pct) {
 		final_expect_fpks = min(final_expect_fpks,
 			normalized_target_fps * normalized_fps_pct * 10);
 	}
 
+	// eara diff
+	if (cooler_on)
+		final_expect_fpks = min(final_expect_fpks, target_fpks);
+
+	if (final_expect_fpks == INT_MAX)
+		final_expect_fpks = target_fpks;
+
 	fpsgo_systrace_c_fbt(pid, bufID, final_expect_fpks, "expect_fpks_wo_margin");
 	return final_expect_fpks;
+}
+
+void fbt_update_freq_qos_min(int policy_id, unsigned int freq)
+{
+	int freq_qos_cap_temp = 0, cluster_min_freq = 0;
+
+	mutex_lock(&fbt_mlock);
+	freq_qos_cap_temp = fbt_cluster_X2Y(policy_id, freq, FREQ, CAP, 1, __func__);
+	cluster_min_freq = fbt_cluster_X2Y(policy_id, cpu_dvfs[policy_id].num_opp - 1, OPP, FREQ, 0, __func__);
+
+	if (freq == cluster_min_freq)
+		freq_qos_cap = 0;
+	else
+		freq_qos_cap = freq_qos_cap_temp;
+
+	mutex_unlock(&fbt_mlock);
+
+	fpsgo_systrace_c_fbt(-100, 0, policy_id, "freq_qos_policy");
+	fpsgo_systrace_c_fbt(-100, 0, freq, "freq_qos_freq");
+	fpsgo_systrace_c_fbt(-100, 0, freq_qos_cap, "freq_qos_cap");
+	fpsgo_systrace_c_fbt_debug(-100, 0, freq_qos_cap_temp, "freq_qos_cap_temp");
+
+}
+
+int fbt_get_limit_min_cap(int limit_min_cap_freq_qos, int limit_min_cap_user)
+{
+	int limit_min_cap_final = 1;
+
+	if (limit_min_cap_freq_qos)
+		limit_min_cap_final = limit_min_cap_freq_qos;
+
+	if (limit_min_cap_user)
+		limit_min_cap_final = max(limit_min_cap_final, limit_min_cap_user);
+
+	fpsgo_main_trace("[%s] limit_min_cap=%d freq_qos_min=%d,user_min=%d",
+		__func__, limit_min_cap_final, limit_min_cap_freq_qos, limit_min_cap_user);
+
+	return limit_min_cap_final;
 }
 
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
@@ -4607,7 +4655,6 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int test_blc_wt_b, test_blc_wt_m, test_blc_wt;
 	unsigned long long t_fps_margin_exp_time;
 	unsigned long long rl_target_t = last_target_t_ns;
-	int limit_min_cap = 1;
 #if !IS_ENABLED(CONFIG_ARM64)
 	unsigned long long temp_targetfps_raw;
 	unsigned long long temp_num = 1000000000000ULL;
@@ -4619,8 +4666,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 
 	rl_target_fpks = target_fpks + expected_fps_margin * 100;
 
-	if (limit_min_cap_final)
-		limit_min_cap = limit_min_cap_final;
+	limit_min_cap_final = limit_min_cap_final ? limit_min_cap_final : 1;
 
 	if (rl_is_ready && rl_active == 2) {
 		if (fbt_cal_target_time_fp) {
@@ -4647,8 +4693,8 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 						t_q2q_100us, 0, &test_blc_wt_b);
 					fbt_cal_blc(aa_m, last_target_t_100us, 1,
 						t_q2q_100us, 0, &test_blc_wt_m);
-					if ((test_blc_wt_b <= limit_min_cap &&
-						test_blc_wt_m <= limit_min_cap &&
+					if ((test_blc_wt_b <= limit_min_cap_final &&
+						test_blc_wt_m <= limit_min_cap_final &&
 						rl_target_t > last_target_t_ns) ||
 						(test_blc_wt_b >= limit_cap_b &&
 						test_blc_wt_m >= limit_cap_m &&
@@ -4657,7 +4703,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 				} else {
 					fbt_cal_blc(aa_n, last_target_t_100us, 1,
 						t_q2q_100us, 0, &test_blc_wt);
-					if ((test_blc_wt <= 1 && rl_target_t > last_target_t_ns) ||
+					if ((test_blc_wt <= limit_min_cap_final && rl_target_t > last_target_t_ns) ||
 						(test_blc_wt >= limit_cap &&
 						rl_target_t < last_target_t_ns))
 						rl_target_t = last_target_t_ns;
@@ -4787,6 +4833,9 @@ static int fbt_boost_policy(
 	unsigned long long logical_head_time_ns = 0;
 	unsigned long long l2q_ns = 0;
 	int is_logic_head_alive = 0;
+	unsigned long long avg_exp_time_ns = 0;
+	int target_raw_fpks = target_fpks;
+	int limit_min_cap_final = 1;
 
 	if (!thread_info) {
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
@@ -4879,15 +4928,19 @@ static int fbt_boost_policy(
 		&is_logic_head_alive);
 	next_vsync = fbt_get_next_vsync_locked(ts);
 
-	expected_fpks = fbt_get_expected_fpks(pid, buffer_id, target_fpks, 0, vsync_period,
-		target_fps_ori, exp_fps_disp_enable, exp_fps_raw_enable, exp_normal_fps_pct);
+	avg_exp_time_ns = fpsgo_other2fstb_get_app_self_ctrl_time(thread_info->pid, thread_info->buffer_id, ts);
+	if (avg_exp_time_ns)
+		target_raw_fpks = div64_u64((unsigned long long) (FBTCPU_SEC_DIVIDER * 1000ULL), avg_exp_time_ns);
+	expected_fpks = fbt_get_expected_fpks(pid, buffer_id, target_fpks, target_raw_fpks, vsync_period,
+		target_fps_ori, exp_fps_disp_enable, exp_fps_raw_enable, exp_normal_fps_pct, cooler_on);
+	limit_min_cap_final = fbt_get_limit_min_cap(freq_qos_cap, limit_min_cap_target_t_final);
 	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active,
 		target_fps_ori, thread_info->target_fps_origin, expected_fpks, target_time,
 		fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
 		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final,
-		limit_min_cap_target_t_final,  separate_aa_final,
+		limit_min_cap_final,  separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
 		limit_max_cap, limit_cap_b, limit_cap_m,
 		rl_l2q_enable, rl_l2q_exp_ns, l2q_ns, is_logic_head_alive,
@@ -9336,10 +9389,11 @@ int __init fbt_cpu_init(void)
 
 	aa_b_minus_idle_time = 0;
 
-	exp_fps_raw_enable = 0;
-	exp_normal_fps_pct = 0;
+	exp_fps_raw_enable = 1;
+	exp_normal_fps_pct = 101;
 	exp_fps_disp_enable = 1;
 	limit_min_cap_target_t = 0;
+	freq_qos_cap = 0;
 
 	jank_min_cap_ratio = 100;
 	jank_max_cap_ratio = 100;
