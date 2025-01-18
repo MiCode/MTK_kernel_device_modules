@@ -66,11 +66,6 @@ static const struct net_device_ops *mddp_wan_netdev_ops_save;
 //------------------------------------------------------------------------------
 // Struct definition.
 // -----------------------------------------------------------------------------
-struct mddp_f_set_ct_timeout_req_t {
-	uint32_t                udp_ct_timeout;
-	uint32_t                tcp_ct_timeout;
-	uint8_t                 rsv[4];
-};
 
 struct mddp_f_set_ct_timeout_rsp_t {
 	uint32_t                udp_ct_timeout;
@@ -411,7 +406,7 @@ int32_t mddp_f_set_ct_value(uint8_t *buf, uint32_t buf_len)
 		return -ENODEV;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) + sizeof(ct_req),
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
 			GFP_ATOMIC);
 	if (unlikely(!md_msg))
 		return -EAGAIN;
@@ -424,7 +419,7 @@ int32_t mddp_f_set_ct_value(uint8_t *buf, uint32_t buf_len)
 
 	md_msg->msg_id = IPC_MSG_ID_DPFM_SET_CT_TIMEOUT_VALUE_REQ;
 	md_msg->data_len = sizeof(ct_req);
-	memcpy(md_msg->data, &ct_req, sizeof(ct_req));
+	memcpy(&md_msg->data, &ct_req, sizeof(ct_req));
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_DPFM);
 

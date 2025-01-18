@@ -117,7 +117,7 @@ int32_t mddp_u_set_data_limit(uint8_t *buf, uint32_t buf_len)
 		return -ENODEV;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) + sizeof(limit),
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
 			GFP_ATOMIC);
 	if (unlikely(!md_msg)) {
 		return -EAGAIN;
@@ -145,7 +145,7 @@ int32_t mddp_u_set_data_limit(uint8_t *buf, uint32_t buf_len)
 
 	md_msg->msg_id = IPC_MSG_ID_DPFM_DATA_USAGE_CMD;
 	md_msg->data_len = sizeof(limit);
-	memcpy(md_msg->data, &limit, sizeof(limit));
+	memcpy(&md_msg->data, &limit, sizeof(limit));
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_DPFM);
 
@@ -177,7 +177,7 @@ int32_t mddp_u_set_warning_and_data_limit(uint8_t *buf, uint32_t buf_len)
 		return -ENODEV;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) + sizeof(limit),
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
 			GFP_ATOMIC);
 	if (unlikely(!md_msg))
 		return -EAGAIN;
@@ -205,7 +205,7 @@ int32_t mddp_u_set_warning_and_data_limit(uint8_t *buf, uint32_t buf_len)
 
 	md_msg->msg_id = IPC_MSG_ID_DPFM_DATA_USAGE_CMD;
 	md_msg->data_len = sizeof(limit);
-	memcpy(md_msg->data, &limit, sizeof(limit));
+	memcpy(&md_msg->data, &limit, sizeof(limit));
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_DPFM);
 

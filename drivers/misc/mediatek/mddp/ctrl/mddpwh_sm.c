@@ -540,7 +540,7 @@ static int32_t mddpw_drv_add_txd(struct mddpw_txd_t *txd)
 
 	md_msg->msg_id = IPC_MSG_ID_WFPM_SEND_MD_TXD_NOTIFY;
 	md_msg->data_len = sizeof(struct mddpw_txd_t) + txd->txd_length;
-	memcpy(md_msg->data, txd, md_msg->data_len);
+	memcpy(&md_msg->data, txd, md_msg->data_len);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
 
 	return 0;
@@ -728,7 +728,7 @@ static int32_t mddpw_drv_notify_info(
 	md_msg->msg_id = IPC_MSG_ID_WFPM_DRV_NOTIFY;
 	md_msg->data_len = sizeof(struct mddpw_drv_notify_info_t) +
 		wifi_notify->buf_len;
-	memcpy(md_msg->data, wifi_notify, md_msg->data_len);
+	memcpy(&md_msg->data, wifi_notify, md_msg->data_len);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
 
 	return 0;
