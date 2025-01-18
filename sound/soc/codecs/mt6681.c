@@ -28,7 +28,7 @@
 #include "mt6681-private.h"
 
 // #define SKIP_FPGA
-#define SKIP_SB
+// #define SKIP_SB
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET) && !defined(SKIP_SB)
 #include "mt6681-accdet.h"
