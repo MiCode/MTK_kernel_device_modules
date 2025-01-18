@@ -279,6 +279,7 @@ void genetlink_exit(void)
 int _backlight_changed_event(struct notifier_block *nb, unsigned long event,
 	void *v)
 {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	struct led_conf_info *led_conf;
 	int ret = 0;
 
@@ -320,6 +321,7 @@ int _backlight_changed_event(struct notifier_block *nb, unsigned long event,
 	default:
 		break;
 	}
+#endif
 
 	mutex_lock(&scrn_changed_lock);
 	if (!scrn_status_changed) {
@@ -1656,12 +1658,12 @@ static ssize_t dram_data_rate_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	int len = 0;
-
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
 	len = snprintf(buf, PAGE_SIZE, "%d\n",
 		mtk_dramc_get_data_rate());
 	if (len < 0 || len >= sizeof(buf))
 		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
-
+#endif
 	return len;
 }
 
