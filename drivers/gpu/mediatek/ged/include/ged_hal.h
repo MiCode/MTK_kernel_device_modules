@@ -17,4 +17,5 @@ GED_ERROR ged_hal_init(void);
 void ged_hal_exit(void);
 
 extern unsigned int ignore_fpsgo_enable;
+extern int stat_mcu_store[][30];
 #endif

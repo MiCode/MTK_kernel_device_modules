@@ -30,7 +30,7 @@
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
-#include <mtk_gpufreq.h>
+#include <gpufreq_v2.h>
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
@@ -210,7 +210,7 @@ void ged_eb_dvfs_trace_dump(void)
 	GED_DVFS_COMMIT_TYPE eCommitType;
 	static int apply_lb_async;
 
-	struct GpuUtilization_Ex util_ex;
+	//struct GpuUtilization_Ex util_ex;
 
 	if (ged_policy_state == POLICY_STATE_LB ||
 			ged_policy_state == POLICY_STATE_FORCE_LB)
@@ -243,8 +243,22 @@ void ged_eb_dvfs_trace_dump(void)
 			time_diff = 0;
 	}
 
-	ged_dvfs_cal_gpu_utilization_ex(&gpu_av_loading,
-		&gpu_block, &gpu_idle, &util_ex);
+	//ged_dvfs_cal_gpu_utilization_ex(&gpu_av_loading,
+		//&gpu_block, &gpu_idle, &util_ex);
+	trace_GPU_DVFS__EB_Loading(
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING),
+		0,
+		0,
+		0,
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_LOADING),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING),
+		time_diff);
+
+	trace_GPU_DVFS__Policy__Loading_based__EB_Loading(
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_LOADING),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_DELTA_TIME), time_diff);
+
 	trace_GPU_DVFS__Policy__Loading_based__EB_Opp(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_OPP), time_diff);
 
@@ -277,8 +291,8 @@ void ged_eb_dvfs_trace_dump(void)
 		if (dcs_get_adjust_support() % 2 != 0)
 			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
-		trace_tracing_mark_write(5566, "EB side loading-base use 26m_iter_u_mcu avg_loading",
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_AVG_LOADING));
+		trace_tracing_mark_write(5566, "26m_replace",
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
 	}
 	trace_GPU_DVFS__Policy__Loading_based__EB_Margin(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MARGIN_CEIL) * 10,
@@ -307,8 +321,8 @@ void ged_eb_dvfs_trace_dump(void)
 
 	trace_GPU_DVFS__Policy__Loading_based__EB_GPU_Time(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_RISKY_COMPLETE_TARGET_TIME),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU_HD),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_COMPLETE_GPU),
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_UNCOMPOLETE_GPU),
 		time_diff);
@@ -318,7 +332,7 @@ void ged_eb_dvfs_trace_dump(void)
 
 	trace_GPU_DVFS__Policy__Frame_based__EB_monitor(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_FB_OVERDUE_TIME),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD) * 100,
+		mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD),
 		time_diff);
 
 	trace_GPU_DVFS__Policy__EB_PRESERVE(
@@ -688,21 +702,25 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 		gpu_loading = gpu_av_loading;
 #endif
 
-		ged_get_gpu_utli_ex(&util_ex);
-		mtk_get_dvfs_loading_mode(&loading_mode);
-		if (loading_mode == LOADING_MAX_3DTA_COM) {
-			gpu_loading_temp =
-			MAX(util_ex.util_3d, util_ex.util_ta) +
-			util_ex.util_compute;
-		} else if (loading_mode == LOADING_MAX_3DTA) {
-			gpu_loading_temp =
-			MAX(util_ex.util_3d, util_ex.util_ta);
-		} else if (loading_mode == LOADING_ITER) {
-			gpu_loading_temp = util_ex.util_iter;
-		} else if (loading_mode == LOADING_MAX_ITERMCU) {
-			gpu_loading_temp = MAX(util_ex.util_iter, util_ex.util_mcu);
-		} else {   // LOADING_ACTIVE or unknown mode
-			gpu_loading_temp = util_ex.util_active;
+		if (is_fdvfs_enable()) {
+			gpu_loading_temp = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING);
+		} else {
+			ged_get_gpu_utli_ex(&util_ex);
+			mtk_get_dvfs_loading_mode(&loading_mode);
+			if (loading_mode == LOADING_MAX_3DTA_COM) {
+				gpu_loading_temp =
+				MAX(util_ex.util_3d, util_ex.util_ta) +
+				util_ex.util_compute;
+			} else if (loading_mode == LOADING_MAX_3DTA) {
+				gpu_loading_temp =
+				MAX(util_ex.util_3d, util_ex.util_ta);
+			} else if (loading_mode == LOADING_ITER) {
+				gpu_loading_temp = util_ex.util_iter;
+			} else if (loading_mode == LOADING_MAX_ITERMCU) {
+				gpu_loading_temp = MAX(util_ex.util_iter, util_ex.util_mcu);
+			} else {   // LOADING_ACTIVE or unknown mode
+				gpu_loading_temp = util_ex.util_active;
+			}
 		}
 
 		if (false == g_bGPUClock && 0 == gpu_loading_temp
@@ -740,6 +758,14 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 	}
 	return HRTIMER_NORESTART;
 }
+
+#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
+unsigned int ged_gpu_power_stress_test_enable(void)
+{
+	return g_ged_power_stress_test_support;
+}
+EXPORT_SYMBOL(ged_gpu_power_stress_test_enable);
+#endif /* MTK_GPU_POWER_ON_OFF_TEST */
 
 unsigned int ged_gpu_whitebox_power_test_support(int support_flag)
 {
@@ -786,14 +812,6 @@ void ged_set_whitebox_power_state_store(int first, int second)
 		stat_mcu_store[first][second]++;
 }
 EXPORT_SYMBOL(ged_set_whitebox_power_state_store);
-
-#if IS_ENABLED(CONFIG_MTK_GPU_POWER_ON_OFF_TEST)
-unsigned int ged_gpu_power_stress_test_enable(void)
-{
-	return g_ged_power_stress_test_support;
-}
-EXPORT_SYMBOL(ged_gpu_power_stress_test_enable);
-#endif /* MTK_GPU_POWER_ON_OFF_TEST */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int ged_gpu_apo_support(void)
@@ -1184,7 +1202,7 @@ void ged_check_predict_power_duration(void)
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
-	// Directly return when glb_idle_irq is received as GPU sleep to GPU power-down
+	//Directly return when glb_idle_irq is received as GPU sleep to GPU power-down
 	if (g_ns_gpu_predict_A_to_I_duration <= 0) {
 		spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 		return;
@@ -1196,25 +1214,21 @@ void ged_check_predict_power_duration(void)
 			g_ns_gpu_predict_prev_A_to_A_duration > 0) {
 			// Not predict idle when A_to_A is too short.
 			if (!((g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns / 2) ||
-				(g_ns_gpu_predict_prev_A_to_A_duration <
-				g_apo_wakeup_ns / 2) ||
+				(g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns / 2) ||
 				(g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns &&
 				g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns))) {
 				// Jobs in one frame or similar power-durations
 				if (((g_ns_gpu_predict_A_to_A_duration +
-					g_ns_gpu_predict_prev_A_to_A_duration) <=
-					g_gpu_frame_time_ns) ||
+					g_ns_gpu_predict_prev_A_to_A_duration) <= g_gpu_frame_time_ns) ||
 					abs(g_ns_gpu_predict_A_to_A_duration -
-					g_ns_gpu_predict_prev_A_to_A_duration) <
+						g_ns_gpu_predict_prev_A_to_A_duration) <
 					min(g_ns_gpu_predict_A_to_A_duration,
-					g_ns_gpu_predict_prev_A_to_A_duration)) {
+						g_ns_gpu_predict_prev_A_to_A_duration)) {
 					trace_GPU_Power__Policy__APO_irregular(0);
 					// Calculate for autosuspend_delay setting
-					llDiff =
-					(long long)(g_ns_gpu_predict_prev_A_to_A_duration -
-						g_ns_gpu_predict_A_to_I_duration);
-					bPredict_current_I_to_A = llDiff <
-						(long long)g_apo_thr_ns;
+					llDiff = (long long)(g_ns_gpu_predict_prev_A_to_A_duration -
+							g_ns_gpu_predict_A_to_I_duration);
+					bPredict_current_I_to_A = llDiff < (long long)g_apo_thr_ns;
 				} else {
 					// set "false" when power-durations are irregular.
 					bPredict_current_I_to_A = false;
@@ -1224,6 +1238,7 @@ void ged_check_predict_power_duration(void)
 		}
 
 		trace_GPU_Power__Policy__APO__Predicted_Idle_Time(llDiff/1000);
+
 		/* autosuspend_delay setting */
 		ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(llDiff);
 	}
@@ -1351,8 +1366,10 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 				g_ns_gpu_on_ts - ged_kpi_get_fb_timestamp();
 			/* get in fallback if uncomplete time is overdue */
 			if (uncomplete_time >= fb_timeout) {
-				ged_set_policy_state(POLICY_STATE_FB_FALLBACK);
-				ged_set_backup_timer_timeout(ged_get_fallback_time());
+				if (is_fdvfs_enable() == 0) {
+					ged_set_policy_state(POLICY_STATE_FB_FALLBACK);
+					ged_set_backup_timer_timeout(ged_get_fallback_time());
+				}
 			} else {
 				u64 fb_tmp_timeout = fb_timeout - uncomplete_time;
 				u64 timeout_val = ged_get_fallback_time();
@@ -1361,7 +1378,6 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 					fb_tmp_timeout = timeout_val;
 				ged_set_policy_state(POLICY_STATE_FB);
 				ged_eb_dvfs_task(EB_UPDATE_POLICY_STATE, GED_DVFS_FRAME_BASE_COMMIT);
-				ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, fb_tmp_timeout / 1000);
 				ged_set_backup_timer_timeout(fb_tmp_timeout);
 
 			}
@@ -1415,8 +1431,9 @@ int check_pm_callback_state(enum ged_gpu_power_state power_state)
 	/* check now pm_callback state */
 	if (atomic_read(&trigger_pm_callback_state) == power_state)
 		return 1;
+	else
+		atomic_set(&trigger_pm_callback_state, power_state);
 
-	atomic_set(&trigger_pm_callback_state, power_state);
 	return 0;
 }
 EXPORT_SYMBOL(check_pm_callback_state);

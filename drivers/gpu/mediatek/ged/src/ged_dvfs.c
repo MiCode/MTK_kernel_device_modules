@@ -9,7 +9,7 @@
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
-#include <mtk_gpufreq.h>
+#include <gpufreq_v2.h>
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
@@ -85,7 +85,7 @@ static unsigned int g_cust_boost_freq_id;
 #define ENABLE_ASYNC_RATIO 1
 #define ASYNC_LOG_LEVEL (g_async_log_level|g_default_log_level)
 #define DEFAULT_ASYNC_DIFF 3
-#define LB_ASYNC_PERF_DIFF_TH 120
+#define LB_ASYNC_PERF_DIFF_TH 130
 
 /**
  * Define some global variable for async ratio.
@@ -471,16 +471,19 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	g_counter_hs.util_irq_raw		+= util_ex->util_irq_raw;
 #endif /*ENABLE_ASYNC_RATIO*/
 }
-static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
+static unsigned int gpu_util_history_query_loading(unsigned int window_size_us ,int high_step,int low_step)
 {
 	struct GpuUtilization_Ex *util_ex;
 	unsigned int loading_mode = 0;
 	unsigned long long sum_loading = 0;   // unit: % * us
+	unsigned long long sum_loading_comp = 0;   // unit: % * us
 	unsigned long long sum_delta_time = 0;   // unit: us
 	unsigned long long remaining_time, delta_time;   // unit: us
 	unsigned int window_avg_loading = 0;
+	unsigned int window_avg_loading_comp = 0;
 	unsigned int cidx = g_util_hs.current_idx;
 	unsigned int his_loading = 0;
+	unsigned int his_loading_comp = 0;
 	int pre_idx = cidx - MAX_SLIDE_WINDOW_SIZE;
 	int his_idx = 0;
 	int i = 0;
@@ -509,14 +512,20 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 			his_loading = util_ex->util_iter_u_mcu;
 		} else {   // LOADING_ACTIVE or unknown mode
 			his_loading = util_ex->util_active;
+			his_loading_comp = util_ex->util_iter_u_mcu;
 		}
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
 		delta_time = util_ex->delta_time / 1000;
+		// clip delta_time
 		if (delta_time > remaining_time)
-			delta_time = remaining_time;   // clip delta_time
+			delta_time = remaining_time;
+
 		sum_loading += his_loading * delta_time;
+		if (loading_mode == LOADING_ACTIVE)
+			sum_loading_comp += his_loading_comp * delta_time;
+
 		sum_delta_time += delta_time;
 
 		// data is sufficient
@@ -524,11 +533,26 @@ static unsigned int gpu_util_history_query_loading(unsigned int window_size_us)
 			break;
 	}
 
-	if (sum_delta_time != 0)
+	if (sum_delta_time != 0){
 		window_avg_loading = sum_loading / sum_delta_time;
+		if (loading_mode == LOADING_ACTIVE)
+			window_avg_loading_comp = sum_loading_comp / sum_delta_time;
+	}
 
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
+
+	if (loading_mode == LOADING_ACTIVE && window_avg_loading_comp > 100)
+		window_avg_loading_comp = 100;
+
+	if (loading_mode == LOADING_ACTIVE && window_size_us == g_loading_slide_window_size * 1000
+		&& window_avg_loading_comp > 0 && window_avg_loading > window_avg_loading_comp
+		&& window_avg_loading - window_avg_loading_comp > 20 && window_avg_loading > high_step) {
+		trace_tracing_mark_write(5566, "26m_replace",1);
+		return window_avg_loading_comp;
+	}
+
+	trace_tracing_mark_write(5566, "26m_replace",0);
 
 	return window_avg_loading;
 }
@@ -1268,7 +1292,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT)
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
 	else
-		trace_tracing_mark_write(5566, "eb_update_dcs", stackNewFreqID);
+		trace_tracing_mark_write(5566, "eb_update_vir", stackNewFreqID);
 	if (dcs_get_adjust_support() % 2 != 0)
 		trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
@@ -2286,7 +2310,6 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	t_gpu_target_fb = t_gpu_target * (1000 - gx_fb_dvfs_margin - FB_ADD_MARGIN) / 1000;
 
 	//t_gpu_target(unit: 100us) *10^5 =nanosecond
-	ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, t_gpu_target_fb * 100);
 	set_fb_timeout(t_gpu_target * 100000, t_gpu_target_fb * 100000);
 
 	ged_set_backup_timer_timeout(fb_timeout);
@@ -2378,12 +2401,16 @@ static void ged_update_window_size_by_fps(int gpu_target)
 	else
 		g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
 }
-static int ged_determine_lb_async(void)
+static int ged_determine_lb_async(int gpu_target)
 {
 	unsigned int max_mcu = 0, avg_mcu = 0, max_is_mcu = 0;
 	unsigned int max_mcu_th = 50, avg_mcu_th = 25;
 
 	if (g_enable_lb_async == 0)
+		return 0;
+
+	// Not apply if fps <= 60
+	if (gpu_target > DVFS_MARGIN_HIGH_FPS_THRESHOLD)
 		return 0;
 
 	gpu_util_history_query_specific_loading(
@@ -2504,6 +2531,8 @@ static bool ged_dvfs_policy(
 		int high = 0;
 		int low = 0;
 		int ultra_low = 0;
+		int pid;
+		int q;
 
 		/* set t_gpu via risky BQ analysis */
 		ged_kpi_update_t_gpu_latest_uncompleted();
@@ -2515,6 +2544,8 @@ static bool ged_dvfs_policy(
 			// pick the largest t_gpu/t_gpu_target & set uncomplete_flag
 			t_gpu = t_gpu_uncomplete;
 			t_gpu_target = info.uncompleted_bq.t_gpu_target;
+			pid = info.uncompleted_bq.pid;
+			q = (int)(info.uncompleted_bq.ullWnd % 0xF);
 			ged_update_margin_by_fps(t_gpu_target);
 			if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 				t_gpu_target_hd = t_gpu_target
@@ -2534,6 +2565,8 @@ static bool ged_dvfs_policy(
 				if (risk_completed > risk_uncompleted) {
 					t_gpu = t_gpu_complete;
 					t_gpu_target = info.completed_bq.t_gpu_target;
+					pid = info.completed_bq.pid;
+					q = (int)(info.completed_bq.ullWnd % 0xF);
 				}
 				uncomplete_flag = 0;
 			}
@@ -2667,7 +2700,7 @@ static bool ged_dvfs_policy(
 			g_tb_dvfs_margin_mode, g_tb_dvfs_margin_step,
 			g_tb_dvfs_margin_value_min*10);
 		trace_GPU_DVFS__Policy__Loading_based__GPU_Time(t_gpu, t_gpu_target,
-			t_gpu_target_hd, t_gpu_complete, t_gpu_uncomplete);
+			t_gpu_target_hd, t_gpu_complete, t_gpu_uncomplete , pid , q);
 		trace_tracing_mark_write(5566, "t_gpu", t_gpu);
 		trace_tracing_mark_write(5566, "t_gpu_target", t_gpu_target);
 
@@ -2703,7 +2736,7 @@ static bool ged_dvfs_policy(
 		trace_GPU_DVFS__Policy__Loading_based__Bound(ultra_high, high, low,
 			ultra_low);
 
-		apply_lb_async = ged_determine_lb_async();
+		apply_lb_async = ged_determine_lb_async(t_gpu_target);
 
 		/* opp control */
 		// use fallback window size in fallback mode
@@ -2723,7 +2756,7 @@ static bool ged_dvfs_policy(
 				// if in DCS, async_top = g_async_id_threshold.
 				// Otherwise, async_top = ui32GPUFreq - DEFAULT_ASYNC_DIFF
 				adjust_ratio = RATIO_SCAL *
-						ged_get_top_freq_by_virt_opp(ui32GPUFreq > ged_get_min_oppidx() ?
+						ged_get_top_freq_by_virt_opp(ui32GPUFreq > ged_get_min_oppidx_real() ?
 							g_async_id_threshold : ui32GPUFreq - DEFAULT_ASYNC_DIFF) /
 						ged_get_top_freq_by_virt_opp(ui32GPUFreq);
 				perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
@@ -2736,7 +2769,7 @@ static bool ged_dvfs_policy(
 				g_async_opp_diff = 0;
 		}
 
-		ui32GPULoading = gpu_util_history_query_loading(window_size_ms * 1000);
+		ui32GPULoading = gpu_util_history_query_loading(window_size_ms * 1000, high, low);
 		loading_mode = ged_get_dvfs_loading_mode();
 
 		if (ui32GPULoading >= ultra_high)
@@ -3257,10 +3290,41 @@ void ged_get_gpu_utli_ex(struct GpuUtilization_Ex *util_ex)
 		sizeof(struct GpuUtilization_Ex));
 }
 
+static void ged_set_eb_dvfs_init_value(void)
+{
+	unsigned int tmp_sysram_val = 0;
+
+	// write dcs related data to sysram for EB dvfs
+	ged_eb_dvfs_task(EB_DCS_ENABLE, ged_gpufreq_get_dcs_sysram());
+	// write oppnum_eachmask to sysram if g_async_ratio_support
+	if (g_async_ratio_support && g_oppnum_eachmask) {
+		// [0:7] for oppnum_eachmask, [8:15] for enable async ratio, [16:31] for lb async
+		tmp_sysram_val = g_oppnum_eachmask << COMMON_LOW_BIT;
+		tmp_sysram_val += g_async_ratio_support << COMMON_MID_BIT;
+		tmp_sysram_val += g_enable_lb_async << COMMON_HIGH_BIT;
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
+	} else
+		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+	// set api boost initial value
+	ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
+}
+
 static void ged_set_fastdvfs_mode(unsigned int u32ModeValue)
 {
 	mutex_lock(&gsDVFSLock);
 	mtk_gpueb_dvfs_set_mode(u32ModeValue);
+	ged_set_eb_dvfs_init_value();
+	ged_eb_dvfs_task(EB_REINIT, 0);
+	mutex_unlock(&gsDVFSLock);
+}
+
+static void ged_get_fastdvfs_mode(void *ipi_data)
+{
+	struct fdvfs_ipi_data *ipi_data_tmp = (struct fdvfs_ipi_data *)ipi_data;
+
+	mutex_lock(&gsDVFSLock);
+	mtk_gpueb_dvfs_get_mode(ipi_data_tmp);
 	mutex_unlock(&gsDVFSLock);
 }
 
@@ -3531,6 +3595,9 @@ void ged_dvfs_enable_async_ratio(int enableAsync)
 		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
 	} else
 		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+
+	// Send ipi to trigger eb reinit
+	ged_eb_dvfs_task(EB_REINIT, EB_ASYNC_RATIO_ENABLE);
 }
 
 void ged_dvfs_force_top_oppidx(int idx)
@@ -3628,6 +3695,9 @@ void ged_dvfs_enable_lb_async_ratio(int enableAsync)
 		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
 	} else
 		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
+
+	// Send ipi to trigger eb reinit
+	ged_eb_dvfs_task(EB_REINIT, EB_ASYNC_RATIO_ENABLE);
 }
 
 int ged_dvfs_get_lb_async_perf_diff(void)
@@ -3652,7 +3722,6 @@ GED_ERROR ged_dvfs_system_init(void)
 	struct device_node *reduce_mips_dvfs_node = NULL;
 	struct device_node *dvfs_loading_mode_node = NULL;
 	struct device_node *gpu_mewtwo_node = NULL;
-	unsigned int tmp_sysram_val = 0;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
@@ -3736,6 +3805,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_get_dvfs_workload_mode_fp = ged_get_dvfs_workload_mode;
 
 	mtk_set_fastdvfs_mode_fp = ged_set_fastdvfs_mode;
+	mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
 	ged_kpi_fastdvfs_update_dcs_fp = ged_fastdvfs_update_dcs;
 
 	ged_get_last_commit_idx_fp = ged_dvfs_get_last_commit_idx;
@@ -3786,20 +3856,8 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(async_dvfs_node, "async-oppnum-eachmask", &g_oppnum_eachmask);
 		g_enable_lb_async = g_async_ratio_support;
 	}
-	// write dcs related data to sysram for EB dvfs
-	ged_eb_dvfs_task(EB_DCS_ENABLE, ged_gpufreq_get_dcs_sysram());
-	// write oppnum_eachmask to sysram if g_async_ratio_support
-	if (g_async_ratio_support && g_oppnum_eachmask) {
-		// [0:7] for oppnum_eachmask, [8:15] for enable async ratio, [16:31] for lb async
-		tmp_sysram_val = g_oppnum_eachmask << COMMON_LOW_BIT;
-		tmp_sysram_val += g_async_ratio_support << COMMON_MID_BIT;
-		tmp_sysram_val += g_enable_lb_async << COMMON_HIGH_BIT;
-		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
-		ged_eb_dvfs_task(EB_ASYNC_PARAM, g_async_pmodel_ver);
-	} else
-		ged_eb_dvfs_task(EB_ASYNC_RATIO_ENABLE, tmp_sysram_val);
-	// set api boost initial value
-	ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
+	ged_set_eb_dvfs_init_value();
+	ged_notify_eb_ged_ready();
 	// Find the largest oppidx whose stack freq does not repeat
 	g_async_id_threshold = get_max_oppidx_with_same_stack(ged_get_min_oppidx_real());
 	if (g_async_id_threshold != ged_get_min_oppidx_real())

@@ -15,7 +15,7 @@
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
-#include <mtk_gpufreq.h>
+#include <gpufreq_v2.h>
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
@@ -36,9 +36,9 @@ bool g_setting_dirty;
 
 // adjust dcs_performance
 static unsigned int g_adjust_dcs_support;
-static unsigned int g_adjust_dcs_ratio_th;
-static unsigned int g_adjust_dcs_fr_cnt;
-static unsigned int g_adjust_dcs_non_dcs_th;
+static unsigned int g_adjust_dcs_ratio_th; //freq max/min threshold (ex:20(2 times))
+static unsigned int g_adjust_dcs_fr_cnt;   // store frame cnt
+static unsigned int g_adjust_dcs_non_dcs_th; // none dcs threshold (ex: 20(20%))
 
 
 struct gpufreq_core_mask_info *g_core_mask_table;
@@ -88,6 +88,10 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	g_fix_core_mask = 0;
 	g_setting_dirty = false;
 
+	g_adjust_dcs_ratio_th = 20;
+	g_adjust_dcs_fr_cnt = 20;
+	g_adjust_dcs_non_dcs_th = 20;
+
 	mutex_init(&g_DCS_lock);
 
 	dcs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_dcs");
@@ -118,10 +122,6 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	_dcs_init_core_mask_table();
 
 	g_adjust_dcs_support = 1;
-	g_adjust_dcs_ratio_th = 20;
-	g_adjust_dcs_fr_cnt = 20;
-	g_adjust_dcs_non_dcs_th = 20;
-
 
 	return ret;
 }

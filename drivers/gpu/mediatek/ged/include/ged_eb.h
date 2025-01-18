@@ -77,11 +77,17 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_LOG_DUMP_SOC_TIMER_LO = 149,
 	FASTDVFS_GPU_EB_LOG_DUMP_UNCOM_TIME = 159,
 	FASTDVFS_GPU_EB_LOG_DUMP_OPP = 169,			// cur, target
-	FASTDVFS_GPU_EB_USE_ITER_U_MCU_AVG_LOADING  = 208,
+	FASTDVFS_GPU_EB_26M_REPLACE  = 208,
 	FASTDVFS_GPU_EB_LOADING_MODE                = 209,
 	FASTDVFS_GPU_EB_API_BOOST = 210,
 	FASTDVFS_GPU_EB_ASYNC_PARAM,
 	FASTDVFS_GPU_EB_DCS_ENABLE,
+	FASTDVFS_GPU_EB_USE_TARGET_GPU_HD,
+	FASTDVFS_GPU_EB_USE_ITER_U_MCU_LOADING = 215,
+	FASTDVFS_GPU_EB_USE_GPU_LOADING = 216,
+	FASTDVFS_GPU_EB_USE_MCU_LOADING = 217,
+	FASTDVFS_GPU_EB_USE_ITER_LOADING = 218,
+	FASTDVFS_GPU_EB_USE_DELTA_TIME = 219,
 	FASTDVFS_GPU_EB_USE_APPLY_LB_ASYNC = 220,
 	FASTDVFS_GPU_EB_USE_MAX_IS_MCU,
 	FASTDVFS_GPU_EB_USE_AVG_MCU,
@@ -284,7 +290,27 @@ enum gpu_fastdvfs_counter {
 (\
 (FASTDVFS_GPU_EB_LOG_DUMP_OPP*SYSRAM_LOG_SIZE) \
 )
-#define SYSRAM_GPU_EB_GED_KERNEL_COMMIT_OPP \
+#define SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING					\
+(\
+(FASTDVFS_GPU_EB_USE_ITER_U_MCU_LOADING*SYSRAM_LOG_SIZE)		\
+)
+#define SYSRAM_GPU_EB_USE_GPU_LOADING					\
+(\
+(FASTDVFS_GPU_EB_USE_GPU_LOADING*SYSRAM_LOG_SIZE)		\
+)
+#define SYSRAM_GPU_EB_USE_MCU_LOADING					\
+(\
+(FASTDVFS_GPU_EB_USE_MCU_LOADING*SYSRAM_LOG_SIZE)		\
+)
+#define SYSRAM_GPU_EB_USE_ITER_LOADING					\
+(\
+(FASTDVFS_GPU_EB_USE_ITER_LOADING*SYSRAM_LOG_SIZE)		\
+)
+#define SYSRAM_GPU_EB_USE_DELTA_TIME					\
+(\
+(FASTDVFS_GPU_EB_USE_DELTA_TIME*SYSRAM_LOG_SIZE)		\
+)
+#define SYSRAM_GPU_EB_GED_KERNEL_COMMIT_OPP              \
 (\
 (FASTDVFS_GPU_EB_GED_KERNEL_COMMIT_OPP *SYSRAM_LOG_SIZE) \
 )
@@ -304,9 +330,9 @@ enum gpu_fastdvfs_counter {
 (													   \
 (FASTDVFS_GPU_EB_LOADING_MODE*SYSRAM_LOG_SIZE) \
 )
-#define SYSRAM_GPU_EB_USE_ITER_U_MCU_AVG_LOADING             \
+#define SYSRAM_GPU_EB_26M_REPLACE             \
 (													   \
-(FASTDVFS_GPU_EB_USE_ITER_U_MCU_AVG_LOADING*SYSRAM_LOG_SIZE) \
+(FASTDVFS_GPU_EB_26M_REPLACE*SYSRAM_LOG_SIZE) \
 )
 #define SYSRAM_GPU_EB_API_BOOST                        \
 (													   \
@@ -319,6 +345,10 @@ enum gpu_fastdvfs_counter {
 #define SYSRAM_GPU_EB_DCS_ENABLE                      \
 (													   \
 (FASTDVFS_GPU_EB_DCS_ENABLE*SYSRAM_LOG_SIZE)          \
+)
+#define SYSRAM_GPU_EB_USE_TARGET_GPU_HD				\
+(\
+(FASTDVFS_GPU_EB_USE_TARGET_GPU_HD*SYSRAM_LOG_SIZE)		  \
 )
 #define SYSRAM_GPU_EB_USE_POLICY_STATE              \
 (\
@@ -461,9 +491,9 @@ enum action_map {
 
 enum {
 	GPUFDVFS_IPI_SET_FRAME_DONE         = 1,
-	GPUFDVFS_IPI_GET_FRAME_LOADING      = 2,
+	GPUFDVFS_IPI_GET_BOUND              = 2,
 	GPUFDVFS_IPI_SET_NEW_FREQ           = 3,
-	GPUFDVFS_IPI_GET_CURR_FREQ          = 4,
+	GPUFDVFS_IPI_GET_MARGIM             = 4,
 	GPUFDVFS_IPI_PMU_START              = 5,
 	GPUFDVFS_IPI_SET_FRAME_BASE_DVFS    = 6,
 	GPUFDVFS_IPI_SET_TARGET_FRAME_TIME  = 7,
@@ -473,6 +503,7 @@ enum {
 	GPUFDVFS_IPI_SET_GED_READY          = 11,
 	GPUFDVFS_IPI_SET_POWER_STATE        = 12,
 	GPUFDVFS_IPI_SET_DVFS_STRESS_TEST   = 13,
+	GPUFDVFS_IPI_SET_DVFS_REINIT        = 14,
 
 	NR_GPUFDVFS_IPI,
 };
@@ -561,6 +592,8 @@ extern unsigned int
 	mtk_gpueb_dvfs_set_feedback_info(int frag_done_interval_in_ns,
 	struct GpuUtilization_Ex util_ex, unsigned int curr_fps);
 extern unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action);
+extern void mtk_gpueb_dvfs_get_mode(struct fdvfs_ipi_data *ipi_data);
+
 unsigned int mtk_gpueb_set_fallback_mode(int fallback_status);
 unsigned int mtk_gpueb_set_stability_mode(int stability_status);
 void mtk_gpueb_dvfs_get_desire_freq(unsigned long *ui32NewFreqID);
@@ -593,11 +626,13 @@ enum ged_eb_dvfs_debug_index {
 	EB_ITER_LOADING,
 	EB_MCU_LOADING,
 	EB_AVG_LOADING,
+	EB_ITER_U_MCU_LOADING,
 	EB_POWER_STATE,
 	EB_DEBUG_COUNT,
 	EB_UNCOM_TIME,
 	EB_TARGET_OPP,
 	EB_CUR_OPP,
+	EB_COMMIT_TYPE,
 	EB_MAX_COUNT,
 };
 
@@ -608,6 +643,7 @@ enum ged_eb_dvfs_task_index {
 	EB_UPDATE_GPU_TIME_INFO,
 	EB_UPDATE_UNCOMPLETE_GPU_TIME,
 	EB_UPDATE_FB_TARGET_TIME,
+	EB_UPDATE_FB_TARGET_TIME_DONE,
 	EB_SET_FTRACE,
 	EB_COMMIT_LAST_KERNEL_OPP,
 	EB_UPDATE_PRESERVE,
@@ -616,6 +652,7 @@ enum ged_eb_dvfs_task_index {
 	EB_ASYNC_RATIO_ENABLE,
 	EB_ASYNC_PARAM,
 	EB_UPDATE_API_BOOST,
+	EB_REINIT,
 	EB_MAX_INDEX,
 };
 
@@ -631,6 +668,7 @@ enum ged_eb_soc_udpate_point {
 
 
 int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int flag);
+void ged_notify_eb_ged_ready(void);
 
 static struct {
 	const char *name;
@@ -644,11 +682,13 @@ static struct {
 	{"loading_iter", EB_ITER_LOADING, SYSRAM_GPU_EB_LOG_DUMP_LOADING1},
 	{"loading_mcu", EB_MCU_LOADING, SYSRAM_GPU_EB_LOG_DUMP_LOADING1},
 	{"loading_avg", EB_AVG_LOADING, SYSRAM_GPU_EB_LOG_DUMP_LOADING1},
+	{"loading_iter_u_mcu", EB_ITER_U_MCU_LOADING, SYSRAM_GPU_EB_LOG_DUMP_LOADING2},
 	{"power_state", EB_POWER_STATE, SYSRAM_GPU_EB_LOG_DUMP_POWER_STATE},
 	{"debug_count", EB_DEBUG_COUNT, SYSRAM_GPU_EB_LOG_DUMP_DEBUG_COUNT},
 	{"gpu_time_un", EB_UNCOM_TIME, SYSRAM_GPU_EB_LOG_DUMP_UNCOM_TIME},
 	{"opp_target", EB_TARGET_OPP, SYSRAM_GPU_EB_LOG_DUMP_OPP},
 	{"opp_cur", EB_CUR_OPP, SYSRAM_GPU_EB_LOG_DUMP_OPP},
+	{"commit_type", EB_COMMIT_TYPE, SYSRAM_GPU_EB_LOG_DUMP_OPP},
 };
 
 
