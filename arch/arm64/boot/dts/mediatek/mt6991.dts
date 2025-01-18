@@ -3744,7 +3744,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 
 		dcm: dcm@c1b0000 {
-			// compatible = "mediatek,mt6991-dcm";
+			compatible = "mediatek,mt6991-dcm";
 			reg = <0 0xc1b0000 0 0x410>,
 				<0 0x10156000 0 0x10>,
 				<0 0x14012000 0 0x10>,
