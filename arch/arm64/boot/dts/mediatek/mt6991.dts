@@ -6038,6 +6038,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#size-cells = <2>;
 			ranges;
 			mediatek,hwrscs-vers = <2>;
+			mediatek,clkgate = <&usbcfg_ao_clk 0x300>;
 			cdp-block;
 			status = "disabled";
 
@@ -6072,6 +6073,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#size-cells = <2>;
 			ranges;
 			mediatek,hwrscs-vers = <2>;
+			mediatek,clkgate = <&usbcfg_ao_clk 0x310000>;
 			cdp-block;
 			status = "disabled";
 
