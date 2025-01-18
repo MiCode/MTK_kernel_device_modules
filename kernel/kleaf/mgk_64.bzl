@@ -217,6 +217,7 @@ mgk_64_device_modules = [
     "drivers/leds/leds-mtk-pwm.ko",
     "drivers/leds/regulator-vibrator.ko",
     "drivers/leds/flash/leds-mt6370-flash.ko",
+    "drivers/leds/flash/leds-mt6379.ko",
     "drivers/mailbox/mtk-ise-mailbox.ko",
     "drivers/mailbox/mtk-mbox-mailbox.ko",
     "drivers/media/platform/mtk-jpeg/mtk_jpeg.ko",
