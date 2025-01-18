@@ -21,7 +21,7 @@
 	/* System shutdown current */
 	fg-meter-resistance = <(70)>;
 	/* The resistance of PCB */
-	car-tune-value = <(100)>;
+	car-tune-value = <(101)>;
 	/* Tune value for current measurement */
 	pmic-min-vol = <(30000)>;
 	/* vboot voltage for gauge 0%*/
@@ -68,6 +68,8 @@
 	multi-temp-gauge0 = <(1)>;
 	/* Multi gauge0 enable */
 	rbat-pull-up-volt = <(1840)>;
+	enable-r-ratio = <(1)>;
+	enable-charging-ratio = <(1)>;
 #include "mt6991_battery_table.dtsi"
 #include "mt6991_battery_prop_dim2_ext.dtsi"
 };
