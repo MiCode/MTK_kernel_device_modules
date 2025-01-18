@@ -3266,7 +3266,7 @@
 
 		dvfsrc-helper {
 			compatible = "mediatek,dvfsrc-helper";
-			vcore-supply = <&mt6359p_vcore_reg>;
+			vcore-supply = <&dvfsrc_vcore>;
 			rc-vcore-supply = <&dvfsrc_vcore>;
 			rc-vscp-supply = <&dvfsrc_vscp>;
 			interconnects = <&dvfsrc MT6873_MASTER_DBGIF
