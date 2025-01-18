@@ -29,3 +29,4 @@ mtk-dvfsrc-helper-${CONFIG_MTK_DVFSRC_MET_MT6761} += dvfsrc-met-v6768.o dvfsrc-i
 obj-$(CONFIG_MTK_DVFSRC_MET_MT6768) += dvfsrc-opp-mt6768.o
 obj-$(CONFIG_MTK_DVFSRC_MET_MT6765) += dvfsrc-opp-mt6765.o
 obj-$(CONFIG_MTK_DVFSRC_MET_MT6761) += dvfsrc-opp-mt6761.o
+obj-$(CONFIG_MTK_PLAT_POWER_6781) += dvfsrc-opp-mt6781.o
