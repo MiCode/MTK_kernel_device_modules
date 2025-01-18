@@ -730,7 +730,7 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
-    "drivers/clk/mediatek/clk-bringup.ko": "mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt6991 mt8192 mt8188",
+    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt6991 mt8192 mt8188",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
     "drivers/clk/mediatek/clk-mt6893-apu0.ko": "mt6893",
@@ -990,6 +990,7 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko": "mt6991",
     "sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko": "mt6893",
     "sound/soc/mediatek/mt6885/mt6885-mt6359p.ko": "mt6893",
+
 }
 
 
@@ -1357,6 +1358,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/mtk_smmu_qos.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6781.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clkdbg-mt6781.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clk-chk-mt6781.ko")
+        mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6781-pg.ko")
 
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
