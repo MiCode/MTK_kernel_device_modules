@@ -774,6 +774,17 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 			gpm3_table[i].p_stack);
 	}
 
+	seq_puts(m,"\n[Profiling] [Count###] [Latest] [Average] [Maximum] [Minimum]\n");
+	for (i = 0; i < PROF_TYPE_NUM; i++) {
+		seq_printf(m, "[%-9s] %10lld %6lldus %7lldus %7lldus %7lldus\n",
+			GPUFREQ_PROFILE_TYPE_STRING(i),
+			g_shared_status->profile_time[i][PROF_IDX_COUNT],
+			g_shared_status->profile_time[i][PROF_IDX_ONCE],
+			g_shared_status->profile_time[i][PROF_IDX_AVG],
+			g_shared_status->profile_time[i][PROF_IDX_MAX],
+			g_shared_status->profile_time[i][PROF_IDX_MIN]);
+	}
+
 	mutex_unlock(&gpufreq_debug_lock);
 
 	return GPUFREQ_SUCCESS;
@@ -909,6 +920,14 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = FEAT_DISABLE;
 			else if (sysfs_streq(input_val, "safe"))
 				val = PTP3_SAFE_MARGIN;
+		} else if (sysfs_streq(input_target, "profile")) {
+			target = CONFIG_GPU_PROFILING;
+			if (sysfs_streq(input_val, "enable"))
+				val = FEAT_ENABLE;
+			else if (sysfs_streq(input_val, "disable"))
+				val = FEAT_DISABLE;
+			else if (sysfs_streq(input_val, "update"))
+				val = DATA_UPDATE;
 		}
 
 		/* set to mfgsys if valid */
