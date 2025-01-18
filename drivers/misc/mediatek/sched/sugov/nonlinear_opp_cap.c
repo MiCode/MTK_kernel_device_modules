@@ -1612,7 +1612,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	ret = init_sram_mapping();
 	if (ret) {
 		pr_info("init_sram_mapping fail, return=%d\n", ret);
-		return ret;
+		// should not return, because legacy chip dont have cpuhvfs node
+		// return ret;
 	}
 
 	ret = init_feature_status();

@@ -249,4 +249,9 @@ struct eas_info {
 };
 
 void parse_eas_data(struct eas_info *info);
+
+#if !IS_ENABLED(CONFIG_ARM64)
+extern int parse_dt_topology_arm(void);
+#endif
+
 #endif /* _SCHED_COMMON_H */
