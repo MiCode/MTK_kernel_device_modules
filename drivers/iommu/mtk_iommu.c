@@ -267,6 +267,8 @@ static bool hypmmu_type2_en;
 static struct mutex init_mutexs[PGTBALE_NUM];
 static struct mutex group_mutexs[MTK_IOMMU_GROUP_MAX];
 static atomic_t init_once_flag = ATOMIC_INIT(0);
+static const char *IOMMU_BANKS_PROP_NAME = "mediatek,iommu_banks";
+static const char *IOMMU_BANKS_PROP_NAME_v2 = "mediatek,iommu-banks";
 
 static int mtk_iommu_hw_init(const struct mtk_iommu_data *data);
 
@@ -2807,7 +2809,16 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 	 */
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_SEC_EN)) {
 		int bk_nr = of_count_phandle_with_args(dev->of_node,
-					     "mediatek,iommu_banks", NULL);
+						       IOMMU_BANKS_PROP_NAME,
+						       NULL);
+		bool bk_prop_v2 = false;
+
+		if (bk_nr <= 0) {
+			bk_nr = of_count_phandle_with_args(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME_v2,
+							   NULL);
+			bk_prop_v2 = true;
+		}
 
 		if (bk_nr >= IOMMU_BK_NUM || bk_nr < 0) {
 			pr_info("%s, get bank nr fail, %d\n", __func__, bk_nr);
@@ -2822,7 +2833,12 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 			struct device_node *bk_node;
 			struct platform_device *bk_dev;
 
-			bk_node = of_parse_phandle(dev->of_node, "mediatek,iommu_banks", i);
+			if (bk_prop_v2)
+				bk_node = of_parse_phandle(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME_v2, i);
+			else
+				bk_node = of_parse_phandle(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME, i);
 			if (!bk_node) {
 				dev_warn(dev, "Find iommu_bank:%d node fail\n", i);
 				continue;
