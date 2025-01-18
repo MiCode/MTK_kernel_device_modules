@@ -28,7 +28,7 @@
 #include <sound/core.h>
 #include <sound/asound.h>
 
-#include <trace/hooks/audio_usboffload.h>
+/* #include <trace/hooks/audio_usboffload.h> */
 
 #include "usbaudio.h"
 #include "card.h"
