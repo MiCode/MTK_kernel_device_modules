@@ -4268,7 +4268,7 @@ mtk_smi_common_mt6991_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2146}, {SMI_DUMMY, 0x1},}, /* COMM27 */
 	{{SMI_DUMMY, 0x1},}, /* COMM28 */
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2146}, {SMI_DUMMY, 0x1},}, /* COMM29 */
-	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x2146}, {SMI_DUMMY, 0x1},}, /* COMM30 */
+	{{SMI_DUMMY, 0x1},}, /* COMM30 */
 };
 
 static const struct mtk_smi_common_plat mtk_smi_common_gen1 = {
