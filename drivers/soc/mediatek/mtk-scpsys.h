@@ -36,6 +36,7 @@
 #define MTK_SCPD_WAIT_VCP		BIT(21)
 #define MTK_SCPD_PBUS_OPS		BIT(22)
 #define MTK_SCPD_HWV_CHK_MUX_OPT		BIT(23)
+#define MTK_SCPD_INFRA_REQ_OPT		BIT(24)
 
 #define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 20
@@ -169,6 +170,16 @@ struct scp_event_data {
 
 enum scp_event_type {
 	MTK_SCPSYS_PSTATE,
+};
+
+enum infra_onoff_enum {
+	INFRA_OFF = 0,
+	INFRA_ON,
+};
+
+enum hwccf_cmd_type {
+	INFRA_TURN_OFF = 0,
+	INFRA_TURN_ON,
 };
 
 struct apu_callbacks {
