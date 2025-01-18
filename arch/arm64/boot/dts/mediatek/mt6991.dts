@@ -6410,8 +6410,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gce-ddr-sel-wla;
 			gce-fast-mtcmos;
 			cmdq-dump-buf-size = <1>;
-			cmdq-dump-hw-trace = <1>;
-			hw-trace-built-in;
 		};
 
 		gce_sec: gce-mbox-sec@300c0000 {
@@ -6462,8 +6460,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			event-debug;
 			event-dump-range = <0 383>;
 			event-clr-range = <0 255>;
-			cmdq-dump-hw-trace = <1>;
-			hw-trace-built-in;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@30140000 {
