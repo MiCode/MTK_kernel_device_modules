@@ -45,11 +45,11 @@ fl_async_bound(struct v4l2_async_notifier *notifier,
 		 struct v4l2_subdev *subdev,
 		 struct v4l2_async_connection *asd)
 {
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	struct mtk_composite_v4l2_device *pfdev =
 			container_of(notifier->v4l2_dev,
 			struct mtk_composite_v4l2_device, v4l2_dev);
 
-#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	pr_info("%s v4l2 subdev entity name:%s\n", __func__,
 		subdev->entity.name);
 
