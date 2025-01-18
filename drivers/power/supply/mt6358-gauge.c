@@ -2220,6 +2220,17 @@ static int psy_gauge_set_property(struct power_supply *psy,
 		if (gm != NULL && val->intval == 1)
 			set_shutdown_cond(gm, DLPT_SHUTDOWN);
 		break;
+	case POWER_SUPPLY_PROP_ENERGY_EMPTY_DESIGN:
+		gm = gauge->gm;
+		if (gm != NULL && val->intval != 0) {
+			gm->imix = val->intval;
+			if (gm->imix > 5500) {
+				gm->imix = 5500;
+				pr_notice("imix check limit 5500:%d\n",
+					val->intval);
+			}
+		}
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -2587,7 +2598,7 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	int _hw_ocv_58_pon_rdy;
 	int _hw_ocv_chgin;
 	int _hw_ocv_chgin_rdy;
-	int now_temp;
+	int now_temp = -1;
 	int now_thr;
 	int tmp_hwocv_chgin = 0;
 	bool fg_is_charger_exist;
@@ -2608,11 +2619,10 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	else
 		_hw_ocv_chgin = 0;
 
-	now_temp = gm->battery_temp;
-
 	if (gm == NULL)
 		now_thr = 300;
 	else {
+		now_temp = gm->battery_temp;
 		if (now_temp > gm->ext_hwocv_swocv_lt_temp)
 			now_thr = gm->ext_hwocv_swocv;
 		else
@@ -3981,16 +3991,16 @@ static int mt6358_gauge_probe(struct platform_device *pdev)
 	int ret;
 	struct iio_channel *chan_bat_temp;
 
-	gauge = devm_kzalloc(&pdev->dev, sizeof(*gauge), GFP_KERNEL);
-	if (!gauge)
-		return -ENOMEM;
-
 	chan_bat_temp = devm_iio_channel_get(
 		&pdev->dev, "pmic_battery_temp");
 	if (IS_ERR(chan_bat_temp)) {
-		bm_err(gauge->gm, "mt6358 requests probe deferral\n");
+		dev_err(&pdev->dev, "mt6358 requests probe deferral\n");
 		return -EPROBE_DEFER;
 	}
+
+	gauge = devm_kzalloc(&pdev->dev, sizeof(*gauge), GFP_KERNEL);
+	if (!gauge)
+		return -ENOMEM;
 
 	gauge->chip = (struct mt6397_chip *)dev_get_drvdata(
 		pdev->dev.parent);
@@ -4025,28 +4035,28 @@ static int mt6358_gauge_probe(struct platform_device *pdev)
 		&pdev->dev, "pmic_battery_temp");
 	if (IS_ERR(gauge->chan_bat_temp)) {
 		ret = PTR_ERR(gauge->chan_bat_temp);
-		bm_err(gauge->gm, "pmic_battery_temp auxadc get fail, ret=%d\n", ret);
+		dev_err(&pdev->dev,  "pmic_battery_temp auxadc get fail, ret=%d\n", ret);
 	}
 
 	gauge->chan_bat_voltage = devm_iio_channel_get(
 		&pdev->dev, "pmic_battery_voltage");
 	if (IS_ERR(gauge->chan_bat_voltage)) {
 		ret = PTR_ERR(gauge->chan_bat_voltage);
-		bm_err(gauge->gm, "chan_bat_voltage auxadc get fail, ret=%d\n", ret);
+		dev_err(&pdev->dev,  "chan_bat_voltage auxadc get fail, ret=%d\n", ret);
 	}
 
 	gauge->chan_bif = devm_iio_channel_get(
 		&pdev->dev, "pmic_bif_voltage");
 	if (IS_ERR(gauge->chan_bif)) {
 		ret = PTR_ERR(gauge->chan_bif);
-		bm_err(gauge->gm, "pmic_bif_voltage auxadc get fail, ret=%d\n", ret);
+		dev_err(&pdev->dev,  "pmic_bif_voltage auxadc get fail, ret=%d\n", ret);
 	}
 
 	gauge->chan_ptim_bat_voltage = devm_iio_channel_get(
 		&pdev->dev, "pmic_ptim_voltage");
 	if (IS_ERR(gauge->chan_ptim_bat_voltage)) {
 		ret = PTR_ERR(gauge->chan_ptim_bat_voltage);
-		bm_err(gauge->gm, "chan_ptim_bat_voltage auxadc get fail, ret=%d\n",
+		dev_err(&pdev->dev,  "chan_ptim_bat_voltage auxadc get fail, ret=%d\n",
 			ret);
 	}
 
@@ -4054,7 +4064,7 @@ static int mt6358_gauge_probe(struct platform_device *pdev)
 		&pdev->dev, "pmic_ptim_r");
 	if (IS_ERR(gauge->chan_ptim_r)) {
 		ret = PTR_ERR(gauge->chan_ptim_r);
-		bm_err(gauge->gm, "chan_ptim_r auxadc get fail, ret=%d\n",
+		dev_err(&pdev->dev,  "chan_ptim_r auxadc get fail, ret=%d\n",
 			ret);
 	}
 
@@ -4063,7 +4073,7 @@ static int mt6358_gauge_probe(struct platform_device *pdev)
 	gauge->attr = mt6358_sysfs_field_tbl;
 
 	if (battery_psy_init(pdev)) {
-		bm_err(gauge->gm, "battery_psy_init fail\n");
+		dev_err(&pdev->dev,  "battery_psy_init fail\n");
 		return -ENOMEM;
 	}
 
@@ -4079,7 +4089,6 @@ static int mt6358_gauge_probe(struct platform_device *pdev)
 			&gauge->psy_cfg);
 	mt6358_sysfs_create_group(gauge);
 	initial_set(gauge, 0, 0);
-
 	battery_init(pdev);
 	adc_cali_cdev_init(gauge->gm, pdev);
 

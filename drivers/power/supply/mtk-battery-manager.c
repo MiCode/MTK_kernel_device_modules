@@ -1874,6 +1874,10 @@ static int mtk_bm_probe(struct platform_device *pdev)
 
 	kthread_run(battery_manager_routine_thread, bm, "battery_manager_thread");
 
+	bm->bs_data.chg_psy = devm_power_supply_get_by_phandle(&pdev->dev, "charger");
+	if (IS_ERR_OR_NULL(bm->bs_data.chg_psy))
+		pr_err("[%s]Fail to get chg_psy!\n", __func__);
+
 	bm_battery_service_init(bm);
 	mtk_bm_create_netlink(pdev);
 

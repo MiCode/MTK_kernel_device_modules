@@ -2208,7 +2208,7 @@ static ssize_t FG_daemon_disable_store(
 	return size;
 }
 
-int get_battery_current(struct mtk_battery *gm)
+int get_battery_current_now(struct mtk_battery *gm)
 {
 	int ret, curr_now;
 
@@ -2228,7 +2228,7 @@ static ssize_t FG_Battery_CurrentConsumption_show(
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
 
-	ret_value = get_battery_current(gm) * 100;
+	ret_value = get_battery_current_now(gm) * 100;
 	bm_err(gm, "%s[EM] FG_Battery_CurrentConsumption : %d .1mA\n", __func__,
 		ret_value);
 
@@ -2965,7 +2965,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 			ptim_bat_vol = gauge_get_int_property(gm,
 				GAUGE_PROP_PTIM_BATTERY_VOLTAGE);
 
-			curr = get_battery_current(gm);
+			curr = get_battery_current_now(gm);
 
 			if (psy_gauge != NULL) {
 				power_supply_get_property(psy_gauge,
@@ -2983,7 +2983,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 			if (ptim_bat_vol == 0) {
 				ptim_bat_vol = gauge_get_int_property(gm,
 					GAUGE_PROP_PTIM_BATTERY_VOLTAGE);
-				curr = get_battery_current(gm);
+				curr = get_battery_current_now(gm);
 				if (psy_gauge != NULL) {
 					power_supply_get_property(psy_gauge,
 						POWER_SUPPLY_PROP_CURRENT_MAX, &ptim_val);
