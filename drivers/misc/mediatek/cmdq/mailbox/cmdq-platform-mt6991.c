@@ -6,6 +6,9 @@
 #include <dt-bindings/gce/mt6991-gce.h>
 
 #include "cmdq-util.h"
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+#include "proto.h"
+#endif
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #include <mtk-smmu-v3.h>
 #endif
@@ -266,9 +269,26 @@ bool cmdq_mbox_hw_trace_thread(void *chan)
 	return true;
 }
 
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+s32 cmdq_get_thread_id(void *chan)
+{
+	const s32 idx = cmdq_mbox_chan_id(chan);
+
+	return idx;
+}
+
+s32 cmdq_check_pkt_finalize(void *pkt)
+{
+	s32 result = cmdq_pkt_finalize((struct cmdq_pkt *)pkt);
+
+	return result;
+}
+#endif
+
 void cmdq_error_irq_debug(void *chan)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	struct device *dev = cmdq_mbox_get_dev(chan);
 	u32 hw_id = cmdq_util_hw_id((u32)cmdq_mbox_get_base_pa(chan));
 	u32 sid = hw_id? GCE_M_NORMAL_SID: GCE_D_NORMAL_SID;
@@ -278,16 +298,21 @@ void cmdq_error_irq_debug(void *chan)
 	//dump gce req
 	cmdq_mbox_dump_gce_req(chan);
 #endif
+#endif
 }
 
 bool cmdq_check_tf(struct device *dev,
 	u32 sid, u32 tbu, u32 *axids)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	struct mtk_smmu_fault_param out_param;
 
 	return mtk_smmu_tf_detect(MM_SMMU, dev,
 		sid, tbu, axids, 1, &out_param);
+#else
+	return false;
+#endif
 #else
 	return false;
 #endif
@@ -304,11 +329,18 @@ struct cmdq_util_platform_fp platform_fp = {
 	.hw_trace_thread = cmdq_mbox_hw_trace_thread,
 	.dump_error_irq_debug = cmdq_error_irq_debug,
 	.check_tf = cmdq_check_tf,
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	.get_thread_id = cmdq_get_thread_id,
+	.check_pkt_finalize = cmdq_check_pkt_finalize,
+#endif
 };
 
 static int __init cmdq_platform_init(void)
 {
 	cmdq_util_set_fp(&platform_fp);
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	virtio_cmdq_util_set_fp(&platform_fp);
+#endif
 	return 0;
 }
 module_init(cmdq_platform_init);

@@ -561,6 +561,7 @@ static void cmdq_init_cpu(struct cmdq *cmdq)
 	cmdq_trace_ex_end();
 }
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 static void cmdq_init(struct cmdq *cmdq)
 {
 	if (cmdq->init_cmds_base)
@@ -568,6 +569,7 @@ static void cmdq_init(struct cmdq *cmdq)
 	else
 		cmdq_init_cpu(cmdq);
 }
+#endif
 
 static inline void cmdq_mmp_init(void)
 {
@@ -3337,6 +3339,9 @@ static __init int cmdq_drv_init(void)
 
 void cmdq_mbox_enable(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	virtio_cmdq_mbox_enable(chan);
+#else
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
@@ -3485,6 +3490,7 @@ void cmdq_mbox_enable(void *chan)
 		thread->mbox_en = sched_clock();
 	}
 	mutex_unlock(&cmdq->mbox_mutex);
+#endif
 }
 EXPORT_SYMBOL(cmdq_mbox_enable);
 
@@ -3494,6 +3500,10 @@ void cmdq_mbox_disable(void *chan)
 		typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 	s32 usage, i, thd_usage;
+
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	return;
+#endif
 
 	mutex_lock(&cmdq->mbox_mutex);
 

@@ -14,6 +14,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/virtio
+
 ccflags-$(CONFIG_DEBUG_FS) += -DCONFIG_CMDQ_MMPROFILE_SUPPORT
 
 ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)),)

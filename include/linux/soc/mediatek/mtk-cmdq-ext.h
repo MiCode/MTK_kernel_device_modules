@@ -257,6 +257,10 @@ struct cmdq_client {
 	struct mutex chan_mutex;
 	bool use_iommu;
 	struct device	*share_dev;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	bool is_virtio;
+	bool guest_only;
+#endif
 };
 
 struct cmdq_operand {
@@ -326,6 +330,23 @@ struct cmdq_poll_reuse {
 	struct cmdq_reuse jump_to_end;
 	struct cmdq_reuse sleep_jump_to_end;
 };
+
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, void *data);
+int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);
+void virtio_cmdq_pkt_destroy(struct cmdq_pkt *pkt);
+void virtio_cmdq_mbox_channel_stop(struct mbox_chan *chan);
+void virtio_cmdq_mbox_enable_clk(void *chan);
+void virtio_cmdq_mbox_enable(void *chan);
+#endif
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+struct cmdq_client *virtio_cmdq_mbox_create(struct device *dev, int index);
+s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, void *data);
+int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);
+void virtio_cmdq_pkt_destroy(struct cmdq_pkt *pkt);
+void virtio_cmdq_mbox_channel_stop(struct mbox_chan *chan);
+#endif
 
 u32 cmdq_subsys_id_to_base(struct cmdq_base *cmdq_base, int id);
 

@@ -50,3 +50,11 @@ config MTK_CMDQ_DEBUG
 	  only default enable hw trace feature in userdebug/eng load, and avoid
 	  user load for performance concern. But for hw trace feature,
 	  user can enable/disable it with adb command.
+
+config VIRTIO_CMDQ
+	tristate "enable VIRTIO CMDQ  driver"
+	help
+	  This extension enable virtio cmdq driver, virtio cmdq driver
+	  for hypervisor project. The virtio driver is located at mailbox/virtio,
+	  Also used to isolate the conflicting part of the cmdq driver
+	  on main project, default is n.
