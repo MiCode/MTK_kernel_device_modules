@@ -282,7 +282,6 @@ struct mtk_aal_feature_option {
 	unsigned int mtk_dre30_support;
 };
 
-#define DRE_FLT_NUM	(12)
 #define CABC_GAINLMT_NUM (11)
 struct aal_backup { /* structure for backup AAL register value */
 	unsigned int DRE_MAPPING;
