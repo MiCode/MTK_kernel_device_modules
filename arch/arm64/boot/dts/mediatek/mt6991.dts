@@ -1879,28 +1879,28 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"ratio,cps";
 
 			node-5 = "SSPM_CM_MGR_POWER",
-				"c_up_array_0,c_up_array_1,c_up_array_2,c_down_array_0,c_down_array_1,",
-				"c_down_array_2,c_up_0,c_up_1,c_up_2,c_down_0,c_down_1,c_down_2,c_up,",
-				"c_down,v_up,v_down,v2f_0,v2f_1,v2f_2";
+				"c0_pwr,c1_pwr,c2_pwr,v0_prd,v1_prd,",
+				"v2_prd,v0_real,v1_real,v2_real,mem_pwr,",
+				"cap_max,cap_util,cap_prd,cap_emi,c0_ratio,c1_ratio,c2_ratio";
 
 			node-6 = "SSPM_CM_MGR_OPP",
-				"v_dram_opp,v_dram_opp_cur,c_eas_opp_cur_0,c_eas_opp_cur_1,c_eas_opp_cur_2,",
-				"c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,d_times_up,d_times_down,",
-				"c_map_dram_enable,perf_mode_enable,perf_mode_ceiling_opp,",
-				"perf_mode_thd,mode";
+				"v_dram_opp,v_dram_opp_cur,c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,",
+				"pmu_status,valid0";
 
 			node-7 = "SSPM_CM_MGR_RATIO",
-				"stall_0,stall_1,stall_2,stall_3,stall_4,",
-				"stall_5,stall_6,stall_7,",
+				"total_stall_0,total_stall_1,total_stall_2,total_stall_3,total_stall_4,",
+				"total_stall_5,total_stall_6,total_stall_7,",
+				"emi_stall_0,emi_stall_1,emi_stall_2,emi_stall_3,emi_stall_4,",
+				"emi_stall_5,emi_stall_6,emi_stall_7,",
 				"active_0,active_1,active_2,active_3,active_4,",
 				"active_5,active_6,active_7";
 
 			node-8 = "SSPM_CM_MGR_BW",
-				"total_bw";
+				"dram_bw,emi_bw";
 
 			node-9 = "SSPM_CM_MGR_CP_RATIO",
-				"up0,up1,up2,up3,up4,up5,",
-				"down0,down1,down2,down3,down4,down5";
+				"env_lat,slm_lat,usr_dm,perf_dm,pwr_dm,slm_mode,",
+				"mode,valid1,valid2,valid3,valid4,valid5";
 
 			node-10 = "SSPM_CM_MGR_VP_RATIO",
 				"up0,up1,up2,up3,up4,up5,",
