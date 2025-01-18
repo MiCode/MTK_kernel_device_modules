@@ -190,6 +190,7 @@ struct mml_dev {
 	enum mml_sys_id frm_dump_opt_sysid;
 	enum mml_frm_dump_buf frm_dump_opt_bufid;
 #endif
+	s32 gce_thread_cnt;
 };
 
 int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
@@ -283,6 +284,21 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
 
 	return cnt;
 }
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+void cmdq_set_client(struct mml_dev *mml)
+{
+	int cnt;
+
+	if (!mml->gce_thread_cnt) {
+		mml_err("%s gce_thread_cnt is %u!", __func__,mml->gce_thread_cnt);
+		return;
+	}
+
+	for (cnt = 0; cnt < mml->gce_thread_cnt; cnt++)
+		vhost_cmdq_set_client((void *)(mml->cmdq_clts[cnt]), 0);
+}
+#endif
 
 s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 {
@@ -577,6 +593,10 @@ struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 	struct mml_m2m_ctx *ctx;
 
 	mutex_lock(&mml->ctx_mutex);
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	cmdq_set_client(mml);
+#endif
 
 	create_dev_topology_locked(mml);
 	if (IS_ERR(mml->topology)) {
@@ -2102,13 +2122,10 @@ static int mml_probe(struct platform_device *pdev)
 		dev->of_node, "mboxes", "#mbox-cells");
 	if (thread_cnt <= 0 || thread_cnt > MML_MAX_CMDQ_CLTS)
 		thread_cnt = MML_MAX_CMDQ_CLTS;
-
+	mml->gce_thread_cnt = thread_cnt;
 	mml->cmdq_base = cmdq_register_device(dev);
 	for (i = 0; i < thread_cnt; i++) {
 		mml->cmdq_clts[i] = cmdq_mbox_create(dev, i);
-#if IS_ENABLED(CONFIG_VHOST_CMDQ)
-		vhost_cmdq_set_client((void *)(mml->cmdq_clts[i]), 0);
-#endif
 		if (IS_ERR_OR_NULL(mml->cmdq_clts[i])) {
 			ret = PTR_ERR(mml->cmdq_clts[i]);
 			dev_err(dev, "unable to create cmdq mbox on %p:%d err %d",

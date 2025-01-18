@@ -412,6 +412,10 @@ void mml_backup_crc_update(struct mml_task *task, struct mml_comp_config *ccfg,
  */
 u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 crc_idx);
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+void cmdq_set_client(struct mml_dev *mml);
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 enum mml_frm_dump_buf {
 	/* dump once */
