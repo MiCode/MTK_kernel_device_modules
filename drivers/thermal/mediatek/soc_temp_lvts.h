@@ -248,6 +248,7 @@ struct lvts_data {
 	bool support_shutdown;
 	int  gpu_power_ctrl_id;
 	bool mcu_sensor_id_remap;
+	bool ap_domain_no_irq;
 };
 
 struct soc_temp_tz {
