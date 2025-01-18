@@ -721,7 +721,7 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 		ret = regmap_read(core->regmap, chip_data->cid_addr, &id);
 	else
 		ret = regmap_read(core->regmap, PMIC_SWCID, &id);
-	if (ret) {
+	if (ret || id == 0) {
 		dev_err(&sdev->dev, "Failed to read chip id: %d\n", ret);
 		return ret;
 	}
