@@ -1598,7 +1598,7 @@ static void core_taskdone(struct work_struct *work)
 		if (perf) {
 			hw_time = perf[1] > perf[0] ?
 				perf[1] - perf[0] : ~perf[0] + 1 + perf[1];
-			CMDQ_TICK_TO_US((unsigned long long)hw_time);
+			CMDQ_TICK_TO_US(hw_time);
 		}
 	}
 	mml_mmp(exec, MMPROFILE_FLAG_END, task->job.jobid, hw_time);
