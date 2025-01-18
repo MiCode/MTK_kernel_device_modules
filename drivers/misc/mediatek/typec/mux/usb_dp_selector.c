@@ -272,7 +272,9 @@ static void check_hpd(struct work_struct *work)
 
 	if (uds->hdp_state == 0) {
 		dev_info(uds->dev, "%s: force hpd\n", __func__);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		mtk_dp_SWInterruptSet(0x4);
+#endif
 	}
 }
 

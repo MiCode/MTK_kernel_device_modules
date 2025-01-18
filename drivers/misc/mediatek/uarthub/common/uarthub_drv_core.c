@@ -272,12 +272,13 @@ static int uarthub_core_init(void)
 	INIT_WORK(&uarthub_inband_irq_ctrl.inband_irq_work, uarthub_inband_irq_worker_handler);
 
 	uarthub_fb_notifier.notifier_call = uarthub_fb_notifier_callback;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	ret = mtk_disp_notifier_register("uarthub_driver", &uarthub_fb_notifier);
 	if (ret)
 		pr_notice("uarthub register fb_notifier failed! ret(%d)\n", ret);
 	else
 		pr_info("uarthub register fb_notifier OK!\n");
-
+#endif
 	if (g_plat_ic_core_ops->uarthub_plat_uarthub_init) {
 		if (g_plat_ic_core_ops->uarthub_plat_uarthub_init(g_uarthub_pdev) != 0)
 			goto ERROR;
@@ -313,8 +314,9 @@ static void uarthub_core_exit(void)
 #if UARTHUB_DBG_SUPPORT
 	uarthub_dbg_remove();
 #endif
-
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	mtk_disp_notifier_unregister(&uarthub_fb_notifier);
+#endif
 	platform_driver_unregister(&mtk_uarthub_dev_drv);
 	uarthub_drv_callbacks_unregister();
 }
