@@ -64,7 +64,7 @@ EXPORT_SYMBOL_GPL(unregister_gps2mbraink_ops);
 enum gnss2mbr_status mbraink_bridge_gps_get_lp_data(enum mbr2gnss_reason reason,
 						struct gnss2mbr_lp_data *lp_data)
 {
-	enum gnss2mbr_status ret = NO_DATA;
+	enum gnss2mbr_status ret = GNSS2MBR_NO_DATA;
 
 	mutex_lock(&bridge_gps_lock);
 
@@ -82,7 +82,7 @@ EXPORT_SYMBOL_GPL(mbraink_bridge_gps_get_lp_data);
 enum gnss2mbr_status mbraink_bridge_gps_get_mcu_data(enum mbr2gnss_reason reason,
 						struct gnss2mbr_mcu_data *mcu_data)
 {
-	enum gnss2mbr_status ret = NO_DATA;
+	enum gnss2mbr_status ret = GNSS2MBR_NO_DATA;
 
 	mutex_lock(&bridge_gps_lock);
 

@@ -15,26 +15,39 @@ void mbraink_v6991_get_gnss_lp_data(void)
 	struct gnss2mbr_lp_data lp_data;
 
 	do {
-		ret = mbraink_bridge_gps_get_lp_data(TEST, &lp_data);
-		if (ret == NO_DATA)
+		memset(&lp_data, 0, sizeof(lp_data));
+		lp_data.hdr_in.data_size = sizeof(lp_data);
+		lp_data.hdr_in.major_ver = LP_DATA_MAJOR_VER;
+		lp_data.hdr_in.minor_ver = LP_DATA_MINOR_VER;
+
+		ret = mbraink_bridge_gps_get_lp_data(MBR2GNSS_TEST, &lp_data);
+		if (ret == GNSS2MBR_NO_DATA)
 			break;
 
-		pr_info("%s: lp_data: ver=%u,%u, sz=%u, ap_res: idx=%u,ts=%llu, gps: sid=%u, st=%d,%d,%d",
-			__func__,
-			lp_data.hdr.major_ver,
-			lp_data.hdr.minor_ver,
-			lp_data.hdr.data_size,
+		if (lp_data.hdr_out.data_size != lp_data.hdr_in.data_size)
+			pr_info("%s: out.data_size is not match in.data_size : %u, %u\n",
+				__func__,
+				lp_data.hdr_out.data_size,
+				lp_data.hdr_in.data_size);
 
-			lp_data.ap_resume_index,
-			lp_data.ap_resume_ts,
+		pr_info("%s: lp_data: ver=%u,%u, sz=%u,%u, idx=%u,ts=%llu, sid=%u, st=%d,%d,%d,%u",
+			__func__,
+			lp_data.hdr_out.major_ver,
+			lp_data.hdr_out.minor_ver,
+			lp_data.hdr_out.data_size,
+			lp_data.hdr_in.data_size,
+
+			lp_data.dump_index,
+			lp_data.dump_ts,
 
 			lp_data.gnss_mcu_sid,
 
 			lp_data.gnss_mcu_is_on,
 			lp_data.gnss_pwr_is_hi,
-			lp_data.gnss_pwr_wrn
+			lp_data.gnss_pwr_wrn,
+			lp_data.gnss_pwr_wrn_cnt
 		);
-	} while (ret == DATA_OK_AGAIN);
+	} while (ret == GNSS2MBR_OK_MORE);
 
 }
 
@@ -44,26 +57,45 @@ void mbraink_v6991_get_gnss_mcu_data(void)
 	struct gnss2mbr_mcu_data mcu_data;
 
 	do {
-		ret = mbraink_bridge_gps_get_mcu_data(TEST, &mcu_data);
-		if (ret == NO_DATA)
+		memset(&mcu_data, 0, sizeof(mcu_data));
+		mcu_data.hdr_in.data_size = sizeof(mcu_data);
+		mcu_data.hdr_in.major_ver = MCU_DATA_MAJOR_VER;
+		mcu_data.hdr_in.minor_ver = MCU_DATA_MINOR_VER;
+
+		ret = mbraink_bridge_gps_get_mcu_data(MBR2GNSS_TEST, &mcu_data);
+		if (ret == GNSS2MBR_NO_DATA)
 			break;
 
-		pr_info("%s: mcu_data: ver=%u,%u, sz=%u, gps: sid=%u,0x%x, o=%llu,%u, e=%d, c=%llu,%u",
+		if (mcu_data.hdr_out.data_size != mcu_data.hdr_in.data_size)
+			pr_info("%s: out.data_size is not match in.data_size : %u, %u\n",
+				__func__,
+				mcu_data.hdr_out.data_size,
+				mcu_data.hdr_in.data_size);
+
+		pr_info("%s: mcu_data: ver=%u,%u, sz=%u,%u, sid=%u,0x%x, o=%llu,%u,%u, e=%d,%d,%u,%u, c=%llu,%u,%u",
 			__func__,
-			mcu_data.hdr.major_ver,
-			mcu_data.hdr.minor_ver,
-			mcu_data.hdr.data_size,
+			mcu_data.hdr_out.major_ver,
+			mcu_data.hdr_out.minor_ver,
+			mcu_data.hdr_out.data_size,
+			mcu_data.hdr_in.data_size,
 
 			mcu_data.gnss_mcu_sid,
 			mcu_data.clock_cfg_val,
 
 			mcu_data.open_ts,
 			mcu_data.open_duration,
+			mcu_data.open_duration_max,
+
 			mcu_data.has_exception,
+			mcu_data.force_close,
+			mcu_data.exception_cnt,
+			mcu_data.force_close_cnt,
+
 			mcu_data.close_ts,
-			mcu_data.close_duration
+			mcu_data.close_duration,
+			mcu_data.close_duration_max
 		);
-	} while (ret == DATA_OK_AGAIN);
+	} while (ret == GNSS2MBR_OK_MORE);
 
 }
 
