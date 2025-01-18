@@ -6,6 +6,10 @@
 #ifndef __MTK_DPC_INTERNAL_H__
 #define __MTK_DPC_INTERNAL_H__
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <aee.h>
+#endif
+
 #define MMSYS_MT6989  0x6989
 #define MMSYS_MT6878  0x6878
 #define MMSYS_MT6991  0x6991
@@ -18,6 +22,23 @@
 
 #define DPCDUMP(fmt, args...) \
 	pr_info("[dpc] " fmt "\n", ##args)
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define DPCAEE(fmt, args...) \
+	do { \
+		char str[200]; \
+		int r; \
+		pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args); \
+		r = snprintf(str, 199, "DPC:" fmt, ##args); \
+		if (r < 0) \
+			pr_info("snprintf error\n"); \
+		aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT |DB_OPT_MMPROFILE_BUFFER, \
+				       str, fmt, ##args); \
+	} while (0)
+#else /* !CONFIG_MTK_AEE_FEATURE */
+#define DPCAEE(fmt, args...) \
+	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
+#endif
 
 #define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
@@ -297,11 +318,15 @@ struct mtk_dpc {
 	void __iomem *voter_set_va;
 	void __iomem *voter_clr_va;
 
+	void __iomem *rtff_pwr_con;
+	void __iomem *vdisp_ao_cg_con;
+
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
 	struct mtk_dpc_dt_usage *disp_dt_usage;
 	struct mtk_dpc_dt_usage *mml_dt_usage;
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 
+	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, bool en);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 };

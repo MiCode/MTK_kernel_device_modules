@@ -10,7 +10,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi \
-             -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek
+             -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek \
+             -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
 
 obj-$(CONFIG_MTK_DPC) := mtk_dpc.o
 

@@ -170,6 +170,7 @@ struct mtk_dsi {
 
 enum dsi_porch_type;
 
+u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id);
 void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,

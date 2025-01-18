@@ -10,12 +10,6 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 
-#ifndef DRM_CMDQ_DISABLE
-#include <linux/soc/mediatek/mtk-cmdq-ext.h>
-#else
-#include "mtk-cmdq-ext.h"
-#endif
-
 #include "mtk_disp_vidle.h"
 #include "mtk_drm_trace.h"
 #include "mtk_drm_drv.h"
@@ -114,16 +108,36 @@ static void mtk_vidle_dt_enable(unsigned int en)
 		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
 }
 
+void mtk_vidle_clear_wfe_event(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, int event)
+{
+	if (disp_dpc_driver.dpc_clear_wfe_event == NULL)
+		return;
+
+	disp_dpc_driver.dpc_clear_wfe_event(pkt, user, event);
+}
+
+void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, u16 gpr)
+{
+	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce == NULL)
+		return;
+
+	disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr);
+}
+
+void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt)
+{
+	if (disp_dpc_driver.dpc_vidle_power_release_by_gce == NULL)
+		return;
+
+	disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user);
+}
+
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
 		return 0;
 
-	if (mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN))
-		return disp_dpc_driver.dpc_vidle_power_keep(user);
-
-	return 0;
+	return disp_dpc_driver.dpc_vidle_power_keep(user);
 }
 
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
@@ -131,9 +145,7 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
 		return;
 
-	if (mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_release(user);
+	disp_dpc_driver.dpc_vidle_power_release(user);
 }
 
 int mtk_vidle_pq_power_get(const char *caller)
