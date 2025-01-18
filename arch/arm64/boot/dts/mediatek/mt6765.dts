@@ -3506,7 +3506,7 @@ pwrap: pwrap@1000d000 {
 		compatible = "mediatek,irq_nfc-eint";
 	};
 
-	smi_bwc {
+	smi-bwc {
 		compatible = "mediatek,smi-legacy-bwc", "mediatek,mt6765-smi-bwc";
 		clocks = <&topckgen CLK_TOP_MM_SEL>,
 			<&topckgen CLK_TOP_MMPLL>,
@@ -3524,7 +3524,7 @@ pwrap: pwrap@1000d000 {
 		mediatek-common-supply = <&smi_common>;
 	};
 
-	smi_common: smi_common@14002000 {
+	smi_common: smi-common@14002000 {
 		compatible = "mediatek,mt6765-smi-common","mediatek,smi-common","syscon";
 		reg = <0 0x14002000 0 0x1000>;
 		mediatek,common-id = <0>;
