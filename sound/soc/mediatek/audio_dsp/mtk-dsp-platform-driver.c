@@ -684,7 +684,7 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_pb15_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-	SOC_SINGLE_EXT("dsp_capture_mch_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+	SOC_SINGLE_EXT("dsp_capmch_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 #endif
 	SOC_SINGLE_EXT("audio_dsp_version", SND_SOC_NOPM, 0, 0xff, 0,
@@ -1329,7 +1329,7 @@ static int mtk_dsp_pcm_hw_params(struct snd_soc_component *component,
 		release_snd_dmabuffer(&substream->dma_buffer);
 	}
 
-	/* allocate ring buffer wioth share memory */
+	/* allocate ring buffer with share memory */
 	ret = mtk_adsp_genpool_allocate_sharemem_ring(dsp_mem, params_buffer_bytes(params), id);
 	if (ret < 0) {
 		pr_warn("%s err\n", __func__);

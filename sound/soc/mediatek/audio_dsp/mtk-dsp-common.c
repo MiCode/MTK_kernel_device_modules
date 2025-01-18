@@ -99,7 +99,7 @@ static char *dsp_task_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_PLAYBACK13_ID]   = "pb13",
 	[AUDIO_TASK_PLAYBACK14_ID]   = "pb14",
 	[AUDIO_TASK_PLAYBACK15_ID]   = "pb15",
-	[AUDIO_TASK_CAPTURE_MCH_ID]  = "ulmch",
+	[AUDIO_TASK_CAPTURE_MCH_ID]  = "capmch",
 #endif
 };
 

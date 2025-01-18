@@ -2291,18 +2291,26 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch1_mix[] = {
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch2_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH1", AFE_CONN125_1, I_DL4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH2", AFE_CONN125_1, I_DL4_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN125_1, I_DL_24CH_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch3_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN126_1, I_DL7_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN126_1, I_DL7_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH3", AFE_CONN126_1, I_DL_24CH_CH3, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch4_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH1", AFE_CONN014_1, I_DL_4CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH4", AFE_CONN127_1, I_DL_24CH_CH4, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch5_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL26_CH1", AFE_CONN128_2, I_DL26_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL26_CH2", AFE_CONN128_2, I_DL26_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH2", AFE_CONN128_1, I_DL_4CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH5", AFE_CONN128_1, I_DL_24CH_CH5, 1, 0),
 };
 
@@ -2315,6 +2323,10 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch7_mix[] = {
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch8_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN131_1, I_DL6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN131_1, I_DL6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH1", AFE_CONN131_2, I_DL25_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH2", AFE_CONN131_2, I_DL25_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH8", AFE_CONN131_1, I_DL_24CH_CH8, 1, 0),
 };
 
@@ -2327,10 +2339,12 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch10_mix[] = {
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch11_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN134_1, I_DL2_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH11", AFE_CONN134_2, I_DL_24CH_CH11, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch12_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH2", AFE_CONN135_1, I_DL2_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH12", AFE_CONN135_2, I_DL_24CH_CH12, 1, 0),
 };
 
@@ -3905,6 +3919,27 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{I2SOUT4_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
 
 	/* i2sout5 */
+	{"I2SOUT5_CH2", "DL4_CH1", "DL4"},
+	{"I2SOUT5_CH2", "DL4_CH2", "DL4"},
+
+	{"I2SOUT5_CH3", "DL7_CH1", "DL7"},
+	{"I2SOUT5_CH3", "DL7_CH2", "DL7"},
+
+	{"I2SOUT5_CH4", "DL_4CH_CH1", "DL_4CH"},
+	{"I2SOUT5_CH5", "DL_4CH_CH2", "DL_4CH"},
+
+	{"I2SOUT5_CH5", "DL26_CH1", "DL26"},
+	{"I2SOUT5_CH5", "DL26_CH2", "DL26"},
+
+	{"I2SOUT5_CH8", "DL6_CH1", "DL6"},
+	{"I2SOUT5_CH8", "DL6_CH2", "DL6"},
+
+	{"I2SOUT5_CH8", "DL25_CH1", "DL25"},
+	{"I2SOUT5_CH8", "DL25_CH2", "DL25"},
+
+	{"I2SOUT5_CH11", "DL2_CH1", "DL2"},
+	{"I2SOUT5_CH12", "DL2_CH2", "DL2"},
+
 	{"I2SOUT5_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"I2SOUT5_CH2", "DL_24CH_CH2", "DL_24CH"},
 	{"I2SOUT5_CH3", "DL_24CH_CH3", "DL_24CH"},
