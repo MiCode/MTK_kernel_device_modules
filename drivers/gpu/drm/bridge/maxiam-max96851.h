@@ -28,6 +28,9 @@
 #include <linux/of_graph.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/spinlock.h>
 
 #define I2C_WRITE							0x1
 #define PANEL_NAME_SIZE						64
@@ -70,7 +73,11 @@
 #define SERDES_SUPERFRAME_TOUCH_INIT_CMD	"serdes-superframe-touch-init-cmd"
 
 #define MAX96851_DUAL_LINK_SETTING			"max96851-dual-link-setting"
+
 #define MAX96851_DP_MST_SETTING				"max96851-dp-mst-setting"
+#define DP_MST_INIT_CMD						"ser-mst-init-cmd"
+#define MAX96851_DP_MST_TOUCH_I2C_ADDR		"dp_mst_touch_i2c_addr"
+#define MAX96851_DP_MST_TOUCH_INIT_CMD		"dp_mst_touch-init-cmd"
 
 #define BL_ON_CMD							"bl-on-cmd"
 #define BL_OFF_CMD							"bl-off-cmd"
@@ -109,6 +116,8 @@ struct max96851_bridge {
 	struct drm_connector connector;
 	struct i2c_client *client;
 	struct drm_bridge bridge;
+	struct drm_panel *panel1;
+	struct drm_panel *panel2;
 	struct drm_bridge *panel_bridge;
 	struct gpio_desc *gpio_pd_n;
 	struct gpio_desc *gpio_rst_n;
@@ -136,6 +145,20 @@ struct max96851_bridge {
 	struct serdes_cmd_info des_linkb_init_cmd;
 	struct serdes_cmd_info ser_superframe_init_cmd;
 	struct serdes_cmd_info serdes_superframe_touch_init_cmd;
+
+	/* dual link setting */
+
+	/* dp mst setting */
+	struct serdes_cmd_info mst_serdes_init_linka_cmd ;
+	struct serdes_cmd_info mst_des_linka_init_cmd;
+	struct serdes_cmd_info mst_serdes_init_linkb_cmd ;
+	struct serdes_cmd_info mst_des_linkb_init_cmd;
+	struct serdes_cmd_info dp_mst_init_cmd;
+	struct serdes_cmd_info dp_mst_touch_init_cmd;
+
+	/* spin lock */
+	int serdes_enable_index;
+	spinlock_t enable_index_lock;
 
 	bool dual_link_support;
 	bool superframe_support;
