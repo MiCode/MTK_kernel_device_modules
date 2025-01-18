@@ -107,9 +107,9 @@
 #define STA_TCU_RAS_ERI			F_BIT_SET(6)
 #define STA_TCU_RAS_FHI			F_BIT_SET(7)
 /* SOC_SMMU is 3 TBU, others are 4 TBU */
-#define STA_TBUx_RAS_CRI(tbu)		F_BIT_SET(8 + tbu)
-#define STA_TBUx_RAS_ERI(tbu)		F_BIT_SET(12 + tbu)
-#define STA_TBUx_RAS_FHI(tbu)		F_BIT_SET(16 + tbu)
+#define STA_TBUx_RAS_CRI(x)		F_BIT_SET(8 + (x))
+#define STA_TBUx_RAS_ERI(tot, x)	F_BIT_SET(8 + (tot) * 1 + (x))
+#define STA_TBUx_RAS_FHI(tot, x)	F_BIT_SET(8 + (tot) * 2 + (x))
 
 #define SMMUWP_IRQ_ACK			(0x84)
 
