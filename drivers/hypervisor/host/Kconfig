@@ -66,3 +66,11 @@ config DEVICE_MODULES_VHOST_ADSP
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called vhost_adsp.
+
+config VHOST_IOMMU
+	tristate "hypervisor vhost iommu driver"
+	help
+	  This extension enable vhost iommu driver, vhost iommu driver
+	  for hypervisor project. The vhost driver is located at virt/grt,
+	  Also used to isolate the conflicting part of the iommu driver
+	  on main project, default is n.
