@@ -164,6 +164,10 @@ EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
 bool mtk_vdec_enable_dynll = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_enable_dynll);
 
+/* For vdec open set cgroup colocate enable time*/
+int mtk_vdec_open_cgrp_delay = MTK_VDEC_OPEN_CGRP_MS;
+EXPORT_SYMBOL_GPL(mtk_vdec_open_cgrp_delay);
+
 /* For vdec slc switch on/off */
 bool mtk_vdec_slc_enable = true;
 EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);
@@ -541,6 +545,44 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	vcodec_trace_end();
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_cpu_hint);
+
+void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *debug_str)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+
+	vcodec_trace_begin("%s[%d](%d)(%s)", __func__, ctx->id, enable, debug_str);
+
+	mutex_lock(&dev->cgrp_mutex);
+	if (enable) {
+		if (!ctx->cgrp_enable) {
+			ctx->cgrp_enable = true;
+			dev->cgrp_ref_cnt++;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+			group_set_cgroup_colocate(1, 0); // enable
+			mtk_v4l2_debug(0, "[%s][%d] enable cgroup_colocate by %s (ref cnt %d)",
+				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
+				debug_str, dev->cgrp_ref_cnt);
+#endif
+		}
+	} else {
+		if (ctx->cgrp_enable) {
+			ctx->cgrp_enable = false;
+			dev->cgrp_ref_cnt--;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+			mtk_v4l2_debug(dev->cgrp_ref_cnt == 0 ? 0 : 2,
+				"[%s][%d] disable cgroup_colocate by %s (ref cnt %d)",
+				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
+				debug_str, dev->cgrp_ref_cnt);
+			if (dev->cgrp_ref_cnt == 0)
+				group_set_cgroup_colocate(1, -1); // disable, reset to default
+#endif
+		}
+	}
+	mutex_unlock(&dev->cgrp_mutex);
+
+	vcodec_trace_end();
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_set_cgrp);
 
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info)
 {

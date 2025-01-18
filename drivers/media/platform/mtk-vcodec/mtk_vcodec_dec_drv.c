@@ -45,6 +45,7 @@ char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
 module_param(mtk_vdec_enable_dynll, bool, 0644);
+module_param(mtk_vdec_open_cgrp_delay, int, 0644);
 module_param(mtk_vdec_slc_enable, bool, 0644);
 module_param(mtk_vdec_acp_enable, bool, 0644);
 module_param(mtk_vdec_acp_debug, int, 0644);
@@ -552,6 +553,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mutex_init(&dev->dec_dvfs_mutex);
 	mutex_init(&dev->cap_mutex);
 	mutex_init(&dev->cpu_hint_mutex);
+	mutex_init(&dev->cgrp_mutex);
 	spin_lock_init(&dev->irqlock);
 
 	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",

@@ -172,6 +172,7 @@ extern char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
 extern int mtk_vdec_lpw_limit;
 extern int mtk_vdec_lpw_timeout;
 extern bool mtk_vdec_enable_dynll;
+extern int mtk_vdec_open_cgrp_delay;
 extern bool mtk_vdec_slc_enable;
 extern bool mtk_vdec_acp_enable;
 extern bool mtk_venc_acp_enable;
@@ -397,6 +398,7 @@ void mtk_vcodec_init_group_list_lock(void);
 
 void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	enum mtk_instance_type type, int ctx_id, int caller_pid, const char *debug_str);
+void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *debug_str);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 extern void set_top_grp_aware(int val, int force_ctrl);
