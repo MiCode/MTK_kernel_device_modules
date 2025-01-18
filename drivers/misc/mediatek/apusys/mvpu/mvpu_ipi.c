@@ -11,7 +11,9 @@
 #include <linux/mutex.h>
 #include <linux/rpmsg.h>
 
+#include "mvpu_driver.h"
 #include "mvpu_ipi.h"
+extern uint32_t apu_ce_sram_dump(struct device *dev);
 
 /*
  * type0: Distinguish pwr_time, timeout, klog, or CX
@@ -159,10 +161,12 @@ out:
 	return 0;
 }
 
-static void mvpu_ipi_up_msg(u32 type, u64 val)
+static void mvpu_trigger_db(u32 type, u64 val)
 {
-	if (type == MVPU_IPI_MICROP_MSG)
+	if (type == MVPU_IPI_MICROP_MSG) {
+		apu_ce_sram_dump(mvpu_dev);
 		mvpu_aee_warn("MVPU", "MVPU aee");
+	}
 }
 
 static int mvpu_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
@@ -178,7 +182,7 @@ static int mvpu_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 
 		rpmsg_send(mvpu_rx_rpm_dev.ept, &ipi_rx_send_buf, sizeof(ipi_rx_send_buf));
 
-		mvpu_ipi_up_msg(d->type0, d->data);
+		mvpu_trigger_db(d->type0, d->data);
 	} else {
 		pr_info("Receive command ack -> use the wrong channel!?\n");
 	}

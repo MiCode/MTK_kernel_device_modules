@@ -139,4 +139,4 @@ struct mvpu_request {
 	uint32_t glsu_idx_mode_table_size;
 } __packed;
 
-#endif
+#endif /* __MVPU_CMD_DATA_H__ */

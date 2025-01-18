@@ -3,8 +3,8 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#ifndef __MVPU_DEBUG_H__
-#define __MVPU_DEBUG_H__
+#ifndef __MVPU_SYSFS_H__
+#define __MVPU_SYSFS_H__
 
 #define DEBUG 1
 
@@ -27,5 +27,5 @@ int get_mvpu_log_lvl(void);
 int mvpu_sysfs_init(void);
 void mvpu_sysfs_exit(void);
 
-#endif
+#endif /* __MVPU_SYSFS_H__ */
 

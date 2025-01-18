@@ -2,7 +2,8 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
-
+#ifndef __MVPU_SEC_H__
+#define __MVPU_SEC_H__
 #include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
 #include <linux/dma-direction.h>
@@ -329,3 +330,5 @@ int mvpu_load_img(struct device *dev);
 int mvpu_sec_init(struct device *dev);
 
 #endif
+
+#endif /* __MVPU_SEC_H__ */

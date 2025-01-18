@@ -30,6 +30,7 @@
 #include "mvpu_driver.h"
 #include "mvpu_sec.h"
 
+static struct apusys_device mvpu_adev;
 struct mutex mvpu_pool_lock;
 
 #ifdef MVPU_SECURITY

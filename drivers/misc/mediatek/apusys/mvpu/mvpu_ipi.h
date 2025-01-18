@@ -39,5 +39,5 @@ int mvpu_ipi_recv(int type_0, u64 *val);
 int mvpu_ipi_init(void);
 void mvpu_ipi_deinit(void);
 
-#endif /* __MDLA_IPI_H__ */
+#endif /* __MVPU_IPI_H__ */
 
