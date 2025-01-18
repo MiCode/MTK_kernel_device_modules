@@ -178,6 +178,7 @@ enum mminfra_freq_mode {
 	BY_REGULATOR,
 	BY_MMDVFS,
 	BY_VMMRC,
+	NO_MMINFRA,
 };
 
 /* For Channel BW */
