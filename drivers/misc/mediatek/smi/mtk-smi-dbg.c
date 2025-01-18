@@ -1024,7 +1024,7 @@ void call_smi_user_pwr_ctrl(u32 action, char *caller)
 	int ret;
 
 	list_for_each_entry(entry, &smi_user_pwr_ctrl_list, list) {
-		entry->caller = caller;
+		strscpy(entry->caller, caller, sizeof(entry->caller));
 		switch (action) {
 		case ACTION_GET_IF_IN_USE:
 			if (!entry->smi_user_get_if_in_use || !entry->smi_user_put)
