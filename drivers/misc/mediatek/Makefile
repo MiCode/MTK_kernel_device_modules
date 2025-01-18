@@ -99,6 +99,7 @@ obj-$(CONFIG_MTK_AUDIODSP_SUPPORT) += adsp/
 obj-$(CONFIG_MTK_AUDIO_IPI) += audio_ipi/
 obj-$(CONFIG_MTK_HANG_DETECT) += monitor_hang/
 obj-$(CONFIG_MTK_SCHEDULER) += sched/
+obj-$(CONFIG_MTK_CROSS_SCHEDULER) += cross_sched/
 obj-$(CONFIG_MTK_CPUQOS_V3) += cache-auditor/
 obj-$(CONFIG_MTK_AMMS) += memory-amms/
 obj-$(CONFIG_MTK_SDA) += sda/
