@@ -34,6 +34,13 @@
 #include <soc/mediatek/emi.h>
 #endif /* CONFIG_MTK_EMI */
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
+#endif
+#endif
+
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
 
@@ -51,10 +58,13 @@
 #define MAX_RECORD_COMM_NUM	(2)
 #define MAX_RECORD_PORT_NUM	(9)
 #define VIRT_COMM_PORT_ID	(8)
+#define MAX_RECORD_LARB_NUM	(50)
 
 #define MAX_BW_VALUE_NUM	(24)
 #define MAX_REG_VALUE_NUM	(8)
 #define MAX_BW_UNIT		(1023)
+#define CHNN_BW_UNIT_SHIFT	(4)	/* channel bw unit is 16MB/s */
+#define DRAM_BW_UNIT_SHIFT	(6)	/* dram bw unit is 64MB/s */
 
 #define APMCU_MASK_OFFSET	(gmmqos->apmcu_mask_offset)
 #define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
@@ -64,6 +74,17 @@
 
 #define IS_ON_TABLE		(true)
 
+#define MAX_SUBSYS_NUM		(6)
+
+#define SUBSYS_HW_BW(sid)	(gmmqos->mmpc_cam_hw_bw + 0x20 * sid)
+#define SUBSYS_HW_BW_OFFSET(sid, i)	(SUBSYS_HW_BW(sid) + 0x4 * i)
+#define SUBSYS_HW_BW_HRT(sid)	(gmmqos->mmpc_cam_hw_bw_hrt + 0x8 * sid)
+#define SUBSYS_HW_BW_SRT(sid)	(SUBSYS_HW_BW_HRT(sid) + 0x4)
+
+#define TOTAL_BW(i)		(gmmqos->mmpc_total_mmqos_bw + 4 * i)
+#define TOTAL_HRT_BW		(gmmqos->mmpc_total_pmqos_bw)
+#define TOTAL_SRT_BW		(gmmqos->mmpc_total_pmqos_bw + 4)
+
 enum mmqos_rw_type {
 	path_no_type = 0,
 	path_write,		//1
@@ -71,6 +92,19 @@ enum mmqos_rw_type {
 };
 
 static u32 ftrace_ena;
+
+struct last_record {
+	u64 larb_port_update_time;
+	u32 larb_port_node_id;
+	u32 larb_port_avg_bw;
+	u32 larb_port_peak_bw;
+	u64 larb_update_time;
+	u32 larb_node_id;
+	u32 larb_avg_bw;
+	u32 larb_peak_bw;
+};
+
+struct last_record *last_rec;
 
 struct comm_port_bw_record {
 	u8 idx[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM];
@@ -91,8 +125,19 @@ struct chn_bw_record {
 	u32 hrt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
 };
 
+struct larb_port_bw_record {
+	u8 idx[MAX_RECORD_LARB_NUM];
+	u64 time[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 port_id[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 avg_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 peak_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 mix_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u8 ostdl[MAX_RECORD_LARB_NUM][RECORD_NUM];
+};
+
 struct comm_port_bw_record *comm_port_bw_rec;
 struct chn_bw_record *chn_bw_rec;
+struct larb_port_bw_record *larb_port_bw_rec;
 
 struct larb_port_node {
 	struct mmqos_base_node *base;
@@ -110,16 +155,24 @@ struct mtk_mmqos {
 	struct notifier_block nb;
 	struct list_head comm_list;
 	u32 max_ratio;
+	u32 max_disp_ostdl;
 	bool dual_pipe_enable;
 	bool qos_bound;
 	u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 	struct proc_dir_entry *proc;
+	struct proc_dir_entry *last_proc;
 	void __iomem *vmmrc_base;
 	u32 apmcu_mask_offset;
 	u32 apmcu_mask_bit;
 	u32 apmcu_on_bw_offset;
 	u32 apmcu_off_bw_offset;
 	void __iomem *mminfra_base;
+	u32 mmpc_sw_en_all_on;
+	u32 mmpc_cam_hw_bw;
+	u32 mmpc_cam_hw_bw_hrt;
+	u32 mmpc_total_mmqos_bw;
+	u32 mmpc_total_pmqos_bw;
+	u32 vmmrc_level_hex;
 	struct mutex bw_lock;
 };
 
@@ -153,6 +206,15 @@ u32 on_reg_value[MAX_REG_VALUE_NUM];
 u32 off_reg_value[MAX_REG_VALUE_NUM];
 
 u32 freq_mode = BY_REGULATOR;
+
+enum hrt_ostdl_policy {
+	HRT_OSTDL_1_5 = 0,
+	HRT_OSTDL_1,
+	HRT_OSTDL_2,
+};
+
+u32 r_hrt_ostdl = HRT_OSTDL_1_5;
+u32 w_hrt_ostdl = HRT_OSTDL_1_5;
 
 static void mmqos_update_comm_bw(struct device *dev,
 	u32 comm_port, u32 freq, u64 mix_bw, u64 bw_peak, bool qos_bound, bool max_bwl)
@@ -424,6 +486,22 @@ static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_
 }
 */
 
+static u32 change_to_unit(u32 bw)
+{
+	/* bw unit is 16MB/s */
+	u32 bw_unit;
+
+	bw_unit = (icc_to_MBps(bw)) >> CHNN_BW_UNIT_SHIFT;
+	if (bw_unit >= MAX_BW_UNIT) {
+		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
+		bw_unit = MAX_BW_UNIT;
+	}
+	if (log_level & 1 << log_comm_freq && bw > 0)
+		MMQOS_DBG("bw:%d, bw_unit:%d", bw, bw_unit);
+
+	return bw_unit;
+}
+
 static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 	bool is_srt, bool is_write, bool is_on, u32 bw)
 {
@@ -441,6 +519,8 @@ static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 	}
 	if (!is_srt)
 		bw = bw * 10 / 7;
+
+	bw = change_to_unit(bw);
 
 	if (is_on)
 		on_bw_value[bw_value_idx] = bw;
@@ -481,7 +561,7 @@ void write_register(u32 offset, u32 value)
 		if (value != 0)
 			MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
 
-	if (mmqos_state & VMMRC_ENABLE) {
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE) {
 		if (gmmqos->vmmrc_base == NULL)
 			MMQOS_ERR("write vmmrc fail, vmmrc_base is NULL");
 		else
@@ -491,7 +571,7 @@ void write_register(u32 offset, u32 value)
 
 u32 read_register(u32 offset)
 {
-	if (mmqos_state & VMMRC_ENABLE) {
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE) {
 		if (gmmqos->vmmrc_base == NULL)
 			MMQOS_ERR("read vmmrc fail, vmmrc_base is NULL");
 		else
@@ -509,16 +589,25 @@ static void start_write_bw(void)
 	//enable vcp
 	if (mmqos_state & VMMRC_VCP_ENABLE)
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-	orig = read_register(APMCU_MASK_OFFSET);
-	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
+
+	if (mmqos_state & MMPC_ENABLE)
+		write_register(APMCU_MASK_OFFSET, 0);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
+	}
 }
 
 static void stop_write_bw(void)
 {
 	u32 orig = 0;
 
-	orig = read_register(APMCU_MASK_OFFSET);
-	write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	if (mmqos_state & MMPC_ENABLE)
+		write_register(APMCU_MASK_OFFSET, gmmqos->mmpc_sw_en_all_on);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	}
 	//disable vcp
 	if (mmqos_state & VMMRC_VCP_ENABLE)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
@@ -583,22 +672,6 @@ static void set_channel_bw_to_hw(void)
 	stop_write_bw();
 }
 
-static u32 change_to_unit(u32 bw)
-{
-	/* bw unit is 16MB/s */
-	u32 bw_unit;
-
-	bw_unit = (icc_to_MBps(bw)) >> 4;
-	if (bw_unit >= MAX_BW_UNIT) {
-		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
-		bw_unit = MAX_BW_UNIT;
-	}
-	if (log_level & 1 << log_comm_freq && bw > 0)
-		MMQOS_DBG("bw:%d, bw_unit:%d", bw, bw_unit);
-
-	return bw_unit;
-}
-
 static void set_freq_by_vmmrc(const u32 comm_id)
 {
 	int i, j;
@@ -623,13 +696,13 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 		bool is_write = true;
 
 		store_bw_value(comm_id, i, is_srt, !is_write, IS_ON_TABLE,
-			change_to_unit(chn_srt_r_bw[comm_id][i]));
+			chn_srt_r_bw[comm_id][i]);
 		store_bw_value(comm_id, i, is_srt, is_write, IS_ON_TABLE,
-			change_to_unit(chn_srt_w_bw[comm_id][i]));
+			chn_srt_w_bw[comm_id][i]);
 		store_bw_value(comm_id, i, !is_srt, !is_write, IS_ON_TABLE,
-			change_to_unit(chn_hrt_r_bw[comm_id][i]));
+			chn_hrt_r_bw[comm_id][i]);
 		store_bw_value(comm_id, i, !is_srt, is_write, IS_ON_TABLE,
-			change_to_unit(chn_hrt_w_bw[comm_id][i]));
+			chn_hrt_w_bw[comm_id][i]);
 
 		if (mmqos_state & VMMRC_ENABLE) {
 			off_s_r_bw = chn_srt_r_bw[comm_id][i] - disp_srt_r_bw[comm_id][i];
@@ -731,7 +804,7 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 				    &comm_node->comm_port_list, list) {
 			if (comm_port->hrt_type < HRT_TYPE_NUM) {
 				mutex_lock(&comm_port->bw_lock);
-				hrt_bw[comm_port->hrt_type] += 
+				hrt_bw[comm_port->hrt_type] +=
 					icc_to_MBps(comm_port->latest_peak_bw);
 				mutex_unlock(&comm_port->bw_lock);
 			}
@@ -742,6 +815,22 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 		if (i != HRT_MD)
 			mtk_mmqos_set_hrt_bw(i, hrt_bw[i]);
 
+}
+
+static void record_last_larb(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	last_rec->larb_update_time = sched_clock();
+	last_rec->larb_node_id = node_id;
+	last_rec->larb_avg_bw = avg_bw;
+	last_rec->larb_peak_bw = peak_bw;
+}
+
+static void record_last_larb_port(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	last_rec->larb_port_update_time = sched_clock();
+	last_rec->larb_port_node_id = node_id;
+	last_rec->larb_port_avg_bw = avg_bw;
+	last_rec->larb_port_peak_bw = peak_bw;
 }
 
 static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
@@ -775,6 +864,20 @@ static void record_chn_bw(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w, u32 hr
 	chn_bw_rec->hrt_r_bw[comm_id][chnn_id][idx] = hrt_r;
 	chn_bw_rec->hrt_w_bw[comm_id][chnn_id][idx] = hrt_w;
 	chn_bw_rec->idx[comm_id][chnn_id] = (idx + 1) % RECORD_NUM;
+}
+
+static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw, u32 peak_bw, u32 mix_bw, u8 ostdl)
+{
+	u32 idx;
+
+	idx = larb_port_bw_rec->idx[larb_id];
+	larb_port_bw_rec->time[larb_id][idx] = sched_clock();
+	larb_port_bw_rec->port_id[larb_id][idx] = port_id;
+	larb_port_bw_rec->avg_bw[larb_id][idx] = avg_bw;
+	larb_port_bw_rec->peak_bw[larb_id][idx] = peak_bw;
+	larb_port_bw_rec->mix_bw[larb_id][idx] = mix_bw;
+	larb_port_bw_rec->ostdl[larb_id][idx] = ostdl;
+	larb_port_bw_rec->idx[larb_id] = (idx + 1) % RECORD_NUM;
 }
 
 void update_channel_bw(const u32 comm_id, const u32 chnn_id,
@@ -947,6 +1050,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				pr_notice("ignore larb%d\n", src->id);
 			break;
 		}
+
+		record_last_larb(src->id, src->avg_bw, src->peak_bw);
 
 		if (chnn_id) {
 #ifdef ENABLE_INTERCONNECT_V1
@@ -1147,28 +1252,46 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			value = mmqos->max_ratio;
 #endif
 #ifdef ENABLE_INTERCONNECT_V2
-		if (src->v2_mix_bw) {
+		if (icc_to_MBps(src->v2_mix_bw)) {
 			value = SHIFT_ROUND(
 				icc_to_MBps(src->v2_mix_bw),
 				larb_port_node->bw_ratio);
-			if (src->peak_bw)
-				value = SHIFT_ROUND(value * 3, 1);
+			if (src->peak_bw) {
+				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_1_5) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_1_5))
+					value = SHIFT_ROUND(value * 3, 1);
+				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_2) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_2))
+					value = value * 2;
+			}
 		} else {
 			src->v2_max_ostd = false;
 		}
-		if (value > mmqos->max_ratio
-			|| (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy(src))) {
+		if (value > mmqos->max_ratio) {
 			if (value > mmqos->max_ratio)
 				dev_notice(larb_node->larb_dev,
-					"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
+					"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
 					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 					(int)icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
 					(int)icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+					(int)icc_to_MBps(src->v2_mix_bw),
 					value);
 			value = mmqos->max_ratio;
 		}
+		if (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy(src)) {
+			if (log_level & 1 << log_bw)
+				MMQOS_DBG("larb=%d port=%d use max_disp_ostdl=%#x",
+					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+					mmqos->max_disp_ostdl);
+			value = mmqos->max_disp_ostdl;
+		}
 #endif
 		if (mmqos_state & OSTD_ENABLE) {
+			record_larb_port_bw_ostdl(MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				icc_to_MBps(src->v2_mix_bw),
+				value);
 			if (mmqos_state & REAL_TIME_PERM_ENABLE) {
 				if (larb_port_node->base->icc_node->peak_bw)
 					mtk_smi_set_hrt_perm(larb_node->larb_dev,
@@ -1184,11 +1307,16 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 
 		if (log_level & 1 << log_bw)
 			dev_notice(larb_node->larb_dev,
-				"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
+				"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				(int)(icc_to_MBps(larb_port_node->base->icc_node->avg_bw)),
 				(int)(icc_to_MBps(larb_port_node->base->icc_node->peak_bw)),
+				(int)(icc_to_MBps(src->v2_mix_bw)),
 				value);
+
+		record_last_larb_port(src->id,
+			larb_port_node->base->icc_node->avg_bw,
+			larb_port_node->base->icc_node->peak_bw);
 
 		if (mmqos_met_enabled()) {
 			if (!larb_port_node->is_write) {
@@ -1215,6 +1343,11 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
 				trace_comm_id,
 				trace_chnn_id);
+			trace_mmqos__larb_port_ostdl(
+				r_w_type,
+				dst->name,
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				value);
 #ifdef ENABLE_INTERCONNECT_V1
 			trace_mmqos__chn_bw(comm_id, chnn_id,
 				icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
@@ -1331,6 +1464,30 @@ static struct icc_node *mtk_mmqos_xlate(
 	return ERR_PTR(-EINVAL);
 }
 
+static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = larb_port_bw_rec->time[larb_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+	if (ts == 0 &&
+		larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+		larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->peak_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->ostdl[larb_id][i] == 0)
+		return;
+
+	seq_printf(file, "[%5llu.%06llu] larb%2d port%2d %8d %8d %8d %8d\n",
+		(u64)ts, rem_nsec / 1000,
+		larb_id,
+		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->avg_bw[larb_id][i],
+		larb_port_bw_rec->peak_bw[larb_id][i],
+		larb_port_bw_rec->mix_bw[larb_id][i],
+		larb_port_bw_rec->ostdl[larb_id][i]);
+}
+
 static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u32 i)
 {
 	u64 ts;
@@ -1365,10 +1522,10 @@ static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
 	seq_printf(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		comm_id, chnn_id,
-		(int)(icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i])),
-		(int)(icc_to_MBps(chn_bw_rec->srt_w_bw[comm_id][chnn_id][i])),
-		(int)(icc_to_MBps(chn_bw_rec->hrt_r_bw[comm_id][chnn_id][i])),
-		(int)(icc_to_MBps(chn_bw_rec->hrt_w_bw[comm_id][chnn_id][i])));
+		(int)icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->srt_w_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->hrt_r_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->hrt_w_bw[comm_id][chnn_id][i]));
 }
 
 static void hrt_bw_dump(struct seq_file *file, u32 i)
@@ -1395,6 +1552,19 @@ static void cam_hrt_bw_dump(struct seq_file *file, u32 i)
 	seq_printf(file, "[%5llu.%06llu]     %17d\n",
 		(u64)ts, rem_nsec / 1000,
 		g_hrt->cam_hrt_rec.cam_max_hrt[i]);
+}
+
+static void larb_port_ostdl_full_dump(struct seq_file *file, u32 larb_id)
+{
+	u32 i, start;
+
+	start = larb_port_bw_rec->idx[larb_id];
+	for (i = start; i < RECORD_NUM; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+
+	for (i = 0; i < start; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+
 }
 
 static void comm_port_bw_full_dump(struct seq_file *file, u32 comm_id, u32 port_id)
@@ -1451,9 +1621,73 @@ static void cam_hrt_bw_full_dump(struct seq_file *file)
 
 }
 
+static int mmqos_last_dump(struct seq_file *file, void *data)
+{
+	u64 ts;
+	u64 ns;
+
+	seq_puts(file, "last larb port:\n");
+	ts = last_rec->larb_port_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u\n",
+		(u64)ts, ns / 1000,
+		last_rec->larb_port_node_id,
+		last_rec->larb_port_avg_bw,
+		last_rec->larb_port_peak_bw);
+	seq_puts(file, "last larb:\n");
+	ts = last_rec->larb_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u",
+		(u64)ts, ns / 1000,
+		last_rec->larb_node_id,
+		last_rec->larb_avg_bw,
+		last_rec->larb_peak_bw);
+	return 0;
+}
+
+static int mmqos_last_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmqos_last_dump, inode->i_private);
+}
+
+static const struct proc_ops mmqos_last_debug_fops = {
+	.proc_open = mmqos_last_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static void mmpc_subsys_hw_mode_full_dump(struct seq_file *file, int sid)
+{
+	seq_printf(file, "\nsid:%d, Total HRT: %u, SRT: %u\n",
+		sid, read_register(SUBSYS_HW_BW_HRT(sid)),
+		read_register(SUBSYS_HW_BW_SRT(sid)));
+
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		seq_printf(file, "i:%d, offset:%#x, value:%#x\n",
+			i, SUBSYS_HW_BW_OFFSET(sid, i), read_register(SUBSYS_HW_BW_OFFSET(sid, i)));
+	}
+}
+
+static void mmpc_total_bw_full_dump(struct seq_file *file)
+{
+	seq_printf(file, "\nTotal HRT: %u, SRT: %u\n",
+		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		seq_printf(file, "i:%d, offset:%#x, value:%u\n",
+			i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
+	}
+}
+static void mmpc_dvfsrc_full_dump(struct seq_file *file)
+{
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++)
+		mmpc_subsys_hw_mode_full_dump(file, sid);
+
+	mmpc_total_bw_full_dump(file);
+}
 static int mmqos_bw_dump(struct seq_file *file, void *data)
 {
-	u32 comm_id = 0, chnn_id = 0, port_id = 0;
+	u32 comm_id = 0, chnn_id = 0, port_id = 0, larb_id = 0;
 
 	seq_printf(file, "MMQoS HRT BW Dump: %8s %8s %8s\n",
 		"avail", "cam_max", "cam_hrt");
@@ -1475,6 +1709,15 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 		for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
 			comm_port_bw_full_dump(file, comm_id, port_id);
 	}
+
+	seq_printf(file, "MMQoS OSTDL Dump r:%2d w:%2d   %8s %8s %8s %8s\n",
+		r_hrt_ostdl, w_hrt_ostdl,
+		"avg_bw", "peak_bw", "mix_bw", "ostdl");
+	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
+		larb_port_ostdl_full_dump(file, larb_id);
+
+	if (mmqos_state & MMPC_ENABLE)
+		mmpc_dvfsrc_full_dump(file);
 	return 0;
 }
 
@@ -1512,7 +1755,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct mmqos_hrt *hrt;
 	struct device_node *np;
 	struct platform_device *comm_pdev, *larb_pdev;
-	struct proc_dir_entry *dir, *proc;
+	struct proc_dir_entry *dir, *proc, *last_proc;
+	phys_addr_t pa = 0ULL;
+	unsigned long va;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1524,6 +1769,18 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	if (!smi_imu)
 		return -ENOMEM;
 
+	last_rec = kzalloc(sizeof(*last_rec), GFP_KERNEL);
+	if (!last_rec)
+		return -ENOMEM;
+
+	va = (unsigned long) last_rec;
+	pa = __pa_nodebug(va);
+	if (va && pa) {
+		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "LAST_MMQOS");
+		if (ret)
+			MMQOS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
+	}
+
 	chn_bw_rec = devm_kzalloc(&pdev->dev,
 		sizeof(*chn_bw_rec), GFP_KERNEL);
 	if (!chn_bw_rec)
@@ -1532,6 +1789,11 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	comm_port_bw_rec = devm_kzalloc(&pdev->dev,
 		sizeof(*comm_port_bw_rec), GFP_KERNEL);
 	if (!comm_port_bw_rec)
+		return -ENOMEM;
+
+	larb_port_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*larb_port_bw_rec), GFP_KERNEL);
+	if (!larb_port_bw_rec)
 		return -ENOMEM;
 
 	of_for_each_phandle(
@@ -1756,12 +2018,20 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 
 	mmqos->max_ratio = mmqos_desc->max_ratio;
+	if (mmqos_desc->max_disp_ostdl == 0)
+		mmqos->max_disp_ostdl = mmqos_desc->max_ratio;
+	else
+		mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
 
 	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
 	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
 
 	of_property_read_u32(pdev->dev.of_node, "mmqos-log-level", &log_level);
 	pr_notice("[mmqos] mmqos log level: %#x\n", log_level);
+
+	of_property_read_u32(pdev->dev.of_node, "r-hrt-ostdl", &r_hrt_ostdl);
+	of_property_read_u32(pdev->dev.of_node, "w-hrt-ostdl", &w_hrt_ostdl);
+	MMQOS_DBG("hrt ostdl policy, read:%d, write:%d", r_hrt_ostdl, w_hrt_ostdl);
 
 	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
 		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
@@ -1823,6 +2093,12 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		mmqos->proc = proc;
 
+	last_proc = proc_create("last_mmqos", 0444, dir, &mmqos_last_debug_fops);
+	if (IS_ERR_OR_NULL(last_proc))
+		pr_notice("last proc_create failed:%ld\n", PTR_ERR(last_proc));
+	else
+		mmqos->last_proc = last_proc;
+
 	return 0;
 err:
 	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
@@ -1837,27 +2113,56 @@ EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
 int mtk_mmqos_v2_probe(struct platform_device *pdev)
 {
 	struct task_struct *kthr_vcp;
-	u32 base_tmp, mminfra_base_tmp;
+	u32 base_tmp, mminfra_base_tmp, range;
 	int ret, probe_ret;
 
 	probe_ret = mtk_mmqos_probe(pdev);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
 	if (ret >= 0) {
-		gmmqos->vmmrc_base = ioremap(base_tmp, 0x40000);
+		ret = of_property_read_u32(pdev->dev.of_node, "vmmrc-range", &range);
+		if (ret < 0)
+			range = 0x40000;
+		gmmqos->vmmrc_base = ioremap(base_tmp, range);
 		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &gmmqos->apmcu_mask_offset);
-		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &gmmqos->apmcu_mask_bit);
 		of_property_read_u32(pdev->dev.of_node,
 			"vmmrc-on-table", &gmmqos->apmcu_on_bw_offset);
-		of_property_read_u32(pdev->dev.of_node,
-			"vmmrc-off-table", &gmmqos->apmcu_off_bw_offset);
-		of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
-		gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
 
-		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x, mminfra_base=%#x",
-			base_tmp, gmmqos->apmcu_mask_offset, gmmqos->apmcu_mask_bit,
-			gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset,
-			mminfra_base_tmp);
+		if (mmqos_state & VMMRC_ENABLE) {
+			of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &gmmqos->apmcu_mask_bit);
+			of_property_read_u32(pdev->dev.of_node,
+				"vmmrc-off-table", &gmmqos->apmcu_off_bw_offset);
+			of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
+			gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
+			MMQOS_DBG("vmmrc=%#x, range=%#x, mask=%#x, bit=%#x, on=%#x, off=%#x, mminfra=%#x",
+				base_tmp, range, gmmqos->apmcu_mask_offset, gmmqos->apmcu_mask_bit,
+				gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset,
+				mminfra_base_tmp);
+		} else if (mmqos_state & MMPC_ENABLE) {
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-sw-en-all-on", &gmmqos->mmpc_sw_en_all_on);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-cam-hw-bw", &gmmqos->mmpc_cam_hw_bw);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-cam-hw-bw-hrt", &gmmqos->mmpc_cam_hw_bw_hrt);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-total-mmqos-bw", &gmmqos->mmpc_total_mmqos_bw);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-total-pmqos-bw", &gmmqos->mmpc_total_pmqos_bw);
+			of_property_read_u32(pdev->dev.of_node,
+				"vmmrc-level-hex", &gmmqos->vmmrc_level_hex);
+			of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
+			gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
+			MMQOS_DBG("vmmrc base=%#x, range=%#x, mask=%#x, sw_en=%#x, on table=%#x, mminfra_base=%#x",
+				base_tmp, range, gmmqos->apmcu_mask_offset, gmmqos->mmpc_sw_en_all_on,
+				gmmqos->apmcu_on_bw_offset, mminfra_base_tmp);
+			MMQOS_DBG("mmpc cam_hw_bw:%#x, cam_hw_bw_hrt:%#x, mmqos_bw:%#x, pmqos_bw:%#x, level_hex:%#x",
+				gmmqos->mmpc_cam_hw_bw, gmmqos->mmpc_cam_hw_bw_hrt,
+				gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw,
+				gmmqos->vmmrc_level_hex);
+		} else {
+			MMQOS_DBG("no VMMRC_ENABLE & MMPC_ENABLE");
+		}
 	} else {
 		MMQOS_DBG("no vmmrc related property");
 		gmmqos->vmmrc_base = NULL;
@@ -1982,6 +2287,65 @@ noinline int tracing_mark_write(char *fmt, ...)
 	return 0;
 }
 
+static char *get_subsys_name(int sid)
+{
+	switch(sid) {
+	case 0: return "CAM";
+	case 1: return "IMG";
+	case 2: return "MDP";
+	case 3: return "DISP";
+	case 4: return "VENC";
+	case 5: return "VDEC";
+	default: return "???";
+	}
+}
+
+static u32 get_bw_from_reg(u32 reg_value, int bw_idx)
+{
+	u32 shift = bw_idx * 10;
+	u32 mask = (1 << 10) - 1;
+
+	return ((reg_value >> shift) & mask) << CHNN_BW_UNIT_SHIFT;
+}
+
+static void mmpc_ftrace_dump(void)
+{
+	char *subsys_name;
+	u32 reg_value, bw0, bw1, bw2;
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		subsys_name = get_subsys_name(sid);
+		for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+			reg_value = read_register(SUBSYS_HW_BW_OFFSET(sid, i));
+			if (reg_value != 0) {
+				bw0 = get_bw_from_reg(reg_value, 0);
+				bw1 = get_bw_from_reg(reg_value, 1);
+				bw2 = get_bw_from_reg(reg_value, 2);
+				trace_mmqos__mmpc_subsys_chnn_bw(
+					subsys_name, i,
+					bw0, bw1, bw2);
+			}
+		}
+		bw0 = read_register(SUBSYS_HW_BW_HRT(sid));
+		bw1 = read_register(SUBSYS_HW_BW_SRT(sid));
+		if (bw0 == 0 && bw1 ==0)
+			continue;
+		trace_mmqos__mmpc_subsys_dram_bw(subsys_name,
+			bw0 << DRAM_BW_UNIT_SHIFT,
+			bw1 << DRAM_BW_UNIT_SHIFT);
+	}
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		bw0 = read_register(TOTAL_BW(i));
+		if (bw0 == 0)
+			continue;
+		trace_mmqos__mmpc_total_chnn_bw(
+			i, bw0 << CHNN_BW_UNIT_SHIFT);
+	}
+	trace_mmqos__mmpc_total_dram_bw(
+		read_register(TOTAL_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+		read_register(TOTAL_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+}
+
 static int mmqos_dbg_ftrace_thread(void *data)
 {
 	int retry = 0;
@@ -2053,6 +2417,9 @@ static int mmqos_dbg_ftrace_thread(void *data)
 			"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
 		trace_mmqos__larb_avg_bw(
 			"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
+
+		if (mmqos_state & MMPC_ENABLE)
+			mmpc_ftrace_dump();
 		msleep(20);
 	}
 	return 0;
@@ -2138,6 +2505,69 @@ MODULE_PARM_DESC(mmqos_state, "mmqos_state");
 
 module_param(freq_mode, uint, 0644);
 MODULE_PARM_DESC(freq_mode, "mminfra change frequency mode");
+
+module_param(r_hrt_ostdl, uint, 0644);
+MODULE_PARM_DESC(r_hrt_ostdl, "Read HRT OSTDL Policy");
+
+module_param(w_hrt_ostdl, uint, 0644);
+MODULE_PARM_DESC(w_hrt_ostdl, "Write HRT OSTDL Policy");
+
+u32 larb_port_ostdl;
+
+struct device *get_larb_dev(int larb_id)
+{
+	struct icc_onecell_data *icc_data;
+	struct icc_node *node;
+	struct larb_node *larb_node;
+	int i;
+
+	if (larb_id < 0)
+		return NULL;
+
+	icc_data = (struct icc_onecell_data *)gmmqos->prov.data;
+	for (i = 0; i < icc_data->num_nodes; i++)
+		if (icc_data->nodes[i]->id == SLAVE_LARB(larb_id)) {
+			node = icc_data->nodes[i];
+			larb_node = (struct larb_node *)node->data;
+			MMQOS_DBG("found larb id:%d", larb_id);
+			return larb_node->larb_dev;
+		}
+
+	MMQOS_DBG("cannot find larb id:%d", larb_id);
+	return NULL;
+}
+
+int mmqos_set_larb_port_ostdl(const char *val, const struct kernel_param *kp)
+{
+	int result;
+	int larb_id, port_id, ostdl;
+	struct device *larb_dev;
+
+	result = sscanf(val, "%d %d %d", &larb_id, &port_id, &ostdl);
+
+	MMQOS_DBG("larb:%d port:%d ostdl:%d", larb_id, port_id, ostdl);
+	if (ostdl <= 0) {
+		MMQOS_DBG("ostdl should not <= 0");
+		return -1;
+	}
+
+	larb_dev = get_larb_dev(larb_id);
+	if (larb_dev == NULL) {
+		MMQOS_ERR("wrong larb_id");
+		return -1;
+	}
+
+	mtk_smi_larb_bw_set(larb_dev, port_id, ostdl);
+	return 0;
+}
+
+
+static const struct kernel_param_ops larb_port_ostdl_ops = {
+	.set = mmqos_set_larb_port_ostdl,
+	.get = param_get_uint,
+};
+module_param_cb(larb_port_ostdl, &larb_port_ostdl_ops, &larb_port_ostdl, 0644);
+MODULE_PARM_DESC(larb_port_ostdl, "force set ostdl to larb port");
 
 static const struct kernel_param_ops mmqos_debug_set_ftrace_ops = {
 	.set = mmqos_debug_set_ftrace,

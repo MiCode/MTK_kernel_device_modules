@@ -70,6 +70,30 @@ TRACE_EVENT(mmqos__larb_port_peak_bw,
 		(int)__entry->chn,
 		(int)__entry->peak_bw)
 );
+TRACE_EVENT(mmqos__larb_port_ostdl,
+	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int port, int ostdl),
+	TP_ARGS(r_w_type, dev_name, larb, port, ostdl),
+	TP_STRUCT__entry(
+		__string(r_w_type, r_w_type)
+		__string(dev_name, dev_name)
+		__field(int, larb)
+		__field(int, port)
+		__field(int, ostdl)
+	),
+	TP_fast_assign(
+		__assign_str(r_w_type, r_w_type);
+		__assign_str(dev_name, dev_name);
+		__entry->larb = larb;
+		__entry->port = port;
+		__entry->ostdl = ostdl;
+	),
+	TP_printk("%s_%d_%s_ostdl=%d",
+		__get_str(dev_name),
+		(int)__entry->port,
+		__get_str(r_w_type),
+		(int)__entry->ostdl
+	)
+);
 TRACE_EVENT(mmqos__larb_avg_bw,
 	TP_PROTO(const char *r_w_type, const char *dev_name, int bw,
 			int comm, int chn),
@@ -184,6 +208,99 @@ TRACE_EVENT(mmqos__bw_to_emi,
 		((int)__entry->comm_id > 1 ? "vcp" : "ap"),
 		(int)__entry->comm_id,
 		(int)__entry->peak_bw)
+);
+TRACE_EVENT(mmqos__mmpc_subsys_chnn_bw,
+	TP_PROTO(const char *sub_name, int i, int bw0, int bw1, int bw2),
+	TP_ARGS(sub_name, i, bw0, bw1, bw2),
+	TP_STRUCT__entry(
+		__string(sub_name, sub_name)
+		__field(int, i)
+		__field(int, bw0)
+		__field(int, bw1)
+		__field(int, bw2)
+	),
+	TP_fast_assign(
+		__assign_str(sub_name, sub_name);
+		__entry->i = i;
+		__entry->bw0 = bw0;
+		__entry->bw1 = bw1;
+		__entry->bw2 = bw2;
+	),
+	TP_printk("%s_bw%d_comm%d_%d_%s_%s=%d, %s_bw%d_comm%d_%d_%s_%s=%d, %s_bw%d_comm%d_%d_%s_%s=%d",
+		__get_str(sub_name),
+		(int)__entry->i*3,
+		(int)(__entry->i*3 >> 3) & 3,
+		(int)(__entry->i*3 >> 2) & 1,
+		(int)(__entry->i*3 & 2) ? "h" : "s",
+		(int)(__entry->i*3 & 1) ? "w" : "r",
+		(int)__entry->bw0,
+		__get_str(sub_name),
+		(int)__entry->i*3 + 1,
+		(int)((__entry->i*3 + 1) >> 3) & 3,
+		(int)((__entry->i*3 + 1) >> 2) & 1,
+		(int)((__entry->i*3 + 1) & 2) ? "h" : "s",
+		(int)((__entry->i*3 + 1) & 1) ? "w" : "r",
+		(int)__entry->bw1,
+		__get_str(sub_name),
+		(int)__entry->i*3 + 2,
+		(int)((__entry->i*3 + 2) >> 3) & 3,
+		(int)((__entry->i*3 + 2) >> 2) & 1,
+		(int)((__entry->i*3 + 2) & 2) ? "h" : "s",
+		(int)((__entry->i*3 + 2) & 1) ? "w" : "r",
+		(int)__entry->bw2)
+);
+TRACE_EVENT(mmqos__mmpc_subsys_dram_bw,
+	TP_PROTO(const char *sub_name, int hrt, int srt),
+	TP_ARGS(sub_name, hrt, srt),
+	TP_STRUCT__entry(
+		__string(sub_name, sub_name)
+		__field(int, hrt)
+		__field(int, srt)
+	),
+	TP_fast_assign(
+		__assign_str(sub_name, sub_name);
+		__entry->hrt = hrt;
+		__entry->srt = srt;
+	),
+	TP_printk("%s_hrt=%d, %s_srt=%d",
+		__get_str(sub_name),
+		(int)__entry->hrt,
+		__get_str(sub_name),
+		(int)__entry->srt)
+);
+TRACE_EVENT(mmqos__mmpc_total_chnn_bw,
+	TP_PROTO(int i, int bw),
+	TP_ARGS(i, bw),
+	TP_STRUCT__entry(
+		__field(int, i)
+		__field(int, bw)
+	),
+	TP_fast_assign(
+		__entry->i = i;
+		__entry->bw = bw;
+	),
+	TP_printk("bw%d_comm%d_%d_%s_%s=%d",
+		(int)__entry->i,
+		(int)(__entry->i >> 3) & 3,
+		(int)(__entry->i >> 2) & 1,
+		(int)(__entry->i & 2) ? "h" : "s",
+		(int)(__entry->i & 1) ? "w" : "r",
+		(int)__entry->bw)
+);
+TRACE_EVENT(mmqos__mmpc_total_dram_bw,
+	TP_PROTO(int hrt, int srt),
+	TP_ARGS(hrt, srt),
+	TP_STRUCT__entry(
+		__field(int, hrt)
+		__field(int, srt)
+	),
+	TP_fast_assign(
+		__entry->hrt = hrt;
+		__entry->srt = srt;
+	),
+	TP_printk("hrt=%d, srt=%d",
+		(int)__entry->hrt,
+		(int)__entry->srt)
 );
 #endif /* _TRACE_MMQOS_EVENTS_H */
 
