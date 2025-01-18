@@ -38,7 +38,7 @@
 #if IS_ENABLED(CONFIG_MTK_PBM)
 #include <mtk_pbm_gpu_cb.h>
 #endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
@@ -110,7 +110,7 @@ unsigned long (*ged_get_last_commit_top_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_top_idx_fp);
 unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool gpufreq_devapc_vio_callback(void);
 struct devapc_power_callbacks devapc_cb_gpu = {
 	.type = DEVAPC_TYPE_GPU,
@@ -120,7 +120,7 @@ struct devapc_power_callbacks devapc_cb_gpu1 = {
 	.type = DEVAPC_TYPE_GPU1,
 	.query_power = gpufreq_devapc_vio_callback,
 };
-#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
+#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 
 /**
  * ===============================================
@@ -2087,14 +2087,14 @@ static void gpufreq_abort(void)
 #endif /* GPUFREQ_FORCE_WDT_ENABLE */
 }
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool gpufreq_devapc_vio_callback(void)
 {
 	gpufreq_set_mfgsys_config(CONFIG_DEVAPC_HANDLE, CONFIG_VAL_IGNORE);
 
 	return GPU_PWR_ON;
 }
-#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
+#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 
 static void gpufreq_init_external_callback(void)
 {
@@ -2119,10 +2119,10 @@ static void gpufreq_init_external_callback(void)
 	register_pbm_gpu_notify(&pbm_cb);
 #endif /* CONFIG_MTK_PBM */
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 	register_devapc_power_callback(&devapc_cb_gpu);
 	register_devapc_power_callback(&devapc_cb_gpu1);
-#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
+#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 }
 
 void gpufreq_register_gpufreq_fp(struct gpufreq_platform_fp *platform_fp)
