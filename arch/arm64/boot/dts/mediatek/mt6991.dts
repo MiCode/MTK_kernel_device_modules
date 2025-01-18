@@ -5793,6 +5793,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
 				mediatek,refclk-sel;
 				mediatek,chp-en-disable;
+				mediatek,hsrx-vref-sel = <0x7>;
 				mediatek,u2-sw-efuse;
 				usb2jtag = <&infracfg_ao_clk 1>;
 				nvmem-cells = <&u2_phy_data1>, <&u2_phy_data2>, <&u2_phy_data2>;
@@ -19949,6 +19950,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		compatible = "parade,ps5170";
 		reg = <0x28>;
 		// mediatek,vs-voter = <&pmic 0x189a 0x20 1>;
+		mediatek,tx-eq = <0x0 0x1 0x46>;
 		status = "okay";
 	};
 
