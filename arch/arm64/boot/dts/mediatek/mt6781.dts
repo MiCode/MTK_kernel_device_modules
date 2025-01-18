@@ -590,6 +590,10 @@
 		compatible = "simple-bus";
 	};
 
+	clkchk {
+		compatible = "mediatek,mt6781-clkchk";
+	};
+
 	clocks {
 		clk_null: clk_null {
 			compatible = "fixed-clock";
