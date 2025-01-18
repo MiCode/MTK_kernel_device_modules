@@ -60,6 +60,7 @@ obj-$(CONFIG_MTK_CONN_MD) += conn_md/
 obj-$(CONFIG_MTK_UARTHUB) += uarthub/
 obj-$(CONFIG_MTK_CAM_CAL) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP4) += cam_cal/
+obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += cam_cal/
 obj-$(CONFIG_MTK_AEE_FEATURE) += aee/
 obj-$(CONFIG_MTK_SELINUX_AEE_WARNING) += selinux_warning/
 obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf/
