@@ -53,12 +53,22 @@ config TCPC_MT6370
 	  Say N to disable
 
 config TCPC_MT6375
-	tristate "Mediatek MT6375 Type-C chip driver"
+	tristate "Mediatek MT6375 compatible Type-C chip driver"
 	depends on TCPC_CLASS
 	depends on MFD_MT6375
 	help
 	  Say Y to enable MediaTek MT6375
 	  Mediatek MT6375 Type-C chip driver that works with
+	  Type-C Port Controller Manager to provide USB PD and USB
+	  Type-C functionalities.
+
+config TCPC_MT6379
+	tristate "Mediatek MT6379 compatible Type-C chip driver"
+	depends on TCPC_CLASS
+	depends on MFD_MT6379_I2C || MFD_MT6379_SPMI
+	help
+	  Say Y to enable MediaTek MT6375/MT6379
+	  Mediatek MT6375/MT6379 Type-C chip driver that works with
 	  Type-C Port Controller Manager to provide USB PD and USB
 	  Type-C functionalities.
 

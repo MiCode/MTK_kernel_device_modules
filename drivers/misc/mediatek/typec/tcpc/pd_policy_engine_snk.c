@@ -16,7 +16,6 @@ void pe_snk_startup_entry(struct pd_port *pd_port)
 {
 	uint8_t rx_cap = PD_RX_CAP_PE_STARTUP;
 	bool pr_swap = pd_port->state_machine == PE_STATE_MACHINE_PR_SWAP;
-
 #if CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP
 	uint8_t msg_id_last = pd_port->pe_data.msg_id_rx[TCPC_TX_SOP];
 #endif	/* CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP */
@@ -42,6 +41,7 @@ void pe_snk_startup_entry(struct pd_port *pd_port)
 void pe_snk_discovery_entry(struct pd_port *pd_port)
 {
 	if (pd_check_pe_during_hard_reset(pd_port)) {
+		pd_set_rx_enable(pd_port, PD_RX_CAP_PE_SEND_WAIT_CAP);
 		pd_enable_vbus_safe0v_detection(pd_port);
 		pd_enable_pe_state_timer(pd_port, PD_TIMER_HARD_RESET_SAFE0V);
 	} else

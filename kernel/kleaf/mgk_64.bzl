@@ -491,6 +491,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/typec/tcpc/tcpc_mt6360.ko",
     "drivers/misc/mediatek/typec/tcpc/tcpc_mt6370.ko",
     "drivers/misc/mediatek/typec/tcpc/tcpc_mt6375.ko",
+    "drivers/misc/mediatek/typec/tcpc/tcpc_mt6379.ko",
     "drivers/misc/mediatek/typec/tcpc/tcpc_rt1711h.ko",
     "drivers/misc/mediatek/uarthub/uarthub_drv.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko",

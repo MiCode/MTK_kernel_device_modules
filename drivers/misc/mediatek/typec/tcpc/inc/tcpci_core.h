@@ -73,7 +73,7 @@
 #define PD_DYNAMIC_SENDER_RESPONSE	1
 #else
 #define PD_DYNAMIC_SENDER_RESPONSE	0
-#endif
+#endif /* CONFIG_USB_POWER_DELIVERY */
 
 #define PD_BUG_ON(x)	WARN_ON(x)
 
@@ -125,7 +125,6 @@ struct tcpc_desc {
 #define TCPC_REG_POWER_STATUS_VBUS_PRES		(1<<2)
 
 /* TCPC Alert Register Define */
-#define TCPC_REG_ALERT_EXT_WATCHDOG		(1<<(16+2))
 #define TCPC_REG_ALERT_EXT_VBUS_80		(1<<(16+1))
 #define TCPC_REG_ALERT_EXT_WAKEUP		(1<<(16+0))
 
@@ -156,9 +155,7 @@ struct tcpc_desc {
 
 /* TCPC Behavior Flags */
 #define TCPC_FLAGS_RETRY_CRC_DISCARD		(1<<0)
-#define TCPC_FLAGS_LPM_WAKEUP_WATCHDOG		(1<<1)
 #define TCPC_FLAGS_PD_REV30			(1<<2)
-#define TCPC_FLAGS_WATCHDOG_EN			(1<<3)
 #define TCPC_FLAGS_WATER_DETECTION		(1<<4)
 #define TCPC_FLAGS_CABLE_TYPE_DETECTION		(1<<5)
 #define TCPC_FLAGS_VCONN_SAFE5V_ONLY		(1<<6)
@@ -220,7 +217,6 @@ struct tcpc_ops {
 	int (*get_cc)(struct tcpc_device *tcpc, int *cc1, int *cc2);
 	int (*set_cc)(struct tcpc_device *tcpc, int pull);
 	int (*set_polarity)(struct tcpc_device *tcpc, int polarity);
-	int (*set_low_rp_duty)(struct tcpc_device *tcpc, bool low_rp);
 	int (*set_vconn)(struct tcpc_device *tcpc, int enable);
 	int (*deinit)(struct tcpc_device *tcpc);
 	int (*alert_vendor_defined_handler)(struct tcpc_device *tcpc);
@@ -233,22 +229,11 @@ struct tcpc_ops {
 	int (*set_water_protection)(struct tcpc_device *tcpc, bool en);
 #endif /* CONFIG_WATER_DETECTION */
 	int (*set_cc_hidet)(struct tcpc_device *tcpc, bool en);
+	int (*get_cc_hi)(struct tcpc_device *tcpc);
 
-	int (*set_floating_ground)(struct tcpc_device *tcpc, bool en);
-
-	int (*set_otp_fwen)(struct tcpc_device *tcpc, bool en);
 	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
-#if CONFIG_TCPC_LOW_POWER_MODE
-	int (*is_low_power_mode)(struct tcpc_device *tcpc);
 	int (*set_low_power_mode)(struct tcpc_device *tcpc, bool en, int pull);
-#endif /* CONFIG_TCPC_LOW_POWER_MODE */
-
-	int (*set_watchdog)(struct tcpc_device *tcpc, bool en);
-
-#if CONFIG_TCPC_INTRST_EN
-	int (*set_intrst)(struct tcpc_device *tcpc, bool en);
-#endif /* CONFIG_TCPC_INTRST_EN */
 
 #if CONFIG_TYPEC_CAP_AUTO_DISCHARGE
 #if CONFIG_TCPC_AUTO_DISCHARGE_IC
@@ -351,15 +336,9 @@ struct tcpc_device {
 	bool typec_drp_try_timeout;
 	bool typec_lpm;
 	bool typec_power_ctrl;
-	bool typec_watchdog;
-	bool typec_reach_vsafe0v;
 	bool typec_is_attached_src;
 
 	int typec_usb_sink_curr;
-
-#if CONFIG_TYPEC_CAP_CUSTOM_HV
-	bool typec_during_custom_hv;
-#endif	/* CONFIG_TYPEC_CAP_CUSTOM_HV */
 
 #if CONFIG_TYPEC_CAP_ROLE_SWAP
 	uint8_t typec_during_role_swap;
@@ -460,14 +439,20 @@ struct tcpc_device {
 	bool vbus_present;
 	u8 pd_inited_flag:1; /* MTK Only */
 
-	/* TypeC Shield Protection */
-	enum tcpc_fod_status typec_fod;
 	int bootmode;
 #if CONFIG_CABLE_TYPE_DETECTION
 	enum tcpc_cable_type typec_cable_type;
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
+
+	/* TypeC Shield Protection */
+#if CONFIG_WATER_DETECTION
+	bool wd_in_kpoc;
+#endif /* CONFIG_WATER_DETECTION */
+	enum tcpc_fod_status typec_fod;
 	bool typec_otp;
 	bool typec_vbus_to_cc_en;
+	bool cc_hidet_en;
+	int cc_hi;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)

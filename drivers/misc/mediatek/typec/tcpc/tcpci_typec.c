@@ -17,13 +17,6 @@
 #define CONFIG_TYPEC_CAP_TRY_STATE 0
 #endif
 
-/* For Rp3A */
-#define RICHTEK_PD_COMPLIANCE_FAKE_AUDIO_ACC	0
-/* For Rp3A */
-#define RICHTEK_PD_COMPLIANCE_FAKE_EMARK_ONLY	0
-/* For Rp-DFT */
-#define RICHTEK_PD_COMPLIANCE_FAKE_RA_DETACH	0
-
 enum TYPEC_WAIT_PS_STATE {
 	TYPEC_WAIT_PS_DISABLE = 0,
 	TYPEC_WAIT_PS_SNK_VSAFE5V,
@@ -180,7 +173,6 @@ static const char *const typec_state_names[] = {
 #endif	/* CONFIG_TYPEC_CAP_ROLE_SWAP */
 
 #if CONFIG_WATER_DETECTION
-	"WaterProtection.Wait",
 	"WaterProtection",
 #endif /* CONFIG_WATER_DETECTION */
 
@@ -209,7 +201,7 @@ static inline void typec_transfer_state(struct tcpc_device *tcpc,
  */
 
 #if TYPEC_INFO_ENABLE || TYPEC_DBG_ENABLE
-static const char *const typec_attach_name[] = {
+static const char *const typec_attach_names[] = {
 	"NULL",
 	"SINK",
 	"SOURCE",
@@ -219,6 +211,7 @@ static const char *const typec_attach_name[] = {
 	"DBGACC_SNK",
 	"CUSTOM_SRC",
 	"NORP_SRC",
+	"PROTECTION",
 };
 #endif /* TYPEC_INFO_ENABLE || TYPEC_DBG_ENABLE */
 
@@ -228,12 +221,12 @@ static int typec_alert_attach_state_change(struct tcpc_device *tcpc)
 
 	if (tcpc->typec_attach_old == tcpc->typec_attach_new) {
 		TYPEC_DBG("Attached-> %s(repeat)\n",
-			typec_attach_name[tcpc->typec_attach_new]);
+			typec_attach_names[tcpc->typec_attach_new]);
 		return 0;
 	}
 
 	TYPEC_INFO("Attached-> %s\n",
-		   typec_attach_name[tcpc->typec_attach_new]);
+		   typec_attach_names[tcpc->typec_attach_new]);
 
 	/* Report function */
 	ret = tcpci_report_usb_port_changed(tcpc);
@@ -353,14 +346,13 @@ static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
 	}
 #endif	/* CONFIG_TYPEC_CAP_ROLE_SWAP */
 
-	if (tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION)
-		tcpc_typec_handle_fod(tcpc, TCPC_FOD_NONE);
 #if CONFIG_CABLE_TYPE_DETECTION
-	if ((tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION) &&
-	    (tcpc->typec_state == typec_attached_snk ||
-	    tcpc->typec_state == typec_unattachwait_pe))
+	if (tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION)
 		tcpc_typec_handle_ctd(tcpc, TCPC_CABLE_TYPE_NONE);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
+
+	if (tcpc->cc_hidet_en)
+		tcpci_set_cc_hidet(tcpc, false);
 
 	if (!typec_is_cc_no_res()) {
 		tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
@@ -402,16 +394,30 @@ static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
 
 static void typec_unattached_entry(struct tcpc_device *tcpc)
 {
-#if CONFIG_TYPEC_CAP_CUSTOM_HV
-	tcpc->typec_during_custom_hv = false;
-#endif	/* CONFIG_TYPEC_CAP_CUSTOM_HV */
-
 	tcpc->typec_usb_sink_curr = CONFIG_TYPEC_SNK_CURR_DFT;
 
 	if (tcpc->typec_power_ctrl)
 		tcpci_set_vconn(tcpc, false);
 	typec_unattached_cc_entry(tcpc);
 	typec_unattached_power_entry(tcpc);
+}
+
+static bool typec_is_in_protection_states(struct tcpc_device *tcpc)
+{
+#if CONFIG_WATER_DETECTION
+	if (tcpc->typec_state == typec_water_protection)
+		return true;
+#endif /* CONFIG_WATER_DETECTION */
+
+	if ((tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION) &&
+	    tcpc->typec_state == typec_foreign_object_protection)
+		return true;
+
+	if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
+	    tcpc->typec_state == typec_otp)
+		return true;
+
+	return false;
 }
 
 static void typec_attach_new_unattached(struct tcpc_device *tcpc)
@@ -446,9 +452,16 @@ static void typec_cc_open_entry(struct tcpc_device *tcpc, uint8_t state)
 	typec_attach_new_unattached(tcpc);
 	TYPEC_NEW_STATE(state);
 	tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-	typec_enable_low_power_mode(tcpc);
+	if (tcpc->typec_state == typec_disabled)
+		typec_enable_low_power_mode(tcpc);
+	else
+		typec_disable_low_power_mode(tcpc);
 	typec_unattached_power_entry(tcpc);
-	typec_postpone_state_change(tcpc);
+	typec_alert_attach_state_change(tcpc);
+	if (typec_is_in_protection_states(tcpc)) {
+		tcpc->typec_attach_new = TYPEC_PROTECTION;
+		typec_postpone_state_change(tcpc);
+	}
 }
 
 static inline void typec_error_recovery_entry(struct tcpc_device *tcpc)
@@ -779,9 +792,7 @@ static inline void typec_cc_src_detect_entry(
 	struct tcpc_device *tcpc)
 {
 	/* If Port Partner act as Sink with low VBUS, wait vSafe0v */
-	bool vbus_absent = tcpci_check_vsafe0v(tcpc);
-
-	if (vbus_absent || tcpc->typec_reach_vsafe0v)
+	if (tcpci_check_vsafe0v(tcpc))
 		typec_cc_src_detect_vsafe0v_entry(tcpc);
 	else
 		typec_wait_ps_change(tcpc, TYPEC_WAIT_PS_SRC_VSAFE0V);
@@ -867,33 +878,8 @@ static inline bool typec_audio_acc_sink_vbus(
 }
 #endif	/* CONFIG_TYPEC_CAP_AUDIO_ACC_SINK_VBUS */
 
-#if RICHTEK_PD_COMPLIANCE_FAKE_AUDIO_ACC ||\
-			RICHTEK_PD_COMPLIANCE_FAKE_EMARK_ONLY
-static bool typec_is_fake_ra_rp30(struct tcpc_device *tcpc)
-{
-	if (TYPEC_CC_PULL_GET_RP_LVL(tcpc->typec_local_cc) == TYPEC_RP_3_0) {
-		__tcpci_set_cc(tcpc, TYPEC_CC_RP_DFT);
-		usleep_range(1000, 2000);
-		return tcpci_get_cc(tcpc) != 0;
-	}
-
-	return false;
-}
-#endif
-
 static inline bool typec_audio_acc_attached_entry(struct tcpc_device *tcpc)
 {
-#if RICHTEK_PD_COMPLIANCE_FAKE_AUDIO_ACC
-	if (typec_is_fake_ra_rp30(tcpc)) {
-		TYPEC_DBG("[Audio] Fake Both Ra\n");
-		if (typec_check_cc_any(TYPEC_CC_VOLT_RD))
-			typec_cc_src_detect_entry(tcpc);
-		else
-			typec_cc_src_remove_entry(tcpc);
-		return 0;
-	}
-#endif	/* RICHTEK_PD_COMPLIANCE_FAKE_AUDIO_ACC */
-
 	TYPEC_NEW_STATE(typec_audioaccessory);
 	TYPEC_DBG("[Audio] CC1&2 Both Ra\n");
 	tcpc->typec_attach_new = TYPEC_ATTACHED_AUDIO;
@@ -958,11 +944,6 @@ static inline bool typec_attached_snk_cc_change(struct tcpc_device *tcpc)
 		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port))
 			pd_put_sink_tx_event(tcpc, cc_res);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
-
-#if CONFIG_TYPEC_CAP_CUSTOM_HV
-		if (tcpc->typec_during_custom_hv)
-			return true;
-#endif	/* CONFIG_TYPEC_CAP_CUSTOM_HV */
 
 		tcpci_sink_vbus(tcpc,
 				TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, -1);
@@ -1192,22 +1173,6 @@ static inline bool typec_is_cc_attach(struct tcpc_device *tcpc)
 	int cc2 = typec_get_cc2();
 	int cc_res = typec_get_cc_res();
 
-#if RICHTEK_PD_COMPLIANCE_FAKE_RA_DETACH
-	if (tcpc->typec_attach_old == TYPEC_ATTACHED_SRC
-		&& (cc_res == TYPEC_CC_VOLT_RA) &&
-		(tcpc->typec_local_cc == TYPEC_CC_RP_DFT)) {
-
-		tcpci_set_cc(tcpc, TYPEC_CC_RP_1_5);
-		usleep_range(1000, 2000);
-
-		if (tcpci_get_cc(tcpc)) {
-			TYPEC_INFO("[Detach] Fake Ra\n");
-			cc1 = typec_get_cc1();
-			cc2 = typec_get_cc2();
-			cc_res = typec_get_cc_res();
-		}
-	}
-#endif	/* RICHTEK_PD_COMPLIANCE_FAKE_RA_DETACH */
 	switch (tcpc->typec_state) {
 	case typec_attached_snk:
 	case typec_attached_src:
@@ -1244,14 +1209,6 @@ static inline bool typec_is_cc_attach(struct tcpc_device *tcpc)
 
 		/* Cable Only, no device */
 		if ((cc1+cc2) == TYPEC_CC_VOLT_RA) {
-#if RICHTEK_PD_COMPLIANCE_FAKE_EMARK_ONLY
-			if (typec_is_fake_ra_rp30(tcpc)) {
-				TYPEC_DBG("[Cable] Fake Ra\n");
-				if ((cc1+cc2) == TYPEC_CC_VOLT_RD)
-					cc_attach = true;
-				break;
-			}
-#endif	/* RICHTEK_PD_COMPLIANCE_FAKE_EMARK_ONLY */
 			cc_attach = false;
 			TYPEC_INFO("[Cable] Ra Only\n");
 		}
@@ -1271,16 +1228,8 @@ static inline int typec_enter_low_power_mode(struct tcpc_device *tcpc)
 		return 0;
 
 	ret = tcpci_set_low_power_mode(tcpc, true);
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 	if (ret < 0)
 		tcpc_enable_lpm_timer(tcpc, true);
-#else
-	ret = tcpci_is_low_power_mode(tcpc);
-	if (ret <= 0) {
-		tcpc_enable_lpm_timer(tcpc, true);
-		ret = -EAGAIN;
-	}
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 	return ret;
 }
@@ -1308,9 +1257,9 @@ static inline int typec_handle_try_sink_cc_change(
 }
 #endif	/* CONFIG_TYPEC_CAP_TRY_SINK */
 
-static inline int typec_get_rp_present_flag(struct tcpc_device *tcpc)
+int tcpc_typec_get_rp_present_flag(struct tcpc_device *tcpc)
 {
-	uint8_t rp_flag = 0;
+	int rp_flag = 0;
 
 	if (tcpc->typec_remote_cc[0] >= TYPEC_CC_VOLT_SNK_DFT
 		&& tcpc->typec_remote_cc[0] != TYPEC_CC_DRP_TOGGLING)
@@ -1321,25 +1270,6 @@ static inline int typec_get_rp_present_flag(struct tcpc_device *tcpc)
 		rp_flag |= 2;
 
 	return rp_flag;
-}
-
-static bool typec_is_in_protection_states(struct tcpc_device *tcpc)
-{
-#if CONFIG_WATER_DETECTION
-	if (tcpc->typec_state == typec_water_protection_wait ||
-	    tcpc->typec_state == typec_water_protection)
-		return true;
-#endif /* CONFIG_WATER_DETECTION */
-
-	if ((tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION) &&
-	    tcpc->typec_state == typec_foreign_object_protection)
-		return true;
-
-	if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
-	    tcpc->typec_state == typec_otp)
-		return true;
-
-	return false;
 }
 
 bool tcpc_typec_is_cc_open_state(struct tcpc_device *tcpc)
@@ -1361,7 +1291,7 @@ bool tcpc_typec_is_cc_open_state(struct tcpc_device *tcpc)
 }
 
 static inline bool typec_is_ignore_cc_change(
-	struct tcpc_device *tcpc, uint8_t rp_present)
+	struct tcpc_device *tcpc, int rp_present)
 {
 	if (typec_is_drp_toggling())
 		return true;
@@ -1371,14 +1301,13 @@ static inline bool typec_is_ignore_cc_change(
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (tcpc->typec_state == typec_attachwait_snk &&
-		typec_get_rp_present_flag(tcpc) == rp_present) {
+		tcpc_typec_get_rp_present_flag(tcpc) == rp_present) {
 		TYPEC_DBG("[AttachWait] Ignore RpLvl Alert\n");
 		return true;
 	}
 
 	if (tcpc->pd_wait_pr_swap_complete) {
 		TYPEC_DBG("[PR.Swap] Ignore CC_Alert\n");
-		tcpc->typec_remote_rp_level = typec_get_cc_res();
 		return true;
 	}
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -1407,10 +1336,7 @@ static inline bool typec_is_ignore_cc_change(
 
 int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 {
-	int ret;
-	uint8_t rp_present;
-
-	rp_present = typec_get_rp_present_flag(tcpc);
+	int ret = 0, rp_present = tcpc_typec_get_rp_present_flag(tcpc);
 
 	ret = tcpci_get_cc(tcpc);
 	if (ret < 0)
@@ -1433,12 +1359,7 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 	if (typec_is_cc_attach(tcpc)) {
 		typec_disable_low_power_mode(tcpc);
 		typec_attach_wait_entry(tcpc);
-		if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
-			((typec_get_cc1() + typec_get_cc2()) >= TYPEC_CC_VOLT_SNK_DFT))
-			tcpci_set_otp_fwen(tcpc, true);
 	} else {
-		if (tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP)
-			tcpci_set_otp_fwen(tcpc, false);
 		typec_detach_wait_entry(tcpc);
 	}
 
@@ -1580,7 +1501,6 @@ out:
 
 static inline int typec_handle_src_reach_vsafe0v(struct tcpc_device *tcpc)
 {
-	tcpc->typec_reach_vsafe0v = true;
 	typec_cc_src_detect_vsafe0v_entry(tcpc);
 	typec_alert_attach_state_change(tcpc);
 	return 0;
@@ -1726,6 +1646,15 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 			mutex_unlock(&tcpc->access_lock);
 		}
 		break;
+
+#if CONFIG_WATER_DETECTION
+	case TYPEC_RT_TIMER_WD_IN_KPOC:
+		if (tcpc->wd_in_kpoc) {
+			tcpci_report_usb_port_detached(tcpc);
+			ret = tcpci_set_water_protection(tcpc, true);
+		}
+		break;
+#endif /* CONFIG_WATER_DETECTION */
 	}
 
 	return ret;
@@ -1812,7 +1741,7 @@ static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 
 int tcpc_typec_handle_ps_change(struct tcpc_device *tcpc, int vbus_level)
 {
-	tcpc->typec_reach_vsafe0v = false;
+	tcpci_notify_ps_change(tcpc, vbus_level);
 
 #if CONFIG_TYPEC_CAP_NORP_SRC
 	if (typec_try_norp_src(tcpc))
@@ -1883,14 +1812,6 @@ int tcpc_typec_handle_vsafe0v(struct tcpc_device *tcpc)
 		TYPEC_DBG("[Warning] DRP Toggling\n");
 		return 0;
 	}
-
-#if CONFIG_WATER_DETECTION
-	if (tcpc->typec_state == typec_water_protection_wait) {
-		TYPEC_NEW_STATE(typec_water_protection);
-		tcpci_set_water_protection(tcpc, true);
-		return 0;
-	}
-#endif /* CONFIG_WATER_DETECTION */
 
 	if (tcpc_typec_is_cc_open_state(tcpc))
 		return 0;
@@ -2019,6 +1940,7 @@ int tcpc_typec_change_role(
 int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 {
 	int ret = 0;
+	char *reason = NULL;
 
 	if (typec_role == TYPEC_ROLE_UNKNOWN ||
 		typec_role >= TYPEC_ROLE_NR) {
@@ -2030,9 +1952,15 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 
 	if ((tcpc->bootmode == 8 || tcpc->bootmode == 9) &&
 	    typec_role != TYPEC_ROLE_SRC) {
+		reason = "KPOC";
 		typec_role = TYPEC_ROLE_SNK;
-		TYPEC_INFO("KPOC, typec_init: %s\n",
-			   typec_role_name[typec_role]);
+	} else if (tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND) {
+		reason = "WD0";
+		typec_role = TYPEC_ROLE_SNK;
+	}
+	if (reason) {
+		TYPEC_INFO("%s, typec_init: %s\n",
+			   reason, typec_role_name[typec_role]);
 	}
 
 	tcpc->typec_role = typec_role;
@@ -2044,13 +1972,13 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 	tcpc->wake_lock_pd = 0;
 	mutex_unlock(&tcpc->access_lock);
 
-	tcpci_get_cc(tcpc);
+	ret = tcpci_get_cc(tcpc);
 
 #if CONFIG_TYPEC_CAP_NORP_SRC
-	if (!tcpci_check_vbus_valid(tcpc))
+	if (!tcpci_check_vbus_valid(tcpc) || ret < 0)
 		tcpc->typec_power_ctrl = true;
 #else
-	if (!tcpci_check_vbus_valid(tcpc) || typec_is_cc_no_res())
+	if (!tcpci_check_vbus_valid(tcpc) || ret < 0 || typec_is_cc_no_res())
 		tcpc->typec_power_ctrl = true;
 #endif	/* CONFIG_TYPEC_CAP_NORP_SRC */
 
@@ -2067,53 +1995,73 @@ int tcpc_typec_handle_wd(struct tcpc_device **tcpcs, size_t nr, bool wd)
 {
 	int ret = 0, i = 0;
 	struct tcpc_device *tcpc = NULL;
+	bool cc_open = false;
+	uint8_t typec_state = typec_disabled;
+	bool modal_operation = false;
+	bool hreset = false;
 
 	if (nr < 1)
 		return ret;
+#if CONFIG_TCPC_LOG_WITH_PORT_NAME
 	tcpc = tcpcs[0];
-	TYPEC_INFO("%s %d, nr = %d\n", __func__, wd, nr);
-
-	if (tcpc->bootmode == 8 || tcpc->bootmode == 9) {
-		TYPEC_INFO("KPOC does not enter/exit water protection\n");
-		for (i = 0; i < nr; i++) {
-			tcpc = tcpcs[i];
-			tcpci_notify_wd_status(tcpc, wd);
-		}
-		return ret;
-	}
+#endif /* CONFIG_TCPC_LOG_WITH_PORT_NAME */
+	TYPEC_INFO("%s %d, nr = %lu\n", __func__, wd, nr);
 
 	for (i = 0; i < nr; i++) {
 		tcpc = tcpcs[i];
-		if (tcpc->typec_state != typec_unattached_snk &&
-		    tcpc->typec_state != typec_unattached_src &&
-		    tcpc->typec_state != typec_water_protection)
-			return -1;
+		if (i > 0)
+			tcpci_lock_typec(tcpc);
+		cc_open = tcpc_typec_is_cc_open_state(tcpc);
+		typec_state = tcpc->typec_state;
+		modal_operation = tcpc->pd_port.pe_data.modal_operation;
+		hreset = tcpc->pd_wait_hard_reset_complete;
+		if (i > 0)
+			tcpci_unlock_typec(tcpc);
+		if (wd && (cc_open ||
+			   typec_state == typec_audioaccessory ||
+			   modal_operation))
+			return -EPERM;
+#if !CONFIG_WD_DURING_PLUGGED_IN
+		if (typec_state != typec_unattached_snk &&
+		    typec_state != typec_unattached_src &&
+		    typec_state != typec_attachwait_snk &&
+		    typec_state != typec_attachwait_src &&
+		    typec_state != typec_water_protection)
+			return -EPERM;
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
+		if (wd && hreset)
+			return -EAGAIN;
 	}
 
 	i = 0;
 repeat:
 	tcpc = tcpcs[i];
+	if (i > 0)
+		tcpci_lock_typec(tcpc);
+	if (tcpc->bootmode == 8 || tcpc->bootmode == 9) {
+		tcpc->wd_in_kpoc = wd;
+		if (wd) {
+			tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_WD_IN_KPOC);
+		} else {
+			tcpc_disable_timer(tcpc, TYPEC_RT_TIMER_WD_IN_KPOC);
+			tcpci_set_water_protection(tcpc, false);
+			ret = tcpci_report_usb_port_attached(tcpc);
+		}
+		goto out;
+	}
 	if (!wd) {
 		tcpci_set_water_protection(tcpc, false);
 		tcpc_typec_error_recovery(tcpc);
 		goto out;
 	}
 
-	typec_attach_new_unattached(tcpc);
-	ret = tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-	ret = tcpci_is_vsafe0v(tcpc);
-	if (ret == 0) {
-		TYPEC_NEW_STATE(typec_water_protection_wait);
-		typec_wait_ps_change(tcpc, TYPEC_WAIT_PS_SRC_VSAFE0V);
-	} else {
-		TYPEC_NEW_STATE(typec_water_protection);
-		tcpci_set_water_protection(tcpc, true);
-	}
+	typec_cc_open_entry(tcpc, typec_water_protection);
+	tcpci_set_cc_hidet(tcpc, true);
+	ret = tcpci_set_water_protection(tcpc, true);
 out:
 	tcpci_notify_wd_status(tcpc, wd);
-	if (tcpc->typec_state == typec_water_protection ||
-	    tcpc->typec_state == typec_water_protection_wait)
-		typec_alert_attach_state_change(tcpc);
+	if (i > 0)
+		tcpci_unlock_typec(tcpc);
 	if (++i < nr)
 		goto repeat;
 	return ret;
@@ -2121,23 +2069,25 @@ out:
 EXPORT_SYMBOL(tcpc_typec_handle_wd);
 #endif /* CONFIG_WATER_DETECTION */
 
-int tcpc_typec_handle_fod(struct tcpc_device *tcpc,
-			  enum tcpc_fod_status fod)
+int tcpc_typec_handle_fod(struct tcpc_device *tcpc, enum tcpc_fod_status fod)
 {
 	int ret = 0;
 	enum tcpc_fod_status fod_old = tcpc->typec_fod;
+	uint8_t typec_state = tcpc->typec_state;
+
+	TCPC_INFO("%s fod (%d, %d)\n", __func__, fod_old, fod);
 
 	if (!(tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION))
 		return 0;
 
-	TCPC_INFO("%s fod (%d, %d)\n", __func__, tcpc->typec_fod, fod);
-	if (tcpc->typec_fod == fod)
+	if (fod_old == fod)
 		return 0;
-	if (tcpc->typec_fod != TCPC_FOD_NONE && fod != TCPC_FOD_NONE) {
-		TCPC_INFO("%s fod done once %d\n", __func__,
-			  tcpc->typec_fod);
-		return 0;
-	}
+	if (typec_state != typec_unattached_snk &&
+	    typec_state != typec_unattached_src &&
+	    typec_state != typec_attachwait_snk &&
+	    typec_state != typec_attachwait_src &&
+	    typec_state != typec_foreign_object_protection)
+		return -EPERM;
 	tcpc->typec_fod = fod;
 
 #if CONFIG_CABLE_TYPE_DETECTION
@@ -2146,44 +2096,30 @@ int tcpc_typec_handle_fod(struct tcpc_device *tcpc,
 		tcpc_typec_handle_ctd(tcpc, tcpc->typec_cable_type);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
 
-	if ((fod_old == TCPC_FOD_LR) && (fod == TCPC_FOD_NONE)) {
-		tcpci_set_cc_hidet(tcpc, false);
+	if (tcpc->bootmode == 8 || tcpc->bootmode == 9) {
+		TYPEC_INFO("Not to do foreign object protection in KPOC\n");
+		goto out;
+	}
+
+	if (fod_old == TCPC_FOD_LR) {
 		tcpc_typec_error_recovery(tcpc);
 		goto out;
 	}
 	if (fod != TCPC_FOD_LR)
 		goto out;
 
-	if (tcpc->bootmode == 8 || tcpc->bootmode == 9) {
-		TYPEC_INFO("Not to do foreign object protection in KPOC\n");
-		goto out;
-	}
-
-	typec_attach_new_unattached(tcpc);
-	TYPEC_NEW_STATE(typec_foreign_object_protection);
-	ret = tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
+	typec_cc_open_entry(tcpc, typec_foreign_object_protection);
 	ret = tcpci_set_cc_hidet(tcpc, true);
 out:
 	tcpci_notify_fod_status(tcpc);
-	if (tcpc->typec_state == typec_foreign_object_protection)
-		typec_alert_attach_state_change(tcpc);
 	return ret;
 }
 EXPORT_SYMBOL(tcpc_typec_handle_fod);
 
-bool tcpc_typec_ignore_fod(struct tcpc_device *tcpc)
-{
-	return (tcpc->typec_state == typec_attached_snk ||
-		tcpc->typec_state == typec_attached_src ||
-#if CONFIG_TYPEC_CAP_TRY_SINK
-		tcpc->typec_state == typec_try_snk ||
-#endif  /* CONFIG_TYPEC_CAP_TRY_SINK */
-		tcpc->typec_fod != TCPC_FOD_NONE);
-}
-EXPORT_SYMBOL(tcpc_typec_ignore_fod);
-
 int tcpc_typec_handle_otp(struct tcpc_device *tcpc, bool otp)
 {
+	int ret = 0;
+
 	TCPC_INFO("%s otp (%d, %d)\n", __func__, tcpc->typec_otp, otp);
 
 	if (!(tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP))
@@ -2193,20 +2129,15 @@ int tcpc_typec_handle_otp(struct tcpc_device *tcpc, bool otp)
 		return 0;
 	tcpc->typec_otp = otp;
 	if (!otp) {
-		tcpci_set_cc_hidet(tcpc, false);
 		tcpc_typec_error_recovery(tcpc);
 		goto out;
 	}
 
-	typec_attach_new_unattached(tcpc);
-	TYPEC_NEW_STATE(typec_otp);
-	tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-	tcpci_set_cc_hidet(tcpc, true);
+	typec_cc_open_entry(tcpc, typec_otp);
+	ret = tcpci_set_cc_hidet(tcpc, true);
 out:
 	tcpci_notify_typec_otp(tcpc);
-	if (tcpc->typec_state == typec_otp)
-		typec_alert_attach_state_change(tcpc);
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(tcpc_typec_handle_otp);
 
@@ -2216,7 +2147,7 @@ int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 {
 	int ret;
 
-	TCPC_INFO("%s: cable_type = %d\n", __func__, cable_type);
+	TCPC_DBG("%s: cable_type = %d\n", __func__, cable_type);
 
 	if (!(tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION))
 		return 0;
@@ -2255,10 +2186,21 @@ int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 	}
 
 	tcpc->typec_cable_type = cable_type;
-
-	TCPC_INFO("%s cable type %d\n", __func__, tcpc->typec_cable_type);
 	tcpci_notify_cable_type(tcpc);
 	return 0;
 }
 EXPORT_SYMBOL(tcpc_typec_handle_ctd);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
+
+int tcpc_typec_handle_cc_hi(struct tcpc_device *tcpc, int cc_hi)
+{
+	int ret = 0;
+
+	if (tcpc->cc_hi == cc_hi)
+		goto out;
+	tcpc->cc_hi = cc_hi;
+	ret = tcpci_notify_cc_hi(tcpc, cc_hi);
+out:
+	return ret;
+}
+EXPORT_SYMBOL(tcpc_typec_handle_cc_hi);

@@ -464,7 +464,7 @@ bool pd_put_deferred_tcp_event(
 	}
 
 	switch (tcp_event->event_id) {
-	case TCP_DPM_EVT_DISCOVER_CABLE:
+	case TCP_DPM_EVT_DISCOVER_CABLE_ID:
 	case TCP_DPM_EVT_CABLE_SOFTRESET:
 		dpm_reaction_set(pd_port,
 			DPM_REACTION_DYNAMIC_VCONN |
@@ -979,6 +979,7 @@ void pd_notify_pe_idle(struct pd_port *pd_port)
 void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
+	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
 
 	mutex_lock(&tcpc->access_lock);
 	tcpc->pd_wait_vbus_once = wait_evt;
@@ -997,9 +998,11 @@ void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt)
 		}
 
 #if CONFIG_USB_PD_SAFE0V_TIMEOUT
-		mutex_lock(&tcpc->access_lock);
-		tcpci_enable_force_discharge(tcpc, true, 0);
-		mutex_unlock(&tcpc->access_lock);
+		if (!as_sink) {
+			mutex_lock(&tcpc->access_lock);
+			tcpci_enable_force_discharge(tcpc, true, 0);
+			mutex_unlock(&tcpc->access_lock);
+		}
 		tcpc_enable_timer(tcpc, PD_TIMER_VSAFE0V_TOUT);
 #endif	/* CONFIG_USB_PD_SAFE0V_TIMEOUT */
 
@@ -1083,14 +1086,32 @@ void pd_notify_pe_send_hard_reset(struct pd_port *pd_port)
 	mutex_unlock(&tcpc->access_lock);
 }
 
-void pd_notify_pe_execute_pr_swap(struct pd_port *pd_port, bool start_swap)
+void pd_notify_pe_execute_pr_swap(struct pd_port *pd_port)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
-	pd_port->pe_data.during_swap = start_swap;
 	mutex_lock(&tcpc->access_lock);
 	tcpc->pd_wait_pr_swap_complete = true;
 	mutex_unlock(&tcpc->access_lock);
+}
+
+void pd_notify_pe_reset_protocol(struct pd_port *pd_port)
+{
+	struct tcpc_device *tcpc = pd_port->tcpc;
+
+	if (!tcpc->pd_wait_pr_swap_complete)
+		return;
+
+	mutex_lock(&tcpc->access_lock);
+	tcpc->pd_wait_pr_swap_complete = false;
+	mutex_unlock(&tcpc->access_lock);
+
+	/*
+	 *	CC_Alert was ignored if pd_wait_pr_swap_complete = true
+	 *	So enable PDDebounce to detect CC_Again.
+	 */
+
+	tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 }
 
 void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port)
@@ -1101,16 +1122,7 @@ void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port)
 		return;
 
 	pd_port->pe_data.during_swap = false;
-	mutex_lock(&tcpc->access_lock);
-	tcpc->pd_wait_pr_swap_complete = false;
-	mutex_unlock(&tcpc->access_lock);
-
-	/*
-	 *	CC_Alert was ignored if pd_wait_pr_swap_complete = true
-	 *	So enable PDDebounce to detect CC_Again after cancel_pr_swap.
-	 */
-
-	tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
+	pd_notify_pe_reset_protocol(pd_port);
 
 	if (!tcpci_check_vbus_valid(tcpc)
 		&& (pd_port->request_v >= 4000)) {
@@ -1118,15 +1130,6 @@ void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port)
 		pd_put_tcp_pd_event(pd_port, TCP_DPM_EVT_ERROR_RECOVERY,
 				    PD_TCP_FROM_PE);
 	}
-}
-
-void pd_notify_pe_reset_protocol(struct pd_port *pd_port)
-{
-	struct tcpc_device *tcpc = pd_port->tcpc;
-
-	mutex_lock(&tcpc->access_lock);
-	tcpc->pd_wait_pr_swap_complete = false;
-	mutex_unlock(&tcpc->access_lock);
 }
 
 void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode)
