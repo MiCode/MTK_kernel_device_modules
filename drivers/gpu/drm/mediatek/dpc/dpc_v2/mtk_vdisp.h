@@ -6,7 +6,8 @@
 #ifndef __MTK_VDISP_H__
 #define __MTK_VDISP_H__
 
-#include "mtk_dpc.h"
+#include "mtk_dpc_v2.h"
+#include "mtk_vdisp_common.h"
 
 void mtk_vdisp_dpc_register(const struct dpc_funcs *funcs);
 

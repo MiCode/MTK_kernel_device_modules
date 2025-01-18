@@ -136,8 +136,10 @@ mgk_64_device_modules = [
     "drivers/dma-buf/heaps/system_heap.ko",
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
-    "drivers/gpu/drm/mediatek/dpc/mtk_dpc.ko",
-    "drivers/gpu/drm/mediatek/dpc/mtk_vdisp.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mediatek-drm.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_notify.ko",
@@ -2299,8 +2301,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-drm-gateic.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-drm-panel-drv.ko")
-        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/mtk_dpc.ko")
-        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/mtk_vdisp.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")

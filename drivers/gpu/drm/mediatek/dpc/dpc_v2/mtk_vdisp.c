@@ -627,7 +627,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	pm_runtime_get_sync(dev);
 	VDISPDBG("get pd(%d)", pd_id);
 	atomic_inc(&g_mtcmos_cnt);
-	mtk_vdisp_register(&funcs);
+	mtk_vdisp_register(&funcs, VDISP_VER2);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	mtk_smi_set_disp_ops(&smi_funcs);
@@ -647,39 +647,38 @@ static int mtk_vdisp_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id mtk_vdisp_driver_dt_match[] = {
-	{.compatible = "mediatek,mt6989-vdisp-ctrl"},
-	{.compatible = "mediatek,mt6991-vdisp-ctrl"},
+static const struct of_device_id mtk_vdisp_driver_v2_dt_match[] = {
+	{.compatible = "mediatek,mt6991-vdisp-ctrl-v2"},
 	{},
 };
-MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_dt_match);
+MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_v2_dt_match);
 
-struct platform_driver mtk_vdisp_driver = {
+struct platform_driver mtk_vdisp_driver_v2 = {
 	.probe = mtk_vdisp_probe,
 	.remove = mtk_vdisp_remove,
 	.driver = {
-		.name = "mediatek-vdisp-ctrl",
+		.name = "mediatek-vdisp-ctrl-v2",
 		.owner = THIS_MODULE,
-		.of_match_table = mtk_vdisp_driver_dt_match,
+		.of_match_table = mtk_vdisp_driver_v2_dt_match,
 	},
 };
 
 static int __init mtk_vdisp_init(void)
 {
 	VDISPDBG("+");
-	platform_driver_register(&mtk_vdisp_driver);
+	platform_driver_register(&mtk_vdisp_driver_v2);
 	VDISPDBG("-");
 	return 0;
 }
 
 static void __exit mtk_vdisp_exit(void)
 {
-	platform_driver_unregister(&mtk_vdisp_driver);
+	platform_driver_unregister(&mtk_vdisp_driver_v2);
 }
 
 late_initcall(mtk_vdisp_init);
 module_exit(mtk_vdisp_exit);
 MODULE_AUTHOR("William Yang <William-tw.Yang@mediatek.com>");
-MODULE_DESCRIPTION("MTK VDISP driver");
+MODULE_DESCRIPTION("MTK VDISP driver V2.0");
 MODULE_SOFTDEP("post:mediatek-drm");
 MODULE_LICENSE("GPL");

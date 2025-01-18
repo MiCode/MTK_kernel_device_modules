@@ -165,6 +165,9 @@ struct CRTC_MMP_Events {
 	mmp_event dsi_real_sof;
 	mmp_event dsi_ltpo_vsync;
 	mmp_event arp_te;
+	mmp_event leave_vidle;
+	mmp_event enter_vidle;
+	mmp_event pause_vidle;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

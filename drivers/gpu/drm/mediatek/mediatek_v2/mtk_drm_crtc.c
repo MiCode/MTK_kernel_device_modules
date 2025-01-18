@@ -1429,6 +1429,7 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 				mtk_dump_reg(comp);
 			}
 		}
+		mtk_vidle_dpc_analysis();
 		break;
 	case MMSYS_MT6991:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
@@ -11898,6 +11899,16 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 	mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[DDP_FIRST_PATH] = ovl_comp_idx + 1;
 }
 
+static void mtk_set_dpc_dsi_clk(struct mtk_drm_crtc *mtk_crtc, bool enable)
+{
+	unsigned int id = drm_crtc_index(&mtk_crtc->base);
+	unsigned int value = id == 3 ? enable ? 1 : 0 : enable ? 0 : 1;
+
+	mtk_vidle_dsi_pll_set(value);
+
+	DDPMSG("crtc%d %s set %d\n", id, __func__, value);
+}
+
 void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -11953,7 +11964,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (crtc_id != 0)
+	if (crtc_id != 0 && mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
 		mtk_vidle_config_ff(false);
 
 	CRTC_MMP_EVENT_START((int) crtc_id, enable,
@@ -12035,6 +12047,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		/* 3. prepare modules would be used in this CRTC */
 		mtk_crtc_ddp_prepare(mtk_crtc);
 	}
+
+	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 
@@ -13068,6 +13082,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
+	mtk_set_dpc_dsi_clk(mtk_crtc, true);
+
 	mtk_gce_backup_slot_init(mtk_crtc);
 
 	/* 7. set vblank*/
@@ -13081,8 +13097,11 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/* 10. check v-idle enable */
 	mtk_vidle_flag_init(crtc);
-	mtk_vidle_enable(true, priv);
-	mtk_vidle_config_ff(false);
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		mtk_vidle_enable(true, priv);
+		mtk_vidle_config_ff(false);
+	}
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
 }
@@ -13228,8 +13247,11 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
 
-	if ((atomic_read(&priv->kernel_pm.wakelock_cnt) == 2) && (crtc_id != 0))
-		mtk_vidle_config_ff(true);
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		if ((atomic_read(&priv->kernel_pm.wakelock_cnt) == 2) && (crtc_id != 0))
+			mtk_vidle_config_ff(true);
+	}
 
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, disable,
@@ -13460,10 +13482,33 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		}
 		fallthrough;
 	case MML_DIRECT_LINKING:
+		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+		}
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;
+	case MML_DC_ENTERING:
+		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+		}
+		break;
 	case MML_STOP_LINKING:
-		DDP_PROFILE("MML_STOP_LINKING\n");
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
+			DDP_PROFILE("MML DL stop vidle: %d\n", mtk_crtc->mml_link_state);
+		else
+			DDP_PROFILE("MML_STOP_LINKING\n");
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
 		break;
 	default:
@@ -18114,8 +18159,8 @@ static int mtk_drm_mode_switch_thread(void *data)
 
 		/* TODO: set proper DT with corresponding CRTC */
 		if (drm_crtc_index(crtc) == 0)
-			mtk_vidle_update_dt_by_period(crtc);
-
+			mtk_vidle_update_dt_by_type(crtc,
+				mtk_dsi_is_cmd_mode(output_comp) ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 2);
 
 		atomic_set(&mtk_crtc->singal_for_mode_switch, 0);
