@@ -40,7 +40,7 @@ static int __init mtk_sleep_init(void)
 	ccci_set_spm_md_sleep_cb(&spm_is_md1_sleep);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_MDPM_LEGACY_V1)
+#if IS_ENABLED(CONFIG_MTK_MDPM_LEGACY)
 	mdpm_register_md_status_cb(&spm_vcorefs_get_MD_status);
 #endif
 #if IS_ENABLED(CONFIG_USB_MTK_HDRC)

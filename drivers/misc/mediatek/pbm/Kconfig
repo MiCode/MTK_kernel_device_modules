@@ -1,6 +1,5 @@
 config MTK_PBM
 	tristate "MTK power budget management"
-	select MTK_MDPM
 	help
 	  This kernel config can be used to enable power budget management.
 	  When enable this option, pbm will allocate limit power budget to

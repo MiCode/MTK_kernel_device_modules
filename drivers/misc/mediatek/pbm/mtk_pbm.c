@@ -22,7 +22,7 @@
 #include "mtk_dynamic_loading_throttling.h"
 #include "mtk_pbm.h"
 #include "mtk_pbm_common.h"
-#if IS_ENABLED(CONFIG_MTK_MDPM)
+#if IS_ENABLED(CONFIG_MTK_MDPM) || IS_ENABLED(CONFIG_MTK_MDPM_LEGACY)
 #include "mtk_mdpm.h"
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
@@ -155,7 +155,7 @@ static unsigned long hpf_get_power_md1(void)
 	struct hpf *hpfmgr = &hpf_ctrl;
 
 	if (hpfmgr->switch_md1)
-#if IS_ENABLED(CONFIG_MTK_MDPM)
+#if IS_ENABLED(CONFIG_MTK_MDPM) || IS_ENABLED(CONFIG_MTK_MDPM_LEGACY)
 		hpfmgr->loading_md1 = get_md1_power(MAX_POWER, true);
 #else
 		hpfmgr->loading_md1 = MAX_MD1_POWER;
