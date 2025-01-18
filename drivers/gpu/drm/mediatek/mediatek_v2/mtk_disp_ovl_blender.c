@@ -203,6 +203,8 @@
 #define OVL_BLD_ROI_TIMING_6		(0x70c)
 
 #define OVL_BLD_DBG_STATUS0			(0x7a0)
+#define OVL_BLD_DBG_STATUS1			(0x7a4)
+#define OVL_BLD_DBG_STATUS3			(0x7ac)
 #define OVL_BLD_DBG_STATUS5			(0x7b4)
 #define BGCLR_IN_VALID		REG_FLD_MSB_LSB(0, 0)
 #define BGCLR_IN_READY		REG_FLD_MSB_LSB(1, 1)
@@ -306,16 +308,23 @@ static void ovl_dump_bld_layer_info(struct mtk_ddp_comp *comp, int layer)
 	 * REG_FLD_VAL_GET(L_CON_FLD_BTSW, con),
 	 * REG_FLD_VAL_GET(L_CON_FLD_RGB_SWAP, con));
 	 */
-	DDPDUMP("%s_L%d:(%u,%u,%ux%u)\n",
-		layer ? "ext" : "phy", layer, offset & 0xfff,
-		(offset >> 16) & 0xfff, src_size & 0xfff,
+	DDPDUMP("%s_L%d:  size=%ux%u,",
+		layer ? "ext" : "phy", layer,
+		src_size & 0xfff,
 		(src_size >> 16) & 0xfff);
-	DDPDUMP("pitch=%u,source=%s,aen=%u,alpha=%u,cl=0x%x\n",
-		pitch & 0xffff,
-		pixel_src[REG_FLD_VAL_GET(L_CON_FLD_LSRC, lsrc)],
+	DDPDUMP("offset=(%u,%u), clip(L,R,T,B)=(%u,%u,%u,%u)\n",
+		offset & 0xfff,
+		(offset >> 16) & 0xfff,
+		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_LEFT,clip),
+		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_RIGHT,clip),
+		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_TOP,clip),
+		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_BOTTOM,clip));
+	DDPDUMP("layer_src=0x%x, clrfmt=0x%x, a_en=0x%x, alpha=0x%x pitch=0x%x\n",
+		REG_FLD_VAL_GET(L_CON_FLD_LSRC, lsrc),
+		readl(OVL_BLD_L0_CLRFMT(layer) + baddr),
 		REG_FLD_VAL_GET(L_ALPHA_EN, con),
 		REG_FLD_VAL_GET(L_ALPHA, con),
-		clip);
+		pitch & 0xffff);
 }
 
 static void ovl_blender_printf_status(unsigned int status)
@@ -354,19 +363,20 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	path_con = readl(DISP_REG_OVL_BLD_DATAPATH_CON + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,l0_en=%d,ext_en(%d,%d,%d)bg(%dx%d)\n",
-		ovl_en & 0x1, layer_en[0]&0x1, layer_en[1]&0x1, layer_en[2]&0x1, layer_en[3]&0x1,
+	DDPDUMP("ovl_en=%d,\nbgclr_in_sel=%d, to_outproc=%d, to_next_layer=%d\n",
+		ovl_en & 0x1,
+		REG_FLD_VAL_GET(DISP_BLD_BGCLR_IN_SEL, path_con),
+		REG_FLD_VAL_GET(DISP_BLD_OUT_PROC, path_con),
+		REG_FLD_VAL_GET(DISP_BLD_OUT_NEXT_LAYER, path_con));
+	DDPDUMP("sta=0x%x\n",readl(DISP_REG_OVL_BLD_STA + baddr));
+	DDPDUMP("roi_size=%dx%d, cur_pos=(%d,%d), pos_hit=0x%x, src_rly_pos=(%d,%d)\n",
 		readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) & 0xfff,
-		(readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) >> 16) & 0xfff);
-	DDPDUMP("in_sel=%s,proc:%d,nxt:%d,sta=0x%x\n",
-		REG_FLD_VAL_GET(DISP_BLD_BGCLR_IN_SEL, path_con) ? "e" : "b",
-		REG_FLD_VAL_GET(DISP_BLD_OUT_PROC, path_con) ,
-		REG_FLD_VAL_GET(DISP_BLD_OUT_NEXT_LAYER, path_con),
-		readl(DISP_REG_OVL_BLD_STA + baddr));
-
-	DDPDUMP("cus_pos(%u,%u)\n",
+		(readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) >> 16) & 0xfff,
 		readl(OVL_BLD_DBG_STATUS0 + baddr) & 0x1fff,
-		(readl(OVL_BLD_DBG_STATUS0 + baddr) >> 16) & 0x1fff);
+		(readl(OVL_BLD_DBG_STATUS0 + baddr) >> 16) & 0x1fff,
+		readl(OVL_BLD_DBG_STATUS1 + baddr),
+		readl(OVL_BLD_DBG_STATUS3 + baddr) & 0x1fff,
+		(readl(OVL_BLD_DBG_STATUS3 + baddr) >> 16) & 0x1fff);
 
 	if (!(ovl_en & 0x1))
 		return 0;
