@@ -555,14 +555,14 @@ static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
 			__func__, comp->id, bypass);
 
 	/* postmask bypass control by round_corner_en and bebug flag */
-	if (postmask->postmask_debug)
-		return;
+	//if (postmask->postmask_debug)
+		//return;
 
-	postmask->postmask_force_relay = 0;
+	postmask->postmask_force_relay = bypass;
 
-	/* config relay mode*/
-	//cmdq_pkt_write(handle, comp->cmdq_base,
-	//	       comp->regs_pa + DISP_POSTMASK_CFG, bypass, 0x1);
+	/* config relay mode */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_POSTMASK_CFG, bypass, 0x1);
 }
 
 void mtk_postmask_relay_debug(struct mtk_ddp_comp *comp, unsigned int relay)
