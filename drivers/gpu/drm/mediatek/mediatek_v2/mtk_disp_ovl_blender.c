@@ -411,7 +411,6 @@ static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
-#ifdef IF_ZERO
 	int i = 0;
 	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
@@ -419,10 +418,6 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 		DDPMSG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			   comp->regs_pa + DISP_REG_OVL_BLD_EN,
-			   DISP_OVL_FORCE_RELAY_MODE, ~0);
 
 	/**
 	 * cmdq_pkt_write(handle, comp->cmdq_base,
@@ -432,7 +427,6 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	for (i = 0; i < OVL_PHY_LAYER_NR; i++)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 					   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(i), 0, ~0);
-#endif
 }
 
 static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
