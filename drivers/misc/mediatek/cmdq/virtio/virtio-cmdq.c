@@ -571,6 +571,25 @@ static bool cmdq_mbox_last_tx_done(struct mbox_chan *chan)
 	return true;
 }
 
+static void cmdq_config_dma_mask(struct device *dev)
+{
+	u32 dma_mask_bit = 0;
+	s32 ret;
+
+	ret = of_property_read_u32(dev->of_node, "dma-mask-bit",
+		&dma_mask_bit);
+	/* if not assign from dts, give default 32bit for legacy chip */
+	if (ret != 0 || !dma_mask_bit)
+		dma_mask_bit = 32;
+	ret = dma_set_coherent_mask(dev, DMA_BIT_MASK(dma_mask_bit));
+	if (ret)
+		cmdq_err("virtio mbox set dma mask bit:%u result:%d\n",
+			dma_mask_bit, ret);
+	else
+		cmdq_msg("virtio mbox set dma mask bit:%u result:%d\n",
+			dma_mask_bit, ret);
+}
+
 static const struct mbox_chan_ops cmdq_mbox_chan_ops = {
 	.send_data = cmdq_mbox_send_data,
 	.startup = cmdq_mbox_startup,
@@ -655,6 +674,7 @@ int virtio_cmdq_mbox_probe(struct platform_device *pdev)
 	error = mbox_controller_register(&cmdq->mbox);
 	if (error < 0)
 		goto err_free_chan;
+	cmdq_config_dma_mask(dev);
 
 	cmdq_msg("virtual cmdq driver info name: %s, hwid: %d base_pa: %lld",
 		pdev->name, hwid, cmdq->base_pa);
