@@ -45,8 +45,8 @@
 
 #define SPMI_OP_ST_BUSY 1
 
-#define MAX_WHITE_LIST_REGION_SIZE	64
-#define WHITELIST_ITEM_NUM	3
+#define MAX_MONITOR_LIST_SIZE	64
+#define MONITOR_PAIR_ITEM_NUM	2
 
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
 
@@ -99,12 +99,6 @@ struct pmif_irq_desc {
 	const char *name;
 	irq_handler_t irq_handler;
 	int irq;
-};
-
-struct spmi_white_list {
-	unsigned int slvid;
-	unsigned int start_addr;
-	unsigned int end_addr;
 };
 
 enum pmif_regs {
@@ -363,29 +357,9 @@ enum {
 };
 
 enum {
-	/* MT6885/MT6873 series */
-	IRQ_PMIC_CMD_ERR_PARITY_ERR = 17,
-	IRQ_PMIF_ACC_VIO = 20,
-	IRQ_PMIC_ACC_VIO = 21,
-	IRQ_LAT_LIMIT_REACHED = 6,
-	IRQ_HW_MONITOR = 7,
-	IRQ_WDT = 8,
-	/* MT6853 series */
-	IRQ_PMIF_ACC_VIO_V2 = 31,
-	IRQ_PMIC_ACC_VIO_V2 = 0,
-	IRQ_HW_MONITOR_V2 = 18,
-	IRQ_WDT_V2 = 19,
-	IRQ_ALL_PMIC_MPU_VIO_V2 = 20,
-	/* MT6833/MT6877 series */
-	IRQ_HW_MONITOR_V3 = 12,
-	IRQ_WDT_V3 = 13,
-	IRQ_ALL_PMIC_MPU_VIO_V3 = 14,
-	/* MT6983/MT6879 */
 	IRQ_HW_MONITOR_V4 = 29,
 	IRQ_WDT_V4 = 30,
 	IRQ_ALL_PMIC_MPU_VIO_V4 = 31,
-	/* MT6985/MT6897 */
-	IRQ_PMIF_ACC_VIO_V3 = 27,
 	IRQ_PMIF_SWINF_ACC_ERR_0 = 3,
 	IRQ_PMIF_SWINF_ACC_ERR_1 = 4,
 	IRQ_PMIF_SWINF_ACC_ERR_2 = 5,
@@ -400,8 +374,8 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 28,
 };
 static struct spmi_dev spmidev[16];
-static struct spmi_white_list nack_whitelist_region[MAX_WHITE_LIST_REGION_SIZE];
-static int nack_whitelist_region_size;
+static struct spmi_nack_monitor_pair nack_monitor_list[MAX_MONITOR_LIST_SIZE];
+static int nack_monitor_list_size;
 
 struct spmi_dev *get_spmi_device(int slaveid)
 {
@@ -435,88 +409,78 @@ static void spmi_dev_parse(struct platform_device *pdev)
 	}
 }
 
-static void spmi_nack_whitelist_parse(struct platform_device *pdev)
+static void spmi_nack_monitor_list_parse(struct platform_device *pdev)
 {
 	int i = 0, ret = 0;
-	int nack_whitelist_arr_size = 0;
+	int nack_monitor_list_arr_size = 0;
 
-	nack_whitelist_arr_size = of_property_count_u32_elems(pdev->dev.of_node, "spmi-nack-whitelist-rgn");
-	if (nack_whitelist_arr_size < 0) {
+	nack_monitor_list_arr_size = of_property_count_u32_elems(pdev->dev.of_node, "spmi-nack-monitor-list");
+	if (nack_monitor_list_arr_size < 0) {
 		dev_notice(&pdev->dev,
-			"Failed to get spmi-nack-whitelist-rgn, ret = %d\n", nack_whitelist_arr_size);
+			"Failed to get spmi-nack-monitor-list, ret = %d\n", nack_monitor_list_arr_size);
 		return;
 	}
 
-	/* Whitelist size too large */
-	if ((nack_whitelist_arr_size / WHITELIST_ITEM_NUM) > MAX_WHITE_LIST_REGION_SIZE) {
+	/* Monitor list size too large */
+	if ((nack_monitor_list_arr_size / MONITOR_PAIR_ITEM_NUM) > MAX_MONITOR_LIST_SIZE) {
 		dev_notice(&pdev->dev,
-			"SPMI nack whitelist region size is too large = %d, max size is %d\n",
-			nack_whitelist_arr_size / WHITELIST_ITEM_NUM, MAX_WHITE_LIST_REGION_SIZE);
+			"SPMI nack monitor list size is too large = %d, max size is %d\n",
+			nack_monitor_list_arr_size / MONITOR_PAIR_ITEM_NUM, MAX_MONITOR_LIST_SIZE);
 	}
 
-	/* NACK whitelist regions are not in pair */
-	if (nack_whitelist_arr_size % WHITELIST_ITEM_NUM != 0) {
+	/* NACK monitor list are not in pair */
+	if (nack_monitor_list_arr_size % MONITOR_PAIR_ITEM_NUM != 0) {
 		dev_notice(&pdev->dev,
-			"SPMI nack whitelist slvid, start, end mismatch, array size = %d\n",
-			nack_whitelist_arr_size);
+			"SPMI nack monitor list slvid, addr are not in pair, array size = %d\n",
+			nack_monitor_list_arr_size);
 	}
 
-	nack_whitelist_region_size = nack_whitelist_arr_size / WHITELIST_ITEM_NUM;
+	nack_monitor_list_size = nack_monitor_list_arr_size / MONITOR_PAIR_ITEM_NUM;
 	dev_notice(&pdev->dev,
-			"nack_whitelist_arr_size = %d, nack_whitelist_region_size = %d\n",
-			nack_whitelist_arr_size,
-			nack_whitelist_region_size);
+			"nack_monitor_list_arr_size = %d, nack_monitor_list_size = %d\n",
+			nack_monitor_list_arr_size,
+			nack_monitor_list_size);
 
-	for (i = 0; i < nack_whitelist_region_size; i++) {
+	for (i = 0; i < nack_monitor_list_size; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"spmi-nack-whitelist-rgn",
-				i * WHITELIST_ITEM_NUM,
-				&nack_whitelist_region[i].slvid);
+				"spmi-nack-monitor-list",
+				i * MONITOR_PAIR_ITEM_NUM,
+				&nack_monitor_list[i].slvid);
 		if (ret) {
 			dev_notice(&pdev->dev,
-				"spmi-nack-whitelist-rgn slvid read fail\n");
+				"spmi-nack-monitor-list slvid read fail\n");
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"spmi-nack-whitelist-rgn",
-				i * WHITELIST_ITEM_NUM + 1,
-				&nack_whitelist_region[i].start_addr);
+				"spmi-nack-monitor-list",
+				i * MONITOR_PAIR_ITEM_NUM + 1,
+				&nack_monitor_list[i].addr);
 		if (ret) {
 			dev_notice(&pdev->dev,
-				"spmi-nack-whitelist-rgn start addr read fail\n");
-		}
-
-		ret = of_property_read_u32_index(pdev->dev.of_node,
-				"spmi-nack-whitelist-rgn",
-				i * WHITELIST_ITEM_NUM + 2,
-				&nack_whitelist_region[i].end_addr);
-		if (ret) {
-			dev_notice(&pdev->dev,
-				"spmi-nack-whitelist-rgn end addr read fail\n");
+				"spmi-nack-monitor-list addr read fail\n");
 		}
 	}
 }
 
-static bool in_spmi_nack_whitelist(u32 spmi_nack)
+static bool in_spmi_nack_monitor_list(u32 spmi_nack)
 {
 	unsigned int i = 0;
 	unsigned int spmi_nack_addr = 0;
 
-	for (i = 0; i < nack_whitelist_region_size; i++) {
-		if (((spmi_nack & 0x0f00) >> 8) == nack_whitelist_region[i].slvid) {
+	for (i = 0; i < nack_monitor_list_size; i++) {
+		if (((spmi_nack & 0x0f00) >> 8) == nack_monitor_list[i].slvid) {
 			spmi_nack_addr = (spmi_nack & 0xffff0000) >> 16;
-			if ((spmi_nack_addr >= nack_whitelist_region[i].start_addr) &&
-				(spmi_nack_addr <= nack_whitelist_region[i].end_addr)) {
-				pr_notice("%s Match SPMI NACK whitelist\n", __func__);
-				pr_notice("%s Whitelist rgn: %d, slvid: 0x%x, start_addr: 0x%x, end_addr: 0x%x\n",
+			if (spmi_nack_addr == nack_monitor_list[i].addr) {
+				pr_notice("%s Match SPMI NACK moinitor list\n", __func__);
+				pr_notice("%s Monitor list pair: %d, slvid: 0x%x, addr: 0x%x\n",
 					__func__, i,
-					nack_whitelist_region[i].slvid,
-					nack_whitelist_region[i].start_addr,
-					nack_whitelist_region[i].end_addr);
+					nack_monitor_list[i].slvid,
+					nack_monitor_list[i].addr);
 				return true;
 			}
 		}
 	}
+	pr_notice("%s Not in SPMI NACK monitor list\n", __func__);
 	return false;
 }
 
@@ -779,20 +743,9 @@ static struct pmif mt6xxx_pmif_arb[] = {
 	},
 };
 
-/* PMIF Exception IRQ Handler */
-static void pmif_cmd_err_parity_err_irq_handler(int irq, void *data)
-{
-	spmi_dump_spmimst_all_reg();
-	spmi_dump_pmif_record_reg();
-#if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
-	aee_kernel_warning("PMIF", "PMIF:parity error");
-#endif
-	pr_notice("[PMIF]:parity error\n");
-}
-
 static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 {
-	spmi_dump_pmif_record_reg();
+	spmi_dump_pmif_record_reg(0, 0);
 	spmi_dump_pmif_acc_vio_reg();
 #if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
 	aee_kernel_warning("PMIF", "PMIF:pmif_acc_vio");
@@ -800,51 +753,30 @@ static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 	pr_notice("[PMIF]:pmif_acc_vio\n");
 }
 
-static void pmif_pmic_acc_vio_irq_handler(int irq, void *data)
-{
-	spmi_dump_pmic_acc_vio_reg();
-#if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
-	aee_kernel_warning("PMIF", "PMIF:pmic_acc_vio");
-#endif
-	pr_notice("[PMIF]:pmic_acc_vio\n");
-}
-
-static void pmif_lat_limit_reached_irq_handler(int irq, void *data)
-{
-	spmi_dump_pmif_busy_reg();
-	spmi_dump_pmif_record_reg();
-}
-
-static void pmif_acc_vio_irq_handler(int irq, void *data)
+static void pmif_swinf_err_irq_handler(int irq_m, int irq_p, void *data, int idx)
 {
 	struct pmif *arb = data;
 
-	pr_notice("[PMIF]:PMIF ACC violation debug info\n");
-	pr_notice("[PMIF]:PMIF-M\n");
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(arb->pmif_base[0],
-		arb, PMIF_ACC_VIO_INFO_0));
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(arb->pmif_base[0],
-		arb, PMIF_ACC_VIO_INFO_1));
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(arb->pmif_base[0],
-		arb, PMIF_ACC_VIO_INFO_2));
+	spmi_dump_pmif_record_reg(irq_m, irq_p);
+	pr_notice("[PMIF] %s swintf %d err irq_m/p 0x%x/0x%x\n", __func__,
+		idx - (arb->swintf_err_idx[0])%32, irq_m, irq_p);
+}
 
-	if (!IS_ERR(arb->pmif_base[1])) {
-		pr_notice("[PMIF]:PMIF-P\n");
-		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(arb->pmif_base[1],
-			arb, PMIF_ACC_VIO_INFO_0));
-		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(arb->pmif_base[1],
-			arb, PMIF_ACC_VIO_INFO_1));
-		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(arb->pmif_base[1],
-			arb, PMIF_ACC_VIO_INFO_2));
-	}
+static void pmif_hwinf_err_irq_handler(int irq_m, int irq_p, void *data, int idx)
+{
+	struct pmif *arb = data;
+
+	spmi_dump_pmif_record_reg(irq_m, irq_p);
+	pr_notice("[PMIF] %s hwintf %d err irq_m/p 0x%x/0x%x\n", __func__,
+		idx - (arb->hwintf_err_idx[0])%32, irq_m, irq_p);
 }
 
 static void pmif_hw_monitor_irq_handler(int irq, void *data)
 {
-	spmi_dump_pmif_record_reg();
-#if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
-	aee_kernel_warning("PMIF", "PMIF:pmif_hw_monitor_match");
-#endif
+	spmi_dump_pmif_record_reg(0, 0);
+	if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
+		aee_kernel_warning("PMIF", "PMIF:pmif_hw_monitor_match");
+
 	pr_notice("[PMIF]:pmif_hw_monitor_match\n");
 }
 
@@ -853,7 +785,7 @@ static void pmif_wdt_irq_handler(int irq, void *data)
 	struct pmif *arb = data;
 
 	spmi_dump_pmif_busy_reg();
-	spmi_dump_pmif_record_reg();
+	spmi_dump_pmif_record_reg(0, 0);
 	spmi_dump_wdt_reg();
 	pmif_writel(arb->pmif_base[0], arb, 0x40000000, PMIF_IRQ_CLR_0);
 	if (!IS_ERR(arb->pmif_base[1]))
@@ -960,11 +892,11 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
-			case IRQ_PMIF_ACC_VIO_V3:
-				pmif_acc_vio_irq_handler(irq, data);
-			break;
 			case IRQ_WDT_V4:
 				pmif_wdt_irq_handler(irq, data);
+			break;
+			case IRQ_HW_MONITOR_V4:
+				pmif_hw_monitor_irq_handler(irq, data);
 			break;
 			case IRQ_ALL_PMIC_MPU_VIO_V4:
 				pmif_pmif_acc_vio_irq_handler(irq, data);
@@ -972,7 +904,7 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
 					__func__, idx);
-				spmi_dump_pmif_record_reg();
+				spmi_dump_pmif_record_reg(0, 0);
 			break;
 			}
 			if (irq_f)
@@ -1008,21 +940,26 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
-
 	for (idx = 0; idx < 32; idx++) {
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
-			switch (idx) {
-			default:
-				pr_notice("%s IRQ[%d] triggered\n",
-					__func__, idx);
-				spmi_dump_pmif_record_reg();
-			break;
+			if ((idx >= (arb->hwintf_err_idx[0] % 32)) && (idx <= (arb->hwintf_err_idx[1] % 32))) {
+				pmif_hwinf_err_irq_handler(irq_f, irq_f_p, data, idx);
+			} else {
+				switch (idx) {
+				default:
+					pr_notice("%s IRQ[%d] triggered\n",
+						__func__, idx);
+					spmi_dump_pmif_record_reg(0, 0);
+				break;
+				}
 			}
-			if (irq_f)
+			if (irq_f) {
 				pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_1);
-			else if (irq_f_p)
+				pr_notice("%s IRQ[%d] m cleared\n", __func__, idx);
+			} else if (irq_f_p) {
 				pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_1);
-			else
+				pr_notice("%s IRQ[%d] p cleared\n", __func__, idx);
+			} else
 				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
 					__func__, idx);
 			break;
@@ -1055,19 +992,10 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 	for (idx = 0; idx < 32; idx++) {
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
-			case IRQ_PMIC_CMD_ERR_PARITY_ERR:
-				pmif_cmd_err_parity_err_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_ACC_VIO_V2:
-				pmif_pmif_acc_vio_irq_handler(irq, data);
-			break;
-			case IRQ_PMIC_ACC_VIO:
-				pmif_pmic_acc_vio_irq_handler(irq, data);
-			break;
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
 					__func__, idx);
-				spmi_dump_pmif_record_reg();
+				spmi_dump_pmif_record_reg(0, 0);
 			break;
 			}
 			if (irq_f)
@@ -1106,65 +1034,52 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 
 	for (idx = 0; idx < 32; idx++) {
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
-			switch (idx) {
-			case IRQ_PMIF_SWINF_ACC_ERR_0:
-			case IRQ_PMIF_SWINF_ACC_ERR_0_V2:
-				pmif_swinf_acc_err_0_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_1:
-			case IRQ_PMIF_SWINF_ACC_ERR_1_V2:
-				pmif_swinf_acc_err_1_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_2:
-			case IRQ_PMIF_SWINF_ACC_ERR_2_V2:
-				pmif_swinf_acc_err_2_irq_handler(irq, data);
-			break;
-			/* Use caps to distinguish platform if they have same irq number */
-			case IRQ_LAT_LIMIT_REACHED:
-			case IRQ_PMIF_SWINF_ACC_ERR_3_V2:
-				if (arb->caps == 1)
-					pmif_lat_limit_reached_irq_handler(irq, data);
-				else
+			if ((idx >= (arb->swintf_err_idx[0] % 32)) && (idx <= (arb->swintf_err_idx[1] % 32))) {
+				pmif_swinf_err_irq_handler(irq_f, irq_f_p, data, idx);
+			} else {
+				switch (idx) {
+				case IRQ_PMIF_SWINF_ACC_ERR_0:
+				case IRQ_PMIF_SWINF_ACC_ERR_0_V2:
+					pmif_swinf_acc_err_0_irq_handler(irq, data);
+				break;
+				case IRQ_PMIF_SWINF_ACC_ERR_1:
+				case IRQ_PMIF_SWINF_ACC_ERR_1_V2:
+					pmif_swinf_acc_err_1_irq_handler(irq, data);
+				break;
+				case IRQ_PMIF_SWINF_ACC_ERR_2:
+				case IRQ_PMIF_SWINF_ACC_ERR_2_V2:
+					pmif_swinf_acc_err_2_irq_handler(irq, data);
+				break;
+				/* Use caps to distinguish platform if they have same irq number */
+				case IRQ_PMIF_SWINF_ACC_ERR_3_V2:
 					pmif_swinf_acc_err_3_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_4:
-			case IRQ_PMIF_SWINF_ACC_ERR_4_V2:
-				pmif_swinf_acc_err_4_irq_handler(irq, data);
-			break;
-			case IRQ_PMIF_SWINF_ACC_ERR_5:
-			case IRQ_PMIF_SWINF_ACC_ERR_5_V2:
-				pmif_swinf_acc_err_5_irq_handler(irq, data);
-			break;
-			case IRQ_HW_MONITOR_V2:
-			case IRQ_HW_MONITOR_V3:
-				pmif_hw_monitor_irq_handler(irq, data);
-			break;
-			case IRQ_WDT_V2:
-			case IRQ_WDT_V3:
-				pmif_wdt_irq_handler(irq, data);
-			break;
-			case IRQ_PMIC_ACC_VIO_V2:
-				pmif_pmic_acc_vio_irq_handler(irq, data);
-			break;
-			case IRQ_ALL_PMIC_MPU_VIO_V2:
-			case IRQ_ALL_PMIC_MPU_VIO_V3:
-				pmif_pmif_acc_vio_irq_handler(irq, data);
-			break;
-			default:
-				pr_notice("%s IRQ[%d] triggered\n",
-					__func__, idx);
-				spmi_dump_pmif_record_reg();
-			break;
+				break;
+				case IRQ_PMIF_SWINF_ACC_ERR_4:
+				case IRQ_PMIF_SWINF_ACC_ERR_4_V2:
+					pmif_swinf_acc_err_4_irq_handler(irq, data);
+				break;
+				case IRQ_PMIF_SWINF_ACC_ERR_5:
+				case IRQ_PMIF_SWINF_ACC_ERR_5_V2:
+					pmif_swinf_acc_err_5_irq_handler(irq, data);
+				break;
+				default:
+					pr_notice("%s IRQ[%d] triggered\n",
+						__func__, idx);
+					spmi_dump_pmif_record_reg(0, 0);
+				break;
+				}
 			}
 			/* Don't clear MD SW SWINF ACC ERR flag for re-send mechanism */
 			if (irq_f) {
 				if ((!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0))) &&
 					(!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0_V2))))
 					pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_3);
+				pr_notice("%s IRQ[%d] m cleared\n", __func__, idx);
 			} else if (irq_f_p) {
 				if ((!(irq_f_p & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0))) &&
-					(!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0_V2))))
+					(!(irq_f_p & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0_V2))))
 					pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_3);
+				pr_notice("%s IRQ[%d] p cleared\n", __func__, idx);
 			} else
 				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
 					__func__, idx);
@@ -1201,7 +1116,7 @@ static irqreturn_t pmif_event_4_irq_handler(int irq, void *data)
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
 					__func__, idx);
-				spmi_dump_pmif_record_reg();
+				spmi_dump_pmif_record_reg(0, 0);
 			break;
 			}
 			if (irq_f)
@@ -1233,6 +1148,7 @@ static void pmif_irq_register(struct platform_device *pdev,
 {
 	int i = 0, ret = 0;
 	u32 irq_event_en[5] = {0};
+	u32 irq_event_en_p[5] = {0};
 
 	for (i = 0; i < ARRAY_SIZE(pmif_event_irq); i++) {
 		if (!pmif_event_irq[i].name)
@@ -1252,6 +1168,9 @@ static void pmif_irq_register(struct platform_device *pdev,
 	ret = of_property_read_u32_array(pdev->dev.of_node, "irq-event-en",
 		irq_event_en, ARRAY_SIZE(irq_event_en));
 
+	ret = of_property_read_u32_array(pdev->dev.of_node, "irq-event-en-p",
+		irq_event_en_p, ARRAY_SIZE(irq_event_en_p));
+
 	pmif_writel(arb->pmif_base[0], arb, irq_event_en[0] | pmif_readl(arb->pmif_base[0],
 		arb, PMIF_IRQ_EVENT_EN_0), PMIF_IRQ_EVENT_EN_0);
 	pmif_writel(arb->pmif_base[0], arb, irq_event_en[1] | pmif_readl(arb->pmif_base[0],
@@ -1264,160 +1183,142 @@ static void pmif_irq_register(struct platform_device *pdev,
 		arb, PMIF_IRQ_EVENT_EN_4), PMIF_IRQ_EVENT_EN_4);
 
 	if (!IS_ERR(arb->pmif_base[1])) {
-		pmif_writel(arb->pmif_base[1], arb, irq_event_en[0] | pmif_readl(arb->pmif_base[1],
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en_p[0] | pmif_readl(arb->pmif_base[1],
 			arb, PMIF_IRQ_EVENT_EN_0), PMIF_IRQ_EVENT_EN_0);
-		pmif_writel(arb->pmif_base[1], arb, irq_event_en[1] | pmif_readl(arb->pmif_base[1],
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en_p[1] | pmif_readl(arb->pmif_base[1],
 			arb, PMIF_IRQ_EVENT_EN_1), PMIF_IRQ_EVENT_EN_1);
-		pmif_writel(arb->pmif_base[1], arb, irq_event_en[2] | pmif_readl(arb->pmif_base[1],
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en_p[2] | pmif_readl(arb->pmif_base[1],
 			arb, PMIF_IRQ_EVENT_EN_2), PMIF_IRQ_EVENT_EN_2);
-		pmif_writel(arb->pmif_base[1], arb, irq_event_en[3] | pmif_readl(arb->pmif_base[1],
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en_p[3] | pmif_readl(arb->pmif_base[1],
 			arb, PMIF_IRQ_EVENT_EN_3), PMIF_IRQ_EVENT_EN_3);
-		pmif_writel(arb->pmif_base[1], arb, irq_event_en[4] | pmif_readl(arb->pmif_base[1],
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en_p[4] | pmif_readl(arb->pmif_base[1],
 			arb, PMIF_IRQ_EVENT_EN_4), PMIF_IRQ_EVENT_EN_4);
 	}
 }
 
-static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
+static void dump_spmip_pmic_dbg_rg(struct pmif *arb, unsigned int slvid)
 {
-	u8 rdata = 0, rdata1 = 0, rdata2 =0, val = 0,sid = 0, org = 0;
+	u8 rdata = 0, rdata1 = 0, rdata2 =0, val = 0, org = 0;
 	u8 dbg_data = 0, idx, addr, data = 0, cmd, addr1;
 	u16 pmic_addr;
 	int i;
 	unsigned short PMIC_SPMI_DBG_SEL = 0x42d, PMIC_SPMI_DBG_L = 0x42b;
-	unsigned short PMIC_SPMI_DBG_H = 0x42c;
+	unsigned short PMIC_SPMI_DBG_H = 0x42c, mt6316INTSTA = 0x240;
+	unsigned short hwcidaddr_mt6316 = 0x209;
+	unsigned int sid = 0;
 
-	for (sid = 8; sid >= 6; sid--) {
-		/* Disable read command log */
-		val = 0;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_EN_RD_CMD_ADDR, &val, 1);
-		/* pause debug log feature by setting RG_DEBUG_DIS_TRIG 0->1->0 */
-		val = 0;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
-		val = 0x1 << MT6316_PMIC_RG_DEBUG_DIS_TRIG_SHIFT;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
-		val = 0;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
+	/* Disable read command log */
+	val = 0;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_EN_RD_CMD_ADDR, &val, 1);
+	/* pause debug log feature by setting RG_DEBUG_DIS_TRIG 0->1->0 */
+	val = 0;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
+	val = 0x1 << MT6316_PMIC_RG_DEBUG_DIS_TRIG_SHIFT;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
+	val = 0;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
 
 		/* DBGMUX_SEL = 0 */
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
+		slvid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
+	org &= ~(MT6316_PMIC_RG_SPMI_DBGMUX_SEL_MASK << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
+	org |= (0 << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
+	/* read spmi_debug[15:0] data*/
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, slvid,
+		MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &dbg_data, 1);
+
+	pr_info ("%s dbg_data:0x%x\n",__func__,dbg_data);
+	idx = dbg_data & 0xF;
+	for (i = 0; i < 16; i++) {
+		/* debug_addr start from index 1 */
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
-			sid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
+			slvid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
 		org &= ~(MT6316_PMIC_RG_SPMI_DBGMUX_SEL_MASK << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-		org |= (0 << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
+		org |= ((((idx + i) % 16) + 1) << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
+		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
 			MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
 		/* read spmi_debug[15:0] data*/
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-			MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &dbg_data, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, slvid,
+			MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &addr, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, slvid,
+			MT6316_PMIC_RG_SPMI_DBGMUX_OUT_H_ADDR, &addr1, 1);
 
-		pr_info ("%s dbg_data:0x%x\n",__func__,dbg_data);
-		idx = dbg_data & 0xF;
-		for (i = 0; i < 16; i++) {
-			/* debug_addr start from index 1 */
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
-				sid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
-			org &= ~(MT6316_PMIC_RG_SPMI_DBGMUX_SEL_MASK << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-			org |= ((((idx + i) % 16) + 1) << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-			arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
-			/* read spmi_debug[15:0] data*/
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &addr, 1);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_OUT_H_ADDR, &addr1, 1);
-
-			pmic_addr = (addr1 << 8) | addr;
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
-				sid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
-			org &= ~(MT6316_PMIC_RG_SPMI_DBGMUX_SEL_MASK << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-			org |= ((((idx + i) % 16) + 17) << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
-			arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
-			/* read spmi_debug[15:0] data*/
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &data, 1);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-				MT6316_PMIC_RG_SPMI_DBGMUX_OUT_H_ADDR, &dbg_data, 1);
-			cmd = dbg_data & 0x7;
-			pr_info("slvid=0x%x record %s addr=0x%x, data=0x%x, cmd=%d%s\n",
-						sid,cmd <= 3 ? "write" : "read",
-						pmic_addr, data, cmd,
-						i == 15 ? "(the last)" : "");
-		}
+		pmic_addr = (addr1 << 8) | addr;
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL,
+			slvid, MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
+		org &= ~(MT6316_PMIC_RG_SPMI_DBGMUX_SEL_MASK << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
+		org |= ((((idx + i) % 16) + 17) << MT6316_PMIC_RG_SPMI_DBGMUX_SEL_SHIFT);
+		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+			MT6316_PMIC_RG_SPMI_DBGMUX_SEL_ADDR, &org, 1);
+		/* read spmi_debug[15:0] data*/
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, slvid,
+			MT6316_PMIC_RG_SPMI_DBGMUX_OUT_L_ADDR, &data, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, slvid,
+			MT6316_PMIC_RG_SPMI_DBGMUX_OUT_H_ADDR, &dbg_data, 1);
+		cmd = dbg_data & 0x7;
+		pr_info("slvid=0x%x record %s addr=0x%x, data=0x%x, cmd=%d%s\n",
+					slvid, cmd <= 3 ? "write" : "read",
+					pmic_addr, data, cmd,
+					i == 15 ? "(the last)" : "");
 	}
 
 	for (i = 33; i < 38; i++) {
 		val = i;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x6,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
-			PMIC_SPMI_DBG_SEL, &rdata, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
-			PMIC_SPMI_DBG_H, &rdata1, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
-			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S6 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
-			__func__, rdata, rdata1, rdata2);
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x7,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
-			PMIC_SPMI_DBG_SEL, &rdata, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
-			PMIC_SPMI_DBG_H, &rdata1, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
-			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S7 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
-			__func__, rdata, rdata1, rdata2);
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x8,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
-			PMIC_SPMI_DBG_SEL, &rdata, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
-			PMIC_SPMI_DBG_H, &rdata1, 1);
-		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
-			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S8 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
-			__func__, rdata, rdata1, rdata2);
+		for (sid = 6; sid < 9; sid ++) {
+			arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
+				PMIC_SPMI_DBG_SEL, &val, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+				PMIC_SPMI_DBG_SEL, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+				PMIC_SPMI_DBG_H, &rdata1, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+				PMIC_SPMI_DBG_L, &rdata2, 1);
+			pr_notice("%s sid 0x%x DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+				__func__,sid, rdata, rdata1, rdata2);
+		}
 	}
 	val = 0;
-	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x6,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x7,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x8,
-			PMIC_SPMI_DBG_SEL, &val, 1);
-
-	for (sid = 8; sid >= 6; sid--) {
-		/* Disable read command log */
-		/* pause debug log feature by setting RG_DEBUG_DIS_TRIG 1->0 */
-		val = 0;
+	for (sid = 6; sid < 9; sid ++) {
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
-		/* enable debug log feature by setting RG_DEBUG_EN_TRIG 0->1->0 */
-		val = 0x1 << MT6316_PMIC_RG_DEBUG_EN_TRIG_SHIFT;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_EN_TRIG_ADDR, &val, 1);
-		val = 0;
-		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
-			MT6316_PMIC_RG_DEBUG_EN_TRIG_ADDR, &val, 1);
+			PMIC_SPMI_DBG_SEL, &val, 1);
 	}
+	/* Disable read command log */
+	/* pause debug log feature by setting RG_DEBUG_DIS_TRIG 1->0 */
+	val = 0;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_DIS_TRIG_ADDR, &val, 1);
+	/* enable debug log feature by setting RG_DEBUG_EN_TRIG 0->1->0 */
+	val = 0x1 << MT6316_PMIC_RG_DEBUG_EN_TRIG_SHIFT;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_EN_TRIG_ADDR, &val, 1);
+	val = 0;
+	arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, slvid,
+		MT6316_PMIC_RG_DEBUG_EN_TRIG_ADDR, &val, 1);
 
+	for (sid = 6; sid < 9; sid ++) {
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+			mt6316INTSTA, &rdata, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
+			hwcidaddr_mt6316, &rdata1, 1);
+		pr_notice("%s sid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
+			__func__, sid, rdata, rdata1);
+	}
 }
 
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int flag = 0, sid = 0;
+	int flag = 0;
 	unsigned int spmi_nack = 0, spmi_p_nack = 0, spmi_nack_data = 0, spmi_p_nack_data = 0;
 	unsigned int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
 		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0,
 		spmi_wdt_rec = 0, spmi_p_wdt_rec = 0;
-	u8 rdata = 0, rdata1 = 0;
-	unsigned short mt6316INTSTA = 0x240, hwcidaddr_mt6316 = 0x209, VIO18_SWITCH_6363 = 0x53,
-		hwcidaddr_mt6363 = 0x9;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
@@ -1439,21 +1340,10 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 	// Write fail nack, causing OP_ST_NACK/PMIF_NACK/PMIF_BYTE_ERR/PMIF_GRP_RD_ERR
 	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
-		spmi_dump_pmif_record_reg();
-		if (spmi_p_nack & 0xD8) {
-			dump_spmip_pmic_dbg_rg(arb);
-			for (sid = 0x8; sid >= 0x6; sid--) {
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					mt6316INTSTA, &rdata, 1);
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					hwcidaddr_mt6316, &rdata1, 1);
-				pr_notice("%s slvid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
-					__func__, sid, rdata, rdata1);
-			}
-			spmi_slvid_nack_cnt_add((spmi_p_nack & 0x0f00)>>8);
-		} else
-			spmi_slvid_nack_cnt_add((spmi_nack & 0x0f00)>>8);
+		if (spmi_p_nack & 0xD8)
+			dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
 
+		spmi_slvid_nack_cnt_add(spmi_nack, spmi_p_nack);
 		pr_notice("%s spmi transaction fail (Write) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
 			spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
@@ -1481,20 +1371,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 	// Read fail nack, causing parity error
 	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
-		spmi_dump_pmif_record_reg();
 		if (spmi_nack & 0x20) {
-			flag = (in_spmi_nack_whitelist(spmi_nack)) ? 0 : 1;
+			flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
 		} else {
-			dump_spmip_pmic_dbg_rg(arb);
-			for (sid = 0x8; sid >= 0x6; sid--) {
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					mt6316INTSTA, &rdata, 1);
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					hwcidaddr_mt6316, &rdata1, 1);
-				pr_notice("%s slvid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
-					__func__, sid, rdata, rdata1);
-			}
-			flag = (in_spmi_nack_whitelist(spmi_p_nack)) ? 0 : 1;
+			dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
+			flag = 1;
 		}
 		pr_notice("%s spmi transaction fail (Read) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
@@ -1531,11 +1412,6 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 				spmi_debug_nack, spmi_p_debug_nack);
 			pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__,
 				spmi_mst_nack, spmi_p_mst_nack);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
-					hwcidaddr_mt6363, &rdata, 1);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
-					VIO18_SWITCH_6363, &rdata1, 1);
-			pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
 		}
 		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
 	} else if (spmi_wdt_rec || spmi_p_wdt_rec) {
@@ -1818,6 +1694,18 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	if (IS_ERR(arb->spmimst_base[1]))
 		dev_notice(&pdev->dev, "[PMIF]:no spmimst-p found\n");
 
+	err = of_property_read_u32_array(pdev->dev.of_node, "hwinf-err-irq-idx",
+		arb->hwintf_err_idx, ARRAY_SIZE(arb->hwintf_err_idx));
+
+	if (err)
+		dev_info(&pdev->dev, "[PMIF]: No hwinf-err-irq-idx found\n");
+
+	err = of_property_read_u32_array(pdev->dev.of_node, "swinf-err-irq-idx",
+		arb->swintf_err_idx, ARRAY_SIZE(arb->swintf_err_idx));
+
+	if (err)
+		dev_info(&pdev->dev, "[PMIF]: No swinf-err-irq-idx found\n");
+
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "bugdbg");
 	arb->busdbgregs = devm_ioremap_resource(&pdev->dev, res);
@@ -1875,7 +1763,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	spmi_pmif_dbg_init(ctrl);
 	spmi_pmif_create_attr(&mtk_spmi_driver.driver);
 
-	spmi_nack_whitelist_parse(pdev);
+	spmi_nack_monitor_list_parse(pdev);
 
 	if (arb->caps == 2) {
 		arb->irq = platform_get_irq_byname(pdev, "pmif_irq");
