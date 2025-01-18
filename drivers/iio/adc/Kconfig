@@ -68,6 +68,18 @@ config MEDIATEK_MT6375_ADC
 	  The driver can also be build as a module.
 	  If so, the module will be called mt6375-adc.
 
+config MEDIATEK_MT6379_ADC
+	tristate "MT6379 ADC driver"
+	depends on MFD_MT6379_SPMI
+	select IIO_BUFFER
+	select IIO_TRIGGERED_BUFFER
+	help
+	  Say yes here to have support for the MT6379 ADC.
+	  The driver does support several channels, VBUS, VBAT, IBUS, etc...
+
+	  The driver can also be build as a module.
+	  If so, the module will be called mt6379-adc.
+
 config MEDIATEK_MT6375_AUXADC
 	tristate "MT6375 AUXADC driver"
 	depends on MFD_MT6375
