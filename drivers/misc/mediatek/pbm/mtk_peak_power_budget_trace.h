@@ -29,10 +29,10 @@ TRACE_EVENT(peak_power_budget,
 		__entry->loading_display = ppb->loading_display;
 		__entry->loading_apu = ppb->loading_apu;
 		__entry->loading_dram = ppb->loading_dram;
-		__entry->vsys_budget = ppb->vsys_budget;
+		__entry->vsys_budget = ppb->vsys_budget_noerr;
 		__entry->remain_budget = ppb->remain_budget;
 	),
-	TP_printk("(S_BGT/R_BGT)=%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
+	TP_printk("(P_BGT/R_BGT)=%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
 		__entry->vsys_budget, __entry->remain_budget,
 		__entry->loading_flash, __entry->loading_audio, __entry->loading_camera,
 		__entry->loading_display, __entry->loading_apu, __entry->loading_dram)

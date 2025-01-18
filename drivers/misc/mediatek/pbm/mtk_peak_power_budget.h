@@ -19,7 +19,7 @@ enum ppb_kicker {
 };
 
 enum ppb_sram_offset {
-	HPT_VSYS_PWR,
+	PPB_VSYS_PWR_NOERR,
 	HPT_SF_ENABLE,
 	HPT_CPU_B_SF_L1,
 	HPT_CPU_B_SF_L2,
@@ -74,24 +74,16 @@ struct ppb {
 	unsigned int loading_apu;
 	unsigned int loading_dram;
 	unsigned int vsys_budget;
-	unsigned int hpt_vsys_budget;
+	unsigned int vsys_budget_noerr;
 	unsigned int remain_budget;
 	unsigned int cg_budget_thd;
 	unsigned int cg_budget_cnt;
 };
 
-struct hpt {
-	unsigned int vsys_budget;
-	unsigned int cpub_sf_lv1;
-	unsigned int cpub_sf_lv2;
-	unsigned int cpum_sf_lv1;
-	unsigned int cpum_sf_lv2;
-	unsigned int gpu_sf_lv1;
-	unsigned int gpu_sf_lv2;
-};
-
 struct power_budget_t {
 	unsigned int version;
+	int soc;
+	int temp;
 	unsigned int soc_err;
 	unsigned int temp_cur_stage;
 	unsigned int temp_max_stage;
@@ -105,12 +97,12 @@ struct power_budget_t {
 	unsigned int cur_rdc;
 	unsigned int cur_rac;
 	unsigned int imax;
-	unsigned int ppb_ocv;
-	unsigned int ppb_sys_power;
-	unsigned int ppb_bat_power;
-	unsigned int hpt_ocv;
-	unsigned int hpt_sys_power;
-	unsigned int hpt_bat_power;
+	unsigned int ocv_noerr;
+	unsigned int sys_power_noerr;
+	unsigned int bat_power_noerr;
+	unsigned int ocv;
+	unsigned int sys_power;
+	unsigned int bat_power;
 	struct work_struct bat_work;
 	struct power_supply *psy;
 	struct device *dev;
@@ -138,6 +130,18 @@ struct fg_cus_data {
 
 struct ppb_ipi_data {
 	unsigned int cmd;
+};
+
+struct xpu_dbg_t {
+	unsigned int cpub_len;
+	unsigned int cpum_len;
+	unsigned int gpu_len;
+	unsigned int cpub_cnt;
+	unsigned int cpum_cnt;
+	unsigned int gpu_cnt;
+	unsigned int cpub_th_t;
+	unsigned int cpum_th_t;
+	unsigned int gpu_th_t;
 };
 
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
