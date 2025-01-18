@@ -7171,6 +7171,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		mali: mali@48000000 {
 			compatible = "mediatek,mali", "arm,mali-valhall";
 			reg = <0 0x48000000 0 0x480000>;
+			l2-hash-values = <0xb 0xe 0x0>;
 			physical-memory-group-manager = <&mgm>;
 			interrupts =
 				<GIC_SPI 606 IRQ_TYPE_LEVEL_HIGH 0>,
