@@ -1966,6 +1966,7 @@ static const struct kernel_param_ops smi_ostdl_change_ops = {
 module_param_cb(smi_ostdl_change_type, &smi_ostdl_change_ops, NULL, 0644);
 MODULE_PARM_DESC(smi_ostdl_change_type, "modify smi ostdl type");
 
+#if IS_ENABLED(CONFIG_MTK_SMI_DEBUG)
 int smi_larb_set(const char *val, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
@@ -2110,6 +2111,7 @@ static const struct kernel_param_ops smi_dump_all_setting_ops = {
 };
 module_param_cb(smi_dump_all_setting, &smi_dump_all_setting_ops, NULL, 0644);
 MODULE_PARM_DESC(smi_dump_all_setting, "dump all smi setting");
+#endif
 
 #define SMI_DUMMY_VAL	(0x1)
 static int smi_ut_chk_dummy(void)
