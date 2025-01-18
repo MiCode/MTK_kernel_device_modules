@@ -4544,7 +4544,6 @@ _mtk_crtc_atmoic_addon_module_connect(
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VDS_PATH_SWITCH) &&
 	    priv->need_vds_path_switch)
@@ -4561,7 +4560,7 @@ _mtk_crtc_atmoic_addon_module_connect(
 		mtk_ddp_clean_ovl_pq_crossbar(mtk_crtc, cmdq_handle);
 
 	if (priv->data->ovl_exdma_rule && lye_state->mml_dl_lye)
-		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
+		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, cmdq_handle);
 
 	_mtk_crtc_lye_addon_module_connect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
