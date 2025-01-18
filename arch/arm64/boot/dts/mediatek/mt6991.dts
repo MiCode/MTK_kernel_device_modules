@@ -3555,9 +3555,9 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		fhctl: fhctl@10000c00 {
 
-			//gpueb-supply = <&gpueb>;
-			//mcupm-supply = <&mcupm>;
-			//compatible = "mediatek,mt6991-fhctl";
+			gpueb-supply = <&gpueb>;
+			mcupm-supply = <&mcupm>;
+			compatible = "mediatek,mt6991-fhctl";
 			reg = <0 0x10000c00 0 0x200>, //AP FHCTL base
 				<0 0x10000800 0 0xe00>, //APMIX base
 
@@ -3636,7 +3636,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			map3 {
 				domain = "gpu0";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgpll {
 					fh-id = <0>;
 				};
@@ -3644,7 +3644,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			map4 {
 				domain = "gpu1";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgpll-sc0 {
 					fh-id = <0>;
 				};
@@ -3652,7 +3652,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			map5 {
 				domain = "gpu2";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgpll-sc1 {
 					fh-id = <0>;
 				};
@@ -3660,35 +3660,35 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 			map6 {
 				domain = "mcu0";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				ccipll {
 					fh-id = <0>;
 				};
 			};
 			map7 {
 				domain = "mcu1";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-ll {
 					fh-id = <0>;
 				};
 			};
 			map8 {
 				domain = "mcu2";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-bl {
 					fh-id = <0>;
 				};
 			};
 			map9 {
 				domain = "mcu3";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-b {
 					fh-id = <0>;
 				};
 			};
 			map10 {
 				domain = "mcu4";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				ptppll {
 					fh-id = <0>;
 				};
