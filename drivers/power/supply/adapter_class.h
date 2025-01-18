@@ -58,11 +58,15 @@ enum adapter_event {
 	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
 	MTK_TYPEC_WD_STATUS,
 	MTK_TYPEC_HRESET_STATUS,
+	MTK_UFCS_DETACH,
+	MTK_UFCS_ATTACH,
+	MTK_UFCS_FAIL,
 };
 
 enum adapter_property {
 	TYPEC_RP_LEVEL,
 	PD_TYPE,
+	UFCS_TYPE,
 };
 
 enum adapter_cap_type {
@@ -70,6 +74,7 @@ enum adapter_cap_type {
 	MTK_PD_APDO_END,
 	MTK_PD,
 	MTK_PD_APDO,
+	MTK_UFCS,
 	MTK_CAP_TYPE_UNKNOWN,
 };
 
@@ -123,6 +128,7 @@ struct adapter_ops {
 	int (*enable_wdt)(struct adapter_device *dev, bool en);
 	int (*sync_volt)(struct adapter_device *dev, u32 mV);
 	int (*send_hardreset)(struct adapter_device *dev);
+	int (*exit_mode)(struct adapter_device *dev);
 };
 
 static inline void *adapter_dev_get_drvdata(
@@ -172,4 +178,5 @@ extern int adapter_dev_set_wdt(struct adapter_device *adapter_dev, u32 ms);
 extern int adapter_dev_enable_wdt(struct adapter_device *adapter_dev, bool en);
 extern int adapter_dev_sync_volt(struct adapter_device *adapter_dev, u32 mV);
 extern int adapter_dev_send_hardreset(struct adapter_device *adapter_dev);
+extern int adapter_dev_exit_mode(struct adapter_device *adapter_dev);
 #endif /*LINUX_POWER_ADAPTER_CLASS_H*/
