@@ -7,6 +7,7 @@ enum {
 	EAS_5_5 = 550,
 	EAS_5_5_1 = 551,
 	EAS_6_1 = 600,
+	EAS_6_5 = 650,
 };
 
 int init_sched_ctrl(void);
