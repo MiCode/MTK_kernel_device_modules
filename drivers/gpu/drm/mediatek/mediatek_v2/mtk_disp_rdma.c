@@ -725,7 +725,8 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	gs[GS_RDMA_TH_LOW_FOR_SODI] =
 		DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + 50), FP);
 
-	if (priv->data->mmsys_id == MMSYS_MT6768)
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6761)
 		gs[GS_RDMA_TH_HIGH_FOR_SODI] = DO_DIV_ROUND_UP(
 			gs[GS_RDMA_FIFO_SIZE] * FP - (fill_rate - consume_rate) * 50,
 			FP);
@@ -744,7 +745,8 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	gs[GS_RDMA_TH_LOW_FOR_DVFS] = gs[GS_RDMA_PRE_ULTRA_TH_LOW];
 	gs[GS_RDMA_TH_HIGH_FOR_DVFS] = gs[GS_RDMA_PRE_ULTRA_TH_LOW] + 1;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6761) {
 		/* DISP_RDMA_DVFS_SETTING_PREULTRA */
 		gs[GS_RDMA_DVFS_PRE_ULTRA_TH_LOW] =
 			DO_DIV_ROUND_UP(consume_rate * (pre_ultra_low_us + 20), FP);
@@ -1782,6 +1784,23 @@ const struct mtk_disp_rdma_data mt6768_rdma_driver_data = {
 	.dsi_buffer = false,
 };
 
+const struct mtk_disp_rdma_data mt6761_rdma_driver_data = {
+	.fifo_size = SZ_1K * 6,
+	.pre_ultra_low_us = 60,
+	.pre_ultra_high_us = 70,
+	.ultra_low_us = 40,
+	.ultra_high_us = 60,
+	.urgent_low_us = 30,
+	.urgent_high_us = 35,
+	.sodi_config = mt6768_mtk_sodi_config,
+	.shadow_update_reg = 0x00bc,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.has_greq_urg_num = false,
+	.is_support_34bits = false,
+	.dsi_buffer = false,
+};
+
 static const struct mtk_disp_rdma_data mt6779_rdma_driver_data = {
 	.fifo_size = SZ_8K + SZ_16K,
 	.sodi_config = mt6779_mtk_sodi_config,
@@ -1973,6 +1992,8 @@ static const struct mtk_disp_rdma_data mt6855_rdma_driver_data = {
 static const struct of_device_id mtk_disp_rdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt2701-disp-rdma",
 	 .data = &mt2701_rdma_driver_data},
+	{.compatible = "mediatek,mt6761-disp-rdma",
+	 .data = &mt6761_rdma_driver_data},
 	{.compatible = "mediatek,mt6768-disp-rdma",
 	 .data = &mt6768_rdma_driver_data},
 	{.compatible = "mediatek,mt6779-disp-rdma",
