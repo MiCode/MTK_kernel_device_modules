@@ -2244,8 +2244,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
 
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765.ko":"mt6765"})
