@@ -33,13 +33,13 @@
 #define TAG "core_ctl"
 
 struct ppm_table {
-	unsigned int power;
+	unsigned long power;
 	unsigned int leakage;
 	unsigned int thermal_leakage;
 	unsigned int freq;
 	unsigned int capacity;
-	unsigned int eff;
-	unsigned int thermal_eff;
+	unsigned long eff;
+	unsigned long thermal_eff;
 };
 
 struct cluster_ppm_data {
@@ -516,8 +516,8 @@ static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 	unsigned long flags;
 	int ret = 0;
 
-	if (val > 100)
-		return -EINVAL;
+	if (val > MAX_BTASK_THRESH)
+		val = MAX_BTASK_THRESH;
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	old_thresh = cluster->up_thres;
@@ -704,7 +704,7 @@ int core_ctl_set_up_thres(int cid, unsigned int val)
 
 	/* Range of up thrash should be 0 - 100 */
 	if (val > MAX_BTASK_THRESH)
-		return -EINVAL;
+		val = MAX_BTASK_THRESH;
 
 	cluster = &cluster_state[cid];
 	return set_up_thres(cluster, val);
@@ -903,7 +903,7 @@ static ssize_t store_up_thres(struct cluster_data *state,
 		return -EINVAL;
 
 	if (val > MAX_BTASK_THRESH)
-		return -EINVAL;
+		val = MAX_BTASK_THRESH;
 
 	set_up_thres(state, val);
 	return count;
@@ -1373,8 +1373,8 @@ static inline void core_ctl_main_algo(void)
 			cpumask_bits(&active_cpus)[0], orig_need_cpu);
 }
 
-unsigned int (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,
-	unsigned int dyn_power, unsigned int cap);
+unsigned long (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,
+	unsigned long dyn_power, unsigned int cap);
 EXPORT_SYMBOL(calc_eff_hook);
 static int need_update_ppm_eff = 1;
 static int update_ppm_eff(void);
@@ -1958,15 +1958,15 @@ static inline int get_opp_count(struct cpufreq_policy *policy)
  * y2, B  eff
  */
 bool check_eff_precisely(unsigned int x1,
-			 unsigned int y1,
+			 unsigned long y1,
 			 unsigned int x2,
-			 unsigned int y2)
+			 unsigned long y2)
 {
 	unsigned int diff;
-	unsigned int new_y1 = 0;
+	unsigned long new_y1 = 0;
 
 	diff = (unsigned int)div64_u64(x2 * 100, x1);
-	new_y1 = (unsigned int)div64_u64(y1 * diff, 100);
+	new_y1 = (unsigned long)div64_u64(y1 * diff, 100);
 	return y2 < new_y1;
 }
 
@@ -1984,7 +1984,7 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 		changed = false;
 		/* BCPU */
 		for (j = c2->ppm_data.opp_nr - 1; j >= 0; j--) {
-			unsigned int c1_eff, c2_eff;
+			unsigned long c1_eff, c2_eff;
 
 			if (c2->ppm_data.ppm_tbl[j].capacity <
 					c1->ppm_data.ppm_tbl[i].capacity)
@@ -2017,12 +2017,6 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 	}
 	return turn_point;
 }
-
-#if IS_ENABLED(CONFIG_64BIT)
-#define em_scale_power(p) ((p)*1000)
-#else
-#define em_scale_power(p) (p)
-#endif
 
 static int update_ppm_eff(void)
 {
@@ -2122,7 +2116,7 @@ static int ppm_data_init(struct cluster_data *cluster)
 	/* get power and capacity and calculate efficiency */
 	for (i = 0; i < opp_nr; i++) {
 		ps = &pd->table[opp_nr-1-i];
-		ppm_tbl[i].power = em_scale_power(ps->power);
+		ppm_tbl[i].power = ps->power;
 		ppm_tbl[i].freq = ps->frequency;
 		ppm_tbl[i].capacity = pd_get_opp_capacity_legacy(first_cpu, i);
 		ppm_tbl[i].thermal_eff = ppm_tbl[i].eff = div64_u64(ppm_tbl[i].power, ppm_tbl[i].capacity);
