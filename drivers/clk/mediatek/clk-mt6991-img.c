@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2023 MediaTek Inc.
+ * Copyright (c) 2024 MediaTek Inc.
  * Author: Chong-ming Wei <chong-ming.wei@mediatek.com>
  */
 
@@ -86,6 +86,8 @@ static const struct mtk_gate dip_nr2_dip1_clks[] = {
 	GATE_DIP_NR2_DIP1(CLK_DIP_NR2_DIP1_LARB15, "dip_nr2_dip1_larb15",
 		"ck2_img1_ck"/* parent */, 1),
 	GATE_DIP_NR2_DIP1_V(CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2, "dip_nr2_dip1_larb15_camera_p2",
+		"dip_nr2_dip1_larb15"/* parent */),
+	GATE_DIP_NR2_DIP1_V(CLK_DIP_NR2_DIP1_LARB15_SMI, "dip_nr2_dip1_larb15_smi",
 		"dip_nr2_dip1_larb15"/* parent */),
 	GATE_DIP_NR2_DIP1(CLK_DIP_NR2_DIP1_LARB39, "dip_nr2_dip1_larb39",
 		"ck2_img1_ck"/* parent */, 2),
@@ -222,7 +224,7 @@ static const struct mtk_gate_regs img1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_IMG1(_id, _name, _parent, _shift) {	\
@@ -250,7 +252,7 @@ static const struct mtk_gate_regs img1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate img_clks[] = {
@@ -278,7 +280,7 @@ static const struct mtk_gate img_clks[] = {
 	GATE_IMG0_V(CLK_IMG_WPE0_CAMERA_P2, "img_wpe0_camera_p2",
 		"img_wpe0"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_IPE, "img_ipe",
-			"ck2_ipe_ck"/* parent */, 5),
+		"ck2_ipe_ck"/* parent */, 5),
 	GATE_IMG0_V(CLK_IMG_IPE_CAMERA_P2, "img_ipe_camera_p2",
 		"img_ipe"/* parent */),
 	GATE_IMG0(CLK_IMG_WPE1, "img_wpe1",
@@ -336,13 +338,13 @@ static const struct mtk_gate img_clks[] = {
 	GATE_IMG0_V(CLK_IMG_SUB_COMMON1_SMI, "img_sub_common1_smi",
 		"img_sub_common1"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_SUB_COMMON2, "img_sub_common2",
-			"ck2_img1_ck"/* parent */, 18),
+		"ck2_img1_ck"/* parent */, 18),
 	GATE_IMG0_V(CLK_IMG_SUB_COMMON2_CAMERA_P2, "img_sub_common2_camera_p2",
 		"img_sub_common2"/* parent */),
 	GATE_IMG0_V(CLK_IMG_SUB_COMMON2_SMI, "img_sub_common2_smi",
 		"img_sub_common2"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_SUB_COMMON3, "img_sub_common3",
-			"ck2_img1_ck"/* parent */, 19),
+		"ck2_img1_ck"/* parent */, 19),
 	GATE_IMG0_V(CLK_IMG_SUB_COMMON3_CAMERA_P2, "img_sub_common3_camera_p2",
 		"img_sub_common3"/* parent */),
 	GATE_IMG0_V(CLK_IMG_SUB_COMMON3_SMI, "img_sub_common3_smi",
@@ -378,11 +380,11 @@ static const struct mtk_gate img_clks[] = {
 	GATE_IMG0_V(CLK_IMG_GALS_RX_WPE2_CAMERA_P2, "img_gals_rx_wpe2_camera_p2",
 		"img_gals_rx_wpe2"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_GALS_TRX_IPE0, "img_gals_trx_ipe0",
-			"ck2_img1_ck"/* parent */, 27),
+		"ck2_img1_ck"/* parent */, 27),
 	GATE_IMG0_V(CLK_IMG_GALS_TRX_IPE0_CAMERA_P2, "img_gals_trx_ipe0_camera_p2",
 		"img_gals_trx_ipe0"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_GALS_TRX_IPE1, "img_gals_trx_ipe1",
-			"ck2_img1_ck"/* parent */, 28),
+		"ck2_img1_ck"/* parent */, 28),
 	GATE_IMG0_V(CLK_IMG_GALS_TRX_IPE1_CAMERA_P2, "img_gals_trx_ipe1_camera_p2",
 		"img_gals_trx_ipe1"/* parent */),
 	GATE_IMG0(CLK_IMG26, "img26",
@@ -394,12 +396,12 @@ static const struct mtk_gate img_clks[] = {
 	GATE_IMG0_V(CLK_IMG_BWR_CAMERA_P2, "img_bwr_camera_p2",
 		"img_bwr"/* parent */),
 	GATE_HWV_IMG0(CLK_IMG_GALS, "img_gals",
-			"ck2_img1_ck"/* parent */, 31),
+		"ck2_img1_ck"/* parent */, 31),
 	GATE_IMG0_V(CLK_IMG_GALS_CAMERA_P2, "img_gals_camera_p2",
 		"img_gals"/* parent */),
 	/* IMG1 */
 	GATE_HWV_IMG1(CLK_IMG_FDVT, "img_fdvt",
-			"ck2_ipe_ck"/* parent */, 0),
+		"ck2_ipe_ck"/* parent */, 0),
 	GATE_IMG1_V(CLK_IMG_FDVT_CAMERA_P2, "img_fdvt_camera_p2",
 		"img_fdvt"/* parent */),
 	GATE_IMG1(CLK_IMG_ME, "img_me",
@@ -411,7 +413,7 @@ static const struct mtk_gate img_clks[] = {
 	GATE_IMG1_V(CLK_IMG_MMG_CAMERA_P2, "img_mmg_camera_p2",
 		"img_mmg"/* parent */),
 	GATE_HWV_IMG1(CLK_IMG_LARB12, "img_larb12",
-			"ck2_ipe_ck"/* parent */, 3),
+		"ck2_ipe_ck"/* parent */, 3),
 	GATE_IMG1_V(CLK_IMG_LARB12_CAMERA_P2, "img_larb12_camera_p2",
 		"img_larb12"/* parent */),
 	GATE_IMG1_V(CLK_IMG_LARB12_SMI, "img_larb12_smi",
@@ -460,26 +462,26 @@ static const struct mtk_gate_regs img_v_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr,			\
-		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+		.flags = CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate img_v_clks[] = {
 	GATE_HWV_IMG_V(CLK_IMG_VCORE_GALS_DISP, "img_vcore_gals_disp",
-			"ck2_mminfra_ck"/* parent */, 0),
+		"ck2_mminfra_ck"/* parent */, 0),
 	GATE_IMG_V_V(CLK_IMG_VCORE_GALS_DISP_CAMERA_P2, "img_vcore_gals_disp_camera_p2",
 		"img_vcore_gals_disp"/* parent */),
 	GATE_HWV_IMG_V(CLK_IMG_VCORE_MAIN, "img_vcore_main",
-			"ck2_mminfra_ck"/* parent */, 1),
+		"ck2_mminfra_ck"/* parent */, 1),
 	GATE_IMG_V_V(CLK_IMG_VCORE_MAIN_CAMERA_P2, "img_vcore_main_camera_p2",
 		"img_vcore_main"/* parent */),
 	GATE_HWV_IMG_V(CLK_IMG_VCORE_SUB0, "img_vcore_sub0",
-			"ck2_mminfra_ck"/* parent */, 2),
+		"ck2_mminfra_ck"/* parent */, 2),
 	GATE_IMG_V_V(CLK_IMG_VCORE_SUB0_SMI, "img_vcore_sub0_smi",
 		"img_vcore_sub0"/* parent */),
 	GATE_IMG_V_V(CLK_IMG_VCORE_SUB0_CAMERA_P2, "img_vcore_sub0_camera_p2",
 		"img_vcore_sub0"/* parent */),
 	GATE_HWV_IMG_V(CLK_IMG_VCORE_SUB1, "img_vcore_sub1",
-			"ck2_mminfra_ck"/* parent */, 3),
+		"ck2_mminfra_ck"/* parent */, 3),
 	GATE_IMG_V_V(CLK_IMG_VCORE_SUB1_SMI, "img_vcore_sub1_smi",
 		"img_vcore_sub1"/* parent */),
 	GATE_IMG_V_V(CLK_IMG_VCORE_SUB1_CAMERA_P2, "img_vcore_sub1_camera_p2",

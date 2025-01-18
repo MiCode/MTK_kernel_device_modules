@@ -22,10 +22,22 @@ static bool is_registered;
 static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	struct clk_hw *p_hw, *gp_hw;
 	u32 val = 0;
+	bool is_enabled = false;
 
 	if (!is_registered)
 		return 0;
+
+	p_hw = clk_hw_get_parent(hw);
+	if (p_hw) {
+		gp_hw = clk_hw_get_parent(p_hw);
+		if (gp_hw) {
+			is_enabled = clk_hw_is_enabled(gp_hw);
+			if (!is_enabled)
+				return 0;
+		}
+	}
 
 	regmap_read(cg->regmap, cg->sta_ofs, &val);
 
@@ -37,10 +49,22 @@ static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 static int mtk_cg_bit_is_set(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	struct clk_hw *p_hw, *gp_hw;
 	u32 val = 0;
+	bool is_enabled = false;
 
 	if (!is_registered)
 		return 0;
+
+	p_hw = clk_hw_get_parent(hw);
+	if (p_hw) {
+		gp_hw = clk_hw_get_parent(p_hw);
+		if (gp_hw) {
+			is_enabled = clk_hw_is_enabled(gp_hw);
+			if (!is_enabled)
+				return 0;
+		}
+	}
 
 	regmap_read(cg->regmap, cg->sta_ofs, &val);
 

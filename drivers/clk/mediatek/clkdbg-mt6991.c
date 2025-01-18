@@ -257,13 +257,6 @@ const char * const *get_mt6991_all_clk_names(void)
 		"pext1_pextp_vlp_ao_p1_lp",
 		"pext1_pextp_vlp_ao_p2_lp",
 
-		/* ssr_top */
-		"ssr_rw_spu",
-		"ssr_rw_sej_b_test",
-		"ssr_rw_aes_b_test",
-		"ssr_DXCC_PTCK",
-		"ssr_rw_sej_f13m_test",
-
 		/* vlp_cksys */
 		"vlp-apll1",
 		"vlp-apll2",
@@ -929,6 +922,7 @@ const char * const *get_mt6991_all_clk_names(void)
 		"mdp_vpp_rsz1",
 		"mdp_mdp_dlo_async5",
 		"mdp_img0",
+		"mdp_f26m",
 		"mdp_img_dl_relay0",
 		"mdp_img_dl_relay1",
 
@@ -969,6 +963,7 @@ const char * const *get_mt6991_all_clk_names(void)
 		"mdp1_vpp_rsz1",
 		"mdp1_mdp_dlo_async5",
 		"mdp1_img0",
+		"mdp1_f26m",
 		"mdp1_img_dl_relay0",
 		"mdp1_img_dl_relay1",
 

@@ -605,6 +605,74 @@ hwv_prepare_fail:
 	return -EBUSY;
 }
 
+static int mtk_clk_hwv_mux_upd_set_parent(struct clk_hw *hw, u8 index)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	u32 mask;
+	u32 opp_mask;
+	u32 val = 0, val2 = 0, orig = 0, renew = 0;
+	int i = 0;
+
+	mask = GENMASK(6, 0) << mux->data->mux_shift;
+	opp_mask = GENMASK(index, 0) << mux->data->mux_shift;
+
+	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &orig);
+
+	val = orig & mask;
+	val ^= opp_mask;
+
+	if (val > opp_mask)
+		regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs, val);
+	else
+		regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs, val);
+
+	regmap_write(mux->hwv_regmap, mux->data->hwv_upd_ofs, BIT(mux->data->hwv_upd_id));
+
+	while (1) {
+		regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &renew);
+		if ((renew & opp_mask) == opp_mask)
+			break;
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (1) {
+		regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &renew);
+
+		if ((renew & val) == val)
+			break;
+
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+
+		i++;
+	}
+
+	return 0;
+
+hwv_done_fail:
+	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
+	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val2);
+	pr_err("%s %s mux enable timeout(%x %x)\n", __func__, clk_hw_get_name(hw), val, val2);
+hwv_prepare_fail:
+	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
+	regmap_read(mux->regmap, mux->data->hwv_set_ofs, &val2);
+	pr_err("%s %s mux prepare timeout(%x %x) index = %u\n",
+			__func__, clk_hw_get_name(hw), val, val2, index);
+	mtk_clk_notify(mux->regmap, mux->hwv_regmap, clk_hw_get_name(hw),
+			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+			mux->data->gate_shift, CLK_EVT_SET_PARENT_TIMEOUT);
+
+	return -EBUSY;
+}
+
 static int mtk_clk_mux_determine_rate_closest(struct clk_hw *hw, struct clk_rate_request *req)
 {
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
@@ -640,6 +708,35 @@ static int mtk_clk_mux_determine_rate(struct clk_hw *hw, struct clk_rate_request
 
 	if (parent_index >= 0) {
 		ret = mtk_clk_hwv_mux_set_parent(hw, parent_index);
+		if (!ret) {
+			idx = mtk_clk_mux_get_parent(hw);
+			req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
+			if (!req->best_parent_hw)
+				return -EINVAL;
+
+			req->best_parent_rate = clk_hw_get_rate(req->best_parent_hw);
+			ret = clk_hw_set_parent(hw, req->best_parent_hw);
+			if (ret)
+				pr_err("mux set parent error(%d)\n", ret);
+		}
+
+		return ret;
+	} else
+		return parent_index;
+
+	return 0;
+}
+
+static int mtk_clk_mux_upd_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
+{
+	int idx, parent_index = -1;
+	int ret = 0;
+
+	if (mux_dfs_ops != NULL && mux_dfs_ops->get_opp != NULL)
+		parent_index = mux_dfs_ops->get_opp(clk_hw_get_name(hw));
+
+	if (parent_index >= 0) {
+		ret = mtk_clk_hwv_mux_upd_set_parent(hw, parent_index);
 		if (!ret) {
 			idx = mtk_clk_mux_get_parent(hw);
 			req->best_parent_hw = clk_hw_get_parent_by_index(hw, parent_index);
@@ -716,6 +813,16 @@ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_clr_set_upd_ops);
 
+const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_2_ops = {
+	.enable = mtk_clk_mux_fenc_enable_setclr,
+	.disable = mtk_clk_mux_disable_setclr,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_closest,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_gate_fenc_clr_set_upd_2_ops);
+
 const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_ops = {
 	.enable = mtk_clk_mux_fenc_enable_setclr,
 	.disable = mtk_clk_mux_disable_setclr,
@@ -758,8 +865,8 @@ const struct clk_ops mtk_hwv_dfs_mux_fenc_ops = {
 	.disable = mtk_clk_hwv_mux_disable,
 	.is_enabled = mtk_clk_mux_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
-	.set_parent = mtk_clk_hwv_mux_set_parent,
-	.determine_rate = mtk_clk_mux_determine_rate,
+	.set_parent = mtk_clk_hwv_mux_upd_set_parent,
+	.determine_rate = mtk_clk_mux_upd_determine_rate,
 };
 EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_fenc_ops);
 

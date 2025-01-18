@@ -28,7 +28,7 @@
 #include "clkchk.h"
 #include "mt-plat/aee.h"
 
-#define MAX_CLK_NUM			1024
+#define MAX_CLK_NUM			2048
 #define PLL_LEN				20
 #define INV_MSK				0xFFFFFFFF
 #define PWR_STA_BIT			BIT(30)
@@ -82,6 +82,15 @@ void clkchk_devapc_dump(void)
 	clkchk_ops->devapc_dump();
 }
 EXPORT_SYMBOL(clkchk_devapc_dump);
+
+void clkchk_external_dump(void)
+{
+	if (clkchk_ops == NULL || clkchk_ops->external_dump == NULL)
+		return;
+
+	clkchk_ops->external_dump();
+}
+EXPORT_SYMBOL(clkchk_external_dump);
 
 static const char *get_provider_name(struct device_node *node, u32 *cells)
 {
@@ -193,6 +202,11 @@ struct provider_clk *get_all_provider_clks(bool is_internal)
 				setup_provider_clk(&temp_clks[n]);
 
 				++n;
+
+				if (n == MAX_CLK_NUM) {
+					pr_notice("[clkchk] %s: temp_clks exceeds max size.\n", __func__);
+					BUG_ON(1);
+				}
 			}
 		}
 	} while (node != NULL && n < MAX_CLK_NUM);
@@ -328,7 +342,7 @@ EXPORT_SYMBOL(clkchk_pvdck_is_prepared);
 
 bool clkchk_pvdck_is_enabled(struct provider_clk *pvdck)
 {
-	struct clk_hw *hw, *p_hw;
+	struct clk_hw *hw, *p_hw, *grandp_hw, *greatp_hw;
 
 	if (clkchk_pvdck_is_on(pvdck) == 1) {
 		hw = __clk_get_hw(pvdck->ck);
@@ -339,6 +353,16 @@ bool clkchk_pvdck_is_enabled(struct provider_clk *pvdck)
 
 		if (IS_ERR_OR_NULL(p_hw))
 			return false;
+		else {
+			grandp_hw = clk_hw_get_parent(p_hw);
+			if (!IS_ERR_OR_NULL(grandp_hw)) {
+				if (!strcmp("clk26m", clk_hw_get_name(grandp_hw)))
+					return false;
+				greatp_hw = clk_hw_get_parent(grandp_hw);
+				if (!IS_ERR_OR_NULL(greatp_hw) && !strcmp("clk26m", clk_hw_get_name(greatp_hw)))
+					return false;
+			}
+		}
 
 		if (!clk_hw_is_enabled(p_hw))
 			return false;
@@ -610,10 +634,9 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 		if (!clkchk_is_retry_bug_on(false))
 			return -1;
 
-		if (is_pll_chk_bug_on() || pdchk_get_bug_on_stat()) {
-			clkchk_dump_pll_reg(false);
+		clkchk_dump_pll_reg(false);
+		if (is_pll_chk_bug_on() || pdchk_get_bug_on_stat())
 			BUG_ON(1);
-		}
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning_api(__FILE__, __LINE__,

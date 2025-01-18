@@ -83,7 +83,7 @@ static struct pd_check_swcg *get_subsys_cg(unsigned int id)
  * pm_domain status check
  */
 
-static int pdchk_pd_is_on(int pd_id)
+int pdchk_pd_is_on(int pd_id)
 {
 	struct pd_msk *pm;
 
@@ -98,6 +98,7 @@ static int pdchk_pd_is_on(int pd_id)
 
 	return pwr_hw_is_on(pm->sta_type, pm->pwr_val);
 }
+EXPORT_SYMBOL_GPL(pdchk_pd_is_on);
 
 static const char * const prm_status_name[] = {
 	"active",
@@ -413,6 +414,14 @@ static bool pdchk_suspend_allow(unsigned int id)
 }
 #endif
 
+static const char *pdchk_get_pd_name(int idx)
+{
+	if (pdchk_ops == NULL || pdchk_ops->get_pd_name == NULL)
+		return NULL;
+
+	return pdchk_ops->get_pd_name(idx);
+}
+
 static int set_genpd_notify(void)
 {
 	struct device_node *node = NULL;
@@ -440,7 +449,10 @@ static int set_genpd_notify(void)
 			pa.args[0] = pd_idx;
 			pa.args_count = 1;
 
-			snprintf(pd_dev_name, DEVN_LEN, "power-domain-chk-%d", i);
+			if (pdchk_get_pd_name(i))
+				snprintf(pd_dev_name, DEVN_LEN, "%s", pdchk_get_pd_name(i));
+			else
+				snprintf(pd_dev_name, DEVN_LEN, "power-domain-chk-%d", i);
 			pd_pdev[i] = platform_device_alloc(pd_dev_name, 0);
 
 			if (!pd_pdev[i]) {
