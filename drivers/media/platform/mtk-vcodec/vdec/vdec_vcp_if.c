@@ -367,9 +367,6 @@ static void handle_init_ack_msg(struct mtk_vcodec_dev *dev, struct vdec_vcu_ipi_
 	vcu->vsi = (void *)((__u64)vcp_get_reserve_mem_virt_ex(VDEC_MEM_ID) + inst_offset);
 	vcu->inst_addr = msg->vcu_inst_addr;
 
-	dev->tf_info = (struct mtk_tf_info *)
-		((__u64)vcp_get_reserve_mem_virt_ex(VDEC_MEM_ID) + VDEC_TF_INFO_OFFSET);
-
 	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%llx", vcu->inst_addr);
 }
 
@@ -566,6 +563,26 @@ void vdec_dump_mem_buf(unsigned long h_vdec)
 	mutex_unlock(inst->vcu.ctx_ipi_lock);
 }
 
+static void handle_vdec_vp_mode_prepare(struct mtk_vcodec_dev *dev, struct vdec_inst *inst)
+{
+	struct vdec_common_vsi *vdec_com_vsi = (struct vdec_common_vsi *)dev->com_vsi;
+	struct vdec_vp_mode_buf_info *info = (struct vdec_vp_mode_buf_info *)&vdec_com_vsi->vp_mode_info;
+	int idx = (inst->vsi->pic.bitdepth == 8) ? 0 : 1;
+	int i, ret_val = 0;
+
+	if (dev->smmu_enabled && !info->alloc_src_buf[idx]) {
+		ret_val = mtk_vcodec_vp_mode_buf_prepare(dev, inst->vsi->pic.bitdepth);
+		if (ret_val >= 0) {
+			for (i = 0; i < 3; i++)
+				info->src_buf[idx][i] = dev->vp_mode_buf[idx][i].mem.iova;
+			info->alloc_src_buf[idx] = (__u8)true;
+		}
+	}
+	mtk_v4l2_debug(2, "[%d] fill vsi vp mode %d bit src buf[%d] iova: 0x%llx 0x%llx 0x%llx (ret %d)",
+		inst->ctx->id, inst->vsi->pic.bitdepth, idx,
+		info->src_buf[idx][0], info->src_buf[idx][1], info->src_buf[idx][2], ret_val);
+}
+
 static int check_codec_id(struct vdec_vcu_ipi_ack *msg, unsigned int fmt, unsigned int svp)
 {
 	int codec_id = 0, ret = 0;
@@ -699,11 +716,22 @@ int vcp_dec_ipi_handler(void *arg)
 		if (msg->msg_id == VCU_IPIMSG_DEC_MEM_ALLOC) {
 			shem_msg = (struct vdec_vcu_ipi_mem_op *)obj->share_buf;
 			if (shem_msg->mem.type == MEM_TYPE_FOR_SHM) {
+				struct vdec_common_vsi *vdec_com_vsi;
+
 				handle_vdec_mem_alloc((void *)shem_msg);
 				shem_msg->vcp_addr[0] = (__u32)VCP_PACK_IOVA(
 					vcp_get_reserve_mem_phys_ex(VDEC_SET_PROP_MEM_ID));
 				shem_msg->vcp_addr[1] = (__u32)VCP_PACK_IOVA(
 					vcp_get_reserve_mem_phys_ex(VDEC_VCP_LOG_INFO_ID));
+
+				dev->com_vsi = (void *)vcp_get_reserve_mem_virt_ex(VDEC_MEM_ID);
+				vdec_com_vsi = (struct vdec_common_vsi *)dev->com_vsi;
+				dev->tf_info = (struct mtk_tf_info *)&vdec_com_vsi->tf_info;
+				vdec_com_vsi->vp_mode_info.enable_smmu = (__u8)dev->smmu_enabled;
+				mtk_v4l2_debug(2, "com_vsi 0x%lx, tf_info 0x%lx, enable_smmu %d",
+					(unsigned long)dev->com_vsi, (unsigned long)dev->tf_info,
+					vdec_com_vsi->vp_mode_info.enable_smmu);
+
 				shem_msg->msg_id = AP_IPIMSG_DEC_MEM_ALLOC_DONE;
 				ret = mtk_ipi_send(vcp_get_ipidev(VDEC_FEATURE_ID), IPI_OUT_VDEC_1, IPI_SEND_WAIT, obj,
 					PIN_OUT_SIZE_VDEC, 100);
@@ -871,6 +899,13 @@ return_vdec_ipi_ack:
 				msg->msg_id = AP_IPIMSG_DEC_WAITISR_DONE;
 				msg->status = ret;
 				vcodec_trace_count("VDEC_HW_CORE", 1);
+				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+				break;
+			case VCU_IPIMSG_DEC_GET_KERNEL_PARAM:
+				if (msg->id == GET_KPARAM_VP_MODE_BUF)
+					handle_vdec_vp_mode_prepare(dev, inst);
+
+				msg->msg_id = AP_IPIMSG_DEC_GET_KERNEL_PARAM_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_GET_FRAME_BUFFER:
@@ -1301,14 +1336,6 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 		(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
 		inst->vcu.id, inst, msg.ap_inst_addr);
 
-	if (ctx->dev->smmu_enabled) {
-		mtk_vcodec_vp_mode_buf_prepare(ctx->dev);
-		inst->vsi->vp_mode_src_buf[0] = ctx->dev->vp_mode_buf[0].mem.iova;
-		inst->vsi->vp_mode_src_buf[1] = ctx->dev->vp_mode_buf[1].mem.iova;
-		mtk_v4l2_debug(2, "fill vsi vp mode src buf iova: 0x%llx 0x%llx",
-			inst->vsi->vp_mode_src_buf[0], inst->vsi->vp_mode_src_buf[1]);
-	}
-
 	vcodec_trace_end();
 	return 0;
 
@@ -1345,8 +1372,15 @@ static void vdec_vcp_deinit(unsigned long h_vdec)
 
 	mtk_vcodec_del_ctx_list(inst->ctx);
 
-	if (inst->ctx->dev->smmu_enabled)
+	if (inst->ctx->dev->smmu_enabled && mtk_vcodec_ctx_list_empty(inst->ctx->dev)) {
+		struct vdec_common_vsi *vdec_com_vsi = (struct vdec_common_vsi *)inst->ctx->dev->com_vsi;
+		struct vdec_vp_mode_buf_info *vp_mode_info =
+			(struct vdec_vp_mode_buf_info *)&vdec_com_vsi->vp_mode_info;
+
+		memset(vp_mode_info->alloc_src_buf, 0, sizeof(vp_mode_info->alloc_src_buf));
+		memset(vp_mode_info->src_buf, 0, sizeof(vp_mode_info->src_buf));
 		mtk_vcodec_vp_mode_buf_unprepare(inst->ctx->dev);
+	}
 
 	mutex_lock(inst->vcu.ctx_ipi_lock);
 	list_for_each_safe(p, q, &inst->vcu.bufs) {

@@ -818,6 +818,7 @@ struct mtk_vcodec_dev {
 	struct mtk_vcodec_ctx *curr_enc_ctx[MTK_VENC_HW_NUM];
 	void __iomem *dec_reg_base[NUM_MAX_VDEC_REG_BASE];
 	void __iomem *enc_reg_base[NUM_MAX_VENC_REG_BASE];
+	void *com_vsi;
 
 	bool dec_is_power_on[MTK_VDEC_HW_NUM];
 	bool enc_is_power_on[MTK_VENC_HW_NUM];
@@ -928,9 +929,8 @@ struct mtk_vcodec_dev {
 	int enc_slb_cpu_used_perf;
 
 	bool smmu_enabled;
-	unsigned int vp_mode_used_cnt;
 	struct mutex vp_mode_buf_mutex;
-	struct vdec_vp_mode_buf vp_mode_buf[2];
+	struct vdec_vp_mode_buf vp_mode_buf[2][3]; // [0] for 8 bit, [1] for 10 bit, [3] = {y dat, c dat, len}
 /**
  *	struct ion_client *ion_vdec_client;
  *	struct ion_client *ion_venc_client;
