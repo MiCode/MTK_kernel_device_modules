@@ -44,6 +44,15 @@ config DRM_PANEL_SERDES
 		resolution and uses 24-bits RGB per pixel. It provides a
 		MIPI DSI interface to host.
 
+config DRM_PANEL_MAXIAM_MAX96851
+	tristate "serdes max96851 vdo mode panel"
+	depends on OF
+	help
+		Say Y here if you want to enable support for max96851 Serdes
+		vdo mode panel. The panel has a 1920x1080
+		resolution and uses 24-bits RGB per pixel. It provides a
+		DP and eDP interface to host.
+
 config DRM_PANEL_BOE_JD9365DA_VDO
 	tristate "BOE JD9365DA wqxga vdo mode panel"
 	depends on OF

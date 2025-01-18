@@ -84,6 +84,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/input/touchscreen/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/gpu/drm/panel/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/gpu/drm/bridge/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/gpu/mediatek/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/media/platform/

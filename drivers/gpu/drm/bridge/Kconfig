@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config DRM_MAXIAM_MAX96851
+	tristate "DRM EDP Support for Mediatek SoCs"
+	depends on OF
+	select PHY_MTK_EDP
+	help
+	  DRM/KMS EDPTX driver for Mediatek SoCs
+	  Choose this option if you want to enable
+	  eDPTX driver, and this config depends on
+	  DRM_MEDIATEK
