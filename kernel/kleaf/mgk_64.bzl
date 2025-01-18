@@ -211,6 +211,7 @@ mgk_64_device_modules = [
     "drivers/input/touchscreen/GT9895/gt9895.ko",
     "drivers/input/touchscreen/GT9896S/gt9896s.ko",
     "drivers/input/touchscreen/GT1151/gt1151.ko",
+    "drivers/input/touchscreen/ILITEK/ilitek_i2c.ko",
     "drivers/input/touchscreen/k6985v1_64_alpha/tp_y761.ko",
     "drivers/input/touchscreen/tui-common.ko",
     "drivers/interconnect/mediatek/mmqos-common.ko",
