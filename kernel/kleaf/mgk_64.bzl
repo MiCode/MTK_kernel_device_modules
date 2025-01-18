@@ -1776,6 +1776,8 @@ def get_overlay_modules_list():
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
+        mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-vcodec.ko":"mt6761"})
