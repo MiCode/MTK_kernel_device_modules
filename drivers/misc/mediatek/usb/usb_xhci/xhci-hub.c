@@ -1185,7 +1185,7 @@ static u32 xhci_get_port_status(struct usb_hcd *hcd,
 	return status;
 }
 
-int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
+int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		u16 wIndex, char *buf, u16 wLength)
 {
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
@@ -1623,6 +1623,7 @@ error:
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	return retval;
 }
+EXPORT_SYMBOL_GPL(xhci_hub_control_);
 
 /*
  * Returns 0 if the status hasn't changed, or the number of bytes in buf.

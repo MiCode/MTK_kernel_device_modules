@@ -2239,7 +2239,7 @@ void xhci_set_link_state(struct xhci_hcd *xhci, struct xhci_port *port,
 				u32 link_state);
 void xhci_test_and_clear_bit(struct xhci_hcd *xhci, struct xhci_port *port,
 				u32 port_bit);
-int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue, u16 wIndex,
+int xhci_hub_control_(struct usb_hcd *hcd, u16 typeReq, u16 wValue, u16 wIndex,
 		char *buf, u16 wLength);
 int xhci_hub_status_data(struct usb_hcd *hcd, char *buf);
 int xhci_find_raw_port_number(struct usb_hcd *hcd, int port1);
