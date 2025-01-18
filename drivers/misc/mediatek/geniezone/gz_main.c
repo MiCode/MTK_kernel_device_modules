@@ -1178,7 +1178,7 @@ static int __init gz_main_init(void)
 		return ret;
 	}
 
-	msleep(1000);
+	// msleep(1000);
 
 #if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
 	/* ffa driver register, init procedure won't stop when register failed */
@@ -1190,7 +1190,7 @@ static int __init gz_main_init(void)
 	if (ret)
 		KREE_ERR("%s gz_ffa_dev driver register fail, ret=%d\n", __func__, ret);
 
-	msleep(1000);
+	// msleep(1000);
 #endif
 
 	return 0;

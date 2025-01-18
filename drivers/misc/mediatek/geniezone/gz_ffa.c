@@ -872,6 +872,13 @@ struct ffa_driver gz_ffa_driver = {
 
 struct ffa_driver *gz_get_ffa_dev(void)
 {
+	/* Only do this setup once */
+	if (!device_driver_initalized) {
+		device_driver_init();
+		device_driver_initalized = true;
+		ffa_enabled = true;
+	}
+
 	return &gz_ffa_driver;
 }
 
