@@ -46,7 +46,7 @@
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
-int debug_module_bw[15];
+int debug_module_bw[MAX_LAYER_NR];
 module_param_array(debug_module_bw, int, NULL, 0644);
 
 #define REG_FLD(width, shift)                                                  \
@@ -643,13 +643,17 @@ static unsigned int mtk_ovl_phy_mapping_MT6991(struct mtk_ddp_comp *comp)
 		return 10;
 	case DDP_COMPONENT_OVL1_EXDMA5:
 		return 11;
+	case DDP_COMPONENT_OVL1_EXDMA6:
+		return 12;
+	case DDP_COMPONENT_OVL1_EXDMA7:
+		return 13;
+	case DDP_COMPONENT_OVL1_EXDMA8:
+		return 14;
+	case DDP_COMPONENT_OVL1_EXDMA9:
+		return 15;
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
-	case DDP_COMPONENT_OVL1_EXDMA6:
-	case DDP_COMPONENT_OVL1_EXDMA7:
-	case DDP_COMPONENT_OVL1_EXDMA8:
-	case DDP_COMPONENT_OVL1_EXDMA9:
-		return 12; // no use
+		return 16; // no use
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -2155,6 +2159,13 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 			(output_comp->id == DDP_COMPONENT_DSI1)))
 		mtk_ddp_comp_io_cmd(output_comp, NULL,
 			DSI_GET_MODE_BY_MAX_VREFRESH, &mode);
+	else
+		mode = &crtc->state->adjusted_mode;
+
+	if (!mode) {
+		DDPPR_ERR("%s mode is null!\n", __func__);
+		return;
+	}
 
 	if ((!vrefresh) || (!mode->vtotal) || (!mode->hdisplay)) {
 		DDPPR_ERR("%s, vrefresh=%d, vtotal=%d, hdisplay=%d is invalid!\n",
@@ -3670,6 +3681,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		u32 hdr_bw_val = 0;
+		u32 stash_bw_val = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3702,18 +3715,21 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		comp->last_hrt_bw = bw_val;
 
 		if (!IS_ERR(comp->hdr_qos_req))
-			if (usage_ovl_compr)
-				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, bw_val / 32,
+			if (usage_ovl_compr) {
+				hdr_bw_val = bw_val ? ((bw_val > 32) ? (bw_val / 32) : 1) : 0;
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
 					priv->data->respective_ostdl);
+			}
 
 		if (!IS_ERR(comp->stash_qos_req)) {
 			if (usage_ovl_compr)
-				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, bw_val * 2 / 256,
-					priv->data->respective_ostdl);
+				stash_bw_val = bw_val ? ((bw_val > 128) ? (bw_val / 128) : 1) : 0;
 			else
-				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, bw_val / 256,
+				stash_bw_val = bw_val ? ((bw_val > 256) ? (bw_val / 256) : 1) : 0;
+			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 					priv->data->respective_ostdl);
 		}
+
 		ret = OVL_REQ_HRT;
 		break;
 	}
@@ -4032,9 +4048,9 @@ void mtk_ovl_exdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 		REG_FLD_VAL_GET(FLD_FBDC_FILTER_EN, value));
 
 	value = readl(DISP_REG_OVL_STASH_CFG0 + baddr);
-	DDPDUMP("OVL_STASH_CFG0:%x\n", value);
+	DDPDUMP("OVL_STASH_CFG0:0x%08x\n", value);
 	value = readl(DISP_REG_OVL_STASH_CFG1 + baddr);
-	DDPDUMP("OVL_STASH_CFG1:%x\n", value);
+	DDPDUMP("OVL_STASH_CFG1:0x%08x\n", value);
 
 }
 

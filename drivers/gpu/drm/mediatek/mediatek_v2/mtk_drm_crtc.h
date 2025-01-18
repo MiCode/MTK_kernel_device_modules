@@ -36,9 +36,11 @@
 #if IS_ENABLED(CONFIG_ARM64)
 #define MAX_CRTC 4
 #define OVL_LAYER_NR 15L
+#define MAX_LAYER_NR 20
 #else
 #define MAX_CRTC 3
 #define OVL_LAYER_NR 12L
+#define MAX_LAYER_NR 20
 #endif
 #define OVL_PHY_LAYER_NR 4L
 #define RDMA_LAYER_NR 1UL
@@ -1159,8 +1161,8 @@ struct mtk_drm_crtc {
 
 	struct mtk_vblank_config_rec *vblank_rec;
 
-	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
-	unsigned int usage_ovl_compr[OVL_LAYER_NR];
+	unsigned int usage_ovl_fmt[MAX_LAYER_NR]; // for mt6989 hrt by larb
+	unsigned int usage_ovl_compr[MAX_LAYER_NR];
 
 	struct mtk_ddp_comp *last_blender;
 

@@ -4047,11 +4047,17 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 		DDPPR_ERR("%s invalid crtc\n", __func__);
 		return;
 	}
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
 			to_mtk_plane_state(plane->state);
 		struct mtk_ddp_comp *comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+		int comp_idx;
+
+		if (!comp)
+			continue;
 
 		DDPDBG("%s ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__,
 					plane_state->comp_state.comp_id,
@@ -4059,10 +4065,17 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 					plane_state->comp_state.ext_lye_id);
 
 		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+
+		if (mtk_crtc && mtk_crtc->path_data && mtk_crtc->path_data->is_exdma_dual_layer && priv) {
+			comp_idx = dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id);
+
+			if (comp_idx < DDP_COMPONENT_ID_MAX) {
+				comp = priv->ddp_comp[comp_idx];
+				mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+			}
+		}
 	}
 
-	mtk_crtc = to_mtk_crtc(crtc);
-	priv = crtc->dev->dev_private;
 	/* For Assert layer */
 	if (mtk_crtc && mtk_drm_dal_enable()) {
 		DDPINFO("%s: need handle dal layer\n", __func__);
@@ -4082,14 +4095,14 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 
 	if (mtk_crtc && mtk_disp_get_logger_enable()) {
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt = ", __func__);
-		for (int i = 0; i < OVL_LAYER_NR ; i++)
+		for (int i = 0; i < MAX_LAYER_NR; i++)
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
 				     mtk_crtc->usage_ovl_fmt[i]);
 		DDPINFO("%s\n", dbg_msg);
 
 		memset(dbg_msg, 0, sizeof(dbg_msg));
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_compr = ", __func__);
-		for (int i = 0; i < OVL_LAYER_NR ; i++)
+		for (int i = 0; i < MAX_LAYER_NR ; i++)
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
 				     mtk_crtc->usage_ovl_compr[i]);
 		DDPINFO("%s\n", dbg_msg);
@@ -18927,6 +18940,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 #endif
 		} else {
+
+#if defined(DISP_STASH_ENABLE)
+			if (pipe == 1)
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_STASH_CMD;
+#endif
+
 			if (priv->data->mmsys_id == MMSYS_MT6991) {
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;

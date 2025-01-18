@@ -349,29 +349,30 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int compr_ratio = 90;
 	int oddmr_hrt = 0;
 
-	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
-	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
-	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
-	 * sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
+	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)(14)
+	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)(15)
+	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + 1_exdma6(12)
+	 * sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + 1_exdma7(13)
 	 */
-	for (i = 0; i < max_ovl_phy_layer; i++) {
+	for (i = 0; i < MAX_LAYER_NR; i++) {
 		if (mtk_crtc->usage_ovl_fmt[i]) {
 			unsigned int bw = bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 
 			if (mtk_crtc->usage_ovl_compr[i])
 				bw = bw * compr_ratio / 100;
 
-			if (i == 0 || i == 5 || i == 11)
+			if (i == 0 || i == 5 || i == 11 || i == 14)
 				subcomm_bw_sum[0] += bw;
-			else if (i == 1 || i == 4 || i == 10)
+			else if (i == 1 || i == 4 || i == 10 || i == 15)
 				subcomm_bw_sum[1] += bw;
-			else if (i == 2 || i == 7 || i == 9)
+			else if (i == 2 || i == 7 || i == 9 || i == 12)
 				subcomm_bw_sum[2] += bw;
-			else if (i == 3 || i == 6 || i == 8)
+			else if (i == 3 || i == 6 || i == 8 || i == 13)
 				subcomm_bw_sum[3] += bw;
 		}
 	}
 
+	// need check if crtc0;
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_oddmr_hrt_cal_notify(&oddmr_hrt);
 		subcomm_bw_sum[2] += bw_base * oddmr_hrt / 400;
@@ -388,6 +389,8 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	priv->hrt_channel_bw_sum[crtc_idx][2] = subcomm_bw_sum[3];
 	priv->hrt_channel_bw_sum[crtc_idx][3] = subcomm_bw_sum[2];
 
+
+	// to do need change to all display sum
 	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
 }
 
