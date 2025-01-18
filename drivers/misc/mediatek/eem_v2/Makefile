@@ -1,5 +1,5 @@
 
-# Copyright (C) 2016 MediaTek Inc.
+# Copyright (C) 2024 MediaTek Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -26,9 +26,6 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/		\
 	-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/			\
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/	\
-
-
-
 
 
 ifneq (,$(filter y m, $(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)))
@@ -109,4 +106,13 @@ mediatek_eem-y += common_6893/mtk_eem.o
 mediatek_eem-y += common_6893/mtk_eem_platform.o
 mediatek_eem-y += common_6893/mtk_eem_internal.o
 mediatek_eem-y += common_6893/mtk_eem_api.o
+
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v1/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/plat_k6781/inc
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
+mediatek_eem-y += plat_k6781/mtk_eem.o
+mediatek_eem-y += plat_k6781/mtk_eem_platform.o
+mediatek_eem-y += plat_k6781/mtk_eem_internal.o
+mediatek_eem-y += plat_k6781/mtk_eem_api.o
 endif
