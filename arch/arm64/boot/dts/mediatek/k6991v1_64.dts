@@ -190,6 +190,93 @@ bootargs_ext = "";
 	status = "okay";
 };
 
+&pcie0 {
+	pinctrl-names = "init", "default", "sleep", "pd";
+	pinctrl-0 = <&pcie0_pins_init>;
+	pinctrl-1 = <&pcie0_pins_default>;
+	pinctrl-2 = <&pcie0_pins_sleep>;
+	pinctrl-3 = <&pcie0_pins_pd>;
+	max-link-speed = <4>;
+	status = "okay";
+};
+
+&pcie1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_pins_default>;
+	max-link-speed = <4>;
+	status = "disabled";
+};
+
+&pciephy0 {
+	mediatek,short-reach;
+	status = "okay";
+};
+
+&pciephy1 {
+	status = "disabled";
+};
+
+/* PCIe pinmux start */
+/* skyhawk use waken to control DFD_EN, PCIe0 don't need to control it */
+&pio {
+	pcie0_pins_init: pcie0-init {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO243__FUNC_GPIO243>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	pcie0_pins_default: pcie0-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO241__FUNC_PCIE_PERSTN>,
+				 <PINMUX_GPIO243__FUNC_PCIE_CLKREQN>;
+			bias-pull-up;
+		};
+	};
+
+	pcie0_pins_sleep: pcie0-sleep {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO243__FUNC_GPIO243>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	pcie0_pins_pd: pcie0-pd {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO241__FUNC_GPIO241>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO243__FUNC_GPIO243>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	pcie1_pins_default: pcie1-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO145__FUNC_PCIE_WAKEN_1P>,
+				 <PINMUX_GPIO146__FUNC_PCIE_PERSTN_1P>,
+				 <PINMUX_GPIO147__FUNC_PCIE_CLKREQN_1P>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+	};
+};
+/* PCIe pinmux end */
+
 #if 0
 &lk_charger {
 	disable-charger;
@@ -662,51 +749,6 @@ bootargs_ext = "";
 };
 /* GPS GPIO standardization end */
 #endif
-
-/* PCIe pinmux start */
-&pcie0 {
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&pcie0_pins_default>;
-	pinctrl-1 = <&pcie0_pins_sleep>;
-	status = "okay";
-};
-
-&pcie1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pcie1_pins_default>;
-	status = "disabled";
-};
-
-&pio {
-	pcie0_pins_default: pcie0-default {
-		pins_cmd_dat {
-			/* PINMUX_GPIO231__FUNC_PCIE_WAKEN for Falcon */
-			pinmux = <PINMUX_GPIO230__FUNC_PCIE_PERSTN>,
-				 <PINMUX_GPIO232__FUNC_PCIE_CLKREQN>;
-			bias-pull-up;
-		};
-	};
-
-	pcie0_pins_sleep: pcie0-sleep {
-		pins_cmd_dat {
-			/* PINMUX_GPIO231__FUNC_GPIO231 for Falcon */
-			pinmux = <PINMUX_GPIO230__FUNC_GPIO230>,
-				 <PINMUX_GPIO232__FUNC_GPIO232>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
-
-	pcie1_pins_default: pcie1-default {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO0__FUNC_PCIE_PERSTN_P1>,
-				 <PINMUX_GPIO1__FUNC_PCIE_WAKEN_P1>,
-				 <PINMUX_GPIO2__FUNC_PCIE_CLKREQN_P1>;
-			bias-pull-up;
-		};
-	};
-};
-/* PCIe pinmux end */
 
 #endif
 /* usb typec mux start */
