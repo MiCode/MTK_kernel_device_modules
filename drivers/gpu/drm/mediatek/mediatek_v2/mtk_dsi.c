@@ -2816,7 +2816,7 @@ static int wait_dsi_wq(struct t_condition_wq *wq, int timeout)
 	return ret;
 }
 
-static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi)
+static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi, struct mtk_drm_private *priv)
 {
 	/* reset related setting */
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG, 0);
@@ -2827,7 +2827,10 @@ static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi)
 	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
 
 	/* set lane num = 0 */
-	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, 0);
+	if (priv && (priv->data->mmsys_id != MMSYS_MT6761 &&
+		priv->data->mmsys_id != MMSYS_MT6765 &&
+		priv->data->mmsys_id != MMSYS_MT6768))
+		mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, 0);
 
 }
 
@@ -3127,7 +3130,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (atomic_read(&dsi->ulps_async) == 0) {
 				wakeup_dsi_wq(&dsi->enter_ulps_done);
 			} else {
-				mtk_dsi_ulps_enter_end(dsi);
+				mtk_dsi_ulps_enter_end(dsi, priv);
 				atomic_set(&dsi->ulps_async, 0);
 				crtc = dsi->encoder.crtc;
 				mtk_drm_idlemgr_async_put(crtc, dsi->ddp_comp.id);
@@ -3363,6 +3366,15 @@ static void mtk_dsi_wait_ulps_event_async(struct mtk_dsi *dsi)
 static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 {
 	unsigned int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
+		dsi->master_dsi->ddp_comp.mtk_crtc
+		: dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+	else if (dsi->encoder.dev)
+		priv = dsi->encoder.dev->dev_private;
 
 	/* reset enter_ulps_done before waiting */
 	reset_dsi_wq(&dsi->enter_ulps_done);
@@ -3375,8 +3387,16 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 		mtk_dsi_wait_ulps_event_async(dsi);
 
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LDX_ULPM_AS_L0, LDX_ULPM_AS_L0);
-	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LD0_ULPM_EN, LD0_ULPM_EN);
-	mtk_dsi_mask(dsi, DSI_PHY_LCCON, LC_ULPM_EN, LC_ULPM_EN);
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6768)) {
+		mtk_dsi_mask(dsi, DSI_PHY_LCCON, LC_ULPM_EN, LC_ULPM_EN);
+		udelay(1);
+		mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LD0_ULPM_EN, LD0_ULPM_EN);
+	} else {
+		mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LD0_ULPM_EN, LD0_ULPM_EN);
+		mtk_dsi_mask(dsi, DSI_PHY_LCCON, LC_ULPM_EN, LC_ULPM_EN);
+	}
 
 	if (async == false) {
 		/* wait enter_ulps_done */
@@ -3399,7 +3419,7 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 			}
 		}
 
-		mtk_dsi_ulps_enter_end(dsi);
+		mtk_dsi_ulps_enter_end(dsi, priv);
 	}
 }
 
@@ -3407,6 +3427,15 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 {
 	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
 	int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
+		dsi->master_dsi->ddp_comp.mtk_crtc
+		:dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+	else if (dsi->encoder.dev)
+		priv = dsi->encoder.dev->dev_private;
 
 	dsi->ulps_wakeup_prd = wake_up_prd;
 
@@ -3426,11 +3455,22 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG,
 		     SLEEPOUT_DONE_INT_FLAG);
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON, LDX_ULPM_AS_L0, LDX_ULPM_AS_L0);
-	mtk_dsi_mask(dsi, DSI_MODE_CTRL, SLEEP_MODE, SLEEP_MODE);
-	mtk_dsi_mask(dsi, DSI_TIME_CON0, 0xffff, wake_up_prd);
+	if (priv && (priv->data->mmsys_id != MMSYS_MT6761 &&
+		priv->data->mmsys_id != MMSYS_MT6765 &&
+		priv->data->mmsys_id != MMSYS_MT6768)) {
+		mtk_dsi_mask(dsi, DSI_MODE_CTRL, SLEEP_MODE, SLEEP_MODE);
+		mtk_dsi_mask(dsi, DSI_TIME_CON0, 0xffff, wake_up_prd);
+	}
 
 	/* free sw control */
 	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
+
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6768)) {
+		mtk_dsi_mask(dsi, DSI_MODE_CTRL, SLEEP_MODE, SLEEP_MODE);
+		mtk_dsi_mask(dsi, DSI_TIME_CON0, 0xffff, wake_up_prd);
+	}
 
 	/* set MIPITX SW CTRL to LP11 if reset PHY is required */
 	if (dsi->driver_data && dsi->driver_data->require_phy_reset) {
