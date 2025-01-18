@@ -102,6 +102,9 @@
 
 #define DSU_CEILING_FREQ_TCM_OFFSET     (0x220)
 
+#define ABNORMAL_TEMP_TCM_OFFSET     (0x23C)
+
+#define MBRAIN_LOG_OFFSET     (0x240)
 
 /*monitor Tj*/
 /*LVTS1~LVTS16,0x138~0x174; 0x178~0x184 reserved*/
