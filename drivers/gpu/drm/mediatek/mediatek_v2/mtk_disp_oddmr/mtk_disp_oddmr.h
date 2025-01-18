@@ -273,6 +273,8 @@ struct mtk_disp_oddmr_data {
 struct mtk_disp_oddmr_od_data {
 	uint32_t ln_offset;
 	uint32_t merge_lines;
+	int bpp;
+	uint32_t base_line_jump;
 	int od_sram_read_sel;
 	uint32_t od_dram_sel[2];
 	int od_sram_table_idx[2];
