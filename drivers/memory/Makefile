@@ -2,5 +2,9 @@
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/memory
 
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
+endif
+
 obj-$(CONFIG_HAVE_MTK_MC)	+= mediatek/
 obj-$(CONFIG_DEVICE_MODULES_MTK_SMI)		+= mtk-smi.o
