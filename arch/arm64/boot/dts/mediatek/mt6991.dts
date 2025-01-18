@@ -1468,6 +1468,17 @@
 		 reg = <0 0xc400000 0 0x40000>, /* distributor */
 			<0 0xc440000 0 0x200000>; /* redistributor */
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+		ppi-partitions {
+				ppi_cluster0: interrupt-partition-0 {
+					affinity = <&cpu0 &cpu1 &cpu2 &cpu3>;
+				};
+				ppi_cluster1: interrupt-partition-1 {
+					affinity = <&cpu4 &cpu5 &cpu6>;
+				};
+				ppi_cluster2: interrupt-partition-2 {
+					affinity = <&cpu7>;
+				};
+		};
 	};
 
 	gic_ram_parity: gic-ram-parity {
@@ -1505,6 +1516,28 @@
 		spmi-dev-mask = <0x85c0>;
 		#address-cells = <2>;
 		#size-cells = <0>;
+	};
+
+	pmu_blackhawk: pmu-blackhawk{
+		compatible = "arm,armv8-pmuv3";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster2>;
+	};
+	pmu_hunter_elp: pmu-hunter-elp {
+		compatible = "arm,cortex-x4-pmu";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster1>;
+	};
+	pmu_hunter: pmu-hunter {
+		compatible = "arm,cortex-a720-pmu";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster0>;
+	};
+	dsu_pmu_0: dsu-pmu-0 {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH 0>;
+		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>,
+			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
 	spmi_pmif_mpu: spmi-pmif-mpu@1c01a900 {
