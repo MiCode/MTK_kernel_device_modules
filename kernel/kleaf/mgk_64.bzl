@@ -1091,6 +1091,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/pwrctl/common:wwan_gpio_pwrctl")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/conninfra/build/thinmd:conninfra")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/thinmd_exception:thinmd_exception")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
