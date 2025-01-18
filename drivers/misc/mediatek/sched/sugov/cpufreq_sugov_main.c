@@ -32,7 +32,9 @@
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
+#endif
 #include <mt-plat/mtk_irq_mon.h>
 #include "sched_version_ctrl.h"
 
