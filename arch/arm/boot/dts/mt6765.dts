@@ -4488,6 +4488,13 @@ initcall_debug=1 pelt=8 clk_ignore_unused=1";
 		mediatek,enable;
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6370_chg>;
+		bootmode = <&chosen>;
+	};
+
 	eas {
 		eff_turn_point = <467>;
 		tiny = <50>;
