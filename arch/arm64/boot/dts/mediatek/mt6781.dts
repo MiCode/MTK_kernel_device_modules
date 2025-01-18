@@ -1067,7 +1067,7 @@
 		clock-names = "spi", "wrap";
 
 		main_pmic: mt6358-pmic {
-			compatible = "mediatek,mt6358-pmic";
+			compatible = "mediatek,mt6358";
 			interrupt-parent = <&pio>;
 			interrupts = <144 IRQ_TYPE_LEVEL_HIGH 144 0>;
 			status = "okay";
