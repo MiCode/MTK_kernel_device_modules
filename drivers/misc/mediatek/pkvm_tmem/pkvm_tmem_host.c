@@ -44,6 +44,11 @@ static int __init test_nvhe_init(void)
 	int ret;
 	unsigned long token;
 
+	if (!is_protected_kvm_enabled()) {
+		pr_info("skip to load pkvm_tmem\n");
+		return 0;
+	}
+
 	ret = pkvm_load_el2_module(__kvm_nvhe_hyp_tmem_init, &token);
 	if (ret) {
 		pr_info("%s: pkvm_load_el2_module() fail, ret=%d\n", __func__, ret);
