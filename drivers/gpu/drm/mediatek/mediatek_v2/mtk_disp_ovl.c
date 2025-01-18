@@ -4356,25 +4356,25 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				phy_id = ovl->data->ovl_phy_mapping(comp);
 
 			if (mtk_crtc->usage_ovl_fmt[phy_id])
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 					priv->data->respective_ostdl);
 			else
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, 0,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 0,
 					priv->data->respective_ostdl);
 
 			if (!IS_ERR(comp->hrt_qos_req_other)) {
 				if(mtk_crtc->usage_ovl_fmt[phy_id + 1])
-					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, bw_val,
+					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, bw_val,
 						priv->data->respective_ostdl);
 				else
-					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, 0,
+					__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, 0,
 						priv->data->respective_ostdl);
 			}
 		} else {
-			__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
+			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			if (!IS_ERR(comp->hrt_qos_req_other))
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, bw_val,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, bw_val,
 					priv->data->respective_ostdl);
 		}
 

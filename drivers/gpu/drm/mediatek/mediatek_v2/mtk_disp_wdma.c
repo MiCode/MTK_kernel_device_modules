@@ -663,6 +663,11 @@ static void mtk_wdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		if (priv && !mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ))
 			mtk_ddp_write(comp, 0, DISP_REG_UFBC_WDMA_INTEN, handle);
+		comp->qos_bw = 0;
+		comp->qos_bw_other = 0;
+		comp->fbdc_bw = 0;
+		comp->hrt_bw = 0;
+		comp->hrt_bw_other = 0;
 	} else {
 		mtk_ddp_write(comp, 0x0, DISP_REG_WDMA_INTEN, handle);
 		mtk_ddp_write(comp, 0x0, DISP_REG_WDMA_EN, handle);
@@ -2258,16 +2263,22 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	}
 	case PMQOS_SET_HRT_BW: {
-		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+		unsigned int bw = 1306;
+		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+
+		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
-		DDPINFO("%s, comp:%d, respective_otstdl:%d\n", __func__, comp->id, priv->data->respective_ostdl);
+
+		if (wdma->info_data->is_support_ufbc && params)
+			bw = *(unsigned int *)params;
+
 		if (priv->data->respective_ostdl) {
 			if (!IS_ERR(comp->hrt_qos_req))
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, 1306,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw,
 					priv->data->respective_ostdl);
 			if (wdma->data->hrt_channel)
-				mtk_vidle_channel_bw_set(1306, wdma->data->hrt_channel(comp));
+				mtk_vidle_channel_bw_set(bw, wdma->data->hrt_channel(comp));
 		}
 		ret = WDMA_REQ_HRT;
 		break;

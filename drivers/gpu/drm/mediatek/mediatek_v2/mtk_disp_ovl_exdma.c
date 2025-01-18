@@ -3697,21 +3697,21 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (bw_val == comp->last_hrt_bw)
 			break;
 
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, bw_val,
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 			priv->data->respective_ostdl);
 		comp->last_hrt_bw = bw_val;
 
 		if (!IS_ERR(comp->hdr_qos_req))
 			if (usage_ovl_compr)
-				__mtk_disp_set_module_hrt(comp->hdr_qos_req, bw_val / 32,
+				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, bw_val / 32,
 					priv->data->respective_ostdl);
 
 		if (!IS_ERR(comp->stash_qos_req)) {
 			if (usage_ovl_compr)
-				__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val * 2 / 256,
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, bw_val * 2 / 256,
 					priv->data->respective_ostdl);
 			else
-				__mtk_disp_set_module_hrt(comp->stash_qos_req, bw_val / 256,
+				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, bw_val / 256,
 					priv->data->respective_ostdl);
 		}
 		ret = OVL_REQ_HRT;
@@ -3742,16 +3742,16 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (comp->last_hrt_bw == 0)
 			break;
 
-		__mtk_disp_set_module_hrt(comp->hrt_qos_req, 0,
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 0,
 			priv->data->respective_ostdl);
 		comp->last_hrt_bw = 0;
 
 		if (!IS_ERR(comp->hdr_qos_req))
-			__mtk_disp_set_module_hrt(comp->hdr_qos_req, 0,
+			__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, 0,
 				priv->data->respective_ostdl);
 
 		if (!IS_ERR(comp->stash_qos_req))
-			__mtk_disp_set_module_hrt(comp->stash_qos_req, 0,
+			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, 0,
 				priv->data->respective_ostdl);
 
 		ret = OVL_REQ_HRT;

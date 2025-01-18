@@ -37,6 +37,9 @@ module_param(debug_vidle_bw, int, 0644);
 int debug_channel_bw[4];
 module_param_array(debug_channel_bw, int, NULL, 0644);
 
+int debug_ostdl;
+module_param(debug_ostdl, int, 0644);
+
 #define CRTC_NUM		4
 static struct drm_crtc *dev_crtc;
 /* add for mm qos */
@@ -219,18 +222,22 @@ int __mtk_disp_set_module_srt(struct icc_path *request, int comp_id,
 
 	mtk_icc_set_bw(request, MBps_to_icc(bandwidth), MBps_to_icc(peak_bw));
 
-	DRM_MMP_MARK(pmqos, comp_id, bandwidth);
+	DRM_MMP_MARK(pmqos, (comp_id << 16) | bandwidth,  (comp_id << 16) | peak_bw);
 
 	return 0;
 }
 
-void __mtk_disp_set_module_hrt(struct icc_path *request,
+void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 				unsigned int bandwidth, bool respective_ostdl)
 {
+	unsigned int icc = MBps_to_icc(bandwidth);
+
 	if (bandwidth > 0 && respective_ostdl != true)
-		mtk_icc_set_bw(request, 0, MTK_MMQOS_MAX_BW);
-	else
-		mtk_icc_set_bw(request, 0, MBps_to_icc(bandwidth));
+		icc = MTK_MMQOS_MAX_BW;
+
+	mtk_icc_set_bw(request, 0, icc);
+	if (debug_ostdl)
+		DRM_MMP_MARK(ostdl, (comp_id << 16) | bandwidth, icc);
 }
 
 static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
