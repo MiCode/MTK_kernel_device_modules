@@ -1449,12 +1449,6 @@ cpus {
 					pll-id = <CLK_APMIXED_ADSPPLL>;
 					perms = <0x1C>;
 				};
-
-				apupll {
-					fh-id = <13>;
-					pll-id = <CLK_APMIXED_APUPLL>;
-				};
-
 				tvdpll {
 					fh-id = <14>;
 					pll-id = <CLK_APMIXED_TVDPLL>;
