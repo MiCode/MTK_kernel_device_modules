@@ -59,6 +59,14 @@ config VIDEO_MTK_ISP_HCP
 	    events, and other notification events that are needed for a
 	    working camera session.
 
+config VIDEO_MTK_ISP_HCP_ISP8
+	tristate "Mediatek hcp processing function"
+	help
+		HCP driver acts a message protocol between imgsys driver and
+		userspace daemon. messages can include enqueue event, dequeue
+		events, and other notification events that are needed for a
+		working camera session.
+
 config VIDEO_MTK_ISP_AOV
 	tristate "Mediatek aov processing function"
 	help
@@ -83,6 +91,14 @@ config VIDEO_MTK_ISP_IPESYS
 	    for isp pipeline image computation such
 	    as motion estimation.
 
+config VIDEO_MTK_ISP_IMGSYS_71
+	tristate "Mediatek imgsys processing function"
+	help
+	    imgsys driver controls post-processing on the streaming images
+	    and/or statistics for better image qualities
+	    such as noise reduction, edge enhencement,
+	    and motion estimation, etc.
+
 config VIDEO_MTK_ISP_IMGSYS_7S
 	tristate "Mediatek imgsys processing function"
 	help
@@ -99,6 +115,14 @@ config VIDEO_MTK_ISP_IMGSYS_CMDQ
 	    wait gce events, and notification that are needed for a
 	    working camera session.
 
+config VIDEO_MTK_ISP_IMGSYS_CMDQ_ISP8
+	tristate "Mediatek imgsys cmdq processing function"
+	help
+		imgsys cmdq driver acts a message protocol between imgsys
+		driver and gce driver. messages can include R/W registers,
+		wait gce events, and notification that are needed for a
+		working camera session.
+
 config VIDEO_MTK_ISP_IMGSYS_7SP
 	tristate "Mediatek imgsys processing function"
 	help
@@ -106,6 +130,14 @@ config VIDEO_MTK_ISP_IMGSYS_7SP
 	    and/or statistics for better image qualities
 	    such as noise reduction, edge enhencement,
 	    and motion estimation, etc.
+
+config VIDEO_MTK_ISP_IMGSYS_8
+	tristate "Mediatek imgsys processing function"
+	help
+		imgsys driver controls post-processing on the streaming images
+		and/or statistics for better image qualities
+		such as noise reduction, edge enhencement,
+		and motion estimation, etc.
 
 config MTK_C2PS
 	tristate "Support MTK Camera Power Performance Sceduling (C2PS) mechanism mechanism"
