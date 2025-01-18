@@ -85,7 +85,6 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram vmalloc=400M \
-		earlycon=uart8250,mmio32,0x11002000 \
 		8250.nr_uarts=2 \
 		initcall_debug=1 \
 		loglevel=8 \
