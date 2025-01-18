@@ -19,6 +19,7 @@ mgk_module_ext_outs = [
     "drivers/iio/adc/mt6370-adc.ko",
     "drivers/leds/leds-pwm.ko",
     "drivers/media/v4l2-core/v4l2-flash-led-class.ko",
+    "drivers/net/ethernet/microchip/lan743x.ko",
     "drivers/perf/arm_dsu_pmu.ko",
     "drivers/power/reset/reboot-mode.ko",
     "drivers/power/reset/syscon-reboot-mode.ko",
