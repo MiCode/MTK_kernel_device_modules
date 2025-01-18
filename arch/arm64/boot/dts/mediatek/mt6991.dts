@@ -1210,6 +1210,13 @@
 				bus-status-num = <3>;
 				bus-freq-mhz = <156>;
 			};
+			monitor20 {
+				monitor-name = "debug_ctrl_ao_MMUP_AO";
+				base = <0x31a22000>;
+				num-ports = <25>;
+				bus-freq-mhz = <728>;
+				isr-dump = <0>;
+			};
 		};
 	};
 
@@ -14491,13 +14498,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		vcp-secure-dump = <0>;   /* enable dump via secure world*/
 		vcp-secure-dump-size = <0x400000>;
 		vcp-secure-dump-offset = <0xa00000>;
+		vcp-secure-dump-dram-offset = <0x200000>;
 		vcp-sec-dump-key = "mediatek,me_vcp_reserved";
 
 		memorydump = <0x60000>, /* l2tcm */
 			<0x020000>, /* l1c */
 			<0x003f00>, /* regdump */
 			<0x000400>, /* trace buffer */
-			<0x160000>; /* dram */
+			<0x200000>; /* dram */
 
 		vcp-mem-tbl = <0 0x78000>, /* VDEC_MEM_ID 480KB */
 			<1 0x12000>, /* VENC_MEM_ID 72KB */
@@ -14600,7 +14608,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		memorydump = <0x020000>, /* l1c */
 			<0x003f00>, /* regdump */
 			<0x000100>, /* trace buffer */
-			<0x160000>; /* dram */
+			<0x200000>; /* dram */
 	};
 
 	opp_table_mminfra: opp-table-mminfra {
