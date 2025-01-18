@@ -168,6 +168,7 @@
 	};
 
 	sensor3: sensor3@52 {
+		mediatek,legacy-search;
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ox08b40_mipi_raw";
 		reg = <0x52>;
