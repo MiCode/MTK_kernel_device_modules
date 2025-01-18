@@ -745,6 +745,11 @@ static int __init mobicore_init(void)
 		g_ctx.real_drv = 0;
 	}
 
+	ret = of_property_read_u32(node, "trustonic,sel2-support", &g_ctx.sel2_support);
+	if (ret)
+		g_ctx.sel2_support = 0;
+	mc_dev_info("support sel2: %d", g_ctx.sel2_support);
+
 	/* In a Xen DomU, just register the front-end */
 	ret = protocol_early_init(mobicore_probe_not_of, mobicore_start_fe);
 	if (ret) {

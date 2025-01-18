@@ -25,7 +25,7 @@
 #include "public/mc_user.h"
 
 #ifdef MC_FFA_FASTCALL
-#include <linux/arm_ffa.h>
+#include "ffa_v11/arm_ffa.h"
 #include "public/trustonic_ffa_api.h"
 
 #define KINIBI_FFA_TAG_SHARED		0
