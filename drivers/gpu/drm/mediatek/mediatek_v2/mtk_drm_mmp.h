@@ -50,6 +50,8 @@ struct DRM_MMP_Events {
 	mmp_event aal;
 	mmp_event aal0;
 	mmp_event aal1;
+	mmp_event chist;
+	mmp_event chist0;
 	mmp_event dp_intf0;
 	mmp_event ddp;
 	mmp_event mutex[DISP_MUTEX_DDP_COUNT];

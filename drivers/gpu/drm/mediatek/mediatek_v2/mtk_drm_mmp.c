@@ -92,6 +92,10 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL0");
 	g_DRM_MMP_Events.aal1 =
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL1");
+	g_DRM_MMP_Events.chist =
+		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "CHIST");
+	g_DRM_MMP_Events.chist0 =
+		mmprofile_register_event(g_DRM_MMP_Events.chist, "CHIST0");
 	g_DRM_MMP_Events.pmqos =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "PMQOS");
 	g_DRM_MMP_Events.ostdl =

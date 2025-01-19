@@ -30,6 +30,7 @@ struct mtk_disp_chist_primary {
 	struct mtk_disp_block_config block_config[DISP_CHIST_CHANNEL_COUNT];
 	struct drm_mtk_channel_config chist_config[DISP_CHIST_CHANNEL_COUNT];
 	struct drm_mtk_channel_hist disp_hist[DISP_CHIST_CHANNEL_COUNT];
+	unsigned int frame_cnt[DISP_CHIST_CHANNEL_COUNT];
 
 	atomic_t irq_event;
 	struct wait_queue_head event_wq;
