@@ -3038,6 +3038,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/mfb/camera_mfb_isp6s.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
 
     if "mt6853_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
