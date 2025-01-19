@@ -5,7 +5,7 @@
  * Copyright (c) 2022 MediaTek Inc.
  * Author: Denis Hsu <denis.hsu@mediatek.com>
  */
-
+#include <linux/usb/audio.h>
 #include <linux/usb/quirks.h>
 #include "quirks.h"
 #include "xhci-mtk.h"
@@ -127,16 +127,17 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 	udev->quirks = usb_detect_static_quirks(udev, mtk_usb_quirk_list);
 }
 
-static void xhci_usb_snd_clear_packet_size(struct urb *urb)
+static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
 {
-	struct device *dev;
+	struct device *dev = &urb->dev->dev;
+	struct usb_ctrlrequest *ctrl = NULL;
 	struct snd_usb_audio *chip;
 	struct snd_usb_endpoint *ep, *en;
 	struct snd_urb_ctx *ctx;
 	unsigned int i, j;
 
-	dev = &urb->dev->dev;
-	if (!dev)
+	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
 		return;
 
 	chip = usb_get_intfdata(to_usb_interface(dev));
@@ -160,46 +161,96 @@ static void xhci_usb_snd_clear_packet_size(struct urb *urb)
 	}
 }
 
-static void xhci_trace_ep0_urb(void *data, struct urb *urb)
+static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 {
-	struct device *hcd_dev = (struct device *)data;
+	struct device *dev = &urb->dev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
+
+	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
+		return;
+
+	dev_dbg(dev, "delay 5ms for UAC device\n");
+	mdelay(5);
+}
+
+static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
+{
+	struct device *dev = &urb->dev->dev;
+	struct usb_ctrlrequest *ctrl = NULL;
+	struct snd_usb_audio *chip;
+
+	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+	if (ctrl->bRequest != UAC_SET_CUR || ctrl->wValue == 0)
+		return;
+
+	chip = usb_get_intfdata(to_usb_interface(dev));
+	if (!chip)
+		return;
+
+	if (chip->usb_id == USB_ID(0x2717, 0x3801)) {
+		dev_dbg(dev, "delay 50ms after set sample rate\n");
+		mdelay(50);
+	}
+}
+
+static bool xhci_mtk_is_usb_audio(struct urb *urb)
+{
 	struct usb_host_config *config = NULL;
 	struct usb_interface_descriptor *intf_desc = NULL;
 	int config_num, i;
+
+	config = urb->dev->config;
+	if (!config)
+		return false;
+	config_num = urb->dev->descriptor.bNumConfigurations;
+
+	for (i = 0; i < config_num; i++, config++) {
+		if (config && config->desc.bNumInterfaces > 0)
+			intf_desc = &config->intf_cache[0]->altsetting->desc;
+		if (intf_desc && intf_desc->bInterfaceClass == USB_CLASS_AUDIO)
+			return true;
+	}
+
+	return false;
+}
+
+static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
+{
+	struct device *hcd_dev = (struct device *)data;
 
 	if (!urb || !urb->setup_packet || !urb->dev) {
 		dev_dbg_ratelimited(hcd_dev, "%s urb/setup pkt/device can't be NULL\n", __func__);
 		return;
 	}
 
-	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
-	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
+	if (xhci_mtk_is_usb_audio(urb)) {
+		/* apply clear packet size */
+		xhci_mtk_usb_clear_packet_size_quirk(urb);
+		/* apply set interface face delay */
+		xhci_mtk_usb_set_interface_quirk(urb);
+	}
+}
+
+static void xhci_trace_ep_urb_giveback(void *data, struct urb *urb)
+{
+	if (!urb || !urb->setup_packet || !urb->dev)
 		return;
 
-	config = urb->dev->config;
-	if (!config)
-		return;
-	config_num = urb->dev->descriptor.bNumConfigurations;
-
-	for (i = 0; i < config_num; i++, config++) {
-		if (config && config->desc.bNumInterfaces > 0)
-			intf_desc = &config->intf_cache[0]->altsetting->desc;
-		if (intf_desc && intf_desc->bInterfaceClass == USB_CLASS_AUDIO) {
-			xhci_usb_snd_clear_packet_size(urb);
-			dev_dbg(hcd_dev, "delay 5ms for UAC device\n");
-			mdelay(5);
-			return;
-		}
+	if (xhci_mtk_is_usb_audio(urb)) {
+		/* apply set sample rate delay */
+		xhci_mtk_usb_set_sample_rate_quirk(urb);
 	}
 }
 
 void xhci_mtk_trace_init(struct device *dev)
 {
-	WARN_ON(register_trace_xhci_urb_enqueue_(xhci_trace_ep0_urb, dev));
+	WARN_ON(register_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
+	WARN_ON(register_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
 }
 
 void xhci_mtk_trace_deinit(struct device *dev)
 {
-	WARN_ON(unregister_trace_xhci_urb_enqueue_(xhci_trace_ep0_urb, dev));
+	WARN_ON(unregister_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
+	WARN_ON(unregister_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
 }
