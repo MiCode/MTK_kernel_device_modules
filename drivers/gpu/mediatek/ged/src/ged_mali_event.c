@@ -11,7 +11,9 @@ static DEFINE_MUTEX(ged_mali_event_callback_lock);
 
 static fence_timeout_notify_callback fence_timeout_notify_callback_list[MAX_CALLBACK_NUM];
 static gpu_reset_done_notify_callback gpu_reset_done_notify_callback_list[MAX_CALLBACK_NUM];
+static worker_event_notify_callback worker_event_notify_callback_list[MAX_CALLBACK_NUM];
 static struct ged_mali_event_info ged_mali_event_info;
+static struct ged_mali_worker_event_info ged_mali_worker_event_info;
 static uint32_t cs_error_info_idx;
 static uint32_t device_lost_info_idx;
 static uint32_t gpu_reset_info_idx;
@@ -29,10 +31,12 @@ void ged_mali_event_init(void)
 
 	// clear all data to zero
 	memset(&ged_mali_event_info, 0, sizeof(struct ged_mali_event_info));
+	memset(&ged_mali_worker_event_info, 0, sizeof(struct ged_mali_worker_event_info));
 
 	for (i = 0; i < MAX_CALLBACK_NUM; i++) {
 		fence_timeout_notify_callback_list[i] = NULL;
 		gpu_reset_done_notify_callback_list[i] = NULL;
+		worker_event_notify_callback_list[i] = NULL;
 	}
 
 	mutex_unlock(&ged_mali_event_callback_lock);
@@ -306,3 +310,90 @@ int ged_mali_event_unregister_gpu_reset_done_callback(gpu_reset_done_notify_call
 	return ret;
 }
 EXPORT_SYMBOL(ged_mali_event_unregister_gpu_reset_done_callback);
+
+int ged_mali_worker_event_notify_callback(int pid, uint32_t workerType, u64 exec_duration,
+	void* meta_data, int meta_data_len)
+{
+	int i = 0;
+	int ret = 0;
+	unsigned long long timestamp = 0;
+	struct timespec64 tv = { 0 };
+
+	ktime_get_real_ts64(&tv);
+
+	timestamp = (tv.tv_sec*1000) + (tv.tv_nsec/1000000);
+
+	mutex_lock(&ged_mali_event_callback_lock);
+
+	ged_mali_worker_event_info.pid = pid;
+	ged_mali_worker_event_info.workerType = workerType;
+	ged_mali_worker_event_info.exec_duration = exec_duration;
+	if (meta_data != NULL) {
+		for (i = 0; i < MAX_META_DATA_NUM; i++) {
+			if (i < meta_data_len) {
+				ged_mali_worker_event_info.meta_data[i] = ((u32*)meta_data)[i];
+			} else {
+				ged_mali_worker_event_info.meta_data[i] = 0;
+			}
+		}
+	}
+
+	for (i = 0; i < MAX_CALLBACK_NUM; i++) {
+		if (worker_event_notify_callback_list[i]) {
+			worker_event_notify_callback_list[i]((void *)(&ged_mali_worker_event_info), timestamp);
+			ret = 1;
+		}
+	}
+
+	mutex_unlock(&ged_mali_event_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(ged_mali_worker_event_notify_callback);
+
+int ged_mali_worker_event_register_callback(worker_event_notify_callback func_cb)
+{
+	int i = 0;
+	int empty_idx = -1;
+	int ret = 0;
+
+	mutex_lock(&ged_mali_event_callback_lock);
+
+	for (i = 0; i < MAX_CALLBACK_NUM; i++) {
+		if (worker_event_notify_callback_list[i] == func_cb)
+			break;
+		if (worker_event_notify_callback_list[i] == NULL && empty_idx == -1)
+			empty_idx = i;
+	}
+	if (i >= MAX_CALLBACK_NUM) {
+		if (empty_idx < 0 || empty_idx >= MAX_CALLBACK_NUM)
+			ret = -ENOMEM;
+		else
+			worker_event_notify_callback_list[empty_idx] = func_cb;
+	}
+
+	mutex_unlock(&ged_mali_event_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(ged_mali_worker_event_register_callback);
+
+int ged_mali_worker_event_unregister_callback(worker_event_notify_callback func_cb)
+{
+	int i = 0;
+	int ret = -ESPIPE;
+
+	mutex_lock(&ged_mali_event_callback_lock);
+
+	for (i = 0; i < MAX_CALLBACK_NUM; i++) {
+		if (worker_event_notify_callback_list[i] == func_cb) {
+			worker_event_notify_callback_list[i] = NULL;
+			ret = 0;
+			break;
+		}
+	}
+
+	mutex_unlock(&ged_mali_event_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(ged_mali_worker_event_unregister_callback);
+
+

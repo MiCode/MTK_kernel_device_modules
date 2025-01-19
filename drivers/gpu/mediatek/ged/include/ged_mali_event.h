@@ -7,6 +7,7 @@
 
 #define MAX_CALLBACK_NUM 3
 #define MAX_RECORD_DATA 8
+#define MAX_META_DATA_NUM 8
 
 struct basic_error_info {
 	unsigned long long ts;
@@ -33,8 +34,16 @@ struct ged_mali_event_info {
 	struct basic_error_info gpu_reset_info_array[MAX_RECORD_DATA];
 };
 
+struct ged_mali_worker_event_info {
+	pid_t pid;
+	uint32_t workerType;
+	u64 exec_duration;
+	u32 meta_data[MAX_META_DATA_NUM];
+};
+
 typedef void (*fence_timeout_notify_callback)(int pid, void *data, unsigned long long time);
 typedef void (*gpu_reset_done_notify_callback)(unsigned long long time);
+typedef void (*worker_event_notify_callback)(void *data, unsigned long long time);
 
 void ged_mali_event_init(void);
 void ged_mali_event_update_cs_error_nolock(pid_t pid, u8 handle, u32 csg_nr, s8 csi_index, u32 cs_fatal_type,
@@ -51,5 +60,10 @@ int ged_mali_event_unregister_fence_timeout_callback(fence_timeout_notify_callba
 int ged_mali_event_notify_gpu_reset_done(void);
 int ged_mali_event_register_gpu_reset_done_callback(gpu_reset_done_notify_callback func_cb);
 int ged_mali_event_unregister_gpu_reset_done_callback(gpu_reset_done_notify_callback func_cb);
+
+int ged_mali_worker_event_notify_callback(int pid, uint32_t workerType, u64 exec_duration,
+	void*meta_data, int meta_data_len);
+int ged_mali_worker_event_register_callback(worker_event_notify_callback func_cb);
+int ged_mali_worker_event_unregister_callback(worker_event_notify_callback func_cb);
 
 #endif /* __GED_MALI_EVENT_H__ */
