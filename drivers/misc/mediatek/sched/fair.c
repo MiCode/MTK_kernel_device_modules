@@ -508,7 +508,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	struct perf_domain *pd_ptr = pd;
 
 	eenv->dpt_v2_support = is_dpt_v2_support();
-	eenv->dpt_v2_swpm_support = sched_dpt_v2_swpm_mode_get();
+	eenv->dpt_v2_swpm_support = eenv->dpt_v2_support ? sched_dpt_v2_swpm_mode_get() : 0;
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
