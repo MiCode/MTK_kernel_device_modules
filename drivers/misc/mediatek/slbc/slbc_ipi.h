@@ -6,7 +6,7 @@
 #ifndef _SLBC_IPI_H_
 #define _SLBC_IPI_H_
 
-#include <slbc_ops.h>
+#include "slbc_ops.h"
 
 enum {
 	IPI_SLBC_ENABLE,

@@ -12,12 +12,10 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 
-#include <slbc.h>
-#include <slbc_ops.h>
-#include <slbc_ipi.h>
-#include <mtk_slbc_sram.h>
-
-#include <slbc_trace.h>
+#include "slbc.h"
+#include "slbc_ops.h"
+#include "mtk_slbc_sram.h"
+#include "slbc_trace.h"
 
 /* mask */
 #define SLBC_TRACE_LOG_LVL(x) (!((1UL << ((x) - 1)) & slbc_trace->log_mask))

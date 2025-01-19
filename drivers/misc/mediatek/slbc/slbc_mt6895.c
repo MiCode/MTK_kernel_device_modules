@@ -16,28 +16,27 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
-
-#include <slbc.h>
-#include <slbc_ops.h>
-#include <slbc_ipi.h>
-#include <mtk_slbc_sram.h>
-
-/* #define CREATE_TRACE_POINTS */
-/* #include <slbc_events.h> */
-#define trace_slbc_api(f, id)
-#define trace_slbc_data(f, data)
-
 #include <linux/kthread.h>
 #include <linux/pm_qos.h>
 #include <linux/cpuidle.h>
 
+#include "mtk_slbc_sram.h"
+#include "slbc.h"
+#include "slbc_ops.h"
+#include "slbc_ipi.h"
+
+#if IS_ENABLED(CONFIG_MTK_L3C_PART)
+#include "l3c_part.h"
+#endif /* CONFIG_MTK_L3C_PART */
+
+/* #define CREATE_TRACE_POINTS */
+/* #include "slbc_events.h" */
+#define trace_slbc_api(f, id)
+#define trace_slbc_data(f, data)
+
 static struct pm_qos_request slbc_qos_request;
 
 #define SLBC_WAY_SIZE			0x80000
-
-#if IS_ENABLED(CONFIG_MTK_L3C_PART)
-#include <l3c_part.h>
-#endif /* CONFIG_MTK_L3C_PART */
 
 /* #define SLBC_TRACE */
 #define ENABLE_SLBC

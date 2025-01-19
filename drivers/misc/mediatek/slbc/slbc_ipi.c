@@ -8,18 +8,18 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-
 #include <linux/scmi_protocol.h>
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
-#include <tinysys-scmi.h>
-#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
+#include "mtk_slbc_sram.h"
 #include "slbc_ipi.h"
 #include "slbc_ops.h"
 #include "slbc.h"
 #include "slbc_trace.h"
-#include <mtk_slbc_sram.h>
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#include "tinysys-scmi.h"
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static int slbc_sspm_ready;

@@ -1,0 +1,68 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+filegroup(
+    name="ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_slbc",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SLBC": {
+            True:["slbc.c"],
+        },
+    },
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "slbc.h",
+        "slbc_ops.h",
+        "mtk_slbc_sram.h",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "slbc_trace",
+    srcs = [
+        "slbc_trace.c",
+    ],
+    hdrs = [
+        "slbc_trace.h",
+    ],
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+    ],
+    ko_deps = [
+        ":mtk_slbc",
+    ],
+)

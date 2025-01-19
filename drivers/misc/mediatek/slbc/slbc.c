@@ -19,7 +19,7 @@
 #include <linux/errno.h>
 #include <linux/dma-buf.h>
 
-#include <slbc.h>
+#include "slbc.h"
 
 unsigned int slbc_enable;
 unsigned int slbc_all_cache_mode;

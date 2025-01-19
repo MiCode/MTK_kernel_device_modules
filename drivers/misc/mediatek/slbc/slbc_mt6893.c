@@ -16,30 +16,31 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
-
-#include <slbc.h>
-#include <slbc_ops.h>
-
-/* #define CREATE_TRACE_POINTS */
-/* #include <slbc_events.h> */
-#define trace_slbc_api(f, id)
-#define trace_slbc_data(f, data)
-
 #include <linux/kthread.h>
 #include <linux/pm_qos.h>
 #include <linux/cpuidle.h>
 
+#include "slbc.h"
+#include "slbc_ops.h"
+
+#if IS_ENABLED(CONFIG_MTK_L3C_PART)
+#include "l3c_part.h"
+#endif /* CONFIG_MTK_L3C_PART */
+
+#if IS_ENABLED(CONFIG_MTK_SLBC_MMSRAM)
+#include "mmsram.h"
+#endif /* CONFIG_MTK_SLBC_MMSRAM */
+
+/* #define CREATE_TRACE_POINTS */
+/* #include "slbc_events.h" */
+#define trace_slbc_api(f, id)
+#define trace_slbc_data(f, data)
+
 static struct pm_qos_request slbc_qos_request;
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_MMSRAM)
-#include <mmsram.h>
-
 static struct mmsram_data mmsram;
 #endif /* CONFIG_MTK_SLBC_MMSRAM */
-
-#if IS_ENABLED(CONFIG_MTK_L3C_PART)
-#include <l3c_part.h>
-#endif /* CONFIG_MTK_L3C_PART */
 
 /* #define SLBC_THREAD */
 /* #define SLBC_TRACE */

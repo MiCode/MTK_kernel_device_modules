@@ -25,11 +25,6 @@ ifeq ($(CONFIG_MTK_L3C_PART),y)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/l3c_part
 endif
 
-ifneq (strip $(CONFIG_MTK_SLBC),)
-obj-${CONFIG_MTK_SLBC} += mtk_slbc.o
-mtk_slbc-y += slbc.o
-endif
-
 ifneq ($(wildcard $(src)/slbc_mt6893.c),)
 obj-${CONFIG_MTK_SLBC_MT6893} += slbc_mt6893.o
 endif
@@ -66,6 +61,5 @@ ifneq ($(wildcard $(src)/slbc_mt6991.c),)
 obj-${CONFIG_MTK_SLBC_MT6991} += slbc_mt6991.o
 endif
 obj-${CONFIG_MTK_SLBC_IPI} += slbc_ipi.o
-obj-${CONFIG_MTK_SLBC_TRACE} += slbc_trace.o
 obj-${CONFIG_MTK_SLBC_MMSRAM} += mmsram.o
 

@@ -17,9 +17,10 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-#include <mt-plat/aee.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+
 #include "mmsram.h"
+#include "mt-plat/aee.h"
 
 #define MMSYSRAM_INTEN0		(0x000)
 #define MMSYSRAM_INTEN1		(0x004)

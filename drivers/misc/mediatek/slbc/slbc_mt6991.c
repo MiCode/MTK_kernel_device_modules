@@ -17,23 +17,6 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
-
-#include <slbc.h>
-#include <slbc_ops.h>
-#include <slbc_ipi.h>
-#include <slbc_trace.h>
-#include <mtk_slbc_sram.h>
-#include <mtk_heap.h>
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V3)
-#include <sspm_reservedmem.h>
-#include <sspm_reservedmem_define.h>
-#endif
-
-/* #define CREATE_TRACE_POINTS */
-/* #include <slbc_events.h> */
-#define trace_slbc_api(f, id)
-#define trace_slbc_data(f, data)
-
 #include <linux/slab.h>
 #include <linux/pm_qos.h>
 #include <linux/cpuidle.h>
@@ -41,19 +24,34 @@
 #include <linux/jiffies.h>
 #include <linux/delay.h>
 #include <linux/scmi_protocol.h>
-
-#include <tinysys-scmi.h>
-
-#if IS_ENABLED(CONFIG_MTK_L3C_PART)
-#include <l3c_part.h>
-#endif /* CONFIG_MTK_L3C_PART */
-
 #include <linux/arm-smccc.h>    /* for Kernel Native SMC API */
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
 
+#include "mtk_slbc_sram.h"
+#include "mtk_heap.h"
+#include "slbc.h"
+#include "slbc_ops.h"
+#include "slbc_ipi.h"
+#include "slbc_trace.h"
+#include "tinysys-scmi.h"
+
+#if IS_ENABLED(CONFIG_MTK_L3C_PART)
+#include "l3c_part.h"
+#endif /* CONFIG_MTK_L3C_PART */
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#include <mt-plat/aee.h>
+#include "mt-plat/aee.h"
 #endif /* CONFIG_MTK_AEE_FEATURE */
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V3)
+#include "sspm_reservedmem.h"
+#include "sspm_reservedmem_define.h"
+#endif /* CONFIG_MTK_TINYSYS_SSPM_V2 || CONFIG_MTK_TINYSYS_SSPM_V3 */
+
+/* #define CREATE_TRACE_POINTS */
+/* #include "slbc_events.h" */
+#define trace_slbc_api(f, id)
+#define trace_slbc_data(f, data)
 
 enum mtk_slbc_kernel_ops {
 	MTK_SLBC_KERNEL_OP_CPU_DCC = 0,

@@ -5,7 +5,7 @@
 #ifndef _SLBC_SDK_H_
 #define _SLBC_SDK_H_
 
-#include <slbc_ops.h>
+#include "slbc_ops.h"
 
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 extern int slbc_force_cache(enum slc_ach_uid uid, unsigned int size);
