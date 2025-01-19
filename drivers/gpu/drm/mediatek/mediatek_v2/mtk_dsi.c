@@ -2587,7 +2587,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	u32 fill_rate;
 	u32 sodi_hi, sodi_lo;
 	u32 sram_unit, buffer_unit;
-	u32 urgent_lo_fifo_us, urgent_hi_fifo_us;
+	u32 urgent_lo_fifo_us, urgent_hi_fifo_us, output_valid_us;
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
 	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
@@ -2636,6 +2636,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				dsi->driver_data->urgent_lo_fifo_us : 11;
 	urgent_hi_fifo_us = dsi->driver_data->urgent_hi_fifo_us ?
 				dsi->driver_data->urgent_hi_fifo_us : 12;
+	output_valid_us = dsi->driver_data->output_valid_fifo_us ?
+				dsi->driver_data->output_valid_fifo_us : 25;
 
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -2672,9 +2674,13 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 						0);
 
 		if (dsi->ext->params->is_cphy)
-			tmp = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			tmp = output_valid_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 		else
-			tmp = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			tmp = output_valid_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+
+		/* check output valid threshold exceed FIFO size if FIFO size is pre-defined */
+		if (buf_con)
+			tmp = (tmp >= (buf_con - 1)) ? (buf_con - 1) : tmp;
 	}
 
 	rw_times = mtk_dsi_calculate_rw_times(dsi, width, height);
@@ -13211,6 +13217,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
 	.urgent_hi_fifo_us = 15,
+	.output_valid_fifo_us = 50,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
