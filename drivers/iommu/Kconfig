@@ -40,17 +40,6 @@ config DEVICE_MODULES_MTK_SMMU_V3_PMU
 
 	  If unsure, say N here.
 
-config DEVICE_MODULES_MTK_SMMU_V3_LMU
-	tristate "MediaTek SMMUV3 LMU Support"
-	depends on DEVICE_MODULES_ARM_SMMU_V3
-
-	help
-	  Support for the SMMU v3 Latency Meter Unit on mediatek SOCs.
-	  LMU is used to get the information of how many cycles spent
-	  for masters or a particular master in the SMMU.
-
-	  If unsure, say N here.
-
 config DEVICE_MODULES_MTK_SMMU_V3_MPAM_MON
 	tristate "MediaTek SMMUV3 MPAM Resource Monitor Support"
 	depends on DEVICE_MODULES_ARM_SMMU_V3
