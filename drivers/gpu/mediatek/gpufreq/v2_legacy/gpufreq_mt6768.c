@@ -129,7 +129,7 @@ static int __gpufreq_init_clk(struct platform_device *pdev);
 static int __gpufreq_init_pmic(struct platform_device *pdev);
 static int __gpufreq_init_platform_info(struct platform_device *pdev);
 static int __gpufreq_pdrv_probe(struct platform_device *pdev);
-static int __gpufreq_pdrv_remove(struct platform_device *pdev);
+static void __gpufreq_pdrv_remove(struct platform_device *pdev);
 /*low power*/
 static void __gpufreq_kick_pbm(int enable);
 static unsigned int __gpufreq_get_ptpod_opp_idx(unsigned int idx);
@@ -3111,15 +3111,13 @@ done:
 }
 
 /* API: gpufreq driver remove */
-static int __gpufreq_pdrv_remove(struct platform_device *pdev)
+static void __gpufreq_pdrv_remove(struct platform_device *pdev)
 {
 	kfree(g_gpu.working_table);
 	kfree(g_gpu.sb_table);
 	kfree(g_clk);
 	kfree(g_pmic);
 	kfree(g_power_table);
-
-	return GPUFREQ_SUCCESS;
 }
 
 /* API: register gpufreq platform driver */

@@ -1731,10 +1731,9 @@ static const struct dev_pm_ops lvts_pm_ops = {
 };
 #endif
 
-static int tscpu_thermal_remove(struct platform_device *pdev)
+static void tscpu_thermal_remove(struct platform_device *pdev)
 {
 	clk_disable_unprepare(auxadc_main);
-	return 0;
 }
 static struct platform_driver mtk_thermal_driver = {
 	.remove = tscpu_thermal_remove,

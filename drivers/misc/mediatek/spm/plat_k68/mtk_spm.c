@@ -123,9 +123,8 @@ static int spm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int spm_remove(struct platform_device *pdev)
+static void spm_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static const struct of_device_id spm_of_ids[] = {

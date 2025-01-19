@@ -190,9 +190,8 @@ static int emicen_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emicen_remove(struct platform_device *dev)
+static void emicen_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static const struct of_device_id emicen_of_ids[] = {

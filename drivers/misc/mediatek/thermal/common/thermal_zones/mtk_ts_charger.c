@@ -574,9 +574,8 @@ err_unreg:
 	return 0;
 }
 
-static int mtktscharger_pdrv_remove(struct platform_device *pdev)
+static void mtktscharger_pdrv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 struct platform_device mtktscharger_device = {

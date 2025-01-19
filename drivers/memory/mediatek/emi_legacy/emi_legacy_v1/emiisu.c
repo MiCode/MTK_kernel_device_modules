@@ -158,9 +158,8 @@ static const struct file_operations dump_buf_fops = {
 	.open = dump_buf_open
 };
 
-static int emiisu_remove(struct platform_device *dev)
+static void emiisu_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static const struct of_device_id emiisu_of_ids[] = {

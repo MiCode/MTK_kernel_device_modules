@@ -865,8 +865,6 @@ static const struct proc_ops _mtkthermal_tz_fops = {
 	.proc_release = single_release,
 };
 
-#define MIN(_a_, _b_) ((_a_) < (_b_) ? (_a_) : (_b_))
-
 /* No parameter check in this internal function */
 static long _mtkthermal_update_and_get_sma
 (struct mtk_thermal_tz_data *tzdata, long latest_val)

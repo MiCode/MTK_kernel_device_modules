@@ -697,10 +697,9 @@ static ssize_t step_cdevnum_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", 0);
 }
 
-static int step_counter_remove(struct platform_device *pdev)
+static void step_counter_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
-	return 0;
 }
 
 static int step_counter_probe(struct platform_device *pdev)

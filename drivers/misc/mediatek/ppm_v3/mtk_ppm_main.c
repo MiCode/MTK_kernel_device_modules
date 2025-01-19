@@ -48,7 +48,7 @@ static bool is_in_game;
 static int ppm_main_suspend(struct device *dev);
 static int ppm_main_resume(struct device *dev);
 static int ppm_main_pdrv_probe(struct platform_device *pdev);
-static int ppm_main_pdrv_remove(struct platform_device *pdev);
+static void ppm_main_pdrv_remove(struct platform_device *pdev);
 
 /*==============================================================*/
 /* Global variables                                             */
@@ -1066,13 +1066,11 @@ static int ppm_main_pdrv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ppm_main_pdrv_remove(struct platform_device *pdev)
+static void ppm_main_pdrv_remove(struct platform_device *pdev)
 {
 	FUNC_ENTER(FUNC_LV_MODULE);
 
 	FUNC_EXIT(FUNC_LV_MODULE);
-
-	return 0;
 }
 
 static int __init ppm_main_init(void)

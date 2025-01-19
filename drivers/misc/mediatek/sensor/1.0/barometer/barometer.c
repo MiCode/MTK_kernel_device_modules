@@ -378,10 +378,9 @@ static ssize_t barodevnum_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", 0);
 }
 
-static int barometer_remove(struct platform_device *pdev)
+static void barometer_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
-	return 0;
 }
 
 static int barometer_probe(struct platform_device *pdev)

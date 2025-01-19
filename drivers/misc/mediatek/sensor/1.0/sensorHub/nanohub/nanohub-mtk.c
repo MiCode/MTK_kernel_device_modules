@@ -164,7 +164,7 @@ void nanohub_ipi_comms_init(struct nanohub_ipi_data *ipi_data)
 	sema_init(&scp_nano_ipi_sem, 1);
 }
 
-static int nanohub_ipi_remove(struct platform_device *pdev);
+static void nanohub_ipi_remove(struct platform_device *pdev);
 
 struct platform_device nanohub_ipi_pdev = {
 	.name = "nanohub_ipi",
@@ -237,9 +237,8 @@ int nanohub_ipi_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int nanohub_ipi_remove(struct platform_device *pdev)
+static void nanohub_ipi_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static struct platform_driver nanohub_ipi_pdrv = {

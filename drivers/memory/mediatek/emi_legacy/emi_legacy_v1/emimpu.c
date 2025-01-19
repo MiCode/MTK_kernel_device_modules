@@ -873,9 +873,8 @@ ignore_violation:
 	return IRQ_HANDLED;
 }
 
-static int emimpu_remove(struct platform_device *dev)
+static void emimpu_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static const struct of_device_id emimpu_of_ids[] = {

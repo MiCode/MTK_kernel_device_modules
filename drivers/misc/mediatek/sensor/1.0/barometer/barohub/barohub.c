@@ -474,7 +474,7 @@ exit:
 	return err;
 }
 
-static int barohub_remove(struct platform_device *pdev)
+static void barohub_remove(struct platform_device *pdev)
 {
 	int err = 0;
 	struct platform_driver *paddr =
@@ -488,8 +488,6 @@ static int barohub_remove(struct platform_device *pdev)
 
 	obj_ipi_data = NULL;
 	kfree(platform_get_drvdata(pdev));
-
-	return 0;
 }
 static int barohub_suspend(struct platform_device *pdev, pm_message_t msg)
 {

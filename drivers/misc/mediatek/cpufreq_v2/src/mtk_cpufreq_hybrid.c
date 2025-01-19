@@ -982,9 +982,8 @@ static int _mt_dvfsp_pdrv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int _mt_dvfsp_pdrv_remove(struct platform_device *pdev)
+static void _mt_dvfsp_pdrv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_OF)

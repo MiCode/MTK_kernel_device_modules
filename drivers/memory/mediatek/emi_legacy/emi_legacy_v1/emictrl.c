@@ -294,7 +294,7 @@ void bwl_init(struct platform_driver *emictrl_drv)
 //======== emi_ctrl ===========================================
 
 static int emictrl_probe(struct platform_device *pdev);
-static int emictrl_remove(struct platform_device *dev);
+static void emictrl_remove(struct platform_device *dev);
 
 static const struct of_device_id emictrl_of_ids[] = {
 	{.compatible = "mediatek,common-emictrl",},
@@ -405,9 +405,8 @@ static int emictrl_probe(struct platform_device *pdev)
 }
 
 
-static int emictrl_remove(struct platform_device *dev)
+static void emictrl_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static int __init emictrl_drv_init(void)

@@ -2372,14 +2372,12 @@ exit:
 	return err;
 }
 
-static int sensorHub_remove(struct platform_device *pdev)
+static void sensorHub_remove(struct platform_device *pdev)
 {
 	struct SCP_sensorHub_data *obj = obj_data;
 
 	if (obj)
 		wakeup_source_unregister(obj->ws);
-
-	return 0;
 }
 
 static int sensorHub_suspend(struct platform_device *pdev,

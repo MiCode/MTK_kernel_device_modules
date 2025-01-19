@@ -861,10 +861,9 @@ static ssize_t pscali_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static int als_ps_remove(struct platform_device *pdev)
+static void als_ps_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
-	return 0;
 }
 
 static int als_ps_probe(struct platform_device *pdev)

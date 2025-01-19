@@ -639,7 +639,7 @@ exit:
 }
 
 /*----------------------------------------------------------------------------*/
-static int maghub_remove(struct platform_device *pdev)
+static void maghub_remove(struct platform_device *pdev)
 {
 	int err = 0;
 	struct platform_driver *paddr =
@@ -651,7 +651,6 @@ static int maghub_remove(struct platform_device *pdev)
 
 	kfree(platform_get_drvdata(pdev));
 	mag_factory_device_deregister(&maghub_factory_device);
-	return 0;
 }
 
 static int maghub_suspend(struct platform_device *pdev, pm_message_t msg)

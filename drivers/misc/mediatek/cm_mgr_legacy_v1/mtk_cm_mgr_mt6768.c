@@ -399,14 +399,12 @@ ERROR:
 	return ret;
 }
 
-static int platform_cm_mgr_remove(struct platform_device *pdev)
+static void platform_cm_mgr_remove(struct platform_device *pdev)
 {
 	cm_mgr_unregister_hook(&local_hk);
 	cm_mgr_common_exit();
 	icc_put(cm_mgr_get_bw_path());
 	kfree(cm_mgr_perfs);
-
-	return 0;
 }
 
 static const struct of_device_id platform_cm_mgr_of_match[] = {

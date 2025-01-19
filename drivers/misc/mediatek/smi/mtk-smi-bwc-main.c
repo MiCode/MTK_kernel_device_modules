@@ -801,9 +801,8 @@ static int smi_bwc_probe(struct platform_device *pdev)
 	return ret;
 }
 
-int smi_bwc_remove(struct platform_device *pdev)
+void smi_bwc_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static struct platform_driver smi_bwc_drv = {

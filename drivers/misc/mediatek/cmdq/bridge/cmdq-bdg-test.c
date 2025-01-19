@@ -428,9 +428,8 @@ static int cmdq_bdg_test_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int cmdq_bdg_test_remove(struct platform_device *pdev)
+static void cmdq_bdg_test_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static const struct of_device_id cmdq_bdg_test_of_ids[] = {

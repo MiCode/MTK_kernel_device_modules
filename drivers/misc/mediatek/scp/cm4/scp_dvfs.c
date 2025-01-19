@@ -1648,9 +1648,8 @@ fail:
 /***************************************
  * this function should never be called
  ****************************************/
-static int mt_scp_dvfs_pdrv_remove(struct platform_device *pdev)
+static void mt_scp_dvfs_pdrv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static const struct dev_pm_ops mt_scp_dvfs_pm_ops = {

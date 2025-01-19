@@ -834,7 +834,7 @@ exit:
 	return err;
 }
 
-static int accelhub_remove(struct platform_device *pdev)
+static void accelhub_remove(struct platform_device *pdev)
 {
 	int err = 0;
 
@@ -845,7 +845,6 @@ static int accelhub_remove(struct platform_device *pdev)
 	accel_factory_device_deregister(&gsensor_factory_device);
 
 	kfree(platform_get_drvdata(pdev));
-	return 0;
 }
 
 static int accelhub_suspend(struct platform_device *pdev, pm_message_t msg)

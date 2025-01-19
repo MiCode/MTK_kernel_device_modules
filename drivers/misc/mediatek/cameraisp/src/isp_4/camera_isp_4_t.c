@@ -8654,7 +8654,7 @@ EXIT:
 /******************************************************************************
  * Called when the device is being detached from the driver
  *****************************************************************************/
-static int ISP_remove(struct platform_device *pDev)
+static void ISP_remove(struct platform_device *pDev)
 {
 	int IrqNum;
 	int i;
@@ -8682,7 +8682,6 @@ static int ISP_remove(struct platform_device *pDev)
 	class_destroy(pIspClass);
 	pIspClass = NULL;
 	/*  */
-	return 0;
 }
 
 static int ISP_suspend(

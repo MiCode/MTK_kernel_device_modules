@@ -932,7 +932,7 @@ exit:
 	return err;
 }
 
-static int gyrohub_remove(struct platform_device *pdev)
+static void gyrohub_remove(struct platform_device *pdev)
 {
 	int err = 0;
 	struct platform_driver *paddr =
@@ -945,7 +945,6 @@ static int gyrohub_remove(struct platform_device *pdev)
 	gyro_factory_device_deregister(&gyrohub_factory_device);
 
 	kfree(platform_get_drvdata(pdev));
-	return 0;
 }
 
 static int gyrohub_suspend(struct platform_device *pdev, pm_message_t msg)

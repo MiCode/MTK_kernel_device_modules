@@ -1807,9 +1807,8 @@ static int scp_device_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int scp_device_remove(struct platform_device *dev)
+static void scp_device_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static int scpsys_device_probe(struct platform_device *pdev)
@@ -1828,9 +1827,8 @@ static int scpsys_device_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int scpsys_device_remove(struct platform_device *dev)
+static void scpsys_device_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static const struct of_device_id scp_of_ids[] = {

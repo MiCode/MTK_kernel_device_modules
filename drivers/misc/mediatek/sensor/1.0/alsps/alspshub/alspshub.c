@@ -1001,7 +1001,7 @@ exit:
 	return err;
 }
 
-static int alspshub_remove(struct platform_device *pdev)
+static void alspshub_remove(struct platform_device *pdev)
 {
 	int err = 0;
 	struct platform_driver *paddr =
@@ -1015,7 +1015,6 @@ static int alspshub_remove(struct platform_device *pdev)
 		pr_err("alspshub_delete_attr fail: %d\n", err);
 	alsps_factory_device_deregister(&alspshub_factory_device);
 	kfree(platform_get_drvdata(pdev));
-	return 0;
 
 }
 

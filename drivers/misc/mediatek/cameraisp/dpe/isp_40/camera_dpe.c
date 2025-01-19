@@ -4551,7 +4551,7 @@ EXIT:
 	return Ret;
 }
 
-static signed int DPE_remove(struct platform_device *pDev)
+static void DPE_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes;*/
 	signed int IrqNum;
@@ -4575,7 +4575,6 @@ static signed int DPE_remove(struct platform_device *pDev)
 	class_destroy(pDPEClass);
 	pDPEClass = NULL;
 	/*  */
-	return 0;
 }
 
 static signed int bPass1_On_In_Resume_TG1;

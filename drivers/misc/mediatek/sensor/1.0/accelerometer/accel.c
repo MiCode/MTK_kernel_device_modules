@@ -489,10 +489,9 @@ static ssize_t acccali_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static int gsensor_remove(struct platform_device *pdev)
+static void gsensor_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
-	return 0;
 }
 
 static int gsensor_probe(struct platform_device *pdev)

@@ -3166,7 +3166,7 @@ static int imgsensor_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int imgsensor_remove(struct platform_device *pdev)
+static void imgsensor_remove(struct platform_device *pdev)
 {
 #ifdef IMGSENSOR_DFS_CTRL_ENABLE
 	imgsensor_dfs_exit(&pgimgsensor->dfs_ctx);
@@ -3180,7 +3180,6 @@ static int imgsensor_remove(struct platform_device *pdev)
 #ifdef SENINF_USE_WAKE_LOCK
 	imgsensor_clk_exit(&pgimgsensor->clk);
 #endif
-	return 0;
 }
 
 static int imgsensor_suspend(struct platform_device *pdev, pm_message_t mesg)

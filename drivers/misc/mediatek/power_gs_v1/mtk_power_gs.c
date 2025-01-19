@@ -183,9 +183,8 @@ static int __init mt_power_gs_pdrv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mt_power_gs_pdrv_remove(struct platform_device *pdev)
+static void mt_power_gs_pdrv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 struct platform_device mt_power_gs_pdev = {

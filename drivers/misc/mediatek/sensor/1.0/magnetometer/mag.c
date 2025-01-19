@@ -414,10 +414,9 @@ static ssize_t maglibinfo_show(struct device *dev,
 	return sizeof(struct mag_libinfo_t);
 }
 
-static int msensor_remove(struct platform_device *pdev)
+static void msensor_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
-	return 0;
 }
 
 static int msensor_probe(struct platform_device *pdev)

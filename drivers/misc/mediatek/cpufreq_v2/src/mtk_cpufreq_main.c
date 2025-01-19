@@ -1296,9 +1296,8 @@ static int _mt_cpufreq_init(struct cpufreq_policy *policy)
 	return ret;
 }
 
-static int _mt_cpufreq_exit(struct cpufreq_policy *policy)
+static void _mt_cpufreq_exit(struct cpufreq_policy *policy)
 {
-	return 0;
 }
 
 
@@ -1725,7 +1724,7 @@ static int _mt_cpufreq_pdrv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int _mt_cpufreq_pdrv_remove(struct platform_device *pdev)
+static void _mt_cpufreq_pdrv_remove(struct platform_device *pdev)
 {
 	FUNC_ENTER(FUNC_LV_MODULE);
 
@@ -1733,8 +1732,6 @@ static int _mt_cpufreq_pdrv_remove(struct platform_device *pdev)
 	cpufreq_unregister_driver(&_mt_cpufreq_driver);
 
 	FUNC_EXIT(FUNC_LV_MODULE);
-
-	return 0;
 }
 
 static const struct dev_pm_ops _mt_cpufreq_pm_ops = {

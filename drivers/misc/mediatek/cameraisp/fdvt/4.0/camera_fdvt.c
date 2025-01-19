@@ -2077,7 +2077,7 @@ static int FDVT_probe(struct platform_device *dev)
 	return 0;
 }
 
-static int FDVT_remove(struct platform_device *dev)
+static void FDVT_remove(struct platform_device *dev)
 {
 	int i4IRQ = 0;
 
@@ -2104,7 +2104,6 @@ static int FDVT_remove(struct platform_device *dev)
 		kfree(pread_buf);
 		pread_buf = NULL;
 	/*}*/
-	return 0;
 }
 
 static int FDVT_suspend(struct platform_device *dev, pm_message_t state)

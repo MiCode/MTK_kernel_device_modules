@@ -373,12 +373,11 @@ static int EEPROM_HW_probe(struct platform_device *pdev)
 /*******************************************************
  * EEPROM_HW_remove()
  *******************************************************/
-static int EEPROM_HW_remove(struct platform_device *pdev)
+static void EEPROM_HW_remove(struct platform_device *pdev)
 {
 	i2c_del_driver(&EEPROM_HW_i2c_driver);
 	i2c_del_driver(&EEPROM_HW_i2c_driver2);
 	i2c_del_driver(&EEPROM_HW_i2c_driver3);
-	return 0;
 }
 
 /******************************************************
