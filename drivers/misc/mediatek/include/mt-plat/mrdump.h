@@ -25,8 +25,6 @@
 #define reg_fp	ARM_fp
 #endif
 
-#define MRDUMP_GO_DUMP "MRDUMP11"
-
 #define KSYM_32        1
 #define KSYM_64        2
 

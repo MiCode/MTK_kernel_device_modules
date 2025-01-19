@@ -21,12 +21,25 @@ struct mrdump_control_block *mrdump_cblock;
 
 static unsigned long mrdump_output_lbaooo;
 
+const static char *mrdump_support_versions[] = {
+	"MRDUMP11",
+	"MRDUMP12"
+};
+
 #if IS_ENABLED(CONFIG_SYSFS)
 
 static ssize_t mrdump_version_show(struct kobject *kobj,
 		struct kobj_attribute *kattr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%s", MRDUMP_GO_DUMP);
+	char version[10];
+	size_t size;
+
+	size = sizeof(version) <= sizeof(mrdump_cblock->sig) ?
+		sizeof(version) - 1 : sizeof(mrdump_cblock->sig);
+	strncpy(version, mrdump_cblock->sig, size);
+	version[size] = '\0';
+
+	return snprintf(buf, PAGE_SIZE, "%s", version);
 }
 
 static struct kobj_attribute mrdump_version_attribute =
@@ -114,9 +127,14 @@ void mrdump_cblock_late_init(void)
 __init void mrdump_cblock_init(const struct mrdump_params *mparams)
 {
 	struct mrdump_machdesc *machdesc_p;
+	int i;
 
-	if (strcmp(mparams->lk_version, MRDUMP_GO_DUMP) != 0) {
-		pr_notice("%s: ramdump disabled, lk version %s not matched.\n",
+	for (i = 0; i < ARRAY_SIZE(mrdump_support_versions); i++) {
+		if (!strcmp(mparams->lk_version, mrdump_support_versions[i]))
+			break;
+	}
+	if (i == ARRAY_SIZE(mrdump_support_versions)){
+		pr_notice("%s: ramdump disabled, lk version %s not supported.\n",
 			  __func__, mparams->lk_version);
 		return;
 	}
@@ -140,7 +158,7 @@ __init void mrdump_cblock_init(const struct mrdump_params *mparams)
 	memset_io(mrdump_cblock, 0,
 		sizeof(struct mrdump_control_block) +
 		nr_cpu_ids * sizeof(mrdump_cblock->crash_record.cpu_reg[0]));
-	memcpy_toio(mrdump_cblock->sig, MRDUMP_GO_DUMP,
+	memcpy_toio(mrdump_cblock->sig, mparams->lk_version,
 			sizeof(mrdump_cblock->sig));
 
 	machdesc_p = &mrdump_cblock->machdesc;
