@@ -131,12 +131,11 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 	TP_PROTO(int fit, int cpu, unsigned long util, unsigned long uclamp_min,
 		unsigned long uclamp_max, unsigned long cap,
 		unsigned long ceiling, unsigned int sugov_margin,
-		unsigned int capacity_dn_margin, unsigned int capacity_up_margin, bool AM_enabled,
-		int uclamp_involve),
+		unsigned int capacity_dn_margin, unsigned int capacity_up_margin, bool AM_enabled),
 
 	TP_ARGS(fit, cpu, util, uclamp_min, uclamp_max, cap,
 			ceiling, sugov_margin,
-			capacity_dn_margin, capacity_up_margin, AM_enabled, uclamp_involve),
+			capacity_dn_margin, capacity_up_margin, AM_enabled),
 
 	TP_STRUCT__entry(
 		__field(int, fit)
@@ -152,7 +151,6 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__field(unsigned int,   capacity_up_margin)
 		__field(unsigned long,   capacity_orig)
 		__field(bool,			AM_enabled)
-		__field(int,			uclamp_involve)
 		),
 
 	TP_fast_assign(
@@ -169,11 +167,10 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->capacity_up_margin	= capacity_up_margin;
 		__entry->capacity_orig		= arch_scale_cpu_capacity(cpu);
 		__entry->AM_enabled			= AM_enabled;
-		__entry->uclamp_involve			= uclamp_involve;
 		),
 
 	TP_printk(
-		"fit=%d cpu=%d util=%ld uclamp_min=%lu uclamp_max=%lu cap_normal=%lu thermal=%lu ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d cap_origin=%ld uclamp_involve=%d adaptive_margin_ctrl=%d",
+		"fit=%d cpu=%d util=%ld uclamp_min=%lu uclamp_max=%lu cap_normal=%lu thermal=%lu ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d cap_origin=%ld adaptive_margin_ctrl=%d",
 		__entry->fit,
 		__entry->cpu,
 		__entry->util,
@@ -186,7 +183,6 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->capacity_up_margin,
 		__entry->sugov_margin,
 		__entry->capacity_orig,
-		__entry->uclamp_involve,
 		__entry->AM_enabled)
 );
 #endif

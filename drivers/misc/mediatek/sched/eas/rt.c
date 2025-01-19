@@ -148,7 +148,7 @@ inline unsigned long mtk_sched_cpu_util(int cpu)
 	unsigned long util;
 
 	irq_log_store();
-	util = mtk_effective_cpu_util(cpu, mtk_cpu_util_cfs(cpu), NULL, NULL, NULL);
+	util = mtk_effective_cpu_util_total(cpu, NULL, -1, 0, NULL, NULL, NULL, 0, false);
 	irq_log_store();
 
 	return util;
@@ -160,19 +160,7 @@ inline unsigned long mtk_sched_max_util(struct task_struct *p, int cpu,
 	unsigned long min, max, util;
 
 	irq_log_store();
-	util = mtk_effective_cpu_util(cpu, mtk_cpu_util_cfs(cpu), p, &min, &max);
-	if (p && uclamp_is_used()) {
-		min = max(min, min_cap);
-		/*
-		* If there is no active max uclamp constraint,
-		* directly use task's one, otherwise keep max.
-		*/
-		if (uclamp_rq_is_idle(cpu_rq(cpu)))
-			max = max_cap;
-		else
-			max = max(max, max_cap);
-	}
-	util = sugov_effective_cpu_perf_clamp(util, min, max);
+	util = mtk_effective_cpu_util_total(cpu, p, -1, 1, &min, &max, NULL, 0, false);
 	irq_log_store();
 
 	return util;
@@ -400,8 +388,8 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu,
 void track_sched_cpu_util(struct task_struct *p, int cpu,
 			unsigned long min_cap, unsigned long max_cap)
 {
-	if (trace_sched_cpu_util_enabled())
-		trace_sched_cpu_util(p, cpu, skip_hiIRQ_enable, min_cap, max_cap);
+	if (trace_sched_cpu_util_other_enabled())
+		trace_sched_cpu_util_other(p, cpu, skip_hiIRQ_enable, min_cap, max_cap);
 }
 
 static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,

@@ -94,3 +94,72 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 	return min(util, arch_scale_cpu_capacity(cpu) + 1);
 }
 EXPORT_SYMBOL_GPL(mtk_cpu_util_next);
+
+int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
+		unsigned long *min, unsigned long *max,
+		void *data, unsigned long cpu_util_iowait, int curr_task_uclamp)
+{
+	int cpu_util_cfs, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
+	struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
+	int source = -1;
+
+	if (trace_sched_cpu_util_enabled()) {
+		if (data) /* sugov */
+			source = 0;
+		else if (p && !rt_task(p)) { /* fair */
+			if (min && max)
+				source = 11; /* max_util */
+			else
+				source = 10; /* sum_util */
+		} else { /* rt */
+			if (min && max)
+				source = 21; /* max_util */
+			else
+				source = 20; /* sum_util */
+		}
+	}
+
+	if (data) { /* sugov */
+		cpu_util_cfs = scx_cpuperf_target(cpu);
+
+		if (!scx_switched_all())
+			cpu_util_cfs += mtk_cpu_util_next(cpu, p, dst_cpu, runnable_boost);
+	} else /* normal, rt*/
+		cpu_util_cfs = mtk_cpu_util_next(cpu, p, dst_cpu, runnable_boost);
+
+#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+	cpu_util_eff = mtk_effective_cpu_util(cpu, cpu_util_cfs, p, min, max);
+#else
+	cpu_util_eff = effective_cpu_util(cpu, cpu_util_cfs, min, max);
+#endif
+
+	if (data) /* sugov */
+		cpu_util_eff = max(cpu_util_eff, (int)cpu_util_iowait);
+
+	if (tsk && uclamp_is_used()) { /* normal rt */
+		*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
+
+		if (uclamp_rq_is_idle(cpu_rq(cpu)))
+			*max = uclamp_eff_value(p, UCLAMP_MAX);
+		else
+			*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
+	}
+
+	/* modified from kmainline sugov_effective_cpu_perf() */
+	if (min && max) { /* sugov, normal max_util, rt max_util */
+		cpu_util_mgn = mtk_effective_cpu_util_with_margin(cpu_util_eff, cpu, data, source);
+		cpu_util_clp = mtk_effective_cpu_util_with_uclamp(cpu_util_mgn, cpu, *min, *max, curr_task_uclamp);
+		cpu_util_tal = cpu_util_clp;
+	} else { /* normal sum_util, rt sum_util */
+		cpu_util_mgn = cpu_util_eff;
+		cpu_util_clp = cpu_util_eff;
+		cpu_util_tal = cpu_util_eff;
+	}
+
+	if (trace_sched_cpu_util_enabled())
+		trace_sched_cpu_util(cpu, cpu_util_tal, cpu_util_clp, cpu_util_mgn, cpu_util_eff, cpu_util_cfs,
+				min, max, dst_cpu, p, source, cpu_util_iowait);
+
+	return cpu_util_tal;
+}
+EXPORT_SYMBOL_GPL(mtk_effective_cpu_util_total);

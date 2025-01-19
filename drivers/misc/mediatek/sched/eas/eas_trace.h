@@ -728,7 +728,7 @@ out:
 }
 #endif
 
-TRACE_EVENT(sched_cpu_util,
+TRACE_EVENT(sched_cpu_util_other,
 	TP_PROTO(struct task_struct *p, int cpu, bool skip_hiIRQ_enable,
 		unsigned long min_cap, unsigned long max_cap),
 	TP_ARGS(p, cpu, skip_hiIRQ_enable, min_cap, max_cap),

@@ -134,6 +134,62 @@ TRACE_EVENT(sugov_ext_gear_uclamp,
 		__entry->umax_gear)
 );
 
+TRACE_EVENT(sched_cpu_util,
+
+	TP_PROTO(int cpu, int cpu_util_tal, int cpu_util_clp, int cpu_util_mgn,
+		int cpu_util_eff, int cpu_util_cfs,
+		unsigned long *min, unsigned long *max, int dst_cpu, struct task_struct *p,
+		int source, unsigned long cpu_util_iowait),
+
+	TP_ARGS(cpu, cpu_util_tal, cpu_util_clp, cpu_util_mgn, cpu_util_eff, cpu_util_cfs,
+		min, max, dst_cpu, p, source, cpu_util_iowait),
+
+	TP_STRUCT__entry(
+		__field(int, source)
+		__field(int, cpu)
+		__field(int, cpu_util_tal)
+		__field(int, cpu_util_clp)
+		__field(int, cpu_util_mgn)
+		__field(int, cpu_util_eff)
+		__field(unsigned long, cpu_util_iowait)
+		__field(int, cpu_util_cfs)
+		__field(int, min)
+		__field(int, max)
+		__field(int, dst_cpu)
+		__field(int, pid)
+		),
+
+	TP_fast_assign(
+		__entry->source          = source;
+		__entry->cpu             = cpu;
+		__entry->cpu_util_tal    = cpu_util_tal;
+		__entry->cpu_util_clp    = cpu_util_clp;
+		__entry->cpu_util_mgn    = cpu_util_mgn;
+		__entry->cpu_util_eff    = cpu_util_eff;
+		__entry->cpu_util_iowait = cpu_util_iowait;
+		__entry->cpu_util_cfs    = cpu_util_cfs;
+		__entry->min             = min ? (int)*min : -1;
+		__entry->max             = max ? (int)*max : -1;
+		__entry->dst_cpu         = dst_cpu;
+		__entry->pid             = p ? p->pid : -1;
+		),
+
+	TP_printk("cpu=%1d cpu_util_tal=%4d cpu_util_clp=%4d cpu_util_mgn=%4d cpu_util_eff=%4d cpu_util_iowait=%4lu cpu_util_cfs=%4d rq_min_clamp=%4d rq_max_clamp=%4d dst_cpu=%1d pid=%5d source=%2d",
+		__entry->cpu,
+		__entry->cpu_util_tal,
+		__entry->cpu_util_clp,
+		__entry->cpu_util_mgn,
+		__entry->cpu_util_eff,
+		__entry->cpu_util_iowait,
+		__entry->cpu_util_cfs,
+		__entry->min,
+		__entry->max,
+		__entry->dst_cpu,
+		__entry->pid,
+		__entry->source
+		)
+);
+
 TRACE_EVENT(sugov_ext_util,
 	TP_PROTO(int cpu, unsigned long util,
 		unsigned int min, unsigned int max, int idle),
@@ -162,29 +218,26 @@ TRACE_EVENT(sugov_ext_util,
 );
 
 TRACE_EVENT(sugov_ext_util_freq,
-	TP_PROTO(int cpu, unsigned long util,
-		unsigned int min, unsigned int max, unsigned int freq),
-	TP_ARGS(cpu, util, min, max, freq),
+	TP_PROTO(int cpu, unsigned long util, unsigned int freq),
+
+	TP_ARGS(cpu, util, freq),
+
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(unsigned long, util)
-		__field(unsigned int, min)
-		__field(unsigned int, max)
 		__field(unsigned int, freq)
 	),
+
 	TP_fast_assign(
 		__entry->cpu = cpu;
 		__entry->util = util;
-		__entry->min = min;
-		__entry->max = max;
 		__entry->freq = freq;
 	),
+
 	TP_printk(
-		"cpu=%d util_with_uclamp=%lu min=%u max=%u cpu_freq=%d",
+		"cpu=%d util_with_uclamp=%lu cpu_freq=%d",
 		__entry->cpu,
 		__entry->util,
-		__entry->min,
-		__entry->max,
 		__entry->freq)
 );
 
@@ -373,74 +426,87 @@ TRACE_EVENT(sugov_ext_tar,
 );
 
 TRACE_EVENT(sugov_ext_group_dvfs,
-	TP_PROTO(int gearid, unsigned long util, unsigned long pelt_util_with_margin,
-		unsigned long flt_util, unsigned long pelt_util, unsigned long pelt_margin,
-		unsigned long freq),
-	TP_ARGS(gearid, util, pelt_util_with_margin, flt_util, pelt_util, pelt_margin, freq),
+	TP_PROTO(int cpu, unsigned long ret, unsigned long flt_util,
+		unsigned long pelt_util_with_margin, unsigned long pelt_util, unsigned long pelt_margin, int source),
+
+	TP_ARGS(cpu, ret, flt_util, pelt_util_with_margin, pelt_util, pelt_margin, source),
+
 	TP_STRUCT__entry(
-		__field(int, gearid)
-		__field(unsigned long, util)
-		__field(unsigned long, pelt_util_with_margin)
+		__field(int, cpu)
+		__field(unsigned long, ret)
 		__field(unsigned long, flt_util)
+		__field(unsigned long, pelt_util_with_margin)
 		__field(unsigned long, pelt_util)
 		__field(unsigned long, pelt_margin)
-		__field(unsigned long, freq)
+		__field(int, source)
 	),
+
 	TP_fast_assign(
-		__entry->gearid = gearid;
-		__entry->util = util;
-		__entry->pelt_util_with_margin = pelt_util_with_margin;
+		__entry->cpu = cpu;
+		__entry->ret = ret;
 		__entry->flt_util = flt_util;
+		__entry->pelt_util_with_margin = pelt_util_with_margin;
 		__entry->pelt_util = pelt_util;
 		__entry->pelt_margin = pelt_margin;
-		__entry->freq = freq;
+		__entry->source = source;
 	),
+
 	TP_printk(
-		"gearid=%d ret=%lu pelt_with_margin=%lu tar=%lu pelt=%lu pelt_margin=%lu freq=%lu",
-		__entry->gearid,
-		__entry->util,
-		__entry->pelt_util_with_margin,
+		"cpu=%d ret=%4lu tar=%4lu pelt_util_with_margin=%4lu pelt_util=%4lu pelt_margin=%4lu source=%2d",
+		__entry->cpu,
+		__entry->ret,
 		__entry->flt_util,
+		__entry->pelt_util_with_margin,
 		__entry->pelt_util,
 		__entry->pelt_margin,
-		__entry->freq)
+		__entry->source
+	)
 );
 
 TRACE_EVENT(sugov_ext_turn_point_margin,
-	TP_PROTO(unsigned int cpu, unsigned int orig_util, unsigned int margin_util,
-	unsigned int turn_point, unsigned int target_margin, unsigned int target_margin_low,
-	int am_ctrl, int grp_dvfs_ctrl_mode),
-	TP_ARGS(cpu, orig_util, margin_util, turn_point, target_margin, target_margin_low, am_ctrl, grp_dvfs_ctrl_mode),
+	TP_PROTO(int cpu, int ret, int pelt_util, unsigned int turn_point,
+		unsigned int target_margin, unsigned int target_margin_low, int pelt_util_with_orig_margin,
+		int am_ctrl, int grp_dvfs_ctrl_mode),
+
+	TP_ARGS(cpu, ret, pelt_util, turn_point, target_margin, target_margin_low, pelt_util_with_orig_margin,
+		am_ctrl, grp_dvfs_ctrl_mode),
+
 	TP_STRUCT__entry(
-		__field(unsigned int, cpu)
-		__field(unsigned int, orig_util)
-		__field(unsigned int, margin_util)
+		__field(int, cpu)
+		__field(int, ret)
+		__field(int, pelt_util)
 		__field(unsigned int, turn_point)
 		__field(unsigned int, target_margin)
 		__field(unsigned int, target_margin_low)
+		__field(int, pelt_util_with_orig_margin)
 		__field(int, am_ctrl)
 		__field(int, grp_dvfs_ctrl_mode)
 	),
+
 	TP_fast_assign(
 		__entry->cpu = cpu;
-		__entry->orig_util = orig_util;
-		__entry->margin_util = margin_util;
+		__entry->ret = ret;
+		__entry->pelt_util = pelt_util;
 		__entry->turn_point = turn_point;
 		__entry->target_margin = target_margin;
 		__entry->target_margin_low = target_margin_low;
+		__entry->pelt_util_with_orig_margin = pelt_util_with_orig_margin;
 		__entry->am_ctrl = am_ctrl;
 		__entry->grp_dvfs_ctrl_mode = grp_dvfs_ctrl_mode;
 	),
+
 	TP_printk(
-		"cpu=%u orig_util=%u margin_util=%u turn_point=%d target_margin=%d target_margin_low=%d am_ctrl=%d grp_dvfs_ctrl_mode=%d",
+		"cpu=%d ret=%d pelt_util=%d turn_point=%d target_margin=%d target_margin_low=%d pelt_util_with_orig_margin=%d am_ctrl=%d grp_dvfs_ctrl_mode=%d",
 		__entry->cpu,
-		__entry->orig_util,
-		__entry->margin_util,
+		__entry->ret,
+		__entry->pelt_util,
 		__entry->turn_point,
 		__entry->target_margin,
 		__entry->target_margin_low,
+		__entry->pelt_util_with_orig_margin,
 		__entry->am_ctrl,
-		__entry->grp_dvfs_ctrl_mode)
+		__entry->grp_dvfs_ctrl_mode
+		)
 );
 
 TRACE_EVENT(collab_type_1_ret_function,

@@ -3235,6 +3235,152 @@ void check_update_adaptive_margin_disabled(struct cpumask *cpumask)
 			WRITE_ONCE(adaptive_margin[i], util_scale);
 }
 
+int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, void *data, int source)
+{
+	u64 wall_time_stamp;
+	int pelt_util = util;
+	int gearid __maybe_unused = topology_cluster_id(cpu), i;
+	unsigned long flt_util = 0, pelt_util_with_margin = 0;
+	int first_cpu;
+	struct cpumask *cpumask;
+	struct cpumask _cpumask;
+
+	if (data != NULL) {
+		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
+		struct cpufreq_policy *policy = sg_policy->policy;
+
+		cpumask = policy->related_cpus;
+
+		if (!cpumask)
+			return util;
+
+		first_cpu = cpumask_first(cpumask);
+
+		if (grp_dvfs_ctrl_mode == 0 || grp_trigger == false) {
+			get_cpu_idle_time(first_cpu, &wall_time_stamp, 1);
+
+			if (wall_time_stamp - last_wall_time_stamp[first_cpu] > am_wind_dura)
+				update_active_ratio_policy(cpumask);
+		}
+
+		update_adaptive_margin(policy);
+	} else {
+		cpumask_clear(&_cpumask);
+		cpumask_set_cpu(cpu, &_cpumask);
+		cpumask = &_cpumask;
+
+		if (!cpumask)
+			return util;
+
+		first_cpu = cpu;
+	}
+
+	if (am_ctrl == 0 || am_ctrl == 9)
+		for_each_cpu(i, cpumask)
+			WRITE_ONCE(adaptive_margin[i], util_scale);
+
+	pelt_util_with_margin =
+		(util * READ_ONCE(adaptive_margin[first_cpu])) >> SCHED_CAPACITY_SHIFT;
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode &&
+			(wl_cpu_curr != 4 || grp_high_freq[gearid]))
+		flt_util = group_aware_dvfs_util(cpumask);
+	if (grp_dvfs_ctrl_mode == 9)
+		flt_util = 0;
+#endif
+
+	util = max_t(int, pelt_util_with_margin, flt_util);
+
+	if (trace_sugov_ext_group_dvfs_enabled())
+		trace_sugov_ext_group_dvfs(first_cpu, util, flt_util,
+				pelt_util_with_margin, pelt_util, READ_ONCE(adaptive_margin[first_cpu]), source);
+
+	return util;
+}
+
+int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu)
+{
+	int pelt_util = util;
+
+	if (target_margin_enable[cpu] && util >= turn_point_util[cpu])
+		util = max(turn_point_util[cpu], util * target_margin[cpu] >> SCHED_CAPACITY_SHIFT);
+	else if (target_margin_low_enable[cpu] && util < turn_point_util[cpu])
+		util = min(turn_point_util[cpu], util * target_margin_low[cpu] >> SCHED_CAPACITY_SHIFT);
+
+	if (trace_sugov_ext_turn_point_margin_enabled()) {
+		int pelt_util_with_orig_margin = (pelt_util * util_scale) >> SCHED_CAPACITY_SHIFT;
+
+		trace_sugov_ext_turn_point_margin(cpu, util, pelt_util,
+				turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu],
+				pelt_util_with_orig_margin,
+				am_ctrl, grp_dvfs_ctrl_mode);
+	}
+
+	return util;
+}
+
+/* modified from kmainline map_uitl_perf() */
+int mtk_effective_cpu_util_with_margin(int util, int cpu, void *data, int source)
+{
+	if (turn_point_util[cpu])
+		util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu);
+	else if (am_ctrl || grp_dvfs_ctrl_mode)
+		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, data, source);
+	else
+		util = map_util_perf(util);
+
+	return util;
+}
+
+int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
+		unsigned long min, unsigned long max, int curr_task_uclamp)
+{
+	if (curr_task_uclamp) {
+		struct rq *rq;
+		struct task_struct *curr_task;
+		unsigned long max_util_curr = ULONG_MAX;
+		unsigned long max_util_curr_eff = ULONG_MAX;
+		int flg_curr_task = -1, flg_exit_state = -1, flg_pid = -1;
+		unsigned long umax = 0;
+
+		rq = cpu_rq(cpu);
+
+		rcu_read_lock();
+
+		curr_task = rcu_dereference(rq->curr);
+
+		if (curr_task) {
+			flg_curr_task = 1;
+			flg_pid = curr_task->pid;
+
+			if (!curr_task->exit_state) {
+				flg_exit_state = 0;
+				max_util_curr = curr_task->uclamp_req[UCLAMP_MAX].value;
+				max_util_curr_eff = curr_task->uclamp[UCLAMP_MAX].value;
+			} else {
+				flg_exit_state = 1;
+			}
+		} else {
+			flg_curr_task = 0;
+		}
+
+		rcu_read_unlock();
+
+		umax = min_t(unsigned long, max_util_curr, rq->uclamp[UCLAMP_MAX].value);
+		umax = (umax * util_scale) >> SCHED_CAPACITY_SHIFT;
+		util = min_t(unsigned long, util, umax);
+
+		if (trace_sugov_ext_curr_task_uclamp_enabled())
+			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
+				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
+	} else {
+		util = sugov_effective_cpu_perf_clamp(util, min, max);
+	}
+
+	return util;
+}
+
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 				unsigned int cpu, unsigned long *next_freq, struct cpumask *cpumask,
                 unsigned long min, unsigned long max)
@@ -3339,12 +3485,12 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 		*next_freq = pd_get_util_freq(cpu, util);
 
 	if (trace_sugov_ext_util_freq_enabled()) {
-		trace_sugov_ext_util_freq(cpu, util, min, max, *next_freq);
+		trace_sugov_ext_util_freq(cpu, util, *next_freq);
 	}
 
 	if (trace_sugov_ext_group_dvfs_enabled())
-		trace_sugov_ext_group_dvfs(first_cpu, util, pelt_util_with_margin,
-			flt_util, util_ori, READ_ONCE(adaptive_margin[first_cpu]), *next_freq);
+		trace_sugov_ext_group_dvfs(first_cpu, util, flt_util,
+				pelt_util_with_margin, util_ori, READ_ONCE(adaptive_margin[first_cpu]), 3);
 
 	if (data != NULL) {
 		policy->cached_target_freq = *next_freq;
@@ -3521,7 +3667,7 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local, unsigned long min, unsigned long max)
 {
 	unsigned long util;
-	int orig_util, util_before_cpu_util_ratio;
+	int util_before_cpu_util_ratio;
 
 	if (!is_dpt_v2_support())
 		return;
@@ -3533,25 +3679,9 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
 
-	orig_util = util;
 	*capacity_result = util;
 
-	if (turn_point_util[cpu] && target_margin_enable[cpu] &&
-		orig_util >= turn_point_util[cpu])
-		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
-					>> SCHED_CAPACITY_SHIFT);
-	else if (turn_point_util[cpu] && target_margin_low_enable[cpu] &&
-		orig_util < turn_point_util[cpu])
-		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
-					>> SCHED_CAPACITY_SHIFT);
-	else if (am_ctrl || grp_dvfs_ctrl_mode) {
-		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
-		if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
-			trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local, coef1_util_local, coef2_util_local, util_before_cpu_util_ratio, min, max);
-		return;
-	}
-	else
-		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
+	util = mtk_effective_cpu_util_with_margin(util, cpu, data, 3);
 
 	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
 	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
@@ -3565,59 +3695,34 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, DPT_CALL_MTK_MAP_UTIL_FREQ);
 		sg_policy->cached_raw_freq = *next_freq;
 	}
-
-	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
-		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
-			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu], am_ctrl, grp_dvfs_ctrl_mode);
-	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq_dpt_v2);
 
-
+/* modified from kmainline map_util_freq() */
 void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
-		unsigned long *next_freq, unsigned long min, unsigned long max)
-{
-	int orig_util = util;
-	unsigned int cpu=0;
+		unsigned long *next_freq, unsigned long min, unsigned long max) {
+	unsigned int first_cpu;
+	struct sugov_policy *sg_policy;
+	struct cpufreq_policy *policy;
+
 	if (!cpumask)
 		return;
 
-	cpu = cpumask_first(cpumask);
+	first_cpu = cpumask_first(cpumask);
 
-	if (turn_point_util[cpu] && target_margin_enable[cpu] &&
-		orig_util >= turn_point_util[cpu])
-		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
-					>> SCHED_CAPACITY_SHIFT);
-	else if (turn_point_util[cpu] && target_margin_low_enable[cpu] &&
-		orig_util < turn_point_util[cpu])
-		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
-					>> SCHED_CAPACITY_SHIFT);
-	else if (am_ctrl || grp_dvfs_ctrl_mode) {
-		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
-		return;
-	}
-	else
-		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
+	*next_freq = pd_X2Y(first_cpu, util, CAP, FREQ, false, DPT_CALL_MTK_MAP_UTIL_FREQ);
 
-	util = sugov_effective_cpu_perf_clamp(util, min, max);
-	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, DPT_CALL_MTK_MAP_UTIL_FREQ);
-
-	if (trace_sugov_ext_util_freq_enabled()) {
-		trace_sugov_ext_util_freq(cpu, util, min, max, *next_freq);
-	}
+	if (trace_sugov_ext_util_freq_enabled())
+		trace_sugov_ext_util_freq(first_cpu, util, *next_freq);
 
 	if (data != NULL) {
-		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
-		struct cpufreq_policy *policy = sg_policy->policy;
+		sg_policy = (struct sugov_policy *)data;
+		policy = sg_policy->policy;
 
-		WRITE_ONCE(policy->cached_target_freq, *next_freq);
-		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, DPT_CALL_MTK_MAP_UTIL_FREQ);
+		policy->cached_target_freq = *next_freq;
+		policy->cached_resolved_idx = pd_X2Y(first_cpu, *next_freq, FREQ, OPP, true,
+				DPT_CALL_MTK_MAP_UTIL_FREQ);
 		sg_policy->cached_raw_freq = *next_freq;
-	}
-
-	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
-		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
-			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu], am_ctrl, grp_dvfs_ctrl_mode);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq);

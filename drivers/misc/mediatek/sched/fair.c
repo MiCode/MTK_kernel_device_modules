@@ -181,24 +181,22 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 	if (eenv->pds_busy_time[pd_idx] != -1)
 		return;
 
-	for_each_cpu(cpu, pd_cpus) {
-		unsigned long util = mtk_cpu_util_next(cpu, p, -1, 0);
+	/*if (eenv->dpt_v2_support) {*/
+	/*        for_each_cpu(cpu, pd_cpus) {*/
+	/*                unsigned long dpt_v2_cpu_util = 0;*/
+	/*                unsigned long dpt_v2_coef1_util = 0, dpt_v2_coef2_util = 0;*/
 
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		/*
-		if (eenv->dpt_v2_support) {
-			unsigned long dpt_v2_cpu_util = 0, dpt_v2_coef1_util = 0, dpt_v2_coef2_util = 0;
+	/*                mtk_cpu_util_next_dpt_v2(cpu, p, -1, 0,*/
+	/*                                &dpt_v2_cpu_util, &dpt_v2_coef1_util, &dpt_v2_coef2_util);*/
 
-			mtk_cpu_util_next_dpt_v2(cpu, p, -1, 0, &dpt_v2_cpu_util, &dpt_v2_coef1_util, &dpt_v2_coef2_util);
-			busy_time += mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util, &dpt_v2_coef1_util, &dpt_v2_coef2_util,
-				NULL, NULL, NULL);
-		} else
-		*/
-		busy_time += mtk_effective_cpu_util(cpu, util, NULL, NULL, NULL);
-#else
-		busy_time += effective_cpu_util(cpu, util, NULL, NULL);
-#endif // CONFIG_MTK_CPUFREQ_SUGOV_EXT
-	}
+	/*                busy_time += mtk_effective_cpu_util_dpt_v2(cpu,*/
+	/*                                &dpt_v2_cpu_util, &dpt_v2_coef1_util, &dpt_v2_coef2_util,*/
+	/*                                NULL, NULL, NULL);*/
+	/*        }*/
+	/*} else {*/
+	for_each_cpu(cpu, pd_cpus)
+		busy_time += mtk_effective_cpu_util_total(cpu, p, -1, 0, NULL, NULL, NULL, 0, false);
+	/*}*/
 
 	eenv->pds_busy_time[pd_idx] = min(eenv->pds_cap[pd_idx], busy_time);
 }
@@ -356,43 +354,13 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 	int cpu, dst_idx, pd_cpu = -1, gear_cpu = -1;
 
 	for_each_cpu_and(cpu, get_gear_cpumask(eenv->gear_idx), cpu_active_mask) {
-		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
-		unsigned long util = -1, cpu_util = -1;
+		unsigned long cpu_util = -1;
 
 		dst_idx = (cpu == dst_cpu) ? 1 : 0;
-		if (eenv->cpu_max_util[cpu][dst_idx] == -1) {
-			util = mtk_cpu_util_next(cpu, p, dst_cpu, 1);
-
-			/*
-			 * Performance domain frequency: utilization clamping
-			 * must be considered since it affects the selection
-			 * of the performance domain frequency.
-			 * NOTE: in case RT tasks are running, by default the
-			 * FREQUENCY_UTIL's utilization can be max OPP.
-			 */
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-			if (tsk)
-				cpu_util = mtk_effective_cpu_util(cpu, util, tsk, min, max);
-			else
-				cpu_util = mtk_effective_cpu_util(cpu, util, tsk, min, max);
-#else
-			cpu_util = effective_cpu_util(cpu, util, min, max);
-#endif // CONFIG_MTK_CPUFREQ_SUGOV_EXT
-			if (tsk && uclamp_is_used()) {
-				*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
-				/*
-				* If there is no active max uclamp constraint,
-				* directly use task's one, otherwise keep max.
-				*/
-				if (uclamp_rq_is_idle(cpu_rq(cpu)))
-					*max = uclamp_eff_value(p, UCLAMP_MAX);
-				else
-					*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
-			}
-			//cpu_util = sugov_effective_cpu_perf_clamp(cpu_util, min, max);
-
-			eenv->cpu_max_util[cpu][dst_idx] = cpu_util;
-		} else
+		if (eenv->cpu_max_util[cpu][dst_idx] == -1)
+			cpu_util = eenv->cpu_max_util[cpu][dst_idx]
+				= mtk_effective_cpu_util_total(cpu, p, dst_cpu, 1, min, max, NULL, 0, false);
+		else
 			cpu_util = eenv->cpu_max_util[cpu][dst_idx];
 
 		if (cpumask_test_cpu(cpu, pd_cpus)) {
@@ -404,37 +372,9 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		gear_max_util = max(gear_max_util, cpu_util);
 
 		/*get dst_cpu base utilization*/
-		if (cpu == dst_cpu) {
-			unsigned long util_base = mtk_cpu_util_next(cpu, p, -1, 1);
-			unsigned long cpu_util_base;
-
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-			cpu_util_base = mtk_effective_cpu_util(cpu, util_base, NULL, min, max);
-#else
-			cpu_util_base = effective_cpu_util(cpu, util, min, max);
-#endif // CONFIG_MTK_CPUFREQ_SUGOV_EXT
-			if (tsk && uclamp_is_used()) {
-				*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
-				/*
-				* If there is no active max uclamp constraint,
-				* directly use task's one, otherwise keep max.
-				*/
-				if (uclamp_rq_is_idle(cpu_rq(cpu)))
-					*max = uclamp_eff_value(p, UCLAMP_MAX);
-				else
-					*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
-			}
-			//cpu_util_base = sugov_effective_cpu_perf_clamp(cpu_util_base, min, max);
-
-			eenv->cpu_max_util[cpu][0] = cpu_util_base;
-			if (trace_sched_max_util_enabled())
-				trace_sched_max_util("cpu", cpu, dst_cpu, 0,
-					eenv->cpu_max_util[cpu][0], cpu, util_base, cpu_util_base);
-		}
-
-		if (trace_sched_max_util_enabled())
-			trace_sched_max_util("cpu", cpu, dst_cpu, dst_idx,
-				eenv->cpu_max_util[cpu][dst_idx], cpu, util, cpu_util);
+		if (cpu == dst_cpu)
+			eenv->cpu_max_util[cpu][0] =
+				mtk_effective_cpu_util_total(cpu, p, -1, 1, min, max, NULL, 0, false);
 	}
 
 	dst_idx = (dst_cpu != -1) ? 1 : 0;
@@ -2020,17 +1960,12 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
-	int fit, uclamp_max_fits, uclamp_involve;
-
+	int fit, uclamp_max_fits;
 
 	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-
-	uclamp_involve = mtk_uclamp_involve(uclamp_min, uclamp_max, true);
-	if (uclamp_involve)
-		sugov_margin = DEFAULT_MARGIN;
 
 	/* ceiling shouldn't affect capacity since updown_migration is not enabled,  */
 	if (!updown_migration_enable)
@@ -2054,7 +1989,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 
 	if (trace_sched_fits_cap_ceiling_enabled())
 		trace_sched_fits_cap_ceiling(fit, cpu, util, uclamp_min, uclamp_max, capacity, ceiling, sugov_margin,
-			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled, uclamp_involve);
+			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled);
 
 	return fit;
 }
@@ -2076,16 +2011,13 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
-	int fit, uclamp_max_fits, uclamp_involve;
+	int fit, uclamp_max_fits;
 
 	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
 		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 
-	uclamp_involve = mtk_uclamp_involve(uclamp_min, uclamp_max, true);
-	if (uclamp_involve)
-		sugov_margin = DEFAULT_MARGIN;
 	/* Whether PELT fit after considering up-down migration ? */
 	fit = fits_capacity(util, capacity, sugov_margin);
 
