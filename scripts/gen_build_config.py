@@ -146,6 +146,7 @@ def main(**args):
         for name in kernel_defconfig_overlays.split():
             kernel_defconfig_overlays_files = '%s ${ROOT_DIR}/%s/kernel/configs/%s' % (kernel_defconfig_overlays_files, kernel_dir, name)
         all_defconfig = '${ROOT_DIR}/%s/%s/%s %s' % (kernel_dir, defconfig_dir, project_defconfig_name, kernel_defconfig_overlays_files)
+    all_defconfig = '%s ${ROOT_DIR}/%s/kernel/configs/sign.config' % (all_defconfig, kernel_dir)
     if mode_config:
         all_defconfig = '%s ${ROOT_DIR}/%s/kernel/configs/%s' % (all_defconfig, kernel_dir, mode_config)
     pre_defconfig_cmds = '%s && mkdir -p ${OUT_DIR} && cd ${OUT_DIR} && bash ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m .config %s && cd ${ROOT_DIR}' % (pre_defconfig_cmds, all_defconfig)
