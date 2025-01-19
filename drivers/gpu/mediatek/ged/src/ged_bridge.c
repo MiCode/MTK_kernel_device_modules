@@ -19,6 +19,11 @@
 #include "ged_kpi.h"
 #include "ged.h"
 
+#ifndef CONFIG_MTK_GPU_LEGACY
+#include <gpufreq_v2.h>
+#endif /* CONFIG_MTK_GPU_LEGACY */
+
+
 static unsigned int ged_boost_enable = 1;
 //-----------------------------------------------------------------------------
 int ged_bridge_log_buf_get(
@@ -179,6 +184,12 @@ int ged_bridge_gpu_hint_to_cpu(
 	trace_tracing_mark_write(5566, "Sync_Api", in->hint);
 	out->eError = GED_OK;
 	out->boost_flag = ret;
+
+#ifndef CONFIG_MTK_GPU_LEGACY
+	if (in->hint == 10)
+		out->boost_flag = gpufreq_get_cur_temperature();
+#endif /* CONFIG_MTK_GPU_LEGACY */
+
 	if (in->hint <= 1)
 		out->boost_value = ged_dvfs_boost_value();
 	else
