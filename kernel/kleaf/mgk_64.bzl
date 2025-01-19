@@ -146,6 +146,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -158,6 +159,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -296,7 +298,6 @@ mgk_64_device_modules = [
     "drivers/gpu/mediatek/gpueb/mtk_ghpm.ko",
     "drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_wrapper.ko",
-    "drivers/gpu/mediatek/hal/mtk_gpu_hal.ko",
     "drivers/i2c/busses/i2c-mt65xx.ko",
     "drivers/i3c/master/mtk-i3c-master-mt69xx.ko",
     "drivers/iio/adc/mt6338-auxadc.ko",

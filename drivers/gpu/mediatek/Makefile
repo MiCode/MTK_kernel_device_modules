@@ -47,7 +47,6 @@ endif
 
 ifneq ($(CONFIG_MTK_GPU_SUPPORT),)
     obj-y += ged/
-    obj-y += hal/
     obj-y += gpufreq/
     obj-y += gpu_bm/
     obj-y += gpu_iommu/
