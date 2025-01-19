@@ -353,7 +353,29 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
+	// init list head, mutex, spin_lock, atomic, etc.
 	INIT_LIST_HEAD(&dev->ctx_list);
+	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
+		sema_init(&dev->enc_sem[i], 1);
+		spin_lock_init(&dev->enc_power_lock[i]);
+		dev->enc_is_power_on[i] = false;
+		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
+	}
+	atomic_set(&dev->larb_ref_cnt, 0);
+	atomic_set(&dev->smi_dump_ref_cnt, 0);
+	mutex_init(&dev->ctx_mutex);
+	mutex_init(&dev->dev_mutex);
+	mutex_init(&dev->ipi_mutex);
+	mutex_init(&dev->enc_dvfs_mutex);
+	mutex_init(&dev->enc_qos_mutex);
+	mutex_init(&dev->cpu_hint_mutex);
+	spin_lock_init(&dev->irqlock);
+
+	INIT_LIST_HEAD(&dev->log_param_list);
+	INIT_LIST_HEAD(&dev->prop_param_list);
+	mutex_init(&dev->log_param_mutex);
+	mutex_init(&dev->prop_param_mutex);
+
 	dev->plat_dev = pdev;
 	dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 	ret = of_property_read_u32(pdev->dev.of_node, "iommu-domain-switch", &dev->iommu_domain_swtich);
@@ -492,22 +514,12 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		pr_info("after get port-def  port num [%d] %d\n", i, port_num[i]);
 	}
 
-	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
-		sema_init(&dev->enc_sem[i], 1);
-		spin_lock_init(&dev->enc_power_lock[i]);
-		dev->enc_is_power_on[i] = false;
-		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
-	}
-
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
 	if (ret != 0)
 		dev_info(&pdev->dev, "Failed to get venc-slb-cpu-used-perf!");
 
 	dev->enc_slb_cpu_used_perf = slb_cpu_used_pref;
 	pr_info("after get venc-slb-cpu-used-perf %d\n", slb_cpu_used_pref);
-
-	atomic_set(&dev->larb_ref_cnt, 0);
-	atomic_set(&dev->smi_dump_ref_cnt, 0);
 
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-extra", &slb_extra);
 	if (ret != 0)
@@ -536,14 +548,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	mtk_v4l2_debug(0, "venc slb_cpu_used_pref %d, slb_extra %d, support acp %d, mtk_venc_acp_enable %d, mtk_venc_input_acp_enable %d",
 		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra,
 		dev->support_acp, mtk_venc_acp_enable, mtk_venc_input_acp_enable);
-
-	mutex_init(&dev->ctx_mutex);
-	mutex_init(&dev->dev_mutex);
-	mutex_init(&dev->ipi_mutex);
-	mutex_init(&dev->enc_dvfs_mutex);
-	mutex_init(&dev->enc_qos_mutex);
-	mutex_init(&dev->cpu_hint_mutex);
-	spin_lock_init(&dev->irqlock);
 
 	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
 			 "[MTK_V4L2_VENC]");
@@ -656,11 +660,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
 		goto err_enc_reg;
 	}
-
-	INIT_LIST_HEAD(&dev->log_param_list);
-	INIT_LIST_HEAD(&dev->prop_param_list);
-	mutex_init(&dev->log_param_mutex);
-	mutex_init(&dev->prop_param_mutex);
 
 	dev_ptr = dev;
 

@@ -420,7 +420,34 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
+	// init list head, mutex, spin_lock, atomic, etc.
 	INIT_LIST_HEAD(&dev->ctx_list);
+	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
+		sema_init(&dev->dec_sem[i], 1);
+		spin_lock_init(&dev->dec_power_lock[i]);
+		dev->dec_is_power_on[i] = false;
+		atomic_set(&dev->dec_hw_active[i], 0);
+		atomic_set(&dev->dec_clk_ref_cnt[i], 0);
+		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
+	}
+	atomic_set(&dev->larb_ref_cnt, 0);
+	atomic_set(&dev->smi_dump_ref_cnt, 0);
+	mutex_init(&dev->ctx_mutex);
+	mutex_init(&dev->dev_mutex);
+	mutex_init(&dev->ipi_mutex);
+	mutex_init(&dev->ipi_mutex_res);
+	mutex_init(&dev->dec_dvfs_mutex);
+	mutex_init(&dev->cap_mutex);
+	mutex_init(&dev->cpu_hint_mutex);
+	mutex_init(&dev->cgrp_mutex);
+	mutex_init(&dev->vp_mode_buf_mutex);
+	spin_lock_init(&dev->irqlock);
+
+	INIT_LIST_HEAD(&dev->log_param_list);
+	INIT_LIST_HEAD(&dev->prop_param_list);
+	mutex_init(&dev->log_param_mutex);
+	mutex_init(&dev->prop_param_mutex);
+
 	dev->plat_dev = pdev;
 	dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 	ret = of_property_read_u32(pdev->dev.of_node, "iommu-domain-switch", &dev->iommu_domain_swtich);
@@ -539,26 +566,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	ret = mtk_vcodec_dec_irq_setup(pdev, dev);
 	if (ret)
 		goto err_res;
-
-	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
-		sema_init(&dev->dec_sem[i], 1);
-		spin_lock_init(&dev->dec_power_lock[i]);
-		dev->dec_is_power_on[i] = false;
-		atomic_set(&dev->dec_hw_active[i], 0);
-		atomic_set(&dev->dec_clk_ref_cnt[i], 0);
-		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
-	}
-	atomic_set(&dev->larb_ref_cnt, 0);
-	atomic_set(&dev->smi_dump_ref_cnt, 0);
-	mutex_init(&dev->ctx_mutex);
-	mutex_init(&dev->dev_mutex);
-	mutex_init(&dev->ipi_mutex);
-	mutex_init(&dev->ipi_mutex_res);
-	mutex_init(&dev->dec_dvfs_mutex);
-	mutex_init(&dev->cap_mutex);
-	mutex_init(&dev->cpu_hint_mutex);
-	mutex_init(&dev->cgrp_mutex);
-	spin_lock_init(&dev->irqlock);
 
 	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
 			 "[/MTK_V4L2_VDEC]");
@@ -708,7 +715,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);
 
 	dev->smmu_enabled = smmu_v3_enabled();
-	mutex_init(&dev->vp_mode_buf_mutex);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
@@ -725,11 +731,6 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
 		goto err_dec_reg;
 	}
-
-	INIT_LIST_HEAD(&dev->log_param_list);
-	INIT_LIST_HEAD(&dev->prop_param_list);
-	mutex_init(&dev->log_param_mutex);
-	mutex_init(&dev->prop_param_mutex);
 
 	dev_ptr = dev;
 
