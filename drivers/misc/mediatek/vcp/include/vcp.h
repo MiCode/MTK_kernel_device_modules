@@ -45,7 +45,7 @@
 #define PIN_OUT_SIZE_MMQOS               2
 #define PIN_OUT_SIZE_MMDEBUG             2
 #define PIN_OUT_C_SIZE_HWVOTER           8
-#define PIN_OUT_SIZE_VDISP               1
+#define PIN_OUT_SIZE_VDISP               2
 
 /* definition of slot size for received PINs */
 #define PIN_IN_SIZE_VDEC                18
