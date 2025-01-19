@@ -25,6 +25,7 @@
 
 #define LUT_MAX_ENTRIES			32U
 #define LUT_FREQ			GENMASK(11, 0)
+#define LUT_FREQ_V2			GENMASK(13, 0)
 #define LUT_ROW_SIZE			0x4
 #define CPUFREQ_HW_STATUS		BIT(0)
 #define SVS_HW_STATUS			BIT(1)
@@ -38,6 +39,8 @@
 #define MAX_PERF_DOMAINS		3
 #define PER_CORE_OFF			0x1380
 #define PER_CORE_SIZE			0x20
+#define LKG_TBL_SIZE			0xC00
+#define LKG_PARA_VER_OFFSET		(LKG_TBL_SIZE - 0x4)
 
 enum {
 	REG_FREQ_LUT_TABLE,
@@ -80,6 +83,7 @@ static int cpu_control_group_map[MAX_CONTROL_GROUPS];
 static int control_group_master[MAX_CONTROL_GROUPS];
 static int perf_domain_master[MAX_PERF_DOMAINS];
 static u32 init_brake[MAX_CONTROL_GROUPS];
+static unsigned int pwr_tbl_ver;
 
 static int look_up_cpu(struct device *cpu_dev)
 {
@@ -361,7 +365,10 @@ static int mtk_cpu_create_freq_table(struct platform_device *pdev,
 
 	for (i = 0; i < LUT_MAX_ENTRIES; i++) {
 		data = readl_relaxed(base_table + (i * LUT_ROW_SIZE));
-		freq = FIELD_GET(LUT_FREQ, data) * 1000;
+		if (pwr_tbl_ver == 2)
+			freq = FIELD_GET(LUT_FREQ_V2, data) * 1000;
+		else
+			freq = FIELD_GET(LUT_FREQ, data) * 1000;
 
 		if (freq == prev_freq)
 			break;
@@ -589,6 +596,7 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	struct platform_device *pdev_c;
 	struct platform_device *pdev_qos;
 	static void __iomem *csram_base;
+	static void __iomem *usram_base;
 	const u16 *offsets;
 	unsigned int cpu;
 	int ret;
@@ -607,6 +615,12 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	if (pdev_c == NULL) {
 		pr_notice("failed to find pdev @ %s\n", __func__);
 		return -EINVAL;
+	}
+
+	usram_base = devm_platform_ioremap_resource(pdev_c, 0);
+	if (IS_ERR(usram_base)) {
+		pr_notice("failed to map usram_base @ %s\n", __func__);
+		return PTR_ERR(usram_base);
 	}
 
 	csram_res = platform_get_resource(pdev_c, IORESOURCE_MEM, 1);
@@ -661,6 +675,9 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 
 	init_brake_enabled = check_init_brake_enabled();
 	pr_notice("%s: init_brake_enabled=%d\n", __func__, init_brake_enabled);
+
+	pwr_tbl_ver = readl_relaxed(usram_base + LKG_PARA_VER_OFFSET);
+	pr_notice("%s: pwr_tbl_ver: %d\n", __func__, pwr_tbl_ver);
 
 	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
 	if (!qos_node) {
