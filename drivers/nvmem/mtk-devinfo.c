@@ -3,7 +3,9 @@
  * Copyright (c) 2020 MediaTek Inc.
  * Author: Mac Lu <mac.lu@mediatek.com>
  */
-
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/device.h>

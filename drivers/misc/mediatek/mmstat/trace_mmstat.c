@@ -4,6 +4,9 @@
  * Author: Chinwen Chang <chinwen.chang@mediatek.com>
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/types.h>

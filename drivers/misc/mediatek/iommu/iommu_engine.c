@@ -3,6 +3,9 @@
  * Copyright (C) 2023 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)    "iommu_engine: test " fmt
 
 #include <linux/iopoll.h>

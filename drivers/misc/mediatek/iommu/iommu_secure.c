@@ -3,6 +3,9 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)    "mtk_iommu: secure " fmt
 
 #include <linux/bitfield.h>

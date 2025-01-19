@@ -2,7 +2,9 @@
 /*
  * Copyright (C) 2020 MediaTek Inc.
  */
-
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt) "[hf_manager]" fmt
 
 #include <linux/kernel.h>

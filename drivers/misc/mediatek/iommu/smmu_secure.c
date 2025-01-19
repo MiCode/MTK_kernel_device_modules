@@ -3,6 +3,9 @@
  * Copyright (C) 2023 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)    "mtk_smmu: sec " fmt
 
 #include <linux/soc/mediatek/mtk_sip_svc.h>
