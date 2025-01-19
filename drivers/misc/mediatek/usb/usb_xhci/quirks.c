@@ -14,7 +14,32 @@
 #include "xhci-trace.h"
 
 #include <sound/asound.h>
+#include <sound/pcm.h>
 #include "card.h"
+
+static unsigned long long usb_quirks;
+module_param(usb_quirks, ullong, 0644);
+
+static unsigned long long uac_quirks;
+module_param(uac_quirks, ullong, 0644);
+
+unsigned int uac_set_interface_delay_ms = 5;
+module_param(uac_set_interface_delay_ms, uint, 0644);
+
+unsigned int uac_set_sample_rate_delay_ms;
+module_param(uac_set_sample_rate_delay_ms, uint, 0644);
+
+unsigned int uac_in_max_bits;
+module_param(uac_in_max_bits, uint, 0644);
+
+unsigned int uac_out_max_bits;
+module_param(uac_out_max_bits, uint, 0644);
+
+unsigned int uac_in_max_rate;
+module_param(uac_in_max_rate, uint, 0644);
+
+unsigned int uac_out_max_rate;
+module_param(uac_out_max_rate, uint, 0644);
 
 struct usb_audio_quirk_flags_table {
 	u32 id;
@@ -112,37 +137,113 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 	return quirks;
 }
 
-static void xhci_mtk_usb_free_format(struct audioformat *fp)
+static void xhci_mtk_usb_update_sample_rate(struct audioformat *fp,
+				unsigned int rate_max, unsigned int rate_min)
 {
-	list_del(&fp->list);
+	unsigned int rate;
+	unsigned int *new_rate_table;
+	int new_nr_rates = 0, new_rates_index = 0;
+	int i;
+
+	/* find the available rate for the new sample rate */
+	for (i = 0; i < fp->nr_rates; i++) {
+		rate = fp->rate_table[i];
+		if (rate <= rate_max && rate >= rate_min)
+			new_nr_rates++;
+	}
+
+	if (!new_nr_rates)
+		return;
+
+	new_rate_table = kmalloc_array(new_nr_rates, sizeof(int), GFP_KERNEL);
+	if (!new_rate_table)
+		return;
+
+	/* copy rates into new table */
+	for (i = 0; i < fp->nr_rates; i++) {
+		rate = fp->rate_table[i];
+		if (rate <= rate_max && rate >= rate_min) {
+			new_rate_table[new_rates_index] = rate;
+			new_rates_index++;
+		}
+	}
+
+	/* free old rate table and asign new rate table */
 	kfree(fp->rate_table);
-	kfree(fp->chmap);
-	kfree(fp);
+	fp->rate_table = new_rate_table;
+	fp->nr_rates = new_nr_rates;
+
+	/* set up rate_min, rate_max and rates from the rate table */
+	fp->rate_min = INT_MAX;
+	fp->rate_max = 0;
+	fp->rates = 0;
+	for (i = 0; i < fp->nr_rates; i++) {
+		rate = fp->rate_table[i];
+		fp->rate_min = min(fp->rate_min, rate);
+		fp->rate_max = max(fp->rate_max, rate);
+		fp->rates |= snd_pcm_rate_to_rate_bit(rate);
+	}
+}
+
+static void xhci_mtk_usb_update_format(struct snd_usb_substream *subs,
+				unsigned int bit_max, unsigned int bit_min,
+				unsigned int rate_max, unsigned int rate_min)
+{
+	struct audioformat *fp, *n;
+
+	/* check if the stream is initialized */
+	if (!subs->num_formats)
+		return;
+
+	/* check and remove the unsupported format from the list */
+	list_for_each_entry_safe(fp, n, &subs->fmt_list, list) {
+		if ((bit_max && (fp->fmt_bits > bit_max)) || fp->fmt_bits < bit_min) {
+			/* update subs format information */
+			subs->num_formats--;
+			subs->formats &= ~(fp->formats);
+
+			/* del and free format */
+			list_del(&fp->list);
+			kfree(fp->rate_table);
+			kfree(fp->chmap);
+			kfree(fp);
+		} else if ((rate_max && (fp->rate_max > rate_max)) || fp->rate_min < rate_min)
+			xhci_mtk_usb_update_sample_rate(fp, rate_max, rate_min);
+	}
 }
 
 static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
 {
 	struct snd_usb_stream *as;
 	struct snd_usb_substream *subs;
-	struct audioformat *fp, *n;
+	unsigned int in_max_bits = uac_in_max_bits;
+	unsigned int out_max_bits = uac_out_max_bits;
+	unsigned int in_max_rate = uac_in_max_rate;
+	unsigned int out_max_rate = uac_out_max_rate;
 
-	/* Restrict the playback format for bestechnic audio device */
-	if (chip->usb_id == USB_ID(0xbe57, 0x0238)) {
-		dev_info(&chip->dev->dev, "Restrict the playback format to 16 bits\n");
-		/* list all streams */
-		list_for_each_entry(as, &chip->pcm_list, list) {
+	/* Restrict the playback format to 16 bit for bestechnic device */
+	if (chip->usb_id == USB_ID(0xbe57, 0x0238))
+		out_max_bits = 16;
+
+	if (!in_max_bits && !out_max_bits && !in_max_rate && !out_max_rate)
+		return;
+
+	/* list all streams */
+	list_for_each_entry(as, &chip->pcm_list, list) {
+		/* Restrict the playback format */
+		if (out_max_bits || out_max_rate) {
+			dev_info(&chip->dev->dev, "Restrict playback format to bit rate %d, sample rate %d\n",
+				out_max_bits, out_max_rate);
 			subs = &as->substream[SNDRV_PCM_STREAM_PLAYBACK];
-			/* check if the stream is initialized */
-			if (subs->num_formats) {
-				/* check and remove the unsupported format from the list */
-				list_for_each_entry_safe(fp, n, &subs->fmt_list, list) {
-					if (fp->fmt_bits > 16) {
-						subs->num_formats--;
-						subs->formats &= ~(fp->formats);
-						xhci_mtk_usb_free_format(fp);
-					}
-				}
-			}
+			xhci_mtk_usb_update_format(subs, out_max_bits, 0, out_max_rate, 0);
+		}
+
+		/* Restrict the capture format */
+		if (in_max_bits || in_max_rate) {
+			dev_info(&chip->dev->dev, "Restrict capture format to bit rate %d, sample rate %d\n",
+				in_max_bits, in_max_rate);
+			subs = &as->substream[SNDRV_PCM_STREAM_CAPTURE];
+			xhci_mtk_usb_update_format(subs, in_max_bits, 0, in_max_rate, 0);
 		}
 	}
 }
@@ -164,6 +265,8 @@ void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 		}
 	}
 
+	chip->quirk_flags |= uac_quirks;
+
 	xhci_mtk_usb_format_quirk(chip);
 }
 
@@ -173,7 +276,8 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 	if (!udev)
 		return;
 
-	udev->quirks = usb_detect_static_quirks(udev, mtk_usb_quirk_list);
+	udev->quirks |= usb_detect_static_quirks(udev, mtk_usb_quirk_list);
+	udev->quirks |= usb_quirks;
 }
 
 static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
@@ -229,6 +333,7 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 	struct usb_ctrlrequest *ctrl = NULL;
 	struct usb_interface *iface = NULL;
 	struct usb_host_interface *alt = NULL;
+	unsigned int delay = uac_set_interface_delay_ms;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
@@ -245,8 +350,10 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 	if (alt->desc.bInterfaceClass != USB_CLASS_AUDIO)
 		return;
 
-	dev_dbg(dev, "delay 5ms for UAC device\n");
-	mdelay(5);
+	if (delay) {
+		dev_dbg(dev, "delay %d ms for UAC device\n", delay);
+		mdelay(delay);
+	}
 }
 
 static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
@@ -254,6 +361,7 @@ static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 	struct device *dev = &urb->dev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
 	struct snd_usb_audio *chip;
+	unsigned int delay = uac_set_sample_rate_delay_ms;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != UAC_SET_CUR || ctrl->wValue == 0)
@@ -263,9 +371,12 @@ static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 	if (!chip)
 		return;
 
-	if (chip->usb_id == USB_ID(0x2717, 0x3801)) {
-		dev_dbg(dev, "delay 50ms after set sample rate\n");
-		mdelay(50);
+	if (chip->usb_id == USB_ID(0x2717, 0x3801))
+		delay = 50;
+
+	if (delay) {
+		dev_dbg(dev, "delay %d ms after set sample rate\n", delay);
+		mdelay(delay);
 	}
 }
 
