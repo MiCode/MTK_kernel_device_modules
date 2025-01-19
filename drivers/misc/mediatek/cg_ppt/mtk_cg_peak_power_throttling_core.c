@@ -18,14 +18,14 @@
 #include <linux/topology.h>	//cpu freq
 #include <linux/power_supply.h>	//power
 #include <linux/nvmem-consumer.h> //nvram
-#include <mtk_gpu_utility.h> //gpu loading
+// #include <mtk_gpu_utility.h> //gpu loading
 
 #define CREATE_TRACE_POINTS
 #include "mtk_cg_peak_power_throttling_trace.h"
 
 #include "mtk_cg_peak_power_throttling_table.h"
 #include "mtk_cg_peak_power_throttling_def.h"
-#include "mtk_peak_power_budget_cgppt.h"
+// #include "mtk_peak_power_budget_cgppt.h"
 
 /*
  * -----------------------------------------------
@@ -377,7 +377,7 @@ static void get_sgnl_data(struct sgnlInfo *sgnl_info)
 
 	struct power_supply *psy;
 	union power_supply_propval val;
-	unsigned int gpu_loading = 0;
+	// unsigned int gpu_loading = 0;
 	int i;
 
 	/*
@@ -441,9 +441,11 @@ static void get_sgnl_data(struct sgnlInfo *sgnl_info)
 	 * GPU Loading
 	 * -----------------------------------------------
 	 */
-
+	/*
 	mtk_get_gpu_loading(&gpu_loading);
 	sgnl_info->gpu_loading = gpu_loading;
+	*/
+
 
 
 
@@ -1300,6 +1302,8 @@ void cgppt_set_mo_multiscene(int value)
 }
 EXPORT_SYMBOL(cgppt_set_mo_multiscene);
 
+/*pbm not support*/
+/*
 static int cgppt_get_cpu_combo_usage_count(int idx)
 {
 	int value = 0;
@@ -1369,7 +1373,7 @@ static int cgppt_get_cg_budget(void)
 		value = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.cgppb_mw);
 	return value;
 }
-
+*/
 
 /*
  * ========================================================
@@ -1484,6 +1488,8 @@ static int nvram_get_segment_id(struct platform_device *pdev)
 	return ret;
 }
 
+/*pbm not support*/
+/*
 static struct ppb_cgppt_dbg_operation cgppt_dbg_op_t = {
 	.get_cpub_sf = cgppt_get_cpu_b_scaling_factor,
 	.get_cpum_sf = cgppt_get_cpu_m_scaling_factor,
@@ -1494,6 +1500,7 @@ static struct ppb_cgppt_dbg_operation cgppt_dbg_op_t = {
 	.get_gpucb_cnt = cgppt_get_gpu_combo_usage_count,
 	.get_cg_bgt = cgppt_get_cg_budget,
 };
+*/
 
 /*
  * ========================================================
@@ -1555,7 +1562,10 @@ static int cgppt_driver_probe(struct platform_device *pdev)
 	//trace work
 	trace_work_init();
 
+	/*pbm not support*/
+	/*
 	register_ppb_cgppt_cb(&cgppt_dbg_op_t);
+	*/
 
 	return 0; // Return 0 means success, negative values indicate failure
 }
