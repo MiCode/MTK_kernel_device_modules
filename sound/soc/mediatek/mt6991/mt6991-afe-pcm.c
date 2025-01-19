@@ -7193,9 +7193,6 @@ static ssize_t mt6991_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 	regmap_read(afe->regmap, AUDIO_ENGEN_CON0_MON, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUDIO_ENGEN_CON0_MON = 0x%x\n", value);
-	regmap_read(afe->regmap, AUD_TOP_CFG_VLP_RG, &value);
-	n += scnprintf(buffer + n, size - n,
-		"AUD_TOP_CFG_VLP_RG = 0x%x\n", value);
 	regmap_read(afe->regmap, AUD_TOP_MON_RG, &value);
 	n += scnprintf(buffer + n, size - n,
 		"AUD_TOP_MON_RG = 0x%x\n", value);
