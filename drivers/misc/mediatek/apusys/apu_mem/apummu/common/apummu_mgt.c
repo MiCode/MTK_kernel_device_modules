@@ -529,7 +529,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 								uint32_t buf_size, uint64_t *eva)
 {
 	int ret = 0;
-	uint64_t ret_eva;
+	uint64_t ret_eva = 0;
 	uint32_t SLB_type, cross_page_array_num = 0;
 	uint8_t mask_idx;
 
@@ -538,7 +538,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
 		ret = -EINVAL;
-		goto out_before_lock;
+		goto out;
 	}
 
 	AMMU_LOG_VERBO("session = 0x%llx, device_va = 0x%llx, size = 0x%x\n",
@@ -558,7 +558,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 			ret = ammu_session_table_add_SLB(session, SLB_type);
 			if (ret) {
 				AMMU_LOG_ERR("IOVA 2 EVA SLB fail!!\n");
-				goto out_before_lock;
+				goto out;
 			}
 
 			ret_eva = (device_va == g_adv->rsc.internal_SLB.iova)
@@ -569,14 +569,14 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 		} else {
 			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
 			ret = -EINVAL;
-			goto out_before_lock;
+			goto out;
 		}
 	}
 
 	/* addr encode and CHECK input type */
 	ret = addr_encode(device_va, type, &ret_eva);
 	if (ret)
-		goto out_before_lock;
+		goto out;
 
 	/* lock for g_ammu_stable_ptr */
 	mutex_lock(&g_ammu_table_set.table_lock);
@@ -631,15 +631,13 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 
 	count_page_array_en_num();
 
+out_after_lock:
+	mutex_unlock(&g_ammu_table_set.table_lock);
 out:
 	*eva = ret_eva;
 
 	AMMU_LOG_VERBO("apummu add 0x%llx -> 0x%llx in 0x%llx stable done\n",
 		ret_eva, device_va, session);
-
-out_after_lock:
-	mutex_unlock(&g_ammu_table_set.table_lock);
-out_before_lock:
 	ammu_trace_end();
 	return ret;
 }
