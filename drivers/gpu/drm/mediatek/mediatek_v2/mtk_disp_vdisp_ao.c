@@ -20,7 +20,7 @@
 #include "mtk_dump.h"
 #include "mtk_drm_drv.h"
 
-
+/* mt6991 */
 #define DISP_REG_VDISP_AO_INTEN				(0x000UL)
 	#define CPU_INTEN				BIT(0)
 	#define SCP_INTEN				BIT(1)
@@ -100,6 +100,20 @@
 #define IRQ_TABLE_DISP_CHIST0_MT6991           (17)    //473
 #define IRQ_TABLE_DISP_AAL1_MT6991             (8)     //474
 #define IRQ_TABLE_DISP_AAL0_MT6991             (7)     //475
+
+/* mt6993 */
+#define DISP_REG_VDISP_AO_INT_SEL_G0_MT6993	0x014	//GIC:555
+#define DISP_REG_VDISP_AO_INT_SEL_G1_MT6993	0x018	//GIC:556
+#define DISP_REG_VDISP_AO_INT_SEL_G2_MT6993	0x01C	//GIC:557
+#define DISP_REG_VDISP_AO_INT_SEL_G3_MT6993	0x020	//GIC:558
+#define DISP_REG_VDISP_AO_INT_SEL_G4_MT6993	0x024	//GIC:559
+#define DISP_REG_VDISP_AO_INT_SEL_G5_MT6993	0x028	//GIC:560
+#define DISP_REG_VDISP_AO_INT_SEL_G6_MT6993	0x02C	//GIC:561
+
+#define CPU_INTSEL_BIT_MT6993_L		REG_FLD_MSB_LSB(8, 0)
+#define CPU_INTSEL_BIT_MT6993_H		REG_FLD_MSB_LSB(24, 16)
+
+#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	288  //555
 
 static void __iomem *vdisp_ao_base;
 
@@ -311,6 +325,25 @@ void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 	mtk_vdisp_ao_int_sel_g4_MT6991();
 	mtk_vdisp_ao_int_sel_g5_MT6991();
 	mtk_vdisp_ao_int_sel_g6_MT6991();
+}
+
+static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_WDMA1_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	//SET_VAL_MASK(value, mask, 0x0, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G0_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
+{
+	DDPINFO("%s:%d\n", __func__, __LINE__);
+	writel(1, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);	// disable merge irq
+	mtk_vdisp_ao_int_sel_g0_MT6993();
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)

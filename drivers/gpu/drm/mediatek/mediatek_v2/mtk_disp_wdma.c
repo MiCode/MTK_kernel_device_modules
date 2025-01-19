@@ -207,6 +207,12 @@
 #define DISP_WDMA1_AID_SEL_MANUAL	BIT(2)
 #define DISP_WDMA4_AID_SEL_MANUAL	BIT(5)
 
+#define MT6993_DISP1_WDMA0_AID_SETTING		0xDA8
+#define MT6993_DISP1_WDMA1_AID_SETTING		0xDAC
+#define MT6993_DISP1_AID_SEL_MANUAL		0x10004
+#define MT6993_DISP1_AID_SEL_MANUAL_WDMA0	(BIT(1))
+#define MT6993_DISP1_AID_SEL_MANUAL_WDMA1	(BIT(2))
+
 /* AID offset in mmsys config */
 #define MT6895_WDMA0_AID_SEL	(0xB1CUL)
 #define MT6895_WDMA1_AID_SEL	(0xB20UL)
@@ -497,6 +503,18 @@ unsigned int mtk_wdma_aid_sel_MT6991(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_wdma_aid_sel_MT6993(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_WDMA0:
+		return MT6993_DISP1_WDMA0_AID_SETTING;
+	case DDP_COMPONENT_WDMA1:
+		return MT6993_DISP1_WDMA1_AID_SETTING;
+	default:
+		return 0;
+	}
+}
+
 unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
@@ -641,15 +659,21 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				mmsys_reg = priv->ovlsys1_regs_pa;
 			else if (priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa + MT6991_OVLSYS_SEC_OFFSET;
+			else if (priv->data->mmsys_id == MMSYS_MT6993)
+				mmsys_reg = priv->sys_b_config_regs_pa;
 		}
 		if (aid_sel_offset) {
 			if (priv->data->mmsys_id == MMSYS_MT6989)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					mmsys_reg + MT6989_OVLSYS1_WDMA0_AID_MANU, BIT(0), BIT(0));
-			else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			else if (priv->data->mmsys_id == MMSYS_MT6991)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					mmsys_reg + MT6991_OVLSYS1_WDMA0_AID_MANU, BIT(0), BIT(0));
-			} else
+			else if (priv->data->mmsys_id == MMSYS_MT6993)
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
+					MT6993_DISP1_AID_SEL_MANUAL_WDMA1, U32_MAX);
+			else
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					mmsys_reg + aid_sel_offset, BIT(1), BIT(1));
 		}
@@ -1298,10 +1322,15 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 			if (priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa;
+			else if (priv->data->mmsys_id == MMSYS_MT6993)
+				mmsys_reg = priv->sys_b_config_regs_pa;
 		}
 		if (aid_sel_offset) {
 			if (sec) {
-				if (priv->data->mmsys_id == MMSYS_MT6991) {
+				if (priv->data->mmsys_id == MMSYS_MT6993) {
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						mmsys_reg + aid_sel_offset, 0x3, U32_MAX);
+				} else if (priv->data->mmsys_id == MMSYS_MT6991) {
 					SET_VAL_MASK(value, mask, 0x3, L_CON_FLD_AID);
 					cmdq_pkt_write(handle, comp->cmdq_base,
 						mmsys_reg + aid_sel_offset, value, mask);
@@ -1310,7 +1339,10 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 						mmsys_reg + aid_sel_offset,
 						BIT(0), BIT(0));
 			} else {
-				if (priv->data->mmsys_id == MMSYS_MT6991) {
+				if (priv->data->mmsys_id == MMSYS_MT6993) {
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						mmsys_reg + aid_sel_offset, 0, U32_MAX);
+				} else if (priv->data->mmsys_id == MMSYS_MT6991) {
 					SET_VAL_MASK(value, mask, 0, L_CON_FLD_AID);
 					cmdq_pkt_write(handle, comp->cmdq_base,
 						mmsys_reg + aid_sel_offset, value, mask);
@@ -1584,10 +1616,15 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 			if (priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6991)
 				mmsys_reg = priv->ovlsys1_regs_pa;
+			if (priv->data->mmsys_id == MMSYS_MT6993)
+				mmsys_reg = priv->sys_b_config_regs_pa;
 		}
 		if (aid_sel_offset) {
 			if (sec) {
-				if (priv->data->mmsys_id == MMSYS_MT6991) {
+				if (priv->data->mmsys_id == MMSYS_MT6993)
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						mmsys_reg + aid_sel_offset, 0x3, U32_MAX);
+				else if (priv->data->mmsys_id == MMSYS_MT6991) {
 					SET_VAL_MASK(value, mask, 0x3, L_CON_FLD_AID);
 					cmdq_pkt_write(handle, comp->cmdq_base,
 						mmsys_reg + aid_sel_offset, value, mask);
@@ -1595,7 +1632,10 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 					cmdq_pkt_write(handle, comp->cmdq_base,
 						mmsys_reg + aid_sel_offset, BIT(0), BIT(0));
 			} else {
-				if (priv->data->mmsys_id == MMSYS_MT6991) {
+				if (priv->data->mmsys_id == MMSYS_MT6993)
+					cmdq_pkt_write(handle, comp->cmdq_base,
+						mmsys_reg + aid_sel_offset, 0, U32_MAX);
+				else if (priv->data->mmsys_id == MMSYS_MT6991) {
 					SET_VAL_MASK(value, mask, 0, L_CON_FLD_AID);
 					cmdq_pkt_write(handle, comp->cmdq_base,
 						mmsys_reg + aid_sel_offset, value, mask);
@@ -1796,6 +1836,28 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 						mmsys_reg + MT6991_DISP1_WDMA4_AID_SETTING,
 						BIT(0), BIT(0));
 			}
+		} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+			mtk_ddp_write(comp, 0, WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			if (comp->id == DDP_COMPONENT_WDMA0) {
+				// DISP1_AID_SEL_MANUAL
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
+					MT6993_DISP1_AID_SEL_MANUAL_WDMA0,
+					MT6993_DISP1_AID_SEL_MANUAL_WDMA0);
+				// DISP1_WDMA1_AID_SETTING
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_WDMA0_AID_SETTING, 1, U32_MAX);
+			} else if (comp->id == DDP_COMPONENT_WDMA1) {
+				// DISP1_AID_SEL_MANUAL
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
+					MT6993_DISP1_AID_SEL_MANUAL_WDMA1,
+					MT6993_DISP1_AID_SEL_MANUAL_WDMA1);
+				// DISP1_WDMA1_AID_SETTING
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_WDMA1_AID_SETTING, 1, U32_MAX);
+			}
 		}
 	} else {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
@@ -1825,6 +1887,26 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 									0, DISP_WDMA4_AID_SEL_MANUAL);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 								mmsys_reg + MT6991_DISP1_WDMA4_AID_SETTING, 0, BIT(0));
+			}
+		} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+			mtk_ddp_write(comp, 0x7, WDMA_SECURITY_DISABLE, handle);
+			mmsys_reg = priv->side_config_regs_pa;
+			if (comp->id == DDP_COMPONENT_WDMA0) {
+				// DISP1_AID_SEL_MANUAL
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
+					0, MT6993_DISP1_AID_SEL_MANUAL_WDMA0);
+				// DISP1_WDMA1_AID_SETTING
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_WDMA0_AID_SETTING, 0, U32_MAX);
+			} else if (comp->id == DDP_COMPONENT_WDMA1) {
+				// DISP1_AID_SEL_MANUAL
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
+					0, MT6993_DISP1_AID_SEL_MANUAL_WDMA1);
+				// DISP1_WDMA1_AID_SETTING
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6993_DISP1_WDMA1_AID_SETTING, 0, U32_MAX);
 			}
 		}
 	}
@@ -2032,7 +2114,7 @@ bool wdma_can_not_skip_secure(struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991 || priv->data->mmsys_id == MMSYS_MT6993)
 		return false;
 	return true;
 }
@@ -2936,7 +3018,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.sodi_config = mt6989_mtk_sodi_config,
-	.aid_sel = &mtk_wdma_aid_sel_MT6991,
+	.aid_sel = &mtk_wdma_aid_sel_MT6993,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
 	.support_shadow = false,
 	.need_bypass_shadow = true,

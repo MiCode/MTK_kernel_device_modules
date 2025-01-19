@@ -94,7 +94,7 @@ static const int disp_wdma0_path_v4[] = {
 	DDP_COMPONENT_WDMA0,
 };
 
-/* Leroy CWB */
+/* mt6989 CWB */
 static const int disp_wdma0_path_v5[] = {
 	DDP_COMPONENT_COMP0_IN_CB7,
 	DDP_COMPONENT_COMP0_OUT_CB7,
@@ -102,7 +102,7 @@ static const int disp_wdma0_path_v5[] = {
 	DDP_COMPONENT_WDMA1,
 };
 
-/* Liber CWB */
+/* mt6991 CWB */
 static const int disp_wdma0_path_v6[] = {
 	DDP_COMPONENT_COMP0_OUT_CB9,
 	DDP_COMPONENT_MERGE0_OUT_CB8,
@@ -120,6 +120,7 @@ static const int disp_mid_wdma_path[] = {
 	DDP_COMPONENT_WDMA1,
 };
 
+/* also mt6993 CWB */
 static const int disp_wdma1_path[] = {
 	DDP_COMPONENT_WDMA1,
 };
@@ -146,23 +147,34 @@ static const int disp_ovlsys_wdma2_path[] = {
 	DDP_COMPONENT_OVLSYS_WDMA3,
 };
 
-/* Leroy CWB */
+/* mt6989 CWB */
 static const int disp_ovlsys_wdma0_path_v2[] = {
 	DDP_COMPONENT_MDP_RSZ0,
 	DDP_COMPONENT_OVLSYS_WDMA1,
 };
 
-/* Liber CWB */
+/* mt6991 CWB */
 static const int disp_ovlsys_wdma0_path_v3[] = {
 	DDP_COMPONENT_OVLSYS_WDMA0,
 };
-/* Liber EXDMA DL CWB */
+/* mt6991 EXDMA DL CWB */
 static const int disp_ovlsys_wdma0_dl_path[] = {
 	DDP_COMPONENT_OVL0_BLENDER_OUT_CB10,
 	DDP_COMPONENT_OVL0_OUTPROC1,
 	DDP_COMPONENT_OVLSYS_WDMA0,
 };
 
+/* mt6993 dl cwb */
+static const int disp_wdma1_dl_path[] = {
+#ifndef DRM_BYPASS_PQ
+#else
+	DDP_COMPONENT_PQ0_OUT_CB3,
+	DDP_COMPONENT_DLO_ASYNC0, DDP_COMPONENT_DLI_ASYNC20,
+	DDP_COMPONENT_SPLITTER0_IN_CB0,
+	DDP_COMPONENT_SPLITTER0_OUT_CB0,
+#endif
+	DDP_COMPONENT_WDMA1,
+};
 
 static const int disp_wdma2_path_v2[] = {
 	DDP_COMPONENT_MAIN_OVL_DISP1_WDMA_VIRTUAL,
@@ -379,6 +391,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_WDMA1_v2] = {
 				.path = disp_wdma1_path_v2,
 				.path_len = ARRAY_SIZE(disp_wdma1_path_v2),
+			},
+		[DISP_WDMA1_DL] = {
+				.path = disp_wdma1_dl_path,
+				.path_len = ARRAY_SIZE(disp_wdma1_dl_path),
 			},
 		[DISP_WDMA2] = {
 				.path = disp_wdma2_path,

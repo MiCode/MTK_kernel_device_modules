@@ -3883,13 +3883,23 @@ static const struct mtk_addon_module_data mt6985_addon_wdma1_data[] = {
 };
 
 static const struct mtk_addon_module_data mt6989_addon_wdma0_data[] = {
-	/* Leroy CWB */
+	/* mt6989 CWB */
 	{DISP_WDMA0_v5, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC8},
 };
 
 static const struct mtk_addon_module_data mt6991_addon_wdma0_data[] = {
-	/* Liber CWB */
+	/* mt6991 CWB */
 	{DISP_WDMA0_v6, ADDON_AFTER, DDP_COMPONENT_SPLITTER0_OUT_CB9},
+};
+
+static const struct mtk_addon_module_data mt6993_addon_wdma1_data[] = {
+	/* mt6993 CWB */
+	{DISP_WDMA1, ADDON_AFTER, DDP_COMPONENT_MERGE0_OUT_CB0},
+};
+
+static const struct mtk_addon_module_data mt6993_addon_wdma1_dl_data[] = {
+	/* mt6993 DL CWB */
+	{DISP_WDMA1_DL, ADDON_AFTER, DDP_COMPONENT_MERGE0_OUT_CB0},
 };
 
 static const struct mtk_addon_module_data mt6991_addon_mid_wdma_data[] = {
@@ -4453,10 +4463,9 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6991_addon_ovl_rsz_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
-	/* TODO: porting for mt6993 */
 	[WDMA_WRITE_BACK] = {
-		.module_num = ARRAY_SIZE(mt6991_addon_wdma0_data),
-		.module_data = mt6991_addon_wdma0_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_data),
+		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	/* TODO: porting for mt6993 */
@@ -4468,6 +4477,11 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 	[WDMA_WRITE_BACK_OVL] = {
 		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_wdma0_data),
 		.module_data = mt6991_addon_ovlsys_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_EXDMA_DL] = {
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_dl_data),
+		.module_data = mt6993_addon_wdma1_dl_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
@@ -6810,7 +6824,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.gce_event_config = mtk_gce_event_config_MT6993,
-	//.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6993,
+	.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6993,
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
 	.ovl_exdma_rule = true,

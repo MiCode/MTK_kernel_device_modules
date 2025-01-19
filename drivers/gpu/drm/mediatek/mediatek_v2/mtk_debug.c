@@ -2209,8 +2209,10 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
 			if (priv->data->mmsys_id == MMSYS_MT6989)
 				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
-			if (priv->data->mmsys_id == MMSYS_MT6991)
+			else if (priv->data->mmsys_id == MMSYS_MT6991)
 				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA4];
+			else if (priv->data->mmsys_id == MMSYS_MT6993)
+				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
 		}
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
 					priv->data->mmsys_id == MMSYS_MT6897)
@@ -2218,10 +2220,10 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
-		else if (priv->data->mmsys_id == MMSYS_MT6991) {
-			DDPMSG("chia-cheng DDP_COMPONENT_OVLSYS_WDMA0\n");
+		else if (priv->data->mmsys_id == MMSYS_MT6991)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA0];
-		}
+		else if (priv->data->mmsys_id == MMSYS_MT6993)
+			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
 	}
 
 	if (!cwb_info->buffer[0].dst_roi.width ||

@@ -6,5 +6,6 @@
 #define __MTK_DISP_VDISP_AO_H__
 
 void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm);
+void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm);
 
 #endif

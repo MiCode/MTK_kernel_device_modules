@@ -4747,14 +4747,9 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 		DDPPR_ERR("%s, Cannot find output component\n", __func__);
 		return -EINVAL;
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6991 ||
-		priv->data->mmsys_id == MMSYS_MT6993) {
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		if (comp->id == DDP_COMPONENT_WDMA1)
 			return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
-		if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
-			return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
-		if (comp->id == DDP_COMPONENT_WDMA4)
-			return mtk_crtc->gce_obj.event[EVENT_WDMA4_EOF];
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
 		if (comp->id == DDP_COMPONENT_WDMA1)
@@ -4764,9 +4759,13 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 	}
 	if (comp->id == DDP_COMPONENT_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
-	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
+	if (comp->id == DDP_COMPONENT_WDMA1)
+		return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
+	if (comp->id == DDP_COMPONENT_WDMA4)
+		return mtk_crtc->gce_obj.event[EVENT_WDMA4_EOF];
+	if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
-	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
+	if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
 		return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA1_EOF];
 
 	DDPPR_ERR("The output component has not frame done event %s\n", __func__);
@@ -4853,6 +4852,10 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_DL) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA_MID) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
@@ -4930,6 +4933,10 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -5278,6 +5285,10 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA_MID) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_DL) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
@@ -5481,6 +5492,10 @@ _mtk_crtc_cwb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -18842,14 +18857,13 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		}
 		*/
 
-		event = mtk_crtc_wb_addon_get_event(crtc);
 		mtk_crtc_pkt_create(&handle, crtc, client);
-
 		if (!handle) {
 			DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
 			return -EINVAL;
 		}
 
+		event = mtk_crtc_wb_addon_get_event(crtc);
 		cmdq_pkt_wfe(handle, event);
 		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
 		mtk_crtc->capturing = false;

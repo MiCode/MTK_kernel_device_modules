@@ -28341,6 +28341,13 @@ static int mtk_ddp_mout_en_MT6993(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
+	if ((cur == DDP_COMPONENT_OVL0_BLENDER_OUT_CB10) &&
+		(next == DDP_COMPONENT_OVL0_OUTPROC1)) {
+		*addr = MT6993_OVL_BLENDER_OUT_CROSSBAR10_MOUT_EN;
+		value = MT6993_DISP_OUT_BLENDER_CB_TO_OVL_OUTPROC1;
+		return value;
+	}
+
 	/* dispsys0 pq_in_cb */
 	value = mtk_ddp_disp0_pq_in_cb_MT6993(cur, next, addr);
 	if (value > 0)
@@ -31054,9 +31061,9 @@ void mtk_gce_event_config_MT6993(struct drm_device *drm)
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL2);
 	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL3_RDMA1_FRAME_DONE,
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL3);
-	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL4_WDMA1_FRAME_DONE,
+	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL4_WDMA0_FRAME_DONE,
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL4);
-	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE,
+	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL5_WDMA1_FRAME_DONE,
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL5);
 
 	for (off = MT6993_DISP1_GCE_FRAME_DONE_SEL6;
