@@ -3173,7 +3173,7 @@ static const struct mtk_smmu_plat_data mt6993_data_gpu = {
 	.smmu_plat		= SMMU_MT6993,
 	.smmu_type		= GPU_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | /* SMMU_HYP_EN | */
-				  SMMU_DIS_CPU_TBU_PARTID | SMMU_CLK_AO_EN,
+				  SMMU_DIS_CPU_TBU_PARTID,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
