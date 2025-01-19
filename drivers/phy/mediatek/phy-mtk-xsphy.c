@@ -1907,7 +1907,11 @@ static void u2_phy_instance_power_off(struct mtk_xsphy *xsphy,
 	mdelay(2);
 
 	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0, P2D_RG_DATAIN);
-	mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (P2D_RG_XCVRSEL_VAL(1) | P2D_DTM0_PART_MASK));
+
+	if (xsphy->num_rptr)
+		mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (P2D_DTM0_PART_MASK & ~P2D_FORCE_XCVRSEL));
+	else
+		mtk_phy_set_bits(pbase + XSP_U2PHYDTM0, (P2D_RG_XCVRSEL_VAL(1) | P2D_DTM0_PART_MASK));
 
 	mtk_phy_set_bits(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6_VAL(1));
 
