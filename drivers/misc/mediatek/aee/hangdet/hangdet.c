@@ -1635,7 +1635,7 @@ static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *reg
 }
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-static int arch_timer_irq;
+static int arch_timer_irq, arch_timer_phys_irq;
 
 static int arch_timer_burst_irq_callback(unsigned int irq, enum irq_mon_aee_type type)
 {
@@ -1916,10 +1916,18 @@ static int __init hangdet_init(void)
 	if (np_arch_timer) {
 		arch_timer_irq = of_irq_get(np_arch_timer, ARCH_TIMER_VIRT_PPI);
 		if (arch_timer_irq < 0) {
-			pr_info("Failed to get arch_timer IRQ number\n");
+			pr_info("Failed to get arch_timer VIRT IRQ number\n");
 		} else {
-			pr_info("arch_timer IRQ number: %d\n", arch_timer_irq);
+			pr_info("arch_timer VIRT IRQ number: %d\n", arch_timer_irq);
 			irq_mon_aee_callback_register(arch_timer_irq, arch_timer_burst_irq_callback);
+		}
+
+		arch_timer_phys_irq = of_irq_get(np_arch_timer, ARCH_TIMER_PHYS_NONSECURE_PPI);
+		if (arch_timer_phys_irq < 0) {
+			pr_info("Failed to get arch_timer PHYS_NONSECURE IRQ number\n");
+		} else {
+			pr_info("arch_timer PHYS_NONSECURE IRQ number: %d\n", arch_timer_phys_irq);
+			irq_mon_aee_callback_register(arch_timer_phys_irq, arch_timer_burst_irq_callback);
 		}
 	} else {
 		pr_info("No arch_timer compatible node found\n");
@@ -1962,6 +1970,7 @@ static void __exit hangdet_exit(void)
 	unregister_kprobe(&kp_clockevents_exchange_device);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	irq_mon_aee_callback_unregister(arch_timer_irq);
+	irq_mon_aee_callback_unregister(arch_timer_phys_irq);
 	unregister_kprobe(&kp_usleep_range_state);
         unregister_kprobe(&kp_hrtimer_wakeup_entry);
 	hrtimer_tp_unregister();
