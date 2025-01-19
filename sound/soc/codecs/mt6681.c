@@ -2662,49 +2662,49 @@ static const struct snd_kcontrol_new vow_dmic3_mux_control =
 	SOC_DAPM_ENUM("VOW_DMIC_MUX Select", vow_dmic3_mux_map_enum);
 
 /* VOW ADC MUX */
-static const char *const vow_adc_mux_map[] = {"VOW_ONLY", "VOW_SHARE"};
+static const char *const vow_adc_mux_map[] = {"VOW_INIT", "VOW_ONLY", "VOW_SHARE"};
 
 static int vow_adc_mux_map_value[] = {
-	0x0, 0x1
+	0x0, 0x1, 0x2
 };
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_l_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_l_mux_control =
 	SOC_DAPM_ENUM("VOW_ADC_MUX Select", vow_adc_l_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_r_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_r_mux_control =
 	SOC_DAPM_ENUM("VOW_ADC_MUX Select", vow_adc_r_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_3_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_3_mux_control =
 	SOC_DAPM_ENUM("VOW_ADC_MUX Select", vow_adc_3_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_4_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_4_mux_control =
 	SOC_DAPM_ENUM("VOW_ADC_MUX Select", vow_adc_4_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_5_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_5_mux_control =
 	SOC_DAPM_ENUM("VOW_ADC_MUX Select", vow_adc_5_mux_map_enum);
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_adc_6_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x3,
 				  vow_adc_mux_map, vow_adc_mux_map_value);
 
 static const struct snd_kcontrol_new vow_adc_6_mux_control =
@@ -2720,7 +2720,7 @@ static int vow_cic_mux_map_value[] = {
 };
 
 static SOC_VALUE_ENUM_SINGLE_DECL(vow_cic_mux_map_enum,
-				  SND_SOC_NOPM, 0, 0,
+				  SND_SOC_NOPM, 0, 0x1,
 				  vow_cic_mux_map, vow_cic_mux_map_value);
 
 static const struct snd_kcontrol_new vow_cic_mux_control =
@@ -13744,6 +13744,7 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("AIN3_DMIC"), SND_SOC_DAPM_INPUT("AIN4_DMIC"),
 
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+	SND_SOC_DAPM_INPUT("AIN_EMPTY"),
 	SND_SOC_DAPM_INPUT("AIN_VIRTUAL"),
 	SND_SOC_DAPM_INPUT("VOW_PBUF_SRC"),
 	SND_SOC_DAPM_INPUT("VOW_LEGACY_CIC"),
@@ -14221,16 +14222,22 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"VOW_AMIC3_MUX", "ADC_DATA_3", "VOW_ADC_4_MUX"},
 	{"VOW_AMIC3_MUX", "ADC_DATA_4", "VOW_ADC_5_MUX"},
 	{"VOW_AMIC3_MUX", "ADC_DATA_5", "VOW_ADC_6_MUX"},
+	{"VOW_ADC_L_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_L_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_L_MUX", "VOW_ONLY", "ADC_L"},
+	{"VOW_ADC_R_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_R_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_R_MUX", "VOW_ONLY", "ADC_R"},
+	{"VOW_ADC_3_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_3_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_3_MUX", "VOW_ONLY", "ADC_3"},
+	{"VOW_ADC_4_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_4_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_4_MUX", "VOW_ONLY", "ADC_4"},
+	{"VOW_ADC_5_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_5_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_5_MUX", "VOW_ONLY", "ADC_5"},
+	{"VOW_ADC_6_MUX", "VOW_INIT", "AIN_EMPTY"},
 	{"VOW_ADC_6_MUX", "VOW_SHARE", "AIN_VIRTUAL"},
 	{"VOW_ADC_6_MUX", "VOW_ONLY", "ADC_6"},
 	{"AIN_VIRTUAL", NULL, "VOW_HDR_CONCURRENT"},
