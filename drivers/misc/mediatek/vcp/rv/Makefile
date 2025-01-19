@@ -11,7 +11,7 @@ vcp-$(CONFIG_MTK_TINYSYS_VCP_SUPPORT) += vcp_feature_table.o
 vcp-$(CONFIG_MTK_TINYSYS_VCP_SUPPORT) += vcp_awake.o
 vcp-$(CONFIG_MTK_TINYSYS_VCP_SUPPORT) += vcp_hwvoter_dbg.o
 
-ccflags-y += -D DEBUG_DO -fno-pic -mcmodel=large
+ccflags-y += -D DEBUG_DO -fno-pic
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv
