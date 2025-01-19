@@ -42,6 +42,19 @@ static const struct resource mt6323_rtc_resources[] = {
 	DEFINE_RES_IRQ(MT6323_IRQ_STATUS_RTC),
 };
 
+static const struct resource mt6357_rtc_resources[] = {
+	{
+		.start = MT6358_RTC_BASE,
+		.end   = MT6358_RTC_BASE + MT6358_RTC_SIZE,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = MT6357_IRQ_RTC,
+		.end   = MT6357_IRQ_RTC,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static const struct resource mt6358_rtc_resources[] = {
 	DEFINE_RES_MEM(MT6358_RTC_BASE, MT6358_RTC_SIZE),
 	DEFINE_RES_IRQ(MT6358_IRQ_RTC),
@@ -441,6 +454,11 @@ static const struct mfd_cell mt6357_devs[] = {
 	}, {
 		.name = "mt63xx-oc-debug",
 		.of_compatible = "mediatek,mt63xx-oc-debug",
+	}, {
+		.name = "mt6397-rtc",
+		.num_resources = ARRAY_SIZE(mt6357_rtc_resources),
+		.resources = mt6357_rtc_resources,
+		.of_compatible = "mediatek,mt6357-rtc",
 	}, {
 		.name = "mt6357-pulse-charger",
 		.of_compatible = "mediatek,mt6357-pulse-charger"
