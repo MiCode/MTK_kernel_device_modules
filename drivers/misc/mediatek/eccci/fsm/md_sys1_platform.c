@@ -108,6 +108,13 @@ void ccci_dump(void)
 EXPORT_SYMBOL(ccci_dump);
 #endif
 
+static void (*s_notify_flightmode)(bool on);
+void md_notify_flightmode_cb_register(void (*md_notify_flightmode_cb)(bool on))
+{
+	s_notify_flightmode = md_notify_flightmode_cb;
+}
+EXPORT_SYMBOL(md_notify_flightmode_cb_register);
+
 static int md_cd_io_remap_md_side_register(struct ccci_modem *md)
 {
 	struct arm_smccc_res res;
@@ -1041,12 +1048,16 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 static int md_cd_soft_power_off(struct ccci_modem *md, unsigned int mode)
 {
 	flight_mode_set_by_atf(md, true);
+	if (s_notify_flightmode)
+		s_notify_flightmode(true);
 	return 0;
 }
 
 static int md_cd_soft_power_on(struct ccci_modem *md, unsigned int mode)
 {
 	flight_mode_set_by_atf(md, false);
+	if (s_notify_flightmode)
+		s_notify_flightmode(false);
 	return 0;
 }
 
