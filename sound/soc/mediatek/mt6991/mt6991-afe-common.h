@@ -715,6 +715,8 @@ struct mt6991_afe_private {
 	int speech_md_headversion;
 	int speech_md_version;
 	int speech_cust_param_init;
+	int speech_bt_sco_lc3_swb;
+	int speech_bt_sco_codec;
 	/* codec component */
 	struct snd_soc_component *codec_component;
 	/* clk always on */
