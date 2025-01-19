@@ -97,7 +97,11 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[]);
 void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[]);
-unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned int i);
+unsigned int mtk_disp_get_channel_idx(enum CHANNEL_TYPE type, unsigned int i);
+void mtk_disp_update_channel_hrt_MT6993(struct mtk_drm_crtc *mtk_crtc,
+						unsigned int bw_base, unsigned int channel_bw[]);
+void mtk_disp_update_channel_hrt_write_MT6993(struct mtk_drm_crtc *mtk_crtc,
+						unsigned int bw_base, unsigned int channel_bw[]);
 void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 void mtk_disp_set_channel_hrt_write_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc);

@@ -6811,7 +6811,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.skip_trans = true,
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6991,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6991,
-	.get_channel_idx = mtk_disp_get_channel_idx_MT6991,
+	.get_channel_idx = mtk_disp_get_channel_idx,
 //	.ct_wiat_cmdq_event = true,
 };
 
@@ -6849,8 +6849,9 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.ovl_exdma_rule = true,
 	.real_srt_ostdl = true,
 	.skip_trans = true,
-	//.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
-	//.get_channel_idx = mtk_disp_get_channel_idx_MT6993,
+	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
+	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6993,
+	.get_channel_idx = mtk_disp_get_channel_idx,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {

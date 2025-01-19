@@ -45,6 +45,7 @@ struct mtk_disp_ovl_exdma_data {
 	unsigned int (*frame_done_event)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovlsys_mapping)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovl_phy_mapping)(struct mtk_ddp_comp *comp);
+	unsigned int (*ovl_ch_mapping)(struct mtk_ddp_comp *comp);
 };
 
 struct exdma_compress_info {

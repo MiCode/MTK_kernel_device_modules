@@ -2363,13 +2363,15 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			ARRAY_SIZE(mtk_crtc->qos_ctx->last_channel_req), __func__);
 	}
 
-	if (priv->data->update_channel_hrt) {
+	if (priv->data->update_channel_hrt &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++)
 			mtk_disp_set_channel_hrt_bw(mtk_crtc,
 				mtk_crtc->qos_ctx->last_channel_req[i], i);
 	}
 
-	if (priv->data->update_channel_hrt_write) {
+	if (priv->data->update_channel_hrt_write &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++)
 			mtk_disp_set_channel_hrt_write_bw(mtk_crtc,
 				mtk_crtc->qos_ctx->last_channel_write_req[i], i);

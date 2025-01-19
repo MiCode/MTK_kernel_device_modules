@@ -855,10 +855,10 @@ static unsigned int mtk_ovl_phy_channel_mapping_MT6991(struct mtk_ddp_comp *comp
 
 static unsigned int mtk_ovl_phy_mapping_MT6993(struct mtk_ddp_comp *comp)
 {
-	/* sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
-	 * sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
-	 * sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
-	 * sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
+	/* channel0: sub_comm2: exdma3(1) +   exdma6(4) + 1_exdma5(9) +  2_exdma2(12)
+	 * channel1: sub_comm3: exdma4(2) + 1_exdma3(7) + 1_exdma6(10) + 2_exdma5(15)
+	 * channel3: sub_comm1: exdma5(3) + 1_exdma2(6) + 1_exdma7(11) + 2_exdma4(14)
+	 * channel2: sub_comm0: exdma2(0) +   exdma7(5) + 1_exdma4(8) +  2_exdma3(13)
 	 */
 	switch (comp->id) {
 	case DDP_COMPONENT_OVL_EXDMA2:
@@ -873,29 +873,34 @@ static unsigned int mtk_ovl_phy_mapping_MT6993(struct mtk_ddp_comp *comp)
 		return 4;
 	case DDP_COMPONENT_OVL_EXDMA7:
 		return 5;
-	case DDP_COMPONENT_OVL_EXDMA8:
-		return 6;
-	case DDP_COMPONENT_OVL_EXDMA9:
-		return 7;
 	case DDP_COMPONENT_OVL1_EXDMA2:
-		return 8;
+		return 6;
 	case DDP_COMPONENT_OVL1_EXDMA3:
-		return 9;
+		return 7;
 	case DDP_COMPONENT_OVL1_EXDMA4:
-		return 10;
+		return 8;
 	case DDP_COMPONENT_OVL1_EXDMA5:
-		return 11;
+		return 9;
 	case DDP_COMPONENT_OVL1_EXDMA6:
-		return 12;
+		return 10;
 	case DDP_COMPONENT_OVL1_EXDMA7:
+		return 11;
+	case DDP_COMPONENT_OVL2_EXDMA2:
+		return 12;
+	case DDP_COMPONENT_OVL2_EXDMA3:
 		return 13;
-	case DDP_COMPONENT_OVL1_EXDMA8:
+	case DDP_COMPONENT_OVL2_EXDMA4:
 		return 14;
-	case DDP_COMPONENT_OVL1_EXDMA9:
+	case DDP_COMPONENT_OVL2_EXDMA5:
 		return 15;
+	case DDP_COMPONENT_OVL2_EXDMA6:
+		return 16;
+	case DDP_COMPONENT_OVL2_EXDMA7:
+		return 17;
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
-		return 16; // no use
+	case DDP_COMPONENT_OVL2_EXDMA0:
+		return 18; // no use
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -904,34 +909,36 @@ static unsigned int mtk_ovl_phy_mapping_MT6993(struct mtk_ddp_comp *comp)
 
 static unsigned int mtk_ovl_phy_channel_mapping_MT6993(struct mtk_ddp_comp *comp)
 {
-	/* channel0: sub_comm0: exdma2(0) + exdma7(5) + 1_exdma5(11) + (1_exdma8)
-	 * channel1: sub_comm1: exdma3(1) + exdma6(4) + 1_exdma4(10) + (1_exdma9)
-	 * channel3: sub_comm2: exdma4(2) + exdma9(7) + 1_exdma3(9) + (1_exdma6)
-	 * channel2: sub_comm3: exdma5(3) + exdma8(6) + 1_exdma2(8) + (1_exdma7)
+	/* channel0: sub_comm2: exdma3(1) +   exdma6(4) + 1_exdma5(9) +  2_exdma2(12)
+	 * channel1: sub_comm3: exdma4(2) + 1_exdma3(7) + 1_exdma6(10) + 2_exdma5(15)
+	 * channel3: sub_comm1: exdma5(3) + 1_exdma2(6) + 1_exdma7(11) + 2_exdma4(14)
+	 * channel2: sub_comm0: exdma2(0) +   exdma7(5) + 1_exdma4(8) +  2_exdma3(13)
 	 */
 	switch (comp->id) {
-	case DDP_COMPONENT_OVL_EXDMA2:
-	case DDP_COMPONENT_OVL_EXDMA7:
-	case DDP_COMPONENT_OVL1_EXDMA5:
-	case DDP_COMPONENT_OVL1_EXDMA8:
-		return 0;
 	case DDP_COMPONENT_OVL_EXDMA3:
 	case DDP_COMPONENT_OVL_EXDMA6:
-	case DDP_COMPONENT_OVL1_EXDMA4:
-	case DDP_COMPONENT_OVL1_EXDMA9:
-		return 1;
+	case DDP_COMPONENT_OVL1_EXDMA5:
+	case DDP_COMPONENT_OVL2_EXDMA2:
+		return 0;
 	case DDP_COMPONENT_OVL_EXDMA4:
-	case DDP_COMPONENT_OVL_EXDMA9:
 	case DDP_COMPONENT_OVL1_EXDMA3:
 	case DDP_COMPONENT_OVL1_EXDMA6:
-		return 3;
+	case DDP_COMPONENT_OVL2_EXDMA5:
+		return 1;
 	case DDP_COMPONENT_OVL_EXDMA5:
-	case DDP_COMPONENT_OVL_EXDMA8:
 	case DDP_COMPONENT_OVL1_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA7:
+	case DDP_COMPONENT_OVL2_EXDMA4:
 		return 2;
+	case DDP_COMPONENT_OVL_EXDMA2:
+	case DDP_COMPONENT_OVL_EXDMA7:
+	case DDP_COMPONENT_OVL1_EXDMA4:
+	case DDP_COMPONENT_OVL2_EXDMA3:
+		return 3;
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
+	case DDP_COMPONENT_OVL2_EXDMA6:
+	case DDP_COMPONENT_OVL2_EXDMA7:
 		return 4; // no use
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
@@ -4458,6 +4465,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	}
 	case PMQOS_UPDATE_BW: {
 		struct drm_crtc *crtc;
+		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
 		unsigned int update_pending = 0;
@@ -4471,10 +4479,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		crtc = &mtk_crtc->base;
 		crtc_idx = drm_crtc_index(crtc);
 
-		if (priv->data->mmsys_id == MMSYS_MT6991)
-			channel_id = mtk_ovl_phy_channel_mapping_MT6991(comp);
-		else if (priv->data->mmsys_id == MMSYS_MT6993)
-			channel_id = mtk_ovl_phy_channel_mapping_MT6993(comp);
+		if (ovl->data->ovl_ch_mapping)
+			channel_id = ovl->data->ovl_ch_mapping(comp);
 
 		/* process FBDC */
 		/* qos BW only has one port for one device, no need to separate */
@@ -5538,6 +5544,7 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6991,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6991,
+	.ovl_ch_mapping = &mtk_ovl_phy_channel_mapping_MT6991,
 };
 
 static const struct exdma_compress_info compr_info_mt6993 = {
@@ -5574,6 +5581,7 @@ static const struct mtk_disp_ovl_exdma_data mt6993_ovl_exdma_driver_data = {
 	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6993,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6993,
+	.ovl_ch_mapping = &mtk_ovl_phy_channel_mapping_MT6993,
 };
 
 

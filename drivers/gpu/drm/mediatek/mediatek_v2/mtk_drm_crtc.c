@@ -5320,11 +5320,14 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 				     mtk_crtc->usage_ovl_compr[i]);
 		DDPINFO("%s\n", dbg_msg);
 
-		written = scnprintf(dbg_msg, 512, "%s usage_ovl_ext_compr = ", __func__);
-		for (int i = 0; i < MAX_LAYER_NR  * OVL_EXT_LYE_NUM; i++)
-			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
-				     mtk_crtc->usage_ovl_ext_compr[i]);
-		DDPINFO("%s\n", dbg_msg);
+		if (!priv->data->ovl_exdma_rule) {
+			memset(dbg_msg, 0, sizeof(dbg_msg));
+			written = scnprintf(dbg_msg, 512, "%s usage_ovl_ext_compr = ", __func__);
+			for (int i = 0; i < MAX_LAYER_NR  * OVL_EXT_LYE_NUM; i++)
+				written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
+					     mtk_crtc->usage_ovl_ext_compr[i]);
+			DDPINFO("%s\n", dbg_msg);
+		}
 
 		memset(dbg_msg, 0, sizeof(dbg_msg));
 		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_x = ", __func__);
@@ -6981,7 +6984,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
 			if (channel_hrt[i] > mtk_crtc->qos_ctx->last_channel_req[i]) {
 				DDPINFO("mtk_disp_set_channel_hrt_bw[%u] = %u\n", i, channel_hrt[i]);
-				mtk_disp_set_channel_hrt_bw(mtk_crtc, channel_hrt[i], i);
+				if (opt_mmqos)
+					mtk_disp_set_channel_hrt_bw(mtk_crtc, channel_hrt[i], i);
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT(i)),
 			       NO_PENDING_HRT, ~0);
@@ -7008,7 +7012,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
 			if (channel_hrt_write[i] > mtk_crtc->qos_ctx->last_channel_write_req[i]) {
 				DDPINFO("mtk_disp_set_channel_hrt_write_bw[%u] = %u\n", i, channel_hrt_write[i]);
-				mtk_disp_set_channel_hrt_write_bw(mtk_crtc, channel_hrt_write[i], i);
+				if (opt_mmqos)
+					mtk_disp_set_channel_hrt_write_bw(mtk_crtc, channel_hrt_write[i], i);
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT_WRITE(i)),
 			       NO_PENDING_HRT, ~0);
@@ -8411,18 +8416,15 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 
 			if (index == 0 || sphrt_enable) {
 
-				if (mtk_drm_helper_get_opt(mtk_drm->helper_opt,
-						MTK_DRM_OPT_MMQOS_SUPPORT)) {
-					memset(mtk_crtc->usage_ovl_fmt, 0,
-						sizeof(mtk_crtc->usage_ovl_fmt));
-					memset(mtk_crtc->usage_ovl_compr, 0,
-						sizeof(mtk_crtc->usage_ovl_compr));
-					memset(mtk_crtc->usage_ovl_ext_compr, 0,
-						sizeof(mtk_crtc->usage_ovl_ext_compr));
-					memset(mtk_crtc->usage_ovl_roi, 0,
-						sizeof(mtk_crtc->usage_ovl_roi));
-					mtk_crtc_update_ovl_hrt_usage(crtc);
-				}
+				memset(mtk_crtc->usage_ovl_fmt, 0,
+					sizeof(mtk_crtc->usage_ovl_fmt));
+				memset(mtk_crtc->usage_ovl_compr, 0,
+					sizeof(mtk_crtc->usage_ovl_compr));
+				memset(mtk_crtc->usage_ovl_ext_compr, 0,
+					sizeof(mtk_crtc->usage_ovl_ext_compr));
+				memset(mtk_crtc->usage_ovl_roi, 0,
+					sizeof(mtk_crtc->usage_ovl_roi));
+				mtk_crtc_update_ovl_hrt_usage(crtc);
 
 				hrt_valid = lyeblob_ids->hrt_valid;
 				if (hrt_valid == true) {
@@ -9325,7 +9327,10 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 				cur_chan_hrt_bw <= mtk_crtc->qos_ctx->last_channel_req[i]) {
 				DDPINFO("CRTC%u channel[%d]:%u, release HRT to last_channel_hrt_req:%u\n",
 					crtc_idx, i, cur_chan_hrt_bw, mtk_crtc->qos_ctx->last_channel_req[i]);
-				mtk_disp_set_channel_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_channel_req[i], i);
+				if (mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_MMQOS_SUPPORT))
+					mtk_disp_set_channel_hrt_bw(mtk_crtc,
+						mtk_crtc->qos_ctx->last_channel_req[i], i);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT(i)) =
 					NO_PENDING_HRT;
 			}
@@ -9341,7 +9346,9 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 				cur_chan_hrt_bw <= mtk_crtc->qos_ctx->last_channel_write_req[i]) {
 				DDPINFO("CRTC%u channel[%d]:%u, release write HRT to last_channel_write_hrt_req:%u\n",
 					crtc_idx, i, cur_chan_hrt_bw, mtk_crtc->qos_ctx->last_channel_write_req[i]);
-				mtk_disp_set_channel_hrt_write_bw(mtk_crtc,
+				if (mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_MMQOS_SUPPORT))
+					mtk_disp_set_channel_hrt_write_bw(mtk_crtc,
 						mtk_crtc->qos_ctx->last_channel_write_req[i], i);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 						DISP_SLOT_CUR_CHAN_HRT_WRITE(i)) = NO_PENDING_HRT;
@@ -10366,7 +10373,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		for (j = 0; j < MAX_CRTC; j++)
 			channel_sum += priv->srt_channel_bw_sum[j][1];
 		channel_sum += tmp_srt;
-		mtk_vidle_channel_bw_set(channel_sum, (1 * 4)); //0, 4, 8, 12
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_vidle_channel_bw_set(channel_sum, (1 * 4)); //0, 4, 8, 12
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, tmp_srt, 0,
 						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 
@@ -13271,7 +13279,8 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 
 	/* Update QOS BW*/
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
-	mtk_disp_clear_channel_srt_bw(mtk_crtc);
+	if (priv->data->update_channel_hrt)
+		mtk_disp_clear_channel_srt_bw(mtk_crtc);
 
 	//EXDMA2 is not on the list of basic main data path, need extra setting
 	if (priv->data->ovl_exdma_rule
@@ -13288,7 +13297,9 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 			PMQOS_UPDATE_BW, NULL);
 	mtk_crtc_tui_ovl_bw(crtc);
 	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
-	mtk_disp_channel_srt_bw(mtk_crtc);
+	if (priv->data->update_channel_hrt &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+		mtk_disp_channel_srt_bw(mtk_crtc);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -14464,7 +14475,8 @@ skip:
 
 	/* 3. Reset QOS BW after CRTC stop */
 	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
-	mtk_disp_clear_channel_srt_bw(mtk_crtc);
+	if (priv->data->update_channel_hrt)
+		mtk_disp_clear_channel_srt_bw(mtk_crtc);
 
 	/* 3.1 stop the last mml pkt */
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
@@ -14496,7 +14508,9 @@ skip:
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
 	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
-	mtk_disp_channel_srt_bw(mtk_crtc);
+	if (priv->data->update_channel_hrt &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+		mtk_disp_channel_srt_bw(mtk_crtc);
 
 	/* 5. Set HRT BW to 0 */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -14510,12 +14524,14 @@ skip:
 				ARRAY_SIZE(channel_hrt), __func__);
 	}
 
-	if (priv->data->update_channel_hrt) {
+	if (priv->data->update_channel_hrt &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++)
 			mtk_disp_set_channel_hrt_bw(mtk_crtc, 0, i);
 	}
 
-	if (priv->data->update_channel_hrt_write) {
+	if (priv->data->update_channel_hrt_write &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++)
 			mtk_disp_set_channel_hrt_write_bw(mtk_crtc, 0, i);
 	}
@@ -15080,7 +15096,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 			mtk_disp_set_hrt_bw(mtk_crtc,
 				mtk_crtc->qos_ctx->last_hrt_req);
 
-		if (priv->data->update_channel_hrt) {
+		if (priv->data->update_channel_hrt &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 			for (i = 0; i < BW_CHANNEL_NR; i++)
 				mtk_disp_set_channel_hrt_bw(mtk_crtc,
 					mtk_crtc->qos_ctx->last_channel_req[i], i);
@@ -15124,7 +15141,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
 	}
 
-	if (priv->data->update_channel_hrt) {
+	if (priv->data->update_channel_hrt &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 
 		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
@@ -15136,7 +15154,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		}
 	}
 
-	if (priv->data->update_channel_hrt_write) {
+	if (priv->data->update_channel_hrt_write &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		unsigned int channel_hrt_write[BW_CHANNEL_NR] = {0};
 
 		priv->data->update_channel_hrt_write(mtk_crtc, bw_base, channel_hrt_write);
@@ -16022,7 +16041,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 	/*5. Enable Frame done IRQ &  process first config */
 	mtk_crtc->total_srt = 0;
-	mtk_disp_clear_channel_srt_bw(mtk_crtc);
+	if (priv->data->update_channel_hrt)
+		mtk_disp_clear_channel_srt_bw(mtk_crtc);
 	mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
 
 	//EXDMA2 is not on the list of basic main data path, need extra setting
@@ -20645,7 +20665,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
 		mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
-		mtk_disp_clear_channel_srt_bw(mtk_crtc);
+		if (priv->data->update_channel_hrt)
+			mtk_disp_clear_channel_srt_bw(mtk_crtc);
 		//EXDMA2 is not on the list of basic main data path, need extra setting
 		if (priv->data->ovl_exdma_rule && (cmp_id < DDP_COMPONENT_ID_MAX)
 			&& mtk_crtc_state->lye_state.rpo_lye) {
@@ -20684,7 +20705,9 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		}
 		mtk_crtc_tui_ovl_bw(crtc);
 		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
-		mtk_disp_channel_srt_bw(mtk_crtc);
+		if (priv->data->update_channel_hrt &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_channel_srt_bw(mtk_crtc);
 	}
 
 	if ((priv->data->shadow_register) == true) {

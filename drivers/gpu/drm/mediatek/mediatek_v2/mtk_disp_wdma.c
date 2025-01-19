@@ -510,28 +510,6 @@ unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 	}
 }
 
-unsigned int mtk_wdma_hrt_channel_MT6991(struct mtk_ddp_comp *comp)
-{
-	switch (comp->id) {
-	case DDP_COMPONENT_OVLSYS_WDMA2:
-		return 3;
-	case DDP_COMPONENT_WDMA0:
-	case DDP_COMPONENT_OVLSYS_WDMA1:
-		return 7;
-	case DDP_COMPONENT_OVLSYS_WDMA0:
-		return 11;
-	case DDP_COMPONENT_WDMA1:
-	case DDP_COMPONENT_WDMA2:
-	case DDP_COMPONENT_WDMA3:
-	case DDP_COMPONENT_WDMA4:
-	case DDP_COMPONENT_OVLSYS_WDMA3:
-		return 15;
-	default:
-		return 0;
-	}
-}
-
-
 resource_size_t mtk_wdma_check_sec_reg_MT6886(struct mtk_ddp_comp *comp)
 {
 	struct mtk_ddp_comp *comp_sec;
@@ -2983,7 +2961,6 @@ static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.is_support_34bits = true,
 	.use_larb_control_sec = false,
 	.skip_secure = true,
-	.hrt_channel = &mtk_wdma_hrt_channel_MT6991,
 	.aid_sel_manual = &wdma_aid_sel_manual_mt6991,
 	.sec_set = &wdma_sec_set_mt6991,
 	.sec_aid_config = &wdma_aid_config_mt6991,
@@ -3008,7 +2985,6 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.is_support_34bits = true,
 	.use_larb_control_sec = false,
 	.skip_secure = true,
-	.hrt_channel = &mtk_wdma_hrt_channel_MT6991,
 	.aid_sel_manual = &wdma_aid_sel_manual_mt6993,
 	.sec_set = &wdma_sec_set_mt6993,
 	.sec_aid_config = &wdma_aid_config_mt6993,
