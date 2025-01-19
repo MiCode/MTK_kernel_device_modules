@@ -1223,6 +1223,8 @@ int vcp_disable_pm_clk(enum feature_id id)
 		pr_info("[VCP][Debug] VCP_BUS_DEBUG_OUT 0x%x, waitCnt=%u\n",
 			(uint32_t)readl(VCP_BUS_DEBUG_OUT),
 			waitCnt);
+#else
+		pr_info("[VCP][Debug] %s waitCnt=%u\n", __func__, waitCnt);
 #endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 		vcp_wait_awake_count();
