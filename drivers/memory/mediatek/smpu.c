@@ -125,6 +125,14 @@ char *smpu_clear_md_violation(void)
 					     MTK_SMPU_MAX_CMD_LEN - msg_len,
 					     "\n[SMPU]%s\n", smpu->name);
 		}
+
+		if (smpu->get_axiid){
+			if (dump_reg[5].value == 0)
+				dump_reg[17].value = smpu->md_masterid;
+			else
+				dump_reg[8].value = smpu->md_masterid;
+		}
+
 		for (i = 0; i < smpu->dump_md_cnt; i++) {
 			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
 				msg_len += scnprintf(
@@ -248,14 +256,6 @@ static irqreturn_t smpu_violation_thread(int irq, void *dev_id)
 	struct arm_smccc_res smc_res;
 	unsigned int prefetch_mask = 0x200000; //e00/e80's b[21] = 1 -> prefetch
 
-	/*
-	 * CPU will cause WCE violation
-	 */
-	int by_pass_aid[3] = { 240, 241, 243 };
-	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
-	int i, j, by_pass_flag = 0;
-	/*var for WCE violation end*/
-
 	pr_info("%s: %s", __func__, mpu->vio_msg);
 
 	/* check vio region addr */
@@ -280,28 +280,26 @@ static irqreturn_t smpu_violation_thread(int irq, void *dev_id)
 
 		msleep(30);
 
-		for (i = 0; i < 3;
-		     i++) { // by pass WCE, this will be temp patch
-			for (j = 0; j < 10; j++) {
-				if (mpu->dump_reg[5].value == by_pass_aid[i] &&
-				    mpu->dump_reg[7].value ==
-					    by_pass_region[j]) {
-					by_pass_flag++;
-					break;
-				}
-			}
-			if (by_pass_flag > 0)
-				break;
+		/*
+		 * for 6993's axid work around
+		 */
+		if (mpu->get_axiid){
+			if((mpu->dump_reg[5].value == 35) ||
+			   (mpu->dump_reg[14].value == 35))
+				mpu->md_masterid = mpu->dump_reg[5].value == 0?
+				mpu->dump_reg[17].value : mpu->dump_reg[8].value;
+
+			if((mpu->dump_reg[5].value == 39) ||
+			   (mpu->dump_reg[14].value == 39))
+				mpu->md_masterid = mpu->dump_reg[5].value == 0?
+				mpu->dump_reg[17].value : mpu->dump_reg[8].value;
 		}
+
 		//add prefetch mask
 		if ((mpu->dump_reg[0].value & prefetch_mask) ||
 		    (mpu->dump_reg[9].value & prefetch_mask) ||
 		    (mpu->is_prefetch == true)) {
 			pr_info("%s:Prefetch without KERNEL_API!!\n", __func__);
-		} else if (by_pass_flag > 0 && mpu->slc_b_mode) {
-			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
-				__func__, mpu->dump_reg[5].value,
-				mpu->dump_reg[7].value);
 		} else if (!mpu->is_bypass) // by pass GPU write vio
 			aee_kernel_exception("SMPU",
 					     mpu->vio_msg); // for smpu_vio case
@@ -834,7 +832,7 @@ static int smpu_probe(struct platform_device *pdev)
 		mpu->slc_b_mode = true;
 
 	/*
-	 * mt6992 will remaping the axiid for SNOC usage,
+	 * mt6993 will remaping the axiid for SNOC usage,
 	 * so we need to get the original axiid.
 	 */
 	if (of_property_read_bool(smpu_node, "mediatek,original-axiid"))

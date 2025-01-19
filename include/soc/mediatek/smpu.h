@@ -96,6 +96,10 @@ struct smpu {
 	struct bypass_axi_info_t *bypass_axi;
 	unsigned int *gpu_bypass_list;
 	unsigned int bypass_axi_num;
+
+	/*for mt6993 md WA*/
+	unsigned int md_masterid;
+
 	/* As SLC B mode enable */
 	bool slc_b_mode;
 	bool get_axiid;
