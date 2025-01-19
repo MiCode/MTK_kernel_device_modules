@@ -743,6 +743,65 @@ void irq_mon_kprobes_exit(void)
 }
 /* end of kprobes */
 
+bool b_default_enabled; // default false
+bool b_count_tracer_default_enabled; // default false
+static void irq_mon_boot(void)
+{
+#if !IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEFAULT_ENABLED)
+	struct device_node *node;
+	bool b_override_thresholds;
+	unsigned int override_th1_ms = 500;
+	unsigned int override_th2_ms = 500;
+	unsigned int override_th3_ms = 500;
+
+	node = of_find_node_by_name(NULL, "mtk-irq-monitor");
+	if (node) {
+		b_default_enabled =
+			of_property_read_bool(node, "mediatek,default-enabled");
+		b_count_tracer_default_enabled =
+			of_property_read_bool(node, "mediatek,count-tracer-default-enabled");
+		b_override_thresholds =
+			of_property_read_bool(node, "mediatek,override-thresholds");
+		pr_info("%s: default-enabled=%s, count-tracer=%s, override-thresholds=%s",
+			__func__,
+			b_default_enabled ? "yes" : "no",
+			b_count_tracer_default_enabled ? "yes" : "no",
+			b_override_thresholds ? "yes" : "no");
+
+		if (b_override_thresholds) {
+			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
+						       0, &override_th1_ms))
+				override_th1_ms = OVERRIDE_TH1_MS;
+			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
+						       1, &override_th2_ms))
+				override_th2_ms = OVERRIDE_TH1_MS;
+			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
+						       2, &override_th3_ms))
+				override_th3_ms = OVERRIDE_TH1_MS;
+			pr_info("%s: override-thresholds: th1=%d, th2=%d, th3=%d",
+				__func__, override_th1_ms, override_th2_ms, override_th3_ms);
+
+			/* override irq_handler, ipi and hrtimer thresholds */
+			irq_handler_tracer.th1_ms = override_th1_ms;
+			irq_handler_tracer.th2_ms = override_th2_ms;
+			irq_handler_tracer.th3_ms = override_th3_ms;
+			irq_handler_tracer.aee_limit = 1;
+			ipi_tracer.th1_ms = override_th1_ms;
+			ipi_tracer.th2_ms = override_th2_ms;
+			ipi_tracer.th3_ms = override_th3_ms;
+			ipi_tracer.aee_limit = 0;
+			hrtimer_expire_tracer.th1_ms = override_th1_ms;
+			hrtimer_expire_tracer.th2_ms = override_th2_ms;
+			hrtimer_expire_tracer.th3_ms = override_th3_ms;
+			hrtimer_expire_tracer.aee_limit = 1;
+		}
+	}
+#else
+	b_default_enabled = true;
+	b_count_tracer_default_enabled = true;
+#endif
+}
+
 /* tracepoints */
 struct irq_mon_tracepoint {
 	struct tracepoint *tp;
@@ -842,107 +901,11 @@ static void irq_mon_tracepoint_lookup(struct tracepoint *tp, void *priv)
 	}
 }
 
-bool b_default_enabled; // default false
-bool b_count_tracer_default_enabled; // default false
-#if !IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEFAULT_ENABLED)
-static void irq_mon_boot(void)
-{
-	struct device_node *node;
-	bool b_override_thresholds;
-	unsigned int override_th1_ms = 500;
-	unsigned int override_th2_ms = 500;
-	unsigned int override_th3_ms = 500;
-
-	node = of_find_node_by_name(NULL, "mtk-irq-monitor");
-	if (node) {
-		b_default_enabled =
-			of_property_read_bool(node, "mediatek,default-enabled");
-		b_count_tracer_default_enabled =
-			of_property_read_bool(node, "mediatek,count-tracer-default-enabled");
-		b_override_thresholds =
-			of_property_read_bool(node, "mediatek,override-thresholds");
-		pr_info("%s: default-enabled=%s, count-tracer=%s, override-thresholds=%s",
-			__func__,
-			b_default_enabled ? "yes" : "no",
-			b_count_tracer_default_enabled ? "yes" : "no",
-			b_override_thresholds ? "yes" : "no");
-
-		if (b_override_thresholds) {
-			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
-						       0, &override_th1_ms))
-				override_th1_ms = OVERRIDE_TH1_MS;
-			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
-						       1, &override_th2_ms))
-				override_th2_ms = OVERRIDE_TH1_MS;
-			if (of_property_read_u32_index(node, "mediatek,override-thresholds",
-						       2, &override_th3_ms))
-				override_th3_ms = OVERRIDE_TH1_MS;
-			pr_info("%s: override-thresholds: th1=%d, th2=%d, th3=%d",
-				__func__, override_th1_ms, override_th2_ms, override_th3_ms);
-
-			/* override irq_handler, ipi and hrtimer thresholds */
-			irq_handler_tracer.th1_ms = override_th1_ms;
-			irq_handler_tracer.th2_ms = override_th2_ms;
-			irq_handler_tracer.th3_ms = override_th3_ms;
-			irq_handler_tracer.aee_limit = 1;
-			ipi_tracer.th1_ms = override_th1_ms;
-			ipi_tracer.th2_ms = override_th2_ms;
-			ipi_tracer.th3_ms = override_th3_ms;
-			ipi_tracer.aee_limit = 0;
-			hrtimer_expire_tracer.th1_ms = override_th1_ms;
-			hrtimer_expire_tracer.th2_ms = override_th2_ms;
-			hrtimer_expire_tracer.th3_ms = override_th3_ms;
-			hrtimer_expire_tracer.aee_limit = 1;
-		}
-	}
-}
-#endif
-
-/* probe tracepoints for all tracers */
-static int irq_mon_tracepoint_init(void)
-{
-	for_each_kernel_tracepoint(irq_mon_tracepoint_lookup
-					, (void *)irq_mon_tracepoint_table);
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEFAULT_ENABLED)
-	b_default_enabled = true;
-	b_count_tracer_default_enabled = true;
-#else
-	irq_mon_boot();
-#endif
-	if (b_default_enabled) {
-		struct irq_mon_tracepoint *t;
-
-		for (t = irq_mon_tracepoint_table; t->name ; t++) {
-			int ret;
-
-			if (!t->tp) {
-				pr_info("tp: %s not found\n", t->name);
-				continue;
-			}
-			ret = tracepoint_probe_register(t->tp, t->func, (void *)t->tracer);
-			if (ret) {
-				pr_info("tp: %s probe failed\n", t->name);
-				continue;
-			}
-			pr_info("tp: %s,%pS probed\n", t->name, t->tp);
-			t->probe = true;
-		}
-		irq_handler_tracer.tracing = true;
-		softirq_tracer.tracing = true;
-		ipi_tracer.tracing = true;
-		irq_off_tracer.tracing = true;
-		preempt_off_tracer.tracing = true;
-		hrtimer_expire_tracer.tracing = true;
-	}
-	return 0;
-}
-
 static int irq_mon_tracer_probe(struct irq_mon_tracer *tracer)
 {
 	struct irq_mon_tracepoint *t;
 
-	for (t = irq_mon_tracepoint_table; t->name != NULL; t++) {
+	for (t = irq_mon_tracepoint_table; t->name; t++) {
 		int ret;
 
 		if (t->tracer != tracer)
@@ -1009,6 +972,35 @@ static void irq_mon_tracer_tracing_set(struct irq_mon_tracer *tracer, bool val)
 	}
 }
 
+static void irq_mon_tracepoint_init(void)
+{
+	for_each_kernel_tracepoint(irq_mon_tracepoint_lookup,
+				   (void *)irq_mon_tracepoint_table);
+	/* probe tracepoints for all tracers if default enabled */
+	if (b_default_enabled) {
+		irq_mon_tracer_tracing_set(&irq_handler_tracer, true);
+		irq_mon_tracer_tracing_set(&softirq_tracer, true);
+		irq_mon_tracer_tracing_set(&ipi_tracer, true);
+		irq_mon_tracer_tracing_set(&irq_off_tracer, true);
+		irq_mon_tracer_tracing_set(&preempt_off_tracer, true);
+		irq_mon_tracer_tracing_set(&hrtimer_expire_tracer, true);
+	}
+}
+
+static void irq_mon_tracepoint_exit(void)
+{
+	struct irq_mon_tracepoint *t;
+
+	for (t = irq_mon_tracepoint_table; t->name; t++) {
+		if (!t->tp)
+			continue;
+		if (t->probe) {
+			tracepoint_probe_unregister(t->tp, t->func, (void *)t->tracer);
+			t->probe = false;
+		}
+	}
+	tracepoint_synchronize_unregister();
+}
 /* proc functions */
 
 static DEFINE_MUTEX(proc_lock);
@@ -1221,9 +1213,8 @@ static int __init irq_monitor_init(void)
 	ret = irq_mon_kprobes_init();
 	if (ret)
 		return ret;
-	ret = irq_mon_tracepoint_init();
-	if (ret)
-		return ret;
+	irq_mon_boot();
+	irq_mon_tracepoint_init();
 	ret = irq_count_tracer_init();
 	if (ret)
 		return ret;
@@ -1232,24 +1223,6 @@ static int __init irq_monitor_init(void)
 #if IS_ENABLED(CONFIG_MTK_FTRACE_DEFAULT_ENABLE)
 	trace_set_clr_event(NULL, "irq_mon_msg", 1);
 #endif
-	return 0;
-}
-
-/* exit */
-static int irq_mon_tracepoint_exit(void)
-{
-	struct irq_mon_tracepoint *t;
-
-	for (t = irq_mon_tracepoint_table; t->name != NULL; t++) {
-		if (!t->tp)
-			continue;
-		if (t->probe) {
-			tracepoint_probe_unregister(t->tp, t->func, (void *)t->tracer);
-			t->probe = false;
-		}
-	}
-	tracepoint_synchronize_unregister();
-
 	return 0;
 }
 
