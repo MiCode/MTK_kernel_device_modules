@@ -80,13 +80,14 @@ TRACE_EVENT(core_ctl_demand_eval,
 			unsigned int min_cpus,
 			unsigned int max_cpus,
 			unsigned int boost,
+			unsigned int gas_enable,
 			unsigned int enable,
 			unsigned int updated,
 			unsigned int next_off_time),
 
 		TP_ARGS(cid, old_need, new_need,
-			active_cpus, min_cpus, max_cpus,
-			boost, enable, updated, next_off_time),
+			active_cpus, min_cpus, max_cpus, boost,
+			gas_enable, enable, updated, next_off_time),
 
 		TP_STRUCT__entry(
 			__field(u32, cid)
@@ -96,6 +97,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__field(u32, min_cpus)
 			__field(u32, max_cpus)
 			__field(u32, boost)
+			__field(u32, gas_enable)
 			__field(u32, enable)
 			__field(u32, updated)
 			__field(u32, next_off_time)
@@ -109,12 +111,13 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->min_cpus = min_cpus;
 			__entry->max_cpus = max_cpus;
 			__entry->boost = boost;
+			__entry->gas_enable = gas_enable;
 			__entry->enable = enable;
 			__entry->updated = updated;
 			__entry->next_off_time = next_off_time;
 		),
 
-		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u enbl=%u update=%u next_off_time=%u",
+		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u gas=%u enbl=%u update=%u next_off_time=%u",
 			__entry->cid,
 			__entry->old_need,
 			__entry->new_need,
@@ -122,6 +125,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->min_cpus,
 			__entry->max_cpus,
 			__entry->boost,
+			__entry->gas_enable,
 			__entry->enable,
 			__entry->updated,
 			__entry->next_off_time)

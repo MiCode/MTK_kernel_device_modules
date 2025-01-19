@@ -28,14 +28,19 @@
 #include "core_ctl.h"
 #include "common.h"
 #include <sched_sys_common.h>
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-#include <thermal_interface.h>
-#endif
 #include <eas/eas_plus.h>
 #include <mtk_cpu_power_throttling.h>
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+#include <thermal_interface.h>
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 extern int get_immediate_tslvts1_1_wrap(void);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+#include "eas/grp_awr.h"
 #endif
 
 #define TAG	"core_ctl"
@@ -339,13 +344,18 @@ static bool demand_eval(struct cluster_data *cluster)
 	unsigned int new_need;
 	unsigned int old_need;
 	s64 now, elapsed;
+	int gas_enable = 0;
 
 	if (unlikely(!cluster->inited))
 		return ret;
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	gas_enable = get_top_grp_aware();
+#endif
+
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 
-	if (cluster->boost || !cluster->enable || !enable_policy)
+	if (cluster->boost || !cluster->enable || !enable_policy || gas_enable)
 		need_cpus = cluster->max_cpus;
 	else
 		need_cpus = cluster->new_need_cpus;
@@ -391,6 +401,7 @@ static bool demand_eval(struct cluster_data *cluster)
 			cluster->min_cpus,
 			cluster->max_cpus,
 			cluster->boost,
+			gas_enable,
 			cluster->enable,
 			ret && need_flag,
 			cluster->next_offline_time);
