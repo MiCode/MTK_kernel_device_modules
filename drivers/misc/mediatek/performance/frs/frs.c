@@ -172,25 +172,26 @@ int eara_nl_send_to_user(void *buf, int size)
 
 static void eara_nl_data_handler(struct sk_buff *skb)
 {
-	u32 pid;
-	kuid_t uid;
-	int seq;
-	void *data;
+	/*u32 pid;
+	 * kuid_t uid;
+	 * int seq;
+	 */
+
 	struct nlmsghdr *nlh;
 	struct _EARA_THRM_PACKAGE *change_msg;
 	struct _EARA_THRM_ENABLE *enable_msg;
-	//int size = 0;
 
 	nlh = (struct nlmsghdr *)skb->data;
-	pid = NETLINK_CREDS(skb)->pid;
-	uid = NETLINK_CREDS(skb)->uid;
-	seq = nlh->nlmsg_seq;
+	/*pid = NETLINK_CREDS(skb)->pid;
+	 * uid = NETLINK_CREDS(skb)->uid;
+	 * seq = nlh->nlmsg_seq;
+	 */
 
 	/*tsta_dprintk(
 	 *"[ta_nl_data_handler] recv skb from user space uid:%d pid:%d seq:%d\n"
 	 * ,uid, pid, seq);
 	 */
-	data = NLMSG_DATA(nlh);
+
 	change_msg = (struct _EARA_THRM_PACKAGE *) NLMSG_DATA(nlh);
 	enable_msg = (struct _EARA_THRM_ENABLE *) NLMSG_DATA(nlh);
 	if (change_msg->type == 0)
