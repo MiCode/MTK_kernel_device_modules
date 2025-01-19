@@ -605,13 +605,18 @@ int mtk_mdp_rsz_calc_tile_params(struct mtk_ddp_comp *comp, u32 frm_in_len, u32 
 	if (t[0].par_update_y) {
 		dst_y = t[0].dst_y - t[0].overhead_y;
 		dst_height = frm_out_len + (t[0].overhead_y << 1);
+		sub_offset[0] = ((s64)sub_offset[0] << RSZ_PREC_SHIFT) / UNIT;
 
 		mtk_mdp_rsz_back_taps(dst_y, dst_y + dst_height - 1, step, UNIT,
 			int_offset[0], sub_offset[0], t[0].ori_in_len - 1, 2,
 			&y_in_start, &y_in_end);
+		if(y_in_end > y_in_start + dst_height - 1)
+			y_in_end = y_in_start + dst_height - 1;
+
 		mtk_mdp_rsz_for_taps(y_in_start, y_in_end, t[0].ori_in_len - 1, step, UNIT,
 			int_offset[0], sub_offset[0], t[0].ori_out_len - 1, 2, dst_y,
 			&y_out_start, &y_out_end, &(int_offset[0]), &(sub_offset[0]));
+		y_out_end = y_out_start + dst_height - 1;
 
 		t[0].src_y = y_in_start;
 		t[0].step = step;
