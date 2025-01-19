@@ -44,5 +44,8 @@ struct port_proxy {
 extern int port_get_cfg(struct port_t **ports);
 extern int port_ipc_write_check_id(struct port_t *port, struct sk_buff *skb);
 extern void inject_md_status_event(int event_type, char reason[]);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
+extern int (*register_spmi_md_force_assert)(unsigned int id, char *buf, unsigned int len);
+#endif
 
 #endif /* __PORT_PROXY_H__ */

@@ -1875,6 +1875,14 @@ int ccci_port_init(void)
 		CCCI_ERROR_LOG(0, TAG, "alloc port_proxy fail\n");
 		return -1;
 	}
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
+	/* register callback func for spmi */
+	if (register_spmi_md_force_assert == NULL) {
+		register_spmi_md_force_assert = exec_ccci_kern_func;
+		CCCI_NORMAL_LOG(0, TAG,
+			"%s: hook register_spmi_md_force_assert done\n", __func__);
+	}
+#endif
 
 	return 0;
 }
@@ -2279,6 +2287,10 @@ int exec_ccci_kern_func(unsigned int id, char *buf, unsigned int len)
 		CCCI_NORMAL_LOG(0, CORE, "Force MD assert called by %s\n",
 			current->comm);
 		ret = ccci_md_force_assert(MD_FORCE_ASSERT_BY_USER_TRIGGER, NULL, 0);
+		break;
+	case ID_SPMI_FORCE_MD_ASSERT:
+		CCCI_NORMAL_LOG(0, CORE, "Force MD assert called by SPMI\n");
+		ret = ccci_md_force_assert(MD_FORCE_ASSERT_BY_SPMI_TRIGGER, NULL, 0);
 		break;
 	case ID_MD_MPU_ASSERT:
 		if (buf != NULL && strlen(buf)) {
