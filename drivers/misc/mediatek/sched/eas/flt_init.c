@@ -53,6 +53,11 @@
 #define RZ	7
 #define RT	(RX + RY + RZ)
 
+#define RX1	17
+#define RY1	15
+#define RZ1	10
+#define RT1	(RX1 + RY1 + RZ1)
+
 #define AGK	12
 #define XLA	23
 #define YLA	56
@@ -67,13 +72,15 @@
 #define TSH	0x2481c6
 #define MSH	0x12481c6
 #define LFP	0x1f
+#define JQP	0x2d
 #define KOL	0x1dc
-#define ROE	0x3fc
 #define AMI	0x3ff
+#define JMI	0x7FFF
 
 #define HAV	0x101
+#define JAV	0x1000
 
-unsigned int EKV[GKEL][RT] = {0};
+unsigned int EKV[GKEL][RT1] = {0};
 
 static u32 flt_mode = FLT_MODE_0;
 static u32 flt_version;
@@ -132,50 +139,72 @@ EXPORT_SYMBOL(flt_get_chip_sw_ver);
 
 static void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
 {
-	int i = 0, RD = 0;
+	int i = 0, RD = 0, WLA = 0, PEG = 0, len = 0, cnt = 0, UTY = 0, PAD = 0;
 	unsigned int tmp = 0;
 
 	switch (LA) {
 	case XLA:
 		i = 0;
 		RD = 0;
+		PAD = L3;
 		break;
 	case YLA:
 		i = XLO;
-		RD = RX;
+		PAD = L3;
+		if (flt_version >= JAV)
+			RD = RX1;
+		else
+			RD = RX;
 		break;
 	case ZLA:
 		i = XLO + YLO;
-		RD = RX + RY;
+		if (flt_version >= JAV) {
+			PAD = L3;
+			RD = RX1 + RY1;
+		} else {
+			PAD = L2;
+			RD = RX + RY;
+		}
 		break;
 	default:
 		return;
 	}
 
-	for (; i + 2 < SS; ++i, RD++) {
-		tmp = XHR[i];
-		++i;
-		tmp += XHR[i] << L1;
-		++i;
-		tmp +=  XHR[i] << L2;
-		if (i == SS - 1)
-			tmp += ctp << L3;
+	if (flt_version >= JAV) {
+		WLA = XLA;
+		PEG = 2;
+		len = 15;
+		UTY = 1;
+	} else {
+		WLA = ZLA;
+		PEG = 3;
+		len = 10;
+		UTY = 2;
+	}
+
+	for (; i + (PEG - 1) < SS; RD++) {
+		for (tmp = 0, cnt = 0; cnt < PEG; cnt++, i++)
+			tmp += XHR[i] << (len * cnt);
+		if (i == SS)
+			tmp += (ctp << PAD);
 		KK[RD] = tmp;
 	}
 
-	if (LA == ZLA && i + 1 < SS) {
-		tmp = XHR[i];
-		++i;
-		tmp = tmp + (XHR[i] << L1) + (ctp << L2);
+	if (LA == WLA && (SS > (i + (UTY - 1)))) {
+		for (tmp = 0, cnt = 0; cnt < UTY; cnt++, i++)
+			tmp += XHR[i] << (len * cnt);
+		if (i == SS)
+			tmp += (ctp << PAD);
 		KK[RD] = tmp;
 	}
+
 }
 
 static void flt_fei(int wl, int ctp)
 {
 	int cpu, i = 0, GG = 0, KY = 0, GK = 0, j = 0, pol = 0, HA = 0;
 	struct cpumask *gear_cpus;
-	unsigned int nr_gear, gear_idx, MF, MU, LF, LU, TT;
+	unsigned int nr_gear, gear_idx, MF, MU, LF, LU, TT, DKI;
 	unsigned int XHR[TLO] = {0};
 	unsigned int XU[TLO] = {0};
 	unsigned int XF[TLO] = {
@@ -382,11 +411,17 @@ static void flt_fei(int wl, int ctp)
 			FLT_LOGI("wl %d XF[%d] XU[i]%d", wl, XF[i], XU[i]);
 		}
 	}
+
+	if (flt_version >= JAV)
+		DKI = JMI;
+	else
+		DKI = AMI;
+
 	for (i = 0 ; i < TLO; ++i) {
 		GG = XU[i] << AGK;
 		if (X_RR[i])
 			XHR[i] = (GG + (X_RR[i] >> 1)) / X_RR[i];
-		XHR[i] = clamp_t(unsigned int, XHR[i], 0, AMI);
+		XHR[i] = clamp_t(unsigned int, XHR[i], 0, DKI);
 	}
 
 	if (flt_version > HAV || flt_chip_sw_ver == 1)
@@ -462,35 +497,44 @@ static int flt_init_ekg(void)
 
 static void flt_mi(int ctp, u32 flt_mode)
 {
-	int i = 0, offset = 0;
+	int i = 0, range = 0, cnt = 0;
+	unsigned long long offset = 0;
 
 	/* sanity check */
 	if (ctp < 0 || ctp >= GKEL)
 		return;
 
+	if (flt_version >= JAV) {
+		range = RT1;
+		cnt = JQP;
+	} else {
+		range = RT;
+		cnt = LFP;
+	}
+
 	switch (flt_mode) {
 	case FLT_MODE_2:
 	case FLT_MODE_3:
-		offset = KOL + ((ctp * LFP) << 2);
+		offset = KOL + ((ctp * cnt) << 2);
 		break;
 	case FLT_MODE_4:
-		offset = ROE + ((ctp * LFP) << 2);
+		offset = flt_xrg_size - 4 - (((GKEL - ctp) * cnt) << 2);
 		break;
 	default:
 		return;
 	}
 
-	for (i = 0 ; i < RT; ++i) {
+	for (i = 0 ; i < range; ++i) {
 		iowrite32(EKV[ctp][i], flt_xrg + offset);
-		FLT_LOGI("mi reg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+		FLT_LOGI("mi reg 0x%x offset %llu\n", ioread32(flt_xrg + offset), offset);
 		offset += 4;
 	}
 
 	iowrite32(ECG, flt_xrg + offset);
-	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+	FLT_LOGI("mi xrg 0x%x offset %llu\n", ioread32(flt_xrg + offset), offset);
 	offset += 4;
 	iowrite32(IBS, flt_xrg + offset);
-	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+	FLT_LOGI("mi xrg 0x%x offset %llu\n", ioread32(flt_xrg + offset), offset);
 	offset += 4;
 	switch (flt_mode) {
 	case FLT_MODE_2:
@@ -503,7 +547,7 @@ static void flt_mi(int ctp, u32 flt_mode)
 	default:
 		return;
 	}
-	FLT_LOGI("mi xrg 0x%x offset %d\n", ioread32(flt_xrg + offset), offset);
+	FLT_LOGI("mi xrg 0x%x offset %llu\n", ioread32(flt_xrg + offset), offset);
 }
 
 int flt_tul(void)
