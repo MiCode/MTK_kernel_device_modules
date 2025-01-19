@@ -444,8 +444,8 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 		goto done;
 	sysqos->current_level = i;
 
-	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)",
-		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i]);
+	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u",
+		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i], tput);
 	tp->qos[sysid].current_volt = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
