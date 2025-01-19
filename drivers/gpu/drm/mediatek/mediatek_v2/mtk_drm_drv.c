@@ -11024,9 +11024,22 @@ void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
 		vdisp_func.sent_aod_scp_sema(_SPM_SEMA_AP);
 	else
 		DDPMSG("WARNING: sent aod scp semaphore fail!\n");
-	mtk_mipi_sent_aod_scp_sema(_SPM_SEMA_AP);
+	//mtk_mipi_sent_aod_scp_sema(_SPM_SEMA_AP);
 }
 EXPORT_SYMBOL_GPL(_mtk_sent_aod_scp_sema);
+
+void mtk_set_aod_scp_semaphore(int lock)
+{
+	if (aod_scp_flag == 0)
+		return;
+	if (lock)
+		DDPMSG("mipi power on try AOD sema\n");
+
+	if (vdisp_func.set_aod_scp_semaphore)
+		vdisp_func.set_aod_scp_semaphore(lock);
+	else
+		DDPMSG("%s, WARNING: set aod scp semaphore fail!\n", __func__);
+}
 
 unsigned int mtk_aod_scp_vdisp_sema_check(void)
 {

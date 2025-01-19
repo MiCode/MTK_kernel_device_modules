@@ -633,6 +633,7 @@ static const struct mtk_vdisp_funcs funcs = {
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
+	.set_aod_scp_semaphore = vdisp_set_aod_scp_semaphore,
 	.query_aging_val = mtk_vdisp_query_aging_val,
 	.debug_mtcmos_ctrl = mtk_vdisp_debug_mtcmos_ctrl,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)

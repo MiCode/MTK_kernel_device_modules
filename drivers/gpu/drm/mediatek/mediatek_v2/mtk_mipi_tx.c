@@ -7017,63 +7017,16 @@ static const struct phy_ops mtk_mipi_tx_ops = {
 };
 
 static struct notifier_block nb;
-static void __iomem *SPM_SEMA_AP;
-#define KEY_HOLE    BIT(1)
-void mtk_mipi_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
-{
-	SPM_SEMA_AP = _SPM_SEMA_AP;
-	DDPMSG("%s:0x%llx\n", __func__, (long long)SPM_SEMA_AP);
-}
-
-static void mipi_set_aod_scp_semaphore(int lock)
-{
-	int i = 0;
-	bool key = false;
-
-	if (SPM_SEMA_AP == NULL)
-		return;
-
-	key = ((readl(SPM_SEMA_AP) & KEY_HOLE) == KEY_HOLE);
-	if (key == lock) {
-		DDPMSG("%s, skip %s sema\n", __func__, lock ? "get" : "put");
-		return;
-	}
-
-	if (lock) {
-		do {
-			/* 40ms timeout */
-			if (unlikely(++i > 4000))
-				goto fail;
-			writel(KEY_HOLE, SPM_SEMA_AP);
-			udelay(10);
-		} while ((readl(SPM_SEMA_AP) & KEY_HOLE) != KEY_HOLE);
-	} else {
-		writel(KEY_HOLE, SPM_SEMA_AP);
-		do {
-			/* 10ms timeout */
-			if (unlikely(++i > 1000))
-				goto fail;
-			udelay(10);
-		} while (readl(SPM_SEMA_AP) & KEY_HOLE);
-	}
-
-	return;
-fail:
-	DDPPR_ERR("%s: %s sema:0x%lx fail(0x%x), retry:%d\n",
-		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
-		readl(SPM_SEMA_AP), i);
-}
-
 static int mipi_tx_genpd_event_notifier(struct notifier_block *nb,
 			  unsigned long event, void *data)
 {
 	switch (event) {
 	case GENPD_NOTIFY_PRE_ON:
-		mipi_set_aod_scp_semaphore(1);
+		mtk_set_aod_scp_semaphore(1);
 		break;
 	case GENPD_NOTIFY_OFF:
 		if (mtk_aod_scp_vdisp_sema_check() == 0)
-			mipi_set_aod_scp_semaphore(0);
+			mtk_set_aod_scp_semaphore(0);
 		break;
 	case GENPD_NOTIFY_ON:
 	case GENPD_NOTIFY_PRE_OFF:
