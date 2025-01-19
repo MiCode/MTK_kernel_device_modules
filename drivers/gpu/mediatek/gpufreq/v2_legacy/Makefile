@@ -72,6 +72,11 @@ mtk_gpufreq_mt6853-y := \
 	gpuppm_legacy.o \
 	gpufreq_mt6853.o
 
+mtk_gpufreq_mt6855-y := \
+	gpufreq_history_mt6855.o \
+	gpuppm_legacy.o \
+	gpufreq_mt6855.o
+
 mtk_gpufreq_mt6789-y := \
 	gpufreq_history_mt6789.o \
 	gpuppm_legacy.o \
@@ -124,6 +129,12 @@ endif
 ifneq ($(wildcard $(src)/gpufreq_mt6853.c),)
 ifneq ($(wildcard $(src)/gpufreq_history_mt6853.c),)
 obj-$(CONFIG_MTK_GPU_MT6853_SUPPORT) += mtk_gpufreq_mt6853.o
+endif
+endif
+
+ifneq ($(wildcard $(src)/gpufreq_mt6855.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6855.c),)
+obj-$(CONFIG_MTK_GPU_MT6855_SUPPORT) += mtk_gpufreq_mt6855.o
 endif
 endif
 
