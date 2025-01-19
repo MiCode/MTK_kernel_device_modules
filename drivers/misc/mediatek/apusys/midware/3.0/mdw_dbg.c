@@ -75,9 +75,40 @@ static int max_dtime_get(void *data, u64 *val)
 	return 0;
 }
 
+static int dplcy_mode_set(void *data, u64 val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	mdev->plat_funcs->set_param(mdev, MDW_INFO_DPLCY_MODE, val);
+	return 0;
+}
+static int dplcy_mode_get(void *data, u64 *val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	*val = mdev->plat_funcs->get_info(mdev, MDW_INFO_DPLCY_MODE);
+	return 0;
+}
+static int dplcy_time_ms_set(void *data, u64 val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	mdev->plat_funcs->set_param(mdev, MDW_INFO_DPLCY_TIME_MS, val);
+	return 0;
+}
+static int dplcy_time_ms_get(void *data, u64 *val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	*val = mdev->plat_funcs->get_info(mdev, MDW_INFO_DPLCY_TIME_MS);
+	return 0;
+}
+
 DEFINE_DEBUGFS_ATTRIBUTE(fops_min_dtime, min_dtime_get, min_dtime_set, "%llu\n");
 DEFINE_DEBUGFS_ATTRIBUTE(fops_max_dtime, max_dtime_get, max_dtime_set, "%llu\n");
 DEFINE_DEBUGFS_ATTRIBUTE(fops_min_etime, min_etime_get, min_etime_set, "%llu\n");
+DEFINE_DEBUGFS_ATTRIBUTE(fops_dplcy_mode, dplcy_mode_get, dplcy_mode_set, "%llu\n");
+DEFINE_DEBUGFS_ATTRIBUTE(fops_dplcy_time_ms, dplcy_time_ms_get, dplcy_time_ms_set, "%llu\n");
 //----------------------------------------------
 int mdw_dbg_init(struct apusys_core_info *info)
 {
@@ -90,30 +121,27 @@ int mdw_dbg_init(struct apusys_core_info *info)
 	mdw_dbg_root = debugfs_create_dir("midware", info->dbg_root);
 
 	/* create log level */
-	debugfs_create_u32("klog", 0644,
-		mdw_dbg_root, &g_mdw_klog);
+	debugfs_create_u32("klog", 0644, mdw_dbg_root, &g_mdw_klog);
 
 	/* create log level */
 	cfg_apusys_trace = 0;
-	debugfs_create_u8("trace_en", 0644,
-		mdw_dbg_root, &cfg_apusys_trace);
+	debugfs_create_u8("trace_en", 0644, mdw_dbg_root, &cfg_apusys_trace);
 
 	/* create pwroff_cnt */
-	debugfs_create_u32("pwroff_cnt", 0644,
-		mdw_dbg_root, &g_mdw_pwroff_cnt);
+	debugfs_create_u32("pwroff_cnt", 0644, mdw_dbg_root, &g_mdw_pwroff_cnt);
 
 	/* create poll_time */
-	debugfs_create_u32("poll_interval", 0644,
-		mdw_dbg_root, &g_mdw_poll_interval);
+	debugfs_create_u32("poll_interval", 0644, mdw_dbg_root, &g_mdw_poll_interval);
 	/* create poll_timeout */
-	debugfs_create_u32("poll_timeout", 0644,
-		mdw_dbg_root, &g_mdw_poll_timeout);
+	debugfs_create_u32("poll_timeout", 0644, mdw_dbg_root, &g_mdw_poll_timeout);
 
 	dbg_min_dtime = 0;
 	dbg_max_dtime = 10000;
 	debugfs_create_file("min_dtime", 0644, mdw_dbg_root, mdw_dev, &fops_min_dtime);
 	debugfs_create_file("max_dtime", 0644, mdw_dbg_root, mdw_dev, &fops_max_dtime);
 	debugfs_create_file("min_etime", 0644, mdw_dbg_root, mdw_dev, &fops_min_etime);
+	debugfs_create_file("dplcy_mode", 0644, mdw_dbg_root, mdw_dev, &fops_dplcy_mode);
+	debugfs_create_file("dplcy_time", 0644, mdw_dbg_root, mdw_dev, &fops_dplcy_time_ms);
 
 	mdw_dbg_device = debugfs_create_dir("device", mdw_dbg_root);
 

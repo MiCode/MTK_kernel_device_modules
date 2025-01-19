@@ -32,6 +32,9 @@ struct policy_cb {
 	uint32_t record_point_inf_us[TMA_POINT_NUM];
 	uint32_t record_point_accu_boost[TMA_POINT_NUM];
 
+	/* for debugging */
+	int32_t unexpect_code;
+
 	uint8_t history_num;
 	uint8_t version;
 	uint8_t con_current_cmd;
@@ -81,11 +84,11 @@ static uint32_t mdw_dplcy_appendix_cb_size(uint32_t num_subcmds)
 
 	return appendix_size;
 }
-static void mdw_dplcy_dump_cnd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
+static void mdw_dplcy_dump_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 {
 	int i;
 	mdw_flw_debug(
-		"uid(%llu) num_subcmds(%u) session(%llu) history_tma(0x%x) record_quality(%u) valid_record_num(%u) recommand_opp(%d/%d/%d)\n",
+		"uid(0x%llx) num_subcmds(%u) session(%llu) history_tma(0x%x) record_quality(%u) valid_record_num(%u) recommand_opp(%d/%d/%d)\n",
 		cmd_tb->uid, cmd_tb->num_subcmds, (uint64_t)cmd_tb->mpriv, cmd_tb->history_tma,
 		cmd_tb->record_quality, cmd_tb->valid_record_num, cmd_tb->recommand_opp[0],
 		cmd_tb->recommand_opp[1], cmd_tb->recommand_opp[2]);
@@ -118,8 +121,11 @@ static void mdw_dplcy_dump_cb(struct policy_cb *cb)
 {
 	// TODO change to va_start/va_arg for define ??
 	int i;
-	mdw_flw_debug("cmd_tb_ic(%llu) start_ts(%llu) end_ts(%llu) history_num(%u)\n",
-		      cb->cmd_tb_id, cb->start_ts_us, cb->end_ts_us, cb->history_num);
+
+	mdw_flw_debug(
+		"cmd_tb_ic(0x%llx) total(%llu) history_num(%u) start_ts(%llu) end_ts(%llu)\n",
+		cb->cmd_tb_id, cb->end_ts_us - cb->start_ts_us, cb->history_num, cb->start_ts_us,
+		cb->end_ts_us);
 	for (i = 0; i < MAX_CON_CMD; i++)
 		mdw_flw_debug(
 			"history_inf_time-%d (%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u)\n",
@@ -180,6 +186,8 @@ static int mdw_dplcy_preprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *c
 		       TMA_POINT_NUM * sizeof(uint32_t));
 	}
 	cb->record_total_tma = cmd_tb->history_tma;
+	mdw_flw_debug("\n");
+	mdw_dplcy_dump_cmd_tb(cmd_tb);
 	return 0;
 }
 static inline uint8_t mdw_dplcy_record_rank(struct policy_cb *cb, bool exist_opp_diff)
@@ -225,7 +233,12 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 	if (cb->con_current_cmd == 0 || total_us == 0 || cb->record_total_tma == 0)
 		return 0;
 	mdw_dplcy_dump_cb(cb);
-	mdw_dplcy_dump_cnd_tb(cmd_tb);
+	mdw_dplcy_dump_cmd_tb(cmd_tb);
+
+	if (cb->unexpect_code != 0)
+		mdw_exception("dplcy err(%d) session(0x%llx) c-uid(0x%llx/0x%llx)\n",
+			      cb->unexpect_code, (uint64_t)cmd_tb->mpriv, cb->cmd_tb_id,
+			      cmd_tb->uid);
 
 	cb->con_current_cmd =
 		(cb->con_current_cmd > MAX_CON_CMD) ? MAX_CON_CMD : cb->con_current_cmd;
@@ -237,6 +250,7 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 	}
 	valid_record_num = i;
 	avg_opp = mdw_dplcy_cal_close_opp(total_us_opp, total_us);
+
 	if (total_us > cmd_tb->history_inf_time[cb->con_current_cmd][avg_opp])
 		cmd_tb->history_inf_time[cb->con_current_cmd][avg_opp] = total_us;
 	for (i = 0; i < MAX_CON_CMD - 1; i++) {
@@ -245,6 +259,9 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 			cmd_tb->history_inf_time[i + 1][avg_opp] =
 				cmd_tb->history_inf_time[i][avg_opp];
 	}
+	mdw_flw_debug("uid(0x%llx) opp(%llu) history_inf_time(%u/%u/%u)\n", cmd_tb->uid, avg_opp,
+		      cmd_tb->history_inf_time[0][avg_opp], cmd_tb->history_inf_time[1][avg_opp],
+		      cmd_tb->history_inf_time[2][avg_opp]);
 	for (i = 0; i < valid_record_num; i++) {
 		if (i == 0)
 			record_avg_opp[0] = mdw_dplcy_cal_close_opp(cb->record_point_accu_boost[i],
@@ -286,13 +303,15 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 	} else {
 		record_to_history = false;
 	}
-
+	mdw_flw_debug("uid(0x%llx) to_history(%d) record_quality(%u/%u) num(%u/%u) diff(%d)\n",
+		      cmd_tb->uid, record_to_history, record_quality, cmd_tb->record_quality,
+		      valid_record_num, cmd_tb->valid_record_num, exist_opp_diff);
 	if (record_to_history) {
 		total_us = cb->end_ts_us - cb->start_ts_us;
 		for (i = 0; i < TMA_POINT_NUM; i++) {
 			if (cb->record_point_inf_us[i] == 0)
 				break;
-			cmd_tb->history_point_tma[i] = cb->history_point_tma[i];
+			cmd_tb->history_point_tma[i] = cb->record_point_tma[i];
 			cmd_tb->history_point_percent[i] =
 				(cb->record_point_inf_us[i] << PERCENT_SHIFT) / total_us;
 		}
