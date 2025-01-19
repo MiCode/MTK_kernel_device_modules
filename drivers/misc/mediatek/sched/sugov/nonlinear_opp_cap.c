@@ -28,6 +28,7 @@
 #include "dsu_interface.h"
 #include <mt-plat/mtk_irq_mon.h>
 #include "eas/group.h"
+#include "sched_version_ctrl.h"
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
@@ -866,7 +867,7 @@ int get_eas_hook(void)
 {
 	if (mtk_eas_hook)
 		return mtk_eas_hook();
-	return 0;
+	return legacy_api_support_get();
 }
 EXPORT_SYMBOL_GPL(get_eas_hook);
 
