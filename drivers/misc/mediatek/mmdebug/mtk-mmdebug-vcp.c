@@ -22,11 +22,25 @@
 #include "vcp_status.h"
 
 #include "mtk-mmdebug-vcp.h"
-#include "mtk-mmdvfs-debug.h"
 
 static int vcp_power;
 static DEFINE_MUTEX(mmdebug_vcp_pwr_mutex);
 static struct mmdebug_ipi_data mmdebug_vcp_ipi_data;
+
+static bool mmdebug_init_done;
+
+bool mmdebug_is_init_done(void)
+{
+	return mmdebug_init_done;
+}
+EXPORT_SYMBOL_GPL(mmdebug_is_init_done);
+
+static RAW_NOTIFIER_HEAD(mmdebug_status_dump_notifier_list);
+int mtk_mmdebug_status_dump_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mmdebug_status_dump_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdebug_status_dump_register_notifier);
 
 static int mtk_mmdebug_enable_vcp(const bool enable)
 {
@@ -91,7 +105,7 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 #endif
 		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%hhu",
 			kernel_warn_type_str[slot.idx], slot.idx, slot.ack, slot.base);
-		mmdvfs_debug_status_dump(NULL);
+		raw_notifier_call_chain(&mmdebug_status_dump_notifier_list, 0, NULL);
 		break;
 	default:
 		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",
@@ -141,6 +155,9 @@ static int mmdebug_vcp_init_thread(void *data)
 	}
 
 	mtk_mmdebug_enable_vcp(false);
+
+	mmdebug_init_done = true;
+	MMDEBUG_DBG("mmdebug_init_done:%d", mmdebug_init_done);
 
 	return 0;
 }
