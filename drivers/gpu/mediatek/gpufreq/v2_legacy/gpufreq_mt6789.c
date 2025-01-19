@@ -3520,7 +3520,8 @@ static int __gpufreq_init_segment_id(struct platform_device *pdev)
 		segment_id = MT6789T_SEGMENT;
 		break;
 	default:
-		segment_id = ENG_SEGMENT;
+		//segment_id = ENG_SEGMENT;
+		segment_id = MT6789_SEGMENT;
 		break;
 	}
 
