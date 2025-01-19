@@ -736,7 +736,6 @@ static void tt_vip(void)
 	bool ct_vip_qualified = false;
 	bool touching = false;
 	int tmp_avg_cpu_loading = 0;
-	int ret = -1;
 
 	/* The effect after touch ends lasts for TOUCH_SUSTAIN_MS milliseconds */
 	if (ktime_to_ms(ktime_get() - cur_touch_time) < TOUCH_SUSTAIN_MS || launch_turbo_enable())
@@ -756,7 +755,7 @@ static void tt_vip(void)
 	mutex_lock(&wi_lock);
 
 	if (tt_vip_algo_hook)
-		ret = tt_vip_algo_hook(ct_vip_qualified, ssid_tgid, sui_tgid, f_tgid, touching);
+		tt_vip_algo_hook(ct_vip_qualified, ssid_tgid, sui_tgid, f_tgid, touching);
 
 	mutex_unlock(&wi_lock);
 }
