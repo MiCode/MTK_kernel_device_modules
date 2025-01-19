@@ -339,6 +339,7 @@ static int emi_icc_probe(struct platform_device *pdev)
 
 	icc_provider_init(provider);
 
+	data->num_nodes = num_nodes;
 	for (i = 0; i < num_nodes; i++) {
 		node = icc_node_create(mnodes[i]->id);
 		if (IS_ERR(node)) {
@@ -356,7 +357,6 @@ static int emi_icc_probe(struct platform_device *pdev)
 
 		data->nodes[i] = node;
 	}
-	data->num_nodes = num_nodes;
 
 	ret = icc_provider_register(provider);
 	if (ret)
