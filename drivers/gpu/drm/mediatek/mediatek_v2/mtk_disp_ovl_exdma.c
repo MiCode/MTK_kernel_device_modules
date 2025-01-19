@@ -1054,6 +1054,9 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 	u32 wcg_mask = 0, wcg_value = 0, sel_value = 0, sel_mask = 0;
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 
+	if (!comp)
+		return;
+
 	DDPDBG("%s, %s idx:%d, ext_idx:%d\n", __func__,
 		mtk_dump_comp_str(comp), idx, ext_idx);
 
@@ -2231,6 +2234,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	unsigned int pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
 	unsigned int modifier = 0;
 
+	if (!comp)
+		return;
+
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
@@ -3122,12 +3128,9 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 		DDPDBG("exdma_addon_config:%s\n", mtk_dump_comp_str(comp));
 
 		if (comp->mtk_crtc->is_dual_pipe) {
-			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD)) {
-				if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
-					width = config->rsz_src_roi.width;
-				else
-					width = config->rsz_src_roi.width;
-			} else
+			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_TILE_OVERHEAD))
+				width = config->rsz_src_roi.width;
+			else
 				width = config->rsz_src_roi.width / 2;
 			if (drm_crtc_index(crtc) == 2 && (width % 2)) {
 				if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
@@ -3637,8 +3640,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
-				REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
+		//inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
+		//		REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
 		inten = 0; /* remove me after irq handling done */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_INTSTA, 0,
@@ -3799,7 +3802,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
 		unsigned int update_pending = 0;
-		unsigned int crtc_idx, channel_id;
+		unsigned int crtc_idx, channel_id = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4788,7 +4791,7 @@ static int mtk_disp_ovl_exdma_probe(struct platform_device *pdev)
 
 	ranges = of_get_property(dev->of_node, "dma-ranges", &len);
 	if (ranges && priv->data && priv->data->is_support_34bits)
-		dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_INTSTA);
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_INTEN);

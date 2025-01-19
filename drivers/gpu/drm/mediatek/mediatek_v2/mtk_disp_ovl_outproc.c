@@ -442,36 +442,6 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 				 struct cmdq_pkt *handle)
 {
 	return;
-
-	if ((addon_config->config_type.module == DISP_RSZ ||
-		addon_config->config_type.module == DISP_RSZ_v2 ||
-		addon_config->config_type.module == DISP_RSZ_v3 ||
-		addon_config->config_type.module == DISP_RSZ_v4 ||
-		addon_config->config_type.module == DISP_RSZ_v5 ||
-		addon_config->config_type.module == DISP_RSZ_v6) &&
-		addon_config->config_type.type == ADDON_BETWEEN) {
-		struct mtk_addon_rsz_config *config =
-			&addon_config->addon_rsz_config;
-
-		mtk_ovl_outproc_addon_rsz_config(comp, prev, next, config->rsz_src_roi,
-					 config->rsz_dst_roi, handle);
-	}
-
-	if ((addon_config->config_type.module == DISP_MML_IR_PQ ||
-		addon_config->config_type.module == DISP_MML_IR_PQ_1 ||
-		addon_config->config_type.module == DISP_MML_IR_PQ_v3) &&
-		(addon_config->config_type.type == ADDON_CONNECT ||
-		addon_config->config_type.type == ADDON_DISCONNECT)) {
-		struct mtk_addon_mml_config *config = &addon_config->addon_mml_config;
-		struct mtk_rect src, dst;
-
-		src = config->mml_src_roi[config->pipe];
-		dst = config->mml_dst_roi[config->pipe];
-
-		/* this rsz means enlarge/narrow, not component */
-		mtk_ovl_outproc_addon_rsz_config(comp, prev, next, src, dst, handle);
-	}
-
 }
 
 static int mtk_ovl_outproc_golden_setting(struct mtk_ddp_comp *comp,
@@ -991,7 +961,7 @@ static int mtk_disp_ovl_outproc_probe(struct platform_device *pdev)
 
 	ranges = of_get_property(dev->of_node, "dma-ranges", &len);
 	if (ranges && priv->data && priv->data->is_support_34bits)
-		dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_OUTPROC_INTSTA);
 	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_OUTPROC_INTEN);

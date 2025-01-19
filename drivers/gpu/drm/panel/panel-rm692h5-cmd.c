@@ -690,6 +690,9 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
 	unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h)
 {
+	if (!ext_param)
+		return;
+
 	unsigned int roi_y = *y, roi_h = *h;
 	unsigned int slice_height = ext_param->dsc_params.slice_height;
 	unsigned int lil_te1_line = 380;
