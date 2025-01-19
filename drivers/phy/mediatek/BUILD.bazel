@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -23,6 +24,17 @@ filegroup(
     ]),
 )
 
+ddk_headers(
+    name = "phy-mtk-io",
+    hdrs = [
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+    linux_includes = [
+        "include",
+    ],
+)
+
 define_mgk_ddk_ko(
     name = "phy-mtk-fpgaphy",
     srcs = [
@@ -45,6 +57,15 @@ define_mgk_ddk_ko(
     name = "phy-mtk-nxp-eusb2-repeater",
     srcs = [
         "phy-mtk-nxp-eusb2-repeater.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-pcie",
+    srcs = [
+        "phy-mtk-pcie.c",
+        "phy-mtk-io.h",
     ],
     includes = ["."],
 )
