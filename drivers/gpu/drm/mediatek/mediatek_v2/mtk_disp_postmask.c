@@ -118,6 +118,10 @@
 #define DISP_POSTMASK_NUM(n) (DISP_POSTMASK_NUM_0 + (0x4 * (n)))
 #define DISP_POSTMASK_GRAD_VAL_0 0xA00
 #define DISP_POSTMASK_GRAD_VAL(n) (DISP_POSTMASK_GRAD_VAL_0 + (0x4 * (n)))
+#define DISP_POSTMASK_SLC (0x1FC)
+#define POSTMASK_SLC REG_FLD_MSB_LSB(4, 0)
+#define POSTMASK_VCSEL REG_FLD_MSB_LSB(5, 5)
+
 
 static irqreturn_t mtk_postmask_irq_handler(int irq, void *dev_id) __always_unused;
 
@@ -452,6 +456,10 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 
 		mtk_ddp_write_relaxed(comp, size, DISP_POSTMASK_MEM_LENGTH,
 				      handle);
+		value = (REG_FLD_VAL((POSTMASK_SLC), 0) |
+			 REG_FLD_VAL((POSTMASK_VCSEL), 1));
+		mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SLC, handle);
+
 #else
 		value = (REG_FLD_VAL((CFG_FLD_RELAY_MODE), 0) |
 			 REG_FLD_VAL((CFG_FLD_DRAM_MODE), 0) |
@@ -562,6 +570,8 @@ int mtk_postmask_analysis(struct mtk_ddp_comp *comp)
 	DDPDUMP("status=0x%x,cur_pos=0x%x\n",
 		readl(DISP_POSTMASK_STATUS + baddr),
 		readl(DISP_POSTMASK_INPUT_COUNT + baddr));
+	DDPDUMP("slc=0x%x\n",
+		readl(DISP_POSTMASK_SLC + baddr));
 
 	return 0;
 }
