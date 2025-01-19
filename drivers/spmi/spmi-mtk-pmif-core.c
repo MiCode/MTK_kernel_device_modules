@@ -1868,7 +1868,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 
 	spmi_nack_monitor_list_parse(pdev);
 
-	if (arb->caps == 2) {
+	if ((arb->caps == 2) || (arb->caps == 3)) {
 		arb->irq = platform_get_irq_byname(pdev, "pmif_irq");
 		if (arb->irq < 0) {
 			dev_notice(&pdev->dev,
