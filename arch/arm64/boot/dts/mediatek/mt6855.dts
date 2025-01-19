@@ -6587,9 +6587,14 @@
 					  "mbox2",
 					  "mbox3",
 					  "mbox4";
+			scp-sram-size = <0x00100000>;
+			scp-dram-size = <0x00100000>; /* scp dram image size */
+			scp-cache-dump-buf-size = <0x0003c000>;
+			scp-reg-dump-buf-size = <0x00003c00>;
+			scp-tbuf-dump-buf-size = <0x00000400>;
+
 			core-0 = "enable";
 			scp-hwvoter = "disable";
-			scp-sram-size = <0x00100000>;
 			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
 			mbox-count = <4>;
