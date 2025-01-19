@@ -1,4 +1,6 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
 
 package(
     default_visibility = [
@@ -30,4 +32,62 @@ ddk_headers(
     ]),
     includes = ["."],
     visibility = ["//visibility:public"],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-mmc-dbg",
+	srcs = [
+		"mtk-mmc-dbg.c",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:headers".format(kernel_version),
+	],
+	hdrs = [
+		"mtk-mmc-dbg.h",
+		"mtk-mmc.h",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "mtk-mmc-dbg.ko",
+)
+
+define_mgk_ddk_ko(
+	name = "cqhci",
+	srcs = [
+		"cqhci-core.c",
+		"cqhci-crypto.c"
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "cqhci.ko",
 )
