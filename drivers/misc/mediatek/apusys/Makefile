@@ -340,7 +340,7 @@ apusys-objs += mvpu/common/mvpu_plat.o
 apusys-objs += mvpu/common/mvpu_sysfs.o
 apusys-objs += mvpu/common/mvpu_config.o
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.0/mvpu20_platdata.c),)
+# mvpu20
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.0/
 subdir-ccflags-y += -DMVPU_V20_PLAT_DATA
 apusys-objs += mvpu/platform/v2/mvpu2_preempt.o
@@ -349,8 +349,8 @@ apusys-objs += mvpu/platform/v2/2.0/mvpu20_sec.o
 apusys-objs += mvpu/platform/v2/2.0/mvpu20_platdata.o
 apusys-objs += mvpu/platform/v2/2.0/mvpu20_valid.o
 apusys-objs += mvpu/platform/v2/2.0/mvpu20_handler.o
-endif
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.5/mvpu25_platdata.c),)
+
+# mvpu25
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v2/2.5/
 subdir-ccflags-y += -DMVPU_V25_PLAT_DATA
 apusys-objs += mvpu/platform/v2/mvpu2_preempt.o
@@ -359,8 +359,8 @@ apusys-objs += mvpu/platform/v2/2.5/mvpu25_sec.o
 apusys-objs += mvpu/platform/v2/2.5/mvpu25_platdata.o
 apusys-objs += mvpu/platform/v2/2.5/mvpu25_valid.o
 apusys-objs += mvpu/platform/v2/2.5/mvpu25_handler.o
-endif
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v3/3.0/mvpu30_platdata.c),)
+
+# mvpu30
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/v3/3.0/
 subdir-ccflags-y += -DMVPU_V30_PLAT_DATA
 apusys-objs += mvpu/platform/v3/mvpu3_preempt.o
@@ -369,7 +369,6 @@ apusys-objs += mvpu/platform/v3/3.0/mvpu30_sec.o
 apusys-objs += mvpu/platform/v3/3.0/mvpu30_platdata.o
 apusys-objs += mvpu/platform/v3/3.0/mvpu30_valid.o
 apusys-objs += mvpu/platform/v3/3.0/mvpu30_handler.o
-endif
 
 # aps
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aps/
