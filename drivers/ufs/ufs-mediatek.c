@@ -980,7 +980,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 	if (!cmd)
 		return;
 
-#if IS_ENABLED(CONFIG_RPMB)
+#if IS_ENABLED(CONFIG_MTK_RPMB)
 	ufs_rpmb_vh_compl_command(hba, lrbp);
 #endif
 

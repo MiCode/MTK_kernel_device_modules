@@ -580,7 +580,7 @@ static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, region);
 #else
-		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, region);
+		ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &rpmbdata, region);
 #endif
 
 		if (ret) {
@@ -706,7 +706,7 @@ static int _rpmb_req_program_key(u8 region, u8 *key)
 	rpmb_dump_frame(&data.icmd.frames[0]);
 
 	/* Send to kernel driver instead of netlink */
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &data, region);
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
 			__func__, ret, ret);
@@ -758,7 +758,7 @@ static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 #else
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 #endif
 
 	if (ret)
@@ -820,7 +820,7 @@ static int rpmb_req_write_data_ufs(u8 *frame, u32 blk_cnt)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 #else
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 #endif
 
 	if (ret)
@@ -870,7 +870,7 @@ static int rpmb_req_purge_enable(u8 region, u8 *frame)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&data, region);
 #else
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &data, region);
 #endif
 
 	if (ret)
@@ -913,7 +913,7 @@ static int rpmb_req_read_purge_status(u8 region, u8 *frame)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&data, region);
 #else
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &data, region);
 #endif
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
@@ -959,7 +959,7 @@ static int rpmb_req_program_key_ufs(u8 region, u8 *frame)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&data, region);
 #else
-	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &data, region);
 #endif
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
@@ -1167,7 +1167,7 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 #else
-		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
+		ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 #endif
 
 		if (ret) {
@@ -1343,7 +1343,7 @@ static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 #else
-		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
+		ret = rpmb_mtk_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 #endif
 
 		if (ret) {

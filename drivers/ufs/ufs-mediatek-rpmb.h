@@ -6,7 +6,7 @@
 #ifndef _UFS_MEDIATEK_RPMB_H
 #define _UFS_MEDIATEK_RPMB_H
 
-#if IS_ENABLED(CONFIG_RPMB)
+#if IS_ENABLED(CONFIG_MTK_RPMB)
 
 #include <linux/rpmb.h>
 
@@ -19,7 +19,7 @@ void ufs_rpmb_vh_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 #define ufs_mtk_rpmb_init(...)
 #define ufs_rpmb_vh_compl_command(...)
 
-#endif /* CONFIG_RPMB */
+#endif /* CONFIG_MTK_RPMB */
 
 #endif /* _UFS_MEDIATEK_RPMB_H */
 

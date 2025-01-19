@@ -365,7 +365,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	if (unlikely(scsi_device_get(host->sdev_rpmb)))
 		goto out;
 
-	rdev = rpmb_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
+	rdev = rpmb_mtk_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
 	if (IS_ERR(rdev)) {
 		dev_info(hba->dev, "%s: cannot register to rpmb %ld\n",
 			 dev_name(hba->dev), PTR_ERR(rdev));

@@ -575,7 +575,7 @@ static int rpmb_sim_probe(struct device *dev)
 	rpmb_sim_ops.dev_id = id;
 	rpmb_sim_ops.reliable_wr_cnt = max_wr_blks;
 
-	rsdev->rdev = rpmb_dev_register(rsdev->dev, &rpmb_sim_ops);
+	rsdev->rdev = rpmb_mtk_dev_register(rsdev->dev, &rpmb_sim_ops);
 	if (IS_ERR(rsdev->rdev)) {
 		ret = PTR_ERR(rsdev->rdev);
 		goto err;
@@ -601,7 +601,7 @@ static int rpmb_sim_remove(struct device *dev)
 
 	rsdev = dev_get_drvdata(dev);
 
-	rpmb_dev_unregister(rsdev->dev);
+	rpmb_mtk_dev_unregister(rsdev->dev);
 
 	dev_set_drvdata(dev, NULL);
 

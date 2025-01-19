@@ -9,7 +9,7 @@
 /**********************************************************
  * Function Declaration                                   *
  **********************************************************/
-#if IS_ENABLED(CONFIG_RPMB)
+#if IS_ENABLED(CONFIG_MTK_RPMB)
 int mmc_rpmb_register(struct mmc_host *mmc);
 #else
 //int mmc_rpmb_register(...);

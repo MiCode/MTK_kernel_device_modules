@@ -1159,7 +1159,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 
 	ufs_mtk_perf_heurisic_req_done(hba, cmd);
 
-#if IS_ENABLED(CONFIG_RPMB)
+#if IS_ENABLED(CONFIG_MTK_RPMB)
 	ufs_rpmb_vh_compl_command(hba, lrbp);
 #endif
 

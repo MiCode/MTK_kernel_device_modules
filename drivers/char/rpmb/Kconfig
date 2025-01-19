@@ -1,4 +1,4 @@
-config RPMB
+config MTK_RPMB
 	tristate "RPMB partition interface"
 	help
 	  Unified RPMB partition interface for eMMC and UFS.

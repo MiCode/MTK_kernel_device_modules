@@ -4677,7 +4677,7 @@ skip_hwcq:
 	ret = mmc_dbg_register(mmc);
 #endif
 
-#if IS_ENABLED(CONFIG_RPMB)
+#if IS_ENABLED(CONFIG_MTK_RPMB)
 	ret = mmc_rpmb_register(mmc);
 #endif
 	dev_info(&pdev->dev, "[%s %d]ret=%d\n", __func__, __LINE__, ret);

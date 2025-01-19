@@ -17,26 +17,26 @@
 static DEFINE_IDA(rpmb_ida);
 
 /**
- * rpmb_dev_get - increase rpmb device ref counter
+ * rpmb_mtk_dev_get - increase rpmb device ref counter
  *
  * @rdev: rpmb device
  */
-struct rpmb_dev *rpmb_dev_get(struct rpmb_dev *rdev)
+struct rpmb_dev *rpmb_mtk_dev_get(struct rpmb_dev *rdev)
 {
 	return get_device(&rdev->dev) ? rdev : NULL;
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_get);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_get);
 
 /**
- * rpmb_dev_put - decrease rpmb device ref counter
+ * rpmb_mtk_dev_put - decrease rpmb device ref counter
  *
  * @rdev: rpmb device
  */
-void rpmb_dev_put(struct rpmb_dev *rdev)
+void rpmb_mtk_dev_put(struct rpmb_dev *rdev)
 {
 	put_device(&rdev->dev);
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_put);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_put);
 
 static int rpmb_request_verify(struct rpmb_dev *rdev, struct rpmb_data *rpmbd)
 {
@@ -153,7 +153,7 @@ static void rpmb_cmd_fixup(struct rpmb_dev *rdev,
 }
 
 /**
- * rpmb_cmd_seq - send RPMB command sequence
+ * rpmb_mtk_cmd_seq - send RPMB command sequence
  *
  * @rdev: rpmb device
  * @cmds: rpmb command list
@@ -164,7 +164,7 @@ static void rpmb_cmd_fixup(struct rpmb_dev *rdev,
  *         -EOPNOTSUPP if device doesn't support the requested operation
  *         < 0 if the operation fails
  */
-int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds,
+int rpmb_mtk_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds,
 	u8 region)
 {
 	int err;
@@ -181,7 +181,7 @@ int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds,
 	mutex_unlock(&rdev->lock);
 	return err;
 }
-EXPORT_SYMBOL_GPL(rpmb_cmd_seq);
+EXPORT_SYMBOL_GPL(rpmb_mtk_cmd_seq);
 
 static void rpmb_cmd_set(struct rpmb_cmd *cmd, u32 flags,
 			 struct rpmb_frame *frames, u32 nframes)
@@ -217,7 +217,7 @@ static void rpmb_dump_frame(u8 *data_frame)
 }
 #endif
 /**
- * rpmb_cmd_req - send rpmb request command
+ * rpmb_mtk_cmd_req - send rpmb request command
  *
  * @rdev: rpmb device
  * @rpmbd: rpmb request data
@@ -227,7 +227,7 @@ static void rpmb_dump_frame(u8 *data_frame)
  *         -EOPNOTSUPP if device doesn't support the requested operation
  *         < 0 if the operation fails
  */
-int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd, u8 region)
+int rpmb_mtk_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd, u8 region)
 {
 	struct rpmb_cmd cmd[3];
 	struct rpmb_frame *res_frame;
@@ -300,13 +300,13 @@ int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd, u8 region)
 #endif
 	return ret;
 }
-EXPORT_SYMBOL_GPL(rpmb_cmd_req);
+EXPORT_SYMBOL_GPL(rpmb_mtk_cmd_req);
 
-u16 rpmb_get_rw_size(struct rpmb_dev *rdev)
+u16 rpmb_mtk_get_rw_size(struct rpmb_dev *rdev)
 {
 	return rdev->ops->reliable_wr_cnt;
 }
-EXPORT_SYMBOL_GPL(rpmb_get_rw_size);
+EXPORT_SYMBOL_GPL(rpmb_mtk_get_rw_size);
 
 static void rpmb_dev_release(struct device *dev)
 {
@@ -316,7 +316,7 @@ static void rpmb_dev_release(struct device *dev)
 	kfree(rdev);
 }
 
-struct class rpmb_class = {
+struct class rpmb_mtk_class = {
 #if IS_ENABLED(CONFIG_ARCH_MEDIATEK)
 	.name = "rpmb_dummy",
 #else
@@ -324,26 +324,26 @@ struct class rpmb_class = {
 #endif
 	.dev_release = rpmb_dev_release,
 };
-EXPORT_SYMBOL(rpmb_class);
+EXPORT_SYMBOL(rpmb_mtk_class);
 
 /**
- * rpmb_dev_find_device - return first matching rpmb device
+ * rpmb_mtk_dev_find_device - return first matching rpmb device
  *
  * @data: data for the match function
  * @match: the matching function
  *
  * Return: matching rpmb device or NULL on failure
  */
-struct rpmb_dev *rpmb_dev_find_device(void *data,
+struct rpmb_dev *rpmb_mtk_dev_find_device(void *data,
 		     int (*match)(struct device *dev, const void *data))
 {
 	struct device *dev;
 
-	dev = class_find_device(&rpmb_class, NULL, data, match);
+	dev = class_find_device(&rpmb_mtk_class, NULL, data, match);
 
 	return dev ? to_rpmb_dev(dev) : NULL;
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_find_device);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_find_device);
 
 static int match_by_type(struct device *dev, const void *data)
 {
@@ -354,7 +354,7 @@ static int match_by_type(struct device *dev, const void *data)
 }
 
 /**
- * rpmb_dev_get_by_type - return first registered rpmb device
+ * rpmb_mtk_dev_get_by_type - return first registered rpmb device
  *      with matching type.
  *      If run with RPMB_TYPE_ANY the first an probably only
  *      device is returned
@@ -363,14 +363,14 @@ static int match_by_type(struct device *dev, const void *data)
  *
  * Return: matching rpmb device or NULL/ERR_PTR on failure
  */
-struct rpmb_dev *rpmb_dev_get_by_type(enum rpmb_type type)
+struct rpmb_dev *rpmb_mtk_dev_get_by_type(enum rpmb_type type)
 {
 	if (type > RPMB_TYPE_MAX)
 		return ERR_PTR(-EINVAL);
 
-	return rpmb_dev_find_device(&type, match_by_type);
+	return rpmb_mtk_dev_find_device(&type, match_by_type);
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_get_by_type);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_get_by_type);
 
 static int match_by_parent(struct device *dev, const void *data)
 {
@@ -380,20 +380,20 @@ static int match_by_parent(struct device *dev, const void *data)
 }
 
 /**
- * rpmb_dev_find_by_device - retrieve rpmb device from the parent device
+ * rpmb_mtk_dev_find_by_device - retrieve rpmb device from the parent device
  *
  * @parent: parent device of the rpmb device
  *
  * Return: NULL if there is no rpmb device associated with the parent device
  */
-struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent)
+struct rpmb_dev *rpmb_mtk_dev_find_by_device(struct device *parent)
 {
 	if (!parent)
 		return NULL;
 
-	return rpmb_dev_find_device(parent, match_by_parent);
+	return rpmb_mtk_dev_find_device(parent, match_by_parent);
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_find_by_device);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_find_by_device);
 
 static ssize_t type_show(struct device *dev,
 			 struct device_attribute *attr, char *buf)
@@ -466,43 +466,43 @@ static const struct attribute_group *rpmb_attr_groups[] = {
 };
 
 /**
- * rpmb_dev_unregister - unregister RPMB partition from the RPMB subsystem
+ * rpmb_mtk_dev_unregister - unregister RPMB partition from the RPMB subsystem
  *
  * @dev: parent device of the rpmb device
  */
-int rpmb_dev_unregister(struct device *dev)
+int rpmb_mtk_dev_unregister(struct device *dev)
 {
 	struct rpmb_dev *rdev;
 
 	if (!dev)
 		return -EINVAL;
 
-	rdev = rpmb_dev_find_by_device(dev);
+	rdev = rpmb_mtk_dev_find_by_device(dev);
 	if (!rdev) {
 		dev_notice(dev, "no disk found %s\n", dev_name(dev->parent));
 		return -ENODEV;
 	}
 
-	rpmb_dev_put(rdev);
+	rpmb_mtk_dev_put(rdev);
 
 	mutex_lock(&rdev->lock);
 	rpmb_cdev_del(rdev);
 	device_del(&rdev->dev);
 	mutex_unlock(&rdev->lock);
 
-	rpmb_dev_put(rdev);
+	rpmb_mtk_dev_put(rdev);
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_unregister);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_unregister);
 
 /**
- * rpmb_dev_register - register RPMB partition with the RPMB subsystem
+ * rpmb_mtk_dev_register - register RPMB partition with the RPMB subsystem
  *
  * @dev: storage device of the rpmb device
  * @ops: device specific operations
  */
-struct rpmb_dev *rpmb_dev_register(struct device *dev,
+struct rpmb_dev *rpmb_mtk_dev_register(struct device *dev,
 				   const struct rpmb_ops *ops)
 {
 	struct rpmb_dev *rdev;
@@ -537,7 +537,7 @@ struct rpmb_dev *rpmb_dev_register(struct device *dev,
 #else
 	dev_set_name(&rdev->dev, "rpmb%d", id);
 #endif
-	rdev->dev.class = &rpmb_class;
+	rdev->dev.class = &rpmb_mtk_class;
 	rdev->dev.parent = dev;
 	rdev->dev.groups = rpmb_attr_groups;
 
@@ -559,25 +559,25 @@ exit:
 	kfree(rdev);
 	return ERR_PTR(ret);
 }
-EXPORT_SYMBOL_GPL(rpmb_dev_register);
+EXPORT_SYMBOL_GPL(rpmb_mtk_dev_register);
 
-static int __init rpmb_init(void)
+static int __init rpmb_mtk_init(void)
 {
 	int err;
 	ida_init(&rpmb_ida);
-	err = class_register(&rpmb_class);
+	err = class_register(&rpmb_mtk_class);
 	return err ? err : rpmb_cdev_init();
 }
 
-static void __exit rpmb_exit(void)
+static void __exit rpmb_mtk_exit(void)
 {
 	rpmb_cdev_exit();
-	class_unregister(&rpmb_class);
+	class_unregister(&rpmb_mtk_class);
 	ida_destroy(&rpmb_ida);
 }
 
-subsys_initcall(rpmb_init);
-module_exit(rpmb_exit);
+subsys_initcall(rpmb_mtk_init);
+module_exit(rpmb_mtk_exit);
 
 MODULE_AUTHOR("Intel Corporation");
 MODULE_DESCRIPTION("RPMB class");

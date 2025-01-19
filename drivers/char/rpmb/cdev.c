@@ -179,7 +179,7 @@ static long rpmb_ioctl_seq_cmd(struct rpmb_dev *rdev,
 			goto out;
 	}
 
-	ret = rpmb_cmd_seq(rdev, cmds, ncmds, region);
+	ret = rpmb_mtk_cmd_seq(rdev, cmds, ncmds, region);
 	if (ret)
 		goto out;
 
@@ -231,7 +231,7 @@ static long rpmb_ioctl_req_cmd(struct rpmb_dev *rdev,
 	if (ret)
 		goto out;
 
-	ret = rpmb_cmd_req(rdev, &rpmbd, 0);
+	ret = rpmb_mtk_cmd_req(rdev, &rpmbd, 0);
 	if (ret)
 		goto out;
 

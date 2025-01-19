@@ -4,4 +4,4 @@
 #
 
 obj-$(CONFIG_HW_RANDOM)		+= hw_random/
-obj-$(CONFIG_RPMB)		+= rpmb/
+obj-$(CONFIG_MTK_RPMB)		+= rpmb/

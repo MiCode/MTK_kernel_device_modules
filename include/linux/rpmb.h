@@ -130,7 +130,7 @@ enum rpmb_type {
 	RPMB_TYPE_MAX = RPMB_TYPE_SIM
 };
 
-extern struct class rpmb_class;
+extern struct class rpmb_mtk_class;
 
 #define RPMB_F_WRITE     BIT(0)
 #define RPMB_F_REL_WRITE BIT(1)
@@ -200,63 +200,63 @@ struct rpmb_dev {
 
 #define to_rpmb_dev(x) container_of((x), struct rpmb_dev, dev)
 
-#if IS_ENABLED(CONFIG_RPMB)
-struct rpmb_dev *rpmb_dev_get(struct rpmb_dev *rdev);
-void rpmb_dev_put(struct rpmb_dev *rdev);
-struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent);
-struct rpmb_dev *rpmb_dev_get_by_type(enum rpmb_type type);
-struct rpmb_dev *rpmb_dev_register(struct device *dev,
+#if IS_ENABLED(CONFIG_MTK_RPMB)
+struct rpmb_dev *rpmb_mtk_dev_get(struct rpmb_dev *rdev);
+void rpmb_mtk_dev_put(struct rpmb_dev *rdev);
+struct rpmb_dev *rpmb_mtk_dev_find_by_device(struct device *parent);
+struct rpmb_dev *rpmb_mtk_dev_get_by_type(enum rpmb_type type);
+struct rpmb_dev *rpmb_mtk_dev_register(struct device *dev,
 				   const struct rpmb_ops *ops);
-struct rpmb_dev *rpmb_dev_find_device(void *data,
+struct rpmb_dev *rpmb_mtk_dev_find_device(void *data,
 				      int (*match)(struct device *dev,
 						   const void *data));
-int rpmb_dev_unregister(struct device *dev);
-int rpmb_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds,
+int rpmb_mtk_dev_unregister(struct device *dev);
+int rpmb_mtk_cmd_seq(struct rpmb_dev *rdev, struct rpmb_cmd *cmds, u32 ncmds,
 	u8 region);
-int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *data, u8 region);
+int rpmb_mtk_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *data, u8 region);
 
 #else
-static inline struct rpmb_dev *rpmb_dev_get(struct rpmb_dev *rdev)
+static inline struct rpmb_dev *rpmb_mtk_dev_get(struct rpmb_dev *rdev)
 {
 	return NULL;
 }
 
-static inline void rpmb_dev_put(struct rpmb_dev *rdev) { }
+static inline void rpmb_mtk_dev_put(struct rpmb_dev *rdev) { }
 
-static inline struct rpmb_dev *rpmb_dev_find_by_device(struct device *parent)
+static inline struct rpmb_dev *rpmb_mtk_dev_find_by_device(struct device *parent)
 {
 	return NULL;
 }
 
 static inline
-struct rpmb_dev *rpmb_dev_get_by_type(enum rpmb_type type)
+struct rpmb_dev *rpmb_mtk_dev_get_by_type(enum rpmb_type type)
 {
 	return NULL;
 }
 
 static inline struct rpmb_dev *
-rpmb_dev_register(struct device *dev, const struct rpmb_ops *ops)
+rpmb_mtk_dev_register(struct device *dev, const struct rpmb_ops *ops)
 {
 	return NULL;
 }
 
-static inline int rpmb_dev_unregister(struct device *dev)
+static inline int rpmb_mtk_dev_unregister(struct device *dev)
 {
 	return 0;
 }
 
-static inline int rpmb_cmd_seq(struct rpmb_dev *rdev,
+static inline int rpmb_mtk_cmd_seq(struct rpmb_dev *rdev,
 			       struct rpmb_cmd *cmds, u32 ncmds)
 {
 	return 0;
 }
 
-static inline int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *data,
+static inline int rpmb_mtk_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *data,
 	 u8 region)
 {
 	return 0;
 }
 
-#endif /* CONFIG_RPMB */
+#endif /* CONFIG_MTK_RPMB */
 
 #endif /* __RPMB_H__ */
