@@ -1821,8 +1821,13 @@
 	logstore: logstore {
 		enabled = <1>;
 		pmic-register = <0xa0d>;
-		/* if not, means default(2M); v2.0 (4M) */
-		version = "v2.0";
+		/*
+		if not, means default(3M: 2M(logstoe) + 1M(mrdump));
+		version = C_LOG_STORE_EXPDB_SIZE(preloader) + 1M(bootprof) + 1M(mrdump)
+		version < MRDUMP_CONFIG_EXPDB_OFFSET_LIMIT
+		note: To modify the version value, modify the C_LOG_STORE_EXPDB_SIZE(mt6991/print.h) at the same time.
+		*/
+		version = "12582912";
 	};
 
 	gic: interrupt-controller {
