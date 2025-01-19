@@ -23,7 +23,8 @@ enum adsp_excep_id {
 };
 
 /* adsp reg dump */
-struct adsp_coredump {
+/* hifi: size 512B */
+struct adsp_coredump_hifi {
 	u32 reserved_0[67];
 	u32 pc;
 	u32 exccause;
@@ -31,6 +32,24 @@ struct adsp_coredump {
 	u32 reserved_1[7];
 	u8 task_name[16];
 	u32 reserved_2[47];
+};
+/* rv: size 512B */
+struct adsp_coredump_rv {
+	u32 reserved_0[32];
+	u32 pc;
+	u32 exccause;
+	u32 excvaddr;
+	u32 reserved_1[15];
+	u8 task_name[16];
+	u32 reserved_2[74];
+};
+
+/* coredump: total 1KB */
+struct adsp_coredump {
+	union {
+		struct adsp_coredump_hifi hifi;
+		struct adsp_coredump_rv rv;
+	};
 	u8 assert_log[512];
 };
 

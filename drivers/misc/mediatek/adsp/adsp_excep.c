@@ -36,6 +36,13 @@
 #define ADSP_MISC_BUF_SIZE      0x10000 //64KB
 #define ADSP_TEST_EE_PATTERN    "Assert-Test"
 
+static_assert(sizeof(struct adsp_coredump_hifi) == 512, \
+	"Size of adsp_coredump_hifi is not 512 bytes");
+static_assert(sizeof(struct adsp_coredump_rv) == 512, \
+	"Size of adsp_coredump_rv is not 512 bytes");
+static_assert(sizeof(struct adsp_coredump) == 1024, \
+	"Size of adsp_coredump is not 1024 bytes");
+
 static char *adsp_ke_buffer;
 static struct adsp_exception_control excep_ctrl;
 static bool suppress_test_ee;
@@ -279,14 +286,25 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 	n += snprintf(detail + n, ADSP_AED_STR_LEN - n, "%s %s\n",
 		      pdata->name, aed_type);
 	if (coredump) {
-		n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
-			      "adsp pc=0x%08x,exccause=0x%x,excvaddr=0x%x\n",
-			      coredump->pc,
-			      coredump->exccause,
-			      coredump->excvaddr);
-		n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
-			      "CRDISPATCH_KEY:ADSP exception/%s\n",
-			      coredump->task_name);
+		if (adspsys->desc->version == 3) {
+			n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
+				"adsp pc=0x%08x,exccause=0x%x,excvaddr=0x%x\n",
+				coredump->rv.pc,
+				coredump->rv.exccause,
+				coredump->rv.excvaddr);
+			n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
+				"CRDISPATCH_KEY:ADSP exception/%s\n",
+				coredump->rv.task_name);
+		} else {
+			n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
+				"adsp pc=0x%08x,exccause=0x%x,excvaddr=0x%x\n",
+				coredump->hifi.pc,
+				coredump->hifi.exccause,
+				coredump->hifi.excvaddr);
+			n += snprintf(detail + n, ADSP_AED_STR_LEN - n,
+				"CRDISPATCH_KEY:ADSP exception/%s\n",
+				coredump->hifi.task_name);
+		}
 		n += snprintf(detail + n, ADSP_AED_STR_LEN - n, "%s",
 			      coredump->assert_log);
 	}
@@ -393,7 +411,8 @@ void adsp_aed_worker(struct work_struct *ws)
 	adsp_extern_notify_chain(ADSP_EVENT_STOP);
 
 #if !IS_ENABLED(CONFIG_MTK_ADSP_V0)
-	adsp_bus_monitor_dump();
+	if (adspsys->desc->version < 3)
+		adsp_bus_monitor_dump();
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

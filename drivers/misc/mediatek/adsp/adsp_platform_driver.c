@@ -35,7 +35,8 @@ int adsp_after_bootup(struct adsp_priv *pdata)
 {
 #ifdef BRINGUP_ADSP
 	/* disable adsp suspend by registering feature */
-	_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
+	if (adspsys->desc->version == 3) /* temp for bring up v3 */
+		_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
 #endif
 	/* force release slb buffer */
 	while (slb_memory_control(false) > 0)
@@ -319,6 +320,9 @@ void adsp_logger_init0_cb(struct work_struct *ws)
 	info[5] = adsp_get_reserve_mem_size(ADSP_A_DEBUG_DUMP_MEM_ID);
 	info[6] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
 	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
+
+	/* TEMP Force update each IPI */
+	adsp_timesync_resume();
 
 	ret = adsp_logger_init_message(ADSP_A_ID, (void *)info, sizeof(info));
 	if (ret != ADSP_OK)

@@ -10,7 +10,7 @@
 
 /* Should be undefined when running at real chip */
 // #define CFG_FPGA
-// #define BRINGUP_ADSP
+#define BRINGUP_ADSP
 
 /* reset recovery feature kernel option*/
 #define CFG_RECOVERY_SUPPORT

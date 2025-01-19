@@ -32,10 +32,7 @@ const struct adsp_core_description mt6993_adsp_c0_desc = {
 	.id = 0,
 	.name = "adsp_0",
 	.sharedmems = {
-		/* TODO: Need check offset */
-		[ADSP_SHAREDMEM_SYS_STATUS] = {0x0008, 0x0004},
-		[ADSP_SHAREDMEM_C2C_BUFINFO] = {0x2510, 0x0008}, // common begin
-		[ADSP_SHAREDMEM_TIMESYNC] = {0x2530, 0x0020},
+		[ADSP_SHAREDMEM_TIMESYNC] = {0xB00, 0x0018},
 	},
 	.ops = {
 		.initialize = adsp_core0_init,
@@ -46,10 +43,7 @@ const struct adsp_core_description mt6993_adsp_c0_desc = {
 const struct adsp_core_description mt6993_adsp_c1_desc = {
 	.id = 1,
 	.name = "adsp_1",
-	.sharedmems = {
-		/* TODO: Need check offset */
-		[ADSP_SHAREDMEM_SYS_STATUS] = {0x0008, 0x0004},
-	},
+	.sharedmems = {},
 	.ops = {
 		.initialize = adsp_core1_init,
 		.after_bootup = adsp_after_bootup,
@@ -104,6 +98,15 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	}
 	adspsys->cfg = devm_ioremap_resource(dev, res);
 	adspsys->cfg_size = resource_size(res);
+
+	/* for dump */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfg2");
+	if (!res) {
+		dev_err(dev, "no cfg2 resource found!");
+		return -ENODEV;
+	}
+	adspsys->cfg2 = devm_ioremap_resource(dev, res);
+	adspsys->cfg2_size = resource_size(res);
 
 	/* property read from dts*/
 	READ_U32_PROPERTY_DEFAULT(dev->of_node, "core-num",
@@ -209,15 +212,11 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 	}
 	pdata->dtcm = devm_ioremap_resource(dev, res);
 	pdata->dtcm_size = resource_size(res);
-#ifndef CFG_FPGA
-	/* get l2sram resource from platform_device */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	if (res) {
-		pdata->l2sram = devm_ioremap_resource(dev, res);
-		pdata->l2sram_size = resource_size(res);
-	} else
-		pr_info("%s, l2sram not support\n", __func__);
-#endif
+
+	/* Let has_system_l2sram() return true */
+	pdata->l2sram = pdata->dtcm;
+	pdata->l2sram_size = pdata->dtcm_size;
+
 	pdata->irq[ADSP_IRQ_IPC_ID].seq = platform_get_irq_byname(pdev, "sysirq");
 	pdata->irq[ADSP_IRQ_IPC_ID].clear_irq = adsp_mt_clr_sysirq;
 	pdata->irq[ADSP_IRQ_WDT_ID].seq = platform_get_irq_byname(pdev, "wdt");
@@ -335,7 +334,6 @@ static struct platform_driver * const drivers[] = {
 	&adsp_qos_scene_driver,
 };
 
-#ifndef CFG_FPGA
 int notify_adsp_semaphore_event(struct notifier_block *nb,
 				unsigned long event, void *v)
 {
@@ -355,7 +353,6 @@ int notify_adsp_semaphore_event(struct notifier_block *nb,
 static struct notifier_block adsp_semaphore_init_notifier = {
 	.notifier_call = notify_adsp_semaphore_event,
 };
-#endif
 
 /*
  * driver initialization entry point
@@ -367,18 +364,15 @@ static int __init platform_adsp_init(void)
 	ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
 	if (ret)
 		return ret;
-#ifndef CFG_FPGA
+
 	register_3way_semaphore_notifier(&adsp_semaphore_init_notifier);
-#endif
 	adsp_system_bootup();
 	return 0;
 }
 
 static void __exit platform_adsp_exit(void)
 {
-#ifndef CFG_FPGA
 	unregister_3way_semaphore_notifier(&adsp_semaphore_init_notifier);
-#endif
 	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
 	pr_info("[ADSP] platform-adsp Exit.\n");
 }
