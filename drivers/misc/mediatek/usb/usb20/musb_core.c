@@ -3431,9 +3431,9 @@ static struct musb_fifo_cfg fifo_cfg[]  = {
 		.ep_mode = EP_BULK, .mode = BUF_SINGLE},
 	{.hw_ep_num = 7, .style = FIFO_RX, .maxpacket = 512,
 		.ep_mode = EP_BULK, .mode = BUF_SINGLE},
-	{.hw_ep_num = 8, .style = FIFO_TX, .maxpacket = 512,
+	{.hw_ep_num = 8, .style = FIFO_TX, .maxpacket = 1024,
 		.ep_mode = EP_ISO, .mode = BUF_DOUBLE},
-	{.hw_ep_num = 8, .style = FIFO_RX, .maxpacket = 512,
+	{.hw_ep_num = 8, .style = FIFO_RX, .maxpacket = 1024,
 		.ep_mode = EP_ISO, .mode = BUF_DOUBLE},
 };
 
