@@ -138,6 +138,11 @@
 #define AXSLC_SET			(AXSLC_CACHE | AXSLC_ALLOCATE | AXSLC_SPECULATIVE)
 #define SLC_SB_ONLY_EN			F_BIT_SET(1)
 
+/* SMMU connect to DVM mi for tlbi broadcast */
+#define SMMU_TCU_CTL4_DVM		(0x210)
+#define DVM_EN_REQ			F_BIT_SET(0)
+#define DVM_EN_ACK			F_BIT_SET(1)
+
 /* SMMU TCU latency meters control registers
  * TCU_MON_ID: The monitoring AXI ID if needed, default monitor all
  * TCU_MON_DIS: 0:Enable measure, 1:Disable measure. Default 0
@@ -538,6 +543,7 @@ struct mtk_smmu_data {
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
+	bool				dvm_support;
 };
 
 enum mtk_smmu_tfm_type {

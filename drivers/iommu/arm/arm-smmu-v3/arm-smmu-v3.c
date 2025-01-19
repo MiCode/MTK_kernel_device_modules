@@ -4350,7 +4350,12 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu)
 	writel_relaxed(reg, smmu->base + ARM_SMMU_CR1);
 
 	/* CR2 (random crap) */
-	reg = CR2_PTM | CR2_RECINVSID;
+	if (smmu->impl && smmu->impl->smmu_dvm_support &&
+	    smmu->impl->smmu_dvm_support(smmu)) {
+		/* Remove PTM setting to make smmu participate in broadcast TLB maintenance */
+		reg = CR2_RECINVSID;
+	} else
+		reg = CR2_PTM | CR2_RECINVSID;
 
 	if (smmu->features & ARM_SMMU_FEAT_E2H)
 		reg |= CR2_E2H;
@@ -4452,6 +4457,11 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu)
 		dev_err(smmu->dev, "failed to enable SMMU interface\n");
 		return ret;
 	}
+
+	if (smmu->impl && smmu->impl->smmu_dvm_support &&
+	    smmu->impl->smmu_dvm_connect &&
+	    smmu->impl->smmu_dvm_support(smmu))
+		smmu->impl->smmu_dvm_connect(smmu);
 
 	return 0;
 }

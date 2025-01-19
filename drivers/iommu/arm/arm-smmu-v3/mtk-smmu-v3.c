@@ -1925,6 +1925,42 @@ static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
 	return SMC_SMMU_SUCCESS;
 }
 
+static bool mtk_smmu_dvm_support(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	return data->dvm_support;
+}
+
+static inline bool mtk_smmu_dvm_connect_done(struct arm_smmu_device *smmu)
+{
+	unsigned int val;
+
+	val = smmu_read_field(smmu->base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
+	return val == (DVM_EN_ACK | DVM_EN_REQ);
+}
+
+static void mtk_smmu_dvm_connect(struct arm_smmu_device *smmu)
+{
+	unsigned int attempts = 0;
+
+	if (mtk_smmu_dvm_connect_done(smmu)) {
+		/* SMMU has already connected with DVM */
+		return;
+	}
+
+	/* SMMU connect with DVM MI */
+	smmu_write_field(smmu->base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
+	while (attempts++ < SMMU_POLL_MAX_ATTEMPTS) {
+		if (mtk_smmu_dvm_connect_done(smmu)) {
+			/* SMMU has already connected with DVM */
+			return;
+		}
+	}
+
+	pr_info("%s, dvm connect timeout\n", __func__);
+}
+
 static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 				   u64 reg, u32 sid, u32 event_id, bool trans_s2)
 {
@@ -1964,11 +2000,16 @@ static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 		/* dump page table info */
 		if (!trans_s2)
 			break;
+
 		fault_ipa_32 = MTK_SMMU_ADDR(fault_ipa);
 		if (hyp_smmu_debug_smc(HYP_SMMU_TF_DUMP, 0, 0, smmu_type, sid,
 				       fault_ipa_32, &debug_info))
 			return SMC_SMMU_FAIL;
 		hyp_smmu_dump_s2_pgtable(debug_info);
+
+		if (mtk_smmu_dvm_support(smmu) && !mtk_smmu_dvm_connect_done(smmu))
+			pr_info("[%s] %s, This fault may be caused by DVM not connect\n",
+				HYP_SMMU_INFO_PREFIX, __func__);
 		break;
 	case HYP_SMMU_REG_DUMP_EVT:
 		/* dump smmu hw reg */
@@ -2384,6 +2425,8 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.alloc_io_pgtable_ops = mtk_alloc_io_pgtable_ops,
 	.free_io_pgtable_ops = mtk_free_io_pgtable_ops,
 	.smmu_mem_share = mtk_smmu_share_mem_to_hyp,
+	.smmu_dvm_support = mtk_smmu_dvm_support,
+	.smmu_dvm_connect = mtk_smmu_dvm_connect,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
@@ -2474,6 +2517,11 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 
 	if (of_property_read_bool(smmu->dev->of_node, "mediatek,axslc"))
 		data->axslc = true;
+
+	if (of_property_read_bool(smmu->dev->of_node, "mediatek,dvm")) {
+		dev_info(smmu->dev, "dvm_support\n");
+		data->dvm_support = true;
+	}
 
 	data->smi_com_base = kcalloc(SMI_COM_REGS_NUM, sizeof(u32), GFP_KERNEL);
 	ret = of_property_read_u32_array(smmu->dev->of_node, "smi-common-base",
