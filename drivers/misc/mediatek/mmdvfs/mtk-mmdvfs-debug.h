@@ -5,6 +5,9 @@
 #ifndef MTK_MMDVFS_DEBUG_H
 #define MTK_MMDVFS_DEBUG_H
 
+#include <linux/seq_file.h>
+#include <linux/types.h>
+
 #define MAX_OPP		(8)
 #define MMDVFS_RES_DATA_MODULE_ID	8
 #define MMDVFS_RES_DATA_VERSION		0
@@ -42,5 +45,8 @@ void mmdvfs_debug_status_dump(struct seq_file *file);
 inline void mmdvfs_vcp_cb_mutex_lock(void);
 inline void mmdvfs_vcp_cb_mutex_unlock(void);
 inline bool mmdvfs_vcp_cb_ready_get(void);
+
+int mmdvfs_debug_set_force_step(const char *val, const struct kernel_param *kp);
+int mmdvfs_debug_set_vote_step(const char *val, const struct kernel_param *kp);
 #endif
 

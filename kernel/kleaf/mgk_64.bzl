@@ -436,6 +436,8 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp-stub.ko",
     "drivers/misc/mediatek/memory-amms/memory-amms.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ccu.ko",
+    "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v3.ko",
+    "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v5.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ftrace.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-v3-start.ko",
