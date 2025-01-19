@@ -305,6 +305,26 @@
 			output-high;
 		};
 	};
+	camera_pins_cam2_scl_ap: cam2@6 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO202__FUNC_SCL9>;
+		};
+	};
+	camera_pins_cam2_scl_scp: cam2@7 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO202__FUNC_SCP_SCL7>;
+		};
+	};
+	camera_pins_cam2_sda_ap: cam2@8 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO203__FUNC_SDA9>;
+		};
+	};
+	camera_pins_cam2_sda_scp: cam2@9 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO203__FUNC_SCP_SDA7>;
+		};
+	};
 #if 0
 	camera_pins_cam2_mclk1_off: camera-pins-cam2-mclk1-off {
 		pins-cmd-dat {
@@ -675,7 +695,8 @@
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ov48b_mipi_raw",
 					"imx06a_mipi_raw",
-					"imx06c_mipi_raw";
+					"imx06c_mipi_raw",
+					"ov50ddual_mipi_raw";
 		reg = <0x36 0 0>;
 		maximum-pmic-delay = <4000>;
 
@@ -945,7 +966,8 @@
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "imx758_mipi_raw",
-					"imx858_mipi_raw";
+					"imx858_mipi_raw",
+					"ov50d_mipi_raw";
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 
@@ -1129,7 +1151,8 @@
 
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "imx598_mipi_raw",
+		sensor-names = "s5kjn1_mipi_raw",
+				"imx598_mipi_raw",
 				"imx709_mipi_raw",
 				"imx858dual_mipi_raw";
 		reg = <0x10>;
@@ -1147,7 +1170,12 @@
 				"mclk_6mA",
 				"mclk_8mA",
 				"rst_low",
-				"rst_high";
+				"rst_high",
+				"scl_ap",
+				"scl_scp",
+				"sda_ap",
+				"sda_scp";
+
 #if 0
 				"mclk1_off",
 				"mclk1_2mA",
@@ -1171,6 +1199,11 @@
 		pinctrl-4 = <&camera_pins_cam2_mclk_8ma>;
 		pinctrl-5 = <&camera_pins_cam2_rst_0>;
 		pinctrl-6 = <&camera_pins_cam2_rst_1>;
+		pinctrl-7 = <&camera_pins_cam2_scl_ap>;
+		pinctrl-8 = <&camera_pins_cam2_scl_scp>;
+		pinctrl-9 = <&camera_pins_cam2_sda_ap>;
+		pinctrl-10 = <&camera_pins_cam2_sda_scp>;
+
 #if 0
 		pinctrl-7 = <&camera_pins_cam2_mclk1_off>;
 		pinctrl-8 = <&camera_pins_cam2_mclk1_2ma>;
