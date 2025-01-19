@@ -5987,7 +5987,7 @@ void _mtk_crtc_atmoic_addon_module_connect(
 		priv->data->mmsys_id != MMSYS_MT6877 &&
 		priv->data->mmsys_id != MMSYS_MT6768 &&
 		priv->data->mmsys_id != MMSYS_MT6765 &&
-		priv->data->mmsys_id == MMSYS_MT6789 &&
+		priv->data->mmsys_id != MMSYS_MT6789 &&
 		priv->data->mmsys_id != MMSYS_MT6853 &&
 		priv->data->mmsys_id != MMSYS_MT6781 &&
 		priv->data->mmsys_id != MMSYS_MT6885 &&
