@@ -17,6 +17,7 @@ obj-$(CONFIG_SND_SOC_MT6768) += snd-soc-mt6768-afe.o
 
 # machine driver
 obj-$(CONFIG_SND_SOC_MT6768_MT6358) += mt6768-mt6358.o
+obj-$(CONFIG_AW862xx_HAPTIC) += mt6768-mt6358-ref.o
 
 # MENU Governor Predict(low power)
 ifeq ($(CONFIG_MTK_ACAO_SUPPORT),y)
