@@ -27,6 +27,16 @@ enum CHANNEL_TYPE {
 	CHANNEL_HRT_RW,
 };
 
+enum CHANNEL_BW_MODE {
+	CHANNEL_BW_OF_OVL = 0x1,
+	CHANNEL_BW_OF_PQ = 0x2,
+	CHANNEL_BW_OF_WDMA_IWB = 0x4,
+	CHANNEL_BW_OF_WDMA_CWB = 0x8,
+	CHANNEL_BW_DEFAULT = CHANNEL_BW_OF_OVL | CHANNEL_BW_OF_PQ | CHANNEL_BW_OF_WDMA_CWB,
+	CHANNEL_BW_HSIDLE_DC = CHANNEL_BW_OF_OVL | CHANNEL_BW_OF_PQ | CHANNEL_BW_OF_WDMA_IWB,
+	CHANNEL_BW_HSIDLE_DL = CHANNEL_BW_OF_PQ,
+};
+
 #define NO_PENDING_HRT (0xFFFF)
 #define OVL_REQ_HRT (0x1)
 #define RDMA_REQ_HRT (0x2)
@@ -90,12 +100,25 @@ void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned int i);
 void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 void mtk_disp_set_channel_hrt_write_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
-int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
-bool mtk_disp_check_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc);
 void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc);
 void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
+
+void mtk_disp_update_channel_bw_by_layer_MT6989(unsigned int layer, unsigned int bpp,
+	unsigned int *subcomm_bw_sum, unsigned int size,
+	unsigned int bw_base, enum CHANNEL_TYPE type);
+void mtk_disp_update_channel_bw_by_larb_MT6989(struct mtk_larb_port_bw *port_bw,
+	unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type);
+
 int mtk_disp_get_port_hrt_bw(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type);
+void mtk_disp_get_channel_hrt_bw_by_scope(struct mtk_drm_crtc *mtk_crtc,
+				unsigned int scope, unsigned int *result, unsigned int size);
+void mtk_disp_get_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+				unsigned int *result, unsigned int size);
+unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int bw, unsigned int ch_idx, bool force, const char *master);
+void mtk_disp_set_all_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int *bw, unsigned int size, const char *master);
 
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
 #endif

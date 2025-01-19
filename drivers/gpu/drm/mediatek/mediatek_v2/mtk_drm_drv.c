@@ -1648,6 +1648,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	struct mtk_drm_private *priv = dev->dev_private;
 	bool need_update_plane = false;
 	unsigned int *addr;
+	int crtc_idx = 0;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
@@ -1743,19 +1744,17 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		if (mtk_crtc->mml_link_state == MML_DIRECT_LINKING &&
 		    !mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle,
-				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_enable(true, priv);
-			CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(true);
+			if (mtk_vidle_is_ff_enabled())
+				CRTC_MMP_MARK(crtc_idx, enter_vidle, 0xd1, new_mode);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING ||
 			   mtk_crtc->mml_link_state == MML_STOP_DC) &&
 			   mtk_vidle_is_ff_enabled()) {
-			CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle,
-				mtk_crtc->mml_link_state, new_mode);
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle, 0xd1, mtk_crtc->mml_link_state);
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
+			if (!mtk_vidle_is_ff_enabled())
+				CRTC_MMP_MARK(crtc_idx, leave_vidle, 0xd1, new_mode);
 		}
 	}
 }
@@ -6773,6 +6772,8 @@ static const struct mtk_mmsys_driver_data mt6989_mmsys_driver_data = {
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
+	.update_channel_bw_by_layer = mtk_disp_update_channel_bw_by_layer_MT6989,
+	.update_channel_bw_by_larb = mtk_disp_update_channel_bw_by_larb_MT6989,
 };
 static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.main_path_data = &mt6991_mtk_main_path_data,

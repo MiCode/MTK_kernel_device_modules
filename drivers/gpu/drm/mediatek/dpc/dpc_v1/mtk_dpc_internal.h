@@ -286,6 +286,8 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_VIDLE_WINDOW_MASK      BIT(9)
 #define DPC_VIDLE_VDISP_MASK       BIT(10)
 
+#define MTK_MAX_CHANNEL_NUM 4
+
 enum dpc_state_source {
 	DPC_STATE_OF_TIMER,
 	DPC_STATE_OF_GROUPS,
@@ -382,6 +384,11 @@ struct mtk_dpc_dvfs_bw {
 	u8 bw_level;
 	u8 mml_level;
 	u8 disp_level;
+};
+
+struct mtk_dpc_channel_bw {
+	u32 disp_bw;
+	u32 mml_bw;
 };
 
 static void dpc_dt_enable(u16 dt, bool en);

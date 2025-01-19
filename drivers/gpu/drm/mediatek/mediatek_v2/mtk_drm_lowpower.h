@@ -20,6 +20,8 @@
 #define CMDQ_EVENT_ENUM cmdq_event
 #endif
 
+#define MTK_MAX_WB_FB_COUNT 5
+
 struct mtk_idle_private_data {
 	//the target cpu bind to idlemgr
 	unsigned int cpu_mask;
@@ -84,8 +86,10 @@ struct mtk_drm_idlemgr {
 	atomic_t async_cb_count;
 	atomic_t async_cb_pending;
 	struct pm_qos_request cpu_qos_req;
-	struct drm_framebuffer *wb_fb;
-	struct drm_framebuffer *wb_fb_r;
+	unsigned int fb_index;
+	unsigned int fb_r_index;
+	struct drm_framebuffer *wb_fb[MTK_MAX_WB_FB_COUNT];
+	struct drm_framebuffer *wb_fb_r[MTK_MAX_WB_FB_COUNT];
 	dma_addr_t wb_buffer_iova;
 	dma_addr_t wb_buffer_r_iova;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
@@ -108,8 +112,10 @@ struct mtk_drm_async_cb {
 struct mtk_iwb_cb_data {
 	struct cmdq_pkt			*cmdq_handle;
 	struct drm_crtc			*crtc;
-	struct mtk_ddp_comp		*comp;
-	struct mtk_ddp_comp		*comp_dual;
+	struct mtk_ddp_comp		*ovl;
+	struct mtk_ddp_comp		*wdma;
+	struct mtk_ddp_comp		*ovl_dual;
+	struct mtk_ddp_comp		*wdma_dual;
 };
 
 enum mtk_drm_async_user_id {

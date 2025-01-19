@@ -102,6 +102,11 @@ struct mtk_mmsys_driver_data {
 			unsigned int bw_base, unsigned int channel_bw[]);
 	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);
 	bool ct_wiat_cmdq_event;
+	void (*update_channel_bw_by_layer)(unsigned int layer, unsigned int bpp,
+			unsigned int *subcomm_bw_sum, unsigned int size,
+			unsigned int bw_base, enum CHANNEL_TYPE type);
+	void (*update_channel_bw_by_larb)(struct mtk_larb_port_bw *port_bw,
+			unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type);
 };
 
 struct mtk_drm_lyeblob_ids {

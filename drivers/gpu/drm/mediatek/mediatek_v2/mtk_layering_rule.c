@@ -1208,4 +1208,5 @@ static struct layering_rule_ops l_rule_ops = {
 	.fbdc_adjust_layout = fbdc_adjust_layout,
 	.fbdc_restore_layout = fbdc_restore_layout,
 	.fbdc_rule = filter_by_fbdc,
+	.layering_get_valid_hrt = layering_get_valid_hrt,
 };

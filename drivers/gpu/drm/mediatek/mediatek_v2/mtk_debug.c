@@ -6010,6 +6010,8 @@ void mtk_ovl_set_aod_scp_hrt(void)
 				sizeof(mtk_crtc->usage_ovl_fmt));
 	memset(mtk_crtc->usage_ovl_compr, 0,
 				sizeof(mtk_crtc->usage_ovl_compr));
+	memset(mtk_crtc->usage_ovl_ext_compr, 0,
+				sizeof(mtk_crtc->usage_ovl_ext_compr));
 	memset(mtk_crtc->usage_ovl_roi, 0,
 				sizeof(mtk_crtc->usage_ovl_roi));
 	for (i = 0; i < MAX_LAYER_NR; i++)
