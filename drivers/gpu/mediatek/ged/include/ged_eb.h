@@ -153,7 +153,8 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_CMD_LOADING_WIN_SIZE = 430,
 	FASTDVFS_GPU_EB_CMD_TIMER_BASE_DVFS_MARGIN = 431,
 	FASTDVFS_GPU_EB_LOG_DUMP_PREOC = 432,
-	NR_FASTDVFS_COUNTER = 442,
+	FASTDVFS_GPU_EB_USE_IDX_NOTIFY = 442,
+	NR_FASTDVFS_COUNTER,
 };
 
 /* 6989 0x117800~0x117C00 */
@@ -623,7 +624,13 @@ enum gpu_fastdvfs_counter {
 (														\
 (FASTDVFS_GPU_EB_LOG_DUMP_PREOC *SYSRAM_LOG_SIZE)	\
 )
+#define SYSRAM_GPU_EB_USE_IDX_NOTIFY                \
+(														\
+(FASTDVFS_GPU_EB_USE_IDX_NOTIFY *SYSRAM_LOG_SIZE)	\
+)
 
+
+/**********************************************/
 enum action_map {
 	ACTION_MAP_FASTDVFS = 0,
 	ACTION_MAP_FULLTRACE = 1,
@@ -655,8 +662,27 @@ enum {
 	GPUFDVFS_IPI_SET_DVFS_REINIT        = 14,
 	GPUFDVFS_IPI_GET_FB_TUNE_PARAM      = 15,
 	GPUFDVFS_IPI_GET_LB_TUNE_PARAM      = 16,
+	GPUFDVFS_IPI_SET_KPI_TS             = 17,
+	GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE = 18,
+	GPUFDVFS_IPI_GET_KPI_DATA 			= 19,
+	GPUFDVFS_IPI_GET_TABLE_DATA			= 20,
 
 	NR_GPUFDVFS_IPI,
+};
+
+enum {
+	GPUFDVFS_KPI_GET_NUM = 1,
+	GPUFDVFS_KPI_GET_HEAD = 2,
+	GPUFDVFS_KPI_GET_KPI_FROM_HEAD = 3,
+	GPUFDVFS_KPI_GET_HEAD_FPS = 4,
+	NR_GPUFDVFS_KPI_NUM,
+};
+
+enum {
+	GPUFDVFS_TABLE_GET_NUM = 1,
+	GPUFDVFS_TABLE_GET_COL_1 = 2,
+	GPUFDVFS_TABLE_GET_COL_2 = 3,
+	NR_GPUFDVFS_TABLE_NUM,
 };
 
 /* IPI data structure */
@@ -686,6 +712,8 @@ enum {
 	GPUFDVFS_IPI_EVENT_CLK_CHANGE = 1,
 	GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON = 2,
 	GPUFDVFS_IPI_EVENT_DEBUG_DATA = 3,
+	GPUFDVFS_IPI_EVENT_IDX_CHANGE = 4,
+	GPUFDVFS_IPI_EVENT_UPDATE_DESIRE_FREQ = 5,
 
 	NR_GPUFDVFS_IPI_EVENT_CMD,
 };
@@ -693,6 +721,7 @@ enum {
 struct GED_EB_EVENT {
 	int cmd;
 	unsigned int freq_new;
+	unsigned int idx[2];
 	struct work_struct sWork;
 	bool bUsed;
 };
@@ -707,6 +736,21 @@ struct fastdvfs_event_data {
 };
 
 /**************************************************
+ * GPU KPI TIMESTAMP
+ * DequeueBuffer/QueueBuffer/Prefence/GPU_done/set_target_fps
+ * Align GED_TIMESTAMP_TYPE_XX
+ **************************************************/
+enum GPU_KPI_TS {
+	GPU_KPI_TS_DEQ = 0x1,
+	GPU_KPI_TS_QUE = 0x2,
+	GPU_KPI_TS_PRE = 0x10,
+	GPU_KPI_TS_DONE = 0x4,
+	GPU_KPI_TS_FPS = 0x40,
+
+	GPU_KPI_TS_NUM,
+};
+
+/**************************************************
  * Definition
  **************************************************/
 #define FDVFS_IPI_DATA_LEN \
@@ -717,7 +761,7 @@ struct fastdvfs_event_data {
 #define POLICY_MODE         (2)
 #define POLICY_DEBUG_FTRACE (4)
 #define POLICY_DEBUG_MET    (8)
-#define DEFAULT_POLICY      POLICY_MODE
+#define POLICY_MODE_V2      (64)
 
 extern void fdvfs_init(void);
 extern void fdvfs_exit(void);
@@ -811,6 +855,7 @@ enum ged_eb_dvfs_task_index {
 	EB_UPDATE_DESIRE_FREQ_ID,
 	EB_UPDATE_LAST_COMMIT_IDX,
 	EB_UPDATE_LAST_COMMIT_TOP_IDX,
+	EB_SET_PANEL_REFRESH_RATE,
 	EB_DBG_CMD,
 	EB_MAX_INDEX,
 };
@@ -853,5 +898,283 @@ static struct {
 
 };
 
+/******************************************************************
+ * SYSRAM for EB_DVFS_V2
+ * Start address: 0x13D400~0x13E000 (borrow 3KB from MPU)
+ * Size: 3KB
+ * Debug RB: 0x13D400~0x13D800 (1KB), Each ringbuffer size: 10
+ * TS RB: 0x13D800~0x13DC00 (1KB), Each ringbuffer size: 7
+ * Mbrain: 0x13DC00~0x13E000 (1KB)
+ ******************************************************************/
+#define AP_FDVFS_DATA_START_OFFSET (0x800)
+#define AP_FDVFS_TMP_NEGATIVE_OFFSET AP_FDVFS_DATA_START_OFFSET
+#define AP_FDVFS_NORMAL_DATA_START 443  // tmp use 443~511 for swrgo
+#define FDVFS_V2_RB_SIZE (0x400)  // 1 KB
+#define FDVFS_MBRAIN_SIZE (0x400)  // 1 KB
+#define AP_FDVFS_TS_DATA_START (AP_FDVFS_DATA_START_OFFSET + FDVFS_V2_RB_SIZE)  // 0x13D800~0x13DC00 (1KB)
+#define AP_FDVFS_MBRAIN_DATA_START (AP_FDVFS_DATA_START_OFFSET + FDVFS_V2_RB_SIZE + FDVFS_MBRAIN_SIZE)  // 0x13D800~0x13DC00 (1KB)
+#define SYSRAM_RB_LOG_SIZE SYSRAM_LOG_SIZE * 10
+#define SYSRAM_RB_TS_SIZE SYSRAM_LOG_SIZE * 7
+#define SRAM_TS_RB_NUM 36
+
+typedef struct {
+	unsigned int type;
+	unsigned int lo_ts;
+	unsigned int hi_ts;
+	unsigned int lo_bqid;
+	unsigned int hi_bqid;
+	unsigned int pid;
+	unsigned int frameid;
+	unsigned int isSF;
+} GPU_TS_INFO;
+
+// RB for debug
+#define GPU_FDVFS_V2_RB_LOG_LIST \
+ GEN("Policy__Common", GPU_EB_LOG_DUMP_POLICY_COMMON, 2, "policy_state | eb_commit_type") \
+ GEN("Policy__Common__Commit_Reason", GPU_EB_LOG_DUMP_COMMIT_REASON1, 2, "same | diff") \
+ GEN("Policy__Frame_based__Frequency", GPU_EB_LOG_DUMP_FB_FREQ, 2, "target | target_opp") \
+ GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD1, 2, "cur | avg") \
+ GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD2, 2, "real | pipe") \
+ GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD3, 1, "mode") \
+ GEN("Policy__Frame_based__GPU_Time", GPU_EB_LOG_DUMP_FB_GPU_TIME1, 2, "cur | target") \
+ GEN("Policy__Frame_based__GPU_Time", GPU_EB_LOG_DUMP_FB_GPU_TIME2, 2, "real | pipe") \
+ GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX1, 2, "is_decreasing | async_ratio") \
+ GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX2, 2, "perf_improve | fb_oppidx") \
+ GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX3, 2, "fb_tar_freq | as_tar_opp") \
+ GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY1, 2, "cur_opp_id | fb_oppidx") \
+ GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY2, 2, "async_id | apply_async") \
+ GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY3, 1, "is_decreasing") \
+ GEN("Policy__Loading_based__GPU_Time", GPU_EB_LOG_DUMP_LB_GPU_TIME, 1, "target_hd") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
+ GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE1, 2, "dbg1_1 | dbg1_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE3, 2, "dbg3_1 | dbg3_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE4, 2, "dbg4_1 | dbg4_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE6, 2, "dbg6_1 | dbg6_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2")
+
+ /* Enable after Jayer SB due to no space
+ GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON2, 2, "pid | bqid") \
+ GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON3, 2, "count") \
+ GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target1, 2, "pid | bqid") \
+ GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target2, 2, "fps | use") \
+ GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target3, 1, "t_gpu_target") \
+ GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 2, "ceil | cur") \
+ GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 1, "floor") \
+ GEN("Policy__Frame_based__Margin_Detail", GPU_EB_LOG_DUMP_FB_MARGIN_DETAIL1, 2, "margin_mode | target_fps_margin") \
+ GEN("Policy__Frame_based__Margin_Detail", GPU_EB_LOG_DUMP_FB_MARGIN_DETAIL2, 2, "min_margin_inc_step | min_margin") \
+ */
+
+// sysram
+#define GPU_FDVFS_V2_COUNTER_LIST \
+ GEN("Panel_refresh_rate", GPU_TS_RB_IDX, 1, "write_idx") \
+ GEN("Panel_refresh_rate", GPU_PANEL_REFRESH_RATE, 1, "panel_fps") \
+ GEN("Gpu_rb_read_idx", GPU_RB_READ_IDX, 1, "read_idx") \
+ GEN("Gpu_rb_full_hint", GPU_RB_FULL_HINT, 1, "rb_full") \
+ GEN("Gpu_target_fps_bq", GPU_TARGET_FPS_BQ_LO, 1, "bq_low") \
+ GEN("Gpu_target_fps_bq", GPU_TARGET_FPS_BQ_HI, 1, "bq_high") \
+ GEN("Gpu_kpi_fps_freq", GPU_KPI_FPS_FREQ, 2, "kpi_fps_freq") \
+ GEN("Gpu_kpi_cpu_time", GPU_KPI_CPU_TIME, 1, "kpi_cpu_time") \
+ GEN("Gpu_kpi_gpu_time", GPU_KPI_GPU_TIME, 1, "kpi_gpu_time") \
+ GEN("Gpu_debug_5566", GPU_DEBUG1, 1, "5566_debug1") \
+ GEN("Gpu_debug_5566", GPU_DEBUG2, 1, "5566_debug2") \
+ GEN("Gpu_debug_5566", GPU_DEBUG3, 1, "5566_debug3") \
+ GEN("Gpu_debug_5566", GPU_DEBUG4, 1, "5566_debug4") \
+ GEN("Gpu_debug_5566", GPU_DEBUG5, 1, "5566_debug5") \
+ GEN("Gpu_debug_5566", GPU_DEBUG6, 1, "5566_debug6") \
+ GEN("Gpu_debug_5566", GPU_DEBUG7, 1, "5566_debug7") \
+ GEN("Gpu_debug_5566", GPU_DEBUG8, 1, "5566_debug8") \
+ GEN("Gpu_debug_5566", GPU_DEBUG9, 1, "5566_debug9") \
+ GEN("Gpu_debug_5566", GPU_DEBUG10, 1, "5566_debug10")\
+ GEN("commit_type", GPU_COMMIT_TYPE, 1, "commit_type") \
+ GEN("gpu_freq", GPU_STACK_FREQ, 1, "gpu_freq") \
+ GEN("top_freq", GPU_TOP_FREQ, 1, "top_freq") \
+ GEN("t_gpu", GPU_T_GPU, 1, "t_gpu") \
+ GEN("t_gpu_target", GPU_T_GPU_TARGET, 1, "t_gpu_target") \
+ GEN("t_gpu_pipe", GPU_T_GPU_PIPE, 1, "t_gpu_pipe") \
+ GEN("t_gpu_real", GPU_T_GPU_REAL, 1, "t_gpu_real") \
+ GEN("workload_pipe", GPU_WORKLOAD_PIPE, 1, "workload_pipe") \
+ GEN("workload_real", GPU_WORKLOAD_REAL, 1, "workload_real") \
+ GEN("target_freq", GPU_TARGET_FREQ, 1, "target_freq") \
+ GEN("target_opp", GPU_TARGET_OPP, 1, "target_opp") \
+ GEN("fb_margin", GPU_FB_MARGIN, 1, "fb_margin")
+
+// generate sysram index list according to FDVFS_V2_COUNTER
+#define GEN(name, index, count, var) index,
+enum gpu_fdvfs_v2_log_dump {
+    GPU_FDVFS_V2_RB_LOG_LIST
+    GPU_FDVFS_V2_RB_LOG_MAX,
+};
+enum gpu_fdvfs_v2_counter {
+    GPU_FDVFS_V2_COUNTER_LIST
+    GPU_FDVFS_V2_COUNTER_MAX,
+};
+#undef GEN
+
+// generate sysram address of SYSRAM_GPU_EB_LOG_DUMP_XXXXXX
+#define GEN(name, index, count, var) \
+    SYSRAM_##index = (AP_FDVFS_DATA_START_OFFSET + index * SYSRAM_RB_LOG_SIZE),
+enum gpu_sysram_rb_index {
+    GPU_FDVFS_V2_RB_LOG_LIST
+    SYSRAM_GPU_EB_LOG_DUMP_MAX = 511, // 1KB
+};
+#undef GEN
+
+// generate sysram address of SYSRAM_GPU_XXXXXX
+#define GEN(name, index, count, var) \
+    SYSRAM_##index = ((AP_FDVFS_NORMAL_DATA_START + index) * SYSRAM_LOG_SIZE),
+enum gpu_sysram_index {
+    GPU_FDVFS_V2_COUNTER_LIST
+    SYSRAM_GPU_EB_COUNTER_MAX,
+};
+#undef GEN
+
+struct gpu_fdvfs_v2_rb_table_t {
+	const char *tag_name;  // only for debug: tag name
+	enum gpu_fdvfs_v2_log_dump index;
+	unsigned int data_count;
+	unsigned int addr;
+	const char *var_name; // only for debug: variables included
+};
+
+struct gpu_fdvfs_v2_table_t {
+	const char *tag_name;  // only for debug: tag name
+	enum gpu_fdvfs_v2_counter index;
+	unsigned int data_count;
+	unsigned int addr;
+	const char *var_name; // only for debug: variables included
+};
+
+// generate fdvfs_v2_rb_table, index of item in table is the same as enum value
+// ex: GPU_EB_LOG_DUMP_COMMIT_REASON1 is store at fdvfs_v2_rb_table[GPU_EB_LOG_DUMP_COMMIT_REASON1]
+#define GEN(name, index, count, var_name) {name, index, count, SYSRAM_##index, var_name},
+static struct gpu_fdvfs_v2_rb_table_t fdvfs_v2_rb_table[] = {
+    GPU_FDVFS_V2_RB_LOG_LIST
+};
+static struct gpu_fdvfs_v2_table_t fdvfs_v2_table[] = {
+    GPU_FDVFS_V2_COUNTER_LIST
+};
+#undef GEN
+
+
+
+/**************************************************
+ * SYSRAM For timestamp ringbuffer
+ **************************************************/
+enum gpu_fdvfs_ts_ringbuffer {
+	FASTDVFS_SRAM_TS_0,
+	FASTDVFS_SRAM_TS_1,
+	FASTDVFS_SRAM_TS_2,
+	FASTDVFS_SRAM_TS_3,
+	FASTDVFS_SRAM_TS_4,
+	FASTDVFS_SRAM_TS_5,
+	FASTDVFS_SRAM_TS_6,
+	FASTDVFS_SRAM_TS_7,
+	FASTDVFS_SRAM_TS_8,
+	FASTDVFS_SRAM_TS_9,
+	FASTDVFS_SRAM_TS_10,
+	FASTDVFS_SRAM_TS_11,
+	FASTDVFS_SRAM_TS_12,
+	FASTDVFS_SRAM_TS_13,
+	FASTDVFS_SRAM_TS_14,
+	FASTDVFS_SRAM_TS_15,
+	FASTDVFS_SRAM_TS_16,
+	FASTDVFS_SRAM_TS_17,
+	FASTDVFS_SRAM_TS_18,
+	FASTDVFS_SRAM_TS_19,
+	FASTDVFS_SRAM_TS_20,
+	FASTDVFS_SRAM_TS_21,
+	FASTDVFS_SRAM_TS_22,
+	FASTDVFS_SRAM_TS_23,
+	FASTDVFS_SRAM_TS_24,
+	FASTDVFS_SRAM_TS_25,
+	FASTDVFS_SRAM_TS_26,
+	FASTDVFS_SRAM_TS_27,
+	FASTDVFS_SRAM_TS_28,
+	FASTDVFS_SRAM_TS_29,
+	FASTDVFS_SRAM_TS_30,
+	FASTDVFS_SRAM_TS_31,
+	FASTDVFS_SRAM_TS_32,
+	FASTDVFS_SRAM_TS_33,
+	FASTDVFS_SRAM_TS_34,
+	FASTDVFS_SRAM_TS_35
+};
+
+#define SYSRAM_GPU_TS_RB_LIST \
+    GPU_SRAM_ITEM_TS(0) \
+    GPU_SRAM_ITEM_TS(1) \
+    GPU_SRAM_ITEM_TS(2) \
+    GPU_SRAM_ITEM_TS(3) \
+    GPU_SRAM_ITEM_TS(4) \
+    GPU_SRAM_ITEM_TS(5) \
+    GPU_SRAM_ITEM_TS(6) \
+    GPU_SRAM_ITEM_TS(7) \
+    GPU_SRAM_ITEM_TS(8) \
+    GPU_SRAM_ITEM_TS(9) \
+    GPU_SRAM_ITEM_TS(10) \
+    GPU_SRAM_ITEM_TS(11) \
+    GPU_SRAM_ITEM_TS(12) \
+    GPU_SRAM_ITEM_TS(13) \
+    GPU_SRAM_ITEM_TS(14) \
+    GPU_SRAM_ITEM_TS(15) \
+    GPU_SRAM_ITEM_TS(16) \
+    GPU_SRAM_ITEM_TS(17) \
+    GPU_SRAM_ITEM_TS(18) \
+    GPU_SRAM_ITEM_TS(19) \
+    GPU_SRAM_ITEM_TS(20) \
+    GPU_SRAM_ITEM_TS(21) \
+    GPU_SRAM_ITEM_TS(22) \
+    GPU_SRAM_ITEM_TS(23) \
+    GPU_SRAM_ITEM_TS(24) \
+    GPU_SRAM_ITEM_TS(25) \
+    GPU_SRAM_ITEM_TS(26) \
+    GPU_SRAM_ITEM_TS(27) \
+    GPU_SRAM_ITEM_TS(28) \
+    GPU_SRAM_ITEM_TS(29) \
+    GPU_SRAM_ITEM_TS(30) \
+    GPU_SRAM_ITEM_TS(31) \
+    GPU_SRAM_ITEM_TS(32) \
+    GPU_SRAM_ITEM_TS(33) \
+    GPU_SRAM_ITEM_TS(34) \
+    GPU_SRAM_ITEM_TS(35)
+
+#define GPU_SRAM_ITEM_TS(type) \
+    SYSRAM_GPU_TS_RB_##type = (AP_FDVFS_TS_DATA_START + FASTDVFS_SRAM_TS_##type * SYSRAM_RB_TS_SIZE),
+
+enum FDVFS_SRAM_AP_TS_ADR_LIST {
+    SYSRAM_GPU_TS_RB_LIST
+   	SYSRAM_GPU_TS_RB_END
+};
+
+// For R/W multi variable to single sysram address
+union combineData {
+	struct {
+        unsigned int var1 : 32;
+    } oneVar;
+	struct {
+        unsigned int var1 : 16;
+        unsigned int var2 : 16;
+    } twoVar;
+    struct {
+        unsigned int var1 : 8;
+        unsigned int var2 : 8;
+        unsigned int var3 : 16;
+    } thrVar;
+    struct {
+        unsigned int var1 : 8;
+        unsigned int var2 : 8;
+        unsigned int var3 : 8;
+        unsigned int var4 : 8;
+    } fourVar;
+    unsigned int value;
+};
+/******************************************************************
+ * API for EB_DVFS_V2
+ *****************************************************************/
+extern int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in);
+extern union combineData mtk_gpueb_sysram_multi_read(int offset);
 
 #endif // __GED_EB_H__

@@ -27,7 +27,6 @@
 #endif
 
 #include "ged_eb.h"
-
 #include "ged_base.h"
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -46,9 +45,13 @@
 
 #if defined(MTK_GPU_EB_SUPPORT)
 static void __iomem *mtk_gpueb_dvfs_sysram_base_addr;
+static void __iomem *mtk_gpueb_base_addr;   /* 0x4b000000 */
+static void __iomem *mtk_gpueb_dvfs_sysram_base_addr_swrgo;
 
 struct fdvfs_ipi_rcv_data fdvfs_ipi_rcv_msg;
+struct fdvfs_ipi_rcv_data async_ipi_rcv_msg;
 static int g_fast_dvfs_ipi_channel = -1;
+static int g_async_ipi_channel = -1;
 
 static int g_fdvfs_event_ipi_channel = -1;
 uint32_t fdvfs_event_ipi_rcv_msg[4];
@@ -100,6 +103,7 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 {
 	struct GED_EB_EVENT *psEBEvent =
 		GED_CONTAINER_OF(psWork, struct GED_EB_EVENT, sWork);
+	static int desire_ipi_cnt = 0;
 
 	/* debug info */
 	/*
@@ -120,7 +124,7 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 			trace_tracing_mark_write(5566, "unreasonable_top_freq",psEBEvent->freq_new);
 		} else {
 			mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
-			if (eb_policy_dts_flag && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
+			if (is_fdvfs_enable() && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
 				&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
 				mutex_lock(&gsPolicyLock);
 				ged_kpi_fastdvfs_update_dcs();
@@ -145,6 +149,22 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		//trace_tracing_mark_write(5566, "eb_margin", eb_margin);
 		//trace_tracing_mark_write(5566, "eb_policy_state", eb_policy_state);
 		break;
+	case GPUFDVFS_IPI_EVENT_IDX_CHANGE:
+		// check psEBEvent->idx[0], psEBEvent->idx[1] value
+
+		trace_tracing_mark_write(5566, "idx_enable", 1);
+
+		break;
+	case GPUFDVFS_IPI_EVENT_UPDATE_DESIRE_FREQ:
+		desire_ipi_cnt++;
+		if (is_fdvfs_enable() & POLICY_MODE_V2) {
+			mutex_lock(&gsPolicyLock);
+			ged_kpi_fastdvfs_update_dcs();
+			mutex_unlock(&gsPolicyLock);
+			trace_tracing_mark_write(5566, "desire_ipi_req", psEBEvent->idx[0]);
+		}
+		trace_tracing_mark_write(5566, "desire_ipi_cnt", desire_ipi_cnt);
+		break;
 	default:
 		GPUFDVFS_LOGI("(%d), cmd: %d wrong!!!\n", __LINE__, psEBEvent->cmd);
 		break;
@@ -160,6 +180,7 @@ static void ged_eb_sysram_debug_data_write(void)
 	int dbg_data4[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
 	int dbg_data5[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
 	int dbg_data6[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
+	union combineData tmp_multi = {0};
 
 	u32 diff_data[GPUEB_SYSRAM_DVFS_DEBUG_COUNT] = {0};
 	int i, dbg_cnt;
@@ -192,7 +213,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_LO + cur_read_p);
 			soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
 			if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
-				time_diff = (soc_timer - soc_timer_eb) / 13;
+				time_diff = (soc_timer - soc_timer_eb) / soc_timer_unit;
 			else
 				time_diff = 0;
 			diff_data[i] = time_diff;
@@ -421,8 +442,50 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			}
 		}
-
 		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GPU_EB_DEBUG_READ_POINTER, tmp_head);
+	}
+
+	// RB for EB_DVFS_V2
+	for (dbg_cnt = 0; dbg_cnt < GPU_FDVFS_V2_RB_LOG_MAX; dbg_cnt++) {
+		tmp_head = head;
+		for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
+			int cur_read_p = tmp_head * sizeof(u32);
+			if (tmp_head != tail) {
+				switch (dbg_cnt) {
+				case GPU_EB_LOG_DUMP_POLICY_COMMON:
+				case GPU_EB_LOG_DUMP_COMMIT_REASON1:
+				case GPU_EB_LOG_DUMP_LB_GPU_TIME:
+					tmp_multi =	mtk_gpueb_sysram_multi_read(
+							fdvfs_v2_rb_table[dbg_cnt].addr + cur_read_p);
+					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
+						dbg_data[i] = tmp_multi.oneVar.var1;
+					} else if (fdvfs_v2_rb_table[dbg_cnt].data_count == 2) {
+						dbg_data[i] = tmp_multi.twoVar.var1;
+						dbg_data2[i] = tmp_multi.twoVar.var2;
+					}
+					break;
+				default:
+					break;
+				}
+
+				tmp_head++;
+				if (tmp_head >= GPUEB_SYSRAM_DVFS_DEBUG_BUF_SIZE)
+					tmp_head = 0;
+			} else {
+				dbg_data[i] = 0;
+			}
+		}
+
+		switch (dbg_cnt) {
+			case GPU_EB_LOG_DUMP_POLICY_COMMON:
+				trace_GPU_DVFS__EBRB_Policy_Common(dbg_data, dbg_data2);
+				break;
+			case GPU_EB_LOG_DUMP_COMMIT_REASON1:
+				trace_GPU_DVFS__EBRB_Commit_Reason(dbg_data, dbg_data2);
+				break;
+			default:
+				break;
+		}
 	}
 
 }
@@ -450,6 +513,9 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 		event_data = (struct fastdvfs_event_data *) data;
 		cmd = event_data->cmd;
 		if (cmd == GPUFDVFS_IPI_EVENT_DEBUG_DATA) {
+			if (event_data->u.set_para.arg[2] == EB_DVFS_FALLBACK && is_fdvfs_enable() & POLICY_MODE_V2) {
+				ged_eb_dvfs_frame_done_dump();
+			}
 			if (event_data->u.set_para.arg[0] == EB_DVFS_FALLBACK) {
 				ged_eb_dvfs_trace_dump();
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
@@ -460,10 +526,17 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 				ged_eb_sysram_debug_data_write();
 			}
 			return 0;
+		} else if (cmd == GPUFDVFS_IPI_EVENT_CLK_CHANGE) {
+			psEBEvent->freq_new = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
+			psEBEvent->idx[0] = 0;
+			psEBEvent->idx[1] = 0;
+		} else if (cmd == GPUFDVFS_IPI_EVENT_IDX_CHANGE) {
+			psEBEvent->freq_new = 0;
+			psEBEvent->idx[0] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
+			psEBEvent->idx[1] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[1];
+		} else if (cmd == GPUFDVFS_IPI_EVENT_UPDATE_DESIRE_FREQ) {
+			psEBEvent->idx[0] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
 		}
-
-		psEBEvent->freq_new = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
-
 		/* irq cmd type (from gpueb) */
 		psEBEvent->cmd = ((struct fastdvfs_event_data *)data)->cmd;
 
@@ -498,8 +571,6 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 		ipi_data->u.set_para.arg[0]);
 
 	cmd_start = ktime_get();
-	ipi_data->u.set_para.arg[3] = (cmd_start & 0xFFFFFFFF00000000) >> 32;
-	ipi_data->u.set_para.arg[4] = (u32)(cmd_start & 0x00000000FFFFFFFF);
 
 
 	switch (cmd) {
@@ -538,6 +609,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_GET_MODE:
 	case GPUFDVFS_IPI_GET_FB_TUNE_PARAM:
 	case GPUFDVFS_IPI_GET_LB_TUNE_PARAM:
+	case GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE:
 		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
@@ -552,6 +624,33 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 
 	break;
 	// Get
+	case GPUFDVFS_IPI_GET_KPI_DATA:
+		ret = mtk_ipi_send_compl_to_gpueb(
+			g_fast_dvfs_ipi_channel,
+			IPI_SEND_POLLING, ipi_data,
+			FDVFS_IPI_DATA_LEN,
+			FASTDVFS_IPI_TIMEOUT);
+
+		ipi_data->u.set_para.arg[0] = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
+		ipi_data->u.set_para.arg[1] = fdvfs_ipi_rcv_msg.u.set_para.arg[1];
+		ipi_data->u.set_para.arg[2] = fdvfs_ipi_rcv_msg.u.set_para.arg[2];
+		ipi_data->u.set_para.arg[3] = fdvfs_ipi_rcv_msg.u.set_para.arg[3];
+		ipi_data->u.set_para.arg[4] = fdvfs_ipi_rcv_msg.u.set_para.arg[4];
+	break;
+
+	case GPUFDVFS_IPI_GET_TABLE_DATA:
+		ret = mtk_ipi_send_compl_to_gpueb(
+			g_fast_dvfs_ipi_channel,
+			IPI_SEND_POLLING, ipi_data,
+			FDVFS_IPI_DATA_LEN,
+			FASTDVFS_IPI_TIMEOUT);
+
+		ipi_data->u.set_para.arg[0] = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
+		ipi_data->u.set_para.arg[1] = fdvfs_ipi_rcv_msg.u.set_para.arg[1];
+		ipi_data->u.set_para.arg[2] = fdvfs_ipi_rcv_msg.u.set_para.arg[2];
+		ipi_data->u.set_para.arg[3] = fdvfs_ipi_rcv_msg.u.set_para.arg[3];
+		ipi_data->u.set_para.arg[4] = fdvfs_ipi_rcv_msg.u.set_para.arg[4];
+	break;
 
 	case GPUFDVFS_IPI_PMU_START:
 		ret = mtk_ipi_send_compl_to_gpueb(
@@ -573,9 +672,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	}
 
 	cmd_now = ktime_get();
-	cmd_duration = ktime_sub(cmd_now,
-		(((u64)((u64)(fdvfs_ipi_rcv_msg.u.set_para.arg[3]) << 32) & 0xFFFFFFFF00000000) +
-		fdvfs_ipi_rcv_msg.u.set_para.arg[4]));
+	cmd_duration = ktime_sub(cmd_now, cmd_start);
 
 	GPUFDVFS_LOGD("(%d), cmd: %d, ack cmd: %d, msg[0]: %d. IPI duration: %llu ns(%llu ns)\n",
 		__LINE__,
@@ -901,6 +998,7 @@ unsigned int is_fdvfs_enable(void)
 	return eb_policy_mode;
 }
 
+
 unsigned int mtk_gpueb_dvfs_get_cur_freq(void)
 {
 	int ret = 0;
@@ -1031,23 +1129,47 @@ int mtk_gpueb_sysram_read(int offset)
 {
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -1;
+	if (!mtk_gpueb_dvfs_sysram_base_addr_swrgo)
+		return -1;
 
 	if ((offset % 4) != 0)
 		return -1;
 
-	return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
+	// legacy 2 KB space
+	if (offset < 0x800)
+		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
+	// new space for swrgo and Jayer
+	else
+		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset));
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_read);
+
+// same as mtk_gpueb_sysram_read but return combineData type
+union combineData mtk_gpueb_sysram_multi_read(int offset)
+{
+	union combineData out_data= {};
+
+	out_data.value = mtk_gpueb_sysram_read(offset);
+	return out_data;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_multi_read);
 
 int mtk_gpueb_sysram_write(int offset, int val)
 {
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -EADDRNOTAVAIL;
+	if (!mtk_gpueb_dvfs_sysram_base_addr_swrgo)
+		return -EADDRNOTAVAIL;
 
 	if ((offset % 4) != 0)
 		return -EINVAL;
 
-	__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
+	// legacy 2 KB space
+	if (offset < 0x800)
+		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
+	// new space for swrgo and Jayer
+	else
+		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset);
 	mb(); /* make sure register access in order */
 
 	if (val != mtk_gpueb_sysram_read(offset))
@@ -1058,6 +1180,130 @@ int mtk_gpueb_sysram_write(int offset, int val)
 	return 0;
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_write);
+
+static unsigned int SYSRAM_GPU_TS_RB(int rb_num)
+{
+	switch (rb_num) {
+		case 0:
+			return SYSRAM_GPU_TS_RB_0;
+		case 1:
+			return SYSRAM_GPU_TS_RB_1;
+		case 2:
+			return SYSRAM_GPU_TS_RB_2;
+		case 3:
+			return SYSRAM_GPU_TS_RB_3;
+		case 4:
+			return SYSRAM_GPU_TS_RB_4;
+		case 5:
+			return SYSRAM_GPU_TS_RB_5;
+		case 6:
+			return SYSRAM_GPU_TS_RB_6;
+		case 7:
+			return SYSRAM_GPU_TS_RB_7;
+		case 8:
+			return SYSRAM_GPU_TS_RB_8;
+		case 9:
+			return SYSRAM_GPU_TS_RB_9;
+		case 10:
+			return SYSRAM_GPU_TS_RB_10;
+		case 11:
+			return SYSRAM_GPU_TS_RB_11;
+		case 12:
+			return SYSRAM_GPU_TS_RB_12;
+		case 13:
+			return SYSRAM_GPU_TS_RB_13;
+		case 14:
+			return SYSRAM_GPU_TS_RB_14;
+		case 15:
+			return SYSRAM_GPU_TS_RB_15;
+		case 16:
+			return SYSRAM_GPU_TS_RB_16;
+		case 17:
+			return SYSRAM_GPU_TS_RB_17;
+		case 18:
+			return SYSRAM_GPU_TS_RB_18;
+		case 19:
+			return SYSRAM_GPU_TS_RB_19;
+		case 20:
+			return SYSRAM_GPU_TS_RB_20;
+		case 21:
+			return SYSRAM_GPU_TS_RB_21;
+		case 22:
+			return SYSRAM_GPU_TS_RB_22;
+		case 23:
+			return SYSRAM_GPU_TS_RB_23;
+		case 24:
+			return SYSRAM_GPU_TS_RB_24;
+		case 25:
+			return SYSRAM_GPU_TS_RB_25;
+		case 26:
+			return SYSRAM_GPU_TS_RB_26;
+		case 27:
+			return SYSRAM_GPU_TS_RB_27;
+		case 28:
+			return SYSRAM_GPU_TS_RB_28;
+		case 29:
+			return SYSRAM_GPU_TS_RB_29;
+		case 30:
+			return SYSRAM_GPU_TS_RB_30;
+		case 31:
+			return SYSRAM_GPU_TS_RB_31;
+		case 32:
+			return SYSRAM_GPU_TS_RB_32;
+		case 33:
+			return SYSRAM_GPU_TS_RB_33;
+		case 34:
+			return SYSRAM_GPU_TS_RB_34;
+		case 35:
+			return SYSRAM_GPU_TS_RB_35;
+		default:
+			return 0;
+	}
+}
+
+int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in)
+{
+	int offset = 0;
+	if (rb_num >= SRAM_TS_RB_NUM)
+		return -1;
+
+	offset = SYSRAM_GPU_TS_RB(rb_num);
+	if (!offset)
+		return -1;
+
+	GED_LOGD("[EB_POLICY_V2] Write SYSRAM rb_num(%d) addr(%u): type(%u) lo_ts(%u) hi_ts(%u)"
+		" lo_bqid(%u) hi_bqid(%u) pid(%u) frameid(%u) isSF(%u)",
+		rb_num, offset, ts_in.type, ts_in.lo_ts, ts_in.hi_ts,
+		ts_in.lo_bqid, ts_in.hi_bqid, ts_in.pid, ts_in.frameid, ts_in.isSF);
+
+	// 1.type
+	mtk_gpueb_sysram_write(offset, ts_in.type);
+	offset += sizeof(ts_in.type);
+	// 2. lo_bqid
+	mtk_gpueb_sysram_write(offset, ts_in.lo_bqid);
+	offset += sizeof(ts_in.lo_bqid);
+	// 3. hi_bqid
+	mtk_gpueb_sysram_write(offset, ts_in.hi_bqid);
+	offset += sizeof(ts_in.hi_bqid);
+	// 4. frameid
+	mtk_gpueb_sysram_write(offset, ts_in.frameid);
+	offset += sizeof(ts_in.frameid);
+	// 5. pid_sf
+	mtk_gpueb_sysram_write(offset,
+		((ts_in.pid & 0xFFFF) << 16) + (ts_in.isSF & 0xFFFF));
+	offset += sizeof(ts_in.pid);
+	// 6. lo_ts
+	mtk_gpueb_sysram_write(offset, ts_in.lo_ts);
+	offset += sizeof(ts_in.lo_ts);
+	// 7. hi_ts
+	mtk_gpueb_sysram_write(offset, ts_in.hi_ts);
+	offset += sizeof(ts_in.hi_ts);
+
+	mb();
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_rb_write);
 
 u64 mtk_gpueb_read_soc_timer(void)
 {
@@ -1077,7 +1323,7 @@ u64 mtk_gpueb_read_soc_timer(void)
 
 		if (cur_ged_timer > ged_timer) {
 			timer_dur = cur_ged_timer - ged_timer;
-			timer_dur = (timer_dur * 13) / 1000;
+			timer_dur = (timer_dur * soc_timer_unit) / 1000;
 		} else {
 			timer_dur = 0;
 		}
@@ -1238,11 +1484,13 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 			break;
 		case EB_SET_FTRACE:
 			if (value == 1) {
-				mtk_set_fastdvfs_mode(POLICY_MODE | POLICY_DEBUG_FTRACE);
+				unsigned int eb_policy_mode = is_fdvfs_enable();
+				mtk_set_fastdvfs_mode(eb_policy_mode | POLICY_DEBUG_FTRACE);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 				ged_cancel_backup_timer();
 			} else if (value == 0) {
-				mtk_set_fastdvfs_mode(POLICY_MODE);
+				unsigned int eb_policy_mode = is_fdvfs_enable();
+				mtk_set_fastdvfs_mode(eb_policy_mode & (~POLICY_DEBUG_FTRACE));
 			}
 			break;
 		case EB_COMMIT_LAST_KERNEL_OPP:
@@ -1288,6 +1536,9 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 		break;
 		case EB_UPDATE_LAST_COMMIT_TOP_IDX:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, value);
+		break;
+		case EB_SET_PANEL_REFRESH_RATE:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_PANEL_REFRESH_RATE, value);
 		break;
 		case EB_DBG_CMD:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_FALLBACK_INTERVAL,
@@ -1370,6 +1621,7 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL));
 		seq_puts(m, show_string);
 		seq_puts(m, "\n\n\n");
+
 	}
 */
 
@@ -1566,6 +1818,19 @@ void fdvfs_init(void)
 			NULL, NULL, (void *)&fdvfs_ipi_rcv_msg);
 	}
 
+	/* init async ipi channel */
+	if (g_async_ipi_channel < 0) {
+		g_async_ipi_channel =
+			gpueb_get_send_PIN_ID_by_name("IPI_ID_GPUMPU");
+		if (unlikely(g_async_ipi_channel <= 0)) {
+			GPUFDVFS_LOGE("fail to get IPI_ID_GPUMPU channel id (ENOENT)");
+			return;
+		}
+
+		mtk_ipi_register(get_gpueb_ipidev(), g_async_ipi_channel,
+			NULL, NULL, (void *)&async_ipi_rcv_msg);
+	}
+
 	if (g_fdvfs_event_ipi_channel < 0) {
 		g_fdvfs_event_ipi_channel =
 			gpueb_get_recv_PIN_ID_by_name("IPI_ID_FAST_DVFS_EVENT");
@@ -1597,6 +1862,25 @@ void fdvfs_init(void)
 		GPUFDVFS_LOGE("can't find fdvfs sysram");
 		return;
 	}
+
+	/* init sysram for debug swrgo*/
+	mtk_gpueb_dvfs_sysram_base_addr_swrgo =
+		_gpu_fastdvfs_of_ioremap("mediatek,gpu_fdvfs_swrgo");
+
+	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo == NULL) {
+		GPUFDVFS_LOGE("can't find fdvfs sysram swrgo");
+		return;
+	}
+
+	/* init sysram for debug */
+	mtk_gpueb_base_addr =
+		_gpu_fastdvfs_of_ioremap("mediatek,gpueb");
+
+	if (mtk_gpueb_base_addr == NULL) {
+		GPUFDVFS_LOGE("can't find gpueb");
+		return;
+	}
+
 
 	mtk_register_gpu_power_change("fdvfs", gpu_power_change_notify_fdvfs);
 

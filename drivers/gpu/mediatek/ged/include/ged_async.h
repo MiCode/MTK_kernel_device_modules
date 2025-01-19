@@ -51,6 +51,20 @@ static const long async_coeff_2[11] = {
 	-99225,
 	101541
 };
+static const long async_coeff_3[11] = {
+	-30512,
+	1804,
+	26961,
+	-1445,
+	-230234,
+	312974,
+	284634,
+	-378276,
+	135535,
+	-43973,
+	101440
+};
+
 
 struct async_counter {
 	long gpuactive;
@@ -59,6 +73,7 @@ struct async_counter {
 	long l2ext;
 	long irq;
 	long mcu;
+	long tiler;
 };
 
 struct GpuRawCounter {
@@ -68,6 +83,7 @@ struct GpuRawCounter {
 	unsigned int util_irq_raw;
 	unsigned int util_sc_comp_raw;
 	unsigned int util_l2ext_raw;
+	unsigned int util_tiler_raw;
 };
 
 #endif /* __GED_ASYNC_H__ */

@@ -68,6 +68,7 @@ void ged_set_policy_state(enum gpu_dvfs_policy_state state);
 void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state);
 unsigned long long ged_get_power_on_timestamp(void);
 void ged_eb_dvfs_trace_dump(void);
+void ged_eb_dvfs_frame_done_dump(void);
 int check_pm_callback_state(enum ged_gpu_power_state power_state);
 void dump_pm_callback_kbase_info(void);
 

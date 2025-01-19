@@ -309,14 +309,27 @@ static ssize_t ged_kpi_show(struct kobject *kobj, struct kobj_attribute *attr,
 	unsigned int gpu_remained_time;
 	unsigned int cpu_remained_time;
 	unsigned int gpu_freq;
+	union combineData tmp_multi = {0};
 
-	fps = ged_kpi_get_cur_fps();
-	cpu_time = ged_kpi_get_cur_avg_cpu_time();
-	gpu_time = ged_kpi_get_cur_avg_gpu_time();
-	response_time = ged_kpi_get_cur_avg_response_time();
-	cpu_remained_time = ged_kpi_get_cur_avg_cpu_remained_time();
-	gpu_remained_time = ged_kpi_get_cur_avg_gpu_remained_time();
-	gpu_freq = ged_kpi_get_cur_avg_gpu_freq();
+	if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+		fps = ged_kpi_get_cur_fps();
+		cpu_time = ged_kpi_get_cur_avg_cpu_time();
+		gpu_time = ged_kpi_get_cur_avg_gpu_time();
+		response_time = ged_kpi_get_cur_avg_response_time();
+		cpu_remained_time = ged_kpi_get_cur_avg_cpu_remained_time();
+		gpu_remained_time = ged_kpi_get_cur_avg_gpu_remained_time();
+		gpu_freq = ged_kpi_get_cur_avg_gpu_freq();
+	} else {
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_KPI_FPS_FREQ);
+		fps = tmp_multi.twoVar.var1;
+		gpu_freq = tmp_multi.twoVar.var2;
+		cpu_time = mtk_gpueb_sysram_read(SYSRAM_GPU_KPI_CPU_TIME);
+		gpu_time = mtk_gpueb_sysram_read(SYSRAM_GPU_KPI_GPU_TIME);
+		response_time = 0;
+		cpu_remained_time = 0;
+		gpu_remained_time = 0;
+	}
+
 
 	return scnprintf(buf, PAGE_SIZE, "%u,%u,%u,%u,%u,%u,%u\n",
 			fps, cpu_time, gpu_time, response_time,
@@ -643,7 +656,9 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
 
 	eb_policy_mode = is_fdvfs_enable();
-	if (eb_policy_dts_flag > 0 && eb_policy_mode > 0)
+	if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2)
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS V2 enable,\n");
+	else if (eb_policy_dts_flag > 0 && eb_policy_mode > 0)
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS enable,\n");
 	else
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "EB DVFS disable,\n");
@@ -655,6 +670,13 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"================EB Parameter=====================\n");
+	ipi_data->cmd = GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"EB_default_flag: %u, ",ipi_data->u.set_para.arg[0]);
+	}
 
 	/* 0:eb_flag, 1:dcs, 2:async, 3:real min opp, 4:virtual min opp*/
 	ipi_data->cmd = GPUFDVFS_IPI_GET_MODE;
@@ -750,7 +772,10 @@ static ssize_t eb_dvfs_policy_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
 				if (u32Value > 0) {
-					eb_policy_dts_flag = 1;
+					if (u32Value & POLICY_MODE_V2)
+						eb_policy_dts_flag = 2;
+					else
+						eb_policy_dts_flag = 1;
 					mtk_set_fastdvfs_mode(u32Value);
 				} else {
 					eb_policy_dts_flag = 0;
@@ -765,6 +790,226 @@ static ssize_t eb_dvfs_policy_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(eb_dvfs_policy);
 
 //-----------------------------------------------------------------------------
+
+static ssize_t eb_dvfs_kpi_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0, i = 0, j = 0;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+	unsigned int head_num = 0, kpi_num = 0;
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	if (!ipi_data) {
+		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
+
+	/*
+	  1 : get number of head, kpi
+      2 : show head data
+      3 : show kpi data
+	*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_KPI_DATA;
+	ipi_data->u.set_para.arg[0] = GPUFDVFS_KPI_GET_NUM;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		head_num = ipi_data->u.set_para.arg[0];
+		kpi_num = ipi_data->u.set_para.arg[1];
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"HEAD num: %u, KPI num: %u\n",
+					head_num,
+					kpi_num);
+	}
+
+	if (head_num > 0) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"-------------------- KPI information ----------------------\n");
+		for (i = 0; i < head_num; i++) {
+			ipi_data->cmd = GPUFDVFS_IPI_GET_KPI_DATA;
+			ipi_data->u.set_para.arg[0] = GPUFDVFS_KPI_GET_HEAD;
+			ipi_data->u.set_para.arg[1] = i;
+			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+			if (ret) {
+				unsigned int kpi_tmp_num = ipi_data->u.set_para.arg[1];
+				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+						"HEAD[%d] pid: %u KPI num: %u bqid: %u_%u target FPS: %d\n",
+							i,
+							ipi_data->u.set_para.arg[0],
+							ipi_data->u.set_para.arg[1],
+							ipi_data->u.set_para.arg[2],
+							ipi_data->u.set_para.arg[3],
+							ipi_data->u.set_para.arg[4]);
+				if (kpi_tmp_num > 0) {
+					for (j = 0; j < kpi_tmp_num; j++) {
+						ipi_data->cmd = GPUFDVFS_IPI_GET_KPI_DATA;
+						ipi_data->u.set_para.arg[0] = GPUFDVFS_KPI_GET_KPI_FROM_HEAD;
+						ipi_data->u.set_para.arg[1] = i;
+						ipi_data->u.set_para.arg[2] = j;
+						ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+						if (ret) {
+							pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+									"->Frame[%d] pid: %u Frame_id: %u deq_ts: %u done_ts: %u ulMask: 0x%X\n",
+										j,
+										ipi_data->u.set_para.arg[0],
+										ipi_data->u.set_para.arg[1],
+										ipi_data->u.set_para.arg[2],
+										ipi_data->u.set_para.arg[3],
+										ipi_data->u.set_para.arg[4]);
+						}
+
+					}
+				}
+				scnprintf(buf + pos, PAGE_SIZE - pos, "\n");
+			}
+			ipi_data->cmd = GPUFDVFS_IPI_GET_KPI_DATA;
+			ipi_data->u.set_para.arg[0] = GPUFDVFS_KPI_GET_HEAD_FPS;
+			ipi_data->u.set_para.arg[1] = i;
+			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+			if (ret) {
+				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+						"HEAD_addtion [%d] fps: %u use: %u candi: %u gpu_target: %u t_last_fps: %d\n",
+							i,
+							ipi_data->u.set_para.arg[0],
+							ipi_data->u.set_para.arg[1],
+							ipi_data->u.set_para.arg[2],
+							ipi_data->u.set_para.arg[3],
+							ipi_data->u.set_para.arg[4]);
+				scnprintf(buf + pos, PAGE_SIZE - pos, "\n");
+			}
+
+		}
+	}
+
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+
+	return pos;
+}
+
+static ssize_t eb_dvfs_kpi_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int u32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
+				GED_LOGE("eb_dvfs_kpi_store %d", u32Value);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(eb_dvfs_kpi);
+
+//-----------------------------------------------------------------------------
+
+static ssize_t v_table_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0, i = 0, j = 0;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+	unsigned int s_num = 0, s_init = 0, rs_num = 0, t_init = 0, ver = 0;
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	if (!ipi_data) {
+		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
+
+	ipi_data->cmd = GPUFDVFS_IPI_GET_TABLE_DATA;
+	ipi_data->u.set_para.arg[0] = GPUFDVFS_TABLE_GET_NUM;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+
+	if (ret) {
+		ver = ipi_data->u.set_para.arg[0];
+		s_num = ipi_data->u.set_para.arg[1];
+		s_init = ipi_data->u.set_para.arg[2];
+		rs_num = ipi_data->u.set_para.arg[3];
+		t_init = ipi_data->u.set_para.arg[4];
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ver: %u, s_num: %u s_init:%d rs_num: %u t_init:%u\n",
+					ver, s_num, s_init, rs_num, t_init);
+	}
+
+	if (s_num > 0) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"\n%-5s %-8s %-8s %-8s %-5s %-5s %-8s %-8s %-8s %-8s %-8s\n",
+				   "idx", "t_f", "vs_f", "rs_f", "r_opp", "c_num",
+				          "add_1", "add_2", "add_3", "add_4", "add_5");
+		for (i = 0; i < s_num; i++) {
+			ipi_data->cmd = GPUFDVFS_IPI_GET_TABLE_DATA;
+			ipi_data->u.set_para.arg[0] = GPUFDVFS_TABLE_GET_COL_1;
+			ipi_data->u.set_para.arg[1] = i;
+			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+			if (ret) {
+				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+						"%-5d %-8u %-8u %-8u %-5u %-5u",
+							i,
+							ipi_data->u.set_para.arg[0],
+							ipi_data->u.set_para.arg[1],
+							ipi_data->u.set_para.arg[2],
+							ipi_data->u.set_para.arg[3],
+							ipi_data->u.set_para.arg[4]);
+			}
+			ipi_data->cmd = GPUFDVFS_IPI_GET_TABLE_DATA;
+			ipi_data->u.set_para.arg[0] = GPUFDVFS_TABLE_GET_COL_2;
+			ipi_data->u.set_para.arg[1] = i;
+			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+			if (ret) {
+				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+						" %-8u %-8u %-8u %-8u %-8u\n",
+							ipi_data->u.set_para.arg[0],
+							ipi_data->u.set_para.arg[1],
+							ipi_data->u.set_para.arg[2],
+							ipi_data->u.set_para.arg[3],
+							ipi_data->u.set_para.arg[4]);
+				scnprintf(buf + pos, PAGE_SIZE - pos, "\n");
+			}
+		}
+	}
+
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+
+	return pos;
+}
+
+static ssize_t v_table_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int u32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
+				GED_LOGE("v_table %d", u32Value);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(v_table);
+
+//-----------------------------------------------------------------------------
+
 
 static ssize_t frame_base_optimize_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2126,6 +2371,39 @@ static ssize_t loading_window_size_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(loading_window_size);
 
+#if defined(MTK_GPU_EB_SUPPORT)
+unsigned int g_enable_idx_notify;
+static ssize_t enable_idx_notify_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u(%d)\n", g_enable_idx_notify,
+						mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_IDX_NOTIFY));
+}
+static ssize_t enable_idx_notify_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				g_enable_idx_notify = i32Value;
+				if (i32Value > 0 && i32Value < 3)
+					mtk_gpueb_sysram_write(SYSRAM_GPU_EB_USE_IDX_NOTIFY, i32Value);
+				else
+					mtk_gpueb_sysram_write(SYSRAM_GPU_EB_USE_IDX_NOTIFY, 0);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(enable_idx_notify);
+#endif
+
 //-----------------------------------------------------------------------------
 #if defined(MTK_GPU_SLC_POLICY)
 static ssize_t gpu_slc_policy_show(struct kobject *kobj,
@@ -2290,6 +2568,14 @@ GED_ERROR ged_hal_init(void)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_dvfs_policy);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create eb_dvfs_policy entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create eb_dvfs_kpi entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_v_table);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create v_table entry!\n");
 
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_force_loading_base);
 	if (unlikely(err != GED_OK))
@@ -2482,6 +2768,15 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+#if defined(MTK_GPU_EB_SUPPORT)
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_enable_idx_notify);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create enable_idx_notify entry!\n");
+		goto ERROR;
+	}
+#endif
+
 #if defined(MTK_GPU_SLC_POLICY)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_slc_policy);
 	if (unlikely(err != GED_OK)) {
@@ -2534,6 +2829,8 @@ ERROR:
 void ged_hal_exit(void)
 {
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_policy);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_v_table);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_loading_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_workload_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_timer_base_dvfs_margin);
@@ -2583,6 +2880,11 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_legacy);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_autosuspend_stress);
+
+#if defined(MTK_GPU_EB_SUPPORT)
+		ged_sysfs_remove_file(hal_kobj, &kobj_attr_enable_idx_notify);
+#endif
+
 #if defined(MTK_GPU_SLC_POLICY)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_slc_policy);
 #endif /* MTK_GPU_SLC_POLICY */

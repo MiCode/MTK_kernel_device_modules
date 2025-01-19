@@ -149,6 +149,7 @@ unsigned int g_ged_apo_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 unsigned int g_ged_frame_base_optimize;
 int prom_enable;
+int soc_timer_unit;
 int g_target_fps_vsync;
 unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
@@ -156,7 +157,6 @@ unsigned int g_ged_pre_fence_chk;
 unsigned int g_default_log_level;
 //Bring up flag
 u32 g_is_bringup;
-
 
 /******************************************************************************
  * GED File operations

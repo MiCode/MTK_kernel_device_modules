@@ -116,6 +116,7 @@ struct GpuUtilization_Ex {
 	unsigned int util_irq_raw;
 	unsigned int util_sc_comp_raw;
 	unsigned int util_l2ext_raw;
+	unsigned int util_tiler_raw;
 
 	unsigned long long delta_time;   // unit: ns
 	unsigned int freq;   // unit: kHz
@@ -212,7 +213,7 @@ void ged_set_apo_status(int apo_status);
 void ged_set_apo_legacy(enum ged_apo_legacy apo_legacy);
 enum ged_apo_legacy ged_get_apo_legacy(void);
 
-void ged_check_gpu_frame_time(void);
+
 void ged_get_gpu_frame_time(int frame_time);
 void ged_get_active_time(void);
 void ged_get_idle_time(void);

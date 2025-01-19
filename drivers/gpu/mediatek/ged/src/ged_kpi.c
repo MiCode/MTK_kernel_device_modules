@@ -325,6 +325,7 @@ struct GED_KPI_MEOW_DVFS_FREQ_PRED {
 static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 static unsigned int fb_timer_set_count;
 
+
 int g_target_fps = GED_KPI_MAX_FPS;
 int g_target_fps_default = GED_KPI_MAX_FPS;
 int g_gpu_target_default = 16666666;
@@ -599,6 +600,7 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 		}
 
 		if (g_invalid_fps) {
+			psHead->t_use_gpu_fps = pre_t_use_gpu_fps;
 			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
 				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 6);
 			g_invalid_fps = false;
@@ -1293,7 +1295,7 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000; //ms to ns
 		break;
 	case 1:
-		lb_timeout = (u64)t_gpu_target * g_loading_stride_size / 10;
+		lb_timeout = div_u64((u64)t_gpu_target * g_loading_stride_size, 10);
 		break;
 	case 2:
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
@@ -1305,7 +1307,6 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
 		break;
 	}
-
 }
 
 void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size)
@@ -1474,8 +1475,8 @@ static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int u
 			unsigned long long psHead_soc_overdue = soc_timer;
 			/* compare overdue timer to check uncomplete soc timer*/
 			info_soc_overdue +=
-					(g_ged_eb_uncomplete_info.last_uncomplete_target / 1000) * 13;
-			psHead_soc_overdue += head_t_gpu_target * 13;
+					(g_ged_eb_uncomplete_info.last_uncomplete_target / 1000) * soc_timer_unit;
+			psHead_soc_overdue += head_t_gpu_target * soc_timer_unit;
 			if (psHead_soc_overdue < info_soc_overdue)
 				timer_change = 1;
 		}
@@ -1542,7 +1543,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 	int gpu_freq_pre, t_gpu, t_gpu_target, target_fps_margin;
 	unsigned int force_fallback;
-	unsigned long long soc_timer = 0;
 
 	GED_LOGD("ts type = %d, pid = %d, wnd = %llu, frame = %lu",
 		psTimeStamp->eTimeStampType,
@@ -2178,7 +2178,12 @@ static GED_ERROR ged_kpi_push_timestamp(
 	void *fence_addr)
 {
 	static atomic_t event_QedBuffer_cnt, event_3d_fence_cnt, event_hw_vsync;
+	static atomic_t tcm_rb_write_idx, sram_rb_write_idx;
 	unsigned long ui32IRQFlags;
+	GPU_TS_INFO temp_ts;
+	unsigned int tmp_sram_rb_write_idx = 0, tmp_sram_rb_read_idx = 0;
+	u64 socTimeStamp = mtk_gpueb_read_soc_timer();
+	union combineData tmp_multi = {0};
 
 	if (g_psWorkQueue && ged_kpi_enabled()) {
 		struct GED_TIMESTAMP *psTimeStamp = (struct GED_TIMESTAMP *)
@@ -2222,8 +2227,10 @@ static GED_ERROR ged_kpi_push_timestamp(
 		psTimeStamp->i32QedBuffer_length = QedBuffer_length;
 		psTimeStamp->isSF = isSF;
 		psTimeStamp->fence_addr = fence_addr;
-		INIT_WORK(&psTimeStamp->sWork, ged_kpi_work_cb);
-		queue_work(g_psWorkQueue, &psTimeStamp->sWork);
+		if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+			INIT_WORK(&psTimeStamp->sWork, ged_kpi_work_cb);
+			queue_work(g_psWorkQueue, &psTimeStamp->sWork);
+		}
 		switch (eTimeStampType) {
 		case GED_TIMESTAMP_TYPE_D:
 			break;
@@ -2247,6 +2254,54 @@ static GED_ERROR ged_kpi_push_timestamp(
 			break;
 		case GED_SET_TARGET_FPS:
 			break;
+		}
+
+		// Update timestamp to RB for POLICY_MODE_V2
+		if (is_fdvfs_enable() & POLICY_MODE_V2) {
+			temp_ts.type = eTimeStampType;
+			temp_ts.lo_ts = socTimeStamp & 0xFFFFFFFF;
+			temp_ts.hi_ts = socTimeStamp >> 32;
+			temp_ts.lo_bqid = ullWnd & 0xFFFFFFFF;
+			temp_ts.hi_bqid = ullWnd >> 32;
+			temp_ts.pid = pid;
+			temp_ts.frameid = i32FrameID;
+			temp_ts.isSF = isSF >=0 ? isSF : 1111;
+
+			switch (eTimeStampType) {
+			case GED_TIMESTAMP_TYPE_D:
+			case GED_TIMESTAMP_TYPE_1:
+			case GED_TIMESTAMP_TYPE_P:
+				tmp_sram_rb_write_idx = (atomic_inc_return(&sram_rb_write_idx) + 1) % SRAM_TS_RB_NUM;
+				tmp_sram_rb_read_idx = mtk_gpueb_sysram_read(SYSRAM_GPU_RB_READ_IDX);
+				if (tmp_sram_rb_read_idx == tmp_sram_rb_write_idx) {
+					mtk_gpueb_sysram_write(SYSRAM_GPU_RB_FULL_HINT, temp_ts.lo_ts);
+					trace_tracing_mark_write(5566, "RB_Full", 1);
+				}
+
+				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
+				break;
+			case GED_TIMESTAMP_TYPE_2:
+				tmp_sram_rb_write_idx = (atomic_inc_return(&sram_rb_write_idx) + 1) % SRAM_TS_RB_NUM;
+				tmp_sram_rb_read_idx = mtk_gpueb_sysram_read(SYSRAM_GPU_RB_READ_IDX);
+				if (tmp_sram_rb_read_idx == tmp_sram_rb_write_idx) {
+					mtk_gpueb_sysram_write(SYSRAM_GPU_RB_FULL_HINT, temp_ts.lo_ts);
+					trace_tracing_mark_write(5566, "RB_Full", 1);
+				}
+
+				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
+				break;
+			case GED_SET_TARGET_FPS:
+				tmp_multi.twoVar.var1 = i32FrameID & 0xFF;  // fps
+				tmp_multi.twoVar.var2 = QedBuffer_length;  // fps_margin
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS, tmp_multi.value);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_LO, temp_ts.lo_bqid);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_HI, temp_ts.hi_bqid);
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
@@ -2602,10 +2657,7 @@ static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam
 	struct list_head *psListEntry, *psListEntryTemp;
 	struct list_head *psList = &psHead->sList;
 	long long t_gpu_uncomplete = 0;
-	unsigned long long current_timestamp __maybe_unused;
 	int i = 0;
-
-	current_timestamp = ged_get_time();
 
 	spin_lock(&psHead->sListLock);
 	list_for_each_prev_safe(psListEntry, psListEntryTemp, psList) {
@@ -2701,8 +2753,8 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 					g_ged_eb_uncomplete_info.last_uncomplete_target =
 						psHead->t_gpu_target;
 				} else if (psHead->t_gpu_latest_uncompleted > 0){
-					info_soc_overdue += (info->last_tgpu_uncompleted_target / 1000) * 13;
-					psHead_soc_overdue += (psHead->t_gpu_target / 1000) * 13;
+					info_soc_overdue += (info->last_tgpu_uncompleted_target / 1000) * soc_timer_unit;
+					psHead_soc_overdue += (psHead->t_gpu_target / 1000) * soc_timer_unit;
 					if (psHead_soc_overdue < info_soc_overdue) {
 						info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
 						info->last_tgpu_uncompleted_target = psHead->t_gpu_target;
@@ -2766,6 +2818,7 @@ void ged_dfrc_fps_limit_cb(unsigned int target_fps)
 #ifdef MTK_GED_KPI
 	ged_kpi_push_timestamp(GED_SET_PANEL_REFRESH_RATE, 0, -1, 0,
 		(int) target_fps, -1, -1, NULL);
+	ged_eb_dvfs_task(EB_SET_PANEL_REFRESH_RATE, target_fps);
 #endif /* MTK_GED_KPI */
 }
 /* ------------------------------------------------------------------- */

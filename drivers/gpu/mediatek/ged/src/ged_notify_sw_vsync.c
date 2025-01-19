@@ -302,9 +302,13 @@ void ged_eb_dvfs_trace_dump(void)
 				custom_boost_info.value);
 		}
 
-
-		if (dcs_get_adjust_support() % 2 != 0)
-			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
+		if (dcs_get_adjust_support() % 2 != 0) {
+			if (is_fdvfs_enable() & POLICY_MODE_V2) {
+				trace_tracing_mark_write(5566, "preserve",
+					mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));
+			} else
+				trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
+		}
 
 		trace_tracing_mark_write(5566, "26m_replace",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
@@ -345,6 +349,39 @@ void ged_eb_dvfs_trace_dump(void)
 	pre_eb_policy_state = eb_policy_state;
 	pre_ged_policy_state = ged_policy_state;
 	pre_freq_id = freq_id;
+#endif
+}
+
+void ged_eb_dvfs_frame_done_dump(void)
+{
+#if defined(MTK_GPU_EB_SUPPORT)
+	trace_tracing_mark_write(5566, "commit_type",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_COMMIT_TYPE));
+	trace_tracing_mark_write(5566, "t_gpu",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU));
+	trace_tracing_mark_write(5566, "t_gpu_target",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
+	trace_tracing_mark_write(5566, "stack_freq",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_STACK_FREQ));
+	trace_tracing_mark_write(5566, "top_freq",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_TOP_FREQ));
+	trace_tracing_mark_write(5566, "preserve",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));
+	trace_tracing_mark_write(5566, "t_gpu_pipe",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_PIPE].addr));
+	trace_tracing_mark_write(5566, "t_gpu_real",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_REAL].addr));
+	trace_tracing_mark_write(5566, "workload_pipe",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr));
+	trace_tracing_mark_write(5566, "workload_real",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_REAL].addr));
+	trace_tracing_mark_write(5566, "target_freq",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr));
+	trace_tracing_mark_write(5566, "target_opp",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr));
+	trace_tracing_mark_write(5566, "fb_margin",
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MARGIN].addr));
+
 #endif
 }
 
