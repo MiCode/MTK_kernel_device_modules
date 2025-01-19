@@ -78,6 +78,14 @@ static struct afe_offload_codec_t afe_offload_codec_info = {
 	.has_video = 0,
 };
 
+static struct HEAAC_codec_t heaac_codec_info = {
+	.samplerate = 0,
+	.bitrate = 0,
+	.framesize = 0,
+	.channel = 0,
+	.SBRFlag = 0,
+};
+
 static struct snd_compr_stream *offload_stream;
 
 static struct device *offload_dev;
@@ -468,6 +476,7 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
 	afe_offload_codec_info.has_video = false;
+
 	/* send video info */
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_MSG_ONLY,
@@ -477,6 +486,12 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 			 afe_offload_codec_info.has_video,
 			 NULL);
 	pr_debug("%s afe_offload_codec_info.has_video = %d\n", __func__, afe_offload_codec_info.has_video);
+
+	heaac_codec_info.samplerate = 0;
+	heaac_codec_info.bitrate = 0;
+	heaac_codec_info.framesize = 0;
+	heaac_codec_info.channel = 0;
+	heaac_codec_info.SBRFlag = 0;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(false);
 #endif
@@ -745,6 +760,11 @@ static void offloadservice_ipicmd_received(struct ipi_msg_t *ipi_msg)
 			afe_offload_codec_info.codec_samplerate = ipi_msg->param2;
 			pr_info("%s sample_rate[%u]\n", __func__, ipi_msg->param2);
 		}
+		break;
+	case OFFLOAD_HEAAC_INFO:
+		memcpy((void *)&heaac_codec_info, ipi_msg->payload, sizeof(struct HEAAC_codec_t));
+		pr_info("%s update heaac info framesize[%u] channel[%u] SBRFlag[%u]\n", __func__,
+			heaac_codec_info.framesize, heaac_codec_info.channel, heaac_codec_info.SBRFlag);
 		break;
 	default:
 		break;
