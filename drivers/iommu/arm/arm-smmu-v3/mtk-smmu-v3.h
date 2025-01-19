@@ -611,6 +611,27 @@ struct io_pgtable_ops *mtk_alloc_io_pgtable_ops(enum io_pgtable_fmt fmt,
 
 void mtk_free_io_pgtable_ops(struct io_pgtable_ops *ops);
 
+struct smmu_tbu_device {
+	struct list_head		node;
+	struct device			*dev;
+	enum mtk_smmu_type		type;
+	void				*tbu_base;
+	u32				tbu_cnt;
+	struct smmu_tbu_impl		*impl;
+};
+
+struct smmu_tbu_impl {
+	int (*pm_get)(struct smmu_tbu_device *tbu);
+	int (*pm_put)(struct smmu_tbu_device *tbu);
+	void (*debug_dump)(struct smmu_tbu_device *tbu, struct seq_file *s);
+};
+
+struct smmu_tbu_data {
+	struct list_head		tbu_devices;
+	spinlock_t			tbu_lock;
+	enum mtk_smmu_type		type;
+};
+
 static inline bool smmu_v3_enabled(void)
 {
 	struct device_node *node = NULL;

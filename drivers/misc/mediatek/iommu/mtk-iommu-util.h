@@ -36,6 +36,9 @@ static inline void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops)
 int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops);
 int mtk_smmu_rpm_get(u32 smmu_type);
 int mtk_smmu_rpm_put(u32 smmu_type);
+int mtk_smmu_register_tbu(struct smmu_tbu_device *tbu);
+int mtk_smmu_unregister_tbu(struct smmu_tbu_device *tbu);
+struct smmu_tbu_data *mtk_smmu_tbu_data_get(u32 smmu_type);
 #else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 static inline int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
 {
@@ -50,6 +53,21 @@ static inline int mtk_smmu_rpm_get(u32 smmu_type)
 static inline int mtk_smmu_rpm_put(u32 smmu_type)
 {
 	return -1;
+}
+
+static inline int mtk_smmu_register_tbu(struct smmu_tbu_device *tbu)
+{
+	return -1;
+}
+
+static inline int mtk_smmu_unregister_tbu(struct smmu_tbu_device *tbu)
+{
+	return -1;
+}
+
+static inline struct smmu_tbu_data *mtk_smmu_tbu_data_get(u32 smmu_type)
+{
+	return NULL;
 }
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 #endif /* _MTK_IOMMU_UTIL_ */

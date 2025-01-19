@@ -148,6 +148,9 @@ static void smmuwp_clear_tf(struct arm_smmu_device *smmu);
 static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu);
 static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu);
 static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu);
+static bool smmuwp_ext_tbu_faults(struct arm_smmu_device *smmu,
+				  struct arm_smmu_master *master,
+				  struct mtk_iommu_fault_event *fault_evt);
 static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu);
 static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 			    bool ratelimit);
@@ -3287,6 +3290,8 @@ static bool smmuwp_process_tf(struct arm_smmu_device *smmu,
 	for (tbu = 0; tbu < tbu_cnt; tbu++)
 		tf_det |= smmuwp_tbu_faults(smmu, master, fault_evt, wp_base, tbu);
 
+	tf_det |= smmuwp_ext_tbu_faults(smmu, master, fault_evt);
+
 	if (!tf_det)
 		dev_info(smmu->dev, "No TF detected or has been cleaned\n");
 
@@ -3436,6 +3441,50 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 		 "GLB_CTL0(0x%x):0x%x, DCM_EN:0x%x, CFG_TAB_DCM_EN:0x%x\n",
 		 SMMUWP_GLB_CTL0, regval, FIELD_GET(CTL0_DCM_EN, regval),
 		 FIELD_GET(CTL0_CFG_TAB_DCM_EN, regval));
+}
+
+static bool smmuwp_ext_tbu_faults(struct arm_smmu_device *smmu,
+				  struct arm_smmu_master *master,
+				  struct mtk_iommu_fault_event *fault_evt)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct smmu_tbu_data *tbu_data;
+	struct smmu_tbu_device *tbu, *n;
+	unsigned long flags;
+	bool tf_det = false;
+	int ret, i;
+
+	tbu_data = mtk_smmu_tbu_data_get(data->plat_data->smmu_type);
+	if (!tbu_data || list_empty(&tbu_data->tbu_devices))
+		return false;
+
+	spin_lock_irqsave(&tbu_data->tbu_lock, flags);
+	list_for_each_entry_safe(tbu, n, &tbu_data->tbu_devices, node) {
+		if (!tbu->impl || !tbu->impl->pm_get || !tbu->impl->pm_put)
+			continue;
+
+		ret = tbu->impl->pm_get(tbu);
+		if (ret) {
+			dev_info(smmu->dev, "[%s] dev:%s pm_get:%d\n",
+				 __func__, dev_name(tbu->dev), ret);
+			continue;
+		}
+
+		for (i = 0; i < tbu->tbu_cnt; i++) {
+			tf_det |= smmuwp_tbu_faults(smmu, master, fault_evt,
+						    tbu->tbu_base, (u32)i);
+		}
+
+		ret = tbu->impl->pm_put(tbu);
+		if (ret) {
+			/* no need handle fail case */
+			dev_info(smmu->dev, "[%s] dev:%s pm_put:%d\n",
+				 __func__, dev_name(tbu->dev), ret);
+		}
+	}
+	spin_unlock_irqrestore(&tbu_data->tbu_lock, flags);
+
+	return tf_det;
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)

@@ -1027,8 +1027,8 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 }
 EXPORT_SYMBOL_GPL(report_custom_smmu_fault);
 
-static void dump_wrapper_register(struct seq_file *s,
-				  struct arm_smmu_device *smmu)
+static void smmuwp_reg_dump(struct seq_file *s,
+			    struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	void __iomem *wp_base = smmu->wp_base;
@@ -1068,14 +1068,39 @@ static void dump_wrapper_register(struct seq_file *s,
 	}
 }
 
+static void smmuwp_ext_tbu_dump(struct seq_file *s,
+				struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct smmu_tbu_data *tbu_data;
+	struct smmu_tbu_device *tbu, *n;
+	unsigned long flags;
+
+	tbu_data = mtk_smmu_tbu_data_get(data->plat_data->smmu_type);
+	if (!tbu_data || list_empty(&tbu_data->tbu_devices))
+		return;
+
+	spin_lock_irqsave(&tbu_data->tbu_lock, flags);
+	list_for_each_entry_safe(tbu, n, &tbu_data->tbu_devices, node) {
+		if (tbu->impl && tbu->impl->debug_dump) {
+			iommu_dump(s, "wp reg for smmu:%d, extend tbu: %s\n",
+				   data->plat_data->smmu_type, dev_name(tbu->dev));
+			tbu->impl->debug_dump(tbu, s);
+		}
+	}
+	spin_unlock_irqrestore(&tbu_data->tbu_lock, flags);
+}
+
 void mtk_smmu_wpreg_dump(struct seq_file *s, u32 smmu_type)
 {
 	struct mtk_smmu_data *data;
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL && data->hw_init_flag == 1)
-			dump_wrapper_register(s, &data->smmu);
+		if (data != NULL && data->hw_init_flag == 1) {
+			smmuwp_reg_dump(s, &data->smmu);
+			smmuwp_ext_tbu_dump(s, &data->smmu);
+		}
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
