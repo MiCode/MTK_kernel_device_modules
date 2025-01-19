@@ -4166,8 +4166,11 @@ static int __init mtk_charger_init(void)
 {
 	return platform_driver_register(&mtk_charger_driver);
 }
+#if IS_BUILTIN(CONFIG_MTK_CHARGER)
+late_initcall(mtk_charger_init);
+#else
 module_init(mtk_charger_init);
-
+#endif
 static void __exit mtk_charger_exit(void)
 {
 	platform_driver_unregister(&mtk_charger_driver);

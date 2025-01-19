@@ -743,7 +743,21 @@ static struct platform_driver mtk_pd_adapter_driver = {
 		   .of_match_table = mtk_pd_adapter_of_match,
 	},
 };
+#if IS_BUILTIN(CONFIG_MTK_CHARGER)
+static int __init mtk_pd_adapter_init(void)
+{
+	return platform_driver_register(&mtk_pd_adapter_driver);
+}
+device_initcall_sync(mtk_pd_adapter_init);
+
+static void __exit mtk_pd_adapter_exit(void)
+{
+	platform_driver_unregister(&mtk_pd_adapter_driver);
+}
+module_exit(mtk_pd_adapter_exit);
+#else
 module_platform_driver(mtk_pd_adapter_driver);
+#endif
 
 MODULE_AUTHOR("wy.chuang <wy.chuang@mediatek.com>");
 MODULE_DESCRIPTION("MTK PD Adapter Driver");
