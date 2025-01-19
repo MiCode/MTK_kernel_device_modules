@@ -396,13 +396,16 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 		if (cpu_over_thres->nr_over_dn_thres < 0 ||
 		    cpu_over_thres->nr_over_up_thres < 0 ||
 			cpu_over_thres->nr_running_diff < 0) {
+			int nr_over_dn_thres_abnormal, nr_over_up_thres_abnormal, nr_running_diff_abnormal;
 			reset = true;
-			pr_info("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
-					TAG, cpu_over_thres->nr_over_dn_thres,
-					cpu_over_thres->nr_over_up_thres,
-					cpu_over_thres->nr_running_diff);
-
+			nr_over_dn_thres_abnormal = cpu_over_thres->nr_over_dn_thres;
+			nr_over_up_thres_abnormal = cpu_over_thres->nr_over_up_thres;
+			nr_running_diff_abnormal = cpu_over_thres->nr_running_diff;
 			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
+
+			pr_info("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
+					TAG, nr_over_dn_thres_abnormal,
+					nr_over_up_thres_abnormal, nr_running_diff_abnormal);
 			break;
 		}
 		/* get sum of nr_over_thres */
