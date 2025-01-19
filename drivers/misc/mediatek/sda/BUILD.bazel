@@ -64,6 +64,23 @@ define_mgk_ddk_ko(
 	],
 )
 
+define_mgk_ddk_ko(
+        name = "systracker",
+        srcs = [
+                "systracker.c",
+        ],
+        includes = ["include"],
+        ko_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ],
+        header_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+        ],
+        copts = [
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        ],
+)
+
 ddk_headers(
 	name = "headers",
 	hdrs = [
