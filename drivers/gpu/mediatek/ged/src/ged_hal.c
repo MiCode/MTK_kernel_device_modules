@@ -186,6 +186,51 @@ static ssize_t custom_boost_gpu_freq_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(custom_boost_gpu_freq);
 //-----------------------------------------------------------------------------
+unsigned int fb_rsf_policy_flag;
+
+static ssize_t fb_rsf_policy_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+
+	if (fb_rsf_policy_flag){
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"fb_rsf_policy_enable (%d)\n",fb_rsf_policy_flag);
+	}else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"fb_rsf_policy is disabled\n");
+
+	return pos;
+}
+
+static ssize_t fb_rsf_policy_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int u32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
+				if (u32Value > 0 && u32Value < 4) {
+					fb_rsf_policy_flag = u32Value;
+					ged_eb_dvfs_task(EB_FB_RSF_POLICY_ENABLE, u32Value);
+				} else {
+					fb_rsf_policy_flag = 0;
+					ged_eb_dvfs_task(EB_FB_RSF_POLICY_ENABLE, 0);
+				}
+			}
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(fb_rsf_policy);
+//-----------------------------------------------------------------------------
+
 static ssize_t custom_upbound_gpu_freq_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2569,6 +2614,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create eb_dvfs_policy entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_fb_rsf_policy);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create fb_rsf_policy entry!\n");
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create eb_dvfs_kpi entry!\n");
@@ -2829,6 +2878,9 @@ ERROR:
 void ged_hal_exit(void)
 {
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_policy);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_v_table);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fb_rsf_policy);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_v_table);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_loading_mode);

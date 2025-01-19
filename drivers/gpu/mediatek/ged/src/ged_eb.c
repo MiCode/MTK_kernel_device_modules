@@ -585,6 +585,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_SET_DVFS_STRESS_TEST:
 	case GPUFDVFS_IPI_SET_POWER_STATE:
 	case GPUFDVFS_IPI_SET_DVFS_REINIT:
+	case GPUFDVFS_IPI_SET_FB_RSF_POLICY:
 		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
@@ -1034,6 +1035,19 @@ static void mtk_gpueb_dvfs_reinit(unsigned int type)
 	if (ret)
 		GED_LOGD("%s err:%d\n", __func__, ret);
 }
+
+static void mtk_gpueb_dvfs_fb_rsf_policy_enable(unsigned int type)
+{
+	int ret = 0;
+	struct fdvfs_ipi_data ipi_data;
+
+	ipi_data.u.set_para.arg[0] = type;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_FB_RSF_POLICY, &ipi_data);
+
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
+}
+
 
 int mtk_gpueb_sysram_batch_read(int max_read_count,
 	char *batch_string, int batch_str_size)
@@ -1561,6 +1575,9 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 			tmp |= ((ged_dvfs_get_margin_step() & 0xF) << 24);
 			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_TB_DVFS_MARGIN, tmp);
 		break;
+		case EB_FB_RSF_POLICY_ENABLE:
+			mtk_gpueb_dvfs_fb_rsf_policy_enable(value);
+			break;
 		default:
 			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);
 			break;
