@@ -21,18 +21,18 @@
 #include "blocktag-internal.h"
 #include "blocktag-fuse-trace.h"
 
-#define EARA_IOCTL_MAX_SIZE 27
-struct _EARA_IOCTL_PACKAGE {
+#define EARA_IO_SYS_MAX_SIZE 27
+typedef struct _EARA_IO_SYS_PACKAGE {
 	union {
 		__s32 cmd;
-		__s32 data[EARA_IOCTL_MAX_SIZE];
+		__s32 data[EARA_IO_SYS_MAX_SIZE];
 	};
-};
+} EARA_IO_SYS_PACKAGE;
 
-#define EARA_GETINDEX                _IOW('g', 1, struct _EARA_IOCTL_PACKAGE)
-#define EARA_COLLECT                 _IOW('g', 2, struct _EARA_IOCTL_PACKAGE)
-#define EARA_GETINDEX2               _IOW('g', 3, struct _EARA_IOCTL_PACKAGE)
-#define EARA_SET_PARAM               _IOW('g', 4, struct _EARA_IOCTL_PACKAGE)
+#define EARA_IO_GETINDEX             _IOW('g', 1, EARA_IO_SYS_PACKAGE)
+#define EARA_IO_COLLECT              _IOW('g', 2, EARA_IO_SYS_PACKAGE)
+#define EARA_IO_GETINDEX2            _IOW('g', 3, EARA_IO_SYS_PACKAGE)
+#define EARA_IO_SET_PARAM            _IOW('g', 4, EARA_IO_SYS_PACKAGE)
 
 #define PARAM_RANDOM_THRESHOLD       0
 #define PARAM_SEQ_R_THRESHOLD        1
@@ -393,42 +393,42 @@ static long earaio_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
 	ssize_t ret = 0;
-	struct _EARA_IOCTL_PACKAGE *msgKM = NULL;
-	struct _EARA_IOCTL_PACKAGE *msgUM = (struct _EARA_IOCTL_PACKAGE *)arg;
-	struct _EARA_IOCTL_PACKAGE smsgKM = {0};
+	EARA_IO_SYS_PACKAGE *msgKM = NULL;
+	EARA_IO_SYS_PACKAGE *msgUM = (EARA_IO_SYS_PACKAGE *)arg;
+	EARA_IO_SYS_PACKAGE smsgKM = {0};
 	unsigned long flags;
 
 	msgKM = &smsgKM;
 
 	switch (cmd) {
-	case EARA_GETINDEX:
+	case EARA_IO_GETINDEX:
 		spin_lock_irqsave(&earaio_ctrl.lock, flags);
 		if (earaio_ctrl.earaio_boost_state != ACCEL_NORMAL)
 			//fix me: determine shall be 1 or 0
 			earaio_ctrl.earaio_boost_state = ACCEL_NORMAL;
 		spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 		mtk_btag_eara_transfer_data(smsgKM.data,
-				sizeof(struct _EARA_IOCTL_PACKAGE));
+				sizeof(EARA_IO_SYS_PACKAGE));
 		eara_ioctl_copy_to_user(msgUM, msgKM,
-				sizeof(struct _EARA_IOCTL_PACKAGE));
+				sizeof(EARA_IO_SYS_PACKAGE));
 		break;
-	case EARA_COLLECT:
+	case EARA_IO_COLLECT:
 		if (eara_ioctl_copy_from_user(msgKM, msgUM,
-				sizeof(struct _EARA_IOCTL_PACKAGE))) {
+				sizeof(EARA_IO_SYS_PACKAGE))) {
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
 		mtk_btag_eara_switch_collect(msgKM->cmd);
 		break;
-	case EARA_GETINDEX2:
+	case EARA_IO_GETINDEX2:
 		mtk_btag_eara_transfer_data(smsgKM.data,
-				sizeof(struct _EARA_IOCTL_PACKAGE));
+				sizeof(EARA_IO_SYS_PACKAGE));
 		eara_ioctl_copy_to_user(msgUM, msgKM,
-				sizeof(struct _EARA_IOCTL_PACKAGE));
+				sizeof(EARA_IO_SYS_PACKAGE));
 		break;
-	case EARA_SET_PARAM:
+	case EARA_IO_SET_PARAM:
 		if (eara_ioctl_copy_from_user(msgKM, msgUM,
-				sizeof(struct _EARA_IOCTL_PACKAGE))) {
+				sizeof(EARA_IO_SYS_PACKAGE))) {
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
