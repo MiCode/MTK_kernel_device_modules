@@ -724,7 +724,8 @@ void trigger_vcp_dump(enum vcp_core_id core_id, char *user)
 			writel(GIPC_MMUP_DUMP, R_GIPC_IN_SET);
 			while ((readl(R_GIPC_IN_SET) & GIPC_MMUP_DUMP)) {
 				if (timeout == 0) {
-					pr_notice("[MMUP] %s failed %x\n", __func__, readl(R_GIPC_IN_SET));
+					pr_notice("[MMUP] %s failed %x %x\n", __func__,
+						readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR));
 					break;
 				}
 				timeout --;
@@ -975,7 +976,12 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_unlock(&vcp_A_notify_mutex);
 
 		mutex_lock(&vcp_pw_clk_mutex);
-		pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d\n", pwclkcnt, is_suspending);
+		if (!IS_ERR((void const *) VLP_AO_RSVD7))
+			pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d rdy %x\n",
+				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
+		else
+			pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d\n",
+				pwclkcnt, is_suspending);
 		if ((!is_suspending) && pwclkcnt) {
 			is_suspending = true;
 #if VCP_RECOVERY_SUPPORT
@@ -1021,7 +1027,12 @@ static int vcp_pm_event(struct notifier_block *notifier
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		mutex_lock(&vcp_pw_clk_mutex);
-		pr_notice("[VCP] PM_POST_SUSPEND entered %d %d\n", pwclkcnt, is_suspending);
+		if (!IS_ERR((void const *) VLP_AO_RSVD7))
+			pr_notice("[VCP] PM_POST_SUSPEND entered %d %d rdy %x\n",
+				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
+		else
+			pr_notice("[VCP] PM_POST_SUSPEND entered %d %d\n",
+				pwclkcnt, is_suspending);
 		if (is_suspending && pwclkcnt) {
 			if(!vcp_ao) {
 				ret = pm_runtime_get_sync(vcp_power_devs);
@@ -1033,6 +1044,11 @@ static int vcp_pm_event(struct notifier_block *notifier
 			}
 			if (!is_vcp_shutdown) {
 				vcp_wait_suspend_resume(0);
+				pr_notice("[VCP] core 0x%x 0x%x GPIC 0x%x 0x%x 0x%x 0x%x flag 0x%x 0x%x\n",
+					readl(R_CORE0_STATUS), readl(R_CORE1_STATUS),
+					readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR),
+					readl(AP_R_GPR2), readl(AP_R_GPR3),
+					readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
 
 #if VCP_RECOVERY_SUPPORT
 				is_suspending = false;
@@ -2225,30 +2241,51 @@ void vcp_wait_suspend_resume(bool suspend)
 	int timeout = 50000; /* max wait 0.5s */
 
 	if (suspend) {
-		writel(B_CORE0_SUSPEND|B_CORE1_SUSPEND, AP_R_GPR1);
-		writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+		writel(B_CORE0_SUSPEND, AP_R_GPR2);
+		writel(B_CORE1_SUSPEND, AP_R_GPR3);
+		writel(0x87654321, R_CORE0_GENERAL_REG0);
+		writel(0x87654321, R_CORE1_GENERAL_REG0);
+		if (!readl(AP_R_GPR2) || !readl(AP_R_GPR3)) {
+			pr_notice("[VCP] [%s] AP_R_GPR2/3 is null %x %x %x %x flag %x %x\n",
+				suspend ? "suspend" : "resume",
+				readl(AP_R_GPR2), readl(AP_R_GPR3),
+				readl(R_CORE0_GENERAL_REG0), readl(R_CORE1_GENERAL_REG0),
+				readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
+			vcp_dump_last_regs(1);
+		}
+		writel(B_GIPC4_SETCLR_3, R_GIPC_IN_SET);
 	} else {
-		writel(B_CORE0_RESUME|B_CORE1_RESUME, AP_R_GPR1);
-		writel(B_GIPC4_SETCLR_3 ,R_GIPC_IN_SET);
+		writel(B_CORE0_RESUME, AP_R_GPR2);
+		writel(B_CORE1_RESUME, AP_R_GPR3);
+		writel(0x12345678, R_CORE0_GENERAL_REG0);
+		writel(0x12345678, R_CORE1_GENERAL_REG0);
+		if (!readl(AP_R_GPR2) || !readl(AP_R_GPR3)) {
+			pr_notice("[VCP] [%s] AP_R_GPR2/3 is null %x %x %x %x flag %x %x\n",
+				suspend ? "suspend" : "resume",
+				readl(AP_R_GPR2), readl(AP_R_GPR3),
+				readl(R_CORE0_GENERAL_REG0), readl(R_CORE1_GENERAL_REG0),
+				readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
+			vcp_dump_last_regs(1);
+		}
+		writel(B_GIPC4_SETCLR_3, R_GIPC_IN_SET);
 	}
-
-	if (!readl(AP_R_GPR1))
-		pr_notice("[VCP] [%s] AP_R_GPR1 is null %x\n",
-			suspend ? "suspend" : "resume", readl(AP_R_GPR1));
 
 	while (--timeout) {
 		if (suspend && (readl(R_GPR3_CFGREG_SEC) & (VCP_AP_SUSPEND))
-			&& (readl(R_GPR3_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
+			&& (readl(R_GPR2_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
 			break;
 		else if (!suspend && !(readl(R_GPR3_CFGREG_SEC) & (VCP_AP_SUSPEND))
-			&& !(readl(R_GPR3_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
+			&& !(readl(R_GPR2_CFGREG_SEC) & (MMUP_AP_SUSPEND)))
 			break;
 
 		udelay(10);
 	}
 	if (timeout <= 0) {
-		pr_notice("[VCP] wait vcp %s timeout 0x%x\n",
-			suspend ? "suspend" : "resume", readl(R_GPR3_CFGREG_SEC));
+		pr_notice("[VCP] vcp %s timeout GPIC 0x%x 0x%x 0x%x 0x%x flag 0x%x 0x%x\n",
+			suspend ? "suspend" : "resume",
+			readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR),
+			readl(AP_R_GPR2), readl(AP_R_GPR3),
+			readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
 		vcp_dump_last_regs(1);
 	}
 }
@@ -2322,8 +2359,11 @@ void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 			core0_status, core1_status);
 
 		if (core0_halt && core1_halt && (!core0_axi) && (!core1_axi)) {
-			pr_notice("[VCP] core idle 0x%x, 0x%x GPIC 0x%x flag 0x%x\n",
-				core0_status, core1_status, readl(R_GIPC_IN_SET), readl(R_GPR3_CFGREG_SEC));
+			pr_notice("[VCP] idle 0x%x 0x%x GPIC 0x%x 0x%x 0x%x 0x%x flag 0x%x 0x%x\n",
+				core0_status, core1_status,
+				readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR),
+				readl(AP_R_GPR2), readl(AP_R_GPR3),
+				readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
 			/* VCP stops any activities
 			 * and parks at wfi
 			 */
@@ -2333,8 +2373,11 @@ void vcp_wait_core_stop_timeout(enum vcp_core_id core_id)
 	}
 
 	if (timeout <= 0) {
-		pr_notice("[VCP] reset timeout, still reset vcp: 0x%x, 0x%x\n",
-			core0_status, core1_status);
+		pr_notice("[VCP] rst timeout 0x%x 0x%x GPIC 0x%x 0x%x 0x%x 0x%x flag 0x%x 0x%x\n",
+			core0_status, core1_status,
+			readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR),
+			readl(AP_R_GPR2), readl(AP_R_GPR3),
+			readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
 		vcp_dump_last_regs(1);
 	}
 }
