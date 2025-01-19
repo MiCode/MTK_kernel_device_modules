@@ -1013,25 +1013,6 @@ int reset_scp(int reset)
 	return 0;
 }
 
-/*
- * TODO: what should we do when hibernation ?
- */
-static int scp_pm_event(struct notifier_block *notifier
-			, unsigned long pm_event, void *unused)
-{
-	switch (pm_event) {
-	case PM_POST_HIBERNATION:
-		pr_debug("[SCP] %s: PM_POST_HIBERNATION\n", __func__);
-		return NOTIFY_DONE;
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block scp_pm_notifier_block = {
-	.notifier_call = scp_pm_event,
-	.priority = 0,
-};
-
 
 static inline ssize_t scp_A_status_show(struct device *kobj
 			, struct device_attribute *attr, char *buf)
@@ -3502,10 +3483,6 @@ static int __init scp_init(void)
 
 	mtk_ipi_register(&scp_ipidev, IPI_IN_KASAN_CHECK,
 			(void *)scp_check_kasan_handler, NULL, &scp_kasan_info);
-
-	ret = register_pm_notifier(&scp_pm_notifier_block);
-	if (ret)
-		pr_notice("[SCP] failed to register PM notifier %d\n", ret);
 
 	/* scp sysfs initialise */
 	pr_debug("[SCP] sysfs init\n");
