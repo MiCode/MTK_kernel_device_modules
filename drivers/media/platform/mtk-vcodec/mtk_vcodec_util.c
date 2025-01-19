@@ -355,6 +355,7 @@ EXPORT_SYMBOL(vcodec_trace);
 
 void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff)
 {
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG)
 	bool is_input = V4L2_TYPE_IS_OUTPUT(buf_type);
 	int trace_count;
 
@@ -372,6 +373,7 @@ void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_
 	vcodec_trace_tid_count(ctx->trace_count_tgid, trace_count,
 		"%s-%d-%s_buf-in_%s", ctx->type == MTK_INST_DECODER ? "VDEC" : "VENC", ctx->id,
 		is_input ? "in" : "out", in_kernel ? "kernel" : "driver");
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_in_out_trace_count);
 
