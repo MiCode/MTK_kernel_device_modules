@@ -16,7 +16,9 @@
 #include "imgsensor_hw.h"
 
 char * const imgsensor_prj_names[] = {
-	"k69v1_64_basic_ref"
+	"k69v1_64_basic_ref",
+	"k69v1_64_for_kmainline_ref",
+	"k69v1_64_ref"
 };
 
 enum IMGSENSOR_RETURN imgsensor_hw_release_all(struct IMGSENSOR_HW *phw)
@@ -38,6 +40,8 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 	char str_prop_name[LENGTH_FOR_SNPRINTF];
 	const char *prj_name;
 	unsigned int custlen = 0;
+	bool is_ref =false;
+
 	struct device_node *of_node
 		= of_find_compatible_node(NULL, NULL, "mediatek,camera_hw");
 
@@ -59,24 +63,32 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 			(phw->pdev[i]->init)(phw->pdev[i]->pinstance);
 	}
 
+	for(i=0; i< sizeof(imgsensor_prj_names)/sizeof(imgsensor_prj_names[0]);i++){
+		if(custlen != 0 && strncmp(prj_name,imgsensor_prj_names[i],custlen) == 0){
+			is_ref =true;
+			pr_info("current project is ref project!! \n");
+			break;
+		}
+	}
+
+
 	for (i = 0; i < IMGSENSOR_SENSOR_IDX_MAX_NUM; i++) {
 		psensor_pwr = &phw->sensor_pwr[i];
 
-		if (custlen != 0 && strncmp(prj_name, imgsensor_prj_names[0], custlen)
-			== 0) {
+		if (is_ref) {
 #ifdef IMGSENSOR_ISP4_T_REF
 			pcust_pwr_cfg = imgsensor_isp4_t_ref;
-#else
-			pcust_pwr_cfg = imgsensor_custom_config;
-#endif
-
-#ifdef IMGSENSOR_TB8786P2
+			pr_info("imgsensor_isp4_t_ref_config \n");
+#elif defined(IMGSENSOR_TB8786P2)
 			pcust_pwr_cfg = imgsensor_mt8786_config;
+			pr_info("imgsensor_mt8786_config \n");
 #else
 			pcust_pwr_cfg = imgsensor_custom_config;
+			pr_info("imgsensor_custom_config \n");
 #endif
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
+			pr_info("normal custom_config \n");
 		}
 
 		while (pcust_pwr_cfg->sensor_idx != i &&
