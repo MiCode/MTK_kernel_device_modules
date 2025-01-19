@@ -18242,11 +18242,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_PARTIAL_UPDATE)) {
+#if defined(DRM_PARTIAL_UPDATE)
 		partial_enable =
 			mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
 		if (mtkfb_is_force_partial_roi() && !partial_enable)
 			partial_enable = mtkfb_is_force_partial_roi();
-
+#endif
 		DDPDBG("partial_enable: %d\n", partial_enable);
 		if (!partial_enable &&
 		    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
@@ -22805,13 +22806,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
-
+#if defined(DRM_PARTIAL_UPDATE)
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_PARTIAL_UPDATE)) {
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE_BISO;
 			}
-
+#endif
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_UNION_FENCE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_UNION_FENCE;

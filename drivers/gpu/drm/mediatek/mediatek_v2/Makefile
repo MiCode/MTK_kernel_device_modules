@@ -82,6 +82,10 @@ endif
 
 ccflags-y += -DDISP_STASH_ENABLE
 
+ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DDRM_PARTIAL_UPDATE
+endif
+
 ifeq ($(CONFIG_DRM_MEDIATEK_DPTX_AUTO),y)
 mediatek-drm-y += mtk_drm_dp/mtk_drm_dp_intf.o \
 	mtk_drm_dp/mtk_drm_dp.o \
