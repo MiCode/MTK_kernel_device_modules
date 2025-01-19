@@ -161,16 +161,17 @@ unsigned int get_task_rank(struct task_struct *p)
 void (*mtk_cpuqos_set)(int pd);
 EXPORT_SYMBOL(mtk_cpuqos_set);
 
-int (*mtk_cpuqos_css_map)(int id);
+int (*mtk_cpuqos_css_map)(unsigned int id);
 EXPORT_SYMBOL(mtk_cpuqos_css_map);
 int css_init;
 
 int mtk_cpuqos_map(int id)
 {
 	int num = 0;
+	unsigned int pvid = id;
 
 	if (mtk_cpuqos_css_map)
-		num = mtk_cpuqos_css_map(id);
+		num = mtk_cpuqos_css_map(pvid);
 	else
 		num = PD0;
 
