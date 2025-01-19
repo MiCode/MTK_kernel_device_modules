@@ -79,6 +79,21 @@ int mminfra_ao_onoff(bool on_off)
 	return ret;
 }
 
+int mminfra2_onoff(bool on_off)
+{
+	int ret = 0;
+
+	if (on_off) {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+	} else {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+	}
+
+	return ret;
+}
+
 int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 {
 	int ret = 0, ref_cnt;
@@ -122,6 +137,8 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			ret = mminfra1_onoff(true);
 		else if (mm_pwr == MM_PWR_MM_AO)
 			ret = mminfra_ao_onoff(true);
+		else if (mm_pwr == MM_PWR_MM_2)
+			ret = mminfra2_onoff(true);
 	} else {
 		// minus ref_cnt
 		ref_cnt = atomic_dec_return(&g_mminfra_pd->mm_mtcmos[mm_pwr].ref_cnt);
@@ -138,6 +155,8 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			ret = mminfra1_onoff(false);
 		else if (mm_pwr == MM_PWR_MM_AO)
 			ret = mminfra_ao_onoff(false);
+		else if (mm_pwr == MM_PWR_MM_2)
+			ret = mminfra2_onoff(false);
 	}
 
 	if (ret) {
