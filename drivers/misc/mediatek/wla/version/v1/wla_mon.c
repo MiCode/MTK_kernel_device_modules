@@ -179,7 +179,8 @@ EXPORT_SYMBOL(wla_mon_ch_sel);
 int wla_mon_get_ch_sel(unsigned int ch, struct wla_mon_ch_setting *ch_set)
 {
 	unsigned int sel_ch_start, sel_reg_n, shift;
-	uint32_t mask, val_l, val_h, val_n, val_s;
+	uint32_t mask, val_n, val_s;
+	uint32_t val_l = 0, val_h = 0;
 	int ret = WLA_SUCCESS;
 
 	if (ch >= wla_mon->ch_hw_max || ch_set == NULL)
