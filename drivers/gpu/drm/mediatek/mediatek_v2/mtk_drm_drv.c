@@ -4462,6 +4462,11 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 	},
 };
 
+static const struct mtk_addon_module_data mt6993_addon_ovl_rsz_data[] = {
+	{OVL_RSZ_2, ADDON_BEFORE, DDP_COMPONENT_OVL0_BLENDER1},
+	//{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER9},
+};
+
 static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -4474,8 +4479,8 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 	},
 	/* TODO: porting for mt6993 */
 	[ONE_SCALING] = {
-		.module_num = ARRAY_SIZE(mt6991_addon_ovl_rsz_data),
-		.module_data = mt6991_addon_ovl_rsz_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_ovl_rsz_data),
+		.module_data = mt6993_addon_ovl_rsz_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[WDMA_WRITE_BACK] = {
@@ -4500,6 +4505,10 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+};
+
+static const enum mtk_ddp_comp_id mt6993_scaling_main[] = {
+	DDP_COMPONENT_MDP_RSZ0,
 };
 
 static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {
@@ -5656,7 +5665,7 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_path_data = {
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
 	.addon_data = mt6993_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
-//	.scaling_data = mt6993_scaling_main,
+	.scaling_data = mt6993_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
 };
 

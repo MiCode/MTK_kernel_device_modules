@@ -928,7 +928,7 @@ void mtk_addon_connect_before(struct drm_crtc *crtc, unsigned int ddp_mode,
 	int i, j;
 	unsigned int addon_idx, prev_id;
 
-	next_attach_comp_id = ((priv->data->mmsys_id != MMSYS_MT6991) && addon_config->config_type.tgt_comp) ?
+	next_attach_comp_id = ((!priv->data->ovl_exdma_rule) && addon_config->config_type.tgt_comp) ?
 		addon_config->config_type.tgt_comp : mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
 
 	if (module_data->attach_comp >= DDP_COMPONENT_ID_MAX) {
@@ -1022,7 +1022,7 @@ void mtk_addon_disconnect_before(
 	enum mtk_ddp_comp_id prev_comp_id, next_comp_id, next_attach_comp_id;
 	const struct mtk_addon_path_data *path_data =
 		mtk_addon_module_get_path(module_data->module);
-	next_attach_comp_id = ((priv->data->mmsys_id != MMSYS_MT6991) && addon_config->config_type.tgt_comp) ?
+	next_attach_comp_id = ((!priv->data->ovl_exdma_rule) && addon_config->config_type.tgt_comp) ?
 		addon_config->config_type.tgt_comp : mtk_crtc_find_comp(crtc, ddp_mode, module_data->attach_comp);
 	if (next_attach_comp_id == -1 || next_attach_comp_id >= DDP_COMPONENT_ID_MAX) {
 		comp = priv->ddp_comp[module_data->attach_comp];
