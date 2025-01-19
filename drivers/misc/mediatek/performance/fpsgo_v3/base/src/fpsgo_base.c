@@ -538,11 +538,13 @@ void fpsgo_render_tree_lock(const char *tag)
 {
 	mutex_lock(&fpsgo_render_lock);
 }
+EXPORT_SYMBOL_GPL(fpsgo_render_tree_lock);
 
 void fpsgo_render_tree_unlock(const char *tag)
 {
 	mutex_unlock(&fpsgo_render_lock);
 }
+EXPORT_SYMBOL_GPL(fpsgo_render_tree_unlock);
 
 void fpsgo_lockprove(const char *tag)
 {
