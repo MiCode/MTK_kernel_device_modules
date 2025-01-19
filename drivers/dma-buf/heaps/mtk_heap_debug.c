@@ -307,12 +307,12 @@ static void mtk_dmabuf_dump_for_hang(void)
 
 #endif
 
-#if (!IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
-int is_dma_buf_file(struct file *file)
+static inline int mtk_is_dma_buf_file(struct file *file)
 {
-	return 0;
+	return (dma_buf_file_fops && file->f_op == dma_buf_file_fops);
 }
 
+#if (!IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
 int dma_buf_get_each(int (*callback)(const struct dma_buf *dmabuf,
 		     void *private), void *private)
 {
@@ -411,7 +411,7 @@ struct dma_buf *get_dmabuf_from_file(struct file *file)
 	 * 2. atomic check(file count != 0) and add 1 reference
 	 */
 	if (!get_kernel_nofault(tmp_file, file) &&
-	    is_dma_buf_file(file) &&
+	    mtk_is_dma_buf_file(file) &&
 	    get_file_rcu(&file))
 		return (struct dma_buf *)file->private_data;
 
@@ -692,7 +692,7 @@ unsigned long dmabuf_dbg_rbtree_clear(struct dump_fd_data *fd_data)
 
 		if (!get_kernel_nofault(tmp_dmabuf, dmabuf) &&
 		    !get_kernel_nofault(tmp_file, dmabuf->file) &&
-		    is_dma_buf_file(dmabuf->file))
+		    mtk_is_dma_buf_file(dmabuf->file))
 			/* add 1 ref when add to rb tree, put it after dump */
 			dma_buf_put((struct dma_buf *)dmabuf);
 

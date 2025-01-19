@@ -42,6 +42,7 @@ typedef int (*mtk_refill_order_cb)(unsigned int order, int value);
 
 typedef void (*dmabuf_rbtree_dump_cb)(u64 tab_id, u32 dom_id);
 extern dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
+extern const struct file_operations *dma_buf_file_fops;
 
 #define dmabuf_dump(file, fmt, args...)                         \
 	do {                                                    \

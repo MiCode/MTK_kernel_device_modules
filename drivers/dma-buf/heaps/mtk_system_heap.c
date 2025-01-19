@@ -47,6 +47,9 @@ static dmaheap_slc_callback slc_callback;
 dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
 EXPORT_SYMBOL_GPL(dmabuf_rbtree_dump_by_domain);
 
+const struct file_operations *dma_buf_file_fops;
+EXPORT_SYMBOL_GPL(dma_buf_file_fops);
+
 struct system_heap_buffer {
 	struct dma_heap *heap;
 	struct list_head attachments;
@@ -1309,6 +1312,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		ret = PTR_ERR(dmabuf);
 		goto free_pages;
 	}
+	if (unlikely(!dma_buf_file_fops))
+		dma_buf_file_fops = dmabuf->file->f_op;
 
 	/*
 	 * For uncached buffers, we need to initially flush cpu cache, since
