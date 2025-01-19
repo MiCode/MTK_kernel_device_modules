@@ -298,9 +298,6 @@ struct ufs_mtk_host {
 	struct ufs_mtk_clk mclk;
 	bool pm_qos_init;
 	struct pm_qos_request pm_qos_req;
-	bool qos_allowed;
-	bool qos_enabled;
-	bool boot_device;
 	struct mtk_blocktag *btag;
 
 	struct delayed_work delay_eh_work;

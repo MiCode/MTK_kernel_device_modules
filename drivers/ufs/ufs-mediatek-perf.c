@@ -784,7 +784,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct device_node *np = hba->dev->of_node;
-	struct tag_bootmode *tag = NULL;
 
 	if (of_property_read_bool(np, "mediatek,ufs-boost-crypt"))
 		ufs_mtk_init_boost_crypt(hba);
@@ -794,9 +793,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 
 	if (of_property_read_bool(np, "mediatek,ufs-disable-ah8"))
 		host->caps |= UFS_MTK_CAP_DISABLE_AH8;
-
-	if (of_property_read_bool(np, "mediatek,ufs-qos"))
-		host->qos_enabled = host->qos_allowed = true;
 
 	if (of_property_read_bool(np, "mediatek,ufs-broken-vcc"))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC;
@@ -826,15 +822,6 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	}
 
 	dev_info(hba->dev, "caps=0x%x", host->caps);
-
-	/* Get boot type from bootmode */
-	tag = (struct tag_bootmode *)ufs_mtk_get_boot_property(np,
-								"atag,boot", NULL);
-	if (!tag)
-		dev_info(hba->dev, "failed to get atag,boot\n");
-	else if (tag->boottype == BOOTDEV_UFS)
-		host->boot_device = true;
-
 }
 
 static void ufs_mtk_mcq_disable_irq(struct ufs_hba *hba)
