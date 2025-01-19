@@ -3631,58 +3631,6 @@
 			pinctrl-17 = <&vow_clk_miso_on>;
 		};
 
-		audio_sram@11212000 {
-			compatible = "mediatek,audio_sram";
-			reg = <0 0x11212000 0 0xd000>;
-			prefer_mode = <0>;
-			mode_size = <0x9c00 0xd000>;
-			block_size = <0x1000>;
-		};
-
-		btcvsd_snd: mtk-btcvsd-snd@18050000 {
-			compatible = "mediatek,mtk-btcvsd-snd";
-			reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
-				<0 0x18080000 0 0x10000>; /*SRAM_BANK2*/
-			interrupts = <GIC_SPI 407 IRQ_TYPE_LEVEL_HIGH 0>;
-			mediatek,infracfg = <&infracfg_ao_clk>;
-			/*INFRA MISC, conn_bt_cvsd_mask*/
-			/*cvsd_mcu_read, write, packet_indicator*/
-			mediatek,offset =<0xf00 0x800 0x140 0x144 0x148>;
-			disable_write_silence = <1>;
-		};
-
-		snd_scp_ultra: snd_scp_ultra {
-			compatible = "mediatek,snd_scp_ultra";
-			scp_ultra_dl_memif_id = <0x7>;
-			scp_ultra_ul_memif_id = <0xe>;
-		};
-
-		scp_audio_mbox: scp_audio_mbox@107ff000 {
-			compatible = "mediatek,scp_audio_mbox";
-			status = "disabled";
-			reg = <0 0x107ff000 0 0x100>, /* Re-use scp hw mbox4 */
-			      <0 0x107ff100 0 0x4>,
-			      <0 0x107ff10c 0 0x4>;
-
-			reg-names = "mbox0_base", "mbox0_set", "mbox0_clr";
-			interrupts = <GIC_SPI 472 IRQ_TYPE_LEVEL_HIGH 0>;
-			interrupt-names = "mbox0";
-		};
-
-		snd_scp_audio: snd_scp_audio {
-			compatible = "mediatek,snd_scp_audio";
-			status = "disabled";
-			scp_spk_process_enable = <0x0 0x4 0xf 0x13>;
-		};
-
-		sound: sound {
-			compatible = "mediatek,mt6789-mt6366-sound";
-			mediatek,platform = <&afe>;
-			mediatek,scp-audio = <&snd_scp_audio>;
-			mediatek,speaker-codec {
-			};
-		};
-
 		efuse: efuse@11c10000 {
 			compatible = "mediatek,devinfo";
 			reg = <0 0x11c10000 0 0x10000>;
@@ -6260,6 +6208,58 @@
 			emi-size = <0x600000>;
 			emi-alignment = <0x1000000>;
 			emi-max-addr = <0xC0000000>;
+		};
+	};
+
+	audio_sram@11212000 {
+		compatible = "mediatek,audio_sram";
+		reg = <0 0x11212000 0 0xd000>;
+		prefer-mode = <0>;
+		mode-size = <0x9c00 0xd000>;
+		block-size = <0x1000>;
+	};
+
+	btcvsd_snd: mtk-btcvsd-snd@18050000 {
+		compatible = "mediatek,mtk-btcvsd-snd";
+		reg=<0 0x18050000 0 0x1000>, /*PKV_PHYSICAL_BASE*/
+			<0 0x18080000 0 0x10000>; /*SRAM_BANK2*/
+		interrupts = <GIC_SPI 407 IRQ_TYPE_LEVEL_HIGH 0>;
+		mediatek,infracfg = <&infracfg_ao_clk>;
+		/*INFRA MISC, conn_bt_cvsd_mask*/
+		/*cvsd_mcu_read, write, packet_indicator*/
+		mediatek,offset =<0xf00 0x800 0x140 0x144 0x148>;
+		disable_write_silence = <1>;
+	};
+
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0xe>;
+	};
+
+	scp_audio_mbox: scp_audio_mbox@107ff000 {
+		compatible = "mediatek,scp_audio_mbox";
+		status = "disabled";
+		reg = <0 0x107ff000 0 0x100>, /* Re-use scp hw mbox4 */
+		      <0 0x107ff100 0 0x4>,
+		      <0 0x107ff10c 0 0x4>;
+
+		reg-names = "mbox0_base", "mbox0_set", "mbox0_clr";
+		interrupts = <GIC_SPI 472 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "mbox0";
+	};
+
+	snd_scp_audio: snd_scp_audio {
+		compatible = "mediatek,snd_scp_audio";
+		status = "disabled";
+		scp-spk-process-enable = <0x0 0x4 0xf 0x13>;
+	};
+
+	sound: sound {
+		compatible = "mediatek,mt6789-mt6366-sound";
+		mediatek,platform = <&afe>;
+		mediatek,scp-audio = <&snd_scp_audio>;
+		mediatek,speaker-codec {
 		};
 	};
 
