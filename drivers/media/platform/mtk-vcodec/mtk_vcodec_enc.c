@@ -3309,13 +3309,16 @@ static int mtk_venc_encode_header(void *priv)
 
 static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 {
-	struct venc_enc_param enc_prm;
+	struct venc_enc_param enc_prm = {0};
 	struct vb2_v4l2_buffer *vb2_v4l2 = v4l2_m2m_next_src_buf(ctx->m2m_ctx);
 	struct mtk_video_enc_buf *mtkbuf = to_video_enc_buf(vb2_v4l2);
-
 	int ret = 0;
 
-	memset(&enc_prm, 0, sizeof(enc_prm));
+	if (!vb2_v4l2) {
+		mtk_v4l2_err("[%d] no next src buf", ctx->id);
+		return -1;
+	}
+
 	if (mtkbuf->param_change == MTK_ENCODE_PARAM_NONE)
 		return 0;
 

@@ -90,7 +90,7 @@ int mtk_slb_user_deactivate_request(struct slbc_data *d)
 
 void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 {
-	struct slbc_ops slbc_ops;
+	struct slbc_ops slbc_ops = {0};
 
 	ctx->sram_data.uid = UID_MM_VENC;
 	ctx->sram_data.type = TP_BUFFER;
@@ -766,6 +766,10 @@ static int mtk_venc_translation_fault_callback(
 			hw_id = MTK_VENC_CORE_0;
 		else if (larb_id == 8)
 			hw_id = MTK_VENC_CORE_1;
+		else {
+			mtk_v4l2_err("larb %d not found hw_id", larb_id);
+			return -1;
+		}
 	}
 
 	if (dev->tf_info != NULL) {
@@ -781,6 +785,10 @@ static int mtk_venc_translation_fault_callback(
 	if (dev->power_in_vcp)
 		return 0;
 
+	if (hw_id >= MTK_VENC_HW_NUM) {
+		mtk_v4l2_err("larb %d hw_id %d not support dump", larb_id, hw_id);
+		return -1;
+	}
 	spin_lock_irqsave(&dev->enc_power_lock[hw_id], flags);
 	if (dev->enc_is_power_on[hw_id] == false) {
 		mtk_v4l2_err("hw %d power is off !!", hw_id);
