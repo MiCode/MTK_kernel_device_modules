@@ -689,6 +689,7 @@ struct mtk_vcodec_ctx {
 	int input_slot;
 	bool has_first_input;
 
+	bool waiting_fmt; // after resolution change need wait g_fmt
 	bool is_flushing;
 	unsigned int eos_type;
 	u64 early_eos_ts;
