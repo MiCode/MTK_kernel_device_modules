@@ -169,4 +169,6 @@
 #define DVO_BUF_SODI_LOW		0x234
 #define DVO_DISP_BUF_MASK		0xFFFFFFFF
 
+#define DVO_STATUS			0xE00
+
 #endif /* __MTK_DPI_REGS_H */

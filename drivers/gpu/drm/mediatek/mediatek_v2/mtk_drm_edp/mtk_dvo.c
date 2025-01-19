@@ -103,6 +103,7 @@ struct mtk_dvo {
 	struct clk *pixel_clk;
 	struct clk *tvd_clk;
 	struct clk *dvo_clk;
+	struct clk *hf_fdvo_clk;
 	struct clk *pclk_src[5];
 	int irq;
 	struct drm_display_mode mode;
@@ -240,27 +241,17 @@ static void mtk_dvo_buffer_ctrl(struct mtk_dvo *dvo)
 static void mtk_dvo_pm_ctl(struct mtk_dvo *dvo, bool enable)
 {
 	u32 ret = 0;
+
+	/* DISP_EDPTX_PWR_CON */
 	void *address = ioremap(0x31B50074, 0x1);
 
-	if (enable) {
-		ret = clk_prepare_enable(dvo->pixel_clk);
-		if (ret)
-			dev_info(dvo->dev, "[eDPTX]Failed to enable pixel clock: %d\n", ret);
-
-		/* set DVO switch 26Mhz crystal */
-		clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
-
-		/* DISP_EDPTX_PWR_CON */
-		pr_info("[eDPTX] DISP_EDPTX_PWR_CON enabled\n");
+	if (enable)
 		writel(0xC2FC224D, address);
-	} else {
-		pr_info("[eDPTX] DISP_EDPTX_PWR_CON disabled\n");
+	else
 		writel(0xC2FC2372, address);
-	}
 
 	if (address)
 		iounmap(address);
-
 }
 
 static void mtk_dvo_trailing_blank_setting(struct mtk_dvo *dvo)
@@ -273,12 +264,12 @@ static void mtk_dvo_trailing_blank_setting(struct mtk_dvo *dvo)
 static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *mode)
 {
 	u32 mmsys_clk = 273;
-	u64 data_rate;
-	u64 fill_rate_rem ,consume_rate_rem;
-	u64 fill_rate , consume_rate;
-	u64 dvo_fifo_size, fifo_size, total_bit;
-	u64 sodi_high_rem ,sodi_low_rem, tmp;
-	u64 sodi_high, sodi_low;
+	u64 data_rate = 0;
+	u64 fill_rate_rem = 0, consume_rate_rem = 0;
+	u64 fill_rate = 0, consume_rate = 0;
+	u64 dvo_fifo_size = 0, fifo_size = 0, total_bit = 0;
+	u64 sodi_high_rem = 0, sodi_low_rem = 0, tmp = 0;
+	u64 sodi_high = 0, sodi_low = 0;
 
 	mmsys_clk = mtk_drm_get_mmclk(&dvo->ddp_comp.mtk_crtc->base, __func__) / 1000000;
 	if (!mmsys_clk) {
@@ -431,9 +422,10 @@ static void mtk_dvo_power_off(struct mtk_dvo *dvo)
 		return;
 
 	mtk_dvo_disable(dvo);
+	clk_disable_unprepare(dvo->engine_clk);
 	clk_disable_unprepare(dvo->tvd_clk);
 	clk_disable_unprepare(dvo->pixel_clk);
-	clk_disable_unprepare(dvo->engine_clk);
+	clk_disable_unprepare(dvo->hf_fdvo_clk);
 }
 
 static int mtk_dvo_power_on(struct mtk_dvo *dvo)
@@ -443,15 +435,10 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 	if (++dvo->refcount != 1)
 		return 0;
 
-	ret = clk_prepare_enable(dvo->tvd_clk);
+	/* open MMSYS_CG_1 MOD6_HF_CK_CG for DVO */
+	ret = clk_prepare_enable(dvo->hf_fdvo_clk);
 	if (ret) {
-		dev_info(dvo->dev, "[eDPTX]Failed to enable tvd_clk clock: %d\n", ret);
-		goto err_refcount;
-	}
-
-	ret = clk_prepare_enable(dvo->engine_clk);
-	if (ret) {
-		dev_info(dvo->dev, "Failed to enable engine clock: %d\n", ret);
+		dev_info(dvo->dev, "Failed to enable hf_fdvo_clk: %d\n", ret);
 		goto err_refcount;
 	}
 
@@ -461,10 +448,29 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 		goto err_pixel;
 	}
 
+	/* set DVO switch 26Mhz crystal */
+	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+
+	ret = clk_prepare_enable(dvo->tvd_clk);
+	if (ret) {
+		dev_info(dvo->dev, "[eDPTX]Failed to enable tvd_clk clock: %d\n", ret);
+		goto err_tvd;
+	}
+
+	ret = clk_prepare_enable(dvo->engine_clk);
+	if (ret) {
+		dev_info(dvo->dev, "Failed to enable engine clock: %d\n", ret);
+		goto err_refcount;
+	}
+
 	return 0;
 
+err_engine:
+	clk_disable_unprepare(dvo->tvd_clk);
+err_tvd:
+	clk_disable_unprepare(dvo->pixel_clk);
 err_pixel:
-	clk_disable_unprepare(dvo->engine_clk);
+	clk_disable_unprepare(dvo->hf_fdvo_clk);
 err_refcount:
 	dvo->refcount--;
 	return ret;
@@ -476,8 +482,9 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	struct mtk_dvo_sync_param hsync;
 	struct mtk_dvo_sync_param vsync_lodd = { 0 };
 	struct videomode vm = { 0 };
-	unsigned long pll_rate;
-	unsigned int factor;
+	unsigned long pll_rate = 0;
+	unsigned int factor = 0;
+	int ret = 0;
 
 	pr_info("[eDPTX] %s+\n", __func__);
 
@@ -501,7 +508,12 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	pr_info("[eDPTX] Want PLL %lu Hz, pixel clock %lu Hz\n",
 		pll_rate, vm.pixelclock);
 
-	clk_set_rate(dvo->tvd_clk, pll_rate);
+	ret = clk_set_rate(dvo->tvd_clk, pll_rate);
+	if (ret) {
+		pr_info("[eDPTX] Failed to set dvo->tvd_clk rate:%d\n", ret);
+		return ret;
+	}
+
 	pll_rate = clk_get_rate(dvo->tvd_clk);
 
 	/*
@@ -513,13 +525,18 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	vm.pixelclock /= dvo->conf->pixels_per_iter;
 
 	if (factor == 1)
-		clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
+		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
 	else if (factor == 2)
-		clk_set_parent(dvo->pixel_clk, dvo->pclk_src[3]);
+		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[3]);
 	else if (factor == 4)
-		clk_set_parent(dvo->pixel_clk, dvo->pclk_src[4]);
+		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[4]);
 	else
-		clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
+		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
+
+	if (ret) {
+		pr_info("[eDPTX] Failed to set pixel clock parent ret:%d\n", ret);
+		return ret;
+	}
 
 	vm.pixelclock = clk_get_rate(dvo->pixel_clk);
 
@@ -666,6 +683,13 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 	int ret = 0;
 
+	ret = clk_prepare_enable(dvo->pixel_clk);
+	if (ret)
+		dev_info(dvo->dev, "[eDPTX]Failed to enable pixel clock: %d\n", ret);
+
+	/* set DVO switch 26Mhz crystal */
+	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+
 	ret = drm_bridge_attach(bridge->encoder, dvo->next_bridge,
 				 &dvo->bridge, flags);
 	if (ret)
@@ -695,13 +719,18 @@ static void mtk_dvo_bridge_disable(struct drm_bridge *bridge)
 
 	if (dvo->pinctrl && dvo->pins_gpio)
 		pinctrl_select_state(dvo->pinctrl, dvo->pins_gpio);
+
+	mtk_dvo_pm_ctl(dvo, false);
 }
 
 static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 {
+	int i = 0;
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
 	dev_info(dvo->dev, "[eDPTX] %s+\n", __func__);
+
+	mtk_dvo_pm_ctl(dvo, true);
 	if (dvo->pinctrl && dvo->pins_dvo)
 		pinctrl_select_state(dvo->pinctrl, dvo->pins_dvo);
 
@@ -1003,6 +1032,12 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 	if (IS_ERR(dvo->dvo_clk)) {
 		pr_info("[eDPTX ] Failed to get tck26_clk clock\n");
 		return PTR_ERR(dvo->dvo_clk);
+	}
+
+	dvo->hf_fdvo_clk = devm_clk_get(dev, "hf_fdvo_clk");
+	if (IS_ERR(dvo->hf_fdvo_clk)) {
+		pr_info("[eDPTX ] Failed to get hf_fdvo_clk clock\n");
+		return PTR_ERR(dvo->hf_fdvo_clk);
 	}
 
 	dvo->pclk_src[1] = devm_clk_get(dev, "TVDPLL_D2");
