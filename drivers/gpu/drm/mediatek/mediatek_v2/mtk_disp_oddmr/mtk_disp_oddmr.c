@@ -9753,6 +9753,8 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 	uint32_t cur_dbv_gain;
 	uint32_t remap_gain_target_code;
 	uint32_t remap_gain;
+	uint32_t dmr_remap_gain;
+	int dmr_remap_en;
 
 	if (oddmr_data->primary_data->dbi_state < ODDMR_INIT_DONE) {
 		ODDMRLOW_LOG("dbi off remap_gain_target_code %u\n", dbi_cfg_data->fps_dbv_node.remap_gain_target_code);
@@ -9781,11 +9783,19 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 	}
 
 	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
-		mtk_oddmr_write_mask(comp, remap_gain,
+
+		atomic_set(oddmr_data->dmr_data.remap_gain, remap_gain);
+		dmr_remap_en = atomic_read(oddmr_data->dmr_data.remap_enable);
+		if (dmr_remap_en == 1)
+			dmr_remap_gain = atomic_read(oddmr_data->dmr_data.remap_gain);
+		else
+			dmr_remap_gain = 4096;
+		mtk_oddmr_write_mask(comp, ((remap_gain * dmr_remap_gain) / 4096),
 			MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN, 0xffffffff, pkg);
-	else
+	} else {
 		mtk_oddmr_write_mask(comp, remap_gain,
 			DISP_ODDMR_REG_SPR_REMAP_GAIN, 0xffffffff, pkg);
+	}
 }
 
 static int mtk_oddmr_dbi_enable(struct mtk_ddp_comp *comp, bool en)
