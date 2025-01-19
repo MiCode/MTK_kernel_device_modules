@@ -13258,6 +13258,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	static int cmdq_set_vio;
 #endif
+	unsigned int bw_base, oddmr_hrt;
 
 	if (!crtc) {
 		DDPPR_ERR("%s, crtc is NULL\n", __func__);
@@ -13502,6 +13503,31 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, NULL);
+
+	/* Set HRT BW,  ODDMR and POSTMARK need*/
+	bw_base = mtk_drm_primary_frame_bw(crtc);
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+			mtk_ddp_comp_io_cmd(comp, NULL, ODDMR_SUM_HRT, &oddmr_hrt);
+		oddmr_hrt = bw_base * oddmr_hrt / 400;
+		mtk_disp_set_hrt_bw(mtk_crtc, oddmr_hrt);
+	}
+
+	if (priv->data->update_channel_hrt) {
+		unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+
+		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
+		DDPINFO("%s channel[%u][%u][%u][%u]\n", __func__,
+			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);
+		for (i = 0; i < BW_CHANNEL_NR; i++) {
+			mtk_disp_set_channel_hrt_bw(mtk_crtc, channel_hrt[i], i);
+			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
+		}
+	}
+
+	if (priv->data->respective_ostdl)
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base, NULL, PMQOS_SET_HRT_BW);
 
 	/* 11. set dirty for cmd mode */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
