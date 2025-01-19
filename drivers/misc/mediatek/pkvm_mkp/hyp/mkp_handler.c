@@ -15,6 +15,10 @@
 #undef memcpy
 #endif
 
+/* Default fix range */
+u64 FIX_END = ((uint64_t)0xfffffffefea00000);
+u64 FIX_START = ((uint64_t)0xfffffffefe438000);
+
 /* A64 TOP-LEVEL */
 #define A64_TL_LOAD_STORE_OP0		(0b0100 << 25)
 #define A64_TL_LOAD_STORE_MASK		(0b0101 << 25)
@@ -350,12 +354,12 @@ static u32 handle_low_el_dabt(struct user_pt_regs *regs, u64 fault_va, u64 pc_ip
 		u64 el2_gpa_va, u32 size)
 {
 	u64 pc_el2_va = pc_ipa;
-	u64 pc;
+	// u64 pc;
 	void *fixmap_ptr;
 	u32 inst = 0;
 	int ret = 0;
 
-	pc = read_sysreg_el2(SYS_ELR);
+	// pc = read_sysreg_el2(SYS_ELR);
 
 	if (pc_el2_va == 0) {
 		// trace_hyp_printk("[MKP] handle_low_el_dabt:%d: invalid pc_el2_va!", __LINE__);
@@ -386,7 +390,7 @@ u32 mkp_sync_handler(struct user_pt_regs *regs)
 	bool l3_translation_fault = false;
 	u64 pc_el2_va, pc;
 	int line = 0;
-	u32 ret = 1;
+	u32 ret = 0;
 
 	/*
 	if (el2_gpa_va == 0) {
@@ -441,7 +445,9 @@ u32 mkp_sync_handler(struct user_pt_regs *regs)
 		pc = read_sysreg_el2(SYS_ELR);
 		pc_el2_va = gva_to_par_ipa(pc) | (pc & (PAGE_SIZE - 1));
 
-		/* TODO: Is faulting va in the range of FIXADDR_xxx */
+		/* Is faulting va in the range of FIXADDR_xxx */
+		if (far >= FIX_END || far < FIX_START)
+			goto finish;
 
 		/* Start handling lower EL data abort */
 		ret = handle_low_el_dabt(regs, far, pc_el2_va, el2_gpa_va,

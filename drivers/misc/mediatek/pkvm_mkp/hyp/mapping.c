@@ -11,7 +11,7 @@
 /* The heart of lookup mapping entry */
 static void __mkp_lookup_mapping_entry(u64 ipa, u64 *entry_level, u64 *permission)
 {
-	int ret;
+	// int ret;
 	u64 descriptor = 0;
 
 	/* Clear entry_size and permission */
@@ -19,7 +19,8 @@ static void __mkp_lookup_mapping_entry(u64 ipa, u64 *entry_level, u64 *permissio
 	*permission = 0x0;
 
 	/* Query corresponding descriptor */
-	ret = module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
+	// ret = module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
+	module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
 
 	//if (ret)
 	//	trace_hyp_printk("[MKP] __mkp_lookup_mapping_entry: failed to get pte");
@@ -70,13 +71,6 @@ int reset_to_default_state(u64 perm, u64 start_pfn, u64 nr_pages)
 
 	/* Check if it is default state */
 	if ((perm & S2_MEM_DEFAULT_ATTR) != S2_MEM_DEFAULT_ATTR) {
-		/*
-		for (i = 0; i < nr_pages; i++) {
-			ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR);
-			pfn += 1;
-			ret_final = ret_final | ret;
-		}
-		*/
 		ret = module_ops->host_stage2_mod_prot(pfn, S2_MEM_DEFAULT_ATTR, nr_pages);
 
 		//if (ret_final)
@@ -111,9 +105,6 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 		u64 el, perm, pfn;
 		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
-		bool mapped = false;
-
-		// TODO: MAPPING_CB_LOCK()
 
 		/* Look up the current permission */
 		lookup_entry_for_mkp_set_mapping(handle_obj, &el, &perm);
@@ -132,21 +123,7 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 				goto out;
 			}
 
-			/*
-			for (i = 0; i < nr_pages; i++) {
-				ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR);
-				pfn += 1;
-				ret_final = ret_final | ret;
-			}
-
-			if (!ret_final)
-				mapped = true;
-			*/
-
 			ret = module_ops->host_stage2_mod_prot(pfn, perm & ~MT_WR, nr_pages);
-
-			if (!ret)
-				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
@@ -169,10 +146,6 @@ int mkp_set_mapping_ro(u32 policy, u32 handle)
 			}
 			*/
 		}
-
-		/* Update mapping status of this handle_obj  TODO: */
-
-		// TODO: MAPPING_CB_UNLOCK();
 	}
 
 out:
@@ -207,9 +180,6 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 		u64 el, perm, pfn;
 		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
-		bool mapped = false;
-
-		// TODO: MAPPING_CB_LOCK()
 
 		/* Look up the current permission */
 		lookup_entry_for_mkp_set_mapping(handle_obj, &el, &perm);
@@ -228,29 +198,12 @@ int mkp_set_mapping_rw(u32 policy, u32 handle)
 				goto out;
 			}
 
-			/*
-			for (i = 0; i < nr_pages; i++) {
-				ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW);
-				pfn += 1;
-				ret_final = ret_final | ret;
-			}
-
-			if (!ret_final)
-				mapped = true;
-			*/
 			ret = module_ops->host_stage2_mod_prot(pfn, perm | MT_RW, nr_pages);
-
-			if (!ret)
-				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
 		if (!ret)
 			handle_obj->attrset = rw_is_applied(handle_obj->attrset);
-
-		/* Update mapping status of this handle_obj  TODO: */
-
-		// TODO: MAPPING_CB_UNLOCK();
 	}
 
 out:
@@ -286,9 +239,6 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 		u64 el, perm, pfn;
 		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
-		bool mapped = false;
-
-		// TODO: MAPPING_CB_LOCK()
 
 		/* Look up the current permission */
 		lookup_entry_for_mkp_set_mapping(handle_obj, &el, &perm);
@@ -307,29 +257,12 @@ int mkp_set_mapping_nx(u32 policy, u32 handle)
 				goto out;
 			}
 
-			/*
-			for (i = 0; i < nr_pages; i++) {
-				ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN);
-				pfn += 1;
-				ret_final = ret_final | ret;
-			}
-
-			if (!ret_final)
-				mapped = true;
-			*/
 			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_X) | KVM_PGTABLE_PROT_UXN, nr_pages);
-
-			if (!ret)
-				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
 		if (!ret)
 			handle_obj->attrset = nx_is_applied(handle_obj->attrset);
-
-		/* Update mapping status of this handle_obj  TODO: */
-
-		// TODO: MAPPING_CB_UNLOCK();
 	}
 
 out:
@@ -365,9 +298,6 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 		u64 el, perm, pfn;
 		int nr_pages, ret = 0;
 		bool no_hw_access = policy_has_no_hw_access(policy);
-		bool mapped = false;
-
-		// TODO: MAPPING_CB_LOCK()
 
 		/* Look up the current permission */
 		lookup_entry_for_mkp_set_mapping(handle_obj, &el, &perm);
@@ -386,29 +316,12 @@ int mkp_set_mapping_x(u32 policy, u32 handle)
 				goto out;
 			}
 
-			/*
-			for (i = 0; i < nr_pages; i++) {
-				ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X);
-				pfn += 1;
-				ret_final = ret_final | ret;
-			}
-
-			if (!ret_final)
-				mapped = true;
-			*/
 			ret = module_ops->host_stage2_mod_prot(pfn, (perm & ~MT_AXN) | MT_X, nr_pages);
-
-			if (!ret)
-				mapped = true;
 		}
 
 		/* Update attrset if applied successfully */
 		if (!ret)
 			handle_obj->attrset = _x_is_applied(handle_obj->attrset);
-
-		/* Update mapping status of this handle_obj  TODO: */
-
-		// TODO: MAPPING_CB_UNLOCK();
 	}
 
 out:
@@ -443,9 +356,6 @@ int mkp_clear_mapping(u32 policy, u32 handle)
 	if (to_apply_unmap(handle_obj->attrset)) {
 		u64 pfn;
 		int nr_pages;
-		bool mapped = false;
-
-		// TODO: MAPPING_CB_LOCK()
 
 		/* IPA == PA */
 		nr_pages = handle_obj->size >> PAGE_SHIFT;
@@ -453,14 +363,8 @@ int mkp_clear_mapping(u32 policy, u32 handle)
 		ret = module_ops->host_donate_hyp(pfn, nr_pages, 0);
 
 		/* Update attrset if applied successfully */
-		if (!ret) {
+		if (!ret)
 			handle_obj->attrset = unmap_is_applied(handle_obj->attrset);
-			mapped = true;
-		}
-
-		/* Update mapping status of this handle_obj  TODO: */
-
-		// TODO: MAPPING_CB_UNLOCK();
 	}
 
 out:

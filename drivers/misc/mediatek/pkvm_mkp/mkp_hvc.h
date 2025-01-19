@@ -84,7 +84,8 @@ enum mkp_hvc_func_num {
 	HVC_FUNC_UPDATE_SHAREBUF = 70,
 
 	/* MKP HYP PREPARE ops */
-	HVC_FUNC_MKP_HYP_PREPARE = 80,
+	HVC_FUNC_MKP_HYP_PREPARE1 = 80,
+	HVC_FUNC_MKP_HYP_PREPARE2 = 81,
 
 	/* Essential for MKP service */
 	HVC_FUNC_ESS_0 = 96,

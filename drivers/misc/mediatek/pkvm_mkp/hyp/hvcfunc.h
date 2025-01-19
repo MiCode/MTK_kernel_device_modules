@@ -43,7 +43,8 @@ enum mkp_hvc_func_num {
 	HVC_FUNC_GUARD_5 = 79,
 
 	/* 80 ~ 95 : Helper ops */
-	HVC_FUNC_MKP_HYP_PREPARE = 80,
+	HVC_FUNC_MKP_HYP_PREPARE1 = 80,
+	HVC_FUNC_MKP_HYP_PREPARE2 = 81,
 	HVC_FUNC_GUARD_6 = 95,
 
 	/* 96 ~ 127 : Essential for MKP service */
