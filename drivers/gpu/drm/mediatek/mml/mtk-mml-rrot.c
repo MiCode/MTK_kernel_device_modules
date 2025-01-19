@@ -226,7 +226,7 @@ struct rrot_data {
 };
 
 static const struct rrot_data mt6989_rrot_data = {
-	.tile_width = 4096,	/* 2048+2048 */
+	.tile_width = 2048,
 	.px_per_tick = 2,
 	.alpha_pq_r2y = true,
 	.golden = {
@@ -258,7 +258,7 @@ static const struct rrot_data mt6989_rrot_data = {
 };
 
 static const struct rrot_data mt6991_rrot_data = {
-	.tile_width = 4096,	/* 2048+2048 */
+	.tile_width = 2048,
 	.px_per_tick = 2,
 	.alpha_pq_r2y = true,
 	.ddren_off = true,
@@ -314,8 +314,9 @@ struct rrot_offset {
 
 /* meta data for each different frame config */
 struct rrot_frame_data {
-	/* frame separate by rrot pipe (rrot/rrot_2nd) */
-	struct mml_rect crop;
+	/* frame config */
+	uint16_t rotate;
+	bool flip;
 
 	/* tile config */
 	u8 enable_ufo;
@@ -410,7 +411,7 @@ static void calc_binning_crop(u32 *crop, u32 *frac)
 	((_start_sub + (sz << MML_SUBPIXEL_BITS) + \
 		sz_sub + (1 << MML_SUBPIXEL_BITS) - 1) >> MML_SUBPIXEL_BITS)
 
-static void calc_binning_rot(struct mml_frame_config *cfg)
+static void calc_binning_rot(struct mml_frame_config *cfg, struct rrot_frame_data *rrot_frm)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
@@ -419,7 +420,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 	struct mml_crop *crop;
 	bool binning = rrot_binning && MML_FMT_YUV420(src->format);
 
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+	if (rrot_frm->rotate == MML_ROT_90 || rrot_frm->rotate == MML_ROT_270)
 		swap(outw, outh);
 
 	if (binning && (w >> 1) >= outw && !(src->width & 0x3)) {
@@ -457,7 +458,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 		cfg->frame_tile_sz.height = cfg->frame_in.height;
 	}
 
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+	if (rrot_frm->rotate == MML_ROT_90 || rrot_frm->rotate == MML_ROT_270) {
 		swap(cfg->frame_in.width, cfg->frame_in.height);
 		swap(cfg->frame_tile_sz.width, cfg->frame_tile_sz.height);
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
@@ -503,11 +504,17 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	ccfg->data = kzalloc(sizeof(struct rrot_frame_data), GFP_KERNEL);
 	if (!ccfg->data)
 		return -ENOMEM;
+
+	/* TODO: use an independent flag to replace mml mode */
+	if (mml_isdc(cfg->info.mode))
+		return 0;
 	rrot_frm = rrot_frm_data(ccfg);
+	rrot_frm->rotate = cfg->info.dest[0].rotate;
+	rrot_frm->flip = cfg->info.dest[0].flip;
 
 	/* calculate binning size and set to frame config */
 	if (rrot->pipe == 0)
-		calc_binning_rot(cfg);
+		calc_binning_rot(cfg, rrot_frm);
 	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
 		rrot_msg("%s rrot%s bin %u %u",
@@ -571,7 +578,8 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->rdma.src_fmt = src->format;
 	data->rdma.blk_shift_w = MML_FMT_BLOCK(src->format) ? 4 : 0;
 	data->rdma.blk_shift_h = MML_FMT_BLOCK(src->format) ? 5 : 0;
-	data->rdma.max_width = rrot->data->tile_width;
+	data->rdma.max_width = cfg->rrot_dual ?
+		rrot->data->tile_width * 2 : rrot->data->tile_width;
 
 	/* RDMA support crop capability */
 	func->type = TILE_TYPE_RDMA | TILE_TYPE_CROP_EN;
@@ -579,7 +587,7 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->for_func = tile_rdma_for;
 	func->back_func = tile_rdma_back;
 	func->data = data;
-	data->rdma.read_rotate = cfg->info.dest[0].rotate;
+	data->rdma.read_rotate = rrot_frm->rotate;
 	func->enable_flag = true;
 
 	func->full_size_x_in = cfg->frame_in.width;
@@ -994,12 +1002,11 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 }
 
 static void rrot_calc_slice(struct mml_frame_config *cfg,
-	const struct mml_frame_data *src, const struct mml_frame_dest *dest,
-	struct rrot_frame_data *rrot_frm)
+	const struct mml_frame_data *src, struct rrot_frame_data *rrot_frm)
 {
 	u32 slice_size = 0;
 
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
+	if (rrot_frm->rotate == MML_ROT_0 || rrot_frm->rotate == MML_ROT_180)
 		return;
 
 	if (MML_FMT_YUV420(src->format) && rrot_frm->blk)
@@ -1016,15 +1023,14 @@ static void rrot_calc_slice(struct mml_frame_config *cfg,
 }
 
 static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
-	u32 width, const struct mml_frame_dest *dest,
-	struct rrot_frame_data *rrot_frm, struct cmdq_pkt *pkt)
+	u32 width, struct rrot_frame_data *rrot_frm, struct cmdq_pkt *pkt)
 {
 	const u32 slice_size = rrot_frm->slice_size;
 	const u32 slice_px = rrot_frm->slice_pixel;
 	u32 slice_num;
 	u32 slice0 = 0, slice1 = 0;
 
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
+	if (rrot_frm->rotate == MML_ROT_0 || rrot_frm->rotate == MML_ROT_180)
 		goto done;
 
 	slice_num = DIV_ROUND_UP(width, slice_px);
@@ -1047,7 +1053,7 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	const u32 w = info->src.width;
 	const u32 h = info->src.height;
 	const u32 fps = 1000000000 / info->act_time + 1;
-	const enum mml_orientation rot = info->dest[0].rotate;
+	const enum mml_orientation rot = rrot_frm_data(ccfg)->rotate;
 	u32 leading_pixels = 0;
 
 	u32 prefetch_line_cnt[4] = {0};
@@ -1229,7 +1235,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		U32_MAX);
 
 	rrot_color_fmt(cfg, rrot_frm);
-	rrot_calc_slice(cfg, src, dest, rrot_frm);
+	rrot_calc_slice(cfg, src, rrot_frm);
 
 	/* Enable dither on output, not input */
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_DITHER_CON, 0x0, U32_MAX);
@@ -1257,13 +1263,13 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
 		if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK)
 			rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
-				frame_in->width, frame_in->height, dest->rotate);
+				frame_in->width, frame_in->height, rrot_frm->rotate);
 		else
 			rrot_reset_threshold(rrot, pkt, base_pa);
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN and ULTRA_EN */
 		rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
-			frame_in->width, frame_in->height, dest->rotate);
+			frame_in->width, frame_in->height, rrot_frm->rotate);
 	} else {
 		rrot_reset_threshold(rrot, pkt, comp->base_pa);
 	}
@@ -1433,8 +1439,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (rrot_frm->lb_2b_mode << 12) |
 		   (output_10bit << 5) |
 		   (simple_mode << 4) |
-		   dest->flip << 2 |
-		   dest->rotate,
+		   rrot_frm->flip << 2 |
+		   rrot_frm->rotate,
 		   U32_MAX);
 
 	/* Write frame base address */
@@ -1602,11 +1608,10 @@ static void coord_flip(u16 left, u16 *start, u16 *end, u32 size)
 }
 
 static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml_task *task,
-	struct mml_tile_engine *tile_merge)
+	struct rrot_frame_data *rrot_frm, struct mml_tile_engine *tile_merge)
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_tile_engine tile = *tile_merge;
 
 	rrot_msg("%s frame in crop %u %u %u %u in %u %u %u %u out %u %u %u %u ofst %u %u",
@@ -1617,10 +1622,10 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		tile.out.xs, tile.out.xe, tile.out.ys, tile.out.ye,
 		tile.luma.x, tile.luma.y);
 
-	if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-		(dest->rotate == MML_ROT_180 && !dest->flip) ||
-		(dest->rotate == MML_ROT_90 && !dest->flip) ||
-		(dest->rotate == MML_ROT_270 && dest->flip)) {
+	if ((rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) ||
+		(rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip) ||
+		(rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) ||
+		(rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip)) {
 		const enum mml_color format = cfg->info.src.format;
 		u32 left = cfg->frame_in_crop[0].r.left;
 		u32 tile_width = left + cfg->frame_tile_sz.width;
@@ -1650,7 +1655,7 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 			tile.in.xs, tile.in.xe, tile.out.xs, tile.out.xe);
 	}
 
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+	if (rrot_frm->rotate == MML_ROT_90 || rrot_frm->rotate == MML_ROT_270) {
 		swap(tile.in.xs, tile.in.ys);
 		swap(tile.in.xe, tile.in.ye);
 		swap(tile.out.xs, tile.out.ys);
@@ -1675,30 +1680,30 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 
 	if (cfg->rrot_dual) {
 		if (rrot->pipe == 0) {
-			if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-			    (dest->rotate == MML_ROT_270 && dest->flip))
+			if ((rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) ||
+			    (rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip))
 				rrot_config_bottom(&tile);
-			else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-				 (dest->rotate == MML_ROT_270 && !dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_90 && rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_270 && !rrot_frm->flip))
 				rrot_config_top(&tile);
-			else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-				 (dest->rotate == MML_ROT_180 && dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_0 && !rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_180 && rrot_frm->flip))
 				rrot_config_left(&tile);
-			else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-				 (dest->rotate == MML_ROT_180 && !dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip))
 				rrot_config_right(&tile);
 		} else {
-			if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-			    (dest->rotate == MML_ROT_270 && dest->flip))
+			if ((rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) ||
+			    (rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip))
 				rrot_config_top(&tile);
-			else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-				 (dest->rotate == MML_ROT_270 && !dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_90 && rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_270 && !rrot_frm->flip))
 				rrot_config_bottom(&tile);
-			else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-				 (dest->rotate == MML_ROT_180 && dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_0 && !rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_180 && rrot_frm->flip))
 				rrot_config_right(&tile);
-			else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-				 (dest->rotate == MML_ROT_180 && !dest->flip))
+			else if ((rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) ||
+				 (rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip))
 				rrot_config_left(&tile);
 		}
 	}
@@ -1742,7 +1747,7 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		(_target_uv_blk(_offx, _offy, _stride, _frm)) : \
 		(_target_uv(_offx, _offy, _stride, _frm)))
 
-static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_dest *dest,
+static void rrot_calc_offset(struct mml_frame_data *src,
 	struct rrot_frame_data *rrot_frm, struct mml_tile_engine *tile,
 	struct rrot_offset *ofst, bool buf_offset)
 {
@@ -1775,43 +1780,43 @@ static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_
 	 */
 	xs = 0;
 	ys = 0;
-	if ((dest->rotate == MML_ROT_0 && !dest->flip)) {
+	if ((rrot_frm->rotate == MML_ROT_0 && !rrot_frm->flip)) {
 		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ys, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
 
 		msg = "No flip and no rotation";
-	} else if (dest->rotate == MML_ROT_0 && dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) {
 		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ys, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
 
 		msg = "Flip without rotation";
-	} else if (dest->rotate == MML_ROT_90 && !dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) {
 		ofst->y = target_y(xs, ye, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ye, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ye, src->uv_stride, rrot_frm);
 
 		msg = "Rotate 90 degree only";
-	} else if (dest->rotate == MML_ROT_90 && dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_90 && rrot_frm->flip) {
 		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ys, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
 
 		msg = "Flip and Rotate 90 degree";
-	} else if (dest->rotate == MML_ROT_180 && !dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip) {
 		ofst->y = target_y(xs, ye, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ye, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ye, src->uv_stride, rrot_frm);
 
 		msg = "Rotate 180 degree only";
-	} else if (dest->rotate == MML_ROT_180 && dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_180 && rrot_frm->flip) {
 		ofst->y = target_y(xs, ye, src->y_stride, rrot_frm);
 		ofst->c = target_uv(xs, ye, src->uv_stride, rrot_frm);
 		ofst->v = target_uv(xs, ye, src->uv_stride, rrot_frm);
 
 		msg = "Flip and Rotate 180 degree";
-	} else if (dest->rotate == MML_ROT_270 && !dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_270 && !rrot_frm->flip) {
 		u32 w = xe - xs + 1;
 		u32 slice = w & (rrot_frm->slice_pixel - 1);
 
@@ -1823,7 +1828,7 @@ static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_
 		ofst->v = target_uv(xe + 1 - slice, ys, src->uv_stride, rrot_frm);
 
 		msg = "Rotate 270 degree only";
-	} else if (dest->rotate == MML_ROT_270 && dest->flip) {
+	} else if (rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip) {
 		u32 w = xe - xs + 1;
 		u32 slice = w & (rrot_frm->slice_pixel - 1);
 
@@ -1853,7 +1858,6 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 plane;
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_tile_engine *tile_merge = config_get_tile(cfg, ccfg, idx);
-	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct rrot_offset ofst;
 
 	u32 src_offset_wp = 0;
@@ -1867,7 +1871,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 tput_w, tput_h;
 
 	/* Following data retrieve from tile calc result */
-	struct mml_tile_engine tile = rrot_config_dual(comp, task, tile_merge);
+	struct mml_tile_engine tile = rrot_config_dual(comp, task, rrot_frm, tile_merge);
 	u64 in_xs = tile.in.xs;
 	const u32 in_xe = tile.in.xe;
 	u64 in_ys = tile.in.ys;
@@ -1905,7 +1909,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* config source buffer offset */
-	rrot_calc_offset(src, dest, rrot_frm, &tile, &ofst, true);
+	rrot_calc_offset(src, rrot_frm, &tile, &ofst, true);
 	rrot_write64(pkt,
 		base_pa + RROT_SRC_OFFSET_0,
 		base_pa + RROT_SRC_OFFSET_0_MSB,
@@ -1919,7 +1923,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + RROT_SRC_OFFSET_2_MSB,
 		ofst.v);
 
-	rrot_calc_offset(src, dest, rrot_frm, &tile, &ofst, false);
+	rrot_calc_offset(src, rrot_frm, &tile, &ofst, false);
 	if (!rrot_frm->blk) {
 		/* Set source size */
 		mf_src_w = in_xe - in_xs + 1;
@@ -1963,7 +1967,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + RROT_SRC_BASE_ADD_2_MSB,
 		ofst.v);
 
-	rrot_config_slice(comp, cfg, mf_src_w, dest, rrot_frm, pkt);
+	rrot_config_slice(comp, cfg, mf_src_w, rrot_frm, pkt);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_WP, src_offset_wp, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_HP, src_offset_hp, U32_MAX);
@@ -1974,7 +1978,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_MF_OFFSET_1,
 		(mf_offset_h_1 << 16) + mf_offset_w_1, U32_MAX);
 
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+	if (rrot_frm->rotate == MML_ROT_0 || rrot_frm->rotate == MML_ROT_180) {
 		cfg->rrot_out[rrot->pipe].width = mf_clip_w >> cfg->bin_x;
 		cfg->rrot_out[rrot->pipe].height = mf_clip_h >> cfg->bin_y;
 	} else {
@@ -2012,7 +2016,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			mf_offset_w_1, mf_offset_h_1,
 			mf_clip_w, mf_clip_h,
 			rrot_frm->datasize,
-			dest->rotate);
+			rrot_frm->rotate);
 	else
 		rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u data %u rotate %u",
 			rrot->pipe == 1 ? "_2nd" : "    ",
@@ -2021,7 +2025,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			mf_offset_w_1, mf_offset_h_1,
 			mf_clip_w, mf_clip_h,
 			rrot_frm->datasize,
-			dest->rotate);
+			rrot_frm->rotate);
 
 	return 0;
 }
@@ -2071,7 +2075,6 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
@@ -2084,13 +2087,13 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 
 	cache->total_datasize += rrot_frm->datasize;
 
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+	if (rrot_frm->rotate == MML_ROT_90 || rrot_frm->rotate == MML_ROT_270)
 		swap(tput_w, tput_h);
 
 	/* bound binning or output 1t2p */
 	tput_w = tput_w / rrot->data->px_per_tick;
 	/* output height after binning */
-	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
+	if (rrot_frm->rotate == MML_ROT_0 || rrot_frm->rotate == MML_ROT_180) {
 		if (cfg->bin_y)
 			tput_h = tput_h / rrot->data->px_per_tick;
 	} else {
@@ -2099,7 +2102,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* add rrot rotate max latency for safe */
-	latency = dest->rotate == MML_ROT_0 ? 0 : 32;
+	latency = rrot_frm->rotate == MML_ROT_0 ? 0 : 32;
 
 	dvfs_cache_sz(cache, tput_w, tput_h, 0, latency);
 	dvfs_cache_log(cache, comp, "rrot");
@@ -2244,13 +2247,13 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
-	const u32 rotate = cfg->info.dest[0].rotate;
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+	const u32 rotate = rrot_frm->rotate;
 	const u32 format = src->format;
 	const u32 acttime = mml_iscouple(cfg->info.mode) ? cfg->info.act_time : cfg->duration;
 	const u32 bin_hor = 1 << cfg->bin_x;
 	const u32 pgsz = PAGE_SIZE;
 	u32 w = src->width, h = src->height;
-	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	u32 stash_cmd_num = 0, stash_bw = 256;
 
 	if (rrot_frm->stash_bw)

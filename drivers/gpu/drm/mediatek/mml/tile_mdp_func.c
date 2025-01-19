@@ -19,8 +19,9 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *func,
 
 	/* In tile constraints
 	 * Input Format | Tile Width
-	 * -------------|-----------
-	 *   Block mode | L
+	 * -------------|----------------------
+	 *  Compression | L align blk_w - blk_w
+	 *   Block mode | L align blk_w
 	 *       YUV420 | L
 	 *       YUV422 | L * 2
 	 * YUV444/RGB/Y | L * 4
@@ -87,11 +88,10 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *func,
 
 	/* In tile constraints
 	 * Input Format | Tile Width
-	 * -------------|-----------
-	 *   Block mode | L
-	 *       YUV420 | L
-	 *       YUV422 | L * 2
-	 * YUV444/RGB/Y | L * 4
+	 * -------------|----------------------
+	 *  Compression | L align blk_w - blk_w
+	 *   Block mode | L align blk_w
+	 *    YUV/RGB/Y | L
 	 */
 	if (MML_FMT_AFBC_ARGB(data->src_fmt)) {
 		/* For AFBC mode end x may be extend to block size
