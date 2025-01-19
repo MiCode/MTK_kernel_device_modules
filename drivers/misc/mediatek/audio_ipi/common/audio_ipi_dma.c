@@ -1059,7 +1059,6 @@ static int audio_region_drop(uint32_t dsp_id,
 	uint32_t count_align = DO_BYTE_ALIGN(count,
 					     g_cache_alilgn_mask[dsp_id]);
 	uint32_t available_count = 0;
-	uint8_t *base = NULL;
 	uint32_t r2e = 0;
 
 	if (!region)
@@ -1090,8 +1089,6 @@ static int audio_region_drop(uint32_t dsp_id,
 			    region, count);
 		return -ENOMEM;
 	}
-
-	base = dma_vir_base(dsp_id) + region->offset;
 
 	if (region->read_idx <= region->write_idx)
 		region->read_idx += count_align;
@@ -1375,7 +1372,7 @@ static int hal_dma_push(
 
 static int hal_dma_pop(struct hal_dma_queue_t *msg_queue)
 {
-	struct ipi_msg_t *p_ipi_msg = NULL;
+	struct ipi_msg_t __maybe_unused *p_ipi_msg = NULL;
 
 	if (msg_queue == NULL) {
 		pr_info("NULL!! msg_queue: %p", msg_queue);

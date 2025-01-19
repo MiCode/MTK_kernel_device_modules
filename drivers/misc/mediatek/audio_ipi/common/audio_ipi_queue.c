@@ -426,7 +426,6 @@ int send_message_ack(
 	struct ipi_msg_t *p_ipi_msg_ack)
 {
 	struct msg_queue_t *msg_queue = NULL;
-	uint8_t task_scene = 0xFF;
 	unsigned long flags = 0;
 
 	/* error handling */
@@ -442,7 +441,6 @@ int send_message_ack(
 
 	/* get info */
 	msg_queue = (struct msg_queue_t *)handler->msg_queue;
-	task_scene = msg_queue->task_scene;
 
 	if (msg_queue->enable == false)
 		return -1;
