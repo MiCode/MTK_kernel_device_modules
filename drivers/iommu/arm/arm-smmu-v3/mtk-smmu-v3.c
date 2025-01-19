@@ -2880,98 +2880,131 @@ static u32 smmuwp_fault_id(u32 axi_id, u32 tbu_id)
 	return fault_id;
 }
 
+static bool smmuwp_tbu_read_fault(struct arm_smmu_device *smmu,
+				  struct arm_smmu_master *master,
+				  struct mtk_iommu_fault_event *fault_evt,
+				  void __iomem *wp_base, u32 tbu)
+{
+	unsigned int sid, ssid, secsidv, ssidv;
+	u32 regval, va35_32, axiid, fault_id;
+	u64 fault_iova, fault_pa;
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM0(tbu));
+	if (!(regval & RTFM0_FAULT_DET))
+		return false;
+
+	axiid = FIELD_GET(RTFM0_FAULT_AXI_ID, regval);
+	fault_id = smmuwp_fault_id(axiid, tbu);
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM1(tbu));
+	va35_32 = FIELD_GET(RTFM1_FAULT_VA_35_32, regval);
+	fault_iova = (u64)(regval & RTFM1_FAULT_VA_31_12);
+	fault_iova |= (u64)va35_32 << 32;
+	fault_pa = smmu_iova_to_phys(master, fault_iova);
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM2(tbu));
+	sid = FIELD_GET(RTFM2_FAULT_SID, regval);
+	ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
+	ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
+	secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
+
+	dev_info(smmu->dev,
+		 "TBU%d %s read TF, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		 tbu, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
+
+	fault_evt->mtk_fault_param[SMMU_TFM_READ][tbu] = (struct mtk_smmu_fault_param) {
+		.tfm_type = SMMU_TFM_READ,
+		.fault_id = fault_id,
+		.fault_det = true,
+		.fault_iova = fault_iova,
+		.fault_pa = fault_pa,
+		.fault_sid = sid,
+		.fault_ssid = ssid,
+		.fault_ssidv = ssidv,
+		.fault_secsid = secsidv,
+		.tbu_id = tbu,
+	};
+
+	if (fault_evt->first_fault_param == NULL)
+		fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_READ][tbu];
+
+	return true;
+}
+
+static bool smmuwp_tbu_write_fault(struct arm_smmu_device *smmu,
+				   struct arm_smmu_master *master,
+				   struct mtk_iommu_fault_event *fault_evt,
+				   void __iomem *wp_base, u32 tbu)
+{
+	unsigned int sid, ssid, secsidv, ssidv;
+	u32 regval, va35_32, axiid, fault_id;
+	u64 fault_iova, fault_pa;
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM0(tbu));
+	if (!(regval & WTFM0_FAULT_DET))
+		return false;
+
+	axiid = FIELD_GET(WTFM0_FAULT_AXI_ID, regval);
+	fault_id = smmuwp_fault_id(axiid, tbu);
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM1(tbu));
+	va35_32 = FIELD_GET(WTFM1_FAULT_VA_35_32, regval);
+	fault_iova = (u64)(regval & WTFM1_FAULT_VA_31_12);
+	fault_iova |= (u64)va35_32 << 32;
+	fault_pa = smmu_iova_to_phys(master, fault_iova);
+
+	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM2(tbu));
+	sid = FIELD_GET(WTFM2_FAULT_SID, regval);
+	ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
+	ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
+	secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
+
+	dev_info(smmu->dev,
+		 "TBU%d %s write TF, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		 tbu, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
+
+	fault_evt->mtk_fault_param[SMMU_TFM_WRITE][tbu] = (struct mtk_smmu_fault_param) {
+		.tfm_type = SMMU_TFM_WRITE,
+		.fault_id = fault_id,
+		.fault_det = true,
+		.fault_iova = fault_iova,
+		.fault_pa = fault_pa,
+		.fault_sid = sid,
+		.fault_ssid = ssid,
+		.fault_ssidv = ssidv,
+		.fault_secsid = secsidv,
+		.tbu_id = tbu,
+	};
+
+	if (fault_evt->first_fault_param == NULL)
+		fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][tbu];
+
+	return true;
+}
+
+static bool smmuwp_tbu_faults(struct arm_smmu_device *smmu,
+			      struct arm_smmu_master *master,
+			      struct mtk_iommu_fault_event *fault_evt,
+			      void __iomem *wp_base, u32 tbu)
+{
+	bool read_det = smmuwp_tbu_read_fault(smmu, master, fault_evt, wp_base, tbu);
+	bool write_det = smmuwp_tbu_write_fault(smmu, master, fault_evt, wp_base, tbu);
+
+	return read_det || write_det;
+}
+
 /* Process TBU translation fault Monitor */
 static bool smmuwp_process_tf(struct arm_smmu_device *smmu,
 			      struct arm_smmu_master *master,
 			      struct mtk_iommu_fault_event *fault_evt)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 tbu, tbu_cnt = SMMU_TBU_CNT(data->plat_data->smmu_type);
 	void __iomem *wp_base = smmu->wp_base;
-	unsigned int sid, ssid, secsidv, ssidv;
-	u32 i, regval, va35_32, axiid, fault_id;
-	u64 fault_iova, fault_pa;
 	bool tf_det = false;
 
-	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM0(i));
-		if (!(regval & RTFM0_FAULT_DET))
-			goto write;
-
-		tf_det = true;
-		axiid = FIELD_GET(RTFM0_FAULT_AXI_ID, regval);
-		fault_id = smmuwp_fault_id(axiid, i);
-
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM1(i));
-		va35_32 = FIELD_GET(RTFM1_FAULT_VA_35_32, regval);
-		fault_iova = (u64)(regval & RTFM1_FAULT_VA_31_12);
-		fault_iova |= (u64)va35_32 << 32;
-		fault_pa = smmu_iova_to_phys(master, fault_iova);
-
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM2(i));
-		sid = FIELD_GET(RTFM2_FAULT_SID, regval);
-		ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
-		ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
-		secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
-		dev_info(smmu->dev,
-			 "TBU%d %s TF read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
-			 i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
-
-		fault_evt->mtk_fault_param[SMMU_TFM_READ][i] = (struct mtk_smmu_fault_param) {
-			.tfm_type = SMMU_TFM_READ,
-			.fault_id = fault_id,
-			.fault_det = tf_det,
-			.fault_iova = fault_iova,
-			.fault_pa = fault_pa,
-			.fault_sid = sid,
-			.fault_ssid = ssid,
-			.fault_ssidv = ssidv,
-			.fault_secsid = secsidv,
-			.tbu_id = i,
-		};
-
-		if (fault_evt->first_fault_param == NULL)
-			fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_READ][i];
-
-write:
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM0(i));
-		if (!(regval & WTFM0_FAULT_DET))
-			continue;
-
-		tf_det = true;
-		axiid = FIELD_GET(WTFM0_FAULT_AXI_ID, regval);
-		fault_id = smmuwp_fault_id(axiid, i);
-
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM1(i));
-		va35_32 = FIELD_GET(WTFM1_FAULT_VA_35_32, regval);
-		fault_iova = (u64)(regval & RTFM1_FAULT_VA_31_12);
-		fault_iova |= (u64)va35_32 << 32;
-		fault_pa = smmu_iova_to_phys(master, fault_iova);
-
-		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM2(i));
-		sid = FIELD_GET(WTFM2_FAULT_SID, regval);
-		ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
-		ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
-		secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
-		dev_info(smmu->dev,
-			 "TBU%d %s TF write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
-			 i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
-
-		fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i] = (struct mtk_smmu_fault_param) {
-			.tfm_type = SMMU_TFM_WRITE,
-			.fault_id = fault_id,
-			.fault_det = tf_det,
-			.fault_iova = fault_iova,
-			.fault_pa = fault_pa,
-			.fault_sid = sid,
-			.fault_ssid = ssid,
-			.fault_ssidv = ssidv,
-			.fault_secsid = secsidv,
-			.tbu_id = i,
-		};
-
-		if (fault_evt->first_fault_param == NULL)
-			fault_evt->first_fault_param = &fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i];
-	}
+	for (tbu = 0; tbu < tbu_cnt; tbu++)
+		tf_det |= smmuwp_tbu_faults(smmu, master, fault_evt, wp_base, tbu);
 
 	if (!tf_det)
 		dev_info(smmu->dev, "No TF detected or has been cleaned\n");
