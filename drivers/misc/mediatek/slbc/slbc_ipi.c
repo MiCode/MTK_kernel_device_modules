@@ -976,5 +976,22 @@ void slbc_unregister_ipi_ops(struct slbc_ipi_ops *ops)
 }
 EXPORT_SYMBOL_GPL(slbc_unregister_ipi_ops);
 
+int slbc_all_cache_pmu_test(int status, int slc_way)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_SLBC_ALL_CACHE_PMU_TEST;
+	slbc_ipi_d.arg1 = status;
+	slbc_ipi_d.arg2 = slc_way;
+	return slbc_scmi_ctrl(&slbc_ipi_d, &rvalue);
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+EXPORT_SYMBOL_GPL(slbc_all_cache_pmu_test);
+
 MODULE_DESCRIPTION("SLBC scmi Driver v0.1");
 MODULE_LICENSE("GPL");

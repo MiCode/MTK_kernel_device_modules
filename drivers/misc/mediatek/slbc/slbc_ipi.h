@@ -51,6 +51,7 @@ enum {
 	IPI_SLBC_TABLE_GID_AXI_SET,
 	IPI_SLBC_TABLE_GID_AXI_RELEASE,
 	IPI_SLBC_TABLE_GID_AXI_GET,
+	IPI_SLBC_ALL_CACHE_PMU_TEST,
 	IPI_EMI_SLB_SELECT,
 	IPI_SLBC_BUFFER_CB_NOTIFY,
 	IPI_EMI_PMU_COUNTER,
@@ -127,6 +128,7 @@ extern int slbc_table_idt_get(int index);
 extern int slbc_table_gid_axi_set(int index, int axiid, int pg);
 extern int slbc_table_gid_axi_release(int index);
 extern int slbc_table_gid_axi_get(int index);
+extern int slbc_all_cache_pmu_test(int status, int slc_way);
 extern int emi_slb_select(int argv1, int argv2, int argv3);
 extern int emi_pmu_counter(int argv1, int argv2, int argv3);
 extern int emi_pmu_set_ctrl(int argv1, int argv2, int argv3);
@@ -173,6 +175,7 @@ __weak int slbc_table_idt_get(int index) { return 0; }
 __weak int slbc_table_gid_axi_set(int index, int axiid, int pg) { return 0; }
 __weak int slbc_table_gid_axi_release(int index) { return 0; }
 __weak int slbc_table_gid_axi_get(int index) { return 0; }
+__weak int slbc_all_cache_pmu_test(int status, int slc_way) { return 0; }
 __weak int emi_slb_select(int argv1, int argv2, int argv3) { return 0; }
 __weak int emi_pmu_counter(int argv1, int argv2, int argv3) { return 0; }
 __weak int emi_pmu_set_ctrl(int argv1, int argv2, int argv3) { return 0; }
