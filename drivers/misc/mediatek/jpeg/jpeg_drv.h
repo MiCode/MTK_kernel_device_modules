@@ -62,7 +62,8 @@ struct JpegDeviceStruct {
 	unsigned long jpeg_freqs[JPEG_LARB_COUNT][MAX_FREQ_STEP];
 	struct regulator *jpeg_reg[JPEG_LARB_COUNT];
 	struct clk *jpeg_dvfs[JPEG_LARB_COUNT];
-	struct notifier_block pm_notifier;
+	struct notifier_block pm_suspend_prepare_notifier;
+	struct notifier_block pm_post_suspend_notifier;
 	bool is_suspending;
 	bool is_shutdowning;
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
