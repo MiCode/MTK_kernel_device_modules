@@ -13,6 +13,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/types.h>
+#include <linux/of_device.h>
 
 #include <video/videomode.h>
 
@@ -29,8 +30,6 @@
 #include "../mtk_drm_drv.h"
 
 #include "mtk_drm_dp_intf_regs.h"
-
-#define ATTACH_SERDES_BRIDGE 1
 
 enum mtk_dpi_out_bit_num {
 	MTK_DPI_OUT_BIT_NUM_8BITS,
@@ -73,9 +72,7 @@ enum TVDPLL_CLK {
 struct mtk_dpi {
 	struct drm_encoder encoder;
 	struct drm_bridge bridge;
-#if ATTACH_SERDES_BRIDGE
 	struct drm_bridge *next_bridge;
-#endif
 	struct drm_connector *connector;
 	struct mtk_ddp_comp ddp_comp;
 	void __iomem *regs;
@@ -174,6 +171,7 @@ struct mtk_dpi_conf {
 	u32 csc_enable_bit;
 	u32 pixels_per_iter;
 	bool edge_cfg_in_mmsys;
+	bool no_next_bridge;
 };
 
 static void mtk_dpi_mask(struct mtk_dpi *dpi, u32 offset, u32 val, u32 mask)
@@ -787,8 +785,8 @@ static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
 		if (dpi->conf->num_output_fmts)
 			out_bus_format = dpi->conf->output_fmts[0];
 
-	dev_dbg(dpi->dev, "input format 0x%04x, output format 0x%04x\n",
-		bridge_state->input_bus_cfg.format,
+	dev_info(dpi->dev, "dpintf, input format 0x%04x, output format 0x%04x\n",
+		 bridge_state->input_bus_cfg.format,
 		bridge_state->output_bus_cfg.format);
 
 	dpi->output_fmt = out_bus_format;
@@ -803,23 +801,17 @@ static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
 	return 0;
 }
 
-#if ATTACH_SERDES_BRIDGE
 static int mtk_dpi_bridge_attach(struct drm_bridge *bridge,
 				 enum drm_bridge_attach_flags flags)
 {
 	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
-	int ret;
 
-	if (!dpi->next_bridge)
+	if (dpi->conf->no_next_bridge)
 		return 0;
 
-	ret = drm_bridge_attach(bridge->encoder, dpi->next_bridge, &dpi->bridge, flags);
-	if (ret < 0)
-		dev_info(dpi->dev, "Failed to attach next bridge (%d)\n", ret);
-
-	return 0;
+	return drm_bridge_attach(bridge->encoder, dpi->next_bridge,
+				 &dpi->bridge, flags);
 }
-#endif
 
 static void mtk_dpi_bridge_mode_set(struct drm_bridge *bridge,
 				    const struct drm_display_mode *mode,
@@ -828,7 +820,7 @@ static void mtk_dpi_bridge_mode_set(struct drm_bridge *bridge,
 	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
 
 	drm_mode_copy(&dpi->mode, adjusted_mode);
-	dev_info(dpi->dev, "Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d\n",
+	dev_info(dpi->dev, "dpintf, Htt:%d, Vtt:%d, Hact:%d, Vact:%d, fps:%d\n",
 		 dpi->mode.htotal, dpi->mode.vtotal,
 			dpi->mode.hdisplay, dpi->mode.vdisplay, drm_mode_vrefresh(mode));
 }
@@ -869,9 +861,7 @@ mtk_dpi_bridge_mode_valid(struct drm_bridge *bridge,
 }
 
 static const struct drm_bridge_funcs mtk_dpi_bridge_funcs = {
-#if ATTACH_SERDES_BRIDGE
 	.attach = mtk_dpi_bridge_attach,
-#endif
 	.mode_set = mtk_dpi_bridge_mode_set,
 	.mode_valid = mtk_dpi_bridge_mode_valid,
 	.disable = mtk_dpi_bridge_disable,
@@ -933,8 +923,14 @@ static int mtk_dpi_bind(struct device *dev, struct device *master, void *data)
 
 	ret = drm_bridge_attach(&dpi->encoder, &dpi->bridge, NULL,
 				DRM_BRIDGE_ATTACH_NO_CONNECTOR);
+	if (ret)
+		goto err_cleanup;
 
 	return 0;
+
+err_cleanup:
+	drm_encoder_cleanup(&dpi->encoder);
+	return ret;
 }
 
 static void mtk_dpi_unbind(struct device *dev, struct device *master,
@@ -1122,7 +1118,7 @@ static const struct mtk_dpi_conf mt8195_dpintf_conf = {
 	.csc_enable_bit = DPINTF_CSC_ENABLE,
 };
 
-static const struct mtk_dpi_conf mt8678_dpintf_conf = {
+static const struct mtk_dpi_conf mt8678_dpintf_conf0 = {
 	.cal_factor = mt8678_dpintf_calculate_factor,
 	.max_clock_khz = 600000,
 	.output_fmts = mt8678_output_fmts,
@@ -1134,6 +1130,21 @@ static const struct mtk_dpi_conf mt8678_dpintf_conf = {
 	.channel_swap_shift = DPINTF_CH_SWAP,
 	.yuv422_en_bit = DPINTF_YUV422_EN,
 	.csc_enable_bit = DPINTF_CSC_ENABLE,
+};
+
+static const struct mtk_dpi_conf mt8678_dpintf_conf1 = {
+	.cal_factor = mt8678_dpintf_calculate_factor,
+	.max_clock_khz = 600000,
+	.output_fmts = mt8678_output_fmts,
+	.num_output_fmts = ARRAY_SIZE(mt8678_output_fmts),
+	.pixels_per_iter = 4,
+	.input_2pixel = true,
+	.dimension_mask = DPINTF_HPW_MASK,
+	.hvsize_mask = DPINTF_HSIZE_MASK,
+	.channel_swap_shift = DPINTF_CH_SWAP,
+	.yuv422_en_bit = DPINTF_YUV422_EN,
+	.csc_enable_bit = DPINTF_CSC_ENABLE,
+	.no_next_bridge = true,
 };
 
 static void mt8678_get_clk(struct mtk_dpi *dp_intf)
@@ -1317,6 +1328,15 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	dpi->conf = (struct mtk_dpi_conf *)of_device_get_match_data(dev);
 	dpi->output_fmt = MEDIA_BUS_FMT_RGB888_1X24;
 
+	if (!dpi->conf->no_next_bridge) {
+		dpi->next_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 0, 0);
+		if (IS_ERR(dpi->next_bridge)) {
+			dev_info(dev, "Can not find next_bridge");
+			return -EPROBE_DEFER;
+		}
+		dev_info(dev, "Found dp tx bridge node: %pOF\n", dpi->next_bridge->of_node);
+	}
+
 	dpi->pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR(dpi->pinctrl)) {
 		dpi->pinctrl = NULL;
@@ -1356,6 +1376,18 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 
 	mt8678_get_clk(dpi);
 
+	ret = clk_prepare_enable(dpi->pclk);
+	if (ret < 0)
+		dev_info(dev, "%s Failed to enable pclk:%d\n",
+			 __func__, ret);
+
+	ret = clk_set_parent(dpi->pclk, dpi->pclk_src[TCK_26M]);
+	if (ret < 0)
+		dev_info(dev, "%s Failed to clk_set_parent:%d\n",
+			 __func__, ret);
+	dev_info(dev, "%s dpintf->pclk:%ld\n",
+		 __func__, clk_get_rate(dpi->pclk));
+
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DP_INTF);
 	if ((int)comp_id < 0) {
 		dev_info(dev, "Failed to identify by alias: %d\n", comp_id);
@@ -1372,16 +1404,6 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	if (dpi->irq < 0)
 		return dpi->irq;
 
-#if ATTACH_SERDES_BRIDGE
-	ret = drm_of_find_panel_or_bridge(dev->of_node, 1, 0, NULL, &dpi->next_bridge);
-	if (!dpi->next_bridge) {
-		dev_info(dev, "Can not find next_bridge");
-		return -EPROBE_DEFER;
-	}
-
-	dev_info(dev, "Found next bridge node: %pOF\n", dpi->next_bridge->of_node);
-#endif
-
 	platform_set_drvdata(pdev, dpi);
 
 	dpi->bridge.funcs = &mtk_dpi_bridge_funcs;
@@ -1393,21 +1415,10 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 		return ret;
 
 	ret = component_add(dev, &mtk_dpi_component_ops);
-	if (ret)
+	if (ret) {
+		dev_info(dev, "Failed to component add: %d\n", ret);
 		return -EPROBE_DEFER;
-
-	ret = clk_prepare_enable(dpi->pclk);
-	if (ret < 0)
-		dev_info(dev, "%s Failed to enable pclk:%d\n",
-			 __func__, ret);
-
-	ret = clk_set_parent(dpi->pclk, dpi->pclk_src[TCK_26M]);
-	if (ret < 0)
-		dev_info(dev, "%s Failed to clk_set_parent:%d\n",
-			 __func__, ret);
-
-	dev_info(dev, "%s dpintf->pclk:%ld\n",
-		 __func__, clk_get_rate(dpi->pclk));
+	}
 
 	return 0;
 }
@@ -1425,7 +1436,8 @@ static const struct of_device_id mtk_dpi_of_ids[] = {
 	{ .compatible = "mediatek,mt8188-dp-intf", .data = &mt8195_dpintf_conf },
 	{ .compatible = "mediatek,mt8192-dpi", .data = &mt8192_conf },
 	{ .compatible = "mediatek,mt8195-dp-intf", .data = &mt8195_dpintf_conf },
-	{ .compatible = "mediatek,mt6991-dp-intf", .data = &mt8678_dpintf_conf },
+	{ .compatible = "mediatek,disp1_dp_intf0", .data = &mt8678_dpintf_conf0 },
+	{ .compatible = "mediatek,disp1_dp_intf1", .data = &mt8678_dpintf_conf1 },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, mtk_dpi_of_ids);

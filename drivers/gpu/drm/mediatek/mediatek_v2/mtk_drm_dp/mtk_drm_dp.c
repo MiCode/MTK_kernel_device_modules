@@ -1243,7 +1243,7 @@ void mtk_dp_fec_ready(struct mtk_dp *mtk_dp, u8 err_cnt_sel)
 		drm_dp_dpcd_write(&mtk_dp->aux, 0x120, data, 0x1);
 		drm_dp_dpcd_read(&mtk_dp->aux, 0x280, data, 0x3);
 		DP_MSG("FEC status & error Count:0x%x, 0x%x, 0x%x\n",
-			data[0], data[1], data[2]);
+		       data[0], data[1], data[2]);
 	}
 
 	DP_MSG("SINK has_fec:%d\n", mtk_dp->has_fec);
@@ -3900,6 +3900,7 @@ void mtk_dp_set_efuse_value(struct mtk_dp *mtk_dp)
 	/* get_devinfo_with_index(114); */
 
 	DP_DBG("DP efuse(0x11C101B8):0x%x\n", efuse);
+	DP_MSG("DP lane:0x%x\n", READ_BYTE(mtk_dp, REG_3000_DP_ENCODER0_P0));
 
 	if (efuse) {
 		WRITE_4BYTE_MASK(mtk_dp, 0x0008, efuse >> 1, GENMASK(23, 20));
@@ -5520,6 +5521,130 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 	}
 }
 
+static struct mtk_dp *mtk_dp_from_bridge(struct drm_bridge *b)
+{
+	return container_of(b, struct mtk_dp, bridge);
+}
+
+static int mtk_dp_bridge_attach(struct drm_bridge *bridge,
+				enum drm_bridge_attach_flags flags)
+{
+	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
+	int ret;
+
+	DP_FUNC();
+
+	if (!(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)) {
+		DP_MSG("Driver does not provide a connector");
+		return -EINVAL;
+	}
+
+	mtk_dp->aux.drm_dev = bridge->dev;
+	ret = drm_dp_aux_register(&mtk_dp->aux);
+	if (ret) {
+		DP_MSG("failed to register DP AUX channel:%d\n", ret);
+		return ret;
+	}
+
+	if (mtk_dp->next_bridge) {
+		ret = drm_bridge_attach(bridge->encoder, mtk_dp->next_bridge,
+					&mtk_dp->bridge, flags);
+		if (ret) {
+			drm_warn(mtk_dp->drm_dev,
+				 "Failed to attach external bridge:%d\n", ret);
+			goto err_bridge_attach;
+		}
+	}
+
+	mtk_dp->drm_dev = bridge->dev;
+
+	mtk_dp_init_port(mtk_dp);
+	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
+
+	return 0;
+
+err_bridge_attach:
+	drm_dp_aux_unregister(&mtk_dp->aux);
+	return ret;
+}
+
+static u32 *mtk_dp_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
+						     struct drm_bridge_state *bridge_state,
+						     struct drm_crtc_state *crtc_state,
+						     struct drm_connector_state *conn_state,
+						     unsigned int *num_output_fmts)
+{
+	u32 *output_fmts;
+
+	DP_FUNC();
+
+	*num_output_fmts = 0;
+	output_fmts = kmalloc(sizeof(*output_fmts), GFP_KERNEL);
+	if (!output_fmts)
+		return NULL;
+	*num_output_fmts = 1;
+	output_fmts[0] = MEDIA_BUS_FMT_FIXED;
+	return output_fmts;
+}
+
+static u32 *mtk_dp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
+						    struct drm_bridge_state *bridge_state,
+						    struct drm_crtc_state *crtc_state,
+						    struct drm_connector_state *conn_state,
+						    u32 output_fmt,
+						    unsigned int *num_input_fmts)
+{
+	u32 *input_fmts;
+	struct mtk_dp *mtk_dp = mtk_dp_from_bridge(bridge);
+	struct drm_display_mode *mode = &crtc_state->adjusted_mode;
+	struct drm_display_info *display_info =
+		&conn_state->connector->display_info;
+
+	DP_FUNC();
+
+	u32 rate = min_t(u32, drm_dp_max_link_rate(mtk_dp->rx_cap) *
+			      drm_dp_max_lane_count(mtk_dp->rx_cap),
+			 drm_dp_bw_code_to_link_rate(mtk_dp->training_info.link_rate) *
+			 mtk_dp->training_info.link_lane_count);
+
+	*num_input_fmts = 0;
+
+	/*
+	 * If the linkrate is smaller than datarate of RGB888, larger than
+	 * datarate of YUV422 and sink device supports YUV422, we output YUV422
+	 * format. Use this condition, we can support more resolution.
+	 */
+	if ((rate < (mode->clock * 24 / 8)) &&
+	    (rate > (mode->clock * 16 / 8)) &&
+	    (display_info->color_formats & DRM_COLOR_FORMAT_YCBCR422)) {
+		input_fmts = kcalloc(1, sizeof(*input_fmts), GFP_KERNEL);
+		if (!input_fmts)
+			return NULL;
+		*num_input_fmts = 1;
+		input_fmts[0] = MEDIA_BUS_FMT_YUYV8_1X16;
+	} else {
+		input_fmts = kcalloc(ARRAY_SIZE(mt8678_input_fmts),
+				     sizeof(*input_fmts),
+				     GFP_KERNEL);
+		if (!input_fmts)
+			return NULL;
+
+		*num_input_fmts = ARRAY_SIZE(mt8678_input_fmts);
+		memcpy(input_fmts, mt8678_input_fmts, sizeof(mt8678_input_fmts));
+	}
+
+	return input_fmts;
+}
+
+static const struct drm_bridge_funcs mtk_dp_bridge_funcs = {
+	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
+	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
+	.atomic_get_output_bus_fmts = mtk_dp_bridge_atomic_get_output_bus_fmts,
+	.atomic_get_input_bus_fmts = mtk_dp_bridge_atomic_get_input_bus_fmts,
+	.atomic_reset = drm_atomic_helper_bridge_reset,
+	.attach = mtk_dp_bridge_attach,
+};
+
 int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 {
 	int ret = DP_RET_NOERR;
@@ -5903,7 +6028,6 @@ enum dp_train_stage mtk_dp_training_flow(struct mtk_dp *mtk_dp, u8 link_rate, u8
 				DP_MSG("EQ Training Success\n");
 				if (dpcd_202[2] & 0x1) {
 					mtk_dp->training_info.eq_done = true;
-					mtk_dp->dp_ready = true;
 					DP_MSG("Inter-lane skew Success\n");
 					break;
 				}
@@ -6586,47 +6710,14 @@ int mtk_dp_phy_get_info(char *buffer, int size)
 
 /*  dp tx api for debug end */
 
-static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
-{
-	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
-	struct drm_device *drm_dev = data;
-	int ret;
-
-	mtk_dp->drm_dev = drm_dev;
-
-	ret = mtk_ddp_comp_register(drm_dev, &mtk_dp->ddp_comp);
-	if (ret < 0) {
-		DP_ERR("Failed to register component %s: %d\n",
-		       dev->of_node->full_name, ret);
-		return ret;
-	}
-
-	mtk_dp_init_port(mtk_dp);
-	mtk_dp_hpd_interrupt_enable(mtk_dp, true);
-
-	return 0;
-}
-
-static void mtk_dp_unbind(struct device *dev, struct device *master,
-			  void *data)
-{
-}
-
-static const struct component_ops mtk_dp_component_ops = {
-	.bind = mtk_dp_bind, .unbind = mtk_dp_unbind,
-};
-
 static int mtk_drm_dp_probe(struct platform_device *pdev)
 {
 	struct mtk_dp *mtk_dp;
 	struct device *dev = &pdev->dev;
-	enum mtk_ddp_comp_id comp_id;
 	int ret;
 	struct mtk_drm_private *mtk_priv = dev_get_drvdata(dev);
 	int irq_num = 0;
 	void *base;
-
-	DP_DBG("probe start");
 
 	mtk_dp = devm_kmalloc(dev, sizeof(*mtk_dp), GFP_KERNEL | __GFP_ZERO);
 	if (!mtk_dp)
@@ -6692,22 +6783,17 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 
 	mtk_dp->data = (struct mtk_dp_data *)of_device_get_match_data(dev);
 
+	platform_set_drvdata(pdev, mtk_dp);
+
+	mtk_dp->bridge.funcs = &mtk_dp_bridge_funcs;
+	mtk_dp->bridge.of_node = dev->of_node;
+	mtk_dp->bridge.type = mtk_dp->data->bridge_type;
+	ret = devm_drm_bridge_add(dev, &mtk_dp->bridge);
+	if (ret)
+		return ret;
+
 	base = ioremap(0x31b50000, 0x1000);
 	writel(0xc2fc224d, base + 0x78);
-
-	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DPTX);
-	if ((int)comp_id < 0) {
-		DP_ERR("Failed to identify by alias: %d\n", comp_id);
-		return comp_id;
-	}
-
-	ret = mtk_ddp_comp_init(dev, dev->of_node, &mtk_dp->ddp_comp, comp_id, NULL);
-	if (ret) {
-		DP_ERR("Failed to initialize component: %d\n", ret);
-		return ret;
-	}
-
-	component_add(&pdev->dev, &mtk_dp_component_ops);
 
 	DP_FUNC("done\n");
 

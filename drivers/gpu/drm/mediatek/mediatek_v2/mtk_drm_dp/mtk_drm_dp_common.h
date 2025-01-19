@@ -879,11 +879,11 @@ struct mtk_drm_dp_mst_topology_mgr {
 struct mtk_dp {
 	struct device *dev;
 	struct drm_device *drm_dev;
-	struct mtk_ddp_comp ddp_comp;
+	struct drm_bridge bridge;
+	struct drm_bridge *next_bridge;
 	const struct mtk_dp_data *data;
 	struct drm_connector *conn;
 	struct drm_encoder *enc;
-	struct drm_bridge *next_bridge;
 	int id;
 	struct edid *edid;
 	struct drm_dp_aux aux;
