@@ -5256,7 +5256,7 @@ cpus {
 		};
 
 		jpgdec0@17040000 {
-			compatible = "mediatek,jpgdec0";
+			compatible = "mediatek,jpgdec";
 			reg = <0 0x17040000 0 0x10000>,
 				<0 0x17050000 0 0x10000>;
 			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -5278,7 +5278,7 @@ cpus {
 		};
 
 		jpgdec1@17840000 {
-			compatible = "mediatek,jpgdec1";
+			compatible = "mediatek,jpgdec_c1";
 			reg = <0 0x17840000 0 0x10000>;
 			interrupts = <GIC_SPI 315 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb8>;
