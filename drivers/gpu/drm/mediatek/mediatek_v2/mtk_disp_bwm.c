@@ -277,8 +277,8 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 					all_layer_compress_ratio_table[i].average_ratio = 1000;
 					all_layer_compress_ratio_table[i].peak_ratio = 1000;
 					if (aee_trigger) {
-						DDPAEE("bwm20 layer%d ratio error,avg%d peak%d\n", i,
-								all_layer_compress_ratio_table[i].average_ratio,
+						DDPPR_ERR("CRDISPATCH_KEY:BWM20 layer%d ratio error,avg%d peak%d\n",
+								i, all_layer_compress_ratio_table[i].average_ratio,
 								all_layer_compress_ratio_table[i].peak_ratio);
 						aee_trigger = false;
 						mtk_bwm_dump(comp);
