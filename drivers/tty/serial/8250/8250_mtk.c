@@ -150,6 +150,11 @@ struct mtk8250_info_dump {
 	struct mtk8250_dump rec[UART_DUMP_RECORE_NUM];
 };
 
+struct mtk8250_uart_info {
+	unsigned int rx_remain[4];
+	unsigned int db5[4];
+};
+
 struct mtk8250_reg_data {
 	unsigned int addr;
 	unsigned int mask;
@@ -2271,18 +2276,42 @@ static bool mtk8250_dma_filter(struct dma_chan *chan, void *param)
 }
 #endif
 
+static bool is_dma_ready(struct uart_8250_port *up, struct mtk8250_uart_info *uart_reg)
+{
+	if (!up && !uart_reg)
+		return false;
+
+	uart_reg->rx_remain[0] = serial_in(up, MTK_UART_DEBUG7);
+	uart_reg->db5[0] = serial_in(up, MTK_UART_DEBUG5);
+	if(uart_reg->rx_remain[0] & 0x3F) {
+		mdelay(2);
+		uart_reg->rx_remain[1] = serial_in(up, MTK_UART_DEBUG7);
+		uart_reg->db5[1] = serial_in(up, MTK_UART_DEBUG5);
+		if (uart_reg->rx_remain[1] & 0x3F) {
+			mdelay(3);
+			uart_reg->rx_remain[2] = serial_in(up, MTK_UART_DEBUG7);
+			uart_reg->db5[2] = serial_in(up, MTK_UART_DEBUG5);
+			mdelay(7);
+			uart_reg->rx_remain[3] = serial_in(up, MTK_UART_DEBUG7);
+			uart_reg->db5[3] = serial_in(up, MTK_UART_DEBUG5);
+			if ((uart_reg->rx_remain[2] & 0x3F) &&
+				(uart_reg->rx_remain[3] & 0x3F))
+				pr_info("[%s], data[0x%x]\n",__func__, serial_in(up, UART_RX));
+		}
+	}
+	return true;
+}
+
 static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 {
 	struct platform_device *pdev = NULL;
 	struct mtk8250_data *data = NULL;
 	struct uart_8250_port *up = NULL;
-	u64 wakeup_time_1 = 0;
-	u64 wakeup_time_2 = 0;
-	u64 wakeup_time_3 = 0;
-	u64 wakeup_time_4 = 0;
+	u64 wakeup_time[5] = {0};
 	int rx_state = 0;
 	unsigned int uart_fcr = 0;
 	unsigned int xoff;
+	struct mtk8250_uart_info reg_dump = {{0},{0}};
 
 	pdev= (struct platform_device *)dev_id;
 	data = platform_get_drvdata(pdev);
@@ -2294,7 +2323,7 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	wakeup_time_1 = sched_clock();
+	wakeup_time[0] = sched_clock();
 	mutex_lock(&data->clk_mutex);
 	if (atomic_read(&data->wakeup_state) == 0) {
 		if (atomic_read(&data->uart_state) == MTK_UART_SUSPENDING) {
@@ -2331,9 +2360,9 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			#endif
 			/* make sure clock ready */
 			mb();
-			wakeup_time_2 = sched_clock();
-			udelay(80);
-			wakeup_time_3 = sched_clock();
+			wakeup_time[1] = sched_clock();
+			udelay(60);
+			wakeup_time[2] = sched_clock();
 			#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 			KERNEL_mtk_uart_apdma_enable_vff(true);
 			#endif
@@ -2347,11 +2376,25 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 				#endif
 			}
 		#endif
+		wakeup_time[3] = sched_clock();
+		/* polling dma ready */
+		udelay(5);
+		if(!is_dma_ready(up, &reg_dump))
+			pr_info("[warning]%s: is_dma_ready up/reg_dump is null !!\n",__func__);
+
 		atomic_set(&data->wakeup_state, 1);
-		wakeup_time_4 = sched_clock();
-		pr_info("[%s]: handler[%lld]ns, udelay[%lld], bottom_half[%lld], rx_state[%d]\n"
-			, __func__, wakeup_time_4 - wakeup_irq_time, wakeup_time_3 - wakeup_time_2,
-			 wakeup_time_4 - wakeup_time_1, rx_state);
+		wakeup_time[4] = sched_clock();
+		pr_info("[%s]: time[%lld %lld %lld %lld]ns rx_state[%d]"
+			"remain[0x%x 0x%x 0x%x 0x%x]"
+			"db5[0x%x 0x%x 0x%x 0x%x]\n"
+			, __func__, wakeup_time[4] - wakeup_irq_time,
+			wakeup_time[2] - wakeup_time[1],
+			wakeup_time[3] - wakeup_time[0],
+			wakeup_time[4] - wakeup_time[3],
+			rx_state, reg_dump.rx_remain[0],
+			reg_dump.rx_remain[1],reg_dump.rx_remain[2],
+			reg_dump.rx_remain[3], reg_dump.db5[0],
+			reg_dump.db5[1], reg_dump.db5[2], reg_dump.db5[3]);
 	}
 	mutex_unlock(&data->clk_mutex);
 	return IRQ_HANDLED;
