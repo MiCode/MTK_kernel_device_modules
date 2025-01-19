@@ -92,6 +92,7 @@
 #define CONFIG_UART_DMA_DATA_RECORD
 #define DBG_STAT_WD_ACT		BIT(5)
 #define MAX_POLL_CNT_RX		200
+#define MAX_POLL_CNT_RX_D	1500
 #define MAX_POLL_CNT_TX		900
 #define MAX_GLOBAL_VD_COUNT	5
 #define VFF_POLL_INTERVAL	100
@@ -1041,7 +1042,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	unsigned int len, wg, rg, left_data;
 	int cnt;
 	unsigned int idx = 0;
-	int poll_cnt = MAX_POLL_CNT_RX;
+	int poll_cnt = MAX_POLL_CNT_RX_D;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	struct mtk_uart_apdmadev *mtkd =
 		to_mtk_uart_apdma_dev(c->vc.chan.device);
