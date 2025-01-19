@@ -588,6 +588,8 @@ struct msdc_host {
 	struct delayed_work req_timeout;
 	int irq;		/* host interrupt */
 	int eint_irq;	        /* device interrupt */
+	int cpuhp_state;
+	struct hlist_node cpuhp_node;
 	int sdio_irq_cnt;       /* irq enable cnt */
 	struct reset_control *reset;
 

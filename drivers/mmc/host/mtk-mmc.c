@@ -6,6 +6,7 @@
 
 #include <linux/module.h>
 #include <linux/clk.h>
+#include <linux/cpumask.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/iopoll.h>
@@ -4421,6 +4422,49 @@ static int mtk_msdc_get_chipid(struct msdc_host *host)
 	return 0;
 }
 
+static int mmc_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
+{
+	struct msdc_host *host;
+	int ret = 0;
+
+	if (!node)
+		return 0;
+
+	host = hlist_entry_safe(node, struct msdc_host, cpuhp_node);
+
+	if (cpu == 3) {
+		ret = irq_set_affinity_hint(host->irq, cpumask_of(cpu));
+		dev_info(host->dev, "set irq %d affinity to CPU: %d %s\n",
+					host->irq, cpu, ret ? "failed" : "");
+	}
+	return 0;
+}
+
+static int mmc_mtk_cpu_offline_notify(unsigned int cpu, struct hlist_node *node)
+{
+	struct msdc_host *host;
+	struct cpumask mask;
+	int ret = 0;
+
+	if (!node)
+		return 0;
+
+	host = hlist_entry_safe(node, struct msdc_host, cpuhp_node);
+
+	if (cpu == 3) {
+		/* Avoid binding irq affinity to CPU0 or CPU3 (off) */
+		cpumask_setall(&mask);
+		cpumask_clear_cpu(0, &mask);
+		cpumask_clear_cpu(3, &mask);
+
+		ret = irq_set_affinity_hint(host->irq, &mask);
+		dev_info(host->dev, "set irq %d affinity to CPU %*pbl %s\n",
+				host->irq, cpumask_pr_args(&mask), ret ? "failed" : "");
+	}
+	return 0;
+}
+
+
 static int msdc_drv_probe(struct platform_device *pdev)
 {
 	struct mmc_host *mmc;
@@ -4704,8 +4748,20 @@ skip_hwcq:
 			dev_info(host->dev, "%s: failed to set vcore to %d\n",
 				__func__, host->req_vcore);
 
-	if (host->id == MSDC_SD || host->id == MSDC_EMMC)
-		irq_set_affinity_hint(host->irq, get_cpu_mask(3));
+	irq_set_affinity_hint(host->irq, cpumask_of(3));
+
+	host->cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN, "mmc:online",
+					mmc_mtk_cpu_online_notify, mmc_mtk_cpu_offline_notify);
+	if (host->cpuhp_state < 0)
+		dev_info(host->dev, "Setup cpu hotplug state failed, ret: %d\n", host->cpuhp_state);
+	else {
+		ret = cpuhp_state_add_instance_nocalls(host->cpuhp_state, &host->cpuhp_node);
+
+		if (ret) {
+			dev_info(host->dev, "Add cpu hotplug instance failed, ret: %d\n", ret);
+			cpuhp_remove_multi_state(host->cpuhp_state);
+		}
+	}
 
 	if (host->id == MSDC_SDIO) {
 		ret = request_sdio_eint_irq(host);
@@ -4776,6 +4832,9 @@ static void msdc_drv_remove(struct platform_device *pdev)
 	host = mmc_priv(mmc);
 
 	pm_runtime_get_sync(host->dev);
+
+	cpuhp_state_remove_instance_nocalls(host->cpuhp_state, &host->cpuhp_node);
+	cpuhp_remove_multi_state(host->cpuhp_state);
 
 	platform_set_drvdata(pdev, NULL);
 	mmc_remove_host(mmc);
