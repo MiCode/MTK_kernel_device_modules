@@ -135,3 +135,15 @@ config MFD_RT9490
 	  path management device for 1 to 4 cell Li-Ion and Li-Polymer battery.
 	  Except the charger circuit, it also includes ADCs to sense the
 	  charger voltage and current like as VBUS/IBUS/VBAT/IBAT.
+
+config MFD_MT6687
+	tristate "MT6687 SPMI PMIC"
+	depends on OF
+	depends on SPMI
+	select REGMAP_SPMI
+	select REGMAP_IRQ
+	help
+	  This enables support for the Mediatek SPMI PMICs.
+	  These PMICs are currently used with the Mediatek series of
+	  SoCs.  Note, that this will only be useful paired with descriptions
+	  of the independent functions as children nodes in the device tree.
