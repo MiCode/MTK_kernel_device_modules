@@ -680,7 +680,9 @@ struct tee_mmu *tee_mmu_wrap(struct tee_deleter *deleter, struct page **pages,
 			unsigned long pfn;
 
 			phys = page_to_phys(*pages);
+#if defined CONFIG_ARM64
 			phys &= PHYS_48BIT_MASK;
+#endif
 			pfn = PFN_DOWN(phys);
 			*pte = __pfn_to_mfn(pfn) << PAGE_SHIFT;
 		}
