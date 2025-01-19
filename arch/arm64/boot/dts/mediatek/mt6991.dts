@@ -11109,13 +11109,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		jpgenc0: jpgenc@38030000 {
 			compatible = "mediatek,mtk-jpgenc";
 			mediatek,platform = "platform:mt6991";
-			reg = <0 0x38030000 0 0x10000>;
+			reg = <0 0x38030000 0 0x10000>,
+				<0 0x38000000 0 0x10000>,
+				<0 0x380b0000 0 0x10000>;
 			interrupts = <GIC_SPI 488 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>,
 				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
 			clock-names = "jpgenc", "mmdvfs_clk";
 			power-domains = <&hfrpsys  MT6991_POWER_DOMAIN_VEN0>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P7_JPGENC_YRD)
@@ -11130,19 +11132,22 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_c_rmda",
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
+			axdomain = <224>;
 		};
 
 		jpgenc1: jpgenc@38830000 {
 			compatible = "mediatek,mtk-jpgenc_c0_c1";
 			mediatek,platform = "platform:mt6991";
-			reg = <0 0x38830000 0 0x10000>;
+			reg = <0 0x38830000 0 0x10000>,
+				<0 0x38000000 0 0x10000>,
+				<0 0x388b0000 0 0x10000>;
 			interrupts = <GIC_SPI 493 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
 				     <&venc_gcon_core1_clk  CLK_VEN2_CKE2_JPGENC_JPGENC>,
 					 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
 			clock-names = "jpgenc", "jpgenc_c1", "mmdvfs_clk";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7 &smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P7_JPGENC_YRD)
@@ -11157,6 +11162,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_c_rmda",
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
+			axdomain = <224>;
 		};
 
 		vcodec_venc: venc@38000000 {
