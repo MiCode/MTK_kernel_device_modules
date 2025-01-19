@@ -48,7 +48,7 @@ static inline void irq_mon_msg_ftrace(const char *msg)
 #define irq_mon_msg_ftrace(msg) trace_irq_mon_msg_rcuidle(msg)
 #endif
 
-void irq_mon_msg(unsigned int out, char *buf, ...)
+void irq_mon_msg(unsigned int out, const char *buf, ...)
 {
 	char msg[MAX_MSG_LEN];
 	va_list args;

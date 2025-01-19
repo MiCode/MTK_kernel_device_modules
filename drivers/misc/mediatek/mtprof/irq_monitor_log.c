@@ -8,6 +8,7 @@
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
 #include <linux/proc_fs.h>
+#include <linux/seq_buf.h>
 
 #include "internal.h"
 
@@ -16,9 +17,10 @@
 #define IRQ_LOG_END UINT_MAX
 
 struct irq_log_entry {
-	const char *func;
+	void *func;
 	int line;
 	u64 ts;
+	enum irq_log_type type;
 };
 
 struct irq_log_data {
@@ -38,7 +40,7 @@ void irq_log_end(void)
 	this_cpu_write(irq_log_data->count, IRQ_LOG_END);
 }
 
-void __irq_log_store(const char *func, int line)
+void ___irq_log_store(void *func, int line, enum irq_log_type type)
 {
 	struct irq_log_data *data;
 	int i;
@@ -58,8 +60,43 @@ void __irq_log_store(const char *func, int line)
 	data->entry[i].func = func;
 	data->entry[i].line = line;
 	data->entry[i].ts = sched_clock();
+	data->entry[i].type = type;
+}
+
+void __irq_log_store(const char *func, int line)
+{
+	___irq_log_store((void *)func, line, IRQ_LOG_TYPE_COMMON);
 }
 EXPORT_SYMBOL_GPL(__irq_log_store);
+
+static void irq_log_data_print(unsigned int out, int cpu, struct irq_log_entry *e,
+			       u64 prev_ts)
+{
+	DECLARE_SEQ_BUF(m, MAX_MSG_LEN);
+	char *callstate = "exit";
+
+	seq_buf_printf(&m, "cpu=%d", cpu);
+
+	switch (e->type) {
+	case IRQ_LOG_TYPE_COMMON:
+		seq_buf_printf(&m, ", func=%s, line=%d", (char *)e->func, e->line);
+		break;
+	case IRQ_LOG_TYPE_ENTRY:
+		callstate = "entry";
+		fallthrough;
+	case IRQ_LOG_TYPE_EXIT:
+		seq_buf_printf(&m, ", %s of func=%ps", callstate, e->func);
+		break;
+	case IRQ_LOG_TYPE_IRQ_ENTRY:
+		callstate = "entry";
+		fallthrough;
+	case IRQ_LOG_TYPE_IRQ_EXIT:
+		seq_buf_printf(&m, ", %s of handler=%ps, irq=%d", callstate, e->func, e->line);
+		break;
+	}
+	seq_buf_printf(&m, ", time=%llu, delta=%llu", e->ts, e->ts - prev_ts);
+	irq_mon_msg(out, seq_buf_str(&m));
+}
 
 void irq_log_dump(unsigned int out, u64 start, u64 end)
 {
@@ -71,17 +108,12 @@ void irq_log_dump(unsigned int out, u64 start, u64 end)
 	if (data->count > IRQ_LOG_ENTRY)
 		return;
 
-	/* It is safe to print the function pointers iff we are in the same
+	/*
+	 * It is safe to print the function pointers iff we are in the same
 	 * interrupt context
 	 */
 	for (i = 0; i < data->count; i++) {
-		irq_mon_msg(out,
-			    "cpu=%d, func=%s, line=%d, time=%llu, delta=%llu",
-			    cpu,
-			    data->entry[i].func,
-			    data->entry[i].line,
-			    data->entry[i].ts,
-			    data->entry[i].ts - prev_ts);
+		irq_log_data_print(out, cpu, &data->entry[i], prev_ts);
 		prev_ts = data->entry[i].ts;
 	}
 

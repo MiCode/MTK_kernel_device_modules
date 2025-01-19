@@ -34,7 +34,7 @@ void irq_mon_account_irq_time(u64 time, int irq);
 
 #define MAX_MSG_LEN 160
 
-void irq_mon_msg(unsigned int out, char *buf, ...);
+void irq_mon_msg(unsigned int out, const char *buf, ...);
 
 // proc
 int irq_mon_bool_open(struct inode *inode, struct file *file);
@@ -50,8 +50,17 @@ extern const struct proc_ops irq_mon_uint_pops;
 /*
  * irq_monitor_log.c
  */
+enum irq_log_type {
+	IRQ_LOG_TYPE_COMMON = 0,
+	IRQ_LOG_TYPE_ENTRY,
+	IRQ_LOG_TYPE_EXIT,
+	IRQ_LOG_TYPE_IRQ_ENTRY,
+	IRQ_LOG_TYPE_IRQ_EXIT,
+};
+
 void irq_log_start(void);
 void irq_log_end(void);
+void ___irq_log_store(void *func, int line, enum irq_log_type);
 void irq_log_dump(unsigned int out, u64 start, u64 end);
 void irq_log_exit(void);
 int irq_log_init(void);
