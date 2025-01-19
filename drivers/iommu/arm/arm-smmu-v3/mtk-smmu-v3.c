@@ -2586,10 +2586,16 @@ static void smi_debug_dump(struct arm_smmu_device *smmu)
 
 static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 {
-	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
+	struct mtk_smmu_data *data;
+
+	if (!__ratelimit(&fault_rs))
+		return;
 
 	smmu_debug_dump(smmu, false, false);
 
+	data = to_mtk_smmu_data(smmu);
 	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HANG_DETECT)) {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 		mtk_smi_dbg_hang_detect("iommu");
