@@ -210,8 +210,6 @@
 #define PCIE_CPLTO_SCALE_R2_L		16
 #define PCIE_CPLTO_SCALE_R5_L		20
 #define PCIE_SW_CPLTO_TIMER		GENMASK(25, 16)
-#define CPLTO_ALWAYS_EN			BIT(26)
-#define WR_CPLTO_ALWAYS_EN		BIT(27)
 #define SW_CPLTO_DATA_SEL		BIT(28)
 
 #define PCIE_ISTATUS_PENDING_ADT	0x1d4
@@ -476,9 +474,8 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 		reg = readl_relaxed(port->base + PCIE_AER_CO_STATUS);
 		if (reg & AER_CO_RE) {
 			mtk_pcie_dump_link_info(port->port_num);
-			reg = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
-			reg |= (CPLTO_ALWAYS_EN | WR_CPLTO_ALWAYS_EN);
-			writel_relaxed(reg, port->base + PCIE_AXI_IF_CTRL);
+			mtk_pcie_disable_data_trans(port->port_num);
+			dev_info(port->dev, "PCIe Rxerr detected!\n");
 		}
 	}
 
