@@ -2801,11 +2801,10 @@ static ssize_t eem_setmargin_proc_write(struct file *file,
 		goto out;
 	buf[count] = '\0';
 	cmd_str = strsep(&buf, " ");
-	if (cmd_str == NULL)
-		ret = -EINVAL;
+
 	while ((tok = strsep(&buf, " ")) != NULL) {
-		if (i == 3) {
-			eem_error("number of arguments > 3!\n");
+		if (i >= 2) {
+			eem_error("number of aging arguments > 2!\n");
 			goto out;
 		}
 		if (kstrtoint(tok, 10, &aging_val[i])) {
