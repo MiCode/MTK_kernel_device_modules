@@ -2361,7 +2361,7 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			/* make sure clock ready */
 			mb();
 			wakeup_time[1] = sched_clock();
-			udelay(60);
+			udelay(80);
 			wakeup_time[2] = sched_clock();
 			#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 			KERNEL_mtk_uart_apdma_enable_vff(true);
