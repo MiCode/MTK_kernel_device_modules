@@ -208,7 +208,10 @@ static DEVICE_ATTR_RO(mt_brightness_hw_changed);
 static int mt_leds_add_brightness_hw_changed(struct led_conf_info *led_conf)
 {
 	struct device *dev = led_conf->cdev.dev;
-	int ret;
+	int ret = 0;
+
+	if (strstr(led_conf->cdev.name, "test-backlight"))
+		return ret;
 
 	ret = device_create_file(dev, &dev_attr_mt_brightness_hw_changed);
 	if (ret) {
@@ -224,12 +227,14 @@ static int mt_leds_add_brightness_hw_changed(struct led_conf_info *led_conf)
 		return -ENXIO;
 	}
 
-	return 0;
+	return ret;
 }
 
 static void mt_leds_remove_brightness_hw_changed(struct led_conf_info *led_conf)
 {
-	sysfs_put(led_conf->brightness_hw_changed_kn);
+	if (led_conf->brightness_hw_changed_kn)
+		sysfs_put(led_conf->brightness_hw_changed_kn);
+
 	device_remove_file(led_conf->cdev.dev, &dev_attr_mt_brightness_hw_changed);
 }
 
@@ -543,9 +548,10 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 	struct mt_leds_desp_info *nleds_info;
 
 	ret = fwnode_property_read_string(fwnode, "label", &(mdev->conf.cdev.name));
-	if (ret)
-		return -EINVAL;
-
+	if (ret) {
+		pr_info("Fail to read label property");
+		mdev->conf.cdev.name = "test-backlight";
+	}
 	ret = fwnode_property_read_string(fwnode, "default-trigger",
 		&(mdev->conf.cdev.default_trigger));
 	if (ret) {
@@ -661,10 +667,11 @@ int mt_leds_classdev_register(struct device *parent,
 	int ret = 0;
 
 	led_dat->conf.cdev.flags = LED_CORE_SUSPENDRESUME;
-	led_dat->conf.flags = LED_MT_BRIGHTNESS_HW_CHANGED | LED_MT_BRIGHTNESS_CHANGED;
+	led_dat->conf.flags = LED_MT_BRIGHTNESS_CHANGED;
 	led_dat->conf.cdev.brightness_set_blocking = mtk_set_brightness;
 #ifdef CONFIG_LEDS_MT_BRIGHTNESS_HW_CHANGED
 	led_dat->conf.brightness_hw_changed = -1;
+	led_dat->conf.flags |= LED_MT_BRIGHTNESS_HW_CHANGED;
 #endif
 	led_dat->conf.cdev.groups = mt_led_groups;
 
@@ -681,6 +688,7 @@ int mt_leds_classdev_register(struct device *parent,
 			return ret;
 		}
 	}
+	pr_info("%s mt_leds_add_brightness_hw_changed ok! ", led_dat->conf.cdev.name);
 
 	ret = snprintf(led_dat->debug.buffer + strlen(led_dat->debug.buffer),
 		4095 - strlen(led_dat->debug.buffer),
@@ -690,7 +698,6 @@ int mt_leds_classdev_register(struct device *parent,
 		pr_info("print log init error!");
 
 	led_dat->last_brightness = led_dat->conf.cdev.brightness;
-
 	mtk_set_hw_brightness(led_dat,
 		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness),
 		0, 1 << SET_BACKLIGHT_LEVEL);
