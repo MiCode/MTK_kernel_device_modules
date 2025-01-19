@@ -35,7 +35,7 @@
 #define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
 #define MAX_BIN_NUM	7
-#define MAX_BINSET_NUM 3
+#define MAX_BINSET_NUM 32
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
