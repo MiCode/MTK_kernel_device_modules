@@ -1346,6 +1346,7 @@ void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_idlemgr *idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 
 	if (crtc)
 		mtk_crtc = to_mtk_crtc(crtc);
@@ -1354,6 +1355,17 @@ void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc)
 		idlemgr = mtk_crtc->idlemgr;
 	else
 		return;
+
+	// wake_up_interruptible is very expensive,
+	// skip wake_up_interruptible if no need.
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
+	mutex_lock(&idlemgr_ctx->idle_check_lock);
+	if (!idlemgr_ctx->is_idle) {
+		idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
+		mutex_unlock(&idlemgr_ctx->idle_check_lock);
+		return;
+	}
+	mutex_unlock(&idlemgr_ctx->idle_check_lock);
 
 	atomic_set(&idlemgr->kick_task_active, 1);
 	wake_up_interruptible(&idlemgr->kick_wq);
@@ -1378,6 +1390,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 	/* get lock to protect idlemgr_last_kick_time and is_idle */
 	if (need_lock)
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	mutex_lock(&idlemgr_ctx->idle_check_lock);
 
 	if (idlemgr_ctx->is_idle) {
 		DDPINFO("[LP] kick idle from [%s] time[%llu]\n", source,
@@ -1401,6 +1414,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 	/* update kick timestamp */
 	idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
 
+	mutex_unlock(&idlemgr_ctx->idle_check_lock);
 	if (need_lock)
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 }
@@ -1689,6 +1703,20 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 
 		msleep_interruptible(idlemgr_ctx->idle_check_interval);
 
+		mutex_lock(&idlemgr_ctx->idle_check_lock);
+		if (idlemgr_ctx->is_idle) {
+			mutex_unlock(&idlemgr_ctx->idle_check_lock);
+			continue;
+		}
+
+		t_idle = local_clock() - idlemgr_ctx->idlemgr_last_kick_time;
+		if (t_idle < idlemgr_ctx->idle_check_interval * 1000 * 1000) {
+			/* kicked in idle_check_interval msec, it's not idle */
+			mutex_unlock(&idlemgr_ctx->idle_check_lock);
+			continue;
+		}
+		mutex_unlock(&idlemgr_ctx->idle_check_lock);
+
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 		if (!mtk_crtc->enabled) {
@@ -1726,8 +1754,7 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			}
 		}
 
-		if (idlemgr_ctx->is_idle
-			|| mtk_crtc_is_dc_mode(crtc)
+		if (mtk_crtc_is_dc_mode(crtc)
 			|| mtk_crtc->sec_on
 			|| !priv->already_first_config) {
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__,
@@ -1735,9 +1762,15 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			continue;
 		}
 
+		mutex_lock(&idlemgr_ctx->idle_check_lock);
+		// This is not duplicate check, do not remove it, if we block
+		// by crtc_lock which was hold by gce_flush, the gce_flush
+		// will update idlemgr_last_kick_time to prevent idle manager
+		// enter idle, so we need check idle again after get crtc_lock.
 		t_idle = local_clock() - idlemgr_ctx->idlemgr_last_kick_time;
 		if (t_idle < idlemgr_ctx->idle_check_interval * 1000 * 1000) {
 			/* kicked in idle_check_interval msec, it's not idle */
+			mutex_unlock(&idlemgr_ctx->idle_check_lock);
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__,
 					__LINE__, false);
 			continue;
@@ -1761,6 +1794,7 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			}
 		}
 
+		mutex_unlock(&idlemgr_ctx->idle_check_lock);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 		wait_event_interruptible(idlemgr->idlemgr_wq,
@@ -1797,6 +1831,8 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 
 	idlemgr->idlemgr_ctx = idlemgr_ctx;
 	mtk_crtc->idlemgr = idlemgr;
+
+	mutex_init(&idlemgr_ctx->idle_check_lock);
 
 	idlemgr_ctx->session_mode_before_enter_idle = MTK_DRM_SESSION_INVALID;
 	idlemgr_ctx->is_idle = 0;

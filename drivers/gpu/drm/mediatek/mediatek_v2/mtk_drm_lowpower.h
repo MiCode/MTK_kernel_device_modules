@@ -36,6 +36,13 @@ struct mtk_idle_private_data {
 };
 
 struct mtk_drm_idlemgr_context {
+	// idle_check_lock only protect:
+	//   - is_idle
+	//   - idlemgr_last_kick_time
+	//   - enter_idle_ts
+	// let we only hold crtc_lock when is_idle is true,
+	// otherwise use idle_check_lock instead.
+	struct mutex idle_check_lock;
 	unsigned long long idle_check_interval;
 	unsigned long long idlemgr_last_kick_time;
 	unsigned long long enter_idle_ts;
