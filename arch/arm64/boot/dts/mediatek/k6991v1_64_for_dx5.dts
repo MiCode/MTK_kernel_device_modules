@@ -987,6 +987,19 @@ bootargs_ext = "rcu_nocbs=0-7";
 	};
 };
 
+&jpgenc0 {
+	ccf-one-step;
+};
+
+&jpgenc1 {
+	ccf-one-step;
+};
+
+&jpgdec0 {
+	ccf-one-step;
+};
+
+
 &pio {
 	rptr_enable: rptr-enable {
 		pins-cmd-dat {
