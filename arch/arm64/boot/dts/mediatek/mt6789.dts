@@ -7450,3 +7450,7 @@
 	};
 };
 #include "mediatek/trusty.dtsi"
+&hypervisor {
+	status = "okay";
+};
+
