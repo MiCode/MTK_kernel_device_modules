@@ -99,6 +99,5 @@ struct emi_mpu {
 extern struct emi_mpu *global_emi_mpu;
 
 int mtk_emimpu_isr_hook_register(emimpu_isr_hook hook);
-unsigned int mtk_get_axiid(unsigned int emi_id);
 
 #endif /* __EMI_MPU_H__ */
