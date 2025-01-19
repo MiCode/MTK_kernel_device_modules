@@ -73,7 +73,7 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs/
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs.o
-ifneq ($(filter y m,$(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
+ifneq ($(filter y m,$(CONFIG_MTK_MMDVFS_VCP)),)
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-v3.o
 endif
 obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mutex.o

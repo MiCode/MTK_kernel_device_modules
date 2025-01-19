@@ -7,7 +7,7 @@
 #ifndef _MTK_MMDVFS_V3_MEMORY_H_
 #define _MTK_MMDVFS_V3_MEMORY_H_
 
-#if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 void *mmdvfs_get_mmup_base(phys_addr_t *pa);
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
 bool mmdvfs_get_mmup_sram_enable(void);
@@ -253,4 +253,3 @@ enum {
 #define SRAM_MUX_CB_END_USEC	(SRAM_BASE + 4 * (638))
 #define SRAM_MUX_CB_MUX_OPP	(SRAM_BASE + 4 * (639))
 #endif
-

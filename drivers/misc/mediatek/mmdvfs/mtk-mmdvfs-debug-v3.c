@@ -96,7 +96,10 @@ struct mmdvfs_debug {
 };
 
 static struct mmdvfs_debug *g_mmdvfs;
-static bool ftrace_v1_ena, ftrace_v3_ena;
+static bool ftrace_v1_ena;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+static bool ftrace_v3_ena;
+#endif
 static bool mmdvfs_met_freerun;
 static bool mmdvfs_v3_debug_init_done;
 
@@ -112,13 +115,21 @@ EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
 int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	return mtk_mmdvfs_v3_set_force_step(idx, opp, false);
+#else
+	return 0;
+#endif
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 
 int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 {
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	return mtk_mmdvfs_v3_set_vote_step(idx, opp, false);
+#else
+	return 0;
+#endif
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_vote_step);
 
@@ -142,10 +153,10 @@ static int mmdvfs_debug_v3_set_force_step(const char *val, const struct kernel_p
 		mmdvfs_set_force_step(opp);
 		return 0;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_force_step(idx, opp, true);
-
+#endif
 	return 0;
 }
 
@@ -170,8 +181,10 @@ static int mmdvfs_debug_v3_set_vote_step(const char *val, const struct kernel_pa
 		return 0;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		mtk_mmdvfs_v3_set_vote_step(idx, opp, true);
+#endif
 
 	return 0;
 }
@@ -638,7 +651,11 @@ static const struct proc_ops mmdvfs_mbrain_test_fops = {
 
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
 {
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	return mtk_mmdvfs_force_vcore_notify(val);
+#else
+	return 0;
+#endif
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
 
@@ -648,6 +665,7 @@ bool mtk_is_mmdvfs_v3_debug_init_done(void)
 }
 EXPORT_SYMBOL_GPL(mtk_is_mmdvfs_v3_debug_init_done);
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mmdvfs_v3_debug_thread(void *data)
 {
 	phys_addr_t pa = 0ULL;
@@ -676,14 +694,15 @@ static int mmdvfs_v3_debug_thread(void *data)
 			MMDVFS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
 	}
 
+	if (!g_mmdvfs->release_step0)
+		goto init_done;
+
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, g_mmdvfs->force_step0, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0, false);
-
-	if (!g_mmdvfs->release_step0)
-		goto init_done;
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1, false);
@@ -704,11 +723,13 @@ static int mmdvfs_v3_debug_thread(void *data)
 				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf, false);
 			g_mmdvfs->force_step = g_mmdvfs->force_step >> 8;
 		}
+#endif
 
 init_done:
 	mmdvfs_v3_debug_init_done = true;
 	return 0;
 }
+#endif
 
 static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 {
@@ -752,6 +773,7 @@ static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 {
 	s32 i;
@@ -811,11 +833,15 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 	MMDVFS_DBG("kthread mmdvfs-dbg-ftrace-v3 end");
 	return 0;
 }
+#endif
 
 static int mmdvfs_debug_set_ftrace(const char *val,
 	const struct kernel_param *kp)
 {
-	static struct task_struct *kthr_v1, *kthr_v3;
+	static struct task_struct *kthr_v1;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	static struct task_struct *kthr_v3;
+#endif
 	u32 ver = 0, ena = 0;
 	int ret;
 
@@ -851,6 +877,7 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 		}
 	}
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (ver & MMDVFS_DBG_VER3) {
 		if (ena) {
 			if (ftrace_v3_ena)
@@ -871,6 +898,7 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 			}
 		}
 	}
+#endif
 
 	return 0;
 }
@@ -1069,6 +1097,7 @@ static int mmdvfs_debug_parse_ver1(void)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mmdvfs_debug_parse_ver3(void)
 {
 	const char *MMDVFS_CLK_NAMES = "mediatek,mmdvfs-clock-names";
@@ -1103,6 +1132,7 @@ static int mmdvfs_debug_parse_ver3(void)
 	}
 	return ret;
 }
+#endif
 
 static int mmdvfs_debug_parse_fmeter(void)
 {
@@ -1190,7 +1220,9 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
 static int mmdvfs_debug_probe(struct platform_device *pdev)
 {
 	struct proc_dir_entry *dir, *proc;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	struct task_struct *kthr;
+#endif
 	struct regulator *reg;
 	int ret;
 
@@ -1227,8 +1259,10 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mmdvfs_debug_record_opp_set_fp(mmdvfs_debug_record_opp);
 	ret = mmdvfs_debug_parse_ver1();
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	/* MMDVFS_DBG_VER3 */
 	ret = mmdvfs_debug_parse_ver3();
+#endif
 
 	reg = devm_regulator_get(g_mmdvfs->dev, "vcore");
 	if (IS_ERR_OR_NULL(reg))
@@ -1251,7 +1285,9 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	g_mmdvfs->smi_dbg_nb.notifier_call = mmdvfs_debug_smi_cb;
 	mtk_smi_dbg_register_notifier(&g_mmdvfs->smi_dbg_nb);
 	g_mmdvfs->fmeter_nb.notifier_call = mmdvfs_debug_smi_cb;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	mtk_mmdvfs_fmeter_register_notifier(&g_mmdvfs->fmeter_nb);
+#endif
 	g_mmdvfs->mmdebug_nb.notifier_call = mmdvfs_debug_mmdebug_cb;
 	mtk_mmdebug_status_dump_register_notifier(&g_mmdvfs->mmdebug_nb);
 
@@ -1265,12 +1301,13 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	ret = mmdvfs_debug_parse_clk();
 
 	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "use-v3-pwr", &g_mmdvfs->use_v3_pwr);
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3) {
 		kthr = kthread_run(mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
 		if (IS_ERR(kthr))
 			MMDVFS_DBG("create kthread mmdvfs_v3_debug_thread failed");
 	}
-
+#endif
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v3_ops);
 
 	g_mmdvfs->workq = create_singlethread_workqueue("mmdvfs_debug_workq");
@@ -1321,4 +1358,3 @@ module_exit(mmdvfs_debug_exit);
 MODULE_DESCRIPTION("MMDVFS Debug V3 Driver");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
 MODULE_LICENSE("GPL");
-
