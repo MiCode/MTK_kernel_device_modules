@@ -10455,6 +10455,12 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 						+ scale_factor_v -1) / scale_factor_v;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 				}
 			}
 
