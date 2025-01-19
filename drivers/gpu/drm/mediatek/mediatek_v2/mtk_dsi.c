@@ -10158,6 +10158,7 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 	u32 lpx = 0, hs_prpr = 0, hs_zero = 0, hs_trail = 0, da_hs_exit = 0;
 	u32 ui = 0, cycle_time = 0;
 	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
+	u32 data_phy_cycle = 0, da_hs_prep =0, da_hs_zero = 0, da_hs_trail = 0;
 
 	//for FPS change,update dsi->ext
 	dsi->ext = find_panel_ext(dsi->panel);
@@ -10187,6 +10188,27 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 		hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
 		da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
 
+		if (dsi->driver_data->n_verion >= VER_N3) {
+			u32 cphy_progseq_cycle = 2;
+
+			lpx = (dsi->data_rate * 80) / 7000 + 1;
+			lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+			da_hs_prep = (dsi->data_rate * 50) / 7000 + 1;
+			da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+			da_hs_zero = 48;
+			da_hs_trail = 32;
+			da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
+			da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
+
+			lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+			da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+			da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+			da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+			da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+			data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
+		}
+
 		if (dsi->ext->params->lp_perline_en) {
 			/* LP per line */
 			line_time =
@@ -10194,6 +10216,11 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 				DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
 				(CEILING(1 + ps_wc + 2, 2) / 2)),
 				dsi->lanes) + hs_trail + 1 + da_hs_exit + 1;
+			if (dsi->driver_data->n_verion >= VER_N3)
+				line_time = data_phy_cycle +
+					DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
+					(CEILING(1 + ps_wc + 2, 2) / 2)),
+					dsi->lanes) + da_hs_trail + 1;
 		} else {
 			if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 				/* Keep HS + Dummy cycle */
@@ -10231,11 +10258,37 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 		hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
 		da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
 
+		if (dsi->driver_data->n_verion >= VER_N4) {
+			lpx = (data_rate * 80) / 8000 + 1;
+			lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+			da_hs_prep = (data_rate * 59 + 4000) / 8000 + 1;
+			da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+			da_hs_zero = (data_rate * 163 + 11000) / 8000 + 1 - da_hs_prep;
+			if (data_rate < 740)
+				da_hs_trail = (data_rate * 66 + 44300) / 8000 + 1;
+			else
+				da_hs_trail = (data_rate * 66 + 42000) / 8000 + 1;
+			da_hs_exit = (data_rate * 118) / 8000 + 1;
+			da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;
+
+			lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+			da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+			da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+			da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+			da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+			data_phy_cycle = lpx + da_hs_exit + da_hs_prep + da_hs_zero + 2;
+		}
+
 		if (dsi->ext->params->lp_perline_en) {
 			/* LP per line */
 			line_time = lpx + hs_prpr + hs_zero + 1 +
 				DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
 				hs_trail + 1 + da_hs_exit + 1;
+			if (dsi->driver_data->n_verion >= VER_N4)
+				line_time = data_phy_cycle +
+					DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
+					da_hs_trail + 1;
 		} else {
 			if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 			/* Keep HS + Dummy cycle */
@@ -10522,6 +10575,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			u32 ui = 0, cycle_time = 0;
 			struct mtk_dsi_phy_timcon *phy_timcon = NULL;
 			u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+			u32 data_phy_cycle = 0, da_hs_prep =0, da_hs_zero = 0, da_hs_trail = 0;
 
 			pixclk = data_rate * dsi->lanes * compress_rate;
 			if (data_rate && ext->params->is_cphy)
@@ -10559,6 +10613,27 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 				hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
 				da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
 
+				if (dsi->driver_data->n_verion >= VER_N3) {
+					u32 cphy_progseq_cycle = 2;
+
+					lpx = (dsi->data_rate * 80) / 7000 + 1;
+					lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+					da_hs_prep = (dsi->data_rate * 50) / 7000 + 1;
+					da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+					da_hs_zero = 48;
+					da_hs_trail = 32;
+					da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
+					da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
+
+					lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+					da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+					da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+					da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+					da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+					data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
+				}
+
 				image_time = DIV_ROUND_UP(DIV_ROUND_UP(ps_wc, 2), dsi->lanes);
 
 				if (ext->params->lp_perline_en) {
@@ -10569,6 +10644,11 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 							(CEILING(1 + ps_wc + 2, 2) / 2)),
 								dsi->lanes) +
 						hs_trail + 1 + da_hs_exit + 1;
+					if (dsi->driver_data->n_verion >= VER_N3)
+						line_time = data_phy_cycle +
+							DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
+							(CEILING(1 + ps_wc + 2, 2) / 2)),
+							dsi->lanes) + da_hs_trail + 1;
 				} else {
 					if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 						/* Keep HS + Dummy cycle */
@@ -10609,6 +10689,28 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 				hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
 				da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
 
+				if (dsi->driver_data->n_verion >= VER_N4) {
+					lpx = (data_rate * 80) / 8000 + 1;
+					lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
+					da_hs_prep = (data_rate * 59 + 4000) / 8000 + 1;
+					da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
+					da_hs_zero = (data_rate * 163 + 11000) / 8000 + 1 - da_hs_prep;
+					if (data_rate < 740)
+						da_hs_trail = (data_rate * 66 + 44300) / 8000 + 1;
+					else
+						da_hs_trail = (data_rate * 66 + 42000) / 8000 + 1;
+					da_hs_exit = (data_rate * 118) / 8000 + 1;
+					da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;
+
+					lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+					da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+					da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+					da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+					da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+
+					data_phy_cycle = lpx + da_hs_exit + da_hs_prep + da_hs_zero + 2;
+				}
+
 				image_time = DIV_ROUND_UP(ps_wc, dsi->lanes);
 
 				if (ext->params->lp_perline_en) {
@@ -10616,6 +10718,10 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 					line_time = lpx + hs_prpr + hs_zero + 1 +
 						DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
 						hs_trail + 1 + da_hs_exit + 1;
+					if (dsi->driver_data->n_verion >= VER_N4)
+						line_time = data_phy_cycle +
+							DIV_ROUND_UP((5 + ps_wc + 6), dsi->lanes) +
+							da_hs_trail + 1;
 				} else {
 					if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 						/* Keep HS + Dummy cycle */
