@@ -144,6 +144,8 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	/* register as syscore_device, not to be turned off when suspend */
 	dev_pm_syscore_device(dev, true);
 
+	adsp_hardware_init(adspsys);
+
 	register_adspsys(adspsys);
 
 	switch_adsp_power(true);
@@ -152,9 +154,8 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int adspsys_drv_remove(struct platform_device *pdev)
+static void adspsys_drv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static int adsp_core_drv_probe(struct platform_device *pdev)
@@ -257,9 +258,8 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int adsp_core_drv_remove(struct platform_device *pdev)
+static void adsp_core_drv_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static int adsp_qos_scene_probe(struct platform_device *pdev)
@@ -276,9 +276,8 @@ static int adsp_qos_scene_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int adsp_qos_scene_remove(struct platform_device *pdev)
+static void adsp_qos_scene_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static struct platform_driver adspsys_driver = {
