@@ -15,6 +15,7 @@
 #include "eas/eas_plus.h"
 #include "eas/shortcut/compress.h"
 #include "util/cpu_util.h"
+#include "eas/shortcut/gather.h"
 #include "sugov/cpufreq.h"
 #include "sugov/dsu_interface.h"
 #include <sched/pelt.h>
@@ -2052,11 +2053,12 @@ static inline bool gear_hints_unset(struct task_gear_hints *ghts)
 }
 
 void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index,
-		int *reverse)
+		int *reverse, bool latency_sensitive)
 {
 	int i = 0;
 	struct task_gear_hints *ghts = &((struct mtk_task *)android_task_vendor_data(p))->gear_hints;
 	int max_num_gear = -1;
+	bool gathering = false;
 
 	*order_index = 0;
 	*end_index = 0;
@@ -2095,8 +2097,12 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 
 	if (gear_hints_enable && ghts->num_gear > 0 && ghts->num_gear <= max_num_gear)
 		*end_index = ghts->num_gear - 1;
-	else
+	else {
 		*end_index = max_num_gear - 1;
+
+		if (gear_hints_enable && !latency_sensitive)
+			gathering = gather_to_gear(p, end_index);
+	}
 
 	if (gear_hints_enable)
 		*reverse     = ghts->reverse;
@@ -2105,7 +2111,7 @@ out:
 	if (trace_sched_get_gear_indices_enabled()) {
 		trace_sched_get_gear_indices(p, uclamp_task_util(p), gear_hints_enable,
 				ghts->gear_start, ghts->num_gear, ghts->reverse,
-				num_sched_clusters, max_num_gear, *order_index, *end_index, *reverse);
+				num_sched_clusters, max_num_gear, *order_index, *end_index, *reverse, gathering);
 	}
 }
 
@@ -2484,7 +2490,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (is_vip) {
 		if (vip_in_gh)
-			mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+			mtk_get_gear_indicies(p, &order_index, &end_index, &reverse, latency_sensitive);
 		vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio, &allowed_cpu_mask,
 			order_index, end_index, reverse);
 	}
@@ -2518,7 +2524,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	irq_log_store();
 
-	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse, latency_sensitive);
 
 	irq_log_store();
 

@@ -22,6 +22,7 @@
 #include "common.h"
 #include "eas_plus.h"
 #include "shortcut/compress.h"
+#include "shortcut/gather.h"
 #include "sched_sys_common.h"
 #include "util/cpu_util.h"
 #include "sugov/cpufreq.h"
@@ -758,6 +759,17 @@ static long eas_ioctl_impl(struct file *filp,
 			return -1;
 
 		reset_shortcut_compress_relax_enough_tsk_util(cluster_idx);
+		break;
+
+	case EAS_SET_GH_GATHERING_TH:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(int)))
+			return -1;
+
+		set_gear_hints_gathering_th(val);
+		break;
+
+	case EAS_RESET_GH_GATHERING_TH:
+		reset_gear_hints_gathering_th();
 		break;
 
 	case EAS_SBB_ALL_SET:

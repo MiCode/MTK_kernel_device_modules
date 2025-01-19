@@ -289,7 +289,7 @@ extern void init_cpu_array(void);
 extern void build_cpu_array(void);
 extern void free_cpu_array(void);
 extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index,
-			int *reverse);
+			int *reverse, bool latency_sensitive);
 extern bool sched_gear_hints_enable_get(void);
 extern void init_gear_hints(void);
 extern bool sched_dsu_pwr_enable_get(void);

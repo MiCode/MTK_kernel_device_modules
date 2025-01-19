@@ -417,7 +417,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	int compress_cpu;
 
 	irq_log_store();
-	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse, false);
 	irq_log_store();
 	end_index = energy_eval ? end_index : 0;
 
