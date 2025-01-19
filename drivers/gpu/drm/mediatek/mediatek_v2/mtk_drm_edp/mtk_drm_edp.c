@@ -59,7 +59,6 @@
 
 #define MTK_EDP_MODE_EXTERNAL_MONITOR	"external-monitor"
 #define MTK_EDP_MODE_USE_EDID			"use-edid"
-#define MTK_EDP_MODE_COLOR_DEPTH_10BIT	"color-depth-10bit"
 #define MTK_EDP_MODE_USE_HPD			"use-hpd"
 
 enum {
@@ -141,11 +140,11 @@ struct mtk_edp {
 	struct timer_list debounce_timer;
 
 	/* For eDP attribute */
+	unsigned int color_depth;
 	bool use_hpd;
 	bool use_edid;
 	bool external_monitor;
 	bool edp_ui_enable;
-	bool color_depth_10bit;
 	bool has_fec;
 
 	/* For audio */
@@ -495,31 +494,38 @@ static void mtk_edp_set_msa(struct mtk_edp *mtk_edp)
 static int mtk_edp_set_color_format(struct mtk_edp *mtk_edp,
 				   enum dp_pixelformat color_format)
 {
-	u32 val;
-
-	/* update MISC0 */
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
-			   color_format << DP_TEST_COLOR_FORMAT_SHIFT,
-			   DP_TEST_COLOR_FORMAT_MASK);
+	u32 val = 0;
+	u32 misc0 = 0;
 
 	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
 			   BIT(3), BIT(3));
 
 	switch (color_format) {
-	case DP_PIXELFORMAT_YUV422:
-		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_YCBCR422;
-		break;
 	case DP_PIXELFORMAT_RGB:
+		misc0 = 0x0;
 		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_RGB;
 		break;
+	case DP_PIXELFORMAT_YUV444:
+		misc0 = 0x2;
+		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_RGB;
+		break;
+	case DP_PIXELFORMAT_YUV422:
+		misc0 = 0x1;
+		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_YCBCR422;
+		break;
 	case DP_PIXELFORMAT_YUV420:
+		misc0 = 0x3;
 		val = PIXEL_ENCODE_FORMAT_DP_ENC0_P0_YCBCR420;
 		break;
 	default:
-		drm_warn(mtk_edp->drm_dev, "Unsupported color format: %d\n",
-			 color_format);
+		pr_info("[eDPTX] Not supported color format: %d\n", color_format);
 		return -EINVAL;
 	}
+
+	/* update MISC0 for color format */
+	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
+			   misc0 << DP_TEST_COLOR_FORMAT_SHIFT,
+			   DP_TEST_COLOR_FORMAT_MASK);
 
 	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_303C,
 			   val, PIXEL_ENCODE_FORMAT_DP_ENC0_P0_MASK);
@@ -529,15 +535,50 @@ static int mtk_edp_set_color_format(struct mtk_edp *mtk_edp,
 
 static void mtk_edp_set_color_depth(struct mtk_edp *mtk_edp)
 {
-	/* Only support 8 bits currently */
-	/* Update MISC0 */
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
-			   DP_MSA_MISC_8_BPC, DP_TEST_BIT_DEPTH_MASK);
+	u32 val = 0;
+	u32 misc0 = 0;
 
-	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_303C,
-			   VIDEO_COLOR_DEPTH_DP_ENC0_P0_8BIT,
-			   VIDEO_COLOR_DEPTH_DP_ENC0_P0_MASK);
+	switch (mtk_edp->color_depth) {
+	case 6:
+		misc0 = DP_MSA_MISC_6_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_6BIT;
+		break;
+	case 8:
+		misc0 = DP_MSA_MISC_8_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_8BIT;
 
+		/* set MISC0 BT709 */
+		mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
+				MTK_DP_MISC0_BT709, MTK_DP_MISC0_BT_MASK);
+		break;
+	case 10:
+		misc0 = DP_MSA_MISC_10_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_10BIT;
+
+		/* set MISC0 BT601 */
+		mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
+				MTK_DP_MISC0_BT601, MTK_DP_MISC0_BT_MASK);
+		break;
+	case 12:
+		misc0 = DP_MSA_MISC_12_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_12BIT;
+		break;
+	case 16:
+		misc0 = DP_MSA_MISC_16_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_16BIT;
+		break;
+	default:
+		misc0 = DP_MSA_MISC_8_BPC;
+		val = VIDEO_COLOR_DEPTH_DP_ENC0_P0_8BIT;
+
+		/* set MISC0 BT709 */
+		mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034,
+				MTK_DP_MISC0_BT709, MTK_DP_MISC0_BT_MASK);
+		break;
+	}
+
+	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_3034, misc0, DP_TEST_BIT_DEPTH_MASK);
+	mtk_edp_update_bits(mtk_edp, MTK_DP_ENC0_4P_303C, val, VIDEO_COLOR_DEPTH_DP_ENC0_P0_MASK);
 }
 
 static void mtk_edp_config_mn_mode(struct mtk_edp *mtk_edp)
@@ -2202,17 +2243,13 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_USE_EDID, &read_value);
 	mtk_edp->use_edid = (!ret) ? !!read_value : false;
 
-	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_COLOR_DEPTH_10BIT, &read_value);
-	mtk_edp->color_depth_10bit = (!ret) ? !!read_value : false;
-
 	ret = of_property_read_u32(dev->of_node, MTK_EDP_MODE_USE_HPD, &read_value);
 	mtk_edp->use_hpd = (!ret) ? !!read_value : false;
 
-	dev_info(dev, "[eDPTX] use external monitor:%d, use edid:%d use hpd:%d color_dep_10b %d\n",
+	dev_info(dev, "[eDPTX] use external monitor:%d, use edid:%d use hpd:%d\n",
 			mtk_edp->external_monitor,
 			mtk_edp->use_edid,
-			mtk_edp->use_hpd,
-			mtk_edp->color_depth_10bit);
+			mtk_edp->use_hpd);
 
 	return 0;
 }
@@ -2339,7 +2376,7 @@ static ssize_t mtk_edp_aux_transfer(struct drm_dp_aux *mtk_aux,
 
 	if (msg == NULL) {
 		pr_info("[eDPTX] msg is null.\n");
-		goto err;
+		return -EINVAL;
 	}
 
 	switch (msg->request) {
@@ -2620,13 +2657,17 @@ static u32 *mtk_edp_bridge_atomic_get_output_bus_fmts(struct drm_bridge *bridge,
 {
 	u32 *output_fmts;
 
-	pr_info("[eDPTX] %s\n", __func__);
 	*num_output_fmts = 0;
 	output_fmts = kmalloc(sizeof(*output_fmts), GFP_KERNEL);
 	if (!output_fmts)
 		return NULL;
+
 	*num_output_fmts = 1;
 	output_fmts[0] = MEDIA_BUS_FMT_FIXED;
+
+	pr_info("[eDPTX] %s num_output_fmts:%u output_fmts:0x%04x\n",
+			__func__, *num_output_fmts, output_fmts[0]);
+
 	return output_fmts;
 }
 
@@ -2651,7 +2692,7 @@ static u32 *mtk_edp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	u32 rate = mtk_edp->train_info.link_rate *
 				mtk_edp->train_info.lane_count;
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("[eDPTX] %s+\n", __func__);
 	*num_input_fmts = 0;
 
 	/*
@@ -2671,12 +2712,16 @@ static u32 *mtk_edp_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 		input_fmts = kcalloc(ARRAY_SIZE(mt8678_input_fmts),
 				     sizeof(*input_fmts),
 				     GFP_KERNEL);
-		if (!input_fmts)
+		if (!input_fmts) {
+			*num_input_fmts = 0;
 			return NULL;
+		}
 
 		*num_input_fmts = ARRAY_SIZE(mt8678_input_fmts);
 		memcpy(input_fmts, mt8678_input_fmts, sizeof(mt8678_input_fmts));
 	}
+
+	pr_info("[eDPTX] input_fmts=0x%04x\n", input_fmts[0]);
 
 	return input_fmts;
 }
@@ -2687,20 +2732,35 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 				      struct drm_connector_state *conn_state)
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
+	struct drm_display_info *display_info =
+		&conn_state->connector->display_info;
 	struct drm_crtc *crtc = conn_state->crtc;
 	unsigned int input_bus_format;
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("[eDPTX] %s+\n", __func__);
 	input_bus_format = bridge_state->input_bus_cfg.format;
 
-	dev_dbg(mtk_edp->dev, "input format 0x%04x, output format 0x%04x\n",
+	dev_info(mtk_edp->dev, "[eDPTX] input format 0x%04x, output format 0x%04x\n",
 		bridge_state->input_bus_cfg.format,
 		 bridge_state->output_bus_cfg.format);
 
-	if (input_bus_format == MEDIA_BUS_FMT_YUYV8_1X16)
+	/* set edp output color depth */
+	mtk_edp->color_depth = display_info->bpc;
+
+	switch (input_bus_format) {
+	case MEDIA_BUS_FMT_YUYV8_1X16:
 		mtk_edp->info.format = DP_PIXELFORMAT_YUV422;
-	else
+		break;
+	case MEDIA_BUS_FMT_AYUV8_1X32:
+		mtk_edp->info.format = DP_PIXELFORMAT_YUV420;
+		break;
+	default:
 		mtk_edp->info.format = DP_PIXELFORMAT_RGB;
+		break;
+	}
+
+	dev_info(mtk_edp->dev, "[eDPTX] color depth:%u, color format:%d\n",
+		mtk_edp->color_depth, mtk_edp->info.format);
 
 	if (!crtc) {
 		drm_err(mtk_edp->drm_dev,
@@ -2709,6 +2769,7 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 	}
 
 	drm_display_mode_to_videomode(&crtc_state->adjusted_mode, &mtk_edp->info.vm);
+	pr_info("[eDPTX] %s-\n", __func__);
 
 	return 0;
 }
@@ -3011,7 +3072,6 @@ bool mtk_edp_get_lk_display(void)
 	return false;
 #endif
 }
-
 
 static int mtk_edp_probe(struct platform_device *pdev)
 {

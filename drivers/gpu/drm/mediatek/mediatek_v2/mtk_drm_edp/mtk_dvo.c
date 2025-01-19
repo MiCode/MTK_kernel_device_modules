@@ -108,6 +108,7 @@ struct mtk_dvo {
 	int irq;
 	struct drm_display_mode mode;
 	const struct mtk_dvo_conf *conf;
+	unsigned int color_depth;
 	enum mtk_dvo_out_color_format color_format;
 	enum mtk_dvo_out_yc_map yc_map;
 	enum mtk_dvo_out_bit_num bit_num;
@@ -212,19 +213,34 @@ static void mtk_dvo_sw_reset(struct mtk_dvo *dvo, bool reset)
 	mtk_dvo_mask(dvo, DVO_RET, reset ? SWRST : 0, SWRST);
 }
 
-static void mtk_dvo_enable(struct mtk_dvo *dvo)
+static void mtk_dvo_enable(struct mtk_dvo *dvo, bool enable)
 {
-	mtk_dvo_mask(dvo, DVO_EN, EN, EN);
-}
-
-static void mtk_dvo_disable(struct mtk_dvo *dvo)
-{
-	mtk_dvo_mask(dvo, DVO_EN, 0, EN);
+	mtk_dvo_mask(dvo, DVO_EN, enable? EN : 0, EN);
 }
 
 static void mtk_dvo_irq_enable(struct mtk_dvo *dvo)
 {
 	mtk_dvo_mask(dvo, DVO_INTEN, INT_VDE_END_EN, INT_VDE_END_EN);
+}
+
+static void mtk_dvo_config_pol(struct mtk_dvo *dvo,
+				struct mtk_dvo_polarities *dvo_pol)
+{
+	unsigned int pol;
+	unsigned int mask;
+
+	mask = HSYNC_POL | VSYNC_POL;
+	pol = (dvo_pol->hsync_pol == MTK_DVO_POLARITY_RISING ? 0 : HSYNC_POL) |
+			(dvo_pol->vsync_pol == MTK_DVO_POLARITY_RISING ? 0 : VSYNC_POL);
+
+	if (dvo->conf->is_ck_de_pol) {
+		mask |= CK_POL | DE_POL;
+		pol |= (dvo_pol->ck_pol == MTK_DVO_POLARITY_RISING ? 0 : CK_POL) |
+				(dvo_pol->de_pol == MTK_DVO_POLARITY_RISING ? 0 : DE_POL);
+	}
+
+	/* use default value for remain same */
+	mtk_dvo_mask(dvo, DVO_OUTPUT_SET, 0, mask);
 }
 
 static void mtk_dvo_info_queue_start(struct mtk_dvo *dvo)
@@ -256,9 +272,98 @@ static void mtk_dvo_pm_ctl(struct mtk_dvo *dvo, bool enable)
 
 static void mtk_dvo_trailing_blank_setting(struct mtk_dvo *dvo)
 {
-	//shuijing hard code, why 20
 	mtk_dvo_mask(dvo, DVO_TGEN_V_LAST_TRAILING_BLANK, 0x20, V_LAST_TRAILING_BLANK_MASK);
 	mtk_dvo_mask(dvo, DVO_TGEN_OUTPUT_DELAY_LINE, 0x20, EXT_TG_DLY_LINE_MASK);
+}
+
+static void mtk_dvo_config_channel_swap(struct mtk_dvo *dvo,
+							enum mtk_dvo_out_channel_swap swap)
+{
+	u32 val;
+
+	switch (swap) {
+	case MTK_DVO_OUT_CHANNEL_SWAP_RGB:
+		val = SWAP_RGB;
+		break;
+	case MTK_DVO_OUT_CHANNEL_SWAP_GBR:
+		val = SWAP_GBR;
+		break;
+	case MTK_DVO_OUT_CHANNEL_SWAP_BRG:
+		val = SWAP_BRG;
+		break;
+	case MTK_DVO_OUT_CHANNEL_SWAP_RBG:
+		val = SWAP_RBG;
+		break;
+	case MTK_DVO_OUT_CHANNEL_SWAP_GRB:
+		val = SWAP_GRB;
+		break;
+	case MTK_DVO_OUT_CHANNEL_SWAP_BGR:
+		val = SWAP_BGR;
+		break;
+	default:
+		val = SWAP_RGB;
+		break;
+	}
+
+	mtk_dvo_mask(dvo, DVO_OUTPUT_SET, val << CH_SWAP_SHIFT, CH_SWAP_MASK);
+}
+
+static void mtk_dvo_config_yuv422_enable(struct mtk_dvo *dvo, bool enable)
+{
+	mtk_dvo_mask(dvo, DVO_YUV422_SET, enable ? dvo->conf->yuv422_en_bit : 0,
+			dvo->conf->yuv422_en_bit);
+}
+
+static void mtk_dvo_config_csc_enable(struct mtk_dvo *dvo, bool enable)
+{
+	mtk_dvo_mask(dvo, DVO_MATRIX_SET, enable ? dvo->conf->csc_enable_bit : 0,
+			dvo->conf->csc_enable_bit);
+}
+
+static void mtk_dvo_config_swap_input(struct mtk_dvo *dvo, bool enable)
+{
+	mtk_dvo_mask(dvo, DVO_CON, enable ? 0 : 0,
+			BIT(1));
+}
+
+static void mtk_dvo_config_color_format(struct mtk_dvo *dvo,
+							enum mtk_dvo_out_color_format format)
+{
+	pr_info("[eDPTX] %s+\n", __func__);
+	mtk_dvo_config_channel_swap(dvo, MTK_DVO_OUT_CHANNEL_SWAP_RGB);
+
+	if (format == MTK_DVO_COLOR_FORMAT_YCBCR_422) {
+		mtk_dvo_config_csc_enable(dvo, true);
+		mtk_dvo_config_yuv422_enable(dvo, true);
+		pr_info("[eDPTX] support MTK_DVO_COLOR_FORMAT_YCBCR_422\n");
+	} else {
+		mtk_dvo_config_csc_enable(dvo, false);
+		mtk_dvo_config_yuv422_enable(dvo, false);
+		if (dvo->conf->swap_input_support)
+			mtk_dvo_config_swap_input(dvo, false);
+	}
+	pr_info("[eDPTX] %s-\n", __func__);
+}
+
+static void mtk_dvo_config_color_depth(struct mtk_dvo *dvo)
+{
+	pr_info("[eDPTX] %s+\n", __func__);
+	switch (dvo->color_depth) {
+	case 8:
+		mtk_dvo_mask(dvo, DVO_MATRIX_SET,
+			MATRIX_SEL_RGB_TO_BT709, INT_MTX_SEL_MASK);
+		break;
+	case 10:
+		mtk_dvo_mask(dvo, DVO_MATRIX_SET,
+			MATRIX_SEL_RGB_TO_BT601, INT_MTX_SEL_MASK);
+		break;
+	default:
+		mtk_dvo_mask(dvo, DVO_MATRIX_SET,
+			MATRIX_SEL_RGB_TO_BT709, INT_MTX_SEL_MASK);
+		break;
+	}
+	pr_info("[eDPTX] color depth:%u\n", dvo->color_depth);
+	pr_info("[eDPTX] %s-\n", __func__);
 }
 
 static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *mode)
@@ -283,7 +388,7 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 				(u64)32 * MTK_DISP_BUF_SRAM_UNIT_SIZE, &fill_rate_rem);
 
 	data_rate = (u64)mode->hdisplay * mode->vdisplay *
-				((u64)mode->clock * 1000 / (mode->htotal * mode->vtotal));
+				((u64)mode->clock * 1000 / ((u64)mode->htotal * mode->vtotal));
 	/* consume_rate = data_rate *  MTK_BLANKING_RATIO * 30 /(8 * 32 * 1000000) */
 	consume_rate = div64_u64_rem(((data_rate * 30 * 5) / 4),
 					(u64)(8 * 32 * 1000000), &consume_rate_rem);
@@ -421,7 +526,7 @@ static void mtk_dvo_power_off(struct mtk_dvo *dvo)
 	if (--dvo->refcount != 0)
 		return;
 
-	mtk_dvo_disable(dvo);
+	mtk_dvo_enable(dvo, false);
 	clk_disable_unprepare(dvo->engine_clk);
 	clk_disable_unprepare(dvo->tvd_clk);
 	clk_disable_unprepare(dvo->pixel_clk);
@@ -479,38 +584,38 @@ err_refcount:
 static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 				    struct drm_display_mode *mode)
 {
+	struct mtk_dvo_polarities dvo_pol;
 	struct mtk_dvo_sync_param hsync;
 	struct mtk_dvo_sync_param vsync_lodd = { 0 };
+	struct mtk_dvo_sync_param vsync_leven = { 0 };
+	struct mtk_dvo_sync_param vsync_rodd = { 0 };
+	struct mtk_dvo_sync_param vsync_reven = { 0 };
 	struct videomode vm = { 0 };
 	unsigned long pll_rate = 0;
 	unsigned int factor = 0;
 	int ret = 0;
 
 	pr_info("[eDPTX] %s+\n", __func__);
+	mtk_dvo_enable(dvo, false);
 
 	/* let pll_rate can fix the valid range of tvdpll (1G~2GHz) */
 	factor = dvo->conf->cal_factor(mode->clock);
 	drm_display_mode_to_videomode(mode, &vm);
 
-	pr_notice("[eDPTX] vm.pixelclock=%lu vm.hactive=%d vm.hfront_porch=%d",
-				vm.pixelclock, vm.hactive, vm.hfront_porch);
-	pr_notice(" vm.hback_porch=%d vm.vsync_len=%d\n",
-				vm.hback_porch, vm.hsync_len);
+	pr_notice("[eDPTX] vm.pixelclock=%lu\n", vm.pixelclock);
+	pr_notice("[eDPTX] vm.hactive=%d vm.hfront_porch=%d vm.hback_porch=%d vm.vsync_len=%d\n",
+			vm.hactive, vm.hfront_porch, vm.hback_porch, vm.vsync_len);
 
-	pr_notice("[eDPTX]  vm.vactive=%d vm.vfront_porch=%d",
-				vm.vactive, vm.vfront_porch);
-
-	pr_notice("[eDPTX] vm.vback_porch=%d vm.vsync_len=%d\n",
-				vm.vback_porch, vm.vsync_len);
+	pr_notice("[eDPTX] vm.vactive=%d vm.vfront_porch=%d vm.vback_porch=%d vm.vsync_len=%d\n",
+			vm.vactive, vm.vfront_porch, vm.vback_porch, vm.vsync_len);
 
 	pll_rate = vm.pixelclock * factor;
 
-	pr_info("[eDPTX] Want PLL %lu Hz, pixel clock %lu Hz\n",
-		pll_rate, vm.pixelclock);
+	pr_info("[eDPTX] Want PLL %lu Hz, pixel clock %lu Hz\n", pll_rate, vm.pixelclock);
 
 	ret = clk_set_rate(dvo->tvd_clk, pll_rate);
 	if (ret) {
-		pr_info("[eDPTX] Failed to set dvo->tvd_clk rate:%d\n", ret);
+		pr_info("[eDPTX] Failed to set dvo->tvd_clk rate: %d\n", ret);
 		return ret;
 	}
 
@@ -534,7 +639,7 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
 
 	if (ret) {
-		pr_info("[eDPTX] Failed to set pixel clock parent ret:%d\n", ret);
+		pr_info("[eDPTX] Failed to set pixel clock parent %d\n", ret);
 		return ret;
 	}
 
@@ -543,6 +648,12 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	pr_info("[eDPTX] Got  PLL %lu Hz, pixel clock %lu Hz\n",
 		pll_rate, vm.pixelclock);
 
+	dvo_pol.ck_pol = MTK_DVO_POLARITY_FALLING;
+	dvo_pol.de_pol = MTK_DVO_POLARITY_RISING;
+	dvo_pol.hsync_pol = vm.flags & DISPLAY_FLAGS_HSYNC_HIGH ?
+						MTK_DVO_POLARITY_FALLING : MTK_DVO_POLARITY_RISING;
+	dvo_pol.vsync_pol = vm.flags & DISPLAY_FLAGS_VSYNC_HIGH ?
+						MTK_DVO_POLARITY_FALLING : MTK_DVO_POLARITY_RISING;
 	/*
 	 * Depending on the IP version, we may output a different amount of
 	 * pixels for each iteration: divide the clock by this number and
@@ -558,9 +669,30 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	vsync_lodd.front_porch = vm.vfront_porch;
 	vsync_lodd.shift_half_line = false;
 
+	if (vm.flags & DISPLAY_FLAGS_INTERLACED &&
+		mode->flags & DRM_MODE_FLAG_3D_MASK) {
+		vsync_leven = vsync_lodd;
+		vsync_rodd = vsync_lodd;
+		vsync_reven = vsync_lodd;
+		vsync_leven.shift_half_line = true;
+		vsync_reven.shift_half_line = true;
+	} else if (vm.flags & DISPLAY_FLAGS_INTERLACED &&
+				!(mode->flags & DRM_MODE_FLAG_3D_MASK)) {
+		vsync_leven = vsync_lodd;
+		vsync_leven.shift_half_line = true;
+	} else if (!(vm.flags & DISPLAY_FLAGS_INTERLACED) &&
+				mode->flags & DRM_MODE_FLAG_3D_MASK) {
+		vsync_reven = vsync_lodd;
+	}
+
 	mtk_dvo_sw_reset(dvo, true);
-	pr_info("[eDPTX] %s-\n", __func__);
+	mtk_dvo_config_pol(dvo, &dvo_pol);
+
 	mtk_dvo_irq_enable(dvo);
+	if (dvo->conf->out_np_sel) {
+		mtk_dvo_mask(dvo, DVO_OUTPUT_SET, dvo->conf->out_np_sel,
+			     OUT_NP_SEL_MASK);
+	}
 
 	mtk_dvo_config_hsync(dvo, &hsync);
 	mtk_dvo_config_vsync_lodd(dvo, &vsync_lodd);
@@ -576,16 +708,13 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	mtk_dvo_info_queue_start(dvo);
 	mtk_dvo_buffer_ctrl(dvo);
 	mtk_dvo_trailing_blank_setting(dvo);
-
+	mtk_dvo_config_color_format(dvo, dvo->color_format);
+	mtk_dvo_config_color_depth(dvo);
 	mtk_dvo_sodi_setting(dvo, mode);
 
 	if (dvo->conf->pixels_per_iter)
 		mtk_dvo_shadow_ctrl(dvo);
 
-	if (dvo->conf->out_np_sel) {
-		mtk_dvo_mask(dvo, DVO_OUTPUT_SET, dvo->conf->out_np_sel,
-			     OUT_NP_SEL);
-	}
 	mtk_dvo_sw_reset(dvo, false);
 
 	pr_info("[eDPTX] %s-\n", __func__);
@@ -634,7 +763,6 @@ static u32 *mtk_dvo_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 
 	*num_input_fmts = 0;
 
-	pr_info("[eDPTX] %s\n", __func__);
 	input_fmts = kcalloc(1, sizeof(*input_fmts),
 			     GFP_KERNEL);
 	if (!input_fmts)
@@ -642,6 +770,9 @@ static u32 *mtk_dvo_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 
 	*num_input_fmts = 1;
 	input_fmts[0] = MEDIA_BUS_FMT_RGB888_1X24;
+
+	pr_info("[eDPTX] %s num_input_fmts:%d input_fmts:0x%04x\n",
+			__func__, *num_input_fmts, input_fmts[0]);
 
 	return input_fmts;
 }
@@ -652,18 +783,22 @@ static int mtk_dvo_bridge_atomic_check(struct drm_bridge *bridge,
 				       struct drm_connector_state *conn_state)
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
+	struct drm_display_info *display_info =
+		&conn_state->connector->display_info;
 	unsigned int out_bus_format;
 
 	out_bus_format = bridge_state->output_bus_cfg.format;
+	dvo->color_depth = display_info->bpc;
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("[eDPTX] %s+ bridge_state out_bus_format:0x%04x\n", __func__, out_bus_format);
 	if (out_bus_format == MEDIA_BUS_FMT_FIXED)
 		if (dvo->conf->num_output_fmts)
 			out_bus_format = dvo->conf->output_fmts[0];
 
-	dev_dbg(dvo->dev, "input format 0x%04x, output format 0x%04x\n",
+	dev_info(dvo->dev, "[eDPTX] %s input format 0x%04x, output format 0x%04x\n",
+		__func__,
 		bridge_state->input_bus_cfg.format,
-		bridge_state->output_bus_cfg.format);
+		out_bus_format);
 
 	dvo->output_fmt = out_bus_format;
 	dvo->bit_num = MTK_DVO_OUT_BIT_NUM_8BITS;
@@ -736,7 +871,7 @@ static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 
 	mtk_dvo_power_on(dvo);
 	mtk_dvo_set_display_mode(dvo, &dvo->mode);
-	mtk_dvo_enable(dvo);
+	mtk_dvo_enable(dvo, true);
 
 	dev_info(dvo->dev, "[eDPTX] %s-\n", __func__);
 }
@@ -957,7 +1092,7 @@ static const u32 mt6991_output_fmts[] = {
 
 static const struct mtk_dvo_conf mt6991_conf = {
 	.cal_factor = mt6991_calculate_factor,
-	.out_np_sel = 0X2,
+	.out_np_sel = 0x2,
 	.reg_h_fre_con = 0xb0,
 	.max_clock_khz = 600000,
 	.output_fmts = mt6991_output_fmts,
@@ -966,6 +1101,9 @@ static const struct mtk_dvo_conf mt6991_conf = {
 	.has_commit = true,
 	.dimension_mask = HFP_MASK,
 	.hvsize_mask = PIC_HSIZE_MASK,
+	.csc_enable_bit = CSC_EN,
+	.yuv422_en_bit = YUV422_EN | VYU_MAP,
+	.swap_input_support = false,
 };
 
 static int mtk_dvo_probe(struct platform_device *pdev)
