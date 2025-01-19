@@ -1480,9 +1480,9 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 					CCCI_ERROR_LOG(0, FSM,
 						"invalid MD_QUERY_MSG %d\n",
 						event->length);
-				ccci_md_dump_info(DUMP_MD_BOOTUP_STATUS, NULL, 0);
 				fsm_finish_event(ctl, event);
 				spin_unlock_irqrestore(&ctl->event_lock, flags);
+				ccci_md_dump_info(DUMP_MD_BOOTUP_STATUS, NULL, 0);
 				/* this API would alloc skb */
 				ret = ccci_md_send_runtime_data();
 				CCCI_NORMAL_LOG(0, FSM, "send runtime data %d\n", ret);
