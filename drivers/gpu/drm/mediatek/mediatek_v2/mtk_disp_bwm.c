@@ -244,20 +244,13 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	u16 gpr;
-
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BWM_TRIG, 0x1, 0x1);
-	/*gpr = mtk_get_gpr(comp, handle);
-
-	cmdq_pkt_poll_timeout(handle, 0x2, SUBSYS_NO_SUPPORT,
-				  DISP_REG_BWM_INTSTA, 0x2, 500, gpr);//polling 6ms
-	*/
 }
 
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 {
-	unsigned int avail_layer, i, j = 0, loop_cnt = 0;
+	unsigned int avail_layer, i, j = 0;
 	s32 avg_val, peak_val, int_val;
 	int_val = readl(comp->regs + DISP_REG_BWM_INTSTA);
 	avail_layer = __builtin_popcount(REG_FLD_VAL_GET(FLD_BWM_ROI_TIMING_INTSTA, int_val));
@@ -491,7 +484,6 @@ static void mtk_bwm_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 				 struct cmdq_pkt *handle)
 {
 	struct mtk_disp_bwm *bwm = comp_to_bwm(comp);
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (!comp->mtk_crtc) {
 		DDPINFO("%s %d no crtc\n", __func__, __LINE__);
