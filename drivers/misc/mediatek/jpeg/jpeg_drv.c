@@ -486,16 +486,16 @@ static void jpeg_drv_update_qos_request(unsigned int id)
 	JPEG_LOG(1, "update qos request id: %d", id);
 
 	if (gJpegqDev.ven0BaseVA && gJpegqDev.is_qos_16_level) {
-		IMG_REG_WRITE(0x71,
+		IMG_REG_WRITE(0x60,
 			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
 						  gJpegqDev.larb_port[id][JPEG_DEC_WDMA]));
-		IMG_REG_WRITE(0x71,
+		IMG_REG_WRITE(0x61,
 			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
 						  gJpegqDev.larb_port[id][JPEG_DEC_BSDMA]));
-		IMG_REG_WRITE(0x71,
+		IMG_REG_WRITE(0x60,
 			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
 						  gJpegqDev.larb_port[id][JPEG_DEC_HUFF_OFFSET]));
-		IMG_REG_WRITE(0x8C, (gJpegqDev.ven0BaseVA + 0x39c));
+		IMG_REG_WRITE(0x90, (gJpegqDev.ven0BaseVA + 0x39c));
 	}
 
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_wdma[id], MBps_to_icc(960), 0);
