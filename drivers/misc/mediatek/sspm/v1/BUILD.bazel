@@ -43,4 +43,5 @@ define_mgk_ddk_ko(
     hdrs = glob(["**/*.h"]),
     copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
              "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",],
+    ko_deps = ["//kernel_device_modules-{}/drivers/memory/mediatek:emimpu".format(kernel_version),],
 )
