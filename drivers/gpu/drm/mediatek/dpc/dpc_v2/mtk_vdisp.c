@@ -134,6 +134,52 @@ static void check_subcomm_status(void)
 #endif
 }
 
+static int check_sub_devices(void)
+{
+	struct device *d;
+	struct pm_domain_data *pdd;
+	struct generic_pm_domain *gpd = pd_to_genpd(g_dev[DISP_PD_DISP_VCORE]->pm_domain);
+	int i = 0, total_usage_count = 0;
+
+	mutex_lock(&g_mtcmos_cnt_lock);
+	list_for_each_entry(pdd, &gpd->dev_list, list_node) {
+		d = pdd->dev;
+		if (!d)
+			continue;
+
+		total_usage_count += atomic_read(&d->power.usage_count);
+		VDISPDBG("\t%c (%-80s %3d %3d %3d %3d %3d status:%3d)",
+			pm_runtime_active(d) ? '+' : '-',
+			dev_name(d),
+			atomic_read(&d->power.usage_count),
+			d->power.is_noirq_suspended,
+			d->power.syscore,
+			d->power.direct_complete,
+			d->power.must_resume,
+			d->power.runtime_status);
+	}
+
+	for (i = 1; i < DISP_PD_NUM; i++) {
+		d = g_dev[i];
+		if (!d)
+			continue;
+
+		total_usage_count += atomic_read(&d->power.usage_count);
+		VDISPDBG("\t%c (%-80s %3d %3d %3d %3d %3d status:%3d)",
+			pm_runtime_active(d) ? '+' : '-',
+			dev_name(d),
+			atomic_read(&d->power.usage_count),
+			d->power.is_noirq_suspended,
+			d->power.syscore,
+			d->power.direct_complete,
+			d->power.must_resume,
+			d->power.runtime_status);
+	}
+	mutex_unlock(&g_mtcmos_cnt_lock);
+
+	return total_usage_count;
+}
+
 static s32 mtk_vdisp_get_power_cnt(void)
 {
 	return atomic_read_acquire(&g_mtcmos_cnt);
@@ -144,8 +190,21 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 	s32 ret, tmp;
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
-	if (ret < 0)
-		VDISPERR("poll power cnt timeout, mtcmos_mask(%#x)", atomic_read(&g_mtcmos_cnt));
+	if (ret < 0) {
+		tmp = check_sub_devices();
+		VDISPERR("poll power cnt timeout, mtcmos_mask(%#x) total_usage_count(%d)",
+			 atomic_read(&g_mtcmos_cnt), tmp);
+		if (tmp == 0) {
+			pm_runtime_get_sync(g_dev[DISP_PD_DISP_VCORE]);
+			pm_runtime_put_sync(g_dev[DISP_PD_DISP_VCORE]);
+			ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+			if (ret == 0)
+				aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER,
+					__func__, "False alarm, recovery success");
+#endif
+		}
+	}
 
 	return ret;
 }
