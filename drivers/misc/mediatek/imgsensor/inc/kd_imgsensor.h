@@ -256,6 +256,7 @@
 #define OX08B40_SENSOR_ID                       0x580841
 
 /*S5K*/
+#define S5KHP9SP_SENSOR_ID                      0x1b73
 #define S5KHP3SP_SENSOR_ID                      0x1b73
 #define S5KJD1_SENSOR_ID                        0x3841
 #define S5KJN1_SENSOR_ID                        0x38E1
@@ -557,6 +558,7 @@
 #define SENSOR_DRVNAME_OX08B40_MIPI_RAW         "ox08b40_mipi_raw"
 
 /*S5K*/
+#define SENSOR_DRVNAME_S5KHP9SP_MIPI_RAW        "s5khp9sp_mipi_raw"
 #define SENSOR_DRVNAME_S5KHP3SP_MIPI_RAW        "s5khp3sp_mipi_raw"
 #define SENSOR_DRVNAME_S5KJD1_MIPI_RAW        "s5kjd1_mipi_raw"
 #define SENSOR_DRVNAME_S5K2LQSX_MIPI_RAW        "s5k2lqsx_mipi_raw"
