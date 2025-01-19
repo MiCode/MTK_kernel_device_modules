@@ -10435,6 +10435,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 	int vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	int vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
 	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	int tmp_vact = 0;
 
 	//For CMD mode to calculate HRT BW
 	unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
@@ -10459,8 +10460,12 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		//vdo mode
-		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
 			hact = mtk_crtc->scaling_ctx.lcm_width;
+			tmp_vact = vact;
+			vact = mtk_crtc->scaling_ctx.lcm_height;
+			vtotal = vtotal - tmp_vact + vact;
+		}
 
 		if (to_info.is_support) {
 			hact += (to_info.left_overhead + to_info.right_overhead);
@@ -10589,20 +10594,23 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		//vdo mode
 		u32 hact = mode->hdisplay;
+		u32 vact = mode->vdisplay;
+		u32 vtotal = mode->vtotal;
 
-		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
 			hact = mtk_crtc->scaling_ctx.lcm_width;
-		else
-			hact = mode->hdisplay;
+			vact = mtk_crtc->scaling_ctx.lcm_height;
+			vtotal = vtotal - mode->vdisplay + vact;
+		}
 
 		if (to_info.is_support) {
 			hact += (to_info.left_overhead + to_info.right_overhead);
 			DDPDBG("%s vdo mode hact with total overhead %d\n", __func__, hact);
 		}
 
-		bw_base = DO_COMMON_DIV((unsigned long long) mode->vdisplay
+		bw_base = DO_COMMON_DIV((unsigned long long) vact
 			* hact * vrefresh * 4, 1000);
-		bw_base = DO_COMMON_DIV(bw_base * mode->vtotal, mode->vdisplay);
+		bw_base = DO_COMMON_DIV(bw_base * vtotal, vact);
 		bw_base = DO_COMMON_DIV(bw_base, 1000);
 
 		DDPDBG("%s vdo mode bw_base:%llu, vrefresh:%d\n",
