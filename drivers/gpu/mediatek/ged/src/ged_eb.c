@@ -2026,7 +2026,7 @@ void ged_notify_eb_ged_ready(void)
 		schedule_work(&sg_notify_ged_ready_work);
 	}
 }
-#else
+#else /* MTK_GPU_EB_SUPPORT */
 void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
 		GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited)
 {
@@ -2182,6 +2182,11 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 	return GED_ERROR_FAIL;
 }
 
+int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
+{
+	//Do nothing
+	return 0;
+}
 void fdvfs_init(void)
 {
 	//Do nothing
@@ -2207,4 +2212,34 @@ void ged_notify_eb_ged_ready(void)
 {
 	//Do nothing
 }
-#endif
+
+union combineData mtk_gpueb_sysram_multi_read(int offset)
+{
+	union combineData out_data= {};
+	//Do nothing
+	return out_data;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_multi_read);
+
+int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_rb_write);
+
+struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
+{
+	struct GED_DVFS_OPP_STAT out_data= {};
+	//Do nothing
+	return out_data;
+}
+EXPORT_SYMBOL(mtk_gpueb_mbrain_read);
+
+void mtk_gpueb_mbrain_write(int opp, unsigned long long active, unsigned long long idle)
+{
+	//Do nothing
+}
+EXPORT_SYMBOL(mtk_gpueb_mbrain_write);
+
+#endif /* MTK_GPU_EB_SUPPORT */
