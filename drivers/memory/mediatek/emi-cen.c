@@ -56,6 +56,26 @@ struct a2d_s6s_v2 {
 	unsigned long chcd_rk0_sz, chcd_rk1_sz;
 };
 
+struct a2d_s6s_v3 {
+	unsigned int chn_bit_position;
+	unsigned int chn_en;
+	unsigned int magics[14];
+
+	unsigned int dual_rank_en;
+	unsigned int dw32_en;
+	unsigned int bg1_bk3_pos;
+	unsigned int chn_scrm_en;
+	unsigned int rank_pos;
+	unsigned int magics2[8];
+	unsigned int rank0_row_width, rank0_bank_width, rank0_col_width;
+	unsigned int rank0_size_MB, rank0_bg_16bank_mode;
+	unsigned int rank1_row_width, rank1_bank_width, rank1_col_width;
+	unsigned int rank1_size_MB, rank1_bg_16bank_mode;
+
+	unsigned long chab_rk0_sz, chab_rk1_sz;
+	unsigned long chcd_rk0_sz, chcd_rk1_sz;
+};
+
 struct emi_cen {
 	/*
 	 * EMI setting from device tree
@@ -85,6 +105,7 @@ struct emi_cen {
 	union {
 		struct a2d_s6s_v1 v1;
 		struct a2d_s6s_v2 v2;
+		struct a2d_s6s_v3 v3;
 	} a2d_s6s;
 	unsigned int *chn_swap;
 };
@@ -99,6 +120,10 @@ static const struct mtk_emi_compatible mt6873_compat = {
 
 static const struct mtk_emi_compatible mt6877_compat = {
 	.ver = 2,
+};
+
+static const struct mtk_emi_compatible mt6993_compat = {
+	.ver = 3,
 };
 
 #define EMI_CONA_DW32_EN 1
@@ -161,6 +186,8 @@ static const struct mtk_emi_compatible mt6877_compat = {
 
 static unsigned int emi_a2d_emi_cen[6];
 static unsigned int emi_a2d_emi_chn[3];
+static unsigned int emi_a2d_emi_chn_v3[5];
+static unsigned int emi_a2d_emi_cen2[6];
 static unsigned int emi_a2d_info_support;
 
 static unsigned int emi_a2d_con_offset[] = {
@@ -877,6 +904,295 @@ static inline unsigned int use_a2d_magic_v2(unsigned long addr,
 }
 
 /*
+ * prepare_a2d_v3: a helper function to initialize and calculate settings for
+ *                 the mtk_emicen_addr2dram_v3() function
+ *
+ * There is no code comment for the translation. This is intended since
+ * the fomular of translation is derived from the implementation of EMI.
+ */
+static inline void prepare_a2d_v3(struct emi_cen *cen)
+{
+	const unsigned int mask_12b = 0xfff, mask_8b = 0xff, mask_7b = 0x7f, mask_6b = 0x3f;
+	const unsigned int mask_4b = 0xf, mask_3b = 0x7, mask_2b = 0x3, mask_1b = 0x1;
+	struct a2d_s6s_v3 *s6s;
+	unsigned long emi_cona, emi_conf, emi_conh, emi_conh_2nd, emi_conk, emi_scrm_ext;
+	unsigned long emi_scrm_ext0, emi_scrm_ext1, emi_scrm_ext2, emi_scrm_ext3, emi_scrm_ext4, emi_scrm_ext5;
+	unsigned long emi_chn_cona, emi_chn_conc, emi_chn_conc_2nd, emi_chn_scrm, emi_chn_scrm_2nd;
+	int tmp;
+	int col, col2nd, row, row2nd, row_ext0, row2nd_ext0;
+	int rank0_size, rank1_size, rank0_size_ext, rank1_size_ext;
+	int chn_4bank_mode, chn_bg_16bank_mode, chn_bg_16bank_mode_2nd;
+	int b11s, b12s, b13s, b14s, b15s, b16s;
+	int b8s, b11s_ext, b12s_ext, b13s_ext, b14s_ext, b15s_ext, b16s_ext;
+	int b9s, b8s_ext2, b12s_ext2, b13s_ext2, b14s_ext2;
+
+	if (!cen)
+		return;
+
+	s6s = &cen->a2d_s6s.v3;
+
+	if (emi_a2d_info_support) {
+		emi_cona = emi_a2d_emi_cen[0];
+		emi_conf = emi_a2d_emi_cen[1];
+		emi_conh = emi_a2d_emi_cen[2];
+		emi_conh_2nd = emi_a2d_emi_cen[3];
+		emi_conk = emi_a2d_emi_cen[4];
+		emi_scrm_ext = emi_a2d_emi_cen[5];
+
+		emi_chn_cona = emi_a2d_emi_chn_v3[0];
+		emi_chn_conc = emi_a2d_emi_chn_v3[1];
+		emi_chn_conc_2nd = emi_a2d_emi_chn_v3[2];
+		emi_chn_scrm = emi_a2d_emi_chn_v3[3];
+		emi_chn_scrm_2nd = emi_a2d_emi_chn_v3[4];
+
+		emi_scrm_ext0 = emi_a2d_emi_cen2[0];
+		emi_scrm_ext1 = emi_a2d_emi_cen2[1];
+		emi_scrm_ext2 = emi_a2d_emi_cen2[2];
+		emi_scrm_ext3 = emi_a2d_emi_cen2[3];
+		emi_scrm_ext4 = emi_a2d_emi_cen2[4];
+		emi_scrm_ext5 = emi_a2d_emi_cen2[5];
+	} else
+		return;
+
+	pr_info("a2d_cen: 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx\n",
+			emi_cona, emi_conf, emi_conh, emi_conh_2nd, emi_conk, emi_scrm_ext);
+	pr_info("a2d_chn_v3: 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx\n",
+			emi_chn_cona, emi_chn_conc, emi_chn_conc_2nd, emi_chn_scrm, emi_chn_scrm_2nd);
+	pr_info("a2d_cen2: 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx\n",
+			emi_scrm_ext0, emi_scrm_ext1, emi_scrm_ext2, emi_scrm_ext3, emi_scrm_ext4, emi_scrm_ext5);
+
+	tmp = (emi_cona >> EMI_CONA_CHN_POS_0) & mask_2b;
+	switch (tmp) {
+	case 3:
+		s6s->chn_bit_position = 12;
+		break;
+	case 2:
+		s6s->chn_bit_position = 9;
+		break;
+	case 1:
+		s6s->chn_bit_position = 8;
+		break;
+	default:
+		s6s->chn_bit_position = 7;
+		break;
+	}
+
+	s6s->chn_en = (emi_cona >> EMI_CONA_CHN_EN) & mask_2b;
+
+	/* v2 basic setting */
+	s6s->magics[2] = (emi_conh_2nd >> 24) & mask_4b;
+	s6s->magics[3] = emi_conf & mask_4b;
+	s6s->magics[4] = (emi_conf >> 4) & mask_4b;
+	s6s->magics[5] = (emi_conf >> 8) & mask_4b;
+	s6s->magics[6] = (emi_conf >> 12) & mask_4b;
+	s6s->magics[7] = (emi_conf >> 16) & mask_4b;
+	s6s->magics[8] = (emi_conf >> 20) & mask_4b;
+	s6s->magics[9] = (emi_conf >> 24) & mask_4b;
+	s6s->magics[10] = (emi_conf >> 28) & (mask_4b & ~mask_1b);
+	s6s->magics[10] +=  ((emi_conf >> 28) & mask_1b) << 6;
+	s6s->magics[0] = emi_scrm_ext & mask_6b;
+	s6s->magics[1] = (emi_scrm_ext >> 6) & mask_6b;
+	s6s->magics[2] += ((emi_scrm_ext >> 12) & mask_2b) << 4;
+	s6s->magics[3] += ((emi_scrm_ext >> 14) & mask_2b) << 4;
+	s6s->magics[4] += ((emi_scrm_ext >> 16) & mask_2b) << 4;
+	s6s->magics[5] += ((emi_scrm_ext >> 18) & mask_2b) << 4;
+	s6s->magics[6] += ((emi_scrm_ext >> 20) & mask_2b) << 4;
+	s6s->magics[7] += ((emi_scrm_ext >> 22) & mask_2b) << 4;
+	s6s->magics[8] += ((emi_scrm_ext >> 24) & mask_2b) << 4;
+	s6s->magics[9] += ((emi_scrm_ext >> 26) & mask_2b) << 4;
+	s6s->magics[10] += ((emi_scrm_ext >> 28) & mask_2b) << 4;
+
+	/* v3 extended setting for bit17-19 ref bit21-28 */
+	s6s->magics[11] = ((emi_scrm_ext4 >> 4)  & mask_8b) << 5;
+	s6s->magics[12] = ((emi_scrm_ext4 >> 20) & mask_8b) << 5;
+	s6s->magics[13] = ((emi_scrm_ext5 >> 4) & mask_8b) << 5;
+
+	/* v3 extended setting for bit8-16 ref bit22-28 */
+	s6s->magics[2] += (emi_scrm_ext0 & mask_7b) << 6;
+	s6s->magics[3] += ((emi_scrm_ext0 >> 8) & mask_7b) << 6;
+	s6s->magics[4] += ((emi_scrm_ext0 >> 16) & mask_7b) << 6;
+	s6s->magics[5] += ((emi_scrm_ext0 >> 24) & mask_7b) << 6;
+	s6s->magics[6] += (emi_scrm_ext1 & mask_7b) << 6;
+	s6s->magics[7] += ((emi_scrm_ext1 >> 8) & mask_7b) << 6;
+	s6s->magics[8] += ((emi_scrm_ext1 >> 16) & mask_7b) << 6;
+	s6s->magics[9] += ((emi_scrm_ext1 >> 24) & mask_7b) << 6;
+	s6s->magics[10] += (emi_scrm_ext2 & mask_6b) << 7;
+
+	/* v3 extended setting for bit8-19 ref bit10-13 */
+	s6s->magics[2] += (emi_scrm_ext3 & mask_4b) << 13;
+	s6s->magics[3] += ((emi_scrm_ext3 >> 4) & mask_4b) << 13;
+	s6s->magics[4] += ((emi_scrm_ext3 >> 8) & mask_3b) << 14;
+	s6s->magics[5] += ((emi_scrm_ext3 >> 12) & mask_1b) << 13;
+	s6s->magics[5] += ((emi_scrm_ext3 >> 13) & mask_2b) << 15;
+	s6s->magics[6] += ((emi_scrm_ext3 >> 16) & mask_2b) << 13;
+	s6s->magics[6] += ((emi_scrm_ext3 >> 18) & mask_1b) << 16;
+	s6s->magics[7] += ((emi_scrm_ext3 >> 20) & mask_3b) << 13;
+	s6s->magics[8] += ((emi_scrm_ext3 >> 24) & mask_4b) << 13;
+	s6s->magics[9] += ((emi_scrm_ext3 >> 28) & mask_4b) << 13;
+	s6s->magics[10] += ((emi_scrm_ext2 >> 6) & mask_4b) << 13;
+	s6s->magics[11] += (emi_scrm_ext4 & mask_4b) << 13;
+	s6s->magics[12] += ((emi_scrm_ext4 >> 16) & mask_4b) << 13;
+	s6s->magics[13] += (emi_scrm_ext5 & mask_4b) << 13;
+
+	s6s->dual_rank_en =
+		test_bit(EMI_CHN_CONA_DUAL_RANK_EN, &emi_chn_cona) ?  1 : 0;
+	s6s->dw32_en = test_bit(EMI_CHN_CONA_DW32_EN, &emi_chn_cona) ? 1 : 0;
+	row_ext0 = test_bit(EMI_CHN_CONA_ROW_EXT0, &emi_chn_cona) ? 1 : 0;
+	row2nd_ext0 = test_bit(EMI_CHN_CONA_ROW2ND_EXT0, &emi_chn_cona) ? 1 : 0;
+	col = (emi_chn_cona >> EMI_CHN_CONA_COL) & mask_2b;
+	col2nd = (emi_chn_cona >> EMI_CHN_CONA_COL2ND) & mask_2b;
+	rank0_size_ext =
+		test_bit(EMI_CHN_CONA_RANK0_SIZE_EXT, &emi_chn_cona) ? 1 : 0;
+	rank1_size_ext =
+		test_bit(EMI_CHN_CONA_RANK1_SIZE_EXT, &emi_chn_cona) ? 1 : 0;
+	chn_bg_16bank_mode =
+		test_bit(EMI_CHN_CONA_16BANK_MODE, &emi_chn_cona) ? 1 : 0;
+	chn_bg_16bank_mode_2nd =
+		test_bit(EMI_CHN_CONA_16BANK_MODE_2ND, &emi_chn_cona) ? 1 : 0;
+	row = (emi_chn_cona >> EMI_CHN_CONA_ROW) & mask_2b;
+	row2nd = (emi_chn_cona >> EMI_CHN_CONA_ROW2ND) & mask_2b;
+	rank0_size = (emi_chn_cona >> EMI_CHN_CONA_RANK0_SZ) & mask_4b;
+	rank1_size = (emi_chn_cona >> EMI_CHN_CONA_RANK1_SZ) & mask_4b;
+	chn_4bank_mode =
+		test_bit(EMI_CHN_CONA_4BANK_MODE, &emi_chn_cona) ? 1 : 0;
+	s6s->rank_pos = test_bit(EMI_CHN_CONA_RANK_POS, &emi_chn_cona) ? 1 : 0;
+	s6s->bg1_bk3_pos =
+		test_bit(EMI_CHN_CONA_BG1_BK3_POS, &emi_chn_cona) ? 1 : 0;
+	s6s->chn_scrm_en = test_bit(EMI_CHN_CONC_SCRM_EN, &emi_chn_conc);
+
+	/* v2 basic setting */
+	b11s = (emi_chn_conc >> 8) & mask_4b;
+	b12s = (emi_chn_conc >> 12) & mask_4b;
+	b13s = (emi_chn_conc >> 16) & mask_4b;
+	b14s = (emi_chn_conc >> 20) & mask_4b;
+	b15s = (emi_chn_conc >> 24) & mask_4b;
+	b16s = (emi_chn_conc >> 28) & (mask_4b & ~mask_1b);
+	b16s +=  ((emi_chn_conc >> 28) & mask_1b) << 6;
+
+	b11s_ext = (emi_chn_conc_2nd >> 4) & mask_2b;
+	b12s_ext = (emi_chn_conc_2nd >> 6) & mask_2b;
+	b13s_ext = (emi_chn_conc_2nd >> 8) & mask_2b;
+	b14s_ext = (emi_chn_conc_2nd >> 10) & mask_2b;
+	b15s_ext = (emi_chn_conc_2nd >> 12) & mask_2b;
+	b16s_ext = (emi_chn_conc_2nd >> 14) & mask_2b;
+	b8s = (emi_chn_conc_2nd >> 16) & mask_6b;
+
+	/* v3 extended setting for bit9 ref bit16-27 */
+	b9s = emi_chn_scrm_2nd & mask_12b;
+
+	b8s_ext2 = emi_chn_scrm & mask_6b;
+	b12s_ext2 = (emi_chn_scrm >> 8) & mask_6b;
+	b13s_ext2 = (emi_chn_scrm >> 16) & mask_6b;
+	b14s_ext2 = (emi_chn_scrm >> 24) & mask_6b;
+
+	s6s->magics2[0] = b8s_ext2 * 64 + b8s;
+	s6s->magics2[1] = b9s;
+	s6s->magics2[2] = b11s_ext * 16 + b11s;
+	s6s->magics2[3] = b12s_ext2 * 64 + b12s_ext * 16 + b12s;
+	s6s->magics2[4] = b13s_ext2 * 64 + b13s_ext * 16 + b13s;
+	s6s->magics2[5] = b14s_ext2 * 64 + b14s_ext * 16 + b14s;
+	s6s->magics2[6] = b15s_ext * 16 + b15s;
+	s6s->magics2[7] = b16s_ext * 16 + b16s;
+
+	s6s->rank0_row_width = row_ext0 * 4 + row + 13;
+	s6s->rank0_bank_width = (chn_bg_16bank_mode == 1) ? 4 :
+				(chn_4bank_mode == 1) ? 2 : 3;
+	s6s->rank0_col_width = col + 9;
+	s6s->rank0_bg_16bank_mode = chn_bg_16bank_mode;
+	s6s->rank0_size_MB = (rank0_size_ext * 16 + rank0_size) * 256;
+	if (!(s6s->rank0_size_MB)) {
+		tmp = s6s->rank0_row_width + s6s->rank0_bank_width;
+		tmp += s6s->rank0_col_width + s6s->dw32_en;
+		s6s->rank0_size_MB = 2 << (tmp - 20);
+	}
+
+	s6s->rank1_row_width = row2nd_ext0 * 4 + row2nd + 13;
+	s6s->rank1_bank_width = (chn_bg_16bank_mode_2nd == 1) ? 4 :
+				(chn_4bank_mode == 1) ? 2 : 3;
+	s6s->rank1_col_width = col2nd + 9;
+	s6s->rank1_bg_16bank_mode = chn_bg_16bank_mode_2nd;
+	s6s->rank1_size_MB = (rank1_size_ext * 16 + rank1_size) * 256;
+	if (!(s6s->rank1_size_MB)) {
+		tmp = s6s->rank1_row_width + s6s->rank1_bank_width;
+		tmp += s6s->rank1_col_width + s6s->dw32_en;
+		s6s->rank1_size_MB = 2 << (tmp - 20);
+	}
+
+	tmp = (emi_conh >> EMI_CONH_CHNAB_RANK0_SIZE) & mask_4b;
+	tmp += ((emi_conk >> EMI_CONK_CHNAB_RANK0_SIZE_EXT) & mask_4b) << 4;
+	if (tmp)
+		s6s->chab_rk0_sz = tmp << 8;
+	else
+		s6s->chab_rk0_sz = s6s->rank0_size_MB;
+
+	tmp = (emi_conh >> EMI_CONH_CHNAB_RANK1_SIZE) & mask_4b;
+	tmp += ((emi_conk >> EMI_CONK_CHNAB_RANK1_SIZE_EXT) & mask_4b) << 4;
+	if (!test_bit(EMI_CONA_DUAL_RANK_EN, &emi_cona))
+		s6s->chab_rk1_sz = 0;
+	else if (tmp)
+		s6s->chab_rk1_sz = tmp << 8;
+	else
+		s6s->chab_rk1_sz = s6s->rank1_size_MB;
+
+	tmp = (emi_conh >> EMI_CONH_CHNCD_RANK0_SIZE) & mask_4b;
+	tmp += ((emi_conk >> EMI_CONK_CHNCD_RANK0_SIZE_EXT) & mask_4b) << 4;
+	if (tmp)
+		s6s->chcd_rk0_sz = tmp << 8;
+	else
+		s6s->chcd_rk0_sz = s6s->rank0_size_MB;
+
+	tmp = (emi_conh >> EMI_CONH_CHNCD_RANK1_SIZE) & mask_4b;
+	tmp += ((emi_conk >> EMI_CONK_CHNCD_RANK1_SIZE_EXT) & mask_4b) << 4;
+	if (!test_bit(EMI_CONA_DUAL_RANK_EN_CHN1, &emi_cona))
+		s6s->chcd_rk1_sz = 0;
+	else if (tmp)
+		s6s->chcd_rk1_sz = tmp << 8;
+	else
+		s6s->chcd_rk1_sz = s6s->rank1_size_MB;
+
+	cen->max = s6s->chab_rk0_sz + s6s->chab_rk1_sz;
+	cen->max += s6s->chcd_rk0_sz + s6s->chcd_rk0_sz;
+	if ((s6s->chn_en > 1) || (cen->disph > 0))
+		cen->max *= 2;
+	cen->max = cen->max << 20;
+}
+
+/*
+ * use_a2d_magic_v3: a helper function to calculate the input address
+ *                   for the mtk_emicen_addr2dram_v3() function
+ *
+ * There is no code comment for the translation. This is intended since
+ * the fomular of translation is derived from the implementation of EMI.
+ */
+static inline unsigned int use_a2d_magic_v3(unsigned long addr,
+						unsigned long magic,
+						unsigned int bit)
+{
+	unsigned int ret;
+
+	ret = test_bit(bit, &addr) ? 1 : 0;
+	ret ^= (test_bit(16, &addr) && test_bit(0, &magic)) ? 1 : 0;
+	ret ^= (test_bit(17, &addr) && test_bit(1, &magic)) ? 1 : 0;
+	ret ^= (test_bit(18, &addr) && test_bit(2, &magic)) ? 1 : 0;
+	ret ^= (test_bit(19, &addr) && test_bit(3, &magic)) ? 1 : 0;
+	ret ^= (test_bit(20, &addr) && test_bit(4, &magic)) ? 1 : 0;
+	ret ^= (test_bit(21, &addr) && test_bit(5, &magic)) ? 1 : 0;
+	ret ^= (test_bit(22, &addr) && test_bit(6, &magic)) ? 1 : 0;
+	ret ^= (test_bit(23, &addr) && test_bit(7, &magic)) ? 1 : 0;
+	ret ^= (test_bit(24, &addr) && test_bit(8, &magic)) ? 1 : 0;
+	ret ^= (test_bit(25, &addr) && test_bit(9, &magic)) ? 1 : 0;
+	ret ^= (test_bit(26, &addr) && test_bit(10, &magic)) ? 1 : 0;
+	ret ^= (test_bit(27, &addr) && test_bit(11, &magic)) ? 1 : 0;
+	ret ^= (test_bit(28, &addr) && test_bit(12, &magic)) ? 1 : 0;
+	ret ^= (test_bit(10, &addr) && test_bit(13, &magic)) ? 1 : 0;
+	ret ^= (test_bit(11, &addr) && test_bit(14, &magic)) ? 1 : 0;
+	ret ^= (test_bit(12, &addr) && test_bit(15, &magic)) ? 1 : 0;
+	ret ^= (test_bit(13, &addr) && test_bit(16, &magic)) ? 1 : 0;
+
+	return ret;
+}
+
+/*
  * a2d_rm_bit: a helper function to calculate the input address
  *             for the mtk_emicen_addr2dram_v2() function
  *
@@ -1119,6 +1435,233 @@ static int mtk_emicen_addr2dram_v2(unsigned long addr,
 }
 
 /*
+ * mtk_emicen_addr2dram_v3 - Translate a physical address to
+ *                           a DRAM-point-of-view map for EMI v2
+ * @addr - input physical address
+ * @map - output map stored in struct emi_addr_map
+ *
+ * Return 0 on success, -1 on failures.
+ *
+ * There is no code comment for the translation. This is intended since
+ * the fomular of translation is derived from the implementation of EMI.
+ */
+static int mtk_emicen_addr2dram_v3(unsigned long addr,
+					struct emi_addr_map *map)
+{
+	struct a2d_s6s_v3 *s6s;
+	unsigned long disph, hash;
+	unsigned long saddr, taddr, bgaddr, noraddr;
+	unsigned long tmp;
+	int emi_tpos, chn_tpos;
+
+	if (!global_emi_cen)
+		return -1;
+	if (!map)
+		return -1;
+	if (addr < global_emi_cen->offset)
+		return -1;
+
+	addr -= global_emi_cen->offset;
+	if (addr > global_emi_cen->max)
+		return -1;
+
+	map->emi = -1;
+	map->channel = -1;
+	map->dram_chn = -1;
+	map->rank = -1;
+	map->bank = -1;
+	map->row = -1;
+	map->column = -1;
+
+	s6s = &global_emi_cen->a2d_s6s.v3;
+	disph = global_emi_cen->disph;
+	hash = global_emi_cen->hash;
+
+	saddr = addr;
+	clear_bit(6, &saddr);
+	clear_bit(7, &saddr);
+	clear_bit(8, &saddr);
+	clear_bit(9, &saddr);
+	clear_bit(10, &saddr);
+	clear_bit(11, &saddr);
+	clear_bit(12, &saddr);
+	clear_bit(13, &saddr);
+	clear_bit(14, &saddr);
+	clear_bit(15, &saddr);
+	clear_bit(16, &saddr);
+	clear_bit(17, &saddr);
+	clear_bit(18, &saddr);
+	clear_bit(19, &saddr);
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[0], 6) << 6;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[1], 7) << 7;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[2], 8) << 8;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[3], 9) << 9;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[4], 10) << 10;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[5], 11) << 11;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[6], 12) << 12;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[7], 13) << 13;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[8], 14) << 14;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[9], 15) << 15;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[10], 16) << 16;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[11], 17) << 17;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[12], 18) << 18;
+	saddr |= use_a2d_magic_v3(addr, s6s->magics[13], 19) << 19;
+
+	if (!hash) {
+		map->channel = test_bit(s6s->chn_bit_position, &saddr) ? 1 : 0;
+
+		chn_tpos = s6s->chn_bit_position;
+	} else {
+		tmp = (test_bit(8, &saddr) && test_bit(0, &hash)) ? 1 : 0;
+		tmp ^= (test_bit(9, &saddr) && test_bit(1, &hash)) ? 1 : 0;
+		tmp ^= (test_bit(10, &saddr) && test_bit(2, &hash)) ? 1 : 0;
+		tmp ^= (test_bit(11, &saddr) && test_bit(3, &hash)) ? 1 : 0;
+		map->channel = tmp;
+
+		if (test_bit(0, &hash))
+			chn_tpos = 8;
+		else if (test_bit(1, &hash))
+			chn_tpos = 9;
+		else if (test_bit(2, &hash))
+			chn_tpos = 10;
+		else if (test_bit(3, &hash))
+			chn_tpos = 11;
+		else
+			chn_tpos = -1;
+	}
+
+	if (!disph) {
+		map->emi = 0;
+
+		emi_tpos = -1;
+	} else {
+		tmp = (test_bit(8, &saddr) && test_bit(0, &disph)) ? 1 : 0;
+		tmp ^= (test_bit(9, &saddr) && test_bit(1, &disph)) ? 1 : 0;
+		tmp ^= (test_bit(10, &saddr) && test_bit(2, &disph)) ? 1 : 0;
+		tmp ^= (test_bit(11, &saddr) && test_bit(3, &disph)) ? 1 : 0;
+		map->emi = tmp;
+
+		if (test_bit(0, &disph))
+			emi_tpos = 8;
+		else if (test_bit(1, &disph))
+			emi_tpos = 9;
+		else if (test_bit(2, &disph))
+			emi_tpos = 10;
+		else if (test_bit(3, &disph))
+			emi_tpos = 11;
+		else
+			emi_tpos = -1;
+	}
+
+	tmp = (map->emi << 1) | map->channel;
+	map->dram_chn = global_emi_cen->chn_swap[tmp];
+
+	taddr = saddr;
+	if (!disph) {
+		if (!s6s->chn_en)
+			taddr = saddr;
+		else
+			taddr = a2d_rm_bit(taddr, chn_tpos);
+	} else {
+		if ((chn_tpos < 0) || (emi_tpos < 0))
+			return -1;
+		if (!s6s->chn_en)
+			taddr = a2d_rm_bit(taddr, emi_tpos);
+		else if (emi_tpos > chn_tpos) {
+			taddr = a2d_rm_bit(taddr, emi_tpos);
+			taddr = a2d_rm_bit(taddr, chn_tpos);
+		} else {
+			taddr = a2d_rm_bit(taddr, chn_tpos);
+			taddr = a2d_rm_bit(taddr, emi_tpos);
+		}
+	}
+
+	saddr = taddr;
+	if (s6s->chn_scrm_en) {
+		clear_bit(8, &saddr);
+		clear_bit(9, &saddr);
+		clear_bit(11, &saddr);
+		clear_bit(12, &saddr);
+		clear_bit(13, &saddr);
+		clear_bit(14, &saddr);
+		clear_bit(15, &saddr);
+		clear_bit(16, &saddr);
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[0], 8) << 8;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[1], 9) << 9;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[2], 11) << 11;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[3], 12) << 12;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[4], 13) << 13;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[5], 14) << 14;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[6], 15) << 15;
+		saddr |= use_a2d_magic_v3(taddr, s6s->magics2[7], 16) << 16;
+	}
+
+	if (!s6s->dual_rank_en)
+		map->rank = 0;
+	else {
+		if (!s6s->rank_pos)
+			map->rank = ((saddr >> 20) >= s6s->rank0_size_MB) ?
+					1 : 0;
+		else {
+			tmp = 1 + s6s->dw32_en;
+			tmp += s6s->rank0_col_width + s6s->rank0_bank_width;
+			map->rank = saddr >> tmp;
+		}
+	}
+
+	tmp = (map->rank)
+		? s6s->rank1_bg_16bank_mode
+		: s6s->rank0_bg_16bank_mode;
+	if (tmp) {
+		bgaddr = a2d_rm_bit(saddr, 8);
+		map->column = (bgaddr >> (1 + s6s->dw32_en))
+			% (1 << ((map->rank)
+				? s6s->rank1_col_width
+				: s6s->rank0_col_width));
+
+		tmp = (map->rank) ? s6s->rank1_col_width : s6s->rank0_col_width;
+		tmp = (bgaddr >> (1 + s6s->dw32_en + tmp))
+			% (1 << ((map->rank)
+				? s6s->rank1_bank_width - 1
+				: s6s->rank0_bank_width - 1));
+		map->bank = test_bit((s6s->bg1_bk3_pos) ? 0 : 1, &tmp) ? 1 : 0;
+		map->bank += test_bit((s6s->bg1_bk3_pos) ? 1 : 2, &tmp) ? 2 : 0;
+		map->bank += test_bit(8, &saddr) ? 4 : 0;
+		map->bank += test_bit((s6s->bg1_bk3_pos) ? 2 : 0, &tmp) ? 8 : 0;
+	} else {
+		map->column = (saddr >> (1 + s6s->dw32_en))
+			% (1 << ((map->rank)
+				? s6s->rank1_col_width
+				: s6s->rank0_col_width));
+
+		tmp = (map->rank) ? s6s->rank1_col_width : s6s->rank0_col_width;
+		map->bank = (saddr >> (1 + s6s->dw32_en + tmp))
+			% (1 << ((map->rank)
+				? s6s->rank1_bank_width
+				: s6s->rank0_bank_width));
+	}
+
+	if (!s6s->rank_pos) {
+		noraddr = (map->rank) ? (saddr - (s6s->rank0_size_MB << 20)) : saddr;
+	} else {
+		tmp = 1 + s6s->dw32_en;
+		tmp += (map->rank) ?
+			s6s->rank1_bank_width : s6s->rank0_bank_width;
+		tmp += (map->rank) ?
+			s6s->rank1_col_width : s6s->rank0_col_width;
+		noraddr = a2d_rm_bit(saddr, tmp);
+	}
+	tmp = 1 + s6s->dw32_en;
+	tmp += (map->rank) ? s6s->rank1_bank_width : s6s->rank0_bank_width;
+	tmp += (map->rank) ? s6s->rank1_col_width : s6s->rank0_col_width;
+	noraddr = noraddr >> tmp;
+	tmp = (map->rank) ? s6s->rank1_row_width : s6s->rank0_row_width;
+	map->row = noraddr % (1 << tmp);
+
+	return 0;
+}
+
+/*
  * mtk_emicen_addr2dram - Translate a physical address to
 			a DRAM-point-of-view map
  * @addr - input physical address
@@ -1136,8 +1679,10 @@ int mtk_emicen_addr2dram(unsigned long addr, struct emi_addr_map *map)
 
 	if (global_emi_cen->ver == 1)
 		return mtk_emicen_addr2dram_v1(addr, map);
-	else
+	else if (global_emi_cen->ver == 2)
 		return mtk_emicen_addr2dram_v2(addr, map);
+	else
+		return mtk_emicen_addr2dram_v3(addr, map);
 }
 EXPORT_SYMBOL(mtk_emicen_addr2dram);
 
@@ -1340,11 +1885,24 @@ static int emicen_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "No a2d_emi_cen\n");
 
-	ret = of_property_read_u32_array(emicen_node,
-		"a2d-emi-chn", emi_a2d_emi_chn,
-		ARRAY_SIZE(emi_a2d_emi_chn));
-	if (ret)
-		dev_info(&pdev->dev, "No a2d_emi_chn\n");
+	if (cen->ver == 3) {
+		ret = of_property_read_u32_array(emicen_node,
+			"a2d-emi-chn", emi_a2d_emi_chn_v3,
+			ARRAY_SIZE(emi_a2d_emi_chn_v3));
+		if (ret)
+			dev_info(&pdev->dev, "No a2d_emi_chn_v3\n");
+		ret = of_property_read_u32_array(emicen_node,
+			"a2d-emi-cen2", emi_a2d_emi_cen2,
+			ARRAY_SIZE(emi_a2d_emi_cen2));
+		if (ret)
+			dev_info(&pdev->dev, "No a2d_emi_cen2\n");
+	} else {
+		ret = of_property_read_u32_array(emicen_node,
+			"a2d-emi-chn", emi_a2d_emi_chn,
+			ARRAY_SIZE(emi_a2d_emi_chn));
+		if (ret)
+			dev_info(&pdev->dev, "No a2d_emi_chn\n");
+	}
 
 	ret = of_property_read_u32(emicen_node,
 		"a2d-info-support", &emi_a2d_info_support);
@@ -1355,6 +1913,8 @@ static int emicen_probe(struct platform_device *pdev)
 		prepare_a2d_v1(cen);
 	else if (cen->ver == 2)
 		prepare_a2d_v2(cen);
+	else if (cen->ver == 3)
+		prepare_a2d_v3(cen);
 	else
 		return -ENXIO;
 
@@ -1378,9 +1938,18 @@ static int emicen_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "emi_a2d_emi_cen[%d] 0x%x\n",
 				i, emi_a2d_emi_cen[i]);
 
-		for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_chn); i++)
-			dev_info(&pdev->dev, "emi_a2d_emi_chn[%d] 0x%x\n",
-				i, emi_a2d_emi_chn[i]);
+		if (cen->ver == 3) {
+			for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_chn_v3); i++)
+				dev_info(&pdev->dev, "emi_a2d_emi_chn_v3[%d] 0x%x\n",
+					i, emi_a2d_emi_chn_v3[i]);
+			for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_cen2); i++)
+				dev_info(&pdev->dev, "emi_a2d_emi_cen2[%d] 0x%x\n",
+					i, emi_a2d_emi_cen2[i]);
+		} else {
+			for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_chn); i++)
+				dev_info(&pdev->dev, "emi_a2d_emi_chn[%d] 0x%x\n",
+					i, emi_a2d_emi_chn[i]);
+		}
 	} else {
 		for (i = 0; i < ARRAY_SIZE(emi_a2d_con_offset); i++)
 			dev_info(&pdev->dev, "emi_a2d_con_offset[%d] 0x%x\n",
@@ -1403,6 +1972,7 @@ static const struct of_device_id emicen_of_ids[] = {
 	{.compatible = "mediatek,common-emicen", .data = &mt6873_compat },
 	{.compatible = "mediatek,mt6873-emicen", .data = &mt6873_compat },
 	{.compatible = "mediatek,mt6877-emicen", .data = &mt6877_compat },
+	{.compatible = "mediatek,mt6993-emicen", .data = &mt6993_compat },
 	{}
 };
 
