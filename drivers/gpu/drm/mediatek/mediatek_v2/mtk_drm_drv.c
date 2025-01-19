@@ -10845,6 +10845,32 @@ static bool init_secure_static_path_switch(struct device *dev, struct mtk_drm_pr
 	return false;
 }
 
+void mtk_drm_get_chipid(struct mtk_drm_private *private)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (node) {
+		chip_id = (struct tag_chipid *) of_get_property(node, "atag,chipid", &len);
+		if (!chip_id) {
+			DDPMSG("could not found atag,chipid in chosen\n");
+			return;
+		}
+	} else {
+		DDPMSG("chosen node not found in device tree\n");
+		return;
+	}
+	if (chip_id)
+		private->sw_ver = chip_id->sw_ver;
+
+	DDPMSG("sw_ver:0x%x hw_ver:0x%x hw_code:0x%x hw_subcode:0x%x\n",
+		private->sw_ver, chip_id->hw_ver, chip_id->hw_code, chip_id->hw_subcode);
+}
+
 static int mtk_drm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -10885,6 +10911,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	INIT_WORK(&private->commit.work, mtk_atomic_work);
 
 	mtk_drm_helper_init(dev, &private->helper_opt);
+
+	mtk_drm_get_chipid(private);
 
 	/* Init disp_global_stage from platform dts */
 	if (mtk_drm_helper_get_opt(private->helper_opt,

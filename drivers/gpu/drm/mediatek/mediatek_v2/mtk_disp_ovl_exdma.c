@@ -1041,8 +1041,18 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv;
+	unsigned int te_duration = 0;
+
+	priv = mtk_crtc->base.dev->dev_private;
 
 	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
+		return;
+
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
+		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
+
+	if ((te_duration && te_duration <= 2778) && priv->sw_ver == A0_CHIP)
 		return;
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG1,
@@ -2153,12 +2163,22 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct mtk_ddp_comp *output_comp;
 	struct drm_crtc *crtc;
 	struct drm_display_mode *mode = NULL;
+	struct mtk_drm_private *priv;
+	unsigned int te_duration = 0;
 
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	priv = mtk_crtc->base.dev->dev_private;
 
 	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
+		return;
+
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
+		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
+
+	/* 360TE && A0 chip, not enable stash cmd */
+	if ((te_duration && te_duration <= 2778) && priv->sw_ver == A0_CHIP)
 		return;
 
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
