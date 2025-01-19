@@ -130,6 +130,7 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define RX_SIZE_SHIFT 10
 #define RX_NOTIFY_MASK 0x3F
 #define RX_NOTIFY_BASE 0x40
+#define RX_NOTIFY_LIMT 0x40
 #define RX_SIZE_SCALE (1ULL << RX_SIZE_SHIFT)
 
 #define BT_AWAKE_CNT	50
@@ -2016,7 +2017,9 @@ static void mtk8250_uart_notify_rx_size(struct mtk8250_data *data,unsigned int c
 	if (rx_diff_kb < RX_NOTIFY_THRESHOLD)
 		return;
 
-	notify_size_kb = ((data->total_rx_size >> RX_SIZE_SHIFT) & RX_NOTIFY_MASK) + RX_NOTIFY_BASE;
+	/*valid notify_size: [0x0: 0x3F]*/
+	notify_size_kb = (data->total_rx_size >> RX_SIZE_SHIFT) % RX_NOTIFY_LIMT;
+	notify_size_kb = (notify_size_kb & RX_NOTIFY_MASK) + RX_NOTIFY_BASE;
 
 	notify_time = sched_clock();
 	mtk8250_uart_hub_inband_set_esc_sta(notify_size_kb);
