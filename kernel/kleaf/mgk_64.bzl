@@ -357,6 +357,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-td4320-fhdp-dsi-vdo-auo-rt5081".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-cphy-vdo".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-120hz-frameratev5".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-144hz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt35695b-auo-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37707-c2v-arp".format(kernel_version),
