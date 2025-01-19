@@ -21,7 +21,74 @@ filegroup(
         "**/Kbuild",
         "**/*.c",
         "**/*.h",
+        "*.h",
     ]),
+)
+
+LEGACY_GAUGE_MODULES = [
+    "mt6357",
+    "mt6358",
+    "mt6359p",
+]
+
+GAUGE_MODULES = [
+    "mt6375",
+    "mt6379",
+]
+
+SIMPLE_CHG_MODULES = [
+    "mt6360_charger",
+    "mt6362-chg",
+    "mt6370-charger",
+    "mt6375-charger",
+    "rt9465",
+    "rt9490-charger",
+    "rt9758-charger",
+    "rt9759",
+]
+
+SPLIT_TYPE_CHG_MODULES = [
+    "mt6379",
+]
+
+define_mgk_ddk_ko(
+    name = "adapter_class",
+    srcs = [
+        "adapter_class.c",
+    ],
+    hdrs = ["adapter_class.h",],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_battery_manager",
+    srcs = [
+        "mtk-battery-manager.c",
+        "mtk_battery_interface.c",
+    ],
+    hdrs = [
+        "mtk_battery.h",
+        "mtk_battery_daemon.h",
+        "mtk_gauge.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -29,17 +96,15 @@ define_mgk_ddk_ko(
     srcs = [
         "charger_class.c",
     ],
-    hdrs = ["charger_class.h"],
+    hdrs = ["charger_class.h",],
     includes = ["."],
-)
-
-define_mgk_ddk_ko(
-    name = "adapter_class",
-    srcs = [
-        "adapter_class.c",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
     ],
-    hdrs = ["adapter_class.h"],
-    includes = ["."],
 )
 
 define_mgk_ddk_ko(
@@ -47,6 +112,274 @@ define_mgk_ddk_ko(
     srcs = [
         "mtk_charger_algorithm_class.c",
     ],
-    hdrs = ["mtk_charger_algorithm_class.h"],
+    hdrs = ["mtk_charger_algorithm_class.h",],
     includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk_charger_framework",
+    srcs = [
+        "mtk_adapter_switch.c",
+        "mtk_basic_charger.c",
+        "mtk_charger.c",
+        "mtk_charger_intf.c",
+        "mtk_pulse_charger.c",
+    ],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_charger_algorithm_class.h",
+        "mtk_smartcharging.h",
+    ]),
+    includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_battery_manager",
+        ":mtk_charger_algorithm_class",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+
+define_mgk_ddk_ko(
+    name = "mtk_pd_adapter",
+    srcs = [
+        "mtk_pd_adapter.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ufcs_adapter",
+    srcs = [
+        "mtk_ufcs_adapter.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pd_charging",
+    srcs = [
+        "mtk_pd.c",
+        "mtk_pd.h",
+        "mtk_pd_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+	"mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_chg_type_det",
+    srcs = [
+        "mtk_chg_type_det.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_chg_type_det.h",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+
+[define_mgk_ddk_ko(
+    name = "{}_battery".format(gauge),
+    srcs = [
+        "mtk_battery.c",
+        "mtk_battery_algo.c",
+        "mtk_battery_coulomb_service.c",
+        "mtk_battery_daemon.c",
+        "mtk_battery_interface.c",
+        "mtk_battery_table.h",
+        "{}-gauge.c".format(gauge),
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        ":mtk_battery_manager",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+) for gauge in LEGACY_GAUGE_MODULES]
+
+[define_mgk_ddk_ko(
+    name = "{}-battery".format(gauge),
+    srcs = [
+        "mtk_battery.c",
+        "mtk_battery_algo.c",
+        "mtk_battery_coulomb_service.c",
+        "mtk_battery_daemon.c",
+        "mtk_battery_interface.c",
+        "mtk_battery_table.h",
+        "{}-gauge.c".format(gauge),
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        ":mtk_battery_manager",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+) for gauge in GAUGE_MODULES]
+
+define_mgk_ddk_ko(
+    name = "sgm41516d",
+    srcs = [
+        "mtk_gauge.h",
+        "sgm41516d.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6360_pmu_chg",
+    srcs = [
+        "mt6360_pmu_chg.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_framework",
+        ":mtk_chg_type_det",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+[define_mgk_ddk_ko(
+    name = "{}".format(chg),
+    srcs = [
+        "{}.c".format(chg),
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+        ":mtk_chg_type_det",
+        "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+) for chg in SIMPLE_CHG_MODULES]
+
+[define_mgk_ddk_ko(
+    name = "{}-chg".format(chg),
+    srcs = [
+        "{}-chgdev.c".format(chg),
+        "{}-charger.h".format(chg),
+        "{}-charger.c".format(chg),
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_framework",
+        ":mtk_chg_type_det",
+        "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+) for chg in SPLIT_TYPE_CHG_MODULES]

@@ -16,8 +16,10 @@
 #include <net/sock.h>		/* netlink */
 #include "mtk_battery.h"
 #include "mtk_battery_daemon.h"
+#ifdef FOR_DDK_PATCH_TEMP_DISABLE
 #if IS_ENABLED(CONFIG_PMIC_LBAT_SERVICE)
 #include <pmic_lbat_service.h>
+#endif
 #endif
 
 
@@ -5845,6 +5847,7 @@ int mtk_battery_daemon_init(struct platform_device *pdev)
 		"mtk_gauge_nafg",
 		gm);
 		if (hw_version < GAUGE_HW_V2000) {
+#ifdef FOR_DDK_PATCH_TEMP_DISABLE
 #if IS_ENABLED(CONFIG_PMIC_LBAT_SERVICE)
 			gm->lowbat_service =
 			lbat_user_register("fuel gauge",
@@ -5871,6 +5874,7 @@ int mtk_battery_daemon_init(struct platform_device *pdev)
 				bm_err(gm, "[%s]lowbat_service null\n", __func__);
 
 #endif /* end of CONFIG_PMIC_LBAT_SERVICE */
+#endif
 
 			/* sw bat_cycle_car init, gm25 should start from 0 */
 			gm->bat_cycle_car =

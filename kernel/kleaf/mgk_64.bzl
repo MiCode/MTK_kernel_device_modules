@@ -157,6 +157,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/rps:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek:makefiles".format(kernel_version),
@@ -192,6 +193,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek:ddk_kconfigs".format(kernel_version),
@@ -268,9 +270,30 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-nxp-eusb2-repeater".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-tphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-xsphy".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6357_battery".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6358_battery".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6359p_battery".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6360_charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6360_pmu_chg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6370-charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6375-battery".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6379-battery".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mt6379-chg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_battery_manager".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_algorithm_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_chg_type_det".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_pd_adapter".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_pd_charging".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_ufcs_adapter".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:rt9490-charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:rt9758-charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:rt9759".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6360-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6370-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6379-regulator".format(kernel_version),
@@ -770,35 +793,14 @@ mgk_64_device_modules = [
     "drivers/pinctrl/mediatek/pinctrl-mt6373.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-common-v2_debug.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-v2.ko",
-    "drivers/power/supply/mt6357_battery.ko",
-    "drivers/power/supply/mt6358_battery.ko",
-    "drivers/power/supply/mt6359p_battery.ko",
-    "drivers/power/supply/mt6360_charger.ko",
-    "drivers/power/supply/mt6360_pmu_chg.ko",
-    "drivers/power/supply/mt6370-charger.ko",
-    "drivers/power/supply/mt6375-battery.ko",
-    "drivers/power/supply/mtk_battery_manager.ko",
-    "drivers/power/supply/mt6375-charger.ko",
-    "drivers/power/supply/mt6379-chg.ko",
-    "drivers/power/supply/mt6379-battery.ko",
-    "drivers/power/supply/ufcs/ufcs_class.ko",
-    "drivers/power/supply/ufcs/ufcs_mt6379.ko",
-    "drivers/power/supply/mtk_ufcs_adapter.ko",
     "drivers/power/supply/mtk_2p_charger.ko",
-    "drivers/power/supply/mtk_charger_framework.ko",
-    "drivers/power/supply/mtk_chg_type_det.ko",
     "drivers/power/supply/mtk_hvbpc.ko",
-    "drivers/power/supply/mtk_pd_adapter.ko",
-    "drivers/power/supply/mtk_pd_charging.ko",
     "drivers/power/supply/mtk_pep.ko",
     "drivers/power/supply/mtk_pep20.ko",
     "drivers/power/supply/mtk_pep40.ko",
     "drivers/power/supply/mtk_pep45.ko",
     "drivers/power/supply/mtk_pep50.ko",
     "drivers/power/supply/mtk_pep50p.ko",
-    "drivers/power/supply/rt9490-charger.ko",
-    "drivers/power/supply/rt9758-charger.ko",
-    "drivers/power/supply/rt9759.ko",
     "drivers/pwm/pwm-mtk-disp.ko",
     "drivers/regulator/mt6315-regulator.ko",
     "drivers/regulator/mt6316-regulator.ko",
@@ -1901,9 +1903,6 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
 
-        mgk_64_device_modules.remove("drivers/power/supply/mt6375-charger.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/rt9490-charger.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/rt9758-charger.ko")
         mgk_64_device_modules.append("drivers/power/supply/bq2589x_charger.ko")
 
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
@@ -1951,6 +1950,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm_swwa.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_wrapper.ko")
         mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_wrapper_legacy.ko")
+
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:rt9490-charger".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:rt9758-charger".format(kernel_version))
 
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6768.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6768.ko":"mt6768"})
@@ -2089,6 +2092,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
+        mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/power/supply:rt9465".format(kernel_version))
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-vcodec.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-fmeter-mt6761.ko":"mt6761"})
@@ -2110,7 +2114,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/qos/mtk_qos_legacy.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/power/supply/mt6357-charger-type.ko":"mt6761"})
-        mgk_64_platform_device_modules.update({"drivers/power/supply/rt9465.ko":"mt6761"})
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko")
@@ -2382,6 +2385,7 @@ def get_overlay_modules_list():
 
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_device_modules.append("drivers/misc/mediatek/flashlight/flashlights-ocp81375.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/mux_switch.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5169.ko")
@@ -2389,12 +2393,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ptn36241g.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
 
-        mgk_64_device_modules.remove("drivers/power/supply/mt6360_charger.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/mt6360_pmu_chg.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/mtk_pd_adapter.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/mtk_pd_charging.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/mtk_chg_type_det.ko")
-
+        mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_hvbpc.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep20.ko")
@@ -2402,26 +2401,27 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep45.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep50.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_pep50p.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/rt9759.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_2p_charger.ko")
-
-        mgk_64_device_modules.append("drivers/power/supply/sgm41516d.ko")
-        mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
-
-        mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_class.ko")
-        mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_mt6379.ko")
         mgk_64_device_modules.append("sound/soc/mediatek/mt6768/mt6768-mt6358-ref.ko")
 
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:pd_dbg_info".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6360".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6370".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:pd_dbg_info".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpci_late_sync".format(kernel_version))
-        mgk_64_device_modules.append("drivers/misc/mediatek/flashlight/flashlights-ocp81375.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6360_charger".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6360_pmu_chg".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_chg_type_det".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_pd_adapter".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_pd_charging".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:rt9759".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/power/supply:sgm41516d".format(kernel_version))
 
     if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")

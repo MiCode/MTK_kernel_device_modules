@@ -3023,7 +3023,6 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 				reg_type_name, gp_name, prop_control->i2c_fail_counter[i]);
 			prop_control->i2c_fail_counter[i] = 0;
 		}
-
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning("BATTERY",  "gauge get prop fail case over 20 times\n");
 #endif
