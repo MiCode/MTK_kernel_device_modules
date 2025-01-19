@@ -10,6 +10,8 @@
 #ifndef _MTK_SEC_HEAP_H
 #define _MTK_SEC_HEAP_H
 
+#include <linux/types.h>
+
 #define ROUNDUP(a, b) (((a) + ((b)-1)) & ~((b)-1))
 
 #define PMM_MSG_ORDER_SHIFT (24UL)
@@ -17,7 +19,7 @@
 	((pa >> PAGE_SHIFT) | (page_order << PMM_MSG_ORDER_SHIFT))
 #define GET_PMM_ENTRY_PA(entry)                                                \
 	((entry & ((1UL << PMM_MSG_ORDER_SHIFT) - 1)) << PAGE_SHIFT)
-#define PMM_MSG_ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(uint32_t))
+#define PMM_MSG_ENTRIES_PER_PAGE (PAGE_SIZE / sizeof(u32))
 
 #define HYP_PMM_ASSIGN_BUFFER_V2 (0XBB00FFAB)
 #define HYP_PMM_UNASSIGN_BUFFER_V2 (0XBB00FFAC)
