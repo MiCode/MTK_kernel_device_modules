@@ -79,6 +79,10 @@
 
 #include <soc/mediatek/mmqos.h>
 
+//force on:0x10001, off:0x10000
+int debug_ct_wait;
+module_param(debug_ct_wait, int, 0644);
+
 int debug_merge_t = 150;
 module_param(debug_merge_t, int, 0644);
 
@@ -6181,9 +6185,16 @@ void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
 #define NUM_SKIP_FRAME 2
 	struct cmdq_pkt *handle;
 	struct mtk_drm_private *priv;
+	int ct_wiat_cmdq_event = 0;
 
 	priv = mtk_crtc->base.dev->dev_private;
-	if (priv && priv->data && priv->data->ct_wiat_cmdq_event)
+	if (priv && priv->data)
+		ct_wiat_cmdq_event = priv->data->ct_wiat_cmdq_event;
+
+	if (debug_ct_wait && (debug_ct_wait & BIT(16)))
+		ct_wiat_cmdq_event = debug_ct_wait & BIT(0);
+
+	if (ct_wiat_cmdq_event)
 		return;
 
 	handle = cmdq_pkt_create(
@@ -9889,6 +9900,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	unsigned int merge_trigger_offset = CMDQ_US_TO_TICK(debug_merge_t);
 	unsigned int prefetch_te_offset = CMDQ_US_TO_TICK(150);
 	unsigned int frame_time = 0;
+	int ct_wiat_cmdq_event = 0;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
@@ -10049,7 +10061,11 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 			var1);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		{
-			if (!priv->data->ct_wiat_cmdq_event)
+			ct_wiat_cmdq_event = priv->data->ct_wiat_cmdq_event;
+			if (debug_ct_wait && (debug_ct_wait & BIT(16)))
+				ct_wiat_cmdq_event = debug_ct_wait & BIT(0);
+
+			if (!ct_wiat_cmdq_event)
 				GCE_SLEEP(frame_time);
 			else {
 				GCE_SLEEP(frame_time - pre_mt_offset);
@@ -11743,15 +11759,20 @@ static void set_dirty_cmdq_cb(struct cmdq_cb_data data)
 static bool mtk_crtc_is_ct_use_event(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct mtk_drm_private *priv = NULL;
+	int ct_wiat_cmdq_event = 0;
 
 	priv = mtk_crtc->base.dev->dev_private;
 
 	if (IS_ERR_OR_NULL(priv))
 		return false;
 
+	ct_wiat_cmdq_event = priv->data->ct_wiat_cmdq_event;
+	if (debug_ct_wait && (debug_ct_wait & BIT(16)))
+		ct_wiat_cmdq_event = debug_ct_wait & BIT(0);
+
 	if (mtk_crtc_with_event_loop(&mtk_crtc->base) &&
 		mtk_crtc->event_loop_cmdq_handle &&
-		priv->data->ct_wiat_cmdq_event)
+		ct_wiat_cmdq_event)
 		return true;
 
 	return false;
