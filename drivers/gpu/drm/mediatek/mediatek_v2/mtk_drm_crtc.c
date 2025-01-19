@@ -10195,7 +10195,7 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 
 			if (start_time > cur_time) {
 				diff_time = div_u64(start_time - cur_time, 1000000);
-				if (diff_time < (1000 / vrefresh / 2))
+				if (diff_time < (1000 / te_freq / 2))
 					pass = true;
 			} else
 				pass = true;
