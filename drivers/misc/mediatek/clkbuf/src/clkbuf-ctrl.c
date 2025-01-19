@@ -62,6 +62,7 @@ static const struct of_device_id clkbuf_of_match[] = {
 	{ .compatible = "mediatek,mt6985-clkbuf" },
 	{ .compatible = "mediatek,mt6989-clkbuf" },
 	{ .compatible = "mediatek,mt6991-clkbuf" },
+	{ .compatible = "mediatek,mt6993-clkbuf" },
 	{ .compatible = "mediatek,mt8786-clkbuf" },
 	{ .compatible = "mediatek,mt8792-clkbuf" },
 	{}
@@ -73,6 +74,7 @@ static const char *const xo_api_cmd[] = {
 	[SET_XO_IMPEDANCE] = "SET_XO_IMPEDANCE",
 	[SET_XO_DESENSE] = "SET_XO_DESENSE",
 	[SET_XO_VOTER] = "SET_XO_VOTER",
+	[SET_XO_EXT_VOTER] = "SET_XO_EXT_VOTER",
 };
 
 static const char *const rc_api_cmd[] = {
@@ -272,9 +274,8 @@ static int dump_all(struct device *dev)
 	struct plat_xodata *xopd;
 	struct plat_rcdata *rcpd;
 	int pmic_dump = WAIT_TO_DUMP, rc_dump = WAIT_TO_DUMP, pmif_dump = WAIT_TO_DUMP;
-	int nums, i, ret = 0;
+	int nums, i;
 	char *buf = NULL;
-	u32 out = 0;
 
 	buf = vmalloc(CLKBUF_STATUS_INFO_SIZE);
 	if (!buf)
@@ -296,9 +297,8 @@ static int dump_all(struct device *dev)
 			if ((pmic_dump == DUMP_DONE) | !(hdlr->ops->get_pmrcen))
 				break;
 			xopd = (struct plat_xodata *)hdlr->data;
-			ret = hdlr->ops->get_pmrcen(xopd, &out);
-			if (ret)
-				break;
+			hdlr->ops->get_pmrcen(xopd, buf, 0);
+			CLKBUF_DBG("%s\n", buf);
 			pmic_dump = DUMP_DONE;
 			break;
 		case SRCLKEN_STA:
@@ -356,4 +356,5 @@ MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MediaTek CLKBUF CTRL Driver");
 MODULE_AUTHOR("Kuan-Hsin Lee <kuan-hsin.lee@mediatek.com>");
 MODULE_SOFTDEP("pre: mt6685-core");
+MODULE_SOFTDEP("pre: mt6687-core");
 MODULE_SOFTDEP("pre: mt6397");

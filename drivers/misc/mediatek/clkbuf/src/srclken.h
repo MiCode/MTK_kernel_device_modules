@@ -49,6 +49,15 @@ struct srclken_rc_cfg {
 	struct reg_t _start_mask_cfg;
 	struct reg_t _start_on_cnt;
 	struct reg_t _start_off_cnt;
+	struct reg_t _central_cfg4_1;
+	struct reg_t _central_cfg5_1;
+	struct reg_t _subsys_inf_cfg_fpm;
+	struct reg_t _subsys_inf_cfg_bblpm;
+	struct reg_t _central_cfg6_1;
+	struct reg_t _central_cfg6_2;
+	struct reg_t _dcxo_fpm_cfg;
+	struct reg_t _cmd_arb_cfg;
+	struct reg_t _rc_sw_con_cfg;
 };
 
 /*srclken_rc_sta only allow registers*/
@@ -111,5 +120,6 @@ struct plat_rcdata {
 
 extern struct plat_rcdata rc_data_v1;
 extern struct plat_rcdata rc_data_v2;
+extern struct plat_rcdata rc_data_v3;
 
 #endif /* SRCLKEN_RC_HW_H */

@@ -146,6 +146,10 @@ struct clkbuf_dts *parse_srclken_dts(struct clkbuf_dts *array,
 
 	rc_cfg_base = of_iomap(src_node, iomap_idx++);
 	rc_sta_base = of_iomap(src_node, iomap_idx++);
+	if (!rc_sta_base) {
+		CLKBUF_DBG("DTS has no rc_sta_base, assign rc_sta_base=rc_cfg_base.\n");
+		rc_sta_base = rc_cfg_base;
+	}
 
 	for_each_child_of_node(src_node, sub) {
 		/* default for optional field */
@@ -704,6 +708,12 @@ static struct clkbuf_hdlr clkbuf_hdlr_v3 = {
 	.ops = &clkbuf_ops_v3,
 	.data = &rc_data_v1,
 };
+
+static struct clkbuf_hdlr clkbuf_hdlr_v4 = {
+	.ops = &clkbuf_ops_v2,
+	.data = &rc_data_v3,
+};
+
 static struct match_srclken match_srclken_v2 = {
 	.name = "mediatek,srclken-rc-v2", // v2 support 4 byte pmrc_en
 	.hdlr = &clkbuf_hdlr_v2,
@@ -716,10 +726,17 @@ static struct match_srclken match_srclken_v3 = {
 	.init = &srclken_init_v1,
 };
 
+static struct match_srclken match_srclken_v4 = {
+	.name = "mediatek,srclken-rc-v4", // v4 based on v2, RC offsets changed and RGs added
+	.hdlr = &clkbuf_hdlr_v4,
+	.init = &srclken_init_v1,
+};
+
 static struct match_srclken *matches_srclken[] = {
 	&match_srclken_v1,
 	&match_srclken_v2,
 	&match_srclken_v3,
+	&match_srclken_v4,
 	NULL,
 };
 

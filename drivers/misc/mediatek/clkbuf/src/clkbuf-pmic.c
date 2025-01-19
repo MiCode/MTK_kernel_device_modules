@@ -156,7 +156,7 @@ static int pmic_init_lv1(struct clkbuf_dts *array, struct match_pmic *match)
 	return 0;
 }
 
-int set_xo_desense(void *data, int xo_id, u32 des)
+static int set_xo_desense(void *data, int xo_id, u32 des)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -180,7 +180,7 @@ int set_xo_desense(void *data, int xo_id, u32 des)
 	return ret;
 }
 
-int set_xo_desense_lv1(void *data, int xo_id, u32 des)
+static int set_xo_desense_lv1(void *data, int xo_id, u32 des)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -211,7 +211,7 @@ int set_xo_desense_lv1(void *data, int xo_id, u32 des)
 	return ret;
 }
 
-int get_xo_desense(void *data, int xo_id, u32 *out)
+static int get_xo_desense(void *data, int xo_id, u32 *out)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -229,7 +229,7 @@ int get_xo_desense(void *data, int xo_id, u32 *out)
 	return ret;
 }
 
-int set_xo_impedance(void *data, int xo_id, u32 imp)
+static int set_xo_impedance(void *data, int xo_id, u32 imp)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -253,7 +253,7 @@ int set_xo_impedance(void *data, int xo_id, u32 imp)
 	return ret;
 }
 
-int get_xo_impedance(void *data, int xo_id, u32 *out)
+static int get_xo_impedance(void *data, int xo_id, u32 *out)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -271,7 +271,7 @@ int get_xo_impedance(void *data, int xo_id, u32 *out)
 	return ret;
 }
 
-int get_xo_mode(void *data, int xo_id, u32 *out)
+static int get_xo_mode(void *data, int xo_id, u32 *out)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -289,7 +289,7 @@ int get_xo_mode(void *data, int xo_id, u32 *out)
 	return ret;
 }
 
-int get_xo_en_m(void *data, int xo_id, u32 *out)
+static int get_xo_en_m(void *data, int xo_id, u32 *out)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -307,7 +307,7 @@ int get_xo_en_m(void *data, int xo_id, u32 *out)
 	return ret;
 }
 
-int set_xo_mode(void *data, int xo_id, u32 mode)
+static int set_xo_mode(void *data, int xo_id, u32 mode)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -346,7 +346,7 @@ int set_xo_mode(void *data, int xo_id, u32 mode)
 	return ret;
 }
 
-int set_xo_mode_lv1(void *data, int xo_id, u32 mode)
+static int set_xo_mode_lv1(void *data, int xo_id, u32 mode)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -391,7 +391,7 @@ int set_xo_mode_lv1(void *data, int xo_id, u32 mode)
 	return ret;
 }
 
-int set_xo_en_m(void *data, int xo_id, int onoff)
+static int set_xo_en_m(void *data, int xo_id, int onoff)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -423,7 +423,7 @@ int set_xo_en_m(void *data, int xo_id, int onoff)
 	return ret;
 }
 
-int set_xo_en_m_lv1(void *data, int xo_id, int onoff)
+static int set_xo_en_m_lv1(void *data, int xo_id, int onoff)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -462,7 +462,7 @@ int set_xo_en_m_lv1(void *data, int xo_id, int onoff)
 }
 
 
-int get_xo_auxout(void *data, int xo_id, u32 *out, char *reg_name)
+static int get_xo_auxout(void *data, int xo_id, u32 *out, char *reg_name)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct xo_buf_t xo_buf;
@@ -508,6 +508,62 @@ int get_xo_auxout(void *data, int xo_id, u32 *out, char *reg_name)
 		goto FAIL2;
 
 	spin_unlock_irqrestore(lock, flags);
+	return ret;
+
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
+	return ret;
+
+}
+
+static int get_auxout(void *data, u32 *out,
+		struct auxout_reg_t *aux_reg)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg_in, reg_out;
+	unsigned long flags = 0;
+	int auxout_sel, ret = 0;
+	spinlock_t *lock = NULL;
+
+	if (!pd)
+		return 0;
+
+	lock = pd->lock;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+
+	reg_in = com_regs->_static_aux_sel;
+
+	if (aux_reg->shift > 8)
+		reg_out = com_regs->_static_aux_out_h;
+	else
+		reg_out = com_regs->_static_aux_out_l;
+	auxout_sel = aux_reg->auxsel;
+
+	spin_lock_irqsave(lock, flags);
+
+	ret = pmic_write(&hw, &reg_in, auxout_sel);
+	if (ret)
+		goto FAIL1;
+
+	ret = pmic_read(&hw, &reg_out, out);
+	if (ret)
+		goto FAIL2;
+
+	spin_unlock_irqrestore(lock, flags);
+	(*out) >>= (aux_reg->shift > 8) ? (aux_reg->shift - 8) : (aux_reg->shift);
+	(*out) &= aux_reg->mask;
 	return ret;
 
 FAIL1:
@@ -718,7 +774,7 @@ static int get_heater(void *data, u32 *on)
 	return ret;
 }
 
-int get_xo_auxout_lv1(void *data, int xo_id, u32 *out, char *reg_name)
+static int get_xo_auxout_lv1(void *data, int xo_id, u32 *out, char *reg_name)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct xo_buf_t xo_buf;
@@ -775,50 +831,146 @@ int get_xo_auxout_lv1(void *data, int xo_id, u32 *out, char *reg_name)
 	return ret;
 }
 
-int __get_pmrcen(void *data, u32 *out)
+static int __get_pmrcen(void *data, char *buf, int len)
 {
-	int ret = 0, tmp = 0;
+	int ret = 0, tmp = 0, out = 0;
 	struct plat_xodata *pd;
 	struct common_regs *com_regs;
 	struct clkbuf_hw hw;
 	struct reg_t reg;
 
 	pd = (struct plat_xodata *)data;
-	if (!pd)
-		return 0;
+	if (!pd) {
+		CLKBUF_DBG("plat_xodata PD undefined!!\n");
+		return len;
+	}
 
 	com_regs = pd->common_regs;
-	if (!com_regs)
-		return -EREG_NOT_SUPPORT;
+	if (!com_regs) {
+		CLKBUF_DBG("PD common_regs undefined!!\n");
+		return len;
+	}
 
 	hw = pd->hw;
 	reg = com_regs->_pmrc_en_l;
 
-	ret = pmic_read(&hw, &reg, out);
+	ret = pmic_read(&hw, &reg, &out);
 	if (ret) {
 		CLKBUF_DBG("read dcxo pmrc_en failed\n");
-		return ret;
+		return len;
 	}
 
 	/* if pmic is spmi type rw, read 1 more reg to fit 16bits */
 	ret = read_with_ofs(&hw, &reg, &tmp, 1);
 	if (ret) {
 		CLKBUF_DBG("read dcxo pmrc_en ofs: 1 failed\n");
-		return ret;
+		return len;
 	}
-	*out |= (tmp << 8);
+	out |= (tmp << 8);
 
-	CLKBUF_DBG("dump pmrcen = %x", *out);
-	return ret;
+	len += snprintf(buf + len, PAGE_SIZE - len,
+			"PMRC_EN = 0x%x", out);
+	return len;
 }
 
-int __get_pmrcen_lv1(void *data, u32 *out)
+/* MT6687*/
+static int __get_pmrcen_v2(void *data, char *buf, int len)
 {
-	int ret = 0;
-	return ret;
+	int ret = 0, m = 0;
+	u32 tmp = 0, out = 0;
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd) {
+		CLKBUF_DBG("plat_xodata PD undefined!!\n");
+		return len;
+	}
+
+	com_regs = pd->common_regs;
+	if (!com_regs) {
+		CLKBUF_DBG("PD common_regs undefined!!\n");
+		return len;
+	}
+
+	hw = pd->hw;
+	reg = com_regs->_pmrc_en_l;
+
+	// Dump M0~M3 PMRC_EN
+	for (m = 0; m <= 3; ++m) {
+		ret = read_with_ofs(&hw, &reg, &out, (m * 4));
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en failed\n");
+			return len;
+		}
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 1);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 1 failed\n");
+			return len;
+		}
+		out |= (tmp << 8);
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 2);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 2 failed\n");
+			return len;
+		}
+		out |= (tmp << 16);
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 3);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 3 failed\n");
+			return len;
+		}
+		out |= (tmp << 24);
+
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"M%d_PMRC_EN = 0x%x, ", m, out);
+	}
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "\n");
+
+	// Dump PMRC masks
+	reg = com_regs->_pmrc_mask_l;
+	for (m = 0; m <= 3; ++m) {
+		ret = read_with_ofs(&hw, &reg, &out, (m * 4));
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en failed\n");
+			return len;
+		}
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 1);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 1 failed\n");
+			return len;
+		}
+		out |= (tmp << 8);
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 2);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 2 failed\n");
+			return len;
+		}
+		out |= (tmp << 16);
+		ret = read_with_ofs(&hw, &reg, &tmp, (m * 4) + 3);
+		if (ret) {
+			CLKBUF_DBG("read dcxo pmrc_en ofs: 3 failed\n");
+			return len;
+		}
+		out |= (tmp << 24);
+
+		len += snprintf(buf + len, PAGE_SIZE - len,
+				"M%d_MASK_PMRC = 0x%x, ", m, out);
+	}
+	return len;
 }
 
-int get_xo_voter(void *data, int xo_id, u32 *out)
+static int __get_pmrcen_lv1(void *data, char *buf, int len)
+{
+	len += snprintf(buf + len, PAGE_SIZE - len,
+			"PMRC_EN not supported!");
+	return len;
+}
+
+static int get_xo_voter(void *data, int xo_id, u32 *out)
 {
 	u32 tmp = 0;
 	int ret = 0;
@@ -861,7 +1013,7 @@ FAIL2:
 	return ret;
 }
 
-int set_xo_voter(void *data, int xo_id, u32 vote)
+static int set_xo_voter(void *data, int xo_id, u32 vote)
 {
 	u32 spmi_mask = 0;
 	int ret = 0;
@@ -907,6 +1059,168 @@ FAIL1:
 FAIL2:
 	spin_unlock_irqrestore(lock, flags);
 	CLKBUF_DBG("2nd Error: %d\n", ret);
+	return ret;
+}
+
+static int get_xo_voter_v2(void *data, int xo_id, u32 *voter, u32 *ext_voter)
+{
+	u32 tmp = 0;
+	int ret = 0;
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct xo_buf_t xo_buf;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+	unsigned long flags = 0;
+	spinlock_t *lock = pd->lock;
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	hw = pd->hw;
+	reg = xo_buf._rc_voter;
+
+	spin_lock_irqsave(lock, flags);
+
+	ret = pmic_read(&hw, &reg, voter);
+	if (ret)
+		goto FAIL1;
+	ret = read_with_ofs(&hw, &reg, &tmp, 1);
+	if (ret)
+		goto FAIL2;
+	*voter |= (tmp << 8);
+	ret = read_with_ofs(&hw, &reg, &tmp, 2);
+	if (ret)
+		goto FAIL3;
+	*voter |= (tmp << 16);
+	ret = read_with_ofs(&hw, &reg, &tmp, 3);
+	if (ret)
+		goto FAIL4;
+	*voter |= (tmp << 24);
+	ret = read_with_ofs(&hw, &reg, ext_voter, 4);
+	if (ret)
+		goto FAIL5;
+
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("dump voter = %x, ext_voter = %x\n", *voter, *ext_voter);
+	return ret;
+
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
+	return ret;
+FAIL3:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("3nd Error: %d\n", ret);
+	return ret;
+FAIL4:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("4nd Error: %d\n", ret);
+	return ret;
+FAIL5:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("5nd Error: %d\n", ret);
+	return ret;
+}
+
+static int set_xo_voter_v2(void *data, int xo_id, u32 vote)
+{
+	u32 spmi_mask = 0;
+	int ret = 0;
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct xo_buf_t xo_buf;
+	struct clkbuf_hw hw;
+	struct common_regs *com_regs;
+	struct reg_t reg;
+	unsigned long flags = 0;
+	spinlock_t *lock = pd->lock;
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	hw = pd->hw;
+	reg = xo_buf._rc_voter;
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	spmi_mask = com_regs->spmi_mask;
+
+	vote &= spmi_mask;
+
+	spin_lock_irqsave(lock, flags);
+
+	ret = pmic_write(&hw, &reg, vote);
+	if (ret)
+		goto FAIL1;
+	vote >>= 8;
+	ret = write_with_ofs(&hw, &reg, vote, 1);
+	if (ret)
+		goto FAIL2;
+	vote >>= 8;
+	ret = write_with_ofs(&hw, &reg, vote, 2);
+	if (ret)
+		goto FAIL3;
+	vote >>= 8;
+	ret = write_with_ofs(&hw, &reg, vote, 3);
+	if (ret)
+		goto FAIL4;
+
+	spin_unlock_irqrestore(lock, flags);
+	return ret;
+
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
+	return ret;
+FAIL3:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("3nd Error: %d\n", ret);
+	return ret;
+FAIL4:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("4nd Error: %d\n", ret);
+	return ret;
+}
+
+static int set_xo_voter_ext(void *data, int xo_id, u32 vote)
+{
+	u32 spmi_mask = 0;
+	int ret = 0;
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct xo_buf_t xo_buf;
+	struct clkbuf_hw hw;
+	struct common_regs *com_regs;
+	struct reg_t reg;
+	unsigned long flags = 0;
+	spinlock_t *lock = pd->lock;
+
+	xo_buf = (pd->xo_buf_t)[xo_id];
+	hw = pd->hw;
+	reg = xo_buf._rc_voter;
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	spmi_mask = com_regs->spmi_mask;
+
+	vote &= spmi_mask;
+
+	spin_lock_irqsave(lock, flags);
+
+	ret = write_with_ofs(&hw, &reg, vote, 4);
+	if (ret)
+		goto FAIL;
+
+	spin_unlock_irqrestore(lock, flags);
+	return ret;
+
+FAIL:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
 	return ret;
 }
 
@@ -988,6 +1302,90 @@ static int __set_xo_cmd_hdlr_v1(void *data, int cmd, int xo_id, u32 input,
 
 	case SET_XO_VOTER: // = 0x0010,
 		ret = set_xo_voter(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	default:
+		ret = -EUSER_INPUT_INVALID;
+		goto WRITE_FAIL;
+	}
+	return ret;
+WRITE_FAIL:
+	return ret;
+}
+
+static int __get_xo_cmd_hdlr_v2(void *data, int xo_id, char *buf, int len)
+{
+	u32 out, out2;
+	int ret = 0;
+
+	/*****XO MODE****/
+	ret = get_xo_mode(data, xo_id, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "xo_mode: <%2d> ", out);
+	/****EN_M****/
+	ret = get_xo_en_m(data, xo_id, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "xo_en_m: <%2d> ", out);
+	/****AUXOUT****/
+	ret = get_xo_auxout(data, xo_id, &out, "xo_en");
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "auxout: <%2d>\n", out);
+	/****IMPEDANCE****/
+	ret = get_xo_impedance(data, xo_id, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "imp: <0x%08x> ", out);
+	/****VOTER****/
+	/****EXT_VOTER****/
+	ret = get_xo_voter_v2(data, xo_id, &out, &out2);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "voter: <0x%08x>, ext_voter: <0x%02x>\n", out, out2);
+
+	return len;
+}
+
+static int __set_xo_cmd_hdlr_v2(void *data, int cmd, int xo_id, u32 input,
+				int perms)
+{
+	int ret = 0;
+
+	/*handle premission from dts*/
+	perms = perms & 0xffff;
+
+	CLKBUF_DBG("cmd: %x, perms: %x\n", cmd, perms);
+	switch (cmd & perms) {
+	case SET_XO_MODE: // = 0x0001,
+		ret = set_xo_mode(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_EN_M: // = 0x0002,
+		ret = set_xo_en_m(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_IMPEDANCE: // = 0x0004,
+		ret = set_xo_impedance(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_VOTER: // = 0x0010,
+		ret = set_xo_voter_v2(data, xo_id, input);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+
+	case SET_XO_EXT_VOTER: // = 0x0020,
+		ret = set_xo_voter_ext(data, xo_id, input);
 		if (ret)
 			goto WRITE_FAIL;
 		break;
@@ -1133,7 +1531,7 @@ WRITE_FAIL:
 	return cmd & perms;
 }
 
-int __dump_pmic_debug_regs(void *data, char *buf, int len)
+static int __dump_pmic_debug_regs(void *data, char *buf, int len)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
 	struct clkbuf_hw hw = pd->hw;
@@ -1184,6 +1582,71 @@ int __dump_pmic_debug_regs(void *data, char *buf, int len)
 	return len;
 }
 
+static int __dump_pmic_debug_regs_v2(void *data, char *buf, int len)
+{
+	struct plat_xodata *pd = (struct plat_xodata *)data;
+	struct clkbuf_hw hw = pd->hw;
+	struct reg_t *reg_p = NULL;
+	struct auxout_reg_t *aux_reg_p = NULL;
+	int ret = 0;
+	int i;
+	u32 out;
+
+	reg_p = pd->debug_regs;
+	if (!reg_p) {
+		CLKBUF_DBG("read rep_p failed\n");
+		return len;
+	}
+
+	for (i = 0; strcmp(reg_p->name, "NULL"); ++i, ++reg_p) {
+		//spin lock
+		ret = pmic_read(&hw, reg_p, &out);
+		//unlock
+		if (ret) {
+			CLKBUF_DBG("read debug_regs[%d] failed\n", i);
+			break;
+		}
+
+		if (!buf)
+			CLKBUF_DBG(
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
+				reg_p->name, reg_p->ofs, out);
+		else
+			len += snprintf(
+				buf + len, PAGE_SIZE - len,
+				"PMIC DBG reg: %s Addr: 0x%08x Val: 0x%08x\n",
+				reg_p->name, reg_p->ofs, out);
+	}
+
+	aux_reg_p = pd->auxout_regs;
+	if (!aux_reg_p) {
+		CLKBUF_DBG("read aux_reg_p failed\n");
+		return len;
+	}
+
+	for (i = 0; strcmp(aux_reg_p->name, "NULL"); ++i, ++aux_reg_p) {
+		//spin lock
+		ret = get_auxout(&hw, &out, aux_reg_p);
+
+		if (ret) {
+			CLKBUF_DBG("read auxout_regs[%d] failed\n", i);
+			break;
+		}
+
+		if (!buf)
+			CLKBUF_DBG(
+				"Debug AUXOUT (%s): 0x%08x\n",
+				aux_reg_p->name, out);
+		else
+			len += snprintf(
+				buf + len, PAGE_SIZE - len,
+				"Debug AUXOUT (%s): 0x%08x\n",
+				aux_reg_p->name, out);
+	}
+
+	return len;
+}
+
 static struct clkbuf_operation clkbuf_ops_v1 = {
 	.get_pmrcen = __get_pmrcen,
 	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
@@ -1200,6 +1663,15 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 	.set_pmic_common_hdlr = __set_pmic_common_hdlr,
 	.get_pmic_common_hdlr = __get_pmic_common_hdlr,
 };
+
+/* MT6687 ops */
+static struct clkbuf_operation clkbuf_ops_v3 = {
+	.get_pmrcen = __get_pmrcen_v2,
+	.dump_pmic_debug_regs = __dump_pmic_debug_regs_v2,
+	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_v2,
+	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_v2,
+};
+
 
 static struct clkbuf_operation clkbuf_ops_lv1 = {
 	.get_pmrcen = __get_pmrcen_lv1,
@@ -1219,6 +1691,12 @@ static struct clkbuf_hdlr pmic_hdlr_v1 = {
 static struct clkbuf_hdlr pmic_hdlr_v2 = {
 	.ops = &clkbuf_ops_v2,
 	.data = &mt6685_tb_data,
+};
+
+/* MT6687 hdlr */
+static struct clkbuf_hdlr pmic_hdlr_v3 = {
+	.ops = &clkbuf_ops_v3,
+	.data = &mt6687_data,
 };
 
 static struct clkbuf_hdlr pmic_hdlr_lv1 = {
@@ -1440,6 +1918,13 @@ static struct match_pmic mt6685_tb_match_pmic = {
 	.parse_dts = &pmic_parse_dts_v1,
 };
 
+static struct match_pmic mt6687_match_pmic = {
+	.name = "mediatek,mt6687-clkbuf",
+	.hdlr = &pmic_hdlr_v3,
+	.init = &pmic_init_v1,
+	.parse_dts = &pmic_parse_dts_v1,
+};
+
 static struct match_pmic mt6359p_match_pmic = {
 	.name = "mediatek,mt6359p-clkbuf",
 	.hdlr = &pmic_hdlr_lv2,
@@ -1459,6 +1944,7 @@ static struct match_pmic *matches_pmic[] = {
 	&mt6358_match_pmic,
 	&mt6358_tb_match_pmic,
 	&mt6685_match_pmic,
+	&mt6687_match_pmic,
 	&mt6685_tb_match_pmic,
 	&mt6359p_match_pmic,
 	NULL,

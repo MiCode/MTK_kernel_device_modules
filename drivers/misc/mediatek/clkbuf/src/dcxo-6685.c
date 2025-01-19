@@ -435,7 +435,7 @@
 #define RG_LDO_VRFCK2_HW14_OP_EN_MASK	(0x1)
 #define RG_LDO_VRFCK2_HW14_OP_EN_SHIFT	(6)
 
-struct reg_t mt6685_debug_regs[] = {
+static struct reg_t mt6685_debug_regs[] = {
 	[0] =
 	SET_DBG_REG(vrfck1_en, RG_LDO_VRFCK1_EN)
 	[1] =
@@ -472,7 +472,7 @@ struct reg_t mt6685_debug_regs[] = {
 	DBG_REG(NULL, NULL_ADDR, 0x0, 0x0)
 };
 
-struct common_regs com_regs = {
+static struct common_regs com_regs = {
 	.bblpm_auxout_sel = 79,
 	.mode_num = 3,
 	.spmi_mask = 0x0000ffff,
@@ -485,7 +485,7 @@ struct common_regs com_regs = {
 
 };
 
-struct xo_buf_t mt6685_xo_bufs[] = {
+static struct xo_buf_t mt6685_xo_bufs[] = {
 	[0] = {
 		SET_REG_BY_NAME(xo_mode, XO_BBCK1_MODE)
 		SET_REG_BY_NAME(xo_en, XO_BBCK1_EN_M)

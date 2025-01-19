@@ -14,7 +14,7 @@
 
 struct clkbuf_operation {
 	/*xo call back functions*/
-	int (*get_pmrcen)(void *data, u32 *out);
+	int (*get_pmrcen)(void *data, char *buf, int len);
 	int (*dump_pmic_debug_regs)(void *data, char *buf, int len);
 	int (*get_xo_cmd_hdlr)(void *data, int xo_id, char *buf, int len);
 	int (*set_xo_cmd_hdlr)(void *data, int cmd, int xo_id, u32 input,

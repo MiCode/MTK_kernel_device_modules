@@ -39,6 +39,21 @@ struct reg_t {
 
 #define SET_DBG_REG(reg, name) DBG_REG(reg, name##_ADDR, 0xff, 0x0)
 
+struct auxout_reg_t {
+	char *name;
+	u32 auxsel;
+	u32 mask;
+	u32 shift;
+};
+
+#define AUXOUT_REG(reg, aux, msk, bit)                                         \
+	{                                                                      \
+		.name = #reg,                                                  \
+		.auxsel = aux,                                                 \
+		.mask = msk,                                                   \
+		.shift = bit,                                                  \
+	},
+
 enum clkbuf_err_code {
 
 	EREG_NOT_SUPPORT = 1000,

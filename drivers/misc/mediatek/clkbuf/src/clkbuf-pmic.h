@@ -17,6 +17,7 @@ enum CLKBUF_DBG_CMD_ID {
 	SET_XO_IMPEDANCE = 0x0004,
 	SET_XO_DESENSE = 0x0008,
 	SET_XO_VOTER = 0x0010,
+	SET_XO_EXT_VOTER = 0x0020,
 };
 
 enum CLKBUF_DBG_TB_CMD_ID {
@@ -45,11 +46,14 @@ struct common_regs {
 	u32 spmi_mask;
 	//struct mutex lock;
 	struct reg_t _static_aux_sel;
+	struct reg_t _static_aux_out_h;
+	struct reg_t _static_aux_out_l;
 	struct reg_t _bblpm_auxout;
 	struct reg_t _swbblpm_en;
 	struct reg_t _hwbblpm_sel;
 	struct reg_t _pmrc_en_l;
 	struct reg_t _pmrc_en_h;
+	struct reg_t _pmrc_mask_l;
 	struct reg_t _cdac_fpm;
 	struct reg_t _cofst_fpm;
 	struct reg_t _idac_fpm;
@@ -60,6 +64,7 @@ struct common_regs {
 struct plat_xodata {
 	struct xo_buf_t *xo_buf_t;
 	struct reg_t *debug_regs;
+	struct auxout_reg_t *auxout_regs;
 	struct common_regs *common_regs;
 	struct clkbuf_hw hw;
 	spinlock_t *lock;
@@ -68,6 +73,7 @@ struct plat_xodata {
 
 extern struct plat_xodata mt6685_data;
 extern struct plat_xodata mt6685_tb_data;
+extern struct plat_xodata mt6687_data;
 extern struct plat_xodata mt6377_data;
 extern struct plat_xodata mt6357_data;
 extern struct plat_xodata mt6358_data;

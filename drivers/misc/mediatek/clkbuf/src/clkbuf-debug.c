@@ -250,8 +250,7 @@ static ssize_t xo_status_show(struct kobject *kobj, struct kobj_attribute *attr,
 		hdlr; //should get right hdlr , if pasing srclken would get wrong
 	struct plat_xodata *pd;
 	struct clkbuf_hw hw;
-	u32 out = 0;
-	int ret = 0, len = 0, nums = 0, xo_id = 0, i;
+	int len = 0, nums = 0, xo_id = 0, i;
 	/*count last xo element for printing pmrcen*/
 	int count = 0;
 
@@ -285,8 +284,8 @@ static ssize_t xo_status_show(struct kobject *kobj, struct kobj_attribute *attr,
 		if (hw.hw_type != PMIC)
 			continue;
 
-		if ((!hdlr->ops->get_xo_cmd_hdlr) || (!hdlr->ops->get_pmrcen))
-			return sprintf(buf, "Error: call back is null\n");
+		if ((!hdlr->ops->get_xo_cmd_hdlr))
+			return sprintf(buf, "Error: XO cmd callback is null\n");
 
 		pd = (struct plat_xodata *)hdlr->data; //could be NULL if rc node
 		xo_id = array->xo_id;
@@ -298,15 +297,13 @@ static ssize_t xo_status_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 		/****PMRC_EN****/
 		count++;
-		if (count == array->num_xo) {
-			ret = hdlr->ops->get_pmrcen(pd, &out);
-			if (ret)
-				return len;
+		if (count == array->num_xo && hdlr->ops->get_pmrcen) {
 			len += snprintf(
 				buf + len, PAGE_SIZE - len,
 				"---------------------------------------------------\n");
-			len += snprintf(buf + len, PAGE_SIZE - len,
-					"pmrcen: <0x%08x>\n", out);
+
+			len = hdlr->ops->get_pmrcen(pd, buf, len);
+			len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 		}
 	}
 	return len;
