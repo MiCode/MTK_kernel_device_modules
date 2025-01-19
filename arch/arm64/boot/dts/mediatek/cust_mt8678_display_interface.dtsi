@@ -286,7 +286,7 @@
 	max-lane-count = <4>;
 	max-linkrate-mhz = <8100>;
 
-	use-hpd = <0>;
+	use-hpd = <1>;
 	use-edid = <0>;
 	external-monitor = <0>;
 	color-depth-10bit = <0>;
