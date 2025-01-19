@@ -410,9 +410,8 @@ static void mtk_btag_seq_trace(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, ".\n");
 }
 
-static void mtk_btag_seq_debug_show_ringtrace(struct mtk_blocktag *btag,
-					      char **buff, unsigned long *size,
-					      struct seq_file *seq)
+static void btag_show_ringtrace(struct mtk_blocktag *btag, char **buff,
+				unsigned long *size, struct seq_file *seq)
 {
 	struct mtk_btag_ringtrace *rt = BTAG_RT(btag);
 	unsigned long flags;
@@ -438,9 +437,8 @@ static void mtk_btag_seq_debug_show_ringtrace(struct mtk_blocktag *btag,
 	spin_unlock_irqrestore(&rt->lock, flags);
 }
 
-static size_t mtk_btag_seq_sub_show_usedmem(struct mtk_blocktag *btag,
-					    char **buff, unsigned long *size,
-					    struct seq_file *seq)
+static size_t btag_show_usedmem(struct mtk_blocktag *btag, char **buff,
+				unsigned long *size, struct seq_file *seq)
 {
 	size_t used_mem = 0;
 	size_t size_l;
@@ -523,12 +521,12 @@ static int mtk_btag_seq_sub_show(struct seq_file *seq, void *v)
 	struct mtk_blocktag *btag = seq->private;
 
 	if (btag) {
-		mtk_btag_seq_debug_show_ringtrace(btag, NULL, NULL, seq);
+		btag_show_ringtrace(btag, NULL, NULL, seq);
 		if (btag->vops->seq_show) {
 			seq_printf(seq, "<%s: context info>\n", btag->name);
 			btag->vops->seq_show(btag, NULL, NULL, seq);
 		}
-		mtk_btag_seq_sub_show_usedmem(btag, NULL, NULL, seq);
+		btag_show_usedmem(btag, NULL, NULL, seq);
 	}
 	return 0;
 }
@@ -597,7 +595,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, "[Trace]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
-		mtk_btag_seq_debug_show_ringtrace(btag, buff, size, seq);
+		btag_show_ringtrace(btag, buff, size, seq);
 	rcu_read_unlock();
 
 	BTAG_PRINTF(buff, size, seq, "[Info]\n");
@@ -630,8 +628,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 	BTAG_PRINTF(buff, size, seq, "[Memory Usage]\n");
 	rcu_read_lock();
 	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
-		used_mem += mtk_btag_seq_sub_show_usedmem(btag, buff, size,
-							  seq);
+		used_mem += btag_show_usedmem(btag, buff, size, seq);
 	rcu_read_unlock();
 
 	BTAG_PRINTF(buff, size, seq, "<blocktag core>\n");
