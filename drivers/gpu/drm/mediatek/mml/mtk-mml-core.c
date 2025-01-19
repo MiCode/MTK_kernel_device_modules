@@ -2365,9 +2365,6 @@ static void core_config_task(struct mml_task *task)
 		}
 	}
 
-	/* mark start in early stage */
-	task->done = false;
-
 	mml_update_pq_status(&cfg->info.dest[0].pq_config);
 	mml_update_status_to_tppa(&cfg->info);
 
@@ -2605,6 +2602,7 @@ void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)
 {
 	/* reset to 0 in case reuse task */
 	atomic_set(&task->pipe_done, 0);
+	task->done = false;
 	if (task->state == MML_TASK_INITIAL)
 		core_update_config(cfg);
 
