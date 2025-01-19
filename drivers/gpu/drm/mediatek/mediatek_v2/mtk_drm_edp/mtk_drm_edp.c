@@ -3175,10 +3175,19 @@ static int mtk_edp_suspend(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
+	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+
+	if (mtk_edp_plug_state(mtk_edp)) {
+		drm_dp_dpcd_writeb(&mtk_edp->aux, DP_SET_POWER, DP_SET_POWER_D3);
+		usleep_range(2000, 3000);
+	}
+
 	mtk_edp_power_disable(mtk_edp);
-	if (mtk_edp->bridge.type != DRM_MODE_CONNECTOR_eDP)
-		mtk_edp_hwirq_enable(mtk_edp, false);
+	mtk_edp_hwirq_enable(mtk_edp, false);
+
 	pm_runtime_put_sync(dev);
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
 
 	return 0;
 }
@@ -3187,11 +3196,15 @@ static int mtk_edp_resume(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
 
+	dev_info(mtk_edp->dev, "[eDPTX] %s+\n", __func__);
+
 	pm_runtime_get_sync(dev);
+
 	mtk_edp_init_port(mtk_edp);
-	if (mtk_edp->bridge.type != DRM_MODE_CONNECTOR_eDP)
-		mtk_edp_hwirq_enable(mtk_edp, true);
+	mtk_edp_hwirq_enable(mtk_edp, true);
 	mtk_edp_power_enable(mtk_edp);
+
+	dev_info(mtk_edp->dev, "[eDPTX] %s-\n", __func__);
 
 	return 0;
 }
