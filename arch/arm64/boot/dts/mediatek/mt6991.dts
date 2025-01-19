@@ -11363,6 +11363,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1_JPGDEC>,
 				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
 			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1", "mmdvfs_clk";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN0>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			jpeg-set-axdomain-base-idx = <3>;
 			jpeg-set-axdomain = <0xd>;
@@ -11385,7 +11386,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						"path_jpegdec1_bsdma",
 						"path_jpegdec1_huff_offset";
 			jpeg-set-resource = <2>;
-			ccf-one-step;
 		};
 
 		jpgdec1: jpgdec1@38840000 {
@@ -11398,6 +11398,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>,
 				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
 			clock-names = "MT_CG_VENC_JPGDEC_C2", "mmdvfs_clk";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			jpeg-set-axdomain-base-idx = <1>;
 			jpeg-set-axdomain = <0xf>;
