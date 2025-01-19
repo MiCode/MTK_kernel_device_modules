@@ -2,8 +2,6 @@
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/memory/mediatek/
 
-obj-$(CONFIG_MTK_DRAMC)    += mtk_dramc.o
-mtk_dramc-objs	+= dramc.o dramc_bin.o
 
 ifneq (, $(filter m y, $(CONFIG_MTK_EMI_LEGACY)))
 obj-$(CONFIG_MTK_EMI_LEGACY) += emi_legacy/
