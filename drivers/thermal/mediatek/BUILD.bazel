@@ -1,0 +1,62 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "board_temp",
+    srcs = [
+        "board_temp.c",
+    ],
+    includes = [
+        "$(srctree)/drivers/thermal",
+        "$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+    ],
+    copts = [
+        "-I$(srctree)/drivers/thermal",
+        "-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "charger_cooling",
+    srcs = [
+        "charger_cooling.c",
+    ],
+    hdrs = [
+        "charger_cooling.h",
+    ],
+    copts = [
+        "-I$(srctree)/drivers/thermal",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pmic_temp",
+    srcs = [
+        "pmic_temp.c",
+    ],
+    copts = [
+        "-I$(srctree)/drivers/thermal",
+    ],
+)
