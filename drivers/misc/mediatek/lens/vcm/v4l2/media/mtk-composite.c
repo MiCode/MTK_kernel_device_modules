@@ -3,6 +3,9 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": %s: " fmt, __func__
 
 #include <linux/types.h>
