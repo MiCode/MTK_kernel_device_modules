@@ -35,6 +35,7 @@
 #endif
 
 #include "mtk-mminfra-debug.h"
+#include "mtk-mminfra-util.h"
 
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
@@ -84,6 +85,7 @@ static struct task_struct *mminfra_power_mon_thread;
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
 static u32 mm_pwr_ver;
+static u32 mminfra_api_pwr_idx;
 static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
@@ -93,6 +95,7 @@ static bool is_mminfra_shutdown;
 static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
 static bool mmpc_src_ctrl;
+static bool mminfra_api_pwr_ctrl;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mm_dapc_pwr_on;
 spinlock_t mm_dapc_lock;
@@ -417,7 +420,10 @@ static int mminfra_voter_mon(void *data)
 
 	if (!has_infra_hfrp) {
 		pr_notice("%s set mm pwr on\n", __func__);
-		pm_runtime_get(dbg->comm_dev[0]);
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_get(dbg->comm_dev[0]);
+		else
+			mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 	}
 	voter_addr = ioremap(dbg->mm_voter_base, 0x4);
 	while (!kthread_should_stop()) {
@@ -592,7 +598,10 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 	pr_notice("%s: input: %s\n", __func__, val);
 	switch (test_case) {
 	case 0:
-		ret = pm_runtime_get_sync(dev);
+		if (!mminfra_api_pwr_ctrl)
+			ret = pm_runtime_get_sync(dev);
+		else
+			mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 		test_base = ioremap(arg0, 4);
 		value = readl_relaxed(test_base);
 		do_mminfra_bkrs(false); // backup
@@ -605,10 +614,16 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 			pr_notice("%s: test_case(%d) fail value=%d\n",
 				__func__, test_case, value);
 		iounmap(test_base);
-		pm_runtime_put_sync(dev);
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_put_sync(dev);
+		else
+			mtk_mminfra_on_off(false, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 		break;
 	case 1:
-		ret = pm_runtime_get_sync(dev);
+		if (!mminfra_api_pwr_ctrl)
+			ret = pm_runtime_get_sync(dev);
+		else
+			mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 		test_base = ioremap(bkrs_reg_pa, 4);
 		value = readl_relaxed(test_base);
 		do_mminfra_bkrs(false); // backup
@@ -623,7 +638,10 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 		pr_notice("%s: HRE restore result %#x=%x value=%x\n",
 			__func__, bkrs_reg_pa, readl_relaxed(test_base), value);
 		iounmap(test_base);
-		pm_runtime_put_sync(dev);
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_put_sync(dev);
+		else
+			mtk_mminfra_on_off(false, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 		break;
 	case 2:
 		pr_notice("%s: test_case(%d) enable mminfra_voter_mon\n", __func__, test_case);
@@ -1001,7 +1019,10 @@ static int mminfra_get_for_smi_dbg(void *v)
 	if (strncmp(smi_dbg->caller, "VCP", strlen("VCP")) == 0)
 		ret = 0;
 	else {
-		pm_runtime_get_sync(dev);
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_get_sync(dev);
+		else
+			mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 		mminfra_gals_dump();
 		ret = 1;
 	}
@@ -1011,7 +1032,10 @@ static int mminfra_get_for_smi_dbg(void *v)
 
 static int mminfra_put_for_smi_dbg(void *v)
 {
-	pm_runtime_put_sync(dev);
+	if (!mminfra_api_pwr_ctrl)
+		pm_runtime_put_sync(dev);
+	else
+		mtk_mminfra_on_off(false, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
 
 	return 0;
 }
@@ -1046,9 +1070,15 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 		return IRQ_NONE;
 
 	if (dbg->irq_safe) {
-		ret = pm_runtime_get_sync(dev);
-		if (ret)
-			pr_notice("%s pm_runtime_get_sync ret[%d].\n", __func__, ret);
+		if (!mminfra_api_pwr_ctrl) {
+			ret = pm_runtime_get_sync(dev);
+			if (ret)
+				pr_notice("%s pm_runtime_get_sync ret[%d].\n", __func__, ret);
+		} else {
+			ret = mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
+			if (ret)
+				pr_notice("%s mtk_mminfra_on_off ret[%d].\n", __func__, ret);
+		}
 	}
 
 	cmdq_util_mminfra_cmd(1);
@@ -1069,8 +1099,12 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 
 	cmdq_util_mminfra_cmd(0);
 
-	if (dbg->irq_safe)
-		pm_runtime_put_sync(dev);
+	if (dbg->irq_safe) {
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_put_sync(dev);
+		else
+			mtk_mminfra_on_off(false, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1097,7 +1131,11 @@ static void mminfra_devapc_power_off_cb(void)
 
 			if (!is_mminfra_shutdown) {
 				pr_info("%s set mminfra pwr off\n", __func__);
-				ret = pm_runtime_put_sync(dev);
+				if (!mminfra_api_pwr_ctrl)
+					ret = pm_runtime_put_sync(dev);
+				else
+					ret = mtk_mminfra_on_off(false, mminfra_api_pwr_idx,
+						MM_TYPE_MMINFRA_DBG);
 				if (ret)
 					pr_notice("%s: ret=%d\n", __func__, ret);
 				mm_dapc_pwr_on = false;
@@ -1148,7 +1186,11 @@ static bool mminfra_devapc_power_cb(void)
 
 			if (!is_mminfra_shutdown && !mm_dapc_pwr_on) {
 				pr_info("%s set mminfra pwr on\n", __func__);
-				ret = pm_runtime_get_sync(dev);
+				if (!mminfra_api_pwr_ctrl)
+					ret = pm_runtime_get_sync(dev);
+				else
+					ret = mtk_mminfra_on_off(true, mminfra_api_pwr_idx,
+						MM_TYPE_MMINFRA_DBG);
 				if (ret)
 					pr_notice("%s: ret=%d\n", __func__, ret);
 				mm_dapc_pwr_on = true;
@@ -1281,6 +1323,9 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 	mm_no_scmi = of_property_read_bool(node, "mm-no-scmi");
 	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
+	mminfra_api_pwr_ctrl = of_property_read_bool(node, "mminfra-api-pwr-ctrl");
+	if (mminfra_api_pwr_ctrl)
+		of_property_read_u32(node, "mminfra-api-pwr-idx", &mminfra_api_pwr_idx);
 	of_property_read_u32(node, "mm-pwr-ver", &mm_pwr_ver);
 
 	if (mm_pwr_ver <= mm_pwr_v2) {
@@ -1292,7 +1337,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	mminfra_check_scmi_status();
 
 	dev = &pdev->dev;
-	pm_runtime_enable(dev);
+	if (!mminfra_api_pwr_ctrl)
+		pm_runtime_enable(dev);
 
 	if (mm_pwr_ver <= mm_pwr_v2) {
 		for (i = 0; i < MMINFRA_GALS_NR; i++) {
@@ -1386,7 +1432,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 			is_mminfra_shutdown = false;
 		}
 	} else {
-		pm_runtime_irq_safe(dev);
+		if (!mminfra_api_pwr_ctrl)
+			pm_runtime_irq_safe(dev);
 		dbg->irq_safe = true;
 		is_mminfra_shutdown = false;
 	}
