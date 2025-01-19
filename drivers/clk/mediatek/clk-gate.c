@@ -20,7 +20,7 @@
 #define CTRL_ON			1
 #define CTRL_OFF		0
 
-#define MT_CCF_BRINGUP 1
+#define MT_CCF_BRINGUP 0
 
 static bool is_registered;
 
