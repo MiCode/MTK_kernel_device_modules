@@ -653,9 +653,9 @@ int mdw_mem_ioctl(struct mdw_fpriv *mpriv, void *data)
 /* for validation */
 int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t size)
 {
-	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
-	struct mdw_cmd *c = (struct mdw_cmd *)cmd;
-	struct mdw_device *mdev = mpriv->mdev;
+	struct mdw_fpriv *mpriv = NULL;
+	struct mdw_cmd *c = NULL;
+	struct mdw_device *mdev = NULL;
 	struct mdw_mem_map *map = NULL;
 	struct hlist_node *tmp = NULL;
 	int i = 0, ret = -ENOMEM;
@@ -663,6 +663,10 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t 
 	/* check arguments */
 	if (!session || !cmd)
 		return -EINVAL;
+
+	mpriv = (struct mdw_fpriv *)session;
+	c = (struct mdw_cmd *)cmd;
+	mdev = mpriv->mdev;
 
 	hash_for_each_safe(mpriv->u_map_hash, i, tmp, map, fpriv_node) {
 		mdw_vld_debug("check target(0x%llx/%u) map(0x%llx/%llu)...\n",
@@ -701,10 +705,16 @@ int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t 
 
 void *apusys_mem_query_kva_by_sess(void *session, uint64_t eva)
 {
-	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
+	struct mdw_fpriv *mpriv = NULL;
 	struct mdw_mem_map *map = NULL;
 	struct hlist_node *tmp = NULL;
 	int i = 0;
+
+	/* check arguments */
+	if (!session)
+		return NULL;
+
+	mpriv = (struct mdw_fpriv *)session;
 
 	hash_for_each_safe(mpriv->u_map_hash, i, tmp, map, fpriv_node) {
 		if (eva >= map->device_va &&

@@ -184,6 +184,9 @@ int mdw_queue_boost(struct mdw_ap_sc *sc)
 	suggest_time = sc->hdr->info->suggest_time * 1000;
 
 	tab = mdw_rsc_get_tab(sc->type);
+	if (!tab)
+		return -ENODEV;
+
 	root = &tab->q.deadline;
 
 	if (sc->hdr->info->suggest_time != 0) {

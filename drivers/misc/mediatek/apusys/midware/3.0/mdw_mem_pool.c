@@ -138,7 +138,7 @@ int mdw_mem_pool_create(struct mdw_fpriv *mpriv, struct mdw_mem_pool *pool,
 	INIT_LIST_HEAD(&pool->m_list);
 	pool->gp = gen_pool_create(PAGE_SHIFT, -1 /* nid */);
 
-	if (IS_ERR(pool->gp)) {
+	if (IS_ERR_OR_NULL(pool->gp)) {
 		ret = PTR_ERR(pool->gp);
 		mdw_drv_err("mem_pool(0x%llx) gen_pool init fail: %d\n",
 			(uint64_t) mpriv, ret);
