@@ -48,6 +48,7 @@ static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
 void __iomem *hpt_ctrl_base;
+void __iomem *hpt_status_base;
 void __iomem *gpu_dbg_base;
 void __iomem *cpu_dbg_base;
 struct fg_cus_data fg_data;
@@ -204,6 +205,18 @@ static void __used hpt_ctrl_write(unsigned int val, int offset)
 	}
 
 	writel(val, (void __iomem *)(hpt_ctrl_base + offset * 4));
+}
+
+static int __used hpt_status_read(int offset)
+{
+	void __iomem *addr = hpt_status_base + offset * 4;
+
+	if (!hpt_status_base) {
+		pr_info("hpt_status_base error %p\n", hpt_status_base);
+		return 0;
+	}
+
+	return readl(addr);
 }
 
 static void ppb_allocate_budget_manager(void)
@@ -1815,9 +1828,16 @@ static int mt_hpt_ctrl_proc_show(struct seq_file *m, void *v)
 {
 	unsigned int reg = 0;
 
-	reg = hpt_ctrl_read(HPT_CTRL);
-	seq_printf(m, "0x%x\n", reg);
-
+	if (pb.version == 2) {
+		reg = hpt_ctrl_read(HPT_CTRL);
+		seq_printf(m, "0x%x\n", reg);
+	} else if (pb.version == 3) {
+		reg = hpt_ctrl_read(HPT_CTRL);
+		seq_printf(m, "hpt_ctrl: 0x%x\n", reg);
+		reg = hpt_status_read(0);
+		seq_printf(m, "hpt_status: 0x%x\n", reg);
+	} else
+		seq_printf(m, "hpt_ctrl not supported\n");
 	return 0;
 }
 
@@ -2148,6 +2168,13 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	else
 		hpt_ctrl_base = addr;
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_status");
+	addr = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(addr))
+		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
+	else
+		hpt_status_base = addr;
+
 	spin_lock_init(&ppb_lock);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpu_dbg");
@@ -2172,7 +2199,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	INIT_WORK(&pb.bat_work, bat_handler);
 	read_power_budget_dts(pdev);
 
-	if (hpt_ctrl_read(HPT_CTRL) && pb.hpt_exclude_lbat_cg_thl)
+	if ((pb.version == 2) && hpt_ctrl_read(HPT_CTRL) && pb.hpt_exclude_lbat_cg_thl)
 		lbat_set_hpt_mode(1);
 
 	ppb_nb.notifier_call = ppb_psy_event;
