@@ -8857,6 +8857,7 @@
 		compatible = "mediatek,mt6360";
 		reg = <0x34>;
 		wakeup-source;
+		#interrupt-cells = <2>;
 		interrupt-controller;
 		interrupt-parent = <&pio>;
 		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
