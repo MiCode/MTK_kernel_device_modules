@@ -913,6 +913,7 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 	int ret= 0;
 	unsigned int reg_value = 0;
 	void __iomem *reg;
+	struct arm_smccc_res res;
 
 #ifdef FEATURE_INFORM_NFC_VSIM_CHANGE
 	/* notify NFC */
@@ -946,6 +947,16 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 	}
 
 	md1_dpsw_pmic_setting_off();
+	if (ap_plat_info == 6991) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] MD emi bus protect set\n");
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_EMI_BUS_SET,
+			0, 0, 0, 0, 0, 0, &res);
+		if (res.a0)
+			CCCI_ERROR_LOG(-1, TAG,
+				"[POWER OFF] MD emi bus protect set fail (0x%lx)\n", res.a0);
+		else
+			CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] MD emi bus protect set done\n");
+	}
 
 	/* 1. power off MD MTCMOS */
 	CCCI_BOOTUP_LOG(0, TAG,
@@ -1774,6 +1785,7 @@ static int md_cd_power_on(struct ccci_modem *md)
 {
 	int ret = 0;
 	void __iomem *md_rgu_base;
+	struct arm_smccc_res res;
 
 	/* step 1: PMIC setting,if setting DPSW bypass this step */
 	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING)))
@@ -1833,6 +1845,17 @@ static int md_cd_power_on(struct ccci_modem *md)
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
 
+	if (ap_plat_info == 6991) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] md emi bus protect clear\n");
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_EMI_BUS_CLEAR,
+			0, 0, 0, 0, 0, 0, &res);
+		if (res.a0)
+			CCCI_ERROR_LOG(-1, TAG,
+				"[POWER ON] md emi bus protect clear fail (0x%lx)\n", res.a0);
+		else
+			CCCI_NORMAL_LOG(0, TAG,
+				"[POWER ON] MD emi bus protect clear done\n");
+	}
 	/* step 4: md DPSW set */
 	md_cd_dpsw_setting(md);
 
