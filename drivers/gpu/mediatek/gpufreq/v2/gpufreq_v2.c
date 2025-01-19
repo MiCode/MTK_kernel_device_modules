@@ -1857,8 +1857,9 @@ static int gpufreq_shared_memory_init(void)
 	/* init to 0 */
 	memset((void *)gpufreq_mem_va, 0, gpufreq_mem_size);
 
-	GPUFREQ_LOGI("shared status memory: 0x%llx (phy_addr: 0x%llx, size: 0x%x)",
-		(unsigned long long)g_shared_status, g_shared_mem_pa, g_shared_mem_size);
+	GPUFREQ_LOGI("shared status memory: 0x%llx (phy_addr: 0x%llx, size: %u, used: %lu)",
+		(unsigned long long)g_shared_status, g_shared_mem_pa,
+		g_shared_mem_size, sizeof(struct gpufreq_shared_status));
 
 done:
 	return ret;
