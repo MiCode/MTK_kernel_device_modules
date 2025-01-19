@@ -9374,6 +9374,8 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 		return -1;
 	}
 
+	map_list->fd = dma_map->fd;
+
 	map_list->dmabuf = dma_buf_get(dma_map->fd);
 	if (IS_ERR(map_list->dmabuf)) {
 		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
