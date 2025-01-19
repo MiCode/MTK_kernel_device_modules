@@ -1598,7 +1598,7 @@ check_dc_tput:
 	} else if (mml_opp_check) {
 		/* dl mode support, compare opp with dc */
 		if (tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
-			info_cache->dl_opp > info_cache->dc_opp) {
+			info_cache && info_cache->dl_opp > info_cache->dc_opp) {
 			*reason = mml_query_lowpower;
 			mode = MML_MODE_MML_DECOUPLE;
 		}
