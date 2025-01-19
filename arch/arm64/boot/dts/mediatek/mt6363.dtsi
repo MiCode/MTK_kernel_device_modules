@@ -16,6 +16,7 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x63 0x9 0x8>;
 		};
 
 		pmic_adc: mt6363-auxadc {

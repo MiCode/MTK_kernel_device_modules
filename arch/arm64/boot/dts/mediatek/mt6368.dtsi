@@ -16,6 +16,7 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x68 0x9 0x8>;
 		};
 
 		accdet: accdet {
