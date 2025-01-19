@@ -1622,12 +1622,7 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, &data, 1);
 			mdrv_DPTx_VideoMute(mtk_dp, true);
 			mdrv_DPTx_AudioMute(mtk_dp, true);
-			unsigned int mute_delay_ms;
-			mute_delay_ms = drm_mode_vrefresh(&mtk_dp->mode) > 0 ? \
-				((1000/drm_mode_vrefresh(&mtk_dp->mode)/10)+1)*10 : 40;
-			DPTXMSG("%s, fps=%d mute_delay_ms=%d\n", __func__, \
-				drm_mode_vrefresh(&mtk_dp->mode), mute_delay_ms);
-			mdelay(mute_delay_ms);
+			mdelay(20);
 
 			if (mtk_dp->bUeventToHwc) {
 				mtk_dp_hotplug_uevent(0);
@@ -3908,7 +3903,6 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 			__func__, mode->hdisplay, mode->vdisplay,
 			drm_mode_vrefresh(mode),
 			mode->clock);
-	mtk_dp->mode = *mode;
 	if (0x1fff > 0 && mode->hdisplay > 0x1fff)
 		return MODE_VIRTUAL_X;
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
