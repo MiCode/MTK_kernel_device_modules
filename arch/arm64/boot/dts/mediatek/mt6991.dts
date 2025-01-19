@@ -3205,6 +3205,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		ringbuf-page-order = <3>;
 		config-mode = <1>;
 		hw-semaphore-bit = <1>;
+		concurrent-contexts = /bits/ 8 <0x4>;
+		extended-pbha-bits = /bits/ 8 <0x8>;
 	};
 
 	pextp0cfg_ao_clk: syscon@169b0000 {
