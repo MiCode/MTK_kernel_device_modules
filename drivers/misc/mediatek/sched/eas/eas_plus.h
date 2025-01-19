@@ -287,6 +287,8 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RUNNABLE_BOOST_UNSET	_IOW('g', 62,  unsigned int)
 #define EAS_SET_DSU_IDLE			_IOW('g', 63,  unsigned int)
 #define EAS_UNSET_DSU_IDLE			_IOW('g', 64,  unsigned int)
+#define EAS_SET_CURR_TASK_UCLAMP	_IOW('g', 65,  unsigned int)
+#define EAS_UNSET_CURR_TASK_UCLAMP	_IOW('g', 66,  unsigned int)
 
 extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)

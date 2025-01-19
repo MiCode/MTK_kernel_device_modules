@@ -118,6 +118,12 @@ int get_curr_task_uclamp_ctrl(void)
 }
 EXPORT_SYMBOL(get_curr_task_uclamp_ctrl);
 
+void unset_curr_task_uclamp_ctrl(void)
+{
+	curr_task_uclamp_max_ctrl = DEFAULT_CURR_TASK_UCLAMP;
+}
+EXPORT_SYMBOL(unset_curr_task_uclamp_ctrl);
+
 /* dsu_idle ctrl */
 static bool dsu_idle_enable = DEFAULT_DSU_IDLE;
 

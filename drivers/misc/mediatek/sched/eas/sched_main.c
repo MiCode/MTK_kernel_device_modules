@@ -849,6 +849,16 @@ static long eas_ioctl_impl(struct file *filp,
 			return -1;
 		unset_runnable_boost_enable();
 		break;
+	case EAS_SET_CURR_TASK_UCLAMP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_curr_task_uclamp_ctrl(val);
+		break;
+	case EAS_UNSET_CURR_TASK_UCLAMP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_curr_task_uclamp_ctrl();
+		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);

@@ -272,6 +272,7 @@ extern void (*set_v_driver_hook)(int v);
 int collab_type_0_ret_function(void);
 extern int get_sys_max_cap_cluster(void);
 extern void set_curr_task_uclamp_ctrl(int set);
+extern void unset_curr_task_uclamp_ctrl(void);
 extern int get_curr_task_uclamp_ctrl(void);
 
 #define DPT_CALL_UPDATE_WL_TBL 0

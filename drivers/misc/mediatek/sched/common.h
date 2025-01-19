@@ -219,6 +219,7 @@ extern int set_target_margin_low(int gearid, int margin);
 extern int set_turn_point_freq(int gearid, unsigned long freq);
 
 extern void set_curr_task_uclamp_ctrl(int set);
+extern void unset_curr_task_uclamp_ctrl(void);
 extern int get_curr_task_uclamp_ctrl(void);
 
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER)
