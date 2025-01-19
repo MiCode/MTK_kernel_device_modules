@@ -1303,7 +1303,7 @@ int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 		}
 
 		src_buf = &dev->vp_mode_buf[idx][i];
-		src_buf->mem.len = 192 * 16 * 1024 + 16;
+		src_buf->mem.len = 192 * dev->vp_mode_buf_size_multi + 16;
 		src_buf->mem.type = MEM_TYPE_FOR_HW_CACHE;
 
 		ret = mtk_vcodec_alloc_mem(&src_buf->mem, io_dev, &src_buf->attach, &src_buf->sgt, MTK_INST_DECODER);

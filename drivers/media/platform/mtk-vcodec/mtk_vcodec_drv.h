@@ -1041,6 +1041,7 @@ struct mtk_vcodec_dev {
 
 	bool smmu_enabled;
 	struct mutex vp_mode_buf_mutex;
+	unsigned int vp_mode_buf_size_multi;
 	struct vdec_vp_mode_buf vp_mode_buf[2][3]; // [0] for 8 bit, [1] for 10 bit, [3] = {y dat, c dat, len}
 /**
  *	struct ion_client *ion_vdec_client;

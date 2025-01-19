@@ -583,7 +583,7 @@ static void handle_vdec_vp_mode_prepare(struct mtk_vcodec_dev *dev, struct vdec_
 	int idx = (inst->vsi->pic.bitdepth == 8) ? 0 : 1;
 	int i, ret_val = 0;
 
-	if (dev->smmu_enabled && !info->alloc_src_buf[idx]) {
+	if (dev->smmu_enabled && dev->vp_mode_buf_size_multi > 0 && !info->alloc_src_buf[idx]) {
 		ret_val = mtk_vcodec_vp_mode_buf_prepare(dev, inst->vsi->pic.bitdepth);
 		if (ret_val >= 0) {
 			for (i = 0; i < 3; i++)

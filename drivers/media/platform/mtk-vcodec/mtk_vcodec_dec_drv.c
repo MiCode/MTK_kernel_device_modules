@@ -709,6 +709,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mtk_v4l2_debug(0, "vdec slc ver: %d, support acp %d, mtk_vdec_acp_enable %d",
 		dev->dec_slc_ver, dev->support_acp, mtk_vdec_acp_enable);
 
+	ret = of_property_read_u32(pdev->dev.of_node, "vp-mode-buf-size-multi", &dev->vp_mode_buf_size_multi);
+	if (ret != 0)
+		dev->vp_mode_buf_size_multi = 0;
+
 	dev->queued_frame = false;
 	mtk_vdec_init_slc(&dev->dec_slc_frame, ID_VDEC_FRAME);
 	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);
