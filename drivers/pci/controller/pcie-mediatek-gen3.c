@@ -1213,7 +1213,7 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 	struct irq_chip *irqchip = irq_desc_get_chip(desc);
 	unsigned long status, int_enable;
 	irq_hw_number_t irq_bit = PCIE_INTX_SHIFT;
-	u32 cor_sta = 0, uncor_sta = 0, root_err_sta = 0;
+	u32 cor_sta = 0, uncor_sta = 0;
 
 	chained_irq_enter(irqchip, desc);
 
@@ -1231,8 +1231,7 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 				readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
 				cor_sta, uncor_sta);
 
-			pci_read_config_dword(port->pcidev, PCIE_RP_STS_REG, &root_err_sta);
-			if ((root_err_sta & PCI_ERR_ROOT_UNCOR_RCV) || (status & PCIE_AXI_POST_ERR_EVT))
+			if ((uncor_sta & PCI_ERR_UNC_COMP_TIME) || (status & PCIE_AXI_POST_ERR_EVT))
 				mtk_pcie_disable_data_trans(port->port_num);
 		}
 
