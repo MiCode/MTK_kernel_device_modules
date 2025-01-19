@@ -2121,10 +2121,10 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 	/* write dummy register to force rdma tick and clean up */
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DUMMY_REG, 0, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x3f3, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x3, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x8010, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x10, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x3f1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x1, U32_MAX);
 }
 
 static void rdma_backup_crc(struct mml_comp *comp, struct mml_task *task,
