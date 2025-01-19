@@ -476,8 +476,8 @@ static unsigned long mtk_scale_rt_capacity(int cpu)
 	if (unlikely(irq >= max))
 		return 1;
 
-	used = READ_ONCE(rq->avg_rt.util_avg);
-	used += READ_ONCE(rq->avg_dl.util_avg);
+	used = cpu_util_rt(rq);
+	used += cpu_util_dl(rq);
 	used += hw_load_avg(rq);
 
 	if (unlikely(used >= max))
