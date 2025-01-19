@@ -149,6 +149,22 @@ thermal_monitor-y += v1/src/mtk_thermal_ipi_mt6893.o
 thermal_monitor-y += v1/src/mtk_lvts_tc_mt6893.o
 thermal_monitor-y += v1/src/mtk_tc_wrapper_mt6893.o
 thermal_monitor-y += v1/src/mtk_pmic_efuse_mt6893.o
+endif
 
-
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
+include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v3/src/Makefile
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v3/inc
+thermal_monitor-y += common/thermal_zones/mtk_ts_imgsensor.o
+thermal_monitor-y += v3/mtk_thermal_monitor.o
+thermal_monitor-y += v3/src/mtk_tc.o
+#thermal_monitor-y += v3/src/mtk_ts_6357buck1.o
+#thermal_monitor-y += v3/src/mtk_ts_6357buck2.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_cpu_noBank.o
+ifeq ($(CONFIG_MTK_THERMAL_PA_VIA_ATCMD),y)
+thermal_monitor-y += common/coolers/mtk_cooler_mutt.o
+endif
+thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
+thermal_monitor-y += common/coolers/mtk_cooler_bcct_2nd.o
+thermal_monitor-y += v3/src/mtk_pmic_efuse.o
+#thermal_monitor-y += common/thermal_zones/mtk_ts_charger2.o
 endif

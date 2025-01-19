@@ -17,7 +17,7 @@ endif
 # Include thermal header "mtk_thermal.h"
 ifneq ($(CONFIG_MTK_LEGACY_THERMAL),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/inc/mach/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v3/inc/mach/
 endif
 # Include sspm header "sspm_ipi.h"
 ifneq ($(CONFIG_MTK_TINYSYS_SSPM_V1),)
