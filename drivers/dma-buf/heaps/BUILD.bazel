@@ -1,0 +1,57 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "system_heap",
+    srcs = [
+        "mtk-deferred-free-helper.c",
+        "mtk_cache_pool.c",
+        "mtk_dmabuf_monitor.c",
+        "mtk_page_pool.c",
+        "mtk_system_heap.c",
+    ],
+    hdrs = glob([
+        "mtk-deferred-free-helper.h",
+        "mtk_dmabuf_events.h",
+        "mtk_heap.h",
+        "mtk_heap_priv.h",
+        "mtk_page_pool.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+    ],
+    out = "system_heap.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_heap_refill",
+    srcs = [
+        "mtk_heap_refill.c",
+    ],
+    ko_deps = [":system_heap"],
+    out = "mtk_heap_refill.ko",
+)

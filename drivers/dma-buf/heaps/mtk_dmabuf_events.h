@@ -35,7 +35,7 @@ DEFINE_DMABUF_EVENT(tracing_mark_write_dma32);
 
 #undef TRACE_INCLUDE_FILE
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../drivers/dma-buf/heaps
+#define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE mtk_dmabuf_events
 
 /* This part must be outside protection */
