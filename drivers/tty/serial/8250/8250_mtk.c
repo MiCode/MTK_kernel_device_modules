@@ -1551,6 +1551,32 @@ static int mtk8250_uart_polling_resume_state(void)
 	return 0;
 }
 
+static bool is_dma_ready(struct uart_8250_port *up, struct mtk8250_uart_info *uart_reg)
+{
+	if (!up || !uart_reg)
+		return false;
+
+	uart_reg->rx_remain[0] = serial_in(up, MTK_UART_DEBUG7);
+	uart_reg->db5[0] = serial_in(up, MTK_UART_DEBUG5);
+	if(uart_reg->rx_remain[0] & 0x3F) {
+		mdelay(2);
+		uart_reg->rx_remain[1] = serial_in(up, MTK_UART_DEBUG7);
+		uart_reg->db5[1] = serial_in(up, MTK_UART_DEBUG5);
+		if (uart_reg->rx_remain[1] & 0x3F) {
+			mdelay(3);
+			uart_reg->rx_remain[2] = serial_in(up, MTK_UART_DEBUG7);
+			uart_reg->db5[2] = serial_in(up, MTK_UART_DEBUG5);
+			mdelay(7);
+			uart_reg->rx_remain[3] = serial_in(up, MTK_UART_DEBUG7);
+			uart_reg->db5[3] = serial_in(up, MTK_UART_DEBUG5);
+			if ((uart_reg->rx_remain[2] & 0x3F) &&
+				(uart_reg->rx_remain[3] & 0x3F))
+				pr_info("[%s], data[0x%x]\n",__func__, serial_in(up, UART_RX));
+		}
+	}
+	return true;
+}
+
 int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 {
 	int ret  = 0;
@@ -1558,6 +1584,7 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 	unsigned int rx_state = 0;
 	struct uart_8250_port *up = NULL;
 	unsigned int xoff = 0;
+	struct mtk8250_uart_info reg_dump = {{0},{0}};
 
 	if (uarthub_drv_cbs.dev0_set_tx_request){
 		if (hub_uart_data != NULL && hub_uart_data->support_wakeup) {
@@ -1622,6 +1649,9 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 						#endif
 					}
 				#endif
+
+				if(!is_dma_ready(up, &reg_dump))
+					pr_info("[warning]%s: is_dma_ready up/reg_dump is null !!\n",__func__);
 
 				atomic_set(&hub_uart_data->wakeup_state, 1);
 				pr_info("[%s]: atomic_set wakeup_state 1,rx_state[%d], INB[0x%x]\n"
@@ -2677,32 +2707,6 @@ static bool mtk8250_dma_filter(struct dma_chan *chan, void *param)
 	return false;
 }
 #endif
-
-static bool is_dma_ready(struct uart_8250_port *up, struct mtk8250_uart_info *uart_reg)
-{
-	if (!up || !uart_reg)
-		return false;
-
-	uart_reg->rx_remain[0] = serial_in(up, MTK_UART_DEBUG7);
-	uart_reg->db5[0] = serial_in(up, MTK_UART_DEBUG5);
-	if(uart_reg->rx_remain[0] & 0x3F) {
-		mdelay(2);
-		uart_reg->rx_remain[1] = serial_in(up, MTK_UART_DEBUG7);
-		uart_reg->db5[1] = serial_in(up, MTK_UART_DEBUG5);
-		if (uart_reg->rx_remain[1] & 0x3F) {
-			mdelay(3);
-			uart_reg->rx_remain[2] = serial_in(up, MTK_UART_DEBUG7);
-			uart_reg->db5[2] = serial_in(up, MTK_UART_DEBUG5);
-			mdelay(7);
-			uart_reg->rx_remain[3] = serial_in(up, MTK_UART_DEBUG7);
-			uart_reg->db5[3] = serial_in(up, MTK_UART_DEBUG5);
-			if ((uart_reg->rx_remain[2] & 0x3F) &&
-				(uart_reg->rx_remain[3] & 0x3F))
-				pr_info("[%s], data[0x%x]\n",__func__, serial_in(up, UART_RX));
-		}
-	}
-	return true;
-}
 
 static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 {
