@@ -1327,6 +1327,8 @@ static ssize_t default_fps_margin_support_store(struct kobject *kobj,
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
 	int i32Value;
+	struct fdvfs_ipi_data ipi_data = {0};
+	int ret = 0;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
@@ -1335,6 +1337,13 @@ static ssize_t default_fps_margin_support_store(struct kobject *kobj,
 					ignore_fpsgo_enable = 1;
 				else
 					ignore_fpsgo_enable = 0;
+
+				ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_USE_DEFAULT_MAGIN_ENABLE;
+				ipi_data.u.set_para.arg[1] = ignore_fpsgo_enable;
+
+				ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+				if (ret)
+					GED_LOGD("%s err:%d\n", __func__, ret);
 			}
 		}
 	}

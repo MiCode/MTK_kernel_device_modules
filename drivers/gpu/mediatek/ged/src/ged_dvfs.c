@@ -2853,6 +2853,8 @@ static bool ged_dvfs_policy(
 		int ultra_low = 0;
 		int pid = 0;
 		int q = 0;
+		unsigned int t_fps_use = 0;
+		int t_fps = 0;
 
 		/* set t_gpu via risky BQ analysis */
 		ged_kpi_update_t_gpu_latest_uncompleted();
@@ -2866,6 +2868,8 @@ static bool ged_dvfs_policy(
 			t_gpu_target = info.uncompleted_bq.t_gpu_target;
 			pid = info.uncompleted_bq.pid;
 			q = (int)(info.uncompleted_bq.ullWnd % 0xF);
+			t_fps_use = info.uncompleted_bq.t_gpu_fps_reason;
+			t_fps = info.uncompleted_bq.t_gpu_fps;
 			ged_update_margin_by_fps(t_gpu_target);
 			if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 				t_gpu_target_hd = div_u64((u64)t_gpu_target
@@ -2887,6 +2891,8 @@ static bool ged_dvfs_policy(
 					t_gpu_target = info.completed_bq.t_gpu_target;
 					pid = info.completed_bq.pid;
 					q = (int)(info.completed_bq.ullWnd % 0xF);
+					t_fps_use = info.completed_bq.t_gpu_fps_reason;
+					t_fps = info.completed_bq.t_gpu_fps;
 				}
 				uncomplete_flag = 0;
 			}
@@ -3020,7 +3026,7 @@ static bool ged_dvfs_policy(
 			g_tb_dvfs_margin_mode, g_tb_dvfs_margin_step,
 			g_tb_dvfs_margin_value_min*10);
 		trace_GPU_DVFS__Policy__Loading_based__GPU_Time(t_gpu, t_gpu_target,
-			t_gpu_target_hd, t_gpu_complete, t_gpu_uncomplete , pid , q);
+			t_gpu_target_hd, t_gpu_complete, t_gpu_uncomplete , pid , q, t_fps_use, t_fps);
 		trace_tracing_mark_write(5566, "t_gpu", t_gpu);
 		trace_tracing_mark_write(5566, "t_gpu_target", t_gpu_target);
 

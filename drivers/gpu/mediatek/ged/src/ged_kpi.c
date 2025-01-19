@@ -108,6 +108,19 @@ enum ged_gpu_fps_level {
 	GED_FPS_CONFIG_NUM
 };
 
+enum gpu_fps_reason {
+	GED_FPS_REASON_1 = 1, // start from 1 to avoid not set case
+	GED_FPS_REASON_2 = 2, //deprecated (high frame rate only)
+	GED_FPS_REASON_3 = 3, //deprecated (panel - fps > threshold)
+	GED_FPS_REASON_4 = 4, //fps < level0 part1
+	GED_FPS_REASON_5 = 5, //fps < level0 part2
+	GED_FPS_REASON_6 = 6,
+	GED_FPS_REASON_7 = 7,
+	GED_FPS_REASON_8 = 8,
+	GED_FPS_REASON_9 = 9,
+};
+
+
 #define REFRESH_DIFF           0 // deprecated for limited diff fps with refresh rate
 #define HIGH_REFRESH           0 // deprecated for limited with high refresh rate
 #define GPU_FPS_START_MASK     0x000000FF
@@ -198,6 +211,7 @@ struct GED_KPI_HEAD {
 	unsigned int frame_count;
 	int t_gpu_fps;
 	int t_use_gpu_fps;
+	unsigned int t_use_gpu_fps_reason;
 	int t_last_gpu_fps;
 	int candidate_fps;
 	int candidate_fps_cnt;
@@ -544,8 +558,7 @@ static inline void update_target_by_gpu(struct GED_KPI_HEAD *psHead,
 	if (psHead->t_gpu_fps < g_ged_gpu_fps[upper_level].fps_margin &&
 		psHead->t_gpu_fps >= g_ged_gpu_fps[lower_level].fps_margin) {
 		psHead->t_gpu_target = g_ged_gpu_fps[upper_level].target;
-		trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-			(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, (upper_level << 8) + lower_level);
+		psHead->t_use_gpu_fps_reason = (upper_level << 8) + lower_level;
 		psHead->t_use_gpu_fps = 1;
 	}
 }
@@ -559,30 +572,30 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 		if (psHead->target_fps_v) {	// api target fps
 			psHead->t_cpu_target = (int)((int)GED_KPI_SEC_DIVIDER/psHead->target_fps_v);
 			psHead->t_gpu_target = psHead->t_cpu_target;
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_9;
 			trace_tracing_mark_write(5566, "target_fps_v", psHead->target_fps_v);
 			return;
 		}
 
-		if (psHead->target_fps_margin != GED_KPI_DEFAULT_FPS_MARGIN)
+		if (psHead->target_fps_margin != GED_KPI_DEFAULT_FPS_MARGIN) {
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_8;
 			return;
+		}
 
 		psHead->t_use_gpu_fps = 0;
 		if (g_gpu_fps_start_level == 0 && pre_t_use_gpu_fps) {
 			psHead->t_gpu_target = g_gpu_target_default;
-			 trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-			(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 0);
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_1;
 			return;
 		}
 
 		if (g_target_fps_default < HIGH_REFRESH) {
-			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 1);
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_2;
 			psHead->t_gpu_target = g_gpu_target_default;
 			return;
 		}
 		if (g_target_fps_default - psHead->t_gpu_fps < REFRESH_DIFF) {
-			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 2);
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_3;
 			psHead->t_gpu_target = g_gpu_target_default;
 			return;
 		}
@@ -591,12 +604,9 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 			if (psHead->t_gpu_target < g_gpu_target_default) {
 				psHead->t_gpu_target = g_gpu_target_default;
 				psHead->t_use_gpu_fps = 0;
-				trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 3);
 			} else {
 				psHead->t_use_gpu_fps = pre_t_use_gpu_fps;
-				trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 4);
+				psHead->t_use_gpu_fps_reason = GED_FPS_REASON_5;
 			}
 
 			return;
@@ -604,8 +614,7 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 
 		if (g_invalid_fps) {
 			psHead->t_use_gpu_fps = pre_t_use_gpu_fps;
-			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 6);
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_7;
 			g_invalid_fps = false;
 			return;
 		}
@@ -616,8 +625,7 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 
 		if (psHead->t_use_gpu_fps == 0) {
 			psHead->t_gpu_target = g_gpu_target_default;
-			trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
-				(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, 5);
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_6;
 		}
 
 	}
@@ -650,6 +658,9 @@ void update_gpu_fps_table(int i32MarginValue)
 	unsigned int end_level = (i32MarginValue & GPU_FPS_END_MASK) >> 8;
 	unsigned int margin = (i32MarginValue & GPU_FPS_MARGIN_MASK) >> 16;
 
+	struct fdvfs_ipi_data ipi_data = {0};
+	int ret = 0;
+
 	g_gpu_fps_enable = i32MarginValue;
 
 	if (i32MarginValue != 1) {
@@ -672,6 +683,14 @@ void update_gpu_fps_table(int i32MarginValue)
 	}
 	GED_LOGI("%u, %u, %u",
 		g_gpu_fps_start_level,g_gpu_fps_end_level, g_gpu_fps_margin);
+
+	ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_GPU_FPS_ENABLE;
+	ipi_data.u.set_para.arg[1] = g_gpu_fps_start_level;
+	ipi_data.u.set_para.arg[2] = g_gpu_fps_end_level;
+	ipi_data.u.set_para.arg[3] = g_gpu_fps_margin;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
 }
 
 unsigned int dump_gpu_fps_table(void)
@@ -744,6 +763,10 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 		psHead->frame_count = 0;
 		psHead->ullElapsed_time_per_sec = 0;
 		check_refresh_diff(psHead);
+		trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
+			(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, psHead->t_use_gpu_fps_reason,
+			psHead->t_gpu_target);
+
 	}
 }
 
@@ -2191,6 +2214,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 	unsigned int tmp_sram_rb_write_idx = 0, tmp_sram_rb_read_idx = 0;
 	u64 socTimeStamp = mtk_gpueb_read_soc_timer();
 	union combineData tmp_multi = {0};
+	int target_FPS;
 
 	if (g_psWorkQueue && ged_kpi_enabled()) {
 		struct GED_TIMESTAMP *psTimeStamp = (struct GED_TIMESTAMP *)
@@ -2308,6 +2332,20 @@ static GED_ERROR ged_kpi_push_timestamp(
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS, tmp_multi.value);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_LO, temp_ts.lo_bqid);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_HI, temp_ts.hi_bqid);
+				break;
+			case GED_SET_PANEL_REFRESH_RATE:
+				target_FPS = i32FrameID;
+
+				if (target_FPS > 0 &&
+					target_FPS <= GED_KPI_FPS_LIMIT) {   // valid range
+					if (g_target_fps_default != target_FPS) {   // panel refresh rate change
+						g_target_fps_default = target_FPS;
+						g_gpu_target_default = (int)((int)GED_KPI_SEC_DIVIDER/g_target_fps_default);
+						g_set_panel_refresh_rate = true;
+
+					}
+					trace_tracing_mark_write(5566, "target_fps_panel", target_FPS);
+				}
 				break;
 			default:
 				break;
@@ -3085,6 +3123,8 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 			info->completed_bq.risk = risk_completed;
 			info->completed_bq.ullWnd = psHead->ullWnd;
 			info->completed_bq.pid = psHead->pid;
+			info->completed_bq.t_gpu_fps = psHead->t_gpu_fps;
+			info->completed_bq.t_gpu_fps_reason = psHead->t_use_gpu_fps_reason;
 		}
 		if (risk_uncompleted > info->uncompleted_bq.risk) {
 			info->uncompleted_bq.t_gpu = t_gpu_latest_uncompleted;
@@ -3092,6 +3132,8 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 			info->uncompleted_bq.risk = risk_uncompleted;
 			info->uncompleted_bq.ullWnd = psHead->ullWnd;
 			info->uncompleted_bq.pid = psHead->pid;
+			info->uncompleted_bq.t_gpu_fps = psHead->t_gpu_fps;
+			info->uncompleted_bq.t_gpu_fps_reason = psHead->t_use_gpu_fps_reason;
 			if (psHead->uncomplete_source == GED_TIMESTAMP_TYPE_D)
 				info->uncompleted_bq.useTimeStampD = true;
 			else

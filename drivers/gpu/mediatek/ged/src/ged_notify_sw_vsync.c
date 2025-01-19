@@ -330,6 +330,14 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU));
 		trace_tracing_mark_write(5566, "t_gpu_target",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU));
+		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
+			trace_GPU_DVFS__Policy__Common__Check_Target(
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_PID].addr),
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_Q].addr),
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS].addr),
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_USE].addr),
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
+		}
 		trace_GPU_DVFS__EB_Loading_dump(
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
@@ -461,6 +469,13 @@ void ged_eb_dvfs_frame_done_dump(void)
 	if (mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) >> 8 == 2)
 		trace_tracing_mark_write(5566, "mfrc_policy_margin",
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) & 0xFF);
+
+	trace_GPU_DVFS__Policy__Common__Check_Target(
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_PID].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_Q].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_USE].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
 
 #endif
 }

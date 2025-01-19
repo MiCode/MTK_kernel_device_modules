@@ -341,15 +341,16 @@ TRACE_EVENT(GPU_DVFS__Policy__Common__Commit_Reason__TID,
 
 TRACE_EVENT(GPU_DVFS__Policy__Common__Check_Target,
 
-	TP_PROTO(int pid, int bqid, int fps, int use),
+	TP_PROTO(int pid, int bqid, int fps, int use, int gpu_target),
 
-	TP_ARGS(pid, bqid, fps, use),
+	TP_ARGS(pid, bqid, fps, use, gpu_target),
 
 	TP_STRUCT__entry(
 		__field(int, pid)
 		__field(int, bqid)
 		__field(int, fps)
 		__field(int, use)
+		__field(int, gpu_target)
 	),
 
 	TP_fast_assign(
@@ -357,10 +358,11 @@ TRACE_EVENT(GPU_DVFS__Policy__Common__Check_Target,
 		__entry->bqid = bqid;
 		__entry->fps = fps;
 		__entry->use = use;
+		__entry->gpu_target = gpu_target;
 	),
 
-	TP_printk("gpu_fps=%d, pid=%d, q=%d, use=%d",
-		__entry->fps, __entry->pid, __entry->bqid, __entry->use)
+	TP_printk("gpu_fps=%d, pid=%d, q=%d, use=%d target=%d",
+		__entry->fps, __entry->pid, __entry->bqid, __entry->use, __entry->gpu_target)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Common__SOC_Timer_LB,
@@ -713,9 +715,10 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Bound,
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 
-	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete, int pid ,int q),
+	TP_PROTO(int cur, int target, int target_hd, int complete, int uncomplete, int pid ,
+			 int q, unsigned int fps_use, int fps),
 
-	TP_ARGS(cur, target, target_hd, complete, uncomplete, pid, q),
+	TP_ARGS(cur, target, target_hd, complete, uncomplete, pid, q, fps_use, fps),
 
 	TP_STRUCT__entry(
 		__field(int, cur)
@@ -725,6 +728,8 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 		__field(int, uncomplete)
 		__field(int, pid)
 		__field(int, q)
+		__field(unsigned int, fps_use)
+		__field(int, fps)
 	),
 
 	TP_fast_assign(
@@ -735,11 +740,13 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__GPU_Time,
 		__entry->uncomplete = uncomplete;
 		__entry->pid = pid;
 		__entry->q = q;
+		__entry->fps_use = fps_use;
+		__entry->fps = fps;
 	),
 
-	TP_printk("cur=%d, target=%d, target_hd=%d, complete=%d, uncomplete=%d, pid=%d, q=%d",
+	TP_printk("cur=%d, target=%d, target_hd=%d, complete=%d, uncomplete=%d, pid=%d, q=%d use=%u fps=%d",
 		__entry->cur, __entry->target, __entry->target_hd, __entry->complete,
-		__entry->uncomplete, __entry->pid, __entry->q)
+		__entry->uncomplete, __entry->pid, __entry->q, __entry->fps_use, __entry->fps)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Margin,
@@ -1920,6 +1927,48 @@ TRACE_EVENT(GPU_DVFS__EBRB_Policy_Common,
 		__entry->u7, __entry->r7)
 
 );
+
+TRACE_EVENT(GPU_DVFS__EBRB_2ND_GPU_TIME,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3,
+			const unsigned int *arg4, const unsigned int *arg5),
+	TP_ARGS(arg, arg2, arg3, arg4, arg5),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+		__field(unsigned int, v0)__field(unsigned int, v1)__field(unsigned int, v2)__field(unsigned int, v3)
+		__field(unsigned int, v4)__field(unsigned int, v5)__field(unsigned int, v6)__field(unsigned int, v7)
+		__field(unsigned int, c0)__field(unsigned int, c1)__field(unsigned int, c2)__field(unsigned int, c3)
+		__field(unsigned int, c4)__field(unsigned int, c5)__field(unsigned int, c6)__field(unsigned int, c7)
+		__field(unsigned int, q0)__field(unsigned int, q1)__field(unsigned int, q2)__field(unsigned int, q3)
+		__field(unsigned int, q4)__field(unsigned int, q5)__field(unsigned int, q6)__field(unsigned int, q7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+		__entry->v0 = arg3[0];__entry->v1 = arg3[1];__entry->v2 = arg3[2];__entry->v3 = arg3[3];
+		__entry->v4 = arg3[4];__entry->v5 = arg3[5];__entry->v6 = arg3[6];__entry->v7 = arg3[7];
+		__entry->c0 = arg4[0];__entry->c1 = arg4[1];__entry->c2 = arg4[2];__entry->c3 = arg4[3];
+		__entry->c4 = arg4[4];__entry->c5 = arg4[5];__entry->c6 = arg4[6];__entry->c7 = arg4[7];
+		__entry->q0 = arg5[0];__entry->q1 = arg5[1];__entry->q2 = arg5[2];__entry->q3 = arg5[3];
+		__entry->q4 = arg5[4];__entry->q5 = arg5[5];__entry->q6 = arg5[6];__entry->q7 = arg5[7];
+	),
+
+	TP_printk("u0=%u|%u|%u|%u|%u u1=%u|%u|%u|%u|%u u2=%u|%u|%u|%u|%u u3=%u|%u|%u|%u|%u u4=%u|%u|%u|%u|%u u5=%u|%u|%u|%u|%u u6=%u|%u|%u|%u|%u u7=%u|%u|%u|%u|%u",
+		__entry->u0, __entry->r0, __entry->v0, __entry->c0, __entry->q0,
+		__entry->u1, __entry->r1, __entry->v1, __entry->c1, __entry->q1,
+		__entry->u2, __entry->r2, __entry->v2, __entry->c2, __entry->q2,
+		__entry->u3, __entry->r3, __entry->v3, __entry->c3, __entry->q3,
+		__entry->u4, __entry->r4, __entry->v4, __entry->c4, __entry->q4,
+		__entry->u5, __entry->r5, __entry->v5, __entry->c5, __entry->q5,
+		__entry->u6, __entry->r6, __entry->v6, __entry->c6, __entry->q6,
+		__entry->u7, __entry->r7, __entry->v7, __entry->c7, __entry->q7)
+);
+
 
 #endif /* _TRACE_GED_H */
 

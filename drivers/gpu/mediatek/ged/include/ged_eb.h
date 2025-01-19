@@ -692,6 +692,8 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_DTS_INIT_DCS = 1,
 	GPUFDVFS_IPI_SET_DCS_STRESS = 2,
 	GPUFDVFS_IPI_SET_GOV_ENABLE = 3,
+	GPUFDVFS_IPI_SET_GPU_FPS_ENABLE = 4,
+	GPUFDVFS_IPI_SET_USE_DEFAULT_MAGIN_ENABLE = 5,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 };
 
@@ -959,9 +961,9 @@ typedef struct {
  GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY2, 2, "async_id | apply_async") \
  GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY3, 1, "is_decreasing") \
  GEN("Policy__Loading_based__GPU_Time", GPU_EB_LOG_DUMP_LB_GPU_TIME, 1, "target_hd") \
- GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
- GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
- GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
+ GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1, 2, "pid | bqid") \
+ GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2, 2, "fps | use") \
+ GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3, 1, "t_gpu_target") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE1, 2, "dbg1_1 | dbg1_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE3, 2, "dbg3_1 | dbg3_2") \
@@ -973,9 +975,9 @@ typedef struct {
  /* Enable after Jayer SB due to no space
  GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON2, 2, "pid | bqid") \
  GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON3, 2, "count") \
- GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target1, 2, "pid | bqid") \
- GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target2, 2, "fps | use") \
- GEN("Policy__Common__Check_Target", GPU_EB_LOG_DUMP_Check_Target3, 1, "t_gpu_target") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
+ GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
  GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 2, "ceil | cur") \
  GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 1, "floor") \
  GEN("Policy__Frame_based__Margin_Detail", GPU_EB_LOG_DUMP_FB_MARGIN_DETAIL1, 2, "margin_mode | target_fps_margin") \
@@ -1016,6 +1018,11 @@ typedef struct {
  GEN("t_gpu", GPU_T_GPU, 1, "t_gpu") \
  GEN("t_gpu_target", GPU_T_GPU_TARGET, 1, "t_gpu_target") \
  GEN("t_gpu_target_hd", GPU_T_GPU_TARGET_HD, 1, "t_gpu_target_hd") \
+ GEN("t_q", GPU_T_GPU_FPS_Q, 1, "t_q") \
+ GEN("t_pid", GPU_T_GPU_FPS_PID, 1, "t_pid") \
+ GEN("t_use", GPU_T_GPU_FPS_USE, 1, "t_use") \
+ GEN("t_fps", GPU_T_GPU_FPS, 1, "t_fps") \
+ GEN("t_fps_target", GPU_T_GPU_FPS_TARGET, 1, "t_fps_target") \
  GEN("t_gpu_pipe", GPU_T_GPU_PIPE, 1, "t_gpu_pipe") \
  GEN("t_gpu_real", GPU_T_GPU_REAL, 1, "t_gpu_real") \
  GEN("workload_pipe", GPU_WORKLOAD_PIPE, 1, "workload_pipe") \

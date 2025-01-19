@@ -77,6 +77,7 @@ struct ged_risky_bq_info {
 		unsigned long long ullWnd;
 		bool useTimeStampD;
 		int pid;
+		unsigned int t_gpu_fps_reason;
 	} completed_bq, uncompleted_bq;
 
 	unsigned int total_gpu_completed_count;
