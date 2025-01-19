@@ -25,15 +25,16 @@
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DPCAEE(fmt, args...) \
-	do { \
-		char str[200]; \
-		int r; \
-		pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args); \
-		r = snprintf(str, 199, "DPC:" fmt, ##args); \
-		if (r < 0) \
-			pr_info("snprintf error\n"); \
-		aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT |DB_OPT_MMPROFILE_BUFFER, \
-				       str, fmt, ##args); \
+	do {                                                                                     \
+		char str[200];                                                                   \
+		int r;                                                                           \
+		pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args);               \
+		r = snprintf(str, 199, "DPC:" fmt, ##args);                                      \
+		if (r < 0)                                                                       \
+			pr_info("snprintf error\n");                                             \
+		aee_kernel_warning_api(__FILE__, __LINE__,                                       \
+				       DB_OPT_DEFAULT | DB_OPT_FTRACE | DB_OPT_MMPROFILE_BUFFER, \
+				       str, fmt, ##args);                                        \
 	} while (0)
 #else /* !CONFIG_MTK_AEE_FEATURE */
 #define DPCAEE(fmt, args...) \

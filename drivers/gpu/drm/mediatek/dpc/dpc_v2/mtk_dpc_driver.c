@@ -323,8 +323,10 @@ static inline int dpc_pm_ctrl(bool en)
 		}
 
 		/* read dummy register to make sure it's ready to use */
-		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0))
+		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0)) {
 			DPCAEE("read mminfra dummy failed");
+			return -2;
+		}
 
 		/* disable devapc power check false alarm, */
 		/* DPC address is bound by power of disp1 on 6989 */
@@ -1529,17 +1531,17 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user _user)
 
 	switch (user) {
 	case DISP_VIDLE_USER_MML1:
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
 		break;
 	case DISP_VIDLE_USER_MML0:
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
+		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
 		break;
 	case DISP_VIDLE_USER_PQ:
 		if (g_priv->root_dev) {
 			/* can only be used by USER_PQ, as it will not be used within ISR */
 			pm_runtime_get_sync(g_priv->root_dev);
 			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
-			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+			ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
 			pm_runtime_put_sync(g_priv->root_dev);
 		} else
 			udelay(post_vlp_delay);
@@ -1552,7 +1554,7 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user _user)
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
+		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
 		break;
 	default:
 		udelay(post_vlp_delay);
