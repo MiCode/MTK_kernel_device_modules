@@ -27,8 +27,12 @@ struct mtk_disp_wdma_data {
 	bool is_support_34bits;
 	bool is_support_ufbc;
 	bool use_larb_control_sec;
+	bool skip_secure;
 	bool (*is_right_wdma_comp)(struct mtk_ddp_comp *comp);
 	unsigned int (*hrt_channel)(struct mtk_ddp_comp *comp);
+	void (*aid_sel_manual)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
+	void (*sec_set)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec);
+	void (*sec_aid_config)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec);
 };
 
 #endif
