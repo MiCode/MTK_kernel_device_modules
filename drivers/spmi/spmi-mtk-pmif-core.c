@@ -1430,6 +1430,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 	// Write fail nack, causing OP_ST_NACK/PMIF_NACK/PMIF_BYTE_ERR/PMIF_GRP_RD_ERR
 	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
+		spmi_dump_spmimst_all_reg();
 		if (spmi_p_nack & 0xD8)
 			dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
 
