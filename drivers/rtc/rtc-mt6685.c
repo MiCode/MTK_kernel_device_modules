@@ -16,6 +16,7 @@
 #include <linux/mfd/mt6685/rtc.h>
 #include <linux/mfd/mt6685/core.h>
 #include <linux/mfd/mt6685/registers.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/nvmem-provider.h>
 #include <linux/sched/clock.h>
 #include <linux/spmi.h>
@@ -551,6 +552,68 @@ bool mtk_rtc_is_pwron_alarm(struct mt6685_rtc *rtc,
 exit:
 	dev_err(rtc->rtc_dev->dev.parent, "%s error\n", __func__);
 	return false;
+}
+
+static void set_rtc_ext_status_value(struct mt6685_rtc *rtc, u8 val)
+{
+	struct nvmem_cell *cell;
+	u32 length = 1;
+	int ret;
+
+	cell = nvmem_cell_get(rtc->rtc_dev->dev.parent, "rtc_status");
+	if (IS_ERR(cell)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to get status cell = %p\n", cell);
+		return;
+	}
+
+	ret = nvmem_cell_write(cell, &val, length);
+	nvmem_cell_put(cell);
+
+	if (ret != length)
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to write status cell\n");
+}
+
+static u8 get_rtc_ext_con_value(struct mt6685_rtc *rtc)
+{
+	struct nvmem_cell *cell;
+	u8 *buf, data;
+
+	cell = nvmem_cell_get(rtc->rtc_dev->dev.parent, "rtc_con");
+	if (IS_ERR(cell)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to get con cell = %p\n", cell);
+		return 0;
+	}
+
+	buf = nvmem_cell_read(cell, NULL);
+	nvmem_cell_put(cell);
+
+	if (IS_ERR(buf)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to read con cell\n");
+		return 0;
+	}
+	data = *buf;
+	kfree(buf);
+
+	return data;
+}
+
+static void set_rtc_ext_con_value(struct mt6685_rtc *rtc, u8 val)
+{
+	struct nvmem_cell *cell;
+	u32 length = 1;
+	int ret;
+
+	cell = nvmem_cell_get(rtc->rtc_dev->dev.parent, "rtc_con");
+	if (IS_ERR(cell)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to get con cell = %p\n", cell);
+		return;
+	}
+
+	ret = nvmem_cell_write(cell, &val, length);
+	nvmem_cell_put(cell);
+
+	if (ret != length)
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to write con cell\n");
 }
 #endif
 
@@ -1351,6 +1414,9 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 	}
 
 #ifdef SUPPORT_PWR_OFF_ALARM
+	if (rtc->data->chip_version == MT6687_SERIES)
+		rtc->ext_sts_support = device_property_read_bool(&pdev->dev, "nvmem-cells");
+
 	mt6685_rtc_suspend_lock =
 		wakeup_source_register(NULL, "mt6685-rtc suspend wakelock");
 
@@ -1443,6 +1509,7 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 	ktime_t ktime_now;
 	ktime_t ktime_alarm;
 	bool is_pwron_alarm = false;
+	u8 ext_rtc_con = 0;
 #endif
 
 	/* disable PWREN */
@@ -1465,6 +1532,10 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 #ifdef SUPPORT_PWR_OFF_ALARM
 	is_pwron_alarm = mtk_rtc_is_pwron_alarm(rtc,
 				&rtc_time_now, &rtc_time_alarm);
+
+	if (rtc->ext_sts_support)
+		set_rtc_ext_status_value(rtc, 0xC); /* Clear ext alarm status */
+
 	if (is_pwron_alarm) {
 		rtc_time_now.tm_year += RTC_MIN_YEAR_OFFSET;
 		rtc_time_now.tm_mon--;
@@ -1490,6 +1561,13 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 
 		if (ktime_after(ktime_alarm, ktime_now)) {
 			/* enable PWREN */
+			if (rtc->ext_sts_support) {
+				ext_rtc_con = get_rtc_ext_con_value(rtc);
+				set_rtc_ext_con_value(rtc, ext_rtc_con | (0x40));
+				ext_rtc_con = get_rtc_ext_con_value(rtc);
+				pr_notice("ext_rtc_con = %x\n", ext_rtc_con);
+			}
+
 			power_on_mclk(rtc);
 			bbpu = RTC_BBPU_KEY | RTC_BBPU_PWREN;
 			ret = rtc_write(rtc, rtc->addr_base + RTC_BBPU, bbpu);

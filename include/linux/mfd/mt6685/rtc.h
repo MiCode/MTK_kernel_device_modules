@@ -310,6 +310,7 @@ struct mt6685_rtc {
 #ifdef SUPPORT_PWR_OFF_ALARM
 	struct work_struct work;
 	struct completion comp;
+	bool   ext_sts_support;
 #if IS_ENABLED(CONFIG_PM)
 struct notifier_block pm_nb;
 #endif
