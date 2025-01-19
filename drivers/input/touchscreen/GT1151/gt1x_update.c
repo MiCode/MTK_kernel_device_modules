@@ -757,7 +757,6 @@ int gt1x_check_subsystem_in_flash(struct fw_subsystem_info *subsystem)
 	u32 length = subsystem->length;
 	int ret;
 	int check_state = 0;
-	int retry = 5;
 	u8 *fw;
 
 	GTP_INFO("Subsystem: %d", subsystem->type);
@@ -787,7 +786,6 @@ int gt1x_check_subsystem_in_flash(struct fw_subsystem_info *subsystem)
 
 		length -= block_len;
 		checked_len += block_len;
-		retry = 5;
 	}
 	if (check_state)
 		GTP_ERROR("Subsystem in flash is broken!");
