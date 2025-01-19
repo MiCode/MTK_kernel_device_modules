@@ -80,6 +80,10 @@
 
 #include <soc/mediatek/mmqos.h>
 
+// [0] after mode switch [1] fps hint
+int dynamic_vidle_enable;
+module_param(dynamic_vidle_enable, int, 0644);
+
 //force on:0x10001, off:0x10000
 int debug_ct_wait;
 module_param(debug_ct_wait, int, 0644);
@@ -6202,14 +6206,11 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
 			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	}
-	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE) {
-		//workaround for hwc
-		if (mtk_crtc->mode_idx
-			== old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
-			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]
-				= mtk_crtc->mode_idx;
-		}
-	}
+
+	/* FIXME: workaround for hwc */
+	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
+		if (mtk_crtc->mode_idx == old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] = mtk_crtc->mode_idx;
 
 	DDPMSG("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
@@ -6232,8 +6233,10 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	drm_mode_set_crtcinfo(&new_state->adjusted_mode, 0);
 
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
-		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
+	    new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) {
 		mtk_crtc->mode_chg = true;
+		new_mtk_state->disp_mode_changed = true;
+	}
 }
 
 void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
@@ -15900,8 +15903,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	static unsigned int position;
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
-	bool mode_changed = old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
-			    mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	struct mtk_ddp_comp *output_comp;
 	unsigned int partial_enable = 0;
 #ifndef DRM_CMDQ_DISABLE
@@ -16149,7 +16150,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
 			    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
-			    (!mode_changed || (mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
+			    (!mtk_crtc_state->disp_mode_changed ||
+			    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
 				DDPDBG("partial update is disable and equal to old\n");
 			else
 				/* set partial update */
@@ -16172,10 +16174,26 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 
 		/* keep power on to avoid extra TE during mode switch process */
-		if (mode_changed)
+		if (mtk_crtc_state->disp_mode_changed)
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
-		else
-			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
+		else {
+			if (dynamic_vidle_enable) {
+				static u8 debounce = 3;
+
+				if (old_mtk_state->disp_mode_changed)
+					debounce = 3;
+				else if(--debounce == 1) {
+					DDPMSG("disp_mode_changed(1->0->0->0) enable vidle\n");
+					mtk_vidle_config_ff(true);
+				} else if (debounce == 0)
+					mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
+									    mtk_crtc_state->cmdq_handle);
+			} else {
+				/* this is the only way to release DISP_VIDLE_USER_DISP_DPC_CFG */
+				mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
+								    mtk_crtc_state->cmdq_handle);
+			}
+		}
 	}
 #endif
 

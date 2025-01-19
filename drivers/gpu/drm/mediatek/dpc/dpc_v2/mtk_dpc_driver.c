@@ -68,6 +68,11 @@ module_param(wfe_prete, int, 0644);
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
 
+/* debug emi violation */
+static void __iomem *mmpc_emi_req;
+static void __iomem *mmpc_ddrsrc_req;
+static void __iomem *spm_ddr_emi_req;
+
 static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
 static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
 static noinline int tracing_mark_write(const char buf[])
@@ -1243,8 +1248,14 @@ irqreturn_t mt6991_irq_handler(int irq, void *dev_id)
 	}
 
 	/* Panel TE */
-	if (disp_sta & BIT(18))
-		dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
+	if (disp_sta & BIT(18)) {
+		if (mmpc_emi_req && mmpc_ddrsrc_req && spm_ddr_emi_req)
+			dpc_mmp(prete, MMPROFILE_FLAG_PULSE,
+				(readl(mmpc_emi_req) & 0xffff) << 16 | (readl(mmpc_ddrsrc_req) & 0xffff),
+				readl(spm_ddr_emi_req));
+		else
+			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, 0);
+	}
 	if (disp_sta & BIT(9)) {
 		u32 presz = DPC2_DT_PRESZ;
 
@@ -1415,6 +1426,10 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		/* power check by dpc, instead of subsys_pm */
 		for (subsys = 0; subsys < DPC_SUBSYS_CNT; subsys++)
 			priv->mtcmos_cfg[subsys].chk_pa = priv->dpc_pa + priv->mtcmos_cfg[subsys].cfg + 0x8;
+
+		mmpc_emi_req = ioremap(0x31b5103c, 0x4);
+		mmpc_ddrsrc_req = ioremap(0x31b5101c, 0x4);
+		spm_ddr_emi_req = ioremap(0x1c00488c, 0x4);
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
