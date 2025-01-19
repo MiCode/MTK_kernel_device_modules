@@ -422,7 +422,8 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	/* handle iova to eva */
 	mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%llu btype(%d)",
 		m->device_iova, m->dva_size, m->buf_type);
-	ret = apu_mem_map_iova(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva);
+	ret = apu_mem_map_iova(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva,
+			0);
 	mdw_trace_end();
 
 	if (ret) {
@@ -603,7 +604,7 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%llu btype(%d)",
 			m->device_iova, m->dva_size, m->buf_type);
 		ret = apu_mem_map_iova(m->buf_type, (uint64_t)mpriv, m->device_iova,
-				m->dva_size, &eva);
+				m->dva_size, &eva, 0);
 		mdw_trace_end();
 		if (ret) {
 			mdw_drv_err("apu_mem_map_iova fail s(0x%llx) ret(%d),\n", (uint64_t)mpriv, ret);

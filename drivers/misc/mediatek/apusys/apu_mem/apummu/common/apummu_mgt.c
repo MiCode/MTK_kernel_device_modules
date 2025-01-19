@@ -38,6 +38,7 @@ static struct delayed_work DRAM_free_work;
 #define EVA2IOVA(input_addr, offset)	(input_addr + offset)
 
 #define AMMU_SSID_MAX		(256)
+#define SLC_DC_BUF_EVA      0x0F000000
 
 static DEFINE_SPINLOCK(ssid_lock);
 static DECLARE_BITMAP(ssid_bitmap, AMMU_SSID_MAX);
@@ -52,7 +53,7 @@ static DECLARE_BITMAP(ssid_bitmap, AMMU_SSID_MAX);
  * @description:
  *  encode input addr according to type
  */
-static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *output_addr)
+static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *output_addr, uint SLC_DC_EN)
 {
 	int ret = 0;
 	uint64_t ret_addr;
@@ -60,6 +61,9 @@ static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *o
 	switch (type) {
 	case AMMU_DATA_BUF:
 		ret_addr = IOVA2EVA(input_addr, g_adv->plat.encode_offset);
+		pr_info("apummu DC buf:0x%llx\n", input_addr);
+		if (SLC_DC_EN)
+			ret_addr = SLC_DC_BUF_EVA;
 		break;
 	case AMMU_CMD_BUF:
 	case AMMU_VLM_BUF:
@@ -564,7 +568,7 @@ exit:
 
 /* device_va == iova */
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint64_t device_va,
-								uint64_t buf_size, uint64_t *eva)
+								uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
 {
 	int ret = 0;
 	uint64_t ret_eva = 0;
@@ -613,7 +617,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	}
 
 	/* addr encode and CHECK input type */
-	ret = addr_encode(device_va, type, &ret_eva);
+	ret = addr_encode(device_va, type, &ret_eva, SLC_DC_EN);
 	if (ret)
 		goto out;
 

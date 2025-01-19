@@ -172,7 +172,7 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 
 	switch (mode) {
 	case AMMU_ADD_STABLE: // 0
-		ret = apummu_iova2eva(type, session, device_va, 0, &eva);
+		ret = apummu_iova2eva(type, session, device_va, 0, &eva, 0);
 		if (ret)
 			AMMU_LOG_ERR("apummu_iova2eva fail\n");
 		else
@@ -225,7 +225,7 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			break;
 
 		// ret = apummu_map_mem(session, type, &addr);
-		ret = addr_encode_and_write_stable(0, session, addr, size, &eva);
+		ret = addr_encode_and_write_stable(0, session, addr, size, &eva, 0);
 		if (ret)
 			break;
 

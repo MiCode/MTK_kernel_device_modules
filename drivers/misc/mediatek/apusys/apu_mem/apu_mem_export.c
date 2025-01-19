@@ -138,13 +138,13 @@ int apu_mem_rvs_get_pool_size(uint32_t type, uint32_t *size)
 
 /* APUMMU only API */
 int apu_mem_map_iova(uint32_t type, uint64_t session, uint64_t device_va,
-			uint64_t buf_size, uint64_t *eva)
+			uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
 {
 	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_map_iova == NULL)
 		return -EOPNOTSUPP;
 
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_map_iova(type, session,
-		device_va, buf_size, eva);
+		device_va, buf_size, eva, SLC_DC_EN);
 }
 
 int apu_mem_iova_decode(uint64_t eva, uint64_t *iova)

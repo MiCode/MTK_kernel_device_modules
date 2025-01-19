@@ -31,6 +31,9 @@ enum {
 	APU_SYSMEM_DOMAIN_CODE, // 32bit addr
 	APU_SYSMEM_DOMAIN_DATA, // long addr
 	APU_SYSMEM_DOMAIN_SHARE,// share addr
+	APU_SYSMEM_DOMAIN_CODE_COHERENT, // COHERENT use 32bit addr
+	APU_SYSMEM_DOMAIN_DATA_COHERENT, // COHERENT use long addr
+	APU_SYSMEM_DOMAIN_SHARE_COHERENT, // COHERENT use long addr
 	APU_SYSMEM_DOMAIN_MAX,
 };
 
@@ -74,22 +77,45 @@ static struct device *apu_sysmem_get_mem_dev(uint64_t map_bitmask)
 	struct device *mem_dev = NULL;
 
 	/* choose memory device by type */
-	if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_DEVICE_VA) {
+	if ((map_bitmask & F_APU_SYSMEM_MAP_TYPE_DEVICE_VA)) {
+		if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SHAREABLE) {
+			if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE_COHERENT] == NULL)
+				apu_sysmem_err("not support coherence 32bit device va\n");
+			else
+				mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE_COHERENT];
+		} else {
 		if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE] == NULL)
 			apu_sysmem_err("not support 32bit device va\n");
 		else
 			mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE];
+		}
 	} else if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_DEVICE_LONGVA) {
+		if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SHAREABLE) {
+			if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_DATA_COHERENT] == NULL)
+				apu_sysmem_err("not support coherence long addr device va\n");
+			else
+				mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_DATA_COHERENT];
+		} else {
 		if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_DATA] == NULL)
 			apu_sysmem_err("not support long addr device va\n");
 		else
 			mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_DATA];
+		}
 	} else if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_DEVICE_SHAREVA) {
+		if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SHAREABLE) {
+			if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_SHARE_COHERENT] == NULL) {
+				apu_sysmem_info("not support coherence share addr device va\n");
+				mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE_COHERENT];
+			} else {
+				mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_SHARE_COHERENT];
+			}
+		} else {
 		if (g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_SHARE] == NULL) {
 			apu_sysmem_info("not support share addr device va\n");
 			mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_CODE];
 		} else {
 			mem_dev = g_apu_sysmem_mgr.dev[APU_SYSMEM_DOMAIN_SHARE];
+		}
 		}
 	} else {
 		apu_sysmem_err("no va map bit\n");
@@ -222,7 +248,7 @@ static bool apu_sysmem_get_ssid_en(struct device *dev)
 
 static struct dma_buf_attachment *apu_sysmem_buf_attach(struct apu_sysmem_map *map)
 {
-	if (!map->ssid_en || !map->ssid)
+	if (!map->ssid_en || !map->ssid || (map->map_bitmask & F_APU_SYSMEM_MAP_TYPE_SLC_DC))
 		goto next;
 
 	return dma_buf_attach_ssid(map->dbuf, map->mem_dev, map->ssid);
@@ -237,10 +263,20 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	struct apu_sysmem_map *map = NULL;
 	struct scatterlist *sg = NULL;
 	int ret = 0, i = 0;
+	uint a_SLC_DC_EN;
+	//bool is_cached = false;
 
 	/* get dmabuf's ref */
 	get_dma_buf(dbuf);
 
+	/* check dma buf cachable or not TODO: kernel-6.1 not support*/
+	#if 0
+	is_cached = !is_uncached_dmabuf(dbuf);
+	if ((!is_cached) && (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SHAREABLE)) {
+		apu_sysmem_err("sharable buf but not cached\n");
+		goto put_dma_buf;
+	}
+	#endif
 	/* new map */
 	map = kzalloc(sizeof(*map), GFP_KERNEL);
 	if (!map) {
@@ -271,6 +307,11 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 		}
 	}
 
+	if (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SLC_DC)
+		a_SLC_DC_EN = 1;
+	else
+		a_SLC_DC_EN = 0;
+
 	/* map by iommu/smmu */
 	map->attach = apu_sysmem_buf_attach(map);
 	if (IS_ERR(map->attach)) {
@@ -295,7 +336,7 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 
 	/* map eva by apummu */
 	ret = apu_mem_map_iova(apu_sysmem_mapflag2ammu(map_bitmask), allocator->session_id,
-		map->device_iova, map->size, &map->device_va);
+		map->device_iova, map->size, &map->device_va, a_SLC_DC_EN);
 	if (ret) {
 		apu_sysmem_err("map dmabuf eva failed(%d), dbuf(0x%llx) map_bitmask(0x%llx)\n",
 			ret, (uint64_t)dbuf, map_bitmask);
@@ -631,6 +672,9 @@ static const struct of_device_id mem_of_match[] = {
 	{.compatible = "mediatek, apu_mem_code"},
 	{.compatible = "mediatek, apu_mem_data"},
 	{.compatible = "mediatek, apu_mem_share"},
+	{.compatible = "mediatek, apu_mem_code_coherent"},
+	{.compatible = "mediatek, apu_mem_data_coherent"},
+	{.compatible = "mediatek, apu_mem_share_coherent"},
 	{},
 };
 

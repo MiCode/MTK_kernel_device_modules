@@ -371,9 +371,9 @@ err:
  *  for apummu, we also record translate info into session table
  */
 int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
-		uint64_t buf_size, uint64_t *eva)
+		uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
 {
-	return addr_encode_and_write_stable(type, session, device_va, buf_size, eva);
+	return addr_encode_and_write_stable(type, session, device_va, buf_size, eva, SLC_DC_EN);
 }
 
 /**
