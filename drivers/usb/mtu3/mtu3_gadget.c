@@ -863,6 +863,7 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	mtu->g.sg_supported = 0;
 	mtu->g.name = MTU3_DRIVER_NAME;
 	mtu->g.irq = mtu->irq;
+	mtu->g.lpm_capable = mtu->u3_lpm;
 	mtu->is_active = 0;
 	mtu->delayed_status = false;
 
