@@ -625,6 +625,9 @@
 	#define REG_DMR_USE_HRT_DDREN_REQ				REG_FLD_MSB_LSB(1, 1)
 	#define REG_DMR_STASH_DDREN_REQ_DISABLE			REG_FLD_MSB_LSB(16, 16)
 	#define REG_DMR_STASH_USE_HRT_DDREN_REQ			REG_FLD_MSB_LSB(17, 17)
+#define MT6993_DISP_ODDMR_SMI_SB_FLG_DMR			0x60
+	#define MT6993_REG_DMR_RE_ULTRA_MODE			REG_FLD_MSB_LSB(11, 8)
+	#define MT6993_REG_DMR_STASH_ULTRA_RE_FRCE		REG_FLD_MSB_LSB(19, 19)
 //DBI ctrl
 #define DISP_ODDMR_DBI_SHADOW_CTRL					0x10734
 	#define DBI_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
@@ -4611,6 +4614,14 @@ static void mtk_oddmr_dmr_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	value = 0;
 	mask = 0;
 	if (oddmr_data->data->dmr_version == MTK_DMR_V2) {
+		if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
+			value = 0; mask = 0;
+			SET_VAL_MASK(value, mask, 2, MT6993_REG_DMR_RE_ULTRA_MODE);
+			value = 0; mask = 0;
+			SET_VAL_MASK(value, mask, 1, MT6993_REG_DMR_STASH_ULTRA_RE_FRCE);
+			mtk_oddmr_write_mask(comp, value, MT6993_DISP_ODDMR_SMI_SB_FLG_DMR, mask, pkg);
+			return;
+		}
 		value = 0; mask = 0;
 		SET_VAL_MASK(value, mask, 4, MT6991_REG_DMR_RE_ULTRA_MODE);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_SMI_SB_FLG_DMR, mask, pkg);
@@ -6793,13 +6804,14 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				//8.stash cmd
 				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
 				if (oddmr_data->data->is_dmr_support_stash) {
+					stash_lead_time = oddmr_data->data->dmr_stash_lead_time;
 					output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 					if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
 						mtk_ddp_comp_io_cmd(output_comp, NULL,
 							DSI_GET_LINE_TIME_NS, &dsi_line_time);
 					dsi_line_time /= 1000;
 					if (dsi_line_time > 0)
-						stash_lead_cnt = (24 + dsi_line_time - 1) / dsi_line_time;
+						stash_lead_cnt = (stash_lead_time + dsi_line_time - 1) / dsi_line_time;
 					reg_val = (1 << 8) | stash_lead_cnt;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DMR_CTRL30, handle);
@@ -11939,6 +11951,7 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.dmr_version = MTK_DMR_V2,
 	.od_version = MTK_OD_V2,
 	.is_dmr_support_stash = true,
+	.dmr_stash_lead_time = 24,
 	.is_dbi_support_stash = true,
 	.is_od_support_stash = false,
 };
@@ -11964,6 +11977,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.dmr_version = MTK_DMR_V2,
 	.od_version = MTK_OD_V3,
 	.is_dmr_support_stash = true,
+	.dmr_stash_lead_time = 20,
 	.is_dbi_support_stash = true,
 	.is_od_support_stash = false,
 	.slc_read_alloc = 1,
