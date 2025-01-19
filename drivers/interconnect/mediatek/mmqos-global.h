@@ -53,6 +53,7 @@ enum mmqos_state_level {
 	MMPC_V2_ENABLE = BIT(17),
 	AXI_MON_BWL_ENABLE = BIT(18),
 	AXI_MON_OSTDBL_ENABLE = BIT(19),
+	MMUP_ENABLE = BIT(20),
 };
 extern u32 mmqos_state;
 

@@ -241,6 +241,95 @@ u32 get_min_freq_from_axi_mon(uint32_t mux_id)
 }
 EXPORT_SYMBOL(get_min_freq_from_axi_mon);
 
+static RAW_NOTIFIER_HEAD(mtk_mmmc_smmu_factor_notifier_list);
+int mtk_mmmc_smmu_factor_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mtk_mmmc_smmu_factor_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_mmmc_smmu_factor_register_notifier);
+
+u32 get_ostdbl_smmu_factor(void)
+{
+	if (!g_mtk_axi_mon) {
+		MM_MONITOR_ERR("g_mtk_axi_mon is NULL");
+		return 0;
+	}
+	return (g_mtk_axi_mon->ostdbl_bef_smmu_r_factor & 0xff) << 24 |
+		(g_mtk_axi_mon->ostdbl_bef_smmu_w_factor & 0xff) << 16 |
+		(g_mtk_axi_mon->ostdbl_af_smmu_r_factor & 0xff) << 8 |
+		(g_mtk_axi_mon->ostdbl_af_smmu_w_factor & 0xff);
+}
+EXPORT_SYMBOL(get_ostdbl_smmu_factor);
+
+static int mtk_mmmc_set_smmu_factor(const char *val, const struct kernel_param *kp)
+{
+	u32 bef_r, bef_w, af_r, af_w;
+	int ret;
+
+	ret = sscanf(val, "%u %u %u %u", &bef_r, &bef_w, &af_r, &af_w);
+	if (ret != 4) {
+		MM_MONITOR_ERR("fail ret=%d", ret);
+		return ret;
+	}
+
+
+	MM_MONITOR_INFO("update bef_r=%u bef_w=%u af_r=%u af_w=%u", bef_r, bef_w, af_r, af_w);
+	g_mtk_axi_mon->ostdbl_bef_smmu_r_factor = bef_r;
+	g_mtk_axi_mon->ostdbl_bef_smmu_w_factor = bef_w;
+	g_mtk_axi_mon->ostdbl_af_smmu_r_factor = af_r;
+	g_mtk_axi_mon->ostdbl_af_smmu_w_factor = af_w;
+
+	raw_notifier_call_chain(&mtk_mmmc_smmu_factor_notifier_list, 0, NULL);
+	return 0;
+}
+static const struct kernel_param_ops mmmc_smmu_factor_ops = {
+	.set = mtk_mmmc_set_smmu_factor,
+};
+module_param_cb(mtk_mmmc_smmu_factor, &mmmc_smmu_factor_ops, NULL, 0644);
+MODULE_PARM_DESC(mtk_mmmc_smmu_factor, "set smmu factor");
+
+
+static RAW_NOTIFIER_HEAD(mtk_mmmc_threshold_us_notifier_list);
+int mtk_mmmc_threshold_us_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mtk_mmmc_threshold_us_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_mmmc_threshold_us_register_notifier);
+
+u32 get_axi_mon_threshold_us(void)
+{
+	if (!g_mtk_axi_mon) {
+		MM_MONITOR_ERR("g_mtk_axi_mon is NULL");
+		return 0;
+	}
+	return g_mtk_axi_mon->threshold_us;
+}
+EXPORT_SYMBOL(get_axi_mon_threshold_us);
+
+static int mtk_mmmc_set_threshold_us(const char *val, const struct kernel_param *kp)
+{
+	u32 threshold_us;
+	int ret;
+
+	ret = kstrtou32(val, 10, &threshold_us);
+	if (ret) {
+		MM_MONITOR_ERR("fail ret=%d", ret);
+		return ret;
+	}
+
+
+	MM_MONITOR_INFO("update threshold_us=%u", threshold_us);
+	g_mtk_axi_mon->threshold_us = threshold_us;
+
+	raw_notifier_call_chain(&mtk_mmmc_threshold_us_notifier_list, 0, NULL);
+	return 0;
+}
+static const struct kernel_param_ops mmmc_threshold_us_ops = {
+	.set = mtk_mmmc_set_threshold_us,
+};
+module_param_cb(mtk_mmmc_threshold_us, &mmmc_threshold_us_ops, NULL, 0644);
+MODULE_PARM_DESC(mtk_mmmc_threshold_us, "set smmu factor");
+
 void write_axi_register(uint32_t axi_mon_id, uint32_t offset, uint32_t value)
 {
 	void *base;
@@ -1334,6 +1423,11 @@ int mtk_mm_axi_mon_limiter_probe(struct platform_device *pdev)
 	of_property_read_u32(np, "bwl-up-bnd-shift", &g_mtk_axi_mon->bwl_up_bnd_shift);
 	of_property_read_u32(np, "bwl-budget-size", &g_mtk_axi_mon->bwl_budget_size);
 	of_property_read_u32(np, "threshold-us", &g_mtk_axi_mon->threshold_us);
+
+	of_property_read_u32(np, "ostdbl-bef-smmu-r-factor", &g_mtk_axi_mon->ostdbl_bef_smmu_r_factor);
+	of_property_read_u32(np, "ostdbl-bef-smmu-w-factor", &g_mtk_axi_mon->ostdbl_bef_smmu_w_factor);
+	of_property_read_u32(np, "ostdbl-af-smmu-r-factor", &g_mtk_axi_mon->ostdbl_af_smmu_r_factor);
+	of_property_read_u32(np, "ostdbl-af-smmu-w-factor", &g_mtk_axi_mon->ostdbl_af_smmu_w_factor);
 
 	return 0;
 }

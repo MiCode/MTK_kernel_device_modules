@@ -85,6 +85,10 @@ struct mtk_mm_axi_mon {
 	u32 bwl_up_bnd_shift;
 	u32 bwl_budget_size;
 	u32 threshold_us;
+	u32 ostdbl_bef_smmu_r_factor;
+	u32 ostdbl_bef_smmu_w_factor;
+	u32 ostdbl_af_smmu_r_factor;
+	u32 ostdbl_af_smmu_w_factor;
 };
 
 extern larb_axi_mon_mapping *aximon_larb_map;
@@ -218,6 +222,10 @@ void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32
 u16 get_freq_from_mux_id(enum MUX_ID id);
 void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state);
 
+u32 get_ostdbl_smmu_factor(void);
+u32 get_axi_mon_threshold_us(void);
+int mtk_mmmc_smmu_factor_register_notifier(struct notifier_block *nb);
+int mtk_mmmc_threshold_us_register_notifier(struct notifier_block *nb);
 #else
 
 static inline int mtk_mmmc_reinit_all(const char *val, const struct kernel_param *kp)
@@ -276,6 +284,22 @@ static inline u16 get_freq_from_mux_id(enum MUX_ID id)
 static inline void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 {
 	return;
+}
+static inline u32 get_ostdbl_smmu_factor(void)
+{
+	return 0;
+}
+static inline u32 get_axi_mon_threshold_us(void)
+{
+	return 0;
+}
+static inline int mtk_mmmc_smmu_factor_register_notifier(struct notifier_block *nb)
+{
+	return 0;
+}
+static inline int mtk_mmmc_threshold_us_register_notifier(struct notifier_block *nb)
+{
+	return 0;
 }
 #endif /* CONFIG_MTK_MM_MONITOR */
 #endif /* __MTK_MM_MONITOR_CONTROLLER_H__ */

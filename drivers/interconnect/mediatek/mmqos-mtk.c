@@ -30,6 +30,7 @@
 #include "mmqos-vcp-memory.h"
 #include <linux/delay.h>
 #include "mtk-mm-monitor-controller.h"
+#include "mmqos-mmup.h"
 
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
@@ -2450,7 +2451,7 @@ EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
 
 int mtk_mmqos_v2_probe(struct platform_device *pdev)
 {
-	struct task_struct *kthr_vcp;
+	struct task_struct *kthr_vcp, *kthr_mmup;
 	u32 base_tmp, mminfra_base_tmp, range;
 	int ret, probe_ret;
 
@@ -2514,6 +2515,13 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 		MMQOS_DBG("no vmmrc related property");
 		gmmqos->vmmrc_base = NULL;
 	}
+
+	if (mmqos_state & MMUP_ENABLE) {
+		kthr_mmup = kthread_run(mmqos_mmup_init_thread, NULL, "mmqos-mmup");
+		if (IS_ERR(kthr_mmup))
+			MMQOS_ERR("Failed to start mmqos-mmup thread\n");
+	} else
+		MMQOS_DBG("MMUP not enable");
 
 	if (mmqos_state & VCP_ENABLE) {
 		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
@@ -2995,6 +3003,12 @@ static int mmqos_set_state(const char *val, const struct kernel_param *kp)
 
 	MMQOS_DBG("sync mmqos_state: %d -> %d", mmqos_state, state);
 	mmqos_state = state;
+
+	if (mmqos_state & MMUP_ENABLE) {
+		mtk_mmqos_enable_mmup(true);
+		ret = mmqos_mmup_ipi_send(FUNC_MMUP_SYNC_STATE, mmqos_state);
+		mtk_mmqos_enable_mmup(false);
+	}
 
 	if (mmqos_state & VCP_ENABLE) {
 		mtk_mmqos_enable_vcp(true);

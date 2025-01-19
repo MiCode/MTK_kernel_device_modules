@@ -13,7 +13,7 @@ obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON) += mmqos-common.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs
 mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o mmqos-test.o
 ifneq ($(filter y m,$(CONFIG_MTK_MMQOS_VCP)),)
-mmqos-common-objs += mmqos-vcp.o
+mmqos-common-objs += mmqos-vcp.o mmqos-mmup.o
 endif
 ifneq ($(wildcard $(src)/mmqos-mt6873.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6873) += mmqos-mt6873.o
