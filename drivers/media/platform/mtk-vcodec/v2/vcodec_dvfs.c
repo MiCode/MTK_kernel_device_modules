@@ -20,6 +20,10 @@
 #include <linux/vmalloc.h>
 #include "mtk_vcodec_drv.h"
 #include "vcp_feature_define.h"
+#ifdef MS_TO_NS
+#undef MS_TO_NS
+#endif
+#include "pf_ctrl.h"
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -771,3 +775,12 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 		}
 	}
 }
+
+void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
+{
+	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
+		mtk_set_pf_ctrl_enable((bool)enable);
+		mtk_v4l2_debug(0, "%s [VDVFS] pf dynamic control %s\n", __func__, mtk_get_pf_ctrl_enable()?"enable":"disable");
+	}
+}
+
