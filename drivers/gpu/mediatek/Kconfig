@@ -16,6 +16,7 @@ config MTK_GPU_VERSION
 
 config MTK_GPU_LEGACY
 	bool "Specify Mediatek GPU Legacy Project"
+	default n
 	help
 	  Set Y to select this config for legacy GPU project,
 	  and set N to disable.
@@ -179,6 +180,15 @@ config MTK_GPU_MT6833_SUPPORT
 	depends on MTK_GPU_SUPPORT
 	help
 	  Select MediaTek GPU Platform is mt6833.
+	  Set Y or M to select this feature for specific platform-mt6833,
+	  and set N to disable.
+	  It is additional config to separate platforms.
+
+config MTK_GPU_MT6789_SUPPORT
+	tristate "Specify Mediatek GPU Platform is mt6789"
+	depends on MTK_GPU_SUPPORT
+	help
+	  Select MediaTek GPU Platform is mt6789.
 	  Set Y or M to select this feature for specific platform-mt6833,
 	  and set N to disable.
 	  It is additional config to separate platforms.

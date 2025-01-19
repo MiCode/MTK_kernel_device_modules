@@ -42,9 +42,6 @@
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 #include <mtk_low_battery_throttling.h>
 #endif
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
-#include <linux/soc/mediatek/devapc_public.h>
-#endif
 
 /**
  * ===============================================
@@ -106,17 +103,6 @@ unsigned long (*ged_get_last_commit_top_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_top_idx_fp);
 unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
-static bool gpufreq_devapc_vio_callback(void);
-struct devapc_power_callbacks devapc_cb_gpu = {
-	.type = DEVAPC_TYPE_GPU,
-	.query_power = gpufreq_devapc_vio_callback,
-};
-struct devapc_power_callbacks devapc_cb_gpu1 = {
-	.type = DEVAPC_TYPE_GPU1,
-	.query_power = gpufreq_devapc_vio_callback,
-};
-#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 
 /**
  * ===============================================
@@ -1818,14 +1804,6 @@ static void gpufreq_abort(void)
 	BUG_ON(1);
 }
 
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
-static bool gpufreq_devapc_vio_callback(void)
-{
-	gpufreq_set_mfgsys_config(CONFIG_DEVAPC_HANDLE, CONFIG_VAL_IGNORE);
-
-	return GPU_PWR_ON;
-}
-#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void gpufreq_batt_oc_callback(enum BATTERY_OC_LEVEL_TAG batt_oc_level, void *data)
@@ -1888,6 +1866,7 @@ static void gpufreq_init_external_callback(void)
 	!IS_ENABLED(CONFIG_MTK_GPU_MT6761_SUPPORT) && \
 	!IS_ENABLED(CONFIG_MTK_GPU_MT6765_SUPPORT) && \
 	!IS_ENABLED(CONFIG_MTK_GPU_MT6781_SUPPORT) && \
+	!IS_ENABLED(CONFIG_MTK_GPU_MT6789_SUPPORT) && \
 	!IS_ENABLED(CONFIG_MTK_GPU_MT6853_SUPPORT) && \
 	!IS_ENABLED(CONFIG_MTK_GPU_MT6833_SUPPORT)
 	register_pbm_gpu_notify(&pbm_cb);
@@ -1895,27 +1874,16 @@ static void gpufreq_init_external_callback(void)
 
 	/* register power throttling callback */
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-	register_low_battery_notify(&gpufreq_low_batt_callback, LOW_BATTERY_PRIO_GPU, NULL);
+	//register_low_battery_notify(&gpufreq_low_batt_callback, LOW_BATTERY_PRIO_GPU, NULL);
 #endif /* CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-	register_bp_thl_notify(&gpufreq_batt_percent_callback, BATTERY_PERCENT_PRIO_GPU);
+	//register_bp_thl_notify(&gpufreq_batt_percent_callback, BATTERY_PERCENT_PRIO_GPU);
 #endif /* CONFIG_MTK_BATTERY_PERCENT_THROTTLING */
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-	register_battery_oc_notify(&gpufreq_batt_oc_callback, BATTERY_OC_PRIO_GPU, NULL);
+	//register_battery_oc_notify(&gpufreq_batt_oc_callback, BATTERY_OC_PRIO_GPU, NULL);
 #endif /* CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
-
-//todo mark for not ready
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)  && \
-	!IS_ENABLED(CONFIG_MTK_GPU_MT6761_SUPPORT) && \
-	!IS_ENABLED(CONFIG_MTK_GPU_MT6765_SUPPORT) && \
-	!IS_ENABLED(CONFIG_MTK_GPU_MT6781_SUPPORT) && \
-	!IS_ENABLED(CONFIG_MTK_GPU_MT6853_SUPPORT) && \
-	!IS_ENABLED(CONFIG_MTK_GPU_MT6833_SUPPORT)
-	register_devapc_power_callback(&devapc_cb_gpu);
-	register_devapc_power_callback(&devapc_cb_gpu1);
-#endif /* CONFIG_DEVAPC_ARCH_MULTI */
 }
 
 void gpufreq_register_gpufreq_fp(struct gpufreq_platform_fp *platform_fp)
