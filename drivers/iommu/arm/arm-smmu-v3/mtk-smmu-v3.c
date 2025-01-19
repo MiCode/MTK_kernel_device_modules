@@ -2808,9 +2808,9 @@ static int mtk_smmu_suspend_pm_event(struct notifier_block *notifier,
 	case PM_POST_SUSPEND:
 		atomic_set(&data->is_suspend, 0);
 		return NOTIFY_DONE;
+	default:
+		return NOTIFY_OK;
 	}
-
-	return NOTIFY_OK;
 }
 
 static void mtk_smmu_register_power_awake(struct mtk_smmu_data *data)

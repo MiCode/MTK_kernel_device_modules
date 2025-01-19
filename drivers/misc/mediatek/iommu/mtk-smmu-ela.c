@@ -299,11 +299,11 @@ static int smmu_pmu_hw_init(u32 smmu_type)
 
 static int mtk_smmu_ela_hw_init(u32 smmu_type)
 {
-	int ret;
+	int ret = 0;
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return ret;
 	}
 
@@ -363,7 +363,7 @@ static int mtk_smmu_ela_data_init(u32 smmu_type)
 
 int mtk_smmu_ela_init(u32 smmu_type)
 {
-	int ret;
+	int ret = 0;
 
 	if (smmu_type >= SMMU_TYPE_NUM)
 		return -EINVAL;
@@ -387,14 +387,14 @@ EXPORT_SYMBOL_GPL(mtk_smmu_ela_init);
 
 int mtk_smmu_enable_ela(u32 smmu_type)
 {
-	int ret;
+	int ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return ret;
 	}
 
@@ -409,14 +409,14 @@ EXPORT_SYMBOL_GPL(mtk_smmu_enable_ela);
 
 int mtk_smmu_disable_ela(u32 smmu_type)
 {
-	int ret;
+	int ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return ret;
 	}
 
@@ -431,21 +431,22 @@ EXPORT_SYMBOL_GPL(mtk_smmu_disable_ela);
 
 bool mtk_smmu_ela_enabled(u32 smmu_type)
 {
-	bool ret;
+	bool is_enabled = false;
+	int ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return false;
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return false;
 	}
 
-	ret = smmu_hwpmu_enabled(smmu_type);
+	is_enabled = smmu_hwpmu_enabled(smmu_type);
 	mtk_smmu_rpm_put(smmu_type);
 
-	return ret;
+	return is_enabled;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_ela_enabled);
 
@@ -453,13 +454,14 @@ void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type)
 {
 	void __iomem *wp_base;
 	struct smmu_pmu *pmu;
-	int i;
+	int i, ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return;
 
-	if (mtk_smmu_rpm_get(smmu_type)) {
-		dump_ela(s, "smmu_%u ela dump, get power fail\n", smmu_type);
+	ret = mtk_smmu_rpm_get(smmu_type);
+	if (ret) {
+		dump_ela(s, "smmu_%u ela dump, power_status:%d\n", smmu_type, ret);
 		return;
 	}
 
@@ -515,7 +517,7 @@ static int smmu_ela_evts_set(const char *val, const struct kernel_param *kp)
 	u32 tcu_evt = 0, tbu_evt = 0;
 	u32 smmu_type = MM_SMMU;
 	struct smmu_pmu *pmu;
-	int i, ret;
+	int i, ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
@@ -550,7 +552,7 @@ static int smmu_ela_mons_set(const char *val, const struct kernel_param *kp)
 	u32 smmu_type = MM_SMMU;
 	u32 ela_mons[SMMU_ELA_MONITOR_MAX] = { 0 };
 	void __iomem *wp_base;
-	int i, ret;
+	int i, ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
@@ -569,7 +571,7 @@ static int smmu_ela_mons_set(const char *val, const struct kernel_param *kp)
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return -EINVAL;
 	}
 
@@ -614,7 +616,7 @@ static int smmu_ela_enable_set(const char *val, const struct kernel_param *kp)
 
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return -EINVAL;
 	}
 
@@ -640,12 +642,14 @@ static int smmu_ela_dump_get(char *buf, const struct kernel_param *kp)
 	u32 smmu_type = MM_SMMU;
 	void __iomem *wp_base;
 	struct smmu_pmu *pmu;
+	int ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
-	if (mtk_smmu_rpm_get(smmu_type)) {
-		pr_info("%s, smmu_%u get power fail\n", __func__, smmu_type);
+	ret = mtk_smmu_rpm_get(smmu_type);
+	if (ret) {
+		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
 		return -EINVAL;
 	}
 
