@@ -3238,6 +3238,18 @@ static u32 default_iommu_get_valid_tf_id(int tf_id, u32 type, int id)
 	return vld_id;
 }
 
+static u32 mt6993_get_valid_tf_id(int tf_id, u32 type, int id)
+{
+	u32 vld_id = 0;
+
+	if (type == APU_SMMU)
+		vld_id = FIELD_GET(GENMASK(12, 9), tf_id);
+	else
+		vld_id = tf_id & F_MMU_INT_TF_MSK;
+
+	return vld_id;
+}
+
 static bool mt6989_tf_id_is_match(int tf_id, u32 type, int id,
 				  struct mtk_iommu_port port)
 {
@@ -3450,6 +3462,18 @@ static const struct mtk_m4u_plat_data mt6991_smmu_data = {
 	.smmu_port_name = mt6991_smmu_soc_port_name,
 };
 
+static const struct mtk_m4u_plat_data mt6993_smmu_data = {
+	.port_list[MM_SMMU] = mm_port_mt6993,
+	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6993),
+	.port_list[APU_SMMU] = apu_port_mt6993,
+	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6993),
+	.mm_tf_ccu_support = 1,
+	.get_valid_tf_id = mt6993_get_valid_tf_id,
+	.mm_tf_is_gce_videoup = default_tf_is_gce_videoup,
+	.smmu_common_id = default_smmu_common_id,
+	.smmu_port_name = mt6993_smmu_soc_port_name,
+};
+
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6761-iommu-debug", .data = &mt6761_data},
 	{ .compatible = "mediatek,mt6765-iommu-debug", .data = &mt6765_data},
@@ -3469,6 +3493,7 @@ static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6985-iommu-debug", .data = &mt6985_data},
 	{ .compatible = "mediatek,mt6989-smmu-debug", .data = &mt6989_smmu_data},
 	{ .compatible = "mediatek,mt6991-smmu-debug", .data = &mt6991_smmu_data},
+	{ .compatible = "mediatek,mt6993-smmu-debug", .data = &mt6993_smmu_data},
 	{},
 };
 

@@ -7446,4 +7446,104 @@ static inline char *mt6991_smmu_soc_port_name(u32 type, int id, int tf_id)
 	}
 }
 
+static const struct mtk_iommu_port mm_port_mt6993[] = {
+	MM_IOMMU_PORT_INIT("MM_UNKNOWN", 0, 0, 0, 0)
+};
+
+static const struct mtk_iommu_port apu_port_mt6993[] = {
+	/* larb_id:N/A, port_id:N/A, tf_id:ENCODE ID */
+	APU_IOMMU_PORT_INIT("APU_uP", APU_SMMU_M0, 0, 0, 0),
+	APU_IOMMU_PORT_INIT("APU_eDPA", APU_SMMU_M0, 0, 0, 1),
+	APU_IOMMU_PORT_INIT("APU_MDLA0_AXI_0", APU_SMMU_M0, 0, 0, 2),
+	APU_IOMMU_PORT_INIT("APU_MDLA0_AXI_1", APU_SMMU_M0, 0, 0, 3),
+	APU_IOMMU_PORT_INIT("APU_MDLA1_AXI_0", APU_SMMU_M0, 0, 0, 4),
+	APU_IOMMU_PORT_INIT("APU_MDLA1_AXI_1", APU_SMMU_M0, 0, 0, 5),
+	APU_IOMMU_PORT_INIT("APU_MDLA2_AXI_0", APU_SMMU_M0, 0, 0, 6),
+	APU_IOMMU_PORT_INIT("APU_MDLA2_AXI_1", APU_SMMU_M0, 0, 0, 7),
+	APU_IOMMU_PORT_INIT("APU_MVPU_AXI_0", APU_SMMU_M0, 0, 0, 8),
+	APU_IOMMU_PORT_INIT("APU_MVPU_AXI_1", APU_SMMU_M0, 0, 0, 9),
+	APU_IOMMU_PORT_INIT("APU_TDLA", APU_SMMU_M0, 0, 0, 10),
+	APU_IOMMU_PORT_INIT("APU_MDLA3_AXI_0", APU_SMMU_M0, 0, 0, 11),
+	APU_IOMMU_PORT_INIT("APU_MDLA3_AXI_1", APU_SMMU_M0, 0, 0, 12),
+
+	APU_IOMMU_PORT_INIT("APU_UNKNOWN", APU_SMMU_M0, 0, 0, 0)
+};
+
+static inline char *mt6993_soc_m4_port_name(u32 axid)
+{
+	u32 id1_0 = FIELD_GET(GENMASK(1, 0), axid);
+	u32 id2_0 = FIELD_GET(GENMASK(2, 0), axid);
+	u32 id3_0 = FIELD_GET(GENMASK(3, 0), axid);
+
+	if (id1_0 == 0x0)
+		return "SOC_M4_IO_M7_I8B";
+	else if (id1_0 == 0x1)
+		return "SOC_M4_PERI2INFRA2_M";
+	else if (id2_0 == 0x2)
+		return "SOC_M4_CONN_M";
+	else if (id2_0 == 0x6)
+		return "SOC_M4_DFD_M_APB";
+	else if (id3_0 == 0x3)
+		return "SOC_M4_MEM_FAKE_ENG_M4_M";
+	else if (id3_0 == 0x7)
+		return "SOC_M4_SCPSYS_M";
+	else if (id3_0 == 0xB)
+		return "SOC_M4_DPMAIF_M";
+	else if (id3_0 == 0xF)
+		return "SOC_M4_ADSPSYS_M0_M";
+	else
+		return "SOC_M4_UNKNOWN";
+}
+
+static inline char *mt6993_soc_m6_port_name(u32 axid)
+{
+	u32 id1_0 = FIELD_GET(GENMASK(1, 0), axid);
+
+	if (id1_0 == 0x0)
+		return "SOC_M6_MEM_FAKE_ENG_M6_M";
+	else if (id1_0 == 0x1)
+		return "SOC_M6_PERI2INFRA0_M";
+	else if (id1_0 == 0x2)
+		return "SOC_M6_PERI2INFRA2_M";
+	else
+		return "SOC_M6_UNKNOWN";
+}
+
+static inline char *mt6993_soc_m7_port_name(u32 axid)
+{
+	u32 id2_0 = FIELD_GET(GENMASK(2, 0), axid);
+
+	if (id2_0 == 0x0)
+		return "SOC_M7_MEM_FAKE_ENG_M7_M";
+	else if (id2_0 == 0x1)
+		return "SOC_M7_SSR_M";
+	else if (id2_0 == 0x2)
+		return "SOC_M7_PERI2INFRA1_M";
+	else if (id2_0 == 0x3)
+		return "SOC_M7_PERI2INFRA2_M";
+	else if (id2_0 == 0x4)
+		return "SOC_M7_DBG_TRACE_TOP_M";
+	else
+		return "SOC_M7_UNKNOWN";
+}
+
+static inline char *mt6993_smmu_soc_port_name(u32 type, int id, int tf_id)
+{
+	if (type != SOC_SMMU) {
+		pr_info("%s is not support type:%u\n", __func__, type);
+		return NULL;
+	}
+
+	switch (id) {
+	case SOC_SMMU_M4:
+		return mt6993_soc_m4_port_name(tf_id);
+	case SOC_SMMU_M6:
+		return mt6993_soc_m6_port_name(tf_id);
+	case SOC_SMMU_M7:
+		return mt6993_soc_m7_port_name(tf_id);
+	default:
+		return "SOC_UNKNOWN";
+	}
+}
+
 #endif /* IOMMU_PORT_H */
