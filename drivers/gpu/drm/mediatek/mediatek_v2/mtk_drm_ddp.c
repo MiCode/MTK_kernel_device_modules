@@ -25982,8 +25982,10 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 		reg1 = 0;
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
-				reg_data->dispsys_map[cur] == DISPSYS1)
+				reg_data->dispsys_map[cur] == DISPSYS1) {
 			config_regs = mtk_crtc->side_config_regs;
+			addr = MT6991_DISPSYS1_BYPASS_MUX_SHADOW;
+		}
 
 		if (reg_data->dispsys_map && (reg_data->dispsys_map[cur] == OVLSYS0 ||
 			reg_data->dispsys_map[next] == OVLSYS0)) {
@@ -26598,8 +26600,10 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		reg1 = 0;
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
-				reg_data->dispsys_map[cur] == 1)
+				reg_data->dispsys_map[cur] == 1) {
 			config_regs_pa = mtk_crtc->side_config_regs_pa;
+			addr = MT6991_DISPSYS1_BYPASS_MUX_SHADOW;
+		}
 		if (reg_data) {
 			if (reg_data->dispsys_map &&
 				(reg_data->dispsys_map[cur] == OVLSYS0 ||
@@ -33276,6 +33280,8 @@ void mmsys_config_dump_reg_mt6991(void __iomem *config_regs)
 
 	for (off = 0xC30; off <= 0xC40; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
+
+	mtk_serial_dump_reg(config_regs, 0xCF8, 1);
 
 	for (off = 0xD00; off <= 0xFF0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
