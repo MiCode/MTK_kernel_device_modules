@@ -343,6 +343,9 @@ struct mtk_dp {
 	u32 vsv_vers;
 	unsigned long long starttime;
 	bool trigger_db_flag;
+
+	/* cfg ver for diff platform*/
+	int cfg_ver;
 };
 
 #endif /*__DRTX_TYPE_H__*/

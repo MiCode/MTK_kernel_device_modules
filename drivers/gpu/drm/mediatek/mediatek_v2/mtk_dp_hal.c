@@ -226,8 +226,7 @@ void mhal_DPTx_fec_init_setting(struct mtk_dp *mtk_dp)
 
 void mhal_DPTx_InitialSetting(struct mtk_dp *mtk_dp)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		msWrite4ByteMask(mtk_dp, DP_TX_TOP_PWR_STATE,
 				(0x3 << DP_PWR_STATE_FLDMASK_POS), DP_PWR_STATE_FLDMASK);
 
@@ -1256,8 +1255,7 @@ void mhal_DPTx_Audio_TDM_PG_EN(struct mtk_dp *mtk_dp, BYTE Channel,
 				 (0x1 << AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK_POS),
 				 AUDIO_8CH_EN_DP_ENCODER0_P0_FLDMASK);
 		if (!bEnable) {	//TDM audio interface, audio channel number, 7: 8ch
-			if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+			if (mtk_dp->cfg_ver == 2) {
 				msWrite2ByteMask(mtk_dp, REG_331C_DP_ENCODER1_P0,
 				(0x1 << TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK_POS),
 				TDM_AUDIO_DATA_CH_NUM_DP_ENCODER1_P0_FLDMASK);
@@ -1834,7 +1832,7 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 	u32 aux_state = 0;
 
 	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R))
-		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_dp->cfg_ver == 2)
 			msWrite4ByteMask(mtk_dp, REG_36F4_AUX_TX_P0,
 				1<<IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK_POS,
 				IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK);
@@ -1908,7 +1906,7 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 	}
 
 	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R)) {
-		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_dp->cfg_ver == 2)
 			msWrite4ByteMask(mtk_dp, REG_36F4_AUX_TX_P0, 0x0,
 				IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK);
 		else
@@ -2081,8 +2079,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 
 	switch (lane_num) {
 	case DPTx_LANE0:
-		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
 					(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 					DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
@@ -2101,8 +2098,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 		}
 		break;
 	case DPTx_LANE1:
-		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
 					(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 					DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
@@ -2121,8 +2117,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 		}
 		break;
 	case DPTx_LANE2:
-		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
 					(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 					DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
@@ -2141,8 +2136,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 		}
 		break;
 	case DPTx_LANE3:
-		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
 					(swingValue << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 					DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
@@ -2171,8 +2165,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 
 bool mhal_DPTx_ResetSwingtPreEmphasis(struct mtk_dp *mtk_dp)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		msPhyWrite4ByteMask(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
 				(0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
 				DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
@@ -2470,8 +2463,7 @@ void mhal_DPTx_HPDInterruptEnable(struct mtk_dp *mtk_dp, bool enable)
 
 void mhal_DPTx_HPDDetectSetting(struct mtk_dp *mtk_dp)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		//Crystal frequency value for 1us timing normalization
 		//[7:2]: Integer value
 		//[1:0]: Fractional value
@@ -2735,8 +2727,7 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 
 void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		mhal_DPTx_hw_phy_set_param(mtk_dp, MAX_LANECOUNT);
 		mhal_DPTx_PhyDPowerOn(mtk_dp);
 	} else {
@@ -2811,8 +2802,7 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 {
 	DPTXMSG("SSC_enable = %d\n", bENABLE);
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		// power off TPLL and Lane;
 		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
@@ -2882,8 +2872,7 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		// modify timeout threshold = 1595 [12 : 8]
 		msWrite2ByteMask(mtk_dp,
 			REG_360C_AUX_TX_P0,
@@ -2984,8 +2973,7 @@ void mtk_dptx_hal_encoder_reset(struct mtk_dp *mtk_dp)
 void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp)
 {
 	DPTXFUNC();
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		mhal_DPTx_spkg_asp_hb32(mtk_dp, FALSE, DPTX_SDP_ASP_HB3_AU02CH, 0x0);
 		// Mengkun suggest: disable reg_sdp_down_cnt_new_mode
 		msWriteByteMask(mtk_dp, REG_304C_DP_ENCODER0_P0, 0,
@@ -3085,8 +3073,7 @@ void mhal_DPTx_SetTxLaneToLane(struct mtk_dp *mtk_dp, BYTE ucLaneNum,
 
 void mhal_DPTx_PHYD_Reset(struct mtk_dp *mtk_dp)
 {
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, BIT(0));
 		udelay(50);
 		msPhyWriteByteMask(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, BIT(0), BIT(0));
@@ -3129,7 +3116,7 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 		// aux swap
 		msWrite4ByteMask(mtk_dp, REG_360C_AUX_TX_P0, 0, BIT(15));
 		msWrite4ByteMask(mtk_dp, REG_3680_AUX_TX_P0, 0, BIT(0));
-		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			// Phy porting guide (inter-lane skew improvement)
 			msPhyWriteByte(mtk_dp, 0x01A0, 0x46);
 			msPhyWriteByte(mtk_dp, 0x02A0, 0x46);
@@ -3141,7 +3128,7 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 		// aux swap
 		msWrite4ByteMask(mtk_dp, REG_360C_AUX_TX_P0, BIT(15), BIT(15));
 		msWrite4ByteMask(mtk_dp, REG_3680_AUX_TX_P0, BIT(0), BIT(0));
-		if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			// Phy porting guide (inter-lane skew improvement)
 			msPhyWriteByte(mtk_dp, 0x01A0, 0x47);
 			msPhyWriteByte(mtk_dp, 0x02A0, 0x47);
@@ -3155,8 +3142,7 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable)
 void mhal_DPTx_SetTxRate(struct mtk_dp *mtk_dp, u8 Value)
 {
 	DPTXFUNC();
-	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		switch (Value) {
 		case 0x06:
 			msPhyWrite4Byte(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
@@ -3490,8 +3476,7 @@ void mhal_DPTx_AnalogPowerOnOff(struct mtk_dp *mtk_dp, bool enable)
 	} else {
 		msWrite2Byte(mtk_dp, TOP_OFFSET, 0x0);
 		udelay(10);
-		if (mtk_dp->priv && mtk_dp->priv->data &&
-				mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (mtk_dp->cfg_ver == 2) {
 			msPhyWrite2Byte(mtk_dp, 0x0034, 0x4AA);
 			msPhyWrite2Byte(mtk_dp, 0x1040, 0x0);
 			msPhyWrite2Byte(mtk_dp, 0x0038, 0x555);

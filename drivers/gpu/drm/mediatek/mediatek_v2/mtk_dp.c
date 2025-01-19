@@ -1918,7 +1918,7 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 	ubDPCD206 = 0xFF;
 
 	// Lane power on flow fix in 6991(n3)
-	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+	if (mtk_dp->cfg_ver == 2) {
 		mhal_DPTx_PhyTrainingConfig(mtk_dp, ubTargetLinkRate, ubTargetLaneCount);
 		mhal_DPTx_SetTxLane(mtk_dp, ubTargetLaneCount);
 	} else {
@@ -2892,12 +2892,7 @@ void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp)
 	mdrv_DPTx_I2S_Audio_Ch_Status_Set(mtk_dp, ucChannel,
 		ucFs, ucWordlength);
 
-	if (g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6897
-		&& g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6989
-		&& g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6991)
-		mhal_DPTx_Audio_PG_EN(mtk_dp, ucChannel, ucFs, false);
-	else
-		mhal_DPTx_Audio_TDM_PG_EN(mtk_dp, ucChannel, ucFs, false);//DPTX audio for TDM
+	mhal_DPTx_Audio_TDM_PG_EN(mtk_dp, ucChannel, ucFs, false);//DPTX audio for TDM
 
 	mdrv_DPTx_I2S_Audio_Set_MDiv(mtk_dp, 4);
 }
@@ -3717,6 +3712,7 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	int ret = 0;
 	int count = 0;
 	const char *pd_name;
+	int config_version = 0;
 
 	// get power num
 	while (true) {
@@ -3787,6 +3783,14 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	ret = mtk_dp_vsvoter_parse(mtk_dp, dev->of_node);
 	if (ret)
 		dev_info(dev, "failed to parse vsv property\n");
+
+	ret = of_property_read_u32(dev->of_node,
+				"config-version", &config_version);
+	if (ret) {
+		DPTXERR("ret%d: no dptx config version, using default version=1\n", ret);
+		config_version = 1;
+	}
+	mtk_dp->cfg_ver = config_version;
 
 	return 0;
 }
