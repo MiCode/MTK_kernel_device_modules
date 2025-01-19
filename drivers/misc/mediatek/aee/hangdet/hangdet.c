@@ -388,9 +388,9 @@ void tick_broadcast_mtk_aee_dump(void)
 
 void dump_wdk_bind_info(bool to_aee_sram)
 {
-	int i = 0;
+	int i = 0, ret = -1;
 
-	snprintf(wk_tsk_buf, sizeof(wk_tsk_buf),
+	ret = snprintf(wk_tsk_buf, sizeof(wk_tsk_buf),
 		"kick=0x%x,check=0x%x\n",
 		get_kick_bit(), get_check_bit());
 
@@ -399,26 +399,28 @@ void dump_wdk_bind_info(bool to_aee_sram)
 	aee_rr_rec_check(('B' << 24) | get_check_bit());
 #endif
 
-	pr_info("%s", wk_tsk_buf);
+	if (ret >= 0)
+		pr_info("%s", wk_tsk_buf);
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	if (to_aee_sram) {
 		aee_sram_fiq_log("\n");
-		aee_sram_fiq_log(wk_tsk_buf);
+		if (ret >= 0)
+			aee_sram_fiq_log(wk_tsk_buf);
 	}
 #endif
 	for (i = 0; i < CPU_NR; i++) {
 		if (wk_tsk[i] != NULL) {
 			memset(wk_tsk_buf, 0, sizeof(wk_tsk_buf));
-			snprintf(wk_tsk_buf, sizeof(wk_tsk_buf),
+			ret = snprintf(wk_tsk_buf, sizeof(wk_tsk_buf),
 				"[wdk]CPU %d, %d, %lld, %d, %u, %lld\n",
 				i, wk_tsk_bind[i], wk_tsk_bind_time[i],
 				wk_tsk[i]->on_rq, wk_tsk[i]->__state,
 				wk_tsk_kick_time[i]);
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-			if (to_aee_sram)
+			if (to_aee_sram && (ret >= 0))
 				aee_sram_fiq_log(wk_tsk_buf);
 #endif
-			if (!to_aee_sram)
+			if (!to_aee_sram && (ret >= 0))
 				pr_info("%s", wk_tsk_buf);
 		}
 	}
@@ -1003,7 +1005,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 				unsigned int original_kicker)
 {
 	unsigned int dump_timeout = 0, r_counter = DEFAULT_INTERVAL;
-	int i = 0;
+	int i = 0, ret = -1;
 	bool rgu_fiq = false;
 	unsigned long s_s2idle = get_s2idle_state();
 	char smp_histroy[60] = {'\0'};
@@ -1021,20 +1023,24 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	    (CHG_TMO_DLY_SEC + 5) * 1000000000ULL)) {
 		if (!aee_dump_timer_c) {
 			aee_dump_timer_c = 1;
-			snprintf(msg_buf, WK_MAX_MSG_SIZE, "wdtk-et %s %d cpu=%d o_k=%d\n",
+			ret = snprintf(msg_buf, WK_MAX_MSG_SIZE, "wdtk-et %s %d cpu=%d o_k=%d\n",
 				  __func__, __LINE__, cpu, original_kicker);
 			spin_unlock_bh(&lock);
-			pr_info("%s", msg_buf);
+
+			if (ret >= 0)
+				pr_info("%s", msg_buf);
 			kwdt_dump_func();
 			return;
 		}
 
-		snprintf(msg_buf, WK_MAX_MSG_SIZE,
+		ret = snprintf(msg_buf, WK_MAX_MSG_SIZE,
 			"all wdtk was already stopped cpu=%d o_k=%d\n",
 			cpu, original_kicker);
 
 		spin_unlock_bh(&lock);
-		pr_info("%s", msg_buf);
+
+		if (ret >= 0)
+			pr_info("%s", msg_buf);
 		return;
 	}
 
@@ -1072,7 +1078,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 				smp_ret[cpu] = smp_call_function_single_async(cpu, &wdt_csd[cpu]);
 		}
 
-		snprintf(smp_histroy, 60, "s_cpu %d - %d %d %d %d %d %d %d %d\n",
+		ret = snprintf(smp_histroy, 60, "s_cpu %d - %d %d %d %d %d %d %d %d\n",
 			smp_processor_id(), smp_ret[0], smp_ret[1], smp_ret[2], smp_ret[3],
 			 smp_ret[4], smp_ret[5], smp_ret[6], smp_ret[7]);
 	}
@@ -1080,7 +1086,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 	wk_tsk_kick_time[cpu] = sched_clock();
 #if !IS_ENABLED(CONFIG_ARM64)
-	snprintf(msg_buf, WK_MAX_MSG_SIZE,
+	ret = snprintf(msg_buf, WK_MAX_MSG_SIZE,
 	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx\n",
 	 cpu, original_kicker, local_bit, get_check_bit(),
 	 (local_bit ^ get_check_bit()) & get_check_bit(), lasthpg_cpu,
@@ -1088,14 +1094,14 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	 div_u64(lastsuspend_syst, 1000000), div_u64(lastresume_t, 1000000),
 	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle);
 #else
-	snprintf(msg_buf, WK_MAX_MSG_SIZE,
+	ret = snprintf(msg_buf, WK_MAX_MSG_SIZE,
 	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx %s\n",
 	 cpu, original_kicker, local_bit, get_check_bit(),
 	 (local_bit ^ get_check_bit()) & get_check_bit(), lasthpg_cpu,
 	 lasthpg_act, lasthpg_t, atomic_read(&plug_mask), div_u64(lastsuspend_t, 1000000),
 	 div_u64(lastsuspend_syst, 1000000), div_u64(lastresume_t, 1000000),
 	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle,
-	 smp_histroy);
+	 (ret >= 0) ? smp_histroy : " ");
 #endif
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
@@ -1141,7 +1147,8 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 	spin_unlock_bh(&lock);
 
-	pr_info("%s", msg_buf);
+	if (ret >= 0)
+		pr_info("%s", msg_buf);
 
 #if IS_ENABLED(CONFIG_SMP)
 	pr_info("%s", tmr_buf[cpu]);
