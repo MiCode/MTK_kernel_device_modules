@@ -21,6 +21,8 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/version.h>
 #include <linux/fs.h>
+#include <linux/err.h>
+#include <linux/fcntl.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
@@ -45,6 +47,16 @@ static struct goodix_ts_core *ts_core;
 #define GOODIX_DEFAULT_CFG_NAME		"goodix_cfg_group.cfg"
 #define GOOIDX_INPUT_PHYS		"goodix_ts/input0"
 
+#include "ghost_touch.h"
+#ifdef GOODIX_TOUCH_GHOST
+#include <linux/kfifo.h>
+int64_t unixtimestamp = 24;
+#endif
+
+/*touch ghost callback*/
+typedef void (*kfifo_data_ready_callback)(void);
+struct mutex callback_lock;
+
 struct goodix_module goodix_modules;
 int core_module_prob_sate = CORE_MODULE_UNPROBED;
 
@@ -67,6 +79,152 @@ struct goodix_ts_core *ts_core_gt9895_tui;
 #endif
 
 static int goodix_send_ic_config(struct goodix_ts_core *cd, int type);
+
+#ifdef GOODIX_TOUCH_GHOST
+#define GHOST_TOUCH_DEFAULT_THRESHOLD_NS 80000000
+
+static struct kfifo ghost_touch_fifo;
+static int64_t last_touch_timestamps[GOODIX_MAX_TOUCH] = {0};
+static bool finger_down[GOODIX_MAX_TOUCH] = {0};
+struct mutex ghost_touch_fifo_lock;
+#endif
+
+static int ghost_touch_fifo_init(void)
+{
+	int ret;
+	// Allocate and initialize the FIFO queue
+	ret = kfifo_alloc(&ghost_touch_fifo,
+			GHOST_TOUCH_FIFO_SIZE * sizeof(struct ghost_touch_data),
+			GFP_KERNEL);
+	if (ret) {
+		ts_err("Failed to allocate ghost touch FIFO\n");
+		return ret;
+	}
+	return 0;
+}
+
+static void ghost_touch_fifo_free(void)
+{
+	kfifo_free(&ghost_touch_fifo);
+	ts_info("FIFO freed successfully\n");
+}
+
+ssize_t get_ghost_buffer_size(void)
+{
+	size_t buffer_size;
+
+	buffer_size = kfifo_len(&ghost_touch_fifo) * sizeof(struct ghost_touch_data);
+	return buffer_size;
+}
+EXPORT_SYMBOL(get_ghost_buffer_size);
+
+ssize_t get_ghost_touch_data(struct ghost_touch_data *buffer, size_t buffer_size)
+{
+	size_t num_events;
+	size_t bytes_to_copy;
+	ssize_t ret;
+
+	mutex_lock(&ghost_touch_fifo_lock);
+	num_events = kfifo_len(&ghost_touch_fifo) / sizeof(struct ghost_touch_data);
+	bytes_to_copy = min(num_events * sizeof(struct ghost_touch_data), buffer_size);
+	// Retrieve all ghost touch event data from the FIFO
+	ret = kfifo_out(&ghost_touch_fifo, buffer, bytes_to_copy);
+	if (ret <= 0) {
+		ts_err("read touch ghost data fails!");
+		// If the read fails, return an error code
+		ret = -EIO;
+	}
+	for (int i = 0; i < ret ; i++) {
+		ts_info("Touch_id:%d,time:%lld,X:%d,Y:%d",buffer[i].touch_id,
+			buffer[i].timestamp,buffer[i].x,buffer[i].y);
+	}
+	mutex_unlock(&ghost_touch_fifo_lock);
+	ts_info("FIFO ghost data: num_events=%zu, buffer_size=%zu, bytes_to_copy=%zu, ret=%zd",
+		num_events, buffer_size, bytes_to_copy, ret);
+	return ret; //Return the number of bytes read
+}
+EXPORT_SYMBOL(get_ghost_touch_data);
+
+/*touch ghost callback*/
+
+void default_callback(void)
+{
+	ts_err("When there is no function callback, point to the default function.");
+}
+
+static kfifo_data_ready_callback registered_callback = default_callback;
+
+int register_kfifo_callback(kfifo_data_ready_callback callback)
+{
+	int ret = 0;
+
+	mutex_lock(&callback_lock);
+	if (registered_callback != default_callback)
+		ret = -EBUSY;
+	else
+		registered_callback = callback;
+
+	mutex_unlock(&callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(register_kfifo_callback);
+
+int unregister_kfifo_callback(kfifo_data_ready_callback callback)
+{
+	mutex_lock(&callback_lock);
+	if (registered_callback == callback)
+		registered_callback = default_callback;
+
+	mutex_unlock(&callback_lock);
+	return 0;
+}
+EXPORT_SYMBOL(unregister_kfifo_callback);
+
+void trigger_kfifo_read(void)
+{
+	kfifo_data_ready_callback callback;
+
+	mutex_lock(&callback_lock);
+	callback = registered_callback;
+	mutex_unlock(&callback_lock);
+	if (callback)
+		callback();
+}
+
+static bool is_ghost_touch(int touch_id, int64_t timestamp)
+{
+	s64 time_diff;
+
+	time_diff = timestamp - last_touch_timestamps[touch_id];
+	ts_info("touch id: %d, current time:%lld, last time: %lld, diff: %lld",
+		touch_id,timestamp,last_touch_timestamps[touch_id],time_diff);
+	last_touch_timestamps[touch_id] = timestamp;
+
+	return time_diff > 0 && time_diff < GHOST_TOUCH_DEFAULT_THRESHOLD_NS;
+}
+
+static void record_ghost_touch(int touch_id, int64_t timestamp, int64_t unixtimestamp, int x, int y)
+{
+	struct ghost_touch_data data = {
+		.touch_id = touch_id,
+		.timestamp = timestamp,
+		.unixtimestamp = unixtimestamp,
+		.x = x,
+		.y = y
+	};
+
+	if (kfifo_is_full(&ghost_touch_fifo)) {
+		ts_err("FIFO is full, call api to report all data");
+		trigger_kfifo_read();
+	} else {
+		ts_info("original ghost data id=%d, timestamp=%lld, x=%d, y=%d",
+			data.touch_id, data.timestamp, data.x, data.y);
+		// Add the ghost touch event data to the FIFO queue
+		if (!kfifo_in(&ghost_touch_fifo, &data, sizeof(struct ghost_touch_data)))
+			ts_err("failed to put data into the FIFO");
+	}
+}
+
 /**
  * __do_register_ext_module - register external module
  * to register into touch core modules structure
@@ -1364,10 +1522,17 @@ void goodix_ts_report_finger(struct input_dev *dev,
 				touch_data->coords[i].x,
 				touch_data->coords[i].y,
 				touch_data->coords[i].w);
-			if ((x_last[i] == 0) && (y_last[i] == 0))
+			#ifdef GOODIX_TOUCH_GHOST
+			finger_down[i] = 0;
+			#endif
+			if ((x_last[i] == 0) && (y_last[i] == 0)) {
 				ts_info("touch down, i=%d, x=%d, y=%d, x_last=%d, y_last=%d",
 					i, touch_data->coords[i].x, touch_data->coords[i].y,
 					x_last[i], y_last[i]);
+				#ifdef GOODIX_TOUCH_GHOST
+				finger_down[i] = 1;
+				#endif
+			}
 			x_last[i] = touch_data->coords[i].x;
 			y_last[i] = touch_data->coords[i].y;
 			input_mt_slot(dev, i);
@@ -1409,6 +1574,16 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	}
 #endif
 
+#ifdef GOODIX_TOUCH_GHOST
+	for (i = 0; i < GOODIX_MAX_TOUCH; i++) {
+		if(finger_down[i] &&
+			(is_ghost_touch(i, atomic64_read(&ts_core->timestamp)))) {
+			record_ghost_touch(i, atomic64_read(&ts_core->timestamp), unixtimestamp,
+					touch_data->coords[i].x, touch_data->coords[i].y);
+		}
+	}
+#endif
+
 	mutex_unlock(&dev->mutex);
 }
 
@@ -1437,8 +1612,11 @@ static int goodix_ts_request_handle(struct goodix_ts_core *cd,
 static irqreturn_t goodix_ts_interrupt_func(int irq, void *data)
 {
 	struct goodix_ts_core *core_data = data;
+	struct timespec64 tv = { 0 };
 
 	atomic64_set(&core_data->timestamp, ktime_to_ns(ktime_get()));
+	ktime_get_real_ts64(&tv);
+	unixtimestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 	return IRQ_WAKE_THREAD;
 }
 
@@ -2698,6 +2876,9 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	}
 #endif
 
+#ifdef GOODIX_TOUCH_GHOST
+	ghost_touch_fifo_init();
+#endif
 
 	return 0;
 
@@ -2745,6 +2926,9 @@ static void goodix_ts_remove(struct platform_device *pdev)
 		goodix_ts_power_off(core_data);
 	}
 
+#ifdef GOODIX_TOUCH_GHOST
+	ghost_touch_fifo_free();
+#endif
 }
 
 #if IS_ENABLED(CONFIG_PM)
