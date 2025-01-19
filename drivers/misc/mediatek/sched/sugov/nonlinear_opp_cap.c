@@ -2038,8 +2038,9 @@ static int init_sram_mapping(void)
 static int init_feature_status(void)
 {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	sram_base_addr_freq_scaling =
-		ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
+	if (csram_res)
+		sram_base_addr_freq_scaling =
+			ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
 	if (!sram_base_addr_freq_scaling) {
 		pr_info("Remap sram_base_addr_freq_scaling failed!\n");
 		return -EIO;
