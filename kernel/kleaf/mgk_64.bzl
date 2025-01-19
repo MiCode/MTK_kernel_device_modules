@@ -163,6 +163,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -215,6 +216,11 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:rt4803".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt5133-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt6160-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -798,11 +804,6 @@ mgk_64_device_modules = [
     "drivers/thermal/mediatek/thermal_trace.ko",
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
-    "drivers/trusty/trusty-core.ko",
-    "drivers/trusty/trusty-ipc.ko",
-    "drivers/trusty/trusty-log.ko",
-    "drivers/trusty/trusty-test.ko",
-    "drivers/trusty/trusty-virtio.ko",
     "drivers/tty/serial/8250/8250_mtk.ko",
     "drivers/usb/mtu3/mtu3.ko",
     "drivers/watchdog/mtk_wdt.ko",

@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Makefile for trusty components
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-core",
+    srcs = [
+        "trusty.c",
+        "trusty-irq.c",
+        "trusty-irq.h",
+        "trusty-irq-trace.h",
+        "trusty-mem.c",
+        "trusty-sched-share.c",
+        "trusty-sched-share.h",
+        "trusty-sched-share-api.h",
+        "trusty-smc.h",
+        "trusty-smc-arm64.S",
+        "trusty-trace.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-ipc",
+    srcs = [
+        "trusty-ipc.c",
+        "trusty-ipc-trace.h",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-log",
+    srcs = [
+        "trusty-log.c",
+        "trusty-log.h",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-test",
+    srcs = [
+        "trusty-test.c",
+        "trusty-test.h",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-virtio",
+    srcs = [
+        "trusty-virtio.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+)
