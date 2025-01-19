@@ -62,6 +62,7 @@ enum adapter_event {
 	TA_SOFT_RESET,
 	MTK_TYPEC_WD_STATUS,
 	MTK_TYPEC_HRESET_STATUS,
+	MTK_SINK_VBUS,
 	MTK_UFCS_DETACH,
 	MTK_UFCS_ATTACH,
 	MTK_UFCS_FAIL,
@@ -72,6 +73,7 @@ enum adapter_property {
 	PD_TYPE,
 	UFCS_TYPE,
 	CAP_TYPE,
+	PD_SRC_PDO_SUPPORT_USB_SUSPEND,
 };
 
 enum adapter_cap_type {

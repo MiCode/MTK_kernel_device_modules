@@ -96,6 +96,9 @@ struct charger_data;
 
 #define RESET_BOOT_VOLT_TIME 50
 
+#define USB_CURRENT_MASK 0x80000000
+#define UNLIMIT_CURRENT_MASK 0x10000000
+
 enum bat_temp_state_enum {
 	BAT_TEMP_LOW = 0,
 	BAT_TEMP_NORMAL,
@@ -268,6 +271,8 @@ struct charger_data {
 	int force_charging_current;
 	int thermal_input_current_limit;
 	int thermal_charging_current_limit;
+	int usb_input_current_limit;
+	int pd_input_current_limit;
 	bool thermal_throttle_record;
 	int disable_charging_count;
 	int input_current_limit_by_aicl;
@@ -359,6 +364,7 @@ struct mtk_charger {
 	int usb_type;
 	int usb_state;
 	int adapter_priority;
+	int en_cts_mode;
 
 	struct mutex cable_out_lock;
 	int cable_out_cnt;
@@ -398,6 +404,8 @@ struct mtk_charger {
 	bool dpdmov_stat;
 	bool lst_dpdmov_stat;
 	bool is_chg_done;
+	bool power_path_en;
+	bool en_power_path;
 	/* ATM */
 	bool atm_enabled;
 
