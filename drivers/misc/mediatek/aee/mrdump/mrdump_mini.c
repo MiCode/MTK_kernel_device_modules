@@ -644,14 +644,19 @@ void mrdump_mini_add_klog(void)
 void mrdump_mini_add_kallsyms(void)
 {
 	unsigned long size, vaddr;
+	unsigned long vaddr_align, size_align;
 
 	vaddr = aee_get_kns_addr();
-	vaddr = round_down(vaddr, PAGE_SIZE);
+	vaddr_align = round_down(vaddr, PAGE_SIZE);
 	size = aee_get_kallsyms_mem_size();
-	size = round_up(size, PAGE_SIZE);
-	if (vaddr)
-		mrdump_mini_add_misc_pa(vaddr, __pa_nodebug(vaddr),
-				size, 0, MRDUMP_MINI_MISC_LOAD);
+	size_align = round_up(size, PAGE_SIZE);
+
+	if ((vaddr - vaddr_align) > (size_align - size))
+		size_align = round_up(size, PAGE_SIZE) + PAGE_SIZE;
+
+	if (vaddr_align)
+		mrdump_mini_add_misc_pa(vaddr_align, __pa_nodebug(vaddr_align),
+				size_align, 0, MRDUMP_MINI_MISC_LOAD);
 }
 
 static void mrdump_mini_build_elf_misc(void)
@@ -813,6 +818,10 @@ int __init mrdump_mini_init(const struct mrdump_params *mparams)
 	if (mrdump_cblock) {
 		vaddr = round_down((unsigned long)mrdump_cblock, PAGE_SIZE);
 		size = round_up(mparams->cb_size, PAGE_SIZE);
+
+		if (((unsigned long)mrdump_cblock - vaddr) > (size - mparams->cb_size))
+			size = round_up(mparams->cb_size, PAGE_SIZE) + PAGE_SIZE;
+
 		mrdump_mini_add_misc_pa(vaddr, mparams->cb_addr, size,
 				0, MRDUMP_MINI_MISC_LOAD);
 #ifndef MODULE
