@@ -4,6 +4,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <asm/arch_timer.h>
 #include <asm/cputype.h>
 #include <linux/arm-smccc.h>
 #include <linux/atomic.h>
@@ -143,6 +144,10 @@ static void lastbus_dump_monitor(const struct lastbus_monitor *m, void __iomem *
 	grad_code = readl(base + 0x404);
 	grad_code = (grad_code << 32) | readl(base + 0x400);
 	bin_code = gray_code_to_binary_convert(grad_code);
+	if (arch_timer_get_cntfrq() == 1000000000) {
+		pr_debug("%s: original bin_code = 0x%llx\n", __func__, bin_code);
+		bin_code = bin_code << 7;
+	}
 	pr_debug("%s: gray_code = 0x%llx, binary = 0x%llx\n", __func__, grad_code, bin_code);
 	buf_point = check_buf_size(50);
 	dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
