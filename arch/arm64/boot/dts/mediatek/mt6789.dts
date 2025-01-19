@@ -4600,6 +4600,7 @@
 			reg = <0 0x14000000 0 0x1000>;
 			#clock-cells = <1>;
 			iommus = <&disp_iommu M4U_PORT_L1_OVL_2L_RDMA0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mediatek,larb = <&smi_larb1>;
 			mediatek,smi-id = <1>;
 			fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
@@ -4804,6 +4805,7 @@
 			mediatek,smi-id = <0>;
 			iommus = <&disp_iommu M4U_PORT_L0_OVL_RDMA0>,
 				   <&disp_iommu M4U_PORT_L0_OVL_RDMA0_HDR>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L0_OVL_RDMA0)
 						&mmqos SLAVE_COMMON(0)>,
@@ -4826,6 +4828,7 @@
 			mediatek,smi-id = <1>;
 			iommus = <&disp_iommu M4U_PORT_L1_OVL_2L_RDMA0>,
 				<&disp_iommu M4U_PORT_L1_OVL_2L_RDMA0_HDR>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_OVL_2L_RDMA0)
 						&mmqos SLAVE_COMMON(0)>,
@@ -4847,6 +4850,7 @@
 			mediatek,larb = <&smi_larb1>;
 			mediatek,smi-id = <1>;
 			iommus = <&disp_iommu M4U_PORT_L1_DISP_RDMA0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L1_DISP_RDMA0)
 						&mmqos SLAVE_COMMON(0)>,
@@ -4870,6 +4874,7 @@
 			reg = <0 0x14009000 0 0x1000>;
 			interrupts = <GIC_SPI 291 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_COLOR0>;
+			doze-bypass = <1>;
 		};
 
 		reserved@1400a000 {
@@ -4888,6 +4893,7 @@
 			ccorr-linear-per-pipe = <0x1>;
 			ccorr-prim-force-linear = <0x0>;
 			ccorr-linear = <1>;
+			doze-bypass = <1>;
 		};
 
 		disp_aal0: disp_aal0@1400c000 {
@@ -4898,6 +4904,7 @@
 			clocks = <&dispsys_config_clk CLK_MM_DISP_AAL0>;
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <0>;
+			doze-bypass = <1>;
 		};
 
 		disp_gamma0: disp_gamma0@1400d000 {
@@ -4924,6 +4931,7 @@
 			mediatek,larb = <&smi_larb0>;
 			mediatek,smi-id = <0>;
 			iommus = <&disp_iommu M4U_PORT_L0_DISP_POSTMASK0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		};
 
 		disp_dither0: disp_dither0@1400f000 {
@@ -4998,6 +5006,7 @@
 			mediatek,larb = <&smi_larb1>;
 			mediatek,smi-id = <1>;
 			iommus = <&disp_iommu M4U_PORT_L1_DISP_WDMA0>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		};
 
 		reserved@14015000 {
