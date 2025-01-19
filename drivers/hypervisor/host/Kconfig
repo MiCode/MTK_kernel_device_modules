@@ -95,6 +95,17 @@ config VHOST_IOMMU
 	  Also used to isolate the conflicting part of the iommu driver
 	  on main project, default is n.
 
+config VHOST_APU
+       tristate "Host kernel accelerator for virtio apu (EXPERIMENTAL)"
+       select VHOST
+       help
+         This kernel module can be loaded in host kernel to accelerate
+         guest block with virtio_apu. Not to be confused with virtio_apu
+         module itself which needs to be loaded in guest kernel.
+
+         To compile this driver as a module, choose M here: the module will
+         be called vhost_apu.
+
 config DEVICE_MODULES_VHOST_SPI
 	tristate "Hypervisor for virtio spi"
 	select VHOST
