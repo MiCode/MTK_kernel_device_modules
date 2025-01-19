@@ -289,7 +289,7 @@ int mtk_offload_rsv_sram_pwr_ctrl(bool power)
 	if (sram_version != 0x3)
 		return sram_runtime_pm_ctrl(rsv_sram.type, power);
 
-	USB_OFFLOAD_MEM_DBG("power:%d sram_pwr_on:%d\n", power, sram_pwr_on);
+	USB_OFFLOAD_INFO("power:%d sram_pwr_on:%d\n", power, sram_pwr_on);
 	if (power != sram_pwr_on) {
 		sram_pwr_on = power;
 		USB_OFFLOAD_MEM_DBG("sram_pwr_on:%d->%d\n", !sram_pwr_on, sram_pwr_on);
