@@ -16,7 +16,13 @@ static const struct mfd_cell mt6687_devs[] = {
 	{
 		.name = "mt6687-clkbuf",
 		.of_compatible = "mediatek,mt6687-clkbuf",
-	}
+	}, {
+		.name = "mt6687-consys",
+		.of_compatible = "mediatek,mt6687-consys",
+	}, {
+		.name = "mt6687-connv3",
+		.of_compatible = "mediatek,mt6687-connv3",
+	},
 };
 
 static const struct regmap_config spmi_regmap_config = {
