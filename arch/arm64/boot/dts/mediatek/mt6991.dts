@@ -16084,16 +16084,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,mmup-sram;
 	};
 
-	mmdvfs_v5_user: mmdvfs-v5-user {
-		//compatible = "mediatek,mtk-mmdvfs-v5-user";
-		clocks = <&mmdvfs_v5_mux MMDVFS_V5_AP_CAM>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VDE>,
-			<&mmdvfs_v5_mux MMDVFS_V5_AP_IMG>, <&mmdvfs_v5_mux MMDVFS_V5_AP_IPE>, <&mmdvfs_v5_mux MMDVFS_V5_AP_DIS>,
-			<&mmdvfs_v5_mux MMDVFS_V5_AP_MML>, <&mmdvfs_v5_mux MMDVFS_V5_AP_SMI>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VEN>,
-			<&mmdvfs_v5_mux MMDVFS_V5_AP_MDP>;
-		clock-names = "mmdvfs-v5-ap-cam", "mmdvfs-v5-ap-vde", "mmdvfs-v5-ap-img", "mmdvfs-v5-ap-ipe",
-			"mmdvfs-v5-ap-dis", "mmdvfs-v5-ap-mml", "mmdvfs-v5-ap-smi", "mmdvfs-v5-ap-ven", "mmdvfs-v5-ap-mdp";
-	};
-
 	mmdvfs_debug_v5: mmdvfs-debug-v5 {
 		compatible = "mediatek,mmdvfs-debug-v5";
 		vcore-supply	= <&mt6316_8_vbuck1>;
