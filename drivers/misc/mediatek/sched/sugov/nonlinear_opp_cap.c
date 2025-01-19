@@ -3755,6 +3755,10 @@ unsigned long mtk_cpu_util_next_dpt_v2(int cpu, struct task_struct *p, int dst_c
 		__coef2_util += local_util_coef2_avg;
 	}
 
+	*cpu_util = __cpu_util;
+	*coef1_util = __coef1_util;
+	*coef2_util = __coef2_util;
+
 	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
 		unsigned long cpu_util_est, coef1_util_est, coef2_util_est;
 
