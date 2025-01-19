@@ -176,10 +176,7 @@
 		status = "okay";
 		op-mode = <1>;
 		mediatek,larbs-uisp = <&smi_larb27>;
-		mediatek,larbs-mae = <&smi_larb12>;
-		mae = <&mae>;
 		scp-dvfs-supply = <&scp_dvfs>;
-		mae-supply = <&mae>;
 		apu-supply = <&apusys_aov>;
 		ulposc-support;
 		vlp-base = <0x1c016000>;
@@ -13637,7 +13634,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 					<0 0x34170000 0 0x00100>,	/* 21 IMGSYS_DIP_TOP_NR2 */
 					<0 0x34710000 0 0x00100>,	/* 22 IMGSYS_TRAW_DIP1 */
 					<0 0x34080000 0 0x10000>,	/* 23 IMGSYS_ME_MMG */
-					<0 0x34780000 0 0x00100>;	/* 24 IMGSYS_VCORE */
+					<0 0x34780000 0 0x00100>,	/* 24 IMGSYS_VCORE */
+					<0 0x34310000 0 0x10000>;	/* 25 IMGSYS_MAE */
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
 			mediatek,hcp = <&hcp>;
 			mediatek,img-frm-sync = <&img_frm_sync>;
@@ -13645,6 +13643,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 					<&smi_larb9>,
 					<&smi_larb39>,
 					<&smi_larb11>,
+					<&smi_larb12>,
 					<&smi_larb28>,
 					<&smi_larb40>,
 					<&smi_larb38>,
@@ -14731,6 +14730,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>,
 				<&imgsys_main_clk CLK_IMG_ME_CAMERA_P2>,
 				<&imgsys_main_clk CLK_IMG_MMG_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
+				<&imgsys_main_clk CLK_IMG_LARB12_CAMERA_P2>,
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS0_CAMERA_P2>,
 				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS1_CAMERA_P2>,
@@ -14798,6 +14799,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				"IMG_GALS",
 				"IMG_ME",
 				"IMG_MMG",
+				"IMG_FDVT",
+				"IMG_LARB12",
 				"DIP_TOP_DIP1_DIP_TOP",
 				"DIP_TOP_DIP1_DIP_TOP_GALS0",
 				"DIP_TOP_DIP1_DIP_TOP_GALS1",
@@ -14840,54 +14843,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			compatible = "mediatek,imgsys-io-sentrymode";
 			mtk,smmu-shared = <&mm_smmu_imgsyssentrymode>;
 			status = "disabled";
-		};
-
-		mae: mae@34310000 {
-			compatible = "mediatek,mtk-mae";
-			reg = <0 0x34310000 0 0x9000>;
-			// dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
-			cmdqsec-supply = <&gce_m_sec>;
-			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
-				<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-			mediatek,larb = <&smi_larb12>;
-			mediatek,aov = <&aov>;
-			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
-			sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
-			sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
-
-			mtk,smmu-shared = <&mm_smmu_cam>;
-
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_ISP_MAIN>;
-		};
-
-		mtk-mae-plat@34319000 {
-			compatible = "mediatek,mtk-mae-plat";
-			reg = <0 0x34319000 0 0x1000>;
-			mae-supply = <&mae>;
-			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_CAMERA_P2>,
-				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_LARB12_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_SUB_COMMON2_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_SUB_COMMON3_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE0_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_GALS_TRX_IPE1_CAMERA_P2>,
-				<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
-			clock-names = "VCORE_GALS_DISP",
-				"VCORE_MAIN",
-				"VCORE_SUB0_CAMERA_P2",
-				"VCORE_SUB1_CAMERA_P2",
-				"FDVT_CAMERA_P2",
-				"LARB12_CAMERA_P2",
-				"IPE_CAMERA_P2",
-				"SUB_COMMON2_CAMERA_P2",
-				"SUB_COMMON3_CAMERA_P2",
-				"GALS_TRX_IPE0_CAMERA_P2",
-				"GALS_TRX_IPE1_CAMERA_P2",
-				"GALS_CAMERA_P2";
 		};
 
 		dvs: dvs@3a770000 {
