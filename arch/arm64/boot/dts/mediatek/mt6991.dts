@@ -180,6 +180,7 @@
 		mae = <&mae>;
 		scp-dvfs-supply = <&scp_dvfs>;
 		mae-supply = <&mae>;
+		apu-supply = <&apusys_aov>;
 		ulposc-support;
 		vlp-base = <0x1c016000>;
 		ulposc-cali-register = <0x2c0 0x2c4 0x2c8>;
@@ -17101,7 +17102,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		iommus = <&apu_smmu 0xe>;
 	};
 
-	apusys-aov {
+	apusys_aov: apusys-aov {
 		compatible = "mediatek,apusys_aov-v2";
 		smmu-device = <&apusys_aov_smmu_device>;
 		ctrl-size = <0x200000>;
