@@ -105,21 +105,28 @@ unsigned long _capacity_of(int cpu)
 
 unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 {
-	struct cfs_rq *cfs_rq;
-	unsigned long capacity;
-	unsigned long util;
+	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
+	unsigned long cpu_util = READ_ONCE(cfs_rq->avg.util_avg);
+	unsigned long runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+	unsigned long capacity, umin, umax;
 	unsigned int util_pct;
 
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
+	cpu_util = max_t(unsigned long, cpu_util, runnable);
 
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		util = max_t(unsigned long, util,
-			READ_ONCE(cfs_rq->avg.util_est));
+	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+		unsigned long util_est;
+
+		util_est = READ_ONCE(cfs_rq->avg.util_est);
+		cpu_util = max_t(unsigned long, cpu_util, util_est);
+	}
+
+	cpu_util = mtk_effective_cpu_util(cpu, cpu_util,
+				(struct task_struct *)UINTPTR_MAX, &umin, &umax);
 
 	capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
-	util = min_t(unsigned long, util, capacity);
-	util_pct = (unsigned int)div64_ul((util * 100), capacity);
+	cpu_util = min_t(unsigned long, cpu_util, capacity);
+	util_pct = (unsigned int)div64_ul((cpu_util * 100), capacity);
+
 	return util_pct;
 }
 EXPORT_SYMBOL(get_cpu_util_pct);

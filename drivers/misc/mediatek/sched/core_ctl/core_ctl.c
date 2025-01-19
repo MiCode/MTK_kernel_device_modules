@@ -410,12 +410,18 @@ static int test_set_val(struct cluster_data *cluster, unsigned int val)
 	return 0;
 }
 
+static bool test_disable_cpu(unsigned int cpu);
 static inline int core_ctl_pause_cpu(unsigned int cpu)
 {
 	int ret = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&core_ctl_pause_lock, flags);
+	/* Unable to pause CPU */
+	if(!test_disable_cpu(cpu)) {
+		spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
+		return -EBUSY;
+	}
 	ret = sched_pause_cpu(cpu);
 	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
 
@@ -734,7 +740,6 @@ EXPORT_SYMBOL(core_ctl_set_up_thres);
  *
  *  return 0 if success, else return errno
  */
- static bool test_disable_cpu(unsigned int cpu);
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
 int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int request_mask)
 {
@@ -1215,32 +1220,51 @@ static unsigned int big_cpu_ts;
 
 #define MAX_NR_RUNNING_THRESHOLD   4
 /*
- * Get number of the busy CPU cores, protected by core_ctl_state_lock.
+ * Get number of the busy CPU cores
  */
 static void get_busy_cpus(void)
 {
+	unsigned long flags;
 	struct cluster_data *cluster;
-	struct cpu_data *c;
-	int cpus = 0, cid = 0, i = 0;
+	struct cpu_data *cpu_stat;
+	int cpu = 0, cid = 0, i = 0, cpu_count = 0;
+
+	/* check CPU is busy or not */
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for_each_possible_cpu(cpu) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		cluster = cpu_stat->cluster;
+
+		if (!cluster || !cluster->inited)
+			continue;
+
+		cpu_stat->cpu_util_pct = get_cpu_util_pct(cpu, false);
+		if (cpu_stat->cpu_util_pct >= cluster->cpu_busy_up_thres)
+			cpu_stat->is_busy = true;
+		else
+			cpu_stat->is_busy = false;
+	}
 
 	for (cid = 0; cid < num_clusters; cid++) {
 		cluster = &cluster_state[cid];
+		cpu_count = 0;
 		for_each_cpu(i, &cluster->cpu_mask) {
-			c = &per_cpu(cpu_state, i);
-			if (c->is_busy && get_max_nr_running(i) > MAX_NR_RUNNING_THRESHOLD)
-				cpus++;
+			cpu_stat = &per_cpu(cpu_state, i);
+			if (cpu_stat->is_busy && get_max_nr_running(i) > MAX_NR_RUNNING_THRESHOLD)
+				cpu_count++;
 		}
-		cluster->need_spread_cpus = cpus;
-		cpus = 0;
+		cluster->need_spread_cpus = cpu_count;
 	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25
 /*
- * Get number of big tasks, protected by core_ctl_state_lock.
+ * Get number of big tasks
  */
 static void get_nr_running_big_task(void)
 {
+	unsigned long flags;
 	int avg_down[MAX_CLUSTERS] = {0};
 	int avg_up[MAX_CLUSTERS] = {0};
 	int nr_up[MAX_CLUSTERS] = {0};
@@ -1256,6 +1280,7 @@ static void get_nr_running_big_task(void)
 					  &nr_up[i]);
 	}
 
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for (i = 0; i < num_clusters; i++) {
 		/* reset nr_up and nr_down */
 		cluster_state[i].nr_up = 0;
@@ -1291,6 +1316,7 @@ static void get_nr_running_big_task(void)
 		cluster_state[i].nr_down =
 			cluster_state[i].nr_down < 0 ? 0 : cluster_state[i].nr_down;
 	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
 	for (i = 0; i < num_clusters; i++) {
 		nr_up[i] = cluster_state[i].nr_up;
@@ -1342,6 +1368,7 @@ static inline bool window_check(void)
 
 static void check_heaviest_util(void)
 {
+	unsigned long flags;
 	struct cluster_data *big_cluster;
 	struct cluster_data *mid_cluster;
 	unsigned int max_capacity;
@@ -1375,6 +1402,7 @@ static void check_heaviest_util(void)
 
 	/* If max util is over threshold */
 	if (max_task_util > heaviest_thres) {
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
 		big_cluster->new_need_cpus++;
 
 		/*
@@ -1385,11 +1413,13 @@ static void check_heaviest_util(void)
 		 */
 		if (mid_cluster->new_need_cpus > 0)
 			mid_cluster->new_need_cpus--;
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
 }
 
 static inline void core_ctl_main_algo(void)
 {
+	unsigned long flags;
 	unsigned int index = 0;
 	struct cluster_data *cluster;
 	unsigned int orig_need_cpu[MAX_CLUSTERS] = {0};
@@ -1400,6 +1430,7 @@ static inline void core_ctl_main_algo(void)
 	/* get TLP of over threshold tasks */
 	get_nr_running_big_task();
 
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Apply TLP of tasks */
 	for_each_cluster(cluster, index) {
 		int temp_need_cpus = 0;
@@ -1423,6 +1454,7 @@ static inline void core_ctl_main_algo(void)
 			(temp_need_cpus > cluster->max_cpus ?
 			 (temp_need_cpus - cluster->max_cpus) : 0);
 	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
 	/*
 	 * Ensure prime cpu make core-on
@@ -1447,10 +1479,7 @@ EXPORT_SYMBOL(calc_eff_hook);
 void core_ctl_tick(void *data, struct rq *rq)
 {
 	unsigned int index = 0;
-	unsigned long flags;
 	struct cluster_data *cluster;
-	int cpu = 0;
-	struct cpu_data *c;
 
 	/* prevent irq disable on cpu 0 */
 	if (rq->cpu == 0)
@@ -1459,30 +1488,9 @@ void core_ctl_tick(void *data, struct rq *rq)
 	if (!window_check())
 		return;
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
-
-	/* check CPU is busy or not */
-	for_each_possible_cpu(cpu) {
-		c = &per_cpu(cpu_state, cpu);
-		cluster = c->cluster;
-
-		if (!cluster || !cluster->inited)
-			continue;
-
-		c->cpu_util_pct = get_cpu_util_pct(cpu, false);
-		if (c->cpu_util_pct >= cluster->cpu_busy_up_thres)
-			c->is_busy = true;
-		else if (c->cpu_util_pct < cluster->cpu_busy_down_thres)
-			c->is_busy = false;
-	}
-
-	if (enable_policy) {
+	if (enable_policy)
 		core_ctl_main_algo();
 
-	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-
-	/* reset index value */
-	/* index = 0; */
 	for_each_cluster(cluster, index) {
 		apply_demand(cluster);
 	}
