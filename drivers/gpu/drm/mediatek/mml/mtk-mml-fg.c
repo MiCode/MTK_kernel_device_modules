@@ -239,7 +239,6 @@ static const struct fg_data mt6899_mmlf_fg_data = {
 	.reg_table = fg_reg_table_mt6989, // fg reg table update ?
 	.tile_width = 3520,
 	.sram_pp = true,
-	.hw_ar = true,
 };
 
 static const struct fg_data mt6989_fg_data = {
