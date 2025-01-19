@@ -53,6 +53,12 @@ struct vcp_feature_tb feature_table[NUM_FEATURE_ID] = {
 		.sys_id	= VCPSYS_CORE0,
 	},
 	{
+		.feature	= MMQOS_MMUP_FEATURE_ID,
+		.freq		= 0,
+		.enable = 0,
+		.sys_id = VCPSYS_CORE0,
+	},
+	{
 		.feature	= MMDEBUG_FEATURE_ID,
 		.freq		= 0,
 		.enable	= 0,
