@@ -391,6 +391,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -530,6 +531,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -941,6 +943,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-dbg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod-ise".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:mtk-hw-semaphore".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1326,7 +1329,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/flashlight/v4l2/lm3643.ko",
     "drivers/misc/mediatek/flashlight/v4l2/lm3644.ko",
     "drivers/misc/mediatek/geniezone/gz_main_mod.ko",
-    "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     #"drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
