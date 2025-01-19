@@ -278,7 +278,6 @@ int __get_rc_MXX_req_sta(void *data, int sub_id, char *buf)
 		return len;
 	}
 	m00_sta = sta->_m00_sta;
-
 	meta = pd->meta;
 	if (!meta) {
 		CLKBUF_DBG("meta data is null");
@@ -412,7 +411,6 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 		CLKBUF_DBG("cfg is null");
 		goto DUMP_FAIL;
 	}
-
 	for (i = 0; i < sizeof(struct srclken_rc_cfg) / sizeof(struct reg_t);
 	     ++i) {
 		if (!((((struct reg_t *)cfg) + i)->mask))
@@ -422,7 +420,6 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 
 		if (rc_read(&hw, reg_p, &out))
 			goto DUMP_FAIL;
-
 		if (!buf)
 			CLKBUF_DBG("CFG reg: %s Addr: 0x%08x Val: 0x%08x\n",
 				   reg_p->name, reg_p->ofs, out);
@@ -440,7 +437,6 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 		CLKBUF_DBG("sta is null");
 		goto DUMP_FAIL;
 	}
-
 	meta = pd->meta;
 	if (!meta) {
 		CLKBUF_DBG("meta data is null");
@@ -454,7 +450,6 @@ ssize_t __dump_srclken_status(void *data, char *buf)
 			continue;
 
 		reg_p = ((struct reg_t *)sta) + i;
-
 		if (rc_read(&hw, reg_p, &out))
 			goto DUMP_FAIL;
 
@@ -598,7 +593,6 @@ ssize_t __dump_srclken_trace_v2(void *data, char *buf, int is_dump_max)
 		CLKBUF_DBG("sta is null");
 		goto DUMP_FAIL;
 	}
-
 	meta = pd->meta;
 	if (!meta) {
 		CLKBUF_DBG("meta data is null");
@@ -693,21 +687,38 @@ static struct clkbuf_operation clkbuf_ops_v2 = {
 	.get_rc_MXX_req_sta = __get_rc_MXX_req_sta,
 	.get_rc_MXX_cfg = __get_rc_MXX_cfg,
 };
+static struct clkbuf_operation clkbuf_ops_v3 = {
+	.dump_srclken_status = NULL,
+	.dump_srclken_trace = NULL,
+	.srclken_subsys_ctrl = __srclken_subsys_ctrl,
+	.get_rc_MXX_req_sta = __get_rc_MXX_req_sta,
+	.get_rc_MXX_cfg = __get_rc_MXX_cfg,
+};
 
 static struct clkbuf_hdlr clkbuf_hdlr_v2 = {
 	.ops = &clkbuf_ops_v2,
 	.data = &rc_data_v2,
 };
-
+static struct clkbuf_hdlr clkbuf_hdlr_v3 = {
+	.ops = &clkbuf_ops_v3,
+	.data = &rc_data_v1,
+};
 static struct match_srclken match_srclken_v2 = {
 	.name = "mediatek,srclken-rc-v2", // v2 support 4 byte pmrc_en
 	.hdlr = &clkbuf_hdlr_v2,
 	.init = &srclken_init_v1,
 };
 
+static struct match_srclken match_srclken_v3 = {
+	.name = "mediatek,srclken-rc-v3",
+	.hdlr = &clkbuf_hdlr_v3,
+	.init = &srclken_init_v1,
+};
+
 static struct match_srclken *matches_srclken[] = {
 	&match_srclken_v1,
 	&match_srclken_v2,
+	&match_srclken_v3,
 	NULL,
 };
 
