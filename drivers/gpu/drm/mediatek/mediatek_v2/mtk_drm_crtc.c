@@ -16958,10 +16958,11 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 
 	bw_zero = 0;
-	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-	if (priv && priv->power_state)
+	if (priv && priv->power_state) {
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		mtk_addon_path_io_cmd(crtc, cb_data->wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
-	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	}
 
 	CRTC_MMP_MARK(0, wbBmpDump, 1, fence_idx);
 	mtk_dprec_mmp_dump_wdma_layer(crtc, cb_data->wb_fb);
