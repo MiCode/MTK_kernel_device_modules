@@ -1692,6 +1692,8 @@ static void mtk_atomic_mml(struct drm_device *dev,
 
 	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);
 	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
+	if (mtk_crtc->is_mml_dl && priv->data->ovl_exdma_rule)
+		mtk_crtc_clr_set_dirty(mtk_crtc);
 
 	if (old_mtk_state->lye_state.mml_dl_lye && !mtk_crtc->is_mml_dl)
 		mtk_crtc->mml_link_state = MML_STOP_LINKING;
