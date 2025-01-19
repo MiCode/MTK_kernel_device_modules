@@ -38,6 +38,13 @@ enum DSI_N_Version {
 	VER_N3,
 };
 
+enum PREURGENT_MODE {
+	PREURGENT_NOT_SUPPORT = 0,
+	PREURGENT_SUPPORT_VDO,
+	PREURGENT_SUPPORT_CMD,
+	PREURGENT_SUPPORT_ALL,
+};
+
 struct mtk_dsi_driver_data {
 	const u32 reg_cmdq0_ofs;
 	const u32 reg_cmdq1_ofs;
@@ -63,7 +70,7 @@ struct mtk_dsi_driver_data {
 	bool smi_dbg_disable;
 	bool require_phy_reset; /* reset phy before trigger DSI */
 	bool keep_hs_eotp; /* keep HS eotp */
-	bool support_pre_urgent;
+	enum PREURGENT_MODE support_pre_urgent;
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);
