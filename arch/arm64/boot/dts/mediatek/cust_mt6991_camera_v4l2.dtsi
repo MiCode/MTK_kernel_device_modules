@@ -1067,7 +1067,7 @@
 
 	sensor6: sensor6@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "ov64b_mipi_raw";
+		sensor-names = "ov64b_mipi_raw", "s5khp9sp_mipi_raw";
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 
