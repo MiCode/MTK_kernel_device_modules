@@ -2576,13 +2576,19 @@ void set_api_sync_flag(int flag)
 			}
 
 			if ((flag & 0x000000FF) > 0) {
-				// set preferred opp.
-				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				if (ged_get_max_freq_in_opp() > 1430) {
+					// set 1.6 preferred opp.
+					set_gpu_pre_throttle_opp((flag & 0x000000FF)+6);
+				} else {
+					// set preferred opp.
+					set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				}
 			}
 		}
-		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
+		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d / freq: %d",
 			__func__, __LINE__, (flag & 0x0000FFFF),
-			get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
+			get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp(),
+			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp()));
 #endif
 	}
 }
