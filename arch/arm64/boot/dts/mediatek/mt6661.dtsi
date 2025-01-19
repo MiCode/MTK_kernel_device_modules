@@ -18,6 +18,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-4-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6661_4_efuse: mt6661-4-efuse {
@@ -288,6 +292,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-3-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6661_3_efuse: mt6661-3-efuse {
@@ -538,6 +546,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-5-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
                 mt6661_5_auxadc: mt6661-5-auxadc {
@@ -984,6 +996,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-6-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
                 mt6661_6_auxadc: mt6661-6-auxadc {

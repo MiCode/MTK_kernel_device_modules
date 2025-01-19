@@ -14,6 +14,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-7-debug";
+			cid-addr = <0x67 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6667_7_pio: mt6667-7-pinctrl {
@@ -51,6 +55,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-8-debug";
+			cid-addr = <0x67 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6667_8_pio: mt6667-8-pinctrl {
@@ -79,6 +87,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-12-debug";
+			cid-addr = <0x67 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6667_12_pio: mt6667-12-pinctrl {
@@ -107,6 +119,10 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-13-debug";
+			cid-addr = <0x67 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
 		};
 
 		mt6667_13_pio: mt6667-13-pinctrl {
