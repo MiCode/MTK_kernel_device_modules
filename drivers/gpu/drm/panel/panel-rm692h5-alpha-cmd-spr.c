@@ -335,8 +335,6 @@ static int lcm_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
-	//push_table(ctx, lcm_suspend_setting, ARRAY_SIZE(lcm_suspend_setting), 0);
-
 	ctx->error = 0;
 	ctx->prepared = false;
 	lcm_panel_power_disable(ctx);
@@ -404,7 +402,6 @@ static int lcm_prepare(struct drm_panel *panel)
 		return 0;
 
 	lcm_panel_power_enable(ctx);
-	//lcm_panel_init(ctx);
 
 	ret = ctx->error;
 	if (ret < 0)
@@ -943,7 +940,8 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 	cmd_bl_level[0].para_list[1] = (unsigned char)((level>>8) & 0xF);
 	cmd_bl_level[0].para_list[2] = (unsigned char)(level & 0xFF);
-	pr_info("dsi set backlight level %d, (0x%x, 0x%x, 0x%x), (0x%x,0x%x)\n", level,
+	pr_info("%s level %d, (0x%x, 0x%x, 0x%x), (0x%x,0x%x)\n",
+			__func__, level,
 			cmd_bl_level[0].para_list[0],
 			cmd_bl_level[0].para_list[1],
 			cmd_bl_level[0].para_list[2],
@@ -1062,6 +1060,86 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
 
 	return ret;
+}
+
+static int lcm_update_roi_v2(void *dsi_drv, struct drm_panel *panel,
+		mtk_dsi_ddic_cmd cb,
+		unsigned int x, unsigned int y,
+		unsigned int w, unsigned int h,
+		struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i;
+	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
+	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
+	struct mipi_dsi_msg update_cmd_roi_x[ARRAY_SIZE(roi_x_setting)] = { 0 };
+	struct mipi_dsi_msg update_cmd_roi_y[ARRAY_SIZE(roi_y_setting)] = { 0 };
+
+	lcm_info("%s, (x,y,w,h): (%d,%d,%d,%d), x=%d, y=%d\n", __func__, x, y, w, h,
+		(int)ARRAY_SIZE(roi_x_setting), (int)ARRAY_SIZE(roi_y_setting));
+
+	for (i = 0; i < ARRAY_SIZE(roi_x_setting); i++) {
+		update_cmd_roi_x[i].tx_buf = roi_x_setting[i].para_list;
+		update_cmd_roi_x[i].tx_len = roi_x_setting[i].count;
+	}
+	for (i = 0; i < ARRAY_SIZE(roi_y_setting); i++) {
+		update_cmd_roi_y[i].tx_buf = roi_y_setting[i].para_list;
+		update_cmd_roi_y[i].tx_len = roi_y_setting[i].count;
+	}
+	struct mtk_dsi_cmd_msg roi_x_setting_msg = {
+		.cmd_num = ARRAY_SIZE(roi_x_setting),
+		.cmd_msg = update_cmd_roi_x,
+	};
+	struct mtk_dsi_cmd_msg roi_y_setting_msg = {
+		.cmd_num = ARRAY_SIZE(roi_y_setting),
+		.cmd_msg = update_cmd_roi_y,
+	};
+
+	cb(dsi_drv, NULL, cmd_opt, &roi_x_setting_msg);
+	cb(dsi_drv, NULL, cmd_opt, &roi_y_setting_msg);
+
+	return 0;
+}
+
+static int lcm_update_roi_cmdq_v2(void *dsi_drv,
+		mtk_dsi_ddic_cmd cb, void *handle,
+		unsigned int x, unsigned int y, unsigned int w, unsigned int h,
+		struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i = 0;
+	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
+	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
+	struct mipi_dsi_msg update_cmd_roi_x[ARRAY_SIZE(roi_x_setting)] = { 0 };
+	struct mipi_dsi_msg update_cmd_roi_y[ARRAY_SIZE(roi_y_setting)] = { 0 };
+
+	if (!cb)
+		return -1;
+
+	lcm_info("%s, (x,y,w,h): (%d,%d,%d,%d), x=%d, y=%d\n", __func__, x, y, w, h,
+		(int)ARRAY_SIZE(roi_x_setting), (int)ARRAY_SIZE(roi_y_setting));
+
+	for (i = 0; i < ARRAY_SIZE(roi_x_setting); i++) {
+		update_cmd_roi_x[i].tx_buf = roi_x_setting[i].para_list;
+		update_cmd_roi_x[i].tx_len = roi_x_setting[i].count;
+	}
+	for (i = 0; i < ARRAY_SIZE(roi_y_setting); i++) {
+		update_cmd_roi_y[i].tx_buf = roi_y_setting[i].para_list;
+		update_cmd_roi_y[i].tx_len = roi_y_setting[i].count;
+	}
+	struct mtk_dsi_cmd_msg roi_x_setting_msg = {
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_num = ARRAY_SIZE(roi_x_setting),
+		.cmd_msg = update_cmd_roi_x,
+	};
+	struct mtk_dsi_cmd_msg roi_y_setting_msg = {
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_num = ARRAY_SIZE(roi_y_setting),
+		.cmd_msg = update_cmd_roi_y,
+	};
+
+	cb(dsi_drv, handle, cmd_opt, &roi_x_setting_msg);
+	cb(dsi_drv, handle, cmd_opt, &roi_y_setting_msg);
+
+	return 0;
 }
 
 static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
@@ -2248,6 +2326,121 @@ static int lcm_set_spr_cmdq(void *dsi, struct drm_panel *panel, dcs_grp_write_gc
 	return 0;
 }
 
+static int lcm_set_spr_cmdq_v2(void *dsi, struct drm_panel *panel, mtk_dsi_ddic_cmd cb,
+	void *handle, unsigned int en, struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i;
+	static int flag;
+	static struct mtk_panel_para_table panel_spr_on_tb[] = {
+		{0x02, {0xFE, 0x00}},
+		{0x02, {0xF1, 0xA6}},//XEQ
+		{0x02, {0xFE, 0x90}},
+		{0x02, {0x77, 0x27}},//27 SPR on
+		{0x02, {0xFE, 0xD6}},
+		{0x0B, {0x00, 0x00, 0x00, 0x76, 0x0C, 0x40, 0x22, 0x76, 0x0C, 0x08, 0x00}},
+		{0x02, {0xFE, 0xD4}},
+		{0x03, {0x93, 0x11, 0x00}},
+		{0x08, {0x97, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}},
+//VESA
+		{0x02, {0xFE, 0xD2}},
+		{0x02, {0xAC, 0xE4}},
+		{0x02, {0x36, 0x11}},
+		{0x04, {0x39, 0xAB, 0x30, 0x80}},
+		{0x0E, {0x3F, 0xF0, 0x04, 0xEC, 0x00, 0x14, 0x02, 0x76, 0x02, 0x76, 0x02, 0x00, 0x02, 0x3B}},
+		{0x06, {0x4D, 0x20, 0x02, 0x0E, 0x00, 0x08}},
+		{0x05, {0x53, 0x0C, 0x05, 0x0E, 0x04}},
+		{0x3A, {0x58, 0x5C, 0x18, 0x00, 0x10, 0xF0, 0x07, 0x10, 0x20, 0x00, 0x06, 0x0F, 0x0F, 0x33,
+				0x0E, 0x1C, 0x2A, 0x38, 0x46, 0x54, 0x62, 0x69, 0x70, 0x77, 0x79, 0x7B, 0x7D, 0x7E,
+				0x02, 0x02, 0x22, 0x00, 0x2A, 0x40, 0x2A, 0xBE, 0x3A, 0xFC, 0x3A, 0xFA, 0x3A, 0xF8,
+				0x3B, 0x38, 0x3B, 0x78, 0x3B, 0xB6, 0x4B, 0xF6, 0x4C, 0x34, 0x4C, 0x74, 0x5C, 0x74,
+				0x8C, 0xF4}},
+		{0x09, {0x91, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00}},
+		{0x02, {0xFB, 0xAA}},//XEQ
+		{0x02, {0xFE, 0x00}},
+	};
+	static struct mtk_panel_para_table panel_spr_off_tb[] = {
+		{0x02, {0xFE, 0x00}},
+		{0x02, {0xF1, 0xA6}},//XEQ
+		{0x02, {0xFE, 0x90}},
+		{0x02, {0x77, 0x37}},
+		{0x02, {0xFE, 0xD6}},
+		{0x0B, {0x00, 0x00, 0x00, 0x3B, 0x0C, 0x02, 0x11, 0x3B, 0x0C, 0x00, 0x00}},
+		{0x02, {0xFE, 0xD4}},
+		{0x03, {0x93, 0x11, 0xCF}},
+		{0x08, {0x97, 0x11, 0x11, 0xA4, 0xA4, 0xA4, 0xA4, 0x80}},
+		//vesa
+		{0x02, {0xFE, 0xD2}},
+		{0x02, {0xAC, 0xB4}},
+		{0x02, {0x36, 0x12}},
+		{0x04, {0x39, 0xA0, 0x21, 0x00}},
+		{0x0E, {0x3F, 0xF0, 0x04, 0xEC, 0x00, 0x14, 0x02, 0x76, 0x02, 0x76, 0x01, 0x55, 0x01, 0xD6}},
+		{0x06, {0x4D, 0x0A, 0x01, 0x0F, 0x00, 0x34}},
+		{0x05, {0x53, 0x0D, 0x05, 0x7A, 0x18}},
+		{0x3A, {0x58, 0xB0, 0x08, 0x00, 0x0C, 0x00, 0x07, 0x10, 0x20, 0x00, 0x06, 0x0F, 0x0F, 0x33,
+				0x0E, 0x1C, 0x2A, 0x38, 0x46, 0x54, 0x62, 0x69, 0x70, 0x77, 0x79, 0x7B, 0x7D, 0x7E,
+				0x00, 0x82, 0x11, 0x40, 0x19, 0xC0, 0x22, 0x3E, 0x32, 0x7C, 0x3A, 0xBA, 0x3A, 0xF8,
+				0x3B, 0x38, 0x3B, 0x38, 0x3B, 0x76, 0x4B, 0x76, 0x4B, 0x74, 0x4B, 0x74, 0x5B, 0xB4,
+				0x73, 0xF4}},
+		{0x09, {0x91, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x20}},
+		{0x02, {0xFB, 0xAA}},//XEQ
+		{0x02, {0xFE, 0x00}},
+	};
+	static struct mipi_dsi_msg spr_on_msg[ARRAY_SIZE(panel_spr_on_tb)] = { 0 };
+	static struct mipi_dsi_msg spr_off_msg[ARRAY_SIZE(panel_spr_off_tb)] = { 0 };
+
+	pr_info("%s en %d, flag=%d, cmd_num:%d, %d\n", __func__, en, flag,
+		(int)ARRAY_SIZE(panel_spr_on_tb), (int)ARRAY_SIZE(panel_spr_off_tb));
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(panel_spr_on_tb); i++) {
+			spr_on_msg[i].tx_len= panel_spr_on_tb[i].count;
+			spr_on_msg[i].tx_buf = panel_spr_on_tb[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(panel_spr_off_tb); i++) {
+			spr_off_msg[i].tx_len= panel_spr_off_tb[i].count;
+			spr_off_msg[i].tx_buf = panel_spr_off_tb[i].para_list;
+		}
+	}
+
+	struct mtk_dsi_cmd_msg panel_spr_on_tb_v2 = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 1,
+		.cmd_num = ARRAY_SIZE(panel_spr_on_tb),
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = spr_on_msg,
+	};
+
+	struct mtk_dsi_cmd_msg panel_spr_off_tb_v2 = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 1,
+		.cmd_num = ARRAY_SIZE(panel_spr_off_tb),
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = spr_off_msg,
+	};
+
+	//ddic spr off
+	if (en == 0xfefe) {
+		panel_spr_enable = false;
+		return -1;
+	}
+	//ddic spr on
+	if (en == 0xeeee) {
+		panel_spr_enable = true;
+		return -1;
+	}
+	if (!cb)
+		return -1;
+	if (!handle)
+		return -1;
+
+	if (en)
+		cb(dsi, handle, cmd_opt, &panel_spr_on_tb_v2);
+	else
+		cb(dsi, handle, cmd_opt, &panel_spr_off_tb_v2);
+
+	return 0;
+}
+
 static int panel_ata_check(struct drm_panel *panel)
 {
 	/* Customer test by own ATA tool */
@@ -2274,13 +2467,14 @@ static struct mtk_panel_funcs ext_funcs = {
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
 	.lcm_valid_roi = rm692h5_lcm_valid_roi,
 	.set_spr_cmdq = lcm_set_spr_cmdq,
-	/* Not real backlight cmd in AOD, just for QC purpose */
-	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
 	.panel_init = lcm_panel_init,
 	.panel_deinit = lcm_panel_deinit,
 
 	/* dsi cmd v2 interface */
+	.lcm_update_roi_cmdq_v2 = lcm_update_roi_cmdq_v2,
+	.lcm_update_roi_v2 = lcm_update_roi_v2,
+	.set_spr_cmdq_v2 = lcm_set_spr_cmdq_v2,
 	.panel_init_v2 = lcm_panel_init_v2,
 	.panel_deinit_v2 = lcm_panel_deinit_v2,
 	.mode_switch_v2 = mode_switch_v2,

@@ -147,7 +147,7 @@ static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
-int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1};
+int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1, 1};
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -5284,18 +5284,18 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "set_new_dsi:", 12) == 0) {
 		int ret = 0;
 
-		ret = sscanf(opt, "set_new_dsi:%d,%d,%d,%d,%d\n",
-			&dsi_cmd_v2_dbg[BACKLIGHT_DBG], &dsi_cmd_v2_dbg[SPR_DBG],
-			&dsi_cmd_v2_dbg[PANEL_INIT_DBG],&dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
-			&dsi_cmd_v2_dbg[ESD_CHECK_DBG]);
+		ret = sscanf(opt, "set_new_dsi:%d,%d,%d,%d,%d,%d\n", &dsi_cmd_v2_dbg[BACKLIGHT_DBG],
+			&dsi_cmd_v2_dbg[SPR_DBG], &dsi_cmd_v2_dbg[PANEL_INIT_DBG],
+			&dsi_cmd_v2_dbg[MODE_SWITCH_DBG], &dsi_cmd_v2_dbg[ESD_CHECK_DBG],
+			&dsi_cmd_v2_dbg[PU_DBG]);
 		if (ret <= 0) {
 			DDPPR_ERR("set_new_dsi fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("debug cmd %d, in1 set_new_dsi, new_dsi=%d,%d,%d,%d,%d, ret=%d\n", __LINE__,
-			dsi_cmd_v2_dbg[BACKLIGHT_DBG], dsi_cmd_v2_dbg[SPR_DBG],
+		DDPMSG("debug cmd %d, in1 set_new_dsi, new_dsi=%d,%d,%d,%d,%d,%d ret=%d\n",
+			__LINE__, dsi_cmd_v2_dbg[BACKLIGHT_DBG], dsi_cmd_v2_dbg[SPR_DBG],
 			dsi_cmd_v2_dbg[PANEL_INIT_DBG], dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
-			dsi_cmd_v2_dbg[ESD_CHECK_DBG], ret);
+			dsi_cmd_v2_dbg[ESD_CHECK_DBG], dsi_cmd_v2_dbg[PU_DBG], ret);
 	} else if (strncmp(opt, "new_read_ddic:", 14) == 0) {
 		int flags = 0, idx = 0, slot = 0, rx_len = 0, addr = 0;
 		char *rx_buf;

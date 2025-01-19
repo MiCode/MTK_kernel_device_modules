@@ -806,6 +806,16 @@ struct mtk_panel_funcs {
 		void *handle, unsigned int level, struct mtk_dsi_cmd_option *cmd_opt);
 	int (*set_aod_light_mode_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
 		void *handle, unsigned int mode, struct mtk_dsi_cmd_option *cmd_opt);
+	int (*set_spr_cmdq_v2)(void *dsi_drv, struct drm_panel *panel, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int en, struct mtk_dsi_cmd_option *cmd_opt);
+	int (*lcm_update_roi_v2)(void *dsi_drv, struct drm_panel *panel, mtk_dsi_ddic_cmd cb,
+		unsigned int x, unsigned int y,
+		unsigned int w, unsigned int h,
+		struct mtk_dsi_cmd_option *cmd_opt);
+	int (*lcm_update_roi_cmdq_v2)(void *dsi_drv,
+		mtk_dsi_ddic_cmd cb, void *handle,
+		unsigned int x, unsigned int y, unsigned int w, unsigned int h,
+		struct mtk_dsi_cmd_option *cmd_opt);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

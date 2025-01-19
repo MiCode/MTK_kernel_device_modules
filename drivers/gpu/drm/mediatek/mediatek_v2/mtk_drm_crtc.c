@@ -20005,7 +20005,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		return ret;
 	}
 
-	if (!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq) {
+	if (!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq_v2 &&
+		!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq) {
 		//DDPMSG("LCM does not support partial update!\n");
 		return ret;
 	}

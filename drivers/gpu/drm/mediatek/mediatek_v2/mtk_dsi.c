@@ -13354,12 +13354,19 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct drm_panel *panel = dsi ? dsi->panel : NULL;
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en && dsi_cmd_v2_dbg[SPR_DBG] &&
+			panel_ext && panel_ext->funcs && panel_ext->funcs->set_spr_cmdq_v2) {
+			struct mtk_dsi_cmd_option cmd_opt;
 
-		if (panel_ext && panel_ext->funcs
-			&& panel_ext->funcs->set_spr_cmdq)
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			panel_ext->funcs->set_spr_cmdq_v2(dsi, panel, mtk_mipi_dsi_cmd, handle,
+				*(unsigned int *)params, &cmd_opt);
+		} else if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->set_spr_cmdq) {
 			panel_ext->funcs->set_spr_cmdq(dsi, panel,
 					mipi_dsi_dcs_grp_write_gce,
 					handle, *(unsigned int *)params);
+		}
 	}
 		break;
 	case DSI_READ_ELVSS_BASE_VOLTAGE:
@@ -14153,7 +14160,24 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_TX_BUF_RW_TIMES(dsi->driver_data), rw_times, ~0);
 
-	if (panel_ext && panel_ext->funcs
+	if (dsi->driver_data->dsi_cmd_v2_en && dsi_cmd_v2_dbg[PU_DBG] &&
+		panel_ext && panel_ext->funcs && panel_ext->funcs->lcm_update_roi_cmdq_v2) {
+		struct mtk_dsi_cmd_option cmd_opt;
+
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+		if (dsi->set_partial_update == 1)
+			panel_ext->funcs->lcm_update_roi_cmdq_v2(dsi,
+			mtk_mipi_dsi_cmd, handle, 0, dsi->roi_y_offset,
+			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
+				comp, true), dsi->roi_height, &cmd_opt);
+		else
+			panel_ext->funcs->lcm_update_roi_cmdq_v2(dsi,
+			mtk_mipi_dsi_cmd, handle, 0, 0,
+			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
+				comp, true),
+			mtk_crtc_get_height_by_comp(__func__, &crtc->base,
+				comp, true), &cmd_opt);
+	} else if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
 		if (dsi->set_partial_update == 1)
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
