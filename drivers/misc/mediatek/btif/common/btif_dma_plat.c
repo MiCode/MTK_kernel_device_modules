@@ -1393,7 +1393,7 @@ int hal_dma_pm_ops(struct _MTK_DMA_INFO_STR_ *p_dma_info,
 		i_ret = 0;
 		break;
 	case BTIF_PM_RESTORE_NOIRQ:{
-			unsigned int flag = 0;
+			unsigned int flag;
 			struct _MTK_BTIF_IRQ_STR_ *p_irq = p_dma_info->p_irq;
 
 #ifdef CONFIG_OF
