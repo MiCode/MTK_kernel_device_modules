@@ -355,6 +355,16 @@ void jpeg_drv_hybrid_dec_prepare_dvfs(unsigned int id)
 		i++;
 		dev_pm_opp_put(opp);
 	}
+
+	if (id == 0) {
+		ret = of_property_read_u32(gJpegqDev.pDev[id]->of_node,
+					   "dvfs-opp-level",
+					   &gJpegqDev.dvfs_opp_level);
+		if (ret != 0 || gJpegqDev.dvfs_opp_level >= gJpegqDev.jpeg_freq_cnt[id]) {
+			gJpegqDev.dvfs_opp_level = gJpegqDev.jpeg_freq_cnt[id] - 1;
+		}
+		JPEG_LOG(0, "dvfs opp level: %d", gJpegqDev.dvfs_opp_level);
+	}
 }
 
 void jpeg_drv_hybrid_dec_unprepare_dvfs(void)
@@ -369,9 +379,9 @@ void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
 
 	if (gJpegqDev.jpeg_reg[id]) {
 		JPEG_LOG(1, "request freq %lu",
-				gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+				gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
 		opp = dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[id],
-		&gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+		&gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
 
@@ -382,14 +392,14 @@ void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
 		}
 	} else if (gJpegqDev.jpeg_dvfs[id]) {
 		JPEG_LOG(1, "request freq %lu",
-				gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+				gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
 		if (mmdvfs_get_version())
 			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGDEC);
 		ret = clk_set_rate(gJpegqDev.jpeg_dvfs[id],
-			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+			gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
 		if (ret) {
 			JPEG_LOG(0, "Failed to set freq %lu",
-			gJpegqDev.jpeg_freqs[id][gJpegqDev.jpeg_freq_cnt[id]-1]);
+			gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
 		}
 		if (mmdvfs_get_version())
 			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGDEC);

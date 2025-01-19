@@ -73,6 +73,7 @@ struct JpegDeviceStruct {
 	long ven0BaseVA;
 	long smiLarbBaseVA[JPEG_LARB_COUNT];
 	uint32_t axdomain[JPEG_LARB_COUNT];
+	uint32_t dvfs_opp_level;
 };
 
 long jpeg_dev_get_hybrid_decoder_base_VA(int id);
