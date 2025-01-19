@@ -20,6 +20,7 @@
 #include <linux/timer.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
+#include <scsi/scsi_device.h>
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek-ise.h"
 #include "ufs-mediatek.h"
@@ -318,39 +319,35 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	struct ufs_mtk_host *host;
 	struct ufs_hba *hba = (struct ufs_hba *)data;
 	struct scsi_device *sdev = NULL;
+	unsigned long timeout = jiffies + msecs_to_jiffies(10000);
 
 	host = ufshcd_get_variant(hba);
 	g_hba = hba;
 
 	sema_init(&host->rpmb_sem, 0);
 
-	err = wait_for_completion_timeout(&host->luns_added, 10 * HZ);
-	if (err == 0) {
-		dev_info(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed", __func__);
-		goto out;
-	}
-
-	/* add sdev_rpmb */
-	shost_for_each_device(sdev, hba->host) {
-		if (sdev->lun == ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN)) { /* rpmb lun */
-			host->sdev_rpmb = sdev;
-			/* break out shost_for_each_device should call scsi_device_put(sdev) */
-			scsi_device_put(sdev);
-			goto find_exit;
+	while (!host->sdev_rpmb) {
+		msleep(100);
+		shost_for_each_device(sdev, hba->host) {
+			if (sdev->lun == ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN) &&
+			    sdev->sdev_state != SDEV_CREATED)
+				host->sdev_rpmb = sdev;
+		}
+		if (time_after(jiffies, timeout) && !host->sdev_rpmb) {
+			dev_info(hba->dev, "%s: scsi rpmb device cannot found before timeout\n", __func__);
+			goto out;
 		}
 	}
-
-	dev_info(hba->dev, "%s: scsi rpmb device cannot found\n", __func__);
-		goto out;
-
-find_exit:
+	dev_info(hba->dev, "%s: get rpmb sdev, sdev_state = %d", __func__, host->sdev_rpmb->sdev_state);
 
 	desc_buf = kmalloc(QUERY_DESC_MAX_SIZE, GFP_KERNEL);
 	if (!desc_buf)
 		goto out;
 
+	ufshcd_rpm_get_sync(hba);
 	err = ufshcd_read_desc_param(hba, QUERY_DESC_IDN_GEOMETRY, 0, 0,
 				     desc_buf, QUERY_DESC_MAX_SIZE);
+	ufshcd_rpm_put_sync(hba);
 	if (err) {
 		dev_info(hba->dev, "%s: cannot get rpmb rw limit %d\n",
 			 dev_name(hba->dev), err);

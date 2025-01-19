@@ -1694,7 +1694,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	     	   PM_QOS_DEFAULT_VALUE);
 	host->pm_qos_init = true;
 
-	init_completion(&host->luns_added);
 	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
 	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
 	host->ufs_wake_lock = wakeup_source_register(NULL, "ufs_wake_lock");
