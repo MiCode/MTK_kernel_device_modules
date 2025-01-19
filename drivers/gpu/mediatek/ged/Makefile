@@ -69,7 +69,8 @@ ccflags-y += \
 		-I$(VIDEOX_TOP)/ \
 		-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
 		-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/ \
-		-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/
+		-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
+		-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
 ccflags-y += \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb
