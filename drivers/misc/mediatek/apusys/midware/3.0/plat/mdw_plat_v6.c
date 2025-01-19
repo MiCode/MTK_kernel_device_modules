@@ -195,7 +195,7 @@ static int mdw_plat_v6_late_init(struct mdw_device *mdev)
 	}
 
 	/* support dvfs policy */
-	ret = mdw_dplcy_init();
+	ret = mdw_dplcy_init(mdev);
 	if (ret) {
 		mdw_drv_err("mdw dvfs policy init failed\n");
 		goto deinit_ch;
@@ -211,7 +211,7 @@ static int mdw_plat_v6_late_init(struct mdw_device *mdev)
 	goto out;
 
 deinit_dp:
-	mdw_dplcy_deinit();
+	mdw_dplcy_deinit(mdev);
 deinit_ch:
 	mdw_ch_deinit(mdev);
 deinit_pb:
@@ -225,7 +225,7 @@ static void mdw_plat_v6_late_deinit(struct mdw_device *mdev)
 	mdw_drv_debug("\n");
 
 	mdw_rv_late_deinit(mdev);
-	mdw_dplcy_deinit();
+	mdw_dplcy_deinit(mdev);
 	mdw_ch_deinit(mdev);
 	mdw_pb_deinit(mdev);
 }
@@ -504,6 +504,10 @@ static int mdw_plat_v6_create_session(struct mdw_fpriv *mpriv)
 	if (ret)
 		mdw_drv_err("create cmd history session fail(%d)\n", ret);
 
+	ret = mdw_dplcy_session_create(mpriv);
+	if (ret)
+		mdw_drv_err("create dplcy session fail(%d)\n", ret);
+
 	return ret;
 }
 
@@ -511,7 +515,7 @@ static int mdw_plat_v6_delete_session(struct mdw_fpriv *mpriv)
 {
 	mdw_drv_debug("\n");
 	mdw_ch_session_delete(mpriv);
-
+	mdw_dplcy_session_delete(mpriv);
 	return 0;
 }
 
