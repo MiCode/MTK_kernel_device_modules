@@ -196,13 +196,18 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		(ptp3_status.thermal_prot_mode == CTT_THERMAL_PROT ? "CTT_T" :
 		(ptp3_status.thermal_prot_mode == SW_THERMAL_PROT ? "SW" : "Off")));
 	seq_printf(m,
-		"%-16s HBVC: %s, BRCAST: %s, DELSEL: %s, PreUVLO: %s, PRBC: %s\n",
+		"%-16s HBVC: %s, BRCAST: %s, DELSEL: %s, PRBC: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.hbvc_support ? "On" : "Off",
 		ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" : "Off",
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
-		ptp3_status.preuvlo_mode ? "On" : "Off",
 		ptp3_status.prbc_mode ? "On" : "Off");
+	seq_printf(m,
+		"%-16s PreUVLO: %s (F=%d, T=%d, C=%d, LT=%d, TT=%d)\n",
+		"[PTP3 Config]",
+		ptp3_status.preuvlo_mode ? "On" : "Off", g_shared_status->preuvlo_info.throttle_freq,
+		g_shared_status->preuvlo_info.throttled, g_shared_status->preuvlo_info.count,
+		g_shared_status->preuvlo_info.last_time, g_shared_status->preuvlo_info.total_time);
 	seq_printf(m,
 		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s, F_TRACKER: %s, V_TRACKER: %s\n",
 		"[PTP3 Config]",

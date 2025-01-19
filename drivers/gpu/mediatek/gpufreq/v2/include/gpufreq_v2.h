@@ -463,6 +463,14 @@ struct gpufreq_preoc_info {
 	unsigned int scale_factor;
 };
 
+struct gpufreq_preuvlo_info {
+	unsigned int throttle_freq; /* KHz */
+	unsigned int throttled;
+	unsigned int count;
+	unsigned int last_time;     /* us */
+	unsigned int total_time;    /* us */
+};
+
 struct gpufreq_prbc_info {
 	unsigned int ondie_power;
 	unsigned int ondie_volt;
@@ -590,6 +598,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
 	struct gpufreq_prbc_info prbc_info;
+	struct gpufreq_preuvlo_info preuvlo_info;
 	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_slt2_bmodel slt2_bmodel;
