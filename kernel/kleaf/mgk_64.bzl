@@ -181,6 +181,8 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/mailbox:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_makefile".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -234,6 +236,8 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -407,6 +411,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/platform/v2:mtk-lpm-plat-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:mkp".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:trace_mmstat".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -592,7 +598,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/adsp/adsp.ko",
     "drivers/misc/mediatek/adsp/v1/adsp-v1.ko",
     "drivers/misc/mediatek/adsp/v2/adsp-v2.ko",
-    "drivers/misc/mediatek/mkp/mkp.ko",
     "drivers/misc/mediatek/aee/aed/aee_rs.ko",
     "drivers/misc/mediatek/aee/hangdet/aee_hangdet.ko",
     "drivers/misc/mediatek/apusys/apusys.ko",
@@ -700,7 +705,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mddp/mddp.ko",
     "drivers/misc/mediatek/mdp/cmdq_helper_inf.ko",
     #"drivers/misc/mediatek/mdp/mdp_drv_dummy.ko",
-    #"drivers/misc/mediatek/mkp/mkp.ko",
     "drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko",
     "drivers/misc/mediatek/memory-amms/memory-amms.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ccu.ko",
@@ -713,7 +717,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmp/src/mmprofile.ko",
     "drivers/misc/mediatek/mme/src/mme.ko",
     "drivers/misc/mediatek/mmqos/mmqos_wrapper.ko",
-    "drivers/misc/mediatek/mmstat/trace_mmstat.ko",
     "drivers/misc/mediatek/monitor_hang/monitor_hang.ko",
     "drivers/misc/mediatek/mtk-interconnect/mtk-icc-core.ko",
     "drivers/misc/mediatek/mtprintk/mtk_printk_ctrl.ko",
