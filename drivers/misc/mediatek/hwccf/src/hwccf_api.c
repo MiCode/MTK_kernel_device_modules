@@ -574,7 +574,18 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 		case 0x214:
 			setclr_sta_ofs = V0_PLL_CLR_STA;
 			break;
-
+		case 0x230:
+			setclr_sta_ofs = V0_CCF_BACKUP1_SET_STA;
+			break;
+		case 0x234:
+			setclr_sta_ofs = V0_CCF_BACKUP1_CLR_STA;
+			break;
+		case 0x238:
+			setclr_sta_ofs = V0_CCF_BACKUP2_SET_STA;
+			break;
+		case 0x23C:
+			setclr_sta_ofs = V0_CCF_BACKUP2_CLR_STA;
+			break;
 		default:
 			break;
 	}
@@ -723,12 +734,12 @@ int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, en
 	} else if (resource_id == HW_CCF_MTCMOS_GRP_1) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_MTCMOS1_SET_OFS : V0_MTCMOS1_CLR_OFS);
 		done_ofs = V0_MTCMOS1_DONE_OFS;
-	} else if (resource_id == HW_CCF_BACKUP_GRP_0) {
-		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_XPU_B0_SET : V0_XPU_B0_CLR);
-		done_ofs = V0_XPU_B0_DONE;
 	} else if (resource_id == HW_CCF_BACKUP_GRP_1) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_XPU_B1_SET : V0_XPU_B1_CLR);
 		done_ofs = V0_XPU_B1_DONE;
+	} else if (resource_id == HW_CCF_BACKUP_GRP_2) {
+		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_XPU_B2_SET : V0_XPU_B2_CLR);
+		done_ofs = V0_XPU_B2_DONE;
 	} else if (resource_id == HW_CCF_PLL) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_XPU_PLL_SET : V0_XPU_PLL_CLR);
 		done_ofs = V0_CCF_XPU_PLL_DONE;

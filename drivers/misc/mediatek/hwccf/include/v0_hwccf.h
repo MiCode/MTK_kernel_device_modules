@@ -69,13 +69,13 @@
 #define V0_MTCMOS1_DONE_OFS    V0_CCF_MTCMOS_DONE_1
 
 /* BACKUP id to ofs */
-#define V0_XPU_B0_SET          V0_CCF_XPU_B1_SET(HWV_XPU_0)
-#define V0_XPU_B0_CLR          V0_CCF_XPU_B1_CLR(HWV_XPU_0)
-#define V0_XPU_B0_DONE         V0_CCF_BACKUP1_DONE
+#define V0_XPU_B1_SET          V0_CCF_XPU_B1_SET(HWV_XPU_0)
+#define V0_XPU_B1_CLR          V0_CCF_XPU_B1_CLR(HWV_XPU_0)
+#define V0_XPU_B1_DONE         V0_CCF_BACKUP1_DONE
 
-#define V0_XPU_B1_SET          V0_CCF_XPU_B2_SET(HWV_XPU_0)
-#define V0_XPU_B1_CLR          V0_CCF_XPU_B2_CLR(HWV_XPU_0)
-#define V0_XPU_B1_DONE         V0_CCF_BACKUP2_DONE
+#define V0_XPU_B2_SET          V0_CCF_XPU_B2_SET(HWV_XPU_0)
+#define V0_XPU_B2_CLR          V0_CCF_XPU_B2_CLR(HWV_XPU_0)
+#define V0_XPU_B2_DONE         V0_CCF_BACKUP2_DONE
 
 /* PLL Voter */
 #define V0_XPU_PLL_SET          V0_CCF_XPU_PLL_SET(HWV_XPU_0)
@@ -91,5 +91,9 @@
 #define V0_XPU_MTCMOS1_CLR_STA    CCF_OFS(0x1478)
 #define V0_PLL_SET_STA    CCF_OFS(0x1464)
 #define V0_PLL_CLR_STA    CCF_OFS(0x1468)
+#define V0_CCF_BACKUP1_SET_STA    CCF_OFS(0x1484)
+#define V0_CCF_BACKUP1_CLR_STA    CCF_OFS(0x1488)
+#define V0_CCF_BACKUP2_SET_STA    CCF_OFS(0x148C)
+#define V0_CCF_BACKUP2_CLR_STA    CCF_OFS(0x1490)
 
 #endif /* _V0_HWCCF_H_ */
