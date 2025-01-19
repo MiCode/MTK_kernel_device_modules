@@ -496,10 +496,10 @@ config MTK_MEMLOG_EVENT_SUPPORT
 	bool "Support memlog event in Thin MD host driver"
 	help
 	  Used to control the memlog event feature of the Thin MD host driver.
-	  When this option is enabled, host dirver will print the
-	  specified log in binary format.
-	  The logs printed in binary format need to be parsed into
-	  plain  text using a post-processing tools.
+	  When this option is enabled, host dirver will print
+	  high-frequency logs in hex format.
+	  The logs printed in hex format need to be parsed into
+	  plain text using a post-processing tool.
 	  Say Y here if need to enable memlog event in host driver.
 	  If unsure, say N.
 
