@@ -726,6 +726,8 @@ static ssize_t clkscale_control_store(struct device *dev,
 	if (hba->dev_info.wspecversion < 0x0400)
 		return count;
 
+	down(&hba->host_sem);
+
 	atomic_set(&host->clkscale_control, value);
 
 	switch (value) {
@@ -759,6 +761,8 @@ static ssize_t clkscale_control_store(struct device *dev,
 	default:
 		break;
 	}
+
+	up(&hba->host_sem);
 
 	return count;
 }

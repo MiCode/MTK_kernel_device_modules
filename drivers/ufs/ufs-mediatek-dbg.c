@@ -1748,6 +1748,51 @@ out:
 	return ret;
 }
 
+static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (!host->legacy_ip_ver && host->ip_ver >= IP_VER_MT6983) {
+		ufshcd_writel(hba, 0x820820, REG_UFS_DEBUG_SEL);
+		ufshcd_writel(hba, 0x0, REG_UFS_DEBUG_SEL_B0);
+		ufshcd_writel(hba, 0x55555555, REG_UFS_DEBUG_SEL_B1);
+		ufshcd_writel(hba, 0xaaaaaaaa, REG_UFS_DEBUG_SEL_B2);
+		ufshcd_writel(hba, 0xffffffff, REG_UFS_DEBUG_SEL_B3);
+	} else {
+		ufshcd_writel(hba, 0x20, REG_UFS_DEBUG_SEL);
+	}
+}
+
+static int ufs_mtk_wait_link_state(struct ufs_hba *hba, u32 state,
+				   unsigned long max_wait_ms)
+{
+	ktime_t timeout, time_checked;
+	u32 val;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	timeout = ktime_add_ms(ktime_get(), max_wait_ms);
+	do {
+		time_checked = ktime_get();
+
+		if (host->legacy_ip_ver || host->ip_ver < IP_VER_MT6899) {
+			ufs_mtk_dbg_sel(hba);
+			val = ufshcd_readl(hba, REG_UFS_PROBE);
+			val = val >> 28;
+		} else {
+			val = ufshcd_readl(hba, REG_UFS_UFS_MMIO_OTSD_CTRL);
+			val = val >> 24;
+		}
+
+		if (val == state)
+			return 0;
+
+		/* Sleep for max. 200us */
+		usleep_range(100, 200);
+	} while (ktime_before(time_checked, timeout));
+
+	return -ETIMEDOUT;
+}
+
 /*
  * Ref-clk start calibration may have jiter, block requests and enter ah8
  */
@@ -1756,6 +1801,7 @@ int ufs_mtk_cali_hold(void)
 	struct ufs_hba *hba = ufshba;
 	u64 timeout = 1000 * 1000; /* 1 sec */;
 	int ret = 0;
+	u32 ahit;
 
 	if (!hba)
 		return -EINVAL;
@@ -1771,12 +1817,28 @@ int ufs_mtk_cali_hold(void)
 		ret = -EBUSY;
 	}
 
-	/* To make sure clock scaling isn't work when ref-clk calibration ongoing */
-	queue_work(hba->clk_scaling.workq, &hba->clk_scaling.suspend_work);
-	flush_work(&hba->clk_scaling.suspend_work);
+	/*
+	 * To make sure clock scaling isn't work when ref-clk
+	 * calibration ongoing
+	 */
+	if (ufshcd_is_clkscaling_supported(hba)) {
+		queue_work(hba->clk_scaling.workq,
+			&hba->clk_scaling.suspend_work);
+		flush_work(&hba->clk_scaling.suspend_work);
+	}
 
 	/* Make sure host enter AH8 and clock off */
-	mdelay(15);
+	ufshcd_hold(hba);
+	ahit = ufshcd_readl(hba, REG_AUTO_HIBERNATE_IDLE_TIMER);
+	if (ahit == 0)
+		ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
+
+	ret = ufs_mtk_wait_link_state(hba, VS_LINK_HIBERN8, 15);
+	if (ret)
+		dev_err(hba->dev, "%s: UFS enter hibernate timeout!", __func__);
+	ufshcd_release(hba);
+
+	down(&hba->host_sem);
 
 	dev_info(hba->dev, "%s: UFS Block Request ret = %d\n", __func__, ret);
 
@@ -1793,6 +1855,8 @@ int ufs_mtk_cali_release(void)
 
 	if (!hba)
 		return -EINVAL;
+
+	up(&hba->host_sem);
 
 	ufs_mtk_scsi_unblock_requests(hba);
 	pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
