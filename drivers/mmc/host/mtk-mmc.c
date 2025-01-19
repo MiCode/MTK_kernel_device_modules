@@ -980,6 +980,8 @@ static void msdc_new_tx_rx_setting(struct msdc_host *host, unsigned char timing)
 
 static int msdc_prepare_set_mclk(struct msdc_host *host, bool gate)
 {
+	int ret = 0;
+#if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	if (host->dev_comp->clock_set.need_gate_cg == false)
 		return 0;
 
@@ -1001,9 +1003,9 @@ V1:
 				clk_disable_unprepare(clk_get_parent(host->src_clk));
 		} else {
 			if (host->src_clk_cg)
-				clk_prepare_enable(host->src_clk_cg);
+				ret = clk_prepare_enable(host->src_clk_cg);
 			else
-				clk_prepare_enable(clk_get_parent(host->src_clk));
+				ret = clk_prepare_enable(clk_get_parent(host->src_clk));
 		}
 		break;
 	case MSDC_CLK_SET_V2:
@@ -1013,24 +1015,24 @@ V1:
 			if (host->src_clk_cg)
 				clk_disable_unprepare(host->src_clk);
 		} else {
-			clk_prepare_enable(host->src_clk);
-			if (host->src_clk_cg)
-				clk_prepare_enable(host->src_clk);
+			ret = clk_prepare_enable(host->src_clk);
+			if (host->src_clk_cg && ret == 0)
+				ret = clk_prepare_enable(host->src_clk);
 		}
 		break;
 	case MSDC_CLK_SET_MULTI:
 		if (host->sw_ver == CHIP_VER_E1)
-			return 0;
+			ret = 0;
 		else if (host->sw_ver == CHIP_VER_E2)
 			goto V1;
 		else
-			return 2;
+			ret = 2;
 		break;
 	default:
 		break;
 	}
-
-	return 0;
+#endif
+	return ret;
 }
 
 static void msdc_set_mclk(struct msdc_host *host, unsigned char timing, u32 hz)
