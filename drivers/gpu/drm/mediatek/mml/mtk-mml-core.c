@@ -1316,6 +1316,14 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	/* note the running task not always current begin task */
 	task_pipe_tmp = list_first_entry_or_null(&path_clt->tasks,
 		typeof(*task_pipe_tmp), entry_clt);
+	while (task_pipe_tmp && task_pipe_tmp->task->done) {
+		if (task_pipe_tmp ==
+			list_last_entry(&path_clt->tasks, typeof(*task_pipe_tmp), entry_clt)) {
+			task_pipe_tmp = NULL;
+			break;
+		}
+		task_pipe_tmp = list_next_entry(task_pipe_tmp, entry_clt);
+	}
 	if (unlikely(!task_pipe_tmp))
 		goto done;
 	/* clear so that qos set api report max bw */
@@ -1424,6 +1432,16 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 	task_pipe_cur = list_first_entry_or_null(&path_clt->tasks, typeof(*task_pipe_cur),
 		entry_clt);
+	/* find current item which still running */
+	while (task_pipe_cur && task_pipe_cur->task->done) {
+		if (task_pipe_cur ==
+			list_last_entry(&path_clt->tasks, typeof(*task_pipe_cur), entry_clt)) {
+			task_pipe_cur = NULL;
+			break;
+		}
+		task_pipe_cur = list_next_entry(task_pipe_cur, entry_clt);
+	}
+
 	if (task_pipe_cur) {
 		/* calculate remaining time to complete pixels */
 		max_pixel = task_pipe_cur->task->config->cache[pipe].max_tput_pixel;
@@ -1432,6 +1450,8 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 		if (racing_mode) {
 			throughput = 0;
 			list_for_each_entry(task_pipe_tmp, &path_clt->tasks, entry_clt) {
+				if (task_pipe_tmp->task->done)
+					continue;
 				/* find the max between tasks on same client */
 				throughput = max(throughput, task_pipe_tmp->throughput);
 			}
@@ -1448,6 +1468,8 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 		throughput = 0;
 		list_for_each_entry(task_pipe_tmp, &path_clt->tasks, entry_clt) {
+			if (task_pipe_tmp->task->done)
+				continue;
 			/* find the max throughput (frequency) between tasks on same client */
 			throughput = max(throughput, task_pipe_tmp->throughput);
 		}
@@ -1468,6 +1490,8 @@ done:
 			tmp_pipe = 0;
 		mml_core_qos_reset(task, tmp_pipe);
 		list_for_each_entry(task_pipe_tmp, &path_clt->tasks, entry_clt) {
+			if (task_pipe_tmp->task->done)
+				continue;
 			/* force all comp find max bw after reset */
 			mml_core_qos_calc(task_pipe_tmp->task, tmp_pipe, throughput);
 		}
@@ -1791,8 +1815,11 @@ static void core_taskdone_check(struct mml_task *task)
 
 	/* cnt can be 1 or 2, if dual on and count 2 means pipes done */
 	cnt = atomic_inc_return(&task->pipe_done);
-	if (!cfg->dual || cnt > 1)
+	mml_mmp(taskdone, MMPROFILE_FLAG_PULSE, task->job.jobid, ((cfg->dual << 16) | cnt));
+	if (!cfg->dual || cnt > 1) {
+		task->done = true;
 		kthread_queue_work(cfg->ctx_kt_done, &task->kt_work_done);
+	}
 }
 
 static void core_taskdone_cb(struct cmdq_cb_data data)
@@ -2281,6 +2308,9 @@ static void core_config_task(struct mml_task *task)
 			goto done;
 		}
 	}
+
+	/* mark start in early stage */
+	task->done = false;
 
 	mml_update_pq_status(&cfg->info.dest[0].pq_config);
 	mml_update_status_to_tppa(&cfg->info);
