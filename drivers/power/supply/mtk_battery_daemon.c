@@ -5031,10 +5031,10 @@ void fg_bat_temp_int_sw_check(struct mtk_battery *gm)
 	else if (tmp <= gm->bat_tmp_lt)
 		fg_bat_temp_int_internal(gm);
 
-	if (gm->cur_bat_temp >= BATTERY_SHUTDOWN_TEMPERATURE) {
+	if (gm->battery_temp >= BATTERY_SHUTDOWN_TEMPERATURE) {
 		bm_debug(gm,
 			"%d battery temperature >= %d,shutdown",
-			gm->cur_bat_temp, BATTERY_SHUTDOWN_TEMPERATURE);
+			gm->battery_temp, BATTERY_SHUTDOWN_TEMPERATURE);
 		set_shutdown_cond(gm, OVERHEAT);
 	}
 }

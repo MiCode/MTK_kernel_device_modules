@@ -1069,7 +1069,7 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 		}
 		break;
 	case TEMP:
-		ret_val = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
+		ret_val = gm->tbat_precise;
 		break;
 	case QMAX_DESIGN:
 		if (gm->battery_id < 0 || gm->battery_id >= TOTAL_BATTERY_NUMBER)
@@ -1228,7 +1228,7 @@ static int bs_psy_get_property(struct power_supply *psy,
 				count += 1;
 			}
 		if (count != 0)
-			val->intval = temp / count * 10;
+			val->intval = temp / count;
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:

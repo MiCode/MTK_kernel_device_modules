@@ -161,7 +161,7 @@ int get_iavg_gap(struct mtk_battery *gm)
 	int temp = 0, ret_val = 0;
 	int is_ascending = 0, is_descending = 0;
 
-	temp = gm->cur_bat_temp;
+	temp = gm->battery_temp;
 	for (i = 0;i < gm->fg_table_cust_data.active_table_number - 1;i++) {
 		if (gm->fg_table_cust_data.fg_profile[i].temperature >
 			gm->fg_table_cust_data.fg_profile[i + 1].temperature)
@@ -605,14 +605,14 @@ int adc_battemp(struct mtk_battery *gm, int res)
 {
 	int i = 0;
 	int res1 = 0, res2 = 0;
-	int tbatt_value = -200, tmp1 = 0, tmp2 = 0;
+	int tbatt_value = -2000, tmp1 = 0, tmp2 = 0;
 	struct fg_temp *ptable;
 
 	ptable = gm->tmp_table;
 	if (res >= ptable[0].TemperatureR) {
-		tbatt_value = -40;
+		tbatt_value = -400;
 	} else if (res <= ptable[20].TemperatureR) {
-		tbatt_value = 60;
+		tbatt_value = 600;
 	} else {
 		res1 = ptable[0].TemperatureR;
 		tmp1 = ptable[0].BatteryTemp;
@@ -630,7 +630,7 @@ int adc_battemp(struct mtk_battery *gm, int res)
 		}
 
 		tbatt_value = (((res - res2) * tmp1) +
-			((res1 - res) * tmp2)) / (res1 - res2);
+			((res1 - res) * tmp2)) * 10 / (res1 - res2);
 	}
 	bm_debug(gm, "[%s] %d %d %d %d %d %d\n",
 		__func__,
@@ -835,7 +835,12 @@ int force_get_tbat_internal(struct mtk_battery *gm)
 		tmp_time = ktime_to_timespec64(dtime);
 	}
 
-	return bat_temperature_val;
+	if (gm->fixed_bat_tmp != 0xffff)
+		gm->tbat_precise = gm->fixed_bat_tmp * 10;
+	else
+		gm->tbat_precise = bat_temperature_val;
+
+	return bat_temperature_val / 10;
 }
 
 int force_get_tbat(struct mtk_battery *gm, bool update)
@@ -848,12 +853,12 @@ int force_get_tbat(struct mtk_battery *gm, bool update)
 	prop_control = &gm->prop_control;
 
 	if (gm->is_probe_done == false) {
-		gm->cur_bat_temp = 25;
+		gm->tbat_precise = 250;
 		return 25;
 	}
 
 	if (gm->fixed_bat_tmp != 0xffff) {
-		gm->cur_bat_temp = gm->fixed_bat_tmp;
+		gm->tbat_precise = gm->fixed_bat_tmp * 10;
 		return gm->fixed_bat_tmp;
 	}
 
@@ -877,9 +882,7 @@ int force_get_tbat(struct mtk_battery *gm, bool update)
 	}
 
 	if (bat_temperature_val == -EHOSTDOWN)
-		return gm->cur_bat_temp;
-
-	gm->cur_bat_temp = bat_temperature_val;
+		return gm->battery_temp;
 
 	return bat_temperature_val;
 }
