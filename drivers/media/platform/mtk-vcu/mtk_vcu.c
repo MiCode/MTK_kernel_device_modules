@@ -2557,6 +2557,7 @@ static long mtk_vcu_free(
 	long ret = -1;
 	unsigned char *user_data_addr = NULL;
 	struct mem_obj mem_buff_data;
+	memset(&mem_buff_data, 0, sizeof(struct mem_obj));
 
 	user_data_addr = (unsigned char *)arg;
 	ret = (long)copy_from_user(&mem_buff_data, user_data_addr,
