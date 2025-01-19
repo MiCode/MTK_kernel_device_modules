@@ -245,40 +245,38 @@ bootargs_ext = "rcu_nocbs=0-7";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "truly,td4330,cmd";
-		reg = <0>;
-		pm-enable-gpios = <&pio 174 0>;
-		reset-gpios = <&pio 90 0>;
-		swap-from-dts;
-		lane-swap-setting = <1 2 0 3 4 2>;
-		pn-swap-setting = <1 1 1 1 1 1>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	panel2@1 {
 		compatible = "jdi,nt36672e,vdo,120hz";
-		reg = <1>;
+		reg = <0>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
 		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
+			panel_in1: endpoint {
+			remote-endpoint = <&dsi_out1>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "truly,td4330,cmd";
+		reg = <1>;
+		pm-enable-gpios = <&pio 174 0>;
+		reset-gpios = <&pio 90 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
 			panel_in2: endpoint {
-				remote-endpoint = <&dsi_out2>;
+			remote-endpoint = <&dsi_out2>;
 			};
 		};
 	};
 	panel3@2 {
-		compatible = "truly,td4330,cmd";
+		compatible = "nt37801,cmd,fhd";
 		reg = <2>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -288,7 +286,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel4@3 {
-		compatible = "nt37801,cmd,fhd";
+		compatible = "nt37801,cmd,fhd,plus";
 		reg = <3>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
@@ -302,7 +300,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel5@4 {
-		compatible = "nt37801,cmd,fhd,plus";
+		compatible = "jdi,nt36672e,cphy,vdo";
 		reg = <4>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
@@ -311,29 +309,14 @@ bootargs_ext = "rcu_nocbs=0-7";
 		pinctrl-names = "default";
 		port {
 			panel_in5: endpoint {
-				remote-endpoint = <&dsi_out5>;
-			};
-		};
-	};
-
-	panel6@5 {
-		compatible = "jdi,nt36672e,cphy,vdo";
-		reg = <5>;
-		pm-enable-gpios = <&pio 174 0>;
-		reset-gpios = <&pio 90 0>;
-		res-switch = <2>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in6: endpoint {
-				remote-endpoint = <&dsi_out6>;
+			remote-endpoint = <&dsi_out5>;
 			};
 		};
 	};
 
 	ports {
 		port {
-			dsi_out: endpoint@0 {
+			dsi_out1: endpoint@0 {
 				remote-endpoint = <&panel_in1>;
 			};
 
@@ -351,10 +334,6 @@ bootargs_ext = "rcu_nocbs=0-7";
 
 			dsi_out5: endpoint@4 {
 				remote-endpoint = <&panel_in5>;
-			};
-
-			dsi_out6: endpoint@5 {
-				remote-endpoint = <&panel_in6>;
 			};
 		};
 	};
