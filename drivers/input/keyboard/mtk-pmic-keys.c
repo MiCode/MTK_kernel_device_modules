@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/pm_wakeup.h>
 #include <linux/regmap.h>
+#include <linux/device.h>
 #include <linux/mfd/mt6323/registers.h>
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6363/registers.h>
@@ -23,6 +24,9 @@
 #include <linux/mfd/mt6397/core.h>
 #include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6357/core.h>
+#include <linux/mfd/mt6661/registers.h>
+#include <linux/mfd/mt6661/core.h>
+#include <linux/pinctrl/consumer.h>
 
 /* 6358 pmic define */
 #define MT6358_TOPSTATUS			(0x28)
@@ -37,7 +41,8 @@
 #define MT6358_RST_DU_SHIFT                     12
 #define MTK_PMIC_PWRKEY_INDEX			0
 #define MTK_PMIC_HOMEKEY_INDEX			1
-#define MTK_PMIC_MAX_KEY_COUNT			2
+#define MTK_PMIC_HOMEKEY2_INDEX			2
+#define MTK_PMIC_MAX_KEY_COUNT			3
 #define MT6397_PWRKEY_RST_SHIFT			6
 #define MT6397_HOMEKEY_RST_SHIFT		5
 #define MT6397_RST_DU_SHIFT			8
@@ -47,6 +52,9 @@
 #define MT6363_PWRKEY_RST_SHIFT			2
 #define MT6363_HOMEKEY_RST_SHIFT		4
 #define MT6363_RST_DU_SHIFT			6
+#define MT6661_PWRKEY_RST_SHIFT			2
+#define MT6661_HOMEKEY_RST_SHIFT		4
+#define MT6661_RST_DU_SHIFT			6
 #define PWRKEY_RST_EN				1
 #define HOMEKEY_RST_EN				1
 #define RST_DU_MASK				3
@@ -75,7 +83,6 @@ struct mtk_pmic_keys_regs {
 	.intsel_mask		= _intsel_mask,		\
 }
 
-#define RELEASE_IRQ_INTERVAL	2
 struct mtk_pmic_regs {
 	const struct mtk_pmic_keys_regs keys_regs[MTK_PMIC_MAX_KEY_COUNT];
 	bool release_irq;
@@ -134,7 +141,10 @@ static const struct mtk_pmic_regs mt6363_regs = {
 		0x1, MT6363_PSC_TOP_INT_CON0, 0x0),
 	.keys_regs[MTK_PMIC_HOMEKEY_INDEX] =
 		MTK_PMIC_KEYS_REGS(MT6363_TOPSTATUS,
-		0x3, MT6363_PSC_TOP_INT_CON0, 0x1),
+		0x3, MT6363_PSC_TOP_INT_CON0, 0x12),
+	.keys_regs[MTK_PMIC_HOMEKEY2_INDEX] =
+		MTK_PMIC_KEYS_REGS(MT6363_TOPSTATUS,
+		0x4, MT6363_PSC_TOP_INT_CON0, 0x24),
 	.release_irq = true,
 	.pmic_rst_reg = MT6363_STRUP_CON11,
 	.pmic_rst_para_reg = MT6363_STRUP_CON12,
@@ -178,6 +188,25 @@ static const struct mtk_pmic_regs mt6358_regs = {
 	.homekey_rst_shift = MT6358_HOMEKEY_RST_SHIFT,
 	.rst_du_shift = MT6358_RST_DU_SHIFT,
 };
+
+static const struct mtk_pmic_regs mt6661_regs = {
+	.keys_regs[MTK_PMIC_PWRKEY_INDEX] =
+		MTK_PMIC_KEYS_REGS(MT6661_TOPSTATUS,
+		0x1, MT6661_PSC_TOP_INT_CON0, 0x09),
+	.keys_regs[MTK_PMIC_HOMEKEY_INDEX] =
+		MTK_PMIC_KEYS_REGS(MT6661_TOPSTATUS,
+		0x3, MT6661_PSC_TOP_INT_CON0, 0x12),
+	.keys_regs[MTK_PMIC_HOMEKEY2_INDEX] =
+		MTK_PMIC_KEYS_REGS(MT6661_TOPSTATUS,
+		0x4, MT6661_PSC_TOP_INT_CON0, 0x24),
+	.release_irq = true,
+	.pmic_rst_reg = MT6661_STRUP_CON11,
+	.pmic_rst_para_reg = MT6661_STRUP_CON12,
+	.pwrkey_rst_shift = MT6661_PWRKEY_RST_SHIFT,
+	.homekey_rst_shift = MT6661_HOMEKEY_RST_SHIFT,
+	.rst_du_shift = MT6661_RST_DU_SHIFT,
+};
+
 struct mtk_pmic_keys_info {
 	struct mtk_pmic_keys *keys;
 	const struct mtk_pmic_keys_regs *regs;
@@ -192,12 +221,15 @@ struct mtk_pmic_keys {
 	struct device *dev;
 	struct regmap *regmap;
 	struct mtk_pmic_keys_info keys[MTK_PMIC_MAX_KEY_COUNT];
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *kpcol0_pins_mode;
 };
 
 enum mtk_pmic_keys_lp_mode {
 	LP_DISABLE,
 	LP_ONEKEY,
-	LP_TWOKEY,
+	LP_TWOKEY_HOMEKEY,
+	LP_TWOKEY_HOMEKEY2,
 };
 
 static struct platform_device *ktf_pmic_pdev;
@@ -224,9 +256,13 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 	if (ret)
 		long_press_debounce = 0;
 
-	regmap_update_bits(keys->regmap, pmic_rst_para_reg,
+	ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 			   RST_DU_MASK << pmic_regs->rst_du_shift,
 			   long_press_debounce << pmic_regs->rst_du_shift);
+	if (ret < 0) {
+		dev_dbg(keys->dev,
+			"regmap_update_bits fail: %d\n", ret);
+	}
 
 	ret = of_property_read_u32(keys->dev->of_node,
 		"mediatek,long-press-mode", &long_press_mode);
@@ -235,28 +271,68 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 
 	switch (long_press_mode) {
 	case LP_ONEKEY:
-		regmap_update_bits(keys->regmap, pmic_rst_reg,
+		ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
 				   pwrkey_rst_shift,
 				   pwrkey_rst_shift);
-		regmap_update_bits(keys->regmap, pmic_rst_para_reg,
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_ONEKEY: %d\n", ret);
+		}
+		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
 				   RST_PWRKEY_MODE);
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_ONEKEY: %d\n", ret);
+		}
 		break;
-	case LP_TWOKEY:
-		regmap_update_bits(keys->regmap, pmic_rst_reg,
+	case LP_TWOKEY_HOMEKEY:
+		ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
 				   pwrkey_rst_shift,
 				   pwrkey_rst_shift);
-		regmap_update_bits(keys->regmap, pmic_rst_para_reg,
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_TWOKEY_HOMEKEY: %d\n", ret);
+		}
+		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
 				   RST_PWRKEY_HOME_MODE << pmic_regs->homekey_rst_shift);
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_TWOKEY_HOMEKEY: %d\n", ret);
+		}
+		break;
+	case LP_TWOKEY_HOMEKEY2:
+		ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift,
+				   pwrkey_rst_shift);
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_TWOKEY_HOMEKEY2: %d\n", ret);
+		}
+		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
+				   homekey_rst_shift,
+				   RST_PWRKEY_HOME2_MODE << pmic_regs->homekey_rst_shift);
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_TWOKEY_HOMEKEY2: %d\n", ret);
+		}
 		break;
 	case LP_DISABLE:
-		regmap_update_bits(keys->regmap, pmic_rst_reg,
+		ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
 				   pwrkey_rst_shift,
 				   0);
-		regmap_update_bits(keys->regmap, pmic_rst_para_reg,
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_DISABLE: %d\n", ret);
+		}
+		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
 				   RST_PWRKEY_HOME_HOME2_MODE << pmic_regs->homekey_rst_shift);
+		if (ret < 0) {
+			dev_dbg(keys->dev,
+				"regmap_update_bits fail LP_DISABLE: %d\n", ret);
+		}
 		break;
 	default:
 		break;
@@ -281,11 +357,16 @@ static irqreturn_t mtk_pmic_keys_irq_handler_thread(int irq, void *data)
 {
 	struct mtk_pmic_keys_info *info = data;
 	u32 key_deb, pressed;
+	int ret;
 
 	if (info->release_irq_num > 0) {
 		pressed = 1;
 	} else {
-		regmap_read(info->keys->regmap, info->regs->deb_reg, &key_deb);
+		ret = regmap_read(info->keys->regmap, info->regs->deb_reg, &key_deb);
+		if (ret < 0) {
+			dev_dbg(info->keys->dev,
+				"regmap_read fail: %d\n", ret);
+		}
 		key_deb &= info->regs->deb_mask;
 		pressed = !key_deb;
 	}
@@ -343,6 +424,31 @@ static int mtk_pmic_key_setup(struct mtk_pmic_keys *keys,
 	return 0;
 }
 
+static int keypad_pinctrl_init(struct mtk_pmic_keys *keys)
+{
+	int ret = 0;
+
+	keys->pinctrl = devm_pinctrl_get(keys->dev);
+	if (IS_ERR(keys->pinctrl)) {
+		dev_dbg(keys->dev, "Failed to get keypad pinctrl handler");
+		return PTR_ERR(keys->pinctrl);
+	}
+
+	keys->kpcol0_pins_mode = pinctrl_lookup_state(keys->pinctrl, "kpcol0_mode");
+	if (!IS_ERR(keys->kpcol0_pins_mode)) {
+		ret = pinctrl_select_state(keys->pinctrl, keys->kpcol0_pins_mode);
+		if (ret) {
+			dev_dbg(keys->dev, "failed to switch kpcol0 to gpio mode, ret: %d\n", ret);
+			return ret;
+		}
+	} else {
+		dev_dbg(keys->dev, "failed to get pinctrl state: %s\n", "kpcol0_mode");
+		return PTR_ERR(keys->kpcol0_pins_mode);
+	}
+
+	return ret;
+}
+
 static int __maybe_unused mtk_pmic_keys_suspend(struct device *dev)
 {
 	struct mtk_pmic_keys *keys = dev_get_drvdata(dev);
@@ -392,6 +498,9 @@ static const struct of_device_id of_mtk_pmic_keys_match_tbl[] = {
 		.compatible = "mediatek,mt6357-keys",
 		.data = &mt6357_regs,
 	}, {
+		.compatible = "mediatek,mt6661-keys",
+		.data = &mt6661_regs,
+	}, {
 		/* sentinel */
 	}
 };
@@ -401,6 +510,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 {
 	int error, index = 0;
 	unsigned int keycount;
+	unsigned int release_irq_interval;
 	struct mt6397_chip *pmic_chip;
 	struct device_node *node = pdev->dev.of_node, *child;
 	struct mtk_pmic_keys *keys;
@@ -426,11 +536,15 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 	}
 
 	keys->dev = &pdev->dev;
+	if (!of_id) {
+		dev_info(keys->dev, "failed to get of_match_device\n");
+		return -ENODEV;
+	}
 	mtk_pmic_regs = of_id->data;
 
 	keys->input_dev = input_dev = devm_input_allocate_device(keys->dev);
 	if (!input_dev) {
-		dev_err(keys->dev, "input allocate device fail.\n");
+		dev_dbg(keys->dev, "input allocate device fail.\n");
 		return -ENOMEM;
 	}
 
@@ -442,6 +556,11 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 
 	__set_bit(EV_KEY, input_dev->evbit);
 	keycount = of_get_available_child_count(node);
+	if(strncmp(of_id->compatible, "mediatek,mt6363-keys", 20) == 0 ||
+		strncmp(of_id->compatible, "mediatek,mt6661-keys", 20) == 0)
+		release_irq_interval = 3;
+	else
+		release_irq_interval = 2;
 	ktf_pmic_key = keys;
 	if (keycount > MTK_PMIC_MAX_KEY_COUNT) {
 		dev_err(keys->dev, "too many keys defined (%d)\n", keycount);
@@ -457,7 +576,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		if (mtk_pmic_regs->release_irq) {
 			keys->keys[index].release_irq_num = platform_get_irq(
 						pdev,
-						index + RELEASE_IRQ_INTERVAL);
+						index + release_irq_interval);
 			if (keys->keys[index].release_irq_num < 0)
 				return keys->keys[index].release_irq_num;
 		}
@@ -465,7 +584,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		error = of_property_read_u32(child,
 			"linux,keycodes", &keys->keys[index].keycode);
 		if (error) {
-			dev_err(keys->dev,
+			dev_dbg(keys->dev,
 				"failed to read key:%d linux,keycode property: %d\n",
 				index, error);
 			of_node_put(child);
@@ -480,6 +599,14 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		if (error) {
 			of_node_put(child);
 			return error;
+		}
+
+		if (index == 2) {
+			error = keypad_pinctrl_init(keys);
+			if (error < 0) {
+				dev_dbg(keys->dev, "failed to init keypad gpio\n");
+				return error;
+			}
 		}
 
 		index++;
