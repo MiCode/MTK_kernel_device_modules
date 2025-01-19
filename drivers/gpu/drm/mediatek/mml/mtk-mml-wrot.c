@@ -1986,9 +1986,15 @@ static u32 wrot_calc_stash_delay(const struct mml_frame_config *cfg,
 	const struct mml_frame_dest *dest, u32 in_xsize, u32 line_num)
 {
 	const struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
-	const u32 opp = tp->qos[mml_sys_frame].opp_cnt / 2;
-	const u32 clk_rate = tp->qos[mml_sys_frame].opp_speeds[opp];
-	u32 delay_interval, delay_line;
+	u32 opp, clk_rate, delay_interval, delay_line;
+
+	if (unlikely(!tp)) {
+		mml_err("no topology");
+		return 0;
+	}
+
+	opp = tp->qos[mml_sys_frame].opp_cnt / 2;
+	clk_rate = tp->qos[mml_sys_frame].opp_speeds[opp];
 
 	if (dest->rotate == MML_ROT_0) {
 		/* config only page to page delay in clock level
@@ -1997,7 +2003,6 @@ static u32 wrot_calc_stash_delay(const struct mml_frame_config *cfg,
 		 */
 		return (clk_rate * wrot_stash_delay) << 16;
 	}
-
 
 	/* config first cmd delay in line time level,
 	 * and page to page delay in clock level

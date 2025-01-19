@@ -369,8 +369,12 @@ static void sys_sync_racing(struct mml_comp *comp, struct mml_task *task,
 	if (cfg->disp_vdo)
 		cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(mml));
 	cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(mml));
-	if (cfg->disp_vdo)
-		cmdq_pkt_clear_event(pkt, mml_ir_get_target_event(mml));
+	if (cfg->disp_vdo) {
+		u16 disp_ready = mml_ir_get_target_event(mml);
+
+		if (disp_ready)
+			cmdq_pkt_clear_event(pkt, disp_ready);
+	}
 }
 
 static void sys_config_frame_racing(struct mml_comp *comp, struct mml_task *task,

@@ -1020,7 +1020,7 @@ static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	const u32 h = info->src.height;
 	const u32 fps = 1000000000 / info->act_time + 1;
 	const enum mml_orientation rot = info->dest[0].rotate;
-	u32 leading_pixels;
+	u32 leading_pixels = 0;
 
 	u32 prefetch_line_cnt[4] = {0};
 	u32 stash_con, con1, con2;
@@ -2223,7 +2223,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	const u32 pgsz = PAGE_SIZE;
 	u32 w = src->width, h = src->height;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-	u32 stash_cmd_num, stash_bw = 256;
+	u32 stash_cmd_num = 0, stash_bw = 256;
 
 	if (rrot_frm->stash_bw)
 		goto done;
