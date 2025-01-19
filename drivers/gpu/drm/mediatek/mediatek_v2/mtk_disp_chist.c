@@ -653,6 +653,10 @@ static int disp_chist_set_config(struct mtk_ddp_comp *comp,
 					disp_chist_enable_channel(channel_id, 0,
 						chist_data->companion, handle);
 			}
+			mutex_lock(&chist_data->primary_data->data_lock);
+			memset(&chist_data->primary_data->disp_hist[channel_id], 0,
+					sizeof(struct drm_mtk_channel_hist));
+			mutex_unlock(&chist_data->primary_data->data_lock);
 		}
 	}
 	mutex_lock(&chist_data->primary_data->data_lock);
@@ -1058,7 +1062,7 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 				disp_chist_get_hist_dual_pipe(comp, i, max_bins);
 			else {
 				int j = 0;
-				for (; j < prim_data->disp_hist[i].bin_count; j++) {
+				for (; j < max_bins; j++) {
 					prim_data->disp_hist[i].hist[j] = readl(comp->regs
 						+ DISP_CHIST_SRAM_R_IF) >> disp_chist_shift_num(comp);
 
