@@ -125,7 +125,7 @@ struct mmprofile_meta_datablock_t {
 	unsigned int cookie;
 	enum mmp_metadata_type data_type;
 	unsigned int data_size;
-	unsigned char meta_data[0];
+	unsigned char meta_data[];
 };
 
 static int bmmprofile_init_buffer;
