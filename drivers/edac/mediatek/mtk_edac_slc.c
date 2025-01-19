@@ -18,6 +18,8 @@
 #include <soc/mediatek/emi.h>
 #include "edac_module.h"
 
+#define SLC_BUF_SIZE 1024
+
 enum error_type {
 	NO_ERROR = 0,
 	CORRECTABLE_ERROR,
@@ -46,15 +48,19 @@ struct error_flags_data{
 	int int_sts_len;
 	unsigned int *int_sts_msk;
 	int int_sts_msk_len;
+	unsigned int *int_sts_fatal;
+	int int_sts_fatal_len;
 	unsigned int *int_sts_clr;
 	int int_sts_clr_len;
-	unsigned int dbg_info_mux_sel;
-	unsigned int *dbg_info_mux_vals;
-	int dbg_info_mux_vals_len;
-	unsigned int *dbg_data;
-	int dbg_data_len;
+	unsigned int mux_sel;
+	unsigned int *mux_vals;
+	int mux_vals_len;
+	unsigned int *mux_data;
+	int mux_data_len;
 	unsigned int dfd_enable;
 	struct dfd_data *dfd;
+	unsigned int tag_ecc_enable;
+	struct tag_ecc_data *tag_ecc;
 };
 
 struct dfd_data{
@@ -66,6 +72,17 @@ struct dfd_data{
 	unsigned int tag_num;
 };
 
+struct tag_ecc_data{
+	unsigned int mux_sel;
+	unsigned int mux_num;
+	unsigned int *mux_data;
+};
+
+static int err_flag_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx,
+	enum error_type *total_error_type);
+static void dfd_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx);
+static void tag_ecc_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx);
+
 static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsigned int emi_idx)
 {
 	struct arm_smccc_res smc_res;
@@ -73,6 +90,7 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 	unsigned int content;
 	int port_idx, chn_idx, cs_idx;
 	int ecc_idx, ecc_count;
+	int ecc_position_idx;
 	enum error_type partial_error_type = NO_ERROR;
 	enum error_type total_error_type = NO_ERROR;
 	char ecc_position[40] = {0};
@@ -93,14 +111,17 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 						++ecc_count;
 				}
 
-				snprintf(ecc_position, sizeof(ecc_position), "emi: %d, port: %d, chn: %d, cs: %d\n", emi_idx, port_idx, chn_idx, cs_idx);
+				ecc_position_idx = snprintf(ecc_position, sizeof(ecc_position),
+					"emi: %d, port: %d, chn: %d, cs: %d", emi_idx, port_idx, chn_idx, cs_idx);
 
 				if (ecc_count == 1) {
 					partial_error_type = CORRECTABLE_ERROR;
-					edac_device_handle_ce_count(dci, ecc_count, 0, 0, ecc_position);
+					if (ecc_position_idx)
+						edac_device_handle_ce_count(dci, ecc_count, 0, 0, ecc_position);
 				} else if (ecc_count > 1) {
 					partial_error_type = UNCORRECTABLE_ERROR;
-					edac_device_handle_ue_count(dci, ecc_count, 0, 0, ecc_position);
+					if (ecc_position_idx)
+						edac_device_handle_ue_count(dci, ecc_count, 0, 0, ecc_position);
 				}
 
 				if (total_error_type == NO_ERROR) {
@@ -135,14 +156,16 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 	struct slc_drvdata *drvdata = dci->pvt_info;
 	enum error_type partial_error_type = NO_ERROR;
 	enum error_type total_error_type = NO_ERROR;
+	int dump_log;
 	char ecc_mesg[40] = {0};
 	int ecc_mesg_idx = 0;
+	char slc_err_mesg[SLC_BUF_SIZE] = {0};
+	int slc_err_mesg_idx = 0;
 	unsigned long long parity_err_tol;
 	unsigned int parity_err_value;
 	unsigned int parity_err_ext_value;
-	unsigned int emi_idx, chn_idx, i, j, reg_val, tag_idx, data_idx;
-	unsigned int sram_type;
-	struct dfd_data *dfd = NULL;
+	unsigned int emi_idx;
+	struct arm_smccc_res smc_res;
 
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		parity_err_value = readl(drvdata->base[emi_idx] + drvdata->parity_err_offset);
@@ -151,7 +174,6 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 		if (parity_err_tol > 0)
 			ecc_mesg_idx = snprintf(ecc_mesg + ecc_mesg_idx, sizeof(ecc_mesg) - ecc_mesg_idx, "emi: %d, overall: %llx\n", emi_idx, parity_err_tol);
 	}
-
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		partial_error_type = read_parity_status(dci, emi_idx);
 		if (total_error_type == NO_ERROR) {
@@ -162,91 +184,217 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 				total_error_type = partial_error_type;
 		}
 	}
-
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		slc_clear_violation(emi_idx);
 	}
-
 	if (total_error_type == UNCORRECTABLE_ERROR) {
 		pr_info("error type: %d bit error\n", total_error_type);
-		aee_kernel_exception("SLC_PARITY", ecc_mesg);
+		if (ecc_mesg_idx)
+			aee_kernel_exception("SLC_PARITY", ecc_mesg);
 	}
-
 	//error flag
 	total_error_type = NO_ERROR;
 	if (drvdata->error_flags_enable == 1) {
-		pr_info("error flags\n");
-		//dump error flag
-		for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
-			pr_info("emi: %d\n", emi_idx);
-			for (i=0; i<drvdata->error_flags->int_sts_len; ++i) {
-				reg_val = readl(drvdata->base[emi_idx] + drvdata->error_flags->int_sts[i]);
-				if ((reg_val & drvdata->error_flags->int_sts_msk[i]) != 0 )
-					total_error_type = UNCORRECTABLE_ERROR;
-				pr_info("\t%x: %x", drvdata->error_flags->int_sts[i], reg_val);
-			}
-			pr_info("\n");
-			for (i=0; i<drvdata->error_flags->dbg_info_mux_vals_len; ++i) {
-				pr_info("mux: %d", drvdata->error_flags->dbg_info_mux_vals[i]);
-				writel(drvdata->error_flags->dbg_info_mux_vals[i], drvdata->base[emi_idx] + drvdata->error_flags->dbg_info_mux_sel);
-				for (j=0; j<drvdata->error_flags->dbg_data_len; ++j) {
-					pr_info("\t%x: %x", drvdata->error_flags->dbg_data[j], readl(drvdata->base[emi_idx] + drvdata->error_flags->dbg_data[j]));
-				}
-				pr_info("\n");
-			}
+		if (slc_err_mesg_idx < SLC_BUF_SIZE)
+			slc_err_mesg_idx += snprintf(slc_err_mesg + slc_err_mesg_idx,
+				SLC_BUF_SIZE - slc_err_mesg_idx, "debug flags\n");
+		dump_log = err_flag_dump(drvdata, slc_err_mesg, &slc_err_mesg_idx, &total_error_type);
+		if (dump_log == 1) {
+			pr_info("%s", slc_err_mesg);
+			memset(slc_err_mesg, '\0', SLC_BUF_SIZE);
+			slc_err_mesg_idx = 0;
 		}
-
 		//dfd
 		if (drvdata->error_flags->dfd_enable == 1) {
-			pr_info("dfd\n");
-			dfd = drvdata->error_flags->dfd;
-			for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
-				pr_info("emi: %d\n", emi_idx);
-				for (chn_idx=0; chn_idx < drvdata->chn_num; ++chn_idx) {
-					pr_info("chn: %d\n", chn_idx);
-					//data
-					sram_type = 0;
-					pr_info("data sram\n");
-					reg_val = readl(drvdata->base[emi_idx] + dfd->data_err_status[chn_idx]);
-					for (data_idx = 0; data_idx < dfd->data_num; ++data_idx) {
-						if (((reg_val>>data_idx) & 0x1) == 1) {
-							reg_val = (sram_type << 30) | data_idx;
-							writel(reg_val, drvdata->base[emi_idx] + dfd->sram_sel[chn_idx]);
-							pr_info("\t%x: %x", data_idx, readl(drvdata->base[emi_idx] + dfd->latch_data[chn_idx]));
-						}
-					}
-					pr_info("\n");
-					//tag
-					sram_type = 1;
-					pr_info("tag sram\n");
-					reg_val = readl(drvdata->base[emi_idx] + dfd->tag_err_status[chn_idx]);
-					for (tag_idx = 0; tag_idx < dfd->tag_num; ++tag_idx) {
-						if (((reg_val>>tag_idx) & 0x1) == 1) {
-							reg_val = (sram_type << 30) | tag_idx;
-							writel(reg_val, drvdata->base[emi_idx] + dfd->sram_sel[chn_idx]);
-							pr_info("\t%x: %x", tag_idx, readl(drvdata->base[emi_idx] + dfd->latch_data[chn_idx]));
-						}
-					}
-					pr_info("\n");
-				}
+			dfd_dump(drvdata, slc_err_mesg, &slc_err_mesg_idx);
+			if (dump_log == 1) {
+				pr_info("%s", slc_err_mesg);
+				memset(slc_err_mesg, '\0', SLC_BUF_SIZE);
+				slc_err_mesg_idx = 0;
 			}
 		}
-#if 0
-		//clear error flag
-		for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
-			for (i=0; i<drvdata->error_flags->int_sts_clr_len; ++i) {
-				writel(0xffffffff, drvdata->base[emi_idx] + drvdata->error_flags->int_sts_clr[i]);
+		//tag_ecc
+		if (drvdata->error_flags->tag_ecc_enable == 1) {
+			tag_ecc_dump(drvdata, slc_err_mesg, &slc_err_mesg_idx);
+			if (dump_log == 1) {
+				pr_info("%s", slc_err_mesg);
+				memset(slc_err_mesg, '\0', SLC_BUF_SIZE);
+				slc_err_mesg_idx = 0;
 			}
 		}
-#endif
 		if (total_error_type == UNCORRECTABLE_ERROR)
 			BUG_ON(1);
+		//clear error flag
+		for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_ERROR_FLAGS_CLEAR,
+					emi_idx, 0, 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0) {
+				pr_info("%s:%d MTK_SLC_ERROR_FLAGS_CLEAR failed, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+			}
+		}
 	}
-
 	if (drvdata->assert)
                 BUG_ON(1);
 
 	return IRQ_HANDLED;
+}
+
+static int err_flag_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx,
+	enum error_type *total_error_type)
+{
+	unsigned int emi_idx, i, j, reg_val;
+	int dump_log = 0;
+	struct arm_smccc_res smc_res;
+
+	//dump error flag
+	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
+		if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+			*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+				SLC_BUF_SIZE - *slc_err_mesg_idx, "emi: %d", emi_idx);
+		for (i=0; i<drvdata->error_flags->int_sts_len; ++i) {
+			reg_val = readl(drvdata->base[emi_idx] + drvdata->error_flags->int_sts[i]);
+			if ((reg_val & drvdata->error_flags->int_sts_msk[i]) != 0 )
+				dump_log = 1;
+			if ((reg_val & drvdata->error_flags->int_sts_fatal[i]) != 0 )
+				*total_error_type = UNCORRECTABLE_ERROR;
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, ", %x: %x",
+					drvdata->error_flags->int_sts[i], reg_val);
+		}
+		if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+			*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+				SLC_BUF_SIZE - *slc_err_mesg_idx, ", mux:\n");
+		for (i=0; i<drvdata->error_flags->mux_vals_len; ++i) {
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "%d",
+					drvdata->error_flags->mux_vals[i]);
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_ERROR_FLAGS_SELECT,
+					emi_idx, drvdata->error_flags->mux_vals[i], 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0) {
+				pr_info("%s:%d MTK_SLC_ERROR_FLAGS_SELECT failed, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+			}
+			for (j=0; j<drvdata->error_flags->mux_data_len; ++j)
+				if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+					*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+						SLC_BUF_SIZE - *slc_err_mesg_idx, ", %x: %x",
+						drvdata->error_flags->mux_data[j],
+						readl(drvdata->base[emi_idx] + drvdata->error_flags->mux_data[j]));
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "\n");
+		}
+	}
+
+	return dump_log;
+}
+
+static void dfd_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx)
+{
+	unsigned int emi_idx, chn_idx, reg_val, tag_idx, data_idx;
+	struct arm_smccc_res smc_res;
+	struct dfd_data *dfd = drvdata->error_flags->dfd;
+
+	if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+		*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+			SLC_BUF_SIZE - *slc_err_mesg_idx, "slc dfd\n");
+	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
+		if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+			*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+				SLC_BUF_SIZE - *slc_err_mesg_idx, "emi: %d\n", emi_idx);
+		for (chn_idx=0; chn_idx < drvdata->chn_num; ++chn_idx) {
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "chn: %d", chn_idx);
+			//data
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, ", data");
+			reg_val = readl(drvdata->base[emi_idx] + dfd->data_err_status[chn_idx]);
+			for (data_idx = 0; data_idx < dfd->data_num; ++data_idx) {
+				if (((reg_val>>data_idx) & 0x1) == 1) {
+					arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_DFD_DATA_SELECT,
+							emi_idx, chn_idx, data_idx, 0, 0, 0, &smc_res);
+					if (smc_res.a0) {
+						pr_info("%s:%d MTK_SLC_DFD_SELECT failed, ret=0x%lx\n",
+							__func__, __LINE__, smc_res.a0);
+					}
+					if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+						*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+							SLC_BUF_SIZE - *slc_err_mesg_idx, ", %x: %x", data_idx,
+							readl(drvdata->base[emi_idx] + dfd->latch_data[chn_idx]));
+				}
+			}
+			//tag
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, ", tag");
+			reg_val = readl(drvdata->base[emi_idx] + dfd->tag_err_status[chn_idx]);
+			for (tag_idx = 0; tag_idx < dfd->tag_num; ++tag_idx) {
+				if (((reg_val>>tag_idx) & 0x1) == 1) {
+					arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_DFD_TAG_SELECT,
+							emi_idx, chn_idx, data_idx, 0, 0, 0, &smc_res);
+					if (smc_res.a0) {
+						pr_info("%s:%d MTK_SLC_DFD_SELECT failed, ret=0x%lx\n",
+							__func__, __LINE__, smc_res.a0);
+					}
+					if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+						*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+							SLC_BUF_SIZE - *slc_err_mesg_idx, ", %x: %x", tag_idx,
+							readl(drvdata->base[emi_idx] + dfd->latch_data[chn_idx]));
+				}
+			}
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "\n");
+		}
+	}
+}
+
+static void tag_ecc_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx)
+{
+	unsigned int emi_idx, chn_idx, mux_idx;
+	struct arm_smccc_res smc_res;
+	struct tag_ecc_data *tag_ecc = drvdata->error_flags->tag_ecc;
+
+	if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+		*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+			SLC_BUF_SIZE - *slc_err_mesg_idx, "tag ecc\n");
+	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
+		if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+			*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+				SLC_BUF_SIZE - *slc_err_mesg_idx, "emi: %d, mux:\n", emi_idx);
+		for (mux_idx=0; mux_idx<tag_ecc->mux_num; ++mux_idx) {
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "%d", mux_idx);
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_TAG_ECC_SELECT,
+					emi_idx, mux_idx, 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0) {
+				pr_info("%s:%d MTK_SLC_TAG_ECC_SELECT failed, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+			}
+			for (chn_idx=0; chn_idx < drvdata->chn_num; ++chn_idx) {
+				if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+					*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+						SLC_BUF_SIZE - *slc_err_mesg_idx, ", %x: %x",
+						tag_ecc->mux_data[chn_idx],
+						readl(drvdata->base[emi_idx] + tag_ecc->mux_data[chn_idx]));
+			}
+			if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+				*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+					SLC_BUF_SIZE - *slc_err_mesg_idx, "\n");
+		}
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_TAG_ECC_CLEAR,
+				emi_idx, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d MTK_SLC_TAG_ECC_CLEAR failed, ret=0x%lx\n",
+				__func__, __LINE__, smc_res.a0);
+		}
+	}
 }
 
 static const struct of_device_id slc_parity_of_ids[] = {
@@ -266,7 +414,9 @@ static int slc_err_probe(struct platform_device *pdev)
 	unsigned int *dump_list;
 	struct device_node *error_flags_node = NULL;
 	struct device_node *dfd_node = NULL;
+	struct device_node *tag_ecc_node = NULL;
 	struct dfd_data *dfd = NULL;
+	struct tag_ecc_data *tag_ecc = NULL;
 
 	dci = edac_device_alloc_ctl_info(sizeof(*drvdata), "slc", 1, "slc", 1, 0, 0);
 	if (!dci) {
@@ -414,74 +564,103 @@ static int slc_err_probe(struct platform_device *pdev)
 			goto err2;
 		}
 
+		//int-sts-fatal
+		drvdata->error_flags->int_sts_fatal_len = of_property_count_u32_elems(error_flags_node,
+			"int-sts-fatal");
+		if (drvdata->error_flags->int_sts_fatal_len < 0) {
+			dev_info(&pdev->dev, "Failed to count int-sts-fatal elements\n");
+			ret = drvdata->error_flags->int_sts_fatal_len;
+			goto err2;
+		}
+		drvdata->error_flags->int_sts_fatal = devm_kzalloc(&pdev->dev,
+			drvdata->error_flags->int_sts_fatal_len * sizeof(u32), GFP_KERNEL);
+		if (!drvdata->error_flags->int_sts_fatal) {
+			ret = -ENOMEM;
+			goto err2;
+		}
+		ret = of_property_read_u32_array(error_flags_node, "int-sts-fatal",
+			drvdata->error_flags->int_sts_fatal, drvdata->error_flags->int_sts_fatal_len);
+		if (ret) {
+			dev_info(&pdev->dev, "Failed to read int-sts-fatal property\n");
+			goto err2;
+		}
+
 		//int-sts-clr
-		drvdata->error_flags->int_sts_clr_len = of_property_count_u32_elems(error_flags_node, "int-sts-clr");
+		drvdata->error_flags->int_sts_clr_len = of_property_count_u32_elems(error_flags_node,
+			"int-sts-clr");
 		if (drvdata->error_flags->int_sts_clr_len < 0) {
 			dev_info(&pdev->dev, "Failed to count int-sts-clr elements\n");
 			ret = drvdata->error_flags->int_sts_clr_len;
 			goto err2;
 		}
-		drvdata->error_flags->int_sts_clr = devm_kzalloc(&pdev->dev, drvdata->error_flags->int_sts_clr_len * sizeof(u32), GFP_KERNEL);
+		drvdata->error_flags->int_sts_clr = devm_kzalloc(&pdev->dev,
+			drvdata->error_flags->int_sts_clr_len * sizeof(u32), GFP_KERNEL);
 		if (!drvdata->error_flags->int_sts_clr) {
 			dev_info(&pdev->dev, "Failed to allocate memory for int-sts-clr\n");
 			ret = -ENOMEM;
 			goto err2;
 		}
-		ret = of_property_read_u32_array(error_flags_node, "int-sts-clr", drvdata->error_flags->int_sts_clr, drvdata->error_flags->int_sts_clr_len);
+		ret = of_property_read_u32_array(error_flags_node, "int-sts-clr",
+			drvdata->error_flags->int_sts_clr, drvdata->error_flags->int_sts_clr_len);
 		if (ret) {
 			dev_info(&pdev->dev, "Failed to read int-sts-clr property\n");
 			goto err2;
 		}
 
-		//dbg-info-mux-sel
-		ret = of_property_read_u32(error_flags_node, "dbg-info-mux-sel", &(drvdata->error_flags->dbg_info_mux_sel));
+		//mux-sel
+		ret = of_property_read_u32(error_flags_node, "mux-sel", &(drvdata->error_flags->mux_sel));
 		if (ret) {
-			dev_info(&pdev->dev, "Failed to get dbg_info_mux_sel property\n");
+			dev_info(&pdev->dev, "Failed to get mux_sel property\n");
 			goto err2;
 		}
 
-		//dbg-info-mux-vals
-		drvdata->error_flags->dbg_info_mux_vals_len = of_property_count_u32_elems(error_flags_node, "dbg-info-mux-vals");
-                if (drvdata->error_flags->dbg_info_mux_vals_len < 0) {
-                        dev_info(&pdev->dev, "Failed to count dbg-info-mux-vals elements\n");
-                        ret = drvdata->error_flags->dbg_info_mux_vals_len;
+		//mux-vals
+		drvdata->error_flags->mux_vals_len = of_property_count_u32_elems(error_flags_node,
+			"mux-vals");
+		if (drvdata->error_flags->mux_vals_len < 0) {
+			dev_info(&pdev->dev, "Failed to count mux-vals elements\n");
+			ret = drvdata->error_flags->mux_vals_len;
 			goto err2;
-                }
-                drvdata->error_flags->dbg_info_mux_vals = devm_kzalloc(&pdev->dev, drvdata->error_flags->dbg_info_mux_vals_len * sizeof(u32), GFP_KERNEL);
-                if (!drvdata->error_flags->dbg_info_mux_vals) {
-                        dev_info(&pdev->dev, "Failed to allocate memory for dbg-info-mux-vals\n");
-                        ret = -ENOMEM;
+		}
+		drvdata->error_flags->mux_vals = devm_kzalloc(&pdev->dev,
+			drvdata->error_flags->mux_vals_len * sizeof(u32), GFP_KERNEL);
+		if (!drvdata->error_flags->mux_vals) {
+			ret = -ENOMEM;
 			goto err2;
-                }
-                ret = of_property_read_u32_array(error_flags_node, "dbg-info-mux-vals", drvdata->error_flags->dbg_info_mux_vals, drvdata->error_flags->dbg_info_mux_vals_len);
-                if (ret) {
-                        dev_info(&pdev->dev, "Failed to read dbg-info-mux-vals property\n");
+		}
+		ret = of_property_read_u32_array(error_flags_node, "mux-vals",
+			drvdata->error_flags->mux_vals, drvdata->error_flags->mux_vals_len);
+		if (ret) {
+			dev_info(&pdev->dev, "Failed to read mux-vals property\n");
 			goto err2;
-                }
+		}
 
-		//dbg-data
-		drvdata->error_flags->dbg_data_len = of_property_count_u32_elems(error_flags_node, "dbg-data");
-                if (drvdata->error_flags->dbg_data_len < 0) {
-                        dev_info(&pdev->dev, "Failed to count dbg-data elements\n");
-                        ret = drvdata->error_flags->dbg_data_len;
+		//mux-data
+		drvdata->error_flags->mux_data_len = of_property_count_u32_elems(error_flags_node,
+			"mux-data");
+		if (drvdata->error_flags->mux_data_len < 0) {
+			dev_info(&pdev->dev, "Failed to count mux-data elements\n");
+			ret = drvdata->error_flags->mux_data_len;
 			goto err2;
-                }
-                drvdata->error_flags->dbg_data = devm_kzalloc(&pdev->dev, drvdata->error_flags->dbg_data_len * sizeof(u32), GFP_KERNEL);
-                if (!drvdata->error_flags->dbg_data) {
-                        dev_info(&pdev->dev, "Failed to allocate memory for dbg-data\n");
-                        ret = -ENOMEM;
+		}
+		drvdata->error_flags->mux_data = devm_kzalloc(&pdev->dev,
+			drvdata->error_flags->mux_data_len * sizeof(u32), GFP_KERNEL);
+		if (!drvdata->error_flags->mux_data) {
+			ret = -ENOMEM;
 			goto err2;
-                }
-                ret = of_property_read_u32_array(error_flags_node, "dbg-data", drvdata->error_flags->dbg_data, drvdata->error_flags->dbg_data_len);
-                if (ret) {
-                        dev_info(&pdev->dev, "Failed to read dbg-data property\n");
+		}
+		ret = of_property_read_u32_array(error_flags_node, "mux-data",
+			drvdata->error_flags->mux_data, drvdata->error_flags->mux_data_len);
+		if (ret) {
+			dev_info(&pdev->dev, "Failed to read mux-data property\n");
 			goto err2;
                 }
 		dfd_node = of_get_child_by_name(error_flags_node, "dfd");
 		if (dfd_node) {
 			drvdata->error_flags->dfd_enable = 1;
 			dev_info(&pdev->dev, "dfd support\n");
-			drvdata->error_flags->dfd = devm_kzalloc(&pdev->dev, sizeof(*(drvdata->error_flags->dfd)), GFP_KERNEL);
+			drvdata->error_flags->dfd = devm_kzalloc(&pdev->dev,
+				sizeof(*(drvdata->error_flags->dfd)), GFP_KERNEL);
 			if (!drvdata->error_flags->dfd) {
 				dev_info(&pdev->dev, "Failed to allocate memory for dfd\n");
 				ret = -ENOMEM;
@@ -496,7 +675,8 @@ static int slc_err_probe(struct platform_device *pdev)
 				ret = -ENOMEM;
 				goto err2;
 			}
-			ret = of_property_read_u32_array(dfd_node, "data-err-status", dfd->data_err_status, drvdata->chn_num);
+			ret = of_property_read_u32_array(dfd_node, "data-err-status", dfd->data_err_status,
+				drvdata->chn_num);
 			if (ret) {
 				dev_info(&pdev->dev, "Failed to read data-err-status property\n");
 				goto err2;
@@ -509,7 +689,8 @@ static int slc_err_probe(struct platform_device *pdev)
 				ret = -ENOMEM;
 				goto err2;
 			}
-			ret = of_property_read_u32_array(dfd_node, "tag-err-status", dfd->tag_err_status, drvdata->chn_num);
+			ret = of_property_read_u32_array(dfd_node, "tag-err-status", dfd->tag_err_status,
+				drvdata->chn_num);
 			if (ret) {
 				dev_info(&pdev->dev, "Failed to read tag-err-status property\n");
 				goto err2;
@@ -557,6 +738,47 @@ static int slc_err_probe(struct platform_device *pdev)
 				goto err2;
 			}
 		}
+		tag_ecc_node = of_get_child_by_name(error_flags_node, "tag-ecc");
+		if (tag_ecc_node) {
+			drvdata->error_flags->tag_ecc_enable = 1;
+			dev_info(&pdev->dev, "tag_ecc support\n");
+			drvdata->error_flags->tag_ecc = devm_kzalloc(&pdev->dev,
+				sizeof(*(drvdata->error_flags->tag_ecc)), GFP_KERNEL);
+			if (!drvdata->error_flags->tag_ecc) {
+				ret = -ENOMEM;
+				goto err2;
+			}
+			tag_ecc = drvdata->error_flags->tag_ecc;
+
+			//mux-sel
+			ret = of_property_read_u32(tag_ecc_node, "mux-sel", &(tag_ecc->mux_sel));
+			if (ret) {
+				dev_info(&pdev->dev, "Unable to get mux-sel\n");
+				res = -ENXIO;
+				goto err2;
+			}
+
+			//mux-num
+			ret = of_property_read_u32(tag_ecc_node, "mux-num", &(tag_ecc->mux_num));
+			if (ret) {
+				dev_info(&pdev->dev, "Unable to get mux-num\n");
+				res = -ENXIO;
+				goto err2;
+			}
+
+			//mux-data
+			tag_ecc->mux_data = devm_kzalloc(&pdev->dev, drvdata->chn_num * sizeof(u32), GFP_KERNEL);
+			if (!tag_ecc->mux_data) {
+				ret = -ENOMEM;
+				goto err2;
+			}
+			ret = of_property_read_u32_array(tag_ecc_node, "mux-data", tag_ecc->mux_data,
+				drvdata->chn_num);
+			if (ret) {
+				dev_info(&pdev->dev, "Failed to read mux-data property\n");
+				goto err2;
+			}
+		}
 	} else {
 		drvdata->error_flags_enable = 0;
 		dev_info(&pdev->dev, "error flags not support\n");
@@ -566,6 +788,7 @@ static int slc_err_probe(struct platform_device *pdev)
 	dci->mod_name = pdev->dev.driver->name;
 	dci->ctl_name = id ? id->compatible : "unknown";
 	dci->dev_name = dev_name(&pdev->dev);
+	dci->log_ce = 0;
 
 	if (edac_device_add_device(dci)) {
 		dev_info(&pdev->dev, "Add edac device fail\n");
@@ -613,6 +836,13 @@ static struct platform_driver slc_edac_driver = {
 		.of_match_table = slc_parity_of_ids,
 	},
 };
+
+void write2buf(char slc_err_mesg[], int *slc_err_mesg_idx, char *slc_log)
+{
+	if (*slc_err_mesg_idx < SLC_BUF_SIZE)
+		*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
+			SLC_BUF_SIZE - *slc_err_mesg_idx, slc_log);
+}
 
 module_platform_driver(slc_edac_driver);
 
