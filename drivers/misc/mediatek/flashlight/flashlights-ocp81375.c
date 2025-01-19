@@ -914,14 +914,12 @@ static int ocp81375_probe(struct platform_device *dev)
 	return 0;
 }
 
-static int ocp81375_remove(struct platform_device *dev)
+static void ocp81375_remove(struct platform_device *dev)
 {
 	pr_debug("Remove start.\n");
 
 	i2c_del_driver(&ocp81375_i2c_driver);
 	pr_debug("Remove done.\n");
-
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_OF)
