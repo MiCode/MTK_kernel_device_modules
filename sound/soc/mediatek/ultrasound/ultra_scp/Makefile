@@ -11,11 +11,11 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 endif
 
 # common code
-snd-soc-mtk-scp-ultra-objs := \
-	mtk-scp-ultra-pcm.o \
-	mtk-scp-ultra-mem-control.o \
-	mtk-scp-ultra-platform-driver.o \
-	mtk-scp-ultra-common.o \
-	ultra_ipi.o
+# snd-soc-mtk-scp-ultra-objs := \
+#	mtk-scp-ultra-pcm.o \
+#	mtk-scp-ultra-mem-control.o \
+#	mtk-scp-ultra-platform-driver.o \
+#	mtk-scp-ultra-common.o \
+#	ultra_ipi.o
 
-obj-$(CONFIG_MTK_ULTRASND_PROXIMITY) += snd-soc-mtk-scp-ultra.o
+# obj-$(CONFIG_MTK_ULTRASND_PROXIMITY) += snd-soc-mtk-scp-ultra.o

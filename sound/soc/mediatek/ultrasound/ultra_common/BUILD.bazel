@@ -30,6 +30,14 @@ define_mgk_ddk_ko(
     out = "mtk-scp-ultra.ko",
 )
 
+ddk_headers(
+    name = "ddk_public_headers",
+    hdrs = [
+        "mtk-scp-ultra.h",
+    ],
+    includes = ["."],
+)
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
