@@ -1282,7 +1282,7 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 	htotal = mtk_crtc->base.state->adjusted_mode.htotal;
 	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
 	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	base_bw = (unsigned long long)div_u64(vtotal * htotal * vrefresh * bpp, 1000000);
+	base_bw = div_u64((unsigned long long)vtotal * htotal * vrefresh * bpp, 1000000);
 
 	if (dp_intf_bw != base_bw) {
 		dp_intf_bw = base_bw;
@@ -1308,7 +1308,7 @@ static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 	htotal = mtk_crtc->avail_modes->htotal ;
 	vtotal = mtk_crtc->avail_modes->vtotal;
 	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
-	base_bw = (unsigned long long)div_u64(vtotal * htotal * vrefresh * bpp, 1000000);
+	base_bw = div_u64((unsigned long long)vtotal * htotal * vrefresh * bpp, 1000000);
 
 	if (dp_intf_bw != base_bw) {
 		dp_intf_bw = base_bw;
