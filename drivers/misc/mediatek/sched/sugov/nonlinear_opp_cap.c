@@ -277,10 +277,10 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 			if(dsu_idle_ctrl) {
 				if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
 					cpu_active(cpu_idx) &&
-					!available_idle_cpu(cpu_idx))
+					!mtk_available_idle_cpu(cpu_idx))
 					max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 			} else {
-				if (cpumask_weight(&pd_cpumask[i]) == 1 && available_idle_cpu(cpu)) {
+				if (cpumask_weight(&pd_cpumask[i]) == 1 && mtk_available_idle_cpu(cpu)) {
 					sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
 					if (READ_ONCE(sugov_data_ptr->enq_ing) == 0) {
 						freq_state.dsu_freq_vote[i] = 0;
@@ -462,6 +462,38 @@ DEFINE_PER_CPU(unsigned long, min_freq) = 0;
 EXPORT_PER_CPU_SYMBOL(min_freq);
 
 /************************* scheduler common ************************/
+
+/* cloned from k69 core.c */
+int mtk_idle_cpu(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+	if (rq->curr != rq->idle)
+		return 0;
+
+	if (rq->nr_running)
+		return 0;
+
+#ifdef CONFIG_SMP
+	if (rq->ttwu_pending)
+		return 0;
+#endif
+
+	return 1;
+}
+
+/* cloned from k69 core.c */
+int mtk_available_idle_cpu(int cpu)
+{
+	if (!mtk_idle_cpu(cpu))
+		return 0;
+
+	if (vcpu_is_preempted(cpu))
+		return 0;
+
+	return 1;
+}
+EXPORT_SYMBOL_GPL(mtk_available_idle_cpu);
 
 /* cloned from k66 scale_rt_capacity() */
 static unsigned long mtk_scale_rt_capacity(int cpu)
@@ -2436,7 +2468,7 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 	for_each_cpu(cpu, cpumask) {
 		rq = cpu_rq(cpu);
 		sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
-		if ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) && available_idle_cpu(cpu))
+		if ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) && mtk_available_idle_cpu(cpu))
 			goto skip_idle;
 
 		am = get_adaptive_margin(cpu);
