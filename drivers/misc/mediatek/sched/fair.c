@@ -102,6 +102,7 @@ int task_fits_capacity(struct task_struct *p, long capacity, int cpu, unsigned i
 
 		task_util = uclamp_task_util_dpt_v2(p, cpu, &using_uclamp_freq);
 		margin = using_uclamp_freq ? NO_MARGIN : margin;
+		capacity = dpt_v2_local_capacity_all_util_of(cpu);
 	} else
 		task_util = uclamp_task_util(p);
 
@@ -557,7 +558,6 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		for_each_cpu(cpu, cpus) {
 			if (eenv->dpt_v2_support) {
 				eenv->pds_cap[pd_idx] += (DPT_V2_MAX_RUNNING_TIME_LOCAL * get_thermal_freq_ceiling_ratio(cpu)) >> FREQ_CEILING_RATIO_BIT;
-				eenv->local_capacity_of[cpu] = dpt_v2_local_capacity_all_util_of(cpu);
 
 				eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor = eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor = get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
 
@@ -567,10 +567,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 				}
 				if (trace_sched_per_core_base_sratio_enabled())
 					trace_sched_per_core_base_sratio(eenv->dpt_v2_support, cpu, eenv->dpt_v2_sratio[cpu][0]);
-			} else {
+			} else
 				eenv->pds_cap[pd_idx] += cpu_thermal_cap;
-				eenv->local_capacity_of[cpu] = capacity_of(cpu);
-			}
 		}
 
 		if (trace_sched_energy_init_enabled()) {
@@ -1580,7 +1578,7 @@ mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask,
 	util_max = uclamp_eff_value(p, UCLAMP_MAX);
 
 	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
-		unsigned long cpu_cap = eenv->local_capacity_of[cpu];
+		unsigned long cpu_cap = capacity_of(cpu);
 
 		if (!is_vip && (!mtk_available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
 			continue;
@@ -1928,7 +1926,7 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 
 	/* if updown_migration is not enabled */
 	if (!updown_migration_enable)
-		return task_fits_capacity(p, is_dpt_v2_support() ? DPT_V2_MAX_RUNNING_TIME_LOCAL : dst_capacity, dst_cpu, get_adaptive_margin(dst_cpu));
+		return task_fits_capacity(p, dst_capacity, dst_cpu, get_adaptive_margin(dst_cpu));
 
 	/*
 	 * Derive upmigration/downmigration margin wrt the src/dst CPU.
@@ -2061,9 +2059,6 @@ static inline bool task_demand_fits(struct task_struct *p, int cpu)
 
 	if (capacity == SCHED_CAPACITY_SCALE)
 		return true;
-
-	if (is_dpt_v2_support())
-		capacity = DPT_V2_MAX_RUNNING_TIME_LOCAL;
 
 	return task_fits_capacity(p, capacity, cpu, get_adaptive_margin(cpu));
 }
@@ -2397,7 +2392,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				unsigned long cpu_util_uclamped; /* not use for now */
 
 				fit = util_fits_capacity_dpt_v2(dpt_v2_cpu_util_local, dpt_v2_coef1_util_local, dpt_v2_coef2_util_local,
-					rq_uclamp_min, rq_uclamp_max, eenv->local_capacity_of[cpu], cpu, &cpu_util_uclamped);
+					rq_uclamp_min, rq_uclamp_max, dpt_v2_local_capacity_all_util_of(cpu), cpu, &cpu_util_uclamped);
 			} else {
 				uint_cpu = cpu;
 				/* record pre-clamping cpu_util */
@@ -2550,7 +2545,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	if (sync && cpu_rq(this_cpu)->nr_running == 1 &&
 	    cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
-	    task_fits_capacity(p, eenv.local_capacity_of[this_cpu], this_cpu, get_adaptive_margin(this_cpu)) &&
+	    task_fits_capacity(p, capacity_of(this_cpu), this_cpu, get_adaptive_margin(this_cpu)) &&
 	    !(latency_sensitive && !cpumask_test_cpu(this_cpu, &effective_softmask))) {
 		rcu_read_unlock();
 		*new_cpu = this_cpu;
@@ -2743,7 +2738,7 @@ fail:
 	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
 		/* Don't check CPU idle state if task is VIP, since idle is not critical for VIP*/
 	    (is_vip || (mtk_available_idle_cpu(target) || sched_idle_cpu(target))) &&
-	    task_fits_capacity(p, eenv.local_capacity_of[target], target, get_adaptive_margin(target))) {
+	    task_fits_capacity(p, capacity_of(target), target, get_adaptive_margin(target))) {
 		*new_cpu = target;
 		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
 		goto backup_unlock;
@@ -2755,7 +2750,7 @@ fail:
 	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
 		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
 	    (is_vip || (mtk_available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu))) &&
-	    task_fits_capacity(p, eenv.local_capacity_of[prev_cpu], prev_cpu, get_adaptive_margin(prev_cpu))) {
+	    task_fits_capacity(p, capacity_of(prev_cpu), prev_cpu, get_adaptive_margin(prev_cpu))) {
 		*new_cpu = prev_cpu;
 		backup_reason = LB_BACKUP_PREV;
 		goto backup_unlock;
@@ -2775,7 +2770,7 @@ fail:
 		is_per_cpu_kthread(current) && in_task() &&
 	    prev_cpu == this_cpu &&
 	    this_rq()->nr_running <= 1 &&
-	    task_fits_capacity(p, eenv.local_capacity_of[this_cpu], this_cpu, get_adaptive_margin(this_cpu))) {
+	    task_fits_capacity(p, capacity_of(this_cpu), this_cpu, get_adaptive_margin(this_cpu))) {
 		*new_cpu = this_cpu;
 		backup_reason = LB_BACKUP_CURR;
 		goto backup_unlock;
@@ -2790,7 +2785,7 @@ fail:
 		mtk_cpus_share_cache(recent_used_cpu, target) &&
 		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
 	    (is_vip || (mtk_available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu))) &&
-	    task_fits_capacity(p, eenv.local_capacity_of[recent_used_cpu], recent_used_cpu, get_adaptive_margin(recent_used_cpu))) {
+	    task_fits_capacity(p, capacity_of(recent_used_cpu), recent_used_cpu, get_adaptive_margin(recent_used_cpu))) {
 		*new_cpu = recent_used_cpu;
 		/*
 		 * Replace recent_used_cpu

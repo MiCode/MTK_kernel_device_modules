@@ -110,7 +110,6 @@ struct energy_env {
 	u16 dpt_v2_cpu_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
 	u16 dpt_v2_coef1_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
 	u16 dpt_v2_coef2_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned int local_capacity_of[MAX_NR_CPUS];
 	dpt_v2_cap_params_struct dpt_v2_cap_params[MAX_NR_CPUS][2]; /* cpu * NUM_DST_CPU_TYPE * {cpu_util_local, total_util_local, IPC_scaling_factor}*/
 
 	ANDROID_VENDOR_DATA_ARRAY(1, 32);
