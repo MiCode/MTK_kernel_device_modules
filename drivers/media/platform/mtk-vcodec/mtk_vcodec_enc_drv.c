@@ -350,6 +350,63 @@ static int mtk_vcodec_enc_suspend_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static void venc_acp_enable_check(struct platform_device *pdev, struct mtk_vcodec_dev *dev)
+{
+	int ret;
+	bool enable_acp = false;
+	unsigned int sw_ver;
+
+	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
+	if (ret != 0)
+		dev->support_acp = 0;
+
+	if (!dev->support_acp) {
+		mtk_v4l2_debug(0, "not support acp");
+		mtk_venc_acp_enable = mtk_venc_input_acp_enable = false;
+		return;
+	}
+
+	enable_acp = of_property_read_bool(pdev->dev.of_node, "enable-acp");
+	if (!enable_acp && of_property_read_bool(pdev->dev.of_node, "enable-acp-by-sw-ver")) {
+		ret = of_property_read_u32(pdev->dev.of_node, "enable-acp-by-sw-ver", &sw_ver);
+		mtk_v4l2_debug(0, "enable-acp-by-sw-ver %d, current sw_ver %d, ret %d",
+			sw_ver, dev->chip_id.sw_ver, ret);
+		if (!ret && dev->chip_id.sw_ver == sw_ver)
+			enable_acp = true;
+	}
+	if (enable_acp) {
+		mtk_venc_acp_enable = mtk_venc_input_acp_enable = enable_acp;
+		return;
+	}
+
+	if (!mtk_venc_acp_enable) {
+		mtk_venc_acp_enable = of_property_read_bool(pdev->dev.of_node, "enable-output-acp");
+		if (mtk_venc_acp_enable)
+			mtk_v4l2_debug(0, "enable-output-acp");
+		else if (of_property_read_bool(pdev->dev.of_node, "enable-output-acp-by-sw-ver")) {
+			ret = of_property_read_u32(pdev->dev.of_node, "enable-output-acp-by-sw-ver", &sw_ver);
+			mtk_v4l2_debug(0, "enable-output-acp-by-sw-ver %d, current sw_ver %d, ret %d",
+				sw_ver, dev->chip_id.sw_ver, ret);
+			if (!ret && dev->chip_id.sw_ver == sw_ver)
+				mtk_venc_acp_enable = true;
+		} else
+			mtk_v4l2_debug(0, "output acp disable");
+	}
+	if (!mtk_venc_input_acp_enable) {
+		mtk_venc_input_acp_enable = of_property_read_bool(pdev->dev.of_node, "enable-input-acp");
+		if (mtk_venc_input_acp_enable)
+			mtk_v4l2_debug(0, "enable-input-acp");
+		else if (of_property_read_bool(pdev->dev.of_node, "enable-input-acp-by-sw-ver")) {
+			ret = of_property_read_u32(pdev->dev.of_node, "enable-input-acp-by-sw-ver", &sw_ver);
+			mtk_v4l2_debug(0, "enable-input-acp-by-sw-ver %d, current sw_ver %d, ret %d",
+				sw_ver, dev->chip_id.sw_ver, ret);
+			if (!ret && dev->chip_id.sw_ver == sw_ver)
+				mtk_venc_input_acp_enable = true;
+		} else
+			mtk_v4l2_debug(0, "input acp disable");
+	}
+}
+
 static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev;
@@ -541,22 +598,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	dev->enc_slb_extra = slb_extra;
 	pr_info("after get venc-slb-extra %d\n", slb_extra);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "support-acp", &dev->support_acp);
-	if (ret != 0)
-		dev->support_acp = 0;
-
-	if (dev->support_acp && !mtk_venc_acp_enable) {
-		mtk_venc_acp_enable = of_property_read_bool(pdev->dev.of_node, "enable-acp");
-		mtk_venc_input_acp_enable = mtk_venc_acp_enable;
-	}
-	if (dev->support_acp && !mtk_venc_acp_enable &&
-	    of_property_read_bool(pdev->dev.of_node, "enable-acp-by-sw-ver")) {
-		unsigned int sw_ver;
-
-		ret = of_property_read_u32(pdev->dev.of_node, "enable-acp-by-sw-ver", &sw_ver);
-		if (!ret && dev->chip_id.sw_ver == sw_ver)
-			mtk_venc_input_acp_enable = mtk_venc_acp_enable = true;
-	}
+	venc_acp_enable_check(pdev, dev);
 
 	mtk_v4l2_debug(0, "venc slb_cpu_used_pref %d, slb_extra %d, support acp %d, mtk_venc_acp_enable %d, mtk_venc_input_acp_enable %d",
 		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra,
