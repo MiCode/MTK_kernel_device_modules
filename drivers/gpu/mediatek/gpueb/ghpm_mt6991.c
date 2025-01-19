@@ -356,6 +356,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 {
 	unsigned int i;
 	int recovery_flag = 0; /* Only 1 chance of recovery everytime when GPUEB resume failed */
+	unsigned int val = 0;
 
 	raw_spin_lock_irqsave(&ghpm_lock, g_pwr_irq_flags);
 	gpueb_log_d(GHPM_TAG, "Entry, event=%d, g_progress_status=%d, g_power_count=%d",
@@ -366,8 +367,8 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			ghpm_profile(PROF_GHPM_WAIT_ON, PROF_GHPM_OP_START);
 			i = 0;
 			__ghpm_timestamp_monitor(POLLING_GHPM_ON_START);
-			while (((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) ||
-				((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) != GHPM_PWR_STATE) ||
+			val = readl(MFG_GHPM_RO0_CON);
+			while (((val & GHPM_STATE) != 0x0) || ((val & GHPM_PWR_STATE) != GHPM_PWR_STATE) ||
 				(mfg0_pwr_sta() != MFG0_PWR_ON)) {
 #if GHPM_TIMEOUT_ERR_KE
 				if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
@@ -387,6 +388,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					__dump_ghpm_info();
 					__dump_mfg_pwr_sta();
 				}
+				val = readl(MFG_GHPM_RO0_CON);
 			}
 #if GHPM_TIMEOUT_ERR_KE
 			if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
@@ -443,9 +445,8 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			ghpm_profile(PROF_GHPM_WAIT_OFF, PROF_GHPM_OP_START);
 			__ghpm_timestamp_monitor(POLLING_GPUEB_OFF_START);
 			i = 0;
-			while (((readl(MFG_GHPM_RO0_CON) & GHPM_STATE) != 0x0) ||
-				((readl(MFG_GHPM_RO0_CON) & GHPM_PWR_STATE) == GHPM_PWR_STATE) ||
-				(mfg0_pwr_sta() != MFG0_PWR_OFF)) {
+			while ((mfg0_pwr_sta() != MFG0_PWR_OFF) ||
+				((readl(MFG_GHPM_RO0_CON) & (GHPM_STATE | GHPM_PWR_STATE)) != 0x0)) {
 #if GHPM_TIMEOUT_ERR_KE
 				if ((readl(MFG_GHPM_RO0_CON) & TIMEOUT_ERR_RECORD) == TIMEOUT_ERR_RECORD) {
 					__ghpm_timestamp_monitor(POLLING_GHPM_OFF_TIMEOUT_ERR);
