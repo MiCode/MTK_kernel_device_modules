@@ -10,6 +10,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include "clk-mtk.h"
+#include "clkchk.h"
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 #include "hwccf_provider.h"
 #include "hwccf_provider_data.h"
@@ -169,6 +170,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 	if (ret) {
 		pr_notice("%s: power(%d) on_off(%d) fail, type(%d)\n",
 			__func__, mm_pwr, on_off, mm_type);
+		clkchk_external_dump();
 	}
 
 	spin_unlock_irqrestore(&mminfra_pd_lock, flags);
