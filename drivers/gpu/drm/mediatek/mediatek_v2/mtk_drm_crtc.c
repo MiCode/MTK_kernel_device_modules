@@ -10310,7 +10310,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		return;
 	}
 	comp->qos_bw = 0;
-	memset(all_layer_compress_ratio_table, 0, sizeof(all_layer_compress_ratio_table));
 	memset(&mtk_bwm_sort_list, 0, sizeof(struct sort_list));
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
@@ -10455,6 +10454,11 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
 							__LINE__, index, emi_eff_tb[0], weight);
 					}
+					if ((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) &&
+						!(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER))
+						break;
+					memset(&all_layer_compress_ratio_table[i], 0,
+						sizeof(struct layer_compress_ratio_item));
 					break;
 				}
 			}
