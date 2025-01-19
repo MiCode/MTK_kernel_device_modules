@@ -667,6 +667,13 @@ static struct match_pmif mt6991_match_pmif = {
 	.parse_dts = &pmif_parse_dts_v2,
 };
 
+static struct match_pmif mt6993_match_pmif = {
+	.name = "mediatek,mt6993-spmi",
+	.hdlr = &pmif_hdlr_v3,
+	.init = &pmif_init_v1,
+	.parse_dts = &pmif_parse_dts_v2,
+};
+
 static struct match_pmif *matches_pmif[] = {
 	&mt6761_match_pmif,
 	&mt6765_match_pmif,
@@ -678,6 +685,7 @@ static struct match_pmif *matches_pmif[] = {
 	&mt6985_match_pmif,
 	&mt6989_match_pmif,
 	&mt6991_match_pmif,
+	&mt6993_match_pmif,
 	NULL,
 };
 
