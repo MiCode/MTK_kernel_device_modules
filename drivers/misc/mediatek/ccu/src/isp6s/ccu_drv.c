@@ -85,6 +85,15 @@ static struct mtk_ccu_clk_name MT6833_ccu_clock_name[] = {
 	{true, "CCU_CLK_CAM_CCU_GALS"},
 	{false, ""}};
 
+static struct mtk_ccu_clk_name MT6853_ccu_clock_name[] = {
+	{true, "TOP_CCU_CLK"},
+	{true, "CCU_CLK_CAM_CAM"},
+	{true, "CCU_CLK_CAM_LARB13"},
+	{true, "CCU_CLK_CAM_CCU0"},
+	{true, "CCU_CLK_CAM_GALS"},
+	{true, "CCU_CLK_CAM_CCU_GALS"},
+	{false, ""}};
+
 static struct mtk_ccu_clk_name MT6877_ccu_clock_name[] = {
 	{true, "TOP_CCU_CLK"},
 	{true, "CCU_CLK_CAM_CAM"},
@@ -643,7 +652,8 @@ static long ccu_compat_ioctl(struct file *flip,
 					&uint_Data32, sizeof(uint_Data32));
 		}
 
-		LOG_DBG("[IOCTL_DBG] err: %d\n", err);
+		if (err)
+			LOG_DBG_MUST("[IOCTL_DBG] err: %d\n", err);
 		LOG_DBG("[IOCTL_DBG] ptr_power32->workBuf.va_pool: %x\n",
 			ptr_power32->workBuf.va_pool);
 		LOG_DBG("[IOCTL_DBG] ptr_power64->workBuf.va_pool: %p\n",
@@ -1720,6 +1730,8 @@ static int ccu_probe(struct platform_device *pdev)
 			memcpy(clock_name, MT6893_ccu_clock_name, sizeof(MT6893_ccu_clock_name));
 		else if (ccu_version == CCU_VER_MT6833)
 			memcpy(clock_name, MT6833_ccu_clock_name, sizeof(MT6833_ccu_clock_name));
+		else if (ccu_version == CCU_VER_MT6853)
+			memcpy(clock_name, MT6853_ccu_clock_name, sizeof(MT6853_ccu_clock_name));
 		else
 			memcpy(clock_name, MT6877_ccu_clock_name, sizeof(MT6877_ccu_clock_name));
 
