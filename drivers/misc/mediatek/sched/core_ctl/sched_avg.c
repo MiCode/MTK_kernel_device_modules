@@ -263,6 +263,8 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 {
 	struct over_thres_stats *cpu_over_thres;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	int cpu;
 
 	if (!p)
@@ -270,6 +272,12 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 
 	cpu = cpu_of(task_rq(p));
 	util = task_util(p);
+	/* uclamp request for capacity */
+	uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+	uclamp_min = uc_min_req->value;
+	if (uclamp_min > util)
+		util = uclamp_min;
+
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
 	/* track task with max utilization */
@@ -565,6 +573,8 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 	enum over_thres_type over_type = NO_OVER_THRES;
 	struct over_thres_stats *cpu_over_thres = NULL;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	struct cc_task_struct *cc_ts = NULL;
 
 	/* TODO: should be error handle ? */
@@ -579,6 +589,12 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 		return;
 
 	util = task_util(p);
+	/* uclamp request for capacity */
+	uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+	uclamp_min = uc_min_req->value;
+	if (uclamp_min > util)
+		util = uclamp_min;
+
 	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
@@ -613,7 +629,7 @@ static void update_nr_over_thres_locked(struct over_thres_stats *stats,
 	if (over_type == NO_OVER_THRES)
 		return;
 
-	/* track task with max utilization */
+	/* track task with max utilization or uclamp_min */
 	if (util > atomic_long_read(&stats->max_task_util))
 		atomic_long_set(&stats->max_task_util, util);
 
@@ -668,6 +684,8 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 	enum over_thres_type new_type = NO_OVER_THRES;
 	unsigned long flags;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	int cpu;
 	struct cc_task_struct *cc_ts = NULL;
 
@@ -690,6 +708,12 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		old_type = READ_ONCE(cc_ts->over_type);
 
 		util = task_util(p);
+		/* uclamp request for capacity */
+		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+		uclamp_min = uc_min_req->value;
+		if (uclamp_min > util)
+			util = uclamp_min;
+
 		stats = &per_cpu(cpu_over_thres_state, cpu);
 		new_type = get_over_type(stats, util);
 
