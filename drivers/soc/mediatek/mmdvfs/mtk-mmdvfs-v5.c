@@ -508,7 +508,7 @@ static unsigned long mmdvfs_recalc_rate(struct clk_hw *hw, unsigned long parent_
 	/*MMDVFS_DBG("user_id:%d user_name:%s user_mux:%d user_xpu:%d user_level:%d parent_rate:%lu",
 		user->id, user->name, user->mux, user->xpu, user->level, parent_rate);*/
 
-	return 0;
+	return user->level < MAX_LEVEL ? mmdvfs_data->mux[user->mux].freq[user->level] : 0;
 }
 
 static const struct clk_ops mmdvfs_req_ops = {
