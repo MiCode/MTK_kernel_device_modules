@@ -1563,7 +1563,6 @@ static int mbraink_post_suspend(void)
 	struct timespec64 tv = { 0 };
 	ktime_t resume_ktime;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
-	int n = 0;
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
 
@@ -1598,7 +1597,7 @@ static int mbraink_post_suspend(void)
 	wakeup_event = 0;
 #endif
 
-	n += snprintf(netlink_buf, MAX_BUF_SZ,
+	snprintf(netlink_buf, MAX_BUF_SZ,
 			"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d:%d:%d:%d:%d %d:%d:%d:%d:%d:%d:%d:%d",
 			NETLINK_EVENT_SYSRESUME,
 			mbraink_priv.last_suspend_timestamp,
@@ -1641,14 +1640,13 @@ static void mbraink_post_suspend_get_spm(void)
 	int ret;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 	long long spm_l1_info[SPM_L1_DATA_NUM];
-	int n = 0;
 
 	memset(spm_l1_info, 0, sizeof(spm_l1_info));
 	ret = mbraink_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
 	if (ret)
 		return;
 
-	n += snprintf(netlink_buf, MAX_BUF_SZ,
+	snprintf(netlink_buf, MAX_BUF_SZ,
 			"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
 			NETLINK_EVENT_SYSNOTIFIER_PS,
 			last_resume_timestamp,
