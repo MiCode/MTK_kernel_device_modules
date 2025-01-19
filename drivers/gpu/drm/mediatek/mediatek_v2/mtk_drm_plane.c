@@ -459,6 +459,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	unsigned int crtc_index = 0;
 	char dbg_msg[512] = {0};
 	int written = 0;
+	bool plane_visible = plane->state->visible;
 	struct total_tile_overhead_v to_v_info;
 
 	if (!crtc)
@@ -500,6 +501,10 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	mtk_plane_state->pending.mml_mode = mtk_plane_state->mml_mode;
 	if (mtk_plane_state->mml_mode > MML_MODE_UNKNOWN)
 		mtk_plane_state->pending.mml_cfg = mtk_plane_state->mml_cfg;
+	else {
+		if (mtk_plane_state->prop_val[PLANE_PROP_IS_MML])
+			plane_visible = 0;
+	}
 
 	// MML setting display single pipe in here, we set dual pipe
 	// in mtk_drm_layer_dispatch_to_dual_pipe()
@@ -511,7 +516,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		height = crtc_state->mml_src_roi[0].height;
 		pitch = cfg->info.src.y_stride;
 
-		mtk_plane_state->pending.enable = plane->state->visible;
+		mtk_plane_state->pending.enable = plane_visible;
 		mtk_plane_state->pending.pitch = pitch;
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.addr = (dma_addr_t)(mtk_crtc->mml_ir_sram.data.paddr);
@@ -537,7 +542,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		height = cfg->info.dest[0].crop.r.height;
 		pitch = cfg->info.src.y_stride;
 
-		mtk_plane_state->pending.enable = plane->state->visible;
+		mtk_plane_state->pending.enable = plane_visible;
 		mtk_plane_state->pending.pitch = pitch;
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.addr = 0;
@@ -554,7 +559,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.offset = crtc_state->mml_dst_roi.y << 16 |
 						  crtc_state->mml_dst_roi.x;
 	} else {
-		mtk_plane_state->pending.enable = plane->state->visible;
+		mtk_plane_state->pending.enable = plane_visible;
 		mtk_plane_state->pending.pitch = fb->pitches[0];
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.modifier = fb->modifier;

@@ -1477,20 +1477,20 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	submit_pq = mtk_alloc_mml_submit();
 	if (unlikely(!submit_pq)) {
-		DDPMSG("%s:err_alloc_submit_pq\n", __func__);
+		DDPPR_ERR("%s:err_alloc_submit_pq\n", __func__);
 		goto err_alloc_submit_pq;
 	}
 
 	submit_kernel = mtk_alloc_mml_submit();
 	if (unlikely(!submit_kernel)) {
-		DDPMSG("%s:err_alloc_submit_kernel\n", __func__);
+		DDPPR_ERR("%s:err_alloc_submit_kernel\n", __func__);
 		goto err_alloc_submit_kernel;
 	}
 
 	ret = copy_mml_submit_from_user(
 	    (struct mml_submit *)(mtk_plane_state->prop_val[PLANE_PROP_MML_SUBMIT]), submit_kernel);
 	if (unlikely(ret < 0)) {
-		DDPMSG("%s:err_copy_submit\n", __func__);
+		DDPPR_ERR("%s:err_copy_submit\n", __func__);
 		goto err_copy_submit;
 	}
 
@@ -1507,11 +1507,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		submit_kernel->buffer.src.use_dma = true;
 		submit_kernel->buffer.src.dmabuf[0] = fd_to_dma_buf(src_fd_0);
 		if (submit_kernel->buffer.src.dmabuf[0] == NULL) {
-			DDPMSG("%s:err_fd_to_dma\n", __func__);
+			DDPPR_ERR("%s:err_fd_to_dma\n", __func__);
 			goto err_fd_to_dma;
 		}
 	} else {
-		DDPMSG("%s:err_src_fd\n", __func__);
+		DDPPR_ERR("%s:err_src_fd\n", __func__);
 		goto err_src_fd;
 	}
 
@@ -1595,8 +1595,10 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
-	if (ret)
+	if (ret) {
+		DDPPR_ERR("%s:err_submit\n", __func__);
 		goto err_submit;
+	}
 	mtk_crtc->is_mml_submit = true;
 
 	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
