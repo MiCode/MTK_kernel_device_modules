@@ -720,6 +720,14 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			vsi->qpmap_size = 0;
 		}
 
+		if (frm_buf->has_adab) {
+			vsi->adab_addr = frm_buf->adab_dma_addr;
+			vsi->adab_size = frm_buf->adab_dma->size;
+		} else {
+			vsi->adab_addr = 0;
+			vsi->adab_size = 0;
+		}
+
 		if (frm_buf->dyparams_dma) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);

@@ -1208,6 +1208,14 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			vsi->qpmap_size = 0;
 		}
 
+		if (frm_buf->has_adab) {
+			vsi->adab_addr = frm_buf->adab_dma_addr;
+			vsi->adab_size = frm_buf->adab_dma->size;
+		} else {
+			vsi->adab_addr = 0;
+			vsi->adab_size = 0;
+		}
+
 		if (frm_buf->dyparams_dma) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);
@@ -1228,6 +1236,8 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			vsi->meta_addr);
 		mtk_vcodec_debug(inst, "vsi qpmap addr %llx size%d",
 			vsi->qpmap_addr, vsi->qpmap_size);
+		mtk_vcodec_debug(inst, "vsi adab addr %llx size%d",
+			vsi->adab_addr, vsi->adab_size);
 	}
 
 	if (bs_buf) {
@@ -1914,6 +1924,9 @@ int vcp_enc_set_param(struct venc_inst *inst,
 	case VENC_SET_PARAM_CONFIG:
 		out.data_item = 0; // passed via vsi
 		break;
+	case VENC_SET_PARAM_ADAB_INFO:
+		out.data_item = 0; // passed via vsi
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -2032,6 +2045,12 @@ static int venc_vcp_set_param(unsigned long handle,
 				sizeof(struct mtk_venc_nal_length));
 		}
 
+		if (enc_prm->adab_info) {
+			memcpy(&inst->vsi->config.adab_info,
+				enc_prm->adab_info,
+				sizeof(struct mtk_venc_adab_info));
+		}
+
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
@@ -2143,6 +2162,13 @@ static int venc_vcp_set_param(unsigned long handle,
 			sizeof(__u8)*VENC_CONFIG_LENGTH);
 			ret = venc_set_config_data(inst);
 		}
+		break;
+	case VENC_SET_PARAM_ADAB_INFO:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.adab_info, enc_prm->adab_info,
+			sizeof(struct mtk_venc_adab_info));
+		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	default:
 		if (inst->vsi == NULL)

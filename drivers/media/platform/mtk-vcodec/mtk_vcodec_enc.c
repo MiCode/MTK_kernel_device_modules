@@ -1029,6 +1029,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val);
 		p->use_clean_gop = ctrl->val;
 		break;
+	case V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO:
+		mtk_v4l2_debug(2, "V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO: buf(%ux%u), crop_size(%ux%u), format(%x)",
+			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1],
+			ctrl->p_new.p_u32[2], ctrl->p_new.p_u32[3], ctrl->p_new.p_u32[4]);
+		memcpy(&p->adab_info, ctrl->p_new.p_u32, sizeof(struct mtk_venc_adab_info));
+		ctx->param_change |= MTK_ENCODE_PARAM_ADAB_INFO;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1072,6 +1079,9 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_GET_MAX_TEMPORAL_LAYER:
 		ctrl->val = mtk_venc_cap_common.max_temporal_layer;
+		break;
+	case V4L2_CID_MTK_VIDEO_ENC_GET_ADAB_CAPABILITY:
+		ctrl->val = mtk_venc_cap_common.support_adab;
 		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
@@ -1675,6 +1685,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->nal_length = &enc_params->nal_length;
 	param->mlvec_mode = enc_params->mlvec_mode;
 	param->use_clean_gop = enc_params->use_clean_gop;
+	param->adab_info = &enc_params->adab_info;
 	vcodec_trace_end();
 }
 
@@ -2238,25 +2249,44 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			}
 
 			if (meta_desc.fd_flag) {
-				if (meta_desc.type != METADATA_QPMAP)
-					continue;
+				if (meta_desc.type == METADATA_QPMAP) {
+					dmabuf = dma_buf_get(meta_desc.value);
 
-				dmabuf = dma_buf_get(meta_desc.value);
-				if (IS_ERR(dmabuf)) {
-					mtk_v4l2_err("%s qpmap_dma is err 0x%lx\n", __func__, PTR_ERR(dmabuf));
-					mtk_venc_queue_error_event(ctx);
-					continue;
-				}
+					if (IS_ERR(dmabuf)) {
+						mtk_v4l2_err("%s qpmap_dma is err 0x%lx\n", __func__, PTR_ERR(dmabuf));
+						mtk_venc_queue_error_event(ctx);
+						continue;
+					}
+					if (mtk_vcodec_dma_attach_map(dev, dmabuf, NULL, NULL,
+						&mtkbuf->frm_buf.qpmap_dma_addr, DMA_TO_DEVICE, __func__, __LINE__)) {
+						dma_buf_put(dmabuf);
+						continue;
+					}
+					mtkbuf->frm_buf.qpmap_dma = dmabuf;
+					mtkbuf->frm_buf.has_qpmap = 1;
+					mtk_v4l2_debug(2, "[%d] Have Qpmap fd, buf->index:%d. qpmap_dma:%p, fd:%u",
+						ctx->id, buf->index, mtkbuf->frm_buf.qpmap_dma, meta_desc.value);
+				} else if (meta_desc.type == METADATA_ADAPTIVE_B_INPUT) {
+					dmabuf = dma_buf_get(meta_desc.value);
+					if (IS_ERR(dmabuf)) {
+						mtk_v4l2_err("%s adab_dma is err 0x%lx.\n",
+							__func__, PTR_ERR(dmabuf));
+						mtk_venc_queue_error_event(ctx);
+						continue;
+					}
 
-				if (mtk_vcodec_dma_attach_map(dev, dmabuf, NULL, NULL,
-					&mtkbuf->frm_buf.qpmap_dma_addr, DMA_TO_DEVICE, __func__, __LINE__)) {
-					dma_buf_put(dmabuf);
-					continue;
+					if (mtk_vcodec_dma_attach_map(ctx->dev->smmu_dev, dmabuf, NULL, NULL,
+						&mtkbuf->frm_buf.adab_dma_addr, DMA_TO_DEVICE, __func__, __LINE__)) {
+						dma_buf_put(dmabuf);
+						continue;
+					}
+
+					mtkbuf->frm_buf.adab_dma = dmabuf;
+					mtkbuf->frm_buf.has_adab = 1;
+					mtk_v4l2_debug(2, "[%d] Have ADAB fd, buf->index:%d. adab_dma:%p, fd:%u",
+						ctx->id, buf->index,
+						mtkbuf->frm_buf.adab_dma, meta_desc.value);
 				}
-				mtkbuf->frm_buf.qpmap_dma = dmabuf;
-				mtkbuf->frm_buf.has_qpmap = 1;
-				mtk_v4l2_debug(2, "[%d] Have Qpmap fd, buf->index:%d. qpmap_dma:%p, fd:%u",
-					ctx->id, buf->index, mtkbuf->frm_buf.qpmap_dma, meta_desc.value);
 			} else {
 				if (meta_desc.type == METADATA_HDR) {
 					mtkbuf->frm_buf.has_meta = 1;
@@ -2762,6 +2792,16 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 		dma_buf_put(mtkbuf->frm_buf.qpmap_dma);
 		mtkbuf->frm_buf.qpmap_dma = NULL;
 	}
+
+	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.adab_dma)) {
+		mtk_v4l2_debug(2, "dma_buf_put adab_dma=%p, DMA=%lx",
+			mtkbuf->frm_buf.adab_dma,
+			(unsigned long)mtkbuf->frm_buf.adab_dma_addr);
+
+		dma_buf_put(mtkbuf->frm_buf.adab_dma);
+		mtkbuf->frm_buf.adab_dma = NULL;
+	}
+
 	vcodec_trace_end();
 }
 
@@ -3457,6 +3497,19 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 				enc_prm.frame_qp_range->min);
 		ret |= venc_if_set_param(ctx,
 					VENC_SET_PARAM_FRAME_QP_RANGE,
+					&enc_prm);
+	}
+
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_ADAB_INFO) {
+		enc_prm.adab_info = &mtkbuf->enc_params.adab_info;
+		mtk_v4l2_err("[%d] idx=%d, adab buf_size(%ux%u), crop_size(%ux%u), pixelformat:%x",
+				ctx->id,
+				mtkbuf->vb.vb2_buf.index,
+				enc_prm.adab_info->buf_width, enc_prm.adab_info->buf_height,
+				enc_prm.adab_info->crop_width,	enc_prm.adab_info->crop_height,
+				enc_prm.adab_info->pixelformat);
+		ret |= venc_if_set_param(ctx,
+					VENC_SET_PARAM_ADAB_INFO,
 					&enc_prm);
 	}
 
@@ -4484,6 +4537,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_GET_ADAB_CAPABILITY;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "Get Video Encoder ADAB capability";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
 	if (handler->error) {
 		mtk_v4l2_err("Init control handler fail %d",
 			     handler->error);
@@ -4699,6 +4764,25 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 1;
 	cfg.step = 1;
 	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	ctx->enc_params.adab_info.buf_width = 0;
+	ctx->enc_params.adab_info.buf_height = 0;
+	ctx->enc_params.adab_info.crop_width = 0;
+	ctx->enc_params.adab_info.crop_height = 0;
+	ctx->enc_params.adab_info.pixelformat = 0;
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO;
+	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode ADAB Info";
+	cfg.min = 0;
+	cfg.max = 0xFFFFFFFF;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.dims[0] = (sizeof(struct mtk_venc_adab_info)/sizeof(u32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

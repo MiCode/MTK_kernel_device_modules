@@ -187,6 +187,7 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_FRAMEQP_RANGE = (1 << 30),
 	MTK_ENCODE_PARAM_CHROMAQP = (1 << 31),
 	MTK_ENCODE_PARAM_MBRC_TKSPD = (1 << 32),
+	MTK_ENCODE_PARAM_ADAB_INFO = (1 << 33),
 };
 
 /*
@@ -435,6 +436,7 @@ struct mtk_enc_params {
 	struct mtk_venc_frame_qp_range frame_qp_range;
 	struct mtk_venc_nal_length nal_length;
 	bool use_clean_gop;
+	struct mtk_venc_adab_info adab_info;
 };
 
 /*
@@ -534,6 +536,7 @@ struct venc_enc_param {
 	struct mtk_venc_frame_qp_range *frame_qp_range;
 	struct mtk_venc_nal_length *nal_length;
 	bool use_clean_gop;
+	struct mtk_venc_adab_info *adab_info;
 };
 
 /*
@@ -562,6 +565,9 @@ struct venc_frm_buf {
 	dma_addr_t dyparams_dma_addr;
 	struct dma_buf *dyparams_dma;
 	unsigned int dyparams_offset;
+	bool has_adab;
+	struct dma_buf *adab_dma;
+	dma_addr_t adab_dma_addr;
 };
 
 struct dma_gen_buf {
@@ -582,7 +588,9 @@ struct dma_meta_buf {
 enum metadata_type {
 	METADATA_HDR               = 0,
 	METADATA_QPMAP             = 1,
-	METADATA_DYNAMICPARAM    = 4
+	METADATA_ENCODING_STATS  = 3,
+	METADATA_DYNAMICPARAM    = 4,
+	METADATA_ADAPTIVE_B_INPUT = 7,
 };
 
 struct meta_describe {

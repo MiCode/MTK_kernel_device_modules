@@ -163,6 +163,7 @@ struct mtk_codec_framesizes {
 struct mtk_codec_capability {
 	__u32	max_b;
 	__u32	max_temporal_layer;
+	__u32   support_adab;
 };
 
 struct mtk_tf_info {
@@ -512,6 +513,14 @@ struct mtk_venc_frame_qp_range {
 struct mtk_venc_nal_length {
 	__u32	prefer;
 	__u32	bytes;
+};
+
+struct mtk_venc_adab_info {
+	__u32	buf_width;
+	__u32	buf_height;
+	__u32	crop_width;
+	__u32	crop_height;
+	__u32	pixelformat;
 };
 
 #endif

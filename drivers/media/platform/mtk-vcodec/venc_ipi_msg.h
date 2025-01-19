@@ -148,6 +148,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_ADJUST_CHROMQA_QP,
 	VENC_SET_PARAM_MBRC_TKSPD,
 	VENC_SET_PARAM_CONFIG,
+	VENC_SET_PARAM_ADAB_INFO,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -556,6 +557,7 @@ struct venc_vcu_config {
 	struct mtk_venc_frame_qp_range frame_qp_range;
 	struct mtk_venc_nal_length nal_length;
 	__u8 use_clean_gop;
+	struct mtk_venc_adab_info adab_info;
 };
 
 /**
@@ -644,6 +646,8 @@ struct venc_vsi {
 	__u32 meta_offset;
 	__u32 qpmap_size;
 	__u64 qpmap_addr;
+	__u32 adab_size;
+	__u64 adab_addr;
 	__u64 dynamicparams_addr;
 	__u32 dynamicparams_size;
 	__u32 dynamicparams_offset;
