@@ -818,7 +818,7 @@ static void ufs_mtk_mcq_disable_irq(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	u32 irq, i;
 
-	if (!is_mcq_enabled(hba))
+	if (!hba->mcq_enabled)
 		return;
 
 	if (host->mcq_nr_intr == 0)
@@ -836,7 +836,7 @@ static void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	u32 irq, i;
 
-	if (!is_mcq_enabled(hba))
+	if (!hba->mcq_enabled)
 		return;
 
 	if (host->mcq_nr_intr == 0)
@@ -1511,7 +1511,7 @@ static int ufs_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
 	host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
 	hba = host->hba;
 
-	if (is_mcq_enabled(hba) && cpu != 0) {
+	if (hba->mcq_enabled && cpu != 0) {
 		ufs_mtk_mcq_set_irq_affinity(hba, cpu);
 
 		/* Migrate irq of cpu0 to cpu3 */
@@ -1654,6 +1654,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	if (host->caps & UFS_MTK_CAP_DISABLE_AH8)
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+
+	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ)
+		hba->quirks |= UFSHCD_QUIRK_BROKEN_LSDBS_CAP;
 
 	if (ufs_mtk_is_mphy_dump(hba))
 		ufs_mtk_dbg_phy_enable(hba);
@@ -2356,7 +2359,7 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 	if (err)
 		return err;
 
-	if (is_mcq_enabled(hba)) {
+	if (hba->mcq_enabled) {
 		ufs_mtk_config_mcq(hba, false);
 		/* Enable required interrupts */
 		_ufshcd_enable_intr(hba, UFSHCD_ENABLE_MTK_MCQ_INTRS);
@@ -2639,7 +2642,7 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	u16 mid = dev_info->wmanufacturerid;
 	unsigned int cpu;
 
-	if (is_mcq_enabled(hba)) {
+	if (hba->mcq_enabled) {
 		/* Use none scheduler for mcq */
 		if (hba->host->nr_hw_queues > 1) {
 			hba->host->tag_set.flags |=
@@ -3174,6 +3177,7 @@ void _ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt)
  */
 static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.name                = "mediatek.ufshci",
+	.max_num_rtt         = MTK_MAX_NUM_RTT,
 	.init                = ufs_mtk_init,
 	.get_ufs_hci_version = ufs_mtk_get_ufs_hci_version,
 	.setup_clocks        = ufs_mtk_setup_clocks,
