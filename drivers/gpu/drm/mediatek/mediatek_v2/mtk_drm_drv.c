@@ -3266,7 +3266,7 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVLSYS_WDMA2,
 };
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL_EXDMA3,
 	DDP_COMPONENT_OVL0_BLENDER1,
@@ -3403,8 +3403,6 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_BLENDER4,
 	DDP_COMPONENT_OVL_EXDMA7,
 	DDP_COMPONENT_OVL0_BLENDER5,
-	DDP_COMPONENT_OVL_EXDMA8,
-	DDP_COMPONENT_OVL0_BLENDER6,
 	DDP_COMPONENT_OVL0_OUTPROC0,
 	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
@@ -3459,60 +3457,98 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 
 /* CRTC1 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
-	DDP_COMPONENT_OVL1_EXDMA6,
-	DDP_COMPONENT_OVL1_BLENDER5,
-	DDP_COMPONENT_OVL1_EXDMA7,
-	DDP_COMPONENT_OVL1_BLENDER6,
-	DDP_COMPONENT_OVL1_OUTPROC3,
-	DDP_COMPONENT_OVLSYS1_DLO_ASYNC10,
-	DDP_COMPONENT_DLI_ASYNC13,
-	DDP_COMPONENT_PQ0_IN_CB13,
+	DDP_COMPONENT_OVL_EXDMA8,
+	DDP_COMPONENT_OVL0_BLENDER6,
+	DDP_COMPONENT_OVL0_OUTPROC1,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC6,
+	DDP_COMPONENT_DLI_ASYNC1,
+	DDP_COMPONENT_PQ0_IN_CB1,
 	DDP_COMPONENT_PQ0_OUT_CB7,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
 	DDP_COMPONENT_DLO_ASYNC2,
 	DDP_COMPONENT_DLI_ASYNC22,
 	DDP_COMPONENT_SPLITTER0_IN_CB2,
 	DDP_COMPONENT_SPLITTER0_OUT_CB10,
-	DDP_COMPONENT_COMP0_OUT_CB8,
-	DDP_COMPONENT_MERGE0_OUT_CB7,
+	DDP_COMPONENT_COMP0_OUT_CB7,
+	DDP_COMPONENT_MERGE0_OUT_CB1,
 	DDP_COMPONENT_DP_INTF0,
 	DDP_COMPONENT_DPTX,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_secondary[] = {
-	DDP_COMPONENT_OVL1_EXDMA8,
-	DDP_COMPONENT_OVL1_BLENDER7,
-	DDP_COMPONENT_OVL1_EXDMA9,
-	DDP_COMPONENT_OVL1_BLENDER8,
-	DDP_COMPONENT_OVL1_OUTPROC4,
-	DDP_COMPONENT_OVLSYS1_DLO_ASYNC11,
-	DDP_COMPONENT_DLI_ASYNC14,
-	DDP_COMPONENT_PQ0_IN_CB14,
+	DDP_COMPONENT_OVL_EXDMA9,
+	DDP_COMPONENT_OVL0_BLENDER7,
+	DDP_COMPONENT_OVL0_OUTPROC2,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC7,
+	DDP_COMPONENT_DLI_ASYNC2,
+	DDP_COMPONENT_PQ0_IN_CB2,
 	DDP_COMPONENT_PQ0_OUT_CB8,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
 	DDP_COMPONENT_DLO_ASYNC3,
 	DDP_COMPONENT_DLI_ASYNC23,
 	DDP_COMPONENT_SPLITTER0_IN_CB3,
 	DDP_COMPONENT_SPLITTER0_OUT_CB11,
-	DDP_COMPONENT_COMP0_OUT_CB9,
-	DDP_COMPONENT_MERGE0_OUT_CB8,
-	DDP_COMPONENT_DP_INTF1,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+	DDP_COMPONENT_MERGE0_OUT_CB2,
+	DDP_COMPONENT_DISP_DVO,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_discrete_chip[] = {
-	DDP_COMPONENT_MDP_RDMA0,
-	DDP_COMPONENT_Y2R0,
-	DDP_COMPONENT_PQ0_IN_CB16,
-	DDP_COMPONENT_PQ0_OUT_CB11,
-	DDP_COMPONENT_PANEL0_COMP_OUT_CB7,
-	DDP_COMPONENT_DLO_ASYNC6,
 
+};
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_fifth_path[] = {
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_OUTPROC1,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC6,
+	DDP_COMPONENT_DLI_ASYNC9,
+	DDP_COMPONENT_PQ0_IN_CB9,
+	DDP_COMPONENT_PQ0_OUT_CB9,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB4,
+	DDP_COMPONENT_DLO_ASYNC4,
+	DDP_COMPONENT_DLI_ASYNC24,
+	DDP_COMPONENT_SPLITTER0_IN_CB4,
+	DDP_COMPONENT_SPLITTER0_OUT_CB12,
+	DDP_COMPONENT_COMP0_OUT_CB9,
+	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_DSI1,
+};
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_sixth_path[] = {
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER7,
+	DDP_COMPONENT_OVL1_OUTPROC2,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC7,
+	DDP_COMPONENT_DLI_ASYNC10,
+	DDP_COMPONENT_PQ0_IN_CB10,
+	DDP_COMPONENT_PQ0_OUT_CB10,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB5,
+	DDP_COMPONENT_DLO_ASYNC5,
+	DDP_COMPONENT_DLI_ASYNC25,
+	DDP_COMPONENT_SPLITTER0_IN_CB5,
+	DDP_COMPONENT_SPLITTER0_OUT_CB13,
+	DDP_COMPONENT_COMP0_OUT_CB10,
+	DDP_COMPONENT_MERGE0_OUT_CB4,
+	DDP_COMPONENT_DSI2,
+};
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_seventh_path[] = {
+	DDP_COMPONENT_OVL1_EXDMA7,
+	DDP_COMPONENT_OVL1_BLENDER5,
+	DDP_COMPONENT_OVL1_OUTPROC3,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC8,
+	DDP_COMPONENT_DLI_ASYNC11,
+	DDP_COMPONENT_PQ0_IN_CB11,
+	DDP_COMPONENT_PQ0_OUT_CB11,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB6,
+	DDP_COMPONENT_DLO_ASYNC6,
 	DDP_COMPONENT_DLI_ASYNC26,
 	DDP_COMPONENT_SPLITTER0_IN_CB6,
 	DDP_COMPONENT_SPLITTER0_OUT_CB14,
-	DDP_COMPONENT_COMP0_OUT_CB7,
-	DDP_COMPONENT_MERGE0_OUT_CB1,
-	DDP_COMPONENT_DSI1,
+	DDP_COMPONENT_COMP0_OUT_CB11,
+	DDP_COMPONENT_MERGE0_OUT_CB5,
+	DDP_COMPONENT_DP_INTF1,
 };
 #endif
 
@@ -5351,6 +5387,26 @@ static const struct mtk_crtc_path_data mt6991_mtk_discrete_path_data = {
 	.is_discrete_path = true,
 };
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static const struct mtk_crtc_path_data mt6991_mtk_fifth_path_data = {
+	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_fifth_path,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_fifth_path),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+};
+
+static const struct mtk_crtc_path_data mt6991_mtk_sixth_path_data = {
+	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_sixth_path,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_sixth_path),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+};
+
+static const struct mtk_crtc_path_data mt6991_mtk_seventh_path_data = {
+	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_seventh_path,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_seventh_path),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+};
+#endif
+
 static const struct mtk_crtc_path_data mt6897_mtk_main_path_data = {
 	.ovl_path[DDP_MAJOR][0] = mt6897_mtk_ovlsys_main,
 	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6897_mtk_ovlsys_main),
@@ -6376,6 +6432,11 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.third_path_data_wo_tdshp = &mt6991_mtk_dp_wo_tdshp_path_data,
 	.fourth_path_data_secondary = &mt6991_mtk_secondary_path_data,
 	.fourth_path_data_discrete = &mt6991_mtk_discrete_path_data,
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	.fifth_path_data = &mt6991_mtk_fifth_path_data,
+	.sixth_path_data = &mt6991_mtk_sixth_path_data,
+	.seventh_path_data = &mt6991_mtk_seventh_path_data,
+#endif
 	.fake_eng_data = &mt6991_fake_eng_data,
 	.mmsys_id = MMSYS_MT6991,
 	.mode_tb = mt6991_mode_tb,
@@ -8690,6 +8751,38 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 			if (ret < 0)
 				goto err_component_unbind;
 		}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+		if (private->data->fifth_path_data) {
+			DDPMSG("CRTC4 Path\n");
+			if (of_property_read_bool(private->mmsys_dev->of_node,
+				"enable-fifth-path"))
+				ret = mtk_drm_crtc_create(drm,
+					private->data->fifth_path_data);
+			if (ret < 0)
+				goto err_component_unbind;
+		}
+
+		if (private->data->sixth_path_data) {
+			DDPMSG("CRTC5 Path\n");
+			if (of_property_read_bool(private->mmsys_dev->of_node,
+				"enable-sixth-path"))
+				ret = mtk_drm_crtc_create(drm,
+					private->data->sixth_path_data);
+			if (ret < 0)
+				goto err_component_unbind;
+		}
+
+		if (private->data->seventh_path_data) {
+			DDPMSG("CRTC6 Path\n");
+			if (of_property_read_bool(private->mmsys_dev->of_node,
+				"enable-seventh-path"))
+				ret = mtk_drm_crtc_create(drm,
+					private->data->seventh_path_data);
+			if (ret < 0)
+				goto err_component_unbind;
+		}
+#endif
 	}
 	/* TODO: allow_fb_modifiers = 1 and format_modifiers = null make drm_warn_on.
 	 * so we set allow_fb_modifiers = 1 after mtk_plane_init

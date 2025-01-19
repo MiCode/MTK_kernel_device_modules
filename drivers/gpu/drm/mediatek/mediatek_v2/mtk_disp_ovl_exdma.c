@@ -2239,7 +2239,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	priv = crtc->dev->dev_private;
 	crtc_idx = (unsigned long)drm_crtc_index(crtc);
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, idx, handle);
+#endif
 
 	/* handle dim layer for compression flag & color dim*/
 	if (fmt == DRM_FORMAT_C8) {

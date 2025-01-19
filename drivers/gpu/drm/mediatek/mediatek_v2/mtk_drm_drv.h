@@ -65,6 +65,11 @@ struct mtk_mmsys_driver_data {
 	const struct mtk_crtc_path_data *third_path_data_wo_tdshp;
 	const struct mtk_crtc_path_data *fourth_path_data_secondary;
 	const struct mtk_crtc_path_data *fourth_path_data_discrete;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	const struct mtk_crtc_path_data *fifth_path_data;
+	const struct mtk_crtc_path_data *sixth_path_data;
+	const struct mtk_crtc_path_data *seventh_path_data;
+#endif
 	enum mtk_mmsys_id mmsys_id;
 	bool shadow_register;
 	const struct mtk_session_mode_tb *mode_tb;
