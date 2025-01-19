@@ -976,7 +976,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_unlock(&vcp_A_notify_mutex);
 
 		mutex_lock(&vcp_pw_clk_mutex);
-		if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+		if (!vcp_ao && !IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 			pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d rdy %x\n",
 				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
 		else
@@ -1005,10 +1005,11 @@ static int vcp_pm_event(struct notifier_block *notifier
 			for (i = 0; i < VCP_CORE_TOTAL ; i++)
 				del_timer(&vcp_ready_timer[i].tl);
 #endif
-			vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
 			vcp_wait_awake_count();
 
 			if(!vcp_ao) {
+				vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
+
 				ret = pm_runtime_put_sync(vcp_power_devs);
 				if (ret)
 					pr_notice("[VCP] %s: pm_runtime_put_sync %d\n"
@@ -1027,7 +1028,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		mutex_lock(&vcp_pw_clk_mutex);
-		if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+		if (!vcp_ao && !IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 			pr_notice("[VCP] PM_POST_SUSPEND entered %d %d rdy %x\n",
 				pwclkcnt, is_suspending, readl(VLP_AO_RSVD7));
 		else
@@ -2242,31 +2243,11 @@ void vcp_wait_suspend_resume(bool suspend)
 	if (suspend) {
 		writel(B_CORE0_SUSPEND, AP_R_GPR2);
 		writel(B_CORE1_SUSPEND, AP_R_GPR3);
-		writel(0x87654321, R_CORE0_GENERAL_REG0);
-		writel(0x87654321, R_CORE1_GENERAL_REG0);
-		if (!readl(AP_R_GPR2) || !readl(AP_R_GPR3)) {
-			pr_notice("[VCP] [%s] AP_R_GPR2/3 is null %x %x %x %x flag %x %x\n",
-				suspend ? "suspend" : "resume",
-				readl(AP_R_GPR2), readl(AP_R_GPR3),
-				readl(R_CORE0_GENERAL_REG0), readl(R_CORE1_GENERAL_REG0),
-				readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
-			vcp_dump_last_regs(1);
-		}
-		writel(B_GIPC4_SETCLR_3, R_GIPC_IN_SET);
+		writel(vcpreg.suspend_gipc, R_GIPC_IN_SET);
 	} else {
 		writel(B_CORE0_RESUME, AP_R_GPR2);
 		writel(B_CORE1_RESUME, AP_R_GPR3);
-		writel(0x12345678, R_CORE0_GENERAL_REG0);
-		writel(0x12345678, R_CORE1_GENERAL_REG0);
-		if (!readl(AP_R_GPR2) || !readl(AP_R_GPR3)) {
-			pr_notice("[VCP] [%s] AP_R_GPR2/3 is null %x %x %x %x flag %x %x\n",
-				suspend ? "suspend" : "resume",
-				readl(AP_R_GPR2), readl(AP_R_GPR3),
-				readl(R_CORE0_GENERAL_REG0), readl(R_CORE1_GENERAL_REG0),
-				readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
-			vcp_dump_last_regs(1);
-		}
-		writel(B_GIPC4_SETCLR_3, R_GIPC_IN_SET);
+		writel(vcpreg.resume_gipc, R_GIPC_IN_SET);
 	}
 
 	while (--timeout) {
@@ -2279,6 +2260,7 @@ void vcp_wait_suspend_resume(bool suspend)
 
 		udelay(10);
 	}
+
 	if (timeout <= 0) {
 		pr_notice("[VCP] vcp %s timeout GPIC 0x%x 0x%x 0x%x 0x%x flag 0x%x 0x%x\n",
 			suspend ? "suspend" : "resume",
@@ -2957,6 +2939,24 @@ static int vcp_device_probe(struct platform_device *pdev)
 						, &vcpreg.twohart);
 	pr_notice("[VCP] vcpreg.twohart = %d\n", vcpreg.twohart);
 
+	of_property_read_u32(pdev->dev.of_node, "suspend-gipc-bit"
+		, &vcpreg.suspend_gipc);
+	if (vcpreg.suspend_gipc > 31) {
+		pr_notice("[VCP] suspend gipc bit should not > 31 %u\n", vcpreg.suspend_gipc);
+		return -ENODEV;
+	} else
+		pr_notice("[VCP] suspend gipc bit %u\n", vcpreg.suspend_gipc);
+	vcpreg.suspend_gipc = 1U << vcpreg.suspend_gipc;
+
+	of_property_read_u32(pdev->dev.of_node, "resume-gipc-bit"
+		, &vcpreg.resume_gipc);
+	if (vcpreg.resume_gipc > 31) {
+		pr_notice("[VCP] resume gipc bit should not > 31 %u\n", vcpreg.resume_gipc);
+		return -ENODEV;
+	} else
+		pr_notice("[VCP] resume gipc bit %u\n", vcpreg.resume_gipc);
+	vcpreg.resume_gipc = 1U << vcpreg.resume_gipc;
+
 	vcp_excep_mode = VCP_NO_EXCEP;
 	vcpreg.secure_dump = 0;
 	of_property_read_u32(pdev->dev.of_node, "vcp-secure-dump"
@@ -2978,12 +2978,14 @@ static int vcp_device_probe(struct platform_device *pdev)
 		pr_notice("[VCP] bus debug num ports not found\n");
 	pr_debug("[VCP] vcpreg.bus_debug_num_ports = %d\n", vcpreg.bus_debug_num_ports);
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_vlp_ao_rsvd7");
-	vcpreg.vcp_vlp_ao_rsvd7 = devm_ioremap_resource(dev, res);
-	if (IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
-		pr_debug("[VCP] vcpreg.vcp_vlp_ao_rsvd7 error\n");
-	else
-		pr_notice("[VCP] VLP_AO_RSVD7 value = 0x%x\n", readl(VLP_AO_RSVD7));
+	if (!vcp_ao) {
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_vlp_ao_rsvd7");
+		vcpreg.vcp_vlp_ao_rsvd7 = devm_ioremap_resource(dev, res);
+		if (IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+			pr_debug("[VCP] vcpreg.vcp_vlp_ao_rsvd7 error\n");
+		else
+			pr_notice("[VCP] VLP_AO_RSVD7 value = 0x%x\n", readl(VLP_AO_RSVD7));
+	}
 
 	temp_value = 0;
 	of_property_read_u32(pdev->dev.of_node, "vcp-clk-sys", &temp_value);

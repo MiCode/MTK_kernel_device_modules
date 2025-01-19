@@ -120,6 +120,8 @@ struct vcp_regs {
 	unsigned int fmeter_type;
 	unsigned int secure_dump;
 	unsigned int bus_debug_num_ports;
+	unsigned int suspend_gipc;
+	unsigned int resume_gipc;
 };
 
 struct vcp_ipi_profile {
