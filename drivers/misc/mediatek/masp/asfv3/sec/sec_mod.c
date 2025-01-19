@@ -129,6 +129,39 @@ static const struct proc_ops sec_proc_rid_fops = {
 };
 
 /**************************************************************************
+ * get and show SOC ID from dts node
+ **************************************************************************/
+static int sec_proc_soc_id_show(struct seq_file *m, void *v)
+{
+	unsigned int i = 0;
+
+	if (m == NULL)
+		return -EINVAL;
+
+	if (v == NULL)
+		return -EINVAL;
+
+	seq_printf(m, "SOC_ID: ");
+	for (i = 0; i < NUM_SOC_ID_IN_BYTES; i++)
+		seq_printf(m, "%02x", g_soc_id[i]);
+	seq_printf(m, "\n");
+
+	return 0;
+}
+
+static int sec_proc_soc_id_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, sec_proc_soc_id_show, NULL);
+}
+
+static const struct proc_ops sec_proc_soc_id_fops = {
+	.proc_open = sec_proc_soc_id_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
+
+/**************************************************************************
  *  set_dmverity_reboot eio flag
  **************************************************************************/
 // notify_call function
@@ -211,6 +244,15 @@ static int sec_init(struct platform_device *dev)
 	if (!entry) {
 		ret = -ENOMEM;
 		pr_notice("[%s] Create /proc/rid failed(0x%x)\n",
+			  SEC_DEV_NAME,
+			  ret);
+		goto err_device;
+	}
+
+	entry = proc_create("soc_id", 0444, NULL, &sec_proc_soc_id_fops);
+	if (!entry) {
+		ret = -ENOMEM;
+		pr_notice("[%s] Create /proc/soc_id failed(0x%x)\n",
 			  SEC_DEV_NAME,
 			  ret);
 		goto err_device;
@@ -307,6 +349,8 @@ static int __init masp_get_from_dts(void)
 		g_crypto_seed[i] = tags->crypto_seed[i];
 	for (i = 0; i < NUM_SBC_PUBK_HASH; i++)
 		g_sbc_pubk_hash[i] = tags->sbc_pubk_hash[i];
+	for (i = 0; i < NUM_SOC_ID_IN_BYTES; i++)
+		g_soc_id[i] = tags->soc_id[i];
 
 	return 0;
 }

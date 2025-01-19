@@ -19,7 +19,7 @@ unsigned int g_lock_state;
 unsigned int g_random_id[NUM_RID];
 unsigned char g_crypto_seed[NUM_CRYPTO_SEED];
 unsigned int g_sbc_pubk_hash[NUM_SBC_PUBK_HASH];
-
+unsigned char g_soc_id[NUM_SOC_ID_IN_BYTES];
 /******************************************************************************
  * GET RANDOM ID
  ******************************************************************************/
