@@ -2091,7 +2091,8 @@ static void mtk_ddp_comp_larb_get(struct mtk_ddp_comp *comp,
 	if (ret)
 		DDPPR_ERR("mtk_smi_larb_get failed:%d\n", ret);
 #else
-	ret = pm_runtime_resume_and_get(larb_dev);
+	ret = mtk_smi_larb_enable(larb_dev);
+	// ret = pm_runtime_resume_and_get(larb_dev);
 	if (ret)
 		DDPPR_ERR("pm_runtime_resume_and_get failed:%d\n", ret);
 #endif
@@ -2107,7 +2108,8 @@ static void mtk_ddp_comp_larb_put(struct mtk_ddp_comp *comp,
 #ifdef MTK_SMI_CLK_CTRL
 	mtk_smi_larb_put(larb_dev);
 #else
-	pm_runtime_put_sync(larb_dev);
+	mtk_smi_larb_disable(larb_dev);
+	// pm_runtime_put_sync(larb_dev);
 #endif
 
 }

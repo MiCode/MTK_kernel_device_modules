@@ -142,6 +142,20 @@ enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_MAX,
 };
 
+enum pwr_clk_id {
+	CLK_DISP_VCORE,
+	CLK_DIS0,
+	CLK_DIS1,
+	CLK_OVL0,
+	CLK_OVL1,
+	CLK_MML1,
+	CLK_MML0,
+	CLK_EDPTX,
+	CLK_DPTX,
+	CLK_DSI_PHY0,
+	CLK_MAX_NUM,
+};
+
 struct mtk_connector_state {
 	struct drm_connector_state base;
 
@@ -326,6 +340,9 @@ struct mtk_drm_private {
 	unsigned int total_srt[MAX_CRTC];
 	unsigned int no_hwc_layers;
 	unsigned int no_hwc_overlap;
+
+	struct device_node *pwr_node;
+	struct clk *pwr_clks[CLK_MAX_NUM];
 };
 
 struct mtk_drm_property {

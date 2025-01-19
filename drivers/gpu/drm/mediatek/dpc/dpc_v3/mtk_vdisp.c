@@ -76,6 +76,7 @@ struct mtk_vdisp {
 	struct clk **clks;
 	int pm_ret;
 	u32 pwr_ack_wait_time;
+	struct device_node *pwr_node;
 };
 const struct mtk_vdisp_data default_vdisp_driver_data = {
 	.avs = &default_vdisp_avs_driver_data,
@@ -176,6 +177,10 @@ static s32 mtk_vdisp_get_power_cnt(void)
 static s32 mtk_vdisp_poll_power_cnt(s32 val)
 {
 	s32 ret, tmp;
+
+	/* use pwr clk do not need power cnt*/
+	if (g_priv->pwr_node)
+		return 0;
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_30MS);
 	if (ret < 0) {
@@ -394,8 +399,11 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
 			/* POST ON */
 
-			for (i = 0; i < g_priv->clk_num; i++)
-				clk_prepare_enable(g_priv->clks[i]);
+			if (!g_priv->pwr_node)
+				for (i = 0; i < g_priv->clk_num; i++)
+					clk_prepare_enable(g_priv->clks[i]);
+			else
+				writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x8);
 
 			/* clr vdisp_ao bus prot */
 			if (g_priv->mmpc_bus_prot_gp1)
@@ -403,10 +411,10 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 
 			/* clr dpc cg */
 			if (g_priv->vdisp_ao_cg_con)
-				writel(BIT(16), g_priv->vdisp_ao_cg_con + 0x8);
+				writel((BIT(16)), g_priv->vdisp_ao_cg_con + 0x8);
 
-			// if (disp_dpc_driver.dpc_group_enable)
-			// 	disp_dpc_driver.dpc_group_enable(DPC_SUBSYS_DISP, false);
+			if (disp_dpc_driver.dpc_group_enable)
+				disp_dpc_driver.dpc_group_enable(DPC_SUBSYS_DISP, false);
 		}
 		atomic_inc(&g_vdisp_ctrl_cnt);
 
@@ -424,8 +432,12 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 			if (g_priv->mmpc_bus_prot_gp1)
 				writel(0x80, g_priv->mmpc_bus_prot_gp1 + 0x4);
 
-			for (i = 0; i < g_priv->clk_num; i++)
-				clk_disable_unprepare(g_priv->clks[i]);
+			if (!g_priv->pwr_node)
+				for (i = 0; i < g_priv->clk_num; i++)
+					clk_disable_unprepare(g_priv->clks[i]);
+			else
+				writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x4);
+
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* POST OFF */
 			vdisp_hwccf_ctrl(g_priv, false);
@@ -701,20 +713,32 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 static void mtk_vdisp_genpd_put(void)
 {
-	int i = 0, j = 0;
+	int i = 0, j = 0, clk_num = 0;
+	struct clk *clk;
 
-	for (i = 0; i < DISP_PD_NUM; i++) {
-		if (g_dev[i]) {
-			VDISPDBG("pd(%d) ref(%u)", i,
-				 atomic_read(&g_dev[i]->power.usage_count));
-			pm_runtime_put_sync(g_dev[i]);
-			j++;
+	clk_num = of_count_phandle_with_args(g_priv->pwr_node, "clocks", "#clock-cells");
+	/* if use pwr clk, need to balance cg status here */
+	if (g_priv->pwr_node) {
+
+		for (j = 0; j < clk_num; j++) {
+			clk = of_clk_get(g_priv->pwr_node, j);
+			clk_prepare_enable(clk);
+			clk_disable_unprepare(clk);
 		}
+
+	} else {
+		for (i = 0; i < DISP_PD_NUM; i++) {
+			if (g_dev[i]) {
+				VDISPDBG("pd(%d) ref(%u)", i,
+					atomic_read(&g_dev[i]->power.usage_count));
+				pm_runtime_put_sync(g_dev[i]);
+				j++;
+			}
+		}
+		/* set all devices as syscore to avoid expected power on when suspend resuming */
+		set_devices_syscore();
 	}
 	VDISPDBG("%d mtcmos has been put", j);
-
-	/* set all devices as syscore to avoid expected power on when suspend resuming */
-	set_devices_syscore();
 }
 
 static void mtk_vdisp_query_aging_val(void)
@@ -772,6 +796,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *vcp_node;
+	struct device_node *pwr_node;
 	struct device_node *chosen_node;
 	struct tag_bootmode *tag_boot;
 	struct mtk_vdisp *priv;
@@ -900,6 +925,14 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
+	if (!pwr_node) {
+		VDISPDBG("No pwr-handle node\n");
+		priv->pwr_node = NULL;
+	} else {
+		priv->pwr_node = pwr_node;
+	}
+
 	clk_num = of_property_count_strings(dev->of_node, clkpropname);
 	if (clk_num > 0) {
 		priv->clk_num = clk_num;
@@ -914,10 +947,12 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 			}
 			priv->clks[i] = clk;
 
-			ret = clk_prepare_enable(priv->clks[i]);
-			if (ret) {
-				VDISPERR("failed to enable pd(%d) clk(%s): %d", pd_id, clkname, ret);
-				return ret;
+			if (!pwr_node) {
+				ret = clk_prepare_enable(priv->clks[i]);
+				if (ret) {
+					VDISPERR("failed to enable pd(%d) clk(%s): %d", pd_id, clkname, ret);
+					return ret;
+				}
 			}
 			VDISPDBG("pd(%d) clk(%s) enable", pd_id, clkname);
 			i++;

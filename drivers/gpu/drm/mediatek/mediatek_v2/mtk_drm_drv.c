@@ -106,6 +106,7 @@
 #endif
 
 #include "mtk-mminfra-debug.h"
+#include "mtk-mminfra-util.h"
 #include "mtk_disp_bdg.h"
 
 #include "mtk_disp_vdisp_ao.h"
@@ -7005,6 +7006,19 @@ static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
 	.use_infra_mem_res = false,
 };
 
+static const char * const pwr_clk_names[CLK_MAX_NUM] = {
+	[CLK_DISP_VCORE] = "disp_vcore",
+	[CLK_DIS0] = "dis0",
+	[CLK_DIS1] = "dis1",
+	[CLK_OVL0] = "ovl0",
+	[CLK_OVL1] = "ovl1",
+	[CLK_MML1] = "mml1",
+	[CLK_MML0] = "mml0",
+	[CLK_EDPTX] = "edptx",
+	[CLK_DPTX] = "dptx",
+	[CLK_DSI_PHY0] = "dsi_phy0",
+};
+
 #ifdef MTK_DRM_FENCE_SUPPORT
 void mtk_drm_suspend_release_present_fence(struct device *dev,
 					   unsigned int index)
@@ -7210,14 +7224,6 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		break;
 	case DISP_PM_GET:
-		if (priv->dsi_phy0_dev) {
-			ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
-			if (unlikely(ret)) {
-				DDPMSG("request dsi phy0 power failed\n");
-				return ret;
-			}
-		}
-
 		if (priv->dsi_phy1_dev) {
 			ret = pm_runtime_resume_and_get(priv->dsi_phy1_dev);
 			if (unlikely(ret)) {
@@ -7235,44 +7241,75 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			}
 		}
 #endif
-		/* mminfra power request */
-		if (priv->dpc_dev) {
-			if (unlikely(priv->kernel_pm.skip_mminfra_ctrl)) {
-				DDPMSG("%s mminfra is on, skip mminfra get\n", __func__);
-				priv->kernel_pm.skip_mminfra_ctrl = false;
-			} else {
-				ret = pm_runtime_resume_and_get(priv->dpc_dev);
+
+		if (priv->pwr_node) {
+			clk_prepare_enable(priv->pwr_clks[CLK_DSI_PHY0]);
+			mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_DISP);
+
+			clk_prepare_enable(priv->pwr_clks[CLK_DISP_VCORE]);
+			clk_prepare_enable(priv->pwr_clks[CLK_DIS0]);
+			clk_prepare_enable(priv->pwr_clks[CLK_DIS1]);
+			clk_prepare_enable(priv->pwr_clks[CLK_OVL0]);
+			clk_prepare_enable(priv->pwr_clks[CLK_OVL1]);
+		} else {
+			if (priv->dsi_phy0_dev) {
+				ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
 				if (unlikely(ret)) {
-					DDPMSG("request mminfra power failed\n");
+					DDPMSG("request dsi phy0 power failed\n");
 					return ret;
 				}
 			}
+
+			/* mminfra power request */
+			if (priv->dpc_dev) {
+				if (unlikely(priv->kernel_pm.skip_mminfra_ctrl)) {
+					DDPMSG("%s mminfra is on, skip mminfra get\n", __func__);
+					priv->kernel_pm.skip_mminfra_ctrl = false;
+				} else {
+					ret = pm_runtime_resume_and_get(priv->dpc_dev);
+					if (unlikely(ret)) {
+						DDPMSG("request mminfra power failed\n");
+						return ret;
+					}
+				}
+			}
+
+			pm_runtime_get_sync(priv->mmsys_dev);
+
+			if (priv->side_mmsys_dev)
+				pm_runtime_get_sync(priv->side_mmsys_dev);
+			if (priv->ovlsys_dev)
+				pm_runtime_get_sync(priv->ovlsys_dev);
+			if (priv->side_ovlsys_dev)
+				pm_runtime_get_sync(priv->side_ovlsys_dev);
 		}
 
-		pm_runtime_get_sync(priv->mmsys_dev);
-
-		if (priv->side_mmsys_dev)
-			pm_runtime_get_sync(priv->side_mmsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_get_sync(priv->ovlsys_dev);
-		if (priv->side_ovlsys_dev)
-			pm_runtime_get_sync(priv->side_ovlsys_dev);
 		break;
 	case DISP_PM_PUT:
-		if (priv->side_ovlsys_dev)
-			pm_runtime_put_sync(priv->side_ovlsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_put_sync(priv->ovlsys_dev);
-		if (priv->side_mmsys_dev)
-			pm_runtime_put_sync(priv->side_mmsys_dev);
+		if (priv->pwr_node) {
+			clk_disable_unprepare(priv->pwr_clks[CLK_DIS0]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DIS1]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_OVL0]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_OVL1]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
 
-		pm_runtime_put_sync(priv->mmsys_dev);
+			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DSI_PHY0]);
+		} else {
+			if (priv->side_ovlsys_dev)
+				pm_runtime_put_sync(priv->side_ovlsys_dev);
+			if (priv->ovlsys_dev)
+				pm_runtime_put_sync(priv->ovlsys_dev);
+			if (priv->side_mmsys_dev)
+				pm_runtime_put_sync(priv->side_mmsys_dev);
 
-		if (priv->dpc_dev)
-			pm_runtime_put_sync(priv->dpc_dev);
+			pm_runtime_put_sync(priv->mmsys_dev);
+			if (priv->dpc_dev)
+				pm_runtime_put_sync(priv->dpc_dev);
+			if (priv->dsi_phy0_dev)
+				pm_runtime_put_sync(priv->dsi_phy0_dev);
+		}
 
-		if (priv->dsi_phy0_dev)
-			pm_runtime_put_sync(priv->dsi_phy0_dev);
 
 		if (priv->dsi_phy1_dev)
 			pm_runtime_put_sync(priv->dsi_phy1_dev);
@@ -7283,29 +7320,40 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		break;
 	case DISP_PM_PUT_SYNC:
-		if (priv->side_ovlsys_dev)
-			pm_runtime_put_sync(priv->side_ovlsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_put_sync(priv->ovlsys_dev);
-		if (priv->side_mmsys_dev)
-			pm_runtime_put_sync(priv->side_mmsys_dev);
 
-		pm_runtime_put_sync(priv->mmsys_dev);
+		if (priv->pwr_node) {
+			clk_disable_unprepare(priv->pwr_clks[CLK_DIS0]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DIS1]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_OVL0]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_OVL1]);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
 
-		if (priv->dpc_dev) {
-			if (vdisp_func.poll_power_cnt) {
-				if (vdisp_func.poll_power_cnt(0) == 0)
+			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+			clk_disable_unprepare(priv->pwr_clks[CLK_DSI_PHY0]);
+		} else {
+			if (priv->side_ovlsys_dev)
+				pm_runtime_put_sync(priv->side_ovlsys_dev);
+			if (priv->ovlsys_dev)
+				pm_runtime_put_sync(priv->ovlsys_dev);
+			if (priv->side_mmsys_dev)
+				pm_runtime_put_sync(priv->side_mmsys_dev);
+
+			pm_runtime_put_sync(priv->mmsys_dev);
+
+			if (priv->dpc_dev) {
+				if (vdisp_func.poll_power_cnt) {
+					if (vdisp_func.poll_power_cnt(0) == 0)
+						pm_runtime_put_sync(priv->dpc_dev);
+					else {
+						DDPMSG("%s poll mtcmos off timeout, skip mminfra put\n", __func__);
+						priv->kernel_pm.skip_mminfra_ctrl = true;
+					}
+				} else
 					pm_runtime_put_sync(priv->dpc_dev);
-				else {
-					DDPMSG("%s poll mtcmos off timeout, skip mminfra put\n", __func__);
-					priv->kernel_pm.skip_mminfra_ctrl = true;
-				}
-			} else
-				pm_runtime_put_sync(priv->dpc_dev);
+			}
+			if (priv->dsi_phy0_dev)
+				pm_runtime_put_sync(priv->dsi_phy0_dev);
 		}
-
-		if (priv->dsi_phy0_dev)
-			pm_runtime_put_sync(priv->dsi_phy0_dev);
 
 		if (priv->dsi_phy1_dev)
 			pm_runtime_put_sync(priv->dsi_phy1_dev);
@@ -7362,6 +7410,32 @@ err_dpc_dev:
 	return -1;
 }
 
+static void mtk_drm_get_pwr_clk(struct mtk_drm_private *priv)
+{
+	struct device *dev = priv->mmsys_dev;
+	struct device_node *pwr_node;
+	int i;
+
+	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
+	if (!pwr_node) {
+		DDPMSG("No pwr-handle node\n");
+		priv->pwr_node = NULL;
+		return;
+	}
+
+	priv->pwr_node = pwr_node;
+	// Get clocks from pwr_dev
+	for (i = 0; i < CLK_MAX_NUM; i++) {
+		priv->pwr_clks[i] = of_clk_get_by_name(pwr_node, pwr_clk_names[i]);
+		if (IS_ERR(priv->pwr_clks[i])) {
+			dev_err(dev, "Failed to get %s clock\n", pwr_clk_names[i]);
+			priv->pwr_clks[i] = NULL;
+			priv->pwr_node = NULL;
+		}
+	}
+	DDPDBG("%s\n", __func__);
+}
+
 static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 {
 	struct device *dev = priv->mmsys_dev;
@@ -7388,8 +7462,11 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	priv->top_clk = devm_kmalloc_array(dev, priv->top_clk_num,
 					   sizeof(*priv->top_clk), GFP_KERNEL);
 
-	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-	DDPFUNC("first pm_get\n");
+	/* for power clks, only enable after callback is registered */
+	if (!priv->pwr_node) {
+		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+		DDPFUNC("first pm_get\n");
+	}
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		clk = of_clk_get(node, i);
@@ -7408,16 +7485,21 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 		 * We will power off mtcmos at the end of
 		 * the display initialization.
 		 */
-		ret = clk_prepare_enable(priv->top_clk[i]);
-		if (ret)
-			DDPPR_ERR("top clk prepare enable failed:%d\n", i);
+		if (!priv->pwr_node) {
+			ret = clk_prepare_enable(priv->top_clk[i]);
+			if (ret)
+				DDPPR_ERR("top clk prepare enable failed:%d\n", i);
+		}
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_init(&top_clk_lock);
 		/* TODO: check display enable from lk */
 		atomic_set(&top_isr_ref, 0);
-		atomic_set(&top_clk_ref, 1);
+		if (!priv->pwr_node)
+			atomic_set(&top_clk_ref, 1);
+		else
+			atomic_set(&top_clk_ref, 0);
 		priv->power_state = true;
 	}
 }
@@ -9208,7 +9290,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	 * We power off mtcmos at the end of the display initialization.
 	 * Here we only decrease ref count, the power will hold on.
 	 */
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !private->pwr_node)
 		mtk_drm_top_clk_disable_unprepare(private->crtc[0]);
 
 	/*
@@ -11814,6 +11896,8 @@ SKIP_OVLSYS_CONFIG:
 		g_dpc_dev = private->dpc_dev;
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
+
+	mtk_drm_get_pwr_clk(private);
 
 	/* Get and enable top clk align to HW */
 	mtk_drm_get_top_clk(private);
