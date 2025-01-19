@@ -255,6 +255,7 @@ enum {
 struct mt6375_priv {
 	struct mtk_gauge gauge;
 	struct device *dev;
+	struct device *cdev_dev;
 	struct regmap *regmap;
 	struct irq_domain *domain;
 	struct irq_chip irq_chip;
@@ -1682,7 +1683,7 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 	u16 fg_iavg_reg_27_16 = 0;
 	u16 fg_iavg_reg_15_00 = 0;
 	int sign_bit = 0;
-	int is_bat_charging;
+	int is_bat_charging = 0;
 	int iavg_vld = 0;
 	int r_fg_value, car_tune_value;
 	int ret = 0;
@@ -1789,7 +1790,9 @@ static int average_current_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sys
 	*data = gauge_dev->fg_hw_info.current_avg;
 
 	gauge_dev->fg_hw_info.current_avg_valid = iavg_vld;
-	bm_debug(gauge_dev->gm, "[fg_get_current_iavg] current_avg:%d valid:%d\n", *data, iavg_vld);
+	bm_debug(gauge_dev->gm,
+		 "[fg_get_current_iavg] current_avg:%d valid:%d is_bat_charging:%d\n",
+		 *data, iavg_vld, is_bat_charging);
 
 	return 0;
 }
@@ -3826,7 +3829,6 @@ static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pd
 {
 	struct mtk_gauge *gauge = gm->gauge;
 	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
-	struct class_device *class_dev = NULL;
 	int ret = 0;
 
 	mutex_init(&gauge->fg_mutex);
@@ -3835,7 +3837,7 @@ static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pd
 	if (ret)
 		bm_err(gm, "Error: Can't Get Major number for adc_cali\n");
 
-	cdev_init(&(priv->bat_cali_cdev), &adc_cali_fops);
+	cdev_init(&priv->bat_cali_cdev, &adc_cali_fops);
 	priv->bat_cali_cdev.owner = THIS_MODULE;
 	ret = cdev_add(&priv->bat_cali_cdev, bat_cali_devno, 1);
 	if (ret)
@@ -3843,9 +3845,13 @@ static int adc_cali_cdev_init(struct mtk_battery *gm, struct platform_device *pd
 
 	bat_cali_major = MAJOR(bat_cali_devno);
 	bat_cali_class = class_create(BAT_CALI_DEVNAME);
-	class_dev = (struct class_device *)device_create(bat_cali_class, NULL,
-							 bat_cali_devno, NULL,
-							 BAT_CALI_DEVNAME);
+	priv->cdev_dev = device_create(bat_cali_class, NULL, bat_cali_devno, NULL,
+					"%s", BAT_CALI_DEVNAME);
+	if (IS_ERR(priv->cdev_dev)) {
+		dev_info(priv->dev, "%s, Failed to create cdev_device\n", __func__);
+		cdev_del(&priv->bat_cali_cdev);
+		return PTR_ERR(priv->cdev_dev);
+	}
 
 	return 0;
 }
