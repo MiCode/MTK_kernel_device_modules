@@ -1437,8 +1437,8 @@ TRACE_EVENT(sched_update_rt_rq_load_avg_internal,
 );
 
 TRACE_EVENT(sched_attach_entity_load_avg,
-	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
-	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_PROTO(int cpu, pid_t pid, struct dpt_rq_struct *dpt_rq, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, dpt_rq, util_task),
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(pid_t, pid)
@@ -1458,12 +1458,12 @@ TRACE_EVENT(sched_attach_entity_load_avg,
 	TP_fast_assign(
 		__entry->cpu = cpu;
 		__entry->pid = pid;
-		__entry->util_cfs_cpu_sum = util_cfs->util_cpu_sum;
-		__entry->util_cfs_coef1_sum = util_cfs->util_coef1_sum;
-		__entry->util_cfs_coef2_sum = util_cfs->util_coef2_sum;
-		__entry->util_cfs_cpu_avg = util_cfs->util_cpu_avg;
-		__entry->util_cfs_coef1_avg = util_cfs->util_coef1_avg;
-		__entry->util_cfs_coef2_avg = util_cfs->util_coef2_avg;
+		__entry->util_cfs_cpu_sum = dpt_rq->util_cpu_sum_tmp;
+		__entry->util_cfs_coef1_sum = dpt_rq->util_coef1_sum_tmp;
+		__entry->util_cfs_coef2_sum = dpt_rq->util_coef2_sum_tmp;
+		__entry->util_cfs_cpu_avg = dpt_rq->util_cpu_avg_tmp;
+		__entry->util_cfs_coef1_avg = dpt_rq->util_coef1_avg_tmp;
+		__entry->util_cfs_coef2_avg = dpt_rq->util_coef2_avg_tmp;
 		__entry->util_task_cpu_sum = util_task->util_cpu_sum;
 		__entry->util_task_coef1_sum = util_task->util_coef1_sum;
 		__entry->util_task_coef2_sum = util_task->util_coef2_sum;
@@ -1483,8 +1483,8 @@ TRACE_EVENT(sched_attach_entity_load_avg,
 );
 
 TRACE_EVENT(sched_detach_entity_load_avg,
-	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
-	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_PROTO(int cpu, pid_t pid, struct dpt_rq_struct *dpt_rq, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, dpt_rq, util_task),
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(pid_t, pid)
@@ -1504,12 +1504,12 @@ TRACE_EVENT(sched_detach_entity_load_avg,
 	TP_fast_assign(
 		__entry->cpu = cpu;
 		__entry->pid = pid;
-		__entry->util_cfs_cpu_sum = util_cfs->util_cpu_sum;
-		__entry->util_cfs_coef1_sum = util_cfs->util_coef1_sum;
-		__entry->util_cfs_coef2_sum = util_cfs->util_coef2_sum;
-		__entry->util_cfs_cpu_avg = util_cfs->util_cpu_avg;
-		__entry->util_cfs_coef1_avg = util_cfs->util_coef1_avg;
-		__entry->util_cfs_coef2_avg = util_cfs->util_coef2_avg;
+		__entry->util_cfs_cpu_sum = dpt_rq->util_cpu_sum_tmp;
+		__entry->util_cfs_coef1_sum = dpt_rq->util_coef1_sum_tmp;
+		__entry->util_cfs_coef2_sum = dpt_rq->util_coef2_sum_tmp;
+		__entry->util_cfs_cpu_avg = dpt_rq->util_cpu_avg_tmp;
+		__entry->util_cfs_coef1_avg = dpt_rq->util_coef1_avg_tmp;
+		__entry->util_cfs_coef2_avg = dpt_rq->util_coef2_avg_tmp;
 		__entry->util_task_cpu_sum = util_task->util_cpu_sum;
 		__entry->util_task_coef1_sum = util_task->util_coef1_sum;
 		__entry->util_task_coef2_sum = util_task->util_coef2_sum;

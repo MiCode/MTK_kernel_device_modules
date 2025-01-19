@@ -112,6 +112,12 @@ typedef struct dpt_rq_struct {
 	unsigned long removed_util_cpu_avg;
 	unsigned long removed_util_coef1_avg;
 	unsigned long removed_util_coef2_avg;
+	u32 util_cpu_sum_tmp;
+	u32 util_coef1_sum_tmp;
+	u32 util_coef2_sum_tmp;
+	unsigned long util_cpu_avg_tmp;
+	unsigned long util_coef1_avg_tmp;
+	unsigned long util_coef2_avg_tmp;
 	struct dpt_task_struct util_rt;
 
 	/* cpu info */

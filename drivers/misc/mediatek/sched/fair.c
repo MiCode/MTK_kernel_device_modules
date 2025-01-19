@@ -3731,6 +3731,21 @@ void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, in
 	}
 	*ret = 0;
 
+	if (util_cfs) {
+		util_cfs->util_cpu_avg += dpt_rq->util_cpu_avg_tmp;
+		util_cfs->util_coef1_avg += dpt_rq->util_coef1_avg_tmp;
+		util_cfs->util_coef1_avg += dpt_rq->util_coef2_avg_tmp;
+		util_cfs->util_cpu_sum += dpt_rq->util_cpu_sum_tmp;
+		util_cfs->util_coef1_sum += dpt_rq->util_coef1_sum_tmp;
+		util_cfs->util_coef2_sum += dpt_rq->util_coef2_sum_tmp;
+		dpt_rq->util_cpu_avg_tmp = 0;
+		dpt_rq->util_coef1_avg_tmp = 0;
+		dpt_rq->util_coef2_avg_tmp = 0;
+		dpt_rq->util_cpu_sum_tmp = 0;
+		dpt_rq->util_coef1_sum_tmp = 0;
+		dpt_rq->util_coef2_sum_tmp = 0;
+	}
+
 	if (trace_sched_update_load_avg_cfs_rq_enabled() && util_cfs)
 		trace_sched_update_load_avg_cfs_rq(cpu, &cfs_rq->avg, util_cfs, dpt_rq);
 }
@@ -3785,7 +3800,8 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	int cpu;
 	u32 divider;
 	unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
-	struct dpt_task_struct *util_cfs = NULL, *util_task = NULL;
+	struct dpt_rq_struct *dpt_rq = NULL;
+	struct dpt_task_struct *util_task = NULL;
 	struct task_struct *p = NULL;
 	struct rq *rq = NULL;
 
@@ -3799,7 +3815,7 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	cpu = cpu_of(rq);
 	p = task_of(se);
 	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
-	util_cfs = &per_cpu(__dpt_rq, cpu).util_cfs;
+	dpt_rq = &per_cpu(__dpt_rq, cpu);
 	divider = get_pelt_divider(&rq->cfs.avg);
 
 	util_task->util_cpu_sum = task_util_dpt_v2(p, CPU_UTIL) * divider;
@@ -3810,17 +3826,17 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	divider = get_pelt_divider_cfs_dpt_v2(cpu);
 
 	if (trace_sched_attach_entity_load_avg_enabled())
-		trace_sched_attach_entity_load_avg(cpu, task_pid_nr(p), util_cfs, util_task);
+		trace_sched_attach_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);
 
-	util_cfs->util_cpu_avg += local_util_cpu_avg;
-	util_cfs->util_coef1_avg += local_util_coef1_avg;
-	util_cfs->util_coef2_avg += local_util_coef2_avg;
-	util_cfs->util_cpu_sum += local_util_cpu_avg * divider;
-	util_cfs->util_coef1_sum += local_util_coef1_avg * divider;
-	util_cfs->util_coef2_sum += local_util_coef2_avg * divider;
+	dpt_rq->util_cpu_avg_tmp += local_util_cpu_avg;
+	dpt_rq->util_coef1_avg_tmp += local_util_coef1_avg;
+	dpt_rq->util_coef2_avg_tmp += local_util_coef2_avg;
+	dpt_rq->util_cpu_sum_tmp += local_util_cpu_avg * divider;
+	dpt_rq->util_coef1_sum_tmp += local_util_coef1_avg * divider;
+	dpt_rq->util_coef2_sum_tmp += local_util_coef2_avg * divider;
 
 	if (trace_sched_attach_entity_load_avg_enabled())
-		trace_sched_attach_entity_load_avg(cpu, task_pid_nr(p), util_cfs, util_task);
+		trace_sched_attach_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);
 }
 
 /* Hook from `trace_android_rvh_detach_entity_load_avg` */
@@ -3829,7 +3845,8 @@ void mtk_detach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	int cpu;
 	u32 divider;
 	unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
-	struct dpt_task_struct *util_cfs = NULL, *util_task = NULL;
+	struct dpt_rq_struct *dpt_rq = NULL;
+	struct dpt_task_struct *util_task = NULL;
 	struct task_struct *p = NULL;
 	struct rq *rq = NULL;
 
@@ -3843,26 +3860,28 @@ void mtk_detach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	cpu = cpu_of(rq);
 	p = task_of(se);
 	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
-	util_cfs = &per_cpu(__dpt_rq, cpu).util_cfs;
+	dpt_rq = &per_cpu(__dpt_rq, cpu);
 
 	task_global_to_local_dpt_v2(cpu, p, &local_util_cpu_avg, &local_util_coef1_avg, &local_util_coef2_avg, NULL, NULL, NULL);
 	divider = get_pelt_divider_cfs_dpt_v2(cpu);
 
 	if (trace_sched_detach_entity_load_avg_enabled())
-		trace_sched_detach_entity_load_avg(cpu, task_pid_nr(p), util_cfs, util_task);
+		trace_sched_detach_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);
 
-	sub_positive(&util_cfs->util_cpu_avg, local_util_cpu_avg);
-	sub_positive(&util_cfs->util_coef1_avg, local_util_coef1_avg);
-	sub_positive(&util_cfs->util_coef2_avg, local_util_coef2_avg);
-	sub_positive(&util_cfs->util_cpu_sum, local_util_cpu_avg * divider);
-	sub_positive(&util_cfs->util_coef1_sum, local_util_coef1_avg * divider);
-	sub_positive(&util_cfs->util_coef2_sum, local_util_coef2_avg * divider);
-	util_cfs->util_cpu_sum = max_t(u32, util_cfs->util_cpu_sum, util_cfs->util_cpu_avg * PELT_MIN_DIVIDER);
-	util_cfs->util_coef1_sum = max_t(u32, util_cfs->util_coef1_sum, util_cfs->util_coef1_avg * PELT_MIN_DIVIDER);
-	util_cfs->util_coef2_sum = max_t(u32, util_cfs->util_coef2_sum, util_cfs->util_coef2_avg * PELT_MIN_DIVIDER);
+	sub_positive(&dpt_rq->util_cpu_avg_tmp, local_util_cpu_avg);
+	sub_positive(&dpt_rq->util_coef1_avg_tmp, local_util_coef1_avg);
+	sub_positive(&dpt_rq->util_coef2_avg_tmp, local_util_coef2_avg);
+	sub_positive(&dpt_rq->util_cpu_sum_tmp, local_util_cpu_avg * divider);
+	sub_positive(&dpt_rq->util_coef1_sum_tmp, local_util_coef1_avg * divider);
+	sub_positive(&dpt_rq->util_coef2_sum_tmp, local_util_coef2_avg * divider);
+	dpt_rq->util_cpu_sum_tmp = max_t(u32, dpt_rq->util_cpu_sum_tmp, dpt_rq->util_cpu_avg_tmp * PELT_MIN_DIVIDER);
+	dpt_rq->util_coef1_sum_tmp = max_t(u32, dpt_rq->util_coef1_sum_tmp,
+		dpt_rq->util_coef1_avg_tmp * PELT_MIN_DIVIDER);
+	dpt_rq->util_coef2_sum_tmp = max_t(u32, dpt_rq->util_coef2_sum_tmp,
+		dpt_rq->util_coef2_avg_tmp * PELT_MIN_DIVIDER);
 
 	if (trace_sched_detach_entity_load_avg_enabled())
-		trace_sched_detach_entity_load_avg(cpu, task_pid_nr(p), util_cfs, util_task);
+		trace_sched_detach_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);
 }
 
 /* Hook from `trace_android_rvh_enqueue_task_fair` */
