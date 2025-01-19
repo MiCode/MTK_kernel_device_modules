@@ -90,7 +90,7 @@ static void sched_task_util_hook(void *data, struct sched_entity *se)
 		sa = &se->avg;
 
 		trace_sched_task_util(p->pid,
-				sa->util_avg, sa->util_est.enqueued, sa->util_est.ewma);
+				sa->util_avg, sa->util_est);
 	}
 }
 
@@ -102,7 +102,6 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 	if (trace_sched_task_uclamp_enabled()) {
 		struct task_struct *p;
 		struct sched_avg *sa;
-		struct util_est ue;
 		struct uclamp_se *uc_min_req, *uc_max_req;
 		unsigned long util;
 
@@ -111,8 +110,7 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 
 		p = container_of(se, struct task_struct, se);
 		sa = &se->avg;
-		ue = READ_ONCE(se->avg.util_est);
-		util = max(ue.ewma, ue.enqueued);
+		util = READ_ONCE(se->avg.util_est);
 		util = max(util, READ_ONCE(se->avg.util_avg));
 		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
 		uc_max_req = &p->uclamp_req[UCLAMP_MAX];
@@ -191,7 +189,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 		unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
 
 		util = max_t(unsigned long, util,
-			     READ_ONCE(rq->cfs.avg.util_est.enqueued));
+			     READ_ONCE(rq->cfs.avg.util_est));
 
 		trace_sched_queue_task(cpu, p->pid, type, util,
 				rq->uclamp[UCLAMP_MIN].value, rq->uclamp[UCLAMP_MAX].value,

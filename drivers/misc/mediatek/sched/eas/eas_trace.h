@@ -483,26 +483,23 @@ TRACE_EVENT(sched_queue_task,
 TRACE_EVENT(sched_task_util,
 	TP_PROTO(int pid,
 		unsigned long util,
-		unsigned int util_enqueued, unsigned int util_ewma),
-	TP_ARGS(pid, util, util_enqueued, util_ewma),
+		unsigned int util_enqueued),
+	TP_ARGS(pid, util, util_enqueued),
 	TP_STRUCT__entry(
 		__field(int, pid)
 		__field(unsigned long, util)
 		__field(unsigned int, util_enqueued)
-		__field(unsigned int, util_ewma)
 	),
 	TP_fast_assign(
 		__entry->pid = pid;
 		__entry->util = util;
 		__entry->util_enqueued = util_enqueued;
-		__entry->util_ewma = util_ewma;
 	),
 	TP_printk(
-		"pid=%d util=%lu util_enqueued=%u util_ewma=%u",
+		"pid=%d util=%lu util_enqueued=%u",
 		__entry->pid,
 		__entry->util,
-		__entry->util_enqueued,
-		__entry->util_ewma)
+		__entry->util_enqueued)
 );
 
 TRACE_EVENT(sched_task_uclamp,
@@ -597,7 +594,6 @@ TRACE_EVENT(sched_rq_load,
 		__field(unsigned long, runnable_avg)
 		__field(unsigned long, util_avg)
 		__field(unsigned int, enqueued)
-		__field(unsigned int, ewma)
 	),
 
 	TP_fast_assign(
@@ -613,11 +609,10 @@ TRACE_EVENT(sched_rq_load,
 		__entry->load_avg = rq->avg.load_avg;
 		__entry->runnable_avg = rq->avg.runnable_avg;
 		__entry->util_avg = rq->avg.util_avg;
-		__entry->enqueued = rq->avg.util_est.enqueued;
-		__entry->ewma = rq->avg.util_est.ewma;
+		__entry->enqueued = rq->avg.util_est;
 	),
 
-	TP_printk("nr_running=%u h_nr_running=%u idle_nr_running=%u idle_h_nr_running=%u last_update_time=%llu load_sum=%llu runnable_sum=%llu util_sum=%u period_contrib=%u load_avg=%lu runnable_avg=%lu util_avg=%lu enqueued=%d ewma=%d",
+	TP_printk("nr_running=%u h_nr_running=%u idle_nr_running=%u idle_h_nr_running=%u last_update_time=%llu load_sum=%llu runnable_sum=%llu util_sum=%u period_contrib=%u load_avg=%lu runnable_avg=%lu util_avg=%lu enqueued=%d",
 		__entry->nr_running,
 		__entry->h_nr_running,
 		__entry->idle_nr_running,
@@ -630,8 +625,7 @@ TRACE_EVENT(sched_rq_load,
 		__entry->load_avg,
 		__entry->runnable_avg,
 		__entry->util_avg,
-		__entry->enqueued,
-		__entry->ewma
+		__entry->enqueued
 	)
 );
 
@@ -1199,14 +1193,13 @@ TRACE_EVENT(sched_update_history,
 		__array(char,			comm, TASK_COMM_LEN)
 		__field(pid_t,			pid)
 		__field(unsigned long,		util_avg)
-		__field(unsigned int,		ewma)
 		__field(unsigned int,		enqueued)
 		__field(unsigned int,		demand)
 		__field(u32,			util_demand)
 		__field(unsigned int,		runtime)
 		__field(int,			samples)
-		__field(enum task_event,		evt)
-		__field(enum history_event,		hisevt)
+		__field(enum task_event,	evt)
+		__field(enum history_event,	hisevt)
 		__field(u32,			hist0)
 		__field(u32,			hist1)
 		__field(u32,			hist2)
@@ -1228,8 +1221,7 @@ TRACE_EVENT(sched_update_history,
 		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
 		__entry->pid		= p->pid;
 		__entry->util_avg		= p->se.avg.util_avg;
-		__entry->ewma		= p->se.avg.util_est.ewma;
-		__entry->enqueued	= p->se.avg.util_est.enqueued;
+		__entry->enqueued	= p->se.avg.util_est;
 		__entry->demand		= fts->demand;
 		__entry->util_demand	= fts->util_demand;
 		__entry->runtime		= runtime;
@@ -1253,7 +1245,7 @@ TRACE_EVENT(sched_update_history,
 		__entry->util_avg_history4	= fts->util_avg_history[4];
 	),
 
-	TP_printk("pid=%d name=%s: runtime=%u samples=%d event=%s hisevt=%s demand=%u util_demand=%u (hist[0]=%u hist[1]=%u hist[2]=%u hist[3]=%u hist[4]=%u) (util_sum_hist[0]=%u util_sum_hist[1]=%u util_sum_hist[2]=%u util_sum_hist[3]=%u util_sum_hist[4]=%u) (util_avg_history[0]=%u util_avg_history[1]=%u util_avg_history[2]=%u util_avg_history[3]=%u util_avg_history[4]=%u) pelt(util=%lu util_enqueued=%u util_ewma=%u)",
+	TP_printk("pid=%d name=%s: runtime=%u samples=%d event=%s hisevt=%s demand=%u util_demand=%u (hist[0]=%u hist[1]=%u hist[2]=%u hist[3]=%u hist[4]=%u) (util_sum_hist[0]=%u util_sum_hist[1]=%u util_sum_hist[2]=%u util_sum_hist[3]=%u util_sum_hist[4]=%u) (util_avg_history[0]=%u util_avg_history[1]=%u util_avg_history[2]=%u util_avg_history[3]=%u util_avg_history[4]=%u) pelt(util=%lu util_enqueued=%u)",
 		__entry->pid, __entry->comm,
 		__entry->runtime, __entry->samples,
 		task_event_names[__entry->evt], history_event_names[__entry->hisevt],
@@ -1268,8 +1260,7 @@ TRACE_EVENT(sched_update_history,
 		__entry->util_avg_history2, __entry->util_avg_history3,
 		__entry->util_avg_history4,
 		__entry->util_avg,
-		__entry->enqueued,
-		__entry->ewma)
+		__entry->enqueued)
 );
 
 TRACE_EVENT(sched_update_task_ravg,
