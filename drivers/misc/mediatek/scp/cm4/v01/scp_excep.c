@@ -97,10 +97,13 @@ static uint8_t *core_write_cpu_note(int cpu, struct elf32_phdr *nhdr,
 {
 	struct memelfnote notes;
 	struct elf32_prstatus prstatus;
-	char cpustr[16];
+	char cpustr[16] = {0};
+	int ret = 0;
 
 	memset(&prstatus, 0, sizeof(struct elf32_prstatus));
-	snprintf(cpustr, sizeof(cpustr), "CPU%d", cpu);
+	ret = snprintf(cpustr, sizeof(cpustr), "CPU%d", cpu);
+	if (ret < 0)
+		pr_info("[SCP] cpu = %d\n", cpu);
 	/* set up the process status */
 	notes.name = cpustr;
 	notes.type = NT_PRSTATUS;
