@@ -157,8 +157,9 @@ static inline int moveAF(unsigned long a_u4Position)
 		LOG_INF("out of range\n");
 		return -EINVAL;
 	}
-
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 1) {
+		spin_unlock(g_pAF_SpinLock);
 		unsigned short InitPos;
 
 		initdrv();
@@ -180,7 +181,9 @@ static inline int moveAF(unsigned long a_u4Position)
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
 		spin_unlock(g_pAF_SpinLock);
-	}
+	} else
+		spin_unlock(g_pAF_SpinLock);
+
 
 	if (g_u4CurrPosition == a_u4Position)
 		return 0;
@@ -259,17 +262,15 @@ long DW9800WAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 int DW9800WAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	LOG_INF("Start\n");
-
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 2)
 		LOG_INF("Wait\n");
 
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
-
-		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 0;
-		spin_unlock(g_pAF_SpinLock);
 	}
+	spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("End\n");
 
@@ -281,7 +282,9 @@ int DW9800WAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 {
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
 	g_pAF_SpinLock = pAF_SpinLock;
+	spin_lock(g_pAF_SpinLock);
 	g_pAF_Opened = pAF_Opened;
+	spin_unlock(g_pAF_SpinLock);
 
 	return 1;
 }

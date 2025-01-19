@@ -241,7 +241,7 @@ long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	LOG_INF("Start\n");
-
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 2) {
 		int i4RetValue = 0;
 		u8 data = 0x0;
@@ -260,10 +260,9 @@ int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
 
-		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 0;
-		spin_unlock(g_pAF_SpinLock);
 	}
+	spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("End\n");
 
@@ -275,7 +274,9 @@ int DW9718TAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 {
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
 	g_pAF_SpinLock = pAF_SpinLock;
+	spin_lock(g_pAF_SpinLock);
 	g_pAF_Opened = pAF_Opened;
+	spin_unlock(g_pAF_SpinLock);
 
 	initAF();
 
