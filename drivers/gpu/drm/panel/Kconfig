@@ -735,3 +735,15 @@ config DRM_PANEL_RM692K0_VISIONOX_FHDPLUS_CMD
 	  rm692k0 visionox fhdplus cmd panel. The panel has a 1260x2800
 	  resolution and uses 24-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
+
+config DRM_PANEL_ALPHA_JDI_NT36672E_VDO_120HZ_FRAMERATEV5
+	tristate "ALPHA JDI FHD+ DPHY vdo mode 120HZ panel frameratev5"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for ALPHA JDI NT36672E
+	  DPHY vdo mode Full HD Plus 120HZ panel. The panel has a 1080x2400
+	  resolution and uses 24-bits RGB per pixel, hblank period of 154 pixels.
+	  Align new framerate cal table. It provides aMIPI DSI interface to host.
+	  interface to host.
