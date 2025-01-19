@@ -17,6 +17,7 @@
 #include "mtk-mminfra-util.h"
 
 struct mminfra_mtcmos {
+	u32 voter;
 	u32 vote_bit;
 	atomic_t ref_cnt;
 };
@@ -38,10 +39,10 @@ int mminfra0_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_0].voter,
 			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_0].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_0].voter,
 			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_0].vote_bit);
 	}
 
@@ -53,10 +54,10 @@ int mminfra1_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_1].voter,
 			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_1].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_1].voter,
 			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_1].vote_bit);
 	}
 
@@ -68,10 +69,10 @@ int mminfra_ao_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_AO].voter,
 			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_AO].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_PLL,
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_AO].voter,
 			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_AO].vote_bit);
 	}
 
@@ -184,6 +185,11 @@ static int mminfra_util_probe(struct platform_device *pdev)
 	for (i = 0; i < MM_PWR_NR; i++) {
 		if (i >= g_mminfra_pd->mminfra_mtcmos_num)
 			break;
+		if (!of_property_read_u32_index(g_dev->of_node, "mminfra-mtcmos-voter", i, &tmp)) {
+			g_mminfra_pd->mm_mtcmos[i].voter = tmp;
+			pr_notice("[mminfra] mm[%d] voter(%d)\n",
+				i, g_mminfra_pd->mm_mtcmos[i].voter);
+		}
 		if (!of_property_read_u32_index(g_dev->of_node, "mminfra-mtcmos-data", i, &tmp)) {
 			g_mminfra_pd->mm_mtcmos[i].vote_bit = tmp;
 			atomic_set(&g_mminfra_pd->mm_mtcmos[i].ref_cnt, 0);
