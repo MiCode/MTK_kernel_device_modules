@@ -1276,7 +1276,6 @@ static int mtk_mdp_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 	u32 frm_in_h, frm_out_h;
 	u32 in_h = 0, out_h = 0;
 	struct rsz_tile_params th[1] = {0};
-	u32 reg_val = 0;
 	u32 tile_idx = 0;
 	unsigned int overhead_v;
 	unsigned int comp_overhead_v;
@@ -1335,11 +1334,6 @@ static int mtk_mdp_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 
 	comp->mtk_crtc->tile_overhead_v.in_height = in_h;
 	comp->mtk_crtc->tile_overhead_v.src_y = th[0].src_y;
-
-	reg_val = 0;
-	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, (in_h != out_h));
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			   comp->regs_pa + RSZ_CON_1, reg_val, 0x2);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			   comp->regs_pa + RSZ_INPUT_IMAGE,
