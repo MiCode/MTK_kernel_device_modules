@@ -3194,9 +3194,9 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
-void mtk_smmu_reg_dump(enum mtk_smmu_type type,
-		       struct device *master_dev,
-		       int sid)
+void smmu_reg_dump(enum mtk_smmu_type type,
+		   struct device *master_dev,
+		   int sid)
 {
 	static DEFINE_RATELIMIT_STATE(dbg_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
@@ -3245,6 +3245,13 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 	}
 
 	mtk_smmu_power_put(smmu);
+}
+
+void mtk_smmu_reg_dump(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       int sid)
+{
+	smmu_reg_dump(type, master_dev, sid);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
 
