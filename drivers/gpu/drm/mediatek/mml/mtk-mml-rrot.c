@@ -1115,7 +1115,7 @@ done:
 		con2 = (prefetch_line_cnt[2] << 16) | prefetch_line_cnt[3];
 
 	/* enable stash port urgent/ultra/pre-ultra, monitor normal threshold */
-	stash_con = 0x7f000000;	/* bit[29:26] always on, urgent/ultra/preultra */
+	stash_con = 0x7b000000;	/* bit[29:27] always on, preultra/ultra and sw trigger */
 
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_0, stash_con, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, con1, U32_MAX);
@@ -1179,7 +1179,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* select vcsel for different mode */
 	if (rrot->data->vcsel)
 		cmdq_pkt_write(pkt, NULL, base_pa + RROT_VCSEL,
-			mml_iscouple(cfg->info.mode) ? 0x7 : 0x0, U32_MAX);
+			mml_iscouple(cfg->info.mode) ? 0x3 : 0x0, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))

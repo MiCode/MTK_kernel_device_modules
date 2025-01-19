@@ -353,12 +353,14 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 
 	if (!duration_us)
 		duration_us = MML_MAX_DUR;
-	mml_msg("[drm]%s duration %u", __func__, duration_us);
+	mml_msg("[drm][query]%s duration %u", __func__, duration_us);
 
 	remain[mml_sys_frame] = duration_us -  dc_sw_reserve;
 	remain[mml_sys_tile] = duration_us -  dc_sw_reserve;
 
 	for (i = 0; i < cnt; i++) {
+		bool balance = false;
+
 		if (mml_layer_cnt >= max_layer) {
 			infos[i].mode = MML_MODE_NOT_SUPPORT;
 			continue;
@@ -370,28 +372,38 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 		/* use mml-frame remain time to compare dl/dc opp */
 		info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 		mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
-		if (mode == MML_MODE_MML_DECOUPLE) {
+		if (mode == MML_MODE_DIRECT_LINK)
+			mml_msg("[drm][query]layer %u mode dl active time %u",
+				i, infos[i].act_time);
+		else if (mode == MML_MODE_MML_DECOUPLE) {
 			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
-				mml_msg("[drm]%s dc not support remain %u need %u",
-					__func__, remain[mml_sys_frame],
+				mml_msg("[drm][query]layer %u dc not support remain %u need %u",
+					i, remain[mml_sys_frame],
 					info_cache[mml_layer_cnt].duration);
 				mode = MML_MODE_MML_DECOUPLE2;
 			} else if (remain[mml_sys_frame] < remain[mml_sys_tile]) {
-				mml_msg("[drm]%s balance to dc2", __func__);
+				balance = true;
 				mode = MML_MODE_MML_DECOUPLE2;
-			} else
+			} else {
 				remain[mml_sys_frame] -= info_cache[mml_layer_cnt].duration;
+				mml_msg("[drm][query]layer %u mode dc  remain %u",
+					i, remain[mml_sys_frame]);
+			}
 		}
 
 		if (mode == MML_MODE_MML_DECOUPLE2) {
 			if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration) {
 				mode = MML_MODE_NOT_SUPPORT;
-				mml_msg("[drm]%s dc2 not support remain %u need %u",
-					__func__, remain[mml_sys_tile],
+				mml_msg("[drm][query]layer %u dc2 not support remain %u need %u",
+					i, remain[mml_sys_tile],
 					info_cache[mml_layer_cnt].duration);
-			} else
+			} else {
 				remain[mml_sys_tile] -= info_cache[mml_layer_cnt].duration;
+				mml_msg("[drm][query]layer %u mode dc2 remain %u%s",
+					i, remain[mml_sys_tile], balance ? " (balanced)" : "");
+			}
 		}
+
 		infos[i].mode = mode;
 
 		if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING)

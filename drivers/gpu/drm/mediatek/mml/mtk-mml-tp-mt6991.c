@@ -1124,9 +1124,9 @@ check_hrt:
 	 * skip log in select topology path
 	 */
 	if (info_cache)
-		mml_msg("%s pixel %u tput %llu %u %u dest %u %u hrt %llu opp %u",
-			__func__, pixel, tput, tputw, tputh, destw, desth, hrt,
-			info_cache->dl_opp);
+		mml_msg("%s pixel %u opp %u tput %llu %u %u act %u dest %u %u hrt %llu",
+			__func__, pixel, info_cache->dl_opp, tput, tputw, tputh,
+			info->act_time, destw, desth, hrt);
 
 	if (hrt <= mml_max_hrt)
 		return true;
@@ -1196,8 +1196,8 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 	}
 	info_cache->dc_opp = i;
 
-	mml_msg("%s pixel %u duration %u tput %u opp %u remain %u",
-		__func__, pixel, info_cache->duration, tput, i, info_cache->remain);
+	mml_msg("%s pixel %u opp %u tput %u duration %u remain %u",
+		__func__, pixel, i, tput, info_cache->duration, info_cache->remain);
 	return true;
 }
 
