@@ -6,7 +6,6 @@
 #ifndef __CLK_CTRL_H
 #define __CLK_CTRL_H
 
-#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include "clkbuf-util.h"

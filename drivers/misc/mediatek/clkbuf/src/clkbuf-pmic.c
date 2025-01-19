@@ -20,6 +20,8 @@ struct match_pmic {
 	char *name;
 	struct clkbuf_hdlr *hdlr;
 	int (*init)(struct clkbuf_dts *array, struct match_pmic *match);
+	struct clkbuf_dts *(*parse_dts)(struct clkbuf_dts *array,
+			struct device_node *clkbuf_node, int nums);
 };
 
 static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
@@ -1238,52 +1240,6 @@ static struct clkbuf_hdlr pmic_hdlr_lv3 = {
 	.data = &mt6357_data,
 };
 
-static struct match_pmic mt6358_match_pmic = {
-	.name = "mediatek,mt6358-clkbuf",
-	.hdlr = &pmic_hdlr_lv1,
-	.init = &pmic_init_lv1,
-};
-
-static struct match_pmic mt6358_tb_match_pmic = {
-	.name = "mediatek,mt6358-tb-clkbuf",
-	.hdlr = &pmic_hdlr_lv1_tb,
-	.init = &pmic_init_lv1,
-};
-
-static struct match_pmic mt6685_match_pmic = {
-	.name = "mediatek,mt6685-clkbuf",
-	.hdlr = &pmic_hdlr_v1,
-	.init = &pmic_init_v1,
-};
-
-static struct match_pmic mt6685_tb_match_pmic = {
-	.name = "mediatek,mt6685-tb-clkbuf",
-	.hdlr = &pmic_hdlr_v2,
-	.init = &pmic_init_v1,
-};
-
-static struct match_pmic mt6359p_match_pmic = {
-	.name = "mediatek,mt6359p-clkbuf",
-	.hdlr = &pmic_hdlr_lv2,
-	.init = &pmic_init_lv1,
-};
-
-static struct match_pmic mt6357_match_pmic = {
-	.name = "mediatek,mt6357-clkbuf",
-	.hdlr = &pmic_hdlr_lv3,
-	.init = &pmic_init_lv1,
-};
-
-static struct match_pmic *matches_pmic[] = {
-	&mt6357_match_pmic,
-	&mt6358_match_pmic,
-	&mt6358_tb_match_pmic,
-	&mt6685_match_pmic,
-	&mt6685_tb_match_pmic,
-	&mt6359p_match_pmic,
-	NULL,
-};
-
 int count_pmic_node(struct device_node *clkbuf_node)
 {
 	struct device_node *pmic_node, *xo_buf;
@@ -1341,12 +1297,11 @@ static int parsing_dts_xo_cmds(struct device_node *xo_buf,
 	return 0;
 }
 
-struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
+static struct clkbuf_dts *pmic_parse_dts_v1(struct clkbuf_dts *array,
 				  struct device_node *clkbuf_node, int nums)
 {
 	struct device_node *pmic_node, *xo_buf;
 	struct platform_device *pmic_dev;
-	struct mt6397_chip *chip;
 	struct regmap *pmic_base;
 	unsigned int num_xo = 0;
 
@@ -1362,23 +1317,8 @@ struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
 	}
 
 	pmic_dev = of_find_device_by_node(pmic_node);
-	if (!pmic_dev) {
-		CLKBUF_DBG("find pmic_dev failed, not support pmic_dev\n");
-		return NULL;
-	}
 
 	pmic_base = dev_get_regmap(pmic_dev->dev.parent, NULL);
-
-	if (!pmic_base) {
-		/* get regmap by old way, use pmic main chip */
-		chip = dev_get_drvdata(pmic_dev->dev.parent);
-		if (!chip || !chip->regmap) {
-			CLKBUF_DBG("find chip or chip->regmap failed, not support regmap\n");
-			return NULL;
-		}
-
-		pmic_base = chip->regmap;
-	}
 
 	/*start parsing pmic dcxo dts*/
 	for_each_child_of_node(pmic_node, xo_buf) {
@@ -1405,6 +1345,161 @@ struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
 		array++;
 	}
 
+	return array;
+}
+
+static struct clkbuf_dts *pmic_parse_dts_lv1(struct clkbuf_dts *array,
+				  struct device_node *clkbuf_node, int nums)
+{
+	struct device_node *pmic_node, *xo_buf;
+	struct platform_device *pmic_dev;
+	struct mt6397_chip *chip;
+	struct regmap *pmic_base;
+	unsigned int num_xo = 0;
+
+	pmic_node = of_parse_phandle(clkbuf_node, "pmic", 0);
+
+	if (!pmic_node) {
+		CLKBUF_DBG("find pmic_node failed, not support DCXO\n");
+		return NULL;
+	}
+	/*count xo numbers*/
+	for_each_child_of_node(pmic_node, xo_buf) {
+		num_xo++;
+	}
+
+	pmic_dev = of_find_device_by_node(pmic_node);
+	if (!pmic_dev) {
+		CLKBUF_DBG("find pmic_dev failed, not support pmic_dev\n");
+		return NULL;
+	}
+
+	/* get regmap by old way, use pmic main chip */
+	chip = dev_get_drvdata(pmic_dev->dev.parent);
+	if (!chip || !chip->regmap) {
+		CLKBUF_DBG("find chip or chip->regmap failed, not support regmap\n");
+		return NULL;
+	}
+
+	pmic_base = chip->regmap;
+
+	/*start parsing pmic dcxo dts*/
+	for_each_child_of_node(pmic_node, xo_buf) {
+		/* default for optional field */
+		const char *comp = NULL;
+		int xo_id, perms = 0xffff; /*API need 0xffffffff*/
+
+		if (parsing_dts_xo_cmds(xo_buf, array)) {
+			CLKBUF_DBG("-ENOMEM\n");
+			return array;
+		}
+		of_property_read_u32(xo_buf, "xo-id", &xo_id);
+		of_property_read_u32(xo_buf, "perms", &perms);
+		of_property_read_string(pmic_node, "compatible", &comp);
+
+		array->nums = nums;
+		array->num_xo = num_xo;
+		array->comp = (char *)comp;
+		array->xo_name = (char *)xo_buf->name;
+		array->hw.hw_type = PMIC;
+		array->xo_id = xo_id;
+		array->perms = perms;
+		array->hw.base.map = pmic_base;
+		array++;
+	}
+
+	return array;
+}
+
+static struct match_pmic mt6358_match_pmic = {
+	.name = "mediatek,mt6358-clkbuf",
+	.hdlr = &pmic_hdlr_lv1,
+	.init = &pmic_init_lv1,
+	.parse_dts = &pmic_parse_dts_lv1,
+};
+
+static struct match_pmic mt6358_tb_match_pmic = {
+	.name = "mediatek,mt6358-tb-clkbuf",
+	.hdlr = &pmic_hdlr_lv1_tb,
+	.init = &pmic_init_lv1,
+	.parse_dts = &pmic_parse_dts_lv1,
+};
+
+static struct match_pmic mt6685_match_pmic = {
+	.name = "mediatek,mt6685-clkbuf",
+	.hdlr = &pmic_hdlr_v1,
+	.init = &pmic_init_v1,
+	.parse_dts = &pmic_parse_dts_v1,
+};
+
+static struct match_pmic mt6685_tb_match_pmic = {
+	.name = "mediatek,mt6685-tb-clkbuf",
+	.hdlr = &pmic_hdlr_v2,
+	.init = &pmic_init_v1,
+	.parse_dts = &pmic_parse_dts_v1,
+};
+
+static struct match_pmic mt6359p_match_pmic = {
+	.name = "mediatek,mt6359p-clkbuf",
+	.hdlr = &pmic_hdlr_lv2,
+	.init = &pmic_init_lv1,
+	.parse_dts = &pmic_parse_dts_lv1,
+};
+
+static struct match_pmic mt6357_match_pmic = {
+	.name = "mediatek,mt6357-clkbuf",
+	.hdlr = &pmic_hdlr_lv3,
+	.init = &pmic_init_lv1,
+	.parse_dts = &pmic_parse_dts_lv1,
+};
+
+static struct match_pmic *matches_pmic[] = {
+	&mt6357_match_pmic,
+	&mt6358_match_pmic,
+	&mt6358_tb_match_pmic,
+	&mt6685_match_pmic,
+	&mt6685_tb_match_pmic,
+	&mt6359p_match_pmic,
+	NULL,
+};
+
+struct clkbuf_dts *parse_pmic_dts(struct clkbuf_dts *array,
+				  struct device_node *clkbuf_node, int nums)
+{
+	struct match_pmic **match_pmic = matches_pmic;
+	struct device_node *pmic_node;
+	const char *comp = NULL;
+
+	pmic_node = of_parse_phandle(clkbuf_node, "pmic", 0);
+
+	if (!pmic_node) {
+		CLKBUF_DBG("find \"pmic\" node failed\n");
+	} else {
+		if (of_property_read_string(pmic_node, "compatible", &comp)) {
+			CLKBUF_DBG("find PMIC \"compatible\" property failed\n");
+			goto PARSE_DTS_FAIL;
+		}
+
+		/* find match by compatible */
+		for (; (*match_pmic) != NULL; match_pmic++)
+			if (strcmp((*match_pmic)->name, comp) == 0)
+				break;
+
+		if (*match_pmic == NULL) {
+			CLKBUF_DBG("no match pmic compatible!\n");
+			goto PARSE_DTS_FAIL;
+		}
+
+		/* Parse dts with platform function */
+		if ((*match_pmic)->parse_dts == NULL) {
+			CLKBUF_DBG("parse_dts function not defined!\n");
+			goto PARSE_DTS_FAIL;
+		} else {
+			return (*match_pmic)->parse_dts(array, clkbuf_node, nums);
+		}
+	}
+
+PARSE_DTS_FAIL:
 	return array;
 }
 

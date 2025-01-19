@@ -188,7 +188,7 @@
 #define RG_VRFCK_1_NDIS_EN_SHIFT	(0)
 
 
-struct reg_t mt6359p_debug_regs[] = {
+static struct reg_t mt6359p_debug_regs[] = {
 	[0] =
 		DBG_REG(dcxo_cw00, DCXO_CW00, 0xFFFF, 0)
 	[1] =
@@ -209,7 +209,7 @@ struct reg_t mt6359p_debug_regs[] = {
 		DBG_REG(NULL, NULL_ADDR, 0x0, 0x0)
 };
 
-struct common_regs mt6359p_com_regs = {
+static struct common_regs mt6359p_com_regs = {
 	.bblpm_auxout_sel = 14,
 	.mode_num = 3,
 	SET_REG_BY_NAME(static_aux_sel, XO_STATIC_AUXOUT_SEL)
@@ -218,7 +218,7 @@ struct common_regs mt6359p_com_regs = {
 	SET_REG_BY_NAME(hwbblpm_sel, XO_BB_LPM_EN_SEL)
 };
 
-struct xo_buf_t mt6359p_xo_bufs[] = {
+static struct xo_buf_t mt6359p_xo_bufs[] = {
  	[0] = {
 		SET_REG_BY_NAME(xo_mode, XO_EXTBUF1_MODE)
 		SET_REG_BY_NAME(xo_en, XO_EXTBUF1_EN_M)
