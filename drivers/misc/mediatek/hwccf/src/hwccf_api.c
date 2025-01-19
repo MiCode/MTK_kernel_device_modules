@@ -509,7 +509,7 @@ skip:
 	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
 	// Profling End
 	HWCCF_PROFILE_END(nowait);
-	HWCCF_PROFILE_PRINT(nowait);
+	//HWCCF_PROFILE_PRINT(nowait);
 	return ret;
 
 ERR:
@@ -685,7 +685,7 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 
 	// Profling End
 	HWCCF_PROFILE_END(wait_done);
-	HWCCF_PROFILE_PRINT(wait_done);
+	//HWCCF_PROFILE_PRINT(wait_done);
 	return ret;
 
 ERR:
