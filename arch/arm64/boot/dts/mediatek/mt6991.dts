@@ -1877,6 +1877,7 @@
 		compatible = "mediatek,mbraink-v6991";
 		gauge = <&mtk_gauge>;
 		gauge2 = <&mtk_gauge2>;
+		ufsnotify = <&ufshci>;
 	};
 
 	met {
