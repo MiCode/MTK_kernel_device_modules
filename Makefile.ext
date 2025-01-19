@@ -110,4 +110,6 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pci/controller/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/media/virtio/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/trusty/
+
 endif

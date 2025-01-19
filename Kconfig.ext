@@ -125,3 +125,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/nebula/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)/drivers/media/virtio/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)/drivers/video/backlight/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)/drivers/trusty/Kconfig"

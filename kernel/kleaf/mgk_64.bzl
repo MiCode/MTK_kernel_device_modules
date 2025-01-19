@@ -728,6 +728,11 @@ mgk_64_device_modules = [
     "drivers/thermal/mediatek/thermal_trace.ko",
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
+    "drivers/trusty/trusty-core.ko",
+    "drivers/trusty/trusty-ipc.ko",
+    "drivers/trusty/trusty-log.ko",
+    "drivers/trusty/trusty-test.ko",
+    "drivers/trusty/trusty-virtio.ko",
     "drivers/tty/serial/8250/8250_mtk.ko",
     "drivers/usb/mtu3/mtu3.ko",
     "drivers/watchdog/mtk_wdt.ko",
@@ -1401,6 +1406,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm.ko")
@@ -1785,6 +1795,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
 
         mgk_64_device_modules.remove("sound/soc/codecs/mt6338-accdet.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6338.ko")
@@ -2327,6 +2342,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
@@ -2650,6 +2670,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
 
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
