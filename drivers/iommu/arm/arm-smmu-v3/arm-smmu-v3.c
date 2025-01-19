@@ -4668,6 +4668,24 @@ static int arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+int arm_smmu_trigger_irq(struct arm_smmu_device *smmu)
+{
+	u64 cmd[CMDQ_ENT_DWORDS] = {0};
+
+	if (!smmu)
+		return -EINVAL;
+
+	cmd[0] |= FIELD_PREP(CMDQ_0_OP, CMDQ_OP_CMD_SYNC);
+	cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_CS, CMDQ_SYNC_0_CS_IRQ);
+	cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSH, ARM_SMMU_SH_ISH);
+	cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSIATTR, ARM_SMMU_MEMATTR_OIWB);
+
+	return arm_smmu_cmdq_issue_cmdlist(smmu, cmd, 1, false);
+}
+EXPORT_SYMBOL_GPL(arm_smmu_trigger_irq);
+#endif
+
 static const struct of_device_id arm_smmu_of_match[] = {
 	{ .compatible = "arm,smmu-v3", },
 	{ },

@@ -918,6 +918,10 @@ struct arm_smmu_master *arm_smmu_find_master(struct arm_smmu_device *smmu,
 struct arm_smmu_ste *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					       u32 sid);
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+int arm_smmu_trigger_irq(struct arm_smmu_device *smmu);
+#endif
+
 #ifdef CONFIG_ARM_SMMU_V3_SVA
 bool arm_smmu_sva_supported(struct arm_smmu_device *smmu);
 bool arm_smmu_master_sva_supported(struct arm_smmu_master *master);
