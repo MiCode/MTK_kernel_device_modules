@@ -398,15 +398,17 @@ void ged_eb_dvfs_frame_done_dump(void)
 #if defined(MTK_GPU_EB_SUPPORT)
 	int top_freq_diff = 0, sc_freq_diff = 0;
 	union combineData tmp_multi = {0};
+	union combineData tmp_multi_async = {0};
 	struct cmd_info custom_ceiling_info ={0};
 	struct cmd_info custom_boost_info ={0};
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
 
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_FB_MARGIN_PARAM);
+	tmp_multi_async = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM1].addr);
 
 	trace_tracing_mark_write(5566, "commit_type",
-		mtk_gpueb_sysram_read(SYSRAM_GPU_COMMIT_TYPE));
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE));
 	trace_tracing_mark_write(5566, "gpu_freq",
 		(long long) ged_get_cur_stack_freq() / 1000);
 
@@ -493,6 +495,15 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_USE].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
+
+	trace_tracing_mark_write(5566, "async_perf_high",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_GPU_ACTIVE), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_ITER), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_COMPUTE),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_L2EXT), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_TILER), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_MCU));
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Index(
+		tmp_multi_async.fourVar.var1, mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),	mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM2].addr), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr)/ 1000, tmp_multi_async.fourVar.var3);
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Policy(tmp_multi_async.fourVar.var2, mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr), tmp_multi_async.fourVar.var3, tmp_multi_async.fourVar.var4, tmp_multi_async.fourVar.var1);
 
 #endif
 }

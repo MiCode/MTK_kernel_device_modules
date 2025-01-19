@@ -270,7 +270,7 @@ static void ged_eb_sysram_debug_data_write(void)
 							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_L2EXT + cur_read_p);
 					dbg_data5[i] =
 						mtk_gpueb_sysram_read(
-							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_IRQ + cur_read_p);
+							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_TILER + cur_read_p);
 					dbg_data6[i] =
 						mtk_gpueb_sysram_read(
 							SYSRAM_GPU_EB_LOG_DUMP_ASYNC_MCU + cur_read_p);

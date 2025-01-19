@@ -104,7 +104,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_USE_ASYNC_ITER,
 	FASTDVFS_GPU_EB_USE_ASYNC_COMPUTE,
 	FASTDVFS_GPU_EB_USE_ASYNC_L2EXT,
-	FASTDVFS_GPU_EB_USE_ASYNC_IRQ,
+	FASTDVFS_GPU_EB_USE_ASYNC_TILER,
 	FASTDVFS_GPU_EB_USE_ASYNC_MCU,
 	FASTDVFS_GPU_EB_USE_PERF_IMPROVE,
 	FASTDVFS_GPU_EB_USE_ADJUST_RATIO,
@@ -141,7 +141,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_ITER = 346,
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_COMPUTE = 356,
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_L2EXT = 366,
-	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_IRQ = 376,
+	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_TILER = 376,
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_MCU = 386,
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_INDEX1 = 396,
 	FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_INDEX2 = 406,
@@ -376,9 +376,9 @@ enum gpu_fastdvfs_counter {
 (\
 (FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_L2EXT*SYSRAM_LOG_SIZE) \
 )
-#define SYSRAM_GPU_EB_LOG_DUMP_ASYNC_IRQ \
+#define SYSRAM_GPU_EB_LOG_DUMP_ASYNC_TILER \
 (\
-(FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_IRQ*SYSRAM_LOG_SIZE) \
+(FASTDVFS_GPU_EB_LOG_DUMP_ASYNC_TILER*SYSRAM_LOG_SIZE) \
 )
 #define SYSRAM_GPU_EB_LOG_DUMP_ASYNC_MCU \
 (\
@@ -568,9 +568,9 @@ enum gpu_fastdvfs_counter {
 (														\
 (FASTDVFS_GPU_EB_USE_ASYNC_L2EXT *SYSRAM_LOG_SIZE)	    \
 )
-#define SYSRAM_GPU_EB_USE_ASYNC_IRQ                     \
+#define SYSRAM_GPU_EB_USE_ASYNC_TILER                    \
 (														\
-(FASTDVFS_GPU_EB_USE_ASYNC_IRQ *SYSRAM_LOG_SIZE)	    \
+(FASTDVFS_GPU_EB_USE_ASYNC_TILER *SYSRAM_LOG_SIZE)	    \
 )
 #define SYSRAM_GPU_EB_USE_ASYNC_MCU                     \
 (														\
@@ -948,18 +948,6 @@ typedef struct {
 #define GPU_FDVFS_V2_RB_LOG_LIST \
  GEN("Policy__Common", GPU_EB_LOG_DUMP_POLICY_COMMON, 2, "policy_state | eb_commit_type") \
  GEN("Policy__Common__Commit_Reason", GPU_EB_LOG_DUMP_COMMIT_REASON1, 3, "same | diff | is_offscreen") \
- GEN("Policy__Frame_based__Frequency", GPU_EB_LOG_DUMP_FB_FREQ, 2, "target | target_opp") \
- GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD1, 2, "cur | avg") \
- GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD2, 2, "real | pipe") \
- GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD3, 1, "mode") \
- GEN("Policy__Frame_based__GPU_Time", GPU_EB_LOG_DUMP_FB_GPU_TIME1, 2, "cur | target") \
- GEN("Policy__Frame_based__GPU_Time", GPU_EB_LOG_DUMP_FB_GPU_TIME2, 2, "real | pipe") \
- GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX1, 2, "is_decreasing | async_ratio") \
- GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX2, 2, "perf_improve | fb_oppidx") \
- GEN("Policy__Frame_based__Async_ratio__Index", GPU_EB_LOG_DUMP_FB_ASYNC_INDEX3, 2, "fb_tar_freq | as_tar_opp") \
- GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY1, 2, "cur_opp_id | fb_oppidx") \
- GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY2, 2, "async_id | apply_async") \
- GEN("Policy__Frame_based__Async_ratio__Policy", GPU_EB_LOG_DUMP_FB_ASYNC_POLICY3, 1, "is_decreasing") \
  GEN("Policy__Loading_based__GPU_Time", GPU_EB_LOG_DUMP_LB_GPU_TIME, 1, "target_hd") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1, 2, "pid | bqid") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2, 2, "fps | use") \
@@ -970,7 +958,19 @@ typedef struct {
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE4, 2, "dbg4_1 | dbg4_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE6, 2, "dbg6_1 | dbg6_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2")
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE8, 2, "dbg8_1 | dbg8_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE9, 2, "dbg9_1 | dbg9_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE10, 2, "dbg10_1 | dbg10_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE11, 2, "dbg11_1 | dbg11_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE12, 2, "dbg12_1 | dbg12_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE13, 2, "dbg13_1 | dbg13_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE14, 2, "dbg14_1 | dbg14_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE15, 2, "dbg15_1 | dbg15_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE16, 2, "dbg16_1 | dbg16_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE17, 2, "dbg17_1 | dbg17_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE18, 2, "dbg18_1 | dbg18_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE19, 2, "dbg19_1 | dbg19_2") \
 
  /* Enable after Jayer SB due to no space
  GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON2, 2, "pid | bqid") \
@@ -978,10 +978,6 @@ typedef struct {
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
  GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
- GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 2, "ceil | cur") \
- GEN("Policy__Frame_based__Margin", GPU_EB_LOG_DUMP_FB_MARGIN1, 1, "floor") \
- GEN("Policy__Frame_based__Margin_Detail", GPU_EB_LOG_DUMP_FB_MARGIN_DETAIL1, 2, "margin_mode | target_fps_margin") \
- GEN("Policy__Frame_based__Margin_Detail", GPU_EB_LOG_DUMP_FB_MARGIN_DETAIL2, 2, "min_margin_inc_step | min_margin") \
  */
 
 // sysram
@@ -1012,9 +1008,6 @@ typedef struct {
  GEN("Gpu_debug_5566", GPU_DEBUG8, 1, "5566_debug8") \
  GEN("Gpu_debug_5566", GPU_DEBUG9, 1, "5566_debug9") \
  GEN("Gpu_debug_5566", GPU_DEBUG10, 1, "5566_debug10")\
- GEN("commit_type", GPU_COMMIT_TYPE, 1, "commit_type") \
- GEN("gpu_freq", GPU_STACK_FREQ, 1, "gpu_freq") \
- GEN("top_freq", GPU_TOP_FREQ, 1, "top_freq") \
  GEN("t_gpu", GPU_T_GPU, 1, "t_gpu") \
  GEN("t_gpu_target", GPU_T_GPU_TARGET, 1, "t_gpu_target") \
  GEN("t_gpu_target_hd", GPU_T_GPU_TARGET_HD, 1, "t_gpu_target_hd") \
@@ -1041,7 +1034,9 @@ typedef struct {
  GEN("silence", GPU_LOWPWR_TRACE, 1, "silence") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
  GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc") \
- GEN("is_offscreen", GPU_IS_OFFSCREEN, 1, "is_offscreen")
+ GEN("is_offscreen", GPU_IS_OFFSCREEN, 1, "is_offscreen") \
+ GEN("fb_async_param1", GPU_FB_ASYNC_PARAM1, 4, "fb_async_ratio_param1") \
+ GEN("fb_async_param2", GPU_FB_ASYNC_PARAM2, 1, "fb_async_ratio_param2")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,
