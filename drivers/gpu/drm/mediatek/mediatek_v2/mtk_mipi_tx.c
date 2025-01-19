@@ -2304,10 +2304,10 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 
 	if (rate < 2500)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-			FLD_RG_DSI_PRD_REF_SEL, 0x0);
+			FLD_RG_DSI_PRD_REF_SEL, 0x7);
 	else
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-			FLD_RG_DSI_PRD_REF_SEL, 0x4);
+			FLD_RG_DSI_PRD_REF_SEL, 0x7);
 
 #ifdef IF_ZERO
 	/* No need keep as default */
