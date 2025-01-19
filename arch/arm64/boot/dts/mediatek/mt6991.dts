@@ -16374,26 +16374,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		ux-smart-launch-enable = <1>;
 	};
 
-	soc-smmu-lmu {
-		compatible = "mtk,smmu-v3-lmu";
-		mtk,smmu = <&soc_smmu>;
-	};
-
-	apu-smmu-lmu {
-		compatible = "mtk,smmu-v3-lmu";
-		mtk,smmu = <&apu_smmu>;
-	};
-
-	mm-smmu-lmu {
-		compatible = "mtk,smmu-v3-lmu";
-		mtk,smmu = <&mm_smmu>;
-	};
-
-	gpu-smmu-lmu {
-		compatible = "mtk,smmu-v3-lmu";
-		mtk,smmu = <&gpu_smmu>;
-	};
-
 	soc-smmu-mpam-mon {
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&soc_smmu>;
