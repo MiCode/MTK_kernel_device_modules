@@ -1029,14 +1029,8 @@ void ammu_session_table_check_SLB(uint32_t type)
 
 int get_session_ssid(uint64_t session, uint32_t *ssid)
 {
-	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr;
-
-	if (g_adv == NULL) {
-		AMMU_LOG_ERR("Invalid apummu_device\n");
-		ret = -EINVAL;
-		goto exit;
-	}
+	int ret = 0;
 
 	/* check if session table exist by session */
 	sTable_ptr = session_table_find(session);
@@ -1046,7 +1040,6 @@ int get_session_ssid(uint64_t session, uint32_t *ssid)
 	}
 
 	*ssid = sTable_ptr->stable_info.SMMU_SSID;
-
 exit:
 	return ret;
 }
