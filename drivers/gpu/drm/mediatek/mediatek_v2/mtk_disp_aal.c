@@ -509,15 +509,14 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int connector_id = 0;
 
-	AALAPI_LOG("bl %d/%d nits %d\n", trans_backlight, max_backlight, panel_nits);
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp == NULL) {
 		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
 		return;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
-	AALAPI_LOG("connector_id = %d, max_backlight = %d\n", connector_id, max_backlight);
+	AALAPI_LOG("connector_id = %d, bl %d/%d nits %d type %d\n", connector_id,
+		trans_backlight, max_backlight, panel_nits, aal_data->primary_data->led_type);
 
 	if ((max_backlight != -1) && (trans_backlight > max_backlight))
 		trans_backlight = max_backlight;
@@ -556,8 +555,8 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	// always notify aal service for LED changed
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, need_lock);
-
-	disp_aal_refresh_by_kernel(aal_data, need_lock);
+	if (aal_data->primary_data->led_type != TYPE_ATOMIC)
+		disp_aal_refresh_by_kernel(aal_data, need_lock);
 }
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -2841,7 +2840,7 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 				aal_data->primary_data->ess20_spect_param.ELVSSPN,
 				aal_data->primary_data->ess20_spect_param.flag);
 
-			if(! aal_data->primary_data->ess20_spect_param.flag)
+			if(!aal_data->primary_data->ess20_spect_param.flag)
 				mtk_leds_brightness_set(connector_id,
 					aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
@@ -3112,13 +3111,8 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->ess_level_cmd_id = 0;
 	aal_data->primary_data->dre_en_cmd_id = 0;
 	aal_data->primary_data->ess_en_cmd_id = 0;
-	aal_data->primary_data->led_type = TYPE_FILE;
+	//aal_data->primary_data->led_type = TYPE_FILE;
 	aal_data->primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
-
-#ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-	if (comp->id == DDP_COMPONENT_AAL0)
-		mtk_leds_register_notifier(&leds_init_notifier);
-#endif
 
 	aal_data->primary_data->refresh_wq = create_singlethread_workqueue("aal_refresh_trigger");
 	INIT_WORK(&aal_data->primary_data->refresh_task.task, disp_aal_refresh_trigger);
@@ -3740,7 +3734,10 @@ static int disp_aal_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
-
+#ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
+	if (comp_id == DDP_COMPONENT_AAL0)
+		mtk_leds_register_notifier(&leds_init_notifier);
+#endif
 #if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 	MME_REGISTER_BUFFER(MME_MODULE_DISP, "DISP_AAL", MME_BUFFER_INDEX_9, MME_AAL_BUFFER_SIZE);

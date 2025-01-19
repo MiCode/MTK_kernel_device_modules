@@ -1097,6 +1097,7 @@ struct mtk_drm_crtc {
 	wait_queue_head_t trigger_delay;
 	wait_queue_head_t trigger_event;
 	wait_queue_head_t trigger_cmdq;
+	int check_trigger_type;
 
 	unsigned int avail_modes_num;
 	struct drm_display_mode *avail_modes;
@@ -1430,6 +1431,7 @@ int mtk_crtc_find_next_comp(struct drm_crtc *crtc, unsigned int ddp_mode,
 int mtk_crtc_find_prev_comp(struct drm_crtc *crtc, unsigned int ddp_mode,
 		enum mtk_ddp_comp_id comp_id);
 void mtk_drm_fake_vsync_switch(struct drm_crtc *crtc, bool enable);
+int mtk_crtc_set_check_trigger_type(struct mtk_drm_crtc *mtk_crtc, int type);
 void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		bool need_lock);
 
