@@ -3129,11 +3129,8 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 		pdev->dev.dma_parms =
 			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
-		if (ret)
-			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
-	}
+	if (pdev->dev.dma_parms)
+		dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
 #endif
 
 	if (vcuid == 2)
@@ -3498,11 +3495,8 @@ static int mtk_vcu_io_probe(struct platform_device *pdev)
 		pdev->dev.dma_parms =
 			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
-		if (ret)
-			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
-	}
+	if (pdev->dev.dma_parms)
+		dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
 #endif
 
 	dev_dbg(dev, "[VCU][IO] initialization completed\n");

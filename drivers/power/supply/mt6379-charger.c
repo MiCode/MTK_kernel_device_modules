@@ -569,13 +569,6 @@ static char *mt6379_psy_supplied_to[] = {
 	"mtk-master-charger",
 };
 
-static enum power_supply_usb_type mt6379_charger_psy_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_UNKNOWN,
-	POWER_SUPPLY_USB_TYPE_SDP,
-	POWER_SUPPLY_USB_TYPE_CDP,
-	POWER_SUPPLY_USB_TYPE_DCP,
-};
-
 static enum power_supply_property mt6379_charger_properties[] = {
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -962,8 +955,10 @@ static int mt6379_charger_property_is_writeable(struct power_supply *psy,
 static const struct power_supply_desc mt6379_charger_psy_desc = {
 	.name = "mt6379-charger",
 	.type = POWER_SUPPLY_TYPE_USB,
-	.usb_types = mt6379_charger_psy_usb_types,
-	.num_usb_types = ARRAY_SIZE(mt6379_charger_psy_usb_types),
+	.usb_types =  BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) |
+				  BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_CDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_DCP),
 	.properties = mt6379_charger_properties,
 	.num_properties = ARRAY_SIZE(mt6379_charger_properties),
 	.get_property = mt6379_charger_get_property,

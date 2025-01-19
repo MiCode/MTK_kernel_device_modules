@@ -2075,12 +2075,8 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev, struct devic
 			devm_kzalloc(dma_dev,
 			sizeof(*dma_dev->dma_parms), GFP_KERNEL);
 	}
-	if (dma_dev->dma_parms) {
-		ret = dma_set_max_seg_size(dma_dev,
-			(unsigned int)DMA_BIT_MASK(64));
-		if (ret)
-			dev_info(dma_dev, "Failed to set DMA segment size\n");
-	}
+	if (dma_dev->dma_parms)
+		dma_set_max_seg_size(dma_dev, (unsigned int)DMA_BIT_MASK(64));
 
 	accumlate_memory_size = 0;
 	for (id = 0; id < NUMS_MEM_ID; id++) {
@@ -2705,12 +2701,9 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 			devm_kzalloc(vcp_io_devs[vcp_support-1],
 			sizeof(*vcp_io_devs[vcp_support-1]->dma_parms), GFP_KERNEL);
 	}
-	if (vcp_io_devs[vcp_support-1]->dma_parms) {
-		ret = dma_set_max_seg_size(vcp_io_devs[vcp_support-1],
+	if (vcp_io_devs[vcp_support-1]->dma_parms)
+		dma_set_max_seg_size(vcp_io_devs[vcp_support-1],
 			(unsigned int)DMA_BIT_MASK(64));
-		if (ret)
-			dev_info(vcp_io_devs[vcp_support-1], "Failed to set DMA segment size\n");
-	}
 
 	return 0;
 }

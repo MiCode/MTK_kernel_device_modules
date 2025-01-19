@@ -668,11 +668,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		pdev->dev.dma_parms =
 			devm_kzalloc(dev->smmu_dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
-		if (ret)
-			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
-	}
+	if (pdev->dev.dma_parms)
+		dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
 
 	mtk_vdec_translation_fault_callback_setting(dev);
 #endif

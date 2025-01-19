@@ -8,7 +8,7 @@
  * Author: ChiYuan Huang <cy_huang@richtek.com>
  */
 
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <crypto/hash.h>
 #include <linux/atomic.h>
 #include <linux/bitfield.h>

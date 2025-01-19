@@ -25,7 +25,7 @@
 #include <linux/init.h>
 #include <linux/firmware.h>
 #include <linux/slab.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <linux/vmalloc.h>
 #include <linux/kthread.h>
 #include <linux/version.h>

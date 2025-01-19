@@ -816,7 +816,6 @@ static unsigned int st21nfc_poll(struct file *file, poll_table *wait)
 
 static const struct file_operations st21nfc_dev_fops = {
 	.owner = THIS_MODULE,
-	.llseek = no_llseek,
 	.read = st21nfc_dev_read,
 	.write = st21nfc_dev_write,
 	.open = st21nfc_dev_open,

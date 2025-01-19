@@ -26,11 +26,8 @@ static void mm_config_dma_mask(struct device *dev)
 	pr_notice("%s set dma mask bit:%u result:%d\n", __func__,
 		dma_mask_bit, ret);
 
-	if (dev->dma_parms) {
-		ret = dma_set_max_seg_size(dev, UINT_MAX);
-		if (ret)
-			pr_notice("%s Failed to set DMA segment size\n", __func__);
-	}
+	if (dev->dma_parms)
+		dma_set_max_seg_size(dev, UINT_MAX);
 }
 
 static int mm_fake_eng_probe(struct platform_device *pdev)

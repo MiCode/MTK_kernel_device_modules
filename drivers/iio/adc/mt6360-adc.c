@@ -15,7 +15,7 @@
 #include <linux/iio/trigger_consumer.h>
 #include <linux/iio/triggered_buffer.h>
 
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <linux/mfd/mt6360-private.h>
 
 #define MT6360_REG_PMUCHGCTRL3	0x313

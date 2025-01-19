@@ -1197,13 +1197,6 @@ out:
 	}
 }
 
-static enum power_supply_usb_type mt6375_chg_psy_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_UNKNOWN,
-	POWER_SUPPLY_USB_TYPE_SDP,
-	POWER_SUPPLY_USB_TYPE_CDP,
-	POWER_SUPPLY_USB_TYPE_DCP,
-};
-
 static enum power_supply_property mt6375_chg_psy_properties[] = {
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -1403,8 +1396,10 @@ static char *mt6375_psy_supplied_to[] = {
 
 static const struct power_supply_desc mt6375_psy_desc = {
 	.type = POWER_SUPPLY_TYPE_USB,
-	.usb_types = mt6375_chg_psy_usb_types,
-	.num_usb_types = ARRAY_SIZE(mt6375_chg_psy_usb_types),
+	.usb_types =  BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) |
+				  BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_CDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_DCP),
 	.properties = mt6375_chg_psy_properties,
 	.num_properties = ARRAY_SIZE(mt6375_chg_psy_properties),
 	.property_is_writeable = mt6375_chg_property_is_writeable,

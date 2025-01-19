@@ -3383,11 +3383,8 @@ static int dpmaif_init_com(struct device *dev)
 		if (!dev->dma_parms)
 			CCCI_ERROR_LOG(0, TAG, "[%s] warning: devm_kzalloc() fail.\n", __func__);
 	}
-	if (dev->dma_parms) {
-		if (dma_set_max_seg_size(dev, UINT_MAX))
-			CCCI_ERROR_LOG(0, TAG,
-				"[%s] warning: dma_set_max_seg_size() fail.\n", __func__);
-	}
+	if (dev->dma_parms)
+		dma_set_max_seg_size(dev, UINT_MAX);
 
 	/* hook up to device */
 	dev->platform_data = g_dpmaif_ctrl; /* maybe no need */

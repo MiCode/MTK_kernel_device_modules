@@ -3482,14 +3482,12 @@ static int psy_charger_property_is_writeable(struct power_supply *psy,
 	}
 }
 
-static const enum power_supply_usb_type charger_psy_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_UNKNOWN,
-	POWER_SUPPLY_USB_TYPE_SDP,
-	POWER_SUPPLY_USB_TYPE_DCP,
-	POWER_SUPPLY_USB_TYPE_CDP,
-	POWER_SUPPLY_USB_TYPE_PD,
-	POWER_SUPPLY_USB_TYPE_PD_PPS,
-};
+static u32 charger_psy_usb_types = BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) |
+								   BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+								   BIT(POWER_SUPPLY_USB_TYPE_DCP) |
+								   BIT(POWER_SUPPLY_USB_TYPE_CDP) |
+								   BIT(POWER_SUPPLY_USB_TYPE_PD) |
+								   BIT(POWER_SUPPLY_USB_TYPE_PD_PPS);
 
 static const enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_ONLINE,
@@ -3994,7 +3992,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_desc1.name = "mtk-master-charger";
 	info->psy_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_desc1.usb_types = charger_psy_usb_types;
-	info->psy_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_desc1.properties = charger_psy_properties;
 	info->psy_desc1.num_properties = ARRAY_SIZE(charger_psy_properties);
 	info->psy_desc1.get_property = psy_charger_get_property;
@@ -4033,7 +4030,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_desc2.name = "mtk-slave-charger";
 	info->psy_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_desc2.usb_types = charger_psy_usb_types;
-	info->psy_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_desc2.properties = charger_psy_properties;
 	info->psy_desc2.num_properties = ARRAY_SIZE(charger_psy_properties);
 	info->psy_desc2.get_property = psy_charger_get_property;
@@ -4051,7 +4047,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_dvchg_desc1.name = "mtk-mst-div-chg";
 	info->psy_dvchg_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_dvchg_desc1.usb_types = charger_psy_usb_types;
-	info->psy_dvchg_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_dvchg_desc1.properties = charger_psy_properties;
 	info->psy_dvchg_desc1.num_properties =
 		ARRAY_SIZE(charger_psy_properties);
@@ -4070,7 +4065,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_dvchg_desc2.name = "mtk-slv-div-chg";
 	info->psy_dvchg_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_dvchg_desc2.usb_types = charger_psy_usb_types;
-	info->psy_dvchg_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_dvchg_desc2.properties = charger_psy_properties;
 	info->psy_dvchg_desc2.num_properties =
 		ARRAY_SIZE(charger_psy_properties);
@@ -4089,7 +4083,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_hvdvchg_desc1.name = "mtk-mst-hvdiv-chg";
 	info->psy_hvdvchg_desc1.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_hvdvchg_desc1.usb_types = charger_psy_usb_types;
-	info->psy_hvdvchg_desc1.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_hvdvchg_desc1.properties = charger_psy_properties;
 	info->psy_hvdvchg_desc1.num_properties =
 					     ARRAY_SIZE(charger_psy_properties);
@@ -4108,7 +4101,6 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->psy_hvdvchg_desc2.name = "mtk-slv-hvdiv-chg";
 	info->psy_hvdvchg_desc2.type = POWER_SUPPLY_TYPE_UNKNOWN;
 	info->psy_hvdvchg_desc2.usb_types = charger_psy_usb_types;
-	info->psy_hvdvchg_desc2.num_usb_types = ARRAY_SIZE(charger_psy_usb_types);
 	info->psy_hvdvchg_desc2.properties = charger_psy_properties;
 	info->psy_hvdvchg_desc2.num_properties =
 					     ARRAY_SIZE(charger_psy_properties);

@@ -7,7 +7,7 @@
  * Author: ChiYuan Huang <cy_huang@richtek.com>
  */
 
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>

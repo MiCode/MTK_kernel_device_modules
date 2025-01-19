@@ -9108,11 +9108,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		goto put_dma_dev;
 	}
 
-	ret = dma_set_max_seg_size(dma_dev, (unsigned int)DMA_BIT_MASK(32));
-	if (ret) {
-		dev_err(dma_dev, "Failed to set DMA segment size\n");
-		goto err_unset_dma_parms;
-	}
+	dma_set_max_seg_size(dma_dev, (unsigned int)DMA_BIT_MASK(32));
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	drm_kms_helper_poll_init(drm);
@@ -9982,6 +9978,7 @@ static const struct file_operations mtk_drm_fops = {
 	.mmap = mtk_drm_gem_mmap,
 	.poll = drm_poll,
 	.read = drm_read,
+	.fop_flags = FOP_UNSIGNED_OFFSET,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = mtk_drm_compat_ioctl,
 #endif

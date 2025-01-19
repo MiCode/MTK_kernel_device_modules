@@ -760,7 +760,7 @@ int vb2_dpe_dma_contig_set_max_seg_size(struct device *dev, unsigned int size)
 			return -ENOMEM;
 	}
 	if (dma_get_max_seg_size(dev) < size)
-		return dma_set_max_seg_size(dev, size);
+		dma_set_max_seg_size(dev, size);
 
 	return 0;
 }

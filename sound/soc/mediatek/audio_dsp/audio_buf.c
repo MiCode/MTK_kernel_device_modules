@@ -14,10 +14,11 @@
 #include <linux/kprobes.h>
 #include <asm/traps.h>
 
-#define AUD_LOG_W(format, args...) snd_printk(format, ##args)
 #ifdef CONFIG_SND_VERBOSE_PRINTK
+#define AUD_LOG_W(format, args...) snd_printk(format, ##args)
 #define AUD_LOG_D(format, args...) snd_printk(format, ##args)
 #else
+#define AUD_LOG_W(format, args...)
 #define AUD_LOG_D(format, args...)
 #endif
 

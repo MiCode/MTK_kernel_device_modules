@@ -318,13 +318,6 @@ static const enum power_supply_property rt9490_charger_properties[] = {
 	POWER_SUPPLY_PROP_TYPE,
 };
 
-static const enum power_supply_usb_type rt9490_charger_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_UNKNOWN,
-	POWER_SUPPLY_USB_TYPE_SDP,
-	POWER_SUPPLY_USB_TYPE_DCP,
-	POWER_SUPPLY_USB_TYPE_CDP,
-};
-
 static char *rt9490_charger_supplied_to[] = {
 	"battery",
 	"mtk-master-charger"
@@ -2190,8 +2183,10 @@ static int rt9490_charger_probe(struct platform_device *pdev)
 	desc->type = POWER_SUPPLY_TYPE_USB;
 	desc->properties = rt9490_charger_properties;
 	desc->num_properties = ARRAY_SIZE(rt9490_charger_properties);
-	desc->usb_types = rt9490_charger_usb_types;
-	desc->num_usb_types = ARRAY_SIZE(rt9490_charger_usb_types);
+	desc->usb_types = BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) |
+				  	  BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+				  	  BIT(POWER_SUPPLY_USB_TYPE_DCP) |
+				  	  BIT(POWER_SUPPLY_USB_TYPE_CDP);
 	desc->get_property = rt9490_charger_get_property;
 	desc->set_property = rt9490_charger_set_property;
 

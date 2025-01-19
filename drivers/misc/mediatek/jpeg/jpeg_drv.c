@@ -1135,7 +1135,6 @@ static const struct proc_ops jpeg_fops = {
 	.proc_open = jpeg_open,
 	.proc_release = jpeg_release,
 	.proc_read = jpeg_read,
-	.proc_lseek = no_llseek,
 };
 
 long jpeg_dev_get_hybrid_decoder_base_VA(int id)
@@ -1304,11 +1303,8 @@ static int jpeg_probe(struct platform_device *pdev)
 			pdev->dev.dma_parms =
 			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 		}
-		if (pdev->dev.dma_parms) {
-			ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
-			if (ret)
-				JPEG_LOG(0, "Failed to set DMA segment size\n");
-		}
+		if (pdev->dev.dma_parms)
+			dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
 	}
 	pm_runtime_enable(&pdev->dev);
 

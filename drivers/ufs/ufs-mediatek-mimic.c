@@ -5,7 +5,7 @@
  *	Po-Wen Kao <powen.kao@mediatek.com>
  */
 #include <asm-generic/errno-base.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
 

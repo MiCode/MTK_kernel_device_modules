@@ -1739,8 +1739,6 @@ static void mtk_iommu_domain_free(struct iommu_domain *domain)
 
 static int mtk_iommu_set_dev_dma(struct device *dev)
 {
-	int ret = 0;
-
 	if (!dev)
 		return -EINVAL;
 
@@ -1752,12 +1750,7 @@ static int mtk_iommu_set_dev_dma(struct device *dev)
 			return -ENOMEM;
 	}
 
-	ret = dma_set_max_seg_size(dev,
-				   (unsigned int)DMA_BIT_MASK(34));
-	if (ret) {
-		dev_info(dev, "Failed to set DMA segment size\n");
-		return ret;
-	}
+	dma_set_max_seg_size(dev, (unsigned int)DMA_BIT_MASK(34));
 
 	return 0;
 }

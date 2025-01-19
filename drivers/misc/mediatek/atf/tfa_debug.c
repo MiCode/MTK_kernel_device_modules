@@ -209,7 +209,6 @@ static const struct proc_ops tfa_debug_raw_fops = {
 	.proc_open = raw_open,
 	.proc_read = raw_read,
 	.proc_release = raw_release,
-	.proc_lseek = no_llseek,
 };
 
 static int runtime_snap_open(struct inode *inode, struct file *file)
@@ -234,7 +233,6 @@ static const struct proc_ops tfa_debug_runtime_snap_fops = {
 	.proc_open = runtime_snap_open,
 	.proc_read = raw_read,
 	.proc_release = raw_release,
-	.proc_lseek = no_llseek,
 };
 
 static int is_runtime_empty_for_read(struct file *file)
@@ -381,7 +379,6 @@ static const struct proc_ops tfa_debug_runtime_fops = {
 	.proc_write = runtime_log_write,
 	.proc_poll = runtime_log_poll,
 	.proc_release = raw_release,
-	.proc_lseek = no_llseek,
 };
 
 static int lookup_reserved_memory(void)

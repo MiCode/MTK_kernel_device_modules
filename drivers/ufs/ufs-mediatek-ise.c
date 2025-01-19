@@ -5,7 +5,7 @@
  *	Po-Wen Kao <powen.kao@mediatek.com>
  */
 #include <asm-generic/errno-base.h>
-#include <asm/unaligned.h>
+#include <linux/unaligned.h>
 #include <linux/delay.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
