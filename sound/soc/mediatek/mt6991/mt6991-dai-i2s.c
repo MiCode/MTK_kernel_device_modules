@@ -2428,6 +2428,7 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch8_mix[] = {
 };
 
 static const struct snd_kcontrol_new mtk_i2sout5_ch1_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH1", AFE_CONN124_1, I_DL5_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN124_1, I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH1", AFE_CONN124_4, I_I2SIN3_CH1, 1, 0),
 };
@@ -2435,6 +2436,7 @@ static const struct snd_kcontrol_new mtk_i2sout5_ch1_mix[] = {
 static const struct snd_kcontrol_new mtk_i2sout5_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH1", AFE_CONN125_1, I_DL4_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH2", AFE_CONN125_1, I_DL4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH2", AFE_CONN125_1, I_DL5_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN125_1, I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN3_CH2", AFE_CONN124_5, I_I2SIN3_CH1, 1, 0),
 };
@@ -4168,6 +4170,8 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT5_CH13", "DL4_CH1", "DL4"},
 	{"I2SOUT5_CH13", "DL4_CH2", "DL4"},
 
+	{"I2SOUT5_CH1", "DL5_CH1", "DL5"},
+	{"I2SOUT5_CH2", "DL5_CH2", "DL5"},
 	{"I2SOUT5_CH14", "DL5_CH1", "DL5"},
 	{"I2SOUT5_CH14", "DL5_CH2", "DL5"},
 
