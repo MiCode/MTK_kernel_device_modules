@@ -192,7 +192,7 @@ static unsigned int check_threshold(unsigned long long duration,
 #define MAX_STACK_TRACE_DEPTH   32
 
 struct trace_stat {
-	bool tracing;
+	unsigned int tracing;
 	unsigned long long start_timestamp;
 	unsigned long long end_timestamp;
 	bool skip;
@@ -335,18 +335,26 @@ void mt_aee_dump_irq_info(void)
 }
 EXPORT_SYMBOL_GPL(mt_aee_dump_irq_info);
 
-static void trace_stat_start(struct irq_mon_tracer *tracer)
+static int trace_stat_start(struct irq_mon_tracer *tracer)
 {
 	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
-
+	/*
+	 * Now records the depth of recursion. The depth will never reset to zero
+	 * if we missed the end event. Dont start tracing before all probes are done
+	 */
 	if (!tracer->tracing)
-		return;
-	if (xchg(&stat->tracing, 1))
-		return;
+		return 0;
 
-	stat->start_timestamp = sched_clock();
-	stat->end_timestamp = 0;
-	stat->skip = false;
+	if (!stat->tracing++) {
+		stat->start_timestamp = sched_clock();
+		stat->end_timestamp = 0;
+		stat->skip = false;
+		return 1;
+	}
+
+	if (unlikely(!stat->tracing))
+		aee_kernel_warning(KBUILD_MODNAME, "stat->count underflowed\n");
+	return 0;
 }
 
 static int trace_stat_end(struct irq_mon_tracer *tracer)
@@ -355,9 +363,11 @@ static int trace_stat_end(struct irq_mon_tracer *tracer)
 
 	if (!tracer->tracing)
 		return 0;
+	/* If tracer start in mid of an action, end happen first */
 	if (!stat->tracing)
 		return 0;
-
+	if (--stat->tracing)
+		return 0;
 	stat->end_timestamp = sched_clock();
 	return 1;
 }
@@ -367,8 +377,11 @@ static int trace_stat_end(struct irq_mon_tracer *tracer)
 static void probe_irq_handler_entry(void *data, int irq,
 				    struct irqaction *action)
 {
-	trace_stat_start((struct irq_mon_tracer *)data);
-	irq_log_start();
+	if (trace_stat_start((struct irq_mon_tracer *)data))
+		irq_log_start();
+	else
+		/* for recursive call */
+		___irq_log_store(action->handler, irq, IRQ_LOG_TYPE_IRQ_ENTRY);
 }
 
 static void probe_irq_handler_exit(void *data, int irq,
@@ -379,8 +392,10 @@ static void probe_irq_handler_exit(void *data, int irq,
 	unsigned long long duration;
 	unsigned int out;
 
-	if (!trace_stat_end(tracer))
+	if (!trace_stat_end(tracer)) {
+		___irq_log_store(action->handler, irq, IRQ_LOG_TYPE_IRQ_EXIT);
 		return;
+	}
 	duration = stat_dur(stat);
 	irq_mon_account_irq_time(duration, irq);
 	out = check_threshold(duration, tracer);
@@ -446,9 +461,7 @@ static void probe_irq_handler_exit(void *data, int irq,
 			}
 		}
 	}
-
 	irq_log_end();
-	stat->tracing = 0;
 }
 
 static void probe_softirq_entry(void *data, unsigned int vec_nr)
@@ -476,8 +489,6 @@ static void probe_softirq_exit(void *data, unsigned int vec_nr)
 			    stat->end_timestamp,
 			    raw_smp_processor_id());
 	}
-
-	stat->tracing = 0;
 }
 
 static void probe_ipi_entry(void *data, const char *reason)
@@ -505,8 +516,6 @@ static void probe_ipi_exit(void *data, const char *reason)
 			    stat->end_timestamp,
 			    raw_smp_processor_id());
 	}
-
-	stat->tracing = 0;
 }
 
 static void probe_irq_disable(void *data, unsigned long ip,
@@ -638,8 +647,6 @@ static void probe_hrtimer_expire_exit(void *data, struct hrtimer *hrtimer)
 			}
 		}
 	}
-
-	stat->tracing = 0;
 }
 /* start of kprobes */
 
