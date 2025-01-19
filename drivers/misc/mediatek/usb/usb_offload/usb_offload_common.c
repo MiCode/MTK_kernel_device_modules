@@ -1541,7 +1541,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	ret = send_uas_ipi_msg_to_adsp(&msg);
 	USB_OFFLOAD_INFO("send_ipi_msg_to_adsp msg, ret: %d\n", ret);
 	/* wait response */
-	if (!uainfo->enable)
+	if (!uainfo->enable || ret == -ENODEV)
 		mtk_usb_offload_free_allocated(uainfo->direction == SNDRV_PCM_STREAM_CAPTURE);
 
 done:
@@ -2818,6 +2818,7 @@ static long usb_offload_ioctl(struct file *fp,
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
 		print_all_memory();
 		if (ret || (value == 0)) {
+			xhci_remove_secondary_interrupter_(uodev->xhci->main_hcd, uodev->ir_2nd);
 			uodev->is_streaming = false;
 			uodev->tx_streaming = false;
 			uodev->rx_streaming = false;
