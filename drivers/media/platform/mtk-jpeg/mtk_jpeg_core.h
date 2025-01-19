@@ -174,8 +174,10 @@ struct mtk_jpeg_dev {
 	u32 port_num;
 	u32 port_id[MTK_JPEG_MAX_PORT_NUM];
 	bool is_ccf_one_step;
+	bool is_mmqos_level;
 	u32 clock_set;
 	int need_resource_set;
+	u32 mmdvfs_vcp_idx;
 };
 
 /**

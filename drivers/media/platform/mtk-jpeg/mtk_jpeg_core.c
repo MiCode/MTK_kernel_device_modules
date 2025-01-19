@@ -701,6 +701,7 @@ static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
 	int i = 0;
+	struct of_phandle_args spec;
 
 	pr_info("prepare dvfs +\n");
 	ret = dev_pm_opp_of_add_table(jpeg->dev);
@@ -734,7 +735,18 @@ static void mtk_jpeg_prepare_dvfs(struct mtk_jpeg_dev *jpeg)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-	pr_info("prepare dvfs -\n");
+
+	if (mmdvfs_get_version() >= MMDVFS_VER_V5) {
+		i = of_property_match_string(jpeg->dev->of_node,
+						 "clock-names", "mmdvfs_clk");
+		ret = of_parse_phandle_with_args(jpeg->dev->of_node, "clocks", "#clock-cells", i, &spec);
+		if (!ret)
+			jpeg->mmdvfs_vcp_idx = spec.args[0];
+	} else if (mmdvfs_get_version()) {
+		jpeg->mmdvfs_vcp_idx = VCP_PWR_USR_JPEGENC;
+	}
+
+	pr_info("prepare dvfs mmdvfs_vcp_idx %d\n", jpeg->mmdvfs_vcp_idx);
 
 }
 
@@ -753,6 +765,18 @@ static void mtk_jpeg_prepare_bw_request(struct mtk_jpeg_dev *jpeg)
 
 }
 
+static void mtk_jpeg_set_level_qos(struct mtk_jpeg_dev *jpeg)
+{
+	u32 i = 0;
+	pr_info("%s +\n", __func__);
+	if (jpeg->gcon_base != NULL) {
+		for (i=0; i < jpeg->port_num; i++)
+				writel(0x71, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[i]*4);
+
+		writel(0x8C, jpeg->gcon_base + VENC_MMQOS_ULTRA);
+	}
+	pr_info("%s -\n", __func__);
+}
 static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 {
 	int ret;
@@ -817,6 +841,10 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 		mtk_icc_set_bw(jpeg->path_qtbl, kBps_to_icc(emi_bw), 0);
 		mtk_icc_set_bw(jpeg->path_bsdma, kBps_to_icc(emi_bw), 0);
 	}
+
+	if (jpeg->is_mmqos_level)
+		mtk_jpeg_set_level_qos(jpeg);
+
 }
 
 static void mtk_jpeg_end_bw_request(struct mtk_jpeg_ctx *ctx)
@@ -863,7 +891,7 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 	} else if (jpeg->jpegenc_mmdvfs_clk) {
 		pr_info("%s set mmdvfs clk\n", __func__);
 		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGENC);
+			mtk_mmdvfs_enable_vcp(true, jpeg->mmdvfs_vcp_idx);
 		ret = clk_set_rate(jpeg->jpegenc_mmdvfs_clk, active_freq);
 		if (ret) {
 			pr_info("%s Failed to set freq %lu\n",
@@ -871,7 +899,7 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 		}
 		pr_info("%s  freq: %lu\n", __func__, active_freq);
 		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGENC);
+			mtk_mmdvfs_enable_vcp(false, jpeg->mmdvfs_vcp_idx);
 	}
 }
 
@@ -2147,6 +2175,9 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	jpeg->is_ccf_one_step = of_property_read_bool(pdev->dev.of_node, "ccf-one-step");
 	dev_info(&pdev->dev, "ccf-one-step: 0x%x", jpeg->is_ccf_one_step);
 
+	jpeg->is_mmqos_level = of_property_read_bool(pdev->dev.of_node, "mmqos-level");
+	dev_info(&pdev->dev, "mmqos_level: 0x%x", jpeg->is_mmqos_level);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(jpeg->reg_base)) {
@@ -2176,15 +2207,16 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 			ret = PTR_ERR(jpeg->larb_base);
 			return ret;
 		}
-	}
 
-	jpeg->port_num = of_property_count_u32_elems(
-		pdev->dev.of_node, "ports");
-	jpeg->port_num = (jpeg->port_num > 0) ? jpeg->port_num : 0;
-	pr_info("port number %d\n", jpeg->port_num);
-	for (i = 0; i < jpeg->port_num; i++) {
-		if (!of_property_read_u32_index(pdev->dev.of_node, "ports", i, &jpeg->port_id[i]))
-			pr_info("port index %d\n", MTK_M4U_TO_PORT(jpeg->port_id[i]));
+
+		jpeg->port_num = of_property_count_u32_elems(
+			pdev->dev.of_node, "ports");
+		jpeg->port_num = (jpeg->port_num > 0) ? jpeg->port_num : 0;
+		pr_info("port number %d\n", jpeg->port_num);
+		for (i = 0; i < jpeg->port_num; i++) {
+			if (!of_property_read_u32_index(pdev->dev.of_node, "ports", i, &jpeg->port_id[i]))
+				pr_info("port index %d\n", MTK_M4U_TO_PORT(jpeg->port_id[i]));
+		}
 	}
 
 	jpeg_irq = platform_get_irq(pdev, 0);
