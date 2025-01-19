@@ -179,7 +179,7 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 			APMCU_SET_MG);
 
 	/* if cfg.test = 1, then scmi has been sent */
-	if (cfg.pmsr_sample_rate != 0 && cfg.test != 1) {
+	if ((cfg.pmsr_sample_rate != 0) && (cfg.test != 1)) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 		pmsr_scmi_set_data.user_info =
 			(user_info | APMCU_SET_ACT(PMSR_TOOL_ACT_TEST));
@@ -191,6 +191,8 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	if (!cfg.pmsr_tool_share_results)
+		return;
 	oldest_idx = cfg.pmsr_tool_share_results->oldest_idx;
 	read_idx = oldest_idx > 0 ?
 		oldest_idx - 1 : cfg.pmsr_tool_buffer_max_space - 1;
