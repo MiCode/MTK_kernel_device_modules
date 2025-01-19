@@ -414,6 +414,10 @@ struct GED_BRIDGE_IN_HINT_FRAME_INFO {
 	int32_t tid;
 	uint64_t core;
 	bool	 by_mask;
+	int32_t reserved1;
+	int32_t reserved2;
+	int32_t reserved3;
+	int32_t reserved4;
 };
 
 struct GED_BRIDGE_OUT_HINT_FRAME_INFO {
