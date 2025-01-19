@@ -3764,7 +3764,7 @@
 		jpgenc@17030000 {
 			compatible = "mediatek,mtk-jpgenc";
 			reg = <0 0x17030000 0 0x10000>;
-			interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VENC_CKE2_JPGENC>;
 			clock-names = "jpgenc";
 			mediatek,larb = <&smi_larb7>;
@@ -3788,6 +3788,7 @@
 						"path_jpegenc_q_table",
 						"path_jpegenc_bsdma";
 			interconnect-num = <4>;
+			cshot-spec = <26>;
 			support-34bits = <0>;
 		};
 
