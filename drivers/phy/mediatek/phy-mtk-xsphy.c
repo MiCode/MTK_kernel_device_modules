@@ -1552,7 +1552,7 @@ static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
 	if (of_device_is_compatible(np, "mediatek,mt6993-xsphy")) {
 		/* RG_XTP_LN0_RX_LVSH_CM_SEL 4'b0110 */
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_10, RG_XTP_LN0_RX_LVSH_CM_SEL, 0x6);
-		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_0C, RG_XTP_LN0_RX_FE_RESERVE_6, 0x1);
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_0C, RG_XTP_LN0_RX_FE_RESERVE_6, 0x0);
 	}
 
 	/* RG_XTP0_CDR_PPATH_DVN_G2_LTD0 8'b00101000 */
