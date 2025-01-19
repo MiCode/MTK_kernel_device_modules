@@ -221,6 +221,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -300,6 +301,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -522,6 +524,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/platform/v2:mtk-lpm-plat-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:mkp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:trace_mmstat".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -776,7 +779,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmp/src/mmprofile.ko",
     "drivers/misc/mediatek/mme/src/mme.ko",
     "drivers/misc/mediatek/mmqos/mmqos_wrapper.ko",
-    "drivers/misc/mediatek/mtk-interconnect/mtk-icc-core.ko",
     "drivers/misc/mediatek/pbm/mtk_pbm.ko",
     "drivers/misc/mediatek/pbm/mtk_peak_power_budget.ko",
     "drivers/misc/mediatek/cg_ppt/mtk_cg_peak_power_throttling.ko",
