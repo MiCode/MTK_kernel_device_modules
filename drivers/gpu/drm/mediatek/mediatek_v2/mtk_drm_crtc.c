@@ -4807,6 +4807,7 @@ void _mtk_crtc_atmoic_addon_module_connect(
 
 	if (lye_state->rpo_lye && priv->data->mmsys_id != MMSYS_MT6991 &&
 		priv->data->mmsys_id != MMSYS_MT6877 &&
+		priv->data->mmsys_id != MMSYS_MT6768 &&
 		priv->data->mmsys_id != MMSYS_MT6885) {
 		struct mtk_addon_config_type c = {0};
 
@@ -19469,6 +19470,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	if (priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6989)
 		mtk_crtc->crtc_caps.rpo_support_num = 1;
