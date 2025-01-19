@@ -150,6 +150,8 @@ static int mmdebug_vcp_probe(struct platform_device *pdev)
 	struct task_struct *kthr_vcp;
 
 	kthr_vcp = kthread_run(mmdebug_vcp_init_thread, NULL, "mmdebug-vcp");
+	if (IS_ERR(kthr_vcp))
+		MMDEBUG_ERR("create kthread mmdebug_vcp_init_thread failed");
 	MMDEBUG_DBG("probe success");
 	return 0;
 }

@@ -1985,6 +1985,8 @@ int mmdvfs_set_hqa_enable(const char *val, const struct kernel_param *kp)
 	if (!mmdvfs_free_run) {
 		mmdvfs_free_run = true;
 		kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
+		if (IS_ERR(kthr_vcp))
+			MMDVFS_ERR("create kthread mmdvfs_vcp_init_thread failed");
 	}
 
 	return ret;
@@ -2167,7 +2169,11 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	of_property_read_s32(node, "vmm-ceil-step", &vmm_ceil_step);
 
 	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
+	if (IS_ERR(kthr_vcp))
+		MMDVFS_ERR("create kthread mmdvfs_vcp_init_thread failed");
 	kthr_ccu = kthread_run(mmdvfs_ccu_init_thread, node, "mmdvfs-ccu");
+	if (IS_ERR(kthr_ccu))
+		MMDVFS_ERR("create kthread mmdvfs_ccu_init_thread failed");
 
 	return ret;
 }
@@ -2501,6 +2507,8 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "force-single-clk", &force_single_clk);
 
 	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
+	if (IS_ERR(kthr_vcp))
+		MMDVFS_ERR("create kthread mmdvfs_vcp_init_thread failed");
 	return ret;
 }
 

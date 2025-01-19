@@ -997,8 +997,11 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	ret = mmdvfs_debug_parse_clk();
 
 	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "use-v3-pwr", &g_mmdvfs->use_v3_pwr);
-	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
+	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3) {
 		kthr = kthread_run(mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
+		if (IS_ERR(kthr))
+			MMDVFS_DBG("create kthread mmdvfs_v3_debug_thread failed");
+	}
 
 	g_mmdvfs->workq = create_singlethread_workqueue("mmdvfs_debug_workq");
 	INIT_WORK(&g_mmdvfs->work, mmdvfs_debug_work);
