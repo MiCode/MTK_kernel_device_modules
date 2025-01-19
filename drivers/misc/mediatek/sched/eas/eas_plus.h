@@ -125,7 +125,7 @@ extern int task_fits_capacity(struct task_struct *p, long capacity, unsigned int
 extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
-extern void mtk_find_busiest_group(void *data, struct sched_group *busiest,
+extern void hook_sched_balance_find_src_group(void *data, struct sched_group *busiest,
 		struct rq *dst_rq, int *out_balance);
 extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 		int prev_cpu, int sync, int *new_cpu);
@@ -292,7 +292,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 
 extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
-extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,
+extern void hook_sched_balance_newidle(void *data, struct rq *this_rq,
 		struct rq_flags *rf, int *pulled_task, int *done);
 #endif
 
@@ -304,7 +304,7 @@ extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
 
 extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 		int reason);
-extern void hook_scheduler_tick(void *data, struct rq *rq);
+extern void hook_sched_tick(void *data, struct rq *rq);
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 extern bool system_has_many_heavy_task(void);
 extern void task_check_for_rotation(struct rq *src_rq);

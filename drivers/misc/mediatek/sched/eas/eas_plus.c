@@ -91,7 +91,7 @@ static inline bool check_has_overutilize_cpu(struct cpumask *grp)
 	return false;
 }
 
-void mtk_find_busiest_group(void *data, struct sched_group *busiest,
+void hook_sched_balance_find_src_group(void *data, struct sched_group *busiest,
 		struct rq *dst_rq, int *out_balance)
 {
 	int src_cpu = -1;
@@ -103,8 +103,8 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 
 	if (cpu_paused(dst_cpu)) {
 		*out_balance = 1;
-		if (trace_sched_find_busiest_group_enabled())
-			trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, CORE_PAUSE_OUT);
+		if (trace_sched_balance_find_src_group_enabled())
+			trace_sched_balance_find_src_group(src_cpu, dst_cpu, *out_balance, CORE_PAUSE_OUT);
 		return;
 	}
 
@@ -137,8 +137,8 @@ void mtk_find_busiest_group(void *data, struct sched_group *busiest,
 			fbg_reason |= IB_OVERUTILIZATION;
 		}
 
-		if (trace_sched_find_busiest_group_enabled())
-			trace_sched_find_busiest_group(src_cpu, dst_cpu, *out_balance, fbg_reason);
+		if (trace_sched_balance_find_src_group_enabled())
+			trace_sched_balance_find_src_group(src_cpu, dst_cpu, *out_balance, fbg_reason);
 	}
 }
 
@@ -852,7 +852,7 @@ void check_for_migration(struct task_struct *p)
 	irq_log_store();
 }
 
-void hook_scheduler_tick(void *data, struct rq *rq)
+void hook_sched_tick(void *data, struct rq *rq)
 {
 	if (!get_eas_hook())
 		return;
@@ -1113,12 +1113,14 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 
 void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, bool *need_update)
 {
+	int cpu = cpu_of(rq);
 	unsigned long util, uclamp_min, uclamp_max, capacity, misfit_task_load = 0;
 	int fits;
 
 	*need_update = false;
 
-	if (!p || p->nr_cpus_allowed == 1) {
+	if (!p || p->nr_cpus_allowed == 1 ||
+			(arch_scale_cpu_capacity(cpu) == p->max_allowed_capacity)) {
 		rq->misfit_task_load = 0;
 		return;
 	}

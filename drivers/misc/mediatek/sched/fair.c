@@ -2187,7 +2187,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			order_index, end_index, reverse);
 	}
 #endif
-	if (!pd || READ_ONCE(rd->overutilized)) {
+	if (!pd) {
 		select_reason = LB_FAIL;
 		rcu_read_unlock();
 		goto fail;
@@ -2720,7 +2720,7 @@ unlock:
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
 static DEFINE_PER_CPU(u64, next_update_new_balance_time_ns);
-void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *rf,
+void hook_sched_balance_newidle(void *data, struct rq *this_rq, struct rq_flags *rf,
 		int *pulled_task, int *done)
 {
 	int cpu;

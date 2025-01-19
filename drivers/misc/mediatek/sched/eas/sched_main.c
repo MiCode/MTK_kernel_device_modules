@@ -1068,7 +1068,7 @@ static int __init mtk_scheduler_init(void)
 		return ret;
 
 	ret = register_trace_android_rvh_find_busiest_group(
-			mtk_find_busiest_group, NULL);
+			hook_sched_balance_find_src_group, NULL);
 	if (ret)
 		pr_info("register android_rvh_find_busiest_group failed\n");
 
@@ -1113,7 +1113,7 @@ static int __init mtk_scheduler_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 	ret = register_trace_android_rvh_sched_newidle_balance(
-			mtk_sched_newidle_balance, NULL);
+			hook_sched_balance_newidle, NULL);
 	if (ret)
 		pr_info("register android_rvh_sched_newidle_balance failed\n");
 #endif
@@ -1135,9 +1135,9 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_cpu_util_cfs_boost_hook hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_vh_scheduler_tick(hook_scheduler_tick, NULL);
+	ret = register_trace_android_vh_scheduler_tick(hook_sched_tick, NULL);
 	if (ret)
-		pr_info("scheduler: register scheduler_tick hooks failed, returned %d\n", ret);
+		pr_info("register android_vh_scheduler_tick failed, returned %d\n", ret);
 
 	ret = register_trace_android_rvh_after_enqueue_task(mtk_hook_after_enqueue_task, NULL);
 	if (ret)
@@ -1195,7 +1195,7 @@ out_wq:
 static void __exit mtk_scheduler_exit(void)
 {
 	mtk_sched_trace_exit();
-	unregister_trace_android_vh_scheduler_tick(hook_scheduler_tick, NULL);
+	unregister_trace_android_vh_scheduler_tick(hook_sched_tick, NULL);
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 	unregister_trace_task_newtask(rotat_task_newtask, NULL);
 #endif

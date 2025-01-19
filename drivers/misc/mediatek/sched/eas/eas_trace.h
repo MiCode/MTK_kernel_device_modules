@@ -354,7 +354,7 @@ TRACE_EVENT(sched_shared_buck_calc_pwr_eff,
 		__entry->extern_volt)
 );
 
-TRACE_EVENT(sched_find_busiest_group,
+TRACE_EVENT(sched_balance_find_src_group,
 
 	TP_PROTO(int src_cpu, int dst_cpu,
 		int out_balance, int reason),
