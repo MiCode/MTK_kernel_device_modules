@@ -501,7 +501,7 @@ static irqreturn_t ssusb_vbus_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb,
+void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb,
 			struct device_node *nd)
 {
 	struct device *dev = ssusb->dev;
@@ -1073,9 +1073,11 @@ get_phy:
 	if (IS_ERR(ssusb->ippc_base))
 		return PTR_ERR(ssusb->ippc_base);
 
-	ssusb->force_vbus = of_property_read_bool(node, "mediatek,force-vbus");
+	ssusb->mac_base = devm_platform_ioremap_resource_byname(pdev, "mac");
+	if (IS_ERR(ssusb->mac_base))
+		return PTR_ERR(ssusb->mac_base);
 
-	ssusb_parse_toggle_vbus(ssusb, node);
+	ssusb->force_vbus = of_property_read_bool(node, "mediatek,force-vbus");
 
 	ssusb->clk_mgr = of_property_read_bool(node, "mediatek,clk-mgr");
 	ssusb->noise_still_tr =
