@@ -62,6 +62,7 @@ struct mtk_mux {
 extern const struct clk_ops mtk_mux_ops;
 extern const struct clk_ops mtk_mux_clr_set_ops;
 extern const struct clk_ops mtk_mux_clr_set_upd_ops;
+extern const struct clk_ops mtk_mux_fenc_clr_set_upd_ops;
 extern const struct clk_ops mtk_mux_gate_ops;
 extern const struct clk_ops mtk_mux_gate_clr_set_upd_ops;
 extern const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_ops;
@@ -101,6 +102,26 @@ extern const struct clk_ops mtk_mux_generic_hwv_drate_ops;
 		.flags = _flags,					\
 		.ops = &_ops,						\
 	}
+
+#define MUX_FENC_CLR_SET_UPD_CHK_FLAGS(_id, _name, _parents, _mux_ofs,	\
+			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
+			_upd_ofs, _upd, _chk_ofs, _chk,			\
+			_fenc_sta_mon_ofs, _fenc, _flags)		\
+		GATE_FENC_CLR_SET_UPD_CHK_FLAGS(_id, _name, _parents, _mux_ofs,	\
+			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
+			0, _upd_ofs, _upd, _chk_ofs, _chk,		\
+			_fenc_sta_mon_ofs, _fenc, _flags,		\
+			mtk_mux_fenc_clr_set_upd_ops)
+
+#define MUX_FENC_CLR_SET_UPD_CHK(_id, _name, _parents, _mux_ofs,	\
+			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
+			_upd_ofs, _upd, _chk_ofs, _chk,			\
+			_fenc_sta_mon_ofs, _fenc)			\
+		MUX_FENC_CLR_SET_UPD_CHK_FLAGS(_id, _name, _parents,	\
+			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
+			_width, _upd_ofs, _upd, _chk_ofs, _chk,		\
+			_fenc_sta_mon_ofs, _fenc,			\
+			0)
 
 #define MUX_GATE_FENC_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,	\
 			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\

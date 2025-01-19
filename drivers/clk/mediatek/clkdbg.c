@@ -127,7 +127,7 @@ static struct provider_clk *__clk_dbg_lookup_pvdck(const char *name)
 	return NULL;
 }
 
-static struct clk *__clk_dbg_lookup(const char *name)
+struct clk *__clk_dbg_lookup(const char *name)
 {
 	struct provider_clk *pvdck = __clk_dbg_lookup_pvdck(name);
 
@@ -136,6 +136,7 @@ static struct clk *__clk_dbg_lookup(const char *name)
 
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(__clk_dbg_lookup);
 
 static void print_fclk_freq(const struct fmeter_clk *fclk, u32 freq, void *data)
 {

@@ -499,8 +499,6 @@ static bool __check_mux_off(const char * const *name)
 		if (!clkchk_pvdck_is_enabled(pvdck) && !clkchk_pvdck_is_prepared(pvdck))
 			continue;
 
-		pr_notice("suspend warning[0m: %s is on\n", *name);
-
 		if (check_bypass_status) {
 			bool bypass_name_is_equal = false;
 			const char * const *bypass_name;

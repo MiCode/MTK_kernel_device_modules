@@ -34,6 +34,7 @@ void unset_clkdbg_ops(void);
 void clkdbg_set_cfg(void);
 int clk_dbg_driver_register(struct platform_driver *drv, const char *name);
 struct device *clkdbg_dev_from_name(const char *name);
+struct clk *__clk_dbg_lookup(const char *name);
 
 extern const struct regname *get_all_regnames(void);
 extern struct provider_clk *get_all_provider_clks(bool is_internal);

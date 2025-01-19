@@ -870,6 +870,14 @@ const struct clk_ops mtk_mux_clr_set_upd_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_mux_clr_set_upd_ops);
 
+const struct clk_ops mtk_mux_fenc_clr_set_upd_ops = {
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_fenc_clr_set_upd_ops);
+
 const struct clk_ops mtk_mux_gate_ops = {
 	.enable = mtk_clk_mux_enable,
 	.disable = mtk_clk_mux_disable,
@@ -946,7 +954,9 @@ EXPORT_SYMBOL_GPL(mtk_mux_generic_hwv_ops);
 /* 6993 cksys2 mm-al mux */
 const struct clk_ops mtk_mux_generic_hwv_al_ops = {
 	/* should implment is enable and get result from HWCCF */
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
 	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_generic_hwv_al_ops);
