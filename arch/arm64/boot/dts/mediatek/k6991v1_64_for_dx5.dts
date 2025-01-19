@@ -745,7 +745,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 #include <k6991v1_64_for_dx5/cust.dtsi>
-#include "mediatek/cust_k6991_connfem.dtsi"
+#include "mediatek/cust_k6991_connfem_triband.dtsi"
 
 #include "mediatek/cust_mt6991_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_mt6991_camera_v4l2.dtsi"
