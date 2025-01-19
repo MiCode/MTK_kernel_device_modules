@@ -1011,10 +1011,16 @@ static void mtk_pcie_msi_irq_unmask(struct irq_data *data)
 	irq_chip_unmask_parent(data);
 }
 
+static int mtk_pcie_irq_set_wake(struct irq_data *data, unsigned int on)
+{
+       return 0;
+}
+
 static struct irq_chip mtk_msi_irq_chip = {
 	.irq_ack = irq_chip_ack_parent,
 	.irq_mask = mtk_pcie_msi_irq_mask,
 	.irq_unmask = mtk_pcie_msi_irq_unmask,
+	.irq_set_wake = mtk_pcie_irq_set_wake,
 	.name = "MSI",
 };
 
