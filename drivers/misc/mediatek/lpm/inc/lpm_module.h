@@ -164,6 +164,7 @@ enum MT_SPM_DBG_SMC_UID {
 	MT_SPM_DBG_SMC_SPM_TIMESTAMP,
 	MT_SPM_DBG_SMC_SPM_TIMESTAMP_SIZE,
 	MT_SPM_DBG_SMC_UID_COMMON_SODI_PWR_CTRL,
+	MT_SPM_DBG_SMC_SPM_EL1,
 };
 
 #define lpm_smc_spm_dbg(_lp_id, _act, _val1, _val2) ({\

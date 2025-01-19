@@ -17,6 +17,7 @@
 #include <linux/spinlock.h>
 
 #include <lpm.h>
+#include <lpm_module.h>
 #include <lpm_spm_comm.h>
 #include <lpm_pcm_def.h>
 #include <lpm_dbg_common_v2.h>
@@ -752,6 +753,11 @@ static void lpm_save_sleep_info(void)
 static void suspend_show_detailed_wakeup_reason
 	(struct lpm_spm_wake_status *wakesta)
 {
+	unsigned long isr_num;
+	if (wakesta->r12 == 0) {
+		isr_num = lpm_smc_spm_dbg(MT_SPM_DBG_SMC_SPM_EL1, MT_LPM_SMC_ACT_GET, 0, 0);
+		pr_info("[name:spm&][SPM] Wake up by none, pending isr number = 0x%lx \n", isr_num);
+	}
 }
 
 static int lpm_show_message(int type, const char *prefix, void *data)
