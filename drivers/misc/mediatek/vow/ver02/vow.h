@@ -45,7 +45,7 @@
 
 #define VOW_WAITCHECK_INTERVAL_MS      (2)
 #define MAX_VOW_INFO_LEN               (7)
-#define VOW_VOICE_RECORD_THRESHOLD     (2560) /* 80ms */
+#define VOW_VOICE_RECORD_THRESHOLD     (1280) /* 40ms */
 #define VOW_VOICE_RECORD_BIG_THRESHOLD (8320) /* 260ms */
 #define VOW_IPI_SEND_CNT_TIMEOUT       (50) /* 50 loop */
 /* UBM_V1:0xA000, UBM_V2:0xDC00, UBM_V3: 2*0x11000, UBM_V4: 2*0x16800  */
