@@ -80,6 +80,19 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "phy-mtk-ufs",
+    srcs = [
+        "phy-mtk-ufs.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/ufs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor",
+        "-I$(srctree)/drivers/ufs",
+    ]
+)
+
+define_mgk_ddk_ko(
     name = "phy-mtk-xsphy",
     srcs = [
         "phy-mtk-xsphy.c",

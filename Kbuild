@@ -44,8 +44,6 @@ obj-y += drivers/remoteproc/
 
 obj-y += drivers/rpmsg/
 
-obj-y += drivers/phy/mediatek/
-
 obj-y += drivers/thermal/mediatek/
 
 obj-y += drivers/spmi/
