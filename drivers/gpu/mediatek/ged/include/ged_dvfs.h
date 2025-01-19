@@ -276,7 +276,10 @@ unsigned int ged_dvfs_write_sysram_protm_exit(void);
 int ged_write_sysram_pwr_hint(int pwr_hint);
 int ged_dvfs_update_step_size(int low_step, int med_step, int high_step);
 void ged_dvfs_record_soc_timer(u64 soc_timer);
-
+void ged_notify_fix_opp_from_gpufreq(int gpu_opp, int stack_opp);
+void ged_notify_fix_freq_volt_from_gpufreq(
+	unsigned int gpu_freq, unsigned int gpu_volt, unsigned int stack_freq, unsigned int stack_volt);
+int ged_is_fix_dvfs(void);
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
 	int boost_accum_gpu);

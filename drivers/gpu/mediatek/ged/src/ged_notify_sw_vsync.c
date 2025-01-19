@@ -325,6 +325,7 @@ void ged_eb_dvfs_trace_dump(void)
 			ged_get_cur_limiter_ceil());
 		trace_tracing_mark_write(5566, "limitter_floor",
 			ged_get_cur_limiter_floor());
+		trace_tracing_mark_write(5566, "fix", ged_is_fix_dvfs());
 		if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
 			custom_ceiling_info = ged_dvfs_get_custom_ceiling_gpu_freq_info();
 			trace_tracing_mark_write(5566, "limitter_ceil_pid",

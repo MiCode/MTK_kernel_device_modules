@@ -1039,7 +1039,8 @@ typedef struct {
  GEN("fb_async_param1", GPU_FB_ASYNC_PARAM1, 4, "fb_async_ratio_param1") \
  GEN("fb_async_param2", GPU_FB_ASYNC_PARAM2, 1, "fb_async_ratio_param2") \
  GEN("fb_npu_hint_ms", GPU_FB_NPU_HINT_MS, 1, "fb_npu_hint_ms") \
- GEN("workload_mode", GPU_EB_WORKLOAD_MODE, 1, "workload_mode")
+ GEN("workload_mode", GPU_EB_WORKLOAD_MODE, 1, "workload_mode") \
+ GEN("fix_freq_id", GPU_FIX_FREQ_ID, 2, "enable|id")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

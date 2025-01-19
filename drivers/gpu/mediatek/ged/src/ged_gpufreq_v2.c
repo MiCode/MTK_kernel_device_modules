@@ -779,25 +779,6 @@ unsigned int ged_get_cur_limiter_floor(void)
 	return gpufreq_get_cur_limiter(TARGET_DEFAULT, GPUPPM_FLOOR);
 }
 
-int ged_is_fix_dvfs(void)
-{
-	int cur_floor = 0;
-	int cur_ceil = 0;
-	int dvfs_state = 0;
-
-	dvfs_state = gpufreq_get_dvfs_state();
-
-	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT)
-		return (dvfs_state & DVFS_FIX_OPP) | (dvfs_state & DVFS_FIX_FREQ_VOLT);
-
-	cur_floor =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_FLOOR);
-	cur_ceil =  gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_CEILING);
-	if (cur_floor == cur_ceil)
-		return 1;
-
-	return 0;
-}
-
 int ged_set_limit_ceil(int limiter, int ceil)
 {
 	if (ceil > g_min_working_oppidx)
