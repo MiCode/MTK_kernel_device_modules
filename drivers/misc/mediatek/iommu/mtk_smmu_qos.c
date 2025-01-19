@@ -789,12 +789,14 @@ static void smmu_lmu_polling(u32 smmu_type)
 {
 	u32 tcu_lat_max, tcu_pend_max, tcu_lat_avg, tcu_trans_tot, tcu_lat_tot;
 	u32 tcu_oos_trans_tot, tbu_rlat_max, tbu_wlat_max, tbu_id_rlat_max;
+	u32 tcu_pend_tot;
 	u32 tbu_id_wlat_max, tbu_rpend_max, tbu_wpend_max, tbu_rlat_tot;
 	u32 tbu_wlat_tot, tbu_rtrans_tot, tbu_wtrans_tot, tbu_roos_trans_tot;
 	u32 tbu_woos_trans_tot, tbu_avg_rlat, tbu_avg_wlat, tbu_r_buf_fullness;
 	u32 tbu_w_buf_fullness, regval, i;
 	u32 tbu_awostd_s, tbu_awostd_m, tbu_arostd_s, tbu_arostd_m;
 	u32 tbu_wostd_s, tbu_wostd_m;
+	u32 tbu_rpend_tot, tbu_wpend_tot, tbu_wpend_data_max;
 	struct smmu_lmu_data *lmu_data;
 	void __iomem *wp_base;
 	int written, ret;
@@ -826,12 +828,14 @@ static void smmu_lmu_polling(u32 smmu_type)
 	tcu_lat_avg = tcu_trans_tot > 0 ?
 		      (tcu_lat_tot / tcu_trans_tot) : 0;
 
+	/* tcu total pending command count */
+	tcu_pend_tot = smmu_read_reg(wp_base, SMMUWP_TCU_MON8);
+
 	memset(trace_buf, 0, SMMU_QOS_TRACE_BUF_MAX);
 	ret = snprintf(trace_buf, sizeof(trace_buf),
-		       "lat_max=%u, pend_max=%u, trans_tot=%u, lat_avg=%u, oos_trans_tot=%u",
-		       tcu_lat_max, tcu_pend_max,
-		       tcu_trans_tot, tcu_lat_avg,
-		       tcu_oos_trans_tot);
+		"lat_max=%u, pend_max=%u, trans_tot=%u, lat_avg=%u, oos_trans_tot=%u, pend_tot=%u",
+		tcu_lat_max, tcu_pend_max, tcu_trans_tot, tcu_lat_avg,
+		tcu_oos_trans_tot, tcu_pend_tot);
 	if (ret >= 0 || ret < sizeof(trace_buf))
 		smmu_qos_print_trace(lmu_tcu_trace_func[smmu_type], trace_buf);
 
@@ -895,6 +899,16 @@ static void smmu_lmu_polling(u32 smmu_type)
 		tbu_wostd_s = FIELD_GET(DBG3_WOSTD_S, regval);
 		tbu_wostd_m = FIELD_GET(DBG3_WOSTD_M, regval);
 
+		/* total pending read command count */
+		tbu_rpend_tot = smmu_read_reg(wp_base, SMMUWP_TBUx_MON11(i));
+
+		/* total pending write command count */
+		tbu_wpend_tot = smmu_read_reg(wp_base, SMMUWP_TBUx_MON12(i));
+
+		/* write data channel maximum pending command count */
+		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_MON13(i));
+		tbu_wpend_data_max = FIELD_GET(MON13_WPEND_DATA_MAX, regval);
+
 		written = 0;
 		memset(trace_buf, 0, SMMU_QOS_TRACE_BUF_MAX);
 		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
@@ -949,7 +963,16 @@ static void smmu_lmu_polling(u32 smmu_type)
 		}
 		written += ret;
 		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
-			       "wostd_s=%u, wostd_m=%u", tbu_wostd_s, tbu_wostd_m);
+			       "wostd_s=%u, wostd_m=%u, ", tbu_wostd_s, tbu_wostd_m);
+		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
+			WARN_ON_ONCE(1);
+			continue;
+		}
+		written += ret;
+
+		ret = snprintf(trace_buf + written, sizeof(trace_buf) - written,
+			       "rpend_tot=%u, wpend_tot=%u, wpend_data_max=%u",
+			       tbu_rpend_tot, tbu_wpend_tot, tbu_wpend_data_max);
 		if (ret < 0 || ret >= sizeof(trace_buf) - written) {
 			WARN_ON_ONCE(1);
 			continue;

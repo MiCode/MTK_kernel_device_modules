@@ -392,7 +392,7 @@
 
 /* WPEND_DATA_MAX, write data channel maximum pending command count */
 #define SMMUWP_TBUx_MON13(tbu)		(0x3d8 + 0x100 * (tbu))
-#define MON13_WPEND_DATA_MAX		GENMASK_32(15, 0)
+#define MON13_WPEND_DATA_MAX		GENMASK(15, 0)
 
 /* SMMU performance monitor unit snapshot address register for ELA, total 6 */
 #define SMMUWP_PMU_SNAP_A(id)		(0x1000 + 0x4 * (id))
