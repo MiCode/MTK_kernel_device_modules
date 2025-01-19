@@ -380,6 +380,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t dmr_bin_num;
 	atomic_t cur_binset_idx;
 	atomic_t cur_bin_idx;
+	unsigned int max_table_size;
 };
 
 struct mtk_disp_oddmr_cfg {
@@ -432,6 +433,9 @@ struct mtk_disp_oddmr {
 	uint32_t last_qos_srt_odr;
 	uint32_t qos_srt_odw;
 	uint32_t last_qos_srt_odw;
+	uint32_t last_hrt_dmrr;
+	uint32_t last_hrt_dbir;
+	uint32_t last_hrt_odrw;
 	struct icc_path *qos_req_dmrr;
 	struct icc_path *qos_req_dbir;
 	struct icc_path *qos_req_odr;
