@@ -2268,7 +2268,9 @@ static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 	smmu_debug_dump(smmu, false, false);
 
 	if (data->plat_data->smmu_type == MM_SMMU) {
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 		mtk_smi_dbg_hang_detect("iommu");
+#endif
 		smi_debug_dump(smmu);
 	}
 }

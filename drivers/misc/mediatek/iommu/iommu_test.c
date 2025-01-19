@@ -1371,7 +1371,8 @@ static int iommu_test_dom_probe(struct platform_device *pdev)
 }
 
 #ifdef SMMU_V3_TEST_EN
-#define TEST_SMMU_ADDRESS_NUM	4
+#define TEST_SMMU_ADDRESS_NUM	(4)
+#define TEST_SMMU_STRESS_NUM	(100)
 
 static inline struct arm_smmu_master *arm_smmu_get_master(struct device *dev)
 {
@@ -1420,11 +1421,12 @@ static int smmu_test_translation(int dma_engine, struct platform_device *pdev)
 
 static int smmu_test_stress(int dma_engine, struct platform_device *pdev)
 {
-	int ret, test_times = 1000;
+	int ret, test_times = TEST_SMMU_STRESS_NUM;
 
 	while (test_times--) {
-		pr_info("--- SMMU stress test: %d/1000 ---\n",
-			(1000 - test_times));
+		pr_info("--- SMMU stress test: %d/%d ---\n",
+			(TEST_SMMU_STRESS_NUM - test_times),
+			TEST_SMMU_STRESS_NUM);
 		ret = smmu_test_translation(dma_engine, pdev);
 		if (ret)
 			break;
@@ -1507,19 +1509,26 @@ static int smmu_test_cqdma(int dma_engine, struct platform_device *pdev)
 
 static int iommu_test_cqdma_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	int ret = 0;
 
-	pr_info("%s start dev:%s\n", __func__, dev_name(&pdev->dev));
+	pr_info("%s start dev:%s\n", __func__, dev_name(dev));
 
-	engine_init(DMA_ENGINE_CQDMA, pdev);
-
-	iommu_test_translation(DMA_ENGINE_CQDMA, pdev);
+	ret = engine_init(DMA_ENGINE_CQDMA, pdev);
+	if (ret) {
+		pr_info("%s failed, engine_init fail, dev:%s, ret:%d\n",
+			__func__, dev_name(dev), ret);
+		return ret;
+	}
 
 	ret = smmu_test_cqdma(DMA_ENGINE_CQDMA, pdev);
+	if (ret)
+		pr_info("%s failed, smmu_test_cqdma fail, dev:%s\n",
+			__func__, dev_name(dev));
 
-	pr_info("%s done dev:%s, ret:%d\n", __func__, dev_name(&pdev->dev), ret);
+	pr_info("%s done dev:%s, ret:%d\n", __func__, dev_name(dev), ret);
 
-	return 0;
+	return ret;
 }
 #else /* SMMU_V3_TEST_EN */
 static int iommu_test_cqdma_probe(struct platform_device *pdev)

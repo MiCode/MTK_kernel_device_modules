@@ -36,7 +36,7 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !IOMMU_BRING_UP
 #include <mt-plat/aee.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && !IOMMU_BRING_UP
 #include <mt-plat/mrdump.h>
 #endif
 
@@ -160,7 +160,7 @@ static bool smmu_v3_enable;
 
 mtk_iommu_dump_callback_t iommu_mrdump_proc;
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && !IOMMU_BRING_UP
 #define MAX_STRING_SIZE			(256)
 #define MAX_IOMMU_MRDUMP_SIZE		(1023 * 1024)
 static char *iommu_mrdump_buffer;
@@ -2199,7 +2199,7 @@ void mtk_iommu_pm_trace(int event, int iommu_id, int pd_sta,
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_pm_trace);
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && !IOMMU_BRING_UP
 static int mtk_iommu_mrdump_show(struct seq_file *s, void *unused)
 {
 	mtk_iommu_trace_dump(s);
@@ -2302,7 +2302,7 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 	spin_lock_init(&count_list.lock);
 	INIT_LIST_HEAD(&count_list.head);
 
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && !IOMMU_BRING_UP
 	iommu_mrdump_buffer = kzalloc(MAX_IOMMU_MRDUMP_SIZE, GFP_KERNEL);
 	if (iommu_mrdump_buffer) {
 		iommu_mrdump_proc = mtk_iommu_mrdump;
