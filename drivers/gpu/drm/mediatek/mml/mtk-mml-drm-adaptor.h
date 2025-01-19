@@ -73,6 +73,9 @@ struct mml_drm_param {
 
 	/* [out]The height of racing mode for each output tile in pixel. */
 	u8 racing_height;
+
+	/* [in] */
+	void (*disp_dump_dl_cb)(void *disp_crtc);
 };
 
 /*

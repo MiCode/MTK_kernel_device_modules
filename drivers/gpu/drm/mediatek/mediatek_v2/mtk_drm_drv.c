@@ -9240,6 +9240,11 @@ void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 	DDPINFO("%s- ret:%d\n", __func__, ret);
 }
 
+static void mtk_drm_mmlsys_dump_cb(void *cb_param)
+{
+	mtk_drm_crtc_dump(cb_param);
+}
+
 struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	struct drm_crtc *crtc)
 {
@@ -9276,6 +9281,7 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	disp_param.ddren_cb = mtk_drm_mmlsys_ddren_cb;
 	disp_param.kick_idle_cb = mtk_drm_mmlsys_kick_idle_cb;
 	disp_param.disp_crtc = (void *)crtc;
+	disp_param.disp_dump_dl_cb = mtk_drm_mmlsys_dump_cb;
 
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param);
 	if (IS_ERR_OR_NULL(mml_ctx)) {

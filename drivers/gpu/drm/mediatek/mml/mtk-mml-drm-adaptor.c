@@ -64,6 +64,8 @@ struct mml_drm_ctx {
 	void (*dispen_cb)(bool enable, void *dispen_param);
 	void *dispen_param;
 	struct completion idle;
+
+	void (*disp_dump_dl_cb)(void *disp_crtc);
 };
 
 static struct mml_drm_ctx *task_ctx_to_drm(struct mml_task *task)
@@ -1096,6 +1098,17 @@ static void drm_task_dispen(struct mml_task *task, bool enable)
 	ctx->dispen_cb(enable, ctx->dispen_param);
 }
 
+
+static void drm_task_disp_dump(struct mml_task *task)
+{
+	struct mml_drm_ctx *ctx = task_ctx_to_drm(task);
+
+	if (!ctx->disp_dump_dl_cb)
+		return;
+
+	ctx->disp_dump_dl_cb(ctx->disp_crtc);
+}
+
 static const struct mml_task_ops drm_task_ops = {
 	.queue = task_queue,
 	.submit_done = task_submit_done,
@@ -1105,6 +1118,8 @@ static const struct mml_task_ops drm_task_ops = {
 	.kt_setsched = ctx_kt_setsched,
 	.ddren = drm_task_ddren,
 	.dispen = drm_task_dispen,
+
+	.disp_dump = drm_task_disp_dump,
 };
 
 static const struct mml_config_ops drm_config_ops = {
@@ -1144,6 +1159,7 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	ctx->disp_crtc = disp->disp_crtc;
 	ctx->dispen_cb = disp->dispen_cb;
 	ctx->dispen_param = disp->dispen_param;
+	ctx->disp_dump_dl_cb = disp->disp_dump_dl_cb;
 	ctx->panel_width = MML_DEFAULT_PANEL_W;
 	ctx->panel_height = MML_DEFAULT_PANEL_H;
 

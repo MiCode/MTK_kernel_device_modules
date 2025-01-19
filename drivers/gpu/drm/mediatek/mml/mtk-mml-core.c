@@ -36,6 +36,10 @@ int mtk_mml_msg = 1;
 EXPORT_SYMBOL(mtk_mml_msg);
 module_param(mtk_mml_msg, int, 0644);
 
+int mml_dl_disp_dump;
+EXPORT_SYMBOL(mml_dl_disp_dump);
+module_param(mml_dl_disp_dump, int, 0644);
+
 /* see mtk-mml-core.c enum mml_hrt_mode for more detail */
 int mtk_mml_hrt_mode;
 EXPORT_SYMBOL(mtk_mml_hrt_mode);
@@ -843,12 +847,16 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_hw_op(path->mmlsys2, pw_enable, cfg->info.mode, false);
 	mml_clock_unlock(cfg->mml);
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK)
-		call_dbg_op(path->mmlsys, dump_dl);
-
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_dbg_op(comp, dump);
+	}
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		call_dbg_op(path->mmlsys, dump_dl);
+
+		if (mml_dl_disp_dump)
+			cfg->task_ops->disp_dump(task);
 	}
 
 	if (cnt >= 0)

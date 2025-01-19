@@ -295,6 +295,8 @@ struct mml_task_ops {
 	void (*kt_setsched)(struct mml_ctx *ctx);
 	void (*ddren)(struct mml_task *task, struct cmdq_pkt *pkt, bool enable);
 	void (*dispen)(struct mml_task *task, bool enable);
+
+	void (*disp_dump)(struct mml_task *task);
 };
 
 struct mml_config_ops {
