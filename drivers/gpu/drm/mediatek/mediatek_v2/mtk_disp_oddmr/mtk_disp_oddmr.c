@@ -5565,6 +5565,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	init_waitqueue_head(&primary_data->sof_irq_wq);
 	init_waitqueue_head(&primary_data->hrt_wq);
 	mutex_init(&primary_data->clock_lock);
+	mutex_init(&primary_data->timing_lock);
 	mutex_init(&primary_data->dbi_data_lock);
 	mutex_init(&primary_data->dmr_data_lock);
 
