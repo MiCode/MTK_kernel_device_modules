@@ -555,6 +555,11 @@ static int ssusb_host_register(struct ssusb_mtk *ssusb, bool on)
 	if (!ssusb->xhci_pdrv)
 		return 0;
 
+	if (!ssusb->xhci_pdrv->driver.p) {
+		dev_info(ssusb->dev, "xhci pdrv device driver private is null!\n");
+		return 0;
+	}
+
 	if (on) {
 		ret = platform_driver_register(ssusb->xhci_pdrv);
 		if (ret) {
@@ -568,7 +573,7 @@ static int ssusb_host_register(struct ssusb_mtk *ssusb, bool on)
 }
 
 /* v2 still use platform_driver_unregister to unbind xhci driver */
-int  ssusb_host_init_v2(struct ssusb_mtk *ssusb)
+int ssusb_host_init_v2(struct ssusb_mtk *ssusb)
 {
 	int ret;
 
