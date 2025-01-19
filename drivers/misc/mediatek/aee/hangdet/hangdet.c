@@ -167,18 +167,17 @@ static struct kprobe kp_clockevents_exchange_device = {
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define USLEEP_RANGE_HIS_ARRAY_SIZE (50)
-#define HRTIMER_HIS_ARRAY_SIZE (50)
+#define BURST_HRTIMER_HIS_ARRAY_SIZE (50)
+#define HRTIMER_COUNT_ARRAY_SIZE (100)
 
-struct arch_timer_caller_history_struct
+static struct arch_timer_caller_history_struct
 	usleep_range_history[USLEEP_RANGE_HIS_ARRAY_SIZE];
-struct arch_timer_caller_history_struct
-	hrtimer_history[HRTIMER_HIS_ARRAY_SIZE];
-
+static struct arch_timer_caller_history_struct
+	burst_hrtimer_history[BURST_HRTIMER_HIS_ARRAY_SIZE];
+static DEFINE_PER_CPU(struct hrtimer_count_struct[HRTIMER_COUNT_ARRAY_SIZE], hrtimer_func_counts);
+static DEFINE_PER_CPU(uint64_t, hrtimer_func_counts_last_time);
 static uint64_t usleep_range_count;
 static uint64_t hrtimer_count;
-
-unsigned long tick_sched_timer_addr;
-unsigned long hrtimer_wakeup_addr;
 
 static DEFINE_SPINLOCK(usleep_range_lock);
 static DEFINE_SPINLOCK(hrtimer_lock);
@@ -202,29 +201,6 @@ static struct kprobe kp_hrtimer_expire_entry = {
 	.pre_handler = hrtimer_expire_entry_pre,
 };
 
-static struct kprobe tmp_kp;
-
-static unsigned long lookup_function_address(const char *name)
-{
-	int ret;
-	unsigned long addr = 0;
-
-	memset(&tmp_kp, 0, sizeof(struct kprobe));
-	tmp_kp.symbol_name = name;
-
-	ret = register_kprobe(&tmp_kp);
-	if (ret < 0) {
-		pr_info("register_kprobe failed for %s, returned %d\n", name, ret);
-		return 0;
-	}
-
-	addr = (unsigned long)tmp_kp.addr;
-
-	unregister_kprobe(&tmp_kp);
-
-	return addr;
-}
-
 static void dump_usleep_range_history(void)
 {
 	int i;
@@ -232,27 +208,47 @@ static void dump_usleep_range_history(void)
 
 	spin_lock_irqsave(&usleep_range_lock, flags);
 	for (i = 0; i < USLEEP_RANGE_HIS_ARRAY_SIZE; i++)
-		pr_info("usleep_range_history[%d].caller %lx %ps, call time: %lld, comm: %s",
+		pr_info("usleep_range_history[%d].caller %lx %ps, call time: %lld, comm: %s, caller cpu: %d",
 			i, usleep_range_history[i].timer_caller_ip, (void *)usleep_range_history[i].timer_caller_ip,
-			usleep_range_history[i].timer_called,
-			usleep_range_history[i].comm);
+			usleep_range_history[i].last_time,
+			usleep_range_history[i].comm, usleep_range_history[i].caller_cpu);
 	spin_unlock_irqrestore(&usleep_range_lock, flags);
 }
 
 static void dump_hrtimer_burst_history(void)
 {
-	int i;
+	int i, cpu;
 	unsigned long flags = 0;
+	struct hrtimer_count_struct *cpu_counts;
 
 	spin_lock_irqsave(&hrtimer_lock, flags);
-	for (i = 0; i < HRTIMER_HIS_ARRAY_SIZE; i++)
-		pr_info("hrtimer_history[%d].caller %lx %ps, call time: %lld, now: %lld, comm: %s",
-			i, hrtimer_history[i].timer_caller_ip, (void *)hrtimer_history[i].timer_caller_ip,
-			hrtimer_history[i].timer_called,
-			hrtimer_history[i].now,
-			hrtimer_history[i].comm);
+	for (i = 0; i < BURST_HRTIMER_HIS_ARRAY_SIZE; i++) {
+		if (burst_hrtimer_history[i].count > 0)
+			pr_info("burst_hrtimer_history[%d].caller %lx %ps, start_time: %lld, last_time: %lld, now: %lld, comm: %s, count: %lld caller cpu: %d",
+				i, burst_hrtimer_history[i].timer_caller_ip,
+				(void *)burst_hrtimer_history[i].timer_caller_ip,
+				burst_hrtimer_history[i].start_time,
+				burst_hrtimer_history[i].last_time,
+				burst_hrtimer_history[i].now,
+				burst_hrtimer_history[i].comm,
+				burst_hrtimer_history[i].count,
+				burst_hrtimer_history[i].caller_cpu);
+	}
+
+	for_each_online_cpu(cpu) {
+		cpu_counts = per_cpu_ptr(hrtimer_func_counts, cpu);
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++)
+			if (cpu_counts[i].timer_caller_ip && cpu_counts[i].count >= 200)
+				pr_info("cpu_counts[%d].caller %lx %ps, count: %llu, start_time: %lld, last_time: %lld cpu=%d",
+					i, cpu_counts[i].timer_caller_ip, (void *)cpu_counts[i].timer_caller_ip,
+					cpu_counts[i].count,
+					cpu_counts[i].start_time,
+					cpu_counts[i].last_time,
+					cpu);
+	}
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
 }
+
 #endif
 #endif
 
@@ -1564,7 +1560,8 @@ static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs)
 		usleep_range_count++;
 		temp_count = usleep_range_count % USLEEP_RANGE_HIS_ARRAY_SIZE;
 		usleep_range_history[temp_count].timer_caller_ip = ((unsigned long)__builtin_return_address(8));
-		usleep_range_history[temp_count].timer_called = sched_clock();
+		usleep_range_history[temp_count].last_time = sched_clock();
+		usleep_range_history[temp_count].caller_cpu = smp_processor_id();
 		strscpy(usleep_range_history[temp_count].comm, current->comm, TASK_COMM_LEN);
 		spin_unlock_irqrestore(&usleep_range_lock, flags);
 	}
@@ -1576,22 +1573,51 @@ static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs)
 {
 	u64 temp_count = 0;
 	unsigned long flags = 0;
+	int i;
 
 	struct hrtimer *hrtimer_t = (struct hrtimer *)regs->regs[2];
 	ktime_t *now_t = (ktime_t *)regs->regs[3];
 
-	if ((unsigned long)hrtimer_t->function == tick_sched_timer_addr)
-		return 0;
-	if ((unsigned long)hrtimer_t->function == hrtimer_wakeup_addr)
-		return 0;
-
 	spin_lock_irqsave(&hrtimer_lock, flags);
-	hrtimer_count++;
-	temp_count = hrtimer_count % HRTIMER_HIS_ARRAY_SIZE;
-	hrtimer_history[temp_count].timer_caller_ip = (unsigned long)hrtimer_t->function;
-	hrtimer_history[temp_count].timer_called = sched_clock();
-	hrtimer_history[temp_count].now = *now_t;
-	strscpy(hrtimer_history[temp_count].comm, current->comm, TASK_COMM_LEN);
+
+	struct hrtimer_count_struct *cpu_counts = this_cpu_ptr(hrtimer_func_counts);
+	uint64_t *last_time_ptr = this_cpu_ptr(&hrtimer_func_counts_last_time);
+
+	if (sched_clock() - *last_time_ptr > 2000000000) {
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+			cpu_counts[i].timer_caller_ip = 0;
+			cpu_counts[i].count = 0;
+			cpu_counts[i].start_time = 0;
+			cpu_counts[i].last_time = 0;
+		}
+		*last_time_ptr = sched_clock();
+	}
+
+	for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+		if (cpu_counts[i].timer_caller_ip == (unsigned long)hrtimer_t->function) {
+			cpu_counts[i].count++;
+			cpu_counts[i].last_time = sched_clock();
+			if (cpu_counts[i].count > 0 && cpu_counts[i].count % 5000 == 0) {
+				hrtimer_count++;
+				temp_count = hrtimer_count % BURST_HRTIMER_HIS_ARRAY_SIZE;
+				burst_hrtimer_history[temp_count].timer_caller_ip = (unsigned long)hrtimer_t->function;
+				burst_hrtimer_history[temp_count].last_time = cpu_counts[i].last_time;
+				burst_hrtimer_history[temp_count].start_time = cpu_counts[i].start_time;
+				burst_hrtimer_history[temp_count].now = *now_t;
+				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
+				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
+				strscpy(burst_hrtimer_history[temp_count].comm, current->comm, TASK_COMM_LEN);
+			}
+			break;
+		} else if (cpu_counts[i].timer_caller_ip == 0) {
+			cpu_counts[i].timer_caller_ip = (unsigned long)hrtimer_t->function;
+			cpu_counts[i].count = 1;
+			cpu_counts[i].start_time = sched_clock();
+			cpu_counts[i].last_time = cpu_counts[i].start_time;
+			break;
+		}
+	}
+
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
 
 	return 0;
@@ -1745,8 +1771,6 @@ static int __init hangdet_init(void)
 		pr_info("Planted kprobe at %p for hrtimer_expire_entry\n",
 			kp_hrtimer_expire_entry.addr);
 
-	tick_sched_timer_addr = lookup_function_address("tick_sched_timer");
-	hrtimer_wakeup_addr = lookup_function_address("hrtimer_wakeup");
 #endif
 #endif
 

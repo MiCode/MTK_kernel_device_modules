@@ -29,10 +29,21 @@ struct slp_history {
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 struct arch_timer_caller_history_struct {
 	unsigned long timer_caller_ip;
-	u64 timer_called;
 	ktime_t now;
+	ktime_t last_time;
+	ktime_t start_time;
 	char comm[TASK_COMM_LEN];
+	int caller_cpu;
+	u64 count;
 };
+
+struct hrtimer_count_struct {
+	unsigned long timer_caller_ip;
+	u64 count;
+	ktime_t start_time;
+	ktime_t last_time;
+};
+
 #endif
 
 #endif
