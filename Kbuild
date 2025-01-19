@@ -52,8 +52,6 @@ obj-y += drivers/spmi/
 
 obj-y += drivers/tty/serial/8250/
 
-obj-y += drivers/reset/
-
 obj-y += drivers/mailbox/
 
 obj-y += drivers/interconnect/
