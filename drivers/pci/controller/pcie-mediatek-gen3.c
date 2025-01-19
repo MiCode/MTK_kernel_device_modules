@@ -39,7 +39,7 @@
 
 #include "pcie-mediatek-gen3.h"
 #include "../pci.h"
-#include "../../misc/mediatek/clkbuf/src/clkbuf-ctrl.h"
+#include "../../misc/mediatek/clkbuf/src/clkbuf-api.h"
 
 /* pextp register, CG,HW mode */
 #define PCIE_PEXTP_CG_0			0x14

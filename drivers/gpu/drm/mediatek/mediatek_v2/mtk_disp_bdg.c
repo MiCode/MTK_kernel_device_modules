@@ -28,7 +28,7 @@
 #include <linux/of_gpio.h>
 /***** NFC SRCLKENAI0 Interrupt Handler --- *****/
 #define CLKBUF_COMMON_H
-#include <clkbuf-ctrl.h>
+#include <clkbuf-api.h>
 
 #define SPI_EN
 struct BDG_SYSREG_CTRL_REGS *SYS_REG;		/* 0x00000000 */
