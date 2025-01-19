@@ -16,6 +16,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/hwccf/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 
-obj-$(CONFIG_MTK_HWCCF) += hwccf.o
-hwccf-y += src/hwccf_api.o
-hwccf-y += src/hwccf_port.o
+#obj-$(CONFIG_MTK_HWCCF) += hwccf.o
+#hwccf-y += src/hwccf_api.o
+#hwccf-y += src/hwccf_port.o

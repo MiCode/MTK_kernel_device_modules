@@ -1,6 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version",)
-load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -25,45 +24,17 @@ filegroup(
     ]),
 )
 
-ddk_headers(
-	name = "headers",
-	hdrs = glob(["**/*.h"]),
-	includes = ["."],
-)
-
 define_mgk_ddk_ko(
-    name = "clk-disable-unused",
+    name = "hwccf",
     srcs = [
-        "clk-disable-unused.c",
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-common",
-    srcs = [
-        "clk-mtk.c",
-        "clk-pll.c",
-        "clk-gate.c",
-        "clk-mux.c",
-        "clkchk.c",
-        "clk-fmeter.c",
-        "mtk-pd-chk.c",
-        "clkdbg.c",
+        "src/hwccf_api.c",
+        "src/hwccf_port.c",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
     ],
-    includes = ["."],
+    includes = [".", "include",],
     copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
-    hdrs = glob(["**/*.h"]),
-)
-
-define_mgk_ddk_ko(
-    name = "clk-bringup",
-    srcs = [
-        "clk-bringup.c",
-    ],
-    includes = ["."],
     hdrs = glob(["**/*.h"]),
 )
