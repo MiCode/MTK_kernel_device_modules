@@ -479,7 +479,7 @@ static int mtk_smi_dbg_larb_enable(struct device *dev)
 	}
 
 	return no_pm_runtime ?
-			mtk_smi_larb_enable(dev, MTK_SMI_DRIVER) :
+			mtk_smi_larb_enable(dev) :
 			pm_runtime_resume_and_get(dev);
 }
 
@@ -491,8 +491,18 @@ static int mtk_smi_dbg_larb_disable(struct device *dev)
 	}
 
 	return no_pm_runtime ?
-			mtk_smi_larb_disable(dev, MTK_SMI_DRIVER) :
+			mtk_smi_larb_disable(dev) :
 			pm_runtime_put_sync(dev);
+}
+
+static inline int mtk_smi_dbg_get_if_in_use(struct device *dev)
+{
+	return no_pm_runtime ? mtk_smi_get_if_in_use(dev) : pm_runtime_get_if_in_use(dev);
+}
+
+static inline int mtk_smi_dbg_put_if_in_use(struct device *dev)
+{
+	return no_pm_runtime ? mtk_smi_put_if_in_use(dev) : pm_runtime_put(dev);
 }
 
 #define USER_REPORT_PWR_ON	(0xff)
@@ -515,7 +525,7 @@ static int __mtk_smi_pwr_chk_v2(struct mtk_smi_dbg_node *node)
 			smi->v2.larb_pm_stat[node->id] : smi->v2.comm_pm_stat[node->id];
 }
 
-static int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
+static int smi_get_if_in_use_v2(struct mtk_smi_dbg_node *node)
 {
 	int ret = 0;
 
@@ -525,7 +535,7 @@ static int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
 
 	switch (dbg_version) {
 	case SMI_DBG_VER_1:
-		ret = pm_runtime_get_if_in_use(node->dev);
+		ret = mtk_smi_dbg_get_if_in_use(node->dev);
 		break;
 	case SMI_DBG_VER_2:
 		ret = __mtk_smi_pwr_chk_v2(node);
@@ -537,7 +547,7 @@ static int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
 	return ret;
 }
 
-static int mtk_smi_put(struct mtk_smi_dbg_node *node)
+static int smi_put_if_in_use_v2(struct mtk_smi_dbg_node *node)
 {
 	int ret = 0;
 
@@ -546,7 +556,7 @@ static int mtk_smi_put(struct mtk_smi_dbg_node *node)
 
 	switch (dbg_version) {
 	case SMI_DBG_VER_1:
-		ret = pm_runtime_put(node->dev);
+		ret = mtk_smi_dbg_put_if_in_use(node->dev);
 		break;
 	default:
 		break;
@@ -572,7 +582,7 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 	if (!skip_pm_runtime) {
 		if (!rsi) {
-			ret = mtk_smi_get_if_in_use(node);
+			ret = smi_get_if_in_use_v2(node);
 			if (ret)
 				dev_info(node->dev, "===== %s%u rpm:%d =====\n"
 					, name, id, ret);
@@ -581,7 +591,7 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 			if (of_property_read_u32(node->dev->of_node,
 				"mediatek,dump-with-comm", &comm_id))
 				return;
-			if (mtk_smi_get_if_in_use(&smi->comm[comm_id]) <= 0)
+			if (smi_get_if_in_use_v2(&smi->comm[comm_id]) <= 0)
 				return;
 
 			dump_with = true;
@@ -628,10 +638,10 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 	if (!skip_pm_runtime) {
 		if (dump_with) {
-			mtk_smi_put(&smi->comm[comm_id]);
+			smi_put_if_in_use_v2(&smi->comm[comm_id]);
 			return;
 		}
-		mtk_smi_put(node);
+		smi_put_if_in_use_v2(node);
 	}
 }
 
@@ -643,7 +653,7 @@ static int mtk_smi_mminfra_get_if_in_use(void)
 	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
 		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
 			continue;
-		ret = mtk_smi_get_if_in_use(&smi->comm[i]);
+		ret = mtk_smi_dbg_get_if_in_use(smi->comm[i].dev);
 		if (ret == 0)
 			continue;
 		else if (ret < 0) {
@@ -668,7 +678,7 @@ static int mtk_smi_mminfra_put(void)
 		ref_cnt = atomic_read(&smi->comm[i].is_on);
 		if (ref_cnt > 0) {
 			atomic_dec(&smi->comm[i].is_on);
-			ret = mtk_smi_put(&smi->comm[i]);
+			ret = mtk_smi_dbg_put_if_in_use(smi->comm[i].dev);
 			if (ret < 0) {
 				dev_notice(smi->comm[i].dev, "%s:rpm put fail, ret=%d\n",
 										__func__, ret);
@@ -698,7 +708,7 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 		return;
 
 	if (bus_type != SMI_RSI) {
-		ret = mtk_smi_get_if_in_use(&node);
+		ret = smi_get_if_in_use_v2(&node);
 		if (ret)
 			seq_printf(seq, "%s:===== %s%u rpm:%d =====\n"
 				, dev_name(node.dev), name, id, ret);
@@ -708,7 +718,7 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 		if (of_property_read_u32(node.dev->of_node,
 			"mediatek,dump-with-comm", &comm_id))
 			return;
-		if (mtk_smi_get_if_in_use(&smi->comm[comm_id]) <= 0)
+		if (smi_get_if_in_use_v2(&smi->comm[comm_id]) <= 0)
 			return;
 		dump_with = true;
 	}
@@ -743,10 +753,10 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 	seq_printf(seq, "%s:%s\n", dev_name(node.dev), buf);
 
 	if (dump_with) {
-		mtk_smi_put(&smi->comm[comm_id]);
+		smi_put_if_in_use_v2(&smi->comm[comm_id]);
 		return;
 	}
-	mtk_smi_put(&node);
+	smi_put_if_in_use_v2(&node);
 }
 
 static void smi_bus_status_print_v1(struct seq_file *seq)
@@ -1068,7 +1078,7 @@ void call_smi_pm_get_if_in_use(void)
 	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
 		if (!smi->larb[i].dev)
 			continue;
-		ret = pm_runtime_get_if_in_use(smi->larb[i].dev);
+		ret = mtk_smi_dbg_get_if_in_use(smi->larb[i].dev);
 		if (ret < 0)
 			dev_notice(smi->larb[i].dev, "%s err: rpm:%d\n", __func__, ret);
 		smi->v2.larb_pm_stat[i] = (ret > 0) ? 1 : 0;
@@ -1077,7 +1087,7 @@ void call_smi_pm_get_if_in_use(void)
 	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
 		if (!smi->comm[i].dev)
 			continue;
-		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
+		ret = mtk_smi_dbg_get_if_in_use(smi->comm[i].dev);
 		if (ret < 0)
 			dev_notice(smi->comm[i].dev, "%s err: rpm:%d\n", __func__, ret);
 		smi->v2.comm_pm_stat[i] = (ret > 0) ? 1 : 0;
@@ -1093,14 +1103,14 @@ void call_smi_pm_put_if_in_use(void)
 		if (!smi->larb[i].dev)
 			continue;
 		if (smi->v2.larb_pm_stat[i])
-			pm_runtime_put(smi->larb[i].dev);
+			mtk_smi_dbg_put_if_in_use(smi->larb[i].dev);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
 		if (!smi->comm[i].dev)
 			continue;
 		if (smi->v2.comm_pm_stat[i])
-			pm_runtime_put(smi->comm[i].dev);
+			mtk_smi_dbg_put_if_in_use(smi->comm[i].dev);
 	}
 }
 
@@ -1641,7 +1651,7 @@ static void read_smi_ostd_status(struct mtk_smi_dbg_node node[])
 			type = node[id].smi_type;
 			dbg_setting = &smi->init_setting[type];
 
-			if (mtk_smi_get_if_in_use(&node[id]) <= 0) {
+			if (smi_get_if_in_use_v2(&node[id]) <= 0) {
 				memset(node[id].bus_ostd_val[i], 0,
 						sizeof(u32) * SMI_LARB_OSTD_MON_PORT_NR);
 				continue;
@@ -1652,7 +1662,7 @@ static void read_smi_ostd_status(struct mtk_smi_dbg_node node[])
 				readl_relaxed(node[id].va +
 						dbg_setting->ostd_cnt_offset + (j << 2));
 
-			mtk_smi_put(&node[id]);
+			smi_put_if_in_use_v2(&node[id]);
 		}
 		udelay(3);
 	}
@@ -2157,7 +2167,7 @@ static int smi_ut_chk_dummy(void)
 	return ret;
 }
 
-enum { SMI_UT_DUMP, SMI_UT_PDAS, };
+enum { SMI_UT_DUMP, SMI_UT_PDAS_V1, SMI_UT_PDAS_V2,};
 int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
@@ -2169,36 +2179,34 @@ int smi_ut_dump_get(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
-		if (!smi->larb[i].dev)
-			continue;
-		ret = mtk_smi_dbg_larb_enable(smi->larb[i].dev);
-		if (ret < 0)
-			dev_notice(smi->larb[i].dev, "smi_larb%d get fail:%d\n", i, ret);
-	}
-	call_smi_user_force_all_on("SMI_UT");
-
 	switch(action) {
 	case SMI_UT_DUMP:
 		mtk_smi_dbg_hang_detect("SMI UT");
 		break;
-	case SMI_UT_PDAS:
+	case SMI_UT_PDAS_V1:
+		smi_larb_force_all_on(NULL, NULL);
 		ret = smi_ut_chk_dummy();
 		if (ret == 0)
 			pr_notice("%s: SMI_UT_PDAS pass!\n", __func__);
 		else
 			pr_notice("%s: SMI_UT_PDAS fail:%d\n", __func__, ret);
+		smi_larb_force_all_put(NULL, NULL);
+		break;
+	case SMI_UT_PDAS_V2:
+		for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
+			if (!smi->larb[i].dev)
+				continue;
+			mtk_smi_dbg_larb_enable(smi->larb[i].dev);
+			mtk_smi_dbg_larb_disable(smi->larb[i].dev);
+		}
+		if (mtk_smi_larb_ut_result())
+			pr_notice("%s: SMI_UT_PDAS_V2 fail!\n", __func__);
+		else
+			pr_notice("%s: SMI_UT_PDAS_V2 pass!\n", __func__);
 		break;
 	default:
 		pr_notice("%s: unknown action:%d\n", __func__, action);
 		break;
-	}
-
-	call_smi_user_force_all_put("SMI_UT");
-	for (i = 0; i < ARRAY_SIZE(smi->larb); i++) {
-		if (!smi->larb[i].dev)
-			continue;
-		mtk_smi_dbg_larb_disable(smi->larb[i].dev);
 	}
 
 	return ret;
@@ -2333,9 +2341,9 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 	}
 
 	if (mon_id == SMI_BW_BUS)
-		ret = mtk_smi_get_if_in_use(&smi->comm[common_id]);
+		ret = smi_get_if_in_use_v2(&smi->comm[common_id]);
 	else
-		ret = pm_runtime_get_if_in_use(smi->comm[common_id].dev);
+		ret = mtk_smi_dbg_get_if_in_use(smi->comm[common_id].dev);
 	if (ret <= 0) {
 		pr_notice("[smi]%s: comm%d power off, rpm:%d\n", __func__, common_id, ret);
 		return ret;
@@ -2410,9 +2418,9 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 	atomic_dec(&smi->comm[common_id].mon_ref_cnt[mon_id]);
 
 	if (mon_id == SMI_BW_BUS)
-		mtk_smi_put(&smi->comm[common_id]);
+		smi_put_if_in_use_v2(&smi->comm[common_id]);
 	else
-		pm_runtime_put(smi->comm[common_id].dev);
+		mtk_smi_dbg_put_if_in_use(smi->comm[common_id].dev);
 
 	return 0;
 }
@@ -2642,7 +2650,7 @@ s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 		node = smi->larb[id];
 	else
 		node = smi->comm[id];
-	if (pm_runtime_get_if_in_use(node.dev) <= 0) {
+	if (mtk_smi_dbg_get_if_in_use(node.dev) <= 0) {
 		pr_notice("[smi] is_larb%d id:%d not enable\n", is_larb, id);
 		return 0;
 	}
@@ -2690,7 +2698,7 @@ s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 		}
 	}
 
-	pm_runtime_put(node.dev);
+	mtk_smi_dbg_put_if_in_use(node.dev);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_golden_set);

@@ -182,6 +182,7 @@ struct mtk_smi_larb_gen {
 	struct mtk_smi_reg_pair *misc;
 };
 
+#define LARB_MAX_COMMON		(2)
 #define SMI_MAX_CG_CTRL_NR		(7)
 struct mtk_smi {
 	struct device			*dev;
@@ -199,9 +200,12 @@ struct mtk_smi {
 	atomic_t			ref_count;
 	int				common_set_num;
 	struct mtk_smi_reg_pair		common_set_misc[SMI_USER_SET_MISC_NR];
+	struct device			*smi_common_dev[LARB_MAX_COMMON];
+	u32				pd_id;
+	struct mutex			pd_lock;
+	struct work_struct		pd_work;
 };
 
-#define LARB_MAX_COMMON		(2)
 struct mtk_smi_larb { /* larb: local arbiter */
 	struct mtk_smi			smi;
 	void __iomem			*base;
@@ -216,7 +220,6 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	bool				skip_busy_check;
 	bool				skip_restore;
 	bool				skip_rpm_cb;
-	atomic_t			user_ref_cnt[MTK_SMI_USER_ID_NR];
 	bool				is_default_ostdl;
 	bool				is_two_dram_path_ostdl;
 	bool				is_real_time_perm;
@@ -226,6 +229,7 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	u32				real_time_type;
 	int				larb_set_num;
 	struct mtk_smi_reg_pair		larb_set_misc[SMI_USER_SET_MISC_NR];
+	u32				pd_id;
 };
 
 #define MAX_COMMON_FOR_CLAMP		(3)
@@ -263,6 +267,13 @@ struct mtk_smi_pd {
 	struct mtk_smi			smi;
 };
 
+struct mtk_smi_hwccf {
+	struct device	*dev;
+	bool active;
+	atomic_t ref_cnt[MTK_SMI_SUBSYS_ID_NR_MAX];
+	struct raw_notifier_head nh[MTK_SMI_SUBSYS_ID_NR_MAX];
+};
+
 static u32 log_level;
 enum smi_log_level {
 	log_config_bit = 0,
@@ -273,6 +284,7 @@ enum smi_log_level {
 };
 
 static u32 enable_perm_aee = 1;
+static u32 smi_ut_result;
 
 #define MAX_INIT_POWER_ON_DEV	(30)
 static struct mtk_smi *init_power_on_dev[MAX_INIT_POWER_ON_DEV];
@@ -281,6 +293,9 @@ static unsigned int init_power_on_num;
 #define MAX_PD_CTRL_NUM	(8)
 static struct mtk_smi_pd *smi_pd_ctrl[MAX_PD_CTRL_NUM];
 static unsigned int smi_pd_ctrl_num;
+
+static struct mtk_smi_hwccf *gsmi_hwccf;
+static struct workqueue_struct *smi_pd_ctrl_wq;
 
 #if IS_ENABLED(CONFIG_MTK_SMI_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #define SMI_MME_LOG_SIZE	(160 * 1024)
@@ -296,6 +311,56 @@ void smi_mme_init(void)
 void smi_mme_init(void) {}
 #define SMI_MME_INFO(fmt, arg...)
 #endif
+
+static struct workqueue_struct *smi_pd_ctrl_wq;
+static void smi_pd_ctrl_work_init(void)
+{
+	if (!smi_pd_ctrl_wq)
+  		smi_pd_ctrl_wq = create_workqueue("smi_pd_ctrl_wq");
+}
+static void smi_pd_ctrl_work(struct work_struct *work);
+
+int mtk_smi_pd_register_notifier(struct notifier_block *nb, u32 pd_id)
+{
+	return raw_notifier_chain_register(&gsmi_hwccf->nh[MTK_SMI_ID2SUBSYS_ID(pd_id)], nb);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_pd_register_notifier);
+
+int mtk_smi_pd_unregister_notifier(struct notifier_block *nb, u32 pd_id)
+{
+	return raw_notifier_chain_unregister(&gsmi_hwccf->nh[MTK_SMI_ID2SUBSYS_ID(pd_id)], nb);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_pd_unregister_notifier);
+
+static int smi_pd_ctrl_notify_on(u32 pd_id)
+{
+	struct mtk_smi_hwccf *smi_hwccf = gsmi_hwccf;
+	u32 subsys_id = MTK_SMI_ID2SUBSYS_ID(pd_id);
+
+	if (!smi_hwccf || !smi_hwccf->active)
+		return 0;
+	if (atomic_inc_return(&smi_hwccf->ref_cnt[subsys_id]) != 1)
+		return 0;
+
+	raw_notifier_call_chain(&smi_hwccf->nh[subsys_id], true, NULL); /*cb for mmqos*/
+
+	return 0;
+}
+
+static int smi_pd_ctrl_notify_off(u32 pd_id)
+{
+	struct mtk_smi_hwccf *smi_hwccf = gsmi_hwccf;
+	u32 subsys_id = MTK_SMI_ID2SUBSYS_ID(pd_id);
+
+	if (!smi_hwccf || !smi_hwccf->active)
+		return 0;
+	if (atomic_dec_return(&smi_hwccf->ref_cnt[subsys_id]) != 0)
+		return 0;
+
+	raw_notifier_call_chain(&smi_hwccf->nh[subsys_id], false, NULL); /*cb for mmqos*/
+
+	return 0;
+}
 
 static void power_reset_imp(struct mtk_smi_pd *smi_pd)
 {
@@ -455,21 +520,12 @@ int mtk_smi_larb_bw_thr(struct device *larbdev, const u32 port, bool is_bw_thr)
 	if (unlikely(!larb))
 		return -ENODEV;
 
-	if (is_bw_thr) {
-		if (atomic_read(&larb->smi.ref_count))
-			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) | 0x8,
-				larb->base + SMI_LARB_NONSEC_CON(port));
-		else
-			dev_notice(larbdev, "larb%d port%d not enable is_bw_thr:%d\n",
-				larb->larbid, port, is_bw_thr);
-	} else {
-		if (atomic_read(&larb->smi.ref_count))
-			writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) & ~(1 << 3),
-				larb->base + SMI_LARB_NONSEC_CON(port));
-		else
-			dev_notice(larbdev, "larb%d port%d not enable is_bw_thr:%d\n",
-				larb->larbid, port, is_bw_thr);
-	}
+	if (is_bw_thr)
+		writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) | 0x8,
+			larb->base + SMI_LARB_NONSEC_CON(port));
+	else
+		writel_relaxed(readl_relaxed(larb->base + SMI_LARB_NONSEC_CON(port)) & ~(1 << 3),
+			larb->base + SMI_LARB_NONSEC_CON(port));
 
 	if (log_level & 1 << log_disable_ultra)
 		dev_notice(larbdev, "larb%d port%d is_bw_thr:%d vlue:%#x\n",
@@ -3506,6 +3562,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	const char *name;
 	int ret, i = 0;
 	u32 flags, is_pwr_decp;
+	bool no_pm_runtime = false;
 
 	is_mpu_violation(dev, true);
 	larb = devm_kzalloc(dev, sizeof(*larb), GFP_KERNEL);
@@ -3535,8 +3592,6 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 
 	larb->smi.dev = dev;
 	atomic_set(&larb->smi.ref_count, 0);
-	for (i = 0; i < MTK_SMI_USER_ID_NR; i++)
-		atomic_set(&larb->user_ref_cnt[i], 0);
 
 	for (i = 0; i < LARB_MAX_COMMON; i++) {
 		ret = of_parse_phandle_with_fixed_args(dev->of_node,
@@ -3552,6 +3607,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 				return -EPROBE_DEFER;
 			}
 			larb->smi_common_dev[i] = &smi_pdev->dev;
+			larb->smi.smi_common_dev[i] = is_pwr_decp ? NULL : (&smi_pdev->dev);
 			flags = is_pwr_decp ?
 				DL_FLAG_STATELESS : (DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
 			link = device_link_add(dev, larb->smi_common_dev[i], flags);
@@ -3601,17 +3657,24 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(dev->of_node, "power-domains"))
 		pm_runtime_enable(dev);
+	else {
+		no_pm_runtime = true;
+		mutex_init(&larb->smi.pd_lock);
+		smi_pd_ctrl_work_init();
+		INIT_WORK(&larb->smi.pd_work, smi_pd_ctrl_work);
+	}
 
 	platform_set_drvdata(pdev, larb);
 	ret = component_add(dev, &mtk_smi_larb_component_ops);
 	of_property_read_u32(dev->of_node, "mediatek,larb-id", &larb->larbid);
+	of_property_read_u32(dev->of_node, "mediatek,pd-id", &larb->pd_id);
 
 	if (of_property_read_bool(dev->of_node, "skip-rpm-cb")) {
 		larb->skip_rpm_cb = true;
 		dev_notice(dev, "skip rpm callback\n");
 	}
 
-	if (of_property_read_bool(dev->of_node, "init-power-on")) {
+	if (of_property_read_bool(dev->of_node, "init-power-on") && !no_pm_runtime) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
 		if (ret < 0) {
@@ -3664,22 +3727,17 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 	ktime_t rs_start, rs_end;
 	ktime_t clk_start, clk_end;
 
-	rs_start = ktime_get();
-	atomic_inc(&larb->smi.ref_count);
+	if (atomic_read(&larb->smi.ref_count) > 0)
+		goto out;
 	if (larb->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
 			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
 						__func__, larb->larbid);
-		return 0;
+		goto out;
 	}
-
-	if (log_level & 1 << log_config_bit)
-		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
-			larb->larbid, atomic_read(&larb->smi.ref_count));
+	rs_start = ktime_get();
 	SMI_MME_INFO("larb:%d is to enable clk in callback get new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
-	if (atomic_read(&larb->smi.ref_count) != 1)
-		return 0;
 
 	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(&larb->smi);
@@ -3697,13 +3755,23 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 	/* Configure the basic setting for this larb */
 	larb_gen->config_port(dev);
 
+	smi_pd_ctrl_notify_on(larb->pd_id);
+	if (!readl_relaxed(larb->base + SMI_LARB_SW_FLAG)) {
+		dev_notice(dev, "write dummy fail\n");
+		smi_ut_result |= 1;
+	}
+
 	/* check rpm resume spend time */
 	rs_end = ktime_get();
 	if (ktime_ms_delta(rs_end, rs_start) > timeout)
 		dev_notice(dev, "%s:timeout! total_spend_time=%lld ms, clk_spend_time=%lld ms\n",
 					__func__, ktime_ms_delta(rs_end, rs_start),
 					ktime_ms_delta(clk_end, clk_start));
-
+out:
+	atomic_inc(&larb->smi.ref_count);
+	if (log_level & 1 << log_config_bit)
+		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
+			larb->larbid, atomic_read(&larb->smi.ref_count));
 	return 0;
 }
 
@@ -3918,6 +3986,11 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
 
 	atomic_dec(&larb->smi.ref_count);
+	if (log_level & 1 << log_config_bit)
+		pr_info("[SMI]larb:%d callback put ref_count:%d\n",
+			larb->larbid, atomic_read(&larb->smi.ref_count));
+	if (atomic_read(&larb->smi.ref_count) > 0)
+		return 0;
 	if (larb->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
 			dev_notice(dev, "[SMI]%s: larb%d skip rpm callback\n",
@@ -3925,17 +3998,8 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 		return 0;
 	}
 
-	if (log_level & 1 << log_config_bit)
-		pr_info("[SMI]larb:%d callback put ref_count:%d\n",
-			larb->larbid, atomic_read(&larb->smi.ref_count));
 	SMI_MME_INFO("larb:%d is to disable clk in callback put new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
-	if (atomic_read(&larb->smi.ref_count) != 0)
-		return 0;
-	if (atomic_read(&larb->smi.ref_count)) {
-		dev_notice(dev, "Error: larb(%d) ref count=%d on suspend\n",
-			larb->larbid, atomic_read(&larb->smi.ref_count));
-	}
 
 	if (!larb->skip_busy_check
 		&& (readl_relaxed(larb->base + SMI_LARB_STAT) ||
@@ -3947,9 +4011,12 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	if (larb_gen->sleep_ctrl)
 		larb_gen->sleep_ctrl(dev, true);
 
+	smi_pd_ctrl_notify_off(larb->pd_id);
+
 	mtk_smi_clk_disable(&larb->smi);
 	SMI_MME_INFO("larb:%d has disabled clk in callback put new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
+
 	return 0;
 }
 
@@ -5117,6 +5184,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	const char *name;
 	int i = 0, ret;
 	u32 flags, is_pwr_decp;
+	bool no_pm_runtime = false;
 
 	is_mpu_violation(dev, true);
 	common = devm_kzalloc(dev, sizeof(*common), GFP_KERNEL);
@@ -5182,6 +5250,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			}
 			flags = is_pwr_decp ?
 				DL_FLAG_STATELESS : (DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+			common->smi_common_dev[i] = is_pwr_decp ? NULL : (&smi_pdev->dev);
 			link = device_link_add(dev, &smi_pdev->dev, flags);
 			if (!link) {
 				dev_notice(dev,
@@ -5195,9 +5264,16 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	}
 
 	of_property_read_u32(dev->of_node, "mediatek,common-id", &common->commid);
+	of_property_read_u32(dev->of_node, "mediatek,pd-id", &common->pd_id);
 
 	if (of_property_read_bool(dev->of_node, "power-domains"))
 		pm_runtime_enable(dev);
+	else {
+		no_pm_runtime = true;
+		mutex_init(&common->pd_lock);
+		smi_pd_ctrl_work_init();
+		INIT_WORK(&common->pd_work, smi_pd_ctrl_work);
+	}
 
 	platform_set_drvdata(pdev, common);
 
@@ -5210,10 +5286,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
 		common->skip_rpm_cb = true;
 
-	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
-		common->skip_rpm_cb = true;
-
-	if (of_property_read_bool(dev->of_node, "init-power-on")) {
+	if (of_property_read_bool(dev->of_node, "init-power-on") && !no_pm_runtime) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
 		if (ret < 0) {
@@ -5256,21 +5329,17 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 	ktime_t rs_start, rs_end;
 	ktime_t clk_start, clk_end;
 
-	rs_start = ktime_get();
-	atomic_inc(&common->ref_count);
+	if (atomic_read(&common->ref_count) > 1)
+		goto out;
 	if (common->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
 			dev_notice(dev, "[SMI]%s: common%d skip rpm callback\n",
 						__func__, common->commid);
-		return 0;
+		goto out;
 	}
-	if (log_level & 1 << log_config_bit)
-		pr_info("[SMI]comm:%d callback get ref_count:%d\n",
-			common->commid, atomic_read(&common->ref_count));
+	rs_start = ktime_get();
 	SMI_MME_INFO("common:%d is to enable clk in callback get old ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
-	if (atomic_read(&common->ref_count) != 1)
-		return 0;
 
 	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(common);
@@ -5313,12 +5382,23 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 			common->base + common->common_set_misc[i].offset);
 	wmb(); /* make sure settings are written */
 
+	smi_pd_ctrl_notify_on(common->pd_id);
+	if (!readl_relaxed(common->base + SMI_DUMMY)) {
+		dev_notice(dev, "write dummy fail\n");
+		smi_ut_result |= 1;
+	}
+
 	/* check rpm resume spend time */
 	rs_end = ktime_get();
 	if (ktime_ms_delta(rs_end, rs_start) > timeout)
 		dev_notice(dev, "%s:timeout! total_spend_time=%lld ms, clk_spend_time=%lld ms\n",
 					__func__, ktime_ms_delta(rs_end, rs_start),
 					ktime_ms_delta(clk_end, clk_start));
+out:
+	atomic_inc(&common->ref_count);
+	if (log_level & 1 << log_config_bit)
+		pr_info("[SMI]comm:%d callback get ref_count:%d\n",
+			common->commid, atomic_read(&common->ref_count));
 
 	return 0;
 }
@@ -5328,33 +5408,31 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 	struct mtk_smi *common = dev_get_drvdata(dev);
 
 	atomic_dec(&common->ref_count);
+	if (log_level & 1 << log_config_bit)
+		pr_info("[SMI]comm:%d callback put ref_count:%d\n",
+			common->commid, atomic_read(&common->ref_count));
+	if (atomic_read(&common->ref_count) > 0)
+		return 0;
 	if (common->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
 			dev_notice(dev, "[SMI]%s: common%d skip rpm callback\n",
 						__func__, common->commid);
 		return 0;
 	}
-	if (log_level & 1 << log_config_bit)
-		pr_info("[SMI]comm:%d callback put ref_count:%d\n",
-			common->commid, atomic_read(&common->ref_count));
 	SMI_MME_INFO("common:%d is to disable clk in callback put old ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
-	if (atomic_read(&common->ref_count) != 0)
-		return 0;
+
 
 	if (!common->skip_busy_check && !(readl_relaxed(common->base + SMI_DEBUG_MISC) & 0x1)) {
 		pr_notice("[SMI]common:%d suspend but busy\n", common->commid);
 		raw_notifier_call_chain(&smi_driver_notifier_list, common->commid, NULL);
 	}
 
+	smi_pd_ctrl_notify_off(common->pd_id);
+
 	mtk_smi_clk_disable(common);
 	SMI_MME_INFO("common:%d has disabled clk in callback put new ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
-
-	if (atomic_read(&common->ref_count)) {
-		dev_notice(dev, "Error: comm(%d) ref count=%d on suspend\n",
-			common->commid, atomic_read(&common->ref_count));
-	}
 
 	return 0;
 }
@@ -5365,85 +5443,135 @@ static const struct dev_pm_ops smi_common_pm_ops = {
 
 static int mtk_smi_bus_enable(struct device *dev, bool is_enable)
 {
-	struct device_link *link;
-	int val, ret = 0;
+	int i, val, ret = 0;
 	bool is_larb = of_device_is_compatible(dev->of_node, "mediatek,smi-larb");
+	struct mtk_smi_larb *larb = is_larb ? dev_get_drvdata(dev) : NULL;
+	struct mtk_smi *smi = is_larb ? &larb->smi : dev_get_drvdata(dev);
 
 	if (!is_enable) {
+		mutex_lock(&smi->pd_lock);
 		val = is_larb ? mtk_smi_larb_suspend(dev) : mtk_smi_common_suspend(dev);
 		if (val) {
 			dev_notice(dev, "Failed to enable:%d %s! val=%d\n",
 						is_enable, dev_name(dev), val);
 			ret = -1;
 		}
+		mutex_unlock(&smi->pd_lock);
 	}
-	list_for_each_entry(link, &dev->links.suppliers, c_node) {
-		if (!(link->flags & DL_FLAG_PM_RUNTIME))
+	for (i = 0; i < LARB_MAX_COMMON; i++) {
+		if (!smi->smi_common_dev[i])
 			continue;
-		val = mtk_smi_bus_enable(link->supplier, is_enable);
+		val = mtk_smi_bus_enable(smi->smi_common_dev[i], is_enable);
 		if (val)
 			ret = -1;
 	}
 	if (is_enable) {
+		mutex_lock(&smi->pd_lock);
 		val = is_larb ? mtk_smi_larb_resume(dev) : mtk_smi_common_resume(dev);
 		if (val) {
 			dev_notice(dev, "Failed to enable:%d %s! val=%d\n",
 						is_enable, dev_name(dev), val);
 			ret = -1;
 		}
+		mutex_unlock(&smi->pd_lock);
 	}
 
 	return ret;
 }
 
 /*
- * mtk_smi_larb_enable - smi larb enable interface for mt6991
+ * mtk_smi_larb_enable/disable - smi larb enable/disable interface for mt6991
  * @larbdev: smi larb device to enable.
- * @smi_user_id: ref to include/dt-bindings/memory/mtk-smi-user.h
  *
- * Returns 0 on success, -1 means fail to enable smi larb
- * appropriate error code otherwise.
+ * Returns 0 on success, appropriate error code otherwise.
  */
-int mtk_smi_larb_enable(struct device *larbdev, u32 smi_user_id)
+int mtk_smi_larb_enable(struct device *larbdev)
 {
-	struct mtk_smi_larb *larb;
 	int ret;
 
 	if (unlikely(!larbdev))
 		return -EINVAL;
-	larb = dev_get_drvdata(larbdev);
 
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-	atomic_inc(&larb->user_ref_cnt[smi_user_id]);
+	if (log_level & 1 << log_config_bit)
+		pr_notice("%s: %s Enable\n", __func__, dev_name(larbdev));
+
 	ret = mtk_smi_bus_enable(larbdev, true);
 	if (ret) {
-		atomic_dec(&larb->user_ref_cnt[smi_user_id]);
 		mtk_smi_bus_enable(larbdev, false);
-		pr_notice("smi_user_id:%d Failed to enable %s! ret=%d\n",
-					smi_user_id, dev_name(larbdev), ret);
+		pr_notice("Failed to enable %s! ret=%d\n", dev_name(larbdev), ret);
 	}
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_enable);
 
-int mtk_smi_larb_disable(struct device *larbdev, u32 smi_user_id)
+int mtk_smi_larb_disable(struct device *larbdev)
 {
-	struct mtk_smi_larb *larb;
-
 	if (unlikely(!larbdev))
 		return -EINVAL;
-	larb = dev_get_drvdata(larbdev);
 
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-	atomic_dec(&larb->user_ref_cnt[smi_user_id]);
+	if (log_level & 1 << log_config_bit)
+		pr_notice("%s: %s Disable\n", __func__, dev_name(larbdev));
+
 	mtk_smi_bus_enable(larbdev, false);
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_disable);
+
+int mtk_smi_larb_ut_result(void)
+{
+	return smi_ut_result;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_larb_ut_result);
+
+static void smi_pd_ctrl_work(struct work_struct *work)
+{
+	struct mtk_smi	*smi = container_of(work, struct mtk_smi, pd_work);
+	struct device	*dev = smi->dev;
+	bool is_larb = of_device_is_compatible(dev->of_node, "mediatek,smi-larb");
+	int ret;
+
+	mutex_lock(&smi->pd_lock);
+	ret = is_larb ? mtk_smi_larb_suspend(dev) : mtk_smi_common_suspend(dev);
+	if (ret)
+		dev_notice(dev, "Failed to disable:%s! val=%d\n", dev_name(dev), ret);
+	mutex_unlock(&smi->pd_lock);
+}
+
+int mtk_smi_get_if_in_use(struct device *dev)
+{
+	int ret = 0;
+	bool is_larb = of_device_is_compatible(dev->of_node, "mediatek,smi-larb");
+	struct mtk_smi_larb *larb = is_larb ? dev_get_drvdata(dev) : NULL;
+	struct mtk_smi *smi = is_larb ? &larb->smi : dev_get_drvdata(dev);
+
+	if (unlikely(!dev))
+		return -EINVAL;
+
+	ret = atomic_inc_not_zero(&smi->ref_count);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_get_if_in_use);
+
+int mtk_smi_put_if_in_use(struct device *dev)
+{
+	bool is_larb = of_device_is_compatible(dev->of_node, "mediatek,smi-larb");
+	struct mtk_smi_larb *larb = is_larb ? dev_get_drvdata(dev) : NULL;
+	struct mtk_smi *smi = is_larb ? &larb->smi : dev_get_drvdata(dev);
+	int ret;
+
+	if (unlikely(!dev))
+		return -EINVAL;
+
+	ret = queue_work(smi_pd_ctrl_wq, &smi->pd_work);
+	if (ret < 0)
+		dev_notice(dev, "queue_work fail ret=%d\n", ret);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_put_if_in_use);
 
 int mtk_smi_set_ostdl_type(struct device *larbdev, u32 ostdl_type)
 {
@@ -5743,10 +5871,50 @@ static struct platform_driver mtk_smi_pd_driver = {
 	}
 };
 
+static const struct of_device_id mtk_smi_hwccf_of_ids[] = {
+	{
+		.compatible = "mediatek,smi-hwccf",
+	},
+	{}
+};
+
+#define VOTE_CELL_NUM		(6)
+static int mtk_smi_hwccf_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_smi_hwccf *smi_hwccf;
+	u32 i;
+
+	dev_notice(dev, "%s: start to probe\n", __func__);
+	smi_hwccf = devm_kzalloc(&pdev->dev, sizeof(*smi_hwccf), GFP_KERNEL);
+	if (!smi_hwccf)
+		return -ENOMEM;
+	gsmi_hwccf = smi_hwccf;
+
+	smi_hwccf->dev = dev;
+	smi_hwccf->active = true;
+
+	for (i = 0; i < MTK_SMI_SUBSYS_ID_NR_MAX; i++) {
+		atomic_set(&smi_hwccf->ref_cnt[i], 0);
+		RAW_INIT_NOTIFIER_HEAD(&smi_hwccf->nh[i]);
+	}
+
+	return 0;
+}
+
+static struct platform_driver mtk_smi_hwccf_driver = {
+	.probe	= mtk_smi_hwccf_probe,
+	.driver	= {
+		.name = "mtk-smi-hwccf",
+		.of_match_table = mtk_smi_hwccf_of_ids,
+	}
+};
+
 static struct platform_driver * const smidrivers[] = {
 	&mtk_smi_common_driver,
 	&mtk_smi_pd_driver,
 	&mtk_smi_larb_driver,
+	&mtk_smi_hwccf_driver,
 };
 
 static int __init mtk_smi_init(void)
@@ -5767,6 +5935,9 @@ MODULE_PARM_DESC(log_level, "smi log level");
 
 module_param(enable_perm_aee, uint, 0644);
 MODULE_PARM_DESC(enable_perm_aee, "enable_perm_aee");
+
+module_param(smi_ut_result, uint, 0644);
+MODULE_PARM_DESC(smi_ut_result, "smi ut result");
 
 MODULE_DESCRIPTION("MediaTek SMI driver");
 MODULE_LICENSE("GPL v2");

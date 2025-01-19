@@ -9,6 +9,7 @@
 #include <linux/bitops.h>
 #include <linux/device.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
+#include <dt-bindings/memory/mtk-smi-hwccf.h>
 
 struct mtk_smi_lock {
 	spinlock_t lock;
@@ -49,6 +50,8 @@ struct mtk_smi_larb_iommu {
 };
 int mtk_smi_driver_register_notifier(struct notifier_block *nb);
 int mtk_smi_driver_unregister_notifier(struct notifier_block *nb);
+int mtk_smi_pd_register_notifier(struct notifier_block *nb, u32 pd_id);
+int mtk_smi_pd_unregister_notifier(struct notifier_block *nb, u32 pd_id);
 void mtk_smi_common_bw_set(struct device *dev, const u32 port, const u32 val);
 void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write, const u32 val);
 void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val);
@@ -74,8 +77,11 @@ s32 mtk_smi_dbg_cg_status(void);
 void mtk_smi_check_comm_ref_cnt(struct device *dev);
 void mtk_smi_check_larb_ref_cnt(struct device *dev);
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis);
-int mtk_smi_larb_enable(struct device *larbdev, u32 smi_user_id);
-int mtk_smi_larb_disable(struct device *larbdev, u32 smi_user_id);
+int mtk_smi_larb_enable(struct device *larbdev);
+int mtk_smi_larb_disable(struct device *larbdev);
+int mtk_smi_get_if_in_use(struct device *dev);
+int mtk_smi_put_if_in_use(struct device *dev);
+int mtk_smi_larb_ut_result(void);
 s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port);
 int smi_ut_dump_get(const char *val, const struct kernel_param *kp);
 int mtk_smi_set_ostdl_type(struct device *larbdev, u32 ostdl_type);
@@ -93,6 +99,15 @@ static inline int mtk_smi_driver_register_notifier(struct notifier_block *nb)
 }
 
 static inline int mtk_smi_driver_unregister_notifier(struct notifier_block *nb)
+{
+	return 0;
+}
+
+static inline int mtk_smi_pd_register_notifier(struct notifier_block *nb, u32 pd_id)
+{
+	return 0;
+}
+static inline int mtk_smi_pd_unregister_notifier(struct notifier_block *nb, u32 pd_id)
 {
 	return 0;
 }
@@ -160,12 +175,29 @@ s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 }
 
 static inline
-int mtk_smi_larb_enable(struct device *larbdev, u32 smi_user_id)
+int mtk_smi_larb_enable(struct device *larbdev)
 {
 	return 0;
 }
 static inline
-int mtk_smi_larb_disable(struct device *larbdev, u32 smi_user_id)
+int mtk_smi_larb_disable(struct device *larbdev)
+{
+	return 0;
+}
+static inline
+int mtk_smi_get_if_in_use(struct device *dev)
+{
+	return 0;
+}
+
+static inline
+int mtk_smi_put_if_in_use(struct device *dev)
+{
+	return 0;
+}
+
+static inline
+int mtk_smi_larb_ut_result(void)
 {
 	return 0;
 }
