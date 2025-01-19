@@ -6197,8 +6197,6 @@
 		};
 	};
 
-};
-
 	drm_wv: drm_wv {
 		compatible = "mediatek,drm_wv";
 		status = "okay";
@@ -6207,6 +6205,7 @@
 	mtee_svp: mtee_svp {
 		compatible = "medaitek,svp";
 	};
+};
 
 &pio {
 	aud_clk_mosi_off: aud_clk_mosi_off {
