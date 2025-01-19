@@ -20,7 +20,6 @@ obj-$(CONFIG_ISE_TRUSTY) += ise_trusty/
 obj-$(CONFIG_MTK_ISE_LPM_SUPPORT) += ise_lpm/
 obj-$(CONFIG_MTK_SECURITY_SW_SUPPORT) += masp/
 obj-$(CONFIG_MTK_USB_TYPEC) += typec/
-obj-$(CONFIG_MTK_LOCKING_AEE) += locking/
 obj-$(CONFIG_MTK_CAMERA_ISP_SUPPORT) += cameraisp/
 obj-$(CONFIG_MTK_CAMERA_MEM_SUPPORT) += camera_mem/
 obj-$(CONFIG_MTK_CAM_TIMESYNC) += cam_timesync/

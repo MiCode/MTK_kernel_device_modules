@@ -410,6 +410,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irtx:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/locking:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/masp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:ddk_kconfigs".format(kernel_version),
@@ -998,6 +999,7 @@ mgk_64_kleaf_eng_device_modules = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_v1:cpuhvfs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/locking:locking_aee".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/selinux_warning:mtk_selinux_aee_warning".format(kernel_version),
 ]
 
@@ -1603,7 +1605,6 @@ mgk_64_platform_device_modules = {
 
 
 mgk_64_device_eng_modules = [
-    "drivers/misc/mediatek/locking/locking_aee.ko",
 ]
 
 mgk_64_platform_device_eng_modules = {
