@@ -32,6 +32,7 @@
 
 #include "../../misc/mediatek/smi/mtk-smi-dbg.h"
 #include "mtk-smmu-v3.h"
+#include "mtk-mmdebug-vcp.h"
 
 static u8 mmdvfs_clk_num;
 static struct mtk_mmdvfs_clk *mtk_mmdvfs_clks;
@@ -1799,6 +1800,15 @@ static int mmdvfs_vcp_init_thread(void *data)
 	mmup_ena = is_mmup_enable_ex();
 	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
 
+	while (!mmdebug_is_init_done()) {
+		if (++retry > 100) {
+			MMDVFS_ERR("mmdebug is not ready yet");
+			return -ETIMEDOUT;
+		}
+		ssleep(1);
+	}
+
+	retry = 0;
 	while (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_INIT)) {
 		if (++retry > 100) {
 			MMDVFS_ERR("vcp is not powered on yet");

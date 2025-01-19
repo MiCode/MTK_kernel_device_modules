@@ -40,4 +40,12 @@ struct mmdebug_ipi_data {
 	uint32_t base;
 };
 
+#if IS_ENABLED(CONFIG_MTK_MMDEBUG)
+bool mmdebug_is_init_done(void);
+int mtk_mmdebug_status_dump_register_notifier(struct notifier_block *nb);
+#else
+static inline bool mmdebug_is_init_done(void) { return 0; }
+static inline int mtk_mmdebug_status_dump_register_notifier(struct notifier_block *nb) { return 0; }
+#endif /* CONFIG_MTK_MMDEBUG */
+
 #endif /* __MMDEBUG_VCP_H */
