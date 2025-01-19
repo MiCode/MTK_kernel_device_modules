@@ -6,3 +6,4 @@ endif
 
 obj-$(CONFIG_MTK_PMSR) += v2/
 obj-$(CONFIG_MTK_PMSR) += v3/
+obj-$(CONFIG_MTK_PMSR) += v4/
