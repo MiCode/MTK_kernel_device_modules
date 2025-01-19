@@ -353,7 +353,9 @@ enum gear_uclamp_ret_type {
 };
 
 #define get_scaling_factor_convert_type(gear_idx) (BCORE2LCORE - (gear_idx))
-#define get_task_ipc_scaling_factor(p, gear) (&((struct mtk_task *) p->android_vendor_data1)->dpt_task)->perf_scaling_factor[get_scaling_factor_convert_type(gear)][CPU_COMPUTING_CYCLE_SCALING]
+#define get_task_ipc_scaling_factor(p, gear) (( \
+&((struct mtk_task *) android_task_vendor_data(p))->dpt_task \
+)->perf_scaling_factor[get_scaling_factor_convert_type(gear)][CPU_COMPUTING_CYCLE_SCALING])
 #define FREQ_CEILING_RATIO_BIT 10
 
 extern unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsigned long min_util,
@@ -468,20 +470,20 @@ static inline unsigned long cpu_util_cfs_dpt_v2(struct rq *rq, int type)
 
 static inline int task_inv_scaling_dpt_v2(struct task_struct *p, int covert_type, int scaling_type)
 {
-	struct dpt_task_struct *dts = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	return READ_ONCE(dts->inv_perf_scaling_factor[covert_type][scaling_type]);
 }
 
 static inline int task_scaling_dpt_v2(struct task_struct *p, int covert_type, int scaling_type)
 {
-	struct dpt_task_struct *dts = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	return READ_ONCE(dts->perf_scaling_factor[covert_type][scaling_type]);
 }
 
 static inline unsigned long task_util_dpt_v2(struct task_struct *p, int type)
 {
-	struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	switch(type) {
 		case CPU_UTIL:
@@ -497,7 +499,7 @@ static inline unsigned long task_util_dpt_v2(struct task_struct *p, int type)
 
 static inline unsigned int _task_util_est_queue_dpt_v2(struct task_struct *p, int type)
 {
-	struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *util_task = &((struct mtk_task *)android_task_vendor_data(p))->dpt_task;
 
 	switch(type) {
 		case CPU_UTIL:
@@ -513,7 +515,7 @@ static inline unsigned int _task_util_est_queue_dpt_v2(struct task_struct *p, in
 
 static inline unsigned int _task_util_est_dpt_v2(struct task_struct *p, int type)
 {
-	struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	switch(type) {
 		case CPU_UTIL:

@@ -3587,7 +3587,7 @@ void mtk_update_load_avg_blocked_se(void *unused, u64 now, struct sched_entity *
 	{
 		p = task_of(se);
 		pid = task_pid_nr(p);
-		util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+		util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	}
 
 	if (mtk_update_load_sum(cpu, now, now, 0, 0,
@@ -3632,7 +3632,7 @@ void mtk_update_load_avg_se(void *unused, u64 now, struct cfs_rq *cfs_rq, struct
 	{
 		p = task_of(se);
 		pid = task_pid_nr(p);
-		util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+		util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	}
 
 	if (mtk_update_load_sum(cpu, now, now, 0, 0,
@@ -3814,7 +3814,7 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	rq = rq_of(cfs_rq);
 	cpu = cpu_of(rq);
 	p = task_of(se);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	dpt_rq = &per_cpu(__dpt_rq, cpu);
 	divider = get_pelt_divider(&rq->cfs.avg);
 
@@ -3859,7 +3859,7 @@ void mtk_detach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	rq = rq_of(cfs_rq);
 	cpu = cpu_of(rq);
 	p = task_of(se);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	dpt_rq = &per_cpu(__dpt_rq, cpu);
 
 	task_global_to_local_dpt_v2(cpu, p, &local_util_cpu_avg, &local_util_coef1_avg, &local_util_coef2_avg, NULL, NULL, NULL);
@@ -3899,7 +3899,7 @@ void mtk_enqueue_task_fair(void *unused, struct rq *rq, struct task_struct *p, i
 		return;
 
 	cpu = cpu_of(rq);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	util_cfs = &per_cpu(__dpt_rq, cpu).util_cfs;
 
 	if (trace_sched_enqueue_task_fair_enabled())
@@ -3944,7 +3944,7 @@ void mtk_dequeue_task_fair(void *unused, struct rq *rq, struct task_struct *p, i
 		return;
 
 	cpu = cpu_of(rq);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	util_cfs = &per_cpu(__dpt_rq, cpu).util_cfs;
 
 	if (trace_sched_dequeue_task_fair_enabled())
@@ -3983,7 +3983,7 @@ void mtk_remove_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	cpu = cpu_of(rq_of(cfs_rq));
 	dpt_rq = &per_cpu(__dpt_rq, cpu);
 	p = task_of(se);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	if (trace_sched_remove_entity_load_avg_enabled())
 		trace_sched_remove_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);
@@ -4017,7 +4017,7 @@ void sched_task_util_est_hook(void *data, struct sched_entity *se)
 		return;
 
 	p = container_of(se, struct task_struct, se);
-	util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	ewma_cpu = _task_util_est_dpt_v2(p, CPU_UTIL);
 	ewma_coef1 = _task_util_est_dpt_v2(p, COEF1_UTIL);

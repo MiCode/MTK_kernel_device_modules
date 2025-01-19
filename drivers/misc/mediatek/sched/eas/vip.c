@@ -1219,7 +1219,7 @@ void init_task_gear_hints(struct task_struct *p)
 
 void init_dpt_v2_task_struct(struct task_struct *p)
 {
-	struct dpt_task_struct *dts = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 	dts->util_cpu_sum = 0;
 	dts->util_coef2_sum = 0;

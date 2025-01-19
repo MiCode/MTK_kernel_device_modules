@@ -325,7 +325,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 		unsigned long cpu_scale, coef1_scale, coef2_scale;
 		unsigned long desired_cpu_avg, desired_coef1_avg, desired_coef2_avg;
 		dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
-		struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+		struct dpt_task_struct *util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
 		mtk_cpu_util_next_dpt_v2(cpu, NULL, -1, 0, &local_cpu_util, &local_coef1_util, &local_coef2_util);
 		coef1_scale = div_u64(local_coef1_util * dpt_rq->cur_ltime[S_COEF1], dpt_rq->min_ltime[S_COEF1]);

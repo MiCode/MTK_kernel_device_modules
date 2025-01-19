@@ -1144,7 +1144,7 @@ void __iomem *dpt_v2_cw_counter_addr[MAX_NR_CPUS];
 void record_task_scaling_factor(struct task_struct *prev, struct task_struct *next, int this_cpu)
 {
 	int c, s;
-	struct dpt_task_struct *dts = &((struct mtk_task *) prev->android_vendor_data1)->dpt_task;
+	struct dpt_task_struct *dts = &((struct mtk_task *) android_task_vendor_data(prev))->dpt_task;
 
 	if (unlikely(!dpt_v2_cw_counter_addr[0])) {
 		int __cpu;
