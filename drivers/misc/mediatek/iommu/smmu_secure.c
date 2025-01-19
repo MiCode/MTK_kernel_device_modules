@@ -30,6 +30,7 @@
 	((cmd_id) | (smmu_type << 8) | (sec << 11))
 
 enum smmu_atf_cmd {
+	SMMU_SECURE_WPCFG,
 	SMMU_SECURE_INIT,
 	SMMU_SECURE_IRQ_SETUP,
 	SMMU_SECURE_TF_HANDLE,
@@ -104,6 +105,20 @@ static int mtk_smmu_atf_call_res(uint32_t smmu_type, unsigned long cmd,
 
 	return res.a0;
 }
+
+int mtk_smmu_sec_wpcfg(u32 smmu_type)
+{
+	int ret;
+
+	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_WPCFG);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_sec_wpcfg);
 
 int mtk_smmu_sec_init(u32 smmu_type)
 {

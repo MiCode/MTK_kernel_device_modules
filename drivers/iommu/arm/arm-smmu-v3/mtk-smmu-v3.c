@@ -473,6 +473,23 @@ static bool mtk_delay_hw_init(struct arm_smmu_device *smmu)
 	return delay_hw_init;
 }
 
+static void smmu_sec_wpcfg(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
+	int ret = 0;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return;
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+	ret = mtk_smmu_sec_wpcfg(plat_data->smmu_type);
+	if (ret)
+		dev_info(smmu->dev, "[%s] smmu_%u ret:%d\n",
+			 __func__, plat_data->smmu_type, ret);
+#endif
+}
+
 static void smmu_stash_mode_cfg(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -969,6 +986,7 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	arm_smmu_init_sid_strtab(smmu, 0);
 	data->hw_init_flag = 1;
 
+	smmu_sec_wpcfg(smmu);
 	smmu_init_wpcfg(smmu);
 
 	smmu_mpam_register(smmu);
