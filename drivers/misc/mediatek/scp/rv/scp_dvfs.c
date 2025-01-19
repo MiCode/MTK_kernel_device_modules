@@ -1576,6 +1576,8 @@ static void __init set_ulposc_cali_value_ext(unsigned int cali_val)
 	ret = scp_reg_update(g_dvfs_dev.ulposc_hw.ulposc_regmap,
 		&g_dvfs_dev.ulposc_hw.ulposc_regs->_cali_ext,
 		cali_val);
+	if (ret)
+		pr_notice("%s %d\n", __func__, ret);
 
 	udelay(50);
 }
@@ -1587,6 +1589,8 @@ static void __init set_ulposc_cali_value(unsigned int cali_val)
 	ret = scp_reg_update(g_dvfs_dev.ulposc_hw.ulposc_regmap,
 		&g_dvfs_dev.ulposc_hw.ulposc_regs->_cali,
 		cali_val);
+	if (ret)
+		pr_notice("%s %d\n", __func__, ret);
 
 	udelay(50);
 }
