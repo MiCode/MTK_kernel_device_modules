@@ -702,6 +702,10 @@ static void vow_service_Init(void)
 	vowserv.tx_keyword_start = false;
 	/*Initialization*/
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	if (scp_get_reserve_mem_size(VOW_MEM_ID) == 0) {
+		VOWDRV_DEBUG("%s(): SCP is off, bypass vow service Init\n", __func__);
+		return;
+	}
 	vowserv.voicedata_scp_ptr =
 		(char *)(scp_get_reserve_mem_virt(VOW_MEM_ID))
 		+ VOW_VOICEDATA_OFFSET;
@@ -1133,6 +1137,10 @@ static bool vow_service_SetSpeakerModel(unsigned long arg)
 	if (vow_service_GetParameter(arg) != 0)
 		return false;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	if (scp_get_reserve_mem_size(VOW_MEM_ID) == 0) {
+		VOWDRV_DEBUG("%s(): SCP is off\n", __func__);
+		return false;
+	}
 	mutex_lock(&vow_sendspkmdl_mutex);
 	vowserv.vow_speaker_model[I].model_ptr =
 	   (void *)(scp_get_reserve_mem_virt(VOW_MEM_ID))
@@ -1201,6 +1209,11 @@ static bool vow_service_SetCustomModel(unsigned long arg)
 		p_info->return_size_addr,
 		p_info->data_addr);
 #endif
+		return false;
+	}
+
+	if (scp_get_reserve_mem_size(VOW_MEM_ID) == 0) {
+		VOWDRV_DEBUG("%s(): SCP is off\n", __func__);
 		return false;
 	}
 	p_virt = scp_get_reserve_mem_virt(VOW_MEM_ID);
@@ -2208,6 +2221,10 @@ static int vow_pcm_dump_set(bool enable)
 		     vowserv.dump_pcm_flag,
 		     (unsigned int)enable);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	if (scp_get_reserve_mem_size(VOW_MEM_ID) == 0) {
+		VOWDRV_DEBUG("%s(): SCP is off\n", __func__);
+		return false;
+	}
 	vow_dump_info[DUMP_BARGEIN].vir_addr =
 	    (char *)(scp_get_reserve_mem_virt(VOW_BARGEIN_MEM_ID))
 	    + VOW_BARGEIN_AFE_MEMIF_MAX_SIZE
