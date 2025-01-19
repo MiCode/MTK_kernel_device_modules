@@ -68,6 +68,7 @@ extern void *extmem_malloc_page_align(size_t bytes);
 enum mtk_btag_io_type {
 	BTAG_IO_READ = 0,
 	BTAG_IO_WRITE,
+	BTAG_IO_FUSE,
 	BTAG_IO_TYPE_NR,
 	BTAG_IO_UNKNOWN
 };
@@ -147,7 +148,6 @@ struct mtk_btag_mictx {
 	bool full_logging;
 };
 
-#define EARAIO_EARLY_NOTIFY
 #define THRESHOLD_MAX	0x7fffffff
 
 #define EARAIO_BOOST_ENTRY_LEN 8
@@ -175,12 +175,12 @@ struct mtk_btag_earaio_control {
 	wait_queue_head_t msg_readable;
 
 	int earaio_boost_state;
-#ifdef EARAIO_EARLY_NOTIFY
 	int rand_req_cnt;
 	int rand_rw_threshold;
 	int seq_r_threshold; /* in # of pages */
 	int seq_w_threshold; /* in # of pages */
-#endif
+	int fuse_threshold;
+	int fuse_unlink_threshold;
 };
 
 struct mtk_btag_vmstat {
@@ -262,6 +262,21 @@ struct mtk_btag_vops {
 		const char __user *ubuf, size_t count);
 	bool    boot_device;
 	bool    earaio_enabled;
+};
+
+struct eara_iostat {
+	int io_wl;
+	int io_top;
+	int io_reqc_r;
+	int io_reqc_w;
+	int io_q_dept;
+	int io_reqsz_top_r;
+	int io_reqsz_top_w;
+	int io_reqc_rand;
+	int fuse_req_cnt;
+	int fuse_unlink_cnt;
+	unsigned short hot_pid;
+	unsigned short hot_tgid;
 };
 
 struct mtk_blocktag *mtk_btag_find_by_type(
