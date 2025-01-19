@@ -5024,7 +5024,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	check_layering_result(&layering_info);
 
 	/* adjust scenario after dispatch gles range */
-	if (priv && (priv->data->mmsys_id == MMSYS_MT6768 ||
+	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885)) {
 		scale_num = get_scale_cnt(&layering_info);
