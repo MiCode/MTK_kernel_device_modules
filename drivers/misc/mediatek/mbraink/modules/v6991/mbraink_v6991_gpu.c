@@ -5,12 +5,14 @@
 
 #include <linux/module.h>
 #include <linux/vmalloc.h>
+#include <linux/sched/clock.h>
+#include <linux/smp.h>
+#include <linux/preempt.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6991_gpu.h"
 
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
-#include <fpsgo_common.h>
-#include <fstb.h>
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V8)
+#include <fpsgo_frame_info.h>
 #endif
 
 #include <ged_dvfs.h>
@@ -162,12 +164,39 @@ static ssize_t mbraink_v6991_gpu_getTimeoutCouterReport(char *pBuf)
 	return size;
 }
 
-void fpsgo2mbrain_hint_frameinfo(int pid, unsigned long long bufID,
-	int fps, unsigned long long time)
+static unsigned long long fpsgo_get_time(void)
+{
+	unsigned long long temp;
+
+	preempt_disable();
+	temp = cpu_clock(smp_processor_id());
+	preempt_enable();
+
+	return temp;
+}
+
+void fpsgo2mbrain_hint_frameinfo(unsigned long cmd, struct render_frame_info *iter)
 {
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
 	int n = 0;
 	int pos = 0;
+	int pid = 0;
+	unsigned long long bufID = 0;
+	unsigned long long time = 0;
+
+	if (iter == NULL) {
+		pr_info("q2q is null pointer\n");
+		return;
+	}
+
+	if ((cmd & (1 << GET_FPSGO_Q2Q_TIME)) == 0) {
+		pr_info("q2q cmd is not support (0x%lx)\n", cmd);
+		return;
+	}
+
+	pid = iter->pid;
+	bufID = iter->buffer_id;
+	time = iter->q2q_time;
 
 	if (time > Q2QTIMEOUT_HIST)
 		calculateTimeoutCouter(time);
@@ -289,27 +318,47 @@ static void sendPerfLowoutEvent(struct mbraink_gpu_perfidx_info *iter, int opMod
 	mbraink_netlink_send_msg(netlink_buf);
 }
 
-void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
-	int perf_idx, int sbe_ctrl, unsigned long long ts)
+void fpsgo2mbrain_hint_perfinfo(unsigned long cmd, struct render_frame_info *iter)
 {
-	struct mbraink_gpu_perfidx_info *iter = NULL;
-	struct mbraink_gpu_perfidx_info *iter2 = NULL;
+	struct mbraink_gpu_perfidx_info *PerfIdxIter = NULL;
+	struct mbraink_gpu_perfidx_info *PerfIdxIter2 = NULL;
 	int currentIdx = 0;
 	int opMode = 0;
 	bool bPass = false;
+	int pid = 0;
+	unsigned long long bufID = 0;
+	int perf_idx = 0;
+	int sbe_ctrl = 0;
+	unsigned long long ts = 0;
+
+	if (iter == NULL) {
+		pr_info("perf notify is null pointer\n");
+		return;
+	}
+
+	if ((cmd & (1 << GET_FPSGO_PERF_IDX)) == 0) {
+		pr_info("perf notify cmd is not support (0x%lx)\n", cmd);
+		return;
+	}
+
+
+	pid = iter->pid;
+	bufID = iter->buffer_id;
+	perf_idx = iter->blc;
+	ts = fpsgo_get_time();
 
 	opMode = (sbe_ctrl > 0) ? mbraink_op_mode_sbe : mbraink_v6991_gpu_getOpMode();
 
 	mutex_lock(&mbk_g_perfidx_lock);
 
-	hlist_for_each_entry(iter, &mbk_g_perfidx_list, hlist) {
-		if (iter->pid == pid && (iter->bufid == bufID ||
-				iter->bufid == 0))
+	hlist_for_each_entry(PerfIdxIter, &mbk_g_perfidx_list, hlist) {
+		if (PerfIdxIter->pid == pid && (PerfIdxIter->bufid == bufID ||
+				PerfIdxIter->bufid == 0))
 			break;
 	}
 
 	//add a new one.
-	if (iter == NULL) {
+	if (PerfIdxIter == NULL) {
 		struct mbraink_gpu_perfidx_info *new_perfidx_info = NULL;
 
 		new_perfidx_info = vmalloc(sizeof(struct mbraink_gpu_perfidx_info));
@@ -327,44 +376,44 @@ void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 		new_perfidx_info->ts[0] = ts;
 		new_perfidx_info->current_perf_idx = perf_idx;
 
-		iter = new_perfidx_info;
-		hlist_add_head(&iter->hlist, &mbk_g_perfidx_list);
+		PerfIdxIter = new_perfidx_info;
+		hlist_add_head(&PerfIdxIter->hlist, &mbk_g_perfidx_list);
 	}
 
-	if (iter->bufid == 0)
-		iter->bufid = bufID;
+	if (PerfIdxIter->bufid == 0)
+		PerfIdxIter->bufid = bufID;
 
 	//update info.
-	currentIdx = (iter->currentIdx > PERFINDEX_BUF-1) ? 0 : iter->currentIdx;
-	iter->perf_idx[currentIdx] = perf_idx;
-	iter->ts[currentIdx] = ts;
-	iter->sbe_ctrl[currentIdx] = sbe_ctrl;
-	iter->currentIdx = (currentIdx > PERFINDEX_BUF-2) ? 0 : currentIdx+1;
-	iter->current_perf_idx = perf_idx;
+	currentIdx = (PerfIdxIter->currentIdx > PERFINDEX_BUF-1) ? 0 : PerfIdxIter->currentIdx;
+	PerfIdxIter->perf_idx[currentIdx] = perf_idx;
+	PerfIdxIter->ts[currentIdx] = ts;
+	PerfIdxIter->sbe_ctrl[currentIdx] = sbe_ctrl;
+	PerfIdxIter->currentIdx = (currentIdx > PERFINDEX_BUF-2) ? 0 : currentIdx+1;
+	PerfIdxIter->current_perf_idx = perf_idx;
 
 	//process logic here.
 	if (perf_idx >= gperfIdxLimit) {
-		if (iter->err_counter != 0) {
-			iter->err_counter++;
-			if ((ts - iter->err_ts) > gperfIdxTimeoutInNs) {
-				sendPerfTimeoutEvent(iter);
+		if (PerfIdxIter->err_counter != 0) {
+			PerfIdxIter->err_counter++;
+			if ((ts - PerfIdxIter->err_ts) > gperfIdxTimeoutInNs) {
+				sendPerfTimeoutEvent(PerfIdxIter);
 				//reset
-				iter->err_counter = 0;
-				iter->err_ts = 0;
+				PerfIdxIter->err_counter = 0;
+				PerfIdxIter->err_ts = 0;
 			}
 		} else {
-			iter->err_ts = ts;
-			iter->err_counter++;
+			PerfIdxIter->err_ts = ts;
+			PerfIdxIter->err_counter++;
 		}
 	} else {
-		iter->err_counter = 0;
-		iter->err_ts = 0;
+		PerfIdxIter->err_counter = 0;
+		PerfIdxIter->err_ts = 0;
 	}
 
 	//check if all perf indx = 0
 	if (opMode != mbraink_op_mode_normal) {
-		hlist_for_each_entry(iter2, &mbk_g_perfidx_list, hlist) {
-			if (iter2->current_perf_idx > 0) {
+		hlist_for_each_entry(PerfIdxIter2, &mbk_g_perfidx_list, hlist) {
+			if (PerfIdxIter2->current_perf_idx > 0) {
 				bPass = true;
 				break;
 			}
@@ -377,7 +426,7 @@ void fpsgo2mbrain_hint_perfinfo(int pid, unsigned long long bufID,
 
 		if (gPerfLoAlarmCount >= PERFINDEX_LO_ALARM_COUNT) {
 			gPerfLoAlarmCount = 0;
-			sendPerfLowoutEvent(iter, opMode);
+			sendPerfLowoutEvent(PerfIdxIter, opMode);
 		}
 	}
 
@@ -386,16 +435,30 @@ out:
 
 }
 
-void fpsgo2mbrain_hint_deleteperfinfo(int pid, unsigned long long bufID,
-	int perf_idx, int sbe_ctrl, unsigned long long ts)
+void fpsgo2mbrain_hint_deleteperfinfo(unsigned long cmd, struct render_frame_info *iter)
 {
-	struct mbraink_gpu_perfidx_info *iter = NULL;
+	struct mbraink_gpu_perfidx_info *PerfIndxIter = NULL;
+	int pid = 0;
+	unsigned long long bufID = 0;
+
+	if (iter == NULL) {
+		pr_info("perf notify is null pointer\n");
+		return;
+	}
+
+	if ((cmd & (1 << GET_FPSGO_DELETE_INFO)) == 0) {
+		pr_info("perf notify cmd is not support (0x%lx)\n", cmd);
+		return;
+	}
+
+	pid = iter->pid;
+	bufID = iter->buffer_id;
 
 	mutex_lock(&mbk_g_perfidx_lock);
-	hlist_for_each_entry(iter, &mbk_g_perfidx_list, hlist) {
-		if ((iter->pid == pid) && (iter->bufid == bufID)) {
-			hlist_del(&iter->hlist);
-			vfree(iter);
+	hlist_for_each_entry(PerfIndxIter, &mbk_g_perfidx_list, hlist) {
+		if ((PerfIndxIter->pid == pid) && (PerfIndxIter->bufid == bufID)) {
+			hlist_del(&PerfIndxIter->hlist);
+			vfree(PerfIndxIter);
 			break;
 		}
 	}
@@ -523,14 +586,14 @@ void gpu2mbrain_hint_GpuResetDoneNotify(unsigned long long time)
 static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 {
 	if (bEnable == true) {
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
-		fpsgo_other2fstb_register_info_callback(FPSGO_Q2Q_TIME,
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
+		register_fpsgo_frame_info_callback(1 << GET_FPSGO_Q2Q_TIME,
 			fpsgo2mbrain_hint_frameinfo);
 
-		fpsgo_other2fstb_register_perf_callback(FPSGO_PERF_IDX,
+		register_fpsgo_frame_info_callback(1 << GET_FPSGO_PERF_IDX,
 			fpsgo2mbrain_hint_perfinfo);
 
-		fpsgo_other2fstb_register_perf_callback(FPSGO_DELETE,
+		register_fpsgo_frame_info_callback(1 << GET_FPSGO_DELETE_INFO,
 			fpsgo2mbrain_hint_deleteperfinfo);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
@@ -541,15 +604,12 @@ static int mbraink_v6991_gpu_setFeatureEnable(bool bEnable)
 		gPerfLoAlarmCount = 0;
 #endif
 	} else {
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
-		fpsgo_other2fstb_unregister_info_callback(FPSGO_Q2Q_TIME,
-			fpsgo2mbrain_hint_frameinfo);
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
+		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_frameinfo);
 
-		fpsgo_other2fstb_unregister_perf_callback(FPSGO_PERF_IDX,
-			fpsgo2mbrain_hint_perfinfo);
+		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_perfinfo);
 
-		fpsgo_other2fstb_unregister_perf_callback(FPSGO_DELETE,
-			fpsgo2mbrain_hint_deleteperfinfo);
+		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_deleteperfinfo);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
