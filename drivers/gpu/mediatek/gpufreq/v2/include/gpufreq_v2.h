@@ -388,10 +388,13 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int hbvc_volt_ctrl_support;
 	unsigned int hbvc_preoc_support;
 	unsigned int hbvc_preoc_mode;
+	unsigned int hbvc_preuvlo_support;
+	unsigned int hbvc_preuvlo_mode;
 	unsigned int hbvc_vgpu_upper_bound;
 	unsigned int hbvc_vgpu_lower_bound;
 	unsigned int hbvc_vstack_upper_bound;
 	unsigned int hbvc_vstack_lower_bound;
+	unsigned int prbc_mode;
 	unsigned int brisket_fll_mode;
 	enum gpufreq_brisket_mode brisket_atmc_mode;
 	enum gpufreq_brisket_mode brisket_vmeter_mode;
@@ -407,6 +410,7 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int ses_stack_mode;
 	unsigned int ses_scheduler_support;
 	unsigned int ses_scheduler_mode;
+	unsigned int volt_tracker_mode;
 };
 
 struct gpu_ptp3_info {
@@ -527,6 +531,7 @@ struct gpufreq_shared_status {
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
 	unsigned int power_tracker_mode;
+	unsigned int freq_tracker_mode;
 	unsigned long long profile_time[PROF_TYPE_NUM][PROF_IDX_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
