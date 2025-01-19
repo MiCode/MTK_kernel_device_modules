@@ -1693,8 +1693,10 @@ void fbt_del_ux(struct render_info *info)
 	}
 	//reset sbe tag when render del
 	fpsgo_systrace_c_fbt(info->pid, 0, 0, "sbe_set_ctrl");
-
 	list_del(&(info->scroll_list));
+
+	//delete ux_frame_info
+	fpsgo_ux_reset(info);
 }
 
 #if IS_ENABLED(CONFIG_ARM64)
