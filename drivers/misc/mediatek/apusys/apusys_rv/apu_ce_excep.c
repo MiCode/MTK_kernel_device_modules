@@ -451,22 +451,19 @@ void apu_ce_stop_timer_dump_reg(void)
 
 void apu_ce_timer_dump_reg_init(void)
 {
-	char wq_name[] = "apusys_ce_timer";
-
 	/* init delay worker for power off detection */
 	INIT_DELAYED_WORK(&timeout_work, apu_ce_timer_dump_reg);
-	apu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
+	apu_workq = alloc_ordered_workqueue("apusys_ce_timer", WQ_MEM_RECLAIM);
 }
 
 void apu_ce_timer_dump_reg(struct work_struct *work)
 {
 	if (ce_apu != NULL) {
 		struct device *dev = ce_apu->dev;
-		uint32_t ret =0;
 
 		dev_info(dev, "%s +\n", __func__);
 
-		ret = apusys_rv_smc_call(dev,
+		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
 			(unsigned int)exception_job_id, 0, NULL, NULL, NULL);
 	}

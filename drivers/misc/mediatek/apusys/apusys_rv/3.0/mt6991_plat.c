@@ -361,18 +361,16 @@ static void mt6991_apu_pwr_wake_lock(struct mtk_apu *apu, uint32_t id)
 {
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	unsigned long flags;
-	uint32_t wake_lock_ref_cnt_local;
 
 	spin_lock_irqsave(&apu->wakelock_spinlock, flags);
 	apu->ipi_wake_lock_ref_cnt[id]++;
 	apu->wake_lock_ref_cnt++;
 	if (apu->wake_lock_ref_cnt == 1)
 		__pm_stay_awake(ws);
-	wake_lock_ref_cnt_local = apu->wake_lock_ref_cnt;
 	spin_unlock_irqrestore(&apu->wakelock_spinlock, flags);
 	/* remove to reduce log
 	 * dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
-	 *	__func__, id, wake_lock_ref_cnt_local);
+	 *	__func__, id, apu->wake_lock_ref_cnt);
 	 */
 #endif
 }
@@ -381,18 +379,16 @@ static void mt6991_apu_pwr_wake_unlock(struct mtk_apu *apu, uint32_t id)
 {
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	unsigned long flags;
-	uint32_t wake_lock_ref_cnt_local;
 
 	spin_lock_irqsave(&apu->wakelock_spinlock, flags);
 	apu->ipi_wake_lock_ref_cnt[id]--;
 	apu->wake_lock_ref_cnt--;
 	if (apu->wake_lock_ref_cnt == 0)
 		__pm_relax(ws);
-	wake_lock_ref_cnt_local = apu->wake_lock_ref_cnt;
 	spin_unlock_irqrestore(&apu->wakelock_spinlock, flags);
 	/* remove to reduce log
 	 * dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
-	 *	__func__, id, wake_lock_ref_cnt_local);
+	 *	__func__, id, apu->wake_lock_ref_cnt);
 	 */
 #endif
 }
@@ -1240,12 +1236,10 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 
 static int mt6991_apu_power_init(struct mtk_apu *apu)
 {
-	char wq_name[] = "apusys_rv_pwr";
-
 	/* init delay worker for power off detection */
 	INIT_DELAYED_WORK(&timeout_work, apu_timeout_work);
 	INIT_DELAYED_WORK(&apu_polling_on_work, &apu_polling_on_work_func);
-	apu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
+	apu_workq = alloc_ordered_workqueue("apusys_rv_pwr", WQ_MEM_RECLAIM);
 	g_apu = apu;
 
 	return 0;
