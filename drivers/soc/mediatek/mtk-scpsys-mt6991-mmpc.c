@@ -1297,7 +1297,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 24,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DIS0_DORMANT] = {
 		.name = "dis0-dormant",
@@ -1309,7 +1309,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 25,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DIS1_DORMANT] = {
 		.name = "dis1-dormant",
@@ -1321,7 +1321,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 26,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_OVL0_DORMANT] = {
 		.name = "ovl0-dormant",
@@ -1333,7 +1333,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 27,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_OVL1_DORMANT] = {
 		.name = "ovl1-dormant",
@@ -1345,7 +1345,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 28,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT] = {
 		.name = "disp-edptx-dormant",
@@ -1357,7 +1357,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 29,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT] = {
 		.name = "disp-dptx-dormant",
@@ -1369,7 +1369,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 30,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MML0_SHUTDOWN] = {
 		.name = "mml0-shutdown",
@@ -1467,7 +1467,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x1474,
 		.hwv_clr_sta_ofs = 0x1478,
 		.hwv_shift = 7,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DSI_PHY1] = {
 		.name = "dsi-phy1",
@@ -1525,12 +1525,6 @@ static const struct scp_subdomain scp_subdomain_mt6991_mmpc_swrgo[] = {
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_EIS},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_TNR},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_LITE},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DIS0_DORMANT},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DIS1_DORMANT},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_OVL0_DORMANT},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_OVL1_DORMANT},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML0_SHUTDOWN},
 	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML1_SHUTDOWN},
 };
