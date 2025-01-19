@@ -1,4 +1,4 @@
-load("//kernel_device_modules-mainline:kernel/kleaf/mgk_modules.bzl",
+load("//kernel_device_modules-6.12:kernel/kleaf/mgk_modules.bzl",
      "mgk_module_outs",
      "mgk_module_eng_outs",
      "mgk_module_userdebug_outs",
@@ -13,7 +13,7 @@ load("@mgk_info//:kernel_version.bzl",
      "kernel_version",
 )
 
-mgk_64_defconfig = "mgk_64_kmainline_defconfig"
+mgk_64_defconfig = "mgk_64_k612_defconfig"
 
 mgk_64_kleaf_modules = [
     # keep sorted
