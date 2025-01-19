@@ -25,6 +25,7 @@
 	#define CPU_INTEN				BIT(0)
 	#define SCP_INTEN				BIT(1)
 	#define CPU_INT_MERGE			BIT(4)
+	#define MODULE_INT_MERGE		BIT(5)	// mt6993
 #define DISP_REG_VDISP_AO_MERGED_IRQB_STS	(0x0004)
 #define DISP_REG_VDISP_AO_SELECTED_IRQB_STS	(0x0008)
 #define DISP_REG_VDISP_AO_TOP_IRQB_STS		(0x000C)
@@ -102,41 +103,44 @@
 #define IRQ_TABLE_DISP_AAL0_MT6991             (7)     //475
 
 /* mt6993 */
-#define DISP_REG_VDISP_AO_INT_SEL_G0_MT6993	0x014	//GIC:555
-#define DISP_REG_VDISP_AO_INT_SEL_G1_MT6993	0x018	//GIC:556
-#define DISP_REG_VDISP_AO_INT_SEL_G2_MT6993	0x01C	//GIC:557
-#define DISP_REG_VDISP_AO_INT_SEL_G3_MT6993	0x020	//GIC:558
-#define DISP_REG_VDISP_AO_INT_SEL_G4_MT6993	0x024	//GIC:559
-#define DISP_REG_VDISP_AO_INT_SEL_G5_MT6993	0x028	//GIC:560
-#define DISP_REG_VDISP_AO_INT_SEL_G6_MT6993	0x02C	//GIC:561
+#define DISP_REG_VDISP_AO_INT_SEL_G0_MT6993	0x014
+#define DISP_REG_VDISP_AO_INT_SEL_G1_MT6993	0x018
+#define DISP_REG_VDISP_AO_INT_SEL_G2_MT6993	0x01C
+#define DISP_REG_VDISP_AO_INT_SEL_G3_MT6993	0x020
+#define DISP_REG_VDISP_AO_INT_SEL_G4_MT6993	0x024
+#define DISP_REG_VDISP_AO_INT_SEL_G5_MT6993	0x028
+#define DISP_REG_VDISP_AO_INT_SEL_G6_MT6993	0x02C
 
 #define CPU_INTSEL_BIT_MT6993_L		REG_FLD_MSB_LSB(8, 0)
 #define CPU_INTSEL_BIT_MT6993_H		REG_FLD_MSB_LSB(24, 16)
 
-#define IRQ_TABLE_DISP_DISP1_DSI0_MT6993	257  //555
-#define IRQ_TABLE_DISP_DISP1_MUTEX_MT6993	256  //556
-#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	288  //557
+#define IRQ_TABLE_DISP_DISP1_DSI0_MT6993	257
+#define IRQ_TABLE_DISP_DISP1_MUTEX_MT6993	256
+#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	288
 
 static void __iomem *vdisp_ao_base;
+
+struct vdisp_ao_data {
+	int ao_int_config;
+};
 
 struct mtk_vdisp_ao {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
+	const struct vdisp_ao_data *data;
+};
+
+static const struct vdisp_ao_data vdisp_ao_data_mt6991 = {
+	.ao_int_config = 1,		//	CPU_INT:1
+};
+
+static const struct vdisp_ao_data vdisp_ao_data_mt6993 = {
+	.ao_int_config = 33,	// CPU_INT:1, MODULE_INIT_MODE:1
 };
 
 static inline struct mtk_vdisp_ao *comp_to_vdisp_ao(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_vdisp_ao, ddp_comp);
-}
-
-static void mtk_vdisp_ao_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-
-}
-
-static void mtk_vdisp_ao_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-
 }
 
 void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp)
@@ -183,8 +187,8 @@ static void mtk_vdisp_ao_unprepare(struct mtk_ddp_comp *comp)
 }
 
 static const struct mtk_ddp_comp_funcs mtk_vdisp_ao_funcs = {
-	.start = mtk_vdisp_ao_start,
-	.stop = mtk_vdisp_ao_stop,
+	//.start = mtk_vdisp_ao_start,
+	//.stop = mtk_vdisp_ao_stop,
 	.prepare = mtk_vdisp_ao_prepare,
 	.unprepare = mtk_vdisp_ao_unprepare,
 };
@@ -333,10 +337,8 @@ static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	//SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_WDMA1_MT6993, CPU_INTSEL_BIT_MT6993_L);
 	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_DSI0_MT6993, CPU_INTSEL_BIT_MT6993_L);
 	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_MUTEX_MT6993, CPU_INTSEL_BIT_MT6993_H);
-	//SET_VAL_MASK(value, mask, 0x0, CPU_INTSEL_BIT_MT6993_H);
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G0_MT6993);
 
@@ -346,7 +348,7 @@ static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 {
 	DDPINFO("%s:%d\n", __func__, __LINE__);
-	writel(1, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);	// disable merge irq
+
 	mtk_vdisp_ao_int_sel_g0_MT6993();
 }
 
@@ -355,6 +357,7 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_vdisp_ao *priv;
 	enum mtk_ddp_comp_id comp_id;
+	const struct vdisp_ao_data *ao_data;
 	int ret;
 
 	DDPFUNC("+");
@@ -367,6 +370,11 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
 		return comp_id;
 	}
+	ao_data = (const struct vdisp_ao_data *)of_device_get_match_data(dev);
+	if (!ao_data)
+		ao_data = &vdisp_ao_data_mt6991;
+
+	priv->data = ao_data;
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_vdisp_ao_funcs);
@@ -378,7 +386,7 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 
-	writel(1, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);	// disable merge irq
+	writel(ao_data->ao_int_config, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
@@ -402,7 +410,8 @@ static void mtk_vdisp_ao_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_ao_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-vdisp-ao", },
-	{.compatible = "mediatek,mt6993-vdisp-ao", },
+	{.compatible = "mediatek,mt6993-vdisp-ao",
+	 .data = (void *)&vdisp_ao_data_mt6993,},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_ao_driver_dt_match);
