@@ -9,7 +9,7 @@
 //=====================================================
 //SMMU wrapper all register definition
 //=====================================================
-#define SMMU_TBU_REG_NUM	(39)
+#define SMMU_TBU_REG_NUM	(42)
 
 #define SMMU_GLB_CTL0		0x000
 #define SMMU_GLB_CTL1		0x004
@@ -41,6 +41,8 @@
 #define SMMU_TCU_CTL4		0x210
 #define SMMU_TCU_CTL5		0x214
 #define SMMU_TCU_CTL8		0x220
+#define SMMU_TCU_CTL10		0x228
+#define SMMU_TCU_CTL11		0x22c
 
 #define SMMU_TCU_MON0		0x240
 #define SMMU_TCU_MON1		0x244
@@ -50,6 +52,8 @@
 #define SMMU_TCU_MON5		0x254
 #define SMMU_TCU_MON6		0x258
 #define SMMU_TCU_MON7		0x25C
+#define SMMU_TCU_MON8		0x260
+#define SMMU_TCU_MON9		0x264
 
 #define SMMU_TCU_DBG0		0x280
 #define SMMU_TCU_DBG1		0x284
@@ -103,6 +107,10 @@
 #define SMMU_TBU0_MOGL3		0x3C8
 #define SMMU_TBU0_MOGH3		0x3CC
 
+#define SMMU_TBU0_MON11		0x3d0
+#define SMMU_TBU0_MON12		0x3d4
+#define SMMU_TBU0_MON13		0x3d8
+
 #define SMMU_TBU1_CTL0		0x400
 #define SMMU_TBU1_CTL1		0x404
 #define SMMU_TBU1_CTL2		0x408
@@ -148,6 +156,10 @@
 #define SMMU_TBU1_MOGH2		0x4C4
 #define SMMU_TBU1_MOGL3		0x4C8
 #define SMMU_TBU1_MOGH3		0x4CC
+
+#define SMMU_TBU1_MON11		0x4d0
+#define SMMU_TBU1_MON12		0x4d4
+#define SMMU_TBU1_MON13		0x4d8
 
 #define SMMU_TBU2_CTL0		0x500
 #define SMMU_TBU2_CTL1		0x504
@@ -195,6 +207,10 @@
 #define SMMU_TBU2_MOGL3		0x5C8
 #define SMMU_TBU2_MOGH3		0x5CC
 
+#define SMMU_TBU2_MON11		0x5d0
+#define SMMU_TBU2_MON12		0x5d4
+#define SMMU_TBU2_MON13		0x5d8
+
 #define SMMU_TBU3_CTL0		0x600
 #define SMMU_TBU3_CTL1		0x604
 #define SMMU_TBU3_CTL2		0x608
@@ -241,6 +257,10 @@
 #define SMMU_TBU3_MOGL3		0x6C8
 #define SMMU_TBU3_MOGH3		0x6CC
 
+#define SMMU_TBU3_MON11		0x6d0
+#define SMMU_TBU3_MON12		0x6d4
+#define SMMU_TBU3_MON13		0x6d8
+
 struct smmuwp_reg {
 	unsigned int offset;
 	const char *name;
@@ -272,6 +292,8 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TCU_CTL4, "TCU_CTL4" },
 	{ SMMU_TCU_CTL5, "TCU_CTL5" },
 	{ SMMU_TCU_CTL8, "TCU_CTL8" },
+	{ SMMU_TCU_CTL10, "TCU_CTL10" },
+	{ SMMU_TCU_CTL11, "TCU_CTL11" },
 	{ SMMU_TCU_MON0, "TCU_MON0" },
 	{ SMMU_TCU_MON1, "TCU_MON1" },
 	{ SMMU_TCU_MON2, "TCU_MON2" },
@@ -280,6 +302,8 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TCU_MON5, "TCU_MON5" },
 	{ SMMU_TCU_MON6, "TCU_MON6" },
 	{ SMMU_TCU_MON7, "TCU_MON7" },
+	{ SMMU_TCU_MON8, "TCU_MON8" },
+	{ SMMU_TCU_MON9, "TCU_MON9" },
 	{ SMMU_TCU_DBG0, "TCU_DBG0" },
 	{ SMMU_TCU_DBG1, "TCU_DBG1" },
 	{ SMMU_TCU_DBG2, "TCU_DBG2" },
@@ -324,6 +348,9 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU0_MOGH2, "TBU0_MOGH2" },
 	{ SMMU_TBU0_MOGL3, "TBU0_MOGL3" },
 	{ SMMU_TBU0_MOGH3, "TBU0_MOGH3" },
+	{ SMMU_TBU0_MON11, "TBU0_MON11" },
+	{ SMMU_TBU0_MON12, "TBU0_MON12" },
+	{ SMMU_TBU0_MON13, "TBU0_MON13" },
 	{ SMMU_TBU1_CTL0, "TBU1_CTL0" },
 	{ SMMU_TBU1_CTL1, "TBU1_CTL1" },
 	{ SMMU_TBU1_CTL2, "TBU1_CTL2" },
@@ -363,6 +390,9 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU1_MOGH2, "TBU1_MOGH2" },
 	{ SMMU_TBU1_MOGL3, "TBU1_MOGL3" },
 	{ SMMU_TBU1_MOGH3, "TBU1_MOGH3" },
+	{ SMMU_TBU1_MON11, "TBU1_MON11" },
+	{ SMMU_TBU1_MON12, "TBU1_MON12" },
+	{ SMMU_TBU1_MON13, "TBU1_MON13" },
 	{ SMMU_TBU2_CTL0, "TBU2_CTL0" },
 	{ SMMU_TBU2_CTL1, "TBU2_CTL1" },
 	{ SMMU_TBU2_CTL2, "TBU2_CTL2" },
@@ -402,6 +432,9 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU2_MOGH2, "TBU2_MOGH2" },
 	{ SMMU_TBU2_MOGL3, "TBU2_MOGL3" },
 	{ SMMU_TBU2_MOGH3, "TBU2_MOGH3" },
+	{ SMMU_TBU2_MON11, "TBU2_MON11" },
+	{ SMMU_TBU2_MON12, "TBU2_MON12" },
+	{ SMMU_TBU2_MON13, "TBU2_MON13" },
 	{ SMMU_TBU3_CTL0, "TBU3_CTL0" },
 	{ SMMU_TBU3_CTL1, "TBU3_CTL1" },
 	{ SMMU_TBU3_CTL2, "TBU3_CTL2" },
@@ -441,6 +474,9 @@ static const struct smmuwp_reg smmuwp_regs[] = {
 	{ SMMU_TBU3_MOGH2, "TBU3_MOGH2" },
 	{ SMMU_TBU3_MOGL3, "TBU3_MOGL3" },
 	{ SMMU_TBU3_MOGH3, "TBU3_MOGH3" },
+	{ SMMU_TBU3_MON11, "TBU3_MON11" },
+	{ SMMU_TBU3_MON12, "TBU3_MON12" },
+	{ SMMU_TBU3_MON13, "TBU3_MON13" },
 };
 
 #endif /* SMMU_REG_H */
