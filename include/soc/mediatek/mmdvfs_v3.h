@@ -10,6 +10,8 @@
 
 #include <linux/remoteproc/mtk_ccu.h>
 
+#include "mmdvfs_public.h"
+
 struct mtk_mux_user {
 	int id;
 	const char *name;
@@ -91,7 +93,6 @@ enum {
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 int mtk_mmdvfs_get_ipi_status(void);
-int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx);
 int mtk_mmdvfs_enable_ccu(const bool enable, const u8 idx);
 
 int mtk_mmdvfs_camera_notify(const bool enable);
@@ -108,7 +109,6 @@ void mmdvfs_call_ccu_set_fp(call_ccu fp);
 void mmdvfs_rc_enable_set_fp(rc_enable fp);
 
 int mmdvfs_set_lp_mode_by_vcp(const bool enable);
-int mmdvfs_get_version(void);
 
 int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp);
 int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp);
@@ -119,7 +119,6 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp);
 int mmdvfs_mux_set_opp(const char *name, unsigned long rate);
 #else
 static inline int mtk_mmdvfs_get_ipi_status(void) { return 0; }
-static inline int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx) { return 0; }
 static inline int mtk_mmdvfs_enable_ccu(const bool enable, const u8 idx) { return 0; }
 
 static inline int mtk_mmdvfs_camera_notify(const bool enable) { return 0; }
@@ -140,7 +139,6 @@ static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
 static inline void mmdvfs_rc_enable_set_fp(rc_enable fp) { return; }
 
 static inline int mmdvfs_set_lp_mode_by_vcp(const bool enable) { return 0; }
-static inline int mmdvfs_get_version(void) { return 0; }
 static inline int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
 static inline int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
 static inline int mmdvfs_force_rc_clock_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }

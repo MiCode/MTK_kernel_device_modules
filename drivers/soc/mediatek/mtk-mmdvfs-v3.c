@@ -987,7 +987,7 @@ EXPORT_SYMBOL_GPL(mmdvfs_rc_enable_set_fp);
 
 int mmdvfs_get_version(void)
 {
-	return mmdvfs_mux_version;
+	return mmdvfs_mux_version ? MMDVFS_VER_V35 : MMDVFS_VER_V3;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
