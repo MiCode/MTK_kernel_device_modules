@@ -1173,8 +1173,7 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 		}
 
 		if ((i > 0) && (ndet->volt_tbl_pmic[i] >
-			ndet->volt_tbl_pmic[i-1]) &&
-			(ndet->set_volt_to_upower)) {
+			ndet->volt_tbl_pmic[i-1])) {
 				/*                 _ /            */
 				/*                /_/             */
 				/*               /                */
