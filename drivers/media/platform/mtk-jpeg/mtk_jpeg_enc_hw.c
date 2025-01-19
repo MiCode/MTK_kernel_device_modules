@@ -30,44 +30,32 @@ static const struct mtk_jpeg_enc_qlt mtk_jpeg_enc_quality[] = {
 	{.quality_param = 97, .hardware_value = JPEG_ENC_QUALITY_Q97},
 };
 
+
+void mtk_jpeg_enc_set_resource(void __iomem *base)
+{
+	u32 value = 0;
+
+	value = 0x00000001;
+	writel(value, base+ VENC_GCON_RESOURCE_FLAT_SET);
+	pr_info("%s %d: set resource flag", __func__, __LINE__);
+
+
+}
+
 void mtk_jpeg_enc_set_axdomain(struct mtk_jpeg_dev *jpeg, void __iomem *base)
 {
 	u32 value = 0;
-	//port 7
-	value = readl(base+ (0xF00 + 7*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF00 + 7*4));
+	int i;
 
-	value = readl(base+ (0xF80 + 7*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF80 + 7*4));
+	for (i = 0; i < jpeg->port_num; i++) {
+		value = readl(base+ (0xF00 + MTK_M4U_TO_PORT(jpeg->port_id[i])*4));
+		value |= jpeg->axdomain;
+		writel(value, base+ (0xF00 + MTK_M4U_TO_PORT(jpeg->port_id[i])*4));
 
-	//port 8
-	value = readl(base+ (0xF00 + 8*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF00 + 8*4));
-
-	value = readl(base+ (0xF80 + 8*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF80 + 8*4));
-
-	//port 9
-	value = readl(base+ (0xF00 + 9*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF00 + 9*4));
-
-	value = readl(base+ (0xF80 + 9*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF80 + 9*4));
-
-	//port 16
-	value = readl(base+ (0xF00 + 16*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF00 + 16*4));
-
-	value = readl(base+ (0xF80 + 16*4));
-	value |= jpeg->axdomain;
-	writel(value, base+ (0xF80 + 16*4));
+		value = readl(base+ (0xF80 + MTK_M4U_TO_PORT(jpeg->port_id[i])*4));
+		value |= jpeg->axdomain;
+		writel(value, base+ (0xF80 + MTK_M4U_TO_PORT(jpeg->port_id[i])*4));
+	}
 	pr_info("%s %d: set jpeg enc domain", __func__, __LINE__);
 }
 

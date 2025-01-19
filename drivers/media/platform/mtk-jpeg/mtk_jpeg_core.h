@@ -14,11 +14,13 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-fh.h>
+#include <dt-bindings/memory/mtk-memory-port.h>
 
 #define MTK_JPEG_NAME		"mtk-jpeg"
 
 #define MTK_JPEG_COMP_MAX		3
 #define MTK_JPEG_MAX_FREQ		8
+#define MTK_JPEG_MAX_PORT_NUM		32
 #define MTK_JPEG_MAX_LARB_COUNT		2
 
 #define MTK_JPEG_FMT_FLAG_OUTPUT	BIT(0)
@@ -169,7 +171,11 @@ struct mtk_jpeg_dev {
 	enum mtk_jpeg_support_34bits support_34bits;
 	struct device *smmu_dev;
 	u32 axdomain;
+	u32 port_num;
+	u32 port_id[MTK_JPEG_MAX_PORT_NUM];
 	bool is_ccf_one_step;
+	u32 clock_set;
+	int need_resource_set;
 };
 
 /**

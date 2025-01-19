@@ -85,6 +85,8 @@
 #define JPEG_ENC_CTRL_RDMA_PADDING_0_EN         (1 << 30)
 
 
+#define VENC_GCON_RESOURCE_FLAT_SET 0x10
+
 /**
  * struct mtk_jpeg_enc_qlt - JPEG encoder quality data
  * @quality_param:	quality value
@@ -95,6 +97,7 @@ struct mtk_jpeg_enc_qlt {
 	u8	hardware_value;
 };
 
+void mtk_jpeg_enc_set_resource(void __iomem *base);
 void mtk_jpeg_enc_set_axdomain(struct mtk_jpeg_dev *jpeg, void __iomem *base);
 void mtk_jpeg_enc_set_34bits(struct mtk_jpeg_ctx *ctx, void __iomem *base,
 			struct vb2_buffer *dst_buf);

@@ -767,6 +767,12 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 	ret = of_property_read_u32(jpeg->dev->of_node, "interconnect-num", &port_num);
 	pr_info("%s  ret: %d\n", __func__, ret);
+
+	if (jpeg->path_y_rdma == 0) {
+		pr_info("%s  qos not supported\n", __func__);
+		return;
+	}
+
 	if (ret >= 0)
 		pr_info("%s  port_num: %u\n", __func__, port_num);
 	if (port_num == 1) {
@@ -832,8 +838,15 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	pr_info("%s freq_cnt %d!\n", __func__, jpeg->freq_cnt);
+
+	if (jpeg->freq_cnt == 0)
+		return;
+
 	if (jpeg->freq_cnt > 0 && jpeg->freq_cnt < MTK_JPEG_MAX_FREQ)
 		active_freq = jpeg->freqs[jpeg->freq_cnt - 1];
+
+	if (jpeg->clock_set != 0)
+		active_freq = jpeg->clock_set;
 
 	if (jpeg->jpegenc_reg) {
 		opp = dev_pm_opp_find_freq_ceil(jpeg->dev,
@@ -871,6 +884,10 @@ static void mtk_jpeg_dvfs_end(struct mtk_jpeg_ctx *ctx)
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	pr_info("%s  ++\n", __func__);
+
+	if (jpeg->freq_cnt == 0)
+		return;
+
 	active_freq = jpeg->freqs[0];
 
 	if (jpeg->jpegenc_reg) {
@@ -1451,6 +1468,10 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 
 			if (jpeg->axdomain)
 				mtk_jpeg_enc_set_axdomain(jpeg, jpeg->larb_base);
+
+
+			if (jpeg->need_resource_set)
+				mtk_jpeg_enc_set_resource(jpeg->gcon_base);
 		}
 }
 
@@ -2084,7 +2105,7 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	struct mtk_jpeg_dev *jpeg;
 	struct resource *res;
 	int jpeg_irq;
-	int ret;
+	int ret, i;
 
 	jpeg = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*jpeg), GFP_KERNEL);
 	if (!jpeg)
@@ -2110,6 +2131,13 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "use 34bits %d", jpeg->support_34bits);
 
+
+	ret = of_property_read_u32(pdev->dev.of_node, "need-resource-set", &jpeg->need_resource_set);
+	if (ret != 0) {
+		jpeg->need_resource_set = 0;
+	}
+	dev_info(&pdev->dev, "need_resource_set %d", jpeg->need_resource_set);
+
 	ret = of_property_read_u32(pdev->dev.of_node, "axdomain", &jpeg->axdomain);
 	if (ret != 0)
 		jpeg->axdomain = 0;
@@ -2126,19 +2154,18 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-#if MTK_JPEG_DEC_SUPPORT
-	if ((jpeg->support_34bits == MTK_JPEG_FAKE_34BITS)
-		&& (jpeg->jpeg_dev_type == MTK_JPEG_ENC))
-#else
-	if (jpeg->support_34bits == MTK_JPEG_FAKE_34BITS)
-#endif
-	{
-		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
-		jpeg->gcon_base = devm_ioremap_resource(&pdev->dev, res);
-		if (IS_ERR(jpeg->gcon_base)) {
-			ret = PTR_ERR(jpeg->gcon_base);
-			return ret;
-		}
+	ret = of_property_read_u32(pdev->dev.of_node, "clock-set", &jpeg->clock_set);
+	if (ret != 0)
+		jpeg->clock_set = 0;
+
+	dev_info(&pdev->dev, "clock_set %d", jpeg->clock_set);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
+	jpeg->gcon_base = devm_ioremap(&pdev->dev, res->start,  resource_size(res));
+	if (IS_ERR(jpeg->gcon_base)) {
+		pr_info("get GCON base fail\n");
+		ret = PTR_ERR(jpeg->gcon_base);
+		return ret;
 	}
 
 	if (jpeg->axdomain) {
@@ -2149,6 +2176,15 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 			ret = PTR_ERR(jpeg->larb_base);
 			return ret;
 		}
+	}
+
+	jpeg->port_num = of_property_count_u32_elems(
+		pdev->dev.of_node, "ports");
+	jpeg->port_num = (jpeg->port_num > 0) ? jpeg->port_num : 0;
+	pr_info("port number %d\n", jpeg->port_num);
+	for (i = 0; i < jpeg->port_num; i++) {
+		if (!of_property_read_u32_index(pdev->dev.of_node, "ports", i, &jpeg->port_id[i]))
+			pr_info("port index %d\n", MTK_M4U_TO_PORT(jpeg->port_id[i]));
 	}
 
 	jpeg_irq = platform_get_irq(pdev, 0);
