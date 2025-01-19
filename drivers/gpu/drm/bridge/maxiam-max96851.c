@@ -1225,7 +1225,7 @@ static void serdes_init_wait_queue(struct max96851_bridge *max_bridge)
 	atomic_set(&max_bridge->hotplug_event, 0);
 	init_waitqueue_head(&max_bridge->waitq);
 	max_bridge->serdes_hotplug_task = kthread_run(serdes_hotplug_kthread,
-						(void *)max_bridge, "serdes_hotplug");
+									(void *)max_bridge, "serdes_hotplug");
 }
 
 static irqreturn_t serdes_interrupt_handler(int irq, void *data)
@@ -1288,9 +1288,10 @@ static void max96851_pre_enable(struct drm_bridge *bridge)
 	serdes_init_by_dts(max_bridge);
 
 	if (max_bridge->is_support_hotplug) {
-		if (max_bridge->irq_num <= 0)
+		if (max_bridge->irq_num <= 0) {
 			atomic_set(&max_bridge->hotplug_event, 1);
 			wake_up_interruptible(&max_bridge->waitq);
+		}
 	}
 
 	max_bridge->prepared = true;
@@ -1354,9 +1355,10 @@ static void max96851_post_disbale(struct drm_bridge *bridge)
 
 
 	if (max_bridge->is_support_hotplug) {
-		if (max_bridge->irq_num <= 0)
+		if (max_bridge->irq_num <= 0) {
 			atomic_set(&max_bridge->hotplug_event, 0);
 			wake_up_interruptible(&max_bridge->waitq);
+		}
 	}
 
 	gpiod_set_value(max_bridge->gpio_rst_n, 0);

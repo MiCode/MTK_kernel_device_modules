@@ -82,7 +82,7 @@ static int panel_edp_disable(struct drm_panel *panel)
 {
 	struct panel_edp *edp = to_panel_edp(panel);
 
-	dev_info(edp->dev, "%s %s+\n", edp->debug_str, __func__);
+	dev_info(edp->dev, "%s %s\n", edp->debug_str, __func__);
 
 	if (edp->backlight) {
 		edp->backlight->props.power = FB_BLANK_POWERDOWN;
@@ -358,5 +358,5 @@ static struct platform_driver panel_edp_driver = {
 module_platform_driver(panel_edp_driver);
 
 MODULE_AUTHOR("Jacky Hu <jie-h.hu@mediatek.com>");
-MODULE_DESCRIPTION("eDP Panel Driver");
+MODULE_DESCRIPTION("Panel Driver For DP and EDP");
 MODULE_LICENSE("GPL");
