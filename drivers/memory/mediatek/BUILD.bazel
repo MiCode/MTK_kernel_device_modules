@@ -35,6 +35,38 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "emi",
+    srcs = [
+        "emi-cen.c",
+        "emi-isu.c",
+        "emi-dbg.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-fake-eng",
+    srcs = [
+        "emi-fake-eng.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "emi-mpu",
     srcs = [
         "emi-mpu.c",
