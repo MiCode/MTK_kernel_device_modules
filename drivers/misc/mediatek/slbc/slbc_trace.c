@@ -346,7 +346,7 @@ int slbc_trace_init(void *ptr)
 	slbc_trace->focus_type = 0;
 	slbc_trace->focus_id = 0;
 	/* dump */
-	slbc_trace->dump_num = 50;
+	slbc_trace->dump_num = SLBC_MAX_EVENT_COUNT;
 	/* init enable setting */
 	slbc_trace->log_enable = 1;
 	slbc_trace->rec_enable = 1;
