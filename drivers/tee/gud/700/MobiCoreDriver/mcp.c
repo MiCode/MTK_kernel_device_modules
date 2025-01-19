@@ -104,8 +104,6 @@ static const char *cmd_to_string(enum cmd_id id)
 		return "unmap";
 	case MC_MCP_CMD_GET_MOBICORE_VERSION:
 		return "get version";
-	case MC_MCP_CMD_LOAD_TOKEN:
-		return "load token";
 	}
 	return "unknown";
 }
@@ -493,19 +491,6 @@ int mcp_get_version(struct mc_version_info *version_info)
 	memcpy(version_info, &static_version_info, sizeof(*version_info));
 	nq_set_version_ptr(static_version_info.product_id);
 	return 0;
-}
-
-int mcp_load_token(const struct mcp_buffer_map *map)
-{
-	union mcp_message cmd;
-
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.cmd_header.cmd_id = MC_MCP_CMD_LOAD_TOKEN;
-	cmd.cmd_load_token.wsm_data_type = map->type;
-	cmd.cmd_load_token.adr_load_data = map->addr;
-	cmd.cmd_load_token.ofs_load_data = map->offset;
-	cmd.cmd_load_token.len_load_data = map->length;
-	return mcp_cmd(&cmd, 0, NULL, NULL);
 }
 
 int mcp_open_session(struct mcp_session *session, struct mcp_open_info *info,

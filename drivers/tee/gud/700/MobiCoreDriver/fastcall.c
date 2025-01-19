@@ -41,14 +41,6 @@
 /* Unknown SMC Function Identifier (SMC Calling Convention) */
 #define UNKNOWN_SMC -1
 
-/* Use the arch_extension sec pseudo op before switching to secure world */
-#if defined(__GNUC__) && \
-	defined(__GNUC_MINOR__) && \
-	defined(__GNUC_PATCHLEVEL__) && \
-	((__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)) \
-	>= 40502
-#endif
-
 union fc_sched_init {
 	union fc_common common;
 
@@ -218,8 +210,11 @@ static int convert_fc_ret(u32 ret)
 		return 0;
 	case MC_FC_RET_ERR_INVALID:
 		return -EINVAL;
+	/* In this case we can consider returning 0 as the
+	 * buffer is already initialized.
+	 */
 	case MC_FC_RET_ERR_ALREADY_INITIALIZED:
-		return -EBUSY;
+		return 0;
 	default:
 		return -EFAULT;
 	}
@@ -245,6 +240,7 @@ static inline int __smc(union fc_common *fc, const char *func)
 	ret = ffa_fastcall(fc);
 #else
 	{
+#ifdef CONFIG_ARM64
 		/* SMC expect values in x0-x7 */
 		register u64 reg0 __asm__("x0") = fc->in.cmd;
 		register u64 reg1 __asm__("x1") = fc->in.param[0];
@@ -270,6 +266,39 @@ static inline int __smc(union fc_common *fc, const char *func)
 			: "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
 			  "x16", "x17"
 		);
+#endif
+#ifdef CONFIG_ARM
+/* Use the arch_extension sec pseudo op before switching to secure world */
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+	defined(__GNUC_PATCHLEVEL__) && \
+	((__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)) \
+	>= 40502
+#define MC_ARCH_EXTENSION_SEC
+#endif
+
+		/* SMC expect values in r0-r7 */
+		register u32 reg0 __asm__("r0") = fc->in.cmd;
+		register u32 reg1 __asm__("r1") = fc->in.param[0];
+		register u32 reg2 __asm__("r2") = fc->in.param[1];
+		register u32 reg3 __asm__("r3") = fc->in.param[2];
+		register u32 reg0 __asm__("r4") = 0;
+		register u32 reg0 __asm__("r5") = 0;
+		register u32 reg0 __asm__("r6") = 0;
+		register u32 reg0 __asm__("r7") = 0;
+
+		__asm__ volatile (
+#ifdef MC_ARCH_EXTENSION_SEC
+			/*
+			 * This pseudo op is supported and required from
+			 * binutils 2.21 on
+			 */
+			".arch_extension sec\n"
+#endif
+			"smc #0\n"
+			: "+r"(reg0), "+r"(reg1), "+r"(reg2), "+r"(reg3)
+		);
+
+#endif
 
 		/* set response */
 		fc->out.resp     = reg0;
@@ -440,6 +469,7 @@ int fc_yield(u32 session_id, u32 payload, struct fc_s_yield *resp)
 	return 0;
 }
 
+#ifndef MC_FFA_FASTCALL
 #ifdef CONFIG_XEN
 static int fc_register_shm(u64 phys_addr, u32 pte_count, u64 *handle)
 {
@@ -484,6 +514,7 @@ static int fc_reclaim_shm(u64 handle)
 
 	return 0;
 }
+#endif
 #endif
 
 int fc_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag)

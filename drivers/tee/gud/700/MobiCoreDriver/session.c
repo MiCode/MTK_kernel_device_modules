@@ -730,6 +730,7 @@ int session_mc_open_session(struct tee_session *session,
 		}
 	}
 
+	/* coverity[var_deref_model] FIXME */
 	ret = mcp_open_session(&session->mcp_session, info, tci_in_use);
 
 	if (obj)

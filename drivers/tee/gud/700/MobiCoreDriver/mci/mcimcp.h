@@ -95,8 +95,6 @@ enum cmd_id {
 	MC_MCP_CMD_UNMAP		= 0x05,
 	/** Get MobiCore version information */
 	MC_MCP_CMD_GET_MOBICORE_VERSION	= 0x09,
-	/** Load token for device attestation */
-	MC_MCP_CMD_LOAD_TOKEN		= 0x0B
 };
 
 /*

@@ -334,6 +334,7 @@ static struct protocol_be_map *raite_be_map_create(
 		/* Create PTE tables that contains physical page addresses */
 		pte_tables[i].page = get_zeroed_page(GFP_KERNEL);
 		if (!pte_tables[i].page) {
+			ret = -ENOMEM;
 			mc_dev_err(ret,
 				   "get_zeroed_page of pte_tables failed");
 			goto out;
@@ -383,7 +384,7 @@ static struct protocol_be_map *raite_be_map_create(
 	return map;
 out:
 	raite_be_map_delete(map);
-	return NULL;
+	return ERR_PTR(ret);
 }
 
 struct tee_mmu *raite_be_set_mmu(struct protocol_be_map *map,

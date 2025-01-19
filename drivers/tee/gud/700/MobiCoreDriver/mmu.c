@@ -341,8 +341,8 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 						v_pte64 = *pte64_bak;
 
 					/* Real 16Kb to unpin */
-					pte.pte =
-						ALIGN_DOWN(v_pte64, PAGE_SIZE);
+					pte.pte = v_pte64 & PAGE_MASK;
+
 					/* Note: RATIO_PAGE_SIZE can be greater
 					 * than 1. In this case, one kernel
 					 * page contains multiple kinibi pages.
@@ -836,10 +836,8 @@ static inline int tee_mmu_register_buffer(struct tee_mmu	*mmu,
 		kfree(all_pages);
 		mmu->all_pages = NULL;
 		if (ret) {
-#ifndef MTK_ADAPTED
-			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
-#endif
 			tee_mmu_free(mmu);
+			mc_dev_err(ret, "sharing buffer failed, free mmu");
 		}
 	}
 	return ret;
@@ -853,7 +851,9 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 	int i;
 	int ret = 0;
 	struct mc_ioctl_buffer buf_in;
+#ifdef MC_SHADOW_BUFFER
 	void *shadow_buffer = NULL;
+#endif
 	u32 offset, length;
 	size_t size, order;
 
@@ -868,8 +868,10 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 
 	i = 0;
 	do {
+#ifdef MC_SHADOW_BUFFER
 		if (shadow_buffer)
 			temp_mm = NULL;/*handle shadow buffer*/
+#endif
 
 		mmu = mmu_create_instance(temp_mm, &buf_in);
 
@@ -899,7 +901,10 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 #else
 		return ERR_PTR(ret);
 #endif /* MC_SHADOW_BUFFER */
+
+		/* coverity[unreachable] Used with MC_SHADOW_BUFFER */
 		i++;
+
 	} while (i < 2);
 
 	mmu->shadow.order = order;

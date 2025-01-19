@@ -35,8 +35,17 @@ static struct {
 	//VM shared memory total page
 	int				vmsb_total_page;
 	int				vmsb_free_pages[PMD_ENTRIES_MAX];
-	/* Current index into the vmsb_free_pages tab */
-	int				vmsb_index;
+
+	/* Current index into the vmsb_free_pages tab.
+	 * List of pages in the VMSB is managed like a ring buffer.
+	 * FE code writing CAs PMD/PTE the one after the others
+	 * (CA1 using page 0,1,2 then CA2 starting from 3...).
+	 * This buffering logic allows asynchronous reading of
+	 * CAs PMD/PTE data from the BE
+	 */
+	int				vmsb_head;
+	int				vmsb_tail;
+
 	struct completion		other_end_complete;
 } l_ctx;
 
@@ -82,7 +91,8 @@ static int vmsb_init(struct tee_raite_fe *raite_fe)
 	for (i = 0; i < l_ctx.vmsb_total_page; i++)
 		l_ctx.vmsb_free_pages[i] = i;
 
-	l_ctx.vmsb_index = 0;
+	l_ctx.vmsb_head = 0;
+	l_ctx.vmsb_tail = l_ctx.vmsb_head;
 
 	return 0;
 }
@@ -92,15 +102,17 @@ static void *vmsb_alloc_page(void)
 	/* VMSB Virtual Base Address */
 	char *base = (char *)l_ctx.raite_fe->vmsb_vaddr;
 	/* Page Number of the current page */
-	int page_no = l_ctx.vmsb_free_pages[l_ctx.vmsb_index];
+	int page_no = l_ctx.vmsb_free_pages[l_ctx.vmsb_head];
 	/* Virtual Address of the page */
 	void *virt_addr = base + (page_no * PAGE_SIZE);
 
-	/* Check the index */
-	if (l_ctx.vmsb_index >= l_ctx.vmsb_total_page)
+	/* Check the index, return null if no available page */
+	if (((l_ctx.vmsb_head + 1) % l_ctx.vmsb_total_page) ==
+		l_ctx.vmsb_tail) {
 		return NULL;
+	}
 
-	l_ctx.vmsb_index++;
+	l_ctx.vmsb_head = (l_ctx.vmsb_head + 1) % l_ctx.vmsb_total_page;
 
 	/* Cleanup the pointed page */
 	memset(virt_addr, 0x0, PAGE_SIZE);
@@ -119,12 +131,12 @@ static void vmsb_free_page(void *virt_addr)
 	/* Page Number of the current page */
 	int page_no = ((char *)virt_addr - base) / PAGE_SIZE;
 
-	/* Check the index */
-	WARN_ON(!l_ctx.vmsb_index);
+	/* Check the index, WARN if no allocated page*/
+	WARN_ON(l_ctx.vmsb_tail == l_ctx.vmsb_head);
 
-	l_ctx.vmsb_index--;
+	l_ctx.vmsb_free_pages[l_ctx.vmsb_tail] = page_no;
 
-	l_ctx.vmsb_free_pages[l_ctx.vmsb_index] = page_no;
+	l_ctx.vmsb_tail = (l_ctx.vmsb_tail + 1) % l_ctx.vmsb_total_page;
 }
 
 /*
@@ -187,7 +199,7 @@ static void raite_fe_map_release_pmd_ptes(
 			break;
 
 		vmsb_free_page(raite_map->pte_tables[i].addr);
-		mc_dev_devel("released VMSB PMD ipa %p",
+		mc_dev_devel("released VMSB PTE ipa %p",
 			     raite_map->pte_tables[i].addr);
 		raite_map->pte_tables[i].addr = NULL;
 

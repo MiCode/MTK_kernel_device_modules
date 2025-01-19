@@ -66,8 +66,6 @@ struct mc_admin_load_info {
 	_IOR(MC_IOC_MAGIC, 1, struct mc_admin_driver_info)
 #define MC_ADMIN_IO_LOAD_DRIVER \
 	_IOW(MC_IOC_MAGIC, 2, struct mc_admin_load_info)
-#define MC_ADMIN_IO_LOAD_TOKEN \
-	_IOW(MC_IOC_MAGIC, 3, struct mc_admin_load_info)
 
 #ifdef __cplusplus
 }
