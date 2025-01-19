@@ -4143,7 +4143,7 @@
 
 		mtk_apu_mdw: mtk_apu_mdw {
 			compatible = "mediatek, apu_mdw";
-			uapi-ver = <2>;
+			version = <2>;
 			dsp_mask = <0xff>;
 			dla_mask = <0xff>;
 			dma_mask = <0xff>;
