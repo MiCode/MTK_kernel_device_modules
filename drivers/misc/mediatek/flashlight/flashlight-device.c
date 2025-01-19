@@ -82,6 +82,12 @@ const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
 	{0, 0, 0, "flashlights-lm3642", 0, 0},
 };
+#elif IS_ENABLED(CONFIG_MTK_FLASHLIGHT_OCP81375)
+const struct flashlight_device_id flashlight_id[] = {
+	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
+	{0, 0, 0, "flashlights-ocp81375", 1, 1},
+	/* {0, 1, 0, "flashlights-ocp81375", 1, 0}, */
+};
 #else
 const struct flashlight_device_id flashlight_id[] = {
 	/* {TYPE, CT, PART, "NAME", CHANNEL, DECOUPLE} */
