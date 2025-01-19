@@ -6922,7 +6922,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		mml0_mutex0: mml0-mutex0@3e020000 {
-			compatible = "mediatek,mt6991-mml_mutex";
+			compatible = "mediatek,mt6991-mmlt_mutex";
 			reg = <0 0x3e020000 0 0x1000>;
 			comp-ids = <MML0_MUTEX>;
 			comp-names = "mml0_mutex0";
