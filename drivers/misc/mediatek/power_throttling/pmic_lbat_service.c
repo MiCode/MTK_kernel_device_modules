@@ -435,6 +435,8 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 	substr = strsep(&sepstr, " ");
 	while (substr != NULL) {
 		ret = kstrtouint(substr, 10, &thd_volt[i++]);
+		if (ret < 0)
+			dev_notice(dev, "failed to use kstrtouint\n");
 		substr = strsep(&sepstr, " ");
 	}
 

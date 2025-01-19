@@ -165,7 +165,7 @@ static int md_oc_notify(struct oc_debug_t *oc_dbg)
 static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 			       void *unused)
 {
-	unsigned int len = 0;
+	int len = 0;
 	char oc_str[30] = "";
 	struct oc_debug_t *oc_dbg;
 
@@ -183,6 +183,9 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 	pr_notice("regulator:%s OC %d times\n",
 		  oc_dbg->name, oc_dbg->times);
 	len += snprintf(oc_str, 30, "PMIC OC:%s", oc_dbg->name);
+	if (len < 0)
+		pr_notice("[%s] failed to use snprintf\n", __func__);
+
 	if (oc_dbg->is_md_reg) {
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning(oc_str, "\nCRDISPATCH_KEY:MD OC\nOC Interrupt: %s",

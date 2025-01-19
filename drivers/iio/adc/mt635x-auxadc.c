@@ -1129,19 +1129,16 @@ static int mt6358_batadc_cali(struct mt635x_auxadc_device *adc_dev,
 
 static int bat_temp_filter(int *arr, unsigned short size)
 {
-	unsigned char i, i_max, i_min = 0;
+	unsigned char i;
 	int arr_max = 0, arr_min = arr[0];
 	int sum = 0;
 
 	for (i = 0; i < size; i++) {
 		sum += arr[i];
-		if (arr[i] > arr_max) {
+		if (arr[i] > arr_max)
 			arr_max = arr[i];
-			i_max = i;
-		} else if (arr[i] < arr_min) {
+		else if (arr[i] < arr_min)
 			arr_min = arr[i];
-			i_min = i;
-		}
 	}
 	sum = sum - arr_max - arr_min;
 	return (sum/(size - 2));

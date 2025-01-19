@@ -29,10 +29,9 @@ static ssize_t extbuck_access_store(struct device *dev,
 				    size_t size)
 {
 	struct extbuck_consumer_data *data;
+	unsigned int reg_val = 0, reg_adr = 0;
 	int ret = 0;
 	char *pvalue = NULL, *addr, *val;
-	unsigned int reg_val = 0;
-	unsigned int reg_adr = 0;
 
 	if (dev) {
 		data = dev_get_drvdata(dev);
@@ -48,15 +47,20 @@ static ssize_t extbuck_access_store(struct device *dev,
 		pvalue = (char *)buf;
 		addr = strsep(&pvalue, " ");
 		val = strsep(&pvalue, " ");
-		if (addr)
+		if (addr) {
 			ret = kstrtou32(addr, 16, (unsigned int *)&reg_adr);
+			if (ret < 0)
+				dev_notice(dev, "%s failed to use kstrtou32\n", __func__);
+		}
 		mutex_lock(&data->lock);
 		if (val) {
 			ret = kstrtou32(val, 16, (unsigned int *)&reg_val);
-			ret = regmap_write(data->regmap, reg_adr, reg_val);
+			if (ret < 0)
+				dev_notice(dev, "%s failed to use kstrtou32\n", __func__);
+			regmap_write(data->regmap, reg_adr, reg_val);
 		} else {
-			ret = regmap_read(data->regmap,
-					  reg_adr, &data->reg_value);
+			regmap_read(data->regmap,
+				    reg_adr, &data->reg_value);
 		}
 		mutex_unlock(&data->lock);
 		dev_info(dev, "%s Ext. BUCK Reg[0x%x]=0x%x!\n",
