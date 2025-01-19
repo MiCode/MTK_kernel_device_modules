@@ -930,15 +930,21 @@ static int ee_log_avail(void)
 	return ret;
 }
 
-static char *ee_msg_avail(void)
+static int ee_msg_avail(void)
 {
+	int ret = 0;
+
 	mutex_lock(&aed_dev.ee_mutex);
+
 	if (aed_dev.eerec) {
-		mutex_unlock(&aed_dev.ee_mutex);
-		return aed_dev.eerec->msg;
+		if (aed_dev.eerec->msg != NULL)
+			ret = 1;
+		else
+			ret = 0;
 	}
+
 	mutex_unlock(&aed_dev.ee_mutex);
-	return NULL;
+	return ret;
 }
 
 static void ee_gen_ind_msg(struct aed_eerec *eerec)
