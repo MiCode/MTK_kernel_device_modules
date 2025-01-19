@@ -45,11 +45,11 @@
 
 #define APUSYS_RV_IPI_HANDLE_PRINT \
 	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
-	"latency=%lld, elapse=%lld, t_hndlr=%llu," \
+	"usg_cnt = %d, latency=%lld, elapse=%lld, t_hndlr=%llu," \
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 #define APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG \
 	"%s long: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
-	"latency=%lld, elapse=%lld, t_hndlr=%llu," \
+	"usg_cnt = %d, latency=%lld, elapse=%lld, t_hndlr=%llu," \
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -431,9 +431,9 @@ unlock_mutex:
 			ipi->usage_cnt, timespec64_to_ns(&ts));
 
 	apu_info_ratelimited(dev,
-		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%x, elapse=%lld\n",
-		 __func__, id, len, hdr.csum, hdr.serial_no, user_id,
-		 timespec64_to_ns(&ts));
+		"%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%x, usg_cnt = %d, elapse=%lld\n",
+		__func__, id, len, hdr.csum, hdr.serial_no, user_id, ipi->usage_cnt,
+		timespec64_to_ns(&ts));
 #if IS_ENABLED(CONFIG_VHOST_APU)
 	dev_info(dev, "curr_vm_id = %d\n", curr_vm_id);
 #endif
@@ -675,17 +675,17 @@ out:
 	/* t_elapse_ns > 1s */
 	if (t_elapse_ns > 1000000000)
 		dev_info(dev, APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG,
-			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
+			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id, ipi->usage_cnt,
 			timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns,
 			t_mtx_lock_ns, t_usage_cnt_update_ns, t_wakup_ns);
 	else if ((apu->platdata->flags & F_BRINGUP) != 0)
 		dev_info(dev, APUSYS_RV_IPI_HANDLE_PRINT,
-			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
+			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id, ipi->usage_cnt,
 			timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns,
 			t_mtx_lock_ns, t_usage_cnt_update_ns, t_wakup_ns);
 	else
 		apu_info_ratelimited(dev, APUSYS_RV_IPI_HANDLE_PRINT,
-			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
+			__func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id, ipi->usage_cnt,
 			timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns,
 			t_mtx_lock_ns, t_usage_cnt_update_ns, t_wakup_ns);
 
