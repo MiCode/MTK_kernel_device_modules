@@ -204,6 +204,20 @@ enum hyp_smmu_smc_cmd {
 #define GET_PMM_ENTRY_ORDER(entry) ((entry >> PMM_MSG_ORDER_SHIFT) & 0Xf)
 #define ONE_PAGE_OFFSET 12
 #define ONE_PAGE_SIZE (1 << ONE_PAGE_OFFSET)
+/* record for MPU addr/size */
+struct mpu_record {
+	uint64_t addr;
+	uint64_t size;
+};
+/* It is the same with enum MTEE_MCHUNKS_ID at tmem_ffa.c */
+enum MPU_REQ_ORIGIN_ZONE_ID {
+	MPU_REQ_ORIGIN_EL2_ZONE_PROT = 0,
+	MPU_REQ_ORIGIN_EL2_ZONE_SVP = 8,
+	MPU_REQ_ORIGIN_EL2_ZONE_WFD = 9,
+	MPU_REQ_ORIGIN_EL2_ZONE_TUI = 12,
+
+	MPU_REQ_ORIGIN_EL2_ZONE_MAX = 13,
+};
 /*******************************************************************************
  * Other
  ******************************************************************************/

@@ -25,8 +25,10 @@ int kvm_nvhe_sym(dummy_iommu_hyp_init)(const struct pkvm_module_ops *ops);
 static int add_smmu_device_handler;
 /* Map memory into protect VM, also unmap memory from normal VM */
 int smmu_s2_protect_mapping;
+int smmu_s2_protect_region_mapping;
 /* Map memory into normal VM, also change memory attribute into read-only for protect VM */
 int smmu_s2_protect_unmapping;
+int smmu_s2_protect_region_unmapping;
 /* Host share SMMU structure memory to HYP */
 int smmu_share;
 /* Host debug SMMU */
@@ -583,6 +585,18 @@ void smmu_host_hvc(void)
 		__kvm_nvhe_mtk_smmu_unsecure_v2, pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, smmu_s2_protect_unmapping, 0, 0, 0, 0, &res);
+
+	smmu_s2_protect_region_mapping = pkvm_register_el2_mod_call(
+		__kvm_nvhe_mtk_smmu_secure, pkvm_module_token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP,
+			  smmu_s2_protect_region_mapping, 0, 0, 0, 0, &res);
+
+	smmu_s2_protect_region_unmapping = pkvm_register_el2_mod_call(
+		__kvm_nvhe_mtk_smmu_unsecure, pkvm_module_token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP,
+			  smmu_s2_protect_region_unmapping, 0, 0, 0, 0, &res);
 
 	smmu_share = pkvm_register_el2_mod_call(__kvm_nvhe_mtk_smmu_share,
 						pkvm_module_token);

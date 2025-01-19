@@ -30,6 +30,10 @@
 #include <asm/kvm_pkvm_module.h>
 #include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+#include <asm/kvm_pkvm_module.h>
+#include "../../../misc/mediatek/include/pkvm_mgmt/pkvm_mgmt.h"
+#endif
 
 #include "private/mld_helper.h"
 #include "private/tmem_device.h"
@@ -115,6 +119,41 @@ static int pkvm_mtee_free(u64 sec_handle, u8 *owner, u32 id, void *peer_data,
 	return TMEM_OK;
 }
 
+/* According to lock, map those CMA region into mtk pkvm smmu page table with
+ * related permission.
+ */
+static void pkvm_smmu_region_mapping(u64 region_start, u32 region_size,
+				     u32 region_id, u32 lock)
+{
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	struct arm_smccc_res res;
+	uint32_t smc_id;
+	int ret;
+
+	if (!is_pkvm_enabled()) {
+		pr_info("pKVM is not enabled\n");
+		return;
+	}
+
+	if (lock == 1)
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP, 0, 0, 0,
+				  0, 0, 0, &res);
+	else
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP, 0, 0,
+				  0, 0, 0, 0, &res);
+
+	smc_id = res.a1;
+	if (smc_id != 0) {
+		ret = pkvm_el2_mod_call(smc_id, region_start, region_size,
+					region_id);
+
+		if (ret != 0)
+			pr_info("smc_id=%#x smmu_ret=%x\n", smc_id, ret);
+	} else
+		pr_info("%s hvc is invalid\n", __func__);
+#endif
+}
+
 /*
  * This combination is pKVM & FF-A and GZ is disable.
  */
@@ -126,6 +165,7 @@ static int pkvm_mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_de
 
 	MTEE_SESSION_LOCK();
 
+	pkvm_smmu_region_mapping(pa, size, mtee_dev_desc->mtee_chunks_id, 1);
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 	if (is_pkvm_enabled()) {
 		struct arm_smccc_res res;
@@ -176,6 +216,7 @@ static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 
 	MTEE_SESSION_LOCK();
 
+	pkvm_smmu_region_mapping(0, 0, mtee_dev_desc->mtee_chunks_id, 0);
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 	if (is_pkvm_enabled()) {
 		struct arm_smccc_res res;
