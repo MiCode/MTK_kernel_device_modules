@@ -32,8 +32,6 @@ obj-y += drivers/cpufreq/
 
 obj-y += drivers/soc/mediatek/
 
-obj-y += drivers/watchdog/
-
 obj-y += drivers/dma-buf/heaps/
 
 obj-y += drivers/regulator/
