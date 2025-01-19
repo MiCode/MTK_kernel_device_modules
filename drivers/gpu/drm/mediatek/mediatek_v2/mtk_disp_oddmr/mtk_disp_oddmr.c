@@ -3742,7 +3742,7 @@ static void mtk_oddmr_od_set_dram(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 							g_od_param.od_basic_info.basic_param.od_mode, 0, 1);
 				ODDMRAPI_LOG("PU=1:  partial_roi.y %d, base_line_jump %d\n",
 						priv->roi_y, priv->od_data.base_line_jump);
-				addr += (dma_addr_t)(priv->od_data.base_line_jump * priv->roi_y);
+				addr += (dma_addr_t)(priv->od_data.base_line_jump) * (dma_addr_t)(priv->roi_y);
 			}
 			mtk_oddmr_write_mask(comp, addr >> 4, MT6991_DISP_ODDMR_OD_BASE_ADDR_LSB,
 				REG_FLD_MASK(MT6991_REG_OD_BASE_ADDR_LSB), pkg);
@@ -9318,7 +9318,7 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 				ODDMRAPI_LOG("PU=1: base_line_jump %d, roi_y %d\n",
 						oddmr->od_data.base_line_jump, oddmr->roi_y);
 				addr = oddmr->od_data.channel->dma_addr;
-				addr += (dma_addr_t)(oddmr->od_data.base_line_jump * oddmr->roi_y);
+				addr += (dma_addr_t)(oddmr->od_data.base_line_jump) * (dma_addr_t)(oddmr->roi_y);
 				mtk_oddmr_write_mask(comp, addr >> 4, MT6991_DISP_ODDMR_OD_BASE_ADDR_LSB,
 					REG_FLD_MASK(MT6991_REG_OD_BASE_ADDR_LSB), handle);
 				mtk_oddmr_write_mask(comp, addr >> 20, MT6991_DISP_ODDMR_OD_BASE_ADDR_MSB,
