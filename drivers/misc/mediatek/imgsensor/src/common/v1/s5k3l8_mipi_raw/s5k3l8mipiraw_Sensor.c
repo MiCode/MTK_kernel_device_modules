@@ -2740,6 +2740,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		pr_debug(
 		    "SENSOR_FEATURE_SET_STREAMING_RESUME\n");
 		streaming_control(KAL_TRUE);
+		break;
 	default:
 		break;
 	}
