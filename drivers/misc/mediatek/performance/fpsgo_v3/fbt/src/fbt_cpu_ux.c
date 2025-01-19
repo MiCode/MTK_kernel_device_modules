@@ -65,8 +65,6 @@ enum FPSGO_TASK_POLICY {
 
 static DEFINE_MUTEX(fbt_mlock);
 
-static struct workqueue_struct *wq_rescue;
-
 static struct kmem_cache *frame_info_cachep __ro_after_init;
 static struct kmem_cache *ux_scroll_info_cachep __ro_after_init;
 static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
@@ -473,7 +471,8 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 			if (frame->rescue) {
 				update_hwui_frame_info(thr, frame, frameid, 0, end_ts, 0, 0, 0);
 				new_frame = insert_hwui_frame_info_from_tmp(thr, frame);
-				count_scroll_rescue_info(thr, new_frame);
+				if (new_frame)
+					count_scroll_rescue_info(thr, new_frame);
 			}
 			reset_hwui_frame_info(frame);
 		}
@@ -1064,46 +1063,6 @@ void clear_ux_info(struct render_info *thr)
 	release_all_ux_info(thr);
 }
 
-static void rescue_check_callback(struct work_struct *work)
-{
-	struct ux_rescue_check *rsc_chk = NULL;
-
-	fpsgo_render_tree_lock(__func__);
-	rsc_chk = container_of(work, struct ux_rescue_check, work);
-	if (rsc_chk) {
-		unsigned long long frameid = rsc_chk->frameID;
-		struct render_info *render;
-		struct ux_scroll_info *last_scroll = NULL;
-
-		//find HWUI render infos, 5566 HWUI magic num
-		render = fpsgo_search_and_add_render_info(rsc_chk->pid, 5566, 0);
-		if (!render) {
-			fpsgo_render_tree_unlock(__func__);
-			return;
-		}
-
-		// get latest scrolling worker
-		last_scroll = get_latest_ux_scroll_info(render);
-
-		//if this frame alread end
-		if (!last_scroll || last_scroll->last_frame_ID >= frameid) {
-			fpsgo_render_tree_unlock(__func__);
-			return;
-		}
-		fpsgo_systrace_c_fbt(rsc_chk->pid, render->buffer_id, frameid, "[ux]rescue_again");
-
-		fpsgo_sbe_rescue(render, 1, -1, (rsc_chk->rescue_type | RESCUE_TYPE_BUFFER),
-				0, rsc_chk->frameID);
-
-		rsc_chk->frameID = 0;
-		rsc_chk->rescue_type = 0;
-		rsc_chk->rsc_hint_ts = 0;
-		fpsgo_systrace_c_fbt(rsc_chk->pid, render->buffer_id, 0, "[ux]rescue_again");
-
-	}
-	fpsgo_render_tree_unlock(__func__);
-}
-
 static void fpsgo_update_sbe_dy_rescue(struct render_info *thr, int sbe_dy_enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
@@ -1435,21 +1394,6 @@ struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts,
 	return NULL;
 }
 
-static enum hrtimer_restart rescue_check_tfn(struct hrtimer *timer)
-{
-	struct ux_rescue_check *rescue_check = container_of(timer, struct ux_rescue_check, timer);
-
-	if (!rescue_check)
-		return HRTIMER_NORESTART;
-
-	if (wq_rescue)
-		queue_work(wq_rescue, &rescue_check->work);
-	else
-		schedule_work(&rescue_check->work);
-
-	return HRTIMER_NORESTART;
-}
-
 void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render_info *thr)
 {
 	int list_length;
@@ -1469,8 +1413,10 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render
 					(RESCUE_MAX_MONITOR_DROP_ARR_SIZE) * sizeof(int)
 					, GFP_KERNEL | __GFP_ZERO);
 
-	if (!new_node->score)
+	if (!new_node->score) {
+		kmem_cache_free(ux_scroll_info_cachep, new_node);
 		return;
+	}
 
 	INIT_LIST_HEAD(&new_node->frame_list);
 	new_node->start_ts = start_ts;
@@ -1573,7 +1519,8 @@ struct hwui_frame_info *get_valid_hwui_frame_info_from_pool(struct render_info *
 	if (!info || list_empty(&info->scroll_list))
 		return NULL;
 
-	if (info->hwui_arr_idx >= HWUI_MAX_FRAME_SAME_TIME)
+	if (info->hwui_arr_idx < 0
+			|| info->hwui_arr_idx >= HWUI_MAX_FRAME_SAME_TIME)
 		info->hwui_arr_idx = 0;
 
 	frame = info->tmp_hwui_frame_info_arr[info->hwui_arr_idx];
@@ -1695,19 +1642,6 @@ void fbt_init_ux(struct render_info *info)
 	info->rescue_start_time = 0;
 	info->buffer_count_filter = 0;
 	info->rescue_more_count = 0;
-
-	if (sbe_dy_rescue_enable) {
-		struct ux_rescue_check *m_check = (struct ux_rescue_check *)
-				kmalloc(sizeof(struct ux_rescue_check), GFP_KERNEL);
-
-		if (m_check) {
-			hrtimer_init(&m_check->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-			m_check->timer.function = &rescue_check_tfn;
-			INIT_WORK(&m_check->work, rescue_check_callback);
-
-			info->ux_rchk = m_check;
-		}
-	}
 }
 
 void fbt_del_ux(struct render_info *info)
@@ -1723,14 +1657,6 @@ void fbt_del_ux(struct render_info *info)
 		for (size_t i = 0; i < HWUI_MAX_FRAME_SAME_TIME; i++) {
 			if (info->tmp_hwui_frame_info_arr[i])
 				kmem_cache_free(hwui_frame_info_cachep, info->tmp_hwui_frame_info_arr[i]);
-		}
-
-		if (info->ux_rchk) {
-			hrtimer_cancel(&(info->ux_rchk->timer));
-			cancel_work(&(info->ux_rchk->work));
-			flush_work(&(info->ux_rchk->work));
-
-			kfree(info->ux_rchk);
 		}
 	}
 	//reset sbe tag when render del
@@ -1903,7 +1829,6 @@ void destroy_smart_launch_capinfo(void)
 void __exit fbt_cpu_ux_exit(void)
 {
 	destroy_smart_launch_capinfo();
-	destroy_workqueue(wq_rescue);
 	kmem_cache_destroy(frame_info_cachep);
 	kmem_cache_destroy(ux_scroll_info_cachep);
 	kmem_cache_destroy(hwui_frame_info_cachep);
@@ -1928,8 +1853,6 @@ int __init fbt_cpu_ux_init(void)
 	gas_threshold_for_low_TLP = 10;
 	gas_threshold_for_high_TLP = 5;
 	global_dfrc_fps_limit = UX_TARGET_DEFAULT_FPS;
-
-	wq_rescue = alloc_workqueue("fbt_cpu_ux", WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND, 0);
 
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
