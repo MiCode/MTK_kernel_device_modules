@@ -24,6 +24,7 @@ module_param(mml_dl_dpc, int, 0644);
 void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version)
 {
 	mml_dpc_funcs = *funcs;
+	mml_dpc_version = version;
 }
 EXPORT_SYMBOL_GPL(mml_dpc_register);
 
@@ -55,6 +56,21 @@ void mml_dpc_group_enable(u32 sysid, bool en)
 	}
 
 	mml_dpc_funcs.dpc_group_enable(mml_sysid_to_dpc_subsys(sysid), en);
+}
+
+void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
+{
+	enum mtk_dpc_mtcmos_mode mtcmos_mode = en ? DPC_MTCMOS_AUTO : DPC_MTCMOS_MANUAL;
+
+	if (mml_dpc_version == DPC_VER2)
+		return;
+
+	if (mml_dpc_funcs.dpc_mtcmos_auto == NULL) {
+		mml_msg_dpc("%s dpc_mtcmos_auto not exist", __func__);
+		return;
+	}
+
+	mml_dpc_funcs.dpc_mtcmos_auto(mml_sysid_to_dpc_subsys(sysid), mtcmos_mode);
 }
 
 void mml_dpc_config(const enum mtk_dpc_subsys subsys, bool en)
