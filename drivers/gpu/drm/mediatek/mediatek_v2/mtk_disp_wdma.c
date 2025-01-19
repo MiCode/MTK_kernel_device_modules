@@ -1697,17 +1697,14 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	}
 
 	// WDMA bandwidth setting
-	if (wdma->info_data->force_ostdl_bw) {
-		bw_base = wdma->info_data->force_ostdl_bw;
-	} else {
-		bpp = mtk_get_format_bpp(comp->fb->format->format);
-		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-		bw_base = div_u64(bw_base, 1000) * 2;
-	}
+	bpp = mtk_get_format_bpp(comp->fb->format->format);
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
+	bw_base = div_u64(bw_base, 1000) * 2;
+
 	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
 
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
@@ -2292,7 +2289,13 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 	case PMQOS_SET_HRT_BW: {
 		unsigned int bw = *(unsigned int *)params;
+		unsigned int ostdl_bw = 0;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+
+		if (wdma->info_data->force_ostdl_bw)
+			ostdl_bw = wdma->info_data->force_ostdl_bw;
+		else
+			ostdl_bw = bw;
 
 		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -2300,7 +2303,7 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (priv->data->respective_ostdl) {
 			if (!IS_ERR(comp->hrt_qos_req))
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw,
+				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
 					priv->data->respective_ostdl);
 			if (wdma->data->hrt_channel)
 				mtk_vidle_channel_bw_set(bw, wdma->data->hrt_channel(comp));
@@ -2807,6 +2810,7 @@ static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.fifo_size_uv_2plane = PARSE_FROM_DTS,
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
+	.force_ostdl_bw = 7000,
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.sodi_config = mt6989_mtk_sodi_config,
