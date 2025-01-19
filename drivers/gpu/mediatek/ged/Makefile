@@ -16,8 +16,6 @@ MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
 GPU_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/
 VIDEOX_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/video/$(MTK_PLATFORM)/videox
 
-subdir-ccflags-y += -Wno-error
-
 ccflags-y += \
         -Wno-unused-variable \
         -Wno-unused-function
