@@ -166,10 +166,12 @@ int32_t mddp_on_activate(enum mddp_app_type_e type,
 			__func__, type, app,
 			app->ap_cfg.ul_dev_name, app->ap_cfg.dl_dev_name);
 
+	init_completion(&app->work_comp);
 	mddp_sm_wait_pre(app);
 	mddp_sm_on_event(app, MDDP_EVT_FUNC_ACT);
 	mddp_sm_wait(app, MDDP_EVT_FUNC_ACT);
 	mddp_u_set_wan_iface(ul_dev_name);
+	wait_for_completion(&app->work_comp);
 
 	return 0;
 }
@@ -194,9 +196,11 @@ int32_t mddp_on_deactivate(enum mddp_app_type_e type)
 	/*
 	 * MDDP DEACTIVATE command.
 	 */
+	init_completion(&app->work_comp);
 	mddp_sm_wait_pre(app);
 	mddp_sm_on_event(app, MDDP_EVT_FUNC_DEACT);
 	mddp_sm_wait(app, MDDP_EVT_FUNC_DEACT);
+	wait_for_completion(&app->work_comp);
 
 	return 0;
 }

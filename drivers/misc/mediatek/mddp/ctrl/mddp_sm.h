@@ -105,6 +105,7 @@ struct mddp_app_t {
 	uint32_t                    abnormal_flags;
 	uint32_t                    reset_cnt;
 	struct completion           md_resp_comp;
+	struct completion           work_comp;
 };
 
 
