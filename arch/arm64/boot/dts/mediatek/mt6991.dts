@@ -7,6 +7,7 @@
 #include <dt-bindings/clock/mt6991-clk.h>
 #include <dt-bindings/clock/mt6991-ivi-clk.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
+#include <dt-bindings/mmdvfs/mmdvfs-clk-mt6993.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/iio/adc/mediatek,mt6379_auxadc.h>
@@ -16020,6 +16021,25 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			opp-hz = /bits/ 64 <7>;
 			opp-microvolt = <7>;
 		};
+	};
+
+	mmdvfs_v5_mux: mmdvfs-v5-mux {
+		//compatible = "mediatek,mtk-mmdvfs-v5-mux";
+		mediatek,mmdvfs-muxs = <MMDVFS_V5_MUX_CAM>, <MMDVFS_V5_MUX_CAMTM>, <MMDVFS_V5_MUX_VDE>,
+			<MMDVFS_V5_MUX_IMG>, <MMDVFS_V5_MUX_IPE>, <MMDVFS_V5_MUX_DIS>, <MMDVFS_V5_MUX_MDP>,
+			<MMDVFS_V5_MUX_SMI>, <MMDVFS_V5_MUX_VEN>, <MMDVFS_V5_MUX_VEN_MDP>;
+		mediatek,mmdvfs-mux-names = "mux-cam", "mux-camtm", "mux-vde", "mux-img", "mux-ipe",
+			"mux-dis", "mux-mdp", "mux-smi", "mux-ven", "mux-ven-mdp";
+		mediatek,mmdvfs-opp-table = <&opp_table_cam>, <&opp_table_cam>, <&opp_table_vdec>,
+			<&opp_table_img>, <&opp_table_img>, <&opp_table_disp>, <&opp_table_disp>,
+			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc>;
+		#clock-cells = <1>;
+		clocks = <&mmdvfs_v5_mux MMDVFS_V5_AP_CAM>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VDE>,
+			<&mmdvfs_v5_mux MMDVFS_V5_AP_IMG>, <&mmdvfs_v5_mux MMDVFS_V5_AP_IPE>, <&mmdvfs_v5_mux MMDVFS_V5_AP_DIS>,
+			<&mmdvfs_v5_mux MMDVFS_V5_AP_MML>, <&mmdvfs_v5_mux MMDVFS_V5_AP_SMI>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VEN>,
+			<&mmdvfs_v5_mux MMDVFS_V5_AP_MDP>;
+		clock-names = "mmdvfs-v5-ap-cam", "mmdvfs-v5-ap-vde", "mmdvfs-v5-ap-img", "mmdvfs-v5-ap-ipe",
+			"mmdvfs-v5-ap-dis", "mmdvfs-v5-ap-mml", "mmdvfs-v5-ap-smi", "mmdvfs-v5-ap-ven", "mmdvfs-v5-ap-mdp";
 	};
 
 	mmdvfs_mux: mmdvfs-mux {
