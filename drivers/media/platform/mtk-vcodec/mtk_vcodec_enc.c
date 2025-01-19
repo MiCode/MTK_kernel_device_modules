@@ -2152,6 +2152,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	mtkbuf->frm_buf.qprects_dma = 0;
 	mtkbuf->frm_buf.metabuffer_dma = 0;
 	mtkbuf->frm_buf.dyparams_dma = 0;
+	mtkbuf->frm_buf.has_adab = 0;
 
 	if (buf->flags & V4L2_BUF_FLAG_QP_META &&
 		buf->reserved > 0 &&
