@@ -102,6 +102,7 @@ struct c3d_data {
 	const u32 sram_start_addr;
 	const u32 sram_end_addr;
 	u16 gpr[MML_PIPE_CNT];
+	u16 c3d_lut_num;
 };
 
 static const struct c3d_data mt6989_c3d_data = {
@@ -109,6 +110,7 @@ static const struct c3d_data mt6989_c3d_data = {
 	.sram_start_addr = 0,
 	.sram_end_addr = 2912,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.c3d_lut_num = 729,
 };
 
 static const struct c3d_data mt6991_mmlt_c3d_data = {
@@ -116,6 +118,7 @@ static const struct c3d_data mt6991_mmlt_c3d_data = {
 	.sram_start_addr = 0,
 	.sram_end_addr = 2912,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.c3d_lut_num = 729,
 };
 
 static const struct c3d_data mt6993_mmlf_c3d_data = {
@@ -123,6 +126,7 @@ static const struct c3d_data mt6993_mmlf_c3d_data = {
 	.sram_start_addr = 0,
 	.sram_end_addr = 2912,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.c3d_lut_num = 4913,
 };
 
 struct mml_comp_c3d {
@@ -176,10 +180,10 @@ static void c3d_relay(struct mml_comp *comp, struct cmdq_pkt *pkt,
 	else {
 		if (alpha)
 			cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
-				0x66, U32_MAX);
+				(c3d->data->c3d_lut_num == 729)? 0x66 : 0x76, U32_MAX);
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
-				0x46, U32_MAX);
+				(c3d->data->c3d_lut_num == 729)? 0x46 : 0x56, U32_MAX);
 	}
 }
 
@@ -335,7 +339,7 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_SRAM_CFG],
 		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
-	for (i = 0, addr=0; i < C3D_LUT_NUM; i++, addr+=4) {
+	for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4) {
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_0], addr, U32_MAX);
 		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
@@ -427,7 +431,7 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
 	c3d_lut = result->c3d_lut;
-	for (i = 0 ; i < C3D_LUT_NUM; i++)
+	for (i = 0 ; i < result->c3d_lut_num; i++)
 		mml_update(comp->id, reuse, c3d_frm->labels[i], c3d_lut[i]);
 
 	mml_pq_msg("%s: success ", __func__);

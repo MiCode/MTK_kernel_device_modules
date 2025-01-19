@@ -2196,16 +2196,16 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		goto free_c3d_regs;
 	}
 
-	c3d_lut = kmalloc_array(C3D_LUT_NUM, sizeof(u32),
+	c3d_lut = kmalloc_array(result->c3d_lut_num, sizeof(u32),
 				  GFP_KERNEL);
 	if (unlikely(!c3d_lut)) {
 		mml_pq_err("err: create c3d_lut failed, size:%d\n",
-			C3D_LUT_NUM);
+			result->c3d_lut_num);
 		goto free_c3d_regs;
 	}
 
 	ret = copy_from_user(c3d_lut, result->c3d_lut,
-		C3D_LUT_NUM * sizeof(u32));
+		result->c3d_lut_num * sizeof(u32));
 	if (unlikely(ret)) {
 		mml_pq_err("copy c3d_lut failed!: %d\n", ret);
 		goto free_c3d_lut_curve;
