@@ -23,18 +23,56 @@
 #define EVENT_LVSYS_F	0
 #define EVENT_LVSYS_R	BIT(15)
 
-#define MT6363_RG_LVSYS_INT_EN		0xa18
-#define MT6363_RG_LVSYS_INT_VTHL	0xa8b
-#define MT6363_RG_LVSYS_INT_VTHH	0xa8c
-#define MTK_LBAT_PT_THD_VOLTS_LENGTH	20
+/* MT6363 */
+#define MT6363_RG_LVSYS_INT_EN		(0xa18)
+#define MT6363_RG_LVSYS_INT_VTHL	(0xa8b)
+#define MT6363_RG_LVSYS_INT_VTHH	(0xa8c)
+#define MTK_LBAT_PT_THD_VOLTS_LENGTH	(20)
+
+/* MT6661 */
+/*
+// 6661 TODO:
+#define MT6661_RG_LVSYS1_INT_EN_ADDR    (0xaa4)
+#define MT6661_RG_LVSYS1_INT_EN_SHIFT   (4)
+#define MT6661_RG_LVSYS2_INT_EN_ADDR    (0xaa4)
+#define MT6661_RG_LVSYS2_INT_EN_SHIFT   (5)
+#define MT6661_RG_LVSYS3_INT_EN_ADDR    (0xaa4)
+#define MT6661_RG_LVSYS3_INT_EN_SHIFT   (6)
+#define MT6661_RG_LVSYS1_INT_VTHL_ADDR  (0xa8e)
+#define MT6661_RG_LVSYS1_INT_VTHL_MASK  (0xf)
+#define MT6661_RG_LVSYS1_INT_VTHL_SHIFT (0)
+#define MT6661_RG_LVSYS1_INT_VTHH_ADDR  (0xa8e)
+#define MT6661_RG_LVSYS1_INT_VTHH_MASK  (0xf)
+#define MT6661_RG_LVSYS1_INT_VTHH_SHIFT (4)
+#define MT6661_RG_LVSYS2_INT_VTHL_ADDR  (0xa8f)
+#define MT6661_RG_LVSYS2_INT_VTHL_MASK  (0xf)
+#define MT6661_RG_LVSYS2_INT_VTHL_SHIFT (4)
+#define MT6661_RG_LVSYS2_INT_VTHH_ADDR  (0xa90)
+#define MT6661_RG_LVSYS2_INT_VTHH_MASK  (0xf)
+#define MT6661_RG_LVSYS2_INT_VTHH_SHIFT (0)
+#define MT6661_RG_LVSYS3_INT_VTHL_ADDR  (0xa91)
+#define MT6661_RG_LVSYS3_INT_VTHL_MASK  (0x1f)
+#define MT6661_RG_LVSYS3_INT_VTHL_SHIFT (0)
+*/
 
 struct pmic_lvsys_info {
 	u32 lvsys_int_en_reg;
 	u32 lvsys_int_en_mask;
+	// u32 lvsys1_int_en_reg;
+	// u32 lvsys2_int_en_reg;
+	// u32 lvsys3_int_en_reg;
 	u32 lvsys_int_fdb_sel_mask;
 	u32 lvsys_int_rdb_sel_mask;
+	// u32 lvsys1_int_rdb_sel_mask;
+	// u32 lvsys2_int_rdb_sel_mask;
 	u32 lvsys_int_vthl_reg;
+	// u32 lvsys1_int_vthl_reg;
+	// u32 lvsys2_int_vthl_reg;
+	// u32 lvsys3_int_vthl_reg;
 	u32 lvsys_int_vthh_reg;
+	// u32 lvsys1_int_vthh_reg;
+	// u32 lvsys2_int_vthh_reg;
+	// u32 lvsys3_int_vthh_reg;
 	const struct linear_range vthl_range;
 	const struct linear_range vthh_range;
 };
@@ -59,6 +97,37 @@ static const struct pmic_lvsys_info mt6363_lvsys_info = {
 		.step = 100,
 	},
 };
+
+/*
+// 6661 TODO:
+static const struct pmic_lvsys_info mt6661_lvsys_info = {
+	.lvsys1_int_en_reg = MT6661_RG_LVSYS1_INT_EN_ADDR,
+	.lvsys2_int_en_reg = MT6661_RG_LVSYS2_INT_EN_ADDR,
+	.lvsys3_int_en_reg = MT6661_RG_LVSYS3_INT_EN_ADDR,
+	.lvsys_int_en_mask = 0x1,
+	.lvsys_int_fdb_sel_mask = 0x6,
+	.lvsys1_int_rdb_sel_mask = 0x60,
+	.lvsys2_int_rdb_sel_mask = 0x60,
+	.lvsys1_int_vthl_reg = MT6661_RG_LVSYS1_INT_VTHL_ADDR,
+	.lvsys2_int_vthl_reg = MT6661_RG_LVSYS2_INT_VTHL_ADDR,
+	.lvsys3_int_vthl_reg = MT6661_RG_LVSYS3_INT_VTHL_ADDR,
+	.lvsys1_int_vthh_reg = MT6661_RG_LVSYS1_INT_VTHH_ADDR,
+	.lvsys2_int_vthh_reg = MT6661_RG_LVSYS2_INT_VTHH_ADDR,
+	.lvsys3_int_vthh_reg = MT6661_RG_LVSYS3_INT_VTHH_ADDR,
+	.vthl_range = {
+		.min = 2900,
+		.min_sel = 0,
+		.max_sel = 11,
+		.step = 100,
+	},
+	.vthh_range = {
+		.min = 3200,
+		.min_sel = 0,
+		.max_sel = 11,
+		.step = 100,
+	},
+};
+*/
 
 struct pmic_lvsys_notify {
 	struct device *dev;
@@ -100,6 +169,7 @@ int lvsys_unregister_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(lvsys_unregister_notifier);
 
+#if LVSYS_VIO18_SWITCH
 struct vio18_ctrl_t {
 	struct notifier_block nb;
 	struct regmap *main_regmap;
@@ -108,7 +178,6 @@ struct vio18_ctrl_t {
 	unsigned int second_switch;
 };
 
-#if LVSYS_VIO18_SWITCH
 static int vio18_switch_handler(struct notifier_block *nb, unsigned long event, void *v)
 {
 	int ret;
@@ -177,6 +246,17 @@ static int vio18_switch_init(struct device *dev, struct regmap *main_regmap)
 }
 #endif
 
+/*
+// 6661 TODO:
+static void is_multi_level_lvsys(struct pmic_lvsys_notify *lvsys_notify)
+{
+	if (info->lvsys1_int_en_reg)
+		return true;
+	return false;
+}
+*/
+
+// 6661 TODO:
 static void enable_lvsys_int(struct pmic_lvsys_notify *lvsys_notify, bool en)
 {
 	int ret;
@@ -226,6 +306,7 @@ static int lvsys_vth_get_selector_low(const struct linear_range *r,
 	return 0;
 }
 
+// 6661 TODO:
 static void update_lvsys_vth(struct pmic_lvsys_notify *lvsys_notify)
 {
 	int ret;
@@ -344,6 +425,7 @@ static irqreturn_t lvsys_r_int_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+// 6661 TODO:
 static int pmic_lvsys_parse_dt(struct pmic_lvsys_notify *lvsys_notify, struct device_node *np)
 {
 	int ret;
@@ -401,6 +483,7 @@ static int pmic_lvsys_parse_dt(struct pmic_lvsys_notify *lvsys_notify, struct de
 	return ret;
 }
 
+// 6661 TODO:
 static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
 				  struct device_node *np, struct device_node *lowbatpt_np)
 {
@@ -473,6 +556,13 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 	struct device_node *gauge_np, *lowbatpt_np;
 	struct pmic_lvsys_notify *lvsys_notify;
 	const struct pmic_lvsys_info *info;
+	/*
+	// 6661 TODO:
+	char *single_lvsys_int = {"LVSYS_R", "LVSYS_F"};
+	char *multi_lvsys_int = {"LVSYS1_R", "LVSYS1_F", "LVSYS2_R", "LVSYS2_F", "LVSYS3_R"};
+	char **lvsys_int;
+	unsigned int lvsys_int_size = 0, i = 0;
+	*/
 
 	lvsys_notify = devm_kzalloc(&pdev->dev, sizeof(*lvsys_notify), GFP_KERNEL);
 	if (!lvsys_notify)
@@ -520,6 +610,31 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 	}
 	mutex_init(&lvsys_notify->lock);
 
+	/*
+	// 6661 TODO:
+	if (is_multi_level_lvsys) {
+		lvsys_int = multi_lvsys_int;
+		lvsys_int_size = sizeof(multi_lvsys_int) / sizeof(multi_lvsys_int[0]);
+	} else {
+		lvsys_int = single_lvsys_int;
+		lvsys_int_size = sizeof(single_lvsys_int) / sizeof(single_lvsys_int[0]);
+	}
+	for (i = 0; i < lvsys_int_size; i++) {
+		irq = platform_get_irq_byname_optional(pdev, lvsys_int[i]);
+		if (irq < 0) {
+			dev_notice(&pdev->dev, "failed to get %s irq, ret=%d\n", lvsys_int[i], irq);
+			return irq;
+		}
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL, lvsys_f_int_handler, IRQF_ONESHOT,
+						lvsys_int[i], lvsys_notify);
+		if (ret < 0) {
+			dev_notice(&pdev->dev, "failed to request %s irq, ret=%d\n", lvsys_int[i], ret);
+			return ret;
+		}
+	}
+	*/
+
+	// original (need to be removed)
 	irq = platform_get_irq_byname_optional(pdev, "LVSYS_F");
 	if (irq < 0) {
 		dev_notice(&pdev->dev, "failed to get LVSYS_F irq, ret=%d\n", irq);
@@ -543,6 +658,7 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 		dev_notice(&pdev->dev, "failed to request LVSYS_R irq, ret=%d\n", ret);
 		return ret;
 	}
+
 	/* RG_LVSYS_INT_EN = 0x1 */
 	enable_lvsys_int(lvsys_notify, true);
 
@@ -559,6 +675,12 @@ static const struct of_device_id pmic_lvsys_notify_of_match[] = {
 		.compatible = "mediatek,mt6363-lvsys-notify",
 		.data = &mt6363_lvsys_info,
 	}, {
+/*
+// 6661 TODO:
+		.compatible = "mediatek,mt6661-lvsys-notify",
+		.data = &mt6661_lvsys_info,
+	}, {
+*/
 		/* sentinel */
 	}
 };

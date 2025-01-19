@@ -15,6 +15,10 @@
 #include <linux/mfd/mt6373/registers.h>
 #include <linux/mfd/mt6377/core.h>
 #include <linux/mfd/mt6377/registers.h>
+#include <linux/mfd/mt6661/core.h>
+#include <linux/mfd/mt6661/registers.h>
+#include <linux/mfd/mt6667/core.h>
+#include <linux/mfd/mt6667/registers.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of_device.h>
@@ -46,6 +50,7 @@ struct mtk_spmi_pmic_data {
 	unsigned short top_int_status_reg;
 	struct irq_top_t *pmic_ints;
 	unsigned int cid_addr;
+	unsigned int rcs_int_done_reg;
 };
 
 struct pmic_core {
@@ -58,7 +63,7 @@ struct pmic_core {
 	bool *cache_hwirq;
 	struct mutex irqlock;
 	struct irq_domain *irq_domain;
-	const struct mtk_spmi_pmic_data *chip_data;
+	struct mtk_spmi_pmic_data *chip_data;
 };
 
 static const struct resource mt6363_regulators_resources[] = {
@@ -226,6 +231,53 @@ static const struct resource mt6377_lbat_service_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6377_IRQ_BAT_L, "bat_l"),
 };
 
+static const struct resource mt6661_regulators_resources[] = {
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK1_OC, "BUCK1"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK2_OC, "BUCK2"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK3_OC, "BUCK3"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK4_OC, "BUCK4"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK5_OC, "BUCK5"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK6_OC, "BUCK6"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LD20_1_NM_OC, "LD20_1"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LD20_2_NM_OC, "LD20_2"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LDC0_3_NM_OC, "LDC0_3"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LDC0_4_NM_OC, "LDC0_4"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LN60_5_NM_OC, "LN60_5"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LN60_6_NM_OC, "LN60_6"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LNC0_10_NM_OC, "LNC0_10"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LN60_7_NM_OC, "LN60_7"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LNC0_8_NM_OC, "LNC0_8"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LNC0_9_NM_OC, "LNC0_9"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LNC0_S_11_NM_OC, "LNC0_S_11"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_LNC0_S_12_NM_OC, "LNC0_S_12"),
+};
+
+static const struct resource mt6661_keys_resources[] = {
+	DEFINE_RES_IRQ(MT6661_IRQ_PWRKEY),
+	DEFINE_RES_IRQ(MT6661_IRQ_HOMEKEY),
+	DEFINE_RES_IRQ(MT6661_IRQ_PWRKEY_R),
+	DEFINE_RES_IRQ(MT6661_IRQ_HOMEKEY_R),
+};
+
+static const struct resource mt6661_lvsys_notify_resources[] = {
+	/* MT6661 LVSYS interrupt name is contrary,
+	 * we name LVSYS_R to MT6661_IRQ_NI_LVSYS_INT_FALLING;
+	 * LVSYS_F to MT6661_IRQ_NI_LVSYS_INT_RISING
+	 */
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_NI_LVSYS_INT1_FALLING, "LVSYS1_R"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_NI_LVSYS_INT1_RISING, "LVSYS1_F"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_NI_LVSYS_INT2_FALLING, "LVSYS2_R"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_NI_LVSYS_INT2_RISING, "LVSYS2_F"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_NI_LVSYS_INT3_FALLING, "LVSYS3_R"),
+};
+
+static const struct resource mt6667_regulators_resources[] = {
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK1_OC, "BUCK1"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK2_OC, "BUCK2"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK3_OC, "BUCK3"),
+	DEFINE_RES_IRQ_NAMED(MT6661_IRQ_BUCK4_OC, "BUCK4"),
+};
+
 static const struct mfd_cell mt6363_devs[] = {
 	{
 		.name = "mt6363-auxadc",
@@ -238,6 +290,7 @@ static const struct mfd_cell mt6363_devs[] = {
 		.of_compatible = "mediatek,mt6363-efuse",
 	}, {
 		.name = "mt6363-regulator",
+		.of_compatible = "mediatek,mt6363-regulator",
 		.num_resources = ARRAY_SIZE(mt6363_regulators_resources),
 		.resources = mt6363_regulators_resources,
 	}, {
@@ -273,6 +326,7 @@ static const struct mfd_cell mt6368_devs[] = {
 		.resources = mt6368_accdet_resources,
 	}, {
 		.name = "mt6368-regulator",
+		.of_compatible = "mediatek,mt6368-regulator",
 		.num_resources = ARRAY_SIZE(mt6368_regulators_resources),
 		.resources = mt6368_regulators_resources,
 	}, {
@@ -301,6 +355,7 @@ static const struct mfd_cell mt6369_devs[] = {
 		.resources = mt6369_accdet_resources,
 	}, {
 		.name = "mt6369-regulator",
+		.of_compatible = "mediatek,mt6369-regulator",
 		.num_resources = ARRAY_SIZE(mt6369_regulators_resources),
 		.resources = mt6369_regulators_resources,
 	}, {
@@ -321,6 +376,7 @@ static const struct mfd_cell mt6373_devs[] = {
 		.of_compatible = "mediatek,spmi-pmic-debug",
 	}, {
 		.name = "mt6373-regulator",
+		.of_compatible = "mediatek,mt6373-regulator",
 		.num_resources = ARRAY_SIZE(mt6373_regulators_resources),
 		.resources = mt6373_regulators_resources,
 	}, {
@@ -368,6 +424,10 @@ static const struct mfd_cell mt6377_devs[] = {
 		.of_compatible = "mediatek,mt6377-efuse",
 	}, {
 		.name = "mt6377-regulator",
+		/* NOTE:
+		   if 6377 migrate to w0 version, should add line below
+		.of_compatible = "mediatek,mt6373-regulator",
+		*/
 		.num_resources = ARRAY_SIZE(mt6377_regulators_resources),
 		.resources = mt6377_regulators_resources,
 	}, {
@@ -378,6 +438,118 @@ static const struct mfd_cell mt6377_devs[] = {
 	}, {
 		.name = "mt-pmic",
 		.of_compatible = "mediatek,spmi-pmic-debug",
+	},
+};
+
+static const struct mfd_cell mt6661_devs[] = {
+	{
+		.name = "mt6661-5-auxadc",
+		.of_compatible = "mediatek,mt6661-5-auxadc",
+	}, {
+		.name = "mt6661-6-auxadc",
+		.of_compatible = "mediatek,mt6661-6-auxadc",
+	}, {
+		.name = "mtk-dynamic-loading-throttling",
+		.of_compatible = "mediatek,mt6661-dynamic_loading_throttling",
+	}, {
+		.name = "mt6661-3-efuse",
+		.of_compatible = "mediatek,mt6661-3-efuse",
+	}, {
+		.name = "mt6661-4-efuse",
+		.of_compatible = "mediatek,mt6661-4-efuse",
+	}, {
+		.name = "mt6661-5-efuse",
+		.of_compatible = "mediatek,mt6661-5-efuse",
+	}, {
+		.name = "mt6661-6-efuse",
+		.of_compatible = "mediatek,mt6661-6-efuse",
+	}, {
+		.name = "mt6661-3-regulator",
+		.of_compatible = "mediatek,mt6661-3-regulator",
+		.num_resources = ARRAY_SIZE(mt6661_regulators_resources),
+		.resources = mt6661_regulators_resources,
+	}, {
+		.name = "mt6661-4-regulator",
+		.of_compatible = "mediatek,mt6661-4-regulator",
+		.num_resources = ARRAY_SIZE(mt6661_regulators_resources),
+		.resources = mt6661_regulators_resources,
+	}, {
+		.name = "mt6661-5-regulator",
+		.of_compatible = "mediatek,mt6661-5-regulator",
+		.num_resources = ARRAY_SIZE(mt6661_regulators_resources),
+		.resources = mt6661_regulators_resources,
+	}, {
+		.name = "mt6661-6-regulator",
+		.of_compatible = "mediatek,mt6661-6-regulator",
+		.num_resources = ARRAY_SIZE(mt6661_regulators_resources),
+		.resources = mt6661_regulators_resources,
+	}, {
+		.name = "mt6661-3-pmic",
+		.of_compatible = "mediatek,spmi-pmic-3-debug",
+	}, {
+		.name = "mt-pmic",
+		.of_compatible = "mediatek,spmi-pmic-4-debug",
+	}, {
+		.name = "mt6661-5-pmic",
+		.of_compatible = "mediatek,spmi-pmic-5-debug",
+	}, {
+		.name = "mt6661-6-pmic",
+		.of_compatible = "mediatek,spmi-pmic-6-debug",
+	}, {
+		.name = "mt6661-lvsys-notify",
+		.num_resources = ARRAY_SIZE(mt6661_lvsys_notify_resources),
+		.resources = mt6661_lvsys_notify_resources,
+		.of_compatible = "mediatek,mt6661-lvsys-notify",
+        }, {
+                .name = "mt6661-4-connv3",
+                .of_compatible = "mediatek,mt6661-4-connv3",
+        }, {
+                .name = "mt6661-3-connv3",
+                .of_compatible = "mediatek,mt6661-3-connv3",
+	}, {
+		.name = "mt6661-3-consys",
+		.of_compatible = "mediatek,mt6661-3-consys",
+	}, {
+		.name = "mtk-pmic-keys",
+		.num_resources = ARRAY_SIZE(mt6661_keys_resources),
+		.resources = mt6661_keys_resources,
+		.of_compatible = "mediatek,mt6661-keys"
+	},
+};
+
+static const struct mfd_cell mt6667_devs[] = {
+	{
+		.name = "mt6667-7-regulator",
+		.of_compatible = "mediatek,mt6667-7-regulator",
+		.num_resources = ARRAY_SIZE(mt6667_regulators_resources),
+		.resources = mt6667_regulators_resources,
+	}, {
+		.name = "mt6667-8-regulator",
+		.of_compatible = "mediatek,mt6667-8-regulator",
+		.num_resources = ARRAY_SIZE(mt6667_regulators_resources),
+		.resources = mt6667_regulators_resources,
+	}, {
+		.name = "mt6667-12-regulator",
+		.of_compatible = "mediatek,mt6667-12-regulator",
+		.num_resources = ARRAY_SIZE(mt6667_regulators_resources),
+		.resources = mt6667_regulators_resources,
+	}, {
+		.name = "mt6667-13-regulator",
+		.of_compatible = "mediatek,mt6667-13-regulator",
+		.num_resources = ARRAY_SIZE(mt6667_regulators_resources),
+		.resources = mt6667_regulators_resources,
+	}, {
+		.name = "mt6667-7-pmic",
+		.of_compatible = "mediatek,spmi-pmic-7-debug",
+	}, {
+		.name = "mt6667-8-pmic",
+		.of_compatible = "mediatek,spmi-pmic-8-debug",
+	}, {
+		.name = "mt6667-12-pmic",
+		.of_compatible = "mediatek,spmi-pmic-12-debug",
+	}, {
+		.name = "mt6667-13-pmic",
+		.of_compatible = "mediatek,spmi-pmic-13-debug",
 	},
 };
 
@@ -422,58 +594,98 @@ static struct irq_top_t mt6377_ints[] = {
 	MT6377_TOP_GEN(AUD),
 };
 
-static const struct mtk_spmi_pmic_data common_data = {
+static struct irq_top_t mt6661_ints[] = {
+	MT6661_TOP_GEN(BUCK),
+	MT6661_TOP_GEN(LDO),
+	MT6661_TOP_GEN(PSC),
+	MT6661_TOP_GEN(MISC),
+	MT6661_TOP_GEN(HK),
+};
+
+static struct irq_top_t mt6667_ints[] = {
+	MT6667_TOP_GEN(BUCK),
+	MT6667_TOP_GEN(PSC),
+	MT6667_TOP_GEN(MISC),
+	MT6667_TOP_GEN(HK),
+};
+
+static struct mtk_spmi_pmic_data common_data = {
 	.num_pmic_irqs = 0,
 };
 
-static const struct mtk_spmi_pmic_data mt6316_data = {
+static struct mtk_spmi_pmic_data mt6316_data = {
 	.num_pmic_irqs = 0,
 	.cid_addr = PMIC_MT6316_SWCID,
 };
 
-static const struct mtk_spmi_pmic_data mt6363_data = {
+static struct mtk_spmi_pmic_data mt6363_data = {
 	.cells = mt6363_devs,
 	.cell_size = ARRAY_SIZE(mt6363_devs),
 	.num_top = ARRAY_SIZE(mt6363_ints),
 	.num_pmic_irqs = MT6363_IRQ_NR,
 	.top_int_status_reg = MT6363_TOP_INT_STATUS1,
 	.pmic_ints = mt6363_ints,
+	.rcs_int_done_reg = RCS_INT_DONE,
 };
 
-static const struct mtk_spmi_pmic_data mt6368_data = {
+static struct mtk_spmi_pmic_data mt6368_data = {
 	.cells = mt6368_devs,
 	.cell_size = ARRAY_SIZE(mt6368_devs),
 	.num_top = ARRAY_SIZE(mt6368_ints),
 	.num_pmic_irqs = MT6368_IRQ_NR,
 	.top_int_status_reg = MT6368_TOP_INT_STATUS1,
 	.pmic_ints = mt6368_ints,
+	.rcs_int_done_reg = RCS_INT_DONE,
 };
 
-static const struct mtk_spmi_pmic_data mt6369_data = {
+static struct mtk_spmi_pmic_data mt6369_data = {
 	.cells = mt6369_devs,
 	.cell_size = ARRAY_SIZE(mt6369_devs),
 	.num_top = ARRAY_SIZE(mt6369_ints),
 	.num_pmic_irqs = MT6369_IRQ_NR,
 	.top_int_status_reg = MT6369_TOP_INT_STATUS1,
 	.pmic_ints = mt6369_ints,
+	.rcs_int_done_reg = RCS_INT_DONE,
 };
 
-static const struct mtk_spmi_pmic_data mt6373_data = {
+static struct mtk_spmi_pmic_data mt6373_data = {
 	.cells = mt6373_devs,
 	.cell_size = ARRAY_SIZE(mt6373_devs),
 	.num_top = ARRAY_SIZE(mt6373_ints),
 	.num_pmic_irqs = MT6373_IRQ_NR,
 	.top_int_status_reg = MT6373_TOP_INT_STATUS1,
 	.pmic_ints = mt6373_ints,
+	.rcs_int_done_reg = RCS_INT_DONE,
 };
 
-static const struct mtk_spmi_pmic_data mt6377_data = {
+static struct mtk_spmi_pmic_data mt6377_data = {
 	.cells = mt6377_devs,
 	.cell_size = ARRAY_SIZE(mt6377_devs),
 	.num_top = ARRAY_SIZE(mt6377_ints),
 	.num_pmic_irqs = MT6377_IRQ_NR,
 	.top_int_status_reg = MT6377_TOP_INT_STATUS1,
 	.pmic_ints = mt6377_ints,
+	.rcs_int_done_reg = RCS_INT_DONE,
+};
+
+static struct mtk_spmi_pmic_data mt6661_data = {
+	.cells = mt6661_devs,
+	.cell_size = ARRAY_SIZE(mt6661_devs),
+	.num_top = ARRAY_SIZE(mt6661_ints),
+	.num_pmic_irqs = MT6661_IRQ_NR,
+	.top_int_status_reg = MT6661_TOP_INT_STATUS1,
+	.pmic_ints = mt6661_ints,
+	.rcs_int_done_reg = 0x41C,
+};
+
+static struct mtk_spmi_pmic_data mt6667_data = {
+	.cells = mt6667_devs,
+	.cell_size = ARRAY_SIZE(mt6667_devs),
+	.num_top = ARRAY_SIZE(mt6667_ints),
+	.num_pmic_irqs = MT6667_IRQ_NR,
+	.top_int_status_reg = MT6667_TOP_INT_STATUS1,
+	.pmic_ints = mt6667_ints,
+	.rcs_int_done_reg = 0x41C,
 };
 
 static void mtk_spmi_pmic_irq_enable(struct irq_data *data)
@@ -504,7 +716,7 @@ static void mtk_spmi_pmic_irq_sync_unlock(struct irq_data *data)
 	unsigned int i, top_gp, gp_offset, en_reg, int_regs, shift;
 	struct irq_top_t *pmic_int;
 	struct pmic_core *core = irq_data_get_irq_chip_data(data);
-	const struct mtk_spmi_pmic_data *chip_data = core->chip_data;
+	struct mtk_spmi_pmic_data *chip_data = core->chip_data;
 
 	for (i = 0; i < chip_data->num_pmic_irqs; i++) {
 		if (core->enable_hwirq[i] == core->cache_hwirq[i])
@@ -546,7 +758,7 @@ static void mtk_spmi_pmic_irq_sp_handler(struct pmic_core *core,
 	unsigned int hwirq, virq;
 	int ret, i, j;
 	struct irq_top_t *pmic_int;
-	const struct mtk_spmi_pmic_data *chip_data = core->chip_data;
+	struct mtk_spmi_pmic_data *chip_data = core->chip_data;
 
 	for (i = 0; i < chip_data->pmic_ints[top_gp].num_int_regs; i++) {
 		pmic_int = &(chip_data->pmic_ints[top_gp]);
@@ -586,7 +798,7 @@ static irqreturn_t mtk_spmi_pmic_irq_handler(int irq, void *data)
 	int ret;
 	unsigned int bit, i, top_irq_status = 0;
 	struct pmic_core *core = data;
-	const struct mtk_spmi_pmic_data *chip_data = core->chip_data;
+	struct mtk_spmi_pmic_data *chip_data = core->chip_data;
 
 	ret = regmap_read(core->regmap, chip_data->top_int_status_reg,
 			  &top_irq_status);
@@ -606,7 +818,7 @@ static irqreturn_t mtk_spmi_pmic_irq_handler(int irq, void *data)
 		}
 	}
 
-	ret = regmap_write(core->regmap, RCS_INT_DONE, 1);
+	ret = regmap_write(core->regmap, chip_data->rcs_int_done_reg, 1);
 	if (ret) {
 		dev_err(core->dev,
 			"Failed to clear RCS flag, ret=%d\n", ret);
@@ -639,7 +851,7 @@ static int mtk_spmi_pmic_irq_init(struct pmic_core *core)
 {
 	int i, j, ret;
 	unsigned int en_reg, sta_reg;
-	const struct mtk_spmi_pmic_data *chip_data = core->chip_data;
+	struct mtk_spmi_pmic_data *chip_data = core->chip_data;
 
 	mutex_init(&core->irqlock);
 	core->enable_hwirq = devm_kcalloc(core->dev,
@@ -665,8 +877,7 @@ static int mtk_spmi_pmic_irq_init(struct pmic_core *core)
 			regmap_write(core->regmap, sta_reg, 0xFF);
 		}
 	}
-	regmap_write(core->regmap, RCS_INT_DONE, 1);
-
+	regmap_write(core->regmap, chip_data->rcs_int_done_reg, 1);
 	core->irq_domain = irq_domain_add_linear(core->dev->of_node,
 						 chip_data->num_pmic_irqs,
 						 &pmic_irq_domain_ops,
@@ -698,11 +909,13 @@ static const struct regmap_config spmi_regmap_config = {
 
 static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 {
-	int ret;
-	unsigned int id;
-	struct device_node *np = sdev->dev.of_node;
 	struct pmic_core *core;
-	const struct mtk_spmi_pmic_data *chip_data;
+	struct device_node *np = sdev->dev.of_node;
+	struct device_node *child_node;
+	struct mfd_cell *cells_to_add;
+	struct mtk_spmi_pmic_data *chip_data;
+	int ret, n_devs_to_add = 0, i = 0;
+	unsigned int id;
 
 	core = devm_kzalloc(&sdev->dev, sizeof(*core), GFP_KERNEL);
 	if (!core)
@@ -726,7 +939,6 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 		dev_err(&sdev->dev, "Failed to read chip id: %d\n", ret);
 		return ret;
 	}
-
 	core->chip_id = id;
 
 	if (chip_data->num_pmic_irqs) {
@@ -738,9 +950,33 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 		if (ret)
 			dev_err(&sdev->dev, "IRQ_init failed(%d)\n", core->irq);
 
-		ret = devm_mfd_add_devices(&sdev->dev, -1, chip_data->cells,
-					   chip_data->cell_size, NULL, 0,
-					   core->irq_domain);
+		cells_to_add = kcalloc(chip_data->cell_size, sizeof(struct mfd_cell), GFP_KERNEL);
+		if (!cells_to_add)
+			return -ENOMEM;
+
+		for_each_child_of_node(sdev->dev.of_node, child_node) {
+			dev_info(&sdev->dev, "node name: %s\n", child_node->name);
+			for (i = 0; i < chip_data->cell_size; i++)
+				if (of_device_is_compatible(child_node, chip_data->cells[i].of_compatible)) {
+					dev_info(&sdev->dev, "matched node: %s\n", chip_data->cells[i].of_compatible);
+					memcpy(&cells_to_add[n_devs_to_add++], &chip_data->cells[i], sizeof(struct mfd_cell));
+				}
+		}
+
+		if (n_devs_to_add > 0) {
+			ret = devm_mfd_add_devices(&sdev->dev, -1, cells_to_add,
+						n_devs_to_add, NULL, 0,
+						core->irq_domain);
+			kfree(cells_to_add);
+			if (ret) {
+				dev_err(&sdev->dev, "Failed to add subdevices: %d\n", ret);
+				return ret;
+			}
+		} else {
+			kfree(cells_to_add);
+			return -ENODEV;
+		}
+
 		if (ret)
 			irq_domain_remove(core->irq_domain);
 	} else
@@ -766,6 +1002,8 @@ static const struct of_device_id mtk_spmi_pmic_of_match[] = {
 	{ .compatible = "mediatek,mt6369", .data = &mt6369_data, },
 	{ .compatible = "mediatek,mt6373", .data = &mt6373_data, },
 	{ .compatible = "mediatek,mt6377", .data = &mt6377_data, },
+	{ .compatible = "mediatek,mt6661", .data = &mt6661_data, },
+	{ .compatible = "mediatek,mt6667", .data = &mt6667_data, },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mtk_spmi_pmic_of_match);

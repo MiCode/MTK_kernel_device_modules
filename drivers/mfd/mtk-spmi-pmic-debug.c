@@ -157,6 +157,14 @@ static void mtk_spmi_pmic_debug_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_spmi_pmic_debug_of_match[] = {
 	{ .compatible = "mediatek,spmi-pmic-debug", },
+	{ .compatible = "mediatek,spmi-pmic-3-debug", },
+	{ .compatible = "mediatek,spmi-pmic-4-debug", },
+	{ .compatible = "mediatek,spmi-pmic-5-debug", },
+	{ .compatible = "mediatek,spmi-pmic-6-debug", },
+	{ .compatible = "mediatek,spmi-pmic-7-debug", },
+	{ .compatible = "mediatek,spmi-pmic-8-debug", },
+	{ .compatible = "mediatek,spmi-pmic-12-debug", },
+	{ .compatible = "mediatek,spmi-pmic-13-debug", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mtk_spmi_pmic_debug_of_match);

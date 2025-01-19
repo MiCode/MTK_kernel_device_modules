@@ -48,6 +48,15 @@
 #define EFUSE_V3_OTP_CON14                   (0x398)
 #define EFUSE_V3_OTP_CON16                   (0x39a)
 
+#define EFUSE_V4_TOP_CKPDN_CON1              (0x10f)
+#define EFUSE_V4_TOP_CKHWEN_CON0             (0x126)
+#define EFUSE_V4_OTP_CLK_CON0                (0x38a)
+#define EFUSE_V4_OTP_IF_CON0                 (0x38b)
+#define EFUSE_V4_OTP_CON1                    (0x397)
+#define EFUSE_V4_OTP_CON0                    (0x396)
+#define EFUSE_V4_OTP_CON8                    (0x39e)
+#define EFUSE_V4_OTP_CON11                   (0x3a1)
+
 /* Mask definition for EFUSE control engine clock register */
 #define RG_EFUSE_CK_PDN_HWEN_MASK	BIT(2)
 #define RG_EFUSE_CK_PDN_MASK		BIT(4)
@@ -80,6 +89,7 @@ struct efuse_reg {
 	unsigned int otp_pa;
 	unsigned int otp_rd_trig;
 	unsigned int otp_rd_sw;
+	unsigned int otp_rd_mode;
 	unsigned int otp_dout_sw;
 	unsigned int otp_rd_busy;
 };
@@ -129,6 +139,18 @@ static const struct efuse_reg reg_v3 = {
 	.otp_rd_sw = EFUSE_V3_OTP_CON13,
 	.otp_dout_sw = EFUSE_V3_OTP_CON14,
 	.otp_rd_busy = EFUSE_V3_OTP_CON16,
+};
+
+static const struct efuse_reg reg_v4 = {
+	.ck_pdn = EFUSE_V4_TOP_CKPDN_CON1,
+	.ck_pdn_mask = RG_EFUSE_CK_PDN_MASK,
+	.ck_pdn_hwen = EFUSE_V4_TOP_CKHWEN_CON0,
+	.ck_pdn_hwen_mask = RG_EFUSE_CK_PDN_HWEN_MASK,
+	.otp_pa = EFUSE_V4_OTP_IF_CON0,
+	.otp_rd_trig = EFUSE_V4_OTP_CON1,
+	.otp_rd_mode = EFUSE_V4_OTP_CON0,
+	.otp_dout_sw = EFUSE_V4_OTP_CON8,
+	.otp_rd_busy = EFUSE_V4_OTP_CON11,
 };
 
 struct efuse_chip_data {
@@ -206,7 +228,11 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 			goto disable_efuse;
 	}
 	/* Set SW trigger read */
-	ret = regmap_write(efuse->regmap, reg->otp_rd_sw, 1);
+	if (reg->otp_rd_mode)
+		ret = regmap_write(efuse->regmap, reg->otp_rd_mode, 3);
+	else
+		ret = regmap_write(efuse->regmap, reg->otp_rd_sw, 1);
+
 	if (ret)
 		goto disable_efuse;
 	for (; offset < offset_end; offset += EFUSE_REG_WIDTH) {
@@ -246,7 +272,10 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 	}
 disable_efuse:
 	/* Disable SW trigger read */
-	regmap_write(efuse->regmap, reg->otp_rd_sw, 0);
+	if (reg->otp_rd_mode)
+		ret = regmap_write(efuse->regmap, reg->otp_rd_mode, 0);
+	else
+		regmap_write(efuse->regmap, reg->otp_rd_sw, 0);
 	/* Disable the efuse ctrl engine clock */
 	regmap_write(efuse->regmap,
 		     reg->ck_pdn_hwen + data->ctrl_reg_width * SET_OFFSET,
@@ -444,6 +473,12 @@ static const struct efuse_chip_data mt6377_efuse_data = {
 	.reg = &reg_v3,
 };
 
+static const struct efuse_chip_data mt6661_efuse_data = {
+	.reg_num = 128,
+	.ctrl_reg_width = 0x1,
+	.reg = &reg_v4,
+};
+
 static const struct of_device_id mt635x_efuse_of_match[] = {
 	{
 		.compatible = "mediatek,mt6357-efuse",
@@ -466,6 +501,18 @@ static const struct of_device_id mt635x_efuse_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6377-efuse",
 		.data = &mt6377_efuse_data
+	}, {
+		.compatible = "mediatek,mt6661-3-efuse",
+		.data = &mt6661_efuse_data
+	}, {
+		.compatible = "mediatek,mt6661-4-efuse",
+		.data = &mt6661_efuse_data
+	}, {
+		.compatible = "mediatek,mt6661-5-efuse",
+		.data = &mt6661_efuse_data
+	}, {
+		.compatible = "mediatek,mt6661-6-efuse",
+		.data = &mt6661_efuse_data
 	}, {
 		/* sentinel */
 	}

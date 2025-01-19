@@ -12,6 +12,7 @@
 #include <linux/mfd/mt6368/registers.h>
 #include <linux/mfd/mt6373/registers.h>
 #include <linux/mfd/mt6377/registers.h>
+#include <linux/mfd/mt6661/registers.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -65,6 +66,7 @@ static struct pmic_adc_device *imix_r_dev;
  * @r_ratio:	resistance ratio, represented by r_ratio[0] / r_ratio[1]
  * @avg_num:	sampling times of AUXADC measurments then average it
  * @regs:	request and data output registers for this channel
+ * @spl_time:	sample time for each sampling
  */
 struct auxadc_channels {
 	enum iio_chan_type type;
@@ -74,16 +76,18 @@ struct auxadc_channels {
 	unsigned char res;
 	unsigned char r_ratio[2];
 	unsigned short avg_num;
+	unsigned short spl_time;
+	unsigned short rc_set_time;
 	const struct auxadc_regs *regs;
 };
 
-#define AUXADC_CHANNEL(_ch_name, _res)	\
-	[AUXADC_##_ch_name] = {				\
-		.type = IIO_VOLTAGE,			\
+#define AUXADC_CHANNEL(_ch_name, _res)				\
+	[AUXADC_##_ch_name] = {					\
+		.type = IIO_VOLTAGE,				\
 		.info_mask = BIT(IIO_CHAN_INFO_RAW) |		\
 			     BIT(IIO_CHAN_INFO_PROCESSED),	\
-		.ch_name = __stringify(_ch_name),	\
-		.res = _res,				\
+		.ch_name = __stringify(_ch_name),		\
+		.res = _res,					\
 	}
 
 /*
@@ -116,6 +120,19 @@ static struct auxadc_channels auxadc_chans[] = {
 	AUXADC_CHANNEL(VIN5, 15),
 	AUXADC_CHANNEL(VIN6, 15),
 	AUXADC_CHANNEL(VIN7, 15),
+	AUXADC_CHANNEL(AGPIO1, 15),
+	AUXADC_CHANNEL(AGPIO2, 15),
+	AUXADC_CHANNEL(AGPIO3, 15),
+	AUXADC_CHANNEL(AGPIO4, 15),
+	AUXADC_CHANNEL(VIN1_POLL, 15),
+	AUXADC_CHANNEL(VIN2_POLL, 15),
+	AUXADC_CHANNEL(VIN3_POLL, 15),
+	AUXADC_CHANNEL(VIN4_POLL, 15),
+	AUXADC_CHANNEL(VIN5_POLL, 15),
+	AUXADC_CHANNEL(AGPIO1_POLL, 15),
+	AUXADC_CHANNEL(AGPIO2_POLL, 15),
+	AUXADC_CHANNEL(AGPIO3_POLL, 15),
+	AUXADC_CHANNEL(AGPIO4_POLL, 15),
 };
 
 struct auxadc_regs {
@@ -124,7 +141,17 @@ struct auxadc_regs {
 	unsigned int ready_reg;
 	unsigned int ready_mask;
 	unsigned int value_reg;
-	unsigned int ext_thr_sel;
+	unsigned int ext_thr_sel_reg;
+	unsigned int ext_thr_sel_shift;
+	unsigned int ext_thr_sel_mask;
+	unsigned int extsrc_ana_power_shift;
+	unsigned int avg_num_reg;
+	unsigned int avg_num_mask;
+	unsigned int avg_num_shift;
+	unsigned int spl_num_reg;
+	unsigned int spl_num_mask;
+	unsigned int poll_en_reg;
+	unsigned int poll_en_mask;
 	u8 src_sel;
 };
 
@@ -137,16 +164,60 @@ struct auxadc_regs {
 		.value_reg = _chip##_##_value_reg,	\
 	}						\
 
-#define TIA_ADC_REG(_src_sel, _chip)	\
+#define TIA_ADC_REG(_src_sel, _chip)			\
 	[AUXADC_VIN##_src_sel] = {			\
 		.enable_reg = _chip##_AUXADC_RQST1,	\
 		.enable_mask = BIT(4),			\
 		.ready_reg = _chip##_AUXADC_ADC_CH12_L,	\
 		.ready_mask = AUXADC_RDY_BIT,		\
 		.value_reg = _chip##_AUXADC_ADC_CH12_L,	\
-		.ext_thr_sel = _chip##_SDMADC_CON0,	\
+		.ext_thr_sel_reg = _chip##_SDMADC_CON0,	\
+		.ext_thr_sel_shift = EXT_THR_PURES_SHIFT, \
+		.ext_thr_sel_mask = EXT_THR_SEL_MASK,	\
 		.src_sel = _src_sel,			\
 	}						\
+
+/* MT6661 EXTSRC SW trigger mode */
+#define AUXADC_EXTSRC_REG(_ch_name, _chip, _src_sel, _enable_reg, _enable_mask, _value_reg,	\
+			  _ext_thr_sel_reg, _ext_thr_shift, _ext_thr_sel_mask, _extsrc_ana_power_shift, \
+			  _poll_en_reg, _avg_num_reg, _avg_num_mask, _avg_num_shift, _spl_num_reg) \
+	[AUXADC_##_ch_name] = {						\
+		.enable_reg = _chip##_##_enable_reg,			\
+		.enable_mask = _enable_mask,				\
+		.ready_reg = _chip##_##_value_reg,			\
+		.ready_mask = AUXADC_RDY_BIT,				\
+		.value_reg = _chip##_##_value_reg,			\
+		.ext_thr_sel_reg = _chip##_##_ext_thr_sel_reg,		\
+		.ext_thr_sel_shift = _ext_thr_shift,			\
+		.ext_thr_sel_mask = _ext_thr_sel_mask,			\
+		.extsrc_ana_power_shift = _extsrc_ana_power_shift,	\
+		.src_sel = _src_sel,					\
+		.poll_en_reg = _chip##_##_poll_en_reg,			\
+		.poll_en_mask = BIT(0),					\
+		.avg_num_reg = _chip##_##_avg_num_reg,			\
+		.avg_num_mask = _avg_num_mask,				\
+		.avg_num_shift = _avg_num_shift,			\
+		.spl_num_reg = _chip##_##_spl_num_reg,			\
+		.spl_num_mask = 0xff,					\
+	}
+
+/* MT6661 EXTSRC polling mode */
+#define AUXADC_POLL_REG(_ch_name, _chip, _src_sel, _enable_reg, _enable_mask, _value_reg, \
+			_ext_thr_sel, _avg_num_reg, _avg_num_mask, _avg_num_shift, _poll_en_reg)\
+	[AUXADC_##_ch_name] = {							\
+		.enable_reg = _chip##_##_enable_reg,				\
+		.enable_mask = _enable_mask,					\
+		.ready_reg = _chip##_##_value_reg + (_src_sel - 1) * 4,		\
+		.ready_mask = AUXADC_RDY_BIT,					\
+		.value_reg = _chip##_##_value_reg + (_src_sel - 1) * 4,		\
+		.ext_thr_sel_reg = _chip##_##_ext_thr_sel + (_src_sel - 1),	\
+		.src_sel = _src_sel,						\
+		.avg_num_reg = _chip##_##_avg_num_reg,				\
+		.avg_num_mask = _avg_num_mask,					\
+		.avg_num_shift = _avg_num_shift,				\
+		.poll_en_reg = _chip##_##_poll_en_reg,				\
+		.poll_en_mask = BIT(0),						\
+	}									\
 
 static const struct auxadc_regs mt6363_auxadc_regs_tbl[] = {
 	AUXADC_REG(BATADC, MT6363, AUXADC_RQST0, BIT(0), AUXADC_ADC0_L),
@@ -216,6 +287,62 @@ static const struct auxadc_regs mt6377_auxadc_regs_tbl[] = {
 	},
 };
 
+static const struct auxadc_regs mt6661_auxadc_regs_tbl[] = {
+	AUXADC_REG(VSYSSNS, MT6661, AUXADC_RQST0, BIT(0), AUXADC_ADC0_L),
+	AUXADC_REG(THR1, MT6661, AUXADC_RQST0, BIT(4), AUXADC_ADC4_L),
+	AUXADC_REG(THR2, MT6661, AUXADC_RQST2, BIT(0), AUXADC_ADC_SW0_L),
+	AUXADC_REG(THR3, MT6661, AUXADC_RQST2, BIT(1), AUXADC_ADC_SW1_L),
+	AUXADC_REG(THR4, MT6661, AUXADC_RQST2, BIT(2), AUXADC_ADC_SW2_L),
+	AUXADC_EXTSRC_REG(VIN1, MT6661, 1, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(VIN2, MT6661, 2, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(VIN3, MT6661, 3, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(VIN4, MT6661, 4, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(VIN5, MT6661, 5, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(AGPIO1, MT6661, 6, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(AGPIO2, MT6661, 7, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(AGPIO3, MT6661, 8, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+	AUXADC_EXTSRC_REG(AGPIO4, MT6661, 9, AUXADC_RQST0, BIT(7), AUXADC_ADC7_L,
+			  AUXADC_TIA_CON0, PMIC_AUXADC_INTRES_SEL_SHIFT, 0x7f, 0x6,
+			  AUXADC_POLL0, AUXADC_AVG_CON4, 0x70, 4, AUXADC_SPL_CON10),
+};
+
+static const struct auxadc_regs mt6661_auxadc_poll_regs_tbl[] = {
+	AUXADC_POLL_REG(VIN1_POLL, MT6661, 1, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(VIN2_POLL, MT6661, 2, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(VIN3_POLL, MT6661, 3, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(VIN4_POLL, MT6661, 4, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(VIN5_POLL, MT6661, 5, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(AGPIO1_POLL, MT6661, 6, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(AGPIO2_POLL, MT6661, 7, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(AGPIO3_POLL, MT6661, 8, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+	AUXADC_POLL_REG(AGPIO4_POLL, MT6661, 9, AUXADC_TIA_LATCH0, BIT(1), AUXADC_ADC_TIA0_L_MM,
+			AUXADC_POLL20, AUXADC_AVG_CON4, 0x70, 4, AUXADC_POLL0),
+};
+
 struct auxadc_info {
 	const struct auxadc_regs *regs_tbl;
 };
@@ -234,6 +361,14 @@ static const struct auxadc_info mt6373_info = {
 
 static const struct auxadc_info mt6377_info = {
 	.regs_tbl = mt6377_auxadc_regs_tbl,
+};
+
+static const struct auxadc_info mt6661_info = {
+	.regs_tbl = mt6661_auxadc_regs_tbl,
+};
+
+static const struct auxadc_info mt6661_poll_info = {
+	.regs_tbl = mt6661_auxadc_poll_regs_tbl,
 };
 
 #define regmap_bulk_read_poll_timeout(map, addr, val, val_count, cond, sleep_us, timeout_us) \
@@ -269,25 +404,137 @@ static const struct auxadc_info mt6377_info = {
 static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 			  int channel, int channel2, int *val)
 {
-	int ret;
-	u16 buf = 0;
 	const struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
+	int ret;
+	unsigned int poll_en = 0;
+	u16 buf = 0;
+	u8 wdata = 0;
 
 	if (!auxadc_chan->regs)
 		return -EINVAL;
 
-	if (auxadc_chan->regs->ext_thr_sel) {
-		buf = (channel2 << EXT_THR_PURES_SHIFT)
-			| auxadc_chan->regs->src_sel;
+	/* 1. Select extsrc and PURES */
+	if (auxadc_chan->regs->ext_thr_sel_reg) {
+		/* polling mode error handling */
+		if (auxadc_chan->regs->poll_en_reg) {
+			ret = regmap_read(adc_dev->regmap, auxadc_chan->regs->poll_en_reg, &poll_en);
+			if (ret)
+				return -EIO;
+			poll_en &= auxadc_chan->regs->poll_en_mask;
+			if (poll_en) {
+				dev_err(adc_dev->dev,
+					"%s Error: can't read extsrc by SW trigger when polling mode ON\n",
+					auxadc_chan->ch_name);
+				return -EPERM;
+			}
+		}
+		if (auxadc_chan->regs->extsrc_ana_power_shift) {
+			wdata = auxadc_chan->regs->src_sel |
+			      (channel2 << auxadc_chan->regs->ext_thr_sel_shift) |
+			      (1 << auxadc_chan->regs->extsrc_ana_power_shift);
+		} else {
+			wdata = auxadc_chan->regs->src_sel |
+			      (channel2 << auxadc_chan->regs->ext_thr_sel_shift);
+		}
 		ret = regmap_update_bits(adc_dev->regmap,
-					 auxadc_chan->regs->ext_thr_sel,
-					 EXT_THR_SEL_MASK, buf);
+					 auxadc_chan->regs->ext_thr_sel_reg,
+					 auxadc_chan->regs->ext_thr_sel_mask, wdata);
+
+		if (ret)
+			return -EIO;
+
+		/* 2. Wait RC settling time */
+		if (auxadc_chan->rc_set_time)
+			usleep_range(auxadc_chan->rc_set_time, auxadc_chan->rc_set_time + 100);
 	}
+
+	/* 3. Request ADC */
+	ret = regmap_write(adc_dev->regmap,
+			   auxadc_chan->regs->enable_reg,
+			   auxadc_chan->regs->enable_mask);
+	if (ret)
+		return -EIO;
+
+	/* 4. Wait ADC conversion time */
+	usleep_range(auxadc_chan->avg_num * auxadc_chan->spl_time,
+		    (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time);
+
+	buf = 0;
+	/* 5. Polling ADC ready */
+	ret = regmap_bulk_read_poll_timeout(adc_dev->regmap,
+					    auxadc_chan->regs->value_reg,
+					    buf, 2,
+					    (buf & AUXADC_RDY_BIT),
+					    AUXADC_POLL_DELAY_US,
+					    AUXADC_TIMEOUT_US);
+
+	/* 6. Get ADC out */
+	*val = buf & (BIT(auxadc_chan->res) - 1);
+	if (ret == -ETIMEDOUT)
+		dev_err(adc_dev->dev, "%s Time out!\n", auxadc_chan->ch_name);
+
+	/* set PURES to OPEN after measuring done for power saving */
+	if (auxadc_chan->regs->ext_thr_sel_reg) {
+		buf = auxadc_chan->regs->src_sel |
+		      (ADC_PURES_OPEN << auxadc_chan->regs->ext_thr_sel_shift);
+		ret = regmap_update_bits(adc_dev->regmap,
+					 auxadc_chan->regs->ext_thr_sel_reg,
+					 auxadc_chan->regs->ext_thr_sel_mask, buf);
+	}
+
+	return ret;
+}
+
+/*
+ * @adc_dev:	 pointer to the struct pmic_adc_device
+ * @auxadc_chan: pointer to the struct auxadc_channels, it represents specific
+		 auxadc channel
+ * @val:	 pointer to output value
+ */
+static int get_auxadc_out_poll(struct pmic_adc_device *adc_dev,
+			       int channel, int channel2, int *val)
+{
+	const struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
+	int ret;
+	unsigned int poll_en = 0, old_pures, extsrc_sel_mask;
+	u16 buf = 0;
+
+	if (!auxadc_chan->regs || !auxadc_chan->regs->poll_en_reg)
+		return -EINVAL;
+
+	ret = regmap_read(adc_dev->regmap, auxadc_chan->regs->poll_en_reg, &poll_en);
+	if (ret)
+		return -EIO;
+
+	poll_en &= auxadc_chan->regs->poll_en_mask;
+	if (!poll_en) {
+		dev_err(adc_dev->dev,
+			"%s polling mode disabled\n", auxadc_chan->ch_name);
+		return -EPERM;
+	}
+	ret = regmap_read(adc_dev->regmap, auxadc_chan->regs->ext_thr_sel_reg, &old_pures);
+	if (ret)
+		return -EIO;
+
+	buf = channel2;
+	extsrc_sel_mask = 0x3;
+	ret = regmap_update_bits(adc_dev->regmap,
+				 auxadc_chan->regs->ext_thr_sel_reg,
+				 extsrc_sel_mask, buf);
 	regmap_write(adc_dev->regmap,
 		     auxadc_chan->regs->enable_reg,
 		     auxadc_chan->regs->enable_mask);
-	usleep_range(auxadc_chan->avg_num * AUXADC_AVG_TIME_US,
-		     (auxadc_chan->avg_num + 1) * AUXADC_AVG_TIME_US);
+	/*
+	 * if switching PURES:
+         *      Need to wait ADC conversion time to get new data with new PURES
+         * if no switching PURES:
+         *      No need to wait ADC conversion time, but may return old data
+         */
+	if (channel2 == old_pures)
+		usleep_range(3, 5);
+	else
+		usleep_range(auxadc_chan->avg_num * auxadc_chan->spl_time,
+			    (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time);
 
 	ret = regmap_bulk_read_poll_timeout(adc_dev->regmap,
 					    auxadc_chan->regs->value_reg,
@@ -296,17 +543,9 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 					    AUXADC_POLL_DELAY_US,
 					    AUXADC_TIMEOUT_US);
 	*val = buf & (BIT(auxadc_chan->res) - 1);
+
 	if (ret == -ETIMEDOUT)
 		dev_err(adc_dev->dev, "%s Time out!\n", auxadc_chan->ch_name);
-
-	/* set PURES to OPEN after measuring done */
-	if (auxadc_chan->regs->ext_thr_sel) {
-		buf = (ADC_PURES_OPEN << EXT_THR_PURES_SHIFT)
-			| auxadc_chan->regs->src_sel;
-		ret = regmap_update_bits(adc_dev->regmap,
-					 auxadc_chan->regs->ext_thr_sel,
-					 EXT_THR_SEL_MASK, buf);
-	}
 
 	return ret;
 }
@@ -384,6 +623,11 @@ static int pmic_adc_read_raw(struct iio_dev *indio_dev,
 	case AUXADC_IMIX_R:
 		auxadc_out = adc_dev->imix_r;
 		break;
+	case AUXADC_VIN1_POLL ... AUXADC_AGPIO4_POLL:
+		ret = get_auxadc_out_poll(adc_dev,
+					  chan->channel, chan->channel2,
+					  &auxadc_out);
+		break;
 	default:
 		ret = get_auxadc_out(adc_dev,
 				     chan->channel, chan->channel2,
@@ -417,6 +661,7 @@ err:
 	return ret;
 }
 
+/* channel for channel users, channel2 for PURES */
 static int pmic_adc_fwnode_xlate(struct iio_dev *indio_dev,
 			     const struct fwnode_reference_args *iiospec)
 {
@@ -621,9 +866,9 @@ static int auxadc_get_data_from_dt(struct pmic_adc_device *adc_dev,
 				   struct device_node *node)
 {
 	struct auxadc_channels *auxadc_chan;
-	unsigned int channel = 0;
-	unsigned int value = 0;
+	unsigned int channel = 0, value = 0;
 	unsigned int val_arr[2] = {0};
+	unsigned short avg_num[8] = {1, 2, 4, 16, 32, 64, 128, 256};
 	int ret;
 
 	ret = of_property_read_u32(node, "channel", &channel);
@@ -669,8 +914,26 @@ static int auxadc_get_data_from_dt(struct pmic_adc_device *adc_dev,
 	ret = of_property_read_u32(node, "avg-num", &value);
 	if (!ret)
 		auxadc_chan->avg_num = value;
-	else
+	else if (auxadc_chan->regs->avg_num_reg) {
+		ret = regmap_read(adc_dev->regmap,
+				  auxadc_chan->regs->avg_num_reg, &value);
+		value &= auxadc_chan->regs->avg_num_mask;
+		value >>= auxadc_chan->regs->avg_num_shift;
+		auxadc_chan->avg_num = avg_num[value];
+	} else
 		auxadc_chan->avg_num = AUXADC_DEF_AVG_NUM;
+
+	if (auxadc_chan->regs->spl_num_reg) {
+		ret = regmap_read(adc_dev->regmap,
+				  auxadc_chan->regs->spl_num_reg, &value);
+		/* SPL_TIME: 0.385us(2.89MHz) x (SPL + ADC_compare(12T) + sync(1T)) */
+		auxadc_chan->spl_time = DIV_ROUND_UP((385 * ((value) + 12 + 1)), 1000);
+	} else
+		auxadc_chan->spl_time = AUXADC_AVG_TIME_US;
+
+	ret = of_property_read_u32(node, "rc-set-time", &value);
+	if (!ret)
+		auxadc_chan->rc_set_time = value;
 
 	return 0;
 }
@@ -754,6 +1017,8 @@ static const struct of_device_id pmic_adc_of_match[] = {
 	{ .compatible = "mediatek,mt6368-auxadc", .data = &mt6368_info, },
 	{ .compatible = "mediatek,mt6373-auxadc", .data = &mt6373_info, },
 	{ .compatible = "mediatek,mt6377-auxadc", .data = &mt6377_info, },
+	{ .compatible = "mediatek,mt6661-5-auxadc", .data = &mt6661_poll_info, },
+	{ .compatible = "mediatek,mt6661-6-auxadc", .data = &mt6661_info, },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, pmic_adc_of_match);

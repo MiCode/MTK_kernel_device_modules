@@ -14,6 +14,7 @@
 #include <linux/mfd/mt6359p/registers.h>
 #include <linux/mfd/mt6363/registers.h>
 #include <linux/mfd/mt6377/registers.h>
+#include <linux/mfd/mt6661/registers.h>
 #include <linux/mfd/mt6397/core.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -149,6 +150,31 @@ struct dlpt_regs_t mt6377_dlpt_regs = {
 		.min_sel = 0,
 		.max_sel = 8,
 		.step = 50,
+	},
+};
+
+
+struct dlpt_regs_t mt6661_dlpt_regs = {
+	.rgs_chrdet = {
+		MT6661_CHRDET_DEB_ADDR,
+		MT6661_CHRDET_DEB_MASK << MT6661_CHRDET_DEB_SHIFT,
+		MT6661_CHRDET_DEB_SHIFT
+	},
+	.uvlo_reg = {
+		MT6661_RG_VSYS_UVLO_VTHL_ADDR,
+		MT6661_RG_VSYS_UVLO_VTHL_MASK << MT6661_RG_VSYS_UVLO_VTHL_SHIFT,
+		MT6661_RG_VSYS_UVLO_VTHL_SHIFT
+	},
+	.vbb_uvlo_reg = {
+		MT6661_RG_VBB_UVLO_VTHL_ADDR,
+		MT6661_RG_VBB_UVLO_VTHL_MASK << MT6661_RG_VBB_UVLO_VTHL_SHIFT,
+		MT6661_RG_VBB_UVLO_VTHL_SHIFT
+	},
+	.uvlo_range = {
+		.min = 1700,
+		.min_sel = 0,
+		.max_sel = 10,
+		.step = 100,
 	},
 };
 
@@ -656,6 +682,9 @@ static const struct of_device_id dynamic_loading_throttling_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6377-dynamic_loading_throttling",
 		.data = &mt6377_dlpt_regs,
+	}, {
+		.compatible = "mediatek,mt6661-dynamic_loading_throttling",
+		.data = &mt6661_dlpt_regs,
 	}, {
 		/* sentinel */
 	}

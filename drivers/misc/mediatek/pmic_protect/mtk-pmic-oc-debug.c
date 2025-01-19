@@ -17,6 +17,7 @@
 #include <mtk_ccci_common.h>
 
 #define NOTIFY_TIMES_MAX	2
+#define LVSYS_VIO18_SWITCH	0
 
 struct oc_debug_t {
 	const char *name;
@@ -138,6 +139,59 @@ static struct oc_debug_t mt6983_oc_debug[] = {
 	REG_OC_DEBUG(mt6373_vfp),
 };
 
+static struct oc_debug_t mt6993_oc_debug[] = {
+	REG_OC_DEBUG(mt6661_4_ld20_1),
+	REG_OC_DEBUG(mt6661_4_ld20_2),
+	REG_OC_DEBUG(mt6661_4_ldc0_3),
+	REG_OC_DEBUG(mt6661_4_ldc0_4),
+	REG_OC_DEBUG(mt6661_4_ln60_5),
+	REG_OC_DEBUG(mt6661_4_ldo1_6),
+	REG_OC_DEBUG(mt6661_4_lnc0_10),
+	REG_OC_DEBUG(mt6661_4_ln60_7),
+	REG_OC_DEBUG(mt6661_4_lnc0_8),
+	REG_OC_DEBUG(mt6661_4_lnc0_9),
+	REG_OC_DEBUG(mt6661_4_lnc0_s_11),
+	REG_OC_DEBUG(mt6661_4_lnc0_s_12),
+	REG_OC_DEBUG(mt6661_3_ld20_1),
+	REG_OC_DEBUG(mt6661_3_ld20_2),
+	REG_OC_DEBUG(mt6661_3_ldc0_3),
+	REG_OC_DEBUG(mt6661_3_ldc0_4),
+	REG_OC_DEBUG(mt6661_3_ln60_5),
+	REG_OC_DEBUG(mt6661_3_ldo1_6),
+	REG_OC_DEBUG(mt6661_3_lnc0_10),
+	REG_OC_DEBUG(mt6661_3_ln60_7),
+	REG_OC_DEBUG(mt6661_3_lnc0_8),
+	REG_OC_DEBUG(mt6661_3_lnc0_9),
+	REG_OC_DEBUG(mt6661_3_lnc0_s_11),
+	REG_OC_DEBUG(mt6661_3_lnc0_s_12),
+	REG_OC_DEBUG(mt6661_5_ld20_1),
+	REG_OC_DEBUG(mt6661_5_ld20_2),
+	REG_OC_DEBUG(mt6661_5_ldc0_3),
+	REG_OC_DEBUG(mt6661_5_ldc0_4),
+	REG_OC_DEBUG(mt6661_5_ln60_5),
+	REG_OC_DEBUG(mt6661_5_ldo1_6),
+	REG_OC_DEBUG(mt6661_5_lnc0_10),
+	REG_OC_DEBUG(mt6661_5_ln60_7),
+	REG_OC_DEBUG(mt6661_5_lnc0_8),
+	REG_OC_DEBUG(mt6661_5_lnc0_9),
+	REG_OC_DEBUG(mt6661_5_lnc0_s_11),
+	REG_OC_DEBUG(mt6661_5_lnc0_s_12),
+	REG_OC_DEBUG(mt6661_6_ld20_1),
+	REG_OC_DEBUG(mt6661_6_ld20_2),
+	REG_OC_DEBUG(mt6661_6_ldc0_3),
+	REG_OC_DEBUG(mt6661_6_ldc0_4),
+	REG_OC_DEBUG(mt6661_6_ln60_5),
+	REG_OC_DEBUG(mt6661_6_ldo1_6),
+	/* VRF18 */
+	MD_REG_OC_DEBUG(mt6661_6_lnc0_10, BIT(4)),
+	REG_OC_DEBUG(mt6661_6_ln60_7),
+	REG_OC_DEBUG(mt6661_6_lnc0_8),
+	/* VCN15/VRF09/VRF13 */
+	MD_REG_OC_DEBUG(mt6661_6_lnc0_9, BIT(5)),
+	MD_REG_OC_DEBUG(mt6661_6_lnc0_s_11, BIT(2)),
+	MD_REG_OC_DEBUG(mt6661_6_lnc0_s_12, BIT(3)),
+};
+
 static struct oc_debug_info mt6835_debug_info = {
 	.oc_debug = mt6835_oc_debug,
 	.oc_debug_num = ARRAY_SIZE(mt6835_oc_debug),
@@ -151,6 +205,11 @@ static struct oc_debug_info mt6879_debug_info = {
 static struct oc_debug_info mt6983_debug_info = {
 	.oc_debug = mt6983_oc_debug,
 	.oc_debug_num = ARRAY_SIZE(mt6983_oc_debug),
+};
+
+static struct oc_debug_info mt6993_debug_info = {
+	.oc_debug = mt6993_oc_debug,
+	.oc_debug_num = ARRAY_SIZE(mt6993_oc_debug),
 };
 
 static int md_oc_notify(struct oc_debug_t *oc_dbg)
@@ -375,6 +434,9 @@ static const struct of_device_id pmic_oc_debug_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6983-oc-debug",
 		.data = &mt6983_debug_info,
+	}, {
+		.compatible = "mediatek,mt6993-oc-debug",
+		.data = &mt6993_debug_info,
 	}, {
 		/* sentinel */
 	}
