@@ -563,7 +563,6 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct sk_buff	*skb;
 	struct eth_dev	*dev;
-	struct net_device *net;
 	struct usb_request *new_req;
 	struct usb_ep *in;
 	int length;
@@ -575,7 +574,6 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 	}
 
 	dev = ep->driver_data;
-	net = dev->net;
 
 	if (!dev->port_usb) {
 		usb_ep_free_request(ep, req);
@@ -765,7 +763,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	#endif
 	struct skb_shared_info *pinfo;
 	skb_frag_t *frag;
-	unsigned int frag_cnt = 0, frag_idx = 0, frag_data_len = 0, frag_total_len = 0;
+	unsigned int frag_cnt = 0, frag_idx = 0, frag_data_len = 0;
 	char *frag_data_addr;
 
 	if (ip_debug)
@@ -972,7 +970,6 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 					return NET_XMIT_DROP;
 				}
 				memcpy(req->buf + req->length, frag_data_addr, frag_data_len);
-				frag_total_len += frag_data_len;
 				frag_data_addr += frag_data_len;
 				req->length += frag_data_len;
 			}

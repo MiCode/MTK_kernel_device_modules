@@ -454,7 +454,7 @@ static void test_loops(int id)
 static ssize_t attr_store(struct device *dev, struct device_attribute *attr,
 				  const char *buf, size_t count)
 {
-	int i, ret, idx = -1;
+	int i, idx = -1;
 	long tmp;
 
 	for (i = 0; i < _TYPE_MAXID; i++) {
@@ -472,7 +472,8 @@ static ssize_t attr_store(struct device *dev, struct device_attribute *attr,
 		goto exit;
 	}
 
-	ret = kstrtol(buf, 0, &tmp);
+	if (kstrtol(buf, 0, &tmp) != 0)
+		goto exit;
 
 	switch (idx) {
 	/* normal usage */
@@ -630,7 +631,7 @@ static int create_sys_fs(void)
 
 	for (i = 0 ; i < _TYPE_MAXID ; i++) {
 		boost_inst[i].dev = device_create(usb_boost_class,
-			NULL, MKDEV(0, i), NULL, type_name[i]);
+			NULL, MKDEV(0, i), NULL, "%s", type_name[i]);
 
 		for (n = 0; n < _ATTR_MAXID; n++) {
 			boost_inst[i].attr[n].attr.name = attr_name[n];

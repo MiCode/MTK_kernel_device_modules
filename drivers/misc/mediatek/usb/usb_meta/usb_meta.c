@@ -29,8 +29,6 @@ MODULE_DESCRIPTION("Android Composite USB Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("2.0");
 
-static const char longname[] = "Gadget Android";
-
 /* Default vendor and product IDs, overridden by userspace */
 #define VENDOR_ID		0x0E8D
 #define PRODUCT_ID		0x0001
@@ -512,13 +510,6 @@ static void mass_storage_function_cleanup(struct android_usb_function *f)
 {
 	struct mass_storage_function_config *config = f->config;
 
-	/* release what we required */
-	struct fsg_opts *fsg_opts;
-
-
-	fsg_opts = fsg_opts_from_func_inst(config->f_ms_inst);
-	// fsg_sysfs_update(fsg_opts->common, f->dev, false);
-
 	usb_put_function(config->f_ms);
 	usb_put_function_instance(config->f_ms_inst);
 
@@ -570,7 +561,7 @@ static int android_init_functions(struct android_usb_function **functions,
 		pr_notice("[USB]%s: f->dev_name = %s, f->name = %s\n",
 				__func__, f->dev_name, f->name);
 		f->dev = device_create(android_class, dev->dev,
-				MKDEV(0, index), f, f->dev_name);
+				MKDEV(0, index), f, "%s", f->dev_name);
 		if (IS_ERR(f->dev)) {
 			pr_info("%s: Failed to create dev %s", __func__,
 							f->dev_name);
@@ -781,7 +772,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct android_usb_function *f;
 	int enabled = 0;
-	int ret;
 
 	if (!cdev)
 		return -ENODEV;
@@ -790,7 +780,8 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 
 	pr_notice("[USB]%s: %d %d\n", __func__, enabled, dev->enabled);
 
-	ret = kstrtoint(buff, 0, &enabled);
+	if (kstrtoint(buff, 0, &enabled) != 0)
+		return 0;
 
 	if (enabled && !dev->enabled) {
 		/* ALPS01770952

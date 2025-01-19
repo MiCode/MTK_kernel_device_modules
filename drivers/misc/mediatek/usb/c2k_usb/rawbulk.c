@@ -321,9 +321,8 @@ static ssize_t rawbulk_attr_store(struct device *dev,
 #else
 		{
 #endif
-			int ret;
-
-			ret = kstrtol(buf, 0, &tmp);
+			if (kstrtol(buf, 0, &tmp) != 0)
+				goto exit;
 			enable = (int)tmp;
 			C2K_NOTE("enable:%d\n", enable);
 
@@ -445,26 +444,29 @@ static ssize_t rawbulk_attr_store(struct device *dev,
 	} else if (idx == ATTR_DTR) {
 		if (fn->transfer_id == RAWBULK_TID_MODEM) {
 			if (check_enable_state(fn)) {
-				int val, ret;
+				int val;
 				long tmp = 0;
 
-				ret = kstrtol(buf, 0, &tmp);
+				if (kstrtol(buf, 0, &tmp) != 0)
+					goto exit;
 				val = (int)tmp;
 				modem_dtr_set(val, 1);
 			}
 		}
 	} else if (idx == ATTR_AUTORECONN) {
-		int val, ret;
+		int val;
 		long tmp = 0;
 
-		ret = kstrtol(buf, 0, &tmp);
+		if (kstrtol(buf, 0, &tmp) != 0)
+			goto exit;
 		val = (int)tmp;
 		fn->autoreconn = !!val;
 	} else {
-		int val, ret;
+		int val;
 		long tmp = 0;
 
-		ret = kstrtol(buf, 0, &tmp);
+		if (kstrtol(buf, 0, &tmp) != 0)
+			goto exit;
 		val = (int)tmp;
 		switch (idx) {
 		case ATTR_NUPS:
@@ -665,7 +667,7 @@ static __init struct rawbulk_function *rawbulk_alloc_function(int transfer_id)
 	}
 
 	fn->dev = device_create(rawbulk_class, NULL, MKDEV(0,
-				fn->transfer_id), NULL, fn->shortname);
+				fn->transfer_id), NULL, "%s", fn->shortname);
 	if (IS_ERR(fn->dev)) {
 		kfree(fn);
 		return NULL;
