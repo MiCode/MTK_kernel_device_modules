@@ -2039,8 +2039,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	}
 
 	mtk_vidle_register(&funcs, DPC_VER2);
-	mml_dpc_register(&funcs);
-	mdp_dpc_register(&funcs);
+	mml_dpc_register(&funcs, DPC_VER2);
+	mdp_dpc_register(&funcs, DPC_VER2);
 	mtk_vdisp_dpc_register(&funcs);
 	mtk_smi_dbg_register_pwr_ctrl_cb(&dpc_smi_pwr_funcs);
 

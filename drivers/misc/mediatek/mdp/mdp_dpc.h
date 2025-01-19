@@ -17,7 +17,7 @@
  *
  * @funcs:	DPC driver functions.
  */
-void mdp_dpc_register(const struct dpc_funcs *funcs);
+void mdp_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 
 void mdp_dpc_dc_force_enable(bool en);
 void mdp_dpc_power_keep(void);

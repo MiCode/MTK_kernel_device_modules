@@ -3,8 +3,8 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#ifndef __MTK_DPC_COMMON_H__
-#define __MTK_DPC_COMMON_H__
+#ifndef __MTK_DPC_H__
+#define __MTK_DPC_H__
 
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
