@@ -578,7 +578,8 @@ next:
 	else
 		reg_val = ZRAM_ENC_BATCH_INTR_MASK | ZRAM_ENC_IDLE_INTR_MASK | ZRAM_ENC_ERROR_INTR_MASK;
 
-	zram_writel(reg_val, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+	/* Keep IRQ setting for future configuration */
+	ctrl->enc_irq_setting = reg_val;
 }
 
 #define ZRAM_DEC_CFG_DST_SNOOPING_EN	(1UL << 4)
@@ -634,7 +635,9 @@ next:
 	reg_val |= ZRAM_DEC_FIFO_CMD_INTR_MASK;
 	reg_val |= ZRAM_DEC_ERROR_FIFO_ID_INTR_MASK;
 	reg_val |= ZRAM_DEC_KERNEL_HANG_INTR_MASK;
-	zram_writel(reg_val, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+
+	/* Keep IRQ setting for future configuration */
+	ctrl->dec_irq_setting = reg_val;
 }
 
 void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits)

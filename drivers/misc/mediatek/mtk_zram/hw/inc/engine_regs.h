@@ -24,6 +24,10 @@ struct engine_control_t {
 	void __iomem *zram_dec_base;
 	void __iomem *zram_enc_base;
 
+	/* Engine ENC/DEC IRQ setting */
+	uint32_t enc_irq_setting;
+	uint32_t dec_irq_setting;
+
 	/* Control by gear enable/disable clock */
 	atomic_t irq_status;
 
@@ -203,11 +207,23 @@ static inline bool engine_irq_off(struct engine_control_t *ctrl)
 static inline void engine_set_irq_on(struct engine_control_t *ctrl)
 {
 	atomic_set(&ctrl->irq_status, ENGINE_IRQ_ON);
+
+	/* Enable engine interrupt */
+	writel(ctrl->enc_irq_setting, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+	writel(ctrl->dec_irq_setting, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
 }
 
 static inline void engine_set_irq_off(struct engine_control_t *ctrl)
 {
+	/* disable engine interrupt */
+	writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+	writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+
 	atomic_set(&ctrl->irq_status, ENGINE_IRQ_OFF);
+
+	/* Clear avoid pending IRQs */
+	writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_STATUS);
+	writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_STATUS);
 }
 
 /* ENC Interrupt Type */
