@@ -480,6 +480,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:mt6360-core".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6370".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:mt6379i".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6397".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt63xx-debug".format(kernel_version),

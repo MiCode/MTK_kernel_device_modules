@@ -49,6 +49,16 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mt6379i",
+    srcs = [
+        "mt6379.h",
+        "mt6379-i2c.c",
+        "mt6379-core.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
     name = "mt6379s",
     srcs = [
         "mt6379.h",

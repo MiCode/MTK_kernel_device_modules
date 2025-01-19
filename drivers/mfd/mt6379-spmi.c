@@ -69,7 +69,6 @@ static int mt6379_spmi_read(void *context, const void *reg_buf, size_t reg_size,
 	WARN_ON_ONCE(reg_size != 2);
 
 	addr = get_unaligned_be16(reg_buf);
-
 	check_rg_access_limit(priv, addr, val_size, ktime_get());
 
 	return spmi_ext_register_readl(sdev, addr, val_buf, val_size);
@@ -176,11 +175,101 @@ static void mt6379_spmi_check_of_irq(struct mt6379_data *data)
 	dev_notice(data->dev, "%s, bypass_retrigger: %d\n", __func__, priv->bypass_retrigger);
 }
 
+static void mt6379_spmi_irq_bus_lock(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+
+	mutex_lock(&data->irq_lock);
+	memcpy(data->tmp_buf, data->mask_buf, MT6379_MAX_IRQ_REG);
+}
+
+static void mt6379_spmi_irq_bus_sync_unlock(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	struct device *dev = data->dev;
+	unsigned int hwirq_reg;
+	int ret;
+
+	if (data->tmp_buf[d->hwirq / 8] == data->mask_buf[d->hwirq / 8])
+		goto out_sync_unlock;
+
+	memcpy(data->mask_buf, data->tmp_buf, MT6379_MAX_IRQ_REG);
+
+	hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	ret = regmap_write(data->regmap, hwirq_reg, data->mask_buf[d->hwirq / 8]);
+	if (ret)
+		dev_info(dev, "%s, Failed to config for hwirq %ld\n", __func__, d->hwirq);
+
+out_sync_unlock:
+	mutex_unlock(&data->irq_lock);
+}
+
+static void mt6379_spmi_irq_enable(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+
+	data->tmp_buf[d->hwirq / 8] &= ~BIT(d->hwirq % 8);
+}
+
+static void mt6379_spmi_irq_disable(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+
+	data->tmp_buf[d->hwirq / 8] |= BIT(d->hwirq % 8);
+}
+
+static void mt6379_spmi_irq_mask(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	int ret;
+
+	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
+		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0xFF);
+		if (ret)
+			dev_info(data->dev, "%s, Failed to mask UFCS IND_MASK\n", __func__);
+	}
+
+	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0xFF);
+	if (ret)
+		dev_info(data->dev, "%s, Failed to mask 0x%03X irq mask\n", __func__, hwirq_reg);
+}
+
+static void mt6379_spmi_irq_unmask(struct irq_data *d)
+{
+	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
+	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
+	int ret;
+
+	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
+		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0);
+		if (ret)
+			dev_info(data->dev, "%s, Failed to unmask UFCS IND_MASK\n", __func__);
+	}
+
+	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0);
+	if (ret)
+		dev_info(data->dev, "%s, Failed to unmask 0x%03X irq mask\n", __func__, hwirq_reg);
+}
+
+static const struct irq_chip mt6379_spmi_irq_chip = {
+	.name = "mt6379-spmi-irqs",
+	.irq_bus_lock = mt6379_spmi_irq_bus_lock,
+	.irq_bus_sync_unlock = mt6379_spmi_irq_bus_sync_unlock,
+	.irq_enable = mt6379_spmi_irq_enable,
+	.irq_disable = mt6379_spmi_irq_disable,
+	.irq_mask = mt6379_spmi_irq_mask,
+	.irq_unmask = mt6379_spmi_irq_unmask,
+	.flags = IRQCHIP_SKIP_SET_WAKE,
+};
+
 static int mt6379_probe(struct spmi_device *sdev)
 {
+	struct device *dev = &sdev->dev;
 	struct mt6379_priv *priv;
 	struct mt6379_data *data;
-	struct device *dev = &sdev->dev;
+	struct irq_chip *irqc;
+	char *irqc_name;
 	int irqno, ret;
 
 	irqno = of_irq_get(dev->of_node, 0);
@@ -201,11 +290,12 @@ static int mt6379_probe(struct spmi_device *sdev)
 	if (!data)
 		return -ENOMEM;
 
+	data->interface_type = MT6379_IFT_SPMI;
 	data->dev = dev;
 	data->irq = irqno;
 	data->priv = priv;
-
 	mt6379_spmi_check_of_irq(data);
+	dev_set_drvdata(dev, data);
 
 	data->regmap = devm_regmap_init(dev, &mt6379_spmi_bus, data, &mt6379_spmi_config);
 	if (IS_ERR(data->regmap))
@@ -221,6 +311,16 @@ static int mt6379_probe(struct spmi_device *sdev)
 		if (ret)
 			dev_info(dev, "%s, Failed to enable MT6379 RCS\n", __func__);
 	}
+
+	irqc = &data->irq_chip;
+	irqc_name = devm_kasprintf(dev, GFP_KERNEL, "mt6379s-irqs(%s)", dev_name(dev));
+
+	memcpy(irqc, &mt6379_spmi_irq_chip, sizeof(data->irq_chip));
+	if (irqc_name)
+		irqc->name = irqc_name;
+	else
+		dev_info(dev, "%s, Failed to allocate irq chip name, using default name(%s)\n",
+			 __func__, irqc->name);
 
 	return mt6379_device_init(data);
 }

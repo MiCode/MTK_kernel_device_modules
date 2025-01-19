@@ -8,6 +8,7 @@
 #ifndef __MFD_MT6379_H__
 #define __MFD_MT6379_H__
 
+#include <dt-bindings/mfd/mt6379.h>
 #include <linux/bits.h>
 #include <linux/irq.h>
 #include <linux/mutex.h>
@@ -32,6 +33,11 @@
 #define MT6379_VENDOR_ID	0x70
 #define MT6379_MAX_IRQ_REG	16 /* except ufcs(Read Only), use dummy hwirq 127(reserved) */
 
+enum mt6379_interface_type {
+	MT6379_IFT_I2C = 0,
+	MT6379_IFT_SPMI,
+};
+
 struct mt6379_data {
 	struct device *dev;
 	struct regmap *regmap;
@@ -41,10 +47,11 @@ struct mt6379_data {
 	struct mutex irq_lock;
 	u8 mask_buf[MT6379_MAX_IRQ_REG];
 	u8 tmp_buf[MT6379_MAX_IRQ_REG];
-	bool test_mode_entered;
 	int irq;
+	enum mt6379_interface_type interface_type;
 };
 
+extern unsigned int mt6379_find_irq_hwreg(unsigned int hwirq);
 extern int mt6379_device_init(struct mt6379_data *data);
 
 #endif

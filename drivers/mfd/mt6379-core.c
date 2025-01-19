@@ -7,16 +7,19 @@
  * Author: ChiYuan Huang <cy_huang@richtek.com>
  */
 
-#include <dt-bindings/mfd/mt6379.h>
+#include <linux/cpumask.h>
 #include <linux/device.h>
 #include <linux/export.h>
 #include <linux/interrupt.h>
+#include <linux/irqdesc.h>
 #include <linux/irqdomain.h>
+#include <linux/irqnr.h>
 #include <linux/kernel.h>
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
-#include <linux/sysfs.h>
+#include <linux/sched.h>
 #include <linux/sched/clock.h>
+#include <linux/sysfs.h>
 
 #include "mt6379.h"
 
@@ -141,15 +144,7 @@ static irqreturn_t mt6379_irq_handler(int irq, void *d)
 	return IRQ_WAKE_THREAD;
 }
 
-static void mt6379_irq_bus_lock(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-
-	mutex_lock(&data->irq_lock);
-	memcpy(data->tmp_buf, data->mask_buf, MT6379_MAX_IRQ_REG);
-}
-
-static unsigned int mt6379_find_irq_hwreg(unsigned int hwirq)
+unsigned int mt6379_find_irq_hwreg(unsigned int hwirq)
 {
 	unsigned int offs_idx, offs_cal, rg_cnt = 0;
 	unsigned int hwirq_reg = 0;
@@ -174,75 +169,6 @@ static unsigned int mt6379_find_irq_hwreg(unsigned int hwirq)
 	return hwirq_reg;
 }
 
-static void mt6379_irq_bus_sync_unlock(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-	struct device *dev = data->dev;
-	unsigned int hwirq_reg;
-	int ret;
-
-	if (data->tmp_buf[d->hwirq / 8] == data->mask_buf[d->hwirq / 8])
-		goto out_sync_unlock;
-
-	memcpy(data->mask_buf, data->tmp_buf, MT6379_MAX_IRQ_REG);
-
-	hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
-	ret = regmap_write(data->regmap, hwirq_reg, data->mask_buf[d->hwirq / 8]);
-	if (ret)
-		dev_warn(dev, "Failed to config for hwirq %ld\n", d->hwirq);
-
-out_sync_unlock:
-	mutex_unlock(&data->irq_lock);
-}
-
-static void mt6379_irq_enable(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-
-	data->tmp_buf[d->hwirq / 8] &= ~BIT(d->hwirq % 8);
-}
-
-static void mt6379_irq_disable(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-
-	data->tmp_buf[d->hwirq / 8] |= BIT(d->hwirq % 8);
-}
-
-static void mt6379_irq_mask(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
-	int ret;
-
-	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
-		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0xFF);
-		if (ret)
-			dev_info(data->dev, "%s, Failed to mask UFCS IND_MASK\n", __func__);
-	}
-
-	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0xFF);
-	if (ret)
-		dev_info(data->dev, "%s, Failed to mask 0x%03X irq mask\n", __func__, hwirq_reg);
-}
-
-static void mt6379_irq_unmask(struct irq_data *d)
-{
-	struct mt6379_data *data = irq_data_get_irq_chip_data(d);
-	unsigned int hwirq_reg = mt6379_find_irq_hwreg(d->hwirq);
-	int ret;
-
-	if (d->hwirq == MT6379_DUMMY_EVT_UFCS) {
-		ret = regmap_update_bits(data->regmap, MT6379_REG_IRQ_MASK, MT6379_INDM_UFCS, 0);
-		if (ret)
-			dev_info(data->dev, "%s, Failed to unmask UFCS IND_MASK\n", __func__);
-	}
-
-	ret = regmap_update_bits(data->regmap, hwirq_reg, BIT(d->hwirq % 8), 0);
-	if (ret)
-		dev_info(data->dev, "%s, Failed to unmask 0x%03X irq mask\n", __func__, hwirq_reg);
-}
-
 static int mt6379_irq_domain_map(struct irq_domain *h, unsigned int virq,
 				 irq_hw_number_t hwirq)
 {
@@ -255,7 +181,13 @@ static int mt6379_irq_domain_map(struct irq_domain *h, unsigned int virq,
 	case MT6379_EVT_GM30_LDO ... MT6379_EVT_GM30_HK1:
 	case MT6379_EVT_USBPD:
 	case MT6379_DUMMY_EVT_UFCS:
-		irq_set_chip_and_handler(virq, irqc, handle_level_irq);
+		if (data->interface_type == MT6379_IFT_I2C)
+			irq_set_chip_and_handler(virq, irqc, handle_simple_irq);
+		else if (data->interface_type == MT6379_IFT_SPMI)
+			irq_set_chip_and_handler(virq, irqc, handle_level_irq);
+		else
+			return -ENODEV;
+
 		break;
 	default:
 		irq_set_chip(virq, irqc);
@@ -284,17 +216,17 @@ static void mt6379_free_irq_chip(void *d)
 
 static int mt6379_init_irq_chip(struct mt6379_data *data)
 {
+	/* Common */
 	struct device *dev = data->dev;
 	struct regmap *regmap = data->regmap;
-	struct irq_chip *irqc = &data->irq_chip;
 	const struct irq_ind_rg_map *map;
 	unsigned int evt_offs = 0;
-	char *irqc_name;
 	int i, ret;
 
-	irqc_name = devm_kasprintf(dev, GFP_KERNEL, "mt6379-%s", dev_name(dev));
-	if (!irqc_name)
-		return -ENOMEM;
+	/* For I2C only */
+	struct task_struct *irq_thread;
+	struct cpumask new_cpumask;
+	struct irq_desc *desc;
 
 	memset(data->mask_buf, 0xff, MT6379_MAX_IRQ_REG);
 	mutex_init(&data->irq_lock);
@@ -316,17 +248,7 @@ static int mt6379_init_irq_chip(struct mt6379_data *data)
 		evt_offs += map->rg_num;
 	}
 
-	irqc->name = irqc_name;
-	irqc->irq_bus_lock = mt6379_irq_bus_lock;
-	irqc->irq_bus_sync_unlock = mt6379_irq_bus_sync_unlock;
-	irqc->irq_enable = mt6379_irq_enable;
-	irqc->irq_disable = mt6379_irq_disable;
-	irqc->irq_mask = mt6379_irq_mask;
-	irqc->irq_unmask = mt6379_irq_unmask;
-	irqc->flags = IRQCHIP_SKIP_SET_WAKE;
-
-	data->irq_domain = irq_domain_add_linear(dev->of_node,
-						 MT6379_MAX_IRQ_REG * 8,
+	data->irq_domain = irq_domain_add_linear(dev->of_node, MT6379_MAX_IRQ_REG * 8,
 						 &mt6379_irq_domain_ops, data);
 	if (!data->irq_domain)
 		return dev_err_probe(dev, -ENOMEM, "Failed to create IRQ domain\n");
@@ -335,49 +257,26 @@ static int mt6379_init_irq_chip(struct mt6379_data *data)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to add devm for irq chip release\n");
 
-	return devm_request_threaded_irq(dev, data->irq, mt6379_irq_handler,
-					 mt6379_irq_threaded_handler,
-					 IRQF_ONESHOT, dev_name(dev), data);
-}
-
-static ssize_t test_mode_entered_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	struct mt6379_data *data = dev_get_drvdata(dev);
-
-	return sysfs_emit(buf, "%s\n", data->test_mode_entered ? "Y" : "N");
-}
-
-static ssize_t test_mode_entered_store(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t count)
-{
-	static const u8 test_mode_on[] = { 0x69, 0x96, 0x63, 0x79 };
-	struct mt6379_data *data = dev_get_drvdata(dev);
-	struct regmap *regmap = data->regmap;
-	bool enter_state;
-	int ret;
-
-	ret = kstrtobool(buf, &enter_state);
-	if (ret)
+	ret = devm_request_threaded_irq(dev, data->irq, mt6379_irq_handler,
+					mt6379_irq_threaded_handler,
+					IRQF_ONESHOT, dev_name(dev), data);
+	if (ret) {
+		dev_info(dev, "%s, Failed to request MT6379 IRQ(irq:%d)\n", __func__, data->irq);
 		return ret;
+	}
 
-	if (enter_state == data->test_mode_entered)
-		return count;
+	/* For I2C only, binding IRQ thread cpus exclude cpu0 */
+	if (data->interface_type == MT6379_IFT_I2C) {
+		desc = irq_to_desc(data->irq);
+		irq_thread = desc->action->thread;
+		cpumask_copy(&new_cpumask, cpu_online_mask);
+		cpumask_clear_cpu(0, &new_cpumask);
+		if (cpumask_any(&new_cpumask) < nr_cpu_ids)
+			set_cpus_allowed_ptr(irq_thread, &new_cpumask);
+	}
 
-	if (enter_state)
-		ret = regmap_raw_write(regmap, MT6379_REG_TM_PASS_CODE,
-				      test_mode_on, ARRAY_SIZE(test_mode_on));
-	else
-		ret = regmap_write(regmap, MT6379_REG_TM_PASS_CODE, 0);
-
-	if (ret)
-		return ret;
-
-	data->test_mode_entered = enter_state;
-	return count;
+	return 0;
 }
-static const DEVICE_ATTR_RW(test_mode_entered);
 
 int mt6379_device_init(struct mt6379_data *data)
 {
@@ -393,8 +292,6 @@ int mt6379_device_init(struct mt6379_data *data)
 	if ((vid & MT6379_VENID_MASK) != MT6379_VENDOR_ID)
 		return dev_err_probe(dev, -ENODEV, "VID not matched 0x%02x\n", vid);
 
-	dev_set_drvdata(dev, data);
-
 	ret = mt6379_init_irq_chip(data);
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to init irq chip\n");
@@ -402,15 +299,6 @@ int mt6379_device_init(struct mt6379_data *data)
 	ret = regmap_write(regmap, MT6379_REG_SPMI_TXDRV2, MT6379_RCS_INT_DONE);
 	if (ret)
 		dev_err(dev, "Failed to set IRQ retrigger (%d)\n", ret);
-
-	/*
-	 * Caution: There's the potential risk to enter TM.
-	 * Be careful to use it. For the manufacturing information, only enter
-	 * TM can get them
-	 */
-	ret = device_create_file(dev, &dev_attr_test_mode_entered);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to create test_mode attribute\n");
 
 	return devm_of_platform_populate(dev);
 }
