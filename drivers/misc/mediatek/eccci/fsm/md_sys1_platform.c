@@ -631,7 +631,7 @@ static void md1_dpsw_pmic_setting_off(void)
 static int md_cd_dpsw_setting(struct ccci_modem *md)
 {
 	int ret, idx;
-	void __iomem *reg = NULL;
+	struct arm_smccc_res res = {0};
 
 	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING))) {
 		CCCI_BOOTUP_LOG(0, TAG,
@@ -641,25 +641,13 @@ static int md_cd_dpsw_setting(struct ccci_modem *md)
 		return 0;
 	}
 
-	reg = ioremap_wc(0x21AC0000, 0x4000);
-	if (!reg) {
-		CCCI_ERROR_LOG(0, TAG, "%s, ioremap_wc fail\n", __func__);
-		return -1;
-	}
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG, MD_LK_SET_DPSW,
+		0, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] get MD_DVFS_DPSW_CTRL_INTF_RW=0x%lx\n",
+		res.a3);
 
-	/* seting DPSW reg */
-	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] get MD_DVFS_DPSW_CTRL_INTF_RW=0x%x\n",
-		ccci_read32(reg, 0xA00));
-	ccci_write32(reg, 0xA00, 0X0);
-	ccci_write32(reg, 0x300C, 0X01);
-	ccci_write32(reg, 0x300C, 0X0);
-	ccci_write32(reg, 0xA20, 0X0);
-	ccci_write32(reg, 0x302C, 0X341);
-	ccci_write32(reg, 0xA04, 0X01);
-
-	/* seting Vmodem to 0.8V */
 	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
-		if (IS_ERR(md_reg_table[idx].reg_ref)) {
+		if (IS_ERR(md_reg_table[idx].reg_ref) || (md_reg_table[idx].reg_ref == NULL)) {
 			ret = PTR_ERR(md_reg_table[idx].reg_ref);
 			if (ret != -ENODEV) {
 				CCCI_ERROR_LOG(-1, TAG,
@@ -670,9 +658,10 @@ static int md_cd_dpsw_setting(struct ccci_modem *md)
 				continue;
 			}
 		} else {
-			/* seting Vmodem pmic to 0.8 */
+			/* seting Vmodem pmic with mddrvier dts volt val */
 			if (strcmp(md_reg_table[idx].reg_name, "md-vmodem") == 0) {
-				ret = regulator_set_voltage(md_reg_table[idx].reg_ref, 800000, 800000);
+				ret = regulator_set_voltage(md_reg_table[idx].reg_ref,
+					md_reg_table[idx].reg_vol0, md_reg_table[idx].reg_vol1);
 				if (ret)
 					CCCI_ERROR_LOG(-1, TAG, "pmic_%s set fail\n",
 						md_reg_table[idx].reg_name);
@@ -687,9 +676,12 @@ static int md_cd_dpsw_setting(struct ccci_modem *md)
 			}
 		}
 	}
-	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] after set vmoden 0.8V, MD_DVFS_DPSW_CTRL_INTF_RW=0x%x\n",
-		ccci_read32(reg, 0xA00));
-	iounmap(reg);
+
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG, MD_LK_SET_DPSW,
+		1, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] end: MD_DVFS_DPSW_CTRL_INTF_RW=0x%lx\n",
+		res.a3);
+
 	return 0;
 }
 
