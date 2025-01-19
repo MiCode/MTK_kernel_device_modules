@@ -517,6 +517,14 @@ int mtk_pcie_lane_margin_entry(struct mtk_pcie_info *pcie_smt, int port, int mod
 	if (ret)
 		pr_info("[%s:%d], Lane Margin fail.\n", __func__, __LINE__);
 
+	if (pcie_smt->eye[MTK_TIME_MARGIN_LEFT] < 3 ||
+	    pcie_smt->eye[MTK_TIME_MARGIN_RIGHT] < 3 ||
+	    pcie_smt->eye[MTK_VOLTAGE_MARGIN_UP] < 10 ||
+	    pcie_smt->eye[MTK_VOLTAGE_MARGIN_DOWN] < 10) {
+		pr_info("Port%d lane margin doesn't meet pass criteria.\n", port);
+		ret = -1;
+	}
+
 error:
 	pci_dev_put(dev);
 
