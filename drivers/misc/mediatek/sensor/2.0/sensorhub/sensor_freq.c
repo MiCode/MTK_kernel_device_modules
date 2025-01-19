@@ -12,6 +12,7 @@
 #include <linux/mm.h>
 #include <linux/kernel.h>
 
+#include "sap.h"
 #include "sensor_freq.h"
 
 static DECLARE_BITMAP(high_freq_tb, SENSOR_TYPE_SENSOR_MAX);
@@ -85,6 +86,18 @@ static struct sensor_freq_tb sensor_freq_table[] = {
 		.core_id = 0,
 	},
 };
+
+static int freq_tb_bitmap_need_bypass(uint8_t sensor_type)
+{
+	switch (sensor_type) {
+	case SENSOR_TYPE_OIS ... SENSOR_TYPE_OIS3:
+		return sap_delicated_clock_supported();
+	default:
+		return false;
+	}
+
+	return false;
+}
 
 static int freq_tb_bitmap_set(uint8_t sensor_type)
 {
@@ -166,6 +179,9 @@ int sensor_register_freq(uint8_t sensor_type)
 {
 	int ret = 0;
 
+	if (freq_tb_bitmap_need_bypass(sensor_type))
+		return 0;
+
 	if (!freq_tb_bitmap_set(sensor_type))
 		ret = set_scp_freq();
 
@@ -175,6 +191,9 @@ int sensor_register_freq(uint8_t sensor_type)
 int sensor_deregister_freq(uint8_t sensor_type)
 {
 	int ret = 0;
+
+	if (freq_tb_bitmap_need_bypass(sensor_type))
+		return 0;
 
 	if (!freq_tb_bitmap_clear(sensor_type))
 		ret = set_scp_freq();

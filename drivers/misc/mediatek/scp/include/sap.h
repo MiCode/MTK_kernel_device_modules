@@ -31,6 +31,7 @@ extern struct mtk_ipi_device sap_ipidev;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SAP_SUPPORT)
 bool sap_enabled(void);
+bool sap_delicated_clock_supported(void);
 uint8_t sap_get_core_id(void);
 uint32_t sap_cfg_reg_read(uint32_t reg_offset);
 void sap_dump_last_regs(void);
@@ -42,6 +43,7 @@ void sap_exit(void);
 uint32_t sap_get_secure_dump_size(void);
 #else
 static inline bool sap_enabled(void) { return false; }
+static inline bool sap_delicated_clock_supported(void) { return false; }
 static inline uint8_t sap_get_core_id(void) { return 0; };
 static inline uint32_t sap_cfg_reg_read(uint32_t reg_offset) { return 0; }
 static inline void sap_dump_last_regs(void) {}

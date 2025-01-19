@@ -25,6 +25,8 @@ struct sap_status_reg {
 
 struct sap_device {
 	bool enable;
+	bool pll_clock_support;
+
 	uint8_t core_id;
 	void __iomem *reg_cfg;
 	struct mtk_mbox_device mbox_dev;
@@ -148,6 +150,13 @@ bool sap_enabled(void)
 	return READ_ONCE(sap_dev.enable);
 }
 EXPORT_SYMBOL_GPL(sap_enabled);
+
+bool sap_delicated_clock_supported(void)
+{
+	return READ_ONCE(sap_dev.enable)
+		&& READ_ONCE(sap_dev.pll_clock_support);
+}
+EXPORT_SYMBOL_GPL(sap_delicated_clock_supported);
 
 uint32_t sap_cfg_reg_read(uint32_t reg_offset)
 {
@@ -394,6 +403,13 @@ static int sap_device_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+	dev->pll_clock_support = of_property_read_bool(
+		pdev->dev.of_node, "pll-clock-support");
+	if (!dev->pll_clock_support)
+		pr_info("don't support pll clock, using scp clock\n");
+	else
+		pr_info("pll clock support\n");
+
 	ret = of_property_read_u8(pdev->dev.of_node, "core-id", &core_id);
 	if (ret < 0) {
 		pr_err("invalid core_id res, %d\n", ret);
@@ -453,6 +469,7 @@ static void sap_device_remove(struct platform_device *pdev)
 		return;
 
 	WRITE_ONCE(dev->enable, false);
+	WRITE_ONCE(dev->pll_clock_support, false);
 }
 
 static const struct of_device_id sap_of_ids[] = {
@@ -477,6 +494,7 @@ void sap_init(void)
 	struct sap_device *dev = &sap_dev;
 
 	WRITE_ONCE(dev->enable, false);
+	WRITE_ONCE(dev->pll_clock_support, false);
 	if (platform_driver_register(&mtk_sap_device))
 		pr_err("register fail\n");
 }
