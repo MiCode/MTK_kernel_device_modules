@@ -1437,7 +1437,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 		}
 
 		datainterval = ret;
-		USB_OFFLOAD_INFO("data interval %u\n", ret);
+		USB_OFFLOAD_INFO("data interval %u\n", datainterval);
 	}
 
 	uadev[pcm_card_num].ctrl_intf = chip->ctrl_intf;
@@ -3194,6 +3194,8 @@ static int usb_offload_remove(struct platform_device *pdev)
 
 	USB_OFFLOAD_INFO("\n");
 	ret = ssusb_offload_unregister(uodev->ssusb_offload_notify->dev);
+	if (ret)
+		USB_OFFLOAD_ERR("ssusb_offload_unregister failed!\n");
 
 	kfree(buf_ev_table);
 	buf_ev_table = NULL;
