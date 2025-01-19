@@ -1008,9 +1008,9 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		if (can_binning && (cw >= w * 2 || ch >= h * 2) &&
 			MML_FMT_YUV420(info->src.format)) {
 			*can_binning = true;
-			if (cw >= w * 2 && !(inw & 0x3) && !(cw & 0x3))
+			if (cw >= w * 2 && !(inw & 0x3))
 				cw = cw / 2;
-			if (ch >= h * 2 && !(inh & 0x3) && !(ch & 0x3))
+			if (ch >= h * 2 && !(inh & 0x3))
 				ch = ch / 2;
 		}
 	}
