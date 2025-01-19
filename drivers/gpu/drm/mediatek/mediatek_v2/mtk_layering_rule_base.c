@@ -832,6 +832,7 @@ int mtk_rollback_resize_layer_to_GPU_range(
 		     i <= disp_info->gles_tail[idx]; i++) {
 			lc = &disp_info->input_config[idx][i];
 			lc->ext_sel_layer = -1;
+			lc->layer_caps &= ~MTK_DISP_RSZ_LAYER;
 		}
 	}
 
@@ -3364,6 +3365,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			break;
 		} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
 			rsz_lye++;
+			DDPINFO("%s L%d is rsz, rsz_lye:%d\n", __func__, i, rsz_lye);
 		}
 	}
 
