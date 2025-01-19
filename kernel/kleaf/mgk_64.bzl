@@ -897,6 +897,7 @@ mgk_64_platform_device_modules = {
     "drivers/clk/mediatek/clk-mt6991-mdpsys.ko": "mt6991",
     "drivers/clk/mediatek/clk-mt6991-bus.ko": "mt6991",
     "drivers/clk/mediatek/clk-mt6991-vcodec.ko": "mt6991",
+    "drivers/clk/mediatek/clk-mt6991-pd.ko": "mt6991",
     #"drivers/clk/mediatek/clk-mt8188.ko": "mt8188",
     #"drivers/clk/mediatek/clk-mt8188-audio_src.ko": "mt8188",
     #"drivers/clk/mediatek/clk-mt8188-cam.ko": "mt8188",
