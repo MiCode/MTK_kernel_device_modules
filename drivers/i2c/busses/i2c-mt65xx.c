@@ -126,6 +126,10 @@
 #define SCP_SLEEP_STAT	\
 		readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat)
 
+#ifdef CONFIG_FPGA_EARLY_PORTING
+#define CLOCK_CG_W1C    (0x04)
+#endif
+
 #define I2C_DRV_NAME		"i2c-mt65xx"
 #define I2C_POLLING_TIMEOUT	50000000
 
@@ -339,6 +343,13 @@ struct mtk_i2c_cal_para {
 	unsigned int exp_duty_diff;
 };
 
+#ifdef CONFIG_FPGA_EARLY_PORTING
+struct mtk_i2c_clk_reg {
+	unsigned int addr;
+	unsigned int val;
+};
+#endif
+
 struct mtk_i2c {
 	struct i2c_adapter adap;	/* i2c host adapter */
 	struct device *dev;
@@ -387,6 +398,10 @@ struct mtk_i2c {
 	unsigned long long complete_time;
 	unsigned long complete_ns;
 	u16 last_addr;
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	void __iomem *clk_base;		/* i2c clk base addr */
+	struct mtk_i2c_clk_reg  clk_info;
+#endif
 };
 
 /**
@@ -796,6 +811,51 @@ static void mtk_i2c_writew_ccu(struct mtk_i2c *i2c, u16 val,
 {
 	writew(val, i2c->base + i2c->ch_offset_ccu + i2c->dev_comp->regs[reg]);
 }
+
+#ifdef CONFIG_FPGA_EARLY_PORTING
+static int mt_i2c_fpga_probe_of(struct device_node *np, struct mtk_i2c *i2c)
+{
+	int ret;
+
+	if (!np || !i2c) {
+		pr_info("[%s] para error. parameter is NULL\n", __func__);
+		return -EINVAL;
+	}
+	/* get i2c-clk info from dts */
+	ret = of_property_read_u32_index(np, "i2c-clock-info", 0, &i2c->clk_info.addr);
+	if (ret) {
+		dev_info(i2c->dev, "get i2c_clock base fail\n");
+		return ret;
+	}
+	ret = of_property_read_u32_index(np, "i2c-clock-info", 1, &i2c->clk_info.val);
+	if (ret) {
+		dev_info(i2c->dev, "get i2c_clock val fail\n");
+		return ret;
+	}
+
+	/* ioremap i2c_clk_info addr */
+	i2c->clk_base = ioremap(i2c->clk_info.addr, 0x10);
+	if (!i2c->clk_base) {
+		dev_info(i2c->dev, "i2c_clock_base[0x%x] ioremap fail\n",i2c->clk_info.addr);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void mtk_i2c_fpga_clock_enable(struct mtk_i2c *i2c)
+{
+	if (!i2c || !i2c->clk_base || !i2c->clk_info.val) {
+		pr_info("[%s] para error. parameter is NULL\n", __func__);
+		return;
+	}
+
+	if ((readl(i2c->clk_base) & i2c->clk_info.val)) {
+		dev_info(i2c->dev, "clk enable[0x%x] \n", readl(i2c->clk_base));
+		writel(i2c->clk_info.val, i2c->clk_base + CLOCK_CG_W1C);
+	}
+}
+#endif
 
 static int mtk_i2c_clock_enable(struct mtk_i2c *i2c)
 {
@@ -1535,6 +1595,7 @@ static int mtk_i2c_set_speed(struct mtk_i2c *i2c, unsigned int parent_clk)
 	return 0;
 }
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 extern void gpio_dump_regs_range(int start, int end);
 static void mtk_i2c_gpio_dump(struct mtk_i2c *i2c)
 {
@@ -1545,6 +1606,7 @@ static void mtk_i2c_gpio_dump(struct mtk_i2c *i2c)
 	end = i2c->scl_gpio_id < i2c->sda_gpio_id ? i2c->sda_gpio_id : i2c->scl_gpio_id;
 	gpio_dump_regs_range(start, end);
 }
+#endif
 
 static void mtk_i2c_dump_reg(struct mtk_i2c *i2c)
 {
@@ -2178,7 +2240,9 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		}
 		dev_info(i2c->dev, "addr: %x, transfer timeout\n", msgs->addr);
 		mtk_i2c_dump_reg(i2c);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mtk_i2c_gpio_dump(i2c);
+#endif
 		if (i2c->ch_offset_i2c) {
 			mtk_i2c_writew(i2c, I2C_FIFO_ADDR_CLR_MCH | I2C_FIFO_ADDR_CLR,
 						OFFSET_FIFO_ADDR_CLR);
@@ -2434,6 +2498,11 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	int ret;
 	unsigned int temp;
 
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	ret = mt_i2c_fpga_probe_of(np, i2c);
+	if (ret < 0)
+		return ret;
+#endif
 	ret = of_property_read_u32(np, "clock-frequency", &i2c->speed_hz);
 	if (ret < 0)
 		i2c->speed_hz = I2C_MAX_STANDARD_MODE_FREQ;
@@ -2622,7 +2691,12 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 	ret = mtk_i2c_parse_dt(pdev->dev.of_node, i2c);
 	if (ret)
 		return -EINVAL;
-
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	if (i2c->ch_offset_i2c == i2c->i2c_offset_scp) {
+		dev_info(dev, "scp i2c probe end in fpga!\n");
+		return 0;
+	}
+#endif
 	if (i2c->have_pmic && !i2c->dev_comp->pmic_i2c)
 		return -EINVAL;
 
@@ -2688,6 +2762,9 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	mtk_i2c_fpga_clock_enable(i2c);
+#endif
 	ret = mtk_i2c_clock_enable(i2c);
 	if (ret) {
 		dev_err(&pdev->dev, "clock enable failed!\n");
@@ -2734,7 +2811,10 @@ static void mtk_i2c_remove(struct platform_device *pdev)
 
 		scp_wake.is_initialized = false;
 	}
-
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	if (i2c->clk_base)
+		iounmap(i2c->clk_base);
+#endif
 	i2c_del_adapter(&i2c->adap);
 }
 
