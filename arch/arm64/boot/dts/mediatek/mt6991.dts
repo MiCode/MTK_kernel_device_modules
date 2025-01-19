@@ -16061,6 +16061,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,mmdvfs-opp-table = <&opp_table_cam>, <&opp_table_cam>, <&opp_table_vdec>,
 			<&opp_table_img>, <&opp_table_img>, <&opp_table_disp>, <&opp_table_disp>,
 			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc>;
+		mediatek,mmup-sram;
 	};
 
 	mmdvfs_v5_user: mmdvfs-v5-user {
@@ -16071,6 +16072,18 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<&mmdvfs_v5_mux MMDVFS_V5_AP_MDP>;
 		clock-names = "mmdvfs-v5-ap-cam", "mmdvfs-v5-ap-vde", "mmdvfs-v5-ap-img", "mmdvfs-v5-ap-ipe",
 			"mmdvfs-v5-ap-dis", "mmdvfs-v5-ap-mml", "mmdvfs-v5-ap-smi", "mmdvfs-v5-ap-ven", "mmdvfs-v5-ap-mdp";
+	};
+
+	mmdvfs_debug_v5: mmdvfs-debug-v5 {
+		compatible = "mediatek,mmdvfs-debug-v5";
+		vcore-supply	= <&mt6316_8_vbuck1>;
+		vmm-supply	= <&mt6363_vbuck2>;
+		vdisp-supply	= <&mt6363_vbuck1>;
+		mux-base	= <0x1000c000>;
+		mux-offset	= /bits/ 16 <0x0020 0x0030 0x0040 0x0050 0x0060 0x0174 0x00f8>;
+		fmeter-id	= /bits/ 8 <22 23 27 15  9  7  8 11 12 20 21>;
+		fmeter-type	= /bits/ 8 < 5  5  5  5  5  5  5  5  5  5  5>;
+		mediatek,met-freerun;
 	};
 
 	mmdvfs_mux: mmdvfs-mux {
