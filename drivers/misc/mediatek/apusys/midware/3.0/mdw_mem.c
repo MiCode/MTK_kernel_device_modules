@@ -167,6 +167,11 @@ static void mdw_mem_release(struct kref *ref)
 	if (ret)
 		mdw_exception("delete mem failed(%d) dbuf(0x%llx) size(%llu)", ret, (uint64_t)m->dbuf, m->size);
 
+	/* remove from dev hashtable */
+	mutex_lock(&mdw_dev->mctl_mtx);
+	hash_del(&m->device_node);
+	mutex_unlock(&mdw_dev->mctl_mtx);
+
 	kfree(m);
 }
 
@@ -249,7 +254,7 @@ static void mdw_map_release(struct kref *ref)
 
 	mdw_map_show(map);
 
-	/* insert to dev */
+	/* remove from dev */
 	mutex_lock(&mdw_dev->mctl_mtx);
 	list_del(&map->device_node);
 	mutex_unlock(&mdw_dev->mctl_mtx);
