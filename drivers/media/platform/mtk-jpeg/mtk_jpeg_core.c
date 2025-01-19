@@ -1406,6 +1406,81 @@ static int mtk_jpeg_set_dec_dst(struct mtk_jpeg_ctx *ctx,
 	return 0;
 }
 
+static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
+{
+	int ret, i;
+
+	for (i = 0; i < jpeg->variant->num_clks; i++) {
+		if (jpeg->larb[i]) {
+			if (jpeg->is_ccf_one_step)
+				ret = mtk_smi_larb_enable(jpeg->larb[i]);
+			else
+				ret = pm_runtime_resume_and_get(jpeg->larb[i]);
+			if (ret)
+				pr_info("clk on jpeg clk %d fail %d\n", i, ret);
+		}
+	}
+
+	pr_info("%s %d num_clks %d\n", __func__,
+		__LINE__, jpeg->variant->num_clks);
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
+		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec);
+		if (ret)
+			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC failed %d",
+					ret);
+		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c1);
+		if (ret)
+			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC_C1 failed %d",
+					ret);
+
+		//core1 need open core0 firstly
+		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1) {
+			ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c2);
+			if (ret)
+				JPEG_LOG(0, "clk enable MT_CG_VENC_JPGDEC_C2 failed %d",
+						ret);
+		}
+	} else
+#endif
+		{
+			ret = clk_bulk_prepare_enable(jpeg->variant->num_clks,
+					jpeg->variant->clks);
+			if (ret)
+				v4l2_err(&jpeg->v4l2_dev, "Failed to open jpeg clk: %d\n", ret);
+
+			if (jpeg->axdomain)
+				mtk_jpeg_enc_set_axdomain(jpeg, jpeg->larb_base);
+		}
+}
+
+static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
+{
+	int i;
+#if MTK_JPEG_DEC_SUPPORT
+	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
+		//core1 need close core0 firstly
+		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1)
+			clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c2);
+
+		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c1);
+		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec);
+	} else
+#endif
+		clk_bulk_disable_unprepare(jpeg->variant->num_clks,
+					jpeg->variant->clks);
+
+	for (i = 0; i < jpeg->variant->num_clks; i++) {
+		if (jpeg->larb[i]) {
+			if (jpeg->is_ccf_one_step)
+				mtk_smi_larb_disable(jpeg->larb[i]);
+			else
+				pm_runtime_put_sync(jpeg->larb[i]);
+		}
+	}
+	pr_info("clk off jpeg OK larb num[%d]\n", jpeg->variant->num_clks);
+}
+
 static void mtk_jpeg_enc_device_run(void *priv)
 {
 	struct mtk_jpeg_ctx *ctx = priv;
@@ -1426,11 +1501,13 @@ static void mtk_jpeg_enc_device_run(void *priv)
 		return;
 	}
 	dst_buf->vb2_buf.timestamp = src_buf->vb2_buf.timestamp;
-
-	ret = pm_runtime_get_sync(jpeg->dev);
-	if (ret < 0)
-		goto enc_end;
-
+	if (jpeg->is_ccf_one_step)
+		mtk_jpeg_clk_on(jpeg);
+	else {
+		ret = pm_runtime_get_sync(jpeg->dev);
+		if (ret < 0)
+			goto enc_end;
+	}
 #if MTK_JPEG_DVFS_BW_SUPPORT
 	mtk_jpeg_update_bw_request(ctx);
 	mtk_jpeg_dvfs_begin(ctx);
@@ -1578,73 +1655,7 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 	return ret;
 }
 
-static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
-{
-	int ret, i;
 
-	for (i = 0; i < jpeg->variant->num_clks; i++) {
-		if (jpeg->larb[i]) {
-			ret = pm_runtime_resume_and_get(jpeg->larb[i]);
-			if (ret)
-				pr_info("clk on jpeg clk %d fail %d\n", i, ret);
-		}
-	}
-
-	pr_info("%s %d num_clks %d\n", __func__,
-		__LINE__, jpeg->variant->num_clks);
-#if MTK_JPEG_DEC_SUPPORT
-	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
-		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec);
-		if (ret)
-			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC failed %d",
-					ret);
-		ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c1);
-		if (ret)
-			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC_C1 failed %d",
-					ret);
-
-		//core1 need open core0 firstly
-		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1) {
-			ret = clk_prepare_enable(jpeg->jpegDecClk.clk_jpgDec_c2);
-			if (ret)
-				JPEG_LOG(0, "clk enable MT_CG_VENC_JPGDEC_C2 failed %d",
-						ret);
-		}
-	} else
-#endif
-		{
-			ret = clk_bulk_prepare_enable(jpeg->variant->num_clks,
-					jpeg->variant->clks);
-			if (ret)
-				v4l2_err(&jpeg->v4l2_dev, "Failed to open jpeg clk: %d\n", ret);
-
-			if (jpeg->axdomain)
-				mtk_jpeg_enc_set_axdomain(jpeg, jpeg->larb_base);
-		}
-}
-
-static void mtk_jpeg_clk_off(struct mtk_jpeg_dev *jpeg)
-{
-	int i;
-#if MTK_JPEG_DEC_SUPPORT
-	if (jpeg->jpeg_dev_type != MTK_JPEG_ENC) {
-		//core1 need close core0 firstly
-		if (jpeg->jpeg_dev_type == MTK_JPEG_DEC_C1)
-			clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c2);
-
-		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec_c1);
-		clk_disable_unprepare(jpeg->jpegDecClk.clk_jpgDec);
-	} else
-#endif
-		clk_bulk_disable_unprepare(jpeg->variant->num_clks,
-					jpeg->variant->clks);
-
-	for (i = 0; i < jpeg->variant->num_clks; i++) {
-		if (jpeg->larb[i])
-			pm_runtime_put_sync(jpeg->larb[i]);
-	}
-	pr_info("clk off jpeg OK larb num[%d]\n", jpeg->variant->num_clks);
-}
 
 static irqreturn_t mtk_jpeg_enc_done(struct mtk_jpeg_dev *jpeg)
 {
@@ -1881,7 +1892,11 @@ static int mtk_jpeg_release(struct file *file)
 		mtk_jpeg_dvfs_end(ctx);
 		mtk_jpeg_end_bw_request(ctx);
 	#endif
-		pm_runtime_put(ctx->jpeg->dev);
+		if (jpeg->is_ccf_one_step)
+			mtk_jpeg_clk_off(jpeg);
+		else
+			pm_runtime_put(ctx->jpeg->dev);
+
 	}
 	if ((ctx->size_output != 0) && (ctx->time_end != 0))
 		pr_info("%s  time(ms) %lld outsize %d\n", __func__,
@@ -2047,7 +2062,7 @@ static void mtk_jpeg_job_timeout_work(struct work_struct *work)
 
 	jpeg->variant->hw_reset(jpeg->reg_base);
 
-	pm_runtime_put(jpeg->dev);
+	//pm_runtime_put(jpeg->dev);
 
 	v4l2_m2m_buf_done(src_buf, VB2_BUF_STATE_ERROR);
 	v4l2_m2m_buf_done(dst_buf, VB2_BUF_STATE_ERROR);
@@ -2100,6 +2115,9 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		jpeg->axdomain = 0;
 
 	dev_info(&pdev->dev, "axdomain %d", jpeg->axdomain);
+
+	jpeg->is_ccf_one_step = of_property_read_bool(pdev->dev.of_node, "ccf-one-step");
+	dev_info(&pdev->dev, "ccf-one-step: 0x%x", jpeg->is_ccf_one_step);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);
@@ -2211,7 +2229,8 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, jpeg);
 
-	pm_runtime_enable(&pdev->dev);
+	if (jpeg->is_ccf_one_step == false)
+		pm_runtime_enable(&pdev->dev);
 
 	if (strcmp((const char *)jpeg->variant->dev_name, "mtk-jpeg-enc") == 0)
 		jpgenc_probe_time++;
@@ -2242,8 +2261,8 @@ err_req_irq:
 static void mtk_jpeg_remove(struct platform_device *pdev)
 {
 	struct mtk_jpeg_dev *jpeg = platform_get_drvdata(pdev);
-
-	pm_runtime_disable(&pdev->dev);
+	if (jpeg->is_ccf_one_step == false)
+		pm_runtime_disable(&pdev->dev);
 	video_unregister_device(jpeg->vdev);
 	video_device_release(jpeg->vdev);
 	v4l2_m2m_release(jpeg->m2m_dev);

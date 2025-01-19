@@ -169,6 +169,7 @@ struct mtk_jpeg_dev {
 	enum mtk_jpeg_support_34bits support_34bits;
 	struct device *smmu_dev;
 	u32 axdomain;
+	bool is_ccf_one_step;
 };
 
 /**
