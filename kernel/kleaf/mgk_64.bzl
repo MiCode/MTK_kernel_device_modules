@@ -2970,6 +2970,14 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
+        mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+
+        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
+        mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
+
         mgk_64_device_modules.append("drivers/regulator/mt6362-regulator.ko")
         mgk_64_device_modules.append("drivers/mfd/mt6362-core.ko")
         mgk_64_device_modules.remove("drivers/char/rpmb/rpmb.ko")
