@@ -350,10 +350,8 @@ bool cancel_suspend_work(u32 cid)
 	struct adsp_feature_control *ctrl = &feature_ctrl[cid];
 	bool ret = false;
 
-	mutex_lock(&ctrl->lock);
 	if (ctrl->total == 0 && delayed_work_pending(&ctrl->suspend_work))
 		ret = cancel_delayed_work(&ctrl->suspend_work);
-	mutex_unlock(&ctrl->lock);
 
 	return ret;
 }
