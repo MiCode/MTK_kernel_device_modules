@@ -48,6 +48,13 @@
 			};
 		};
 
+		mt6661_4_pio: mt6661-4-pinctrl {
+			compatible = "mediatek,mt6661-4-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_4_pio 0 0 12>;
+		};
+
 		regulators {
 			compatible = "mediatek,mt6661-4-regulator";
 			mt6661_4_buck1: mt6661-4-buck1 {
@@ -295,6 +302,13 @@
 
 		mt6661-3-connv3 {
 			compatible = "mediatek,mt6661-3-connv3";
+		};
+
+		mt6661_3_pio: mt6661-3-pinctrl {
+			compatible = "mediatek,mt6661-3-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_3_pio 0 0 12>;
 		};
 
 		regulators {
@@ -734,6 +748,13 @@
 			// #size-cells = <1>;
 		};
 
+		mt6661_5_pio: mt6661-5-pinctrl {
+			compatible = "mediatek,mt6661-5-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_5_pio 0 0 12>;
+		};
+
 		regulators {
 			compatible = "mediatek,mt6661-5-regulator";
 			mt6661_5_buck1: mt6661-5-buck1 {
@@ -1171,6 +1192,13 @@
 			compatible = "mediatek,mt6661-6-efuse";
 			// #address-cells = <1>;
 			// #size-cells = <1>;
+		};
+
+		mt6661_6_pio: mt6661-6-pinctrl {
+			compatible = "mediatek,mt6661-6-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_6_pio 0 0 12>;
 		};
 
 		regulators {
