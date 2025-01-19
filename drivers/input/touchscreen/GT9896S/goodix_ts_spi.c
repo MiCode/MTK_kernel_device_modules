@@ -282,6 +282,12 @@ static int gt9896s_parse_dt(struct device_node *node,
 				strlen(name_tmp),
 				sizeof(board_data->avdd_name));
 	}
+	r = of_property_read_u32(node, "gt9896s,power-voltage",
+		&board_data->power_voltage);
+	if (r) {
+		ts_err("invalid power-voltage using default voltage");
+		board_data->power_voltage = 3000000;
+	}
 
 	r = of_property_read_u32(node, "goodix,power-on-delay-us",
 				&board_data->power_on_delay_us);
