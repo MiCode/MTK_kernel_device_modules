@@ -189,6 +189,9 @@ struct ccci_fsm_ee {
 	char ex_start_time[MD_EX_START_TIME_LEN];
 	unsigned int mdlog_dump_done;
 	char ex_smpu_string[MD_EX_MPU_STR_LEN];
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	unsigned int is_normal_ee_case;
+#endif
 };
 
 struct ccci_fsm_monitor {
@@ -271,6 +274,10 @@ int fsm_poller_init(struct ccci_fsm_poller *poller_ctl);
 int fsm_ee_init(struct ccci_fsm_ee *ee_ctl);
 int fsm_monitor_init(struct ccci_fsm_monitor *monitor_ctl);
 int fsm_sys_init(void);
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+int ccci_get_ap_debug_level(void);
+#endif
+
 
 extern struct ccci_fsm_ctl *ccci_fsm_entries;
 

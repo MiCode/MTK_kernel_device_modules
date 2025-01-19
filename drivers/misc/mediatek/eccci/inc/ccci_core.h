@@ -262,7 +262,22 @@ extern struct ccci_ccb_config ccb_configs[];
 
 #define CCCI_IOC_CCB_CTRL_INFO			\
 	_IOWR(CCCI_IOC_MAGIC, 71, struct ccb_ctrl_info)
-/* for cancel ccb poll */
+
+/* for user space ccci mdinit user */
+#define CCCI_IOC_GET_MDINIT_KILLED      \
+	_IOR(CCCI_IOC_MAGIC, 72, unsigned int)
+
+/* modem log */
+#define CCCI_IOC_ENTER_UPLOAD		\
+	_IO(CCCI_IOC_MAGIC, 73)
+
+#define CCCI_IOC_DRV_ENTER_UPLOAD	\
+	_IO(CCCI_IOC_MAGIC, 74) /* modem log for s */
+
+#define CCCI_IOC_LOG_LVL	\
+	_IOW(CCCI_IOC_MAGIC, 75, unsigned int) /* modem log for s */
+
+/* for meta cancel poll */
 #define CCCI_IOC_SMEM_POLL_EXIT	\
 	_IO(CCCI_IOC_MAGIC, 76)
 #define CCCI_IOC_SET_HEADER			\
@@ -476,6 +491,8 @@ enum CCCI_CH {
 	CCCI_BIP_TX			= 176,
 	CCCI_UDC_RX			= 177,
 	CCCI_UDC_TX			= 178,
+	CCCI_MIPI_CHANNEL_RX		= 179,
+	CCCI_MIPI_CHANNEL_TX		= 180,
 
 	CCCI_TCHE_RX			= 181,
 	CCCI_TCHE_TX			= 182,
@@ -640,5 +657,8 @@ unsigned int ccci_get_boot_mode_from_dts(void);
 extern int ccci_register_dev_node(const char *name, int major_id, int minor);
 #ifdef CCCI_KMODULE_ENABLE
 int ccci_init(void);
+#endif
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+void drv_tri_panic_by_lvl(void);
 #endif
 #endif	/* __CCCI_CORE_H__ */

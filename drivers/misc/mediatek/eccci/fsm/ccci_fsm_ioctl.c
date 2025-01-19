@@ -45,6 +45,51 @@ unsigned int get_sim_switch_type(void)
 }
 #endif
 
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+static int ccci_md_log_level;
+
+#define MD_LOG_LEVEL_HIGH	0x4948
+#define MD_LOG_LEVEL_MID	0x494d
+#define MD_LOG_LEVEL_LOW	0x4f4c
+
+void drv_tri_panic_by_lvl(void)
+{
+	CCCI_NORMAL_LOG(0, FSM,
+		"%s:log level=0x%x\n", __func__, ccci_md_log_level);
+
+	if (ccci_md_log_level == MD_LOG_LEVEL_LOW) {
+		/* modem reset */
+		CCCI_NORMAL_LOG(0, FSM,
+			"Curr log level is low, trigger reset called by %s\n",
+			current->comm);
+		fsm_monitor_send_message(CCCI_MD_MSG_RESET_REQUEST, 0);
+	} else if ((ccci_md_log_level == MD_LOG_LEVEL_MID) ||
+		(ccci_md_log_level == MD_LOG_LEVEL_HIGH)) {
+		CCCI_NORMAL_LOG(0, FSM,
+			"ram dump done called by %s\n", current->comm);
+		panic("CP Crash");
+	} else
+		CCCI_NORMAL_LOG(0, FSM,
+			"md log level is invalid, do nothing\n");
+}
+
+int ccci_get_ap_debug_level(void)
+{
+	if (ccci_md_log_level == MD_LOG_LEVEL_LOW)
+		return 0;
+	else if (ccci_md_log_level == MD_LOG_LEVEL_MID)
+		return 1;
+	else if (ccci_md_log_level == MD_LOG_LEVEL_HIGH)
+		return 2;
+
+	CCCI_ERROR_LOG(-1, FSM,
+		"%s:debug_level(%d) invalid\n", __func__,
+		ccci_md_log_level);
+	return -1;
+}
+#endif
+
+
 struct ccci_runtime_feature *
 ccci_md_get_rt_feature_by_id(u8 feature_id, u8 ap_query_md)
 {
@@ -173,22 +218,26 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 {
 	int ret = 0, retry;
 	int data = 0;
-	char buffer[64];
-	unsigned int sim_slot_cfg[4];
-	char ap_platform[5];
+	unsigned int sim_slot_cfg[4] = {0};
+	char ap_platform[5] = {0};
 	int md_gen;
 	struct device_node *node = NULL;
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
 
 	node = of_find_compatible_node(NULL, NULL,
 		"mediatek,mddriver");
-	of_property_read_u32(node,
+	ret = of_property_read_u32(node,
 		"mediatek,md-generation", &md_gen);
-
+	if (ret) {
+		CCCI_ERROR_LOG(0, FSM,
+			"%s get property fail\n", __func__);
+		md_gen = 0;
+		ret = 0;
+	}
 	switch (cmd) {
 	case CCCI_IOC_GET_MD_PROTOCOL_TYPE:
-		snprintf(buffer, sizeof(buffer), "%d", md_gen);
-		snprintf((void *)ap_platform, sizeof(ap_platform), "%d", md_gen);
+		scnprintf((void *)ap_platform, sizeof(ap_platform), "%d", md_gen);
+
 		if (copy_to_user((void __user *)arg,
 			ap_platform, sizeof(ap_platform))) {
 			CCCI_ERROR_LOG(0, FSM,
@@ -275,6 +324,9 @@ static int fsm_md_data_ioctl(unsigned int cmd, unsigned long arg)
 					ret);
 				ret = -EFAULT;
 			}
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+			ccci_md_log_level = per_md_data->md_boot_data[MD_CFG_LOG_LEVEL];
+#endif
 		}
 		break;
 	case CCCI_IOC_SIM_SWITCH:
@@ -534,6 +586,9 @@ long ccci_fsm_ioctl(unsigned int cmd, unsigned long arg)
 	enum MD_STATE_FOR_USER state_for_user;
 	unsigned int data;
 	char *VALID_USER = "ccci_mdinit";
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	struct ccci_modem *md;
+#endif
 
 	if (!ctl)
 		return -EINVAL;
@@ -578,8 +633,16 @@ long ccci_fsm_ioctl(unsigned int cmd, unsigned long arg)
 		break;
 	case CCCI_IOC_DO_START_MD:
 		/* add check whether the user call md start ioctl is valid */
-		if (strncmp(current->comm,
-			VALID_USER, strlen(VALID_USER)) == 0) {
+		if (strncmp(current->comm, VALID_USER, strlen(VALID_USER)) == 0) {
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+			md = ccci_get_modem();
+			if (md == NULL) {
+				CCCI_ERROR_LOG(0, FSM,
+					"fail get md in CCCI_IOC_DO_START_MD\n");
+				return -EINVAL;
+			}
+			md->ccci_drv_trigger_upload = 0;
+#endif
 			CCCI_NORMAL_LOG(0, FSM,
 				"MD start ioctl called by %s\n", current->comm);
 			ret = fsm_append_command(ctl, CCCI_COMMAND_START, 0);
@@ -679,6 +742,32 @@ long ccci_fsm_ioctl(unsigned int cmd, unsigned long arg)
 			"get modem exception type=%d ret=%d\n",
 			ctl->ee_ctl.ex_type, ret);
 		break;
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	case CCCI_IOC_ENTER_UPLOAD:
+		drv_tri_panic_by_lvl();
+		break;
+	case CCCI_IOC_DRV_ENTER_UPLOAD:
+		md = ccci_get_modem();
+		if (md == NULL) {
+			CCCI_ERROR_LOG(0, FSM,
+				"fail get md in CCCI_IOC_DRV_ENTER_UPLOAD\n");
+			return -EINVAL;
+		}
+		md->ccci_drv_trigger_upload = 1;
+		CCCI_NORMAL_LOG(0, FSM, "drv trigger upload called by %s\n",
+			current->comm);
+		break;
+	case CCCI_IOC_LOG_LVL:
+		if (copy_from_user(&ccci_md_log_level, (void __user *)arg,
+			sizeof(unsigned int))) {
+			CCCI_NORMAL_LOG(0, FSM,
+				"cpy log level fail: copy_from_user fail!\n");
+			ret = -EFAULT;
+		}
+		CCCI_NORMAL_LOG(0, FSM,
+			"cpy log level value:0x%x\n", ccci_md_log_level);
+		break;
+#endif
 	default:
 		ret = fsm_md_data_ioctl(cmd, arg);
 		break;

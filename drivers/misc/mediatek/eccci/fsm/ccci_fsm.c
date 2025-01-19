@@ -729,6 +729,11 @@ static void config_ap_side_feature(struct ccci_modem *md,
 		CCCI_FEATURE_OPTIONAL_SUPPORT;
 	md_feature->feature_set[MD_POST_DUMP].support_mask =
 		CCCI_FEATURE_OPTIONAL_SUPPORT;
+/* MD EE trigger reboot */
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	md_feature->feature_set[AP_DEBUG_LEVEL].support_mask =
+		CCCI_FEATURE_MUST_SUPPORT;
+#endif
 }
 
 static void ccci_sib_region_set_runtime(struct ccci_runtime_feature *rt_feature,
@@ -909,6 +914,9 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 	unsigned int random_seed = 0;
 	unsigned int c2k_flags = 0;
 	int adc_val = 0;
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	int debug_level;
+#endif
 
 	if (rt_data_region == NULL) {
 		CCCI_ERROR_LOG(0, FSM, "Error: %s rt_data_region is NULL\n", __func__);
@@ -1358,6 +1366,14 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				append_runtime_feature(&rt_data, &rt_feature,
 				rt_mem_view);
 				break;
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+			case AP_DEBUG_LEVEL:
+				rt_feature.data_len = sizeof(int);
+				debug_level = ccci_get_ap_debug_level();
+				append_runtime_feature(&rt_data, &rt_feature, &debug_level);
+				break;
+#endif
+
 #ifdef CCCI_SUPPORT_AP_MD_SECURE_FEATURE
 			case SECURITY_SHARE_MEMORY:
 				ccci_smem_region_set_runtime(

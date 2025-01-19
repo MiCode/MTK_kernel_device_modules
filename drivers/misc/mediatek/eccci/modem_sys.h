@@ -144,6 +144,9 @@ struct ccci_modem {
 	struct md_hw_info *hw_info;
 
 	struct ccci_per_md per_md_data;
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+	unsigned int ccci_drv_trigger_upload;
+#endif
 	void *ioremap_buff_src;
 };
 

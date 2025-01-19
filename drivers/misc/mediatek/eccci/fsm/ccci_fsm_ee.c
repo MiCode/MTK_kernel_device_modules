@@ -171,7 +171,9 @@ _dump_done:
 	} else if (stage == 2) { /* got MD_EX_PASS or second timeout */
 		unsigned long flags;
 		unsigned int md_dump_flag = 0;
-
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+		struct ccci_modem *md;
+#endif
 		CCCI_ERROR_LOG(0, FSM, "MD exception stage 2!\n");
 		CCCI_MEM_LOG_TAG(0, FSM, "MD exception stage 2! ee=%x\n",
 			ee_ctl->ee_info_flag);
@@ -201,6 +203,25 @@ _dump_done:
 
 		CCCI_ERROR_LOG(0, FSM,
 			"MD exception stage 2:end\n");
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+		md = ccci_get_modem();
+		if (md == NULL) {
+			CCCI_ERROR_LOG(0, FSM,
+				"fail to get md struct-no any userful MD!!\n");
+			return;
+		}
+		if (md->ccci_drv_trigger_upload) {
+			CCCI_ERROR_LOG(0, FSM, "[md1] drv trigger panic\n");
+			drv_tri_panic_by_lvl();
+			return;
+		}
+		if (!ee_ctl->is_normal_ee_case) {
+			CCCI_ERROR_LOG(0, FSM,
+				"[md1] EE time out case, call panic\n");
+			drv_tri_panic_by_lvl();
+		}
+		ee_ctl->is_normal_ee_case = 0;
+#endif
 	}
 }
 
@@ -276,6 +297,10 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 	} else if (ccci_h->data[1] == MD_EX_PASS) {
 		spin_lock_irqsave(&ee_ctl->ctrl_lock, flags);
 		ee_ctl->ee_info_flag |= MD_EE_PASS_MSG_GET;
+#ifdef MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+		/* dump share memory again to let MD check exception flow */
+		ee_ctl->is_normal_ee_case = 1;
+#endif
 		spin_unlock_irqrestore(&ee_ctl->ctrl_lock, flags);
 		fsm_append_event(ctl, CCCI_EVENT_MD_EX_PASS, NULL, 0);
 	} else if (ccci_h->data[1] == CCCI_DRV_VER_ERROR) {

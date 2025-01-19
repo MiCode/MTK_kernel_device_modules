@@ -18,4 +18,14 @@
 
 /* AMMS DRDI bank4 share memory size */
 #define BANK4_DRDI_SMEM_SIZE (64*1024)
+
+
+/*
+ * This feature set the md debug level.
+ * After MD EE.
+ *  1. LEVEL_LOW: reset md.
+ *  2. LEVEL_MID/LEVEL_HIGH: trigger crash.
+ */
+//#define MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+
 #endif
