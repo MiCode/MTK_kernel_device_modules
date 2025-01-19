@@ -736,6 +736,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
+	if (!comp) {
+		DDPPR_ERR("%s comp is null\n", __func__);
+		return;
+	}
 	int i = 0;
 	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	if (keep_first_layer) {
@@ -4701,7 +4705,7 @@ static irqreturn_t mtk_disp_ovl_exdma_irq_handler(int irq, void *dev_id)
 				drv_priv->data->mmsys_id == MMSYS_MT6897)) {
 				unsigned int index = drm_crtc_index(&mtk_crtc->base);
 
-				CRTC_MMP_MARK(index, target_time, ovl->id, 0xffff0001);
+				CRTC_MMP_MARK((int)index, target_time, ovl->id, 0xffff0001);
 				atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
 				wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
 			}
