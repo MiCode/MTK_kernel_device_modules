@@ -58,11 +58,3 @@ config VIRTIO_CMDQ
 	  for hypervisor project. The virtio driver is located at mailbox/virtio,
 	  Also used to isolate the conflicting part of the cmdq driver
 	  on main project, default is n.
-
-config MTK_TEMP_DISABLE_DEVAPC_MTXXXX
-	tristate "disable devapc CMDQ  driver"
-	help
-	  This extension disable devapc for cmdq driver, devapc cmdq driver
-	  for legacy chips In bringup stage legacy chips does not have devapc ,
-	  ready so cmdq module has this extensoin for workaround to use,
-	  This extension checks for bringup stage.

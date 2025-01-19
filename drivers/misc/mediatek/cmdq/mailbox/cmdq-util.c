@@ -1296,7 +1296,7 @@ void cmdq_util_devapc_dump(void)
 }
 EXPORT_SYMBOL(cmdq_util_devapc_dump);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)  && !IS_ENABLED(CONFIG_MTK_TEMP_DISABLE_DEVAPC_MTXXXX)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static struct devapc_vio_callbacks devapc_vio_handle = {
 	.id = INFRA_SUBSYS_GCE,
 	.debug_dump = cmdq_util_devapc_dump,
@@ -1483,7 +1483,7 @@ int cmdq_util_init(void)
 	if (exists)
 		dput(dir);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC) && !IS_ENABLED(CONFIG_MTK_TEMP_DISABLE_DEVAPC_MTXXXX)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 
