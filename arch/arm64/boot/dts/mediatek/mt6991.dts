@@ -14960,6 +14960,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-scpsys-regmap = "enable";
 		scp-bus-tracker-ver = <0x2>;
 		scp-mbrain = "enable";
+		scp-recovery-wfi-detect = "enable";
+		scp-ipi-timeout-bugon = "enable";
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
