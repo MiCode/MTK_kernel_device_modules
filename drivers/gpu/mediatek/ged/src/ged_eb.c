@@ -124,11 +124,13 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 			trace_tracing_mark_write(5566, "unreasonable_top_freq",psEBEvent->freq_new);
 		} else {
 			mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
-			if (is_fdvfs_enable() && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
-				&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
-				mutex_lock(&gsPolicyLock);
-				ged_kpi_fastdvfs_update_dcs();
-				mutex_unlock(&gsPolicyLock);
+			if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+				if (is_fdvfs_enable() && ged_get_cur_oppidx() < ged_get_min_stack_oppidx()
+					&& dcs_get_cur_core_num() != dcs_get_max_core_num()) {
+					mutex_lock(&gsPolicyLock);
+					ged_kpi_fastdvfs_update_dcs();
+					mutex_unlock(&gsPolicyLock);
+				}
 			}
 		}
 		break;
@@ -159,7 +161,10 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		desire_ipi_cnt++;
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
 			mutex_lock(&gsPolicyLock);
-			ged_kpi_fastdvfs_update_dcs();
+			if (psEBEvent->idx[1] == GOV_MASK_DEBUG && psEBEvent->idx[0] != 0)
+				dcs_set_fix_core_mask(psEBEvent->idx[1], psEBEvent->idx[0]);
+			else
+				ged_kpi_fastdvfs_update_dcs();
 			mutex_unlock(&gsPolicyLock);
 			trace_tracing_mark_write(5566, "desire_ipi_req", psEBEvent->idx[0]);
 		}
@@ -536,6 +541,8 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 			psEBEvent->idx[1] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[1];
 		} else if (cmd == GPUFDVFS_IPI_EVENT_UPDATE_DESIRE_FREQ) {
 			psEBEvent->idx[0] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
+			psEBEvent->idx[1] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[1];
+			psEBEvent->idx[2] = ((struct fastdvfs_event_data *)data)->u.set_para.arg[2];
 		}
 		/* irq cmd type (from gpueb) */
 		psEBEvent->cmd = ((struct fastdvfs_event_data *)data)->cmd;

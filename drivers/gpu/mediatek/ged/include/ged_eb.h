@@ -689,6 +689,7 @@ enum {
 
 enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_DTS_INIT_DCS = 1,
+	GPUFDVFS_IPI_SET_DCS_STRESS = 2,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 };
 
@@ -728,7 +729,7 @@ enum {
 struct GED_EB_EVENT {
 	int cmd;
 	unsigned int freq_new;
-	unsigned int idx[2];
+	unsigned int idx[3];
 	struct work_struct sWork;
 	bool bUsed;
 };
@@ -1014,7 +1015,8 @@ typedef struct {
  GEN("fb_freq_floor", GPU_FB_FREQ_FLOOR, 1, "fb_freq_floor") \
  GEN("fb_busy_cycle_cur", GPU_FB_BUSY_CYCLE_CUR, 1, "fb_busy_cycle_cur") \
  GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle") \
- GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us")
+ GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us") \
+ GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

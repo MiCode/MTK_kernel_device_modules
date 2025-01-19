@@ -233,6 +233,10 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 
 	g_setting_dirty = g_dcs_stress;
 	g_cur_core_num = core_num;
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+	}
 	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
@@ -245,6 +249,33 @@ done_unlock:
 	mutex_unlock(&g_DCS_lock);
 	return ret;
 }
+
+int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
+{
+	int ret = GED_OK;
+
+	mutex_lock(&g_DCS_lock);
+
+	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
+		ged_dvfs_set_gpu_core_mask_fp(core_mask);
+	else
+		ret = GED_ERROR_FAIL;
+
+	g_setting_dirty = true;
+
+	trace_GPU_DVFS__Policy__DCS(config, g_cur_core_num, g_fix_core_num);
+	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
+	/* TODO: set return error */
+	if (ret) {
+		GED_LOGE("Failed to set core_mask: 0x%x %d", core_mask, config);
+		goto done_unlock;
+	}
+
+done_unlock:
+	mutex_unlock(&g_DCS_lock);
+	return ret;
+}
+
 
 int dcs_set_fix_num(unsigned int core_num)
 {
@@ -279,6 +310,9 @@ int dcs_set_fix_num(unsigned int core_num)
 			g_fix_core_mask = 0;
 			pr_info("g_debug reset %X", g_fix_core_num);
 		}
+		if (is_fdvfs_enable() & POLICY_MODE_V2) {
+			mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+		}
 	}
 
 done_unlock:
@@ -292,6 +326,10 @@ void dcs_fix_reset(void)
 	g_fix_core_num =  0;
 	g_fix_core_mask = 0;
 	pr_info("g_debug timer reset  %X", g_fix_core_num);
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+	}
 }
 
 unsigned int dcs_get_fix_num(void)
@@ -327,6 +365,10 @@ int dcs_restore_max_core_mask(void)
 		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
 	else
 		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+	}
 
 	g_cur_core_num = g_max_core_num;
 	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
@@ -382,6 +424,18 @@ void dcs_set_dcs_stress(int enable)
 	mutex_lock(&g_DCS_lock);
 	g_dcs_stress = enable;
 	g_setting_dirty = true;
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		struct fdvfs_ipi_data ipi_data = {0};
+		int ret = 0;
+
+		ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_DCS_STRESS;
+		ipi_data.u.set_para.arg[1] = enable;
+		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+
+		if (ret)
+			GED_LOGD("%s err:%d\n", __func__, ret);
+	}
 	mutex_unlock(&g_DCS_lock);
 }
 
