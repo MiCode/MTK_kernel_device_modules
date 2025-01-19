@@ -12712,7 +12712,7 @@ void mtk_crtc_bwm_enable(struct drm_crtc *crtc,
 		mtk_ddp_comp_io_cmd(comp, handle, MTK_IO_CMD_BWM_ENABLE, NULL);
 	else
 		DDPMSG("%s comp is null\n", __func__);
-  	
+
 	if (flush) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -16222,6 +16222,10 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
 
+	/*Need to move here to prevent cmdq time for first config*/
+	mtk_crtc_gce_event_config(crtc);
+	mtk_crtc_vdisp_ao_config(crtc);
+
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
 		if (mtk_crtc_with_sodi_loop(crtc) &&
@@ -16257,9 +16261,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
 	}
-
-	mtk_crtc_gce_event_config(crtc);
-	mtk_crtc_vdisp_ao_config(crtc);
 
 	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
