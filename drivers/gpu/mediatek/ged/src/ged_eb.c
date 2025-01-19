@@ -98,6 +98,7 @@ int eb_notify_index;
 
 static struct work_struct sg_notify_ged_ready_work;
 #define EB_CLOCK 26 //uinit:MHz
+static struct ged_platform_fp *ged_fp;
 
 static void ged_eb_work_cb(struct work_struct *psWork)
 {
@@ -441,7 +442,6 @@ static void ged_eb_sysram_debug_data_write(void)
 	for (dbg_cnt = 0; dbg_cnt < GPU_FDVFS_V2_RB_LOG_MAX; dbg_cnt++) {
 		tmp_head = head;
 		for (i = 0; i < GPUEB_SYSRAM_DVFS_DEBUG_COUNT; i++) {
-			int cur_read_p = tmp_head * sizeof(u32);
 			if (tmp_head != tail) {
 				switch (dbg_cnt) {
 				case GPU_EB_LOG_DUMP_POLICY_COMMON:
@@ -453,7 +453,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				case GPU_EB_LOG_DUMP_DCS_DETAIL:
 				case GPU_EB_LOG_DUMP_GOV_DETAIL1:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
-							fdvfs_v2_rb_table[dbg_cnt].addr + cur_read_p);
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
 						dbg_data[i] = tmp_multi.oneVar.var1;
 					} else if (fdvfs_v2_rb_table[dbg_cnt].data_count == 2) {
@@ -473,7 +473,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2:
 				case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
-							fdvfs_v2_rb_table[dbg_cnt].addr + cur_read_p);
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
 						dbg_data5[i] = tmp_multi.oneVar.var1;
 					} else if (fdvfs_v2_rb_table[dbg_cnt].data_count == 2) {
@@ -483,7 +483,7 @@ static void ged_eb_sysram_debug_data_write(void)
 					break;
 				case GPU_EB_LOG_DUMP_DCS2:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
-							fdvfs_v2_rb_table[dbg_cnt].addr + cur_read_p);
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 4) {
 						dbg_data5[i] = tmp_multi.fourVar.var1;
 						dbg_data6[i] = tmp_multi.fourVar.var2;
@@ -493,7 +493,7 @@ static void ged_eb_sysram_debug_data_write(void)
 					break;
 				case GPU_EB_LOG_DUMP_GOV_DETAIL2:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
-							fdvfs_v2_rb_table[dbg_cnt].addr + cur_read_p);
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
 						dbg_data2[i] = tmp_multi.oneVar.var1;
 					}
@@ -1221,21 +1221,32 @@ EXPORT_SYMBOL(mtk_gpueb_sysram_batch_read);
 
 int mtk_gpueb_sysram_read(int offset)
 {
+	unsigned int real_offset = offset;
+
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -1;
 
-	if ((offset % 4) != 0)
+	if (ged_fp && ged_fp->get_sysram) {
+		// use virtual offset to query real offset
+		real_offset = ged_fp->get_sysram(offset);
+	} else if (offset >= AP_FDVFS_DATA_START_OFFSET) {
+		GED_LOGE("Access platform related sysram without ged_fp: %d", offset);
+		return -EINVAL;
+	}
+
+	if ((real_offset % 4) != 0)
 		return -1;
 
 	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo) {
-		// legacy 2 KB space
-		if (offset < 0x800)
-			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
+		// legacy 2 KB space (0x800)
+		if (real_offset < AP_FDVFS_DATA_START_OFFSET)
+			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + real_offset));
 		// new space for swrgo and Jayer
 		else
-			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset));
+			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo -
+				AP_FDVFS_TMP_NEGATIVE_OFFSET + real_offset));
 	} else {
-		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
+		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + real_offset));
 	}
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_read);
@@ -1253,16 +1264,16 @@ EXPORT_SYMBOL(mtk_gpueb_sysram_multi_read);
 struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
 {
 	struct GED_DVFS_OPP_STAT out_data= {};
-	unsigned int offset = AP_FDVFS_MBRAIN_DATA_START + opp * MBRAIN_MAX_LOG_SIZE * SYSRAM_LOG_SIZE;
+	unsigned int offset = FDVFS_MBRAIN_VIRTUAL_DATA_START + opp * MBRAIN_MAX_LOG_SIZE;
 	unsigned long long active_low = 0, active_high = 0, idle_low = 0, idle_high = 0;
 
-	if (opp >= MBRAIN_MAX_OPP_NUM)
+	if (opp >= ged_get_mbrain_max_num())
 		return out_data;
 
 	active_low = mtk_gpueb_sysram_read(offset);
-	active_high = mtk_gpueb_sysram_read(offset + 1 * SYSRAM_LOG_SIZE);
-	idle_low = mtk_gpueb_sysram_read(offset + 2 * SYSRAM_LOG_SIZE);
-	idle_high = mtk_gpueb_sysram_read(offset + 3 * SYSRAM_LOG_SIZE);
+	active_high = mtk_gpueb_sysram_read(offset + 1);
+	idle_low = mtk_gpueb_sysram_read(offset + 2);
+	idle_high = mtk_gpueb_sysram_read(offset + 3);
 
 	out_data.ui64Active = active_low & 0xFFFFFFFF + (active_high << 32);
 	out_data.ui64Idle = idle_low & 0xFFFFFFFF + (idle_high << 32);
@@ -1271,133 +1282,188 @@ struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
 }
 EXPORT_SYMBOL(mtk_gpueb_mbrain_read);
 
-void mtk_gpueb_mbrain_write(int opp, unsigned long long active, unsigned long long idle)
-{
-	unsigned int offset = AP_FDVFS_MBRAIN_DATA_START + opp * MBRAIN_MAX_LOG_SIZE * SYSRAM_LOG_SIZE;
-
-	if (opp >= MBRAIN_MAX_OPP_NUM)
-		return;
-
-	mtk_gpueb_sysram_write(offset, active & 0xFFFFFFFF);
-	mtk_gpueb_sysram_write(offset + 1 * SYSRAM_LOG_SIZE, active >> 32);
-	mtk_gpueb_sysram_write(offset + 2 * SYSRAM_LOG_SIZE, idle & 0xFFFFFFFF);
-	mtk_gpueb_sysram_write(offset + 3 * SYSRAM_LOG_SIZE, idle >> 32);
-}
-EXPORT_SYMBOL(mtk_gpueb_mbrain_write);
-
 int mtk_gpueb_sysram_write(int offset, int val)
 {
+	unsigned int real_offset = offset;
+
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -EADDRNOTAVAIL;
 
-	if ((offset % 4) != 0)
+	if (ged_fp && ged_fp->get_sysram) {
+		// use virtual offset to query real offset
+		real_offset = ged_fp->get_sysram(offset);
+	} else if (offset >= AP_FDVFS_DATA_START_OFFSET) {
+		GED_LOGE("Access platform related sysram without ged_fp: %d", offset);
+		return -EINVAL;
+	}
+
+	if ((real_offset % 4) != 0)
 		return -EINVAL;
 
 	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo) {
 		// legacy 2 KB space
-		if (offset < 0x800)
-			__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
+		if (real_offset < AP_FDVFS_DATA_START_OFFSET)
+			__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + real_offset);
 		// new space for swrgo and Jayer
 		else
-			__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset);
+			__raw_writel(val,
+				mtk_gpueb_dvfs_sysram_base_addr_swrgo -
+				AP_FDVFS_TMP_NEGATIVE_OFFSET +
+				real_offset);
 	} else {
-		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
+		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + real_offset);
 	}
 	mb(); /* make sure register access in order */
-
-	if (val != mtk_gpueb_sysram_read(offset))
-		GPUFDVFS_LOGD("%s(). failed to update sysram. value : %0x, val: %d/%d",
-		__func__, offset, val,
-		mtk_gpueb_sysram_read(offset));
 
 	return 0;
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_write);
 
+#define MAX_TS_RB_COUNT 128
 static unsigned int SYSRAM_GPU_TS_RB(int rb_num)
 {
-	switch (rb_num) {
-		case 0:
-			return SYSRAM_GPU_TS_RB_0;
-		case 1:
-			return SYSRAM_GPU_TS_RB_1;
-		case 2:
-			return SYSRAM_GPU_TS_RB_2;
-		case 3:
-			return SYSRAM_GPU_TS_RB_3;
-		case 4:
-			return SYSRAM_GPU_TS_RB_4;
-		case 5:
-			return SYSRAM_GPU_TS_RB_5;
-		case 6:
-			return SYSRAM_GPU_TS_RB_6;
-		case 7:
-			return SYSRAM_GPU_TS_RB_7;
-		case 8:
-			return SYSRAM_GPU_TS_RB_8;
-		case 9:
-			return SYSRAM_GPU_TS_RB_9;
-		case 10:
-			return SYSRAM_GPU_TS_RB_10;
-		case 11:
-			return SYSRAM_GPU_TS_RB_11;
-		case 12:
-			return SYSRAM_GPU_TS_RB_12;
-		case 13:
-			return SYSRAM_GPU_TS_RB_13;
-		case 14:
-			return SYSRAM_GPU_TS_RB_14;
-		case 15:
-			return SYSRAM_GPU_TS_RB_15;
-		case 16:
-			return SYSRAM_GPU_TS_RB_16;
-		case 17:
-			return SYSRAM_GPU_TS_RB_17;
-		case 18:
-			return SYSRAM_GPU_TS_RB_18;
-		case 19:
-			return SYSRAM_GPU_TS_RB_19;
-		case 20:
-			return SYSRAM_GPU_TS_RB_20;
-		case 21:
-			return SYSRAM_GPU_TS_RB_21;
-		case 22:
-			return SYSRAM_GPU_TS_RB_22;
-		case 23:
-			return SYSRAM_GPU_TS_RB_23;
-		case 24:
-			return SYSRAM_GPU_TS_RB_24;
-		case 25:
-			return SYSRAM_GPU_TS_RB_25;
-		case 26:
-			return SYSRAM_GPU_TS_RB_26;
-		case 27:
-			return SYSRAM_GPU_TS_RB_27;
-		case 28:
-			return SYSRAM_GPU_TS_RB_28;
-		case 29:
-			return SYSRAM_GPU_TS_RB_29;
-		case 30:
-			return SYSRAM_GPU_TS_RB_30;
-		case 31:
-			return SYSRAM_GPU_TS_RB_31;
-		case 32:
-			return SYSRAM_GPU_TS_RB_32;
-		case 33:
-			return SYSRAM_GPU_TS_RB_33;
-		case 34:
-			return SYSRAM_GPU_TS_RB_34;
-		case 35:
-			return SYSRAM_GPU_TS_RB_35;
-		default:
-			return 0;
+	static const unsigned int SYSRAM_GPU_TS_RB_VALUES[MAX_TS_RB_COUNT] = {
+		SYSRAM_GPU_TS_RB_0,
+		SYSRAM_GPU_TS_RB_1,
+		SYSRAM_GPU_TS_RB_2,
+		SYSRAM_GPU_TS_RB_3,
+		SYSRAM_GPU_TS_RB_4,
+		SYSRAM_GPU_TS_RB_5,
+		SYSRAM_GPU_TS_RB_6,
+		SYSRAM_GPU_TS_RB_7,
+		SYSRAM_GPU_TS_RB_8,
+		SYSRAM_GPU_TS_RB_9,
+		SYSRAM_GPU_TS_RB_10,
+		SYSRAM_GPU_TS_RB_11,
+		SYSRAM_GPU_TS_RB_12,
+		SYSRAM_GPU_TS_RB_13,
+		SYSRAM_GPU_TS_RB_14,
+		SYSRAM_GPU_TS_RB_15,
+		SYSRAM_GPU_TS_RB_16,
+		SYSRAM_GPU_TS_RB_17,
+		SYSRAM_GPU_TS_RB_18,
+		SYSRAM_GPU_TS_RB_19,
+		SYSRAM_GPU_TS_RB_20,
+		SYSRAM_GPU_TS_RB_21,
+		SYSRAM_GPU_TS_RB_22,
+		SYSRAM_GPU_TS_RB_23,
+		SYSRAM_GPU_TS_RB_24,
+		SYSRAM_GPU_TS_RB_25,
+		SYSRAM_GPU_TS_RB_26,
+		SYSRAM_GPU_TS_RB_27,
+		SYSRAM_GPU_TS_RB_28,
+		SYSRAM_GPU_TS_RB_29,
+		SYSRAM_GPU_TS_RB_30,
+		SYSRAM_GPU_TS_RB_31,
+		SYSRAM_GPU_TS_RB_32,
+		SYSRAM_GPU_TS_RB_33,
+		SYSRAM_GPU_TS_RB_34,
+		SYSRAM_GPU_TS_RB_35,
+		SYSRAM_GPU_TS_RB_36,
+		SYSRAM_GPU_TS_RB_37,
+		SYSRAM_GPU_TS_RB_38,
+		SYSRAM_GPU_TS_RB_39,
+		SYSRAM_GPU_TS_RB_40,
+		SYSRAM_GPU_TS_RB_41,
+		SYSRAM_GPU_TS_RB_42,
+		SYSRAM_GPU_TS_RB_43,
+		SYSRAM_GPU_TS_RB_44,
+		SYSRAM_GPU_TS_RB_45,
+		SYSRAM_GPU_TS_RB_46,
+		SYSRAM_GPU_TS_RB_47,
+		SYSRAM_GPU_TS_RB_48,
+		SYSRAM_GPU_TS_RB_49,
+		SYSRAM_GPU_TS_RB_50,
+		SYSRAM_GPU_TS_RB_51,
+		SYSRAM_GPU_TS_RB_52,
+		SYSRAM_GPU_TS_RB_53,
+		SYSRAM_GPU_TS_RB_54,
+		SYSRAM_GPU_TS_RB_55,
+		SYSRAM_GPU_TS_RB_56,
+		SYSRAM_GPU_TS_RB_57,
+		SYSRAM_GPU_TS_RB_58,
+		SYSRAM_GPU_TS_RB_59,
+		SYSRAM_GPU_TS_RB_60,
+		SYSRAM_GPU_TS_RB_61,
+		SYSRAM_GPU_TS_RB_62,
+		SYSRAM_GPU_TS_RB_63,
+		SYSRAM_GPU_TS_RB_64,
+		SYSRAM_GPU_TS_RB_65,
+		SYSRAM_GPU_TS_RB_66,
+		SYSRAM_GPU_TS_RB_67,
+		SYSRAM_GPU_TS_RB_68,
+		SYSRAM_GPU_TS_RB_69,
+		SYSRAM_GPU_TS_RB_70,
+		SYSRAM_GPU_TS_RB_71,
+		SYSRAM_GPU_TS_RB_72,
+		SYSRAM_GPU_TS_RB_73,
+		SYSRAM_GPU_TS_RB_74,
+		SYSRAM_GPU_TS_RB_75,
+		SYSRAM_GPU_TS_RB_76,
+		SYSRAM_GPU_TS_RB_77,
+		SYSRAM_GPU_TS_RB_78,
+		SYSRAM_GPU_TS_RB_79,
+		SYSRAM_GPU_TS_RB_80,
+		SYSRAM_GPU_TS_RB_81,
+		SYSRAM_GPU_TS_RB_82,
+		SYSRAM_GPU_TS_RB_83,
+		SYSRAM_GPU_TS_RB_84,
+		SYSRAM_GPU_TS_RB_85,
+		SYSRAM_GPU_TS_RB_86,
+		SYSRAM_GPU_TS_RB_87,
+		SYSRAM_GPU_TS_RB_88,
+		SYSRAM_GPU_TS_RB_89,
+		SYSRAM_GPU_TS_RB_90,
+		SYSRAM_GPU_TS_RB_91,
+		SYSRAM_GPU_TS_RB_92,
+		SYSRAM_GPU_TS_RB_93,
+		SYSRAM_GPU_TS_RB_94,
+		SYSRAM_GPU_TS_RB_95,
+		SYSRAM_GPU_TS_RB_96,
+		SYSRAM_GPU_TS_RB_97,
+		SYSRAM_GPU_TS_RB_98,
+		SYSRAM_GPU_TS_RB_99,
+		SYSRAM_GPU_TS_RB_100,
+		SYSRAM_GPU_TS_RB_101,
+		SYSRAM_GPU_TS_RB_102,
+		SYSRAM_GPU_TS_RB_103,
+		SYSRAM_GPU_TS_RB_104,
+		SYSRAM_GPU_TS_RB_105,
+		SYSRAM_GPU_TS_RB_106,
+		SYSRAM_GPU_TS_RB_107,
+		SYSRAM_GPU_TS_RB_108,
+		SYSRAM_GPU_TS_RB_109,
+		SYSRAM_GPU_TS_RB_110,
+		SYSRAM_GPU_TS_RB_111,
+		SYSRAM_GPU_TS_RB_112,
+		SYSRAM_GPU_TS_RB_113,
+		SYSRAM_GPU_TS_RB_114,
+		SYSRAM_GPU_TS_RB_115,
+		SYSRAM_GPU_TS_RB_116,
+		SYSRAM_GPU_TS_RB_117,
+		SYSRAM_GPU_TS_RB_118,
+		SYSRAM_GPU_TS_RB_119,
+		SYSRAM_GPU_TS_RB_120,
+		SYSRAM_GPU_TS_RB_121,
+		SYSRAM_GPU_TS_RB_122,
+		SYSRAM_GPU_TS_RB_123,
+		SYSRAM_GPU_TS_RB_124,
+		SYSRAM_GPU_TS_RB_125,
+		SYSRAM_GPU_TS_RB_126,
+		SYSRAM_GPU_TS_RB_127
+	};
+
+	if (rb_num >= 0 && rb_num < MAX_TS_RB_COUNT) {
+		return SYSRAM_GPU_TS_RB_VALUES[rb_num];
+	} else {
+		return 0;
 	}
 }
 
 int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in)
 {
 	int offset = 0;
-	if (rb_num >= SRAM_TS_RB_NUM)
+	if (rb_num >= ged_get_ts_rb_num())
 		return -1;
 
 	offset = SYSRAM_GPU_TS_RB(rb_num);
@@ -1411,26 +1477,25 @@ int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in)
 
 	// 1.type
 	mtk_gpueb_sysram_write(offset, ts_in.type);
-	offset += sizeof(ts_in.type);
+	offset++;
 	// 2. lo_bqid
 	mtk_gpueb_sysram_write(offset, ts_in.lo_bqid);
-	offset += sizeof(ts_in.lo_bqid);
+	offset++;
 	// 3. hi_bqid
 	mtk_gpueb_sysram_write(offset, ts_in.hi_bqid);
-	offset += sizeof(ts_in.hi_bqid);
+	offset++;
 	// 4. frameid
 	mtk_gpueb_sysram_write(offset, ts_in.frameid);
-	offset += sizeof(ts_in.frameid);
+	offset++;
 	// 5. pid_sf
 	mtk_gpueb_sysram_write(offset,
 		((ts_in.pid & 0xFFFF) << 16) + (ts_in.isSF & 0xFFFF));
-	offset += sizeof(ts_in.pid);
+	offset++;
 	// 6. lo_ts
 	mtk_gpueb_sysram_write(offset, ts_in.lo_ts);
-	offset += sizeof(ts_in.lo_ts);
+	offset++;
 	// 7. hi_ts
 	mtk_gpueb_sysram_write(offset, ts_in.hi_ts);
-	offset += sizeof(ts_in.hi_ts);
 
 	mb();
 
@@ -1874,6 +1939,51 @@ void ged_fastdvfs_systrace(void)
 */
 }
 
+unsigned int ged_get_ts_rb_num(void)
+{
+	if (ged_fp && ged_fp->get_ts_rb_num)
+		return ged_fp->get_ts_rb_num();
+
+	return 0;
+}
+
+unsigned int ged_get_mbrain_max_num(void)
+{
+	if (ged_fp && ged_fp->get_mbrain_max_num)
+		return ged_fp->get_mbrain_max_num();
+
+	return 0;
+}
+
+void ged_register_platform_fp(struct ged_platform_fp *platform_fp)
+{
+	if (!platform_fp) {
+		GED_LOGE("null ged platform function pointer (EINVAL)");
+		return;
+	}
+
+	ged_fp = platform_fp;
+}
+EXPORT_SYMBOL(ged_register_platform_fp);
+
+void ged_do_platform_related_init(void)
+{
+	unsigned int workloadMode;
+
+	mtk_get_dvfs_workload_mode(&workloadMode);
+	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, workloadMode);
+	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr, 0);
+
+	GED_LOGI("ts_rb_num(%u) mbrain_max_num(%u)",
+		ged_get_ts_rb_num(), ged_get_mbrain_max_num());
+	GED_LOGI("GPU_EB_LOG_DUMP_POLICY_COMMON(%u) TS_RB_0(%u) MBRAIN_START(%u) GPU_TS_RB_IDX(%u)",
+		ged_fp->get_sysram(SYSRAM_GPU_EB_LOG_DUMP_POLICY_COMMON), // first debug RB
+		ged_fp->get_sysram(SYSRAM_GPU_TS_RB_0), // first TS RB
+		ged_fp->get_sysram(FDVFS_MBRAIN_VIRTUAL_DATA_START), // first mbrain data
+		ged_fp->get_sysram(SYSRAM_GPU_TS_RB_IDX)); // first normal data
+}
+EXPORT_SYMBOL(ged_do_platform_related_init);
+
 enum hrtimer_restart ged_fdvfs_debug_cb(struct hrtimer *timer)
 {
 	if (g_is_fulltrace_enable == 1) {
@@ -2269,10 +2379,28 @@ struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
 }
 EXPORT_SYMBOL(mtk_gpueb_mbrain_read);
 
-void mtk_gpueb_mbrain_write(int opp, unsigned long long active, unsigned long long idle)
+void ged_register_platform_fp(struct ged_platform_fp *platform_fp)
 {
-	//Do nothing
+	//Do nothing;
 }
-EXPORT_SYMBOL(mtk_gpueb_mbrain_write);
+EXPORT_SYMBOL(ged_register_platform_fp);
+
+void ged_do_platform_related_init(void)
+{
+	//Do nothing;
+}
+EXPORT_SYMBOL(ged_do_platform_related_init);
+
+unsigned int ged_get_ts_rb_num(void)
+{
+	//Do nothing;
+	return 0;
+}
+
+unsigned int ged_get_mbrain_max_num(void)
+{
+	//Do nothing;
+	return 0;
+}
 
 #endif /* MTK_GPU_EB_SUPPORT */

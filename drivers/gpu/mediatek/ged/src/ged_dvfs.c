@@ -4544,9 +4544,7 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(dvfs_loading_mode_node, "dvfs-workload-mode",
 							&gx_dvfs_workload_mode);
 	}
-	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, gx_dvfs_workload_mode);
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_LOADING_MODE, gx_dvfs_loading_mode);
-	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr,0);
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {

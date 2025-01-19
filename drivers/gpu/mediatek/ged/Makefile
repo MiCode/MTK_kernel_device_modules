@@ -58,6 +58,7 @@ ccflags-y += \
 		-I$(DEVICE_MODULES_PATH)/include/ \
 		-I$(MTK_TOP)/include/ \
 		-I$(GED_TOP)/include/ \
+		-I$(GED_TOP)/include/platform/ \
 		-I$(GPU_TOP)/hal/ \
 		-I$(GPU_TOP)/ \
 		-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lcm/inc/ \
@@ -122,3 +123,15 @@ endif
 ged-$(CONFIG_SYNC_FILE) += src/ged_sync.o
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += ged.o
+
+mtk_ged_mt6991-y := src/platform/ged_mt6991.o
+
+ifneq ($(wildcard $(GED_TOP)/src/platform/ged_mt6991.c),)
+obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_ged_mt6991.o
+endif
+
+mtk_ged_mt6993-y := src/platform/ged_mt6993.o
+
+ifneq ($(wildcard $(GED_TOP)/src/platform/ged_mt6993.c),)
+obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_ged_mt6993.o
+endif

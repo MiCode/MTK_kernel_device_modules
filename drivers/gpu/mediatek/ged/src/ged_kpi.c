@@ -2323,7 +2323,9 @@ static GED_ERROR ged_kpi_push_timestamp(
 			case GED_TIMESTAMP_TYPE_D:
 			case GED_TIMESTAMP_TYPE_1:
 			case GED_TIMESTAMP_TYPE_P:
-				tmp_sram_rb_write_idx = (atomic_inc_return(&sram_rb_write_idx) + 1) % SRAM_TS_RB_NUM;
+				tmp_sram_rb_write_idx =
+					(atomic_inc_return(&sram_rb_write_idx) + 1) %
+					ged_get_ts_rb_num();
 				tmp_sram_rb_read_idx = mtk_gpueb_sysram_read(SYSRAM_GPU_RB_READ_IDX);
 				if (tmp_sram_rb_read_idx == tmp_sram_rb_write_idx) {
 					mtk_gpueb_sysram_write(SYSRAM_GPU_RB_FULL_HINT, temp_ts.lo_ts);
@@ -2334,7 +2336,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
 				break;
 			case GED_TIMESTAMP_TYPE_2:
-				tmp_sram_rb_write_idx = (atomic_inc_return(&sram_rb_write_idx) + 1) % SRAM_TS_RB_NUM;
+				tmp_sram_rb_write_idx =
+					(atomic_inc_return(&sram_rb_write_idx) + 1) % ged_get_ts_rb_num();
 				tmp_sram_rb_read_idx = mtk_gpueb_sysram_read(SYSRAM_GPU_RB_READ_IDX);
 				if (tmp_sram_rb_read_idx == tmp_sram_rb_write_idx) {
 					mtk_gpueb_sysram_write(SYSRAM_GPU_RB_FULL_HINT, temp_ts.lo_ts);
