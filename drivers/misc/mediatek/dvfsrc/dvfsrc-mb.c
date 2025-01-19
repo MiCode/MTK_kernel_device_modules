@@ -3,15 +3,15 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/module.h>
-#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/of.h>
 #include "dvfsrc-mb.h"
 
 static struct mtk_dvfsrc_mb *dvfsrc_drv;
-static uint32_t data_version;
 
 static inline u32 dvfsrc_read(struct mtk_dvfsrc_mb *dvfs, u32 offset)
 {
@@ -23,7 +23,7 @@ void dvfsrc_mt6989_get_data(struct mtk_dvfsrc_header *header)
 	header->module_id = dvfsrc_drv->dvd->module_id;
 	header->data_offset = dvfsrc_drv->dvd->data_offset;
 	header->data_length = dvfsrc_drv->dvd->data_length;
-	header->version = data_version;
+	header->version = dvfsrc_drv->dvd->max_ddr_info_ver;
 
 	header->data[0] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_1);
 	header->data[1] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_2);
@@ -52,7 +52,69 @@ void dvfsrc_get_data(struct mtk_dvfsrc_header *header)
 }
 EXPORT_SYMBOL(dvfsrc_get_data);
 
+static const uint32_t mt6991_regs[] = {
+	[SW_REQ1] = 0x010,
+	[SW_REQ2] = 0x014,
+	[SW_REQ3] = 0x018,
+	[SW_REQ4] = 0x01c,
+	[SW_REQ5] = 0x020,
+	[SW_REQ7] = 0x028,
+	[SW_REQ10] = 0x5FC,
+	[MD_DDQ] = 0x5E4,
+	[DDR_QOS] = 0x5E8,
+	[DBG_STA0] = 0x29C,
+	[DBG_STA1] = 0x2A0,
+	[DBG_STA2] = 0x2A4,
+	[DBG_STA3] = 0x2A8,
+	[DBG_STA4] = 0x2AC,
+	[DBG_STA5] = 0x2B0,
+	[DBG_STA6] = 0x2B4,
+	[DBG_STA7] = 0x2B8,
+	[DBG_STA8] = 0x2BC,
+	[DBG_STA9] = 0x2C0,
+	[DBG_STA10] = 0x2C4,
+	[SW_BW0] = 0x1DC,
+	[SW_BW1] = 0x1E0,
+	[SW_BW2] = 0x1E4,
+	[SW_BW3] = 0x1E8,
+	[SW_BW4] = 0x1EC,
+	[SW_BW5] = 0x1F0,
+	[SW_BW6] = 0x1F4,
+	[SW_BW7] = 0x1F8,
+	[SW_BW8] = 0x1FC,
+	[SW_BW9] = 0x200,
+};
+
+void dvfsrc_read_dvfs_info_reg(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_header)
+{
+	uint32_t i = 0;
+
+	dvfs_info_header->dvfs_info_version = dvfsrc_drv->dvd->dvfs_info_ver;
+
+	for (i = 0; i < DVFS_INFO_REG_NUM; i++)
+		dvfs_info_header->dvfs_info_val[i] =
+			dvfsrc_read(dvfsrc_drv, dvfsrc_drv->dvd->dvfs_info_regs[i]);
+}
+
+void dvfsrc_get_dvfs_info(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_header)
+{
+	if (dvfsrc_drv && dvfsrc_drv->dvd && dvfsrc_drv->dvd->config)
+		dvfsrc_drv->dvd->config->get_dvfs_info(dvfs_info_header);
+	else
+		dev_info(dvfsrc_drv->dev, "%s not support\n", __func__);
+}
+EXPORT_SYMBOL(dvfsrc_get_dvfs_info);
+
 const struct mtk_dvfsrc_config mt6989_config = {
+	.get_data = &dvfsrc_mt6989_get_data,
+};
+
+const struct mtk_dvfsrc_config mt6991_config = {
+	.get_data = &dvfsrc_mt6989_get_data,
+	.get_dvfs_info = &dvfsrc_read_dvfs_info_reg,
+};
+
+const struct mtk_dvfsrc_config mt6899_config = {
 	.get_data = &dvfsrc_mt6989_get_data,
 };
 
@@ -60,8 +122,28 @@ static const struct mtk_dvfsrc_data mt6989_data = {
 	.module_id = 2,
 	.data_offset = 0,
 	.data_length = sizeof(struct mtk_dvfsrc_header),
+	.max_ddr_info_ver = 0,
 	.config = &mt6989_config,
 };
+
+static const struct mtk_dvfsrc_data mt6991_data = {
+	.module_id = 2,
+	.data_offset = 0,
+	.data_length = sizeof(struct mtk_dvfsrc_header),
+	.max_ddr_info_ver = 2,
+	.dvfs_info_ver = 0x6991,
+	.dvfs_info_regs = mt6991_regs,
+	.config = &mt6991_config,
+};
+
+static const struct mtk_dvfsrc_data mt6899_data = {
+	.module_id = 2,
+	.data_offset = 0,
+	.data_length = sizeof(struct mtk_dvfsrc_header),
+	.max_ddr_info_ver = 2,
+	.config = &mt6899_config,
+};
+
 
 static const struct of_device_id dvfsrc_mdv_of_match[] = {
 	{
@@ -69,7 +151,10 @@ static const struct of_device_id dvfsrc_mdv_of_match[] = {
 		.data = &mt6989_data,
 	}, {
 		.compatible = "mediatek,mt6991-dvfsrc",
-		.data = &mt6989_data,
+		.data = &mt6991_data,
+	}, {
+		.compatible = "mediatek,mt6899-dvfsrc",
+		.data = &mt6899_data,
 	}, {
 		/* sentinel */
 	},
@@ -113,10 +198,7 @@ static int dvfsrc_mb_probe(struct platform_device *pdev)
 	}
 
 	dvfsrc->dvd = match->data;
-
 	dvfsrc_drv = dvfsrc;
-
-	data_version = dvfsrc_read(dvfsrc, DVFSRC_RSV_0);
 
 	return 0;
 }
