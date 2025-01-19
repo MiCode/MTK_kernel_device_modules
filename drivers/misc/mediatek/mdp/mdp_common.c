@@ -2880,6 +2880,9 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 				continue;
 
 			mdp_list_pmqos = (struct mdp_pmqos *)curTask->prop_addr;
+			if (!mdp_list_pmqos)
+				continue;
+
 			pmqos_list_record =
 			    (struct mdp_pmqos_record *)curTask->user_private;
 			total_pixel = max(mdp_list_pmqos->mdp_total_pixel,
