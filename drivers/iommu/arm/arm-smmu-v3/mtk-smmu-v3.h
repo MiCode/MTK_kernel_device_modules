@@ -561,7 +561,7 @@ struct mtk_iommu_fault_event {
 
 struct mtk_smmu_ops {
 	struct mtk_smmu_data* (*get_smmu_data)(u32 smmu_type);
-	__le64* (*get_cd_ptr)(struct arm_smmu_domain *smmu_domain, u32 ssid);
+	__le64* (*get_cd_ptr)(struct arm_smmu_master *master, u32 ssid);
 	__le64* (*get_step_ptr)(struct arm_smmu_device *smmu, u32 sid);
 	int (*smmu_power_get)(struct arm_smmu_device *smmu);
 	int (*smmu_power_put)(struct arm_smmu_device *smmu);
@@ -652,7 +652,7 @@ static inline int get_smmu_asid(struct device *dev)
 
 	smmu_domain = container_of(domain, struct arm_smmu_domain, domain);
 
-	return smmu_domain->s1_cfg.cd.asid;
+	return smmu_domain->cd.asid;
 }
 
 static inline u64 get_smmu_tab_id(struct device *dev)

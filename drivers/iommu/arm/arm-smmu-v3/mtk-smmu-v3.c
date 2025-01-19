@@ -149,8 +149,7 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu);
 static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu);
 static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 			    bool ratelimit);
-static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
-					 u32 sid);
+static __le64 *mtk_smmu_get_ste_ptr(struct arm_smmu_device *smmu, u32 sid);
 static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu);
 static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 					struct mtk_iommu_fault_event *mtk_fault_evt);
@@ -372,7 +371,7 @@ static u64 get_smmu_tab_id_by_domain(struct iommu_domain *domain)
 	data = to_mtk_smmu_data(smmu);
 
 	smmu_id = data->plat_data->smmu_type;
-	asid = smmu_domain->s1_cfg.cd.asid;
+	asid = smmu_domain->cd.asid;
 
 	return smmu_id << 32 | asid;
 }
@@ -637,9 +636,12 @@ static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
 				__func__, sid);
 			continue;
 		}
-		step = arm_smmu_get_step_for_sid(smmu, sid);
-		step[4] = FIELD_PREP(STRTAB_STE_4_PARTID, mpam_cfgs[n].partid);
-		step[5] = FIELD_PREP(STRTAB_STE_5_PMG, mpam_cfgs[n].pmg);
+		step = mtk_smmu_get_ste_ptr(smmu, sid);
+		if (!step)
+			continue;
+
+		step[4] = cpu_to_le64(FIELD_PREP(STRTAB_STE_4_PARTID, mpam_cfgs[n].partid));
+		step[5] = cpu_to_le64(FIELD_PREP(STRTAB_STE_5_PMG, mpam_cfgs[n].pmg));
 	}
 
 out_free:
@@ -1211,57 +1213,6 @@ static void mtk_get_resv_regions(struct device *dev, struct list_head *head)
 	list_splice(&resv_regions, head);
 }
 
-static __le64 *arm_smmu_get_cd_ptr(struct arm_smmu_domain *smmu_domain,
-			  u32 ssid)
-{
-	unsigned int idx;
-	struct arm_smmu_l1_ctx_desc *l1_desc;
-	struct arm_smmu_ctx_desc_cfg *cdcfg = &smmu_domain->s1_cfg.cdcfg;
-
-	if (!cdcfg)
-		return NULL;
-
-	if (smmu_domain->s1_cfg.s1fmt == STRTAB_STE_0_S1FMT_LINEAR) {
-		if (!cdcfg->cdtab)
-			return NULL;
-
-		return cdcfg->cdtab + ssid * CTXDESC_CD_DWORDS;
-	}
-
-	if (!cdcfg->l1_desc)
-		return NULL;
-
-	idx = ssid >> CTXDESC_SPLIT;
-	l1_desc = &cdcfg->l1_desc[idx];
-	if (!l1_desc->l2ptr)
-		return NULL;
-
-	idx = ssid & (CTXDESC_L2_ENTRIES - 1);
-	return l1_desc->l2ptr + idx * CTXDESC_CD_DWORDS;
-}
-
-static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu, u32 sid)
-{
-	struct arm_smmu_strtab_cfg *cfg = &smmu->strtab_cfg;
-	__le64 *step;
-
-	if (smmu->features & ARM_SMMU_FEAT_2_LVL_STRTAB) {
-		struct arm_smmu_strtab_l1_desc *l1_desc;
-		int idx;
-
-		/* Two-level walk */
-		idx = (sid >> STRTAB_SPLIT) * STRTAB_L1_DESC_DWORDS;
-		l1_desc = &cfg->l1_desc[idx];
-		idx = (sid & ((1 << STRTAB_SPLIT) - 1)) * STRTAB_STE_DWORDS;
-		step = &l1_desc->l2ptr[idx];
-	} else {
-		/* Simple linear lookup */
-		step = &cfg->strtab[sid * STRTAB_STE_DWORDS];
-	}
-
-	return step;
-}
-
 static bool is_dev_bypass_smmu_s1_enabled(struct device *dev)
 {
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
@@ -1277,20 +1228,16 @@ static bool is_dev_bypass_smmu_s1_enabled(struct device *dev)
 static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 {
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
-	struct arm_smmu_cmdq_ent prefetch_cmd;
-	__le64 *steptr;
+	struct arm_smmu_ste *ste, target = {};
 	bool enabled;
 	u64 val;
 	u32 sid;
-	int i;
 
 	if (!master)
 		return -1;
 
 	sid = master->streams[0].id;
 	enabled = is_dev_bypass_smmu_s1_enabled(dev);
-	prefetch_cmd.opcode = CMDQ_OP_PREFETCH_CFG;
-	prefetch_cmd.prefetch.sid = sid;
 
 	if ((enabled && enable) || (!enabled && !enable))
 		return 0;
@@ -1300,8 +1247,11 @@ static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 	else
 		clear_bit(IOMMU_DEV_FEAT_BYPASS_S1, master->features);
 
-	steptr = arm_smmu_get_step_for_sid(master->smmu, sid);
-	val = le64_to_cpu(steptr[0]);
+	ste = arm_smmu_get_step_for_sid(master->smmu, sid);
+	if (!ste)
+		return -1;
+
+	val = le64_to_cpu(ste->data[0]);
 	set_mask_bits(&val, GENMASK_ULL(3, 1), 0);
 
 	if (enable)
@@ -1309,20 +1259,9 @@ static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 	else
 		val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S1_TRANS);
 
-	steptr[0] = cpu_to_le64(val);
-
-	arm_smmu_sync_ste_for_sid(master->smmu, sid);
-	/* See comment in arm_smmu_write_ctx_desc() */
-	WRITE_ONCE(steptr[0], cpu_to_le64(val));
-	arm_smmu_sync_ste_for_sid(master->smmu, sid);
-
-	/* It's likely that we'll want to use the new STE soon */
-	if (!(master->smmu->options & ARM_SMMU_OPT_SKIP_PREFETCH))
-		arm_smmu_cmdq_issue_cmd(master->smmu, &prefetch_cmd);
-
-	/* print ste */
-	for (i = 0; i < STRTAB_STE_DWORDS; i++)
-		pr_info("ste %d u64[%d]:0x%016llx\n", sid, i, le64_to_cpu(steptr[i]));
+	memcpy(&target, ste, sizeof(struct arm_smmu_ste));
+	target.data[0] = cpu_to_le64(val);
+	arm_smmu_write_ste(master, sid, ste, &target);
 
 	return 0;
 }
@@ -1396,8 +1335,8 @@ static bool mtk_smmu_dev_feature_enabled(struct device *dev,
 	}
 }
 
-static bool mtk_smmu_dev_enable_feature(struct device *dev,
-					enum iommu_dev_features feat)
+static int mtk_smmu_dev_enable_feature(struct device *dev,
+				       enum iommu_dev_features feat)
 {
 	unsigned long mtk_iommu_feat = (unsigned long)feat;
 
@@ -1405,12 +1344,13 @@ static bool mtk_smmu_dev_enable_feature(struct device *dev,
 	case IOMMU_DEV_FEAT_BYPASS_S1:
 		return set_dev_bypass_smmu_s1(dev, true);
 	default:
-		return false;
+		return -EINVAL;
 	}
 }
 
-static bool mtk_smmu_dev_disable_feature(struct device *dev,
-					 enum iommu_dev_features feat)
+static int mtk_smmu_dev_disable_feature(struct device *dev,
+					enum iommu_dev_features feat)
+
 {
 	unsigned long mtk_iommu_feat = (unsigned long)feat;
 
@@ -1418,37 +1358,52 @@ static bool mtk_smmu_dev_disable_feature(struct device *dev,
 	case IOMMU_DEV_FEAT_BYPASS_S1:
 		return set_dev_bypass_smmu_s1(dev, false);
 	default:
-		return false;
+		return -EINVAL;
 	}
 }
 
-static void mtk_smmu_setup_features(struct arm_smmu_master *master,
-				    u32 sid, __le64 *dst)
+static void mtk_smmu_setup_features(struct arm_smmu_master *master, u32 sid,
+				    __le64 *dst)
 {
 	struct arm_smmu_device *smmu;
 	struct mtk_smmu_data *data;
+	__le64 *steptr;
 	u64 val;
+	bool s1_vld;
 
 	if (!master || !master->smmu || !dst)
 		return;
 
 	smmu = master->smmu;
 	data = to_mtk_smmu_data(smmu);
+	s1_vld = dst[0] & cpu_to_le64(STRTAB_STE_0_S1CTXPTR_MASK);
 
 	/* setup tcu prefetch */
-	if ((smmu->features & ARM_SMMU_FEAT_TCU_PF) && !master->ats_enabled) {
+	if ((smmu->features & ARM_SMMU_FEAT_TCU_PF) && !master->ats_enabled &&
+	    s1_vld) {
 		val = FIELD_PREP(STRTAB_STE_1_TCU_PF, data->tcu_prefetch);
 		dst[1] |= cpu_to_le64(val);
 	}
 
 	/* Setup STE memory type for TCU non-coherent */
 	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_TCU_CH) &&
-	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY)) {
+	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY) && s1_vld) {
 		val = le64_to_cpu(dst[1]);
 		val &= ~(STRTAB_STE_1_S1CIR | STRTAB_STE_1_S1COR);
 		val |= FIELD_PREP(STRTAB_STE_1_S1CIR, STRTAB_STE_1_S1C_CACHE_NC) |
 		       FIELD_PREP(STRTAB_STE_1_S1COR, STRTAB_STE_1_S1C_CACHE_NC);
 		dst[1] = cpu_to_le64(val);
+	}
+
+	/* Restore ste mpam config */
+	steptr = mtk_smmu_get_ste_ptr(smmu, sid);
+	if (steptr) {
+		val = FIELD_GET(STRTAB_STE_4_PARTID, le64_to_cpu(steptr[4]));
+		dst[4] &=  cpu_to_le64(~(STRTAB_STE_4_PARTID));
+		dst[4] |= cpu_to_le64(FIELD_PREP(STRTAB_STE_4_PARTID, val));
+		val = FIELD_GET(STRTAB_STE_5_PMG, le64_to_cpu(steptr[5]));
+		dst[5] &=  cpu_to_le64(~(STRTAB_STE_5_PMG));
+		dst[5] |= cpu_to_le64(FIELD_PREP(STRTAB_STE_5_PMG, val));
 	}
 }
 
@@ -2456,10 +2411,34 @@ static void mtk_smmu_register_hang_detect(struct mtk_smmu_data *data)
 #endif
 }
 
+static __le64 *mtk_smmu_get_cd_ptr(struct arm_smmu_master *master, u32 ssid)
+{
+	struct arm_smmu_cd *smmu_cd = NULL;
+	__le64 *cdptr = NULL;
+
+	smmu_cd = arm_smmu_get_cd_ptr(master, ssid);
+	if (smmu_cd)
+		cdptr = smmu_cd->data;
+
+	return cdptr;
+}
+
+static __le64 *mtk_smmu_get_ste_ptr(struct arm_smmu_device *smmu, u32 sid)
+{
+	struct arm_smmu_ste *smmu_ste = NULL;
+	__le64 *steptr = NULL;
+
+	smmu_ste = arm_smmu_get_step_for_sid(smmu, sid);
+	if (smmu_ste)
+		steptr = smmu_ste->data;
+
+	return steptr;
+}
+
 static const struct mtk_smmu_ops mtk_smmu_ops = {
 	.get_smmu_data		= mkt_get_smmu_data,
-	.get_cd_ptr		= arm_smmu_get_cd_ptr,
-	.get_step_ptr		= arm_smmu_get_step_for_sid,
+	.get_cd_ptr		= mtk_smmu_get_cd_ptr,
+	.get_step_ptr		= mtk_smmu_get_ste_ptr,
 	.smmu_power_get		= mtk_smmu_power_get,
 	.smmu_power_put		= mtk_smmu_power_put,
 };

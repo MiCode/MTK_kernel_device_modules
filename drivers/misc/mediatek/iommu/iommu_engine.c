@@ -112,10 +112,6 @@ static int cqdma_engine_init(struct platform_device *pdev)
 	data->iommu_fault_handler = default_iommu_fault_handler;
 
 	dma_engine_datas[DMA_ENGINE_CQDMA] = data;
-
-	/* Register Translation Fault handler */
-	/* TODO */
-
 	pr_info("%s done dev:%s, cqdma_reg_base:%llx\n", __func__,
 		dev_name(&pdev->dev), (unsigned long long)cqdma_reg_base);
 

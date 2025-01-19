@@ -1264,7 +1264,6 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 static void dump_ste_cd_info(struct seq_file *s,
 			     struct arm_smmu_master *master)
 {
-	struct arm_smmu_domain *domain;
 	struct arm_smmu_device *smmu;
 	__le64 *steptr = NULL, *cdptr = NULL;
 	u64 asid = 0, ttbr = 0;
@@ -1279,13 +1278,12 @@ static void dump_ste_cd_info(struct seq_file *s,
 	sid = master->streams[0].id;
 	ssid = 0;
 	smmu = master->smmu;
-	domain = master->domain;
 
 	if (smmu_ops && smmu_ops->get_step_ptr)
 		steptr = smmu_ops->get_step_ptr(smmu, sid);
 
 	if (smmu_ops && smmu_ops->get_cd_ptr)
-		cdptr = smmu_ops->get_cd_ptr(domain, ssid);
+		cdptr = smmu_ops->get_cd_ptr(master, ssid);
 
 	if (is_valid_cd(cdptr)) {
 		asid = FIELD_GET(CTXDESC_CD_0_ASID, le64_to_cpu(cdptr[0]));
@@ -1520,7 +1518,7 @@ static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 		   sid, ssid);
 
 	if (smmu_ops && smmu_ops->get_cd_ptr)
-		cdptr = smmu_ops->get_cd_ptr(domain, ssid);
+		cdptr = smmu_ops->get_cd_ptr(master, ssid);
 
 	dump_io_pgtable_s1(s, domain, sid, ssid, cdptr);
 
