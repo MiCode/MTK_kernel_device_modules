@@ -122,12 +122,52 @@ static void sched_task_uclamp_hook(void *data, struct sched_entity *se)
 	}
 }
 
+static void mtk_record_wakee(struct task_struct *p)
+{
+	/*
+	 * Only decay a single time; tasks that have less then 1 wakeup per
+	 * jiffy will not have built up many flips.
+	 */
+	if (time_after(jiffies, current->wakee_flip_decay_ts + HZ)) {
+		current->wakee_flips >>= 1;
+		current->wakee_flip_decay_ts = jiffies;
+	}
+
+	if (current->last_wakee != p) {
+		current->last_wakee = p;
+		current->wakee_flips++;
+	}
+}
+
+void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu);
+EXPORT_SYMBOL(task_turbo_select_task_rq_fair_hook);
 static void sched_select_task_rq_fair_hook(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
 							int wake_flags, int *target_cpu)
 {
 	if (trace_sched_domain_flags_enabled())
 		trace_sched_domain_flags(p, prev_cpu, sd_flag, wake_flags, *target_cpu);
+
+	/* task turbo algo. */
+	if (task_turbo_select_task_rq_fair_hook) {
+		task_turbo_select_task_rq_fair_hook(p, target_cpu);
+		if (*target_cpu >= 0)
+			return;
+	}
+
+	/* EAS+ algo. */
+	lockdep_assert_held(&p->pi_lock);
+	if (wake_flags & WF_TTWU) {
+		mtk_record_wakee(p);
+
+		if (!(wake_flags & WF_CURRENT_CPU) ||
+			!cpumask_test_cpu(smp_processor_id(), p->cpus_ptr)) {
+				int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
+
+				mtk_find_energy_efficient_cpu(NULL, p, prev_cpu, sync, target_cpu);
+			}
+	}
+
 }
 
 static void sched_rq_load_hook(void *data, struct cfs_rq *rq)
@@ -1075,16 +1115,6 @@ static int __init mtk_scheduler_init(void)
 			mtk_can_migrate_task, NULL);
 	if (ret)
 		pr_info("register android_rvh_can_migrate_task failed\n");
-
-	ret = register_trace_android_rvh_find_energy_efficient_cpu(
-			mtk_find_energy_efficient_cpu, NULL);
-	if (ret)
-		pr_info("register android_rvh_find_energy_efficient_cpu failed\n");
-
-	ret = register_trace_android_rvh_select_task_rq_fair(
-			mtk_overutilized_temp, NULL);
-	if (ret)
-		pr_info("register mtk_overutilized_temp failed\n");
 
 	ret = register_trace_android_rvh_cpu_overutilized(
 			mtk_cpu_overutilized, NULL);
