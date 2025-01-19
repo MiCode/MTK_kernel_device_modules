@@ -431,12 +431,17 @@ static struct clkbuf_dts *pmif_parse_dts_v1(struct clkbuf_dts *array,
 
 	if (!pmif_node) {
 		CLKBUF_DBG("find pmif_node failed, not support PMIF\n");
-		return NULL;
+		return array;
 	}
 	/*count pmif numbers, assume only PMIF_M*/
 	num_pmif = 1;
 
 	pmif_dev = of_find_device_by_node(pmif_node);
+	if (!pmif_dev) {
+		CLKBUF_DBG("find pmif device failed\n");
+		return array;
+	}
+
 	pmif_m_base = of_iomap(pmif_node, iomap_idx++);
 
 	/*start parsing pmif dts*/
@@ -694,7 +699,6 @@ PARSE_DTS_FAIL:
 int clkbuf_pmif_init(struct clkbuf_dts *array, struct device *dev)
 {
 	struct match_pmif **match_pmif = matches_pmif;
-	struct clkbuf_hdlr *hdlr;
 	struct clkbuf_hw hw;
 	int i;
 	int nums = array->nums;
@@ -703,7 +707,6 @@ int clkbuf_pmif_init(struct clkbuf_dts *array, struct device *dev)
 	CLKBUF_DBG("\n");
 
 	for (i = 0; i < nums; i++, array++) {
-		hdlr = array->hdlr;
 		hw = array->hw;
 		/*only need one pmif element*/
 		if (IS_PMIF_HW(hw.hw_type)) {

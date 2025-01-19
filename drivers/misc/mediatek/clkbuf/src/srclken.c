@@ -128,15 +128,21 @@ struct clkbuf_dts *parse_srclken_dts(struct clkbuf_dts *array,
 
 	src_node = of_parse_phandle(clkbuf_node, "srclken-rc", 0);
 
-	if (!src_node)
+	if (!src_node) {
 		CLKBUF_DBG("find src_node failed, not support srclken-rc\n");
-
+		return array;
+	}
 	/*count subsys numbers*/
 	for_each_child_of_node(src_node, sub) {
 		num_sub++;
 	}
 	/*start parsing srclken dts*/
 	src_dev = of_find_device_by_node(src_node);
+	if (!src_dev) {
+		CLKBUF_DBG("find srclken device failed\n");
+		return array;
+	}
+
 	rc_cfg_base = of_iomap(src_node, iomap_idx++);
 	rc_sta_base = of_iomap(src_node, iomap_idx++);
 
@@ -708,7 +714,6 @@ static struct match_srclken *matches_srclken[] = {
 int clkbuf_srclken_init(struct clkbuf_dts *array, struct device *dev)
 {
 	struct match_srclken **match_srclken = matches_srclken;
-	struct clkbuf_hdlr *hdlr;
 	struct clkbuf_hw hw;
 	int i;
 	int nums = array->nums;
@@ -717,7 +722,6 @@ int clkbuf_srclken_init(struct clkbuf_dts *array, struct device *dev)
 	CLKBUF_DBG("\n");
 
 	for (i = 0; i < nums; i++, array++) {
-		hdlr = array->hdlr;
 		hw = array->hw;
 		/*only need first RC obj, no need loop all obj*/
 		if (IS_RC_HW(hw.hw_type)) {

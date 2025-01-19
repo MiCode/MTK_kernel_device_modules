@@ -150,12 +150,12 @@ int platform_write(struct clkbuf_hw *hw, struct reg_t *reg, u32 val)
 
 static int mtxxxx_init(struct clkbuf_dts *array, struct match_platform *match)
 {
-	struct clkbuf_hdlr *hdlr;
+	//struct clkbuf_hdlr *hdlr;
 
 	if (!array)
 		return -EINVAL;
 
-	hdlr = array->hdlr;
+	//hdlr = array->hdlr;
 
 	CLKBUF_DBG("array<%lx> type: %d\n", (unsigned long)array, array->hw.hw_type);
 
@@ -274,14 +274,11 @@ static struct attribute_group clkbuf_tb_attr_group = {
 
 static int mt8xxx_init(struct clkbuf_dts *array, struct match_platform *match)
 {
-	struct clkbuf_hdlr *hdlr;
 	static int pmic_job;
 	int ret;
 
 	if (!array)
 		return -EINVAL;
-
-	hdlr = array->hdlr;
 
 	CLKBUF_DBG("array<%lx> type: %d\n", (unsigned long)array, array->hw.hw_type);
 
