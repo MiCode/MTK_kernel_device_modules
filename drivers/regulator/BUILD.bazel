@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 package(
@@ -65,4 +66,18 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(srctree)/drivers/regulator",
     ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-dvfsrc-regulator",
+    srcs = [
+        "mtk-dvfsrc-regulator.c",
+    ],
+
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+
+    ko_deps = ["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version)],
 )
