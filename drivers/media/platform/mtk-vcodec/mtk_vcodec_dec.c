@@ -193,7 +193,8 @@ static void set_vcu_vpud_log(struct mtk_vcodec_ctx *ctx, void *in)
 		return;
 	}
 
-	vdec_if_set_param(ctx, SET_PARAM_VDEC_VCU_VPUD_LOG, in);
+	if (vdec_if_set_param(ctx, SET_PARAM_VDEC_VCU_VPUD_LOG, in))
+		mtk_v4l2_err("[%d] Error!! Cannot set param : SET_PARAM_VDEC_VCU_VPUD_LOG ERR", ctx->id);
 }
 
 static void get_vcu_vpud_log(struct mtk_vcodec_ctx *ctx, void *out)
@@ -203,11 +204,8 @@ static void get_vcu_vpud_log(struct mtk_vcodec_ctx *ctx, void *out)
 		return;
 	}
 
-	if (vdec_if_get_param(ctx, GET_PARAM_VDEC_VCU_VPUD_LOG, out) != 0) {
-		mtk_v4l2_err("[%d]Error!! Cannot get param : GET_PARAM_VDEC_VCU_VPUD_LOG ERR",
-					 ctx->id);
-		return;
-	}
+	if (vdec_if_get_param(ctx, GET_PARAM_VDEC_VCU_VPUD_LOG, out) != 0)
+		mtk_v4l2_err("[%d] Error!! Cannot get param : GET_PARAM_VDEC_VCU_VPUD_LOG ERR", ctx->id);
 }
 
 static void get_supported_format(struct mtk_vcodec_ctx *ctx)
@@ -868,7 +866,7 @@ static void mtk_vdec_cgrp_init(struct mtk_vcodec_ctx *ctx)
 {
 	char name[25];
 
-	snprintf(name, sizeof(name), "vdec_cgrp-%d", ctx->id);
+	SNPRINTF(name, sizeof(name), "vdec_cgrp-%d", ctx->id);
 	ctx->cgrp_wq = create_workqueue(name);
 }
 
@@ -1563,7 +1561,8 @@ unlock:
 	mutex_unlock(&ctx->resched_lock);
 
 	if (process) {
-		vdec_if_set_param(ctx, SET_PARAM_PUT_FB, NULL);
+		if (vdec_if_set_param(ctx, SET_PARAM_PUT_FB, NULL))
+			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_PUT_FB", ctx->id);
 		clean_display_buffer(ctx, 0);
 		clean_free_fm_buffer(ctx);
 	}
@@ -3332,8 +3331,8 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 	}
 
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
-		vdec_if_set_param(ctx, SET_PARAM_FB_NUM_PLANES,
-			(void *) &q_data->fmt->num_planes);
+		if (vdec_if_set_param(ctx, SET_PARAM_FB_NUM_PLANES, (void *) &q_data->fmt->num_planes))
+			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_FB_NUM_PLANES", ctx->id);
 
 	return 0;
 }
@@ -4483,9 +4482,10 @@ static void m2mops_vdec_job_abort(void *priv)
 {
 	struct mtk_vcodec_ctx *ctx = priv;
 
-	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM)
-		vdec_if_set_param(ctx, SET_PARAM_FRAME_BUFFER, NULL);
-	else if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
+	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM) {
+		if (vdec_if_set_param(ctx, SET_PARAM_FRAME_BUFFER, NULL))
+			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_FRAME_BUFFER", ctx->id);
+	} else if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
 		wake_up(&ctx->fm_wq);
 
 	mtk_vcodec_set_state_from(ctx, MTK_STATE_STOP, MTK_STATE_HEADER);
@@ -5462,7 +5462,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 
 	mtk_v4l2_debug(4, "[%d]", ctx->id);
 
-	snprintf(name, sizeof(name), "mtk_vdec-%d-out", ctx->id);
+	SNPRINTF(name, sizeof(name), "mtk_vdec-%d-out", ctx->id);
 	src_vq->type            = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	src_vq->io_modes        = VB2_DMABUF | VB2_MMAP;
 	src_vq->drv_priv        = ctx;
@@ -5524,7 +5524,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 		return ret;
 	}
 
-	snprintf(name, sizeof(name), "mtk_vdec-%d-cap", ctx->id);
+	SNPRINTF(name, sizeof(name), "mtk_vdec-%d-cap", ctx->id);
 	dst_vq->type            = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	dst_vq->io_modes        = VB2_DMABUF | VB2_MMAP;
 	dst_vq->drv_priv        = ctx;

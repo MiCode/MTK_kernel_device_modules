@@ -4565,7 +4565,7 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	 * https://patchwork.kernel.org/patch/8335461/
 	 * https://patchwork.kernel.org/patch/7596181/
 	 */
-	snprintf(name, sizeof(name), "mtk_venc-%d-out", ctx->id);
+	SNPRINTF(name, sizeof(name), "mtk_venc-%d-out", ctx->id);
 	src_vq->type            = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	src_vq->io_modes        = VB2_DMABUF | VB2_MMAP | VB2_USERPTR;
 	src_vq->drv_priv        = ctx;
@@ -4604,7 +4604,7 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	if (ret)
 		return ret;
 
-	snprintf(name, sizeof(name), "mtk_venc-%d-cap", ctx->id);
+	SNPRINTF(name, sizeof(name), "mtk_venc-%d-cap", ctx->id);
 	dst_vq->type            = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	dst_vq->io_modes        = VB2_DMABUF | VB2_MMAP | VB2_USERPTR;
 	dst_vq->drv_priv        = ctx;
