@@ -777,15 +777,12 @@ int vcp_dec_ipi_handler(void *arg)
 			}
 		}
 		if (!msg_valid) {
-			if (vcu) {
+			if (vcu)
 				inst = container_of(vcu, struct vdec_inst, vcu);
-				ctx = vcu->ctx;
-			} else {
+			else
 				inst = NULL;
-				ctx = NULL;
-			}
-			mtk_v4l2_err(" msg msg_id %X vcu not exist 0x%lx (ctx 0x%lx, inst 0x%lx)\n", msg->msg_id,
-				(unsigned long)vcu, (unsigned long)ctx, (unsigned long)inst);
+			mtk_v4l2_err(" msg msg_id %X vcu not exist 0x%lx (inst 0x%lx)\n", msg->msg_id,
+				(unsigned long)vcu, (unsigned long)inst);
 			mtk_vcodec_dump_ctx_list(dev, 0);
 			mutex_unlock(&dev->ctx_mutex);
 			continue;
