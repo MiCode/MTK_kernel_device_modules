@@ -1468,6 +1468,7 @@ mgk_64_device_modules = [
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     "sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko",
     "sound/soc/mediatek/vow/mtk-scp-vow.ko",
+    "sound/soc/codecs/snd-soc-mt6366.ko",
 ]
 
 mgk_64_platform_device_modules = {
@@ -1713,6 +1714,8 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko": "mt6991",
     "sound/soc/mediatek/mt6993/mt6993-mt6681.ko": "mt6993",
     "sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
+    "sound/soc/mediatek/mt6789/mt6789-mt6366.ko": "mt6789",
+    "sound/soc/mediatek/mt6789/snd-soc-mt6789-afe.ko": "mt6789",
 
 }
 
