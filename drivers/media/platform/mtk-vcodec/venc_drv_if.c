@@ -119,7 +119,8 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 {
 	int ret = 0;
 	bool is_query_cap = (type == GET_PARAM_VENC_CAP_SUPPORTED_FORMATS ||
-			     type == GET_PARAM_VENC_CAP_FRAME_SIZES);
+			     type == GET_PARAM_VENC_CAP_FRAME_SIZES ||
+			     type == GET_PARAM_VENC_CAP_COMMON);
 
 	if (is_query_cap && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;
