@@ -4268,6 +4268,7 @@ static signed int DPE_release(struct inode *pInode, struct file *pFile)
 		DPEInfo.UserCount, current->comm, current->pid, current->tgid);
 	mutex_unlock(&(MutexDPERef));
 
+	cmdq_mbox_stop(dpe_clt);
 	cmdq_mbox_disable(dpe_clt->chan);
 	/* Disable clock. */
 	DPE_EnableClock(MFALSE);
