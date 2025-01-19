@@ -1289,7 +1289,6 @@ struct mtk_drm_crtc {
 	bool is_plane0_updated;
 
 	bool reset_path;
-	bool pre_rpo;
 };
 
 enum BL_GAMMA_GAIN {

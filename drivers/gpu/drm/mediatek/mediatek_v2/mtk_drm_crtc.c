@@ -6743,8 +6743,7 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
 
-		if (priv->data->ovl_exdma_rule &&
-			(mtk_crtc_state->lye_state.rpo_lye || mtk_crtc->pre_rpo)) {
+		if (priv->data->ovl_exdma_rule) {
 			cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
 			if (cmp_id < DDP_COMPONENT_ID_MAX)
 				mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
@@ -9192,9 +9191,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 		cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
 		//EXDMA2 is not on the list of basic main data path, need extra setting
-		if (priv->data->ovl_exdma_rule && (cmp_id < DDP_COMPONENT_ID_MAX)
-			&& (mtk_crtc_state->lye_state.rpo_lye
-			|| mtk_crtc->pre_rpo)) {
+		if (priv->data->ovl_exdma_rule && (cmp_id < DDP_COMPONENT_ID_MAX)) {
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
 				NULL, PMQOS_UPDATE_BW, &flag);
 		}
@@ -9217,8 +9214,6 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 	if (priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW_DELAY_POST);
-
-	mtk_crtc->pre_rpo = mtk_crtc_state->lye_state.rpo_lye ? TRUE : FALSE;
 
 	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
 
