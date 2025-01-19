@@ -22,11 +22,15 @@
 #include "mtu3_dr.h"
 #include "mtu3_debug.h"
 #include "mtu3_trace.h"
+/* for irq monitoring */
+#include <mt-plat/mtk_irq_mon.h>
 
 #include <linux/usb/typec.h>
 #include "class.h"
 
 #include "mtk_charger.h"
+
+#define MTU3_IRQ_PERIOD_BURST 16666 /* 60000 irqs per sec */
 
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {
@@ -1270,6 +1274,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		dev_err(dev, "mtu3 set dma_mask failed:%d\n", ret);
 		goto dma_mask_err;
 	}
+
+	/* set period for burst irq */
+	irq_mon_aee_period_set(mtu->irq, MTU3_IRQ_PERIOD_BURST);
 
 	ret = devm_request_threaded_irq(dev, mtu->irq, NULL,
 			mtu3_irq, IRQF_ONESHOT, dev_name(dev), mtu);

@@ -38,6 +38,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
         "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
         "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],
@@ -60,5 +61,6 @@ define_mgk_ddk_ko(
         "-I$(srctree)/drivers/usb/typec",
         "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3",
         "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
     ],
 )
