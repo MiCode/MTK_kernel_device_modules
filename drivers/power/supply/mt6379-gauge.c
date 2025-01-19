@@ -202,6 +202,7 @@ enum mt6379_fg_rg_list {
 	MT6379_REG_FGADC_NTER_CON0,			/* 0x99 */
 	MT6379_REG_FGADC_ZCV_CON0,			/* 0xAE */
 	MT6379_REG_FGADC_ZCV_CON2,			/* 0xB0 */
+	MT6379_REG_FGADC_ZCV_CON3,			/* 0xB2 */
 	MT6379_REG_FGADC_ZCVTH_CON0,			/* 0xB6 */
 	MT6379_REG_FGADC_R_CON0	,			/* 0xE5 */
 	MT6379_REG_FGADC_CUR_CON0,			/* 0xE7	: CIC1 output */
@@ -297,6 +298,7 @@ static const unsigned int rg[][MT6379_FG_RG_MAX] = {
 		[MT6379_REG_FGADC_NTER_CON0]			= 0x799,
 		[MT6379_REG_FGADC_ZCV_CON0]			= 0x7AE,
 		[MT6379_REG_FGADC_ZCV_CON2]			= 0x7B0,
+		[MT6379_REG_FGADC_ZCV_CON3]			= 0x7B2,
 		[MT6379_REG_FGADC_ZCVTH_CON0]			= 0x7B6,
 		[MT6379_REG_FGADC_R_CON0]			= 0x7E5,
 		[MT6379_REG_FGADC_CUR_CON0]			= 0x7E7, /* BAT1 CIC1 output */
@@ -385,6 +387,7 @@ static const unsigned int rg[][MT6379_FG_RG_MAX] = {
 		[MT6379_REG_FGADC_NTER_CON0]			= 0xA99,
 		[MT6379_REG_FGADC_ZCV_CON0]			= 0xAAE,
 		[MT6379_REG_FGADC_ZCV_CON2]			= 0xAB0,
+		[MT6379_REG_FGADC_ZCV_CON3]			= 0xAB2,
 		[MT6379_REG_FGADC_ZCVTH_CON0]			= 0xAB6,
 		[MT6379_REG_FGADC_R_CON0]			= 0xAE5,
 		[MT6379_REG_FGADC_CUR_CON0]			= 0xAE7, /* BAT2 CIC1 output */
@@ -458,6 +461,11 @@ enum fg_cic_idx {
 	FG_CIC2,
 	FG_CIC3,
 	FG_CIC_MAX
+};
+
+enum fg_car_idx {
+	FG_COULOMB = 0,
+	FG_ZCV,
 };
 
 /************ bat_cali *******************/
@@ -2251,10 +2259,10 @@ static int nafg_check_corner(struct mtk_gauge *gauge)
 	return 0;
 }
 
-static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int *val)
+static int coulomb_calculate(struct mtk_gauge *gauge, int *val, enum fg_car_idx car_idx)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
-	unsigned int uvalue32_car = 0, uvalue32_car_msb = 0;
+	unsigned int uvalue32_car = 0, uvalue32_car_msb = 0, dist_reg = 0;
 	const unsigned int bat_idx = priv->desc->bat_idx;
 	int r_fg_value, car_tune_value, ret = 0;
 	signed int dvalue_CAR = 0;
@@ -2263,9 +2271,20 @@ static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 
 	r_fg_value = gauge->hw_status.r_fg_value;
 	car_tune_value = gauge->gm->fg_cust_data.car_tune_value;
+
+	switch (car_idx) {
+	case FG_COULOMB:
+		dist_reg = rg[bat_idx][MT6379_REG_FGADC_CAR_CON0];
+		break;
+	case FG_ZCV:
+		dist_reg = rg[bat_idx][MT6379_REG_FGADC_ZCV_CON3];
+		break;
+	default:
+		return -EINVAL;
+	}
 	pre_gauge_update(gauge);
 
-	ret = regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_FGADC_CAR_CON0],
+	ret = regmap_raw_read(gauge->regmap, dist_reg,
 			      &temp_car, sizeof(temp_car));
 	if (ret) {
 		dev_info(priv->dev, "%s, Failed to read %s FGADC CAR (ret:%d)\n",
@@ -2339,6 +2358,38 @@ static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 	*val = dvalue_CAR;
 
 	return ret;
+}
+
+static int zcv_coulomb_get(struct mtk_gauge *gauge, int *val)
+{
+	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
+	const unsigned int bat_idx = priv->desc->bat_idx;
+	int ret = 0;
+
+	ret = coulomb_calculate(gauge, val, FG_ZCV);
+	if (ret) {
+		dev_info(priv->dev, "%s, Failed to get BAT%d CAR, ret = %d\n",
+			__func__, bat_idx + 1, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int coulomb_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int *val)
+{
+	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
+	const unsigned int bat_idx = priv->desc->bat_idx;
+	int ret = 0;
+
+	ret = coulomb_calculate(gauge, val, FG_COULOMB);
+	if (ret) {
+		dev_info(priv->dev, "%s, Failed to get BAT%d CAR, ret = %d\n",
+			__func__, bat_idx + 1, ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 static int average_current_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
@@ -3210,6 +3261,9 @@ static int zcv_get(struct mtk_gauge *gauge_dev, struct mtk_gauge_sysfs_field_inf
 	adc_result_reg = regval & AUXADC_ADC_OUT_FGADC_PCHR_MASK;
 
 	adc_result = reg_to_mv_value(gauge_dev, adc_result_reg);
+
+	zcv_coulomb_get(gauge_dev, &gauge_dev->hw_status.zcv_car);
+
 	bm_err(gauge_dev->gm, "[oam] %s %s BATSNS ZCV (pchr):adc_result_reg=%d, adc_result=%d\n",
 		 __func__, priv->desc->gauge_name, adc_result_reg, adc_result);
 

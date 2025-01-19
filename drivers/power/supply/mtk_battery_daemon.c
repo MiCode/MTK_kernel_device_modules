@@ -4594,6 +4594,19 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 
 	}
 	break;
+	case FG_DAEMON_CMD_GET_ZCV_INTR_CAR:
+	{
+		int zcv_car;
+
+		zcv_car = gm->gauge->hw_status.zcv_car;
+		bm_debug(gm, "FG_DAEMON_CMD_GET_ZCV_INTR_CAR, %d\n", zcv_car);
+
+		ret_msg->data_len += sizeof(zcv_car);
+		memcpy(ret_msg->data,
+			&zcv_car, sizeof(zcv_car));
+
+	}
+	break;
 	case FG_DAEMON_CMD_GET_CHARGE_POWER_SEL:
 	{
 		int charge_power_sel = gm->charge_power_sel;

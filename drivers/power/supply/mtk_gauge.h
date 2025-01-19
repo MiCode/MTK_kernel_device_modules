@@ -150,6 +150,9 @@ struct gauge_hw_status {
 	int vbat2_det_time;
 	int vbat2_det_counter;
 
+	/* zcv relocate related*/
+	int zcv_car;
+
 };
 
 enum gauge_hw_version {
