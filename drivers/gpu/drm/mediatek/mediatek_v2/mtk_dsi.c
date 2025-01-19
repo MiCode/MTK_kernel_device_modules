@@ -3721,6 +3721,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			mtk_ddp_comp_io_cmd(comp, NULL, IRQ_UNDERRUN, &underrun_int_en);
 			++underrun_cnt;
+
+			mtk_disp_clr_debug_deteriorate();
 		}
 
 		//if (status & INP_UNFINISH_INT_EN)
