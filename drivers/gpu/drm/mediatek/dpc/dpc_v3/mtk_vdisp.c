@@ -77,6 +77,7 @@ struct mtk_vdisp {
 	int pm_ret;
 	u32 pwr_ack_wait_time;
 	struct device_node *pwr_node;
+	int bringup_stage;
 };
 const struct mtk_vdisp_data default_vdisp_driver_data = {
 	.avs = &default_vdisp_avs_driver_data,
@@ -385,6 +386,9 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 {
 	int i = 0;
+
+	if (g_priv->bringup_stage)
+		return;
 
 	mutex_lock(&g_vdisp_ctrl_cnt_lock);
 
@@ -809,7 +813,26 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	int ret = 0;
 	int support = 0;
 	u32 pd_id = 0;
+	int bringup_stage = 0;
 	int i = 0, clk_num = 0, genpd_num = 0, pair_size = 0;
+
+	ret = of_property_read_u32(dev->of_node, "bringup-stage", &bringup_stage);
+	if (ret)
+		VDISPDBG("bringup-stage property read fail(%d)", ret);
+
+	if (bringup_stage) {
+		VDISPDBG("vdisp register callback %s\n", __func__);
+		ret = register_mtk_clk_external_api_cb(CLK_REQUEST_VDISP_CB, &vdisp_ctrl, NULL);
+		if (ret < 0)
+			VDISPDBG("register_mtk_clk_external_api_cb fail(%d)", ret);
+
+		priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+		if (!priv)
+			return -ENOMEM;
+		priv->bringup_stage = bringup_stage;
+		g_priv = priv;
+		return ret;
+	}
 
 	vcp_node = of_find_node_by_name(NULL, "vcp");
 	if (vcp_node == NULL)
@@ -829,6 +852,8 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
+
+	priv->bringup_stage = bringup_stage;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "SPM_BASE");
 	if (res) {
@@ -1045,6 +1070,8 @@ static void mtk_vdisp_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_driver_v3_dt_match[] = {
 	{.compatible = "mediatek,mt6991-vdisp-ctrl-v3",
+	 .data = &default_vdisp_driver_data},
+	{.compatible = "mediatek,mt6993-vdisp-ctrl-v3",
 	 .data = &default_vdisp_driver_data},
 	{},
 };
