@@ -973,7 +973,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/eccci/hif/ccci_ccif.ko",
     "drivers/misc/mediatek/eccci/hif/ccci_cldma.ko",
     "drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko",
-    "drivers/misc/mediatek/et/mtk_et.ko",
     "drivers/misc/mediatek/extcon/extcon-mtk-usb.ko",
     "drivers/misc/mediatek/flashlight/flashlight.ko",
     "drivers/misc/mediatek/flashlight/v4l2/lm3643.ko",
