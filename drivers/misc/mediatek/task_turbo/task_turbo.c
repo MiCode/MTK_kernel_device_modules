@@ -260,6 +260,36 @@ void exp_trace_turbo_vip(const char *desc, int pid)
 }
 EXPORT_SYMBOL(exp_trace_turbo_vip);
 
+int set_task_priority(struct task_struct *task, int prio)
+{
+
+	struct sched_param param;
+	int policy;
+
+	if (prio < 0 || prio >= MAX_NORMAL_PRIO)
+		return -EINVAL;
+
+	if (!task)
+		return -ESRCH;
+
+	if (prio < MAX_RT_PRIO) {
+		policy = SCHED_FIFO;
+		param.sched_priority = prio;
+		if (sched_setscheduler_nocheck(task, policy, &param) != 0)
+			return -EINVAL;
+	} else {
+		policy = SCHED_NORMAL;
+		param.sched_priority = 0;
+		if (sched_setscheduler_nocheck(task, policy, &param) != 0)
+			return -EINVAL;
+
+		set_user_nice(task, prio - 120);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(set_task_priority);
+ /* end of task rt prio interface */
+
 int (*wi_add_tgid_hook)(int pid) = NULL;
 EXPORT_SYMBOL(wi_add_tgid_hook);
 int (*wi_del_tgid_hook)(int pid) = NULL;
@@ -648,6 +678,32 @@ static const struct kernel_param_ops enable_binder_nonvip_inheritance_ops = {
 module_param_cb(enable_binder_nonvip_inheritance
 		, &enable_binder_nonvip_inheritance_ops, &binder_nonvip_inheritance_enable, 0664);
 MODULE_PARM_DESC(enable_binder_nonvip_inheritance, "Enable or disable binder nonvip inheritance");
+
+static char set_tdp_param[64] = "";
+static int set_tdp(const char *buf, const struct kernel_param *kp)
+{
+	pid_t pid;
+	int prio;
+	struct task_struct *task;
+
+	if (sscanf(buf, "%d %d", &pid, &prio) != 2)
+		return -EINVAL;
+
+	task = find_task_by_vpid(pid);
+	if (!task)
+		return -ESRCH;
+
+	return set_task_priority(task, prio);
+}
+
+static const struct kernel_param_ops set_tdp_ops = {
+	.set = set_tdp,
+	.get = param_get_int,
+};
+
+module_param_cb(set_tdp, &set_tdp_ops, &set_tdp_param, 0664);
+MODULE_PARM_DESC(set_tdp, "set task priority for debug");
+
 /*
  * enforce_ct_to_vip - Enforce critical task(ct) VIP status based on caller id
  * @val: the value indicating whether to enforce VIP status
