@@ -1363,12 +1363,9 @@ static bool mtk_smmu_dev_has_feature(struct device *dev,
 {
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
 	unsigned long mtk_iommu_feat = (unsigned long)feat;
-	struct arm_smmu_device *smmu;
 
 	if (!master)
 		return false;
-
-	smmu = master->smmu;
 
 	switch (mtk_iommu_feat) {
 	case IOMMU_DEV_FEAT_BYPASS_S1:
@@ -2624,13 +2621,11 @@ out_put_node:
 
 static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 {
-	const struct mtk_smmu_plat_data *plat_data;
 	struct device *dev = data->smmu.dev;
 
 	mutex_init(&data->group_mutexs);
 	spin_lock_init(&data->pmu_lock);
 	data->plat_data = of_device_get_plat_data(data->smmu.dev);
-	plat_data = data->plat_data;
 
 	if (data->plat_data == NULL) {
 		dev_info(dev, "%s, plat_data NULL\n", __func__);

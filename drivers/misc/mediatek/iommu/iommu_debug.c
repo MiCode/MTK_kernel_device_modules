@@ -365,8 +365,6 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	u32 id = (iova >> 32);
 	unsigned long flags;
 	struct iova_map_info *iova_buf;
-	u64 time_high;
-	u32 time_low;
 
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
@@ -387,8 +385,6 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	iova_buf->tab_id = tab_id;
 	iova_buf->iova = iova;
 	iova_buf->size = size;
-	time_high = iova_buf->time_high;
-	time_low = iova_buf->time_low;
 	spin_lock_irqsave(&map_list.lock, flags);
 	list_add(&iova_buf->list_node, &map_list.head[id]);
 	spin_unlock_irqrestore(&map_list.lock, flags);
