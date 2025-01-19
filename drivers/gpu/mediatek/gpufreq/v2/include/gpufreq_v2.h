@@ -234,12 +234,6 @@ enum gpufreq_delsel_mode {
 	HW_DELSEL = 1,
 };
 
-enum gpufreq_gpm3_prot_mode {
-	GPM3_DISABLE     = 0, /* default */
-	GPM3_0_IMAX_PROT = 1,
-	GPM3_5_IMAX_PROT = 2,
-};
-
 enum gpufreq_brcast_mode {
 	BRCAST_DISABLE       = 0, /* default */
 	BRCAST_SW_REFILLED   = 1,
@@ -256,6 +250,19 @@ enum gpufreq_brisket_mode {
 	BRISKET_UNSUPPORTED = -1,
 	BRISKET_DISABLE     = 0, /* default */
 	BRISKET_ENABLE      = 1,
+};
+
+enum gpufreq_imax_prot_mode {
+	IMAX_NO_PROT       = 0, /* default */
+	GPM3_0_IMAX_PROT   = 1,
+	CTT_IMAX_PROT      = 2,
+	PMIC_CURRENT_CLAMP = 3,
+};
+
+enum gpufreq_thermal_prot_mode {
+	THERMAL_NO_PROT  = 0, /* default */
+	SW_THERMAL_PROT  = 1,
+	CTT_THERMAL_PROT = 2,
 };
 
 enum gpufreq_hbvc_state {
@@ -398,13 +405,13 @@ struct gpufreq_reg_info {
 
 struct gpufreq_ptp3_shared_status {
 	enum gpufreq_dvfs_mode dvfs_mode;
-	enum gpufreq_gpm3_prot_mode gpm3_prot_mode;
 	enum gpufreq_brcast_mode brcast_mode;
 	enum gpufreq_delsel_mode delsel_mode;
+	enum gpufreq_imax_prot_mode imax_prot_mode;
+	enum gpufreq_thermal_prot_mode thermal_prot_mode;
 	unsigned int ptp3_mode;
 	unsigned int ptp3_debug_mode;
-	unsigned int hbvc_freq_ctrl_support;
-	unsigned int hbvc_volt_ctrl_support;
+	unsigned int hbvc_support;
 	unsigned int hbvc_preoc_support;
 	unsigned int hbvc_preoc_mode;
 	unsigned int hbvc_vgpu_upper_bound;
@@ -416,10 +423,8 @@ struct gpufreq_ptp3_shared_status {
 	enum gpufreq_brisket_mode brisket_vmeter_mode;
 	enum gpufreq_brisket_mode brisket_tmeter_mode;
 	unsigned int brisket_cpmeter_mode;
-	unsigned int brisket_ctt_mode;
 	unsigned int brisket_safe_margin;
-	unsigned int auto_dma_refill_top_brisket;
-	unsigned int auto_dma_refill_top_gpm;
+	unsigned int gpm3_5_mode;
 	unsigned int ses_top_support;
 	unsigned int ses_top_mode;
 	unsigned int ses_stack_support;

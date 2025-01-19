@@ -186,26 +186,25 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 
 	ptp3_status = g_shared_status->ptp3_status;
 	seq_printf(m,
-		"%-16s PTP3: %s, DVFSMode: %s, ImaxProt: %s, HBVCFreq: %s, HBVCVolt: %s\n",
+		"%-16s PTP3: %s, DVFSMode: %s, ImaxProt: %s, ThermalProt: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.ptp3_mode ? "On" : "Off",
-		(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
-		(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")),
-		(ptp3_status.gpm3_prot_mode == GPM3_5_IMAX_PROT ? "3.5" :
-		(ptp3_status.gpm3_prot_mode == GPM3_0_IMAX_PROT ? "3.0" : "Off")),
-		ptp3_status.hbvc_freq_ctrl_support ? "On" : "Off",
-		ptp3_status.hbvc_volt_ctrl_support ? "On" : "Off");
+		ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" : "SW_LEGACY",
+		(ptp3_status.imax_prot_mode == PMIC_CURRENT_CLAMP ? "PMIC_CC" :
+		(ptp3_status.imax_prot_mode == CTT_IMAX_PROT ? "CTT_I" :
+		(ptp3_status.imax_prot_mode == GPM3_0_IMAX_PROT ? "GPM3.0" : "Off"))),
+		(ptp3_status.thermal_prot_mode == CTT_THERMAL_PROT ? "CTT_T" :
+		(ptp3_status.thermal_prot_mode == SW_THERMAL_PROT ? "SW" : "Off")));
 	seq_printf(m,
-		"%-16s BRCAST: %s, DELSEL: %s, PreUVLO: %s, PRBC: %s\n",
+		"%-16s HBVC: %s, BRCAST: %s, DELSEL: %s, PreUVLO: %s, PRBC: %s\n",
 		"[PTP3 Config]",
-		(ptp3_status.brcast_mode == BRCAST_SW_REFILLED ? "SW_REFILLED" :
-		(ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" :
-		(ptp3_status.brcast_mode == BRCAST_SW_ONLY_ACK ? "SW_ONLY_ACK" : "Off"))),
+		ptp3_status.hbvc_support ? "On" : "Off",
+		ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" : "Off",
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
 		ptp3_status.preuvlo_mode ? "On" : "Off",
 		ptp3_status.prbc_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s, FTRACKER: %s, VTRACKER: %s\n",
+		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s, F_TRACKER: %s, V_TRACKER: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.ses_top_mode ? "On" : "Off",
 		ptp3_status.ses_stack_mode ? "On" : "Off",
@@ -213,7 +212,7 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.freq_tracker_mode ? "On" : "Off",
 		ptp3_status.volt_tracker_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, CTT: %s\n",
+		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, GPM3.5: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.brisket_fll_mode ? "On" : "Off",
 		(ptp3_status.brisket_atmc_mode == BRISKET_ENABLE ? "On" :
@@ -223,7 +222,7 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		(ptp3_status.brisket_tmeter_mode == BRISKET_ENABLE ? "On" :
 		(ptp3_status.brisket_tmeter_mode == BRISKET_UNSUPPORTED ? "NSup" : "Off")),
 		ptp3_status.brisket_cpmeter_mode ? "On" : "Off",
-		ptp3_status.brisket_ctt_mode ? "On" : "Off");
+		ptp3_status.gpm3_5_mode ? "On" : "Off");
 	seq_printf(m,
 		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d, Mode: %s\n",
 		"[PTP3 Config]",
