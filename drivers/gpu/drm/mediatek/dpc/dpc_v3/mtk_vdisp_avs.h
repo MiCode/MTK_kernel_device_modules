@@ -21,7 +21,7 @@
 void mtk_vdisp_avs_vcp_notifier(unsigned long vcp_event, void *data);
 void mtk_vdisp_avs_query_aging_val(struct device *dev);
 int mtk_vdisp_avs_probe(struct platform_device *pdev);
-int mtk_vdisp_avs_dbg_opt(const char *opt);
+int mtk_vdisp_up_dbg_opt(const char *opt);
 void mtk_vdisp_set_clk(unsigned long rate);
 
 /* This enum is used to define the IPI function IDs for vdisp */
@@ -31,6 +31,17 @@ enum mtk_vdisp_avs_ipi_func_id {
 	FUNC_IPI_AVS_DBG_MODE,
 	FUNC_IPI_AGING_ACK,
 	FUNC_IPI_AVS_STEP,
+	FUNC_IPI_UNIT_TEST,
+	FUNC_IPI_RESET_EFUSE_VAR,
+	FUNC_IPI_CHANGE_STAGE,
+};
+
+enum vdisp_ut_id {
+    UT_RD_LVL,
+    UT_RD_VOL,
+    UT_WR_LVL,
+    UT_PWR_ON,
+    UT_PWR_OFF,
 };
 
 struct mtk_vdisp_avs_data {

@@ -353,11 +353,67 @@ int mtk_vdisp_avs_dbg_opt(const char *opt)
 	} else if (strncmp(opt + 4, "dbg:off", 7) == 0) {
 		/*Off avs debug mode*/
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_DBG_MODE, 0);
+	} else if (strncmp(opt + 4, "rst_efuse", 9) == 0) {
+		/* reset efuse */
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_RESET_EFUSE_VAR, 0);
+	} else if (strncmp(opt + 4, "vir_efuse:", 10) == 0) {
+		/* virtual efuse (ofs, val) */
+		ret = sscanf(opt, "avs:vir_efuse:0x%x,0x%x\n", &v1, &v2);
+		if (ret != 2) {
+			VDISPDBG("[Warning] avs:vir_efuse sscanf not match");
+			return -EINVAL;
+		}
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(v1, v2);
 	}
 
 	return ret;
 }
-EXPORT_SYMBOL(mtk_vdisp_avs_dbg_opt);
+
+int mtk_vdisp_up_dbg_opt(const char *opt)
+{
+	int ret = 0;
+	u32 v1 = 0, v2 = 0;
+
+	if (strncmp(opt, "avs:", 4) == 0)
+		return mtk_vdisp_avs_dbg_opt(opt);
+
+	/* uP other opt */
+	if (strncmp(opt + 3, "vdisp_read_level", 16) == 0) {
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_RD_LVL);
+	} else if (strncmp(opt + 3, "vdisp_read_voltage", 18) == 0) {
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_RD_VOL);
+	} else if (strncmp(opt + 3, "vdisp_update_level", 18) == 0) {
+		ret = sscanf(opt, "up:vdisp_update_level:%u\n", &v1);
+		if (ret != 1) {
+			VDISPDBG("[Warning] up:vdisp_update_level sscanf not match");
+			return -EINVAL;
+		}
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, (v1 << 16) | UT_WR_LVL);
+	} else if (strncmp(opt + 3, "vdisp_on", 8) == 0) {
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_PWR_ON);
+	} else if (strncmp(opt + 3, "vdisp_off", 9) == 0) {
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_PWR_OFF);
+	} else if (strncmp(opt + 3, "arb:", 4) == 0) {
+		/* arbitrary input */
+		ret = sscanf(opt, "up:arb:%u,%u\n", &v1, &v2);
+		if (ret != 2) {
+			VDISPDBG("[Warning] up:arb sscanf not match");
+			return -EINVAL;
+		}
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(v1, v2);
+	} else if (strncmp(opt + 3, "chg_stg:", 8) == 0) {
+		/* change MMuP VDISP stage*/
+		ret = sscanf(opt, "up:chg_stg:%u\n", &v1);
+		if (ret != 1) {
+			VDISPDBG("[Warning] up:chg_stg sscanf not match");
+			return -EINVAL;
+		}
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_CHANGE_STAGE, v1);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_vdisp_up_dbg_opt);
 
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {

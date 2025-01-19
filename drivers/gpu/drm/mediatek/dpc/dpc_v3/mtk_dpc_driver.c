@@ -1865,8 +1865,9 @@ static void process_dbg_opt(const char *opt)
 		}
 		DPCDUMP("cap(0x%x->0x%x)", g_priv->vidle_mask, v1);
 		g_priv->vidle_mask = v1;
-	} else if (strncmp(opt, "avs:", 4) == 0) {
-		if (mtk_vdisp_avs_dbg_opt(opt))
+	} else if ((strncmp(opt, "avs:", 4) == 0) ||
+		(strncmp(opt, "up:", 3) == 0)) {
+		if (mtk_vdisp_up_dbg_opt(opt))
 			goto err;
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);
