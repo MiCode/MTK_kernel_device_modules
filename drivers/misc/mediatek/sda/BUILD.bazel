@@ -137,3 +137,23 @@ define_mgk_ddk_ko(
 		"-I$(srctree)/kernel",
 	],
 )
+
+define_mgk_ddk_ko(
+	name = "gic-ram-parity",
+	srcs = [
+		"gic-ram-parity.c",
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+	],
+
+)
