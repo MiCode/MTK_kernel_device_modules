@@ -68,11 +68,13 @@ static char *task_group_path(struct task_group *tg)
 
 static DEFINE_SPINLOCK(sched_debug_lock);
 
+#if NO_EXPORT
 static const char * const sched_tunable_scaling_names[] = {
 	"none",
 	"logarithmic",
 	"linear"
 }; /* kernel/sched/debug.c */
+#endif
 
 char print_at_AEE_buffer[160];
 
