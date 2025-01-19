@@ -489,4 +489,40 @@ int usb_offload_debug_deinit(struct usb_offload_dev *udev);
 void usb_offload_trace_start(struct usb_audio_stream_msg *msg);
 void usb_offload_trace_stop(int dir);
 void usb_offload_trace_stop_all(void);
+
+/****
+ * mbbrain related
+ ****/
+
+enum uo_mbrain_phase {
+	UO_PHASE_CONNECT,
+	UO_PHASE_OPEN,
+	UO_PHASE_INIT_ADSP,
+	UO_PHASE_ENABLE_STREAM,
+	UO_PHASE_DISABLE_STREAM,
+	UO_PHASE_HID_START,
+};
+
+enum uo_mbrain_error {
+	UO_ERROR_SUCCESS = 0,
+	UO_ERROR_IPI_FAIL,
+	UO_ERROR_ALLOC_SB_FAIL,
+	UO_ERROR_ALLOC_URB_FAIL,
+	UO_ERROR_ALLOC_TR_FAIL,
+	UO_ERROR_xHCI_NOT_RDY,
+	UO_ERROR_NO_DEV_CONNECTED,
+	UO_ERROR_INSUFFICIENT_SPACE,
+	UO_ERROR_RSV_REGION_ISSUE,
+};
+
+struct uo_mbrain {
+	u16 vid;
+	u16 pid;
+	enum uo_mbrain_phase phase;
+	enum uo_mbrain_error error;
+};
+
+int register_uo_mbrain_cb(void (*cb)(struct uo_mbrain data));
+int unregister_uo_mbrain_cb(void);
+void uo_mbrain_update(enum uo_mbrain_phase phase, enum uo_mbrain_error error);
 #endif /* __USB_OFFLOAD_H__ */

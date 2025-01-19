@@ -781,8 +781,10 @@ int usb_offload_hid_start(void)
 				hid_info("hid transfer ring isn't under managed\n");
 				ret = xhci_realloc_hid_ring(hid, uodev->policy.adv_lowpwr ?
 						UO_PROV_SRAM : UO_PROV_DRAM);
-				if (ret)
+				if (ret) {
 					hid_err("fail to re-allocate hid ring\n");
+					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_TR_FAIL);
+				}
 			} else {
 				ret = xhci_hid_ep_ctx_control(hid, out_ep_ctx, true);
 				if (ret)
@@ -792,8 +794,16 @@ int usb_offload_hid_start(void)
 			if (ret == 0) {
 				hid_ring_unlock(hid, "<AP Suspend>");
 				/* inform dsp to start hid offloading */
-				usb_offload_prepare_send_urb_msg(hid, true, AUDIO_IPI_MSG_NEED_ACK);
+				if (usb_offload_prepare_send_urb_msg(hid, true, AUDIO_IPI_MSG_NEED_ACK)) {
+					clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_IPI_FAIL);
+					hid_info("HID Not Offloading!!!\n");
+				} else {
+					hid_info("HID Offloading!!!\n");
+					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_SUCCESS);
+				}
 			} else {
+				hid_info("HID Not Offloading!!!\n");
 				clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
 				hid_ring_unlock(hid, "<Fail to Start>");
 			}
