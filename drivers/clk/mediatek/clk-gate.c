@@ -20,8 +20,6 @@
 #define CTRL_ON			1
 #define CTRL_OFF		0
 
-#define MT_CCF_BRINGUP 0
-
 static bool is_registered;
 
 static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
@@ -591,7 +589,6 @@ static void mtk_cg_disable_unused_null(struct clk_hw *hw)
 {
 }
 
-#if !MT_CCF_BRINGUP
 static int mtk_cg_prepare_mm_dma(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -646,9 +643,7 @@ CG_PREPARE_FAIL:
 	pr_cg_err("mtk_cg_prepare_mm_dma - %s, ret: %x\n", c_n, -ret);
 	return ret;
 }
-#endif
 
-#if !MT_CCF_BRINGUP
 static void mtk_cg_unprepare_mm_dma(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -703,9 +698,7 @@ CG_UNPREPARE_FAIL:
 	pr_cg_err("mtk_cg_unprepare_mm_dma - %s, ret: %x\n", c_n, -ret);
 	return;
 }
-#endif
 
-#if !MT_CCF_BRINGUP
 static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -759,9 +752,7 @@ CG_PREPARE_FAIL:
 	pr_cg_err("mtk_cg_prepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
 	return ret;
 }
-#endif
 
-#if !MT_CCF_BRINGUP
 static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -815,7 +806,6 @@ CG_UNPREPARE_FAIL:
 	pr_cg_err("mtk_cg_unprepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
 	return;
 }
-#endif
 
 const struct clk_ops mtk_clk_gate_ops_null = {
 	.is_prepared	= mtk_cg_bit_is_set_null,
@@ -866,10 +856,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_setclr_inv);
 /*6993 MM dma gate res*/
 const struct clk_ops mtk_clk_mm_gate_ops_setclr = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
-#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
-#endif
 	.enable		= mtk_cg_enable,
 	.disable	= mtk_cg_disable,
 	.disable_unused = mtk_cg_disable_unused,
@@ -878,10 +866,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_mm_gate_ops_setclr);
 /*6993 MM dma gate res*/
 const struct clk_ops mtk_clk_mm_gate_ops_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
-#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
-#endif
 	.enable		= mtk_cg_enable_inv,
 	.disable	= mtk_cg_disable_inv,
 	.disable_unused = mtk_cg_disable_unused_inv,
@@ -921,10 +907,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr_inv);
 /*6993 MM res with inv CG*/
 const struct clk_ops mtk_clk_mm_gate_ops_no_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
-#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
-#endif
 	.enable		= mtk_cg_enable_inv_no_setclr,
 	.disable	= mtk_cg_disable_inv_no_setclr,
 	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
@@ -951,10 +935,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_ap_hwv_ops_inv);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
-#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_hwv,
 	.unprepare	= mtk_cg_unprepare_mm_hwv,
-#endif
 	.enable		= mtk_cg_enable_generic_hwv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };
@@ -963,10 +945,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_mm_hwv_ops);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
-#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_hwv,
 	.unprepare	= mtk_cg_unprepare_mm_hwv,
-#endif
 	.enable		= mtk_cg_enable_generic_hwv_inv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };
