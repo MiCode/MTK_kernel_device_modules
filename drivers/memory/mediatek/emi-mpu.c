@@ -18,12 +18,13 @@
 #include <linux/slab.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include "mt-plat/aee.h"
-#include <soc/mediatek/emi.h>
+#include "emi.h"
 
 /* global pointer for exported functions */
 struct emi_mpu *global_emi_mpu;
 EXPORT_SYMBOL_GPL(global_emi_mpu);
 unsigned int smc_clear;
+unsigned int dump_axid;
 
 static void set_regs(
 	struct reg_info_t *reg_list, unsigned int reg_cnt,
@@ -125,6 +126,16 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 
 			if (dump_reg[i].value)
 				violation = true;
+		}
+		if (dump_axid == 1) {
+			if (msg_len < MTK_EMI_MAX_CMD_LEN) {
+				n = snprintf(mpu->vio_msg + msg_len,
+					MTK_EMI_MAX_CMD_LEN - msg_len,
+					"%s(%d),%s(%x);\n",
+					"emi", emi_id,
+					"axid", mtk_get_axiid(emi_id));
+				msg_len += (n < 0) ? 0 : (ssize_t)n;
+			}
 		}
 
 		if (dump_reg[2].value & hp_mask)
@@ -349,6 +360,12 @@ static int emimpu_probe(struct platform_device *pdev)
 	if (!ret)
 		dev_info(&pdev->dev, "Use smc to clear vio\n");
 
+	dump_axid = 0;
+	ret = of_property_read_u32(emimpu_node,
+		"dump-axid", &dump_axid);
+	if (!ret)
+		dev_info(&pdev->dev, "No need to dump axid\n");
+
 	size = of_property_count_elems_of_size(emimpu_node,
 		"bypass-r-axi", sizeof(char));
 	if (size <= 0) {
@@ -487,8 +504,9 @@ static int emimpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		ret = -ENXIO;
 	}
-	ret = request_irq(mpu->irq, (irq_handler_t)emimpu_violation_irq,
-		IRQF_TRIGGER_NONE, "emimpu", mpu);
+	ret = request_threaded_irq(mpu->irq, NULL,
+		(irq_handler_t)emimpu_violation_irq,
+		IRQF_ONESHOT, "emimpu", mpu);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq");
 		ret = -EINVAL;

@@ -43,6 +43,7 @@ define_mgk_ddk_ko(
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),

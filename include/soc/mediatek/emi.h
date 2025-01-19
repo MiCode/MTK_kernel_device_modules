@@ -128,7 +128,6 @@ int mtk_emimpu_lock_region(struct emimpu_region_t *rg_info, bool lock);
 int mtk_emimpu_set_protection(struct emimpu_region_t *rg_info);
 int mtk_emimpu_free_region(struct emimpu_region_t *rg_info);
 int mtk_emimpu_clear_protection(struct emimpu_region_t *rg_info);
-unsigned int mtk_get_axiid(unsigned int emi_id);
 
 /*
  * this macro CONFIG_MTK_DEVMPU_EMI and function is for 6885/6893,
@@ -145,5 +144,7 @@ int mtk_emimpu_prehandle_register(emimpu_pre_handler bypass_func);
 int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
 void mtk_clear_md_violation(void);
 int mtk_clear_smpu_log(unsigned int emi_id);
+unsigned int mtk_get_axiid(unsigned int emi_id);
+
 
 #endif /* __EMI_H__ */
