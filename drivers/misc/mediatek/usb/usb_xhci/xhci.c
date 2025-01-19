@@ -304,7 +304,7 @@ static void xhci_zero_64b_regs(struct xhci_hcd *xhci)
 		xhci_info(xhci, "Fault detected\n");
 }
 
-static int xhci_enable_interrupter(struct xhci_interrupter *ir)
+int xhci_enable_interrupter_(struct xhci_interrupter *ir)
 {
 	u32 iman;
 
@@ -316,8 +316,9 @@ static int xhci_enable_interrupter(struct xhci_interrupter *ir)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(xhci_enable_interrupter_);
 
-static int xhci_disable_interrupter(struct xhci_interrupter *ir)
+int xhci_disable_interrupter_(struct xhci_interrupter *ir)
 {
 	u32 iman;
 
@@ -329,6 +330,7 @@ static int xhci_disable_interrupter(struct xhci_interrupter *ir)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(xhci_disable_interrupter_);
 
 /* interrupt moderation interval imod_interval in nanoseconds */
 static int xhci_set_interrupter_moderation(struct xhci_interrupter *ir,
@@ -498,7 +500,7 @@ static int xhci_run_finished(struct xhci_hcd *xhci)
 	writel(temp, &xhci->op_regs->command);
 
 	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "Enable primary interrupter");
-	xhci_enable_interrupter(ir);
+	xhci_enable_interrupter_(ir);
 
 	if (xhci_start(xhci)) {
 		xhci_halt(xhci);
@@ -632,7 +634,7 @@ void xhci_stop_(struct usb_hcd *hcd)
 			"// Disabling event ring interrupts");
 	temp = readl(&xhci->op_regs->status);
 	writel((temp & ~0x1fff) | STS_EINT, &xhci->op_regs->status);
-	xhci_disable_interrupter(ir);
+	xhci_disable_interrupter_(ir);
 
 	xhci_dbg_trace_(xhci, trace_xhci_dbg_init_, "cleaning up memory");
 	xhci_mem_cleanup(xhci);
@@ -1100,7 +1102,7 @@ int xhci_resume_(struct xhci_hcd *xhci, pm_message_t msg)
 		xhci_dbg(xhci, "// Disabling event ring interrupts\n");
 		temp = readl(&xhci->op_regs->status);
 		writel((temp & ~0x1fff) | STS_EINT, &xhci->op_regs->status);
-		xhci_disable_interrupter(xhci->interrupters[0]);
+		xhci_disable_interrupter_(xhci->interrupters[0]);
 
 		xhci_dbg(xhci, "cleaning up memory\n");
 		xhci_mem_cleanup(xhci);
