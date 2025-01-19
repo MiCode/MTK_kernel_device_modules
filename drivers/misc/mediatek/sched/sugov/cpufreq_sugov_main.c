@@ -559,7 +559,7 @@ unsigned long mtk_effective_cpu_util_dpt_v2(unsigned int cpu, unsigned long *cpu
 	 * because of inaccuracies in how we track these -- see
 	 * update_irq_load_avg().
 	 */
-	irq = (cpu_util_irq(rq) << __get_scaling_factor_shift_bit()) / curr_ipc_scaling_factor;
+	irq = cpu_util_irq(rq);
 	if (unlikely(irq >= scale)) {
 		if (min)
 			*min = scale;
@@ -584,7 +584,7 @@ unsigned long mtk_effective_cpu_util_dpt_v2(unsigned int cpu, unsigned long *cpu
 		 *   steals time to the deadline task.
 		 * - The minimum performance requirement for CFS and/or RT.
 		 */
-		*min = max(irq + ((cpu_bw_dl(rq) << __get_scaling_factor_shift_bit()) / curr_ipc_scaling_factor), uclamp_rq_get(rq, UCLAMP_MIN));
+		*min = max(irq + cpu_bw_dl(rq), uclamp_rq_get(rq, UCLAMP_MIN));
 		/*
 		 * When an RT task is runnable and uclamp is not used, we must
 		 * ensure that the task will run at maximum compute capacity.
