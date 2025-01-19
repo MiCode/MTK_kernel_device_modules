@@ -1591,8 +1591,8 @@
 		compatible = "mediatek,eas-info";
 		csram-base = <0x0c2c0f10>;
 		share-buck = <2>;
-		/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600, EAS_6_5 : 650 */
-		version = <650>;
+		/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600, EAS_6_5 : 650, EAS_6_12 : 612 */
+		version = <612>;
 	};
 
 	perf_tracker_info: perf-tracker-info {
