@@ -1848,6 +1848,13 @@ static int __init hangdet_init(void)
 #endif
 	init_wk_check_bit();
 
+#if IS_ENABLED(CONFIG_SMP)
+	for (res = 0; res < MAX_CPUNR; res++) {
+		wdt_csd[res].func = wdt_dump_cntcv;
+		wdt_csd[res].info = NULL;
+	}
+#endif
+
 	wdk_workqueue = create_singlethread_workqueue("mt-wdk");
 	INIT_WORK(&wdk_work, wdk_work_callback);
 
@@ -1876,13 +1883,6 @@ static int __init hangdet_init(void)
 	}
 
 	timer_setup(&aee_dump_timer, aee_dump_timer_func, 0);
-
-#if IS_ENABLED(CONFIG_SMP)
-	for (res = 0; res < 8; res++) {
-		wdt_csd[res].func = wdt_dump_cntcv;
-		wdt_csd[res].info = NULL;
-	}
-#endif
 
 #if IS_ENABLED(CONFIG_ARM64)
 	res = register_kprobe(&kp_hrtimer_start_range_ns);
