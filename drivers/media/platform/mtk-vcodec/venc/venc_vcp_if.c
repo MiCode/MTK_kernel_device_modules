@@ -488,7 +488,7 @@ int vcp_enc_ipi_handler(void *arg)
 	struct venc_vsi *vsi = NULL;
 	struct mtk_vcodec_ctx *ctx;
 	int ret = 0;
-	struct mtk_vcodec_msg_node *mq_node;
+	struct mtk_vcodec_msg_node *mq_node = NULL;
 	struct venc_vcu_ipi_mem_op *shem_msg;
 	unsigned long flags;
 	struct list_head *p, *q;
@@ -517,6 +517,10 @@ int vcp_enc_ipi_handler(void *arg)
 	sched_setscheduler(current, SCHED_FIFO, &sched_p);
 
 	do {
+		if (mq_node != NULL)
+			venc_vcp_free_mq_node(dev, mq_node);
+
+		mq_node = NULL;
 		ret = wait_event_interruptible(dev->mq.wq, atomic_read(&dev->mq.cnt) > 0);
 		if (ret < 0) {
 			mtk_v4l2_debug(0, "wait event return %d (suspending %d)\n",
@@ -537,7 +541,6 @@ int vcp_enc_ipi_handler(void *arg)
 		   (struct venc_vcu_inst *)(unsigned long)msg->ap_inst_addr == NULL) {
 			mtk_v4l2_err(" msg invalid %lx (msg 0x%x)\n",
 				(unsigned long)msg, msg ? msg->msg_id : 0);
-			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 
@@ -568,7 +571,6 @@ int vcp_enc_ipi_handler(void *arg)
 					if (ret != IPI_ACTION_DONE)
 						mtk_v4l2_err("mtk_ipi_send fail %d", ret);
 				}
-				venc_vcp_free_mq_node(dev, mq_node);
 				continue;
 			}
 		}
@@ -600,7 +602,6 @@ int vcp_enc_ipi_handler(void *arg)
 				(unsigned long)vcu, (unsigned long)ctx, (unsigned long)inst);
 			mtk_vcodec_dump_ctx_list(dev, 0);
 			mutex_unlock(&dev->ctx_mutex);
-			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 		mutex_unlock(&dev->ctx_mutex);
@@ -609,7 +610,6 @@ int vcp_enc_ipi_handler(void *arg)
 			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
 				msg->msg_id, vcu->daemon_pid, vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv"));
 			mutex_unlock(&ctx->ipi_use_lock);
-			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 		inst = container_of(vcu, struct venc_inst, vcu_inst);
@@ -753,7 +753,6 @@ return_venc_ipi_ack:
 		}
 		mtk_vcodec_debug(vcu, "- id=%X", msg->msg_id);
 		mutex_unlock(&ctx->ipi_use_lock);
-		venc_vcp_free_mq_node(dev, mq_node);
 	} while (!kthread_should_stop());
 	mtk_v4l2_debug_leave();
 
