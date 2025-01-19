@@ -118,6 +118,12 @@
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
 #define MAX_POLLING_CNT		10
 #define SCP_WAKE_TIMEOUT	40
+#define SCP_POWER_OFF_STAT	\
+		(readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat) & scp_wake.not_in_sleep_mask)
+#define SCP_L2_SLP_STAT	\
+		(readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat) & scp_wake.l2_slp_stat_mask)
+#define SCP_SLEEP_STAT	\
+		readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat)
 
 #define I2C_DRV_NAME		"i2c-mt65xx"
 
@@ -1623,24 +1629,27 @@ int scp_wake_request(struct i2c_adapter *adap)
 			}
 		}
 
-		if (i2c->ch_offset_i2c == I2C_OFFSET_SCP_V1) {
+		if (scp_wake.use_l2_slp_stat) {
 			do {
 				delay--;
-				reg = readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat);
-				if ((reg & scp_wake.not_in_sleep_mask) == 0) {
+				if ((SCP_POWER_OFF_STAT == 0) && (SCP_POWER_OFF_STAT == 0)) {
 					writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)) |
 					(scp_wake.wakeup_mask | scp_wake.wakeup_pre_mask),
 					scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 
 					writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
-						(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+					(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 					break;
 				}
 
 				udelay(20);
 			} while (delay);
 
-			if ((reg & scp_wake.not_in_sleep_mask) != 0) {
+			if (!delay)
+				dev_dbg(i2c->dev, "%s: wake scp timeout, try l2 wake, sleep_stat=0x%x\n",
+					__func__, SCP_SLEEP_STAT);
+
+			if (SCP_POWER_OFF_STAT != 0) {
 				writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)) |
 				(scp_wake.wakeup_mask | scp_wake.wakeup_pre_mask),
 				scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
@@ -1649,8 +1658,7 @@ int scp_wake_request(struct i2c_adapter *adap)
 
 				do {
 					delay--;
-					reg = readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat);
-					if ((reg & scp_wake.l2_slp_stat_mask) == 0) {
+					if ((SCP_L2_SLP_STAT == 0) && (SCP_L2_SLP_STAT == 0)) {
 						writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
 						(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 						break;
@@ -1660,28 +1668,29 @@ int scp_wake_request(struct i2c_adapter *adap)
 				} while (delay);
 
 				if (!delay) {
-					dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n, count=%d",
-						reg, scp_wake.count);
+					dev_info(i2c->dev, "%s: wake scp l2 timeout, sleep_stat=0x%x\n",
+						__func__, SCP_SLEEP_STAT);
 					goto err;
 				} else {
 					scp_wake.count++;
-					dev_dbg(i2c->dev, "scp wakeup use l2 success, sleep_stat=0x%x, count=%d\n",
-						reg, scp_wake.count);
+					dev_dbg(i2c->dev, "%s: wake scp l2 success, sleep_stat=0x%x, count=%d\n",
+						__func__, SCP_SLEEP_STAT, scp_wake.count);
 					ret = 0;
 				}
 			} else {
 				scp_wake.count++;
-				dev_dbg(i2c->dev, "scp wakeup success, sleep_stat=0x%x, count=%d\n",
-					reg, scp_wake.count);
+				dev_dbg(i2c->dev, "%s: wake scp success, sleep_stat=0x%x, count=%d\n",
+					__func__, SCP_SLEEP_STAT, scp_wake.count);
 				ret = 0;
 			}
 		}
 	} else if (scp_wake.count > 0) {
 		scp_wake.count++;
-		dev_dbg(i2c->dev, "scp is awake, count=%d\n", scp_wake.count);
+		dev_dbg(i2c->dev, "%s: scp is awake, sleep_stat=0x%x, count=%d\n",
+			__func__, SCP_SLEEP_STAT, scp_wake.count);
 		ret = 0;
 	} else {
-		dev_dbg(i2c->dev, "scp wake count value invalid\n");
+		dev_info(i2c->dev, "%s: scp wake count value invalid\n", __func__);
 	}
 
 err:
@@ -1704,19 +1713,21 @@ int scp_wake_release(struct i2c_adapter *adap)
 	spin_lock_irqsave(&scp_wake.lock, flags);
 
 	if (scp_wake.count == 0) {
-		dev_info(i2c->dev, "please request scp first!\n");
+		dev_info(i2c->dev, "%s: please request scp first!\n", __func__);
 		goto err;
 	} else if (scp_wake.count > 0) {
 		scp_wake.count--;
-		dev_dbg(i2c->dev, "scp release count=%d\n", scp_wake.count);
+		dev_dbg(i2c->dev, "%s: scp release count, sleep_stat=0x%x, count=%d\n",
+			__func__, SCP_SLEEP_STAT, scp_wake.count);
 		if (!scp_wake.count) {
 			writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)
 				& ~(scp_wake.wakeup_pre_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
-			dev_dbg(i2c->dev, "scp release success.\n");
+			dev_dbg(i2c->dev, "%s: scp release success, sleep_stat=0x%x, count=%d\n",
+				__func__, SCP_SLEEP_STAT, scp_wake.count);
 		}
 		ret = 0;
 	} else {
-		dev_info(i2c->dev, "scp wake count value invalid\n");
+		dev_info(i2c->dev, "%s: scp wake count value invalid\n", __func__);
 	}
 
 err:
