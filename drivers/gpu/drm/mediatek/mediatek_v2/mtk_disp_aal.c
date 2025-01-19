@@ -1026,6 +1026,7 @@ static bool disp_aal_write_dre3_curve(struct mtk_ddp_comp *comp, bool force_writ
 static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	 bool check_sram)
 {
+	bool result = false;
 	unsigned long flags;
 	int dre_blk_x_num, dre_blk_y_num;
 	unsigned int read_value;
@@ -1077,17 +1078,23 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	dre_blk_y_num = aal_data->primary_data->init_regs.dre_blk_y_num;
 	mtk_drm_trace_begin("read_dre3_hist");
 	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
-		disp_aal_read_dre3_hist(comp, dre_blk_x_num, dre_blk_y_num);
-		aal_data->primary_data->dre30_hist.dre_blk_x_num = dre_blk_x_num;
-		aal_data->primary_data->dre30_hist.dre_blk_y_num = dre_blk_y_num;
-		atomic_set(&aal_data->hist_available, 1);
+		result = disp_aal_read_dre3_hist(comp, dre_blk_x_num, dre_blk_y_num);
+		if (result) {
+			aal_data->primary_data->dre30_hist.dre_blk_x_num = dre_blk_x_num;
+			aal_data->primary_data->dre30_hist.dre_blk_y_num = dre_blk_y_num;
+			atomic_set(&aal_data->hist_available, 1);
+		}
 		if (comp1) {
-			disp_aal_read_dre3_hist(comp1, dre_blk_x_num, dre_blk_y_num);
-			atomic_set(&aal1_data->hist_available, 1);
+			result = disp_aal_read_dre3_hist(comp1, dre_blk_x_num, dre_blk_y_num);
+			if (result)
+				atomic_set(&aal1_data->hist_available, 1);
 		}
 		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
-		AALIRQ_LOG("wake up dre3\n");
-		wake_up_interruptible(&aal_data->primary_data->hist_wq);
+		if (result) {
+			AALIRQ_LOG("wake up dre3\n");
+			wake_up_interruptible(&aal_data->primary_data->hist_wq);
+		} else
+			AALIRQ_LOG("skip wake up dre3\n");
 	} else {
 		AALIRQ_LOG("comp %d hist not retrieved\n", comp->id);
 		CRTC_MMP_MARK(0, aal_dre30_rw, comp->id, 0xEE);
@@ -1285,12 +1292,17 @@ static void disp_aal_dre3_reset_to_linear(struct mtk_ddp_comp *comp, int check)
 	for (blk_y = 0; blk_y < dre_blk_y_num; blk_y++) {
 		for (blk_x = 0; blk_x < dre_blk_x_num; blk_x++) {
 			/* write each block dre curve */
-			if (!disp_aal_dre3_write_linear_curve(aal_data, dre3_gain, blk_x, blk_y, dre_blk_x_num, check))
-				break;
+			if (!disp_aal_dre3_write_linear_curve(aal_data,
+				dre3_gain, blk_x, blk_y, dre_blk_x_num, check)) {
+				AALERR("%s write_linear_curve error\n");
+				return;
+			}
 		}
 	}
 	/* write each block dre curve last point */
-	disp_aal_dre3_write_linear_curve16(aal_data, dre3_gain, dre_blk_x_num, dre_blk_y_num, check);
+	if (!disp_aal_dre3_write_linear_curve16(aal_data,
+		dre3_gain, dre_blk_x_num, dre_blk_y_num, check))
+		AALERR("%s write_linear_curve16 error\n");
 }
 
 static void disp_aal_init_dre3_curve(struct mtk_ddp_comp *comp)
