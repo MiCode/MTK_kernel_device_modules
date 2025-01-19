@@ -918,6 +918,8 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 		dma_sync_sg_for_cpu(dev, sgt_tmp->sgl, sgt_tmp->nents, direction);
 	} else {
 		mtk_v4l2_debug(0, "direction %d not correct\n", direction);
+		sg_free_table(sgt_tmp);
+		kfree(sgt_tmp);
 		return -1;
 	}
 	mtk_v4l2_debug(8, "flush nents %d total nents %d\n",
