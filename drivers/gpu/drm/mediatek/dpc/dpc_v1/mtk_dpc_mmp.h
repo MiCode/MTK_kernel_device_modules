@@ -18,11 +18,21 @@ static inline void dpc_v1_mmp_init(void) {}
 #define dpc_mmp(event, flag, v1, v2) \
 	mmprofile_log_ex(dpc_v1_mmp_get_event()->event, flag, v1, v2)
 
+#define MTK_DPC_UPDATE_MMP_RANGE(tag, cnt, data0, data1) \
+{ \
+	if (cnt == 0) \
+		dpc_mmp(tag, MMPROFILE_FLAG_END, data0, data1); \
+	else if (cnt == 1) \
+		dpc_mmp(tag, MMPROFILE_FLAG_START, data0, data1); \
+	else if (cnt > 1)\
+		dpc_mmp(tag, MMPROFILE_FLAG_PULSE, data0, data1); \
+}
+
 struct dpc_v1_mmp_events_t {
 	mmp_event dpc;
 	mmp_event group;
-	mmp_event disp_group;
-	mmp_event mml_group;
+	mmp_event disp_group_auto;
+	mmp_event mml_group_auto;
 	mmp_event dt;
 	mmp_event disp_dt;
 	mmp_event mml_dt;
@@ -52,7 +62,8 @@ struct dpc_v1_mmp_events_t {
 	// mmp_event mtcmos_ovl1;
 	// mmp_event mtcmos_disp0;
 	mmp_event mtcmos_mml1;
-	mmp_event mtcmos_vote;
+	mmp_event disp_mtcmos_auto;
+	mmp_event mml_mtcmos_auto;
 	mmp_event ovl0_vote;
 	mmp_event disp1_vote;
 	mmp_event mml1_vote;

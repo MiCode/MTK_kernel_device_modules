@@ -26,8 +26,8 @@ void dpc_v1_mmp_init(void)
 	folder = mmprofile_register_event(MMP_ROOT_EVENT, "DPC");
 	dpc_v1_mmp_events.dpc = folder;
 	dpc_v1_mmp_events.group = mmprofile_register_event(folder, "group");
-	dpc_v1_mmp_events.disp_group = mmprofile_register_event(dpc_v1_mmp_events.group, "disp_group");
-	dpc_v1_mmp_events.mml_group = mmprofile_register_event(dpc_v1_mmp_events.group, "mml_group");
+	dpc_v1_mmp_events.disp_group_auto = mmprofile_register_event(dpc_v1_mmp_events.group, "disp_group_auto");
+	dpc_v1_mmp_events.mml_group_auto = mmprofile_register_event(dpc_v1_mmp_events.group, "mml_group_auto");
 	dpc_v1_mmp_events.dt = mmprofile_register_event(folder, "dt");
 	dpc_v1_mmp_events.disp_dt = mmprofile_register_event(dpc_v1_mmp_events.dt, "disp_dt");
 	dpc_v1_mmp_events.mml_dt = mmprofile_register_event(dpc_v1_mmp_events.dt, "mml_dt");
@@ -40,10 +40,11 @@ void dpc_v1_mmp_init(void)
 	dpc_v1_mmp_events.cpu_vote = mmprofile_register_event(dpc_v1_mmp_events.vlp_vote, "cpu_vote");
 	dpc_v1_mmp_events.gce_vote = mmprofile_register_event(dpc_v1_mmp_events.vlp_vote, "gce_vote");
 	dpc_v1_mmp_events.skip_vote = mmprofile_register_event(dpc_v1_mmp_events.vlp_vote, "skip_vote");
-	dpc_v1_mmp_events.mtcmos_vote = mmprofile_register_event(folder, "mtcmos_vote");
-	dpc_v1_mmp_events.ovl0_vote = mmprofile_register_event(dpc_v1_mmp_events.mtcmos_vote, "ovl0_vote");
-	dpc_v1_mmp_events.disp1_vote = mmprofile_register_event(dpc_v1_mmp_events.mtcmos_vote, "disp1_vote");
-	dpc_v1_mmp_events.mml1_vote = mmprofile_register_event(dpc_v1_mmp_events.mtcmos_vote, "mml1_vote");
+	dpc_v1_mmp_events.disp_mtcmos_auto = mmprofile_register_event(folder, "disp_mtcmos_auto");
+	dpc_v1_mmp_events.mml_mtcmos_auto = mmprofile_register_event(folder, "mml_mtcmos_auto");
+	dpc_v1_mmp_events.ovl0_vote = mmprofile_register_event(dpc_v1_mmp_events.disp_mtcmos_auto, "ovl0_vote");
+	dpc_v1_mmp_events.disp1_vote = mmprofile_register_event(dpc_v1_mmp_events.disp_mtcmos_auto, "disp1_vote");
+	dpc_v1_mmp_events.mml1_vote = mmprofile_register_event(dpc_v1_mmp_events.mml_mtcmos_auto, "mml1_vote");
 
 	dpc_v1_mmp_events.mml_sof = mmprofile_register_event(dpc_v1_mmp_events.mml_irq, "mml_sof");
 	dpc_v1_mmp_events.mml_rrot_done = mmprofile_register_event(dpc_v1_mmp_events.mml_irq, "mml_rrot_done");

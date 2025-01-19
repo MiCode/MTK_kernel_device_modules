@@ -13174,9 +13174,10 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	/* hold wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 
-	if (index != 0)
+	if (index != 0) {
 		if (vdisp_func.vlp_disp_vote)
 			vdisp_func.vlp_disp_vote(DISP_VIDLE_FORCE_KEEP, true);
+	}
 
 	if (mtk_crtc->path_data->is_discrete_path)
 		mtk_crtc->skip_frame = true;
@@ -13892,6 +13893,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		mtk_vidle_enable(true, priv);
+		CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle, 0xb007, 0x0);
 		mtk_vidle_config_ff(false);
 	}
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
@@ -14138,9 +14140,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	if (index >= 0 && index < MAX_CRTC)
 		priv->usage[index] = DISP_DISABLE;
 
-	if (index != 0)
+	if (index != 0) {
 		if (vdisp_func.vlp_disp_vote)
 			vdisp_func.vlp_disp_vote(DISP_VIDLE_FORCE_KEEP, false);
+	}
 
 	/* release wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
@@ -14278,10 +14281,8 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
+				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
@@ -14290,10 +14291,8 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
+				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
 		break;

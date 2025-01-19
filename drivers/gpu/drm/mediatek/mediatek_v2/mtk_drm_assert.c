@@ -418,6 +418,7 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 
 	plane_state->base.crtc = NULL;
 
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	ret = mtk_crtc_gce_flush(crtc, NULL, cmdq_handle, cmdq_handle);
 	if (ret == -1) {
