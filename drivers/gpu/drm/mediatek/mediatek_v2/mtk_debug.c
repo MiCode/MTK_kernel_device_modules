@@ -147,7 +147,7 @@ static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
-int new_dsi = 0;
+int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1};
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -5284,12 +5284,63 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "set_new_dsi:", 12) == 0) {
 		int ret = 0;
 
-		ret = sscanf(opt, "set_new_dsi:%d\n", &new_dsi);
+		ret = sscanf(opt, "set_new_dsi:%d,%d,%d,%d,%d\n",
+			&dsi_cmd_v2_dbg[BACKLIGHT_DBG], &dsi_cmd_v2_dbg[SPR_DBG],
+			&dsi_cmd_v2_dbg[PANEL_INIT_DBG],&dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
+			&dsi_cmd_v2_dbg[ESD_CHECK_DBG]);
 		if (ret <= 0) {
 			DDPPR_ERR("set_new_dsi fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("hc1 debug cmd %d, in1 set_new_dsi, new_dsi=%d, ret=%d\n", __LINE__, new_dsi, ret);
+		DDPMSG("hc1 debug cmd %d, in1 set_new_dsi, new_dsi=%d,%d,%d,%d,%d, ret=%d\n",
+			 __LINE__,
+			dsi_cmd_v2_dbg[BACKLIGHT_DBG], dsi_cmd_v2_dbg[SPR_DBG],
+			dsi_cmd_v2_dbg[PANEL_INIT_DBG], dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
+			dsi_cmd_v2_dbg[ESD_CHECK_DBG], ret);
+	} else if (strncmp(opt, "new_read_ddic:", 14) == 0) {
+		int flags = 0, idx = 0, slot = 0, rx_len = 0, addr = 0;
+		char *rx_buf;
+		int i, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg msg = { 0 };
+
+		ret = sscanf(opt, "new_read_ddic:%x,%d,%d,%d,%d\n", &flags, &slot,
+			&idx, &rx_len, &addr);
+		if (ret <= 0) {
+			DDPPR_ERR("new_read_ddic fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x,ret=%d\n",
+			__LINE__, flags, slot, idx, rx_len, addr, ret);
+
+		msg.rx_buf= vmalloc(rx_len * sizeof(u8));
+		if (!msg.rx_buf) {
+			DDPMSG("hc1 alloc rx_buf fail\n");
+			return;
+		}
+
+		msg.rx_len = rx_len;
+		msg.tx_buf = &addr;
+
+		test_cmd.is_rd = 1;
+		test_cmd.rd_to_slot = slot;
+		test_cmd.slot_idx = idx;
+		test_cmd.read_scn = READ_COMMON_SCN;
+		test_cmd.transfer_mode = PACKET_LP_MODE;
+		test_cmd.cmd_msg = &msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("hc1 in2 new_read_ddic ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+
+		rx_buf = (char *)test_cmd.cmd_msg->rx_buf;
+		for (i = 0; i < rx_len; i++)
+			DDPMSG("hc1 in2 new_read_ddic, rx_data[%d]:0x%x, ret=%d\n", rx_buf[i], ret);
+
+		vfree(msg.rx_buf);
 	}
 }
 

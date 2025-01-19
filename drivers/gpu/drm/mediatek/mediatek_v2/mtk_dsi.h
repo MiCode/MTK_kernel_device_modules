@@ -103,6 +103,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_ltpo_vdo_sq0;
 	bool support_512byte_rx;
 	bool support_bl_at_te;
+	bool dsi_cmd_v2_en;
 	const u32 dsi_rx_trig_sta;
 	const u32 dsi_rx_con;
 	const u32 con_offset;

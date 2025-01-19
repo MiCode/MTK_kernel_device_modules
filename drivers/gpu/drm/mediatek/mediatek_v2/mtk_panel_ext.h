@@ -29,6 +29,8 @@
 struct mtk_dsi;
 struct cmdq_pkt;
 
+#define DSI_CMD_V2
+
 #define MTK_MIPI_DSI_CMD_EXTERNAL				BIT(0)
 #define MTK_MIPI_DSI_CMD_BY_CPU					BIT(1)
 #define MTK_MIPI_DSI_CMD_NEED_LOCK				BIT(2)
@@ -56,12 +58,19 @@ enum packet_transfer_mode {
 	PACKET_MODE_NUM
 };
 
+enum read_ddic_scn {
+	READ_COMMON_SCN,
+	ESD_CHECK_SCN,
+	READ_SCN_NUM,
+};
+
 struct mtk_dsi_cmd_msg {
 	bool is_rd; /* 0:write 1:read */
 	bool is_package;
 	bool rd_to_slot;
 	u32 slot_idx;
 	u32 cmd_num;
+	enum read_ddic_scn read_scn;
 	enum packet_transfer_mode transfer_mode;
 	struct mipi_dsi_msg *cmd_msg;
 };

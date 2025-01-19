@@ -48,6 +48,16 @@ enum MTK_DRM_DEBUG_LOG_SWITCH_OPS {
 	MTK_DRM_IRQ_LOG,
 };
 
+enum MTK_DSI_CMD_V2_SCN_OPS {
+	BACKLIGHT_DBG = 0,
+	SPR_DBG,
+	PANEL_INIT_DBG,
+	MODE_SWITCH_DBG,
+	ESD_CHECK_DBG,
+	PU_DBG,
+	DSI_CMD_V2_SCN_NUM
+};
+
 extern int mtk_disp_hrt_bw_dbg(void);
 
 struct cb_data_store {
