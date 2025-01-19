@@ -1,6 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version",)
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("scpsys_plat.bzl", "define_platform_scpsys_ko")
 
 package(
     default_visibility = [
@@ -72,6 +73,25 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mtk-scpsys",
+    srcs = [
+        "mtk-scpsys.c"
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+    ],
+    hdrs = glob(["*.h", "**/*.h"]),
+    copts = [
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "mtk_tinysys_ipi",
     srcs = [
         "mtk_tinysys_ipi.c"
@@ -107,3 +127,19 @@ ddk_headers (
         hdrs = glob(["**/*.h"]),
         includes = ["include"],
 );
+
+define_platform_scpsys_ko("mt6761")
+define_platform_scpsys_ko("mt6765")
+define_platform_scpsys_ko("mt6768")
+define_platform_scpsys_ko("mt6781")
+define_platform_scpsys_ko("mt6789")
+define_platform_scpsys_ko("mt6833")
+define_platform_scpsys_ko("mt6853")
+define_platform_scpsys_ko("mt6877")
+define_platform_scpsys_ko("mt6886")
+define_platform_scpsys_ko("mt6893")
+define_platform_scpsys_ko("mt6897")
+define_platform_scpsys_ko("mt6899")
+define_platform_scpsys_ko("mt6983")
+define_platform_scpsys_ko("mt6985")
+define_platform_scpsys_ko("mt6989")
