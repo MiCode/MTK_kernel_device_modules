@@ -520,14 +520,16 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		eenv->pd_base_max_util[cpu] = 0;
 		eenv->pd_base_freq[cpu] = 0;
 
-		eenv->dpt_v2_freq[cpu][0] = -1;
-		eenv->dpt_v2_freq[cpu][1] = -1;
-		eenv->dpt_v2_gear_max_freq[cpu][0] = -1;
-		eenv->dpt_v2_gear_max_freq[cpu][1] = -1;
-		eenv->dpt_v2_gear_max_freq_cpu[cpu][0] = -1;
-		eenv->dpt_v2_gear_max_freq_cpu[cpu][1] = -1;
-		eenv->dpt_v2_sratio[cpu][0] = -1;
-		eenv->dpt_v2_sratio[cpu][1] = -1;
+		if (eenv->dpt_v2_support) {
+			eenv->dpt_v2_freq[cpu][0] = -1;
+			eenv->dpt_v2_freq[cpu][1] = -1;
+			eenv->dpt_v2_gear_max_freq[cpu][0] = -1;
+			eenv->dpt_v2_gear_max_freq[cpu][1] = -1;
+			eenv->dpt_v2_gear_max_freq_cpu[cpu][0] = -1;
+			eenv->dpt_v2_gear_max_freq_cpu[cpu][1] = -1;
+			eenv->dpt_v2_sratio[cpu][0] = -1;
+			eenv->dpt_v2_sratio[cpu][1] = -1;
+		}
 	}
 
 	eenv->wl_support = get_eas_dsu_ctrl();
@@ -1584,15 +1586,6 @@ mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask,
 
 	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
 		unsigned long cpu_cap = eenv->local_capacity_of[cpu];
-		// unsigned int margin = get_adaptive_margin(cpu);
-
-		// if (eenv->dpt_v2_support) {
-		// 	int using_uclamp_freq = 0;
-
-		// 	task_util = uclamp_task_util_dpt_v2(p, cpu, &using_uclamp_freq);
-		// 	cpu_cap = DPT_V2_MAX_RUNNING_TIME_LOCAL;
-		// 	// margin = using_uclamp_freq ? NO_MARGIN : margin;
-		// }
 
 		if (!is_vip && (!mtk_available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
 			continue;

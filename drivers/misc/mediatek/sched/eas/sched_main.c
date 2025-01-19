@@ -75,21 +75,6 @@ static inline void sched_asym_cpucapacity_init(void)
 		mtk_sched_asym_cpucapacity = 0;
 }
 
-/*
-static void sched_cfs_util_hook(void *data, struct cfs_rq *cfs_rq)
-{
-	int cpu;
-	if(!is_dpt_v2_support())
-		return;
-
-	if(cfs_rq->tg->parent)
-		return;
-
-	cpu = cpu_of(rq_of(cfs_rq));
-	trace_printk("cpu=%d util_sum=%u util_avg=%lu\n", cpu, cfs_rq->avg.util_sum, cfs_rq->avg.util_avg);
-}
-*/
-
 static void sched_task_util_hook(void *data, struct sched_entity *se)
 {
 	if (!get_eas_hook())
@@ -512,12 +497,6 @@ static void mtk_sched_trace_init(void)
 	ret = register_trace_android_rvh_dequeue_task(sched_queue_task_hook, &dequeue);
 	if (ret)
 		pr_info("register android_rvh_dequeue_task failed!\n");
-
-	/*
-	ret = register_trace_pelt_cfs_tp(sched_cfs_util_hook, NULL);
-	if (ret)
-		pr_info("register sched_cfs_util_hook failed!\n");
-	*/
 
 	ret = register_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	if (ret)
