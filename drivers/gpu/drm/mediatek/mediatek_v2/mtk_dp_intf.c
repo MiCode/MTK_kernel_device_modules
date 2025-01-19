@@ -830,15 +830,21 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 			if(atomic_read(&priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 				dptx_shutdown();
 		}
-		clk_disable_unprepare(dp_intf->hf_fmm_ck);
-		clk_disable_unprepare(dp_intf->hf_fdp_ck);
+
 		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
 		priv = mtk_crtc->base.dev->dev_private;
+		if (priv->data->mmsys_id == MMSYS_MT6991){
+			DPTXMSG("unprepare pixel clks\n");
+			mtk_dp_intf_unprepare_clk();
+		}
+		clk_disable_unprepare(dp_intf->hf_fmm_ck);
+		clk_disable_unprepare(dp_intf->hf_fdp_ck);
 		if (priv->data->mmsys_id == MMSYS_MT6989){
 			clk_disable_unprepare(dp_intf->pclk);
 			clk_disable_unprepare(dp_intf->vcore_pclk);
 		}
 		DPTXMSG("%s:succesed disable dp_intf clock\n", __func__);
+		mdrv_DPTx_put_device();
 	} else
 		DPTXERR("Failed to disable dp_intf clock\n");
 }

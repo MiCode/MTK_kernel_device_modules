@@ -1526,11 +1526,43 @@ void mdrv_DPTx_StopSentSDP(struct mtk_dp *mtk_dp)
 	DPTXFUNC();
 }
 
+void mdrv_DPTx_put_device(void)
+{
+	int pm_ret;
+	void *base;
+
+	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		// control slice(mac->phy)
+		base = ioremap(0x31b50000, 0x100);
+		writel(readl(base + 0x78) & ~(1 << 0), base + 0x78); // Clear bit 0 (reset)
+		writel(readl(base + 0x78) |  (1 << 4), base + 0x78); // set bit 4 to 1 (enable)
+		iounmap(base);
+	}
+	if(g_mtk_dp->shutdown == 0) {
+		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
+		if (pm_ret < 0)
+			DRM_ERROR("Failed to disable power domain: %d\n", pm_ret);
+		else
+			DPTXMSG("%s successfully disable power domain\n", __func__);
+	} else
+		DPTXMSG("thread dptx_shutdown\n");
+	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+		if (g_mtk_dp->priv->dpc_dev) {
+			pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+			DPTXMSG("%s successfully disable dpc\n", __func__);
+		}
+	} else {
+		if (g_mtk_dp->info.bPatternGen)
+			mhal_DPTx_VideoClock(false,
+				g_mtk_dp->info.resolution);
+	}
+
+	mtk_dp_vsvoter_clr(g_mtk_dp);
+}
+
 int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 {
 	int ret = DPTX_NOERR;
-	int pm_ret;
-	void *base;
 
 	if (mtk_dp->training_info.bCableStateChange) {
 		bool ubCurrentHPD = mhal_DPTx_GetHPDPinLevel(mtk_dp);
@@ -1544,6 +1576,12 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			DPTXMSG("HPD_DISCON\n");
 			mdrv_DPTx_VideoMute(mtk_dp, true);
 			mdrv_DPTx_AudioMute(mtk_dp, true);
+			unsigned int mute_delay_ms;
+			mute_delay_ms = drm_mode_vrefresh(&mtk_dp->mode) > 0 ? \
+				((1000/drm_mode_vrefresh(&mtk_dp->mode)/10)+1)*10 : 40;
+			DPTXMSG("%s, fps=%d mute_delay_ms=%d\n", __func__, \
+				drm_mode_vrefresh(&mtk_dp->mode), mute_delay_ms);
+			mdelay(mute_delay_ms);
 
 			if (mtk_dp->bUeventToHwc) {
 				mtk_dp_hotplug_uevent(0);
@@ -1569,34 +1607,8 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 				mhal_DPTx_EnableFEC(mtk_dp, true);
 			mdrv_DPTx_StopSentSDP(mtk_dp);
 			mhal_DPTx_AnalogPowerOnOff(mtk_dp, false);
+			DPTXMSG("%s dptx disabled\n", __func__);
 
-			if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
-				DPTXMSG("unprepare dp clks\n");
-				mtk_dp_intf_unprepare_clk();
-			}
-			DPTXMSG("Power OFF %d", mtk_dp->bPowerOn);
-
-			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
-				// control slice(mac->phy)
-				base = ioremap(0x31b50000, 0x100);
-				writel(readl(base + 0x78) & ~(1 << 0), base + 0x78); // Clear bit 0 (reset)
-				writel(readl(base + 0x78) |  (1 << 4), base + 0x78); // set bit 4 to 1 (enable)
-				iounmap(base);
-			}
-			if(mtk_dp->shutdown == 0) {
-				pm_ret = pm_runtime_put_sync(mtk_dp->dev);
-				if (pm_ret < 0)
-					DRM_ERROR("Failed to disable power domain: %d\n", pm_ret);
-			} else
-				DPTXMSG("thread dptx_shutdown\n");
-			if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
-				if (mtk_dp->priv->dpc_dev)
-					pm_runtime_put_sync(mtk_dp->priv->dpc_dev);
-			} else {
-				if (mtk_dp->info.bPatternGen)
-					mhal_DPTx_VideoClock(false,
-						mtk_dp->info.resolution);
-			}
 			fakecablein = false;
 			fakeres = FAKE_DEFAULT_RES;
 			fakebpc = DP_COLOR_DEPTH_8BIT;
@@ -1610,8 +1622,6 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 				mtk_dp->conn.status
 					= mtk_dp->conn.funcs->detect(&mtk_dp->conn, false);
 			}
-
-			mtk_dp_vsvoter_clr(mtk_dp);
 		}
 	}
 
@@ -3812,6 +3822,7 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 			__func__, mode->hdisplay, mode->vdisplay,
 			drm_mode_vrefresh(mode),
 			mode->clock);
+	mtk_dp->mode = *mode;
 	if (0x1fff > 0 && mode->hdisplay > 0x1fff)
 		return MODE_VIRTUAL_X;
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
