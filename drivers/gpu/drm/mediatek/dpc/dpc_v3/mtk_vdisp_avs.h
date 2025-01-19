@@ -8,11 +8,12 @@
 
 #include <soc/mediatek/mmdvfs_v3.h>
 
+/* todo: port vdisp sram share memory */
 #define VDISP_SHRMEM_BITWISE_IDX 5
 #define VDISP_SHRMEM_BITWISE	(mmdvfs_get_mmup_sram_enable() \
 								? SRAM_VDISP_VAL(VDISP_SHRMEM_BITWISE_IDX) \
 								: MEM_VDISP_AVS_STEP(VDISP_SHRMEM_BITWISE_IDX))
-#define VDISP_SHRMEM_BITWISE_VAL readl(VDISP_SHRMEM_BITWISE)
+#define VDISP_SHRMEM_BITWISE_VAL 0 //readl(VDISP_SHRMEM_BITWISE)
 #define VDISP_AVS_ENABLE_BIT        0
 #define VDISP_AVS_AGING_ENABLE_BIT  1
 #define VDISP_AVS_AGING_ACK_BIT     2
