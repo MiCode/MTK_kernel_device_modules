@@ -17,7 +17,7 @@ status = "okay";
 		wakeup-source;
 		interrupt-controller;
 		interrupt-parent = <&pio>;
-		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
+		interrupts = <24 IRQ_TYPE_LEVEL_LOW>;
 		interrupt-names = "IRQB";
 		mt6360_chg: chg {
 			compatible ="mediatek,mt6360-chg";
