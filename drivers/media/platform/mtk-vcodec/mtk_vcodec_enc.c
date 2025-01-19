@@ -3793,7 +3793,7 @@ static void queue_enc_work(struct mtk_vcodec_ctx *ctx)
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->worker_mq.lock, flags);
-	list_add_tail(&ctx->worker_node, &dev->worker_mq.head);
+	list_add_tail(&ctx->worker_node.node, &dev->worker_mq.head);
 	atomic_inc(&dev->worker_mq.cnt);
 	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
 	wake_up(&dev->worker_mq.wq);
@@ -3801,12 +3801,14 @@ static void queue_enc_work(struct mtk_vcodec_ctx *ctx)
 
 static struct mtk_vcodec_ctx *dequeue_enc_work(struct mtk_vcodec_dev *dev)
 {
+	struct vcodec_work *work;
 	struct mtk_vcodec_ctx *ctx;
 	unsigned long flags;
 
 	spin_lock_irqsave(&dev->worker_mq.lock, flags);
-	ctx = list_entry(dev->worker_mq.head.next, struct mtk_vcodec_ctx, worker_node);
-	list_del(&ctx->worker_node);
+	work = list_entry(dev->worker_mq.head.next, struct vcodec_work, node);
+	ctx = container_of(work, struct mtk_vcodec_ctx, worker_node);
+	list_del(&ctx->worker_node.node);
 	atomic_dec(&dev->worker_mq.cnt);
 	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
 

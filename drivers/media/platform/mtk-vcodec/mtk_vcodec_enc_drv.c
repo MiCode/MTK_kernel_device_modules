@@ -131,7 +131,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->init_lock);
 	mutex_init(&ctx->ipi_use_lock);
 	mutex_init(&ctx->gen_buf_list_lock);
-	INIT_LIST_HEAD(&ctx->worker_node);
+	INIT_LIST_HEAD(&ctx->worker_node.node);
 
 	ctx->type = MTK_INST_ENCODER;
 	ret = mtk_vcodec_enc_ctrls_setup(ctx);

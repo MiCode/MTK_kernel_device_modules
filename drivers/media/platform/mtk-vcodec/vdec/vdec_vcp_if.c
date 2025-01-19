@@ -1772,7 +1772,8 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 			inst->vsi->dec_params.wait_key_frame,
 			inst->vsi->dec_params.operating_rate,
 			inst->vsi->dec_params.decode_error_handle_mode);
-		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+		if (inst->vsi->dec_params.dec_param_change)
+			vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	case SET_PARAM_COMPRESSED_MODE:
 		msg.data[0] = (__u32)(*param_ptr);

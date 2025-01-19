@@ -737,6 +737,9 @@ static int vdec_set_param(unsigned long h_vdec,
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
 		break;
 	case SET_PARAM_DEC_PARAMS:
+		if (inst->vsi->dec_params.dec_param_change)
+			vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
+		break;
 	case SET_PARAM_PUT_FB:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
 		break;

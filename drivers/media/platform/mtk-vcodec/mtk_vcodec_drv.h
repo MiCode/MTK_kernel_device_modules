@@ -624,6 +624,18 @@ struct vdec_check_alive_work_struct {
 	struct mtk_vcodec_dev *dev;
 };
 
+enum vcodec_work_type {
+	VCODEC_WORK_START,
+	VCODEC_WORK_DEC,
+	VCODEC_WORK_ENC,
+};
+
+struct vcodec_work {
+	struct list_head node;
+	struct mtk_vcodec_ctx *ctx;
+	enum vcodec_work_type type;
+};
+
 /**
  * struct mtk_vcodec_ctx - Context (instance) private data.
  *
@@ -726,7 +738,9 @@ struct mtk_vcodec_ctx {
 	unsigned int irq_status;
 
 	struct v4l2_ctrl_handler ctrl_hdl;
-	struct list_head worker_node;
+	struct semaphore start_work_sem;
+	struct vcodec_work start_node;
+	struct vcodec_work worker_node;
 	struct vdec_pic_info last_decoded_picinfo;
 	struct mtk_video_dec_buf *dec_flush_buf;
 	struct mtk_video_enc_buf *enc_flush_buf;
