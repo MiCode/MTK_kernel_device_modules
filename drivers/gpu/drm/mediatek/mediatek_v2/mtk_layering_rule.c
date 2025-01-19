@@ -586,7 +586,7 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 						DISP_HW_OVL_TB, addon_data->hrt_type);
 			else
 				map = ovl_mapping_table_mt6985[addon_data->hrt_type];
-		else if (priv->data->ovl_exdma_rule)
+		else if (l_rule_info.ovl_exdma_rule)
 			if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 				map = get_dynamic_mapping_table(dev, disp_idx,
 						disp_list, DISP_HW_LAYER_TB, addon_data->hrt_type);
@@ -649,6 +649,7 @@ void mtk_layering_rule_init(struct drm_device *dev)
 {
 	struct mtk_drm_private *private = dev->dev_private;
 
+	l_rule_info.ovl_exdma_rule = private->data->ovl_exdma_rule;
 	l_rule_info.primary_fps = 60;
 	l_rule_info.hrt_idx = 0;
 	mtk_register_layering_rule_ops(&l_rule_ops, &l_rule_info);
