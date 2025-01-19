@@ -275,7 +275,8 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 
 		/*get dst_cpu base utilization*/
 		if (cpu == dst_cpu) {
-			unsigned long dpt_v2_cpu_util_base_local, dpt_v2_coef1_util_base_local, dpt_v2_coef2_util_base_local, freq_base;
+			unsigned long dpt_v2_cpu_util_base_local = 0, dpt_v2_coef1_util_base_local = 0;
+			unsigned long dpt_v2_coef2_util_base_local = 0, freq_base = 0;
 
 			mtk_cpu_util_next_dpt_v2(cpu, p, -1, -1, &dpt_v2_cpu_util_base_local,
 				&dpt_v2_coef1_util_base_local, &dpt_v2_coef2_util_base_local);
