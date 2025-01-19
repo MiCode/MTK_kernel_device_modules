@@ -70,6 +70,8 @@ static void slbc_api_wrapper(unsigned int api_id)
 	case SLC_API_REQUEST:
 		if (md_gid < 0) {
 			ret = slbc_gid_request(ID_MD, &md_gid, &slbc_gid_md_data);
+			if (ret == 0 && md_gid < 0)
+				md_gid = 0;
 			string = "slbc gid request";
 		} else
 			string = "slbc gid already request,";
