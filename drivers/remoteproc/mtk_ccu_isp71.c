@@ -593,6 +593,8 @@ static int mtk_ccu_stopx(struct rproc *rproc, bool normal_stop)
 		writel(SYSCTRL_IPC_MAGICNO ^ 3, ccu->ccu_base + MTK_CCU_SPARE_REG24);
 		ret = mtk_ccu_rproc_ipc_send(ccu->pdev, MTK_CCU_FEATURE_SYSCTRL,
 			3, NULL, 0);
+		if (ret)
+			dev_notice(ccu->dev, "stop CCU, IPC failed (%d).\n", ret);
 	}
 
 	mtk_ccu_rproc_ipc_uninit(ccu);
@@ -603,6 +605,8 @@ static int mtk_ccu_stopx(struct rproc *rproc, bool normal_stop)
 #if !defined(SECURE_CCU)
 	ret = mtk_ccu_deallocate_mem(ccu->dev,
 		&ccu->buffer_handle[MTK_CCU_DDR], ccu->smmu_enabled);
+	if (ret)
+		dev_notice(ccu->dev, "CCU deallocate mem error (%d).\n", ret);
 #endif
 
 #if defined(SECURE_CCU)
