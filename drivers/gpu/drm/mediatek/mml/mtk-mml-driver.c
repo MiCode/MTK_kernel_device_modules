@@ -1376,10 +1376,6 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		hrt_bw == mml->port_hrt_bw[comp->sysid][comp->larb_port])
 		goto skip_update;
 
-	/* disable clock will set bw to 0, so skip bw 0 here to reduce mips in config thread */
-	if (!srt_bw && !hrt_bw)
-		goto skip_clear;
-
 	mml_trace_begin("mml_comp%u_bw_%u_%u", comp->id, srt_bw, hrt_bw);
 #ifndef MML_FPGA
 	if (cfg->dpc) {
@@ -1420,8 +1416,6 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 #endif
 	mml_trace_end();
 	updated = true;
-
-skip_clear:
 	mml->port_srt_bw[comp->sysid][comp->larb_port] = srt_bw;
 	mml->port_hrt_bw[comp->sysid][comp->larb_port] = hrt_bw;
 
