@@ -486,6 +486,8 @@ struct gpufreq_shared_status {
 	unsigned int lkg_ht_info_gpu;
 	unsigned int lkg_ht_info_stack;
 	unsigned int lkg_ht_info_sram;
+	unsigned int dac_low_vgpu;
+	unsigned int dac_low_vstack;
 	unsigned int cur_ceiling;
 	unsigned int cur_floor;
 	unsigned int cur_c_limiter;
