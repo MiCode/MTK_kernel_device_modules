@@ -71,6 +71,7 @@
 	#define DISP_BLD_OUT_PROC				REG_FLD_MSB_LSB(4, 4)
 	#define DISP_BLD_OUT_NEXT_LAYER			REG_FLD_MSB_LSB(5, 5)
 	#define DISP_OUTPUT_INTERLACE			BIT(16)
+#define DISP_REG_OVL_BLD_RELAY_MODE_OPT		(0x001CUL)
 #define DISP_REG_OVL_BLD_EN				(0x0020UL)
 	#define DISP_OVL_EN						BIT(0)
 	#define DISP_OVL_FORCE_RELAY_MODE		BIT(4)
@@ -533,6 +534,8 @@ static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_
 #endif
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
 		DISP_OVL_EN, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_BLD_RELAY_MODE_OPT, 0x1, ~0);
 }
 
 static void mtk_ovl_blender_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -550,6 +553,8 @@ static void mtk_ovl_blender_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
 		       DISP_OVL_EN, DISP_OVL_EN);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_BLD_RELAY_MODE_OPT, 0x1, ~0);
 
 	/**
 	 * cmdq_pkt_write(handle, comp->cmdq_base,

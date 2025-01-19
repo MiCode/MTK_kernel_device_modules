@@ -546,6 +546,13 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 			value = mtk_ddp_exdma_mout_MT6991(comp->id, DDP_COMPONENT_OVL0_MDP_RSZ0, &addr);
 		else
 			value = mtk_ddp_exdma_mout_MT6991(comp->id, DDP_COMPONENT_OVL0_EXDMA_OUT_CB3, &addr);
+	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if (rpo_flag)
+			value = mtk_ddp_exdma_mout_MT6993(comp->id, DDP_COMPONENT_OVL0_MDP_RSZ0,
+				&addr);
+		else
+			value = mtk_ddp_exdma_mout_MT6993(comp->id, DDP_COMPONENT_OVL0_EXDMA_OUT_CB3,
+				&addr);
 	}
 
 	if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
@@ -563,7 +570,12 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		value = mtk_ddp_exdma_mout_MT6991(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
-		value_rsz = mtk_ddp_exdma_mout_MT6991(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender, &addr_rsz);
+		value_rsz = mtk_ddp_exdma_mout_MT6991(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender,
+			&addr_rsz);
+	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+		value = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
+		value_rsz = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender,
+			&addr_rsz);
 	}
 
 	if (value >= 0 && config_regs_pa > 0) {
@@ -613,25 +625,19 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 			else
 				config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL1_EXDMA2) {
+			mtk_drm_crtc_rsz_exdma_ovl_path(mtk_crtc, comp, blender_id,
+				cmdq_handle, reset_flag, rpo_flag);
+			goto check_reset;
+		} else {
+			value = mtk_ddp_exdma_mout_MT6993(comp->id, next_blender, &addr);
+			if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
+				config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
+			else
+				config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
+		}
 	}
-	// need to fix me, if not, 6993 will be failed
-	/*else if (priv->data->mmsys_id == MMSYS_MT6993) {
-		if (crtc_id == 0)
-			next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
-		else if (crtc_id == 1)
-			next_blender = dual_comp_blender_map_mt6993(comp->id);
-		else if (crtc_id == 2)
-			next_blender = dual_comp_blender_map_mt6993(comp->id);
-		else if (crtc_id == 3)
-			next_blender = DDP_COMPONENT_OVL1_BLENDER8 + plane_index;
-
-		value = mtk_ddp_exdma_mout_MT6993(comp->id, next_blender, &addr);
-
-		if (comp->id > DDP_COMPONENT_OVL1_EXDMA7)
-			config_regs_pa = mtk_crtc->ovlsys2_regs_pa;
-		else if (comp->id > DDP_COMPONENT_OVL_EXDMA7)
-			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
-	}*/
 
 #ifndef DRM_CMDQ_DISABLE
 	if (value >= 0 && config_regs_pa > 0) {
@@ -705,6 +711,24 @@ void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 
 		value = mtk_ddp_exdma_mout_MT6991(comp->id, out_proc, &addr);
+	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if (crtc_id == 0)
+			out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
+		else if  (crtc_id == 1)
+			out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
+		else if  (crtc_id == 2)
+			out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
+		else if  (crtc_id == 3)
+			out_proc = DDP_COMPONENT_OVL1_OUTPROC4;
+		else
+			out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
+
+		if (comp->id < DDP_COMPONENT_OVL1_BLENDER0)
+			config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
+		else
+			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
+
+		value = mtk_ddp_exdma_mout_MT6993(comp->id, out_proc, &addr);
 	}
 
 	if(!mtk_crtc->last_blender) {

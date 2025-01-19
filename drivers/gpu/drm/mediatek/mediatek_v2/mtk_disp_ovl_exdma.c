@@ -2663,6 +2663,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (blender_id)
 		mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, blender_id, handle, false, rpo_check_flag);
+	else
+		mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, comp->bind_comp->id, handle, false,
+			rpo_check_flag);
 #endif
 
 	mtk_ovl_color_manage(comp, idx, state, handle);

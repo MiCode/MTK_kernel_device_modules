@@ -2893,7 +2893,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 				return DDP_COMPONENT_OVL1_2L;
 			} else
 				return DDP_COMPONENT_OVL2_2L;
-		} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		} else if (priv->data->mmsys_id == MMSYS_MT6991 ||
+					priv->data->mmsys_id == MMSYS_MT6993) {
 			return DDP_COMPONENT_OVL_EXDMA2;
 		} else {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
@@ -3017,7 +3018,8 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	/* need align with mtk_crtc_get_plane_comp_id */
 
 	if (disp_idx == 0) {
-		if (priv->data->mmsys_id == MMSYS_MT6991) {
+		if (priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993) {
 			int exdma_comp = 0;
 			int first_comp = 0;
 
@@ -3125,7 +3127,8 @@ static int mtk_lye_get_blender_comp_id(int disp_idx, int layer_idx,
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	if (disp_idx == 0) {
-		if (priv->data->mmsys_id == MMSYS_MT6991) {
+		if (priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993) {
 			int bld_comp = 0;
 
 			if (layer_idx < (DISP_BLENDER_LAYER_LIMIT + blender_lye))
@@ -3386,7 +3389,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			lyeblob_ids->fbt_gles_tail = disp_info->gles_tail[HRT_PRIMARY];
 		}
 	}
-	DDPINFO("layer_num = %d\n",disp_info->layer_num[idx]);
+	DDPMSG("layer_num = %d\n",disp_info->layer_num[idx]);
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 
 		layer_info = &disp_info->input_config[idx][i];
@@ -4320,7 +4323,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 
 		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
 			(private->data->mmsys_id != MMSYS_MT6897)
-			&& (private->data->mmsys_id != MMSYS_MT6991))
+			&& (private->data->mmsys_id != MMSYS_MT6991)
+			&& (private->data->mmsys_id != MMSYS_MT6993))
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)
@@ -4989,6 +4993,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	if (set_disp_info(disp_info_user, debug_mode)) {
 		DRM_MMP_MARK(layering, 0, 2);
 		DRM_MMP_EVENT_END(layering, 0, 0);
+		DDPMSG("set_disp_info fail\n");
 		return -EFAULT;
 	}
 
@@ -4998,7 +5003,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	DDPMSG("[Input data]\n");
 	dump_disp_info(&layering_info, DISP_DEBUG_LEVEL_INFO);
 #endif
-
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info_user->disp_idx;
 	/* fix the hrt bandwidth before the 1st valid input layers
@@ -5226,7 +5230,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 				disp_idx);
 
 	ret = copy_layer_info_to_user(dev, disp_info_user, debug_mode);
-
 	DRM_MMP_EVENT_END(layering, (unsigned long)disp_info_user,
 			(unsigned long)dev);
 
