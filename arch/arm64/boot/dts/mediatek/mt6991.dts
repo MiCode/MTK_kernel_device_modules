@@ -254,7 +254,7 @@
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
 			    cgroup.memory=nosocket,nokmem \
-			    disable_dma32=on arm64.nomte \
+			    disable_dma32=on \
 			    transparent_hugepage=never \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_smmu,pkvm_mkp";
 			    mkp_panic="on";
