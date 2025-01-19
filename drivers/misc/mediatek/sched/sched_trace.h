@@ -13,6 +13,37 @@
 #include <linux/compat.h>
 #include "common.h"
 
+#ifndef _SCHED_TRACE_INFO_
+#define _SCHED_TRACE_INFO_
+struct trace_info_sched_select_task_rq {
+	unsigned int pid;
+	int compat_thread;
+	bool in_irq;
+	int policy;
+	int backup_reason;
+	int prev_cpu;
+	int target_cpu;
+	int task_util;
+	int task_util_est;
+	int boost;
+	unsigned long task_cpu_util;
+	unsigned long task_coef1_util;
+	unsigned long task_coef2_util;
+	unsigned long task_cpu_util_est;
+	unsigned long task_coef1_util_est;
+	unsigned long task_coef2_util_est;
+	int vip_prio;
+	bool latency_sensitive;
+	int sync_flag;
+	long task_mask;
+	long effective_softmask;
+	int cpuctl_grp_id;
+	int cpuset_grp_id;
+	int nr_candidates;
+	unsigned int time_ns;
+};
+#endif
+
 #ifdef CREATE_TRACE_POINTS
 int sched_cgroup_state(struct task_struct *p, int subsys_id)
 {
@@ -342,14 +373,12 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 
 TRACE_EVENT(sched_select_task_rq,
 
-	TP_PROTO(struct task_struct *tsk, bool in_irq,
-		int policy, int backup_reason, int prev_cpu, int target_cpu,
-		int vip_prio, bool prefer, int sync_flag, struct cpumask *effective_softmask),
+	TP_PROTO(struct trace_info_sched_select_task_rq *info),
 
-	TP_ARGS(tsk, in_irq, policy, backup_reason, prev_cpu, target_cpu, vip_prio, prefer, sync_flag, effective_softmask),
+	TP_ARGS(info),
 
 	TP_STRUCT__entry(
-		__field(pid_t, pid)
+		__field(unsigned int, pid)
 		__field(int, compat_thread)
 		__field(bool, in_irq)
 		__field(int, policy)
@@ -366,42 +395,46 @@ TRACE_EVENT(sched_select_task_rq,
 		__field(unsigned long, task_coef1_util_est)
 		__field(unsigned long, task_coef2_util_est)
 		__field(int, vip_prio)
+		__field(bool, latency_sensitive)
+		__field(int, sync_flag)
 		__field(long, task_mask)
 		__field(long, effective_softmask)
-		__field(bool, prefer)
-		__field(int, sync_flag)
 		__field(int, cpuctl_grp_id)
 		__field(int, cpuset_grp_id)
-		),
+		__field(int, nr_candidates)
+		__field(unsigned int, time_ns)
+	),
 
 	TP_fast_assign(
-		__entry->pid        = tsk->pid;
-		__entry->compat_thread = is_compat_thread(task_thread_info(tsk));
-		__entry->in_irq     = in_irq;
-		__entry->policy     = policy;
-		__entry->backup_reason     = backup_reason;
-		__entry->prev_cpu   = prev_cpu;
-		__entry->target_cpu = target_cpu;
-		__entry->task_util      = task_util(tsk);
-		__entry->task_util_est  = task_util_est(tsk);
-		__entry->boost          = uclamp_task_util(tsk);
-		__entry->task_cpu_util = task_util_dpt_v2(tsk, CPU_UTIL);
-		__entry->task_cpu_util_est = task_util_est_dpt_v2(tsk, CPU_UTIL);
-		__entry->task_coef1_util = task_util_dpt_v2(tsk, COEF1_UTIL);
-		__entry->task_coef1_util_est = task_util_est_dpt_v2(tsk, COEF1_UTIL);
-		__entry->task_coef2_util = task_util_dpt_v2(tsk, COEF2_UTIL);
-		__entry->task_coef2_util_est = task_util_est_dpt_v2(tsk, COEF2_UTIL);
-		__entry->vip_prio       = vip_prio;
-		__entry->task_mask      = tsk->cpus_ptr->bits[0];
-		__entry->effective_softmask = effective_softmask->bits[0];
-		__entry->prefer         = prefer;
-		__entry->sync_flag     = sync_flag;
-		__entry->cpuctl_grp_id = sched_cgroup_state(tsk, cpu_cgrp_id);
-		__entry->cpuset_grp_id = sched_cgroup_state(tsk, cpuset_cgrp_id);
-		),
+		__entry->pid                 = info->pid;
+		__entry->compat_thread       = info->compat_thread;
+		__entry->in_irq              = info->in_irq;
+		__entry->policy              = info->policy;
+		__entry->backup_reason       = info->backup_reason;
+		__entry->prev_cpu            = info->prev_cpu;
+		__entry->target_cpu          = info->target_cpu;
+		__entry->task_util           = info->task_util;
+		__entry->task_util_est       = info->task_util_est;
+		__entry->boost               = info->boost;
+		__entry->task_cpu_util       = info->task_cpu_util;
+		__entry->task_cpu_util_est   = info->task_cpu_util_est;
+		__entry->task_coef1_util     = info->task_coef1_util;
+		__entry->task_coef1_util_est = info->task_coef1_util_est;
+		__entry->task_coef2_util     = info->task_coef2_util;
+		__entry->task_coef2_util_est = info->task_coef2_util_est;
+		__entry->vip_prio            = info->vip_prio;
+		__entry->latency_sensitive   = info->latency_sensitive;
+		__entry->sync_flag           = info->sync_flag;
+		__entry->task_mask           = info->task_mask;
+		__entry->effective_softmask  = info->effective_softmask;
+		__entry->cpuctl_grp_id       = info->cpuctl_grp_id;
+		__entry->cpuset_grp_id       = info->cpuset_grp_id;
+		__entry->nr_candidates       = info->nr_candidates;
+		__entry->time_ns             = info->time_ns;
+	),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d nr_candidates=%d time_ns=%u",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,
@@ -421,10 +454,12 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->vip_prio,
 		__entry->task_mask,
 		__entry->effective_softmask,
-		__entry->prefer,
+		__entry->latency_sensitive,
 		__entry->sync_flag,
 		__entry->cpuctl_grp_id,
-		__entry->cpuset_grp_id)
+		__entry->cpuset_grp_id,
+		__entry->nr_candidates,
+		__entry->time_ns)
 );
 
 TRACE_EVENT(sched_effective_mask,

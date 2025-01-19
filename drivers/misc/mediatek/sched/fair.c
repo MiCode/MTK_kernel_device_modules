@@ -2487,6 +2487,7 @@ static DEFINE_PER_CPU(cpumask_t, energy_cpus);
 void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
 					int *new_cpu)
 {
+	u64 start_time_ns = trace_sched_select_task_rq_enabled() ? ktime_get_ns() : 0;
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned long best_delta = ULONG_MAX;
 	int this_cpu = smp_processor_id();
@@ -2504,7 +2505,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	struct cpumask effective_softmask;
 	bool in_irq = in_interrupt();
 	struct cpumask allowed_cpu_mask;
-	int order_index = 0, end_index = 0, weight, reverse = 0;
+	int order_index = 0, end_index = 0, weight = 0, reverse = 0;
 	cpumask_t *candidates;
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
@@ -2838,8 +2839,44 @@ done:
 		trace_sched_find_energy_efficient_cpu(in_irq, best_delta, best_energy_cpu,
 				best_energy_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu);
 	if (trace_sched_select_task_rq_enabled()) {
-		trace_sched_select_task_rq(p, in_irq, select_reason, backup_reason, prev_cpu,
-				*new_cpu, vip_prio, latency_sensitive, sync, &effective_softmask);
+		struct trace_info_sched_select_task_rq info = {
+			.pid                   = p->pid,
+			.compat_thread         = is_compat_thread(task_thread_info(p)),
+			.in_irq                = in_irq,
+			.policy                = select_reason,
+			.backup_reason         = backup_reason,
+			.prev_cpu              = prev_cpu,
+			.target_cpu            = *new_cpu,
+			.task_util             = task_util(p),
+			.task_util_est         = task_util_est(p),
+			.boost                 = uclamp_task_util(p),
+			.task_cpu_util         = 0,
+			.task_cpu_util_est     = 0,
+			.task_coef1_util       = 0,
+			.task_coef1_util_est   = 0,
+			.task_coef2_util       = 0,
+			.task_coef2_util_est   = 0,
+			.vip_prio              = vip_prio,
+			.task_mask             = p->cpus_ptr->bits[0],
+			.effective_softmask    = effective_softmask.bits[0],
+			.latency_sensitive     = latency_sensitive,
+			.sync_flag             = sync,
+			.cpuctl_grp_id         = sched_cgroup_state(p, cpu_cgrp_id),
+			.cpuset_grp_id         = sched_cgroup_state(p, cpuset_cgrp_id),
+			.nr_candidates         = weight,
+			.time_ns               = (unsigned int) (ktime_get_ns() - start_time_ns),
+		};
+
+		if (eenv.dpt_v2_support) {
+			info.task_cpu_util       = task_util_dpt_v2(p, CPU_UTIL);
+			info.task_cpu_util_est   = task_util_est_dpt_v2(p, CPU_UTIL);
+			info.task_coef1_util     = task_util_dpt_v2(p, COEF1_UTIL);
+			info.task_coef1_util_est = task_util_est_dpt_v2(p, COEF1_UTIL);
+			info.task_coef2_util     = task_util_dpt_v2(p, COEF2_UTIL);
+			info.task_coef2_util_est = task_util_est_dpt_v2(p, COEF2_UTIL);
+		}
+
+		trace_sched_select_task_rq(&info);
 	}
 	if (trace_sched_effective_mask_enabled()) {
 		struct soft_affinity_task *sa_task = &((struct mtk_task *)
