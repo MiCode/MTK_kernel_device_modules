@@ -38,6 +38,13 @@ config MTK_QOS_LEGACY
 	will be enabled and set EMI hardware.
 	If unsure, say N.
 
+config MTK_QOS_EVT_TRI_SUPPORT
+	bool "Enable MTK QOS event trigger"
+	help
+	Enable the option to support function in event trigger,
+	which is able to keep qos task polling in sspm.
+	If unsure, say N.
+
 config MTK_QOS_BOUND_LEGACY
 	bool "Enable QoS Bound Feature for Legacy MTK Chips"
 	help
