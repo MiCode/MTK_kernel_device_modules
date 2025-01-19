@@ -75,14 +75,15 @@ static struct cpufreq_mtk *mtk_freq_domain_map[NR_CPUS];
 static bool freq_scaling_disabled = true;
 static bool fdvfs_enabled;
 static bool per_core_enabled;
-static bool init_brake_enabled;
 static void __iomem *qos_base;
 static void __iomem *per_core_base;
 static int control_group_num;
 static int cpu_control_group_map[MAX_CONTROL_GROUPS];
 static int control_group_master[MAX_CONTROL_GROUPS];
 static int perf_domain_master[MAX_PERF_DOMAINS];
-static u32 init_brake[MAX_CONTROL_GROUPS];
+static unsigned int init_brake_policy0;
+static unsigned int init_brake_policy4;
+static unsigned int init_brake_policy7;
 static unsigned int pwr_tbl_ver;
 
 static int look_up_cpu(struct device *cpu_dev)
@@ -326,10 +327,15 @@ static void mtk_cpufreq_register_em(struct cpufreq_policy *policy)
 
 static void mtk_cpufreq_ready(struct cpufreq_policy *policy)
 {
-	if (init_brake_enabled && init_brake[policy->cpu] > 0) {
-		policy->max = init_brake[policy->cpu];
-		pr_notice("%s: cpu=%u, policy->max set to %u\n", __func__,
-				policy->cpu, policy->max);
+	if (policy->cpu == 0 && init_brake_policy0 > 0) {
+		policy->max = init_brake_policy0;
+		pr_notice("%s: cpu=0, policy->max set to %u\n", __func__, policy->max);
+	} else if (policy->cpu == 4 && init_brake_policy4 > 0) {
+		policy->max = init_brake_policy4;
+		pr_notice("%s: cpu=4, policy->max set to %u\n", __func__, policy->max);
+	} else if (policy->cpu == 7 && init_brake_policy7 > 0) {
+		policy->max = init_brake_policy7;
+		pr_notice("%s: cpu=7, policy->max set to %u\n", __func__, policy->max);
 	}
 }
 
@@ -566,26 +572,6 @@ static bool check_per_core_enabled(void)
 	return true;
 }
 
-static bool check_init_brake_enabled(void)
-{
-	struct device_node *cpu_np;
-	int cpu, ret;
-	bool enabled = false;
-
-	for_each_possible_cpu(cpu) {
-		cpu_np = of_cpu_device_node_get(cpu);
-		if (!cpu_np)
-			continue;
-
-		ret = of_property_read_u32(cpu_np, "init-brake", &init_brake[cpu]);
-		of_node_put(cpu_np);
-		if (ret == 0 && init_brake[cpu] > 0)
-			enabled = true;
-	}
-
-	return enabled;
-}
-
 static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 {
 	struct device_node *cpu_np;
@@ -668,9 +654,6 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 			return -ENOMEM;
 		}
 	}
-
-	init_brake_enabled = check_init_brake_enabled();
-	pr_notice("%s: init_brake_enabled=%d\n", __func__, init_brake_enabled);
 
 	usram_res = platform_get_resource(pdev_c, IORESOURCE_MEM, 0);
 	if (!usram_res) {
@@ -772,6 +755,9 @@ static struct platform_driver mtk_cpufreq_hw_driver = {
 	},
 };
 module_platform_driver(mtk_cpufreq_hw_driver);
+module_param(init_brake_policy0, uint, 0444);
+module_param(init_brake_policy4, uint, 0444);
+module_param(init_brake_policy7, uint, 0444);
 
 MODULE_DESCRIPTION("Mediatek cpufreq-hw driver");
 MODULE_LICENSE("GPL");
