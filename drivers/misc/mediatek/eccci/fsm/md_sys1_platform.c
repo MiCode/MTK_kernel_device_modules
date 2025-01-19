@@ -209,13 +209,14 @@ void md_cd_lock_modem_clock_src(int locked)
 	}
 
 	if (locked) {
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
+			MD_REG_AP_MDSRC_SETTLE, md_cd_plat_val_ptr.mdsrc_settle_time,
+			0, 0, 0, 0, &res);
+
 		if (md_cd_plat_val_ptr.mdsrc_settle_time) {
 			settle = md_cd_plat_val_ptr.mdsrc_settle_time;
 			goto settle_time_get_done;
 		}
-
-		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
-			MD_REG_AP_MDSRC_SETTLE, 0, 0, 0, 0, 0, &res);
 
 		CCCI_MEM_LOG_TAG(-1, TAG,
 			"a0 = 0x%lX; a1 = 0x%lX\n", res.a0, res.a1);
