@@ -57,7 +57,11 @@
 			i2c13 = &i2c13;
 			i2c14 = &i2c14;
 			scp-i2c1 = &scp_i2c1;
-			dli-async13 = &ovl_dli_async1;
+			ovl0-dli-async1 = &ovl0_dli_async1;
+			ovl0-dlo-async5 = &ovl0_dlo_async5;
+			dli-async0 = &dli_async0;
+			dlo-async0 = &dlo_async0;
+			dli-async20 = &dli_async20;
 			wdma1 = &disp_wdma1;
 			wdma4 = &disp_wdma4;
 			exdma0 = &disp_ovl0_exdma0;
@@ -9191,11 +9195,39 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32800000 0 0x1000>;
 		};
 
-		ovl_dli_async1: ovl-dli-async1@32800000 {
-			compatible = "mediatek,ovl_dli_async1",
-				"mediatek,mt6991-disp-dli-async";
+		ovl0_dli_async1: ovl0-dli-async1@32800000 {
+			compatible = "mediatek,ovl0_dli_async",
+				"mediatek,mt6991-ovl-0-dli-async";
 			clocks = <&ovlsys_config_clk CLK_OVL_DLI1_DISP>;
 			reg = <0 0x32800000 0 0x1000>;
+		};
+
+		ovl0_dlo_async5: ovl0-dlo-async5@32800000 {
+			compatible = "mediatek,ovl0_dlo_async",
+				"mediatek,mt6991-ovl-0-dlo-async";
+			clocks = <&ovlsys_config_clk CLK_OVL_DLO5_DISP>;
+			reg = <0 0x32800000 0 0x1000>;
+		};
+
+		dli_async0: dli-async0@32000000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6991-disp-dli-async";
+			clocks = <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC0_DISP>;
+			reg = <0 0x32000000 0 0x1000>;
+		};
+
+		dlo_async0: dlo-async0@32000000 {
+			compatible = "mediatek,dlo_async",
+				"mediatek,mt6991-disp-dlo-async";
+			clocks = <&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC0_DISP>;
+			reg = <0 0x32000000 0 0x1000>;
+		};
+
+		dli_async20: dli-async20@32400000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6991-disp-dli-async";
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC20_DISP>;
+			reg = <0 0x32400000 0 0x1000>;
 		};
 
 		disp-mutex0@32820000 {
