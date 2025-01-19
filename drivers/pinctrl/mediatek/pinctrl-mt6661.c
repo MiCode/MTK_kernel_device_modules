@@ -212,7 +212,10 @@ static int mt6661_pinctrl_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id mt6661_pinctrl_of_match[] = {
-	{ .compatible = "mediatek,mt6661-pinctrl", },
+	{ .compatible = "mediatek,mt6661-3-pinctrl", },
+	{ .compatible = "mediatek,mt6661-4-pinctrl", },
+	{ .compatible = "mediatek,mt6661-5-pinctrl", },
+	{ .compatible = "mediatek,mt6661-6-pinctrl", },
 	{ }
 };
 
