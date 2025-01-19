@@ -43,6 +43,7 @@
 #include "slbc_ops.h"
 #include "../mml/mtk-mml.h"
 #include <soc/mediatek/smi.h>
+#include "mtk-smmu-v3.h"
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
@@ -3985,7 +3986,7 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 		layer_addr = read_phy_layer_addr(comp, 0);
 		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
-			domain = iommu_get_domain_for_dev(comp->dev);
+			domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
 			if (domain == NULL) {
 				DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
 				return -1;
