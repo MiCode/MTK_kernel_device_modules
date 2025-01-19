@@ -149,7 +149,7 @@ static int partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
-int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1, 1};
+int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 0, 1, 1, 1, 1};
 
 struct logger_buffer {
 	char **buffer_ptr;
