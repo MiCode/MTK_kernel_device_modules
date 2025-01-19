@@ -27,6 +27,9 @@
 #include <linux/pm_domain.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/arm-smccc.h>
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+#include <linux/libnvdimm.h>
+#endif
 
 #include <iommu_debug.h>
 #include <mt-plat/mtk_irq_mon.h>
@@ -973,11 +976,18 @@ static void cmdq_task_connect_buffer(struct cmdq_task *task,
 		*task_base = (u64)CMDQ_JUMP_BY_OFFSET << 32 | 0x00000001;
 		cmdq_log("%s connect to null change last inst %#018llx to %#018llx connect 0x%p -> NULL",
 			__func__, inst, *task_base, task->pkt);
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+		arch_wb_cache_pmem(task_base, CMDQ_INST_SIZE);
+#endif
 		return;
 	}
 
 	*task_base = (u64)CMDQ_JUMP_BY_PA << 32 |
 		CMDQ_REG_SHIFT_ADDR(next_task->pa_base);
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	arch_wb_cache_pmem(task_base, CMDQ_INST_SIZE);
+#endif
 
 	next_task->pkt->append.pre_last_inst = *task_base;
 	cmdq_log("change last inst %#018llx to %#018llx connect 0x%p -> 0x%p",
@@ -3049,7 +3059,9 @@ int cmdq_iommu_fault_callback(int port, dma_addr_t mva, void *cb_data)
 
 	if (cmdq->err_irq) {
 		cmdq_msg("%s error irq flag:%d", __func__, cmdq->err_irq);
+#if !IS_ENABLED(CONFIG_VHOST_CMDQ)
 		BUG_ON(1);
+#endif
 	}
 
 	return 0;
