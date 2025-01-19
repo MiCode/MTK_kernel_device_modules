@@ -2872,6 +2872,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	int ret;
 	unsigned long idx;
+	int slb_ex_res_thresh = 0;
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		V4L2_TYPE_IS_CAPTURE(q->type) ? "out" : "in");
@@ -2904,8 +2905,16 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->enc_params.framerate_num/ctx->enc_params.framerate_denom, ctx->dev->enc_slb_cpu_used_perf) &&
 		(ctx->dev->enc_slb_cpu_used_perf > 0) && (ctx->enc_params.operationrate < 120));
 
+
+	if (ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_H264) {
+		slb_ex_res_thresh = ctx->dev->enc_slb_extra_res_thresh[0];
+	} else if (ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_HEVC ||
+		ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc == V4L2_PIX_FMT_HEIF) {
+		slb_ex_res_thresh = ctx->dev->enc_slb_extra_res_thresh[1];
+	}
+
 	ctx->enc_params.slbc_request_extra =
-	(isENCODE_REQUEST_SLB_EXTRA(q_data_src->visible_width, q_data_src->visible_height) &&
+	(isENCODE_REQUEST_SLB_EXTRA(q_data_src->visible_width, q_data_src->visible_height, slb_ex_res_thresh) &&
 	(ctx->dev->enc_slb_extra > 0));
 
 	if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_cpu_used_performance == 1)) {
@@ -2945,9 +2954,9 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			if (ctx->sram_data.ref <= 0)
 				atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 		}
-		pr_info("slbc_request_extra %d, 0x%x, 0x%lx, ref %d\n",
+		pr_info("slbc_request_extra %d, 0x%x, 0x%lx, ref %d, slb_ex_res_thresh %d\n",
 		ctx->use_slbc_extra, ctx->slbc_addr_extra, (unsigned long)ctx->sram_data_extra.paddr,
-		ctx->sram_data_extra.ref);
+		ctx->sram_data_extra.ref, slb_ex_res_thresh);
 	}
 
 	memset(&param, 0, sizeof(param));

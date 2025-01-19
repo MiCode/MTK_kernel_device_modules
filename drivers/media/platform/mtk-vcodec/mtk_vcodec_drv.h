@@ -1033,6 +1033,7 @@ struct mtk_vcodec_dev {
 	int enc_slb_cpu_used_perf;
 
 	int enc_slb_extra;
+	int enc_slb_extra_res_thresh[2];
 
 	bool smmu_enabled;
 	struct mutex vp_mode_buf_mutex;

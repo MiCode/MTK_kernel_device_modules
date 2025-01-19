@@ -412,7 +412,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	struct mtk_vcodec_dev *dev;
 	struct video_device *vfd_enc;
 	struct resource *res;
-	int i = 0, reg_index = 0, ret, slb_cpu_used_pref, slb_extra;
+	int i = 0, reg_index = 0, ret, slb_cpu_used_pref, slb_extra, slb_extra_res_thresh;
 	int port_num[MTK_VENC_HW_NUM] = {0};
 	const char *name = NULL;
 	int port_args_num = 0, port_data_len = 0, total_port_num = 0;
@@ -597,6 +597,24 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 
 	dev->enc_slb_extra = slb_extra;
 	pr_info("after get venc-slb-extra %d\n", slb_extra);
+
+	offset = 0;
+	ret = of_property_read_u32_index(pdev->dev.of_node, "venc-slb-extra-resolution-threshold",
+			offset, &slb_extra_res_thresh);
+	if (ret != 0)
+		dev_info(&pdev->dev, "fail venc-slb-extra-resolution-threshold offset %d!", offset);
+
+	dev->enc_slb_extra_res_thresh[offset] = slb_extra_res_thresh;
+	pr_info("after get venc-slb-extra-resolution-threshold %d %d\n", offset, slb_extra_res_thresh);
+
+	offset++;
+	ret = of_property_read_u32_index(pdev->dev.of_node, "venc-slb-extra-resolution-threshold",
+			offset, &slb_extra_res_thresh);
+	if (ret != 0)
+		dev_info(&pdev->dev, "fail venc-slb-extra-resolution-threshold offset %d!", offset);
+
+	dev->enc_slb_extra_res_thresh[offset] = slb_extra_res_thresh;
+	pr_info("after get venc-slb-extra-resolution-threshold %d %d\n", offset, slb_extra_res_thresh);
 
 	venc_acp_enable_check(pdev, dev);
 
