@@ -1233,7 +1233,7 @@ void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
 	init_task_gear_hints(new);
-	init_dpt_v2_task_struct(new);
+	/* init_dpt_v2_task_struct(new); */
 }
 
 void __init_vip_group(struct cgroup_subsys_state *css)

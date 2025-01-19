@@ -2703,6 +2703,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 	init_freq_ceiling_floor();
 
+	/*
 	ret = init_dpt_io();
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
@@ -2710,6 +2711,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_dpt_rq();
 
 	alloc_dpt_v2_linear_table();
+	*/
 
 	if (legacy_api_support_get()) {
 		for (int i = 0; i < MAX_NR_CPUS; i++) {
