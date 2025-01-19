@@ -10634,7 +10634,6 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U)) {
 		if (priv->data->mmsys_id == MMSYS_MT6983 ||
 			priv->data->mmsys_id == MMSYS_MT6768 ||
-			priv->data->mmsys_id == MMSYS_MT6789 ||
 			priv->data->mmsys_id == MMSYS_MT6877 ||
 			priv->data->mmsys_id == MMSYS_MT6761 ||
 			priv->data->mmsys_id == MMSYS_MT6765 ||

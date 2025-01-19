@@ -164,6 +164,8 @@ const struct mtk_dsi_driver_data mt6789_dsi_driver_data = {
 	.need_wait_fifo = true,
 	.dsi_buffer = false,
 //	.dsi_new_trail = false,
+	.buffer_unit = 18,
+	.sram_unit = 18,
 	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 };
