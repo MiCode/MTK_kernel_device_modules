@@ -49,6 +49,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	int gen, ret = 0, retry = 0;
 	static u8 times;
 	u32 val;
+	struct mtk_ipi_device *vcp_ipi_dev;
 
 	if (!mmqos_is_init_done())
 		return -ENODEV;
@@ -87,7 +88,12 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	writel(val | (1 << func), MEM_IPI_SYNC_FUNC);
 	gen = vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_GET_GEN, "mmqos_ipi_task");
 
-	ret = mtk_ipi_send(vcp_get_ipidev(MMQOS_FEATURE_ID), IPI_OUT_MMQOS, IPI_SEND_WAIT,
+	vcp_ipi_dev = vcp_get_ipidev(MMQOS_FEATURE_ID);
+	if (!vcp_ipi_dev) {
+		MMQOS_ERR("vcp_ipi_dev is null");
+		goto ipi_lock_end;
+	}
+	ret = mtk_ipi_send(vcp_ipi_dev, IPI_OUT_MMQOS, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMQOS, IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
