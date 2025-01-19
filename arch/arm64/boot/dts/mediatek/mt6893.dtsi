@@ -1803,7 +1803,7 @@ cpus {
 		emiisu: emiisu {
 			compatible = "mediatek,mt6885-emiisu",
 				     "mediatek,common-emiisu";
-			ctrl-intf = <0>;
+			ctrl-intf = <1>;
 		};
 
 		device_mpu_low@1021a000 {
@@ -1875,6 +1875,7 @@ cpus {
 			clear-md = <0x1fc 0x80000000 1>;
 			ctrl-intf = <1>;
 			slverr = <0>;
+			bypass = <1>;
 		};
 
 		gce: mailbox@10228000 {
