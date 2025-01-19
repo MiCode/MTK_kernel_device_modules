@@ -16,6 +16,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/sched/clock.h>
@@ -331,7 +332,9 @@ static inline int dpc_pm_ctrl(bool en)
 
 		/* read dummy register to make sure it's ready to use */
 		if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0)) {
-			DPCAEE("read mminfra dummy failed");
+			dump_stack();
+			DPCAEE("%s read mminfra dummy failed", __func__);
+			pm_runtime_put_sync(g_priv->pd_dev);
 			return -2;
 		}
 
@@ -379,15 +382,34 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 		return -1;
 	}
 
+	if (g_priv->mminfra_dummy && (readl(g_priv->mminfra_dummy) == 0)) {
+		DPCAEE("%s read mminfra dummy failed", __func__);
+		ret = -2;
+		goto no_pwr_err;
+	}
+
+	if (!dpc_is_power_on()) {
+		DPCERR("disp vcore is not power on");
+		ret = -3;
+		goto no_pwr_err;
+	}
+
 	/* by subsys pm */
 	// ret = readl_poll_timeout_atomic(g_priv->mtcmos_cfg[subsys].chk_va, value, 0xB, 1, 200);
 
 	/* by dpc */
 	ret = readl_poll_timeout_atomic(dpc_base + g_priv->mtcmos_cfg[subsys].cfg + 0x8,
 					value, value & BIT(20), 1, 200);
-	if (ret < 0)
+	if (ret < 0) {
 		DPCERR("wait subsys(%d) power on timeout", subsys);
+		goto no_pwr_err;
+	}
 
+	return ret;
+
+no_pwr_err:
+	dump_stack();
+	udelay(post_vlp_delay);
 	return ret;
 }
 
@@ -1554,16 +1576,23 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user _user)
 		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
 		break;
 	case DISP_VIDLE_USER_PQ:
-		if (g_priv->root_dev) {
-			/* can only be used by USER_PQ, as it will not be used within ISR */
-			pm_runtime_get_sync(g_priv->root_dev);
-			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
-			ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+		if (g_priv->root_dev)
+			pm_runtime_get_sync(g_priv->root_dev); /* make sure power is on, must not in ISR */
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+		if (g_priv->root_dev)
 			pm_runtime_put_sync(g_priv->root_dev);
-		} else
-			udelay(post_vlp_delay);
 		break;
 	case DISP_VIDLE_USER_CRTC:
+		if (g_priv->root_dev)
+			pm_runtime_get_sync(g_priv->root_dev);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
+		ret = mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
+		if (g_priv->root_dev)
+			pm_runtime_put_sync(g_priv->root_dev);
+		break;
 	case DISP_VIDLE_USER_DISP_DPC_CFG:
 	case DISP_VIDLE_USER_DPC_DUMP:
 	case DISP_VIDLE_USER_SMI_DUMP:
@@ -1802,17 +1831,29 @@ static int dpc_vcp_notifier(struct notifier_block *nb, unsigned long vcp_event, 
 }
 #endif
 
+static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long action, void *data)
+{
+	if (g_priv->root_dev) {
+		DPCFUNC("action(%lu)", action);
+		if (action == true) {
+			dpc_vidle_power_keep(DISP_VIDLE_USER_SMI_DUMP);
+			pm_runtime_get_sync(g_priv->root_dev);
+		} else {
+			pm_runtime_put_sync(g_priv->root_dev);
+			dpc_vidle_power_release(DISP_VIDLE_USER_SMI_DUMP);
+		}
+	}
+
+	return NOTIFY_DONE;
+}
 static int dpc_smi_pwr_get(void *data)
 {
-	dpc_vidle_power_keep(DISP_VIDLE_USER_SMI_DUMP);
-	g_priv->vidle_mask_bk = g_priv->vidle_mask;
-	g_priv->vidle_mask = 0;
+	DPCFUNC("+");
 	return 0;
 }
 static int dpc_smi_pwr_put(void *data)
 {
-	g_priv->vidle_mask = g_priv->vidle_mask_bk;
-	dpc_vidle_power_release(DISP_VIDLE_USER_SMI_DUMP);
+	DPCFUNC("-");
 	return 0;
 }
 static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs = {
@@ -2130,8 +2171,11 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 		if (node)
 			pdev = of_find_device_by_node(node);
-		if (pdev)
+		if (pdev) {
 			priv->root_dev = &pdev->dev;
+			if (!pm_runtime_enabled(priv->root_dev))
+				pm_runtime_enable(priv->root_dev);
+		}
 	}
 
 #if defined(DISP_VIDLE_ENABLE)
@@ -2159,6 +2203,9 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		DPCERR("register_pm_notifier failed %d", ret);
 		return ret;
 	}
+
+	priv->smi_nb.notifier_call = dpc_smi_force_on_callback;
+	mtk_smi_dbg_register_force_on_notifier(&priv->smi_nb);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	priv->vcp_nb.notifier_call = dpc_vcp_notifier;
@@ -2194,8 +2241,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		/* set vdisp level */
 		// dpc_dvfs_set(DPC_SUBSYS_DISP, 0x4, true);
 
-		/* set channel bw for larb0 HRT READ */
-		dpc_ch_bw_set(DPC_SUBSYS_DISP, 2, 363 * 16);
+		/* set channel bw for the first HRT_READ layer, which is exdma3 currently */
+		dpc_ch_bw_set(DPC_SUBSYS_DISP, 6, 363 * 16);
 
 		/* set total HRT bw */
 		dpc_hrt_bw_set(DPC_SUBSYS_DISP, 363 * priv->total_hrt_unit, true);

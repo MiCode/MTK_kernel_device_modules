@@ -154,6 +154,7 @@ struct mtk_drm_kernel_pm {
 	atomic_t status;
 	atomic_t wakelock_cnt;
 	wait_queue_head_t wq;
+	bool skip_mminfra_ctrl;
 };
 
 struct lateinit_task {

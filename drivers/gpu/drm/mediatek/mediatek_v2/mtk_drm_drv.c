@@ -6926,10 +6926,15 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		/* mminfra power request */
 		if (priv->dpc_dev) {
-			ret = pm_runtime_resume_and_get(priv->dpc_dev);
-			if (unlikely(ret)) {
-				DDPMSG("request mminfra power failed\n");
-				return ret;
+			if (unlikely(priv->kernel_pm.skip_mminfra_ctrl)) {
+				DDPMSG("%s mminfra is on, skip mminfra get\n", __func__);
+				priv->kernel_pm.skip_mminfra_ctrl = false;
+			} else {
+				ret = pm_runtime_resume_and_get(priv->dpc_dev);
+				if (unlikely(ret)) {
+					DDPMSG("request mminfra power failed\n");
+					return ret;
+				}
 			}
 		}
 
@@ -6977,9 +6982,15 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		pm_runtime_put_sync(priv->mmsys_dev);
 
 		if (priv->dpc_dev) {
-			if (vdisp_func.poll_power_cnt)
-				vdisp_func.poll_power_cnt(0);
-			pm_runtime_put_sync(priv->dpc_dev);
+			if (vdisp_func.poll_power_cnt) {
+				if (vdisp_func.poll_power_cnt(0) == 0)
+					pm_runtime_put_sync(priv->dpc_dev);
+				else {
+					DDPMSG("%s poll mtcmos off timeout, skip mminfra put\n", __func__);
+					priv->kernel_pm.skip_mminfra_ctrl = true;
+				}
+			} else
+				pm_runtime_put_sync(priv->dpc_dev);
 		}
 
 		if (priv->dsi_phy0_dev)
