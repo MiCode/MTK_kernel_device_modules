@@ -1926,12 +1926,12 @@ static void scp_control_feature(enum feature_id id, bool enable)
 
 			if (ret < 0) {
 				pr_notice("[SCP] %s: req_freq fail\n", __func__);
-				WARN_ON(1);
+				/* WARN_ON(1); */
 			}
 
 	} else {
 		pr_notice("[SCP]Not send SCP DVFS request because SCP is down\n");
-		WARN_ON(1);
+		/* WARN_ON(1); */
 	}
 
 	mutex_unlock(&scp_feature_mutex);
