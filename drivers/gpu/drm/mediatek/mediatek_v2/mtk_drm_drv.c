@@ -7048,6 +7048,8 @@ int mtk_drm_suspend_release_fence(struct device *dev)
 			atomic_read(&private->crtc_config[0]), 0, MTK_UNION_FENCE_CONFIG);
 		mtk_release_union_fence(private->session_id[0],
 			atomic_read(&private->crtc_present[0]), 0, MTK_UNION_FENCE_PRESENT);
+		mtk_release_union_fence(private->session_id[0],
+			atomic_read(&private->crtc_frame_done[0]), 0, MTK_UNION_FENCE_FRAME_DONE);
 		return 0;
 	}
 
@@ -9531,6 +9533,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		atomic_set(&private->crtc_present[i], 0);
 		atomic_set(&private->crtc_rel_present[i], 0);
 		atomic_set(&private->crtc_config[i], 0);
+		atomic_set(&private->crtc_frame_done[i], 0);
 	}
 	atomic_set(&private->rollback_all, 0);
 	mtk_drm_svp_init(drm);

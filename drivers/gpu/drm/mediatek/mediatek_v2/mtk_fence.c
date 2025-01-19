@@ -752,6 +752,38 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		CRTC_MMP_MARK(idx, release_present_fence, 0, fence_idx);
 
 		mutex_unlock(&layer_info->sync_lock);
+	} else if (fence_type == MTK_UNION_FENCE_FRAME_DONE) {
+		timeline_id = mtk_fence_get_frame_done_timeline_id(session_id);
+		layer_info = _disp_sync_get_sync_info(session_id, timeline_id);
+
+		if (layer_info == NULL) {
+			DDPFENCE("%s: layer_info is null\n", __func__);
+			return -1;
+		}
+		if (layer_info->timeline == NULL) {
+			DDPFENCE("%s: layer_info->timeline is null\n", __func__);
+			return -1;
+		}
+
+		mutex_lock(&layer_info->sync_lock);
+
+		fence_increment = fence_idx - layer_info->timeline->value;
+		if (fence_increment <= 0) {
+			mutex_unlock(&layer_info->sync_lock);
+			return 0;
+		}
+
+		DDPFENCE("RF+/%s%d/T%d/id%d\n", mtk_fence_session_mode_spy(session_id),
+				MTK_SESSION_DEV(session_id), layer_info->layer_id, fence_idx);
+
+		/* signal fence */
+		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
+		drm_trace_tag_value("release_frame_done_fence", fence_idx);
+
+		/* print mmp log */
+		CRTC_MMP_MARK(idx, release_frame_done_fence, 0, fence_idx);
+
+		mutex_unlock(&layer_info->sync_lock);
 	} else {
 		DDPFENCE("%s: fence_type is invalid\n", __func__);
 		return -1;
@@ -798,6 +830,15 @@ int mtk_fence_get_config_timeline_id(unsigned int session_id)
 {
 	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_PRIMARY)
 		return MTK_TIMELINE_PRIMARY_CONFIG_TIMELINE_ID;
+
+	DDPFENCE("session id is wrong, session=0x%x!!\n", session_id);
+	return -1;
+}
+
+int mtk_fence_get_frame_done_timeline_id(unsigned int session_id)
+{
+	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_PRIMARY)
+		return MTK_TIMELINE_PRIMARY_FRAME_DONE_TIMELINE_ID;
 
 	DDPFENCE("session id is wrong, session=0x%x!!\n", session_id);
 	return -1;

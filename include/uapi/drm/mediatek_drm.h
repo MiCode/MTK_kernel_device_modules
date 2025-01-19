@@ -2115,6 +2115,11 @@ struct mtk_union_fence {
 	/* signal present fence after sof */
 	int32_t present_fence_fd;
 	uint32_t present_fence_idx;
+	/* At cmd mode, signal frame done fence after eof,
+	 * At vdo mode, don't support and set it as -1
+	 */
+	int32_t frame_done_fence_fd;
+	uint32_t frame_done_fence_idx;
 };
 
 #define DRM_IOCTL_MTK_GET_UNION_FENCE DRM_IOWR(DRM_COMMAND_BASE + \

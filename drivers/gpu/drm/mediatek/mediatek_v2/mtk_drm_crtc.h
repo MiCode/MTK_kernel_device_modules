@@ -153,8 +153,10 @@ enum EVENT_TRIGGER_PT {
 	(DISP_SLOT_CUR_CONFIG_FENCE_BASE + (0x4 * (n)))
 #define DISP_SLOT_PRESENT_FENCE(n)                                          \
 	(DISP_SLOT_CUR_CONFIG_FENCE(MAX_PLANE_NR) + (0x4 * (n)))
+#define DISP_SLOT_FRAME_DONE_FENCE(n)                                          \
+	(DISP_SLOT_PRESENT_FENCE(MAX_CRTC) + (0x4 * (n)))
 #define DISP_SLOT_SUBTRACTOR_WHEN_FREE_BASE                                    \
-	(DISP_SLOT_PRESENT_FENCE(MAX_CRTC))
+	(DISP_SLOT_FRAME_DONE_FENCE(MAX_CRTC))
 #define DISP_SLOT_SUBTRACTOR_WHEN_FREE(n)                                      \
 	(DISP_SLOT_SUBTRACTOR_WHEN_FREE_BASE + (0x4 * (n)))
 #define DISP_SLOT_RDMA_FB_IDX (DISP_SLOT_SUBTRACTOR_WHEN_FREE(MAX_PLANE_NR))
@@ -1160,6 +1162,10 @@ struct mtk_drm_crtc {
 	wait_queue_head_t present_fence_wq;
 	struct task_struct *pf_release_thread;
 	atomic_t pf_event;
+
+	wait_queue_head_t frame_done_fence_wq;
+	struct task_struct *frame_done_release_thread;
+	atomic_t frame_done_event;
 
 	wait_queue_head_t sf_present_fence_wq;
 	struct task_struct *sf_pf_release_thread;

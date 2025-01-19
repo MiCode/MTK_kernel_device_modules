@@ -232,6 +232,7 @@ struct mtk_drm_private {
 	ktime_t crtc_last_present_ts[MAX_CRTC];
 	ktime_t crtc_rel_present_ts[MAX_CRTC];
 	atomic_t crtc_config[MAX_CRTC];
+	atomic_t crtc_frame_done[MAX_CRTC];
 
 	struct device_node *mutex_node;
 	struct device *mutex_dev;
