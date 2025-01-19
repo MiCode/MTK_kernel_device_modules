@@ -146,10 +146,10 @@ static unsigned int ppm_get_cpu_temp(enum ppm_cluster cluster)
 	case PPM_CLUSTER_LL:
 	if (s_ppm_thermal_cpuL_temp_cb)
 		temp = s_ppm_thermal_cpuL_temp_cb() / 1000;
-		break;
+	break;
 	default:
 		ppm_err("@%s: invalid cluster id = %d\n", __func__, cluster);
-		break;
+	break;
 	}
 
 	return temp;
