@@ -273,6 +273,9 @@
 #define DPMAIF_UL_DRBSIZE_ADDRH_n(q_num)    \
 	((DPMAIF_PD_UL_CHNL0_CON1) + (0x10 * (q_num)))
 
+#define DPMAIF_UL_DRBSIZE_ADDRH_n_1(q_num)    \
+	((DPMAIF_PD_UL_CHNL0_CON2) + (0x10 * (q_num)))
+
 #define DPMAIF_ULQSAR_n(q_num)      \
 	((DPMAIF_PD_UL_CHNL0_CON0) + (0x10 * (q_num)))
 

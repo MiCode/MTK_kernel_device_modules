@@ -467,6 +467,12 @@ static void drv3_ul_update_drb_base_addr(unsigned char q_num,
 	/* 2 bit 31~0: drb base addr low 32bits, curr: lb_addr */
 	DPMA_WRITE_AO_UL_SRAM(DPMAIF_ULQSAR_n(q_num), lb_addr);
 
+	if (g_plat_inf == 6993) {
+		old_addr = hb_addr;
+		DPMA_WRITE_AO_UL_SRAM(DPMAIF_UL_DRBSIZE_ADDRH_n_1(q_num), old_addr);
+		return;
+	}
+
 	old_addr = DPMA_READ_AO_UL_SRAM(DPMAIF_UL_DRBSIZE_ADDRH_n(q_num));
 
 	old_addr &= ~DPMAIF_DRB_ADDRH_MSK;

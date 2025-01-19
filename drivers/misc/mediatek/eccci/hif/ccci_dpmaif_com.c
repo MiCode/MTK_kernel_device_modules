@@ -3191,6 +3191,9 @@ static int dpmaif_dump_status(unsigned char hif_id,
 	}
 #endif
 
+	if (flag & (1<<31))
+		dpmaif_dump_txq_data(length);
+
 	return 0;
 }
 

@@ -56,6 +56,13 @@ void ccci_drv_dl_set_pit_base_addr(dma_addr_t base_addr)
 	/* 2.4 bit 31~0: pit base addr low 32bits, curr: lb_addr */
 	DPMA_WRITE_PD_DL(DPMAIF_PD_DL_PIT_INIT_CON0, (unsigned int)base_addr);
 
+	if (g_plat_inf == 6993) {
+		value = (unsigned int)(base_addr >> 32);
+		DPMA_WRITE_PD_DL(DPMAIF_PD_DL_PIT_INIT_CON4, value);
+
+		return;
+	}
+
 	value = DPMA_READ_PD_DL(DPMAIF_PD_DL_PIT_INIT_CON1);
 
 	value &= ~(DPMAIF_PIT_ADDRH_MSK);
@@ -135,6 +142,12 @@ void ccci_drv_dl_set_bat_base_addr(dma_addr_t base_addr)
 
 	/* 2.3 bit 31~0: bat base addr low 32bits, curr: lb_addr */
 	DPMA_WRITE_PD_DL(DPMAIF_PD_DL_BAT_INIT_CON0, (unsigned int)base_addr);
+
+	if (g_plat_inf == 6993) {
+		value = (unsigned int)(base_addr >> 32);
+		DPMA_WRITE_PD_DL(DPMAIF_PD_DL_BAT_INIT_CON3, value);
+		return;
+	}
 
 	value = DPMA_READ_PD_DL(DPMAIF_PD_DL_BAT_INIT_CON1);
 
