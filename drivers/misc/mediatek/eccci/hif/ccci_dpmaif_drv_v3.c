@@ -952,6 +952,48 @@ static irqreturn_t drv3_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/* reset flow: drv3_hw_reset_v1_1 + drv3_glitch_prot_off */
+static void drv3_hw_reset_v1_1(void)
+{
+	/* CG on by clk_prepare, glitch on, ao & pd reset set */
+	/* glitch protect on */
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC28, (1<<30));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot on: 0x%x\n", __func__,
+		dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC20));
+	udelay(500);
+
+	/* PD reset set */
+	dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF14, (1<<6));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:PD reset set: 0x%x\n", __func__,
+			dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF10));
+	udelay(500);
+
+	/* AO reset set */
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF14, (1<<4));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:AO reset set: 0x%x\n", __func__,
+			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF10));
+	udelay(500);
+
+	/* AO reset clear */
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF18, (1<<4));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:AO reset clear: 0x%x\n", __func__,
+			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF10));
+	udelay(500);
+
+	/* PD reset clear */
+	dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF18, (1<<6));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:PD reset clear: 0x%x\n", __func__,
+			dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF10));
+}
+
+static void drv3_glitch_prot_off(void)
+{
+	/* CG off by clk_unprepare, glitch off */
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC24, (1<<30));
+	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot off: 0x%x\n", __func__,
+		dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC20));
+}
+
 static void drv3_infra_ao_com_set(void)
 {
 	unsigned int value = 0;
@@ -1107,7 +1149,10 @@ static int drv3_start(void)
 {
 	int ret;
 
-	drv3_infra_ao_com_set();
+	if (g_plat_inf == 6993)
+		drv3_glitch_prot_off();
+	else
+		drv3_infra_ao_com_set();
 	ret = drv3_common_hw_init();
 	if (ret)
 		return ret;
@@ -1733,7 +1778,9 @@ static int drv3_setting_hw_reset_func(void)
 		}
 	}
 
-	if (hw_reset_ver == 1)  // for mt6855&mt6985
+	if (g_plat_inf == 6993) // for 6993, flow flow version 1, just reg && bit changed
+		ops.drv_hw_reset = &drv3_hw_reset_v1_1;
+	else if (hw_reset_ver == 1)  // for mt6855&mt6985&&mt6989&&...
 		ops.drv_hw_reset = &drv3_hw_reset_v1;
 	else  // for other 98 dpmaif chip
 		ops.drv_hw_reset = &drv3_hw_reset;
