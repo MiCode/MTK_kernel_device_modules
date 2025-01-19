@@ -15,7 +15,7 @@
 #include <linux/random.h>
 #include <linux/seq_file.h>
 #include <linux/pm_runtime.h>
-#include <mboot_params.h>
+#include <mt-plat/mboot_params.h>
 
 // MTK common IPI/MBOX
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>

@@ -33,10 +33,8 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
-//#include <mt-plat/sync_write.h>
-//#include <mt-plat/aee.h>
 #include <linux/delay.h>
-#include <aee.h>
+#include <mt-plat/aee.h>
 #include <soc/mediatek/smi.h>
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 #include <linux/soc/mediatek/devapc_public.h>
