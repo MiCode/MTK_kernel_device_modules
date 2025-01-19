@@ -545,6 +545,14 @@ int set_reboot_temperature(int temp)
 }
 EXPORT_SYMBOL(set_reboot_temperature);
 
+int get_apu_temp(unsigned int i)
+{
+	int temp = therm_intf_read_csram_s32(APU_TEMP_ADDR + (i << 2));
+
+	return temp;
+}
+EXPORT_SYMBOL(get_apu_temp);
+
 int set_cold_interrupt_enable_addr(int val)
 {
 	if (!tm_data.sw_ready)

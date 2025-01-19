@@ -15,6 +15,7 @@ ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
 ifneq ($(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT),)
 ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
+ccflags-y += -DGPU_POWERCHK
 endif
 endif
 

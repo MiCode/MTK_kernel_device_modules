@@ -117,6 +117,7 @@
 
 /*CORE0~CORE7,0x188~0x1A4, 0x1A8,0x1AC reserved*/
 #define CPU_CORE_TEMP_MA_TCM_ADDR                 (0x188)
+#define APU_TEMP_ADDR                 (0x300)
 
 struct headroom_info {
 	int temp;
@@ -228,6 +229,7 @@ extern int get_catm_ttj(void);
 extern int get_catm_min_ttj(void);
 extern int get_dsu_temp(void);
 extern int set_reboot_temperature(int temp);
+extern int get_apu_temp(unsigned int i);
 extern int set_cold_interrupt_enable_addr(int val);
 extern int get_dsu_ceiling_freq(void);
 extern int get_cpu_ceiling_freq (int cluster_id);

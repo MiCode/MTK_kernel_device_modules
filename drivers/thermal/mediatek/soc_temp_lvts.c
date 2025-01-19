@@ -202,15 +202,30 @@ static int __used lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool
 	void __iomem *base;
 	struct platform_ops *ops = &lvts_data->ops;
 	struct device *dev = lvts_data->dev;
+	bool is_apu_dts_node = false;
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
+#ifdef GPU_POWERCHK
+		if (lvts_data->gpu_power_ctrl_id)
+			if (i == lvts_data->gpu_power_ctrl_id)
+				if (mfg0_pwr_sta() != MFG0_PWR_ON)
+					continue;
+#endif /* GPU_POWERCHK */
 		for (j = 0; j < tc[i].num_sensor; j++) {
 			if (tc[i].sensor_on_off[j] != SEN_ON)
 				continue;
 
 			s_index = tc[i].sensor_map[j];
 
+			if (lvts_data->ops.read_apu_temp_in_csram) {
+				is_apu_dts_node =
+					lvts_data->ops.read_apu_temp_in_csram(lvts_data,
+					s_index + 1, &current_temp);
+				if (is_apu_dts_node)
+					goto AFTER_GET_CURRENT_TEMP;
+
+			}
 			if (lvts_data->is_tsfdc_n3e_ver)
 				msr_raw = lvts_read_tc_msr_raw(LVTSATP0_0 + base + 0x4 * j);
 			else
@@ -221,6 +236,7 @@ static int __used lvts_read_all_tc_temperature(struct lvts_data *lvts_data, bool
 			else
 				current_temp = ops->lvts_raw_to_temp(&(tc[i].coeff), j, msr_raw);
 
+AFTER_GET_CURRENT_TEMP:
 			if (current_temp > max_temp)
 				max_temp = current_temp;
 
@@ -304,6 +320,16 @@ static int soc_temp_lvts_read_temp(struct thermal_zone_device *tz, int *temperat
 {
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
+	bool is_apu_dts_node;
+
+	if (lvts_data->ops.read_apu_temp_in_csram) {
+		is_apu_dts_node =
+			lvts_data->ops.read_apu_temp_in_csram(lvts_data,
+				lvts_tz->id, temperature);
+		if (is_apu_dts_node)
+			return 0;
+
+	}
 
 	if (lvts_tz->id == 0)
 		*temperature = lvts_read_all_tc_temperature(lvts_data, false);
@@ -7137,6 +7163,23 @@ static void mt6993_update_coef_data(struct lvts_data *lvts_data)
 	}
 }
 
+static bool mt6993_read_apu_temp_in_csram(struct lvts_data *lvts_data,
+	unsigned int tz_id, int *temperature)
+{
+	const unsigned int apu_dts_1st_id = 17;
+	const unsigned int apu_dts_last_id = 20;
+
+	if (tz_id >= apu_dts_1st_id && tz_id <= apu_dts_last_id) {
+		*temperature = get_apu_temp(tz_id - apu_dts_1st_id);
+
+		if (*temperature == CSRAM_DEFAULT_VALUE)
+			*temperature = DISABLE_THERMAL_HW_REBOOT;
+
+		return true;
+	}
+	return false;
+}
+
 static struct tc_settings mt6993_tc_settings[] = {
 	[MT6993_LVTS_MCU_CTRL0] = {
 		.domain_index = MT6993_MCU_DOMAIN,
@@ -7291,6 +7334,7 @@ static struct lvts_data mt6993_lvts_data = {
 		.lvts_raw_to_temp = lvts_raw_to_temp_v2,
 		.check_cal_data = mt6993_check_cal_data,
 		.update_coef_data = mt6993_update_coef_data,
+		.read_apu_temp_in_csram = mt6993_read_apu_temp_in_csram,
 	},
 	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK |
 		FEATURE_CHANGE_REBOOT_TEMP_IN_TFA,

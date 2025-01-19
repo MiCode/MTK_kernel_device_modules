@@ -11,7 +11,7 @@
  */
 #define LK_LVTS_MAGIC (0x0000555)
 #define TFA_LVTS_MAGIC (0x0000777)
-
+#define CSRAM_DEFAULT_VALUE (666666666)
 
 #define DISABLE_THERMAL_HW_REBOOT (-274000)
 
@@ -202,6 +202,8 @@ struct platform_ops {
 	unsigned int (*lvts_temp_to_raw)(struct formula_coeff *co, unsigned int id, int temp);
 	void (*check_cal_data)(struct lvts_data *lvts_data);
 	void (*update_coef_data)(struct lvts_data *lvts_data);
+	bool (*read_apu_temp_in_csram)(struct lvts_data *lvts_data,
+		unsigned int tz_id, int *temperature);
 };
 
 struct power_domain {
