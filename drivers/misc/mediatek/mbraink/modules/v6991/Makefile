@@ -74,7 +74,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/qos/
 
-
+ifeq ($(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK),m)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
+endif
 
 
 subdir-ccflags-y += -Wformat

@@ -15,6 +15,7 @@ int mbraink_memory_init(void)
 {
 	_mbraink_memory_ops.getDdrInfo = NULL;
 	_mbraink_memory_ops.getMdvInfo = NULL;
+	_mbraink_memory_ops.get_ufs_info = NULL;
 	return 0;
 }
 
@@ -22,6 +23,7 @@ int mbraink_memory_deinit(void)
 {
 	_mbraink_memory_ops.getDdrInfo = NULL;
 	_mbraink_memory_ops.getMdvInfo = NULL;
+	_mbraink_memory_ops.get_ufs_info = NULL;
 	return 0;
 }
 
@@ -34,6 +36,7 @@ int register_mbraink_memory_ops(struct mbraink_memory_ops *ops)
 
 	_mbraink_memory_ops.getDdrInfo = ops->getDdrInfo;
 	_mbraink_memory_ops.getMdvInfo = ops->getMdvInfo;
+	_mbraink_memory_ops.get_ufs_info = ops->get_ufs_info;
 
 	return 0;
 }
@@ -45,6 +48,7 @@ int unregister_mbraink_memory_ops(void)
 
 	_mbraink_memory_ops.getDdrInfo = NULL;
 	_mbraink_memory_ops.getMdvInfo = NULL;
+	_mbraink_memory_ops.get_ufs_info = NULL;
 
 	return 0;
 }
@@ -82,6 +86,18 @@ int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo  *pMemoryMdv)
 		ret = _mbraink_memory_ops.getMdvInfo(pMemoryMdv);
 	else
 		pr_info("%s: Do not support ioctl getMdv query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_get_ufs_info(struct mbraink_ufs_info *ufs_info)
+{
+	int ret = 0;
+
+	if (_mbraink_memory_ops.get_ufs_info)
+		ret = _mbraink_memory_ops.get_ufs_info(ufs_info);
+	else
+		pr_info("%s: Do not support ioctl get_ufs_info.\n", __func__);
 
 	return ret;
 }

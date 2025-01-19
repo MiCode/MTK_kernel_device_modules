@@ -30,6 +30,8 @@
 #define MAX_WIFI_RATE_SZ			32
 #define MAX_WIFI_LP_SZ				5
 #define MAX_LPM_STATE_NUM				16
+#define MAX_UFS_INFO_NUM				64
+
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -44,6 +46,7 @@
 #define NETLINK_EVENT_LOW_BATTERY_VOLTAGE_THROTTLE		"NLEvent_LBVThro"
 #define NETLINK_EVENT_BATTERY_OVER_CURRENT_THROTTLE		"NLEvent_BOCThro"
 #define NETLINK_EVENT_PPB_NOTIFY "NLEvent_PPBNotify"
+#define NETLINK_EVENT_UFS_NOTIFY "NLEvent_UFSNotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -546,5 +549,11 @@ struct nbl_trace_buf_trans {
 	u64 cntfrq;
 	void *vcpu_data;
 };
+
+struct mbraink_ufs_info {
+	unsigned char model[MAX_UFS_INFO_NUM];
+	unsigned char rev[MAX_UFS_INFO_NUM];
+};
+
 
 #endif
