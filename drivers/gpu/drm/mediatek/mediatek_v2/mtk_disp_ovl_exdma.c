@@ -1058,7 +1058,8 @@ static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
 		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
 
-	if ((te_duration && te_duration <= 2778) && priv->sw_ver == A0_CHIP)
+	if (priv->data->mmsys_id == MMSYS_MT6991 &&
+		priv->sw_ver == A0_CHIP && (te_duration && te_duration <= 2778))
 		return;
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG1,
@@ -2183,8 +2184,9 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
 		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
 
-	/* 360TE && A0 chip, not enable stash cmd */
-	if ((te_duration && te_duration <= 2778) && priv->sw_ver == A0_CHIP)
+	/* MT6991 && A0 chip && 360TE, not enable stash cmd */
+	if (priv->data->mmsys_id == MMSYS_MT6991 &&
+		priv->sw_ver == A0_CHIP && (te_duration && te_duration <= 2778))
 		return;
 
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
