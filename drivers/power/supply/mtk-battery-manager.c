@@ -148,6 +148,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			sdu->shutdown_status.is_soc_zero_percent = false;
 		} else {
 			/* ui_soc is not zero, check it after 10s */
+			sdu->pre_time[SOC_ZERO_PERCENT] = now;
 			polling++;
 		}
 	}
@@ -173,6 +174,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 				now_current, current_soc);
 		} else {
 			/* ui_soc is not zero, check it after 10s */
+			sdu->pre_time[UISOC_ONE_PERCENT] = now;
 			polling++;
 		}
 
@@ -352,6 +354,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			sdu->pre_time[SOC_ZERO_PERCENT] = 0;
 		} else {
 			/* ui_soc is not zero, check it after 10s */
+			sdu->pre_time[SOC_ZERO_PERCENT] = now;
 			polling++;
 		}
 		pr_debug("%s, !!! SOC_ZERO_PERCENT, vbat1:%d, vbat2:%d, current_gm1_soc:%d, current_gm2_soc:%d\n",
@@ -386,9 +389,11 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			sdu->pre_time[SHUTDOWN_1_TIME] = 0;
 			bm->force_ui_zero = 0;
 			return polling;
+		} else {
+			/* ui_soc is not zero, check it after 10s */
+			sdu->pre_time[UISOC_ONE_PERCENT] = now;
+			polling++;
 		}
-		/* ui_soc is not zero, check it after 10s */
-		polling++;
 
 	}
 
