@@ -552,7 +552,7 @@ int ccu_send_command(struct ccu_cmd_s *pCmd)
 		if (ret == -ERESTARTSYS)
 			LOG_ERR("interrupted as -ERESTARTSYS\n");
 
-		pCmd->status = ret;
+		pCmd->status = (ret == -512) ? CCU_ENG_STATUS_FAILURE : (enum ccu_eng_status_e) ret;
 		goto out;
 	}
 

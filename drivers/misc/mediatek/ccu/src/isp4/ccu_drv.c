@@ -896,8 +896,12 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd, unsigned long arg)
 			ret = copy_from_user(&i2c_arg, (void *)arg,
 				sizeof(struct ccu_i2c_arg));
 
-			ret = ccu_i2c_ctrl(i2c_arg.i2c_write_id,
-				i2c_arg.transfer_len);
+			if (i2c_arg.transfer_len < 0) {
+				ret = -EINVAL;
+			} else {
+				ret = ccu_i2c_ctrl(i2c_arg.i2c_write_id,
+					(unsigned int)i2c_arg.transfer_len);
+			}
 
 			break;
 		}
