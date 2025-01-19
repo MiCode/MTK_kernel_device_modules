@@ -2501,7 +2501,7 @@
 			compatible = "mediatek,mt6789-pwrap";
 			reg = <0 0x10026000 0 0x1000>;
 			reg-names = "pwrap";
-			interrupts = <GIC_SPI 252 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 252 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_PMIC_AP>,
 			<&infracfg_ao_clk CLK_IFRAO_PMIC_TMR>,
 			<&topckgen_clk CLK_TOP_PWRAP_ULPOSC_SEL>,
@@ -3932,7 +3932,7 @@
 					<0 0>, <0 0>;
 
 			/* vccq2 is ext ldo */
-			/* vcc-supply = <&mt6358_vemc_reg>; */
+			vcc-supply = <&mt6358_vemc_reg>;
 
 			resets = <&infracfg_rst 1>, <&infracfg_rst 2>,
 				<&infracfg_rst 3>;
