@@ -13,6 +13,7 @@
 #define ULTRA_PCM_NAME "AUDIO_ULTRA_PCM"
 
 extern const struct snd_soc_component_driver mtk_scp_ultra_pcm_platform;
+extern bool ultra_sema_support;
 
 #endif
 

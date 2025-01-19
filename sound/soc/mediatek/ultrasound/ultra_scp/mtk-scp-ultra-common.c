@@ -17,6 +17,7 @@
 /* don't use this directly if not necessary */
 static struct mtk_base_afe *local_scp_ultra_afe;
 static void *ipi_recv_private;
+bool ultra_sema_support;
 
 int ultra_set_dsp_afe(struct mtk_base_afe *afe)
 {
@@ -329,5 +330,28 @@ int ultra_irq_set_disable_hw_sema(struct mtk_base_afe *afe,
 				      NULL);
 
 	return ret;
+}
+
+int ultra_irq_set_target_hw_sema(int scp_enable)
+{
+	int scp_sem_ret = NOTIFY_STOP;
+
+	if (ultra_sema_support) {
+		scp_sem_ret =
+			notify_3way_semaphore_control(NOTIFIER_SCP_3WAY_SEMAPHORE_GET, NULL);
+		if (scp_sem_ret != NOTIFY_STOP) {
+			pr_info("%s error, sem_ret[%d]\n", __func__, scp_sem_ret);
+			return -EBUSY;
+		}
+		// Set dl&ul irq to ap
+		set_afe_dl_irq_target(scp_enable);
+		set_afe_ul_irq_target(scp_enable);
+		notify_3way_semaphore_control(
+			NOTIFIER_SCP_3WAY_SEMAPHORE_RELEASE, NULL);
+	} else {
+		set_afe_dl_irq_target(scp_enable);
+		set_afe_ul_irq_target(scp_enable);
+	}
+	return 0;
 }
 
