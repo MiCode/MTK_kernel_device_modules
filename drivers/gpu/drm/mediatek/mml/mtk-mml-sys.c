@@ -246,7 +246,8 @@ struct mml_sys {
 	void __iomem *apu_base_va;
 
 	bool pwr_control_by_mminfra;
-	u32 mminfra_all_on_pwr_idx;
+	u32 mminfra_pwr_idx;
+	u32 mminfra_pwr_type;
 };
 
 struct sys_frame_data {
@@ -1337,8 +1338,8 @@ s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
 	mml_mmp(pw_get, MMPROFILE_FLAG_PULSE, 0, 0);
 	if (sys->pwr_control_by_mminfra) {
-		mml_log("%s enable by mminfra_on_off", __func__);
-		ret = mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_MML);
+		mml_msg("%s enable by mminfra_on_off", __func__);
+		ret = mtk_mminfra_on_off(true, sys->mminfra_pwr_idx, sys->mminfra_pwr_type);
 		if (ret)
 			mml_err("%s enable mtk_mminfra_on_off fail ret:%d", __func__, ret);
 	} else {
@@ -1376,8 +1377,8 @@ s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
 	mml_mmp(pw_put, MMPROFILE_FLAG_PULSE, 0, 0);
 	if (sys->pwr_control_by_mminfra) {
-		mml_log("%s disable by mminfra_on_off", __func__);
-		ret = mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_MML);
+		mml_msg("%s disable by mminfra_on_off", __func__);
+		ret = mtk_mminfra_on_off(false, sys->mminfra_pwr_idx, sys->mminfra_pwr_type);
 		if (ret)
 			mml_err("%s disable mtk_mminfra_on_off fail ret:%d", __func__, ret);
 	} else {
@@ -1507,7 +1508,9 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 		if (get_pd_cnt == -ENOENT || get_pd_cnt == 0) {
 			sys->pwr_control_by_mminfra = true;
 			of_property_read_u32(dev->of_node,
-				"mminfra-all-on-pwr-idx", &sys->mminfra_all_on_pwr_idx);
+				"mminfra-pwr-idx", &sys->mminfra_pwr_idx);
+			of_property_read_u32(dev->of_node,
+				"mminfra-pwr-type", &sys->mminfra_pwr_type);
 			mml_log("%s controlled by mminfra", __func__);
 		}
 		else {

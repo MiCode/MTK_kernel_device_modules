@@ -996,7 +996,7 @@ s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 	mml_mmp(pw_get, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	if (pw_by_mminfra) {
-		mml_log("%s mtk_smi_larb_enable", __func__);
+		mml_msg("%s mtk_smi_larb_enable", __func__);
 		ret = mtk_smi_larb_enable(comp->larb_dev);
 		if (ret)
 			mml_err("%s mtk_smi_larb_enable fail ret:%d", __func__, ret);
@@ -1033,7 +1033,7 @@ s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra
 	mml_mmp(pw_put, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	if (pw_by_mminfra) {
-		mml_log("%s mtk_smi_larb_disable", __func__);
+		mml_msg("%s mtk_smi_larb_disable", __func__);
 		ret = mtk_smi_larb_disable(comp->larb_dev);
 		if (ret)
 			mml_err("%s mtk_smi_larb_disable fail ret:%d", __func__, ret);
