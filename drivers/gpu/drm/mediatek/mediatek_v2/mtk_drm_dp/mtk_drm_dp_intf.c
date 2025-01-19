@@ -100,6 +100,7 @@ struct mtk_dpi {
 	struct pinctrl_state *pins_dpi;
 	u32 output_fmt;
 	int refcount;
+	unsigned long long dp_intf_bw;
 };
 
 static inline struct mtk_dpi *bridge_to_dpi(struct drm_bridge *b)
@@ -545,9 +546,8 @@ static void mtk_dpi_set_golden_setting(struct mtk_dpi *dpi, u32 hsize, u32 vsize
 
 	unsigned int rw_times = 0;
 
-	DDPMSG("%s hsizexvsize %dx%d sodi_high %d sodi_low %d\n",
-		__func__,
-		hsize, vsize,
+	DDPMSG("HV:%d x %d, sodi_high:%d, sodi_low:%d\n",
+	       hsize, vsize,
 		dp_buf_sodi_high,
 		dp_buf_sodi_low);
 
@@ -562,7 +562,8 @@ static void mtk_dpi_set_golden_setting(struct mtk_dpi *dpi, u32 hsize, u32 vsize
 
 	mtk_dpi_mask(dpi, DPI_BUF_RW_TIMES, rw_times, 0xffffffff);
 	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
-	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK);
+	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK,
+		     BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK);
 }
 
 static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
@@ -1200,6 +1201,107 @@ int mtk_dp_intf_analysis(struct mtk_ddp_comp *comp)
 
 /*  dp intf api for drm drv end */
 
+/*  dp intf ddp comp functions start */
+static unsigned long long mtk_dpintf_get_frame_hrt_bw_base
+	(struct mtk_drm_crtc *mtk_crtc, struct mtk_dpi *dp_intf)
+{
+	unsigned long long bw_base;
+	int hact;
+	int vtotal;
+	int vact;
+	int vrefresh;
+	u32 bpp = 3;
+
+	/* for the case dpintf not initialize yet, return 1 avoid treat as error */
+	if (!(mtk_crtc && mtk_crtc->base.state))
+		return 1;
+
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	bw_base = div_u64(bw_base * vtotal, vact);
+	bw_base = div_u64(bw_base, 1000);
+
+	if (dp_intf->dp_intf_bw != bw_base) {
+		dp_intf->dp_intf_bw = bw_base;
+		DDPMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, bw_base, bpp);
+	}
+	return bw_base;
+}
+
+static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode
+	(struct mtk_drm_crtc *mtk_crtc, struct mtk_dpi *dp_intf)
+{
+	unsigned long long base_bw;
+	unsigned int hact;
+	unsigned int vtotal;
+	unsigned int vact;
+	unsigned int vrefresh;
+	u32 bpp = 3;
+
+	/* for the case dpintf not initialize yet, return 1 avoid treat as error */
+	if (!(mtk_crtc && mtk_crtc->avail_modes))
+		return 1;
+
+	hact = mtk_crtc->avail_modes->hdisplay;
+	vtotal = mtk_crtc->avail_modes->vtotal;
+	vact = mtk_crtc->avail_modes->vdisplay;
+	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
+	base_bw = (unsigned long long)div_u64(vact * hact * vrefresh * 4, 1000);
+	base_bw = div_u64(base_bw * vtotal, vact);
+	base_bw = div_u64(base_bw, 1000);
+	if (dp_intf->dp_intf_bw != base_bw) {
+		dp_intf->dp_intf_bw = base_bw;
+		DDPMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, base_bw, bpp);
+	}
+
+	return base_bw;
+}
+
+static inline struct mtk_dpi *comp_to_dp_intf(struct mtk_ddp_comp *comp)
+{
+	return container_of(comp, struct mtk_dpi, ddp_comp);
+}
+
+static int mtk_dpintf_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+			     enum mtk_ddp_io_cmd cmd, void *params)
+{
+	struct mtk_dpi *dp_intf = comp_to_dp_intf(comp);
+
+	switch (cmd) {
+	case GET_FRAME_HRT_BW_BY_DATARATE:
+	{
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned long long *base_bw =
+			(unsigned long long *)params;
+
+		*base_bw = mtk_dpintf_get_frame_hrt_bw_base(mtk_crtc, dp_intf);
+	}
+		break;
+	case GET_FRAME_HRT_BW_BY_MODE:
+	{
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned long long *base_bw =
+			(unsigned long long *)params;
+
+		*base_bw = mtk_dpintf_get_frame_hrt_bw_base_by_mode(mtk_crtc, dp_intf);
+	}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static const struct mtk_ddp_comp_funcs mtk_dp_intf_funcs = {
+	.io_cmd = mtk_dpintf_io_cmd,
+};
+
+/*  dp intf ddp comp functions end */
+
 static int mtk_dpi_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1260,7 +1362,7 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 
-	ret = mtk_ddp_comp_init(dev, dev->of_node, &dpi->ddp_comp, comp_id, NULL);
+	ret = mtk_ddp_comp_init(dev, dev->of_node, &dpi->ddp_comp, comp_id, &mtk_dp_intf_funcs);
 	if (ret) {
 		dev_info(dev, "Failed to initialize component: %d\n", ret);
 		return ret;
