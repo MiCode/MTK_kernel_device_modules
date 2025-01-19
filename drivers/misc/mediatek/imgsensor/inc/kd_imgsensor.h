@@ -711,6 +711,7 @@
  ************************************/
 /* SONY */
 #define IMX866RGB_I3C_PID							0x036008660000
+#define S5KHP9SP_I3C_PID							0x02161b730000
 
 
 /************************************
@@ -718,6 +719,7 @@
  ************************************/
 static const struct i3c_device_id mtk_i3c_id_table[] = {
 	PID_TO_I3C_DEV(IMX866RGB_I3C_PID),
+	PID_TO_I3C_DEV(S5KHP9SP_I3C_PID),
 	{ /* Sentinel, Don't remove this. */ },
 };
 
