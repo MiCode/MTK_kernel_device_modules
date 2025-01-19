@@ -286,7 +286,6 @@ static int load_ut_drv(struct TEEC_UUID *uuid, unsigned int flags)
 		IMSG_WARN("TEE is not ready\n");
 		return -EBUSY;
 	}
-
 	mutex_lock(&drv_load_mutex);
 
 	if (!is_context_init) {
@@ -361,7 +360,7 @@ int tz_load_ta_by_str(const char *buf)
 	size_t len = strlen(buf);
 	int res;
 
-	if (len < UUID_STRING_LENGTH) {
+	if (len < UUID_STRING_LENGTH-1) {
 		IMSG_ERROR("bad UUID length, buf '%s' len %zd\n",
 				buf, len);
 		return -EINVAL;
@@ -383,7 +382,7 @@ int tz_load_drv_by_str(const char *buf)
 	size_t len = strlen(buf);
 	int res;
 
-	if (len < UUID_STRING_LENGTH) {
+	if (len < UUID_STRING_LENGTH-1) {
 		IMSG_ERROR("bad UUID length, buf '%s' len %zd\n",
 				buf, len);
 		return -EINVAL;
@@ -406,8 +405,7 @@ static ssize_t load_ut_drv_store(struct device *dev,
 {
 	int ret;
 	struct TEEC_UUID uuid;
-
-	if (len < UUID_STRING_LENGTH) {
+	if (len < UUID_STRING_LENGTH-1) {
 		IMSG_ERROR("bad UUID length, buf '%s' len %zd\n", buf, len);
 		return len;
 	}
@@ -462,7 +460,7 @@ static ssize_t unload_ut_drv_store(struct device *dev,
 	struct TEEC_UUID uuid;
 	int ret;
 
-	if (len < UUID_STRING_LENGTH) {
+	if (len < UUID_STRING_LENGTH-1) {
 		IMSG_ERROR("bad UUID length, buf '%s' len %zd\n", buf, len);
 		return len;
 	}
