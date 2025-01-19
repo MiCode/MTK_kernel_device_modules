@@ -7764,6 +7764,7 @@ int mtk_drm_disp_test_show(struct drm_crtc *crtc, bool enable)
 #else
 	DDPMSG("%s: trigger cmdq\n", __func__);
 	mtk_crtc_hw_block_ready(crtc);
+	CRTC_MMP_MARK(0, set_dirty, TEST_SHOW, __LINE__);
 	mtk_crtc_set_dirty(mtk_crtc);
 #endif
 

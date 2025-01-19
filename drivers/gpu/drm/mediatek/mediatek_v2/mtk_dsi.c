@@ -5357,6 +5357,7 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	 * frame updating and wait for the latest frame done.
 	 */
 	if (new_doze_state && !force_lcm_update) {
+		CRTC_MMP_MARK(0, set_dirty, WAIT_CMD_FRAME_DONE, __LINE__);
 		cmdq_pkt_set_event(handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 		cmdq_pkt_wait_no_clear(handle,
@@ -9749,6 +9750,7 @@ static int mtk_dsi_ddic_handler_by_gce(struct mtk_dsi *dsi,
 	if ((prop & MTK_LCM_DSI_CMD_PROP_ALIGN_FRAME) != 0 &&
 	    (prop & MTK_LCM_DSI_CMD_PROP_READ) == 0) {
 		if (dsi_mode == 0) {
+			CRTC_MMP_MARK(0, set_dirty, DDIC_HANDLER_BY_GCE, __LINE__);
 			cmdq_pkt_set_event(handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 			cmdq_pkt_set_event(handle,
@@ -12914,6 +12916,7 @@ static int mtk_dsi_hotplug_kthread(void *data)
 				mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 					mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
+				CRTC_MMP_MARK(0, set_dirty, HOT_PLUG_THREAD, __LINE__);
 				cmdq_pkt_set_event(cmdq_handle,
 					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 				cmdq_pkt_set_event(cmdq_handle,
@@ -14353,6 +14356,7 @@ int fbconfig_get_esd_check_test(struct drm_crtc *crtc,
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
+		CRTC_MMP_MARK(0, set_dirty, ESD_CHECK_TEST,__LINE__);
 		cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 		cmdq_pkt_set_event(cmdq_handle,
