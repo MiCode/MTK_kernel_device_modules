@@ -1487,6 +1487,9 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 	task_pipe_cur = list_first_entry_or_null(&path_clt->tasks, typeof(*task_pipe_cur),
 		entry_clt);
+	if (task_pipe_cur && task != task_pipe_cur->task) {
+		mml_err("warning: task done job is not the first one in the pipe");
+	}
 	/* find current item which still running */
 	while (task_pipe_cur && (task_pipe_cur->task->done ||
 		task_pipe_cur->task->config->dpc != cfg->dpc)) {
