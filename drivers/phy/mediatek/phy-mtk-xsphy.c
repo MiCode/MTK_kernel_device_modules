@@ -201,6 +201,9 @@
 
 #define SSPXTP_DAIG_LN_RX0_40	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x040)
 
+#define SSPXTP_DAIG_LN_RX0_48   ((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x048)
+#define RG_XTP0_U1_U2_EXIT_EQUAL		BIT(19)
+
 #define SSPXTP_DAIG_LN_RX0_70	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x070)
 #define RG_XTP0_CDR_PPATH_DVN_G2_LTD1	GENMASK(15, 8)
 
@@ -421,6 +424,8 @@ struct xsphy_instance {
 	int tx_lctxcp1;
 	bool u3_rx_fix;
 	bool u3_gen2_hqa;
+	/* u3 lpm */
+	bool u1u2_exit_equal;
 	/* refclk source */
 	bool refclk_sel;
 	/* HWPLL mode setting */
@@ -1645,7 +1650,14 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_08, RG_XTP_LN0_RX_CDR_RESERVE, 0x8);
 	}
 
+	if (inst->u1u2_exit_equal) {
+		dev_info(xsphy->dev, "%s apply u3 lpm u1u2_exit_equal.\n", __func__);
+		/* set U1 exit equal to U2 exit */
+		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_RX0_48, RG_XTP0_U1_U2_EXIT_EQUAL);
+	}
+
 	dev_info(xsphy->dev, "%s(%d)\n", __func__, inst->index);
+
 }
 
 static void u3_phy_instance_power_off(struct mtk_xsphy *xsphy,
@@ -2285,10 +2297,13 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		inst->u3_rx_fix = device_property_read_bool(dev, "mediatek,u3-rx-fix");
 		inst->u3_gen2_hqa = device_property_read_bool(dev, "mediatek,u3-gen2-hqa");
 		inst->u3_sw_efuse = device_property_read_bool(dev, "mediatek,u3-sw-efuse");
+		inst->u1u2_exit_equal = device_property_read_bool(dev, "mediatek,u1u2-exit-equal");
 
 		dev_dbg(dev, "u3-sw-efuse: %d, intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d, u3_gen2_hqa:%d\n",
 			inst->u3_sw_efuse, inst->efuse_intr, inst->efuse_tx_imp,
 			inst->efuse_rx_imp, inst->u3_rx_fix, inst->u3_gen2_hqa);
+
+		dev_dbg(dev, "u1u2_exit_equal: %d", inst->u1u2_exit_equal);
 
 		inst->orientation = 0;
 
