@@ -136,7 +136,7 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
-
+    "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:ddk_src".format(kernel_version),
@@ -176,6 +176,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
 
 mgk_64_kleaf_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:rt4831a".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
@@ -438,7 +439,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/aee/aed/aee_aed.ko",
     "drivers/misc/mediatek/aee/aed/aee_rs.ko",
     "drivers/misc/mediatek/aee/hangdet/aee_hangdet.ko",
-    "drivers/misc/mediatek/aee/mrdump/mrdump.ko",
     "drivers/misc/mediatek/apusys/apusys.ko",
     "drivers/misc/mediatek/apusys/apu_aov.ko",
     "drivers/misc/mediatek/apusys/power/apu_top.ko",

@@ -15,23 +15,23 @@ ifeq ($(CONFIG_MTK_GCOV_KERNEL),y)
 GCOV_PROFILE := y
 endif
 
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
-subdir-ccflags-y += -I$(srctree)/kernel/
-subdir-ccflags-y += -I$(srctree)/drivers/android/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
+#subdir-ccflags-y += -I$(srctree)/kernel/
+#subdir-ccflags-y += -I$(srctree)/drivers/android/
 
 ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)
-obj-$(CONFIG_MTK_AEE_IPANIC)	+= mrdump.o
+#obj-$(CONFIG_MTK_AEE_IPANIC)	+= mrdump.o
 
-mrdump-y := \
-	mboot_params.o \
-	mrdump_control.o \
-	mrdump_mini.o \
-	mrdump_panic.o \
-	mrdump_helper.o
+#mrdump-y := \
+#	mboot_params.o \
+#	mrdump_control.o \
+#	mrdump_mini.o \
+#	mrdump_panic.o \
+#	mrdump_helper.o
 
-mrdump-$(CONFIG_ARM) += mrdump_arm.o
+#mrdump-$(CONFIG_ARM) += mrdump_arm.o
 
-mrdump-$(CONFIG_ARM64) += \
-	mrdump_arm64.o
+#mrdump-$(CONFIG_ARM64) += \
+#	mrdump_arm64.o
 
 KASAN_SANITIZE := n
