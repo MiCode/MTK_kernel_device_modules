@@ -2114,14 +2114,8 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 				feedback_host_awake_tx_done[1] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
 			dev_host_awake_sent_sta[1] = STA0_GET_dev_host_awake_sta(STA0_ADDR);
 			sent_sta = ((dev_host_awake_sent_sta[1] & (0x1 << dev_index)) >> dev_index);
-			if (((check_irq == 0) || (feedback_host_awake_tx_done[1] == 1)) && (sent_sta == set)) {
-				len = 0;
-				ret = snprintf(result + len, 128 - len,
-					"%s_%d", "PASS", retry);
-				if (ret > 0)
-					len += ret;
-				break;
-			}
+			if (((check_irq == 0) || (feedback_host_awake_tx_done[1] == 1)) && (sent_sta == set))
+				return 0;
 			usleep_range(50, 60);
 		}
 
