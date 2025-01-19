@@ -142,38 +142,56 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &disp_ssc0_smi_2x1_sub_comm {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &disp_ssc1_smi_2x1_sub_comm {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &mdp_ssc4_smi_2x1_sub_comm {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &mdp_ssc5_smi_2x1_sub_comm {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &mmsram_smi_2x1_sub_comm3 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &mmsram_smi_2x1_sub_comm4 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &smi_disp_common {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &smi_mdp_common {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
 &smi_sysram_common {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
 
