@@ -8965,7 +8965,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
 				<1>, /*MTK_DRM_OPT_LTPO_VM*/
 				<1>, /*MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE*/
-				<0>; /*MTK_DRM_OPT_UNION_FENCE*/
+				<1>; /*MTK_DRM_OPT_UNION_FENCE*/
 
 		};
 
