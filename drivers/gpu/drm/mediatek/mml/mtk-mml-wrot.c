@@ -791,7 +791,7 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	out_crop.left = 0;
 	out_crop.top = 0;
-	if (wrot->data->yuv_pending) {
+	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
 		out_crop.width = wrot_frm->compose.width;
 		out_crop.height = wrot_frm->compose.height;
 		if (MML_FMT_H_SUBSAMPLE(dest->data.format) &&
@@ -948,8 +948,8 @@ static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->wrot.enable_x_crop = wrot_frm->en_x_crop;
 	data->wrot.enable_y_crop = wrot_frm->en_y_crop;
 	data->wrot.crop = wrot_frm->out_crop;
-	data->wrot.yuv_pending = wrot->data->yuv_pending;
-	if (wrot->data->yuv_pending) {
+	data->wrot.yuv_pending = (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING);
+	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
 		func->full_size_x_in = wrot_frm->compose.width;
 		func->full_size_y_in = wrot_frm->compose.height;
 		func->full_size_x_out = wrot_frm->compose.width;
@@ -2171,7 +2171,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* round up target footprint size for internal buffer and output */
-	if (wrot->data->yuv_pending) {
+	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 			if (MML_FMT_H_SUBSAMPLE(dest->data.format)) {
 				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);

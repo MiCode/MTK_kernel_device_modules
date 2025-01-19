@@ -233,7 +233,7 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 	    crop->r.height == in_h && in_h == frame_out->height &&
 	    crop->x_sub_px == 0 && crop->y_sub_px == 0 &&
 	    crop->w_sub_px == 0 && crop->h_sub_px == 0)
-		return rsz->data->wrot_pending ||
+		return (rsz->data->wrot_pending && cfg->info.mode != MML_MODE_DDP_ADDON) ||
 			(dest->data.width == dest->compose.width &&
 			dest->data.height == dest->compose.height);
 	return false;
@@ -404,7 +404,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->full_size_x_in = frame_in->width;
 		func->full_size_y_in = frame_in->height;
 	}
-	if (rsz->data->wrot_pending) {
+	if (rsz->data->wrot_pending && cfg->info.mode != MML_MODE_DDP_ADDON) {
 		func->full_size_x_out = frame_out->width;
 		func->full_size_y_out = frame_out->height;
 	} else if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
