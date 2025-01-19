@@ -700,21 +700,6 @@ unsigned int get_uclamp_min_ls(void)
 }
 EXPORT_SYMBOL_GPL(get_uclamp_min_ls);
 
-static void wakeup_preempt_clone(struct rq *rq, struct task_struct *p, int flags)
-{
-	if (p->sched_class == rq->curr->sched_class)
-		rq->curr->sched_class->wakeup_preempt(rq, p, flags);
-	else if (sched_class_above(p->sched_class, rq->curr->sched_class))
-		resched_curr(rq);
-
-	/*
-	 * A queue event has occurred, and we're going to schedule.  In
-	 * this case, we can save a useless back to back clock update.
-	 */
-	if (task_on_rq_queued(rq->curr) && test_tsk_need_resched(rq->curr))
-		rq_clock_skip_update(rq);
-}
-
 /*
  * attach_task() -- attach the task detached by detach_task() to its new rq.
  */
@@ -724,7 +709,7 @@ static void attach_task(struct rq *rq, struct task_struct *p)
 
 	BUG_ON(task_rq(p) != rq);
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
-	wakeup_preempt_clone(rq, p, 0);
+	wakeup_preempt(rq, p, 0);
 }
 
 /*
