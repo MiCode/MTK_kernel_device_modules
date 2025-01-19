@@ -14,6 +14,9 @@ struct mtk_disp_wdma_data {
 	unsigned int fifo_size_uv_2plane;
 	unsigned int fifo_size_3plane;
 	unsigned int fifo_size_uv_3plane;
+	unsigned int force_ostdl_bw;
+	unsigned int buf_con1_fld_fifo_pseudo_size;
+	unsigned int buf_con1_fld_fifo_pseudo_size_uv;
 
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);

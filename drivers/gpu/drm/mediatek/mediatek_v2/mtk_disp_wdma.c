@@ -741,7 +741,7 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 	unsigned int fifo;
 	unsigned int factor1 = 4;
 	unsigned int factor2 = 4;
-	unsigned int tmp;
+	unsigned int tmp, field;
 
 	if (gsc->vrefresh == 0 || priv->data->mmsys_id == MMSYS_MT6886)
 		frame_rate = 60;
@@ -826,7 +826,20 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 		break;
 	}
 
-	gs[GS_WDMA_BUF_CON1] += (fifo_size_uv << 10) + fifo_size;
+	field = BUF_CON1_FLD_FIFO_PSEUDO_SIZE;
+	tmp = REG_FLD_VAL(field, fifo_size);
+	if (wdma->info_data->buf_con1_fld_fifo_pseudo_size)
+		field = wdma->info_data->buf_con1_fld_fifo_pseudo_size;
+	fifo_size = REG_FLD_VAL(field, fifo_size);
+
+	field = BUF_CON1_FLD_FIFO_PSEUDO_SIZE_UV;
+	tmp += REG_FLD_VAL(field, fifo_size_uv);
+	if (wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv)
+		field = wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv;
+	fifo_size_uv = REG_FLD_VAL(field, fifo_size_uv);
+
+	tmp += gs[GS_WDMA_BUF_CON1];
+	gs[GS_WDMA_BUF_CON1] += fifo_size_uv + fifo_size;
 
 	/* WDMA_BUF_CON5 */
 	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP);
@@ -1647,15 +1660,17 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 {
 	unsigned int size = 0;
 	unsigned int con = 0;
-	unsigned int bw_base = 1306;
+	unsigned int bw_base;
 	dma_addr_t addr = 0;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
 	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 	int src_w, src_h, clip_w, clip_h, clip_x, clip_y, pitch;
+	int hact, vtotal, vact, vrefresh, bpp;
 	bool is_secure;
 	struct golden_setting_context *gsc;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	resource_size_t mmsys_reg = priv->config_regs_pa;
 
 	comp->fb = addon_config->addon_wdma_config.fb;
@@ -1680,8 +1695,19 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	}
 
 	// WDMA bandwidth setting
-	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-						   &bw_base);
+	if (wdma->info_data->force_ostdl_bw) {
+		bw_base = wdma->info_data->force_ostdl_bw;
+	} else {
+		bpp = mtk_get_format_bpp(comp->fb->format->format);
+		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+		bw_base = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
+		bw_base = div_u64(bw_base, 1000) * 2;
+	}
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
 
@@ -2263,31 +2289,12 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	}
 	case PMQOS_SET_HRT_BW: {
+		unsigned int bw = *(unsigned int *)params;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
-		unsigned long long bw;
-		int hact;
-		int vtotal;
-		int vact;
-		int vrefresh;
-		u32 bpp = 3;
-
-		/* for the case not initialize yet, return 1 avoid treat as error */
-		if (!(mtk_crtc && mtk_crtc->base.state))
-			return 1;
-
-		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		bw = (unsigned long long)div_u64(vact * hact * vrefresh * bpp, 1000);
-		bw = div_u64(bw, 1000) * 2;
 
 		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
-
-		if (wdma->info_data->is_support_ufbc && params)
-			bw = *(unsigned int *)params;
 
 		if (priv->data->respective_ostdl) {
 			if (!IS_ERR(comp->hrt_qos_req))
@@ -2793,6 +2800,9 @@ static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.fifo_size_uv_2plane = PARSE_FROM_DTS,
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
+	.force_ostdl_bw = 7000,
+	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
+	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.sodi_config = mt6989_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6991,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
