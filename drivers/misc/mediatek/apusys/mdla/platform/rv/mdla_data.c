@@ -9,11 +9,22 @@
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/firmware.h>
 
 #include "mdla_cfg_data.h"
+#include "mdla_rv.h"
 
-#define DRAM_CFG0_SIZE 0x400
-#define DRAM_CFG1_SIZE 0xFF00
+#define FW_ELF_NAME   "mdla_firmware.elf"
+#define BOOT_BIN_NAME "mdla_boot.bin"
+#define MAIN_BIN_NAME "mdla_main.bin"
+
+#define BOOT_DATA_MIN_SIZE 128
+#define BOOT_DATA_MAX_SIZE (4 * 1024)
+#define MAIN_DATA_MIN_SIZE (16 * 1024)
+#define MAIN_DATA_MAX_SIZE (256 * 1024)
+
+#define BOOT_DATA_SIZE 0x400
+#define MAIN_DATA_SIZE 0xFF00
 
 enum LOAD_DATA_METHOD {
 	LOAD_NONE,
@@ -25,100 +36,123 @@ enum LOAD_DATA_METHOD {
 
 static int load_data_method;
 
-struct mdla_data {
-	void *buf;
-	dma_addr_t da;
-};
-static struct mdla_data cfg0;
-static struct mdla_data cfg1;
 
-static int mdla_data_alloc_mem(struct device *dev)
+static int mdla_data_alloc_mem(struct device *dev, struct mdla_rv_mem *mem, size_t len)
 {
-	cfg0.buf = dma_alloc_coherent(dev, DRAM_CFG0_SIZE, &cfg0.da, GFP_KERNEL);
-	if (cfg0.buf == NULL || cfg0.da == 0) {
+	mem->buf = dma_alloc_coherent(dev, len, &mem->da, GFP_KERNEL);
+	if (mem->buf == NULL || mem->da == 0) {
 		dev_info(dev, "%s() dma_alloc_coherent cfg_init_data fail\n\n", __func__);
 		return -1;
 	}
-
-	cfg1.buf = dma_alloc_coherent(dev, DRAM_CFG1_SIZE, &cfg1.da, GFP_KERNEL);
-	if (cfg1.buf == NULL || cfg1.da == 0) {
-		dev_info(dev, "%s() dma_alloc_coherent cfg_main_data fail\n\n", __func__);
-		dma_free_coherent(dev, DRAM_CFG0_SIZE, cfg0.buf, cfg0.da);
-		return -1;
-	}
-
-	memset(cfg0.buf, 0, DRAM_CFG0_SIZE);
-	memset(cfg1.buf, 0, DRAM_CFG1_SIZE);
+	mem->size = len;
+	memset(mem->buf, 0, len);
 
 	/* AISIM: It's not necessary to get iova */
 
 	return 0;
 }
 
-static void mdla_data_free_mem(struct device *dev)
+static void mdla_data_free_mem(struct device *dev, struct mdla_rv_mem  *mem)
 {
-
-	if (cfg0.buf && cfg0.da)
-		dma_free_coherent(dev, DRAM_CFG0_SIZE, cfg0.buf, cfg0.da);
-	if (cfg1.buf && cfg1.da)
-		dma_free_coherent(dev, DRAM_CFG1_SIZE, cfg1.buf, cfg1.da);
-
-	cfg0.da = 0;
-	cfg1.da = 0;
+	if (mem->buf && mem->da)
+		dma_free_coherent(dev, mem->size, mem->buf, mem->da);
+	mem->da = 0;
 }
 
-static int mdla_plat_load_elf(struct device *dev, unsigned int *initdata, unsigned int *maindata)
+static int mdla_plat_load_elf(struct device *dev, struct mdla_rv_mem  *boot_men, struct mdla_rv_mem  *main_men)
 {
 	return 0;
 }
 
-static int mdla_plat_load_img(struct device *dev, unsigned int *initdata, unsigned int *maindata)
+static int mdla_plat_load_img(struct device *dev, struct mdla_rv_mem  *boot_men, struct mdla_rv_mem  *main_men)
 {
 	int ret = 0;
+	const struct firmware *bootcode;
+	const struct firmware *maincode;
 
-	if (mdla_data_alloc_mem(dev) < 0)
+	dev_info(dev, "%s start\n", __func__);
+
+	if (request_firmware(&bootcode, BOOT_BIN_NAME, dev) != 0) {
+		dev_info(dev, "mdla_boot.bin not available\n");
 		return -1;
+	}
 
-	dev_info(dev, "%s +\n", __func__);
+	if ((bootcode->size < BOOT_DATA_MIN_SIZE) || (bootcode->size > BOOT_DATA_MAX_SIZE)) {
+		dev_info(dev, "mdla_boot.bin abnormal size\n");
+		ret = -1;
+		goto release_boot;
+	}
+
+	if (mdla_data_alloc_mem(dev, boot_men, bootcode->size) < 0) {
+		ret = -1;
+		goto release_boot;
+	}
+
+	memcpy(boot_men->buf, bootcode->data,  bootcode->size);
+
+	if (request_firmware(&maincode, MAIN_BIN_NAME, dev) != 0) {
+		dev_info(dev, "mdla_main.bin not available\n");
+		ret = -1;
+		goto release_boot;
+	}
+
+	if ((maincode->size < MAIN_DATA_MIN_SIZE) || (maincode->size > MAIN_DATA_MAX_SIZE)) {
+		dev_info(dev, "mdla_main.bin abnormal size\n");
+		ret = -1;
+		goto release_main;
+	}
+
+	if (mdla_data_alloc_mem(dev, main_men, maincode->size) < 0) {
+		ret = -1;
+		goto release_main;
+	}
+
+	memcpy(main_men->buf, maincode->data,  maincode->size);
+
+release_main:
+	release_firmware(maincode);
+release_boot:
+	release_firmware(bootcode);
+
 	return ret;
 }
 
-static int mdla_plat_load_hdr(struct device *dev, unsigned int *cfg0_data, unsigned int *cfg1_data)
+static int mdla_plat_load_hdr(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men)
 {
 	u32 i;
 	int ret = 0;
 
-	if (mdla_data_alloc_mem(dev) < 0)
+	if (mdla_data_alloc_mem(dev, boot_men, BOOT_DATA_SIZE) < 0)
 		return -1;
 
-	/* cfg0 : 1K */
-	memcpy(cfg0.buf, cfg_init, sizeof(cfg_init));
+	if (mdla_data_alloc_mem(dev, main_men, MAIN_DATA_SIZE) < 0) {
+		mdla_data_free_mem(dev, boot_men);
+		return -1;
+	}
+
+	memcpy(boot_men->buf, cfg_init, sizeof(cfg_init));
 
 	for (i = 0; cfg_main_section[i].data != NULL; i++)
-		memcpy(cfg1.buf + cfg_main_section[i].ofs,
+		memcpy(boot_men->buf + cfg_main_section[i].ofs,
 				cfg_main_section[i].data, cfg_main_section[i].size);
-
-	*cfg0_data = (unsigned int)cfg0.da;
-	*cfg1_data = (unsigned int)cfg1.da;
-	dev_info(dev, "%s +\n", __func__);
 
 	return ret;
 }
 
-static int mdla_plat_load_pre_secure_boot(
-	struct device *dev,
-	unsigned int *cfg0_data,
-	unsigned int *cfg1_data)
+static int mdla_plat_load_pre_secure_boot(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men)
 {
-	if (mdla_data_alloc_mem(dev) < 0)
+	if (mdla_data_alloc_mem(dev, boot_men, BOOT_DATA_SIZE) < 0)
 		return -1;
-	*cfg0_data = (unsigned int)cfg0.da;
-	*cfg1_data = (unsigned int)cfg1.da;
-	pr_info("%s +\n", __func__);
+
+	if (mdla_data_alloc_mem(dev, main_men, MAIN_DATA_SIZE) < 0) {
+		mdla_data_free_mem(dev, boot_men);
+		return -1;
+	}
+
 	return 0;
 }
 
-int mdla_plat_load_data(struct device *dev, unsigned int *cfg0_data, unsigned int *cfg1_data)
+int mdla_plat_load_data(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men)
 {
 	int ret;
 	const char *method = NULL;
@@ -139,31 +173,36 @@ int mdla_plat_load_data(struct device *dev, unsigned int *cfg0_data, unsigned in
 
 	switch (load_data_method) {
 	case LOAD_BIN_FILE:
-		mdla_plat_load_img(dev, cfg0_data, cfg1_data);
+		ret = mdla_plat_load_img(dev, boot_men, main_men);
 		break;
 	case LOAD_ELF_FILE:
-		ret = mdla_plat_load_elf(dev, cfg0_data, cfg1_data);
+		ret = mdla_plat_load_elf(dev, boot_men, main_men);
 		break;
 	case LOAD_HDR_FILE:
-		mdla_plat_load_hdr(dev, cfg0_data, cfg1_data);
+		ret = mdla_plat_load_hdr(dev, boot_men, main_men);
 		break;
 	case LOAD_PRE_SECURE_BOOT:
-		mdla_plat_load_pre_secure_boot(dev, cfg0_data, cfg1_data);
+		ret = mdla_plat_load_pre_secure_boot(dev, boot_men, main_men);
 		break;
 	default:
 		break;
 	}
 
+	if (ret == 0)
+		dev_info(dev, "load mdla firmware by %s\n", method);
+
 	return ret;
 }
 
-void mdla_plat_unload_data(struct device *dev)
+void mdla_plat_unload_data(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men)
 {
 	switch (load_data_method) {
 	case LOAD_BIN_FILE:
 	case LOAD_ELF_FILE:
 	case LOAD_HDR_FILE:
-		mdla_data_free_mem(dev);
+	case LOAD_PRE_SECURE_BOOT:
+		mdla_data_free_mem(dev, boot_men);
+		mdla_data_free_mem(dev, main_men);
 		break;
 	default:
 		break;

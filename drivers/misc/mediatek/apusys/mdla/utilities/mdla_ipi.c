@@ -10,6 +10,7 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/rpmsg.h>
+#include <linux/delay.h>
 
 #include <utilities/mdla_debug.h>
 #include <utilities/mdla_ipi.h>
@@ -47,7 +48,7 @@ static struct mdla_rpmsg_device mdla_rx_rpm_dev;
 int mdla_ipi_send(int type_0, int type_1, u64 val)
 {
 	struct mdla_ipi_data ipi_cmd_send;
-	int ret = 0;
+	int ret = 0, i = 0, retry_cnt = 10;
 
 	if (!mdla_tx_rpm_dev.ept)
 		return 0;
@@ -71,7 +72,19 @@ int mdla_ipi_send(int type_0, int type_1, u64 val)
 		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
 		goto out;
 	}
-	ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+	for (i = 0; i < retry_cnt; i++) {
+		ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+		/* send busy, retry */
+		if (ret == -EBUSY || ret == -EAGAIN) {
+			mdla_err("%s: re-send ipi(retry_cnt = %d/%d)\n", __func__, i, retry_cnt);
+			mdelay(50);
+			continue;
+		}
+		break;
+	}
+
 	if (ret) {
 		mdla_err("%s: rpmsg_send fail(%d)\n", __func__, ret);
 		/* power off to restore ref cnt */
@@ -88,7 +101,7 @@ out:
 int mdla_ipi_recv(int type_0, int type_1, u64 *val)
 {
 	struct mdla_ipi_data ipi_cmd_send;
-	int ret = 0;
+	int ret = 0, i = 0, retry_cnt = 10;
 
 	ipi_cmd_send.type0  = type_0;
 	ipi_cmd_send.type1  = type_1;
@@ -104,7 +117,19 @@ int mdla_ipi_recv(int type_0, int type_1, u64 *val)
 		goto out;
 	}
 
-	ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+	reinit_completion(&mdla_tx_rpm_dev.ack);
+
+	for (i = 0; i < retry_cnt; i++) {
+		ret = rpmsg_send(mdla_tx_rpm_dev.ept, &ipi_cmd_send, sizeof(ipi_cmd_send));
+
+		/* send busy, retry */
+		if (ret == -EBUSY || ret == -EAGAIN) {
+			mdla_err("%s: re-send ipi(retry_cnt = %d/%d)\n", __func__, i, retry_cnt);
+			mdelay(50);
+			continue;
+		}
+		break;
+	}
 
 	if (ret) {
 		mdla_err("%s: rpmsg_send fail(%d)\n", __func__, ret);
@@ -137,25 +162,24 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 	struct mdla_ipi_data *d = (struct mdla_ipi_data *)data;
 	int ret = 0;
 
-	if (d->dir != MDLA_IPI_READ)
-		goto END;
-
-	if (d->type0 == MDLA_IPI_MICROP_MSG) {
-		mdla_err("Receive uP message -> use the wrong channel!?\n");
-	} else {
-		ipi_tx_recv_buf.type0  = d->type0;
-		ipi_tx_recv_buf.type1  = d->type1;
-		ipi_tx_recv_buf.dir    = d->dir;
-		ipi_tx_recv_buf.data   = d->data;
+	if (d->dir == MDLA_IPI_READ) {
+		if (d->type0 == MDLA_IPI_MICROP_MSG) {
+			mdla_err("Receive uP message -> use the wrong channel!?\n");
+		} else {
+			ipi_tx_recv_buf.type0  = d->type0;
+			ipi_tx_recv_buf.type1  = d->type1;
+			ipi_tx_recv_buf.dir    = d->dir;
+			ipi_tx_recv_buf.data   = d->data;
+		}
+		mdla_verbose("tx rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
+					d->type0,
+					d->type1,
+					d->dir,
+					d->data,
+					d->data);
+		complete(&mdla_tx_rpm_dev.ack);
 	}
-	mdla_verbose("tx rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
-				d->type0,
-				d->type1,
-				d->dir,
-				d->data,
-				d->data);
-END:
-	complete(&mdla_tx_rpm_dev.ack);
+
 	/* power off to restore ref cnt */
 	ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
 	if (ret && ret != -EOPNOTSUPP)

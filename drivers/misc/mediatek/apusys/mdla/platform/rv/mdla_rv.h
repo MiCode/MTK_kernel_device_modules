@@ -68,7 +68,12 @@ enum V5_DBG_LOG_MASK {
 	NR_V5_DBG_LOG_MASK
 };
 
-int mdla_plat_load_data(struct device *dev, unsigned int *cfg0, unsigned int *cfg1);
-void mdla_plat_unload_data(struct device *dev);
+struct mdla_rv_mem {
+	void *buf;
+	dma_addr_t da;
+	size_t size;
+};
 
+int mdla_plat_load_data(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men);
+void mdla_plat_unload_data(struct device *dev, struct mdla_rv_mem *boot_men, struct mdla_rv_mem *main_men);
 #endif /* __MDLA_RV_H__ */

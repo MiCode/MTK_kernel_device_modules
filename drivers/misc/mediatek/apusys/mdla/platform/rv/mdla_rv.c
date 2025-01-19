@@ -57,8 +57,8 @@ static const struct file_operations name ## _fops = {			\
 }
 
 DEFINE_IPI_DBGFS_ATTRIBUTE(ulog,           MDLA_IPI_ULOG,           0, "0x%llx\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(timeout,        MDLA_IPI_TIMEOUT,        0, "%llu ms\n");
-DEFINE_IPI_DBGFS_ATTRIBUTE(pwrtime,        MDLA_IPI_PWR_TIME,       0, "%llu ms\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(timeout,        MDLA_IPI_TIMEOUT,        0, "%llu\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(pwrtime,        MDLA_IPI_PWR_TIME,       0, "%llu\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(cmd_check,      MDLA_IPI_CMD_CHECK,      0, "%llx\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(pmu_trace,      MDLA_IPI_TRACE_ENABLE,   0, "%llx\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(C1,             MDLA_IPI_PMU_COUNT,      1, "0x%llx\n");
@@ -96,7 +96,7 @@ struct mdla_dbgfs_ipi_file {
 
 static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_PWR_TIME,       0, 0x2C, 0660,  "poweroff_time",        &pwrtime_fops, 0},
-	{MDLA_IPI_TIMEOUT,        0, 0x2C, 0660,        "timeout",        &timeout_fops, 0},
+	{MDLA_IPI_TIMEOUT,        0, 0x6C, 0660,        "timeout",        &timeout_fops, 0},
 	{MDLA_IPI_ULOG,           0, 0x2C, 0660,           "ulog",           &ulog_fops, 0},
 	{MDLA_IPI_CMD_CHECK,      0, 0x04, 0660,      "cmd_check",      &cmd_check_fops, 0},
 	{MDLA_IPI_TRACE_ENABLE,   0, 0x2C, 0660,      "pmu_trace",      &pmu_trace_fops, 0},
@@ -115,24 +115,20 @@ static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_PMU_COUNT,     13, 0x04, 0660,            "c13",            &C13_fops, 0},
 	{MDLA_IPI_PMU_COUNT,     14, 0x04, 0660,            "c14",            &C14_fops, 0},
 	{MDLA_IPI_PMU_COUNT,     15, 0x04, 0660,            "c15",            &C15_fops, 0},
-	{MDLA_IPI_PREEMPT_CNT,    0, 0x2C, 0660,  "preempt_times",  &preempt_times_fops, 0},
-	{MDLA_IPI_FORCE_PWR_ON,   0, 0x2C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
-	{MDLA_IPI_PROFILE_EN,     0, 0x28, 0660,      "profiling",      &profiling_fops, 0},
-	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x2C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
-	{MDLA_IPI_INFO,           0, 0x2C, 0660,           "info",           &info_fops, 0},
+	{MDLA_IPI_PREEMPT_CNT,    0, 0x6C, 0660,  "preempt_times",  &preempt_times_fops, 0},
+	{MDLA_IPI_FORCE_PWR_ON,   0, 0x6C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
+	{MDLA_IPI_PROFILE_EN,     0, 0x68, 0660,      "profiling",      &profiling_fops, 0},
+	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x6C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
+	{MDLA_IPI_INFO,           0, 0x6C, 0660,           "info",           &info_fops, 0},
 	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
-	{MDLA_IPI_DBG_OPTIONS,    0, 0x20, 0660,    "dbg_options",    &dbg_options_fops, 0},
+	{MDLA_IPI_DBG_OPTIONS,    0, 0x60, 0660,    "dbg_options",    &dbg_options_fops, 0},
 	{NF_MDLA_IPI_TYPE_0,      0, 0x00,    0,             NULL,                 NULL, 0}
 };
 
-static u32 cfg0;
-static u32 cfg1;
 
-struct mdla_rv_mem {
-	void *buf;
-	dma_addr_t da;
-	size_t size;
-};
+
+static struct mdla_rv_mem boot_mem;
+static struct mdla_rv_mem main_mem;
 
 #define DEFAULT_DBG_SZ 0x1000
 #define DEFAULT_RV_DBG_SZ 0x2000
@@ -151,8 +147,20 @@ static char *mdla_plat_get_ipi_str(int idx)
 	return "unknown";
 }
 
-static void mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
+static int mdla_plat_unknown_dbgfs_usage(struct seq_file *s, void *data)
 {
+	seq_puts(s, "\n---------- unknown usage ----------\n");
+	return 0;
+}
+
+static int mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
+{
+	seq_puts(s, "\n---------- Command timeout setting ----------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
+
+	seq_puts(s, "\n-------- Set delay time of power off --------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_PWR_TIME].str);
+
 	seq_puts(s, "\n------------- Set uP debug log mask -------------\n");
 	seq_printf(s, "echo [mask(hex)] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_ULOG));
 	seq_printf(s, "\tMDLA_DBG_DRV         = 0x%x\n", 1U << V2_DBG_DRV);
@@ -177,10 +185,18 @@ static void mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
 
 	seq_puts(s, "\n----------- allocate debug memory ---------------\n");
 	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
+
+	return 0;
 }
 
-static void mdla_plat_v3_dbgfs_usage(struct seq_file *s, void *data)
+static int mdla_plat_v3_dbgfs_usage(struct seq_file *s, void *data)
 {
+	seq_puts(s, "\n---------- Command timeout setting ----------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
+
+	seq_puts(s, "\n-------- Set delay time of power off --------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_PWR_TIME].str);
+
 	seq_puts(s, "\n----------- Set uP debug log mask -----------\n");
 	seq_printf(s, "echo [mask(hex)] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_ULOG));
 	seq_printf(s, "\tMDLA_DBG_DRV     = 0x%x\n", 1U << V3_DBG_DRV);
@@ -217,10 +233,18 @@ static void mdla_plat_v3_dbgfs_usage(struct seq_file *s, void *data)
 
 	seq_puts(s, "\n----------- allocate debug memory -----------\n");
 	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
+
+	return 0;
 }
 
-static void mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
+static int mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
 {
+	seq_puts(s, "\n---------- Command timeout setting ----------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
+
+	seq_puts(s, "\n-------- Set delay time of power off --------\n");
+	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_PWR_TIME].str);
+
 	seq_puts(s, "\n----------- Set uP debug log mask -----------\n");
 	seq_printf(s, "echo [mask(hex)] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_ULOG));
 	seq_printf(s, "\tMDLA_DBG_DRV       = 0x%x\n", 1U << V5_DBG_DRV);
@@ -268,24 +292,38 @@ static void mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\tEnable external HSE check while free HSE         = 0x10\n");
 	seq_puts(s, "\tEnable internal HSE check while CMD done         = 0x20\n");
 	seq_puts(s, "\tShow backup data in seq/player log if preemption = 0x100\n");
+
+	return 0;
 }
 
-static int mdla_plat_dbgfs_usage(struct seq_file *s, void *data)
+static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 {
-	/* Common */
 	seq_puts(s, "\n---------- Command timeout setting ----------\n");
-	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
+	seq_printf(s, "echo [us(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
 
-	seq_puts(s, "\n-------- Set delay time of power off --------\n");
-	seq_printf(s, "echo [ms(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_PWR_TIME].str);
+	seq_puts(s, "\n--------------- profile control ---------------\n");
+	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_PROFILE_EN));
+	seq_puts(s, "\t0: stop profiling\n");
+	seq_puts(s, "\t1: start to profile\n");
 
-	/* IP */
-	if (get_major_num(mdla_plat_get_version()) == 2)
-		mdla_plat_v2_dbgfs_usage(s, data);
-	else if (get_major_num(mdla_plat_get_version()) == 3)
-		mdla_plat_v3_dbgfs_usage(s, data);
-	else if (get_major_num(mdla_plat_get_version()) == 5)
-		mdla_plat_v5_dbgfs_usage(s, data);
+	seq_puts(s, "\n------------- show information -------------\n");
+	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
+	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
+	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
+	seq_printf(s, "\t%d: show the last cmdbuf (if dump_cmdbuf_en != 0)\n",
+				MDLA_IPI_INFO_CMDBUF);
+	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
+
+	seq_puts(s, "\n----------- allocate debug memory -----------\n");
+	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
+
+	seq_puts(s, "\n----------- set debug options -----------\n");
+	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
+	seq_puts(s, "\tDisable preemption                               = 0x0001\n");
+	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
+	seq_puts(s, "\tProfiline enable                                 = 0x0004\n");
+	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
+	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
 
 	return 0;
 }
@@ -331,15 +369,16 @@ static void mdla_plat_free_mem(struct mdla_rv_mem *m)
 static int mdla_rv_dbg_mem_show(struct seq_file *s, void *data)
 {
 	u32 i = 0, *buf;
+	struct mdla_rv_mem *m = &dbg_mem;
 
-	if (!dbg_mem.buf || !dbg_mem.da || !dbg_mem.size) {
+	if (!m->buf || !m->da || !m->size) {
 		seq_puts(s, "No debug data!\n");
 		return 0;
 	}
 
-	buf = (u32 *)dbg_mem.buf;
+	buf = (u32 *)m->buf;
 
-	for (i = 0; i < dbg_mem.size / 4; i += 4) {
+	for (i = 0; i < m->size / 4; i += 4) {
 		seq_printf(s, "0x%08x: %08x %08x %08x %08x\n",
 				4 * i,
 				buf[i],
@@ -360,11 +399,13 @@ static int mdla_plat_send_addr_info(void *arg)
 {
 	msleep(1000);
 
-	if (cfg0 && cfg1) {
+	if (boot_mem.da && main_mem.da) {
 		mdla_verbose("%s(): send ipi for fw addr(0x%08x, 0x%08x)\n", __func__,
-				cfg0, cfg1);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT, (u64)cfg0);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN, (u64)cfg1);
+				(u32)boot_mem.da, (u32)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT, (u64)boot_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT_SZ, (u64)boot_mem.size);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN, (u64)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN_SZ, (u64)main_mem.size);
 	}
 
 	if (backup_mem.da) {
@@ -372,15 +413,26 @@ static int mdla_plat_send_addr_info(void *arg)
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BACKUP_DATA_SZ, (u64)backup_mem.size);
 	}
 
-	if (dbg_mem.da) {
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
-	}
-
 	if (rv_dbg_mem.da) {
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA, (u64)rv_dbg_mem.da);
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA_SZ, (u64)rv_dbg_mem.size);
 	}
+
+	if (get_major_num(mdla_plat_get_version()) == 6) {
+		u64 size = 0;
+		mdla_ipi_recv(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, &size);
+		if (size) {
+			mdla_plat_alloc_mem(&dbg_mem, (u32)size);
+			if (dbg_mem.da) {
+				mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
+				mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
+			}
+		}
+	} else if (dbg_mem.da) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
+	}
+
 
 	return 0;
 }
@@ -392,6 +444,10 @@ static ssize_t mdla_rv_dbg_mem_write(struct file *flip,
 	char *buf;
 	u32 size;
 	int ret;
+
+	/* v6: size is determined by uP platform driver and can't be changed */
+	if (get_major_num(mdla_plat_get_version()) == 6)
+		return 0;
 
 	buf = kzalloc(count + 1, GFP_KERNEL);
 	if (!buf)
@@ -434,16 +490,26 @@ static const struct file_operations mdla_rv_dbg_mem_fops = {
 static void mdla_plat_dbgfs_init(struct device *dev, struct dentry *parent)
 {
 	struct mdla_dbgfs_ipi_file *file;
-	u32 mask;
+	int (*usage)(struct seq_file *s, void *data);
+	u32 hw_ip_ver, mask;
 	u32 i;
 
 	if (!dev || !parent)
 		return;
 
-	debugfs_create_devm_seqfile(dev, DBGFS_USAGE_NAME, parent,
-				mdla_plat_dbgfs_usage);
+	hw_ip_ver = get_major_num(mdla_plat_get_version());
 
-	mask = BIT(get_major_num(mdla_plat_get_version()));
+	switch (hw_ip_ver) {
+		case 2: 	usage = mdla_plat_v2_dbgfs_usage; 		break;
+		case 3: 	usage = mdla_plat_v3_dbgfs_usage; 		break;
+		case 5: 	usage = mdla_plat_v5_dbgfs_usage; 		break;
+		case 6: 	usage = mdla_plat_v6_dbgfs_usage; 		break;
+		default: 	usage = mdla_plat_unknown_dbgfs_usage;	break;
+	}
+
+	debugfs_create_devm_seqfile(dev, DBGFS_USAGE_NAME, parent, usage);
+
+	mask = BIT(hw_ip_ver);
 
 	for (i = 0; ipi_dbgfs_file[i].fops != NULL; i++) {
 		file = &ipi_dbgfs_file[i];
@@ -460,7 +526,6 @@ static void mdla_plat_memory_show(struct seq_file *s)
 	seq_puts(s, "------- dump debug info  -------\n");
 	mdla_rv_dbg_mem_show(s, NULL);
 }
-
 
 void mdla_plat_up_init(void)
 {
@@ -494,7 +559,7 @@ int mdla_rv_init(struct platform_device *pdev)
 		mdla_plat_devices[i].dev = &pdev->dev;
 	}
 
-	mdla_plat_load_data(&pdev->dev, &cfg0, &cfg1);
+	mdla_plat_load_data(&pdev->dev, &boot_mem, &main_mem);
 
 	if (mdla_ipi_init() != 0) {
 		dev_info(&pdev->dev, "register apu_ctrl channel : Fail\n");
@@ -504,12 +569,15 @@ int mdla_rv_init(struct platform_device *pdev)
 	}
 
 	mdla_dbg_plat_cb()->dbgfs_plat_init = mdla_plat_dbgfs_init;
+	// DB: Dump MDLA_MEMORY
 	mdla_dbg_plat_cb()->memory_show     = mdla_plat_memory_show;
 
-	/* backup size * core num * preempt lv */
-	mdla_plat_alloc_mem(&backup_mem, 1024 * nr_core_ids * 4);
-	mdla_plat_alloc_mem(&dbg_mem, DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
-	mdla_plat_alloc_mem(&rv_dbg_mem, DEFAULT_RV_DBG_SZ);
+	if (get_major_num(mdla_plat_get_version()) < 6) {
+		/* backup size * core num * preempt lv */
+		mdla_plat_alloc_mem(&backup_mem, 1024 * nr_core_ids * 4);
+		mdla_plat_alloc_mem(&dbg_mem, DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
+		mdla_plat_alloc_mem(&rv_dbg_mem, DEFAULT_RV_DBG_SZ);
+	}
 
 	return 0;
 }
@@ -518,15 +586,19 @@ void mdla_rv_deinit(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s()\n", __func__);
 
-	mdla_plat_free_mem(&backup_mem);
-	mdla_plat_free_mem(&dbg_mem);
-	mdla_plat_free_mem(&rv_dbg_mem);
+	if (get_major_num(mdla_plat_get_version()) == 6) {
+		mdla_plat_free_mem(&dbg_mem);
+	} else {
+		mdla_plat_free_mem(&dbg_mem);
+		mdla_plat_free_mem(&backup_mem);
+		mdla_plat_free_mem(&rv_dbg_mem);
+	}
 	mdla_ipi_deinit();
 
 	if (mdla_plat_pwr_drv_ready()
 			&& mdla_pwr_device_unregister(pdev))
 		dev_info(&pdev->dev, "unregister mdla power fail\n");
 
-	mdla_plat_unload_data(&pdev->dev);
+	mdla_plat_unload_data(&pdev->dev, &boot_mem, &main_mem);
 }
 
