@@ -537,6 +537,12 @@ static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 				 SLC_SB_ONLY_EN);
 	}
 
+	/* Set SLC Gid */
+	if (data->slc_gid) {
+		smmu_write_field(wp_base, SMMUWP_TCU_CTL10, TCU_ARGID_ID_MASK,
+				 data->slc_gid);
+	}
+
 	/* Set TCU ultra/pre-ultra signal */
 	if (data->tcu_qos == TCU_QOS_ULTRA ||
 	    data->tcu_qos == TCU_QOS_PREULTRA) {
@@ -2871,7 +2877,7 @@ static void mtk_smmu_register_power_awake(struct mtk_smmu_data *data)
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
-	u32 prefetch, irq_disable, ssid_enable, tcu_qos, val;
+	u32 prefetch, irq_disable, ssid_enable, tcu_qos, val, gid;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2884,6 +2890,14 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 
 	if (of_property_read_bool(smmu->dev->of_node, "mediatek,axslc"))
 		data->axslc = true;
+	/* tcu slc gid SRT=7, HRT=8 */
+	ret = of_property_read_u32(smmu->dev->of_node, "mtk,slc-gid", &gid);
+	if (!ret && gid <= TCU_GID_MAX) {
+		data->slc_gid = gid;
+		dev_info(smmu->dev, "parse slc-gid:%d\n", gid);
+	} else {
+		data->slc_gid = 0;
+	}
 
 	if (of_property_read_bool(smmu->dev->of_node, "mediatek,dvm")) {
 		dev_info(smmu->dev, "dvm_support\n");

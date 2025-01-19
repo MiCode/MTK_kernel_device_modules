@@ -183,6 +183,11 @@
 #define TCU_MON_DIS			F_BIT_SET(15)
 #define TCU_MON_ID_MASK			GENMASK(30, 16)
 
+/* SMMU TCU SLC GID control register */
+#define SMMUWP_TCU_CTL10		(0x228)
+#define TCU_ARGID_ID_MASK		GENMASK(6, 0)
+#define TCU_GID_MAX			TCU_ARGID_ID_MASK
+
 /*
  * SMMU TCU MON1/2/3 are used to measure latency, related control register: SMMUWP_TCU_CTL8
  * Only measure read command, donot measure write command.
@@ -674,6 +679,7 @@ struct mtk_smmu_data {
 	u32				pmg_max;
 	u32				tcu_prefetch;
 	u32				tcu_qos;
+	u32				slc_gid;
 	int				stash_mode;
 	bool				axslc;
 	bool				ssid_enabled;
