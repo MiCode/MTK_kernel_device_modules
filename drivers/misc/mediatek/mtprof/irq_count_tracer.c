@@ -437,37 +437,35 @@ void show_irq_count_info(unsigned int output)
 		__show_irq_count_info(output);
 }
 
-/* caller must holding desc->lock */
-static unsigned int check_burst_irq(unsigned long count, struct irq_desc *desc)
+static unsigned int check_burst_irq(u64 t_avg)
 {
-	u64 t_avg = irq_count_stat.t_diff;
-	unsigned int i, ret = 0;
+	unsigned int ret = 0;
 
-	if (!desc->action || !desc->action->name || !desc->action->handler)
-		return ret;
-
-	do_div(t_avg, count);
 	if (t_avg > irq_period_th1_ns)
 		return ret;
 
 	/* Print a log if anyone exceeds the threshold. */
 	ret = TO_BOTH;
 
+	if (irq_period_th2_ns && t_avg < irq_period_th2_ns)
+		ret |= TO_AEE;
+	return ret;
+}
+
+static bool in_plist(u64 t_avg, const char *name)
+{
+	unsigned int i;
+
 	for (i = 0; i < ARRAY_SIZE(irq_count_plist); i++) {
-		if (!strcmp(desc->action->name, irq_count_plist[i].name))
+		if (!strcmp(name, irq_count_plist[i].name))
 			if (t_avg > irq_count_plist[i].period)
-				return ret;
+				return true;
 	}
 
 	/* skip AEE for IPI */
-	if (!strcmp(desc->action->name, "IPI"))
-		return ret;
-
-	if (irq_period_th2_ns && t_avg < irq_period_th2_ns &&
-	    irq_count_aee_limit &&
-	    irq_mon_aee_debounce_check(true))
-		ret |= TO_AEE;
-	return ret;
+	if (!strcmp(name, "IPI"))
+		return true;
+	return false;
 }
 
 static void irq_count_core(void)
@@ -496,6 +494,7 @@ static void irq_count_core(void)
 		char aee_msg[MAX_MSG_LEN] = {};
 		char module[100] = {};
 		unsigned int out;
+		u64 t_avg;
 
 		if (xas_retry(&xas, imdesc))
 			continue;
@@ -516,35 +515,39 @@ static void irq_count_core(void)
 			/* The irq count is decreased */
 			if (unlikely(count > UINT_MAX / 2))
 				continue;
+			t_avg = stat->t_diff;
+			do_div(t_avg, count);
+			out = check_burst_irq(t_avg);
+			if (!out)
+				continue;
 
 			desc = irq_to_desc(imdesc->irq);
 			if (!desc)
 				continue;
+			scoped_guard(raw_spinlock_irqsave, &desc->lock) {
+				if (!desc->action || !desc->action->name
+				    || !desc->action->handler)
+					continue;
+				if (out & TO_AEE
+				    && in_plist(t_avg, desc->action->name))
+					out &= ~TO_AEE;
+				seq_buf_init(&buf_msg, aee_msg, sizeof(aee_msg));
+				seq_buf_init(&buf_mod, module, sizeof(module));
+				seq_buf_printf(&buf_msg, "irq: %u [<%px>]%ps, %s",
+					imdesc->irq, (void *)desc->action->handler,
+					(void *)desc->action->handler,
+					desc->action->name);
+				seq_buf_printf(&buf_mod, "BURST IRQ:%u, %ps %s",
+					imdesc->irq, desc->action->handler,
+					desc->action->name);
 
-			raw_spin_lock_irqsave(&desc->lock, flags);
-			out = check_burst_irq(count, desc);
-			if (!out) {
-				raw_spin_unlock_irqrestore(&desc->lock, flags);
-				continue;
+				if (!strcmp(desc->action->name, "IPI")) {
+					int ipi_type = desc_to_ipi_type(desc);
+
+					seq_buf_printf(&buf_msg, "%d", ipi_type);
+					seq_buf_printf(&buf_mod, "%d", ipi_type);
+				}
 			}
-			seq_buf_init(&buf_msg, aee_msg, sizeof(aee_msg));
-			seq_buf_init(&buf_mod, module, sizeof(module));
-			seq_buf_printf(&buf_msg, "irq: %u [<%px>]%ps, %s",
-				       imdesc->irq, (void *)desc->action->handler,
-				       (void *)desc->action->handler,
-				       desc->action->name);
-			seq_buf_printf(&buf_mod, "BURST IRQ:%u, %ps %s",
-				       imdesc->irq, desc->action->handler,
-				       desc->action->name);
-
-			if (!strcmp(desc->action->name, "IPI")) {
-				int ipi_type = desc_to_ipi_type(desc);
-
-				seq_buf_printf(&buf_msg, "%d", ipi_type);
-				seq_buf_printf(&buf_mod, "%d", ipi_type);
-			}
-			raw_spin_unlock_irqrestore(&desc->lock, flags);
-
 			seq_buf_printf(&buf_msg, " count +%lu in %lld ms, from %lld.%06lu to %lld.%06lu on CPU:%d",
 				       count, t_diff_ms,
 				       sec_high(stat->t_start), sec_low(stat->t_start),
@@ -552,7 +555,8 @@ static void irq_count_core(void)
 				       cpu);
 
 			irq_mon_msg(out, aee_msg);
-			if (out & TO_AEE) {
+			if (out & TO_AEE && irq_count_aee_limit &&
+	    		    irq_mon_aee_debounce_check(true)) {
 				irq_mon_aee_callback(imdesc->irq,
 						     IRQ_MON_AEE_TYPE_BURST_IRQ);
 				aee_kernel_warning_api(__FILE__, __LINE__,
