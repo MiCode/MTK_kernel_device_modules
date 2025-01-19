@@ -125,6 +125,8 @@
 		(readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat) & scp_wake.l2_slp_stat_mask)
 #define SCP_SLEEP_STAT	\
 		readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat)
+#define SCP_SLEEP_STAT2	\
+		(readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat2) & scp_wake.slp_stat2_mask)
 
 #ifdef CONFIG_FPGA_EARLY_PORTING
 #define CLOCK_CG_W1C    (0x04)
@@ -314,12 +316,15 @@ struct scp_wake_info {
 	unsigned int not_in_sleep_mask;
 	unsigned int power_off_stat_mask;
 	unsigned int l2_slp_stat_mask;
+	unsigned int slp_stat2_mask;
 	unsigned int sleep_reg;
 	unsigned int sleep_stat;
+	unsigned int sleep_stat2;
 	int count;
 	bool is_initialized;
 	bool use_power_stat;
 	bool use_l2_slp_stat;
+	bool use_slp_stat1_stat2;
 	spinlock_t lock;
 };
 
@@ -329,6 +334,7 @@ static struct scp_wake_info scp_wake = {
 	.is_initialized = false,
 	.use_power_stat = false,
 	.use_l2_slp_stat = false,
+	.use_slp_stat1_stat2 = false,
 	.count = 0,
 };
 
@@ -1677,7 +1683,7 @@ int scp_wake_request(struct i2c_adapter *adap)
 	unsigned int delay = 0;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
-	if (!scp_wake.is_initialized) {
+	if (!scp_wake.is_initialized || !scp_wake.vlpcfg_base_va) {
 		dev_info(i2c->dev, "scp_wake init fail.\n");
 		return ret;
 	}
@@ -1719,7 +1725,7 @@ int scp_wake_request(struct i2c_adapter *adap)
 			}
 		}
 
-		if (scp_wake.use_l2_slp_stat) {
+		if (scp_wake.use_l2_slp_stat || scp_wake.use_slp_stat1_stat2) {
 			do {
 				delay--;
 				if ((SCP_POWER_OFF_STAT == 0) && (SCP_POWER_OFF_STAT == 0)) {
@@ -1745,18 +1751,29 @@ int scp_wake_request(struct i2c_adapter *adap)
 				scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 
 				delay = SCP_WAKE_TIMEOUT;
-
-				do {
-					delay--;
-					if ((SCP_L2_SLP_STAT == 0) && (SCP_L2_SLP_STAT == 0)) {
-						writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
-						(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+				if (scp_wake.use_l2_slp_stat) {
+					do {
+						delay--;
+						if ((SCP_L2_SLP_STAT == 0) && (SCP_L2_SLP_STAT == 0)) {
+							writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
+							(~scp_wake.wakeup_mask)),
+							scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 						break;
-					}
-
-					udelay(20);
-				} while (delay);
-
+						}
+						udelay(20);
+					} while (delay);
+				} else {
+					do {
+						delay--;
+						if ((SCP_SLEEP_STAT2 == 0) && (SCP_SLEEP_STAT2 == 0)) {
+							writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
+							(~scp_wake.wakeup_mask)),
+							scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+						break;
+						}
+						udelay(20);
+					} while (delay);
+				}
 				if (!delay) {
 					dev_info(i2c->dev, "%s: wake scp l2 timeout, sleep_stat=0x%x\n",
 						__func__, SCP_SLEEP_STAT);
@@ -2555,6 +2572,7 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 
 		scp_wake.use_power_stat = of_property_read_bool(np, "mediatek,use-power-stat");
 		scp_wake.use_l2_slp_stat = of_property_read_bool(np, "mediatek,use-l2-slp-stat");
+		scp_wake.use_slp_stat1_stat2  = of_property_read_bool(np, "mediatek,use-slp-stat1-stat2");
 
 		ret = of_property_read_u32(np, "vlpcfg-base", &temp);
 		if (ret < 0) {
@@ -2603,6 +2621,20 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 			ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat", 2, &scp_wake.l2_slp_stat_mask);
 			if (ret < 0) {
 				dev_info(i2c->dev, "read scp_wake l2_slp_stat_mask fail, ret = %d\n", ret);
+				return ret;
+			}
+		}
+
+		if (scp_wake.use_slp_stat1_stat2) {
+			ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat2", 0, &scp_wake.sleep_stat2);
+			if (ret < 0) {
+				dev_info(i2c->dev, "read scp_wake slp_stat2 fail, ret = %d\n", ret);
+				return ret;
+			}
+
+			ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat2", 1, &scp_wake.slp_stat2_mask);
+			if (ret < 0) {
+				dev_info(i2c->dev, "read scp_wake slp_stat2_mask fail, ret = %d\n", ret);
 				return ret;
 			}
 		}
