@@ -564,7 +564,6 @@ static void fuel_gauge_handler(struct work_struct *work)
 	int curr, volt, cap;
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret;
 
 	if (!fuel_gauge_enable)
 		return;
@@ -573,13 +572,13 @@ static void fuel_gauge_handler(struct work_struct *work)
 	if (psy == NULL)
 		return;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &val);
 	volt = val.intval;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
 	cap = val.intval;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_NOW, &val);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_CURRENT_NOW, &val);
 	curr = val.intval;
 
 	curr = curr/1000;
@@ -658,7 +657,6 @@ static void charger_handler(struct work_struct *work)
 	int volt, temp;
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret;
 
 	if (!charger_enable)
 		return;
@@ -667,10 +665,10 @@ static void charger_handler(struct work_struct *work)
 	if (psy == NULL)
 		return;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT, &val);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT, &val);
 	volt = val.intval;
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
+	power_supply_get_property(psy, POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &val);
 	temp = val.intval;
 	trace_charger(temp, volt);
 

@@ -1,6 +1,8 @@
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 
+ccflags-y += -Wno-frame-address
+
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/

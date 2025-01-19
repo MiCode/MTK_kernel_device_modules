@@ -55,9 +55,9 @@ static int freq_qos_max_notifier_call(struct notifier_block *nb,
 {
 	int cid = nb - freq_qos_max_notifier;
 	const char *caller_info = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(2));
-	const char *caller_info2 = find_and_get_symobls(
 		(unsigned long)__builtin_return_address(3));
+	const char *caller_info2 = find_and_get_symobls(
+		(unsigned long)__builtin_return_address(4));
 	if (caller_info && caller_info2)
 		trace_freq_qos_user_setting(cid, FREQ_QOS_MAX, freq_limit_max,
 			caller_info, caller_info2);
@@ -69,9 +69,9 @@ static int freq_qos_min_notifier_call(struct notifier_block *nb,
 {
 	int cid = nb - freq_qos_min_notifier;
 	const char *caller_info = find_and_get_symobls(
-		(unsigned long)__builtin_return_address(2));
-	const char *caller_info2 = find_and_get_symobls(
 		(unsigned long)__builtin_return_address(3));
+	const char *caller_info2 = find_and_get_symobls(
+		(unsigned long)__builtin_return_address(4));
 	if (caller_info && caller_info2)
 		trace_freq_qos_user_setting(cid, FREQ_QOS_MIN, freq_limit_min,
 			caller_info, caller_info2);
