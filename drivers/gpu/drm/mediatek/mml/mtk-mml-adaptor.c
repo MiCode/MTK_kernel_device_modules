@@ -304,7 +304,7 @@ void task_move_to_idle(struct mml_task *task)
 
 void task_queue(struct mml_task *task, u32 pipe)
 {
-	queue_work(task->ctx->wq_config[pipe], &task->work_config[pipe]);
+	kthread_queue_work(task->ctx->kt_config[pipe], &task->work_config[pipe]);
 }
 
 void task_submit_done(struct mml_task *task)
@@ -514,14 +514,18 @@ struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe)
 void ctx_kt_setsched(struct mml_ctx *ctx)
 {
 	struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
-	int ret;
+	int ret[3] = {0};
 
 	if (ctx->kt_priority)
 		return;
 
-	ret = sched_setscheduler(ctx->kt_done->task, SCHED_FIFO, &kt_param);
-	mml_log("[adpt]%s set kt done priority %d ret %d",
-		__func__, kt_param.sched_priority, ret);
+	ret[0] = sched_setscheduler(ctx->kt_done->task, SCHED_FIFO, &kt_param);
+	if (ctx->kt_config[0])
+		ret[1] = sched_setscheduler(ctx->kt_config[0]->task, SCHED_FIFO, &kt_param);
+	if (ctx->kt_config[1])
+		ret[2] = sched_setscheduler(ctx->kt_config[1]->task, SCHED_FIFO, &kt_param);
+	mml_log("[adpt]%s set kt done priority %d ret %d %d %d",
+		__func__, kt_param.sched_priority, ret[0], ret[1], ret[2]);
 	ctx->kt_priority = true;
 }
 
@@ -548,22 +552,45 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	if (IS_ERR(ctx->kt_done)) {
 		mml_err("[adpt]fail to create kthread worker %d",
 			(s32)PTR_ERR(ctx->kt_done));
-		return -EIO;
+		ctx->kt_done = NULL;
+		goto err;
+
 	}
 	ctx->wq_destroy = alloc_ordered_workqueue(threads[1], 0);
 	if (threads[2]) {
-		ctx->wq_config[0] = alloc_ordered_workqueue(threads[2],
-			WORK_CPU_UNBOUND | WQ_HIGHPRI);
+		ctx->kt_config[0] = kthread_create_worker(0, threads[2]);
+		if (IS_ERR(ctx->kt_config[0])) {
+			mml_err("[adpt]fail to create config thread 0 %s err %pe",
+				threads[2], ctx->kt_config[0]);
+			ctx->kt_config[0] = NULL;
+			goto err;
+		}
 	}
 	if (threads[3]) {
-		ctx->wq_config[1] = alloc_ordered_workqueue(threads[3],
-			WORK_CPU_UNBOUND | WQ_HIGHPRI);
+		ctx->kt_config[0] = kthread_create_worker(0, threads[3]);
+		if (IS_ERR(ctx->kt_config[1])) {
+			mml_err("[adpt]fail to create config thread 1 %s err %pe",
+				threads[3], ctx->kt_config[1]);
+			ctx->kt_config[1] = NULL;
+			goto err;
+		}
 	}
 
 	INIT_LIST_HEAD(&ctx->configs);
 	mutex_init(&ctx->config_mutex);
 	ctx->mml = mml;
 	return 0;
+
+err:
+	if (ctx->kt_done)
+		kthread_destroy_worker(ctx->kt_done);
+	if (ctx->wq_destroy)
+		destroy_workqueue(ctx->wq_destroy);
+	if (ctx->kt_config[0])
+		kthread_destroy_worker(ctx->kt_config[0]);
+	if (ctx->kt_config[1])
+		kthread_destroy_worker(ctx->kt_config[1]);
+	return -EIO;
 }
 
 void mml_ctx_deinit(struct mml_ctx *ctx)
@@ -586,10 +613,10 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 	}
 
 	destroy_workqueue(ctx->wq_destroy);
-	if (ctx->wq_config[0])
-		destroy_workqueue(ctx->wq_config[0]);
-	if (ctx->wq_config[1])
-		destroy_workqueue(ctx->wq_config[1]);
+	if (ctx->kt_config[0])
+		kthread_destroy_worker(ctx->kt_config[0]);
+	if (ctx->kt_config[1])
+		kthread_destroy_worker(ctx->kt_config[1]);
 	kthread_destroy_worker(ctx->kt_done);
 
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
