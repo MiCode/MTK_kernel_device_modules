@@ -235,6 +235,11 @@ static ssize_t rawbulk_attr_show(struct device *dev,
 	default:
 		break;
 	}
+	if (count < 0) {
+		C2K_ERR("Formatted output error: %zd\n", count);
+		return -EIO;
+	}
+
 	return count;
 }
 
