@@ -27,6 +27,9 @@ void init_rt_aggre_preempt(void)
 
 void set_rt_aggre_preempt(int val)
 {
+	if (_get_sched_debug_lock() == true)
+		return;
+
 	rt_aggre_preempt_enable = (bool) val;
 }
 EXPORT_SYMBOL_GPL(set_rt_aggre_preempt);
@@ -558,8 +561,10 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 		if (best_idle_cpu_cluster != -1)
 			cpumask_set_cpu(best_idle_cpu_cluster, &candidates);
-		else if (best_non_idle_cpu_cluster != -1)
+		else if (best_non_idle_cpu_cluster != -1) {
+			rt_ea_output->select_reason = LB_RT_NON_IDLE;
 			cpumask_set_cpu(best_non_idle_cpu_cluster, &candidates);
+		}
 
 		if ((cluster >= end_index) && (!cpumask_empty(&candidates)))
 			break;
@@ -675,6 +680,13 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	if (target != -1 &&
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
+
+		if (rt_ea_output.select_reason == LB_RT_NON_IDLE) {
+			select_reason = rt_ea_output.select_reason;
+
+			goto unlock;
+		}
+
 		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
 		if (!(rt_ea_output.idle_cpus & (1 << target)))
 			select_reason = select_reason | LB_FAIL_IN_REGULAR;
@@ -690,6 +702,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 		select_reason = LB_RT_SOURCE_CPU;
 	}
 
+unlock:
 	rcu_read_unlock();
 	irq_log_store();
 out:
@@ -735,6 +748,13 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	/* best energy cpu found */
 	if (target != -1) {
 		*lowest_cpu = target;
+
+		if (rt_ea_output.select_reason == LB_RT_NON_IDLE) {
+			select_reason = rt_ea_output.select_reason;
+
+			goto out;
+		}
+
 		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
 		if (!(rt_ea_output.idle_cpus & (1 << target)))
 			select_reason = select_reason | LB_FAIL_IN_REGULAR;

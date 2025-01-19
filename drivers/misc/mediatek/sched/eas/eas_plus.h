@@ -46,6 +46,7 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_RT_FAIL_CPU     (0x1002)
 #define LB_RT_SYNC      (0x2000)
 #define LB_RT_IDLE      (0x4000)
+#define LB_RT_NON_IDLE  (0x4005)
 #define LB_RT_LOWEST_PRIO         (0x8000)
 #define LB_RT_LOWEST_PRIO_NORMAL  (0x8001)
 #define LB_RT_LOWEST_PRIO_RT      (0x8002)
