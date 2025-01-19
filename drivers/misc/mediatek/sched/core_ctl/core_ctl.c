@@ -194,6 +194,10 @@ int core_ctl_enable_policy(unsigned int policy)
 		old_val = enable_policy;
 		enable_policy = policy;
 		success = true;
+
+		/* reset recorded data when turn on */
+		if (!old_val && enable_policy)
+			reset_cpu_over_stat();
 	}
 
 	if (success)
@@ -906,6 +910,11 @@ void core_ctl_notifier_unregister(struct notifier_block *n)
 }
 EXPORT_SYMBOL(core_ctl_notifier_unregister);
 
+unsigned int core_ctl_get_policy(void)
+{
+	return enable_policy;
+}
+EXPORT_SYMBOL(core_ctl_get_policy);
 /* ==================== sysctl node ======================== */
 
 static ssize_t store_min_cpus(struct cluster_data *state,
@@ -1488,11 +1497,12 @@ void core_ctl_tick(void *data, struct rq *rq)
 	if (!window_check())
 		return;
 
-	if (enable_policy)
+	if (enable_policy) {
 		core_ctl_main_algo();
 
-	for_each_cluster(cluster, index) {
-		apply_demand(cluster);
+		for_each_cluster(cluster, index) {
+			apply_demand(cluster);
+		}
 	}
 }
 
@@ -1963,7 +1973,7 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->active_cpus = get_active_cpu_count(cluster);
 
 	cluster->core_ctl_thread = kthread_run(try_core_ctl, (void *) cluster,
-			"core_ctl_v3/%d", first_cpu);
+			"core_ctl_v5/%d", first_cpu);
 	if (IS_ERR(cluster->core_ctl_thread))
 		return PTR_ERR(cluster->core_ctl_thread);
 

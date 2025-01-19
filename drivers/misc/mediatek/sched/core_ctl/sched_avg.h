@@ -33,5 +33,7 @@ extern unsigned int pd_get_opp_leakage(unsigned int cpu,
 				    unsigned int temperature);
 extern unsigned long pd_get_opp_capacity_legacy(int cpu, int opp);
 extern int get_max_nr_running(int cpu);
+extern void reset_cpu_over_stat(void);
+extern unsigned int core_ctl_get_policy(void);
 
 #endif /* _SCHED_AVG_H */

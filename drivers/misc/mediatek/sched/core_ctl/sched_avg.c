@@ -170,6 +170,8 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 
 void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 {
+	if (!core_ctl_get_policy())
+		return;
 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
 }
 
@@ -287,7 +289,7 @@ static DEFINE_SPINLOCK(deferrable_lock);
 static void sched_avg_deferred_func(struct work_struct *work)
 {
 	over_thresh_chg_notify();
-	printk_deferred_once("core_clt reset\n");
+	pr_info("%s reset\n", TAG);
 }
 static DECLARE_WORK(sched_avg_deferred_work, sched_avg_deferred_func);
 
@@ -353,7 +355,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	/* cluster_id need reasonale. */
 	cluster_nr = arch_get_nr_clusters();
 	if (cluster_id < 0 || cluster_id >= cluster_nr) {
-		printk_deferred_once("%s: invalid cluster id %d\n", __func__, cluster_id);
+		pr_info("%s: invalid cluster id %d\n", __func__, cluster_id);
 		return -EINVAL;
 	}
 
@@ -387,7 +389,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 		    cpu_over_thres->nr_over_up_thres < 0 ||
 			cpu_over_thres->nr_running_diff < 0) {
 			reset = true;
-			printk_deferred_once("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
+			pr_info("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
 					TAG, cpu_over_thres->nr_over_dn_thres,
 					cpu_over_thres->nr_over_up_thres,
 					cpu_over_thres->nr_running_diff);
@@ -438,34 +440,20 @@ EXPORT_SYMBOL(sched_get_nr_over_thres_avg);
 static void over_thresh_chg_notify(void)
 {
 	int cpu;
-	unsigned long flags;
-	struct task_struct *p;
-	enum over_thres_type over_type = NO_OVER_THRES;
-	int nr_over_dn_thres, nr_over_up_thres;
 	struct over_thres_stats *cpu_over_thres;
 	int cid;
 	unsigned int over_threshold = 100;
 	int cluster_nr = arch_get_nr_clusters();
 
+	/* update cpu over threshold stat */
+	reset_cpu_over_stat();
+
+	/* update threshold */
 	for_each_possible_cpu(cpu) {
-		u64 curr_time = sched_clock();
-
-		nr_over_dn_thres = 0;
-		nr_over_up_thres = 0;
-
 		cid = arch_get_cluster_id(cpu);
 		cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
-		if (cid < 0 || cid >= cluster_nr) {
-			printk_deferred_once("%s: cid=%d is out of nr=%d\n",
-			__func__, cid, cluster_nr);
-			continue;
-		}
-
-		raw_spin_lock_irqsave(&cpu_rq(cpu)->__lock, flags);
 		spin_lock(&per_cpu(nr_over_thres_lock, cpu));
-
-		/* update threshold */
 		if (cid == 0)
 			cpu_over_thres->dn_thres = INT_MAX;
 		else {
@@ -483,6 +471,34 @@ static void over_thresh_chg_notify(void)
 				(int)(cluster_over_thres_table[cid].max_capacity*
 					over_threshold)/100;
 		}
+		spin_unlock(&per_cpu(nr_over_thres_lock, cpu));
+	}
+}
+
+void reset_cpu_over_stat(void)
+{
+	int cpu;
+	unsigned long flags;
+	struct task_struct *p;
+	enum over_thres_type over_type = NO_OVER_THRES;
+	int nr_over_dn_thres, nr_over_up_thres;
+	struct over_thres_stats *cpu_over_thres;
+	int cid;
+	int cluster_nr = arch_get_nr_clusters();
+	u64 curr_time;
+
+	for_each_possible_cpu(cpu) {
+		cid = arch_get_cluster_id(cpu);
+		cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
+
+		if (cid < 0 || cid >= cluster_nr) {
+			pr_info("%s: cid=%d is out of nr=%d\n",
+			__func__, cid, cluster_nr);
+			continue;
+		}
+
+		raw_spin_lock_irqsave(&cpu_rq(cpu)->__lock, flags);
+		spin_lock(&per_cpu(nr_over_thres_lock, cpu));
 
 		/* pick next cpu if not online */
 		if (!cpu_online(cpu)) {
@@ -491,9 +507,10 @@ static void over_thresh_chg_notify(void)
 			continue;
 		}
 
-		/*
-		 * re-calculate over_thres count when updated threshold
-		 */
+		nr_over_dn_thres = 0;
+		nr_over_up_thres = 0;
+
+		/* re-calculate over_thres count */
 		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
 			struct cc_task_struct *cc_ts =
 				&((struct mtk_task *) p->android_vendor_data1)->cc_task;
@@ -515,6 +532,7 @@ static void over_thresh_chg_notify(void)
 		 * Threshold for over_thres is changed.
 		 * Need to reset stats
 		 */
+		curr_time = sched_clock();
 		cpu_over_thres->nr_over_up_thres = nr_over_up_thres;
 		cpu_over_thres->nr_over_up_thres_prod_sum = 0;
 		cpu_over_thres->up_last_update_time = curr_time;
@@ -526,8 +544,10 @@ static void over_thresh_chg_notify(void)
 		cpu_over_thres->nr_running_diff = 0;
 		spin_unlock(&per_cpu(nr_over_thres_lock, cpu));
 		raw_spin_unlock_irqrestore(&cpu_rq(cpu)->__lock, flags);
+		atomic_long_set(&cpu_over_thres->max_task_util, 0);
 	}
 }
+EXPORT_SYMBOL(reset_cpu_over_stat);
 
 static void update_nr_over_thres_locked(struct over_thres_stats *stats,
 					enum over_thres_type over_type,
@@ -549,7 +569,7 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 
 	/* TODO: should be error handle ? */
 	if (!init_thres) {
-		printk_deferred_once("assertion failed at %s:%d\n",
+		pr_info("assertion failed at %s:%d\n",
 				__FILE__,
 				__LINE__);
 		return;
@@ -651,8 +671,11 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 	int cpu;
 	struct cc_task_struct *cc_ts = NULL;
 
+	if (!core_ctl_get_policy())
+		return;
+
 	if (!init_thres) {
-		printk_deferred_once("assertion failed at %s:%d\n",
+		pr_info("assertion failed at %s:%d\n",
 				__FILE__,
 				__LINE__);
 		return;
@@ -713,6 +736,8 @@ static inline int cfs_rq_throttled(struct cfs_rq *cfs_rq)
 
 void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	if (!core_ctl_get_policy())
+		return;
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -729,6 +754,8 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 
 void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	if (!core_ctl_get_policy())
+		return;
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -789,7 +816,7 @@ static int init_thres_table(void)
 	if (init_thres)
 		return 0;
 
-	printk_deferred_once("%s start.\n", __func__);
+	pr_info("%s start.\n", __func__);
 
 	global_task_util = 0;
 
