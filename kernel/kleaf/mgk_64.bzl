@@ -1,4 +1,5 @@
-load("//kernel_device_modules-6.12:kernel/kleaf/mgk_modules.bzl",ddk_makefiles
+load("//kernel_device_modules-6.12:kernel/kleaf/mgk_modules.bzl",
+
      "mgk_module_outs",
      "mgk_module_eng_outs",
      "mgk_module_userdebug_outs",
