@@ -620,6 +620,22 @@ static inline struct arm_smmu_device *get_smmu_device(struct device *dev)
 	return master->smmu;
 }
 
+static inline const char *get_smmu_name(enum mtk_smmu_type type)
+{
+	switch (type) {
+	case MM_SMMU:
+		return "MM";
+	case APU_SMMU:
+		return "APU";
+	case SOC_SMMU:
+		return "SOCSYS";
+	case GPU_SMMU:
+		return "GPU";
+	default:
+		return "Unknown";
+	}
+}
+
 static inline int get_smmu_id(struct device *dev)
 {
 	struct arm_smmu_device *smmu;

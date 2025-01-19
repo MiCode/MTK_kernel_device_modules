@@ -232,22 +232,6 @@ static inline struct mtk_smmu_data *mkt_get_smmu_data(u32 smmu_type)
 	return NULL;
 }
 
-static const char *get_smmu_name(enum mtk_smmu_type type)
-{
-	switch (type) {
-	case MM_SMMU:
-		return "MM";
-	case APU_SMMU:
-		return "APU";
-	case SOC_SMMU:
-		return "SOCSYS";
-	case GPU_SMMU:
-		return "GPU";
-	default:
-		return "Unknown";
-	}
-}
-
 static const char *get_fault_reason_str(__u32 reason)
 {
 	switch (reason) {

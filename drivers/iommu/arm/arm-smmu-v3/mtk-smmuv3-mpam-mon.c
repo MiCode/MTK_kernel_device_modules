@@ -95,22 +95,6 @@ SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_pmg, config1, 16, 31);
 SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_ris, config1, 32, 47);
 SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_enable_pmg, config1, 48, 48);
 
-static inline const char *smmu_name(enum mtk_smmu_type type)
-{
-	switch (type) {
-	case MM_SMMU:
-		return "mm";
-	case APU_SMMU:
-		return "apu";
-	case SOC_SMMU:
-		return "socsys";
-	case GPU_SMMU:
-		return "gpu";
-	default:
-		return "unknown";
-	}
-}
-
 static inline unsigned int smmu_read_reg(void __iomem *base,
 					 unsigned int offset)
 {
@@ -642,11 +626,11 @@ static int smmu_mpam_mon_init(struct smmu_mpam_mon *mpam_mon)
 	if (mpam_mon->txu_id == 0)
 		mpam_mon->name = devm_kasprintf(mpam_mon->dev, GFP_KERNEL,
 						"smmuv3_%s_mpam_tcu",
-						smmu_name(smmu_type));
+						get_smmu_name(smmu_type));
 	else
 		mpam_mon->name = devm_kasprintf(mpam_mon->dev, GFP_KERNEL,
 						"smmuv3_%s_mpam_tbu_%d",
-						smmu_name(smmu_type),
+						get_smmu_name(smmu_type),
 						mpam_mon->txu_id - 1);
 	if (!mpam_mon->name) {
 		dev_err(mpam_mon->dev,
