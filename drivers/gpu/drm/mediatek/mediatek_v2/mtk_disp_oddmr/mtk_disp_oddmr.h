@@ -438,6 +438,8 @@ struct mtk_disp_oddmr {
 	uint32_t last_qos_srt_dmrr;
 	uint32_t qos_srt_dbir;
 	uint32_t last_qos_srt_dbir;
+	uint32_t srt_delay_dbi;
+	uint32_t last_cal_srt_dbi;
 	uint32_t qos_srt_odr;
 	uint32_t last_qos_srt_odr;
 	uint32_t qos_srt_odw;

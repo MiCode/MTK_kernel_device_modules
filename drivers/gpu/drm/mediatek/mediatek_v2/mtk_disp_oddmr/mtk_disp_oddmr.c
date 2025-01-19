@@ -550,6 +550,9 @@
 #define MT6991_DISP_ODDMR_UDMA_DBI_CTRL30				0xE6C
 	#define MT6991_REG_DBI_REQ_STASH_LEAD_CNT			REG_FLD_MSB_LSB(3, 0)
 	#define MT6991_REG_DBI_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
+#define MT6991_DISP_ODDMR_UDMA_DBI_CTRL88				0xFC0
+	#define MT6991_REG_RB_EN							REG_FLD_MSB_LSB(0, 0)
+
 
 // mt6991 DBI DDREN CTL
 #define MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL			0x084
@@ -1905,7 +1908,17 @@ static void mtk_oddmr_dbi_srt_cal(struct mtk_ddp_comp *comp, int en)
 		srt = DO_COMMON_DIV(srt, 100);
 		srt = srt * vrefresh;
 		srt = DO_COMMON_DIV(srt, 1000);
-		oddmr_priv->qos_srt_dbir = srt;
+
+		if (srt < oddmr_priv->last_cal_srt_dbi)
+			oddmr_priv->srt_delay_dbi = 0;
+
+		if ((srt < oddmr_priv->qos_srt_dbir) && (oddmr_priv->srt_delay_dbi < 5)) {
+			oddmr_priv->srt_delay_dbi++;
+		} else {
+			oddmr_priv->srt_delay_dbi = 0;
+			oddmr_priv->qos_srt_dbir = srt;
+		}
+		oddmr_priv->last_cal_srt_dbi = srt;
 	} else {
 		oddmr_priv->qos_srt_dbir = 0;
 	}
@@ -5469,11 +5482,15 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enum mtk_ddp_io_cmd cmd, void *params)
 {
+	struct mtk_drm_private *priv;
+
 	ODDMRLOW_LOG("cmd %d+\n", cmd);
 	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
 		ODDMRFLOW_LOG("%s %u has invalid CRTC or device\n", mtk_dump_comp_str(comp), cmd);
 		return -INVALID;
 	}
+
+	priv = comp->mtk_crtc->base.dev->dev_private;
 
 	switch (cmd) {
 	case FRAME_DIRTY:
@@ -5558,6 +5575,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dmr_binset_idx = cur_binset_idx;
 		}
 
+		mtk_oddmr_dbi_srt_cal(default_comp, g_oddmr_priv->dbi_enable);
+
 		if(dbi_enable != g_oddmr_priv->dbi_enable) {
 			mtk_oddmr_dbi_config(default_comp,handle);
 			dbi_enable = g_oddmr_priv->dbi_enable;
@@ -5570,10 +5589,22 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv =
 			comp->mtk_crtc->base.dev->dev_private;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
+		unsigned int crtc_idx, channel_id = 0;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
+
+		mtk_crtc = comp->mtk_crtc;
+		crtc = &mtk_crtc->base;
+		crtc_idx = drm_crtc_index(crtc);
+
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			channel_id = 3;
+
 		ODDMRLOW_LOG("srt odr(%u,%u),odw(%u,%u),dmrr(%u,%u) dbi(%u,%u)\n",
 			oddmr_priv->last_qos_srt_odr, oddmr_priv->qos_srt_odr,
 			oddmr_priv->last_qos_srt_odw, oddmr_priv->qos_srt_odw,
@@ -5582,7 +5613,26 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (params) {
 			force_update = *(unsigned int *)params;
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
+		if (!force_update && !update_pending) {
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odr;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dmrr;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dbir;
 		}
 
 		/* process normal */
@@ -5591,32 +5641,44 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				oddmr_priv->qos_srt_odr, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_odr = oddmr_priv->qos_srt_odr;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odr;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_odw != oddmr_priv->qos_srt_odw) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odw, comp->id,
 				oddmr_priv->qos_srt_odw, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_odw = oddmr_priv->qos_srt_odw;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dmrr, comp->id,
 				oddmr_priv->qos_srt_dmrr, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_dmrr = oddmr_priv->qos_srt_dmrr;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dmrr;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_dbir != oddmr_priv->qos_srt_dbir) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dbir, comp->id,
 				oddmr_priv->qos_srt_dbir, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_dbir = oddmr_priv->qos_srt_dbir;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dbir;
+			}
 		}
 	}
 		break;
@@ -6210,6 +6272,11 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_RB_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_UDMA_DBI_CTRL88, mask, handle);
 
 				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
 				if (oddmr_priv->data->is_dbi_support_stash) {
