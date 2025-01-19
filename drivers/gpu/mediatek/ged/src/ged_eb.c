@@ -444,6 +444,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				switch (dbg_cnt) {
 				case GPU_EB_LOG_DUMP_POLICY_COMMON:
 				case GPU_EB_LOG_DUMP_COMMIT_REASON1:
+				case GPU_EB_LOG_DUMP_COMMIT_REASON2:
 				case GPU_EB_LOG_DUMP_LB_GPU_TIME:
 				case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
@@ -488,6 +489,9 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case GPU_EB_LOG_DUMP_COMMIT_REASON1:
 				trace_GPU_DVFS__EBRB_Commit_Reason(dbg_data, dbg_data2, dbg_data3);
+				break;
+			case GPU_EB_LOG_DUMP_COMMIT_REASON2:
+				trace_GPU_DVFS__EBRB_Commit_Reason_TID(dbg_data, dbg_data2, dbg_data3);
 				break;
 			case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3:
 				trace_GPU_DVFS__EBRB_2ND_GPU_TIME(

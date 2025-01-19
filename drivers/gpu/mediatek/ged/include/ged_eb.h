@@ -949,6 +949,7 @@ typedef struct {
 #define GPU_FDVFS_V2_RB_LOG_LIST \
  GEN("Policy__Common", GPU_EB_LOG_DUMP_POLICY_COMMON, 2, "policy_state | eb_commit_type") \
  GEN("Policy__Common__Commit_Reason", GPU_EB_LOG_DUMP_COMMIT_REASON1, 3, "same | diff | is_offscreen") \
+ GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON2, 3, "count | bqid | pid") \
  GEN("Policy__Loading_based__GPU_Time", GPU_EB_LOG_DUMP_LB_GPU_TIME, 1, "target_hd") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1, 2, "pid | bqid") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2, 2, "fps | use") \
@@ -969,13 +970,9 @@ typedef struct {
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE14, 2, "dbg14_1 | dbg14_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE15, 2, "dbg15_1 | dbg15_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE16, 2, "dbg16_1 | dbg16_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE17, 2, "dbg17_1 | dbg17_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE18, 2, "dbg18_1 | dbg18_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE19, 2, "dbg19_1 | dbg19_2") \
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE17, 2, "dbg17_1 | dbg17_2")
 
  /* Enable after Jayer SB due to no space
- GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON2, 2, "pid | bqid") \
- GEN("Policy__Common__Commit_Reason_TID", GPU_EB_LOG_DUMP_COMMIT_REASON3, 2, "count") \
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
  GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
