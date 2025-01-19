@@ -44,7 +44,7 @@
 #define PIN_OUT_SIZE_MMDVFS              2
 #define PIN_OUT_SIZE_MMQOS               2
 #define PIN_OUT_SIZE_MMDEBUG             2
-#define PIN_OUT_C_SIZE_HWVOTER           4
+#define PIN_OUT_C_SIZE_HWVOTER           8
 
 /* definition of slot size for received PINs */
 #define PIN_IN_SIZE_VDEC                18
@@ -52,7 +52,7 @@
 #define PIN_IN_SIZE_MMDVFS               2
 #define PIN_IN_SIZE_MMQOS                2
 #define PIN_IN_SIZE_MMDEBUG              2
-#define PIN_OUT_R_SIZE_HWVOTER           4
+#define PIN_OUT_R_SIZE_HWVOTER           8
 /* ============================================================ */
 enum {
 	IPI_OUT_VDEC_1                 =  0,
