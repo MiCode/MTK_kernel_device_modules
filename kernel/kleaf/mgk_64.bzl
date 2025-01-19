@@ -574,6 +574,7 @@ mgk_64_kleaf_device_modules = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/char/hw_random:sec-rng".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:mtk-dvfsrc-devfreq".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma/mediatek:mtk-cqdma".format(kernel_version),
@@ -1309,7 +1310,6 @@ mgk_64_kleaf_platform_user_modules = {
 mgk_64_device_modules = [
     # keep sorted
     #"drivers/char/hw_random/sec-rng.ko",
-    "drivers/char/rpmb/rpmb-mtk.ko",
     "drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
@@ -2216,7 +2216,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6781.ko":"mt6781"})
         #mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6781.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v1:adsp-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v2:adsp-v2".format(kernel_version))
@@ -3786,7 +3786,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6833.ko":"mt6833"})
         #mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6833.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/char/rpmb/rpmb-mtk.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version))
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")

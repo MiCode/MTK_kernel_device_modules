@@ -49,10 +49,10 @@
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 #include <uapi/linux/mmc/ioctl.h>
-#include "core.h"
-#include "mmc_ops.h"
+#include "core/core.h"
+#include "core/mmc_ops.h"
 #include "mtk-mmc.h"
-#include "queue.h"
+#include "core/queue.h"
 #include "rpmb-mtk.h"
 
 static struct mmc_host *mtk_mmc_host[] = {NULL};
