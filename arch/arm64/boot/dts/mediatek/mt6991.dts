@@ -20510,6 +20510,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		mt6379_eusb2_repeater: mt6379-eusb2-repeater@d00 {
 			compatible = "mtk,mt6379-eusb2-repeater";
+			interrupts = <MT6379_DUMMY_EVT_EUSB>;
 			reg = <0xd00>;
 			#phy-cells = <0>;
 			mediatek,rx-sqth = <0x5>;
