@@ -1007,6 +1007,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6886".format(kernel_version): "mt6886",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6897".format(kernel_version): "mt6897",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6899".format(kernel_version): "mt6899",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6983".format(kernel_version): "mt6983",
