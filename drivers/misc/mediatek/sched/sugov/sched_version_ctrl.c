@@ -101,6 +101,19 @@ int init_sched_ctrl(void)
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;
 		break;
+	case EAS_6_12:
+		am_support = 1;
+		grp_dvfs_support_mode = 1;
+		// TODO
+		_gear_hints_enable = true;
+		_updown_migration_enable = true;
+		_skip_hiIRQ_enable = true;
+		_rt_aggre_preempt_enable = false;
+		_vip_enable = true;
+		_post_init_util_ctl = true;
+		_percore_l3_bw = true;
+		_dsu_pwr_enable = true;
+		break;
 	default:
 		am_support = 0;
 		grp_dvfs_support_mode = 0;
