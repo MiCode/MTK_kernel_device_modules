@@ -29,6 +29,7 @@ static int vcp_power;
 static DEFINE_MUTEX(mmdebug_vcp_pwr_mutex);
 static struct mmdebug_ipi_data mmdebug_vcp_ipi_data;
 
+static bool mmdebug_ena;
 static bool mmdebug_init_done;
 
 struct workqueue_struct *mmdebug_workq;
@@ -36,7 +37,7 @@ struct work_struct mmdebug_work;
 
 bool mmdebug_is_init_done(void)
 {
-	return mmdebug_init_done;
+	return !mmdebug_ena || mmdebug_init_done;
 }
 EXPORT_SYMBOL_GPL(mmdebug_is_init_done);
 
@@ -179,6 +180,8 @@ static int mmdebug_vcp_init_thread(void *data)
 static int mmdebug_vcp_probe(struct platform_device *pdev)
 {
 	struct task_struct *kthr_vcp;
+
+	mmdebug_ena = true;
 
 	kthr_vcp = kthread_run(mmdebug_vcp_init_thread, NULL, "mmdebug-vcp");
 	if (IS_ERR(kthr_vcp))

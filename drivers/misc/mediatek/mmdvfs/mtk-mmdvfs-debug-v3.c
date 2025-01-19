@@ -56,6 +56,7 @@ struct mmdvfs_record {
 struct mmdvfs_debug {
 	struct device *dev;
 	struct proc_dir_entry *proc;
+	struct proc_dir_entry *proc_mbrain;
 	u32 debug_version;
 
 	/* MMDVFS_DBG_VER1 */
@@ -211,6 +212,7 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 static int mmdvfs_debug_v3_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
+	uint64_t mux_cb_time;
 	u32 i, j, k, val;
 
 	if (!g_mmdvfs)
@@ -356,6 +358,9 @@ static int mmdvfs_debug_v3_status_dump(struct seq_file *file)
 	mmdvfs_debug_dump_line(file, "[%5u.%6u] mux:%lu opp:%lu",
 		readl(MEM_MUX_CB_END_SEC), readl(MEM_MUX_CB_END_USEC), (val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 
+	// vcore ceil
+	mmdvfs_debug_dump_line(file, "vcore ceil:%#x", readl(MEM_CEIL_LEVEL(PWR_MMDVFS_VCORE)));
+
 	// vmm ceil records
 	i = readl(MEM_REC_VMM_CEIL_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_VMM_CEIL_SEC(i)))
@@ -400,21 +405,34 @@ static int mmdvfs_debug_v3_status_dump(struct seq_file *file)
 			readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 			readl(MEM_REC_VMM_VOLT(j)),
 			readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
-	return 0;
 
 sram_dump:
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
 	mmdvfs_vcp_cb_mutex_lock();
 	if (!mmdvfs_vcp_cb_ready_get()) {
-		mmdvfs_vcp_cb_mutex_unlock();
 		MMDVFS_DBG("cb_ready:%d", mmdvfs_vcp_cb_ready_get());
-		return 0;
+		goto sram_dump_end;
 	}
+
+	// sram mux cb records
+	if (mmdvfs_get_mux_cb_sram_enable()) {
+		mmdvfs_debug_dump_line(file, "sram mux cb records");
+		for (i = 0; i < SRAM_MUX_CB_CNT; i++) {
+			mux_cb_time = readq(SRAM_MUX_CB_TIME(i));
+			if (mux_cb_time)
+				mmdvfs_debug_dump_line(file, "[%5llu.%6llu] mux_cb_val:%#x",
+					mux_cb_time/1000000, mux_cb_time%1000000,
+					readl(SRAM_MUX_CB_VAL(i)));
+		}
+	}
+
+	if (!mmdvfs_get_mmup_sram_enable())
+		goto sram_dump_end;
 
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 	// usr
 	for (k = 0; k < SRAM_USR_NUM; k++) {
-		i = readl(SRAM_REC_CNT_USR(k));
+		i = readl(SRAM_REC_CNT_USR(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] usr:%u opp:%u",
 				readl(SRAM_USR_SEC(k, j)), readl(SRAM_USR_USEC(k, j)),
@@ -426,7 +444,7 @@ sram_dump:
 	}
 
 	// mux
-	i = readl(SRAM_REC_CNT_MUX);
+	i = readl(SRAM_REC_CNT_MUX) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++) {
 		val = readl(SRAM_MUX_VAL(j));
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu",
@@ -444,7 +462,7 @@ sram_dump:
 
 	// pwr
 	for (k = 0; k < SRAM_PWR_CNT; k++) {
-		i = readl(SRAM_REC_CNT_PWR(k));
+		i = readl(SRAM_REC_CNT_PWR(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u opp:%u",
 				readl(SRAM_PWR_SEC(k, j)), readl(SRAM_PWR_USEC(k, j)),
@@ -457,7 +475,7 @@ sram_dump:
 
 	// clk
 	for (k = 0; k < SRAM_PWR_CNT; k++) {
-		i = readl(SRAM_REC_CNT_CLK(k));
+		i = readl(SRAM_REC_CNT_CLK(k)) % SRAM_REC_CNT;
 		for (j = i; j < SRAM_REC_CNT; j++)
 			mmdvfs_debug_dump_line(file, "[%5u.%3u] clk:%u opp:%u",
 				readl(SRAM_CLK_SEC(k, j)), readl(SRAM_CLK_USEC(k, j)),
@@ -469,7 +487,7 @@ sram_dump:
 	}
 
 	// rate
-	i = readl(SRAM_REC_CNT_RATE);
+	i = readl(SRAM_REC_CNT_RATE) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] rate:%u",
 			readl(SRAM_RATE_SEC(j)), readl(SRAM_RATE_USEC(j)),readl(SRAM_RATE_VAL(j)));
@@ -478,7 +496,7 @@ sram_dump:
 			readl(SRAM_RATE_SEC(j)), readl(SRAM_RATE_USEC(j)),readl(SRAM_RATE_VAL(j)));
 
 	// ceil
-	i = readl(SRAM_REC_CNT_CEIL);
+	i = readl(SRAM_REC_CNT_CEIL) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] ceil:%u",
 			readl(SRAM_CEIL_SEC(j)), readl(SRAM_CEIL_USEC(j)),readl(SRAM_CEIL_VAL(j)));
@@ -487,7 +505,7 @@ sram_dump:
 			readl(SRAM_CEIL_SEC(j)), readl(SRAM_CEIL_USEC(j)),readl(SRAM_CEIL_VAL(j)));
 
 	// vmm
-	i = readl(SRAM_REC_CNT_VMM);
+	i = readl(SRAM_REC_CNT_VMM) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm val:%u hw:%u volt:%u",
 			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),
@@ -499,7 +517,7 @@ sram_dump:
 	mmdvfs_debug_dump_line(file, "vmm efuse high:%u low:%u", readl(SRAM_VMM_EFUSE_HIGH), readl(SRAM_VMM_EFUSE_LOW));
 
 	// vdisp
-	i = readl(SRAM_REC_CNT_VDISP);
+	i = readl(SRAM_REC_CNT_VDISP) % SRAM_REC_CNT;
 	for (j = i; j < SRAM_REC_CNT; j++)
 		mmdvfs_debug_dump_line(file, "[%5u.%3u] vdisp:%u",
 			readl(SRAM_VDISP_SEC(j)), readl(SRAM_VDISP_USEC(j)),readl(SRAM_VDISP_VAL(j)));
@@ -524,6 +542,7 @@ sram_dump:
 					i, j, val & GENMASK(15, 0));
 		}
 
+sram_dump_end:
 	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 
@@ -560,6 +579,68 @@ static const struct proc_ops mmdvfs_debug_opp_fops = {
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
+
+static int mmdvfs_mbrain_test(struct seq_file *file, void *data)
+{
+	struct mmdvfs_res_mbrain_debug_ops *ops = NULL;
+	unsigned int data_size = 0;
+	unsigned char *ptr = NULL, *addr = NULL;
+	u32 i, j;
+
+	struct mmdvfs_res_mbrain_header header;
+	struct mmdvfs_opp_record record[MMDVFS_OPP_RECORD_NUM];
+
+	ops = get_mmdvfs_mbrain_dbg_ops();
+	if (ops && ops->get_length && ops->get_data) {
+		data_size = ops->get_length();
+		seq_printf(file, "data_size:%u\n", data_size);
+
+		if (data_size > 0) {
+			ptr = kmalloc(data_size, GFP_KERNEL);
+			if (!ptr)
+				return 0;
+
+			ops->get_data(ptr, data_size);
+
+			memcpy(&header, ptr, sizeof(header));
+			addr = ptr + sizeof(header);
+			memcpy(&record, addr, sizeof(record));
+
+			kfree(ptr);
+			ptr = NULL;
+
+			seq_printf(file, "header mbrain_module:%u, version:%u ",
+				header.mbrain_module, header.version);
+			seq_printf(file, "data_offset:%u index_data_length:%u\n",
+				header.data_offset, header.index_data_length);
+
+			for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
+				for (j = 0; j < MAX_OPP; j++)
+					seq_printf(file, "pwr:%u opp:%u total_time:%llu\n",
+						i, j, record[i].opp_duration[j]);
+		}
+	}
+
+	return 0;
+}
+
+static int mmdvfs_mbrain_test_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmdvfs_mbrain_test, inode->i_private);
+}
+
+static const struct proc_ops mmdvfs_mbrain_test_fops = {
+	.proc_open = mmdvfs_mbrain_test_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+{
+	return mtk_mmdvfs_force_vcore_notify(val);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
 
 bool mtk_is_mmdvfs_v3_debug_init_done(void)
 {
@@ -693,11 +774,22 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 		if (mmdvfs_get_version()) {  //mmdvfs v3.5
 			// power opp
 			for (i = 0; i < PWR_MMDVFS_NUM; i++)
-				ftrace_pwr_opp_v3(i, readl(MEM_PWR_OPP(i)));
-
+				if (!mmdvfs_get_mmup_sram_enable())
+					ftrace_pwr_opp_v3(i, readl(MEM_PWR_OPP(i)));
+				else
+					ftrace_pwr_opp_v3(i, readl(SRAM_PWR_VAL(i,
+						(readl(SRAM_REC_CNT_PWR(i)) + SRAM_REC_CNT - 1) % SRAM_REC_CNT)));
 			// user opp
 			for (i = 0; i < MMDVFS_USER_NUM; i++)
-				ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i, readl(MEM_USR_OPP(i, true)) != MAX_OPP)));
+				if (!mmdvfs_get_mmup_sram_enable() || (i != MMDVFS_USER_DISP && i != MMDVFS_USER_SMI))
+					ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i,
+						readl(MEM_USR_OPP(i, true)) != MAX_OPP)));
+				else if (i == MMDVFS_USER_DISP)
+					ftrace_user_opp_v3(SRAM_USR_DPC, readl(SRAM_USR_VAL(SRAM_USR_DPC, (readl(
+						SRAM_REC_CNT_USR(SRAM_USR_DPC)) + SRAM_REC_CNT - 1) % SRAM_REC_CNT)));
+				else if (i == MMDVFS_USER_SMI)
+					ftrace_user_opp_v3(SRAM_USR_SMI, readl(SRAM_USR_VAL(SRAM_USR_SMI, (readl(
+						SRAM_REC_CNT_USR(SRAM_USR_SMI)) + SRAM_REC_CNT - 1) % SRAM_REC_CNT)));
 		} else {                     //mmdvfs v3.0
 			// power opp
 			for (i = 0; i <= PWR_MMDVFS_VMM; i++)
@@ -883,6 +975,9 @@ static struct mmdvfs_res_mbrain_debug_ops mmdvfs_mbrain_ops = {
 
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void)
 {
+	if (!MEM_BASE)
+		return NULL;
+
 	return &mmdvfs_mbrain_ops;
 }
 EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_dbg_ops);
@@ -1113,6 +1208,12 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
 	else
 		g_mmdvfs->proc = proc;
+
+	proc = proc_create("mmdvfs_mbrain_test", 0440, dir, &mmdvfs_mbrain_test_fops);
+	if (IS_ERR_OR_NULL(proc))
+		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
+	else
+		g_mmdvfs->proc_mbrain = proc;
 
 	ret = of_property_read_u32(
 		g_mmdvfs->dev->of_node, "debug-version", &g_mmdvfs->debug_version);

@@ -72,6 +72,12 @@ enum {
 	VMM_CEIL_USR_NUM
 };
 
+enum {
+	VCORE_CEIL_USR_VCORE,
+	VCORE_CEIL_USR_ADB,
+	VCORE_CEIL_USR_NUM
+};
+
 /* vcp/.../mmdvfs_public.h */
 enum {
 	USER_DISP,
@@ -95,6 +101,7 @@ enum {
 int mtk_mmdvfs_get_ipi_status(void);
 int mtk_mmdvfs_enable_ccu(const bool enable, const u8 idx);
 
+int mtk_mmdvfs_force_vcore_notify(const u32 val);
 int mtk_mmdvfs_camera_notify(const bool enable);
 int mtk_mmdvfs_genpd_notify(const u8 idx, const bool enable);
 int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fresh);
@@ -121,6 +128,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate);
 static inline int mtk_mmdvfs_get_ipi_status(void) { return 0; }
 static inline int mtk_mmdvfs_enable_ccu(const bool enable, const u8 idx) { return 0; }
 
+static inline int mtk_mmdvfs_force_vcore_notify(const u32 val) { return 0; }
 static inline int mtk_mmdvfs_camera_notify(const bool enable) { return 0; }
 static inline int mtk_mmdvfs_genpd_notify(const u8 idx, const bool enable) { return 0; }
 static inline int mtk_mmdvfs_set_avs(const u8 idx, const u32 aging, const u32 fresh) { return 0; }
