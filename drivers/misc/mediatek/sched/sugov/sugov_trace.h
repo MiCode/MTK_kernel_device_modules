@@ -700,6 +700,40 @@ TRACE_EVENT(sugov_ext_util_debug,
 		__entry->scale_irq,
 		__entry->bw_dl)
 );
+
+TRACE_EVENT(sugov_ext_curr_task_uclamp,
+	TP_PROTO(int cpu, int pid, int flg_curr_tas, int flg_exit_state, unsigned long task_uclamp,
+		unsigned long task_uclamp_eff, int rq_uclamp),
+	TP_ARGS(cpu, pid, flg_curr_tas, flg_exit_state, task_uclamp,
+		task_uclamp_eff, rq_uclamp),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, pid)
+		__field(int, flg_curr_tas)
+		__field(int, flg_exit_state)
+		__field(unsigned long, task_uclamp)
+		__field(unsigned long, task_uclamp_eff)
+		__field(int, rq_uclamp)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->flg_curr_tas = flg_curr_tas;
+		__entry->flg_exit_state = flg_exit_state;
+		__entry->task_uclamp = task_uclamp;
+		__entry->task_uclamp_eff = task_uclamp_eff;
+		__entry->rq_uclamp = rq_uclamp;
+	),
+	TP_printk(
+		"cpu=%d pid=%d flg_curr_task=%d flg_exit_state=%d task_uclamp=%lu task_uclamp_eff=%lu rq_uclamp=%d",
+		__entry->cpu,
+		__entry->pid,
+		__entry->flg_curr_tas,
+		__entry->flg_exit_state,
+		__entry->task_uclamp,
+		__entry->task_uclamp_eff,
+		__entry->rq_uclamp)
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

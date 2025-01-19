@@ -44,6 +44,7 @@
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 #define DEFAULT_RUNNABLE_BOOST	true
 #define DEFAULT_DSU_IDLE		true
+#define DEFAULT_CURR_TASK_UCLAMP	false
 
 struct sugov_cpu {
 	struct update_util_data	update_util;
@@ -101,6 +102,21 @@ inline bool is_runnable_boost_enable(void)
 	return runnable_boost_enable;
 }
 EXPORT_SYMBOL(is_runnable_boost_enable);
+
+/* curr_task_uclamp_max_ctrl */
+static int curr_task_uclamp_max_ctrl = DEFAULT_CURR_TASK_UCLAMP;
+
+void set_curr_task_uclamp_ctrl(int set)
+{
+	curr_task_uclamp_max_ctrl = set;
+}
+EXPORT_SYMBOL(set_curr_task_uclamp_ctrl);
+
+int get_curr_task_uclamp_ctrl(void)
+{
+	return curr_task_uclamp_max_ctrl;
+}
+EXPORT_SYMBOL(get_curr_task_uclamp_ctrl);
 
 /* dsu_idle ctrl */
 static bool dsu_idle_enable = DEFAULT_DSU_IDLE;

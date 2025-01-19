@@ -62,12 +62,27 @@ unsigned long mtk_uclamp_rq_util_with(struct rq *rq, unsigned long util,
 {
 	unsigned long min_util;
 	unsigned long max_util;
+	unsigned long max_util_curr = ULONG_MAX;
+	struct task_struct *curr_task;
 
 	if (!static_branch_likely(&sched_uclamp_used))
 		return util;
 
+	if (get_curr_task_uclamp_ctrl()) {
+		rcu_read_lock();
+		curr_task = rcu_dereference(rq->curr);
+		if (curr_task) {
+			if (!curr_task->exit_state)
+				max_util_curr = curr_task->uclamp_req[UCLAMP_MAX].value;
+		}
+		rcu_read_unlock();
+	}
+
+	if (max_util_curr == ULONG_MAX || get_curr_task_uclamp_ctrl() == 0)
+		max_util = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+	else
+		max_util = max_util_curr;
 	min_util = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
-	max_util = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
 
 	if (p) {
 		min_util = max(min_util, min_cap);

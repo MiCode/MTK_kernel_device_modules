@@ -2569,10 +2569,17 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	u64 wall_time_stamp;
 	struct rq *rq;
 	unsigned long rq_uclamp_min, rq_uclamp_max;
+	unsigned long max_util_curr = ULONG_MAX;
+	struct task_struct *curr_task;
+	int flg_curr_task = -1, flg_exit_state = -1, flg_pid = -1;
+	unsigned long max_util_curr_eff = ULONG_MAX;
+	unsigned long umax = 0;
+	int curr_task_uclamp = 0;
 
 	rq = cpu_rq(cpu);
 	rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 	rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+	curr_task_uclamp = get_curr_task_uclamp_ctrl();
 
 	if (data != NULL) {
 		sg_policy = (struct sugov_policy *)data;
@@ -2603,6 +2610,34 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
 	else
 		util = max_t(int, pelt_util_with_margin, flt_util);
+
+	if (curr_task_uclamp) {
+		rcu_read_lock();
+		curr_task = rcu_dereference(rq->curr);
+		if (curr_task) {
+			flg_curr_task = 1;
+			flg_pid = curr_task->pid;
+			if (!curr_task->exit_state) {
+				flg_exit_state = 0;
+				max_util_curr = curr_task->uclamp_req[UCLAMP_MAX].value;
+				max_util_curr_eff = curr_task->uclamp[UCLAMP_MAX].value;
+			} else {
+				flg_exit_state = 1;
+			}
+		} else {
+			flg_curr_task = 0;
+		}
+		rcu_read_unlock();
+
+		umax = min_t(unsigned long, max_util_curr, rq->uclamp[UCLAMP_MAX].value);
+		umax = (umax * util_scale) >> SCHED_CAPACITY_SHIFT;
+
+		util = min_t(unsigned long, util, umax);
+
+		if (trace_sugov_ext_curr_task_uclamp_enabled())
+			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
+				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
+	}
 
 	*next_freq = pd_get_util_freq(cpu, util);
 
