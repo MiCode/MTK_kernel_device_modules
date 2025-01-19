@@ -54,6 +54,8 @@ static int charger_delay;
 static DECLARE_DELAYED_WORK(charger, charger_handler);
 #endif
 
+void (*format_sbin_data_hook)(char *buf, u32 size, u32 *sbin_data, u32 lens) = NULL;
+EXPORT_SYMBOL(format_sbin_data_hook);
 
 static int perf_tracker_on;
 static DEFINE_MUTEX(perf_ctl_mutex);
@@ -175,22 +177,6 @@ int perf_tracker_enable(int on)
 }
 EXPORT_SYMBOL_GPL(perf_tracker_enable);
 
-static inline void format_sbin_data(char *buf, u32 size, u32 *sbin_data, u32 lens)
-{
-	char *ptr = buf;
-	char *buffer_end = buf + size;
-	int i;
-
-	ptr += snprintf(ptr, buffer_end - ptr, "ARRAY[");
-	for (i = 0; i < lens; i++) {
-		ptr += snprintf(ptr, buffer_end - ptr, "%02x,%02x,%02x,%02x,",
-				(*(sbin_data+i)) & 0xff, (*(sbin_data+i) >> 8) & 0xff,
-				(*(sbin_data+i) >> 16) & 0xff, (*(sbin_data+i) >> 24) & 0xff);
-	}
-	ptr -= 1;
-	ptr += snprintf(ptr, buffer_end - ptr, "]");
-}
-
 enum {
 	SBIN_EMI_BW_RECORD		= 1U << 0,
 	SBIN_U_RECORD			= 1U << 1,
@@ -200,6 +186,7 @@ enum {
 	SBIN_U_A_E_RECORD		= 1U << 5,
 	SBIN_DRAM_BW_RECORD		= 1U << 6,
 	SBIN_S_RECORD			= 1U << 7,
+	SBIN_HIDDEN				= 1U << 9,
 };
 
 #define K(x) ((x) << (PAGE_SHIFT - 10))
@@ -398,11 +385,14 @@ void perf_tracker(u64 wallclock,
 	sbin_lens += cpu_mcupm_freq_nums;
 	sbin_data_ctl |= SBIN_S_RECORD;
 
+	if(format_sbin_data_hook) {
+		sbin_data_ctl |= SBIN_HIDDEN;
 #if IS_ENABLED(CONFIG_ARM64)
-	format_sbin_data(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
+		format_sbin_data_hook(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
 #else
-	format_sbin_data(sbin_data_print, PRINT_BUFFER_SIZE, sbin_data, sbin_lens);
+		format_sbin_data_hook(sbin_data_print, PRINT_BUFFER_SIZE, sbin_data, sbin_lens);
 #endif
+	}
 	trace_perf_index_sbin(sbin_data_print, sbin_lens, sbin_data_ctl);
 
 	/* trace for short msg */
