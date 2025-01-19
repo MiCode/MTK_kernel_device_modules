@@ -10021,8 +10021,6 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 	int type;
 	int i, j;
 	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
-	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	DDPDBG_BWM("%s +\n", __func__);
@@ -10060,7 +10058,7 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 		type = mtk_ddp_comp_get_type(comp->id);
 		if (type == MTK_OVL_EXDMA &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RPO)) {
-			mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
+			cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
 			if(cmp_id < DDP_COMPONENT_ID_MAX)
 				comp = priv->ddp_comp[cmp_id];
 			for(index = 0; index < MT6991_MAX_EXDMA_NUM; index++) {
