@@ -1861,7 +1861,7 @@ static int smmu_qos_lmu_set(const char *val, const struct kernel_param *kp)
 		ret = kstrtoint(tokenTmp, 10, &lmu_arr[idx]);
 		if (ret) {
 			pr_info("%s, parse failed:%d\n", __func__, ret);
-			return ret;
+			goto out_free;
 		}
 		idx++;
 	}
