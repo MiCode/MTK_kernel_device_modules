@@ -19,6 +19,8 @@
 #include <linux/timer.h>
 #include <linux/proc_fs.h>
 
+#include <linux/version.h>
+
 #include <linux/virtio.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_config.h>
@@ -1077,7 +1079,12 @@ static long filp_send_ioctl(struct file *filp,
 	}
 
 	memset(&map, 0, sizeof(struct iosys_map));
-	if (dma_buf_vmap(dmabuf, &map)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	if (dma_buf_vmap_unlocked(dmabuf, &map))
+#else
+	if (dma_buf_vmap(dmabuf, &map))
+#endif
+	{
 		dev_err(dev, "%s: dma_buf_vmap failed\n", __func__);
 		ret = -ENOMEM;
 		goto dma_buf_vmap_failed;
@@ -1141,7 +1148,11 @@ iov_import_failed:
 trusty_elf_init_failed:
 	// trusty_shm_free(shm_vaddr, (size_t)shm->size);
 trusty_shm_alloc_failed:
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+	dma_buf_vunmap_unlocked(dmabuf, &map);
+#else
 	dma_buf_vunmap(dmabuf, &map);
+#endif
 dma_buf_vmap_failed:
 	if (!IS_ERR_OR_NULL(dmabuf))
 		dma_buf_put(dmabuf);
