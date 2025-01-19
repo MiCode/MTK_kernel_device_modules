@@ -264,6 +264,9 @@ static void mtk_compr_offload_int_wakelock(bool enable)
 
 static int mtk_compr_offload_draindone(void)
 {
+#ifdef use_wake_lock
+	mtk_compr_offload_int_wakelock(true);
+#endif
 	if (afe_offload_block.state == OFFLOAD_STATE_DRAIN) {
 		pr_info("%s\n", __func__);
 		/* gapless mode clear vars */
@@ -351,9 +354,11 @@ static int mtk_compr_offload_drain(struct snd_compr_stream *stream)
 				       sizeof(buf_bridge->pWrite),
 				       0, (void *)&buf_bridge->pWrite);
 	}
+	if (!afe_offload_service.draindone) {
 #ifdef use_wake_lock
-	mtk_compr_offload_int_wakelock(false);
+		mtk_compr_offload_int_wakelock(false);
 #endif
+	}
 	pr_info("%s- ret: %d", __func__, ret);
 	//return -1;  /* make compress driver drain failed if use write_wait */
 	return 0;
