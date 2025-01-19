@@ -257,7 +257,7 @@ bool get_dsu_fine_ctrl(void)
 
     return dsu_fine_ctrl;
 }
-EXPORT_SYMBOL_GPL(get_dsu_fine_ctrl);
+EXPORT_SYMBOL(get_dsu_fine_ctrl);
 
 int get_fine_value_pct_gear(int gearid)
 {
@@ -278,7 +278,7 @@ int get_fine_value_pct_gear(int gearid)
 	}
     return fine_value_pct;
 }
-EXPORT_SYMBOL_GPL(get_fine_value_pct_gear);
+EXPORT_SYMBOL(get_fine_value_pct_gear);
 
 int get_fine_value_pct_cpu(int cpu)
 {
@@ -289,5 +289,5 @@ int get_fine_value_pct_cpu(int cpu)
 
 	return fine_value_pct;
 }
-EXPORT_SYMBOL_GPL(get_fine_value_pct_cpu);
+EXPORT_SYMBOL(get_fine_value_pct_cpu);
 
