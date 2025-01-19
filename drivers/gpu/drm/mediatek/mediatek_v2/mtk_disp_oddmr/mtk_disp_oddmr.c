@@ -894,7 +894,7 @@ static inline unsigned int mtk_oddmr_read(struct mtk_ddp_comp *comp,
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	u32 max_offset = 0x2000;
 
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
+	if (oddmr_data->data->dbi_version >= MTK_DBI_V2)
 		max_offset = 0x20000;
 
 		if (offset >= max_offset || (offset % 4) != 0) {
@@ -913,7 +913,7 @@ static inline void mtk_oddmr_write_mask_cpu(struct mtk_ddp_comp *comp,
 	u32 max_offset = 0x2000;
 	unsigned int tmp;
 
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
+	if (oddmr_data->data->dbi_version >= MTK_DBI_V2)
 		max_offset = 0x20000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
@@ -933,7 +933,7 @@ static inline void mtk_oddmr_write_cpu(struct mtk_ddp_comp *comp,
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	u32 max_offset = 0x2000;
 
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
+	if (oddmr_data->data->dbi_version >= MTK_DBI_V2)
 		max_offset = 0x20000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
@@ -954,7 +954,7 @@ static inline void mtk_oddmr_write(struct mtk_ddp_comp *comp, unsigned int value
 		DDPPR_ERR("%s: invalid comp\n", __func__);
 		return;
 	}
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
+	if (oddmr_data->data->dbi_version >= MTK_DBI_V2)
 		max_offset = 0x20000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
@@ -976,7 +976,7 @@ static inline void mtk_oddmr_write_mask(struct mtk_ddp_comp *comp, unsigned int 
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	u32 max_offset = 0x2000;
 
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2)
+	if (oddmr_data->data->dbi_version >= MTK_DBI_V2)
 		max_offset = 0x20000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
@@ -2720,6 +2720,8 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int reg_tuning_en = 0;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
+	unsigned int full_width = mtk_crtc_get_width_by_comp(__func__,
+				&comp->mtk_crtc->base, comp, true);
 	bool dmr_support;
 	struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
 	struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
@@ -2817,7 +2819,12 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 				mtk_oddmr_write(comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 			}
 		}
-
+		if (oddmr_data->data->dbi_version== MTK_DBI_V3) {
+			mtk_oddmr_write(comp, full_width,
+				DISP_ODDMR_REG_DMR_FRAME_WIDTH, handle);
+			mtk_oddmr_write(comp, full_width,
+				DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH, handle);
+		}
 		if(oddmr_data->set_partial_update == 1) {
 			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : oddmr_data->tile_overhead_v.overhead_v;
@@ -6056,7 +6063,6 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			mutex_lock(&oddmr_data->primary_data->timing_lock);
 			cur_dbv = oddmr_data->primary_data->current_timing.bl_level;
 			mutex_unlock(&oddmr_data->primary_data->timing_lock);
-
 			mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, cur_dbv, handle);
 			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 			mtk_oddmr_dmr_config(comp, handle);
@@ -10197,7 +10203,7 @@ static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en)
 	if (ret <= 0) {
 		atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 0);
 		DDPPR_ERR("enable %d repaint timeout %d\n", enable, ret);
-		ret = 0;
+		ret = -1;
 	}
 	return ret;
 }
@@ -10759,21 +10765,19 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 	case PQ_ODDMR_DMR_INIT:
 		ret = mtk_oddmr_dmr_init(comp, params);
-		DDPMSG("%s, PQ_DMR_INIT\n", __func__);
+		DDPMSG("%s, PQ_DMR_INIT ret:%d\n", __func__, ret);
 		break;
 	case PQ_ODDMR_DMR_ENABLE:
-		ret = 0;
-		mtk_oddmr_dmr_enable(comp, true);
-		DDPMSG("%s, PQ_DMR_ENABLE\n", __func__);
+		ret = mtk_oddmr_dmr_enable(comp, true);
+		DDPMSG("%s, PQ_DMR_ENABLE ret:%d\n", __func__, ret);
 		break;
 	case PQ_ODDMR_DMR_DISABLE:
-		ret = 0;
-		mtk_oddmr_dmr_enable(comp, false);
-		DDPMSG("%s, PQ_DMR_DISABLE\n", __func__);
+		ret = mtk_oddmr_dmr_enable(comp, false);
+		DDPMSG("%s, PQ_DMR_DISABLE ret:%d\n", __func__, ret);
 		break;
 	case PQ_ODDMR_DMR_BINSET_INIT:
 		ret = mtk_oddmr_dmr_binset_init(comp, params);
-		DDPMSG("%s, PQ_DMR_BINSET_INIT\n", __func__);
+		DDPMSG("%s, PQ_DMR_BINSET_INIT ret:%d\n", __func__, ret);
 		break;
 	case PQ_ODDMR_DMR_BINSET_CHG:
 	{
@@ -10798,7 +10802,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 				}
 			}
 		}
-		DDPMSG("%s, PQ_DMR_BINSET_CHG\n", __func__);
+		DDPMSG("%s, PQ_DMR_BINSET_CHG ret:%d\n", __func__, ret);
 	}
 		break;
 	case PQ_ODDMR_DMR_REG_TUNING_ENABLE:
@@ -10808,7 +10812,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_ODDMR_DMR_REG_TUNING_INIT:
 		ret = mtk_oddmr_reg_tuning_init(comp, params);
-		DDPMSG("%s, PQ_ODDMR_DMR_REG_TUNING_INIT\n", __func__);
+		DDPMSG("%s, PQ_ODDMR_DMR_REG_TUNING_INIT ret:%d\n", __func__, ret);
 		break;
 	case PQ_ODDMR_DBI_LOAD_PARAM:
 		ret = mtk_oddmr_dbi_init(comp, params);
