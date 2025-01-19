@@ -8943,6 +8943,7 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		DDPMSG("------ Dump trigger loop ------\n");
 	}
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
+	wake_up_interruptible(&mtk_crtc->trigger_cmdq);
 #endif
 }
 
