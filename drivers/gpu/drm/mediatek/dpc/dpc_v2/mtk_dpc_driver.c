@@ -803,16 +803,16 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 	value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
 
 	if (unlikely(debug_dvfs))
-		DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, bw_in_mb);
+		DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw);
 
 	writel(value, dpc_base + mt6991_ch_bw_cfg[idx].offset);
-	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | idx, bw_in_mb);
+	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, idx, ch_bw);
 }
 
 void mt6991_mml_bw_set(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_bw_type type,
 		       const u32 bw_in_mb, const bool force)
 {
-	u32 ch_bw = 0;
+	u32 ch_bw = 0, ch_bw_sys = 0;
 	u8 idx = 0;
 
 /*	mmlsys	bits		AXI	S/H	R/W	*/
@@ -825,20 +825,24 @@ void mt6991_mml_bw_set(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_bw_t
 /*	37	36	34	35	*/
 /*	2	32	3	33	*/
 
-	/* mml0_bw[DPC_SRT_READ = 0] : disp_bw[0] */
-	/* mml0_bw[DPC_HRT_READ = 2] : disp_bw[1] */
-	/* mml1_bw[DPC_SRT_READ = 0] : disp_bw[2] */
-	/* mml1_bw[DPC_HRT_READ = 2] : disp_bw[3] */
+	/* mml0_bw[DPC_SRT_READ = 0] : disp_bw[DPC_MML0_SHARED_SRT = 0] */
+	/* mml0_bw[DPC_HRT_READ = 2] : disp_bw[DPC_MML0_SHARED_HRT = 1] */
+	/* mml1_bw[DPC_SRT_READ = 0] : disp_bw[DPC_MML1_SHARED_SRT = 2] */
+	/* mml1_bw[DPC_HRT_READ = 2] : disp_bw[DPC_MML1_SHARED_HRT = 3] */
 
 	mutex_lock(&g_priv->dvfs_bw.lock);
 	if (subsys == DPC_SUBSYS_MML0) {
 		ch_bw = g_priv->dvfs_bw.mml0_bw[type] + g_priv->dvfs_bw.disp_bw[type >> 1];
 		idx = type;
+		ch_bw_sys = g_priv->dvfs_bw.mml0_bw[type];
 	} else if (subsys == DPC_SUBSYS_MML1) {
-		ch_bw = g_priv->dvfs_bw.mml1_bw[type] + g_priv->dvfs_bw.disp_bw[(type >> 1) + 1];
+		ch_bw = g_priv->dvfs_bw.mml1_bw[type] + g_priv->dvfs_bw.disp_bw[(type >> 1) + 2];
 		idx = type + 8;
+		ch_bw_sys = g_priv->dvfs_bw.mml1_bw[type];
 	}
 	mutex_unlock(&g_priv->dvfs_bw.lock);
+
+	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, BIT(subsys) << 16 | idx, ch_bw_sys << 16 | ch_bw);
 	dpc_ch_bw_set(subsys, idx, ch_bw);
 }
 
@@ -873,6 +877,7 @@ static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8
 	}
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 
+	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, BIT(subsys) << 16 | idx, bw_in_mb << 16 | ch_bw);
 	dpc_ch_bw_set(subsys, idx, ch_bw);
 }
 
