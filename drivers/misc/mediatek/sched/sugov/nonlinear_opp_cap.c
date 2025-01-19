@@ -1871,6 +1871,14 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
 
+	if (legacy_api_support_get()) {
+		for (int i = 0; i < MAX_NR_CPUS; i++) {
+			set_target_margin(i, 20);
+			set_target_margin_low(i, 20);
+			set_turn_point_freq(i, 1);
+		}
+	}
+
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	for (int i = 0; i < MAX_NR_CPUS; i++) {
 		set_target_margin(i, 20);
