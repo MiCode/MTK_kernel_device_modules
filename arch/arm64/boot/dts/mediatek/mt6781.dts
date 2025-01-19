@@ -1132,6 +1132,44 @@
 			pmic_oc_debug: pmic-oc-debug {
 				compatible = "mediatek,pmic-oc-debug";
 			};
+
+			mt6358rtc: mt6358rtc {
+				compatible = "mediatek,mt6358-rtc";
+
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				fg_init: fg_init {
+					reg = <0 0x1>;
+				};
+				fg_soc: fg_soc {
+					reg = <1 0x1>;
+				};
+				ext_32k: ext_32k {
+					reg = <2 0x1>;
+					bits = <6 1>;
+				};
+			};
+
+			mtk_gauge: mtk_gauge {
+				compatible = "mediatek,mt6358-gauge";
+				bootmode = <&chosen>;
+				charger = <&mt6370_chg>;
+				io-channels = <&pmic_auxadc AUXADC_BAT_TEMP>,
+						<&pmic_auxadc AUXADC_BATADC>,
+						<&pmic_auxadc AUXADC_VBIF>,
+						<&pmic_auxadc AUXADC_IMP>,
+						<&pmic_auxadc AUXADC_IMIX_R>;
+				io-channel-names = "pmic_battery_temp",
+						"pmic_battery_voltage",
+						"pmic_bif_voltage",
+						"pmic_ptim_voltage",
+						"pmic_ptim_r";
+				nvmem-cells = <&fg_init>, <&fg_soc>;
+				nvmem-cell-names = "initialization", "state-of-charge";
+
+			};
+
 		};
 
 	};
@@ -2893,6 +2931,13 @@
 		gauge_name = "gauge";
 		alias_name = "MT6358";
 		vbif28-supply = <&mt_pmic_vbif28_ldo_reg>;
+	};
+
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6370_chg>;
+		bootmode = <&chosen>;
 	};
 
 #if (CONFIG_MTK_GAUGE_VERSION == 30)
