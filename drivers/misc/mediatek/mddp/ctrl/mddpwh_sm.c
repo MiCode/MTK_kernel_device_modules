@@ -192,8 +192,7 @@ static void mddpwh_sm_rsp_act_ok(struct mddp_app_t *app)
 	// 2. Send RSP to upper module.
 	mddp_dev_response(app->type, MDDP_CMCMD_ACT_RSP,
 			true, (uint8_t *)&act, sizeof(act));
-	if (!mddp_connection_base_activated_s)
-		schedule_work(&mddp_hook_work);
+	schedule_work(&mddp_hook_work);
 }
 
 static void mddpwh_sm_deact(struct mddp_app_t *app)
@@ -225,8 +224,7 @@ static void mddpwh_sm_rsp_deact(struct mddp_app_t *app)
 {
 	struct mddp_dev_rsp_deact_t     deact = {0};
 
-	if (!mddp_connection_base_activated_s)
-		schedule_work(&mddp_unhook_work);
+	schedule_work(&mddp_unhook_work);
 	// 2. Send RSP to WiFi
 	if (app->drv_hdlr.change_state != NULL)
 		app->drv_hdlr.change_state(app->state, NULL, NULL);
@@ -926,7 +924,9 @@ static void mddp_hook_work_func(struct work_struct *work)
 	struct mddp_app_t       *app;
 
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
-	mddp_netfilter_hook(&app->work_comp);
+	if (!mddp_connection_base_activated_s)
+		mddp_netfilter_hook();
+	complete(&app->work_comp);
 }
 
 static void mddp_unhook_work_func(struct work_struct *work)
@@ -934,9 +934,11 @@ static void mddp_unhook_work_func(struct work_struct *work)
 	struct mddp_app_t       *app;
 
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+	if (!mddp_connection_base_activated_s)
+		mddp_netfilter_unhook();
 	mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
 	mddp_f_dev_del_lan_dev(app->ap_cfg.dl_dev_name);
-	mddp_netfilter_unhook(&app->work_comp);
+	complete(&app->work_comp);
 }
 
 void mddpw_notify_wlan_mdinfo(void)
