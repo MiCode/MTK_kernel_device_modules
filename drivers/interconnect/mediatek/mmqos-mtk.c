@@ -95,7 +95,7 @@
 #define SUBSYS_V2_HW_BW_HRT(sid)		(gmmqos->mmpc_cam_hw_bw_hrt + (sid << 2))
 #define SUBSYS_V2_HW_BW_SRT(sid)		(gmmqos->mmpc_cam_hw_bw_hrt + 0x18 + (sid << 2))
 #define SUBSYS_V2_HW_EMI_BW_HRT(sid)	(gmmqos->mmpc_cam_hw_emi_bw_hrt + (sid << 2))
-#define SUBSYS_V2_HW_EMI_BW_SRT(sid)	(gmmqos->mmpc_cam_hw_emi_bw_srt + 0x18 + (sid << 2))
+#define SUBSYS_V2_HW_EMI_BW_SRT(sid)	(gmmqos->mmpc_cam_hw_emi_bw_hrt + 0x18 + (sid << 2))
 
 #define TOTAL_BW(i)		(gmmqos->mmpc_total_mmqos_bw + (i<<2))
 #define TOTAL_CUR_BW(i)		(gmmqos->mmpc_total_current_mmqos_bw + (i<<2))
@@ -104,6 +104,10 @@
 #define TOTAL_SRT_BW		(gmmqos->mmpc_total_pmqos_bw + 4)
 #define TOTAL_CUR_HRT_BW	(gmmqos->mmpc_total_current_pmqos_bw)
 #define TOTAL_CUR_SRT_BW	(gmmqos->mmpc_total_current_pmqos_bw + 4)
+#define TOTAL_CUR_SLB_BW(i)	(gmmqos->mmpc_total_current_slb_bw + (i<<2))
+#define TOTAL_EMI_HRT_BW	(gmmqos->mmpc_total_emi_pmqos_bw)
+#define TOTAL_EMI_SRT_BW	(gmmqos->mmpc_total_emi_pmqos_bw + 4)
+
 #define MAX_BUF_LEN			1024
 
 
@@ -207,9 +211,10 @@ struct mtk_mmqos {
 	u32 mmpc_total_pmqos_bw;
 	u32 mmpc_total_slb_bw;
 	u32 mmpc_cam_hw_emi_bw_hrt;
-	u32 mmpc_cam_hw_emi_bw_srt;
+	u32 mmpc_total_emi_pmqos_bw;
 	u32 mmpc_total_current_mmqos_bw;
 	u32 mmpc_total_current_pmqos_bw;
+	u32 mmpc_total_current_slb_bw;
 	u32 vmmrc_level_hex;
 	struct mutex bw_lock;
 	u32 bwl_hrt_r_margin;
@@ -1924,11 +1929,17 @@ static void mmpc_total_bw_full_dump(struct seq_file *file)
 {
 	mmqos_debug_dump_line(file, "\nTotal HRT: %u, SRT: %u\n",
 		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
+	if (mmqos_state & MMPC_V2_ENABLE)
+		mmqos_debug_dump_line(file, "\nTotal EMI HRT: %u, SRT: %u\n",
+			read_register(TOTAL_EMI_HRT_BW), read_register(TOTAL_EMI_SRT_BW));
 	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
 		mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%u\n",
 			i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
 	}
 	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++)
+			mmqos_debug_dump_line(file, "[VENC SLB]i:%d, offset:%#x, value:%u\n",
+				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
 		mmqos_debug_dump_line(file, "\nTotal Current HRT: %u, SRT: %u\n",
 			read_register(TOTAL_CUR_HRT_BW), read_register(TOTAL_CUR_SRT_BW));
 		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
@@ -1936,8 +1947,8 @@ static void mmpc_total_bw_full_dump(struct seq_file *file)
 				i, TOTAL_CUR_BW(i), read_register(TOTAL_CUR_BW(i)));
 		}
 		for (int i = 0; i < MAX_SLB_BW_NUM; i++)
-			mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%u\n",
-				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
+			mmqos_debug_dump_line(file, "[Current][VENC SLB]i:%d, offset:%#x, value:%u\n",
+				i, TOTAL_CUR_SLB_BW(i), read_register(TOTAL_CUR_SLB_BW(i)));
 	}
 }
 static void mmpc_total_bw_full_dump_line(void)
@@ -1977,8 +1988,24 @@ static void mmpc_total_bw_full_dump_line(void)
 		}
 	}
 	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"[VENC SLB]i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
 		ret = snprintf(buf + len, MAX_BUF_LEN - len,
-			"[mmqos]        Total Current HRT: %5u, SRT: %5u, ",
+			"\n[mmqos]        Total EMI HRT: %5u, SRT: %5u, ",
+			read_register(TOTAL_EMI_HRT_BW), read_register(TOTAL_EMI_SRT_BW));
+		len += ret;
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"\n[mmqos]        Total Current HRT: %5u, SRT: %5u, ",
 			read_register(TOTAL_CUR_HRT_BW), read_register(TOTAL_CUR_SRT_BW));
 		len += ret;
 		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
@@ -2007,14 +2034,15 @@ static void mmpc_total_bw_full_dump_line(void)
 		}
 		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
 			ret = snprintf(buf + len, MAX_BUF_LEN - len,
-				"i:%d, offset:%#x, value:%5u ",
-				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
+				"[Current][VENC SLB]i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_CUR_SLB_BW(i), read_register(TOTAL_CUR_SLB_BW(i)));
 			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
 				pr_notice("err ret:%d\n", ret);
 				pr_notice("%s\n", buf);
 				len = 0;
 				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
 			}
+			len += ret;
 		}
 	}
 	pr_notice("%s\n", buf);
@@ -2555,17 +2583,20 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 				of_property_read_u32(pdev->dev.of_node,
 					"mmpc-cam-hw-emi-bw-hrt", &gmmqos->mmpc_cam_hw_emi_bw_hrt);
 				of_property_read_u32(pdev->dev.of_node,
-					"mmpc-cam-hw-emi-bw-srt", &gmmqos->mmpc_cam_hw_emi_bw_srt);
+					"mmpc-total-emi-pmqos-bw", &gmmqos->mmpc_total_emi_pmqos_bw);
 				of_property_read_u32(pdev->dev.of_node,
 					"mmpc-total-current-mmqos-bw", &gmmqos->mmpc_total_current_mmqos_bw);
 				of_property_read_u32(pdev->dev.of_node,
 					"mmpc-total-current-pmqos-bw", &gmmqos->mmpc_total_current_pmqos_bw);
-				MMQOS_DBG("mmpc cam_hw_bw:%#x, cam_hw_bw_hrt:%#x, mmqos_bw:%#x, pmqos_bw:%#x, slb_bw:%#x",
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-current-slb-bw", &gmmqos->mmpc_total_current_slb_bw);
+				MMQOS_DBG("mmpc cam_hw_bw:%#x, cam_hw_bw_hrt:%#x, mmqos_bw:%#x, pmqos_bw:%#x",
 					gmmqos->mmpc_cam_hw_bw, gmmqos->mmpc_cam_hw_bw_hrt,
-					gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw,
-					gmmqos->mmpc_total_slb_bw);
-				MMQOS_DBG("mmpc cam_emi_hrt:%#x, cam_emi_srt:%#x, current_mmqos:%#x, current_pmqos:%#x",
-					gmmqos->mmpc_cam_hw_emi_bw_hrt, gmmqos->mmpc_cam_hw_emi_bw_srt,
+					gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw);
+				MMQOS_DBG("mmpc slb_bw:%#x, current slb:%#x",
+					gmmqos->mmpc_total_slb_bw, gmmqos->mmpc_total_current_slb_bw);
+				MMQOS_DBG("mmpc cam_emi_hrt:%#x, emi_pmqos:%#x, current_mmqos:%#x, current_pmqos:%#x",
+					gmmqos->mmpc_cam_hw_emi_bw_hrt, gmmqos->mmpc_total_emi_pmqos_bw,
 					gmmqos->mmpc_total_current_mmqos_bw, gmmqos->mmpc_total_current_pmqos_bw);
 			} else {
 				of_property_read_u32(pdev->dev.of_node,
@@ -2764,10 +2795,26 @@ static char *get_subsys_name(int sid)
 	switch(sid) {
 	case 0: return "CAM";
 	case 1: return "IMG";
-	case 2: return "MDP";
-	case 3: return "DISP";
-	case 4: return "VENC";
-	case 5: return "VDEC";
+	case 2:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VDEC";
+		else
+			return "MDP";
+	case 3:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VENC";
+		else
+			return "DISP";
+	case 4:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "DISP";
+		else
+			return "VENC";
+	case 5:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "MDP";
+		else
+			return "VDEC";
 	default: return "???";
 	}
 }
