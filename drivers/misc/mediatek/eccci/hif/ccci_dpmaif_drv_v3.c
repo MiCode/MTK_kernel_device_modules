@@ -1279,12 +1279,42 @@ static int drv3_suspend_noirq(struct device *dev)
 	CCCI_NORMAL_LOG(0, TAG, "[%s] power down=%u\n",
 		__func__, ops.drv_check_power_down());
 
+	if (g_debug_flags & DEBUG_SUSPEND) {
+		struct debug_suspend_hdr hdr;
+
+		hdr.type = TYPE_SUSPEND_ID;
+		hdr.flag = NOIRQ_FLAG_SUSPEND;
+		hdr.time = (unsigned int)(local_clock() >> 16);
+		hdr.rxsr = DPMA_READ_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0);
+		hdr.rxmr = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0);
+		hdr.txsr = DPMA_READ_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0);
+		hdr.txmr = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0);
+		hdr.ipby = DPMA_READ_PD_MISC(DPMAIF_PD_AP_IP_BUSY);
+
+		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+	}
+
 	return 0;
 }
 
 static int drv3_resume_noirq(struct device *dev)
 {
 	unsigned int L2RISAR0;
+
+	if (g_debug_flags & DEBUG_SUSPEND) {
+		struct debug_suspend_hdr hdr;
+
+		hdr.type = TYPE_SUSPEND_ID;
+		hdr.flag = NOIRQ_FLAG_RESUME;
+		hdr.time = (unsigned int)(local_clock() >> 16);
+		hdr.rxsr = DPMA_READ_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0);
+		hdr.rxmr = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0);
+		hdr.txsr = DPMA_READ_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0);
+		hdr.txmr = DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0);
+		hdr.ipby = DPMA_READ_PD_MISC(DPMAIF_PD_AP_IP_BUSY);
+
+		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+	}
 
 	/* UL set mask */
 	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, ~(AP_UL_L2INTR_En_Msk));

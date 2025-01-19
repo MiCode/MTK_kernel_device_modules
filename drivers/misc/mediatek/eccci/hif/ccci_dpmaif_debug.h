@@ -37,6 +37,8 @@
 #define TYPE_Q_STOP_START_ID 14
 #define TYPE_RX_FLUSH_ID     15
 #define TYPE_TX_ERROR_ID     16
+#define TYPE_TX_START_ID     17
+#define TYPE_SUSPEND_ID      18
 
 
 #define DEBUG_RX_DONE_SKB    (1 << TYPE_RX_DONE_SKB_ID)
@@ -56,6 +58,8 @@
 #define DEBUG_Q_STOP_START   (1 << TYPE_Q_STOP_START_ID)
 #define DEBUG_RX_FLUSH       (1 << TYPE_RX_FLUSH_ID)
 #define DEBUG_TX_ERROR       (1 << TYPE_TX_ERROR_ID)
+#define DEBUG_TX_START       (1 << TYPE_TX_START_ID)
+#define DEBUG_SUSPEND        (1 << TYPE_SUSPEND_ID)
 
 
 #define DROP_SKB_FROM_RX_TASKLET_LRO     0
@@ -71,6 +75,8 @@
 #define RX_PUSH_IP_PROC_UDP   2
 #define RX_PUSH_IP_PROC_OTH   3
 
+#define NOIRQ_FLAG_SUSPEND    0
+#define NOIRQ_FLAG_RESUME     1
 
 
 struct debug_rx_done_skb_hdr {
@@ -235,6 +241,28 @@ struct debug_tx_error_hdr {
 	s32 err;
 
 } __packed;
+
+struct debug_tx_start_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u16 drb_rel;
+	u16 rel_cnt;
+
+} __packed;
+
+struct debug_suspend_hdr {
+	u8  type:5;
+	u8  flag:3;
+	u32 time;
+	u32 rxsr;
+	u32 rxmr;
+	u32 txsr;
+	u32 txmr;
+	u32 ipby;
+
+} __packed;
+
 
 extern unsigned int g_debug_flags;
 
