@@ -51,6 +51,10 @@
 #include <linux/arm-smccc.h>    /* for Kernel Native SMC API */
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#endif /* CONFIG_MTK_AEE_FEATURE */
+
 enum mtk_slbc_kernel_ops {
 	MTK_SLBC_KERNEL_OP_CPU_DCC = 0,
 };
@@ -62,6 +66,16 @@ enum mtk_slbc_kernel_ops {
 		      _opid, _val1, _val2, 0, 0, 0, 0, &res);\
 	res.a0;                                              \
 })
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define slbc_kernel_exception(cond, fmt, args...)                   \
+	do {                                                        \
+		if (cond)                                           \
+			aee_kernel_exception("slbc", fmt, ##args);  \
+	} while (0)
+#else
+#define slbc_kernel_exception(cond, fmt, args...)
+#endif /* CONFIG_MTK_AEE_FEATURE */
 
 #define ENABLE_SLBC
 #define SLBC_CB
@@ -2444,7 +2458,7 @@ static int slbc_suspend_cb(struct device *dev)
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x, screen on user",
 						slbc_uid_str[i], uid_ref[i]);
-				WARN_ON(uid_ref[i]);
+				slbc_kernel_exception(uid_ref[i], "screen on slb user(%s,%x) didn't release slb in suspend cb", slbc_uid_str[i], uid_ref[i]);
 			}
 		}
 	}
@@ -2473,7 +2487,7 @@ static int slbc_resume_cb(struct device *dev)
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x, screen off user",
 						slbc_uid_str[i], uid_ref[i]);
-				WARN_ON(uid_ref[i]);
+				slbc_kernel_exception(uid_ref[i], "screen off slb user(%s,%x) didn't release slb in resume cb", slbc_uid_str[i], uid_ref[i]);
 			} else {
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x, screen on user",
