@@ -1627,8 +1627,6 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	struct device *dev = port->dev;
 	int err = 0;
 
-	clk_bulk_disable_unprepare(port->num_clks, port->clks);
-
 	if (!device_find_child(dev, NULL, match_any)) {
 		err = pm_runtime_put_sync(dev);
 		if (err)
@@ -1637,17 +1635,21 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 		pm_runtime_disable(dev);
 	}
 
-	reset_control_assert(port->mac_reset);
-
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
+
+	port->data->clkbuf_control(port, false);
+
+	/* Disable clocks and assert reset after MTCOMS off
+	 * to ensure the MTCOMS off sequence
+	 */
+	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+	reset_control_assert(port->mac_reset);
 	reset_control_assert(port->phy_reset);
 
 	/* Set PCIe sw reset bit */
 	if (port->peri_reset_en)
 		mtk_pcie_peri_reset(port, true);
-
-	port->data->clkbuf_control(port, false);
 }
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
