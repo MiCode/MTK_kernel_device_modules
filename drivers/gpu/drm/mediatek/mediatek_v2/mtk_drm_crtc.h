@@ -1265,6 +1265,7 @@ struct mtk_drm_crtc {
 	struct mtk_crtc_se_plane se_plane[MTK_FB_SE_NUM];
 	enum DISP_SE_STATE se_state;
 
+	bool is_plane0_updated;
 };
 
 enum BL_GAMMA_GAIN {
