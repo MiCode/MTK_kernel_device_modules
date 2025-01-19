@@ -1596,6 +1596,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 
 &dp_tx {
 	power-domains;
+	power-domain-names;
 };
 
 &mipi_tx_config0 {
