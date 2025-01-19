@@ -622,6 +622,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_cam_vcore_sub_comm {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_VCORE_SMI>,
 		<&cam_vcore_r1a_clk CLK_VCORE_CAMRAW>,
 		<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
@@ -631,6 +633,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_cam_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
@@ -641,6 +645,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_cam_sub_comm2 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
@@ -650,14 +656,20 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_ccu_sub_comm1 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
 &smi_ccu_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
 &smi_larb13 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -665,6 +677,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb14 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -672,6 +686,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb16 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA>,
 		<&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
@@ -681,6 +697,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb43 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB>,
 		<&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
@@ -690,6 +708,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb44 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC>,
 		<&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
@@ -699,6 +719,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb17 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA>,
 		<&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
@@ -708,6 +730,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb45 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB>,
 		<&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
@@ -717,6 +741,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb46 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC>,
 		<&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
@@ -726,6 +752,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb19 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
 		<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -733,6 +761,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb25 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
 		<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -740,6 +770,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb26 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
 		<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -747,6 +779,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb27 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -754,6 +788,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb29 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
 		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -761,10 +797,14 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb30 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
 &smi_pd_cam_mraw {
+	power-domains;
+	no-pm-runtime;
 	compatible = "mediatek,smi-skip-probe";
 };
 
