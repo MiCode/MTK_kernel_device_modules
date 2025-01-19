@@ -4590,6 +4590,26 @@
 			compatible = "mediatek,mt6895-iommu-debug";
 		};
 
+		mtkheap-page-prot {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_prot_page-uncached";
+			trusted-mem-type = <10>;
+		};
+
+		mtkheap_page_svp: mtkheap-page-svp {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_svp_page-uncached";
+			trusted-mem-type = <9>;
+			status = "disabled";
+		};
+
+		mtkheap_page_wfd: mtkheap-page-wfd {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_wfd_page-uncached";
+			trusted-mem-type = <11>;
+			status = "disabled";
+		};
+
 		mtkheap-region-prot {
 			compatible = "mediatek,dmaheap-mtk-sec-region";
 			heap-name = "mtk_prot_region";
