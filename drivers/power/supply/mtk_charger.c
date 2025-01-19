@@ -673,8 +673,10 @@ static void check_battery_exist(struct mtk_charger *info)
 		return;
 
 	for (i = 0; i < 3; i++) {
-		if (is_battery_exist(info) == false)
+		if (is_battery_exist(info) == false) {
 			count++;
+			chr_debug("%s: %d\n", __func__, count);
+		}
 	}
 
 #ifdef FIXME
@@ -3036,10 +3038,12 @@ static void charger_status_check(struct mtk_charger *info)
 	} else {
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ONLINE, &online);
-
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_STATUS, &status);
-
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		if (!online.intval)
 			charging = false;
 		else {
@@ -3765,10 +3769,16 @@ static void mtk_charger_external_power_changed(struct power_supply *psy)
 	} else {
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_USB_TYPE, &prop2);
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 		ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ENERGY_EMPTY, &vbat0);
+		if (ret < 0)
+			chr_debug("%s: %d\n", __func__, ret);
 	}
 
 	if (info->vbat0_flag != vbat0.intval) {

@@ -129,7 +129,7 @@ static bool support_fast_charging(struct mtk_charger *info)
 static bool select_charging_current_limit(struct mtk_charger *info,
 	struct chg_limit_setting *setting)
 {
-	struct charger_data *pdata, *pdata2, *pdata_dvchg, *pdata_dvchg2;
+	struct charger_data *pdata, *pdata2, *pdata_dvchg;
 	bool is_basic = false;
 	u32 ichg1_min = 0, aicr1_min = 0;
 	int ret;
@@ -139,7 +139,7 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 	pdata = &info->chg_data[CHG1_SETTING];
 	pdata2 = &info->chg_data[CHG2_SETTING];
 	pdata_dvchg = &info->chg_data[DVCHG1_SETTING];
-	pdata_dvchg2 = &info->chg_data[DVCHG2_SETTING];
+	// pdata_dvchg2 = &info->chg_data[DVCHG2_SETTING];
 	if (info->usb_unlimited) {
 		pdata->input_current_limit =
 					info->data.ac_charger_input_current;

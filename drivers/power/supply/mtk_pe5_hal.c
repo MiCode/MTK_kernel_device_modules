@@ -419,7 +419,7 @@ int pe50_hal_reset_vbusovp_alarm(struct chg_alg_device *alg,
 static int pe50_get_tbat(struct pe50_hal *hal)
 {
 	int ret = 27;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_manager_psy = NULL;
 
 	bat_manager_psy = hal->bat_manager_psy;
@@ -435,6 +435,8 @@ static int pe50_get_tbat(struct pe50_hal *hal)
 	} else {
 		ret = power_supply_get_property(bat_manager_psy,
 			POWER_SUPPLY_PROP_TEMP, &prop);
+		if (ret < 0)
+			return ret;
 		ret = prop.intval / 10;
 	}
 	PE50_DBG("%d\n", ret);
