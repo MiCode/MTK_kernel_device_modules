@@ -277,6 +277,36 @@ int sbe_check_info_status(void)
 	return count;
 }
 
+struct sbe_render_info *sbe_get_render_info_by_thread_name(int tgid, char *thread_name)
+{
+	struct sbe_render_info *iter, *temp_info = NULL;
+	struct rb_node *rbn;
+	struct task_struct *tsk;
+
+	rbn = rb_first(&sbe_render_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct sbe_render_info, entry);
+		if (iter->tgid == tgid) {
+			rcu_read_lock();
+			tsk = find_task_by_vpid(iter->pid);
+			if (tsk) {
+				get_task_struct(tsk);
+				if (!strncmp(tsk->comm, thread_name, 16))
+					temp_info = iter;
+				put_task_struct(tsk);
+			}
+			rcu_read_unlock();
+		}
+
+		if (temp_info)
+			return temp_info;
+
+		rbn = rb_next(rbn);
+	}
+
+	return temp_info;
+}
+
 struct sbe_render_info *sbe_get_render_info(int pid,
 	unsigned long long buffer_id, int force)
 {
@@ -374,8 +404,9 @@ int sbe_check_render_info_status(void)
 	rbn = rb_first(&sbe_render_info_tree);
 	while (rbn) {
 		iter = rb_entry(rbn, struct sbe_render_info, entry);
-		if ((cur_ts - iter->latest_use_ts > NSEC_PER_SEC)
-			&& (!iter->scroll_status)) {
+		if (((cur_ts - iter->latest_use_ts > NSEC_PER_SEC)
+			&& (!iter->scroll_status)) ||
+			!sbe_get_tgid(iter->pid)) {
 			sbe_delete_render_info(iter);
 			rbn = rb_first(&sbe_render_info_tree);
 		} else {

@@ -85,6 +85,7 @@ void sbe_delete_info(int pid);
 int sbe_check_info_status(void);
 struct sbe_render_info *sbe_get_render_info(int pid,
 	unsigned long long buffer_id, int force);
+struct sbe_render_info *sbe_get_render_info_by_thread_name(int tgid, char *thread_name);
 int sbe_check_render_info_status(void);
 int sbe_check_spid_loading_status(void);
 int sbe_delete_spid_loading(int tgid);

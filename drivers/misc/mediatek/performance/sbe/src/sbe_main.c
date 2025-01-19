@@ -389,6 +389,22 @@ int sbe_get_render_tid_by_render_name(int tgid, char *name,
 	return 0;
 }
 
+void sbe_enforce_update_sbe_info_by_thread_name(int tgid, char *thread_name,
+		int start, unsigned long long ts)
+{
+	struct sbe_render_info *sbe_thr = NULL;
+
+	sbe_thr = sbe_get_render_info_by_thread_name(tgid, thread_name);
+	if(!sbe_thr)
+		return;
+
+	if (!start) {
+		sbe_thr->latest_use_ts = ts;
+		sbe_thr->scroll_status = 0;
+		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 0, "[ux]sbe_set_ctrl");
+	}
+}
+
 static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 				unsigned long long ts, int start,
 				char *specific_name, int num)
@@ -443,6 +459,12 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 
 	sbe_get_render_tid_by_render_name(tgid, thread_name,
 		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, max_rpid_num);
+
+	if (!final_pid_arr_idx) {
+		sbe_get_tree_lock(__func__);
+		sbe_enforce_update_sbe_info_by_thread_name(tgid, thread_name, start, ts);
+		sbe_put_tree_lock(__func__);
+	}
 
 	ux_general_policy = get_ux_general_policy();
 	sbe_trace("[SBE] %s tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d ux_general_policy:%d",

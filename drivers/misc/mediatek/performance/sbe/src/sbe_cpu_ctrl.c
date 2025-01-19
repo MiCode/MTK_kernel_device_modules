@@ -1514,7 +1514,7 @@ void sbe_del_ux(struct sbe_render_info *info)
 		}
 	}
 	//reset sbe tag when render del
-	sbe_systrace_c(info->pid, 0, 0, "sbe_set_ctrl");
+	sbe_systrace_c(info->pid, info->buffer_id, 2, "[ux]sbe_set_ctrl");
 	list_del(&(info->scroll_list));
 
 	//delete ux_frame_info
