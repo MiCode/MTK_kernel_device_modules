@@ -3068,7 +3068,8 @@
 			<0 0x1022c000 0 0x1000>, /*PD_MD_MISC*/
 			<0 0x1022e000 0 0x1000>; /*SRAM*/
 		interrupts = <GIC_SPI 209 IRQ_TYPE_LEVEL_HIGH 0>;
-		mediatek,dpmaif_cap = <6>;
+		mediatek,dpmaif-ver = <2>;
+		mediatek,dpmaif-cap = <6>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>;
 		clock-names = "infra-dpmaif-clk",
@@ -3077,16 +3078,17 @@
 		interconnect-names = "icc-dpmaif-bw";
 		required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>;
-		net_spd_ver = <2>;
-		mediatek,ap_plat_info = <6833>;
+		net-spd-ver = <2>;
+		mediatek,ap-plat-info = <6833>;
+		dpmaif-infracfg = <&infracfg_ao_clk>;
 	};
 
 	ccifdriver:ccifdriver@10209000 {
 		compatible = "mediatek,ccci_ccif";
 		reg = <0 0x10209000 0 0x1000>, /*AP_CCIF_BASE*/
 			<0 0x1020a000 0 0x1000>; /*MD_CCIF_BASE*/
-		mediatek,sram_size = <512>;
-		/*CCIF0 174/206, CCIF0 175/207*/
+		mediatek,sram-size = <512>;
+		/*CCIF0 194, CCIF0 195*/
 		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_CCIF_AP>,
@@ -3107,30 +3109,27 @@
 	mddriver:mddriver {
 		compatible = "mediatek,mddriver";
 		/* bit0~3: CLDMA|CCIF|DPMAIF */
-		mediatek,mdhif_type = <6>;
-		mediatek,md_id = <0>;
-		mediatek,ap_plat_info = <6833>;
-		mediatek,md_generation = <6297>;
-		mediatek,offset_epon_md1 = <0x2844>;
-		mediatek,cldma_capability = <14>;
+		mediatek,mdhif-type = <6>;
+		mediatek,ap-plat-info = <6833>;
+		mediatek,md-generation = <6297>;
+		mediatek,offset-epon-md1 = <0x2844>;
+		mediatek,cldma-capability = <14>;
+		mediatek,boot-status-value = <0x5443000c>;
 		/* bit0~1: srcclkena|srclken_o1_on */
-		mediatek,power_flow_config = <2>;
+		mediatek,power-flow-config = <2>;
 		/* srclken_o1 set value |= 1<<21 */
-		mediatek,srclken_o1 = <0x200000>;
+		mediatek,srclken-o1 = <0x200000>;
 		/* MDWDT; CCIF0 194/226; CCIF0 195/227 */
 		interrupts = <GIC_SPI 78 IRQ_TYPE_EDGE_RISING 0>,
 			     <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH 0>,
 			     <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
-		md_vmodem-supply = <&mt6315_3_vbuck1>;
-		md_vsram-supply = <&mt6315_3_vbuck4>;
-		md_vdigrf-supply = <&mt6359p_vpu_reg>;
 		power-domains = <&scpsys MT6833_POWER_DOMAIN_MD>;
 		ccci-infracfg = <&infracfg_ao_clk>;
 		ccci-topckgen = <&topckgen_clk>;
-		ccci_spmsleep = <&sleep>;
+		ccci-spmsleep = <&sleep>;
 	};
 
-	md_auxadc:md_auxadc {
+	md_auxadc:md-auxadc {
 		compatible = "mediatek,md_auxadc";
 		io-channels = <&auxadc 2>;
 		io-channel-names = "md-channel";
@@ -3142,7 +3141,7 @@
 		nvmem-cell-names = "external-32k";
 	};
 
-	ccci_scp:ccci_scp {
+	ccci_scp:ccci-scp {
 		compatible = "mediatek,ccci_md_scp";
 		reg = <0 0x1023c000 0 0x1000>, /* AP_CCIF2_BASE */
 		      <0 0x1023d000 0 0x1000>; /* MD_CCIF2_BASE */
@@ -3156,10 +3155,10 @@
 		compatible = "mediatek,gpio_usage_mapping";
 	};
 
-	md1_sim1_hot_plug_eint:MD1_SIM1_HOT_PLUG_EINT {
+	md1_sim1_hot_plug_eint:MD1-SIM1-HOT-PLUG-EINT {
 	};
 
-	md1_sim2_hot_plug_eint:MD1_SIM2_HOT_PLUG_EINT {
+	md1_sim2_hot_plug_eint:MD1-SIM2-HOT-PLUG-EINT {
 	};
 
 	watchdog: watchdog@10007000 {
@@ -7052,6 +7051,16 @@ grpid = <11>;
 	};
 	aud_gpio_i2s5_on: aud_gpio_i2s5_on {
 	};
+};
+
+&mddriver {
+	/* for md pmic voltage setting*/
+	md-vmodem-supply = <&mt6315_3_vbuck1>;
+	md-vmodem = <825000 825000>;
+	md-vsram-supply = <&mt6315_3_vbuck4>;
+	md-vsram = <825000 825000>;
+	md-vdigrf-supply = <&mt6359p_vpu_reg>;
+	md-vdigrf = <700000 700000>;
 };
 
 #include "mediatek/cust_mt6833_msdc.dtsi"
