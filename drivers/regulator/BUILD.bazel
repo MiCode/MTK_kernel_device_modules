@@ -26,9 +26,17 @@ filegroup(
 )
 
 SIMPLE_MODULE_NAME = [
+    "mt6315-regulator",
+    "mt6316-regulator",
+    "mt6359p-regulator",
     "mt6360-regulator",
+    "mt6363-regulator",
+    "mt6368-regulator",
+    "mt6369-regulator",
     "mt6370-regulator",
+    "mt6373-regulator",
     "mt6379-regulator",
+    "mtk-extbuck-debug",
     "rt4803",
 ]
 

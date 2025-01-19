@@ -81,3 +81,43 @@ define_mgk_ddk_ko(
     ],
     includes = ["include"],
 )
+
+define_mgk_ddk_ko(
+    name = "mt6397",
+    srcs = [
+        "mt6397-core.c",
+        "mt6397-irq.c",
+        "mt6358-irq.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt63xx-debug",
+    srcs = [
+        "mt63xx-debug.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-spmi-pmic",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_GRT_HYPERVISOR": {
+            False: ["mtk-spmi-pmic.c"],
+        },
+    },
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-spmi-pmic-debug",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEBUG_FS": {
+            True: ["mtk-spmi-pmic-debug.c"],
+        },
+    },
+    includes = ["include"],
+)

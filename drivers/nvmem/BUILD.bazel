@@ -29,3 +29,10 @@ define_mgk_ddk_ko(
         "mtk-devinfo.c",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt635x-efuse",
+    srcs = [
+        "mt635x-efuse.c",
+    ],
+)

@@ -24,11 +24,13 @@ filegroup(
 )
 
 MODULE_NAME = [
+    "mt635x-auxadc",
     "mt6360-adc",
     "mt6370-adc",
     "mt6375-adc",
     "mt6375-auxadc",
     "mt6379-adc",
+    "mtk-spmi-pmic-adc",
     "rt9490-adc",
 ]
 

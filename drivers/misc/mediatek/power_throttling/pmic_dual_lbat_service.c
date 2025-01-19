@@ -342,7 +342,7 @@ static ssize_t dual_lbat_user_modify_thd_ext_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	lbat_user_modify_thd_ext(lbat_user_table[i], thd_volt, thd_volt_size);
+	dual_lbat_user_modify_thd_ext(lbat_user_table[i], thd_volt, thd_volt_size);
 
 	return size;
 }
@@ -453,7 +453,7 @@ static void lbat_deb_handler(struct work_struct *work)
 	mutex_lock(&lbat_mutex);
 	if (user->deb_thd_ptr == user->hv_thd) {
 		/* LBAT user HV de-bounce */
-		if (lbat_read_volt() < user->deb_thd_ptr->thd_volt) {
+		if (dual_lbat_read_volt() < user->deb_thd_ptr->thd_volt) {
 			/* ignore this event and reset lbat_list */
 			lbat_list_add(user->deb_thd_ptr, &lbat_hv_list);
 			goto done;
@@ -463,7 +463,7 @@ static void lbat_deb_handler(struct work_struct *work)
 	} else if (user->deb_thd_ptr == user->lv1_thd ||
 		   (user->lv2_thd && user->deb_thd_ptr == user->lv2_thd)) {
 		/* LBAT user LV de-bounce */
-		if (lbat_read_volt() > user->deb_thd_ptr->thd_volt) {
+		if (dual_lbat_read_volt() > user->deb_thd_ptr->thd_volt) {
 			/* ignore this event and reset lbat_list */
 			lbat_list_add(user->deb_thd_ptr, &lbat_lv_list);
 			goto done;
@@ -478,7 +478,7 @@ static void lbat_deb_handler(struct work_struct *work)
 	user->deb_cnt++;
 #if LBAT_SERVICE_DBG
 	pr_info("[%s] name:%s, read_volt:%d, thd_volt:%d, de-bounce times:%d\n", __func__,
-		user->name, lbat_read_volt(), user->deb_thd_ptr->thd_volt, user->deb_cnt);
+		user->name, dual_lbat_read_volt(), user->deb_thd_ptr->thd_volt, user->deb_cnt);
 #endif
 	if (user->deb_cnt < deb_times) {
 		queue_delayed_work(lbat_wq, &user->deb_work, msecs_to_jiffies(deb_prd));
