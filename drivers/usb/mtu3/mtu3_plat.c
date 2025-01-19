@@ -664,8 +664,7 @@ int ssusb_offload_register(struct ssusb_offload *offload)
 	offload->ssusb = ssusb;
 	ssusb->offload = offload;
 
-	if (ssusb->otg_switch.latest_role == USB_ROLE_HOST &&
-		ssusb->otg_switch.current_role == USB_ROLE_NONE) {
+	if (ssusb->otg_switch.latest_role == USB_ROLE_HOST) {
 		dev_info(ssusb->dev, "usb offload ready, switch to host\n");
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
 	}
