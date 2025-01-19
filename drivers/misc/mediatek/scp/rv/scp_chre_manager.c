@@ -142,7 +142,7 @@ static ssize_t scp_chre_manager_write(struct file *filp,
 		return -EFAULT;
 	}
 
-	if (msg.magic != SCP_CHRE_MAGIC &&
+	if (msg.magic != SCP_CHRE_MAGIC ||
 		msg.size > SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM) {
 		pr_err("[SCP] magic/size check fail\n");
 		return -EFAULT;
