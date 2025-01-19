@@ -26,6 +26,7 @@
 #include <sched/sched.h>
 #include "sched_sys_common.h"
 #include <linux/types.h>
+#include <linux/rbtree.h>
 #include "eas_plus.h"
 #include "eas_trace.h"
 
@@ -67,13 +68,214 @@ void attach_tasks_clone(struct list_head *tasks, struct rq *rq)
 	}
 }
 
-#if 0
 static inline void
 rq_relock(struct rq *rq, struct rq_flags *rf)
 	__acquires(rq->lock)
 {
 	raw_spin_rq_lock(rq);
 	rq_repin_lock(rq, rf);
+}
+
+static struct task_struct *pick_task_stop_clone(struct rq *rq)
+{
+	if (!sched_stop_runnable(rq))
+		return NULL;
+
+	return rq->stop;
+}
+
+#define __node_2_dle(node) \
+	rb_entry((node), struct sched_dl_entity, rb_node)
+
+static struct sched_dl_entity *pick_next_dl_entity_clone(struct dl_rq *dl_rq)
+{
+	struct rb_node *left = rb_first_cached(&dl_rq->root);
+
+	if (!left)
+		return NULL;
+
+	return __node_2_dle(left);
+}
+
+static struct task_struct *pick_task_dl_clone(struct rq *rq)
+{
+	struct sched_dl_entity *dl_se;
+	struct dl_rq *dl_rq = &rq->dl;
+	struct task_struct *p;
+
+	if (!sched_dl_runnable(rq))
+		return NULL;
+
+	dl_se = pick_next_dl_entity_clone(dl_rq);
+	WARN_ON_ONCE(!dl_se);
+
+	p = container_of(dl_se, struct task_struct, dl);
+
+	return p;
+}
+
+static struct sched_rt_entity *pick_next_rt_entity_clone(struct rt_rq *rt_rq)
+{
+	struct rt_prio_array *array = &rt_rq->active;
+	struct sched_rt_entity *next = NULL;
+	struct list_head *queue;
+	int idx;
+
+	idx = sched_find_first_bit(array->bitmap);
+	BUG_ON(idx >= MAX_RT_PRIO);
+
+	queue = array->queue + idx;
+	if (SCHED_WARN_ON(list_empty(queue)))
+		return NULL;
+	next = list_entry(queue->next, struct sched_rt_entity, run_list);
+
+	return next;
+}
+
+static struct task_struct *_pick_next_task_rt_clone(struct rq *rq)
+{
+	struct sched_rt_entity *rt_se;
+	struct rt_rq *rt_rq  = &rq->rt;
+
+	do {
+		rt_se = pick_next_rt_entity_clone(rt_rq);
+		if (unlikely(!rt_se))
+			return NULL;
+#ifdef CONFIG_RT_GROUP_SCHED
+		rt_rq = rt_se->my_q;
+#else
+		rt_rq = NULL;
+#endif
+	} while (rt_rq);
+
+	return container_of(rt_se, struct task_struct, rt);
+}
+
+static struct task_struct *pick_task_rt_clone(struct rq *rq)
+{
+	struct task_struct *p;
+
+	if (!sched_rt_runnable(rq))
+		return NULL;
+
+	p = _pick_next_task_rt_clone(rq);
+
+	return p;
+}
+
+static struct task_struct *choose_task_fair(struct rq *rq)
+{
+	struct list_head *tasks = &rq->cfs_tasks;
+	struct task_struct *p;
+
+	lockdep_assert_rq_held(rq);
+	list_for_each_entry_reverse(p, tasks, se.group_node) {
+		if (p)
+			return p;
+	}
+
+	return NULL;
+}
+
+#ifdef CONFIG_SCHED_CLASS_EXT
+static struct task_struct *first_local_task(struct rq *rq)
+{
+	return list_first_entry_or_null(&rq->scx.local_dsq.list,
+					struct task_struct, scx.dsq_list.node);
+}
+
+static struct task_struct *pick_task_scx_clone(struct rq *rq)
+{
+	struct task_struct *prev = rq->curr;
+	struct task_struct *p;
+
+	if ((rq->scx.flags & SCX_RQ_BAL_KEEP) &&
+		prev->sched_class == &ext_sched_class) {
+		p = prev;
+		if (!p->scx.slice)
+			p->scx.slice = SCX_SLICE_DFL;
+	} else {
+		p = first_local_task(rq);
+		if (!p)
+			return NULL;
+
+		if (unlikely(!p->scx.slice)) {
+			if (!scx_rq_bypassing(rq) && !scx_warned_zero_slice) {
+				printk_deferred(KERN_WARNING "sched_ext: %s[%d] has zero slice in pick_next_task_scx()\n",
+					p->comm, p->pid);
+				scx_warned_zero_slice = true;
+			}
+			p->scx.slice = SCX_SLICE_DFL;
+		}
+	}
+}
+#endif
+
+#define STOP 0x1
+#define DL 0x2
+#define RT 0x3
+#define FAIR 0x4
+#define EXT 0x5
+#define IDLE 0x6
+
+static struct task_struct *mtk_pick_migrate_task(struct rq *rq)
+{
+	struct task_struct *next = NULL;
+	int class_num = 0;
+
+	next = pick_task_stop_clone(rq);
+	if (next) {
+		class_num = STOP;
+		goto out;
+	}
+
+	next = pick_task_dl_clone(rq);
+	if (next) {
+		class_num = DL;
+		goto out;
+	}
+
+	next = pick_task_rt_clone(rq);
+	if (next) {
+		class_num = RT;
+		goto out;
+	}
+
+#ifdef CONFIG_SCHED_CLASS_EXT
+	if (!scx_switched_all()) {
+		next = choose_task_fair(rq);
+		if (next) {
+			class_num = FAIR;
+			goto out;
+		}
+	}
+
+	if (scx_enabled()) {
+		next = pick_task_scx_clone(rq);
+		if (next) {
+			class_num = EXT;
+			goto out;
+		}
+	}
+#else
+	next = choose_task_fair(rq);
+	if (next) {
+		class_num = FAIR;
+		goto out;
+	}
+#endif
+
+	if (next == NULL) {
+		next = rq->idle;
+		class_num = IDLE;
+		goto out;
+	}
+
+out:
+	if (trace_sched_pause_pick_task_enabled())
+		trace_sched_pause_pick_task(rq->cpu, next, class_num, cpu_pause_mask);
+
+	return next;
 }
 
 static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
@@ -116,7 +318,7 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 		if (rq->nr_running == 1)
 			break;
 
-		next = pick_migrate_task(rq);
+		next = mtk_pick_migrate_task(rq);
 		/* prevent warn on rq_pin_lock() */
 		if (rq->balance_callback && rq->balance_callback != &balance_push_callback)
 			rq->balance_callback = NULL;
@@ -160,6 +362,8 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 
 		if (cpu_of(rq) != dest_cpu && !is_migration_disabled(next)) {
 			rq = __migrate_task(rq, rf, next, dest_cpu);
+			if (trace_sched_pause_mig_task_enabled())
+				trace_sched_pause_mig_task(rq->cpu, next, dest_cpu, cpu_pause_mask);
 			if (rq != dead_rq) {
 				rq_unlock(rq, rf);
 				rq = dead_rq;
@@ -179,14 +383,14 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 
 	rq->stop = stop;
 }
-#endif
+
 int drain_rq_cpu_stop(void *data)
 {
 	struct rq *rq = this_rq();
 	struct rq_flags rf;
 
 	rq_lock_irqsave(rq, &rf);
-//	migrate_tasks(rq, &rf);
+	migrate_tasks(rq, &rf);
 	rq_unlock_irqrestore(rq, &rf);
 
 	return 0;
