@@ -15348,7 +15348,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<12 1  2 0>,/* IPI_IN_MMQOS */
 			<15 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
 			<17 1 18 0>,/* IPI_IN_VENC_0 */
-			<34 1  2 0>,/* IPI_IN_MMDVFS_VCP */
+			<10 1  2 0>,/* IPI_IN_MMDVFS_VCP */
 			< 5 2  1 0>,/* IPI_IN_VCP_READY_0 */
 			<25 2  6 0>,/* IPI_IN_LOGGER_CTRL_0 */
 			< 2 2  1 1>;/* IPI_OUT_C_SLEEP_0 */
@@ -15478,7 +15478,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		/* id, mbox, recv_size, recv_opt */
 		recv-table =
-			<10 0  2 0>,/* IPI_IN_MMDVFS_MMUP */
+			<34 0  2 0>,/* IPI_IN_MMDVFS_MMUP */
 			<14 0  2 0>,/* IPI_IN_MMDEBUG */
 			<26 1  1 0>,/* IPI_IN_VCP_READY_1 */
 			<31 1  6 0>,/* IPI_IN_LOGGER_CTRL_1 */
@@ -15742,6 +15742,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,restore-step;
 		mediatek,vcore-check-rg = <0x1c0132b0>;
 		mediatek,vcore-check-offset = <6>;
+		mediatek,mmdebug = <&mmdebug>;
 	};
 
 	mmdvfs-user {
@@ -15769,9 +15770,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		vmm-pmic-supply = <&mt6363_vbuck2>;
 		vdisp-pmic-supply = <&mt6363_vbuck1>;
 		mediatek,met-freerun;
+		mediatek,mmdebug = <&mmdebug>;
 	};
 
-	mmdebug-vcp {
+	mmdebug: mmdebug-vcp {
 		compatible = "mediatek,mmdebug-vcp";
 	};
 
