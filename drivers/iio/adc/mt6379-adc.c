@@ -133,7 +133,7 @@ bypass_oneshot:
 					MT6379_MASK_ADC_REPORT_CH, chan);
 		if (ret) {
 			dev_info(priv->dev, "%s: Failed to select ADC report channel\n", __func__);
-			return ret;
+			goto adc_unlock;
 		}
 
 		usleep_range(1000, 1200);
@@ -141,7 +141,7 @@ bypass_oneshot:
 				      &be_val, sizeof(be_val));
 		if (ret) {
 			dev_info(priv->dev, "%s, Failed to read ADC_REPORT\n", __func__);
-			return ret;
+			goto adc_unlock;
 		}
 
 		*val = be16_to_cpu(be_val);

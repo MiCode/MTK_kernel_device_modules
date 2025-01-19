@@ -108,7 +108,6 @@ struct dev_constraint {
 	const unsigned int bat_idx;
 	int (*pre_irq_handler)(void *data);
 	int (*post_irq_handler)(void *data);
-	const char *pmic_compatible;
 };
 
 struct mt6375_priv {
@@ -169,9 +168,6 @@ static const struct {
 	.info_mask_separate = _info				\
 }
 
-#define AUXADC_CHAN_PROCESSED(_idx, _resolution, _type)		\
-	AUXADC_CHAN(_idx, _resolution, _type, BIT(IIO_CHAN_INFO_PROCESSED))
-
 #define AUXADC_CHAN_RAW(_idx, _resolution, _type)		\
 	AUXADC_CHAN(_idx, _resolution, _type, BIT(IIO_CHAN_INFO_RAW))
 
@@ -182,10 +178,20 @@ static const struct {
 static const struct iio_chan_spec auxadc_channels[] = {
 	AUXADC_CHAN_RAW_SCALE(BATSNS, 15, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW_SCALE(BATON, 12, IIO_VOLTAGE),
-	AUXADC_CHAN_PROCESSED(IMP, 15, IIO_VOLTAGE),
+	AUXADC_CHAN_RAW(IMP, 15, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW(IMIX_R, 16, IIO_RESISTANCE),
 	AUXADC_CHAN_RAW_SCALE(VREF, 12, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW_SCALE(BATSNS_DBG, 15, IIO_VOLTAGE)
+};
+
+static const char * const mt6375_auxadc_chan_labels[MT6375_AUXADC_MAX_CHANNEL] = {
+	/* The label index of MT6375 is tha same as that of MT6379. */
+	[MT6375_AUXADC_BATSNS]		= "batsns (auxadc_vbat)",
+	[MT6375_AUXADC_BATON]		= "baton",
+	[MT6375_AUXADC_IMP]		= "IMP (PTIM vbat)",
+	[MT6375_AUXADC_IMIX_R]		= "imix_r",
+	[MT6375_AUXADC_VREF]		= "vref",
+	[MT6375_AUXADC_BATSNS_DBG]	= "batsns_dbg (auxadc_vbat)",
 };
 
 static unsigned int rg_xlate(struct mt6375_priv *priv, unsigned int addr)
@@ -208,8 +214,8 @@ static unsigned int rg_xlate(struct mt6375_priv *priv, unsigned int addr)
 	if (RG_BASE_CMP(addr, MT6375_RG_HK2_BASE))
 		return XLATE_NEW_ADDR(addr, dinfo->rg_hk2_base);
 
-	dev_notice(priv->dev, "%s: error reg address! error addr:0x%x\n",
-		   __func__, addr);
+	dev_info(priv->dev, "%s, error reg address! error addr:0x%x\n",
+		 __func__, addr);
 	return addr;
 }
 
@@ -232,7 +238,7 @@ static int auxadc_get_chg_vbat(struct mt6375_priv *priv, int *chg_vbat)
 	return ret;
 }
 
-static int auxadc_read_channel(struct mt6375_priv *priv, int chan, int dbits, int *val)
+static int mt6375_auxadc_read_channel(struct mt6375_priv *priv, int chan, int dbits, int *val)
 {
 	unsigned int enable, out_reg, rdy_val;
 	u16 raw_val;
@@ -247,7 +253,9 @@ static int auxadc_read_channel(struct mt6375_priv *priv, int chan, int dbits, in
 	} else if (chan == MT6375_AUXADC_BATSNS) {
 		if (atomic_read(&priv->vbat0_flag)) {
 			ret = auxadc_get_chg_vbat(priv, &chg_vbat);
-			dev_info(priv->dev, "%s: use chg_vbat:%d(%d)\n", __func__, chg_vbat, ret);
+			dev_info(priv->dev,
+				 "%s, auxadc_vbat is abnormal, use chg_vbat: %dmV(ret:%d)\n",
+				 __func__, chg_vbat, ret);
 			if (ret >= 0)
 				*val = chg_vbat;
 
@@ -270,7 +278,9 @@ static int auxadc_read_channel(struct mt6375_priv *priv, int chan, int dbits, in
 	ret = regmap_read_poll_timeout(priv->regmap, rg_xlate(priv, out_reg + 1),
 				       rdy_val, rdy_val & ADC_OUT_RDY, 500, 11 * 1000);
 	if (ret == -ETIMEDOUT)
-		dev_err(priv->dev, "(%d) channel timeout\n", chan);
+		dev_info(priv->dev, "%s, %s(ch%d) channel timeout\n",
+			 __func__, chan < MT6375_AUXADC_MAX_CHANNEL ?
+			 mt6375_auxadc_chan_labels[chan] : "!!INVALID!!", chan);
 
 	ret = regmap_raw_read(priv->regmap, rg_xlate(priv, out_reg),
 			      &raw_val, sizeof(raw_val));
@@ -308,7 +318,7 @@ static int gauge_get_imp_ibat(struct mt6375_priv *priv)
 
 	ret = check_gauge_psy(priv);
 	if (ret) {
-		dev_err(priv->dev, "%s, No gauge device!\n", __func__);
+		dev_info(priv->dev, "%s, No gauge device!\n", __func__);
 		return 0;
 	}
 
@@ -320,7 +330,7 @@ static int gauge_get_imp_ibat(struct mt6375_priv *priv)
 	return prop.intval;
 }
 
-static int auxadc_read_imp(struct mt6375_priv *priv, int *vbat, int *ibat)
+static int mt6375_auxadc_read_imp(struct mt6375_priv *priv, int *vbat, int *ibat)
 {
 	unsigned int wait_time_in_ms, regval;
 	const unsigned int prd_sel[] = { 6, 8, 10, 12 };
@@ -330,7 +340,7 @@ static int auxadc_read_imp(struct mt6375_priv *priv, int *vbat, int *ibat)
 	int dbits = auxadc_channels[MT6375_AUXADC_IMP].scan_type.realbits;
 
 	if (atomic_read(&priv->vbat0_flag)) {
-		dev_info(priv->dev, "%s: vbat cell abnormal, return -EIO\n", __func__);
+		dev_info(priv->dev, "%s, auxadc_vbat(cell) is abnormal, return -EIO\n", __func__);
 		return -EIO;
 	}
 
@@ -364,7 +374,8 @@ static int auxadc_read_imp(struct mt6375_priv *priv, int *vbat, int *ibat)
 	ret = regmap_read_poll_timeout(priv->regmap, rg_xlate(priv, HK_TOP_INT_RAW_STATUS1),
 				       regval, (regval & INT_RAW_AUXADC_IMP), 100, 1000);
 	if (ret == -ETIMEDOUT)
-		dev_err(priv->dev, "IMP channel timeout\n");
+		dev_info(priv->dev, "%s, %s channel timeout\n",
+			 __func__, mt6375_auxadc_chan_labels[MT6375_AUXADC_IMP]);
 
 	ret = regmap_raw_read(priv->regmap, rg_xlate(priv, AUXADC_OUT_IMP_AVG),
 			      &raw_val, sizeof(raw_val));
@@ -418,18 +429,6 @@ static int auxadc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const
 	int ret;
 
 	switch (mask) {
-	case IIO_CHAN_INFO_PROCESSED:
-		switch (ch_idx) {
-		case MT6375_AUXADC_IMP:
-			mutex_lock(&priv->adc_lock);
-			pm_stay_awake(priv->dev);
-			ret = auxadc_read_imp(priv, val1, val2);
-			pm_relax(priv->dev);
-			mutex_unlock(&priv->adc_lock);
-			return ret;
-		}
-
-		return -EINVAL;
 	case IIO_CHAN_INFO_RAW:
 		switch (ch_idx) {
 		case MT6375_AUXADC_BATSNS:
@@ -438,13 +437,20 @@ static int auxadc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const
 		case MT6375_AUXADC_BATSNS_DBG:
 			mutex_lock(&priv->adc_lock);
 			pm_stay_awake(priv->dev);
-			ret = auxadc_read_channel(priv, ch_idx, dbits, val1);
+			ret = mt6375_auxadc_read_channel(priv, ch_idx, dbits, val1);
 			pm_relax(priv->dev);
 			mutex_unlock(&priv->adc_lock);
 			return ret;
 		case MT6375_AUXADC_IMIX_R:
 			*val1 = priv->is_imix_r_unused ? 90 : priv->imix_r;
 			return IIO_VAL_INT;
+		case MT6375_AUXADC_IMP:
+			mutex_lock(&priv->adc_lock);
+			pm_stay_awake(priv->dev);
+			ret = mt6375_auxadc_read_imp(priv, val1, val2);
+			pm_relax(priv->dev);
+			mutex_unlock(&priv->adc_lock);
+			return ret;
 		}
 
 		return -EINVAL;
@@ -455,20 +461,14 @@ static int auxadc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const
 	}
 }
 
-static const char * const mt6375_auxadc_chan_labels[MT6375_AUXADC_MAX_CHANNEL] = {
-	/* The label index of MT6375 is tha same as that of MT6379. */
-	[MT6375_AUXADC_BATSNS]		= "batsns",
-	[MT6375_AUXADC_BATON]		= "baton",
-	[MT6375_AUXADC_IMP]		= "imp",
-	[MT6375_AUXADC_IMIX_R]		= "imix_r",
-	[MT6375_AUXADC_VREF]		= "vref",
-	[MT6375_AUXADC_BATSNS_DBG]	= "batsns_dbg",
-};
-
 static int auxadc_chan_labels(struct iio_dev *iiodev,
 			      struct iio_chan_spec const *chan, char *label)
 {
 	struct mt6375_priv *priv = iio_priv(iiodev);
+
+	if (chan->channel == MT6375_AUXADC_BATSNS && atomic_read(&priv->vbat0_flag))
+		return sysfs_emit(label, "%s\n",
+				  "batsns (chg_vbat, because auxadc_vbat is abnormal!!)");
 
 	if (chan->channel == MT6375_AUXADC_IMIX_R && priv->is_imix_r_unused)
 		return sysfs_emit(label, "%s\n", "imix_r (phase out!!)");
@@ -505,7 +505,8 @@ static void auxadc_irq_sync_unlock(struct irq_data *data)
 
 	ret = regmap_write(priv->regmap, rg_xlate(priv, reg), bits);
 	if (ret)
-		dev_err(priv->dev, "Failed to set/clr irq con %d\n", (int)data->hwirq);
+		dev_info(priv->dev, "%s, Failed to set/clr irq con %d\n",
+			 __func__, (int)data->hwirq);
 
 irq_sync_unlock_out:
 	mutex_unlock(&priv->irq_lock);
@@ -543,7 +544,7 @@ static const struct irq_domain_ops auxadc_domain_ops = {
 	.xlate = irq_domain_xlate_onetwocell,
 };
 
-static int auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
+static int mt6375_auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
 {
 	static struct iio_channel *auxadc_vbat_chan;
 	int ret = 0, chg_vbat = 0, auxadc_vbat = 0;
@@ -555,13 +556,14 @@ static int auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
 		return PTR_ERR(auxadc_vbat_chan);
 
 	ret = auxadc_get_chg_vbat(priv, &chg_vbat);
-	dev_info(priv->dev, "%s: chg_vbat = %d(%d)\n", __func__, chg_vbat, ret);
+	dev_info(priv->dev, "%s, chg_vbat = %dmV (ret:%d)\n", __func__, chg_vbat, ret);
 
 	ret |= iio_read_channel_processed(auxadc_vbat_chan, &auxadc_vbat);
-	dev_info(priv->dev, "%s: auxadc_vbat = %d(%d)\n", __func__, auxadc_vbat, ret);
+	dev_info(priv->dev, "%s, auxadc_vbat = %dmV (ret:%d)\n", __func__, auxadc_vbat, ret);
 
 	if (!ret && abs(chg_vbat - auxadc_vbat) > 1000) {
-		dev_info(priv->dev, "%s: unexpected vbat cell!!\n", __func__);
+		dev_info(priv->dev,
+			 "%s, unexpected vbat cell (more than 1000mV difference)!!\n", __func__);
 		*valid = false;
 	} else
 		*valid = true;
@@ -569,7 +571,7 @@ static int auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
 	return ret;
 }
 
-static int auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
+static int mt6375_auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
 {
 	struct power_supply *chg_psy;
 	union power_supply_propval val;
@@ -579,7 +581,7 @@ static int auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
 	ret = regmap_update_bits(priv->regmap, rg_xlate(priv, SYSTEM_INFO_CON2_H),
 				 VBAT0_FLAG, is_vbat0 ? 0xFF : 0);
 	if (ret < 0) {
-		dev_notice(priv->dev, "%s: failed to clear vbat0 flag\n", __func__);
+		dev_info(priv->dev, "%s, Failed to clear vbat0 flag\n", __func__);
 		return ret;
 	}
 
@@ -621,10 +623,10 @@ static void auxadc_vbat0_poll_work(struct work_struct *work)
 #endif
 
 	__pm_stay_awake(priv->vbat0_ws);
-	ret = auxadc_vbat_is_valid(priv, &valid);
+	ret = mt6375_auxadc_vbat_is_valid(priv, &valid);
 	if (ret < 0 || !valid) {
-		dev_info(priv->dev, "%s: restart timer\n", __func__);
 #ifdef CONFIG_MTK_GAUGE_VBAT0_DEBUG
+		dev_info(priv->dev, "%s, restart vbat0 polling timer\n", __func__);
 		add = ktime_set(VBAT0_POLL_TIME_SEC, 0);
 		alarm_forward_now(&priv->vbat0_alarm, add);
 		alarm_restart(&priv->vbat0_alarm);
@@ -633,9 +635,10 @@ static void auxadc_vbat0_poll_work(struct work_struct *work)
 		return;
 	}
 
-	dev_info(priv->dev, "%s: vbat recover\n", __func__);
-	if (auxadc_handle_vbat0(priv, false))
-		dev_notice(priv->dev, "%s: failed to handle vbat0\n", __func__);
+	dev_info(priv->dev, "%s, auxadc vbat returns to normal!\n", __func__);
+
+	if (mt6375_auxadc_handle_vbat0(priv, false))
+		dev_info(priv->dev, "%s, Failed to handle vbat0\n", __func__);
 
 	__pm_relax(priv->vbat0_ws);
 }
@@ -648,11 +651,13 @@ static enum alarmtimer_restart vbat0_alarm_poll_func(struct alarm *alarm, ktime_
 	return ALARMTIMER_NORESTART;
 }
 
-static int auxadc_check_vbat_event(struct mt6375_priv *priv, u8 *status_buf)
+static int mt6375_auxadc_check_vbat_event(struct mt6375_priv *priv, u8 *status_buf)
 {
-	int i, ret = 0, idx_i, idx_j;
+	unsigned int i, idx_i, idx_j;
 	bool valid = false;
 	ktime_t now, add;
+	int ret = 0;
+	u8 status;
 
 	if (atomic_read(&priv->vbat0_flag))
 		return ret;
@@ -660,22 +665,23 @@ static int auxadc_check_vbat_event(struct mt6375_priv *priv, u8 *status_buf)
 	for (i = 0; i < ARRAY_SIZE(vbat_event); i++) {
 		idx_i = vbat_event[i] / 8;
 		idx_j = vbat_event[i] % 8;
-		if (status_buf[idx_i] & BIT(idx_j))
+		status = status_buf[idx_i] & priv->unmask_buf[idx_i];
+		if (status & BIT(idx_j))
 			break;
 	}
 
 	if (i == ARRAY_SIZE(vbat_event)) {
-		dev_info(priv->dev, "%s: without related event\n", __func__);
+		dev_info(priv->dev, "%s, There are no events related to vbat\n", __func__);
 		return ret;
 	}
 
-	ret = auxadc_vbat_is_valid(priv, &valid);
+	ret = mt6375_auxadc_vbat_is_valid(priv, &valid);
 	if (ret < 0 || valid)
 		return ret;
 
-	ret = auxadc_handle_vbat0(priv, true);
+	ret = mt6375_auxadc_handle_vbat0(priv, true);
 	if (ret < 0) {
-		dev_notice(priv->dev, "%s: failed to handle vbat0\n", __func__);
+		dev_info(priv->dev, "%s, Failed to handle vbat0\n", __func__);
 		return ret;
 	}
 
@@ -695,7 +701,7 @@ static int mt6379_pre_irq_handler(void *data)
 
 	ret = regmap_read(priv->regmap, MT6379_RG_GM30_EVT, &reg_val);
 	if (ret) {
-		dev_notice(priv->dev, "%s: Failed to read GM30_EVT\n", __func__);
+		dev_info(priv->dev, "%s, Failed to read GM30_EVT\n", __func__);
 		return ret;
 	}
 
@@ -733,23 +739,23 @@ static irqreturn_t auxadc_irq_thread(int irq, void *data)
 	ret = regmap_raw_read(priv->regmap, rg_xlate(priv, HK_TOP_INT_STATUS0),
 			      status_buf, sizeof(status_buf));
 	if (ret) {
-		dev_err(dev, "Error reading INT status\n");
+		dev_info(dev, "%s, Failed to read HK TOP INT status\n", __func__);
 		return IRQ_HANDLED;
 	}
 
 	if (!memcmp(status_buf, no_status, NUM_IRQ_REG))
 		return IRQ_HANDLED;
 
-	ret = auxadc_check_vbat_event(priv, status_buf);
+	ret = mt6375_auxadc_check_vbat_event(priv, status_buf);
 	if (ret < 0)
-		dev_info(dev, "check vbat event failed\n");
+		dev_info(dev, "%s, Failed to check vbat event\n", __func__);
 
 	/* mask all irqs */
 	for (i = 0; i < NUM_IRQ_REG; i++) {
 		ret = regmap_write(priv->regmap,
 				   rg_xlate(priv, HK_TOP_INT_MASK_CON0_SET + i * 3), mask[i]);
 		if (ret)
-			dev_err(dev, "Failed to mask irq[%d]\n", i);
+			dev_info(dev, "%s, Failed to mask irq[%d]\n", __func__, i);
 	}
 
 	for (i = 0; i < NUM_IRQ_REG; i++) {
@@ -761,8 +767,8 @@ static irqreturn_t auxadc_irq_thread(int irq, void *data)
 			if (!(status & BIT(j)))
 				continue;
 
-			dev_err(priv->dev, "%s, handle auxadc irq (reg: 0x%X, bit: %d)\n",
-				__func__, rg_xlate(priv, HK_TOP_INT_STATUS0 + i), j);
+			dev_info(priv->dev, "%s, handle auxadc irq (reg: 0x%X, bit: %d)\n",
+				 __func__, rg_xlate(priv, HK_TOP_INT_STATUS0 + i), j);
 			handle_nested_irq(irq_find_mapping(priv->domain, i * 8 + j));
 			handled = true;
 		}
@@ -773,24 +779,24 @@ static irqreturn_t auxadc_irq_thread(int irq, void *data)
 		ret = regmap_write(priv->regmap,
 				   rg_xlate(priv, HK_TOP_INT_MASK_CON0_CLR + i * 3), mask[i]);
 		if (ret)
-			dev_err(dev, "Failed to unmask irq[%d]\n", i);
+			dev_info(dev, "%s, Failed to unmask irq[%d]\n", __func__, i);
 	}
 
 	ret = regmap_raw_write(priv->regmap, rg_xlate(priv, HK_TOP_INT_STATUS0),
 			       status_buf, sizeof(status_buf));
 	if (ret)
-		dev_err(dev, "Error clear INT status\n");
+		dev_info(dev, "%s, Failed to clear HK TOP INT status\n", __func__);
 
 	if (handled && priv->dinfo && priv->dinfo->post_irq_handler) {
 		ret = priv->dinfo->post_irq_handler(priv);
 		if (ret)
-			dev_notice(dev, "Failed to do post irq handler\n");
+			dev_info(dev, "%s, Failed to do post irq handler\n", __func__);
 	}
 
 	return handled ? IRQ_HANDLED : IRQ_NONE;
 }
 
-static int auxadc_add_irq_chip(struct mt6375_priv *priv)
+static int mt6375_auxadc_add_irq_chip(struct mt6375_priv *priv)
 {
 	u32 val, state_reg, clear_reg, mask_reg;
 	int i, ret;
@@ -839,7 +845,7 @@ static int auxadc_add_irq_chip(struct mt6375_priv *priv)
 	ret = regmap_update_bits(priv->regmap, rg_xlate(priv, HK_TOP_INT_MASK_CON1),
 				 INT_RAW_AUXADC_IMP, INT_RAW_AUXADC_IMP);
 	if (ret) {
-		dev_err(priv->dev, "Failed to defaut unmask AUXADC_IMP\n");
+		dev_info(priv->dev, "%s, Failed to defaut unmask AUXADC_IMP\n", __func__);
 		return ret;
 	}
 
@@ -852,15 +858,15 @@ static int auxadc_add_irq_chip(struct mt6375_priv *priv)
 	priv->domain = irq_domain_add_linear(priv->dev->of_node, NUM_IRQ_REG * 8,
 					     &auxadc_domain_ops, priv);
 	if (!priv->domain) {
-		dev_err(priv->dev, "Failed to create IRQ domain\n");
+		dev_info(priv->dev, "%s, Failed to create IRQ domain\n", __func__);
 		return -ENOMEM;
 	}
 
 	ret = request_threaded_irq(priv->irq, NULL, auxadc_irq_thread, IRQF_SHARED | IRQF_ONESHOT,
 				   dev_name(priv->dev), priv);
 	if (ret) {
-		dev_err(priv->dev, "Failed to request IRQ %d for %s: %d\n", priv->irq,
-			dev_name(priv->dev), ret);
+		dev_info(priv->dev, "%s, Failed to request IRQ %d for %s: %d\n",
+			 __func__, priv->irq, dev_name(priv->dev), ret);
 		goto err_irq;
 	}
 
@@ -889,7 +895,7 @@ static void auxadc_del_irq_chip(void *data)
 	irq_domain_remove(priv->domain);
 }
 
-static int auxadc_reset(struct mt6375_priv *priv)
+static int mt6375_auxadc_reset(struct mt6375_priv *priv)
 {
 	u8 reset_key[2] = { 0x63, 0x63 };
 	int ret;
@@ -935,7 +941,7 @@ static int auxadc_get_uisoc(struct mt6375_priv *priv)
 }
 
 /* This function can only be used on the old platforms which use "imix-r" function */
-static int auxadc_get_rac(struct mt6375_priv *priv)
+static int mt6375_auxadc_get_rac(struct mt6375_priv *priv)
 {
 	int vbat_1 = 0, vbat_2 = 0;
 	int ibat_1 = 0, ibat_2 = 0;
@@ -948,7 +954,7 @@ static int auxadc_get_rac(struct mt6375_priv *priv)
 
 	do {
 		mutex_lock(&priv->adc_lock);
-		ret = auxadc_read_imp(priv, &vbat_1, &ibat_1);
+		ret = mt6375_auxadc_read_imp(priv, &vbat_1, &ibat_1);
 		mutex_unlock(&priv->adc_lock);
 		if (ret < 0)
 			return ret;
@@ -961,7 +967,7 @@ static int auxadc_get_rac(struct mt6375_priv *priv)
 		mdelay(50);
 
 		mutex_lock(&priv->adc_lock);
-		ret = auxadc_read_imp(priv, &vbat_2, &ibat_2);
+		ret = mt6375_auxadc_read_imp(priv, &vbat_2, &ibat_2);
 		mutex_unlock(&priv->adc_lock);
 		if (ret < 0)
 			return ret;
@@ -991,9 +997,9 @@ static int auxadc_get_rac(struct mt6375_priv *priv)
 		} else
 			ret = -1;
 
-		dev_info(priv->dev, "v1=%d,v2=%d,c1=%d,c2=%d,v_diff=%d,c_diff=%d,rac=%d,ret=%d,retry=%d\n",
-			 vbat_1, vbat_2, ibat_1, ibat_2, (vbat_1 - vbat_2), (ibat_2 - ibat_1),
-			 rac, ret, retry_count);
+		dev_info(priv->dev, "%s, v1=%d,v2=%d,c1=%d,c2=%d,v_diff=%d,c_diff=%d,rac=%d,ret=%d,retry=%d\n",
+			 __func__, vbat_1, vbat_2, ibat_1, ibat_2, (vbat_1 - vbat_2),
+			 (ibat_2 - ibat_1), rac, ret, retry_count);
 
 		if (++retry_count >= 3)
 			break;
@@ -1006,7 +1012,7 @@ static int auxadc_get_rac(struct mt6375_priv *priv)
 #define IMIX_R_CALI_CNT	2
 
 /* This function can only be used on the old platforms which use "imix-r" function */
-static int auxadc_cali_imix_r(struct mt6375_priv *priv)
+static int mt6375_auxadc_cali_imix_r(struct mt6375_priv *priv)
 {
 	int i, ret, imix_r_avg = 0, rac_val[IMIX_R_CALI_CNT];
 	int cur_uisoc = auxadc_get_uisoc(priv);
@@ -1018,15 +1024,15 @@ static int auxadc_cali_imix_r(struct mt6375_priv *priv)
 	}
 
 	if (cur_uisoc < 0 || cur_uisoc == priv->pre_uisoc) {
-		dev_info(priv->dev, "%s, pre_SOC=%d SOC= %d, skip\n", __func__,
-			 priv->pre_uisoc, cur_uisoc);
+		dev_info(priv->dev, "%s, pre_SOC=%d SOC= %d, skip\n",
+			 __func__, priv->pre_uisoc, cur_uisoc);
 		return 0;
 	}
 
 	priv->pre_uisoc = cur_uisoc;
 
 	for (i = 0; i < IMIX_R_CALI_CNT; i++) {
-		rac_val[i] = auxadc_get_rac(priv);
+		rac_val[i] = mt6375_auxadc_get_rac(priv);
 		if (rac_val[i] < 0)
 			return -EIO;
 
@@ -1037,27 +1043,20 @@ static int auxadc_cali_imix_r(struct mt6375_priv *priv)
 	if (imix_r_avg > IMIX_R_MIN_MOHM)
 		priv->imix_r = imix_r_avg;
 
-	dev_info(priv->dev, "[%s] %d, %d, ravg:%d\n", __func__, rac_val[0], rac_val[1], imix_r_avg);
+	dev_info(priv->dev, "%s, rac0:%d, rac1:%d, ravg:%d\n",
+		 __func__, rac_val[0], rac_val[1], imix_r_avg);
 	return 0;
 }
 
 static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 {
-	struct device_node *np, *imix_r_np;
+	struct device_node *imix_r_np;
 	u32 val = 0;
 	int ret = 0;
 
-	if (priv->dinfo)
-		np = of_find_compatible_node(NULL, NULL, priv->dinfo->pmic_compatible);
-	else
-		np = of_find_compatible_node(NULL, NULL, "mediatek,pmic-auxadc");
-
-	if (!np)
-		return -ENODEV;
-
-	imix_r_np = of_get_child_by_name(np, "imix_r");
+	imix_r_np = of_get_child_by_name(dev_of_node(priv->dev), "imix_r");
 	if (!imix_r_np)
-		imix_r_np = of_get_child_by_name(np, "imix-r");
+		imix_r_np = of_get_child_by_name(dev_of_node(priv->dev), "imix-r");
 
 	if (!imix_r_np) {
 		dev_info(priv->dev, "%s, No imix_r/imix-r dt node, using \"no imix-r\" version\n",
@@ -1099,7 +1098,6 @@ static void mt6375_unregister_lockdep_key(void *data)
 
 static const struct dev_constraint mt6379_bat1_dinfo = {
 	.bat_idx = 0,
-	.pmic_compatible = "mediatek,pmic-auxadc-1",
 	.rg_bm_base = MT6379_RG_BAT1_BM_BASE,
 	.rg_hk1_base = MT6379_RG_BAT1_HK1_BASE,
 	.rg_hk2_base = MT6379_RG_BAT1_HK2_BASE,
@@ -1110,13 +1108,21 @@ static const struct dev_constraint mt6379_bat1_dinfo = {
 
 static const struct dev_constraint mt6379_bat2_dinfo = {
 	.bat_idx = 1,
-	.pmic_compatible = "mediatek,pmic-auxadc-2",
 	.rg_bm_base = MT6379_RG_BAT2_BM_BASE,
 	.rg_hk1_base = MT6379_RG_BAT2_HK1_BASE,
 	.rg_hk2_base = MT6379_RG_BAT2_HK2_BASE,
 	.gm30_evt_mask = MT6379_MASK_HK2_EVT,
 	.pre_irq_handler = mt6379_pre_irq_handler,
 	.post_irq_handler = mt6379_post_irq_handler,
+};
+
+static const struct dev_constraint mt6720_dinfo = {
+	.bat_idx = 0,
+	.rg_bm_base = MT6379_RG_BAT1_BM_BASE,
+	.rg_hk1_base = MT6379_RG_BAT1_HK1_BASE,
+	.rg_hk2_base = MT6379_RG_BAT1_HK2_BASE,
+	.gm30_evt_mask = MT6379_MASK_HK1_EVT,
+	.pre_irq_handler = mt6379_pre_irq_handler,
 };
 
 static int mt6379_check_bat_cell_count(struct mt6375_priv *priv)
@@ -1157,7 +1163,7 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	priv->dinfo = device_get_match_data(&pdev->dev);
 	priv->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!priv->regmap) {
-		dev_err(&pdev->dev, "Failed to get parent regmap\n");
+		dev_info(&pdev->dev, "%s, Failed to get parent regmap\n", __func__);
 		return -ENODEV;
 	}
 
@@ -1185,25 +1191,25 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 
 	ret = mt6375_auxadc_parse_dt(priv);
 	if (ret) {
-		dev_notice(&pdev->dev, "Failed to parse dt\n");
+		dev_info(&pdev->dev, "%s, Failed to parse dt\n", __func__);
 		return ret;
 	}
 
-	ret = auxadc_reset(priv);
+	ret = mt6375_auxadc_reset(priv);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to reset\n");
+		dev_info(&pdev->dev, "%s, Failed to do auxadc reset\n", __func__);
 		return ret;
 	}
 
 	priv->irq = platform_get_irq(pdev, 0);
 	if (priv->irq < 0) {
-		dev_err(&pdev->dev, "Failed to get gm30 irq\n");
+		dev_info(&pdev->dev, "%s, Failed to get gm30 irq\n", __func__);
 		return priv->irq;
 	}
 
-	ret = auxadc_add_irq_chip(priv);
+	ret = mt6375_auxadc_add_irq_chip(priv);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to add irq chip\n");
+		dev_info(&pdev->dev, "%s, Failed to add irq chip\n", __func__);
 		return ret;
 	}
 
@@ -1246,9 +1252,9 @@ static int mt6375_auxadc_suspend_late(struct device *dev)
 	if (priv->is_imix_r_unused)
 		return 0;
 
-	ret = auxadc_cali_imix_r(priv);
+	ret = mt6375_auxadc_cali_imix_r(priv);
 	if (ret)
-		dev_err(dev, "calibrate imix_r ret=[%d]\n", ret);
+		dev_info(dev, "%s, Failed to calibrate imix_r (ret:%d)\n", __func__, ret);
 
 	return 0;
 }
@@ -1261,6 +1267,7 @@ static const struct of_device_id mt6375_auxadc_of_match[] = {
 	{ .compatible = "mediatek,mt6375-auxadc", },
 	{ .compatible = "mediatek,mt6379-auxadc-1", .data = (void *) &mt6379_bat1_dinfo },
 	{ .compatible = "mediatek,mt6379-auxadc-2", .data = (void *) &mt6379_bat2_dinfo },
+	{ .compatible = "mediatek,mt6720-auxadc", .data = (void *) &mt6720_dinfo },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mt6375_auxadc_of_match);
@@ -1277,5 +1284,5 @@ static struct platform_driver mt6375_auxadc_driver = {
 module_platform_driver(mt6375_auxadc_driver);
 
 MODULE_AUTHOR("ChiYuan Huang <cy_huang@richtek.com>");
-MODULE_DESCRIPTION("MT6375_MT6379 AUXADC Driver");
+MODULE_DESCRIPTION("MT6375/MT6379/MT6720 AUXADC Driver");
 MODULE_LICENSE("GPL");
