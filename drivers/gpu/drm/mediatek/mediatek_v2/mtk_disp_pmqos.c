@@ -369,10 +369,20 @@ void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw,
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	unsigned int total = 0, j, idx;
 
+	if (i < 0) {
+		DDPPR_ERR("%s i invalid\n", __func__);
+		return;
+	}
+
+	if (!priv) {
+		DDPPR_ERR("%s priv is not assigned\n", __func__);
+		return;
+	}
+
 	if (debug_channel_bw[i])
 		bw = debug_channel_bw[i];
 
-	if (priv && priv->req_hrt_channel_bw[crtc_idx][i] == bw)
+	if (priv->req_hrt_channel_bw[crtc_idx][i] == bw)
 		return;
 
 	priv->req_hrt_channel_bw[crtc_idx][i] = bw;
