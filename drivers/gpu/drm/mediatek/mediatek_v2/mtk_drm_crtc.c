@@ -3490,10 +3490,19 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
-unsigned int mtk_crtc_get_plane_comp_id(struct mtk_crtc_state *state,
+unsigned int mtk_crtc_get_plane_comp_id(struct drm_crtc *crtc, struct mtk_crtc_state *state,
 		unsigned int plane_index)
 {
 	unsigned int comp_id = 0;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = NULL;
+
+	if (crtc_idx != 0) {
+		DDPMSG("%s crtc[%u]", __func__, drm_crtc_index(crtc));
+		comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
+		return (comp) ? comp->id : 0;
+	}
 
 	if ((state->lye_state.rpo_lye & (1 << plane_index)))
 		comp_id = DDP_COMPONENT_OVL_EXDMA2;
@@ -3581,9 +3590,9 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (plane_state->comp_state.comp_id == 0) {
-		if (priv->data->ovl_exdma_rule)
+		if (priv->data->ovl_exdma_rule && crtc)
 			plane_state->comp_state.comp_id =
-				mtk_crtc_get_plane_comp_id(state, plane_index);
+				mtk_crtc_get_plane_comp_id(crtc, state, plane_index);
 		else
 			return mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
 	}
@@ -11499,7 +11508,7 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 		if (plane_state->comp_state.comp_id == 0 && priv->data->ovl_exdma_rule) {
 			plane_index = to_crtc_plane_index(plane_state->base.plane->index);
 			plane_state->comp_state.comp_id =
-				mtk_crtc_get_plane_comp_id(mtk_crtc_state, plane_index);
+				mtk_crtc_get_plane_comp_id(crtc, mtk_crtc_state, plane_index);
 		}
 
 		if (plane_state->comp_state.comp_id)
