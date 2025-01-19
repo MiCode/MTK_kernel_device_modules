@@ -7,6 +7,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/bits.h>
+#include <linux/iova.h>
 #include <linux/io-pgtable-arm.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -104,6 +105,9 @@
 #define SMMU_STACK_LINE_MAX_LEN		(100)
 #define SMMU_STACK_MAX_LEN		(400)
 #endif
+
+#define IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT	9
+static unsigned long iommu_max_align_shift __read_mostly = IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT;
 
 struct mtk_iommu_cb {
 	int port;
@@ -2831,6 +2835,20 @@ static void free_iova_hook(void *data,
 	return mtk_iova_dbg_free(iovad, iova, size);
 }
 
+static unsigned long limit_align_shift(struct iova_domain *iovad, unsigned long shift)
+{
+	unsigned long max_align_shift;
+
+	max_align_shift = iommu_max_align_shift + PAGE_SHIFT - iova_shift(iovad);
+	return min_t(unsigned long, max_align_shift, shift);
+}
+
+static void limit_align_hook(void __always_unused *data, struct iova_domain *iovad,
+			     unsigned long size, unsigned long *shift)
+{
+	*shift = limit_align_shift(iovad, *shift);
+}
+
 static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -2862,6 +2880,10 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 	ret = register_trace_android_vh_iommu_iovad_free_iova(free_iova_hook,
 							      "mtk_m4u_dbg_probe");
 	pr_debug("add free iova hook %s\n", (ret ? "fail" : "pass"));
+
+	ret = register_trace_android_rvh_iommu_limit_align_shift(limit_align_hook,
+								 "mtk_m4u_dbg_probe");
+	pr_debug("add limit align shift hook %s\n", (ret ? "fail" : "pass"));
 
 	return 0;
 }
