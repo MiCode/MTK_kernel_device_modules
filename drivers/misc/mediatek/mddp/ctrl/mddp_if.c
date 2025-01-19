@@ -140,7 +140,7 @@ int32_t mddp_on_activate(enum mddp_app_type_e type,
 
 	// NG. app is not configured!
 	app = mddp_get_app_inst(type);
-	if (!app->is_config)
+	if ((!app->is_config) || (app->state == MDDP_STATE_DISABLED))
 		return -EINVAL;
 
 	if (!(app->feature & MDDP_FEATURE_MDDP_WH) || !app->drv_reg)
