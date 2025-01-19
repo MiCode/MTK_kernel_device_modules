@@ -139,8 +139,8 @@ static const struct platform_data mt6989_platform_data = {
 
 static const struct platform_data mt6991_platform_data = {
 	/* MT6989-specific settings */
-	//.default_cg_ppt_mode = 2, /*TODO: OFF*/
-	.default_cg_ppt_mode = 12, /*mode 12: CGPPT use vsys_pb + PreOC (DX4 default)*/
+	.default_cg_ppt_mode = 2, /*TODO: OFF*/
+	// .default_cg_ppt_mode = 12, /*mode 12: CGPPT use vsys_pb + PreOC (DX4 default)*/
 	.default_mo_gpu_curr_freq_power_calc = 0, /*change*/
 	.default_mo_onetime_power_table_calc = 1, /*change*/
 	.default_mo_gpu_low_freq_power_calc = 1,  /*change*/
