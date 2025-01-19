@@ -55,6 +55,7 @@ static struct proc_dir_entry *entry;
 static u32 last_boot_phase = FLAG_INVALID;
 static struct regmap *map;
 static u32 pmic_addr;
+static bool early_log_disable;
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 struct log_store_partition *expdb_logstore;
@@ -88,8 +89,7 @@ static int get_partition_info(void)
 	struct block_device *bdev;
 	dev_t dev_num = 0;
 
-	lookup_bdev(EXPDB_PATH, &dev_num);
-	if (dev_num == 0)
+	if (lookup_bdev(EXPDB_PATH, &dev_num) != 0 || dev_num == 0)
 		return -EIO;
 
 	bdev = blkdev_get_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
@@ -126,7 +126,8 @@ static int partition_block_rw(struct block_device *bdev, int write, sector_t ind
 	if (len > expdb_logstore->block_size)
 		return -EINVAL;
 
-	bh = __getblk_gfp(bdev, index, expdb_logstore->block_size, __GFP_MOVABLE);
+	if (bdev)
+		bh = __getblk_gfp(bdev, index, expdb_logstore->block_size, __GFP_MOVABLE);
 	if (bh) {
 		clear_bit(BH_Uptodate, &bh->b_state);
 		get_bh(bh);
@@ -240,7 +241,8 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 {
 	char *logstore_pos = buffer;
 	int ret = -1;
-	size_t write_remain = write_len;
+	size_t write_remain = write_len, remaining_space_in_block = 0;
+	size_t write_chunk_size = 0;
 	sector_t index_offset = 0;
 	sector_t write_block_offset = 0;
 	sector_t write_offset = 0;
@@ -278,59 +280,41 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 				logstore_pos += (write_remain - expdb_logstore->logstore_size/4);
 			}
 
-			if (write_offset > 0) {
-				if (write_remain >= (expdb_logstore->block_size - write_offset)) {
-					ret = partition_block_rw(expdb_logstore->bdev, 1,
-						expdb_logstore->logstore_offset + write_block_offset, write_offset,
-						logstore_pos, expdb_logstore->block_size - write_offset);
-					write_remain -= (expdb_logstore->block_size - write_offset);
-					logstore_pos += (expdb_logstore->block_size - write_offset);
-					pEmmc.offset += (expdb_logstore->block_size - write_offset);
-					write_block_offset += 1;
-				} else {
-					ret = partition_block_rw(expdb_logstore->bdev, 1,
-						expdb_logstore->logstore_offset + write_block_offset, write_offset,
-						logstore_pos, write_remain);
-					write_remain -= write_remain;
-					pEmmc.offset += write_remain;
-				}
-			}
-			if (ret) {
-				pr_err("%s: write log is error!\n", __func__);
-				return ret;
-			}
-
 			while (write_remain > 0) {
-				if ((pEmmc.offset + expdb_logstore->block_size) >
+				remaining_space_in_block = expdb_logstore->block_size - write_offset;
+				if ((pEmmc.offset + remaining_space_in_block) >
 					(expdb_logstore->logstore_size - expdb_logstore->block_size)) {
 					pEmmc.offset = 0;
 					write_block_offset = 0;
+					write_offset = 0;
 				}
 				if (write_block_offset > (expdb_logstore->logstore_size /
 						expdb_logstore->block_size - 2)) {
 					pEmmc.offset = 0;
 					write_block_offset = 0;
+					write_offset = 0;
 				}
 
-				if (write_remain > expdb_logstore->block_size) {
-					ret = partition_block_rw(expdb_logstore->bdev, 1,
-						expdb_logstore->logstore_offset + write_block_offset, 0,
-						logstore_pos, expdb_logstore->block_size);
-					write_remain -= expdb_logstore->block_size;
-					pEmmc.offset += expdb_logstore->block_size;
-					logstore_pos += expdb_logstore->block_size;
-				} else {
-					ret = partition_block_rw(expdb_logstore->bdev, 1,
-						expdb_logstore->logstore_offset + write_block_offset, 0,
-						logstore_pos, write_remain);
-					write_remain -= write_remain;
-					pEmmc.offset += write_remain;
-				}
+				write_chunk_size = (write_remain > remaining_space_in_block) ? remaining_space_in_block
+								: write_remain;
+				ret = partition_block_rw(expdb_logstore->bdev, 1,
+						expdb_logstore->logstore_offset + write_block_offset, write_offset,
+						logstore_pos, write_chunk_size);
 				if (ret) {
 					pr_err("%s: write log to partition is error!\n", __func__);
 					return ret;
 				}
+				write_remain -= write_chunk_size;
+				pEmmc.offset += write_chunk_size;
 				write_block_offset += 1;
+				write_offset = 0;
+				if (write_remain > 0)
+					logstore_pos += write_chunk_size;
+			}
+
+			if (pEmmc.offset >= (expdb_logstore->logstore_size - expdb_logstore->block_size)) {
+				pr_err("%s: emmc offset is exceed logstore size!\n", __func__);
+				return 0;
 			}
 
 			log_config.end = pEmmc.offset;
@@ -391,7 +375,8 @@ static int boot_log_write_to_partition(char *buffer, size_t write_len)
 	int ret = -1;
 	sector_t block_num = 0;
 	struct log_emmc_header pEmmc;
-	u32 reserve_size = 0, block_reserve_size = 0, block_offset = 0, write_pos = 0;
+	u32 block_reserve_size = 0, block_offset = 0, write_pos = 0;
+	u32 remaining_write_len = 0, write_chunk_size = 0;
 
 	if (expdb_logstore->bdev == NULL)
 		if (get_partition_info() != 0)
@@ -413,31 +398,29 @@ static int boot_log_write_to_partition(char *buffer, size_t write_len)
 		}
 		block_num = pEmmc.reserve_flag[BOOT_PROF_OFFSET] / expdb_logstore->block_size;
 		block_offset = pEmmc.reserve_flag[BOOT_PROF_OFFSET] % expdb_logstore->block_size;
-		reserve_size = expdb_logstore->bootlog_size - pEmmc.reserve_flag[BOOT_PROF_OFFSET];
+		if (expdb_logstore->bootlog_size <= pEmmc.reserve_flag[BOOT_PROF_OFFSET]) {
+			block_num = 0;
+			block_offset = 0;
+		}
 
 		while (write_pos < write_len) {
 			block_reserve_size = expdb_logstore->block_size - block_offset;
-			if ((write_len - write_pos) > block_reserve_size) {
-				ret = partition_block_rw(expdb_logstore->bdev, 1,
+			remaining_write_len = write_len - write_pos;
+			write_chunk_size = (remaining_write_len > block_reserve_size) ? block_reserve_size
+								: remaining_write_len;
+
+			ret = partition_block_rw(expdb_logstore->bdev, 1,
 					expdb_logstore->bootlog_offset + block_num,
-					block_offset, buffer + write_pos, block_reserve_size);
-				if (ret) {
-					pr_err("1: write boot prof log is error!\n");
-					return ret;
-				}
-				write_pos += block_reserve_size;
-			} else {
-				ret = partition_block_rw(expdb_logstore->bdev, 1,
-					expdb_logstore->bootlog_offset + block_num,
-					block_offset, buffer + write_pos, write_len - write_pos);
-				if (ret) {
-					pr_err("2: write boot prof log is error!\n");
-					return ret;
-				}
-				write_pos += (write_len - write_pos);
-				break;
+					block_offset, buffer + write_pos, write_chunk_size);
+			if (ret) {
+				pr_err("1: write boot prof log is error!\n");
+				return ret;
 			}
-			block_num = (block_num + 1) % (expdb_logstore->bootlog_size / expdb_logstore->block_size);
+
+			write_pos += write_chunk_size;
+			if (write_chunk_size == block_reserve_size)
+				block_num = (block_num + 1) % (expdb_logstore->bootlog_size
+							/ expdb_logstore->block_size);
 			block_offset = 0;
 		}
 
@@ -467,7 +450,6 @@ static void bootlog_to_partition(void)
 			return;
 
 	if (expdb_logstore->log_offset != expdb_logstore->store_offset) {
-		write_len = 0;
 		/* ring buffer is full */
 		if (expdb_logstore->log_offset < expdb_logstore->store_offset) {
 			write_len = BOOT_BUFF_SIZE - expdb_logstore->store_offset;
@@ -582,8 +564,10 @@ static int write_expdb_thread_fn(void *data)
 	register_bootprof_write_log(write_to_logstore);
 
 	while (!kthread_should_stop()) {
-		wait_event_interruptible_timeout(wait_queue,
-			expdb_logstore->log_offset != expdb_logstore->store_offset, 2 * HZ);
+		if (wait_event_interruptible_timeout(wait_queue,
+			expdb_logstore->log_offset != expdb_logstore->store_offset, 2 * HZ)
+			== -ERESTARTSYS)
+			break;
 		bootlog_to_partition();
 	}
 	return 0;
@@ -1090,8 +1074,6 @@ EXPORT_SYMBOL_GPL(store_printk_buff);
 
 void disable_early_log(void)
 {
-	static bool early_log_disable;
-
 	pr_notice("log_store: %s.\n", __func__);
 	early_log_disable = true;
 	if (!sram_dram_buff) {
