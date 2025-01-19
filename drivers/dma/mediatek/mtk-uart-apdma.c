@@ -654,6 +654,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	unsigned int wpt, vff_sz, left_data, rst_status;
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLLING_CNT;
+	int ret = 0;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (c->is_hub_port) {
@@ -740,15 +741,17 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	if (d->vd.tx.callback_param != NULL) {
 		struct uart_8250_port *p = (struct uart_8250_port *)d->vd.tx.callback_param;
 		struct uart_state *u_state = p->port.state;
-		struct circ_buf *xmit = &u_state->xmit;
-		const char *ptr = xmit->buf + xmit->tail;
-		int tx_size = CIRC_CNT_TO_END(xmit->head, xmit->tail, UART_XMIT_SIZE);
-		int dump_len = min(tx_size, UART_RECORD_MAXLEN);
 
 		if (u_state != NULL) {
-			if (c->rec_info[idx].trans_len <= UART_RECORD_MAXLEN)
-				memcpy(c->rec_info[idx].rec_buf, ptr,
+			int tx_size = kfifo_len(&u_state->port.xmit_fifo);
+			int dump_len = min(tx_size, UART_RECORD_MAXLEN);
+			if (c->rec_info[idx].trans_len <= UART_RECORD_MAXLEN) {
+				ret = kfifo_out_peek(&u_state->port.xmit_fifo,c->rec_info[idx].rec_buf,
 					min((unsigned int)dump_len, c->rec_info[idx].trans_len));
+				if(ret <= 0) {
+					pr_info("[%s] kfifo_out_peek fail ret=%d\n",__func__,ret);
+				}
+			}
 		} else {
 			c->chan_debug_value = DMA_U_STATE; /* u_state==NULL */
 		}
