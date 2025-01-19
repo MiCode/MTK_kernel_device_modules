@@ -68,6 +68,19 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "mtk_sbe_ioctl",
+    srcs = [
+        "perf_ioctl/sbe_ioctl.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "perf_ioctl/sbe_ioctl.h",
+    ],
+)
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([

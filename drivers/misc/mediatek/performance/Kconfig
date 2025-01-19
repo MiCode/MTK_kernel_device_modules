@@ -55,3 +55,11 @@ config MTK_PERF_IOCTL_MAGT
 	  Support MAGT analysis performance.
           If you are not sure about this, set n.
 
+config MTK_SBE
+	tristate "MediaTek Scenario Boost Engine"
+	help
+	  For UX scenario, SBE identify scrolling behavior, and adjust
+	  CPU boost policy to achieve FPS performance and low power balance
+	  via kernel config of MTK_SBE
+	  If you are not sure about this, set n.
+
