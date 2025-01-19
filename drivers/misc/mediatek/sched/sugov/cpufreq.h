@@ -365,4 +365,7 @@ DECLARE_PER_CPU(unsigned long, freq_ceiling);
 #define DPT_V2_MAX_RUNNING_TIME_LOCAL 1024
 /* End of DPT */
 
+bool _get_sched_debug_lock(void);
+void _set_sched_debug_lock(bool lock);
+
 #endif /* __CPUFREQ_H__ */

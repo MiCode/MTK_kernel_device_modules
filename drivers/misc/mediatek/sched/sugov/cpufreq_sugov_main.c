@@ -86,6 +86,20 @@ EXPORT_SYMBOL(fpsgo_notify_fbt_is_boost_fp);
 
 /************************* scheduler common ************************/
 
+static bool sched_debug_lock;
+
+bool _get_sched_debug_lock(void)
+{
+	return sched_debug_lock;
+}
+EXPORT_SYMBOL(_get_sched_debug_lock);
+
+void _set_sched_debug_lock(bool lock)
+{
+	sched_debug_lock = lock;
+}
+EXPORT_SYMBOL(_set_sched_debug_lock);
+
 /* curr_task_uclamp_max_ctrl */
 static int curr_task_uclamp_max_ctrl = DEFAULT_CURR_TASK_UCLAMP;
 
