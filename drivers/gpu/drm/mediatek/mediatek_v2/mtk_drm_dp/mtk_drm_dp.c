@@ -6199,6 +6199,10 @@ int mtk_dp_training_handler(struct mtk_dp *mtk_dp)
 
 	switch (mtk_dp->training_state) {
 	case DP_TRAINING_STATE_STARTUP:
+		if (mtk_dp->next_bridge) {
+			mtk_dp->next_bridge->funcs->pre_enable(mtk_dp->next_bridge);
+			msleep(500);
+		}
 		mtk_dp->training_state = DP_TRAINING_STATE_CHECKCAP;
 		break;
 
