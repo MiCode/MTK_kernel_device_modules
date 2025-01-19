@@ -145,7 +145,9 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 		ipi_wait_type = IPI_SEND_POLLING;
 
 	if (!is_ack) {
+		vcodec_trace_begin("msg_mutex(msg 0x%x)", msg_ap->msg_id);
 		mutex_lock(&inst->ctx->dev->ipi_mutex);
+		vcodec_trace_end();
 		if (need_wait_suspend) {
 			while (inst->ctx->dev->is_codec_suspending == 1) {
 				mutex_unlock(&inst->ctx->dev->ipi_mutex);
@@ -202,6 +204,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	mtk_v4l2_debug(2, "[%d] id %d len %d msg 0x%x is_ack %d %d",
 		inst->ctx->id, obj.id, obj.len, msg_ap->msg_id, is_ack, inst->vcu_inst.signaled);
 
+	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", msg_ap->msg_id, is_ack);
 	ipidev = vcp_get_ipidev(VENC_FEATURE_ID);
 	if (!ipidev) {
 		mtk_vcodec_err(inst, "[%d] vcp_get_ipidev(VENC_FEATURE_ID) get NULL", inst->ctx->id);
@@ -216,8 +219,10 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 			goto ipi_err_wait_and_unlock;
 	}
 
-	if (is_ack)
+	if (is_ack) {
+		vcodec_trace_end();
 		return 0;
+	}
 
 	// if (!is_ack)
 
@@ -267,12 +272,14 @@ wait_ack:
 			msg_ap->msg_id, ret, inst->vcu_inst.failure);
 		goto ipi_err_wait_and_unlock;
 	}
+	vcodec_trace_end();
 	mutex_unlock(&inst->ctx->dev->ipi_mutex);
 
 	return inst->vcu_inst.failure;
 
 ipi_err_wait_and_unlock:
 	timeout = 0;
+	vcodec_trace_end();
 	if (inst->vcu_inst.daemon_pid == vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv")) {
 		vcp_cmd_ex(VENC_FEATURE_ID, VCP_SET_HALT, "venc_srv");
 		while (inst->vcu_inst.daemon_pid == vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv")) {
@@ -652,21 +659,27 @@ return_venc_ipi_ack:
 			wake_up(&vcu->wq_hd);
 			break;
 		case VCU_IPIMSG_ENC_PUT_BUFFER:
+			vcodec_trace_begin("venc_ipi(PUT_FRAME_BUFFER)");
 			mtk_enc_put_buf(ctx);
 			msg->msg_id = AP_IPIMSG_ENC_PUT_BUFFER_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+			vcodec_trace_end();
 			break;
 		case VCU_IPIMSG_ENC_MEM_ALLOC:
+			vcodec_trace_begin("venc_ipi(MEM_ALLOC)");
 			handle_venc_mem_alloc((void *)obj->share_buf);
 			msg->msg_id = AP_IPIMSG_ENC_MEM_ALLOC_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op),
 				true, false, false);
+			vcodec_trace_end();
 			break;
 		case VCU_IPIMSG_ENC_MEM_FREE:
+			vcodec_trace_begin("venc_ipi(MEM_FREE)");
 			handle_venc_mem_free((void *)obj->share_buf);
 			msg->msg_id = AP_IPIMSG_ENC_MEM_FREE_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(struct venc_vcu_ipi_mem_op),
 				true, false, false);
+			vcodec_trace_end();
 			break;
 		// TODO: need remove HW locks /power ipis
 		case VCU_IPIMSG_ENC_WAIT_ISR:
@@ -1285,8 +1298,9 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt),
 			inst->ctx->later_cnt_once);
 	}
-
+	vcodec_trace_begin("%s(ipi)", __func__);
 	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
+	vcodec_trace_end();
 	if (ret) {
 		mtk_vcodec_err(inst, "AP_IPIMSG_ENC_ENCODE %d fail %d",
 					   bs_mode, ret);
@@ -1396,9 +1410,11 @@ static int venc_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	struct venc_inst *inst;
 	struct venc_ap_ipi_msg_init out;
 
+	vcodec_trace_begin_func();
 	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
 	if (!inst) {
 		*handle = (unsigned long)NULL;
+		vcodec_trace_end();
 		return -ENOMEM;
 	}
 
@@ -1418,6 +1434,7 @@ static int venc_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	if (!inst->vcu_inst.ctx_ipi_lock) {
 		kfree(inst);
 		*handle = (unsigned long)NULL;
+		vcodec_trace_end();
 		return -ENOMEM;
 	}
 	mutex_init(inst->vcu_inst.ctx_ipi_lock);
@@ -1432,7 +1449,9 @@ static int venc_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 
 	mtk_vcodec_add_ctx_list(ctx);
 
+	vcodec_trace_begin("%s(ipi)", __func__);
 	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
+	vcodec_trace_end();
 	inst->vsi = (struct venc_vsi *)inst->vcu_inst.vsi;
 
 	mtk_vcodec_debug_leave(inst);
@@ -1444,6 +1463,7 @@ static int venc_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 		(*handle) = (unsigned long)NULL;
 	}
 
+	vcodec_trace_end();
 	return ret;
 }
 

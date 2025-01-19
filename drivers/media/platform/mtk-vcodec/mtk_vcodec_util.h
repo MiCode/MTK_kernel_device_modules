@@ -184,7 +184,7 @@ extern int mtk_v4l2_dbg_level;
 extern int mtk_vdec_lpw_level;
 extern bool mtk_vcodec_dbg;
 extern bool mtk_vcodec_perf;
-extern bool mtk_vdec_trace_enable;
+extern bool mtk_vcodec_trace_enable;
 extern int mtk_vcodec_vcp;
 extern char *mtk_vdec_property;
 extern char *mtk_venc_property;
@@ -229,7 +229,7 @@ enum mtk_vcodec_debug_level {
 
 #if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 #define vcodec_trace_begin(fmt, args...) do { \
-			if (mtk_vdec_trace_enable) { \
+			if (mtk_vcodec_trace_enable) { \
 				vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \
 			} \
 		} while (0)
@@ -237,25 +237,25 @@ enum mtk_vcodec_debug_level {
 #define vcodec_trace_begin_func() vcodec_trace_begin("%s", __func__)
 
 #define vcodec_trace_end() do { \
-			if (mtk_vdec_trace_enable) { \
+			if (mtk_vcodec_trace_enable) { \
 				vcodec_trace("E\n"); \
 			} \
 		} while (0)
 
 #define vcodec_trace_count(name, count) do { \
-			if (mtk_vdec_trace_enable) { \
+			if (mtk_vcodec_trace_enable) { \
 				vcodec_trace("C|%d|%s|%d\n", current->tgid, name, count); \
 			} \
 		} while (0)
 
 #define vcodec_trace_count_fmt(count, fmt, args...) do { \
-				if (mtk_vdec_trace_enable) { \
+				if (mtk_vcodec_trace_enable) { \
 					vcodec_trace("C|%d|"fmt"|%d\n", current->tgid, ##args, count); \
 				} \
 			} while (0)
 
 #define vcodec_trace_tid_count(tid, count, fmt, args...) do { \
-				if (mtk_vdec_trace_enable) { \
+				if (mtk_vcodec_trace_enable) { \
 					vcodec_trace("C|%d|"fmt"|%d\n", tid, ##args, count); \
 				} \
 			} while (0)

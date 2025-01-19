@@ -1515,6 +1515,8 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	struct mtk_q_data *q_data_src = &ctx->q_data[MTK_Q_DATA_SRC];
 	struct mtk_enc_params *enc_params = &ctx->enc_params;
 
+	vcodec_trace_begin_func();
+
 	switch (q_data_src->fmt->fourcc) {
 	case V4L2_PIX_FMT_YUV420M:
 	case V4L2_PIX_FMT_YUV420:
@@ -1673,6 +1675,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->nal_length = &enc_params->nal_length;
 	param->mlvec_mode = enc_params->mlvec_mode;
 	param->use_clean_gop = enc_params->use_clean_gop;
+	vcodec_trace_end();
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -2624,6 +2627,9 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 	if (vb->vb2_queue->memory != VB2_MEMORY_DMABUF)
 		return 0;
 
+	vcodec_trace_begin("%s(%s)", __func__,
+		V4L2_TYPE_IS_CAPTURE(vb->type) ? "out" : "in");
+
 	q_data = mtk_venc_get_q_data(ctx, vb->vb2_queue->type);
 
 	// Check if need to proceed cache operations
@@ -2636,6 +2642,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 				i,
 				vb2_plane_size(vb, i),
 				q_data->sizeimage[i]);
+			vcodec_trace_end();
 			return -EINVAL;
 		}
 
@@ -2678,6 +2685,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 		}
 	}
 
+	vcodec_trace_end();
 	return 0;
 }
 
@@ -2686,6 +2694,9 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct mtk_video_enc_buf *mtkbuf;
 	struct vb2_v4l2_buffer *vb2_v4l2;
+
+	vcodec_trace_begin("%s(%s)", __func__,
+		V4L2_TYPE_IS_CAPTURE(vb->type) ? "out" : "in");
 
 	vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	mtkbuf = to_video_enc_buf(vb2_v4l2);
@@ -2751,6 +2762,7 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 		dma_buf_put(mtkbuf->frm_buf.qpmap_dma);
 		mtkbuf->frm_buf.qpmap_dma = NULL;
 	}
+	vcodec_trace_end();
 }
 
 
@@ -2759,6 +2771,9 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct vb2_v4l2_buffer *vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	struct mtk_video_enc_buf *mtk_buf = to_video_enc_buf(vb2_v4l2);
+
+	vcodec_trace_begin("%s(%s)", __func__,
+		V4L2_TYPE_IS_CAPTURE(vb->type) ? "out" : "in");
 
 	if(mtk_venc_dvfs_monitor_op_rate(ctx, vb->vb2_queue->type))
 		ctx->param_change |= MTK_ENCODE_PARAM_OPERATION_RATE;
@@ -2780,6 +2795,7 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 		wake_up(&ctx->bs_wq);
 
 	v4l2_m2m_buf_queue_check(ctx->m2m_ctx, vb2_v4l2);
+	vcodec_trace_end();
 }
 
 static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
@@ -2792,6 +2808,9 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	int ret;
 	unsigned long idx;
 
+	vcodec_trace_begin("%s(%s)", __func__,
+		V4L2_TYPE_IS_CAPTURE(q->type) ? "out" : "in");
+
 	mtk_v4l2_debug(4, "[%d] (%d) state=(%x)", ctx->id, q->type, mtk_vcodec_get_state(ctx));
 	/* Once state turn into MTK_STATE_ABORT, we need stop_streaming
 	  * to clear it
@@ -2803,11 +2822,15 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	/* Do the initialization when both start_streaming have been called */
 	if (V4L2_TYPE_IS_OUTPUT(q->type)) {
-		if (!vb2_start_streaming_called(&ctx->m2m_ctx->cap_q_ctx.q))
+		if (!vb2_start_streaming_called(&ctx->m2m_ctx->cap_q_ctx.q)) {
+			vcodec_trace_end();
 			return 0;
+		}
 	} else {
-		if (!vb2_start_streaming_called(&ctx->m2m_ctx->out_q_ctx.q))
+		if (!vb2_start_streaming_called(&ctx->m2m_ctx->out_q_ctx.q)) {
+			vcodec_trace_end();
 			return 0;
+		}
 	}
 
 	//release slb for cpu used more perf than venc
@@ -2926,6 +2949,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	else
 		mtk_vcodec_set_state_except(ctx, MTK_STATE_INIT, MTK_STATE_FLUSH);
 
+	vcodec_trace_begin("dvfs(stream_on)");
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
 	if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
 		mtk_venc_prepare_vcp_dvfs_data(ctx, &param);
@@ -2952,6 +2976,8 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_venc_init_boost(ctx);
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
+	vcodec_trace_end();
+	vcodec_trace_end();
 
 	return 0;
 
@@ -2973,7 +2999,7 @@ err_set_param:
 	while (v4l2_m2m_buf_remove(q_ctx))
 		;
 	mutex_unlock(&ctx->buf_lock);
-
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -2987,6 +3013,9 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 	struct venc_enc_param param;
 	unsigned long idx;
 	int ret;
+
+	vcodec_trace_begin("%s(%s)", __func__,
+		V4L2_TYPE_IS_CAPTURE(q->type) ? "out" : "in");
 
 	mtk_v4l2_debug(2, "[%d]-> type=%d", ctx->id, q->type);
 
@@ -3047,6 +3076,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 		}
 		mutex_unlock(&ctx->buf_lock);
 
+		vcodec_trace_begin("dvfs(stream_off)");
 		ctx->enc_flush_buf->lastframe = NON_EOS;
 		mutex_lock(&ctx->dev->enc_dvfs_mutex);
 		if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
@@ -3072,7 +3102,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			mtk_venc_pmqos_monitor_reset(ctx->dev);
 			mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 		}
-
+		vcodec_trace_end();
 		ctx->has_first_input = false;
 	}
 
@@ -3084,8 +3114,10 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			       ctx->id, q->type,
 			       vb2_is_streaming(&ctx->m2m_ctx->out_q_ctx.q),
 			       vb2_is_streaming(&ctx->m2m_ctx->cap_q_ctx.q));
+		vcodec_trace_end();
 		return;
 	}
+	vcodec_trace_end();
 }
 
 static const struct vb2_ops mtk_venc_vb2_ops = {

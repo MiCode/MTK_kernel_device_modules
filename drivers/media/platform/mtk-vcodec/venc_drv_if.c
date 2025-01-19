@@ -49,9 +49,13 @@ int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
 	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
 	struct venc_inst *inst = NULL;
 
+	vcodec_trace_begin_func();
+
 	inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
-	if (inst == NULL)
+	if (inst == NULL) {
+		vcodec_trace_end();
 		return -ENOMEM;
+	}
 	dev->id_counter++;
 	if (dev->id_counter == 0)
 		dev->id_counter++;
@@ -74,6 +78,7 @@ int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
 	mtk_vcodec_add_ctx_list(ctx);
 	mtk_v4l2_debug(0, "[%d] init drv_handle = 0x%lx", ctx->id, ctx->drv_handle);
 
+	vcodec_trace_end();
 	return 0;
 }
 
@@ -122,6 +127,8 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 			     type == GET_PARAM_VENC_CAP_FRAME_SIZES ||
 			     type == GET_PARAM_VENC_CAP_COMMON);
 
+	vcodec_trace_begin_func();
+
 	if (is_query_cap && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;
 		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
@@ -134,6 +141,7 @@ int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
 	else
 		ret = -EINVAL;
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -145,6 +153,8 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 			    type == VENC_SET_PARAM_VCP_LOG_INFO ||
 			    type == VENC_SET_PARAM_VCU_VPUD_LOG ||
 			    type == VENC_SET_PARAM_CONFIG);
+
+	vcodec_trace_begin_func();
 
 	if (is_set_prop && ctx->dev_ctx != NULL) {
 		ctx = ctx->dev_ctx;
@@ -158,6 +168,7 @@ int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
 	else
 		ret = -EINVAL;
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -245,13 +256,18 @@ int venc_if_encode(struct mtk_vcodec_ctx *ctx,
 {
 	int ret = 0;
 
-	if (ctx->drv_handle == 0)
+	vcodec_trace_begin_func();
+
+	if (ctx->drv_handle == 0) {
+		vcodec_trace_end();
 		return 0;
+	}
 
 	//vcodec_trace_begin
 	ret = ctx->enc_if->encode(ctx->drv_handle, opt, frm_buf, bs_buf, result);
 	//vcodec_trace_end();
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -259,8 +275,10 @@ int venc_if_deinit(struct mtk_vcodec_ctx *ctx)
 {
 	int ret = 0;
 
+	vcodec_trace_begin_func();
 	if (ctx->drv_handle == 0) {
 		mtk_venc_deinit_ctx_pm(ctx);
+		vcodec_trace_end();
 		return 0;
 	}
 
@@ -270,6 +288,7 @@ int venc_if_deinit(struct mtk_vcodec_ctx *ctx)
 
 	mtk_venc_deinit_ctx_pm(ctx);
 
+	vcodec_trace_end();
 	return ret;
 }
 

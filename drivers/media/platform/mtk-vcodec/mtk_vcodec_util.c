@@ -128,8 +128,8 @@ int mtk_vdec_lpw_level;
 EXPORT_SYMBOL_GPL(mtk_vdec_lpw_level);
 
 /* For vdec kernel driver trace enable */
-bool mtk_vdec_trace_enable;
-EXPORT_SYMBOL_GPL(mtk_vdec_trace_enable);
+bool mtk_vcodec_trace_enable;
+EXPORT_SYMBOL_GPL(mtk_vcodec_trace_enable);
 
 /* For vcodec vcp debug */
 int mtk_vcodec_vcp;
