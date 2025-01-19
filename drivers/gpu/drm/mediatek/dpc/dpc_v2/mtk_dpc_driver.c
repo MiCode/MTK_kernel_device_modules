@@ -300,8 +300,8 @@ static inline int dpc_pm_ctrl(bool en)
 	if (en) {
 		ret = pm_runtime_resume_and_get(g_priv->pd_dev);
 		if (ret) {
-			DPCERR("pm_runtime_resume_and_get failed skip_force_power(%u)",
-			       g_priv->skip_force_power);
+			DPCERR("get failed ret(%d) skip_force_power(%u)",
+			       ret, g_priv->skip_force_power);
 			return -1;
 		}
 
@@ -330,15 +330,10 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 	if (subsys >= DPC_SUBSYS_CNT)
 		return;
 
-	if (dpc_pm_ctrl(true))
-		return;
-
 	/* CLR : execute SW threads, disable auto MTCMOS */
 	addr = en ? (g_priv->mtcmos_cfg[subsys].thread_clr + thread * 0x4)
 		  : (g_priv->mtcmos_cfg[subsys].thread_set + thread * 0x4);
 	writel(1, dpc_base + addr);
-
-	dpc_pm_ctrl(false);
 }
 
 static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
@@ -508,17 +503,12 @@ static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en
 	u32 addr = 0;
 	u32 value = en ? 0x000D000D : 0x00050005;
 
-	if (dpc_pm_ctrl(true))
-		return;
-
 	if (subsys == DPC_SUBSYS_DISP)
 		addr = DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG;
 	else if (subsys == DPC_SUBSYS_MML)
 		addr = DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG;
 
 	writel(value, dpc_base + addr);
-
-	dpc_pm_ctrl(false);
 }
 
 static void dpc_enable(const u8 en)
@@ -527,9 +517,6 @@ static void dpc_enable(const u8 en)
 
 	if (en == 2)
 		g_priv->vidle_mask = 0;
-
-	if (dpc_pm_ctrl(true))
-		return;
 
 	if (en) {
 		if (g_priv->mmsys_id == MMSYS_MT6991) {
@@ -598,8 +585,6 @@ static void dpc_enable(const u8 en)
 
 	/* enable gce event */
 	writel(en, dpc_base + DISP_REG_DPC_EVENT_EN);
-
-	dpc_pm_ctrl(false);
 }
 
 static u8 bw_to_level(const u32 total_bw)
@@ -1420,19 +1405,23 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	int ret = 0;
+	int ret = VOTER_PM_DONE;
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR) {
-		if (!mminfra_is_power_on())
-			ret = 2;
+	if (user & VOTER_ONLY) {
+		mtk_disp_vlp_vote(VOTE_SET, user & 0x1f);
+
 		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
 		/* but if no power at this time, the user should call pm_get to ensure power */
-	} else {
-		if (dpc_pm_ctrl(true))
-			return -1;
+		if (((user & 0x1f) == DISP_VIDLE_USER_TOP_CLK_ISR) && !mminfra_is_power_on())
+			return VOTER_PM_LATER;
+
+		return VOTER_ONLY;
 	}
 
-	mtk_disp_vlp_vote(VOTE_SET, user);
+	if (dpc_pm_ctrl(true))
+		return VOTER_PM_FAILED;
+
+	mtk_disp_vlp_vote(VOTE_SET, user & 0x1f);
 
 	if (user >= DISP_VIDLE_USER_CRTC)
 		udelay(post_vlp_delay);
@@ -1444,9 +1433,9 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	mtk_disp_vlp_vote(VOTE_CLR, user);
+	mtk_disp_vlp_vote(VOTE_CLR, user & 0x1f);
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR)
+	if (user & VOTER_ONLY)
 		return;
 
 	dpc_pm_ctrl(false);
@@ -1539,7 +1528,7 @@ static void dpc_analysis(void)
 		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
-	mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s", msg);
+	mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s\n", msg);
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		int i;
@@ -1559,7 +1548,7 @@ static void dpc_analysis(void)
 			if (g_priv->dpc2_dt_usage[i].en)
 				written += scnprintf(msg + written, 512 - written, "[%d]%u ",
 					i, g_priv->dpc2_dt_usage[i].val);
-		mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s", msg);
+		mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s\n", msg);
 	}
 
 	dpc_pm_ctrl(false);
