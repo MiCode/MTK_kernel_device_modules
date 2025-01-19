@@ -2710,10 +2710,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * 2 * dsi->lanes / 7
 				/ buffer_unit) / 10);
 		sodi_lo = (23 + 5) * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		preultra_hi = 26 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		preultra_lo = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		ultra_hi = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		ultra_lo = 23 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+		preultra_hi = 36 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+		preultra_lo = 35 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+		ultra_hi = 26 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+		ultra_lo = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 		urgent_hi = urgent_hi_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 		urgent_lo = urgent_lo_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 	} else {
@@ -2721,10 +2721,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				/ buffer_unit) / 10);
 		/*dsi->driver_data*/
 		sodi_lo = (23 + 5) * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		preultra_hi = 26 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		preultra_lo = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		ultra_hi = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		ultra_lo = 23 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+		preultra_hi = 36 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+		preultra_lo = 35 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+		ultra_hi = 26 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+		ultra_lo = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 		urgent_hi = urgent_hi_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 		urgent_lo = urgent_lo_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 	}
@@ -13218,9 +13218,9 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
-	.urgent_lo_fifo_us = 14,
-	.urgent_hi_fifo_us = 15,
-	.output_valid_fifo_us = 50,
+	.urgent_lo_fifo_us = 11,
+	.urgent_hi_fifo_us = 12,
+	.output_valid_fifo_us = 35,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
