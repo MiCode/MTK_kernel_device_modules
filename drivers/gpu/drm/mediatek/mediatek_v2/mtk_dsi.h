@@ -62,6 +62,7 @@ struct mtk_dsi_driver_data {
 	bool dsi_buffer;
 	bool smi_dbg_disable;
 	bool require_phy_reset; /* reset phy before trigger DSI */
+	bool support_pre_urgent;
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);
