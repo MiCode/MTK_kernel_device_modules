@@ -47,6 +47,7 @@ int apummu_plat_init(struct platform_device *pdev)
 	adv->plat.alloc_DRAM_FB_in_session_create = aplat->alloc_DRAM_FB_in_session_create;
 	adv->plat.is_ASE_support = aplat->is_ASE_support;
 	adv->plat.reserved_session_num = aplat->reserved_session_num;
+	adv->plat.is_SLC_support = aplat->is_SLC_support;
 	ammu_set_hw_ops(aplat->hw_ops);
 	mutex_init(&adv->plat.slb_mtx);
 

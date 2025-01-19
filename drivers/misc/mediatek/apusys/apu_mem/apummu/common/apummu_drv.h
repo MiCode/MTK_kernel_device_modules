@@ -45,6 +45,7 @@ struct apummu_platform {
 	bool is_general_SLB_support;
 	bool alloc_DRAM_FB_in_session_create; // add for DRAM FB alloc time check
 	bool is_ASE_support;
+	bool is_SLC_support;
 
 	uint8_t reserved_session_num;
 };

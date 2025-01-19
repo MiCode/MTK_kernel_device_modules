@@ -19,6 +19,7 @@ struct apummu_plat {
 	bool is_ASE_support;
 	const void *hw_ops;
 	uint8_t reserved_session_num;
+	bool is_SLC_support;
 };
 
 int apummu_plat_init(struct platform_device *pdev);

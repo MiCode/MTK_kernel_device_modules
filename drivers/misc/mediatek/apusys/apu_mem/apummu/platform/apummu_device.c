@@ -22,6 +22,7 @@ static struct apummu_plat mt6897_drv = {
 	.is_ASE_support                  = false,
 	.hw_ops                          = NULL,
 	.reserved_session_num            = 0,
+	.is_SLC_support                  = false,
 };
 
 static struct apummu_plat mt6989_drv = {
@@ -33,6 +34,7 @@ static struct apummu_plat mt6989_drv = {
 	.is_ASE_support                  = false,
 	.hw_ops                          = NULL,
 	.reserved_session_num            = 0,
+	.is_SLC_support                  = false,
 };
 
 static struct apummu_plat mt6878_drv = {
@@ -44,6 +46,7 @@ static struct apummu_plat mt6878_drv = {
 	.is_ASE_support                  = false,
 	.hw_ops                          = NULL,
 	.reserved_session_num            = 0,
+	.is_SLC_support                  = false,
 };
 
 static struct apummu_plat mt6991_drv = {
@@ -55,6 +58,7 @@ static struct apummu_plat mt6991_drv = {
 	.is_ASE_support                  = false,
 	.hw_ops                          = NULL,
 	.reserved_session_num            = 0,
+	.is_SLC_support                  = false,
 };
 
 static struct apummu_plat mt6899_drv = {
@@ -66,6 +70,7 @@ static struct apummu_plat mt6899_drv = {
 	.is_ASE_support                  = false,
 	.hw_ops                          = NULL,
 	.reserved_session_num            = 0,
+	.is_SLC_support                  = false,
 };
 
 static struct apummu_plat mt6993_drv = {
@@ -77,6 +82,7 @@ static struct apummu_plat mt6993_drv = {
 	.is_ASE_support                  = true,
 	.hw_ops                          = &mt6993_ammudata.ops,
 	.reserved_session_num            = 2,
+	.is_SLC_support                  = true,
 };
 
 static const struct of_device_id apummu_of_match[] = {

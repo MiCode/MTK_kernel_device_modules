@@ -15,6 +15,7 @@
 #include <linux/bitmap.h>
 #include <linux/find.h>
 #include <linux/bitops.h>
+#include <linux/vmalloc.h>
 
 #include <apusys_device.h>
 #include "apummu_drv.h"
@@ -23,6 +24,12 @@
 #include "apummu_remote_cmd.h"
 #include "apummu_cmn.h"
 #include "apummu_trace.h"
+
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+#include "slbc_ops.h"
+static int gid;
+static struct slbc_gid_data *ammu_slbc_gid_data;
+#endif
 
 extern struct apummu_dev_info *g_adv;
 
@@ -547,10 +554,34 @@ out:
 	return sTable_ptr;
 }
 
+static int enable_slc(uint64_t session)
+{
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	int ret_slbc = 0;
+#endif
+	if (g_adv->plat.is_SLC_support) {
+		if (g_ammu_table_set.session_tbl_cnt == (g_adv->plat.reserved_session_num + 1)) {
+			gid = -1;
+			ammu_slbc_gid_data = vzalloc(sizeof(struct slbc_gid_data));
+			ammu_slbc_gid_data->sign = 0x51ca11ca;
+			ret_slbc = slbc_gid_request(ID_NPU, &gid, ammu_slbc_gid_data);
+			if (ret_slbc)
+				AMMU_LOG_INFO("slc request fail\n");
+			ret_slbc = slbc_validate(ID_NPU, gid);
+			if (ret_slbc)
+				AMMU_LOG_INFO("slc validate fail\n");
+			AMMU_LOG_INFO("enable slc success\n");
+		}
+	}
+	AMMU_LOG_INFO("enable slc done\n");
+	return ret_slbc;
+}
+
 int session_table_alloc(uint64_t session)
 {
 	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr;
+	//int ret_slc = 0;
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
@@ -559,8 +590,11 @@ int session_table_alloc(uint64_t session)
 	}
 
 	sTable_ptr = session_table_alloc_and_return(session);
-	if (!sTable_ptr)
+	if (!sTable_ptr) {
 		ret = -ENOMEM;
+		goto exit;
+	}
+	ret = enable_slc(session);
 
 exit:
 	return ret;
@@ -730,6 +764,9 @@ out:
 int session_table_free(uint64_t session)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	int ret_slbc = 0;
+#endif
 	struct apummu_session_tbl *sTable_ptr;
 
 	ammu_trace_begin("APUMMU: free session table");
@@ -761,8 +798,19 @@ int session_table_free(uint64_t session)
 	kvfree(sTable_ptr);
 
 	g_ammu_table_set.session_tbl_cnt -= 1;
-	if (g_ammu_table_set.session_tbl_cnt == g_adv->plat.reserved_session_num)
+	if (g_ammu_table_set.session_tbl_cnt == g_adv->plat.reserved_session_num) {
 		free_memory();
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+		/*slc release flow*/
+		ret_slbc = slbc_invalidate(ID_NPU, gid);
+		if (ret_slbc)
+			AMMU_LOG_INFO("slc invalidate fail");
+		ret_slbc = slbc_gid_release(ID_NPU, gid);
+		if (ret_slbc)
+			AMMU_LOG_INFO("slc release fail");
+		vfree(ammu_slbc_gid_data);
+#endif
+	}
 	mutex_unlock(&g_ammu_table_set.gtable_lock);
 out:
 	ammu_trace_end();
