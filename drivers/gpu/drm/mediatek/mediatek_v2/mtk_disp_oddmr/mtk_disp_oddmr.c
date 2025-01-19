@@ -313,6 +313,9 @@
 #define DISP_ODDMR_SMI_SB_FLG_DMR_8 (0x005c + DISP_ODDMR_REG_SMI_BASE)
 #define REG_DMR_RE_ULTRA_MODE REG_FLD_MSB_LSB(11, 8)
 
+#define MT6991_DISP_ODDMR_SMI_SB_FLG_ODR_1 (0x0068)
+	#define MT6991_REG_DBI_GUSER_CTRL_1		REG_FLD_MSB_LSB(15, 0)
+
 // MT6991 DDREN
 #define MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_2 0x008C
 #define MT6991_DISP_ODDMR_SMI_SB_FLG_ODW_3 0x0090
@@ -418,10 +421,10 @@
 #define MT6991_ODDMR_DMR_ULTRA_FAIL_LV(size)        (size * 2 / 4) //50%
 
 /* ultra&preultra in mt6991 */
-#define MT6991_ODDMR_PRE_ULTRA_RISE_LV(size)    (size * (1 - 2 / 3))
-#define MT6991_ODDMR_PRE_ULTRA_FAIL_LV(size)    (size * (1 - 3 / 4))
-#define MT6991_ODDMR_ULTRA_RISE_LV(size)        (size * (1 - 1 / 3))
-#define MT6991_ODDMR_ULTRA_FAIL_LV(size)        (size * (1 - 2 / 4))
+#define MT6991_ODDMR_PRE_ULTRA_RISE_LV(size)    (size * 1 / 3)
+#define MT6991_ODDMR_PRE_ULTRA_FAIL_LV(size)    (size * 1 / 4)
+#define MT6991_ODDMR_ULTRA_RISE_LV(size)        (size * 2 / 3)
+#define MT6991_ODDMR_ULTRA_FAIL_LV(size)        (size * 2 / 4)
 
 
 #define ODDMR_ENABLE_IRQ
@@ -4310,6 +4313,10 @@ static void mtk_oddmr_dbi_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	SET_VAL_MASK(value, mask, value, MT6991_REG_DBI_REQ_ULTRA_FAIL_LV);
 	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DBI_CTRL22,
 		mask, pkg);
+	value = 0x8000;
+	SET_VAL_MASK(value, mask, value, MT6991_REG_DBI_GUSER_CTRL_1);
+	mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_SMI_SB_FLG_ODR_1,
+		mask, pkg);
 }
 
 static void mtk_oddmr_od_smi_dual(struct cmdq_pkt *pkg)
@@ -5483,10 +5490,10 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			/* DBI outstanding */
 			bw_val = *(unsigned int *)params;
 			layer_num = mtk_oddmr_dbi_bpp(0);
-			bw_val = ((layer_num * bw_val) / 400) * dbi_enable;
+			bw_val = (layer_num * bw_val) / 400;
 			/* stash bw = data_bw / 4096 * 16 */
-			bw_val += bw_val / 256;
-			bw_val = bw_val > 17 ? bw_val : 17; //set low bound
+			bw_val += (bw_val / 256 > 17) ? (bw_val / 256) : 17;
+			bw_val *= (dbi_enable > 0) ? 1 : 0;
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 
