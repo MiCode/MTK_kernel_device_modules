@@ -2083,6 +2083,9 @@ static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bo
 static s32 core_flush(struct mml_task *task, u32 pipe)
 {
 	struct mml_frame_config *cfg = task->config;
+	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
+	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
+		pipe + GCE_THREAD_START);
 	int i, ret;
 	struct cmdq_pkt *pkt = task->pkts[pipe];
 
@@ -2091,6 +2094,14 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mml_trace_ex_begin("%s", __func__);
 
 	core_enable(task, pipe);
+
+	if (cfg->dpc) {
+		cmdq_check_thread_complete(tp_clt->chan);
+
+		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
+		    cfg->info.mode == MML_MODE_DIRECT_LINK)
+			cmdq_check_thread_complete(rb_clt->chan);
+	}
 
 	/* before flush, wait buffer fence being signaled */
 	task->wait_fence_time[pipe] = sched_clock();
@@ -2193,20 +2204,9 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 {
 	s32 err;
 	struct mml_frame_config *cfg = task->config;
-	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
-	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
-		pipe + GCE_THREAD_START);
 
 	mml_trace_ex_begin("%s_%u_%u", __func__, pipe, task->job.jobid);
 	task->config_pipe_time[pipe] = sched_clock();
-
-	if (cfg->dpc) {
-		cmdq_check_thread_complete(tp_clt->chan);
-
-		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
-		    cfg->info.mode == MML_MODE_DIRECT_LINK)
-			cmdq_check_thread_complete(rb_clt->chan);
-	}
 
 	err = core_config(task, pipe);
 	if (err < 0) {
