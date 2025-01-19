@@ -573,6 +573,8 @@ void mtk_crtc_v_idle_apsrc_control(struct drm_crtc *crtc,
 int scmi_set(void *buffer);
 int mtk_drm_get_master_info_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file_priv);
+int mtk_drm_ioctl_get_lcm_index(struct drm_device *dev, void *data,
+			struct drm_file *file_priv);
 void mtk_vidle_multi_crtc_stop(unsigned int crtc_id);
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
 void **mtk_drm_disp_mtee_cb_init(void);

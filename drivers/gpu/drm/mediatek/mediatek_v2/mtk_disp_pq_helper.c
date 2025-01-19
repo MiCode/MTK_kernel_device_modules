@@ -483,6 +483,9 @@ int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *de
 				to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
 		ret = disp_ccorr_act_get_irq(comp, kdata);
 		break;
+	case PQ_VIRTUAL_GET_LCM_INDEX:
+        	ret = mtk_drm_ioctl_get_lcm_index(dev, kdata, file_priv);
+        	break;
 	case PQ_COLOR_WRITE_REG:
 		ret = disp_pq_proxy_virtual_hw_write(crtc, kdata);
 		break;
