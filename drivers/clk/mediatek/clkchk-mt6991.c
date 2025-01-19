@@ -3546,7 +3546,13 @@ static const char * const off_pll_names[] = {
 	"mfgpll-sc1",
 	"univpll",
 	"msdcpll",
+	"mainpll2",
+	"univpll2",
+	"mmpll2",
+	"imgpll",
 	"tvdpll1",
+	"tvdpll2",
+	"tvdpll3",
 	NULL
 };
 
@@ -3558,6 +3564,7 @@ static const char * const notice_pll_names[] = {
 };
 
 static const char * const bypass_pll_name[] = {
+	"univpll",
 	NULL
 };
 
@@ -3577,6 +3584,29 @@ static const char * const *get_bypass_pll_name(void)
 }
 
 static const char * const off_mux_names[] = {
+	"ck_uart_sel",
+	"ck_spi0_b_sel",
+	"ck_spi1_b_sel",
+	"ck_spi2_b_sel",
+	"ck_spi3_b_sel",
+	"ck_spi4_b_sel",
+	"ck_spi5_b_sel",
+	"ck_spi6_b_sel",
+	"ck_spi7_b_sel",
+	"ck_msdc30_1_sel",
+	"ck_msdc30_2_sel",
+	"ck_disp_pwm_sel",
+	"ck_usb_1p_sel",
+	"ck_usb_xhci_1p_sel",
+	"ck_usb_fmcnt_p1_sel",
+	"ck_i2c_p_sel",
+	"ck_i2c_east_sel",
+	"ck_i2c_west_sel",
+	"ck_i2c_north_sel",
+	"ck_aes_ufsfde_sel",
+	"ck_sel",
+	"ck_dpmaif_main_sel",
+	"ck_pwm_sel",
 	"ck2_seninf0_sel",
 	"ck2_seninf1_sel",
 	"ck2_seninf2_sel",
@@ -3596,14 +3626,29 @@ static const char * const off_mux_names[] = {
 	"ck2_dp0_sel",
 	"ck2_disp_sel",
 	"ck2_mdp_sel",
+	"ck2_mminfra_sel",
+	"ck2_mminfra_snoc_sel",
+	"ck2_mminfra_ao_sel",
+	"vlp_camtg0_sel",
+	"vlp_camtg1_sel",
+	"vlp_camtg2_sel",
+	"vlp_camtg3_sel",
+	"vlp_camtg4_sel",
+	"vlp_camtg5_sel",
+	"vlp_camtg6_sel",
+	"vlp_camtg7_sel",
 	NULL
 };
 
 static const char * const notice_mux_names[] = {
-	"ck2_mminfra_sel",
-	"ck2_mminfra_snoc_sel",
+	"ck_aud_1_sel",
+	"ck_aud_2_sel",
+	"ck_adsp_sel",
+	"ck_adsp_uarthub_b_sel",
 	"ck2_mmup_sel",
-	"ck2_mminfra_ao_sel",
+	"vlp_audio_h_sel",
+	"vlp_aud_engen1_sel",
+	"vlp_aud_engen2_sel",
 	NULL
 };
 

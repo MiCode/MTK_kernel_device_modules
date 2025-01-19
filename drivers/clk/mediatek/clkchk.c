@@ -680,7 +680,7 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 {
 	struct provider_clk *pvdck = get_all_provider_clks(true);
 
-	if (check_pll_off() || check_mux_off()) {
+	if (check_pll_off() && check_mux_off()) {
 		for (; pvdck->ck != NULL; pvdck++)
 			dump_enabled_clks(pvdck);
 
