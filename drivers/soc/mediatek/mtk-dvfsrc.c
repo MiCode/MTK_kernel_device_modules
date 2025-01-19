@@ -425,6 +425,37 @@ static const int mt6991_regs[] = {
 	[DVFSRC_SW_EMI_BW]     =    0x60c,
 };
 
+static const int mt6993_regs[] = {
+	[DVFSRC_BASIC_CONTROL] =    0x0,
+	[DVFSRC_SW_REQ] =           0x18,
+	[DVFSRC_SW_REQ2] =          0x604,
+	[DVFSRC_LEVEL] =            0x5F0,
+	[DVFSRC_SW_PEAK_BW] =       0x1F4,
+	[DVFSRC_SW_BW] =            0x1E8,
+	[DVFSRC_SW_HRT_BW] =        0x20C,
+	[DVFSRC_TARGET_LEVEL] =     0x5F0,
+	[DVFSRC_TARGET_FORCE] =     0x774,
+	[DVFSRC_TARGET_FORCE_H] =   0x770,
+	[DVFSRC_TARGET_FORCE_H1] =  0x5E0,
+	[DVFSRC_TARGET_FORCE_H2] =  0x5DC,
+	[DVFSRC_FORCE_MASK] =       0x5EC,
+	[DVFSRC_SW_FORCE_BW] =      0x200,
+	[DVFSRC_INT] =              0xC8,
+	[DVFSRC_INT_EN] =           0xCC,
+	[DVFSRC_INT_CLR] =          0xD0,
+	[DVFSRC_CUR_TAR_GEAR] =     0x6AC,
+	[DVFSRC_DEFAULT_OPP_1] =    0x22C,
+	[DVFSRC_DEFAULT_OPP_2] =    0x230,
+	[DVFSRC_DEFAULT_OPP_3] =    0x740,
+	[DVFSRC_DEFAULT_OPP_4] =    0x744,
+	[DVFSRC_HALT_CONTROL]  =    0xC4,
+	[DVFSRC_DEFAULT_OPP_5] =    0x828,
+	[DVFSRC_DEFAULT_OPP_6] =    0x82C,
+	[DVFSRC_DEFAULT_OPP_7] =    0x830,
+	[DVFSRC_DEFAULT_OPP_8] =    0x834,
+	[DVFSRC_SW_EMI_BW]     =    0xB74,
+};
+
 static const int mt6899_regs[] = {
 	[DVFSRC_BASIC_CONTROL] =    0x0,
 	[DVFSRC_SW_REQ] =           0x18,
@@ -2220,6 +2251,21 @@ static const struct dvfsrc_soc_data mt6991_data = {
 	.emi_ddr_bw_en = true,
 };
 
+static const struct dvfsrc_soc_data mt6993_data = {
+	DVFSRC_MT6991_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6991_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6991_desc),
+	.regs = mt6993_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6989_set_force_opp_level,
+	.force_ver = 0x6991,
+#endif
+	.query_opp_count = mt6991_get_opp_count,
+	.dis_ddr_check = true,
+	.mem_res_req_en = true,
+	.emi_ddr_bw_en = true,
+};
+
 static const struct dvfsrc_soc_data mt6765_data = {
 	DVFSRC_MT6765_SERIES_OPS,
 	.opps_desc = dvfsrc_opp_mt6765_desc,
@@ -2328,7 +2374,7 @@ static const struct of_device_id mtk_dvfsrc_of_match[] = {
 		.data = &mt6899_data,
 	}, {
 		.compatible = "mediatek,mt6993-dvfsrc",
-		.data = &mt6991_data,
+		.data = &mt6993_data,
 	}, {
 		/* sentinel */
 	},
