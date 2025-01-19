@@ -298,17 +298,17 @@ void mt6991_aud_update_power_scenario(void)
 	int ul_hifi = 0, dl_hifi = 0;
 
 	if (!local_afe) {
-		dev_info(local_afe->dev, "%s(), afe is NULL ptr\n", __func__);
+		pr_info("%s(), local_afe is NULL ptr\n", __func__);
 		local_audio_data = audio_data;
 		return;
 	}
 	afe_priv = local_afe->platform_priv;
-	adda_priv = afe_priv->dai_priv[MT6991_DAI_ADDA];
-
 	if (!afe_priv) {
-		dev_info(local_afe->dev, "%s(), afe_priv is NULL ptr\n", __func__);
+		pr_info("%s(), afe_priv is NULL ptr\n", __func__);
 		goto exit;
 	}
+
+	adda_priv = afe_priv->dai_priv[MT6991_DAI_ADDA];
 	codec_component = afe_priv->codec_component;
 
 	if (!codec_component) {
