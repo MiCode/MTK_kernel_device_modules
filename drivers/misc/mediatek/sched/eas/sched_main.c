@@ -1084,11 +1084,11 @@ static int __init mtk_scheduler_init(void)
 	ret = register_trace_android_rvh_cpu_overutilized(
 			mtk_cpu_overutilized, NULL);
 	if (ret)
-		pr_info("register trace_android_rvh_cpu_overutilized failed\n");
+		pr_info("register android_rvh_cpu_overutilized failed\n");
 
 
-	//ret = register_trace_android_rvh_tick_entry(
-	//		mtk_tick_entry, NULL);
+	ret = register_trace_android_rvh_tick_entry(
+			mtk_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
 
@@ -1100,15 +1100,15 @@ static int __init mtk_scheduler_init(void)
 
 	ret = register_trace_pelt_rt_tp(mtk_pelt_rt_tp, NULL);
 	if (ret)
-		pr_info("register mtk_pelt_rt_tp hooks failed, returned %d\n", ret);
+		pr_info("register pelt_rt_tp failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
+	ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
 	if (ret)
-		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
+		pr_info("register android_rvh_schedule failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_update_misfit_status(mtk_update_misfit_status, NULL);
+	ret = register_trace_android_rvh_update_misfit_status(mtk_update_misfit_status, NULL);
 	if (ret)
-		pr_info("register mtk_update_misfit_status hooks failed, returned %d\n", ret);
+		pr_info("register android_rvh_update_misfit_status failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 	ret = register_trace_android_rvh_sched_newidle_balance(
@@ -1173,11 +1173,6 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
-#if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
-	//ret = register_trace_android_vh_check_uninterrupt_tasks(mtk_check_d_tasks, NULL);
-	if (ret)
-		pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
-#endif
 	ret = register_trace_android_vh_setscheduler_uclamp(mtk_setscheduler_uclamp, NULL);
 	if (ret)
 		pr_info("register mtk_setscheduler_uclamp hooks failed, returned %d\n", ret);

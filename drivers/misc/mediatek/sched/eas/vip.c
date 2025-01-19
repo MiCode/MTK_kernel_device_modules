@@ -1419,9 +1419,9 @@ void vip_init(void)
 	/* init vip related value to group*/
 	init_vip_group();
 
-	//ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
+	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
 	if (ret)
-		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
+		pr_info("register android_rvh_wake_up_new_task failed, returned %d\n", ret);
 
 	/* init vip related value to exist tasks */
 	read_lock(&tasklist_lock);
