@@ -3740,7 +3740,7 @@ unsigned long mtk_cpu_util_next_dpt_v2(int cpu, struct task_struct *p, int dst_c
 	unsigned long __coef1_util = cpu_util_cfs_dpt_v2(cpu_rq(cpu), COEF1_UTIL);
 	unsigned long __coef2_util = cpu_util_cfs_dpt_v2(cpu_rq(cpu), COEF2_UTIL);
 	unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
-	unsigned int local_util_cpu_est, local_util_coef1_est, local_util_coef2_est;
+	unsigned int local_util_cpu_est = 0, local_util_coef1_est = 0, local_util_coef2_est = 0;
 	/* unsigned long runnable; */
 
 	/* if (is_runnable_boost_enable() && boost) {
