@@ -29,6 +29,7 @@
 #include <linux/time.h>
 #include <linux/rtc.h>
 #include <linux/timekeeping.h>
+#include <linux/tracepoint.h>
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38)
 #include <linux/input/mt.h>
@@ -37,6 +38,8 @@
 
 #include "goodix_ts_core.h"
 #include "ts_scp_core.h"
+#define CREATE_TRACE_POINTS
+#include "touch_trace.h"
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
@@ -58,6 +61,7 @@ struct mutex irq_info_mutex;
 static unsigned int x_last[GOODIX_MAX_TOUCH], y_last[GOODIX_MAX_TOUCH];
 static unsigned int touch_num_last = 0;
 bool ts_scp_enable = false;
+static bool trace_enable = false;
 
 #ifdef GOODIX_TZ
 static atomic_t delayed_reset;
@@ -852,6 +856,20 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 		}
 		ts_info("touch power on");
 		break;
+	/* use cmd to enable trace */
+	case '4':
+		mutex_lock(&irq_info_mutex);
+		trace_enable = true;
+		mutex_unlock(&irq_info_mutex);
+		ts_info("touch trace enable");
+		break;
+	/* use cmd to disable trace */
+	case '5':
+		mutex_lock(&irq_info_mutex);
+		trace_enable = false;
+		mutex_unlock(&irq_info_mutex);
+		ts_info("touch trace disable");
+		break;
 	default:
 		break;
 	}
@@ -1345,6 +1363,7 @@ void goodix_ts_report_finger(struct input_dev *dev,
 {
 	unsigned int touch_num = touch_data->touch_num;
 	int i;
+	int64_t ktime_now_ns, ktime_irq_ns, ktime_diff_ns;
 
 	mutex_lock(&dev->mutex);
 
@@ -1390,6 +1409,12 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	input_set_timestamp(dev,
 		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
+	if (trace_enable == true) {
+		ktime_now_ns = ktime_get_ns();
+		ktime_irq_ns = atomic64_read(&ts_core->timestamp);
+		ktime_diff_ns = ktime_now_ns - ktime_irq_ns;
+		trace_touch_event(ktime_now_ns, ktime_irq_ns, ktime_diff_ns);
+	}
 
 #ifdef GOODIX_TZ
 	if ((atomic_read(&delayed_reset) == 1) && (touch_num == 0)) {
