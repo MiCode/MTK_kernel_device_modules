@@ -17668,19 +17668,15 @@ static int mt6681_hwgain_set(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	int gain = 0;
+	int gain = ucontrol->value.integer.value[0];
 
-	dev_info(priv->dev, "%s(), DB = %ld\n",
-	 __func__, ucontrol->value.integer.value[0]);
-
-	gain = ucontrol->value.integer.value[0] + 64;
+	dev_info(priv->dev, "%s(), gain_index = %d\n", __func__, gain);
 
 	if (gain >= ARRAY_SIZE(kHWGainMap)) {
 		dev_info(priv->dev, "%s(), return -EINVAL\n", __func__);
 		return -EINVAL;
 	}
 	priv->dl_hwgain = kHWGainMap[gain];
-
 
 	return 0;
 }
