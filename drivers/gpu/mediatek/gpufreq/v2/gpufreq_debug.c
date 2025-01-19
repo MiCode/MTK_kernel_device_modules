@@ -243,11 +243,17 @@ static int gpu_working_opp_table_proc_show(struct seq_file *m, void *v)
 	}
 
 	for (i = 0; i < opp_num; i++) {
-		seq_printf(m,
-			"[%02d] freq: %d, volt: %d, vsram: %d, posdiv: %d, margin: %d, power: %d\n",
-			i, opp_table[i].freq, opp_table[i].volt,
-			opp_table[i].vsram, opp_table[i].posdiv,
-			opp_table[i].margin, opp_table[i].power);
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram);
 	}
 
 done:
@@ -273,11 +279,17 @@ static int stack_working_opp_table_proc_show(struct seq_file *m, void *v)
 	}
 
 	for (i = 0; i < opp_num; i++) {
-		seq_printf(m,
-			"[%02d] freq: %d, volt: %d, vsram: %d, posdiv: %d, margin: %d, power: %d\n",
-			i, opp_table[i].freq, opp_table[i].volt,
-			opp_table[i].vsram, opp_table[i].posdiv,
-			opp_table[i].margin, opp_table[i].power);
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram);
 	}
 
 done:
@@ -308,11 +320,17 @@ static int gpu_signed_opp_table_proc_show(struct seq_file *m, void *v)
 	}
 
 	for (i = 0; i < opp_num; i++) {
-		seq_printf(m,
-			"[%02d*] freq: %d, volt: %d, vsram: %d, posdiv: %d, margin: %d, power: %d\n",
-			i, opp_table[i].freq, opp_table[i].volt,
-			opp_table[i].vsram, opp_table[i].posdiv,
-			opp_table[i].margin, opp_table[i].power);
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d*] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d*] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram);
 	}
 
 done:
@@ -343,11 +361,17 @@ static int stack_signed_opp_table_proc_show(struct seq_file *m, void *v)
 	}
 
 	for (i = 0; i < opp_num; i++) {
-		seq_printf(m,
-			"[%02d*] freq: %d, volt: %d, vsram: %d, posdiv: %d, margin: %d, power: %d\n",
-			i, opp_table[i].freq, opp_table[i].volt,
-			opp_table[i].vsram, opp_table[i].posdiv,
-			opp_table[i].margin, opp_table[i].power);
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d*] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d*] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram);
 	}
 
 done:
