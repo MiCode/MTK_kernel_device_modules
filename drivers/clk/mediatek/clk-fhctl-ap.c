@@ -413,6 +413,11 @@ static struct match mt6991_match = {
 	.hdlr = &ap_hdlr_v1,
 	.init = &ap_init_v1,
 };
+static struct match mt6993_match = {
+	.name = "mediatek,mt6993-fhctl",
+	.hdlr = &ap_hdlr_v1,
+	.init = &ap_init_v1,
+};
 static struct match *matches[] = {
 	&mt6768_match,
 	&mt6877_match,
@@ -422,6 +427,7 @@ static struct match *matches[] = {
 	&mt6985_match,
 	&mt6989_match,
 	&mt6991_match,
+	&mt6993_match,
 	NULL,
 };
 

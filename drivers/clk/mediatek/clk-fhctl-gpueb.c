@@ -450,11 +450,35 @@ static struct match mt6991_match = {
 };
 /*mt6991 end*/
 
+/*mt6993 begin*/
+static struct id_map map_6993[] = {
+	{"gpu0", 1000},
+	{"gpu1", 2000},
+	{}
+};
+
+struct hdlr_data_v1 hdlr_data_6993_gpueb = {
+	.reg_tr = NULL,
+	.map = map_6993,
+};
+static struct fh_hdlr gpueb_hdlr_6993 = {
+	.ops = &gpueb_ops_v1,
+	.data = &hdlr_data_6993_gpueb,
+};
+
+static struct match mt6993_match = {
+	.name = "mediatek,mt6993-fhctl",
+	.hdlr = &gpueb_hdlr_6993,
+	.init = &gpueb_init_v1,
+};
+/*mt6993 end*/
+
 static struct match *matches[] = {
 	&mt6897_match,
 	&mt6985_match,
 	&mt6989_match,
 	&mt6991_match,
+	&mt6993_match,
 	NULL,
 };
 
