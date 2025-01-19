@@ -322,6 +322,7 @@ struct mtk_dp {
 	bool has_dsc;
 	bool has_fec;
 	bool dsc_enable;
+	bool fake_comeplete_irq;
 	struct mtk_drm_private *priv;
 	//phy_params[10] = {L0P0,L0P1,L0P2,L0P3,L1P0,L1P1,L1P2,L2P0,L2P1,L3P0};
 	struct DPTX_PHY_PARAMETER phy_params[DPTX_PHY_LEVEL_COUNT];
