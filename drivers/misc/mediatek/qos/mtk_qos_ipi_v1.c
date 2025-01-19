@@ -27,7 +27,7 @@ static int qos_ipi_recv_thread(void *arg)
 {
 	struct ipi_action qos_isr;
 	struct qos_ipi_data qos_ipi_d;
-	unsigned int rdata, ret;
+	unsigned int rdata __maybe_unused, ret;
 	int bound_cmd_id = qos_get_ipi_cmd(QOS_IPI_QOS_BOUND);
 
 	qos_isr.data = &qos_ipi_d;

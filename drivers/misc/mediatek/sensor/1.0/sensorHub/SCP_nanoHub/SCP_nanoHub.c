@@ -1080,7 +1080,7 @@ static int SCP_sensorHub_server_dispatch_data(uint32_t *currWp)
 	uint32_t wp_copy;
 	int err = 0;
 
-	int64_t scp_time = 0;
+	int64_t scp_time __maybe_unused = 0;
 
 	pStart = (char *)READ_ONCE(obj->SCP_sensorFIFO) +
 		offsetof(struct sensorFIFO, data);

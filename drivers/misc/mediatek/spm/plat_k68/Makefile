@@ -1,3 +1,4 @@
+ccflags-y += -Wno-frame-address
 # Include mtk_idle_internal.h for MTK_IDLE_OPT_XXX
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common_v1/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/plat_k68/

@@ -1253,7 +1253,7 @@ static enum gpufreq_posdiv __gpufreq_get_posdiv_by_freq(unsigned int freq)
 /* API: scale Freq of GPU via CON1 Reg or FHCTL */
 static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new)
 {
-	enum gpufreq_posdiv cur_posdiv = POSDIV_POWER_1;
+	enum gpufreq_posdiv cur_posdiv __maybe_unused = POSDIV_POWER_1;
 	enum gpufreq_posdiv target_posdiv = POSDIV_POWER_1;
 	unsigned int pcw = 0;
 	unsigned int pll = 0;
@@ -2120,7 +2120,7 @@ static void __gpufreq_set_springboard(void)
  */
 static int __gpufreq_init_opp_table(struct platform_device *pdev)
 {
-	unsigned int segment_id = 0;
+	unsigned int segment_id __maybe_unused = 0;
 	int i = 0, j = 0;
 	int ret = GPUFREQ_SUCCESS;
 

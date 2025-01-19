@@ -1046,7 +1046,7 @@ struct CATM_T thermal_atm_t;
 static void catmplus_update_params(void)
 {
 
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	thermal_atm_t.t_catm_par.CATM_ON = ctm_on;
 	thermal_atm_t.t_catm_par.K_TT = K_TT;
@@ -2079,7 +2079,7 @@ static int adp_cpu_get_cur_state
 static int adp_cpu_set_cur_state
 (struct thermal_cooling_device *cdev, unsigned long state)
 {
-	int ttj = 117000;
+	int ttj __maybe_unused = 117000;
 	unsigned int prev_active_state = cl_dev_adp_cpu_state_active;
 
 	cl_dev_adp_cpu_state[(cdev->type[13] - '0')] = state;
@@ -3392,7 +3392,7 @@ static enum hrtimer_restart atm_loop(struct hrtimer *timer)
 static void atm_loop(struct timer_list *t)
 {
 #endif
-	int temp;
+	int temp __maybe_unused;
 #ifdef ENALBE_UART_LIMIT
 #if ENALBE_UART_LIMIT
 	static int hasDisabled;

@@ -362,7 +362,7 @@ static unsigned int scp_crash_dump(struct MemoryDump *pMemoryDump,
 	unsigned int scp_dump_size;
 	unsigned int scp_awake_fail_flag;
 #if SCP_RECOVERY_SUPPORT
-	uint32_t dram_start = 0;
+	uint32_t dram_start __maybe_unused = 0;
 #endif
 	uint32_t dram_size = 0;
 

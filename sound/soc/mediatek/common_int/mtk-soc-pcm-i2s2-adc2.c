@@ -309,7 +309,7 @@ static int mtk_i2s2_adc2_remove(struct platform_device *pdev)
 }
 
 #if IS_ENABLED(CONFIG_OF)
-static const struct of_device_id mt_soc_pcm_i2s2_adc2_of_ids[] = {
+static const struct of_device_id mt_soc_pcm_i2s2_adc2_of_ids[] __maybe_unused = {
 	{
 		.compatible = "mediatek,mt_soc_pcm_i2s2_adc2",
 	},

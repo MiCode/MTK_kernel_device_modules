@@ -966,7 +966,7 @@ static const struct mtk_gate venc_clks[] = {
 	GATE_VENC(CLK_VENC_SET3_VDEC, "venc_set3_vdec", "mm_ck", 12),
 };
 
-static const struct mtk_gate_regs top0_cg_regs = {
+static const struct mtk_gate_regs top0_cg_regs __maybe_unused = {
 	.set_ofs = 0x0,
 	.clr_ofs = 0x0,
 	.sta_ofs = 0x0,
@@ -1044,13 +1044,13 @@ static const struct mtk_gate top_clks[] = {
 };
 
 
-static const struct mtk_gate_regs ifr0_cg_regs = {
+static const struct mtk_gate_regs ifr0_cg_regs __maybe_unused = {
 	.set_ofs = 0x200,
 	.clr_ofs = 0x200,
 	.sta_ofs = 0x200,
 };
 
-static const struct mtk_gate_regs ifr1_cg_regs = {
+static const struct mtk_gate_regs ifr1_cg_regs __maybe_unused = {
 	.set_ofs = 0x74,
 	.clr_ofs = 0x74,
 	.sta_ofs = 0x74,

@@ -119,7 +119,7 @@ End:
 int ufs2mbrain_event_notify(struct ufs_mbrain_event *event)
 {
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
-	int n = 0;
+	int n __maybe_unused = 0;
 
 	if (!event) {
 		pr_info("[%s] event is null\n", __func__);

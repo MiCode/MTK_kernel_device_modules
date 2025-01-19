@@ -59,7 +59,7 @@ static int maghub_GetMData(char *buf, int size)
 {
 	struct maghub_ipi_data *obj = mag_ipi_data;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 	int mag_m[MAGHUB_AXES_NUM];
 	int err = 0;
 	unsigned int status = 0;

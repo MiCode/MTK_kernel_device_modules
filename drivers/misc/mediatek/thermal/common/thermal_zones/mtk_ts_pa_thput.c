@@ -539,7 +539,7 @@ static const struct proc_ops mtk_mdm_proc_mdinfoex_threshold_fops = {
 
 int  mtk_mdm_txpwr_init(void)
 {
-	struct proc_dir_entry *entry = NULL;
+	struct proc_dir_entry *entry __maybe_unused = NULL;
 	struct proc_dir_entry *mdtxpwr_dir = NULL;
 
 	mtk_mdm_dprintk("[%s]\n", __func__);

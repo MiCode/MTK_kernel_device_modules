@@ -773,7 +773,7 @@ static const struct mtk_mux top_muxes[] = {
 		8, 2, 15, CLK_CFG_UPDATE, 29),
 };
 
-static const struct mtk_gate_regs top0_cg_regs = {
+static const struct mtk_gate_regs top0_cg_regs __maybe_unused = {
 	.set_ofs = 0x0,
 	.clr_ofs = 0x0,
 	.sta_ofs = 0x0,
@@ -854,13 +854,13 @@ static const struct mtk_gate top_clks[] = {
 	GATE_TOP2(CLK_TOP_APLL12_DIVB, "apll12_divb", "f_f26m_ck", 7),
 };
 
-static const struct mtk_gate_regs ifr0_cg_regs = {
+static const struct mtk_gate_regs ifr0_cg_regs __maybe_unused = {
 	.set_ofs = 0x200,
 	.clr_ofs = 0x200,
 	.sta_ofs = 0x200,
 };
 
-static const struct mtk_gate_regs ifr1_cg_regs = {
+static const struct mtk_gate_regs ifr1_cg_regs __maybe_unused = {
 	.set_ofs = 0x74,
 	.clr_ofs = 0x74,
 	.sta_ofs = 0x74,

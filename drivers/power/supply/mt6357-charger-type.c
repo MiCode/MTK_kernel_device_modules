@@ -554,7 +554,7 @@ void do_charger_detect(struct mtk_charger_type *info, bool en)
 	union power_supply_propval prop_online = {0};
 	union power_supply_propval prop_type = {0};
 	union power_supply_propval prop_usb_type = {0};
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 #if !IS_ENABLED(CONFIG_TCPC_CLASS)
 	if (!mt_usb_is_device()) {

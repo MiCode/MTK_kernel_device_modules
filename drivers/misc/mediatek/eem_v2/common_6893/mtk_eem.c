@@ -1027,7 +1027,7 @@ static enum hrtimer_restart eem_log_timer_func(struct hrtimer *timer)
 static void eem_calculate_aging_margin(struct eem_det *det,
 	int start_oft, int end_oft)
 {
-	int num_bank_freq, offset, i = 0;
+	int num_bank_freq __maybe_unused, offset, i = 0;
 
 	num_bank_freq = det->num_freq_tbl;
 	offset = start_oft - end_oft;
@@ -1484,7 +1484,7 @@ static void eem_init_ctrl(struct eem_ctrl *ctrl)
 	if (1) {
 		init_waitqueue_head(&ctrl->wq);
 		ctrl->thread = kthread_run(eem_volt_thread_handler,
-				ctrl, ctrl->name);
+				ctrl, "%s", ctrl->name);
 		if (IS_ERR(ctrl->thread))
 			eem_error("Create %s thread failed: %ld\n",
 					ctrl->name, PTR_ERR(ctrl->thread));

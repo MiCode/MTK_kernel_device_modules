@@ -151,7 +151,7 @@ static unsigned int RG_AUDHPLTRIM_VAUDP15, RG_AUDHPRTRIM_VAUDP15,
 static int mAdc_Power_Mode;
 static bool apply_n12db_gain;
 static unsigned int dAuxAdcChannel = 16;
-static const int mDcOffsetTrimChannel = 9;
+static const int mDcOffsetTrimChannel __maybe_unused = 9;
 static bool mInitCodec;
 static unsigned int always_pull_down_enable;
 static unsigned int always_pull_low_off;
@@ -1359,9 +1359,9 @@ static struct ana_trim_offset hp_3pole_anaoffset,
 	spk_3pole_anaoffset,
 	spk_4pole_anaoffset;
 #endif
-static const int dBFactor_Den = 8192;
+static const int dBFactor_Den __maybe_unused = 8192;
 /* 1 / (10 ^ (dB / 20)) * dBFactor_Den */
-static const int dBFactor_Nom[32] = {
+static const int dBFactor_Nom[32] __maybe_unused = {
 	3261, 3659, 4106, 4607,
 	5169, 5799, 6507, 7301,
 	8192, 9192, 10313, 11572,
@@ -5440,7 +5440,7 @@ static int Audio_MicSource1_Set(struct snd_kcontrol *kcontrol,
 	/* ADC1 Mic source selection,
 	 * "ADC1" is main_mic, "ADC2" is headset_mic
 	 */
-	int index = 0;
+	int index __maybe_unused = 0;
 
 	if (ucontrol->value.enumerated.item[0] >
 	    ARRAY_SIZE(Pmic_Digital_Mux)) {

@@ -908,7 +908,7 @@ int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key)
 {
 	struct gpufreq_opp_info *opp_table = g_gpu.working_table;
 	int opp_num = g_gpu.opp_num;
-	int cur_oppidx = 0;
+	int cur_oppidx __maybe_unused = 0;
 	unsigned int cur_freq = 0, target_freq = 0;
 	unsigned int cur_volt = 0, target_volt = 0;
 	unsigned int cur_vsram = 0, target_vsram = 0;
@@ -1390,7 +1390,7 @@ static enum gpufreq_posdiv __gpufreq_get_posdiv_by_fgpu(unsigned int freq)
 /* API: scale Freq of GPU via CON1 Reg or FHCTL */
 static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new)
 {
-	enum gpufreq_posdiv cur_posdiv = POSDIV_POWER_1;
+	enum gpufreq_posdiv cur_posdiv __maybe_unused = POSDIV_POWER_1;
 	enum gpufreq_posdiv target_posdiv = POSDIV_POWER_1;
 	unsigned int pcw = 0;
 	unsigned int pll = 0;

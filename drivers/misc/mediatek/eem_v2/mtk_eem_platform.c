@@ -172,7 +172,7 @@ int set_volt_cpu(struct eem_det *det)
 void restore_default_volt_cpu(struct eem_det *det)
 {
 #if SET_PMIC_VOLT_TO_DVFS
-	int value = 0;
+	int value __maybe_unused = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 

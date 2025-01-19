@@ -838,7 +838,7 @@ static const struct file_operations g_stCAM_CAL_fops1 = {
 #define CAM_CAL_DYNAMIC_ALLOCATE_DEVNO 1
 static inline int EEPROM_chrdev_register(void)
 {
-	struct device *device = NULL;
+	struct device *device __maybe_unused = NULL;
 
 	pr_debug("%s Start\n", __func__);
 

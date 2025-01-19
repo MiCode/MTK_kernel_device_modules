@@ -197,7 +197,7 @@ static int accelhub_ReadChipInfo(char *buf, int bufsize)
 static int accelhub_ReadSensorData(char *buf, int bufsize)
 {
 	struct accelhub_ipi_data *obj = obj_ipi_data;
-	uint64_t time_stamp = 0;
+	uint64_t time_stamp __maybe_unused = 0;
 	struct data_unit_t data;
 	int acc[ACCELHUB_AXES_NUM];
 	int err = 0;

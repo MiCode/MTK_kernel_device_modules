@@ -1442,7 +1442,7 @@ static int mml_m2m_s_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static const struct v4l2_ioctl_ops mml_m2m_ioctl_ops = {
+static const struct v4l2_ioctl_ops mml_m2m_ioctl_ops __maybe_unused = {
 	.vidioc_querycap		= mml_m2m_querycap,
 	.vidioc_enum_fmt_vid_cap	= mml_m2m_enum_fmt_mplane,
 	.vidioc_enum_fmt_vid_out	= mml_m2m_enum_fmt_mplane,
@@ -1648,7 +1648,7 @@ static int mml_m2m_release(struct file *file)
 	return 0;
 }
 
-static const struct v4l2_file_operations mml_m2m_fops = {
+static const struct v4l2_file_operations mml_m2m_fops __maybe_unused = {
 	.owner		= THIS_MODULE,
 	.poll		= v4l2_m2m_fop_poll,
 	.unlocked_ioctl	= video_ioctl2,
@@ -2007,7 +2007,7 @@ err_buf_exit:
 	mml_m2m_process_done(mctx, vb_state);
 }
 
-static const struct v4l2_m2m_ops mml_m2m_ops = {
+static const struct v4l2_m2m_ops mml_m2m_ops __maybe_unused = {
 	.device_run	= mml_m2m_device_run,
 };
 

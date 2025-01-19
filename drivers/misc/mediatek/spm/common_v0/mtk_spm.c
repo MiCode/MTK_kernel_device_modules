@@ -139,7 +139,7 @@ static const struct of_device_id spm_sleep_of_ids[] = {
 
 static int spm_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret __maybe_unused;
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6761)
 	struct mt6397_chip *chip = NULL;
 	struct device_node *pmic_node = NULL;
@@ -272,7 +272,7 @@ static const struct mtk_idle_sysfs_op spm_spmfw_version_fops = {
 static int spm_module_init(void)
 {
 	unsigned int spm_irq_0 = 0;
-	int r = 0;
+	int r __maybe_unused = 0;
 	int ret = -1;
 	struct mtk_idle_sysfs_handle pParent2ND;
 	struct mtk_idle_sysfs_handle *pParent = NULL;

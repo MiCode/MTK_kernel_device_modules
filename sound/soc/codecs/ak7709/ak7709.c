@@ -9474,7 +9474,7 @@ static const struct soc_enum ak7709_osmem_mux_enum =
 	SOC_VALUE_ENUM_SINGLE(AK7709_C0_207_OSMEM_RECORD_DATA_SEL, 0, 0xFF,
 		ARRAY_SIZE(ak7709_source_select_texts), ak7709_source_select_texts,
 		ak7709_source_select_values);
-static const struct snd_kcontrol_new ak7709_osmem_mux_control =
+static const struct snd_kcontrol_new ak7709_osmem_mux_control __maybe_unused =
 	SOC_DAPM_ENUM("OSMEM Record Input Select", ak7709_osmem_mux_enum);
 
 static const struct soc_enum ak7709_mixer1a_mux_enum =
@@ -10840,14 +10840,14 @@ static const struct soc_enum ak7709_tout1_mux_enum =
 	SOC_VALUE_ENUM_SINGLE(AK7709_C0_2FE_TIF_OUT_DATA_SEL1, 0, 0xFF,
 		ARRAY_SIZE(ak7709_source_select_texts), ak7709_source_select_texts,
 		ak7709_source_select_values);
-static const struct snd_kcontrol_new ak7709_tout1_mux_control =
+static const struct snd_kcontrol_new ak7709_tout1_mux_control __maybe_unused =
 	SOC_DAPM_ENUM("TOUT1 Input Select", ak7709_tout1_mux_enum);
 
 static const struct soc_enum ak7709_tout2_mux_enum =
 	SOC_VALUE_ENUM_SINGLE(AK7709_C0_2FF_TIF_OUT_DATA_SEL2, 0, 0xFF,
 		ARRAY_SIZE(ak7709_source_select_texts), ak7709_source_select_texts,
 		ak7709_source_select_values);
-static const struct snd_kcontrol_new ak7709_tout2_mux_control =
+static const struct snd_kcontrol_new ak7709_tout2_mux_control __maybe_unused =
 	SOC_DAPM_ENUM("TOUT2 Input Select", ak7709_tout2_mux_enum);
 
 static int ak7709_ClockReset(struct snd_soc_dapm_widget *w,
@@ -51414,7 +51414,7 @@ static int mt_akm_tdm_snd_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 	unsigned int slot_width = 32;
 	unsigned int slots;
-	unsigned int slot_mask, rate, clk_freq;
+	unsigned int slot_mask, rate, clk_freq __maybe_unused;
 
 	struct snd_soc_component *cmpnt = dai->component;
 	struct ak7709_priv *priv = snd_soc_component_get_drvdata(cmpnt);

@@ -655,7 +655,7 @@ EXPORT_SYMBOL(sspm_ipi_send_async_wait);
 
 int sspm_ipi_send_async_wait_ex(int mid, int opts, void *retbuf, int retslot)
 {
-	int ret = 0, lock = 0, polling = 0;
+	int ret = 0, lock = 0, polling __maybe_unused = 0;
 	struct _pin_send *pin;
 	unsigned long wait_comp;
 

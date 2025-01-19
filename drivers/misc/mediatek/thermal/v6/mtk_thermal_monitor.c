@@ -756,7 +756,7 @@ static ssize_t _mtkthermal_tz_write
 	int len = 0;
 	char desc[128];
 	char trailing[128] = { 0 };
-	int check = 0;
+	int check __maybe_unused = 0;
 	struct thermal_zone_device *tz;
 	char arg_name[32] = { 0 };
 	int arg_val = 0;

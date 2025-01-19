@@ -4146,7 +4146,7 @@ EXIT:
 static signed int DPE_release(
 	struct inode *pInode, struct file *pFile)
 {
-	struct DPE_USER_INFO_STRUCT *pUserInfo;
+	struct DPE_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	/*unsigned int Reg;*/
 
 	log_dbg("- E. UserCount: %d.", DPEInfo.UserCount);
@@ -4819,7 +4819,7 @@ static int proc_dpe_dump_open(
 	return single_open(file, dpe_dump_read, NULL);
 }
 
-static const struct file_operations dpe_dump_proc_fops = {
+static const struct file_operations dpe_dump_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_dpe_dump_open,
 	.read = seq_read,
@@ -4960,7 +4960,7 @@ static int proc_dpe_reg_open(
 	return single_open(file, dpe_reg_read, NULL);
 }
 
-static const struct file_operations dpe_reg_proc_fops = {
+static const struct file_operations dpe_reg_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_dpe_reg_open,
 	.read = seq_read,

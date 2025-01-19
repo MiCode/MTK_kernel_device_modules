@@ -79,7 +79,7 @@ static ssize_t mtk_cpuidle_cpc_write(char *FromUserBuf,
 	struct MTK_CPUIDLE_NODE *node =
 				(struct MTK_CPUIDLE_NODE *)priv;
 	unsigned int param = 0;
-	unsigned long ret = 0;
+	unsigned long ret __maybe_unused = 0;
 
 	if (!FromUserBuf || !node)
 		return -EINVAL;

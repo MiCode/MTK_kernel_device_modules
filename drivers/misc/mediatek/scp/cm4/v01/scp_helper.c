@@ -852,7 +852,7 @@ static ssize_t scp_recovery_flag_show(struct device *dev
 static ssize_t scp_recovery_flag_store(struct device *dev
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int ret, tmp;
+	int ret __maybe_unused, tmp;
 
 	ret = kstrtoint(buf, 10, &tmp);
 	if (kstrtoint(buf, 10, &tmp) < 0) {

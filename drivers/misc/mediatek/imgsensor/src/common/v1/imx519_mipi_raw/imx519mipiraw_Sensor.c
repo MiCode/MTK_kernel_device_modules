@@ -2430,7 +2430,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	/* unsigned long long *feature_return_para
 	 *  = (unsigned long long *) feature_para;
 	 */
-	struct SET_PD_BLOCK_INFO_T *PDAFinfo;
+	struct SET_PD_BLOCK_INFO_T *PDAFinfo __maybe_unused;
 	struct SENSOR_WINSIZE_INFO_STRUCT *wininfo;
 	struct SENSOR_VC_INFO_STRUCT *pvcinfo;
 	/* SET_SENSOR_AWB_GAIN *pSetSensorAWB

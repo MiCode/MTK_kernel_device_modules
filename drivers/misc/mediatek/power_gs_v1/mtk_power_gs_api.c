@@ -40,7 +40,7 @@ static bool _is_pmic_addr(unsigned int addr)
 static u16 gs_pmic_read(u16 reg)
 {
 	u32 reg_val = 0;
-	u32 ret = 0;
+	u32 ret __maybe_unused = 0;
 
 	if (!gs_regmap) {
 		pr_info("pmic regmap is null\n");

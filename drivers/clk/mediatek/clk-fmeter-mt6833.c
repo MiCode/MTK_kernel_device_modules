@@ -219,7 +219,7 @@ static unsigned int check_mux_pdn(unsigned int ID)
 
 static int __mt_get_freq(unsigned int ID, int type)
 {
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0;
 	unsigned long flags;
 	int output = 0, i = 0;
 

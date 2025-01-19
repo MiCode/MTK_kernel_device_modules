@@ -5617,7 +5617,7 @@ static int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 	unsigned long flags;
 	unsigned int irqStatus;
 	unsigned int idx;
-	bool freeze_passbysigcnt = false;
+	bool freeze_passbysigcnt __maybe_unused = false;
 
 	if ((WaitIrq->Type >= ISP_IRQ_TYPE_AMOUNT) ||
 	    (WaitIrq->Type < 0)) {
@@ -7924,7 +7924,7 @@ static int ISP_release(
 	struct inode *pInode,
 	struct file *pFile)
 {
-	struct ISP_USER_INFO_STRUCT *pUserInfo;
+	struct ISP_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	unsigned int Reg;
 	unsigned int i = 0;
 
@@ -9357,7 +9357,7 @@ static int __init ISP_Init(void)
 	int Ret = 0, j;
 	void *tmp;
 	struct device_node *node = NULL;
-	struct proc_dir_entry *proc_entry;
+	struct proc_dir_entry *proc_entry __maybe_unused;
 	struct proc_dir_entry *isp_p2_dir;
 
 	int i;
@@ -10821,8 +10821,8 @@ irqreturn_t ISP_Irq_DIP_A(signed int  Irq, void *DeviceId)
 {
 	int i = 0;
 	unsigned int IrqINTStatus = 0x0;
-	unsigned int IrqCQStatus = 0x0;
-	unsigned int IrqCQLDStatus = 0x0;
+	unsigned int IrqCQStatus __maybe_unused = 0x0;
+	unsigned int IrqCQLDStatus __maybe_unused = 0x0;
 
 	/*pr_info("ISP_Irq_DIP_A:%d\n", Irq);*/
 

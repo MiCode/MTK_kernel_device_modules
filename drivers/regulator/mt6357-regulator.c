@@ -341,7 +341,7 @@ static const u32 vusb33_idx[] = {
 static int mt6357_regulator_enable(struct regulator_dev *rdev)
 {
 	struct mt6357_regulator_info *info = rdev_get_drvdata(rdev);
-	int ret = 0, ret2 = 0;
+	int ret = 0, ret2 __maybe_unused = 0;
 
 	ret = regulator_enable_regmap(rdev);
 	/* Unmask oc irq after enable regulator */

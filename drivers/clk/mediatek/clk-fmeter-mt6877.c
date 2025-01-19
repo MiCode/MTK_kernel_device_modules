@@ -291,7 +291,7 @@ static unsigned int get_post_div(unsigned int type, unsigned int ID)
 static unsigned int mt6877_get_ckgen_freq(unsigned int ID)
 {
 	int output = 0, i = 0;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0;
 	unsigned long flags;
 
 	fmeter_lock(flags);
@@ -375,7 +375,7 @@ static unsigned int mt6877_get_abist_freq(unsigned int ID)
 {
 	int output = 0, i = 0;
 	unsigned long flags;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0, clk_div, post_div;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0, clk_div, post_div;
 
 	fmeter_lock(flags);
 	while (clk_readl(CLK26CALI_0) & 0x1000) {
@@ -453,7 +453,7 @@ static unsigned int mt6877_get_abist2_freq(unsigned int ID)
 {
 	int output = 0, i = 0;
 	unsigned long flags;
-	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
+	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 __maybe_unused = 0;
 
 	fmeter_lock(flags);
 	if (check_pdn(topck_base, ABIST_2, ID)) {

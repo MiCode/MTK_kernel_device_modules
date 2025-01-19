@@ -2185,7 +2185,7 @@ EXPORT_SYMBOL(tscpu_is_temp_valid);
 void tscpu_update_tempinfo(void)
 {
 	unsigned long flags, i;
-	ktime_t now;
+	ktime_t now __maybe_unused;
 
 	now = ktime_get();
 	if (g_tc_resume == 0)

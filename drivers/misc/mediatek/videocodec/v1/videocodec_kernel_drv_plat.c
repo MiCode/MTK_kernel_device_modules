@@ -172,7 +172,7 @@ void vdec_polling_status(void)
 
 void vdec_power_on(struct mtk_vcodec_dev *dev)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	pr_debug("%s +\n", __func__);
 
@@ -219,7 +219,7 @@ void vdec_power_off(struct mtk_vcodec_dev *dev)
 
 void venc_power_on(struct mtk_vcodec_dev *dev)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	mutex_lock(&gDrvInitParams->vencPWRLock);
 	gDrvInitParams->u4VencPWRCounter++;
@@ -480,7 +480,7 @@ static long vcodec_lockhw_vdec(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 	unsigned long handle = 0, handle_id = 0;
 	long ret = 0;
 	struct VAL_TIME_T rCurTime;
-	unsigned int u4TimeInterval;
+	unsigned int u4TimeInterval __maybe_unused;
 	enum VAL_RESULT_T eValRet = VAL_RESULT_NO_ERROR;
 	unsigned int suspend_block_cnt = 0;
 	struct codec_job *cur_job = 0;
@@ -698,7 +698,7 @@ static long vcodec_lockhw_venc(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 	unsigned long handle = 0, handle_id = 0;
 	long ret = 0;
 	struct VAL_TIME_T rCurTime;
-	unsigned int u4TimeInterval;
+	unsigned int u4TimeInterval __maybe_unused;
 	enum VAL_RESULT_T eValRet = VAL_RESULT_NO_ERROR;
 	unsigned int suspend_block_cnt = 0;
 	struct codec_job *cur_job = 0;
@@ -932,7 +932,7 @@ long vcodec_lockhw(unsigned long arg)
 	unsigned char *user_data_addr;
 	struct VAL_HW_LOCK_T rHWLock;
 	unsigned long handle;
-	enum VAL_RESULT_T eValRet;
+	enum VAL_RESULT_T eValRet __maybe_unused;
 	long ret;
 	char bLockedHW = VAL_FALSE;
 	unsigned long ulFlagsLockHW;
@@ -1042,7 +1042,7 @@ long vcodec_unlockhw(unsigned long arg)
 	unsigned char *user_data_addr;
 	struct VAL_HW_LOCK_T rHWLock;
 	unsigned long handle = 0, handle_id = 0;
-	enum VAL_RESULT_T eValRet;
+	enum VAL_RESULT_T eValRet __maybe_unused;
 	long ret;
 	struct codec_job *cur_job = 0;
 	/* pr_debug("VCODEC_UNLOCKHW + tid = %d\n", current->pid); */
@@ -1304,7 +1304,7 @@ static long vcodec_set_frame_info(unsigned long arg)
 	long ret;
 	struct VAL_FRAME_INFO_T rFrameInfo;
 	int frame_type = 0;
-	int b_freq_idx = 0;
+	int b_freq_idx __maybe_unused = 0;
 	long emi_bw = 0;
 
 	/* pr_debug("VCODEC_SET_FRAME_INFO + tid = %d\n", current->pid); */

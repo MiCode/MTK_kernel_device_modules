@@ -5903,7 +5903,7 @@ static signed int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 	unsigned long flags;
 	unsigned int irqStatus;
 	int idx;
-	bool freeze_passbysigcnt = false;
+	bool freeze_passbysigcnt __maybe_unused = false;
 
 	if ((WaitIrq->Type >= ISP_IRQ_TYPE_AMOUNT) ||
 	    (WaitIrq->Type < 0)) {
@@ -8086,7 +8086,7 @@ static inline void ISP_StopHW(signed int module)
 	unsigned int regTGSt, loopCnt;
 	signed int ret = 0;
 	struct ISP_WAIT_IRQ_STRUCT waitirq;
-	unsigned long long  sec = 0, usec = 0, m_sec = 0, m_usec = 0;
+	unsigned long long  sec = 0, usec __maybe_unused = 0, m_sec = 0, m_usec __maybe_unused = 0;
 	unsigned long long  timeoutMs = 500000000;/*500ms*/
 	char moduleName[128];
 
@@ -8178,7 +8178,7 @@ static signed int ISP_release(
 	struct inode *pInode,
 	struct file *pFile)
 {
-	struct ISP_USER_INFO_STRUCT *pUserInfo;
+	struct ISP_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	unsigned int Reg;
 	unsigned int i = 0;
 
@@ -9689,11 +9689,11 @@ static const struct proc_ops isp_p2_dump_proc_fops = {
 /******************************************************************************
  *
  *****************************************************************************/
-static const struct file_operations fcameraisp_proc_fops = {
+static const struct file_operations fcameraisp_proc_fops __maybe_unused = {
 	.read = ISP_DumpRegToProc,
 	.write = ISP_RegDebug,
 };
-static const struct file_operations fcameraio_proc_fops = {
+static const struct file_operations fcameraio_proc_fops __maybe_unused = {
 	.read = CAMIO_DumpRegToProc,
 	.write = CAMIO_RegDebug,
 };
@@ -9706,7 +9706,7 @@ static signed int __init ISP_Init(void)
 	signed int Ret = 0, j;
 	void *tmp;
 	struct device_node *node = NULL;
-	struct proc_dir_entry *proc_entry;
+	struct proc_dir_entry *proc_entry __maybe_unused;
 	struct proc_dir_entry *isp_p2_dir;
 
 	int i;
@@ -11199,8 +11199,8 @@ irqreturn_t ISP_Irq_DIP_A(signed int  Irq, void *DeviceId)
 {
 	int i = 0;
 	unsigned int IrqINTStatus = 0x0;
-	unsigned int IrqCQStatus = 0x0;
-	unsigned int IrqCQLDStatus = 0x0;
+	unsigned int IrqCQStatus __maybe_unused = 0x0;
+	unsigned int IrqCQLDStatus __maybe_unused = 0x0;
 
 	/*pr_info("ISP_Irq_DIP_A:%d\n", Irq);*/
 

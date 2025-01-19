@@ -383,7 +383,7 @@ static int cmdq_bdg_test_probe(struct platform_device *pdev)
 {
 	struct cmdq_bdg_test *test;
 	struct dentry *dir, *fs;
-	s32 ret;
+	s32 ret __maybe_unused;
 
 	test = devm_kzalloc(&pdev->dev, sizeof(*test), GFP_KERNEL);
 	if (!test)

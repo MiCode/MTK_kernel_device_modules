@@ -176,7 +176,7 @@ static ssize_t mt_soc_debug_write(struct file *f, const char __user *buf,
 				  size_t count, loff_t *offset)
 {
 #define MAX_DEBUG_WRITE_INPUT 256
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	char InputBuf[MAX_DEBUG_WRITE_INPUT];
 	char *token1 = NULL;
 	char *token2 = NULL;

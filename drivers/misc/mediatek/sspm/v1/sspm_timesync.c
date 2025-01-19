@@ -107,7 +107,7 @@ static void timesync_sync_base_internal(unsigned int flag)
 {
 	u64 tick, ts;
 	unsigned long irq_flags = 0;
-	int freeze, unfreeze;
+	int freeze, unfreeze __maybe_unused;
 
 	spin_lock_irqsave(&timesync_ctx.lock, irq_flags);
 

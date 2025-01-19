@@ -703,7 +703,7 @@ static void set_dummy(void)
 
 static kal_uint32 return_sensor_id(void)
 {
-	kal_uint8 tmph, tmpl;
+	kal_uint8 tmph __maybe_unused, tmpl __maybe_unused;
 
 	pr_debug("Enter\n");
 	if (write_cmos_sensor(0x0A02, 0x1F) < 0)

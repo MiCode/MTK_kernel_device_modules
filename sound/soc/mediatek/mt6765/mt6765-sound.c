@@ -857,7 +857,7 @@ EXPORT_SYMBOL(SetChipModemPcmConfig);
 
 bool SetChipModemPcmEnable(int modem_index, bool modem_pcm_on)
 {
-	unsigned int mPcm1AsyncFifo;
+	unsigned int mPcm1AsyncFifo __maybe_unused;
 
 	pr_debug("+%s(), modem_index = %d, modem_pcm_on = %d\n", __func__,
 		 modem_index, modem_pcm_on);

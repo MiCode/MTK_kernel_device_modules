@@ -34,7 +34,7 @@ static void startTimer(struct hrtimer *timer, int delay_ms, bool first)
 {
 	struct gyro_context *obj = (struct gyro_context *)container_of(timer,
 		struct gyro_context, hrTimer);
-	static int count;
+	static int count __maybe_unused;
 
 	if (obj == NULL) {
 		pr_err("NULL pointer\n");

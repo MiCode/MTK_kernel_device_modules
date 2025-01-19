@@ -76,7 +76,7 @@ static int dummy_codec_trigger(struct snd_pcm_substream *substream, int command,
 	return 0;
 }
 
-static const struct snd_soc_dai_ops dummy_aif1_dai_ops = {
+static const struct snd_soc_dai_ops dummy_aif1_dai_ops __maybe_unused = {
 	.startup = dummy_codec_startup,
 	.prepare = dummy_codec_prepare,
 	.trigger = dummy_codec_trigger,

@@ -1064,7 +1064,7 @@ signed int mss_enque_cb(struct frame *frames, void *req)
 {
 	unsigned int f, fcnt;
 	struct MFB_MSSRequest *_req;
-	struct MFB_MSSConfig *pcfg;
+	struct MFB_MSSConfig *pcfg __maybe_unused;
 
 	_req = (struct MFB_MSSRequest *) req;
 
@@ -1087,7 +1087,7 @@ signed int mss_deque_cb(struct frame *frames, void *req)
 {
 	unsigned int f, fcnt;
 	struct MFB_MSSRequest *_req;
-	struct MFB_MSSConfig *pcfg;
+	struct MFB_MSSConfig *pcfg __maybe_unused;
 
 	_req = (struct MFB_MSSRequest *) req;
 
@@ -1372,7 +1372,7 @@ signed int msf_enque_cb(struct frame *frames, void *req)
 {
 	unsigned int f, fcnt;
 	struct MFB_MSFRequest *_req;
-	struct MFB_MSFConfig *pcfg;
+	struct MFB_MSFConfig *pcfg __maybe_unused;
 
 	_req = (struct MFB_MSFRequest *) req;
 
@@ -1393,7 +1393,7 @@ signed int msf_deque_cb(struct frame *frames, void *req)
 {
 	unsigned int f, fcnt;
 	struct MFB_MSFRequest *_req;
-	struct MFB_MSFConfig *pcfg;
+	struct MFB_MSFConfig *pcfg __maybe_unused;
 
 	_req = (struct MFB_MSFRequest *) req;
 

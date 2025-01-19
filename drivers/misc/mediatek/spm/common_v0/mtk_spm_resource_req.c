@@ -254,7 +254,7 @@ void spm_resource_req_debugfs_init(void)
 bool spm_resource_req_init(void)
 {
 	int i, k;
-	struct device_node *spm_node = NULL;
+	struct device_node *spm_node __maybe_unused = NULL;
 
 	for (i = 0; i < NF_SPM_RESOURCE; i++) {
 		resc_desc[i].id = i;

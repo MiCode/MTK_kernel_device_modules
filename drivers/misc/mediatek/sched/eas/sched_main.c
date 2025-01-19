@@ -299,7 +299,7 @@ void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
 {
-	int pelt_weight = 0, pelt_sum = 0;
+	int pelt_weight __maybe_unused = 0, pelt_sum __maybe_unused = 0;
 
 	switch (new_pelt) {
 	/* pelt 32 */

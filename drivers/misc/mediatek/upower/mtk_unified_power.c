@@ -115,7 +115,7 @@ void upower_ut(void)
 {
 	struct upower_tbl_info **addr_ptr_tbl_info;
 	struct upower_tbl_info *ptr_tbl_info;
-	struct upower_tbl *ptr_tbl;
+	struct upower_tbl *ptr_tbl __maybe_unused;
 	int i, j;
 
 	upower_debug("----upower_get_tbl()----\n");
@@ -525,7 +525,7 @@ void get_LL_pwr_efficiency(void)
 	unsigned int min = ~0U;
 	unsigned long long LL_pwr, CCI_pwr;
 	unsigned long long sum;
-	struct upower_tbl *tbl, *ctbl;
+	struct upower_tbl *tbl, *ctbl __maybe_unused;
 
 	tbl = &upower_tbl_ref[UPOWER_BANK_LL];
 	ctbl = &upower_tbl_ref[UPOWER_BANK_CCI];
@@ -814,7 +814,7 @@ static int create_procfs(void)
 
 static int __init upower_init(void)
 {
-	int turn;
+	int turn __maybe_unused;
 	int err;
 #ifdef UPOWER_NOT_READY
 	return 0;

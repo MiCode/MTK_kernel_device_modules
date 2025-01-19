@@ -944,7 +944,7 @@ static ssize_t eem_debug_proc_write(struct file *file,
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	struct eem_ipi_data eem_data;
-	int ipi_ret = 0;
+	int ipi_ret __maybe_unused = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
@@ -1015,7 +1015,7 @@ static ssize_t eem_setmargin_proc_write(struct file *file,
 	int ret;
 	int aging_val[2];
 	int i = 0;
-	int start_oft, end_oft;
+	int start_oft __maybe_unused, end_oft __maybe_unused;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
 	char *tok;
@@ -1523,7 +1523,7 @@ static ssize_t eem_log_en_proc_write(struct file *file,
 	int ret;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eem_ipi_data eem_data;
-	unsigned int ipi_ret = 0;
+	unsigned int ipi_ret __maybe_unused = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
@@ -1585,7 +1585,7 @@ static ssize_t eem_en_proc_write(struct file *file,
 	int ret;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eem_ipi_data eem_data;
-	unsigned int ipi_ret = 0;
+	unsigned int ipi_ret __maybe_unused = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
@@ -1648,7 +1648,7 @@ static ssize_t eem_sn_en_proc_write(struct file *file,
 	int ret;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	struct eem_ipi_data eem_data;
-	unsigned int ipi_ret = 0;
+	unsigned int ipi_ret __maybe_unused = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
@@ -1775,7 +1775,7 @@ static ssize_t eem_offset_proc_write(struct file *file,
 	char *buf = (char *) __get_free_page(GFP_USER);
 	int offset = 0;
 	struct eemsn_det *det = (struct eemsn_det *)pde_data(file_inode(file));
-	unsigned int ipi_ret = 0;
+	unsigned int ipi_ret __maybe_unused = 0;
 	struct eem_ipi_data eem_data;
 
 

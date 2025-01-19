@@ -4866,7 +4866,7 @@ EXIT:
  ***********************************************************************/
 static signed int WPE_release(struct inode *pInode, struct file *pFile)
 {
-	struct WPE_USER_INFO_STRUCT *pUserInfo;
+	struct WPE_USER_INFO_STRUCT *pUserInfo __maybe_unused;
 	/*MUINT32 Reg; */
 
 	LOG_DBG("- E. UserCount: %d.", WPEInfo.UserCount);
@@ -5608,7 +5608,7 @@ static int proc_wpe_dump_open(struct inode *inode, struct file *file)
 	return single_open(file, wpe_dump_read, NULL);
 }
 
-static const struct file_operations WPE_dump_proc_fops = {
+static const struct file_operations WPE_dump_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_wpe_dump_open,
 	.read = seq_read,
@@ -5755,7 +5755,7 @@ static int proc_wpe_reg_open(struct inode *inode, struct file *file)
 	return single_open(file, wpe_reg_read, NULL);
 }
 
-static const struct file_operations WPE_reg_proc_fops = {
+static const struct file_operations WPE_reg_proc_fops __maybe_unused = {
 	.owner = THIS_MODULE,
 	.open = proc_wpe_reg_open,
 	.read = seq_read,

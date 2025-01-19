@@ -800,7 +800,7 @@ void fpsgo_boost_non_hwui_policy(struct render_info *thr, int set_vip)
 void fpsgo_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 {
 	int pid;
-	int need_gas_policy = 1;
+	int need_gas_policy __maybe_unused = 1;
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	set_ignore_idle_ctrl(scrolling);

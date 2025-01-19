@@ -14374,7 +14374,7 @@ static void mt6681_codec_dai_vow_shutdown(struct snd_pcm_substream *substream,
 	}
 }
 
-static const struct snd_soc_dai_ops mt6681_codec_dai_vow_ops = {
+static const struct snd_soc_dai_ops mt6681_codec_dai_vow_ops __maybe_unused = {
 	.hw_params = mt6681_codec_dai_vow_hw_params,
 	.startup = mt6681_codec_dai_vow_startup,
 	.shutdown = mt6681_codec_dai_vow_shutdown,

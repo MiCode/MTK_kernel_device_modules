@@ -953,7 +953,7 @@ static void check_cm_mgr_status_internal(void)
 	}
 
 	if (spin_trylock_irqsave(&cm_mgr_lock, flags)) {
-		int ret;
+		int ret __maybe_unused;
 		int max_ratio_idx[CM_MGR_CPU_CLUSTER];
 #if defined(LIGHT_LOAD) && IS_ENABLED(CONFIG_MTK_SCHED_RQAVG_US)
 		unsigned int cpu;
@@ -1177,7 +1177,7 @@ static void cm_mgr_process(struct work_struct *work)
 
 static void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	int dram_opp = 0;
 
 	if (cm_mgr_disable_fb == 1 && cm_mgr_blank_status == 1) {

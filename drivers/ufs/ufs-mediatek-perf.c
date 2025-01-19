@@ -1115,7 +1115,7 @@ struct tracepoints_table {
 static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	bool timeout = false;
+	bool timeout __maybe_unused = false;
 	ktime_t start;
 	u32 val;
 

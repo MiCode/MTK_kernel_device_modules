@@ -37,7 +37,7 @@ EXPORT_SYMBOL(efuse_get_value_by_offset);
 
 unsigned int _mt_cpufreq_get_cpu_level(void)
 {
-	int val, cpulv, cpulv0, cpulv1, cpulv2, seg, ret = 0;
+	int val, cpulv, cpulv0, cpulv1, cpulv2, seg, ret __maybe_unused = 0;
 #if IS_ENABLED(CONFIG_REGULATOR_MT6362)
 	unsigned int lv = CPU_LEVEL_3;
 #else

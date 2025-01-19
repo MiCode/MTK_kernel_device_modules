@@ -110,7 +110,7 @@ static size_t scp_A_get_last_log(size_t b_len)
 {
 	size_t ret = 0;
 	int scp_awake_flag;
-	unsigned int log_start_idx;
+	unsigned int log_start_idx __maybe_unused;
 	unsigned int log_end_idx;
 	unsigned int update_start_idx;
 	unsigned char *scp_last_log_buf =
@@ -744,7 +744,7 @@ void scp_crash_log_move_to_buf(enum scp_core_id scp_id)
 	ret = 0;
 	if (scp_last_logger) {
 		ret += snprintf(scp_last_logger, strlen(crash_message),
-			crash_message);
+			"%s", crash_message);
 		ret--;
 		while ((log_start_idx != log_end_idx) &&
 			ret <= (length + strlen(crash_message))) {

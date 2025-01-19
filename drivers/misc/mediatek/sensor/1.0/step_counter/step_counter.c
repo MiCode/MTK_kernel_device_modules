@@ -19,7 +19,7 @@ static void step_c_work_func(struct work_struct *work)
 	uint32_t counter_floor_c;
 	/* hwm_sensor_data sensor_data; */
 	int status;
-	int64_t nt;
+	int64_t nt __maybe_unused;
 	int err = 0;
 
 	cxt = step_c_context_obj;
@@ -136,7 +136,7 @@ static struct step_c_context *step_c_context_alloc_object(void)
 int step_notify_t(enum STEP_NOTIFY_TYPE type, int64_t time_stamp)
 {
 	int err = 0;
-	struct step_c_context *cxt = NULL;
+	struct step_c_context *cxt __maybe_unused = NULL;
 	struct sensor_event event;
 
 	memset(&event, 0, sizeof(struct sensor_event));

@@ -854,7 +854,7 @@ static void mmdvfs_single_hw_configuration_dump(struct mmdvfs_adaptor *self,
 
 	for (i = 0; i < hw_configuration->total_clks; i++) {
 		char *ccf_clk_source_name = "NONE";
-		char *ccf_clk_mux_name = "NONE";
+		char *ccf_clk_mux_name __maybe_unused = "NONE";
 		u32 clk_rate_mhz = 0;
 		u32 clk_step = 0;
 		u32 clk_id = 0;

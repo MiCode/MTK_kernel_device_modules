@@ -1755,7 +1755,7 @@ static unsigned int msdc_cmdq_command_resp_polling(struct msdc_host *host,
 	u32 events;
 	unsigned long tmo;
 	u32 event_mask = MSDC_INT_CMDRDY | MSDC_INT_RSPCRCERR | MSDC_INT_CMDTMO;
-	u64 rsp_time;
+	u64 rsp_time __maybe_unused;
 
 	/* polling */
 	tmo = jiffies + timeout;

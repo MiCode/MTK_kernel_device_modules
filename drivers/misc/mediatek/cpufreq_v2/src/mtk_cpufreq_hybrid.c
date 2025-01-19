@@ -326,7 +326,7 @@ int Ripi_cpu_dvfs_thread(void *data)
 			if (p->mt_policy && p->mt_policy->governor &&
 					(p->mt_policy->cpu < 10) &&
 					(p->mt_policy->cpu >= 0)) {
-				int cid;
+				int cid __maybe_unused;
 
 				if (j < p->idx_opp_ppm_limit)
 					j = p->idx_opp_ppm_limit;
