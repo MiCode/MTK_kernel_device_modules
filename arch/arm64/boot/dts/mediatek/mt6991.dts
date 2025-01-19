@@ -11140,7 +11140,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<SMMU_L5_P4_VDEC_LAT0_WDMA>,
 				<SMMU_L5_P5_VDEC_LAT0_AVC_MV>,
 				<SMMU_L5_P6_VDEC_LAT0_TILE>,
+				<SMMU_L5_P7_VDEC_LAT0_UNIWRAP>,
+				<SMMU_L6_P0_VDEC_MC_PORT2>,
 				<SMMU_L6_P1_VDEC_UFO_ENC_C>,
+				<SMMU_L6_P2_VDEC_UNIWRAP>,
 				<SMMU_L49_MMUP>;
 			m4u-port-names =
 				"M4U_PORT_VDEC_MC",
@@ -11158,7 +11161,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"M4U_PORT_VDEC_LAT0_WDMA",
 				"M4U_PORT_VDEC_LAT0_AVC_MV",
 				"M4U_PORT_VDEC_LAT0_TILE",
+				"M4U_PORT_VDEC_LAT0_UNIWRAP",
+				"M4U_PORT_VDEC_MC_PORT2",
 				"M4U_PORT_VDEC_LAT0_UFO_ENC_C",
+				"M4U_PORT_VDEC_UNIWRAP",
 				"M4U_PORT_VDEC_VIDEO_UP_NOR";
 			vdec-power-in-vcp = <1>;
 			vdec-mmdvfs-in-vcp = <1>;
