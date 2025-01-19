@@ -3563,8 +3563,8 @@
 			<&gce 20 0 CMDQ_THR_PRIO_1>,
 			<&gce 21 0 CMDQ_THR_PRIO_1>,
 			<&gce 22 0 CMDQ_THR_PRIO_1>;
-		mmsys_config = <&mdpsys_config>;
-		mm_mutex   = <&mdp_mutex>;
+		mmsys-config = <&mdpsys_config>;
+		mm-mutex   = <&mdp_mutex>;
 		mdp_rdma0  = <&mdp_rdma0>;
 		mdp_rsz0   = <&mdp_rsz0>;
 		mdp_rsz1   = <&mdp_rsz1>;
@@ -3648,24 +3648,24 @@
 			<CMDQ_EVENT_GCE_IMG2_EVENT23>;
 		wpe_b_frame_done =
 			<CMDQ_EVENT_GCE_IMG2_EVENT22>;
-		mdp_rdma0_sof = <CMDQ_EVENT_MDP_RDMA0_SOF>;
-		mdp_aal_sof = <CMDQ_EVENT_MDP_AAL0_SOF>;
-		mdp_hdr0_sof = <CMDQ_EVENT_MDP_HDR0_SOF>;
-		mdp_rsz0_sof = <CMDQ_EVENT_MDP_RSZ0_SOF>;
-		mdp_rsz1_sof = <CMDQ_EVENT_MDP_RSZ1_SOF>;
-		mdp_wrot0_sof = <CMDQ_EVENT_MDP_WROT0_SOF>;
-		mdp_wrot1_sof = <CMDQ_EVENT_MDP_WROT1_SOF>;
-		mdp_tdshp_sof = <CMDQ_EVENT_MDP_TDSHP0_SOF>;
-		img_dl_relay_sof = <CMDQ_EVENT_IMG_DL_RELAY0_SOF>;
-		img_dl_relay1_sof = <CMDQ_EVENT_IMG_DL_RELAY1_SOF>;
-		mdp_wrot1_write_frame_done = <CMDQ_EVENT_MDP_WROT1_FRAME_DONE>;
-		mdp_wrot0_write_frame_done = <CMDQ_EVENT_MDP_WROT0_FRAME_DONE>;
-		mdp_tdshp_frame_done = <CMDQ_EVENT_MDP_TDSHP0_FRAME_DONE>;
-		mdp_rsz1_frame_done = <CMDQ_EVENT_MDP_RSZ1_FRAME_DONE>;
-		mdp_rsz0_frame_done = <CMDQ_EVENT_MDP_RSZ0_FRAME_DONE>;
-		mdp_rdma0_frame_done = <CMDQ_EVENT_MDP_RDMA0_FRAME_DONE>;
-		mdp_hdr0_frame_done = <CMDQ_EVENT_MDP_HDR0_FRAME_DONE>;
-		mdp_aal_frame_done = <CMDQ_EVENT_MDP_AAL0_FRAME_DONE>;
+		mdp-rdma0-sof = <CMDQ_EVENT_MDP_RDMA0_SOF>;
+		mdp-aal-sof = <CMDQ_EVENT_MDP_AAL0_SOF>;
+		mdp-hdr0-sof = <CMDQ_EVENT_MDP_HDR0_SOF>;
+		mdp-rsz0-sof = <CMDQ_EVENT_MDP_RSZ0_SOF>;
+		mdp-rsz1-sof = <CMDQ_EVENT_MDP_RSZ1_SOF>;
+		mdp-wrot0-sof = <CMDQ_EVENT_MDP_WROT0_SOF>;
+		mdp-wrot1-sof = <CMDQ_EVENT_MDP_WROT1_SOF>;
+		mdp-tdshp-sof = <CMDQ_EVENT_MDP_TDSHP0_SOF>;
+		img-dl-relay-sof = <CMDQ_EVENT_IMG_DL_RELAY0_SOF>;
+		img-dl-relay1-sof = <CMDQ_EVENT_IMG_DL_RELAY1_SOF>;
+		mdp-wrot1-write-frame-done = <CMDQ_EVENT_MDP_WROT1_FRAME_DONE>;
+		mdp-wrot0-write-frame-done = <CMDQ_EVENT_MDP_WROT0_FRAME_DONE>;
+		mdp-tdshp-frame-done = <CMDQ_EVENT_MDP_TDSHP0_FRAME_DONE>;
+		mdp-rsz1-frame-done = <CMDQ_EVENT_MDP_RSZ1_FRAME_DONE>;
+		mdp-rsz0-frame-done = <CMDQ_EVENT_MDP_RSZ0_FRAME_DONE>;
+		mdp-rdma0-frame-done = <CMDQ_EVENT_MDP_RDMA0_FRAME_DONE>;
+		mdp-hdr0-frame-done = <CMDQ_EVENT_MDP_HDR0_FRAME_DONE>;
+		mdp-aal-frame-done = <CMDQ_EVENT_MDP_AAL0_FRAME_DONE>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
 				&mmqos SLAVE_COMMON(0)>,
