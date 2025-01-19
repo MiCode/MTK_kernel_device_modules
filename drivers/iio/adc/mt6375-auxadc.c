@@ -462,7 +462,8 @@ static const char * const mt6375_auxadc_chan_labels[MT6375_AUXADC_MAX_CHANNEL] =
 static int auxadc_chan_labels(struct iio_dev *iiodev,
 			      struct iio_chan_spec const *chan, char *label)
 {
-	return sysfs_emit(label, "%s\n", mt6375_auxadc_chan_labels[chan->channel]);
+	return sysfs_emit(label, "%s\n", chan->channel >= 0 ?
+			  mt6375_auxadc_chan_labels[chan->channel] : "INVALID");
 }
 
 static const struct iio_info auxadc_iio_info = {
