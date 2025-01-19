@@ -32,3 +32,13 @@ config MTK_HANG_PROC
 	  native backtrace by proc interface "sys/kernel/debug/monitor_hang".
 	  if value is 2, will dump all thread info; if value > 10,
 	  will dump backtrace of pid equals value.
+
+config MTK_HANG_YOCTO
+	bool "run on the Yocto system"
+	help
+	  MTK_HANG_YOCTO is the kernel config of designed by MTK,
+	  Enabling this config indicates that the current system
+	  is Yocto. Since the process monitored by monitor_hang
+	  are different from those in Android, monitor_hang driver
+	  needs to distinguish whether the current system is a Yocto
+	  system.

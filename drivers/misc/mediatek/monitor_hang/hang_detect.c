@@ -360,7 +360,12 @@ static int compare_cmdline(void)
 		strncmp(buf, "/system_ext", strlen("/system_ext")) &&
 		strncmp(buf,  "/vendor", strlen("/vendor")) &&
 		strncmp(buf, "/system", strlen("/system")) &&
-		strncmp(buf, "/apex", strlen("/apex"))) {
+		strncmp(buf, "/apex", strlen("/apex"))
+#if IS_ENABLED(CONFIG_MTK_HANG_YOCTO)
+		&& strncmp(buf, "/usr/bin/SystemWatchdog",
+				strlen("/usr/bin/SystemWatchdog"))
+#endif
+	) {
 		pr_info("%s:open failed!\n", __func__);
 		return -1;
 	}
