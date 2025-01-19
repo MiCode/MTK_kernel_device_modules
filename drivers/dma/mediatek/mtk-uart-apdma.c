@@ -197,6 +197,8 @@ atomic_t dma_clk_count;
 static unsigned int clk_count;
 struct mtk_chan *hub_dma_tx_chan;
 struct mtk_chan *hub_dma_rx_chan;
+struct mtk_chan db_chan;
+struct mtk_chan db_chan2;
 #endif
 
 static inline struct mtk_uart_apdmadev *
@@ -310,6 +312,34 @@ void mtk_uart_apdma_start_record(struct dma_chan *chan)
 }
 EXPORT_SYMBOL(mtk_uart_apdma_start_record);
 
+void mtk_uart_apdma_record_dbg(int record)
+{
+	struct mtk_chan *c = hub_dma_rx_chan;
+	struct mtk_chan *record_chan = NULL;
+
+	if (record == 0)
+		record_chan = &db_chan;
+	else
+		record_chan = &db_chan2;
+
+	record_chan->start_record_wpt =  mtk_uart_apdma_read(c, VFF_WPT);
+	record_chan->start_record_rpt = mtk_uart_apdma_read(c, VFF_RPT);
+	record_chan->start_int_flag =  mtk_uart_apdma_read(c, VFF_INT_FLAG);
+	record_chan->start_int_en =  mtk_uart_apdma_read(c, VFF_INT_EN);
+	record_chan->start_en =  mtk_uart_apdma_read(c, VFF_EN);
+	record_chan->start_int_buf_size =  mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
+	record_chan->start_record_time = sched_clock();
+	record_chan->peri_dbg = mtk_uart_apdma_get_peri_axi_status();
+	record_chan->start_debug_states = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	record_chan->start_vff_thre = mtk_uart_apdma_read(c, VFF_THRE);
+	record_chan->start_flush = mtk_uart_apdma_read(c, VFF_FLUSH);
+	record_chan->start_addr = mtk_uart_apdma_read(c, VFF_ADDR);
+	record_chan->start_stop = mtk_uart_apdma_read(c, VFF_STOP);
+	record_chan->start_valid_size = mtk_uart_apdma_read(c, VFF_VALID_SIZE);
+	record_chan->dir = c->dir;
+}
+EXPORT_SYMBOL(mtk_uart_apdma_record_dbg);
+
 void mtk_uart_apdma_end_record(struct dma_chan *chan)
 {
 	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
@@ -354,6 +384,35 @@ void mtk_uart_apdma_end_record(struct dma_chan *chan)
 		_debug_states, _vff_thre, _flush, _addr, _stop, _valid_size);
 }
 EXPORT_SYMBOL(mtk_uart_apdma_end_record);
+
+void mtk_uart_apdma_debug_dump(const char *debug_string)
+{
+	unsigned long starttime = db_chan.start_record_time;
+	unsigned long endtime = db_chan2.start_record_time;
+	unsigned long ns1 = do_div(starttime, 1000000000);
+	unsigned long ns2 =  do_div(endtime, 1000000000);
+
+	pr_info("[%s] %s - [%s %5lu.%06lu] Start: wpt=0x%x rpt=0x%x int_flag=0x%x int_en=0x%x "
+		"en=0x%x int_buf_size=0x%x debug_states=0x%x vff_thre=0x%x flush=0x%x "
+		"addr=0x%x stop=0x%x valid_size=0x%x | [%s %5lu.%06lu] End: wpt=0x%x rpt=0x%x "
+		"int_flag=0x%x int_en=0x%x en=0x%x int_buf_size=0x%x debug_states=0x%x "
+		"vff_thre=0x%x flush=0x%x addr=0x%x stop=0x%x valid_size=0x%x",
+		__func__, debug_string,
+		db_chan.dir == DMA_DEV_TO_MEM ? "RX" : "TX", (unsigned long)(starttime),
+		ns1 / 1000,db_chan.start_record_wpt,
+		db_chan.start_record_rpt,db_chan.start_int_flag,db_chan.start_int_en,db_chan.start_en,
+		db_chan.start_int_buf_size, db_chan.start_debug_states,
+		db_chan.start_vff_thre,db_chan.start_flush,
+		db_chan.start_addr, db_chan.start_stop, db_chan.start_valid_size,
+
+		db_chan2.dir == DMA_DEV_TO_MEM ? "RX" : "TX", (unsigned long)(endtime),
+		ns2 / 1000,db_chan2.start_record_wpt,
+		db_chan2.start_record_rpt,db_chan2.start_int_flag, db_chan2.start_int_en,db_chan2.start_en,
+		db_chan2.start_int_buf_size, db_chan2.start_debug_states,
+		db_chan2.start_vff_thre,db_chan2.start_flush, db_chan2.start_addr,
+		db_chan2.start_stop, db_chan2.start_valid_size);
+}
+EXPORT_SYMBOL(mtk_uart_apdma_debug_dump);
 
 void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 {
