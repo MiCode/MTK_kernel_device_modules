@@ -730,6 +730,9 @@ struct mml_task {
 	struct cmdq_backup perf_dispready;
 	struct cmdq_backup perf_sof;
 
+	struct cmdq_backup dlo_status;
+	u32 dlo_size;
+
 	/* mml context */
 	struct mml_ctx *ctx;
 	void *cb_param;
