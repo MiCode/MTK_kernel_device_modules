@@ -178,13 +178,15 @@ void guest_adsp_task_share_dram_notify(int dsp_scene,
 static void guest_adsp_ul_handler(struct mtk_base_dsp *dsp,
 			int id, int core_id, int xrun)
 {
-	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
+	struct mtk_base_dsp_mem *dsp_mem;
 	void *ipi_audio_buf;
 	unsigned long flags;
 	int dsp_scene = get_dspscene_by_dspdaiid(id);
 
 	if (id < 0 || id >= AUDIO_TASK_DAI_NUM)
 		return;
+
+	dsp_mem = &dsp->dsp_mem[id];
 
 	if (!dsp->dsp_mem[id].substream) {
 		pr_info("%s substream NULL\n", __func__);
@@ -236,10 +238,12 @@ static void guest_adsp_dl_consume_handler(struct mtk_base_dsp *dsp,
 	void *ipi_audio_buf;
 	int dsp_scene = get_dspscene_by_dspdaiid(id);
 
-	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
+	struct mtk_base_dsp_mem *dsp_mem;
 
 	if (id < 0 || id >= AUDIO_TASK_DAI_NUM)
 		return;
+
+	dsp_mem = &dsp->dsp_mem[id];
 
 	if (!dsp->dsp_mem[id].substream) {
 		pr_info_ratelimited("%s substream NULL id[%d]\n", __func__, id);
