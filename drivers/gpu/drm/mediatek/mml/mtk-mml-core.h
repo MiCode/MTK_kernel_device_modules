@@ -528,6 +528,7 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
+	struct mml_frame_size max_size;
 
 	/* frame input image size after rrot binning and rotate */
 	struct mml_frame_size frame_in;
