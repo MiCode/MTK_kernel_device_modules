@@ -64,7 +64,7 @@ static int fsm_get_no_response_assert_type(struct ccci_fsm_poller *poller_ctl)
 	if (poller_ctl->latest_poll_start_time > traffic_info[2]) {
 		CCCI_ERROR_LOG(0, FSM,
 		"no work after poll but isr, rx queue maybe blocked\n");
-		return MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED;
+		return MD_FORCE_ASSERT_BY_MD_NO_RESPONSE;
 	}
 
 	CCCI_ERROR_LOG(0, FSM,

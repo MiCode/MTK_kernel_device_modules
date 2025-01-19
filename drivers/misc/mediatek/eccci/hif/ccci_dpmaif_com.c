@@ -223,14 +223,16 @@ err:
 			__func__, is_rx ? "[RX]" : "[TX]", version);
 }
 
-static void tx_force_md_assert(char buf[])
+static void dpmaif_force_md_assert(unsigned int step, unsigned int error_no)
 {
-	if (atomic_inc_return(&g_tx_busy_assert_on) <= 1) {
-		CCCI_NORMAL_LOG(0, TAG,
-			"[%s] error: force assert md, because: %s\n",
-			__func__, buf);
-		ccci_md_force_assert(MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED, "TX", 3);
-	}
+	unsigned int assert_data[4] = {0};
+
+	assert_data[0] = step;
+	assert_data[1] = error_no;
+
+	ccci_md_force_assert(MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED, (char *)assert_data,
+		sizeof(assert_data));
+
 }
 
 static inline int dpmaif_skb_gro_receive(struct sk_buff *p, struct sk_buff *skb)
@@ -1022,7 +1024,7 @@ static inline int dpmaif_rxq_check_pit_seq(struct dpmaif_rx_queue *rxq, unsigned
 			"[%s] error: pit_seq is invalid: (%u/%u)\n",
 			__func__, rxq->pit_seq, pit_seq);
 
-		return DATA_CHECK_FAIL;
+		return SEQ_CHECK_FAIL;
 	}
 
 	if (rxq->pit_seq == g_dpmaif_ctrl->max_pit_seq)
@@ -1218,12 +1220,12 @@ static int dpmaif_rxq_data_collect(struct dpmaif_rx_queue *rxq)
 				ret = ONCE_MORE;
 
 		} else if (real_cnt < LOW_MEMORY_TYPE_MAX) {
-			ret = LOW_MEMORY;
+			ret = real_cnt;// change from "LOW_MEMORY;" for assert type difference
 			CCCI_ERROR_LOG(-1, TAG, "[%s] error: rx low mem: %d\n",
 				__func__, real_cnt);
 
 		} else if (real_cnt <= ERROR_STOP_MAX) {
-			ret = ERROR_STOP;
+			ret = real_cnt;// change from "ERROR_STOP;" for assert type difference
 			CCCI_ERROR_LOG(-1, TAG, "[%s] error: rx ERR_STOP: %d\n",
 				__func__, real_cnt);
 		}
@@ -1256,7 +1258,7 @@ static void dpmaif_rxq_tasklet(unsigned long data)
 		return;
 
 	} else
-		ccci_md_force_assert(MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED, NULL, 0);
+		dpmaif_force_md_assert(ASSERT_PARA_RX, (unsigned int)ret);
 
 processing_done:
 	atomic_set(&rxq->rxq_processing, 0);
@@ -2072,8 +2074,7 @@ static inline int dpmaif_txq_drb_release(struct dpmaif_tx_queue *txq)
 
 		if (real_rel_cnt == rel_cnt)
 			return ALL_CLEAR;
-		if (real_rel_cnt < 0)
-			return ERROR_STOP;
+		return real_rel_cnt;
 	}
 
 	return ALL_CLEAR;
@@ -2171,7 +2172,7 @@ static int dpmaif_txq_done_thread(void *arg)
 			}
 
 		} else
-			ccci_md_force_assert(MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED, NULL, 0);
+			dpmaif_force_md_assert(ASSERT_PARA_TX_DONE, (unsigned int)ret);
 	}
 
 	return 0;
@@ -2463,7 +2464,11 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 				tx_info->hw_qno, txq->drb_cnt);
 
 		ops.drv_dump_register(CCCI_DUMP_REGISTER);
-		tx_force_md_assert("HW_REG_CHK_FAIL");
+		if (atomic_inc_return(&g_tx_busy_assert_on) <= 1) {
+			CCCI_NORMAL_LOG(0, TAG, "[%s] error: force assert md, because: HW_REG_CHK_FAIL\n",
+				__func__);
+			dpmaif_force_md_assert(ASSERT_PARA_TX, (unsigned int)ret);
+		}
 
 		ret = 0;
 	} else
@@ -2841,6 +2846,7 @@ static int dpmaif_pre_stop(unsigned char hif_id)
 static int dpmaif_stop(unsigned char hif_id)
 {
 	int txq_err = 0, rxq_err = 0;
+	unsigned int assert_data = 0;
 
 	if (g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_PWROFF ||
 		g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_MIN)
@@ -2877,7 +2883,11 @@ static int dpmaif_stop(unsigned char hif_id)
 	if (!txq_err && !rxq_err)
 		return 0;
 
-	ccci_md_force_assert(MD_FORCE_ASSERT_BY_AP_Q0_BLOCKED, NULL, 0);
+	if (txq_err)
+		assert_data = ASSERT_PARA_TX; /* 0x5458 == TX */
+	if (rxq_err)
+		assert_data |= (ASSERT_PARA_RX << 16); /* 0x5258 == RX */
+	dpmaif_force_md_assert(ASSERT_PARA_STOP, assert_data);
 
 	return -1;
 }

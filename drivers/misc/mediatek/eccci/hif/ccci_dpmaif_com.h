@@ -49,12 +49,17 @@ enum error_num {
 	LOW_MEMORY_TYPE_MAX, /* -10 */
 
 	DMA_MAPPING_ERR,
-	FLOW_CHECK_ERR,
-	DATA_CHECK_FAIL,
-	HW_REG_CHK_FAIL,
-	HW_REG_TIME_OUT,
+	SEQ_CHECK_FAIL = -8, /* do not change the value, for assert para. with MD */
+	DATA_CHECK_FAIL = -7, /* do not change the value, for assert para. with MD */
+	HW_REG_CHK_FAIL = -6, /* do not change the value, for assert para. with MD */
+	HW_REG_TIME_OUT = -5, /* do not change the value, for assert para. with MD */
 	ERROR_STOP_MAX, /* -4 */
 };
+
+#define ASSERT_PARA_TX        (0x5458)   /* 0x5458 == TX ASCII */
+#define ASSERT_PARA_RX        (0x5258)   /* 0x5258 == RX ASCII */
+#define ASSERT_PARA_STOP      (0x535450) /* 0x535450 == STP ASCII */
+#define ASSERT_PARA_TX_DONE   (0x545844) /* 0x545844 == TXD ASCII */
 
 #define DPMAIF_MAX_LRO 50
 
