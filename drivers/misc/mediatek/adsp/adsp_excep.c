@@ -193,13 +193,15 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 	total = 8 * sizeof(struct adsp_mem_header)
 		+ adspsys->cfg_size
 		+ adspsys->cfg2_size
-		+ adspsys->cfg3_size
 		+ pdata->itcm_size
 		+ pdata->dtcm_size
 		+ pdata->sysram_size
 		+ adsp_get_reserve_mem_size(coredump_id)
 		+ adsp_get_reserve_mem_size(ADSP_A_LOGGER_MEM_ID)
 		+ adsp_get_reserve_mem_size(ADSP_B_LOGGER_MEM_ID);
+
+	if (adspsys->cfg3_size)
+		total += sizeof(struct adsp_mem_header) + adspsys->cfg3_size;
 
 	buf = vzalloc(total);
 	if (!buf)
