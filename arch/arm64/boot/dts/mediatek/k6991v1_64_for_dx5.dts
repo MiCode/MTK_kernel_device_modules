@@ -1412,7 +1412,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &bt {
-	flavor-bin = "dx5";
+	flavor-bin = "dx5_2g2a";
 };
 
 &mddriver {
