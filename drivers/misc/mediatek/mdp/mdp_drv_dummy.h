@@ -20,7 +20,7 @@ typedef void (*CmdqMdpSetResourceCallback) (enum cmdq_event res_event,
 	CmdqResourceReleaseCB res_release);
 CmdqMdpSetResourceCallback cmdqMdpSetResourceCallback;
 
-void mdp_dpc_register(const struct dpc_funcs *funcs);
+void mdp_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 void mdp_set_resource_callback(enum cmdq_event res_event,
 	CmdqResourceAvailableCB res_available,
 	CmdqResourceReleaseCB res_release);
