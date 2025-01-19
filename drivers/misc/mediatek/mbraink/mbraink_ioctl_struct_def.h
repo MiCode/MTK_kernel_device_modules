@@ -93,6 +93,7 @@ struct mbraink_process_stat_struct {
 struct mbraink_process_stat_data {
 	unsigned short pid;
 	unsigned short pid_count;
+	unsigned int current_cnt;
 	struct mbraink_process_stat_struct drv_data[MAX_STRUCT_SZ];
 };
 
@@ -122,6 +123,7 @@ struct mbraink_thread_stat_data {
 	unsigned short pid_idx;
 	unsigned short tid;
 	unsigned short tid_count;
+	unsigned int current_cnt;
 	struct mbraink_thread_stat_struct drv_data[MAX_STRUCT_SZ];
 };
 

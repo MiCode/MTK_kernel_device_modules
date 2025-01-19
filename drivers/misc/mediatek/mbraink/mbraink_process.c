@@ -114,7 +114,7 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 	read_unlock(&tasklist_lock);
 }
 
-void mbraink_get_process_stat_info(pid_t current_pid,
+void mbraink_get_process_stat_info(pid_t current_pid, unsigned int cnt,
 		struct mbraink_process_stat_data *process_stat_buffer)
 {
 	struct task_struct *t = NULL;
@@ -123,14 +123,18 @@ void mbraink_get_process_stat_info(pid_t current_pid,
 	int priority = 0;
 	const struct cred *cred = NULL;
 	unsigned short pid_count = 0;
+	unsigned int current_count = 0;
 
 	memset(process_stat_buffer, 0, sizeof(struct mbraink_process_stat_data));
 	process_stat_buffer->pid = 0;
+	process_stat_buffer->current_cnt = cnt;
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
-		if (t->pid < current_pid)
+		if (current_count < cnt) {
+			++current_count;
 			continue;
+		}
 
 		stime = utime = 0;
 		cutime = t->signal->cutime;
@@ -156,6 +160,7 @@ void mbraink_get_process_stat_info(pid_t current_pid,
 			process_stat_buffer->drv_data[pid_count].process_jiffies = process_jiffies;
 			process_stat_buffer->drv_data[pid_count].priority = priority;
 			process_stat_buffer->pid_count++;
+			process_stat_buffer->current_cnt++;
 			put_cred(cred);
 		} else {
 			process_stat_buffer->pid = (unsigned short)(t->pid);
@@ -164,12 +169,14 @@ void mbraink_get_process_stat_info(pid_t current_pid,
 		}
 	}
 
-	pr_info("%s: current_pid = %u, count = %u\n",
-		__func__, process_stat_buffer->pid, process_stat_buffer->pid_count);
+	pr_info("%s: current_pid = %u, count = %u, current_count=%u\n",
+		__func__, process_stat_buffer->pid, process_stat_buffer->pid_count,
+		process_stat_buffer->current_cnt);
 	read_unlock(&tasklist_lock);
 }
 
 void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
+				unsigned int cnt,
 				struct mbraink_thread_stat_data *thread_stat_buffer)
 {
 	struct task_struct *t = NULL;
@@ -185,6 +192,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 	int count = 0;
 	unsigned short tid_count = 0;
 	unsigned short processlist_temp[MAX_MONITOR_PROCESS_NUM];
+	unsigned int current_count = 0;
 
 	/*Check if there is a config to set montor process pid list*/
 	spin_lock_irqsave(&monitor_pidlist_lock, flags);
@@ -205,6 +213,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 	memset(thread_stat_buffer, 0, sizeof(struct mbraink_thread_stat_data));
 	thread_stat_buffer->tid = 0;
 	thread_stat_buffer->tid_count = 0;
+	thread_stat_buffer->current_cnt = cnt;
 
 	for (index = current_pid_idx; index < count; index++) {
 		parent_pid = find_get_pid(processlist_temp[index]);
@@ -225,8 +234,10 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 
 		if (t && t->mm) {
 			for_each_thread(t, s) {
-				if (s->pid < current_tid)
+				if (current_count < cnt) {
+					++current_count;
 					continue;
+				}
 
 				stime = utime = 0;
 				task_cputime_adjusted(s, &utime, &stime);
@@ -263,6 +274,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 					 * s->comm);
 					 ********************************************************/
 					thread_stat_buffer->tid_count++;
+					thread_stat_buffer->current_cnt++;
 
 					put_cred(cred);
 				} else {
@@ -287,9 +299,9 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 		current_tid = 1;
 	}
 
-	pr_info("%s: current_tid = %u, current_pid_idx = %u, count = %u\n",
+	pr_info("%s: current_tid = %u, current_pid_idx = %u, count = %u, current_count=%u\n",
 			__func__, thread_stat_buffer->tid, thread_stat_buffer->pid_idx,
-			thread_stat_buffer->tid_count);
+			thread_stat_buffer->tid_count, thread_stat_buffer->current_cnt);
 
 	read_unlock(&tasklist_lock);
 }
