@@ -482,7 +482,9 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 static void u3_phy_props_set(struct mtk_xsphy *xsphy,
 		struct xsphy_instance *inst);
 static int mtk_phy_get_mode(struct mtk_xsphy *xsphy);
+
 static struct proc_dir_entry *usb_root;
+static DEFINE_MUTEX(procfs_mutex);
 
 static ssize_t proc_sib_write(struct file *file,
 	const char __user *ubuf, size_t count, loff_t *ppos)
@@ -1435,22 +1437,24 @@ static void mtk_xsphy_procfs_init_worker(struct work_struct *data)
 	struct device *dev = &inst->phy->dev;
 	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
 
+	mutex_lock(&procfs_mutex);
+
 	if (!usb_root) {
 		usb_root = proc_mkdir(MTK_USB_STR, NULL);
 		if (!usb_root) {
 			dev_info(xsphy->dev, "failed to create usb_root\n");
-			return;
+			goto exit;
 		}
 	}
 
 	if (xsphy->u2_procfs_disable && inst->type == PHY_TYPE_USB2)
-		return;
+			goto exit;
 
 	if (!xsphy->root) {
 		xsphy->root = proc_mkdir(dev->parent->of_node->name, usb_root);
 		if (!xsphy->root) {
 			dev_info(xsphy->dev, "failed to create xphy root\n");
-			return;
+			goto exit;
 		}
 	}
 
@@ -1459,6 +1463,8 @@ static void mtk_xsphy_procfs_init_worker(struct work_struct *data)
 
 	if (inst->type == PHY_TYPE_USB3)
 		u3_phy_procfs_init(xsphy, inst);
+exit:
+	mutex_unlock(&procfs_mutex);
 }
 
 static int mtk_xsphy_procfs_exit(struct mtk_xsphy *xsphy)
