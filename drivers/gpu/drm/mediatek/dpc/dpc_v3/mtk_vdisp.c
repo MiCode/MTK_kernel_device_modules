@@ -149,6 +149,25 @@ static int check_sub_devices(enum disp_pd_id pd_id)
 	return total_usage_count;
 }
 
+static void set_devices_syscore(void)
+{
+	struct device *d;
+	struct pm_domain_data *pdd;
+	struct generic_pm_domain *gpd;
+	int pd_id;
+
+	for (pd_id = 0; pd_id < DISP_PD_NUM; pd_id++) {
+		gpd = pd_to_genpd(g_dev[pd_id]->pm_domain);
+		list_for_each_entry(pdd, &gpd->dev_list, list_node) {
+			d = pdd->dev;
+			if (!d)
+				continue;
+
+			dev_pm_syscore_device(d, true);
+		}
+	}
+}
+
 static s32 mtk_vdisp_get_power_cnt(void)
 {
 	return atomic_read_acquire(&g_mtcmos_cnt);
@@ -693,6 +712,9 @@ static void mtk_vdisp_genpd_put(void)
 		}
 	}
 	VDISPDBG("%d mtcmos has been put", j);
+
+	/* set all devices as syscore to avoid expected power on when suspend resuming */
+	set_devices_syscore();
 }
 
 static void mtk_vdisp_query_aging_val(void)
