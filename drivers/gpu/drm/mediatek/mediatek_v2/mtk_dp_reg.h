@@ -74,6 +74,39 @@
 #define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS                              5
 #define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_LEN                              2
 /*-----------------------------------------------------*/
+//Phy rg
+
+#define DP_PHY_DIG_GLB_STATUS_00                                          (0x80)
+#define RGS_DP_PHYD_VERSION_FLDMASK                                       0xffffffff
+#define RGS_DP_PHYD_VERSION_FLDMASK_POS                                   0
+#define RGS_DP_PHYD_VERSION_FLDMASK_LEN                                   32
+
+#define DP_PHY_DIG_GLB_STATUS_01                                          (0x84)
+#define RGS_DP_PHYA_MODEL_FLDMASK                                         0xffffffff
+#define RGS_DP_PHYA_MODEL_FLDMASK_POS                                     0
+#define RGS_DP_PHYA_MODEL_FLDMASK_LEN                                     32
+
+#define DP_PHY_DIG_GLB_STATUS_02                                          (0x88)
+#define RGS_BIAS_READY_FLDMASK                                            0x1
+#define RGS_BIAS_READY_FLDMASK_POS                                        0
+#define RGS_BIAS_READY_FLDMASK_LEN                                        1
+
+#define RGS_TX_LN0_READY_FLDMASK                                        0x8
+#define RGS_TX_LN0_READY_FLDMASK_POS                                    3
+#define RGS_TX_LN0_READY_FLDMASK_LEN                                      1
+
+#define RGS_TX_LN1_READY_FLDMASK                                          0x10
+#define RGS_TX_LN1_READY_FLDMASK_POS                                      4
+#define RGS_TX_LN1_READY_FLDMASK_LEN                                      1
+
+#define RGS_TX_LN2_READY_FLDMASK                                          0x20
+#define RGS_TX_LN2_READY_FLDMASK_POS                                      5
+#define RGS_TX_LN2_READY_FLDMASK_LEN                                      1
+
+#define RGS_TX_LN3_READY_FLDMASK                                          0x40
+#define RGS_TX_LN3_READY_FLDMASK_POS                                    6
+#define RGS_TX_LN3_READY_FLDMASK_LEN                                    1
+/*-----------------------------------------------------*/
 
 #define REG_3000_DP_ENCODER0_P0              (0x3000)
 #define LANE_NUM_DP_ENCODER0_P0_FLDMASK                                 0x3
