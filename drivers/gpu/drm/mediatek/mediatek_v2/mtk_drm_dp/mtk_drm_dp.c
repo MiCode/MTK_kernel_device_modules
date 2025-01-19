@@ -114,12 +114,16 @@
 #define DP_VIDEO_TIMING_MASK 0x000000ff
 #define DP_VIDEO_TIMING_SFT 0
 #define DP_AUTO_TEST_ENABLE		0x0
+#define ENABLE_DP_EF_MODE		0x1
+#if (ENABLE_DP_EF_MODE == 0x01)
 #define DP_AUX_SET_ENAHNCED_FRAME	0x80
+#else
+#define DP_AUX_SET_ENAHNCED_FRAME	0x00
+#endif
 #define DP_CheckSinkCap_TimeOutCnt		0x3
 
 #define DP_PHY_REG_COUNT              6
 #define DP_SUPPORT_DSC                0 /* confirm DSC scenario before open this */
-#define DP_SUPPORT_MAX_LANECOUNT	DP_4LANE
 #define DP_TBC_BUF_ReadStartAdrThrd	0x08
 #define DP_TBC_BUF_SIZE		DP_TBC_SELBUF_CASE
 #define DP_TBC_SELBUF_CASE		2
@@ -163,6 +167,12 @@
 #define VS_VOTER_EN_LO 0x0
 #define VS_VOTER_EN_LO_CLR 0x2
 #define VS_VOTER_EN_LO_SET 0x1
+#define DP_CTS_RETRAIN_TIMES_14		12
+#define DP_CTS_RETRAIN_TIMES_DEFAULT	6
+#define DP_LT_RETRY_LIMIT					0x8
+#define DP_LT_MAX_LOOP						0x4
+#define DP_LT_MAX_CR_LOOP					0x9
+#define DP_LT_MAX_EQ_LOOP					0x6
 
 enum aux_reply_cmd {
 	AUX_REPLY_ACK = 0x00,
@@ -201,6 +211,16 @@ enum dp_lane_num {
 	DP_LANE2 = 0x2,
 	DP_LANE3 = 0x3,
 	DP_LANE_MAX,
+};
+
+enum dp_lt_pattern {
+	DP_0 = 0,
+	DP_TPS1 = BIT(4),
+	DP_TPS2 = BIT(5),
+	DP_TPS3 = BIT(6),
+	DP_TPS4 = BIT(7),
+	DP_20_TPS1 = BIT(14),
+	DP_20_TPS2 = BIT(15),
 };
 
 enum dp_notify_state {
@@ -254,6 +274,13 @@ enum dp_power_status_type {
 	DP_POWER_STATUS_PS_ON,
 	DP_POWER_STATUS_DC_OFF,
 	DP_POWER_STATUS_POWER_SAVING,
+};
+
+enum dp_preemphasis_num {
+	DP_PREEMPHASIS0 = 0x00,
+	DP_PREEMPHASIS1 = 0x01,
+	DP_PREEMPHASIS2 = 0x02,
+	DP_PREEMPHASIS3 = 0x03,
 };
 
 enum dp_sdp_asp_hb3_auch {
@@ -313,11 +340,15 @@ enum dp_swing_num {
 	DP_SWING3 = 0x03,
 };
 
-enum dp_preemphasis_num {
-	DP_PREEMPHASIS0 = 0x00,
-	DP_PREEMPHASIS1 = 0x01,
-	DP_PREEMPHASIS2 = 0x02,
-	DP_PREEMPHASIS3 = 0x03,
+enum dp_train_stage {
+	DP_LT_NONE			= 0x0000,
+	DP_LT_CR_L0_FAIL	= 0x0008,
+	DP_LT_CR_L1_FAIL	= 0x0009,
+	DP_LT_CR_L2_FAIL	= 0x000A,
+	DP_LT_EQ_L0_FAIL	= 0x0080,
+	DP_LT_EQ_L1_FAIL	= 0x0090,
+	DP_LT_EQ_L2_FAIL	= 0x00A0,
+	DP_LT_PASS			= 0x7777,
 };
 
 enum dp_usb_pin_assign_type {
@@ -381,11 +412,9 @@ struct drm_display_limit_mode {
 };
 
 struct mtk_dp *g_mtk_dp;
-static bool aux_swap;
 static bool fake_cable_in;
 static int fake_res = FAKE_DEFAULT_RES;
 static int fake_bpc = DP_COLOR_DEPTH_8BIT;
-static u8 max_lane_count = DP_2LANE;
 static atomic_t device_count;
 static const unsigned int dp_cable[] = {
 	EXTCON_DISP_HDMI, /* audio framework not support DP */
@@ -1109,8 +1138,27 @@ static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
 	return ret;
 }
 
+static void mtk_dp_aux_swap(struct mtk_dp *mtk_dp, bool enable)
+{
+	if (enable) {
+		WRITE_2BYTE_MASK(mtk_dp, REG_360C_AUX_TX_P0,
+				 1 << AUX_SWAP_AUX_TX_P0_FLDMASK_POS,
+			AUX_SWAP_AUX_TX_P0_FLDMASK);
+		WRITE_BYTE_MASK(mtk_dp, REG_3680_AUX_TX_P0,
+				1 << AUX_SWAP_TX_AUX_TX_P0_FLDMASK_POS,
+			AUX_SWAP_TX_AUX_TX_P0_FLDMASK);
+	} else {
+		WRITE_2BYTE_MASK(mtk_dp, REG_360C_AUX_TX_P0, 0,
+				 AUX_SWAP_AUX_TX_P0_FLDMASK);
+		WRITE_2BYTE_MASK(mtk_dp, REG_3680_AUX_TX_P0, 0,
+				 AUX_SWAP_TX_AUX_TX_P0_FLDMASK);
+	}
+}
+
 void mtk_dp_aux_setting(struct mtk_dp *mtk_dp)
 {
+	mtk_dp_aux_swap(mtk_dp, mtk_dp->swap_enable);
+
 	/* modify timeout threshold = 1595 [12 : 8] */
 	WRITE_2BYTE_MASK(mtk_dp, REG_360C_AUX_TX_P0, 0x1D0C, AUX_TIMEOUT_THR_AUX_TX_P0_FLDMASK);
 	WRITE_BYTE_MASK(mtk_dp, REG_3658_AUX_TX_P0, 0, BIT(0));
@@ -1129,7 +1177,7 @@ void mtk_dp_aux_setting(struct mtk_dp *mtk_dp)
 			 MTK_ATOP_EN_AUX_TX_P0_FLDMASK);
 	/* disable aux sync_stop detect function */
 	WRITE_4BYTE_MASK(mtk_dp, REG_3690_AUX_TX_P0,
-			 RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK,
+			 0x1 << RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK_POS,
 			RX_REPLY_COMPLETE_MODE_AUX_TX_P0_FLDMASK);
 
 	/* Con Thd = 1.5ms+Vx0.1ms */
@@ -1327,7 +1375,7 @@ void mtk_dp_mvid_renew(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder_i
 	htt = mtk_dp->info[encoder_id].dp_output_timing.htt;
 	if (htt % 4 != 0) {
 		mvid = READ_4BYTE(mtk_dp, REG_33C8_DP_ENCODER1_P0 + reg_offset);
-		DP_ERR("Encoder:%d, Odd Htt:%d, Mvid:%d, overwrite\n",
+		DP_MSG("Encoder:%d, Odd Htt:%d, Mvid:%d, overwrite\n",
 		       encoder_id, htt, mvid);
 		if (mtk_dp->info[encoder_id].input_src == DP_SRC_PG)
 			mvid = mvid * htt / (htt - 2);
@@ -2607,27 +2655,48 @@ void mtk_dp_audio_ch_status_set(struct mtk_dp *mtk_dp,
 
 	memset(&aud_ch_sts, 0, sizeof(aud_ch_sts));
 
+	switch (channel) {
+	case 2:
+		aud_ch_sts.audio_chsts.channel_number = 2;
+		break;
+
+	case 8:
+		aud_ch_sts.audio_chsts.channel_number = 8;
+		break;
+
+	default:
+		aud_ch_sts.audio_chsts.channel_number = 2;
+		break;
+	}
+
 	switch (fs) {
 	case FS_32K:
 		aud_ch_sts.audio_chsts.sampling_freq = 3;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 0xC;
 		break;
 	case FS_44K:
 		aud_ch_sts.audio_chsts.sampling_freq = 0;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 0xF;
 		break;
 	case FS_48K:
 		aud_ch_sts.audio_chsts.sampling_freq = 2;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 0xD;
 		break;
 	case FS_88K:
 		aud_ch_sts.audio_chsts.sampling_freq = 8;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 7;
 		break;
 	case FS_96K:
 		aud_ch_sts.audio_chsts.sampling_freq = 0xA;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 5;
 		break;
 	case FS_192K:
 		aud_ch_sts.audio_chsts.sampling_freq = 0xE;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 1;
 		break;
 	default:
 		aud_ch_sts.audio_chsts.sampling_freq = 0x1;
+		aud_ch_sts.audio_chsts.original_sampling_freq = 0xD;
 		break;
 	}
 
@@ -2977,33 +3046,198 @@ void mtk_dp_dsc_pps_send(const enum dp_encoder_id encoder_id, u8 *PPS_128)
 	mtk_dp_dsc_set_param(g_mtk_dp, encoder_id, slice_num, chunk_size);
 }
 
-void mtk_dp_phyd_power_on(struct mtk_dp *mtk_dp)
+void mtk_dp_phy_set_rate_param(struct mtk_dp *mtk_dp, enum dp_link_rate val)
+{
+	switch (val) {
+	case DP_LINK_RATE_RBR:
+		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
+		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
+		break;
+
+	case DP_LINK_RATE_HBR:
+		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
+		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x1);
+		break;
+
+	case DP_LINK_RATE_HBR2:
+		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
+		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x2);
+		break;
+
+	case DP_LINK_RATE_HBR3:
+		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
+		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x3);
+		break;
+	default:
+		break;
+	}
+}
+
+void mtk_dp_set_rate(struct mtk_dp *mtk_dp, int value)
+{
+	DP_FUNC();
+
+	/* power off TPLL and Lane */
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			    0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+
+	DP_MSG("Set Tx Rate:0x%x\n", value);
+
+	mtk_dp_phy_set_rate_param(mtk_dp, value);
+	/* power on BandGap, TPLL and Lane */
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			    0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
+}
+
+static void mtk_dp_phy_set_link_rate(struct mtk_dp *mtk_dp, enum dp_link_rate val)
+{
+	mtk_dp_phy_set_rate_param(mtk_dp, val);
+}
+
+void mtk_dp_phy_set_lane_pwr(struct mtk_dp *mtk_dp, enum dp_lane_count lane_count)
+{
+	/* ***===power ON flow===***
+	 * for 4Lane: -> 0x8 -> 0xC -> 0xE -> 0xF
+	 * for 2Lane: -> 0x2 -> 0x3
+	 * for 1Lane: -> 0x1
+	 */
+	int power_indx = lane_count - 1;
+	u8 power_bmp = BIT(power_indx);
+
+	do {
+		power_bmp |= BIT(power_indx);
+		PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
+				    power_bmp << TX_LN_EN_FLDMASK_POS,
+				TX_LN_EN_FLDMASK);
+		DP_DBG("set lane pwr %x\n", (PHY_READ_BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET
+						+ DP_PHY_DIG_TX_CTL_0) &
+					TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS);
+	} while (--power_indx >= 0);
+}
+
+static void mtk_dp_phy_clear_lane_pwr(struct mtk_dp *mtk_dp)
+{
+	/* ***===power OFF flow===***
+	 * for 4Lane: -> 0x7 -> 0x3 -> 0x1 -> 0x0
+	 * for 2Lane: -> 0x1 -> 0x0
+	 * for 1Lane: -> 0x0
+	 * UINT8 power_bmp; = (1 << lane_count) - 1;
+	 */
+	u8 power_bmp = (PHY_READ_BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET
+							+ DP_PHY_DIG_TX_CTL_0) &
+						TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS;
+
+	do {
+		power_bmp >>= 1;
+		PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
+				    power_bmp << TX_LN_EN_FLDMASK_POS,
+				TX_LN_EN_FLDMASK);
+		DP_DBG("clear lane pwr %x\n", (PHY_READ_BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET
+							+ DP_PHY_DIG_TX_CTL_0) &
+						TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS);
+	} while (power_bmp > 0);
+}
+
+void mtk_dp_phy_power_on(struct mtk_dp *mtk_dp)
 {
 	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			    0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-	mdelay(30);
 	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
 			    0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
-	DP_MSG("DP PHYD enable\n");
-	usleep_range(100, 101);
+
+	DP_MSG("DPTX PHYD power on\n");
 }
 
-void mtk_dp_phyd_reset(struct mtk_dp *mtk_dp)
+static void mtk_dp_phy_power_down(struct mtk_dp *mtk_dp)
 {
-	u8 val;
+	mtk_dp_phy_clear_lane_pwr(mtk_dp);
 
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, BIT(0));
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, BIT(0), BIT(0));
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			    0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
+	/* power off TPLL and Lane */
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			    0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
 
-	val = (PHY_READ_BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0) &
-				TX_LN_EN_FLDMASK) >> TX_LN_EN_FLDMASK_POS;
-	DP_MSG("Current lane power:%x\n", val);
-	while (val > 0) {
-		val >>= 1;
-		PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
-				    val << TX_LN_EN_FLDMASK_POS, TX_LN_EN_FLDMASK);
-		DP_MSG("Current lane power:%x\n", val);
-	}
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, BIT(1) | BIT(3));
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST,
+			    BIT(1) | BIT(3), BIT(1) | BIT(3));
+
+	DP_MSG("DPTX PHYD power down\n");
+}
+
+void mtk_dp_phyd_power_off(struct mtk_dp *mtk_dp)
+{
+	mtk_dp_phy_power_down(mtk_dp);
+
+	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
+			    0x0, FORCE_PWR_STATE_VAL_FLDMASK);
+
+	DP_MSG("DPTX PHYD power off\n");
+}
+
+static void mtk_dp_phy_reset_swing_pre(struct mtk_dp *mtk_dp)
+{
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_VOLT_SWING_EN_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_EN_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			     (0x1 << DP_TX_FORCE_PRE_EMPH_EN_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_EN_FLDMASK);
+
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
+			     (0x0  << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
+	PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
+			     (0x0 << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+			 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
+}
+
+static void mtk_dp_phy_ssc_enable(struct mtk_dp *mtk_dp, const u8 enable, const u8 ssc_delta)
+{
+	if (enable)
+		PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				    0x1 << TPLL_SSC_EN_FLDMASK_POS, TPLL_SSC_EN_FLDMASK);
+	else
+		PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_1,
+				    0x0, TPLL_SSC_EN_FLDMASK);
+
+	DP_MSG("Phy SSC enable = %d\n", enable);
 }
 
 void mtk_dp_phy_param_init(struct mtk_dp *mtk_dp, u32 *buffer, u32 size)
@@ -3023,48 +3257,130 @@ void mtk_dp_phy_param_init(struct mtk_dp *mtk_dp, u32 *buffer, u32 size)
 	}
 }
 
+void mtk_dp_phy_4lane_enable(struct mtk_dp *mtk_dp, u8 enable)
+{
+	u8 i;
+	u8 lane_count;
+	u16 value;
+	void *reg;
+	u32 tmp;
+
+	reg = ioremap(0x1002D600, 0x1000);
+
+	/* 4-3. Inter-lane skew improvement for 4 lanes
+	 * TX TFIFO read selection
+	 * 00: Local path for 1 LANE configuration
+	 * 01: Select DA_XTP_GLB_TX_DATA_EN_A/B for 2 LANE configuration
+	 * 10: Select DA_XTP_GLB_TX_DATA_EN_C for 4 LANE configuration
+	 * 11: Select DA_XTP_GLB_TX_DATA_EN_C or TX_DATA_EN_EXT for 8 LANE configuration
+	 */
+	if (enable) {
+		lane_count = 4;
+		value = (BIT(12) | BIT(13));
+
+		tmp = readl(reg);
+		tmp = (tmp & ~BIT(19)) | (BIT(19) & BIT(19));
+		writel(tmp, reg);
+	} else {
+		lane_count = 2;
+		value = BIT(12);
+
+		tmp = readl(reg);
+		tmp = (tmp & ~BIT(19)) | (0 & BIT(19));
+		writel(tmp, reg);
+	}
+
+	for (i = 1; i <= lane_count; i++)
+		PHY_WRITE_2BYTE_MASK(mtk_dp, 0x0100 * i, value, (BIT(12) | BIT(13)));
+}
+
+void mtk_dp_phy_flip_enable(struct mtk_dp *mtk_dp, const u8 flip_enable)
+{
+	void *reg;
+	u32 tmp;
+
+	reg = ioremap(0x1002D600, 0x1000);
+	/* Lane select DATA_EN_EXT
+	 * 0: from local GLB (select TX_DATA_EN_A/B/C)
+	 * 1: from master GLB (select TX_DATA_EN_EXT)
+	 */
+
+	/* 4-3. Inter-lan skew improvement for 4 Lanes */
+	if (flip_enable) {
+		PHY_WRITE_BYTE(mtk_dp, 0x01A0, 0x47);
+		PHY_WRITE_BYTE(mtk_dp, 0x02A0, 0x47);
+		PHY_WRITE_BYTE(mtk_dp, 0x03A0, 0x46);
+		PHY_WRITE_BYTE(mtk_dp, 0x04A0, 0x46);
+
+		tmp = readl(reg);
+		tmp = (tmp & ~BIT(18)) | (BIT(18) & BIT(18));
+		writel(tmp, reg);
+	} else {
+		PHY_WRITE_BYTE(mtk_dp, 0x01A0, 0x46);
+		PHY_WRITE_BYTE(mtk_dp, 0x02A0, 0x46);
+		PHY_WRITE_BYTE(mtk_dp, 0x03A0, 0x47);
+		PHY_WRITE_BYTE(mtk_dp, 0x04A0, 0x47);
+
+		tmp = readl(reg);
+		tmp = (tmp & ~BIT(18)) | (0 & BIT(18));
+		writel(tmp, reg);
+	}
+
+	DP_MSG("Swap %s\n", flip_enable ? "enable" : "disable");
+}
+
 void mtk_dp_phy_set_param(struct mtk_dp *mtk_dp)
 {
 	u8 i;
-	u32 phy_param[6] = {0x221C1814, 0x24241e18, 0x0000302A,	/* c0 */
-			       0x0E080400, 0x000c0600, 0x00000006	/* cp1 */
-			      };
 
-	/* 4Lane issue */
+	const u32 phyd_dig_lan_base_addr[4] = {
+		PHYD_DIG_LAN0_OFFSET, PHYD_DIG_LAN1_OFFSET,
+		PHYD_DIG_LAN2_OFFSET, PHYD_DIG_LAN3_OFFSET};
+
+	/* 4-1. PLL Opitmization */
 	PHY_WRITE_BYTE_MASK(mtk_dp, 0x0614, BIT(0), BIT(0));
-	mdelay(30);
+	/* 4-2. Unused AUX TX High-Z */
 	PHY_WRITE_4BYTE_MASK(mtk_dp, 0x0700, 0x0, BIT(20));
-	mdelay(30);
-	for (i = 1; i <= 4; i++) {
-		PHY_WRITE_2BYTE(mtk_dp, 0x0100 * i, 0x3000);
-		mdelay(30);
+
+	/* 4-4. Swing and Pre-emphasis Optimization */
+	for (i = 0; i < 4; i++) {
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_3, 0x110E0C0A);
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_4, 0x1212110E);
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_5, 0x1815);
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_6, 0x7040200);
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_7, 0x60300);
+		PHY_WRITE_4BYTE(mtk_dp, phyd_dig_lan_base_addr[i] + DRIVING_PARAM_8, 0x3);
 	}
-
-	PHY_WRITE_BYTE(mtk_dp, 0x01A0, 0x46);
-	mdelay(25);
-	PHY_WRITE_BYTE(mtk_dp, 0x02A0, 0x46);
-	mdelay(25);
-	PHY_WRITE_BYTE(mtk_dp, 0x03A0, 0x47);
-	usleep_range(25, 26);
-	PHY_WRITE_BYTE(mtk_dp, 0x04A0, 0x47);
-	usleep_range(25, 26);
-
-	mtk_dp_phy_param_init(mtk_dp, phy_param, ARRAY_SIZE(phy_param));
 }
 
 void mtk_dp_phy_setting(struct mtk_dp *mtk_dp)
 {
-	mtk_dp_phyd_power_on(mtk_dp);
+	/* step1: phy init */
+	mtk_dp_phy_4lane_enable(mtk_dp, mtk_dp->training_info.max_link_lane_count == DP_4LANE);
+	mtk_dp_phy_flip_enable(mtk_dp, mtk_dp->swap_enable);
+
 	mtk_dp_phy_set_param(mtk_dp);
+	/* step2: phy power ON */
+	mtk_dp_phy_power_on(mtk_dp);
+}
 
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			    0x1 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-	PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			    0x3 << FORCE_PWR_STATE_EN_FLDMASK_POS, FORCE_PWR_STATE_EN_FLDMASK);
-	usleep_range(100, 101);
+void mtk_dp_phy_training_config(struct mtk_dp *mtk_dp, const u8 link_rate,
+				const u8 lane_count, const u8 ssc_enable)
+{
+	const u8 ssc_delta = mtk_dp->training_info.ssc_delta;
 
-	/* WRITE_BYTE_MASK(mtk_dp, 0x1002D600, BIT(19), BIT(19)); */
+	mtk_dp_phy_reset_swing_pre(mtk_dp);
+	mtk_dp_phy_ssc_enable(mtk_dp, ssc_enable, ssc_delta);
+
+	/* step1: phy-d power down */
+	mtk_dp_phy_power_down(mtk_dp);
+
+	/* step2: phy-d set link rate */
+	mtk_dp_phy_set_link_rate(mtk_dp, link_rate);
+	mtk_dp_phy_power_on(mtk_dp);
+
+	/* step3: phy-d enable lane */
+	mtk_dp_phy_set_lane_pwr(mtk_dp, lane_count);
 }
 
 void mtk_dp_phy_set_idle_pattern(struct mtk_dp *mtk_dp, bool enable)
@@ -3182,31 +3498,41 @@ void mtk_dp_ssc_enable(struct mtk_dp *mtk_dp, u8 enable, u8 ssc_delta)
 	DP_MSG("SSC enable:%d\n", enable);
 }
 
-bool mtk_dp_ssc_check(struct mtk_dp *mtk_dp)
+bool mtk_dp_ssc_check(struct mtk_dp *mtk_dp, u8 *p_enable)
 {
-#if (DP_AUTO_TEST_ENABLE == 1)
+	u8 status;
+	u8 ret = 0;
+
 #if (ENABLE_DP_SSC_OUTPUT == 0x1)
-	u8 tmp[0x2] = {0x0};
-	enum dp_encoder_id encoder_id;
+	if (mtk_dp->training_info.force_ssc_en) {
+		*p_enable = mtk_dp->training_info.force_ssc;
 
-	drm_dp_dpcd_read(&mtk_dp->aux,
-			 DPCD_00003 + DPCD_02200 * mtk_dp->training_info.sink_ext_cap_en,
-		tmp, 0x1);
-
-	if (tmp[0x0] & 0x1) {
-		tmp[0x0] = 0x10;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, tmp, 0x1);
-		for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++)
-			mtk_dp->info[encoder_id].sink_ssc_en = true;
-		mtk_dp_ssc_on_off_setting(mtk_dp, true);
+		DP_MSG("SW force control SSC!!!\n");
 	} else {
-		for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++)
-			mtk_dp->info[encoder_id].sink_ssc_en = false;
-		mtk_dp_ssc_on_off_setting(mtk_dp, false);
+		*p_enable = mtk_dp->training_info.sink_ssc_en;
 	}
+
+	/* write DPCD_00107 = BIT4 when SSC enable */
+#else
+	*p_enable = false;
+
+	DP_MSG("DPTX not support SSC, force off !\n");
 #endif
-#endif
-	return true;
+
+	status = *p_enable ? BIT(4) : 0;
+	ret = drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, &status, 0x1);
+
+	if (ret > 0) {
+		if (*p_enable)
+			DP_MSG("Enable SSC via DPCD_00107\n");
+		else
+			DP_MSG("Disable SSC via DPCD_00107\n");
+
+		return true;
+	}
+
+	DP_ERR("Write DPCD_00107 Fail!!!\n");
+	return false;
 }
 
 void mtk_dp_video_mute(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder_id, bool enable)
@@ -3462,45 +3788,51 @@ void mtk_dp_tu_set(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder_id)
 	mtk_dp_sdp_set_asp_count_init(mtk_dp, encoder_id);
 }
 
-bool mtk_dp_swingt_set_pre_emphasis(struct mtk_dp *mtk_dp, int lane_num,
-				    int swing_value, int pre_emphasis)
+bool mtk_dp_swingt_set_pre_emphasis(struct mtk_dp *mtk_dp,
+				    enum dp_lane_num lane_num,
+	enum dp_swing_num swing_level,
+	enum dp_preemphasis_num pre_emphasis_level)
 {
-	DP_MSG("lane_num:%d, swing_value:%x, pre_emphasis:%x\n", lane_num,
-	       swing_value, pre_emphasis);
+	DP_MSG("lane:%d, set Swing:0x%x, Emp:0x%x\n",
+	       lane_num, swing_level, pre_emphasis_level);
 
 	switch (lane_num) {
 	case DP_LANE0:
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
-				     (swing_value << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				     (swing_level << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN0_OFFSET + DRIVING_FORCE,
-				     (pre_emphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				     (pre_emphasis_level << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
 		break;
+
 	case DP_LANE1:
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
-				     (swing_value << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				     (swing_level << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN1_OFFSET + DRIVING_FORCE,
-				     (pre_emphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				     (pre_emphasis_level << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
 		break;
+
 	case DP_LANE2:
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
-				     (swing_value << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				     (swing_level << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN2_OFFSET + DRIVING_FORCE,
-				     (pre_emphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				     (pre_emphasis_level << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
 		break;
+
 	case DP_LANE3:
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
-				     (swing_value << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
+				     (swing_level << DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_VOLT_SWING_VAL_FLDMASK);
 		PHY_WRITE_4BYTE_MASK(mtk_dp, PHYD_DIG_LAN3_OFFSET + DRIVING_FORCE,
-				     (pre_emphasis << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
+				     (pre_emphasis_level << DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_POS),
 				 DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK);
 		break;
+
 	default:
 		DP_ERR("lane number is error\n");
 		return false;
@@ -3569,14 +3901,7 @@ void mtk_dp_set_efuse_value(struct mtk_dp *mtk_dp)
 	u32 efuse = 0;
 	/* get_devinfo_with_index(114); */
 
-	DP_MSG("DP efuse(0x11C101B8):0x%x\n", efuse);
-
-	DP_MSG("DP lane1:0x%x\n", READ_BYTE(mtk_dp, REG_3000_DP_ENCODER0_P0));
-
-	WRITE_BYTE_MASK(mtk_dp, REG_3000_DP_ENCODER0_P0,
-			LANE_NUM_DP_ENCODER0_P0_FLDMASK, LANE_NUM_DP_ENCODER0_P0_FLDMASK);
-
-	DP_MSG("DP lane2:0x%x\n", READ_BYTE(mtk_dp, REG_3000_DP_ENCODER0_P0));
+	DP_DBG("DP efuse(0x11C101B8):0x%x\n", efuse);
 
 	if (efuse) {
 		WRITE_4BYTE_MASK(mtk_dp, 0x0008, efuse >> 1, GENMASK(23, 20));
@@ -3604,9 +3929,9 @@ void mtk_dp_set_video_interlance(struct mtk_dp *mtk_dp,
 	}
 }
 
-void mtk_dp_set_lane(struct mtk_dp *mtk_dp, const enum dp_lane_count lane_count)
+void mtk_dp_set_lane_count(struct mtk_dp *mtk_dp, const enum dp_lane_count lane_count)
 {
-	const u8 value = lane_count / 2;
+	const u8 value = lane_count >> 1;
 	enum dp_encoder_id encoder_id;
 	u32 reg_offset;
 
@@ -3614,7 +3939,7 @@ void mtk_dp_set_lane(struct mtk_dp *mtk_dp, const enum dp_lane_count lane_count)
 
 	if (value == 0) {
 		WRITE_BYTE_MASK(mtk_dp, REG_35F0_DP_TRANS_P0, 0, BIT(3) | BIT(2));
-	} else if (value < DP_SUPPORT_MAX_LANECOUNT) {
+	} else if (value < mtk_dp->training_info.max_link_lane_count) {
 		WRITE_BYTE_MASK(mtk_dp, REG_35F0_DP_TRANS_P0, BIT(3), BIT(3) | BIT(2));
 	} else {
 		DP_MSG("Un-expected lane count:%d\n", lane_count);
@@ -3632,71 +3957,22 @@ void mtk_dp_set_lane(struct mtk_dp *mtk_dp, const enum dp_lane_count lane_count)
 	WRITE_BYTE_MASK(mtk_dp, REG_34A4_DP_TRANS_P0,
 			value << LANE_NUM_DP_TRANS_P0_FLDMASK_POS,
 		LANE_NUM_DP_TRANS_P0_FLDMASK);
-
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_TX_CTL_0,
-			    ((1 << (lane_count)) - 1) << TX_LN_EN_FLDMASK_POS, TX_LN_EN_FLDMASK);
-	DP_MSG("Current lane power:%x\n", ((1 << (lane_count)) - 1));
-
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0, 0xFF);
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_SW_RST, 0xFF, 0xFF);
 }
 
-void mtk_dp_set_rate_param(struct mtk_dp *mtk_dp, u8 val)
-{
-	switch (val) {
-	case DP_LINK_RATE_RBR:
-		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
-		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x0);
-		break;
-
-	case DP_LINK_RATE_HBR:
-		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
-		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x1);
-		break;
-
-	case DP_LINK_RATE_HBR2:
-		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
-		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x2);
-		break;
-
-	case DP_LINK_RATE_HBR3:
-		/* Set gear : 0x0 : RBR, 0x1 : HBR, 0x2 : HBR2, 0x3 : HBR3 */
-		PHY_WRITE_4BYTE(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_BIT_RATE, 0x3);
-		break;
-	default:
-		break;
-	}
-}
-
-void mtk_dp_set_rate(struct mtk_dp *mtk_dp, int value)
-{
-	DP_FUNC();
-
-	/* power off TPLL and Lane; */
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			    0x1 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
-
-	DP_MSG("Set Tx Rate:0x%x\n", value);
-
-	mtk_dp_set_rate_param(mtk_dp, value);
-	/* power on BandGap, TPLL and Lane; */
-	PHY_WRITE_BYTE_MASK(mtk_dp, PHYD_DIG_GLB_OFFSET + DP_PHY_DIG_PLL_CTL_0,
-			    0x3 << FORCE_PWR_STATE_VAL_FLDMASK_POS, FORCE_PWR_STATE_VAL_FLDMASK);
-}
-
-void mtk_dp_set_training_pattern(struct mtk_dp *mtk_dp, int  value)
+void mtk_dp_set_training_pattern(struct mtk_dp *mtk_dp, int value)
 {
 	DP_MSG("Set Train Pattern:0x%x\n", value);
 
-	if (value == BIT(4)) /* if Set TPS1 */
-		mtk_dp_phy_set_idle_pattern(mtk_dp, false);
+	if (value <= DP_TPS4) {
+		if (value == DP_TPS1) /* if Set TPS1 */
+			mtk_dp_phy_set_idle_pattern(mtk_dp, false);
 
-	WRITE_BYTE_MASK(mtk_dp, (REG_3400_DP_TRANS_P0 + 1), value, GENMASK(7, 4));
-
+		WRITE_BYTE_MASK(mtk_dp, (REG_3400_DP_TRANS_P0 + 1), value, GENMASK(7, 4));
+	}
 	mdelay(20);
 }
 
-void mtk_dp_set_enhanced_frame_mode(struct mtk_dp *mtk_dp, bool  enable)
+void mtk_dp_set_enhanced_frame_mode(struct mtk_dp *mtk_dp, bool enable)
 {
 	enum dp_encoder_id encoder_id;
 	u32 reg_offset;
@@ -3853,7 +4129,6 @@ void mtk_dp_video_config(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder
 	u32 mvid = 0;
 	bool overwrite = false;
 	struct videomode vm = {0};
-	u8 data[1];
 
 	if (!mtk_dp->dp_ready) {
 		DP_ERR("%s, DP is not ready\n", __func__);
@@ -3924,9 +4199,6 @@ void mtk_dp_video_config(struct mtk_dp *mtk_dp, const enum dp_encoder_id encoder
 
 	if (mtk_dp->dsc_enable)
 		mtk_dp_mn_overwrite(mtk_dp, encoder_id, overwrite, mvid, 0x8000);
-
-	data[0] = (u8)mtk_dp->dsc_enable;
-	drm_dp_dpcd_write(&mtk_dp->aux, 0x160, data, 0x1);
 
 	/* interlace not support */
 	dp_timing->video_ip_mode = DP_VIDEO_PROGRESSIVE;
@@ -4054,10 +4326,8 @@ bool mtk_dp_check_sink_lock(struct mtk_dp *mtk_dp, u8 *dpcd_20x, u8 *dpcd_200c)
 	}
 
 	if (!locked) {
-		if (!mtk_dp->dp_ready)
-			mtk_dp->training_state = DP_TRAINING_STATE_CHECKCAP;
-		else if (mtk_dp->training_state > DP_TRAINING_STATE_TRAINING_PRE)
-			mtk_dp->training_state = DP_TRAINING_STATE_TRAINING_PRE;
+		if (mtk_dp->dp_ready)
+			mtk_dp->training_state = DP_TRAINING_STATE_TRAINING;
 	}
 
 	return locked;
@@ -4103,14 +4373,14 @@ void mtk_dp_check_sink_esi(struct mtk_dp *mtk_dp,
 	}
 #endif
 
-	if (dpcd_20x[0x1] & BIT(0)) { // not support, clrear it.
+	if (dpcd_20x[0x1] & BIT(0)) { /* not support, clrear it */
 		tmp = BIT(0);
 		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00201, &tmp, 0x1);
 	}
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
 	if (dpcd_20x[0x4] & BIT(6)) {
-		//DOWNSTREAM_PORT_STATUS_CHANGED
+		/* DOWNSTREAM_PORT_STATUS_CHANGED */
 		if (mtk_dp->training_state > DP_TRAINING_STATE_TRAINING) {
 			mtk_dp->training_state = DP_TRAINING_STATE_CHECKCAP;
 			DP_MSG("Rx Link Status Change!!\n");
@@ -4118,24 +4388,6 @@ void mtk_dp_check_sink_esi(struct mtk_dp *mtk_dp,
 		}
 	}
 #endif
-}
-
-void mtk_dp_check_max_link_rate(struct mtk_dp *mtk_dp)
-{
-	switch (mtk_dp->training_info.dp_version) {
-	case DP_VER_11:
-		mtk_dp->training_info.max_link_rate = DP_LINK_RATE_HBR;
-		break;
-	case DP_VER_12:
-		mtk_dp->training_info.max_link_rate = DP_LINK_RATE_HBR2;
-		break;
-	case DP_VER_14:
-		mtk_dp->training_info.max_link_rate = DP_LINK_RATE_HBR3;
-		break;
-	default:
-		mtk_dp->training_info.max_link_rate = DP_LINK_RATE_HBR2;
-		break;
-	}
 }
 
 bool mtk_dp_hpd_get_pin_level(struct mtk_dp *mtk_dp)
@@ -4178,21 +4430,12 @@ bool mtk_dp_check_sink_cap(struct mtk_dp *mtk_dp)
 		mtk_dp_dsc_support(mtk_dp);
 	}
 
-#if !ENABLE_DP_FIX_LRLC
-	mtk_dp->training_info.link_rate =
-		(tmp[0x1] >= mtk_dp->training_info.max_link_rate) ?
-		mtk_dp->training_info.max_link_rate : tmp[0x1];
-	mtk_dp->training_info.link_lane_count =
-		((tmp[0x2] & 0x1F) >= max_lane_count) ?
-		max_lane_count : (tmp[0x2] & 0x1F);
-#endif
-
 #if ENABLE_DP_FIX_TPS2
-	mtk_dp->training_info.tps3 = 0;
-	mtk_dp->training_info.tps4 = 0;
+	mtk_dp->training_info.tps3_support = 0;
+	mtk_dp->training_info.tps4_support = 0;
 #else
-	mtk_dp->training_info.tps3 = (tmp[0x2] & BIT(6)) >> 0x6;
-	mtk_dp->training_info.tps4 = (tmp[0x3] & BIT(7)) >> 0x7;
+	mtk_dp->training_info.tps3_support = (tmp[0x2] & BIT(6)) >> 0x6;
+	mtk_dp->training_info.tps4_support = (tmp[0x3] & BIT(7)) >> 0x7;
 #endif
 	mtk_dp->training_info.dwn_strm_port_present =
 			(tmp[0x5] & BIT(0));
@@ -4366,11 +4609,9 @@ void mtk_dp_hpd_check_sink_event(struct mtk_dp *mtk_dp)
 	sink_cnt = mtk_dp_get_sink_count(mtk_dp);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
-	if (!mtk_dp->is_mst_start) {
-#else
-	{
+	if (!mtk_dp->is_mst_start)
 #endif
-
+	{
 		if (sink_cnt != mtk_dp->training_info.sink_count ||
 		    (dpcd_200c[0x2] & BIT(6) || dpcd_20x[0x4] & BIT(6))) {
 			DP_MSG("New Branch Device Detection!!\n");
@@ -4423,7 +4664,7 @@ void mtk_dp_hpd_handle_in_isr(struct mtk_dp *mtk_dp)
 			mtk_dp->training_info.phy_status &= ~HPD_DISCONNECT;
 	}
 
-	// ignore plug-in --> plug-in event
+	/* ignore plug-in --> plug-in event */
 	if (mtk_dp->training_info.cable_plug_in)
 		mtk_dp->training_info.phy_status &= ~HPD_CONNECT;
 	else
@@ -4450,7 +4691,7 @@ void mtk_dp_hpd_handle_in_isr(struct mtk_dp *mtk_dp)
 		DP_MSG("HPD_DISCON_ISR\n");
 	}
 
-	// handle IRQ in thread
+	/* handle IRQ in thread */
 	if (mtk_dp->training_info.phy_status & HPD_INT_EVNET)
 		DP_MSG("****** [DPTX] HPD_INT ****** \r\n\n");
 }
@@ -4474,7 +4715,7 @@ void mtk_dp_hpd_isr_event(struct mtk_dp *mtk_dp)
 		mtk_dp_hpd_interrupt_clr(mtk_dp, hw_status);
 
 	if (mtk_dp->training_info.cable_state_change ||
-	    hw_status == HPD_INT_EVNET) {
+	    (mtk_dp->training_info.phy_status & HPD_INT_EVNET)) {
 		DP_MSG("dp_work, hw_status:0x%x\n", hw_status);
 		queue_work(mtk_dp->dp_wq, &mtk_dp->dp_work);
 	}
@@ -4542,7 +4783,7 @@ void mtk_dp_hpd_interrupt_set(int status)
 	DP_MSG("%s, status:%d[2:DISCONNECT, 4:CONNECT, 8:IRQ], Power:%d, uevent:%d\n",
 	       __func__, status, g_mtk_dp->power_on, g_mtk_dp->uevent_to_hwc);
 
-	// delay to prevent from slow connecting
+	/* delay to prevent from slow connecting */
 	msleep(500);
 
 	if ((status == HPD_CONNECT && !g_mtk_dp->power_on) ||
@@ -4589,13 +4830,12 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 
 	DP_FUNC();
 	mtk_dp->training_info.dp_version = DP_VER_14;
-	mtk_dp->training_info.link_rate = DP_LINK_RATE_HBR3;
-
-	mtk_dp->training_info.link_lane_count = max_lane_count;
+	mtk_dp->training_info.max_link_rate = DP_SUPPORT_MAX_LINKRATE;
+	mtk_dp->training_info.max_link_lane_count = DP_SUPPORT_MAX_LANECOUNT;
 	mtk_dp->training_info.sink_ext_cap_en = false;
 	mtk_dp->training_info.sink_ssc_en = false;
-	mtk_dp->training_info.tps3 = true;
-	mtk_dp->training_info.tps4 = true;
+	mtk_dp->training_info.tps3_support = true;
+	mtk_dp->training_info.tps4_support = true;
 	mtk_dp->training_info.phy_status = HPD_INITIAL_STATE;
 	mtk_dp->training_info.cable_plug_in = false;
 	mtk_dp->training_info.cable_state_change = false;
@@ -4621,9 +4861,6 @@ void mtk_dp_init_variable(struct mtk_dp *mtk_dp)
 	mtk_dp->has_dsc   = false;
 	mtk_dp->has_fec   = false;
 	mtk_dp->dsc_enable = false;
-
-	if (!mtk_dp->training_info.set_max_linkrate)
-		mtk_dp_check_max_link_rate(mtk_dp);
 }
 
 void mtk_dp_initial_setting(struct mtk_dp *mtk_dp)
@@ -5091,10 +5328,7 @@ static enum drm_mode_status mtk_dp_connector_mode_valid(struct drm_connector *co
 		mode->hdisplay, mode->vdisplay,
 		drm_mode_vrefresh(mode), mode->clock);
 
-	if (mode->hdisplay == 1920 && mode->vdisplay == 1080 && drm_mode_vrefresh(mode) == 60)
-		return MODE_OK;
-	else
-		return MODE_BAD;
+	return MODE_OK;
 }
 
 static int mtk_dp_connector_get_modes(struct drm_connector *connector)
@@ -5110,7 +5344,8 @@ static int mtk_dp_connector_get_modes(struct drm_connector *connector)
 
 	if (mtk_dp->next_bridge) {
 		DP_MSG("getting timing mode from next bridge\n");
-		return mtk_dp->next_bridge->funcs->get_modes(mtk_dp->next_bridge, &mtk_connector->connector);
+		return mtk_dp->next_bridge->funcs->get_modes(mtk_dp->next_bridge,
+			&mtk_connector->connector);
 	}
 
 	if (mtk_connector->edid)
@@ -5226,8 +5461,9 @@ void mtk_dp_connect_attach_encoder(struct mtk_dp *mtk_dp)
 	sink_count = mtk_dp_get_sink_count(mtk_dp);
 
 #if ENABLE_SERDES_MST
+	/* serdes always report 1 sink count, so set it as 2 here */
 	if (mtk_dp->mst_enable)
-		sink_count = DP_ENCODER_NUM; // serdes always report 1 sink count, so set it as 2 here
+		sink_count = DP_ENCODER_NUM;
 #endif
 
 	for (i = 0; i < DP_ENCODER_NUM; i++) {
@@ -5317,7 +5553,6 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 			DP_MSG("HPD_CON\n");
 			mtk_dp_vsvoter_set(mtk_dp);
 
-			// to check
 			/* check capability */
 			dpcd[0] = mtk_dp->training_info.dp_version;
 			mst_cap = drm_dp_read_mst_cap(&mtk_dp->aux, dpcd);
@@ -5331,7 +5566,6 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 			}
 
 			mtk_dp_connect_attach_encoder(mtk_dp);
-			// to check
 
 			mtk_dp_initial_setting(mtk_dp);
 			mtk_dp_analog_power_on_off(mtk_dp, true);
@@ -5380,81 +5614,96 @@ int mtk_dp_hpd_handle_in_thread(struct mtk_dp *mtk_dp)
 	return ret;
 }
 
-bool mtk_dp_training_check_swing_pre(struct mtk_dp *mtk_dp,
-				     u8 target_lane_count, u8 *dpcd_202x, u8 *dpcd_buf)
+void mtk_dp_training_check_swing_pre(struct mtk_dp *mtk_dp,
+				     u8 lane_count,
+	u8 *dpcd_202,
+	u8 *dpcd_buffer,
+	u8 is_adjustable_swing_pre,
+	u8 is_lttpr)
 {
-	u8 swing_value;
-	u8 pre_emphasis;
+	u8 swing, emhasis;
+	u8 lane01_adjust_offset, lane23_adjust_offset;
 
-	if (target_lane_count >= 0x1) { /* lane0 */
-		swing_value = (dpcd_202x[0x4] & 0x3);
-		pre_emphasis = ((dpcd_202x[0x4] & 0x0C) >> 2);
-		/* Adjust the swing and pre-emphasis */
-		mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE0,
-					       swing_value, pre_emphasis);
-		/* Adjust the swing and pre-emphasis done, notify Sink Side */
-		dpcd_buf[0x0] = swing_value | (pre_emphasis << 3);
-		if (swing_value == DP_SWING3) { /* MAX_SWING_REACHED */
-			dpcd_buf[0x0] |= BIT(2);
-		}
-		/* MAX_PRE-EMPHASIS_REACHED */
-		if (pre_emphasis == DP_PREEMPHASIS3)
-			dpcd_buf[0x0] |= BIT(5);
+	if (is_lttpr) {
+		lane01_adjust_offset = 3; /* F0033h-F0030h */
+		lane23_adjust_offset = 4; /* F0034h-F0030h */
+	} else {
+		lane01_adjust_offset = 4; /* 206h-202h */
+		lane23_adjust_offset = 5; /* 207h-202h */
 	}
 
-	if (target_lane_count >= 0x2) { /* lane1 */
-		swing_value = (dpcd_202x[0x4] & 0x30) >> 4;
-		pre_emphasis = ((dpcd_202x[0x4] & 0xC0) >> 6);
+	if (lane_count >= 0x1) { /* lane0 */
+		swing = (dpcd_202[lane01_adjust_offset] & 0x3);
+		emhasis = ((dpcd_202[lane01_adjust_offset] & 0x0C) >> 2);
+
 		/* Adjust the swing and pre-emphasis */
-		mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE1,
-					       swing_value, pre_emphasis);
+		if (is_adjustable_swing_pre)
+			mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE0, swing, emhasis);
 		/* Adjust the swing and pre-emphasis done, notify Sink Side */
-		dpcd_buf[0x1] = swing_value | (pre_emphasis << 3);
-		if (swing_value == DP_SWING3) { /* MAX_SWING_REACHED */
-			dpcd_buf[0x1] |= BIT(2);
-		}
+		dpcd_buffer[0x0] = swing | (emhasis << 3);
+
+		/* MAX_SWING_REACHED */
+		if (swing == DP_SWING3)
+			dpcd_buffer[0x0] |= BIT(2);
 		/* MAX_PRE-EMPHASIS_REACHED */
-		if (pre_emphasis == DP_PREEMPHASIS3)
-			dpcd_buf[0x1] |= BIT(5);
+		if (emhasis == DP_PREEMPHASIS3)
+			dpcd_buffer[0x0] |= BIT(5);
 	}
 
-	if (target_lane_count == 0x4) { /* lane 2,3 */
-		swing_value = (dpcd_202x[0x5] & 0x3);
-		pre_emphasis = ((dpcd_202x[0x5] & 0x0C) >> 2);
+	if (lane_count >= 0x2) { /* lane1 */
+		swing = (dpcd_202[lane01_adjust_offset] & 0x30) >> 4;
+		emhasis = ((dpcd_202[lane01_adjust_offset] & 0xC0) >> 6);
 
 		/* Adjust the swing and pre-emphasis */
-		mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE2,
-					       (dpcd_202x[0x5] & 0x3),
-					       ((dpcd_202x[0x5] & 0x0C) >> 2));
+		if (is_adjustable_swing_pre)
+			mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE1, swing, emhasis);
 		/* Adjust the swing and pre-emphasis done, notify Sink Side */
-		dpcd_buf[0x2] = swing_value | (pre_emphasis << 3);
-		if (swing_value == DP_SWING3) { /* MAX_SWING_REACHED */
-			dpcd_buf[0x2] |= BIT(2);
-		}
-		/* MAX_PRE-EMPHASIS_REACHED */
-		if (pre_emphasis == DP_PREEMPHASIS3)
-			dpcd_buf[0x2] |= BIT(5);
+		dpcd_buffer[0x1] = swing | (emhasis << 3);
 
-		swing_value = (dpcd_202x[0x5] & 0x30) >> 4;
-		pre_emphasis = ((dpcd_202x[0x5] & 0xC0) >> 6);
+		/* MAX_SWING_REACHED */
+		if (swing == DP_SWING3)
+			dpcd_buffer[0x1] |= BIT(2);
+		/* MAX_PRE-EMPHASIS_REACHED */
+		if (emhasis == DP_PREEMPHASIS3)
+			dpcd_buffer[0x1] |= BIT(5);
+	}
+
+	if (lane_count == 0x4) { /* lane 2,3 */
+		swing = (dpcd_202[lane23_adjust_offset] & 0x3);
+		emhasis = ((dpcd_202[lane23_adjust_offset] & 0x0C) >> 2);
 
 		/* Adjust the swing and pre-emphasis */
-		mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE3,
-					       ((dpcd_202x[0x5] & 0x30) >> 4),
-			((dpcd_202x[0x5] & 0xC0) >> 6));
+		if (is_adjustable_swing_pre)
+			mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE2, swing, emhasis);
 		/* Adjust the swing and pre-emphasis done, notify Sink Side */
-		dpcd_buf[0x3] = swing_value | (pre_emphasis << 3);
-		if (swing_value == DP_SWING3) { /* MAX_SWING_REACHED */
-			dpcd_buf[0x3] |= BIT(2);
-		}
+		dpcd_buffer[0x2] = swing | (emhasis << 3);
+
+		/* MAX_SWING_REACHED */
+		if (swing == DP_SWING3)
+			dpcd_buffer[0x2] |= BIT(2);
 		/* MAX_PRE-EMPHASIS_REACHED */
-		if (pre_emphasis == DP_PREEMPHASIS3)
-			dpcd_buf[0x3] |= BIT(5);
+		if (emhasis == DP_PREEMPHASIS3)
+			dpcd_buffer[0x2] |= BIT(5);
+
+		swing = (dpcd_202[lane23_adjust_offset] & 0x30) >> 4;
+		emhasis = ((dpcd_202[lane23_adjust_offset] & 0xC0) >> 6);
+
+		/* Adjust the swing and pre-emphasis */
+		if (is_adjustable_swing_pre)
+			mtk_dp_swingt_set_pre_emphasis(mtk_dp, DP_LANE3, swing, emhasis);
+		/* Adjust the swing and pre-emphasis done, notify Sink Side */
+		dpcd_buffer[0x3] = swing | (emhasis << 3);
+
+		/* MAX_SWING_REACHED */
+		if (swing == DP_SWING3)
+			dpcd_buffer[0x3] |= BIT(2);
+		/* MAX_PRE-EMPHASIS_REACHED */
+		if (emhasis == DP_PREEMPHASIS3)
+			dpcd_buffer[0x3] |= BIT(5);
 	}
 
 	/* Wait signal stable enough */
-	mdelay(2);
-	return true;
+	mdelay(1);
 }
 
 void mtk_dp_print_training_state(u8 state)
@@ -5490,290 +5739,274 @@ void mtk_dp_print_training_state(u8 state)
 	}
 }
 
-int mtk_dp_training_flow(struct mtk_dp *mtk_dp, u8 lane_rate, u8 lane_count)
+void mtk_dp_check_and_set_power_state(struct mtk_dp *mtk_dp)
 {
-	u8  tmp[0x6] = {0};
-	u8  dpcd_200c[0x3] = {0};
-	u8  target_link_rate = lane_rate;
-	u8  target_lane_count = lane_count;
-	u8  dpcd_buf[0x4] = {0};
-	u8  pass_tps1 = false;
-	u8  pass_tps2_3 = false;
-	u8  train_retry_times;
-	u8  status_control;
-	u8  iteration_count;
-	u8  dpcd_206;
+	u8 temp[0x1];
 
-	memset(tmp, 0x0, sizeof(tmp));
-	memset(dpcd_buf, 0x0, sizeof(dpcd_buf));
-
-	drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00600, tmp, 0x1);
-	if (tmp[0] != 0x01) {
-		tmp[0] = 0x01;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, tmp, 0x1);
+	drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00600, temp, 0x1);
+	if (temp[0] != 0x01) {
+		temp[0] = 0x01;
+		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, temp, 0x1);
 		mdelay(1);
 	}
+}
 
-	tmp[0] = target_link_rate;
-	tmp[1] = target_lane_count | DP_AUX_SET_ENAHNCED_FRAME;
-	drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00100, tmp, 0x2);
-
-	if (mtk_dp->training_info.sink_ssc_en) {
-		tmp[0x0] = 0x10;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00107, tmp, 0x1);
+u8 mtk_dp_training_pre_check(struct mtk_dp *mtk_dp)
+{
+	if (!mtk_dp->training_info.cable_plug_in ||
+	    ((mtk_dp->training_info.phy_status & HPD_DISCONNECT) != 0x0)) {
+		DP_MSG("Training Abort, HPD is low\n");
+		return false;
 	}
 
-	train_retry_times = 0x0;
-	status_control = 0x0;
-	iteration_count = 0x1;
-	dpcd_206 = 0xFF;
+	if (mtk_dp->training_info.phy_status & HPD_INT_EVNET)
+		mtk_dp_hpd_handle_in_thread(mtk_dp);
 
-	mtk_dp_set_rate(mtk_dp, target_link_rate);
-	mtk_dp_set_lane(mtk_dp, target_lane_count);
+	if (mtk_dp->training_state < DP_TRAINING_STATE_TRAINING) {
+		DP_MSG("Retraining!\n");
+		return false;
+	}
+
+	return true;
+}
+
+enum dp_train_stage mtk_dp_check_training_res(struct mtk_dp *mtk_dp, u8 dpcd_202)
+{
+	enum dp_train_stage res = DP_LT_PASS;
+
+	if (mtk_dp->training_info.cr_done == 0x0) {
+		if ((dpcd_202 & 0x01) != 0x01)
+			res = DP_LT_CR_L0_FAIL;
+		else if ((dpcd_202 & 0x11) != 0x11)
+			res = DP_LT_CR_L1_FAIL;
+		else
+			res = DP_LT_CR_L2_FAIL;
+	} else if (mtk_dp->training_info.eq_done == 0x0) {
+		if ((dpcd_202 & 0x07) != 0x07)
+			res = DP_LT_EQ_L0_FAIL;
+		else if ((dpcd_202 & 0x77) != 0x77)
+			res = DP_LT_EQ_L1_FAIL;
+		else
+			res = DP_LT_EQ_L2_FAIL;
+	}
+
+	return res;
+}
+
+enum dp_train_stage mtk_dp_training_flow(struct mtk_dp *mtk_dp, u8 link_rate, u8 lane_count)
+{
+	u8 dpcd_buffer[0x4], dpcd_202[0x6], temp[0x6], dpcd_200c[0x3];
+	u8 dpcd_206 = 0xFF;
+	u8 retry_times = 0;
+	u8 control = 0;
+	u8 loop = 0;
+	u8 cr_loop = 0;
+	u8 eq_loop = 0;
+	u8 ssc_enable = false;
+	enum dp_train_stage res = DP_LT_NONE;
+
+	memset(temp, 0x0, sizeof(temp));
+	memset(dpcd_buffer, 0x0, sizeof(dpcd_buffer));
+
+	mtk_dp_check_and_set_power_state(mtk_dp);
+
+	temp[0] = link_rate;
+	temp[1] = (lane_count | DP_AUX_SET_ENAHNCED_FRAME);
+	drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00100, temp, 0x2);
+
+	mtk_dp_ssc_check(mtk_dp, &ssc_enable);
+	mtk_dp_phy_training_config(mtk_dp, link_rate, lane_count, ssc_enable);
+	mtk_dp_set_lane_count(mtk_dp, lane_count);
+	mdelay(5);
 
 	do {
-		train_retry_times++;
-		if (!mtk_dp->training_info.cable_plug_in ||
-		    ((mtk_dp->training_info.phy_status & HPD_DISCONNECT)
-				!= 0x0)) {
-			DP_MSG("Training Abort, HPD is low\n");
-			return DP_RET_PLUG_OUT;
-		}
+		loop++;
+		if (!mtk_dp_training_pre_check(mtk_dp))
+			return DP_LT_NONE;
 
-		if (mtk_dp->training_info.phy_status & HPD_INT_EVNET)
-			mtk_dp_hpd_handle_in_thread(mtk_dp);
-
-		if (mtk_dp->training_state < DP_TRAINING_STATE_TRAINING)
-			return DP_RET_RETRANING;
-
-		if (!pass_tps1)	{
+		if (mtk_dp->training_info.cr_done == 0x0) {
 			DP_MSG("CR Training START\n");
 			mtk_dp_set_scramble(mtk_dp, false);
 
-			if (status_control == 0x0)	{
+			if (control == 0x0)	{
 				mtk_dp_set_training_pattern(mtk_dp, BIT(4));
-				status_control = 0x1;
-				tmp[0] = 0x21;
-				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00102,
-						  tmp, 0x1);
-				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00206,
-						 (tmp + 4), 0x2);
-				iteration_count++;
+				control = 0x1;
+				temp[0] = 0x21;
+				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00102, temp, 0x1);
+				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00206, (temp + 4), 0x2);
+				loop++;
 
 				/* force use SWING = 0 & PRE = 0 to start 1st link training */
-				tmp[4] = 0x00;
-				tmp[5] = 0x00;
-				mtk_dp_training_check_swing_pre(mtk_dp,
-								target_lane_count, tmp,
-					dpcd_buf);
+				temp[4] = 0x00;
+				temp[5] = 0x00;
+				mtk_dp_training_check_swing_pre(mtk_dp, lane_count, temp,
+								dpcd_buffer, true, false);
 			}
-			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00103,
-					  dpcd_buf, target_lane_count);
 
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00103, dpcd_buffer, lane_count);
 			drm_dp_link_train_clock_recovery_delay(&mtk_dp->aux, mtk_dp->rx_cap);
-			drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00202,
-					 tmp, 0x6);
-
+			drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00202, dpcd_202, 0x6);
 			if (mtk_dp->training_info.sink_ext_cap_en) {
-				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_0200C,
-						 dpcd_200c, 0x3);
-				tmp[0] = dpcd_200c[0];
-				tmp[1] = dpcd_200c[1];
-				tmp[2] = dpcd_200c[2];
+				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_0200C, dpcd_200c, 0x3);
+				dpcd_202[0] = dpcd_200c[0]; /*  copy DPCD200C=>DCPD202 */
+				dpcd_202[1] = dpcd_200c[1]; /*  copy DPCD200D=>DCPD203 */
+				dpcd_202[2] = dpcd_200c[2]; /*  copy DPCD200E=>DCPD204 */
 			}
 
-			if (drm_dp_clock_recovery_ok(tmp,
-						     target_lane_count)) {
+			if (drm_dp_clock_recovery_ok(dpcd_202, lane_count)) {
 				DP_MSG("CR Training Success\n");
+
 				mtk_dp->training_info.cr_done = true;
-				pass_tps1 = true;
-				train_retry_times = 0x0;
-				iteration_count = 0x1;
+
+				retry_times = 0x0;
+				loop = 0x1;
+				eq_loop = 0;
 			} else {
 				/* request swing & emp is the same eith last time */
-				if (dpcd_206 == tmp[0x4]) {
-					iteration_count++;
-					if ((dpcd_206 & 0x3) == 0x3)
-						iteration_count =
-						DP_TRAIN_MAX_ITERATION;
+				if (dpcd_206 == dpcd_202[0x4]) {
+					if ((dpcd_206 & 0x3) == 0x3) /* lane0 match max swing */
+						loop = DP_LT_MAX_LOOP;
+					else
+						loop++;
 				} else {
-					dpcd_206 = tmp[0x4];
+					dpcd_206 = dpcd_202[0x4];
 				}
 
+				cr_loop++;
 				DP_MSG("CR Training Fail\n");
 			}
-		} else if (pass_tps1 && !pass_tps2_3) {
+		} else if (mtk_dp->training_info.eq_done == 0x0) {
 			DP_MSG("EQ Training START\n");
-			if (status_control == 0x1) {
-				if (mtk_dp->training_info.tps4) {
-					mtk_dp_set_training_pattern(mtk_dp,
-								    BIT(7));
-					DP_MSG("LT TPS4\n");
-				} else if (mtk_dp->training_info.tps3) {
-					mtk_dp_set_training_pattern(mtk_dp,
-								    BIT(6));
-					DP_MSG("LT TP3\n");
+
+			if (control == 0x1) {
+				if (mtk_dp->training_info.tps4_support) {
+					mtk_dp_set_training_pattern(mtk_dp, DP_TPS4);
+					temp[0] = 0x07;
+				} else if (mtk_dp->training_info.tps3_support) {
+					mtk_dp_set_training_pattern(mtk_dp, DP_TPS3);
+					temp[0] = 0x23;
 				} else {
-					mtk_dp_set_training_pattern(mtk_dp,
-								    BIT(5));
-					DP_MSG("LT TPS2\n");
+					mtk_dp_set_training_pattern(mtk_dp, DP_TPS2);
+					temp[0] = 0x22;
 				}
+				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00102, temp, 0x1);
 
-				if (mtk_dp->training_info.tps4) {
-					tmp[0] = 0x07;
-					drm_dp_dpcd_write(&mtk_dp->aux,
-							  DPCD_00102, tmp, 0x1);
-				} else if (mtk_dp->training_info.tps3) {
-					tmp[0] = 0x23;
-					drm_dp_dpcd_write(&mtk_dp->aux,
-							  DPCD_00102, tmp, 0x1);
-				} else {
-					tmp[0] = 0x22;
-					drm_dp_dpcd_write(&mtk_dp->aux,
-							  DPCD_00102, tmp, 0x1);
-				}
+				control = 0x2;
+				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00206, (dpcd_202 + 4), 0x2);
 
-				status_control = 0x2;
-				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00206,
-						 (tmp + 4), 0x2);
-
-				iteration_count++;
-				mtk_dp_training_check_swing_pre(mtk_dp,
-								target_lane_count, tmp,
-					dpcd_buf);
+				loop++;
+				mtk_dp_training_check_swing_pre(mtk_dp, lane_count, dpcd_202,
+								dpcd_buffer, true, false);
 			}
 
-			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00103,
-					  dpcd_buf, target_lane_count);
+			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00103, dpcd_buffer, lane_count);
 			drm_dp_link_train_channel_eq_delay(&mtk_dp->aux, mtk_dp->rx_cap);
 
-			drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00202,
-					 tmp, 0x6);
+			drm_dp_dpcd_read(&mtk_dp->aux, DPCD_00202, dpcd_202, 0x6);
 			if (mtk_dp->training_info.sink_ext_cap_en) {
-				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_0200C,
-						 dpcd_200c, 0x3);
-				tmp[0] |= dpcd_200c[0];
-				tmp[1] |= dpcd_200c[1];
-				tmp[2] |= dpcd_200c[2];
+				drm_dp_dpcd_read(&mtk_dp->aux, DPCD_0200C, dpcd_200c, 0x3);
+				dpcd_202[0] = dpcd_200c[0]; /* copy DPCD200C=>DCPD202 */
+				dpcd_202[1] = dpcd_200c[1]; /* copy DPCD200D=>DCPD203 */
+				dpcd_202[2] = dpcd_200c[2]; /* copy DPCD200E=>DCPD204 */
 			}
 
-			if (!drm_dp_clock_recovery_ok(tmp,
-						      target_lane_count)) {
+			if (!drm_dp_clock_recovery_ok(dpcd_202, lane_count)) {
 				mtk_dp->training_info.cr_done = false;
 				mtk_dp->training_info.eq_done = false;
 				break;
 			}
 
-			if (drm_dp_channel_eq_ok(tmp,
-						 target_lane_count)) {
-				if (tmp[2] & 0x1) {
-					DP_MSG("Inter-lane skew Success\n");
+			if (drm_dp_channel_eq_ok(dpcd_202, lane_count)) {
+				DP_MSG("EQ Training Success\n");
+				if (dpcd_202[2] & 0x1) {
 					mtk_dp->training_info.eq_done = true;
-					pass_tps2_3 = true;
-					DP_MSG("EQ Training Success\n");
+					mtk_dp->dp_ready = true;
+					DP_MSG("Inter-lane skew Success\n");
 					break;
 				}
 			}
 
 			DP_MSG("EQ Training Fail\n");
-
-			if (dpcd_206 == tmp[0x4])
-				iteration_count++;
+			eq_loop++;
+			if (dpcd_206 == dpcd_202[0x4])
+				loop++;
 			else
-				dpcd_206 = tmp[0x4];
+				dpcd_206 = dpcd_202[0x4];
 		}
 
-		mtk_dp_training_check_swing_pre(mtk_dp, target_lane_count,
-						tmp, dpcd_buf);
-		DP_MSG("train_retry_times:%d, iteration_count:%d\n",
-		       train_retry_times, iteration_count);
+		mtk_dp_training_check_swing_pre(mtk_dp, lane_count, dpcd_202,
+						dpcd_buffer, true, false);
+		DP_MSG("retry_times:%d, loop:%d\n", retry_times, loop);
+	} while ((loop < DP_LT_RETRY_LIMIT) &&
+			(cr_loop < DP_LT_MAX_CR_LOOP) &&
+			(eq_loop < DP_LT_MAX_EQ_LOOP));
 
-	} while ((train_retry_times < DP_TRAIN_RETRY_LIMIT) &&
-		(iteration_count < DP_TRAIN_MAX_ITERATION));
+	temp[0] = 0x0;
+	drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00102, temp, 0x1);
+	mtk_dp_set_training_pattern(mtk_dp, DP_0);
 
-	tmp[0] = 0x0;
-	drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00102, tmp, 0x1);
-	mtk_dp_set_training_pattern(mtk_dp, 0);
-
-	if (pass_tps2_3) {
-		mtk_dp->training_info.link_rate = target_link_rate;
-		mtk_dp->training_info.link_lane_count = target_lane_count;
+	if (mtk_dp->training_info.eq_done) {
+		mtk_dp->training_info.link_rate = link_rate;
+		mtk_dp->training_info.link_lane_count = lane_count;
 
 		mtk_dp_set_scramble(mtk_dp, true);
-
-		tmp[0] = target_lane_count
-			| DP_AUX_SET_ENAHNCED_FRAME;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00101, tmp, 0x1);
+		temp[0] = (lane_count | DP_AUX_SET_ENAHNCED_FRAME);
+		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00101, temp, 0x1);
 		mtk_dp_set_enhanced_frame_mode(mtk_dp, ENABLE_DP_EF_MODE);
 
-		DP_MSG("Link Training PASS\n");
-		return DP_RET_NOERR;
+		DP_MSG("Training PASS, link rate:0x%x, lane count:%d\n",
+		       mtk_dp->training_info.link_rate,
+			mtk_dp->training_info.link_lane_count);
+		return DP_LT_PASS;
 	}
 
-	DP_MSG("Link Training Fail\n");
-	return DP_RET_TRANING_FAIL;
-}
+	DP_MSG("Training Fail\n");
 
-bool mtk_dp_training_change_mode(struct mtk_dp *mtk_dp)
-{
-	mtk_dp_phyd_reset(mtk_dp);
-	mtk_dp_swingt_reset_pre_emphasis(mtk_dp);
-	mtk_dp_ssc_check(mtk_dp);
+	res = mtk_dp_check_training_res(mtk_dp, dpcd_202[0]);
 
-	mdelay(2);
-	return true;
+	return res;
 }
 
 int mtk_dp_set_training_start(struct mtk_dp *mtk_dp)
 {
-	u8 ret = DP_RET_NOERR;
-	u8 lane_count;
-	u8 link_rate;
-	u8 tmp[16];
-	u8 train_time_limits;
-#if !ENABLE_DP_FIX_LRLC
-	u8 max_link_rate;
-#endif
+	enum dp_link_rate max_link_rate = mtk_dp->training_info.max_link_rate;
+	enum dp_lane_count max_lane_count = mtk_dp->training_info.max_link_lane_count;
+	enum dp_link_rate link_rate;
+	enum dp_lane_count lane_count;
+	u32 loop;
+
+	if (mtk_dp->training_info.dp_version == DP_VER_14)
+		loop = DP_CTS_RETRAIN_TIMES_14;
+	else
+		loop = DP_CTS_RETRAIN_TIMES_DEFAULT;
 
 	if (!mtk_dp_hpd_get_pin_level(mtk_dp)) {
-		DP_MSG("Start Training Abort, HPD low\n");
-
-		train_time_limits = 12;
-		while (train_time_limits > 0) {
+		while (1) {
+			mdelay(1);
+			DP_MSG("Start Training Abort!=> HPD low ! remaining loop %d(delay)\n",
+			       loop);
 			if (mtk_dp_hpd_get_pin_level(mtk_dp))
 				break;
+			loop--;
 
-			train_time_limits--;
-			mdelay(1);
+			if (loop <= 0) {
+				mtk_dp->training_state = DP_TRAINING_STATE_DPIDLE;
+				return DP_RET_PLUG_OUT;
+			}
 		}
-
-		if (train_time_limits == 0) {
-			mtk_dp->training_state = DP_TRAINING_STATE_DPIDLE;
-			return DP_RET_PLUG_OUT;
-		}
+	} else {
+		mtk_dp->training_info.cable_plug_in = true;
 	}
 
-	if (!mtk_dp->training_info.dp_tx_auto_test_en) {
-		tmp[0] = 0x1;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, tmp, 0x1);
+	link_rate = mtk_dp->rx_cap[1];
+	lane_count = mtk_dp->rx_cap[2] & 0x1F;
+	DP_MSG("RX support link rate:0x%x, lane count:%d",
+	       link_rate, lane_count);
 
-		link_rate = mtk_dp->rx_cap[1];
-		lane_count = mtk_dp->rx_cap[2] & 0x1F;
-		DP_MSG("RX support link_rate:0x%x, lane_count:%x",
-		       link_rate, lane_count);
-
-#if !ENABLE_DP_FIX_LRLC
-		mtk_dp->training_info.link_rate =
-			(link_rate >= mtk_dp->training_info.max_link_rate) ?
-			mtk_dp->training_info.max_link_rate : link_rate;
-		mtk_dp->training_info.link_lane_count =
-			(lane_count >= max_lane_count) ?
-			max_lane_count : lane_count;
-#endif
-	}
-
-	link_rate = mtk_dp->training_info.link_rate;
-	lane_count = mtk_dp->training_info.link_lane_count;
+	link_rate = (link_rate >= max_link_rate) ?
+		max_link_rate : link_rate;
+	lane_count = (lane_count >= max_lane_count) ?
+		max_lane_count : lane_count;
 
 	switch (link_rate) {
 	case DP_LINK_RATE_RBR:
@@ -5782,67 +6015,74 @@ int mtk_dp_set_training_start(struct mtk_dp *mtk_dp)
 	case DP_LINK_RATE_HBR25:
 	case DP_LINK_RATE_HBR3:
 		break;
+
 	default:
-		mtk_dp->training_info.link_rate = DP_LINK_RATE_HBR3;
+		if (link_rate > DP_LINK_RATE_HBR3)
+			link_rate = DP_LINK_RATE_HBR3;
+		else if (link_rate > DP_LINK_RATE_HBR2)
+			link_rate = DP_LINK_RATE_HBR2;
+		else if (link_rate > DP_LINK_RATE_HBR)
+			link_rate = DP_LINK_RATE_HBR;
+		else
+			link_rate = DP_LINK_RATE_RBR;
 		break;
 	};
 
-#if !ENABLE_DP_FIX_LRLC
 	max_link_rate = link_rate;
-	train_time_limits = 0x12;
-#endif
-	do {
-		DP_MSG("Training with LinkRate:0x%x, LaneCount:%x", link_rate, lane_count);
 
+	do {
 		mtk_dp->training_info.cr_done = false;
 		mtk_dp->training_info.eq_done = false;
 
-		mtk_dp_training_change_mode(mtk_dp);
-		ret = mtk_dp_training_flow(mtk_dp, link_rate, lane_count);
-		if (ret == DP_RET_PLUG_OUT || ret == DP_RET_RETRANING)
-			return ret;
+		DP_MSG("training with link rate:0x%x, lane count:%d",
+		       link_rate, lane_count);
+
+		mtk_dp_training_flow(mtk_dp, link_rate, lane_count);
 
 		if (!mtk_dp->training_info.cr_done) {
-#if !ENABLE_DP_FIX_LRLC
 			switch (link_rate) {
 			case DP_LINK_RATE_RBR:
 				lane_count = lane_count / 2;
 				link_rate = max_link_rate;
+
 				if (lane_count == 0x0) {
 					mtk_dp->training_state =
 						DP_TRAINING_STATE_DPIDLE;
 					return DP_RET_TRANING_FAIL;
 				}
+
 				break;
+
 			case DP_LINK_RATE_HBR:
 				link_rate = DP_LINK_RATE_RBR;
 				break;
+
 			case DP_LINK_RATE_HBR2:
 				link_rate = DP_LINK_RATE_HBR;
 				break;
+
 			case DP_LINK_RATE_HBR3:
 				link_rate = DP_LINK_RATE_HBR2;
 				break;
+
 			default:
 				return DP_RET_TRANING_FAIL;
 			};
-#endif
-			train_time_limits--;
+
+			loop--;
 		} else if (!mtk_dp->training_info.eq_done) {
-#if !ENABLE_DP_FIX_LRLC
 			if (lane_count == DP_4LANE)
 				lane_count = DP_2LANE;
-			else if (lane_count == DP_2LANE)
+			else if (lane_count >= DP_1LANE)
 				lane_count = DP_1LANE;
 			else
 				return DP_RET_TRANING_FAIL;
-#endif
-			train_time_limits--;
+
+			loop--;
 		} else {
 			return DP_RET_NOERR;
 		}
-
-	} while (train_time_limits > 0);
+	} while (loop > 0);
 
 	return DP_RET_TRANING_FAIL;
 }
@@ -5852,7 +6092,7 @@ int mtk_dp_training_handler(struct mtk_dp *mtk_dp)
 	int ret = DP_RET_NOERR;
 	enum dp_encoder_id encoder_id = 0;
 
-	//mtk_dp_print_training_state(mtk_dp->training_state);
+	/* mtk_dp_print_training_state(mtk_dp->training_state); */
 
 	if (!mtk_dp->training_info.cable_plug_in)
 		return DP_RET_PLUG_OUT;
@@ -5903,8 +6143,8 @@ int mtk_dp_training_handler(struct mtk_dp *mtk_dp)
 
 	case DP_TRAINING_STATE_TRAINING:
 		mtk_dp_fec_enable(mtk_dp, false);
-		ret = mtk_dp_set_training_start(mtk_dp);
 
+		ret = mtk_dp_set_training_start(mtk_dp);
 		if (ret == DP_RET_NOERR) {
 			for (encoder_id = 0; encoder_id < DP_ENCODER_ID_MAX; encoder_id++) {
 				mtk_dp_video_mute(mtk_dp, encoder_id, true);
@@ -6121,13 +6361,14 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	if (ret)
 		DP_MSG("failed to parse vsv property\n");
 
+#if ATTACH_BRIDGE
 	ret = drm_of_find_panel_or_bridge(dev->of_node, 2, 0, NULL, &mtk_dp->next_bridge);
 	if (!mtk_dp->next_bridge) {
 		DP_ERR("Can not find next_bridge %d\n", ret);
 		return -EPROBE_DEFER;
 	}
 	DP_MSG("Found next bridge node: %pOF\n", mtk_dp->next_bridge->of_node);
-
+#endif
 	return 0;
 }
 
@@ -6277,24 +6518,35 @@ void mtk_dp_get_dsc_capability(u8 *dsc_cap)
 /*  dp tx api for EXPORT_SYMBOL_GPL start */
 void mtk_dp_aux_swap_enable(bool enable)
 {
-	DP_MSG("%s, enable:%d -> %d\n", __func__, aux_swap, enable);
-	aux_swap = enable;
+	if (!g_mtk_dp) {
+		DP_ERR("%s: dp not initial\n", __func__);
+		return;
+	}
+
+	DP_MSG("%s, enable=%d -> %d\n", __func__, g_mtk_dp->swap_enable, enable);
+
+	g_mtk_dp->swap_enable = enable;
 }
 EXPORT_SYMBOL_GPL(mtk_dp_aux_swap_enable);
 
 void mtk_dp_set_pin_assign(u8 type)
 {
+	if (!g_mtk_dp) {
+		DP_ERR("%s, dp not initial\n", __func__);
+		return;
+	}
+
 	DP_MSG("%s, pin assign:%d\n", __func__, type);
 
 	switch (type) {
 	case DP_USB_PIN_ASSIGNMENT_C:
 	case DP_USB_PIN_ASSIGNMENT_E:
-		max_lane_count = DP_4LANE;
+		g_mtk_dp->training_info.max_link_lane_count = DP_4LANE;
 		break;
 	case DP_USB_PIN_ASSIGNMENT_D:
 	case DP_USB_PIN_ASSIGNMENT_F:
 	default:
-		max_lane_count = DP_2LANE;
+		g_mtk_dp->training_info.max_link_lane_count = DP_2LANE;
 		break;
 	}
 }

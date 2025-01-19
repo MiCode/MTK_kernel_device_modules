@@ -75,6 +75,92 @@
 #define DP_TX_FORCE_PRE_EMPH_VAL_FLDMASK_LEN                              2
 /*-----------------------------------------------------*/
 
+#define DRIVING_PARAM_3                                                   (0x38)
+#define XTP_LN_TX_LCTXC0_SW0_PRE0_FLDMASK                                 0x3f
+#define XTP_LN_TX_LCTXC0_SW0_PRE0_FLDMASK_POS                             0
+#define XTP_LN_TX_LCTXC0_SW0_PRE0_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW0_PRE1_FLDMASK                                 0x3f00
+#define XTP_LN_TX_LCTXC0_SW0_PRE1_FLDMASK_POS                             8
+#define XTP_LN_TX_LCTXC0_SW0_PRE1_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW0_PRE2_FLDMASK                                 0x3f0000
+#define XTP_LN_TX_LCTXC0_SW0_PRE2_FLDMASK_POS                             16
+#define XTP_LN_TX_LCTXC0_SW0_PRE2_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW0_PRE3_FLDMASK                                 0x3f000000
+#define XTP_LN_TX_LCTXC0_SW0_PRE3_FLDMASK_POS                             24
+#define XTP_LN_TX_LCTXC0_SW0_PRE3_FLDMASK_LEN                             6
+
+#define DRIVING_PARAM_4                                                   (0x3C)
+#define XTP_LN_TX_LCTXC0_SW1_PRE0_FLDMASK                                 0x3f
+#define XTP_LN_TX_LCTXC0_SW1_PRE0_FLDMASK_POS                             0
+#define XTP_LN_TX_LCTXC0_SW1_PRE0_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW1_PRE1_FLDMASK                                 0x3f00
+#define XTP_LN_TX_LCTXC0_SW1_PRE1_FLDMASK_POS                             8
+#define XTP_LN_TX_LCTXC0_SW1_PRE1_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW1_PRE2_FLDMASK                                 0x3f0000
+#define XTP_LN_TX_LCTXC0_SW1_PRE2_FLDMASK_POS                             16
+#define XTP_LN_TX_LCTXC0_SW1_PRE2_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW2_PRE0_FLDMASK                                 0x3f000000
+#define XTP_LN_TX_LCTXC0_SW2_PRE0_FLDMASK_POS                             24
+#define XTP_LN_TX_LCTXC0_SW2_PRE0_FLDMASK_LEN                             6
+
+#define DRIVING_PARAM_5                                                   (0x40)
+#define XTP_LN_TX_LCTXC0_SW2_PRE1_FLDMASK                                 0x3f
+#define XTP_LN_TX_LCTXC0_SW2_PRE1_FLDMASK_POS                             0
+#define XTP_LN_TX_LCTXC0_SW2_PRE1_FLDMASK_LEN                             6
+
+#define XTP_LN_TX_LCTXC0_SW3_PRE0_FLDMASK                                 0x3f00
+#define XTP_LN_TX_LCTXC0_SW3_PRE0_FLDMASK_POS                             8
+#define XTP_LN_TX_LCTXC0_SW3_PRE0_FLDMASK_LEN                             6
+
+#define DRIVING_PARAM_6                                                   (0x44)
+#define XTP_LN_TX_LCTXCP1_SW0_PRE0_FLDMASK                                0x3f
+#define XTP_LN_TX_LCTXCP1_SW0_PRE0_FLDMASK_POS                            0
+#define XTP_LN_TX_LCTXCP1_SW0_PRE0_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW0_PRE1_FLDMASK                                0x3f00
+#define XTP_LN_TX_LCTXCP1_SW0_PRE1_FLDMASK_POS                            8
+#define XTP_LN_TX_LCTXCP1_SW0_PRE1_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW0_PRE2_FLDMASK                                0x3f0000
+#define XTP_LN_TX_LCTXCP1_SW0_PRE2_FLDMASK_POS                            16
+#define XTP_LN_TX_LCTXCP1_SW0_PRE2_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW0_PRE3_FLDMASK                                0x3f000000
+#define XTP_LN_TX_LCTXCP1_SW0_PRE3_FLDMASK_POS                            24
+#define XTP_LN_TX_LCTXCP1_SW0_PRE3_FLDMASK_LEN                            6
+
+#define DRIVING_PARAM_7                                                   (0x48)
+#define XTP_LN_TX_LCTXCP1_SW1_PRE0_FLDMASK                                0x3f
+#define XTP_LN_TX_LCTXCP1_SW1_PRE0_FLDMASK_POS                            0
+#define XTP_LN_TX_LCTXCP1_SW1_PRE0_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW1_PRE1_FLDMASK                                0x3f00
+#define XTP_LN_TX_LCTXCP1_SW1_PRE1_FLDMASK_POS                            8
+#define XTP_LN_TX_LCTXCP1_SW1_PRE1_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW1_PRE2_FLDMASK                                0x3f0000
+#define XTP_LN_TX_LCTXCP1_SW1_PRE2_FLDMASK_POS                            16
+#define XTP_LN_TX_LCTXCP1_SW1_PRE2_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW2_PRE0_FLDMASK                                0x3f000000
+#define XTP_LN_TX_LCTXCP1_SW2_PRE0_FLDMASK_POS                            24
+#define XTP_LN_TX_LCTXCP1_SW2_PRE0_FLDMASK_LEN                            6
+
+#define DRIVING_PARAM_8                                                   (0x4C)
+#define XTP_LN_TX_LCTXCP1_SW2_PRE1_FLDMASK                                0x3f
+#define XTP_LN_TX_LCTXCP1_SW2_PRE1_FLDMASK_POS                            0
+#define XTP_LN_TX_LCTXCP1_SW2_PRE1_FLDMASK_LEN                            6
+
+#define XTP_LN_TX_LCTXCP1_SW3_PRE0_FLDMASK                                0x3f00
+#define XTP_LN_TX_LCTXCP1_SW3_PRE0_FLDMASK_POS                            8
+#define XTP_LN_TX_LCTXCP1_SW3_PRE0_FLDMASK_LEN                            6
+
 #define REG_3000_DP_ENCODER0_P0              (0x3000)
 #define LANE_NUM_DP_ENCODER0_P0_FLDMASK                                 0x3
 #define LANE_NUM_DP_ENCODER0_P0_FLDMASK_POS                             0

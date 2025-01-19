@@ -6,6 +6,11 @@
 #ifndef __MTK_DRM_DP_COMMON_H__
 #define __MTK_DRM_DP_COMMON_H__
 
+#define ATTACH_BRIDGE 1
+
+#define DP_SUPPORT_MAX_LINKRATE	DP_LINK_RATE_HBR3
+#define DP_SUPPORT_MAX_LANECOUNT	DP_2LANE
+
 #define CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT 1
 #define DP_DRM_COMMON	0
 
@@ -61,7 +66,7 @@
 	mtk_dp_write_byte(mtk_dp, addr, val, mask)
 
 #define DP_ERR(fmt, arg...)	\
-		pr_info("[DP][ERROR]"pr_fmt(fmt), ##arg)
+		pr_info("[DP]"pr_fmt(fmt), ##arg)
 #define DP_FUNC(fmt, arg...)	\
 		pr_info("[DP][%s]"pr_fmt(fmt), __func__, ##arg)
 #define DP_DBG(fmt, arg...)	\
@@ -352,8 +357,8 @@ struct dp_info {
 
 struct dp_training_info {
 	bool sink_ext_cap_en : 1;
-	bool tps3 : 1;
-	bool tps4 : 1;
+	bool tps3_support : 1;
+	bool tps4_support : 1;
 	bool sink_ssc_en : 1;
 	bool dp_tx_auto_test_en : 1;
 	bool cable_plug_in : 1;
@@ -363,10 +368,10 @@ struct dp_training_info {
 	bool dwn_strm_port_present : 1;
 	bool cr_done : 1;
 	bool eq_done : 1;
-	bool set_max_linkrate;
 
 	u8 dp_version;
 	u8 max_link_rate;
+	u8 max_link_lane_count;
 	u8 link_rate;
 	u8 link_lane_count;
 	u16 phy_status;
@@ -922,6 +927,7 @@ struct mtk_dp {
 	u32 vsv_reg;
 	u32 vsv_mask;
 	u32 vsv_vers;
+	bool swap_enable;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_DP_MST_SUPPORT)
 	bool mst_enable;
