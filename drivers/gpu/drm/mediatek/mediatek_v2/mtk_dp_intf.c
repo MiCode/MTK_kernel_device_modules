@@ -783,19 +783,9 @@ static void mtk_dp_intf_prepare(struct mtk_ddp_comp *comp)
 
 void mtk_dp_intf_unprepare_clk(void)
 {
-	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_drm_private *priv;
-
 	/* disable dp intf clk */
 	if (g_dp_intf != NULL) {
-		clk_disable_unprepare(g_dp_intf->hf_fmm_ck);
-		clk_disable_unprepare(g_dp_intf->hf_fdp_ck);
 		clk_disable_unprepare(g_dp_intf->pclk);
-		clk_disable_unprepare(g_dp_intf->pclk_src[MT6991_TVDPLL_PLL]);
-		mtk_crtc = g_dp_intf->ddp_comp.mtk_crtc;
-		priv = mtk_crtc->base.dev->dev_private;
-		if (priv->data->mmsys_id == MMSYS_MT6989)
-			clk_disable_unprepare(g_dp_intf->vcore_pclk);
 		DPTXMSG("%s:succesed disable dp_intf and DP sel clock\n", __func__);
 	} else
 		DPTXERR("Failed to disable dp_intf clock\n");
@@ -804,8 +794,25 @@ EXPORT_SYMBOL(mtk_dp_intf_unprepare_clk);
 
 static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_dp_intf *dp_intf = NULL;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
 	DPTXFUNC();
 	mtk_dp_poweroff();
+	dp_intf = comp_to_dp_intf(comp);
+
+	/* disable dp intf clk */
+	if (dp_intf != NULL) {
+		clk_disable_unprepare(dp_intf->hf_fmm_ck);
+		clk_disable_unprepare(dp_intf->hf_fdp_ck);
+		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+		priv = mtk_crtc->base.dev->dev_private;
+		if (priv->data->mmsys_id == MMSYS_MT6989)
+			clk_disable_unprepare(dp_intf->vcore_pclk);
+		DPTXMSG("%s:succesed disable dp_intf clock\n", __func__);
+	} else
+		DPTXERR("Failed to disable dp_intf clock\n");
 }
 
 void mtk_dp_inf_video_clock(struct mtk_dp_intf *dp_intf)
@@ -845,14 +852,7 @@ void mtk_dp_inf_video_clock(struct mtk_dp_intf *dp_intf)
 	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
 	priv = mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		/* Liber */
-		ret = clk_prepare_enable(dp_intf->pclk_src[MT6991_TVDPLL_PLL]);
-		if (ret) {
-			DDPMSG("%s clk_prepare_enable pclk_src[TVDPLL_PLL]: err=%d\n",
-				__func__, ret);
-		}
-	} else {
+	if (priv->data->mmsys_id != MMSYS_MT6991) {
 		DPTXMSG("%s:clksrc %x,con1 %x,con0_reg %x,con1_reg %x,compatible %s",
 		__func__, clksrc, con1, con0_reg, con1_reg,
 		dp_intf->driver_data->video_clock_cfg->compatible);
