@@ -576,7 +576,6 @@ fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 extern unsigned int ovl_win_size;
 extern unsigned int default_emi_eff;
 extern unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL];
-extern unsigned int bwm20_overlap;
 extern int aod_scp_flag;
 extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag);

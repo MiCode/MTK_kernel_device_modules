@@ -244,8 +244,7 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_TRIG, 0x1, 0x1);
+	writel(0x1, comp->regs + DISP_REG_BWM_TRIG);
 }
 
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
@@ -290,7 +289,7 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 							all_layer_compress_ratio_table[i].key_value);
 					}
 				}
-				DDPINFO("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
+				DDPDBG_BWM("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
 					__func__, i, j, avail_layer, avg_val, peak_val,
 					all_layer_compress_ratio_table[i].average_ratio,
 					all_layer_compress_ratio_table[i].peak_ratio, int_val);
@@ -368,6 +367,7 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned long record1 = 0;
 	unsigned long record2 = 0;
 	unsigned long record3 = 0;
+	s32 reg_val;
 
 	if (comp->mtk_crtc)
 		params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
@@ -395,12 +395,12 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 	val |= ovl_fmt_convert(bwm, fmt, modifier, 1);
 
-	if (idx == 0) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_BWM_SRC_CON, 0, ~0);
-	}
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_SRC_CON, 1 << idx, BIT(idx));
+	if (idx == 0)
+		writel(0x0, comp->regs + DISP_REG_BWM_SRC_CON);
+
+	reg_val = readl(comp->regs + DISP_REG_BWM_SRC_CON);
+	reg_val |= 1 << idx;
+	writel(reg_val, comp->regs + DISP_REG_BWM_SRC_CON);
 
 	/* calculate for alignment */
 	src_x_align = (src_x / tile_w) * tile_w;
@@ -434,17 +434,14 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	}
 
 	val |= REG_FLD_VAL(FLD_BWM_L_2ND_SUBBUF, lx_2nd_subbuf);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_L_CON(idx), val, ~0);
+	writel(val, comp->regs + DISP_REG_BWM_L_CON(idx));
 
 	if (fmt != DRM_FORMAT_RGB565 && fmt != DRM_FORMAT_BGR565) {
 		src_h_align = src_h_half_align;
 		src_y_align = src_y_half_align;
 	}
 	lx_src_size = (src_h_align << 16) | src_w_align;
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_L_SRC_SIZE(idx),
-			lx_src_size, ~0);
+	writel(lx_src_size, comp->regs + DISP_REG_BWM_L_SRC_SIZE(idx));
 
 	if (src_w_align * src_h_align * Bpp)
 		active_layer_avg_info[idx] = (16 * expand)/(src_w_align * src_h_align * Bpp);
@@ -464,37 +461,29 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		DDPPR_ERR("%s BWM: division by zero, src_w:%u ovl_win_size:%u\n",
 				__func__, src_w_align, ovl_win_size);
 	}
-	record0 = ((0xFFFF & src_h_align) << 16) | (0xFFFF & src_w_align);
-	record1 = ((0xFFFF & active_layer_avg_info[idx]) << 16) |
-			(0xFFFF & active_layer_peak_info[idx]);
-	CRTC_MMP_MARK(0, bwm20, record0, record1);
 
 	tmp_bw = src_h_align * src_w_align / 32 / 8 * 16 / 500;
 	if (tmp_bw == 0)
 		tmp_bw = 1;
 	comp->qos_bw += tmp_bw;
 
+	record0 = ((0xFFFF & src_h_align) << 16) | (0xFFFF & src_w_align);
+	record1 = ((0xFFFF & active_layer_avg_info[idx]) << 16) |
+			(0xFFFF & active_layer_peak_info[idx]);
+	CRTC_MMP_MARK(0, bwm20, record0, record1);
+
 	lx_hdr_addr = addr + tile_offset *
 	    AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES;
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_L_HDR_ADDR(idx),
-			lx_hdr_addr, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_L_HDR_ADDR(idx),
-			lx_hdr_addr, ~0);
+	writel(lx_hdr_addr, comp->regs + DISP_REG_BWM_L_HDR_ADDR(idx));
 
 	if (bwm->data->is_support_34bits)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_BWM_L_ADDR_MSB(idx),
-			       (addr >> 32), ~0);
+		writel(lx_hdr_addr >> 32, comp->regs + DISP_REG_BWM_L_ADDR_MSB(idx));
 
 	lx_hdr_pitch = pitch / tile_w / Bpp *
 		AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES;
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_L_HDR_PITCH(idx),
-			lx_hdr_pitch, ~0);
+	writel(lx_hdr_pitch, comp->regs + DISP_REG_BWM_L_HDR_PITCH(idx));
 
 	return 0;
 }

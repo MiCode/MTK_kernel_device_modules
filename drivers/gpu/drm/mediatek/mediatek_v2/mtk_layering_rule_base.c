@@ -1223,7 +1223,6 @@ static int filter_by_ovl_cnt(struct drm_device *dev,
 static struct hrt_sort_entry *x_entry_list, *y_entry_list;
 static struct hrt_sort_entry *x_entry_list_for_compare, *y_entry_list_for_compare;
 
-
 #ifdef HRT_DEBUG_LEVEL2
 static int dump_entry_list(bool sort_by_y)
 {

@@ -208,7 +208,7 @@ static unsigned int fn;
 #endif
 /* overlay bandwidth monitor BURST ACC Window size */
 unsigned int ovl_win_size;
-unsigned int bwm20_overlap;
+int bwm20_overlap;
 bool no_bwm20_layer;
 
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
@@ -6686,13 +6686,12 @@ unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
 	return (unsigned int)bw;
 }
 
-static unsigned int overlap_to_bw(struct drm_crtc *crtc,
+static unsigned int overlap_to_bw(struct drm_crtc *crtc, unsigned int bw_base,
 	unsigned int overlap_num, struct mtk_drm_lyeblob_ids *lyeblob_ids)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int crtc_idx = drm_crtc_index(crtc);
-	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
 	unsigned int bw = 0, tmp_overlap_of_bwm;
 	unsigned int ori_overlap_num = overlap_num;
 	int discount = hrt_lp_switch_get();
@@ -6810,8 +6809,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
-	unsigned int bw = overlap_to_bw(crtc, frame_weight, lyeblob_ids);
-	unsigned int bw_base = 0, i;
+	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc), i;
+	unsigned int bw = overlap_to_bw(crtc, bw_base, frame_weight, lyeblob_ids);
 	int crtc_idx = drm_crtc_index(crtc);
 	unsigned int ovl0_2l_no_compress_num;
 	struct mtk_ddp_comp *output_comp;
@@ -6945,12 +6944,11 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	}
 
 	if (priv->data->update_channel_hrt) {
-		bw_base = mtk_drm_primary_frame_bw(crtc);
-		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
+		if (bw_base == 0)
+			bw_base = mtk_drm_primary_frame_bw(crtc);
 		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
 		DDPINFO("%s channel[%u][%u][%u][%u]\n", __func__,
 			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);
-		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
 			if (channel_hrt[i] > mtk_crtc->qos_ctx->last_channel_req[i]) {
@@ -6975,11 +6973,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 		if (bw_base == 0)
 			bw_base = mtk_drm_primary_frame_bw(crtc);
-		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		priv->data->update_channel_hrt_write(mtk_crtc, bw_base, channel_hrt_write);
 		DDPINFO("%s channel write[%u][%u][%u][%u]\n", __func__,
 			channel_hrt_write[0], channel_hrt_write[1], channel_hrt_write[2], channel_hrt_write[3]);
-		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
 			if (channel_hrt_write[i] > mtk_crtc->qos_ctx->last_channel_write_req[i]) {
@@ -7005,13 +7001,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		mtk_disp_set_module_hrt(mtk_crtc, bw_base, cmdq_handle, PMQOS_SET_HRT_BW_DELAY);
 	}
 
-	CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
-
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
-
-	CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 
 	if (opt_mmdvfs && is_force_high_step) {
 		unsigned int step_size = mtk_drm_get_mmclk_step_size();
@@ -7025,7 +7017,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 		if (mtk_crtc->force_high_enabled > 0) {
 			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
-			CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		} else {
 			en = 1;
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -7037,7 +7028,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			}
 			atomic_set(&mtk_crtc->force_high_step, 0);
 			mtk_vidle_force_power_ctrl_by_cpu(false);
-			CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {
@@ -10191,146 +10181,68 @@ void update_layer_cap_for_bwm(struct drm_crtc *crtc,
 	}
 }
 
-static struct bwm_hrt_sort_entry *y_entry_list;
+#define MAX_SIZE 100
+struct sort_list{
+	struct bwm_hrt_sort_entry entry[MAX_SIZE];
+	int size;
+} ;
 
-static int insert_entry(struct bwm_hrt_sort_entry **head,
-			struct bwm_hrt_sort_entry *sort_entry)
+static struct sort_list mtk_bwm_sort_list;
+#define BWM_DEBUG_LOG
+
+bool insert_bwm_entry(struct sort_list *list, int idx, struct bwm_hrt_sort_entry sort_entry)
 {
-	struct bwm_hrt_sort_entry *temp;
+	int i;
 
-	temp = *head;
-	while (temp) {
-		if (sort_entry->key < temp->key ||
-		    ((sort_entry->key == temp->key) &&
-		     (sort_entry->overlap_w > 0))) {
-			sort_entry->head = temp->head;
-			sort_entry->tail = temp;
-			if (temp->head != NULL)
-				temp->head->tail = sort_entry;
-			else
-				*head = sort_entry;
-			temp->head = sort_entry;
-			break;
-		}
-
-		if (temp->tail == NULL) {
-			temp->tail = sort_entry;
-			sort_entry->head = temp;
-			sort_entry->tail = NULL;
-			break;
-		}
-		temp = temp->tail;
-	}
-
-	return 0;
+	if (list->size >= MAX_SIZE)
+		return false;
+	if (idx < 0 || idx > list->size)
+		return false;
+	for (i = list->size; i > idx; i--)
+		list->entry[i] = list->entry[i - 1];
+	list->entry[idx] = sort_entry;
+	list->size++;
+	return true;
 }
 
-static int dump_entry_list(void)
-{
-	struct bwm_hrt_sort_entry *temp;
-	struct mtk_plane_pending_state *pending;
-
-	temp = y_entry_list;
-
-	DDPDBG_BWM("%s, addr:0x%p\n", __func__, temp);
-	while (temp) {
-		pending = temp->pending;
-		DDPDBG_BWM("key:%d, offset(%d, %d), w/h(%d, %d), overlap_w:%d\n",
-		       temp->key, pending->dst_x,
-		       pending->dst_y, pending->width,
-		       pending->height, temp->overlap_w);
-		temp = temp->tail;
-	}
-	DDPDBG_BWM("%s end\n", __func__);
-	return 0;
-}
-
-static int free_all_layer_entry(void)
-{
-	struct bwm_hrt_sort_entry *cur_entry, *next_entry;
-
-	cur_entry = y_entry_list;
-
-	while (cur_entry) {
-		next_entry = cur_entry->tail;
-		kfree(cur_entry);
-		cur_entry = next_entry;
-	}
-
-	y_entry_list = NULL;
-
-	return 0;
-}
-
-static int add_layer_entry(struct mtk_plane_state *plane_state,
+bool add_bwm_entry(struct sort_list *list, struct mtk_plane_state *plane_state,
 			   int overlap_w)
 {
-	struct bwm_hrt_sort_entry *begin_t, *end_t;
-	struct bwm_hrt_sort_entry **p_entry;
+	struct bwm_hrt_sort_entry begin, end;
 	struct mtk_plane_pending_state *pending = &plane_state->pending;
+	int idx = 0, i;
 
-	begin_t = kzalloc(sizeof(struct bwm_hrt_sort_entry), GFP_KERNEL);
-	end_t = kzalloc(sizeof(struct bwm_hrt_sort_entry), GFP_KERNEL);
+	begin.pending = pending;
+	begin.key = pending->dst_y;
+	begin.overlap_w = overlap_w;
+	end.pending = pending;
+	end.key = pending->dst_y + pending->height - 1;
+	end.overlap_w = -overlap_w;
 
-	begin_t->head = NULL;
-	begin_t->tail = NULL;
-	end_t->head = NULL;
-	end_t->tail = NULL;
-
-	begin_t->key = pending->dst_y;
-	end_t->key = pending->dst_y + pending->height - 1;
-	p_entry = &y_entry_list;
-	begin_t->overlap_w = overlap_w;
-	begin_t->pending = pending;
-	end_t->overlap_w = -overlap_w;
-	end_t->pending = pending;
-
-	if (*p_entry == NULL) {
-		*p_entry = begin_t;
-		begin_t->head = NULL;
-		begin_t->tail = end_t;
-		end_t->head = begin_t;
-		end_t->tail = NULL;
-	} else {
-		/* Inser begin entry */
-		insert_entry(p_entry, begin_t);
-
-		//DDPDBG_BWM("Insert key:%d\n", begin_t->key);
-		//dump_entry_list(void);
-
-		/* Inser end entry */
-		insert_entry(p_entry, end_t);
-
-		//DDPDBG_BWM("Insert key:%d\n", end_t->key);
-		//dump_entry_list(void);
-	}
-
-	return 0;
-}
-
-static int scan_y_overlap(void)
-{
-	struct bwm_hrt_sort_entry *tmp_entry;
-	int overlap_w_sum = 0;
-	int max_overlap = 0;
-
-	tmp_entry = y_entry_list;
-	while (tmp_entry) {
-		overlap_w_sum += tmp_entry->overlap_w;
-		tmp_entry = tmp_entry->tail;
-		if(overlap_w_sum > max_overlap)
-			max_overlap = overlap_w_sum;
-	}
-
-	return max_overlap;
-}
-
-static void bwm_trigger_cmdq_cb(struct cmdq_cb_data data)
-{
-	struct mtk_cmdq_cb_data *cb_data = data.data;
-
-	cmdq_pkt_destroy(cb_data->cmdq_handle);
-	kfree(cb_data);
+	while (idx < list->size && list->entry[idx].key < begin.key)
+		idx++;
+	insert_bwm_entry(list,idx, begin);
+#ifdef BWM_DEBUG_LOG
+	DDPINFO("Insert key:%d\n", begin.key);
+	for (i = 0; i < list->size; i++)
+		DDPINFO("idx%d key%d pos(%d %d) w/h(%d %d) overlap%d\n", i,
+				list->entry[i].key, list->entry[i].pending->dst_x,
+				list->entry[i].pending->dst_y, list->entry[i].pending->width,
+				list->entry[i].pending->height, list->entry[i].overlap_w);
+#endif
+	idx = 0;
+	while (idx < list->size && list->entry[idx].key < end.key)
+		idx++;
+	insert_bwm_entry(list,idx, end);
+#ifdef BWM_DEBUG_LOG
+	DDPINFO("Insert key:%d\n", end.key);
+	for (i = 0; i < list->size; i++)
+		DDPINFO("idx%d key%d pos(%d %d) w/h(%d %d) overlap%d\n", i,
+				list->entry[i].key, list->entry[i].pending->dst_x,
+				list->entry[i].pending->dst_y, list->entry[i].pending->width,
+				list->entry[i].pending->height, list->entry[i].overlap_w);
+#endif
+	return true;
 }
 
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
@@ -10342,7 +10254,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *comp;
 	unsigned int active_index = 0;
 	unsigned long tmp_srt = 0;
-	struct cmdq_pkt *cmdq_handle;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_cmdq_cb_data *bwm20_cb_data;
 
@@ -10359,6 +10270,7 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	}
 	comp->qos_bw = 0;
 	memset(all_layer_compress_ratio_table, 0, sizeof(all_layer_compress_ratio_table));
+	memset(&mtk_bwm_sort_list, 0, sizeof(struct sort_list));
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
@@ -10398,22 +10310,13 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 				}
 			}
 		} else if (mtk_get_format_bpp(fb->format->format) && active_index < 8) {
-			if (active_index == 0) {
-				mtk_crtc_pkt_create(&cmdq_handle, crtc,
-							mtk_crtc->gce_obj.client[CLIENT_BWM]);
-				bwm20_cb_data = kmalloc(sizeof(*bwm20_cb_data), GFP_KERNEL);
-				if (!bwm20_cb_data) {
-					DDPPR_ERR("%s cb data creation failed\n", __func__);
-					return;
-				}
-			}
 			all_layer_compress_ratio_table[j].active = 1;
 			all_layer_compress_ratio_table[j].valid = 1;
 			all_layer_compress_ratio_table[j].key_value =
 				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
 
 			//set layer config to bwm
-			mtk_ddp_comp_layer_config(comp, active_index, plane_state, cmdq_handle);
+			mtk_ddp_comp_layer_config(comp, active_index, plane_state, NULL);
 
 			CRTC_MMP_MARK(0, bwm20,
 			plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j, 1);
@@ -10422,7 +10325,7 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		j++;
 	}
 	tmp_srt = comp->qos_bw;
-	if (tmp_srt > 0 && cmdq_handle) {
+	if (tmp_srt > 0) {
 		unsigned int channel_sum = 0;
 
 		tmp_srt *= 1000000;
@@ -10439,10 +10342,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 
 		//trig bwm
-		mtk_ddp_comp_io_cmd(comp, cmdq_handle, MTK_IO_CMD_BWM_TRIG, NULL);
-		CRTC_MMP_MARK(0, bwm20, (unsigned long)cmdq_handle, 2);
-		bwm20_cb_data->cmdq_handle = cmdq_handle;
-		cmdq_pkt_flush_threaded(cmdq_handle, bwm_trigger_cmdq_cb, bwm20_cb_data);
+		mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_TRIG, NULL);
+		CRTC_MMP_MARK(0, bwm20, 0, comp->qos_bw);
 	} else
 		no_bwm20_layer = true;
 
@@ -10457,6 +10358,7 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct drm_plane *plane;
 	int overlap, weight;
 	static bool aee_trigger = true;
+	int overlap_sum = 0;
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	plane_mask = crtc->state->plane_mask;
@@ -10476,14 +10378,16 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
 	__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-	//calc overlap
-	CRTC_MMP_MARK(0, bwm20, comp->qos_bw, 3);
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
 			to_mtk_plane_state(plane->state);
 
-		if (plane_state->pending.enable == 0)
+		if (plane_state->pending.enable == 0 ||
+			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
+			plane_state->mml_mode == MML_MODE_RACING ||
+			(plane_state->pending.height == 0) ||
+			(plane_state->pending.width == 0))
 			continue;
 		weight = HRT_UINT_WEIGHT;
 		bpp = mtk_drm_format_plane_cpp(plane_state->pending.format, 0);
@@ -10515,13 +10419,16 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 		}
 		overlap = div_u64((weight * bpp * 10000), default_emi_eff);
 		CRTC_MMP_MARK(0, bwm20, overlap, 5);
-
-		add_layer_entry(plane_state, overlap);
+		add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
 	}
-	bwm20_overlap = scan_y_overlap();
-	free_all_layer_entry();
-	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
+	for (i = 0; i < mtk_bwm_sort_list.size; i++) {
+		overlap_sum += mtk_bwm_sort_list.entry[i].overlap_w;
+		if (overlap_sum > bwm20_overlap)
+			bwm20_overlap = overlap_sum;
+	}
 
+	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
+#ifdef BWM_DEBUG_LOG
 	DDPDBG_BWM("BWMT===== all_layer_compress_ratio_tb ===== overlap %d\n", bwm20_overlap);
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
@@ -10533,10 +10440,13 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 				all_layer_compress_ratio_table[i].valid,
 				all_layer_compress_ratio_table[i].active);
 	}
+#endif
 	if (mtk_crtc->cur_lyeblob) {
 		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle);
 		mtk_crtc->cur_lyeblob = NULL;
-	}
+	} else
+		DDPINFO("bwm can't get lye_blob for update hrt\n");
+
 	return;
 }
 
@@ -17809,7 +17719,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				mtk_crtc_state->cmdq_handle =
 					mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, true);
 				CRTC_MMP_MARK(index, atomic_begin,
-					(unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
+					(unsigned long)mtk_crtc_state->cmdq_handle, 0);
 				drm_trace_tag_mark("atomic_begin");
 			}
 			goto end;
@@ -17875,12 +17785,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 	mtk_crtc_state->cmdq_handle =
 		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, mtk_crtc->is_mml_submit);
-	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
+	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 	drm_trace_tag_mark("atomic_begin");
 
 	/* set backlight value from HWC */
 	mtk_drm_set_backlight(mtk_crtc);
-	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 
 #ifndef DRM_CMDQ_DISABLE
 	if (atomic_read(&priv->need_recover)) {
@@ -17913,7 +17822,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {
 		mtk_drm_ovl_bw_monitor_ratio_get(crtc, atomic_state);
-		CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	}
 #endif
 
@@ -17979,7 +17887,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (priv->data->ovl_exdma_rule && mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] == 1) {
 		DDPINFO("first reset path\n");
 		mtk_drm_crtc_exdma_path_setting_reset(mtk_crtc, mtk_crtc_state->cmdq_handle);
-		CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
@@ -17995,12 +17902,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_crtc->fake_layer.fake_layer_mask)
 		update_frame_weight(crtc, mtk_crtc_state);
 
-	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
-
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
-
-	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 
 	if (priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6991 ||
