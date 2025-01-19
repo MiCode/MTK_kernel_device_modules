@@ -3458,18 +3458,16 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 
 	CRTC_MMP_EVENT_START(0, backlight, 0x123,
 			level);
-	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
-		mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
-
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -ENODEV;
 	}
 
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	if (!mtk_crtc->enabled) {
+		mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 		/* 1. power on mtcmos */
 		mtk_drm_top_clk_prepare_enable(crtc);
 		mtk_crtc_gce_event_config(crtc);
@@ -3566,9 +3564,9 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		cmdq_mbox_disable(client->chan);
 		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
 		mtk_drm_top_clk_disable_unprepare(crtc);
+		mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 	}
 
-	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 	CRTC_MMP_EVENT_END(0, backlight, 0x123,
 			level);
 
