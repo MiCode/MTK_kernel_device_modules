@@ -281,6 +281,7 @@ static const struct file_operations apummu_dbg_fops_kernel = {
 void apummu_dbg_init(struct apummu_dev_info *adv, struct dentry *apu_dbg_root)
 {
 	g_ammu_klog = 0xF; /* log all on, plz refer to apummu_cmn.h*/
+	apummu_apusys_trace = 0;
 
 	/* create apummu FS root node */
 	apummu_dbg_root = debugfs_create_dir(APUMMU_DBG_DIR, apu_dbg_root);

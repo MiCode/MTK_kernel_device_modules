@@ -33,7 +33,6 @@ int reviser_remote_check_reply(void *reply)
 }
 int reviser_remote_print_hw_boundary(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -48,8 +47,6 @@ int reviser_remote_print_hw_boundary(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -72,7 +69,6 @@ out:
 }
 int reviser_remote_print_hw_ctx(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -87,8 +83,6 @@ int reviser_remote_print_hw_ctx(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -112,7 +106,6 @@ out:
 
 int reviser_remote_print_hw_rmp_table(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -127,8 +120,6 @@ int reviser_remote_print_hw_rmp_table(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -152,7 +143,6 @@ out:
 
 int reviser_remote_print_hw_default_iova(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -167,8 +157,6 @@ int reviser_remote_print_hw_default_iova(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -191,7 +179,6 @@ out:
 }
 int reviser_remote_print_hw_exception(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -206,8 +193,6 @@ int reviser_remote_print_hw_exception(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 
 	memset(&req, 0, sizeof(struct reviser_msg));
@@ -232,7 +217,6 @@ out:
 
 int reviser_remote_print_table_tcm(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -247,8 +231,6 @@ int reviser_remote_print_table_tcm(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -272,7 +254,6 @@ out:
 
 int reviser_remote_print_table_ctx(void *drvinfo)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 
@@ -287,8 +268,6 @@ int reviser_remote_print_table_ctx(void *drvinfo)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -313,7 +292,6 @@ out:
 
 int reviser_remote_print_table_vlm(void *drvinfo, uint32_t ctx)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0;
@@ -330,8 +308,6 @@ int reviser_remote_print_table_vlm(void *drvinfo, uint32_t ctx)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -357,7 +333,6 @@ out:
 
 int reviser_remote_set_dbg_loglevel(void *drvinfo, uint32_t level)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0;
@@ -373,8 +348,6 @@ int reviser_remote_set_dbg_loglevel(void *drvinfo, uint32_t level)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -400,7 +373,6 @@ out:
 
 int reviser_remote_get_dbg_loglevel(void *drvinfo, uint32_t *level)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	uint32_t value = 0;
 	int ret = 0;
@@ -417,8 +389,6 @@ int reviser_remote_get_dbg_loglevel(void *drvinfo, uint32_t *level)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -446,7 +416,6 @@ out:
 
 int reviser_remote_set_op(void *drvinfo, uint32_t *argv, uint32_t argc)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	uint32_t i = 0;
 	int ret = 0;
@@ -464,8 +433,6 @@ int reviser_remote_set_op(void *drvinfo, uint32_t *argv, uint32_t argc)
 		LOG_ERR("invalid argc %d / %d\n", argc, max_data);
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	req.cmd = REVISER_CMD_DBG_OP;
 	req.option = REVISER_OPTION_SET;
@@ -545,7 +512,6 @@ out:
 
 int reviser_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iova)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0;
@@ -561,8 +527,6 @@ int reviser_remote_set_hw_default_iova(void *drvinfo, uint32_t ctx, uint64_t iov
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -591,7 +555,6 @@ int reviser_remote_alloc_mem(void *drvinfo,
 		uint32_t type, uint64_t input_addr, uint32_t size,
 		uint64_t *addr, uint32_t *sid)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	uint32_t ret_id = 0, mem_op = 0, out_op = 0;
@@ -611,8 +574,6 @@ int reviser_remote_alloc_mem(void *drvinfo,
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -661,7 +622,6 @@ out:
 int reviser_remote_free_mem(void *drvinfo, uint32_t sid, uint32_t *type,
 				uint64_t *addr, uint32_t *size)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0;
@@ -681,8 +641,6 @@ int reviser_remote_free_mem(void *drvinfo, uint32_t sid, uint32_t *type,
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -729,7 +687,6 @@ out:
 int reviser_remote_map_mem(void *drvinfo,
 		uint64_t session, uint32_t sid, uint64_t *addr)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	uint32_t mem_op = 0, out_op = 0;
@@ -749,8 +706,6 @@ int reviser_remote_map_mem(void *drvinfo,
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -795,7 +750,6 @@ out:
 int reviser_remote_unmap_mem(void *drvinfo,
 		uint64_t session, uint32_t sid)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	uint32_t mem_op = 0, out_op = 0;
@@ -812,8 +766,6 @@ int reviser_remote_unmap_mem(void *drvinfo,
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -853,7 +805,6 @@ out:
 
 int reviser_remote_import_mem(void *drvinfo, uint64_t session, uint32_t sid)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0, ridx = 0;
@@ -870,8 +821,6 @@ int reviser_remote_import_mem(void *drvinfo, uint64_t session, uint32_t sid)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));
@@ -912,7 +861,6 @@ out:
 
 int reviser_remote_unimport_mem(void *drvinfo, uint64_t session, uint32_t sid)
 {
-	struct reviser_dev_info *rdv = NULL;
 	struct reviser_msg req, reply;
 	int ret = 0;
 	int widx = 0, ridx = 0;
@@ -929,8 +877,6 @@ int reviser_remote_unimport_mem(void *drvinfo, uint64_t session, uint32_t sid)
 		LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	rdv = (struct reviser_dev_info *)drvinfo;
 
 	memset(&req, 0, sizeof(struct reviser_msg));
 	memset(&reply, 0, sizeof(struct reviser_msg));

@@ -163,7 +163,7 @@ int reviser_mem_free(struct device *dev, struct reviser_mem *mem, bool fix)
 	}
 
 
-	return 0;
+	return ret;
 }
 
 int reviser_mem_alloc(struct device *dev, struct reviser_mem *mem, bool fix)

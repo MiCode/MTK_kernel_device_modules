@@ -362,7 +362,9 @@ void reviser_print_default_iova(void *drvinfo, void *s_file)
 
 static uint32_t _reviser_ctrl_reg_read(void *drvinfo, uint32_t offset)
 {
+#if !(APUSYS_SECURE)
 	struct reviser_dev_info *rdv = NULL;
+#endif
 	int ret = 0;
 	size_t value = 0;
 	struct arm_smccc_res res;
@@ -372,9 +374,7 @@ static uint32_t _reviser_ctrl_reg_read(void *drvinfo, uint32_t offset)
 		return ret;
 	}
 
-	rdv = (struct reviser_dev_info *)drvinfo;
 #if APUSYS_SECURE
-
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
 		MTK_APUSYS_KERNEL_OP_REVISER_CHK_VALUE,
 		offset, 0, 0, 0, 0, 0, &res);
@@ -388,8 +388,8 @@ static uint32_t _reviser_ctrl_reg_read(void *drvinfo, uint32_t offset)
 	}
 
 #else
+	rdv = (struct reviser_dev_info *)drvinfo;
 	value = _reviser_reg_read(rdv->rsc.ctrl.base, offset);
-
 #endif
 
 	return value;
@@ -785,7 +785,6 @@ int reviser_get_interrupt_offset(void *drvinfo)
 {
 	uint32_t offset = 0;
 	int ret = 0;
-	size_t reg_value;
 	struct arm_smccc_res res;
 
 	struct reviser_dev_info *rdv = NULL;
@@ -837,7 +836,6 @@ int reviser_get_interrupt_offset(void *drvinfo)
 				MTK_APUSYS_KERNEL_OP_REVISER_GET_INTERRUPT_STATUS,
 				offset, 0, 0, 0, 0, 0, &res);
 		ret = res.a0;
-		reg_value = res.a1;
 #else
 		_reviser_reg_set(rdv->rsc.ctrl.base,
 				offset, 1);
