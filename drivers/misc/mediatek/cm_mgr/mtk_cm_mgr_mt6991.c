@@ -546,7 +546,6 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-	local_hk.cm_mgr_get_perfs = cm_mgr_get_perfs_mt6991;
 	local_hk.check_cm_mgr_status = check_cm_mgr_status_mt6991;
 
 	cm_mgr_register_hook(&local_hk);
