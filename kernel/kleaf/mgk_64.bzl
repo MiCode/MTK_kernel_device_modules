@@ -437,6 +437,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmstat/trace_mmstat.ko",
     "drivers/misc/mediatek/monitor_hang/monitor_hang.ko",
     "drivers/misc/mediatek/mtk-interconnect/mtk-icc-core.ko",
+    "drivers/misc/mediatek/mtk_zram/mtk_zram.ko",
     "drivers/misc/mediatek/mtprintk/mtk_printk_ctrl.ko",
     "drivers/misc/mediatek/mtprof/bootprof.ko",
     "drivers/misc/mediatek/nfc/st21nfc/st21nfc.ko",
