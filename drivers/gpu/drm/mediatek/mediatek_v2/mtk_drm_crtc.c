@@ -957,6 +957,11 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	unsigned int addr = 0;
 	int value = 0;
 
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		// return for 6993 bring up, need to remove
+		return;
+	}
+
 	if (mtk_crtc->first_blender)
 		DDPMSG("reset path first: %d\n",mtk_crtc->first_blender->id);
 
@@ -14356,7 +14361,7 @@ void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq
 			priv->data->mmsys_id == MMSYS_MT6765 ||
 			priv->data->mmsys_id == MMSYS_MT6768)
 			DDPMSG("keep first layer for OVLs\n");
-		else if(mtk_crtc->last_blender)
+		else if(mtk_crtc->last_blender && comp == mtk_crtc->first_blender)
 			keep_first_layer = false;
 	}
 
