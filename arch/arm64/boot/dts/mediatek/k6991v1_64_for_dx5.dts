@@ -11,6 +11,7 @@
 #include <dt-bindings/clock/mt6991-clk.h>
 #include <dt-bindings/power/mt6991-power.h>
 #include <dt-bindings/memory/mt6991-smi-pd.h>
+#include <dt-bindings/mminfra/mminfra-mt6991.h>
 
 &chosen {
 bootargs_ext = "rcu_nocbs=0-7";
@@ -749,6 +750,22 @@ bootargs_ext = "rcu_nocbs=0-7";
 
 &smi_hwccf {
 	compatible = "mediatek,smi-hwccf";
+};
+
+&mminfra_util {
+	compatible = "mediatek,mminfra-util";
+	mminfra-mtcmos-num = <MMINFRA_MT6991_PWR_NR>; /* mm0/mm1/mm_ao */
+	mminfra-type-num = <MMINFRA_MT6991_TYPE_NR>;
+	mminfra-type0-pwr = <MMINFRA_MT6991_PWR_MM1>; /* cg_link to mm1*/
+	mminfra-mtcmos-voter = <56 56 56>;
+	mminfra-mtcmos-data = <26 27 25>;
+};
+
+&mminfra_debug {
+	power-domains;
+	mediatek,mminfra-supply = <&mminfra_util>;
+	mminfra-api-pwr-ctrl;
+	mminfra-api-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
 };
 
 &dispsys_config {
