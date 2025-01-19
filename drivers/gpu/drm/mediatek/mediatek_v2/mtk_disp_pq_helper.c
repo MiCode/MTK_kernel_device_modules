@@ -336,6 +336,7 @@ static void frame_cmdq_cb(struct cmdq_cb_data data)
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	int index = drm_crtc_index(crtc);
 
+	drm_trace_tag_mark("pq_frame_cfg_done");
 	if (need_wait_done) {
 		atomic_set(&pq_data->cfg_done, 1);
 		wake_up_interruptible(&pq_data->cfg_done_wq);
@@ -677,6 +678,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	bool is_atomic_commit = cmdq_handle;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	bool need_wait_done = false;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDPDBG("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
 	mtk_drm_trace_begin("disp_pq_helper_frame_config");
@@ -838,7 +840,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			}
 			kfree(cb_data);
 			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000003);
-		} else if (check_trigger)
+		} else if (check_trigger && !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER))
 			mtk_crtc_check_trigger(mtk_crtc, check_trigger == CHECK_TRIGGER_DELAY
 						|| mtk_crtc->msync2.msync_frame_status, !user_lock);
 		DDPDBG("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);

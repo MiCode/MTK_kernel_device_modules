@@ -612,9 +612,14 @@ int disp_ccorr_eventctl(struct mtk_ddp_comp *comp, void *data)
 	int ret = 0;
 	/* TODO: dual pipe */
 	int *enabled = data;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
-	if (enabled)
-		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER)) {
+		if (enabled)
+			mtk_crtc_check_trigger(mtk_crtc, true, true);
+	}
 
 	if (enabled == NULL) {
 		DDPPR_ERR("%s, null pointer!\n", __func__);
