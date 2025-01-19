@@ -14,10 +14,8 @@
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <soc/mediatek/smi.h>
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #include <linux/iommu.h>
 #include "mtk-smmu-v3.h"
-#endif
 
 #define MM_MONITOR_DRIVER_NAME		"mtk-mm-monitor-controller"
 
