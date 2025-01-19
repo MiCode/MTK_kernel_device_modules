@@ -2236,6 +2236,9 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	if (!mtk_edp->train_info.cable_plugged_in)
 		return ret;
 
+	if (mtk_edp->next_bridge)
+		return connector_status_connected;
+
 	if (!enabled)
 		mtk_edp_aux_panel_poweron(mtk_edp, true);
 
@@ -3107,12 +3110,12 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	mtk_edp->bridge.funcs = &mtk_edp_bridge_funcs;
 	mtk_edp->bridge.of_node = dev->of_node;
 	mtk_edp->bridge.type = mtk_edp->data->bridge_type;
-
+	mtk_edp->bridge.ops = DRM_BRIDGE_OP_DETECT;
 	if (mtk_edp->use_edid)
-		mtk_edp->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_HPD |
-						DRM_BRIDGE_OP_EDID;
-	else
-		mtk_edp->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_HPD;
+		mtk_edp->bridge.ops |= DRM_BRIDGE_OP_EDID;
+
+	if (mtk_edp->use_hpd)
+		mtk_edp->bridge.ops |= DRM_BRIDGE_OP_HPD;
 
 	ret = devm_drm_bridge_add(dev, &mtk_edp->bridge);
 	if (ret) {
