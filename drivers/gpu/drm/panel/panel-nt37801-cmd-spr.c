@@ -334,7 +334,6 @@ static void lcm_panel_init(struct lcm *ctx)
 	lcm_dcs_write_seq_static(ctx, 0x35, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x3B, 0x00, 0x18, 0x00, 0x10);
 	lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
-	lcm_dcs_write_seq_static(ctx, 0x51, 0x07, 0xFF, 0x07, 0xFF, 0x0F, 0xFF);
 	lcm_dcs_write_seq_static(ctx, 0x53, 0x20);
 	lcm_dcs_write_seq_static(ctx, 0x9C, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x5F, 0x01);
@@ -379,32 +378,6 @@ static void lcm_panel_init(struct lcm *ctx)
 
 	lcm_dcs_write_seq_static(ctx, 0x11);
 	msleep(140);
-
-	pr_info("%s current_fps:%d\n", __func__, current_fps);
-	switch (current_fps) {
-	case 120:
-		mode_switch_to_120(&ctx->panel);
-		break;
-	case 90:
-		mode_switch_to_90(&ctx->panel);
-		break;
-	case 60:
-		mode_switch_to_60(&ctx->panel);
-		break;
-	case 30:
-		mode_switch_to_30(&ctx->panel);
-		break;
-	case 24:
-		mode_switch_to_24(&ctx->panel);
-		break;
-	case 10:
-		mode_switch_to_10(&ctx->panel);
-		break;
-	default:
-		pr_info("%s current_fps mismatch:%d\n", __func__, current_fps);
-		break;
-	}
-
 	lcm_dcs_write_seq_static(ctx, 0x29);
 }
 
