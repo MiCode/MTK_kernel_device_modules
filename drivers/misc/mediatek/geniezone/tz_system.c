@@ -431,7 +431,7 @@ int _gz_client_wait_ret(int32_t Fd, struct gz_syscall_cmd_param *data)
 {
 	ssize_t rc;
 	struct tipc_k_handle *handle;
-	int size;
+	int __maybe_unused size;
 
 	handle = _FdToHandle(Fd);
 	if (!handle) {
