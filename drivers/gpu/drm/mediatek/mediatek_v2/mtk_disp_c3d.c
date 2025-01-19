@@ -899,7 +899,7 @@ int disp_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 	if(c3d->bin_num != c3d_lut->bin_num) {
 		DDPINFO("%s: comp binsize %d and data binsize %d not matched\n",
 			__func__, c3d->bin_num, c3d_lut->bin_num);
-		return -1;
+		return 0;
 	}
 
 	// 2. lock for protect crtc & power
