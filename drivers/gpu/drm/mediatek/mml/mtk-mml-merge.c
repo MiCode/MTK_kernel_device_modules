@@ -99,14 +99,14 @@ s32 merge_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct tile_func_block *func,
 	union mml_tile_data *data)
 {
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_size *frame_in = &cfg->frame_in;
-	struct mml_crop *crop = &cfg->frame_in_crop[0];
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_crop *crop = &cfg->frame_in_crop[0];
 
 	func->enable_flag = true;
 
 	if (cfg->info.dest_cnt == 1 &&
-	     (crop->r.width != frame_in->width ||
+	    (crop->r.width != frame_in->width ||
 	    crop->r.height != frame_in->height)) {
 		u32 in_crop_w, in_crop_h;
 
