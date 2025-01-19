@@ -11236,6 +11236,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
+			ports =
+				<SMMU_L7_P7_JPGENC_YRD>,
+				<SMMU_L7_P8_JPGENC_CRD>,
+				<SMMU_L7_P9_JPGENC_QT>,
+				<SMMU_L7_P16_JPGENC_BS>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P7_JPGENC_YRD)
 							&mmqos SLAVE_COMMON(0)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L7_P8_JPGENC_CRD)
@@ -11249,6 +11254,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
 			axdomain = <224>;
+			clock-set = <832000000>;
 		};
 
 		jpgenc1: jpgenc@38830000 {
@@ -11266,6 +11272,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7 &smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
+			ports =
+				<SMMU_L8_P7_JPGENC_YRD>,
+				<SMMU_L8_P8_JPGENC_CRD>,
+				<SMMU_L8_P9_JPGENC_QT>,
+				<SMMU_L8_P16_JPGENC_BS>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P7_JPGENC_YRD)
 							&mmqos SLAVE_COMMON(1)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L8_P8_JPGENC_CRD)
@@ -11279,6 +11290,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
 			axdomain = <224>;
+			clock-set = <832000000>;
 		};
 
 		vcodec_venc: venc@38000000 {
