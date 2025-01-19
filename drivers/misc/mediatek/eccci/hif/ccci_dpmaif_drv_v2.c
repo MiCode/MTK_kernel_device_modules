@@ -685,9 +685,19 @@ unsigned short ccci_drv2_dl_get_bat_ridx(void)
 	unsigned int ridx = 0;
 
 	ridx = DPMA_READ_AO_DL(DPMAIF_AO_DL_BAT_STA2);
-	ridx = (ridx & DPMAIF_DL_BAT_WRIDX_MSK);
+	ridx = ((ridx >> 16) & DPMAIF_DL_BAT_WRIDX_MSK);
 
 	return (unsigned short)ridx;
+}
+
+unsigned short ccci_drv2_dl_get_bat_widx(void)
+{
+	unsigned int widx = 0;
+
+	widx = DPMA_READ_AO_DL(DPMAIF_AO_DL_BAT_STA2);
+	widx = (widx & DPMAIF_DL_BAT_WRIDX_MSK);
+
+	return (unsigned short)widx;
 }
 
 unsigned short ccci_drv2_dl_get_frg_bat_ridx(void)
@@ -695,7 +705,7 @@ unsigned short ccci_drv2_dl_get_frg_bat_ridx(void)
 	unsigned int ridx = 0;
 
 	ridx = DPMA_READ_AO_DL(DPMAIF_AO_DL_FRGBAT_STA2);
-	ridx = (ridx & DPMAIF_DL_BAT_WRIDX_MSK);
+	ridx = ((ridx >> 16) & DPMAIF_DL_BAT_WRIDX_MSK);
 
 	return (unsigned short)ridx;
 }

@@ -452,8 +452,11 @@ static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_bat_ridx());
 		if (g_debug_flags & DEBUG_BAT_ALC_SKB)
 			pre_hw_wr_idx = ccci_drv3_dl_get_bat_widx();
-	} else  //version 1, 2
+	} else  {//version 1, 2
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv2_dl_get_bat_ridx());
+		if (g_debug_flags & DEBUG_BAT_ALC_SKB)
+			pre_hw_wr_idx = ccci_drv2_dl_get_bat_widx();
+	}
 
 	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to bat
 		alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
@@ -563,6 +566,8 @@ alloc_end:
 		hdr.pre_hw_wr = pre_hw_wr_idx;
 		if (g_dpmf_ver >= 3)
 			hdr.hw_rd = ccci_drv3_dl_get_bat_ridx();
+		else  //version 1, 2
+			 hdr.hw_rd = ccci_drv2_dl_get_bat_ridx();
 		hdr.thrd = alloc_skb_threshold;
 		hdr.pre_time = pre_time;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
