@@ -1732,6 +1732,9 @@ static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
 
 
 	for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+		if (t->task == NULL)
+			break;
+
 		if (strcmp(cpu_counts[i].comm, t->task->comm) == 0) {
 			cpu_counts[i].count++;
 			cpu_counts[i].last_time = sched_clock();
