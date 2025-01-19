@@ -18,6 +18,7 @@
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
 #include <linux/if_vlan.h>
+#include <linux/string_helpers.h>
 #include <net/sch_generic.h>
 #include <linux/ip.h>
 #include <linux/ktime.h>
@@ -1435,6 +1436,8 @@ int mtk_gether_get_host_addr_cdc(struct net_device *net, char *host_addr, int le
 	dev = netdev_priv(net);
 	if (snprintf(host_addr, len, "%pm", dev->host_mac) < 0)
 		return -EINVAL;
+
+	string_upper(host_addr, host_addr);
 
 	return strlen(host_addr);
 }
