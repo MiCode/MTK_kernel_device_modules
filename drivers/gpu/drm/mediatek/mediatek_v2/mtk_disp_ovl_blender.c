@@ -35,6 +35,8 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_dump.h"
+
 
 #define DISP_REG_OVL_BLD_STA		(0x000UL)
 	#define ENG_ACTIVE					BIT(0)
@@ -239,6 +241,9 @@ struct mtk_disp_ovl_blender {
 
 static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd io_cmd, void *params);
+static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+			    enum mtk_ddp_comp_id prev,
+			    enum mtk_ddp_comp_id next);
 
 static inline struct mtk_disp_ovl_blender *comp_to_ovl_blender(struct mtk_ddp_comp *comp)
 {
@@ -419,11 +424,15 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
 	int i = 0;
-	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
-	if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1){
-		DDPDBG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
-		return;
+	if (keep_first_layer) {
+		if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1) {
+			DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
+			mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, false);
+			mtk_ovl_blender_connect(comp, handle, 0, 0);
+			return;
+		}
 	}
 
 	/**
@@ -559,19 +568,40 @@ static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	cmdq_pkt_write(handle, comp->cmdq_base,
+	if (ext_idx != LYE_NORMAL)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(ext_idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
 }
 
 static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
-	cmdq_pkt_write(handle, comp->cmdq_base,
+	if (unlikely(!comp->mtk_crtc)) {
+		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+
+	if (ext_idx != LYE_NORMAL) {
+		DDPINFO("REMOVE EXT BLENDER %d\n", comp->id);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(ext_idx), 0x0, ~0);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), 0x0, ~0);
-	/**
-	 * cmdq_pkt_write(handle, comp->cmdq_base,
-	 *	   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
-	 */
+
+		if (comp->blender_hold) {
+			comp->blender_hold = false;
+			return;
+		}
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+		   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
+
+		mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, true);
+	}
 }
 
 static void mtk_ovl_blender_prepare(struct mtk_ddp_comp *comp)
@@ -610,7 +640,7 @@ static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
-static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
+static int mtk_ovl_blender_first_layer(struct mtk_ddp_comp *comp)
 {
 	struct mtk_ddp_comp *first_blender = comp->mtk_crtc->first_blender;
 
@@ -630,7 +660,8 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 
 	if (comp->funcs->first_layer)
 		crtc_first_layer = comp->funcs->first_layer(comp);
-	DDPINFO("%s,%d, prev %d, next %d, %d\n", __func__, __LINE__, prev, next, comp->id);
+	DDPINFO("%s,%d, prev %s, next %s, %d\n", __func__, __LINE__,
+		mtk_dump_comp_str_id(prev), mtk_dump_comp_str_id(next), comp->id);
 
 	if (handle == NULL)
 		writel_relaxed(0, comp->regs + DISP_REG_OVL_BLD_DATAPATH_CON);
@@ -660,9 +691,15 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 				       DISP_BGCLR_IN_SEL);
 	}
 
-	if ((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
+	if (comp->mtk_crtc->last_blender != comp ||
+			((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
 			mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA) &&
-			next != DDP_COMPONENT_ID_MAX) {
+			next != DDP_COMPONENT_ID_MAX)) {
+
+		DDPDBG("%s,%d, %s, to Blender\n", __func__, __LINE__,
+			mtk_dump_comp_str_id(prev));
+
+
 		if (handle == NULL)
 			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER,
@@ -674,6 +711,9 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER);
 
 	} else {
+		DDPDBG("%s,%d, %s, to OUT_PROC\n", __func__, __LINE__,
+			mtk_dump_comp_str_id(prev));
+
 		if (handle == NULL)
 			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
 				       DISP_BGCLR_OUT_TO_PROC,
@@ -931,7 +971,7 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 
 	if (ext_lye_idx != LYE_NORMAL)
-		id = ext_lye_idx - 1;
+		id = ext_lye_idx;
 	else
 		id = lye_idx;
 
@@ -941,15 +981,19 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		comp->regs_pa + OVL_BLD_L_PITCH(id), pitch, ~0);
 
 	DDPDBG("%s, %d\n", __func__, comp->id);
-
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	/*bind_comp == NULL => when it does not use EXDMA2, no bind_comp, config size.*/
 	/*comp->id != bind_comp->id => exdma2->bind_comp does not need to be config size again.*/
-	if ((priv->data->mmsys_id == MMSYS_MT6991) &&
-		((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
+
+	/*if (((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
 		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp->id))) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
-	}
+	}*/
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
+#endif
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_BLD_OVL_CLIP(id), clip, ~0);
@@ -1028,11 +1072,11 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 
 	if (fmt == DRM_FORMAT_RGB332) {
 		pending->enable = false;
+		comp->blender_hold = true;
 		DDPINFO("%s: DRM_FORMAT_RGB332 not support, so skip it\n", __func__);
 	}
 	if (ovl->ovl_dis == true && pending->enable == true) {
-		if ((priv->data->mmsys_id == MMSYS_MT6991) &&
-			mtk_crtc_is_frame_trigger_mode(crtc))
+		if (mtk_crtc_is_frame_trigger_mode(crtc))
 			pending->enable = false;
 
 		DDPPR_ERR("%s, %s, idx:%d, lye_idx:%d, ext_idx:%d, en:%d\n",
@@ -1043,6 +1087,16 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 
 	if (!pending->enable)
 		mtk_ovl_blender_layer_off(comp, lye_idx, ext_lye_idx, handle);
+
+	/* connect blender path */
+	/*if (comp && comp->funcs && comp->funcs->connect) {
+		if (mtk_crtc->last_blender->id == comp->id)
+			comp->funcs->connect(comp, handle, comp->id, 0);
+		else
+			comp->funcs->connect(comp, handle, comp->id, comp->id);
+	}
+
+	mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, false);*/
 
 	alpha = 0xFF & (state->base.alpha >> 8);
 
@@ -1072,13 +1126,17 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		unsigned int id = ext_lye_idx - 1;
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_BLD_OVL_OFFSET(id),
+			       comp->regs_pa + DISP_REG_BLD_OVL_OFFSET(ext_lye_idx),
 			       offset, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_BLD_L_CLR(id),
+			       comp->regs_pa + OVL_BLD_L_CLR(ext_lye_idx),
 			       dim_color, ~0);
 
-		disp_reg_ovl_pitch = OVL_BLD_L_PITCH(id);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + OVL_BLD_L_CON2(ext_lye_idx),
+			       con, ~0);
+
+		disp_reg_ovl_pitch = OVL_BLD_L_PITCH(ext_lye_idx);
 
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1205,7 +1263,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ovl_blender_funcs = {
 	.prepare = mtk_ovl_blender_prepare,
 	.unprepare = mtk_ovl_blender_unprepare,
 	.connect = mtk_ovl_blender_connect,
-	.first_layer = mtk_ovl_blender_first_layer_mt6991,
+	.first_layer = mtk_ovl_blender_first_layer,
 //	.config_trigger = mtk_ovl_blender_config_trigger,
 	.partial_update = mtk_ovl_blender_set_partial_update,
 };
@@ -1306,22 +1364,27 @@ static const struct mtk_disp_ovl_blender_data mt6991_ovl_bldner_driver_data = {
 	.fmt_rgb565_is_0 = true,
 	.fmt_uyvy = 4U,
 	.fmt_yuyv = 5U,
-	//.compr_info = &compr_info_mt6989,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.greq_num_dl = 0xFFFF,
-//	.is_support_34bits = true,
-//	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6991,
-//	.aid_per_layer_setting = true,
-//	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6991,
-//	.source_bpc = 10,
-//	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6991,
+};
+
+static const struct mtk_disp_ovl_blender_data mt6993_ovl_bldner_driver_data = {
+	.el_addr_offset = 0x10,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U,
+	.fmt_yuyv = 5U,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.greq_num_dl = 0xFFFF,
 };
 
 
 static const struct of_device_id mtk_disp_ovl_blender_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-ovl-blender",
 	 .data = &mt6991_ovl_bldner_driver_data},
+	{.compatible = "mediatek,mt6993-disp-ovl-blender",
+	 .data = &mt6993_ovl_bldner_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_ovl_blender_driver_dt_match);

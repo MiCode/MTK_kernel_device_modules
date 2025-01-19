@@ -2925,6 +2925,26 @@ static const struct mtk_disp_wdma_data mt6991_wdma_driver_data = {
 	.hrt_channel = &mtk_wdma_hrt_channel_MT6991,
 };
 
+static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
+	.fifo_size_1plane = PARSE_FROM_DTS,
+	.fifo_size_uv_1plane = 29,
+	.fifo_size_2plane = PARSE_FROM_DTS,
+	.fifo_size_uv_2plane = PARSE_FROM_DTS,
+	.fifo_size_3plane = PARSE_FROM_DTS,
+	.fifo_size_uv_3plane = PARSE_FROM_DTS,
+	.force_ostdl_bw = 7000,
+	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
+	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
+	.sodi_config = mt6989_mtk_sodi_config,
+	.aid_sel = &mtk_wdma_aid_sel_MT6991,
+	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.is_support_34bits = true,
+	.use_larb_control_sec = false,
+	.hrt_channel = &mtk_wdma_hrt_channel_MT6991,
+};
+
 static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
 	.fifo_size_1plane = PARSE_FROM_DTS,
 	.fifo_size_uv_1plane = 29,
@@ -2984,6 +3004,8 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	 .data = &mt6989_wdma_driver_data},
 	{.compatible = "mediatek,mt6991-disp-wdma",
 	 .data = &mt6991_wdma_driver_data},
+	{.compatible = "mediatek,mt66993-disp-wdma",
+	 .data = &mt6993_wdma_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_wdma_driver_dt_match);

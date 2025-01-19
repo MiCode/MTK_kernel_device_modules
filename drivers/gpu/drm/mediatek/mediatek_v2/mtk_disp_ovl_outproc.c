@@ -1007,9 +1007,18 @@ static const struct mtk_disp_ovl_outproc_data mt6991_ovl_driver_data = {
 	.mmsys_mapping = &mtk_ovl_outproc_mmsys_mapping_MT6991,
 };
 
+static const struct mtk_disp_ovl_outproc_data mt6993_ovl_driver_data = {
+	//.aid_sel_mapping = &mtk_ovl_outproc_aid_sel_MT6991,
+	.aid_per_layer_setting = true,
+	//.mmsys_mapping = &mtk_ovl_outproc_mmsys_mapping_MT6991,
+};
+
+
 static const struct of_device_id mtk_disp_ovl_outproc_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-ovl-outproc",
 	 .data = &mt6991_ovl_driver_data},
+	{.compatible = "mediatek,mt6993-disp-ovl-outproc",
+	 .data = &mt6993_ovl_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_ovl_outproc_driver_dt_match);

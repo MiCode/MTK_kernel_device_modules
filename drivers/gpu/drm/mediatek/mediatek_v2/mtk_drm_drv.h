@@ -220,10 +220,16 @@ struct mtk_drm_private {
 	resource_size_t config_regs_pa;
 	void __iomem *side_config_regs;
 	resource_size_t side_config_regs_pa;
+	void __iomem *sys_b_config_regs;
+	resource_size_t sys_b_config_regs_pa;
+	void __iomem *sys_b_side_config_regs;
+	resource_size_t sys_b_side_config_regs_pa;
 	void __iomem *ovlsys0_regs;
 	resource_size_t ovlsys0_regs_pa;
 	void __iomem *ovlsys1_regs;
 	resource_size_t ovlsys1_regs_pa;
+	void __iomem *ovlsys2_regs;
+	resource_size_t ovlsys2_regs_pa;
 	void __iomem *infra_regs;
 	resource_size_t infra_regs_pa;
 	const struct mtk_mmsys_reg_data *reg_data;

@@ -210,6 +210,7 @@ struct mtk_plane_input_config {
 
 struct mtk_plane_comp_state {
 	uint32_t comp_id;
+	uint32_t blender_comp_id;
 	uint32_t lye_id;
 	int32_t ext_lye_id;
 	uint32_t layer_caps;

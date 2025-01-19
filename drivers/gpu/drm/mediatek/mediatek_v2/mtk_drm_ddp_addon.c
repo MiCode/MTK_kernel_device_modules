@@ -545,6 +545,8 @@ static void mtk_addon_path_stop(struct drm_crtc *crtc,
 			continue;
 
 		add_comp = priv->ddp_comp[path_data->path[i]];
+		if (add_comp->bind_comp)
+			add_comp->bind_comp->blender_hold = true;
 		mtk_ddp_comp_stop(add_comp, cmdq_handle);
 
 		if (addon_config &&

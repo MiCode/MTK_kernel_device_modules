@@ -104,6 +104,7 @@ struct mtk_dsi_driver_data {
 	bool support_bl_at_te;
 	const u32 dsi_rx_trig_sta;
 	const u32 dsi_rx_con;
+	const u32 con_offset;
 };
 
 struct mtk_dsi {

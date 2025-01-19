@@ -126,6 +126,62 @@
 #define MT6991_DISP1_GCE_FRAME_DONE_SEL6_DSI2_FRAME_DONE	(27)
 #define MT6991_DISP1_GCE_FRAME_DONE_SEL7_WDMA4_FRAME_DONE	(8)
 
+#define MT6993_OVLSYS_GCE_FRAME_DONE_SEL0	(0x028)
+#define MT6993_OVLSYS_GCE_FRAME_DONE_SEL1	(0x02C)
+
+#define MT6993_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1			(21)
+#define MT6993_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA0			(22)
+
+#define MT6993_OVLSYS1_GCE_FRAME_DONE_SEL0_WDMA0			(22)
+
+
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL0	(0x410)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL1	(0x414)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL2	(0x418)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL3	(0x41C)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL4	(0x420)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL5	(0x424)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL6	(0x428)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL7	(0x42C)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL8	(0x430)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL9	(0x434)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL10	(0x438)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL11	(0x43C)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL12	(0x440)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL13	(0x444)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL14	(0x448)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL15	(0x44C)
+
+
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL0_MDP_RDMA0			(7)	//sel0
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL1_Y2R0				(2)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL2_AAL0				(29)
+#define MT6993_DISP0_GCE_FRAME_DONE_SEL3_AAL1				(28)
+
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL0	(0x310)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL1	(0x314)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL2	(0x318)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL3	(0x31C)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL4	(0x320)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL5	(0x324)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL6	(0x328)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL7	(0x32C)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL8	(0x330)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL9	(0x334)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL10	(0x338)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL11	(0x33C)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL12	(0x340)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL13	(0x344)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL14	(0x348)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL15	(0x34C)
+
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL0_DP_INTF			(23)	//sel0
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL1_DSI0_FRAME_DONE	(18)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL2_DSI1_FRAME_DONE	(16)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL3_RDMA1_FRAME_DONE	(23)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL4_WDMA1_FRAME_DONE	(1)
+#define MT6993_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE	(0)
+
 enum mtk_ddp_mutex_sof_id {
 	DDP_MUTEX_SOF_SINGLE_MODE,
 	DDP_MUTEX_SOF_DSI0,
@@ -173,18 +229,27 @@ struct mtk_ddp {
 	struct clk *clk;
 	void __iomem *regs;
 	resource_size_t regs_pa;
+	struct clk *sys_b_clk;
+	void __iomem *sys_b_regs;
+	resource_size_t sys_b_regs_pa;
 
 	unsigned int dispsys_num;
 	unsigned int ovlsys_num;
 	struct clk *side_clk;
+	struct clk *sys_b_side_clk;
 	struct clk *ovlsys0_clk;
 	struct clk *ovlsys1_clk;
+	struct clk *ovlsys2_clk;
 	void __iomem *side_regs;
+	void __iomem *sys_b_side_regs;
 	void __iomem *ovlsys0_regs;
 	void __iomem *ovlsys1_regs;
+	void __iomem *ovlsys2_regs;
 	resource_size_t side_regs_pa;
+	resource_size_t sys_b_side_regs_pa;
 	resource_size_t ovlsys0_regs_pa;
 	resource_size_t ovlsys1_regs_pa;
+	resource_size_t ovlsys2_regs_pa;
 	struct mtk_disp_mutex mutex[10];
 	const struct mtk_disp_ddp_data *data;
 	struct mtk_drm_crtc *mtk_crtc[MAX_CRTC];
@@ -325,6 +390,17 @@ void mmsys_config_dump_reg_mt6991(void __iomem *config_regs);
 void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id);
 void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs, bool rg_dump);
+//void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs);
+
+void mutex_dump_reg_mt6993(struct mtk_disp_mutex *mutex);
+void mutex_ovlsys_dump_reg_mt6993(struct mtk_disp_mutex *mutex);
+void mutex_ovlsys_dump_analysis_mt6993(struct mtk_disp_mutex *mutex);
+void mutex_dump_analysis_mt6993(struct mtk_disp_mutex *mutex);
+void mmsys_config_dump_reg_mt6993(void __iomem *config_regs);
+void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs);
+void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id);
+void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs);
+
 void mtk_ddp_insert_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
@@ -352,6 +428,10 @@ void mtk_ddp_remove_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
 void mtk_ddp_insert_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle);
+void mtk_ddp_insert_dsc_prim_MT6993(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle);
+void mtk_ddp_remove_dsc_prim_MT6993(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 
 void mtk_ddp_insert_dsc_ext_MT6985(struct mtk_drm_crtc *mtk_crtc,
@@ -444,6 +524,13 @@ int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
 			   unsigned int *addr_begin, unsigned int *addr_end, int crtc_id);
 
+int mtk_ddp_exdma_mout_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			   unsigned int *addr);
+
+int mtk_ddp_exdma_mout_reset_MT6993(enum mtk_ddp_comp_type type, int *offset,
+			   unsigned int *addr_begin, unsigned int *addr_end, int crtc_id);
+
 void mtk_gce_event_config_MT6991(struct drm_device *drm);
+void mtk_gce_event_config_MT6993(struct drm_device *drm);
 
 #endif /* MTK_DRM_DDP_H */

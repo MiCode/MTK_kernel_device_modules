@@ -18,6 +18,7 @@
 #include "mtk_drm_fb.h"
 #include "mtk_drm_gem.h"
 #include "mtk_drm_plane.h"
+#include "mtk_dump.h"
 
 #include "slbc_ops.h"
 #include "../mml/mtk-mml.h"
@@ -708,6 +709,18 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	if (skip_update == 0)
 		mtk_drm_crtc_plane_update(crtc, plane, mtk_plane_state);
 
+	if (mtk_plane_state->pending.enable && !mtk_crtc->reset_path)
+		if (mtk_plane_state->comp_state.blender_comp_id != 0) {
+			if (mtk_crtc->path_data->is_exdma_dual_layer) {
+				mtk_crtc->last_blender =
+					priv->ddp_comp[mtk_plane_state->comp_state.blender_comp_id + 1];
+			} else {
+				mtk_crtc->last_blender =
+					priv->ddp_comp[mtk_plane_state->comp_state.blender_comp_id];
+			}
+			DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
+				mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
+		}
 }
 
 

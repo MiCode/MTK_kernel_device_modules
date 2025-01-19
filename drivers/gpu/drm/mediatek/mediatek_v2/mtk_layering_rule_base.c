@@ -80,6 +80,7 @@ static DEFINE_MUTEX(layering_info_lock);
 #define DISP_LAYER_RULE_MAX_NUM 1024
 
 #define DISP_EXDMA_LAYER_LIMIT 7
+#define DISP_BLENDER_LAYER_LIMIT 9
 
 static struct {
 	enum LYE_HELPER_OPT opt;
@@ -3004,18 +3005,25 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 }
 
 static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
-	struct drm_device *drm_dev, int fun_lye)
+	struct drm_device *drm_dev, int fun_lye, int rsz_lye)
 {
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	/* need align with mtk_crtc_get_plane_comp_id */
+
 	if (disp_idx == 0) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
 			int exdma_comp = 0;
+			int first_comp = 0;
+
+			if (rsz_lye)
+				first_comp = DDP_COMPONENT_OVL_EXDMA3;
+			else
+				first_comp = DDP_COMPONENT_OVL_EXDMA2;
 
 			if (layer_idx < (DISP_EXDMA_LAYER_LIMIT + fun_lye))
-				exdma_comp = DDP_COMPONENT_OVL_EXDMA3 + layer_idx - fun_lye;
+				exdma_comp = first_comp + layer_idx - fun_lye;
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
@@ -3104,6 +3112,83 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL_EXDMA3;
+}
+
+static int mtk_lye_get_blender_comp_id(int disp_idx, int layer_idx,
+	struct drm_device *drm_dev, int blender_lye)
+{
+	struct mtk_drm_private *priv = drm_dev->dev_private;
+
+	/* TODO: The component ID should be changed by ddp path and platforms */
+	if (disp_idx == 0) {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			int bld_comp = 0;
+
+			if (layer_idx < (DISP_BLENDER_LAYER_LIMIT + blender_lye))
+				bld_comp = DDP_COMPONENT_OVL0_BLENDER1 + layer_idx - blender_lye;
+			else
+				bld_comp = DDP_COMPONENT_OVL1_BLENDER0 + layer_idx
+									- DISP_BLENDER_LAYER_LIMIT - blender_lye;
+			return bld_comp;
+		}
+	} else if (disp_idx == 1) {
+		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
+			struct mtk_ddp_comp *comp;
+			unsigned int i, j;
+
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
+			//disp_idx 1 does not exist multiple mode yet
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp)
+					break;
+			if (comp)
+				return comp->id;
+		} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			int bld_comp = 0;
+
+			bld_comp = DDP_COMPONENT_OVL1_BLENDER5  + ((layer_idx - blender_lye) * 2);
+
+			return bld_comp;
+		}
+	} else if (disp_idx == 2) {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			int bld_comp = 0;
+
+			bld_comp = DDP_COMPONENT_OVL1_BLENDER5 + ((layer_idx - blender_lye) * 2);
+
+			return bld_comp;
+		} else
+			return DDP_COMPONENT_OVL2_2L;
+	} else if (disp_idx == 3) {
+		if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+			struct drm_crtc *crtc = priv->crtc[disp_idx];
+			struct mtk_drm_crtc *mtk_crtc;
+			struct mtk_ddp_comp *comp;
+			unsigned int i, j;
+
+			if (!crtc)
+				return DDP_COMPONENT_OVL2_2L;
+
+			mtk_crtc = to_mtk_crtc(crtc);
+			//disp_idx 3 does not exist multiple mode yet
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp)
+					break;
+			if (comp)
+				return comp->id;
+		} else if (priv->data->mmsys_id == MMSYS_MT6991)
+			return (DDP_COMPONENT_OVL1_BLENDER7 + layer_idx - blender_lye);
+		else
+			return DDP_COMPONENT_OVL2_2L;
+	}
+
+	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
+	return DDP_COMPONENT_OVL0_BLENDER1;
 }
 
 static int mtk_lye_get_lye_id(int disp_idx, int disp_list, struct drm_device *drm_dev,
@@ -3252,8 +3337,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
-	int fun_lye = 0;
+	int fun_lye = 0, rsz_lye = 0;
+	int blender_lye = 0;
 	int mml_decouple2 = 0;
+	int last_blender = 0;
 
 	mml_decouple2 = (mtk_drm_get_mml_mode_caps() & MTK_MML_DISP_DECOUPLE2_LAYER?1:0);
 
@@ -3275,6 +3362,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				      MTK_DISP_CLIENT_CLEAR_LAYER)) {
 			clear_idx = i;
 			break;
+		} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
+			rsz_lye++;
 		}
 	}
 
@@ -3292,6 +3381,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			lyeblob_ids->fbt_gles_tail = disp_info->gles_tail[HRT_PRIMARY];
 		}
 	}
+	DDPMSG("layer_num = %d\n",disp_info->layer_num[idx]);
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 
 		layer_info = &disp_info->input_config[idx][i];
@@ -3311,6 +3401,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		    i != disp_info->gles_head[idx]) {
 			layer_info->ovl_id = plane_idx - 1;
 			fun_lye++;
+			blender_lye++;
 			if (disp_idx == HRT_PRIMARY)
 				lyeblob_ids->fbt_layer_id = plane_idx - 1;
 
@@ -3319,6 +3410,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 		if (!is_extended_layer(layer_info))
 			layer_map &= ~layer_map_idx;
+		else {
+			fun_lye++;
+			blender_lye++;
+		}
 
 		layer_map_idx = HRT_GET_FIRST_SET_BIT(layer_map);
 		if (l_rule_info->ovl_exdma_rule) {
@@ -3336,14 +3431,15 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;
 				fun_lye++;
 			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_CLIENT_CLEAR_LAYER)) {
-				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
+				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;
 				fun_lye = -1;
+				blender_lye = -1;
 			} else {
 				comp_state.comp_id =
-					mtk_lye_get_exdma_comp_id(disp_idx, i, drm_dev, fun_lye);
+					mtk_lye_get_exdma_comp_id(disp_idx, i, drm_dev, fun_lye, rsz_lye);
 			}
-			DDPINFO("%s disp_idx %d, i %d, fun_lye %d, comp %d\n", __func__,
-				disp_idx, i, fun_lye, comp_state.comp_id);
+			DDPINFO("%s disp_idx %d, i %d, fun_lye %d, rsz_lye %d, comp %s\n", __func__,
+				disp_idx, i, fun_lye, rsz_lye, mtk_dump_comp_str_id(comp_state.comp_id));
 			comp_state.lye_id = 0;
 		} else {
 			comp_state.comp_id =
@@ -3362,11 +3458,21 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (is_extended_layer(layer_info)) {
 			comp_state.ext_lye_id = LYE_EXT0 + ext_cnt;
 			ext_cnt++;
+			comp_state.blender_comp_id =
+				mtk_lye_get_blender_comp_id(disp_idx, i, drm_dev, blender_lye);
 		} else {
 			if (comp_state.comp_id != prev_comp_id)
 				ext_cnt = 0;
 			comp_state.ext_lye_id = LYE_NORMAL;
+			if (priv->data->ovl_exdma_rule) {
+				comp_state.blender_comp_id =
+					mtk_lye_get_blender_comp_id(disp_idx, i, drm_dev, blender_lye);
+				//mtk_crtc->last_blender = priv->ddp_comp[comp_state.blender_comp_id];
+			}
 		}
+
+		DDPINFO("dispatch comp %s ,bind %s fun_lye %d\n", mtk_dump_comp_str_id(comp_state.comp_id),
+			mtk_dump_comp_str_id(comp_state.blender_comp_id), blender_lye);
 
 		if (disp_idx == 0 &&
 			((comp_state.comp_id == DDP_COMPONENT_OVL0_2L) ||

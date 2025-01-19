@@ -1061,12 +1061,18 @@ struct mtk_drm_crtc {
 	resource_size_t ovlsys0_regs_pa;
 	void __iomem *ovlsys1_regs;
 	resource_size_t ovlsys1_regs_pa;
+	void __iomem *ovlsys2_regs;
+	resource_size_t ovlsys2_regs_pa;
 	unsigned int ovlsys_num;
 	void __iomem *config_regs;
 	resource_size_t config_regs_pa;
 	unsigned int dispsys_num;
 	void __iomem *side_config_regs;
 	resource_size_t side_config_regs_pa;
+	void __iomem *sys_b_config_regs;
+	resource_size_t sys_b_config_regs_pa;
+	void __iomem *sys_b_side_config_regs;
+	resource_size_t sys_b_side_config_regs_pa;
 	const struct mtk_mmsys_reg_data *mmsys_reg_data;
 	struct mtk_crtc_ddp_ctx ddp_ctx[DDP_MODE_NR];
 	struct mtk_disp_mutex *mutex[DDP_PATH_NR];
@@ -1277,6 +1283,9 @@ struct mtk_drm_crtc {
 	enum DISP_SE_STATE se_state;
 
 	bool is_plane0_updated;
+
+	bool reset_path;
+
 };
 
 enum BL_GAMMA_GAIN {
@@ -1667,7 +1676,10 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 	struct cmdq_pkt *handle, enum mtk_ddp_io_cmd event);
 
 void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
-	struct mtk_ddp_comp *comp, unsigned int plane_index, struct cmdq_pkt *cmdq_handle);
+	struct mtk_ddp_comp *comp, unsigned int blender_id,
+	struct cmdq_pkt *cmdq_handle, bool reset_flag, bool rpo_flag);
+void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp, struct cmdq_pkt *cmdq_handle, bool reset_flag);
 void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *cmdq_handle);
 void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,

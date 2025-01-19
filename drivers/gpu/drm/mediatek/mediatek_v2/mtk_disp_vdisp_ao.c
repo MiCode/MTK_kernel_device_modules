@@ -365,6 +365,7 @@ static void mtk_vdisp_ao_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_ao_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-vdisp-ao", },
+	{.compatible = "mediatek,mt6993-vdisp-ao", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_ao_driver_dt_match);
