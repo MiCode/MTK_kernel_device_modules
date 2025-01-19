@@ -11,7 +11,11 @@ define_mgk_ddk_ko(
     name = "cam_qos",
     srcs = [
         "cam_qos.c",
-    ] + glob(["**/*.h"]),
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
         "-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/",
@@ -25,6 +29,32 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/",
     ],
     ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),],
+)
+
+define_mgk_ddk_ko(
+    name = "camera_isp",
+    srcs = [
+        "camera_isp.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cam_timesync/",
+        "-I$(DEVICE_MODULES_PATH)/include/dt-bindings/memory/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/common/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/",
+    ],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cam_timesync:archcounter_timesync".format(kernel_version),
+               "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:cam_qos".format(kernel_version),
+               "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),],
 )
 
 filegroup(

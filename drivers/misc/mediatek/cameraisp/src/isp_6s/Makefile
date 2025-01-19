@@ -22,4 +22,5 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/common/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/
 
-obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT) += camera_isp.o
+# obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT) += camera_isp.o
+# obj-$(CONFIG_MTK_CAMERA_ISP_RAW_SUPPORT) += cam_qos.o
