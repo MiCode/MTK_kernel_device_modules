@@ -1887,6 +1887,13 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "SPI probe, 'mainpll' not exist, set univpll as default!\n");
 	}
 
+	/* Added the switch for multi_cs to enable the core to support
+	 * one master and multiple slaves. The user uses dts to contrl
+	 * whether to enable this support.
+	 */
+	if (of_property_read_bool(pdev->dev.of_node, "cs-gpios"))
+		ctrl->use_gpio_descriptors = true;
+
 	if (mdata->dev_comp->need_pad_sel) {
 		if (mdata->pad_num != ctrl->num_chipselect) {
 			dev_err(&pdev->dev,
