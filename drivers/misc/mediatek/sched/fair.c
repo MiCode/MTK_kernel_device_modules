@@ -1908,7 +1908,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	is_vvip = prio_is_vip(vip_prio, VVIP);
 
-	if (is_vvip) {
+	if (is_vvip && !cpumask_empty(&vip_candidate)) {
 		target_balance_cluster = topology_cluster_id(cpumask_last(&vip_candidate));
 		order_index = target_balance_cluster;
 		end_index = 0;
@@ -2326,7 +2326,7 @@ fail:
 		struct cpumask temp_mask;
 
 		/* for VVIP, select biggest CPU */
-		if (prio_is_vip(vip_prio , VVIP)) {
+		if (prio_is_vip(vip_prio , VVIP) && !cpumask_empty(&vip_candidate)) {
 			*new_cpu = cpumask_last(&vip_candidate);
 			backup_reason = LB_BACKUP_VVIP;
 			goto backup_unlock;
