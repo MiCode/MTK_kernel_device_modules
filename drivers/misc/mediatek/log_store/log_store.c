@@ -86,22 +86,29 @@ static inline void logstore_wait_on_buffer(struct buffer_head *bh)
 
 static int get_partition_info(void)
 {
-	//struct block_device *bdev;
+	struct file *bdev_file;
+	struct block_device *bdev;
 	dev_t dev_num = 0;
+
+	if (expdb_logstore->bdev)
+		return 0;
 
 	if (lookup_bdev(EXPDB_PATH, &dev_num) != 0 || dev_num == 0)
 		return -EIO;
 
-#if 0
-	// FIXME: blkdev_get_by_dev is replaced by bdev_open_by_dev
-	bdev = blkdev_get_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
-	if (IS_ERR(bdev))
+	bdev_file = bdev_file_open_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
+	if (IS_ERR(bdev_file))
 		return -EIO;
+
+	bdev = file_bdev(bdev_file);
+	if (!bdev) {
+		fput(bdev_file);
+		return -EIO;
+	}
 
 	expdb_logstore->bdev = bdev;
 	expdb_logstore->block_size = block_size(bdev);
 	expdb_logstore->part_size = bdev_nr_bytes(bdev);
-#endif
 	expdb_logstore->bootlog_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size
 			- expdb_logstore->bootlog_size) / expdb_logstore->block_size;
 	expdb_logstore->logstore_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size)
@@ -111,6 +118,7 @@ static int get_partition_info(void)
 			EXPDB_PATH, (unsigned long)expdb_logstore->part_size, expdb_logstore->block_size,
 			(unsigned long)expdb_logstore->bootlog_offset, (unsigned long)expdb_logstore->logstore_offset,
 			(unsigned long)expdb_logstore->logindex_offset);
+	fput(bdev_file);
 	return 0;
 }
 
@@ -130,7 +138,7 @@ static int partition_block_rw(struct block_device *bdev, int write, sector_t ind
 		return -EINVAL;
 
 	if (bdev)
-		bh = __getblk(bdev, index, expdb_logstore->block_size);
+		bh = bdev_getblk(bdev, index, expdb_logstore->block_size, __GFP_MOVABLE);
 	if (bh) {
 		clear_bit(BH_Uptodate, &bh->b_state);
 		get_bh(bh);
@@ -955,8 +963,12 @@ int log_store_late_init(void)
 	unsigned int boot_mode;
 
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
-	register_pm_notifier(&logstore_pm_nb);
-	register_reboot_notifier(&logstore_reboot_notify);
+	if (register_pm_notifier(&logstore_pm_nb))
+		pr_warn("Failed to register PM notifier for logstore\n");
+
+	if (register_reboot_notifier(&logstore_reboot_notify))
+		pr_warn("Failed to register reboot notifier for logstore\n");
+
 	set_boot_phase(BOOT_PHASE_KERNEL);
 	if (sram_dram_buff == NULL) {
 		pr_notice("log_store: sram header DRAM buff is null.\n");
