@@ -1227,7 +1227,7 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
 	struct mtk_pinctrl_group *grp = hw->groups + group;
-	int err, need_ad_sw_switch;
+	int err = 0, need_ad_sw_switch;
 	bool ret;
 
 	ret = mtk_pctrl_is_function_valid(hw, grp->pin, function);
@@ -1450,7 +1450,7 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	if (gpio >= hw->soc->npins)
 		return -EINVAL;
 
-	if ((gpio >= 0) && (gpio < hw->soc->real_pin_start_idx)) {
+	if (gpio < hw->soc->real_pin_start_idx) {
 		len += sprintf(buf, "%02d: dummy-pin", gpio);
 		return len;
 	}
