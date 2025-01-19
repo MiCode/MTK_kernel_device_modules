@@ -728,6 +728,16 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			vsi->adab_size = 0;
 		}
 
+		if (frm_buf->has_qprects) {
+			vsi->qprects_addr = frm_buf->qprects_dma_addr;
+			vsi->qprects_size = frm_buf->qprects_dma->size;
+			vsi->qprects_meta_size = frm_buf->qprects_meta_size;
+		} else {
+			vsi->qprects_addr = 0;
+			vsi->qprects_size = 0;
+			vsi->qprects_meta_size = 0;
+		}
+
 		if (frm_buf->dyparams_dma) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);
@@ -742,8 +752,8 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			(unsigned long)frm_buf->fb_addr[0].dmabuf,
 			vsi->meta_size,
 			vsi->meta_addr);
-		mtk_vcodec_debug(vcu, "vsi qpmap addr %llx size%d",
-			vsi->meta_addr, vsi->qpmap_size);
+		mtk_vcodec_debug(vcu, "vsi qpmap addr %llx size %d, qprects addr %llx size %d meta_size %d",
+			vsi->meta_addr, vsi->qpmap_size, vsi->qprects_addr, vsi->qprects_size, vsi->qprects_meta_size);
 	} else {
 		mtk_vcodec_debug(vcu, "frm_buf is null");
 	}

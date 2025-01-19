@@ -256,6 +256,14 @@ struct inputqueue_dynamic_info {
 	__u64 timestamp;
 };
 
+#define MAX_ROI_QP_OFFSET_RECTS 100
+struct mtk_venc_roi_qp_offset_rect_info {
+    __s32 width;
+    __s32 height;
+    __s32 left;
+    __s32 top;
+    __s32 qp_offset;
+};
 
 enum mtk_dec_param {
 	MTK_DEC_PARAM_NONE = 0,

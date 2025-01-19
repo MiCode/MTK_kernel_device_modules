@@ -560,6 +560,10 @@ struct venc_frm_buf {
 	bool has_qpmap;
 	struct dma_buf *qpmap_dma;
 	dma_addr_t qpmap_dma_addr;
+	bool has_qprects;
+	struct dma_buf *qprects_dma;
+	dma_addr_t qprects_dma_addr;
+	uint32_t qprects_meta_size;
 	struct dma_buf *metabuffer_dma;
 	dma_addr_t metabuffer_addr;
 	dma_addr_t dyparams_dma_addr;
@@ -591,6 +595,7 @@ enum metadata_type {
 	METADATA_ENCODING_STATS  = 3,
 	METADATA_DYNAMICPARAM    = 4,
 	METADATA_ADAPTIVE_B_INPUT = 7,
+	METADATA_ROI_QPOFFSET_RECTS = 8,
 };
 
 struct meta_describe {

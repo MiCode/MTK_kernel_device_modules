@@ -2146,8 +2146,10 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	}
 
 	mtkbuf->frm_buf.has_qpmap = 0;
+	mtkbuf->frm_buf.has_qprects = 0;
 	mtkbuf->frm_buf.has_meta = 0;
 	mtkbuf->frm_buf.qpmap_dma = 0;
+	mtkbuf->frm_buf.qprects_dma = 0;
 	mtkbuf->frm_buf.metabuffer_dma = 0;
 	mtkbuf->frm_buf.dyparams_dma = 0;
 
@@ -2238,8 +2240,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				index, meta_desc.fd_flag, meta_desc.type,
 				meta_desc.size, meta_desc.value);
 
-			if (meta_desc.type == METADATA_QPMAP && !meta_desc.fd_flag) {
-				mtk_v4l2_err("qpmap should provide buffer fd");
+			if ((meta_desc.type == METADATA_QPMAP || meta_desc.type == METADATA_ROI_QPOFFSET_RECTS) &&
+				!meta_desc.fd_flag) {
+				mtk_v4l2_err("qpmap/qprects should provide buffer fd");
 				continue;
 			} else if ((meta_desc.type == METADATA_HDR ||
 						meta_desc.type == METADATA_DYNAMICPARAM) &&
@@ -2286,6 +2289,25 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					mtk_v4l2_debug(2, "[%d] Have ADAB fd, buf->index:%d. adab_dma:%p, fd:%u",
 						ctx->id, buf->index,
 						mtkbuf->frm_buf.adab_dma, meta_desc.value);
+				} else if (meta_desc.type == METADATA_ROI_QPOFFSET_RECTS) {
+					dmabuf = dma_buf_get(meta_desc.value);
+
+					if (IS_ERR(dmabuf)) {
+						mtk_v4l2_err("%s qprects_dma is err 0x%lx\n", __func__, PTR_ERR(dmabuf));
+						mtk_venc_queue_error_event(ctx);
+						continue;
+					}
+					if (mtk_vcodec_dma_attach_map(dev, dmabuf, NULL, NULL,
+						&mtkbuf->frm_buf.qprects_dma_addr, DMA_TO_DEVICE, __func__, __LINE__)) {
+						dma_buf_put(dmabuf);
+						continue;
+					}
+					mtkbuf->frm_buf.qprects_dma = dmabuf;
+					mtkbuf->frm_buf.qprects_meta_size = meta_desc.size;
+					mtkbuf->frm_buf.has_qprects = 1;
+					mtk_v4l2_debug(2,
+						"[%d] Have Qprects fd, buf->index:%d. qprects_dma:%p, fd:%u",
+						ctx->id, buf->index, mtkbuf->frm_buf.qprects_dma, meta_desc.value);
 				}
 			} else {
 				if (meta_desc.type == METADATA_HDR) {

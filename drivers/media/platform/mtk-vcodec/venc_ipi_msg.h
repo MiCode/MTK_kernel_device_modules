@@ -648,6 +648,9 @@ struct venc_vsi {
 	__u64 qpmap_addr;
 	__u32 adab_size;
 	__u64 adab_addr;
+	__u32 qprects_size;
+	__u64 qprects_addr;
+	__u32 qprects_meta_size;
 	__u64 dynamicparams_addr;
 	__u32 dynamicparams_size;
 	__u32 dynamicparams_offset;
