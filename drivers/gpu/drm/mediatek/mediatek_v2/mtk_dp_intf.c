@@ -924,16 +924,16 @@ void mtk_dp_intf_prepare_clk(void)
 }
 EXPORT_SYMBOL(mtk_dp_intf_prepare_clk);
 
-static void void_mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
+static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 					    struct cmdq_pkt *handle)
 {
 	struct mtk_dp_intf *dp_intf = comp_to_dp_intf(comp);
-	u32 dp_buf_sodi_high = 5255;
-	u32 dp_buf_sodi_low = 3899;
-	u32 dp_buf_preultra_high = 5687;
-	u32 dp_buf_preultra_low = 5468;
-	u32 dp_buf_ultra_high = 5468;
-	u32 dp_buf_ultra_low = 5031;
+	u32 dp_buf_sodi_high = 5295;
+	u32 dp_buf_sodi_low = 6561;
+	u32 dp_buf_preultra_high = 7874;
+	u32 dp_buf_preultra_low = 7655;
+	u32 dp_buf_ultra_high = 5687;
+	u32 dp_buf_ultra_low = 5468;
 	u32 dp_buf_urgent_high = 2625;
 	u32 dp_buf_urgent_low = 2406;
 
@@ -957,8 +957,8 @@ static void void_mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
 	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
 
-	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_ULTRA_HIGH, handle);
-	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_ULTRA_LOW, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
 }
 
 void mhal_DPTx_VideoClock(bool enable, int resolution)
@@ -1139,6 +1139,7 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 			DP_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, handle);
 	mtk_ddp_write_relaxed(comp, dp_intf->driver_data->np_sel,
 			DP_SW_NP_SEL, handle);
+	mtk_dp_intf_golden_setting(comp, handle);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
