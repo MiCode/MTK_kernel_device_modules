@@ -261,8 +261,7 @@
 			    firmware_class.path=/vendor/firmware \
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
-			    transparent_hugepage=never \
-			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_smmu,pkvm_mkp";
+			    transparent_hugepage=never";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
 	};
