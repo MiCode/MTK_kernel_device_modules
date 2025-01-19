@@ -98,6 +98,9 @@ endif
 ifneq ($(wildcard $(src)/mdp_mt6853.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6853.o
 endif
+ifneq ($(wildcard $(src)/mdp_mt6855.c),)
+obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6855.o
+endif
 ifneq ($(wildcard $(src)/mdp_mt6877.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6877.o
 endif
@@ -209,6 +212,20 @@ mdp_drv_mt6833-objs := mdp_mt6833.o\
 	mdp_dpc.o
 
 mdp_drv_mt6853-objs := mdp_mt6853.o\
+	mdp_driver.o \
+	mdp_ioctl_ex.o \
+	mdp_common.o \
+	cmdq_record.o \
+	cmdq_virtual.o \
+	cmdq_device.o \
+	mdp_event_common.o \
+	cmdq_subsys_common.o \
+	cmdq_helper_ext.o \
+	cmdq_mmp.o \
+	mdp_fence.o \
+	mdp_dpc.o
+
+mdp_drv_mt6855-objs := mdp_mt6855.o\
 	mdp_driver.o \
 	mdp_ioctl_ex.o \
 	mdp_common.o \
@@ -340,4 +357,3 @@ mdp_drv_mt6991-objs := mdp_mt6991.o\
 #ifeq ($(strip $(CONFIG_MMPROFILE)),y)
 #obj-y += cmdq_mmp.o
 #endif
-

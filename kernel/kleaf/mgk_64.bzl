@@ -1736,6 +1736,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/mdp/mdp_drv_mt6789.ko": "mt6789",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6833.ko": "mt6833",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6853.ko": "mt6853",
+    "drivers/misc/mediatek/mdp/mdp_drv_mt6855.ko": "mt6855",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6877.ko": "mt6877",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6886.ko": "mt6886",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6893.ko": "mt6893",
