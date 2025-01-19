@@ -16,6 +16,13 @@
 			compatible = "mediatek,spmi-pmic-7-debug";
 		};
 
+		mt6667_7_pio: mt6667-7-pinctrl {
+			compatible = "mediatek,mt6667-7-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6667_7_pio 0 0 5>;
+		};
+
 		regulators {
 			compatible = "mediatek,mt6667-7-regulator";
 			mt6667_7_buck1: mt6667-7-buck1 {
@@ -46,6 +53,13 @@
 			compatible = "mediatek,spmi-pmic-8-debug";
 		};
 
+		mt6667_8_pio: mt6667-8-pinctrl {
+			compatible = "mediatek,mt6667-8-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6667_8_pio 0 0 5>;
+		};
+
 		regulators {
 			compatible = "mediatek,mt6667-8-regulator";
 			mt6667_8_buck1: mt6667-8-buck1 {
@@ -67,6 +81,13 @@
 			compatible = "mediatek,spmi-pmic-12-debug";
 		};
 
+		mt6667_12_pio: mt6667-12-pinctrl {
+			compatible = "mediatek,mt6667-12-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6667_12_pio 0 0 5>;
+		};
+
 		regulators {
 			compatible = "mediatek,mt6667-12-regulator";
 			mt6667_12_buck1: mt6667-12-buck1 {
@@ -86,6 +107,13 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-13-debug";
+		};
+
+		mt6667_13_pio: mt6667-13-pinctrl {
+			compatible = "mediatek,mt6667-13-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6667_13_pio 0 0 5>;
 		};
 
 		regulators {
