@@ -1,5 +1,8 @@
 MTK_LPM_MODULES_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm_legacy/modules/
 
+ifneq ($(CONFIG_MTK_POWER_GS_LEGACY),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/power_gs_v1/
+endif
 
 MTK_LPM_DBG_COMMON_NAME=mtk-lpm-dbg-common-v1-legacy
 

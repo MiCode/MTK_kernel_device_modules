@@ -22,7 +22,12 @@
 #include <lpm_call.h>
 #include <lpm_call_type.h>
 /* FIXME */
+
+#if IS_ENABLED(CONFIG_MTK_LPM_GS_DUMP_SUPPORT)
 #include <gs/v1/lpm_power_gs.h>
+#elif IS_ENABLED(CONFIG_MTK_POWER_GS_LEGACY)
+#include <mtk_power_gs_api.h>
+#endif
 
 
 #undef lpm_dbg_log
@@ -52,6 +57,9 @@ static int spm_power_gs_dump(void)
 		if (!lpm_callee_get(LPM_CALLEE_PWR_GS, &callee))
 			callee->set(LPM_PWR_GS_TYPE_SUSPEND, &val);
 	}
+#elif IS_ENABLED(CONFIG_MTK_POWER_GS_LEGACY)
+	if (mtk_suspend_debug_flag & MTK_DUMP_LP_GOLDEN)
+		mt_power_gs_dump_suspend();
 #endif
 	return 0;
 }
