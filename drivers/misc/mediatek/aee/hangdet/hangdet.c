@@ -187,8 +187,9 @@ static DEFINE_SPINLOCK(hrtimer_lock);
 
 static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs);
 static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs);
-static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs);
 static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs);
+// tracepoints for hrtimers
+static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, ktime_t *now_t);
 
 static struct kprobe kp_aee_kernel_warning_api_func = {
 	.symbol_name = "aee_kernel_warning_api_func",
@@ -200,15 +201,72 @@ static struct kprobe kp_usleep_range_state = {
 	.pre_handler = usleep_range_state_pre,
 };
 
-static struct kprobe kp_hrtimer_expire_entry = {
-	.symbol_name = "__run_hrtimer",
-	.pre_handler = hrtimer_expire_entry_pre,
-};
-
 static struct kprobe kp_hrtimer_wakeup_entry = {
 	.symbol_name = "hrtimer_wakeup",
 	.pre_handler = hrtimer_wakeup_entry_pre,
 };
+
+struct tracepoints_table {
+	const char *name;
+	void *func;
+	struct tracepoint *tp;
+	bool init;
+};
+
+static struct tracepoints_table interests[] = {
+	{.name = "hrtimer_expire_entry", .func = hrtimer_expire_entry_tracer},
+};
+
+#define FOR_EACH_INTEREST(i) \
+	for (i = 0; i < sizeof(interests) / sizeof(struct tracepoints_table); \
+	i++)
+
+static void lookup_tracepoints(struct tracepoint *tp, void *ignore)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (strcmp(interests[i].name, tp->name) == 0) {
+			interests[i].tp = tp;
+			pr_info("found tp: %s,%pS\n", tp->name, tp);
+		}
+	}
+}
+
+int hrtimer_tp_register(void)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (interests[i].tp == NULL) {
+			pr_info("Error: %s not found\n",
+				interests[i].name);
+			return -EINVAL;
+		}
+
+		if (interests[i].init)
+			continue;
+
+		tracepoint_probe_register(interests[i].tp, interests[i].func, NULL);
+		interests[i].init = true;
+	}
+
+	return 0;
+}
+
+void hrtimer_tp_unregister(void)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (interests[i].init) {
+			tracepoint_probe_unregister(interests[i].tp, interests[i].func, NULL);
+			interests[i].init = false;
+		}
+	}
+
+	tracepoint_synchronize_unregister();
+}
 
 static void dump_usleep_range_history(void)
 {
@@ -1592,14 +1650,11 @@ static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
-static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs)
+static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, ktime_t *now_t)
 {
 	u64 temp_count = 0;
 	unsigned long flags = 0;
 	int i;
-
-	struct hrtimer *hrtimer_t = (struct hrtimer *)regs->regs[2];
-	ktime_t *now_t = (ktime_t *)regs->regs[3];
 
 	spin_lock_irqsave(&hrtimer_lock, flags);
 
@@ -1642,8 +1697,6 @@ static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs)
 	}
 
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
-
-	return 0;
 }
 
 static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
@@ -1843,19 +1896,17 @@ static int __init hangdet_init(void)
 		pr_info("Planted kprobe at %p for usleep_range_state\n",
 			kp_usleep_range_state.addr);
 
-	res = register_kprobe(&kp_hrtimer_expire_entry);
-	if (res < 0)
-		pr_info("hrtimer_expire_entry kprobe failed %d\n", res);
-	else
-		pr_info("Planted kprobe at %p for hrtimer_expire_entry\n",
-			kp_hrtimer_expire_entry.addr);
-
 	res = register_kprobe(&kp_hrtimer_wakeup_entry);
 	if (res < 0)
 		pr_info("hrtimer_wakeup_entry kprobe failed %d\n", res);
 	else
 		pr_info("Planted kprobe at %p for hrtimer_wakeup_entry\n",
 			kp_hrtimer_wakeup_entry.addr);
+
+	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+	res = hrtimer_tp_register();
+	if (res < 0)
+		pr_info("hrtimer_expire_entry tp failed %d\n", res);
 
 #endif
 #endif
@@ -1876,8 +1927,8 @@ static void __exit hangdet_exit(void)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	unregister_kprobe(&kp_aee_kernel_warning_api_func);
 	unregister_kprobe(&kp_usleep_range_state);
-	unregister_kprobe(&kp_hrtimer_expire_entry);
         unregister_kprobe(&kp_hrtimer_wakeup_entry);
+	hrtimer_tp_unregister();
 #endif
 #endif
 	unregister_pm_notifier(&wdt_pm_nb);
