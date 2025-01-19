@@ -120,6 +120,39 @@ static struct device *get_dev_by_mem_type(struct venc_inst *inst, struct vcodec_
 		return NULL;
 }
 
+
+static void venc_get_bs_list(struct venc_inst *inst)
+{
+	struct ring_input_list *src_list = &inst->vsi->list_free;
+	struct ring_input_list *dst_list = &inst->list_free;
+
+	while (src_list->read_idx != src_list->write_idx) {
+
+		if (dst_list->count >= VENC_MAX_FB_NUM)
+			break;
+
+		mtk_vcodec_debug(inst, "bs list copy: src read_idx %d write_idx %d count %d, dst read_idx %d write_idx %d count %d, venc_bs_handle 0x%llx venc_fb_handle 0x%llx",
+			src_list->read_idx, src_list->write_idx, src_list->count,
+			dst_list->read_idx, dst_list->write_idx, dst_list->count,
+			src_list->venc_bs_va_list[src_list->read_idx],
+			src_list->venc_fb_va_list[src_list->read_idx]);
+
+		//ring_input_list structure requires sync between kernel and driver to ensure consistent data handling
+		dst_list->venc_bs_va_list[dst_list->write_idx] = src_list->venc_bs_va_list[src_list->read_idx];
+		dst_list->venc_fb_va_list[dst_list->write_idx] = src_list->venc_fb_va_list[src_list->read_idx];
+		dst_list->is_key_frm[dst_list->write_idx] = src_list->is_key_frm[src_list->read_idx];
+		dst_list->bs_size[dst_list->write_idx] = src_list->bs_size[src_list->read_idx];
+		dst_list->is_last_slice[dst_list->write_idx] = src_list->is_last_slice[src_list->read_idx];
+		dst_list->flags[dst_list->write_idx] = src_list->flags[src_list->read_idx];
+
+		dst_list->write_idx = (dst_list->write_idx + 1U) % VENC_MAX_FB_NUM;
+		dst_list->count++;
+
+		src_list->read_idx = (src_list->read_idx == VENC_MAX_FB_NUM - 1U) ? 0U : src_list->read_idx + 1U;
+		src_list->count = (VENC_MAX_FB_NUM + src_list->write_idx - src_list->read_idx) % VENC_MAX_FB_NUM;
+	}
+}
+
 static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	bool is_ack, bool need_wait_suspend, bool has_lock_dvfs)
 {
@@ -659,10 +692,18 @@ return_venc_ipi_ack:
 			wake_up(&vcu->wq_hd);
 			break;
 		case VCU_IPIMSG_ENC_PUT_BUFFER:
+			inst->put_bs_async = 0;
 			vcodec_trace_begin("venc_ipi(PUT_FRAME_BUFFER)");
 			mtk_enc_put_buf(ctx);
 			msg->msg_id = AP_IPIMSG_ENC_PUT_BUFFER_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+			vcodec_trace_end();
+			break;
+		case VCU_ASYNCIPIMSG_ENC_PUT_FRAME_BUFFER:
+			inst->put_bs_async = 1;
+			vcodec_trace_begin("venc_ipi(ASYNC_PUT_FRAME_BUFFER)");
+			venc_get_bs_list(inst);
+			mtk_enc_put_buf(ctx);
 			vcodec_trace_end();
 			break;
 		case VCU_IPIMSG_ENC_MEM_ALLOC:
@@ -1645,7 +1686,11 @@ static int venc_vcp_get_param(unsigned long handle,
 	case GET_PARAM_FREE_BUFFERS:
 		if (inst->vsi == NULL)
 			return -EINVAL;
-		venc_get_free_buffers(inst, &inst->vsi->list_free, out);
+		if (inst->put_bs_async) {
+			venc_get_free_buffers(inst, &inst->list_free, out);
+		} else {
+			venc_get_free_buffers(inst, &inst->vsi->list_free, out);
+		}
 		break;
 	case GET_PARAM_ROI_RC_QP: {
 		if (inst->vsi == NULL || out == NULL)

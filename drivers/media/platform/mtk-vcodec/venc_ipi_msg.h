@@ -66,6 +66,8 @@ enum venc_ipi_msg_id {
 	AP_IPIMSG_ENC_CHECK_CODEC_ID_DONE,
 	AP_IPIMSG_ENC_GET_BS_BUFFER_DONE,
 	AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE,
+
+	VCU_ASYNCIPIMSG_ENC_PUT_FRAME_BUFFER = VCU_IPIMSG_VENC_SEND_ASYNC_BASE
 };
 
 /* enum venc_get_param_type - The type of set parameter used in

@@ -38,6 +38,8 @@ struct venc_inst {
 	struct venc_vcu_inst vcu_inst;
 	struct venc_vsi *vsi;
 	struct mtk_vcodec_ctx *ctx;
+	struct ring_input_list list_free;
+	bool put_bs_async;
 };
 
 /*
