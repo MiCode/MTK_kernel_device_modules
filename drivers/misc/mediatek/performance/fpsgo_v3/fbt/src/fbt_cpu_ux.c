@@ -811,8 +811,8 @@ void fpsgo_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 		if (scrolling) {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 			if (ux_general_policy_dpt_setwl) {
-				set_wl_manual(0);
-				fpsgo_main_trace("set_wl_manual: 0");
+				set_wl_cpu_manual(0);
+				fpsgo_main_trace("set_wl_cpu_manual: 0");
 			}
 #endif
 			if (change_dpt_support_driver_hook)
@@ -821,8 +821,8 @@ void fpsgo_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 		} else {
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 			if (ux_general_policy_dpt_setwl) {
-				set_wl_manual(-1);
-				fpsgo_main_trace("set_wl_manual: -1");
+				set_wl_cpu_manual(-1);
+				fpsgo_main_trace("set_wl_cpu_manual: -1");
 			}
 #endif
 			if (change_dpt_support_driver_hook)
