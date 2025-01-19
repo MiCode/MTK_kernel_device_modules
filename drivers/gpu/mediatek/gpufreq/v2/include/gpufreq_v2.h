@@ -481,7 +481,8 @@ struct gpufreq_prbc_info {
 	unsigned int prbc_freq;
 	unsigned int avg_freq;
 	unsigned int ratio;
-	unsigned int error;
+	unsigned int ratio_irq_count;
+	unsigned int ratio_irq_thresh_count;
 };
 
 struct gpufreq_slt2_bmodel {

@@ -243,10 +243,11 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->prbc_info.ondie_current, g_shared_status->prbc_info.spbm_power,
 		g_shared_status->prbc_info.spbm_current, g_shared_status->prbc_info.ratio);
 	seq_printf(m,
-		"%-16s Freq_HBVC/PRBC/AVG: %d/%d/%d, Error: %d\n",
+		"%-16s Freq_HBVC/PRBC/AVG: %d/%d/%d, RIC: %d (RITC: %d)\n",
 		"[PRBC Status]",
 		g_shared_status->prbc_info.hbvc_freq, g_shared_status->prbc_info.prbc_freq,
-		g_shared_status->prbc_info.avg_freq, g_shared_status->prbc_info.error);
+		g_shared_status->prbc_info.avg_freq, g_shared_status->prbc_info.ratio_irq_count,
+		g_shared_status->prbc_info.ratio_irq_thresh_count);
 
 	mutex_unlock(&gpufreq_debug_lock);
 
