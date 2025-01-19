@@ -50,3 +50,11 @@ define_mgk_ddk_ko(
     copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
     hdrs = glob(["**/*.h"]),
 )
+define_mgk_ddk_ko(
+    name = "clk-bringup",
+    srcs = [
+        "clk-bringup.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+)

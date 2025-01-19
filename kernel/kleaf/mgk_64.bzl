@@ -646,6 +646,7 @@ mgk_64_kleaf_device_modules = [
 
 mgk_64_kleaf_platform_modules = {
     # keep sorted
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-bringup".format(kernel_version): "mt6781 mt6789 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/v6993:mtk-lpm-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6789".format(kernel_version): "mt6789",
@@ -657,6 +658,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-bringup".format(kernel_version): "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899",
 
     ## write vendor file by platform here
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
@@ -1017,7 +1019,6 @@ mgk_64_device_modules = [
     "drivers/soc/mediatek/mtk-mutex.ko",
     "drivers/soc/mediatek/mtk-pmic-wrap.ko",
     "drivers/soc/mediatek/mtk-scpsys.ko",
-    "drivers/soc/mediatek/scpsys-dummy.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
     "drivers/spi/spi-mt65xx.ko",
     "drivers/spmi/spmi-mtk-mpu.ko",
@@ -1060,7 +1061,6 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
-    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6789 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899 mt6993",
     "drivers/clk/mediatek/clk-chk-mt6789.ko": "mt6789",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
@@ -1359,7 +1359,6 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
     "drivers/soc/mediatek/devapc/device-apc-mt6991.ko": "mt6991",
     "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
-    "drivers/soc/mediatek/mtk-scpsys-bringup.ko": "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899",
     "drivers/soc/mediatek/mtk-scpsys-mt6886.ko": "mt6886",
     "drivers/soc/mediatek/mtk-scpsys-mt6897.ko": "mt6897",
     "drivers/soc/mediatek/mtk-scpsys-mt6899.ko": "mt6899",
