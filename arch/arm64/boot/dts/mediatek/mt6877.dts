@@ -5039,9 +5039,9 @@
 		interconnect-names = "fpsgo-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 
-		fbt_cpu_mask = <255 192 63 63>;
+		fbt-cpu-mask = <255 192 63 63>;
 		sbe-resceue-enable = <1>;
-		boost-dram = <1>;
+		boost-dram = <2>;
 	};
 
 	scp_dvfs: scp-dvfs {
