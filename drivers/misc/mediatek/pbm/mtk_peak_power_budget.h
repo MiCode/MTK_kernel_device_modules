@@ -86,6 +86,12 @@ struct power_budget_t {
 	int hpt_cur_lv;
 	int hpt_lv_t[10];
 	int soc;
+	int uisoc;
+	int combo0_uisoc;
+	int fix_combo0[50];
+	unsigned int uisoc_cur_stage;
+	unsigned int uisoc_max_stage;
+	int uisoc_thd[6];
 	int temp;
 	unsigned int soc_err;
 	unsigned int temp_cur_stage;

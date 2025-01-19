@@ -479,12 +479,6 @@ static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 		soc_default_setting(dev, priv);
 		goto out;
 	}
-#if SOC_DEBUG_LOG
-	pr_info("num=%d temp_max_s=%d soc_max_s=%d\n", num, priv->temp_max_stage, priv->soc_max_stage);
-	for (i = 0; i < num; i++)
-		pr_info("soc-throttle-level[%d]=%d\n", i, priv->throttle_table[i]);
-#endif
-
 out:
 	return 0;
 }
