@@ -12,17 +12,16 @@
 #include <asm/timex.h>
 #include "mcupm_driver.h"
 #include "mcupm_timesync.h"
+#include "mcupm_ipi_id.h"
 
-#define mcupm_ts_write(id, val) \
-	mcupm_mbox_write(MCUPM_TS_MBOX, id, (void *)&val, 1)
+
+//#define mcupm_ts_write(id, val) \
+//	mcupm_mbox_write(MCUPM_TS_MBOX, id, (void *)&val, 1)
 
 #define TIMESYNC_TAG	"[MCUPM_TS]"
 
-#define TIMESYNC_MAX_VER           (0x7)
 #define TIMESYNC_HEADER_FREEZE_OFS (31)
 #define TIMESYNC_HEADER_FREEZE     (1 << TIMESYNC_HEADER_FREEZE_OFS)
-#define TIMESYNC_HEADER_VER_OFS    (28)
-#define TIMESYNC_HEADER_VER_MASK   (TIMESYNC_MAX_VER << TIMESYNC_HEADER_VER_OFS)
 
 #define TIMESYNC_FLAG_SYNC     (1 << 0)
 #define TIMESYNC_FLAG_ASYNC    (1 << 1)
@@ -43,18 +42,47 @@ static struct timesync_context_t timesync_ctx;
 static struct timecounter timesync_counter;
 static struct hrtimer timesync_refresh_timer;
 static u8 mcupm_base_ver;
+static u32 timesync_max_ver;
+static u32 timesync_header_ver_ofs;
+static u32 timesync_header_ver_mask;
 
+static int arch_counter_get_width(void)
+{
+	u64 min_cycles = (40ULL * 365 * 24 * 3600) * arch_timer_get_cntfrq();
+
+	/* guarantee the returned width is within the valid range */
+	return clamp_val(ilog2(min_cycles - 1) + 1, 56, 64);
+}
+
+static int mcupm_ts_write(u32 id, u32 val) {
+	u32 ipi_num = 0, ret = 0;
+	struct mtk_mbox_device *mdev;
+
+	ipi_num = get_mcupms_ipidev_number();
+	for(int i=0; i< ipi_num;i++) {
+			mdev = GET_MCUPM_MBOXDEV(i);
+			if(mdev) {
+				ret = mtk_mbox_write(mdev, MCUPM_TS_MBOX, id
+					, (void *)&val, 4);
+				if(ret)
+					return ret;
+			} else {
+				pr_info("[MCUPM] GET_MCUPM_MBOXDEV(%d) is empty ipi_numbers=%d\n", i, get_mcupms_ipidev_number());
+			}
+	}
+	return 0;
+}
 static void mcupm_ts_update(int suspended, u64 tick, u64 ts)
 {
 	u32 header, val;
 
-	mcupm_base_ver = (mcupm_base_ver + 1)%(TIMESYNC_MAX_VER+1);
+	mcupm_base_ver = (mcupm_base_ver + 1)%(timesync_max_ver+1);
 
 	/* make header: freeze and version */
 	header = suspended ? TIMESYNC_HEADER_FREEZE : 0;
 
-	header |= ((mcupm_base_ver << TIMESYNC_HEADER_VER_OFS) &
-		TIMESYNC_HEADER_VER_MASK);
+	header |= ((mcupm_base_ver << timesync_header_ver_ofs) &
+		timesync_header_ver_mask);
 
 	/* update tick, h -> l */
 	val = (tick >> 32) & 0xFFFFFFFF;
@@ -92,7 +120,6 @@ static u64 timesync_tick_read(const struct cyclecounter *cc)
 
 static struct cyclecounter timesync_cc __ro_after_init = {
 	.read	= timesync_tick_read,
-	.mask	= CLOCKSOURCE_MASK(56),
 };
 
 static void timesync_sync_base_internal(unsigned int flag)
@@ -173,6 +200,22 @@ unsigned int mcupm_timesync_init(void)
 
 	spin_lock_init(&timesync_ctx.lock);
 
+	if (arch_timer_get_cntfrq() == 1000000000) {
+		/* Counter frequency: 1,000,000,000 (1GHz)
+		 * A 1GHz counter requires a 61-bit mask. To prevent losing a bit in the counter,
+		 * we need to adjust the max version and version offset.
+		 */
+		timesync_max_ver = 0x3;
+		timesync_header_ver_ofs = 29;
+	} else {
+		/* Legacy counter frequency: 13,000,000 */
+		timesync_max_ver = 0x7;
+		timesync_header_ver_ofs = 28;
+	}
+	timesync_header_ver_mask = timesync_max_ver << timesync_header_ver_ofs;
+	timesync_cc.mask = CLOCKSOURCE_MASK(arch_counter_get_width());
+
+
 	/* init cyclecounter mult and shift as sched_clock */
 	clocks_calc_mult_shift(&timesync_cc.mult, &timesync_cc.shift,
 				arch_timer_get_cntfrq(), NSEC_PER_SEC, 3600);
@@ -192,9 +235,9 @@ unsigned int mcupm_timesync_init(void)
 	timesync_refresh_timer.function = timesync_refresh;
 	hrtimer_start(&timesync_refresh_timer, wrap, HRTIMER_MODE_REL);
 
-	pr_info("%s ts: cycle_last %lld, time_base:%lld, wrap:%lld\n",
+	pr_info("%s ts: cycle_last %lld, time_base:%lld, wrap:%lld, mask:0x%llx, max_ver:%d\n",
 		TIMESYNC_TAG, timesync_counter.cycle_last,
-		timesync_counter.nsec, wrap);
+		timesync_counter.nsec, wrap, timesync_cc.mask, timesync_max_ver);
 
 	timesync_ctx.enabled = 1;
 

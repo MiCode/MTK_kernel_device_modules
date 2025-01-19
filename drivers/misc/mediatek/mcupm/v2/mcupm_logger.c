@@ -15,6 +15,7 @@
 
 #include "mcupm_driver.h"
 #include "mcupm_ipi_id.h"
+#include "mcupm_sysfs.h"
 
 extern int mcupm_plt_ackdata;
 
@@ -26,54 +27,12 @@ static struct buffer_info_s *buf_info, *lbuf_info;
 static struct timer_list mcupm_log_timer;
 static DEFINE_MUTEX(mcupm_log_mutex);
 
-
-static ssize_t mcupm_log_if_read(struct file *file, char __user *data,
-				 size_t len, loff_t *ppos)
-{
-	ssize_t ret;
-
-	/* pr_debug("[MCUPM] mcupm_log_if_read\n"); */
-
-	ret = 0;
-
-	if (access_ok(data, len))
-		ret = mcupm_log_read(data, len);
-
-	return ret;
-}
-
-static int mcupm_log_if_open(struct inode *inode, struct file *file)
-{
-	/* pr_debug("[MCUPM] mcupm_log_if_open\n"); */
-	return nonseekable_open(inode, file);
-}
-
-static unsigned int mcupm_log_if_poll(struct file *file, poll_table *wait)
-{
-	unsigned int ret = 0;
-
-	/* pr_debug("[MCUPM] mcupm_log_if_poll\n"); */
-
-	if (!mcupm_logger_inited)
-		return 0;
-
-	if (!(file->f_mode & FMODE_READ))
-		return ret;
-
-	poll_wait(file, &logwait, wait);
-
-	ret = mcupm_log_poll();
-
-	return ret;
-}
-
 void mcupm_log_if_wake(void)
 {
 	wake_up(&logwait);
 }
 
-
-static inline void mcupm_log_timer_add(void)
+void mcupm_log_timer_add(void)
 {
 	if (mcupm_log_timer.expires == 0) {
 		mcupm_log_timer.expires = jiffies + MCUPM_TIMER_TIMEOUT;
@@ -143,12 +102,20 @@ error:
 	mutex_unlock(&mcupm_log_mutex);
 
 	return datalen;
+
 }
 
-unsigned int mcupm_log_poll(void)
+unsigned int mcupm_log_poll(struct file *file, poll_table *wait)
 {
+	unsigned int ret = 0;
+
 	if (!mcupm_logger_inited)
 		return 0;
+
+	if (!(file->f_mode & FMODE_READ))
+		return ret;
+
+	poll_wait(file, &logwait, wait);
 
 	if (buf_info->r_pos != buf_info->w_pos)
 		return POLLIN | POLLRDNORM;
@@ -156,38 +123,9 @@ unsigned int mcupm_log_poll(void)
 	mcupm_log_timer_add();
 
 	return 0;
+
 }
 
-static const struct file_operations mcupm_log_file_ops = {
-	.owner = THIS_MODULE,
-	.read = mcupm_log_if_read,
-	.open = mcupm_log_if_open,
-	.poll = mcupm_log_if_poll,
-};
-
-static struct miscdevice mcupm_log_device = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "mcupm",
-	.fops = &mcupm_log_file_ops
-};
-
-int mcupm_sysfs_create_file(struct device_attribute *attr)
-{
-	return device_create_file(mcupm_log_device.this_device, attr);
-}
-int mcupm_sysfs_init(void)
-{
-	int ret;
-
-	init_waitqueue_head(&logwait);
-
-	ret = misc_register(&mcupm_log_device);
-
-	if (unlikely(ret != 0))
-		return ret;
-
-	return 0;
-}
 
 static unsigned int mcupm_log_enable_set(unsigned int enable)
 {
@@ -250,7 +188,6 @@ static ssize_t mcupm_mobile_log_store(struct device *kobj,
 
 	return n;
 }
-
 DEVICE_ATTR_RW(mcupm_mobile_log);
 
 unsigned int mcupm_logger_init(phys_addr_t start, phys_addr_t limit)
@@ -258,6 +195,8 @@ unsigned int mcupm_logger_init(phys_addr_t start, phys_addr_t limit)
 	unsigned int last_ofs;
 
 	last_ofs = 0;
+
+	init_waitqueue_head(&logwait);
 
 	log_ctl = (struct log_ctrl_s *)(uintptr_t) start;
 	log_ctl->base = MCUPM_PLT_LOG_ENABLE; /* magic */

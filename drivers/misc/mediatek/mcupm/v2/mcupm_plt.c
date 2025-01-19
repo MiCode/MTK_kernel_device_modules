@@ -12,6 +12,7 @@
 #include "mcupm_plt.h"
 #include "mcupm_driver.h"
 #include "mcupm_ipi_id.h"
+#include "mcupm_sysfs.h"
 
 /* import from mcupm_driver */
 extern int mcupm_plt_ackdata;
@@ -34,25 +35,6 @@ struct plt_ctrl_s {
 static void __iomem *mpmm_en_reg;
 
 #if MCUPM_PLT_SERV_SUPPORT
-static ssize_t mcupm_alive_show(struct device *kobj,
-				 struct device_attribute *attr, char *buf)
-{
-
-	struct mcupm_ipi_data_s ipi_data;
-	int ret = 0;
-
-	ipi_data.cmd = 0xDEAD;
-	mcupm_plt_ackdata = 0;
-
-	ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM, IPI_SEND_WAIT,
-		&ipi_data,
-		sizeof(struct mcupm_ipi_data_s) / MCUPM_MBOX_SLOT_SIZE,
-		2000);
-
-	return snprintf(buf, PAGE_SIZE, "%s RES_MEM(%d) SKIP_LOG(%d) MBOX%d ret=%d\n",
-			mcupm_plt_ackdata ? "Alive" : "Dead", has_reserved_memory, skip_logger, CH_S_PLATFORM, ret);
-}
-DEVICE_ATTR_RO(mcupm_alive);
 
 static ssize_t mpmm_show(struct device *kobj,
 				 struct device_attribute *attr, char *buf)
@@ -109,10 +91,10 @@ int mcupm_plt_module_init(void)
 	char mcupm_desc[] = "mediatek,mcupm";
 
 
-	if (mcupm_sysfs_init()) {
-		pr_info("[MCUPM] Sysfs Init Failed\n");
-		return -1;
-	}
+	//if (mcupm_sysfs_init()) {
+	//	pr_info("[MCUPM] Sysfs Init Failed\n");
+	//	return -1;
+	//}
 
 	node = of_find_compatible_node(NULL, NULL, mcupm_desc);
 	if (!node)
@@ -128,7 +110,7 @@ int mcupm_plt_module_init(void)
 		pr_info("Failed to get mpmm support index from dts.\n");
 	}
 
-	ret = mcupm_sysfs_create_file(&dev_attr_mcupm_alive);
+	ret = mcupm_sysfs_create_mcupm_alive();
 	if (unlikely(ret != 0))
 		goto error;
 
