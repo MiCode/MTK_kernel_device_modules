@@ -1,0 +1,24 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "gt9886",
+    srcs = [
+        "goodix_ts_i2c.c",
+        "goodix_ts_core.c",
+        "goodix_cfg_bin.c",
+        "goodix_gtx8_update.c",
+        "goodix_ts_tui.c"
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/"
+    ],
+)
