@@ -5,7 +5,6 @@ ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
 endif
 
-obj-$(CONFIG_DRM_PANEL_NOVATEK_NT36672A_VDO) += panel-nt36672a-rt4801-vdo.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_ANA6705_CMD) += panel-samsung-ana6705-cmd.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_ANA6705_CMD_FHDP) += panel-samsung-ana6705-cmd-fhdp.o
 obj-$(CONFIG_DRM_PANEL_TRULY_TD4330_CMD) += panel-truly-td4330-cmd.o

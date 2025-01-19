@@ -62,6 +62,7 @@ PANELS = [
     "panel-truly-td4330-vdo",
     "panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe",
     "panel-alpha-jdi-nt36672e-vdo-120hz-frameratev5",
+    "panel-nt36672a-rt4801-vdo",
 ]
 
 [define_mgk_ddk_ko(
