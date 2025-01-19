@@ -171,32 +171,39 @@ static int gt9896s_parse_dt_display(struct gt9896s_ts_board_data *board_data)
 static int gt9896s_parse_dt_resolution(struct device_node *node,
 		struct gt9896s_ts_board_data *board_data)
 {
-	int r, err;
+	int r;
 
 	if (gt9896s_find_touch_node != 1) {
 		r = of_property_read_u32(node, "goodix,panel-max-x",
 					 &board_data->panel_max_x);
-		if (r)
-			err = -ENOENT;
+		if (r) {
+			ts_err("failed get panel-max-x");
+			return -ENOENT;
+		}
+
 		r = of_property_read_u32(node, "goodix,panel-max-y",
 					 &board_data->panel_max_y);
-		if (r)
-			err = -ENOENT;
+		if (r) {
+			ts_err("failed get panel-max-y");
+			return -ENOENT;
+		}
+
 		/* For unreal lcm test */
 		r = of_property_read_u32(node, "goodix,input-max-x",
 					 &board_data->input_max_x);
 		if (r)
-			err = -ENOENT;
+			ts_err("failed get input-max-x");
+
 		r = of_property_read_u32(node, "goodix,input-max-y",
 					&board_data->input_max_y);
 		if (r)
-			err = -ENOENT;
+			ts_err("failed get input-max-y");
 	}
 
 	r = of_property_read_u32(node, "goodix,panel-max-w",
 				 &board_data->panel_max_w);
 	if (r)
-		err = -ENOENT;
+		ts_err("failed get panel-max-w");
 
 	board_data->swap_axis = of_property_read_bool(node,
 			"goodix,swap-axis");
@@ -652,7 +659,7 @@ static int gt9896s_read_version(struct gt9896s_ts_device *dev,
 	}
 
 	/*check checksum*/
-	if (dev->reg.version_base && dev->reg.version_len < sizeof(temp_buf)) {
+	if (dev->reg.version_base) {
 		r = gt9896s_spi_read(dev, dev->reg.version_base,
 				temp_buf, dev->reg.version_len);
 		if (r < 0) {

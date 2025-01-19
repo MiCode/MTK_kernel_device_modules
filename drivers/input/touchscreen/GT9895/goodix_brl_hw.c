@@ -1056,7 +1056,6 @@ static int goodix_touch_handler(struct goodix_ts_core *cd,
 	u8 touch_num = 0;
 	int ret = 0;
 	u8 point_type = 0;
-	static u8 pre_finger_num;
 
 	/* clean event buffer */
 	memset(ts_event, 0, sizeof(*ts_event));
@@ -1117,7 +1116,6 @@ static int goodix_touch_handler(struct goodix_ts_core *cd,
 	ts_event->event_type = EVENT_TOUCH;
 	goodix_parse_finger(touch_data,
 			    buffer, touch_num);
-	pre_finger_num = touch_num;
 
 	/* process custom info */
 	if (buffer[3] & 0x01)
