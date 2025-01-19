@@ -643,7 +643,7 @@ static void wdma_aid_sel_manual_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pk
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
-	resource_size_t mmsys_reg = priv->sys_b_config_regs_pa;
+	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 
 	switch (comp->id) {
 	case DDP_COMPONENT_WDMA0:
@@ -654,7 +654,7 @@ static void wdma_aid_sel_manual_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pk
 	case DDP_COMPONENT_WDMA1:
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			mmsys_reg + MT6993_DISP1_AID_SEL_MANUAL,
-			MT6993_DISP1_AID_SEL_MANUAL_WDMA1, MT6993_DISP1_AID_SEL_MANUAL_WDMA0);
+			MT6993_DISP1_AID_SEL_MANUAL_WDMA1, MT6993_DISP1_AID_SEL_MANUAL_WDMA1);
 		break;
 	default:
 		break;
@@ -744,7 +744,7 @@ static void wdma_sec_set_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
-	resource_size_t mmsys_reg = priv->sys_b_config_regs_pa;
+	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 	unsigned int aid_sel_offset = wdma->data->aid_sel(comp);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -992,9 +992,9 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 
 	/* WDMA_SMI_CON */
 	if (format == DRM_FORMAT_YVU420 || format == DRM_FORMAT_YUV420)
-		gs[GS_WDMA_SMI_CON] = 0x11140007;
+		gs[GS_WDMA_SMI_CON] = 0x1114000f;
 	else
-		gs[GS_WDMA_SMI_CON] = 0x12240007;
+		gs[GS_WDMA_SMI_CON] = 0x1224000f;
 
 	/* WDMA_BUF_CON1 */
 	if (!gsc->is_dc)
@@ -1036,20 +1036,19 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 		break;
 	}
 
-	field = BUF_CON1_FLD_FIFO_PSEUDO_SIZE;
-	tmp = REG_FLD_VAL(field, fifo_size);
-	if (wdma->info_data->buf_con1_fld_fifo_pseudo_size)
-		field = wdma->info_data->buf_con1_fld_fifo_pseudo_size;
+	field = wdma->info_data->buf_con1_fld_fifo_pseudo_size ?
+		wdma->info_data->buf_con1_fld_fifo_pseudo_size :
+		BUF_CON1_FLD_FIFO_PSEUDO_SIZE;
 	fifo_size = REG_FLD_VAL(field, fifo_size);
 
-	field = BUF_CON1_FLD_FIFO_PSEUDO_SIZE_UV;
-	tmp += REG_FLD_VAL(field, fifo_size_uv);
-	if (wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv)
-		field = wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv;
+	field = wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv ?
+		wdma->info_data->buf_con1_fld_fifo_pseudo_size_uv :
+		BUF_CON1_FLD_FIFO_PSEUDO_SIZE_UV;
 	fifo_size_uv = REG_FLD_VAL(field, fifo_size_uv);
 
-	tmp += gs[GS_WDMA_BUF_CON1];
 	gs[GS_WDMA_BUF_CON1] += fifo_size_uv + fifo_size;
+	if (wdma->info_data->bus_priority_mask)
+		gs[GS_WDMA_BUF_CON1] = gs[GS_WDMA_BUF_CON1] | wdma->info_data->bus_priority_mask;
 
 	/* WDMA_BUF_CON5 */
 	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP);
@@ -3000,6 +2999,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.force_ostdl_bw = 7000,
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
+	.bus_priority_mask = 0xc4000000,
 	.sodi_config = mt6989_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6993,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
@@ -3077,7 +3077,7 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	 .data = &mt6989_wdma_driver_data},
 	{.compatible = "mediatek,mt6991-disp-wdma",
 	 .data = &mt6991_wdma_driver_data},
-	{.compatible = "mediatek,mt66993-disp-wdma",
+	{.compatible = "mediatek,mt6993-disp-wdma",
 	 .data = &mt6993_wdma_driver_data},
 	{},
 };

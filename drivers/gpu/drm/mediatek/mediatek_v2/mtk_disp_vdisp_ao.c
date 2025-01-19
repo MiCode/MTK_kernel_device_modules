@@ -116,7 +116,7 @@
 
 #define IRQ_TABLE_DISP_DISP1_DSI0_MT6993	257
 #define IRQ_TABLE_DISP_DISP1_MUTEX_MT6993	256
-#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	288
+#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	261
 
 static void __iomem *vdisp_ao_base;
 
@@ -342,7 +342,19 @@ static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G0_MT6993);
 
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g1_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_WDMA1_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	//SET_VAL_MASK(value, mask, 0, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G1_MT6993);
+
+	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
 }
 
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
@@ -350,6 +362,7 @@ void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 
 	mtk_vdisp_ao_int_sel_g0_MT6993();
+	mtk_vdisp_ao_int_sel_g1_MT6993();
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)

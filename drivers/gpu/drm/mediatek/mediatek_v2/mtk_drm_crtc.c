@@ -4974,6 +4974,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA_MID) ||
@@ -5055,6 +5057,8 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -5413,6 +5417,8 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
@@ -5620,6 +5626,8 @@ _mtk_crtc_cwb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&

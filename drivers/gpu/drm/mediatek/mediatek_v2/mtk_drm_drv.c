@@ -3905,12 +3905,7 @@ static const struct mtk_addon_module_data mt6991_addon_wdma0_data[] = {
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_data[] = {
 	/* mt6993 CWB */
-	{DISP_WDMA1, ADDON_AFTER, DDP_COMPONENT_MERGE0_OUT_CB0},
-};
-
-static const struct mtk_addon_module_data mt6993_addon_wdma1_dl_data[] = {
-	/* mt6993 DL CWB */
-	{DISP_WDMA1_DL, ADDON_AFTER, DDP_COMPONENT_MERGE0_OUT_CB0},
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
 };
 
 static const struct mtk_addon_module_data mt6991_addon_mid_wdma_data[] = {
@@ -4488,20 +4483,21 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
-	/* TODO: porting for mt6993 */
+
+	/* hw path only support disp wdma */
 	[WDMA_WRITE_BACK_MID] = {
-		.module_num = ARRAY_SIZE(mt6991_addon_mid_wdma_data),
-		.module_data = mt6991_addon_mid_wdma_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_data),
+		.module_data = mt6993_addon_wdma1_data,
 	},
-	/* TODO: porting for mt6993 */
+
 	[WDMA_WRITE_BACK_OVL] = {
-		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_wdma0_data),
-		.module_data = mt6991_addon_ovlsys_wdma0_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_data),
+		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[WDMA_WRITE_BACK_EXDMA_DL] = {
-		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_dl_data),
-		.module_data = mt6993_addon_wdma1_dl_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_data),
+		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
