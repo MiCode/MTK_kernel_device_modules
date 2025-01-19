@@ -718,7 +718,7 @@ ERR:
 	return ret;
 }
 
-int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+int _v0_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
@@ -749,7 +749,7 @@ int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, en
 	}
 
 	// common hwccf voting function
-	ret = _v0_hwccf_irq_voter_ctrl(map, setclr_ofs, BIT(vote_bit), done_ofs);
+	ret = _v0_hwccf_irq_voter_ctrl(map, setclr_ofs, vote_val, done_ofs);
 	if (ret)
 		goto ERR;
 	return ret;
@@ -760,7 +760,17 @@ ERR:
 	return ret;
 }
 
-int v1_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+{
+    return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
+}
+
+int v0_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+{
+    return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
+}
+
+int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
@@ -783,7 +793,7 @@ int v1_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, en
 		goto ERR;
 	}
 	// common hwccf voting function
-	ret = _v1_hwccf_irq_voter_ctrl(map, setclr_ofs, BIT(vote_bit), done_ofs);
+	ret = _v1_hwccf_irq_voter_ctrl(map, setclr_ofs, vote_val, done_ofs);
 	if (ret)
 		goto ERR;
 	return ret;
@@ -792,6 +802,16 @@ ERR:
 	HWCCF_ERR("HWCCF IRQ vote fail, error code: %x\n", abs(ret));
 	configASSERT(0);
 	return ret;
+}
+
+int v1_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+{
+    return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
+}
+
+int v1_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+{
+    return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
 }
 
 void v1_hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
@@ -989,6 +1009,19 @@ int hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum 
 }
 EXPORT_SYMBOL(hwccf_irq_voter_ctrl);
 
+int hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_irq_multi_voter_ctrl) {
+		return hwccf_ops->hwccf_irq_multi_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_val);
+	}
+	return -EINVAL;
+}
+EXPORT_SYMBOL(hwccf_irq_multi_voter_ctrl);
+
 int hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
 {
 	if (!_inited) {
@@ -1025,6 +1058,7 @@ static struct hwccf_ops v0_hwccf_ops = {
 	.hwccf_voter_ctrl = v0_hwccf_voter_ctrl,
 	.raw_hwccf_voter_ctrl = v0_raw_hwccf_voter_ctrl,
 	.hwccf_irq_voter_ctrl = v0_hwccf_irq_voter_ctrl,
+	.hwccf_irq_multi_voter_ctrl = v0_hwccf_irq_multi_voter_ctrl,
 };
 
 static struct hwccf_ops v1_hwccf_ops = {
@@ -1036,6 +1070,7 @@ static struct hwccf_ops v1_hwccf_ops = {
 	.hwccf_freeze = v1_hwccf_freeze,
 	.hwccf_unfreeze = v1_hwccf_unfreeze,
 	.hwccf_irq_voter_ctrl = v1_hwccf_irq_voter_ctrl,
+	.hwccf_irq_multi_voter_ctrl = v1_hwccf_irq_multi_voter_ctrl,
 };
 
 static const struct hwccf_match_data v0_data = {

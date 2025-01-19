@@ -35,6 +35,8 @@ struct hwccf_ops {
 						enum HWCCF_OP hwccf_op, uint32_t vote_val);
 	int (*raw_hwccf_is_enabled)(struct cb_params *);
 	int (*hwccf_irq_voter_ctrl)(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,
+						enum HWCCF_OP hwccf_op, uint32_t vote_bit);
+	int (*hwccf_irq_multi_voter_ctrl)(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,
 						enum HWCCF_OP hwccf_op, uint32_t vote_val);
 	void (*hwccf_freeze)(int is_MASK_XPC, struct regmap *regmap);
 	void (*hwccf_unfreeze)(int is_MASK_XPC, struct regmap *regmap);
@@ -55,6 +57,9 @@ int hwccf_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,
 // General IRQ HWCCF Voter control functions
 int hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,
 						enum HWCCF_OP hwccf_op, uint32_t vote_bit);
+
+int hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,
+						enum HWCCF_OP hwccf_op, uint32_t vote_val);
 
 // Check resource or auto link resource is enabled
 int hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id,

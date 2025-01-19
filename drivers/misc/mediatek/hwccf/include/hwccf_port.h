@@ -135,7 +135,7 @@
 	#define HWCCF_STEPS_DECLARE(name, reg, reg_bit, reg_msk) \
 		static uint32_t name##_step_addr = (reg); \
 		static uint8_t  name##_step_bit  = (reg_bit); \
-		static uint32_t name##_step_msk  = (reg_msk);
+		static uint32_t name##_step_msk  = (reg_msk)
 
 	#define HWCCF_STEPS_UPDATE(name, step) \
 		hwccf_remap_write(name##_step_addr, hwccf_remap_read(name##_step_addr) \
