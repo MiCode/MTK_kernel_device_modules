@@ -43,6 +43,7 @@ define_mgk_ddk_ko(
     ]),
     header_deps = [
         "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
     ],
     ko_deps = [
@@ -50,7 +51,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     ],
     copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
         "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/hw_sem/",
     ],
