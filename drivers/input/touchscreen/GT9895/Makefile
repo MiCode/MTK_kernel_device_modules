@@ -1,4 +1,7 @@
 ccflags-$(CONFIG_DRM_MEDIATEK_V2) += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sensor/2.0/sensorhub
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/input/touchscreen/ts_scp
 
 obj-m += gt9895.o
 gt9895-y := \

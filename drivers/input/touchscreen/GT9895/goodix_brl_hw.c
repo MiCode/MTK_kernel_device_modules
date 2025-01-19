@@ -54,6 +54,8 @@ enum brl_request_code {
 	BRL_REQUEST_CODE_CLOCK = 0x04,
 };
 
+extern bool ts_scp_enable;
+
 static int brl_select_spi_mode(struct goodix_ts_core *cd)
 {
 	int ret;
@@ -230,6 +232,8 @@ static int brl_power_on(struct goodix_ts_core *cd, bool on)
 		if (avdd_gpio > 0) {
 			gpio_direction_output(avdd_gpio, 1);
 		} else if (cd->avdd) {
+			if (ts_scp_enable == true)
+				regulator_disable(cd->avdd);
 			ret = regulator_enable(cd->avdd);
 			if (ret < 0) {
 				ts_err("Failed to enable avdd:%d", ret);

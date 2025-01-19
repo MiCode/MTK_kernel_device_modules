@@ -254,6 +254,7 @@ mgk_64_device_modules = [
     "drivers/input/touchscreen/BoTai_Multi_Touch/BoTai_touch_two/botai_touch_two.ko",
     "drivers/input/touchscreen/GT9886/gt9886.ko",
     "drivers/input/touchscreen/GT9895/gt9895.ko",
+    "drivers/input/touchscreen/ts_scp/ts_scp_common.ko",
     "drivers/input/touchscreen/GT9896S/gt9896s.ko",
     "drivers/input/touchscreen/GT1151/gt1151.ko",
     "drivers/input/touchscreen/NT36532/nt36532.ko",

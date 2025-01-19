@@ -168,6 +168,7 @@ void timesync_filter_set(struct timesync_filter *filter,
 
 	timesync_filter_calculate(filter, host_timestamp, scp_timestamp);
 }
+EXPORT_SYMBOL_GPL(timesync_filter_set);
 
 int64_t timesync_filter_get(struct timesync_filter *filter)
 {
@@ -179,6 +180,7 @@ int64_t timesync_filter_get(struct timesync_filter *filter)
 	spin_unlock_irqrestore(&filter->lock, flags);
 	return offset;
 }
+EXPORT_SYMBOL_GPL(timesync_filter_get);
 
 int timesync_filter_init(struct timesync_filter *filter)
 {
@@ -197,6 +199,7 @@ int timesync_filter_init(struct timesync_filter *filter)
 		return -ENOMEM;
 	return 0;
 }
+EXPORT_SYMBOL_GPL(timesync_filter_init);
 
 void timesync_filter_exit(struct timesync_filter *filter)
 {
