@@ -64,6 +64,8 @@ static void mtk_clk_mux_disable(struct clk_hw *hw)
 
 static int mtk_clk_mux_fenc_enable_setclr(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	unsigned long flags = 0;
 	u32 val = 0;
@@ -110,6 +112,8 @@ fenc_done_fail:
 
 static int mtk_clk_mux_enable_setclr(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	unsigned long flags = 0;
 
@@ -131,6 +135,8 @@ static int mtk_clk_mux_enable_setclr(struct clk_hw *hw)
 
 static void mtk_clk_mux_disable_setclr(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 
 	regmap_write(mux->regmap, mux->data->set_ofs,
@@ -139,6 +145,8 @@ static void mtk_clk_mux_disable_setclr(struct clk_hw *hw)
 
 static int mtk_clk_mux_fenc_is_enabled(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET1(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	u32 val = 0;
 
@@ -152,6 +160,8 @@ static int mtk_clk_mux_fenc_is_enabled(struct clk_hw *hw)
 
 static int mtk_clk_mux_is_enabled(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET1(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	u32 val = 0;
 
@@ -779,6 +789,8 @@ static int mtk_clk_mux_upd_determine_rate(struct clk_hw *hw, struct clk_rate_req
 
 static int mtk_clk_mux_generic_hwv_enable(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_BYPASS, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	const char *c_n = clk_hw_get_name(hw);
 	int ret = 0;
@@ -805,6 +817,8 @@ static int mtk_clk_mux_generic_hwv_enable(struct clk_hw *hw)
 
 static void mtk_clk_mux_generic_hwv_disable(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_BYPASS, clk_hw_get_name(hw));
+
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	const char *c_n = clk_hw_get_name(hw);
 	int ret = 0;

@@ -20,10 +20,14 @@
 #define CTRL_ON			1
 #define CTRL_OFF		0
 
+#define MT_CCF_BRINGUP 1
+
 static bool is_registered;
 
 static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET1(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	struct clk_hw *p_hw, *gp_hw;
 	u32 val = 0;
@@ -51,6 +55,8 @@ static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 
 static int mtk_cg_bit_is_set(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET1(FPGA_SIM, clk_hw_get_name(hw));
+
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	struct clk_hw *p_hw, *gp_hw;
 	u32 val = 0;
@@ -108,6 +114,8 @@ static void mtk_cg_clr_bit_no_setclr(struct clk_hw *hw)
 
 static int mtk_cg_enable(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_clr_bit(hw);
 
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 1, 0, CLK_EVT_CLK_TRACE);
@@ -117,6 +125,8 @@ static int mtk_cg_enable(struct clk_hw *hw)
 
 static void mtk_cg_disable(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_set_bit(hw);
 
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 0, 0, CLK_EVT_CLK_TRACE);
@@ -132,6 +142,8 @@ static void mtk_cg_disable_unused(struct clk_hw *hw)
 
 static int mtk_cg_enable_inv(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET1(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_set_bit(hw);
 
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 1, 0, CLK_EVT_CLK_TRACE);
@@ -141,6 +153,8 @@ static int mtk_cg_enable_inv(struct clk_hw *hw)
 
 static void mtk_cg_disable_inv(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_clr_bit(hw);
 
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 0, 0, CLK_EVT_CLK_TRACE);
@@ -183,6 +197,7 @@ static int mtk_cg_is_done_hwv(struct clk_hw *hw)
 
 static int __hwv_cg_dma_back(struct clk_hw *hw, bool inv)
 {
+	FPGA_SIMULATION_RET0(FPGA_SIM, clk_hw_get_name(hw));
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	u32 val = 0, val2 = 0, val3 = 0;
 	int i = 0;
@@ -223,6 +238,10 @@ hwv_done_fail:
 		pr_notice("cg rewrite success!\n");
 	else
 		pr_notice("cg rewrite failed!\n");
+
+	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
+			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
+			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
 
 
 	return -EBUSY;
@@ -338,6 +357,8 @@ static int mtk_cg_enable_hwv_inv(struct clk_hw *hw)
 
 static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_BYPASS, clk_hw_get_name(hw));
+
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	const char *c_n = clk_hw_get_name(hw);
 	int ret = 0;
@@ -363,13 +384,16 @@ static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 	if (ret)
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
 
-	ret = __hwv_cg_dma_back(hw, false);
+	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+		ret = __hwv_cg_dma_back(hw, false);
 
 	return ret;
 }
 
 static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_BYPASS, clk_hw_get_name(hw));
+
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	const char *c_n = clk_hw_get_name(hw);
 	int ret = 0;
@@ -393,13 +417,16 @@ static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
 	if (ret)
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
 
-	ret = __hwv_cg_dma_back(hw, true);
+	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+		ret = __hwv_cg_dma_back(hw, true);
 
 	return ret;
 }
 
 static void mtk_cg_disable_generic_hwv(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_BYPASS, clk_hw_get_name(hw));
+
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	const char *c_n = clk_hw_get_name(hw);
 	int ret = 0;
@@ -524,6 +551,8 @@ static void mtk_cg_disable_unused_no_setclr(struct clk_hw *hw)
 
 static int mtk_cg_enable_inv_no_setclr(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RET0(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_set_bit_no_setclr(hw);
 
 	return 0;
@@ -531,6 +560,8 @@ static int mtk_cg_enable_inv_no_setclr(struct clk_hw *hw)
 
 static void mtk_cg_disable_inv_no_setclr(struct clk_hw *hw)
 {
+	FPGA_SIMULATION_RNULL(FPGA_SIM, clk_hw_get_name(hw));
+
 	mtk_cg_clr_bit_no_setclr(hw);
 }
 
@@ -560,6 +591,7 @@ static void mtk_cg_disable_unused_null(struct clk_hw *hw)
 {
 }
 
+#if !MT_CCF_BRINGUP
 static int mtk_cg_prepare_mm_dma(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -614,7 +646,9 @@ CG_PREPARE_FAIL:
 	pr_cg_err("mtk_cg_prepare_mm_dma - %s, ret: %x\n", c_n, -ret);
 	return ret;
 }
+#endif
 
+#if !MT_CCF_BRINGUP
 static void mtk_cg_unprepare_mm_dma(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -669,7 +703,9 @@ CG_UNPREPARE_FAIL:
 	pr_cg_err("mtk_cg_unprepare_mm_dma - %s, ret: %x\n", c_n, -ret);
 	return;
 }
+#endif
 
+#if !MT_CCF_BRINGUP
 static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -723,7 +759,9 @@ CG_PREPARE_FAIL:
 	pr_cg_err("mtk_cg_prepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
 	return ret;
 }
+#endif
 
+#if !MT_CCF_BRINGUP
 static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -777,6 +815,7 @@ CG_UNPREPARE_FAIL:
 	pr_cg_err("mtk_cg_unprepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
 	return;
 }
+#endif
 
 const struct clk_ops mtk_clk_gate_ops_null = {
 	.is_prepared	= mtk_cg_bit_is_set_null,
@@ -827,8 +866,10 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_setclr_inv);
 /*6993 MM dma gate res*/
 const struct clk_ops mtk_clk_mm_gate_ops_setclr = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
+#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
+#endif
 	.enable		= mtk_cg_enable,
 	.disable	= mtk_cg_disable,
 	.disable_unused = mtk_cg_disable_unused,
@@ -837,8 +878,10 @@ EXPORT_SYMBOL_GPL(mtk_clk_mm_gate_ops_setclr);
 /*6993 MM dma gate res*/
 const struct clk_ops mtk_clk_mm_gate_ops_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
+#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
+#endif
 	.enable		= mtk_cg_enable_inv,
 	.disable	= mtk_cg_disable_inv,
 	.disable_unused = mtk_cg_disable_unused_inv,
@@ -878,8 +921,10 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr_inv);
 /*6993 MM res with inv CG*/
 const struct clk_ops mtk_clk_mm_gate_ops_no_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
+#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_dma,
 	.unprepare	= mtk_cg_unprepare_mm_dma,
+#endif
 	.enable		= mtk_cg_enable_inv_no_setclr,
 	.disable	= mtk_cg_disable_inv_no_setclr,
 	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
@@ -906,8 +951,10 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_ap_hwv_ops_inv);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
+#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_hwv,
 	.unprepare	= mtk_cg_unprepare_mm_hwv,
+#endif
 	.enable		= mtk_cg_enable_generic_hwv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };
@@ -916,8 +963,10 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_mm_hwv_ops);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
+#if !MT_CCF_BRINGUP
 	.prepare	= mtk_cg_prepare_mm_hwv,
 	.unprepare	= mtk_cg_unprepare_mm_hwv,
+#endif
 	.enable		= mtk_cg_enable_generic_hwv_inv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };
@@ -941,6 +990,8 @@ struct clk *mtk_clk_register_gate_hwv(
 
 	init.name = gate->name;
 	init.flags = gate->flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
+	if ((gate->flags & TYPE_MTCMOS) == TYPE_MTCMOS)
+		init.flags = gate->flags;
 	init.parent_names = gate->parent_name ? &gate->parent_name : NULL;
 	init.num_parents = gate->parent_name ? 1 : 0;
 	if (gate->flags & CLK_USE_HW_VOTER) {

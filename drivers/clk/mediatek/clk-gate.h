@@ -16,6 +16,9 @@
 #define pr_cg_dbg(fmt, ...) \
 	pr_notice("[CLKCG] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
+#define pr_pd_dbg(fmt, ...) \
+	pr_notice("[CLKPD] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
 struct clk;
 
 struct mtk_clk_gate {

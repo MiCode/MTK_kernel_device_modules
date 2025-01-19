@@ -106,7 +106,7 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	// Polling done
 	ret = regmap_read_poll_timeout_atomic(regmap, done_ofs, val,
 		IS_MASK_SET(val, done_ack_msk),
-		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_DONE_CNT);
 	if (ret) {
 		HWCCF_ERR("%s timeout\n", is_set ? "set" : "clr");
 		ret = -HWV_SET_TIMEOUT;
@@ -181,7 +181,7 @@ static int _v1_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	// Polling done
 	ret = regmap_read_poll_timeout_atomic(regmap, done_ofs, val,
 		IS_MASK_SET(val, done_ack_msk),
-		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_DONE_CNT);
 	if (ret) {
 		HWCCF_ERR("%s timeout\n", is_set ? "set" : "clr");
 		ret = -HWV_SET_TIMEOUT;
@@ -1086,7 +1086,7 @@ static const struct hwccf_match_data v1_hwv_data = {
 static const struct of_device_id hwccf_of_match[] = {
 	{ .compatible = "mediatek,mt6991-hwv", .data = &v0_data },
 	{ .compatible = "mediatek,mt6991-mm_hwv", .data = &v0_data },
-	{ .compatible = "mediatek,mt6993-hwv", .data = &v1_hwv_data },
+	{ .compatible = "mediatek,mt6993-ap_hwv", .data = &v1_hwv_data },
 	{ .compatible = "mediatek,mt6993-mm_hwv", .data = &v1_hwv_data },
 	{ /* sentinel */ }
 };

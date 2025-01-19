@@ -190,11 +190,13 @@ obj-$(CONFIG_COMMON_CLK_MT6991_PD) += clk-mt6991-pd.o
 endif
 ifneq ($(wildcard $(src)/clk-mt6993.c),)
 obj-$(CONFIG_COMMON_CLK_MT6993) += clk-mt6993.o clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6993_PD) += clk-mt6993-pd.o
 obj-$(CONFIG_COMMON_CLK_MT6993_ADSP) += clk-mt6993-adsp.o
 obj-$(CONFIG_COMMON_CLK_MT6993_CAM) += clk-mt6993-cam.o
 obj-$(CONFIG_COMMON_CLK_MT6993_IMG) += clk-mt6993-img.o
 obj-$(CONFIG_COMMON_CLK_MT6993_MMSYS) += clk-mt6993-mmsys.o
 obj-$(CONFIG_COMMON_CLK_MT6993_PERI) += clk-mt6993-peri.o
+obj-$(CONFIG_COMMON_CLK_MT6993_PERI) += clk-mt6993-ifrao.o
 obj-$(CONFIG_COMMON_CLK_MT6993_VCODEC) += clk-mt6993-vcodec.o
 endif
 ifneq ($(wildcard $(src)/clk-mt6899.c),)

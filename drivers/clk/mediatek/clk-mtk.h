@@ -15,6 +15,31 @@
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "clk-mux.h"
 
+/* only FPGA use, SB need disable */
+#define FPGA_SIM 0
+#define FPGA_BYPASS 0
+
+#define FPGA_SIMULATION_RET1(config, msg) do { \
+    if (config) { \
+        pr_notice("[CLKMFR_FPGA] %s:%d simulation mode: %s\n", __func__, __LINE__, msg); \
+        return 1; \
+    } \
+} while (0)
+
+#define FPGA_SIMULATION_RET0(config, msg) do { \
+    if (config) { \
+        pr_notice("[CLKMFR_FPGA] %s:%d simulation mode: %s\n", __func__, __LINE__, msg); \
+        return 0; \
+    } \
+} while (0)
+
+#define FPGA_SIMULATION_RNULL(config, msg) do { \
+    if (config) { \
+        pr_notice("[CLKMFR_FPGA] %s:%d simulation mode: %s\n", __func__, __LINE__, msg); \
+        return; \
+    } \
+} while (0)
+
 /* hw voter timeout configures */
 #define MTK_WAIT_HWV_PREPARE_CNT	200
 #define MTK_WAIT_HWV_PREPARE_US		1
