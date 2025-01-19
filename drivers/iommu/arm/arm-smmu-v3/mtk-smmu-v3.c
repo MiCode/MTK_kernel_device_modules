@@ -874,6 +874,55 @@ out_free:
 	data->txu_mpam_data_cnt= 0;
 }
 
+static void smmu_pmu_remap(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct resource *res;
+	resource_size_t ioaddr;
+	int i, tbu_cnt;
+
+	res = platform_get_resource(to_platform_device(smmu->dev),
+				    IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_info(smmu->dev, "%s get io resource fail\n", __func__);
+		return;
+	}
+
+	ioaddr = res->start;
+	tbu_cnt = SMMU_TBU_CNT(data->plat_data->smmu_type);
+	data->pmu_reg[0] = smmu_ioremap(smmu->dev,
+					ioaddr + SMMU_TCU_OFFSET +
+					SMMU_TCU_PMU_PAGE0,
+					SMMU_PMU_REGS_SZ);
+	if (IS_ERR(data->pmu_reg[0]))
+		dev_info(smmu->dev, "%s pmu_reg[0] base err\n", __func__);
+
+	data->pmu_reloc[0] = smmu_ioremap(smmu->dev,
+					ioaddr + SMMU_TCU_OFFSET +
+					SMMU_TCU_PMU_PAGE1,
+					SMMU_PMU_REGS_SZ);
+	if (IS_ERR(data->pmu_reloc[0]))
+		dev_info(smmu->dev, "%s pmu_reloc[0] base err\n", __func__);
+
+	for (i = 0; i < tbu_cnt; i++) {
+		data->pmu_reg[i + 1] = smmu_ioremap(smmu->dev, ioaddr +
+						    SMMU_TBUx_OFFSET(i) +
+						    SMMU_TBU_PMU_PAGE0,
+						    SMMU_PMU_REGS_SZ);
+		if (IS_ERR(data->pmu_reg[i + 1]))
+			dev_info(smmu->dev, "%s pmu_reg[%d] base err\n",
+				 __func__, i + 1);
+
+		data->pmu_reloc[i + 1] = smmu_ioremap(smmu->dev, ioaddr +
+						      SMMU_TBUx_OFFSET(i) +
+						      SMMU_TBU_PMU_PAGE1,
+						      SMMU_PMU_REGS_SZ);
+		if (IS_ERR(data->pmu_reloc[i + 1]))
+			dev_info(smmu->dev, "%s pmu_reloc[%d] base err\n",
+				 __func__, i + 1);
+	}
+}
+
 static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -891,6 +940,7 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	smmu_init_wpcfg(smmu);
 
 	smmu_mpam_register(smmu);
+	smmu_pmu_remap(smmu);
 	if (data->plat_data->smmu_type == GPU_SMMU && data->irq_disable)
 		smmu->features |= ARM_SMMU_FEAT_DIS_EVTQ;
 

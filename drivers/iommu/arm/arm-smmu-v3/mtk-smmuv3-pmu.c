@@ -1064,17 +1064,7 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	smmu_pmu->smmu_type = plat_data->smmu_type;
 	smmu_pmu->take_power = false;
 
-	smmu_pmu->reg_base = devm_platform_get_and_ioremap_resource(pdev, 0, &res_0);
-	if (IS_ERR(smmu_pmu->reg_base))
-		return PTR_ERR(smmu_pmu->reg_base);
-	smmu_pmu->reloc_base = devm_platform_ioremap_resource(pdev, 1);
-	if (IS_ERR(smmu_pmu->reloc_base)) {
-		dev_info(smmu_pmu->dev,
-			 "reloc_base error for %s",
-			 smmu_pmu->pmu.name);
-		smmu_pmu->reloc_base = smmu_pmu->reg_base;
-	}
-
+	res_0 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	/* Update pmu event attr group */
 	smmu_res_0 = platform_get_resource(smmudev, IORESOURCE_MEM, 0);
 	if (res_0 && smmu_res_0 && (res_0->start - smmu_res_0->start > 0x40000)) {
@@ -1084,6 +1074,21 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 			(res_0->start - smmu_res_0->start - 0x40000) / 0x20000 + 1;
 	} else {
 		smmu_pmu->txu_id = 0;
+	}
+
+	if (smmu_pmu->txu_id >= SMMU_TXU_CNT(smmu_pmu->smmu_type))
+		return -EINVAL;
+
+	smmu_pmu->reg_base = data->pmu_reg[smmu_pmu->txu_id];
+	if (IS_ERR(smmu_pmu->reg_base))
+		return PTR_ERR(smmu_pmu->reg_base);
+
+	smmu_pmu->reloc_base = data->pmu_reloc[smmu_pmu->txu_id];
+	if (IS_ERR(smmu_pmu->reloc_base)) {
+		dev_info(smmu_pmu->dev,
+			 "reloc_base error for %s",
+			 smmu_pmu->pmu.name);
+		smmu_pmu->reloc_base = smmu_pmu->reg_base;
 	}
 
 	spin_lock_init(&smmu_pmu->pmu_lock);

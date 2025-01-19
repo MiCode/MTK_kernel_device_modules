@@ -668,6 +668,8 @@ struct mtk_smmu_data {
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
 	bool				dvm_support;
+	void __iomem			*pmu_reg[SMMU_TXU_CNT_MAX];
+	void __iomem			*pmu_reloc[SMMU_TXU_CNT_MAX];
 };
 
 enum mtk_smmu_tfm_type {
