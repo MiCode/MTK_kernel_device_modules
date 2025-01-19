@@ -18,4 +18,21 @@ define_mgk_ddk_ko(
     srcs = [
       "smap-v6991.c",
     ],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "smap-mt6993",
+    srcs = [
+      "smap-v6993.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-smap-debug",
+    srcs = [
+      "mtk-smap-debug.c",
+    ],
+    hdrs = glob(["**/*.h"]),
 )
