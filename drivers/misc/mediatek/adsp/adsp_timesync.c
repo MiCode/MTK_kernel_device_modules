@@ -61,6 +61,8 @@ static void adsp_timesync_update(u32 fz)
 		ret = adsp_copy_to_sharedmem(get_adsp_core_by_id(ADSP_A_ID),
 					ADSP_SHAREDMEM_TIMESYNC,
 					infos, sizeof(*infos));
+		if (ret == 0)
+			pr_info("%s(), copy error", __func__);
 	}
 }
 

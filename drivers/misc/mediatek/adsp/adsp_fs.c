@@ -347,8 +347,8 @@ static ssize_t adsp_trace_read(struct file *filp, char __user *buf,
 static ssize_t adsp_trace_write(struct file *filp, const char __user *buffer,
 				size_t count, loff_t *ppos)
 {
-	char buf[64];
-	unsigned int enable = 0, n = 0;
+	char buf[64] = {0};
+	unsigned int enable = 0;
 	struct adsp_priv *pdata = filp->private_data;
 
 	if (copy_from_user(buf, buffer, min(count, sizeof(buf))))
@@ -359,9 +359,9 @@ static ssize_t adsp_trace_write(struct file *filp, const char __user *buffer,
 
 	if (enable) {
 		kfifo_reset(&pdata->tracefifo);
-		n = snprintf(buf, sizeof(buf), "trace_start");
+		strscpy(buf, "trace_start", sizeof(buf) - 1);
 	} else {
-		n = snprintf(buf, sizeof(buf), "trace_stop");
+		strscpy(buf, "trace_stop", sizeof(buf) - 1);
 	}
 
 	pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, buf,
