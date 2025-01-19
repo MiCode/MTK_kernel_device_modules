@@ -2302,6 +2302,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 		if (!is_forced) {
 			if (scale_allow) {
 				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+				/* Make sure no resume work on-going */
+				cancel_work_sync(&hba->clk_scaling.resume_work);
 				spin_lock_irqsave(hba->host->host_lock, flags);
 				if (!hba->clk_scaling.is_suspended) {
 					scale_suspend = true;
