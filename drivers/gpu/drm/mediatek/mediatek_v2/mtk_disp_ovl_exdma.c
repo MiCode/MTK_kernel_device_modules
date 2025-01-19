@@ -421,6 +421,16 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 	#define OVL_LANDSCAPE			BIT(1)
 	#define OVL_R_FIRST				BIT(2)
 
+#define OVL_UNDO_ALPHA (0xFF8UL)
+	#define L0_UNDO_ALPHA REG_FLD_MSB_LSB(0, 0)
+	#define L0_APPLY_ALPHA REG_FLD_MSB_LSB(4, 4)
+	#define EL_UNDO_ALPHA(n) REG_FLD_MSB_LSB(0 + 8 * (n), 0 + 8 * (n))
+	#define EL_APPLY_ALPHA(n) REG_FLD_MSB_LSB(4 + 8 * (n), 4 + 8 * (n))
+
+#define OVL_UNDO_ALPHA_OFFSET (0xFFCUL)
+	#define L0_UNDO_ALPHA_OFFSET REG_FLD_MSB_LSB(7, 0)
+	#define EL_UNDO_ALPHA_OFFSET(n) REG_FLD_MSB_LSB(7 + 8 * (n), 0 + 8 * (n))
+
 enum GS_OVL_FLD {
 	GS_OVL_RDMA_ULTRA_TH = 0,
 	GS_OVL_RDMA_PRE_ULTRA_TH,
@@ -2504,6 +2514,12 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_L_EN(ext_lye_idx), 0,
 			DISP_OVL_L_EN);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_UNDO_ALPHA,
+			(modifier & MTK_FMT_PREMULTIPLIED) ? ~0: 0,
+			REG_FLD_MASK(EL_UNDO_ALPHA(ext_lye_idx)) |
+			REG_FLD_MASK(EL_APPLY_ALPHA(ext_lye_idx)));
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_L0_CLRFMT(0), Ln_CLRFMT,
@@ -2552,6 +2568,11 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_L_EN(0), 0,
 			DISP_OVL_L_EN);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_UNDO_ALPHA,
+			(modifier & MTK_FMT_PREMULTIPLIED) ? ~0 : 0,
+			REG_FLD_MASK(L0_UNDO_ALPHA) | REG_FLD_MASK(L0_APPLY_ALPHA));
 	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
