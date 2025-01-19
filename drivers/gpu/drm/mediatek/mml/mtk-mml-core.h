@@ -96,7 +96,7 @@ extern int mml_log_rec;
 #define MML_LOG_SIZE	(1 << 20)
 
 void mml_save_log_record(const char *fmt, ...);
-void mml_print_log_record(struct seq_file *seq);
+u32 mml_print_log_buffer(char *debug_buffer, u32 buffer_size);
 
 #define _mml_save_log(fmt, args...) do { \
 	struct timespec64 _curr_time; \

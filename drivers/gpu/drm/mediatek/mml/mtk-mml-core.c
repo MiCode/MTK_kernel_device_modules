@@ -198,31 +198,43 @@ void mml_save_log_record(const char *fmt, ...)
 }
 EXPORT_SYMBOL_GPL(mml_save_log_record);
 
-void mml_print_log_record(struct seq_file *seq)
+u32 mml_print_log_buffer(char *debug_buffer, u32 buffer_size)
 {
-	int ret = 0;
-	u32 idx, end, size = seq->size;
+	u32 idx, end;
 	unsigned long flags = 0;
+	u32 len, buf_idx = 0, copy_sz;
 
-	seq_puts(seq, "\nMML log buffer begin:\n");
+	len = snprintf(debug_buffer, buffer_size, "\nMML log buffer begin:\n");
+	if (len <= 0 || len >= buffer_size)
+		goto done;
+	buf_idx += len;
+	buffer_size -= len;
 
 	spin_lock_irqsave(&mml_log_lock, flags);
-	idx = mml_log_idx + 1;
+	idx = mml_log_idx;
 	end = mml_log_end;
 
-	if (idx > 0 && end > idx) {
-		ret = seq_write(seq, mml_log_record + idx,
-			min_t(u32, end - idx - 1, seq->size));
-		if (!ret)
-			seq_puts(seq, "\n");
+	if (buffer_size && idx > 0 && end > idx) {
+		copy_sz = min_t(u32, end - idx, buffer_size);
+
+		memcpy(debug_buffer + buf_idx, mml_log_record + idx, copy_sz);
+		buf_idx += copy_sz;
+		buffer_size -= copy_sz;
 	}
-	if (!ret) {
-		ret = seq_write(seq, mml_log_record, min_t(u32, idx - 1, seq->size));
-		if (!ret)
-			seq_puts(seq, "\n");
+
+	if (buffer_size) {
+		copy_sz = min_t(u32, idx, buffer_size);
+		memcpy(debug_buffer + buf_idx, mml_log_record, copy_sz);
+		buf_idx += copy_sz;
+		buffer_size -= copy_sz;
 	}
+
 	spin_unlock_irqrestore(&mml_log_lock, flags);
-	mml_log("%s print log index %u end %u sz %u ret %d", __func__, idx, end, size, ret);
+
+done:
+	mml_msg("%s print log index %u end %u write %u remain %u",
+		__func__, mml_log_idx, mml_log_end, buf_idx, buffer_size);
+	return buf_idx;
 }
 
 int mml_topology_register_ip(const char *ip, const struct mml_topology_ops *op)
@@ -1410,6 +1422,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	if (mml_isdc(cfg->info.mode) && timespec64_compare(&curr_time, &task->end_time) > 0) {
 		overdue = true;
 		mml_trace_tag_start(MML_TTAG_OVERDUE);
+		mml_mmp(overdue, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
 	}
 
 	mml_msg_qos("task dvfs end %p job %i pipe %u cur %2u.%03llu end %2u.%03llu clt id %hhu%s",
