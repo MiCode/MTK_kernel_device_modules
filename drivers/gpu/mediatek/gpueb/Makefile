@@ -14,7 +14,7 @@
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
 
-#subdir-ccflags-y += -Wno-error
+ccflags-y += -Wno-unused-but-set-variable
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
 obj-$(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT) += mtk_gpueb.o
