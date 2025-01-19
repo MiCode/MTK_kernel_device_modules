@@ -2183,11 +2183,6 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 	event_mgr[IOMMU_POWER_ON].dump_trace = 1;
 	event_mgr[IOMMU_POWER_OFF].dump_trace = 1;
 
-	event_mgr[IOMMU_SUSPEND].dump_log = 1;
-	event_mgr[IOMMU_RESUME].dump_log = 1;
-	event_mgr[IOMMU_POWER_ON].dump_log = 0;
-	event_mgr[IOMMU_POWER_OFF].dump_log = 0;
-
 	iommu_globals.record = vmalloc(total_size);
 	if (!iommu_globals.record) {
 		iommu_globals.enable = 0;
