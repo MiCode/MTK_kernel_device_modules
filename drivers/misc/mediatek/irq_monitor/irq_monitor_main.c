@@ -1231,7 +1231,6 @@ static int __init irq_monitor_init(void)
 	if (ret)
 		return ret;
 	irq_mon_proc_init();
-	kwdt_regist_irq_info(mt_aee_dump_irq_info);
 #if IS_ENABLED(CONFIG_MTK_FTRACE_DEFAULT_ENABLE)
 	trace_set_clr_event(NULL, "irq_mon_msg", 1);
 #endif
@@ -1240,7 +1239,6 @@ static int __init irq_monitor_init(void)
 
 static void __exit irq_monitor_exit(void)
 {
-	kwdt_regist_irq_info(NULL);
 	remove_proc_subtree("mtmon", NULL);
 	irq_count_tracer_exit();
 	irq_mon_tracepoint_exit();

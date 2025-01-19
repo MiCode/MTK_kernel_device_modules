@@ -247,12 +247,5 @@ static inline void mrdump_set_extra_dump(enum AEE_EXTRA_FILE_ID id,
 extern void mlog_get_buffer(char **ptr, int *size)__attribute__((weak));
 extern void get_msdc_aee_buffer(unsigned long *buff,
 	unsigned long *size)__attribute__((weak));
-#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET)
-void kwdt_regist_irq_info(void (*fn)(void));
-#else
-static inline void kwdt_regist_irq_info(void (*fn)(void))
-{
-}
-#endif
 #endif
 

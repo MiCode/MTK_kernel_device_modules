@@ -31,7 +31,6 @@
 #include <uapi/linux/sched/types.h>
 #if IS_ENABLED(CONFIG_MTK_TICK_BROADCAST_DEBUG)
 #include "../../../../../kernel/time/tick-internal.h"
-#include <linux/of_irq.h>
 #endif
 #include <mt-plat/mboot_params.h>
 #include <mt-plat/mrdump.h>
@@ -47,6 +46,8 @@
 #include <linux/clockchips.h>
 #endif
 #include "hangdet.h"
+#include <mt-plat/mtk_irq_mon.h>
+#include <linux/of_irq.h>
 
 void sysrq_sched_debug_show_at_AEE(void);
 
@@ -185,16 +186,11 @@ static uint64_t hrtimer_count;
 static DEFINE_SPINLOCK(usleep_range_lock);
 static DEFINE_SPINLOCK(hrtimer_lock);
 
-static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs);
 static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs);
 static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs);
 // tracepoints for hrtimers
 static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, ktime_t *now_t);
 
-static struct kprobe kp_aee_kernel_warning_api_func = {
-	.symbol_name = "aee_kernel_warning_api_func",
-	.pre_handler = aee_kernel_warning_api_func_pre,
-};
 
 static struct kprobe kp_usleep_range_state = {
 	.symbol_name = "usleep_range_state",
@@ -555,13 +551,6 @@ void wk_cpu_update_bit_flag(int cpu, int plug_status, int set_check)
 		spin_unlock_bh(&lock);
 	}
 }
-
-static void (*p_mt_aee_dump_irq_info)(void);
-void kwdt_regist_irq_info(void (*fn)(void))
-{
-	p_mt_aee_dump_irq_info = fn;
-}
-EXPORT_SYMBOL_GPL(kwdt_regist_irq_info);
 
 static void kwdt_time_sync(void)
 {
@@ -953,8 +942,7 @@ static void kwdt_dump_func(void)
 	dump_wdk_bind_info(true);
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
-	if (p_mt_aee_dump_irq_info)
-		p_mt_aee_dump_irq_info();
+	mt_aee_dump_irq_info();
 #endif
 	show_irq_count();
 #if CHK_HWT_IRQ
@@ -1647,14 +1635,15 @@ static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *reg
 }
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	char *module = (char *)regs->regs[3];
+static int arch_timer_irq;
 
-	if (strstr(module, "arch_timer") != NULL) {
-		dump_usleep_range_history();
-		dump_hrtimer_burst_history();
-	}
+static int arch_timer_burst_irq_callback(unsigned int irq, enum irq_mon_aee_type type)
+{
+	if (type != IRQ_MON_AEE_TYPE_BURST_IRQ)
+		return -1;
+
+	dump_usleep_range_history();
+	dump_hrtimer_burst_history();
 
 	return 0;
 }
@@ -1907,16 +1896,34 @@ static int __init hangdet_init(void)
 	if (res < 0)
 		pr_info("kp_clockevents_exchange_device kprobe failed %d\n", res);
 	else
-		pr_info("Planted kprobe at %llx for hrtimer_start_range_ns\n",
+		pr_info("Planted kprobe at %llx for clockevents_exchange_device\n",
 			(unsigned long long) kp_clockevents_exchange_device.addr);
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	res = register_kprobe(&kp_aee_kernel_warning_api_func);
-	if (res < 0)
-		pr_info("aee_kernel_warning_api_func kprobe failed %d\n", res);
-	else
-		pr_info("Planted kprobe at %p for aee_kernel_warning_api_func\n",
-			kp_aee_kernel_warning_api_func.addr);
+	static const struct of_device_id arch_timer_of_match[] = {
+		{ .compatible = "arm,armv7-timer" },
+		{ .compatible = "arm,armv8-timer" },
+		{},
+	};
+	struct device_node *np_arch_timer;
+
+	for_each_matching_node(np_arch_timer, arch_timer_of_match) {
+		pr_info("%s: compatible node found: %s\n",
+			 __func__, np_arch_timer->name);
+		break;
+	}
+
+	if (np_arch_timer) {
+		arch_timer_irq = of_irq_get(np_arch_timer, ARCH_TIMER_VIRT_PPI);
+		if (arch_timer_irq < 0) {
+			pr_info("Failed to get arch_timer IRQ number\n");
+		} else {
+			pr_info("arch_timer IRQ number: %d\n", arch_timer_irq);
+			irq_mon_aee_callback_register(arch_timer_irq, arch_timer_burst_irq_callback);
+		}
+	} else {
+		pr_info("No arch_timer compatible node found\n");
+	}
 
 	res = register_kprobe(&kp_usleep_range_state);
 	if (res < 0)
@@ -1954,7 +1961,7 @@ static void __exit hangdet_exit(void)
 	unregister_kprobe(&kp_hrtimer_start_range_ns);
 	unregister_kprobe(&kp_clockevents_exchange_device);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	unregister_kprobe(&kp_aee_kernel_warning_api_func);
+	irq_mon_aee_callback_unregister(arch_timer_irq);
 	unregister_kprobe(&kp_usleep_range_state);
         unregister_kprobe(&kp_hrtimer_wakeup_entry);
 	hrtimer_tp_unregister();
