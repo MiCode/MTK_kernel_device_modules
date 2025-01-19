@@ -16,4 +16,4 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 
 mme-y := mmevent.o
 
-obj-$(CONFIG_MMEVENT) += mme.o
+# obj-$(CONFIG_MMEVENT) += mme.o
