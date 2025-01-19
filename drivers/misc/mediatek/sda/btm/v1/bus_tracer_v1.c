@@ -10,7 +10,7 @@
 #include <linux/of_address.h>
 #include <linux/slab.h>
 
-#include "../bus_tracer_interface.h"
+#include "bus_tracer_interface.h"
 #include "bus_tracer_v1.h"
 
 static int start(struct bus_tracer_plt *plt)
