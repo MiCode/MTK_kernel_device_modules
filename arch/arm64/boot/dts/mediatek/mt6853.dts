@@ -839,6 +839,13 @@
 		slave_mivr_diff = <100000>;
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6362_chg>;
+		bootmode = <&chosen>;
+	};
+
 	charger: charger {
 		compatible = "mediatek,charger";
 		gauge = <&mtk_gauge>;
