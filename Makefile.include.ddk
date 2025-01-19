@@ -12,6 +12,7 @@ endif
 # add ddk device modules' Module.symvers
 # for example
 # EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/{ddk device module path}/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/cpufreq/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/dma-buf/heaps/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/iommu/arm/arm-smmu-v3/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/aee/mrdump/*Module.symvers)

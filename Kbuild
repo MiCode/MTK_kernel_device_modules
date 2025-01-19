@@ -28,8 +28,6 @@ obj-y += drivers/clk/mediatek/
 
 obj-y += drivers/clocksource/
 
-obj-y += drivers/cpufreq/
-
 obj-y += drivers/soc/mediatek/
 
 obj-y += drivers/dma-buf/heaps/

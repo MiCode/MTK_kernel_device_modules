@@ -136,6 +136,7 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/cpufreq:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:srcs".format(kernel_version),
@@ -174,6 +175,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/soc/mediatek:makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:srcs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:srcs".format(kernel_version),
@@ -189,6 +191,7 @@ mgk_64_kleaf_device_modules_srcs = [
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/cpufreq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/rps:ddk_kconfigs".format(kernel_version),
@@ -203,6 +206,8 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/memory/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_v1:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:ddk_kconfigs".format(kernel_version),
@@ -247,6 +252,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
 
 mgk_64_kleaf_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_refill".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-mpam-mon".format(kernel_version),
@@ -290,6 +296,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:gz_trusty_mod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ips:mtk-ips-helper".format(kernel_version),
@@ -439,6 +446,7 @@ mgk_64_kleaf_platform_device_modules = {
 
 mgk_64_kleaf_eng_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_v1:cpuhvfs".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_eng_device_modules = {
@@ -447,6 +455,7 @@ mgk_64_kleaf_platform_eng_device_modules = {
 
 mgk_64_kleaf_userdebug_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_v1:cpuhvfs".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_userdebug_device_modules = {
@@ -471,7 +480,6 @@ mgk_64_device_modules = [
     "drivers/clk/mediatek/clk-disable-unused.ko",
     "drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
-    "drivers/cpufreq/mediatek-cpufreq-hw.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
     "drivers/dma-buf/heaps/deferred-free-helper.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
@@ -636,7 +644,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/connectivity/connadp.ko",
     "drivers/misc/mediatek/conn_scp/connscp.ko",
     "drivers/misc/mediatek/cci_lite/ccidvfs.ko",
-    "drivers/misc/mediatek/cpufreq_lite/cpudvfs.ko",
     "drivers/misc/mediatek/cross_sched/cross_sched.ko",
     "drivers/misc/mediatek/dcm/mtk_dcm.ko",
     #"drivers/misc/mediatek/dvfsrc/mtk-dvfsrc-helper.ko",
@@ -1236,7 +1243,6 @@ mgk_64_platform_device_modules = {
 
 
 mgk_64_device_eng_modules = [
-    "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/locking/locking_aee.ko",
     "drivers/misc/mediatek/irq_monitor/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
@@ -1247,7 +1253,6 @@ mgk_64_platform_device_eng_modules = {
 
 
 mgk_64_device_userdebug_modules = [
-    "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/irq_monitor/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
