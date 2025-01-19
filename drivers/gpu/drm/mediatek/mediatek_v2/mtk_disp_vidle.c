@@ -183,7 +183,31 @@ int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 	return ret;
 }
 
-int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
+int mtk_vidle_user_power_keep_v1(enum mtk_vidle_voter_user user)
+{
+	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)
+		return 0;
+
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
+	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		return -1;
+
+	return disp_dpc_driver.dpc_vidle_power_keep(user);
+}
+
+void mtk_vidle_user_power_release_v1(enum mtk_vidle_voter_user user)
+{
+	if (disp_dpc_driver.dpc_vidle_power_release == NULL || vidle_data.drm_priv == NULL)
+		return;
+
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
+	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		return;
+
+	disp_dpc_driver.dpc_vidle_power_release(user);
+}
+
+int mtk_vidle_user_power_keep_v2(enum mtk_vidle_voter_user user)
 {
 	int pm_ret = 0;
 
@@ -205,7 +229,7 @@ int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 	return pm_ret;
 }
 
-void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
+void mtk_vidle_user_power_release_v2(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_release == NULL || vidle_data.drm_priv == NULL)
 		return;
@@ -218,6 +242,22 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
 		user |= VOTER_ONLY;
 
 	disp_dpc_driver.dpc_vidle_power_release(user);
+}
+
+int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
+{
+	if (vidle_data.dpc_version == DPC_VER1)
+		return mtk_vidle_user_power_keep_v1(user);
+	else
+		return mtk_vidle_user_power_keep_v2(user);
+}
+
+void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
+{
+	if (vidle_data.dpc_version == DPC_VER1)
+		return mtk_vidle_user_power_release_v1(user);
+	else
+		return mtk_vidle_user_power_release_v2(user);
 }
 
 int mtk_vidle_pq_power_get(const char *caller)

@@ -33,6 +33,7 @@ enum mtk_vidle_voter_user {
 	DISP_VIDLE_USER_DPC_DUMP = 29,
 	DISP_VIDLE_USER_SMI_DUMP = 30,
 	DISP_VIDLE_FORCE_KEEP = 31,
+	DISP_VIDLE_USER_MASK = 0x1f,
 };
 
 enum mtk_vidle_voter_status {
