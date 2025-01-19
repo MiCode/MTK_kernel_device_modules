@@ -40,6 +40,14 @@ enum rwsem_waiter_type {
 	RWSEM_WAITING_FOR_READ
 };
 
+enum {
+	DEBUG_NODE,
+	FPSGO,
+	UX,
+	VIDEO,
+	MAX_TYPE
+};
+
 struct rwsem_waiter {
 	struct list_head list;
 	struct task_struct *task;
@@ -60,11 +68,6 @@ struct cluster_info {
 	int cpu;
 };
 
-struct win_info {
-	pid_t tgid;
-	struct list_head list;
-};
-
 struct cpu_time {
 	u64 time;
 };
@@ -73,15 +76,10 @@ struct cpu_info {
 	int *cpu_loading;
 };
 
-extern void set_task_basic_vip(int pid);
-extern void unset_task_basic_vip(int pid);
 extern int set_tgid_vip(int tgid);
 extern int unset_tgid_vip(int tgid);
 extern void turn_on_tgid_vip(void);
 extern void turn_off_tgid_vip(void);
-extern int get_cam_hal_pid_for_task_turbo(void);
-extern int get_cam_server_pid_for_task_turbo(void);
-extern bool get_cam_status_for_task_turbo(void);
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
 
 /*
