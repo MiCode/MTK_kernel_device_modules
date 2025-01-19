@@ -5238,7 +5238,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		slcparity: slc-parity@1046e000 {
-			compatible = "mediatek,common-slc-parity";
+			compatible = "mediatek,edac-slc-parity";
 			reg = <0 0x1046e000 0 0x1000>,
 				<0 0x1056e000 0 0x1000>;
 			interrupts = <GIC_SPI 852 IRQ_TYPE_LEVEL_HIGH 0>;
