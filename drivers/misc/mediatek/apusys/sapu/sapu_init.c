@@ -144,7 +144,7 @@ static int dram_fb_register(void)
 	}
 
 	sapu->dram_fb_info.dram_fb_dmabuf = dma_heap_buffer_alloc(
-						dma_heap, 0x200000,
+						dma_heap, 0x400000,
 						DMA_HEAP_VALID_FD_FLAGS,
 						DMA_HEAP_VALID_HEAP_FLAGS);
 
