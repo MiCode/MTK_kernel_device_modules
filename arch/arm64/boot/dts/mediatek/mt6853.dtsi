@@ -3440,6 +3440,7 @@
 			reg = <0 0x14002000 0 0x1000>;
 			mediatek,smi-supply = <&disp_smi_2x1_sub_common_u0 0 &disp_smi_2x1_sub_common_u1 0>;
 			mediatek,common-id = <0>;
+			operating-points-v2 = <&opp_table_disp>;
 			power-domains = <&scpsys MT6853_POWER_DOMAIN_DISP>;
 			clocks = <&mmsys_config_clk CLK_MM_SMI_COMMON>,
 				 <&mmsys_config_clk CLK_MM_SMI_GALS>,
@@ -3450,7 +3451,7 @@
 
 		smi-dbg {
 			compatible = "mediatek,mtk-smi-dbg";
-			mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
+			mediatek-larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
 					&smi_larb7 &smi_larb9 &smi_larb11 &smi_larb13
 					&smi_larb14 &smi_larb16 &smi_larb17 &smi_larb18
 					&smi_larb19 &smi_larb20>;
