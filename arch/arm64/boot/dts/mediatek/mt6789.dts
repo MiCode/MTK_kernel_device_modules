@@ -1946,40 +1946,40 @@
 	mmdvfs-debug {
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		force-step0 = <1>;
-		release-step0 = <1>;
+		force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
+		release-step0 = <1>;	/* 0:disable,  1:enable */
 	};
 
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_disp0>;
-		mediatek,support_mux = "disp0", "venc",
+		mediatek,support-mux = "disp0", "venc",
 			"vdec", "mdp0", "cam", "img1", "ipe";
-		mediatek,mux_disp0 = "TOP_UNIVPLL_D6_D2",
+		mediatek,mux-disp0 = "TOP_UNIVPLL_D6_D2",
 			"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 			"TOP_MAINPLL_D4";
-		mediatek,mux_venc = "TOP_UNIVPLL_D5_D2",
+		mediatek,mux-venc = "TOP_UNIVPLL_D5_D2",
 			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
 			"TOP_UNIVPLL_D4";
-		mediatek,mux_vdec = "TOP_MAINPLL_D5_D2",
+		mediatek,mux-vdec = "TOP_MAINPLL_D5_D2",
 			"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 			"TOP_MAINPLL_D4";
-		mediatek,mux_mdp0 = "TOP_MMPLL_D5_D2",
+		mediatek,mux-mdp0 = "TOP_MMPLL_D5_D2",
 			"TOP_MMPLL_D4_D2", "TOP_MAINPLL_D5",
 			"TOP_TVDPLL";
-		mediatek,mux_cam = "TOP_NPUPLL",
+		mediatek,mux-cam = "TOP_NPUPLL",
 			"TOP_MMPLL_D7", "TOP_MAINPLL_D4",
 			"TOP_UNIVPLL_D4";
-		mediatek,mux_img1 = "TOP_MMPLL_D5_D2",
+		mediatek,mux-img1 = "TOP_MMPLL_D5_D2",
 			"TOP_MMPLL_D4_D2", "TOP_MMPLL_D6",
 			"TOP_UNIVPLL_D4";
-		mediatek,mux_ipe = "TOP_MMPLL_D5_D2",
+		mediatek,mux-ipe = "TOP_MMPLL_D5_D2",
 			"TOP_UNIVPLL_D4_D2", "TOP_UNIVPLL_D6",
 			"TOP_MAINPLL_D4";
 
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		mediatek,support_hopping = "clk_mmpll_ck";
-		mediatek,hopping_clk_mmpll_ck = <2290000000 2750000000
+		mediatek,support-hopping = "clk_mmpll_ck";
+		mediatek,hopping-clk_mmpll_ck = <2290000000 2750000000
 			2750000000 2750000000>;
 		mediatek,action = <1>;
 
