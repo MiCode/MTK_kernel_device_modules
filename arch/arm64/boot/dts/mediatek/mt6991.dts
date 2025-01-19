@@ -15524,7 +15524,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<0 0x31ba010c 0 0x4>, /* mbox2 clr */
 			<0 0x31a70028 0 0x4>, /* mbox2 init */
 			<0 0x31bd0000 0 0x1000>, /* cfg ap*/
-			<0 0x31a70040 0 0x10>; /* cfg sec gpr */
+			<0 0x31a70040 0 0x10>, /* cfg sec gpr */
+			<0 0x1c00091c 0 0x4>; /* vcp rdy */
 
 		reg-names = "vcp_sram_base",
 			"vcp_bus_tracker",
@@ -15549,7 +15550,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			"mbox2_clr",
 			"mbox2_init",
 			"vcp_cfgreg_ap",
-			"vcp_sec_gpr";
+			"vcp_sec_gpr",
+			"vcp_vlp_ao_rsvd7";
 
 		interrupts = <GIC_SPI 787 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 788 IRQ_TYPE_LEVEL_HIGH 0>,
