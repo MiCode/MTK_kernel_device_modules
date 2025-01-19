@@ -31,6 +31,17 @@
 #define V0_CCF_XPU_PLL_SET(n)         CCF_OFS(V0_CCF_XPU(n) + 0x210)
 #define V0_CCF_XPU_PLL_CLR(n)         CCF_OFS(V0_CCF_XPU(n) + 0x214)
 
+#define V0_CCF_MTCMOS0_SET_OFS      (0x218)
+#define V0_CCF_MTCMOS0_CLR_OFS      (0x21C)
+#define V0_CCF_MTCMOS1_SET_OFS      (0x220)
+#define V0_CCF_MTCMOS1_CLR_OFS      (0x224)
+#define V0_CCF_B1_SET_OFS           (0x230)
+#define V0_CCF_B1_CLR_OFS           (0x234)
+#define V0_CCF_B2_SET_OFS           (0x238)
+#define V0_CCF_B2_CLR_OFS           (0x23C)
+#define V0_CCF_PLL_SET_OFS          (0x210)
+#define V0_CCF_PLL_CLR_OFS          (0x214)
+
 /* Utilities for HWCCF Voter */
 #define V0_IS_SET_FROM_VOTER_ADDR(ofs)  (((ofs) & 0x2ff) < 0x300 ? \
 					(((ofs) & 0x2ff) % 0x8) == 0 : \
@@ -39,13 +50,18 @@
 // CG VIP Status
 #define V0_CCF_VIP_CG_DONE(x)    CCF_OFS(0x12600 + (x) * 0x4)
 // MTCMOS VIP Status
-#define V0_CCF_MTCMOS_DONE_0     CCF_OFS(0x141C)
-#define V0_CCF_MTCMOS_DONE_1     CCF_OFS(0x142C)
+#define V0_CCF_MTCMOS_EN_0	CCF_OFS(0x1410)
+#define V0_CCF_MTCMOS_DONE_0	CCF_OFS(0x141C)
+#define V0_CCF_MTCMOS_EN_1	CCF_OFS(0x1420)
+#define V0_CCF_MTCMOS_DONE_1	CCF_OFS(0x142C)
 // Backup VIP Status
-#define V0_CCF_BACKUP1_DONE      CCF_OFS(0x143C)
-#define V0_CCF_BACKUP2_DONE      CCF_OFS(0x144C)
+#define V0_CCF_BACKUP1_EN	CCF_OFS(0x1430)
+#define V0_CCF_BACKUP1_DONE	CCF_OFS(0x143C)
+#define V0_CCF_BACKUP2_EN	CCF_OFS(0x1440)
+#define V0_CCF_BACKUP2_DONE	CCF_OFS(0x144C)
 // PLL VIP Status
-#define V0_CCF_XPU_PLL_DONE      CCF_OFS(0x140C)
+#define V0_CCF_PLL_EN		CCF_OFS(0x1400)
+#define V0_CCF_PLL_DONE		CCF_OFS(0x140C)
 
 
 /* levarage TFA addressmap */
@@ -84,16 +100,16 @@
 
 
 
-/* dx4 for irq check */
-#define V0_XPU_MTCMOS0_SET_STA    CCF_OFS(0x146C)
-#define V0_XPU_MTCMOS0_CLR_STA    CCF_OFS(0x1470)
-#define V0_XPU_MTCMOS1_SET_STA    CCF_OFS(0x1474)
-#define V0_XPU_MTCMOS1_CLR_STA    CCF_OFS(0x1478)
-#define V0_PLL_SET_STA    CCF_OFS(0x1464)
-#define V0_PLL_CLR_STA    CCF_OFS(0x1468)
-#define V0_CCF_BACKUP1_SET_STA    CCF_OFS(0x1484)
-#define V0_CCF_BACKUP1_CLR_STA    CCF_OFS(0x1488)
-#define V0_CCF_BACKUP2_SET_STA    CCF_OFS(0x148C)
-#define V0_CCF_BACKUP2_CLR_STA    CCF_OFS(0x1490)
+/* dx4 for check */
+#define V0_XPU_MTCMOS0_SET_STA		CCF_OFS(0x146C)
+#define V0_XPU_MTCMOS0_CLR_STA		CCF_OFS(0x1470)
+#define V0_XPU_MTCMOS1_SET_STA		CCF_OFS(0x1474)
+#define V0_XPU_MTCMOS1_CLR_STA		CCF_OFS(0x1478)
+#define V0_PLL_SET_STA			CCF_OFS(0x1464)
+#define V0_PLL_CLR_STA			CCF_OFS(0x1468)
+#define V0_CCF_BACKUP1_SET_STA		CCF_OFS(0x1484)
+#define V0_CCF_BACKUP1_CLR_STA		CCF_OFS(0x1488)
+#define V0_CCF_BACKUP2_SET_STA		CCF_OFS(0x148C)
+#define V0_CCF_BACKUP2_CLR_STA		CCF_OFS(0x1490)
 
 #endif /* _V0_HWCCF_H_ */

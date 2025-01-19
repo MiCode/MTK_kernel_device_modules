@@ -63,6 +63,7 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	uint32_t en_ofs = setclr_ofs;
 	int ret = 0;
 	uint32_t val;
+	uint32_t global_en_ofs = 0, setclr_sta_ofs = 0;
 
 	// Check args
 	if (!vote_val || !done_ofs || !done_ack_msk) {
@@ -80,6 +81,29 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 		HWCCF_ERR("already %s, [%x]=%x{%x}\n",
 			is_set ? "set" : "clr", setclr_ofs, vote_val, val);
 		goto skip;
+	}
+
+	// check mtcmos/pll/backup
+	switch (setclr_ofs & 0xfff) {
+		case V0_CCF_MTCMOS0_SET_OFS:
+			setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_0;
+			break;
+		case V0_CCF_MTCMOS0_CLR_OFS:
+			setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_0;
+			break;
+		case V0_CCF_MTCMOS1_SET_OFS:
+			setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_1;
+			break;
+		case V0_CCF_MTCMOS1_CLR_OFS:
+			setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_1;
+			break;
+		default:
+			setclr_sta_ofs = 0;
+			break;
 	}
 
 	// Pre-Polling done
@@ -103,10 +127,31 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 		goto ERR;
 	}
 
+	if (global_en_ofs != 0) {
+		ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
+			is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
+			ret = -HWV_VOTE_TIMEOUT;
+			goto ERR;
+		}
+	}
+
+	if (setclr_sta_ofs != 0) {
+		ret = regmap_read_poll_timeout_atomic(regmap, setclr_sta_ofs, val, IS_MASK_CLR(val, done_ack_msk),
+		    MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s timeout\n", is_set ? "set_sta" : "clr_sta");
+			ret = -HWV_SET_TIMEOUT;
+			goto ERR;
+		}
+	}
+
 	// Polling done
 	ret = regmap_read_poll_timeout_atomic(regmap, done_ofs, val,
 		IS_MASK_SET(val, done_ack_msk),
-		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_DONE_CNT);
+		MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
 	if (ret) {
 		HWCCF_ERR("%s timeout\n", is_set ? "set" : "clr");
 		ret = -HWV_SET_TIMEOUT;
@@ -551,40 +596,50 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 {
 	bool is_set = V0_IS_SET_FROM_VOTER_ADDR(setclr_ofs);
 	uint32_t en_ofs = setclr_ofs;
-	uint32_t setclr_sta_ofs = 0;
+	uint32_t setclr_sta_ofs = 0, global_en_ofs = 0;
 	int ret = 0;
 	uint32_t val;
 
 	switch (setclr_ofs & 0xFFF) {
 		case 0x218:
 			setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_0;
 			break;
 		case 0x21C:
 			setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_0;
 			break;
 		case 0x220:
 			setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_1;
 			break;
 		case 0x224:
 			setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
+			global_en_ofs = V0_CCF_MTCMOS_EN_1;
 			break;
 		case 0x210:
 			setclr_sta_ofs = V0_PLL_SET_STA;
+			global_en_ofs = V0_CCF_PLL_EN;
 			break;
 		case 0x214:
 			setclr_sta_ofs = V0_PLL_CLR_STA;
+			global_en_ofs = V0_CCF_PLL_EN;
 			break;
 		case 0x230:
 			setclr_sta_ofs = V0_CCF_BACKUP1_SET_STA;
+			global_en_ofs = V0_CCF_BACKUP1_EN;
 			break;
 		case 0x234:
 			setclr_sta_ofs = V0_CCF_BACKUP1_CLR_STA;
+			global_en_ofs = V0_CCF_BACKUP1_EN;
 			break;
 		case 0x238:
 			setclr_sta_ofs = V0_CCF_BACKUP2_SET_STA;
+			global_en_ofs = V0_CCF_BACKUP2_EN;
 			break;
 		case 0x23C:
 			setclr_sta_ofs = V0_CCF_BACKUP2_CLR_STA;
+			global_en_ofs = V0_CCF_BACKUP2_EN;
 			break;
 		default:
 			break;
@@ -595,14 +650,15 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 	HWCCF_PROFILE_RESET(wait_done);
 	HWCCF_PROFILE_START(wait_done);
 
-	// Polling done
-	ret = regmap_read_poll_timeout_atomic(regmap, done_ofs, val,
-		IS_MASK_SET(val, done_ack_msk),
-		MTK_WAIT_GHWV_IRQ_DONE_US, MTK_WAIT_GHWV_IRQ_DONE_CNT);
-	if (ret) {
-		HWCCF_ERR("%s timeout\n", is_set ? "set" : "clr");
-		ret = -HWV_SET_TIMEOUT;
-		goto ERR;
+	if (global_en_ofs != 0) {
+		ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
+			is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
+			ret = -HWV_VOTE_TIMEOUT;
+			goto ERR;
+		}
 	}
 
 	if (setclr_sta_ofs) {
@@ -615,6 +671,16 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 			ret = -HWV_SET_TIMEOUT;
 			goto ERR;
 		}
+	}
+
+	// Polling done
+	ret = regmap_read_poll_timeout_atomic(regmap, done_ofs, val,
+		IS_MASK_SET(val, done_ack_msk),
+		MTK_WAIT_GHWV_IRQ_DONE_US, MTK_WAIT_GHWV_IRQ_DONE_CNT);
+	if (ret) {
+		HWCCF_ERR("%s timeout\n", is_set ? "set" : "clr");
+		ret = -HWV_SET_TIMEOUT;
+		goto ERR;
 	}
 
 	// Profling End
@@ -742,7 +808,8 @@ int _v0_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resour
 		done_ofs = V0_XPU_B2_DONE;
 	} else if (resource_id == HW_CCF_PLL) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_XPU_PLL_SET : V0_XPU_PLL_CLR);
-		done_ofs = V0_CCF_XPU_PLL_DONE;
+
+		done_ofs = V0_CCF_PLL_DONE;
 	} else {
 		ret = -HWV_WRONG_ID;
 		goto ERR;
