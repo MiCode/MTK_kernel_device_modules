@@ -17,6 +17,7 @@
 #include <linux/plist.h>
 #include <linux/percpu-defs.h>
 #include <linux/input.h>
+#include <linux/sched/signal.h>
 
 #include <kernel/futex/futex.h>
 #include <kernel/sched/sched.h>
@@ -866,6 +867,11 @@ static void tt_vip_periodic_handler(struct work_struct *work)
 	tt_vip();
 }
 
+bool is_task_exiting(struct task_struct *task)
+{
+	return task->exit_state == EXIT_ZOMBIE || task->exit_state == EXIT_DEAD;
+}
+
 /*
  * tt_input_event - Handles touch input events for VIP management
  * @handle: input handle associated with the event
@@ -899,7 +905,7 @@ static void tt_input_event(struct input_handle *handle, unsigned int type,
 		diff = cur_touch_time - cur_touch_down_time;
 		cur_touch_down_time = cur_touch_time;
 		if (diff >= TOUCH_SUSTAIN_MS) {
-			if (!is_target_found_hook)
+			if (!is_target_found_hook || is_task_exiting(current))
 				goto hook_unready;
 
 			rcu_read_lock();
