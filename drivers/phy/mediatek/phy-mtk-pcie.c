@@ -44,8 +44,11 @@
 #define PEXTP_DIG_PROBE_OUT		0xd0
 #define PEXTP_DIG_GLB_70		0x70
 #define RG_XTP_PIPE_UPDT		BIT(4)
+#define RG_XTP_PIPE_TX_MARGIN		GENMASK(21, 19)
+#define PIPE_TX_MARGIN_TO_3		0x3
 #define RG_XTP_PIPE_TX_SWING		BIT(22)
 #define PEXTP_DIG_GLB_A4		0xa4
+#define RG_XTP_FRC_TX_MARGIN		BIT(0)
 #define RG_XTP_FRC_TX_SWING		BIT(1)
 #define PEXTP_DIG_GLB_D0		0xd0
 #define PEXTP_DIG_GLB_F4		0xf4
@@ -74,6 +77,16 @@
 #define PEXTP_DIG_LN_TRX_E8		0x30e8
 #define RG_XTP_LN_RX_LF_CTLE_CSEL_GEN4	GENMASK(14, 12)
 #define CTLE_CSEL_GEN4_TO_1		0x1
+
+#define PEXTP_DIG_LN_RX_A0		0x50a0
+#define RG_XTP_LN_RX_SGDT_GEN1_HF	GENMASK(1, 0)
+#define RX_SGDT_GEN1_HF_TO_2		0x2
+#define RG_XTP_LN_RX_SGDT_GEN2_HF	GENMASK(3, 2)
+#define RX_SGDT_GEN2_HF_TO_2		0x2
+#define RG_XTP_LN_RX_SGDT_GEN3_HF	GENMASK(5, 4)
+#define RX_SGDT_GEN3_HF_TO_2		0x2
+#define RG_XTP_LN_RX_SGDT_GEN4_HF	GENMASK(7, 6)
+#define RX_SGDT_GEN4_HF_TO_2		0x2
 
 #define PEXTP_DIG_LN_RX_F0		0x50f0
 #define RG_XTP_LN_RX_GEN1_CTLE1_CSEL	GENMASK(3, 0)
@@ -136,6 +149,10 @@
 #define PEXTP_ANA_LN_TRX_34		0xA034
 #define RG_XTP_LN_RX_FE			BIT(15)
 
+#define PEXTP_ANA_LN_TRX_38		0xA038
+#define RG_XTP_LN_RX_LVSH_CM_SEL	GENMASK(15, 12)
+#define RX_LVSH_CM_SEL_TO_6		0x6
+
 #define PEXTP_ANA_LN_TRX_6C		0xA06C
 #define RG_XTP_LN_RX_AEQ_CTLE_ERR_TYPE	GENMASK(14, 13)
 #define AEQ_CTLE_ERR_TYPE_H15		0x0
@@ -150,8 +167,11 @@
 
 #define PEXTP_ANA_LN_TRX_A8		0xa0a8
 #define RG_XTP_LN_RX_LEQ_RL_CTLE_CAL	GENMASK(6, 2)
+#define RX_LEQ_RL_CTLE_CAL_TO_A		0xa
 #define RG_XTP_LN_RX_LEQ_RL_VGA_CAL	GENMASK(11, 7)
+#define RX_LEQ_RL_VGA_CAL_TO_A		0xa
 #define RG_XTP_LN_RX_LEQ_RL_DFE_CAL	GENMASK(23, 19)
+#define RX_LEQ_RL_DFE_CAL_TO_A		0xa
 
 #define PEXTP_DIG_LN_TX_RSWN_4		0xb004
 #define PEXTP_DIG_LN_TX_RSWN_8		0xb008
@@ -237,6 +257,7 @@ struct mtk_pcie_phy_data {
 	bool sw_efuse_supported;
 	int (*phy_init)(struct phy *phy);
 	int (*get_efuse_info)(struct phy *phy);
+	int (*no_efuse_cal)(struct phy *phy);
 };
 
 /**
@@ -696,64 +717,6 @@ static int mtk_pcie_phy_init_6989(struct phy *phy)
 	return 0;
 }
 
-static int mtk_pcie_sr_init_6991(struct phy *phy)
-{
-	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	u32 i;
-
-	for (i = 0; i < pcie_phy->num_lanes; i++) {
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN0_TRX_REG +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_TX_RESERVE,
-				     LN_TX_RESERVE_TO_8);
-
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_6C +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_RX_AEQ_CTLE_ERR_TYPE,
-				     AEQ_CTLE_ERR_TYPE_H15);
-
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_A4 +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_RX_AEQ_OFORCE_GEN3,
-				     AEQ_OFORCE_GEN3_TO_7F);
-
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_A4 +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_RX_AEQ_OFORCE_GEN4,
-				     AEQ_OFORCE_GEN4_TO_7F);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_FRC_RX_AEQ_DFETP1);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_FRC_RX_AEQ_DFETP2);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_FRC_RX_AEQ_DFETP3);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_70 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_FRC_RX_AEQ_DFETP4);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_70 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_FRC_RX_AEQ_DFETP5);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_94 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_RX_CDR_DLY_OFF_GEN3);
-
-		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_94 +
-				 i * PEXTP_ANA_LANE_OFFSET,
-				 RG_XTP_LN_RX_CDR_DLY_OFF_GEN4);
-	}
-
-	return 0;
-}
-
 static int mtk_pcie_get_efuse_info(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
@@ -783,6 +746,144 @@ static int mtk_pcie_get_efuse_info(struct phy *phy)
 
 	pcie_phy->efuse_info = efuse_buff;
 	pcie_phy->efuse_info_len = len;
+
+	return 0;
+}
+
+static int mtk_pcie_no_efuse_cal_6991(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	u32 i;
+
+	for (i = 0; i < pcie_phy->num_lanes; i++) {
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_TX_IMPSEL_PMOS,
+				     TX_IMPSEL_PMOS_TO_A);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_TX_IMPSEL_NMOS,
+				     TX_IMPSEL_NMOS_TO_9);
+	}
+
+	return 0;
+}
+
+static int mtk_pcie_no_efuse_cal_6993(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	u32 i;
+
+	for (i = 0; i < pcie_phy->num_lanes; i++) {
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_IMPSEL,
+				     TX_IMPSEL_PMOS_TO_A);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_LEQ_RL_CTLE_CAL,
+				     RX_LEQ_RL_CTLE_CAL_TO_A);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_LEQ_RL_VGA_CAL,
+				     RX_LEQ_RL_CTLE_CAL_TO_A);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_LEQ_RL_DFE_CAL,
+				     RX_LEQ_RL_DFE_CAL_TO_A);
+	}
+
+	return 0;
+}
+
+static int mtk_pcie_sphy3_sr_init(struct phy *phy, bool tx_sr, bool rx_sr)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	int ret = 0;
+	u32 val, i;
+
+	dev_info(pcie_phy->dev, "%s tx short reach, %s rx short reach\n",
+		 tx_sr ? "enable" : "disable", rx_sr ? "enable" : "disable");
+
+	if (tx_sr) {
+		/* Before init short reach, We need check whether pipe clock is ready
+		 * MAC reset will gating pipe clock, need deassert MAC reset before
+		 * update pipe setting
+		 */
+		writel_relaxed(PRB_SEL_TO_101, pcie_phy->sif_base + PEXTP_DIG_GLB_00);
+		writel_relaxed(CKGEN_PRB_SEL_TO_A000A, pcie_phy->sif_base + PEXTP_DIG_GLB_08);
+
+		ret = readl_poll_timeout(pcie_phy->sif_base + PEXTP_DIG_GLB_D0, val,
+					 !!(val & BIT(1)), 10, 1000);
+		if (ret) {
+			dev_info(pcie_phy->dev, "PCIe PHY apply short reach fail\n");
+			return ret;
+		}
+
+		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_A4, RG_XTP_FRC_TX_SWING);
+		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_TX_SWING);
+
+		/* Toggle RG_XTP_PIPE_UPDT */
+		mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
+		udelay(1);
+		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_70, RG_XTP_PIPE_UPDT);
+	}
+
+	if (rx_sr) {
+		for (i = 0; i < pcie_phy->num_lanes; i++) {
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN0_TRX_REG +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_TX_RESERVE,
+					     LN_TX_RESERVE_TO_8);
+
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_6C +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_RX_AEQ_CTLE_ERR_TYPE,
+					     AEQ_CTLE_ERR_TYPE_H15);
+
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_A4 +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_RX_AEQ_OFORCE_GEN3,
+					     AEQ_OFORCE_GEN3_TO_7F);
+
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_A4 +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_RX_AEQ_OFORCE_GEN4,
+					     AEQ_OFORCE_GEN4_TO_7F);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_FRC_RX_AEQ_DFETP1);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_FRC_RX_AEQ_DFETP2);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_74 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_FRC_RX_AEQ_DFETP3);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_70 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_FRC_RX_AEQ_DFETP4);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_70 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_FRC_RX_AEQ_DFETP5);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_94 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_RX_CDR_DLY_OFF_GEN3);
+
+			mtk_phy_set_bits(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_94 +
+					 i * PEXTP_ANA_LANE_OFFSET,
+					 RG_XTP_LN_RX_CDR_DLY_OFF_GEN4);
+		}
+	}
 
 	return 0;
 }
@@ -883,17 +984,8 @@ no_efuse_info:
 	/* To prevent potential EM problem, apply this setting
 	 * if no Efuse calibration
 	 */
-	for (i = 0; i < pcie_phy->num_lanes; i++) {
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_TX_IMPSEL_PMOS,
-				     TX_IMPSEL_PMOS_TO_A);
-
-		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A0 +
-				     i * PEXTP_ANA_LANE_OFFSET,
-				     RG_XTP_LN_TX_IMPSEL_NMOS,
-				     TX_IMPSEL_NMOS_TO_9);
-	}
+	if (pcie_phy->data->no_efuse_cal)
+		pcie_phy->data->no_efuse_cal(phy);
 
 	return 0;
 }
@@ -1081,7 +1173,54 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 				     RG_XTP_GLB_TPLL0_SDM_SSC_CTL, DISABLE_SSC);
 
 	if (pcie_phy->short_reach_en)
-		return mtk_pcie_sr_init_6991(phy);
+		return mtk_pcie_sphy3_sr_init(phy, false, true);
+
+	return 0;
+}
+
+static int mtk_pcie_phy_init_6993(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	int ret = 0;
+	u32 i;
+
+	for (i = 0; i < pcie_phy->num_lanes; i++) {
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_38 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_LVSH_CM_SEL,
+				     RX_LVSH_CM_SEL_TO_6);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_SGDT_GEN1_HF,
+				     RX_SGDT_GEN1_HF_TO_2);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_SGDT_GEN2_HF,
+				     RX_SGDT_GEN2_HF_TO_2);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_SGDT_GEN3_HF,
+				     RX_SGDT_GEN3_HF_TO_2);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX_A0 +
+				     i * PEXTP_ANA_LANE_OFFSET,
+				     RG_XTP_LN_RX_SGDT_GEN4_HF,
+				     RX_SGDT_GEN4_HF_TO_2);
+	}
+
+	ret = mtk_pcie_sphy3_calibrate(phy);
+	if (ret < 0)
+		return ret;
+
+	if (pcie_phy->disable_ssc)
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_TPLL0_6C,
+				     RG_XTP_GLB_TPLL0_SDM_SSC_CTL, DISABLE_SSC);
+
+	if (pcie_phy->short_reach_en)
+		return mtk_pcie_sphy3_sr_init(phy, true, true);
 
 	return 0;
 }
@@ -1104,6 +1243,14 @@ static const struct mtk_pcie_phy_data mt6991_data = {
 	.sw_efuse_supported = false,
 	.phy_init = mtk_pcie_phy_init_6991,
 	.get_efuse_info = mtk_pcie_get_efuse_info,
+	.no_efuse_cal = mtk_pcie_no_efuse_cal_6991,
+};
+
+static const struct mtk_pcie_phy_data mt6993_data = {
+	.sw_efuse_supported = false,
+	.phy_init = mtk_pcie_phy_init_6993,
+	.get_efuse_info = mtk_pcie_get_efuse_info,
+	.no_efuse_cal = mtk_pcie_no_efuse_cal_6993,
 };
 
 static const struct of_device_id mtk_pcie_phy_of_match[] = {
@@ -1111,6 +1258,7 @@ static const struct of_device_id mtk_pcie_phy_of_match[] = {
 	{ .compatible = "mediatek,mt6985-pcie-phy", .data = &mt6985_data },
 	{ .compatible = "mediatek,mt6989-pcie-phy", .data = &mt6989_data },
 	{ .compatible = "mediatek,mt6991-pcie-phy", .data = &mt6991_data },
+	{ .compatible = "mediatek,mt6993-pcie-phy", .data = &mt6993_data },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, mtk_pcie_phy_of_match);
