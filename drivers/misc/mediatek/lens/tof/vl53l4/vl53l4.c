@@ -25,7 +25,7 @@
 
 #define VL53L4_NAME				"vl53l4"
 
-#define VL53L4_CTRL_DELAY_US			5000
+#define VL53L4_CTRL_DELAY_US			10000
 
 #define VL53L4_I2C_SLAVE_ADDR 0x52
 
@@ -37,6 +37,7 @@ struct VL53LX_Dev_t dev;
 struct VL53LX_Dev_t *Dev = &dev;
 
 // debug command
+// #define SEARCH_ALL_DEVICE
 static int32_t vl53l4_log_dbg_en;
 static int32_t vl53l4_start_measure;
 
@@ -116,8 +117,20 @@ static int vl53l4_init(struct vl53l4_device *vl53l4)
 	uint8_t i2c_ret = 0;
 	int vl53status = 0;
 	uint8_t currentDist;
+#ifdef SEARCH_ALL_DEVICE
+	int i = 0;
+#endif
 
 	LOG_INF("[%s] %p\n", __func__, client);
+
+#ifdef SEARCH_ALL_DEVICE
+	for (i = 0; i < 128; ++i) {
+		client->addr = i;
+		i2c_ret = 0;
+		if (VL53LX_RdByte(Dev, 0x010F, &i2c_ret) >= 0)
+			LOG_INF("address = 0x%x, return value = 0x%x", i, i2c_ret);
+	}
+#endif
 
 	if (g_is_tof_support < 0) {
 		LOG_INF("not support tof\n");
@@ -610,7 +623,7 @@ static int vl53l4_probe(struct i2c_client *client)
 
 	Dev->client = client;
 
-	vl53l4->vin = devm_regulator_get(dev, "camera_tof_vin");
+	vl53l4->vin = devm_regulator_get(dev, "vin");
 	if (IS_ERR(vl53l4->vin)) {
 		ret = PTR_ERR(vl53l4->vin);
 		if (ret != -EPROBE_DEFER)
@@ -618,7 +631,7 @@ static int vl53l4_probe(struct i2c_client *client)
 		return ret;
 	}
 
-	vl53l4->vdd = devm_regulator_get(dev, "camera_tof_vdd");
+	vl53l4->vdd = devm_regulator_get(dev, "vdd");
 	if (IS_ERR(vl53l4->vdd)) {
 		ret = PTR_ERR(vl53l4->vdd);
 		if (ret != -EPROBE_DEFER)

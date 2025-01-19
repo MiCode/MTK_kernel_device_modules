@@ -247,7 +247,7 @@ static void vl53l0_subdev_cleanup(struct vl53l0_device *vl53l0)
 {
 	v4l2_async_unregister_subdev(&vl53l0->sd);
 	v4l2_ctrl_handler_free(&vl53l0->ctrls);
-#if IS_ENABLE(CONFIG_MEDIA_CONTROLLER)
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	media_entity_cleanup(&vl53l0->sd.entity);
 #endif
 }
@@ -327,7 +327,7 @@ static int vl53l0_probe(struct i2c_client *client)
 	if (ret)
 		goto err_cleanup;
 
-#if IS_ENABLE(CONFIG_MEDIA_CONTROLLER)
+#if IS_ENABLED(CONFIG_MEDIA_CONTROLLER)
 	ret = media_entity_pads_init(&vl53l0->sd.entity, 0, NULL);
 	if (ret < 0)
 		goto err_cleanup;
@@ -348,7 +348,7 @@ err_cleanup:
 	return ret;
 }
 
-static int vl53l0_remove(struct i2c_client *client)
+static void vl53l0_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct vl53l0_device *vl53l0 = sd_to_vl53l0_ois(sd);
@@ -360,8 +360,6 @@ static int vl53l0_remove(struct i2c_client *client)
 	if (!pm_runtime_status_suspended(&client->dev))
 		vl53l0_power_off(vl53l0);
 	pm_runtime_set_suspended(&client->dev);
-
-	return 0;
 }
 
 static int __maybe_unused vl53l0_ois_suspend(struct device *dev)
