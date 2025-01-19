@@ -44,7 +44,6 @@
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
-void __iomem *hpt_ctrl_base;
 void __iomem *gpu_dbg_base;
 void __iomem *cpu_dbg_base;
 struct fg_cus_data fg_data;
@@ -179,28 +178,6 @@ static int dbg_read(void __iomem *reg_base, int offset)
 	}
 
 	return readl(reg_base + offset * 4);
-}
-
-static int __used hpt_ctrl_read(int offset)
-{
-	void __iomem *addr = hpt_ctrl_base + offset * 4;
-
-	if (!hpt_ctrl_base) {
-		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
-		return 0;
-	}
-
-	return readl(addr);
-}
-
-static void __used hpt_ctrl_write(unsigned int val, int offset)
-{
-	if (!hpt_ctrl_base) {
-		pr_info("hpt_ctrl_base error %p\n", hpt_ctrl_base);
-		return;
-	}
-
-	writel(val, (void __iomem *)(hpt_ctrl_base + offset * 4));
 }
 
 static void ppb_allocate_budget_manager(void)
@@ -1670,44 +1647,6 @@ static int mt_hpt_dump_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static int mt_hpt_ctrl_proc_show(struct seq_file *m, void *v)
-{
-	unsigned int reg = 0;
-
-	reg = hpt_ctrl_read(HPT_CTRL);
-	seq_printf(m, "0x%x\n", reg);
-	return 0;
-}
-
-static ssize_t mt_hpt_ctrl_proc_write
-(struct file *file, const char __user *buffer, size_t count, loff_t *data)
-{
-	char desc[64], cmd[21];
-	unsigned int len = 0, val = 0;
-
-	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
-	if (copy_from_user(desc, buffer, len))
-		return 0;
-	desc[len] = '\0';
-
-	if (sscanf(desc, "%20s %d", cmd, &val) != 2) {
-		pr_notice("parameter number not correct\n");
-		return -EPERM;
-	}
-
-	if (strncmp(cmd, "ctrl", 4))
-		return -EINVAL;
-
-	if (val <= 7) {
-		hpt_ctrl_write(val, HPT_CTRL_SET);
-		val = ~val & 0x7;
-		hpt_ctrl_write(val, HPT_CTRL_CLR);
-	} else
-		pr_notice("hpt ctrl should be 0 ~ 7\n");
-
-	return count;
-}
-
 static int mt_hpt_sf_setting_proc_show(struct seq_file *m, void *v)
 {
 	unsigned int cpub_lv1, cpub_lv2, cpum_lv1, cpum_lv2, gpu_lv1, gpu_lv2, enable, delay;
@@ -1742,7 +1681,7 @@ static ssize_t mt_hpt_sf_setting_proc_write
 	}
 
 	if (!strncmp(cmd, "ENABLE", 8)) {
-		if (val < 0 || val > 1) {
+		if (val > 1) {
 			pr_notice("invalid input %s %d\n", cmd, val);
 			return -EINVAL;
 		}
@@ -1849,7 +1788,6 @@ PROC_FOPS_RW(ppb_cg_budget_thd);
 PROC_FOPS_RW(ppb_cg_budget_cnt);
 PROC_FOPS_RO(hpt_debug);
 PROC_FOPS_RO(hpt_dump);
-PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 
@@ -1876,7 +1814,6 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(ppb_cg_budget_cnt),
 		PROC_ENTRY(hpt_debug),
 		PROC_ENTRY(hpt_dump),
-		PROC_ENTRY(hpt_ctrl),
 		PROC_ENTRY(hpt_sf_setting),
 		PROC_ENTRY(xpu_dbg_dump),
 	};
@@ -1941,13 +1878,6 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		return PTR_ERR(addr);
 
 	ppb_sram_base = addr;
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
-	addr = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(addr))
-		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
-	else
-		hpt_ctrl_base = addr;
 
 	spin_lock_init(&ppb_lock);
 

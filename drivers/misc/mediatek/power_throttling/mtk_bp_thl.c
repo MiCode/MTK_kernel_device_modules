@@ -83,16 +83,21 @@ static void __used hpt_ctrl_write(unsigned int val, int offset)
 
 static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 {
-	int hpt_val;
+	int new_hpt, old_hpt;
 
 	if (!bp_thl_data) {
 		pr_info("[%s] bp_thl not init\n", __func__);
 		return;
 	}
 
-	hpt_val = hpt_ctrl_read(HPT_CTRL);
-	if (bp_thl_data->bp_hpt != hpt_val)
-		hpt_ctrl_write(hpt_val, HPT_CTRL);
+	new_hpt = bp_thl_data->bp_hpt;
+	old_hpt = hpt_ctrl_read(HPT_CTRL);
+	if (new_hpt != old_hpt) {
+		hpt_ctrl_write(new_hpt, HPT_CTRL_SET);
+		new_hpt = ~new_hpt & 0x7;
+		hpt_ctrl_write(new_hpt, HPT_CTRL_CLR);
+		pr_info("HPT_CTRL: %d\n", hpt_ctrl_read(HPT_CTRL));
+	}
 }
 
 void register_bp_thl_notify(
@@ -126,7 +131,7 @@ void register_bp_thl_md_notify(
 		return;
 	}
 
-	if (prio_val >= BPCB_MAX_NUM || prio_val < 0) {
+	if (prio_val >= BPCB_MAX_NUM) {
 		pr_info("[%s] prio_val=%d, out of boundary\n", __func__, prio_val);
 		return;
 	}
@@ -260,6 +265,45 @@ static ssize_t bp_thl_level_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(bp_thl_level);
+
+static ssize_t hpt_ctrl_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+	unsigned int reg = 0;
+
+	reg = hpt_ctrl_read(HPT_CTRL);
+	return sprintf(buf, "0x%x\n", reg);
+}
+
+static ssize_t hpt_ctrl_store(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf,
+					   size_t size)
+{
+	char cmd[21];
+	unsigned int val = 0;
+
+	if (sscanf(buf, "%20s %d", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (strncmp(cmd, "ctrl", 4))
+		return -EINVAL;
+
+	if (val <= 7) {
+		hpt_ctrl_write(val, HPT_CTRL_SET);
+		val = ~val & 0x7;
+		hpt_ctrl_write(val, HPT_CTRL_CLR);
+	} else
+		pr_info("hpt ctrl should be 0 ~ 7\n");
+
+	return size;
+}
+
+static DEVICE_ATTR_RW(hpt_ctrl);
+
 int bp_notify_handler(void *unused)
 {
 	do {
@@ -312,7 +356,7 @@ static void soc_handler(struct work_struct *work)
 {
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret, soc, temp, new_lv, new_hpt, soc_thd, temp_thd, soc_stage, temp_stage;
+	int ret, soc, temp, new_lv, new_hpt=7, soc_thd, temp_thd, soc_stage, temp_stage;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	bool loop;
 
@@ -391,12 +435,15 @@ static void soc_handler(struct work_struct *work)
 			}
 		}
 	} while (loop);
-	new_lv = bp_thl_data->throttle_table[soc_stage+temp_stage*(bp_thl_data->soc_max_stage+1)];
-	if (bp_thl_data->bp_hpt_ctrl_enable)
+
+	if (bp_thl_data->bp_hpt_ctrl_enable) {
 		new_hpt = bp_thl_data->hpt_ctrl_table[soc_stage+temp_stage*(bp_thl_data->soc_max_stage+1)];
+		bp_thl_data->bp_hpt = new_hpt;
+	}
+
+	new_lv = bp_thl_data->throttle_table[soc_stage+temp_stage*(bp_thl_data->soc_max_stage+1)];
 	if (new_lv != bp_thl_data->bp_thl_lv) {
 		bp_thl_data->bp_thl_lv = new_lv;
-		bp_thl_data->bp_hpt = new_hpt;
 		bp_notify_flag = true;
 	}
 	bp_thl_data->soc_cur_stage = soc_stage;
@@ -518,7 +565,7 @@ static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 		goto out;
 	}
 
-	num = of_property_count_u32_elems(np, "hpt_ctrl_val");
+	num = of_property_count_u32_elems(np, "hpt-ctrl-val");
 	if (num != (priv->temp_max_stage + 1) * (priv->soc_max_stage + 1)) {
 		pr_notice("get hpt_ctrl error %d\n", num);
 		goto out;
@@ -527,7 +574,7 @@ static int parse_soc_limit_table(struct device *dev, struct bp_thl_priv *priv)
 	priv->hpt_ctrl_table = devm_kcalloc(dev, num, sizeof(*priv->hpt_ctrl_table), GFP_KERNEL);
 	if (!priv->hpt_ctrl_table)
 		return -ENOMEM;
-	ret = of_property_read_u32_array(np, "hpt_ctrl_val", priv->hpt_ctrl_table, num);
+	ret = of_property_read_u32_array(np, "hpt-ctrl-val", priv->hpt_ctrl_table, num);
 	if (ret) {
 		pr_notice("get hpt_ctrl_table error %d\n", ret);
 		goto out;
@@ -578,10 +625,21 @@ static int bp_thl_probe(struct platform_device *pdev)
 	void __iomem *addr;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
 	md_priv = devm_kzalloc(&pdev->dev, sizeof(*md_priv), GFP_KERNEL);
+	if (!md_priv)
+		return -ENOMEM;
+
 	dev_set_drvdata(&pdev->dev, priv);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hpt_ctrl");
+	if (!res) {
+		pr_notice("Failed to get hpt_ctrl resource\n");
+		return -ENOMEM;
+	}
+
 	addr = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(addr))
 		pr_info("%s:%d hpt_ctrl get addr error 0x%p\n", __func__, __LINE__, addr);
@@ -627,6 +685,8 @@ static int bp_thl_probe(struct platform_device *pdev)
 		&dev_attr_bp_thl_stop);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_level);
+	ret |= device_create_file(&(pdev->dev),
+		&dev_attr_hpt_ctrl);
 	if (ret)
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
 
