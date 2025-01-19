@@ -2406,8 +2406,10 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 	int orig_util = util;
 	unsigned int cpu=0;
 
-	if (cpumask)
-		cpu = cpumask_first(cpumask);
+	if (!cpumask)
+		return;
+
+	cpu = cpumask_first(cpumask);
 
 	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
 		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask);
