@@ -92,7 +92,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_TRAW),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_DIP] = {
 		.name = "isp-dip",
@@ -103,7 +104,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_DIP),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
@@ -114,7 +116,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_MAIN),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -123,7 +126,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_EIS] = {
 		.name = "isp-wpe-eis",
@@ -134,7 +138,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_WPE_EIS),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_TNR] = {
 		.name = "isp-wpe-tnr",
@@ -145,7 +150,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_WPE_TNR),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_LITE] = {
 		.name = "isp-wpe-lite",
@@ -156,7 +162,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_ISP_WPE_LITE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
@@ -167,7 +174,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_VDE0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE1] = {
 		.name = "vde1",
@@ -178,7 +186,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_VDE1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde-vcore0",
@@ -231,7 +240,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_MRAW),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWA] = {
 		.name = "cam-rawa",
@@ -242,7 +252,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RAWA),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWB] = {
 		.name = "cam-rawb",
@@ -253,7 +264,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RAWB),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWC] = {
 		.name = "cam-rawc",
@@ -264,7 +276,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RAWC),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSA] = {
 		.name = "cam-rmsa",
@@ -275,7 +288,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RMSA),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSB] = {
 		.name = "cam-rmsb",
@@ -286,7 +300,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RMSB),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSC] = {
 		.name = "cam-rmsc",
@@ -297,7 +312,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_RMSC),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam-main",
@@ -308,7 +324,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_MAIN),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
@@ -317,7 +334,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam-ccu",
@@ -328,7 +346,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_CCU),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DISP_VCORE] = {
 		.name = "disp-vcore",
@@ -515,7 +534,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 0,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_DIP] = {
 		.name = "isp-dip",
@@ -527,7 +546,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 1,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
@@ -543,7 +562,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 			.hwv_debug_mux_ofs_opt = 0x174,
 			.hwv_debug_mux_shift_opt = 0x3000000,
 		},
-		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -555,7 +574,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 3,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_EIS] = {
 		.name = "isp-wpe-eis",
@@ -567,7 +586,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 4,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_TNR] = {
 		.name = "isp-wpe-tnr",
@@ -579,7 +598,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 5,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_LITE] = {
 		.name = "isp-wpe-lite",
@@ -591,7 +610,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 6,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
@@ -603,7 +622,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 7,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE1] = {
 		.name = "vde1",
@@ -615,7 +634,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 8,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde-vcore0",
@@ -679,7 +698,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 			.hwv_debug_mux_ofs_opt = 0x174,
 			.hwv_debug_mux_shift_opt = 0x200000,
 		},
-		.caps = MTK_SCPD_HWV_OPS | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWA] = {
 		.name = "cam-rawa",
@@ -691,7 +710,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 14,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWB] = {
 		.name = "cam-rawb",
@@ -703,7 +722,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 15,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RAWC] = {
 		.name = "cam-rawc",
@@ -715,7 +734,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 16,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSA] = {
 		.name = "cam-rmsa",
@@ -727,7 +746,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 17,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSB] = {
 		.name = "cam-rmsb",
@@ -739,7 +758,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 18,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_RMSC] = {
 		.name = "cam-rmsc",
@@ -751,7 +770,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 19,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam-main",
@@ -763,7 +782,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 20,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
@@ -775,7 +794,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 21,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam-ccu",
@@ -787,7 +806,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_CAM_CCU),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_DISP_VCORE] = {
 		.name = "disp-vcore",
