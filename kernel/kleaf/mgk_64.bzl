@@ -494,6 +494,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ftrace.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-v3-start.ko",
+    "drivers/misc/mediatek/mminfra/mtk-mminfra-util.ko",
     "drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko",
     "drivers/misc/mediatek/mminfra/mm-fake-engine.ko",
     "drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko",
