@@ -195,6 +195,7 @@ extern unsigned int vcp_cmd(enum feature_id id, enum vcp_cmd_id cmd_id, char *us
 extern void trigger_vcp_halt(enum vcp_core_id id, char *user);
 
 /* APIs for reserved memory */
+extern void __iomem *vcp_get_sram_virt(void);
 extern phys_addr_t vcp_get_reserve_mem_phys(enum vcp_reserve_mem_id_t id);
 extern phys_addr_t vcp_get_reserve_mem_virt(enum vcp_reserve_mem_id_t id);
 extern phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id);
