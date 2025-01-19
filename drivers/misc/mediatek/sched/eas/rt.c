@@ -579,7 +579,7 @@ DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_rt_mask);
 void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				int sd_flag, int flags, int *target_cpu)
 {
-	struct rq *rq, *this_cpu_rq;
+	struct rq *this_cpu_rq;
 	bool sync = !!(flags & WF_SYNC);
 	int ret, target = -1, this_cpu, select_reason = -1;
 	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
@@ -618,8 +618,6 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	}
 
 	irq_log_store();
-
-	rq = cpu_rq(source_cpu);
 
 	rcu_read_lock();
 
