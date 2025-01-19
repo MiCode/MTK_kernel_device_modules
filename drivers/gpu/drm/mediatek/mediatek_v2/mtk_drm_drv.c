@@ -118,6 +118,8 @@
 #define DRIVER_MINOR 0
 #define IDLE_FPS 10 /*when fps is less than or euqal to 10, hwc not sending hw vsync*/
 
+#define DRM_BYPASS_PQ_MT6993 /* 6993 bring up without PQ */
+
 void disp_dbg_deinit(void);
 void disp_dbg_probe(void);
 void disp_dbg_init(struct drm_device *dev);
@@ -3637,7 +3639,8 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ovlsys_main_bringup[] = {
 static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_DLI_ASYNC0,
 	DDP_COMPONENT_PQ0_IN_CB0,
-#ifdef DRM_BYPASS_PQ
+
+#ifdef DRM_BYPASS_PQ_MT6993
 	DDP_COMPONENT_PQ0_OUT_CB3,
 	DDP_COMPONENT_DLO_ASYNC0, DDP_COMPONENT_DLI_ASYNC20,
 	DDP_COMPONENT_SPLITTER0_IN_CB0,
