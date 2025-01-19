@@ -31,7 +31,8 @@ struct ufs_mbrain_data {
 	/* UFS_MB_VER1 */
 	enum ufs_event_type event;
 	uint64_t mb_ts;
-	uint32_t reg_val;
+	/* event specific value (reg / hba->errors / tag..) */
+	uint32_t val;
 	enum ufs_hs_gear_tag gear_rx;
 	enum ufs_hs_gear_tag gear_tx;
 };

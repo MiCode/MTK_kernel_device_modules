@@ -2740,27 +2740,32 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 
 	trace_ufs_mtk_event(evt, val);
 
-	/* Print details of UIC Errors */
-	if (evt <= UFS_EVT_DME_ERR) {
+
+	/* error check for mbrain */
+	if (evt <= UFS_EVT_FATAL_ERR){
 		e = &hba->ufs_stats.event[evt];
 		entry = &host->mb_entries[evt][e->pos];
 		if (entry->busy) {
 			dev_info(hba->dev, "mb event %d has no free entry\n", evt);
-			goto out_uic;
+			goto out_mb;
 		}
 
+		ktime_get_real_ts64(&tv);
 		entry->busy = true;
 
-		ktime_get_real_ts64(&tv);
 		entry->data.mb_ts = (tv.tv_sec * 1000) + (tv.tv_nsec / 1000000);
 		entry->data.event = evt;
 		entry->data.gear_rx = hba->pwr_info.gear_rx;
 		entry->data.gear_tx = hba->pwr_info.gear_tx;
-		entry->data.reg_val = val;
+		entry->data.val = val;
 
 		/* Queue work to write error to mbrain. */
 		ufs_mb_queue_error(hba, entry);
-out_uic:
+	}
+out_mb:
+
+	/* Print details of UIC Errors */
+	if (evt <= UFS_EVT_DME_ERR) {
 		dev_info(hba->dev,
 			 "Host UIC Error Code (%s): %08x\n",
 			 ufs_uic_err_str[evt], val);
