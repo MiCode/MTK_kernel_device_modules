@@ -105,6 +105,8 @@
 #define MT6379_EVT_USBID		112
 /* PD IND: PD */
 #define MT6379_EVT_USBPD		120
+/* EUSB dummy IRQ */
+#define MT6379_DUMMY_EVT_EUSB		126
 /* UFCS dummy IRQ */
 #define MT6379_DUMMY_EVT_UFCS		127
 
