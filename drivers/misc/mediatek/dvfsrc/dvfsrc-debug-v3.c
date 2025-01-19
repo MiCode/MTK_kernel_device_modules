@@ -459,7 +459,7 @@ static u32 dvfsrc_get_md_scen_ddr_gear(struct mtk_dvfsrc *dvfsrc)
 		md_scen = sta0 & 0xFFFF;
 
 		if (is_urgent)
-			val = dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BWU, 0x0);
+			val =  is_turbo ? dvfsrc_read(dvfsrc, DVFSRC_95MD_SCEN_BWU, 0x0) : 0;
 		else {
 			index = md_scen / 8;
 			shift = (md_scen % 8) * 4;

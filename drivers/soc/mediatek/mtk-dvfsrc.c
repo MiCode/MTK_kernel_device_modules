@@ -187,7 +187,6 @@ EXPORT_SYMBOL(dvfsrc_get_required_opp_emi_bw);
 
 /* Perform compatibility adapation for legacy chip */
 
-#if IS_ENABLED(CONFIG_MTK_DVFSRC_LEGACY)
 static inline struct device_node *dvfsrc_parse_required_opp_legacy(
 	struct device_node *np, int index)
 {
@@ -216,7 +215,6 @@ u32 dvfsrc_get_required_opp_peak_bw_legacy(struct device_node *np, int index)
 	return peak_bw;
 }
 EXPORT_SYMBOL(dvfsrc_get_required_opp_peak_bw_legacy);
-#endif
 #endif
 
 #ifdef DVFSRC_DEBUG_ENHANCE
@@ -432,6 +430,38 @@ static const int mt6991_regs[] = {
 	[DVFSRC_DEFAULT_OPP_7] =    0x830,
 	[DVFSRC_DEFAULT_OPP_8] =    0x834,
 	[DVFSRC_SW_EMI_BW]     =    0x60c,
+};
+
+static const int mt6899_regs[] = {
+	[DVFSRC_BASIC_CONTROL] =    0x0,
+	[DVFSRC_SW_REQ] =           0x18,
+	[DVFSRC_SW_REQ2] =          0x604,
+	[DVFSRC_LEVEL] =            0x5F0,
+	[DVFSRC_SW_PEAK_BW] =       0x1F4,
+	[DVFSRC_SW_BW] =            0x1E8,
+	[DVFSRC_SW_HRT_BW] =        0x20C,
+	[DVFSRC_TARGET_LEVEL] =     0x5F0,
+	[DVFSRC_VCORE_REQUEST] =    0x80,
+	[DVFSRC_TARGET_FORCE] =     0xB9C,
+	[DVFSRC_TARGET_FORCE_H] =   0xB98,
+	[DVFSRC_TARGET_FORCE_H1] =  0xB94,
+	[DVFSRC_TARGET_FORCE_H2] =  0xB90,
+	[DVFSRC_FORCE_MASK] =       0x5EC,
+	[DVFSRC_SW_FORCE_BW] =      0x200,
+	[DVFSRC_INT] =              0xC8,
+	[DVFSRC_INT_EN] =           0xCC,
+	[DVFSRC_INT_CLR] =          0xD0,
+	[DVFSRC_CUR_TAR_GEAR] =     0x6AC,
+	[DVFSRC_DEFAULT_OPP_1] =    0x22C,
+	[DVFSRC_DEFAULT_OPP_2] =    0x230,
+	[DVFSRC_DEFAULT_OPP_3] =    0x740,
+	[DVFSRC_DEFAULT_OPP_4] =    0x744,
+	[DVFSRC_HALT_CONTROL]  =    0xC4,
+	[DVFSRC_DEFAULT_OPP_5] =    0xB20,
+	[DVFSRC_DEFAULT_OPP_6] =    0xB24,
+	[DVFSRC_DEFAULT_OPP_7] =    0xB28,
+	[DVFSRC_DEFAULT_OPP_8] =    0xB2C,
+	[DVFSRC_SW_EMI_BW]     =    0x96C,
 };
 
 static const int mt6765_regs[] = {
@@ -745,6 +775,9 @@ static void mt6983_set_dram_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
 	bw = div_u64(kbps_to_mbps(bw), 100);
 	bw = min_t(u64, bw, 0x3FF);
 	dvfsrc_write(dvfsrc, DVFSRC_SW_BW, bw);
+
+	if (dvfsrc->dvd->emi_ddr_bw_en)
+		dvfsrc_write(dvfsrc, DVFSRC_SW_EMI_BW, bw);
 }
 
 static void mt6983_set_dram_peak_bw(struct mtk_dvfsrc *dvfsrc, u64 bw)
@@ -2261,6 +2294,21 @@ static const struct dvfsrc_soc_data mt6765_data = {
 #endif
 };
 
+static const struct dvfsrc_soc_data mt6899_data = {
+	DVFSRC_MT6989_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6991_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6991_desc),
+	.regs = mt6899_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6989_set_force_opp_level,
+	.force_ver = 0x6991,
+#endif
+	.query_opp_count = mt6991_get_opp_count,
+	.dis_ddr_check = true,
+	.mem_res_req_en = true,
+	.emi_ddr_bw_en = true,
+};
+
 static int mtk_dvfsrc_remove(struct platform_device *pdev)
 {
 	struct mtk_dvfsrc *dvfsrc = platform_get_drvdata(pdev);
@@ -2342,6 +2390,9 @@ static const struct of_device_id mtk_dvfsrc_of_match[] = {
 		.compatible = "mediatek,mt6781-dvfsrc",
 		.data = &mt6781_data,
 	},{
+		.compatible = "mediatek,mt6899-dvfsrc",
+		.data = &mt6899_data,
+	}, {
 		/* sentinel */
 	},
 };
