@@ -17,8 +17,8 @@
 #define FLAG_INVALID 0xdeaddead
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
-#define FLAG_VERSION_0 0x76657248 /* total 2M size*/
-#define FLAG_VERSION_1 0x76657231 /* bootlog 1M + logstore 4M*/
+#define VERSION_FLAG 0xB0000000
+#define VERSION_MASK 0xF0000000
 #endif
 #define KEDUMP_ENABLE (1)
 #define KEDUMP_DISABLE (0)
@@ -86,7 +86,9 @@ struct sram_log_header {
 	/* reserve[2] pmic save boot phase enable/disable */
 	/* reserve[3] save history boot phase */
 	/* reserve[4] save pl/lk log size/point */
-	/* reserve[5] expdb size version(0:2M,1:4M+1M) */
+	/* reserve[5] expdb size */
+	/* reserve[6] reboot count, not clear*/
+	/* reserve[7] Abnormal reboot count, not clear*/
 } __packed;
 #define SRAM_RECORD_LOG_SIZE 0X00
 #define SRAM_BLOCK_SIZE 0x01
@@ -95,6 +97,8 @@ struct sram_log_header {
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 #define SRAM_PLLK_SIZE 0x04
 #define SRAM_EXPDB_VER 0x05
+#define SRAM_REBOOT_COUNT 0x06
+#define SRAM_ABNORMAL_REBOOT_COUNT 0x07
 #endif
 
 /* emmc last block struct */
@@ -108,10 +112,12 @@ struct log_emmc_header {
 	/* [2] used to save printk ratalimit  flag */
 	/* [3] used to save kedump contrl flag */
 	/* [4] used to save boot step */
-	/* [5] expdb size version(0:2M,1:4M+1M)*/
+	/* [5] expdb size*/
 	/* [6] boot prof offset*/
 	/* [7] printk buf low address 32 bits*/
 	/* [8] printk buf size_bits 8 bits and high address 24 bits*/
+	/* [9] reboot count*/
+	/* [10] Abnormal reboot count*/
 };
 
 enum EMMC_STORE_FLAG_TYPE {
@@ -124,6 +130,8 @@ enum EMMC_STORE_FLAG_TYPE {
 	BOOT_PROF_OFFSET = 0x06,
 	KLOG_ADDR_LOW = 0x07,
 	KLOG_ADDR_HIGH = 0x08,
+	REBOOT_COUNT = 0x09,
+	ABNORMAL_REBOOT_COUNT = 0x0a,
 	EMMC_STORE_FLAG_TYPE_NR,
 };
 
@@ -135,6 +143,9 @@ enum EMMC_STORE_FLAG_TYPE {
 
 #define HEADER_INDEX_MAX 0x20
 #define BOOT_TYPE_UFS 0x2
+
+#define EMMC_LOG_STORE_DEFAULT_SIZE  0x200000
+#define EMMC_BOOTPROF_DEFAULT_SIZE 0x100000
 
 /* emmc store log */
 struct emmc_log {

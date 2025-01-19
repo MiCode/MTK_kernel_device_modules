@@ -981,12 +981,13 @@ int log_store_late_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 	if (boot_mode == NORMAL_BOOT_MODE &&
-		sram_header->reserve[SRAM_EXPDB_VER] == FLAG_VERSION_1)	{
+		(sram_header->reserve[SRAM_EXPDB_VER] & VERSION_MASK) == VERSION_FLAG &&
+		((sram_header->reserve[SRAM_EXPDB_VER] & (~VERSION_MASK)) > EMMC_LOG_STORE_DEFAULT_SIZE)) {
 		expdb_logstore = kzalloc(sizeof(struct log_store_partition), GFP_KERNEL);
 		if (expdb_logstore != NULL) {
 			memset(expdb_logstore, 0, sizeof(struct log_store_partition));
-			expdb_logstore->bootlog_size = 0x100000;
-			expdb_logstore->logstore_size = 0x400000;
+			expdb_logstore->bootlog_size = EMMC_BOOTPROF_DEFAULT_SIZE;
+			expdb_logstore->logstore_size = sram_header->reserve[SRAM_EXPDB_VER] & (~VERSION_MASK);
 			write_expdb_thread = kthread_create(write_expdb_thread_fn, NULL ,"log_store_thread");
 			if (write_expdb_thread)
 				wake_up_process(write_expdb_thread);
