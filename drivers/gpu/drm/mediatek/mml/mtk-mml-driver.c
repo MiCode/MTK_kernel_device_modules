@@ -465,6 +465,9 @@ u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
 	u32 sysid, tput = 0;
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 
+	if (unlikely(!tp))
+		return 0;
+
 	/* for all mmlsys, update the count to current path client reference count,
 	 * so that mml_qos_update_tput api could update throughput to running client.
 	 */
