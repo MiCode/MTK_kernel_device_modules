@@ -681,8 +681,10 @@ static struct kretprobe kp[] = {
 	{.kp.symbol_name = "perf_duration_warn"},
 	/* for _deferred */
 	{.kp.symbol_name = "wake_up_klogd_work_func"},
+#ifndef arch_trigger_cpumask_backtrace
 	/* sysrq l */
 	{.kp.symbol_name = "showacpu"},
+#endif
 	/* for self test */
 	{.kp.symbol_name = "irq_mon_irq_work2"},
 };
@@ -717,7 +719,6 @@ static int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 	return 0;
 }
 
-
 int irq_mon_kprobes_init(void)
 {
 	int i, ret = 0;
@@ -729,7 +730,8 @@ int irq_mon_kprobes_init(void)
 		kp[i].maxactive = 20;
 		ret = register_kretprobe(&kp[i]);
 		if (ret) {
-			pr_info("register_kprobe failed, returned %d\n", ret);
+			pr_info("register_kprobe %s failed, returned %d\n",
+				kp[i].kp.symbol_name, ret);
 			while (i-- > 0)
 				unregister_kretprobe(&kp[i]);
 			return ret;
