@@ -85,7 +85,7 @@ endif
 #sspm for mt6833
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V2)),)
 #ccflags-y += -DUSE_SSPM_VER_V1
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/v2/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2/
 endif
 
 obj-$(CONFIG_MEDIATEK_CPU_DVFS) += CPU_DVFS.o

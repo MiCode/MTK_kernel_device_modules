@@ -8,7 +8,7 @@
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6765)
 #include <mtk_ppm_platform_6765.h>
-#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6833)
+#elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_6833)
 #include <mtk_ppm_platform_6833.h>
 #elif IS_ENABLED(CONFIG_MTK_PLAT_POWER_MT6768)
 #include <mtk_ppm_platform_6768.h>
