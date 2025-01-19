@@ -18,7 +18,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
 ifneq ($(wildcard $(src)/gpu_pdma_mt6991.c),)
-mtk_gpu_pdma_mt6991-y := gpu_pdma_mt6993.o
+mtk_gpu_pdma_mt6991-y := gpu_pdma_mt6991.o
 obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_pdma_mt6991.o
 endif
 
