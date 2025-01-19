@@ -426,13 +426,16 @@ static int mbraink_v6899_power_get_spm_info(struct mbraink_power_spm_raw *spm_bu
 		if (spm_buffer->type == 1) {
 			size = sizeof(struct mbraink_sys_res_mbrain_header);
 			bufIdx = 0;
-			if ((bufIdx + size) <= g_data_size) {
+
+			if (((bufIdx + size) <= g_data_size) &&
+				(size <= sizeof(spm_buffer->spm_data))) {
 				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw, size);
 				bufIdx += size;
 			}
 
 			size = sizeof(struct mbraink_sys_res_scene_info)*MBRAINK_SCENE_RELEASE_NUM;
-			if ((bufIdx + size) <= g_data_size) {
+			if (((bufIdx + size) <= g_data_size) &&
+				(size <= sizeof(spm_buffer->spm_data))) {
 				memcpy(spm_buffer->spm_data + bufIdx, g_spm_raw + bufIdx, size);
 				bufIdx += size;
 			}
@@ -743,8 +746,13 @@ static int mbraink_v6899_power_get_pmic_voltage_info(
 
 static int mbraink_v6899_power_sys_res_init(void)
 {
-	mbraink_sys_res_plat_init();
-	mbraink_sys_res_mbrain_plat_init();
+	int ret = 0;
+
+	ret = mbraink_sys_res_plat_init();
+	if (!ret)
+		ret = mbraink_sys_res_mbrain_plat_init();
+	else
+		return -1;
 
 	return 0;
 }

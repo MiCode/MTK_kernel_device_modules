@@ -57,7 +57,7 @@ static struct mbriank_sys_res_mapping sys_res_mapping[] = {
 	{0, "uarthub"},
 };
 
-static void get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_info)
+static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_info)
 {
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 
@@ -66,83 +66,200 @@ static void get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_
 
 	unsigned int out1, out2, out3;
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &grouplist_info[DDREN_REQ];
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_DDREN, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_DDREN, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info DDREN_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[APSRC_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_APSRC, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_APSRC, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info APSRC_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[EMI_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_EMI, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_EMI, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info EMI_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[MAINPLL_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_MAINPLL, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_MAINPLL, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info MAINPLL_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[INFRA_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_INFRA,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_INFRA, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info INFRA_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[F26M_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_26M,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_26M, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info F26M_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[PMIC_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PMIC,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PMIC, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info PMIC_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[VCORE_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_VCORE,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_VCORE, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info VCORE_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[RC_REQ]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info RC_REQ fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[PLL_EN]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PLL_EN, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PLL_EN, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info PLL_EN fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[PWR_OFF]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_OFF, &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_OFF, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info PWR_OFF fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[PWR_ACT]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_ACT,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_ACT, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info PWR_ACT fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
+	out1 = 0;
+	out2 = 0;
+	out3 = 0;
 	group_info = &(grouplist_info[SYS_STA]);
-	ret = get_res_group_info(SWPM_PSP_MAIN_RES_SYS_STA,  &(group_info->sys_index),
-		&(group_info->sig_table_index), &(group_info->group_num));
-	if (ret)
-		pr_info("get_res_group_info fail (%d)\n", ret);
+	ret = get_res_group_info(SWPM_PSP_MAIN_RES_SYS_STA, &out1, &out2, &out3);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get_res_group_info SYS_STA fail (%d)\n", ret);
+		if (ret != -22)
+			return -1;
+	} else {
+		group_info->sys_index = out1;
+		group_info->sig_table_index = out2;
+		group_info->group_num = out3;
+	}
 
 	out1 = 0;
 	out2 = 0;
@@ -182,9 +299,11 @@ static void get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_
 	if (ret)
 		pr_info("get_res_group_id fail (%d)\n", ret);
 
+	return ret;
+
 #else
 	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
-	return;
+	return -1;
 #endif
 }
 
@@ -193,6 +312,7 @@ static int mbraink_sys_res_alloc(struct mbraink_sys_res_record *record)
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 
 	struct res_sig_stats *spm_res_sig_stats_ptr;
+	int ret = 0;
 
 	if (!record)
 		return -1;
@@ -202,7 +322,12 @@ static int mbraink_sys_res_alloc(struct mbraink_sys_res_record *record)
 	if (!spm_res_sig_stats_ptr)
 		goto RES_SIG_ALLOC_ERROR;
 
-	get_res_sig_stats(spm_res_sig_stats_ptr);
+	ret = get_res_sig_stats(spm_res_sig_stats_ptr);
+	if (ret == -1 || !spm_res_sig_stats_ptr->res_sig_num) {
+		pr_info("[Mbraink][SPM] ret(%d) res_sig_num(%d)\n", ret,
+			spm_res_sig_stats_ptr->res_sig_num);
+		goto RES_SIG_ALLOC_TABLE_ERROR;
+	}
 
 	spm_res_sig_stats_ptr->res_sig_tbl =
 	kcalloc(spm_res_sig_stats_ptr->res_sig_num,
@@ -618,7 +743,11 @@ int mbraink_sys_res_plat_init(void)
 {
 	int ret, i, j;
 
-	get_sys_res_group_info(sys_res_group_info);
+	ret = get_sys_res_group_info(sys_res_group_info);
+	if (ret) {
+		pr_info("[Mbraink][SPM] get group info ret(%d)\n", ret);
+		return ret;
+	}
 
 	for (i = 0; i < MBRAINK_SYS_RES_SCENE_NUM; i++) {
 		ret = mbraink_sys_res_alloc(&sys_res_record[i]);
