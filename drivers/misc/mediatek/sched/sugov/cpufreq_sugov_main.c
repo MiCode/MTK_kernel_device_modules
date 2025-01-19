@@ -688,8 +688,10 @@ EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
 
 static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost,unsigned long *min,unsigned long *max)
 {
-	unsigned long cpu_util = mtk_cpu_util_cfs_boost(sg_cpu->cpu);
+	unsigned long cpu_util = scx_cpuperf_target(sg_cpu->cpu);
 
+	if (!scx_switched_all())
+		cpu_util += mtk_cpu_util_cfs_boost(sg_cpu->cpu);
 	sg_cpu->util = mtk_effective_cpu_util(sg_cpu->cpu, cpu_util,(struct task_struct *)UINTPTR_MAX, min, max);
 	sg_cpu->bw_min = *min;
 	sg_cpu->util = max(sg_cpu->util, boost);
@@ -1307,9 +1309,9 @@ static int sugov_kthread_create(struct sugov_policy *sg_policy)
 		 * Fake (unused) bandwidth; workaround to "fix"
 		 * priority inheritance.
 		 */
-		.sched_runtime	=  1000000,
-		.sched_deadline = 10000000,
-		.sched_period	= 10000000,
+		.sched_runtime	=  NSEC_PER_MSEC,
+		.sched_deadline = 10 * NSEC_PER_MSEC,
+		.sched_period	= 10 * NSEC_PER_MSEC,
 	};
 	struct cpufreq_policy *policy = sg_policy->policy;
 	int ret;
