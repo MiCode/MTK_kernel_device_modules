@@ -122,6 +122,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	struct arm_smccc_res res;
 	void __iomem *ibase = ssusb->ippc_base;
 	u32 spm_ctrl, value, spm_msk = SSUSB_SPM_REQ_MSK;
+	u32 offload_msk = SSUSB_SPM_REQ_OFFLOAD_MSK;
 	u32 smc_req = -1;
 	int ret;
 	bool vcore_req_support = (ssusb->hwrscs_vers == SSUSB_HWRECS_V3);
@@ -157,9 +158,12 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_POWER_ON:
 		spm_ctrl |= spm_msk;
 		break;
+	case MTU3_STATE_OFFLOAD_EX:
+		offload_msk &= ~(SSUSB_SPM_VCORE_EN);
+		fallthrough;
 	case MTU3_STATE_OFFLOAD:
 		/* Clear req for offload scenario */
-		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_MSK ^ spm_msk);
+		spm_ctrl &= ~(offload_msk ^ spm_msk);
 
 		/* set apsrc=0 and ddren=1, inform peri not to protect bus */
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
@@ -1556,6 +1560,12 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_S_SS:
 		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD);
+		goto suspend;
+	case SSUSB_OFFLOAD_MODE_S_EX:
+		ssusb_host_u3_suspend(ssusb);
+		fallthrough;
+	case SSUSB_OFFLOAD_MODE_S_SS_EX:
+		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD_EX);
 		goto suspend;
 	default:
 		break;

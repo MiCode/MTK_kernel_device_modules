@@ -165,7 +165,8 @@ enum mtu3_power_state {
 	MTU3_STATE_POWER_ON,
 	MTU3_STATE_SUSPEND,
 	MTU3_STATE_RESUME,
-	MTU3_STATE_OFFLOAD,
+	MTU3_STATE_OFFLOAD, /* hold vcore */
+	MTU3_STATE_OFFLOAD_EX, /* release vcore */
 };
 
 enum mtu3_u2_lpm_mode {
@@ -190,9 +191,11 @@ enum mtu3_fpga_phy {
 enum ssusb_offload_mode {
 	SSUSB_OFFLOAD_MODE_NONE = 0,
 	SSUSB_OFFLOAD_MODE_D,    /* full-speed or high speed D mode */
-	SSUSB_OFFLOAD_MODE_S,    /* full-speed or high speed S mode */
+	SSUSB_OFFLOAD_MODE_S,    /* full-speed or high speed S mode with vcore */
+	SSUSB_OFFLOAD_MODE_S_EX, /* full-speed or high speed S mode without vcore */
 	SSUSB_OFFLOAD_MODE_D_SS, /* super-speed or super-speed-plus D mode */
-	SSUSB_OFFLOAD_MODE_S_SS, /* super-speed or super-speed-plus S mode */
+	SSUSB_OFFLOAD_MODE_S_SS, /* super-speed or super-speed-plus S mode with vcore */
+	SSUSB_OFFLOAD_MODE_S_SS_EX /* super-speed or super-speed-plus S mode without vcore */
 };
 
 /**
