@@ -61,6 +61,13 @@ struct mmdvfs_debug_user {
 };
 static struct mmdvfs_debug_user *user;
 
+int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+{
+	//TODO: return mtk_mmdvfs_force_vcore_notify(val);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
+
 int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
 	int ret;
