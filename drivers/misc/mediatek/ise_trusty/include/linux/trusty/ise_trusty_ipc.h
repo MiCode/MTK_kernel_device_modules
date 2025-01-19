@@ -8,7 +8,7 @@
 
 #define ISE_TAG "[iSE]"
 
-#if IS_ENABLED(CONFIG_TRUSTY_TIPC_FOOTPRINT)
+#if IS_ENABLED(CONFIG_ISE_TRUSTY_TIPC_FOOTPRINT)
 #define ISE_FOOTPRINT(format, args...) pr_info(ISE_TAG "%s: %d " format, __func__, __LINE__, ##args)
 #else
 #define ISE_FOOTPRINT(format, args...) do { } while (0)

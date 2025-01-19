@@ -61,4 +61,15 @@ config ISE_TRUSTY_BUG_ON_WARN
 	  Select this if you want to enable above facilities.
 	  If unsure, say N.
 
+config ISE_TRUSTY_TIPC_FOOTPRINT
+	tristate "ISE Trusty TIPC footprint"
+	depends on ISE_TRUSTY_VIRTIO_IPC
+	default n
+	help
+	  The debug feature which enables tipc footprint to trace tipc
+	  flow between REE/iSE.
+
+	  Select this if you want to enable above facilities.
+	  If unsure, say N.
+
 endmenu
