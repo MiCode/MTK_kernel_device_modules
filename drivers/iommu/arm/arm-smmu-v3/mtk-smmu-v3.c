@@ -159,38 +159,6 @@ static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu);
 static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 					struct mtk_iommu_fault_event *mtk_fault_evt);
 
-static inline unsigned int smmu_read_reg(void __iomem *base,
-					 unsigned int offset)
-{
-	return readl_relaxed(base + offset);
-}
-
-static inline void smmu_write_reg(void __iomem *base,
-				  unsigned int offset,
-				  unsigned int val)
-{
-	writel_relaxed(val, base + offset);
-}
-
-static inline void smmu_write_field(void __iomem *base,
-				    unsigned int reg,
-				    unsigned int mask,
-				    unsigned int val)
-{
-	unsigned int regval;
-
-	regval = readl_relaxed(base + reg);
-	regval = (regval & (~mask))|val;
-	writel_relaxed(regval, base + reg);
-}
-
-static inline unsigned int smmu_read_field(void __iomem *base,
-					   unsigned int reg,
-					   unsigned int mask)
-{
-	return readl_relaxed(base + reg) & mask;
-}
-
 #define smmu_read_reg_poll_timeout(addr, val, cond, delay_us, timeout_us) \
 	readx_poll_timeout_atomic(ioread32, addr, val, cond, delay_us, timeout_us)
 

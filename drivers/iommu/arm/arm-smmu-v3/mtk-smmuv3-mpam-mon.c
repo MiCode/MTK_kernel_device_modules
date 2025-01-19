@@ -95,31 +95,6 @@ SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_pmg, config1, 16, 31);
 SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_ris, config1, 32, 47);
 SMMU_MPAM_EVENT_ATTR_EXTRACTOR(filter_enable_pmg, config1, 48, 48);
 
-static inline unsigned int smmu_read_reg(void __iomem *base,
-					 unsigned int offset)
-{
-	return readl_relaxed(base + offset);
-}
-
-static inline void smmu_write_field(void __iomem *base,
-				    unsigned int reg,
-				    unsigned int mask,
-				    unsigned int val)
-{
-	unsigned int regval;
-
-	regval = readl_relaxed(base + reg);
-	regval = (regval & (~mask))|val;
-	writel_relaxed(regval, base + reg);
-}
-
-static inline void smmu_write_reg(void __iomem *base,
-				  unsigned int offset,
-				  unsigned int val)
-{
-	writel_relaxed(val, base + offset);
-}
-
 static inline u64 smmu_mpam_counter_get_value(struct smmu_mpam_mon *mpam_mon,
 					      struct perf_event *event)
 {

@@ -63,6 +63,8 @@
 #define SMMU_TBU_CNT_MAX		(4)
 #define SMMU_TBU_CNT(id)		((id) == SOC_SMMU ?	\
 					 (SMMU_TBU_CNT_MAX - 1) : SMMU_TBU_CNT_MAX)
+#define SMMU_TXU_CNT_MAX		(SMMU_TBU_CNT_MAX + 1)
+#define SMMU_TXU_CNT(id)		(SMMU_TBU_CNT(id) + 1)
 
 #define SMMUWP_CFG_OFFSET		(0x1ff000)
 
@@ -85,6 +87,7 @@
 #define CTL0_APB_DCM_EN			F_BIT_SET(19)
 #define CTL0_DVM_DCM_EN			F_BIT_SET(20)
 #define CTL0_CPU_TBU_PARTID_DIS		F_BIT_SET(21)
+#define CTL0_CFG_HWPMU_EN		F_BIT_SET(24)
 
 #define SMMUWP_GLB_CTL1			(0x4)
 #define SMMUWP_GLB_CTL2			(0x8)
@@ -192,6 +195,9 @@
 
 /* SMMU TCU receive DVM command total */
 #define SMMUWP_TCU_MON7			(0x25c)
+
+/* TCU_PEND_TOT, total pending command count */
+#define SMMUWP_TCU_MON8			(0x260)
 
 #define SMMUWP_TCU_DBG0			(0x280)
 #define TCU_AXI_DBG_M			GENMASK(15, 0)
@@ -368,6 +374,103 @@
 #define SMMUWP_TF_TBU_MSK		GENMASK(26, 24)
 #define SMMUWP_TF_TBU(tbu)		FIELD_PREP(SMMUWP_TF_TBU_MSK, tbu)
 #define SMMUWP_TF_TBU_VAL(id)		FIELD_GET(SMMUWP_TF_TBU_MSK, id)
+
+/* RPEND_TOT, total TBUx pending read command count */
+#define SMMUWP_TBUx_MON11(tbu)		(0x3d0 + 0x100 * (tbu))
+
+/* WPEND_TOT, total TBUx pending write command count */
+#define SMMUWP_TBUx_MON12(tbu)		(0x3d4 + 0x100 * (tbu))
+
+/* WPEND_DATA_MAX, write data channel maximum pending command count */
+#define SMMUWP_TBUx_MON13(tbu)		(0x3d8 + 0x100 * (tbu))
+#define MON13_WPEND_DATA_MAX		GENMASK_32(15, 0)
+
+/* SMMU performance monitor unit snapshot address register for ELA, total 6 */
+#define SMMUWP_PMU_SNAP_A(id)		(0x1000 + 0x4 * (id))
+#define PMU_SNAPSHOT_ADDR		GENMASK(20, 0)
+
+/* SMMU performance monitor unit snapshot write data register for ELA, total 6 */
+#define SMMUWP_PMU_SNAP_D(id)		(0x1020 + 0x4 * (id))
+
+/* SMMU performance monitor unit poll address register for ELA, total 24 */
+#define SMMUWP_PMU_POLL_A(id)		(0x1040 + 0x4 * (id))
+#define PMU_POLL_ADDR			GENMASK(20, 0)
+
+/* SMMU PMU */
+#define SMMU_TCU_OFFSET			(0x0)
+#define SMMU_TBUx_OFFSET(tbu)		(0x40000 + (tbu) * 0x20000)
+#define SMMU_TCU_PMU_PAGE0		(0x2000)
+#define SMMU_TCU_PMU_PAGE1		(0x22000)
+#define SMMU_TBU_PMU_PAGE0		(0x2000)
+#define SMMU_TBU_PMU_PAGE1		(0x12000)
+#define SMMU_PMU_REGS_SZ		(0x1000)
+
+#define SMMU_PMCG_EVCNTR0               0x0
+#define SMMU_PMCG_EVCNTR(n, stride)     (SMMU_PMCG_EVCNTR0 + (n) * (stride))
+#define SMMU_PMCG_EVTYPER0              0x400
+#define SMMU_PMCG_EVTYPER(n)            (SMMU_PMCG_EVTYPER0 + (n) * 4)
+#define SMMU_PMCG_SID_SPAN_SHIFT        29
+#define SMMU_PMCG_SMR0                  0xA00
+#define SMMU_PMCG_SMR(n)                (SMMU_PMCG_SMR0 + (n) * 4)
+#define SMMU_PMCG_CNTENSET0             0xC00
+#define SMMU_PMCG_CNTENCLR0             0xC20
+#define SMMU_PMCG_INTENSET0             0xC40
+#define SMMU_PMCG_INTENCLR0             0xC60
+#define SMMU_PMCG_OVSCLR0               0xC80
+#define SMMU_PMCG_OVSSET0               0xCC0
+#define SMMU_PMCG_CAPR			0xD88
+#define SMMU_PMCG_CAPR_START		BIT(0)
+#define SMMU_PMCG_CFGR                  0xE00
+#define SMMU_PMCG_CFGR_SID_FILTER_TYPE  BIT(23)
+#define SMMU_PMCG_CFGR_MSI              BIT(21)
+#define SMMU_PMCG_CFGR_RELOC_CTRS       BIT(20)
+#define SMMU_PMCG_CFGR_SIZE             GENMASK(13, 8)
+#define SMMU_PMCG_CFGR_NCTR             GENMASK(5, 0)
+#define SMMU_PMCG_CR                    0xE04
+#define SMMU_PMCG_CR_ENABLE             BIT(0)
+#define SMMU_PMCG_IIDR                  0xE08
+#define SMMU_PMCG_IIDR_PRODUCTID        GENMASK(31, 20)
+#define SMMU_PMCG_IIDR_VARIANT          GENMASK(19, 16)
+#define SMMU_PMCG_IIDR_REVISION         GENMASK(15, 12)
+#define SMMU_PMCG_IIDR_IMPLEMENTER      GENMASK(11, 0)
+#define SMMU_PMCG_CEID0                 0xE20
+#define SMMU_PMCG_CEID1                 0xE28
+#define SMMU_PMCG_IRQ_CTRL              0xE50
+#define SMMU_PMCG_IRQ_CTRL_IRQEN        BIT(0)
+#define SMMU_PMCG_IRQ_CFG0              0xE58
+#define SMMU_PMCG_IRQ_CFG1              0xE60
+#define SMMU_PMCG_IRQ_CFG2              0xE64
+
+/* IMP-DEF ID registers */
+#define SMMU_PMCG_PIDR0                 0xFE0
+#define SMMU_PMCG_PIDR0_PART_0          GENMASK(7, 0)
+#define SMMU_PMCG_PIDR1                 0xFE4
+#define SMMU_PMCG_PIDR1_DES_0           GENMASK(7, 4)
+#define SMMU_PMCG_PIDR1_PART_1          GENMASK(3, 0)
+#define SMMU_PMCG_PIDR2                 0xFE8
+#define SMMU_PMCG_PIDR2_REVISION        GENMASK(7, 4)
+#define SMMU_PMCG_PIDR2_DES_1           GENMASK(2, 0)
+#define SMMU_PMCG_PIDR3                 0xFEC
+#define SMMU_PMCG_PIDR3_REVAND          GENMASK(7, 4)
+#define SMMU_PMCG_PIDR4                 0xFD0
+#define SMMU_PMCG_PIDR4_DES_2           GENMASK(3, 0)
+
+/* MSI config fields */
+#define MSI_CFG0_ADDR_MASK              GENMASK_ULL(51, 2)
+#define MSI_CFG2_MEMATTR_DEVICE_nGnRE   0x1
+
+#define SMMU_PMCG_DEFAULT_FILTER_SPAN   1
+#define SMMU_PMCG_DEFAULT_FILTER_SID    GENMASK(31, 0)
+
+#define SMMU_PMCG_MAX_COUNTERS          64
+#define SMMU_PMCG_ARCH_MAX_EVENTS       128
+
+#define SMMU_PMCG_PA_SHIFT              12
+
+#define SMMU_PMCG_EVCNTR_RDONLY         BIT(0)
+
+#define SMMU_TXU_EVENT_START		0x80
+#define SMMU_TXU_EVENT_END		0xe7
 
 /* SMMU MPAM */
 #define SMMU_MPAM_TCU_OFFSET		0x3000
@@ -1015,6 +1118,45 @@ static inline void mtk_smmu_unmap_sgtable(struct device *dev, struct sg_table *s
 					  unsigned long attrs, u32 ssid)
 {
 	mtk_smmu_unmap_sg(dev, sgt->sgl, sgt->orig_nents, dir, attrs, ssid);
+}
+
+static inline unsigned int smmu_read_reg(void __iomem *base,
+					 unsigned int offset)
+{
+	return readl_relaxed(base + offset);
+}
+
+static inline void smmu_write_reg(void __iomem *base,
+				  unsigned int offset,
+				  unsigned int val)
+{
+	writel_relaxed(val, base + offset);
+}
+
+static inline void smmu_write_reg64(void __iomem *base,
+				    unsigned int offset,
+				    unsigned int val)
+{
+	writeq_relaxed(val, base + offset);
+}
+
+static inline void smmu_write_field(void __iomem *base,
+				    unsigned int reg,
+				    unsigned int mask,
+				    unsigned int val)
+{
+	unsigned int regval;
+
+	regval = readl_relaxed(base + reg);
+	regval = (regval & (~mask))|val;
+	writel_relaxed(regval, base + reg);
+}
+
+static inline unsigned int smmu_read_field(void __iomem *base,
+					   unsigned int reg,
+					   unsigned int mask)
+{
+	return readl_relaxed(base + reg) & mask;
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)

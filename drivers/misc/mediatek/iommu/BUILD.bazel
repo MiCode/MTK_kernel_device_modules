@@ -126,7 +126,7 @@ define_mgk_ddk_ko(
     name = "iommu_debug",
     srcs = [
         "iommu_port.h",
-        "iommu_debug.c",
+        "iommu-debug.c",
         "smmu_reg.h",
     ],
     hdrs = glob([

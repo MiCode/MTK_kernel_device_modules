@@ -180,7 +180,7 @@ struct arm_smmu_device;
 #define SMMU_GMPAM_UPADTE		(1 << 31)
 
 #define ARM_SMMU_REG_SZ			0xe00
-#define SMMUWP_REG_SZ			0x800
+#define SMMUWP_REG_SZ			0x2000
 #define SMMUWP_OFFSET			0x1ff000
 
 /* Common MSI config fields */

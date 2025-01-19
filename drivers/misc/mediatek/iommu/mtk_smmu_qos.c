@@ -124,31 +124,6 @@ static void smmu_mpam_polling(u32 smmu_type);
 static void smmu_qos_print_trace(void (*trace)(struct va_format *),
 				 const char *fmt, ...);
 
-static inline unsigned int smmu_read_reg(void __iomem *base,
-					 unsigned int offset)
-{
-	return readl_relaxed(base + offset);
-}
-
-static inline void smmu_write_field(void __iomem *base,
-				    unsigned int reg,
-				    unsigned int mask,
-				    unsigned int val)
-{
-	unsigned int regval;
-
-	regval = readl_relaxed(base + reg);
-	regval = (regval & (~mask))|val;
-	writel_relaxed(regval, base + reg);
-}
-
-static inline void smmu_write_reg(void __iomem *base,
-				  unsigned int offset,
-				  unsigned int val)
-{
-	writel_relaxed(val, base + offset);
-}
-
 static const char *get_pmu_event_name(u32 event_id, bool is_tcu)
 {
 	if (is_tcu) {
