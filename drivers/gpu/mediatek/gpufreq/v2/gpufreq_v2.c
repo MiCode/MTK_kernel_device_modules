@@ -1926,10 +1926,8 @@ static int gpufreq_gpueb_init(void)
 	send_msg.u.shared_mem.base = g_shared_mem_pa;
 	send_msg.u.shared_mem.size = g_shared_mem_size;
 	ret = gpufreq_ipi_to_gpueb(send_msg);
-	if (unlikely(ret)) {
+	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to init gpufreq shared memory");
-		goto done;
-	}
 	raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_ipi_irq_flags);
 
 	/* power off GPUEB */
