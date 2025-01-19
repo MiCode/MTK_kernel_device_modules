@@ -2162,8 +2162,8 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned int target_freq)
 {
 	unsigned int cpu = policy->cpu;
-	int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
-	bool dsu_fine_ctrl = get_dsu_fine_ctrl();
+	// int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
+	// bool dsu_fine_ctrl = get_dsu_fine_ctrl();
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
 
 	irq_log_store();
@@ -2194,7 +2194,7 @@ static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned i
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(UINT_MAX, topology_cluster_id(cpu),
 					dsu_idle_ctrl, target_freq, UINT_MAX, 0,
-					dsu_fine_ctrl_enabled,dsu_fine_ctrl,0);
+					-1,-1,0);
 		}
 	}
 

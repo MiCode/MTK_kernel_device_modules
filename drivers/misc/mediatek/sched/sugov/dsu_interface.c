@@ -238,7 +238,13 @@ EXPORT_SYMBOL(set_dsu_fine_ctrl_enable);
 
 int get_dsu_fine_ctrl_enable(void)
 {
-	return ioread8(dsu_fine_ctrl_enabled_addr);
+	int dsu_fine_ctrl_enable = 0;
+
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	dsu_fine_ctrl_enable = ioread8(dsu_fine_ctrl_enabled_addr);
+#endif
+
+	return dsu_fine_ctrl_enable;
 }
 EXPORT_SYMBOL(get_dsu_fine_ctrl_enable);
 
