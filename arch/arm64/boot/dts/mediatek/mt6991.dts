@@ -10779,6 +10779,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			tcu-prefetch = <2>;
 			mediatek,axslc;
 			dma-coherent;
+			ssid-enable = <1>;
 
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <1 0>;
@@ -16826,6 +16827,31 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			compatible = "mediatek,mm-dynamic-iommu-ktf";
 			iommus = <&mm_smmu 216>;
 			mtk,iommu-dma-range = <0x40000000 0x10000000>;
+		};
+	};
+
+	smmu-test-ktf7 {
+		compatible = "mediatek,mm-ssid-test-ktf";
+		iommus = <&mm_smmu 215>;
+		pasid-num-bits = <8>;
+		mtk,smmu-ssids {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			mtk,iommu-dma-range = <0x0 0x40000000 0x0 0x80000000>;
+			mtk,smmu-ssid-range = <1 255>;
+			smmu-ssid1 {
+				#address-cells = <2>;
+				#size-cells = <2>;
+				ssid = <1>;
+				mtk,iommu-dma-range = <0x1 0x10000000 0x0 0x40000000>;
+			};
+			smmu-ssid2 {
+				ssid = <2>;
+				mtk,iommu-dma-range = <0x2 0x10000000 0x0 0x40000000>;
+			};
+			smmu-ssid3 {
+				ssid = <3>;
+			};
 		};
 	};
 
