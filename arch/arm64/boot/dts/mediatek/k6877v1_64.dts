@@ -50,9 +50,11 @@
 	};
 }; /* IRTX GPIO Settings -End */
 
-&subpmic_mtk {
-	mt6360,intr_gpio_num = <4>; /* direct defined GPIO num */
-	mt6360,intr_gpio = <&pio 4 0x0>;
+&i2c5 {
+	subpmic_mtk {
+		mt6360,intr_gpio_num = <4>; /* direct defined GPIO num */
+		mt6360,intr_gpio = <&pio 4 0x0>;
+	};
 };
 
 &mt6360_regulator {
