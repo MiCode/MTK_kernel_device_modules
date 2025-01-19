@@ -252,7 +252,7 @@ static int lvts_read_tc_temperature(struct lvts_data *lvts_data, unsigned int tz
 	void __iomem *base;
 	struct platform_ops *ops = &lvts_data->ops;
 
-	if(chip_id == NULL) {
+	if(chip_id == NULL && lvts_data->mcu_sensor_id_remap) {
 		pr_info("[%s] chip_id not set yet\n", __func__);
 		lvts_get_chipid();
 	}
@@ -1090,6 +1090,14 @@ static int prepare_calibration_data(struct lvts_data *lvts_data)
 	if (!cal_data->count_rc)
 		return -ENOMEM;
 
+	if (lvts_data->op_cali_support) {
+		cal_data->op_cali = devm_kcalloc(dev, lvts_data->num_tc,
+				sizeof(*cal_data->op_cali), GFP_KERNEL);
+		if (!cal_data->op_cali)
+			return -ENOMEM;
+
+	}
+
 	if (ops->efuse_to_cal_data)
 		ops->efuse_to_cal_data(lvts_data);
 
@@ -1123,7 +1131,7 @@ static int prepare_calibration_data(struct lvts_data *lvts_data)
 
 	dev_info(dev, "%s\n", buffer);
 
-	offset = snprintf(buffer, size, "[lvts_cal] num_tc:g_golden_temp");
+	offset = snprintf(buffer, size, "[lvts_cal] num_tc:g_golden_temp ");
 	if (offset < 0)
 		return -EINVAL;
 	if (offset >= size)
@@ -1145,6 +1153,29 @@ static int prepare_calibration_data(struct lvts_data *lvts_data)
 	}
 	dev_info(dev, "%s\n", buffer);
 
+	if (lvts_data->op_cali_support) {
+		offset = snprintf(buffer, size, "[lvts_cal] num_tc:op_cali ");
+		if (offset < 0)
+			return -EINVAL;
+		if (offset >= size)
+			return -ENOMEM;
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			ret = snprintf(buffer + offset, size - offset, "%d:0x%x ",
+					i, cal_data->op_cali[i]);
+			if (ret < 0) {
+				dev_info(dev, "%s, %d, encode wrong\n", __func__, __LINE__);
+				return -EINVAL;
+			} else if (ret >= size - offset) {
+				buffer[offset] = '\0';
+				dev_info(dev, "%s\n", buffer);
+				i--;
+				offset = 0;
+			} else {
+				offset += ret;
+			}
+		}
+		dev_info(dev, "%s\n", buffer);
+	}
 	return 0;
 }
 
@@ -6824,6 +6855,409 @@ static struct lvts_data mt6991_lvts_data = {
 };
 
 /*==================================================
+ * LVTS MT6993
+ *==================================================
+ */
+enum mt6993_lvts_domain {
+	MT6993_AP_DOMAIN,
+	MT6993_MCU_DOMAIN,
+	MT6993_APU_DOMAIN,
+	MT6993_GPU_DOMAIN,
+	MT6993_NUM_DOMAIN
+};
+
+enum mt6993_lvts_sensor_enum {
+	MT6993_TS1_0,
+	MT6993_TS1_1,
+	MT6993_TS1_2,
+	MT6993_TS1_3,
+	MT6993_TS2_0,
+	MT6993_TS2_1,
+	MT6993_TS2_2,
+	MT6993_TS2_3,
+	MT6993_TS3_0,
+	MT6993_TS3_1,
+	MT6993_TS3_2,
+	MT6993_TS3_3,
+	MT6993_TS4_0,
+	MT6993_TS4_1,
+	MT6993_TS4_2,
+	MT6993_TS4_3,
+	MT6993_TS5_0,
+	MT6993_TS5_1,
+	MT6993_TS5_2,
+	MT6993_TS5_3,
+	MT6993_TS6_0,
+	MT6993_TS7_0,
+	MT6993_TS7_1,
+	MT6993_TS7_2,
+	MT6993_TS7_3,
+	MT6993_TS8_0,
+	MT6993_TS8_1,
+	MT6993_TS8_2,
+	MT6993_TS8_3,
+	MT6993_TS9_0,
+	MT6993_TS9_1,
+	MT6993_NUM_TS,
+};
+
+enum mt6993_lvts_controller_enum {
+	MT6993_LVTS_MCU_CTRL0,
+	MT6993_LVTS_MCU_CTRL1,
+	MT6993_LVTS_MCU_CTRL2,
+	MT6993_LVTS_MCU_CTRL3,
+	MT6993_LVTS_APU_CTRL0,
+	MT6993_LVTS_GPU_CTRL0,
+	MT6993_LVTS_AP_CTRL0,
+	MT6993_LVTS_AP_CTRL1,
+	MT6993_LVTS_AP_CTRL2,
+	MT6993_LVTS_CTRL_NUM
+};
+
+static void mt6993_efuse_to_cal_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	int i = 0;
+
+	cal_data->golden_temp = GET_CAL_DATA_BITMASK(0, 7, 0);
+	cal_data->golden_temp_ht = GET_CAL_DATA_BITMASK(0, 15, 8);
+	cal_data->cali_mode = GET_CAL_DATA_BIT(0, 31);
+
+	for (i = 0; i < lvts_data->num_tc; i++)
+		tc[i].coeff.golden_temp = cal_data->golden_temp;
+
+	if (cal_data->cali_mode == 1) {
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			if (tc[i].coeff.cali_mode == CALI_HT)
+				tc[i].coeff.golden_temp = cal_data->golden_temp_ht;
+		}
+	}
+
+	cal_data->count_r[MT6993_TS1_0] =  GET_CAL_DATA_BITMASK(1, 31, 16);
+	cal_data->count_r[MT6993_TS1_1] =  GET_CAL_DATA_BITMASK(1, 15, 0);
+	cal_data->count_r[MT6993_TS1_2] =  GET_CAL_DATA_BITMASK(2, 31, 16);
+	cal_data->count_r[MT6993_TS1_3] =  GET_CAL_DATA_BITMASK(2, 15, 0);
+
+	cal_data->count_r[MT6993_TS2_0] =  GET_CAL_DATA_BITMASK(3, 31, 16);
+	cal_data->count_r[MT6993_TS2_1] =  GET_CAL_DATA_BITMASK(3, 15, 0);
+	cal_data->count_r[MT6993_TS2_2] =  GET_CAL_DATA_BITMASK(4, 31, 16);
+	cal_data->count_r[MT6993_TS2_3] =  GET_CAL_DATA_BITMASK(4, 15, 0);
+
+	cal_data->count_r[MT6993_TS3_0] =  GET_CAL_DATA_BITMASK(5, 31, 16);
+	cal_data->count_r[MT6993_TS3_1] =  GET_CAL_DATA_BITMASK(5, 15, 0);
+	cal_data->count_r[MT6993_TS3_2] =  GET_CAL_DATA_BITMASK(6, 31, 16);
+	cal_data->count_r[MT6993_TS3_3] =  GET_CAL_DATA_BITMASK(6, 15, 0);
+
+	cal_data->count_r[MT6993_TS4_0] =  GET_CAL_DATA_BITMASK(7, 31, 16);
+	cal_data->count_r[MT6993_TS4_1] =  GET_CAL_DATA_BITMASK(7, 15, 0);
+	cal_data->count_r[MT6993_TS4_2] =  GET_CAL_DATA_BITMASK(8, 31, 16);
+	cal_data->count_r[MT6991_TS4_3] =  GET_CAL_DATA_BITMASK(8, 15, 0);
+
+	cal_data->count_r[MT6993_TS5_0] =  GET_CAL_DATA_BITMASK(9, 31, 16);
+	cal_data->count_r[MT6993_TS5_1] =  GET_CAL_DATA_BITMASK(9, 15, 0);
+	cal_data->count_r[MT6993_TS5_2] =  GET_CAL_DATA_BITMASK(10, 31, 16);
+	cal_data->count_r[MT6993_TS5_3] =  GET_CAL_DATA_BITMASK(10, 15, 0);
+
+	cal_data->count_r[MT6993_TS6_0] =  GET_CAL_DATA_BITMASK(11, 31, 16);
+
+	cal_data->count_r[MT6993_TS7_0]  =  GET_CAL_DATA_BITMASK(12, 31, 16);
+	cal_data->count_r[MT6993_TS7_1]  =  GET_CAL_DATA_BITMASK(12, 15, 0);
+	cal_data->count_r[MT6993_TS7_2]  =  GET_CAL_DATA_BITMASK(13, 31, 16);
+	cal_data->count_r[MT6993_TS7_3]  =  GET_CAL_DATA_BITMASK(13, 15, 0);
+
+	cal_data->count_r[MT6993_TS8_0] =  GET_CAL_DATA_BITMASK(14, 31, 16);
+	cal_data->count_r[MT6993_TS8_1] =  GET_CAL_DATA_BITMASK(14, 15, 0);
+	cal_data->count_r[MT6993_TS8_2] =  GET_CAL_DATA_BITMASK(15, 31, 16);
+	cal_data->count_r[MT6993_TS8_3] =  GET_CAL_DATA_BITMASK(15, 15, 0);
+
+	cal_data->count_r[MT6993_TS9_0] =  GET_CAL_DATA_BITMASK(16, 31, 16);
+	cal_data->count_r[MT6993_TS9_1] =  GET_CAL_DATA_BITMASK(16, 15, 0);
+
+	cal_data->count_rc[MT6993_LVTS_MCU_CTRL0] =  GET_CAL_DATA_BITMASK(17, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_MCU_CTRL1] =  GET_CAL_DATA_BITMASK(18, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_MCU_CTRL2] =  GET_CAL_DATA_BITMASK(19, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_MCU_CTRL3] =  GET_CAL_DATA_BITMASK(20, 23, 0);
+
+	cal_data->count_rc[MT6993_LVTS_APU_CTRL0] =  GET_CAL_DATA_BITMASK(21, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_GPU_CTRL0] =  GET_CAL_DATA_BITMASK(22, 23, 0);
+
+	cal_data->count_rc[MT6993_LVTS_AP_CTRL0] =  GET_CAL_DATA_BITMASK(23, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_AP_CTRL1] =  GET_CAL_DATA_BITMASK(24, 23, 0);
+	cal_data->count_rc[MT6993_LVTS_AP_CTRL2] =  GET_CAL_DATA_BITMASK(25, 23, 0);
+
+	if (lvts_data->op_cali_support) {
+		cal_data->op_cali[MT6993_LVTS_MCU_CTRL0] =  GET_CAL_DATA_BITMASK(17, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_MCU_CTRL1] =  GET_CAL_DATA_BITMASK(18, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_MCU_CTRL2] =  GET_CAL_DATA_BITMASK(19, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_MCU_CTRL3] =  GET_CAL_DATA_BITMASK(20, 29, 24);
+
+		cal_data->op_cali[MT6993_LVTS_APU_CTRL0] =  GET_CAL_DATA_BITMASK(21, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_GPU_CTRL0] =  GET_CAL_DATA_BITMASK(22, 29, 24);
+
+		cal_data->op_cali[MT6993_LVTS_AP_CTRL0] =  GET_CAL_DATA_BITMASK(23, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_AP_CTRL1] =  GET_CAL_DATA_BITMASK(24, 29, 24);
+		cal_data->op_cali[MT6993_LVTS_AP_CTRL2] =  GET_CAL_DATA_BITMASK(25, 29, 24);
+	}
+}
+
+static void mt6993_check_cal_data(struct lvts_data *lvts_data)
+{
+	struct device *dev = lvts_data->dev;
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	int i;
+
+	cal_data->use_fake_efuse = 1;
+
+	if ((cal_data->golden_temp != 0) || (cal_data->golden_temp_ht != 0)) {
+		cal_data->use_fake_efuse = 0;
+	} else {
+		for (i = 0; i < lvts_data->num_sensor; i++) {
+			if (cal_data->count_r[i] != 0) {
+				cal_data->use_fake_efuse = 0;
+				break;
+			}
+		}
+		if (cal_data->use_fake_efuse == 1) {
+			for (i = 0; i < lvts_data->num_tc; i++) {
+				if (cal_data->count_rc[i] != 0) {
+					cal_data->use_fake_efuse = 0;
+					break;
+				}
+			}
+		}
+	}
+
+	if (cal_data->use_fake_efuse) {
+		/* It means all efuse data are equal to 0 */
+		dev_info(dev,
+			"[lvts_cal] This sample is not calibrated, fake !!\n");
+		for (i = 0; i < lvts_data->num_sensor; i++)
+			cal_data->count_r[i] = cal_data->default_count_r;
+
+
+		for (i = 0; i < lvts_data->num_tc; i++)
+			cal_data->count_rc[i] = cal_data->default_count_rc;
+
+		if (lvts_data->op_cali_support)
+			for (i = 0; i < lvts_data->num_tc; i++)
+				cal_data->op_cali[i] = 0;
+
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			if (tc[i].coeff.cali_mode == CALI_HT &&
+				cal_data->cali_mode == 1)
+				tc[i].coeff.golden_temp = cal_data->default_golden_temp_ht;
+			else
+				tc[i].coeff.golden_temp = cal_data->default_golden_temp;
+		}
+	}
+}
+
+#define COF_A_T_SLP_GLD_6993 391460
+#define COF_A_COUNT_R_GLD_6993 34412
+#define COF_A_CONST_OFS_6993 0
+#define COF_A_OFS_6993 (COF_A_T_SLP_GLD_6993 - COF_A_CONST_OFS_6993)
+
+static void mt6993_update_coef_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int i, j, s_index;
+
+	for (i = 0; i < lvts_data->num_tc; i++) {
+		for  (j = 0; j < tc[i].num_sensor; j++) {
+			if (tc[i].sensor_on_off[j] != SEN_ON)
+				continue;
+
+			s_index = tc[i].sensor_map[j];
+
+			tc[i].coeff.a[j] = COF_A_OFS_6993 + (COF_A_CONST_OFS_6993 *
+					cal_data->count_r[s_index] / COF_A_COUNT_R_GLD_6993);
+
+			dev_info(lvts_data->dev, "%s tc[%d].coeff.a[%d]=%d\n", __func__,
+				i, j, tc[i].coeff.a[j]);
+		}
+	}
+}
+
+static struct tc_settings mt6993_tc_settings[] = {
+	[MT6993_LVTS_MCU_CTRL0] = {
+		.domain_index = MT6993_MCU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS1_0, MT6993_TS1_1, MT6993_TS1_2, MT6993_TS1_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_MCU_CTRL1] = {
+		.domain_index = MT6993_MCU_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS2_0, MT6993_TS2_1, MT6993_TS2_2, MT6993_TS2_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_MCU_CTRL2] = {
+		.domain_index = MT6993_MCU_DOMAIN,
+		.addr_offset = 0x200,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS3_0, MT6993_TS3_1, MT6993_TS3_2, MT6993_TS3_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1440, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(3),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_MCU_CTRL3] = {
+		.domain_index = MT6993_MCU_DOMAIN,
+		.addr_offset = 0x300,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS4_0, MT6993_TS4_1, MT6993_TS4_2, MT6993_TS4_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 10, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 114200,
+		.irq_bit = BIT(4),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_APU_CTRL0] = {
+		.domain_index = MT6993_APU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS5_0, MT6993_TS5_1, MT6993_TS5_2, MT6993_TS5_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1950, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_GPU_CTRL0] = {
+		.domain_index = MT6993_GPU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 1,
+		.sensor_map = {MT6993_TS6_0},
+		.sensor_on_off = {SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1230, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_AP_CTRL0] = {
+		.domain_index = MT6993_AP_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS7_0, MT6993_TS7_1, MT6993_TS7_2, MT6993_TS7_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_AP_CTRL1] = {
+		.domain_index = MT6993_AP_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 4,
+		.sensor_map = {MT6993_TS8_0, MT6993_TS8_1, MT6993_TS8_2, MT6993_TS8_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+	[MT6993_LVTS_AP_CTRL2] = {
+		.domain_index = MT6993_AP_DOMAIN,
+		.addr_offset = 0x200,
+		.num_sensor = 2,
+		.sensor_map = {MT6993_TS9_0, MT6993_TS9_1},
+		.sensor_on_off = {SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 118800,
+		.irq_bit = BIT(3),
+		.coeff = {
+			.cali_mode = CALI_NT,
+		},
+	},
+};
+static struct lvts_data mt6993_lvts_data = {
+	.num_domain = MT6993_NUM_DOMAIN,
+	.num_tc = MT6993_LVTS_CTRL_NUM,
+	.tc = mt6993_tc_settings,
+	.num_sensor = MT6993_NUM_TS,
+	.ops = {
+		.device_identification = NULL,
+		.efuse_to_cal_data = mt6993_efuse_to_cal_data,
+		.device_enable_and_init = NULL,
+		.device_enable_auto_rck = NULL,
+		.device_read_count_rc_n = NULL,
+		.set_cal_data = NULL,
+		.init_controller = NULL,
+		.lvts_temp_to_raw = lvts_temp_to_raw_v2,
+		.lvts_raw_to_temp = lvts_raw_to_temp_v2,
+		.check_cal_data = mt6993_check_cal_data,
+		.update_coef_data = mt6993_update_coef_data,
+	},
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK |
+		FEATURE_CHANGE_REBOOT_TEMP_IN_TFA,
+	.num_efuse_addr = 26,
+	.num_efuse_block = 9,
+	.cal_data = {
+		.default_golden_temp = 60,
+		.default_golden_temp_ht = 130,
+		.default_count_r = 34412,
+		.default_count_rc = 23363,
+	},
+	.init_done = false,
+	.enable_dump_log = 0,
+	.clock_gate_no_need = true,
+	.reset_no_need = true,
+	.op_cali_support = true,
+	.is_tsfdc_n3e_ver = false,
+	.dump_wo_pause = true,
+	.gpu_power_ctrl_id = MT6993_LVTS_GPU_CTRL0,
+	.mcu_sensor_id_remap = false,
+	.ap_domain_no_irq = true,
+};
+/*==================================================
  * Support chips
  *==================================================
  */
@@ -6888,6 +7322,10 @@ static const struct of_device_id lvts_of_match[] = {
 	{
 		.compatible = "mediatek,mt6991-lvts",
 		.data = (void *)&mt6991_lvts_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-lvts",
+		.data = (void *)&mt6993_lvts_data,
 	},
 	{
 	},
