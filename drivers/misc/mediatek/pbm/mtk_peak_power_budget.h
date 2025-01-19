@@ -120,6 +120,7 @@ struct power_budget_t {
 	struct power_supply *psy;
 	struct device *dev;
 	unsigned int hpt_exclude_lbat_cg_thl;
+	int is_evb;
 };
 
 struct ocv_table_t {
@@ -159,14 +160,57 @@ struct xpu_dbg_t {
 };
 
 #define TOTAL_PWR_INTERVALS 11
+#define SF_NUM 5
 struct ppb3_dbg_t {
 	unsigned int lcpu_pwr[TOTAL_PWR_INTERVALS];
 	unsigned int mcpu_pwr[TOTAL_PWR_INTERVALS];
 	unsigned int bcpu_pwr[TOTAL_PWR_INTERVALS];
 	unsigned int gpu_pwr[TOTAL_PWR_INTERVALS];
 	unsigned int npu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int bat_pwr;
 	unsigned int pre_uv;
+	unsigned int cgn_sf[SF_NUM];
 };
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+struct spbm_scmi_state_t {
+	unsigned int enabled;
+	unsigned int debug;
+	unsigned int fake_bcpu_tgt_pwr;
+	unsigned int fake_mcpu_tgt_pwr;
+	unsigned int fake_lcpu_tgt_pwr;
+	unsigned int fake_gpu;
+	unsigned int fake_gpu_tgt_pwr;
+	unsigned int fake_gpu_avg_pwr;
+	unsigned int fake_npu;
+	unsigned int fake_npu_tgt_pwr;
+	unsigned int fake_npu_avg_pwr;
+	unsigned int sf_bcpu;
+	unsigned int sf_mcpu;
+	unsigned int sf_lcpu;
+	unsigned int sf_gpu;
+	unsigned int sf_npu;
+};
+
+enum {
+	SPBM_SCMI_SET,
+	SPBM_SCMI_GET,
+};
+
+enum {
+	SPBM_SCMI_SOC,
+	SPBM_SCMI_SOC_BAT_PWR,
+	SPBM_SCMI_SPBM_ENABLE,
+	SPBM_SCMI_DEBUG,
+	SPBM_SCMI_FAKE_CPU_PWR_LIMIT,
+	SPBM_SCMI_FAKE_GPU_PWR_LIMIT,
+	SPBM_SCMI_FAKE_NPU_PWR_LIMIT,
+	SPBM_SCMI_SCALING_FACTOR_CPU,
+	SPBM_SCMI_SCALING_FACTOR_GPU,
+	SPBM_SCMI_SCALING_FACTOR_NPU,
+	NR_SPBM_SCMI,
+};
+#endif
 
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
 extern int ppb_set_wifi_pwr_addr(unsigned int val);
@@ -177,6 +221,12 @@ extern int ppb_set_wifi_pwr_addr(unsigned int val);
 #define SPBM_BCPU_PWR_LIMIT_TIMES_OFFSET         (0x78)
 #define SPBM_GPU_PWR_LIMIT_TIMES_OFFSET          (0xB4)
 #define SPBM_NPU_PWR_LIMIT_TIMES_OFFSET          (0xF0)
+/*scaling factor for CPU/GPU/NPU tuning*/
+#define SPBM_KERNEL_B_SF_OFFSET     0x60
+#define SPBM_KERNEL_M_SF_OFFSET     0x64
+#define SPBM_KERNEL_L_SF_OFFSET     0x68
+#define SPBM_KERNEL_G_SF_OFFSET     0x6C
+#define SPBM_KERNEL_N_SF_OFFSET     0x70
 
 /*for CPU to save CPU power limiter freq, TCM*/
 #define SPBM_CPU_BCORE_FREQ_TCM_OFFSET         (0x308)
@@ -205,14 +255,6 @@ extern int ppb_set_wifi_pwr_addr(unsigned int val);
 #define SPBM_NPU_AVG_CURRENT_OFFSET         (0x2C)
 #define SPBM_NPU_TARGET_PWR_OFFSET          (0x30)
 #define SPBM_NPU_THROTTLED_OFFSET           (0x34)
-
-
-/*scaling factor for CPU/GPU/NPU tuning*/
-#define SPBM_B_SCALING_FACTOR_OFFSET          (0x60)
-#define SPBM_M_SCALING_FACTOR_OFFSET          (0x64)
-#define SPBM_L_SCALING_FACTOR_OFFSET          (0x68)
-#define SPBM_G_SCALING_FACTOR_OFFSET          (0x6C)
-#define SPBM_N_SCALING_FACTOR_OFFSET          (0x70)
 
 
 /*SPMB current reporting log*/

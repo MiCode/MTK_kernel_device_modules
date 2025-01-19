@@ -14,6 +14,7 @@
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
 #include <linux/timer.h>
+#include <linux/of_gpio.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
@@ -33,7 +34,7 @@
 #include <linux/scmi_protocol.h>
 #include <tinysys-scmi.h>
 #endif
-
+#include "mtk_peak_power_budget.h"
 
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
@@ -50,6 +51,7 @@
 #define PPB3_LOG_DURATION msecs_to_jiffies(10000)
 #define HPT_INIT_SETTING    7
 #define DEFAULT_COMBO0_UISOC MAX_VALUE
+
 
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
@@ -117,31 +119,23 @@ struct ppb ppb_manual = {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static int scmi_spbm_id;
 static struct scmi_tinysys_info_st *_tinfo;
-static DEFINE_MUTEX(spbm_ipi_mutex);
+static DEFINE_MUTEX(spbm_scmi_mutex);
 static int spbm_sspm_ready;
 int spbm_ipi_ackdata;
-enum {
-	SPBM_IPI_SCMI_SET,
-	SPBM_IPI_SCMI_GET,
-};
-
-enum {
-	SPBM_IPI_SOC,
-	NR_SPBM_IPI,
-};
+struct spbm_scmi_state_t spbm_scmi_state;
 
 #endif
 
-static int spbm_ipi_to_sspm_scmi_command(unsigned int cmd, unsigned int p1, unsigned int p2,
+static int spbm_scmi_to_sspm_command(unsigned int cmd, unsigned int p1, unsigned int p2,
 			unsigned int p3, unsigned int p4)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret = 0, ackdata = 0;
 	struct scmi_tinysys_status rvalue = {0};
 
-	mutex_lock(&spbm_ipi_mutex);
+	mutex_lock(&spbm_scmi_mutex);
 
-	if (cmd >= NR_SPBM_IPI) {
+	if (cmd >= NR_SPBM_SCMI) {
 		pr_info("spbm ipi cmd get error %d\n",
 			cmd);
 		goto error;
@@ -153,7 +147,7 @@ static int spbm_ipi_to_sspm_scmi_command(unsigned int cmd, unsigned int p1, unsi
 	}
 
 	switch (p4) {
-	case SPBM_IPI_SCMI_SET:
+	case SPBM_SCMI_SET:
 		ret = scmi_tinysys_common_set(_tinfo->ph, scmi_spbm_id,
 			cmd, p1, p2, p3, p4);
 		if (ret) {
@@ -164,17 +158,17 @@ static int spbm_ipi_to_sspm_scmi_command(unsigned int cmd, unsigned int p1, unsi
 		pr_info("spbm send ipi to sspm cmd %d success\n", cmd);
 		ackdata = rvalue.r1;
 		break;
-	case SPBM_IPI_SCMI_GET:
+	case SPBM_SCMI_GET:
 		break;
 	}
-	mutex_unlock(&spbm_ipi_mutex);
+	mutex_unlock(&spbm_scmi_mutex);
 	return ackdata;
 error:
-	mutex_unlock(&spbm_ipi_mutex);
+	mutex_unlock(&spbm_scmi_mutex);
 #endif
 	return -1;
 }
-static void spbm_ipi_init(void)
+static void spbm_scmi_init(void)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	unsigned int ret;
@@ -198,16 +192,23 @@ static int spbm_intf_read_csram_s32(int offset)
 {
 	void __iomem *addr = spbm_csram_base + offset;
 
+	if (!spbm_csram_base) {
+		pr_info("spbm_csram_base error %p\n", spbm_csram_base);
+		return 0;
+	}
+
 	return sign_extend32(readl(addr), 31);
 }
 
 static int spbm_intf_read_cputcm_s32(int offset)
 {
 	void __iomem *addr_cputcm = spbm_cputcm_base + offset;
-
+	if (!spbm_cputcm_base) {
+		pr_info("spbm_cputcm_base error %p\n", spbm_cputcm_base);
+		return 0;
+	}
 	return sign_extend32(readl(addr_cputcm), 31);
 }
-
 
 static ssize_t spbm_cpu_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
@@ -229,6 +230,14 @@ static ssize_t spbm_cpu_info_show(struct kobject *kobj,
 		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_THROTTLED_TCM_OFFSET),
 		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_THROTTLED_TCM_OFFSET));
 
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
 	return len;
 }
 
@@ -245,6 +254,14 @@ static ssize_t spbm_gpu_info_show(struct kobject *kobj,
 		spbm_intf_read_csram_s32(SPBM_GPU_TARGET_PWR_OFFSET),
 		spbm_intf_read_csram_s32(SPBM_GPU_THROTTLED_OFFSET));
 
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
 	return len;
 }
 
@@ -259,6 +276,14 @@ static ssize_t spbm_npu_info_show(struct kobject *kobj,
 		spbm_intf_read_csram_s32(SPBM_NPU_AVG_CURRENT_OFFSET),
 		spbm_intf_read_csram_s32(SPBM_NPU_TARGET_PWR_OFFSET),
 		spbm_intf_read_csram_s32(SPBM_NPU_THROTTLED_OFFSET));
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
 
 	return len;
 }
@@ -287,6 +312,14 @@ static ssize_t spbm_current_reporting_show(struct kobject *kobj,
 		spbm_intf_read_csram_s32(SPBM_NPU_W_OFFSET)
 		);
 
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
 	return len;
 }
 
@@ -305,6 +338,14 @@ static ssize_t spbm_xpu_power_limit_show(struct kobject *kobj,
 		spbm_intf_read_csram_s32(SPBM_GPU_PWR_LIMIT_OFFSET),
 		spbm_intf_read_csram_s32(SPBM_NPU_PWR_LIMIT_OFFSET));
 
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
 	return len;
 }
 
@@ -320,8 +361,434 @@ static ssize_t spbm_xpu_request_power_show(struct kobject *kobj,
 		spbm_intf_read_csram_s32(SPBM_GPU_REQUEST_PWR_OFFSET),
 		spbm_intf_read_csram_s32(SPBM_NPU_REQUEST_PWR_OFFSET));
 
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
 	return len;
 }
+
+static ssize_t spbm_debug_state_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%u\n",
+		spbm_scmi_state.debug);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_debug_state_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int debug_state;
+
+	if (sscanf(buf, "%11s %u", cmd, &debug_state) == 2) {
+		if (strncmp(cmd, "spbm_debug", 10) == 0) {
+			spbm_scmi_state.debug = debug_state;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_DEBUG,
+				spbm_scmi_state.debug, 0 , 0,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+
+static ssize_t spbm_spbm_enable_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "spbm_on: %d\n",
+		spbm_scmi_state.enabled);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_spbm_enable_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+
+	if (strncmp(buf, "spbm_enable", 11) == 0) {
+		spbm_scmi_state.enabled = 1; // Enable the function
+		pr_info("spbm_enabled %d\n", spbm_scmi_state.enabled);
+	} else if (strncmp(buf, "spbm_disable", 12) == 0) {
+		spbm_scmi_state.enabled = 0; // Disable the function
+		pr_info("spbm_enabled %d\n", spbm_scmi_state.enabled);
+	} else if (strncmp(buf, "spbm_freerun", 12) == 0) {
+		spbm_scmi_state.enabled = 2; // free run SPBM
+		pr_info("spbm_freerun %d\n", spbm_scmi_state.enabled);
+	} else {// If the input does not match expected commands, return an error
+		pr_info("[spbm]%s invalid input\n", __func__);
+		return -EINVAL; // Invalid input
+	}
+
+	// Send command to the subsystem to set the state
+	spbm_scmi_to_sspm_command(SPBM_SCMI_SPBM_ENABLE,
+		spbm_scmi_state.enabled, 0, 0, SPBM_SCMI_SET);
+
+	return count;
+}
+
+static ssize_t spbm_fake_cpu_pwr_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "fake bcpu: %d, mcpu: %d, lcpu: %d\n",
+		spbm_scmi_state.fake_bcpu_tgt_pwr,
+		spbm_scmi_state.fake_mcpu_tgt_pwr,
+		spbm_scmi_state.fake_lcpu_tgt_pwr);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_fake_cpu_pwr_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int fake_bcpu, fake_mcpu, fake_lcpu;
+
+	if (sscanf(buf, "%14s %u %u %u", cmd, &fake_bcpu, &fake_mcpu, &fake_lcpu) == 4) {
+		if (strncmp(cmd, "spbm_fake_cpu", 13) == 0) {
+			spbm_scmi_state.fake_bcpu_tgt_pwr = fake_bcpu;
+			spbm_scmi_state.fake_mcpu_tgt_pwr = fake_mcpu;
+			spbm_scmi_state.fake_lcpu_tgt_pwr = fake_lcpu;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_CPU_PWR_LIMIT,
+				fake_bcpu, fake_mcpu , fake_lcpu,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	if (sscanf(buf, "%18s", cmd) == 1) {
+		if (strncmp(cmd, "spbm_not_fake_cpu", 17) == 0) {
+			spbm_scmi_state.fake_bcpu_tgt_pwr = 0xffffffff;
+			spbm_scmi_state.fake_mcpu_tgt_pwr = 0xffffffff;
+			spbm_scmi_state.fake_lcpu_tgt_pwr = 0xffffffff;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_CPU_PWR_LIMIT,
+				spbm_scmi_state.fake_bcpu_tgt_pwr,
+				spbm_scmi_state.fake_mcpu_tgt_pwr,
+				spbm_scmi_state.fake_lcpu_tgt_pwr,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t spbm_fake_gpu_pwr_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "fake gpu(%d): target pwr: %d, average pwr: %d\n",
+		spbm_scmi_state.fake_gpu,
+		spbm_scmi_state.fake_gpu_tgt_pwr,
+		spbm_scmi_state.fake_gpu_avg_pwr);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_fake_gpu_pwr_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int fake_gpu, fake_gpu_tgt, fake_gpu_avg;
+
+	if (sscanf(buf, "%14s %u %u %u", cmd, &fake_gpu, &fake_gpu_tgt, &fake_gpu_avg) == 4) {
+		if (strncmp(cmd, "spbm_fake_gpu", 13) == 0) {
+			spbm_scmi_state.fake_gpu = fake_gpu;
+			spbm_scmi_state.fake_gpu_tgt_pwr = fake_gpu_tgt;
+			spbm_scmi_state.fake_gpu_avg_pwr = fake_gpu_avg;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_GPU_PWR_LIMIT,
+				spbm_scmi_state.fake_gpu,
+				spbm_scmi_state.fake_gpu_tgt_pwr,
+				spbm_scmi_state.fake_gpu_avg_pwr,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	if (sscanf(buf, "%18s %u", cmd, &fake_gpu) == 2) {
+		if (strncmp(cmd, "spbm_not_fake_gpu", 17) == 0) {
+			spbm_scmi_state.fake_gpu = fake_gpu;
+			spbm_scmi_state.fake_gpu_tgt_pwr = 0xffffffff;
+			spbm_scmi_state.fake_gpu_avg_pwr = 0xffffffff;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_GPU_PWR_LIMIT,
+				fake_gpu, fake_gpu_tgt, fake_gpu_avg,
+				SPBM_SCMI_SET);
+
+			return count;
+
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+
+static ssize_t spbm_fake_npu_pwr_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "fake npu(%d): target pwr: %d, average pwr: %d\n",
+		spbm_scmi_state.fake_npu,
+		spbm_scmi_state.fake_npu_tgt_pwr,
+		spbm_scmi_state.fake_npu_avg_pwr);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_fake_npu_pwr_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int fake_npu, fake_npu_tgt, fake_npu_avg;
+
+
+	if (sscanf(buf, "%14s %u %u %u", cmd, &fake_npu, &fake_npu_tgt,
+		&fake_npu_avg) == 4) {
+		if (strncmp(cmd, "spbm_fake_npu", 13) == 0) {
+			spbm_scmi_state.fake_npu = fake_npu;
+			spbm_scmi_state.fake_npu_tgt_pwr = fake_npu_tgt;
+			spbm_scmi_state.fake_npu_avg_pwr = fake_npu_avg;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_NPU_PWR_LIMIT,
+				spbm_scmi_state.fake_npu,
+				spbm_scmi_state.fake_npu_tgt_pwr,
+				spbm_scmi_state.fake_npu_avg_pwr,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	if (sscanf(buf, "%18s %u", cmd, &fake_npu) == 2) {
+		if (strncmp(cmd, "spbm_not_fake_npu", 17) == 0) {
+			spbm_scmi_state.fake_npu = fake_npu;
+			spbm_scmi_state.fake_npu_tgt_pwr = 0xffffffff;
+			spbm_scmi_state.fake_npu_avg_pwr = 0xffffffff;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_FAKE_NPU_PWR_LIMIT,
+				fake_npu, fake_npu_tgt, fake_npu_avg,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t spbm_sf_gpu_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "sf scaling factor gpu(%d)\n",
+		spbm_scmi_state.sf_gpu);
+
+	if (len < 0) {
+		pr_info("Error writing to buffer\n");
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("Buffer size is too small, truncated output\n");
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_sf_gpu_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int sf_gpu;
+
+	if (sscanf(buf, "%12s %u", cmd, &sf_gpu) == 2) {
+		if (strncmp(cmd, "spbm_sf_gpu", 11) == 0) {
+			spbm_scmi_state.sf_gpu = sf_gpu;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_SCALING_FACTOR_GPU,
+				spbm_scmi_state.sf_gpu, 0, 0,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+static ssize_t spbm_sf_npu_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "sf scaling factor npu(%d)\n",
+		spbm_scmi_state.sf_npu);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_sf_npu_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int sf_npu;
+
+	if (sscanf(buf, "%12s %u", cmd, &sf_npu) == 2) {
+		if (strncmp(cmd, "spbm_sf_npu", 11) == 0) {
+			spbm_scmi_state.sf_npu = sf_npu;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_SCALING_FACTOR_NPU,
+				spbm_scmi_state.sf_npu, 0, 0,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
+
+static ssize_t spbm_sf_cpu_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len = snprintf(buf, PAGE_SIZE,
+		"sf scaling factor bcpu(%d) mcpu(%d) lcpu(%d)\n",
+		spbm_scmi_state.sf_bcpu,
+		spbm_scmi_state.sf_mcpu,
+		spbm_scmi_state.sf_lcpu);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_sf_cpu_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[20];
+	unsigned int sf_bcpu, sf_mcpu, sf_lcpu;
+
+	if (sscanf(buf, "%12s %u %u %u", cmd, &sf_bcpu, &sf_mcpu, &sf_lcpu) == 4) {
+		if (strncmp(cmd, "spbm_sf_cpu", 11) == 0) {
+			spbm_scmi_state.sf_bcpu = sf_bcpu;
+			spbm_scmi_state.sf_mcpu = sf_mcpu;
+			spbm_scmi_state.sf_lcpu = sf_lcpu;
+
+			spbm_scmi_to_sspm_command(SPBM_SCMI_SCALING_FACTOR_CPU,
+			spbm_scmi_state.sf_bcpu,
+			spbm_scmi_state.sf_mcpu,
+			spbm_scmi_state.sf_lcpu,
+				SPBM_SCMI_SET);
+
+			return count;
+		}
+	}
+
+	pr_info("[spbm]%s invalid input\n", __func__);
+
+	return -EINVAL;
+}
+
 
 static struct kobj_attribute spbm_cpu_info_attr = __ATTR_RO(spbm_cpu_info);
 static struct kobj_attribute spbm_gpu_info_attr = __ATTR_RO(spbm_gpu_info);
@@ -331,6 +798,15 @@ static struct kobj_attribute spbm_current_reporting_attr = __ATTR_RO(spbm_curren
 static struct kobj_attribute spbm_xpu_power_limit_attr = __ATTR_RO(spbm_xpu_power_limit);
 static struct kobj_attribute spbm_xpu_request_power_attr = __ATTR_RO(spbm_xpu_request_power);
 
+static struct kobj_attribute spbm_spbm_enable_attr = __ATTR_RW(spbm_spbm_enable);
+static struct kobj_attribute spbm_debug_state_attr = __ATTR_RW(spbm_debug_state);
+static struct kobj_attribute spbm_fake_cpu_pwr_attr = __ATTR_RW(spbm_fake_cpu_pwr);
+static struct kobj_attribute spbm_fake_gpu_pwr_attr = __ATTR_RW(spbm_fake_gpu_pwr);
+static struct kobj_attribute spbm_fake_npu_pwr_attr = __ATTR_RW(spbm_fake_npu_pwr);
+static struct kobj_attribute spbm_sf_cpu_attr = __ATTR_RW(spbm_sf_cpu);
+static struct kobj_attribute spbm_sf_gpu_attr = __ATTR_RW(spbm_sf_gpu);
+static struct kobj_attribute spbm_sf_npu_attr = __ATTR_RW(spbm_sf_npu);
+
 static struct attribute *spbm_attrs[] = {
 	&spbm_cpu_info_attr.attr,
 	&spbm_gpu_info_attr.attr,
@@ -338,6 +814,14 @@ static struct attribute *spbm_attrs[] = {
 	&spbm_current_reporting_attr.attr,
 	&spbm_xpu_power_limit_attr.attr,
 	&spbm_xpu_request_power_attr.attr,
+	&spbm_spbm_enable_attr.attr,
+	&spbm_debug_state_attr.attr,
+	&spbm_fake_cpu_pwr_attr.attr,
+	&spbm_fake_gpu_pwr_attr.attr,
+	&spbm_fake_npu_pwr_attr.attr,
+	&spbm_sf_cpu_attr.attr,
+	&spbm_sf_gpu_attr.attr,
+	&spbm_sf_npu_attr.attr,
 	NULL
 };
 
@@ -560,6 +1044,14 @@ static int __used get_ppb3_debug_info(struct ppb3_dbg_t *data)
 		data->gpu_pwr[i]   = dbg_read((ppb3_dbg_base + SPBM_GPU_PWR_LIMIT_TIMES_OFFSET) , i);
 		data->npu_pwr[i]   = dbg_read((ppb3_dbg_base + SPBM_NPU_PWR_LIMIT_TIMES_OFFSET) , i);
 	}
+	data->cgn_sf[0] = dbg_read(spbm_csram_base + SPBM_KERNEL_B_SF_OFFSET, 0);
+	data->cgn_sf[1] = dbg_read(spbm_csram_base + SPBM_KERNEL_M_SF_OFFSET, 0);
+	data->cgn_sf[2] = dbg_read(spbm_csram_base + SPBM_KERNEL_L_SF_OFFSET, 0);
+	data->cgn_sf[3] = dbg_read(spbm_csram_base + SPBM_KERNEL_G_SF_OFFSET, 0);
+	data->cgn_sf[4] = dbg_read(spbm_csram_base + SPBM_KERNEL_N_SF_OFFSET, 0);
+
+	data->bat_pwr = dbg_read(spbm_csram_base + SPBM_BAT_PWR_OFFSET, 0);
+	data->pre_uv = dbg_read(spbm_csram_base + SPBM_UVLO_TRIGGER_TIMES_OFFSET, 0);
 	return 0;
 }
 
@@ -567,9 +1059,6 @@ static int __used get_ppb3_debug_info(struct ppb3_dbg_t *data)
 static void __used ppb3_print_dbg_log(struct timer_list *timer)
 {
 	struct ppb3_dbg_t ppb3_dbg_data;
-	unsigned int lcpu_pwr[11], mcpu_pwr[11], bcpu_pwr[11];
-	unsigned int gpu_pwr[11], npu_pwr[11];
-
 	int offset, ret;
 	char str[STR_SIZE];
 	int i;
@@ -580,14 +1069,6 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 
 		get_ppb3_debug_info(&ppb3_dbg_data);
 
-		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			lcpu_pwr[i] = ppb3_dbg_data.lcpu_pwr[i];
-			mcpu_pwr[i] = ppb3_dbg_data.mcpu_pwr[i];
-			bcpu_pwr[i] = ppb3_dbg_data.bcpu_pwr[i];
-			gpu_pwr[i] = ppb3_dbg_data.gpu_pwr[i];
-			npu_pwr[i] = ppb3_dbg_data.npu_pwr[i];
-		}
-
 		offset = 0;
 		ret = snprintf(str + offset, STR_SIZE - offset, "PPB3 L:(");
 		if (ret < 0)
@@ -596,7 +1077,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", lcpu_pwr[i]);
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", ppb3_dbg_data.lcpu_pwr[i]);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			else
@@ -610,7 +1091,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", mcpu_pwr[i]);
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", ppb3_dbg_data.mcpu_pwr[i]);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			else
@@ -624,7 +1105,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", bcpu_pwr[i]);
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", ppb3_dbg_data.bcpu_pwr[i]);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			else
@@ -638,7 +1119,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", gpu_pwr[i]);
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", ppb3_dbg_data.gpu_pwr[i]);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			else
@@ -652,15 +1133,32 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 		for (i = 0; i < TOTAL_PWR_INTERVALS; i++) {
-			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", npu_pwr[i]);
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ",
+				ppb3_dbg_data.npu_pwr[i]);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			else
 				offset = offset + ret;
 		}
 
-		ret = snprintf(str + offset, STR_SIZE - offset, ") bat[soc:%d t:%d] bdt[pwr:%d noer:%d]/pre_uv:%d",
-			pb.soc, pb.temp, pb.sys_power, pb.sys_power_noerr, ppb3_dbg_data.pre_uv);
+		ret = snprintf(str + offset, STR_SIZE - offset, ") SF:(");
+		if (ret < 0)
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+		else
+			offset = offset + ret;
+
+		for (i = 0; i < SF_NUM; i++) {
+			ret = snprintf(str + offset, STR_SIZE - offset, "%d ", ppb3_dbg_data.cgn_sf[i]);
+			if (ret < 0)
+				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			else
+				offset = offset + ret;
+		}
+
+		ret = snprintf(str + offset, STR_SIZE - offset,
+		") bat[soc:%d t:%d] bdt[pwr:%d noer:%d][spbm pwr:%d pre_uv:%d]",
+			pb.soc, pb.temp, pb.sys_power,pb.sys_power_noerr,
+			ppb3_dbg_data.bat_pwr, ppb3_dbg_data.pre_uv);
 		if (ret < 0)
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 		else
@@ -1356,8 +1854,8 @@ static void bat_handler(struct work_struct *work)
 		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
 			cb_func();
 
-		if (pb.version == 3)
-			spbm_ipi_to_sspm_scmi_command(SPBM_IPI_SOC, soc, 0, 0, SPBM_IPI_SCMI_SET);
+		if (pb.version == 3 && pb.is_evb == 0)
+			spbm_scmi_to_sspm_command(SPBM_SCMI_SOC, soc, 0, 0, SPBM_SCMI_SET);
 
 		last_temp = temp;
 		last_soc = soc;
@@ -2534,6 +3032,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	void __iomem *addr;
 	struct device_node *np;
 	struct tag_bootmode *tag;
+	int gpio_id = -1;
 
 	pb.dev = &pdev->dev;
 	np = of_find_compatible_node(NULL, NULL, "mediatek,peak_power_budget");
@@ -2588,6 +3087,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	else
 		cpu_dbg_base = addr;
 
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spbm_sram");
 	addr = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(addr))
@@ -2602,6 +3102,22 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		pr_info("%s:%d spbm_cputcm get addr error 0x%p\n", __func__, __LINE__, addr);
 	else
 		spbm_cputcm_base = addr;
+
+
+	/*check chip version from gpio*/
+	gpio_id = of_get_named_gpio(np, "evb-phone-gpio", 0);
+	if (gpio_id < 0) {
+		pr_info("%s:%d evb-phone-gpio not supported, gpio_id=%d\n", __func__, __LINE__, gpio_id);
+	} else {
+		if (gpio_get_value(gpio_id) == 0) //gpio low
+			pb.is_evb = 0; //gpio_id=0 => phone
+		else if(gpio_get_value(gpio_id) == 1)  //gpio high
+			pb.is_evb = 1; //gpio_id=1 => evb
+	}
+
+	pr_info("%s:evb-phone-gpio gpio_id=%d, val=%d, is_evb=%d\n", __func__,
+		gpio_id, gpio_get_value(gpio_id), pb.is_evb);
+	/*check chip version from gpio*/
 
 	ret = sysfs_create_group(kernel_kobj, &spbm_attr_group);
 	if (ret) {
@@ -2649,7 +3165,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	if (pb.version == 3) {
 		timer_setup(&ppb_dbg_timer, ppb3_print_dbg_log, TIMER_DEFERRABLE);
 		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
-		spbm_ipi_init();
+		spbm_scmi_init();
 	} else {
 		timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
 		mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
