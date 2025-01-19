@@ -6295,7 +6295,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			system-l2sram = <1>;
 			core-num = <2>;    /* core number */
-			adsp-rsv-ipidma-a = <0x100000>;
+			adsp-rsv-ipidma-a = <0x180000>;
 			adsp-rsv-ipidma-b = <0x100000>;
 			adsp-rsv-logger-a = <0x80000>;
 			adsp-rsv-logger-b = <0x80000>;
