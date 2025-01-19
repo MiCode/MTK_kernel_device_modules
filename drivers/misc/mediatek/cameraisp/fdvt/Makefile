@@ -1,5 +1,5 @@
 
-MTK_CUSTOM_PATH  := $(srctree)/drivers/misc/mediatek
+MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
 ifneq (, $(filter $(strip $(CONFIG_MTK_CAMERA_FD_VERSION40)),m y))
   $(info FDVT LBJ: Drv use 4.0 folder)
@@ -25,19 +25,19 @@ ifneq (, $(filter $(strip $(CONFIG_MTK_CAMERA_FD_VERSION35)),m y))
 endif
 
 #ifdef CONFIG_MTK_M4U
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
 #else
-ccflags-y += -I$(srctree)/drivers/iommu/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/
 #endif
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmp/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/v3/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/cmdq/v3/$(MTK_PLATFORM)/
-ccflags-y += -I$(srctree)/drivers/dma-buf/heaps/
-ccflags-y += -I$(srctree)/drivers/staging/android/ion \
-	     -I$(srctree)/drivers/staging/android/ion/mtk
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/v3/$(MTK_PLATFORM)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
+	     -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 ifeq ($(strip $(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)),y)
 ccflags-y += -DCMDQ_MTEE
