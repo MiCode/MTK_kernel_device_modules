@@ -3471,6 +3471,27 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 		}
 		ODDMRFLOW_LOG("check_trigger = %u\n", on);
 		g_od_check_trigger = on;
+	} else if (strncmp(opt, "od_fps_mode:", 12) == 0) {
+		unsigned int on, ret, val;
+
+		ret = sscanf(opt, "od_fps_mode:%u,%u\n", &on, &val);
+		if (ret != 2) {
+			ODDMRFLOW_LOG("error to parse cmd %s\n", opt);
+			return;
+		}
+		if (oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE &&
+				oddmr_data->primary_data->od_fps_mode != on) {
+			ODDMRFLOW_LOG("error: need before od init\n");
+			return;
+		}
+		ODDMRFLOW_LOG("od_fps_mode = %u, od_wait_time = %u\n", on, val);
+		oddmr_data->primary_data->od_fps_mode = on;
+		if (oddmr_data->primary_data->od_fps_mode == 1) {
+			//use defuault 1000/od_min_fps if given 0
+			if (val == 0 && oddmr_data->primary_data->od_min_fps != 0)
+				val = 1000 / oddmr_data->primary_data->od_min_fps;
+			oddmr_data->primary_data->od_wait_time = val;
+		}
 	} else if (strncmp(opt, "od_merge_lines:", 15) == 0) {
 		unsigned int lines, ret;
 
@@ -4070,6 +4091,35 @@ int mtk_oddmr_od_init_sram_dual(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+/* find max and min fps of all tables */
+static void mtk_oddmr_od_table_fps_minmax(struct mtk_disp_oddmr *oddmr_data)
+{
+	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
+	int idx;
+	uint32_t min_fps = 10000;
+	uint32_t max_fps = 0;
+	uint32_t cnts = od_param->od_basic_info.basic_param.table_cnt;
+
+	for (idx = 0; idx < cnts; idx++) {
+		if (IS_TABLE_VALID(idx, od_param->valid_table)) {
+			if (min_fps > od_param->od_tables[idx]->table_basic_info.min_fps)
+				min_fps = od_param->od_tables[idx]->table_basic_info.min_fps;
+			if (max_fps < od_param->od_tables[idx]->table_basic_info.max_fps)
+				max_fps = od_param->od_tables[idx]->table_basic_info.max_fps;
+			ODDMRAPI_LOG("table_idx %d,min_fps:%d,max_fps:%d\n", idx,
+			od_param->od_tables[idx]->table_basic_info.min_fps,
+			od_param->od_tables[idx]->table_basic_info.max_fps);
+		}
+	}
+	if (min_fps == 0) {
+		ODDMRAPI_LOG("error: od_min_fps=0, use 1 instead");
+		min_fps = 1;
+	}
+	oddmr_data->primary_data->od_min_fps = min_fps;
+	oddmr_data->primary_data->od_max_fps = max_fps;
+	ODDMRAPI_LOG("od_min_fps %d, od_max_fps %d\n", min_fps, max_fps);
+}
+
 static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		struct mtk_oddmr_timing *cur_timing)
 {
@@ -4119,6 +4169,12 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	if (oddmr_data->od_data.od_sram_read_sel < 0 ||
 			oddmr_data->od_data.od_sram_table_idx[0] < 0) {
 		DDPPR_ERR("%s od is not init properly\n", __func__);
+		return -EFAULT;
+	}
+	// fps quick check
+	if (cur_timing->vrefresh < oddmr_data->primary_data->od_min_fps ||
+			cur_timing->vrefresh > oddmr_data->primary_data->od_max_fps) {
+		ODDMRFLOW_LOG("fps %u out of range\n", cur_timing->vrefresh);
 		return -EFAULT;
 	}
 	tmp_sram_idx = oddmr_data->od_data.od_sram_read_sel;
@@ -4175,7 +4231,7 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		CRTC_MMP_MARK(0, oddmr_ctl, 0xc, tmp_table_idx);
 		return 2;
 	}
-	ODDMRFLOW_LOG("fps %u out of range\n", cur_timing->vrefresh);
+	ODDMRFLOW_LOG("fps %u bl %u out of range\n", cur_timing->vrefresh, cur_timing->bl_level);
 	return -EFAULT;
 }
 
@@ -4972,9 +5028,9 @@ static void mtk_oddmr_od_timing_chg_dual(struct mtk_ddp_comp *comp,
 				mtk_oddmr_od_set_res_udma_dual(comp, handle);
 				mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 			}
-			oddmr_data->od_force_off = 0;
+			oddmr_data->od_force_off = false;
 		} else
-			oddmr_data->od_force_off = 1;
+			oddmr_data->od_force_off = true;
 		if (comp->mtk_crtc->is_dual_pipe) {
 			comp1 = oddmr_data->companion;
 			oddmr1_data = comp_to_oddmr(comp1);
@@ -5228,9 +5284,9 @@ static void mtk_oddmr_od_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, st
 		ret = mtk_oddmr_od_table_lookup(oddmr_data, &oddmr_data->primary_data->current_timing, &table_idx);
 		ODDMRAPI_LOG("od_bl_change, %d\n", ret);
 		if (ret >= 0)
-			oddmr_data->od_force_off = 0;
+			oddmr_data->od_force_off = false;
 		else
-			oddmr_data->od_force_off = 1;	
+			oddmr_data->od_force_off = true;
 		if (comp->mtk_crtc->is_dual_pipe) {
 			struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 			struct mtk_disp_oddmr *oddmr1_data = comp_to_oddmr(comp1);
@@ -6092,18 +6148,55 @@ static void mtk_oddmr_od_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		mtk_oddmr_write(comp, 0x200, DISP_ODDMR_OD_SW_RESET, handle);
 }
 
-static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+/*
+ * content fps computed by diff of two dirty-frame sof
+ * current_timing records vrefresh
+ * content_timing records content fps
+ * content_timing and current_timing record same bl
+ */
+static void mtk_oddmr_od_content_timing(struct mtk_disp_oddmr *oddmr_data,
+		struct mtk_oddmr_timing *content_timing)
+{
+	ktime_t sof_diff = 0;
+	unsigned int content_fps = 0;
+	struct mtk_oddmr_timing *current_timing = &oddmr_data->primary_data->current_timing;
+
+	sof_diff = oddmr_data->primary_data->sof_time - oddmr_data->primary_data->sof_time_last; //ns
+	if (sof_diff <= 0) {
+		content_fps = current_timing->vrefresh;
+		ODDMRAPI_LOG("error: sof_diff<=0, content_fps=vrefresh\n");
+	} else {
+		content_fps = 1000000000 / sof_diff;
+	}
+	ODDMRAPI_LOG("sof: last %lld, curr %lld, diff %lld; content_fps %d\n",
+			oddmr_data->primary_data->sof_time_last,
+			oddmr_data->primary_data->sof_time, sof_diff, content_fps);
+
+	content_timing->vrefresh = content_fps;
+	content_timing->bl_level = current_timing->bl_level;
+	ODDMRAPI_LOG("content_timing: old_vrefresh %d, vrefresh %d, old_bl_level %d, bl_level %d\n",
+			content_timing->old_vrefresh, content_timing->vrefresh,
+			content_timing->old_bl_level, content_timing->bl_level);
+}
+
+/*
+ * od table changes by bl and vrefresh (content fps when od_fps_mode=1)
+ * od_force_off = true if vrefresh and/or bl not supported (when od_fps_mode=0)
+ * od_force_off also changed by mtk_oddmr_od_timing_chg_dual and mtk_oddmr_od_bl_chg
+ * od_force_off2 = true if content fps and/or bl not supported (when od_fps_mode=1)
+ */
+static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+		struct mtk_oddmr_timing *current_timing)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *comp1;
 	struct mtk_disp_oddmr *oddmr1_data;
 	uint32_t weight = 0;
 	int table_idx,ret;
-	struct mtk_oddmr_timing *current_timing = &oddmr_data->primary_data->current_timing;
+	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 
-	if ((oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE) &&
-		(current_timing->old_vrefresh != current_timing->vrefresh ||
-		current_timing->old_bl_level != current_timing->bl_level)) {
+	if (current_timing->old_vrefresh != current_timing->vrefresh ||
+		current_timing->old_bl_level != current_timing->bl_level) {
 		ODDMRAPI_LOG("+\n");
 		ret = mtk_oddmr_od_table_lookup(oddmr_data, current_timing, &table_idx);
 		ODDMRLOW_LOG("od_table_chg_ret, %d\n", ret);
@@ -6134,14 +6227,55 @@ static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
 					current_timing->bl_level, table_idx, &weight);
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
-			oddmr_data->od_force_off = 0;
-			if (comp->mtk_crtc->is_dual_pipe)
-				oddmr1_data->od_force_off = 0;
+			if (od_fps_mode == 1) {
+				oddmr_data->od_force_off2 = false;
+				if (comp->mtk_crtc->is_dual_pipe)
+					oddmr1_data->od_force_off2 = false;
+			} else {
+				oddmr_data->od_force_off = false;
+				if (comp->mtk_crtc->is_dual_pipe)
+					oddmr1_data->od_force_off = false;
+			}
 		} else {
-			oddmr_data->od_force_off = 1;
-			if (comp->mtk_crtc->is_dual_pipe)
-				oddmr1_data->od_force_off = 1;
+			if (od_fps_mode == 1) {
+				oddmr_data->od_force_off2 = true;
+				if (comp->mtk_crtc->is_dual_pipe)
+					oddmr1_data->od_force_off2 = true;
+			} else {
+				oddmr_data->od_force_off = true;
+				if (comp->mtk_crtc->is_dual_pipe)
+					oddmr1_data->od_force_off = true;
+			}
 		}
+	} else if (od_fps_mode == 1) {
+		oddmr_data->od_force_off2 =false;
+		if (comp->mtk_crtc->is_dual_pipe)
+			oddmr1_data->od_force_off2 = false;
+	}
+}
+
+/*
+ * table changed by vrefresh and bl if od_fps_mode=0
+ * table changed by content_fps and bl if od_fps_mode=1
+ */
+static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	struct mtk_ddp_comp *comp1;
+	struct mtk_disp_oddmr *oddmr1_data;
+	uint32_t weight = 0;
+	int table_idx,ret;
+	struct mtk_oddmr_timing *current_timing = &oddmr_data->primary_data->current_timing;
+	struct mtk_oddmr_timing *od_content_timing = &oddmr_data->primary_data->od_content_timing;
+
+	if (oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE) {
+		ODDMRAPI_LOG("+\n");
+		if (oddmr_data->primary_data->od_fps_mode == 1){
+			mtk_oddmr_od_content_timing(oddmr_data, od_content_timing);
+			mtk_oddmr_od_table_chg_by_timing(comp, handle, od_content_timing);
+			return;
+		}
+		mtk_oddmr_od_table_chg_by_timing(comp, handle, current_timing);
 	}
 }
 
@@ -6154,9 +6288,9 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE)
 		return;
 	sec_on = comp->mtk_crtc->sec_on;
-	en = enable && !sec_on && !oddmr_data->od_force_off;
-	ODDMRLOW_LOG("en %d, sec %d force_off %d\n",
-		enable, sec_on, oddmr_data->od_force_off);
+	en = enable && !sec_on && !oddmr_data->od_force_off && !oddmr_data->od_force_off2;
+	ODDMRLOW_LOG("enable %d, sec %d, force_off %d, force_off2 %d\n",
+		enable, sec_on, oddmr_data->od_force_off, oddmr_data->od_force_off2);
 	mtk_oddmr_od_srt_cal(comp, en);
 	if (en) {
 		if (oddmr_data->od_enable_last == 0 && en == true) {
@@ -6753,6 +6887,14 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 
 	if (!comp)
 		return;
+
+	if (od_support == true &&
+			oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE &&
+			oddmr_data->primary_data->od_fps_mode == 1 &&
+			atomic_read(&oddmr_data->primary_data->frame_dirty)) {
+		oddmr_data->primary_data->sof_time_last = oddmr_data->primary_data->sof_time;
+		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
+	}
 	if (od_support == false ||
 			oddmr_data->primary_data->od_state < ODDMR_INIT_DONE ||
 			oddmr_data->od_enable == 0)
@@ -6770,6 +6912,7 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 	bool frame_req_trig;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	atomic_t *od_weight_trigger = &oddmr_data->primary_data->od_weight_trigger;
+	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 
 	ODDMRAPI_LOG("+\n");
 	CRTC_MMP_EVENT_START(0, oddmr_sof_thread, 0, 0);
@@ -6781,7 +6924,14 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 			atomic_dec(od_weight_trigger);
 			if (atomic_read(od_weight_trigger) == 0) {
 				sel = oddmr_data->od_data.od_sram_read_sel;
-				mtk_oddmr_od_gain_lookup(comp,
+				if (od_fps_mode == 1)
+					mtk_oddmr_od_gain_lookup(comp,
+						oddmr_data->primary_data->od_content_timing.vrefresh,
+						oddmr_data->primary_data->od_content_timing.bl_level,
+						oddmr_data->od_data.od_sram_table_idx[sel],
+						&weight);
+				else
+					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->current_timing.vrefresh,
 						oddmr_data->primary_data->current_timing.bl_level,
 						oddmr_data->od_data.od_sram_table_idx[sel],
@@ -6794,6 +6944,8 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 		}
 		/* 2. wait until near next frame te */
 		frame_req_trig = (atomic_read(&oddmr_data->primary_data->frame_dirty) == 1);
+		if (od_fps_mode == 1)
+			oddmr_data->primary_data->frame_dirty_last = frame_req_trig;
 		atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
 		if (priv->data->mmsys_id != MMSYS_MT6989)
 		{
@@ -6812,7 +6964,7 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 		/* 3. check & trigger */
 		ODDMRLOW_LOG("frame %d,weight_trigger%d\n",
 			frame_req_trig,atomic_read(od_weight_trigger));
-		if (frame_req_trig ||
+		if ((frame_req_trig && od_fps_mode == 0) ||
 				atomic_read(od_weight_trigger)) {
 			ODDMRLOW_LOG("%d,%d,%d\n",
 				atomic_read(&oddmr_data->primary_data->frame_dirty),
@@ -6829,20 +6981,56 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 	}
 	CRTC_MMP_EVENT_END(0, oddmr_sof_thread, 0, 0);
 }
+
 static int disp_oddmr_sof_kthread(void *data)
 {
 	struct mtk_ddp_comp *comp = (struct mtk_ddp_comp *)data;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int ret;
+	uint32_t timeout, od_wait_time;
+	ktime_t time_diff;
 
 	while (!kthread_should_stop()) {
 		if (atomic_read(&oddmr_data->primary_data->sof_irq_available) == 0) {
-			ODDMRLOW_LOG("wait_event_interruptible\n");
-			ret = wait_event_interruptible(oddmr_data->primary_data->sof_irq_wq,
-					atomic_read(&oddmr_data->primary_data->sof_irq_available) == 1);
-			ODDMRLOW_LOG("sof_irq_available = 1, waken up, ret = %d\n", ret);
-			if (ret == 0)
-				disp_oddmr_sof_handle(comp);
+			//clear frame_dirty_last when od disabled
+			if (oddmr_data->primary_data->od_fps_mode == 1 && !oddmr_data->od_enable)
+				oddmr_data->primary_data->frame_dirty_last = false;
+			//when od enabled and last frame is dirty, instant trigger when waiting sof timeout
+			if (oddmr_data->primary_data->od_fps_mode == 1 &&
+					oddmr_data->od_enable &&
+					oddmr_data->primary_data->frame_dirty_last) {
+				oddmr_data->primary_data->frame_dirty_last = false;
+				//subtracts the usleep time in disp_oddmr_sof_handle
+				od_wait_time = oddmr_data->primary_data->od_wait_time;
+				time_diff = div_u64(ktime_get() - oddmr_data->primary_data->sof_time, 1000000); //ms
+				ret = 0;
+				//if od_wait_time <= time_diff, no waiting
+				if (od_wait_time > time_diff) {
+					timeout = od_wait_time - time_diff;
+					ODDMRLOW_LOG("wait_event_interruptible_timeout: sof_time %lld, wait_time %d, timeout %d\n",
+							oddmr_data->primary_data->sof_time, od_wait_time, timeout);
+					ret = wait_event_interruptible_timeout(oddmr_data->primary_data->sof_irq_wq,
+							atomic_read(&oddmr_data->primary_data->sof_irq_available) == 1,
+							msecs_to_jiffies(timeout));
+					ODDMRLOW_LOG("sof_irq_available = %d, ret = %d, waken up; od_enable %d\n",
+							atomic_read(&oddmr_data->primary_data->sof_irq_available),
+							ret, oddmr_data->od_enable);
+				}
+				if (ret == 0 && oddmr_data->od_enable) {
+					//may change to disable when timeout
+					mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
+					ODDMRLOW_LOG("instant trigger\n");
+				}
+				if (ret > 0)
+					disp_oddmr_sof_handle(comp);
+			} else {
+				ODDMRLOW_LOG("wait_event_interruptible\n");
+				ret = wait_event_interruptible(oddmr_data->primary_data->sof_irq_wq,
+						atomic_read(&oddmr_data->primary_data->sof_irq_available) == 1);
+				ODDMRLOW_LOG("sof_irq_available = 1, waken up, ret = %d\n", ret);
+				if (ret == 0)
+					disp_oddmr_sof_handle(comp);
+			}
 		} else
 			ODDMRLOW_LOG("sof_irq_available already 1, skip\n", ret);
 		atomic_set(&oddmr_data->primary_data->sof_irq_available, 0);
@@ -6938,6 +7126,12 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 	if (!mtk_oddmr_match_panelid(&oddmr_data->primary_data->panelid, &od_param->od_basic_info.basic_param.panelid)) {
 		ODDMRFLOW_LOG("panelid does not match\n");
 		return -1;
+	}
+	mtk_oddmr_od_table_fps_minmax(oddmr_data);
+	if (oddmr_data->primary_data->od_fps_mode == 1 &&
+			oddmr_data->primary_data->od_wait_time == 0) {
+		//use defuault 1000/od_min_fps if given 0
+		oddmr_data->primary_data->od_wait_time = 1000 / oddmr_data->primary_data->od_min_fps;
 	}
 
 	mtk_crtc = comp->mtk_crtc;

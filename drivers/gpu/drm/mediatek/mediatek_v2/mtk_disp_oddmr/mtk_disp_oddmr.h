@@ -534,6 +534,7 @@ struct mtk_disp_oddmr_primary {
 	atomic_t dbi_hrt_done;
 	atomic_t od_hrt_done;
 	struct mtk_oddmr_timing current_timing;
+	struct mtk_oddmr_timing od_content_timing;
 	struct mtk_oddmr_panelid panelid;
 	struct task_struct *sof_irq_event_task;
 	struct wait_queue_head sof_irq_wq;
@@ -555,6 +556,15 @@ struct mtk_disp_oddmr_primary {
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
 	struct workqueue_struct *oddmr_wq;
 	struct work_struct_oddmr_data update_table_work;
+	bool frame_dirty_last;
+	/* 0: vrefresh, 1: content fps */
+	uint32_t od_fps_mode;
+	/* 0: 1000/od_min_fps, >0: od_wait_time (ms) */
+	uint32_t od_wait_time;
+	uint32_t od_min_fps;
+	uint32_t od_max_fps;
+	ktime_t sof_time;
+	ktime_t sof_time_last;
 };
 
 /**
@@ -577,7 +587,8 @@ struct mtk_disp_oddmr {
 	int od_enable;
 	int od_enable_last;
 	int od_update_sram;
-	int od_force_off;
+	bool od_force_off;
+	bool od_force_off2;
 	int dmr_enable_req;
 	int dmr_enable;
 	atomic_t reg_tuning_en;
