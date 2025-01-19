@@ -1148,8 +1148,8 @@ static struct page *alloc_largest_available(unsigned long size,
 
 static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 					       unsigned long len,
-					       unsigned long fd_flags,
-					       unsigned long heap_flags,
+					       u32 fd_flags,
+					       u64 heap_flags,
 					       bool uncached,
 					       const struct dma_buf_ops *ops)
 {
@@ -1322,8 +1322,8 @@ free_buffer:
 
 static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1334,8 +1334,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1346,8 +1346,8 @@ static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_slc_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false,
 				       &mtk_slc_heap_buf_ops);
