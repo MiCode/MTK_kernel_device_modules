@@ -446,6 +446,11 @@ static const char * const mtk_lp_state_name[NUM_SPM_STAT] = {
 	"AP",
 	"26M",
 	"VCORE",
+	"D1_2",
+	"D2",
+	"D3",
+	"D4",
+	"D6X",
 };
 static void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 {

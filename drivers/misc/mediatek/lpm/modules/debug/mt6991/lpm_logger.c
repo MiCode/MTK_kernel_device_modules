@@ -43,6 +43,7 @@
 #define SPM_HW_CG_CHECK_SHIFT_0 (31)
 
 #define SPM_REQ_STA_NUM (((SPM_REQ_STA_11 - SPM_REQ_STA_0) / 4) + 1)
+#define SPM_DATA_INVALID_MAGIC (0xdeadbeef)
 
 #define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 
@@ -610,6 +611,12 @@ static int lpm_get_common_status(void)
 	help->wakesrc->req_sta15 = plat_mmio_read(SPM_REQ_STA_15);
 	help->wakesrc->req_sta16 = plat_mmio_read(SPM_REQ_STA_16);
 
+	help->wakesrc->comm_clk_mon_0 = plat_mmio_read(SPM_SRAM_COMM_CLK_MON_0);
+	help->wakesrc->comm_clk_mon_1 = plat_mmio_read(SPM_SRAM_COMM_CLK_MON_1);
+	help->wakesrc->comm_clk_mon_2 = plat_mmio_read(SPM_SRAM_COMM_CLK_MON_2);
+	help->wakesrc->comm_vlp_mon_0 = plat_mmio_read(SPM_SRAM_COMM_VLP_MON_0);
+	help->wakesrc->comm_clksys2_mon_0 = plat_mmio_read(SPM_SRAM_COMM_CLKSYS2_MON_0);
+
 	return 0;
 }
 
@@ -645,6 +652,16 @@ static int lpm_log_common_info(void)
 
 	pr_info("[name:spm&][SPM] %s", log_buf);
 
+	if ((wakesrc->comm_clk_mon_0 != 0 && wakesrc->comm_clk_mon_0 != SPM_DATA_INVALID_MAGIC) ||
+		(wakesrc->comm_clk_mon_1 != 0 && wakesrc->comm_clk_mon_1 != SPM_DATA_INVALID_MAGIC) ||
+		(wakesrc->comm_clk_mon_2 != 0 && wakesrc->comm_clk_mon_2 != SPM_DATA_INVALID_MAGIC) ||
+		(wakesrc->comm_vlp_mon_0 != 0 && wakesrc->comm_vlp_mon_0 != SPM_DATA_INVALID_MAGIC) ||
+		(wakesrc->comm_clksys2_mon_0 != 0 && wakesrc->comm_clksys2_mon_0 != SPM_DATA_INVALID_MAGIC)) {
+		pr_info("[name:spm&][SPM][CLK_SRAM_COMM_INFO] clk_mon_0: 0x%x, clk_mon_1: 0x%x, clk_mon_2: 0x%x, vlp_mon_0: 0x%x, clksys2_mon_0: 0x%x\n",
+				wakesrc->comm_clk_mon_0, wakesrc->comm_clk_mon_1,
+				wakesrc->comm_clk_mon_2, wakesrc->comm_vlp_mon_0,
+				wakesrc->comm_clksys2_mon_0);
+	}
 	return 0;
 }
 
@@ -690,6 +707,12 @@ static int lpm_get_wakeup_status(void)
 	help->wakesrc->req_sta14 = plat_mmio_read(SPM_REQ_STA_14);
 	help->wakesrc->req_sta15 = plat_mmio_read(SPM_REQ_STA_15);
 	help->wakesrc->req_sta16 = plat_mmio_read(SPM_REQ_STA_16);
+
+	help->wakesrc->lp_clk_mon_0 = plat_mmio_read(SPM_SRAM_LP_CLK_MON_0);
+	help->wakesrc->lp_clk_mon_1 = plat_mmio_read(SPM_SRAM_LP_CLK_MON_1);
+	help->wakesrc->lp_clk_mon_2 = plat_mmio_read(SPM_SRAM_LP_CLK_MON_2);
+	help->wakesrc->lp_vlp_mon_0 = plat_mmio_read(SPM_SRAM_LP_VLP_MON_0);
+	help->wakesrc->lp_clksys2_mon_0 = plat_mmio_read(SPM_SRAM_LP_CLKSYS2_MON_0);
 
 	/* get HW CG check status */
 	help->wakesrc->cg_check_sta =
@@ -941,6 +964,18 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			wakesrc->req_sta9, wakesrc->req_sta10, wakesrc->req_sta11,
 			wakesrc->req_sta12, wakesrc->req_sta13, wakesrc->req_sta14,
 			wakesrc->req_sta15, wakesrc->req_sta16);
+
+		if ((wakesrc->lp_clk_mon_0 != 0 && wakesrc->lp_clk_mon_0 != SPM_DATA_INVALID_MAGIC) ||
+			(wakesrc->lp_clk_mon_1 != 0 && wakesrc->lp_clk_mon_1 != SPM_DATA_INVALID_MAGIC) ||
+			(wakesrc->lp_clk_mon_2 != 0 && wakesrc->lp_clk_mon_2 != SPM_DATA_INVALID_MAGIC) ||
+			(wakesrc->lp_vlp_mon_0 != 0 && wakesrc->lp_vlp_mon_0 != SPM_DATA_INVALID_MAGIC) ||
+			(wakesrc->lp_clksys2_mon_0 != 0 && wakesrc->lp_clksys2_mon_0 != SPM_DATA_INVALID_MAGIC)) {
+			log_size += scnprintf(log_buf + log_size,
+				LOG_BUF_OUT_SZ - log_size,
+				"sram_clk_lp_info =  0x%x 0x%x 0x%x | 0x%x 0x%x, ",
+				wakesrc->lp_clk_mon_0, wakesrc->lp_clk_mon_1, wakesrc->lp_clk_mon_2,
+				wakesrc->lp_vlp_mon_0, wakesrc->lp_clksys2_mon_0);
+		}
 
 		log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_OUT_SZ - log_size,
