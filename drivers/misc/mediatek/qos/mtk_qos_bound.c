@@ -171,10 +171,9 @@ EXPORT_SYMBOL_GPL(get_qos_bound);
 int get_qos_bound_bw_threshold(int state)
 {
 	int val = 0;
-
-#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
-	val = mtk_dramc_get_steps_freq(0) * mtk_emicen_get_ch_cnt() * 2;
-#endif
+//#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
+//	val = mtk_dramc_get_steps_freq(0) * mtk_emicen_get_ch_cnt() * 2;
+//#endif
 
 	if (state == QOS_BOUND_BW_FULL)
 		return val * QOS_BOUND_BW_FULL_PCT / 100;

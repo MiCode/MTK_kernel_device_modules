@@ -1,0 +1,87 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "*.h",
+    ]),
+)
+
+
+define_mgk_ddk_ko(
+    name = "mtk_qos",
+    module_type = "...",
+    srcs = [
+        "mtk_qos_common.c",
+        "mtk_qos_bound.c",
+	"mtk_qos_sysfs.c",
+	"mtk_qos_share.c",
+	"qos-v6893.c",
+	"mtk_qos_scmi.c",
+    ],
+
+    includes = ["."],
+    hdrs = glob([
+        "**/*.h",
+        "mtk_qos_common.h",
+        "mtk_qos_bound.h",
+        "mtk_qos_ipi.h",
+	"mtk_qos_share.h",
+	"mtk_qos_sram.h",
+	"mtk_qos_sysfs.h",
+    ]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+    ],
+
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+
+    ],
+
+    copts = [
+	"-I$(srctree)/drivers/misc/mediatek/sspm/v3",
+	"-I$(srctree)/drivers/misc/mediatek/tinysys_scmi",
+	"-I$(src)",
+	"",
+    ],
+
+    local_defines = [
+	"MTK_SCMI",
+    ],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "sspm_reservedmem.h",
+    ],
+    linux_includes = [
+        "include",
+    ],
+)
