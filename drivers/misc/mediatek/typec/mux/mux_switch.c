@@ -351,7 +351,7 @@ static int typec_mux_switch_procfs_init(struct typec_mux_switch *mux_sw)
 		return -ENOMEM;
 	}
 
-	file = proc_create_data(PROC_SWITCH, 0644,
+	file = proc_create_data(PROC_SWITCH, 0640,
 			root, &proc_switch_fops, mux_sw);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", PROC_SWITCH);
@@ -359,7 +359,7 @@ static int typec_mux_switch_procfs_init(struct typec_mux_switch *mux_sw)
 		goto err;
 	}
 
-	file = proc_create_data(PROC_MUX, 0644,
+	file = proc_create_data(PROC_MUX, 0640,
 			root, &proc_mux_fops, mux_sw);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", PROC_MUX);
