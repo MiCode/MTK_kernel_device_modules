@@ -5885,7 +5885,7 @@
 		mdp: mdp@1f000000 {
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
-			thread_count = <24>;
+			thread-count = <24>;
 			mboxes = <&gce 10 0 CMDQ_THR_PRIO_1>,
 				<&gce 16 0 CMDQ_THR_PRIO_1>,
 				<&gce 17 0 CMDQ_THR_PRIO_1>,
@@ -5931,62 +5931,62 @@
 			vdec3_base = <0x18050000 26 0xffff0000>;
 			camsys_base = <0x18080000 27 0xffff0000>;
 			camsys1_base = <0x180a0000 28 0xffff0000>;
-			dip_cq_thread0_frame_done =
+			dip-cq-thread0-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_0>;
-			dip_cq_thread1_frame_done =
+			dip-cq-thread1-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_1>;
-			dip_cq_thread2_frame_done =
+			dip-cq-thread2-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_2>;
-			dip_cq_thread3_frame_done =
+			dip-cq-thread3-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_3>;
-			dip_cq_thread4_frame_done =
+			dip-cq-thread4-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_4>;
-			dip_cq_thread5_frame_done =
+			dip-cq-thread5-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_5>;
-			dip_cq_thread6_frame_done =
+			dip-cq-thread6-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_6>;
-			dip_cq_thread7_frame_done =
+			dip-cq-thread7-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_7>;
-			dip_cq_thread8_frame_done =
+			dip-cq-thread8-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_8>;
-			dip_cq_thread9_frame_done =
+			dip-cq-thread9-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_9>;
-			dip_cq_thread10_frame_done =
+			dip-cq-thread10-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_10>;
-			dip_cq_thread11_frame_done =
+			dip-cq-thread11-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_11>;
-			dip_cq_thread12_frame_done =
+			dip-cq-thread12-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_12>;
-			dip_cq_thread13_frame_done =
+			dip-cq-thread13-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_13>;
-			dip_cq_thread14_frame_done =
+			dip-cq-thread14-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_14>;
-			dip_cq_thread15_frame_done =
+			dip-cq-thread15-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_15>;
-			dip_cq_thread16_frame_done =
+			dip-cq-thread16-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_16>;
-			dip_cq_thread17_frame_done =
+			dip-cq-thread17-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_17>;
-			dip_cq_thread18_frame_done =
+			dip-cq-thread18-frame-done =
 				<CMDQ_EVENT_IMG2_EVENT_TX_FRAME_DONE_18>;
-			mdp_rdma0_sof = <CMDQ_EVENT_MDP_MDP_RDMA0_SOF>;
-			mdp_aal_sof = <CMDQ_EVENT_MDP_MDP_AAL0_SOF>;
-			mdp_hdr0_sof = <CMDQ_EVENT_MDP_MDP_HDR0_SOF>;
-			mdp_rsz0_sof = <CMDQ_EVENT_MDP_MDP_RSZ0_SOF>;
-			mdp_rsz1_sof = <CMDQ_EVENT_MDP_MDP_RSZ1_SOF>;
-			mdp_wrot0_sof = <CMDQ_EVENT_MDP_MDP_WROT0_SOF>;
-			mdp_wrot1_sof = <CMDQ_EVENT_MDP_MDP_WROT1_SOF>;
-			mdp_tdshp_sof = <CMDQ_EVENT_MDP_MDP_TDSHP0_SOF>;
-			img_dl_relay_sof = <CMDQ_EVENT_MDP_IMG_DL_RELAY0_SOF>;
-			img_dl_relay1_sof = <CMDQ_EVENT_MDP_IMG_DL_RELAY1_SOF>;
-			mdp_wrot1_write_frame_done = <CMDQ_EVENT_MDP_MDP_WROT1_FRAME_DONE>;
-			mdp_wrot0_write_frame_done = <CMDQ_EVENT_MDP_MDP_WROT0_FRAME_DONE>;
-			mdp_tdshp_frame_done = <CMDQ_EVENT_MDP_MDP_TDSHP0_FRAME_DONE>;
-			mdp_rsz1_frame_done = <CMDQ_EVENT_MDP_MDP_RSZ1_FRAME_DONE>;
-			mdp_rsz0_frame_done = <CMDQ_EVENT_MDP_MDP_RSZ0_FRAME_DONE>;
-			mdp_rdma0_frame_done = <CMDQ_EVENT_MDP_MDP_RDMA0_FRAME_DONE>;
-			mdp_hdr0_frame_done = <CMDQ_EVENT_MDP_MDP_HDR0_FRAME_DONE>;
-			mdp_aal_frame_done = <CMDQ_EVENT_MDP_MDP_AAL0_FRAME_DONE>;
+			mdp-rdma0-sof = <CMDQ_EVENT_MDP_MDP_RDMA0_SOF>;
+			mdp-aal-sof = <CMDQ_EVENT_MDP_MDP_AAL0_SOF>;
+			mdp-hdr0-sof = <CMDQ_EVENT_MDP_MDP_HDR0_SOF>;
+			mdp-rsz0-sof = <CMDQ_EVENT_MDP_MDP_RSZ0_SOF>;
+			mdp-rsz1-sof = <CMDQ_EVENT_MDP_MDP_RSZ1_SOF>;
+			mdp-wrot0-sof = <CMDQ_EVENT_MDP_MDP_WROT0_SOF>;
+			mdp-wrot1-sof = <CMDQ_EVENT_MDP_MDP_WROT1_SOF>;
+			mdp-tdshp-sof = <CMDQ_EVENT_MDP_MDP_TDSHP0_SOF>;
+			img-dl-relay-sof = <CMDQ_EVENT_MDP_IMG_DL_RELAY0_SOF>;
+			img-dl-relay1-sof = <CMDQ_EVENT_MDP_IMG_DL_RELAY1_SOF>;
+			mdp-wrot1-write-frame-done = <CMDQ_EVENT_MDP_MDP_WROT1_FRAME_DONE>;
+			mdp-wrot0-write-frame-done = <CMDQ_EVENT_MDP_MDP_WROT0_FRAME_DONE>;
+			mdp-tdshp-frame-done = <CMDQ_EVENT_MDP_MDP_TDSHP0_FRAME_DONE>;
+			mdp-rsz1-frame-done = <CMDQ_EVENT_MDP_MDP_RSZ1_FRAME_DONE>;
+			mdp-rsz0-frame-done = <CMDQ_EVENT_MDP_MDP_RSZ0_FRAME_DONE>;
+			mdp-rdma0-frame-done = <CMDQ_EVENT_MDP_MDP_RDMA0_FRAME_DONE>;
+			mdp-hdr0-frame-done = <CMDQ_EVENT_MDP_MDP_HDR0_FRAME_DONE>;
+			mdp-aal-frame-done = <CMDQ_EVENT_MDP_MDP_AAL0_FRAME_DONE>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_PORT_L2_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(0)>,
