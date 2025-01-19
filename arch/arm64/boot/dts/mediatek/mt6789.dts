@@ -346,14 +346,14 @@
 
 			scmi_tinysys: protocol@80 {
 				reg = <0x80>;
-				scmi_qos = <1>;
-				scmi_pmic = <2>;
-				scmi_met = <3>;
-				scmi_gpupm = <4>;
-				scmi_plt = <5>;
-				scmi_smi = <6>;
-				scmi_cm = <7>;
-				scmi_apmcupm = <8>;
+				scmi-qos = <1>;
+				scmi-pmic = <2>;
+				scmi-met = <3>;
+				scmi-gpupm = <4>;
+				scmi-plt = <5>;
+				scmi-smi = <6>;
+				scmi-cm = <7>;
+				scmi-apmcupm = <8>;
 			};
 		};
 
@@ -392,7 +392,7 @@
 		ranges = <0 0x0 0x10450000 0x80>;
 
 		scmi_tx_shmem: tiny_mbox@0 {
-			compatible = "arm,scmi-tx-shmem";
+			compatible = "arm,scmi-shmem";
 			reg = <0x0 0x80>;
 		};
 	};
@@ -406,7 +406,7 @@
 		ranges = <0 0x0 0x10460000 0x80>;
 
 		scmi_rx_shmem: tiny_mbox@1 {
-			compatible = "arm,scmi-rx-shmem";
+			compatible = "arm,scmi-shmem";
 			reg = <0x0 0x80>;
 		};
 	};
