@@ -26007,4 +26007,6 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc)
 
 	if (priv->data->vdisp_ao_irq_config)
 		priv->data->vdisp_ao_irq_config(crtc->dev);
+	if (priv->data->vdisp_ao_qos_config)
+		priv->data->vdisp_ao_qos_config(crtc->dev);
 }

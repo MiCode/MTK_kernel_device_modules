@@ -91,6 +91,7 @@ struct mtk_mmsys_driver_data {
 	void (*disable_merge_irq)(struct drm_device *drm);
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
+	void (*vdisp_ao_qos_config)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;

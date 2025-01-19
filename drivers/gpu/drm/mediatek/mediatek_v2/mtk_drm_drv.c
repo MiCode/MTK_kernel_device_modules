@@ -6843,6 +6843,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.gce_event_config = mtk_gce_event_config_MT6993,
 	.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6993,
+	.vdisp_ao_qos_config = mtk_vdisp_ao_qos_config_MT6993,
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
 	.ovl_exdma_rule = true,
