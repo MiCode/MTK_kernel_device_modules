@@ -45,9 +45,37 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #define SRAM_REC_CNT		(8)
 #define SRAM_OBJ_CNT		(2) // sec, usec << 16 | idx << 8 | opp
 
-#define SRAM_DEC_USEC(val)	((val >> 16) & 0xffff)
-#define SRAM_DEC_IDX(val)	((val >>  8) & 0xff)
-#define SRAM_DEC_LVL(val)	((val >>  0) & 0xff)
+#define SRAM_DEC_IDX(val)	((val >> 28) & 0xff)
+#define SRAM_DEC_LVL(val)	((val >> 24) & 0xff)
+#define SRAM_DEC_USEC(val)	((val >>  0) & 0xffffff)
+
+#define SRAM_ENC_VAL(idx, lvl, usec)	((idx) << 28 | (lvl) << 24 | (usec) << 0)
+
+enum {
+	DUMP_IRQ,
+	DUMP_PWR,
+	DUMP_CLK,
+	DUMP_CEIL,
+	DUMP_NUM
+};
+
+enum {
+	DUMP_DFS_VCORE,
+	DUMP_DFS_VMM,
+	DUMP_DFS_VDISP,
+	DUMP_DVS_VMM,
+	DUMP_DVS_VDISP,
+	DUMP_IRQ_NUM
+};
+
+enum {
+	DUMP_VCORE,
+	DUMP_VMM,
+	DUMP_VDISP,
+	DUMP_CAM,
+	DUMP_HOP,
+	DUMP_CLK_NUM
+};
 
 #define SRAM_IRQ_CNT		(5) // vcore dvs, vmm dvs, vdisp dvs, vmm dfs, vdisp dfs
 #define SRAM_PWR_CNT		(3) // vcore, vmm, vdisp
