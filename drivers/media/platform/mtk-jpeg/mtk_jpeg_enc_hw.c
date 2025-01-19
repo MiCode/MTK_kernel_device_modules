@@ -55,7 +55,7 @@ void mtk_jpeg_enc_reset(void __iomem *base)
 
 u32 mtk_jpeg_enc_get_file_size(void __iomem *base, enum mtk_jpeg_support_34bits support_34bits)
 {
-	if (support_34bits) {
+	if (support_34bits != MTK_JPEG_NON_SUPPORT_34BITS) {
 		return readl(base + JPEG_ENC_DMA_ADDR0)*4 -
 			readl(base + JPEG_ENC_DST_ADDR0);
 	} else {
