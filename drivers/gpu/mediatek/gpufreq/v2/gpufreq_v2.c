@@ -725,6 +725,26 @@ done:
 EXPORT_SYMBOL(gpufreq_get_dynamic_power);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_cur_temperature
+ * Inputs             : -
+ * Outputs            : -
+ * Returns            : temper - Current temperature of GPU
+ * Description        : Query current temperature of GPU
+ ***********************************************************************************/
+int gpufreq_get_cur_temperature(void)
+{
+	int temper = -274;
+
+	if (g_shared_status)
+		temper = g_shared_status->temperature;
+	else
+		GPUFREQ_LOGE("null gpufreq shared memory (ENOENT)");
+
+	return temper;
+}
+EXPORT_SYMBOL(gpufreq_get_cur_temperature);
+
+/***********************************************************************************
  * Function Name      : gpufreq_power_control
  * Inputs             : power          - Target power state
  * Outputs            : -
