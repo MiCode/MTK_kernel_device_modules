@@ -34,6 +34,15 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mtk-mbox",
+    srcs = [
+        "mtk-mbox.c"
+    ],
+
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
     name = "mtk-dvfsrc-start",
     srcs = [
         "mtk-dvfsrc-start.c"
@@ -49,5 +58,18 @@ define_mgk_ddk_ko(
         "mtk-pm-domain-disable-unused.c"
     ],
 
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_tinysys_ipi",
+    srcs = [
+        "mtk_tinysys_ipi.c"
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/rpmsg:mtk_rpmsg_mbox".format(kernel_version),
+    ],
     hdrs = glob(["**/*.h"]),
 )

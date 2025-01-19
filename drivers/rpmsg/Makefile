@@ -2,4 +2,4 @@
 
 ccflags-y += -I$(srctree)/drivers/rpmsg
 
-obj-$(CONFIG_RPMSG_MTK)	+= mtk_rpmsg_mbox.o
+#obj-$(CONFIG_RPMSG_MTK)	+= mtk_rpmsg_mbox.o
