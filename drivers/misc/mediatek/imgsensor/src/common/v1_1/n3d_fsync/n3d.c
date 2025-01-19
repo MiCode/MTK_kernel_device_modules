@@ -69,7 +69,7 @@ static int n3d_pm_runtime_get_sync(struct SENINF_N3D *pn3d)
 
 	if (pn3d->pm_domain_cnt == 1)
 		pm_runtime_get_sync(pn3d->dev);
-	else {
+	else if (pn3d->pm_domain_cnt > 1) {
 		if (!pn3d->pm_domain_devs)
 			return -EINVAL;
 
@@ -90,8 +90,8 @@ static int n3d_pm_runtime_put_sync(struct SENINF_N3D *pn3d)
 
 	if (pn3d->pm_domain_cnt == 1)
 		pm_runtime_put_sync(pn3d->dev);
-	else {
-		if (!pn3d->pm_domain_devs && pn3d->pm_domain_cnt < 1)
+	else if (pn3d->pm_domain_cnt > 1) {
+		if (!pn3d->pm_domain_devs)
 			return -EINVAL;
 
 		for (i = pn3d->pm_domain_cnt - 1; i >= 0; i--) {
@@ -123,12 +123,11 @@ static int n3d_power_on(void)
 #endif
 
 		n3d_clk_open(&pn3d->clk);
-		enable_irq(pn3d->irq_id);
 	}
 
 	LOG_D("%s need_power_on: %d\n", __func__, need_power_on);
 
-	return 0;
+	return need_power_on;
 }
 
 /**
@@ -185,8 +184,10 @@ static int register_sensor(struct sensor_info *psensor)
 	mutex_lock(&pn3d->n3d_mutex);
 
 	if (psensor->sensor_idx < MAX_NUM_OF_SUPPORT_SENSOR) {
-		if (pn3d->sync_sensors[psensor->sensor_idx] != NULL)
+		if (pn3d->sync_sensors[psensor->sensor_idx] != NULL) {
 			kfree(pn3d->sync_sensors[psensor->sensor_idx]);
+			pn3d->sync_sensors[psensor->sensor_idx] = NULL;
+		}
 		info = kmalloc(sizeof(struct sensor_info), GFP_KERNEL);
 		if (!info)
 			return -1;
@@ -219,6 +220,7 @@ static int unregister_sensor(struct sensor_info *psensor)
 			pn3d->fsync_mgr->fs_streaming(0, &st);
 			pn3d->fl_result[psensor->sensor_idx] = 0;
 			kfree(pn3d->sync_sensors[psensor->sensor_idx]);
+			pn3d->sync_sensors[psensor->sensor_idx] = NULL;
 		}
 		LOG_D("unregister sensor index = %u\n",
 		      psensor->sensor_idx);
@@ -238,6 +240,7 @@ static int start_sync(void)
 	struct SENINF_N3D *pn3d = &gn3d;
 	unsigned int i, sync_num;
 	unsigned int sync_idx[SYNC_NUM];
+	int first_poweron = 0;
 
 	for (i = 0, sync_num = 0;
 	     (i < ARRAY_SIZE(pn3d->sync_sensors)) && (sync_num < SYNC_NUM);
@@ -249,16 +252,18 @@ static int start_sync(void)
 	}
 
 	if (sync_num == SYNC_NUM) {
-		n3d_power_on();
 		reset_recorder(pn3d->sync_sensors[sync_idx[0]]->cammux_id,
 			       pn3d->sync_sensors[sync_idx[1]]->cammux_id);
-		set_n3d_source(&pn3d->regs,
-			       pn3d->sync_sensors[sync_idx[0]],
-			       pn3d->sync_sensors[sync_idx[1]]);
 		if (pn3d->fsync_mgr != NULL) {
 			pn3d->fsync_mgr->fs_set_sync(sync_idx[0], 1);
 			pn3d->fsync_mgr->fs_set_sync(sync_idx[1], 1);
 		}
+		first_poweron = n3d_power_on();
+		set_n3d_source(&pn3d->regs,
+			       pn3d->sync_sensors[sync_idx[0]],
+			       pn3d->sync_sensors[sync_idx[1]]);
+		if (first_poweron)
+			enable_irq(pn3d->irq_id);
 	} else {
 		LOG_D("skip to start sync due to sync_num is %d\n",
 		      sync_num);
@@ -623,7 +628,7 @@ static int n3d_pm_runtime_enable(struct SENINF_N3D *pn3d)
 				"#power-domain-cells");
 	if (pn3d->pm_domain_cnt == 1)
 		pm_runtime_enable(pn3d->dev);
-	else {
+	else if (pn3d->pm_domain_cnt > 1) {
 		pn3d->pm_domain_devs = devm_kcalloc(pn3d->dev, pn3d->pm_domain_cnt,
 				sizeof(*pn3d->pm_domain_devs), GFP_KERNEL);
 		if (!pn3d->pm_domain_devs)
@@ -650,7 +655,7 @@ static int n3d_pm_runtime_disable(struct SENINF_N3D *pn3d)
 
 	if (pn3d->pm_domain_cnt == 1)
 		pm_runtime_disable(pn3d->dev);
-	else {
+	else if (pn3d->pm_domain_cnt > 1) {
 		if (!pn3d->pm_domain_devs)
 			return -EINVAL;
 
