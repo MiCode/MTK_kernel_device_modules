@@ -6493,6 +6493,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.sodi_apsrc_config = mt6991_mtk_sodi_apsrc_config,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
+	.need_emi_eff = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
@@ -8830,9 +8831,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	mtk_drm_init_dummy_table(private);
 
 	/* Load emi efficiency table for ovl bandwidht monitor */
-	if ((private->data->mmsys_id == MMSYS_MT6897) ||
-		(private->data->mmsys_id == MMSYS_MT6989) ||
-		(private->data->mmsys_id == MMSYS_MT6991))
+	if (private->data->need_emi_eff)
 		mtk_drm_init_emi_eff_table(drm);
 
 	mtk_drm_first_enable(drm);
