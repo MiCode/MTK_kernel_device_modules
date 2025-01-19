@@ -313,13 +313,6 @@
 #define ANA_EQ_EYE_CTRL_SIGNAL5		0xdc
 #define RG_CDR_BIRLTD0_GEN3_MSK		GENMASK(4, 0)
 
-#define PHY_MODE_BC11_SW_SET 1
-#define PHY_MODE_BC11_SW_CLR 2
-#define PHY_MODE_DPDMPULLDOWN_SET 3
-#define PHY_MODE_DPDMPULLDOWN_CLR 4
-#define PHY_MODE_DPPULLUP_SET 5
-#define PHY_MODE_DPPULLUP_CLR 6
-
 /* PHY switch between pcie/usb3/sgmii/sata */
 #define USB_PHY_SWITCH_CTRL	0x0
 #define RG_PHY_SW_TYPE		GENMASK(3, 0)
