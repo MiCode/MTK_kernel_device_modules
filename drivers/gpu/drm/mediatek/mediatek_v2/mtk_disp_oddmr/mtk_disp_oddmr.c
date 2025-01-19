@@ -2544,7 +2544,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 
 				//DBI table size as pixel
 				mtk_oddmr_write(comp,
-					oddmr->roi_height,
+					(oddmr->roi_height + overhead_v * 2),
 					MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
 
 				//DBI udma size
@@ -8794,7 +8794,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	/* update y ini */
 	if (oddmr->set_partial_update == 1)
-		dbi_y_ini = partial_roi.y;
+		dbi_y_ini = partial_roi.y - overhead_v;
 	else
 		dbi_y_ini = 0;
 
@@ -8861,24 +8861,26 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			mtk_oddmr_write(comp, dbi_y_ini,
 				MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 
-			//DBI table size as block
-			reg_val = (partial_roi.height + overhead_v * 2
-				+ scale_factor_v -1)/ scale_factor_v;
-			mtk_oddmr_write(comp, reg_val,
-				MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+			if (is_oddmr_dbi_support && g_oddmr_priv->dbi_enable) {
+				//DBI table size as block
+				reg_val = (partial_roi.height + overhead_v * 2
+					+ scale_factor_v -1)/ scale_factor_v;
+				mtk_oddmr_write(comp, reg_val,
+					MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
 
-			//DBI table size as pixel
-			mtk_oddmr_write(comp,
-				partial_roi.height,
-				MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+				//DBI table size as pixel
+				mtk_oddmr_write(comp,
+					(partial_roi.height + overhead_v * 2),
+					MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
 
-			//DBI udma size
-			mtk_oddmr_write(comp, dbi_udma_y_ini,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
-			reg_val = (partial_roi.height + overhead_v * 2
-				+ scale_factor_v -1) / scale_factor_v;
-			mtk_oddmr_write(comp, reg_val,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				//DBI udma size
+				mtk_oddmr_write(comp, dbi_udma_y_ini,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+				reg_val = (partial_roi.height + overhead_v * 2
+					+ scale_factor_v -1) / scale_factor_v;
+				mtk_oddmr_write(comp, reg_val,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+			}
 
 			//DBI output size
 			mtk_oddmr_write(comp,
@@ -8920,21 +8922,23 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 
-			//DBI table size as block
-			reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
-			mtk_oddmr_write(comp, reg_val,
-				MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+			if (is_oddmr_dbi_support && g_oddmr_priv->dbi_enable) {
+				//DBI table size as block
+				reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
+				mtk_oddmr_write(comp, reg_val,
+					MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
 
-			//DBI table size as pixel
-			mtk_oddmr_write(comp, full_height,
-				MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+				//DBI table size as pixel
+				mtk_oddmr_write(comp, full_height,
+					MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
 
-			//DBI udma size
-			mtk_oddmr_write(comp, 0,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
-			reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
-			mtk_oddmr_write(comp, reg_val,
-				MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				//DBI udma size
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+				reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
+				mtk_oddmr_write(comp, reg_val,
+					MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+			}
 
 			//DBI output size
 			mtk_oddmr_write(comp, full_height,
