@@ -2410,8 +2410,12 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 {
 	int ret = 0;
 
-	if (!mtk_vcodec_is_state(ctx, MTK_STATE_FREE))
+	mutex_lock(&ctx->init_lock);
+
+	if (!mtk_vcodec_is_state(ctx, MTK_STATE_FREE)) {
+		mutex_unlock(&ctx->init_lock);
 		return 0;
+	}
 
 	ret = vdec_if_init(ctx, q_data->fmt->fourcc);
 	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
@@ -2426,6 +2430,7 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 	} else
 		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 
+	mutex_unlock(&ctx->init_lock);
 	return ret;
 }
 

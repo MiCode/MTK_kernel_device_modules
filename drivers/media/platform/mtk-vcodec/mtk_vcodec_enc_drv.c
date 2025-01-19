@@ -121,6 +121,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->worker_lock);
 	mutex_init(&ctx->hw_status);
 	mutex_init(&ctx->q_mutex);
+	mutex_init(&ctx->init_lock);
 	mutex_init(&ctx->ipi_use_lock);
 	mutex_init(&ctx->gen_buf_list_lock);
 
