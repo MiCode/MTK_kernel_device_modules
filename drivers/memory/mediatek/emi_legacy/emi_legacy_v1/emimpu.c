@@ -20,7 +20,7 @@
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
-#include <mt-plat/aee.h>
+#include "mt-plat/aee.h"
 #include <soc/mediatek/emi.h>
 
 #define EMI_MPUS_OFFSET	(0x1F0)

@@ -79,3 +79,64 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "emicen",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emicen.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emimpu",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emimpu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emiisu",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emiisu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emictrl",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emictrl.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
