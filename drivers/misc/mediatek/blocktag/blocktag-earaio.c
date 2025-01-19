@@ -352,7 +352,7 @@ static unsigned long eara_ioctl_copy_to_user(void __user *pvTo,
 	return ulBytes;
 }
 
-static long mtk_btag_eara_ioctl(struct file *filp,
+static long earaio_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
 	ssize_t ret = 0;
@@ -407,55 +407,29 @@ ret_ioctl:
 	return ret;
 }
 
-static int mtk_btag_eara_ioctl_show(struct seq_file *m, void *v)
+static int earaio_ioctl_show(struct seq_file *m, void *v)
 {
 	return 0;
 }
 
-static int mtk_btag_eara_ioctl_open(struct inode *inode, struct file *file)
+static int earaio_ioctl_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mtk_btag_eara_ioctl_show, inode->i_private);
+	return single_open(file, earaio_ioctl_show, inode->i_private);
 }
 
-static const struct proc_ops mtk_btag_eara_ioctl_fops = {
-	.proc_ioctl = mtk_btag_eara_ioctl,
+static const struct proc_ops earaio_ioctl_fops = {
+	.proc_ioctl = earaio_ioctl,
 #if IS_ENABLED(CONFIG_COMPAT)
-	.proc_compat_ioctl = mtk_btag_eara_ioctl,
+	.proc_compat_ioctl = earaio_ioctl,
 #endif
-	.proc_open = mtk_btag_eara_ioctl_open,
+	.proc_open = earaio_ioctl_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
 
-static int mtk_btag_earaio_init(struct proc_dir_entry *parent)
-{
-	int ret = 0;
-	struct proc_dir_entry *proc_entry;
-
-	proc_entry = proc_create("eara_io",
-		0664, parent, &mtk_btag_eara_ioctl_fops);
-
-	if (IS_ERR(proc_entry)) {
-		ret = PTR_ERR(proc_entry);
-		pr_debug("failed to create proc entry (%d)\n", ret);
-	}
-
-	proc_entry = proc_create("eara_io_boost", 0440, parent,
-		&earaio_boost_fops);
-	if (IS_ERR(proc_entry)) {
-		pr_notice("[BLOCK TAG] Creating node eara-io-boost failed\n");
-		ret =  -ENOMEM;
-	} else {
-		earaio_ctrl.earaio_boost_entry = proc_entry;
-		init_waitqueue_head(&earaio_ctrl.msg_readable);
-	}
-
-	return ret;
-}
-
-static ssize_t mtk_btag_earaio_ctrl_sub_write(struct file *file,
-	const char __user *ubuf, size_t count, loff_t *ppos)
+static ssize_t earaio_control_write(struct file *file, const char __user *ubuf,
+				    size_t count, loff_t *ppos)
 {
 	int ret;
 	char cmd[MICTX_PROC_CMD_BUF_SIZE] = {0};
@@ -498,7 +472,7 @@ err:
 	return -1;
 }
 
-static int mtk_btag_earaio_ctrl_sub_show(struct seq_file *s, void *data)
+static int earaio_control_show(struct seq_file *s, void *data)
 {
 	struct mtk_blocktag *btag;
 	char name[BTAG_NAME_LEN] = {' '};
@@ -523,24 +497,24 @@ static int mtk_btag_earaio_ctrl_sub_show(struct seq_file *s, void *data)
 	return 0;
 }
 
-static const struct seq_operations mtk_btag_seq_earaio_ctrl_ops = {
+static const struct seq_operations earaio_control_seq_ops = {
 	.start  = mtk_btag_seq_debug_start,
 	.next   = mtk_btag_seq_debug_next,
 	.stop   = mtk_btag_seq_debug_stop,
-	.show   = mtk_btag_earaio_ctrl_sub_show,
+	.show   = earaio_control_show,
 };
 
-static int mtk_btag_earaio_ctrl_sub_open(struct inode *inode, struct file *file)
+static int earaio_control_open(struct inode *inode, struct file *file)
 {
-	return seq_open(file, &mtk_btag_seq_earaio_ctrl_ops);
+	return seq_open(file, &earaio_control_seq_ops);
 }
 
-static const struct proc_ops mtk_btag_earaio_ctrl_sub_fops = {
-	.proc_open		= mtk_btag_earaio_ctrl_sub_open,
+static const struct proc_ops earaio_control_fops = {
+	.proc_open		= earaio_control_open,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release		= seq_release,
-	.proc_write		= mtk_btag_earaio_ctrl_sub_write,
+	.proc_write		= earaio_control_write,
 };
 
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
@@ -595,15 +569,9 @@ try_boost:
 	}
 }
 
-void mtk_btag_earaio_init_mictx(
-	struct mtk_btag_vops *vops,
-	enum mtk_btag_storage_type storage_type,
-	struct proc_dir_entry *btag_proc_root)
+void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 {
 	int ret;
-
-	if (!vops->earaio_enabled)
-		return;
 
 	if (!earaio_ctrl.enabled) {
 		spin_lock_init(&earaio_ctrl.lock);
@@ -613,7 +581,7 @@ void mtk_btag_earaio_init_mictx(
 		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
 		earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;
 		earaio_ctrl.fuse_threshold = THRESHOLD_MAX;
-		earaio_ctrl.mictx_id.storage = storage_type;
+		earaio_ctrl.mictx_id.storage = btag->storage_type;
 		strncpy(earaio_ctrl.mictx_id.name, "earaio", BTAG_NAME_LEN - 1);
 	}
 
@@ -626,12 +594,45 @@ void mtk_btag_earaio_init_mictx(
 
 	/* Disable Full Logging for earaio by default */
 	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
+}
 
-	if (mtk_btag_earaio_init(btag_proc_root) < 0)
-		earaio_ctrl.enabled = false;
-	else
-		proc_create("earaio_ctrl", S_IFREG | 0444, btag_proc_root,
-			    &mtk_btag_earaio_ctrl_sub_fops);
+void mtk_btag_earaio_init(struct proc_dir_entry *root)
+{
+	struct proc_dir_entry *proc_root, *proc_entry;
+
+	proc_root = proc_mkdir("earaio", root);
+	if (IS_ERR(proc_root)) {
+		pr_err("proc_mkdir earaio failed: %ld\n",
+		       PTR_ERR(proc_root));
+		return;
+	}
+
+	proc_entry = proc_create("control", S_IFREG | 0444, proc_root,
+				 &earaio_control_fops);
+	if (IS_ERR(proc_entry)) {
+		pr_err("proc_create control failed: %ld\n",
+		       PTR_ERR(proc_entry));
+		return;
+	}
+
+	proc_entry = proc_create("ioctl", 0664, proc_root,
+				 &earaio_ioctl_fops);
+	if (IS_ERR(proc_entry)) {
+		pr_err("proc_create ioctl failed: %ld\n",
+		       PTR_ERR(proc_entry));
+		return;
+	}
+
+	proc_entry = proc_create("boost", 0440, proc_root,
+				 &earaio_boost_fops);
+	if (IS_ERR(proc_entry)) {
+		pr_err("proc_create boost failed: %ld\n",
+		       PTR_ERR(proc_entry));
+		return;
+	}
+
+	earaio_ctrl.earaio_boost_entry = proc_entry;
+	init_waitqueue_head(&earaio_ctrl.msg_readable);
 }
 
 #else

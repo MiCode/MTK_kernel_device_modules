@@ -318,11 +318,9 @@ int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id);
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 
+void mtk_btag_earaio_init(struct proc_dir_entry *root);
+void mtk_btag_earaio_register(struct mtk_blocktag *btag);
 void mtk_btag_earaio_clear_data(void);
-void mtk_btag_earaio_init_mictx(
-	struct mtk_btag_vops *vops,
-	enum mtk_btag_storage_type storage_type,
-	struct proc_dir_entry *btag_proc_root);
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
 
 /* seq file operations */

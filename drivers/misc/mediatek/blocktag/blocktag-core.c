@@ -64,8 +64,6 @@ char *blockio_aee_buffer;
 /* procfs dentries */
 struct proc_dir_entry *btag_proc_root;
 
-static int mtk_btag_init_procfs(void);
-
 /* blocktag */
 LIST_HEAD(mtk_btag_list);
 spinlock_t list_lock;
@@ -773,28 +771,28 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 		return ERR_PTR(-ENOMEM);
 	}
 
+	mtk_btag_mictx_init(btag);
+
 	/* vops */
 	btag->vops = vops;
 
 	/* procfs dentries */
-	mtk_btag_init_procfs();
 	btag->dentry.droot = proc_mkdir(name, btag_proc_root);
-
 	if (IS_ERR(btag->dentry.droot))
 		goto out;
 
 	btag->dentry.dlog = proc_create("blockio", S_IFREG | 0444,
 		btag->dentry.droot, &mtk_btag_sub_fops);
-
 	if (IS_ERR(btag->dentry.dlog))
 		goto out;
 
-	mtk_btag_mictx_init(btag);
-out:
 	spin_lock_irqsave(&list_lock, flags);
 	list_add_rcu(&btag->list, &mtk_btag_list);
 	spin_unlock_irqrestore(&list_lock, flags);
-	mtk_btag_earaio_init_mictx(vops, storage_type, btag_proc_root);
+
+	if (btag->vops->earaio_enabled)
+		mtk_btag_earaio_register(btag);
+out:
 
 	return btag;
 }
@@ -1173,6 +1171,8 @@ static int mtk_btag_init_procfs(void)
 		proc_set_user(proc_entry, uid, gid);
 	else
 		pr_info("failed to initialize procfs\n");
+
+	mtk_btag_earaio_init(btag_proc_root);
 
 	return 0;
 }
