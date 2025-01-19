@@ -1881,7 +1881,6 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	unsigned long min_cap = eenv->min_cap;
 	unsigned long max_cap = eenv->max_cap;
 	bool is_vvip = false;
-	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int target_balance_cluster;
 #endif
@@ -1895,7 +1894,6 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int vip_prio = fbc_params->vip_prio;
 	struct cpumask vip_candidate = fbc_params->vip_candidate;
 
-	num_vip = prev_min_num_vip = min_num_vip = UINT_MAX;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	is_vvip = prio_is_vip(vip_prio, VVIP);
 

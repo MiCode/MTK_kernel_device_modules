@@ -2313,7 +2313,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	struct cpufreq_policy *policy;
 	unsigned long flt_util = 0, pelt_util_with_margin;
 	unsigned long util_ori = util;
-	u64 idle_time_stamp, wall_time_stamp;
+	u64 wall_time_stamp;
 	struct rq *rq;
 	unsigned long rq_uclamp_min, rq_uclamp_max;
 
@@ -2325,7 +2325,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 		sg_policy = (struct sugov_policy *)data;
 		policy = sg_policy->policy;
 		if (grp_dvfs_ctrl_mode == 0 || grp_trigger == false) {
-			idle_time_stamp = get_cpu_idle_time(cpu, &wall_time_stamp, 1);
+			get_cpu_idle_time(cpu, &wall_time_stamp, 1);
 			if (wall_time_stamp - last_wall_time_stamp[cpu] > am_wind_dura)
 				update_active_ratio_policy(cpumask);
 		}
@@ -2367,12 +2367,11 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 		unsigned long *next_freq)
 {
-	int orig_util = util, gearid;
+	int orig_util = util;
 	unsigned int cpu=0;
 
 	if (cpumask)
 		cpu = cpumask_first(cpumask);
-	gearid = topology_cluster_id(cpu);
 
 	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
 		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask);
