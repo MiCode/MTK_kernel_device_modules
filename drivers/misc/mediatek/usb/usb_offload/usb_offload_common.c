@@ -1902,6 +1902,22 @@ static int xhci_mtk_ep_ctx_control(struct xhci_hcd *xhci, struct xhci_virt_devic
 	return ret;
 }
 
+void dump_ring(struct xhci_ring *ring)
+{
+	dma_addr_t first_trb, link_trb, point_to;
+	int i;
+
+	for (i = 0; i < ring->num_segs; i++) {
+		first_trb = ring->first_seg->dma;
+		link_trb = ring->first_seg->dma + ((USB_OFFLOAD_TRBS_PER_SEGMENT - 1) * 16);
+		point_to = ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.segment_ptr;
+		USB_OFFLOAD_INFO("1st_trb:0x%llx link_trb:0x%llx point_to:0x%llx (high:0x%x low:0x%x)\n",
+			first_trb, link_trb, point_to,
+			ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].generic.field[1],
+			ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].generic.field[0]);
+	}
+}
+
 /* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
 int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	enum uo_provider_type type, bool is_rsv)
@@ -1956,6 +1972,7 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 		USB_OFFLOAD_ERR("fail to send RECONFIGURE_ENDPOINT\n");
 		goto error;
 	}
+	dump_ring(new_ring);
 	return ret;
 error:
 	USB_OFFLOAD_ERR("fail to reallocate, ring was still on AP viewed only\n");
