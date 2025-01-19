@@ -247,10 +247,26 @@ enum gpufreq_brcast_mode {
 	BRCAST_SW_ONLY_ACK   = 3, /* SW refill and only check ACK */
 };
 
+enum gpufreq_brcast_event {
+	BRCAST_EVENT_TABLE      = 0,
+	BRCAST_ONE_TIME_TRIGGER = 1,
+};
+
 enum gpufreq_brisket_mode {
 	BRISKET_UNSUPPORTED = -1,
 	BRISKET_DISABLE     = 0, /* default */
 	BRISKET_ENABLE      = 1,
+};
+
+enum gpufreq_hbvc_state {
+	HBVC_STATE_IDLE    = 0, /* 3'b000 */
+	HBVC_STATE_ACTIVE  = 1, /* 3'b001 */
+	HBVC_STATE_BF_IRQ  = 2, /* 3'b010 */
+	HBVC_STATE_VPROC   = 3, /* 3'b011 */
+	HBVC_STATE_VSRAM   = 4, /* 3'b100 */
+	HBVC_STATE_WAIT    = 5, /* 3'b101 */
+	HBVC_STATE_AF_IRQ  = 6, /* 3'b110 */
+	HBVC_STATE_ERR_IRQ = 7, /* 3'b111 */
 };
 
 enum gpufreq_dfd_mode {
@@ -391,13 +407,10 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int hbvc_volt_ctrl_support;
 	unsigned int hbvc_preoc_support;
 	unsigned int hbvc_preoc_mode;
-	unsigned int hbvc_preuvlo_support;
-	unsigned int hbvc_preuvlo_mode;
 	unsigned int hbvc_vgpu_upper_bound;
 	unsigned int hbvc_vgpu_lower_bound;
 	unsigned int hbvc_vstack_upper_bound;
 	unsigned int hbvc_vstack_lower_bound;
-	unsigned int prbc_mode;
 	unsigned int brisket_fll_mode;
 	enum gpufreq_brisket_mode brisket_atmc_mode;
 	enum gpufreq_brisket_mode brisket_vmeter_mode;
@@ -413,6 +426,9 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int ses_stack_mode;
 	unsigned int ses_scheduler_support;
 	unsigned int ses_scheduler_mode;
+	unsigned int preuvlo_mode;
+	unsigned int prbc_mode;
+	unsigned int freq_tracker_mode;
 	unsigned int volt_tracker_mode;
 };
 
@@ -534,7 +550,6 @@ struct gpufreq_shared_status {
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
 	unsigned int power_tracker_mode;
-	unsigned int freq_tracker_mode;
 	unsigned long long profile_time[PROF_TYPE_NUM][PROF_IDX_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
