@@ -21,10 +21,12 @@
 #include <linux/hrtimer.h>
 #include <linux/workqueue.h>
 #include <linux/slab.h>
-
 #include <linux/platform_device.h>
-
 #include <linux/ioctl.h>
+#include <linux/vmalloc.h>
+#include "fpsgo_frame_info.h"
+
+#define MAX_RENDER_NUM 10
 
 struct _FPSGO_PACKAGE {
 	union {
@@ -115,18 +117,35 @@ struct _FPSGO_LR_PAIR_PACKAGE {
 	__u64 ktime_now_ns;
 };
 
+struct _FPSGO_OTHER2COMP_PACKAGE {
+	__u32 mode;
+	__u32 num;
+	struct render_fw_info render_fw_info_arr[MAX_RENDER_NUM];
+};
+
+struct _FPSGO_OTHER2FSTB_PACKAGE {
+	__u32 pid;
+	__u64 bufID;
+	__u64 self_time;
+	struct render_fps_info fps_value;
+};
+
+struct _FPSGO_OTHER2XGF_PACKAGE {
+	__u32 pid;
+	__u64 bufID;
+	__u32 num;
+	__u32 filter_non_cfs;
+	struct task_info task_arr[FPSGO_MAX_TASK_NUM];
+};
 
 #define FPSGO_QUEUE                  _IOW('g', 1,  struct _FPSGO_PACKAGE)
 #define FPSGO_DEQUEUE                _IOW('g', 3,  struct _FPSGO_PACKAGE)
 #define FPSGO_VSYNC                  _IOW('g', 5,  struct _FPSGO_PACKAGE)
-#define FPSGO_TOUCH                  _IOW('g', 10, struct _FPSGO_PACKAGE)
 #define FPSGO_SWAP_BUFFER            _IOW('g', 14, struct _FPSGO_PACKAGE)
 #define FPSGO_QUEUE_CONNECT          _IOW('g', 15, struct _FPSGO_PACKAGE)
 #define FPSGO_BQID                   _IOW('g', 16, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_FPS                _IOW('g', 17, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_CMD                _IOW('g', 18, struct _FPSGO_PACKAGE)
-#define FPSGO_GET_FSTB_ACTIVE        _IOW('g', 20, struct _FPSGO_PACKAGE)
-#define FPSGO_WAIT_FSTB_ACTIVE       _IOW('g', 21, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_RESCUE             _IOW('g', 22, struct _FPSGO_PACKAGE)
 #define FPSGO_ACQUIRE                _IOW('g', 23, struct _FPSGO_PACKAGE)
 #define FPSGO_BUFFER_QUOTA           _IOW('g', 24, struct _FPSGO_PACKAGE)
@@ -136,6 +155,8 @@ struct _FPSGO_LR_PAIR_PACKAGE {
 #define FPSGO_HINT_FRAME             _IOW('g', 28, struct _FPSGO_SBE_PACKAGE)
 #define FPSGO_VSYNC_PERIOD           _IOW('g', 29, struct _FPSGO_PACKAGE)
 #define FPSGO_SBE_BUFFER_COUNT       _IOW('g', 30, struct _FPSGO_PACKAGE)
+#define FPSGO_ENABLE_SIGNAL          _IOW('g', 31, struct _FPSGO_PACKAGE)
+#define FPSGO_PRODUCER_INFO          _IOW('g', 32, struct _FPSGO_PACKAGE)
 
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)
 #define XGFFRAME_END                _IOW('g', 2, struct _XGFFRAME_PACKAGE)
@@ -146,6 +167,14 @@ struct _FPSGO_LR_PAIR_PACKAGE {
 #define FPSGO_LR_PAIR               _IOW('g', 1, struct _FPSGO_LR_PAIR_PACKAGE)
 #define FPSGO_SF_TOUCH_ACTIVE       _IOW('g', 2, struct _FPSGO_LR_PAIR_PACKAGE)
 #define FPSGO_SF_EXP_L2Q            _IOW('g', 3, struct _FPSGO_LR_PAIR_PACKAGE)
+
+#define FPSGO_OTHER2COMP_GET_FW_INFO _IOW('g', 1, struct _FPSGO_OTHER2COMP_PACKAGE)
+#define FPSGO_OTHER2COMP_FLUSH_ACQUIRE_TABLE _IOW('g', 2, struct _FPSGO_OTHER2COMP_PACKAGE)
+
+#define FPSGO_OTHER2FSTB_GET_APP_SELF_CTRL_TIME _IOW('g', 1, struct _FPSGO_OTHER2FSTB_PACKAGE)
+#define FPSGO_OTHER2FSTB_GET_RENDER_FPS_INFO    _IOW('g', 2, struct _FPSGO_OTHER2FSTB_PACKAGE)
+
+#define FPSGO_OTHER2XGF_GET_CRITICAL_TASK _IOW('g', 1, struct _FPSGO_OTHER2XGF_PACKAGE)
 
 #endif
 

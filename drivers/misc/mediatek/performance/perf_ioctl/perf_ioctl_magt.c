@@ -235,9 +235,6 @@ int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr,
 		int num);
 EXPORT_SYMBOL(magt2fpsgo_notify_target_fps_fp);
 
-int (*magt2fpsgo_get_all_fps_control_pid_info)(struct fps_control_pid_info *arr);
-EXPORT_SYMBOL(magt2fpsgo_get_all_fps_control_pid_info);
-
 int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);
 EXPORT_SYMBOL(magt2fpsgo_get_fpsgo_frame_info);

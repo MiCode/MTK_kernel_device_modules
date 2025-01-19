@@ -1,9 +1,9 @@
-ifeq ($(CONFIG_MTK_FPSGO_V3),$(filter $(CONFIG_MTK_FPSGO_V3),m))
-ccflags-y += -DCONFIG_MTK_FPSGO_V3
-subdir-ccflags-y += -DCONFIG_MTK_FPSGO_V3
+ifeq ($(CONFIG_MTK_FPSGO_V8),$(filter $(CONFIG_MTK_FPSGO_V8),m))
+ccflags-y += -DCONFIG_MTK_FPSGO_V8
+subdir-ccflags-y += -DCONFIG_MTK_FPSGO_V8
 endif
 
-FPSGO_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/
+FPSGO_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/
 BASE_TOP = $(FPSGO_TOP)/base
 FBT_TOP = $(FPSGO_TOP)/fbt
 FSTB_TOP = $(FPSGO_TOP)/fstb
@@ -62,6 +62,6 @@ MTK_FPSGO_FSTB = $(mtk_fpsgo_fstb_objs:%.o=fstb/%.o)
 
 MTK_FPSGO_SRC = $(MTK_FPSGO_MAIN) $(MTK_FPSGO_BASE) $(MTK_FPSGO_COMPOSER) $(MTK_FPSGO_FBT) $(MTK_FPSGO_FSTB)
 
-obj-$(CONFIG_MTK_FPSGO_V3) += mtk_fpsgo_v3.o
-mtk_fpsgo_v3-objs += $(MTK_FPSGO_SRC)
+obj-$(CONFIG_MTK_FPSGO_V8) += mtk_fpsgo_v8.o
+mtk_fpsgo_v8-objs += $(MTK_FPSGO_SRC)
 

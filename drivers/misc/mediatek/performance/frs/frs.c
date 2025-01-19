@@ -11,6 +11,8 @@
 #include <linux/module.h>
 
 #include "frs.h"
+#include "fpsgo_frame_info.h"
+#include "fpsgo_base.h"
 #include "fpsgo_common.h"
 #include "fstb.h"
 #include "fbt_cpu.h"

@@ -6,6 +6,7 @@
 
 #define TAG "PERF_IOCTL"
 
+// FPSGO
 int (*fpsgo_notify_qudeq_fp)(int qudeq,
 		unsigned int startend,
 		int pid, unsigned long long identifier,
@@ -21,22 +22,30 @@ void (*fpsgo_notify_vsync_fp)(void);
 EXPORT_SYMBOL_GPL(fpsgo_notify_vsync_fp);
 void (*fpsgo_notify_vsync_period_fp)(unsigned long long period);
 EXPORT_SYMBOL_GPL(fpsgo_notify_vsync_period_fp);
-void (*fpsgo_get_fps_fp)(int *pid, int *fps);
-EXPORT_SYMBOL_GPL(fpsgo_get_fps_fp);
 void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_cmd_fp);
-int (*fpsgo_get_fstb_active_fp)(long long time_diff);
-EXPORT_SYMBOL_GPL(fpsgo_get_fstb_active_fp);
-int (*fpsgo_wait_fstb_active_fp)(void);
-EXPORT_SYMBOL_GPL(fpsgo_wait_fstb_active_fp);
 void (*fpsgo_notify_swap_buffer_fp)(int pid);
 EXPORT_SYMBOL_GPL(fpsgo_notify_swap_buffer_fp);
 void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
+void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
+EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
+int (*fpsgo_get_enable_signal_fp)(int tgid, int wait);
+EXPORT_SYMBOL_GPL(fpsgo_get_enable_signal_fp);
+void (*fpsgo_notify_producer_info_fp)(int ipc_tgid, int pid, int connectedAPI,
+	int queue_SF, unsigned long long buffer_id);
+EXPORT_SYMBOL_GPL(fpsgo_notify_producer_info_fp);
+
+// PowerHAL
+void (*power2fpsgo_get_fps_fp)(int *pid, int *fps);
+EXPORT_SYMBOL_GPL(power2fpsgo_get_fps_fp);
+
+// ThirdCam
 void (*fpsgo_get_pid_fp)(int cmd, int *pid, int value1, int value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_pid_fp);
 
+// SBE
 void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
@@ -50,13 +59,9 @@ int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
 int (*fpsgo_notify_ux_buffer_count_fp)(int pid,int count, int max_buffer);
 EXPORT_SYMBOL_GPL(fpsgo_notify_ux_buffer_count_fp);
-
 int (*fpsgo_notify_smart_launch_algorithm_fp)(int feedback_time,
 		int target_time, int pre_opp, int capabilty_ration);
 EXPORT_SYMBOL_GPL(fpsgo_notify_smart_launch_algorithm_fp);
-
-void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
-EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
 
 #if IS_ENABLED(CONFIG_ARM64)
 struct proc_dir_entry *perfmgr_root;
@@ -395,9 +400,280 @@ static const struct proc_ops fpsgo_lr_Fops = {
 	.proc_release = single_release,
 };
 
+/*--------------------------FPSGO_OTHER2COMP_IOCTL-----------------------*/
+int (*fpsgo_other2comp_get_render_fw_info_fp)(int mode, int max_num,
+		int *num, struct render_fw_info *arr);
+EXPORT_SYMBOL(fpsgo_other2comp_get_render_fw_info_fp);
+void (*fpsgo_other2comp_flush_acquire_table_fp)(void);
+EXPORT_SYMBOL(fpsgo_other2comp_flush_acquire_table_fp);
+
+static long fpsgo_other2comp_ioctl_impl(struct file *filp,
+		unsigned int cmd, unsigned long arg, void *pKM)
+{
+	ssize_t ret = 0;
+	struct _FPSGO_OTHER2COMP_PACKAGE *msgKM = NULL,
+		*msgUM = (struct _FPSGO_OTHER2COMP_PACKAGE *)arg;
+	struct _FPSGO_OTHER2COMP_PACKAGE smsgKM;
+
+	int arr_num = 0;
+
+	msgKM = (struct _FPSGO_OTHER2COMP_PACKAGE *)pKM;
+	if (!msgKM) {
+		msgKM = &smsgKM;
+		if (perfctl_copy_from_user(msgKM, msgUM,
+				sizeof(struct _FPSGO_OTHER2COMP_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+	}
+
+	switch (cmd) {
+	case FPSGO_OTHER2COMP_GET_FW_INFO:
+		if (!fpsgo_other2comp_get_render_fw_info_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		ret = fpsgo_other2comp_get_render_fw_info_fp(msgKM->mode, MAX_RENDER_NUM, &arr_num,
+			msgKM->render_fw_info_arr);
+
+		if (!ret && arr_num > 0 && arr_num < MAX_RENDER_NUM) {
+			msgKM->num = arr_num;
+			perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_OTHER2COMP_PACKAGE));
+		} else {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		break;
+	case FPSGO_OTHER2COMP_FLUSH_ACQUIRE_TABLE:
+		if (!fpsgo_other2comp_flush_acquire_table_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		fpsgo_other2comp_flush_acquire_table_fp();
+		break;
+
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n",
+			__FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static long fpsgo_other2comp_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	return fpsgo_other2comp_ioctl_impl(filp, cmd, arg, NULL);
+}
+
+static int fpsgo_other2comp_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static int fpsgo_other2comp_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fpsgo_other2comp_show, inode->i_private);
+}
+
+
+static const struct proc_ops fpsgo_other2comp_Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
+	.proc_compat_ioctl = fpsgo_other2comp_ioctl,
+#endif
+	.proc_ioctl = fpsgo_other2comp_ioctl,
+	.proc_open = fpsgo_other2comp_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+/*--------------------------FPSGO_OTHER2FSTB_IOCTL-----------------------*/
+unsigned long long (*fpsgo_other2fstb_get_app_self_ctrl_time_fp)(int pid,
+	unsigned long long bufID);
+EXPORT_SYMBOL(fpsgo_other2fstb_get_app_self_ctrl_time_fp);
+int (*fpsgo_other2fstb_get_fps_info_fp)(int pid, unsigned long long bufID,
+	struct render_fps_info *info);
+EXPORT_SYMBOL(fpsgo_other2fstb_get_fps_info_fp);
+
+static long fpsgo_other2fstb_ioctl_impl(struct file *filp,
+		unsigned int cmd, unsigned long arg, void *pKM)
+{
+	ssize_t ret = 0;
+	struct _FPSGO_OTHER2FSTB_PACKAGE *msgKM = NULL,
+		*msgUM = (struct _FPSGO_OTHER2FSTB_PACKAGE *)arg;
+	struct _FPSGO_OTHER2FSTB_PACKAGE smsgKM;
+	unsigned long long self_time = 0;
+
+	msgKM = (struct _FPSGO_OTHER2FSTB_PACKAGE *)pKM;
+	if (!msgKM) {
+		msgKM = &smsgKM;
+		if (perfctl_copy_from_user(msgKM, msgUM,
+				sizeof(struct _FPSGO_OTHER2FSTB_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+	}
+
+	switch (cmd) {
+	case FPSGO_OTHER2FSTB_GET_APP_SELF_CTRL_TIME:
+		if (!fpsgo_other2fstb_get_app_self_ctrl_time_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		self_time = fpsgo_other2fstb_get_app_self_ctrl_time_fp(msgKM->pid, msgKM->bufID);
+
+		if (self_time) {
+			msgKM->self_time = self_time;
+			perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_OTHER2FSTB_PACKAGE));
+		} else {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		break;
+	case FPSGO_OTHER2FSTB_GET_RENDER_FPS_INFO:
+		if (!fpsgo_other2fstb_get_fps_info_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		ret = fpsgo_other2fstb_get_fps_info_fp(msgKM->pid, msgKM->bufID, &msgKM->fps_value);
+		if (!ret)
+			perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_OTHER2FSTB_PACKAGE));
+		break;
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n",
+			__FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static long fpsgo_other2fstb_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	return fpsgo_other2fstb_ioctl_impl(filp, cmd, arg, NULL);
+}
+
+static int fpsgo_other2fstb_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static int fpsgo_other2fstb_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fpsgo_other2fstb_show, inode->i_private);
+}
+
+
+static const struct proc_ops fpsgo_other2fstb_Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
+	.proc_compat_ioctl = fpsgo_other2fstb_ioctl,
+#endif
+	.proc_ioctl = fpsgo_other2fstb_ioctl,
+	.proc_open = fpsgo_other2fstb_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+/*--------------------------FPSGO_OTHER2XGF_IOCTL-----------------------*/
+int (*fpsgo_other2xgf_get_critical_tasks_fp)(int pid, int max_num,
+	struct task_info *arr, int filter_non_cfs, unsigned long long bufID);
+EXPORT_SYMBOL(fpsgo_other2xgf_get_critical_tasks_fp);
+
+static long fpsgo_other2xgf_ioctl_impl(struct file *filp,
+		unsigned int cmd, unsigned long arg, void *pKM)
+{
+	ssize_t ret = 0;
+	struct _FPSGO_OTHER2XGF_PACKAGE *msgKM = NULL,
+		*msgUM = (struct _FPSGO_OTHER2XGF_PACKAGE *)arg;
+	struct _FPSGO_OTHER2XGF_PACKAGE *smsgKM = NULL;
+
+	smsgKM = vzalloc(sizeof(struct _FPSGO_OTHER2XGF_PACKAGE));
+	if (!smsgKM) {
+		ret = -ENOMEM;
+		goto ret_ioctl;
+	}
+
+	msgKM = (struct _FPSGO_OTHER2XGF_PACKAGE *)pKM;
+	if (!msgKM) {
+		msgKM = smsgKM;
+		if (perfctl_copy_from_user(msgKM, msgUM,
+				sizeof(struct _FPSGO_OTHER2XGF_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+	}
+
+	switch (cmd) {
+	case FPSGO_OTHER2XGF_GET_CRITICAL_TASK:
+		if (!fpsgo_other2xgf_get_critical_tasks_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		ret = fpsgo_other2xgf_get_critical_tasks_fp(msgKM->pid, FPSGO_MAX_TASK_NUM, msgKM->task_arr, msgKM->filter_non_cfs, msgKM->bufID);
+
+		if (ret >= 0) {
+			msgKM->num = ret;
+			perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_OTHER2XGF_PACKAGE));
+		} else {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		break;
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n",
+			__FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	vfree(smsgKM);
+	return ret;
+
+}
+
+static long fpsgo_other2xgf_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	return fpsgo_other2xgf_ioctl_impl(filp, cmd, arg, NULL);
+}
+
+static int fpsgo_other2xgf_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static int fpsgo_other2xgf_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, fpsgo_other2xgf_show, inode->i_private);
+}
+
+
+static const struct proc_ops fpsgo_other2xgf_Fops = {
+#if IS_ENABLED(CONFIG_COMPAT)
+	.proc_compat_ioctl = fpsgo_other2xgf_ioctl,
+#endif
+	.proc_ioctl = fpsgo_other2xgf_ioctl,
+	.proc_open = fpsgo_other2xgf_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
 
 /*--------------------INIT------------------------*/
-
 static int device_show(struct seq_file *m, void *v)
 {
 	return 0;
@@ -427,14 +703,14 @@ static long device_ioctl(struct file *filp,
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
-
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 		if (fpsgo_notify_smart_launch_algorithm_fp)
 			ret = fpsgo_notify_smart_launch_algorithm_fp(smart_launch.feedback_time,
 				smart_launch.target_time, smart_launch.pre_opp, smart_launch.capabilty_ration);
 
 		smart_launch.next_opp = ret;
 		perfctl_copy_to_user(smart_launch_p, &smart_launch, sizeof(struct _SMART_LAUNCH_PACKAGE));
-
+#endif
 		goto ret_ioctl;
 	}
 
@@ -482,7 +758,7 @@ static long device_ioctl(struct file *filp,
 	}
 
 	switch (cmd) {
-#if defined(CONFIG_MTK_FPSGO_V3)
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO_V8)
 	case FPSGO_QUEUE:
 		if (fpsgo_notify_qudeq_fp)
 			ret = fpsgo_notify_qudeq_fp(1,
@@ -506,8 +782,6 @@ static long device_ioctl(struct file *filp,
 				msgKM->queue_SF, msgKM->identifier,
 				msgKM->start);
 		break;
-	case FPSGO_TOUCH:
-		break;
 	case FPSGO_VSYNC:
 		if (fpsgo_notify_vsync_fp)
 			fpsgo_notify_vsync_fp();
@@ -521,8 +795,8 @@ static long device_ioctl(struct file *filp,
 			fpsgo_notify_swap_buffer_fp(msgKM->tid);
 		break;
 	case FPSGO_GET_FPS:
-		if (fpsgo_get_fps_fp) {
-			fpsgo_get_fps_fp(&pwr_pid, &pwr_fps);
+		if (power2fpsgo_get_fps_fp) {
+			power2fpsgo_get_fps_fp(&pwr_pid, &pwr_fps);
 			msgKM->tid = pwr_pid;
 			msgKM->value1 = pwr_fps;
 		} else
@@ -540,18 +814,6 @@ static long device_ioctl(struct file *filp,
 			ret = -1;
 		perfctl_copy_to_user(msgUM, msgKM,
 				sizeof(struct _FPSGO_PACKAGE));
-		break;
-	case FPSGO_GET_FSTB_ACTIVE:
-		if (fpsgo_get_fstb_active_fp)
-			msgKM->active = fpsgo_get_fstb_active_fp(msgKM->time_diff);
-		else
-			ret = 0;
-		perfctl_copy_to_user(msgUM, msgKM,
-				sizeof(struct _FPSGO_PACKAGE));
-		break;
-	case FPSGO_WAIT_FSTB_ACTIVE:
-		if (fpsgo_wait_fstb_active_fp)
-			fpsgo_wait_fstb_active_fp();
 		break;
 	case FPSGO_SBE_RESCUE:
 		if (fpsgo_notify_sbe_rescue_fp)
@@ -580,45 +842,17 @@ static long device_ioctl(struct file *filp,
 		perfctl_copy_to_user(msgUM, msgKM,
 			sizeof(struct _FPSGO_PACKAGE));
 		break;
-#else
-	case FPSGO_TOUCH:
-		 [[fallthrough]];
-	case FPSGO_QUEUE:
-		 [[fallthrough]];
-	case FPSGO_DEQUEUE:
-		 [[fallthrough]];
-	case FPSGO_QUEUE_CONNECT:
-		 [[fallthrough]];
-	case FPSGO_VSYNC:
-		 [[fallthrough]];
-	case FPSGO_VSYNC_PERIOD:
-		 [[fallthrough]];
-	case FPSGO_BQID:
-		 [[fallthrough]];
-	case FPSGO_SWAP_BUFFER:
-		 [[fallthrough]];
-	case FPSGO_GET_FPS:
-		 [[fallthrough]];
-	case FPSGO_GET_CMD:
-		 [[fallthrough]];
-	case FPSGO_GET_FSTB_ACTIVE:
-		[[fallthrough]];
-	case FPSGO_WAIT_FSTB_ACTIVE:
-		[[fallthrough]];
-	case FPSGO_BUFFER_QUOTA:
-		[[fallthrough]];
-	case FPSGO_SBE_RESCUE:
-		[[fallthrough]];
-	case FPSGO_SBE_BUFFER_COUNT:
-		[[fallthrough]];
-	case FPSGO_ACQUIRE:
+	case FPSGO_ENABLE_SIGNAL:
+		if (fpsgo_get_enable_signal_fp)
+			ret = fpsgo_get_enable_signal_fp(msgKM->pid1, msgKM->value1);
 		break;
-	case FPSGO_GET_CAM_APK_PID:
-		break;
-	case FPSGO_GET_CAM_SERVER_PID:
+	case FPSGO_PRODUCER_INFO:
+		if (fpsgo_notify_producer_info_fp)
+			fpsgo_notify_producer_info_fp(msgKM->identifier,
+				msgKM->tid, msgKM->connectedAPI,
+				msgKM->queue_SF, msgKM->bufID);
 		break;
 #endif
-
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
@@ -674,6 +908,33 @@ static int __init init_perfctl(void)
 	}
 
 	pe = proc_create("fpsgo_lr_ioctl", 0664, parent, &fpsgo_lr_Fops);
+	if (!pe) {
+		pr_debug(TAG"%s failed with %d\n",
+				"Creating file node ",
+				ret_val);
+		ret_val = -ENOMEM;
+		goto out_wq;
+	}
+
+	pe = proc_create("fpsgo_other2comp_ioctl", 0664, parent, &fpsgo_other2comp_Fops);
+	if (!pe) {
+		pr_debug(TAG"%s failed with %d\n",
+				"Creating file node ",
+				ret_val);
+		ret_val = -ENOMEM;
+		goto out_wq;
+	}
+
+	pe = proc_create("fpsgo_other2fstb_ioctl", 0664, parent, &fpsgo_other2fstb_Fops);
+	if (!pe) {
+		pr_debug(TAG"%s failed with %d\n",
+				"Creating file node ",
+				ret_val);
+		ret_val = -ENOMEM;
+		goto out_wq;
+	}
+
+	pe = proc_create("fpsgo_other2xgf_ioctl", 0664, parent, &fpsgo_other2xgf_Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",

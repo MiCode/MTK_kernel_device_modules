@@ -25,7 +25,6 @@
 #include <linux/pm_qos.h>
 #include <linux/sort.h>
 #include <linux/delay.h>
-#include "perf_ioctl.h"
 #include "touch_boost.h"
 
 #ifndef CREATE_TRACE_POINTS
