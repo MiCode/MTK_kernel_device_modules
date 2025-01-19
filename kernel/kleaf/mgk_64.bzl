@@ -90,7 +90,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8s-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2/custom:mtk_cam_cal",
-    "//vendor/mediatek/kernel_modules/mtkcam/ccusys:ccusys",
+    "//vendor/mediatek/kernel_modules/mtkcam/ccusys:mtk_ccuv",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor:mtk_imgsensor",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
@@ -412,6 +412,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:srcs".format(kernel_version),
+    "//vendor/mediatek/kernel_modules/mtkcam/ccusys:srcs",
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -910,6 +911,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:rt6160-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/rtc:rtc-mt6397".format(kernel_version),
     "//kernel_device_modules-{}/drivers/rtc:rtc-mt6685".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/remoteproc:mtk_ccu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/remoteproc:mtk_ccu_mssv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/reset:reset-ti-syscon".format(kernel_version),
     "//kernel_device_modules-{}/drivers/rpmsg:mtk_rpmsg_mbox".format(kernel_version),
@@ -1497,7 +1499,7 @@ mgk_64_device_modules = [
     "drivers/pwm/pwm-mtk-disp.ko",
     "drivers/regulator/mt6681-regulator.ko",
     "drivers/regulator/mtk-vmm-isp71-regulator.ko",
-    "drivers/remoteproc/mtk_ccu.ko",
+    #"drivers/remoteproc/mtk_ccu.ko",
     #"drivers/soc/mediatek/mtk-mmsys.ko",
     #"drivers/soc/mediatek/mtk-mutex.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
