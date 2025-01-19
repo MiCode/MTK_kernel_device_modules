@@ -463,6 +463,14 @@ static void vow_ipi_rx_handle_data_msg(void *msg_data)
 void vow_ipi_rx_internal(unsigned int msg_id,
 			 void *msg_data)
 {
+#ifdef DEBUG_IPI_RX
+	unsigned long long   ipi_rx_begin_cycle;
+	unsigned long long   ipi_rx_end_cycle;
+	unsigned int   ipi_rx_diff_time;
+
+	ipi_rx_begin_cycle = get_cycles();
+#endif
+
 	switch (msg_id) {
 	case IPIMSG_VOW_COMBINED_INFO: {
 		struct vow_ipi_combined_info_t *ipi_ptr;
@@ -527,8 +535,8 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 		break;
 	}
 	case IPIMSG_VOW_ALEXA_ENGINE_VER: {
-		VOWDRV_DEBUG("%s(), IPIMSG_VOW_ALEXA_ENGINE_VER %s\r",
-			__func__, (char *)msg_data);
+		//VOWDRV_DEBUG("%s(), IPIMSG_VOW_ALEXA_ENGINE_VER %s\r",
+		//	__func__, (char *)msg_data);
 		memcpy(vowserv.alexa_engine_version, msg_data,
 				 sizeof(vowserv.alexa_engine_version));
 		}
@@ -536,14 +544,14 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 	case IPIMSG_VOW_GOOGLE_ENGINE_VER: {
 		unsigned int *temp = (unsigned int *)msg_data;
 
-		VOWDRV_DEBUG("%s(), IPIMSG_VOW_GOOGLE_ENGINE_VER 0x%x\r",
-			__func__, temp[0]);
+		//VOWDRV_DEBUG("%s(), IPIMSG_VOW_GOOGLE_ENGINE_VER 0x%x\r",
+		//	__func__, temp[0]);
 		vowserv.google_engine_version = temp[0];
 		}
 		break;
 	case IPIMSG_VOW_GOOGLE_ARCH: {
-		VOWDRV_DEBUG("%s(), IPIMSG_VOW_GOOGLE_ARCH %s\r",
-			__func__, (char *)msg_data);
+		//VOWDRV_DEBUG("%s(), IPIMSG_VOW_GOOGLE_ARCH %s\r",
+		//	__func__, (char *)msg_data);
 		memcpy(vowserv.google_engine_arch, msg_data,
 				 sizeof(vowserv.google_engine_arch));
 		}
@@ -551,6 +559,18 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 	default:
 		break;
 	}
+
+#ifdef DEBUG_IPI_RX
+	ipi_rx_end_cycle = get_cycles();
+	ipi_rx_diff_time =
+				(unsigned int)CYCLE_TO_NS *
+				(unsigned int)(ipi_rx_end_cycle
+				- ipi_rx_begin_cycle);
+	if (ipi_rx_diff_time > 5000000) {
+		VOWDRV_DEBUG("IPI RX handler timeout, msg_id = %d, cost %d(ns)\n",
+			     msg_id, ipi_rx_diff_time);
+	}
+#endif
 }
 
 bool vow_ipi_rceive_ack(unsigned int msg_id,
