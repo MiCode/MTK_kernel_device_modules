@@ -208,15 +208,19 @@ int _update_userlimit_cpufreq_min(int cid, int value)
 {
 	_cpu_ctrl_systrace(value, "tchbst_freq_c%d", cid);
 	return freq_qos_update_request(&(freq_min_request[cid]), value);
-	//return 0;
 }
 
 static void notify_touch_up_timeout(struct work_struct *work)
 {
 	int i = 0, ret = -1;
 
-	for (i = 0 ; i < policy_num ; i++)
+	for (i = 0 ; i < policy_num ; i++) {
 		ret = _update_userlimit_cpufreq_min(i, 0);
+		if (ret < 0) {
+			pr_info("[%s] freq_qos_update_request fail, cpu=%d freq=%d ret=%d",
+				__func__, i, 0, ret);
+		}
+	}
 
 	touch_boost_on = 0;
 
@@ -249,8 +253,13 @@ void _force_stop_touch_boost(void)
 	int i = 0, ret = -1;
 
 	disable_touch_boost_timer();
-	for (i = 0 ; i < policy_num ; i++)
+	for (i = 0 ; i < policy_num ; i++) {
 		ret = _update_userlimit_cpufreq_min(i, 0);
+		if (ret < 0) {
+			pr_info("[%s] freq_qos_update_request fail, cpu=%d freq=%d ret=%d",
+				__func__, i, 0, ret);
+		}
+	}
 
 	send_boost_cmd(TOUCH_BOOST_CPU, 0);
 	touch_boost_on = 0;
@@ -268,6 +277,10 @@ void touch_boost(void)
 		if (boost_opp_cluster[i] >= 0) {
 			freq_to_set[i].min = cpu_opp_tbl[i][boost_opp_cluster[i]];
 			ret = _update_userlimit_cpufreq_min(i, freq_to_set[i].min);
+			if (ret < 0) {
+				pr_info("[%s] freq_qos_update_request fail, cpu=%d freq=%d ret=%d",
+					__func__, i, freq_to_set[i].min, ret);
+			}
 		}
 	}
 
@@ -954,7 +967,7 @@ PROC_FOPS_RW(boost_down);
 
 static int __init touch_boost_init(void)
 {
-	int cpu_num = 0, num = 0, cpu = 0, i = 0, handle = 0, ret = 0;
+	int cpu_num = 0, num = 0, cpu = 0, i = 0, error = 0, ret = 0;
 	struct proc_dir_entry *parent = NULL;
 	struct proc_dir_entry *lt_dir = NULL;
 	struct cpufreq_policy *policy;
@@ -1000,7 +1013,9 @@ static int __init touch_boost_init(void)
 	init_waitqueue_head(&ktchboost.wq);
 	atomic_set(&ktchboost.event, 0);
 
-	handle = input_register_handler(&dbs_input_handler);
+	error = input_register_handler(&dbs_input_handler);
+	if (error)
+		pr_info("[%s] input_register_handler fail, error: %d", __func__, error);
 
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
