@@ -129,6 +129,7 @@ struct mtk_dp_intf {
 struct mtk_dp_intf_resolution_cfg {
 	unsigned int clksrc;
 	unsigned int con1;
+	unsigned int clk;
 };
 
 enum TVDPLL_CLK {
@@ -481,63 +482,78 @@ static const struct mtk_dp_intf_resolution_cfg mt6989_resolution_cfg[SINK_MAX] =
 static const struct mtk_dp_intf_resolution_cfg mt6991_resolution_cfg[SINK_MAX] = {
 	[SINK_640_480] = {
 					.clksrc = MT6991_TVDPLL_D16,
-					.con1 = 0x840F81F8
+					.con1 = 0x840F81F8,
+					.clk = 37125
 				},
 	[SINK_800_600] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6991_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1280_720] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8416DFB4
+					.con1 = 0x8416DFB4,
+					.clk = 74250
 				},
 	[SINK_1280_960] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6991_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1280_1024] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6991_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_1920_1080] = {
 					.clksrc = MT6991_TVDPLL_D16,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 37125
 				},
 	[SINK_1920_1080_120] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 74250
 				},
 	[SINK_1080_2460] = {
 					.clksrc = MT6991_TVDPLL_D16,
-					.con1 = 0x821AC941
+					.con1 = 0x821AC941,
+					.clk = 37125
 				},
 	[SINK_1920_1200] = {
 					.clksrc = MT6991_TVDPLL_D16,
-					.con1 = 0x8217B645
+					.con1 = 0x8217B645,
+					.clk = 37125
 				},
 	[SINK_1920_1440] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6991_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 	[SINK_2560_1440] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x821293B1
+					.con1 = 0x821293B1,
+					.clk = 74250
 				},
 	[SINK_2560_1600] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8214A762
+					.con1 = 0x8214A762,
+					.clk = 74250
 				},
 	[SINK_3840_2160_30] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 74250
 				},
 	[SINK_3840_2160] = {
 					.clksrc = MT6991_TVDPLL_D4,
-					.con1 = 0x8216D89D
+					.con1 = 0x8216D89D,
+					.clk = 148500
 				}, //htotal = 1500  //con1 = 0x83109D89; //htotal = 1600
 	[SINK_7680_4320] = {
-					.clksrc = 0,
-					.con1 = 0
+					.clksrc = MT6991_TCK_26M,
+					.con1 = 0,
+					.clk = 26000
 				},
 };
 
@@ -886,13 +902,13 @@ void mtk_dp_inf_video_clock(struct mtk_dp_intf *dp_intf)
 				clk_apmixed_base + con0_reg, 1);
 		ret = clk_prepare_enable(dp_intf->pclk);
 		if (ret)
-			DDPMSG("%s clk_prepare_enable dp_intf->pclk: err=%d\n",
+			DPTXMSG("%s clk_prepare_enable dp_intf->pclk: err=%d\n",
 				__func__, ret);
 	}
 
 	ret = clk_set_parent(dp_intf->pclk, dp_intf->pclk_src[clksrc]);
 	if (ret)
-		DDPMSG("%s clk_set_parent dp_intf->pclk: err=%d\n",
+		DPTXMSG("%s clk_set_parent dp_intf->pclk: err=%d\n",
 			__func__, ret);
 
 	/* dptx vcore clk control */
@@ -900,7 +916,6 @@ void mtk_dp_inf_video_clock(struct mtk_dp_intf *dp_intf)
 		ret = clk_prepare_enable(dp_intf->vcore_pclk);
 		ret = clk_set_parent(dp_intf->vcore_pclk, dp_intf->pclk_src[clksrc]);
 	}
-
 
 	DPTXMSG("%s set pclk2 and src %d\n", __func__, clksrc);
 }
@@ -911,15 +926,15 @@ void mtk_dp_intf_prepare_clk(void)
 
 	ret = clk_prepare_enable(g_dp_intf->pclk);
 	if (ret < 0)
-		DDPMSG("%s Failed to enable pclk: %d\n",
+		DPTXMSG("%s Failed to enable pclk: %d\n",
 			__func__, ret);
 
 	ret = clk_set_parent(g_dp_intf->pclk, g_dp_intf->pclk_src[TCK_26M]);
 	if (ret < 0)
-		DDPMSG("%s Failed to clk_set_parent: %d\n",
+		DPTXMSG("%s Failed to clk_set_parent: %d\n",
 			__func__, ret);
 
-	DDPMSG("%s dpintf->pclk =  %ld\n",
+	DPTXMSG("%s dpintf->pclk =  %ld\n",
 		__func__, clk_get_rate(g_dp_intf->pclk));
 }
 EXPORT_SYMBOL(mtk_dp_intf_prepare_clk);
@@ -928,25 +943,47 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 					    struct cmdq_pkt *handle)
 {
 	struct mtk_dp_intf *dp_intf = comp_to_dp_intf(comp);
-	u32 dp_buf_sodi_high = 5295;
-	u32 dp_buf_sodi_low = 6561;
-	u32 dp_buf_preultra_high = 7874;
-	u32 dp_buf_preultra_low = 7655;
-	u32 dp_buf_ultra_high = 5687;
-	u32 dp_buf_ultra_low = 5468;
-	u32 dp_buf_urgent_high = 2625;
-	u32 dp_buf_urgent_low = 2406;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	unsigned int dp_buf_sodi_high, dp_buf_sodi_low;
+	unsigned int dp_buf_preultra_high, dp_buf_preultra_low;
+	unsigned int dp_buf_ultra_high, dp_buf_ultra_low;
+	unsigned int dp_buf_urgent_high, dp_buf_urgent_low;
+	unsigned int mmsys_clk, dp_clk; //{26000, 37125, 74250, 148500, 297000};
+	unsigned int twait = 12, twake = 5;
+	unsigned int fill_rate, consume_rate;
 
+	if (dp_intf->res >= SINK_MAX || dp_intf->res < 0) {
+		DPTXERR("%s:input res error: %d\n", __func__, dp_intf->res);
+		dp_intf->res = SINK_1920_1080;
+	}
 
-	DDPMSG("%s mode %s %dx%d@%dhz sodi_high %d sodi_low %d handle %p\n",
-		__func__,
-		dp_intf->mode.name,
-		dp_intf->mode.hdisplay,
-		dp_intf->mode.vdisplay,
-		drm_mode_vrefresh(&dp_intf->mode),
-		dp_buf_sodi_high,
-		dp_buf_sodi_low,
-		handle);
+	dp_clk = dp_intf->driver_data->video_clock_cfg->resolution_cfg[dp_intf->res].clk;
+	dp_clk = dp_clk > 0 ? dp_clk : 74250;
+	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000;
+	mmsys_clk = mmsys_clk > 0 ? mmsys_clk : 273000;
+
+	fill_rate = mmsys_clk * 4 / 8;
+	consume_rate = dp_clk * 4 / 8;
+	DPTXMSG("%s mmsys_clk=%d, dp_intf->res=%d, dp_clk=%d, fill_rate=%d, consume_rate=%d\n",
+		__func__, mmsys_clk, dp_intf->res, dp_clk, fill_rate, consume_rate);
+
+	dp_buf_sodi_high = (5940000 - twait * 100 * fill_rate / 1000 - consume_rate) * 30 / 32000;
+	dp_buf_sodi_low = (25 + twake) * consume_rate * 30 / 32000;
+
+	dp_buf_preultra_high = 36 * consume_rate * 30 / 32000;
+	dp_buf_preultra_low = 35 * consume_rate * 30 / 32000;
+
+	dp_buf_ultra_high = 26 * consume_rate * 30 / 32000;
+	dp_buf_ultra_low = 25 * consume_rate * 30 / 32000;
+
+	dp_buf_urgent_high = 12 * consume_rate * 30 / 32000;
+	dp_buf_urgent_low = 11 * consume_rate * 30 / 32000;
+
+	DPTXDBG("dp_buf_sodi_high=%d, dp_buf_sodi_low=%d, dp_buf_preultra_high=%d, dp_buf_preultra_low=%d\n",
+			dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
+
+	DPTXDBG("dp_buf_ultra_high=%d, dp_buf_ultra_low=%d dp_buf_urgent_high=%d, dp_buf_urgent_low=%d\n",
+			dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
 
 	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
 	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
