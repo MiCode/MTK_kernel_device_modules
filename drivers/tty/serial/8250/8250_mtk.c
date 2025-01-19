@@ -2790,7 +2790,7 @@ static int mtk8250_probe(struct platform_device *pdev)
 	uart.port.irq = irq;
 	uart.port.pm = mtk8250_do_pm;
 	uart.port.type = PORT_16550;
-	uart.port.flags = UPF_BOOT_AUTOCONF | UPF_FIXED_PORT;
+	uart.port.flags = UPF_BOOT_AUTOCONF | UPF_FIXED_PORT | UPF_NO_THRE_TEST;
 	uart.port.dev = &pdev->dev;
 	uart.port.iotype = UPIO_MEM32;
 	uart.port.regshift = 2;
