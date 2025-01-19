@@ -40,9 +40,11 @@ static bool aging_force_disable = true;
 #define IPI_TIMEOUT_MS	(200U)
 int mtk_vdisp_avs_ipi_send(struct mtk_vdisp_avs_ipi_data data)
 {
-	int ret = 0, ack = 0, i = 0;
-	struct mtk_ipi_device *ipidev;
+	int ret = 0;
 #if IS_ENABLED(CONFIG_ARM64)
+	int ack = 0, i = 0;
+	struct mtk_ipi_device *ipidev;
+
 	ipidev = vcp_get_ipidev(VDISP_FEATURE_ID);
 	if (!ipidev) {
 		VDISPDBG("vcp_get_ipidev fail");
