@@ -1899,7 +1899,7 @@ static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 	if (!mml) {
 		mml_err("[test]%s mml is NULL", __func__);
 		ret = false;
-		goto done;
+		return ret;
 	}
 
 	frm = mml_dump_read_data_lock(mml);
@@ -2834,7 +2834,7 @@ static ssize_t ut_write(struct file *filp, const char __user *buf, size_t size, 
 	cur.size_out1 = user_case.size_out1;
 	cur.mmlid = user_case.mmlid;
 
-	if (user_case.mmlid >= mml_max_sys || user_case.mmlid < 0) {
+	if (user_case.mmlid >= mml_max_sys) {
 		mml_err("[test] invalid user_case.mmlid:%d", user_case.mmlid);
 		return 0;
 	}

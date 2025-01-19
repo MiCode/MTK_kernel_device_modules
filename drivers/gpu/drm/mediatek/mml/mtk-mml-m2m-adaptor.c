@@ -2034,7 +2034,7 @@ static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2
 	if (snprintf(vdev->name, sizeof(vdev->name), "%s:m2m", MML_M2M_MODULE_NAME) <= 0){
 		dev_err(dev, "Failed to get the name of video device\n");
 		ret = PTR_ERR(vdev->name);
-		goto err_video_alloc;
+		goto err_m2m_init;
 	}
 	video_set_drvdata(vdev, mml);
 	v4l2_dev->m2m_vdev = vdev;
