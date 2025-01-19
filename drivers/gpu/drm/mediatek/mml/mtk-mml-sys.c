@@ -99,6 +99,11 @@ enum mml_aidsel_mode {
 
 struct mml_sys;
 
+struct debug_reg {
+	const char *name;
+	u16 offset;
+};
+
 struct mml_data {
 	int (*comp_inits[MML_COMP_TYPE_TOTAL])(struct device *dev,
 		struct mml_sys *sys, struct mml_comp *comp);
@@ -1093,6 +1098,28 @@ static void sys_debug_dump(struct mml_comp *comp)
 	}
 }
 
+static const struct debug_reg mt6991_ovl_debug_regs[] = {
+	{"OVL_DL_IN_RELAY1_SIZE   ",	0x264},
+	{"OVL_DLI_ASYNC1_STATUS0  ",	0x308},
+	{"OVL_DLI_ASYNC1_STATUS1  ",	0x30c},
+};
+
+static void sys_debug_dump_dl(struct mml_comp *comp)
+{
+	const u32 ovl_base = 0x32800000;
+	void *va = (void *)ioremap(ovl_base, 4096);
+	u32 value, i;
+
+	mml_err("dump ovlsys base %#010x", ovl_base);
+	for (i = 0; i < ARRAY_SIZE(mt6991_ovl_debug_regs); i++) {
+		value = readl(va + mt6991_ovl_debug_regs[i].offset);
+		mml_err("%s %#050x: %#010x",
+			mt6991_ovl_debug_regs[i].name, mt6991_ovl_debug_regs[i].offset, value);
+	}
+
+	iounmap((void *)va);
+}
+
 static void sys_debug_dump_fast_mml1(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
@@ -1226,6 +1253,7 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991 = {
 	.dump = &sys_debug_dump,
 	.dump_fast = &sys_debug_dump_fast_mml1,
 	.reset = &sys_reset_current,
+	.dump_dl = &sys_debug_dump_dl,
 };
 
 static const struct mml_comp_debug_ops sys_debug_ops_mt6991_mml0 = {

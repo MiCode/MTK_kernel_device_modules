@@ -843,6 +843,9 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_hw_op(path->mmlsys2, pw_enable, cfg->info.mode);
 	mml_clock_unlock(cfg->mml);
 
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+		call_dbg_op(path->mmlsys, dump_dl);
+
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_dbg_op(comp, dump);
