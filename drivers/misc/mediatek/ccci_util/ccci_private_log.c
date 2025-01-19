@@ -506,10 +506,10 @@ int ccci_dump_write(unsigned int buf_type, unsigned int flag, const char *fmt, .
 					write_len);
 		}
 		actual_write = write_len;
-		ptr->data_size += actual_write;
-		if (ptr->data_size > ptr->buf_size)
+		if ((ptr->data_size + actual_write) > ptr->buf_size)
 			ptr->data_size = ptr->buf_size + 1;
-
+		else
+			ptr->data_size = ptr->data_size + actual_write;
 		ptr->write_pos = (ptr->write_pos + actual_write)
 							&(ptr->buf_size-1);
 	}
@@ -688,8 +688,7 @@ static ssize_t ccci_dump_fops_read(struct file *file, char __user *buf,
 				read_pos =
 					user_info->read_idx[index];
 			}
-			available = ptr->data_size
-				- user_info->read_idx[index];
+			available = ptr->data_size - user_info->read_idx[index];
 			if (available == 0)
 				continue;
 			read_len = left < available ? left : available;
