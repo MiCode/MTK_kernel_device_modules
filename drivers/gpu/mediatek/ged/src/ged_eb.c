@@ -317,6 +317,11 @@ static void ged_eb_sysram_debug_data_write(void)
 						mtk_gpueb_sysram_read(
 							SYSRAM_GPU_EB_LOG_DUMP_TIME_TARGET + cur_read_p);
 					break;
+				case EB_PREOC:
+					dbg_data[i] =
+						mtk_gpueb_sysram_read(
+							SYSRAM_GPU_EB_LOG_DUMP_PREOC + cur_read_p);
+					break;
 				default:
 					dbg_data[i] =
 						mtk_gpueb_sysram_read(
@@ -348,6 +353,9 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case EB_DEBUG_COUNT:
 				trace_GPU_DVFS__EBRB_DEBUG(dbg_data);
+				break;
+			case EB_PREOC:
+				trace_GPU_DVFS__EBRB_PREOC(dbg_data);
 				break;
 			default:
 				trace_GPU_DVFS__Policy__EB_RINBUFFER(
@@ -402,6 +410,9 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case EB_DEBUG_COUNT:
 				trace_GPU_DVFS__EBRB_DEBUG(dbg_data);
+				break;
+			case EB_PREOC:
+				trace_GPU_DVFS__EBRB_PREOC(dbg_data);
 				break;
 			default:
 				trace_GPU_DVFS__Policy__EB_RINBUFFER(
