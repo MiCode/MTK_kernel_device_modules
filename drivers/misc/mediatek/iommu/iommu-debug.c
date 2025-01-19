@@ -824,9 +824,10 @@ static void report_custom_fault(
 	/* Only MM_IOMMU support fault callback */
 	support_tf_fn = (smmu_v3_enable ? (smmu_type == MM_SMMU) : (type == MM_IOMMU));
 	if (support_tf_fn) {
-		pr_info("error, tf report larb-port:(%u--%u), idx:%d\n",
-			port_list[idx].larb_id,
-			port_list[idx].port_id, idx);
+		pr_info("error, tf report larb-port:(%u--%u):%s, idx:%d\n",
+			port_list[idx].larb_id, port_list[idx].port_id,
+			(port_list[idx].name != NULL ? port_list[idx].name : "NULL"),
+			idx);
 
 		if (port_list[idx].enable_tf &&
 			m4u_data->m4u_cb[idx].fault_fn)
