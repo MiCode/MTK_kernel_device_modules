@@ -58,6 +58,16 @@ config DEVAPC_MT6768
 	  This driver is combined with DEVAPC_ARCH_COMMON for
 	  common handle flow.
 
+config DEVAPC_MT6781
+	tristate "Mediatek MT6781 Device APC driver"
+	select DEVICE_MODULES_MTK_DEVAPC
+	select DEVAPC_ARCH_COMMON
+	help
+	  Say yes here to enable support Mediatek MT6781
+	  Device APC driver.
+	  This driver is combined with DEVAPC_ARCH_COMMON for
+	  common handle flow.
+
 config DEVAPC_MT6833
 	tristate "Mediatek MT6833 Device APC driver"
 	select DEVICE_MODULES_MTK_DEVAPC

@@ -981,6 +981,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/devapc/device-apc-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/devapc/device-apc-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
+    "drivers/soc/mediatek/devapc/device-apc-mt6781.ko": "mt6781",
     "drivers/soc/mediatek/devapc/device-apc-mt6833.ko": "mt6833",
     "drivers/soc/mediatek/devapc/device-apc-mt6853.ko": "mt6853",
     "drivers/soc/mediatek/devapc/device-apc-mt6877.ko": "mt6877",
@@ -1468,6 +1469,19 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
+
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6761.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6765.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6768.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6833.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6853.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6877.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6879.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6895.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")

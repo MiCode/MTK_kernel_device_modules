@@ -27,6 +27,11 @@ obj-$(CONFIG_DEVAPC_MT6768) += device-apc-mt6768.o
 device-apc-mt6768-$(CONFIG_DEVAPC_MT6768) += devapc-mt6768.o
 endif
 
+ifneq ($(wildcard $(srctree)/$(src)/devapc-mt6781.c),)
+obj-$(CONFIG_DEVAPC_MT6781) += device-apc-mt6781.o
+device-apc-mt6781-$(CONFIG_DEVAPC_MT6781) += devapc-mt6781.o
+endif
+
 ifneq ($(wildcard $(srctree)/$(src)/devapc-mt6833.c),)
 obj-$(CONFIG_DEVAPC_MT6833) += device-apc-mt6833.o
 device-apc-mt6833-$(CONFIG_DEVAPC_MT6833) += devapc-mt6833.o
