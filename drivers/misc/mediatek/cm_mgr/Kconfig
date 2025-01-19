@@ -109,3 +109,11 @@ config MTK_CM_MGR_MT6991
 	  this option, dram opp level will be changed which will depended
 	  on power table.
 	  If unsure, say N.
+
+config MTK_CM_MGR_MT6993
+    tristate "MTK CM_MGR for MT6993"
+    help
+      This kernel config can be used to enable CM_MGR MT6993. When enable
+      this option, dram opp level will be changed which will depended
+      on power table.
+      If unsure, say N.
