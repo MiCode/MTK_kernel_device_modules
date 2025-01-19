@@ -51,7 +51,7 @@ free_dinfo:
 	}
 	ret = -ENOMEM;
 out:
-	return 0;
+	return ret;
 }
 
 static void mdw_rv_sw_deinit(struct mdw_device *mdev)

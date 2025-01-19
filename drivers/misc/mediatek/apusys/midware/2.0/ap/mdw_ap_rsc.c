@@ -648,7 +648,7 @@ static int mdw_rsc_add_dev(struct apusys_device *dev)
 	d->lock = mdw_rsc_lock_dev;
 	d->unlock = mdw_rsc_unlock_dev;
 	/* create kthd */
-	d->thd = kthread_run(mdw_sched_dev_routine, d, thd_name);
+	d->thd = kthread_run(mdw_sched_dev_routine, d, "%s", thd_name);
 
 	goto out;
 
