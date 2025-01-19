@@ -155,6 +155,9 @@ static u32 slbc_total_ceil_n;
 static u32 slbc_sspm_major_ver;
 static u32 slbc_sspm_minor_ver;
 static u32 slbc_sspm_patch_ver;
+static u32 slbc_ipic_ret; /* ipic debug info */
+static u32 slbc_ipic_uid; /* ipic debug info */
+static u32 slbc_ipic_type; /* ipic debug info */
 static int debug_level;
 static int uid_ref[UID_MAX];
 static int slbc_mic_num = 3;
@@ -162,6 +165,8 @@ static int slbc_inner = 5;
 static int slbc_outer = 5;
 static int gid_ref[GID_MAX];
 static int gid_vld_cnt[GID_MAX];
+static u64 slbc_ipic_start_ts; /* ipic debug info */
+static u64 slbc_ipic_end_ts; /* ipic debug info */
 
 static u64 req_val_count;
 static u64 rel_val_count;
@@ -1673,6 +1678,11 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	slbc_pmu_6 = slbc_sram_read(SLBC_PMU_6);
 	slbc_cg_pri = slbc_sram_read(SLBC_CG_PRIORITY);
 	slbc_total_ceil_n = slbc_sram_read(SLBC_TOTAL_CEIL);
+	slbc_ipic_start_ts = (u64)slbc_sram_read(SLBC_IPIC_START_TS_L) | ((u64)slbc_sram_read(SLBC_IPIC_START_TS_H) << 32);
+	slbc_ipic_end_ts = (u64)slbc_sram_read(SLBC_IPIC_END_TS_L) | ((u64)slbc_sram_read(SLBC_IPIC_END_TS_H) << 32);
+	slbc_ipic_uid = slbc_sram_read(SLBC_IPIC_UID);
+	slbc_ipic_type = slbc_sram_read(SLBC_IPIC_TYPE);
+	slbc_ipic_ret = slbc_sram_read(SLBC_IPIC_RET);
 
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
@@ -1719,17 +1729,22 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "outer %x\n", slbc_outer);
 	seq_printf(m, "cg_priority %d\n", slbc_cg_pri);
 	seq_printf(m, "total_ceil %d\n", slbc_total_ceil_n);
+	seq_printf(m, "slbc_ipic_start_ts %llu\n", slbc_ipic_start_ts);
+	seq_printf(m, "slbc_ipic_end_ts %llu\n", slbc_ipic_end_ts);
+	seq_printf(m, "slbc_ipic_type %u\n", slbc_ipic_type);
+	seq_printf(m, "slbc_ipic_uid %u\n", slbc_ipic_uid);
+	seq_printf(m, "slbc_ipic_ret %u\n", slbc_ipic_ret);
 	if (slbc_all_cache_mode) {
 		seq_puts(m, "gid         ");
-		for (i = 0; i < UID_MAX; i++)
+		for (i = 0; i < GID_MAX; i++)
 			seq_printf(m, "%3d", i);
 		seq_puts(m, "\n");
 		seq_puts(m, "gid_ref     ");
-		for (i = 0; i < UID_MAX; i++)
+		for (i = 0; i < GID_MAX; i++)
 			seq_printf(m, "%3d", gid_ref[i]);
 		seq_puts(m, "\n");
 		seq_puts(m, "gid_vld_cnt ");
-		for (i = 0; i < UID_MAX; i++)
+		for (i = 0; i < GID_MAX; i++)
 			seq_printf(m, "%3d", gid_vld_cnt[i]);
 		seq_puts(m, "\n");
 	}
@@ -2423,14 +2438,6 @@ static int slbc_suspend(struct device *dev)
 	return 0;
 }
 
-static int slbc_resume(struct device *dev)
-{
-#if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-	slbc_suspend_resume_notify(0);
-#endif /* CONFIG_MTK_SLBC_IPI */
-	return 0;
-}
-
 static int slbc_suspend_cb(struct device *dev)
 {
 	int i;
@@ -2464,11 +2471,17 @@ static int slbc_suspend_cb(struct device *dev)
 	return 0;
 }
 
-static int slbc_resume_cb(struct device *dev)
+static int slbc_resume(struct device *dev)
 {
 	int i;
 	int sid;
 
+	/* enable SSPM-side SLC task */
+#if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
+	slbc_suspend_resume_notify(0);
+#endif /* CONFIG_MTK_SLBC_IPI */
+
+	/* check if suspend SLB users release SLB */
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
 		if (sid != SID_NOT_FOUND)
@@ -2501,7 +2514,6 @@ static const struct dev_pm_ops slbc_pm_ops = {
 	.suspend = slbc_suspend,
 	.resume = slbc_resume,
 	.suspend_late = slbc_suspend_cb,
-	.resume_early = slbc_resume_cb,
 };
 
 static const struct of_device_id slbc_of_match[] = {

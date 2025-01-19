@@ -84,6 +84,13 @@
 #define SLBC_CG_PRIORITY                0xD0
 #define SLBC_DCC_COUNT                  0xD4
 #define SLBC_DCC_CTRL                   0xD8
+#define SLBC_IPIC_START_TS_L            0xDC
+#define SLBC_IPIC_START_TS_H            0xE0
+#define SLBC_IPIC_END_TS_L              0xE4
+#define SLBC_IPIC_END_TS_H              0xE8
+#define SLBC_IPIC_TYPE                  0xEC
+#define SLBC_IPIC_UID                   0xF0
+#define SLBC_IPIC_RET                   0xF4
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)
