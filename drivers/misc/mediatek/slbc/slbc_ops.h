@@ -38,9 +38,6 @@
 /* SLC all cache mode magic num */
 #define SLC_DATA_MAGIC		0x51ca11ca
 
-/* maximum number of GID */
-#define GID_MAX				64
-
 /* GID settings */
 #define GS_M	BIT(0)
 #define GS_K	BIT(1)
@@ -143,6 +140,9 @@ enum slc_ach_uid {
 	ID_DBI,
 	ID_NPU_ADL_DC,
 	ID_NPU,
+	ID_VENC_EC,
+	ID_SMMU_H,
+	ID_DUMMY, /* add new user before dummy user */
 	ID_MAX,
 };
 
@@ -173,6 +173,7 @@ struct slbc_data {
 };
 
 struct slbc_gid_data {
+	bool slb_like;
 	unsigned int sign;
 	unsigned int buffer_fd;
 	unsigned int producer;
@@ -180,6 +181,8 @@ struct slbc_gid_data {
 	unsigned int height;	//unit: pixel
 	unsigned int width;	//unit: pixel
 	unsigned int dma_size;	//unit: MB
+	unsigned int max_size;	//unit: MB
+	unsigned int min_size;	//unit: MB
 	unsigned int bw;	//unit: MBps
 	unsigned int fps;	//unit: frames per sec
 	unsigned int flag;
