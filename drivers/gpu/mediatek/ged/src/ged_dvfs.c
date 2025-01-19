@@ -2582,30 +2582,26 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-	} else if ((flag & 0xFFFF0000) == 0x55660000) {
+	} else if ((flag & 0xFFF00000) == 0x55600000) {
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
-			// reset default
-			set_gpu_pre_throttle(0x27BC86AA,2);
-			set_gpu_pre_throttle_opp(0x27BC86AA,2);
+			set_gpu_pre_throttle(0x27BC86AA, (flag & 0x000F0000) >> 16);
+			set_gpu_pre_throttle_opp(0x27BC86AA, (flag & 0x000F0000) >> 16);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000,2);
+				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000, (flag & 0x000F0000) >> 16);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
-				if (ged_get_max_freq_in_opp() > 1430) {
-					// set 1.6 preferred opp.
-					set_gpu_pre_throttle_opp((flag & 0x000000FF)+6,2);
-				} else {
-					// set preferred opp.
-					set_gpu_pre_throttle_opp((flag & 0x000000FF)-1,2);
-				}
+				// set preferred opp.
+				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1, (flag & 0x000F0000) >> 16);
 			}
 		}
-		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d / freq: %d",
-			__func__, __LINE__, (flag & 0x0000FFFF),
+		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle 1 temp: %d opp: %d freq: %d, 2 temp: %d opp: %d freq: %d",
+			__func__, __LINE__, (flag & 0x000FFFFF),
+			get_gpu_pre_throttle_temp(1), get_gpu_pre_throttle_opp(1),
+			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp(1)),
 			get_gpu_pre_throttle_temp(2), get_gpu_pre_throttle_opp(2),
 			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp(2)));
 #endif
