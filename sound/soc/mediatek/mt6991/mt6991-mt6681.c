@@ -1153,6 +1153,14 @@ SND_SOC_DAILINK_DEFS(dspplayback15,
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 #endif
 #endif
+SND_SOC_DAILINK_DEFS(hostless_i2sin3,
+	DAILINK_COMP_ARRAY(COMP_CPU("Hostless I2SIN3 DAI")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(hostless_i2sout5,
+	DAILINK_COMP_ARRAY(COMP_CPU("Hostless I2SOUT5 DAI")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 
 static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 	/* Front End DAI links */
@@ -2337,6 +2345,26 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 	},
 #endif
 #endif
+	{
+		.name = "Hostless_I2SIN3",
+		.stream_name = "Hostless_I2SIN3",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(hostless_i2sin3),
+	},
+	{
+		.name = "Hostless_I2SOUT5",
+		.stream_name = "Hostless_I2SOUT5",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(hostless_i2sout5),
+	},
 };
 
 static struct snd_soc_card mt6991_mt6681_soc_card = {

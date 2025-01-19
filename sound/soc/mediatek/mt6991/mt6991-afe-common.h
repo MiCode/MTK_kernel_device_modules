@@ -130,6 +130,8 @@ enum {
 	MT6991_DAI_TDM_DPTX,
 	MT6991_DAI_HOSTLESS_LPBK,
 	MT6991_DAI_HOSTLESS_FM,
+	MT6991_DAI_HOSTLESS_I2SIN3,
+	MT6991_DAI_HOSTLESS_I2SOUT5,
 	MT6991_DAI_HOSTLESS_HW_GAIN_AAUDIO,
 	MT6991_DAI_HOSTLESS_SRC_AAUDIO,
 	MT6991_DAI_HOSTLESS_SPEECH,
@@ -651,6 +653,9 @@ struct mt6991_afe_private {
 	int ap_dmic;
 	unsigned int audio_r_miso1_enable;
 	unsigned int miso_only;
+
+	/* fmi2s gpio mode for A/B */
+	int fmi2s_gpio_mode;
 
 	/* add for vs1 voter */
 	/* adda dl/ul is on */
