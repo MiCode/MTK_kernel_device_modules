@@ -42,6 +42,59 @@ static struct dpmaif_clk_node g_clk_tbs[] = {
 	{ NULL, NULL},
 };
 
+static int drv_sram_init_v1(void)
+{
+	unsigned int reg_value = 0;
+	unsigned int count = 0;
+
+	/* clr SRAM 2/6/7 */
+	/* 2 */
+	reg_value = (1 << (8 + 2)) | (0xFFFF << 16);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
+
+	reg_value = (0x5FF << 12) | (1 << 31);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
+	/* polling status */
+	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
+		if (count++ >= 1600000) {
+			CCCI_ERROR_LOG(0, TAG, "[%s] error: 1st reg timeout\n", __func__);
+			return HW_REG_TIME_OUT;
+		}
+	}
+
+	/* 6 */
+	reg_value = (1 << (8 + 6)) | (0xFFFF << 16);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
+
+	reg_value = (0x443 << 12) | (1 << 31);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
+	/* polling status */
+	count = 0;
+	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
+		if (count++ >= 1600000) {
+			CCCI_ERROR_LOG(0, TAG, "[%s] error: 2nd reg timeout\n", __func__);
+			return HW_REG_TIME_OUT;
+		}
+	}
+
+	/* 7 */
+	reg_value = (1 << (8 + 7)) | (0xFFFF << 16);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
+
+	reg_value = (0x177 << 12) | (1 << 31);
+	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
+	/* polling status */
+	count = 0;
+	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
+		if (count++ >= 1600000) {
+			CCCI_ERROR_LOG(0, TAG, "[%s] error: 3rd reg timeout\n", __func__);
+			return HW_REG_TIME_OUT;
+		}
+	}
+	return 0;
+}
+
+
 static void drv_sram_init(void)
 {
 	unsigned int value;
@@ -135,16 +188,31 @@ static void drv_md_hw_bus_remap(void)
 	DPMA_WRITE_AO_MISC_SRAM(NRL2_DPMAIF_MISC_AO_REMAP_BANK4_MAP5_7, value);
 }
 
-static void drv3_common_hw_init(void)
+static int drv3_common_hw_init(void)
 {
-	drv_sram_init();
+	unsigned int reg_val;
+	int ret = 0;
+
+	if (g_plat_inf == 6993) {
+		/* P2 mode */
+		reg_val = DPMA_READ_PD_MD_MISC(DPMAIF_AO_DL_MODE_SEL);
+		reg_val &= (~(1 << 0));
+		reg_val |= (1 << 2);
+		DPMA_WRITE_PD_MD_MISC(DPMAIF_AO_DL_MODE_SEL, reg_val);
+		/* SRAM init setting */
+		ret = drv_sram_init_v1();
+		if (ret)
+			return ret;
+	} else
+		drv_sram_init();
 
 	/*Set HW CG dis*/
 	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_CG_EN, 0x7F);
 
-	drv_md_hw_bus_remap();
+	if (g_plat_inf != 6993) // for 6993, md hw remap is moved to MD side
+		drv_md_hw_bus_remap();
 
-	if (g_plat_inf == 6985 || g_plat_inf == 6989)
+	if (g_plat_inf == 6985 || g_plat_inf == 6989 || g_plat_inf == 6993)
 		/* this bit24 is used to mask irq2's isr to irq1 */
 		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L1TIMR0,
 				((1<<9)|(1<<10)|(1<<15)|(1<<16)|(1<<24)));
@@ -157,6 +225,7 @@ static void drv3_common_hw_init(void)
 		DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_AO_RW, 0xFF);
 	else
 		DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW, 0xFF);
+	return ret;
 }
 
 void ccci_drv3_dl_set_bid_maxcnt(unsigned int cnt)
@@ -1036,8 +1105,12 @@ static bool drv3_dpmaif_check_power_down(void)
 
 static int drv3_start(void)
 {
+	int ret;
+
 	drv3_infra_ao_com_set();
-	drv3_common_hw_init();
+	ret = drv3_common_hw_init();
+	if (ret)
+		return ret;
 	return drv3_intr_hw_init();
 }
 
