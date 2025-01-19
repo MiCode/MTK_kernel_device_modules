@@ -25,6 +25,7 @@
 #if IS_ENABLED(CONFIG_PROC_FS)
 /* name of the proc entry */
 #define	PROC_GPU_UTILIZATION "gpu_utilization"
+#define	PROC_GPU_LOADING "gpu_loading"
 static DEFINE_MUTEX(gpu_utilization_lock);
 #endif
 
@@ -374,12 +375,51 @@ static int mtk_dvfs_gpu_utilization_show(struct seq_file *m, void *v)
 }
 DEFINE_PROC_SHOW_ATTRIBUTE(mtk_dvfs_gpu_utilization);
 
+static int mtk_dvfs_gpu_loading_show(struct seq_file *m, void *v)
+{
+	struct kbase_device *kbdev = (struct kbase_device *)mtk_common_get_kbdev();
+	unsigned int cur_opp_idx = 0;
+	unsigned int utilisation = 0, totalLoading = 0;
+	unsigned int curFreq = 0, maxFreq = 0;
+	struct kbasep_pm_metrics diff;
+	struct kbasep_pm_metrics first;
+
+	kbase_pm_get_dvfs_metrics(kbdev, &first, &diff);
+	usleep_range(100000, 100001);
+	kbase_pm_get_dvfs_metrics(kbdev, &first, &diff);
+
+#if MALI_USE_CSF
+	utilisation = (100 * diff.time_busy[0]) /
+		max(diff.time_busy[0]+ diff.time_idle[0], 1u);
+#else
+	utilisation = (100 * diff.time_busy) /
+	max(diff.time_busy+ diff.time_idle, 1u);
+
+#endif
+
+	cur_opp_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+	curFreq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, cur_opp_idx);
+	maxFreq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, 0);
+
+	if (maxFreq == 0)
+		totalLoading = utilisation;
+	else
+		totalLoading = curFreq * utilisation / maxFreq;
+
+	seq_printf(m, "curLoad=%u, curFreq=%u, maxFreq=%u, totalLoad=%u\n",
+		utilisation, curFreq, maxFreq, totalLoading);
+
+	return 0;
+}
+DEFINE_PROC_SHOW_ATTRIBUTE(mtk_dvfs_gpu_loading);
+
 int mtk_dvfs_procfs_init(struct kbase_device *kbdev, struct proc_dir_entry *parent)
 {
 	if (IS_ERR_OR_NULL(kbdev))
 		return -1;
 
 	proc_create(PROC_GPU_UTILIZATION, 0440, parent, &mtk_dvfs_gpu_utilization_proc_ops);
+	proc_create(PROC_GPU_LOADING, 0440, parent, &mtk_dvfs_gpu_loading_proc_ops);
 
 	return 0;
 }
@@ -390,6 +430,7 @@ int mtk_dvfs_procfs_term(struct kbase_device *kbdev, struct proc_dir_entry *pare
 		return -1;
 
 	remove_proc_entry(PROC_GPU_UTILIZATION, parent);
+	remove_proc_entry(PROC_GPU_LOADING, parent);
 
 	return 0;
 }
