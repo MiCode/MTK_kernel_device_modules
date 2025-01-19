@@ -493,7 +493,7 @@ static void __mt_gpufreq_vgpu_set_mode(unsigned int mode)
 	}
 }
 
-static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, unsigned int volt_new)
+static void __gpufreq_volt_switch(unsigned int volt_old, unsigned int volt_new)
 {
 	unsigned int vsram_volt_new, vsram_volt_old;
 	int ret = GPUFREQ_SUCCESS;
@@ -502,12 +502,15 @@ static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, u
 
 	GPUFREQ_LOGD("volt_new = %d, volt_old = %d\n", volt_new, volt_old);
 
+	mutex_lock(&gpufreq_lock);
+
 	vsram_volt_new = __gpufreq_get_vsram_by_vgpu(volt_new);
 	vsram_volt_old = __gpufreq_get_vsram_by_vgpu(volt_old);
 
 		/* voltage scaling */
 	ret = __gpufreq_volt_scale_gpu(
 		volt_old, volt_new, vsram_volt_old, vsram_volt_new);
+
 	if (unlikely(ret)) {
 		GPUFREQ_LOGE("fail to scale Vgpu: (%d->%d), Vsram_gpu: (%d->%d)",
 			volt_old, volt_new, vsram_volt_old, vsram_volt_new);
@@ -515,6 +518,8 @@ static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, u
 		g_gpu.cur_volt = volt_new;
 		g_gpu.cur_vsram = vsram_volt_new;
 	}
+
+	mutex_unlock(&gpufreq_lock);
 }
 
 /*
@@ -562,26 +567,6 @@ void mt_gpufreq_update_volt_interpolation(void)
 }
 
 /*
- * switch voltage and vsram via PMIC
- */
-static void _gpufreq_volt_switch_without_vsram_gpu(
-		unsigned int vgpu_old, unsigned int vgpu_new)
-{
-	unsigned int vsram_gpu_new, vsram_gpu_old;
-
-	vgpu_new = VOLT_NORMALIZATION(vgpu_new);
-
-	vsram_gpu_new = __gpufreq_get_vsram_by_vgpu(vgpu_new);
-	vsram_gpu_old = __gpufreq_get_vsram_by_vgpu(vgpu_old);
-
-	__gpufreq_volt_scale_gpu(
-			vgpu_old,
-			vgpu_new,
-			vsram_gpu_old,
-			vsram_gpu_new);
-}
-
-/*
  * API : update OPP and switch back to default voltage setting
  */
 void mt_gpufreq_restore_default_volt(void)
@@ -610,7 +595,7 @@ void mt_gpufreq_restore_default_volt(void)
 
 	__gpufreq_set_springboard();
 
-	__mt_gpufreq_volt_switch_without_vsram_volt(g_gpu.cur_volt,
+	__gpufreq_volt_switch(g_gpu.cur_volt,
 		g_gpu.working_table[g_gpu.cur_oppidx].volt);
 
 	mutex_unlock(&ptpod_lock);
@@ -706,7 +691,7 @@ unsigned int mt_gpufreq_update_volt(unsigned int pmic_volt[], unsigned int array
 
 	/* update volt if powered */
 	if (__gpufreq_get_power_state() && !g_fixed_freq_volt_state) {
-		_gpufreq_volt_switch_without_vsram_gpu(
+		__gpufreq_volt_switch(
 			g_gpu.cur_volt,
 			signed_table[g_gpu.cur_oppidx].volt);
 

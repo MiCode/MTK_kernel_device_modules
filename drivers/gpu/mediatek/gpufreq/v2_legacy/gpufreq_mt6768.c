@@ -517,7 +517,7 @@ void mt_gpufreq_disable_by_ptpod(void)
 }
 EXPORT_SYMBOL(mt_gpufreq_disable_by_ptpod);
 
-static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, unsigned int volt_new)
+static void __gpufreq_volt_switch(unsigned int volt_old, unsigned int volt_new)
 {
 	unsigned int vsram_volt_new, vsram_volt_old;
 	int ret = GPUFREQ_SUCCESS;
@@ -526,9 +526,10 @@ static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, u
 
 	GPUFREQ_LOGD("volt_new = %d, volt_old = %d\n", volt_new, volt_old);
 
+	mutex_lock(&gpufreq_lock);
+
 	vsram_volt_new = __gpufreq_get_vsram_by_vgpu(volt_new);
 	vsram_volt_old = __gpufreq_get_vsram_by_vgpu(volt_old);
-
 		/* voltage scaling */
 	ret = __gpufreq_volt_scale_gpu(
 		volt_old, volt_new, vsram_volt_old, vsram_volt_new);
@@ -539,6 +540,8 @@ static void __mt_gpufreq_volt_switch_without_vsram_volt(unsigned int volt_old, u
 		g_gpu.cur_volt = volt_new;
 		g_gpu.cur_vsram = vsram_volt_new;
 	}
+
+	mutex_unlock(&gpufreq_lock);
 }
 
 /*
@@ -570,7 +573,7 @@ void mt_gpufreq_restore_default_volt(void)
 
 	__gpufreq_set_springboard();
 
-	__mt_gpufreq_volt_switch_without_vsram_volt(g_gpu.cur_volt,
+	__gpufreq_volt_switch(g_gpu.cur_volt,
 		g_gpu.working_table[g_gpu.cur_oppidx].volt);
 
 	mutex_unlock(&ptpod_lock);
