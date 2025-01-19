@@ -276,16 +276,16 @@ static void lcm_panel_init(struct lcm *ctx)
 
 	switch (mode_id) {
 	case FHD_60:
-		push_table(ctx, cmd_set_fps_60hz, ARRAY_SIZE(cmd_set_fps_60hz), 0);
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
 	case FHD_90:
-		push_table(ctx, cmd_set_fps_90hz, ARRAY_SIZE(cmd_set_fps_90hz), 0);
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
 	case FHD_120:
-		push_table(ctx, cmd_set_fps_120hz, ARRAY_SIZE(cmd_set_fps_120hz), 0);
+		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
 		break;
 	default:
-		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
+		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
 		break;
 	}
 }
@@ -612,7 +612,22 @@ static int mode_switch(struct drm_panel *panel,
 		struct drm_connector *connector, unsigned int cur_mode,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
 {
-	return 1;
+	int ret = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
+
+	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
+
+	if (drm_mode_vrefresh(m) == 120)
+		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
+	else if (drm_mode_vrefresh(m) == 90)
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
+	else if (drm_mode_vrefresh(m) == 60)
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
+	else
+		ret = 1;
+
+	return ret;
 }
 
 #if defined(CONFIG_MTK_PANEL_EXT)
