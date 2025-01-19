@@ -86,6 +86,8 @@ enum {
 	SLP_STATUS_DBG,
 	SLP_SUSPEND,
 	SLP_RESUME,
+	SLP_WFI_WAKE_LOCK,
+	SLP_WFI_WAKE_UNLOCK,
 };
 
 struct vcp_regs {

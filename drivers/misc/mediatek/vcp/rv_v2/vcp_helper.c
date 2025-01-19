@@ -1245,6 +1245,12 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
 		}
+		if (value == 222) {
+			ipi_data.cmd = SLP_WFI_WAKE_LOCK;
+			ipi_data.feature = RTOS_FEATURE_ID;
+			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		}
 		if (ret != IPI_ACTION_DONE)
 			pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
 	}
@@ -1268,6 +1274,15 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 			vcp_deregister_feature(RTOS_FEATURE_ID);
 		if (value == 333) {
 			ipi_data.cmd = SLP_WAKE_UNLOCK;
+			ipi_data.feature = RTOS_FEATURE_ID;
+			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+
+			if (ret != IPI_ACTION_DONE)
+				pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
+		}
+		if (value == 222) {
+			ipi_data.cmd = SLP_WFI_WAKE_UNLOCK;
 			ipi_data.feature = RTOS_FEATURE_ID;
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
@@ -1567,11 +1582,12 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 			timetick = arch_timer_read_counter();
 			cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
 			cmd.ipi_time_l = timetick & 0xFFFFFFFF;
-
 			ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
 				PIN_OUT_SIZE_TEST_0, 0);
 
-			pr_notice("[VCP] times: %d tick: %llu\n", i, timetick);
+			mdelay(3);
+			vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
+			pr_notice("[VCP] times: %d tick: %llu core0_status 0x%x core1_status 0x%x\n", i, timetick, readl(R_CORE0_STATUS), readl(R_CORE1_STATUS));
 
 			timetick = arch_timer_read_counter();
 			cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
@@ -1580,10 +1596,13 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 			ret = mtk_ipi_send(mmup_get_ipidev(), IPI_OUT_TEST_1, 0, &cmd,
 				PIN_OUT_SIZE_TEST_1, 0);
 
-			pr_notice("[MMUP] times: %d tick: %llu\n", i, timetick);
+			mdelay(3);
+			vcp_wait_core_stop_timeout(VCP_CORE_TOTAL);
+			pr_notice("[MMUP] times: %d tick: %llu core0_status 0x%x core1_status 0x%x\n", i, timetick, readl(R_CORE0_STATUS), readl(R_CORE1_STATUS));
 
-			udelay(1000);
 		}
+		mdelay(5);
+
 		break;
 	case IPI_VCP_PBFR:
 		cmd.type = IPI_VCP_PBFR;
