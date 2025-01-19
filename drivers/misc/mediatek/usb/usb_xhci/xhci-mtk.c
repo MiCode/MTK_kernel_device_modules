@@ -370,7 +370,6 @@ static void xhci_mtk_procfs_exit(struct xhci_hcd_mtk *mtk)
 	proc_remove(mtk->root);
 }
 
-#if 0
 static void xhci_mtk_snd_connect(struct snd_usb_audio *chip)
 {
 	struct xhci_hcd *xhci;
@@ -410,7 +409,6 @@ static struct snd_usb_platform_ops snd_ops = {
 	.connect_cb = xhci_mtk_snd_connect,
 	.disconnect_cb = xhci_mtk_snd_disconnect,
 };
-#endif
 
 /*
  * workaround: usb3.2 gen1 isoc rx hw issue
@@ -983,7 +981,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 	pm_runtime_put_autosuspend(dev);
 	pm_runtime_forbid(dev);
 
-	//snd_usb_register_platform_ops(&snd_ops);
+	snd_usb_register_platform_ops(&snd_ops);
 	xhci_mtk_trace_init(dev);
 
 	return 0;
@@ -1074,7 +1072,7 @@ static void xhci_mtk_remove(struct platform_device *pdev)
 	pm_runtime_put_noidle(dev);
 	pm_runtime_set_suspended(dev);
 
-	//snd_usb_unregister_platform_ops();
+	snd_usb_unregister_platform_ops();
 	xhci_mtk_trace_deinit(dev);
 }
 
