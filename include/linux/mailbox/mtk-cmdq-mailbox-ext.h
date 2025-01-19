@@ -38,6 +38,7 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 #define CMDQ_PREDUMP_MS(timeout_ms)	\
 	((timeout_ms == CMDQ_NO_TIMEOUT) ? CMDQ_PREDUMP_DEFAULT_MS : timeout_ms / 5)
 
+#define CMDQ_HW_MAX			4
 #define CMDQ_THR_MAX_COUNT		32
 
 #define CMDQ_INST_SIZE			8 /* instruction is 64-bit */
@@ -93,6 +94,7 @@ enum cmdq_code {
 	CMDQ_CODE_JUMP = 0x10,
 	CMDQ_CODE_WFE = 0x20,
 	CMDQ_CODE_POLL_SLEEP = 0x30,
+	CMDQ_CODE_POLL_SLEEP_MASK = 0x31,
 	CMDQ_CODE_EOC = 0x40,
 
 	/* these are pseudo op code defined by SW */
@@ -131,6 +133,24 @@ enum cmdq_log_type {
 	CMDQ_PWR_CHECK = 0,
 };
 
+enum cmdq_dbg_type {
+	CMDQ_DBG_ALL = BIT(0),
+	CMDQ_DBG_TFA_READ = BIT(1),
+	CMDQ_DBG_NORMAL_SECURE = BIT(2),
+};
+
+enum cmdq_irq_type {
+	mtk_cmdq = 0,
+	mtk_cmdq_vm1 = 1,
+	mtk_cmdq_vm2 = 2,
+	mtk_cmdq_vm3 = 3,
+	mtk_cmdq_vm4 = 4,
+	mtk_cmdq_vm5 = 5,
+	mtk_cmdq_vm6 = 6,
+	mtk_cmdq_mpu = 7,
+	mtk_cmdq_aux = 8,
+	mtk_cmdq_irq_max = 9,
+};
 
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
 
@@ -217,6 +237,7 @@ struct cmdq_pkt {
 	size_t			create_instr_cnt;
 	bool			timeout_dump_hw_trace;
 	bool		support_spr3_timer;
+	bool		support_poll_sleep_bit32;
 	u32				debug_id;
 };
 
@@ -410,7 +431,7 @@ struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev);
 s32 cmdq_mbox_set_hw_id(void *cmdq);
 s32 cmdq_mbox_reset_hw_id(void *cmdq);
 s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id);
-s32 cmdq_pkt_set_spr3_timer(struct cmdq_pkt *pkt);
+s32 cmdq_pkt_set_capability(struct cmdq_pkt *pkt);
 s32 cmdq_thread_set_vm(struct cmdq_thread *thread);
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
@@ -425,6 +446,7 @@ void cmdq_get_mminfra_cb(cmdq_mminfra_power cb);
 void cmdq_get_mminfra_gce_cg_cb(cmdq_mminfra_gce_cg cb);
 void cmdq_dump_usage(void);
 bool cmdq_get_support_vm(u8 hwid);
+bool cmdq_get_hw_trace_vm(u8 hwid);
 void cmdq_check_thread_complete(struct mbox_chan *chan);
 u8 cmdq_get_irq_long_times(void *chan);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
@@ -432,6 +454,14 @@ u32 cmdq_get_tf_high_addr(void *chan);
 u32 cmdq_get_tf_high_addr_by_dev(struct device *dev);
 #endif
 void cmdq_event_dump_and_clr(void *chan);
+void cmdq_event_timeout_dump_and_clr(void *chan, u16 event_id);
 u32 cmdq_mbox_get_tpr(void *chan);
+dma_addr_t cmdq_reg_shift_addr(dma_addr_t addr, void *chan);
+dma_addr_t cmdq_reg_revert_addr(dma_addr_t addr, void *chan);
+unsigned long long cmdq_get_gce_mminfra(void *chan);
+int cmdq_get_gce_shift_bit(void *chan);
+bool cmdq_get_append_by_event(void *chan);
 bool cmdq_is_hw_trace_thread(struct mbox_chan *chan);
+bool cmdq_get_hw_trace_built_in(u8 hwid);
+void cmdq_set_hw_trace_built_in(u8 hwid, bool built_in);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

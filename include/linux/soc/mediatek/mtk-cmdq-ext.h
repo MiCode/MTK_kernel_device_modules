@@ -104,6 +104,7 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 #define CMDQ_CPR_HW_TRACE_BUILT_IN_START		0x8184
 #define CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE		736
 #define CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START		0x8000
+#define CMDQ_CPR_HW_TRACE_BUILT_IN_VM_HOST_START		0x80f0
 
 /* Compatible with 32bit division and mold operation */
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
@@ -140,25 +141,22 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 #define CMDQ_TICK_TO_US(_t)		(DO_COMMON_DIV_CMDQ(_t, 26))
 #define CMDQ_TICK_DIFF(_b, _e)		(_e > _b ? _e - _b : ~_b + 1 + _e)
 
-extern int gce_shift_bit;
 extern unsigned long long gce_mminfra;
 extern bool gce_in_vcp;
 extern bool cpr_not_support_cookie;
 extern bool skip_poll_sleep;
-extern bool append_by_event;
-extern bool cmdq_tfa_read_dbg;
-extern bool hw_trace_built_in[2];
-extern bool hw_trace_vm;
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
 extern int cmdq_ut_count;
 extern int cmdq_ut_sleep_time;
 extern int cmdq_proc_debug_off;
 extern int cmdq_print_debug;
+extern u8 gce_hw_cnt;
 
-#define CMDQ_REG_SHIFT_ADDR(addr) (((addr) + gce_mminfra) >> gce_shift_bit)
-#define CMDQ_REG_REVERT_ADDR(addr) (((addr) << gce_shift_bit) - gce_mminfra)
-
+#define CMDQ_REG_SHIFT_ADDR(addr) cmdq_reg_shift_addr(addr, NULL)
+#define CMDQ_REG_REVERT_ADDR(addr) cmdq_reg_revert_addr(addr, NULL)
+#define CMDQ_REG_SHIFT_ADDR_BY_CORE(addr, chan) cmdq_reg_shift_addr(addr, chan)
+#define CMDQ_REG_REVERT_ADDR_BY_CORE(addr, chan) cmdq_reg_revert_addr(addr, chan)
 
 /* GCE provide 32/64 bit General Purpose Register (GPR)
  * use as data cache or address register

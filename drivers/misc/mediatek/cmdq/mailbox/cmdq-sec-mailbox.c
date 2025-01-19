@@ -31,8 +31,10 @@
 static atomic_t m4u_init = ATOMIC_INIT(0);
 #endif
 
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 #include <mmprofile.h>
+#endif
 #endif
 
 #define CMDQ_SEC_DRV_NAME	"cmdq_sec_mbox"
@@ -125,6 +127,7 @@ struct cmdq_sec_shared_mem {
 	u32		size;
 };
 
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 struct cmdq_mmp_event {
 	mmp_event cmdq_root;
@@ -139,7 +142,7 @@ struct cmdq_mmp_event {
 	mmp_event wait;
 	mmp_event wait_done;
 };
-
+#endif
 #endif
 
 struct cmdq_sec {
@@ -170,7 +173,9 @@ struct cmdq_sec {
 	struct cmdq_sec_shared_mem	*shared_mem;
 	struct cmdq_sec_context		*context;
 	struct iwcCmdqCancelTask_t	cancel;
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 	struct cmdq_mmp_event		mmp;
+#endif
 	struct mutex mbox_mutex;
 	spinlock_t		pkvm_lock;
 };
@@ -241,6 +246,7 @@ cmdq_sec_init_context_base(struct cmdq_sec_context *context)
 
 static inline void cmdq_mmp_init(struct cmdq_sec *cmdq)
 {
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	char name[32];
 	int len;
@@ -271,6 +277,7 @@ static inline void cmdq_mmp_init(struct cmdq_sec *cmdq)
 		"wait_done");
 	mmprofile_enable_event_recursive(cmdq->mmp.cmdq, 1);
 	mmprofile_start(1);
+#endif
 #endif
 }
 
@@ -418,6 +425,7 @@ s32 cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 	struct cmdq_operand left, right;
 	u32 xpr;
 	s32 err;
+	unsigned long long gce_mminfra;
 
 	if (!thread->occupied || !cmdq->shared_mem) {
 		cmdq_err("shared_mem is NULL pkt:%p thrd-idx:%u cmdq:%p",
@@ -445,6 +453,7 @@ s32 cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 	right.value = 1;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, xpr, &left, &right);
 
+	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
 	if (!cpr_not_support_cookie)
 		err = cmdq_pkt_write_indriect(pkt, NULL,
 			cmdq->shared_mem->mva + CMDQ_SEC_SHARED_THR_CNT_OFFSET +
@@ -568,10 +577,11 @@ static bool cmdq_sec_irq_handler(
 	list_for_each_entry_safe(task, temp, &thread->task_list, list_entry) {
 		if (!done)
 			break;
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 		mmprofile_log_ex(cmdq->mmp.irq, MMPROFILE_FLAG_PULSE,
 			thread->idx, (unsigned long)task->pkt);
+#endif
 #endif
 
 		cmdq_sec_task_done(task, 0);
@@ -589,10 +599,11 @@ static bool cmdq_sec_irq_handler(
 
 	if (err && cur_task) {
 		struct cmdq_cb_data cb_data;
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 		mmprofile_log_ex(cmdq->mmp.irq, MMPROFILE_FLAG_PULSE,
 			thread->idx, (unsigned long)cur_task->pkt);
+#endif
 #endif
 
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
@@ -681,10 +692,11 @@ static void cmdq_sec_irq_notify_work(struct work_struct *work_item)
 	bool stop = false, empty = true;
 
 	mutex_lock(&cmdq->exec_lock);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.notify, MMPROFILE_FLAG_START,
 		cmdq->hwid, cmdq->notify_run);
+#endif
 #endif
 
 	for (i = 0; i < CMDQ_MAX_SECURE_THREAD_COUNT; i++) {
@@ -733,10 +745,11 @@ static void cmdq_sec_irq_notify_work(struct work_struct *work_item)
 		cmdq_mbox_stop(cmdq->clt);
 		cmdq_mbox_disable(cmdq->clt->chan);
 	}
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.notify, MMPROFILE_FLAG_END,
 		cmdq->hwid, cmdq->notify_run);
+#endif
 #endif
 
 	mutex_unlock(&cmdq->exec_lock);
@@ -748,18 +761,20 @@ static void cmdq_sec_irq_notify_callback(struct cmdq_cb_data cb_data)
 
 	if (!work_pending(&cmdq->irq_notify_work)) {
 		queue_work(cmdq->notify_wq, &cmdq->irq_notify_work);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 		mmprofile_log_ex(cmdq->mmp.queue_notify, MMPROFILE_FLAG_PULSE,
 			cmdq->hwid, 1);
 #endif
+#endif
 
 	} else {
 		cmdq_msg("last notify callback working");
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 		mmprofile_log_ex(cmdq->mmp.queue_notify, MMPROFILE_FLAG_PULSE,
 			cmdq->hwid, 0);
+#endif
 #endif
 
 	}
@@ -908,6 +923,8 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	struct cmdq_pkt_buffer *buf, *last;
 	u32 size = CMDQ_CMD_BUFFER_SIZE, offset = 0, *instr;
 	u32 i;
+	int gce_shift_bit;
+	struct cmdq_client *cl = task->pkt->cl;
 
 	if (!data->mtee) {
 		iwc_msg = (struct iwcCmdqMessage_t *)context->iwc_msg;
@@ -963,6 +980,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	if (data->mtee)
 		iwc_msg->command.sec_id = data->sec_id;
 #endif
+	gce_shift_bit = cmdq_get_gce_shift_bit(cl->chan);
 	last = list_last_entry(&task->pkt->buf, typeof(*last), list_entry);
 	list_for_each_entry(buf, &task->pkt->buf, list_entry) {
 		if (buf == last)
@@ -1115,10 +1133,11 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 
 	mem_ex1 = iwc_msg->iwcex_available & (1 << CMDQ_IWC_MSG1);
 	mem_ex2 = iwc_msg->iwcex_available & (1 << CMDQ_IWC_MSG2);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.invoke, MMPROFILE_FLAG_START,
 		thrd_idx, task ? (unsigned long)task->pkt : 0);
+#endif
 #endif
 
 	cmdq->sec_invoke = sched_clock();
@@ -1157,10 +1176,11 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	else
 		cmdq_log("%s execute done cmdq:%p task:%lx cost:%lluus",
 			__func__, cmdq, (unsigned long)task, cost);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.invoke, MMPROFILE_FLAG_END,
 		thrd_idx, task ? (unsigned long)task->pkt : 0);
+#endif
 #endif
 
 	if (err)
@@ -1282,10 +1302,11 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 
 	cmdq_log("task:%p iwc_cmd:%u cmdq:%p thrd-idx:%u tgid:%u",
 		task, iwc_cmd, cmdq, thrd_idx, current->tgid);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.submit, MMPROFILE_FLAG_PULSE,
 		thrd_idx, (unsigned long)pkt);
+#endif
 #endif
 
 	cmdq_trace_begin("%s_%u", __func__, iwc_cmd);
@@ -1657,8 +1678,10 @@ static int cmdq_sec_mbox_send_data(struct mbox_chan *chan, void *data)
 		(struct cmdq_sec_data *)pkt->sec_data;
 	struct cmdq_sec_thread *thread =
 		(struct cmdq_sec_thread *)chan->con_priv;
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 	struct cmdq_sec *cmdq =
 		container_of(thread->chan->mbox, struct cmdq_sec, mbox);
+#endif
 	struct cmdq_sec_task *task;
 
 	if (!sec_data) {
@@ -1671,10 +1694,11 @@ static int cmdq_sec_mbox_send_data(struct mbox_chan *chan, void *data)
 	if (!task)
 		return -ENOMEM;
 	pkt->task_alloc = true;
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.queue, MMPROFILE_FLAG_PULSE,
 		thread->idx, (unsigned long)pkt);
+#endif
 #endif
 
 	task->pkt = pkt;
@@ -1766,7 +1790,7 @@ static void cmdq_sec_mbox_shutdown(struct mbox_chan *chan)
 
 	thread->occupied = false;
 }
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 void cmdq_sec_mmp_wait(struct mbox_chan *chan, void *pkt)
 {
@@ -1787,7 +1811,7 @@ void cmdq_sec_mmp_wait_done(struct mbox_chan *chan, void *pkt)
 		thread->idx, (unsigned long)pkt);
 }
 EXPORT_SYMBOL(cmdq_sec_mmp_wait_done);
-
+#endif
 #endif
 
 static bool cmdq_sec_mbox_last_tx_done(struct mbox_chan *chan)

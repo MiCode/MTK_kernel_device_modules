@@ -325,9 +325,10 @@ int cmdq_sec_pkt_wait_complete(struct cmdq_pkt *pkt)
 	u8 cnt = 0;
 	s32 thread_id = cmdq_sec_mbox_chan_id(client->chan);
 	u32 timeout_ms = cmdq_mbox_get_thread_timeout((void *)client->chan);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	cmdq_sec_mmp_wait(client->chan, pkt);
+#endif
 #endif
 
 	cmdq_sec_mbox_enable(client->chan);
@@ -360,9 +361,10 @@ int cmdq_sec_pkt_wait_complete(struct cmdq_pkt *pkt)
 	} while (1);
 
 	cmdq_sec_mbox_disable(client->chan);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	cmdq_sec_mmp_wait_done(client->chan, pkt);
+#endif
 #endif
 
 	return 0;

@@ -29,12 +29,13 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #include <soc/mediatek/smi.h>
 #endif
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
+#endif
 
-#define CMDQ_MBOX_NUM			2
-#define CMDQ_HW_MAX			2
+#define CMDQ_MBOX_NUM			4
 #define CMDQ_RECORD_NUM			512
 #define CMDQ_BUF_RECORD_NUM		60
 #define CMDQ_USER_BUF_RECORD_NUM	128
@@ -140,6 +141,7 @@ struct cmdq_util {
 	u8	cmdq_irq_thrd_history[CMDQ_HW_MAX][CMDQ_IRQ_HISTORY_MAX_SIZE];
 	u16	cmdq_irq_thrd_history_idx[CMDQ_HW_MAX];
 	char	*buf_rec_buffer;
+	u32		total_length;
 };
 static struct cmdq_util	util;
 
@@ -175,7 +177,7 @@ void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx)
 {
 	u16 arr_idx;
 
-	if(thread_idx >= CMDQ_THR_MAX_COUNT || hwid >= CMDQ_HW_MAX)
+	if(thread_idx >= CMDQ_THR_MAX_COUNT || hwid >= gce_hw_cnt)
 		return;
 
 	arr_idx = util.cmdq_irq_thrd_history_idx[hwid]++;
@@ -388,10 +390,10 @@ void cmdq_util_error_disable(u8 hwid)
 		unsigned long	nsec = 0;
 		char title[] = "[cmdq] first error kernel time:";
 
-		if (util.err[1 - hwid].record)
-			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.err[1 -
-				hwid].length + log_length * 2);
-		else
+		if (util.total_length) {
+			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.total_length + log_length * 2);
+			util.total_length += log_length * 2;
+		} else
 			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + log_length);
 
 		buf_va_end = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
@@ -433,6 +435,7 @@ s32 cmdq_util_error_save_lst(const char *format, va_list args, u8 hwid)
 		cmdq_log("hwid:%d size:%d over buf size:%d",
 			hwid, size, CMDQ_FIRST_ERR_SIZE - util.err[hwid].length);
 	util.err[hwid].length += size;
+	util.total_length += size;
 	spin_unlock_irqrestore(&util.err[hwid].lock, flags);
 
 	if (util.err[hwid].length >= CMDQ_FIRST_ERR_SIZE) {
@@ -451,7 +454,7 @@ s32 cmdq_util_error_save(const char *format, ...)
 	s32 enable;
 	u8 i = 0;
 
-	for (i = 0; i < CMDQ_HW_MAX; i++) {
+	for (i = 0; i < gce_hw_cnt; i++) {
 		enable = atomic_read(&util.err[i].enable);
 		if (enable < 0)
 			return -EFAULT;
@@ -474,7 +477,7 @@ static int cmdq_util_status_print(struct seq_file *seq, void *data)
 	unsigned long	nsec = 0;
 	u32		i;
 
-	for (i = 0; i < CMDQ_HW_MAX; i++) {
+	for (i = 0; i < gce_hw_cnt; i++) {
 		if (util.err[i].length) {
 			sec = util.err[i].nsec;
 			nsec = do_div(sec, 1000000000);
@@ -605,7 +608,7 @@ void cmdq_util_buf_record_save(void)
 
 		sec = buf_rec->nsec;
 		nsec = do_div(sec, 1000000000);
-		for (i = 0; i < CMDQ_HW_MAX; i++) {
+		for (i = 0; i < gce_hw_cnt; i++) {
 			buf_va += scnprintf(buf_va, buf_va_end - buf_va,
 				"[%5llu.%06lu] hwid:%d ", sec, nsec, i);
 			for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
@@ -629,7 +632,7 @@ void cmdq_util_buf_record_aee_dump(unsigned long *vaddr, unsigned long *size)
 	if (cmdq_print_debug) {
 		char *buf_va, *buf_va_end;
 
-		buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.err[0].length + util.err[1].length);
+		buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + util.total_length);
 		buf_va_end = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
 		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", util.buf_rec_buffer);
 	}
@@ -718,7 +721,7 @@ bool cmdq_util_is_prebuilt_client(struct cmdq_client *client)
 {
 	s32 i;
 
-	for (i = 0; i < CMDQ_HW_MAX; i++)
+	for (i = 0; i < gce_hw_cnt; i++)
 		if (client == util.prebuilt_clt[i])
 			return true;
 	return false;
@@ -727,7 +730,7 @@ EXPORT_SYMBOL(cmdq_util_is_prebuilt_client);
 
 void cmdq_util_prebuilt_set_client(const u16 hwid, struct cmdq_client *client)
 {
-	if (hwid >= CMDQ_HW_MAX)
+	if (hwid >= gce_hw_cnt)
 		cmdq_err("invalid hwid:%u", hwid);
 	else
 		util.prebuilt_clt[hwid] = client;
@@ -917,7 +920,7 @@ s32 cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client)
 		return -EFAULT;
 	}
 
-	if (hwid >= CMDQ_HW_MAX) {
+	if (hwid >= gce_hw_cnt) {
 		cmdq_err("invalid hwid:%u", hwid);
 		return -EINVAL;
 	}
@@ -965,20 +968,28 @@ void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 		cmdq_pkt_destroy(trace->pkt);
 		trace->pkt = NULL;
 		trace->update = false;
-		hw_trace_built_in[hwid] = trace->built_in;
+		cmdq_set_hw_trace_built_in(hwid, trace->built_in);
 	}
 
 	if (unlikely(!trace->pkt)) {
 		struct cmdq_operand lop, rop;
-		s32 i;
-		s32 size = hw_trace_built_in[hwid]?
-			CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE : CMDQ_CPR_HW_TRACE_SIZE;
-		u16 cpr_start = hw_trace_built_in[hwid]?
-			CMDQ_CPR_HW_TRACE_BUILT_IN_START : CMDQ_CPR_HW_TRACE_START;
+		s32 i, size;
+		u16 cpr_start;
 
-		if (cmdq_get_support_vm(hwid) && hw_trace_built_in[hwid]) {
-			size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
-			cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+		if (cmdq_get_hw_trace_built_in(hwid)) {
+			if (cmdq_get_support_vm(hwid)) {
+				size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
+				if (cmdq_get_hw_trace_vm(hwid))
+					cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+				else
+					cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_HOST_START;
+			} else {
+				size = CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE;
+				cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_START;
+			}
+		} else {
+			size = CMDQ_CPR_HW_TRACE_SIZE;
+			cpr_start = CMDQ_CPR_HW_TRACE_START;
 		}
 
 		trace->pkt = cmdq_pkt_create(trace->clt);
@@ -989,7 +1000,7 @@ void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 		rop.value = 0;
 
 		for (i = 0; i < size; i++) {
-			if (hw_trace_built_in[hwid]) {
+			if (cmdq_get_hw_trace_built_in(hwid)) {
 				cmdq_pkt_assign_command(trace->pkt,
 					cpr_start + i, 0);
 				continue;
@@ -1005,7 +1016,7 @@ void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram)
 		}
 	}
 
-	if (!hw_trace_built_in[hwid])
+	if (!cmdq_get_hw_trace_built_in(hwid))
 		cmdq_pkt_finalize_loop(trace->pkt);
 	cmdq_pkt_flush_async(trace->pkt, NULL, NULL);
 }
@@ -1034,14 +1045,23 @@ void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram)
 	struct cmdq_hw_trace *trace;
 	u32 val[8];
 	s32 i, j;
-	s32 cpr_size = hw_trace_built_in[hwid]?
-		CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE : CMDQ_CPR_HW_TRACE_SIZE;
-	u16 cpr_start = hw_trace_built_in[hwid]?
-		CMDQ_CPR_HW_TRACE_BUILT_IN_START : CMDQ_CPR_HW_TRACE_START;
+	s32 cpr_size;
+	u16 cpr_start;
 
-	if (cmdq_get_support_vm(hwid) && hw_trace_built_in[hwid]) {
-		cpr_size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
-		cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+	if (cmdq_get_hw_trace_built_in(hwid)) {
+		if (cmdq_get_support_vm(hwid)) {
+			cpr_size = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_SIZE;
+			if (cmdq_get_hw_trace_vm(hwid))
+				cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_START;
+			else
+				cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_VM_HOST_START;
+		} else {
+			cpr_size = CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE;
+			cpr_start = CMDQ_CPR_HW_TRACE_BUILT_IN_START;
+		}
+	} else {
+		cpr_size = CMDQ_CPR_HW_TRACE_SIZE;
+		cpr_start = CMDQ_CPR_HW_TRACE_START;
 	}
 
 	if (hwid > util.mbox_cnt || !cmdq_hw_trace) {
@@ -1065,7 +1085,8 @@ void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram)
 		hwid, cpr_start, cpr_size);
 	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 	// DRAM
-	for (i = 0; dram && !hw_trace_built_in[hwid] && i < CMDQ_CPR_HW_TRACE_SIZE; i += 8) {
+	for (i = 0; dram && !cmdq_get_hw_trace_built_in(hwid) &&
+		i < CMDQ_CPR_HW_TRACE_SIZE; i += 8) {
 		for (j = 0; j < 8; j++)
 			val[j] = readl(trace->buf->va_base + (i + j) * 4);
 		cmdq_msg(
@@ -1107,9 +1128,7 @@ EXPORT_SYMBOL(cmdq_util_mminfra_cmd);
 
 void cmdq_util_enable_dbg(u32 id)
 {
-	if ((id < CMDQ_HW_MAX) && (atomic_cmpxchg(&cmdq_dbg_ctrl[id], 0, 1) == 0)) {
-		struct arm_smccc_res res;
-
+	if ((id < gce_hw_cnt) && (atomic_cmpxchg(&cmdq_dbg_ctrl[id], 0, 1) == 0)) {		struct arm_smccc_res res;
 		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], true);
 		arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_ENABLE_DEBUG, id,
 			0, 0, 0, 0, 0, &res);
@@ -1120,7 +1139,7 @@ EXPORT_SYMBOL(cmdq_util_enable_dbg);
 
 void cmdq_util_return_dbg(u32 id, u64 *dbg)
 {
-	if (id < CMDQ_HW_MAX) {
+	if (id < gce_hw_cnt) {
 		struct arm_smccc_res res1, res2;
 
 		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], true);
@@ -1170,7 +1189,7 @@ void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
 	u32 i, j;
 	struct cmdq_buf_record *buf_record_unit;
 
-	if(rows != CMDQ_HW_MAX || cols != CMDQ_THR_MAX_COUNT)
+	if(rows != gce_hw_cnt || cols != CMDQ_THR_MAX_COUNT)
 		return;
 
 	mutex_lock(&cmdq_buf_record_mutex);
@@ -1281,6 +1300,7 @@ EXPORT_SYMBOL(cmdq_util_track);
 
 void cmdq_util_dump_smi(void)
 {
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	int smi_hang;
@@ -1290,6 +1310,7 @@ void cmdq_util_dump_smi(void)
 #endif
 #else
 	cmdq_util_err("[WARNING]not enable SMI dump now");
+#endif
 #endif
 }
 EXPORT_SYMBOL(cmdq_util_dump_smi);
@@ -1308,11 +1329,13 @@ void cmdq_util_devapc_dump(void)
 }
 EXPORT_SYMBOL(cmdq_util_devapc_dump);
 
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static struct devapc_vio_callbacks devapc_vio_handle = {
 	.id = INFRA_SUBSYS_GCE,
 	.debug_dump = cmdq_util_devapc_dump,
 };
+#endif
 #endif
 
 void cmdq_util_dump_fast_mtcmos(void)
@@ -1464,7 +1487,7 @@ int cmdq_util_init(void)
 	cmdq_controller_set_fp(&controller_fp);
 	cmdq_helper_set_fp(&helper_fp);
 
-	for (i = 0; i < CMDQ_HW_MAX; i++) {
+	for (i = 0; i < gce_hw_cnt; i++) {
 		spin_lock_init(&util.err[i].lock);
 		util.err[i].buffer = vzalloc(CMDQ_FIRST_ERR_SIZE);
 		if (!util.err[i].buffer)
@@ -1495,12 +1518,16 @@ int cmdq_util_init(void)
 	if (exists)
 		dput(dir);
 
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
+#endif
 
 	memset(util.cmdq_irq_thrd_history, CMDQ_THR_MAX_COUNT, sizeof(util.cmdq_irq_thrd_history));
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_CMDQ, cmdq_util_buf_record_aee_dump);
+#endif
 	cmdq_msg("%s end", __func__);
 
 	return 0;
