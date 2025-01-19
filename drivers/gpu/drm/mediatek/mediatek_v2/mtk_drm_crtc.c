@@ -15887,18 +15887,18 @@ void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crt
 
 	cmdq_pkt_clear_event(pkt, spr_event);
 
-	set_gpr_mark =  pkt->cmd_buf_size;
 	// SPR3 = Targe
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, target);
+	set_gpr_mark =  pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	// GPR3 = diff
 	cmdq_pkt_assign_command(pkt, CMDQ_GPR_CNT_ID + CMDQ_GPR_R03, diff);
 	// record_mark : jump to if(TPR > GPR), else condition  ========> SPR2
-	else_jump_mark = pkt->cmd_buf_size;
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX2, 0); // go to else
+	else_jump_mark = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 	// record_mark : jump to wait for GPR timer event       ========> SPR3
-	wait_gpr_jump_mark = pkt->cmd_buf_size;
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX1, 0);
+	wait_gpr_jump_mark = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	lop.reg = true;
 	lop.idx = CMDQ_THR_SPR_IDX3;
@@ -15925,8 +15925,8 @@ void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crt
 		CMDQ_LESS_THAN);
 
 	// record mark : jump to end(skip wfe)
-	mark_1 = pkt->cmd_buf_size;
 	cmdq_pkt_jump_addr(pkt, 0);  //skip wfe
+	mark_1 = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	// else start
 	// set spr2 = else start
@@ -15966,8 +15966,8 @@ void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crt
 		CMDQ_LESS_THAN);
 
 	// record mark : jump to end(skip wfe)
-	mark_2 = pkt->cmd_buf_size;
 	cmdq_pkt_jump_addr(pkt, 0);  //skip wfe
+	mark_2 = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	// fix SPR3 assign value
 	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
@@ -15980,8 +15980,8 @@ void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crt
 
 	// wait spr event
 	cmdq_pkt_wfe(pkt, spr_event);
-	skip_save_spr_mark = pkt->cmd_buf_size;
 	cmdq_pkt_jump_addr(pkt, 0);  //skip save spr
+	skip_save_spr_mark = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	// fix jump address
 	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
