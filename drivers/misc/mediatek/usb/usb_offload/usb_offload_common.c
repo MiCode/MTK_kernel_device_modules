@@ -1915,19 +1915,28 @@ static int xhci_mtk_ep_ctx_control(struct xhci_hcd *xhci, struct xhci_virt_devic
 	return ret;
 }
 
-void dump_ring(struct xhci_ring *ring)
+static void xhci_mtk_ring_check(struct xhci_ring *ring)
 {
-	dma_addr_t first_trb, link_trb, point_to;
+	dma_addr_t first_dma, link_dma, point_dma;
+	struct xhci_segment *cur, *next;
+	union xhci_trb *link_trb;
 	int i;
 
+	cur = ring->first_seg;
 	for (i = 0; i < ring->num_segs; i++) {
-		first_trb = ring->first_seg->dma;
-		link_trb = ring->first_seg->dma + ((USB_OFFLOAD_TRBS_PER_SEGMENT - 1) * 16);
-		point_to = ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.segment_ptr;
-		USB_OFFLOAD_INFO("1st_trb:0x%llx link_trb:0x%llx point_to:0x%llx (high:0x%x low:0x%x)\n",
-			first_trb, link_trb, point_to,
-			ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].generic.field[1],
-			ring->first_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].generic.field[0]);
+		next = cur->next;
+		first_dma = cur->dma;
+		link_dma = cur->dma + ((USB_OFFLOAD_TRBS_PER_SEGMENT - 1) * 16);
+
+		/* set segment pointer of link trb again */
+		link_trb = &cur->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1];
+		link_trb->link.segment_ptr = cpu_to_le64(next->dma);
+
+		point_dma = link_trb->link.segment_ptr;
+		USB_OFFLOAD_INFO("cur:[start_trb:0x%llx end_trb:0x%llx point_to:0x%llx(high:0x%x low:0x%x)],"
+			" next:(start_trb:0x%llx)\n", first_dma, link_dma,
+			point_dma, link_trb->generic.field[1], link_trb->generic.field[0], next->dma);
+		cur = cur->next;
 	}
 }
 
@@ -1973,6 +1982,8 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	}
 	USB_OFFLOAD_INFO("[slot:%d ep:%d] new_ring:(phy:0x%llx) old_ring:(phy:0x%llx)\n",
 		slot_id, ep_id, new_ring->first_seg->dma, old_ring->first_seg->dma);
+	mdelay(5);
+	xhci_mtk_ring_check(new_ring);
 	virt_dev->eps[ep_id].new_ring = new_ring;
 
 	/* 2. update dequeue pointer of output ep context */
@@ -1985,7 +1996,6 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 		USB_OFFLOAD_ERR("fail to send RECONFIGURE_ENDPOINT\n");
 		goto error;
 	}
-	dump_ring(new_ring);
 	return ret;
 error:
 	USB_OFFLOAD_ERR("fail to reallocate, ring was still on AP viewed only\n");
