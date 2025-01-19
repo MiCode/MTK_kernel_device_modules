@@ -365,6 +365,19 @@ static struct fh_operation mcupm_ops_v1 = {
 	.ssc_disable = mcupm_ssc_disable_v1,
 };
 
+struct hdlr_data_v1 hdlr_data_6853 = {
+	.reg_tr = (void __iomem *)(0xC8 + 0x4),
+};
+static struct fh_hdlr mcupm_hdlr_6853 = {
+	.ops = &mcupm_ops_v1,
+	.data = &hdlr_data_6853,
+};
+static struct match mt6853_match = {
+	.name = "mediatek,mt6853-fhctl",
+	.hdlr = &mcupm_hdlr_6853,
+	.init = &mcupm_init_v1,
+};
+
 struct hdlr_data_v1 hdlr_data_6877 = {
 	.reg_tr = (void __iomem *)(0x90),
 };
@@ -457,6 +470,7 @@ static struct match mt6991_match = {
 /*mt6991 end*/
 
 static struct match *matches[] = {
+	&mt6853_match,
 	&mt6877_match,
 	&mt6885_match,
 	&mt6897_match,
