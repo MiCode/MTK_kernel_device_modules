@@ -64,3 +64,7 @@ s task_non_contending
 s task_tick_fair
 s update_load_avg
 s enqueue_top_rt_rq
+s find_idlest_cpu
+s load_balance
+s newidle_balance
+s update_misfit_status
