@@ -277,7 +277,7 @@ static int scmi_tinysys_protocol_init(const struct scmi_protocol_handle *ph)
 
 	pinfo->version = version;
 
-	return ph->set_priv(ph, pinfo);
+	return ph->set_priv(ph, pinfo, version);
 }
 
 const struct scmi_protocol scmi_tinysys_protocol = {
