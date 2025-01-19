@@ -1077,8 +1077,8 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register android_rvh_can_migrate_task failed\n");
 
-	//ret = register_trace_android_rvh_find_energy_efficient_cpu(
-	//		mtk_find_energy_efficient_cpu, NULL);
+	ret = register_trace_android_rvh_find_energy_efficient_cpu(
+			mtk_find_energy_efficient_cpu, NULL);
 	if (ret)
 		pr_info("register android_rvh_find_energy_efficient_cpu failed\n");
 
