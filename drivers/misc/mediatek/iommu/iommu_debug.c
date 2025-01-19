@@ -160,7 +160,7 @@ mtk_iommu_dump_callback_t iommu_mrdump_proc;
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #define MAX_STRING_SIZE			(256)
-#define MAX_IOMMU_MRDUMP_SIZE		(512*1024)
+#define MAX_IOMMU_MRDUMP_SIZE		(1023 * 1024)
 static char *iommu_mrdump_buffer;
 static int iommu_mrdump_size;
 #endif
