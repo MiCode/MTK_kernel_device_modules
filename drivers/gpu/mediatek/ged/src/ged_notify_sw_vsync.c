@@ -208,6 +208,9 @@ u64 ged_get_fallback_time(void)
 
 enum gpu_dvfs_policy_state ged_get_policy_state(void)
 {
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		g_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE);
+
 	return g_policy_state;
 }
 
@@ -218,7 +221,8 @@ enum gpu_dvfs_policy_state ged_get_prev_policy_state(void)
 
 void ged_set_policy_state(enum gpu_dvfs_policy_state state)
 {
-	g_policy_state = state;
+	if (!(is_fdvfs_enable() & POLICY_MODE_V2))
+		g_policy_state = state;
 }
 
 void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state)
@@ -417,12 +421,6 @@ void ged_eb_dvfs_frame_done_dump(void)
 	// loading
 	trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
 		0, 0, 0, 0, ged_dvfs_get_gpu_loading());
-
-	// sample code for APO
-	//if (is_fdvfs_enable() & POLICY_MODE_V2) {
-	//	trace_tracing_mark_write(5566, "t_min_gpu_target",
-	//		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr));
-	//}
 
 	trace_GPU_DVFS__Policy__Frame_based__Frequency(
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr),
@@ -1029,7 +1027,17 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 	if (g_apo_autosuspend_delay_ctrl == 0) {
 		trace_GPU_Power__Policy__APO_active_time(g_ns_gpu_predict_A_to_I_duration);
 		trace_GPU_Power__Policy__APO_idle_time(idle_time);
-
+		if (is_fdvfs_enable() & POLICY_MODE_V2) {
+			unsigned long long g_gpu_frame_time_ns_tmp;
+			g_gpu_frame_time_ns = g_ged_gpu_frame_time[0].target;
+			g_gpu_frame_time_ns_tmp = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr) * 1000;
+			for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
+				if (g_gpu_frame_time_ns_tmp <= g_ged_gpu_frame_time[i].margin) {
+					g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
+					break;
+				}
+			}
+		}
 		if (g_apo_legacy == GED_APO_LEGACY_VER1) {
 			if (g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target)
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
@@ -1108,12 +1116,14 @@ EXPORT_SYMBOL(ged_set_apo_autosuspend_delay_ms);
 void ged_get_gpu_frame_time(int frame_time)
 {
 	/* initialization */
-	g_gpu_frame_time_ns = g_ged_gpu_frame_time[0].target;
+	if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+		g_gpu_frame_time_ns = g_ged_gpu_frame_time[0].target;
 
-	for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
-		if (frame_time <= g_ged_gpu_frame_time[i].margin) {
-			g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
-			break;
+		for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
+			if (frame_time <= g_ged_gpu_frame_time[i].margin) {
+				g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
+				break;
+			}
 		}
 	}
 	trace_GPU_Power__Policy__APO_Frame_Time(g_gpu_frame_time_ns);
