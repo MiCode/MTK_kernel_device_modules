@@ -734,8 +734,6 @@ s32 cmdq_core_interpret_instruction(char *textBuf, s32 bufLen,
 				/* operator */
 				mdp_snprintf(reqLen, textBuf, bufLen, "%s ",
 					cmdq_core_parse_logic_sop(s_op));
-				if (unlikely(reqLen < 0))
-					reqLen = 0;
 				bufLen -= reqLen;
 				textBuf += reqLen;
 				/* arg_c_i */
