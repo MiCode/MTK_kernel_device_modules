@@ -38,9 +38,9 @@
 #define ROUND_N(X, N)   (((X) + ((N)-1)) & (~((N)-1)))    //only for N is exponential of 2
 #define CEIL_DIV(x, y) ((y) ? (((x) + (y) - 1) / (y)) : 0)
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
-#define NS_TO_MS(X) (div_u64(X, 1000000))
-#define NS_MOD_MS(X) ({u64 __X = (X); do_div(__X, 1000000);})
-#define MS_TO_NS(X) ((X) * 1000000)
+#define NS_TO_MS(X) (div_u64(X, NSEC_PER_MSEC))
+#define NS_MOD_MS(X) ({u64 __X = (X); do_div(__X, NSEC_PER_MSEC);})
+#define MS_TO_NS(X) ((X) * NSEC_PER_MSEC)
 // FOURCC_STR: fourcc to string
 #define FOURCC_STR(x) ((const char[]){(x) & 0xFF, ((x) >> 8) & 0xFF, ((x) >> 16) & 0xFF, ((x) >> 24) & 0xFF, 0})
 

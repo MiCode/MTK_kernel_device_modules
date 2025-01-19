@@ -500,6 +500,8 @@ static u64 mtk_vdec_ts_update_mode_and_timestamp(struct mtk_vcodec_ctx *ctx, u64
 	dst_cnt = v4l2_m2m_num_dst_bufs_ready(m2m_ctx); \
 	pair_cnt = MIN(src_cnt, dst_cnt); \
 }
+#define T_T "%lld.%06d" // time of ms.ns
+#define TMNS(x) NS_TO_MS(x), NS_MOD_MS(x) // ms, ns
 
 static unsigned int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 {
@@ -545,7 +547,7 @@ static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 	if (ctx->lpw_timer_wait) {
 		if (ctx->lpw_state == VDEC_LPW_WAIT) {
 			GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
-			mtk_lpw_debug(1, "[%d] timer timeup, switch lpw_state(%d) to DEC(%d)(pair cnt %d(%d,%d))",
+			mtk_lpw_debug(1, "[%d] timer timeup, switch lpw_state(%d) to DEC(%d)(pair cnt %u(%u,%u))",
 				ctx->id, ctx->lpw_state, VDEC_LPW_DEC, pair_cnt, src_cnt, dst_cnt);
 			ctx->lpw_state = VDEC_LPW_DEC;
 			need_trigger = true;
@@ -571,133 +573,131 @@ static void mtk_vdec_lpw_deinit_timer(struct mtk_vcodec_ctx *ctx)
 static void mtk_vdec_lpw_reset_start(struct mtk_vcodec_ctx *ctx)
 {
 	ctx->lpw_state = VDEC_LPW_DEC;
-	ctx->lpw_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
+	ctx->lpw_dec_start_cnt = 0;
+	ctx->max_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
+	ctx->in_start_group = true;
 	ctx->in_group = false;
-	ctx->lpw_start_not_get = true;
-	ctx->lpw_start_ts = ctx->lpw_last_disp_ts = 0;
-	ctx->lpw_is_pausing = false;
-	ctx->lpw_pause_time = 0;
-	ctx->start_dec_cnt = 0;
+	ctx->get_disped = false;
+	ctx->lpw_last_disp_ts = 0;
+	ctx->group_dec_cnt = 0;
+	ctx->put_disp_cnt = ctx->get_disped_cnt = 0;
 }
 
-static void mtk_vdec_lpw_set_pause(struct mtk_vcodec_ctx *ctx)
+static void mtk_vdec_lpw_put_disp(struct mtk_vcodec_ctx *ctx, u64 ts)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
+	ctx->put_disp_cnt++;
 
-	ctx->in_group = false;
-	ctx->lpw_is_pausing = true;
-
-	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
-}
-
-static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
-{
-	unsigned long flags;
-
-	if (!ctx->low_pw_mode)
-		return;
-
-	spin_lock_irqsave(&ctx->lpw_lock, flags);
-	if (ctx->lpw_start_not_get) {
-		ctx->lpw_start_jiffies = jiffies;
-		ctx->lpw_start_ts = ctx->lpw_last_disp_ts = ts;
-		ctx->lpw_start_not_get = false;
-	}
-	if (ctx->lpw_is_pausing) {
-		// pause start time should be last display time
-		ctx->lpw_pause_time += jiffies_to_nsecs(jiffies - ctx->lpw_last_disp_jiffies);
-		ctx->lpw_is_pausing = false;
-	}
-	ctx->start_dec_cnt++;
-	if (ts >= ctx->lpw_last_disp_ts)
+	if (ts > ctx->lpw_last_disp_ts && ctx->lpw_ts_diff != ts - ctx->lpw_last_disp_ts) {
+		mtk_lpw_debug(2, "[%d] update lpw_ts_diff from "T_T" to "T_T" (ts "T_T", lpw_last_disp_ts "T_T")",
+			ctx->id, TMNS(ctx->lpw_ts_diff), TMNS(ts - ctx->lpw_last_disp_ts),
+			TMNS(ts), TMNS(ctx->lpw_last_disp_ts));
 		ctx->lpw_ts_diff = ts - ctx->lpw_last_disp_ts;
+	}
 	ctx->lpw_last_disp_ts = MAX(ts, ctx->lpw_last_disp_ts);
-	ctx->lpw_last_disp_jiffies = jiffies;
 	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
-#define T_T "%lld.%06d" // time of ms.ns
-#define TMNS(x) NS_TO_MS(x), NS_MOD_MS(x) // ms, ns
+static void mtk_vdec_lpw_get_disped(struct mtk_vcodec_ctx *ctx, u64 ts, bool is_new_buf)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&ctx->lpw_lock, flags);
+	if (!ctx->get_disped && !is_new_buf)
+		ctx->get_disped = true;
+
+	if (ctx->get_disped)
+		ctx->get_disped_cnt++;
+
+	mtk_lpw_debug(8, "[%d] ts=%lld get_disped_cnt %d, get_disped %d is_new_buf %d",
+		ctx->id, ts, ctx->get_disped_cnt, ctx->get_disped, is_new_buf);
+	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
+}
+
 static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 {
 	u64 timeout = 0, group_time, dec_time, delay_time, limit_time; // ns
-	u64 limit_time_g, limit_time_s = 0, ts_diff_g, ts_diff_s, time_diff; // ns
+	unsigned int over_cnt = 0;
+	unsigned int max_buf_cnt = vb2_get_max_num_bufs(v4l2_m2m_get_dst_vq(ctx->m2m_ctx));
 	unsigned long curr_jiffies;
 	unsigned int limit_cnt = mtk_vdec_get_lpw_limit(ctx);
-	unsigned int delay_cnt = limit_cnt / 2;
+	unsigned int delay_cnt = MAX(1, limit_cnt / 2);
 	unsigned int op_rate = MAX(ctx->op_rate_adaptive, ctx->dec_params.operating_rate);
-	u64 op_diff = div_u64(1000000000, op_rate), op_diff_s; // ns
-	bool use_default = false, use_group = true;
+	u64 op_diff = (op_rate > 0) ? div_u64(NSEC_PER_SEC, op_rate) : 0; // ns
+	bool use_default = false;
 	unsigned long flags;
 
 	if (!ctx->low_pw_mode || ctx->dynamic_low_latency)
 		return;
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
-	if (ctx->lpw_state == VDEC_LPW_WAIT && !ctx->lpw_timer_wait) {
-		curr_jiffies = jiffies;
-		 if (time_before(curr_jiffies, ctx->group_start_jiffies)) {
-			group_time = MS_TO_NS(10) * ctx->group_dec_cnt; // dec_time default 10ms
-			mtk_lpw_debug(0, "[%d][warning] curr_time "T_T" < group_start_time "T_T" not valid, set dec_time to default 10 ms",
-				ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
-				TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)));
-		} else if (curr_jiffies == ctx->group_start_jiffies) {
-			group_time = jiffies_to_nsecs(1); // 1 tick
-			mtk_lpw_debug(1, "[%d] curr_time "T_T" == group_start_time "T_T", set group_time to 1 tick "T_T" ms",
-				ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
-				TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)), TMNS(group_time));
-		} else
-			group_time = jiffies_to_nsecs(curr_jiffies - ctx->group_start_jiffies);
 
-		ts_diff_g = ctx->lpw_ts_diff;
-		if (op_diff < ctx->lpw_ts_diff) {
-			mtk_lpw_debug(1, "[%d] ts diff for group "T_T" > op rate (%d) time "T_T" ms, use op time",
-				ctx->id, TMNS(ctx->lpw_ts_diff), op_rate, TMNS(op_diff));
-			ts_diff_g = op_diff;
-		}
-		dec_time = div_u64(group_time, ctx->group_dec_cnt);
-		delay_time = dec_time * delay_cnt;
-		limit_time_g = ts_diff_g * ctx->group_dec_cnt; // limit form group
+	// no need start timer
+	if (ctx->lpw_state != VDEC_LPW_WAIT || ctx->lpw_timer_wait) {
+		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
+		return;
+	}
 
-		ts_diff_s = ctx->lpw_last_disp_ts - ctx->lpw_start_ts;
-		if (!check_mul_overflow(op_diff, (u64)(ctx->start_dec_cnt - 1), &op_diff_s) && op_diff_s < ts_diff_s) {
-			mtk_lpw_debug(1, "[%d] ts diff from start "T_T" - "T_T" = "T_T" > op rate (%d) time "T_T" * (%d-1) = "T_T" ms, use op time",
-				ctx->id, TMNS(ctx->lpw_last_disp_ts), TMNS(ctx->lpw_start_ts), TMNS(ts_diff_s),
-				op_rate, TMNS(op_diff), ctx->start_dec_cnt, TMNS(op_diff_s));
-			ts_diff_s = op_diff_s;
-		}
-		time_diff = jiffies_to_nsecs(curr_jiffies - ctx->lpw_start_jiffies);
-		if (ts_diff_s > time_diff - ctx->lpw_pause_time + delay_time)
-			limit_time_s = ts_diff_s - (time_diff - ctx->lpw_pause_time) - delay_time; // limit from start
+	curr_jiffies = jiffies;
+	 if (time_before(curr_jiffies, ctx->group_start_jiffies)) {
+		group_time = MS_TO_NS(10) * ctx->group_dec_cnt; // dec_time default 10ms
+		mtk_lpw_debug(0, "[%d][warning] curr_time "T_T" < group_start_time "T_T" not valid, set dec_time to default 10 ms",
+			ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
+			TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)));
+	} else if (curr_jiffies == ctx->group_start_jiffies) {
+		group_time = jiffies_to_nsecs(1); // 1 tick
+		mtk_lpw_debug(1, "[%d] curr_time "T_T" == group_start_time "T_T", set group_time to 1 tick "T_T" ms",
+			ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
+			TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)), TMNS(group_time));
+	} else
+		group_time = jiffies_to_nsecs(curr_jiffies - ctx->group_start_jiffies);
 
-		if (limit_time_g >= limit_time_s) {
-			limit_time = limit_time_g;
-			use_group = true;
-		} else {
-			limit_time = limit_time_s;
-			use_group = false;
-		}
+	dec_time = div_u64(group_time, ctx->group_dec_cnt);
+	delay_time = dec_time * delay_cnt;
 
-		if (limit_time > delay_time && (limit_time - delay_time) <= MS_TO_NS(mtk_vdec_lpw_timeout))
-			timeout = limit_time - delay_time;
-		else {
-			timeout = MS_TO_NS(mtk_vdec_lpw_timeout);
-			use_default = true;
-		}
+	if (ctx->put_disp_cnt < ctx->get_disped_cnt) // overflow
+		over_cnt = UINT_MAX - (ctx->get_disped_cnt - ctx->put_disp_cnt);
+	else
+		over_cnt = ctx->put_disp_cnt - ctx->get_disped_cnt;
+	if (over_cnt > max_buf_cnt) {
+		mtk_lpw_debug(0, "[%d][warning] over_cnt %u > max count %u (put_disp_cnt %u, get_disped_cnt %u)",
+			ctx->id, over_cnt, max_buf_cnt, ctx->put_disp_cnt, ctx->get_disped_cnt);
+		over_cnt = 0;
+	}
+	if (over_cnt > 0)
+		over_cnt -= 1; // -1 for latency
+	limit_time = (u64)over_cnt * ctx->lpw_ts_diff;
+	if (op_diff > 0 && op_diff < ctx->lpw_ts_diff) { // = op rate > fps from timestamp
+		limit_time = (u64)over_cnt * op_diff;
+		mtk_lpw_debug(4, "[%d] op rate (%d,%d) time "T_T" ms < ts diff for group "T_T", use op time",
+			ctx->id, ctx->op_rate_adaptive, ctx->dec_params.operating_rate, TMNS(op_diff),
+			TMNS(ctx->lpw_ts_diff));
+	}
 
-		mtk_lpw_debug(1, "[%d] lpw_timer timeout %s "T_T" (g limit: "T_T" = "T_T" * %d, s limit: "T_T" = "T_T" - ("T_T" - "T_T") - "T_T", delay_time: "T_T" = "T_T" (= "T_T" / %d) * %d)",
-			ctx->id, use_default ? "default" : (use_group ? " group " : " start "), TMNS(timeout),
-			TMNS(limit_time_g), TMNS(ts_diff_g), ctx->group_dec_cnt,
-			TMNS(limit_time_s), TMNS(ts_diff_s),
-			TMNS(time_diff), TMNS(ctx->lpw_pause_time), TMNS(delay_time),
-			TMNS(delay_time), TMNS(dec_time), TMNS(group_time), ctx->group_dec_cnt, delay_cnt);
+	if (limit_time <= delay_time)
+		timeout = 0;
+	else if ((limit_time - delay_time) <= MS_TO_NS(mtk_vdec_lpw_timeout))
+		timeout = limit_time - delay_time;
+	else {
+		timeout = MS_TO_NS(mtk_vdec_lpw_timeout);
+		use_default = true;
+	}
 
-		if (timeout > 0) {
-			ctx->lpw_timer_wait = true;
-			mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(timeout));
-		}
+	mtk_lpw_debug(1, "[%d] lpw_timer timeout %s "T_T" (limit_time "T_T" = MIN[lpw_ts_diff "T_T", op_diff "T_T"] * over_cnt %u (= %u - %u -1), delay_time: "T_T" = "T_T" (= "T_T" / %d) * %d)",
+		ctx->id, use_default ? "default" : "ts calc", TMNS(timeout),
+		TMNS(limit_time), TMNS(ctx->lpw_ts_diff), TMNS(op_diff),
+		over_cnt, ctx->put_disp_cnt, ctx->get_disped_cnt,
+		TMNS(delay_time), TMNS(dec_time), TMNS(group_time), ctx->group_dec_cnt, delay_cnt);
+
+	if (timeout > 0) {
+		ctx->lpw_timer_wait = true;
+		mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(timeout));
+	} else {
+		mtk_lpw_debug(2, "[%d] calculate timer timeout = 0, directly switch lpw_state(%d) to DEC(%d)",
+			ctx->id, ctx->lpw_state, VDEC_LPW_DEC);
+		ctx->lpw_state = VDEC_LPW_DEC;
 	}
 	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
@@ -763,13 +763,13 @@ static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
 		mtk_vdec_lpw_switch_reset(ctx, false, debug_str);
 		has_switch = true;
 	} else if (pair_cnt >= limit_cnt) {
-		mtk_lpw_debug(1, "[%d] %s pair cnt %d(%d,%d) >= %d, switch lpw_state(%d) to DEC(%d)",
+		mtk_lpw_debug(1, "[%d] %s pair cnt %u(%u,%u) >= %d, switch lpw_state(%d) to DEC(%d)",
 			ctx->id, debug_str, pair_cnt, src_cnt, dst_cnt, limit_cnt,
 			ctx->lpw_state, VDEC_LPW_DEC);
 		ctx->lpw_state = VDEC_LPW_DEC;
 		has_switch = true;
 	} else
-		mtk_lpw_debug(4, "[%d] %s pair cnt %d(%d,%d) < %d, not switch lpw_state(%d)",
+		mtk_lpw_debug(4, "[%d] %s pair cnt %u(%u,%u) < %d, not switch lpw_state(%d)",
 			ctx->id, debug_str, pair_cnt, src_cnt, dst_cnt, limit_cnt, ctx->lpw_state);
 
 check_lpw_start_done:
@@ -797,10 +797,10 @@ static bool mtk_vdec_lpw_check_low_latency_no_lock(struct mtk_vcodec_ctx *ctx,
 		if (ctx->dynamic_low_latency) {
 			mtk_vdec_lpw_stop_timer(ctx, false);
 			ctx->lpw_state = VDEC_LPW_DEC;
-			mtk_lpw_debug(0, "[%d] detect dynamic low latency, switch lpw_state to DEC(%d)(pair cnt %d(%d,%d))",
+			mtk_lpw_debug(0, "[%d] detect dynamic low latency, switch lpw_state to DEC(%d)(pair cnt %u(%u,%u))",
 				ctx->id, ctx->lpw_state, pair_cnt, src_cnt, dst_cnt);
 		} else {
-			mtk_lpw_debug(0, "[%d] detect not dynamic low latency, lpw_state %d (pair cnt %d(%d,%d))",
+			mtk_lpw_debug(0, "[%d] detect not dynamic low latency, lpw_state %d (pair cnt %u(%u,%u))",
 				ctx->id, ctx->lpw_state, pair_cnt, src_cnt, dst_cnt);
 		}
 	}
@@ -809,68 +809,22 @@ static bool mtk_vdec_lpw_check_low_latency_no_lock(struct mtk_vcodec_ctx *ctx,
 	return ctx->dynamic_low_latency;
 }
 
-static bool mtk_vdec_lpw_check_dec_stop_no_lock(struct mtk_vcodec_ctx *ctx, char *debug_str)
-{
-	unsigned int src_cnt, dst_cnt, pair_cnt, limit_cnt;
-	bool has_switch = false;
-
-	if (!ctx->low_pw_mode)
-		return has_switch;
-
-	GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
-	limit_cnt = 1; // before decode
-	mtk_lpw_debug(8, "[%d] pair cnt %d(%d,%d) lpw_state(%d) lpw_dec_start_cnt %d, group_dec_cnt %d",
-		ctx->id, pair_cnt, src_cnt, dst_cnt, ctx->lpw_state,
-		ctx->lpw_dec_start_cnt, ctx->group_dec_cnt);
-
-	if (ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) // check when group end
-		mtk_vdec_lpw_check_low_latency_no_lock(ctx, src_cnt, dst_cnt, pair_cnt);
-
-	if (ctx->lpw_state != VDEC_LPW_DEC || ctx->dynamic_low_latency)
-		goto check_lpw_stop_done;
-
-	if (ctx->lpw_dec_start_cnt > 0) {
-		ctx->lpw_dec_start_cnt--;
-		if (pair_cnt <= limit_cnt) {
-			has_switch = true; // for get out of in_group
-			if (ctx->lpw_dec_start_cnt > 0 && ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_start_limit) {
-				// done driver dpb size but no more pair to decode
-				mtk_lpw_debug(1, "[%d] lpw_dec_start_cnt less %d not done but no more pair cnt %d(%d,%d)",
-					ctx->id, ctx->lpw_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
-				ctx->lpw_dec_start_cnt = 0;
-			}
-		}
-		if (ctx->lpw_dec_start_cnt == 0) {
-			ctx->lpw_state = VDEC_LPW_WAIT;
-			if (mtk_vdec_lpw_check_dec_start(ctx, false, false, debug_str) == false) {
-				mtk_lpw_debug(1, "[%d] %s lpw_dec_start_cnt done, switch lpw_state to WAIT(%d)(pair cnt %d(%d,%d))",
-					ctx->id, debug_str, ctx->lpw_state, pair_cnt, src_cnt, dst_cnt);
-				has_switch = true;
-			} else
-				has_switch = false;
-		}
-	} else if (ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) {
-		ctx->lpw_state = VDEC_LPW_WAIT;
-		has_switch = true;
-		mtk_lpw_debug(1, "[%d] %s pair cnt %d(%d,%d) <= %d, switch lpw_state to WAIT(%d)",
-			ctx->id, debug_str, pair_cnt, src_cnt, dst_cnt, limit_cnt, ctx->lpw_state);
-	}
-
-check_lpw_stop_done:
-	return has_switch;
-}
-
 static void mtk_vdec_lpw_update_before_dec(struct mtk_vcodec_ctx *ctx)
 {
+	unsigned int src_cnt, dst_cnt, pair_cnt, limit_cnt = 1; // limit before decode
 	unsigned long flags;
-	bool has_stop;
+	bool is_group_end = false;
 
 	if (!ctx->low_pw_mode)
 		return;
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
 	mtk_vdec_lpw_stop_timer(ctx, false);
+	GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
+	if (pair_cnt <= limit_cnt)
+		is_group_end = true;
 
+	// set in group
 	if (!ctx->in_group) {
 		ctx->in_group = true;
 		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
@@ -879,13 +833,47 @@ static void mtk_vdec_lpw_update_before_dec(struct mtk_vcodec_ctx *ctx)
 	}
 	ctx->group_dec_cnt++;
 
-	has_stop = mtk_vdec_lpw_check_dec_stop_no_lock(ctx, "before dec");
-	if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency ||
-				(ctx->lpw_dec_start_cnt > 0 && has_stop))) {
+	// check start group
+	if (ctx->in_start_group && ctx->get_disped) {
+		ctx->in_start_group = false;
+		mtk_lpw_debug(4, "[%d] end start group since get displayed buffer, pair cnt %u(%u,%u)",
+			ctx->id, pair_cnt, src_cnt, dst_cnt);
+	}
+	if (ctx->in_start_group) {
+		ctx->lpw_dec_start_cnt++;
+		if (ctx->lpw_dec_start_cnt >= ctx->max_dec_start_cnt) {
+			ctx->in_start_group = false;
+			mtk_lpw_debug(4, "[%d] end start group since lpw_dec_start_cnt %d >= max_dec_start_cnt %d, pair cnt %u(%u,%u)",
+				ctx->id, ctx->lpw_dec_start_cnt, ctx->max_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
+		} else if (mtk_vdec_lpw_start_limit > 0 && ctx->lpw_dec_start_cnt >= mtk_vdec_lpw_start_limit) {
+			ctx->in_start_group = false;
+			mtk_lpw_debug(0, "[%d] early end start group since lpw_dec_start_cnt %d >= mtk_vdec_lpw_start_limit %d, pair cnt %u(%u,%u)",
+				ctx->id, ctx->lpw_dec_start_cnt, mtk_vdec_lpw_start_limit, pair_cnt, src_cnt, dst_cnt);
+		}
+	}
+
+	mtk_lpw_debug(8, "[%d] pair cnt %u(%u,%u) lpw_state(%d) lpw_dec_start_cnt %d(%d), group_dec_cnt %d",
+		ctx->id, pair_cnt, src_cnt, dst_cnt, ctx->lpw_state,
+		ctx->lpw_dec_start_cnt, ctx->in_start_group, ctx->group_dec_cnt);
+
+	// group end check
+	if (is_group_end && !ctx->in_start_group) {
+		// check if is low latency
+		mtk_vdec_lpw_check_low_latency_no_lock(ctx, src_cnt, dst_cnt, pair_cnt);
+
+		// check stop dec
+		if (!ctx->dynamic_low_latency && ctx->lpw_state == VDEC_LPW_DEC) {
+			ctx->lpw_state = VDEC_LPW_WAIT;
+			mtk_lpw_debug(1, "[%d] pair cnt %u(%u,%u) <= %d, switch lpw_state to WAIT(%d)",
+				ctx->id, pair_cnt, src_cnt, dst_cnt, limit_cnt, ctx->lpw_state);
+		}
+	}
+
+	// check in group for stop task base power
+	if (ctx->in_group && (ctx->dynamic_low_latency || is_group_end)) {
 		ctx->in_group = false;
 		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
 	}
-
 	if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
 		mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_VDEC_IN_GROUP(%d)",
 			ctx->id, SET_PARAM_VDEC_IN_GROUP);
@@ -1093,7 +1081,7 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 			dstbuf->queued_in_vb2, got_early_eos,
 			dstbuf->vb.flags, dstbuf->vb.field, dstbuf->vb.vb2_buf.timestamp);
 
-		mtk_vdec_lpw_set_ts(ctx, dstbuf->vb.vb2_buf.timestamp);
+		mtk_vdec_lpw_put_disp(ctx, dstbuf->vb.vb2_buf.timestamp);
 		mtk_vcodec_in_out_trace_count(ctx, dstbuf->vb.vb2_buf.type, false, -1);
 		v4l2_m2m_buf_done(&dstbuf->vb, VB2_BUF_STATE_DONE);
 		ctx->decoded_frame_cnt++;
@@ -1463,7 +1451,7 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 
 	dmabuf = dma_buf_get(fd);
 	if (IS_ERR_OR_NULL(dmabuf)) {
-		mtk_v4l2_err("dma_buf_get fail ret %ld", PTR_ERR(dmabuf));
+		mtk_v4l2_err("[%d] dma_buf_get fail ret %ld (fd %d)", ctx->id, PTR_ERR(dmabuf), fd);
 		return NULL;
 	}
 
@@ -1490,13 +1478,13 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 			gen_buf_info->dma_general_addr = dma_general_addr;
 			gen_buf_info->buf_att = buf_att;
 			gen_buf_info->sgt = sgt;
-			mtk_v4l2_debug(4, "save general buf va %p dmabuf %p addr:%llx at %d",
-				va, dmabuf, (u64)dma_general_addr, i);
+			mtk_v4l2_debug(4, "[%d] save general buf va %p dmabuf %p addr:%llx at %d (fd %d)",
+				ctx->id, va, dmabuf, (u64)dma_general_addr, i, fd);
 			break;
 		}
 	}
 	if (gen_buf_info == NULL) {
-		mtk_v4l2_err("dma_buf_list is overflow!");
+		mtk_v4l2_err("[%d] dma_buf_list is overflow! (fd %d)", ctx->id, fd);
 		mtk_vcodec_dma_unmap_detach(dmabuf, &buf_att, &sgt, DMA_BIDIRECTIONAL);
 		if (va)
 			dma_buf_vunmap_unlocked(dmabuf, &map);
@@ -2153,7 +2141,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 						ctx->is_active = 0;
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
 						mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive", ctx->id);
-						mtk_vdec_lpw_set_pause(ctx); // for group decode
 					}
 				} else {
 					if (!ctx->is_active) {
@@ -3414,11 +3401,6 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 	mtkbuf = to_video_dec_buf(vb2_v4l2);
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		set_general_buffer(ctx, &mtkbuf->frame_buffer, mtkbuf->general_user_fd);
-		mtk_v4l2_debug(4, "general_buf fd=%d, dma_buf=%p, DMA=%pad",
-			mtkbuf->general_user_fd,
-			mtkbuf->frame_buffer.dma_general_buf,
-			&mtkbuf->frame_buffer.dma_general_addr);
-
 #if ENABLE_META_BUF
 		mutex_lock(&ctx->meta_buf_lock);
 		if (mtkbuf->meta_user_fd > 0) {
@@ -3590,6 +3572,8 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	buf = to_video_dec_buf(vb2_v4l2);
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+		u64 ts = vb->timestamp;
+
 		mutex_lock(&ctx->buf_lock);
 		if (buf->used == false) {
 			vb->timestamp = 0;
@@ -3621,12 +3605,20 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 					i, (unsigned long)new_dma_addr, vb->planes[i].dbuf);
 			}
 		}
+		mtk_vdec_lpw_get_disped(ctx, ts, new_dma);
 
 		if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1 &&
 			mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) &&
 			vb->planes[0].dbuf) {
 			mtk_vdec_slc_get_gid_from_dma(ctx, vb->planes[0].dbuf);
 		}
+
+		mtk_v4l2_debug(4, "[%d] dst num_buffers %d q_cnt %d, id=%d state %d queued %d %d %d status=%x frame_buffer %p %lx, new_dma %d ts=%lld",
+			ctx->id, vb2_get_num_buffers(vb->vb2_queue), atomic_read(&vb->vb2_queue->owned_by_drv_count),
+			vb->index, vb->state,
+			buf->queued_in_vb2, buf->queued_in_v4l2, buf->used,
+			buf->frame_buffer.status,
+			&buf->frame_buffer, (unsigned long)(&buf->frame_buffer), new_dma, ts);
 
 		// only allow legacy buffers in this slot still referenced put to driver
 		if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM &&
