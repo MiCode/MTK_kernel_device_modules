@@ -5686,6 +5686,7 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 	struct mtk_drm_crtc *mtk_crtc;
 	int temp_hrt = 0;
 	bool dmr_support, od_support, dbi_support;
+	int od_enable, sec_on;
 
 	ODDMRAPI_LOG("+\n");
 	if (comp == NULL || comp->mtk_crtc == NULL) {
@@ -5708,13 +5709,15 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 	if (g_oddmr_hrt_en == false)
 		return 0;
 
+	sec_on = comp->mtk_crtc->sec_on;
+	od_enable = oddmr_data->od_enable && (!sec_on);
 	if (type == CHANNEL_HRT_WRITE) {
-		if (oddmr_data->od_enable) {
+		if (od_enable) {
 			if (oddmr_data->data->od_version == MTK_OD_V2)
 				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
 		}
 	} else {
-		if (oddmr_data->od_enable) {
+		if (od_enable) {
 			if (oddmr_data->data->od_version == MTK_OD_V2)
 				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
 			else
@@ -5748,7 +5751,7 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 	}
 	sum = sum * res_ratio / 1000;
 	ODDMRAPI_LOG("type:%d, od %d dmr %d dbi %d sum %d res_ratio %llu\n",
-			type, oddmr_data->od_enable, oddmr_data->dmr_enable,
+			type, od_enable, oddmr_data->dmr_enable,
 			oddmr_data->dbi_enable, sum, res_ratio);
 
 	if (oddmr_hrt)
