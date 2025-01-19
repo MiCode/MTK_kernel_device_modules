@@ -1,0 +1,120 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+#include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/spmi/spmi.h>
+
+&spmi {
+	#address-cells = <2>;
+	#size-cells = <0>;
+	mt6667_7: mt6667-7@7 {
+		compatible = "mediatek,mt6667";
+		reg = <0x7 SPMI_USID>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-7-debug";
+		};
+
+		regulators {
+			compatible = "mediatek,mt6667-7-regulator";
+			mt6667_7_buck1: mt6667-7-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6667_7_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6667_7_buck3: mt6667-7-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6667_7_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				// regulator-always-on; // MM TODO:
+			};
+		};
+	};
+
+	mt6667_8: mt6667-8@8 {
+		compatible = "mediatek,mt6667";
+		reg = <0x8 SPMI_USID>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-8-debug";
+		};
+
+		regulators {
+			compatible = "mediatek,mt6667-8-regulator";
+			mt6667_8_buck1: mt6667-8-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6667_8_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+		};
+	};
+
+	mt6667_12: mt6667-12@12 {
+		compatible = "mediatek,mt6667";
+		reg = <0xc SPMI_USID>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-12-debug";
+		};
+
+		regulators {
+			compatible = "mediatek,mt6667-12-regulator";
+			mt6667_12_buck1: mt6667-12-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6667_12_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+		};
+	};
+
+	mt6667_13: mt6667-13@13 {
+		compatible = "mediatek,mt6667";
+		reg = <0xd SPMI_USID>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-13-debug";
+		};
+
+		regulators {
+			compatible = "mediatek,mt6667-13-regulator";
+			mt6667_13_buck1: mt6667-13-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6667_13_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6667_13_buck3: mt6667-13-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6667_13_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				// regulator-always-on; // GPU_TOP TODO:
+			};
+			mt6667_13_buck4: mt6667-13-buck4 {
+				regulator-compatible = "BUCK4";
+				regulator-name = "mt6667_13_buck4";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+		};
+	};
+};
