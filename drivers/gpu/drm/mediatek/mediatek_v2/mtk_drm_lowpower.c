@@ -1359,13 +1359,17 @@ void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc)
 	// wake_up_interruptible is very expensive,
 	// skip wake_up_interruptible if no need.
 	idlemgr_ctx = idlemgr->idlemgr_ctx;
-	mutex_lock(&idlemgr_ctx->idle_check_lock);
-	if (!idlemgr_ctx->is_idle) {
-		idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
+	// since we do not want to block caller when the
+	// lock is hold by idlemgr that is entering idle,
+	// just let kick_wq to handle the kick event.
+	if (mutex_trylock(&idlemgr_ctx->idle_check_lock)) {
+		if (!idlemgr_ctx->is_idle) {
+			idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
+			mutex_unlock(&idlemgr_ctx->idle_check_lock);
+			return;
+		}
 		mutex_unlock(&idlemgr_ctx->idle_check_lock);
-		return;
 	}
-	mutex_unlock(&idlemgr_ctx->idle_check_lock);
 
 	atomic_set(&idlemgr->kick_task_active, 1);
 	wake_up_interruptible(&idlemgr->kick_wq);
