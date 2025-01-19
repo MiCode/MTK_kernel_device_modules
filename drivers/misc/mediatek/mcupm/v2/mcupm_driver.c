@@ -10,11 +10,11 @@
 #include <linux/mutex.h>
 #include <linux/of.h>
 
-#include "mcupm_driver.h"
-#include "mcupm_plt.h"
 #include "mcupm_ipi_id.h"
-#include "mcupm_ipi_table.h"
-#include "mcupm_timesync.h"
+#include "include/mcupm_driver.h"
+#include "include/mcupm_plt.h"
+#include "include/mcupm_ipi_table.h"
+#include "include/mcupm_timesync.h"
 
 #if IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 #include <linux/of_reserved_mem.h>
@@ -463,6 +463,12 @@ void *get_mcupm_ipidev(void)
 	return &mcupm_ipidev;
 }
 EXPORT_SYMBOL_GPL(get_mcupm_ipidev);
+
+u32 get_mcupms_ipidev_number(void)
+{
+	return 1;
+}
+EXPORT_SYMBOL_GPL(get_mcupms_ipidev_number);
 
 #if CPUQOS_IPI
 #define UBUS_BASE   0x0C800000

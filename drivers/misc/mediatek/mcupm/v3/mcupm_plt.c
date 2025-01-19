@@ -10,16 +10,15 @@
 #include <linux/io.h>
 
 
-#include "mcupm_plt.h"
-#include "mcupm_driver.h"
 #include "mcupm_ipi_id.h"
-#include "mcupm_sysfs.h"
-#include "mcupm_timesync.h"
+#include "include/mcupm_plt.h"
+#include "include/mcupm_driver.h"
+#include "include/mcupm_sysfs.h"
+#include "include/mcupm_timesync.h"
 
 int multi_mcupm_plt_ackdata[max_mcupm];
 
 #if MCUPM_PLT_SERV_SUPPORT
-
 int mcupms_plt_module_init(void)
 {
 	int ret = 0;

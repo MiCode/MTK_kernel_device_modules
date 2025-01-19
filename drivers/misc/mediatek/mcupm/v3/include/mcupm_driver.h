@@ -113,4 +113,6 @@ extern int mcupm_mbox_read(unsigned int mbox, unsigned int slot, void *buf,
 extern phys_addr_t mcupm_reserve_mem_get_phys(unsigned int id);
 extern phys_addr_t mcupm_reserve_mem_get_virt(unsigned int id);
 extern phys_addr_t mcupm_reserve_mem_get_size(unsigned int id);
+extern int mcupms_device_probe(struct platform_device *pdev);
+extern void mcupms_device_remove(struct platform_device *pdev);
 #endif

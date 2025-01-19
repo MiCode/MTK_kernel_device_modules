@@ -24,8 +24,6 @@
 #include <linux/sched.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
-#include "../mcupm/include/mcupm_driver.h"
-#include "../mcupm/include/mcupm_ipi_id.h"
 #include "cpufreq-dbg-lite.h"
 #include "sugov/cpufreq.h"
 #include "mtk_freq_qos.h"

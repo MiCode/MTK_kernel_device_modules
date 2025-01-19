@@ -11,9 +11,10 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 
-#include "mcupm_driver.h"
-#include "mcupm_plt.h"
 #include "mcupm_ipi_id.h"
+#include "include/mcupm_driver.h"
+#include "include/mcupm_plt.h"
+
 
 extern int mcupms_plt_module_init(void);
 extern int mcupms_init_ipi_mboxs(struct platform_device *pdev);
@@ -29,6 +30,7 @@ int mcupms_selfcheck(void)
 	struct mtk_ipi_device *ipidev;
 
 	//MCUPM Check Alive
+	ipinum = get_mcupms_ipidev_number();
 	for(int i = 0; i < ipinum; i++) {
 		struct mcupm_ipi_data_s ipi_data;
 
@@ -85,7 +87,6 @@ int mcupms_device_probe(struct platform_device *pdev)
 void mcupms_device_remove(struct platform_device *pdev)
 {
 	//Todo implement remove ipi interface and memory
-	mcupm_plt_module_exit();
 	return;
 }
 

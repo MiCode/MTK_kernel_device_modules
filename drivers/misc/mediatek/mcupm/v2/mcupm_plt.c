@@ -9,9 +9,9 @@
 #include <linux/of.h>
 #include <linux/io.h>
 
-#include "mcupm_plt.h"
-#include "mcupm_driver.h"
 #include "mcupm_ipi_id.h"
+#include "include/mcupm_plt.h"
+#include "include/mcupm_driver.h"
 
 /* import from mcupm_driver */
 extern int mcupm_plt_ackdata;

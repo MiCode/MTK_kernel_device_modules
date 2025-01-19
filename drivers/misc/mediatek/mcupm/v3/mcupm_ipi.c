@@ -11,10 +11,10 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 
-#include "mcupm_driver.h"
-#include "mcupm_plt.h"
 #include "mcupm_ipi_id.h"
-#include "mcupm_timesync.h"
+#include "include/mcupm_driver.h"
+#include "include/mcupm_plt.h"
+#include "include/mcupm_timesync.h"
 
 /*share memory start address defination*/
 #define MCUPM_MBOX_SLOT_NUM			40
@@ -27,6 +27,8 @@ u32 get_mcupms_ipidev_number(void)
 {
 	return internal_ipidev_number;
 }
+EXPORT_SYMBOL_GPL(get_mcupms_ipidev_number);
+
 static int platform_parse_and_init_mtk_mbox_device(struct platform_device *pdev, struct mtk_mbox_device *mboxdev);
 int mcupms_init_ipi_mboxs(struct platform_device *pdev) {
 	int ret;

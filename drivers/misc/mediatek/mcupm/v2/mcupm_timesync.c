@@ -10,8 +10,10 @@
 #include <linux/types.h>
 #include <asm/arch_timer.h>
 #include <asm/timex.h>
-#include "mcupm_driver.h"
-#include "mcupm_timesync.h"
+
+
+#include "include/mcupm_driver.h"
+#include "include/mcupm_timesync.h"
 
 #define mcupm_ts_write(id, val) \
 	mcupm_mbox_write(MCUPM_TS_MBOX, id, (void *)&val, 1)

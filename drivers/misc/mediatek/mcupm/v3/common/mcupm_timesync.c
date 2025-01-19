@@ -10,9 +10,11 @@
 #include <linux/types.h>
 #include <asm/arch_timer.h>
 #include <asm/timex.h>
-#include "mcupm_driver.h"
-#include "mcupm_timesync.h"
+
 #include "mcupm_ipi_id.h"
+#include "../include/mcupm_driver.h"
+#include "../include/mcupm_timesync.h"
+
 
 
 //#define mcupm_ts_write(id, val) \
@@ -54,30 +56,22 @@ static int arch_counter_get_width(void)
 	return clamp_val(ilog2(min_cycles - 1) + 1, 56, 64);
 }
 
-static int mcupm_ts_write(u32 id, u32 val) {
+static int mcupm_ts_write(u32 id, u32 val)
+{
 	u32 ipi_num = 0, ret = 0;
 	struct mtk_mbox_device *mdev;
 
 	ipi_num = get_mcupms_ipidev_number();
-	if (get_mcupms_ipidev_number() == 0) {
-		// V2
-		ret = mcupm_mbox_write(MCUPM_TS_MBOX, id, (void *)&val, 1);
-		if(ret) {
-			pr_info("[MCUPM] %s: mbox(%d) slot(%d) val(0x%x)\n", __func__, MCUPM_TS_MBOX, id, val);
-			return ret;
-		}
-	} else {
-		// V3
-		for(int i = 0; i< ipi_num;i++) {
-				mdev = GET_MCUPM_MBOXDEV(i);
-				if(mdev) {
-					ret = mtk_mbox_write(mdev, MCUPM_TS_MBOX, id
-						, (void *)&val, 4);
-					if(ret)
-						return ret;
-				} else {
-					pr_info("[MCUPM] GET_MCUPM_MBOXDEV(%d) is empty ipi_numbers=%d\n", i, get_mcupms_ipidev_number());
-				}
+	for(int i = 0; i < ipi_num; i++) {
+		mdev = GET_MCUPM_MBOXDEV(i);
+		if(mdev) {
+			ret = mtk_mbox_write(mdev, MCUPM_TS_MBOX, id
+				, (void *)&val, 4);
+			if(ret)
+				return ret;
+		} else {
+			pr_info("[MCUPM] GET_MCUPM_MBOXDEV(%d) is empty ipi_numbers=%d\n",
+					i, get_mcupms_ipidev_number());
 		}
 	}
 	return 0;
