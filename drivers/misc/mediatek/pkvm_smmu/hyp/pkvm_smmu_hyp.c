@@ -711,13 +711,12 @@ void add_smmu_device(struct user_pt_regs *regs)
 /* set cmdq base into real smmu cmdq hw register */
 static void write_smmu_cmdq_base_addr(smmu_device_t *dev, uint64_t cmdq_regval)
 {
-	uint64_t cmdq_pa;
-	unsigned int cmdq_size;
-	struct smmuv3_driver *smmuv3;
+	uint64_t cmdq_pa = 0ULL;
+	struct smmuv3_driver *smmuv3 = NULL;
 
 	smmuv3 = dev->smmuv3;
 	cmdq_pa = ((uint64_t)cmdq_regval) & SMMU_CMDQ_BASE_ADDR_MASK;
-	cmdq_size = MTK_SMMU_CMDQ_SIZE((uint64_t)cmdq_regval);
+
 	if (!dev->guest_cmdq_regval) {
 		/* store guest cmdq base address setting */
 		dev->guest_cmdq_regval = cmdq_regval;
@@ -749,18 +748,23 @@ static void write_smmu_cmdq_base_addr(smmu_device_t *dev, uint64_t cmdq_regval)
 
 static void write_smmu_strtab_cfg_reg(smmu_device_t *dev, uint32_t guest_reg)
 {
-	paddr_t guest_strtab_base_pa;
-	unsigned int ste_size;
-	uint32_t host_reg;
-	struct smmuv3_driver *smmuv3;
+	paddr_t guest_strtab_base_pa = 0;
+	struct smmuv3_driver *smmuv3 = NULL;
+
+	if (!dev) {
+		pkvm_smmu_ops->puts(
+			"write_smmu_strtab_cfg_reg smmu_device_t *dev is NULL");
+		return;
+	}
 
 	smmuv3 = dev->smmuv3;
-	ste_size = MTK_SMMU_STE_SIZE((uint32_t)guest_reg);
 	guest_strtab_base_pa = dev->guest_strtab_base_pa;
-	if (!guest_strtab_base_pa)
+
+	if (!guest_strtab_base_pa) {
 		pkvm_smmu_ops->puts(
 			"write_smmu_strtab_cfg_reg guest_strtab_base_pa != 0");
-
+		return;
+	}
 	/* Create once */
 	if (dev->guest_strtab_base_pa) {
 		if (!smmuv3) {
@@ -771,7 +775,6 @@ static void write_smmu_strtab_cfg_reg(smmu_device_t *dev, uint32_t guest_reg)
 		smmuv3->prop.stream_n_bits =
 			(MTK_SMMU_STE_SIZE_MASK & guest_reg);
 		/* Write host strtab_cfg reg value */
-		host_reg = guest_reg;
 		writel(guest_reg,
 		       (void *)(dev->reg_base_va_addr + STRTAB_BASE_CFG));
 	}
@@ -785,18 +788,19 @@ static void write_smmu_strtab_cfg_reg(smmu_device_t *dev, uint32_t guest_reg)
  */
 static void check_ste_update_content(unsigned int sid, smmu_device_t *dev)
 {
-	uint64_t *host_ste_base, *guest_ste_base, *step, *host_sid_addr;
-	uint64_t guest_ste[STE_SIZE_DW];
-	uint64_t host_ste[STE_SIZE_DW];
-	uint64_t combined_ste[STE_SIZE_DW];
+	uint64_t *host_ste_base = NULL, *guest_ste_base = NULL, *step = NULL,
+		 *host_sid_addr = NULL;
+	uint64_t guest_ste[STE_SIZE_DW] = { 0ULL };
+	uint64_t host_ste[STE_SIZE_DW] = { 0ULL };
+	uint64_t combined_ste[STE_SIZE_DW] = { 0ULL };
+	uint64_t stage1_ste_mask[STE_SIZE_DW] = { 0ULL };
 	int i;
-	uint64_t ste_base_reg_value, global_ste_base_address;
-	uint64_t stage1_ste_mask[STE_SIZE_DW] = { 0 };
 
-	/* check ste base reg, before operate ste */
-	ste_base_reg_value =
-		(uint64_t)readl_64(dev->smmuv3->base_addr + STRTAB_BASE);
-	global_ste_base_address = (uint64_t)smmu_get_global_ste_pa();
+	if (!dev || !dev->smmuv3) {
+		pkvm_smmu_ops->puts(
+			"check_ste_update_content smmu_device_t *dev or dev->smmuv3 is NULL");
+		return;
+	}
 
 	if (sid > STE_ENTRY_NUM(dev->smmuv3->prop.stream_n_bits)) {
 		pkvm_smmu_ops->puts("sid over expect sid numbers");
@@ -805,12 +809,25 @@ static void check_ste_update_content(unsigned int sid, smmu_device_t *dev)
 		pkvm_smmu_ops->puts("WARN: sid 0 can not be changed");
 		return;
 	}
+
 	stage1_ste_mask[0] = STRTAB_STE_0_V | STRTAB_STE_0_S2_CFG |
 					STRTAB_STE_0_PASS_CFG;
 	stage1_ste_mask[2] = STRTAB_STE_2_S2_SETTING;
 	stage1_ste_mask[3] = STRTAB_STE_3_S2_SETTING;
 	guest_ste_base = (uint64_t *)dev->guest_strtab_base_va;
+	if (!guest_ste_base) {
+		pkvm_smmu_ops->puts(
+			"check_ste_update_content guest_ste_base is NULL");
+		return;
+	}
+
 	host_ste_base = (uint64_t *)dev->smmuv3->strtab_cfg.base;
+	if (!host_ste_base) {
+		pkvm_smmu_ops->puts(
+			"check_ste_update_content host_ste_base is NULL");
+		return;
+	}
+
 	step = (guest_ste_base + (STE_SIZE_DW * sid));
 	host_sid_addr = (host_ste_base + (STE_SIZE_DW * sid));
 	/* read sid's STE info to guest ste */
@@ -823,6 +840,7 @@ static void check_ste_update_content(unsigned int sid, smmu_device_t *dev)
 		host_ste[i] &= (stage1_ste_mask[i]); /* keep s2 */
 		combined_ste[i] = host_ste[i] | guest_ste[i];
 	}
+
 	write_ste(host_sid_addr, combined_ste);
 }
 /* copu guest ste setting into global ste */
@@ -970,12 +988,23 @@ static void handle_guest_write_prod(u64 cmdq_prod_reg_value, smmu_device_t *dev)
 
 static void write_guest_strtab_base_reg(smmu_device_t *dev, uint64_t reg_val)
 {
-	uint64_t host_reg;
-	struct smmuv3_driver *smmuv3 = dev->smmuv3;
+	if (!dev) {
+		pkvm_smmu_ops->puts(
+			"write_guest_strtab_base_reg smmu_device_t *dev is NULL");
+		return;
+	}
 
 	/* Write Once Protection */
 	if (!dev->guest_strtab_base_reg) {
 		uint64_t guest_ste_pa = reg_val & MTK_SMMU_STE_ADDR_MASK;
+		struct smmuv3_driver *smmuv3 = dev->smmuv3;
+		uint64_t host_reg = 0;
+
+		if (!smmuv3) {
+			pkvm_smmu_ops->puts(
+				"write_guest_strtab_base_reg smmuv3_driver *smmuv3 is NULL");
+			return;
+		}
 
 		dev->guest_strtab_base_pa = guest_ste_pa;
 		/* Save guest strtab_base */
@@ -999,10 +1028,15 @@ static void write_guest_strtab_base_reg(smmu_device_t *dev, uint64_t reg_val)
 
 static void guest_set_cr0_value(smmu_device_t *dev, uint32_t guest_reg)
 {
-	unsigned long reg_address;
-	uint32_t guest_cr0_val, host_cr0_val, combine_cr0_val, en_bit_mask;
+	uint32_t guest_cr0_val = 0U, host_cr0_val = 0U, combine_cr0_val = 0U,
+		 en_bit_mask = 0U;
 
-	reg_address = dev->reg_base_pa_addr;
+	if (!dev) {
+		pkvm_smmu_ops->puts(
+			"guest_set_cr0_value smmu_device_t *dev is NULL");
+		return;
+	}
+
 	guest_cr0_val = guest_reg;
 	host_cr0_val = (uint32_t)readl((void *)(dev->reg_base_va_addr + CR0));
 	en_bit_mask = CMDQ_EN | EVTQ_EN | PRIQ_EN | SMMU_EN;
