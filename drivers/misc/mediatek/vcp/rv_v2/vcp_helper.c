@@ -1446,6 +1446,12 @@ static ssize_t vcp_excep_mode_store(struct device *kobj
 					MTK_TINYSYS_VCP_KERNEL_OP_DUMP_POLLING,
 					1, 0, 0, 0, 0, 0, &res);
 
+		} else if (value == 104) {
+			// suspend
+			vcp_wait_suspend_resume(1);
+		} else if (value == 105) {
+			// resume
+			vcp_wait_suspend_resume(0);
 		}
 
 		pr_debug("[VCP] vcp_excep_mode = %d, vcp_dbg_log = %d (1:enable, 0:disable), res.a0 %lu\n"
