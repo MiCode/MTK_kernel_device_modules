@@ -290,6 +290,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/remoteproc:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/memory:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -387,6 +388,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -676,6 +678,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:trace_mmstat".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -832,7 +835,6 @@ mgk_64_device_modules = [
     "drivers/memory/mediatek/emi-mpu-test.ko",
     "drivers/memory/mediatek/smpu.ko",
     "drivers/memory/mediatek/smpu-hook-v1.ko",
-    "drivers/memory/mtk-smi.ko",
     "drivers/mfd/mt6338-core.ko",
     "drivers/mfd/mt6681-core.ko",
     "drivers/mfd/mt6685-audclk.ko",
