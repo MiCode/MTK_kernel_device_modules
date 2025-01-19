@@ -16,6 +16,9 @@
 #include "pf_ctrl.h"
 #include "mtk_sip_svc.h"
 
+#define CREATE_TRACE_POINTS
+#include "pf_ctrl_trace.h"
+
 #define DEFAULT_PF_MIN_FREQ		1000000
 #define DEFAULT_PF_MAX_FREQ		1500000
 #define DEFAULT_PF_INTERVAL		1000
@@ -326,7 +329,7 @@ static void pf_switch_work_function(struct work_struct *work)
 
 	off_ts = pf_ctrl_info.pf_ts[cpu];
 	pf_ctrl_info.pf_ts[cpu] = sched_clock();
-	if (cpu == 0 && off_ts != 0)
+	if (cpu == 0 && off_ts != 0 && pf_work->pf_type == PF_ENABLE)
 		pf_ctrl_info.pf_off_total_time += pf_ctrl_info.pf_ts[cpu] - off_ts;
 
 	pf_ctrl_info.pf_set[cpu] = pf_work->pf_type == PF_DISABLE ? 1 : 0;
@@ -356,6 +359,8 @@ static void trigger_pf_work(int type)
 		}
 	}
 	cpus_read_unlock();
+
+	trace_trigger_pf_work(type, pf_ctrl_info.pf_off_total_time);
 }
 
 static void pf_main_work(struct work_struct *work)
