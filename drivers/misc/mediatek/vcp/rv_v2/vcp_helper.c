@@ -1479,7 +1479,8 @@ enum ipi_debug_opt {
 	IPI_TRACKING_ON,
 	IPIMON_SHOW,
 	IPI_PROFILING,
-	IPI_PBFR,
+	IPI_VCP_PBFR,
+	IPI_MMUP_PBFR,
 	IPI_VCP_TEST = 100,
 	IPI_VCP_TEST_END = 199,
 	IPI_MMUP_TEST = 200,
@@ -1572,11 +1573,13 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 			udelay(1000);
 		}
 		break;
-	case IPI_PBFR:
-		cmd.type = IPI_PBFR;
+	case IPI_VCP_PBFR:
+		cmd.type = IPI_VCP_PBFR;
 		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
 			PIN_OUT_SIZE_TEST_0, 0);
-
+		break;
+	case IPI_MMUP_PBFR:
+		cmd.type = IPI_MMUP_PBFR;
 		ret = mtk_ipi_send(mmup_get_ipidev(), IPI_OUT_TEST_1, 0, &cmd,
 			PIN_OUT_SIZE_TEST_1, 0);
 		break;
