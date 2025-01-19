@@ -214,6 +214,14 @@ struct usb_offload_xhci_ep {
 	unsigned char cycle_state;
 };
 
+struct usb_trace_msg {
+	unsigned char enable;
+	unsigned char disable_all;
+	unsigned char direction;
+	unsigned long long buffer;
+	unsigned int size;
+};
+
 struct intf_info {
 	unsigned int data_ep_pipe;
 	unsigned int sync_ep_pipe;
@@ -278,6 +286,7 @@ struct usb_offload_dev {
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
 	u64 *mapping_table;
+	void *tracer;
 };
 
 extern int ssusb_offload_register(struct ssusb_offload *offload);
@@ -336,4 +345,14 @@ extern void usb_offload_hid_finish(void);
 extern void usb_offload_hid_stop(void);
 extern bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
 extern void usb_offload_register_ipi_recv(void);
+
+extern int usb_offload_debug_init(struct usb_offload_dev *udev);
+extern int usb_offload_debug_deinit(struct usb_offload_dev *udev);
+extern int usb_offload_trace_stream_init(struct usb_offload_buffer *trace_buffer,
+	u16 slot, u16 ep, bool is_in, struct usb_endpoint_descriptor *desc);
+
+void usb_offload_ipi_hid_handler(void *param);
+void usb_offload_ipi_trace_handler(void *param);
+void prepare_and_send_trace_ipi_msg(struct usb_audio_stream_msg *msg,
+	bool enable, bool disable_all);
 #endif /* __USB_OFFLOAD_H__ */

@@ -95,7 +95,6 @@ struct dsp_payload {
 #define UO_HID_WAKEUP_TIME 1000
 static struct hid_ep_info hid_ep[UO_HID_EP_NUM];
 static struct workqueue_struct *giveback_wq;
-static bool register_ipi_receiver;
 static struct wakeup_source *hid_wake_lock;
 static DECLARE_COMPLETION(hid_dequeue_done);
 
@@ -677,11 +676,13 @@ static void hid_reset(struct hid_ep_info *hid)
 
 }
 
-void usb_offload_ipi_recv(struct ipi_msg_t *ipi_msg)
+void usb_offload_ipi_hid_handler(void *param)
 {
+	struct ipi_msg_t *ipi_msg = NULL;
 	struct hid_ep_info *hid;
 	int direction, slot, ep;
 
+	ipi_msg = (struct ipi_msg_t *)param;
 	if (!ipi_msg) {
 		hid_err("%s null ipi_msg\n", __func__);
 		return;
@@ -746,7 +747,6 @@ void usb_offload_ipi_recv(struct ipi_msg_t *ipi_msg)
 		break;
 	}
 	default:
-		hid_err("unknown msg_id:0x%x\n", ipi_msg->msg_id);
 		break;
 	}
 
@@ -1201,18 +1201,6 @@ static int sned_payload_to_adsp(unsigned int msg_id, void *payload,
 		hid_info("USB Offload urb ipi msg send succeed\n");
 
 	return send_result;
-}
-
-void usb_offload_register_ipi_recv(void)
-{
-	if (hid_disable_offload)
-		return;
-
-	if (!register_ipi_receiver) {
-		audio_task_register_callback(
-			TASK_SCENE_USB_DL, usb_offload_ipi_recv);
-		register_ipi_receiver = true;
-	}
 }
 
 static void xhci_mtk_trace_init(void)

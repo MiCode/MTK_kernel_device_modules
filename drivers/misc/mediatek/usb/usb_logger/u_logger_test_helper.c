@@ -9,6 +9,10 @@
 #include "u_logger.h"
 #include "xhci-trace.h"
 
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+#include "usb_offload_trace.h"
+#endif
+
 #define TESTER_NAME         "usb_tester"
 #define TEST_CMD_NAME       "command"
 #define RESULT_CMD_NAME     "result"
@@ -33,6 +37,7 @@ struct u_tester {
 	struct xhci_isr done[MAX_TRACE_ISR];
 	u16 in_use;
 	atomic_t running;
+	atomic_t trace_xhci_irq;
 } tester;
 
 static void reset_xhci_isr(struct xhci_isr *done)
@@ -166,6 +171,14 @@ static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
 				done->slot, done->ep, done->dir, done->class, done->cnt);
 		}
 		tester.output[cnt] = '\0';
+	} else if (!strncmp(name, "enable_trace", 12)) {
+		atomic_set(&tester.trace_xhci_irq, 1);
+		dev_info(dev, "start tracing xhci irq\n");
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	} else if (!strncmp(name, "disable_trace", 13)) {
+		atomic_set(&tester.trace_xhci_irq, 0);
+		dev_info(dev, "stop tracing xhci irq\n");
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
 	} else {
 		dev_info(dev, "unknown command\n");
 		goto error;
@@ -208,6 +221,75 @@ static int u_tester_create_sysfs(struct u_logger *logger)
 	return ret;
 }
 
+
+static inline bool is_match(u16 slot, u16 ep, int *index)
+{
+	struct xhci_isr *done;
+	int i;
+
+	for (i = 0; i < tester.in_use; i++) {
+		done = &tester.done[i];
+		dev_dbg(tester.dev, "done[%d]=>slot:%d ep%d dir%d class%d\n",
+			i, done->slot, done->ep, done->dir, done->class);
+		if (done->slot == slot && done->ep == ep) {
+			dev_dbg(tester.dev, "match id:%d for slot%d ep%d\n", i, slot, ep);
+			*index = i;
+			return true;
+		}
+	}
+
+	*index = i;
+	return false;
+}
+
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+static void usb_offload_monitor_interrupt(void *data, void *stream,
+	void *buffer, int length, u16 slot, u16 ep,
+	struct usb_endpoint_descriptor *desc)
+{
+	struct xhci_isr *done;
+	int i;
+	bool match = false;
+
+	if (!atomic_read(&tester.running))
+		return;
+
+	dev_dbg(tester.dev, "======%s slot:%d ep:%d======\n", __func__, slot, ep);
+
+	match = is_match(slot, ep, &i);
+
+	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
+
+	if (match) {
+		if (tester.done[i].cnt + 1 > UINT_MAX) {
+			tester.done[i].cnt = 0;
+			if (tester.done[i].cnt2 + 1 > UINT_MAX)
+				tester.done[i].cnt2 = 0;
+		} else
+			tester.done[i].cnt++;
+	} else {
+		if (tester.in_use + 1 > MAX_TRACE_ISR) {
+			dev_dbg(tester.dev, "not enough space for slot%d ep%d\n", slot, ep);
+		} else {
+			int idx;
+
+			tester.in_use++;
+			idx = tester.in_use - 1;
+			done = &tester.done[idx];
+
+			done->class = USB_CLASS_AUDIO; /* workaround, force it tot USB_CLASS_AUDIO*/
+			done->slot = slot;
+			done->ep = ep;
+			done->dir = usb_endpoint_dir_in(desc);
+			done->cnt = 1;
+			done->cnt2 = 0;
+			dev_dbg(tester.dev, "create done[%d]=>slot%d ep%d dir:%d class:%d in_use:%d\n",
+				idx, done->slot, done->ep, done->dir, done->class, tester.in_use);
+		}
+	}
+}
+#endif
+
 static void xhci_monitor_interrupt(void *data, struct urb *urb)
 {
 	struct xhci_isr *done;
@@ -215,7 +297,7 @@ static void xhci_monitor_interrupt(void *data, struct urb *urb)
 	bool match = false;
 	u16 ep, slot;
 
-	if (!atomic_read(&tester.running))
+	if (!atomic_read(&tester.trace_xhci_irq) || !atomic_read(&tester.running))
 		return;
 
 	if (!urb || !urb->dev || urb->setup_packet || !urb->ep)
@@ -226,16 +308,7 @@ static void xhci_monitor_interrupt(void *data, struct urb *urb)
 
 	dev_dbg(tester.dev, "======%s slot:%d ep:%d======\n", __func__, slot, ep);
 
-	for (i = 0; i < tester.in_use; i++) {
-		done = &tester.done[i];
-		dev_dbg(tester.dev, "done[%d]=>slot:%d ep%d dir%d class%d\n",
-			i, done->slot, done->ep, done->dir, done->class);
-		if (done->slot == slot && done->ep == ep) {
-			dev_dbg(tester.dev, "match id:%d for slot%d ep%d\n", i, slot, ep);
-			match = true;
-			break;
-		}
-	}
+	match = is_match(slot, ep, &i);
 
 	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
 
@@ -295,6 +368,10 @@ int u_tester_init(struct u_logger *logger)
 	tester.in_use = 0;
 
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_monitor_interrupt, &tester));
+#if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
+	WARN_ON(register_trace_usb_offload_trace_trigger(
+		usb_offload_monitor_interrupt, &tester));
+#endif
 
 exit:
 	return ret;
