@@ -5383,7 +5383,9 @@ static const struct mtk_crtc_path_data mt6991_mtk_ext_path_data = {
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
 	.addon_data = mt6991_addon_ext,
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	.is_exdma_dual_layer = true,
+#endif
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_dp_w_tdshp_path_data = {
