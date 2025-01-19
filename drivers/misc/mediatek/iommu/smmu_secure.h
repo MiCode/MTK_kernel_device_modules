@@ -10,12 +10,6 @@
 #define SMC_SMMU_FAIL				(1)
 #define SMC_SMMU_NOSUPPORT			(-1)
 
-enum smmu_test_enum {
-	TEST_FUNC_BASIC = 0,
-	TEST_FUNC_FULLY,
-	TEST_FUNC_MAX
-};
-
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 int mtk_smmu_sec_wpcfg(u32 smmu_type);
 int mtk_smmu_sec_init(u32 smmu_type);
