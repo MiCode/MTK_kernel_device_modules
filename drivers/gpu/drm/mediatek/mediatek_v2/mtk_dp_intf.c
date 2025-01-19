@@ -849,8 +849,16 @@ static void mtk_dp_intf_prepare(struct mtk_ddp_comp *comp)
 
 void mtk_dp_intf_unprepare_clk(void)
 {
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
+	mtk_crtc = g_dp_intf->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
 	/* disable dp intf clk */
 	if (g_dp_intf != NULL) {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			clk_set_rate(g_dp_intf->pclk_src[MT6991_TVDPLL_PLL], 594000000);
+		}
 		clk_disable_unprepare(g_dp_intf->pclk);
 		DPTXMSG("%s:succesed disable dp_intf and DP sel clock\n", __func__);
 	} else
@@ -1061,11 +1069,20 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 
 void mhal_DPTx_VideoClock(bool enable, int resolution)
 {
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+	mtk_crtc = g_dp_intf->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+
 	if (enable) {
 		g_dp_intf->res = resolution;
 		mtk_dp_inf_video_clock(g_dp_intf);
-	} else
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			clk_set_rate(g_dp_intf->pclk_src[MT6991_TVDPLL_PLL], 594000000);
+		}
 		clk_disable_unprepare(g_dp_intf->pclk);
+	}
 }
 
 static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
