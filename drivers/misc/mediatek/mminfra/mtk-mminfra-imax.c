@@ -338,21 +338,24 @@ static int do_mminfra_imax(const char *val, const struct kernel_param *kp)
 	init_smi();
 	cmdq_util_mminfra_cmd(2);
 
+	if (is_sram) {
 #if IS_ENABLED(CONFIG_MTK_SLBC)
-	sram_data.uid = UID_MML;
-	sram_data.type = TP_BUFFER;
-	//sram_data.flag = FG_POWER;
-	ret = slbc_request(&sram_data);
+		sram_data.uid = UID_MML;
+		sram_data.type = TP_BUFFER;
+		//sram_data.flag = FG_POWER;
+		ret = slbc_request(&sram_data);
 
-	if (ret >= 0)
-		mm_sram_base = (unsigned long)sram_data.paddr;
+		if (ret >= 0)
+			mm_sram_base = (unsigned long)sram_data.paddr;
 #endif
 
-	if (mm_sram_base) {
-		fake_eng_set(MDPSYS_BASE, mdpsys_base, 0, mm_sram_base, mm_sram_base,
-			4, 255, 7, 0, 0, latency, 1);
-		fake_eng_set(MDPSYS1_BASE, mdpsys1_base, 0, mm_sram_base, mm_sram_base,
-			4, 255, 7, 0, 0, latency, 1);
+		if (mm_sram_base) {
+			fake_eng_set(MDPSYS_BASE, mdpsys_base, 0, mm_sram_base, mm_sram_base,
+				4, 255, 7, 0, 0, latency, 1);
+			fake_eng_set(MDPSYS1_BASE, mdpsys1_base, 0, mm_sram_base, mm_sram_base,
+				4, 255, 7, 0, 0, latency, 1);
+		}
+
 	}
 
 	dma_mask = dma_get_mask(mtk_smmu_get_shared_device(dev));
