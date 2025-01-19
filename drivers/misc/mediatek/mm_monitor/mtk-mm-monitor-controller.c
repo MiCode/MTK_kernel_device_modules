@@ -4,10 +4,6 @@
  * Copyright (c) 2024 MediaTek Inc.
  */
 #include "mtk-mm-monitor-controller.h"
-#include <linux/io.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
-#include <linux/of_platform.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/delay.h>
@@ -101,16 +97,6 @@
 #define LINE_MAX_LEN		(800)
 #define BUF_ALLOC_SIZE		(PAGE_SIZE)
 
-struct power_domain_cb {
-    int (*callback)(struct notifier_block *nb,
-	    unsigned long is_on, void *v);
-};
-
-struct mm_monitor_engine {
-	u32 engine;
-    struct power_domain_cb *pd_cb;
-};
-
 static struct mtk_mmmc_power_domain *g_mmmc_power_domain[MMMC_POWER_NUM_MAX];
 static struct mtk_mminfra2_config *g_mtk_mminfra2_config;
 static struct mtk_mm_fake_engine *g_mtk_mm_fake_engine;
@@ -151,6 +137,7 @@ EXPORT_SYMBOL(mmmc_smi_mon_comm1);
 module_param(mmmc_smi_mon_comm1, int, 0644);
 
 u32 mmmc_state;
+static bool hrt_debug_enabled;
 
 static int mmmc_set_state(const char *val, const struct kernel_param *kp)
 {
@@ -832,33 +819,6 @@ void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 		dump_cti(mmmc_power_domain);
 }
 
-int mmmc_pd_MT6993_SMI_PD_DISP_VCORE_cb(struct notifier_block *nb,
-	unsigned long is_on, void *v)
-{
-	//MM_MONITOR_DBG("%ld", is_on);
-	//mtk_init_monitor(MT6991_SMI_PD_DIS0, false);
-	return 0;
-}
-int mmmc_pd_MT6993_SMI_PD_ISP_VCORE_cb(struct notifier_block *nb,
-	unsigned long is_on, void *v)
-{
-	//MM_MONITOR_DBG("%ld", is_on);
-	//mtk_init_monitor(MT6991_SMI_PD_ISP_MAIN, false);
-	return 0;
-}
-int mmmc_pd_MT6993_SMI_PD_CAM_VCORE_cb(struct notifier_block *nb,
-	unsigned long is_on, void *v)
-{
-	//MM_MONITOR_DBG("%ld", is_on);
-	//mtk_init_monitor(MT6991_SMI_PD_CAM_MAIN, false);
-	return 0;
-}
-static struct power_domain_cb power_domain_callbacks_mt6993[] = {
-	{ .callback = mmmc_pd_MT6993_SMI_PD_DISP_VCORE_cb },
-	{ .callback = mmmc_pd_MT6993_SMI_PD_ISP_VCORE_cb },
-	{ .callback = mmmc_pd_MT6993_SMI_PD_CAM_VCORE_cb },
-};
-
 u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 {
 	void *base = NULL;
@@ -925,9 +885,13 @@ u32 mtk_init_monitor_by_subsys_id(u32 subsys_id, bool dump_and_force_init)
 		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
 		return -EINVAL;
 	}
-	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d",
+	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d hrt_debug_enabled:%d",
 		subsys_id, mmmc_power_domain->bwr_total_cnt,
-		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt);
+		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt,
+		hrt_debug_enabled);
+
+	if (!hrt_debug_enabled)
+		return 0;
 
 	if (dump_and_force_init || (mmmc_state & MONITOR_ENABLE)) {
 		if (subsys_id == MTK_SMI_ID2SUBSYS_ID(get_mminfra_pd()))
@@ -1655,9 +1619,20 @@ int mtk_mmmc_config_probe(struct platform_device *pdev, u32 power_domain_id,
 	struct mtk_mminfra2_config *mtk_mminfra2_config;
 	u32 emi_monitor_pa;
 	struct resource *res;
-	int len = 0, i;
+	int len = 0, i, ret;
 	const __be32 *smi_cb = NULL;
 	struct mtk_mmmc_power_domain *mmmc_power_domain;
+	struct device_node *chosen_node;
+	const char *name = NULL;
+
+	chosen_node = of_find_node_by_path("/chosen");
+	if (chosen_node) {
+		ret = of_property_read_string_index(chosen_node, "mtk_fabric_hrt_debug", 0, &name);
+		if (!ret && (!strncmp("on", name, sizeof("on"))))
+			hrt_debug_enabled = true;
+		else
+			hrt_debug_enabled = false;
+	}
 
 	mtk_mminfra2_config = devm_kzalloc(dev, sizeof(*mtk_mminfra2_config), GFP_KERNEL);
 	if (!mtk_mminfra2_config) {
@@ -1721,7 +1696,7 @@ int mtk_mmmc_config_probe(struct platform_device *pdev, u32 power_domain_id,
 		len /= sizeof(__be32);
 		for (i = 0; i < len; i++) {
 			u32 subsys_id = MTK_SMI_ID2SUBSYS_ID(be32_to_cpu(smi_cb[i]));
-			MM_MONITOR_DBG("subsys_id:%d", subsys_id);
+			MM_MONITOR_DBG("subsys_id:%d smi pwr cb", subsys_id);
 			if (!g_mmmc_power_domain[subsys_id]) {
 				g_mmmc_power_domain[subsys_id] = devm_kzalloc(dev, sizeof(*mmmc_power_domain), GFP_KERNEL);
 				g_mmmc_power_domain_cnt++;
@@ -1878,6 +1853,59 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 	return ret;
 }
 
+int mmmc_pd_MT6993_SMI_PD_DISP_VCORE_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[DISP_VCORE], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_ISP_VCORE_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[ISP_VCORE], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_CAM_VCORE_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[CAM_VCORE], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_CAM_RAWA_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[CAM_RAWA], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_CAM_RAWB_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[CAM_RAWB], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_CAM_RAWC_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[CAM_RAWC], false);
+	return 0;
+}
+int mmmc_pd_MT6993_SMI_PD_VEN_MDP_cb(struct notifier_block *nb,
+	unsigned long is_on, void *v)
+{
+	mtk_init_monitor(power_domains[VEN_MDP], false);
+	return 0;
+}
+
+struct power_domain_cb power_domain_callbacks_mt6993[] = {
+	{ .callback = mmmc_pd_MT6993_SMI_PD_DISP_VCORE_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_ISP_VCORE_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_CAM_VCORE_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_CAM_RAWA_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_CAM_RAWB_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_CAM_RAWC_cb },
+	{ .callback = mmmc_pd_MT6993_SMI_PD_VEN_MDP_cb },
+};
+
 static const struct mm_monitor_engine mm_axi = {.engine = MM_AXI};
 static const struct mm_monitor_engine mm_ela = {.engine = MM_ELA};
 static const struct mm_monitor_engine mm_cti = {.engine = MM_CTI};
@@ -1889,9 +1917,9 @@ static const struct of_device_id mm_monitor_of_ids[] = {
 	{.compatible = "mediatek,mm-axi-monitor", .data = (void *)&mm_axi},
 	{.compatible = "mediatek,mm-ela", .data = (void *)&mm_ela},
 	{.compatible = "mediatek,mm-cti", .data = (void *)&mm_cti},
-	{.compatible = "mediatek,mmmc-config-mt6993", .data = (void *)&mm_mminfra_mt6993},
 	{.compatible = "mediatek,mm-fake-engine", .data = (void *)&mm_fake_engine},
 	{.compatible = "mediatek,mm-axi-monitor-limiter", .data = (void *)&mm_axi_limiter},
+	{.compatible = "mediatek,mmmc-config-mt6993", .data = (void *)&mm_mminfra_mt6993},
 	{}
 };
 

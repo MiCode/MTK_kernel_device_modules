@@ -8,6 +8,11 @@
 
 #include <linux/types.h>
 #include <linux/platform_device.h>
+#include <linux/io.h>
+#include <linux/of_device.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <soc/mediatek/smi.h>
 
 #define MMMC_POWER_NUM_MAX	36
 #define BWR_NUM_DOMAIN_MAX	10
@@ -21,6 +26,26 @@
 #define CTI_SETTINGS_MAX	4
 
 #define BUS_WIDTH		16
+
+enum smi_pd_cb_ids {
+	DISP_VCORE = 0,
+	ISP_VCORE = 1,
+	CAM_VCORE = 2,
+	CAM_RAWA = 3,
+	CAM_RAWB = 4,
+	CAM_RAWC = 5,
+	VEN_MDP = 6,
+};
+
+struct power_domain_cb {
+	int (*callback)(struct notifier_block *nb,
+		unsigned long is_on, void *v);
+};
+
+struct mm_monitor_engine {
+	u32 engine;
+	struct power_domain_cb *pd_cb;
+};
 
 /* MUX ID */
 #define MAX_LEVEL 8
@@ -204,6 +229,7 @@ do { \
 		__func__, ##args); \
 } while (0)
 
+
 #if IS_ENABLED(CONFIG_MTK_MM_MONITOR)
 u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value);
 void enable_mminfra_funnel(void);
@@ -211,6 +237,10 @@ void mminfra_fake_engine_bus_settings(void);
 void emi_moniter_settings(void);
 u32 get_mmmc_subsys_max(void);
 u32 get_mminfra_pd(void);
+u16 get_freq_from_mux_id(enum MUX_ID id);
+extern u32 power_domains[];
+
+u32 mtk_init_monitor(u32 power_domain_id, bool dump_and_force_init);
 
 mux_axi_mon_pair *get_mux_axi_pair_by_larb(uint32_t larb_id);
 mux_axi_mon_pair *get_mux_axi_pair_by_comm_port(uint32_t comm_id, uint32_t port_id);
@@ -219,7 +249,6 @@ void mtk_mmmc_set_ostdbl_by_larb(uint32_t hwid, uint32_t r_bw, uint32_t v2_avg_w
 						uint32_t v2_peak_r_bw, uint32_t v2_peak_w_bw, uint32_t min_freq);
 void mtk_mmmc_set_ostdbl(uint32_t hwid, uint32_t min_freq);
 void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32_t min_freq);
-u16 get_freq_from_mux_id(enum MUX_ID id);
 void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state);
 
 u32 get_ostdbl_smmu_factor(void);
@@ -227,28 +256,36 @@ u32 get_axi_mon_threshold_us(void);
 int mtk_mmmc_smmu_factor_register_notifier(struct notifier_block *nb);
 int mtk_mmmc_threshold_us_register_notifier(struct notifier_block *nb);
 #else
-
-static inline int mtk_mmmc_reinit_all(const char *val, const struct kernel_param *kp)
-{
-	return 0;
-}
 static inline u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
 {
 	return 0;
 }
 static inline void enable_mminfra_funnel(void)
 {
-	return;
 }
 static inline void mminfra_fake_engine_bus_settings(void)
 {
-	return;
+}
+static inline void emi_moniter_settings(void)
+{
 }
 static inline u32 get_mmmc_subsys_max(void)
 {
 	return 0;
 }
 static inline u32 get_mminfra_pd(void)
+{
+	return 0;
+}
+static inline u16 get_freq_from_mux_id(enum MUX_ID id)
+{
+	return 0;
+}
+static inline u32 mtk_init_monitor(u32 power_domain_id, bool dump_and_force_init)
+{
+	return 0;
+}
+static inline int mtk_mmmc_reinit_all(const char *val, const struct kernel_param *kp)
 {
 	return 0;
 }
@@ -267,23 +304,15 @@ static inline u32 get_min_freq_from_axi_mon(uint32_t mux_id)
 static inline void mtk_mmmc_set_ostdbl_by_larb(uint32_t hwid, uint32_t r_bw, uint32_t v2_avg_w_bw,
 	uint32_t v2_peak_r_bw, uint32_t v2_peak_w_bw, uint32_t min_freq)
 {
-	return;
 }
 static inline void mtk_mmmc_set_ostdbl(uint32_t hwid, uint32_t min_freq)
 {
-	return;
 }
 static inline void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32_t min_freq)
 {
-	return;
-}
-static inline u16 get_freq_from_mux_id(enum MUX_ID id)
-{
-	return 0;
 }
 static inline void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 {
-	return;
 }
 static inline u32 get_ostdbl_smmu_factor(void)
 {
