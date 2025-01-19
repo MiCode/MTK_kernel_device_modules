@@ -931,13 +931,13 @@ dma_addr_t cmdq_thread_get_end(struct cmdq_thread *thread)
 	return CMDQ_REG_REVERT_ADDR_BY_CORE(end, thread->chan);
 }
 
-static void cmdq_thread_set_pc(struct cmdq_thread *thread, dma_addr_t pc)
+static inline void cmdq_thread_set_pc(struct cmdq_thread *thread, dma_addr_t pc)
 {
 	writel(CMDQ_REG_SHIFT_ADDR_BY_CORE(pc, thread->chan),
 		thread->base + CMDQ_THR_CURR_ADDR);
 }
 
-static void cmdq_thread_set_end(struct cmdq_thread *thread, dma_addr_t end)
+static inline void cmdq_thread_set_end(struct cmdq_thread *thread, dma_addr_t end)
 {
 	writel(CMDQ_REG_SHIFT_ADDR_BY_CORE(end, thread->chan),
 		thread->base + CMDQ_THR_END_ADDR);
@@ -1366,7 +1366,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 
 	buf = list_first_entry_or_null(&pkt->buf, typeof(*buf),
 			list_entry);
-	if (!buf) {
+	if (unlikely(!buf)) {
 		cmdq_err("no command to execute");
 		cmdq_trace_end("%s pkt:%p", __func__, pkt);
 		return;
@@ -1375,27 +1375,6 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 
 	cmdq_mtcmos_by_fast(cmdq, true);
 
-	if (list_empty(&thread->task_busy_list)) {
-		// power
-		if (mminfra_power_cb && !mminfra_power_cb()) {
-			cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d mminfra power not enable",
-				cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
-				atomic_read(&thread->usage));
-			cmdq_mtcmos_by_fast(cmdq, false);
-			cmdq_trace_end("%s pkt:%p", __func__, pkt);
-			return;
-		}
-		// clock
-		if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid)) {
-			cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d gce clock not enable",
-				cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
-				atomic_read(&thread->usage));
-			cmdq_mtcmos_by_fast(cmdq, false);
-			cmdq_trace_end("%s pkt:%p", __func__, pkt);
-			return;
-		}
-	}
-
 	do {
 		task = kzalloc(sizeof(*task), GFP_ATOMIC);
 		if (task)
@@ -1403,7 +1382,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 		cmdq_err("alloc task fail, retry cnt:%d", i);
 	} while (++i < alloc_retry_cnt);
 
-	if (!task) {
+	if (unlikely(!task)) {
 		cmdq_task_callback(pkt, -ENOMEM);
 		cmdq_mtcmos_by_fast(cmdq, false);
 		cmdq_trace_end("%s pkt:%p", __func__, pkt);
@@ -1427,7 +1406,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	task->pkt = pkt;
 	task->exec_time = sched_clock();
 
-	if (atomic_read(&cmdq->usage) <= 0)
+	if (unlikely(atomic_read(&cmdq->usage) <= 0))
 		cmdq_err("hwid:%hu usage:%d idx:%u usage:%d gce off",
 			cmdq->hwid, atomic_read(&cmdq->usage),
 			thread->idx, atomic_read(&thread->usage));
@@ -1444,8 +1423,8 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 			thread->idx, atomic_read(&thread->usage));
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-		if (cmdq->sw_ddr_en &&
-			cmdq_util_controller->thread_ddr_module(thread->idx)) {
+		if (unlikely(cmdq->sw_ddr_en &&
+			cmdq_util_controller->thread_ddr_module(thread->idx))) {
 
 			spin_lock_irqsave(&cmdq->lock, flags);
 			writel(readl(cmdq->base + GCE_GCTL_VALUE) | (1 << 16),
@@ -1464,7 +1443,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 			- (pkt->loop ? 0 : CMDQ_INST_SIZE));
 		cmdq_thread_set_pc(thread, task->pa_base);
 
-		if (cmdq->append_by_event)
+		if (likely(cmdq->append_by_event))
 			cmdq_thread_pause(thread, false);
 
 		writel(CMDQ_THR_IRQ_EN, thread->base + CMDQ_THR_IRQ_ENABLE);
@@ -1493,7 +1472,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	} else {
 		/* no warn on here to prevent slow down cpu */
 
-		if (cmdq->append_by_event) {
+		if (likely(cmdq->append_by_event)) {
 			cmdq_thread_pause(thread, true);
 
 			/* reorder case */
@@ -1558,7 +1537,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 		curr_pa = cmdq_thread_get_pc(thread);
 		task->pkt->append.pc[1] = curr_pa;
 
-		if (cmdq->append_by_event)
+		if (likely(cmdq->append_by_event))
 			cmdq_thread_pause(thread, false);
 
 		if (thread->dirty) {

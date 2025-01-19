@@ -274,7 +274,7 @@ struct cmdq_thread {
 extern int mtk_cmdq_log;
 #define cmdq_log(fmt, args...) \
 do { \
-	if (mtk_cmdq_log) \
+	if (unlikely(mtk_cmdq_log)) \
 		pr_notice("[cmdq] "fmt" @%s,%u\n", \
 		##args, __func__, __LINE__); \
 } while (0)

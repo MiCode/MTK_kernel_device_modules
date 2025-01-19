@@ -1615,19 +1615,21 @@ static bool cmdq_pkt_is_finalized(struct cmdq_pkt *pkt)
 static void cmdq_pkt_instr_encoder(void *buf, u16 arg_c, u16 arg_b,
 	u16 arg_a, u8 s_op, u8 arg_c_type, u8 arg_b_type, u8 arg_a_type, u8 op)
 {
-	struct cmdq_instruction *cmdq_inst;
+	struct cmdq_instruction temp_inst;
 
-	cmdq_inst = buf;
-	cmdq_inst->op = op;
-	cmdq_inst->arg_a_type = arg_a_type;
-	cmdq_inst->arg_b_type = arg_b_type;
-	cmdq_inst->arg_c_type = arg_c_type;
-	cmdq_inst->s_op = s_op;
-	cmdq_inst->arg_a = arg_a;
-	cmdq_inst->arg_b = arg_b;
-	cmdq_inst->arg_c = arg_c;
-	if (cmdq_inst->op >> 4 == 7 || cmdq_inst->op != op) {
-		cmdq_err("cmdq_inst->op:%#x, op::%#x", cmdq_inst->op, op);
+	*(uint64_t *)buf = (uint64_t)arg_c |
+		((uint64_t)arg_b << 16) |
+		((uint64_t)arg_a << 32) |
+		((uint64_t)s_op << 48) |
+		((uint64_t)arg_c_type << 53) |
+		((uint64_t)arg_b_type << 54) |
+		((uint64_t)arg_a_type << 55) |
+		((uint64_t)op << 56);
+
+	temp_inst = *(struct cmdq_instruction *)buf;
+
+	if (unlikely(temp_inst.op >> 4 == 7 || temp_inst.op != op)) {
+		cmdq_err("cmdq_inst->op:%#x, op::%#x", temp_inst.op, op);
 		dump_stack();
 	}
 }
