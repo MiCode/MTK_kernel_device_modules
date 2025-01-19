@@ -256,6 +256,10 @@ int mtk_vmm_notify_ut_ctrl(const char *val, const struct kernel_param *kp)
 	int ret;
 
 	ret = sscanf(val, "%u %u", &enable, &vote_bit);
+	if (ret <= 0) {
+		ISP_LOGI("sscanf ret is wrong %d\n", ret);
+		return 0;
+	}
 	ISP_LOGI("[%s][%d] en[%u] vote_bit[%u]\n", __func__, __LINE__, enable, vote_bit);
 
 	vmm_locked_hwccf_ctrl((enable > 0), vote_bit);
