@@ -874,6 +874,7 @@ static enum UT_RET_STATE mem_create_run_thread(enum TRUSTED_MEM_TYPE mem_type)
 {
 	int idx;
 	int chunk_cnt;
+	int ret;
 	u32 min_alloc_sz = tmem_core_get_min_chunk_size(mem_type);
 	u32 max_total_sz =
 		tmem_core_get_max_pool_size(mem_type) / MEM_SPAWN_THREAD_COUNT;
@@ -886,8 +887,11 @@ static enum UT_RET_STATE mem_create_run_thread(enum TRUSTED_MEM_TYPE mem_type)
 	for (idx = 0; idx < MEM_SPAWN_THREAD_COUNT; idx++) {
 		memset(&thread_param[mem_type][idx], 0x0,
 		       sizeof(struct mem_thread_param));
-		snprintf(thread_param[mem_type][idx].name, MEM_THREAD_NAME_LEN,
+		ret = snprintf(thread_param[mem_type][idx].name, MEM_THREAD_NAME_LEN,
 			 "mem%d_thread_%d", mem_type, idx);
+		if (ret)
+			pr_debug("[UT_TEST] snprintf fail\n");
+
 		thread_param[mem_type][idx].mem_type = mem_type;
 		thread_param[mem_type][idx].alloc_chunk_size = min_alloc_sz;
 		thread_param[mem_type][idx].alloc_total_size = max_total_sz;
