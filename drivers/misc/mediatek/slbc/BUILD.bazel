@@ -3,6 +3,19 @@ load("@mgk_info//:kernel_version.bzl",
     "kernel_version",
 )
 
+PLATFORMS = [
+    "mt6886",
+    "mt6893",
+    "mt6895",
+    "mt6897",
+    "mt6899",
+    "mt6983",
+    "mt6985",
+    "mt6989",
+    "mt6991",
+    "mt6993",
+]
+
 package(
     default_visibility = [
         "//visibility:public",
@@ -86,6 +99,72 @@ define_mgk_ddk_ko(
     ko_deps = [
         ":mtk_slbc",
         ":slbc_trace",
-	"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "mmsram",
+    srcs = [
+        "mmsram.c",
+    ],
+    hdrs = [
+        "mmsram.h",
+    ],
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+        "-I$(srctree)/include",
+        "-I$(src)",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_rs".format(kernel_version),
+    ],
+)
+
+[define_mgk_ddk_ko(
+    name = "slbc_{}".format(p),
+    includes = [
+        "include",
+    ],
+    srcs = [
+        "slbc_{}.c".format(p),
+        "slbc.h",
+        "slbc_trace.h",
+        "slbc_ipi.h",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/l3c_part",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+        "-I$(srctree)/include",
+        "-I$(src)",
+    ],
+    ko_deps = [
+        ":mtk_slbc",
+        ":slbc_trace",
+        ":slbc_ipi",
+        ":mmsram",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_rs".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+    ],
+) for p in PLATFORMS]
+
+
