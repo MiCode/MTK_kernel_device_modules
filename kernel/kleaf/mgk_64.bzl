@@ -512,6 +512,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/iommu/smmu_secure.ko",
     "drivers/misc/mediatek/irtx/mtk_irtx_pwm.ko",
     "drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
+    "drivers/misc/mediatek/ise_lpm/ise_lpm_v2.ko",
     "drivers/misc/mediatek/ise_trusty/ise-trusty.ko",
     "drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko",
     "drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko",
