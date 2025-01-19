@@ -242,6 +242,7 @@ void dptx_shutdown(void)
 	if (g_mtk_dp->priv->pwr_node) {
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+		pm_runtime_put_sync(g_mtk_dp->dev);
 	}
 	else
 		ret = pm_runtime_put_sync(g_mtk_dp->dev);
@@ -1667,6 +1668,7 @@ void mdrv_DPTx_put_device(void)
 		if (g_mtk_dp->priv->pwr_node) {
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+			pm_runtime_put_sync(g_mtk_dp->dev);
 		}
 		else
 			pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
@@ -4366,6 +4368,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				if (g_mtk_dp->priv->pwr_node) {
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+					pm_runtime_get_sync(g_mtk_dp->dev);
 				}
 				else
 					pm_runtime_get_sync(g_mtk_dp->dev);
