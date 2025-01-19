@@ -243,6 +243,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:srcs".format(kernel_version),
@@ -321,6 +322,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
@@ -542,6 +544,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_dummy".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:cam_qos".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl_magt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:mtk_wdt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
@@ -715,7 +718,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
     "drivers/misc/mediatek/cameraisp/pda/isp_71/camera_pda.ko",
     "drivers/misc/mediatek/cameraisp/src/isp_6s/camera_isp.ko",
-    "drivers/misc/mediatek/cameraisp/src/isp_6s/cam_qos.ko",
     "drivers/misc/mediatek/camera_mem/camera_mem.ko",
     "drivers/misc/mediatek/cam_timesync/archcounter_timesync.ko",
     "drivers/misc/mediatek/ccci_util/ccci_util_lib.ko",
@@ -1872,7 +1874,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/audio_ipi/audio_ipi.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/camera_isp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/cam_qos.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/src/isp_4/camera_isp_4_t.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp40.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp40.ko")
@@ -2426,7 +2427,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/camera_isp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/cam_qos.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/src/isp_3/camera_isp_3_m.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/src/isp_3/cam_qos_3.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp35.ko")
@@ -3139,7 +3139,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/sensor/1.0/hwmon/hwmon.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/camera_isp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/cameraisp/src/isp_6s/cam_qos.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/src/isp_4/camera_isp_4_c.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/src/isp_4/cam_qos_4.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp40.ko")
