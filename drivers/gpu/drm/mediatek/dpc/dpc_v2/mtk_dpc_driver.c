@@ -798,7 +798,7 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 	if (unlikely(mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16)))
 		ch_bw = mminfra_floor * 16;
 
-	if (idx >= 0 && idx < 24) {
+	if (idx < 24) {
 	/* use display voter for both display and mml, since mml voter is reserved for others */
 		value = readl(dpc_base + mt6991_ch_bw_cfg[idx].offset) & ~(0x3ff << mt6991_ch_bw_cfg[idx].shift);
 		value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << mt6991_ch_bw_cfg[idx].shift;
@@ -1111,7 +1111,8 @@ static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 
 	if (!en && is_mminfra_ctrl_by_dpc) {
 		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc get mminfra\n");
-		dpc_pm_ctrl(true);
+		if (dpc_pm_ctrl(true))
+			return;
 		is_mminfra_ctrl_by_dpc = false;
 	}
 
@@ -1722,7 +1723,7 @@ static void process_dbg_opt(const char *opt)
 		if (strncmp(opt + 4, "off:", 4) == 0) {
 			ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
 			/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
-			if ((ret != 2)||(v1 < 0 || v2 < 0 || v1 > 5 || v2 >= 31)) {
+			if ((ret != 2)||(v1 > 5 || v2 >= 31)) {
 				DPCDUMP("[Waring] avs:off sscanf not match");
 				goto err;
 			}
