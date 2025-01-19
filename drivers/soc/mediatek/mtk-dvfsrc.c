@@ -1502,7 +1502,7 @@ out:
 static void pstate_notifier_register(struct mtk_dvfsrc *dvfsrc)
 {
 	dvfsrc->scpsys_notifier.notifier_call = dvfsrc_set_performance;
-	//register_scpsys_notifier(&dvfsrc->scpsys_notifier);
+	register_scpsys_notifier(&dvfsrc->scpsys_notifier);
 }
 
 static irqreturn_t mtk_dvfsrc_irq_handler_thread(int irq, void *data)
