@@ -1106,8 +1106,10 @@ static void fstb_notifier_wq_cb(struct work_struct *psWork)
 	vpPush = container_of(psWork, struct fstb_notifier_push_tag, sWork);
 
 	if (!vpPush->only_detect) {
+		mutex_lock(&fstb_user_target_hint_lock);
 		hint = fstb_get_user_target_hint(0, vpPush->tgid, 0) ||
 				fstb_get_user_target_hint(1, vpPush->pid, vpPush->bufid);
+		mutex_unlock(&fstb_user_target_hint_lock);
 		fstb_calculate_target_fps(vpPush->tgid, vpPush->pid, vpPush->bufid,
 			vpPush->target_fps_policy, vpPush->target_fps_margin, hint,
 			vpPush->eara_is_active, vpPush->cur_queue_end_ts);
@@ -1451,17 +1453,18 @@ static int cmp_powerfps(const void *x1, const void *x2)
 void fstb_cal_powerhal_fps(void)
 {
 	struct fstb_frame_info *iter;
-	int i = 0, j = 0;
+	int i = 0, j = 0, hint = 0;
 
 	memset(powerfps_array, 0, 64 * sizeof(struct fstb_powerfps_list));
+	mutex_lock(&fstb_user_target_hint_lock);
 	hlist_for_each_entry(iter, &fstb_frame_info_list, hlist) {
 		if (i < 0 || i >= 64)
 			break;
 
 		powerfps_array[i].pid = iter->proc_id;
-		if (iter->target_fps_policy == 2 ||
-			fstb_get_user_target_hint(0, iter->proc_id, 0) ||
-			fstb_get_user_target_hint(1, iter->pid, iter->bufid))
+		hint = fstb_get_user_target_hint(0, iter->proc_id, 0) ||
+			fstb_get_user_target_hint(1, iter->pid, iter->bufid);
+		if (iter->target_fps_policy == 2 || hint)
 			powerfps_array[i].fps = iter->raw_target_fpks / 1000;
 		else
 			powerfps_array[i].fps = -1;
@@ -1472,6 +1475,7 @@ void fstb_cal_powerhal_fps(void)
 			break;
 		}
 	}
+	mutex_unlock(&fstb_user_target_hint_lock);
 
 	if (i < 0 || i >= 64)
 		return;
@@ -1646,7 +1650,7 @@ int fpsgo_ctrl2fstb_switch_fstb(int enable)
 int fpsgo_other2fstb_calculate_target_fps(int policy, int pid,
 	unsigned long long bufID, unsigned long long cur_ts)
 {
-	int tfps = -1;
+	int tfps = -1, hint = 0;
 	struct fstb_frame_info *iter = NULL;
 	struct fstb_notifier_push_tag *vpPush = NULL;
 
@@ -1668,10 +1672,13 @@ int fpsgo_other2fstb_calculate_target_fps(int policy, int pid,
 	vpPush->eara_is_active = !!iter->target_fps_diff;
 	mutex_unlock(&fstb_lock);
 
+	mutex_lock(&fstb_user_target_hint_lock);
+	hint = fstb_get_user_target_hint(0, vpPush->tgid, 0) || fstb_get_user_target_hint(1, pid, bufID);
+	mutex_unlock(&fstb_user_target_hint_lock);
+
 	tfps = fstb_calculate_target_fps(vpPush->tgid, pid, bufID,
 		policy, vpPush->target_fps_margin,
-		fstb_get_user_target_hint(0, vpPush->tgid, 0) || fstb_get_user_target_hint(1, pid, bufID),
-		vpPush->eara_is_active, cur_ts);
+		hint, vpPush->eara_is_active, cur_ts);
 
 out:
 	kfree(vpPush);
