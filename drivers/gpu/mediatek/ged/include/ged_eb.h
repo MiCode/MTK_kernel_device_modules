@@ -922,12 +922,14 @@ static struct {
 #define AP_FDVFS_TMP_NEGATIVE_OFFSET AP_FDVFS_DATA_START_OFFSET
 #define AP_FDVFS_NORMAL_DATA_START 443  // tmp use 443~511 for swrgo
 #define FDVFS_V2_RB_SIZE (0x400)  // 1 KB
-#define FDVFS_MBRAIN_SIZE (0x400)  // 1 KB
+#define FDVFS_TS_DATA_SIZE (0x400)  // 1 KB
 #define AP_FDVFS_TS_DATA_START (AP_FDVFS_DATA_START_OFFSET + FDVFS_V2_RB_SIZE)  // 0x13D800~0x13DC00 (1KB)
-#define AP_FDVFS_MBRAIN_DATA_START (AP_FDVFS_DATA_START_OFFSET + FDVFS_V2_RB_SIZE + FDVFS_MBRAIN_SIZE)  // 0x13D800~0x13DC00 (1KB)
+#define AP_FDVFS_MBRAIN_DATA_START (AP_FDVFS_DATA_START_OFFSET + FDVFS_V2_RB_SIZE + FDVFS_TS_DATA_SIZE)  // 0x13DC00~0x13DE00 (1KB)
 #define SYSRAM_RB_LOG_SIZE SYSRAM_LOG_SIZE * 10
 #define SYSRAM_RB_TS_SIZE SYSRAM_LOG_SIZE * 7
 #define SRAM_TS_RB_NUM 36
+#define MBRAIN_MAX_OPP_NUM 64
+#define MBRAIN_MAX_LOG_SIZE 4 // active: u64, idle: u64
 
 typedef struct {
 	unsigned int type;
@@ -992,6 +994,12 @@ typedef struct {
  GEN("Gpu_kpi_cpu_time", GPU_KPI_CPU_TIME, 1, "kpi_cpu_time") \
  GEN("Gpu_kpi_gpu_time", GPU_KPI_GPU_TIME, 1, "kpi_gpu_time") \
  GEN("Gpu_loading", GPU_LOADING, 1, "gpu_loading") \
+ GEN("mbrain_sum_loading1", GPU_SUM_LOADING1, 1, "g_sum_loading") \
+ GEN("mbrain_sum_loading2", GPU_SUM_LOADING2, 1, "g_sum_loading")\
+ GEN("mbrain_sum_time1", GPU_SUM_TIME1, 1, "g_sum_delta_time") \
+ GEN("mbrain_sum_time2", GPU_SUM_TIME2, 1, "g_sum_delta_time") \
+ GEN("mbrain_opp_cost_ts1", GPU_OPP_COST_TS1, 1, "g_last_opp_cost_update_ts_ms") \
+ GEN("mbrain_opp_cost_ts2", GPU_OPP_COST_TS2, 1, "g_last_opp_cost_update_ts_ms") \
  GEN("Gpu_debug_5566", GPU_DEBUG1, 1, "5566_debug1") \
  GEN("Gpu_debug_5566", GPU_DEBUG2, 1, "5566_debug2") \
  GEN("Gpu_debug_5566", GPU_DEBUG3, 1, "5566_debug3") \
@@ -1199,5 +1207,7 @@ union combineData {
  *****************************************************************/
 extern int mtk_gpueb_sysram_rb_write(int rb_num, GPU_TS_INFO ts_in);
 extern union combineData mtk_gpueb_sysram_multi_read(int offset);
+extern struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp);
+extern void mtk_gpueb_mbrain_write(int opp, unsigned long long active, unsigned long long idle);
 
 #endif // __GED_EB_H__

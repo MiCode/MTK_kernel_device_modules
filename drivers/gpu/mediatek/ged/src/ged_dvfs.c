@@ -3937,17 +3937,30 @@ void ged_dvfs_reset_opp_cost(int oppsize)
 int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 		int i32NumOpp, bool bStript, u64 *last_ts)
 {
+	unsigned int real_opp_num = gpufreq_get_opp_num(TARGET_DEFAULT);
+	int report_idx = 0;
+
 	if (ged_kpi_enabled() && g_aOppStat != NULL && psReport &&
 		i32NumOpp > 0 && i32NumOpp <= g_real_oppfreq_num &&
 		gpu_opp_logs_enable == 1) {
-		*last_ts = g_last_opp_cost_update_ts_ms;
 
-		memcpy(psReport, g_aOppStat,
+		if (is_fdvfs_enable() & POLICY_MODE_V2) {
+			for (int i = 0; i < real_opp_num; i++) {
+				if (i >= i32NumOpp)
+					report_idx = i32NumOpp - 1;
+				else
+					report_idx = i;
+				psReport[report_idx] = mtk_gpueb_mbrain_read(i);
+			}
+			*last_ts = (unsigned long long)mtk_gpueb_sysram_read(SYSRAM_GPU_OPP_COST_TS1) +
+					((unsigned long long)mtk_gpueb_sysram_read(SYSRAM_GPU_OPP_COST_TS2) << 32);
+		} else {
+			*last_ts = g_last_opp_cost_update_ts_ms;
+			memcpy(psReport, g_aOppStat,
 				i32NumOpp * sizeof(struct GED_DVFS_OPP_STAT));
-
+		}
 		return 0;
 	}
-
 	return -1;
 }
 EXPORT_SYMBOL(ged_dvfs_query_opp_cost);
@@ -4003,6 +4016,8 @@ EXPORT_SYMBOL(ged_dvfs_get_real_oppfreq_num);
 
 int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time)
 {
+	unsigned int tmp_loading1 = 0, tmp_loading2 = 0, tmp_time1 = 0, tmp_time2 = 0;
+
 	if (sum_loading == NULL || sum_delta_time == NULL) {
 		WARN(1, "Invalid parameters");
 		return -EINVAL;
@@ -4010,6 +4025,16 @@ int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time)
 
 	*sum_loading = g_sum_loading;
 	*sum_delta_time = g_sum_delta_time;
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_loading1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_LOADING1);
+		tmp_loading2 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_LOADING2);
+		tmp_time1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME1);
+		tmp_time2 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME2);
+
+		*sum_loading = (u64)tmp_loading1 + ((u64)tmp_loading2 << 32);
+		*sum_delta_time = (u64)tmp_time1 + ((u64)tmp_time2 << 32);
+	}
 
 	return 0;
 }

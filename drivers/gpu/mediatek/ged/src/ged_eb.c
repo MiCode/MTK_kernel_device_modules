@@ -1202,6 +1202,41 @@ union combineData mtk_gpueb_sysram_multi_read(int offset)
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_multi_read);
 
+struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
+{
+	struct GED_DVFS_OPP_STAT out_data= {};
+	unsigned int offset = AP_FDVFS_MBRAIN_DATA_START + opp * MBRAIN_MAX_LOG_SIZE * SYSRAM_LOG_SIZE;
+	unsigned long long active_low = 0, active_high = 0, idle_low = 0, idle_high = 0;
+
+	if (opp >= MBRAIN_MAX_OPP_NUM)
+		return out_data;
+
+	active_low = mtk_gpueb_sysram_read(offset);
+	active_high = mtk_gpueb_sysram_read(offset + 1 * SYSRAM_LOG_SIZE);
+	idle_low = mtk_gpueb_sysram_read(offset + 2 * SYSRAM_LOG_SIZE);
+	idle_high = mtk_gpueb_sysram_read(offset + 3 * SYSRAM_LOG_SIZE);
+
+	out_data.ui64Active = active_low & 0xFFFFFFFF + (active_high << 32);
+	out_data.ui64Idle = idle_low & 0xFFFFFFFF + (idle_high << 32);
+
+	return out_data;
+}
+EXPORT_SYMBOL(mtk_gpueb_mbrain_read);
+
+void mtk_gpueb_mbrain_write(int opp, unsigned long long active, unsigned long long idle)
+{
+	unsigned int offset = AP_FDVFS_MBRAIN_DATA_START + opp * MBRAIN_MAX_LOG_SIZE * SYSRAM_LOG_SIZE;
+
+	if (opp >= MBRAIN_MAX_OPP_NUM)
+		return;
+
+	mtk_gpueb_sysram_write(offset, active & 0xFFFFFFFF);
+	mtk_gpueb_sysram_write(offset + 1 * SYSRAM_LOG_SIZE, active >> 32);
+	mtk_gpueb_sysram_write(offset + 2 * SYSRAM_LOG_SIZE, idle & 0xFFFFFFFF);
+	mtk_gpueb_sysram_write(offset + 3 * SYSRAM_LOG_SIZE, idle >> 32);
+}
+EXPORT_SYMBOL(mtk_gpueb_mbrain_write);
+
 int mtk_gpueb_sysram_write(int offset, int val)
 {
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
