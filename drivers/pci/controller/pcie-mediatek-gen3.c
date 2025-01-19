@@ -1331,9 +1331,14 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 			writel_relaxed(int_enable, port->base + PCIE_INT_ENABLE_REG);
 		}
 
-		dev_info(port->dev, "PCIe error %#lx detected\n", status);
+		port->full_debug_dump = true;
 		mtk_pcie_dump_link_info(port->port_num);
+		port->full_debug_dump = false;
+		if (port->port_num == 0)
+			mtk_pcie_disable_data_trans(port->port_num);
+
 		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
+		dev_info(port->dev, "PCIe error %#lx detected\n", status);
 	}
 
 	for_each_set_bit_from(irq_bit, &status, PCI_NUM_INTX +
