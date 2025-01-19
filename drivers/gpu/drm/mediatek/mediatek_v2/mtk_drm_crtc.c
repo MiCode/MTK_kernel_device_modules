@@ -10712,7 +10712,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_crtc *crtc = cb_data->crtc ? cb_data->crtc : crtc_state->crtc;
+	struct drm_crtc *crtc = crtc_state->crtc;
 
 	/* debug log */
 	DDPINFO("%s +\n", __func__);
@@ -10728,8 +10728,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_atomic_state *atomic_state;
-	struct drm_crtc *crtc = cb_data->crtc ? cb_data->crtc : crtc_state->crtc;
+	struct drm_atomic_state *atomic_state = crtc_state->state;
+	struct drm_crtc *crtc = crtc_state->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 	bool use_union_fence = false;
@@ -10772,7 +10772,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		kfree(cb_data);
 		return;
 	}
-	atomic_state = crtc_state->state;
 	old_crtc_state = drm_atomic_get_old_crtc_state(atomic_state, crtc);
 	old_mtk_state = to_mtk_crtc_state(old_crtc_state);
 	frame_idx = old_mtk_state->prop_val[CRTC_PROP_OVL_DSI_SEQ];
@@ -10782,8 +10781,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		(unsigned long)crtc, cb_data->pres_fence_idx);
 
 	session_id = mtk_get_session_id(crtc);
-
-	id = drm_crtc_index(crtc);
 
 	// we only support union fence on primary display, because other
 	// crtc may release to other drm user (ex: drmwrapper) which not
