@@ -960,6 +960,22 @@ void ssusb_clks_disable(struct ssusb_mtk *ssusb)
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 }
 
+int ssusb_pds_enable(struct ssusb_mtk *ssusb)
+{
+	int ret;
+
+	ret = clk_bulk_prepare_enable(BULK_PDS_CNT, ssusb->pds);
+	if (ret)
+		dev_err(ssusb->dev, "failed to enable pd\n");
+
+	return ret;
+}
+
+void ssusb_pds_disable(struct ssusb_mtk *ssusb)
+{
+	clk_bulk_disable_unprepare(BULK_PDS_CNT, ssusb->pds);
+}
+
 static int ssusb_rscs_init(struct ssusb_mtk *ssusb)
 {
 	int ret = 0;
@@ -974,6 +990,10 @@ static int ssusb_rscs_init(struct ssusb_mtk *ssusb)
 	}
 
 	ssusb_vsvoter_set(ssusb);
+
+	ret = clk_bulk_prepare_enable(BULK_PDS_CNT, ssusb->pds);
+	if (ret)
+		goto pds_err;
 
 	ret = clk_bulk_prepare_enable(BULK_CLKS_CNT, ssusb->clks);
 	if (ret)
@@ -1002,6 +1022,8 @@ phy_init_err:
 
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 clks_err:
+	clk_bulk_disable_unprepare(BULK_PDS_CNT, ssusb->pds);
+pds_err:
 	ssusb_vsvoter_clr(ssusb);
 	regulator_disable(ssusb->vusb33);
 vusb33_err:
@@ -1010,11 +1032,11 @@ vusb33_err:
 
 static void ssusb_rscs_exit(struct ssusb_mtk *ssusb)
 {
-
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	regulator_disable(ssusb->vusb33);
 	ssusb_phy_power_off(ssusb);
 	ssusb_phy_exit(ssusb);
+	clk_bulk_disable_unprepare(BULK_PDS_CNT, ssusb->pds);
 	ssusb_vsvoter_clr(ssusb);
 }
 
@@ -1067,6 +1089,7 @@ static int get_ssusb_rscs(struct platform_device *pdev, struct ssusb_mtk *ssusb)
 	struct device_node *child;
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 	struct clk_bulk_data *clks = ssusb->clks;
+	struct clk_bulk_data *pds = ssusb->pds;
 	struct device *dev = &pdev->dev;
 	int i;
 	int ret;
@@ -1087,6 +1110,12 @@ static int get_ssusb_rscs(struct platform_device *pdev, struct ssusb_mtk *ssusb)
 		dev_err(dev, "failed to get vusb33\n");
 		return PTR_ERR(ssusb->vusb33);
 	}
+
+	pds[0].id = "u2_pd";
+	pds[1].id = "u3_pd";
+	ret = devm_clk_bulk_get_optional(dev, BULK_PDS_CNT, pds);
+	if (ret)
+		return ret;
 
 	clks[0].id = "sys_ck";
 	clks[1].id = "ref_ck";

@@ -98,6 +98,7 @@ struct mtu3_request;
 #define EP0_RESPONSE_BUF  6
 
 #define BULK_CLKS_CNT	6
+#define BULK_PDS_CNT	2
 
 /* device operated link and speed got from DEVICE_CONF register */
 enum mtu3_speed {
@@ -332,6 +333,7 @@ struct ssusb_mtk {
 	/* common power & clock */
 	struct regulator *vusb33;
 	struct clk_bulk_data clks[BULK_CLKS_CNT];
+	struct clk_bulk_data pds[BULK_PDS_CNT];
 	/* otg */
 	struct otg_switch_mtk otg_switch;
 	enum usb_dr_mode dr_mode;
@@ -575,6 +577,8 @@ void ssusb_phy_set_mode(struct ssusb_mtk *ssusb, enum phy_mode mode);
 void ssusb_phy_dp_pullup(struct ssusb_mtk *ssusb);
 int ssusb_clks_enable(struct ssusb_mtk *ssusb);
 void ssusb_clks_disable(struct ssusb_mtk *ssusb);
+int ssusb_pds_enable(struct ssusb_mtk *ssusb);
+void ssusb_pds_disable(struct ssusb_mtk *ssusb);
 void ssusb_ip_sw_reset(struct ssusb_mtk *ssusb);
 void ssusb_set_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
 void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb);
