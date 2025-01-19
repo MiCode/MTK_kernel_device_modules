@@ -302,9 +302,11 @@ static void set_camera_max_bw(u32 bw)
 
 	pr_notice("%s: %d\n", __func__, bw);
 
-	if (mmqos_hrt->cam_max_bw == 0 && bw > 0)
+	if (mmqos_hrt->cam_max_bw == 0 && bw > 0) {
 		thread_vcp = kthread_run(enable_vcp_blocking, NULL, "enable vcp");
-	else if (mmqos_hrt->cam_max_bw > 0 && bw == 0)
+		if (IS_ERR(thread_vcp))
+			pr_notice("%s: Failed to start enable vcp thread\n", __func__);
+	} else if (mmqos_hrt->cam_max_bw > 0 && bw == 0)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
 
 	mmqos_hrt->cam_max_bw = bw;

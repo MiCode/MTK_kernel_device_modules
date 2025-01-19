@@ -388,7 +388,7 @@ static bool is_srt_comm_port(u8 hrt_type)
 
 static void set_total_bw_to_emi(struct common_node *comm_node)
 {
-	u32 avg_bw = 0, peak_bw = 0, total_bw_to_vcp = 0;
+	u32 avg_bw = 0, peak_bw = 0;
 	u32 sum_up_avg_bw = 0, sum_up_peak_bw = 0;
 	u64 normalize_peak_bw;
 	struct common_port_node *comm_port_node;
@@ -396,8 +396,6 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
 		mutex_lock(&comm_port_node->bw_lock);
-		total_bw_to_vcp +=
-			comm_port_node->latest_avg_bw + comm_port_node->latest_peak_bw;
 		if (mmqos_state & DPC_ENABLE
 			&& is_disp_comm_port(comm_port_node->hrt_type)) {
 			if (log_level & 1 << log_debug)
@@ -2295,9 +2293,11 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 		gmmqos->vmmrc_base = NULL;
 	}
 
-	if (mmqos_state & VCP_ENABLE)
+	if (mmqos_state & VCP_ENABLE) {
 		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
-	else
+		if (IS_ERR(kthr_vcp))
+			MMQOS_ERR("Failed to start mmqos-vcp thread\n");
+	} else
 		MMQOS_DBG("VCP not enable");
 
 	return probe_ret;
@@ -2800,17 +2800,21 @@ int mmqos_set_larb_port_ostdl(const char *val, const struct kernel_param *kp)
 	struct device *larb_dev;
 
 	result = sscanf(val, "%d %d %d", &larb_id, &port_id, &ostdl);
+	if (result != 3) {
+		MMQOS_ERR("Invalid input format. Expected 'larb_id port_id ostdl'");
+		return -EINVAL;
+	}
 
 	MMQOS_DBG("larb:%d port:%d ostdl:%d", larb_id, port_id, ostdl);
 	if (ostdl <= 0) {
 		MMQOS_DBG("ostdl should not <= 0");
-		return -1;
+		return -EINVAL;
 	}
 
 	larb_dev = get_larb_dev(larb_id);
 	if (larb_dev == NULL) {
 		MMQOS_ERR("wrong larb_id");
-		return -1;
+		return -EINVAL;
 	}
 
 	mtk_smi_larb_bw_set(larb_dev, port_id, ostdl);
@@ -2831,6 +2835,48 @@ static const struct kernel_param_ops mmqos_debug_set_ftrace_ops = {
 };
 module_param_cb(ftrace_ena, &mmqos_debug_set_ftrace_ops, &ftrace_ena, 0644);
 MODULE_PARM_DESC(ftrace_ena, "mmqos ftrace log");
+
+static int sid;
+static int bw_id;
+int mmqos_set_sid_bw_id(const char *val, const struct kernel_param *kp)
+{
+	int result;
+
+	result = sscanf(val, "%d %d", &sid, &bw_id);
+	if (result != 2) {
+		MMQOS_ERR("Invalid input format. Expected 'sid bw_id'");
+		return -EINVAL;
+	}
+	if (sid < 0 || sid >= MAX_SUBSYS_NUM) {
+		MMQOS_ERR("sid:%d is wrong", sid);
+		return -EINVAL;
+	}
+	if (bw_id < 0 || bw_id >= MAX_BW_VALUE_NUM) {
+		MMQOS_ERR("bw_id:%d is wrong", bw_id);
+		return -EINVAL;
+	}
+	MMQOS_DBG("set sid:%d, bw_id:%d", sid, bw_id);
+
+	return 0;
+}
+
+int mmqos_check_channel_bw(char *val, const struct kernel_param *kp)
+{
+	int reg_id, bw;
+
+	reg_id = bw_id / 3;
+	bw = get_bw_from_reg(
+		read_register(SUBSYS_HW_BW_OFFSET(sid, reg_id)), bw_id % 3);
+	MMQOS_DBG("sid:%d, bw_id:%d, bw:%d", sid, bw_id, bw);
+
+	return sprintf(val, "%d", bw);
+}
+static const struct kernel_param_ops mmqos_check_channel_ops = {
+	.set = mmqos_set_sid_bw_id,
+	.get = mmqos_check_channel_bw,
+};
+module_param_cb(check_channel, &mmqos_check_channel_ops, NULL, 0644);
+MODULE_PARM_DESC(check_channel, "mmqos check channel bw");
 
 EXPORT_SYMBOL_GPL(mtk_mmqos_remove);
 MODULE_LICENSE("GPL v2");
