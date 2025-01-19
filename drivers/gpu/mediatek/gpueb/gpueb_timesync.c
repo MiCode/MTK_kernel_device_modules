@@ -19,19 +19,18 @@
 
 #define TIMESYNC_TAG	"[GPUEB_TS]"
 
-#define TIMESYNC_MAX_VER           (0x7)
 #define TIMESYNC_HEADER_FREEZE_OFS (31)
 #define TIMESYNC_HEADER_FREEZE     (1 << TIMESYNC_HEADER_FREEZE_OFS)
-#define TIMESYNC_HEADER_VER_OFS    (28)
-#define TIMESYNC_HEADER_VER_MASK   (TIMESYNC_MAX_VER << TIMESYNC_HEADER_VER_OFS)
 
-#define TIMESYNC_FLAG_SYNC     (1 << 0)
-#define TIMESYNC_FLAG_ASYNC    (1 << 1)
-#define TIMESYNC_FLAG_FREEZE   (1 << 2)
-#define TIMESYNC_FLAG_UNFREEZE (1 << 3)
+#define TIMESYNC_FLAG_SYNC         (1 << 0)
+#define TIMESYNC_FLAG_ASYNC        (1 << 1)
+#define TIMESYNC_FLAG_FREEZE       (1 << 2)
+#define TIMESYNC_FLAG_UNFREEZE     (1 << 3)
 
-static unsigned int g_gpueb_ts_mbox;
-static unsigned int g_gpueb_ts_mbox_offset_base;
+/* sched_clock wrap time is 4398 seconds for arm arch timer
+ * applying a period less than it for tinysys timesync
+ */
+#define TIMESYNC_WRAP_TIME         (4000*NSEC_PER_SEC)
 
 /*
  * Shared MBOX: AP write, GPUEB read
@@ -64,18 +63,31 @@ static u8 gpueb_base_ver;
 static u64 latest_tick, latest_ts;
 static int latest_freeze;
 static int need_sync;
+static unsigned int g_gpueb_ts_mbox;
+static unsigned int g_gpueb_ts_mbox_offset_base;
+static u32 timesync_max_ver;
+static u32 timesync_header_ver_ofs;
+static u32 timesync_header_ver_mask;
+
+static int arch_counter_get_width(void)
+{
+	u64 min_cycles = (40ULL * 365 * 24 * 3600) * arch_timer_get_cntfrq();
+
+	/* guarantee the returned width is within the valid range */
+	return clamp_val(ilog2(min_cycles - 1) + 1, 56, 64);
+}
 
 static void gpueb_ts_update(int suspended, u64 tick, u64 ts)
 {
 	u32 header, val;
 
-	gpueb_base_ver = (gpueb_base_ver + 1)%(TIMESYNC_MAX_VER+1);
+	gpueb_base_ver = (gpueb_base_ver + 1)%(timesync_max_ver+1);
 
 	/* make header: freeze and version */
 	header = suspended ? TIMESYNC_HEADER_FREEZE : 0;
 
-	header |= ((gpueb_base_ver << TIMESYNC_HEADER_VER_OFS) &
-		TIMESYNC_HEADER_VER_MASK);
+	header |= ((gpueb_base_ver << timesync_header_ver_ofs) &
+		timesync_header_ver_mask);
 
 	/* update tick, h -> l */
 	val = (tick >> 32) & 0xFFFFFFFF;
@@ -125,8 +137,7 @@ static u64 timesync_tick_read(const struct cyclecounter *cc)
 }
 
 static struct cyclecounter timesync_cc __ro_after_init = {
-	.read	= timesync_tick_read,
-	.mask	= CLOCKSOURCE_MASK(56),
+	.read	= timesync_tick_read
 };
 
 static void timesync_sync_base_internal(unsigned int flag)
@@ -189,23 +200,8 @@ static void timesync_ws(struct work_struct *ws)
 	timesync_sync_base(TIMESYNC_FLAG_SYNC);
 }
 
-static u64 get_ts_max_nsecs(u32 mult, u32 shift, u64 mask)
-{
-	u64 max_nsecs, max_cycles;
-
-	max_cycles = ULLONG_MAX;
-	do_div(max_cycles, mult);
-	max_cycles = min(max_cycles, mask);
-	max_nsecs = clocksource_cyc2ns(max_cycles, mult, shift);
-	/* Return 50% of the actual maximum, so we can detect bad values */
-	max_nsecs >>= 1;
-	return max_nsecs;
-}
-
 unsigned int gpueb_timesync_init(void)
 {
-	u64 wrap;
-
 	g_gpueb_ts_mbox = gpueb_get_ts_mbox();
 	gpueb_log_i(GPUEB_TAG, "g_gpueb_ts_mbox = %d", g_gpueb_ts_mbox);
 	g_gpueb_ts_mbox_offset_base = gpueb_get_send_PIN_offset_by_name("IPI_ID_TIMER");
@@ -222,13 +218,27 @@ unsigned int gpueb_timesync_init(void)
 
 	spin_lock_init(&timesync_ctx.lock);
 
+	if (arch_timer_get_cntfrq() == 1000000000) {
+		/* Counter frequency: 1,000,000,000 (1GHz)
+		 * A 1GHz counter requires a 61-bit mask. To prevent losing a bit in the counter,
+		 * we need to adjust the max version and version offset.
+		 */
+		timesync_max_ver = 0x3;
+		timesync_header_ver_ofs = 29;
+	} else {
+		/* Legacy counter frequency: 13,000,000 */
+		timesync_max_ver = 0x7;
+		timesync_header_ver_ofs = 28;
+	}
+	timesync_header_ver_mask = timesync_max_ver << timesync_header_ver_ofs;
+
+	timesync_cc.mask = CLOCKSOURCE_MASK(arch_counter_get_width());
+
 	/* init cyclecounter mult and shift as sched_clock */
 	clocks_calc_mult_shift(&timesync_cc.mult, &timesync_cc.shift,
 				arch_timer_get_cntfrq(), NSEC_PER_SEC, 3600);
 
-	wrap = get_ts_max_nsecs(timesync_cc.mult, timesync_cc.shift,
-				timesync_cc.mask);
-	timesync_ctx.wrap_kt = ns_to_ktime(wrap);
+	timesync_ctx.wrap_kt = ns_to_ktime(TIMESYNC_WRAP_TIME);
 
 	/* Init time counter:
 	 * start_time: current sched_clock
@@ -241,9 +251,9 @@ unsigned int gpueb_timesync_init(void)
 	timesync_refresh_timer.function = timesync_refresh;
 	hrtimer_start(&timesync_refresh_timer, timesync_ctx.wrap_kt, HRTIMER_MODE_REL);
 
-	gpueb_log_i(GPUEB_TAG, "%s ts: cycle_last %lld, time_base:%lld, wrap:%lld",
+	gpueb_log_i(GPUEB_TAG, "%s ts: cycle_last %lld, time_base:%lld, wrap:%lld, mask:0x%llx, max_ver:%d",
 		TIMESYNC_TAG, timesync_counter.cycle_last,
-		timesync_counter.nsec, wrap);
+		timesync_counter.nsec, timesync_ctx.wrap_kt, timesync_cc.mask, timesync_max_ver);
 
 	timesync_ctx.enabled = 1;
 
