@@ -768,11 +768,6 @@ static void smi_bus_status_print_v1(struct seq_file *seq)
 	smi->larb_skip = 0;
 	smi->comm_skip = 0;
 
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-
-	smi->larb_skip = 0;
-	smi->comm_skip = 0;
-
 	if(!mtk_smi_mminfra_get_if_in_use()) {
 		pr_info("%s: ===== MMinfra may off =====\n", __func__);
 		return;
