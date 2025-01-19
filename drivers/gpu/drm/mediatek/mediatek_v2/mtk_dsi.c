@@ -3442,7 +3442,6 @@ static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
 	/* reset related setting */
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPOUT_DONE_INT_FLAG, 0);
 	mtk_dsi_mask(dsi, DSI_PHY_LD0CON(dsi->driver_data), LDX_ULPM_AS_L0, 0);
-	mtk_dsi_mask(dsi, DSI_PHY_LD0CON(dsi->driver_data), 0xffffffff, 0x00000008);
 	mtk_dsi_mask(dsi, DSI_MODE_CTRL(dsi->driver_data), SLEEP_MODE, 0);
 	mtk_dsi_mask(dsi, DSI_START, SLEEPOUT_START, 0);
 
@@ -4537,7 +4536,7 @@ static int DSI_MIPI_deskew(struct mtk_dsi *dsi)
 	int ret = 0;
 
 	phy_syncon = readl(dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
-	writel(0x00aaffff, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
+	writel(0x00aa00ff, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
 
 	SET_VAL_MASK(value, mask, 6, FLD_SKEWCAL_PRD);
 	mtk_dsi_mask(dsi, DSI_TIME_CON0(dsi->driver_data), mask, value);
