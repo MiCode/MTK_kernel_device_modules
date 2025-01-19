@@ -1458,6 +1458,6 @@ void vip_init(void)
 		tgid_vip_arr[slot_id] = -1;
 
 	/* init vip related value to newly forked tasks */
-	register_vip_hooks();
+	//register_vip_hooks();
 	vip_enable = sched_vip_enable_get();
 }
