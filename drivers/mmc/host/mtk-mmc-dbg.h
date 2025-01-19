@@ -29,7 +29,8 @@
 		MSG_ACCU_SZ = MSG_SZ; \
 		BUF_CUR = BUF; \
 	} \
-	snprintf(BUF_CUR, MSG_SZ+1, "[%.3hx:%.8x]", OFFSET, VAL); \
+	if (snprintf(BUF_CUR, MSG_SZ+1, "[%.3hx:%.8x]", OFFSET, VAL) > MSG_SZ)	{ \
+		pr_info("truncated\n");}; \
 	BUF_CUR += MSG_SZ; \
 }
 

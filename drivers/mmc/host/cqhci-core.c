@@ -26,6 +26,8 @@
 
 #define CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD	(1 << 31)
 
+#define CQHCI_IDLE_TIMEOUT (10 * 1000)
+
 struct cqhci_slot {
 	struct mmc_request *mrq;
 	unsigned int flags;
@@ -893,9 +895,14 @@ static int cqhci_wait_for_idle(struct mmc_host *mmc)
 {
 	struct cqhci_host *cq_host = mmc->cqe_private;
 	int ret;
+	int timeout;
 
-	wait_event(cq_host->wait_queue, cqhci_is_idle(cq_host, &ret));
-
+	timeout = wait_event_timeout(cq_host->wait_queue, cqhci_is_idle(cq_host, &ret),
+		msecs_to_jiffies(CQHCI_IDLE_TIMEOUT) + 1);
+	if (timeout == 0) {
+		pr_info("%s timeout ret=%d bug_on\n", __func__, ret);
+		ret = -EBUSY;
+	}
 	return ret;
 }
 

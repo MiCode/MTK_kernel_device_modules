@@ -88,6 +88,7 @@
 #define SDC_ACMD_RESP    0x80
 #define DMA_SA_H4BIT     0x8c
 #define MSDC_DMA_SA      0x90
+#define MSDC_DMA_CA      0x94
 #define MSDC_DMA_CTRL    0x98
 #define MSDC_DMA_CFG     0x9c
 #define MSDC_DBG_SEL     0xa0
@@ -327,6 +328,7 @@
 #define EMMC50_CFG1_DS_CFG        (0x1 << 28)  /* RW */
 
 #define EMMC50_CFG2_AXI_SET_LEN	(0xF << 24)	/* RW */
+#define EMMC50_CFG2_AXI_BUSY	(0x1 << 30)	/* RU */
 
 #define EMMC50_CFG3_OUTS_WR       (0x1f << 0)  /* RW */
 

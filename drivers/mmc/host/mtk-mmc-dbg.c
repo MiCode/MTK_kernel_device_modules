@@ -43,6 +43,7 @@ u16 msdc_offsets[] = {
 	SDC_ACMD_RESP,
 	DMA_SA_H4BIT,
 	MSDC_DMA_SA,
+	MSDC_DMA_CA,
 	MSDC_DMA_CTRL,
 	MSDC_DMA_CFG,
 	MSDC_DBG_SEL,
@@ -260,7 +261,7 @@ EXPORT_SYMBOL(msdc_dump_ldo_sts);
 void msdc_dump_register_core(char **buff, unsigned long *size,
 	struct seq_file *m, struct msdc_host *host)
 {
-	u32 id = host->id;
+	u32 id;
 	u32 msg_size = 0;
 	u32 val;
 	u16 offset, i;
@@ -272,6 +273,7 @@ void msdc_dump_register_core(char **buff, unsigned long *size,
 		return;
 	}
 
+	id = host->id;
 	if (!host->base) {
 		SPREAD_PRINTF(buff, size, m, "%s illegal host->base addr\n", __func__);
 		return;
@@ -319,6 +321,7 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 	u16 i;
 	char buffer[PRINTF_REGISTER_BUFFER_SIZE + 1];
 	char *buffer_cur_ptr = buffer;
+	int ret;
 
 	if (IS_ERR_OR_NULL(host)) {
 		SPREAD_PRINTF(buff, size, m, "%s msdc host null\n", __func__);
@@ -341,8 +344,10 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 			buffer_cur_ptr = buffer;
 		}
 		writel(i, host->base + MSDC_DBG_SEL);
-		snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+		ret = snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
 			"[%.3hx:%.8x]", i, readl(host->base + MSDC_DBG_OUT));
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
 		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
 	}
 	SPREAD_PRINTF(buff, size, m, "%s\n", buffer);
@@ -361,8 +366,10 @@ void msdc_dump_dbg_register(char **buff, unsigned long *size,
 			buffer_cur_ptr = buffer;
 		}
 		writel(i, host->base + EMMC50_CFG4);
-		snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
+		ret = snprintf(buffer_cur_ptr, ONE_REGISTER_STRING_SIZE + 1,
 			"[%.3hx:%.8x]", i, readl(host->base + MSDC_DBG_OUT));
+		if (ret > ONE_REGISTER_STRING_SIZE)
+			dev_info(host->dev, "buffer was truncated %d\n", ret);
 		buffer_cur_ptr += ONE_REGISTER_STRING_SIZE;
 	}
 	SPREAD_PRINTF(buff, size, m, "%s\n", buffer);
