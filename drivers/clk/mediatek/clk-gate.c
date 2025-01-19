@@ -237,11 +237,6 @@ hwv_done_fail:
 	else
 		pr_notice("cg rewrite failed!\n");
 
-	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
-			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
-			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
-
-
 	return -EBUSY;
 }
 
@@ -378,13 +373,23 @@ static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 	}
 
 	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
-
-	if (ret)
+	if (ret) {
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
+		goto ERR;
+	}
 
 	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
-		&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK))
+			&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK)) {
 		ret = __hwv_cg_dma_back(hw, false);
+		if (ret)
+			goto ERR;
+	}
+
+	return ret;
+ERR:
+	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
+			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
+			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
 
 	return ret;
 }
@@ -412,13 +417,23 @@ static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
 	}
 
 	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
-
-	if (ret)
+	if (ret) {
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
+		goto ERR;
+	}
 
 	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
-		&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK))
+			&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK)) {
 		ret = __hwv_cg_dma_back(hw, true);
+		if (ret)
+			goto ERR;
+	}
+
+	return ret;
+ERR:
+	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
+			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
+			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
 
 	return ret;
 }
@@ -448,8 +463,16 @@ static void mtk_cg_disable_generic_hwv(struct clk_hw *hw)
 
 	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
 
-	if (ret)
+	if (ret) {
 		pr_cg_err("fail disable - %s, ret: %x\n", c_n, -ret);
+		goto ERR;
+	}
+
+	return;
+ERR:
+	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
+			cg->sta_ofs, (cg->hwv_clr_ofs / MTK_HWV_ID_OFS),
+			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
 
 	return;
 }
