@@ -4504,6 +4504,14 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		break;
 	}
+	case OVL_COMP_TO_PHY_ID: {
+		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+		unsigned int *phy_id = (unsigned int *)params;
+
+		if (ovl->data->ovl_phy_mapping)
+			*phy_id = ovl->data->ovl_phy_mapping(comp);
+		break;
+	}
 	default:
 		break;
 	}

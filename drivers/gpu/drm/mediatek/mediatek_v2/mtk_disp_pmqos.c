@@ -1443,6 +1443,25 @@ void mtk_disp_set_all_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 			priv->req_hrt_channel_bw[crtc_idx][3], size);
 }
 
+struct mtk_ddp_comp *mtk_drm_get_pan_disp_comp(struct mtk_drm_crtc *mtk_crtc)
+{
+	unsigned int exdma_id = 0;
+	struct mtk_ddp_comp *comp = NULL;
+	int i, j;
+
+	_parse_first_exdma(&exdma_id);
+	if (exdma_id != 0) {
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+			if ((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
+				(mtk_ddp_comp_get_alias(comp->id) == exdma_id)) {
+				return comp;
+			}
+		}
+	}
+
+	return NULL;
+}
+
 void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 {
 	struct mtk_drm_crtc *mtk_crtc;
@@ -1451,6 +1470,8 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
 	unsigned int *slot = NULL;
+	struct mtk_ddp_comp *comp;
+	unsigned int phy_id = 0;
 
 	dev_crtc = crtc;
 	mtk_crtc = to_mtk_crtc(dev_crtc);
@@ -1460,8 +1481,16 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	mtk_disp_set_hrt_bw(mtk_crtc, bw);
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 
-	/* FIXME: this value is zero when booting, will be assigned in exdma_layer_config */
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->first_dma_from_lk) {
+		comp = mtk_drm_get_pan_disp_comp(mtk_crtc);
+		if (!IS_ERR_OR_NULL(comp)) {
+			mtk_ddp_comp_io_cmd(comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
+			DDPINFO("get fisrt exdma comp:%s, phy_id:%u\n",
+					mtk_dump_comp_str_id(comp->id), phy_id);
+			mtk_crtc->usage_ovl_fmt[phy_id] = 4;
+		} else
+			DDPPR_ERR("%s can not get first exdma from lk\n", __func__);
+	} else if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->usage_ovl_fmt[1] = 4;
 	else if (priv->data->mmsys_id == MMSYS_MT6993)
 		mtk_crtc->usage_ovl_fmt[0] = 4;

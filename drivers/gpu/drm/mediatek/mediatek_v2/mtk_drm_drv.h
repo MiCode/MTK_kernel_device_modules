@@ -128,6 +128,7 @@ struct mtk_mmsys_driver_data {
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;
+	bool first_dma_from_lk;
 	bool real_srt_ostdl;
 	bool skip_trans;
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
@@ -410,6 +411,7 @@ struct tag_videolfb {
 	u32 islcmfound;
 	u32 fps;
 	u32 vram;
+	u32 firstEXDMA;
 	char lcmname[1]; /* this is the minimum size */
 };
 
@@ -633,6 +635,7 @@ bool mtk_drm_lcm_is_connect(struct mtk_drm_crtc *mtk_crtc);
 unsigned int mtk_disp_num_from_atag(void);
 int _parse_tag_videolfb(unsigned int *vramsize, phys_addr_t *fb_base,
 	unsigned int *fps);
+int _parse_first_exdma(unsigned int *exdma_id);
 struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	struct drm_crtc *crtc);
 void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para);

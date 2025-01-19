@@ -7003,6 +7003,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
 	.ovl_exdma_rule = true,
+	.first_dma_from_lk = true,
 	.real_srt_ostdl = true,
 	.skip_trans = true,
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
@@ -8520,6 +8521,41 @@ found:
 	DDPINFO("[DT][videolfb] vram       = 0x%x (%d)\n", *vramsize,
 		*vramsize);
 	DDPINFO("[DT][videolfb] fps	   = %d\n", *fps);
+
+	return 0;
+#else
+	return -1;
+#endif
+}
+
+int _parse_first_exdma(unsigned int *exdma_id)
+{
+#ifndef CONFIG_MTK_DISP_NO_LK
+	struct device_node *chosen_node;
+
+	chosen_node = of_find_node_by_path("/chosen");
+
+	if (chosen_node) {
+		struct tag_videolfb *videolfb_tag = NULL;
+		unsigned long size = 0;
+
+		videolfb_tag = (struct tag_videolfb *)of_get_property(
+			chosen_node, "atag,videolfb",
+			(int *)&size);
+		if (videolfb_tag) {
+			*exdma_id = videolfb_tag->firstEXDMA;
+			goto found;
+		} else {
+			DDPINFO("[DT][videolfb] videolfb_tag not found\n");
+			return -1;
+		}
+	} else {
+		DDPINFO("[DT][videolfb] of_chosen not found\n");
+		return -1;
+	}
+
+found:
+	DDPINFO("[DT][videolfb] exdma_id	   = %d\n", *exdma_id);
 
 	return 0;
 #else
