@@ -1233,7 +1233,6 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 	 *             BT601 to FULL709
 	 */
 	if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
-	    profile_in == MML_YCBCR_PROFILE_FULL_BT709 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
@@ -1247,6 +1246,8 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 			rdma_frm->matrix_sel = 3;
 		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601)
 			rdma_frm->matrix_sel = 0;
+		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709)
+			rdma_frm->matrix_sel = 1;
 		else
 			mml_err("[rdma] unknown color conversion %x",
 				profile_in);

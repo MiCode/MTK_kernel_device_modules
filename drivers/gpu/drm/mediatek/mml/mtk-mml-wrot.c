@@ -1112,7 +1112,6 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	 *             BT601 to FULL709
 	 */
 	if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
-	    profile_in == MML_YCBCR_PROFILE_FULL_BT709 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
@@ -1126,6 +1125,8 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 			wrot_frm->mat_sel = 7;
 		else if (profile_in == MML_YCBCR_PROFILE_JPEG)
 			wrot_frm->mat_sel = 4;
+		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709)
+			wrot_frm->mat_sel = 5;
 		else
 			mml_err("[wrot] unknown profile conversion %x",
 				profile_in);
@@ -1154,6 +1155,18 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 13;
+		} else if (profile_in == MML_YCBCR_PROFILE_JPEG &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
+			wrot_frm->mat_en = 1;
+			wrot_frm->mat_sel = 14;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_BT709) {
+			wrot_frm->mat_en = 1;
+			wrot_frm->mat_sel = 8;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
+			wrot_frm->mat_en = 1;
+			wrot_frm->mat_sel = 10;
 		}
 	}
 
