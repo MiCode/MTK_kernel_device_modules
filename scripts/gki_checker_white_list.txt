@@ -28,3 +28,11 @@ s resolve_symbol
 s set_module_sig_enforced
 s sig_enforce
 s vermagic
+s __kvm_nvhe_ffa_host_share_ranges
+s __kvm_nvhe_ffa_host_unshare_ranges
+s __kvm_nvhe_ffa_mem_xfer
+s __kvm_nvhe_host_buffers
+s __kvm_nvhe_ffa_desc_buf
+s __kvm_nvhe_hyp_buffers
+s __kvm_nvhe_hyp_ffa_init
+s __kvm_nvhe_kvm_host_ffa_handler
