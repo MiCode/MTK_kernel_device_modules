@@ -8,6 +8,7 @@
 #define _MTK_SEC_HEAP_PRIV_H
 
 #include "mtk_heap_priv.h"
+#include "mtk_page_pool.h"
 #include <public/trusted_mem_api.h>
 
 extern bool smmu_v3_enable;
@@ -17,6 +18,13 @@ extern const struct dma_buf_ops sec_buf_page_ops;
 
 extern const struct dma_heap_ops sec_heap_page_ops;
 extern const struct dma_heap_ops sec_heap_region_ops;
+
+/* mtk_page_pool define wrappers */
+#define dmabuf_page_pool		mtk_dmabuf_page_pool	// struct
+#define dmabuf_page_pool_alloc		mtk_dmabuf_page_pool_alloc
+#define dmabuf_page_pool_create		mtk_dmabuf_page_pool_create
+#define dmabuf_page_pool_destroy	mtk_dmabuf_page_pool_destroy
+#define dmabuf_page_pool_free		mtk_dmabuf_page_pool_free
 
 #define LOW_ORDER_GFP (GFP_HIGHUSER | __GFP_ZERO | __GFP_COMP)
 #define MID_ORDER_GFP (LOW_ORDER_GFP | __GFP_NOWARN)
@@ -28,8 +36,8 @@ extern const struct dma_heap_ops sec_heap_region_ops;
  * 4KB page granule: 4KB
  * 16KB page granule: 16KB
  */
-static int orders[1] = { 0 };
-#define NUM_ORDERS ARRAY_SIZE(orders)
+//static int orders[1] = { 0 };
+//#define NUM_ORDERS ARRAY_SIZE(orders)
 
 extern struct dmabuf_page_pool *pools[NUM_ORDERS];
 

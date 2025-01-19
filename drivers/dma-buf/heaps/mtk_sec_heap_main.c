@@ -22,7 +22,6 @@
 #include <linux/slab.h>
 #include <linux/list_sort.h>
 #include <linux/vmalloc.h>
-#include "page_pool.h"
 #include "mtk_heap_priv.h"
 #include "mtk_heap.h"
 #include "mtk_sec_heap.h"
@@ -33,7 +32,7 @@
 #include "iommu_pseudo.h"
 
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
-static gfp_t order_flags[] = { LOW_ORDER_GFP };
+//static gfp_t order_flags[] = { LOW_ORDER_GFP };
 
 struct dmabuf_page_pool *pools[NUM_ORDERS];
 

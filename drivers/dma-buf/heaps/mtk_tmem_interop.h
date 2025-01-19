@@ -15,7 +15,7 @@
 #include "mtk_sec_heap.h"
 #include "mtk_sec_heap_priv.h"
 #include "mtk-smmu-v3.h"
-#include "page_pool.h"
+#include "mtk_page_pool.h"
 #include <linux/arm-smccc.h>
 #include <linux/highmem.h>
 #include <linux/list_sort.h>
