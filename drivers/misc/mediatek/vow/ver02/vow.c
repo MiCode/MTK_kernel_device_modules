@@ -180,6 +180,7 @@ static struct
 	unsigned int         payloaddump_cb_type;
 	unsigned int         digital_gain_val;
 	unsigned int         chre_status;
+	unsigned int         seamless_record_channel;
 } vowserv;
 
 struct vow_dump_info_t {
@@ -833,6 +834,7 @@ static void vow_service_Init(void)
 		vowserv.scp_recover_user_return_size_addr = 0;
 		vowserv.delay_wakeup_time = 0;
 		vowserv.payloaddump_cb_type = PAYLOADDUMP_OFF;
+		vowserv.seamless_record_channel = 0;
 		/* set default value */
 		vowserv.digital_gain_val = (VOW_GAIN_0DB << 6) + VOW_GAIN_0DB; // CH2 | CH1
 		/* set meaningless default value to platform identifier and version */
@@ -1471,9 +1473,13 @@ static bool vow_service_SetApAddr(unsigned long arg)
 
 	if (dual_ch_transfer == false)
 		vow_vbuf_length = VOW_VBUF_LENGTH;
-	else
-		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
-
+	else {
+		if (vowserv.seamless_record_channel == 1) {
+			vow_vbuf_length = VOW_VBUF_LENGTH;
+		} else {
+			vow_vbuf_length = VOW_VBUF_LENGTH * 2;
+		}
+	}
 	if (copy_from_user((void *)(&vow_info[0]), (const void __user *)(arg),
 			   sizeof(vow_info))) {
 		VOWDRV_DEBUG("vow check parameter fail\n");
@@ -1504,20 +1510,31 @@ static bool vow_service_SetApAddr(unsigned long arg)
 static bool vow_service_SetVBufAddr(unsigned long arg)
 {
 	unsigned long vow_info[MAX_VOW_INFO_LEN];
-	unsigned int vow_vbuf_length = 0;
+	unsigned int max_vow_vbuf_len = 0;
 
 	if (copy_from_user((void *)(&vow_info[0]), (const void __user *)(arg),
 			   sizeof(vowserv.vow_info_apuser))) {
 		VOWDRV_DEBUG("vow check parameter fail\n");
 		return false;
 	}
-	if (dual_ch_transfer == false)
-		vow_vbuf_length = VOW_VBUF_LENGTH;
-	else
-		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
+	if (dual_ch_transfer == false) {
+		max_vow_vbuf_len = VOW_VBUF_LENGTH;
+		vowserv.seamless_record_channel = 1;
+	} else {
+		// kernel always allocate 2ch buffer size
+		max_vow_vbuf_len = VOW_VBUF_LENGTH * 2;
 
+		if (vow_info[3] == VOW_VBUF_LENGTH) {
+			vowserv.seamless_record_channel = 1;
+		} else if (vow_info[3] == VOW_VBUF_LENGTH * 2) {
+			vowserv.seamless_record_channel = 2;
+		} else {
+			vowserv.seamless_record_channel = 2;
+			VOWDRV_DEBUG("error vbuf length=0x%lx\n", vow_info[3]);
+		}
+	}
 	/* add return condition */
-	if ((vow_info[2] == 0) || (vow_info[3] != vow_vbuf_length) ||
+	if ((vow_info[2] == 0) || (vow_info[3] > max_vow_vbuf_len) ||
 	    (vow_info[4] == 0)) {
 		VOWDRV_DEBUG("%s(), vow SetVBufAddr error!\n", __func__);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
@@ -1534,7 +1551,7 @@ static bool vow_service_SetVBufAddr(unsigned long arg)
 		vfree(vowserv.voicedata_kernel_ptr);
 		vowserv.voicedata_kernel_ptr = NULL;
 	}
-	vowserv.voicedata_kernel_ptr = vmalloc(vow_vbuf_length);
+	vowserv.voicedata_kernel_ptr = vmalloc(max_vow_vbuf_len);
 	mutex_unlock(&vow_vmalloc_lock);
 	return true;
 }
@@ -1709,7 +1726,7 @@ static int vow_service_ReadVoiceData_Internal(void)
 	if (dual_ch_transfer == false)
 		vow_vbuf_length = VOW_VBUF_LENGTH;
 	else
-		vow_vbuf_length = VOW_VBUF_LENGTH * 2;
+		vow_vbuf_length = (vowserv.seamless_record_channel == 1)? VOW_VBUF_LENGTH : VOW_VBUF_LENGTH * 2;
 
 	while(1) {
 		spin_lock_irqsave(&vow_rec_queue_lock, rec_queue_flags);
@@ -1760,16 +1777,16 @@ static int vow_service_ReadVoiceData_Internal(void)
 
 			if (buf_offset > buffer_bound) {
 				VOWDRV_DEBUG(
-				"%s(), buf_offset=0x%x, buf_length=0x%x, VOICEDATA_SZ=0x%x\n",
+				"%s(), buf_offset=0x%x, buf_length=0x%x, buffer_bound=0x%x\n",
 					__func__,
 					buf_offset,
 					buf_length,
-					VOW_VOICEDATA_SIZE);
+					buffer_bound);
 				stop_condition = 1;
 				return stop_condition;
 			}
 			mutex_lock(&vow_vmalloc_lock);
-			if (dual_ch_transfer == true) {
+			if ((dual_ch_transfer == true) && (vowserv.seamless_record_channel == 2)) {
 				/* start interleaving L+R */
 				vow_interleaving(
 				    &vowserv.voicedata_kernel_ptr[vowserv.kernel_voicedata_idx],
@@ -1793,7 +1810,7 @@ static int vow_service_ReadVoiceData_Internal(void)
 				vowserv.tx_keyword_start = true;
 			}
 			mutex_lock(&vow_vmalloc_lock);
-			if (dual_ch_transfer == true) {
+			if ((dual_ch_transfer == true) && (vowserv.seamless_record_channel == 2)) {
 				/* 2 Channels */
 				vowserv.kernel_voicedata_idx += buf_length;
 			} else {
@@ -3160,6 +3177,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_da
 		    && (vowserv.firstRead == true)) {
 			vowserv.firstRead = false;
 			VowDrv_SetFlag(VOW_FLAG_DEBUG, true);
+			VowDrv_SetFlag(VOW_FLAG_SEAMLESS_RECORD_CH, vowserv.seamless_record_channel);
 		}
 		vow_service_ReadVoiceData();
 		break;
