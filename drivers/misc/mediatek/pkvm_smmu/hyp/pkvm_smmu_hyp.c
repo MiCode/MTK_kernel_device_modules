@@ -1404,7 +1404,7 @@ int mtk_smmu_resume(struct kvm_hyp_iommu *iommu)
 	return 0;
 }
 
-static void mtk_smmu_iotlb_sync(void *cookie,
+static void mtk_smmu_iotlb_sync(struct kvm_hyp_iommu_domain *domain,
 			    struct iommu_iotlb_gather *gather)
 {
 }
