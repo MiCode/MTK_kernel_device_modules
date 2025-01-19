@@ -3994,6 +3994,10 @@ static const struct mtk_addon_module_data mt6991_addon_mml_dl_data[] = {
 	{DISP_MML_DL_EXDMA, ADDON_BEFORE, DDP_COMPONENT_OVL_EXDMA0/*DDP_COMPONENT_OVL0_EXDMA_OUT_CB0*/},
 };
 
+static const struct mtk_addon_module_data mt6993_addon_mml_dl_data[] = {
+	{DISP_MML_DL_EXDMA, ADDON_BEFORE, DDP_COMPONENT_OVL_EXDMA0/*DDP_COMPONENT_OVL0_EXDMA_OUT_CB0*/},
+};
+
 static const struct mtk_addon_module_data addon_dsc0_data[] = {
 	{DSC_0, ADDON_AFTER, DDP_COMPONENT_OVL0_2L},
 };
@@ -4431,6 +4435,41 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 
+};
+
+static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[MML_DL] = {
+		.module_num = ARRAY_SIZE(mt6993_addon_mml_dl_data),
+		.module_data = mt6993_addon_mml_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	/* TODO: porting for mt6993 */
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovl_rsz_data),
+		.module_data = mt6991_addon_ovl_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	/* TODO: porting for mt6993 */
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_wdma0_data),
+		.module_data = mt6991_addon_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	/* TODO: porting for mt6993 */
+	[WDMA_WRITE_BACK_MID] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_mid_wdma_data),
+		.module_data = mt6991_addon_mid_wdma_data,
+	},
+	/* TODO: porting for mt6993 */
+	[WDMA_WRITE_BACK_OVL] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_wdma0_data),
+		.module_data = mt6991_addon_ovlsys_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {

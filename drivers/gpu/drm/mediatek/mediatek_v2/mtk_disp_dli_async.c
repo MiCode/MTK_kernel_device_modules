@@ -16,8 +16,37 @@
 #include "mtk_rect.h"
 #include "mtk_drm_drv.h"
 
-#define DISP_REG_OVL_DL_IN_RELAY0_SIZE 0x260
-#define DISP_REG_OVL_DL_IN_RELAY1_SIZE 0x264
+enum disp_ovl_dli_register {
+	OVL_DL_IN_RELAY0_SIZE,
+	OVL_DL_IN_RELAY1_SIZE,
+	OVL_DLI_ASYNC0_STATUS0,
+	OVL_DLI_ASYNC0_STATUS1,
+	OVL_DLI_ASYNC1_STATUS0,
+	OVL_DLI_ASYNC1_STATUS1,
+
+	OVL_DLI_REG_TOTAL
+};
+
+/* mt6991 */
+static const u16 ovl_dli_regs_mt6991[OVL_DLI_REG_TOTAL] = {
+	[OVL_DL_IN_RELAY0_SIZE]		= 0x260,
+	[OVL_DL_IN_RELAY1_SIZE]		= 0x264,
+};
+
+/* mt6993 */
+static const u16 ovl_dli_regs_mt6993[OVL_DLI_REG_TOTAL] = {
+	[OVL_DL_IN_RELAY0_SIZE]		= 0xbcc,
+	[OVL_DL_IN_RELAY1_SIZE]		= 0xbd0,
+	[OVL_DLI_ASYNC0_STATUS0]	= 0xb24,
+	[OVL_DLI_ASYNC0_STATUS1]	= 0xb28,
+	[OVL_DLI_ASYNC1_STATUS0]	= 0xb2c,
+	[OVL_DLI_ASYNC1_STATUS1]	= 0xb30,
+};
+
+struct dli_async_data {
+	const struct mtk_ddp_comp_funcs *funcs;
+	const u16 *regs;
+};
 
 /**
  * struct mtk_disp_dli_async - DISP_RSZ driver structure
@@ -25,6 +54,7 @@
  */
 struct mtk_disp_dli_async {
 	struct mtk_ddp_comp ddp_comp;
+	const struct dli_async_data *data;
 };
 
 static inline struct mtk_disp_dli_async *comp_to_dli_async(struct mtk_ddp_comp *comp)
@@ -39,7 +69,8 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 				 struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_private *priv;
+	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
 	u32 dli_in_relay_size = 0;
 
 	DDPINFO("%s+\n", __func__);
@@ -49,9 +80,9 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 
 	priv = mtk_crtc->base.dev->dev_private;
 	if (priv->data->mmsys_id == MMSYS_MT6991)
-		dli_in_relay_size = DISP_REG_OVL_DL_IN_RELAY1_SIZE;
+		dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY1_SIZE];
 	else
-		dli_in_relay_size = DISP_REG_OVL_DL_IN_RELAY0_SIZE;
+		dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
 
 	if ((addon_config->config_type.module == DISP_MML_IR_PQ_v2) ||
 	    (addon_config->config_type.module == DISP_MML_IR_PQ_v2_1) ||
@@ -62,13 +93,52 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 		u32 width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
 		u32 height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
 
-		DDPINFO("%s,module:%d,dli:0x%x,p:%d,w:%d,h:%d\n", __func__, addon_config->config_type.module,
+		DDPINFO("%s,module:%d,dli:0x%x,p:%d,w:%d,h:%d\n",
+			__func__, addon_config->config_type.module,
 			dli_in_relay_size, pipe, width, height);
 
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + dli_in_relay_size,
-			       (width | height << 16), ~0);
+		cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
+			height << 16 | width, U32_MAX);
 	}
+}
+
+static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
+	enum mtk_ddp_comp_id prev,
+	enum mtk_ddp_comp_id next,
+	union mtk_addon_config *addon_config,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv;
+	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
+	u32 dli_in_relay_size, width, height;
+	u8 pipe;
+
+	DDPINFO("%s+\n", __func__);
+
+	if (!addon_config)
+		return;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
+
+	if (addon_config->config_type.module != DISP_MML_DL_EXDMA) {
+		DDPINFO("%s module:%d dli:%#x p:%u w:%u h:%u fail\n",
+			__func__, addon_config->config_type.module,
+			dli_in_relay_size, pipe, width, height);
+		return;
+	}
+
+	pipe = addon_config->addon_mml_config.pipe;
+	width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
+	height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
+
+	DDPINFO("%s module:%d dli:%#x p:%u w:%u h:%u\n",
+		__func__, addon_config->config_type.module,
+		dli_in_relay_size, pipe, width, height);
+
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
+		height << 16 | width, U32_MAX);
 }
 
 void mtk_dli_async_dump_mt6991(struct mtk_ddp_comp *comp)
@@ -86,6 +156,26 @@ void mtk_dli_async_dump_mt6991(struct mtk_ddp_comp *comp)
 		readl(baddr + 0x30C));
 }
 
+void mtk_dli_async_dump_mt6993(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
+	void __iomem *baddr = comp->regs;
+
+	if (!baddr) {
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	DDPINFO("%s\n", __func__);
+	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("%#05X: %#010x\n",
+		dli->data->regs[OVL_DL_IN_RELAY0_SIZE],
+		readl(baddr + dli->data->regs[OVL_DL_IN_RELAY0_SIZE]));
+	DDPDUMP("%#05X: %#010x %#010x\n",
+		dli->data->regs[OVL_DLI_ASYNC0_STATUS0],
+		readl(baddr + dli->data->regs[OVL_DLI_ASYNC0_STATUS0]),
+		readl(baddr + dli->data->regs[OVL_DLI_ASYNC0_STATUS1]));
+}
+
 void mtk_dli_async_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
@@ -98,7 +188,10 @@ void mtk_dli_async_dump(struct mtk_ddp_comp *comp)
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+
+	if (priv->data->mmsys_id == MMSYS_MT6993)
+		mtk_dli_async_dump_mt6993(comp);
+	else if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_dli_async_dump_mt6991(comp);
 	else {
 		DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
@@ -127,11 +220,13 @@ static void mtk_dli_async_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 static void mtk_dli_async_prepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
+
 	DDPINFO("%s\n", __func__);
 	mtk_ddp_comp_clk_prepare(comp);
 
-	writel(0, comp->regs + DISP_REG_OVL_DL_IN_RELAY1_SIZE);
-	writel(0, comp->regs + DISP_REG_OVL_DL_IN_RELAY0_SIZE);
+	writel(0, comp->regs + dli->data->regs[OVL_DL_IN_RELAY1_SIZE]);
+	writel(0, comp->regs + dli->data->regs[OVL_DL_IN_RELAY0_SIZE]);
 }
 
 static void mtk_dli_async_unprepare(struct mtk_ddp_comp *comp)
@@ -144,8 +239,28 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dli_async_funcs = {
 	.start = mtk_dli_async_start,
 	.stop = mtk_dli_async_stop,
 	.addon_config = mtk_dli_async_addon_config,
+	//.dump = mtk_dli_async_dump_mt6991,
 	.prepare = mtk_dli_async_prepare,
 	.unprepare = mtk_dli_async_unprepare,
+};
+
+static const struct mtk_ddp_comp_funcs mtk_disp_dli_funcs_mt6993 = {
+	.start = mtk_dli_async_start,
+	.stop = mtk_dli_async_stop,
+	.addon_config = mtk_dli_async_addon_config_mt6993,
+	//.dump = mtk_dli_async_dump_mt6993,
+	.prepare = mtk_dli_async_prepare,
+	.unprepare = mtk_dli_async_unprepare,
+};
+
+static const struct dli_async_data dli_data_mt6991 = {
+	.funcs = &mtk_disp_dli_async_funcs,
+	.regs = ovl_dli_regs_mt6991,
+};
+
+static const struct dli_async_data dli_data_mt6993 = {
+	.funcs = &mtk_disp_dli_funcs_mt6993,
+	.regs = ovl_dli_regs_mt6993,
 };
 
 static int mtk_disp_dli_async_bind(struct device *dev, struct device *master,
@@ -185,6 +300,7 @@ static int mtk_disp_dli_async_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_dli_async *priv;
 	enum mtk_ddp_comp_id comp_id;
+	const struct dli_async_data *dli_data;
 	int ret;
 
 	DDPINFO("%s+\n", __func__);
@@ -199,15 +315,16 @@ static int mtk_disp_dli_async_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 
-	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
-				&mtk_disp_dli_async_funcs);
-
+	dli_data = (const struct dli_async_data *)of_device_get_match_data(dev);
+	if (!dli_data)
+		dli_data = &dli_data_mt6991;
+	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id, dli_data->funcs);
 	if (ret) {
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		return ret;
 	}
 
-	//priv->data = of_device_get_match_data(dev);
+	priv->data = dli_data;
 
 	platform_set_drvdata(pdev, priv);
 
@@ -243,7 +360,8 @@ static const struct of_device_id mtk_disp_dli_async_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-dli-async",},
 	{.compatible = "mediatek,mt6897-disp-dli-async",},
 	{.compatible = "mediatek,mt6886-disp-dli-async3",},
-	{.compatible = "mediatek,mt6993-disp-dli-async",},
+	{.compatible = "mediatek,mt6993-disp-dli-async",
+	 .data = (void *)&dli_data_mt6993,},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_dli_async_driver_dt_match);

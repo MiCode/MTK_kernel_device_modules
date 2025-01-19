@@ -24472,7 +24472,7 @@ void mtk_addon_get_comp(struct drm_crtc *crtc, u32 addon,
 		return;
 	else if (addon == DDP_COMPONENT_OVL_EXDMA0) {
 		*comp_id = DDP_COMPONENT_OVL_EXDMA0;
-		return ;
+		return;
 	}
 	addon = __builtin_ffs(addon) - 1;
 

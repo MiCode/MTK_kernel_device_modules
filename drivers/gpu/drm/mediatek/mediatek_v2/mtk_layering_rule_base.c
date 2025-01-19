@@ -4640,16 +4640,10 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
 			c = &disp_info->input_config[disp_idx][i];
-		if (!(MTK_MML_OVL_LAYER & c->layer_caps))
+		if (!(MTK_MML_OVL_LAYER & c->layer_caps) || disp_idx < 0 || disp_idx > LYE_CRTC)
 			continue;
 
-		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
-			mml_info = &(disp_info->mml_cfg[disp_idx][i]);
-		else
-			continue;
-
-		if (!mml_info)
-			continue;
+		mml_info = &disp_info->mml_cfg[disp_idx][i];
 
 		if (!output_comp && !mml_multi_layer) {
 			/* Check line time and slbc state once per HRT */

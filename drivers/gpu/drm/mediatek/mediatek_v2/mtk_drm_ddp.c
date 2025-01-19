@@ -1876,8 +1876,8 @@
 	#define MT6993_DISP_OVL_RSZ_IN_CB_TO_OVL_MDP_RSZ0 BIT(0)
 	#define MT6993_DISP_OVL_RSZ_IN_CB_TO_OVL_EXDMA_OUT_CB3 BIT(1)
 
-#define MT6993_OVL_MML_IN0_MOUT_EN 0xEB0 //OVL_PQ_IN_CROSSBAR0_MOUT_EN
-#define MT6993_OVL_MML_IN1_MOUT_EN 0xEB4 //OVL_PQ_IN_CROSSBAR1_MOUT_EN
+#define MT6993_OVL_PQ_IN_CROSSBAR0_MOUT_EN 0xEB0
+#define MT6993_OVL_PQ_IN_CROSSBAR1_MOUT_EN 0xEB4
 	#define MT6993_OVL_PQ_IN_CB_TO_OVL_EXDMA0 BIT(0)
 	#define MT6993_OVL_PQ_IN_CB_TO_OVL_EXDMA1 BIT(1)
 	#define MT6993_OVL_PQ_IN_CB_TO_OVL_EXDMA3 BIT(2)
@@ -26805,12 +26805,12 @@ static int mtk_ddp_ovl_pq_in_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_co
 	case DDP_COMPONENT_OVLSYS_DLI_ASYNC0:
 	case DDP_COMPONENT_OVLSYS1_DLI_ASYNC0:
 	case DDP_COMPONENT_OVLSYS2_DLI_ASYNC0:
-		*addr = MT6993_OVL_MML_IN0_MOUT_EN;
+		*addr = MT6993_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
 		break;
 	case DDP_COMPONENT_OVLSYS_DLI_ASYNC1:
 	case DDP_COMPONENT_OVLSYS1_DLI_ASYNC1:
 	case DDP_COMPONENT_OVLSYS2_DLI_ASYNC1:
-		*addr = MT6993_OVL_MML_IN1_MOUT_EN;	// OVL_MOUT = 0x1
+		*addr = MT6993_OVL_PQ_IN_CROSSBAR1_MOUT_EN;	// OVL_MOUT = 0x1
 		break;
 	default:
 		value = -1;
@@ -28334,12 +28334,12 @@ static int mtk_ddp_mout_en_MT6993(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
-	/*if ((cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC1) &&
+	if ((cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC0) &&
 		(next == DDP_COMPONENT_MML_MUTEX0)) {
-		*addr = MT6993_OVL_MML_IN0_MOUT_EN;
-		value = MT6993_OVL_DLI_RELAY1_TO_OVL_EXDMA0;
+		*addr = MT6993_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = MT6993_OVL_PQ_IN_CB_TO_OVL_EXDMA0;
 		return value;
-	}*/
+	}
 
 	/* dispsys0 pq_in_cb */
 	value = mtk_ddp_disp0_pq_in_cb_MT6993(cur, next, addr);
