@@ -134,3 +134,9 @@ endif
 ccflags-y += -DMML_DL_SUPPORT
 ccflags-y += -DMML_STASH_SUPPORT
 
+ifeq ($(strip $(MGK_INTERNAL)),true)
+ccflags-y += -DMML_IR_SUPPORT
+endif
+
+
+
