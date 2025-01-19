@@ -8,19 +8,19 @@
 #include "apusys_device.h"
 
 #include "mvpu_plat.h"
-#include "mvpu2X_handler.h"
-#include "mvpu2X_valid.h"
-#include "mvpu2X_sec.h"
+#include "mvpu25_handler.h"
+#include "mvpu25_valid.h"
+#include "mvpu25_sec.h"
 
-struct mutex mvpu_pool_lock;
+struct mutex mvpu25_pool_lock;
 
-void mvpu2X_handler_lite_init(void)
+void mvpu25_handler_lite_init(void)
 {
-	mutex_init(&mvpu_pool_lock);
+	mutex_init(&mvpu25_pool_lock);
 }
 
 
-int mvpu2X_handler_lite(int type, void *hnd, struct apusys_device *dev)
+int mvpu25_handler_lite(int type, void *hnd, struct apusys_device *dev)
 {
 	int ret = 0;
 
@@ -42,10 +42,10 @@ int mvpu2X_handler_lite(int type, void *hnd, struct apusys_device *dev)
 
 	switch (type) {
 	case APUSYS_CMD_VALIDATE:
-		ret = mvpu_validation(hnd);
+		ret = mvpu25_validation(hnd);
 		break;
 	case APUSYS_CMD_SESSION_CREATE:
-		set_sec_log_lvl(mvpu_drv_loglv);
+		mvpu25_set_sec_log_lvl(mvpu_drv_loglv);
 		ret = 0;
 		break;
 	case APUSYS_CMD_SESSION_DELETE:
@@ -53,9 +53,9 @@ int mvpu2X_handler_lite(int type, void *hnd, struct apusys_device *dev)
 			pr_info("[MVPU][Sec] APUSYS_CMD_SESSION_DELETE error: hnd is NULL\n");
 			ret = -1;
 		} else {
-			mutex_lock(&mvpu_pool_lock);
-			clear_session(hnd);
-			mutex_unlock(&mvpu_pool_lock);
+			mutex_lock(&mvpu25_pool_lock);
+			mvpu25_clear_session(hnd);
+			mutex_unlock(&mvpu25_pool_lock);
 			ret = 0;
 		}
 		break;

@@ -10,15 +10,15 @@
 
 #include "mvpu_plat.h"
 #include "mvpu_sysfs.h"
-#include "mvpu2X_cmd_data.h"
-#include "mvpu2X_sec.h"
-#include "mvpu2X_handler.h"
-#include "mvpu2X_ipi.h"
+#include "mvpu20_request.h"
+#include "mvpu20_sec.h"
+#include "mvpu20_handler.h"
+#include "mvpu20_ipi.h"
 
-int mvpu_validation(void *hnd)
+int mvpu20_validation(void *hnd)
 {
 	int ret = 0;
-	struct mvpu_request *mvpu_req;
+	struct mvpu_request_v20 *mvpu_req;
 	struct apusys_cmd_valid_handle *cmd_hnd;
 	void *session;
 	struct apusys_cmdbuf *cmdbuf;
@@ -123,15 +123,15 @@ int mvpu_validation(void *hnd)
 
 	cmdbuf = cmd_hnd->cmdbufs;
 
-	if (cmdbuf[MVPU_CMD_INFO_IDX].size != sizeof(struct mvpu_request)) {
+	if (cmdbuf[MVPU_CMD_INFO_IDX].size != sizeof(struct mvpu_request_v20)) {
 		pr_info("[MVPU][Sec] [ERROR] get wrong cmdbuf size: 0x%x, should be 0x%lx\n",
 				cmdbuf[MVPU_CMD_INFO_IDX].size,
-				sizeof(struct mvpu_request));
+				sizeof(struct mvpu_request_v20));
 		ret = -1;
 		goto END;
 	}
 
-	mvpu_req = (struct mvpu_request *)cmdbuf[MVPU_CMD_INFO_IDX].kva;
+	mvpu_req = (struct mvpu_request_v20 *)cmdbuf[MVPU_CMD_INFO_IDX].kva;
 	kreg_kva = cmdbuf[MVPU_CMD_KREG_BASE_IDX].kva;
 
 	batch_name_hash = mvpu_req->batch_name_hash;
@@ -155,9 +155,9 @@ int mvpu_validation(void *hnd)
 	}
 
 	if (mvpu_algo_available == true)
-		algo_in_img = get_ptn_hash(batch_name_hash);
+		algo_in_img = mvpu20_get_ptn_hash(batch_name_hash);
 
-	if (algo_in_img == true && get_mvpu_algo_available() == false) {
+	if (algo_in_img == true && mvpu20_get_mvpu_algo_available() == false) {
 		pr_info("[MVPU][IMG] [ERROR] get HASH 0x%08x but mvpu_algo.img is wrong, please check\n",
 						batch_name_hash);
 		ret = -1;
@@ -178,20 +178,9 @@ int mvpu_validation(void *hnd)
 	}
 #endif
 
-	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a) {
-		if ((mvpu_req->feature_control_mask & MVPU_REQ_FEATURE_OSGB_LIMITED) != MVPU_REQ_FEATURE_OSGB_LIMITED) {
-			pr_info("[MVPU] [ERROR] binary is too old, please regenerate binary with version after SW 4.1 (include OSG patch)\n");
-			strscpy(&mvpu_req->name[31], "\0", sizeof(char));
-			pr_info("[MVPU] algo_name: %s\n", mvpu_req->name);
-			mvpu_aee_exception("MVPU", "MVPU aee");
-			ret = -1;
-			goto END;
-		}
-	}
+	mutex_lock(&mvpu20_pool_lock);
 
-	mutex_lock(&mvpu_pool_lock);
-
-	algo_in_pool = get_hash_info(session,
+	algo_in_pool = mvpu20_get_hash_info(session,
 						batch_name_hash,
 						&session_id,
 						&hash_id,
@@ -208,7 +197,7 @@ int mvpu_validation(void *hnd)
 
 	// get kerarg setting and check support modify
 	kerarg_num = (mvpu_req->buf_num & KERARG_NUM_MASK) >> KERARG_NUM_SHIFT;
-	if (cmdbuf[MVPU_CMD_INFO_IDX].size == sizeof(struct mvpu_request))
+	if (cmdbuf[MVPU_CMD_INFO_IDX].size == sizeof(struct mvpu_request_v20))
 		support_mod_kerarg = true;
 
 	if (support_mod_kerarg == false && kerarg_num != 0) {
@@ -233,7 +222,7 @@ int mvpu_validation(void *hnd)
 						i, mvpu_req->mpu_seg[i]);
 	}
 
-	if (mem_use_iova(mvpu_req->pmu_buff)) {
+	if (mvpu20_mem_use_iova(mvpu_req->pmu_buff)) {
 		if (apusys_mem_validate_by_cmd(session, cmd_hnd->cmd,
 				(uint64_t)mvpu_req->pmu_buff, mvpu_req->buff_size) != 0) {
 			pr_info("[MVPU][Sec] pmu_buff 0x%lx integrity checked FAIL\n",
@@ -332,7 +321,7 @@ int mvpu_validation(void *hnd)
 					sec_buf_size[i]);
 			}
 
-			if (mem_use_iova(sec_chk_addr[i]) == false) {
+			if (mvpu20_mem_use_iova(sec_chk_addr[i]) == false) {
 				if (sec_chk_addr[i] == 0) {
 					buf_cmd_cnt++;
 					if (buf_cmd_cnt == MVPU_MIN_CMDBUF_NUM) {
@@ -368,7 +357,7 @@ int mvpu_validation(void *hnd)
 			goto END_WITH_MUTEX;
 		}
 
-		ret = update_mpu(mvpu_req, session_id, hash_id,
+		ret = mvpu20_update_mpu(mvpu_req, session_id, hash_id,
 						sec_chk_addr, sec_buf_size, sec_buf_attr, false);
 
 		if (mvpu_req->mpu_num != 0 && mvpu_drv_loglv >= APUSYS_MVPU_LOG_DBG) {
@@ -390,7 +379,7 @@ int mvpu_validation(void *hnd)
 				pr_info("[MVPU][Sec] check flow\n");
 
 			knl_num = mvpu_req->header.reg_bundle_setting_0.s.kreg_kernel_num;
-			ret = check_batch_flow(session, cmd_hnd->cmd, sec_level, kreg_kva, knl_num);
+			ret = mvpu20_check_batch_flow(session, cmd_hnd->cmd, sec_level, kreg_kva, knl_num);
 
 			if (ret != 0) {
 				pr_info("[MVPU][Sec] integrity checked FAIL\n");
@@ -508,7 +497,7 @@ int mvpu_validation(void *hnd)
 
 	//get image infos: kernel.bin
 	if (algo_in_img) {
-		get_ker_info(batch_name_hash, &ker_bin_offset, &ker_bin_num);
+		mvpu20_get_ker_info(batch_name_hash, &ker_bin_offset, &ker_bin_num);
 
 		if (ker_bin_num == 0) {
 			pr_info("[MVPU][IMG] [ERROR] not found Kernel_*.bin in mvpu_algo.img, please check\n");
@@ -522,7 +511,7 @@ int mvpu_validation(void *hnd)
 			goto END_WITH_MUTEX;
 		}
 
-		set_ker_iova(ker_bin_offset, ker_bin_num, ker_bin_each_iova);
+		mvpu20_set_ker_iova(ker_bin_offset, ker_bin_num, ker_bin_each_iova);
 	}
 
 	// copy ker arg infos
@@ -697,7 +686,7 @@ int mvpu_validation(void *hnd)
 
 	if ((sec_chk_addr != NULL) && (sec_buf_attr != NULL)) {
 		//map rp_info to buf_id
-		map_base_buf_id(buf_num,
+		mvpu20_map_base_buf_id(buf_num,
 						sec_chk_addr,
 						sec_buf_attr,
 						rp_num,
@@ -718,7 +707,7 @@ int mvpu_validation(void *hnd)
 
 	// special case: check flow with image
 	if ((sec_level != SEC_LVL_PROTECT) && (algo_in_img == true)) {
-		ret = replace_img_knl(session,
+		ret = mvpu20_replace_img_knl(session,
 					buf_num,
 					sec_chk_addr,
 					sec_buf_attr,
@@ -733,7 +722,7 @@ int mvpu_validation(void *hnd)
 					ker_bin_each_iova);
 
 		if (mvpu_req->mpu_num != 0)
-			ret = add_img_mpu(mvpu_req);
+			ret = mvpu20_add_img_mpu(mvpu_req);
 
 		goto END_WITH_MUTEX;
 	}
@@ -741,7 +730,7 @@ int mvpu_validation(void *hnd)
 	//mem pool: session/hash
 	if (session_id != 0xFFFFFFFF) {
 		if (hash_id == 0xFFFFFFFF) {
-			hash_id = get_avail_hash_id(session_id);
+			hash_id = mvpu20_get_avail_hash_id(session_id);
 #ifndef MVPU_SEC_USE_OLDEST_HASH_ID
 			if (hash_id == 0xFFFFFFFF) {
 				pr_info("[MVPU][SEC] [ERROR] out of hash pool\n");
@@ -750,9 +739,9 @@ int mvpu_validation(void *hnd)
 			}
 #endif
 
-			clear_hash(session_id, hash_id);
+			mvpu20_clear_hash(session_id, hash_id);
 
-			ret = update_hash_pool(session,
+			ret = mvpu20_update_hash_pool(session,
 						algo_in_img,
 						session_id,
 						hash_id,
@@ -766,12 +755,12 @@ int mvpu_validation(void *hnd)
 			if (ret != 0) {
 				pr_info("[MVPU][SEC] hash error: ret = 0x%08x\n",
 							ret);
-				clear_hash(session_id, hash_id);
+				mvpu20_clear_hash(session_id, hash_id);
 				goto END_WITH_MUTEX;
 			}
 		}
 	} else {
-		session_id = get_avail_session_id();
+		session_id = mvpu20_get_avail_session_id();
 #ifndef MVPU_SEC_USE_OLDEST_SESSION_ID
 		if (session_id == 0xFFFFFFFF) {
 			pr_info("[MVPU][SEC] [ERROR] out of session pool\n");
@@ -781,9 +770,9 @@ int mvpu_validation(void *hnd)
 #endif
 
 		//clear_session_id(session_id);
-		update_session_id(session_id, session);
+		mvpu20_update_session_id(session_id, session);
 
-		hash_id = get_avail_hash_id(session_id);
+		hash_id = mvpu20_get_avail_hash_id(session_id);
 #ifndef MVPU_SEC_USE_OLDEST_HASH_ID
 		if (hash_id == 0xFFFFFFFF) {
 			pr_info("[MVPU][SEC] [ERROR] out of hash pool\n");
@@ -792,9 +781,9 @@ int mvpu_validation(void *hnd)
 		}
 #endif
 
-		clear_hash(session_id, hash_id);
+		mvpu20_clear_hash(session_id, hash_id);
 
-		ret = update_hash_pool(session,
+		ret = mvpu20_update_hash_pool(session,
 						algo_in_img,
 						session_id,
 						hash_id,
@@ -808,7 +797,7 @@ int mvpu_validation(void *hnd)
 		if (ret != 0) {
 			pr_info("[MVPU][SEC] hash error: ret = 0x%08x\n",
 						ret);
-			clear_hash(session_id, hash_id);
+			mvpu20_clear_hash(session_id, hash_id);
 			goto END_WITH_MUTEX;
 		}
 	}
@@ -822,7 +811,7 @@ REPLACE_MEM:
 	}
 
 	if (algo_in_pool == true) {
-		algo_all_same_buf = set_rp_skip_buf(session_id,
+		algo_all_same_buf = mvpu20_set_rp_skip_buf(session_id,
 						hash_id,
 						buf_num,
 						sec_chk_addr,
@@ -836,7 +825,7 @@ REPLACE_MEM:
 		}
 	}
 
-	ret = update_new_base_addr(algo_in_img,
+	ret = mvpu20_update_new_base_addr(algo_in_img,
 							algo_in_pool,
 							session_id,
 							hash_id,
@@ -854,7 +843,7 @@ REPLACE_MEM:
 		goto END_WITH_MUTEX;
 
 #ifdef FULL_RP_INFO
-	ret = save_hash_info(session_id,
+	ret = mvpu20_save_hash_info(session_id,
 						hash_id,
 						buf_num,
 						rp_num,
@@ -866,7 +855,7 @@ REPLACE_MEM:
 						target_buf_old_map,
 						target_buf_new_map);
 #else
-	ret = save_hash_info(session_id,
+	ret = mvpu20_save_hash_info(session_id,
 						hash_id,
 						buf_num,
 						sec_chk_addr);
@@ -876,7 +865,7 @@ REPLACE_MEM:
 
 #endif
 
-	ret = replace_mem(session_id, hash_id,
+	ret = mvpu20_replace_mem(session_id, hash_id,
 					sec_buf_attr,
 					algo_in_pool,
 					rp_skip_buf,
@@ -892,7 +881,7 @@ REPLACE_MEM:
 	if (ret != 0)
 		goto END_WITH_MUTEX;
 
-	ret = update_mpu(mvpu_req, session_id, hash_id,
+	ret = mvpu20_update_mpu(mvpu_req, session_id, hash_id,
 					sec_chk_addr, sec_buf_size, sec_buf_attr, true);
 
 	if (mvpu_req->mpu_num != 0 && mvpu_drv_loglv >= APUSYS_MVPU_LOG_DBG) {
@@ -907,7 +896,7 @@ REPLACE_MEM:
 
 TRIGGER_SETTING:
 #ifdef MVPU_SEC_KREG_IN_POOL
-	get_pool_kreg_iova(&kreg_iova_pool,
+	mvpu20_get_pool_kreg_iova(&kreg_iova_pool,
 						session_id,
 						hash_id,
 						buf_cmd_kreg);
@@ -917,7 +906,7 @@ TRIGGER_SETTING:
 #endif
 
 	if (kerarg_num != 0 && algo_in_pool == true) {
-		ret = replace_kerarg(session,
+		ret = mvpu20_replace_kerarg(session,
 					session_id, hash_id,
 					kerarg_num,
 					sec_chk_addr,
@@ -933,7 +922,7 @@ TRIGGER_SETTING:
 	}
 
 END_WITH_MUTEX:
-	mutex_unlock(&mvpu_pool_lock);
+	mutex_unlock(&mvpu20_pool_lock);
 
 END:
 	if (sec_chk_addr != NULL) {

@@ -7,20 +7,27 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/of_platform.h>
 
 #include "mvpu_plat.h"
 
-#ifndef MVPU_V2X_PLAT_DATA
+#ifndef MVPU_V20_PLAT_DATA
+#ifndef MVPU_V25_PLAT_DATA
+#ifndef MVPU_V30_PLAT_DATA
 struct mvpu_platdata mvpu_mt6879_platdata;
 struct mvpu_platdata mvpu_mt6886_platdata;
 struct mvpu_platdata mvpu_mt6895_platdata;
 struct mvpu_platdata mvpu_mt6897_platdata;
+struct mvpu_platdata mvpu_mt6899_platdata;
 struct mvpu_platdata mvpu_mt6983_platdata;
 struct mvpu_platdata mvpu_mt6985_platdata;
 struct mvpu_platdata mvpu_mt6989_platdata;
 struct mvpu_platdata mvpu_mt6991_platdata;
+struct mvpu_platdata mvpu_mt6993_platdata;
 struct mvpu_platdata mvpu_mt8139_platdata;
-#endif
+#endif // MVPU_V30_PLAT_DATA
+#endif // MVPU_V25_PLAT_DATA
+#endif // MVPU_V20_PLAT_DATA
 
 struct mvpu_platdata *g_mvpu_platdata;
 
@@ -44,6 +51,10 @@ static const struct of_device_id mvpu_of_match[] = {
 	.data = &mvpu_mt6879_platdata
 	},
 	{
+	.compatible = "mediatek, mt6899-mvpu",
+	.data = &mvpu_mt6899_platdata
+	},
+	{
 	.compatible = "mediatek, mt6983-mvpu",
 	.data = &mvpu_mt6983_platdata
 	},
@@ -58,6 +69,10 @@ static const struct of_device_id mvpu_of_match[] = {
 	{
 	.compatible = "mediatek, mt6991-mvpu",
 	.data = &mvpu_mt6991_platdata
+	},
+	{
+	.compatible = "mediatek, mt6993-mvpu",
+	.data = &mvpu_mt6993_platdata
 	},
 	{
 	.compatible = "mediatek, mt8139-mvpu",
@@ -100,8 +115,10 @@ int mvpu_platdata_init(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "version", &dts_ver) == 0)
 		dev_info(dev, "%s: dts_ver = %d\n", __func__, dts_ver);
 
-	if (of_property_read_u32(dev->of_node, "core-num", &platdata->core_num)) {
-		dev_info(dev, "%s: get core-num fail\n", __func__);
+	if (!of_property_read_u32(dev->of_node, "core_num", &platdata->core_num)) {
+	} else if (!of_property_read_u32(dev->of_node, "core-num", &platdata->core_num)) {
+	} else {
+		dev_info(dev, "%s: get core num fail\n", __func__);
 		return -EINVAL;
 	}
 	dev_info(dev, "%s: core-num = %d\n", __func__, platdata->core_num);
