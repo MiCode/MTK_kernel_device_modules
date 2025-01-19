@@ -166,7 +166,7 @@ static bool is_cpu_in_interrupt_context(unsigned int cpu)
 	return ((task_thread_info(cpu_curr(cpu))->preempt.count)&HARDIRQ_MASK);
 }
 
-static int get_cpu_num(unsigned int router)
+static unsigned int get_cpu_num(unsigned int router)
 {
 	int cpu;
 
@@ -175,7 +175,7 @@ static int get_cpu_num(unsigned int router)
 			return cpu;
 	}
 
-	return -1;
+	return 0xffffffff;
 }
 
 static const char *get_suspected_irq_name(unsigned int irq, unsigned int hwirq)
@@ -299,9 +299,13 @@ static int mt_irq_dump_status_buf(unsigned int irq, char *buf)
 
 	/* get target cpu */
 	result = (res.a0 >> GIC_TARGET_CPU) & 0xffff;
-	if (result != 0xffff)
+	if (result != 0xffff) {
 		cpu = get_cpu_num(result);
-	else
+		if (cpu == 0xffffffff) {
+			pr_info("[mt gic dump] invalid target cpu num %x\n", result);
+			return num;
+		}
+	} else
 		cpu = result;
 	num += snprintf(ptr + num, PAGE_SIZE - num,
 			"[mt gic dump] target cpu = %x\n", cpu);
