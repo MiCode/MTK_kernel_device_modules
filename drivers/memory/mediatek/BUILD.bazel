@@ -202,6 +202,22 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     ],
 )
+define_mgk_ddk_ko(
+    name = "smpu",
+    srcs = [
+        "smpu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ":emi-mpu",
+    ],
+)
 
 define_mgk_ddk_ko(
     name = "emi-mpu-test-v2",
