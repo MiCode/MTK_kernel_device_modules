@@ -56,5 +56,27 @@
 		mt6877_consys: mt6877-consys {
 			compatible = "mediatek,mt6687-consys";
 		};
+
+		mt6687_rtc: mt6687-rtc {
+			status = "disabled";
+			compatible = "mediatek,mt6687-rtc";
+			interrupts = <0x9 IRQ_TYPE_NONE>;
+			interrupt-names = "rtc";
+			base = <0x580>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			fg_init: fg-init {
+				reg = <0 0x1>;
+			};
+			fg_soc: fg-soc {
+				reg = <1 0x1>;
+			};
+			ext_32k: ext-32k {
+				reg = <2 0x1>;
+				bits = <6 1>;
+			};
+		};
 	};
 };
