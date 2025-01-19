@@ -26,28 +26,14 @@
 #include "mtk_drm_graphics_base.h"
 #include "mtk_drm_helper.h"
 #include "mtk_drm_drv.h"
+#include "platform/mtk_ovl_outproc_reg.h"
 #include "mtk_disp_ovl_outproc.h"
 #include "mtk_layer_layout_trace.h"
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "platform/mtk_drm_platform.h"
 
-#define REG_FLD(width, shift)                                                  \
-	((unsigned int)((((width)&0xFF) << 16) | ((shift)&0xFF)))
-
-#define REG_FLD_MSB_LSB(msb, lsb) REG_FLD((msb) - (lsb) + 1, (lsb))
-
-#define REG_FLD_WIDTH(field) ((unsigned int)(((field) >> 16) & 0xFF))
-
-#define REG_FLD_SHIFT(field) ((unsigned int)((field)&0xFF))
-
-#define REG_FLD_MASK(field)                                                    \
-	((unsigned int)((1ULL << REG_FLD_WIDTH(field)) - 1)                    \
-	 << REG_FLD_SHIFT(field))
-
-#define REG_FLD_VAL(field, val)                                                \
-	(((val) << REG_FLD_SHIFT(field)) & REG_FLD_MASK(field))
-
+//To-do: It will be moved to ovlsys related define in the future
 
 #define MT6991_OVL_OUTPROC0_L0_AID_SETTING	(0xB00UL)
 #define MT6991_OVL_OUTPROC1_L0_AID_SETTING	(0xB10UL)
@@ -59,64 +45,6 @@
 #define DISP_OVL_BYPASS_SHADOW_BIT			BIT(2)
 #define DISP_OVL_OUTPROC_EN					BIT(0)
 #define DISP_OVL_OUTPROC_RELAY_MODE_EN		BIT(5)
-
-
-#define DISP_REG_OVL_OUTPROC_STA			(0x0000UL)
-#define DISP_REG_OVL_OUTPROC_INTEN			(0x0004UL)
-#define DISP_REG_OVL_OUTPROC_INTSTA			(0x0008UL)
-#define DISP_REG_OVL_OUTPROC_TRIG			(0x000CUL)
-#define DISP_REG_OVL_OUTPROC_DATAPATH_CON	(0x0010UL)
-#define DISP_REG_OVL_OUTPROC_EN				(0x0020UL)
-#define DISP_REG_OVL_OUTPROC_RST			(0x0024UL)
-#define DISP_REG_OVL_OUTPROC_SHADOW_CTRL	(0x0028UL)
-#define DISP_REG_OVL_OUTPROC_ROI_SIZE		(0x0030UL)
-#define DISP_REG_OVL_OUTPROC_CRC			(0x0100UL)
-#define DISP_REG_OVL_OUTPROC_OVLDTH_CTRL	(0x0104UL)
-#define DISP_REG_OVL_OUTPROC_FLOW_CTRL_DBG	(0x0108UL)
-#define DISP_REG_OVL_OUTPROC_FUNC_DCM0		(0x010CUL)
-#define DISP_REG_OVL_OUTPROC_FUNC_DCM1		(0x0110UL)
-#define DISP_REG_OVL_OUTPROC_MODE			(0x0114UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_R0	(0x0118UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_R1	(0x011CUL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_R2	(0x0120UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_G0	(0x0124UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_G1	(0x0128UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_G2	(0x012CUL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_B0	(0x0130UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_B1	(0x0134UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_B2	(0x0138UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_POST_RGB_A_0	(0x013CUL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_POST_RGB_A_1	(0x0140UL)
-#define DISP_REG_OVL_OUTPROC_OUT_R2R_PARA_POST_RGB_A_2	(0x0144UL)
-#define DISP_REG_OVL_OUTPROC_INTEN_2ND		(0x0148UL)
-#define DISP_REG_OVL_OUTPROC_INTSTA_2ND		(0x014CUL)
-#define DISP_REG_OVL_OUTPROC_INRELAY_DBG1	(0x0150UL)
-#define DISP_REG_OVL_OUTPROC_INRELAY_DBG2	(0x0154UL)
-#define DISP_REG_OVL_OUTPROC_DBG1			(0x0158UL)
-#define DISP_REG_OVL_INT_OUTPROC_DBG1		(0x015CUL)
-
-/*Need to Fix*/
-#define DISP_REG_BLD_OVL_OFFSET(n)		(0x0044UL + 0x30 * (n))
-#define DISP_REG_BLD_OVL_SRC_SIZE(n)	(0x0048UL + 0x30 * (n))
-#define DISP_REG_BLD_OVL_CLIP(n)		(0x004CUL + 0x30 * (n))
-	#define OVL_L_CLIP_FLD_LEFT				REG_FLD_MSB_LSB(7, 0)
-	#define OVL_L_CLIP_FLD_RIGHT			REG_FLD_MSB_LSB(15, 8)
-	#define OVL_L_CLIP_FLD_TOP				REG_FLD_MSB_LSB(23, 16)
-	#define OVL_L_CLIP_FLD_BOTTOM			REG_FLD_MSB_LSB(31, 24)
-	#define FLD_DISP_OVL_EN					REG_FLD_MSB_LSB(0, 0)
-#define DATAPATH_CON_FLD_LAYER_SMI_ID_EN	REG_FLD_MSB_LSB(0, 0)
-#define DATAPATH_CON_FLD_GCLAST_EN		REG_FLD_MSB_LSB(24, 24)
-#define DATAPATH_CON_FLD_HDR_GCLAST_EN	REG_FLD_MSB_LSB(25, 25)
-#define DATAPATH_CON_FLD_OUTPUT_CLAMP	REG_FLD_MSB_LSB(26, 26)
-
-	#define FLD_OVL_OUTPROC_FUNC_DCM0_GOLDEN		REG_FLD_MSB_LSB(3, 3)
-	#define INTEN_FLD_OUTPROC_REG_CMT_INTEN REG_FLD_MSB_LSB(0, 0)
-	#define INTEN_FLD_OUTPROC_FME_CPL_INTEN REG_FLD_MSB_LSB(1, 1)
-	#define INTEN_FLD_OUTPROC_FME_UND_INTEN REG_FLD_MSB_LSB(2, 2)
-	#define INTEN_FLD_OUTPROC_START_INTEN REG_FLD_MSB_LSB(6, 6)
-	#define INTEN_FLD_OUTPROC_ABNORMAL_SOF REG_FLD_MSB_LSB(5, 5)
-
-/*Need to Fix*/
 
 
 #define MAX_LAYER_NUM 1
@@ -242,18 +170,15 @@ static int mtk_ovl_outproc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_outproc_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
-	//int i = 0;
-	DDPMSG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+	//struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	//const u16 *regs = outproc->data->regs;
+
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 #ifdef IF_ZERO
 	if (keep_first_layer) {
-		if (comp->id == DDP_COMPONENT_OVL_EXDMA2)
-			return;
+		return;
 	}
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
-		       DISP_OVL_FORCE_RELAY_MODE, ~0);
 #endif
 }
 
@@ -261,23 +186,26 @@ static void mtk_ovl_outproc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 {
 	unsigned int value = 0, mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+	const u32 *reg_fld = outproc->data->reg_fld;
 
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_OUTPROC_RST, BIT(0), BIT(0));
+				comp->regs_pa + regs[OVL_OUTPROC_RST], BIT(0), BIT(0));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_OUTPROC_RST, 0x0, BIT(0));
+				comp->regs_pa + regs[OVL_OUTPROC_RST], 0x0, BIT(0));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_OUTPROC_INTSTA, 0, ~0);
+			comp->regs_pa + regs[OVL_OUTPROC_INTSTA], 0, ~0);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_OUTPROC_EN],
 		       0x1, 0x21);
 
 	value = 0;
 	mask = 0;
-	SET_VAL_MASK(value, mask, 1, DATAPATH_CON_FLD_OUTPUT_CLAMP);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_OVL_OUTPROC_OUTPUT_CLAMP]);
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_REG_OVL_OUTPROC_DATAPATH_CON,
+		       comp->regs_pa + regs[OVL_OUTPROC_DATAPATH_CON],
 		       value, mask);
 
 
@@ -285,22 +213,25 @@ static void mtk_ovl_outproc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		/* golden setting */
 		value = 0;
 		mask = 0;
-		SET_VAL_MASK(value, mask, 1, FLD_OVL_OUTPROC_FUNC_DCM0_GOLDEN);
+		SET_VAL_MASK(value, mask, 1, reg_fld[FLD_OVL_OUTPROC_FUNC_DCM0]);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_FUNC_DCM0,
+			       comp->regs_pa + regs[OVL_OUTPROC_FUNC_DCM0],
 			       value, mask);
-	} // Aaron_check need to check with DE
+	} // need to check with DE
 
 	DDPDBG("%s-\n", __func__);
 }
 
 static void mtk_ovl_outproc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_OUTPROC_INTEN, 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+			comp->regs_pa + regs[OVL_OUTPROC_INTEN], 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_OUTPROC_EN],
 			   0x20, DISP_OVL_OUTPROC_RELAY_MODE_EN | DISP_OVL_OUTPROC_EN);
 
 	mtk_ovl_outproc_all_layer_off(comp, handle, 0);
@@ -313,20 +244,23 @@ static void mtk_ovl_outproc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 static void mtk_ovl_outproc_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_OUTPROC_RST, BIT(0), ~0);
+			comp->regs_pa + regs[OVL_OUTPROC_RST], BIT(0), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_OUTPROC_RST, 0, ~0);
+			comp->regs_pa + regs[OVL_OUTPROC_RST], 0, ~0);
 	DDPDBG("%s-\n", __func__);
 }
 
 static void _store_bg_roi(struct mtk_ddp_comp *comp, int h, int w)
 {
-	struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
 
-	ovl->bg_h = h;
-	ovl->bg_w = w;
+	outproc->bg_h = h;
+	outproc->bg_w = w;
 }
 
 static int mtk_ovl_outproc_golden_setting(struct mtk_ddp_comp *comp,
@@ -342,20 +276,21 @@ static void mtk_ovl_outproc_config(struct mtk_ddp_comp *comp,
 	//struct mtk_drm_private *priv = crtc->dev->dev_private;
 	//unsigned long crtc_idx = (unsigned long)drm_crtc_index(crtc);
 	//int fps;
-	struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
 
 	DDPINFO("outproc_config:%s\n", mtk_dump_comp_str(comp));
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		if (cfg->tile_overhead.is_support) {
-			if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
+			if (outproc->data->is_right_ovl_comp && outproc->data->is_right_ovl_comp(comp))
 				width = cfg->tile_overhead.right_in_width;
 			else
 				width = cfg->tile_overhead.left_in_width;
 		} else
 			width = cfg->w / 2;
 		if (drm_crtc_index(crtc) == 2 && (width % 2)) {
-			if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
+			if (outproc->data->is_right_ovl_comp && outproc->data->is_right_ovl_comp(comp))
 				width += 1;
 			else
 				width -= 1;
@@ -363,17 +298,17 @@ static void mtk_ovl_outproc_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
-	if (ovl->set_partial_update != 1)
+	if (outproc->set_partial_update != 1)
 		height = cfg->h;
 	else
-		height = ovl->roi_height;
+		height = outproc->roi_height;
 	/*out_proc wa*/
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_OUTPROC_EN],
 		       0x1, ~0);
 
 	if (cfg->w != 0 && cfg->h != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				   comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
 				   height << 16 | width, ~0);
 
 		_store_bg_roi(comp, height, width);
@@ -426,9 +361,12 @@ mtk_ovl_outproc_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id
 			 enum mtk_ddp_comp_id next, struct mtk_rect rsz_src_roi,
 			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+
 	if (prev == -1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+			       comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
 			       rsz_src_roi.height << 16 | rsz_src_roi.width,
 			       ~0);
 		_store_bg_roi(comp, rsz_src_roi.height, rsz_src_roi.width);
@@ -444,18 +382,20 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 	unsigned int width, height;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
 
 	width = addon_config->addon_wdma_config.wdma_dst_roi.width;
 	height = addon_config->addon_wdma_config.wdma_dst_roi.height;
 
 	DDPINFO("%s,%s,w:%d, h:%d\n", __func__, mtk_dump_comp_str(comp), width, height);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_OUTPROC_EN],
 		       0x1, ~0);
 
 	if (width != 0 && height != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				   comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
 				   height << 16 | width, ~0);
 
 	return;
@@ -465,102 +405,6 @@ static int mtk_ovl_outproc_golden_setting(struct mtk_ddp_comp *comp,
 				  struct mtk_ddp_config *cfg,
 				  struct cmdq_pkt *handle)
 {
-#ifdef IF_ZERO
-	unsigned long baddr = comp->regs_pa;
-	unsigned int regval;
-	unsigned int gs[GS_OVL_FLD_NUM];
-	int i, layer_num;
-	unsigned long Lx_base;
-
-	layer_num = mtk_ovl_outproc_layer_num(comp);
-
-	/* calculate ovl golden setting */
-	mtk_ovl_outproc_cal_golden_setting(cfg, comp, gs);
-
-	/* OVL_RDMA_MEM_GMC_SETTING_1 */
-	regval =
-		gs[GS_OVL_RDMA_ULTRA_TH] + (gs[GS_OVL_RDMA_PRE_ULTRA_TH] << 16);
-	for (i = 0; i < layer_num; i++) {
-		Lx_base = i * OVL_LAYER_OFFSET + baddr;
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       Lx_base + DISP_REG_OVL_RDMA0_MEM_GMC_SETTING,
-			       regval, ~0);
-	}
-
-	/* OVL_RDMA_FIFO_CTRL */
-	regval = gs[GS_OVL_RDMA_FIFO_THRD] + (gs[GS_OVL_RDMA_FIFO_SIZE] << 16);
-	for (i = 0; i < layer_num; i++) {
-		Lx_base = i * OVL_LAYER_OFFSET + baddr;
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       Lx_base + DISP_REG_OVL_RDMA0_FIFO_CTRL, regval,
-			       ~0);
-	}
-
-	/* OVL_RDMA_MEM_GMC_SETTING_2 */
-	regval = gs[GS_OVL_RDMA_ISSUE_REQ_TH] +
-		 (gs[GS_OVL_RDMA_ISSUE_REQ_TH_URG] << 16) +
-		 (gs[GS_OVL_RDMA_REQ_TH_PRE_ULTRA] << 28) +
-		 (gs[GS_OVL_RDMA_REQ_TH_ULTRA] << 29) +
-		 (gs[GS_OVL_RDMA_FORCE_REQ_TH] << 30);
-	for (i = 0; i < layer_num; i++)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       baddr + DISP_REG_OVL_RDMA0_MEM_GMC_S2 + i * 4,
-			       regval, ~0);
-
-	/* DISP_REG_OVL_RDMA_GREQ_NUM */
-	regval = gs[GS_OVL_RDMA_GREQ_NUM];
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_RDMA_GREQ_NUM, regval, ~0);
-
-	/* DISP_REG_OVL_RDMA_GREQ_URG_NUM */
-	regval = gs[GS_OVL_RDMA_GREQ_URG_NUM];
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_RDMA_GREQ_URG_NUM, regval, ~0);
-
-	/* DISP_REG_OVL_RDMA_ULTRA_SRC */
-	regval = gs[GS_OVL_RDMA_ULTRA_SRC];
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_RDMA_ULTRA_SRC, regval, ~0);
-
-	/* DISP_REG_OVL_RDMAn_BUF_LOW */
-	regval = gs[GS_OVL_RDMA_ULTRA_LOW_TH] +
-		 (gs[GS_OVL_RDMA_PRE_ULTRA_LOW_TH] << 12);
-
-	for (i = 0; i < layer_num; i++)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       baddr + DISP_REG_OVL_RDMAn_BUF_LOW(i), regval,
-			       ~0);
-
-	/* DISP_REG_OVL_RDMAn_BUF_HIGH */
-	regval = (gs[GS_OVL_RDMA_PRE_ULTRA_HIGH_TH] << 12) +
-		 (gs[GS_OVL_RDMA_PRE_ULTRA_HIGH_DIS] << 31);
-
-	for (i = 0; i < layer_num; i++)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       baddr + DISP_REG_OVL_RDMAn_BUF_HIGH(i), regval,
-			       ~0);
-
-	/* OVL_EN */
-	regval = (gs[GS_OVL_BLOCK_EXT_ULTRA] << 18) +
-		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19);
-	cmdq_pkt_write(handle, comp->cmdq_base, baddr + DISP_REG_OVL_EN_CON,
-		       regval, 0x3 << 18);
-
-	/* OVL_STASH_EN */
-	regval = gs[GS_OVL_STASH_EN];
-	if (regval) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_STASH_CFG0, regval, ~0);
-	}
-
-	regval = gs[GS_OVL_STASH_CFG];
-	if (regval) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		       baddr + DISP_REG_OVL_STASH_CFG1, regval, ~0);
-	}
-#endif
 	return 0;
 }
 
@@ -568,9 +412,9 @@ static int mtk_ovl_outproc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 			  enum mtk_ddp_io_cmd io_cmd, void *params)
 {
 	int ret = 0;
-
-
-
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+	const u32 *reg_fld = outproc->data->reg_fld;
 	struct mtk_drm_private *priv;
 
 	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
@@ -587,46 +431,46 @@ static int mtk_ovl_outproc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		dma_addr_t slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_STATUS(idx));
 
 		cmdq_pkt_mem_move(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_OUTPROC_STA,
+			comp->regs_pa + regs[OVL_OUTPROC_STA],
 			slot, CMDQ_THR_SPR_IDX3);
 		break;
 	}
 	case IRQ_LEVEL_ALL: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(INTEN_FLD_OUTPROC_ABNORMAL_SOF, 1) |
-			REG_FLD_VAL(INTEN_FLD_OUTPROC_FME_UND_INTEN, 1) |
-			REG_FLD_VAL(INTEN_FLD_OUTPROC_START_INTEN, 1);
+		inten = REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_ABNORMAL_SOF_INTEN], 1) |
+			REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_FME_UND_INTEN], 1) |
+			REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_START_INTEN], 1);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_INTSTA, 0,
+			       comp->regs_pa + regs[OVL_OUTPROC_INTSTA], 0,
 			       ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_INTEN, inten,
+			       comp->regs_pa + regs[OVL_OUTPROC_INTEN], inten,
 			       ~0);
 		break;
 	}
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(INTEN_FLD_OUTPROC_FME_UND_INTEN, 1) |
-			REG_FLD_VAL(INTEN_FLD_OUTPROC_FME_CPL_INTEN, 1);
+		inten = REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_FME_UND_INTEN], 1) |
+			REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_FME_CPL_INTEN], 1);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_INTSTA, 0,
+			       comp->regs_pa + regs[OVL_OUTPROC_INTSTA], 0,
 			       ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_INTEN, inten,
+			       comp->regs_pa + regs[OVL_OUTPROC_INTEN], inten,
 			       ~0);
 		break;
 	}
 	case IRQ_LEVEL_IDLE: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(INTEN_FLD_OUTPROC_REG_CMT_INTEN, 1) |
-			REG_FLD_VAL(INTEN_FLD_OUTPROC_FME_CPL_INTEN, 1) |
-			REG_FLD_VAL(INTEN_FLD_OUTPROC_START_INTEN, 1);
+		inten = REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_REG_CMT_INTEN], 1) |
+			REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_FME_CPL_INTEN], 1) |
+			REG_FLD_VAL(reg_fld[FLD_OVL_OUTPROC_START_INTEN], 1);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_OUTPROC_INTEN, 0, inten);
+			       comp->regs_pa + regs[OVL_OUTPROC_INTEN], 0, inten);
 		break;
 	}
 	default:
@@ -642,29 +486,29 @@ void mtk_ovl_outproc_dump_golden_setting(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned long rg0 = 0;
 	unsigned int value;
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
+	const u32 *reg_fld = outproc->data->reg_fld;
 
-	rg0 = DISP_REG_OVL_OUTPROC_DATAPATH_CON;
+	rg0 = regs[OVL_OUTPROC_DATAPATH_CON];
 	DDPDUMP("0x%03lx:0x%08x\n",
 		rg0, readl(rg0 + baddr));
 
-	value = readl(DISP_REG_OVL_OUTPROC_EN + baddr);
-	DDPDUMP("OVL_EN:%d\n", REG_FLD_VAL_GET(FLD_DISP_OVL_EN, value));
+	value = readl(regs[OVL_OUTPROC_EN] + baddr);
+	DDPDUMP("OVL_EN:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_OVL_OUTPROC_EN], value));
 
 
-	value = readl(DISP_REG_OVL_OUTPROC_DATAPATH_CON + baddr);
+	value = readl(regs[OVL_OUTPROC_DATAPATH_CON] + baddr);
 	DDPDUMP("DATAPATH_CON\n");
-	DDPDUMP("[0]:%u [24]:%u [25]:%u [26]:%u\n",
-		REG_FLD_VAL_GET(DATAPATH_CON_FLD_LAYER_SMI_ID_EN, value),
-		REG_FLD_VAL_GET(DATAPATH_CON_FLD_GCLAST_EN, value),
-		REG_FLD_VAL_GET(DATAPATH_CON_FLD_HDR_GCLAST_EN, value),
-		REG_FLD_VAL_GET(DATAPATH_CON_FLD_OUTPUT_CLAMP, value));
+	DDPDUMP("[0]:%u\n",
+		REG_FLD_VAL_GET(reg_fld[FLD_OVL_OUTPROC_OUTPUT_CLAMP], value));
 
 }
 #endif
 
 int mtk_ovl_outproc_dump(struct mtk_ddp_comp *comp)
 {
-	//struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
+	//struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
 	void __iomem *baddr = comp->regs;
 	int i;
 
@@ -693,7 +537,8 @@ static void mtk_ovl_outproc_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ovl_outproc *priv = dev_get_drvdata(comp->dev);
 	int ret;
-	struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
 	//struct mtk_drm_private *dev_priv = NULL;
 
 	mtk_ddp_comp_clk_prepare(comp);
@@ -706,12 +551,12 @@ static void mtk_ovl_outproc_prepare(struct mtk_ddp_comp *comp)
 	}
 
 	/* Bypass shadow register and read shadow register */
-	if (ovl->data->need_bypass_shadow)
+	if (outproc->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, DISP_OVL_BYPASS_SHADOW_BIT,
-			DISP_REG_OVL_OUTPROC_SHADOW_CTRL, DISP_OVL_BYPASS_SHADOW_BIT);
+			regs[OVL_OUTPROC_SHADOW_CTRL], DISP_OVL_BYPASS_SHADOW_BIT);
 	else
 		mtk_ddp_write_mask_cpu(comp, 0,
-			DISP_REG_OVL_OUTPROC_SHADOW_CTRL, DISP_OVL_BYPASS_SHADOW_BIT);
+			regs[OVL_OUTPROC_SHADOW_CTRL], DISP_OVL_BYPASS_SHADOW_BIT);
 
 	/*
 	 * if (comp->mtk_crtc && comp->mtk_crtc->base.dev) {
@@ -847,7 +692,8 @@ mtk_ovl_outproc_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 static int mtk_ovl_outproc_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
-	struct mtk_disp_ovl_outproc *ovl = comp_to_ovl_outproc(comp);
+	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+	const u16 *regs = outproc->data->regs;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, false);
 	struct total_tile_overhead_v to_v_info;
@@ -856,27 +702,27 @@ static int mtk_ovl_outproc_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	ovl->set_partial_update = enable;
+	outproc->set_partial_update = enable;
 
 	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
 	overhead_v = to_v_info.overhead_v;
 
 	if (comp->mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
 		comp->mtk_crtc->scaling_ctx.scaling_en)
-		ovl->roi_height = to_v_info.in_height;
+		outproc->roi_height = to_v_info.in_height;
 	else
-		ovl->roi_height = partial_roi.height + (overhead_v * 2);
+		outproc->roi_height = partial_roi.height + (overhead_v * 2);
 
 	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
+			__func__, mtk_dump_comp_str(comp), overhead_v, outproc->roi_height);
 
-	if (ovl->set_partial_update == 1) {
+	if (outproc->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
-				ovl->roi_height << 16, 0x1fff << 16);
+				comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
+				outproc->roi_height << 16, 0x1fff << 16);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
 				full_height << 16, 0x1fff << 16);
 	}
 
@@ -919,8 +765,8 @@ static int mtk_disp_ovl_outproc_bind(struct device *dev, struct device *master,
 	}
 
 	baddr = priv->ddp_comp.regs;
-	bg_w = readl(DISP_REG_OVL_OUTPROC_ROI_SIZE + baddr) & 0xfff,
-	bg_h = (readl(DISP_REG_OVL_OUTPROC_ROI_SIZE + baddr) >> 16) & 0xfff,
+	bg_w = readl(priv->data->regs[OVL_OUTPROC_ROI_SIZE] + baddr) & 0xfff,
+	bg_h = (readl(priv->data->regs[OVL_OUTPROC_ROI_SIZE] + baddr) >> 16) & 0xfff,
 	_store_bg_roi(&priv->ddp_comp, bg_h, bg_w);
 
 	return 0;
@@ -981,8 +827,8 @@ static int mtk_disp_ovl_outproc_probe(struct platform_device *pdev)
 	if (ranges && priv->data && priv->data->is_support_34bits)
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
-	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_OUTPROC_INTSTA);
-	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_OUTPROC_INTEN);
+	writel(0, priv->ddp_comp.regs + priv->data->regs[OVL_OUTPROC_INTSTA]);
+	writel(0, priv->ddp_comp.regs + priv->data->regs[OVL_OUTPROC_INTEN]);
 
 	//num_irqs = platform_irq_count(pdev);
 	/*
@@ -1022,12 +868,16 @@ static const struct mtk_disp_ovl_outproc_data mt6991_ovl_driver_data = {
 	.aid_sel_mapping = &mtk_ovl_outproc_aid_sel_MT6991,
 	.aid_per_layer_setting = true,
 	.mmsys_mapping = &mtk_ovl_outproc_mmsys_mapping_MT6991,
+	.regs = ovl_outproc_regs_mt6991,
+	.reg_fld = ovl_outproc_fld_mt6991,
 };
 
 static const struct mtk_disp_ovl_outproc_data mt6993_ovl_driver_data = {
 	//.aid_sel_mapping = &mtk_ovl_outproc_aid_sel_MT6991,
 	.aid_per_layer_setting = true,
 	//.mmsys_mapping = &mtk_ovl_outproc_mmsys_mapping_MT6991,
+	.regs = ovl_outproc_regs_mt6991,
+	.reg_fld = ovl_outproc_fld_mt6991,
 };
 
 

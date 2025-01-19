@@ -36,76 +36,60 @@
 #include "mtk_drm_gem.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_dump.h"
+#include "platform/mtk_ovl_blender_reg.h"
+
+/*ext layer define*/
+#define OVL_BLD_ELX_EN(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_EN] + 0x30*(n))
+
+#define OVL_BLD_ELX_OFFSET(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_OFFSET] + 0x30*(n))
+
+#define OVL_BLD_ELX_SRC_SIZE(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_SRC_SIZE] + 0x30*(n))
+
+#define OVL_BLD_ELX_CLIP(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_CLIP] + 0x30*(n))
+
+#define OVL_BLD_ELX_CON2(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_CON2] + 0x100*(n))
+
+#define OVL_BLD_ELX_PITCH(module, n) \
+	((module)->data->regs[OVL_BLD_EL0_PITCH] + 0x100*(n))
+
+#define OVL_BLD_ELX_CLR(module, n) \
+		((module)->data->regs[OVL_BLD_EL0_CLR] + 0x100*(n))
 
 
-#define DISP_REG_OVL_BLD_STA		(0x000UL)
-	#define ENG_ACTIVE					BIT(0)
-	#define IN_RLY0_IDLE				BIT(1)
-	#define IN_RLY1_IDLE				BIT(2)
-	#define BLD_IDLE					BIT(3)
-	#define OUT_RLY_IDLE				BIT(4)
-	#define ADDCON_IDLE					BIT(5)
-	#define ENG_IDLE					BIT(6)
-#define DISP_REG_OVL_BLD_INTEN		(0x0004)
-#define DISP_REG_OVL_BLD_INTSTA		(0x0008)
-	#define REG_UPDATE			REG_FLD_MSB_LSB(0, 0)
-	#define FRAME_DONE			REG_FLD_MSB_LSB(1, 1)
-	#define ABNORMAL_SOF		REG_FLD_MSB_LSB(2, 2)
-	#define OVL_START_INTEN		REG_FLD_MSB_LSB(3, 3)
-	#define OVL_ROL_TIMING_0	REG_FLD_MSB_LSB(8, 8)
-	#define OVL_ROL_TIMING_1	REG_FLD_MSB_LSB(9, 9)
-	#define OVL_ROL_TIMING_2	REG_FLD_MSB_LSB(10, 10)
-	#define OVL_ROL_TIMING_3	REG_FLD_MSB_LSB(11, 11)
-	#define OVL_ROL_TIMING_4	REG_FLD_MSB_LSB(12, 12)
-	#define OVL_ROL_TIMING_5	REG_FLD_MSB_LSB(13, 13)
-	#define OVL_ROL_TIMING_6	REG_FLD_MSB_LSB(14, 14)
-	#define OVL_ROL_TIMING_7	REG_FLD_MSB_LSB(15, 15)
+/*Specific value define*/
 
-#define DISP_REG_OVL_BLD_FUNC_DCM_DIS0		(0x000CUL)
-#define DISP_REG_OVL_BLD_DATAPATH_CON		(0x0010UL)
-	#define DISP_BGCLR_IN_SEL				BIT(0)
-	#define DISP_BGCLR_OUT_TO_PROC			BIT(4)
-	#define DISP_BGCLR_OUT_TO_NEXT_LAYER	BIT(5)
-	#define DISP_BLD_BGCLR_IN_SEL			REG_FLD_MSB_LSB(0, 0)
-	#define DISP_BGCLR_OUT_SEL				REG_FLD_MSB_LSB(5, 4)
-	#define DISP_BLD_OUT_PROC				REG_FLD_MSB_LSB(4, 4)
-	#define DISP_BLD_OUT_NEXT_LAYER			REG_FLD_MSB_LSB(5, 5)
-	#define DISP_OUTPUT_INTERLACE			BIT(16)
-#define DISP_REG_OVL_BLD_RELAY_MODE_OPT		(0x001CUL)
-#define DISP_REG_OVL_BLD_EN				(0x0020UL)
-	#define DISP_OVL_EN						BIT(0)
-	#define DISP_OVL_FORCE_RELAY_MODE		BIT(4)
-	#define DISP_OVL_RELAY_MODE				BIT(5)
 
-#define DISP_REG_OVL_BLD_RST			(0x0024UL)
-#define DISP_REG_OVL_BLD_SHADOW_CTRL	(0x0028UL)
-	#define DISP_OVL_READ_WRK_REG			BIT(0)
-	#define DISP_OVL_FORCE_COMMIT			BIT(1)
-	#define DISP_OVL_BYPASS_SHADOW			BIT(2)
 
-#define DISP_REG_OVL_BLD_ROI_SIZE	(0x0030)
-#define DISP_REG_OVL_BLD_L_EN(n)		(0x0040UL + 0x30 * (n))
-	#define DISP_OVL_L_EN				BIT(0)
-	#define DISP_OVL_L_FBCD_EN			BIT(4)
-	#define LSRC_COLOR					BIT(8)
-	#define LSRC_UFOD					BIT(9)
-	#define LSRC_PQ						(BIT(8) | BIT(9))
-	#define L_CON_FLD_LSRC				REG_FLD_MSB_LSB(9, 8)
+/*OVL_BLD_DATAPATH_CON*/
+#define DISP_BGCLR_IN_SEL				BIT(0)
+#define DISP_BGCLR_OUT_TO_PROC			BIT(4)
+#define DISP_BGCLR_OUT_TO_NEXT_LAYER	BIT(5)
 
-#define DISP_REG_BLD_OVL_OFFSET(n)		(0x0044UL + 0x30 * (n))
-#define DISP_REG_BLD_OVL_SRC_SIZE(n)	(0x0048UL + 0x30 * (n))
-#define DISP_REG_BLD_OVL_CLIP(n)		(0x004CUL + 0x30 * (n))
-	#define OVL_L_CLIP_FLD_LEFT				REG_FLD_MSB_LSB(7, 0)
-	#define OVL_L_CLIP_FLD_RIGHT			REG_FLD_MSB_LSB(15, 8)
-	#define OVL_L_CLIP_FLD_TOP				REG_FLD_MSB_LSB(23, 16)
-	#define OVL_L_CLIP_FLD_BOTTOM			REG_FLD_MSB_LSB(31, 24)
+/*OVL_BLD_EN*/
+#define DISP_OVL_BLD_EN						BIT(0)
+#define DISP_OVL_BLD_FORCE_RELAY_MODE		BIT(4)
+#define DISP_OVL_BLD_RELAY_MODE				BIT(5)
 
-#define OVL_BLD_L0_CLRFMT(n)	(0x0050 + 0x30 * (n))
-	#define OVL_CON_CLRFMT_MAN		BIT(4)
 
-	#define OVL_CON_CLRFMT_RGB (1UL)
-	#define OVL_CON_CLRFMT_RGBA8888 (2)
-	#define OVL_CON_CLRFMT_ARGB8888 (3)
+/*OVL_BLD_SHADOW_CTRL*/
+#define DISP_OVL_READ_WRK_REG			BIT(0)
+#define DISP_OVL_FORCE_COMMIT			BIT(1)
+#define DISP_OVL_BYPASS_SHADOW			BIT(2)
+
+/*OVL_BLD_L0_EN*/
+#define DISP_OVL_LX_EN				BIT(0)
+
+/*OVL_BLD_L0_CLRFMT*/
+#define OVL_BLD_CON_CLRFMT_MAN		BIT(4)
+
+#define OVL_CON_CLRFMT_RGB (1UL)
+#define OVL_CON_CLRFMT_RGBA8888 (2)
+#define OVL_CON_CLRFMT_ARGB8888 (3)
 #define OVL_CON_CLRFMT_DIM (1 << 8)
 #define OVL_CON_CLRFMT_RGB565(module)                                          \
 		(((module)->data->fmt_rgb565_is_0 == true) ? 0UL : OVL_CON_CLRFMT_RGB)
@@ -113,107 +97,14 @@
 		(((module)->data->fmt_rgb565_is_0 == true) ? OVL_CON_CLRFMT_RGB : 0UL)
 #define OVL_CON_CLRFMT_UYVY(module) ((module)->data->fmt_uyvy)
 #define OVL_CON_CLRFMT_YUYV(module) ((module)->data->fmt_yuyv)
-#define OVL_CON_AEN BIT(8)
-#define OVL_CON_ALPHA 0xff
 
-#define OVL_BLD_BGCLR_CON		(0x100)
-#define OVL_BLD_BGCLR_CLG		(0x104)
-	#define ROI_BGCLR_BLUE			REG_FLD_MSB_LSB(7, 0)
-	#define ROI_BGCLR_GREEN			REG_FLD_MSB_LSB(15, 8)
-	#define ROI_BGCLR_BED			REG_FLD_MSB_LSB(23, 16)
-	#define ROI_BGCLR_ALPHA			REG_FLD_MSB_LSB(31, 24)
+/*OVL_BLD_BGCLR_CLG*/
 #define OVL_ROI_BGCLR (0xFF000000)
 
-#define OVL_BLD_L_CON2(n)		(0x200 + 0x100*(n))
-#define L_ALPHA					REG_FLD_MSB_LSB(7, 0)
-#define L_ALPHA_EN				REG_FLD_MSB_LSB(12, 12)
-#define L_SRCKEY_EN				REG_FLD_MSB_LSB(16, 16)
-#define L_DSTKEY_EN				REG_FLD_MSB_LSB(17, 17)
+/*OVL_BLD_L0_PITCH*/
+#define LYE_CONST_BLD			BIT(24)
 
-#define OVL_BLD_SRCKEY(n)		(0x204 + 0x100*(n))
-#define OVL_BLD_L_PITCH(n)		(0x208 + 0x100*(n))
-#define L0_CONST_BLD			BIT(24)
-#define L_SA_SEL				REG_FLD_MSB_LSB(2, 0)
-#define L_SRGB_SEL				REG_FLD_MSB_LSB(7, 4)
-#define L_DA_SEL				REG_FLD_MSB_LSB(10, 8)
-#define L_DRGB_SEL				REG_FLD_MSB_LSB(15, 12)
-#define L_CONST_BLD				REG_FLD_MSB_LSB(24, 24)
-#define L_BLEND_RND_SHT			REG_FLD_MSB_LSB(25, 25)
-#define L_MINUS_BLD				REG_FLD_MSB_LSB(26, 26)
-#define L_SURFL_EN				REG_FLD_MSB_LSB(31, 31)
-#define OVL_BLD_L_CLR(n)		(0x20c + 0x100*(n))
-#define L_CNST_CLR_BLUE			REG_FLD_MSB_LSB(7, 0)
-#define L_CNST_CLR_GREEN		REG_FLD_MSB_LSB(15, 8)
-#define L_CNST_CLR_RED			REG_FLD_MSB_LSB(23, 16)
-#define L_CNST_CLR_ALPHA		REG_FLD_MSB_LSB(31, 24)
-
-#define OVL_BLD_OVLBN_CTRL		(0x600)
-#define L0_BN_EN				BIT(0)
-#define EL0_BN_EN				BIT(5)
-#define EL1_BN_EN				BIT(6)
-#define EL2_BN_EN				BIT(7)
-
-#define OVL_BLD_OVLBN_CTRL1		(0x604)
-
-#define OVL_BLD_OVLBN0_CTRL2		(0x608)
-#define OVL_BLD_OVLBN1_CTRL4		(0x610)
-#define OVL_BLD_OVLBN2_CTRL6		(0x618)
-#define OVL_BLD_OVLBN3_CTRL8		(0x620)
-	#define ALPHA_2_SHIFT	REG_FLD_MSB_LSB(4, 0)
-	#define ALPHA_4_SHIFT	REG_FLD_MSB_LSB(12, 8)
-	#define ALPHA_16_SHIFT	REG_FLD_MSB_LSB(20, 17)
-
-#define OVL_BLD_OVLBN0_CTRL3		(0x60C)
-#define OVL_BLD_OVLBN1_CTRL5		(0x614)
-#define OVL_BLD_OVLBN2_CTRL7		(0x61C)
-#define OVL_BLD_OVLBN3_CTRL9		(0x624)
-	#define ALPHA_32_SHIFT	REG_FLD_MSB_LSB(4, 0)
-	#define ALPHA_64_SHIFT	REG_FLD_MSB_LSB(12, 8)
-	#define ALPHA_128_SHIFT	REG_FLD_MSB_LSB(20, 17)
-
-#define OVL_BLD_OVLBN_CTRL10		(0x628)
-	#define BN_FPHASE_EN	REG_FLD_MSB_LSB(0, 0)
-	#define BN_FPHASE_R		REG_FLD_MSB_LSB(1, 1)
-	#define BN_FPHASE_CTRL	REG_FLD_MSB_LSB(5, 4)
-	#define BN_FPHASE_SEL	REG_FLD_MSB_LSB(9, 8)
-	#define BN_FPHASE_BIT	REG_FLD_MSB_LSB(14, 12)
-	#define BN_FPHASE		REG_FLD_MSB_LSB(21, 16)
-
-#define OVL_BLD_OVLBN_CTRL11		(0x62C)
-	#define BN_CRC24_RND_SEED			REG_FLD_MSB_LSB(23, 0)
-	#define BN_CRC24_RND_SEED_UPDATE	REG_FLD_MSB_LSB(24, 24)
-
-#define OVL_BLD_OVLBN_CTRL12		(0x630)
-	#define	L0_BN_ALPHA_SEL				REG_FLD_MSB_LSB(2, 0)
-	#define	L0_BN_ALPHA_SEL_MAN			REG_FLD_MSB_LSB(3, 3)
-	#define	EL0_BN_ALPHA_SEL			REG_FLD_MSB_LSB(22, 20)
-	#define	EL0_BN_ALPHA_SEL_MAN		REG_FLD_MSB_LSB(23, 23)
-	#define	EL1_BN_ALPHA_SEL			REG_FLD_MSB_LSB(24, 26)
-	#define	EL1_BN_ALPHA_SEL_MAN		REG_FLD_MSB_LSB(27, 27)
-	#define	EL2_BN_ALPHA_SEL			REG_FLD_MSB_LSB(30, 28)
-	#define	EL2_BN_ALPHA_SEL_MAN		REG_FLD_MSB_LSB(31, 31)
-
-#define OVL_BLD_OVLBN_CTRL13		(0x634)
-	#define	BN_FPHASE_INIT				REG_FLD_MSB_LSB(29, 24)
-	#define	BN_FPHASE_INIT_UPDATE		REG_FLD_MSB_LSB(31, 31)
-
-#define OVL_BLD_ROI_TIMING_0		(0x700)
-#define OVL_BLD_ROI_TIMING_2		(0x704)
-#define OVL_BLD_ROI_TIMING_4		(0x708)
-#define OVL_BLD_ROI_TIMING_6		(0x70c)
-
-#define OVL_BLD_DBG_STATUS0			(0x7a0)
-#define OVL_BLD_DBG_STATUS1			(0x7a4)
-#define OVL_BLD_DBG_STATUS3			(0x7ac)
-#define OVL_BLD_DBG_STATUS5			(0x7b4)
-#define BGCLR_IN_VALID		REG_FLD_MSB_LSB(0, 0)
-#define BGCLR_IN_READY		REG_FLD_MSB_LSB(1, 1)
-#define LAYER_IN_VALID		REG_FLD_MSB_LSB(2, 2)
-#define LAYER_IN_READY		REG_FLD_MSB_LSB(3, 3)
-#define BLD2CLR_VALID		REG_FLD_MSB_LSB(12,12)
-#define BLD2CLR_READY		REG_FLD_MSB_LSB(13,13)
-#define BLD2BLD_VALID		REG_FLD_MSB_LSB(14,14)
-#define BLD2BLD_READY		REG_FLD_MSB_LSB(15,15)
+/*Specific value define*/
 
 //enum mtk_ddp_comp_id g_last_active_bld = DDP_COMPONENT_OVL0_BLENDER0;
 
@@ -294,14 +185,28 @@ static void ovl_dump_bld_layer_info(struct mtk_ddp_comp *comp, int layer)
 	void __iomem *baddr = comp->regs;
 	void __iomem *Lx_base;
 	static const char * const pixel_src[] = { "mem", "color", "ufod", "pq" };
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
 
 	Lx_base = baddr;
-	con = readl(OVL_BLD_L_CON2(layer) + Lx_base);
-	lsrc = readl(DISP_REG_OVL_BLD_L_EN(layer) + Lx_base);
-	offset = readl(DISP_REG_BLD_OVL_OFFSET(layer) + Lx_base);
-	src_size = readl(DISP_REG_BLD_OVL_SRC_SIZE(layer) + Lx_base);
-	pitch = readl(OVL_BLD_L_PITCH(layer) + Lx_base);
-	clip = readl(DISP_REG_BLD_OVL_CLIP(layer) + Lx_base);
+	if (layer != LYE_NORMAL) {
+		int ext_id = layer - 1;
+
+		con = readl(OVL_BLD_ELX_CON2(bld, ext_id) + Lx_base);
+		lsrc = readl(OVL_BLD_ELX_EN(bld, ext_id) + Lx_base);
+		offset = readl(OVL_BLD_ELX_OFFSET(bld, ext_id) + Lx_base);
+		src_size = readl(OVL_BLD_ELX_SRC_SIZE(bld, ext_id) + Lx_base);
+		pitch = readl(OVL_BLD_ELX_PITCH(bld, ext_id) + Lx_base);
+		clip = readl(OVL_BLD_ELX_CLIP(bld, ext_id) + Lx_base);
+	} else {
+		con = readl(regs[OVL_BLD_L0_CON2] + Lx_base);
+		lsrc = readl(regs[OVL_BLD_L0_EN] + Lx_base);
+		offset = readl(regs[OVL_BLD_L0_OFFSET] + Lx_base);
+		src_size = readl(regs[OVL_BLD_L0_SRC_SIZE] + Lx_base);
+		pitch = readl(regs[OVL_BLD_L0_PITCH] + Lx_base);
+		clip = readl(regs[OVL_BLD_L0_CLIP] + Lx_base);
+	}
 
 	/* TODO
 	 * fmt = display_fmt_reg_to_unified_fmt(
@@ -316,28 +221,31 @@ static void ovl_dump_bld_layer_info(struct mtk_ddp_comp *comp, int layer)
 	DDPDUMP("offset=(%u,%u), clip(L,R,T,B)=(%u,%u,%u,%u)\n",
 		offset & 0xfff,
 		(offset >> 16) & 0xfff,
-		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_LEFT,clip),
-		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_RIGHT,clip),
-		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_TOP,clip),
-		REG_FLD_VAL_GET(OVL_L_CLIP_FLD_BOTTOM,clip));
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_SRC_LEFT_CLIP],clip),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_SRC_RIGHT_CLIP],clip),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_SRC_TOP_CLIP],clip),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_SRC_BOTTOM_CLIP],clip));
 	DDPDUMP("layer_src=0x%x, clrfmt=0x%x, a_en=0x%x, alpha=0x%x pitch=0x%x\n",
-		REG_FLD_VAL_GET(L_CON_FLD_LSRC, lsrc),
-		readl(OVL_BLD_L0_CLRFMT(layer) + baddr),
-		REG_FLD_VAL_GET(L_ALPHA_EN, con),
-		REG_FLD_VAL_GET(L_ALPHA, con),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_LAYER_SRC], lsrc),
+		readl(regs[OVL_BLD_L0_CLRFMT] + baddr),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_ALPHA_EN], con),
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_L0_ALPHA], con),
 		pitch & 0xffff);
 }
 
-static void ovl_blender_printf_status(unsigned int status)
+static void ovl_blender_printf_status(unsigned int status, struct mtk_ddp_comp *comp)
 {
-	DDPDUMP("BGCLR_IN:v:%d,r:%d\n", REG_FLD_VAL_GET(BGCLR_IN_VALID, status),
-			REG_FLD_VAL_GET(BGCLR_IN_READY, status));
-	DDPDUMP("LAYER_IN:v:%d,r:%d\n", REG_FLD_VAL_GET(LAYER_IN_VALID, status),
-			REG_FLD_VAL_GET(LAYER_IN_READY, status));
-	DDPDUMP("BLD2CLR:v:%d,r:%d\n", REG_FLD_VAL_GET(BLD2CLR_VALID, status),
-			REG_FLD_VAL_GET(BLD2CLR_READY, status));
-	DDPDUMP("BLD2BLD:v:%d,r:%d\n", REG_FLD_VAL_GET(BLD2BLD_VALID, status),
-			REG_FLD_VAL_GET(BLD2BLD_READY, status));
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u32 *reg_fld = bld->data->reg_fld;
+
+	DDPDUMP("BGCLR_IN:v:%d,r:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_BLD_BGCLR_IN_VALID], status),
+			REG_FLD_VAL_GET(reg_fld[FLD_BLD_BGCLR_IN_READY], status));
+	DDPDUMP("LAYER_IN:v:%d,r:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_BLD_LAYER_IN_VALID], status),
+			REG_FLD_VAL_GET(reg_fld[FLD_BLD_LAYER_IN_READY], status));
+	DDPDUMP("BLD2CLR:v:%d,r:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_BLD_BLD2CLR_VALID], status),
+			REG_FLD_VAL_GET(reg_fld[FLD_BLD_BLD2CLR_READY], status));
+	DDPDUMP("BLD2BLD:v:%d,r:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_BLD_BLD2BLD_VALID], status),
+			REG_FLD_VAL_GET(reg_fld[FLD_BLD_BLD2BLD_READY], status));
 }
 
 void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp)
@@ -365,6 +273,9 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned int ovl_en, layer_en[4];
 	unsigned int path_con;
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -374,29 +285,29 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	if (comp->blank_mode)
 		return 0;
 
-	ovl_en = readl(DISP_REG_OVL_BLD_EN + baddr);
-	layer_en[0] = readl(DISP_REG_OVL_BLD_L_EN(0) + baddr);
-	layer_en[1] = readl(DISP_REG_OVL_BLD_L_EN(1) + baddr);
-	layer_en[2] = readl(DISP_REG_OVL_BLD_L_EN(2) + baddr);
-	layer_en[3] = readl(DISP_REG_OVL_BLD_L_EN(3) + baddr);
+	ovl_en = readl(regs[OVL_BLD_EN] + baddr);
+	layer_en[0] = readl(regs[OVL_BLD_L0_EN] + baddr);
+	layer_en[1] = readl(OVL_BLD_ELX_EN(bld, 0) + baddr);
+	layer_en[2] = readl(OVL_BLD_ELX_EN(bld, 1) + baddr);
+	layer_en[3] = readl(OVL_BLD_ELX_EN(bld, 2) + baddr);
 
-	path_con = readl(DISP_REG_OVL_BLD_DATAPATH_CON + baddr);
+	path_con = readl(regs[OVL_BLD_DATAPATH_CON] + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,\nbgclr_in_sel=%d, to_outproc=%d, to_next_layer=%d\n",
+	DDPDUMP("ovl_en=%d,\nbgclr_in_sel=%d, out_sel=%x\n",
 		ovl_en & 0x1,
-		REG_FLD_VAL_GET(DISP_BLD_BGCLR_IN_SEL, path_con),
-		REG_FLD_VAL_GET(DISP_BLD_OUT_PROC, path_con),
-		REG_FLD_VAL_GET(DISP_BLD_OUT_NEXT_LAYER, path_con));
-	DDPDUMP("sta=0x%x\n",readl(DISP_REG_OVL_BLD_STA + baddr));
+		REG_FLD_VAL_GET(reg_fld[FLD_BLD_BGCLR_IN_SEL], path_con),
+		REG_FLD_VAL_GET(reg_fld[FLD_BGCLR_OUT_SEL], path_con));
+
+	DDPDUMP("sta=0x%x\n",readl(regs[OVL_BLD_STA] + baddr));
 	DDPDUMP("roi_size=%dx%d, cur_pos=(%d,%d), pos_hit=0x%x, src_rly_pos=(%d,%d)\n",
-		readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) & 0xfff,
-		(readl(DISP_REG_OVL_BLD_ROI_SIZE + baddr) >> 16) & 0xfff,
-		readl(OVL_BLD_DBG_STATUS0 + baddr) & 0x1fff,
-		(readl(OVL_BLD_DBG_STATUS0 + baddr) >> 16) & 0x1fff,
-		readl(OVL_BLD_DBG_STATUS1 + baddr),
-		readl(OVL_BLD_DBG_STATUS3 + baddr) & 0x1fff,
-		(readl(OVL_BLD_DBG_STATUS3 + baddr) >> 16) & 0x1fff);
+		readl(regs[OVL_BLD_ROI_SIZE] + baddr) & 0xfff,
+		(readl(regs[OVL_BLD_ROI_SIZE] + baddr) >> 16) & 0xfff,
+		readl(regs[OVL_BLD_DBG_STATUS0] + baddr) & 0x1fff,
+		(readl(regs[OVL_BLD_DBG_STATUS0] + baddr) >> 16) & 0x1fff,
+		readl(regs[OVL_BLD_DBG_STATUS1] + baddr),
+		readl(regs[OVL_BLD_DBG_STATUS3] + baddr) & 0x1fff,
+		(readl(regs[OVL_BLD_DBG_STATUS3] + baddr) >> 16) & 0x1fff);
 
 	if (!(ovl_en & 0x1))
 		return 0;
@@ -413,35 +324,38 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 		}
 	}
 
-	ovl_blender_printf_status(readl(OVL_BLD_DBG_STATUS5 + baddr));
+	ovl_blender_printf_status(readl(regs[OVL_BLD_DBG_STATUS5] + baddr), comp);
 
 	return 0;
 }
 
 static void _store_bg_roi(struct mtk_ddp_comp *comp, int h, int w)
 {
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 
-	ovl->bg_h = h;
-	ovl->bg_w = w;
+	bld->bg_h = h;
+	bld->bg_w = w;
 }
 
 static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 {
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 
-	if (ovl->set_partial_update != 1)
-		*h = ovl->bg_h;
+	if (bld->set_partial_update != 1)
+		*h = bld->bg_h;
 	else
-		*h = ovl->roi_height;
+		*h = bld->roi_height;
 
-	*w = ovl->bg_w;
+	*w = bld->bg_w;
 }
 
 static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int keep_first_layer)
 {
 	int i = 0;
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+
 	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (keep_first_layer) {
@@ -457,38 +371,72 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	 * cmdq_pkt_write(handle, comp->cmdq_base,
 	 *		   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
 	 */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+					   comp->regs_pa + regs[OVL_BLD_L0_EN], 0, ~0);
 
-	for (i = 0; i < OVL_PHY_LAYER_NR; i++)
+	for (i = 0; i < OVL_EXT_LAYER_MAX; i++)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(i), 0, ~0);
+					   comp->regs_pa + OVL_BLD_ELX_EN(bld, i), 0, ~0);
 }
 
 static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
 	unsigned int width = 0, height = 0;
 
 	width = cfg->w;
 
-	if (ovl->set_partial_update != 1)
+	if (bld->set_partial_update != 1)
 		height = cfg->h;
 	else
-		height = ovl->roi_height;
+		height = bld->roi_height;
 
 	if (cfg->w != 0 && cfg->h != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_OVL_BLD_ROI_SIZE,
+				   comp->regs_pa + regs[OVL_BLD_ROI_SIZE],
 				   height << 16 | width, ~0);
 		_store_bg_roi(comp, height, width);
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + OVL_BLD_BGCLR_CLG, OVL_ROI_BGCLR,
+		       comp->regs_pa + regs[OVL_BLD_BGCLR_CLR], OVL_ROI_BGCLR,
 		       ~0);
 }
 
+void bld_enable_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool enable)
+{
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+	u32 value = (enable) ? 0x1 : 0x0;
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_EN],
+		       value, REG_FLD_MASK(reg_fld[FLD_OVL_BLD_EN]));
+}
+
+void bld_enable_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool enable)
+{
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+	u32 value = (enable) ? 0x1 : 0x0;
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_RELAY_MODE_OPT], value, ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_EN],
+		       value, REG_FLD_MASK(reg_fld[FLD_OVL_BLD_EN]));
+}
+
+
 static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+
+	DDPINFO("%s,%s\n", __func__, mtk_dump_comp_str_id(comp->id));
+
 #ifdef IF_ZERO
 	u32 value = 0;	//0x10
 	u32 mask = DISP_BGCLR_IN_SEL | DISP_BGCLR_OUT_TO_PROC | DISP_BGCLR_OUT_TO_NEXT_LAYER;
@@ -514,50 +462,54 @@ static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_
 
 
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-			       DISP_REG_OVL_BLD_DATAPATH_CON, value, ~0);
+			       regs[OVL_BLD_DATAPATH_CON], value, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-			       DISP_REG_OVL_BLD_EN,
-			       DISP_OVL_FORCE_RELAY_MODE | DISP_OVL_RELAY_MODE | DISP_OVL_EN, ~0);
+			       regs[OVL_BLD_EN],
+			       DISP_OVL_BLD_FORCE_RELAY_MODE |
+			       DISP_OVL_BLD_RELAY_MODE |
+			       DISP_OVL_BLD_EN, ~0);
 		DDPINFO("SR blender(%d,%d) %#x\n", comp->id, g_last_active_bld, value);
 		return;
 	}
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON,
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
 			value, mask);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_L_EN(0),
-			value, DISP_OVL_L_EN);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
-			DISP_OVL_EN, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_L0_EN],
+			value, DISP_OVL_LX_EN);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_EN],
+			DISP_OVL_BLD_EN, ~0);
 	DDPINFO("BLD_DATAPATH_CON(%s) 0x%x,0x%x\n", mtk_dump_comp_str(comp), value, mask);
 #endif
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
-		DISP_OVL_EN, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_RELAY_MODE_OPT, 0x1, ~0);
+
+	if (bld->data->bld_enable)
+		bld->data->bld_enable(comp, handle, true);
 }
 
 static void mtk_ovl_blender_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	mtk_ovl_blender_io_cmd(comp, handle, IRQ_LEVEL_NORMAL, NULL);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_BLD_RST, BIT(0), BIT(0));
+				comp->regs_pa + regs[OVL_BLD_RST], BIT(0), BIT(0));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_BLD_RST, 0x0, BIT(0));
+				comp->regs_pa + regs[OVL_BLD_RST], 0x0, BIT(0));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_INTSTA, 0, ~0);
+			comp->regs_pa + regs[OVL_BLD_INTSTA], 0, ~0);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
-		       DISP_OVL_EN, DISP_OVL_EN);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_RELAY_MODE_OPT, 0x1, ~0);
+
+	if (bld->data->bld_enable)
+		bld->data->bld_enable(comp, handle, true);
 
 	/**
 	 * cmdq_pkt_write(handle, comp->cmdq_base,
 	 *	       comp->regs_pa + DISP_REG_OVL_BLD_EN,
-	 *	       DISP_OVL_FORCE_RELAY_MODE, DISP_OVL_FORCE_RELAY_MODE);
+	 *	       DISP_OVL_BLD_FORCE_RELAY_MODE, DISP_OVL_BLD_FORCE_RELAY_MODE);
 	 */
 
 	DDPDBG("%s-\n", __func__);
@@ -565,12 +517,16 @@ static void mtk_ovl_blender_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 
 static void mtk_ovl_blender_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_INTEN, 0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_BLD_EN,
-		       0x0, DISP_OVL_EN);
+			comp->regs_pa + regs[OVL_BLD_INTEN], 0, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_BLD_EN],
+		       0x0, REG_FLD_MASK(reg_fld[FLD_OVL_BLD_EN]));
 
 	mtk_ovl_blender_all_layer_off(comp, handle, 0);
 
@@ -579,28 +535,40 @@ static void mtk_ovl_blender_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_RST, BIT(0), ~0);
+			comp->regs_pa + regs[OVL_BLD_RST], BIT(0), ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_BLD_RST, 0, ~0);
+			comp->regs_pa + regs[OVL_BLD_RST], 0, ~0);
 	DDPDBG("%s-\n", __func__);
 }
 
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			     unsigned int ext_idx, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+
 	if (ext_idx != LYE_NORMAL)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(ext_idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
+		   comp->regs_pa + OVL_BLD_ELX_EN(bld, (ext_idx-1)),
+		   DISP_OVL_LX_EN, REG_FLD_MASK(reg_fld[FLD_BLD_ELX_EN]));
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), DISP_OVL_L_EN, DISP_OVL_L_EN);
+		   comp->regs_pa + regs[OVL_BLD_L0_EN],
+		   DISP_OVL_LX_EN, REG_FLD_MASK(reg_fld[FLD_BLD_L0_EN]));
 }
 
 static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			      unsigned int ext_idx, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
 		return;
@@ -609,18 +577,22 @@ static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int id
 	if (ext_idx != LYE_NORMAL) {
 		DDPINFO("REMOVE EXT BLENDER %d\n", comp->id);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(ext_idx), 0x0, ~0);
+		   comp->regs_pa + OVL_BLD_ELX_EN(bld, (ext_idx-1)), 0x0, ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + DISP_REG_OVL_BLD_L_EN(idx), 0x0, ~0);
-
+		   comp->regs_pa + regs[OVL_BLD_L0_EN], 0x0, ~0);
+		/* hold the blender for path control
+		 * sometime the exdma will random close layer not following layering rule
+		 * EX. kill HWC, PU, orginal DRM....
+		 * hold the blender to make sure path will not break on these case
+		 */
 		if (comp->blender_hold) {
 			comp->blender_hold = false;
 			return;
 		}
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
+		   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
 
 		mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, true);
 	}
@@ -630,7 +602,9 @@ static void mtk_ovl_blender_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ovl_blender *priv = dev_get_drvdata(comp->dev);
 	int ret;
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
 
 	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
@@ -644,12 +618,14 @@ static void mtk_ovl_blender_prepare(struct mtk_ddp_comp *comp)
 	}
 
 	/* Bypass shadow register and read shadow register */
-	if (ovl->data->need_bypass_shadow)
+	if (bld->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, DISP_OVL_BYPASS_SHADOW,
-			DISP_REG_OVL_BLD_SHADOW_CTRL, DISP_OVL_BYPASS_SHADOW);
+			regs[OVL_BLD_SHADOW_CTRL],
+			REG_FLD_MASK(reg_fld[FLD_OVL_BYPASS_SHADOW]));
 	else
 		mtk_ddp_write_mask_cpu(comp, 0,
-			DISP_REG_OVL_BLD_SHADOW_CTRL, DISP_OVL_BYPASS_SHADOW);
+			regs[OVL_BLD_SHADOW_CTRL],
+			REG_FLD_MASK(reg_fld[FLD_OVL_BYPASS_SHADOW]));
 }
 
 static void mtk_ovl_blender_unprepare(struct mtk_ddp_comp *comp)
@@ -679,6 +655,8 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 			    enum mtk_ddp_comp_id next)
 {
 	int crtc_first_layer = 0;
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
 
 	if (comp->funcs->first_layer)
 		crtc_first_layer = comp->funcs->first_layer(comp);
@@ -686,29 +664,29 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 		mtk_dump_comp_str_id(prev), mtk_dump_comp_str_id(next), comp->id);
 
 	if (handle == NULL)
-		writel_relaxed(0, comp->regs + DISP_REG_OVL_BLD_DATAPATH_CON);
+		writel_relaxed(0, comp->regs + regs[OVL_BLD_DATAPATH_CON]);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
+				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
 
 	if (prev == 0 || crtc_first_layer) {
 		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
+			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
 					   0,
 					   DISP_BGCLR_IN_SEL);
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON,
+					   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
 					   0,
 					   DISP_BGCLR_IN_SEL);
 	} else {
 		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
+			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
 					       DISP_BGCLR_IN_SEL,
 					       DISP_BGCLR_IN_SEL);
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON,
+				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
 				       DISP_BGCLR_IN_SEL,
 				       DISP_BGCLR_IN_SEL);
 	}
@@ -723,12 +701,12 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 
 
 		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
+			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER,
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER);
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON,
+					   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER,
 					   DISP_BGCLR_OUT_TO_NEXT_LAYER);
 
@@ -737,12 +715,12 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 			mtk_dump_comp_str_id(prev));
 
 		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_BLD_DATAPATH_CON,
+			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
 				       DISP_BGCLR_OUT_TO_PROC,
 				       DISP_BGCLR_OUT_TO_PROC);
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON,
+				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
 				       DISP_BGCLR_OUT_TO_PROC,
 				       DISP_BGCLR_OUT_TO_PROC);
 	}
@@ -753,6 +731,9 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 {
 	int ret = 0;
 	struct mtk_drm_private *priv;
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
 
 	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
 		DDPINFO("%s %s %u has invalid CRTC or device\n",
@@ -772,42 +753,42 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	case IRQ_LEVEL_ALL: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(REG_UPDATE, 1) |
-				REG_FLD_VAL(FRAME_DONE, 1) |
-				REG_FLD_VAL(ABNORMAL_SOF, 1) |
-				REG_FLD_VAL(OVL_START_INTEN, 1);
+		inten = REG_FLD_VAL(reg_fld[FLD_REG_UPDATE_INTSTA], 1) |
+				REG_FLD_VAL(reg_fld[FLD_FRAME_DONE_INTSTA], 1) |
+				REG_FLD_VAL(reg_fld[FLD_ABNORMAL_SOF_INTSTA], 1) |
+				REG_FLD_VAL(reg_fld[FLD_OVL_START_INTSTA], 1);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_BLD_INTSTA, 0,
+			       comp->regs_pa + regs[OVL_BLD_INTSTA], 0,
 			       ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_BLD_INTEN, inten,
+			       comp->regs_pa + regs[OVL_BLD_INTEN], inten,
 			       ~0);
 		break;
 	}
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
 
-		//inten = REG_FLD_VAL(FRAME_DONE, 1) |
-		//		REG_FLD_VAL(ABNORMAL_SOF, 1) |
+		//inten = REG_FLD_VAL(reg_fld[FLD_FRAME_DONE_INTSTA], 1) |
+		//		REG_FLD_VAL(reg_fld[FLD_ABNORMAL_SOF_INTSTA], 1) |
 		//		REG_FLD_VAL(OVL_START_INTEN, 1);
 		inten = 0; /* remove me after irq handling done */
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_BLD_INTSTA, 0,
+			       comp->regs_pa + regs[OVL_BLD_INTSTA], 0,
 			       ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_BLD_INTEN, inten,
+			       comp->regs_pa + regs[OVL_BLD_INTEN], inten,
 			       ~0);
 		break;
 	}
 	case IRQ_LEVEL_IDLE: {
 		unsigned int inten;
 
-		inten = REG_FLD_VAL(FRAME_DONE, 1) |
-				REG_FLD_VAL(ABNORMAL_SOF, 1) |
-				REG_FLD_VAL(OVL_START_INTEN, 1);
+		inten = REG_FLD_VAL(reg_fld[FLD_FRAME_DONE_INTSTA], 1) |
+				REG_FLD_VAL(reg_fld[FLD_ABNORMAL_SOF_INTSTA], 1) |
+				REG_FLD_VAL(reg_fld[FLD_OVL_START_INTSTA], 1);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_BLD_INTEN, 0, inten);
+			       comp->regs_pa + regs[OVL_BLD_INTEN], 0, inten);
 		break;
 	}
 	case OVL_REPLACE_BOOTUP_MVA: {
@@ -832,28 +813,8 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		dma_addr_t slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_STATUS(idx));
 
 		cmdq_pkt_mem_move(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_STA,
+			comp->regs_pa + regs[OVL_BLD_STA],
 			slot, CMDQ_THR_SPR_IDX3);
-		#endif
-		break;
-	}
-	case OVL_SET_PQ_OUT: {
-		#ifdef IF_ZERO
-		struct mtk_addon_config_type *c = (struct mtk_addon_config_type *)params;
-		u32 value = 0, mask = 0;
-
-		if (c->module == OVL_RSZ)
-			SET_VAL_MASK(value, mask, 1, DISP_OVL_PQ_OUT_OPT);
-
-		if (c->module != DISP_MML_DL)
-			SET_VAL_MASK(value, mask, 1, DISP_OVL_PQ_OUT_EN);
-
-		SET_VAL_MASK(value, mask, c->tgt_layer, DATAPATH_PQ_OUT_SEL);
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-			       value, mask);
-
-		cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
-			       DISP_OVL_PQ_OUT_SIZE_SEL, DISP_OVL_PQ_OUT_SIZE_SEL);
 		#endif
 		break;
 	}
@@ -864,60 +825,60 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	return ret;
 }
 
-static unsigned int ovl_fmt_convert(struct mtk_disp_ovl_blender *ovl, unsigned int fmt,
+static unsigned int ovl_fmt_convert(struct mtk_disp_ovl_blender *bld, unsigned int fmt,
 				    uint64_t modifier, unsigned int compress)
 {
 	switch (fmt) {
 	default:
 	case DRM_FORMAT_RGB565:
-		return OVL_CON_CLRFMT_RGB565(ovl);
+		return OVL_CON_CLRFMT_RGB565(bld);
 	case DRM_FORMAT_BGR565:
-		return (unsigned int)OVL_CON_CLRFMT_RGB565(ovl);
+		return (unsigned int)OVL_CON_CLRFMT_RGB565(bld);
 	case DRM_FORMAT_RGB888:
-		return OVL_CON_CLRFMT_RGB888(ovl);
+		return OVL_CON_CLRFMT_RGB888(bld);
 	case DRM_FORMAT_BGR888:
-		return (unsigned int)OVL_CON_CLRFMT_RGB888(ovl);
+		return (unsigned int)OVL_CON_CLRFMT_RGB888(bld);
 	case DRM_FORMAT_RGBX8888:
 	case DRM_FORMAT_RGBA8888:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_BLD_CON_CLRFMT_MAN;
 		else
 			return OVL_CON_CLRFMT_ARGB8888;
 	case DRM_FORMAT_BGRX8888:
 	case DRM_FORMAT_BGRA8888:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
 			return OVL_CON_CLRFMT_ARGB8888 |
-			       OVL_CON_CLRFMT_MAN;
+			       OVL_BLD_CON_CLRFMT_MAN;
 		else
 			return OVL_CON_CLRFMT_ARGB8888;
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_BLD_CON_CLRFMT_MAN;
 		else
 			return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_ABGR8888:
 	case DRM_FORMAT_Y410:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_BLD_CON_CLRFMT_MAN;
 		else
 			return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_UYVY:
-		return OVL_CON_CLRFMT_UYVY(ovl);
+		return OVL_CON_CLRFMT_UYVY(bld);
 	case DRM_FORMAT_YUYV:
-		return OVL_CON_CLRFMT_YUYV(ovl);
+		return OVL_CON_CLRFMT_YUYV(bld);
 	case DRM_FORMAT_ABGR2101010:
 	case DRM_FORMAT_XBGR2101010:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_BLD_CON_CLRFMT_MAN;
 		return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_ABGR16161616F:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
-			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN;
+			return OVL_CON_CLRFMT_ARGB8888 | OVL_BLD_CON_CLRFMT_MAN;
 		return OVL_CON_CLRFMT_RGBA8888;
 	case DRM_FORMAT_C8:
-		return OVL_CON_CLRFMT_DIM | OVL_CON_CLRFMT_RGB888(ovl);
+		return OVL_CON_CLRFMT_DIM | OVL_CON_CLRFMT_RGB888(bld);
 	}
 }
 
@@ -943,6 +904,10 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	unsigned int clip = 0;
 	unsigned int buf_size = 0;
 	int rotate = 0;
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
+
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
@@ -958,11 +923,11 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		if (src_x % 2) {
 			src_x -= 1;
 			dst_w += 1;
-			clip |= REG_FLD_VAL(OVL_L_CLIP_FLD_LEFT, 1);
+			clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_LEFT_CLIP], 1);
 		}
 		if ((src_x + dst_w) % 2) {
 			dst_w += 1;
-			clip |= REG_FLD_VAL(OVL_L_CLIP_FLD_RIGHT, 1);
+			clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_RIGHT_CLIP], 1);
 		}
 	}
 
@@ -992,41 +957,45 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		dst_w * mtk_drm_format_plane_cpp(fmt, 0);
 
 
-	if (ext_lye_idx != LYE_NORMAL)
-		id = ext_lye_idx;
-	else
-		id = lye_idx;
+	if (ext_lye_idx != LYE_NORMAL) {
+		id = ext_lye_idx-1;
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_BLD_ELX_PITCH(bld, id), pitch_msb, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_BLD_ELX_PITCH(bld, id), pitch, ~0);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + OVL_BLD_L_PITCH(id), pitch_msb, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + OVL_BLD_L_PITCH(id), pitch, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_BLD_ELX_SRC_SIZE(bld, id), src_size, ~0);
+#endif
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + OVL_BLD_ELX_CLIP(bld, id), clip, ~0);
+	} else {
+		id = lye_idx;
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_L0_PITCH], pitch_msb, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_L0_PITCH], pitch, ~0);
+#ifndef CONFIG_FPGA_EARLY_PORTING
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_L0_SRC_SIZE], src_size, ~0);
+#endif
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_L0_CLIP], clip, ~0);
+	}
 
 	DDPDBG("%s, %d\n", __func__, comp->id);
-#ifndef CONFIG_FPGA_EARLY_PORTING
-	/*bind_comp == NULL => when it does not use EXDMA2, no bind_comp, config size.*/
-	/*comp->id != bind_comp->id => exdma2->bind_comp does not need to be config size again.*/
 
-	/*if (priv->data->ovl_exdma_rule && cmp_id < DDP_COMPONENT_ID_MAX &&
-		((priv->ddp_comp[cmp_id]->bind_comp == NULL)
-		|| (comp->id != priv->ddp_comp[cmp_id]->bind_comp->id))) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
-	}*/
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
-#endif
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_BLD_OVL_CLIP(id), clip, ~0);
 }
 
 static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 				 struct mtk_plane_state *state,
 				 struct cmdq_pkt *handle)
 {
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
+	const u32 *reg_fld = bld->data->reg_fld;
 	struct mtk_plane_pending_state *pending = &state->pending;
 	int rotate = 0;
 	unsigned int fmt = pending->format;
@@ -1068,8 +1037,8 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	}
 
 	/* handle buffer de-compression */
-	if (ovl->data->compr_info && ovl->data->compr_info->l_config) {
-		if (ovl->data->compr_info->l_config(comp,
+	if (bld->data->compr_info && bld->data->compr_info->l_config) {
+		if (bld->data->compr_info->l_config(comp,
 				idx, state, handle)) {
 			DDPPR_ERR("wrong fbdc input config\n");
 			return;
@@ -1098,14 +1067,14 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		comp->blender_hold = true;
 		DDPINFO("%s: DRM_FORMAT_RGB332 not support, so skip it\n", __func__);
 	}
-	if (ovl->ovl_dis == true && pending->enable == true) {
+	if (bld->ovl_dis == true && pending->enable == true) {
 		if (mtk_crtc_is_frame_trigger_mode(crtc))
 			pending->enable = false;
 
 		DDPPR_ERR("%s, %s, idx:%d, lye_idx:%d, ext_idx:%d, en:%d\n",
 			__func__, mtk_dump_comp_str_id(comp->id), idx, lye_idx,
 			ext_lye_idx, pending->enable);
-		ovl->ovl_dis = false;
+		bld->ovl_dis = false;
 	}
 
 	if (!pending->enable)
@@ -1131,7 +1100,7 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	if (pixel_blend_mode == DRM_MODE_BLEND_PREMULTI)
 		modifier |= MTK_FMT_PREMULTIPLIED;
 
-	Ln_CLRFMT = ovl_fmt_convert(ovl, fmt, modifier,
+	Ln_CLRFMT = ovl_fmt_convert(bld, fmt, modifier,
 			pending->prop_val[PLANE_PROP_COMPRESS]);
 	con |= (alpha_con << 12) | alpha;
 
@@ -1149,31 +1118,31 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 		unsigned int id = ext_lye_idx - 1;
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_BLD_OVL_OFFSET(ext_lye_idx),
+			       comp->regs_pa + OVL_BLD_ELX_OFFSET(bld, id),
 			       offset, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_BLD_L_CLR(ext_lye_idx),
+			       comp->regs_pa + OVL_BLD_ELX_CLR(bld, id),
 			       dim_color, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_BLD_L_CON2(ext_lye_idx),
+			       comp->regs_pa + OVL_BLD_ELX_CON2(bld, id),
 			       con, ~0);
 
-		disp_reg_ovl_pitch = OVL_BLD_L_PITCH(ext_lye_idx);
+		disp_reg_ovl_pitch = OVL_BLD_ELX_PITCH(bld, id);
 
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_BLD_OVL_OFFSET(lye_idx), offset, ~0);
+			       comp->regs_pa + regs[OVL_BLD_L0_OFFSET], offset, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_BLD_L_CLR(lye_idx),
+			       comp->regs_pa + regs[OVL_BLD_L0_CLR],
 			       dim_color, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_BLD_L_CON2(lye_idx),
+			       comp->regs_pa + regs[OVL_BLD_L0_CON2],
 			       con, ~0);
 
-		disp_reg_ovl_pitch = OVL_BLD_L_PITCH(lye_idx);
+		disp_reg_ovl_pitch = regs[OVL_BLD_L0_PITCH];
 	}
 
 #define _LAYER_CONFIG_FMT \
@@ -1189,13 +1158,13 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
-			L0_CONST_BLD,
-			L0_CONST_BLD);
+			LYE_CONST_BLD,
+			REG_FLD_MASK(reg_fld[FLD_BLD_L0_CONST_BLD]));
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + disp_reg_ovl_pitch,
 			0,
-			L0_CONST_BLD);
+			REG_FLD_MASK(reg_fld[FLD_BLD_L0_CONST_BLD]));
 
 	if (pending->enable) {
 		u32 vrefresh;
@@ -1234,7 +1203,8 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 static int mtk_ovl_blender_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
-	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
+	const u16 *regs = bld->data->regs;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, false);
 	struct total_tile_overhead_v to_v_info;
@@ -1243,27 +1213,27 @@ static int mtk_ovl_blender_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	ovl->set_partial_update = enable;
+	bld->set_partial_update = enable;
 
 	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
 	overhead_v = to_v_info.overhead_v;
 
 	if (comp->mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
 		comp->mtk_crtc->scaling_ctx.scaling_en)
-		ovl->roi_height = to_v_info.in_height;
+		bld->roi_height = to_v_info.in_height;
 	else
-		ovl->roi_height = partial_roi.height + (overhead_v * 2);
+		bld->roi_height = partial_roi.height + (overhead_v * 2);
 
 	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
+			__func__, mtk_dump_comp_str(comp), overhead_v, bld->roi_height);
 
-	if (ovl->set_partial_update == 1) {
+	if (bld->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_BLD_ROI_SIZE,
-				ovl->roi_height << 16, 0x1fff << 16);
+				comp->regs_pa + regs[OVL_BLD_ROI_SIZE],
+				bld->roi_height << 16, 0x1fff << 16);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_REG_OVL_BLD_ROI_SIZE,
+				comp->regs_pa + regs[OVL_BLD_ROI_SIZE],
 				full_height << 16, 0x1fff << 16);
 	}
 
@@ -1359,8 +1329,8 @@ static int mtk_disp_ovl_blender_probe(struct platform_device *pdev)
 	if (ranges && priv->data && priv->data->is_support_34bits)
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
-	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_BLD_INTSTA);
-	writel(0, priv->ddp_comp.regs + DISP_REG_OVL_BLD_INTEN);
+	writel(0, priv->ddp_comp.regs + priv->data->regs[OVL_BLD_INTSTA]);
+	writel(0, priv->ddp_comp.regs + priv->data->regs[OVL_BLD_INTEN]);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 
@@ -1390,6 +1360,9 @@ static const struct mtk_disp_ovl_blender_data mt6991_ovl_bldner_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.greq_num_dl = 0xFFFF,
+	.regs = ovl_bld_regs_mt6991,
+	.reg_fld = ovl_bld_fld_mt6991,
+	.bld_enable = bld_enable_mt6991,
 };
 
 static const struct mtk_disp_ovl_blender_data mt6993_ovl_bldner_driver_data = {
@@ -1400,6 +1373,9 @@ static const struct mtk_disp_ovl_blender_data mt6993_ovl_bldner_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.greq_num_dl = 0xFFFF,
+	.regs = ovl_bld_regs_mt6993,
+	.reg_fld = ovl_bld_fld_mt6991,
+	.bld_enable = bld_enable_mt6993,
 };
 
 

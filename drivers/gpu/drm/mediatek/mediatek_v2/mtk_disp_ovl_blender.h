@@ -29,6 +29,8 @@ struct mtk_disp_ovl_blender_data {
 	unsigned int stash_en;
 	unsigned int stash_cfg;
 	bool is_support_34bits;
+	const u16 *regs;
+	const u32 *reg_fld;
 	unsigned int (*aid_sel_mapping)(struct mtk_ddp_comp *comp);
 	bool aid_per_layer_setting;
 	resource_size_t (*mmsys_mapping)(struct mtk_ddp_comp *comp);
@@ -36,6 +38,7 @@ struct mtk_disp_ovl_blender_data {
 	bool (*is_right_ovl_comp)(struct mtk_ddp_comp *comp);
 	unsigned int (*frame_done_event)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovlsys_mapping)(struct mtk_ddp_comp *comp);
+	void (*bld_enable)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool enable);
 };
 struct blender_compress_info {
 	/* naming rule: tech_version_MTK_sub-version,

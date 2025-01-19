@@ -28,6 +28,8 @@ struct mtk_disp_ovl_outproc_data {
 	unsigned int stash_en;
 	unsigned int stash_cfg;
 	bool is_support_34bits;
+	const u16 *regs;
+	const u32 *reg_fld;
 	unsigned int (*aid_sel_mapping)(struct mtk_ddp_comp *comp);
 	bool aid_per_layer_setting;
 	resource_size_t (*mmsys_mapping)(struct mtk_ddp_comp *comp);
