@@ -133,8 +133,6 @@ struct mtk_disp_aal_primary {
 	struct DISP_AAL_PARAM aal_param;
 	bool aal_param_valid;
 	struct DISP_AAL_ESS20_SPECT_PARAM ess20_spect_param;
-	int aal_clarity_support;
-	int tdshp_clarity_support;
 	int disp_clarity_support;
 	struct DISP_AAL_INITREG init_regs;
 	struct work_struct_aal_data refresh_task;

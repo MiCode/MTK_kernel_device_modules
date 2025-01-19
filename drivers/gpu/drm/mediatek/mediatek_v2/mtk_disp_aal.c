@@ -245,63 +245,6 @@ static bool debug_irq_log;
 #define DMDP_AAL_DRE_BILATERAL_Blending_01       (0x5B4)
 #define DMDP_AAL_DRE_BILATERAL_STATUS_CTRL       (0x5B8)
 
-/* TDSHP Clarity */
-#define MDP_TDSHP_00                            (0x000)
-#define MDP_TDSHP_CFG                           (0x110)
-#define MDP_HIST_CFG_00                         (0x064)
-#define MDP_HIST_CFG_01                         (0x068)
-#define MDP_LUMA_HIST_00                        (0x06C)
-#define MDP_LUMA_SUM                            (0x0B4)
-#define MDP_TDSHP_SRAM_1XN_OUTPUT_CNT           (0x0B8)
-#define MDP_Y_FTN_1_0_MAIN                      (0x0BC)
-#define MDP_TDSHP_STATUS_00                     (0x644)
-#define MIDBAND_COEF_V_CUST_FLT1_00             (0x584)
-#define MIDBAND_COEF_V_CUST_FLT1_01             (0x588)
-#define MIDBAND_COEF_V_CUST_FLT1_02             (0x58C)
-#define MIDBAND_COEF_V_CUST_FLT1_03             (0x590)
-#define MIDBAND_COEF_H_CUST_FLT1_00             (0x594)
-#define MIDBAND_COEF_H_CUST_FLT1_01             (0x598)
-#define MIDBAND_COEF_H_CUST_FLT1_02             (0x59C)
-#define MIDBAND_COEF_H_CUST_FLT1_03             (0x600)
-
-#define HIGHBAND_COEF_V_CUST_FLT1_00            (0x604)
-#define HIGHBAND_COEF_V_CUST_FLT1_01            (0x608)
-#define HIGHBAND_COEF_V_CUST_FLT1_02            (0x60C)
-#define HIGHBAND_COEF_V_CUST_FLT1_03            (0x610)
-#define HIGHBAND_COEF_H_CUST_FLT1_00            (0x614)
-#define HIGHBAND_COEF_H_CUST_FLT1_01            (0x618)
-#define HIGHBAND_COEF_H_CUST_FLT1_02            (0x61C)
-#define HIGHBAND_COEF_H_CUST_FLT1_03            (0x620)
-#define HIGHBAND_COEF_RD_CUST_FLT1_00           (0x624)
-#define HIGHBAND_COEF_RD_CUST_FLT1_01           (0x628)
-#define HIGHBAND_COEF_RD_CUST_FLT1_02           (0x62C)
-#define HIGHBAND_COEF_RD_CUST_FLT1_03           (0x630)
-#define HIGHBAND_COEF_LD_CUST_FLT1_00           (0x634)
-#define HIGHBAND_COEF_LD_CUST_FLT1_01           (0x638)
-#define HIGHBAND_COEF_LD_CUST_FLT1_02           (0x63C)
-#define HIGHBAND_COEF_LD_CUST_FLT1_03           (0x640)
-#define MDP_TDSHP_SIZE_PARA                     (0x674)
-#define MDP_TDSHP_FREQUENCY_WEIGHTING	        (0x678)
-#define MDP_TDSHP_FREQUENCY_WEIGHTING_FINAL	(0x67C)
-#define SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH	(0x680)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_HUGE	        (0x684)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_BIG	        (0x688)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_MEDIUM	(0x68C)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_SMALL	(0x690)
-#define ACTIVE_PARA_FREQ_M	                (0x694)
-#define ACTIVE_PARA_FREQ_H	                (0x698)
-#define ACTIVE_PARA_FREQ_D	                (0x69C)
-#define ACTIVE_PARA_FREQ_L	                (0x700)
-#define ACTIVE_PARA	                        (0x704)
-#define CLASS_0_2_GAIN	                        (0x708)
-#define CLASS_3_5_GAIN	                        (0x70C)
-#define CLASS_6_8_GAIN	                        (0x710)
-#define LUMA_CHROMA_PARAMETER	                (0x714)
-#define MDP_TDSHP_STATUS_ROI_X	                (0x718)
-#define MDP_TDSHP_STATUS_ROI_Y	                (0x71C)
-#define FRAME_WIDTH_HIGHT	                (0x720)
-#define MDP_TDSHP_SHADOW_CTRL	                (0x724)
-
 #define AAL_SERVICE_FORCE_UPDATE 0x1
 #define AAL_DRE3_POINT_NUM		(17)
 #define AAL_DRE_GAIN_POINT16_START	(512)
@@ -676,13 +619,10 @@ static void disp_aal_dump_clarity_regs(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 
-	if (debug_dump_clarity_regs && !aal_data->is_right_pipe) {
+	if (debug_dump_clarity_regs && !aal_data->is_right_pipe)
 		print_uint_array("aal0 clarity readback", aal_data->primary_data->hist.aal0_clarity, 6, 6);
-		print_uint_array("tdshp0 clarity readback", aal_data->primary_data->hist.tdshp0_clarity, 12, 12);
-	} else if (debug_dump_clarity_regs && aal_data->is_right_pipe) {
+	else if (debug_dump_clarity_regs && aal_data->is_right_pipe)
 		print_uint_array("aal1 clarity readback", aal_data->primary_data->hist.aal1_clarity, 6, 6);
-		print_uint_array("tdshp1 clarity readback", aal_data->primary_data->hist.tdshp1_clarity, 12, 12);
-	}
 }
 
 static void disp_aal_dump_ghist(struct mtk_ddp_comp *comp, struct DISP_AAL_HIST *data)
@@ -791,7 +731,6 @@ static bool disp_aal_read_ghist(struct mtk_ddp_comp *comp)
 	bool read_success = true;
 	int i;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_ddp_comp *disp_tdshp = aal_data->comp_tdshp;
 	void __iomem *dre3_va = disp_aal_dre3_va(comp);
 
 	if (atomic_read(&aal_data->hw_hist_ready) == 0) {
@@ -831,11 +770,6 @@ static bool disp_aal_read_ghist(struct mtk_ddp_comp *comp)
 				readl(dre3_va + DMDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
 			}
 
-			for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
-				aal_data->primary_data->hist.tdshp0_clarity[i] =
-				readl(disp_tdshp->regs + MDP_TDSHP_STATUS_00 + (i << 2));
-			}
-
 			disp_aal_dump_clarity_regs(comp);
 		}
 	} else {
@@ -869,11 +803,6 @@ static bool disp_aal_read_ghist(struct mtk_ddp_comp *comp)
 			for (i = 0; i < MDP_AAL_CLARITY_READBACK_NUM; i++) {
 				aal_data->primary_data->hist.aal1_clarity[i] =
 				readl(dre3_va + DMDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
-			}
-
-			for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
-				aal_data->primary_data->hist.tdshp1_clarity[i] =
-				readl(disp_tdshp->regs + MDP_TDSHP_STATUS_00 + (i << 2));
 			}
 
 			disp_aal_dump_clarity_regs(comp);
@@ -2077,7 +2006,6 @@ static int disp_aal_set_clarity_reg(struct mtk_ddp_comp *comp,
 {
 	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_ddp_comp *comp_tdshp = aal_data->comp_tdshp;
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 
 	if (clarity_regs == NULL)
@@ -2172,249 +2100,6 @@ static int disp_aal_set_clarity_reg(struct mtk_ddp_comp *comp,
 	clarity_regs->mdp_aal_clarity_regs.dre_bilateral_region_protection_activate_B << 5 |
 	clarity_regs->mdp_aal_clarity_regs.dre_bilateral_region_protection_activate_A << 1 |
 	clarity_regs->mdp_aal_clarity_regs.dre_bilateral_blending_region_protection_en << 0), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_coef_h_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_v_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_h_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_rd_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_00,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_0_0 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_0_1 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_0_2 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_0_3 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_01,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_0_4 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_1_0 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_1_1 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_1_2 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_02,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_1_3 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_1_4 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_2_0 << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_2_1 << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_03,
-		(clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_2_2 << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_2_3 << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_coef_ld_custom_range_flt_2_4 << 16), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + ACTIVE_PARA,
-		(clarity_regs->disp_tdshp_clarity_regs.mid_negative_offset << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.mid_positive_offset << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.high_negative_offset << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.high_positive_offset << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + ACTIVE_PARA_FREQ_D,
-		(clarity_regs->disp_tdshp_clarity_regs.D_active_parameter_N_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.D_active_parameter_N_offset << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.D_active_parameter_P_offset << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.D_active_parameter_P_gain << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + ACTIVE_PARA_FREQ_H,
-		(clarity_regs->disp_tdshp_clarity_regs.High_active_parameter_N_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.High_active_parameter_N_offset << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.High_active_parameter_P_offset << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.High_active_parameter_P_gain << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + ACTIVE_PARA_FREQ_L,
-		(clarity_regs->disp_tdshp_clarity_regs.L_active_parameter_N_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.L_active_parameter_N_offset << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.L_active_parameter_P_offset << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.L_active_parameter_P_gain << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + ACTIVE_PARA_FREQ_M,
-		(clarity_regs->disp_tdshp_clarity_regs.Mid_active_parameter_N_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_active_parameter_N_offset << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_active_parameter_P_offset << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_active_parameter_P_gain << 24), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MDP_TDSHP_SIZE_PARA,
-		(clarity_regs->disp_tdshp_clarity_regs.SIZE_PARA_SMALL_MEDIUM << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.SIZE_PARA_MEDIUM_BIG << 6 |
-		clarity_regs->disp_tdshp_clarity_regs.SIZE_PARA_BIG_HUGE << 12), 0x3FFFF);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_HUGE,
-		(clarity_regs->disp_tdshp_clarity_regs.Mid_size_adaptive_weight_HUGE << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_auto_adaptive_weight_HUGE << 5 |
-		clarity_regs->disp_tdshp_clarity_regs.high_size_adaptive_weight_HUGE << 10 |
-		clarity_regs->disp_tdshp_clarity_regs.high_auto_adaptive_weight_HUGE << 15), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_BIG,
-		(clarity_regs->disp_tdshp_clarity_regs.Mid_size_adaptive_weight_BIG << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_auto_adaptive_weight_BIG << 5 |
-		clarity_regs->disp_tdshp_clarity_regs.high_size_adaptive_weight_BIG << 10 |
-		clarity_regs->disp_tdshp_clarity_regs.high_auto_adaptive_weight_BIG << 15), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_MEDIUM,
-		(clarity_regs->disp_tdshp_clarity_regs.Mid_size_adaptive_weight_MEDIUM << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_auto_adaptive_weight_MEDIUM << 5 |
-		clarity_regs->disp_tdshp_clarity_regs.high_size_adaptive_weight_MEDIUM << 10 |
-		clarity_regs->disp_tdshp_clarity_regs.high_auto_adaptive_weight_MEDIUM << 15), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_SMALL,
-		(clarity_regs->disp_tdshp_clarity_regs.Mid_size_adaptive_weight_SMALL << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Mid_auto_adaptive_weight_SMALL << 5 |
-		clarity_regs->disp_tdshp_clarity_regs.high_size_adaptive_weight_SMALL << 10 |
-		clarity_regs->disp_tdshp_clarity_regs.high_auto_adaptive_weight_SMALL << 15), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MDP_TDSHP_CFG,
-		(clarity_regs->disp_tdshp_clarity_regs.FREQ_EXTRACT_ENHANCE << 12 |
-		clarity_regs->disp_tdshp_clarity_regs.FILTER_HIST_EN << 16),
-		((0x1 << 16) | (0x1 << 12)));
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MDP_TDSHP_FREQUENCY_WEIGHTING,
-		(clarity_regs->disp_tdshp_clarity_regs.freq_M_weighting << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_H_weighting << 4 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_D_weighting << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_L_weighting << 12), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + MDP_TDSHP_FREQUENCY_WEIGHTING_FINAL,
-		(clarity_regs->disp_tdshp_clarity_regs.freq_M_final_weighting << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_D_final_weighting << 5 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_L_final_weighting << 10 |
-		clarity_regs->disp_tdshp_clarity_regs.freq_WH_final_weighting << 15), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + LUMA_CHROMA_PARAMETER,
-		(clarity_regs->disp_tdshp_clarity_regs.luma_low_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.luma_low_index << 3 |
-		clarity_regs->disp_tdshp_clarity_regs.luma_high_index << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.luma_high_gain << 13 |
-		clarity_regs->disp_tdshp_clarity_regs.chroma_low_gain << 16 |
-		clarity_regs->disp_tdshp_clarity_regs.chroma_low_index << 19 |
-		clarity_regs->disp_tdshp_clarity_regs.chroma_high_index << 24 |
-		clarity_regs->disp_tdshp_clarity_regs.chroma_high_gain << 29), ~0);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp_tdshp->regs_pa + SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH,
-		(clarity_regs->disp_tdshp_clarity_regs.Luma_adaptive_mode << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.Chroma_adaptive_mode << 1 |
-		clarity_regs->disp_tdshp_clarity_regs.SIZE_PARAMETER << 2 |
-		clarity_regs->disp_tdshp_clarity_regs.Luma_shift << 12 |
-		clarity_regs->disp_tdshp_clarity_regs.Chroma_shift << 15),
-		(0x7 << 15) | (0x7 << 12) | (0x1F << 2) | (1 << 1) | (1 << 0));
-
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + CLASS_0_2_GAIN,
-		(clarity_regs->disp_tdshp_clarity_regs.class_0_positive_gain << 0 |
-		clarity_regs->disp_tdshp_clarity_regs.class_0_negative_gain << 5),
-		0x3FF);
 
 	CRTC_MMP_MARK(0, clarity_set_regs, comp->id, 2);
 
@@ -2731,8 +2416,6 @@ static int disp_aal_cfg_clarity_set_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct DISP_MDP_AAL_CLARITY_REG *mdp_aal_clarity =
 		&aal_data->primary_data->disp_clarity_regs->mdp_aal_clarity_regs;
-	struct DISP_TDSHP_CLARITY_REG *tdshp_clarity =
-		&aal_data->primary_data->disp_clarity_regs->disp_tdshp_clarity_regs;
 
 	if (!aal_data->primary_data->disp_clarity_regs) {
 		aal_data->primary_data->disp_clarity_regs =
@@ -2753,8 +2436,6 @@ static int disp_aal_cfg_clarity_set_reg(struct mtk_ddp_comp *comp,
 	if (debug_dump_clarity_regs) {
 		print_uint_array("aal_clarity_regs", (uint32_t *)mdp_aal_clarity,
 				sizeof(struct DISP_MDP_AAL_CLARITY_REG) / 4, 10);
-		print_uint_array("tdshp_clarity_regs", (uint32_t *)tdshp_clarity,
-				sizeof(struct DISP_TDSHP_CLARITY_REG) / 4, 10);
 	}
 
 	CRTC_MMP_EVENT_START(0, clarity_set_regs, 0, 0);
@@ -3050,8 +2731,6 @@ static void disp_aal_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&aal_data->dre_config, 0);
 
 	if (!aal_data->is_right_pipe) {
-		aal_data->comp_tdshp = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
-									 MTK_DISP_TDSHP, 0);
 		aal_data->comp_gamma = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
 									 MTK_DISP_GAMMA, 0);
 		aal_data->comp_color = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
@@ -3059,8 +2738,6 @@ static void disp_aal_data_init(struct mtk_ddp_comp *comp)
 		aal_data->comp_dmdp_aal = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
 									 MTK_DMDP_AAL, 0);
 	} else {
-		aal_data->comp_tdshp = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
-								     MTK_DISP_TDSHP, 0);
 		aal_data->comp_gamma = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
 								     MTK_DISP_GAMMA, 0);
 		aal_data->comp_color = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
@@ -3610,7 +3287,6 @@ static int disp_aal_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_aal *priv;
 	enum mtk_ddp_comp_id comp_id;
-	struct device_node *tdshp_node;
 	int ret, irq;
 	struct device_node *dre3_dev_node;
 	struct platform_device *dre3_pdev;
@@ -3652,13 +3328,6 @@ static int disp_aal_probe(struct platform_device *pdev)
 		AALERR("Failed to alloc aal_fo %d\n", ret);
 		goto error_primary;
 	}
-	// for Display Clarity
-	tdshp_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_tdshp0");
-	if (!of_property_read_u32(tdshp_node, "mtk-tdshp-clarity-support",
-		&priv->primary_data->tdshp_clarity_support)) {
-		DDPMSG("disp_tdshp: mtk_tdshp_clarity_support = %d\n",
-			priv->primary_data->tdshp_clarity_support);
-	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-aal-support",
 		&priv->primary_data->aal_fo->mtk_aal_support)) {
@@ -3688,18 +3357,8 @@ static int disp_aal_probe(struct platform_device *pdev)
 				priv->primary_data->dre30_enabled =
 					(priv->primary_data->dre30_en == 1) ? true : false;
 
-			// for Display Clarity
-			if (!of_property_read_u32(dev->of_node, "mtk-aal-clarity-support",
-					&priv->primary_data->aal_clarity_support))
-				DDPMSG("mtk_aal_clarity_support = %d\n",
-						priv->primary_data->aal_clarity_support);
-
-			if ((priv->primary_data->aal_clarity_support == 1)
-					&& (priv->primary_data->tdshp_clarity_support == 1)) {
-				priv->primary_data->disp_clarity_support = 1;
-				DDPMSG("%s: display clarity support = %d\n",
-					__func__, priv->primary_data->disp_clarity_support);
-			}
+			// aal clarity feature phase-out, default no-support
+			priv->primary_data->disp_clarity_support = 0;
 		}
 	}
 
