@@ -1719,7 +1719,7 @@ static inline bool window_check(void)
 	return do_check;
 }
 
-static void check_heaviest_util(void)
+static void check_heaviest_status(void)
 {
 	unsigned long flags;
 	struct cluster_data *big_cluster;
@@ -1727,6 +1727,8 @@ static void check_heaviest_util(void)
 	unsigned int max_capacity, big_cpu_ts=0;
 	unsigned long heaviest_thres;
 	static unsigned int max_task_util;
+	int cpu;
+	struct cpu_data *cpu_stat;
 
 	if (num_clusters <= 2)
 		return;
@@ -1759,17 +1761,20 @@ static void check_heaviest_util(void)
 	if (max_task_util > heaviest_thres) {
 		spin_lock_irqsave(&core_ctl_state_lock, flags);
 		big_cluster->new_need_cpus++;
-
-		/*
-		 * For example:
-		 *   Consider TLP=1 and heaviest is over threshold,
-		 *   prefer to decrease a need CPU of mid cluster
-		 *   to save power consumption
-		 */
-		if (mid_cluster->new_need_cpus > 0)
-			mid_cluster->new_need_cpus--;
+		if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
+			mid_cluster->new_need_cpus = mid_cluster->num_cpus;
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
+
+	/* rescue prime core when busy */
+	for_each_cpu(cpu, &big_cluster->cpu_mask){
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		if (cpu_stat->is_busy) {
+			if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
+				mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+		}
+	}
+
 	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util);
 }
 
@@ -1816,7 +1821,7 @@ static inline void core_ctl_main_algo(void)
 	 * Ensure prime cpu make core-on
 	 * if heaviest task is over threshold.
 	 */
-	check_heaviest_util();
+	check_heaviest_status();
 
 	index = 0;
 	for_each_cluster(cluster, index) {
