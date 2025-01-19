@@ -6,7 +6,7 @@
 		compatible = "mediatek,lm3643";
 		reg = <0x63>;
 		#cooling-cells = <2>;
-		pinctrl-names = "default", "hwen_high", "hwen_low";
+		pinctrl-names = "default", "hwen-high", "hwen-low";
 		pinctrl-0 = <&lm3643_pins_default>;
 		pinctrl-1 = <&lm3643_pins_hwen_high>;
 		pinctrl-2 = <&lm3643_pins_hwen_low>;
@@ -40,7 +40,7 @@
 	lm3643_pins_default: default {
 	};
 
-	lm3643_pins_hwen_high: hwen_high {
+	lm3643_pins_hwen_high: hwen-high {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO157__FUNC_GPIO157>;
 			slew-rate = <1>;
@@ -48,7 +48,7 @@
 		};
 	};
 
-	lm3643_pins_hwen_low: hwen_low {
+	lm3643_pins_hwen_low: hwen-low {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO157__FUNC_GPIO157>;
 			slew-rate = <1>;
