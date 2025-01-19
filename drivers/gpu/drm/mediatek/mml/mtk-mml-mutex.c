@@ -187,6 +187,9 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			} else {
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
 			}
+
+			/* make sure mml wait disp frame done in current te */
+			cmdq_pkt_clear_event(pkt, cfg->info.disp_done_event);
 		} else {
 			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
 			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);

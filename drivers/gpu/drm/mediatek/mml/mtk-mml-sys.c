@@ -416,9 +416,6 @@ static void sys_config_frame_dl(struct mml_comp *comp, struct mml_task *task,
 		(task->job.jobid << 16) | MML_ROUND_SPR_INIT);
 	sys_frm->racing_frame_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
-	/* make sure mml wait disp frame done in current te */
-	cmdq_pkt_clear_event(pkt, cfg->info.disp_done_event);
-
 	/* only pipe 0 sync with disp, thus pipe 1 sync with pipe 0 */
 	if (ccfg->pipe == 0) {
 		struct cmdq_operand lhs, rhs;
