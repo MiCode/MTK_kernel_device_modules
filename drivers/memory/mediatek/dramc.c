@@ -37,12 +37,13 @@ static int mr4_v1_init(struct platform_device *pdev,
 }
 
 static int fmeter_v0_init(struct platform_device *pdev,
-	struct fmeter_dev_t *fmeter_dev_ptr)
+	struct fmeter_dev_t *fmeter_dev_ptr, unsigned int fmeter_sub_version)
 {
 	struct device_node *dramc_node = pdev->dev.of_node;
 	int ret;
 
 	fmeter_dev_ptr->version = 0;
+	fmeter_dev_ptr->sub_version = 0;
 
 	ret = of_property_read_u32(dramc_node,
 		"crystal-freq", &(fmeter_dev_ptr->crystal_freq));
@@ -60,6 +61,11 @@ static int fmeter_v0_init(struct platform_device *pdev,
 		"posdiv", (unsigned int *)(fmeter_dev_ptr->posdiv), 6);
 	ret |= of_property_read_u32_array(dramc_node,
 		"ckdiv4", (unsigned int *)(fmeter_dev_ptr->ckdiv4), 6);
+	if (fmeter_sub_version == 1) {  //for MT6781
+		fmeter_dev_ptr->sub_version = 1;
+		ret |= of_property_read_u32_array(dramc_node,
+			"ckmul2", (unsigned int *)(fmeter_dev_ptr->ckmul2), 6);
+	}
 
 	return ret;
 }
@@ -206,6 +212,7 @@ static int dramc_probe(struct platform_device *pdev)
 	unsigned int vdram2_enable;
 	unsigned int mr4_version;
 	unsigned int fmeter_version;
+	unsigned int fmeter_sub_version;
 	struct resource *res;
 	unsigned int i, size, retval;
 	int ret;
@@ -420,6 +427,12 @@ static int dramc_probe(struct platform_device *pdev)
 	}
 	pr_info("%s: fmeter_version(%d)\n", __func__, fmeter_version);
 
+	ret = of_property_read_u32(
+		dramc_node, "fmeter-sub-version", &fmeter_sub_version);
+	if (ret)
+		fmeter_sub_version = 0;
+	pr_info("%s: fmeter_sub_version(%d)\n", __func__, fmeter_sub_version);
+
 	if (fmeter_version == 0) {
 		dramc_dev_ptr->fmeter_dev_ptr = devm_kmalloc(&pdev->dev,
 			sizeof(struct fmeter_dev_t), GFP_KERNEL);
@@ -427,7 +440,7 @@ static int dramc_probe(struct platform_device *pdev)
 			pr_info("%s: memory  alloc fail\n", __func__);
 			return -ENOMEM;
 		}
-		ret = fmeter_v0_init(pdev, dramc_dev_ptr->fmeter_dev_ptr);
+		ret = fmeter_v0_init(pdev, dramc_dev_ptr->fmeter_dev_ptr, fmeter_sub_version);
 		if (ret) {
 			pr_info("%s: fmeter_init fail\n", __func__);
 			return -EINVAL;
@@ -519,16 +532,24 @@ EXPORT_SYMBOL(mtk_dramc_get_steps_freq);
 static unsigned int decode_freq_v0(unsigned int vco_freq)
 {
 	switch (vco_freq) {
+	case 4264:
+		return 4266;
+	case 3718:
+		return 3733;
 	case 3588:
 		return 3600;
 	case 3198:
 		return 3200;
+	case 3094:
+		return 3094;
 	case 3068:
 		return 3068;
 	case 2392:
 		return 2400;
 	case 1859:
 		return 1866;
+	case 1638:
+		return 819;
 	case 1599:
 		return 1600;
 	case 1534:
@@ -602,6 +623,7 @@ static unsigned int fmeter_v0(struct dramc_dev_t *dramc_dev_ptr)
 	unsigned int prediv_val;
 	unsigned int posdiv_val;
 	unsigned int ckdiv4_val;
+	unsigned int ckmul2_val;
 	unsigned int offset;
 	unsigned int vco_freq;
 
@@ -641,6 +663,17 @@ static unsigned int fmeter_v0(struct dramc_dev_t *dramc_dev_ptr)
 
 	vco_freq = ((fmeter_dev_ptr->crystal_freq >> prediv_val) * (sdmpcw_val >> 8))
 		>> posdiv_val >> ckdiv4_val;
+
+	if (fmeter_dev_ptr->sub_version == 1) {
+		offset = fmeter_dev_ptr->ckmul2[pll_id_val].offset +
+			fmeter_dev_ptr->shu_of * shu_lv_val;
+		ckmul2_val = (readl(dramc_dev_ptr->ddrphy_chn_base_ao[0] + offset) &
+			fmeter_dev_ptr->ckmul2[pll_id_val].mask) >>
+			fmeter_dev_ptr->ckmul2[pll_id_val].shift;
+
+		if (ckmul2_val & 0x2000)
+			vco_freq <<= 1;
+	}
 
 	return decode_freq_v0(vco_freq);
 }

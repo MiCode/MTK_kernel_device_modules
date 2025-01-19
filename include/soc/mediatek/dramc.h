@@ -19,6 +19,7 @@ struct reg_ctrl_t {
 
 struct fmeter_dev_t {
 	unsigned int version;
+	unsigned int sub_version;
 	unsigned int use_real_freq;
 	unsigned int crystal_freq;
 	unsigned int shu_of;
@@ -36,6 +37,7 @@ struct fmeter_dev_t {
 	struct reg_ctrl_t ckdiv4_ca[2];
 	struct reg_ctrl_t async_ca[2];
 	struct reg_ctrl_t dq_ser_mode[2];
+	struct reg_ctrl_t ckmul2[2];
 	unsigned int fmeter_v3_update;
 };
 
