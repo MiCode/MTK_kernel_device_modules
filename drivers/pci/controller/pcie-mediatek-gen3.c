@@ -380,6 +380,7 @@ struct mtk_pcie_port {
 
 	struct mtk_pcie_data *data;
 	int port_num;
+	u32 chipid;
 	u32 suspend_mode;
 	u32 rpm_suspend_mode;
 	bool cfg_saved;
@@ -1363,6 +1364,34 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 	chained_irq_exit(irqchip, desc);
 }
 
+static int mtk_pcie_get_chipid(struct mtk_pcie_port *port)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		pr_info("%s chosen node not found in device tree\n", __func__);
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		pr_info("%s could not found atag,chipid in chosen\n", __func__);
+		return -ENODEV;
+	}
+
+	port->chipid = chip_id->sw_ver;
+	dev_info(port->dev, "%s current sw version:%s\n", __func__,
+		port->chipid == CHIP_VER_A0 ? "A0" : "B0");
+
+	return 0;
+}
+
 static int mtk_pcie_setup_irq(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
@@ -1547,6 +1576,12 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	ret = of_property_read_bool(dev->of_node, "mediatek,runtime-suspend");
 	if (ret)
 		port->rpm = true;
+
+	ret = mtk_pcie_get_chipid(port);
+	if (ret) {
+		port->chipid = CHIP_VER_A0;
+		dev_info(dev, "unknown chip version, set it as A0\n");
+	}
 
 	return 0;
 }

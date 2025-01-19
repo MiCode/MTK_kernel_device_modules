@@ -8,6 +8,17 @@
 
 #include <linux/pci.h>
 
+#define CHIP_VER_A0		0x0000
+#define CHIP_VER_B0		0x0001
+
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 enum pcie_port_number {
 	PCIE_PORT_NUM_0,
 	PCIE_PORT_NUM_1
