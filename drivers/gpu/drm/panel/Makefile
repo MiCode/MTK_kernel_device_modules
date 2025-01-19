@@ -60,6 +60,7 @@ obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-nt36672c-fhdp
 obj-$(CONFIG_DRM_PANEL_BOE_JD9365DA_VDO) += panel-boe-jd9365da-vdo.o
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV3_ALPHA_CMD) += panel-ili7838e-dv3-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_RM692H5_CMD) += panel-rm692h5-cmd.o
+obj-$(CONFIG_DRM_PANEL_NT35695_FHD_VDO_AUO_RT5081_HDP) += panel-nt35695_fhd_dsi_vdo_auo_rt5081_hdp.o
 ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64),)
 obj-$(CONFIG_DRM_TD2204_WQHD_AMB678ZY01_S6E3HC3_CMD) += k6985v1_64/td2204-wqhd-amb678zy01-s6e3hc3-cmd.o
 endif
