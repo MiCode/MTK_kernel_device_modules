@@ -49,11 +49,8 @@
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mboot_params.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_BOOT)
-#include <mt-plat/mtk_boot_common.h>
-#endif
-#include <mt-plat/mrdump.h>
 
+#include <mt-plat/mrdump.h>
 #include "aed/aed.h"
 #include "hang_detect.h"
 #include "hang_unwind.h"
