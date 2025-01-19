@@ -860,7 +860,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pbm/mtk_peak_power_budget.ko",
     "drivers/misc/mediatek/cg_ppt/mtk_cg_peak_power_throttling.ko",
     "drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
-    "drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo.ko",
+    "drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko",
     "drivers/misc/mediatek/performance/frs/frs.ko",
     "drivers/misc/mediatek/performance/load_track/load_track.ko",
     "drivers/misc/mediatek/performance/mtk_perf_ioctl.ko",
@@ -1403,7 +1403,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo.ko")
+        mgk_64_device_modules.remove("drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/performance/frs/frs.ko")
 
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3_default")
