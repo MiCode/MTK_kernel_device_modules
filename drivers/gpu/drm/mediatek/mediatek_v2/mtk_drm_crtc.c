@@ -9308,6 +9308,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int *avg = NULL;
 	unsigned int *peak = NULL;
 	unsigned int reg_avg, reg_peak;
+	unsigned int *addr;
 
 
 	if (unlikely(!mtk_crtc)) {
@@ -9541,6 +9542,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	}
 
 	mtk_crtc->skip_check_trigger = cb_data->is_mml_dl;
+	addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER);
+	writel(mtk_crtc->skip_check_trigger, addr);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
 	    !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT))
@@ -11781,6 +11784,10 @@ static bool mtk_crtc_is_ct_use_event(struct mtk_drm_crtc *mtk_crtc)
 struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct cmdq_pkt *cmdq_handle;
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = CMDQ_THR_SPR_IDX3;
 
 	// Temp code. This flow will only enter by debug command
 	// (CMD mode will enter MML IR by debug command), we don't
@@ -11800,19 +11807,29 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return NULL;
 	}
+	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
 	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY, (unsigned long)cmdq_handle);
 
 	if (mtk_crtc_is_ct_use_event(mtk_crtc)) {
 		/* fixme: use new cmdq event */
-		cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
+		GCE_DO(clear_event, EVENT_SYNC_TOKEN_PREFETCH_TE);
+		GCE_DO(wfe, EVENT_SYNC_TOKEN_PREFETCH_TE);
 	}
 
-	cmdq_pkt_set_event(cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.reg = 0;
+	cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base,
+		mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER),
+		var1);
+	//check allow set dirty or not after wait event
+	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+	//debug: for mml_dl self refresh hang debug, remove after verification
+	mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+	GCE_DO(set_event, EVENT_STREAM_DIRTY);
+	GCE_FI;
 
 	return cmdq_handle;
 }

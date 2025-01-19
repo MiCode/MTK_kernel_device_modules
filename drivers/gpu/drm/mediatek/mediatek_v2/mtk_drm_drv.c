@@ -1640,6 +1640,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
 	struct mtk_drm_private *priv = dev->dev_private;
 	bool need_update_plane = false;
+	unsigned int *addr;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
@@ -1694,6 +1695,8 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
 	if (mtk_crtc->is_mml_dl && priv->data->ovl_exdma_rule) {
 		mtk_crtc->skip_check_trigger = true;
+		addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER);
+		writel(mtk_crtc->skip_check_trigger, addr);
 		mtk_crtc_clr_set_dirty(mtk_crtc);
 	}
 
