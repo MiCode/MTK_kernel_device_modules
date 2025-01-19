@@ -18,6 +18,10 @@
 #include "mtk_disp_vidle.h"
 #include "mtk-smi-dbg.h"
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <aee.h>
+#endif
+
 #define VDISPDBG(fmt, args...) \
 	pr_info("[vdisp] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 
@@ -96,6 +100,32 @@ static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
 
 static bool vcp_warmboot_support;
+
+static void __iomem *g_smi_disp_dram_sub_comm[4];
+
+static void check_subcomm_status(void)
+{
+	int i = 0, offset = 0;
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	bool trigger_aee = false;
+#endif
+
+	for (i = 0; i < 4; i++) {
+		if (readl(g_smi_disp_dram_sub_comm[i] + 0x40) != 0x1) {
+			for (offset = 0; offset <= 0x1c; offset += 0x4) {
+				VDISPDBG("subcomm(%d) offset(%d)=%#x",
+					i, offset, readl(g_smi_disp_dram_sub_comm[i] + offset));
+			}
+			trigger_aee = true;
+		}
+	}
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	if (trigger_aee)
+		aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER,
+					__func__, "subcomm busy");
+#endif
+}
 
 static s32 mtk_vdisp_get_power_cnt(void)
 {
@@ -405,6 +435,9 @@ static int genpd_event_notifier(struct notifier_block *nb,
 			break;
 		}
 
+		if (priv->pd_id == DISP_PD_DISP_VCORE)
+			check_subcomm_status();
+
 		if (disp_dpc_driver.dpc_mtcmos_auto) {
 			if (priv->pd_id == DISP_PD_DISP1)
 				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_DIS1, false);
@@ -653,6 +686,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (pd_id == DISP_PD_DISP_VCORE) {
 		g_vdisp_wake_lock = wakeup_source_create("vdisp_wakelock");
 		wakeup_source_add(g_vdisp_wake_lock);
+
+		g_smi_disp_dram_sub_comm[0] = ioremap(0x3e810400, 0x40);
+		g_smi_disp_dram_sub_comm[1] = ioremap(0x3e820400, 0x40);
+		g_smi_disp_dram_sub_comm[2] = ioremap(0x3e830400, 0x40);
+		g_smi_disp_dram_sub_comm[3] = ioremap(0x3e840400, 0x40);
 	}
 
 	if (!pm_runtime_enabled(dev))
