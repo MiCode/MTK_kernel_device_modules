@@ -107,6 +107,10 @@
 &dispsys_config {
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	pd-others = <&disp1_mutex0>, <&disp_ovl0_exdma3>, <&disp_ovl1_exdma3>,
+			<&disp_dpc>, <&mipi_tx_config0>, <&mipi_tx_config1>, <&mipi_tx_config2>;
+	pd-names = "side_dispsys", "ovlsys", "side_ovlsys",
+			"mminfra_in_dpc", "dsi_phy0", "dsi_phy1", "dsi_phy2";
 	status = "okay";
 };
 
