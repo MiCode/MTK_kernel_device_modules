@@ -49,9 +49,9 @@ int mtk_scp_ultra_allocate_mem(struct snd_pcm_substream *substream,
 	int buf_offset;
 
 	if (id == scp_ultra->scp_ultra_dl_memif_id) {
-		buf_offset = ULTRA_BUF_OFFSET;
+		buf_offset = 0;
 	} else if (id == scp_ultra->scp_ultra_ul_memif_id) {
-		buf_offset = ULTRA_BUF_OFFSET * 2;
+		buf_offset = ULTRA_BUF_OFFSET;
 	}  else {
 		dev_err(scp_ultra->dev, "%s(), wrong memif id\n", __func__);
 		return -EINVAL;

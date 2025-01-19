@@ -6,7 +6,8 @@
 #ifndef _MTK_SCP_ULTRA_H_
 #define _MTK_SCP_ULTRA_H_
 
-#define ULTRA_BUF_OFFSET (0xC000)
+//dram map: begin--DL(0x4000)--OFFSET(0x6000)--UL(1E00)--OFFSET*2--dump(DL+UL)--END(1A000)
+#define ULTRA_BUF_OFFSET (0x6000)
 
 struct audio_ultra_dram {
 	unsigned long long phy_addr;
