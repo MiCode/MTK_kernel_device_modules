@@ -1049,6 +1049,8 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 	if (f_render->frame_type == MFRC_FRAME) {
 		if (f_render->frame_count % mfrc_by_pass_frame_num == 1)
 			f_render->frame_type = MFRC_BY_PASS_FRAME;
+		else
+			f_render->t_dequeue_start = dequeue_start_time;
 	} else {
 		f_render->t_dequeue_start = dequeue_start_time;
 	}
