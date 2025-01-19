@@ -15761,6 +15761,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	static unsigned int position;
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
+	bool mode_changed = old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
+			    mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	struct mtk_ddp_comp *output_comp;
 	unsigned int partial_enable = 0;
 #ifndef DRM_CMDQ_DISABLE
@@ -16007,12 +16009,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
-				!old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE]
-				&& ((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
-				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]) ||
-				((old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
-				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
-				&& !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
+			    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
+			    (!mode_changed || (mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
 				DDPDBG("partial update is disable and equal to old\n");
 			else
 				/* set partial update */
@@ -16021,9 +16019,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
-						    mtk_crtc_state->cmdq_handle);
+	if (crtc_id == 0 && !mode_changed &&
+	    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
 #endif
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
