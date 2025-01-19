@@ -205,7 +205,11 @@
 #define RG_XTP0_U1_U2_EXIT_EQUAL		BIT(19)
 
 #define SSPXTP_DAIG_LN_RX0_70	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x070)
+#define RG_XTP0_CDR_PPATH_DVN_G2_LTD0		GENMASK(7, 0)
 #define RG_XTP0_CDR_PPATH_DVN_G2_LTD1	GENMASK(15, 8)
+
+#define SSPXTP_DAIG_LN_RX0_7C   ((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x07C)
+#define RG_XTP0_CDR_STB_GAIN_G2_LTD0		GENMASK(15, 14)
 
 #define SSPXTP_DAIG_LN_DAIF_00	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x00)
 #define RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1		BIT(7)
@@ -247,6 +251,9 @@
 #define SSPXTP_DAIG_LN_DAIF_44	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x044)
 #define RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN		GENMASK(15, 13)
 
+#define SSPXTP_DAIG_LN_DAIF_58	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x058)
+#define RG_XTP0_DAIF_LN_G2_RX_CDR_FASTP_GAIN		GENMASK(31, 28)
+
 #define SSPXTP_PHYA_LN_04	((SSPXTP_SIFSLV_PHYA_LN) + 0x04)
 #define RG_XTP_LN0_TX_IMPSEL		GENMASK(4, 0)
 
@@ -256,6 +263,9 @@
 
 #define SSPXTP_PHYA_LN_0C	((SSPXTP_SIFSLV_PHYA_LN) + 0x0C)
 #define RG_XTP_LN0_RX_FE_RESERVE	BIT(31)
+
+#define SSPXTP_PHYA_LN_10	((SSPXTP_SIFSLV_PHYA_LN) + 0x010)
+#define RG_XTP_LN0_RX_LVSH_CM_SEL		GENMASK(15, 12)
 
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
 #define RG_XTP_LN0_RX_IMPSEL		GENMASK(3, 0)
@@ -1517,6 +1527,7 @@ static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
 {
 
 	void __iomem *pbase = inst->port_base;
+	struct device_node *np = xsphy->dev->of_node;
 
 	if (!inst->u3_sw_efuse)
 		return;
@@ -1535,6 +1546,27 @@ static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
 
 	/* RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO 6'b010000 */
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_34, RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO, 0x10);
+
+	/* For N3E -> N3P */
+	if (of_device_is_compatible(np, "mediatek,mt6993-xsphy")) {
+		/* RG_XTP_LN0_RX_LVSH_CM_SEL 4'b0110 */
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_10, RG_XTP_LN0_RX_LVSH_CM_SEL, 0x6);
+	}
+
+	/* RG_XTP0_CDR_PPATH_DVN_G2_LTD0 8'b00101000 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_70, RG_XTP0_CDR_PPATH_DVN_G2_LTD0, 0x28);
+
+	/* RG_XTP0_CDR_STB_GAIN_G2_LTD0 2'b10 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_7C, RG_XTP0_CDR_STB_GAIN_G2_LTD0, 0x2);
+
+	/* RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN 3'b010*/
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_44, RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN, 0x2);
+
+	/* RG_XTP0_DAIF_LN_G2_RX_CDR_FASTP_GAIN 4'b0111*/
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_58, RG_XTP0_DAIF_LN_G2_RX_CDR_FASTP_GAIN, 0x7);
+
+	/* RG_XTP0_CDR_PPATH_DVN_G2_LTD1 8'h58 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_70, RG_XTP0_CDR_PPATH_DVN_G2_LTD1, 0x58);
 
 	switch (inst->orientation) {
 	case TCPC_NORMAL:
@@ -1628,19 +1660,6 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_20, RG_XTP0_DAIF_LN_G1_RX_SGDT_HF, 0x2);
 
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_2C, RG_XTP0_DAIF_LN_G2_RX_SGDT_HF, 0x2);
-
-	/* Deprecated since MT6989 */
-	if (!inst->u3_rx_fix) {
-		/* DA_XTP_LN0_RX_AEQ_OFORCE[10], 1'b1 */
-		mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_30, RG_XTP_LN0_RX_AEQ_ATT);
-
-		/* rg_sspxtp0_datf_ln_rx_aeq_att[2:0], 3'b111 */
-		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_ATT, 0x7);
-
-		/* rg_sspxtp0_datf_frc_ln_rx_aeq_att, 1'b1 */
-		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
-	} else
-		dev_info(xsphy->dev, "%s apply u3_rx_fix.\n", __func__);
 
 	if (inst->u3_gen2_hqa) {
 		dev_info(xsphy->dev, "%s apply u3_gen2_hqa.\n", __func__);
