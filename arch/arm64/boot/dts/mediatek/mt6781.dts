@@ -973,6 +973,8 @@
 		reg = <0 0x1a004000 0 0x1000>;
 		power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>,
 			<&scpsys MT6781_POWER_DOMAIN_CSI>;
+		#power-domain-cells = <2>;
+		mediatek,platform = "mt6781";
 		clocks = <&camsys CLK_CAM_M_SENINF>,
 			<&topckgen TOP_MUX_SENINF>,
 			<&topckgen TOP_MUX_SENINF1>,
@@ -1012,6 +1014,8 @@
 			"TOP_CLK26M",
 			"TOP_UNIVP_192M_D4",
 			"TOP_UNIVPLL_D3_D8";
+		operating-points-v2 = <&opp_table_cam>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
 
