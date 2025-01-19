@@ -15,11 +15,4 @@ ifeq ($(CONFIG_MTK_GCOV_KERNEL),y)
 GCOV_PROFILE := y
 endif
 
-obj-$(CONFIG_MTK_AEE_AED)	+= aee_aed.o
-aee_aed-y	+= \
-	aed-main.o \
-	aed-debug.o \
-	aee-common.o \
-	slog.o
-
 obj-$(CONFIG_MTK_AEE_FEATURE)	+= aee_rs.o
