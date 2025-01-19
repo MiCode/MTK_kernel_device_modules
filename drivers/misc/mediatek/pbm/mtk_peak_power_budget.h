@@ -158,7 +158,102 @@ struct xpu_dbg_t {
 	unsigned int gpu_th_t;
 };
 
+#define TOTAL_PWR_INTERVALS 11
+struct ppb3_dbg_t {
+	unsigned int lcpu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int mcpu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int bcpu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int gpu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int npu_pwr[TOTAL_PWR_INTERVALS];
+	unsigned int pre_uv;
+};
+
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
 extern int ppb_set_wifi_pwr_addr(unsigned int val);
+
+/*save CPU power limiter times*/
+#define SPBM_LCPU_PWR_LIMIT_TIMES_OFFSET         (0x00)
+#define SPBM_MCPU_PWR_LIMIT_TIMES_OFFSET         (0x3C)
+#define SPBM_BCPU_PWR_LIMIT_TIMES_OFFSET         (0x78)
+#define SPBM_GPU_PWR_LIMIT_TIMES_OFFSET          (0xB4)
+#define SPBM_NPU_PWR_LIMIT_TIMES_OFFSET          (0xF0)
+
+/*for CPU to save CPU power limiter freq, TCM*/
+#define SPBM_CPU_BCORE_FREQ_TCM_OFFSET         (0x308)
+#define SPBM_CPU_MCORE_FREQ_TCM_OFFSET         (0x30C)
+#define SPBM_CPU_LCORE_FREQ_TCM_OFFSET         (0x310)
+#define SPBM_CPU_BCORE_AVG_PWR_TCM_OFFSET      (0x314)
+#define SPBM_CPU_BCORE_TARGET_PWR_TCM_OFFSET   (0x318)
+#define SPBM_CPU_MCORE_AVG_PWR_TCM_OFFSET      (0x31C)
+#define SPBM_CPU_MCORE_TARGET_PWR_TCM_OFFSET   (0x320)
+#define SPBM_CPU_LCORE_AVG_PWR_TCM_OFFSET      (0x324)
+#define SPBM_CPU_LCORE_TARGET_PWR_TCM_OFFSET   (0x328)
+#define SPBM_CPU_BCORE_THROTTLED_TCM_OFFSET    (0x32C)
+#define SPBM_CPU_MCORE_THROTTLED_TCM_OFFSET    (0x330)
+#define SPBM_CPU_LCORE_THROTTLED_TCM_OFFSET    (0x334)
+
+
+
+/*sysram for GPU to save GPU power limiter freq, sysram*/
+#define SPBM_GPU_FREQ_OFFSET                (0x00)
+#define SPBM_GPU_AVG_CURRENT_OFFSET         (0x04)
+#define SPBM_GPU_TARGET_PWR_OFFSET          (0x08)
+#define SPBM_GPU_THROTTLED_OFFSET           (0x0C)
+
+/*sysram for NPU to save NPU power limiter freq, sysram*/
+#define SPBM_NPU_FREQ_OFFSET                (0x28)
+#define SPBM_NPU_AVG_CURRENT_OFFSET         (0x2C)
+#define SPBM_NPU_TARGET_PWR_OFFSET          (0x30)
+#define SPBM_NPU_THROTTLED_OFFSET           (0x34)
+
+
+/*scaling factor for CPU/GPU/NPU tuning*/
+#define SPBM_B_SCALING_FACTOR_OFFSET          (0x60)
+#define SPBM_M_SCALING_FACTOR_OFFSET          (0x64)
+#define SPBM_L_SCALING_FACTOR_OFFSET          (0x68)
+#define SPBM_G_SCALING_FACTOR_OFFSET          (0x6C)
+#define SPBM_N_SCALING_FACTOR_OFFSET          (0x70)
+
+
+/*SPMB current reporting log*/
+#define SPBM_BCPU_V_OFFSET              (0x80)
+#define SPBM_BCPU_I_OFFSET              (0x84)
+#define SPBM_BCPU_W_OFFSET              (0x88)
+
+#define SPBM_MCPU_V_OFFSET              (0x8C)
+#define SPBM_MCPU_I_OFFSET              (0x90)
+#define SPBM_MCPU_W_OFFSET              (0x94)
+
+#define SPBM_LCPU_V_OFFSET              (0x98)
+#define SPBM_LCPU_I_OFFSET              (0x9C)
+#define SPBM_LCPU_W_OFFSET              (0xA0)
+
+#define SPBM_GPU_V_OFFSET               (0xA4)
+#define SPBM_GPU_I_OFFSET               (0xA8)
+#define SPBM_GPU_W_OFFSET               (0xAC)
+
+#define SPBM_NPU_V_OFFSET               (0xB0)
+#define SPBM_NPU_I_OFFSET               (0xB4)
+#define SPBM_NPU_W_OFFSET               (0xB8)
+
+
+/*for SPMB to save power limit(send to xpu) log*/
+#define SPBM_LCPU_PWR_LIMIT_OFFSET      (0xBC)
+#define SPBM_MCPU_PWR_LIMIT_OFFSET      (0xC0)
+#define SPBM_BCPU_PWR_LIMIT_OFFSET      (0xC4)
+#define SPBM_GPU_PWR_LIMIT_OFFSET       (0xC8)
+#define SPBM_NPU_PWR_LIMIT_OFFSET       (0xCC)
+
+/*for SPMB to save request power log*/
+#define SPBM_LCPU_REQUEST_PWR_OFFSET    (0xD0)
+#define SPBM_MCPU_REQUEST_PWR_OFFSET    (0xD4)
+#define SPBM_BCPU_REQUEST_PWR_OFFSET    (0xD8)
+#define SPBM_GPU_REQUEST_PWR_OFFSET     (0xDC)
+#define SPBM_NPU_REQUEST_PWR_OFFSET     (0xE0)
+
+/*for SPMB to save Record the number of times UVLO is triggered*/
+#define SPBM_BAT_PWR_OFFSET             (0xF0)
+#define SPBM_UVLO_TRIGGER_TIMES_OFFSET  (0xF4)
+
 
 #endif /* __MTK_PEAK_POWER_BUDGETING_H__ */
