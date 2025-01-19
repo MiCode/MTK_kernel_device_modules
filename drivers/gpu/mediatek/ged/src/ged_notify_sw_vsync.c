@@ -409,6 +409,12 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_tracing_mark_write(5566, "t_gpu_target",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
 
+	// sample code for APO
+	//if (is_fdvfs_enable() & POLICY_MODE_V2) {
+	//	trace_tracing_mark_write(5566, "t_min_gpu_target",
+	//		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr));
+	//}
+
 	trace_GPU_DVFS__Policy__Frame_based__Frequency(
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr),
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_FREQ_FLOOR].addr),
@@ -1172,6 +1178,9 @@ bool ged_gpu_is_heavy(void)
 	unsigned int gpu_loading = 0;
 	int cur_oppidx = ged_get_cur_oppidx();
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		cur_oppidx = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID);
 
 	mtk_get_gpu_loading(&gpu_loading);
 

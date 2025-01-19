@@ -1013,7 +1013,8 @@ typedef struct {
  GEN("fb_margin_param", GPU_FB_MARGIN_PARAM, 2, "fb_margin_param") \
  GEN("fb_freq_floor", GPU_FB_FREQ_FLOOR, 1, "fb_freq_floor") \
  GEN("fb_busy_cycle_cur", GPU_FB_BUSY_CYCLE_CUR, 1, "fb_busy_cycle_cur") \
- GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle")
+ GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle") \
+ GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,
