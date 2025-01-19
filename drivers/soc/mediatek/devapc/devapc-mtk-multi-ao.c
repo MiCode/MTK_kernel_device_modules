@@ -982,6 +982,10 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			id = INFRA_SUBSYS_APMCU;
 		else
 			id = INFRA_SUBSYS_GZ;
+
+	else if (!strncasecmp(vio_master, "HFRP2INFRA_M", 12))
+		id = DEVAPC_SUBSYS_HFRP;
+
 	else
 		id = DEVAPC_SUBSYS_RESERVED;
 
