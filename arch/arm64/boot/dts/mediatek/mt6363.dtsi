@@ -150,6 +150,7 @@
 		};
 
 		regulators {
+			compatible = "mediatek,mt6363-regulator";
 			mt6363_vs2: vs2 {
 				regulator-compatible = "VS2";
 				regulator-name = "mt6363_vs2";

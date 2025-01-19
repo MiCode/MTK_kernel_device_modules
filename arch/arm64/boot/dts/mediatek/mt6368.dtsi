@@ -101,6 +101,7 @@
 		};
 
 		regulators {
+			compatible = "mediatek,mt6368-regulator";
 			mt6368_vbuck1: vbuck1 {
 				regulator-compatible = "VBUCK1";
 				regulator-name = "mt6368_vbuck1";
