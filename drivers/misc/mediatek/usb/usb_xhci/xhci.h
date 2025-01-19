@@ -18,6 +18,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/xhci-sideband.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/android_kabi.h>
 
@@ -2210,7 +2211,7 @@ int xhci_alloc_tt_info(struct xhci_hcd *xhci,
 		struct usb_tt *tt, gfp_t mem_flags);
 int xhci_enable_interrupter_(struct xhci_interrupter *ir);
 int xhci_disable_interrupter_(struct xhci_interrupter *ir);
-int xhci_set_interrupter_moderation(struct xhci_interrupter *ir,
+int xhci_set_interrupter_moderation_(struct xhci_interrupter *ir,
 				u32 imod_interval);
 
 /* xHCI ring, segment, TRB, and TD functions */
@@ -2307,6 +2308,24 @@ struct xhci_ring *xhci_triad_to_transfer_ring(struct xhci_hcd *xhci,
 
 void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
 		int slot_id, int ep_index);
+
+/* xhci sideband */
+struct xhci_sideband *xhci_sideband_register_(struct usb_device *udev);
+void xhci_sideband_unregister_(struct xhci_sideband *sb);
+int xhci_sideband_add_endpoint_(struct xhci_sideband *sb,
+	struct usb_host_endpoint *host_ep);
+int xhci_sideband_remove_endpoint_(struct xhci_sideband *sb,
+	struct usb_host_endpoint *host_ep);
+int xhci_sideband_stop_endpoint_(struct xhci_sideband *sb,
+	struct usb_host_endpoint *host_ep);
+struct sg_table *xhci_sideband_get_endpoint_buffer_(struct xhci_sideband *sb,
+	struct usb_host_endpoint *host_ep);
+struct sg_table *xhci_sideband_get_event_buffer_(struct xhci_sideband *sb);
+int xhci_sideband_enable_interrupt_(struct xhci_sideband *sb, u32 imod_interval);
+int xhci_sideband_create_interrupter_(struct xhci_sideband *sb, int num_seg,
+	int intr_num, bool ip_autoclear);
+void xhci_sideband_remove_interrupter_(struct xhci_sideband *sb);
+int xhci_sideband_interrupter_id_(struct xhci_sideband *sb);
 
 static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 								struct urb *urb)
