@@ -257,31 +257,35 @@ int gt9886_touch_filter_register(void)
 static int goodix_parse_dt_resolution(struct device_node *node,
 		struct goodix_ts_board_data *board_data)
 {
-	int r, err;
+	int r;
 
 	if (gt9886_find_touch_node != 1) {
 		r = of_property_read_u32(node, "goodix,panel-max-x",
 					 &board_data->panel_max_x);
-		if (r)
-			err = -ENOENT;
+		if (r) {
+			ts_err("Invalid panel-max-x");
+			return -ENOENT;
+		}
 		r = of_property_read_u32(node, "goodix,panel-max-y",
 					 &board_data->panel_max_y);
-		if (r)
-			err = -ENOENT;
+		if (r) {
+			ts_err("Invalid panel-max-y");
+			return -ENOENT;
+		}
 		/* For unreal lcm test */
 		r = of_property_read_u32(node, "goodix,input-max-x",
 					 &board_data->input_max_x);
 		if (r)
-			err = -ENOENT;
+			ts_err("Invalid input-max-x");
 		r = of_property_read_u32(node, "goodix,input-max-y",
 					&board_data->input_max_y);
 		if (r)
-			err = -ENOENT;
+			ts_err("Invalid input-max-y");
 	}
 	r = of_property_read_u32(node, "goodix,panel-max-id",
 				&board_data->panel_max_id);
 	if (r) {
-		err = -ENOENT;
+		ts_err("Invalid panel-max-id");
 	} else {
 		if (board_data->panel_max_id > GOODIX_MAX_TOUCH)
 			board_data->panel_max_id = GOODIX_MAX_TOUCH;
@@ -290,12 +294,12 @@ static int goodix_parse_dt_resolution(struct device_node *node,
 	r = of_property_read_u32(node, "goodix,panel-max-w",
 				&board_data->panel_max_w);
 	if (r)
-		err = -ENOENT;
+		ts_err("Invalid panel-max-w");
 
 	r = of_property_read_u32(node, "goodix,panel-max-p",
 				&board_data->panel_max_p);
 	if (r)
-		err = -ENOENT;
+		ts_err("Invalid panel-max-p");
 
 	board_data->swap_axis = of_property_read_bool(node,
 			"goodix,swap-axis");
@@ -305,6 +309,7 @@ static int goodix_parse_dt_resolution(struct device_node *node,
 
 	board_data->y2y = of_property_read_bool(node,
 			"goodix,y2y");
+
 	return 0;
 }
 
