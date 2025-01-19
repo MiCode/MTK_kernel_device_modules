@@ -11207,6 +11207,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
+			vp-mode-buf-size-multi = <16384>; // 1024 * 16
 		};
 
 		jpgenc0: jpgenc@38030000 {
