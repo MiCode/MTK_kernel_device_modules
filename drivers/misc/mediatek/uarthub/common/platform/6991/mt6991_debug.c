@@ -723,7 +723,7 @@ int uarthub_dump_sspm_wakeup_debug_info_mt6991(const char *tag)
 }
 #endif
 
-int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor)
+int uarthub_read_dbg_monitor_mt6991(int *sel, int *tx_monitor, int *rx_monitor)
 {
 	if (sel == NULL || tx_monitor == NULL || rx_monitor == NULL) {
 		pr_info("%s failed due to parameter is NULL\n", __func__);
@@ -826,7 +826,7 @@ int uarthub_dump_debug_monitor_packet_info_mode_mt6991(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 
-	if (uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
+	if (uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
 		return 0;
 
 	if (debug_monitor_sel != 0x0)
@@ -852,7 +852,7 @@ int uarthub_dump_debug_monitor_check_data_mode_mt6991(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 
-	if (uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
+	if (uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
 		return 0;
 
 	if (debug_monitor_sel != 0x1)
@@ -883,7 +883,7 @@ int uarthub_dump_debug_monitor_crc_result_mode_mt6991(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 
-	if (uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
+	if (uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) < 0)
 		return 0;
 
 	if (debug_monitor_sel != 0x2)
@@ -1013,7 +1013,7 @@ int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point)
 		if (ret > 0)
 			len += ret;
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 
@@ -1039,7 +1039,7 @@ int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point)
 	cur_rx_pkt_cnt_d1 = ((pkt_cnt.dev1 & 0xFF00) >> 8);
 	cur_rx_pkt_cnt_d2 = ((pkt_cnt.dev2 & 0xFF00) >> 8);
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -1135,7 +1135,7 @@ int uarthub_dump_debug_tx_rx_count_mt6991(const char *tag, int trigger_point)
 		if (ret > 0)
 			len += ret;
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 
@@ -1303,7 +1303,7 @@ int uarthub_dump_debug_clk_info_mt6991(const char *tag)
 	if (ret > 0)
 		len += ret;
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -1312,7 +1312,7 @@ int uarthub_dump_debug_clk_info_mt6991(const char *tag)
 		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
 			DEBUG_MODE_CRTL_ADDR);
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
@@ -1457,7 +1457,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 	if (ret > 0)
 		len += ret;
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -1466,7 +1466,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
 			DEBUG_MODE_CRTL_ADDR);
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
@@ -1603,7 +1603,7 @@ int uarthub_dump_debug_bus_status_info_mt6991(const char *tag)
 	if (ret > 0)
 		len += ret;
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -1612,7 +1612,7 @@ int uarthub_dump_debug_bus_status_info_mt6991(const char *tag)
 		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
 			DEBUG_MODE_CRTL_ADDR);
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
 	}
@@ -1642,7 +1642,7 @@ int uarthub_dump_debug_bus_status_info_mt6991(const char *tag)
 #define UARTHUB_LAST_CK_ON_CNT(addr) (UARTHUB_LAST_CK_ON(addr) + 8)
 
 #define UARTHUB_TMP_BUF_SZ  512
-char g_buf_m6991[UARTHUB_TMP_BUF_SZ];
+char g_buf_mt6991[UARTHUB_TMP_BUF_SZ];
 
 int uarthub_dump_sspm_log_mt6991(const char *tag)
 {
@@ -1654,12 +1654,12 @@ int uarthub_dump_sspm_log_mt6991(const char *tag)
 	char *tmp;
 	const char *def_tag = "HUB_DBG_SSPM";
 
-	g_buf_m6991[0] = '\0';
+	g_buf_mt6991[0] = '\0';
 	log_addr = UARTHUB_LOG_IRQ_IDX_ADDR(sys_sram_remap_addr_mt6991);
 	irq_idx = UARTHUB_REG_READ(log_addr);
 	log_addr += 4;
 
-	tmp = g_buf_m6991;
+	tmp = g_buf_mt6991;
 	used = 0;
 	for (i = 0; i < UARTHUB_IRQ_OP_LOG_SIZE; i++) {
 		t = UARTHUB_REG_READ(log_addr);
@@ -1672,13 +1672,13 @@ int uarthub_dump_sspm_log_mt6991(const char *tag)
 		log_addr += UARTHUB_LOG_IRQ_PKT_SIZE;
 	}
 	pr_info("[%s][%s] [%x] %s",
-		def_tag, ((tag == NULL) ? "null" : tag), irq_idx, g_buf_m6991);
+		def_tag, ((tag == NULL) ? "null" : tag), irq_idx, g_buf_mt6991);
 
 	log_addr = UARTHUB_LOG_TSK_IDX_ADDR(sys_sram_remap_addr_mt6991);
 	tsk_idx = UARTHUB_REG_READ(log_addr);
 	log_addr += 4;
-	g_buf_m6991[0] = '\0';
-	tmp = g_buf_m6991;
+	g_buf_mt6991[0] = '\0';
+	tmp = g_buf_mt6991;
 	used = 0;
 	for (i = 0; i < UARTHUB_TSK_OP_LOG_SIZE; i++) {
 		t = UARTHUB_REG_READ(log_addr);
@@ -1694,9 +1694,9 @@ int uarthub_dump_sspm_log_mt6991(const char *tag)
 					== ((UARTHUB_TSK_OP_LOG_SIZE/2) - 1)) {
 				pr_info("[%s][%s] [%x] %s",
 					def_tag, ((tag == NULL) ? "null" : tag),
-					tsk_idx, g_buf_m6991);
-				g_buf_m6991[0] = '\0';
-				tmp = g_buf_m6991;
+					tsk_idx, g_buf_mt6991);
+				g_buf_mt6991[0] = '\0';
+				tmp = g_buf_mt6991;
 				used = 0;
 			}
 		}
@@ -1812,7 +1812,7 @@ int uarthub_stop_sample_baud_rate_mt6991(void)
 	return 0;
 }
 
-int uarthub_record_check_data_mode_sta_to_buffer(
+int uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 	unsigned char *dmp_info_buf, int len,
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,

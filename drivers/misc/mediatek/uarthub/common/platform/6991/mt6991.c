@@ -254,7 +254,7 @@ int uarthub_is_ready_state_mt6991(void)
 	return DEV0_STA_GET_dev0_intfhub_ready(DEV0_STA_ADDR);
 }
 
-int uarthub_config_baud_rate_m6991(void __iomem *dev_base, int rate_index)
+int uarthub_config_baud_rate_mt6991(void __iomem *dev_base, int rate_index)
 {
 	if (!dev_base) {
 		pr_notice("[%s] dev_base is not been init\n", __func__);
@@ -324,7 +324,7 @@ int uarthub_config_host_baud_rate_mt6991(int dev_index, int rate_index)
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	iRtn = uarthub_config_baud_rate_m6991(uartip_base_map_mt6991[dev_index], rate_index);
+	iRtn = uarthub_config_baud_rate_mt6991(uartip_base_map_mt6991[dev_index], rate_index);
 	if (iRtn != 0) {
 		pr_notice("[%s] config baud rate fail, dev_index=[%d], rate_index=[%d]\n",
 			__func__, dev_index, rate_index);
@@ -338,7 +338,7 @@ int uarthub_config_cmm_baud_rate_mt6991(int rate_index)
 {
 	int iRtn = 0;
 
-	iRtn = uarthub_config_baud_rate_m6991(
+	iRtn = uarthub_config_baud_rate_mt6991(
 		uartip_base_map_mt6991[uartip_id_cmm], rate_index);
 	if (iRtn != 0) {
 		pr_notice("[%s] config baud rate fail, rate_index=[%d]\n",
@@ -1278,7 +1278,7 @@ int uarthub_init_default_config_mt6991(void)
 		baud_rate = uarthub_dev_baud_rate_mt6991[i];
 
 		if (baud_rate >= 0)
-			uarthub_config_baud_rate_m6991(uarthub_dev_base, baud_rate);
+			uarthub_config_baud_rate_mt6991(uarthub_dev_base, baud_rate);
 
 		/* 0x0c = 0x3,  byte length: 8 bit*/
 		UARTHUB_REG_WRITE(LCR_ADDR(uarthub_dev_base), 0x3);
@@ -2092,7 +2092,7 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
 	}
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -2192,11 +2192,11 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",E=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
 
-	len = uarthub_record_check_data_mode_sta_to_buffer(
+	len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 		dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 		tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, "dataMon_B");
 
-	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
+	if ((uarthub_read_dbg_monitor_mt6991(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
 		tx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(
 			DEBUG_MODE_CRTL_ADDR);
@@ -2205,7 +2205,7 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 		check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
 			DEBUG_MODE_CRTL_ADDR);
 
-		len = uarthub_record_check_data_mode_sta_to_buffer(
+		len = uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 			dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
 			tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, "E");
 	}

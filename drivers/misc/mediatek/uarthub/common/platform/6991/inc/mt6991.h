@@ -91,7 +91,7 @@ int uarthub_is_bypass_mode_mt6991(void);
 int uarthub_set_host_trx_request_mt6991(int dev_index, enum uarthub_trx_type trx);
 int uarthub_clear_host_trx_request_mt6991(int dev_index, enum uarthub_trx_type trx);
 int uarthub_config_bypass_ctrl_mt6991(int enable);
-int uarthub_config_baud_rate_m6991(void __iomem *dev_base, int rate_index);
+int uarthub_config_baud_rate_mt6991(void __iomem *dev_base, int rate_index);
 int uarthub_usb_rx_pin_ctrl_mt6991(void __iomem *dev_base, int enable);
 #if !(UARTHUB_SUPPORT_FPGA)
 int uarthub_get_spm_res_info_mt6991(
@@ -144,8 +144,8 @@ int uarthub_dump_sspm_log_mt6991(const char *tag);
 int uarthub_trigger_fpga_testing_mt6991(int type);
 int uarthub_trigger_dvt_ut_testing_mt6991(int type);
 int uarthub_trigger_dvt_it_testing_mt6991(int type);
-int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor);
-int uarthub_record_check_data_mode_sta_to_buffer(
+int uarthub_read_dbg_monitor_mt6991(int *sel, int *tx_monitor, int *rx_monitor);
+int uarthub_record_check_data_mode_sta_to_buffer_mt6991(
 	unsigned char *dmp_info_buf, int len,
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,
