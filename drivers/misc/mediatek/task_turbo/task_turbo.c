@@ -33,9 +33,8 @@
 
 #include <task_turbo.h>
 #include <task_turbo_v.h>
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #include <eas/vip.h>
-#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
-#include <fstb.h>
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -62,10 +61,12 @@ LIST_HEAD(hmp_domains);
 		list_for_each_entry_reverse(hmpd, &hmp_domains, hmp_domains)
 #define hmp_cpu_domain(cpu)     (per_cpu(hmp_cpu_domain, (cpu)))
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #define is_VIP_basic(vts) (vts->basic_vip)
 #define is_VVIP(vts) (vts->vvip)
 #define is_priority_based_vip(vts) ((vts->priority_based_prio <= MAX_PRIORITY_BASED_VIP) &&	\
 	(vts->priority_based_prio >= MIN_PRIORITY_BASED_VIP))
+#endif
 /*
  * Unsigned subtract and clamp on underflow.
  *
@@ -124,6 +125,7 @@ static bool is_turbo_task(struct task_struct *p);
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
 static void rwsem_list_add(struct task_struct *task, struct list_head *entry,
 				struct list_head *head);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static bool binder_start_turbo_inherit(struct task_struct *from,
 					struct task_struct *to);
 static void binder_stop_turbo_inherit(struct task_struct *p);
@@ -131,6 +133,7 @@ void (*binder_start_vip_inherit_hook)(int to_pid, int inherited_vip_prio) = NULL
 EXPORT_SYMBOL(binder_start_vip_inherit_hook);
 void (*binder_stop_vip_inherit_hook)(int pid, int inherited_vip_prio) = NULL;
 EXPORT_SYMBOL(binder_stop_vip_inherit_hook);
+#endif
 static inline struct task_struct *rwsem_owner(struct rw_semaphore *sem);
 static inline bool rwsem_test_oflags(struct rw_semaphore *sem, long flags);
 static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem);
@@ -163,8 +166,10 @@ static inline unsigned long _task_util_est(struct task_struct *p);
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
 static int tt_vip_enable = 1;
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int binder_vip_inheritance_enable = 1;
 static int binder_nonvip_inheritance_enable;
+#endif
 static struct cpu_info ci;
 static u64 checked_timestamp;
 static int max_cpus;
@@ -608,6 +613,7 @@ static const struct kernel_param_ops unset_tdtgd_ops = {
 module_param_cb(unset_tdtgd, &unset_tdtgd_ops, &unset_tdtgd_param, 0664);
 MODULE_PARM_DESC(unset_tdtgd, "unset tdtgd to vip for debug");
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int enable_binder_vip_inheritance(const char *buf, const struct kernel_param *kp)
 {
 	int retval = 0, val = 0;
@@ -657,6 +663,7 @@ static const struct kernel_param_ops enable_binder_nonvip_inheritance_ops = {
 module_param_cb(enable_binder_nonvip_inheritance
 		, &enable_binder_nonvip_inheritance_ops, &binder_nonvip_inheritance_enable, 0664);
 MODULE_PARM_DESC(enable_binder_nonvip_inheritance, "Enable or disable binder nonvip inheritance");
+#endif
 
 static char set_tdp_param[64] = "";
 static int set_tdp(const char *buf, const struct kernel_param *kp)
@@ -1117,6 +1124,7 @@ static void probe_android_vh_binder_transaction_init(void *ignore, struct binder
 	t->android_vendor_data1 = 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 bool binder_start_vip_inherit(struct task_struct *from,
 					struct task_struct *to)
 {
@@ -1188,6 +1196,7 @@ void binder_stop_vip_inherit(struct task_struct *p)
 	binder_stop_vip_inherit_hook(pid, inherited_vip_prio);
 	turbo_data->vip_prio_backup = 0;
 }
+#endif
 
 static void probe_android_vh_binder_set_priority(void *ignore, struct binder_transaction *t,
 							struct task_struct *task)
@@ -1196,8 +1205,10 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 			t->from->task : NULL, task)) {
 		t->android_vendor_data1 = (u64)task;
 	}
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
+#endif
 }
 
 static void probe_android_vh_binder_restore_priority(void *ignore,
@@ -1213,8 +1224,10 @@ static void probe_android_vh_binder_restore_priority(void *ignore,
 		}
 	} else
 		binder_stop_turbo_inherit(cur);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (cur && binder_stop_vip_inherit_hook)
 		binder_stop_vip_inherit(cur);
+#endif
 }
 
 static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_node *q_list,
@@ -1253,9 +1266,11 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 
 void task_turbo_select_task_rq_fair(struct task_struct *p, int *target_cpu)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	/* skip if p is vip */
 	if (get_vip_task_prio(p) != NOT_VIP)
 		return;
+#endif
 
 	*target_cpu = select_turbo_cpu(p);
 }
@@ -1693,10 +1708,12 @@ static inline void set_scheduler_tuning(struct task_struct *task)
 
 	/* trigger renice for turbo task */
 	set_user_nice(task, 0xbeef);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	if (tt_vip_enable) {
 		set_task_vvip_and_throttle(task_pid_nr(task), 60);
 		trace_turbo_vvip_set(task_pid_nr(task));
 	}
+#endif
 
 	trace_sched_turbo_nice_set(task, NICE_TO_PRIO(cur_nice), task->prio);
 }
@@ -1709,9 +1726,11 @@ static inline void unset_scheduler_tuning(struct task_struct *task)
 		return;
 
 	set_user_nice(task, 0xbeee);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	unset_task_vvip(task_pid_nr(task));
 
 	trace_turbo_vvip_unset(task_pid_nr(task));
+#endif
 	trace_sched_turbo_nice_set(task, cur_prio, task->prio);
 }
 
@@ -2531,7 +2550,9 @@ static int __init init_task_turbo(void)
 	if (ret)
 		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 
-	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
+	//task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
+#endif
 
 failed:
 	if (ret)
