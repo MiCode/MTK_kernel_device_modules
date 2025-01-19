@@ -331,6 +331,7 @@ struct fpsgo_boost_attr {
 	int boost_vip_by_pid;
 	int vip_mask_by_pid;
 	int set_vvip_by_pid;
+	int vip_throttle_by_pid;
 
 	/* Gear-Hint Prefer */
 	int gh_prefer_by_pid;

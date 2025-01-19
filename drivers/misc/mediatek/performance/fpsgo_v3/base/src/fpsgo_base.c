@@ -732,6 +732,7 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->ls_groupmask_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->vip_mask_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_vvip_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->vip_throttle_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->check_buffer_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_min_by_pid = BY_PID_DEFAULT_VAL;
@@ -1082,6 +1083,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.ls_groupmask_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.vip_mask_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_vvip_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.vip_throttle_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DEFAULT_VAL &&
@@ -3114,7 +3116,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max, limit_min_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" boost_VIP, vip_mask, set_ls, ls_groupmask, set_vvip\n");
+				" boost_VIP, vip_mask, set_ls, ls_groupmask, set_vvip, vip_throttle\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" bm_th, ml_th, tp_policy, gh_prefer\n");
@@ -3247,12 +3249,13 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.boost_vip_by_pid,
 			attr_item.vip_mask_by_pid,
 			attr_item.set_ls_by_pid,
 			attr_item.ls_groupmask_by_pid,
-			attr_item.set_vvip_by_pid);
+			attr_item.set_vvip_by_pid,
+			attr_item.vip_throttle_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
@@ -3342,7 +3345,7 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max, limit_min_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" boost_VIP, vip_mask, set_ls, ls_groupmask, set_vvip\n");
+				" boost_VIP, vip_mask, set_ls, ls_groupmask, set_vvip, vip_throttle\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" bm_th, ml_th, tp_policy, gh_prefer\n");
@@ -3446,12 +3449,13 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.boost_vip_by_pid,
 			attr_item.vip_mask_by_pid,
 			attr_item.set_ls_by_pid,
 			attr_item.ls_groupmask_by_pid,
-			attr_item.set_vvip_by_pid);
+			attr_item.set_vvip_by_pid,
+			attr_item.vip_throttle_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,

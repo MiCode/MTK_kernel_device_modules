@@ -341,6 +341,7 @@ static int ls_groupmask;
 static int aa_b_minus_idle_time;
 static int vip_mask;
 static int set_vvip;
+static int vip_throttle;
 static int limit_perf_b;
 static int limit_perf_m;
 static int limit_cfreq2cap;
@@ -615,6 +616,15 @@ static unsigned long long nsec_to_usec(unsigned long long nsec)
 	usec = div64_u64(nsec, (unsigned long long)NSEC_PER_USEC);
 
 	return usec;
+}
+
+static int nsec_to_ms(unsigned long long nsec)
+{
+	unsigned long long msec;
+
+	msec = div64_u64(nsec, TIME_MS_TO_NS);
+
+	return (int)msec;
 }
 
 int fbt_cpu_get_bhr(void)
@@ -1334,13 +1344,14 @@ static int fbt_check_multiple_vip_control(int rid)
 }
 
 static void fbt_change_task_policy(int policy, int pid, int group, int spid_action,
-	int spid_prio, int spid_timeout, int *is_vip, int vip_mask, int multiuser_check, int reset)
+	int spid_prio, int spid_timeout, int *is_vip, int vip_mask, int v_throttle_time,
+	int multiuser_check, int reset)
 {
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
 	if (spid_prio) {
 		if (!spid_timeout)
-			spid_timeout = 60;
+			spid_timeout = nsec_to_ms(VIP_TIME_LIMIT_DEFAULT);
 		set_task_priority_based_vip_and_throttle(pid, spid_prio, spid_timeout);
 		goto OUT;
 	}
@@ -1354,9 +1365,15 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 		 * heavy: priority 3, second: priority 2, others: priority 1
 		 */
 		int prio = group + MIN_PRIORITY_BASED_VIP;
+		int throttle;
+
+		if (group != FPSGO_GROUP_OTHERS && v_throttle_time)
+			throttle = v_throttle_time;
+		else
+			throttle = nsec_to_ms(VIP_TIME_LIMIT_DEFAULT);
 
 		if (prio >= MIN_PRIORITY_BASED_VIP && prio <= MAX_PRIORITY_BASED_VIP) {
-			set_task_priority_based_vip_and_throttle(pid, prio, 60);
+			set_task_priority_based_vip_and_throttle(pid, prio, throttle);
 			*is_vip = 1;
 		}
 		goto OUT;
@@ -1368,9 +1385,10 @@ MINOR_USER:
 		 */
 		if (group != FPSGO_GROUP_OTHERS) {
 			int prio_minor = group + MIN_PRIORITY_BASED_VIP - 1;
+			int throttle = nsec_to_ms(VIP_TIME_LIMIT_DEFAULT);
 
 			if (prio_minor >= MIN_PRIORITY_BASED_VIP && prio_minor <= MAX_PRIORITY_BASED_VIP) {
-				set_task_priority_based_vip_and_throttle(pid, prio_minor, 60);
+				set_task_priority_based_vip_and_throttle(pid, prio_minor, throttle);
 				*is_vip = 1;
 			}
 			goto OUT;
@@ -1714,7 +1732,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	fbt_affinity_task(FPSGO_BAFFINITY_NONE, fl->pid, 0, 0, 0,fl->reset_taskmask,
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
-		0, 0, &fl->is_vip, 0, 0, 1);
+		0, 0, &fl->is_vip, 0, 0, 0, 1);
 	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_gear_hint_prefer_cpu(0, fl->pid, &fl->is_prefer, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
@@ -2469,6 +2487,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int ls_groupmask_final;
 	int vip_mask_final;
 	int set_vvip_final;
+	int vip_throttle_final;
 	int min_cap_other;
 	int max_cap_other;
 	int max_util_other;
@@ -2498,6 +2517,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 	vip_mask_final = thr->attr.vip_mask_by_pid;
 	set_vvip_final = thr->attr.set_vvip_by_pid;
+	vip_throttle_final = thr->attr.vip_throttle_by_pid;
 	tp_policy_final = thr->attr.tp_policy_by_pid;
 	bm_th_final = thr->attr.bm_th_by_pid;
 	ml_th_final = thr->attr.ml_th_by_pid;
@@ -2688,7 +2708,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
 		fbt_gear_hint_prefer_cpu(group_prefer_final, fl->pid, &fl->is_prefer, 0);
 		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
-			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, vip_multiuser_check, 0);
+			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, vip_throttle_final, vip_multiuser_check, 0);
 		fbt_set_task_vvip(set_vvip_final, fl->pid, fl->heavyidx, &fl->is_vvip, 0);
 		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
 			fl->heavyidx, &fl->ori_ls);
@@ -2774,6 +2794,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->ls_groupmask_by_pid = ls_groupmask;
 	render_attr->vip_mask_by_pid = vip_mask;
 	render_attr->set_vvip_by_pid = set_vvip;
+	render_attr->vip_throttle_by_pid = vip_throttle;
 
 	render_attr->qr_enable_by_pid = qr_enable;
 	render_attr->qr_t2wnt_x_by_pid = qr_t2wnt_x;
@@ -2974,6 +2995,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->vip_mask_by_pid = pid_attr.vip_mask_by_pid;
 	if (pid_attr.set_vvip_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->set_vvip_by_pid = pid_attr.set_vvip_by_pid;
+	if (pid_attr.vip_throttle_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->vip_throttle_by_pid = pid_attr.vip_throttle_by_pid;
 	if(pid_attr.quota_v2_diff_clamp_min_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->quota_v2_diff_clamp_min_by_pid = pid_attr.quota_v2_diff_clamp_min_by_pid;
 	if(pid_attr.quota_v2_diff_clamp_max_by_pid != BY_PID_DEFAULT_VAL)
@@ -7048,7 +7071,8 @@ static void fbt_jank_thread_restore(int pid)
 	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
 
 	fbt_change_task_policy(iter->attr.boost_vip_by_pid, fl->pid, fl->heavyidx, fl->action,
-		fl->prio, fl->timeout, &fl->is_vip, iter->attr.vip_mask_by_pid, vip_multiuser_check, 0);
+		fl->prio, fl->timeout, &fl->is_vip, iter->attr.vip_mask_by_pid,
+		iter->attr.vip_throttle_by_pid, vip_multiuser_check, 0);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
 
 	fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx,
@@ -7834,6 +7858,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->set_vvip_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->set_vvip_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "vip_throttle")) {
+		if ((val <= 1500 && val >= 0) && action == 's')
+			boost_attr->vip_throttle_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->vip_throttle_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "reset_taskmask")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->reset_taskmask = val;
@@ -9450,6 +9479,10 @@ FBT_SYSFS_READ(set_vvip, fbt_mlock, set_vvip);
 FBT_SYSFS_WRITE_VALUE(set_vvip, fbt_mlock, set_vvip, 0, 1);
 static KOBJ_ATTR_RW(set_vvip);
 
+FBT_SYSFS_READ(vip_throttle, fbt_mlock, vip_throttle);
+FBT_SYSFS_WRITE_VALUE(vip_throttle, fbt_mlock, vip_throttle, 0, 1500);
+static KOBJ_ATTR_RW(vip_throttle);
+
 FBT_SYSFS_READ(limit_perf_b, fbt_mlock, limit_perf_b);
 FBT_SYSFS_WRITE_VALUE(limit_perf_b, fbt_mlock, limit_perf_b, 0, 100);
 static KOBJ_ATTR_RW(limit_perf_b);
@@ -9639,6 +9672,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ls_groupmask);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_mask);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_vvip);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_throttle);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_perf_b);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_perf_m);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_cfreq2cap);
@@ -9907,6 +9941,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ls_groupmask);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_mask);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_vvip);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_throttle);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_perf_b);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_perf_m);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_cfreq2cap);
