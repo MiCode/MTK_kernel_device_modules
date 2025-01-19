@@ -56,8 +56,6 @@ obj-y += drivers/interconnect/
 
 obj-y += drivers/i2c/busses/
 
-obj-y += drivers/i3c/master/
-
 obj-y += drivers/pwm/
 
 obj-y += drivers/iommu/
