@@ -2703,6 +2703,28 @@ static const struct mml_data mt6899_mmlt_data = {
 	.ddren = 0x22,
 };
 
+static const struct mml_data mt6899_mmlf_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_bits_sys,
+	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.px_per_tick = 2,
+	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
+	.sysid = mml_sys_frame,
+	.pw_mminfra = true,
+	.ddren = 0x22,
+};
+
 static const struct mml_data mt6989_mml_data = {
 	.comp_inits = {
 		[MML_CT_SYS] = &sys_comp_init,
@@ -2797,7 +2819,7 @@ const struct of_device_id mtk_mml_of_ids[] = {
 	},
 	{
 		.compatible = "mediatek,mt6899-mml1",
-		.data = &mt6989_mml_data ,
+		.data = &mt6899_mmlf_data,
 	},
 	{
 		.compatible = "mediatek,mt6989-mml",
