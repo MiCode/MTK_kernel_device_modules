@@ -199,6 +199,8 @@ enum mtk_ddp_mutex_sof_id {
 	DDP_MUTEX_SOF_DSI2,
 	DDP_MUTEX_SOF_DSI3,
 	DDP_MUTEX_SOF_DVO,
+	DDP_MUTEX_SOF_SINGLE_EOF_DSI0,
+	DDP_MUTEX_SOF_SINGLE_EOF_DSI1,
 	DDP_MUTEX_SOF_MAX,
 };
 
@@ -228,6 +230,7 @@ struct mtk_disp_ddp_data {
 	unsigned int mutex_sof_reg;
 	unsigned int mutex_rst_reg;
 	const unsigned int *dispsys_map;
+	bool qos_sideband_use_eof;
 	bool wakeup_pf_wq;
 	bool wakeup_esd_wq;
 	const unsigned int disp_mutex_total;

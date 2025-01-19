@@ -9192,6 +9192,10 @@ static const unsigned int mt6993_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6993_MUTEX_SOF_DPI1 | MT6993_MUTEX_EOF_DPI1,
 		[DDP_MUTEX_SOF_DVO] =
 			MT6993_MUTEX_SOF_DVO | MT6993_MUTEX_EOF_DVO,
+		[DDP_MUTEX_SOF_SINGLE_EOF_DSI0] =
+			MT6993_MUTEX_SOF_SINGLE_MODE | MT6993_MUTEX_EOF_DSI0,
+		[DDP_MUTEX_SOF_SINGLE_EOF_DSI1] =
+			MT6993_MUTEX_SOF_SINGLE_MODE | MT6993_MUTEX_EOF_DSI1,
 };
 
 static const unsigned int mt6993_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
@@ -9421,6 +9425,7 @@ static const struct mtk_disp_ddp_data mt6993_ddp_driver_data = {
 	.mutex_sof_reg = MT6993_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = MT6993_DISP_MUTEX_RST,
 	.dispsys_map = mt6993_dispsys_map,
+	.qos_sideband_use_eof = true,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
 	.disp_mutex_total = DISP_MUTEX_TOTAL_v2,
@@ -36261,6 +36266,21 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
 	if (is_cmd_mode) {
+		if (ddp->data->qos_sideband_use_eof) {
+			id = DDP_COMPONENT_DSI0;
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+				if (mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
+					id = comp->id;
+					break;
+				}
+			}
+			if (id == DDP_COMPONENT_DSI0)
+				val = DDP_MUTEX_SOF_SINGLE_EOF_DSI0;
+			else if (id == DDP_COMPONENT_DSI1)
+				val = DDP_MUTEX_SOF_SINGLE_EOF_DSI1;
+			DDPINFO("%s, id:%s, val:0x%x\n", __func__, mtk_dump_comp_str_id(id),
+			       ddp->data->mutex_sof[val]);
+		}
 		sof = ddp->data->mutex_sof[val];
 		/* Only primary display support MUTEX_EOF_EN_FOR_CMD_MODE on MT6768/MT6765*/
 		if (priv && priv->data
@@ -36275,6 +36295,7 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			writel_relaxed(
 				ddp->data->mutex_sof[val],
 				ddp->ovlsys0_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+		//TODO: if use dual-pipe neeed config sys_b_reg and sys_b_side_reg src
 		if (ddp->data->dispsys_map && ddp->side_regs) {
 			writel_relaxed(
 				ddp->data->mutex_sof[val],
