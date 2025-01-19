@@ -2204,6 +2204,43 @@ static int mtk_i3c_master_reattach_i3c_dev(struct i3c_dev_desc *dev,
 
 	i3c->addrs[data->index] = dev->info.dyn_addr ? dev->info.dyn_addr :
 		dev->info.static_addr;
+
+	/* Workaround for Linux I3C master driver bugs.
+	 * If the DTS contains 'assigned-addresses', a dynamic address
+	 * leak occurs when call i3c_master_do_daa and new dev addr is
+	 * not equal to the old_dyn_addr.
+	 */
+	if (old_dyn_addr && (old_dyn_addr != dev->info.dyn_addr) &&
+		(i3c_bus_get_addr_slot_status(&m->bus, old_dyn_addr)
+		!= I3C_ADDR_SLOT_RSVD)) {
+		i3c_bus_set_addr_slot_status(&m->bus,
+			old_dyn_addr, I3C_ADDR_SLOT_FREE);
+		dev_info(i3c->dev, "[%s] set_addr_slot_status_free:0x%x\n",
+			__func__, old_dyn_addr);
+	} else {
+		dev_dbg(i3c->dev, "[%s] old_dyn_addr=0x%x,status=%u\n",
+			__func__, old_dyn_addr,
+			i3c_bus_get_addr_slot_status(&m->bus, old_dyn_addr));
+	}
+	/* end of workaround */
+
+	/* Workaround for Linux I3C master driver bugs.
+	 * If the DTS contains 'assigned-addresses', assigned address
+	 * free occurs by detach old dev.
+	 */
+	if (i3c_bus_get_addr_slot_status(&m->bus, dev->info.dyn_addr) ==
+		I3C_ADDR_SLOT_FREE) {
+		i3c_bus_set_addr_slot_status(&m->bus,
+			dev->info.dyn_addr, I3C_ADDR_SLOT_I3C_DEV);
+		dev_info(i3c->dev, "[%s] set_addr_slot_status_i3c:0x%x\n",
+			__func__, dev->info.dyn_addr);
+	} else {
+		dev_dbg(i3c->dev, "[%s] dyn_addr=0x%x,status=%u\n",
+			__func__, dev->info.dyn_addr,
+			i3c_bus_get_addr_slot_status(&m->bus, dev->info.dyn_addr));
+	}
+	/* end of workaround */
+
 	return 0;
 }
 
