@@ -2598,12 +2598,7 @@ void set_api_sync_flag(int flag)
 				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1, (flag & 0x000F0000) >> 16);
 			}
 		}
-		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle 1 temp: %d opp: %d freq: %d, 2 temp: %d opp: %d freq: %d",
-			__func__, __LINE__, (flag & 0x000FFFFF),
-			get_gpu_pre_throttle_temp(1), get_gpu_pre_throttle_opp(1),
-			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp(1)),
-			get_gpu_pre_throttle_temp(2), get_gpu_pre_throttle_opp(2),
-			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp(2)));
+		GED_LOGI("GPT: 0x%08x", (flag & 0x000FFFFF));
 #endif
 	}
 }
