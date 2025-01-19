@@ -21,6 +21,7 @@ scheduler-y += eas/eas_plus.o
 scheduler-y += eas/rt.o
 scheduler-y += eas/shortcut/compress.o
 scheduler-y += eas/shortcut/gather.o
+scheduler-y += eas/balance.o
 scheduler-y += eas/topology.o
 scheduler-y += eas/eas_adpf.o
 scheduler-y += util/tsk_util.o

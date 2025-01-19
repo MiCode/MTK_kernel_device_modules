@@ -132,6 +132,8 @@ struct rt_energy_aware_output {
 	int rt_aggre_preempt_enable;
 };
 
+extern struct cpumask bcpus;
+
 #ifdef CONFIG_SMP
 /*
  * The margin used when comparing utilization with CPU capacity.
@@ -235,8 +237,6 @@ extern struct task_group *search_tg_by_cpuctl_id(unsigned int cpuctl_id);
 extern struct task_group *search_tg_by_name(char *group_name);
 extern inline void compute_effective_softmask(struct task_struct *p,
 		bool *latency_sensitive, struct cpumask *dst_mask);
-extern void mtk_can_migrate_task(void *data, struct task_struct *p,
-	int dst_cpu, int *can_migrate);
 extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -349,8 +349,6 @@ extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
 		int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params);
 #endif // CONFIG_MTK_EAS
 
-extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
-		int reason);
 extern void hook_sched_tick(void *data, struct rq *rq);
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 extern bool system_has_many_heavy_task(void);

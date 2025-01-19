@@ -35,6 +35,7 @@
 #endif
 #include "sugov/dsu_interface.h"
 #include "vip.h"
+#include "balance.h"
 #include <mt-plat/mtk_irq_mon.h>
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 #include "flt_init.h"
@@ -1273,7 +1274,7 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_sched_balance_find_src_group failed\n");
 
 	ret = register_trace_android_rvh_can_migrate_task(
-			mtk_can_migrate_task, NULL);
+			hook_can_migrate_task, NULL);
 	if (ret)
 		pr_info("register android_rvh_can_migrate_task failed\n");
 

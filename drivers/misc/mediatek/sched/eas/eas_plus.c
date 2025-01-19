@@ -34,6 +34,8 @@
 #include <mt-plat/mtk_irq_mon.h>
 #include "arch.h"
 
+#include "balance.h"
+
 MODULE_LICENSE("GPL");
 
 #define CORE_PAUSE_OUT		0
@@ -757,149 +759,6 @@ unsigned int get_thermal_headroom_interval_tick(void)
 	return thermal_headroom_interval_tick;
 }
 EXPORT_SYMBOL_GPL(get_thermal_headroom_interval_tick);
-
-static DEFINE_RAW_SPINLOCK(migration_lock);
-
-int select_idle_cpu_from_domains(struct task_struct *p,
-					struct perf_domain **prefer_pds, unsigned int len)
-{
-	unsigned int i = 0;
-	struct perf_domain *pd;
-	int cpu, best_cpu = -1;
-
-	for (; i < len; i++) {
-		pd = prefer_pds[i];
-		for_each_cpu_and(cpu, perf_domain_span(pd),
-						cpu_active_mask) {
-			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
-				continue;
-			if (mtk_available_idle_cpu(cpu)) {
-				best_cpu = cpu;
-				break;
-			}
-		}
-		if (best_cpu != -1)
-			break;
-	}
-
-	return best_cpu;
-}
-
-int select_bigger_idle_cpu(struct task_struct *p)
-{
-	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
-	struct perf_domain *pd, *prefer_pds[MAX_NR_CPUS];
-	int cpu = task_cpu(p), bigger_idle_cpu = -1;
-	unsigned int i = 0;
-	long max_capacity = cpu_cap_ceiling(cpu);
-	long capacity;
-
-	rcu_read_lock();
-	pd = rcu_dereference(rd->pd);
-
-	for (; pd; pd = pd->next) {
-		capacity = cpu_cap_ceiling(cpumask_first(perf_domain_span(pd)));
-		if (capacity > max_capacity &&
-			cpumask_intersects(p->cpus_ptr, perf_domain_span(pd))) {
-			prefer_pds[i++] = pd;
-		}
-	}
-
-	if (i != 0)
-		bigger_idle_cpu = select_idle_cpu_from_domains(p, prefer_pds, i);
-
-	rcu_read_unlock();
-	return bigger_idle_cpu;
-}
-
-void check_for_migration(struct task_struct *p)
-{
-	int new_cpu = -1, better_idle_cpu = -1;
-	int cpu = task_cpu(p);
-	struct rq *rq = cpu_rq(cpu);
-
-	irq_log_store();
-
-	if (rq->misfit_task_load) {
-		struct em_perf_domain *pd;
-		struct cpufreq_policy *policy;
-		int opp_curr = 0, thre = 0, thre_idx = 0;
-
-		if (rq->curr->__state != TASK_RUNNING ||
-			rq->curr->nr_cpus_allowed == 1)
-			return;
-
-		pd = em_cpu_get(cpu);
-		if (!pd)
-			return;
-
-		thre_idx = (pd->nr_perf_states >> 3) - 1;
-		if (thre_idx >= 0)
-			thre = pd->em_table->state[thre_idx].frequency;
-
-		policy = cpufreq_cpu_get(cpu);
-		irq_log_store();
-
-		if (policy) {
-			opp_curr = policy->cur;
-			cpufreq_cpu_put(policy);
-		}
-
-		if (opp_curr <= thre) {
-			irq_log_store();
-			return;
-		}
-
-		raw_spin_lock(&migration_lock);
-		irq_log_store();
-		raw_spin_lock(&p->pi_lock);
-		irq_log_store();
-
-		new_cpu = p->sched_class->select_task_rq(p, cpu, WF_TTWU);
-		irq_log_store();
-
-		raw_spin_unlock(&p->pi_lock);
-
-		if ((new_cpu < 0) || new_cpu >= MAX_NR_CPUS ||
-			(cpu_cap_ceiling(new_cpu) <= cpu_cap_ceiling(cpu)))
-			better_idle_cpu = select_bigger_idle_cpu(p);
-
-		if (better_idle_cpu >= 0)
-			new_cpu = better_idle_cpu;
-
-		if (new_cpu < 0) {
-			raw_spin_unlock(&migration_lock);
-			irq_log_store();
-			return;
-		}
-
-		irq_log_store();
-		if ((better_idle_cpu >= 0) ||
-			(new_cpu < MAX_NR_CPUS && new_cpu >= 0 &&
-			(cpu_cap_ceiling(new_cpu) > cpu_cap_ceiling(cpu)))) {
-			raw_spin_unlock(&migration_lock);
-
-			migrate_running_task(new_cpu, p, rq, MIGR_TICK_PULL_MISFIT_RUNNING);
-			irq_log_store();
-		} else {
-#if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
-			int thre_rot = 0, thre_rot_idx = 0;
-
-			thre_rot_idx = (pd->nr_perf_states >> 1) - 1;
-			if (thre_rot_idx >= 0)
-				thre_rot = pd->em_table->state[thre_rot_idx].frequency;
-
-			if (opp_curr > thre_rot) {
-				task_check_for_rotation(rq);
-				irq_log_store();
-			}
-
-#endif
-			raw_spin_unlock(&migration_lock);
-		}
-	}
-	irq_log_store();
-}
 
 void hook_sched_tick(void *data, struct rq *rq)
 {
