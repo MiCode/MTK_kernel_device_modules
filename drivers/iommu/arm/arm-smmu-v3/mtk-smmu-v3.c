@@ -51,7 +51,6 @@
 #define SMMU_HANG_DETECT		BIT(10)
 #define SMMU_EXTRA_DCM_EN		BIT(11)
 #define SMMU_DIS_CPU_TBU_PARTID		BIT(12)
-#define SMMU_DIS_TCU_CH			BIT(13)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -975,15 +974,11 @@ static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
 
 static void mtk_smmu_device_reset(struct arm_smmu_device *smmu)
 {
-	struct mtk_smmu_data *data;
-
 	if (!smmu)
 		return;
 
-	data = to_mtk_smmu_data(smmu);
 	/* Setup CR1 memory type for TCU non-coherent */
-	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_TCU_CH) &&
-	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY)) {
+	if (!(smmu->features & ARM_SMMU_FEAT_COHERENCY)) {
 		smmu_write_field(smmu->base, ARM_SMMU_CR1,
 				 CR1_TABLE_OC | CR1_TABLE_IC |
 				 CR1_QUEUE_OC | CR1_QUEUE_IC,
@@ -1421,8 +1416,7 @@ static void mtk_smmu_setup_features(struct arm_smmu_master *master, u32 sid,
 	}
 
 	/* Setup STE memory type for TCU non-coherent */
-	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_TCU_CH) &&
-	    !(smmu->features & ARM_SMMU_FEAT_COHERENCY) && s1_vld) {
+	if (!(smmu->features & ARM_SMMU_FEAT_COHERENCY) && s1_vld) {
 		val = le64_to_cpu(dst[1]);
 		val &= ~(STRTAB_STE_1_S1CIR | STRTAB_STE_1_S1COR);
 		val |= FIELD_PREP(STRTAB_STE_1_S1CIR, STRTAB_STE_1_S1C_CACHE_NC) |
