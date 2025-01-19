@@ -7230,6 +7230,7 @@ const struct mtk_mipitx_data mt6765_mipitx_data = {
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6765,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6765,
+	.dsi_get_data_rate = _dsi_get_data_rate,
 	.dsi_get_pcw = _dsi_get_pcw,
 	.backup_mipitx_impedance = backup_mipitx_impedance,
 	.refill_mipitx_impedance = refill_mipitx_impedance,
