@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 
 #define GHPM_TEST                          (0)       /* use proc node to test ghpm on/off */
+#define GPUEB_SLEEP_IPI_MAGIC_NUMBER       (0x55667788)
 
 enum ghpm_init_ret {
 	GHPM_INIT_SUCCESS,
@@ -68,7 +69,7 @@ enum gpu_ghpm_state {
 struct gpueb_slp_ipi_data {
 	enum gpueb_low_power_event event;
 	enum mfg0_off_state off_state;
-	int reserve;
+	int magic;
 };
 
 struct ghpm_platform_fp {
