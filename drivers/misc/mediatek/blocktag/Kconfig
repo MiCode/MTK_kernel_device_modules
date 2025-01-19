@@ -38,15 +38,6 @@ config MTK_BLOCK_IO_DEBUG_BUILD
 
 	  If unsure, say N.
 
-config MTK_FUSE_DEBUG
-	bool "Enable Blocktag FUSE Debug Tracer"
-	depends on MTK_BLOCK_IO_TRACER
-	help
-	  If it is enabled, there are some fuse-related trace
-	  events will be created in fuse fs.
-	  Our blocktag module will registered these event and
-	  records the fuse information.
-
 config MTK_FUSE_UPSTREAM_BUILD
 	bool "Enable Fuse Upstream Build"
 	depends on MTK_BLOCK_IO_TRACER
@@ -56,3 +47,14 @@ config MTK_FUSE_UPSTREAM_BUILD
 	  This is temporally used in userdebug/eng load
 
 	  If unsure, say N.
+
+config MTK_FUSE_TRACER
+	bool "Enable Blocktag FUSE Tracer"
+	depends on MTK_BLOCK_IO_TRACER
+	help
+	  If this option is enabled, blocktag will register some fuse
+	  vendor hooks and records the information for every incoming
+	  fuse request. The request history and request statistic can
+	  be found in /proc/blocktag/fuse. This is very useful for us
+	  to analyze fuse-related operations and identify specific
+	  scenarious for performance tuning.
