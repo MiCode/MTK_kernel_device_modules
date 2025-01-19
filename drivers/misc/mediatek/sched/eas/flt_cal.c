@@ -676,7 +676,6 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	u32 *util_avg_hist = &fts->util_avg_history[0];
 	int ridx, widx;
 	u32 max = 0, util_sum_max = 0, util_avg_max = 0;
-	u64 util_avg_sum = 0;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
 
 	if (!runtime || is_idle_task(p) || !samples)
@@ -708,7 +707,6 @@ static void update_history(struct rq *rq, struct task_struct *p,
 		util_avg_hist[widx] = util_avg_hist[ridx];
 		if (util_avg_hist[widx] > util_avg_max)
 			util_avg_max = util_avg_hist[widx];
-		util_avg_sum += util_avg_hist[widx];
 	}
 
 	for (widx = 0; widx < samples && widx < sched_ravg_hist_size; widx++) {
@@ -721,7 +719,6 @@ static void update_history(struct rq *rq, struct task_struct *p,
 								sched_ravg_window);
 		if (util_avg_hist[widx] > util_avg_max)
 			util_avg_max = util_avg_hist[widx];
-		util_avg_sum += util_avg_hist[widx];
 	}
 	fts->util_sum = 0;
 done:
