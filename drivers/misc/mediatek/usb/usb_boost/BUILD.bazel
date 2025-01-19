@@ -1,0 +1,81 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+config_setting(
+    name = "use_mtk_usb_xhci",
+    define_values = {
+        "CONFIG_DEVICE_MODULES_USB_XHCI_MTK": "y"
+    }
+)
+
+define_mgk_ddk_ko(
+    name = "usb_boost",
+    srcs = [
+        "usb_boost_common.c",
+        "usb_boost_plat.c"
+    ],
+    includes = ["."],
+    hdrs = [
+        "usb_boost.h"
+    ],
+    out = "usb_boost.ko",
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:xhci-mtk-hcd-v2".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_xhci",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3",
+    ] if "//conditions:use_mtk_usb_xhci" else [
+        "-I$(srctree)/drivers/usb/host",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "musb_boost",
+    srcs = [
+        "musb_boost_common.c",
+        "usb_boost_plat.c"
+    ],
+    hdrs = [
+        "usb_boost.h"
+    ],
+    includes = ["."],
+    out = "musb_boost.ko",
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+             "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+    ],
+)

@@ -37,15 +37,8 @@ define_mgk_ddk_ko(
         "xhci-mtk-sch.c",
         "quirks.c",
         "xhci-sideband.c",
-        "pci-quirks.h",
-        "quirks.h",
-        "xhci-dbgcap.h",
-        "xhci-ext-caps.h",
-        "xhci-mtk.h",
-        "xhci-trace.h",
-        "xhci.h",
-        "xhci-debugfs.h",
     ],
+    hdrs = glob(["**/*.h"]),
     conditional_srcs = {
       "CONFIG_DEBUG_FS": {
         True: ["xhci-debugfs.c"],
