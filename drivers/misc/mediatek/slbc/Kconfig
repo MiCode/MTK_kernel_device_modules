@@ -42,6 +42,15 @@ config MTK_SLBC_MT6897
 	  and power.
 	  If unsure, say N.
 
+config MTK_SLBC_MT6899
+	tristate "MTK SLBC MT6899"
+	depends on MTK_SLBC
+	help
+	  This kernel config can be used to enable SLBC at mt6899. When enable
+	  this option, we will use system buffer to improve performance
+	  and power.
+	  If unsure, say N.
+
 config MTK_SLBC_MT6983
 	tristate "MTK SLBC MT6983"
 	depends on MTK_SLBC

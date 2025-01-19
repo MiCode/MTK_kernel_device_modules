@@ -82,6 +82,7 @@ enum mtk_slbc_kernel_ops {
 #define SLBC_CHECK_TIME			msecs_to_jiffies(1000)
 #define SLBC_CHECK_TIMEOUT		msecs_to_jiffies(5000)
 #define SLBC_TIMEOUT_LIMIT		500
+#define SLBC_SCMI_RETRY_MAX		10 /* max retry times for slbc scmi init */
 
 
 #define GID_MAX					64
@@ -1302,14 +1303,20 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 
 int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
 {
+	int ret = 0;
+
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
 	mutex_lock(&slbc_req_lock);
-	_slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+	ret = _slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+	if (ret) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach scmi roi update fail, uid:%d, gid:%d", uid, gid);
+		return ret;
+	}
 	mutex_unlock(&slbc_req_lock);
 
-	return 0;
+	return ret;
 }
 
 int slbc_validate(enum slc_ach_uid uid, int gid)
@@ -1397,6 +1404,8 @@ int slbc_invalidate(enum slc_ach_uid uid, int gid)
 int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 {
 	struct slbc_gid_data data;
+	int ret = 0;
+
 
 	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 	if (gid >= GID_MAX)
@@ -1404,10 +1413,14 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 
 	data.bw = enable;
 	mutex_lock(&slbc_req_lock);
-	_slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+	ret = _slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+	if (ret) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, ret, "ach read invld fail, uid:%d, gid:%d", uid, gid);
+		return ret;
+	}
 	mutex_unlock(&slbc_req_lock);
 
-	return 0;
+	return ret;
 }
 
 int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
@@ -1878,7 +1891,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		test_d.type  = TP_BUFFER;
 		ret = slbc_release(&test_d);
 	} else if (!strcmp(cmd, "slbc_gid_request")) {
-		if (val_1 <= UID_ZERO || val_1 >= UID_MAX ||
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
 				val_2 >= GID_MAX) {
 			ret = -EPERM;
 			goto out;
@@ -1888,14 +1901,38 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		test_gid_d.sign = SLC_DATA_MAGIC;
 		slbc_gid_request((enum slc_ach_uid)val_1, &temp, &test_gid_d);
 	} else if (!strcmp(cmd, "slbc_gid_release")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_gid_release((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_validate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_validate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_invalidate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_invalidate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_read_invalidate")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX ||
+				val_2 >= GID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_read_invalidate((enum slc_ach_uid)val_1, val_2, val_3);
 	} else if (!strcmp(cmd, "slbc_ceil")) {
+		if (val_1 <= ID_PD || val_1 >= ID_MAX) {
+			ret = -EPERM;
+			goto out;
+		}
 		slbc_ceil((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_total_ceil")) {
 		slbc_total_ceil(val_1);
@@ -2198,7 +2235,7 @@ static int slbc_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	int ret = 0;
+	int ret = 0, i = 0;
 	/* struct resource *res; */
 	uint32_t reg[4] = {0, 0, 0, 0};
 
@@ -2207,14 +2244,28 @@ static int slbc_probe(struct platform_device *pdev)
 		pr_info("SLBC FAILED TO CREATE TRACE MEMORY (%d)\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-	ret = slbc_scmi_init();
-	if (ret < 0)
+	for (i = 0; i < SLBC_SCMI_RETRY_MAX; i++) {
+		ret = slbc_scmi_init();
+		if (ret == 0) {
+			pr_info("slbc scmi init succeeded after retry %d\n", i);
+			SLBC_TRACE_REC(LVL_NORM, TYPE_N, 0, ret,
+				"slbc scmi init succeeded after retry %d", i);
+			break;
+		}
+		udelay(500);
+	}
+	if (ret < 0) {
+		pr_info("SLBC FAILED TO INIT SCMI (%d)\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to init scmi (%d)", ret);
 		return ret;
+	}
 
 	ret = slbc_shared_dram_init(pdev);
-	if(ret){
+	if (ret) {
 		pr_info("SLBC FAILED TO INIT SHARED DRAM MEMORY (%d)\n", ret);
-		return ret;
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"failed to init shared dram (%d)", ret);
 	}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
@@ -2303,8 +2354,19 @@ static int slbc_probe(struct platform_device *pdev)
 	}
 
 	if (slbc_enable) {
-		slbc_sspm_enable(slbc_enable);
-		slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		ret = slbc_sspm_enable(slbc_enable);
+		if (ret) {
+			pr_info("SLBC FAILED TO ENABLE SSPM SLBC (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to enable sspm slbc (%d)", ret);
+		}
+
+		ret = slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		if (ret) {
+			pr_info("SLBC FAILED TO GET SSPM VERSION (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to get sspm version (%d)", ret);
+		}
 	}
 
 #ifdef SLBC_CB_TEST
