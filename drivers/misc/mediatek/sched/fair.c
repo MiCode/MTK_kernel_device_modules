@@ -18,6 +18,7 @@
 #include <sched/pelt.h>
 #include <linux/stop_machine.h>
 #include <linux/kthread.h>
+
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
@@ -364,9 +365,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		/* Account thermal pressure for the energy estimation */
 		pd_idx = cpu = cpumask_first(cpus);
 		eenv->gear_idx = topology_cluster_id(pd_idx);
-		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
-		/* copy arch_scale_hw_pressure() code and add read_once to avoid data-racing */
-		cpu_thermal_cap -= READ_ONCE(per_cpu(hw_pressure, cpu));
+		cpu_thermal_cap = mtk_get_actual_cpu_capacity(cpu);
 
 		eenv->pds_cpu_cap[pd_idx] = cpu_thermal_cap;
 		eenv->pds_cap[pd_idx] = 0;
@@ -1347,22 +1346,43 @@ static int
 mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask, int target,
 	bool is_vip)
 {
-	unsigned long task_util, best_cap = 0;
+	unsigned long task_util, util_min, util_max, best_cap = 0;
 	int cpu, best_cpu = -1;
+	int fits, best_fits = 0;
 
-	task_util = uclamp_task_util(p);
+	task_util = task_util_est(p);
+	util_min = uclamp_eff_value(p, UCLAMP_MIN);
+	util_max = uclamp_eff_value(p, UCLAMP_MAX);
 
 	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
 		unsigned long cpu_cap = capacity_of(cpu);
 
 		if (!is_vip && (!mtk_available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
 			continue;
-		if (fits_capacity(task_util, cpu_cap, get_adaptive_margin(cpu)))
+
+		fits = util_fits_capacity(task_util, util_min, util_max, cpu_cap, cpu);
+
+		/* This CPU fits with all requirements */
+		if (fits > 0)
 			return cpu;
 
-		if (cpu_cap > best_cap) {
-			best_cap = cpu_cap;
-			best_cpu = cpu;
+		/*
+		 * Only the min performance hint (i.e. uclamp_min) doesn't fit.
+		 * Look for the CPU with best capacity.
+		 */
+
+		else if (fits < 0)
+			cpu_cap = mtk_get_actual_cpu_capacity(cpu);
+
+		/*
+		 * First, select CPU which fits better (-1 being better than 0).
+		 * Then, select the one with best capacity at same level.
+		 */
+		if ((fits < best_fits) ||
+			((fits == best_fits) && (cpu_cap > best_cap))) {
+				best_cap = cpu_cap;
+				best_cpu = cpu;
+				best_fits = fits;
 		}
 	}
 
@@ -1709,7 +1729,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	unsigned long ceiling, cap_after_ceiling;
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
-	unsigned long capacity_orig_thermal, capacity_orig = arch_scale_cpu_capacity(cpu);
+	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits, uclamp_involve;
 
 
@@ -1739,8 +1759,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 
 	/* Change fit status from 1 to -1 only if uclamp min raise util. */
 	uclamp_min = min(uclamp_min, uclamp_max);
-	capacity_orig_thermal = min(cap_after_ceiling, (capacity_orig - arch_scale_hw_pressure(cpu)));
-	if (fit && (util < uclamp_min) && (uclamp_min > capacity_orig_thermal))
+	if (fit && (util < uclamp_min) && (uclamp_min > mtk_get_actual_cpu_capacity(cpu)))
 		fit = -1;
 
 	if (trace_sched_fits_cap_ceiling_enabled())
@@ -1766,7 +1785,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 {
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
-	unsigned long capacity_orig_thermal, capacity_orig = arch_scale_cpu_capacity(cpu);
+	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits, uclamp_involve;
 
 	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
@@ -1781,14 +1800,13 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	fit = fits_capacity(util, capacity, sugov_margin);
 
 	/* Change fit status from 0 to 1 only if uclamp max restrict util. */
-	capacity_orig_thermal = (capacity_orig - arch_scale_hw_pressure(cpu));
 	uclamp_max_fits = (capacity_orig == SCHED_CAPACITY_SCALE) && (uclamp_max == SCHED_CAPACITY_SCALE);
 	uclamp_max_fits = !uclamp_max_fits && (uclamp_max <= capacity_orig);
 	fit = fit || uclamp_max_fits;
 
 	/* Change fit status from 1 to -1 only if uclamp min raise util. */
 	uclamp_min = min(uclamp_min, uclamp_max);
-	if (fit && (util < uclamp_min) && (uclamp_min > capacity_orig_thermal))
+	if (fit && (util < uclamp_min) && (uclamp_min > mtk_get_actual_cpu_capacity(cpu)))
 		fit = -1;
 
 	return fit;

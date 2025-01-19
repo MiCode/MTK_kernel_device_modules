@@ -499,7 +499,7 @@ EXPORT_SYMBOL_GPL(mtk_available_idle_cpu);
 static unsigned long mtk_scale_rt_capacity(int cpu)
 {
 	struct rq *rq = cpu_rq(cpu);
-	unsigned long max = arch_scale_cpu_capacity(cpu);
+	unsigned long max = mtk_get_actual_cpu_capacity(cpu);
 	unsigned long used, free;
 	unsigned long irq;
 
@@ -510,7 +510,6 @@ static unsigned long mtk_scale_rt_capacity(int cpu)
 
 	used = cpu_util_rt(rq);
 	used += cpu_util_dl(rq);
-	used += hw_load_avg(rq);
 
 	if (unlikely(used >= max))
 		return 1;
@@ -529,9 +528,7 @@ void mtk_update_cpu_capacity(int cpu, unsigned long cap_orig, int wl, int caller
 
 	if (!capacity)
 		capacity = 1;
-
-	hook_update_cpu_capacity(NULL, cpu, &capacity);
-
+	
 	cpu_rq(cpu)->cpu_capacity = capacity;
 
 	if (trace_sched_update_cpu_capacity_enabled())
@@ -548,6 +545,16 @@ void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
 	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(hw_pressure, cpu)));
 }
+
+/*kernel mainline get_acutual_cpu_capacity()*/
+unsigned long mtk_get_actual_cpu_capacity(int cpu)
+{
+	unsigned long capacity= arch_scale_cpu_capacity(cpu);
+	hook_update_cpu_capacity(NULL, cpu, &capacity);
+
+	return capacity;
+}
+EXPORT_SYMBOL_GPL(mtk_get_actual_cpu_capacity);
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #define WL_CPU -1

@@ -194,6 +194,7 @@ enum cpu_util_type {
 	FREQUENCY_UTIL,
 	ENERGY_UTIL,
 };
+unsigned long mtk_get_actual_cpu_capacity(int cpu);
 
 unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_rq,
 				enum cpu_util_type type,
