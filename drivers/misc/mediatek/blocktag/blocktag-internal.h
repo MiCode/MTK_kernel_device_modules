@@ -114,7 +114,6 @@ struct mtk_btag_mictx_queue {
 
 struct mtk_btag_mictx {
 	struct list_head list;
-	struct mtk_btag_mictx_queue *q;
 	struct __mictx_workload {
 		spinlock_t lock;
 		__u64 idle_begin;
@@ -144,6 +143,7 @@ struct mtk_btag_mictx {
 	__u16 queue_nr;
 	__s8 id;
 	bool full_logging;
+	struct mtk_btag_mictx_queue q[];
 };
 
 #define THRESHOLD_MAX	0x7fffffff
@@ -214,10 +214,10 @@ struct mtk_btag_trace {
 
 /* Ring Trace */
 struct mtk_btag_ringtrace {
-	struct mtk_btag_trace *trace;
 	spinlock_t lock;
 	__s32 index;
 	__s32 max;
+	struct mtk_btag_trace trace[];
 };
 
 /* BlockTag */
@@ -226,7 +226,6 @@ struct mtk_blocktag {
 	char name[BTAG_NAME_LEN];
 	enum mtk_btag_storage_type storage_type;
 	bool ctx_enable;
-	struct mtk_btag_ringtrace rt;
 
 	struct context_t {
 		void *priv;
@@ -251,6 +250,9 @@ struct mtk_blocktag {
 	u32 tag_per_queue;
 	u32 nr_queue;
 	u32 nr_tag;
+
+	/* rt should be put in the end of blocktag */
+	struct mtk_btag_ringtrace rt;
 };
 
 struct mtk_btag_vops {

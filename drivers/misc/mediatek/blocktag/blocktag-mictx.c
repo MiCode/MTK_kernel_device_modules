@@ -651,25 +651,17 @@ static int mictx_alloc(enum mtk_btag_storage_type type,
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
-	struct mtk_btag_mictx_queue *q;
 	unsigned long flags;
 	__u64 cur_time = sched_clock();
 	int qid;
 
 	btag = mtk_btag_find_by_type(type);
 	if (!btag)
-		return -1;
+		return -ENOENT;
 
-	mictx = kzalloc(sizeof(struct mtk_btag_mictx), GFP_NOFS);
+	mictx = kzalloc(struct_size(mictx, q, btag->ctx.count), GFP_NOFS);
 	if (!mictx)
-		return -1;
-
-	q = kcalloc(btag->ctx.count, sizeof(struct mtk_btag_mictx_queue),
-		    GFP_NOFS);
-	if (!q) {
-		kfree(mictx);
-		return -1;
-	}
+		return -ENOMEM;
 
 	mictx->queue_nr = btag->ctx.count;
 	spin_lock_init(&mictx->wl.lock);
@@ -681,8 +673,7 @@ static int mictx_alloc(enum mtk_btag_storage_type type,
 	mictx->avg_qd.last_depth_chg = cur_time;
 #endif
 	for (qid = 0; qid < btag->ctx.count; qid++)
-		spin_lock_init(&q[qid].lock);
-	mictx->q = q;
+		spin_lock_init(&mictx->q[qid].lock);
 	mictx->vops = vops;
 
 	spin_lock_irqsave(&btag->ctx.mictx.list_lock, flags);
@@ -719,7 +710,6 @@ found:
 	spin_unlock_irqrestore(&btag->ctx.mictx.list_lock, flags);
 
 	synchronize_rcu();
-	kfree(mictx->q);
 	kfree(mictx);
 }
 
@@ -737,7 +727,6 @@ void mtk_btag_mictx_free_all(struct mtk_blocktag *btag)
 	synchronize_rcu();
 	list_for_each_entry_safe(mictx, n, &free_list, list) {
 		list_del(&mictx->list);
-		kfree(mictx->q);
 		kfree(mictx);
 	}
 }

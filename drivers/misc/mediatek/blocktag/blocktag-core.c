@@ -726,12 +726,13 @@ static const struct proc_ops mtk_btag_main_fops = {
 };
 
 struct mtk_blocktag *mtk_btag_alloc(const char *name,
-	enum mtk_btag_storage_type storage_type,
-	__u32 ringtrace_count, size_t ctx_size, __u32 ctx_count,
-	struct mtk_btag_vops *vops)
+				    enum mtk_btag_storage_type storage_type,
+				    __u32 ringtrace_count, size_t ctx_size,
+				    __u32 ctx_count, struct mtk_btag_vops *vops)
 {
 	struct mtk_blocktag *btag;
 	unsigned long flags;
+	int ret;
 
 	if (!name || !ringtrace_count || !ctx_size || !ctx_count)
 		return ERR_PTR(-EINVAL);
@@ -742,22 +743,14 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 		return ERR_PTR(-EEXIST);
 	}
 
-	btag = kmalloc(sizeof(struct mtk_blocktag), GFP_NOFS);
+	btag = kzalloc(struct_size(btag, rt.trace, ringtrace_count), GFP_NOFS);
 	if (!btag)
 		return ERR_PTR(-ENOMEM);
-
-	memset(btag, 0, sizeof(struct mtk_blocktag));
 
 	/* ringtrace */
 	btag->rt.index = 0;
 	btag->rt.max = ringtrace_count;
 	spin_lock_init(&btag->rt.lock);
-	btag->rt.trace = kcalloc(ringtrace_count,
-		sizeof(struct mtk_btag_trace), GFP_NOFS);
-	if (!btag->rt.trace) {
-		kfree(btag);
-		return ERR_PTR(-ENOMEM);
-	}
 	strncpy(btag->name, name, BTAG_NAME_LEN - 1);
 	btag->storage_type = storage_type;
 
@@ -766,9 +759,8 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 	btag->ctx.size = ctx_size;
 	btag->ctx.priv = kcalloc(ctx_count, ctx_size, GFP_NOFS);
 	if (!btag->ctx.priv) {
-		kfree(btag->rt.trace);
-		kfree(btag);
-		return ERR_PTR(-ENOMEM);
+		ret = -ENOMEM;
+		goto free_btag;
 	}
 
 	mtk_btag_mictx_init(btag);
@@ -778,21 +770,30 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 
 	/* procfs dentries */
 	btag->dentry.droot = proc_mkdir(name, btag_proc_root);
-	if (IS_ERR(btag->dentry.droot))
-		goto out;
-
+	if (IS_ERR(btag->dentry.droot)) {
+		ret = PTR_ERR(btag->dentry.droot);
+		goto free_ctx;
+	}
 	btag->dentry.dlog = proc_create("blockio", S_IFREG | 0444,
-		btag->dentry.droot, &mtk_btag_sub_fops);
-	if (IS_ERR(btag->dentry.dlog))
-		goto out;
+					btag->dentry.droot, &mtk_btag_sub_fops);
+	if (IS_ERR(btag->dentry.dlog)) {
+		ret = PTR_ERR(btag->dentry.dlog);
+		goto free_proc;
+	}
 
 	spin_lock_irqsave(&list_lock, flags);
 	list_add_rcu(&btag->list, &mtk_btag_list);
 	spin_unlock_irqrestore(&list_lock, flags);
 
-out:
-
 	return btag;
+
+free_proc:
+	proc_remove(btag->dentry.droot);
+free_ctx:
+	kfree(btag->ctx.priv);
+free_btag:
+	kfree(btag);
+	return ERR_PTR(ret);
 }
 
 void mtk_btag_free(struct mtk_blocktag *btag)
@@ -809,7 +810,6 @@ void mtk_btag_free(struct mtk_blocktag *btag)
 	synchronize_rcu();
 	mtk_btag_mictx_free_all(btag);
 	kfree(btag->ctx.priv);
-	kfree(btag->rt.trace);
 	proc_remove(btag->dentry.droot);
 	kfree(btag);
 }
