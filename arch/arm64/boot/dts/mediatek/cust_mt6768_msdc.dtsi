@@ -202,7 +202,7 @@
 			input-schmitt-enable = <1>;
 		};
 
-		pins_insert {
+		sdcard_pins_insert: pins_insert {
 			input-enable;
 			pinmux = <PINMUX_GPIO18__FUNC_GPIO18>;
 			bias-pull-up;
