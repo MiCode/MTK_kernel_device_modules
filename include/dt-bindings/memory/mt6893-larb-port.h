@@ -16,9 +16,9 @@
  *           larb18, larb19, larb20,
  * domain 3: CCU0: larb13, port9 & larb10.
  * domain 4: CCU1: larb14, port4 & larb5.
- * domain 5: APU CODE: larb21, port0.
- * domain 6: APU DATA: larb21, port1.
- * domain 7: APU VLM: larb21, port2.
+ * domain 5: APU DATA: larb21, port0.
+ * domain 6: APU VLM: larb21, port1.
+ * domain 7: APU CODE: larb21, port2.
  *
  * larb3/6/8/10/12/15 is null.
  */
@@ -300,8 +300,8 @@
 #define M4U_PORT_L22_CCU_DISP	MTK_M4U_DOM_ID(3, 22, 0)
 #define M4U_PORT_L23_CCU_MDP	MTK_M4U_DOM_ID(4, 23, 0)
 
-#define M4U_PORT_L21_APU_FAKE_CODE  MTK_M4U_DOM_ID(5, 21, 0)
-#define M4U_PORT_L21_APU_FAKE_DATA  MTK_M4U_DOM_ID(6, 21, 1)
-#define M4U_PORT_L21_APU_FAKE_VLM  MTK_M4U_DOM_ID(7, 21, 2)
+#define M4U_PORT_L21_APU_FAKE_DATA  MTK_M4U_DOM_ID(5, 21, 0)
+#define M4U_PORT_L21_APU_FAKE_VLM  MTK_M4U_DOM_ID(6, 21, 1)
+#define M4U_PORT_L21_APU_FAKE_CODE  MTK_M4U_DOM_ID(7, 21, 2)
 
 #endif
