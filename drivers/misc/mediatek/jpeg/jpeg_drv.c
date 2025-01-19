@@ -51,6 +51,30 @@ static bool dec_hw_enable[HW_CORE_NUMBER] = {false, false, false};
 static unsigned int _jpeg_hybrid_dec_int_status[HW_CORE_NUMBER];
 static struct dmabuf_info bufInfo[HW_CORE_NUMBER];
 
+static const char *jpegdec_cg_name[] = {
+	"MT_CG_VENC_JPGDEC",
+	"MT_CG_VENC_JPGDEC_C1",
+	"MT_CG_VENC_JPGDEC_C2",
+};
+
+static const char *jpegdec_wdma_name[] = {
+	"path_jpegdec0_wdma",
+	"path_jpegdec1_wdma",
+	"path_jpegdec2_wdma",
+};
+
+static const char *jpegdec_bsdma_name[] = {
+	"path_jpegdec0_bsdma",
+	"path_jpegdec1_bsdma",
+	"path_jpegdec2_bsdma",
+};
+
+static const char *jpegdec_huff_offset_name[] = {
+	"path_jpegdec0_huff_offset",
+	"path_jpegdec1_huff_offset",
+	"path_jpegdec2_huff_offset",
+};
+
 int jpg_dbg_level;
 module_param(jpg_dbg_level, int, 0644);
 
@@ -115,51 +139,44 @@ static inline void jpeg_reg_write_mask(long addr, uint32_t mask, uint32_t val)
 
 static void jpeg_axdomain_set(int id)
 {
-	int node_id = id / 2;
+	int larb_idx = gJpegqDev.larb_idx_map[id];
 
-	if (!gJpegqDev.smiLarbBaseVA[node_id])
+	if (!gJpegqDev.smiLarbBaseVA[larb_idx])
 		return;
 
-	if (id == 0) {
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 17),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 17),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 18),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 18),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 30),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 30),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-	} else if (id == 1) {
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 27),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 27),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 28),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 28),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 29),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 29),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-	}  else if (id == 2) {
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 17),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 17),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 18),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 18),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[node_id], 30),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-		jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[node_id], 30),
-				    0x1f0, gJpegqDev.axdomain[node_id] << 4);
-	}
+	JPEG_LOG(1, "[%d] set axdomain(%d) larb: %d(0x%lx) (%d, %d, %d)",
+		    id,
+		    gJpegqDev.axdomain[larb_idx],
+		    larb_idx,
+		    gJpegqDev.smiLarbBaseVA[larb_idx],
+		    gJpegqDev.larb_port[id][JPEG_DEC_WDMA],
+		    gJpegqDev.larb_port[id][JPEG_DEC_BSDMA],
+		    gJpegqDev.larb_port[id][JPEG_DEC_HUFF_OFFSET]);
+
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_WDMA]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_WDMA]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_BSDMA]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_BSDMA]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F00(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_HUFF_OFFSET]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
+	jpeg_reg_write_mask(REG_JPGDEC_LARB_F80(gJpegqDev.smiLarbBaseVA[larb_idx],
+						gJpegqDev.larb_port[id][JPEG_DEC_HUFF_OFFSET]),
+			    0x1f0,
+			    gJpegqDev.axdomain[larb_idx] << 4);
 }
 
 static int jpeg_drv_hybrid_dec_start(unsigned int data[],
@@ -176,7 +193,7 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 	ret = 0;
 	ibuf_iova = 0;
 	obuf_iova = 0;
-	node_id = id / 2;
+	node_id = gJpegqDev.larb_idx_map[id];
 
 	mutex_lock(&jpeg_hybrid_dec_lock);
 	bufInfo[id].o_dbuf = jpg_dmabuf_alloc(data[20], 128, 0);
@@ -320,86 +337,84 @@ static irqreturn_t jpeg_drv_hybrid_dec_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-void jpeg_drv_hybrid_dec_prepare_dvfs(unsigned int id)
+void jpeg_drv_hybrid_dec_prepare_dvfs(void)
 {
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
 	int i = 0;
 
-	ret = dev_pm_opp_of_add_table(gJpegqDev.pDev[id]);
+	ret = dev_pm_opp_of_add_table(gJpegqDev.pDev[0]);
 	if (ret < 0) {
 		JPEG_LOG(0, "Failed to get opp table (%d)", ret);
 		return;
 	}
 
-	gJpegqDev.jpeg_reg[id] = devm_regulator_get_optional(gJpegqDev.pDev[id],
+	gJpegqDev.jpeg_reg = devm_regulator_get_optional(gJpegqDev.pDev[0],
 						"mmdvfs-dvfsrc-vcore");
-	if (IS_ERR_OR_NULL(gJpegqDev.jpeg_reg[id])) {
+	if (IS_ERR_OR_NULL(gJpegqDev.jpeg_reg)) {
 		JPEG_LOG(0, "Failed to get regulator");
-		gJpegqDev.jpeg_reg[id] = NULL;
-		gJpegqDev.jpeg_dvfs[id] = devm_clk_get(gJpegqDev.pDev[id], "mmdvfs_clk");
-		if (IS_ERR_OR_NULL(gJpegqDev.jpeg_dvfs[id])) {
+		gJpegqDev.jpeg_reg = NULL;
+		gJpegqDev.jpeg_dvfs = devm_clk_get(gJpegqDev.pDev[0], "mmdvfs_clk");
+		if (IS_ERR_OR_NULL(gJpegqDev.jpeg_dvfs)) {
 			JPEG_LOG(0, "Failed to get mmdvfs clk");
-			gJpegqDev.jpeg_dvfs[id] = NULL;
+			gJpegqDev.jpeg_dvfs = NULL;
 			return;
 		}
 	}
 
-	gJpegqDev.jpeg_freq_cnt[id] = dev_pm_opp_get_opp_count(gJpegqDev.pDev[id]);
+	gJpegqDev.jpeg_freq_cnt = dev_pm_opp_get_opp_count(gJpegqDev.pDev[0]);
 	freq = 0;
 	while (!IS_ERR(opp =
-		dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[id], &freq))) {
-		gJpegqDev.jpeg_freqs[id][i] = freq;
+		dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[0], &freq))) {
+		gJpegqDev.jpeg_freqs[i] = freq;
 		freq++;
 		i++;
 		dev_pm_opp_put(opp);
 	}
 
-	if (id == 0) {
-		ret = of_property_read_u32(gJpegqDev.pDev[id]->of_node,
-					   "dvfs-opp-level",
-					   &gJpegqDev.dvfs_opp_level);
-		if (ret != 0 || gJpegqDev.dvfs_opp_level >= gJpegqDev.jpeg_freq_cnt[id]) {
-			gJpegqDev.dvfs_opp_level = gJpegqDev.jpeg_freq_cnt[id] - 1;
-		}
-		JPEG_LOG(0, "dvfs opp level: %d", gJpegqDev.dvfs_opp_level);
+	ret = of_property_read_u32(gJpegqDev.pDev[0]->of_node,
+					"dvfs-opp-level",
+					&gJpegqDev.dvfs_opp_level);
+	if (ret != 0 || gJpegqDev.dvfs_opp_level >= gJpegqDev.jpeg_freq_cnt) {
+		gJpegqDev.dvfs_opp_level = gJpegqDev.jpeg_freq_cnt - 1;
 	}
+	JPEG_LOG(0, "dvfs opp level: %d", gJpegqDev.dvfs_opp_level);
 }
 
 void jpeg_drv_hybrid_dec_unprepare_dvfs(void)
 {
 }
 
-void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
+void jpeg_drv_hybrid_dec_start_dvfs(void)
 {
 	struct dev_pm_opp *opp = 0;
 	int volt = 0;
 	int ret = 0;
 
-	if (gJpegqDev.jpeg_reg[id]) {
+	if (gJpegqDev.jpeg_reg) {
 		JPEG_LOG(1, "request freq %lu",
-				gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
-		opp = dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[id],
-		&gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
+				gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
+		opp = dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[0],
+		&gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
 
-		ret = regulator_set_voltage(gJpegqDev.jpeg_reg[id], volt, INT_MAX);
+		ret = regulator_set_voltage(gJpegqDev.jpeg_reg, volt, INT_MAX);
 		if (ret) {
 			JPEG_LOG(0, "Failed to set regulator voltage %d",
 			volt);
 		}
-	} else if (gJpegqDev.jpeg_dvfs[id]) {
+	} else if (gJpegqDev.jpeg_dvfs) {
 		JPEG_LOG(1, "request freq %lu",
-				gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
+				gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		if (mmdvfs_get_version())
 			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGDEC);
-		ret = clk_set_rate(gJpegqDev.jpeg_dvfs[id],
-			gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
+		ret = clk_set_rate(gJpegqDev.jpeg_dvfs,
+			gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		if (ret) {
 			JPEG_LOG(0, "Failed to set freq %lu",
-			gJpegqDev.jpeg_freqs[id][gJpegqDev.dvfs_opp_level]);
+			gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		}
 		if (mmdvfs_get_version())
 			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGDEC);
@@ -407,57 +422,46 @@ void jpeg_drv_hybrid_dec_start_dvfs(unsigned int id)
 
 }
 
-void jpeg_drv_hybrid_dec_end_dvfs(unsigned int id)
+void jpeg_drv_hybrid_dec_end_dvfs(void)
 {
 	struct dev_pm_opp *opp = 0;
 	int volt = 0;
 	int ret = 0;
 
-	if (gJpegqDev.jpeg_reg[id]) {
-		JPEG_LOG(1, "request freq %lu", gJpegqDev.jpeg_freqs[id][0]);
-		opp = dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[id],
-					&gJpegqDev.jpeg_freqs[id][0]);
+	if (gJpegqDev.jpeg_reg) {
+		JPEG_LOG(1, "request freq %lu", gJpegqDev.jpeg_freqs[0]);
+		opp = dev_pm_opp_find_freq_ceil(gJpegqDev.pDev[0],
+					&gJpegqDev.jpeg_freqs[0]);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
 
-		ret = regulator_set_voltage(gJpegqDev.jpeg_reg[id], volt, INT_MAX);
+		ret = regulator_set_voltage(gJpegqDev.jpeg_reg, volt, INT_MAX);
 		if (ret) {
 			JPEG_LOG(0, "Failed to set regulator voltage %d",
 			volt);
 		}
-	} else if (gJpegqDev.jpeg_dvfs[id]) {
+	} else if (gJpegqDev.jpeg_dvfs) {
 		JPEG_LOG(1, "request freq 0");
-		ret = clk_set_rate(gJpegqDev.jpeg_dvfs[id], 0);
+		ret = clk_set_rate(gJpegqDev.jpeg_dvfs, 0);
 		if (ret)
 			JPEG_LOG(0, "Failed to set freq 0");
 	}
 }
 
-static void jpeg_drv_prepare_bw_request(unsigned int node_id)
+static void jpeg_drv_prepare_bw_request(unsigned int id)
 {
-	JPEG_LOG(1, "bw requset prepare");
+	unsigned int node_id = gJpegqDev.larb_idx_map[id];
 
-	if (node_id == 0) {
-		gJpegqDev.jpeg_path_wdma[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							     "path_jpegdec0_wdma");
-		gJpegqDev.jpeg_path_bsdma[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							      "path_jpegdec0_bsdma");
-		gJpegqDev.jpeg_path_huff_offset[0] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-								    "path_jpegdec0_huff_offset");
-		gJpegqDev.jpeg_path_wdma[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							     "path_jpegdec1_wdma");
-		gJpegqDev.jpeg_path_bsdma[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							      "path_jpegdec1_bsdma");
-		gJpegqDev.jpeg_path_huff_offset[1] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-								    "path_jpegdec1_huff_offset");
-	} else {
-		gJpegqDev.jpeg_path_wdma[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							     "path_jpegdec2_wdma");
-		gJpegqDev.jpeg_path_bsdma[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-							      "path_jpegdec2_bsdma");
-		gJpegqDev.jpeg_path_huff_offset[2] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
-								    "path_jpegdec2_huff_offset");
-	}
+	gJpegqDev.jpeg_path_wdma[id] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								jpegdec_wdma_name[id]);
+	gJpegqDev.jpeg_path_bsdma[id] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								jpegdec_bsdma_name[id]);
+	gJpegqDev.jpeg_path_huff_offset[id] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
+								jpegdec_huff_offset_name[id]);
+	JPEG_LOG(0, "bw prepare(%p, %p, %p)",
+		    gJpegqDev.jpeg_path_wdma[id],
+		    gJpegqDev.jpeg_path_bsdma[id],
+		    gJpegqDev.jpeg_path_huff_offset[id]);
 }
 
 static void jpeg_drv_update_bw_request(unsigned int id)
@@ -484,93 +488,87 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	unsigned int ven_res;
 	int cnt = 0;
 
-	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER] && !dec_hwlocked[(id+2)%HW_CORE_NUMBER]) {
+	if (gJpegqDev.first_larb_ref_cnt == 0) {
 		if (gJpegqDev.jpegLarb[0]) {
-			JPEG_LOG(1, "power on larb7");
+			JPEG_LOG(1, "[%d] power on first larb", id);
 			if (gJpegqDev.is_ccf_one_step)
 				ret = mtk_smi_larb_enable(gJpegqDev.jpegLarb[0]);
 			else
 				ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[0]);
 			if (ret)
-				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
-					ret);
+				JPEG_LOG(0, "[E][%d] first larb on failed %d", id, ret);
 		}
-		ret = clk_prepare_enable(gJpegqDev.jpegClk.clk_venc_jpgDec);
-		if (ret)
-			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC failed %d",
-					ret);
-		ret = clk_prepare_enable(gJpegqDev.jpegClk.clk_venc_jpgDec_c1);
-		if (ret)
-			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC_C1 failed %d",
-					ret);
+
 		if (gJpegqDev.ven0BaseVA) {
 			IMG_REG_WRITE((BIT(0)), (gJpegqDev.ven0BaseVA + 0x10));
 			ven_res = IMG_REG_READ((gJpegqDev.ven0BaseVA + 0x15C));
 			while (!(ven_res & BIT(31))) {
 				cnt++;
 				if (cnt > 10000) {
-					JPEG_LOG(0, "[Error] venc ddrsrc ack timeout 0x%08x",
-						    ven_res);
+					JPEG_LOG(0, "[E][%d] venc ddrsrc ack timeout 0x%08x",
+						     id, ven_res);
 					break;
 				}
 				udelay(10);
 				ven_res = IMG_REG_READ((gJpegqDev.ven0BaseVA + 0x15C));
 			}
 		}
+
+		jpeg_drv_hybrid_dec_start_dvfs();
+	}
+	gJpegqDev.first_larb_ref_cnt++;
+
+	if (gJpegqDev.jpegLarb[1] && gJpegqDev.larb_idx_map[id] == 1) {
+		JPEG_LOG(1, "[%d] power on second larb", id);
+		if (gJpegqDev.is_ccf_one_step)
+			ret = mtk_smi_larb_enable(gJpegqDev.jpegLarb[1]);
+		else
+			ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[1]);
+		if (ret)
+			JPEG_LOG(0, "[%d] second larb on failed %d", id, ret);
 	}
 
-	if (id == 2) {
-		if (gJpegqDev.jpegLarb[1]) {
-			JPEG_LOG(1, "power on larb8");
-			if (gJpegqDev.is_ccf_one_step)
-				ret = mtk_smi_larb_enable(gJpegqDev.jpegLarb[1]);
-			else
-				ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[1]);
-			if (ret)
-				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
-					ret);
-		}
-		ret = clk_prepare_enable(gJpegqDev.jpegClk.clk_venc_jpgDec_c2);
-		if (ret)
-			JPEG_LOG(0, "clk enable MT_CG_VENC_JPGDEC_C2 failed %d",
-					ret);
-		jpeg_drv_hybrid_dec_start_dvfs(1);
-	} else
-		jpeg_drv_hybrid_dec_start_dvfs(0);
+	ret = clk_prepare_enable(gJpegqDev.jpegClk[id]);
+	if (ret)
+		JPEG_LOG(0, "[%d] cg on failed %d", id, ret);
 
 	jpeg_drv_update_bw_request(id);
 
-	JPEG_LOG(1, "JPEG Hybrid Decoder Power On %d", id);
+	JPEG_LOG(1, "[%d] JPEG Hybrid Decoder Power On", id);
 }
 
 void jpeg_drv_hybrid_dec_power_off(int id)
 {
+	int ret;
+
 	jpeg_drv_end_bw_request(id);
 
-	if (id == 2) {
-		jpeg_drv_hybrid_dec_end_dvfs(1);
-		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c2);
-		if (gJpegqDev.jpegLarb[1]) {
-			if (gJpegqDev.is_ccf_one_step)
-				mtk_smi_larb_disable(gJpegqDev.jpegLarb[1]);
-			else
-				pm_runtime_put_sync(gJpegqDev.jpegLarb[1]);
-			JPEG_LOG(1, "Larb 8 Power Off (trigger id: %d)", id);
-		}
-	} else
-		jpeg_drv_hybrid_dec_end_dvfs(0);
+	clk_disable_unprepare(gJpegqDev.jpegClk[id]);
 
-	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER] && !dec_hwlocked[(id+2)%3]) {
-		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c1);
-		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec);
-		if (gJpegqDev.jpegLarb[0]) {
-			if (gJpegqDev.is_ccf_one_step)
-				mtk_smi_larb_disable(gJpegqDev.jpegLarb[0]);
-			else
-				pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
-			JPEG_LOG(1, "Larb 7 Power Off (trigger id: %d)", id);
-		}
+	if (gJpegqDev.jpegLarb[1] && gJpegqDev.larb_idx_map[id] == 1) {
+		JPEG_LOG(1, "[%d] power off second larb", id);
+		if (gJpegqDev.is_ccf_one_step)
+			ret = mtk_smi_larb_disable(gJpegqDev.jpegLarb[1]);
+		else
+			ret = pm_runtime_put_sync(gJpegqDev.jpegLarb[1]);
+		if (ret)
+			JPEG_LOG(0, "[E][%d] second larb off failed %d", id, ret);
 	}
+
+	gJpegqDev.first_larb_ref_cnt--;
+	if (gJpegqDev.jpegLarb[0] && gJpegqDev.first_larb_ref_cnt == 0) {
+		jpeg_drv_hybrid_dec_end_dvfs();
+
+		JPEG_LOG(1, "[%d] power off first larb", id);
+		if (gJpegqDev.is_ccf_one_step)
+			ret = mtk_smi_larb_disable(gJpegqDev.jpegLarb[0]);
+		else
+			ret = pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
+		if (ret)
+			JPEG_LOG(0, "[%d] first larb off failed %d", id, ret);
+	}
+
+	JPEG_LOG(1, "[%d] JPEG Hybrid Decoder Power off", id);
 }
 
 static int jpeg_drv_hybrid_dec_lock(int *hwid)
@@ -666,14 +664,16 @@ static int jpeg_drv_hybrid_dec_suspend_prepare_notifier(
 	for (i = 0 ; i < HW_CORE_NUMBER; i++) {
 		JPEG_LOG(1, "jpeg dec sn wait core %d", i);
 		while (dec_hwlocked[i] && dec_hw_enable[i]) {
-			JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
-			usleep_range(10000, 20000);
-			wait_cnt++;
 			if (wait_cnt > 5) {
 				JPEG_LOG(0, "jpeg dec sn unlock core %d", i);
 				_jpeg_drv_hybrid_dec_unlock(i);
 				break;
 			}
+			mutex_unlock(&jpeg_hybrid_dec_lock);
+			JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
+			usleep_range(10000, 20000);
+			wait_cnt++;
+			mutex_lock(&jpeg_hybrid_dec_lock);
 		}
 	}
 	mutex_unlock(&jpeg_hybrid_dec_lock);
@@ -1182,9 +1182,16 @@ static int jpeg_probe(struct platform_device *pdev)
 	gJpegqDev.smmu_dev[node_index] = mtk_smmu_get_shared_device(&pdev->dev);
 
 	node = pdev->dev.of_node;
-
 	if (node_index == 0) {
-		for (i = 0; i < HW_CORE_NUMBER - 1; i++) {
+		ret = of_property_read_u32(pdev->dev.of_node,
+					   "core-num",
+					   &gJpegqDev.first_larb_core_num);
+		if (ret != 0)
+			gJpegqDev.first_larb_core_num = 2;
+
+		for (i = 0; i < gJpegqDev.first_larb_core_num; i++) {
+			gJpegqDev.larb_idx_map[i] = 0;
+
 			bufInfo[i].o_dbuf = NULL;
 			bufInfo[i].o_attach = NULL;
 			bufInfo[i].o_sgt = NULL;
@@ -1208,16 +1215,31 @@ static int jpeg_probe(struct platform_device *pdev)
 				"jpeg_dec_driver", NULL))
 				JPEG_LOG(0, "JPEG Hybrid DEC requestirq %d failed", i);
 			disable_irq(gJpegqDev.hybriddecIrqId[i]);
-		}
-		gJpegqDev.jpegClk.clk_venc_jpgDec =
-			of_clk_get_by_name(node, "MT_CG_VENC_JPGDEC");
-		if (IS_ERR(gJpegqDev.jpegClk.clk_venc_jpgDec))
-			JPEG_LOG(0, "get MT_CG_VENC_JPGDEC clk error!");
 
-		gJpegqDev.jpegClk.clk_venc_jpgDec_c1 =
-			of_clk_get_by_name(node, "MT_CG_VENC_JPGDEC_C1");
-		if (IS_ERR(gJpegqDev.jpegClk.clk_venc_jpgDec_c1))
-			JPEG_LOG(0, "get MT_CG_VENC_JPGDEC_C1 clk error!");
+			gJpegqDev.jpegClk[i] = of_clk_get_by_name(node, jpegdec_cg_name[i]);
+			if (IS_ERR(gJpegqDev.jpegClk[i]))
+				JPEG_LOG(0, "get %s clk error!", jpegdec_cg_name[i]);
+
+			ret = of_property_read_u32_index(pdev->dev.of_node,
+				"larb-port", i * 3,
+				&gJpegqDev.larb_port[i][JPEG_DEC_WDMA]);
+			ret |= of_property_read_u32_index(pdev->dev.of_node,
+				"larb-port", i * 3 + 1,
+				&gJpegqDev.larb_port[i][JPEG_DEC_BSDMA]);
+			ret |= of_property_read_u32_index(pdev->dev.of_node,
+				"larb-port", i * 3 + 2,
+				&gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
+			if (ret == 0) {
+				JPEG_LOG(0, "[%d] larb port %d, %d, %d", i,
+						gJpegqDev.larb_port[i][JPEG_DEC_WDMA],
+						gJpegqDev.larb_port[i][JPEG_DEC_BSDMA],
+						gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
+			}
+
+			jpeg_drv_prepare_bw_request(i);
+		}
+
+		jpeg_drv_hybrid_dec_prepare_dvfs();
 
 		ret = of_property_read_u32(pdev->dev.of_node,
 					   "jpeg-set-resource",
@@ -1231,26 +1253,12 @@ static int jpeg_probe(struct platform_device *pdev)
 			JPEG_LOG(0, "jpeg disable ven0 resource set, %d", ret);
 		}
 
-		ret = of_property_read_u32(pdev->dev.of_node,
-					   "jpeg-set-axdomain-base-idx",
-					   &larb_base_idx);
-		if (ret == 0)
-			gJpegqDev.smiLarbBaseVA[0] = (unsigned long)of_iomap(node, larb_base_idx);
-		else
-			gJpegqDev.smiLarbBaseVA[0] = 0;
-		JPEG_LOG(0, "larb base: 0x%lx", gJpegqDev.smiLarbBaseVA[0]);
-
-		ret = of_property_read_u32(pdev->dev.of_node,
-					   "jpeg-set-axdomain",
-					   &gJpegqDev.axdomain[0]);
-		if (ret == 0)
-			JPEG_LOG(0, "axdomain: 0x%x", gJpegqDev.axdomain[0]);
-
 		gJpegqDev.is_ccf_one_step = of_property_read_bool(pdev->dev.of_node,
 								  "ccf-one-step");
 		JPEG_LOG(0, "ccf-one-step: 0x%x", gJpegqDev.is_ccf_one_step);
 	} else {
-		i = HW_CORE_NUMBER - 1;
+		i = gJpegqDev.first_larb_core_num;
+		gJpegqDev.larb_idx_map[i] = 1;
 
 		bufInfo[i].o_dbuf = NULL;
 		bufInfo[i].o_attach = NULL;
@@ -1277,26 +1285,43 @@ static int jpeg_probe(struct platform_device *pdev)
 		    "jpeg_dec_driver", NULL))
 			JPEG_LOG(0, "JPEG Hybrid DEC requestirq %d failed", i);
 		disable_irq(gJpegqDev.hybriddecIrqId[i]);
-		gJpegqDev.jpegClk.clk_venc_jpgDec_c2 =
-		of_clk_get_by_name(node, "MT_CG_VENC_JPGDEC_C2");
-		if (IS_ERR(gJpegqDev.jpegClk.clk_venc_jpgDec_c2))
-			JPEG_LOG(0, "get MT_CG_VENC_JPGDEC_C2 clk error!");
+		gJpegqDev.jpegClk[i] = of_clk_get_by_name(node, jpegdec_cg_name[i]);
+		if (IS_ERR(gJpegqDev.jpegClk[i]))
+			JPEG_LOG(0, "get %s clk error!", jpegdec_cg_name[i]);
 
-		ret = of_property_read_u32(pdev->dev.of_node,
-					   "jpeg-set-axdomain-base-idx",
-					   &larb_base_idx);
-		if (ret == 0)
-			gJpegqDev.smiLarbBaseVA[1] = (unsigned long)of_iomap(node, larb_base_idx);
-		else
-			gJpegqDev.smiLarbBaseVA[1] = 0;
-		JPEG_LOG(0, "larb base: 0x%lx", gJpegqDev.smiLarbBaseVA[1]);
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+			"larb-port", 0,
+			&gJpegqDev.larb_port[i][JPEG_DEC_WDMA]);
+		ret |= of_property_read_u32_index(pdev->dev.of_node,
+			"larb-port", 1,
+			&gJpegqDev.larb_port[i][JPEG_DEC_BSDMA]);
+		ret |= of_property_read_u32_index(pdev->dev.of_node,
+			"larb-port", 2,
+			&gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
+		if (ret == 0) {
+			JPEG_LOG(0, "[%d] larb port %d, %d, %d", i,
+					gJpegqDev.larb_port[i][JPEG_DEC_WDMA],
+					gJpegqDev.larb_port[i][JPEG_DEC_BSDMA],
+					gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
+		}
 
-		ret = of_property_read_u32(pdev->dev.of_node,
-					   "jpeg-set-axdomain",
-					   &gJpegqDev.axdomain[1]);
-		if (ret == 0)
-			JPEG_LOG(0, "axdomain: 0x%x", gJpegqDev.axdomain[1]);
+		jpeg_drv_prepare_bw_request(i);
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+				   "jpeg-set-axdomain-base-idx",
+				   &larb_base_idx);
+	if (ret == 0)
+		gJpegqDev.smiLarbBaseVA[node_index] = (unsigned long)of_iomap(node, larb_base_idx);
+	else
+		gJpegqDev.smiLarbBaseVA[node_index] = 0;
+	JPEG_LOG(0, "larb base: 0x%lx", gJpegqDev.smiLarbBaseVA[node_index]);
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+				   "jpeg-set-axdomain",
+				   &gJpegqDev.axdomain[node_index]);
+	if (ret == 0)
+		JPEG_LOG(0, "axdomain: 0x%x", gJpegqDev.axdomain[node_index]);
 
 	larbnode = of_parse_phandle(node, "mediatek,larbs", 0);
 	if (!larbnode) {
@@ -1339,9 +1364,6 @@ static int jpeg_probe(struct platform_device *pdev)
 	if (gJpegqDev.is_ccf_one_step == false)
 		pm_runtime_enable(&pdev->dev);
 
-	jpeg_drv_hybrid_dec_prepare_dvfs(node_index);
-	jpeg_drv_prepare_bw_request(node_index);
-
 	if (atomic_read(&nodeCount) == 1) {
 		gJpegqDev.pm_suspend_prepare_notifier.notifier_call =
 			jpeg_drv_hybrid_dec_suspend_prepare_notifier;
@@ -1357,11 +1379,11 @@ static int jpeg_probe(struct platform_device *pdev)
 		gJpegqDev.is_shutdowning = 0;
 		memset(_jpeg_hybrid_dec_int_status, 0, HW_CORE_NUMBER);
 		proc_create("mtk_jpeg", 0x644, NULL, &jpeg_fops);
-
-		dec_hw_enable[0] = true;
-		dec_hw_enable[1] = true;
+		for (i = 0; i < gJpegqDev.first_larb_core_num; i++) {
+			dec_hw_enable[i] = true;
+		}
 	} else {
-		dec_hw_enable[2] = true;
+		dec_hw_enable[gJpegqDev.first_larb_core_num] = true;
 	}
 
 	JPEG_LOG(0, "JPEG Probe Done");
@@ -1402,14 +1424,16 @@ static void jpeg_shutdown(struct platform_device *pdev)
 	for (i = 0 ; i < HW_CORE_NUMBER; i++) {
 		if (dec_hw_enable[i]) {
 			while (dec_hwlocked[i]) {
-				JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
-				usleep_range(10000, 20000);
-				wait_cnt++;
 				if (wait_cnt > 5) {
 					JPEG_LOG(0, "jpeg dec sn unlock core %d", i);
 					_jpeg_drv_hybrid_dec_unlock(i);
 					break;
 				}
+				mutex_unlock(&jpeg_hybrid_dec_lock);
+				JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
+				usleep_range(10000, 20000);
+				wait_cnt++;
+				mutex_lock(&jpeg_hybrid_dec_lock);
 			}
 			dec_hw_enable[i] = false;
 			JPEG_LOG(0, "jpeg dec shutdown core %d", i);

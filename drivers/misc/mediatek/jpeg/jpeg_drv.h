@@ -27,12 +27,6 @@
 
 extern int jpg_dbg_level;
 
-struct JpegClk {
-	struct clk *clk_venc_jpgDec;
-	struct clk *clk_venc_jpgDec_c1;
-	struct clk *clk_venc_jpgDec_c2;
-};
-
 enum JPEG_DEC_STATE {
 	JPEG_DEC_OPEN,
 	JPEG_DEC_POWER_ON,
@@ -51,29 +45,40 @@ struct JpegPrivData {
 	int hw_id;
 };
 
+enum JPEG_DEC_LARB_PORT {
+	JPEG_DEC_WDMA,
+	JPEG_DEC_BSDMA,
+	JPEG_DEC_HUFF_OFFSET,
+	JPEG_DEC_LARB_PORT_MAX,
+};
+
 struct JpegDeviceStruct {
 	struct device *pDev[JPEG_LARB_COUNT];
 	struct device *smmu_dev[JPEG_LARB_COUNT];
 	long hybriddecRegBaseVA[HW_CORE_NUMBER];
 	uint32_t hybriddecIrqId[HW_CORE_NUMBER];
-	struct JpegClk jpegClk;
+	struct clk *jpegClk[HW_CORE_NUMBER];
+	bool is_ccf_one_step;
+	uint32_t larb_idx_map[HW_CORE_NUMBER];
+	uint32_t larb_port[HW_CORE_NUMBER][JPEG_DEC_LARB_PORT_MAX];
 	struct device *jpegLarb[JPEG_LARB_COUNT];
-	int jpeg_freq_cnt[JPEG_LARB_COUNT];
-	unsigned long jpeg_freqs[JPEG_LARB_COUNT][MAX_FREQ_STEP];
-	struct regulator *jpeg_reg[JPEG_LARB_COUNT];
-	struct clk *jpeg_dvfs[JPEG_LARB_COUNT];
+	uint32_t first_larb_core_num;
+	uint32_t first_larb_ref_cnt;
+	int jpeg_freq_cnt;
+	unsigned long jpeg_freqs[MAX_FREQ_STEP];
+	struct regulator *jpeg_reg;
+	struct clk *jpeg_dvfs;
+	uint32_t dvfs_opp_level;
 	struct notifier_block pm_suspend_prepare_notifier;
 	struct notifier_block pm_post_suspend_notifier;
 	bool is_suspending;
 	bool is_shutdowning;
-	bool is_ccf_one_step;
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_bsdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_huff_offset[HW_CORE_NUMBER];
 	long ven0BaseVA;
 	long smiLarbBaseVA[JPEG_LARB_COUNT];
 	uint32_t axdomain[JPEG_LARB_COUNT];
-	uint32_t dvfs_opp_level;
 };
 
 long jpeg_dev_get_hybrid_decoder_base_VA(int id);
