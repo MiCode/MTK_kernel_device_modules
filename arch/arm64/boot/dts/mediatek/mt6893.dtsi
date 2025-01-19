@@ -4078,7 +4078,7 @@ cpus {
 		smi_larb0: smi-larb0@14118000 {
 			compatible = "mediatek,smi_larb0", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&smi_common 0>;
 			reg = <0 0x14118000 0 0x1000>;
 			mediatek,larb-id = <0>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_DISP>;
@@ -4092,7 +4092,7 @@ cpus {
 		smi_larb1: smi-larb1@14119000 {
 			compatible = "mediatek,smi_larb1", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&smi_common 0>;
 			reg = <0 0x14119000 0 0x1000>;
 			mediatek,larb-id = <1>;
 			init-power-on;
@@ -5256,7 +5256,7 @@ cpus {
 		smi_larb7: smi-larb7@17010000 {
 			compatible = "mediatek,smi_larb7", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&smi_common 0>;
 			reg = <0 0x17010000 0 0x1000>;
 			mediatek,larb-id = <7>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_VENC>;
@@ -5344,7 +5344,7 @@ cpus {
 		smi_larb8: smi-larb8@17810000 {
 			compatible = "mediatek,smi_larb8", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&mdp_smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&mdp_smi_common 0>;
 			reg = <0 0x17810000 0 0x1000>;
 			mediatek,larb-id = <8>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_VENC_CORE1>;
@@ -7350,7 +7350,7 @@ cpus {
 		smi_larb2: smi-larb2@1f003000 {
 			compatible = "mediatek,smi_larb2", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&mdp_smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&mdp_smi_common 0>;
 			reg = <0 0x1f003000 0 0x1000>;
 			mediatek,larb-id = <2>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
@@ -7363,7 +7363,7 @@ cpus {
 		smi_larb3: smi-larb3@1f004000 {
 			compatible = "mediatek,smi_larb3", "mediatek,mt6893-smi-larb",
 					 "mediatek,smi-larb";
-			mediatek,smi-supply = <&mdp_smi_common 0 &sysram_smi_common 0>;
+			mediatek,smi-supply = <&mdp_smi_common 0>;
 			reg = <0 0x1f004000 0 0x1000>;
 			mediatek,larb-id = <3>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
