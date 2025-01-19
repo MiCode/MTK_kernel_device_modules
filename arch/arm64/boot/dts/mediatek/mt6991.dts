@@ -3322,11 +3322,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		interrupts = <245 IRQ_TYPE_EDGE_FALLING>;
 	};
 
-	google-trusty {
+	google_trusty: google-trusty {
 		compatible = "android,google-trusty-smc-v1";
 		ranges = <0x0>;
 		#address-cells = <0x2>;
 		#size-cells = <0x2>;
+		google,real-drv = <0>;
 
 		virtio {
 			compatible = "android,google-trusty-virtio-v1";
