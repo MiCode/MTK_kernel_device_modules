@@ -389,6 +389,7 @@ struct mtk_pcie_port {
 	bool soft_off;
 	bool dump_cfg;
 	bool full_debug_dump;
+	bool aer_detect;
 	bool skip_suspend;
 	bool rpm;
 	int eint_irq;
@@ -477,6 +478,13 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 			mtk_pcie_dump_link_info(port->port_num);
 			mtk_pcie_disable_data_trans(port->port_num);
 			dev_info(port->dev, "PCIe Rxerr detected!\n");
+		}
+
+		reg = readl_relaxed(port->base + PCIE_AER_UNC_STATUS);
+		if ((reg & PCI_ERR_UNC_COMP_TIME) && port->aer_detect) {
+			mtk_pcie_dump_link_info(port->port_num);
+			mtk_pcie_disable_data_trans(port->port_num);
+			dev_info(port->dev, "PCIe CPLTO detected!\n");
 		}
 	}
 
@@ -2831,6 +2839,10 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 	mtk_pcie_irq_restore(port);
 	mtk_pcie_save_restore_cfg(port, false);
 
+	/* The detection range is AER enable to soft on done */
+	if (port->port_num == 0)
+		port->aer_detect = false;
+
 	dev_info(port->dev, "mtk pcie soft on done\n");
 
 	return ret;
@@ -3051,11 +3063,13 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 
 	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
 
-	/* wifi request response data is all zero when completion timeout */
 	if (port->port_num == 0) {
+		/* wifi request response data is all zero when completion timeout */
 		val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
 		val |= SW_CPLTO_DATA_SEL;
 		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+		/* Detect Completion timeout before wifi on */
+		port->aer_detect = true;
 	}
 
 	/* bypass PMRC signal */
