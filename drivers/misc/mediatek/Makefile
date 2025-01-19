@@ -66,7 +66,6 @@ obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MOU) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_LAG) += cam_cal/
 obj-$(CONFIG_MTK_AEE_FEATURE) += aee/
-obj-$(CONFIG_MTK_SELINUX_AEE_WARNING) += selinux_warning/
 obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf/
 obj-$(CONFIG_MTK_SRCLKEN_RC) += srclken_rc/
 obj-$(CONFIG_MTK_HWCCF) += hwccf/
