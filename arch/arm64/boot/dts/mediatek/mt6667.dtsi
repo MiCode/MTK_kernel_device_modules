@@ -105,7 +105,7 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
-				regulator-always-on;
+				// regulator-always-on;
 			};
 			mt6667_13_buck4: mt6667-13-buck4 {
 				regulator-compatible = "BUCK4";
