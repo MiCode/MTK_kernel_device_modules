@@ -2341,6 +2341,7 @@ EXPORT_SYMBOL(get_dpt_v2_driver_init_status);
 
 int ***opp2cap_linear_table;
 int ***cap2freq_linear_table;
+int init_linear_table_done, init_dpt_v2_data_done;
 void alloc_dpt_v2_linear_table(void)
 {
 	int quant, gear_idx, nr_opp, cpu, nr_gears = get_nr_gears();
@@ -2371,6 +2372,8 @@ void alloc_dpt_v2_linear_table(void)
 	/* if (!cap2freq_linear_table)
 		pr_info("init cap2freq_linear_table failed\n"); */
 
+	init_linear_table_done = 1;
+
 	pr_info("alloc_dpt_v2_linear_table done\n");
 }
 
@@ -2379,29 +2382,34 @@ void init_dpt_v2_driver(void)
 	int dpt_v2_default_status, cpu;
 	dpt_rq_t *dpt_rq;
 
-    dpt_v2_default_status = sched_dpt_v2_enable_get();
+	if (!init_dpt_v2_data_done) {
+		dpt_v2_default_status = sched_dpt_v2_enable_get();
 
-    change_dpt_v2_support_hook(dpt_v2_default_status);
-    set_dpt_v2_default_status_hook(dpt_v2_default_status);
+		change_dpt_v2_support_hook(dpt_v2_default_status);
+		set_dpt_v2_default_status_hook(dpt_v2_default_status);
 
-    scaling_factor_shift_bit = get_scaling_factor_shift_bit_hook();
-    /* pr_info("dpt v2 driver receive shift bit=%d\n", scaling_factor_shift_bit); */
+		scaling_factor_shift_bit = get_scaling_factor_shift_bit_hook();
 
-    get_coef1_min_max_ltime_hook(&coef1_min_ltime, &coef1_max_ltime);
-    get_coef2_min_max_ltime_hook(&coef2_min_ltime, &coef2_max_ltime);
-	/* pr_info("dpt v2 driver receive coef1 min/max=%d/%d coef2 min/max=%d/%d\n", coef1_min_ltime, coef1_max_ltime, coef2_min_ltime, coef2_max_ltime); */
-	/* Latency info */
-	for_each_possible_cpu(cpu) {
-		dpt_rq = &per_cpu(__dpt_rq, cpu);
+		get_coef1_min_max_ltime_hook(&coef1_min_ltime, &coef1_max_ltime);
+		get_coef2_min_max_ltime_hook(&coef2_min_ltime, &coef2_max_ltime);
+		/* Latency info */
+		for_each_possible_cpu(cpu) {
+			dpt_rq = &per_cpu(__dpt_rq, cpu);
 
-		dpt_rq->min_ltime[S_COEF1] = coef1_min_ltime;
-		dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
+			dpt_rq->min_ltime[S_COEF1] = coef1_min_ltime;
+			dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
+		}
+
+		init_dpt_v2_data_done = 1;
+		pr_info("init dpt_v2_data_done\n");
 	}
 
-	set_dpt_v2_linear_table_hook(opp2cap_linear_table, cap2freq_linear_table);
-	/* pr_info("set_dpt_v2_linear_table_hook done\n"); */
+	if (init_linear_table_done) {
+		pr_info("set dpt_v2_linear_table\n");
+		set_dpt_v2_linear_table_hook(opp2cap_linear_table, cap2freq_linear_table);
+		init_dpt_v2_driver_done = 1;
+	}
 
-    init_dpt_v2_driver_done = 1;
 }
 
 static DEFINE_SPINLOCK(init_driver_affter_vendor_init_lock);
@@ -2422,7 +2430,7 @@ void init_driver_after_vendor_init(void)
 			last_jiffies_init_driver =  tmp_jiffies;
 			spin_unlock(&init_driver_affter_vendor_init_lock);
 
-			if (!get_dpt_v2_driver_init_status() && dpt_v2_init_done_hook)
+			if (!init_dpt_v2_driver_done && dpt_v2_init_done_hook)
 				init_dpt_v2_driver();
 
 			if (!init_uclamp_involve_done)
@@ -2430,7 +2438,8 @@ void init_driver_after_vendor_init(void)
 
 			if (init_dpt_v2_driver_done && init_uclamp_involve_done)
 				init_driver_after_vendor_init_done = 1;
-		}
+		} else
+			spin_unlock(&init_driver_affter_vendor_init_lock);
 	}
 }
 EXPORT_SYMBOL(init_driver_after_vendor_init);
@@ -2737,8 +2746,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_adaptive_margin();
 
 	register_fpsgo_sugov_hooks();
-
-	init_uclamp_involve();
 
 	return ret;
 }
