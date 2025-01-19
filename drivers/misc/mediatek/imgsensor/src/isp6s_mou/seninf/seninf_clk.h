@@ -17,6 +17,7 @@
 #include "kd_imgsensor_define.h"
 #include "kd_seninf_define.h"
 
+#include "seninf_cfg.h"
 #include "seninf_common.h"
 
 #if IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
@@ -60,7 +61,6 @@ enum SENINF_CLK_IDX_SYS {
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF,
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF1,
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF2,
-	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF3,
 	SENINF_CLK_IDX_SYS_MAX_NUM
 };
 #else
@@ -70,7 +70,6 @@ enum SENINF_CLK_IDX_SYS {
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF,
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF1,
 	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF2,
-	SENINF_CLK_IDX_SYS_TOP_MUX_SENINF3,
 	SENINF_CLK_IDX_SYS_MAX_NUM
 };
 #endif
@@ -158,7 +157,7 @@ static struct SENINF_CLK_CTRL gseninf_clk_name[SENINF_CLK_IDX_MAX_NUM] = {
 	{"TOP_MUX_SENINF"},
 	{"TOP_MUX_SENINF1"},
 	{"TOP_MUX_SENINF2"},
-	{"TOP_MUX_SENINF3"},
+
 	{"TOP_MUX_CAMTG"},
 	{"TOP_MUX_CAMTG2"},
 	{"TOP_MUX_CAMTG3"},
@@ -190,6 +189,8 @@ gseninf_clk_freq[SENINF_CLK_IDX_FREQ_IDX_NUM] = {
 	SENINF_CLK_SYS_TOP_MUX_SENINF_FREQ_499MHZ, //seninf_clk 499.2
 };
 
+
+
 struct SENINF_CLK {
 	struct platform_device *pplatform_device;
 	struct clk *clk_sel[SENINF_CLK_IDX_MAX_NUM];
@@ -214,6 +215,6 @@ extern unsigned int mt_get_ckgen_freq(int ID);
 extern unsigned long clk_get_rate(struct clk *clk);
 extern bool __clk_is_enabled(struct clk *clk);
 extern unsigned int __clk_get_enable_count(struct clk *clk);
-#endif
 
+#endif
 

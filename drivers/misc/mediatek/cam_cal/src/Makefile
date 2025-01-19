@@ -33,3 +33,7 @@ endif
 ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP6S_MON), m y))
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += isp6s_mon/
 endif
+
+ifneq (,$(filter $(CONFIG_MTK_CAM_CAL_ISP6S_MOU), m y))
+obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MOU) += isp6s_mou/
+endif
