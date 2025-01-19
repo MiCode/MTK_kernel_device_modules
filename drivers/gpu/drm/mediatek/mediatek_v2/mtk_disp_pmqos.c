@@ -537,7 +537,7 @@ static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int channel_sum = 0;
 	char dbg_msg[512] = {0};
-	int written = 0;
+	int written = 0, idx = 0;
 
 	if (mtk_disp_get_logger_enable())
 		written = scnprintf(dbg_msg, 512, "%s = ", __func__);
@@ -545,7 +545,36 @@ static void mtk_disp_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 	for (i = 0; i < BW_CHANNEL_NR; i++) {
 		for (j = 0; j < MAX_CRTC; j++)
 			channel_sum += priv->srt_channel_bw_sum[j][i];
-		mtk_vidle_channel_bw_set(channel_sum, (i * 4)); //0, 4, 8, 12
+
+		idx = priv->data->get_channel_idx(CHANNEL_SRT_READ, i);
+		mtk_vidle_channel_bw_set(channel_sum, idx); //0, 4, 8, 12
+
+		if (mtk_disp_get_logger_enable())
+			written += scnprintf(dbg_msg + written, 512 - written, "[%d]", channel_sum);
+
+		channel_sum = 0;
+	}
+	DDPINFO("%s\n", dbg_msg);
+}
+
+static void mtk_disp_channel_srt_write_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i,j;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int channel_sum = 0;
+	char dbg_msg[512] = {0};
+	int written = 0, idx = 0;
+
+	if (mtk_disp_get_logger_enable())
+		written = scnprintf(dbg_msg, 512, "%s = ", __func__);
+
+	for (i = 0; i < BW_CHANNEL_NR; i++) {
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->srt_channel_write_bw_sum[j][i];
+
+		idx = priv->data->get_channel_idx(CHANNEL_SRT_WRITE, i);
+		mtk_vidle_channel_bw_set(channel_sum, idx); //1, 5, 9, 13
 
 		if (mtk_disp_get_logger_enable())
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]", channel_sum);
@@ -564,6 +593,17 @@ static void mtk_disp_clear_channel_srt_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
 
 	for (i = 0; i < BW_CHANNEL_NR; i++)
 		priv->srt_channel_bw_sum[crtc_idx][i] = 0;
+}
+
+static void mtk_disp_clear_channel_srt_write_bw_MT6991(struct mtk_drm_crtc *mtk_crtc)
+{
+	int i;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+
+	for (i = 0; i < BW_CHANNEL_NR; i++)
+		priv->srt_channel_write_bw_sum[crtc_idx][i] = 0;
 }
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
@@ -768,8 +808,10 @@ void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_disp_channel_srt_bw_MT6991(mtk_crtc);
+		mtk_disp_channel_srt_write_bw_MT6991(mtk_crtc);
+	}
 
 }
 
@@ -778,8 +820,10 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_disp_clear_channel_srt_bw_MT6991(mtk_crtc);
+		mtk_disp_clear_channel_srt_write_bw_MT6991(mtk_crtc);
+	}
 }
 
 void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)

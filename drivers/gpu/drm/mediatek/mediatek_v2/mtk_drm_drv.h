@@ -304,6 +304,7 @@ struct mtk_drm_private {
 	unsigned int seg_id;
 
 	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int srt_channel_write_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int total_srt[MAX_CRTC];
 	unsigned int no_hwc_layers;
 	unsigned int no_hwc_overlap;

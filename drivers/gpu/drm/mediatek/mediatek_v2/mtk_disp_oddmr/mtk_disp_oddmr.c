@@ -5629,7 +5629,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 			mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
 			if (channel_id < 4)
-				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+				priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
 
 			mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
 			if (channel_id < 4)
@@ -5660,7 +5660,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
 				if (channel_id < 4)
-					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+					priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
 			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
