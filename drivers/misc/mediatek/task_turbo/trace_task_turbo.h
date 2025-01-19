@@ -348,9 +348,9 @@ TRACE_EVENT(turbo_vip,
 	TP_fast_assign(
 		__entry->avg_cpu_loading = avg_cpu_loading;
 		__entry->cpu_loading_thres = cpu_loading_thres;
-		__assign_str(vip_desc, vip_desc);
+		__assign_str(vip_desc);
 		__entry->pid = pid;
-		__assign_str(caller, caller);
+		__assign_str(caller);
 		__entry->enf_val = enf_val;
 		__entry->enf_mask = enf_mask;
 	),
