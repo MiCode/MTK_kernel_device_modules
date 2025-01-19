@@ -65,7 +65,6 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 	char name[8];
 	int i, ret;
 	uint32_t volts[ENGINE_MAX_GEARS];
-	uint32_t dts_gear = ENGINE_GEAR_DTS_BASE, default_gear;
 
 	/***********************/
 	/* Set up clock source */
@@ -103,19 +102,6 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 		gear_ctrl->volt[i] = volts[i];
 	}
 
-	/* Query default gear */
-	if (of_property_read_u32(dev->of_node, "default-gear", &dts_gear)) {
-		pr_info("%s: failed to get default gear.\n", __func__);
-		return -ENOENT;
-	}
-	default_gear = dts_gear - ENGINE_GEAR_DTS_BASE;
-	if ( default_gear >= ENGINE_MAX_GEARS) {
-		pr_info("%s: invalid default gear:%u.\n", __func__, default_gear);
-		return -EINVAL;
-	}
-
-	pr_info("%s: Using default gear:%u.\n", __func__, default_gear);
-
 	/* Prepare a clock source */
 	ret = clk_prepare(gear_ctrl->clk_mux);
 	if (ret) {
@@ -123,10 +109,10 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 		return ret;
 	}
 
-	/* Set up to default gear */
-	ret = engine_setup_gear(gear_ctrl, default_gear, true);
+	/* Set up to min gear */
+	ret = engine_setup_gear(gear_ctrl, ENGINE_MIN_GEAR, false);
 	if (ret) {
-		pr_info("%s: failed to set default gear.\n", __func__);
+		pr_info("%s: failed to set min gear.\n", __func__);
 		return ret;
 	}
 
@@ -134,7 +120,7 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 	gear_ctrl->clk_usage = 0;
 	gear_ctrl->enc_wish_gear = ENGINE_MIN_GEAR;
 	gear_ctrl->dec_wish_gear = ENGINE_MIN_GEAR;
-	gear_ctrl->curr_gear = default_gear;
+	gear_ctrl->curr_gear = ENGINE_MIN_GEAR;
 	gear_ctrl->engine_gear_in_change = false;
 	gear_ctrl->engine_gear_fixed = false;
 	gear_ctrl->power_on = false;

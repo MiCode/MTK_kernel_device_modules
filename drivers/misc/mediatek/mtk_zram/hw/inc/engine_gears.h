@@ -49,7 +49,7 @@ struct engine_gear_control_t {
 } ____cacheline_internodealigned_in_smp;
 
 /* Static key control for power efficiency mode */
-DECLARE_STATIC_KEY_FALSE(engine_power_efficiency);
+DECLARE_STATIC_KEY_TRUE(engine_power_efficiency);
 static inline bool engine_power_efficiency_enabled(void)
 {
 	return static_branch_unlikely(&engine_power_efficiency);

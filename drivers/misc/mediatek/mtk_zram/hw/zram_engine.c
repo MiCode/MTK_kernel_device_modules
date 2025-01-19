@@ -158,7 +158,7 @@ DEFINE_STATIC_KEY_FALSE(engine_sync_mode);
  * Power efficiency -
  * This may bring some overhead when sending initial requests.
  */
-DEFINE_STATIC_KEY_FALSE(engine_power_efficiency);
+DEFINE_STATIC_KEY_TRUE(engine_power_efficiency);
 
 /**************************************************/
 
