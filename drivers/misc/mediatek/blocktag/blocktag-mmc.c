@@ -426,29 +426,9 @@ int mmc_mtk_biolog_init(struct mmc_host *mmc)
 {
 	struct mtk_blocktag *btag;
 	struct mmc_mtk_bio_context *ctx;
-	struct device_node *np;
-	struct device_node *boot_node = NULL;
-	struct tag_bootmode {
-		u32 size;
-		u32 tag;
-		u32 bootmode;
-		u32 boottype;
-	} *tag = NULL;
 
 	if (!mmc)
 		return -EINVAL;
-
-	np = mmc->class_dev.of_node;
-	boot_node = of_parse_phandle(np, "bootmode", 0);
-
-	if (boot_node) {
-		tag = (struct tag_bootmode *)of_get_property(boot_node,
-							"atag,boot", NULL);
-		if (tag) {
-			if (tag->boottype == 1)
-				mmc_mtk_btag_vops.boot_device = true;
-		}
-	}
 
 	btag = mtk_btag_alloc("mmc",
 				BTAG_STORAGE_MMC,

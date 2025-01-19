@@ -790,8 +790,6 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 	list_add_rcu(&btag->list, &mtk_btag_list);
 	spin_unlock_irqrestore(&list_lock, flags);
 
-	if (btag->vops->earaio_enabled)
-		mtk_btag_earaio_register(btag);
 out:
 
 	return btag;

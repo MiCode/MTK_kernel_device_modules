@@ -542,12 +542,6 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 	if (!host)
 		return ERR_PTR(-EINVAL);
 
-	if (host->qos_allowed)
-		btag_ufs_vops.earaio_enabled = true;
-
-	if (host->boot_device)
-		btag_ufs_vops.boot_device = true;
-
 	if (tag_per_queue > BTAG_UFS_MAX_TAG_PER_QUEUE ||
 	    nr_queue > BTAG_UFS_MAX_QUEUE ||
 	    nr_tag > BTAG_UFS_MAX_TAG || nr_tag > BTAG_MAX_TAG)
@@ -571,6 +565,8 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 	btag->wq = alloc_workqueue("ufs_mtk_btag",
 					  WQ_FREEZABLE | WQ_UNBOUND, 1);
 	INIT_WORK(&btag->worker, btag_ufs_work);
+
+	mtk_btag_earaio_register(btag);
 
 	return btag;
 }

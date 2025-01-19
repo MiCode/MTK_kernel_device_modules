@@ -258,8 +258,6 @@ struct mtk_btag_vops {
 		unsigned long *size, struct seq_file *seq);
 	ssize_t  (*sub_write)(struct mtk_blocktag *btag,
 		const char __user *ubuf, size_t count);
-	bool    boot_device;
-	bool    earaio_enabled;
 };
 
 struct mtk_blocktag *mtk_btag_find_by_type(
