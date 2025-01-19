@@ -250,6 +250,12 @@ static void lcm_panel_init(struct lcm *ctx)
 {
 	pr_info("%s+\n", __func__);
 
+	lcm_dcs_write_seq_static(ctx, 0xe0, 0x00);
+	lcm_dcs_write_seq_static(ctx, 0xe1, 0x93);
+	lcm_dcs_write_seq_static(ctx, 0xe2, 0x65);
+	lcm_dcs_write_seq_static(ctx, 0xe3, 0xf8);
+	lcm_dcs_write_seq_static(ctx, 0x80, 0x02);
+
 	lcm_dcs_write_seq_static(ctx, 0x11);
 	lcm_dcs_write_seq_static(ctx, 0x29);
 	msleep(120);
