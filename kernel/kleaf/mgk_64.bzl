@@ -347,6 +347,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/smi:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -469,6 +470,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/smi:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -830,6 +832,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:uload_ind".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_ipi".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1082,7 +1085,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/sda/last_bus.ko",
     "drivers/misc/mediatek/sda/systracker.ko",
     "drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
-    "drivers/misc/mediatek/smi/mtk-smi-dbg.ko",
     "drivers/misc/mediatek/ssc/debug/v1/mtk-ssc-dbg-v1.ko",
     "drivers/misc/mediatek/ssc/debug/v2/mtk-ssc-dbg-v2.ko",
     "drivers/misc/mediatek/ssc/mtk-ssc.ko",
