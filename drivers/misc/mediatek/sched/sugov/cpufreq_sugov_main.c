@@ -1444,6 +1444,11 @@ static int __init parse_dt_topology_arm(void)
 
 #endif
 
+static void sched_build_perf_domains(void *unused, bool *eas_check)
+{
+	*eas_check = true;
+}
+
 static int __init cpufreq_mtk_init(void)
 {
 	int ret = 0;
@@ -1502,6 +1507,9 @@ static int __init cpufreq_mtk_init(void)
 	else
 		topology_clear_scale_freq_source(SCALE_FREQ_SOURCE_ARCH, cpu_possible_mask);
 #endif
+	ret = register_trace_android_rvh_build_perf_domains(sched_build_perf_domains, NULL);
+	if (ret)
+		pr_info("register sched_build_perf_domains hooks failed, returned %d\n", ret);
 
 	return cpufreq_register_governor(&mtk_gov);
 }
