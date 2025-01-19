@@ -116,8 +116,6 @@ static uint32_t ostdbl_lut_size;
 comm_axi_mon_mapping *aximon_comm_map;
 static struct mtk_mm_axi_mon *g_mtk_axi_mon;
 
-int mmmc_log;
-EXPORT_SYMBOL(mmmc_log);
 module_param(mmmc_log, int, 0644);
 
 int mmmc_smi_mon_interval = 1;
@@ -175,6 +173,7 @@ mux_axi_mon_pair *get_mux_axi_pair_by_comm_port(uint32_t comm_id, uint32_t port_
 		MM_MONITOR_ERR("aximon_comm_map is null");
 		return NULL;
 	}
+	MM_MONITOR_INFO("comm_id:%d, port_id:%d", comm_id, port_id);
 	for (i = 0; i < g_mtk_axi_mon->aximon_comm_map_size; i++) {
 		if (aximon_comm_map[i].input.comm_id == comm_id &&
 			aximon_comm_map[i].input.port_id == port_id)
@@ -199,6 +198,7 @@ mux_axi_mon_pair *get_mux_axi_pair_by_larb(uint32_t larb_id)
 		MM_MONITOR_ERR("aximon_larb_map is null");
 		return NULL;
 	}
+	MM_MONITOR_INFO("larb:%d", larb_id);
 	for (i = 0; i < g_mtk_axi_mon->aximon_larb_map_size; i++) {
 		if (aximon_larb_map[i].larb_id == larb_id)
 			return &aximon_larb_map[i].output;
@@ -210,17 +210,20 @@ EXPORT_SYMBOL(get_mux_axi_pair_by_larb);
 
 u32 get_min_freq_from_axi_mon(uint32_t mux_id)
 {
-	u32 min_freq, local_bus_freq = 0;
+	u32 mminfra_freq = 0, local_bus_freq = 0, min_freq = 0;
 
-	min_freq = get_freq_from_mux_id(MMINFRA_MUX_ID);
+	mminfra_freq = get_freq_from_mux_id(MMINFRA_MUX_ID);
 	if (MMINFRA_MUX_ID != mux_id) {
 		local_bus_freq = get_freq_from_mux_id(mux_id);
-		if (local_bus_freq < min_freq)
+		if (local_bus_freq == 0)
+			min_freq = mminfra_freq;
+		else if (local_bus_freq <= mminfra_freq)
 			min_freq = local_bus_freq;
 	}
-	MM_MONITOR_INFO("min_freq:%d, local_bus_freq:%d", min_freq, local_bus_freq);
+	MM_MONITOR_INFO("mminfra_freq:%d, local_bus_freq:%d, min_freq:%d",
+		mminfra_freq, local_bus_freq, min_freq);
 	if (min_freq == 0)
-		MM_MONITOR_ERR("get min_freq from axi_mon failed!");
+		MM_MONITOR_ERR("get min_freq=0 from axi_mon failed!");
 
 	return min_freq;
 }
@@ -367,6 +370,7 @@ void set_ostdbl_to_aximon(uint32_t axi_mon_id, uint32_t r_ostdbl, uint32_t w_ost
 	value = ((w_ostdbl << g_mtk_axi_mon->ostdbl_w_shift) | r_ostdbl);
 	write_axi_register(axi_mon_id, MON_BWLMTE3, value);
 	write_axi_register(axi_mon_id, MON_BWLMTE3_WA, value);
+	MM_MONITOR_INFO("bwr id:%d, reg:%#x, value:%#x", axi_mon_id, MON_BWLMTE3, value);
 	return;
 }
 
@@ -473,6 +477,8 @@ void set_bwl_to_aximon(uint32_t axi_mon_id, uint32_t r_total_budget, uint32_t r_
 		w_threshold = g_mtk_axi_mon->max_bwl_up_bnd;
 	}
 
+	MM_MONITOR_INFO("r_budget:%d, r_shf:%d, w_budget:%d, w_shf:%d",
+		r_budget, r_shf, w_budget, w_shf);
 	// [31:16] = up_bnd, [9:3] = budget, [2:0] = shf
 	value = ((r_threshold & g_mtk_axi_mon->max_bwl_up_bnd) << g_mtk_axi_mon->bwl_up_bnd_shift)
 			| ((r_budget & g_mtk_axi_mon->max_bwl_budget) << g_mtk_axi_mon->bwl_budget_shift) | (r_shf & g_mtk_axi_mon->max_bwl_budget_shf);
@@ -485,9 +491,11 @@ void set_bwl_to_aximon(uint32_t axi_mon_id, uint32_t r_total_budget, uint32_t r_
 			| ((w_budget & g_mtk_axi_mon->max_bwl_budget) << g_mtk_axi_mon->bwl_budget_shift) | (w_shf & g_mtk_axi_mon->max_bwl_budget_shf);
 	write_axi_register(axi_mon_id, MON_BWLMTE2, value);
 	write_axi_register(axi_mon_id, MON_BWLMTE2_WA, value);
+	MM_MONITOR_INFO("W(%#x):%#x, value:%#x",
+		MON_BWLMTE2_WA, read_axi_register(axi_mon_id, MON_BWLMTE2_WA), value);
 }
 
-void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
+void mtk_mmmc_enable_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 {
 	u32 config = 0;
 
@@ -496,8 +504,10 @@ void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 	if (axi_mon_state & 1 << AXI_MON_BWL)
 		config |= 0x803;
 	write_axi_register_with_mask(hwid, MON_BMAN2, config, config);
+	MM_MONITOR_INFO("(%#x):%#x, value:%#x",
+		MON_BMAN2, read_axi_register(hwid, MON_BMAN2), config);
 }
-EXPORT_SYMBOL(mtk_mmmc_eanble_axi_limiter);
+EXPORT_SYMBOL(mtk_mmmc_enable_axi_limiter);
 
 void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32_t min_freq)
 {
@@ -506,8 +516,8 @@ void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32
 
 	line_bw = min_freq * BUS_WIDTH;
 
-	r_bwl = (r_bw < line_bw) ? r_bw : line_bw;
-	w_bwl = (w_bw < line_bw) ? w_bw : line_bw;
+	r_bwl = (line_bw == 0 || r_bw < line_bw) ? r_bw : line_bw;
+	w_bwl = (line_bw == 0 || w_bw < line_bw) ? w_bw : line_bw;
 
 	r_budget = r_bwl / g_mtk_axi_mon->bwl_budget_size;
 	w_budget = w_bwl / g_mtk_axi_mon->bwl_budget_size;
@@ -519,8 +529,9 @@ void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32
 	r_threshold = (r_threshold == 0) ? 1 : r_threshold;
 	w_threshold = (w_threshold == 0) ? 1 : w_threshold;
 
-	MM_MONITOR_INFO("hwid:%d, r_budget:%d, r_threshold:%d, w_budget:%d, w_threshold:%d",
-		hwid, r_budget, r_threshold, w_budget, w_threshold);
+	MM_MONITOR_INFO("hwid:%d, r_bw:%d, w_bw:%d, r_bwl:%d, w_bwl:%d, "
+		"r_budget:%d, r_threshold:%d, w_budget:%d, w_threshold:%d",
+		hwid, r_bw, w_bw, r_bwl, w_bwl, r_budget, r_threshold, w_budget, w_threshold);
 	set_bwl_to_aximon(hwid, r_budget, r_threshold, w_budget, w_threshold);
 }
 EXPORT_SYMBOL(mtk_mmmc_set_bw_limiter);

@@ -56,7 +56,7 @@ enum MUX_ID {
 	MUX_NUM
 };
 
-struct mux {
+struct mmmc_mux {
 	const uint32_t pa;
 	const uint8_t shift;
 	const uint8_t bit[MAX_LEVEL];
@@ -221,7 +221,7 @@ struct mtk_mm_fake_engine {
 	pr_notice("[mm_monitor] %s: "fmt"\n", __func__, ##args)
 #define MM_MONITOR_ERR(fmt, args...) \
 	pr_notice("[mm_monitor][err] %s: "fmt"\n", __func__, ##args)
-extern int mmmc_log;
+static int mmmc_log;
 #define MM_MONITOR_INFO(fmt, args...) \
 do { \
 	if (unlikely(mmmc_log)) \
@@ -249,7 +249,7 @@ void mtk_mmmc_set_ostdbl_by_larb(uint32_t hwid, uint32_t r_bw, uint32_t v2_avg_w
 						uint32_t v2_peak_r_bw, uint32_t v2_peak_w_bw, uint32_t min_freq);
 void mtk_mmmc_set_ostdbl(uint32_t hwid, uint32_t min_freq);
 void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32_t min_freq);
-void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state);
+void mtk_mmmc_enable_axi_limiter(uint32_t hwid, uint32_t axi_mon_state);
 
 u32 get_ostdbl_smmu_factor(void);
 u32 get_axi_mon_threshold_us(void);
@@ -311,7 +311,7 @@ static inline void mtk_mmmc_set_ostdbl(uint32_t hwid, uint32_t min_freq)
 static inline void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32_t min_freq)
 {
 }
-static inline void mtk_mmmc_eanble_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
+static inline void mtk_mmmc_enable_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 {
 }
 static inline u32 get_ostdbl_smmu_factor(void)
