@@ -1,0 +1,37 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdebug-vcp-stub",
+    srcs = [
+        "mtk-mmdebug-vcp-stub.c",
+    ],
+    hdrs = [
+        "mtk-mmdebug-vcp.h",
+    ],
+    includes = [
+        ".",
+    ],
+)

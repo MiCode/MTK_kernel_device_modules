@@ -17,5 +17,5 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdebug/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
-obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-ftrace.o mtk-mmdvfs-debug.o mtk-mmdvfs-debug-v3.o mtk-mmdvfs-debug-v5.o mtk-mmdvfs-v3-start.o mtk-mmdvfs-ccu.o
+obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-debug-v3.o mtk-mmdvfs-debug-v5.o mtk-mmdvfs-v3-start.o mtk-mmdvfs-ccu.o
 

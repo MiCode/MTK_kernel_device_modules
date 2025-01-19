@@ -1,0 +1,44 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-debug",
+    srcs = [
+        "mtk-mmdvfs-debug.c",
+    ],
+    hdrs = [
+        "mtk-mmdvfs-debug.h",
+    ],
+    includes = [
+        ".",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-ftrace",
+    srcs = [
+        "mtk-mmdvfs-ftrace.h",
+        "mtk-mmdvfs-ftrace.c",
+    ],
+    hdrs = [
+        "mmdvfs_events.h",
+    ],
+    includes = [
+        ".",
+    ],
+)
