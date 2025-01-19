@@ -5626,8 +5626,7 @@
 			clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 			clock-names = "mm";
 			interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
-					<&dvfsrc MT6873_MASTER_HRT_MMSYS
-					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 			interconnect-names = "icc-bw", "icc-hrt-bw";
 		};
 		consys: consys@18002000 {
@@ -6098,8 +6097,8 @@
 			compatible = "mediatek,mmdvfs-debug";
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			disp-dev = <&dispsys_config>;
-			force-step0 = <1>;
-			release-step0 = <1>;
+			force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
+			release-step0 = <1>;	/* 0:disable,  1:enable */
 			debug-version = <0>;
 		};
 		mmdvfs {
