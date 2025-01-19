@@ -123,26 +123,16 @@ static void m2m_param_remove(struct mml_m2m_ctx *ctx)
 static void m2m_task_submit_done(struct mml_task *task)
 {
 	struct mml_m2m_ctx *mctx = container_of(task->ctx, struct mml_m2m_ctx, ctx);
-	struct vb2_v4l2_buffer *src_buf, *dst_buf;
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
+	u32 jobid = task->job.jobid;
 
 	/* note that m2m task is not queued to worker so we do not need to get mctx here */
 	mml_trace_ex_begin("%s", __func__);
 	m2m_param_remove(mctx);
-
-	src_buf = task->src_buf;
-	dst_buf = task->dst_buf;
-	if (!src_buf || !dst_buf) {
-		mml_err("[m2m]%s no src or dst buffer found", __func__);
-		goto done;
-	}
-	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
-	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
-	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
-done:
 	task_submit_done(task);
 	mml_trace_ex_end();
+	mml_mmp(m2m_submit_done, MMPROFILE_FLAG_PULSE, jobid, 0);
 }
 
 static void mml_m2m_process_done(struct mml_task *task, enum vb2_buffer_state vb_state)
@@ -151,6 +141,7 @@ static void mml_m2m_process_done(struct mml_task *task, enum vb2_buffer_state vb
 	v4l2_m2m_buf_done(task->dst_buf, vb_state);
 	task->src_buf = NULL;
 	task->dst_buf = NULL;
+	mml_mmp(m2m_process_done, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
 }
 
 static void m2m_task_frame_done(struct mml_task *task)
@@ -1833,6 +1824,9 @@ static void mml_m2m_device_run(void *priv)
 		result = -EFAULT;
 		goto err_buf_exit;
 	}
+	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
+	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
+	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 
 	result = m2m_set_submit(mctx, submit);
 	if (result < 0)
@@ -1923,7 +1917,6 @@ static void mml_m2m_device_run(void *priv)
 	task->ctx = ctx;
 	task->src_buf = src_buf;
 	task->dst_buf = dst_buf;
-
 	task->adaptor_type = MML_ADAPTOR_M2M;
 	/* update endTime here */
 	task->end_time = ns_to_timespec64(src_buf->vb2_buf.timestamp);
