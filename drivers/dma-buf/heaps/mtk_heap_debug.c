@@ -269,6 +269,460 @@ struct heap_status_s debug_heap_list[] = {
 };
 #define _DEBUG_HEAP_CNT_  (ARRAY_SIZE(debug_heap_list))
 
+#if IS_ENABLED(CONFIG_ARM64)
+#define EGL_MTRACK_BY_KPROBE
+#endif
+static inline int mtk_is_dma_buf_file(struct file *file);
+
+#ifdef EGL_MTRACK_BY_KPROBE
+struct kprobe_pid_info {
+	int pid;
+	u64 pss;
+	u64 rss;
+	struct rb_node node;
+	struct rb_root ino_root;
+};
+
+struct kprobe_pid_ino {
+	u64 ino;
+	u64 size;
+	int fd_count;
+	struct rb_node node;
+	struct kprobe_pid_info *pid_info;
+};
+
+static struct rb_root kprobe_pid_ino_root;
+static spinlock_t kprobe_pid_ino_lock;
+static int register_kprobe_status;
+
+static struct kprobe_pid_info *kp_pid_info_find(int pid, int add)
+{
+	struct rb_root *root = &kprobe_pid_ino_root;
+	struct kprobe_pid_info *pid_info;
+	struct rb_node **ppn, *rb;
+
+	ppn = &root->rb_node;
+	while (*ppn) {
+		rb = *ppn;
+		pid_info = rb_entry(rb, struct kprobe_pid_info, node);
+
+		if (pid > pid_info->pid)
+			ppn = &rb->rb_right;
+		else if (pid < pid_info->pid)
+			ppn = &rb->rb_left;
+		else
+			return pid_info;
+	}
+
+	if (!add)
+		return NULL;
+
+	pid_info = kzalloc(sizeof(*pid_info), DMA_HEAP_DUMP_ALLOC_GFP);
+	if (!pid_info)
+		return NULL;
+
+	pid_info->pid = pid;
+	pid_info->ino_root = RB_ROOT;
+	rb_link_node(&pid_info->node, rb, ppn);
+	rb_insert_color(&pid_info->node, root);
+	return pid_info;
+}
+
+static struct kprobe_pid_ino *kp_pid_ino_find(struct kprobe_pid_info *pid_info, u64 ino, int add)
+{
+	struct rb_root *root = &pid_info->ino_root;
+	struct kprobe_pid_ino *pid_ino;
+	struct rb_node **ppn, *rb;
+
+	ppn = &root->rb_node;
+	while (*ppn) {
+		rb = *ppn;
+		pid_ino = rb_entry(rb, struct kprobe_pid_ino, node);
+
+		if (ino > pid_ino->ino)
+			ppn = &rb->rb_right;
+		else if (ino < pid_ino->ino)
+			ppn = &rb->rb_left;
+		else
+			return pid_ino;
+	}
+
+	if (!add)
+		return NULL;
+
+	pid_ino = kzalloc(sizeof(*pid_ino), DMA_HEAP_DUMP_ALLOC_GFP);
+	if (!pid_ino)
+		return NULL;
+
+	pid_ino->ino = ino;
+	pid_ino->pid_info = pid_info;
+	rb_link_node(&pid_ino->node, rb, ppn);
+	rb_insert_color(&pid_ino->node, root);
+	return pid_ino;
+}
+
+static int kp_add_pid_ino(struct file *file)
+{
+	struct kprobe_pid_info *pid_info;
+	struct kprobe_pid_ino *pid_ino;
+	unsigned long flags;
+	u64 ino, size;
+	int pid, ret = 0;
+
+	pid = current->tgid;
+	ino = file_inode(file)->i_ino;
+	size = file_inode(file)->i_size;
+
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	pid_info = kp_pid_info_find(pid, 1);
+	if (!pid_info) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	pid_ino = kp_pid_ino_find(pid_info, ino, 1);
+	if (!pid_ino) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	pid_ino->fd_count++;
+	if (!pid_ino->size)
+		pid_ino->size = size;
+out:
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+
+	return ret;
+}
+
+static int kp_del_pid_ino(struct file *file)
+{
+	int pid, free_pid_ino = 0, free_pid_info = 0, ret = 0;
+	struct task_struct *task = current;
+	struct kprobe_pid_info *pid_info;
+	struct kprobe_pid_ino *pid_ino;
+	unsigned long flags;
+	u64 ino;
+
+	if (file_count(file) == 0)
+		return -EEXIST;
+
+	if (task->files == NULL && task->pid != task->tgid)
+		return -EINVAL;
+
+	pid = task->tgid;
+	ino = file_inode(file)->i_ino;
+
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	pid_info = kp_pid_info_find(pid, 0);
+	if (!pid_info) {
+		ret = -ESRCH;
+		goto out;
+	}
+
+	pid_ino = kp_pid_ino_find(pid_info, ino, 0);
+	if (!pid_ino) {
+		ret = -EBADF;
+		goto out;
+	}
+
+	pid_ino->fd_count--;
+	if (pid_ino->fd_count <= 0) {
+		free_pid_ino = 1;
+		rb_erase(&pid_ino->node, &pid_info->ino_root);
+
+		if (RB_EMPTY_ROOT(&pid_info->ino_root)) {
+			free_pid_info = 1;
+			rb_erase(&pid_info->node, &kprobe_pid_ino_root);
+		}
+	}
+out:
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+
+	if (free_pid_ino)
+		kfree(pid_ino);
+
+	if (free_pid_info)
+		kfree(pid_info);
+
+	return ret;
+}
+
+static void kp_fork_pid(int fork_tgid)
+{
+	struct kprobe_pid_info *pid_info_src, *pid_info_dst;
+	struct kprobe_pid_ino *pid_ino_src, *pid_ino_dst;
+	struct rb_node *rb_ino;
+	int src_pid, dst_pid;
+	unsigned long flags;
+
+	src_pid = current->tgid;
+	dst_pid = fork_tgid;
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	pid_info_src = kp_pid_info_find(src_pid, 0);
+	if (!pid_info_src)
+		goto out;
+
+	pid_info_dst = kp_pid_info_find(dst_pid, 1);
+	if (!pid_info_dst)
+		goto out;
+
+	for (rb_ino = rb_first(&pid_info_src->ino_root); rb_ino; rb_ino = rb_next(rb_ino)) {
+		pid_ino_src = rb_entry(rb_ino, struct kprobe_pid_ino, node);
+		pid_ino_dst = kp_pid_ino_find(pid_info_dst, pid_ino_src->ino, 1);
+		if (!pid_ino_dst)
+			goto out;
+
+		pid_ino_dst->fd_count = 1;
+		pid_ino_dst->size = pid_ino_src->size;
+	}
+out:
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+}
+
+static void kp_del_pid_ino_cur_proc(void)
+{
+	struct task_struct *task = current;
+	struct kprobe_pid_info *pid_info;
+	struct kprobe_pid_ino *pid_ino;
+	struct rb_root *root;
+	struct rb_node *rb;
+	unsigned long flags;
+	int pid;
+
+	if (task != task->group_leader)
+		return;
+
+	pid = task->pid;
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	pid_info = kp_pid_info_find(pid, 0);
+	if (!pid_info) {
+		spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+		return;
+	}
+
+	rb_erase(&pid_info->node, &kprobe_pid_ino_root);
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+
+	root = &pid_info->ino_root;
+	rb = rb_first(root);
+	while (rb) {
+		pid_ino = rb_entry(rb, struct kprobe_pid_ino, node);
+		rb_erase(rb, root);
+		rb = rb_first(root);
+		kfree(pid_ino);
+	}
+	kfree(pid_info);
+}
+
+static int __kprobes kprobe_handle_fd_install(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (struct file *)regs->regs[1];
+	struct task_struct *task = current;
+
+	if (task->files == task->group_leader->files && file && mtk_is_dma_buf_file(file))
+		kp_add_pid_ino(file);
+
+	return 0;
+}
+
+static int __kprobes kprobe_handle_fput_sync(struct kprobe *p, struct pt_regs *regs)
+{
+	struct file *file = (struct file *)regs->regs[0];
+	struct task_struct *task = current;
+
+	if (task->files == task->group_leader->files && file && mtk_is_dma_buf_file(file))
+		kp_del_pid_ino(file);
+
+	return 0;
+}
+
+static int __kprobes kprobe_handle_filp_close(struct kprobe *p, struct pt_regs *regs)
+{
+	struct files_struct *files = (struct files_struct *)regs->regs[1];
+	struct file *file = (struct file *)regs->regs[0];
+	struct task_struct *task = current;
+
+	if (task->files == task->group_leader->files && files && file && mtk_is_dma_buf_file(file))
+		kp_del_pid_ino(file);
+
+	return 0;
+}
+
+static int __kprobes kprobe_handle_fork_files(struct kprobe *p, struct pt_regs *regs)
+{
+	struct task_struct *task_new = (struct task_struct *)regs->regs[0];
+	struct task_struct *task = current;
+
+	if (task->files == task->group_leader->files &&
+	    task->tgid != task_new->tgid && task_new->files)
+		kp_fork_pid(task_new->tgid);
+
+	return 0;
+}
+
+static int __kprobes kprobe_handle_do_exit(struct kprobe *p, struct pt_regs *regs)
+{
+	kp_del_pid_ino_cur_proc();
+	return 0;
+}
+
+static struct kprobe kprobe_fd_install = {
+	.symbol_name = "fd_install",
+	.pre_handler = kprobe_handle_fd_install,
+};
+
+static struct kprobe kprobe_fput_sync = {
+	.symbol_name = "__fput_sync",
+	.pre_handler = kprobe_handle_fput_sync,
+};
+
+static struct kprobe kprobe_filp_close = {
+	.symbol_name = "filp_close",
+	.pre_handler = kprobe_handle_filp_close,
+};
+
+static struct kprobe kprobe_fork_proc = {
+	.symbol_name = "sched_cgroup_fork",
+	.pre_handler = kprobe_handle_fork_files,
+};
+
+static struct kprobe kprobe_do_exit = {
+	.symbol_name = "do_exit",
+	.pre_handler = kprobe_handle_do_exit,
+};
+
+static void register_kprobe_handle(void)
+{
+	int ret;
+
+	kprobe_pid_ino_root = RB_ROOT;
+	spin_lock_init(&kprobe_pid_ino_lock);
+
+	ret = register_kprobe(&kprobe_fd_install);
+	if (ret) {
+		pr_info("register_kprobe %s failed %d\n", kprobe_fd_install.symbol_name, ret);
+		return;
+	}
+
+	ret = register_kprobe(&kprobe_fput_sync);
+	if (ret) {
+		pr_info("register_kprobe %s failed %d\n", kprobe_fput_sync.symbol_name, ret);
+		goto fput_sync_fail;
+	}
+
+	ret = register_kprobe(&kprobe_filp_close);
+	if (ret) {
+		pr_info("register_kprobe %s failed %d\n", kprobe_filp_close.symbol_name, ret);
+		goto filp_close_fail;
+	}
+
+	ret = register_kprobe(&kprobe_fork_proc);
+	if (ret) {
+		pr_info("register_kprobe %s failed %d\n", kprobe_fork_proc.symbol_name, ret);
+		goto fork_fail;
+	}
+
+	ret = register_kprobe(&kprobe_do_exit);
+	if (ret) {
+		pr_info("register_kprobe %s failed %d\n", kprobe_do_exit.symbol_name, ret);
+		goto do_exit_fail;
+	}
+
+	register_kprobe_status = 1;
+	pr_info("%s success\n", __func__);
+	return;
+
+do_exit_fail:
+	unregister_kprobe(&kprobe_fork_proc);
+fork_fail:
+	unregister_kprobe(&kprobe_filp_close);
+filp_close_fail:
+	unregister_kprobe(&kprobe_fput_sync);
+fput_sync_fail:
+	unregister_kprobe(&kprobe_fd_install);
+}
+
+static void unregister_kprobe_handle(void)
+{
+	if (!register_kprobe_status)
+		return;
+
+	unregister_kprobe(&kprobe_fd_install);
+	unregister_kprobe(&kprobe_fput_sync);
+	unregister_kprobe(&kprobe_filp_close);
+	unregister_kprobe(&kprobe_fork_proc);
+	unregister_kprobe(&kprobe_do_exit);
+}
+
+static int kp_pid_share_count(int pid, u64 ino)
+{
+	struct rb_root *rbroot = &kprobe_pid_ino_root;
+	struct kprobe_pid_info *pid_info;
+	struct kprobe_pid_ino *pid_ino;
+	struct rb_node *tmp_rb;
+	int share_count = 1;
+
+	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
+		pid_info = rb_entry(tmp_rb, struct kprobe_pid_info, node);
+		if (pid_info->pid == pid)
+			continue;
+
+		pid_ino = kp_pid_ino_find(pid_info, ino, 0);
+		if (pid_ino && pid_ino->fd_count > 0)
+			share_count++;
+	}
+
+	return share_count;
+}
+
+static void kp_pid_pss_calc(struct kprobe_pid_info *pid_info)
+{
+	struct rb_root *rbroot = &pid_info->ino_root;
+	struct kprobe_pid_ino *pid_ino;
+	struct rb_node *tmp_rb;
+	int pid_count;
+
+	pid_info->pss = 0;
+	pid_info->rss = 0;
+	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
+		pid_ino = rb_entry(tmp_rb, struct kprobe_pid_ino, node);
+		if (pid_ino->fd_count <= 0)
+			continue;
+
+		pid_count = kp_pid_share_count(pid_info->pid, pid_ino->ino);
+		pid_info->pss += pid_ino->size / pid_count;
+		pid_info->rss += pid_ino->size;
+	}
+}
+
+static void kp_dump_pid_egl(struct seq_file *s, int pid)
+{
+	struct kprobe_pid_info *pid_info;
+	u64 pss = 0, rss = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	pid_info = kp_pid_info_find(pid, 0);
+	if (pid_info) {
+		kp_pid_pss_calc(pid_info);
+		pss = pid_info->pss;
+		rss = pid_info->rss;
+	}
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+
+	/* used for memtrack
+	 *      file: aidl/default/Memtrack.cpp
+	 *      function: getMemory_GRAPHICS
+	 * make sure memtrack can get correct data from below PSS dump,
+	 * please DO NOT change the format unilateral.
+	 */
+	dmabuf_dump(s, "PID     PSS(KB)   RSS(KB)\n");
+	dmabuf_dump(s, "%-5d   %-7llu   %-7llu\n", pid, pss >> 10, rss >> 10);
+	dmabuf_dump(s, "-----EGL memtrack data end.\n");
+}
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_HANG_DETECT) && \
 	IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB) && \
 	IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
@@ -2063,8 +2517,12 @@ static int heap_stat_pid_proc_show(struct seq_file *s, void *v)
 
 	if (pid > 0) {
 		g_stat_pid = 0;
+#ifdef EGL_MTRACK_BY_KPROBE
+		kp_dump_pid_egl(s, pid);
+#else
 		dmabuf_rbtree_dump_all(NULL, HEAP_DUMP_STATS | HEAP_DUMP_EGL |
 				       HEAP_DUMP_PSS_BY_PID, s, pid);
+#endif
 	}
 
 	return 0;
@@ -2349,6 +2807,9 @@ static int __init mtk_dma_heap_debug(void)
 	if (!egl_pid_map)
 		pr_info("%s create egl_pid_map fail\n", __func__);
 
+#ifdef EGL_MTRACK_BY_KPROBE
+	register_kprobe_handle();
+#endif
 	return 0;
 }
 
@@ -2375,6 +2836,10 @@ static void __exit mtk_dma_heap_debug_exit(void)
 #endif
 	dmabuf_rbtree_dump_by_domain = NULL;
 	heap_monitor_exit();
+
+#ifdef EGL_MTRACK_BY_KPROBE
+	unregister_kprobe_handle();
+#endif
 
 	kfree(egl_pid_map);
 	dma_buf_uninit_procfs();
