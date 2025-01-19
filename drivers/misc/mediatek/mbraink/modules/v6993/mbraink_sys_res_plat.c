@@ -456,7 +456,12 @@ static int update_mbraink_sys_res_record(void)
 		return -1;
 	}
 
+	spin_unlock_irqrestore(&sys_res_lock, flag);
+
 	ret = __sync_lastest_mbraink_sys_res_record(&sys_res_record[sys_res_temp_buffer_index]);
+
+	spin_lock_irqsave(&sys_res_lock, flag);
+
 
 	__mbraink_sys_res_record_diff(&sys_res_record[sys_res_last_diff_buffer_index],
 			&sys_res_record[sys_res_temp_buffer_index],
