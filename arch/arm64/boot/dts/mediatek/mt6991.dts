@@ -3604,6 +3604,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	smi-test {
 		compatible = "mediatek,smi-testcase";
 		mediatek,larbs = <&smi_larb2>;
+		skip-set-common-bw;
 	};
 
 	smi_larb2: smi-larb2@3e030000 {
