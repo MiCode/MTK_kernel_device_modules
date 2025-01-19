@@ -6,6 +6,14 @@
 #ifndef __LINUX_TRUSTY_TRUSTY_IPC_H
 #define __LINUX_TRUSTY_TRUSTY_IPC_H
 
+#define ISE_TAG "[iSE]"
+
+#if IS_ENABLED(CONFIG_TRUSTY_TIPC_FOOTPRINT)
+#define ISE_FOOTPRINT(format, args...) pr_info(ISE_TAG "%s: %d " format, __func__, __LINE__, ##args)
+#else
+#define ISE_FOOTPRINT(format, args...) do { } while (0)
+#endif
+
 struct tipc_chan;
 
 struct tipc_msg_buf {

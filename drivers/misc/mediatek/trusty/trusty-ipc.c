@@ -560,6 +560,8 @@ int ise_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 	case TIPC_CONNECTED:
 		fill_msg_hdr(mb, chan->local, chan->remote);
 		err = vds_queue_txbuf(chan->vds, mb);
+		ISE_FOOTPRINT("srv='%s', ree=%d, ise=%d (%d)\n",
+			chan->srv_name, chan->local, chan->remote, err);
 		if (err) {
 			/* this should never happen */
 			pr_err("%s: failed to queue tx buffer (%d)\n",
@@ -569,14 +571,17 @@ int ise_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 	case TIPC_DISCONNECTED:
 	case TIPC_CONNECTING:
 		err = -ENOTCONN;
+		pr_err("%s: unexpected connection state %d\n",
+			__func__, chan->state);
 		break;
 	case TIPC_STALE:
 		err = -ESHUTDOWN;
+		pr_err("%s: stale state\n", __func__);
 		break;
 	default:
 		err = -EBADFD;
 		pr_err("%s: unexpected channel state %d\n",
-		       __func__, chan->state);
+			__func__, chan->state);
 	}
 	mutex_unlock(&chan->lock);
 	return err;
@@ -614,6 +619,8 @@ int ise_chan_connect(struct tipc_chan *chan, const char *name)
 
 		fill_msg_hdr(txbuf, chan->local, TIPC_CTRL_ADDR);
 		err = vds_queue_txbuf(chan->vds, txbuf);
+		ISE_FOOTPRINT("to='%s', ree=%d, ise=%d (CONN_REQ)\n",
+			body->name, chan->local, TIPC_CTRL_ADDR);
 		if (err) {
 			/* this should never happen */
 			pr_err("%s: failed to queue tx buffer (%d)\n",
@@ -626,22 +633,29 @@ int ise_chan_connect(struct tipc_chan *chan, const char *name)
 	case TIPC_CONNECTED:
 	case TIPC_CONNECTING:
 		/* check if we are trying to connect to the same service */
-		if (strcmp(chan->srv_name, body->name) == 0)
+		if (strcmp(chan->srv_name, body->name) == 0) {
 			err = 0;
-		else
+			ISE_FOOTPRINT("to='%s', srv='%s' (0)\n",
+				body->name, chan->srv_name);
+		} else {
 			if (chan->state == TIPC_CONNECTING)
 				err = -EALREADY; /* in progress */
 			else
 				err = -EISCONN;  /* already connected */
+
+			ISE_FOOTPRINT("to='%s', srv='%s' (1) state %d\n",
+				body->name, chan->srv_name, chan->state);
+		}
 		break;
 
 	case TIPC_STALE:
 		err = -ESHUTDOWN;
+		pr_err("%s: stale state\n", __func__);
 		break;
 	default:
 		err = -EBADFD;
 		pr_err("%s: unexpected channel state %d\n",
-		       __func__, chan->state);
+			__func__, chan->state);
 		break;
 	}
 	mutex_unlock(&chan->lock);
@@ -675,15 +689,20 @@ int ise_chan_shutdown(struct tipc_chan *chan)
 		msg->body_len = sizeof(*body);
 		body->target = chan->remote;
 
+		ISE_FOOTPRINT("srv='%s', ree=%d, ise=%d (%d)(DISC_REQ)\n",
+			chan->srv_name, chan->local, chan->remote, chan->state);
+
 		fill_msg_hdr(txbuf, chan->local, TIPC_CTRL_ADDR);
 		err = vds_queue_txbuf(chan->vds, txbuf);
 		if (err) {
 			/* this should never happen */
 			pr_err("%s: failed to queue tx buffer (%d)\n",
-			       __func__, err);
+				__func__, err);
 		}
 	} else {
 		err = -ENOTCONN;
+		pr_err("%s: unexpected channel state %d (%d)\n",
+			__func__, chan->state, err);
 	}
 	chan->state = TIPC_STALE;
 	mutex_unlock(&chan->lock);
@@ -735,6 +754,7 @@ static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 			break;
 		ise_check_vqs_call();
 		max_retry--;
+		ISE_FOOTPRINT("max_retry=%d\n", max_retry);
 	}
 
 	if (ret < 0)
@@ -1087,7 +1107,7 @@ static long filp_send_ioctl(struct file *filp,
 	ret = import_iovec(WRITE, u64_to_user_ptr(req.iov), req.iov_cnt,
 			   ARRAY_SIZE(fast_iovs), &iov, &iter);
 	if (ret < 0) {
-		dev_err(dev, "Failed to import iovec\n");
+		dev_err(dev, "%s: Failed to import iovec\n", __func__);
 		ret = -EINVAL;
 		goto iov_import_failed;
 	}
@@ -1097,7 +1117,7 @@ static long filp_send_ioctl(struct file *filp,
 
 	txbuf = ise_chan_get_txbuf_timeout(dn->chan, timeout);
 	if (IS_ERR(txbuf)) {
-		dev_err(dev, "Failed to get txbuffer\n");
+		dev_err(dev, "%s: Failed to get txbuffer\n", __func__);
 		ret = PTR_ERR(txbuf);
 		goto get_txbuf_failed;
 	}
@@ -1237,6 +1257,7 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 			mod_timer(&dn->tipc_timer, jiffies + msecs_to_jiffies(TIPC_TIMEOUT));
 		mutex_unlock(&dn->timer_lock);
 
+		ISE_FOOTPRINT("wait for read!\n");
 		dn->event_status = wait_event_interruptible(dn->readq, _got_rx(dn));
 		if (dn->event_status)
 			return -ERESTARTSYS;
@@ -1564,6 +1585,8 @@ static void _handle_conn_rsp(struct tipc_virtio_dev *vds,
 		mutex_lock(&chan->lock);
 		if (chan->state == TIPC_CONNECTING) {
 			if (!rsp->status) {
+				ISE_FOOTPRINT("srv='%s', ree=%d, ise=%d (%d)(CONN_RSP)\n",
+					chan->srv_name, chan->local, rsp->remote, chan->state);
 				chan->state = TIPC_CONNECTED;
 				chan->remote = rsp->remote;
 				chan->max_msg_cnt = rsp->max_msg_cnt;
@@ -1571,12 +1594,17 @@ static void _handle_conn_rsp(struct tipc_virtio_dev *vds,
 				chan_trigger_event(chan,
 						   TIPC_CHANNEL_CONNECTED);
 			} else {
+				ISE_FOOTPRINT("srv='%s', ree=%d, ise=%d (%d)(CONN_RSP)\n",
+					chan->srv_name, chan->local, 0, chan->state);
 				chan->state = TIPC_DISCONNECTED;
 				chan->remote = 0;
 				chan_trigger_event(chan,
 						   TIPC_CHANNEL_DISCONNECTED);
 			}
+		} else {
+			ISE_FOOTPRINT("state %d\n", chan->state);
 		}
+
 		mutex_unlock(&chan->lock);
 		kref_put(&chan->refcount, _free_chan);
 	}
@@ -1599,6 +1627,8 @@ static void _handle_disc_req(struct tipc_virtio_dev *vds,
 	chan = vds_lookup_channel(vds, req->target);
 	if (chan) {
 		mutex_lock(&chan->lock);
+		pr_info("%s:%d srv='%s', ree=%d, ise=%d (%d)\n", __func__, __LINE__,
+			chan->srv_name, chan->local, chan->remote, chan->state);
 		if (chan->state == TIPC_CONNECTED ||
 			chan->state == TIPC_CONNECTING) {
 			chan->state = TIPC_DISCONNECTED;
@@ -1607,6 +1637,8 @@ static void _handle_disc_req(struct tipc_virtio_dev *vds,
 		}
 		mutex_unlock(&chan->lock);
 		kref_put(&chan->refcount, _free_chan);
+	} else {
+		ISE_FOOTPRINT("no chan\n");
 	}
 }
 
@@ -1628,10 +1660,12 @@ static void _handle_ctrl_msg(struct tipc_virtio_dev *vds,
 
 	switch (msg->type) {
 	case TIPC_CTRL_MSGTYPE_GO_ONLINE:
+		ISE_FOOTPRINT("GO_ONLINE\n");
 		_go_online(vds);
 	break;
 
 	case TIPC_CTRL_MSGTYPE_GO_OFFLINE:
+		ISE_FOOTPRINT("GO_OFFLINE\n");
 		_go_offline(vds);
 	break;
 
@@ -1694,6 +1728,8 @@ static int _handle_rxbuf(struct tipc_virtio_dev *vds,
 		/* Lookup channel */
 		chan = vds_lookup_channel(vds, msg->dst);
 		if (chan) {
+			ISE_FOOTPRINT("srv='%s', ree=%d, ise=%d (%d)\n",
+				chan->srv_name, chan->local, chan->remote, chan->state);
 			/* handle it */
 			rxbuf = chan->ops->handle_msg(chan->ops_arg, rxbuf);
 			BUG_ON(!rxbuf);
