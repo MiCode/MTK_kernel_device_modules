@@ -675,7 +675,9 @@ static int mtk_spi_prepare_message(struct spi_controller *ctrl,
 		if (spi->mode & SPI_CS_HIGH)
 			reg_val |= SPI_CMD_CS_POL;
 		else
-			reg_val &= ~SPI_CMD_CS_POL;
+			/* if sw_cs supports cs_change, we do not need to run this setting */
+			if (!mdata->dev_comp->sw_cs)
+				reg_val &= ~SPI_CMD_CS_POL;
 
 		if (chip_config->sample_sel)
 			reg_val |= SPI_CMD_SAMPLE_SEL;
