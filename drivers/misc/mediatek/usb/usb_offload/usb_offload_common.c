@@ -1414,7 +1414,7 @@ static bool xhci_mtk_is_usb_offload_enabled(struct xhci_hcd *xhci,
 					   struct xhci_virt_device *vdev,
 					   unsigned int ep_index)
 {
-	return true;
+	return uodev->policy.ready_for_xhci;
 }
 
 static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *xhci,

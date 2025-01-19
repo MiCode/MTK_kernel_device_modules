@@ -104,6 +104,7 @@ static struct policy_member flow_control[] = {
 	POLICY_MAP(hid_tr_switch,       13),
 	POLICY_MAP(support_idle_lowpwr, 19),
 	POLICY_MAP(all_on_sram,         11),
+	POLICY_MAP(ready_for_xhci,      14),
 };
 
 #define MAX_INPUT_NUM   50
@@ -302,6 +303,7 @@ void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_pol
 	policy->support_hub = of_property_read_bool(node, "mediatek,hub-offload");
 	policy->support_idle_lowpwr = of_property_read_bool(node, "mediatek,idle-lowpwr");
 	policy->all_on_sram = of_property_read_bool(node, "mediatek,all-on-sram");
+	policy->ready_for_xhci = of_property_read_bool(node, "mediatek,ready-for-xhci");
 
 	policy->hid_disable_sync = false;
 	policy->hid_tr_switch = true;
